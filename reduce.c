@@ -1888,7 +1888,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
 #ifndef RYU
       sprintf(linebuf,"%.16g",x);
       char *p=linebuf;
-      while isdigit(*p)p++; /* add .0 to false integer */
+      while(isdigit(*p))p++; /* add .0 to false integer */
       if(!*p)*p++='.',*p++='0',*p='\0';
       hd[e]=I; e=tl[e]=str_conv(linebuf); }
 #else
