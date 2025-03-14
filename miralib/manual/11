@@ -34,8 +34,8 @@ Character constants are written using single quotes, thus
 The type `char' includes all Unicode* characters,  those  outside  ascii
 and Latin-1 can be expressed by numeric escape codes, see below.
 
-Note that the functions code  ::  char->num,  and  decode  ::  num->char
-convert characters to and from their numeric codes.
+Note  that  the  functions  code::char->num,  decode::num->char  convert
+characters to and from their numeric codes.
 
 String constants are written using double quotes, thus
 	"hello dolly"    ""    "\n\n\n"
@@ -81,6 +81,6 @@ dolly"
 A literal newline is not allowed inside character quotes.
 
 [* Unicode is an international standard providing numeric codes for the
-   glyphs of practically all known human writing systems.  Unicode
+   symbols of practically all known human writing systems.  Unicode
    points 0-127 coincide with ascii and 128-255 with Latin-1.]
 

@@ -6,10 +6,12 @@ be useful.  Originally released in 1985, Miranda was  the  first  widely
 used  non-strict, purely functional language with polymorphic typing and
 had a significant influence on the development of the field.
 
-Various bugs have been fixed and some features added  (see  the  Changes
-section  of the manual) but the language and main features of the system
-interface remain unchanged.  The manual has been revised in  places  for
-clarity and to remove out of date material.
+The source code has been revised to the current C standard (C11)  so  it
+will  compile  for both 32 and 64 bit platforms.  Various bugs have been
+fixed and some features added (see the Changes section  of  the  manual)
+but  the  Miranda  language  and  main  features of the system interface
+remain unchanged.  The manual has been revised in places for clarity and
+to remove out of date material.
 
 The online manual pages are primarily intended to document the system at
 the  level  required  by  someone  who  already  knows quite a lot about

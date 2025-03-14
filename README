@@ -36,8 +36,11 @@ at the places in the root filing system where you want them to go.
 
 Be aware that the garbage collector works by scanning  the  C  stack  to
 find  anything  that  is  or  seems  to  be a pointer into the heap (see
-bases() in data.c) and is therefore somehat fragile as it can  be  foxed
-by aggressive compiler optimisations.  Use gcc -O2 at your own risk.
+bases() in data.c) and is therefore somewhat fragile as it can be  foxed
+by  aggressive compiler optimisations. GC errors manifest as "impossible
+event"  messages,  or  segmentation  faults.   If   these   appear   try
+recompiling  at a lower level of optimisation (e.g.  without -O) or with
+a different C compiler - e.g. clang instead of gcc or vice versa.
 
 ------------------------------------------------------------------------
 
@@ -84,4 +87,4 @@ miranda.org.uk
 
 David Turner
 University of Kent
-1.12.2019
+13.01.2020

@@ -5,30 +5,35 @@
  * Copyright (C) Research Software Limited 1985-90.  All rights reserved. *
  * The Miranda system is distributed as free software under the terms in  *
  * the file "COPYING" which is included in the distribution.              *
+ *                                                                        *
+ * Revised to C11 standard and made 64bit compatible, January 2020        *
  *------------------------------------------------------------------------*/
 
 /* this stuff is to get the time-last-modified of files */
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h> /* creat() */
 /* #include <sys/wait.h> /* seems not needed, oct 05 */
 static struct stat buf; /* see man(2) stat - gets file status */
 
 #include "data.h"
+#include "big.h"
+#include "lex.h"
 #include <float.h>
-int nill,Void;
-int main_id; /* change to magic scripts 19.11.2013 */
-int message,standardout;
-int diagonalise,concat,indent_fn,listdiff_fn;
-int shownum1,showbool,showchar,showlist,showstring,showparen,showpair,
+word nill,Void;
+word main_id; /* change to magic scripts 19.11.2013 */
+word message,standardout;
+word diagonalise,concat,indent_fn,outdent_fn,listdiff_fn;
+word shownum1,showbool,showchar,showlist,showstring,showparen,showpair,
     showvoid,showfunction,showabstract,showwhat;
 
 char PRELUDE[pnlim+10],STDENV[pnlim+9];
      /* if anyone complains, elasticate these buffers! */
 
-#define DFLTSPACE 2500000
-#define DFLTDICSPACE 100000
+#define DFLTSPACE 2500000l
+#define DFLTDICSPACE 100000l
 /* default values for size of heap, dictionary */
-int SPACELIMIT=DFLTSPACE,DICSPACE=DFLTDICSPACE;
+word SPACELIMIT=DFLTSPACE,DICSPACE=DFLTDICSPACE;
 
 #ifdef CYGWIN
 #define EDITOR "joe +!"
@@ -42,56 +47,98 @@ int SPACELIMIT=DFLTSPACE,DICSPACE=DFLTDICSPACE;
 extern FILE *s_out;
 int UTF8=0, UTF8OUT=0;
 extern char *vdate, *host;
-extern int version, ND;
+extern word version, ND;
+extern word *dstack,*stackp;
 
-char *mkabsolute(), *strvers();
+static void allnamescom(void);
+static void announce(void);
+static int badeditor(void);
+static int checkversion(char*);
+static void command(void);
+static void commandloop(char*);
+static void diagnose(char*);
+static void editfile(char*,int);
+static void ed_warn(void);
+static void filecopy(char*);
+static void filecp(char*,char*);
+static void finger(char*);
+static void fixeditor(void);
+static void fixexports(void);
+static int getln(FILE*,word,char*);
+static word isfreeid(word);
+static void libfails(void);
+static void loadfile(char*);
+static void makedump(void);
+static void manaction(void);
+static void mira_setup(void);
+static void missparam(char*);
+static char *mkabsolute(char*);
+static word mkincludes(word);
+static word mktiny(void);
+static void namescom(word);
+static void primlib(void);
+static word privatise(word);
+static void privlib(void);
+static word publicise(word);
+static word rc_read(char*);
+static void rc_write(void);
+static int src_update(void);
+static void stdlib(void);
+static char *strvers(int);
+static int twidth(void);
+static void undump(char*);
+static int utf8test(void);
+static void unfixexports(void);
+static void unlinkx(char*);
+static void unload(void);
+static void v_info(int);
+static void xschars(void);
 
 char *editor=NULL;
-int okprel=0; /* set to 1 when prelude loaded */
-int nostdenv=0;  /* if set to 1 mira does not load stdenv at startup */
+word okprel=0; /* set to 1 when prelude loaded */
+word nostdenv=0;  /* if set to 1 mira does not load stdenv at startup */
 /* to allow a NOSTDENV directive _in_the_script_ we would need to
     (i) replace isltmess() test in rules by eg is this a list of thing,
         where thing is algebraic type originally defined in STDENV
     (ii) arrange to pick up <stdenv> when current script not loaded
    not implemented */
-int baded=0; /* see fixeditor() */
+word baded=0; /* see fixeditor() */
 char *miralib=NULL;
 char *mirahdr,*lmirahdr;
 char *promptstr="Miranda ";
 char *obsuffix="x";
 FILE *s_in=NULL;
-int commandmode=0; /* true only when reading command-level expressions */
+word commandmode=0; /* true only when reading command-level expressions */
 int atobject=0,atgc=0,atcount=0,debug=0;
-int magic=0; /* set to 1 means script will start with UNIX magic string */
-int making=0; /* set only for mira -make */
-int mkexports=0; /* set only for mira -exports */
-int mksources=0; /* set only for mira -sources */
-int make_status=0; /* exit status of -make */
+word magic=0; /* set to 1 means script will start with UNIX magic string */
+word making=0; /* set only for mira -make */
+word mkexports=0; /* set only for mira -exports */
+word mksources=0; /* set only for mira -sources */
+word make_status=0; /* exit status of -make */
 int compiling=1;
 /* there are two types of MIRANDA process - compiling (the main process) and
 subsidiary processes launched for each evaluation - the above flag tells
 us which kind of process we are in */
 int ideep=0; /* depth of %include we are at, see mkincludes() */
-int SYNERR=0;
-int initialising=1;
-int primenv=NIL;
+word SYNERR=0;
+word initialising=1;
+word primenv=NIL;
 char *current_script;
-int lastexp=UNDEF; /* value of `$$' */
-int echoing=0,listing=0,verbosity; 
-int strictif=1,rechecking=0;
-int errline=0;  /* records position of last error, for editor */
-int errs=0;  /* secondary error location, in inserted script, if relevant */
-int *cstack;
-extern int c;
-extern char *dicp,*dicq,*token();
+word lastexp=UNDEF; /* value of `$$' */
+word echoing=0,listing=0,verbosity; 
+word strictif=1,rechecking=0;
+word errline=0;  /* records position of last error, for editor */
+word errs=0;  /* secondary error location, in inserted script, if relevant */
+word *cstack;
+extern word c;
+extern char *dicp,*dicq;
 char linebuf[BUFSIZE];  /* used for assorted purposes */
   /* NB cannot share with linebuf in lex.c, or !! goes wrong */
 static char ebuf[pnlim];
-extern int col;
+extern word col;
 char home_rc[pnlim+8];
 char lib_rc[pnlim+8];
 char *rc_error=NULL;
-extern char *addextn();
 #define badval(x) (x<1||x>478000000)
 
 #include <setjmp.h> /* for longjmp() - see man (3) setjmp */
@@ -102,18 +149,17 @@ jmp_buf env;
 fp_except commonmask = FP_X_INV|FP_X_OFL|FP_X_DZ; /* invalid|ovflo|divzero */
 #endif
 
-main(argc,argv)  /* system initialisation, followed by call to YACC */
+int main(argc,argv)  /* system initialisation, followed by call to YACC */
 int argc;
 char *argv[];
-{ int manonly=0;
+{ word manonly=0;
   char *home, *prs;
   int okhome_rc; /* flags valid HOME/.mirarc file present */
   char *argv0=argv[0];
   char *initscript;
   int badlib=0;
-  extern int fpe_error();
   extern int ARGC; extern char **ARGV;
-  extern int newtyps,algshfns;
+  extern word newtyps,algshfns;
   char *progname=rindex(argv[0],'/');
   cstack= &manonly;
 /* used to indicate the base of the C stack for garbage collection purposes */
@@ -145,13 +191,13 @@ char *argv[];
     if(strcmp(argv[1],"-dic")==0)
       { argc--,argv++;
 	if(argc==1)missparam("dic"); else
-	if(sscanf(argv[1],"%d",&DICSPACE)!=1||badval(DICSPACE))
+	if(sscanf(argv[1],"%ld",&DICSPACE)!=1||badval(DICSPACE))
 	  fprintf(stderr,"mira: bad value after flag \"-dic\"\n"),exit(1);
       } else
     if(strcmp(argv[1],"-heap")==0)
       { argc--,argv++;
 	if(argc==1)missparam("heap"); else
-	if(sscanf(argv[1],"%d",&SPACELIMIT)!=1||badval(SPACELIMIT))
+	if(sscanf(argv[1],"%ld",&SPACELIMIT)!=1||badval(SPACELIMIT))
 	  fprintf(stderr,"mira: bad value after flag \"-heap\"\n"),exit(1);
       } else
     if(strcmp(argv[1],"-editor")==0)
@@ -245,12 +291,12 @@ char *argv[];
   initialising=0;
   if(mkexports)
     { /* making=1, to say if recompiling, also to undump as for %include */
-      int f,argcount=argc-1;
-      extern int exports,freeids;
+      word f,argcount=argc-1;
+      extern word exports,freeids;
       char *s;
       setjmp(env); /* will return here on blankerr (via reset) */
       while(--argc) /* where do error messages go?? */
-	   { int x=NIL;
+	   { word x=NIL;
 	     s=addextn(1,*++argv);
 	     if(s==dicp)keep(dicp);
 	     undump(s); /* bug, recompile messages goto stdout - FIX LATER */
@@ -261,9 +307,9 @@ char *argv[];
 	     else for(f=files;f!=NIL;f=tl[f])x=append1(fil_defs(hd[f]),x);
 	          /* method very clumsy, because exports not saved in dump */
 	     if(freeids!=NIL)
-	       { int f=freeids;
+	       { word f=freeids;
 		 while(f!=NIL)
-		      { int n=findid((char *)hd[hd[tl[hd[f]]]]);
+		      { word n=findid((char *)hd[hd[tl[hd[f]]]]);
 			id_type(n)=tl[tl[hd[f]]];
 			id_val(n)=the_val(hd[hd[f]]);
 			hd[f]=n;
@@ -281,21 +327,21 @@ char *argv[];
 	          report_type(hd[x]);
 		  putchar('\n'); } }
       exit(0); }
-  if(mksources){ extern int oldfiles;
+  if(mksources){ extern word oldfiles;
 	         char *s;
-		 int f,x=NIL;
+		 word f,x=NIL;
                  setjmp(env); /* will return here on blankerr (via reset) */
 	         while(--argc)
 		      if(stat((s=addextn(1,*++argv)),&buf)==0)
 		      { if(s==dicp)keep(dicp);
 			undump(s);
                         for(f=files==NIL?oldfiles:files;f!=NIL;f=tl[f])
-		           if(!member(x,(int)get_fil(hd[f])))
-		             x=cons((int)get_fil(hd[f]),x),
+		           if(!member(x,(word)get_fil(hd[f])))
+		             x=cons((word)get_fil(hd[f]),x),
                              printf("%s\n",get_fil(hd[f]));
 		      }
 	         exit(0); }
-  if(making){ extern int oldfiles;
+  if(making){ extern word oldfiles;
 	      char *s;
               setjmp(env); /* will return here on blankerr (via reset) */
 	      while(--argc) /* where do error messages go?? */
@@ -308,7 +354,7 @@ char *argv[];
 		     /* keep list of source files with error-dumps */
 		   }
 	      if(tag[make_status]==STRCONS)
-		{ int h=0,maxw=0,w,n;
+		{ word h=0,maxw=0,w,n;
 		  printf("errors or undefined names found in:-\n");
 		  while(make_status) /* reverse to get original order */
 		       { h=strcons(hd[make_status],h);
@@ -317,7 +363,7 @@ char *argv[];
 		         make_status=tl[make_status]; }
 		  maxw++;n=78/maxw;w=0;
 		  while(h)
-		       printf("%*s%s",maxw,(char *)hd[h],(++w%n)?"":"\n"),
+		       printf("%*s%s",(int)maxw,(char *)hd[h],(++w%n)?"":"\n"),
 		       h=tl[h];
 		  if(w%n)printf("\n");
 		  make_status=1; }
@@ -341,7 +387,7 @@ int vstack[4];  /* record of miralib versions looked at */
 char *mstack[4]; /* and where found */
 int mvp=0;
 
-checkversion(m)
+int checkversion(m)
 /* returns 1 iff m is directory with .version containing our version number */
 char *m;
 { int v1,read=0,r=0;
@@ -352,14 +398,15 @@ char *m;
   return r;
 }
 
-libfails()
-{ int i=0;
+void libfails()
+{ word i=0;
   fprintf(stderr,"found");
   for(;i<mvp;i++)fprintf(stderr,"\tversion %s at: %s\n",
                          strvers(vstack[i]),mstack[i]);
 }
 
 char *strvers(v)
+int v;
 { static char vbuf[12];
   if(v<0||v>999999)return "\?\?\?";
   snprintf(vbuf,12,"%.3f",v/1000.0); 
@@ -378,7 +425,7 @@ char *m;
   return(m);
 }
 
-missparam(s)
+void missparam(s)
 char *s;
 { fprintf(stderr,"mira: missing param after flag \"-%s\"\n",s);
   exit(1); }
@@ -387,21 +434,21 @@ int oldversion=0;
 #define colmax 400
 #define spaces(s) for(j=s;j>0;j--)putchar(' ')
 
-announce()
+void announce()
 { extern char *vdate;
-  int w,j;
+  word w,j;
 /*clrscr();  /* clear screen on start up */
   w=(twidth()-50)/2;
   printf("\n\n");
   spaces(w); printf("   T h e   M i r a n d a   S y s t e m\n\n");
   spaces(w+5-strlen(vdate)/2); 
              printf("  version %s last revised %s\n\n",strvers(version),vdate);
-  spaces(w); printf("Copyright Research Software Ltd 1985-2019\n\n");
+  spaces(w); printf("Copyright Research Software Ltd 1985-2020\n\n");
   spaces(w); printf("  World Wide Web: http://miranda.org.uk\n\n\n");
   if(SPACELIMIT!=DFLTSPACE)
-    printf("(%d cells)\n",SPACELIMIT);
+    printf("(%ld cells)\n",SPACELIMIT);
   if(!strictif)printf("(-nostrictif : deprecated!)\n");
-/*printf("\t\t\t\t%dbit platform\n",__WORDSIZE); /* */
+/*printf("\t\t\t\t%dbit platform\n",__WORDSIZE); /* temporary */
   if(oldversion<1999) /* pre release two */
     printf("\
 WARNING:\n\
@@ -419,11 +466,11 @@ the system - please read the `CHANGES' section of the /man pages !!!\n\n");
 }
 
 
-rc_read(rcfile)  /* get settings of system parameters from setup file */
+word rc_read(rcfile)  /* get settings of system parameters from setup file */
 char *rcfile;
 { FILE *in;
   char z[20];
-  int h,d,v,s,r=0;
+  word h,d,v,s,r=0;
   oldversion=version;  /* default assumption */
   in=fopen(rcfile,"r");
   if(in==NULL||fscanf(in,"%19s",z)!=1)
@@ -436,17 +483,17 @@ char *rcfile;
 		  if(*z1=='s') /* ignore */; else
 		  if(*z1=='r')rechecking=2; else
 		  rc_error=rcfile;
-      if(fscanf(in,"%d%d%d%*c",&h,&d,&v)!=3||!getln(in,pnlim-1,ebuf)
+      if(fscanf(in,"%ld%ld%ld%*c",&h,&d,&v)!=3||!getln(in,pnlim-1,ebuf)
          ||badval(h)||badval(d)||badval(v))rc_error=rcfile;
       else editor=ebuf,SPACELIMIT=h,DICSPACE=d,r=1,
            oldversion=v; } else
   if(strcmp(z,"ehdsv")==0) /* versions before 550 */
-    { if(fscanf(in,"%19s%d%d%d%d",ebuf,&h,&d,&s,&v)!=5
+    { if(fscanf(in,"%19s%ld%ld%ld%ld",ebuf,&h,&d,&s,&v)!=5
          ||badval(h)||badval(d)||badval(v))rc_error=rcfile;
       else editor=ebuf,SPACELIMIT=h,DICSPACE=d,r=1,
            oldversion=v; } else
   if(strcmp(z,"ehds")==0)  /* versions before 326, "s" was stacklimit (ignore) */
-    { if(fscanf(in,"%s%d%d%d",ebuf,&h,&d,&s)!=4
+    { if(fscanf(in,"%s%ld%ld%ld",ebuf,&h,&d,&s)!=4
          ||badval(h)||badval(d))rc_error=rcfile;
       else editor=ebuf,SPACELIMIT=h,DICSPACE=d,r=1,
            oldversion=1; }
@@ -456,7 +503,7 @@ char *rcfile;
   return(r);
 }
 
-fixeditor()
+void fixeditor()
 { if(strcmp(editor,"vi")==0)editor="vi +!"; else
   if(strcmp(editor,"pico")==0)editor="pico +!"; else
   if(strcmp(editor,"nano")==0)editor="nano +!"; else
@@ -473,23 +520,23 @@ fixeditor()
   listing=badeditor();
 }
 
-badeditor() /* does editor know how to open file at line? */
+int badeditor() /* does editor know how to open file at line? */
 { char *p=index(editor,'!');
   while(p&&p[-1]=='\\')p=index(p+1,'!');
   return (baded = !p);
 } 
 
-getln(in,n,s) /* reads line (<=n chars) from in into s - returns 1 if ok */
-FILE *in;     /* the newline is discarded, and the result '\0' terminated */
-int n;
+int getln(in,n,s) /* reads line (<=n chars) from in into s - returns 1 if ok */
+FILE *in;         /* the newline is discarded, and the result '\0' terminated */
+word n;
 char *s;
 { while(n--&&(*s=getc(in))!='\n')s++;
   if(*s!='\n'||n<0)return(0);
   *s='\0';
   return(1);
-} /* what a pain that `fgets' doesn't do it right !! */
+}
 
-rc_write()
+void rc_write()
 { FILE *out=fopen(home_rc,"w");
   if(out==NULL)
     { fprintf(stderr,"warning: cannot write to \"%s\"\n",home_rc);
@@ -497,18 +544,19 @@ rc_write()
   fprintf(out,"hdve");
   if(listing)fputc('l',out);
   if(rechecking==2)fputc('r',out);
-  fprintf(out," %d %d %d %s\n",SPACELIMIT,DICSPACE,version,editor);
+  fprintf(out," %ld %ld %ld %s\n",SPACELIMIT,DICSPACE,version,editor);
   fclose(out);
 }
 
-int lastid=0; /* first inscope identifier of immediately preceding command */
-int rv_expr=0;
+word lastid=0; /* first inscope identifier of immediately preceding command */
+word rv_expr=0;
 
-commandloop(initscript)
+void commandloop(initscript)
 char* initscript;
 { int ch;
-  int reset();
-  extern int cook_stdin,polyshowerror;
+  void reset();
+  extern word cook_stdin;
+  extern void obey(word);
   char *lb;
   if(setjmp(env)==0) /* returns here if interrupted, 0 means first time thru */
     { if(magic){ undump(initscript); /* was loadfile() changed 26.11.2019
@@ -534,10 +582,9 @@ char* initscript;
                    /* modified behaviour for `2-window' mode */
     while(ch==' '||ch=='\t')ch=getchar();
     switch(ch)
-    { extern char *rdline();
-      case '?':  ch=getchar();
+    { case '?':  ch=getchar();
 		 if(ch=='?')
-		   { int x; char *aka=NULL;
+		   { word x; char *aka=NULL;
 		     if(!token()&&!lastid)
 		       { printf("\7identifier needed after `\?\?'\n");
 			 ch=getchar(); /* '\n' */
@@ -576,7 +623,7 @@ char* initscript;
       case ':':  /* add (silently) as kindness to Hugs users */
       case '/':  (void)token();
 		 lastid=0;
-		 command(ch);
+		 command();
                  break;
       case '!':  if(!(lb=rdline()))break; /* rdline returns NULL on failure */
 		 lastid=0;
@@ -584,7 +631,7 @@ char* initscript;
 		   { /*system(lb); */ /* always gives /bin/sh */
 		     static char *shell=NULL;
 		     sighandler oldsig;
-		     int pid;
+		     word pid;
 		     if(!shell)
 		       { shell=getenv("SHELL");
 		         if(!shell)shell="/bin/sh"; }
@@ -626,12 +673,12 @@ char* initscript;
                echoing=verbosity&listing;
 }}}
 
-parseline(t,f,fil) /* parses next valid line of f at type t, returns EOF
+word parseline(t,f,fil) /* parses next valid line of f at type t, returns EOF
 		      if none found.  See READVALS in reduce.c */
-int t;
+word t;
 FILE *f;
-int fil;
-{ int t1,ch;
+word fil;
+{ word t1,ch;
   lastexp=UNDEF;
   for(;;)
   { ch=getc(f);
@@ -664,7 +711,7 @@ int fil;
 	   outstats(); exit(1); } 
 }}
 
-ed_warn()
+void ed_warn()
 { printf(
 "The currently installed editor command, \"%s\", does not\n\
 include a facility for opening a file at a specified line number.  As a\n\
@@ -673,22 +720,21 @@ are disabled.  See manual section 31/5 on changing the editor for more\n\
 information.\n",editor);
 }
 
-time_t fm_time(f) /* time last modified of file f */
+word fm_time(f) /* time last modified of file f */
 char *f;
 { return(stat(f,&buf)==0?buf.st_mtime:0);
   /* non-existent file has conventional mtime of 0 */
-} /* WARNING - we assume time_t can be stored in an int field 
-     - this may not port */
+} /* we assume time_t can be stored in a word */
 
 #define same_file(x,y) (hd[fil_inodev(x)]==hd[fil_inodev(y)]&& \
 			tl[fil_inodev(x)]==tl[fil_inodev(y)])
 #define inodev(f) (stat(f,&buf)==0?datapair(buf.st_ino,buf.st_dev):\
 		   datapair(0,-1))
 
-int oldfiles=NIL; /* most recent set of sources, in case of interrupted or
+word oldfiles=NIL; /* most recent set of sources, in case of interrupted or
                                                        failed compilation */
-src_update() /* any sources modified ? */
-{ int ft,f=files==NIL?oldfiles:files;
+int src_update() /* any sources modified ? */
+{ word ft,f=files==NIL?oldfiles:files;
   while(f!=NIL)
   { if((ft=fm_time(get_fil(hd[f])))!=fil_time(hd[f]))
       { if(ft==0)unlinkx(get_fil(hd[f])); /* tidy up after eg `!rm %' */
@@ -700,9 +746,9 @@ src_update() /* any sources modified ? */
 int loading;
 char *unlinkme; /* if set, is name of partially created obfile */
 
-reset() /* interrupt catcher - see call to signal in commandloop */
-{ extern int lineptr,ATNAMES,current_id;
-  extern int blankerr,collecting/* ,*dstack,*stackp */;
+void reset() /* interrupt catcher - see call to signal in commandloop */
+{ extern word lineptr,ATNAMES,current_id;
+  extern int blankerr,collecting;
   /*if(!making)  /* see note below
     (void)signal(SIGINT,SIG_IGN); /* dont interrupt me while I'm tidying up */
 /*if(magic)exit(0); *//* signal now not set to reset in magic scripts */
@@ -731,22 +777,20 @@ reset() /* interrupt catcher - see call to signal in commandloop */
 
 int lose;
 
-normal(f) /* s has ".m" suffix */
+int normal(f) /* s has ".m" suffix */
 char *f;
 { int n=strlen(f);
   return n>=2&&strcmp(f+n-2,".m")==0;
 }
 
-v_info(int full)
+void v_info(int full)
 { printf("%s last revised %s\n",strvers(version),vdate);
   if(!full)return;
   printf("%s",host);
   printf("XVERSION %u\n",XVERSION);
 }
 
-
-command(c)
-int c;
+void command()
 { char *t;
   int ch,ch1;
   switch(dicp[0])
@@ -774,10 +818,10 @@ int c;
 	       { extern char *dic;
 		 if(!token())
 		   { lose=getchar(); /* to eat \n */
-		     printf("%d chars",DICSPACE);
+		     printf("%ld chars",DICSPACE);
 		     if(DICSPACE!=DFLTDICSPACE)
-		       printf(" (default=%d)",DFLTDICSPACE);
-		     printf(" %d in use\n",dicq-dic);
+		       printf(" (default=%ld)",DFLTDICSPACE);
+		     printf(" %ld in use\n",(long)(dicq-dic));
 		     return; }
 		 checkeol;
 		 printf(
@@ -852,7 +896,7 @@ int c;
 		    - FIX LATER */
 		 if(t)errs=errline=0; /* moved here from reset() */
 		 if(t)if(strcmp(t,current_script)||files==NIL&&okdump(t))
-			{ extern int CLASHES;
+			{ extern word CLASHES;
 			  CLASHES=NIL;  /* normally done by load_script */
 			  undump(t); /* does not always call load_script */
 			  if(CLASHES!=NIL)/* pathological case, recompile */
@@ -862,16 +906,16 @@ int c;
 				      files==NIL?" (not loaded)":"");
                  return; }
 	     if(is("files")) /* info about internal state, not documented */
-	       { int f=files;
+	       { word f=files;
 		 checkeol;
 		 for(;f!=NIL;f=tl[f])
-		 printf("(%s,%d,%d)",get_fil(hd[f]),fil_time(hd[f]),
+		 printf("(%s,%ld,%ld)",get_fil(hd[f]),fil_time(hd[f]),
 			fil_share(hd[f])),printlist("",fil_defs(hd[f]));
 	         return; } /* DEBUG */
 	     if(is("find"))
-	       { int i=0;
+	       { word i=0;
 		 while(token())
-		      { int x=findid(dicp),y,f;
+		      { word x=findid(dicp),y,f;
 			i++;
 			if(x!=NIL)
 			{ char *n=get_id(x);
@@ -898,22 +942,22 @@ int c;
 		 filecopy(linebuf); 
 		 return; }
 	     if(is("heap"))
-	       { int x;
+	       { word x;
 		 if(!token())
 		   { lose=getchar(); /* to eat \n */
-		     printf("%d cells",SPACELIMIT);
+		     printf("%ld cells",SPACELIMIT);
 		     if(SPACELIMIT!=DFLTSPACE)
-		       printf(" (default=%d)",DFLTSPACE);
+		       printf(" (default=%ld)",DFLTSPACE);
 		     printf("\n");
 		     return; }
 		 checkeol;
-		 if(sscanf(dicp,"%d",&x)!=1||badval(x))
+		 if(sscanf(dicp,"%ld",&x)!=1||badval(x))
 		   { printf("illegal value (heap unchanged)\n"); return; }
 		 if(x<trueheapsize())
-		   printf("sorry, cannot shrink heap to %d at this time\n",x);
+		   printf("sorry, cannot shrink heap to %ld at this time\n",x);
 		 else { if(x!=SPACELIMIT)
 			  SPACELIMIT=x,resetheap();
-			printf("heaplimit = %d cells\n",SPACELIMIT),
+			printf("heaplimit = %ld cells\n",SPACELIMIT),
 		        rc_write(); }
 		 return; }
              if(is("hush"))
@@ -927,7 +971,7 @@ int c;
 	       { checkeol; printf("%s\n",miralib); return; }
    case 'n': /* if(is("namebuckets"))
 	       { int i,x;
-		 extern int namebucket[];
+		 extern word namebucket[];
 	         checkeol;
 		 for(i=0;i<128;i++)
 		 if(x=namebucket[i])
@@ -954,8 +998,8 @@ int c;
                { checkeol; rechecking=2; rc_write(); return; }
    case 's': if(is("s")||is("settings"))
 	       { checkeol;
-		 printf("*\theap %d\n",SPACELIMIT);
-	         printf("*\tdic %d\n",DICSPACE);
+		 printf("*\theap %ld\n",SPACELIMIT);
+	         printf("*\tdic %ld\n",DICSPACE);
 	         printf("*\teditor = %s\n",editor);
 		 printf("*\t%slist\n",listing?"":"no");
 		 printf("*\t%srecheck\n",rechecking?"":"no");
@@ -976,7 +1020,7 @@ int c;
                { checkeol;
                  v_info(1);
 	         return; }
-   default: printf("\7unknown command \"%c%s\"\n",c,dicp);
+   default: printf("\7unknown command \"%c%s\"\n",(int)c,dicp);
             printf("type /h for help\n");
             while((ch=getchar())!='\n'&&ch!=EOF);
             return;
@@ -984,12 +1028,12 @@ int c;
   xschars();
 }
 
-manaction()
+void manaction()
 { sprintf(linebuf,"\"%s/menudriver\" \"%s/manual\"",miralib,miralib);
   system(linebuf);
 } /* put quotes around both pathnames to allow for spaces in miralib 8.5.06 */
 
-editfile(t,line)
+void editfile(t,line)
 char *t;
 int line;
 { char *ebuf=linebuf;
@@ -1019,21 +1063,21 @@ int line;
   return;
 }
 
-xschars()
-{ int ch;
+void xschars()
+{ word ch;
   printf("\7extra characters at end of command\n");
   while((ch=getchar())!='\n'&&ch!=EOF);
 }
 
-reverse(x)  /* x is a cons list */
-int x;
-{ int y = NIL;
+word reverse(x)  /* x is a cons list */
+word x;
+{ word y = NIL;
   while(x!=NIL)y = cons(hd[x],y), x = tl[x];
   return(y);
 }
 
-shunt(x,y)  /* equivalent to append(reverse(x),y) */
-int x,y;
+word shunt(x,y)  /* equivalent to append(reverse(x),y) */
+word x,y;
 { while(x!=NIL)y = cons(hd[x],y), x = tl[x];
   return(y);
 }
@@ -1047,18 +1091,18 @@ int presym_n[] =
 
 #include <ctype.h>
 
-filequote(p) /* write p to stdout with <quotes> if appropriate */
+void filequote(p) /* write p to stdout with <quotes> if appropriate */
 char *p; /* p is a pathname */
-{ static mlen=0;
+{ static int mlen=0;
   if(!mlen)mlen=(rindex(PRELUDE,'/')-PRELUDE)+1;
   if(strncmp(p,PRELUDE,mlen)==0)
     printf("<%s>",p+mlen);
   else printf("\"%s\"",p);
 } /* PRELUDE is a convenient string with the miralib prefix */
 
-finger(n) /* find info about name stored at dicp */
+void finger(n) /* find info about name stored at dicp */
 char *n;
-{ int x,line;
+{ word x; int line;
   char *s;
   x=findid(n);
   if(x!=NIL&&id_type(x)!=undef_t)
@@ -1096,7 +1140,7 @@ char *n;
   diagnose(n);
 }
 
-diagnose(n)
+void diagnose(n)
 char *n;
 { int i=0;
   if(isalpha(n[0]))
@@ -1109,16 +1153,16 @@ char *n;
   printf("identifier \"%s\" not in scope\n",n);
 }
 
-static int sorted=0; /* flag to avoid repeatedly sorting fil_defs */
-static int leftist; /* flag to alternate bias of padding in justification */
+int sorted=0; /* flag to avoid repeatedly sorting fil_defs */
+int leftist; /* flag to alternate bias of padding in justification */
 int words[colmax]; /* max plausible size of screen */
 
-allnamescom()
-{ int s;
-  int x=ND;
-  int y=x,z=0;
+void allnamescom()
+{ word s;
+  word x=ND;
+  word y=x,z=0;
   leftist=0;
-  namescom(make_fil(nostdenv?0:STDENV,0,0,primenv));
+  namescom(make_fil(nostdenv?0:(word)STDENV,0,0,primenv));
   if(files==NIL)return; else s=tl[files];
   while(s!=NIL)namescom(hd[s]),s=tl[s];
   namescom(hd[files]);
@@ -1154,10 +1198,10 @@ allnamescom()
 #define tolerance  3
              /* max number of extra spaces we are willing to insert */
 
-namescom(l)  /* l is an element of `files' */
-int l;
-{ int n=fil_defs(l),col=0,undefs=NIL,wp=0;
-  int scrwd = twidth();
+void namescom(l)  /* l is an element of `files' */
+word l;
+{ word n=fil_defs(l),col=0,undefs=NIL,wp=0;
+  word scrwd = twidth();
   if(!sorted&&n!=primenv) /* primenv already sorted */
     fil_defs(l)=n=alfasort(n); /* also removes pnames */
   if(n==NIL)return; /* skip empty files */
@@ -1166,10 +1210,10 @@ int l;
   printf("\n");
   while(n!=NIL)
     { if(id_type(hd[n])==wrong_t||id_val(hd[n])!=UNDEF)
-	{ int w=strlen(get_id(hd[n]));
+	{ word w=strlen(get_id(hd[n]));
 	  if(col+w<scrwd)col += (col!=0); else
 	  if(wp&&col+w>=scrwd)
-	    { int i,r,j;
+	    { word i,r,j;
 	      if(wp>1)i=(scrwd-col)/(wp-1),r=(scrwd-col)%(wp-1);
 	      if(i+(r>0)>tolerance)i=r=0;
 	      if(leftist)
@@ -1195,18 +1239,18 @@ int l;
   printlist("SPECIFIED BUT NOT DEFINED: ",undefs);
 }
 
-int detrop=NIL; /* list of unused local definitions */
-int rfl=NIL; /* list of include components containing type orphans */
-int bereaved; /* typenames referred to in exports and not exported */
-int ld_stuff=NIL;
+word detrop=NIL; /* list of unused local definitions */
+word rfl=NIL; /* list of include components containing type orphans */
+word bereaved; /* typenames referred to in exports and not exported */
+word ld_stuff=NIL;
     /* list of list of files, to be unloaded if mkincludes interrupted */
 
-loadfile(t)
+void loadfile(t)
 char *t;
-{ extern int fileq;
-  extern int current_id,includees,embargoes,exportfiles,freeids,exports;
-  extern int fnts,FBS,disgusting,nextpn;
-  int h=NIL; /* location of %export directive, if present */
+{ extern word fileq;
+  extern word current_id,includees,embargoes,exportfiles,freeids,exports;
+  extern word fnts,FBS,nextpn;
+  word h=NIL; /* location of %export directive, if present */
   loading=1;
   errs=errline=0;
   current_script=t;
@@ -1251,7 +1295,7 @@ char *t;
   yyparse();
   if(!SYNERR&&exportfiles!=NIL)
     { /* check pathnames in exportfiles have unique bindings */
-      int s,i,count;
+      word s,i,count;
       for(s=exportfiles;s!=NIL;s=tl[s])
 	 if(hd[s]==PLUS) /* add current script (less freeids) to exports */
 	 { for(i=fil_defs(hd[files]);i!=NIL;i=tl[i])
@@ -1275,7 +1319,7 @@ char *t;
   if(!SYNERR&&includees!=NIL)
     files=append1(files,mkincludes(includees)),includees=NIL;
   ld_stuff=NIL;
-  if(!SYNERR&!disgusting)
+  if(!SYNERR)
     { if(verbosity||making&&!mkexports&&!mksources)
 	printf("checking types in %s\n",t);
       checktypes();
@@ -1283,7 +1327,7 @@ char *t;
   if(!SYNERR&&exports!=NIL)
     if(ND!=NIL)exports=NIL; else /* skip check, cannot be %included */
     { /* check exports all present and close under type info */
-      int e,u=NIL,n=NIL,c=NIL;
+      word e,u=NIL,n=NIL,c=NIL;
       h=hd[exports]; exports=tl[exports];
       for(e=embargoes;e!=NIL;e=tl[e])
 	 { if(id_type(hd[e])==undef_t)u=cons(hd[e],u),ND=add1(hd[e],ND); else
@@ -1309,9 +1353,9 @@ char *t;
     }
   if(!SYNERR&&ND==NIL&&(exports!=NIL||tl[files]!=NIL))
     { /* find out if script can create type orphans when %included */
-      int e1,t;
-      int r=NIL; /* collect list of referenced typenames */
-      int e=NIL; /* and list of exported typenames */
+      word e1,t;
+      word r=NIL; /* collect list of referenced typenames */
+      word e=NIL; /* and list of exported typenames */
       if(exports!=NIL)
       for(e1=exports;e1!=NIL;e1=tl[e1])
          { if((t=id_type(hd[e1]))==type_t)
@@ -1337,8 +1381,8 @@ char *t;
       /*printlist("bereaved: ",bereaved); /* DEBUG */
     }
   if(exports!=NIL&&bereaved!=NIL)
-    { extern int newtyps;
-      int b=intersection(bereaved,newtyps);
+    { extern word newtyps;
+      word b=intersection(bereaved,newtyps);
       /*printlist("newtyps",newtyps); /* DEBUG */
       if(b!=NIL)
 	/*ND=b; /* to escalate to type error, see also allnamescom */
@@ -1348,7 +1392,7 @@ char *t;
       if(b!=NIL&&h!=NIL)out_here(stdout,h,1); /* sayhere(h,1) for error */
     }
   if(!SYNERR&&detrop!=NIL)
-    { int gd=detrop; 
+    { word gd=detrop; 
       while(detrop!=NIL&&tag[dval(hd[detrop])]==LABEL)detrop=tl[detrop];
       if(detrop!=NIL)
         printf("warning, script contains unused local definitions:-\n");
@@ -1370,7 +1414,7 @@ char *t;
                grammar rhs is label(here,...) */
     }
   if(!SYNERR)
-    { int x; extern int lfrule,polyshowerror;
+    { word x; extern int lfrule;
       /* we invoke the code generator */
       lfrule=0;
       for(x=fil_defs(hd[files]);x!=NIL;x=tl[x])
@@ -1410,17 +1454,18 @@ char *t;
   loading=0;
 } 
 
-isfreeid(x)
+word isfreeid(x)
+word x;
 { return(id_type(x)==type_t?t_class(x)==free_t:id_val(x)==FREE); }
 
-int internals=NIL; /* used by fix/unfixexports, list of names not exported */
+word internals=NIL; /* used by fix/unfixexports, list of names not exported */
 #define paint(x) id_val(x)=ap(EXPORT,id_val(x))
 #define unpainted(x)  (tag[id_val(x)]!=AP||hd[id_val(x)]!=EXPORT)
 #define unpaint(x)  id_val(x)=tl[id_val(x)]
 
-fixexports()
-{ extern exports,exportfiles,embargoes,freeids;
-  int e=exports,f;
+void fixexports()
+{ extern word exports,exportfiles,embargoes,freeids;
+  word e=exports,f;
   /* printlist("exports: ",e); /* DEBUG */
   for(;e!=NIL;e=tl[e])paint(hd[e]);
   internals=NIL;
@@ -1440,19 +1485,19 @@ fixexports()
   for(e=exports;e!=NIL;e=tl[e])unpaint(hd[e]);
 } /* may not be interrupt safe, re unload() */
 
-unfixexports()
+void unfixexports()
 { /*printlist("internals: ",internals); /* DEBUG */
-  int i=internals;
+  word i=internals;
   if(mkexports)return; /* in this case don't want internals restored */
   while(i!=NIL) /* lose */
        publicise(hd[i]),i=tl[i];
   internals=NIL;
 } /* may not be interrupt safe, re unload() */
 
-privatise(x) /* change id to pname, and return new id holding it as value */
-int x;
-{ extern int namebucket[],*pnvec;
-  int n = make_pn(x),h=namebucket[hash(get_id(x))],i;
+word privatise(x) /* change id to pname, and return new id holding it as value */
+word x;
+{ extern word namebucket[],*pnvec;
+  word n = make_pn(x),h=namebucket[hash(get_id(x))],i;
   if(id_type(x)==type_t)
     t_info(x)=cons(datapair(getaka(x),0),get_here(x));
     /* to assist identification of danging type refs - see typesharing code 
@@ -1471,10 +1516,10 @@ int x;
 } /* WARNING - dependent on internal representation of ids and pnames */
 /* nasty problem - privatisation can screw AKA's */
 
-publicise(x) /* converse of the above, applied to the new id */
-int x;
-{ extern int namebucket[];
-  int i=id_val(x),h=namebucket[hash(get_id(x))];
+word publicise(x) /* converse of the above, applied to the new id */
+word x;
+{ extern word namebucket[];
+  word i=id_val(x),h=namebucket[hash(get_id(x))];
   tag[i]=ID,hd[i]=hd[x]; 
     /* WARNING - USES FACT THAT tl HOLDS VALUE FOR BOTH ID AND PNAME */
   if(tag[tl[i]]==AP&&tag[hd[tl[i]]]==DATAPAIR)
@@ -1484,16 +1529,16 @@ int x;
   return(i);
 }
 
-static sigflag=0;
+int sigflag=0;
 
-sigdefer()
+void sigdefer()
 { /* printf("sigdefer()\n"); /* DEBUG */
   sigflag=1; } /* delayed signal handler, installed during load_script() */
 
-mkincludes(includees)
-int includees;
-{ extern int FBS,BAD_DUMP,CLASHES,exportfiles,exports,TORPHANS;
-  int pid,result=NIL,tclashes=NIL;
+word mkincludes(includees)
+word includees;
+{ extern word FBS,BAD_DUMP,CLASHES,exportfiles,exports,TORPHANS;
+  word pid,result=NIL,tclashes=NIL;
   includees=reverse(includees); /* process in order of occurrence in script */
   if(pid=fork())
     { /* parent */
@@ -1515,7 +1560,7 @@ int includees;
       /* if we get to here child completed normally, so carry on */
     }
   else { /* child does equivalent of `mira -make' on each includee */
-	 extern int oldfiles;
+	 extern word oldfiles;
 	 (void)signal(SIGINT,SIG_DFL); /* don't trap interrupts */
 	 ideep++; making=1; make_status=0; echoing=listing=verbosity=magic=0;
          setjmp(env); /* will return here on blankerr (via reset) */
@@ -1530,11 +1575,11 @@ int includees;
 	 exit(make_status); }
   sigflag=0;
   for(;includees!=NIL;includees=tl[includees])
-     { int x=NIL;
+     { word x=NIL;
        sighandler oldsig;
        FILE *f;
        char *fn=(char *)hd[hd[hd[includees]]];
-       extern int DETROP,MISSING,ALIASES,TSUPPRESSED,*stackp,*dstack;
+       extern word DETROP,MISSING,ALIASES,TSUPPRESSED;
        (void)strcpy(dicp,fn);
        (void)strcpy(dicp+strlen(dicp)-1,obsuffix);
        if(!making) /* cannot interrupt load_script() */
@@ -1556,7 +1601,7 @@ int includees;
               transmitted thru dumps.  It is illegal to have more than one
 	      copy of a (non-synonym) type in the same scope, even under
 	      different names. */
-	   int y,z;
+	   word y,z;
 	   /* printf("start share analysis\n");  /* DEBUG */
 	   if(TORPHANS)rfl=shunt(x,rfl); /* file has type orphans */
            for(y=x;y!=NIL;y=tl[y])fil_inodev(hd[y])=inodev(get_fil(hd[y]));
@@ -1565,14 +1610,14 @@ int includees;
 	      for(z=result;z!=NIL;z=tl[z])
 	         if(fil_share(hd[z])&&same_file(hd[y],hd[z])
 		    &&fil_time(hd[y])==fil_time(hd[z]))
-		   { int p=fil_defs(hd[y]),q=fil_defs(hd[z]);
+		   { word p=fil_defs(hd[y]),q=fil_defs(hd[z]);
 		     for(;p!=NIL&&q!=NIL;p=tl[p],q=tl[q])
 			if(tag[hd[p]]==ID)
 			if(id_type(hd[p])==type_t&&
 			   (tag[hd[q]]==ID||tag[pn_val(hd[q])]==ID))
 			  { /* typeclash - record in tclashes */
-			    int w=tclashes;
-		            int orig=tag[hd[q]]==ID?hd[q]:pn_val(hd[q]);
+			    word w=tclashes;
+		            word orig=tag[hd[q]]==ID?hd[q]:pn_val(hd[q]);
 			    if(t_class(hd[p])==synonym_t)continue;
 			    while(w!=NIL&&((char *)hd[hd[w]]!=get_fil(hd[z])
 					||hd[tl[hd[w]]]!=orig))
@@ -1589,7 +1634,7 @@ int includees;
 		       fprintf(stderr,"impossible event in mkincludes\n");
 		     /*break; /* z loop -- NO! (see liftbug) */
 		   }
-	   if(member(exportfiles,(int)fn))
+	   if(member(exportfiles,(word)fn))
 	     { /* move ids of x onto exports */
 	       for(y=x;y!=NIL;y=tl[y])
 	       for(z=fil_defs(hd[y]);z!=NIL;z=tl[z])
@@ -1642,7 +1687,7 @@ int includees;
        if(ND==NIL&&CLASHES!=NIL) /* can have this and failed aliasing */
          printf("\"%s\" ",fn),printlist("causes nameclashes: ",CLASHES);
        while(DETROP!=NIL&&tag[hd[DETROP]]==CONS)
-	    { int fa=hd[tl[hd[DETROP]]],ta=tl[tl[hd[DETROP]]];
+	    { word fa=hd[tl[hd[DETROP]]],ta=tl[tl[hd[DETROP]]];
 	      char *pn=get_id(hd[hd[DETROP]]);
 	      if(fa== -1||ta== -1)
 		printf("`%s' has binding of wrong kind ",pn),
@@ -1650,7 +1695,7 @@ int includees;
 	                  :"(should be \"== type\" not \"= value\")\n");
 	      else
 	        printf("`%s' has == binding of wrong arity ",pn),
-	        printf("(formal has arity %d, actual has arity %d)\n",fa,ta);
+	        printf("(formal has arity %ld, actual has arity %ld)\n",fa,ta);
 	      DETROP=tl[DETROP]; }
        if(DETROP!=NIL)
 	 printf("illegal parameter binding (name%s not %%free in file",
@@ -1679,12 +1724,12 @@ int includees;
   return(result);
 }
 
-int tlost=NIL;
-int pfrts=NIL; /* list of private free types bound in this script */
+word tlost=NIL;
+word pfrts=NIL; /* list of private free types bound in this script */
 
-readoption() /* readopt type orphans */
-{ int f,t;
-  extern int TYPERRS,FBS;
+void readoption() /* readopt type orphans */
+{ word f,t;
+  extern word TYPERRS,FBS;
   pfrts=tlost=NIL;
   /* exclude anonymous free types, these dealt with later by mcheckfbs() */
   if(FBS!=NIL)
@@ -1715,18 +1760,8 @@ readoption() /* readopt type orphans */
        printlist("",alfasort(tl[hd[tlost]])); }
 }
 
-/*fixtype(t,x)
-int t,x;
-{ int t1;
-  t1=fixtype1(t,x);
-  printf("fixing type of %s\n",get_id(x));
-  out_type(t); printf(" := ");
-  out_type(t1); putchar('\n');
-  return(t1);
-} /* DEBUG */
-
-fixtype(t,x)  /* substitute out any indirected typenames in t */
-int t,x;
+word fixtype(t,x)  /* substitute out any indirected typenames in t */
+word t,x;
 { switch(tag[t])
   { case AP: 
     case CONS: tl[t]=fixtype(tl[t],x);
@@ -1736,7 +1771,7 @@ int t,x;
 		  while(tag[pn_val(t)]!=CONS)t=pn_val(t);/*at most twice*/
 		  if(tag[t]!=ID)
 		  { /* lost type - record in tlost */
-		    int w=tlost;
+		    word w=tlost;
 		    while(w!=NIL&&hd[hd[w]]!=t)w=tl[w];
 		    if(w==NIL)
 		      w=tlost=cons(cons(t,cons(x,NIL)),tlost);
@@ -1748,16 +1783,16 @@ int t,x;
 
 #define mask(c) (c&0xDF)
 /* masks out lower case bit, which is 0x20  */
-alfa_ls(a,b)  /* 'DICTIONARY ORDER' - not currently used */
+word alfa_ls(a,b)  /* 'DICTIONARY ORDER' - not currently used */
 char *a,*b;
 { while(*a&&mask(*a)==mask(*b))a++,b++;
   if(mask(*a)==mask(*b))return(strcmp(a,b)<0); /* lower case before upper */
   return(mask(*a)<mask(*b));
 }
 
-alfasort(x) /* also removes non_IDs from result */
-int x;
-{ int a=NIL,b=NIL,hold=NIL;
+word alfasort(x) /* also removes non_IDs from result */
+word x;
+{ word a=NIL,b=NIL,hold=NIL;
   if(x==NIL)return(NIL);
   if(tl[x]==NIL)return(tag[hd[x]]!=ID?NIL:x);
   while(x!=NIL) /* split x */
@@ -1773,8 +1808,8 @@ int x;
   return(reverse(x));
 }
 
-unsetids(d) /* d is a list of identifiers */
-int d;
+void unsetids(d) /* d is a list of identifiers */
+word d;
 { while(d!=NIL)
        { if(tag[hd[d]]==ID)id_val(hd[d])=UNDEF,
 			   id_who(hd[d])=NIL,
@@ -1782,10 +1817,10 @@ int d;
 	 d=tl[d]; } /* should we remove from namebucket ? */
 }
 
-unload()  /* clear out current script in preparation for reloading */
-{ extern int TABSTRS,SGC,speclocs,newtyps,rv_script,algshfns,nextpn,nolib,
+void unload()  /* clear out current script in preparation for reloading */
+{ extern word TABSTRS,SGC,speclocs,newtyps,rv_script,algshfns,nextpn,nolib,
 	     includees,freeids;
-  int x;
+  word x;
   sorted=0;
   speclocs=NIL;
   nextpn=0; /* lose pnames */
@@ -1805,7 +1840,7 @@ unload()  /* clear out current script in preparation for reloading */
   for(x=hd[ld_stuff];x!=NIL;x=tl[x])unsetids(fil_defs(hd[x]));
 }
 
-yyerror(s)  /* called by YACC in the event of a syntax error */
+void yyerror(s)  /* called by YACC in the event of a syntax error */
 char *s;
 { extern int yychar;
   if(SYNERR)return;  /* error already reported, so shut up */
@@ -1826,7 +1861,7 @@ char *s;
   reset_lex();
 }
 
-syntax(s) /* called by actions after discovering a (context sensitive) syntax
+void syntax(s) /* called by actions after discovering a (context sensitive) syntax
               error */
 char *s;
 { if(SYNERR)return;
@@ -1836,14 +1871,14 @@ char *s;
   reset_lex();
 }
 
-acterror() /* likewise, but assumes error message output by caller */
+void acterror() /* likewise, but assumes error message output by caller */
 { if(SYNERR)return;
   SYNERR=1;  /* to stop YACC at next symbol */
   reset_lex();
 }
 
-mira_setup()
-{ extern int common_stdin,common_stdinb,cook_stdin;
+void mira_setup()
+{ extern word common_stdin,common_stdinb,cook_stdin;
   setupheap();
   tsetup();
   reset_pns();
@@ -1861,6 +1896,7 @@ mira_setup()
   diagonalise=make_id("diagonalise");
   standardout=constructor(0,"Stdout");
   indent_fn=make_id("indent");
+  outdent_fn=make_id("outdent");
   listdiff_fn=make_id("listdiff");
   shownum1=make_id("shownum1");
   showbool=make_id("showbool");
@@ -1875,7 +1911,7 @@ mira_setup()
   showwhat=make_id("showwhat");
   primlib(); } /* sets up predefined ids, not referred to by RULES */
 
-dieclean()     /* called if evaluation is interrupted - see RULES */
+void dieclean()     /* called if evaluation is interrupted - see RULES */
 { printf("<<...interrupt>>\n");
 #ifndef NOSTATSONINT
   outstats();  /* suppress in presence of segfault on ^C with /count */
@@ -1886,7 +1922,7 @@ dieclean()     /* called if evaluation is interrupted - see RULES */
 /* the function process() creates a process and waits for it to die -
    returning 1 in the child and 0 in the parent - it is used in the
    evaluation command (see MIRANDA RULES) */
-process()
+word process()
 { int pid;
   sighandler oldsig;
   oldsig = signal(SIGINT,SIG_IGN);
@@ -1921,26 +1957,26 @@ process()
       compilation it reverts to the top level prompt - see set_jmp and
       signal(reset) in commandloop() */
 
-primdef(n,v,t)      /*  used by "primlib", see below  */
+void primdef(n,v,t)      /*  used by "primlib", see below  */
 char *n;
-int v,t;
-{ int x;
+word v,t;
+{ word x;
   x= make_id(n);
   primenv=cons(x,primenv);
   id_val(x)= v;
   id_type(x)=t; }
 
-predef(n,v,t)      /*  used by "privlib" and "stdlib", see below  */
+void predef(n,v,t)      /*  used by "privlib" and "stdlib", see below  */
 char *n;
-int v,t;
-{ int x;
+word v,t;
+{ word x;
   x= make_id(n);
   addtoenv(x);
   id_val(x)= isconstructor(x)?constructor(v,x):v;
   id_type(x)=t;
 }
 
-primlib()   /*  called by "mira_setup", this routine enters
+void primlib()   /*  called by "mira_setup", this routine enters
                 the primitive identifiers into the primitive environment  */
 { primdef("num",make_typ(0,0,synonym_t,num_t),type_t);
   primdef("char",make_typ(0,0,synonym_t,char_t),type_t);
@@ -1949,9 +1985,9 @@ primlib()   /*  called by "mira_setup", this routine enters
   primdef("False",0,bool_t); /* likewise - FIX LATER */
 }
 
-privlib()   /*  called when compiling <prelude>, adds some
+void privlib()   /*  called when compiling <prelude>, adds some
                 internally defined identifiers to the environment  */
-{ extern int ltchar;
+{ extern word ltchar;
   predef("offside",OFFSIDE,ltchar);  /* used by `indent' in prelude */
   predef("changetype",I,wrong_t); /* wrong_t to prevent being typechecked */
   predef("first",HD,wrong_t);
@@ -1971,7 +2007,7 @@ privlib()   /*  called when compiling <prelude>, adds some
   predef("tl",TL,undef_t);
 }
 
-stdlib() /*  called when compiling <stdenv>, adds some
+void stdlib() /*  called when compiling <stdenv>, adds some
              internally defined identifiers to the environment  */
 { predef("arctan",ARCTAN_FN,undef_t);
   predef("code",CODE,undef_t);
@@ -1982,10 +2018,10 @@ stdlib() /*  called when compiling <stdenv>, adds some
   predef("error",ERROR,undef_t);
   predef("exp",EXP_FN,undef_t);
   predef("filemode",FILEMODE,undef_t);
+  predef("filestat",FILESTAT,undef_t);  /* added Feb 91 */
   predef("foldl",FOLDL,undef_t);
   predef("foldl1",FOLDL1,undef_t);  /* new at release 2 */
   predef("hugenum",sto_dbl(DBL_MAX),undef_t);
-  /* max_normal() if present returns same value (see <math.h>) */
   predef("last",LIST_LAST,undef_t);
   predef("foldr",FOLDR,undef_t);
   predef("force",FORCE,undef_t);
@@ -2011,24 +2047,23 @@ stdlib() /*  called when compiling <stdenv>, adds some
   predef("zip2",ZIP,undef_t); /* new at release 2 */
 }
 
-mktiny()
+word mktiny()
 { volatile 
   double x=1.0,x1=x/2.0;
   while(x1>0.0)x=x1,x1/=2.0;
   return(sto_dbl(x));
 }
-/* min_subnormal() if present returns same value (see <math.h>) */
 
-size(x)     /*  measures the size of a compiled expression   */
-int x;
-{ int s;
+word size(x)     /*  measures the size of a compiled expression   */
+word x;
+{ word s;
   s= 0;
   while(tag[x]==CONS||tag[x]==AP)
   { s= s+1+size(hd[x]);
     x= tl[x]; }
     return(s); }
 
-makedump()
+void makedump()
 { char *obf=linebuf;
   FILE *f;
   (void)strcpy(obf,current_script);
@@ -2050,15 +2085,15 @@ makedump()
   fclose(f);
 }
 
-undump(t) /* restore t from dump, or recompile if necessary */
+void undump(t) /* restore t from dump, or recompile if necessary */
 char *t;
-{ extern int BAD_DUMP,CLASHES;
+{ extern word BAD_DUMP,CLASHES;
   if(!normal(t)&&!initialising)return loadfile(t);
   /* except for prelude, only .m files have dumps */
   char obf[pnlim];
   FILE *f;
   sighandler oldsig;
-  int flen=strlen(t);
+  word flen=strlen(t);
   time_t t1=fm_time(t),t2;
   if(flen>pnlim)
     { printf("sorry, pathname too long (limit=%d): %s\n",pnlim,t);
@@ -2083,12 +2118,11 @@ char *t;
   files=load_script(f,t,NIL,NIL,!making&!initialising);
   fclose(f);
   if(BAD_DUMP)
-    { extern int *stackp,*dstack;
-      unlink(obf); unload(); CLASHES=NIL; stackp=dstack;
+    { unlink(obf); unload(); CLASHES=NIL; stackp=dstack;
       printf("warning: %s contains incorrect data (file removed)\n",obf);
-      if(BAD_DUMP== -1)printf("(obsolete dump format)\n"); else
+      if(BAD_DUMP== -1)printf("(unrecognised dump format)\n"); else
       if(BAD_DUMP==1)printf("(wrong source file)\n"); else
-      printf("(error %d)\n",BAD_DUMP); }
+      printf("(error %ld)\n",BAD_DUMP); }
   if(!initialising&&!making) /* restore interrupt handler */
     (void)signal(SIGINT,oldsig);
   if(sigflag)sigflag=0,(*oldsig)(); /* take deferred interrupt */
@@ -2110,11 +2144,11 @@ char *t;
   if(files==NIL)printf("%s contains syntax error\n",t); else
   if(ND!=NIL)printf("%s contains undefined names or type errors\n",t); else
   if(!making&&!magic)printf("%s\n",t); /* added &&!magic 26.11.2019 */
-  if(!files==NIL&&!making&!initialising)unfixexports();
+  if(files!=NIL&&!making&!initialising)unfixexports();
   loading=0;
 }
 
-unlinkx(t) /* remove orphaned .x file */
+void unlinkx(t) /* remove orphaned .x file */
 char *t;
 { char *obf=linebuf;
   (void)strcpy(obf,t);
@@ -2122,7 +2156,7 @@ char *t;
   if(!stat(obf,&buf))unlink(obf);
 }
 
-fpe_error()
+void fpe_error()
 { if(compiling)
     { (void)signal(SIGFPE,(sighandler)fpe_error); /* reset SIGFPE trap */
 #ifdef sparc8
@@ -2138,18 +2172,18 @@ fpe_error()
 
 char fbuf[512];
 
-filecopy(fil) /* copy the file "fil" to standard out */
+void filecopy(fil) /* copy the file "fil" to standard out */
 char *fil;
-{ int in=open(fil,0),n;
+{ word in=open(fil,0),n;
   if(in== -1)return;
   while((n=read(in,fbuf,512))>0)write(1,fbuf,n);
   close(in);
 }
 
-filecp(fil1,fil2) /* copy file "fil1" to "fil2" (like `cp') */
+void filecp(fil1,fil2) /* copy file "fil1" to "fil2" (like `cp') */
 char *fil1,*fil2;
-{ int in=open(fil1,0),n;
-  int out=creat(fil2,0644);
+{ word in=open(fil1,0),n;
+  word out=creat(fil2,0644);
   if(in== -1||out== -1)return;
   while((n=read(in,fbuf,512))>0)write(out,fbuf,n);
   close(in);
@@ -2160,7 +2194,7 @@ char *fil1,*fil2;
 #include <termios.h>
 #include <sys/ioctl.h>
 
-twidth()  /* returns width (in columns) of current window, less 2 */
+int twidth()  /* returns width (in columns) of current window, less 2 */
 {
 #ifdef TIOCGWINSZ
     static struct winsize tsize;
@@ -2185,13 +2219,13 @@ twidth()  /* returns width (in columns) of current window, less 2 */
 #ifdef CYGWIN
 #include <windows.h>
 
-utf8test()
+int utf8test()
 { return GetACP()==65001; }
 /* codepage 1252 is Windows version of Latin-1; 65001 is UTF-8 */
 
 #else
 
-utf8test()
+int utf8test()
 { char *lang;
   if(!(lang=getenv("LC_CTYPE")))
     lang=getenv("LANG");

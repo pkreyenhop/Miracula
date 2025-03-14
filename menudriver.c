@@ -5,6 +5,8 @@
  * Copyright (C) Research Software Limited 1985-90.  All rights reserved. *
  * The Miranda system is distributed as free software under the terms in  *
  * the file "COPYING" which is included in the distribution.              *
+ *                                                                        *
+ * Revised to C11 standard and made 64bit compatible, January 2020        *
  *------------------------------------------------------------------------*/
 
 #include <stdio.h>
@@ -12,7 +14,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#define S_IEXEC 0111 /* see man 2 stat */
+#include <sys/wait.h>
 #include <signal.h>
 typedef void (*sighandler)();
 #define pnlim 1024
@@ -38,16 +40,22 @@ int fastback=1;
 int fastback=0;
 #endif
 
+void callshell(char[]);
+void clrscr(void);
+void menudrive(char*);
 void pushlast(void);
 void poplast(void);
+void settings(void);
+void singleton(char*);
+int subdir(void);
 
 char next[40]="",cmd[80],last[40]=".";
-int val,ok=0;
+int val, ok=0;
 
 #include <string.h>
 #define index(s,c) strchr(s,c)
 
-main(argc,argv)
+int main(argc,argv)
 int argc;
 char *argv[];
 { char *v=getenv("VIEWER"),*fb=getenv("RETURNTOMENU");
@@ -68,7 +76,7 @@ char *argv[];
 #endif
   menudrive(argc==1?".":argv[1]); }
 
-lastval() /* checks if last is a number (and if so leaves value in val) */
+int lastval() /* checks if last is a number (and if so leaves value in val) */
 { if(strcmp(last,".")==0&&subdir())
     /* special case, have just entered subdir */
     { poplast();
@@ -78,7 +86,7 @@ lastval() /* checks if last is a number (and if so leaves value in val) */
   return(sscanf(last,"%d",&val)==1);
 }
 
-menudrive(dir)
+void menudrive(dir)
 char *dir;
 { char *np;int c,bad=0;
   if(chdir(dir)==-1)singleton(dir); /* apparently not a directory */
@@ -121,7 +129,7 @@ char *dir;
            if(S_ISREG(buf.st_mode)) /* regular file */
              { clrscr();
 #ifndef UWIN
-               if(buf.st_mode&S_IEXEC) /* executable (by owner) */
+               if(buf.st_mode&S_IXUSR) /* executable (by owner) */
 #else
                if(strcmp(next,"99")==0)
 #endif
@@ -190,12 +198,12 @@ char *dir;
    and exit by chdir(hold) instead of chdir("..") - will need to make this
    recursive, or else have stack of holdwd's */
 
-singleton(fil)
+void singleton(fil)
 char *fil;
 { if(stat(fil,&buf)==0 && S_ISREG(buf.st_mode)) /* regular file */
     { clrscr();
 #ifndef UWIN
-      if(buf.st_mode&S_IEXEC) /* executable (by owner) */
+      if(buf.st_mode&S_IXUSR) /* executable (by owner) */
         { strcpy(cmd,"./");
           strcat(cmd,fil);
           system(cmd);
@@ -214,7 +222,7 @@ char *fil;
        exit(1);
 }
 
-callshell(v)
+void callshell(v)
 char v[];
 { static char *shell=NULL;
   sighandler oldsig; int pid;
@@ -231,7 +239,7 @@ char v[];
   else execl(shell,shell,"-c",v,(char *)0);
 }
 
-settings()
+void settings()
 { printf("current values of menudriver internal variables are\n\n");
   printf("        VIEWER=%s\n",viewer);
   printf("        MENUVIEWER=%s\n",menuviewer);
@@ -257,7 +265,7 @@ page - to cure this set RETURNTOMENU=YES;\n\n");
 char lastvec[100],*lastp=lastvec+1;
 int giveup=0;
 
-subdir()
+int subdir()
 { return(lastp>lastvec+1); }
 
 void pushlast()
@@ -286,7 +294,7 @@ void poplast()
 #ifndef CURSES
 
 /* to clear screen */
-clrscr()
+void clrscr()
 { printf("\x1b[2J\x1b[H"); fflush(stdout);
 }
 
@@ -302,7 +310,7 @@ clrscr()
 #include <term.h>
 #endif
 
-clrscr()
+void clrscr()
 { if(ok!=1)return;
   putp(clear_screen);
   fflush(stdout);

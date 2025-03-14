@@ -5,15 +5,17 @@
  * Copyright (C) Research Software Limited 1985-90.  All rights reserved. *
  * The Miranda system is distributed as free software under the terms in  *
  * the file "COPYING" which is included in the distribution.              *
+ *                                                                        *
+ * Revised to C11 standard and made 64bit compatible, January 2020        *
  *------------------------------------------------------------------------*/
 
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-/* #include <sys/wait.h> /* seems not needed, oct 05 */
-static struct stat buf;  /* used only by code for FILEMODE in reduce */
+static struct stat buf;  /* used only by code for FILEMODE, FILESTAT in reduce */
 #include "data.h"
 #include "big.h"
+#include "lex.h"
 extern int debug, UTF8, UTF8OUT;
 #define FST HD
 #define SND TL
@@ -21,13 +23,31 @@ extern int debug, UTF8, UTF8OUT;
 /* POSIX clock wraps around after c. 72 mins */
 #ifdef RYU
 char* d2s(double);
-int d2s_buffered(double, char*);
+word d2s_buffered(double, char*);
 #endif
 
 double fa,fb;
 long long cycles=0;
-int stdinuse=0;
+word stdinuse=0;
 /* int lasthead=0; /* DEBUG */
+
+static void apfile(word);
+static void closefile(word);
+static void div_error(void);
+static void fn_error(char *);
+static void getenv_error(char *);
+static word g_residue(word);
+static void lexfail(word);
+static word lexstate(word);
+static int memclass(int,word);
+static word numplus(word,word);
+static void outf(word);
+static word piperrmess(word);
+static void print(word);
+static word reduce(word);
+static void stdin_error(int);
+static void subs_error(void);
+static void int_error(char *);
 
 #define constr_tag(x) hd[x]
 #define idconstr_tag(x) hd[id_val(x)]
@@ -41,11 +61,11 @@ int stdinuse=0;
 /* ### */          /* functions marked ### contain possibly recursive calls
 		      to reduce - fix later */
 
-compare(a,b)  /* returns -1, 0, 1 as a is less than equal to or greater than
-                 b in the ordering imposed on all data types by the miranda
-                 language -- a and b already reduced */
-              /* used by MATCH, EQ, NEQ, GR, GRE */
-int a,b;
+int compare(a,b)  /* returns -1, 0, 1 as a is less than equal to or greater than
+                     b in the ordering imposed on all data types by the miranda
+                     language -- a and b already reduced */
+                  /* used by MATCH, EQ, NEQ, GR, GRE */
+word a,b;
 { double d;
  L: switch(tag[a])
     { case DOUBLE:
@@ -68,7 +88,7 @@ int a,b;
         else return(-1); /* atom less than non-atom */
       case CONS: case AP:
       if(tag[a]==tag[b])
-        { int temp;
+        { word temp;
           hd[a]=reduce(hd[a]);
           hd[b]=reduce(hd[b]);
           if((temp=compare(hd[a],hd[b]))!=0)return(temp);
@@ -82,9 +102,9 @@ int a,b;
   return(0);
 }
 
-force(x) /* ensures that x is evaluated "all the way" */
-int x;   /* x is already reduced */ /* ### */
-{ int h;
+void force(x) /* ensures that x is evaluated "all the way" */
+word x;   /* x is already reduced */ /* ### */
+{ word h;
   switch(tag[x])
     { case AP: h=hd[x];
 	       while(tag[h]==AP)h=hd[h];
@@ -103,8 +123,8 @@ int x;   /* x is already reduced */ /* ### */
   return;
 }
 
-head(x)   /* finds the function part of x */
-int x;
+word head(x)   /* finds the function part of x */
+word x;
 { while(tag[x]==AP)x= hd[x];
   return(x);
 }
@@ -113,9 +133,9 @@ extern char linebuf[];  /* used as workspace in various places */
 
 /* ### */  /* opposite is str_conv - see lex.c */
 char *getstring(x,cmd)  /* collect Miranda string - x is already reduced */
-int x;
+word x;
 char *cmd; /* context, for error message */
-{ int x1=x,n=0; 
+{ word x1=x,n=0; 
   char *p=linebuf;
   while(tag[x]==CONS&&n<BUFSIZE)
        n++, hd[x] = reduce(hd[x]), x=tl[x]=reduce(tl[x]);
@@ -129,7 +149,7 @@ char *cmd; /* context, for error message */
 	             cmd,BUFSIZE,linebuf),
              outstats(),
              exit(1);
-      else return(linebuf); }
+      else return(linebuf); /* see G_CLOSE */ }
   return(linebuf); /* very inefficient to keep doing this for filenames etc.
 		   CANNOT WE SUPPORT A PACKED REPRESENTATION OF STRINGS? */
 } /* call keep(linebuf) if you want to save the string */
@@ -149,17 +169,17 @@ FILE *s_out=NULL;  /* destination of current output message */
   /* order of declaration of constructors of these names in sys_message */
 
 /* ### */
-output(e)  /* "output" is called by YACC (see MIRANDA RULES) to print the 
+void output(e)  /* "output" is called by YACC (see MIRANDA RULES) to print the 
 	      value of an expression - output then calls "reduce" - so the
               whole reduction process is driven by the need to print  */
 	   /* the value of the whole expression is a list of `messages' */
-int e;
+word e;
 { 
-  extern int *cstack;
+  extern word *cstack;
   cstack = &e; /* don't follow C stack below this in gc */
 L:e= reduce(e);
   while(tag[e]==CONS)
-  { int d;
+  { word d;
     hd[e]= reduce(hd[e]);
     switch(constr_tag(head(hd[e])))
     { case Stdout: print(tl[hd[e]]);
@@ -186,7 +206,7 @@ L:e= reduce(e);
 		        break;
       case System: system(getstring(tl[hd[e]]=reduce(tl[hd[e]]),"System"));
                    break;
-      case Exit:     { int n=reduce(tl[hd[e]]);
+      case Exit:     { word n=reduce(tl[hd[e]]);
 		       if(tag[n]==INT)n=digit0(n);
 		       else int_error("Exit");
 		       outstats(); exit(n); }
@@ -202,11 +222,11 @@ L:e= reduce(e);
 }
 
 /* ### */
-print(e) /* evaluate list of chars and send to s_out */
-int e;
+void print(e) /* evaluate list of chars and send to s_out */
+word e;
 { e= reduce(e);
   while(tag[e]==CONS && is_char(hd[e]=reduce(hd[e])))
-  { unsigned int c=get_char(hd[e]);
+  { unsigned c=get_char(hd[e]);
     if(UTF8)outUTF8(c,s_out); else
     if(c<256) putc(c,s_out);
     else fprintf(stderr,"\n warning: non Latin1 char \%x in print, ignored\n",c);
@@ -217,14 +237,14 @@ int e;
     exit(1);
 }
 
-int outfilq=NIL; /* list of opened-for-output files */
+word outfilq=NIL; /* list of opened-for-output files */
 /* note that this will be automatically reset to  NIL  and  all  files  on  it
 closed at end of expression evaluation, because of the fork-exit structure */
 
 /* ### */
-outf(e)   /*  e is of the form (Tofile f x)  */
-int e;
-{ int p=outfilq; /* have we already opened this file for output? */
+void outf(e)   /*  e is of the form (Tofile f x)  */
+word e;
+{ word p=outfilq; /* have we already opened this file for output? */
   char *f=getstring(tl[hd[e]]=reduce(tl[hd[e]]),"Tofile");
   while(p!=NIL && strcmp((char *)hd[hd[p]],f)!=0)p=tl[p];
   if(p==NIL)  /* new output file */
@@ -242,9 +262,9 @@ int e;
   s_out= stdout;
 }
 
-apfile(f) /* open file of name f for appending and add to outfilq */
-int f;
-{ int p=outfilq; /* is it already open? */
+void apfile(f) /* open file of name f for appending and add to outfilq */
+word f;
+{ word p=outfilq; /* is it already open? */
   char *fil=getstring(f,"Appendfile");
   while(p!=NIL && strcmp((char *)hd[hd[p]],fil)!=0)p=tl[p];
   if(p==NIL) /* no, so open in append mode */
@@ -256,9 +276,9 @@ int f;
   /* if already there do nothing */
 }
 
-closefile(f)  /* remove file of name "f" from outfilq and close stream */
-int f;
-{ int *p= &outfilq; /* is this file open for output? */
+void closefile(f)  /* remove file of name "f" from outfilq and close stream */
+word f;
+{ word *p= &outfilq; /* is this file open for output? */
   char *fil=getstring(f,"Closefile");
   while(*p!=NIL && strcmp((char *)hd[hd[*p]],fil)!=0)p= &tl[*p];
   if(*p!=NIL)  /* yes */
@@ -267,13 +287,12 @@ int f;
   /* otherwise ignore closefile request (harmless??) */
 }
 
-static int errtrap=0; /* to prevent error cycles - see ERROR below */
-int waiting=NIL;
+static word errtrap=0; /* to prevent error cycles - see ERROR below */
+word waiting=NIL;
 /* list of terminated child processes with exit_status - see Exec/EXEC */
 
 /* pointer-reversing SK reduction machine - based on code written Sep 83 */
 
-#define BACKSTOP 020000000000
 #define READY(x) (x)
 #define RESTORE(x)
 /* in this machine the above two are no-ops, alternate definitions are, eg
@@ -281,10 +300,6 @@ int waiting=NIL;
 #define RESTORE(x) x--
 (if using this method each strict comb needs next opcode unallocated)
    see comment before "ready" switch */
-#define FIELD int
-#define tlptrbit  020000000000
-#define tlptrbits 030000000000
-         /* warning -- if you change this tell `mark()' in data.c */
 #define mktlptr(x)  x |= tlptrbit
 #define mk1tlptr    x |= tlptrbits
 #define mknormal(x) x &= ~tlptrbits
@@ -303,7 +318,7 @@ int waiting=NIL;
 #define getarg(a) upleft; a=tl[e]
 #define UPRIGHT mknormal(s), hold=tl[s], tl[s]=e, e=hd[s], hd[s]=hold
 #define lastarg tl[e]
-int reds=0;
+word reds=0;
 
 /* IMPORTANT WARNING - the macro's
      `downright;' `upleft;' `getarg;' 
@@ -313,7 +328,7 @@ int reds=0;
 #define simpl(r) hd[e]=I, e=tl[e]=r
 
 #ifdef DEBUG
-int maxrdepth=0,rdepth=0;
+word maxrdepth=0,rdepth=0;
 #endif
 
 #define fails(x)   (x==NIL)
@@ -322,9 +337,9 @@ int maxrdepth=0,rdepth=0;
 
 /* reduce e to hnf, note that a function in hnf will have head h with
    S<=h<=ERROR all combinators lie in this range see combs.h */
-FIELD reduce(e)
-FIELD e;
-{ FIELD s=BACKSTOP,hold,arg1,arg2,arg3;
+word reduce(e)
+word e;
+{ word s=BACKSTOP,hold,arg1,arg2,arg3;
 #ifdef DEBUG
     if(++rdepth>maxrdepth)maxrdepth=rdepth;
     if(debug&02)
@@ -476,6 +491,7 @@ FIELD e;
         setcell(CONS,lastarg,hold); }
     goto DONE;
 
+    case G_RULE:
     case P:                /* P x y => x:y  */
     getarg(arg1);
     upleft;
@@ -675,9 +691,10 @@ FIELD e;
     arg1=tl[hd[e]]=reduce(tl[hd[e]]);  /* ### */
     lastarg=reduce(lastarg);  /* ### */
     if(lastarg==NIL)subs_error();
-    { long long indx = tag[arg1]==ATOM?arg1:/* small indexes represented directly */
-                       tag[arg1]==INT?get_int(arg1):
-                       int_error("!");
+    { long long indx;
+      if(tag[arg1]==ATOM)indx=arg1;/* small indexes represented directly */
+      else if(tag[arg1]==INT)indx=get_int(arg1);
+      else int_error("!");
       /* problem, indx may be followed by gc
          - cannot make static, because of ### below */
       if(indx<0)subs_error();
@@ -733,7 +750,7 @@ FIELD e;
         if(stdinuse)
           { hd[e]=I; e=tl[e]=NIL; goto DONE; }
         stdinuse=':';
-        tl[e]=(int)stdin; }
+        tl[e]=(word)stdin; }
     hold= getc((FILE *)lastarg);
     if(hold==EOF)
      {   fclose((FILE *)lastarg);
@@ -753,7 +770,7 @@ FIELD e;
         if(stdinuse)
           { hd[e]=I; e=tl[e]=NIL; goto DONE; }
 	stdinuse='-';
-	tl[e]=(int)stdin; }
+	tl[e]=(word)stdin; }
     hold=UTF8?sto_char(fromUTF8((FILE *)lastarg)):getc((FILE *)lastarg);
     if(hold==EOF)
      {   fclose((FILE *)lastarg);
@@ -782,15 +799,14 @@ FIELD e;
 
     case BADCASE:    /* BADCASE cons(oldn,here_info) => BOTTOM */
     UPLEFT;
-      { extern int sourcemc;
-	int subject= hd[lastarg];
+      { word subject= hd[lastarg];
 		      /* either datapair(oldn,0) or 0 */
 	fprintf(stderr,"\nprogram error: missing case in definition");
 	if(subject) /* cannot do patterns - FIX LATER */
 	  fprintf(stderr," of %s",(char *)hd[subject]);
 	putc('\n',stderr);
 	out_here(stderr,tl[lastarg],1);
-     /* if(sourcemc&&nargs>1)
+     /* if(nargs>1)
 	{ int i=2;
 	  fprintf(stderr,"arg%s = ",nargs>2?"s":"");
 	  while(i<=nargs)out(stderr,tl[stackp[-(i++)]]),putc(' ',stderr);
@@ -798,6 +814,11 @@ FIELD e;
       }
     outstats();
     exit(1);
+
+    case GETARGS:  /* GETARGS 0 => argv  ||`$*' = command line args */
+    UPLEFT;
+    simpl(conv_args());
+    goto DONE;
 
     case CONFERROR:    /* CONFERROR error_info => BOTTOM */
     /* if(nargs<1)fprintf(stderr,"\nimpossible event in reduce\n"),
@@ -824,7 +845,7 @@ FIELD e;
 
     case WAIT:        /* WAIT pid => <exit_status of child process pid> */
     UPLEFT;
-  { int *w= &waiting; /* list of terminated pid's and their exit statuses */
+  { word *w= &waiting; /* list of terminated pid's and their exit statuses */
     while(*w!=NIL&&hd[*w]!=lastarg)w= &tl[tl[*w]];
     if(*w!=NIL)hold=hd[tl[*w]],
 	       *w=tl[tl[*w]];  /* remove entry */
@@ -846,6 +867,7 @@ FIELD e;
     case LAST:
     case EXEC:
     case FILEMODE:
+    case FILESTAT:
     case GETENV:
     case INTEGER:
     case NUMVAL:
@@ -949,7 +971,7 @@ FIELD e;
     case MKSTRICT:  /* MKSTRICT k f x1 ... xk => f x1 ... xk, xk~=BOT */
     GETARG(arg1);
     getarg(arg2);
-    { int i=arg1;
+    { word i=arg1;
       while(i--) { upleft; } }
     lastarg=reduce(lastarg);         /* ### */
     while(--arg1)  /* go back towards head, copying spine */
@@ -957,6 +979,485 @@ FIELD e;
 	   DOWNLEFT;}
     hd[e]=arg2;  /* overwrite (MKSTRICT k f) with f */
     goto NEXTREDEX;
+
+    case G_ERROR:    /* G_ERROR f g toks = (g residue):[], fails(f toks)
+		                         = f toks, otherwise */
+    GETARG(arg1);
+    GETARG(arg2);
+    upleft;
+    hold=ap(arg1,lastarg);
+    hold=reduce(hold);          /* ### */
+    if(!fails(hold))
+      { hd[e]=I; e=tl[e]=hold; goto DONE; }
+    hold=g_residue(lastarg);
+    setcell(CONS,ap(arg2,hold),NIL);
+    goto DONE;
+
+    case G_ALT:      /* G_ALT f g toks = f toks, !fails(f toks)
+                                       = g toks, otherwise  */
+    GETARG(arg1);
+    GETARG(arg2);
+    upleft;
+    hold=ap(arg1,lastarg);
+    hold=reduce(hold);         /* ### */
+    if(!fails(hold))
+      { hd[e]=I; e=tl[e]=hold; goto DONE; }
+    hd[e]=arg2;
+    DOWNLEFT;
+    goto NEXTREDEX;
+
+    case G_OPT:         /* G_OPT f toks = []:toks, fails(f toks)
+					= [a]:toks', otherwise
+					  where
+					  a:toks' = f toks */
+    GETARG(arg1);
+    upleft;
+    hold=ap(arg1,lastarg);
+    hold=reduce(hold);         /* ### */
+    if(fails(hold))
+      setcell(CONS,NIL,lastarg);
+    else setcell(CONS,cons(hd[hold],NIL),tl[hold]);
+    goto DONE;
+
+    case G_STAR:   /* G_STAR f toks => []:toks, fails(f toks)
+			            => ((a:FST z):SND z)
+		      	               where 
+			               a:toks' = f toks
+			               z = G_STAR f toks'
+		   */
+    GETARG(arg1);
+    upleft;
+    hold=ap(arg1,lastarg);
+    hold=reduce(hold);          /* ### */
+    if(fails(hold))
+      { setcell(CONS,NIL,lastarg); goto DONE; }
+    arg2=ap(hd[e],tl[hold]);  /* called z in above rules */
+    tag[e]=CONS;hd[e]=cons(hd[hold],ap(FST,arg2));tl[e]=ap(SND,arg2);
+    goto DONE;
+
+    /* G_RULE has same action as P */
+
+    case G_FBSTAR: /* G_FBSTAR f toks 
+		      = I:toks, if fails(f toks)
+		      = G_SEQ (G_FBSTAR f) (G_RULE (CB a)) toks', otherwise
+		        where a:toks' = f toks
+		   */
+    GETARG(arg1);
+    upleft;
+    hold=ap(arg1,lastarg);
+    hold=reduce(hold);          /* ### */
+    if(fails(hold))
+      { setcell(CONS,I,lastarg); goto DONE; }
+    hd[e]=ap2(G_SEQ,hd[e],ap(G_RULE,ap(CB,hd[hold]))); tl[e]=tl[hold];
+    goto NEXTREDEX;
+
+    case G_SYMB:        /* G_SYMB t ((t,s):toks) = t:toks
+			   G_SYMB t toks = FAILURE  */
+    GETARG(arg1); /* will be in NF */
+    upleft;
+    lastarg=reduce(lastarg);          /* ### */
+    if(lastarg==NIL)
+      { hd[e]=I,e=tl[e]=NIL; goto DONE; }
+    hd[lastarg]=reduce(hd[lastarg]);          /* ### */
+    hold=ap(FST,hd[lastarg]);
+    if(compare(arg1,reduce(hold)))            /* ### */
+      hd[e]=I,e=tl[e]=FAILURE;
+    else setcell(CONS,arg1,tl[lastarg]);
+    goto DONE;
+
+    case G_ANY:         /* G_ANY ((t,s):toks) = t:toks
+			   G_ANY [] = FAILURE   */
+    upleft;
+    lastarg=reduce(lastarg);          /* ### */
+    if(lastarg==NIL)
+      hd[e]=I,e=tl[e]=FAILURE;
+    else setcell(CONS,ap(FST,hd[lastarg]),tl[lastarg]);
+    goto DONE;
+
+    case G_SUCHTHAT:     /* G_SUCHTHAT f ((t,s):toks) = t:toks, f t
+			    G_SUCHTHAT f toks = FAILURE  */
+    GETARG(arg1);
+    upleft;
+    lastarg=reduce(lastarg);          /* ### */
+    if(lastarg==NIL)
+      { hd[e]=I,e=tl[e]=FAILURE; goto DONE; }
+    hold=ap(FST,hd[lastarg]);
+    hold=reduce(hold);                /* ### */
+    if(reduce(ap(arg1,hold))==True)          /* ### */
+      setcell(CONS,hold,tl[lastarg]);
+    else hd[e]=I,e=tl[e]=FAILURE;
+    goto DONE;
+      
+
+    case G_END:         /* G_END [] = []:[]
+			   G_END other = FAILURE */
+    upleft;
+    lastarg=reduce(lastarg);
+    if(lastarg==NIL)
+      setcell(CONS,NIL,NIL);
+    else hd[e]=I,e=tl[e]=FAILURE;
+    goto DONE;
+
+    case G_STATE:       /* G_STATE ((t,s):toks) = s:((t,s):toks)
+		           G_STATE [] = FAILURE   */
+    upleft;
+    lastarg=reduce(lastarg);          /* ### */
+    if(lastarg==NIL)
+      hd[e]=I,e=tl[e]=FAILURE;
+    else setcell(CONS,ap(SND,hd[lastarg]),lastarg);
+    goto DONE;
+
+    case G_SEQ:         /* G_SEQ f g toks = FAILURE, fails(f toks)
+					  = FAILURE, fails(g toks')
+					  = b a:toks'', otherwise
+					    where
+					    a:toks' = f toks
+					    b:toks'' = g toks' */
+    GETARG(arg1);
+    GETARG(arg2);
+    upleft;
+    hold=ap(arg1,lastarg);
+    hold=reduce(hold);          /* ### */
+    if(fails(hold))
+      { hd[e]=I,e=tl[e]=FAILURE; goto DONE; }
+    arg3=ap(arg2,tl[hold]);
+    arg3=reduce(arg3);          /* ### */
+    if(fails(arg3))
+      { hd[e]=I,e=tl[e]=FAILURE; goto DONE; }
+    setcell(CONS,ap(hd[arg3],hd[hold]),tl[arg3]);
+    goto DONE;
+
+    case G_UNIT:   /* G_UNIT toks => I:toks */
+    upleft;
+    tag[e]=CONS,hd[e]=I;
+    goto DONE;
+    /* G_UNIT is right multiplicative identity, equivalent (G_RULE I) */
+
+    case G_ZERO:   /* G_ZERO toks => FAILURE */
+    upleft;
+    simpl(FAILURE);
+    goto DONE;
+    /* G_ZERO is left additive identity */
+
+    case G_CLOSE:     /* G_CLOSE s f toks = <error s>, fails(f toks')
+				          = <error s>, toks'' ~= NIL
+					  = a, otherwise
+					    where
+					    toks' = G_COUNT toks
+					    a:toks'' = f toks' */
+    GETARG(arg1);
+    GETARG(arg2);
+    upleft;
+    arg3=ap(G_COUNT,lastarg);
+    hold=ap(arg2,arg3);
+    hold=reduce(hold);          /* ### */
+    if(fails(hold) /* ||(tl[hold]=reduce(tl[hold]))!=NIL  /* ### */
+      )            /* suppress to make parsers lazy by default 13/12/90 */
+      { fprintf(stderr,"\nPARSE OF %sFAILS WITH UNEXPECTED ",
+		getstring(arg1,0));
+	arg3=reduce(tl[g_residue(arg3)]);
+	if(arg3==NIL)
+	  fprintf(stderr,"END OF INPUT\n"),
+	  outstats(),
+	  exit(1);
+	hold=ap(FST,hd[arg3]);
+	hold=reduce(hold);
+	fprintf(stderr,"TOKEN \"");
+	if(hold==OFFSIDE)fprintf(stderr,"offside"); /* not now possible */
+          { char *p=getstring(hold,0);
+	    while(*p)fprintf(stderr,"%s",charname(*p++)); }
+	fprintf(stderr,"\"\n");
+	outstats();
+	exit(1); }
+    hd[e]=I,e=tl[e]=hd[hold];
+    goto NEXTREDEX;
+/* NOTE the atom OFFSIDE differs from every string and is used as a
+   pseudotoken when implementing the offside rule - see `indent' in prelude */
+
+    case G_COUNT:       /* G_COUNT NIL => NIL
+			   G_COUNT (t:toks) => t:G_COUNT toks */
+    /* G_COUNT is an identity operation on lists - its purpose is to mark
+       last token examined, for syntax error location purposes */
+    upleft;
+    if((lastarg=reduce(lastarg))==NIL)   /* ### */
+      { hd[e]=I; e=tl[e]=NIL; goto DONE; }
+    setcell(CONS,hd[lastarg],ap(G_COUNT,tl[lastarg]));
+    goto DONE;
+
+/*  Explanation of %lex combinators.  A lex analyser is of type
+
+	lexer == [char] -> [alpha]
+
+    At top level these are of the form (LEX_RPT f) where f is of type
+
+	lexer1 == startcond -> [char] -> (alpha,startcond,[char])
+
+    A lexer1 is guaranteed to return a triple (if it returns at all...)
+    and is built using LEX_TRY.
+
+	LEX_TRY [(scstuff,(matcher [],rule))*] :: lexer1
+        rule :: [char] -> alpha
+        matcher :: partial_match -> input -> {(alpha,input') | []}
+
+    partial_match and input are both [char] and [] represents failure.
+    The other lex combinators - LEX_SEQ, LEX_OR, LEX_CLASS etc., all
+    create and combine objects of type matcher.
+
+    LEX_RPT1 is a deviant version that labels the input characters
+    with their lexical state (row,col) using LEX_COUNT - goes with
+    LEX_TRY1 which feeds the leading state of input to each rule.
+
+*/
+
+    case LEX_RPT1: /* LEX_RPT1 f s x => LEX_RPT f s (LEX_COUNT0 x)
+	           i.e. LEX_RPT1 f s => B (LEX_RPT f s) LEX_COUNT0
+		   */
+    GETARG(arg1);
+    UPLEFT;
+    hd[e]=ap(B,ap2(LEX_RPT,arg1,lastarg)); tl[e]=LEX_COUNT0;
+    DOWNLEFT;
+    DOWNLEFT;
+    goto NEXTREDEX;
+
+    case LEX_RPT:       /* LEX_RPT f s [] => []
+			   LEX_RPT f s x  => a : LEX_RPT f s' y
+					     where
+					     (a,s',y) = f s x 
+			   note that if f returns a result it is
+			   guaranteed to be a triple
+			*/
+    GETARG(arg1);
+    GETARG(arg2);
+    upleft;
+    if((lastarg=reduce(lastarg))==NIL)   /* ### */
+      { hd[e]=I; e=tl[e]=NIL; goto DONE; }
+    hold=ap2(arg1,arg2,lastarg);
+    arg1=hd[hd[e]];
+    hold=reduce(hold);
+    setcell(CONS,hd[hold],ap2(arg1,hd[tl[hold]],tl[tl[hold]]));
+    goto DONE;
+
+    case LEX_TRY:
+    upleft;
+    tl[e]=reduce(tl[e]);  /* ### */
+    force(tl[e]);
+    hd[e]=LEX_TRY_;
+    DOWNLEFT;
+    /* falls thru to next case */
+
+    case LEX_TRY_:
+ /* LEX_TRY ((scstuff,(f,rule)):alt) s x => LEX_TRY alt s x, if f x = []
+				         => (rule (rev a),s,y), otherwise
+					    where
+					    (a,y) = f x
+    LEX_TRY [] s x => BOTTOM
+ */
+    GETARG(arg1);
+    GETARG(arg2);
+    upleft;
+L2: if(arg1==NIL)lexfail(lastarg);
+    if(hd[hd[hd[arg1]]]&&!member(hd[hd[hd[arg1]]],arg2))
+      { arg1=tl[arg1]; goto L2; } /* hd[scstuff] is 0 or list of startconds */
+    hold=ap(hd[tl[hd[arg1]]],lastarg);
+    if((hold=reduce(hold))==NIL)        /* ### */
+      { arg1=tl[arg1]; goto L2; }
+    setcell(CONS,ap(tl[tl[hd[arg1]]],ap(DESTREV,hd[hold])),
+		 cons(tl[hd[hd[arg1]]]?tl[hd[hd[arg1]]]-1:arg2,tl[hold]));
+	        /* tl[scstuff] is 1 + next start condition (0 = no change) */
+    goto DONE;
+
+    case LEX_TRY1:
+    upleft;
+    tl[e]=reduce(tl[e]);  /* ### */
+    force(tl[e]);
+    hd[e]=LEX_TRY1_;
+    DOWNLEFT;
+    /* falls thru to next case */
+
+    case LEX_TRY1_:
+ /* LEX_TRY1 ((scstuff,(f,rule)):alt) s x => LEX_TRY1 alt s x, if f x = []
+				          => (rule n (rev a),s,y), otherwise
+				             where
+				             (a,y) = f x
+				             n = lexstate(x)
+    ||same as LEX_TRY but feeds lexstate to rule
+ */
+    GETARG(arg1);
+    GETARG(arg2);
+    upleft;
+L3: if(arg1==NIL)lexfail(lastarg);
+    if(hd[hd[hd[arg1]]]&&!member(hd[hd[hd[arg1]]],arg2))
+      { arg1=tl[arg1]; goto L3; } /* hd[scstuff] is 0 or list of startconds */
+    hold=ap(hd[tl[hd[arg1]]],lastarg);
+    if((hold=reduce(hold))==NIL)        /* ### */
+      { arg1=tl[arg1]; goto L3; }
+    setcell(CONS,ap2(tl[tl[hd[arg1]]],lexstate(lastarg),ap(DESTREV,hd[hold])),
+		 cons(tl[hd[hd[arg1]]]?tl[hd[hd[arg1]]]-1:arg2,tl[hold]));
+	        /* tl[scstuff] is 1 + next start condition (0 = no change) */
+    goto DONE;
+
+    case DESTREV:  /* destructive reverse - used only by LEX_TRY */
+    GETARG(arg1);  /* known to be an explicit list */
+    arg2=NIL; /* to hold reversed list */
+    while(arg1!=NIL)
+	 { if(tag[hd[arg1]]==STRCONS) /* strip off lex state if present */
+	     hd[arg1]=tl[hd[arg1]];
+	   hold=tl[arg1],tl[arg1]=arg2,arg2=arg1,arg1=hold; }
+    hd[e]=I; e=tl[e]=arg2;
+    goto DONE;
+
+    case LEX_COUNT0:  /* LEX_COUNT0 x => LEX_COUNT (state0,x) */
+    upleft;
+    hd[e]=LEX_COUNT; tl[e]=strcons(0,tl[e]);
+    DOWNLEFT;
+    /* falls thru to next case */
+
+    case LEX_COUNT: /* LEX_COUNT (state,[]) => []
+		       LEX_COUNT (state,(a:x)) => (state,a):LEX_COUNT(state',a)
+		       where
+		       state == (line_no*256+col_no)
+		    */
+    GETARG(arg1);
+    if((tl[arg1]=reduce(tl[arg1]))==NIL)   /* ### */
+      { hd[e]=I; e=tl[e]=NIL; goto DONE; }
+    hold=hd[tl[arg1]]; /* the char */
+    setcell(CONS,strcons(hd[arg1],hold),ap(LEX_COUNT,arg1));
+    if(hold=='\n')hd[arg1]=(hd[arg1]>>8)+1<<8; 
+    else { word col = hd[arg1]&255;
+	   col = hold=='\t'?(col/8+1)*8:col+1;
+	   hd[arg1] = hd[arg1]&(~255)|col; }
+    tl[arg1]=tl[tl[arg1]];
+    goto DONE;
+
+#define lh(x) (tag[hd[x]]==STRCONS?tl[hd[x]]:hd[x])
+  /* hd char of possibly lex-state-labelled string */
+
+    case LEX_STRING: /*  LEX_STRING [] p x => p : x
+			 LEX_STRING (c:s) p (c:x) => LEX_STRING s (c:p) x
+			 LEX_STRING (c:s) p other => []
+		     */
+    GETARG(arg1);
+    GETARG(arg2);
+    upleft;
+    while(arg1!=NIL)
+         { if((lastarg=reduce(lastarg))==NIL||lh(lastarg)!=hd[arg1]) /* ### */
+             { hd[e]=I; e=tl[e]=NIL; goto DONE; }
+	   arg1=tl[arg1]; arg2=cons(hd[lastarg],arg2); lastarg=tl[lastarg]; }
+    tag[e]=CONS; hd[e]=arg2;
+    goto DONE;
+
+    case LEX_CLASS: /* LEX_CLASS set p (c:x) => (c:p) : x, if c in set
+		       LEX_CLASS set p   x   => [], otherwise
+		    */
+    GETARG(arg1);
+    GETARG(arg2);
+    upleft;
+    if((lastarg=reduce(lastarg))==NIL||         /* ### */
+       (hd[arg1]==ANTICHARCLASS?memclass(lh(lastarg),tl[arg1])
+                               :!memclass(lh(lastarg),arg1))
+      )
+             { hd[e]=I; e=tl[e]=NIL; goto DONE; }
+    setcell(CONS,cons(hd[lastarg],arg2),tl[lastarg]);
+    goto DONE;
+
+    case LEX_DOT: /* LEX_DOT p (c:x) => (c:p) : x
+		     LEX_DOT p  []   => []
+		  */
+    GETARG(arg1);
+    upleft;
+    if((lastarg=reduce(lastarg))==NIL)    /* ### */
+             { hd[e]=I; e=tl[e]=NIL; goto DONE; }
+    setcell(CONS,cons(hd[lastarg],arg1),tl[lastarg]);
+    goto DONE;
+
+    case LEX_CHAR: /* LEX_CHAR c p (c:x) => (c:p) : x
+		      LEX_CHAR c p  x    => []
+		   */
+    GETARG(arg1);
+    GETARG(arg2);
+    upleft;
+    if((lastarg=reduce(lastarg))==NIL||lh(lastarg)!=arg1)    /* ### */
+             { hd[e]=I; e=tl[e]=NIL; goto DONE; }
+    setcell(CONS,cons(arg1,arg2),tl[lastarg]);
+    goto DONE;
+
+    case LEX_SEQ:  /* LEX_SEQ f g p x => [], if f p x = []
+				      => g q y, otherwise
+					 where
+					 (q,y) = f p x
+		   */
+    GETARG(arg1);
+    GETARG(arg2);
+    GETARG(arg3);
+    upleft;
+    hold=ap2(arg1,arg3,lastarg);
+    lastarg=NIL; /* anti-dragging measure */
+    if((hold=reduce(hold))==NIL)     /* ### */
+      { hd[e]=I; e=tl[e]; goto DONE; }
+    hd[e]=ap(arg2,hd[hold]); tl[e]=tl[hold];
+    DOWNLEFT;
+    DOWNLEFT;
+    goto NEXTREDEX;
+
+    case LEX_OR: /* LEX_OR f g p x => g p x, if f p x = []
+				   => f p x, otherwise
+		 */
+    GETARG(arg1);
+    GETARG(arg2);
+    GETARG(arg3);
+    upleft;
+    hold=ap2(arg1,arg3,lastarg);
+    if((hold=reduce(hold))==NIL)        /* ### */
+      { hd[e]=ap(arg2,arg3); DOWNLEFT; DOWNLEFT; goto NEXTREDEX; }
+    hd[e]=I; e=tl[e]=hold;
+    goto DONE;
+
+    case LEX_RCONTEXT: /* LEX_RC f g p x => [], if f p x = []
+					 => [], if g q y = []
+					 => f p x, otherwise  <-*
+			                    where
+			                    (q,y) = f p x
+
+			 (*) special case g=0 means test for y=[]
+		       */
+    GETARG(arg1);
+    GETARG(arg2);
+    GETARG(arg3);
+    upleft;
+    hold=ap2(arg1,arg3,lastarg);
+    lastarg=NIL; /* anti-dragging measure */
+    if((hold=reduce(hold))==NIL     /* ### */
+       || (arg2?(reduce(ap2(arg2,hd[hold],tl[hold]))==NIL)   /* ### */
+	      :(tl[hold]=reduce(tl[hold]))!=NIL ))
+      { hd[e]=I; e=tl[e]; goto DONE; }
+    hd[e]=I; e=tl[e]=hold;
+    goto DONE;
+
+    case LEX_STAR: /* LEX_STAR f p x => p : x, if f p x = []
+				     => LEX_STAR f q y, otherwise
+					where
+					(q,y) = f p x
+		   */
+    GETARG(arg1);
+    GETARG(arg2);
+    upleft;
+    hold=ap2(arg1,arg2,lastarg);
+    while((hold=reduce(hold))!=NIL)   /* ### */
+         arg2=hd[hold],lastarg=tl[hold],hold=ap2(arg1,arg2,lastarg);
+    tag[e]=CONS; hd[e]=arg2;
+    goto DONE;
+
+    case LEX_OPT: /* LEX_OPT f p x => p : x, if f p x = []
+				   => f p x, otherwise
+		   */
+    GETARG(arg1);
+    GETARG(arg2);
+    upleft;
+    hold=ap2(arg1,arg2,lastarg);
+    if((hold=reduce(hold))==NIL)   /* ### */
+      { tag[e]=CONS; hd[e]=arg2; goto DONE; }
+    hd[e]=I; e=tl[e]=hold;
+    goto DONE;
 
 /*  case NUMBER:   /* constructor of arity 1
     UPLEFT;  /* cannot occur free
@@ -1008,10 +1509,10 @@ FIELD e;
 		    { if(stdinuse&&stdinuse!='+')
                         { tag[e]=AP; hd[e]=I; e=tl[e]=NIL; goto DONE; }
 		      stdinuse='+';
-		      hold=cons(tl[hd[e]],0),lastarg=(int)stdin; }
+		      hold=cons(tl[hd[e]],0),lastarg=(word)stdin; }
 		  else
 		    hold=cons(tl[hd[e]],lastarg),
-                    lastarg=(int)fopen(fil=getstring(lastarg,"readvals"),"r");
+                    lastarg=(word)fopen(fil=getstring(lastarg,"readvals"),"r");
                   if((FILE *)lastarg==NULL)  /* cannot open file for reading  */
                     /* { hd[e]=I; e=tl[e]=NIL; goto DONE; } */
                     { fprintf(stderr,"\nreadvals, cannot open: \"%s\"\n",fil);
@@ -1143,14 +1644,28 @@ FIELD e;
     UPLEFT;
     if(!stat(getstring(lastarg,"filemode"),&buf))
       { mode_t mode=buf.st_mode;
-	int d=S_ISDIR(mode)?'d':'-';
-	int perm= buf.st_uid==geteuid()?(mode&0700)>>6:
+	word d=S_ISDIR(mode)?'d':'-';
+	word perm= buf.st_uid==geteuid()?(mode&0700)>>6:
 		  buf.st_gid==getegid()?(mode&070)>>3:
 		  mode&07;
-	int r=perm&04?'r':'-',w=perm&02?'w':'-',x=perm&01?'x':'-';
+	word r=perm&04?'r':'-',w=perm&02?'w':'-',x=perm&01?'x':'-';
 	setcell(CONS,d,cons(r,cons(w,cons(x,NIL))));
       }
     else hd[e]=I,e=tl[e]=NIL;
+    goto DONE;
+
+    case READY(FILESTAT): /* FILESTAT string => ((inode,dev),mtime) */
+    UPLEFT;
+    /* Notes:
+       Non-existent file has conventional ((inode,dev),mtime) of ((0,-1),0)
+       We assume time_t can be stored in int field, this may not port   */
+    if(!stat(getstring(lastarg,"filestat"),&buf))
+        setcell(CONS,cons(sto_int(buf.st_ino),
+                          sto_int(buf.st_dev) ),
+                     sto_int(buf.st_mtime)  );
+    else setcell(CONS,cons(stosmallint(0),
+                           stosmallint(-1) ),
+                      stosmallint(0)  );
     goto DONE;
 
     case READY(GETENV):    /* GETENV string => string'
@@ -1159,15 +1674,13 @@ FIELD e;
     { char *a = getstring(lastarg,"getenv");
       unsigned char *p = getenv(a);
       hold = NIL;
-      if(p){ int i;
+      if(p){ word i;
 	     unsigned char *q=p, *r=p;
 	     if(UTF8)
 	     { while(*r) /* compress to Latin-1 in situ */
 	       if(*r>127) /* start of multibyte */
 	         if((*r==194||*r==195)&&r[1]>=128&&r[1]<=191) /* Latin-1 */
-	           *q= *r==194?r[1]:r[1]+64, q++, r+=2; else
-	         if(*r==226&&r[1]==130&&r[2]==172) /* euro sign */
-	           *q++=EURO, r+=3;
+	           *q= *r==194?r[1]:r[1]+64, q++, r+=2;
 	         else getenv_error(a),
 		      /* or silently accept errors here? */
                       *q++=*r++;
@@ -1205,7 +1718,7 @@ FIELD e;
           setcell(CONS,ap(READ,fp),cons(ap(READ,fp_a),ap(WAIT,pid)));
         }
       else { /* child (writer) */
-             int in;
+             word in;
              static char *shell="/bin/sh";
              dup2(fd[1],1); /* so pipe replaces stdout */
              dup2(fd_a[1],2); /* 2nd pipe replaces stderr */
@@ -1221,8 +1734,8 @@ FIELD e;
 
     case READY(NUMVAL):    /* NUMVAL numeral => number */
     UPLEFT;
-    { int x=lastarg;
-      int base=10;
+    { word x=lastarg;
+      word base=10;
       while(x!=NIL)
            hd[x]=reduce(hd[x]),        /* ### */
            x=tl[x]=reduce(tl[x]);  /* ### */
@@ -1261,7 +1774,7 @@ FIELD e;
     case READY(STARTREAD): /* STARTREAD filename => READ streamptr */
     UPLEFT;
     { char *fil;
-      lastarg = (int)fopen(fil=getstring(lastarg,"read"),"r");
+      lastarg = (word)fopen(fil=getstring(lastarg,"read"),"r");
       if((FILE *)lastarg==NULL)  /* cannot open file for reading  */
         /* { hd[e]=I; e=tl[e]=NIL; goto DONE; }
 	     /* could just return empty contents */
@@ -1274,7 +1787,7 @@ FIELD e;
     case READY(STARTREADBIN): /* STARTREADBIN filename => READBIN streamptr */
     UPLEFT;
     { char *fil;
-      lastarg = (int)fopen(fil=getstring(lastarg,"readb"),"r");
+      lastarg = (word)fopen(fil=getstring(lastarg,"readb"),"r");
       if((FILE *)lastarg==NULL)  /* cannot open file for reading  */
         /* { hd[e]=I; e=tl[e]=NIL; goto DONE; }
 	     /* could just return empty contents */
@@ -1357,7 +1870,7 @@ FIELD e;
     if(tag[lastarg]==DOUBLE)int_error("decode");
     long long val=get_int(lastarg);
     if(val<0||val>UMAX)
-      { fprintf(stderr,"\nCHARACTER OUT-OF-RANGE decode(%d)\n",val);
+      { fprintf(stderr,"\nCHARACTER OUT-OF-RANGE decode(%lld)\n",val);
         outstats();
         exit(1); }
     hd[e]=I; e=tl[e]=sto_char(val);
@@ -1375,7 +1888,7 @@ FIELD e;
 #ifndef RYU
       sprintf(linebuf,"%.16g",x);
       char *p=linebuf;
-      while(isdigit(*p))p++; /* add .0 to false integer */
+      while isdigit(*p)p++; /* add .0 to false integer */
       if(!*p)*p++='.',*p++='0',*p='\0';
       hd[e]=I; e=tl[e]=str_conv(linebuf); }
 #else
@@ -1572,7 +2085,7 @@ FIELD e;
     UPLEFT;
     /* experiment, suppressed
     if(tag[lastarg]==INT&&tag[arg1]==INT&&!bigzero(lastarg))
-      { extern int b_rem;
+      { extern word b_rem;
 	int d = bigdiv(arg1,lastarg);
 	if(bigzero(b_rem)){ simpl(d); goto DONE; }
       } /* makes a/b integer if a, b integers dividing exactly */
@@ -1617,7 +2130,7 @@ FIELD e;
     if(tag[arg1]==DOUBLE)
       int_error("showscaled");
     arg1=getsmallint(arg1);
-    (void)sprintf(linebuf,"%.*e",arg1,force_dbl(lastarg));
+    (void)sprintf(linebuf,"%.*e",(int)arg1,force_dbl(lastarg));
     hd[e]=I; e=tl[e]=str_conv(linebuf);
     goto DONE;
 
@@ -1628,7 +2141,7 @@ FIELD e;
     if(tag[arg1]==DOUBLE)
       int_error("showfloat");
     arg1=getsmallint(arg1);
-    (void)sprintf(linebuf,"%.*f",arg1,force_dbl(lastarg));
+    (void)sprintf(linebuf,"%.*f",(int)arg1,force_dbl(lastarg));
     hd[e]=I; e=tl[e]=str_conv(linebuf);
     goto DONE;
 
@@ -1704,27 +2217,60 @@ FIELD e;
 
 }  /* end of reduce */
 
-piperrmess(pid)
-int pid;
+int memclass(c,x) /* is char c in list x (may include ranges) */
+int c; word x;
+{ while(x!=NIL)
+       { if(hd[x]==DOTDOT)
+           { x=tl[x];
+             if(hd[x]<=c&&c<=hd[tl[x]])return(1);
+             x=tl[x]; }
+         else if(c==hd[x])return(1);
+         x=tl[x]; }
+  return(0);
+}
+
+void lexfail(x)  /* x is known to be a non-empty string (see LEX_RPT) */
+word x;
+{ int i=24;
+  fprintf(stderr,"\nLEX FAILS WITH UNRECOGNISED INPUT: \"");
+  while(i--&&x!=NIL&&0<=lh(x)&&lh(x)<=255)
+     fprintf(stderr,"%s",charname(lh(x))),
+     x=tl[x];
+  fprintf(stderr,"%s\"\n",x==NIL?"":"...");
+  outstats();
+  exit(1);
+}
+
+word lexstate(x) /* extracts initial state info from list of chars labelled
+               by LEX_COUNT - x is evaluated and known to be non-empty */
+word x;
+{ x = hd[hd[x]]; /* count field of first char */
+  return(cons(sto_int(x>>8),stosmallint(x&255)));
+}
+
+word piperrmess(pid)
+word pid;
 { return(str_conv(pid== -1?"cannot create process\n":"cannot open pipe\n"));
 }
 
-g_residue(toks)  /* remainder of token stream from last token examined */
-int toks;
-{ if(tag[toks]!=CONS)
-    { if(tag[toks]==AP&&hd[toks]==I&&tl[toks]==NIL)
-	return(NIL);
-      fprintf(stderr,"\nimpossible event in g_residue\n"),
+word g_residue(toks2)  /* remainder of token stream from last token examined */
+word toks2;
+{ word toks1 = NIL;
+  if(tag[toks2]!=CONS)
+    { if(tag[toks2]==AP&&hd[toks2]==I&&tl[toks2]==NIL)
+        return(cons(NIL,NIL));
+      return(cons(NIL,toks2)); /*no tokens examined, whole grammar is `error'*/
+      /* fprintf(stderr,"\nimpossible event in g_residue\n"),
       exit(1); /* grammar fn must have examined >=1 tokens */ }
-  while(tag[tl[toks]]==CONS)toks=tl[toks];
-  if(tl[toks]==NIL||tag[tl[toks]]==AP&&hd[tl[toks]]==I&&tl[tl[toks]]==NIL)
-    return(NIL);
-  /*printob("\ntoks=",toks); */
-  return(toks);
+  while(tag[tl[toks2]]==CONS)toks1=cons(hd[toks2],toks1),toks2=tl[toks2];
+  if(tl[toks2]==NIL||tag[tl[toks2]]==AP&&hd[tl[toks2]]==I&&tl[tl[toks2]]==NIL)
+    { toks1=cons(hd[toks2],toks1);
+      return(cons(ap(DESTREV,toks1),NIL)); }
+  return(cons(ap(DESTREV,toks1),toks2));
 }
 
-numplus(x,y)
-int x,y;
+word numplus(x,y)
+word x,y;
 { if(tag[x]==DOUBLE)
     return(sto_dbl(get_dbl(x)+force_dbl(y)));
   if(tag[y]==DOUBLE)
@@ -1732,28 +2278,28 @@ int x,y;
   return(bigplus(x,y));
 }
 
-fn_error(s)
+void fn_error(s)
 char *s;
 { fprintf(stderr,"\nprogram error: %s\n",s);
   outstats(); 
   exit(1); }
 
-getenv_error(char *a)
+void getenv_error(char *a)
 { fprintf(stderr,
    "program error: getenv(%s): illegal characters in result string\n",a);
   outstats();
   exit(1); }
 
-subs_error()
+void subs_error()
 { fn_error("subscript out of range");
 }
 
-div_error()
+void div_error()
 { fn_error("attempt to divide by zero");
 }
 /* other arithmetic exceptions signal-trapped by fpe_error - see STEER */
 
-math_error(s)
+void math_error(s)
 char *s;
 { fprintf(stderr,"\nmath function %serror (%s)\n",
                  errno==EDOM?"domain ":errno==ERANGE?"range ":"",s);
@@ -1761,7 +2307,7 @@ char *s;
   exit(1);
 }
 
-int_error(s)
+void int_error(s)
 char *s;
 { fprintf(stderr,
   "\nprogram error: fractional number where integer expected (%s)\n",s);
@@ -1773,7 +2319,7 @@ char *stdname(c)
 int c;
 { return c==':' ? "$:-" : c=='-' ? "$-" : "$+"; }
 
-stdin_error(c)
+void stdin_error(c)
 int c;
 { if(stdinuse==c)
         fprintf(stderr,"program error: duplicate use of %s\n",stdname(c));
@@ -1795,25 +2341,25 @@ int c;
 clock_t start, end;
 #endif
 
-initclock()
+void initclock()
 { 
 #ifndef BSDCLOCK
 start=clock();
 #endif
 }
 
-out_here(f,h,nl)  /* h is fileinfo(scriptname,line_no) */
+void out_here(f,h,nl)  /* h is fileinfo(scriptname,line_no) */
 FILE *f;
-int h,nl;
-{ extern int errs;
+word h,nl;
+{ extern word errs;
   if(tag[h]!=FILEINFO)
     { fprintf(stderr,"(impossible event in outhere)\n"); return; }
-  fprintf(f,"(line %3d of \"%s\")",tl[h],(char *)hd[h]);
+  fprintf(f,"(line %3ld of \"%s\")",tl[h],(char *)hd[h]);
   if(nl)putc('\n',f); else putc(' ',f);
   if(compiling&&!errs)errs=h; /* relevant only when called from steer.c */
 } /* `soft' error, set errs rather than errline, so not saved in dump */
 
-outstats()
+void outstats()
 { extern long claims,nogcs;
   extern int atcount;
   extern long long cellcount;
@@ -1821,7 +2367,7 @@ outstats()
   struct tms buffer;
 #endif
 #ifdef HISTO
-  if(sourcemc)printhisto();
+  printhisto();
 #endif
   if(!atcount)return;
 #ifdef BSDCLOCK

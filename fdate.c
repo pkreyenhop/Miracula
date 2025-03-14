@@ -12,7 +12,7 @@ struct tm *t;
 
 char *month[] = {"January","February","March","April","May","June",
                 "July","August","September","October","November","December"};
-main()
+int main()
 { char f[200];
   if(scanf("%s",f)==1&&stat(f,&buf)==0)
     t=localtime(&buf.st_mtime),

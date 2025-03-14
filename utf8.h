@@ -3,7 +3,6 @@ typedef unsigned long unicode;
 
 #define UMAX 0x10ffff /* last unicode value */
 #define BMPMAX 0xffff
-#define EURO 0x20ac
 
 #include <stdio.h>
 unicode fromUTF8(FILE *);

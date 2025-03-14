@@ -10,22 +10,27 @@ that it is running on.
 
 The error messages from the Miranda system are mostly self  explanatory.
 Note,  however,  that  messages  of  the  form "impossible event ..." or
-similar indicate that the internal  state  of  the  system  has  somehow
-become  corrupted.   This  should  be  reported  as a bug.  Segmentation
-faults also falls into this category.
+similar indicate that the  internal  state  of  the  system  has  become
+corrupted.   This should be reported as a bug.  Segmentation faults also
+falls into this category.
 
 First check if the problem only occurs following a  garbage  collection.
 Garbage  collector  reports  can  be  turned  on  by `mira -gc' from the
 command line or by /gc within a miranda session.   If  your  error  does
 appear to be associated with garbage collection you can try running with
 a bigger heap and/or  getting  mira  recompiled  at  a  lower  level  of
-optimisation  (eg  -O  instead  of  -O2).   Miranda uses a "conservative
-collector" which works by scanning the C stack  to  follow  things  that
+optimisation  (eg  -O  instead  of  -O2, or without -O).  Miranda uses a
+"conservative collector" which scans the C stack to follow  things  that
 are,  or  appear  to  be, pointers into the heap.  Unfortunately this is
 vulnerable to compiler optimisations affecting the state of the stack.
 
 Even if the problem does appear to  be  gc-related  it  is  still  worth
 reporting.
+
+The source code, orginally  written  for  32  bit  platforms,  has  been
+extensively  revised  and  tested for 64 bit compatibility.  It is quite
+possible that some hidden "integer width" problems remain  in  the  code
+and will be discovered in use.
 
 _L_i_s_t_ _o_f_ _k_n_o_w_n_ _b_u_g_s_,_ _d_e_f_i_c_i_e_n_c_i_e_s_,_ _a_n_d_ _u_n_i_m_p_l_e_m_e_n_t_e_d_ _f_e_a_t_u_r_e_s
 

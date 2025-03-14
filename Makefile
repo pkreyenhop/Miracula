@@ -8,9 +8,10 @@ MAN=usr/share/man/man1
 #BIN=usr/local/bin
 #LIB=usr/local/lib#beware no spaces after LIB
 #MAN=usr/local/man/man1
-CC = gcc -m32 -std=c90 -Wno-return-type -w
-CFLAGS = -O #-DCYGWIN #-DUWIN #-DIBMRISC #-Dsparc7 #-Dsparc8
+CC = gcc -w
+CFLAGS = #-O #-DCYGWIN #-DUWIN #-DIBMRISC #-Dsparc7 #-Dsparc8
 #be wary of using anything higher than -O as the garbage collector may fall over
+#if using gcc rather than clang try without -O first
 EX = #.exe        #needed for CYGWIN, UWIN
 YACC = byacc #Berkeley yacc, gnu yacc not compatible
 # -Dsparc7 needed for Solaris 2.7
@@ -20,14 +21,15 @@ mira: big.o cmbnms.o data.o lex.o reduce.o steer.o trans.o types.o utf8.o y.tab.
 	$(CC) $(CFLAGS) -DVERS=`cat miralib/.version` -DVDATE="\"`./revdate`\"" \
 	    -DHOST="`./quotehostinfo`" version.c cmbnms.o y.tab.o data.o lex.o \
 	    big.o reduce.o steer.o trans.o types.o utf8.o -lm -o mira
-	chmod 711 mira$(EX)
 	strip mira$(EX)
 y.tab.c y.tab.h: rules.y
 	$(YACC) -d rules.y
 big.o cmbns.o data.o lex.o reduce.o steer.o trans.o types.o y.tab.o: \
                      data.h combs.h utf8.h y.tab.h Makefile
 data.o: .xversion
-big.o data.o reduce.o types.o: big.h
+big.o data.o lex.o reduce.o steer.o trans.o types.o: big.h
+big.o data.o lex.o reduce.o steer.o rules.y types.o: lex.h
+utf8.o: utf8.h Makefile
 cmbnms.o: cmbnms.c Makefile
 cmbnms.c combs.h: gencdecs
 	./gencdecs
@@ -41,7 +43,7 @@ tellcc:
 	@echo $(CC) $(CFLAGS)
 cleanup:
 #to be done on moving to a new host
-	-rm -rf *.o fdate mira$(EX)
+	-rm -rf *.o fdate miralib/menudriver mira$(EX)
 	./unprotect
 	-rm -f miralib/preludx miralib/stdenv.x miralib/ex/*.x #miralib/ex/*/*.x
 	./hostinfo > .host
@@ -66,8 +68,8 @@ release:
 	find usr -exec chown `./ugroot` {} \;
 	tar czf `rname`.tgz ./usr
 	-rm -rf usr
-SOURCES = .xversion big.c big.h cmbnms.c combs.h data.h data.c lex.c reduce.c rules.y \
-          steer.c trans.c types.c version.c fdate.c
+SOURCES = .xversion big.c big.h gencdecs data.h data.c lex.h lex.c reduce.c rules.y \
+          steer.c trans.c types.c utf8.h utf8.c version.c fdate.c
 sources: $(SOURCES); @echo $(SOURCES)
 exfiles:
 	@-./mira -make -lib miralib ex/*.m

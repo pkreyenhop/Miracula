@@ -155,6 +155,14 @@ tests f for write permission.  See also `getenv', `read', `system'.
 
 > filemode :: [char]->[char]  ||defined internally
 
+`filestat'  applied  to  a  UNIX   pathname   returns   three   integers
+((inode,device),mtime),  where  mtime  is  the time-last-modified of the
+file, in seconds since 00.00h on 1 Jan 1970.   The  pair  (inode,device)
+identifies a file uniquely, regardless of the pathname used to reach it.
+A non-existent file has inode & device (0,-1) and mtime 0.
+
+> filestat :: [char]->((num,num),num)  ||defined internally
+
 `filter' applied to a predicate and a list, returns  a  list  containing
 only those elements that satisfy the predicate.  Example
         filter (>5) [3,7,2,8,1,17] = [7,8,17]

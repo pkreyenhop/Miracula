@@ -1,13 +1,22 @@
-
 /* MISCELLANEOUS DECLARATIONS   */
 
 /**************************************************************************
  * Copyright (C) Research Software Limited 1985-90.  All rights reserved. *
  * The Miranda system is distributed as free software under the terms in  *
  * the file "COPYING" which is included in the distribution.              *
+ *                                                                        *
+ * Revised to C11 standard and made 64bit compatible, January 2020        *
  *------------------------------------------------------------------------*/
 
-#define YYSTYPE int
+typedef long word;
+/* word must be an integer type wide enough to also store (char*) or (FILE*).
+   Defining it as "long" works on the most common platforms both 32 and
+   64 bit.  Be aware that word==long is reflected in printf etc formats
+   e.g. %ld, in many places in the code.  If you define word to be other 
+   than long these will need to be changed, the gcc/clang option -Wformat
+   will locate format/arg type mismatches. DT Jan 2020 */
+
+#define YYSTYPE word
 #define YYMAXDEPTH 1000
 extern YYSTYPE yylval;
 #include "y.tab.h" /* for tokens */
@@ -17,18 +26,21 @@ extern YYSTYPE yylval;
    /* #define for XVERSION - we increase this by one at each non upwards
       compatible change to dump format */
 
-/* all Miranda values are of type int
+/* all Miranda values are of type word
 
    0..ATOMLIMIT-1 are atoms, made up as follows
    0..255 the Latin 1 character set (0..127 ascii)
    256..CMBASE-1 lexical tokens, see rules.y
    CMBASE..ATOMLIMIT-1 combinators and special values eg NIL
+   see combs.h
 
+   ATOMLIMIT is the first pointer value
    values >= ATOMLIMIT are indexes into the heap
 
    the heap is held as three arrays tag[], hd[], tl[]
-   int *hd,*tl are offset so they run from ATOMLIMIT
-   char *tag holds type info and runs from 0
+   word *hd,*tl are offset so they are indexed from ATOMLIMIT
+   char *tag holds type info and is indexed from 0
+
    tag[0]..tag[ATOMLIMIT-1] are all 0 meaning ATOM
    see setupheap() in data.c
 */
@@ -54,19 +66,24 @@ extern YYSTYPE yylval;
 #define LET 16
 #define LETREC 17
 #define SHARE 18
-#define PAIR 19
-#define UNICODE 20
-#define TCONS 21
+#define LEXER 19
+#define PAIR 20
+#define UNICODE 21
+#define TCONS 22
      /*  ATOM ... TCONS  are the possible values of the
          "tag" field of a cell  */
 
 #define TOP (SPACE+ATOMLIMIT)
 #define isptr(x)  (ATOMLIMIT<=(x)&&(x)<TOP)
 
-#define datapair(x,y) make(DATAPAIR,(int)x,(int)y)
-#define fileinfo(x,y) make(FILEINFO,(int)x,(int)y)
-#define constructor(n,x) make(CONSTRUCTOR,n,x)
-#define strcons(x,y) make(STRCONS,(int)x,y)
+#define BACKSTOP (1l<<(__WORDSIZE-1))
+#define tlptrbit BACKSTOP
+#define tlptrbits (3l<<(__WORDSIZE-2))
+
+#define datapair(x,y) make(DATAPAIR,(word)x,(word)y)
+#define fileinfo(x,y) make(FILEINFO,(word)x,(word)y)
+#define constructor(n,x) make(CONSTRUCTOR,(word)n,(word)x)
+#define strcons(x,y) make(STRCONS,(word)x,y)
 #define cons(x,y) make(CONS,x,y)
 #define lambda(x,y) make(LAMBDA,x,y)
 #define let(x,y) make(LET,x,y)
@@ -78,7 +95,7 @@ extern YYSTYPE yylval;
 #define label(x,y) make(LABEL,x,y)
 #define show(x,y) make(SHOW,x,y)
 #define readvals(x,y) make(STARTREADVALS,x,y)
-#define ap(x,y) make(AP,x,y)
+#define ap(x,y) make(AP,(word)(x),(word)(y))
 #define ap2(x,y,z) ap(ap(x,y),z)
 #define ap3(w,x,y,z) ap(ap2(w,x,y),z)
 
@@ -110,14 +127,15 @@ see also reset_pns(), make_pn(), sto_pn() in lex.c */
 #define the_val(x) tl[x]
 /* works for both pnames and ids */
 
-extern int compiling;
-extern int *hd,*tl;
+extern int compiling,polyshowerror;
+extern word *hd,*tl;
 extern char *tag;
-char *keep();
 char *getstring();
-double get_dbl();
+double get_dbl(word);
+void dieclean(void);
 #include <unistd.h> /* execl */
 #include <stdlib.h> /* malloc, calloc, realloc, getenv */
+#include <limits.h> /* MAX_DBL */
 #include <stdio.h>
 #include <signal.h>
 typedef void (*sighandler)();
@@ -127,7 +145,7 @@ typedef void (*sighandler)();
 #define index(s,c) strchr(s,c)
 #define rindex(s,c) strrchr(s,c)
 #if IBMRISC | sparc7
-union wait { int w_status; };
+union wait { word w_status; };
 #else
 #include <sys/wait.h>
 #endif
@@ -137,24 +155,20 @@ union wait { int w_status; };
 #define GUARD 1
 #define REPEAT 2
 #define is(s) (strcmp(dicp,s)==0)
-extern int idsused;
+extern word idsused;
 
 #define BUFSIZE 1024
 /* limit on length of shell commands (for /e, !, System) */
 #define pnlim 1024
 /* limit on length of pathnames */
-#define EURO 164
-/* (0xa4) ISO 8859-1 general currency symbol */
-extern int files; /* a cons list of elements, each of which is of the form
-      cons(cons(fileinfo(filename,mtime),share),definienda) 
-      where share (=0,1) says if repeated instances are shareable. 
-      Current script at the front followed by subsidiary files
-      due to %insert and %include -- elements due to %insert have
-      NIL definienda (they are attributed to the inserting script)
-no longer   ??Note that only the main file, and the front file of each direct
-true        ??include, can contain ID's - files due to includes of includes
-    ??will contain only private names. (See implementation of %export)
-   */
+extern word files; /* a cons list of elements, each of which is of the form
+               cons(cons(fileinfo(filename,mtime),share),definienda) 
+               where share (=0,1) says if repeated instances are shareable. 
+               Current script at the front followed by subsidiary files
+               due to %insert and %include -- elements due to %insert have
+               NIL definienda (they are attributed to the inserting script)
+            */
+extern word current_file; /*pointer to current element of `files' during compilation*/
 #define make_fil(name,time,share,defs) cons(cons(fileinfo(name,time),\
 cons(share,NIL)),defs)
 #define get_fil(fil) ((char *)hd[hd[hd[fil]]])
@@ -164,9 +178,8 @@ cons(share,NIL)),defs)
 /* leave a NIL as placeholder here - filled in by mkincludes */
 #define fil_defs(fil)  tl[fil]
 
-extern int current_file; /*pointer to current element of `files' during compilation*/
 #define addtoenv(x) fil_defs(hd[files])=cons(x,fil_defs(hd[files]))
-extern int lastexp;
+extern word lastexp;
 
 /* representation of types */
 #define undef_t 0
@@ -224,5 +237,114 @@ cons(cons(arity,showfn),cons(free_t,NIL))
 #define placeholder_t 3
 #define free_t 4
 
-/* end of MIRANDA DECLARATIONS */
+/* function prototypes - data.c */
+word append1(word,word);
+char *charname(word);
+void dump_script(word,FILE *);
+void gc(void);
+void gcpatch(void);
+char *getaka(word);
+word get_char(word);
+word geterrlin(char *);
+word get_here(word);
+int is_char(word);
+word load_script(FILE *,char *,word,word,word);
+word make(unsigned char,word,word);
+void mallocfail(char *);
+int okdump(char *);
+void out(FILE *,word);
+void out1(FILE *,word);
+void out2(FILE *,word);
+void outr(FILE *,double);
+void resetgcstats(void);
+void resetheap(void);
+void setdbl(word,double);
+void setprefix(char *);
+void setupheap(void);
+word sto_char(int);
+word sto_dbl(double);
+word sto_id(char *);
+word trueheapsize(void);
+
+/* function prototypes - reduce.c */
+word head(word);
+void initclock(void);
+void math_error(char *);
+void out_here(FILE *,word,word);
+void output(word);
+void outstats(void);
+ 
+/* function prototypes - trans.c */
+word block(word,word,word);
+word codegen(word);
+word compzf(word,word,word);
+void declare(word,word);
+void declconstr(word,word,word);
+void decltype(word,word,word,word);
+word fallible(word);
+word genlhs(word);
+void genshfns(void);
+word get_ids(word);
+word getspecloc(word);
+word irrefutable(word);
+word lastlink(word);
+word memb(word,word);
+word mkshow(word,word,word);
+void nclashcheck(word,word,word);
+word same(word,word);
+word sortrel(word);
+void specify(word,word,word);
+word tclos(word);
+word transtypeid(word);
+
+/* function prototypes - steer.c */
+void acterror(void);
+word alfasort(word);
+void dieclean(void);
+word fixtype(word,word);
+word fm_time(char *);  /* assumes type word same size as time_t */
+void fpe_error(void);
+word parseline(word,FILE *,word);
+word process(void);
+void readoption(void);
+void reset(void);
+word reverse(word);
+word shunt(word,word);
+word size(word);
+void syntax(char *);
+void yyerror(char *);
+
+/* function prototypes - types.c */
+word add1(word,word);
+void checktypes(void);
+word deps(word);
+word genlstat_t(void);
+word instantiate(word);
+word intersection(word,word);
+int ispoly(word);
+word member(word,word);
+word msc(word);
+word newadd1(word,word);
+void out_pattern(FILE *,word);
+void out_type(word);
+void printlist(char *,word);
+word redtvars(word);
+void report_type(word);
+void sayhere(word,word);
+word setdiff(word,word);
+word subsumes(word,word);
+void tsetup(void);
+word tsort(word);
+word type_of(word);
+word typesfirst(word);
+word UNION(word,word);
+
+/* function prototype - y.tab.c */
+int yyparse();
+
+extern int yychar; /* defined in y.tab.c */
+
+/* #include "allexterns" /* check for type consistency */
+
+/* end of MISCELLANEOUS DECLARATIONS */
 

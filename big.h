@@ -4,6 +4,8 @@
  * Copyright (C) Research Software Limited 1985-90.  All rights reserved. *
  * The Miranda system is distributed as free software under the terms in  *
  * the file "COPYING" which is included in the distribution.              *
+ *                                                                        *
+ * Revised to C11 standard and made 64bit compatible, January 2020        *
  *------------------------------------------------------------------------*/
 
 #define SIGNBIT 020000000000
@@ -20,12 +22,30 @@
 #define bigzero(x) (!digit(x)&&!rest(x))
 #define getsmallint(x) (hd[x]&SIGNBIT?-digit0(x):digit(x))
 #define stosmallint(x) make(INT,(x)<0?SIGNBIT|(-(x)):(x),0)
-long long get_int();
-int sto_int(long long);
-double bigtodbl();
-long double bigtoldbl(); /* not currently used */
-double biglog();
-double biglog10();
+long long get_int(word);
+word sto_int(long long);
+double bigtodbl(word);
+long double bigtoldbl(word); /* not currently used */
+double biglog(word);
+double biglog10(word);
+int bigcmp(word,word);
+word bigdiv(word,word);
+word bigmod(word,word);
+word bignegate(word);
+word bigoscan(char *,char *);
+word bigplus(word,word);
+word bigpow(word,word);
+word bigscan(char *);
+void bigsetup(void);
+word bigsub(word,word);
+word bigtimes(word,word);
+word bigtostr(word);
+word bigtostr8(word);
+word bigtostrx(word);
+word bigxscan(char *,char *);
+word dbltobig(double);
+int isnat(word);
+word strtobig(word,int);
 #define force_dbl(x) (tag[x]==INT?bigtodbl(x):get_dbl(x))
 #define PTEN 10000
    /* largest power of ten < IBASE (used by bigscan) */
