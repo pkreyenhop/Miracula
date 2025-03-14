@@ -99,7 +99,7 @@ word x;
 }
 
 word memb(l,x)  /* tests if x is a member of list "l" - used in testing for 
-              repeated names - see rule for "v2" in MIRANDA RULES */
+              repeated names - see rule for "v2" in rules.y */
 word l,x;
 { if(tag[x]==TVAR)  /* type variable! */
     while(l!=NIL&&!eqtvar(hd[l],x))l= tl[l];
@@ -987,7 +987,7 @@ word n,p,hr;
   return(nclchk(n,hd[p],hr)||nclchk(n,tl[p],hr));
 }
 
-word transtypeid(x)  /* recognises literal type constants - see RULES */
+word transtypeid(x)  /* recognises literal type constants - see rules.y */
 word x;
 { char *n=get_id(x);
   return(strcmp(n,"bool")==0?bool_t:

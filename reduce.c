@@ -169,7 +169,7 @@ FILE *s_out=NULL;  /* destination of current output message */
   /* order of declaration of constructors of these names in sys_message */
 
 /* ### */
-void output(e)  /* "output" is called by YACC (see MIRANDA RULES) to print the 
+void output(e)  /* "output" is called by YACC (see rules.y) to print the 
 	      value of an expression - output then calls "reduce" - so the
               whole reduction process is driven by the need to print  */
 	   /* the value of the whole expression is a list of `messages' */

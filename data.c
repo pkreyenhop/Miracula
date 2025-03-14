@@ -514,8 +514,13 @@ FILE *f;
   return x;
 }
 
-#define put_int(n,f) putw((int)(n),f)
-#define get_int(f) (word)(getw(f))
+void putint(int n,FILE *f)
+{ fwrite(&n,sizeof(int),1,f); }
+
+int getint(FILE *f)
+{ int r;
+  fread(&r,sizeof(int),1,f);
+  return r; }
 
 void putdbl(word x,FILE *f)
 { double d = get_dbl(x);
@@ -601,7 +606,7 @@ FILE *f;
 	   dump_ob(pn_val(hd[defs]),f);
 	   if(v>bits_15)
 	     putc(PN1_X,f),
-	     put_int(v,f);
+	     putint(v,f);
 	   else
 	     putc(PN_X,f),
 	     putc(v&255,f),
@@ -638,11 +643,11 @@ FILE *f;
 		  { if(d&SIGNBIT)d= -(d&MAXDIGIT);
 		    putc(SHORT_X,f); putc(d,f); return; }
 		putc(INT_X,f);
-		put_int(d,f);
+		putint(d,f);
 		x=rest(x);
 		while(x)
-		     put_int(digit(x),f),x=rest(x);
-		put_int(-1,f);
+		     putint(digit(x),f),x=rest(x);
+		putint(-1,f);
 		return; }
 		/* 4 bytes per digit wasteful at current value of IBASE */
     case DOUBLE: putc(DBL_X,f);
@@ -655,7 +660,7 @@ FILE *f;
 */
 		 return;
     case UNICODE: putc(UNICODE_X,f);
-                  put_int(hd[x],f);
+                  putint(hd[x],f);
                   return;
     case DATAPAIR: fprintf(f,"%c%s",AKA_X,(char *)hd[x]);
 	           putc(0,f);
@@ -683,7 +688,7 @@ FILE *f;
     case STRCONS: { word v=get_pn(x); /* private name */
 	            if(v>bits_15)
 	              putc(PN1_X,f),
-	              put_int(v,f);
+	              putint(v,f);
 	            else
 		      putc(PN_X,f),
 		      putc(v&255,f),
@@ -920,12 +925,12 @@ FILE *f;
 		    *stackp++ = stosmallint(ch);
 		    continue;
       case INT_X: { word *x;
-		    ch = get_int(f);
+		    ch = getint(f);
 		    *stackp++ = make(INT,ch,0);
 		    x = &rest(stackp[-1]);
-		    ch = get_int(f);
+		    ch = getint(f);
 		    while(ch!= -1)
-			 *x=make(INT,ch,0),ch=get_int(f),x= &rest(*x);
+			 *x=make(INT,ch,0),ch=getint(f),x= &rest(*x);
 		    continue; }
       case DBL_X: *stackp++ = getdbl(f);
 /*
@@ -936,14 +941,14 @@ FILE *f;
 #endif
 */
 		  continue;
-      case UNICODE_X: *stackp++ = make(UNICODE,get_int(f),0);
+      case UNICODE_X: *stackp++ = make(UNICODE,getint(f),0);
                       continue;
       case PN_X: ch = getc(f);
 		 ch = PNBASE+(ch|(getc(f)<<8));
 		 *stackp++ = ch<nextpn?pnvec[ch]:sto_pn(ch);
 		 /* efficiency hack for *stackp++ = sto_pn(ch); */
 		 continue;
-      case PN1_X: ch=PNBASE+get_int(f);
+      case PN1_X: ch=PNBASE+getint(f);
 		  *stackp++ = ch<nextpn?pnvec[ch]:sto_pn(ch);
 		  /* efficiency hack for *stackp++ = sto_pn(ch); */
 		  continue;

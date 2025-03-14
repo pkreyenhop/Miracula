@@ -1685,5 +1685,5 @@ symbol:
         = { $$ = G_ANY; };
 
 %%
-/*  end of MIRANDA RULES  */
+/*  end of Miranda rules  */
 

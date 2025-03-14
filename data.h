@@ -273,7 +273,7 @@ void math_error(char *);
 void out_here(FILE *,word,word);
 void output(word);
 void outstats(void);
- 
+
 /* function prototypes - trans.c */
 word block(word,word,word);
 word codegen(word);

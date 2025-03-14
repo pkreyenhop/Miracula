@@ -310,7 +310,7 @@ int getlitch()
   }
 }  /* note: we accept \` for ` because getlitch() is used by charclass() */
 
-char *rdline()  /* used by the "!" command -- see RULES  */
+char *rdline()  /* used by the "!" command -- see steer.c */
 { extern char *current_script;
   static char linebuf[BUFSIZE];
   char *p=linebuf;

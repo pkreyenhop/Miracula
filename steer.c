@@ -1909,9 +1909,9 @@ void mira_setup()
   showfunction=make_id("showfunction");
   showabstract=make_id("showabstract");
   showwhat=make_id("showwhat");
-  primlib(); } /* sets up predefined ids, not referred to by RULES */
+  primlib(); } /* sets up predefined ids, not referred to by rules.y */
 
-void dieclean()     /* called if evaluation is interrupted - see RULES */
+void dieclean()     /* called if evaluation is interrupted - see rules.y */
 { printf("<<...interrupt>>\n");
 #ifndef NOSTATSONINT
   outstats();  /* suppress in presence of segfault on ^C with /count */
@@ -1921,7 +1921,7 @@ void dieclean()     /* called if evaluation is interrupted - see RULES */
 
 /* the function process() creates a process and waits for it to die -
    returning 1 in the child and 0 in the parent - it is used in the
-   evaluation command (see MIRANDA RULES) */
+   evaluation command (see rules.y) */
 word process()
 { int pid;
   sighandler oldsig;
@@ -1951,8 +1951,8 @@ word process()
   else return(1); /* child */
 }
 
-/* Notice that the MIRANDA system has a two-level interrupt structure.
-   1) Each evaluation (see RULES) is an interruptible process.
+/* Notice that the Miranda system has a two-level interrupt structure.
+   1) Each evaluation (see rules.y) is an interruptible process.
    2) If the command loop is interrupted outside an evaluation or during
       compilation it reverts to the top level prompt - see set_jmp and
       signal(reset) in commandloop() */

@@ -1,9 +1,10 @@
 _R_E_C_E_N_T_ _C_H_A_N_G_E_S
 
-January 2020 (version 2.063)
+January 2020 (version 2.066)
 
 The Miranda source code has been revised to conform to the C11  standard
-and should now be 64 bit compatible.
+and  to  run  on both 64 and 32 bit platforms.  Earlier releases were 32
+bit only.
 
 December 2019 (version 2.057)
 
