@@ -26,7 +26,7 @@ int atnl=1,line_no=0;
 int lastline;
 int litstack=NIL,linostack=NIL;
 int c=' ', lastc;
-int commandmode;
+extern int commandmode;
 int common_stdin,common_stdinb,cook_stdin;
 int litmain=0,literate=0; /* flags "literate" comment convention */
 char *dic,*dicp,*dicq;

@@ -111,8 +111,8 @@ see also reset_pns(), make_pn(), sto_pn() in lex.c */
 /* works for both pnames and ids */
 
 extern int compiling;
-int *hd,*tl;
-char *tag;
+extern int *hd,*tl;
+extern char *tag;
 char *keep();
 char *getstring();
 double get_dbl();
@@ -145,7 +145,7 @@ extern int idsused;
 /* limit on length of pathnames */
 #define EURO 164
 /* (0xa4) ISO 8859-1 general currency symbol */
-int files; /* a cons list of elements, each of which is of the form
+extern int files; /* a cons list of elements, each of which is of the form
       cons(cons(fileinfo(filename,mtime),share),definienda) 
       where share (=0,1) says if repeated instances are shareable. 
       Current script at the front followed by subsidiary files
@@ -164,7 +164,7 @@ cons(share,NIL)),defs)
 /* leave a NIL as placeholder here - filled in by mkincludes */
 #define fil_defs(fil)  tl[fil]
 
-int current_file; /*pointer to current element of `files' during compilation*/
+extern int current_file; /*pointer to current element of `files' during compilation*/
 #define addtoenv(x) fil_defs(hd[files])=cons(x,fil_defs(hd[files]))
 extern int lastexp;
 

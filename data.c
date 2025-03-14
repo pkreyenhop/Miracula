@@ -18,6 +18,10 @@ extern int SPACELIMIT; /* see steer.c for default value */
      /* Note: the size of a list cell is 2 ints + 1 char  */
 #define BIGTOP (SPACELIMIT + ATOMLIMIT)
 int listp=ATOMLIMIT-1;
+int *hd, *tl;
+char *tag;
+int files;
+int current_file;
 int *hdspace,*tlspace;
 long long cellcount=0;
 long claims=0;

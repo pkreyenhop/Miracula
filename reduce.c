@@ -11,7 +11,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 /* #include <sys/wait.h> /* seems not needed, oct 05 */
-struct stat buf;  /* used only by code for FILEMODE in reduce */
+static struct stat buf;  /* used only by code for FILEMODE in reduce */
 #include "data.h"
 #include "big.h"
 extern int debug, UTF8, UTF8OUT;

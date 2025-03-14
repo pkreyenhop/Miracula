@@ -18,7 +18,7 @@ YACC = byacc #Berkeley yacc, gnu yacc not compatible
 mira: big.o cmbnms.o data.o lex.o reduce.o steer.o trans.o types.o utf8.o y.tab.o \
 			    version.c miralib/.version fdate .host Makefile
 	$(CC) $(CFLAGS) -DVERS=`cat miralib/.version` -DVDATE="\"`./revdate`\"" \
-	    -DHOST="`quotehostinfo`" version.c cmbnms.o y.tab.o data.o lex.o \
+	    -DHOST="`./quotehostinfo`" version.c cmbnms.o y.tab.o data.o lex.o \
 	    big.o reduce.o steer.o trans.o types.o utf8.o -lm -o mira
 	chmod 711 mira$(EX)
 	strip mira$(EX)

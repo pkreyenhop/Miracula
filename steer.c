@@ -11,7 +11,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 /* #include <sys/wait.h> /* seems not needed, oct 05 */
-struct stat buf; /* see man(2) stat - gets file status */
+static struct stat buf; /* see man(2) stat - gets file status */
 
 #include "data.h"
 #include <float.h>
@@ -87,7 +87,7 @@ extern char *dicp,*dicq,*token();
 char linebuf[BUFSIZE];  /* used for assorted purposes */
   /* NB cannot share with linebuf in lex.c, or !! goes wrong */
 static char ebuf[pnlim];
-int col;
+extern int col;
 char home_rc[pnlim+8];
 char lib_rc[pnlim+8];
 char *rc_error=NULL;

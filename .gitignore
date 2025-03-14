@@ -1,0 +1,8 @@
+*.x
+*.o
+/y.tab.c
+/y.tab.h
+/mira
+/fdate
+/miralib/menudriver
+/miralib/preludx
