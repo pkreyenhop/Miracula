@@ -111,8 +111,7 @@ word inbnf=0,col_fn=0,fnts=NIL,eprodnts=NIL,nonterminals=NIL,sreds=0;
 word ihlist=0,ntspecmap=NIL,ntmap=NIL,lasth=0;
 word obrct=0;
 
-void evaluate(x)
-word x;
+void evaluate(word x)
 { word t;
   t=type_of(x);
   if(t==wrong_t)return;
@@ -134,8 +133,7 @@ word x;
     exit(0); }
 }
 
-void obey(x) /* like evaluate but no fork, no stats, no extra '\n' */
-word x;
+void obey(word x) /* like evaluate but no fork, no stats, no extra '\n' */
 { word t=type_of(x);
   x=codegen(x);
   if(polyshowerror)return;
@@ -144,13 +142,11 @@ word x;
             cons(ap(standardout,isstring_t(t)?x:ap(mkshow(0,0,t),x)),NIL));
 }
 
-int isstring(x)
-word x;
+int isstring(word x)
 { return(x==NILS||tag[x]==CONS&&is_char(hd[x]));
 }
 
-word compose(x) /* used in compiling 'cases' */
-word x;
+word compose(word x) /* used in compiling 'cases' */
 { word y=hd[x];
   if(hd[y]==OTHERWISE)y=tl[y]; /* OTHERWISE was just a marker - lose it */
   else y=tag[y]==LABEL?label(hd[y],ap(tl[y],FAIL)):
@@ -166,8 +162,7 @@ word x;
 
 int eprod(word);
 
-word starts(x) /* x is grammar rhs - returns list of nonterminals in start set */
-word x;
+word starts(word x) /* x is grammar rhs - returns list of nonterminals in start set */
 { L: switch(tag[x])
      { case ID: return(cons(x,NIL));
        case LABEL:
@@ -199,8 +194,7 @@ word x;
      }
 }
 
-int eprod(x) /* x is grammar rhs - does x admit empty production? */
-word x;
+int eprod(word x) /* x is grammar rhs - does x admit empty production? */
 { L: switch(tag[x])
      { case ID: return(member(eprodnts,x));
        case LABEL:
@@ -233,36 +227,36 @@ word x;
      }
 }
 
-word add_prod(d,ps,hr)
-word d,ps,hr;
+word add_prod(word d,word ps,word hr)
 { word p,n=dlhs(d);
   for(p=ps;p!=NIL;p=tl[p])
-  if(dlhs(hd[p])==n)
-     if(dtyp(d)==undef_t&&dval(hd[p])==UNDEF)
-       { dval(hd[p])=dval(d); return(ps); } else
-     if(dtyp(d)!=undef_t&&dtyp(hd[p])==undef_t)
-       { dtyp(hd[p])=dtyp(d); return(ps); }
-     else
-       errs=hr,
-       printf(
-      "%ssyntax error: conflicting %s of nonterminal \"%s\"\n",
-               echoing?"\n":"",
-               dtyp(d)==undef_t?"definitions":"specifications",
-               get_id(n)),
-       acterror();
+  if(dlhs(hd[p])==n) {
+     if(dtyp(d)==undef_t&&dval(hd[p])==UNDEF) {
+       dval(hd[p])=dval(d); return(ps);
+     } else {
+       if(dtyp(d)!=undef_t&&dtyp(hd[p])==undef_t)
+	 { dtyp(hd[p])=dtyp(d); return(ps); }
+       else
+	 errs=hr,
+	 printf(
+	"%ssyntax error: conflicting %s of nonterminal \"%s\"\n",
+		 echoing?"\n":"",
+		 dtyp(d)==undef_t?"definitions":"specifications",
+		 get_id(n)),
+	 acterror();
+      }
+  }
   return(cons(d,ps));
 }
 /* clumsy - this algorithm is quadratic in number of prodns - fix later */
 
-word getloc(nt,prods)  /* get here info for nonterminal */
-word nt,prods;
+word getloc(word nt,word prods)  /* get here info for nonterminal */
 { while(prods!=NIL&&dlhs(hd[prods])!=nt)prods=tl[prods];
   if(prods!=NIL)return(hd[dval(hd[prods])]);
   return(0);  /* should not happen, but just in case */
 }
 
-void findnt(nt) /* set errs to here info of undefined nonterminal */
-word nt;
+void findnt(word nt) /* set errs to here info of undefined nonterminal */
 { word p=ntmap;
   while(p!=NIL&&hd[hd[p]]!=nt)p=tl[p];
   if(p!=NIL)
@@ -275,13 +269,12 @@ word nt;
 #define isap2(fn,x) (tag[x]==AP&&tag[hd[x]]==AP&&hd[hd[x]]==(fn))
 #define firstsymb(term) tl[hd[term]]
 
-void binom(rhs,x)
+void binom(word rhs,word x)
 /* performs the binomial optimisation on rhs of nonterminal x
     x: x alpha1| ... | x alphaN | rest     ||need not be in this order
         ==>
     x: rest (alpha1|...|alphaN)*
 */
-word rhs,x;
 { word *p= &tl[rhs];  /* rhs is of form label(hereinf, stuff) */
   word *lastp=0,*holdrhs,suffix,alpha=NIL;
   if(tag[*p]==LETREC)p = &tl[*p]; /* ignore trailing `where defs' */
@@ -319,16 +312,14 @@ void startbnf()
   if(fnts==0)col_fn=0; /* reinitialise, a precaution */
 }
 
-word ih_abstr(x)  /* abstract inherited attributes from grammar rule */
-word x;
+word ih_abstr(word x)  /* abstract inherited attributes from grammar rule */
 { word ih=ihlist;
   while(ih!=NIL)  /* relies on fact that ihlist is reversed */
        x=lambda(hd[ih],x),ih=tl[ih];
   return(x);
 }
 
-int can_elide(x) /* is x of the form $1 applied to ih attributes in order? */
-word x;
+int can_elide(word x) /* is x of the form $1 applied to ih attributes in order? */
 { word ih;
   if(ihlist)
     for(ih=ihlist;ih!=NIL&&tag[x]==AP;ih=tl[ih],x=hd[x])
@@ -336,8 +327,7 @@ word x;
   return(x==mkgvar(1));
 }
 
-int e_re(x) /* does regular expression x match empty string ? */
-word x;
+int e_re(word x) /* does regular expression x match empty string ? */
 { L: if(tag[x]==AP)
        { if(hd[x]==LEX_STAR||hd[x]==LEX_OPT)return(1);
          if(hd[x]==LEX_STRING)return(tl[x]==NIL);
@@ -408,7 +398,7 @@ entity:  /* the entity to be parsed is either a definition script or an
             { int pid;/* launch a concurrent process to perform task */
               sighandler oldsig;
               oldsig=signal(SIGINT,SIG_IGN); /* ignore interrupts */
-              if(pid=fork())
+              if((pid=fork()))
                 { /* "parent" */
                   if(pid==-1)perror("cannot create process");
                   else printf("process %d\n",pid);
@@ -428,7 +418,7 @@ entity:  /* the entity to be parsed is either a definition script or an
                    (fix due to Martin Guy) */
                 /* formerly used dup2, but not present in system V */
                 fclose(stdin);
-                /* setbuf(stdout,NIL); 
+                /* setbuf(stdout,NIL);  */
 		/* not safe to change buffering of stream already in use */
 		/* freopen would have reset the buffering automatically */
                 lastexp = NIL;  /* what else should we set to NIL? */
@@ -1587,7 +1577,7 @@ term:
     count_factors
         = { word n=0,f=$1,rule=Void;
                          /* default value of a production is () */
-                         /* rule=mkgvar(sreds); /* formerly last symbol */
+                         /* rule=mkgvar(sreds);  formerly last symbol */
             if(f!=NIL&&hd[f]==G_END)sreds++;
             if(ihlist)rule=ih_abstr(rule);
             while(n<sreds)rule=lambda(mkgvar(++n),rule);

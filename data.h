@@ -116,8 +116,6 @@ extern YYSTYPE yylval;
 hereinfo for a name that has been defined or specified and
 cons(aka,hereinfo) for a name that has been aliased, where aka
 is of the form datapair(oldn,0) oldn being a string */
-char *getaka();
-/* returns true name of an identifier, even after aliasing (data.c) */
 
 /* data abstractions for private names
 see also reset_pns(), make_pn(), sto_pn() in lex.c */
@@ -130,7 +128,6 @@ see also reset_pns(), make_pn(), sto_pn() in lex.c */
 extern int compiling,polyshowerror;
 extern word *hd,*tl;
 extern char *tag;
-char *getstring();
 double get_dbl(word);
 void dieclean(void);
 #include <unistd.h> /* execl */
@@ -344,7 +341,7 @@ int yyparse();
 
 extern int yychar; /* defined in y.tab.c */
 
-/* #include "allexterns" /* check for type consistency */
+#include "allexterns" /* check for type consistency */
 
 /* end of MISCELLANEOUS DECLARATIONS */
 

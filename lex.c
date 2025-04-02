@@ -61,17 +61,15 @@ void setupdic()
 }
 
 /* this allows ~login convention in filenames */
-/* #define okgetpwnam
+/* #define okgetpwnam */
 /* suppress 26.5.06 getpwnam causes runtime error when statically linked (Linux) */
 
 #ifdef okgetpwnam
 #include <pwd.h>
 struct passwd *getpwnam();
 #endif
-char *getenv();
 
-char *gethome(n) /* for expanding leading `~' in tokens and pathnames */
-char *n;
+char *gethome(char *n) /* for expanding leading `~' in tokens and pathnames */
 { struct passwd *pw;
   if(n[0]=='\0')return(getenv("HOME"));
 #ifdef okgetpwnam
@@ -99,7 +97,7 @@ char *token() /* lex analyser for command language (very simple) */
 	   /* NB csh does not allow `.' in user ids when expanding `~'
 	      but this may be a mistake */
       *dicq='\0';
-      if(h=gethome(dicp+1))
+      if((h=gethome(dicp+1)))
       (void)strcpy(dicp,h),dicq=dicp+strlen(dicp);
     }
 #ifdef SPACEINFILENAMES
@@ -108,8 +106,10 @@ char *token() /* lex analyser for command language (very simple) */
   while(!isspace(ch)&&ch!=EOF)
        { *dicq++ = ch; 
 	 if(ch=='%')
-	 if(dicq[-2]=='\\')(--dicq)[-1]='%';
-	 else dicq--,(void)strcpy(dicq,current_script),dicq+=strlen(dicq);
+           {
+	     if(dicq[-2]=='\\')(--dicq)[-1]='%';
+	     else dicq--,(void)strcpy(dicq,current_script),dicq+=strlen(dicq);
+           }
 	 ch=getchar(); }
 #ifdef SPACEINFILENAMES
   else { word closeq= ch=='<'?'>':'"';  /* this branch added 9.5.06          */
@@ -126,13 +126,11 @@ char *token() /* lex analyser for command language (very simple) */
   return(*dicp=='\0'?(char *)NULL:dicp);
 } /* NB - if no token returns NULL rather than pointer to empty string */
 
-char *addextn(b,s) /* if(b)force s to end in ".m", and resolve <quotes> */
-word b;
-char *s;
+char *addextn(word b,char *s)
+                   /* if(b)force s to end in ".m", and resolve <quotes> */
 { extern char *miralib;
   extern char linebuf[];
   word n=strlen(s);
-  /* printf("addextn(%s)\n",s); /* DEBUG */
   if(s[0]=='<'&&s[n-1]=='>')
     { static int miralen=0; /* code to handle quotes added 21/1/87 */
       if(!miralen)miralen=strlen(miralib);
@@ -163,19 +161,16 @@ char *s;
   (void)strcpy(dicq,".m");
   dicq += 3;
   ovflocheck;
-  /* printf("return(%s)\n",dicp); /* DEBUG */
   return(dicp);
 } /* NB - call keep(dicp) if the result is to be retained */
 
 word brct=0;
 
-void spaces(n)
-word n;
+void spaces(word n)
 { while(n-- >0)putchar(' ');
 }
 
-int litname(s)
-char *s;
+int litname(char *s)
 { word n=strlen(s); 
   return(n>=6 && strcmp(s+n-6,".lit.m")==0);
 }
@@ -205,8 +200,10 @@ int getch() /* keeps track of current position in the variable "col"(column) */
   if(echoing&&ch!=EOF)
     { putchar(ch);
       if(ch=='\n'&&!literate)
-	if(litmain)putchar('>'),spaces(lverge);
-	else spaces(lverge);
+        {
+	  if(litmain)putchar('>'),spaces(lverge);
+	  else spaces(lverge);
+        }
     }
   if(ch=='\t')col= ((col-lverge)/8 + 1)*8+lverge;
   else col++;
@@ -215,8 +212,7 @@ int getch() /* keeps track of current position in the variable "col"(column) */
 
 int blankerr=0;
 
-void chblank(s)
-char *s;
+void chblank(char *s)
 { while(*s==' '||*s=='\t')s++;
   if(*s=='\n')return;
   syntax("formal text not delimited by blank line\n");
@@ -254,7 +250,7 @@ int getlitch()
           c=getch();
           return sto_char((ch&0xf)<<12|(ch1&0x3f)<<6|ch2&0x3f); }
       word ch3=c=getch();
-      if((ch&0xf8)==0xf0) /* 4 bytes, beyond basic multiligual plane */
+      if((ch&0xf8)==0xf0) /* 4 bytes, beyond basic multilingual plane */
         { if((ch1&0xc0)!=0x80||(ch2&0xc0)!=0x80||(ch3&0xc0)!=0x80)
             return -5; /* not valid UTF8 */
           c=getch();
@@ -333,10 +329,12 @@ char *rdline()  /* used by the "!" command -- see steer.c */
 	return(NULL);
       } else
     if(p[-1]=='%')
-    if(p>linebuf+1&&p[-2]=='\\')(--p)[-1]='%'; else
-      { (void)strncpy(p-1,current_script,linebuf+BUFSIZE-p);
-        p = linebuf+strlen(linebuf);
-        expansion = 1;
+      {
+	if(p>linebuf+1&&p[-2]=='\\')(--p)[-1]='%'; else
+	  { (void)strncpy(p-1,current_script,linebuf+BUFSIZE-p);
+	    p = linebuf+strlen(linebuf);
+	    expansion = 1;
+	  }
       }
   *p = '\0';
   if(expansion)printf("!%s",linebuf);
@@ -374,16 +372,14 @@ int yylex()         /* called by YACC to get the next symbol */
   if(SYNERR)return(END); /* tell YACC to go home */
   layout();
   if(c=='\n') /* can only occur in command mode */
-/*  if(magic){ commandmode=0; /* expression just read, now script */
-/*	       line_no=2;
-/*	       return(c); } else /* no longer relevant 26.11.2019 */
     return(END);
   if(col<lmargin)
-  if(c=='='&&(margstack==NIL||col>=hd[margstack]))/* && part fixes utah.bug*/
-    { c = getch();
-      return(ELSEQ);    /* ELSEQ means "OFFSIDE =" */
+    { if(c=='='&&(margstack==NIL||col>=hd[margstack]))/* && part fixes utah.bug*/
+	{ c = getch();
+	  return(ELSEQ);    /* ELSEQ means "OFFSIDE =" */
+	}
+      else return(OFFSIDE);
     }
-  else return(OFFSIDE);
   if(c==';') /* fixes utah2.bug */
     { c=getch(); layout();
       if(c=='='&&(margstack==NIL||col>=hd[margstack]))
@@ -392,9 +388,7 @@ int yylex()         /* called by YACC to get the next symbol */
         }
       else return(';');
     }
-  if(
-  /* c=='_'&&okid(peekch()) || /* _id/_ID as lowercase id */
-     isalpha(c)){ kollect(okid);
+  if(isalpha(c)){ kollect(okid);
                    if(inlex==1){ layout();
                                  yylval=name();
                                  return(c=='='?LEXDEF:
@@ -437,9 +431,9 @@ int yylex()         /* called by YACC to get the next symbol */
     if(yylval==NIL)yylval=NILS;  /* to help typechecker! */
     return(CONST); }
   if(inbnf==2) /* fiddle to offside rule in grammars */
-    if(c=='[')brct++; else if(c==']')brct--; else
+  { if(c=='[')brct++; else if(c==']')brct--; else
     if(c=='|'&&brct==0)
-      return(OFFSIDE);
+      return(OFFSIDE); }
   if(c==EOF)
   { if(tl[fileq]==NIL&&margstack!=NIL)return(OFFSIDE); /* to fix dtbug */
     fclose((FILE *)hd[hd[fileq]]);
@@ -516,7 +510,6 @@ int yylex()         /* called by YACC to get the next symbol */
 	      }
 	    return(lastc);
   case '$': if(
-            /* c=='_'&&okid(peekch())|| /* _id/_ID as id */
               isalpha(c))
               { int t;
                 kollect(okid);
@@ -546,9 +539,7 @@ int yylex()         /* called by YACC to get the next symbol */
                   syntax("unexpected symbol $:-\n"); else
                   {c=getch(); yylval=common_stdinb; return(CONST); }}} /* $:- */
             if(c=='+')
-              { /* if(!(commandmode&&compiling||magic))
-	          syntax("unexpected symbol $+\n"); else /* disallow in scripts */
-		if(!compiling)
+              { if(!compiling)
 	          syntax("unexpected symbol $+\n"); else
 		{ c=getch();
 		  if(commandmode)
@@ -592,8 +583,8 @@ int collectstars()
 
 word gvars=NIL; /* list of grammar variables - no need to reset */
 
-word mkgvar(i)   /* make bound variable (corresponding to $i in bnf rule) */
-word i;
+word mkgvar(word i)
+                 /* make bound variable (corresponding to $i in bnf rule) */
 { word *p= &gvars;
   while(--i)
        { if(*p==NIL)*p=cons(sto_id("gvar"),NIL);
@@ -604,8 +595,8 @@ word i;
 
 word lexvar=0;
 
-word mklexvar(i) /* similar - corresponds to $$, $# on rhs of %lex rule */
-word i;  /* i=0 or 1 */
+word mklexvar(word i) /* similar - corresponds to $$, $# on rhs of %lex rule */
+         /* i=0 or 1 */
 { extern word ltchar;
   if(!lexvar)
     lexvar=cons(sto_id("lexvar"),sto_id("lexvar")),
@@ -626,15 +617,13 @@ word conv_args() /* used to give access to command line args
   return(x);
 }
 
-word str_conv(s) /* convert C string to Miranda form */
-char *s;
+word str_conv(char *s) /* convert C string to Miranda form */
 { word x=NIL,i=strlen(s);
   while(i--)x=cons(s[i],x);
   return(x);
 } /* opposite of getstring() - see reduce.c */
 
-int okpath(ch)
-int ch;
+int okpath(int ch)
 { return(ch!='\"'&&ch!='\n'&&ch!='>'); }
 
 char *pathname() /* returns NULL if not valid pathname (in string quotes) */
@@ -661,7 +650,7 @@ char *pathname() /* returns NULL if not valid pathname (in string quotes) */
       while(isalnum(c)||c=='-'||c=='_'||c=='.')
            *dicp++ = c, c=getch();
       *dicp='\0';
-      if(h=gethome(hold+1))
+      if((h=gethome(hold+1)))
         (void)strcpy(hold,h),dicp=hold+strlen(hold);
       else (void)strcpy(&linebuf[0],hold),
 	   (void)strcpy(hold,prefixbase+prefix),
@@ -684,9 +673,9 @@ char *pathname() /* returns NULL if not valid pathname (in string quotes) */
   return(dicp);
 } /* result is volatile - call keep(dicp) to retain */
 
-void adjust_prefix(f) /* called at %insert and at loadfile, to get static pathname
+void adjust_prefix(char *f)
+                   /* called at %insert and at loadfile, to get static pathname
 		   resolution */
-char *f;
 { /* the directory part of the pathname f becomes the new
      prefix for pathnames, and we stack the current prefix */
   char *g;
@@ -725,9 +714,8 @@ int peekch()
   return(ch);
 }
 
-int openfile(n) /* returns 0 or 1 as indication of success - puts file on fileq
-               if successful */
-char *n;
+int openfile(char *n) /* returns 0 or 1 as indication of success
+                         puts file on fileq if successful */
 { FILE *f;
   f= fopen(n,"r");
   if(f==NULL)return(0);
@@ -736,8 +724,8 @@ char *n;
   return(1);
 }
 
-int identifier(s)  /* recognises reserved words */
-int s; /* flags looking for ul reserved words only */
+int identifier(int s)  /* recognises reserved words */
+       /* "s" flags looking for ul reserved words only */
 { extern word lastid,initialising;
   if(inbnf==1) 
     { /* only reserved nonterminals are `empty', `end', `error', `where' */
@@ -846,8 +834,9 @@ word directive() /* these are of the form "%identifier" */
                     if(echoing)
 		      { putchar('\n'); 
 			if(!literate)
-		          if(litmain)putchar('>'),spaces(holdcol);
-			  else spaces(holdcol); }
+                          { if(litmain)putchar('>'),spaces(holdcol);
+			    else spaces(holdcol); }
+                      }
                     c = getch(); } /* used to precede previous cmd when echo
 				      was delayed by one char, see getch() */
                 else { int toomany=(insertdepth>=12);
@@ -880,27 +869,23 @@ word directive() /* these are of the form "%identifier" */
   return(END);
 }
 
-int okid(ch)
-int ch;
+int okid(int ch)
 { return('a'<=ch&&ch<='z'||'A'<=ch&&ch<='Z'||'0'<=ch&&ch<='9'
           ||ch=='_'||ch=='\''); }
 
-int okulid(ch)
-int ch;
+int okulid(int ch)
 { return('a'<=ch&&ch<='z'||'A'<=ch&&ch<='Z'||'0'<=ch&&ch<='9'
           ||ch=='_'||ch==''||ch=='\''); }
 
-void kollect(f)
+void kollect(int (*f)(word))
 /* note top of dictionary used as work space to collect current token */
-int (*f)();
 { dicq= dicp;
   while((*f)(c)){ *dicq++ = c; c= getch(); }
   *dicq++ = '\0'; 
   ovflocheck;
 }
 
-char *keep(p)  /* call this to retain volatile string for later use */
-char *p;
+char *keep(char *p)  /* call this to retain volatile string for later use */
 { if(p==dicp)dicp= dicq;
   else (void)strcpy(dicp,p),
        p=dicp,
@@ -997,34 +982,30 @@ void octnumeral()   /* added 21.11.2013 */
 
 word namebucket[128]; /* each namebucket has a list terminated by 0, not NIL */
 
-int hash(s) /* returns a value in {0..127} */
-char *s;
+int hash(char *s) /* returns a value in {0..127} */
 { int h = *s;
   if(h)while(*++s)h ^= *s; /* guard necessary to deal with s empty */
   return(h&127);
 }
 
-int isconstrname(s)
-char *s;
+int isconstrname(char *s)
 { if(s[0]=='$')s++;
   return isupper(*s); /* formerly !islower */
 }
 
-word getfname(x)
+word getfname(word x)
 /* nonterminals have an added ' ', getfname returns the corresponding
    function name */
-word x;
 { char *p = get_id(x);
   dicq= dicp;
-  while(*dicq++ = *p++);
+  while((*dicq++ = *p++));
   if(dicq-dicp<3)fprintf(stderr,"impossible event in getfname\n"),exit(1);
   dicq[-2] = '\0'; /* overwrite last char */
   ovflocheck;
   return(name());
 }
 
-int isnonterminal(x)
-word x;
+int isnonterminal(word x)
 { char *n;
   if(tag[x]!=ID)return(0);
   n = get_id(x);
@@ -1047,19 +1028,19 @@ word name()
 
 int inprelude=1;
 
-word make_id(n)  /* used in mira_setup(), primdef(), predef(), all in steer.c */
-char *n;
+word make_id(char *n)
+                 /* used in mira_setup(), primdef(), predef(), all in steer.c */
 { word x,h;
   h=hash(n);
   x = sto_id(inprelude?keep(n):n);
   namebucket[h] = cons(x,namebucket[h]);
   return(x); }
 
-word findid(n)  /* like name() but returns NIL rather than create new id */
-char *n;
+word findid(char *n)
+                /* like name() but returns NIL rather than create new id */
 { word q;
   q= namebucket[hash(n)];
-  while(q&&!strcmp(n,get_id(hd[q]))==0)q= tl[q];
+  while(q&&!(strcmp(n,get_id(hd[q]))==0))q= tl[q];
   return(q?hd[q]:NIL); }
 
 word *pnvec=0,nextpn,pn_lim=200;  /* private name vector */
@@ -1071,8 +1052,7 @@ void reset_pns()  /* (re)initialise private name space */
       if(pnvec==NULL)mallocfail("pnvec"); }
 }
 
-word make_pn(val) /* create new private name with value val */
-word val;
+word make_pn(word val) /* create new private name with value val */
 { if(nextpn==pn_lim)
     { pn_lim+=400;
       pnvec=(word *)realloc(pnvec,pn_lim*sizeof(word));
@@ -1081,8 +1061,7 @@ word val;
   return(pnvec[nextpn++]);
 }
 
-word sto_pn(n) /* return n'th private name, extending pnvec if necessary */
-word n;
+word sto_pn(word n) /* return n'th private name, extending pnvec if necessary */
 { if(n>=pn_lim)
     { while(pn_lim<=n)pn_lim+=400;
       pnvec=(word *)realloc(pnvec,pn_lim*sizeof(word));
@@ -1092,8 +1071,9 @@ word n;
   return(pnvec[n]);
 }
 
-void mkprivate(x) /* disguise identifiers prior to removal from environment */
-word x;       /* used in setting up prelude - see main() in steer.c */
+void mkprivate(word x)
+                  /* disguise identifiers prior to removal from environment */
+              /* used in setting up prelude - see main() in steer.c */
 { while(x!=NIL)
   { char *s = get_id(hd[x]);
     get_id(hd[x])[0] += 128;  /* hack to make private internal name */
@@ -1170,7 +1150,6 @@ int charclass()
 void reset_lex()  /* called after an error */
 { extern word errs,errline;
   extern char *current_script;
-  /*printf("reset_lex()\n"); /* DEBUG */
   if(!commandmode)
     { if(!errs)errs=fileinfo(get_fil(current_file),line_no);
       /* convention, if errs set contains location of error, otherwise pick up
@@ -1196,7 +1175,6 @@ void reset_lex()  /* called after an error */
 void reset_state()  /* reset all global variables used by compiler */
 { extern word TABSTRS,SGC,newtyps,algshfns,showchain,inexplist,sreds,
 	     rv_script,idsused;
-  /* printf("reset_state()\n"); /* DEBUG */
   if(commandmode)
     while(c!='\n'&&c!=EOF)c=getc(s_in);  /* no echo */
   while(fileq!=NIL)fclose((FILE *)hd[hd[fileq]]),fileq=tl[fileq];
@@ -1213,7 +1191,6 @@ void reset_state()  /* reset all global variables used by compiler */
   c=' ';
   line_no=0;
   litmain=literate=0;
-  /* printf("exit reset_state()\n"); /* DEBUG */
 }
 
 /* end of MIRANDA LEX ANALYSER */

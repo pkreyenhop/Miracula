@@ -96,13 +96,10 @@ L:if(TYPERRS)
       SYNERR=1;
       return; }
   if(freeids!=NIL)redtfr(freeids);
-  /* printgraph("dependency analysis:",R); /* for debugging */
   genshfns();
   if(fnts!=NIL)genbnft();
   R=msc(R);
-  /* printgraph("strong components:",R); /* for debugging */
   s=tsort(R);
-  /* printlist("topological sort:",s); /* for debugging */
   NT=R=NIL; /* must be invariant across the call */
   while(s!=NIL)infer_type(hd[s]),s=tl[s];
   checkfbs();
@@ -128,30 +125,36 @@ L:if(TYPERRS)
 */
 /* R occupies quadratic worst-case space - does anyone know a better way? */
 
-void comp_deps(n) /* adds to R an entry of the form cons(n,RHS) where n is an
+void comp_deps(word n)
+                  /* adds to R an entry of the form cons(n,RHS) where n is an
 		identifier and RHS is a list of all the identifiers in the
                 current script upon which n directly depends */
 /* it also meta-typechecks type specifications, and puts them in reduced
    form, as it goes */
-word n;
 { word rhs=NIL,r;
-  /* printf("comp_deps(%s)\n",get_id(n)); /* DEBUG */
   if(id_type(n)==type_t)
-    { if(t_class(n)==algebraic_t)
+    { switch (t_class(n)) {
+      case algebraic_t:
         { r=t_info(n);
           while(r!=NIL) /* meta type check constructors */
             { current_id=hd[r];
               id_type(hd[r])=redtvars(meta_tcheck(id_type(hd[r])));
               r=tl[r]; }
         }
-      else if(t_class(n)==synonym_t)
-	     current_id=n,t_info(n)=meta_tcheck(t_info(n));
-      else if(t_class(n)==abstract_t)
-	   if(t_info(n)==undef_t)
-	     printf("error: script contains no binding for abstract typename\
+	break;
+      case synonym_t:
+	current_id=n,t_info(n)=meta_tcheck(t_info(n));
+	break;
+      case abstract_t:
+	if(t_info(n)==undef_t)
+	  printf("error: script contains no binding for abstract typename\
  \"%s\"\n",get_id(n)),sayhere(id_who(n),1),TYPERRS++;
-	   else current_id=n,t_info(n)=meta_tcheck(t_info(n));
-	   /* placeholder types - no action */
+	else current_id=n,t_info(n)=meta_tcheck(t_info(n));
+        break;
+      default:
+	/* placeholder types - no action */
+        break;
+      }
       current_id=0;
       return; }
   if(tag[id_val(n)]==CONSTRUCTOR)return;
@@ -180,10 +183,11 @@ word n;
   R=cons(cons(n,rhs),R);
 }
 
-word tsort(g) /* topological sort - returns a list of the elements in the domain
+word tsort(word g)
+/* topological sort - returns a list of the elements in the domain
   of relation g, in an order such that each element is preceded by everything
   it depends on */
-word g;  /* the structure of g is "graph2" see NOTES above */
+/* the structure of g is "graph2" see NOTES above */
 { word NP=NIL; /* NP is set of elements with no predecessor */
   word g1=g, r=NIL; /* r is result */
   g=NIL;
@@ -209,9 +213,9 @@ word g;  /* the structure of g is "graph2" see NOTES above */
   return(reverse(r));
 }
 
-word msc(R) /* collects maximal strong components in R, converting it from "graph1"
+word msc(word R)
+       /* collects maximal strong components in R, converting it from "graph1"
           to "graph2" form - destructive in R */
-word R;
 { word R1=R;
   while(R1!=NIL)
   { word *r= &tl[hd[R1]],l=hd[hd[R1]];
@@ -235,9 +239,9 @@ word R;
 
 word meta_pending=NIL;
 
-word meta_tcheck(t) /* returns type t with synonyms substituted out and checks that
+word meta_tcheck(word t)
+               /* returns type t with synonyms substituted out and checks that
                   the result is well formed */
-word t;
 { word tn=t,i=0;
   /* TO DO -- TIDY UP ERROR MESSAGES AND SET ERRLINE (ERRS) IF POSS */
   while(iscompound_t(tn))
@@ -298,8 +302,6 @@ L:if(t_class(tn)!=synonym_t)return(t);
       if(tag[current_id]!=DATAPAIR)
         sayhere(id_who(tn),1);
       longjmp(env1,1); /* fatal error - give up */
-/*    t_class(tn)=algebraic_t;t_info(tn)=NIL;
-          /* to make sure we dont fall in here again! */
       return(t); }
   meta_pending=cons(tn,meta_pending);
   tn=NIL;
@@ -312,9 +314,8 @@ L:if(t_class(tn)!=synonym_t)return(t);
 /* needless inefficiency - we recheck the rhs of a synonym every time we
    use it */
 
-void sterilise(t) /* to prevent multiple reporting of metatype errors from
-			namelist :: type	*/
-word t;
+void sterilise(word t) /* to prevent multiple reporting of metatype errors from
+			  namelist :: type	*/
 { if(tag[t]==AP)hd[t]=list_t,tl[t]=num_t;
 }
 
@@ -323,9 +324,10 @@ word tvcount=1;
   /* brand new type variable */
 #define reset_SUBST  (current_id=tvcount>=hashsize?clear_SUBST():0)
 
-void infer_type(x) /* deduces the types of the identifiers in x - no result,
-                  works by filling in id_type fields */
-word x; /* x is an "element" */
+void infer_type(word x)
+                   /* deduces the types of the identifiers in x - no result,
+                      works by filling in id_type fields */
+        /* x is an "element" */
 { if(tag[x]==ID)
     { word t,oldte=TYPERRS;
       current_id=x;
@@ -396,14 +398,14 @@ void mcheckfbs()
   if(TYPERRS)return;
   for(ff=tl[files];ff!=NIL;ff=tl[ff])
   for(formals=fil_defs(hd[ff]);formals!=NIL;formals=tl[formals])
-  if(tag[n=hd[formals]]==ID)
-  if(id_type(n)==type_t)
-    { if(t_class(n)==synonym_t)t_info(n)=meta_tcheck(t_info(n)); }
-  else id_type(n)=redtvars(meta_tcheck(id_type(n)));
+  if(tag[n=hd[formals]]==ID) {
+    if(id_type(n)==type_t)
+      { if(t_class(n)==synonym_t)t_info(n)=meta_tcheck(t_info(n)); }
+    else id_type(n)=redtvars(meta_tcheck(id_type(n)));
+  }
 } /* wasteful if many includes */
 
-void redtfr(x) /* ensure types of freeids are in reduced form */
-word x;
+void redtfr(word x) /* ensure types of freeids are in reduced form */
 { for(;x!=NIL;x=tl[x])
      tl[tl[hd[x]]] = id_type(hd[hd[x]]);
 }
@@ -438,8 +440,7 @@ void checkfbs()
   reset_SUBST;
 }
 
-word fix_type(t)  /* substitute out any indirected typenames in t */
-word t;
+word fix_type(word t)  /* substitute out any indirected typenames in t */
 { switch(tag[t])
   { case AP: 
     case CONS: tl[t]=fix_type(tl[t]);
@@ -456,18 +457,12 @@ void locate_inc()
   sayhere(lasthereinc=hereinc,1);
 }
 
-void abstr_mcheck(tabstrs) /* meta-typecheck abstract type declarations */
-word tabstrs;
+void abstr_mcheck(word tabstrs) /* meta-typecheck abstract type declarations */
 { while(tabstrs!=NIL)
      { word atnames=hd[hd[tabstrs]],sigids=tl[hd[tabstrs]],rtypes=NIL;
        if(cyclic_abstr(atnames))return;
        while(sigids!=NIL) /* compute representation types */
           { word rt=rep_t(id_type(hd[sigids]),atnames);
-          /*if(rt==id_type(hd[sigids]))
-     	 printf("abstype declaration error: \"%s\" has a type unrelated to \
-the abstraction\n",get_id(hd[sigids])),
-	       sayhere(getspecloc(hd[sigids]),1),
-	       TYPERRS++; /* suppressed June 89, see karen.m, secret.m */
             rtypes=cons(rt,rtypes);
 	    sigids=tl[sigids]; }
        rtypes=reverse(rtypes);
@@ -476,15 +471,12 @@ the abstraction\n",get_id(hd[sigids])),
      }
 }
 
-void abstr_check(x) /* typecheck the implementation equations of a type abstraction
-		       with the given signature */
-word x;
+void abstr_check(word x)
+                /* typecheck the implementation equations of a type abstraction
+		   with the given signature */
 { word rtypes=tl[hd[x]],sigids=tl[x];
-/*int holdat=ATNAMES;
-  ATNAMES=shunt(hd[hd[x]],ATNAMES); */
   ATNAMES=hd[hd[x]];
   txchange(sigids,rtypes);  /* install representation types */
-  /* report_types("concrete signature:\n",sigids); /* DEBUG */
   for(x=sigids;x!=NIL;x=tl[x])
      { word t,oldte=TYPERRS;
        current_id=hd[x];
@@ -504,11 +496,10 @@ word x;
   /* restore the abstract types - for "finger" */
   for(x=sigids;x!=NIL;x=tl[x],rtypes=tl[rtypes])
      if(id_type(hd[x])!=wrong_t)id_type(hd[x])=hd[rtypes];
-  ATNAMES= /* holdat */ 0;
+  ATNAMES=0;
 }
 
-word cyclic_abstr(atnames) /* immediately-cyclic acts of dta are illegal */
-word atnames;
+word cyclic_abstr(word atnames) /* immediately-cyclic acts of dta are illegal */
 { word x,y=NIL;
   for(x=atnames;x!=NIL;x=tl[x])y=ap(y,t_info(hd[x]));
   for(x=atnames;x!=NIL;x=tl[x])
@@ -521,40 +512,37 @@ word atnames;
   return(0);
 }
 
-void txchange(ids,x)  /* swap the id_type of each id with the corresponding type 
+void txchange(word ids,word x)
+                 /* swap the id_type of each id with the corresponding type
 		    in the list x */
-word ids,x;
 { while(ids!=NIL)
        { word t=id_type(hd[ids]);
 	 id_type(hd[ids])=hd[x],hd[x]=t;
 	 ids=tl[ids],x=tl[x]; }
 }
 
-void report_type(x)
-word x;
+void report_type(word x)
 { printf("%s",get_id(x));
   if(id_type(x)==type_t)
-  if(t_arity(x)>5)printf("(arity %ld)",t_arity(x));
-  else { word i,j;
-	 for(i=1;i<=t_arity(x);i++)
-	    { putchar(' ');
-	      for(j=0;j<i;j++)putchar('*'); }
-       }
+  { if(t_arity(x)>5)printf("(arity %ld)",t_arity(x));
+    else { word i,j;
+	   for(i=1;i<=t_arity(x);i++)
+	      { putchar(' ');
+	        for(j=0;j<i;j++)putchar('*'); }
+         }
+  }
   printf(" :: ");
   out_type(id_type(x));
 }
 
-void report_types(header,x)
-char *header;
-word x;
+void report_types(char *header,word x)
 { printf("%s",header);
   while(x!=NIL)
        report_type(hd[x]),putchar(';'),x=tl[x];
   putchar('\n');
 }
 
-word typesfirst(x)  /* rearrange list of ids to put types first */
-word x;
+word typesfirst(word x)  /* rearrange list of ids to put types first */
 { word *y= &x,z=NIL;
   while(*y!=NIL)
        if(id_type(hd[*y])==type_t)
@@ -563,11 +551,11 @@ word x;
   return(shunt(z,x));
 }
 
-word rep_t1(T,L) /* computes the representation type corresponding to T, wrt the
+word rep_t1(word T,word L)
+           /* computes the representation type corresponding to T, wrt the
               abstract typenames in L */
 	   /* will need to apply redtvars to result, see below */
            /* if no substitutions found, result is identically T */
-word T,L;
 { word args=NIL,t1,new=0;
   for(t1=T;iscompound_t(t1);t1=hd[t1])
      { word a=rep_t1(tl[t1],L);
@@ -582,14 +570,12 @@ word T,L;
   return(t1);
 }
 
-word rep_t(T,L) /* see above */
-word T,L;
+word rep_t(word T,word L) /* see above */
 { word t=rep_t1(T,L);
   return(t==T?t:redtvars(t));
 }
 
-word type_of(x)  /* returns the type of expression x, in reduced form */
-word x;
+word type_of(word x)  /* returns the type of expression x, in reduced form */
 { word t;
   TYPERRS=0;
   t=redtvars(subst(etype(x,NIL,NIL)));
@@ -598,9 +584,8 @@ word x;
   return(t);
 }
 
-word checktype(x)  /* is expression x well-typed ? */
+word checktype(word x)  /* is expression x well-typed ? */
            /* not currently used */
-word x;
 { TYPERRS=0;
   etype(x,NIL,NIL);
   reset_SUBST;
@@ -666,9 +651,10 @@ void checkcolfn()  /* if offside rule used, check col_fn has right type */
 } /* note that all parsing fns get type wrong_t if offside rule used
      anywhere and col_fn has wrong type - strictly this is overkill */
 
-word etype(x,env,ngt) /* infer a type for an expression, by using unification */
-word x,env;   /* env is list of local bindings of variables to types */
-word ngt;     /* ngt is list of non-generic type variables */
+word etype(word x,word env,word ngt)
+                      /* infer a type for an expression, by using unification */
+              /* env is list of local bindings of variables to types */
+              /* ngt is list of non-generic type variables */
 { word a,b,c,d; /* initialise to 0 ? */
   switch(tag[x])
   { case AP: if(hd[x]==BADCASE||hd[x]==CONFERROR)return(NTV);
@@ -964,9 +950,10 @@ word ngt;     /* ngt is list of non-generic type variables */
 	       /* G_RULE has same type as I */
 	       case G_CLOSE: a=NTV;
 			     if(col_fn) /* offside rule used */
-			     if(col_fn== -1) /* arbitrary flag */
-			       TYPERRS++; /*overkill, see note on checkcolfn*/
-			     else checkcolfn();
+			       { if(col_fn== -1) /* arbitrary flag */
+				   TYPERRS++; /*overkill, see note on checkcolfn*/
+				 else checkcolfn();
+			       }
 			     return(tf3(ltchar,a,lt(bnf_t),a));
 	       case OFFSIDE: return(ltchar);
 			     /* pretend, used by indent, see prelude */
@@ -987,17 +974,16 @@ word ngt;     /* ngt is list of non-generic type variables */
   }
 }
 
-word rhs_here(r)
-word r;
+word rhs_here(word r)
 { if(tag[r]==LABEL)return(hd[r]);
   if(tag[r]==TRIES)return(hd[hd[lastlink(tl[r])]]);
   return(0); /* something wrong */
 } /* efficiency hack, sometimes we set lineptr to rhs, can extract here_info
      as above when needed */
 
-word conforms(p,t,e,ngt) /* returns new environment of local type bindings obtained
+word conforms(word p,word t,word e,word ngt)
+                    /* returns new environment of local type bindings obtained
 		       by conforming pattern p to type t; -1 means failure */
-word p,t,e,ngt;
 { if(e==-1)return(-1);
   if(tag[p]==ID&&!isconstructor(p))return(cons(cons(p,t),e));
   if(hd[p]==CONST)
@@ -1033,27 +1019,30 @@ word p,t,e,ngt;
   return(e);
 }}
 
-void locate(s) /* for locating type errors */
-char *s;
+void locate(char *s) /* for locating type errors */
 { TYPERRS++;
   if(TYPERRS==1||lastloc!=current_id) /* avoid tedious repetition */
-    if(current_id)
-    if(tag[current_id]==DATAPAIR) /* see checkfbs */
-      { locate_inc();
-        printf("%s in binding for %s\n",s,(char *)hd[current_id]);
-	return; }
-    else
-      { extern word fnts;
-	word x=current_id;
-        printf("%s in definition of ",s);
-        while(tag[x]==CONS)
-	     if(tag[tl[x]]==ID&&member(fnts,tl[x]))
-	       printf("nonterminal "),x=hd[x]; else /*note1*/
-	     out_formal1(stdout,hd[x]),printf(", subdef of "),
-	     x=tl[x];
-        printf("%s",get_id(x));
-        putchar('\n'); }
-    else printf("%s in expression\n",s);
+    {
+      if(current_id)
+	{
+	  if(tag[current_id]==DATAPAIR) /* see checkfbs */
+	    { locate_inc();
+	      printf("%s in binding for %s\n",s,(char *)hd[current_id]);
+	      return; }
+	  else
+	    { extern word fnts;
+	      word x=current_id;
+	      printf("%s in definition of ",s);
+	      while(tag[x]==CONS)
+		   if(tag[tl[x]]==ID&&member(fnts,tl[x]))
+		     printf("nonterminal "),x=hd[x]; else /*note1*/
+		   out_formal1(stdout,hd[x]),printf(", subdef of "),
+		   x=tl[x];
+	      printf("%s",get_id(x));
+	      putchar('\n'); }
+	}
+      else printf("%s in expression\n",s);
+    }
   if(lineptr)sayhere(lineptr,0); else
   if(current_id&&id_who(current_id)!=NIL)sayhere(id_who(current_id),0);
   lastloc=current_id;
@@ -1061,9 +1050,9 @@ char *s;
 /* note1: this is hack to suppress extra `subdef of <fst start symb>' when
    reporting error in defn of non-terminal in %bnf stuff */
 
-void sayhere(h,nl) /* h is hereinfo - reports location (in parens, newline if nl)
+void sayhere(word h,word nl)
+              /* h is hereinfo - reports location (in parens, newline if nl)
 	         and sets errline/errs if not already set */
-word h,nl;
 { extern word errs,errline;
   extern char *current_script;
   if(tag[h]!=FILEINFO)
@@ -1079,9 +1068,7 @@ word h,nl;
   else { if(!errs)errs=h; }
 }
 
-void type_error(a,b,t1,t2)
-char *a,*b;
-word t1,t2;
+void type_error(char *a,char *b,word t1,word t2)
 { t1=redtvars(ap(subst(t1),subst(t2)));
   t2=tl[t1];t1=hd[t1];
   locate("type error");
@@ -1089,42 +1076,36 @@ word t1,t2;
   printf(" %s ",b);out_type(t2);putchar('\n');
 }
 
-void type_error1(x)    /* typename in expression */
-word x;
+void type_error1(word x)    /* typename in expression */
 { locate("type error");
   printf("typename used as identifier (%s)\n",get_id(x));
 }
 
-void type_error2(x)    /* undefined name in expression */
-word x;
+void type_error2(word x)    /* undefined name in expression */
 { if(compiling)return; /* treat as type error only in $+ data */
   TYPERRS++;
   printf("undefined name - %s\n",get_id(x));
 }
 
-void type_error3(x)    /* constructor used at wrong arity in formal */
-word x;
+void type_error3(word x)    /* constructor used at wrong arity in formal */
 { locate("error");
   printf("constructor \"%s\" used at wrong arity in formal\n", get_id(x));
 }
 
-void type_error4(x) /* non-constructor as head of formal */
-word x;
+void type_error4(word x) /* non-constructor as head of formal */
 { locate("error");
   printf("illegal object \""); out_pattern(stdout,x);
   printf("\" as head of formal\n");
 }
 
-void type_error5(x) /* undeclared constructor in formal */
-word x;
+void type_error5(word x) /* undeclared constructor in formal */
 { locate("error");
   printf("undeclared constructor \""); out_pattern(stdout,x);
   printf("\" in formal\n");
   ND=add1(x,ND);
 }
 
-void type_error6(x,f,a)
-word x,f,a;
+void type_error6(word x,word f,word a)
 { TYPERRS++;
   printf("incorrect declaration "); sayhere(lineptr,1);
   printf("specified, %s :: ",get_id(x)); out_type(f); putchar('\n');
@@ -1132,8 +1113,7 @@ word x,f,a;
   putchar('\n');
 }
 
-void type_error7(a,b)
-word a,b;
+void type_error7(word a,word b)
 { locate("type error");
   printf("\nrhs of lex rule :: ");
   out_type(redtvars(subst(b)));
@@ -1142,8 +1122,7 @@ word a,b;
   putchar('\n');
 }
 
-/* void type_error7(t,args)
-word t,args;
+/* void type_error7(word t,word args)
 { int i=1;
   while((args=tl[args])!=NIL)i++;
   locate("type error");
@@ -1153,8 +1132,7 @@ word t,args;
   printf("\n - should be list\n");
 } */
 
-void type_error8(t1,t2)
-word t1,t2;
+void type_error8(word t1,word t2)
 { word big;
   t1=subst(t1); t2=subst(t2);
   if(same(hd[t1],hd[t2]))
@@ -1167,9 +1145,9 @@ word t1,t2;
   printf(big?"\nwith\n  ":" with ");out_type(t2);putchar('\n');
 }
 
-int unify(t1,t2) /* works by side-effecting SUBST, returns 1,0 as it succeeds
+int unify(word t1,word t2)
+                 /* works by side-effecting SUBST, returns 1,0 as it succeeds
 		or fails */
-word t1,t2;
 { t1=subst(t1),t2=subst(t2);
   if(t1==t2)return(1);
   if(isvar_t(t1)&&!occurs(t1,t2))
@@ -1182,10 +1160,10 @@ word t1,t2;
   return(0);
 }
 
-int unify1(t1,t2) /* inner call - exactly like unify, except error reporting is
+int unify1(word t1,word t2)
+              /* inner call - exactly like unify, except error reporting is
                  done only by top level, see above */
          /* we do this to avoid printing inner parts of types */
-word t1,t2;
 { t1=subst(t1),t2=subst(t2);
   if(t1==t2)return(1);
   if(isvar_t(t1)&&!occurs(t1,t2))
@@ -1197,15 +1175,14 @@ word t1,t2;
   return(0);
 }
 
-word subsumes(t1,t2) /* like unify but lop-sided; returns 1,0 as t2 falls, doesnt
+word subsumes(word t1,word t2)
+                /* like unify but lop-sided; returns 1,0 as t2 falls, doesnt
 		   fall under t1 */
-word t1,t2;
 { if(t2==wrong_t)return(1);
   /* special case, shows up only when compiling prelude (changetype etc) */
   return(subsu1(t1,t2,t2)); }
 
-word subsu1(t1,t2,T2)
-word t1,t2,T2;
+word subsu1(word t1,word t2,word T2)
 { t1=subst(t1);
   if(t1==t2)return(1);
   if(isvar_t(t1)&&!occurs(t1,T2))
@@ -1215,9 +1192,8 @@ word t1,t2,T2;
   return(0);
 }
 
-word walktype(t,f)  /* make a copy of t with f applied to its variables */
-word t;
-word (*f)();
+word walktype(word t,word (*f)(word))
+                    /* make a copy of t with f applied to its variables */
 { if(isvar_t(t))return((*f)(t));
   if(iscompound_t(t))
   { word h1=walktype(hd[t],f);
@@ -1226,16 +1202,14 @@ word (*f)();
   return(t);
 }
 
-int occurs(tv,t)  /* does tv occur in type t? */
-word tv,t;
+int occurs(word tv,word t)  /* does tv occur in type t? */
 { while(iscompound_t(t))
   { if(occurs(tv,tl[t]))return(1);
     t=hd[t]; }
   return(tv==t);
 }
 
-int ispoly(t) /* does t contain tvars? (should call subst first) */
-word t;
+int ispoly(word t) /* does t contain tvars? (should call subst first) */
 { while(iscompound_t(t))
   { if(ispoly(tl[t]))return(1);
     t=hd[t]; }
@@ -1251,7 +1225,6 @@ int clear_SUBST()
 { word i;
   fixshows();
   for(i=0;i<hashsize;i++)SUBST[i]=0;
-  /*printf("tvcount=%d\n",tvcount);  /* probe */
   tvcount=1;
   return(0);  /* see defn of reset_SUBST */
 }
@@ -1266,8 +1239,7 @@ void fixshows()
          showchain=tl[showchain]; }
 }
 
-word lookup(tv)  /* find current substitution for type variable */
-word tv;
+word lookup(word tv)  /* find current substitution for type variable */
 { word h=SUBST[hashval(tv)];
   while(h)
   { if(eqtvar(hd[hd[h]],tv))return(tl[hd[h]]);
@@ -1275,28 +1247,24 @@ word tv;
   return(tv);  /* no substitution found, so answer is self */
 }
 
-void addsubst(tv,t) /* add new substitution to SUBST */
-word tv,t;
+void addsubst(word tv,word t) /* add new substitution to SUBST */
 { word h=hashval(tv);
   SUBST[h]=cons(cons(tv,t),SUBST[h]);
 }
 
-word ult(tv)  /* fully substituted out value of a type var */
-word tv;
+word ult(word tv)  /* fully substituted out value of a type var */
 { word s=lookup(tv);
   return(s==tv?tv:subst(s));
 }
 
-word subst(t) /* returns fully substituted out value of type expression */
-word t;
+word subst(word t) /* returns fully substituted out value of type expression */
 { return(walktype(t,ult));
 }
 
 word localtvmap=NIL;
 word NGT=0;
 
-word lmap(tv)
-word tv;
+word lmap(word tv)
 { word l;
   if(non_generic(tv))return(tv);
   for(l=localtvmap;l!=NIL;l=tl[l])
@@ -1305,14 +1273,13 @@ word tv;
   return(l);
 }
 
-word linst(t,ngt) /* local instantiate */
-word t,ngt;   /* relevant tvars are those not in ngt */
+word linst(word t,word ngt) /* local instantiate */
+              /* relevant tvars are those not in ngt */
 { localtvmap=NIL; NGT=ngt;
   return(walktype(t,lmap));
 }
 
-int non_generic(tv)
-word tv;
+int non_generic(word tv)
 { word x;
   for(x=NGT;x!=NIL;x=tl[x])
      if(occurs(tv,subst(hd[x])))return(1);
@@ -1323,8 +1290,7 @@ word tv;
 
 word tvmap=NIL;
 
-word mapup(tv)
-word tv;
+word mapup(word tv)
 { word *m= &tvmap;
   tv=gettvar(tv);
   while(--tv)m= &tl[*m];
@@ -1332,15 +1298,15 @@ word tv;
   return(hd[*m]);
 }
 
-word instantiate(t) /* make a copy of t with a new set of type variables */
-word t;  /* t MUST be in reduced form - see redtvars */
+word instantiate(word t) /* make a copy of t with a new set of type variables */
+         /* t MUST be in reduced form - see redtvars */
 { tvmap=NIL;
   return(walktype(t,mapup));
 }
 
-word ap_subst(t,args) /* similar, but with a list of substitions for the type
+word ap_subst(word t,word args)
+                      /* similar, but with a list of substitions for the type
                variables provided (args).  Again, t must be in reduced form */
-word t,args;
 { word r;
   tvmap=args;
   r=walktype(t,mapup);
@@ -1348,9 +1314,7 @@ word t,args;
   return(r);
 }
 
-
-word mapdown(tv)
-word tv;
+word mapdown(word tv)
 { word *m= &tvmap;
   word i=1;
   while(*m!=NIL&&!eqtvar(hd[*m],tv))m= &tl[*m],i++;
@@ -1358,25 +1322,25 @@ word tv;
   return(mktvar(i));
 }
 
-word redtvars(t) /* renames the variables in t, in order of appearance to walktype,
+word redtvars(word t)
+            /* renames the variables in t, in order of appearance to walktype,
 	       using the numbers 1,2,3... */
-word t;
 { tvmap=NIL;
   return(walktype(t,mapdown));
 }
 
 
-word remove1(e,ss) /* destructively remove e from set with address ss, returning
+word remove1(word e,word *ss)
+              /* destructively remove e from set with address ss, returning
                  1 if e was present, 0 otherwise */
-word e,*ss;
 { while(*ss!=NIL&&hd[*ss]<e)ss= &tl[*ss]; /* we assume set in address order */
   if(*ss==NIL||hd[*ss]!=e)return(0);
   *ss=tl[*ss];
   return(1);
 }
 
-word setdiff(s1,s2) /* destructive on s1, returns set difference */
-word s1,s2; /* both are in ascending address order */
+word setdiff(word s1,word s2) /* destructive on s1, returns set difference */
+            /* both are in ascending address order */
 { word *ss1= &s1;
   while(*ss1!=NIL&&s2!=NIL)
        if(hd[*ss1]==hd[s2])*ss1=tl[*ss1]; else  /* removes element */
@@ -1385,9 +1349,8 @@ word s1,s2; /* both are in ascending address order */
   return(s1);
 }
 
-word add1(e,s) /* inserts e destructively into set s, kept in ascending address
-             order */
-word e,s;
+word add1(word e,word s)
+      /* inserts e destructively into set s, kept in ascending address order */
 { word s1=s;
   if(s==NIL||e<hd[s])return(cons(e,s));
   if(e==hd[s])return(s); /* no duplicates! */
@@ -1399,8 +1362,7 @@ word e,s;
 
 word NEW; /* nasty hack, see rules */
 
-word newadd1(e,s)  /* as above, but with side-effect on NEW */
-word e,s;
+word newadd1(word e,word s)  /* as above, but with side-effect on NEW */
 { word s1=s;
   NEW=1;
   if(s==NIL||e<hd[s])return(cons(e,s));
@@ -1412,8 +1374,8 @@ word e,s;
   return(s);
 }
 
-word UNION(s1,s2) /* destructive on s1; s1, s2 both in address order */
-word s1,s2;
+word UNION(word s1,word s2)
+             /* destructive on s1; s1, s2 both in address order */
 { word *ss= &s1;
   while(*ss!=NIL&&s2!=NIL)
        if(hd[*ss]==hd[s2])ss= &tl[*ss],s2=tl[s2]; else
@@ -1425,8 +1387,7 @@ word s1,s2;
   return(s1);
 }
 
-word intersection(s1,s2)  /* s1, s2 and result all in address order */
-word s1,s2;
+word intersection(word s1,word s2)  /* s1, s2 and result all in address order */
 { word r=NIL;
   while(s1!=NIL&&s2!=NIL)
        if(hd[s1]==hd[s2])r=cons(hd[s1],r),s1=tl[s1],s2=tl[s2]; else
@@ -1435,8 +1396,7 @@ word s1,s2;
   return(reverse(r));
 }
 
-word deps(x) /* returns list of the free identifiers in expression x */
-word x;
+word deps(word x) /* returns list of the free identifiers in expression x */
 { word d=NIL;
 L:switch(tag[x])
 { case AP:
@@ -1446,7 +1406,7 @@ L:switch(tag[x])
 	     x=tl[x];
 	     goto L;
   case ID: return(isconstructor(x)?d:add1(x,d));
-  case LAMBDA: /* d=UNION(d,patdeps(hd[x])); 
+  case LAMBDA: /* d=UNION(d,patdeps(hd[x])); */
 	       /* should add this - see sahbug3.m */
 	       return(rembvars(UNION(d,deps(tl[x])),hd[x]));
   case LET: d=rembvars(UNION(d,deps(tl[x])),dlhs(hd[x]));
@@ -1468,9 +1428,9 @@ L:switch(tag[x])
   default: return(d);
 }}
 
-word rembvars(x,p) /* x is list of ids in address order, remove bv's of pattern p
+word rembvars(word x,word p)
+              /* x is list of ids in address order, remove bv's of pattern p
                  (destructive on x) */
-word x,p;
 { L:
   switch(tag[p])
   { case ID: return(remove1(p,&x),x);
@@ -1486,15 +1446,12 @@ word x,p;
 	     return(x);
 }}
 
-word member(s,x)
-word s,x;
+word member(word s,word x)
 { while(s!=NIL&&x!=hd[s])s=tl[s];
   return(s!=NIL);
 }
 
-void printgraph(title,g) /* for debugging info */
-char *title;
-word g;
+void printgraph(char *title,word g) /* for debugging info */
 { printf("%s\n",title);
   while(g!=NIL)
   { printelement(hd[hd[g]]); putchar(':');
@@ -1502,8 +1459,7 @@ word g;
     g=tl[g]; }
 }
 
-void printelement(x)
-word x;
+void printelement(word x)
 { if(tag[x]!=CONS){ out(stdout,x); return; }
   putchar('(');
   while(x!=NIL)
@@ -1513,9 +1469,7 @@ word x;
   putchar(')');
 }
 
-void printlist(title,l) /* for debugging */
-char *title;
-word l;
+void printlist(char *title,word l) /* for debugging */
 { printf("%s",title);
   while(l!=NIL)
   { printelement(hd[l]);
@@ -1524,23 +1478,17 @@ word l;
   printf(";\n");
 }
 
-word printob(title,x) /* for debugging */
-char *title;
-word x;
+word printob(char *title,word x) /* for debugging */
 { printf("%s",title); out(stdout,x); putchar('\n');
   return(x); }
 
-void print2obs(title,title2,x,y) /* for debugging */
-char *title,*title2;
-word x,y;
+void print2obs(char *title,char *title2,word x,word y) /* for debugging */
 { printf("%s",title); out(stdout,x); printf("%s",title2); out(stdout,y); putchar('\n');
 }
 
 word allchars=0; /* flag used by tail */
 
-void out_formal1(f,x)
-FILE *f;
-word x;
+void out_formal1(FILE *f,word x)
 { extern word nill;
   if(hd[x]==CONST)x=tl[x];
   if(x==NIL)fprintf(f,"[]"); else
@@ -1570,9 +1518,7 @@ word x;
   out(f,x);  /* all other cases */
 }
 
-void out_pattern(f,x)
-FILE *f;
-word x;
+void out_pattern(FILE *f,word x)
 { if(tag[x]==CONS)
     if(hd[x]==CONST&&(tag[tl[x]]==INT||tag[tl[x]]==DOUBLE))out(f,tl[x]); else
     if(hd[x]!=CONST&&tail(x)!=NIL)
@@ -1581,9 +1527,7 @@ word x;
   else out_formal(f,x);
 }
 
-void out_formal(f,x)
-FILE *f;
-word x;
+void out_formal(FILE *f,word x)
 { if(tag[x]!=AP)
     out_formal1(f,x); else
   if(tag[hd[x]]==AP&&hd[hd[x]]==PLUS) /* n+k pattern */
@@ -1592,15 +1536,13 @@ word x;
     { out_formal(f,hd[x]); fprintf(f," "); out_formal1(f,tl[x]); }
 }
 
-word tail(x)
-word x;
+word tail(word x)
 { allchars=1;
   while(tag[x]==CONS)allchars&=(is_char(hd[x])),x=tl[x];
   return(x);
 }
 
-void out_type(t) /* for printing external representation of types */
-word t;
+void out_type(word t) /* for printing external representation of types */
 { while(isarrow_t(t))
   { out_type1(tl[hd[t]]);
     printf("->");
@@ -1608,8 +1550,7 @@ word t;
   out_type1(t);
 }
 
-void out_type1(t)
-word t;
+void out_type1(word t)
 { if(iscompound_t(t)&&!iscomma_t(t)&&!islist_t(t)&&!isarrow_t(t))
     { out_type1(hd[t]);
       putchar(' ');
@@ -1617,8 +1558,7 @@ word t;
   out_type2(t);
 }
 
-void out_type2(t)
-word t;
+void out_type2(word t)
 { if(islist_t(t))
     { putchar('[');
       out_type(tl[t]); /* could be out_typel, but absence of parentheses
@@ -1642,8 +1582,9 @@ word t;
   default: if(tag[t]==ID)printf("%s",get_id(t));else
 	   if(isvar_t(t))
 	   { word n=gettvar(t);
-	   /*if(1)printf("t%d",n-1); else /* experiment, suppressed */
+#if 0
 	   /*if(n<=26)putchar('a'+n-1); else /* experiment */
+#endif
 	     if(n>0&&n<7)while(n--)putchar('*'); /* 6 stars max */
 	     else printf("%ld",n); }else
            if(tag[t]==STRCONS)     /* pname - see hack in privatise */
@@ -1659,8 +1600,7 @@ word t;
   }
 }
 
-void out_typel(t)
-word t;
+void out_typel(word t)
 { while(iscomma_t(t))
   { out_type(tl[hd[t]]);
     t=tl[t];

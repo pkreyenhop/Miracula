@@ -13,12 +13,13 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h> /* creat() */
-/* #include <sys/wait.h> /* seems not needed, oct 05 */
+#include <sys/wait.h>
 static struct stat buf; /* see man(2) stat - gets file status */
 
 #include "data.h"
 #include "big.h"
 #include "lex.h"
+#include "reduce.h"
 #include <float.h>
 word nill,Void;
 word main_id; /* change to magic scripts 19.11.2013 */
@@ -149,9 +150,8 @@ jmp_buf env;
 fp_except commonmask = FP_X_INV|FP_X_OFL|FP_X_DZ; /* invalid|ovflo|divzero */
 #endif
 
-int main(argc,argv)  /* system initialisation, followed by call to YACC */
-int argc;
-char *argv[];
+/* system initialisation, followed by call to YACC */
+int main(int argc,char *argv[])
 { word manonly=0;
   char *home, *prs;
   int okhome_rc; /* flags valid HOME/.mirarc file present */
@@ -165,7 +165,7 @@ char *argv[];
 /* used to indicate the base of the C stack for garbage collection purposes */
   verbosity=isatty(0);
 /*if(isatty(1))*/ setbuf(stdout,NULL); /* for unbuffered tty output */
-  if(home=getenv("HOME"))
+  if((home=getenv("HOME")))
     { strcpy(home_rc,home);
       if(strcmp(home_rc,"/")==0)home_rc[0]=0; /* root is special case */
       strcat(home_rc,"/.mirarc");
@@ -218,7 +218,7 @@ char *argv[];
         char *logfilname, *p=strrchr(argv[2],'/');
         FILE *fil=NULL;
         if(!p)p=argv[2]; /* p now holds last component of prog name */
-        if(logfilname=malloc((strlen(p)+9)))
+        if((logfilname=malloc((strlen(p)+9))))
           sprintf(logfilname,"miralog/%s",p),
           fil=fopen(logfilname,"a");
         else mallocfail("logfile name");
@@ -261,7 +261,7 @@ char *argv[];
     { editor=getenv("EDITOR");
       if(editor==NULL)editor=EDITOR;
       else strcpy(ebuf,editor),editor=ebuf,fixeditor(); }
-  if(prs=getenv("MIRAPROMPT"))promptstr=prs;
+  if((prs=getenv("MIRAPROMPT")))promptstr=prs;
   if(getenv("RECHECKMIRA")&&!rechecking)rechecking=1;
   if(getenv("NOSTRICTIF"))strictif=0;
   setupdic(); /* used by mkabsolute */
@@ -387,9 +387,8 @@ int vstack[4];  /* record of miralib versions looked at */
 char *mstack[4]; /* and where found */
 int mvp=0;
 
-int checkversion(m)
+int checkversion(char *m)
 /* returns 1 iff m is directory with .version containing our version number */
-char *m;
 { int v1,read=0,r=0;
   FILE *f=fopen(strcat(strcpy(linebuf,m),"/.version"),"r");
   if(f&&fscanf(f,"%u",&v1)==1)r= v1==version, read=1;
@@ -405,16 +404,14 @@ void libfails()
                          strvers(vstack[i]),mstack[i]);
 }
 
-char *strvers(v)
-int v;
+char *strvers(int v)
 { static char vbuf[12];
   if(v<0||v>999999)return "\?\?\?";
   snprintf(vbuf,12,"%.3f",v/1000.0); 
   return vbuf;
 }
 
-char *mkabsolute(m)  /* make sure m is an absolute pathname */
-char *m;
+char *mkabsolute(char *m)  /* make sure m is an absolute pathname */
 { if(m[0]=='/')return(m);
   if(!getcwd(dicp,pnlim))fprintf(stderr,"panic: cwd too long\n"),exit(1);
   (void)strcat(dicp,"/");
@@ -425,8 +422,7 @@ char *m;
   return(m);
 }
 
-void missparam(s)
-char *s;
+void missparam(char *s)
 { fprintf(stderr,"mira: missing param after flag \"-%s\"\n",s);
   exit(1); }
 
@@ -437,7 +433,6 @@ int oldversion=0;
 void announce()
 { extern char *vdate;
   word w,j;
-/*clrscr();  /* clear screen on start up */
   w=(twidth()-50)/2;
   printf("\n\n");
   spaces(w); printf("   T h e   M i r a n d a   S y s t e m\n\n");
@@ -448,7 +443,6 @@ void announce()
   if(SPACELIMIT!=DFLTSPACE)
     printf("(%ld cells)\n",SPACELIMIT);
   if(!strictif)printf("(-nostrictif : deprecated!)\n");
-/*printf("\t\t\t\t%dbit platform\n",__WORDSIZE); /* temporary */
   if(oldversion<1999) /* pre release two */
     printf("\
 WARNING:\n\
@@ -466,8 +460,8 @@ the system - please read the `CHANGES' section of the /man pages !!!\n\n");
 }
 
 
-word rc_read(rcfile)  /* get settings of system parameters from setup file */
-char *rcfile;
+word rc_read(char *rcfile)
+                     /* get settings of system parameters from setup file */
 { FILE *in;
   char z[20];
   word h,d,v,s,r=0;
@@ -526,10 +520,9 @@ int badeditor() /* does editor know how to open file at line? */
   return (baded = !p);
 } 
 
-int getln(in,n,s) /* reads line (<=n chars) from in into s - returns 1 if ok */
-FILE *in;         /* the newline is discarded, and the result '\0' terminated */
-word n;
-char *s;
+int getln(FILE *in,word n,char *s)
+                  /* reads line (<=n chars) from in into s - returns 1 if ok */
+                  /* the newline is discarded, and the result '\0' terminated */
 { while(n--&&(*s=getc(in))!='\n')s++;
   if(*s!='\n'||n<0)return(0);
   *s='\0';
@@ -551,8 +544,7 @@ void rc_write()
 word lastid=0; /* first inscope identifier of immediately preceding command */
 word rv_expr=0;
 
-void commandloop(initscript)
-char* initscript;
+void commandloop(char *initscript)
 { int ch;
   void reset();
   extern word cook_stdin;
@@ -636,7 +628,7 @@ char* initscript;
 		       { shell=getenv("SHELL");
 		         if(!shell)shell="/bin/sh"; }
                      oldsig= signal(SIGINT,SIG_IGN);
-                     if(pid=fork())
+                     if((pid=fork()))
                        { /* parent */
                          if(pid==-1)
 	                   perror("UNIX error - cannot create process");
@@ -673,11 +665,9 @@ char* initscript;
                echoing=verbosity&listing;
 }}}
 
-word parseline(t,f,fil) /* parses next valid line of f at type t, returns EOF
+word parseline(word t,FILE *f,word fil)
+                        /* parses next valid line of f at type t, returns EOF
 		      if none found.  See READVALS in reduce.c */
-word t;
-FILE *f;
-word fil;
 { word t1,ch;
   lastexp=UNDEF;
   for(;;)
@@ -720,8 +710,7 @@ are disabled.  See manual section 31/5 on changing the editor for more\n\
 information.\n",editor);
 }
 
-word fm_time(f) /* time last modified of file f */
-char *f;
+word fm_time(char *f) /* time last modified of file f */
 { return(stat(f,&buf)==0?buf.st_mtime:0);
   /* non-existent file has conventional mtime of 0 */
 } /* we assume time_t can be stored in a word */
@@ -749,15 +738,15 @@ char *unlinkme; /* if set, is name of partially created obfile */
 void reset() /* interrupt catcher - see call to signal in commandloop */
 { extern word lineptr,ATNAMES,current_id;
   extern int blankerr,collecting;
+#if 0
   /*if(!making)  /* see note below
     (void)signal(SIGINT,SIG_IGN); /* dont interrupt me while I'm tidying up */
-/*if(magic)exit(0); *//* signal now not set to reset in magic scripts */
+#endif
   if(collecting)gcpatch();
   if(loading)
     { if(!blankerr)
 	printf("\n<<compilation interrupted>>\n");
       if(unlinkme)unlink(unlinkme);
-      /* stackp=dstack; /* add if undump() made interruptible later*/
       oldfiles=files,unload(),current_id=ATNAMES=loading=SYNERR=lineptr=0;
       if(blankerr)blankerr=0,makedump(); }
       /* magic script cannot be literate so no guard needed on makedump */
@@ -777,8 +766,7 @@ void reset() /* interrupt catcher - see call to signal in commandloop */
 
 int lose;
 
-int normal(f) /* s has ".m" suffix */
-char *f;
+int normal(char *f) /* s has ".m" suffix */
 { int n=strlen(f);
   return n>=2&&strcmp(f+n-2,".m")==0;
 }
@@ -831,7 +819,7 @@ void command()
 		 return; }
    case 'e': if(is("e")||is("edit"))
                { char *mf=0;
-		 if(t=token())t=addextn(1,t);
+		 if((t=token()))t=addextn(1,t);
 		 else t=current_script;
                  checkeol;
 	         if(stat(t,&buf)) /* new file */
@@ -851,7 +839,6 @@ void command()
 			 mirahdr=dicp;
 			 dicq=dicp=dicp+strlen(dicp)+1; }
 		     if(!mf&&!stat(mirahdr,&buf))mf=mirahdr;
-	             /*if(mf)printf("mf=%s\n",mf); /* DEBUG*/
 		     if(mf&&t!=current_script)
 		       { printf("open new script \"%s\"? [ny]",t);
 		         ch1=ch=getchar();
@@ -867,8 +854,7 @@ void command()
 	       { char *hold=linebuf,*h;
 		 if(!getln(stdin,pnlim-1,hold))break; /*reject if too long*/
 		 if(!*hold)
-		   { /* lose=getchar(); /* to eat newline */
-		     printf("%s\n",editor);
+		   { printf("%s\n",editor);
 		     return; }
 		 h=hold+strlen(hold); /* remove trailing white space */
 		 while(h[-1]==' '||h[-1]=='\t')*--h='\0';
@@ -969,18 +955,7 @@ void command()
 	       { checkeol; manaction(); return; }
 	     if(is("miralib"))
 	       { checkeol; printf("%s\n",miralib); return; }
-   case 'n': /* if(is("namebuckets"))
-	       { int i,x;
-		 extern word namebucket[];
-	         checkeol;
-		 for(i=0;i<128;i++)
-		 if(x=namebucket[i])
-		   { printf("%d:",i);
-		     while(x)
-			  putchar(' '),out(stdout,hd[x]),x=tl[x];
-		     putchar('\n'); }
-		 return; }              /* DEBUG */
-             if(is("nocount"))
+   case 'n': if(is("nocount"))
                { checkeol; atcount=0; return; }
              if(is("nogc"))
                { checkeol; atgc=0; return; }
@@ -990,8 +965,6 @@ void command()
 	       { checkeol; echoing=listing=0; rc_write(); return; }
              if(is("norecheck"))
 	       { checkeol; rechecking=0; rc_write(); return; }
-/* case 'o': if(is("object"))
-               { checkeol; atobject=1; return; } /* now done by flag -object */
    case 'q': if(is("q")||is("quit"))
                { checkeol; if(verbosity)printf("miranda logout\n"); exit(0); }
    case 'r': if(is("recheck"))
@@ -1033,14 +1006,12 @@ void manaction()
   system(linebuf);
 } /* put quotes around both pathnames to allow for spaces in miralib 8.5.06 */
 
-void editfile(t,line)
-char *t;
-int line;
+void editfile(char *t,int line)
 { char *ebuf=linebuf;
   char *p=ebuf,*q=editor;
   int tdone=0;
   if(line==0)line=1;  /* avoids warnings in some versions of vi */
-  while(*p++ = *q++)
+  while((*p++ = *q++))
      if(p[-1]=='\\'&&(q[0]=='!'||q[0]=='%'))p[-1]= *q++; else
      if(p[-1]=='!')
        (void)
@@ -1057,7 +1028,6 @@ int line;
      (void)strncat(p,t,BUFSIZE+ebuf-p),
      p+=strlen(p),
      *p++ = '"',*p='\0';
-  /* printf("%s\n",ebuf); /* DEBUG */
   system(ebuf);
   if(src_update())loadfile(current_script);
   return;
@@ -1069,15 +1039,13 @@ void xschars()
   while((ch=getchar())!='\n'&&ch!=EOF);
 }
 
-word reverse(x)  /* x is a cons list */
-word x;
+word reverse(word x)  /* x is a cons list */
 { word y = NIL;
   while(x!=NIL)y = cons(hd[x],y), x = tl[x];
   return(y);
 }
 
-word shunt(x,y)  /* equivalent to append(reverse(x),y) */
-word x,y;
+word shunt(word x,word y)  /* equivalent to append(reverse(x),y) */
 { while(x!=NIL)y = cons(hd[x],y), x = tl[x];
   return(y);
 }
@@ -1091,8 +1059,8 @@ int presym_n[] =
 
 #include <ctype.h>
 
-void filequote(p) /* write p to stdout with <quotes> if appropriate */
-char *p; /* p is a pathname */
+void filequote(char *p) /* write p to stdout with <quotes> if appropriate */
+         /* p is a pathname */
 { static int mlen=0;
   if(!mlen)mlen=(rindex(PRELUDE,'/')-PRELUDE)+1;
   if(strncmp(p,PRELUDE,mlen)==0)
@@ -1100,8 +1068,7 @@ char *p; /* p is a pathname */
   else printf("\"%s\"",p);
 } /* PRELUDE is a convenient string with the miralib prefix */
 
-void finger(n) /* find info about name stored at dicp */
-char *n;
+void finger(char *n) /* find info about name stored at dicp */
 { word x; int line;
   char *s;
   x=findid(n);
@@ -1140,8 +1107,7 @@ char *n;
   diagnose(n);
 }
 
-void diagnose(n)
-char *n;
+void diagnose(char *n)
 { int i=0;
   if(isalpha(n[0]))
     while(n[i]&&okid(n[i]))i++;
@@ -1168,10 +1134,6 @@ void allnamescom()
   namescom(hd[files]);
   sorted=1;
   /* now print warnings, if any */
-  /*if(ND!=NIL&&id_type(hd[ND])==type_t)
-    { printf("ILLEGAL EXPORT LIST - MISSING TYPENAME%s: ",tl[ND]==NIL?"":"S");
-      printlist("",ND);
-      return; } /* install if incomplete export list is escalated to error */
   while(x!=NIL&&id_type(hd[x])==undef_t)x=tl[x];
   while(y!=NIL&&id_type(hd[y])!=undef_t)y=tl[y];
   if(x!=NIL)
@@ -1198,8 +1160,7 @@ void allnamescom()
 #define tolerance  3
              /* max number of extra spaces we are willing to insert */
 
-void namescom(l)  /* l is an element of `files' */
-word l;
+void namescom(word l)  /* l is an element of `files' */
 { word n=fil_defs(l),col=0,undefs=NIL,wp=0;
   word scrwd = twidth();
   if(!sorted&&n!=primenv) /* primenv already sorted */
@@ -1245,8 +1206,7 @@ word bereaved; /* typenames referred to in exports and not exported */
 word ld_stuff=NIL;
     /* list of list of files, to be unloaded if mkincludes interrupted */
 
-void loadfile(t)
-char *t;
+void loadfile(char *t)
 { extern word fileq;
   extern word current_id,includees,embargoes,exportfiles,freeids,exports;
   extern word fnts,FBS,nextpn;
@@ -1280,6 +1240,7 @@ char *t;
   col = 0;
   s_in = (FILE *)hd[hd[fileq]];
   adjust_prefix(t);
+#if 0
 /*if(magic&&!initialising)
     { if(!(getc(s_in)=='#'&&getc(s_in)=='!'))
 	{ files=NIL; return; }
@@ -1287,6 +1248,7 @@ char *t;
       commandmode=1;
       c=MAGIC; }
   else  /* change to magic scripts 19.11.2013 */
+#endif
   commandmode = 0;
   if(verbosity||making)printf("compiling %s\n",t);
   nextpn=0; /* lose pnames */
@@ -1323,8 +1285,9 @@ char *t;
     { if(verbosity||making&&!mkexports&&!mksources)
 	printf("checking types in %s\n",t);
       checktypes();
-      /* printf("typecheck complete\n"); /* DEBUG */ }
+    }
   if(!SYNERR&&exports!=NIL)
+  {
     if(ND!=NIL)exports=NIL; else /* skip check, cannot be %included */
     { /* check exports all present and close under type info */
       word e,u=NIL,n=NIL,c=NIL;
@@ -1351,6 +1314,7 @@ char *t;
       if(exports==NIL||n!=NIL)out_here(stderr,h,1),h=NIL;
    /* for warnings call out_here not sayhere, so errinfo not saved in dump */
     }
+  }
   if(!SYNERR&&ND==NIL&&(exports!=NIL||tl[files]!=NIL))
     { /* find out if script can create type orphans when %included */
       word e1,t;
@@ -1375,17 +1339,13 @@ char *t;
 	     r=UNION(r,deps(t_info(hd[hd[e1]])));
 	   else e=cons(hd[hd[e1]],e);
 	 else r=UNION(r,deps(t));
-      /*printlist("r: ",r); /* DEBUG */
       for(;r!=NIL;r=tl[r])
 	 if(!member(e,hd[r]))bereaved=cons(hd[r],bereaved);
-      /*printlist("bereaved: ",bereaved); /* DEBUG */
     }
   if(exports!=NIL&&bereaved!=NIL)
     { extern word newtyps;
       word b=intersection(bereaved,newtyps);
-      /*printlist("newtyps",newtyps); /* DEBUG */
       if(b!=NIL)
-	/*ND=b; /* to escalate to type error, see also allnamescom */
 	printf("warning, export list is incomplete - missing typename%s: ",
 		tl[b]==NIL?"":"s"),
 	printlist("",b);
@@ -1454,8 +1414,7 @@ char *t;
   loading=0;
 } 
 
-word isfreeid(x)
-word x;
+word isfreeid(word x)
 { return(id_type(x)==type_t?t_class(x)==free_t:id_val(x)==FREE); }
 
 word internals=NIL; /* used by fix/unfixexports, list of names not exported */
@@ -1466,7 +1425,6 @@ word internals=NIL; /* used by fix/unfixexports, list of names not exported */
 void fixexports()
 { extern word exports,exportfiles,embargoes,freeids;
   word e=exports,f;
-  /* printlist("exports: ",e); /* DEBUG */
   for(;e!=NIL;e=tl[e])paint(hd[e]);
   internals=NIL;
   if(exports==NIL&&exportfiles==NIL&&embargoes==NIL) /*no %export in script*/
@@ -1481,21 +1439,19 @@ void fixexports()
              { if(tag[hd[e]]==ID&&unpainted(hd[e]))
                  internals=cons(privatise(hd[e]),internals); }
   /* optimisation, need not do this to `silent' components - fix later */
-  /*printlist("internals: ",internals); /* DEBUG */
   for(e=exports;e!=NIL;e=tl[e])unpaint(hd[e]);
 } /* may not be interrupt safe, re unload() */
 
 void unfixexports()
-{ /*printlist("internals: ",internals); /* DEBUG */
-  word i=internals;
+{ word i=internals;
   if(mkexports)return; /* in this case don't want internals restored */
   while(i!=NIL) /* lose */
        publicise(hd[i]),i=tl[i];
   internals=NIL;
 } /* may not be interrupt safe, re unload() */
 
-word privatise(x) /* change id to pname, and return new id holding it as value */
-word x;
+word privatise(word x) /* change id to pname, and return new id holding it as value */
+                  /* change id to pname, and return new id holding it as value */
 { extern word namebucket[],*pnvec;
   word n = make_pn(x),h=namebucket[hash(get_id(x))],i;
   if(id_type(x)==type_t)
@@ -1516,8 +1472,7 @@ word x;
 } /* WARNING - dependent on internal representation of ids and pnames */
 /* nasty problem - privatisation can screw AKA's */
 
-word publicise(x) /* converse of the above, applied to the new id */
-word x;
+word publicise(word x) /* converse of the above, applied to the new id */
 { extern word namebucket[];
   word i=id_val(x),h=namebucket[hash(get_id(x))];
   tag[i]=ID,hd[i]=hd[x]; 
@@ -1532,15 +1487,13 @@ word x;
 int sigflag=0;
 
 void sigdefer()
-{ /* printf("sigdefer()\n"); /* DEBUG */
-  sigflag=1; } /* delayed signal handler, installed during load_script() */
+{ sigflag=1; } /* delayed signal handler, installed during load_script() */
 
-word mkincludes(includees)
-word includees;
+word mkincludes(word includees)
 { extern word FBS,BAD_DUMP,CLASHES,exportfiles,exports,TORPHANS;
   word pid,result=NIL,tclashes=NIL;
   includees=reverse(includees); /* process in order of occurrence in script */
-  if(pid=fork())
+  if((pid=fork()))
     { /* parent */
       int status;
       if(pid==-1)
@@ -1553,10 +1506,12 @@ word includees;
 	  return(NIL); }
       while(pid!=wait(&status));
       if((WEXITSTATUS(status))==2) /* child aborted */
-        if(ideep)exit(2); /* recursive abortion of parent process */
-        else { SYNERR=2; 
-	       printf("compilation of \"%s\" abandoned\n",current_script);
-	       return(NIL); }
+        {
+	  if(ideep)exit(2); /* recursive abortion of parent process */
+	  else { SYNERR=2;
+		 printf("compilation of \"%s\" abandoned\n",current_script);
+		 return(NIL); }
+        }
       /* if we get to here child completed normally, so carry on */
     }
   else { /* child does equivalent of `mira -make' on each includee */
@@ -1584,7 +1539,7 @@ word includees;
        (void)strcpy(dicp+strlen(dicp)-1,obsuffix);
        if(!making) /* cannot interrupt load_script() */
 	 oldsig=signal(SIGINT,(sighandler)sigdefer);
-       if(f=fopen(dicp,"r"))
+       if((f=fopen(dicp,"r")))
 	 x=load_script(f,fn,hd[tl[hd[includees]]],tl[tl[hd[includees]]],0),
 	   fclose(f);
        ld_stuff=cons(x,ld_stuff);
@@ -1602,7 +1557,6 @@ word includees;
 	      copy of a (non-synonym) type in the same scope, even under
 	      different names. */
 	   word y,z;
-	   /* printf("start share analysis\n");  /* DEBUG */
 	   if(TORPHANS)rfl=shunt(x,rfl); /* file has type orphans */
            for(y=x;y!=NIL;y=tl[y])fil_inodev(hd[y])=inodev(get_fil(hd[y]));
            for(y=x;y!=NIL;y=tl[y])
@@ -1632,7 +1586,6 @@ word includees;
 		    /*following test redundant - remove when sure is ok*/
 		    if(p!=NIL||q!=NIL)
 		       fprintf(stderr,"impossible event in mkincludes\n");
-		     /*break; /* z loop -- NO! (see liftbug) */
 		   }
 	   if(member(exportfiles,(word)fn))
 	     { /* move ids of x onto exports */
@@ -1646,7 +1599,6 @@ word includees;
 	   /* keep `result' in front-first order */
 	   if(hd[FBS]==NIL)FBS=tl[FBS];
 	   else hd[FBS]=cons(tl[hd[hd[includees]]],hd[FBS]); /* hereinfo */
-	   /* printf("share analysis finished\n");  /* DEBUG */
 	   continue; }
        /* something wrong - find out what */
        if(!f)result=cons(make_fil(hd[hd[hd[includees]]],
@@ -1741,10 +1693,12 @@ void readoption() /* readopt type orphans */
   for(;rfl!=NIL;rfl=tl[rfl])
   for(f=fil_defs(hd[rfl]);f!=NIL;f=tl[f])
      if(tag[hd[f]]==ID)
-     if((t=id_type(hd[f]))==type_t)
-       { if(t_class(hd[f])==synonym_t)
-           t_info(hd[f])=fixtype(t_info(hd[f]),hd[f]); }
-     else id_type(hd[f])=fixtype(t,hd[f]);
+       {
+	 if((t=id_type(hd[f]))==type_t)
+	   { if(t_class(hd[f])==synonym_t)
+	       t_info(hd[f])=fixtype(t_info(hd[f]),hd[f]); }
+	 else id_type(hd[f])=fixtype(t,hd[f]);
+       }
   if(tlost==NIL)return;
   TYPERRS++;
   printf("MISSING TYPENAME%s\n",tl[tlost]==NIL?"":"S");
@@ -1752,16 +1706,13 @@ void readoption() /* readopt type orphans */
          tl[tlost]==NIL?" is needed but has":"s are needed but have");
   /* structure of tlost is list of cons(losttype,list-of-ids) */
   for(;tlost!=NIL;tlost=tl[tlost])
-     { /* printf("tinfo_tlost=");out(stdout,t_info(hd[hd[tlost]]));
-        putchar(';'); /*DEBUG */
-       printf("\'%s\' of file \"%s\", needed by: ",
+     { printf("\'%s\' of file \"%s\", needed by: ",
        (char *)hd[hd[t_info(hd[hd[tlost]])]],
        (char *)hd[tl[t_info(hd[hd[tlost]])]]);
        printlist("",alfasort(tl[hd[tlost]])); }
 }
 
-word fixtype(t,x)  /* substitute out any indirected typenames in t */
-word t,x;
+word fixtype(word t,word x)  /* substitute out any indirected typenames in t */
 { switch(tag[t])
   { case AP: 
     case CONS: tl[t]=fixtype(tl[t],x);
@@ -1783,15 +1734,13 @@ word t,x;
 
 #define mask(c) (c&0xDF)
 /* masks out lower case bit, which is 0x20  */
-word alfa_ls(a,b)  /* 'DICTIONARY ORDER' - not currently used */
-char *a,*b;
+word alfa_ls(char *a,char *b)  /* 'DICTIONARY ORDER' - not currently used */
 { while(*a&&mask(*a)==mask(*b))a++,b++;
   if(mask(*a)==mask(*b))return(strcmp(a,b)<0); /* lower case before upper */
   return(mask(*a)<mask(*b));
 }
 
-word alfasort(x) /* also removes non_IDs from result */
-word x;
+word alfasort(word x) /* also removes non_IDs from result */
 { word a=NIL,b=NIL,hold=NIL;
   if(x==NIL)return(NIL);
   if(tl[x]==NIL)return(tag[hd[x]]!=ID?NIL:x);
@@ -1808,8 +1757,7 @@ word x;
   return(reverse(x));
 }
 
-void unsetids(d) /* d is a list of identifiers */
-word d;
+void unsetids(word d) /* d is a list of identifiers */
 { while(d!=NIL)
        { if(tag[hd[d]]==ID)id_val(hd[d])=UNDEF,
 			   id_who(hd[d])=NIL,
@@ -1829,7 +1777,7 @@ void unload()  /* clear out current script in preparation for reloading */
   unsetids(newtyps);
   newtyps=NIL;
   unsetids(freeids);
-  freeids=includees=SGC=freeids=TABSTRS=ND=NIL;
+  freeids=includees=SGC=TABSTRS=ND=NIL;
   unsetids(internals);
   internals=NIL;
   while(files!=NIL)
@@ -1840,8 +1788,7 @@ void unload()  /* clear out current script in preparation for reloading */
   for(x=hd[ld_stuff];x!=NIL;x=tl[x])unsetids(fil_defs(hd[x]));
 }
 
-void yyerror(s)  /* called by YACC in the event of a syntax error */
-char *s;
+void yyerror(char *s)  /* called by YACC in the event of a syntax error */
 { extern int yychar;
   if(SYNERR)return;  /* error already reported, so shut up */
   if(echoing)printf("\n");
@@ -1861,9 +1808,9 @@ char *s;
   reset_lex();
 }
 
-void syntax(s) /* called by actions after discovering a (context sensitive) syntax
+void syntax(char *s)
+           /* called by actions after discovering a (context sensitive) syntax
               error */
-char *s;
 { if(SYNERR)return;
   if(echoing)printf("\n");
   printf("syntax error: %s",s);
@@ -1927,7 +1874,7 @@ word process()
   sighandler oldsig;
   oldsig = signal(SIGINT,SIG_IGN);
         /* do not let parent receive interrupts intended for child */
-  if(pid=fork())
+  if((pid=fork()))
   { /* parent */
     int status; /* see man 2 exit, wait, signal */
     if(pid== -1)
@@ -1957,18 +1904,15 @@ word process()
       compilation it reverts to the top level prompt - see set_jmp and
       signal(reset) in commandloop() */
 
-void primdef(n,v,t)      /*  used by "primlib", see below  */
-char *n;
-word v,t;
+void primdef(char *n,word v,word t)      /*  used by "primlib", see below  */
 { word x;
   x= make_id(n);
   primenv=cons(x,primenv);
   id_val(x)= v;
   id_type(x)=t; }
 
-void predef(n,v,t)      /*  used by "privlib" and "stdlib", see below  */
-char *n;
-word v,t;
+void predef(char *n,word v,word t)
+                     /* used by "privlib" and "stdlib", see below */
 { word x;
   x= make_id(n);
   addtoenv(x);
@@ -2054,8 +1998,7 @@ word mktiny()
   return(sto_dbl(x));
 }
 
-word size(x)     /*  measures the size of a compiled expression   */
-word x;
+word size(word x)     /*  measures the size of a compiled expression   */
 { word s;
   s= 0;
   while(tag[x]==CONS||tag[x]==AP)
@@ -2076,17 +2019,14 @@ void makedump()
 	  "TO FIX THIS PROBLEM PLEASE GET SUPER-USER TO EXECUTE `mira'\n");
 	  if(making&&!make_status)make_status=1;
 	  return; }
-  /* printf("dumping to %s\n",obf); /* DEBUG */
   unlinkme=obf;
-  /* fchmod(fileno(f),0666); /* to make dumps writeable by all */ /* no! */
   setprefix(current_script);
   dump_script(files,f);
   unlinkme=NULL;
   fclose(f);
 }
 
-void undump(t) /* restore t from dump, or recompile if necessary */
-char *t;
+void undump(char *t) /* restore t from dump, or recompile if necessary */
 { extern word BAD_DUMP,CLASHES;
   if(!normal(t)&&!initialising)return loadfile(t);
   /* except for prelude, only .m files have dumps */
@@ -2110,7 +2050,6 @@ char *t;
   loading=1;
   oldfiles=NIL;
   unload();
-/*if(!initialising)printf("undumping from %s\n",obf); /* DEBUG */
   if(!initialising&&!making) /* ie this is the main script */
     sigflag=0,
     oldsig=signal(SIGINT,(sighandler)sigdefer); 
@@ -2126,7 +2065,6 @@ char *t;
   if(!initialising&&!making) /* restore interrupt handler */
     (void)signal(SIGINT,oldsig);
   if(sigflag)sigflag=0,(*oldsig)(); /* take deferred interrupt */
-  /*if(!initialising)printf("%s undumped\n",obf); /* DEBUG */
   if(CLASHES!=NIL)
     { if(ideep==0)printf("cannot load %s ",obf),
                   printlist("due to name clashes: ",alfasort(CLASHES));
@@ -2140,16 +2078,19 @@ char *t;
 	fprintf(stderr,"panic: %s contains errors\n",obf),
         exit(1); } /* beware of dangling else ! (whence {}) */
   else
-  if(verbosity||magic||mkexports) /* for less silent making s/mkexports/making/ */
-  if(files==NIL)printf("%s contains syntax error\n",t); else
-  if(ND!=NIL)printf("%s contains undefined names or type errors\n",t); else
-  if(!making&&!magic)printf("%s\n",t); /* added &&!magic 26.11.2019 */
+  /* for less silent making s/mkexports/making/ */
+  if(verbosity||magic||mkexports) {
+    if(files==NIL)printf("%s contains syntax error\n",t);
+    else {
+      if(ND!=NIL)printf("%s contains undefined names or type errors\n",t);
+      else if(!making&&!magic)printf("%s\n",t); /* added &&!magic 26.11.2019 */
+    }
+  }
   if(files!=NIL&&!making&!initialising)unfixexports();
   loading=0;
 }
 
-void unlinkx(t) /* remove orphaned .x file */
-char *t;
+void unlinkx(char *t) /* remove orphaned .x file */
 { char *obf=linebuf;
   (void)strcpy(obf,t);
   (void)strcpy(obf+strlen(t)-1,obsuffix);
@@ -2172,16 +2113,14 @@ void fpe_error()
 
 char fbuf[512];
 
-void filecopy(fil) /* copy the file "fil" to standard out */
-char *fil;
+void filecopy(char *fil) /* copy the file "fil" to standard out */
 { word in=open(fil,0),n;
   if(in== -1)return;
   while((n=read(in,fbuf,512))>0)write(1,fbuf,n);
   close(in);
 }
 
-void filecp(fil1,fil2) /* copy file "fil1" to "fil2" (like `cp') */
-char *fil1,*fil2;
+void filecp(char *fil1,char *fil2) /* copy file "fil1" to "fil2" (like `cp') */
 { word in=open(fil1,0),n;
   word out=creat(fil2,0644);
   if(in== -1||out== -1)return;
