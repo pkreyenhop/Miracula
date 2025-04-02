@@ -1308,7 +1308,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
       { hd[e]=I; e=tl[e]=NIL; goto DONE; }
     hold=hd[tl[arg1]]; /* the char */
     setcell(CONS,strcons(hd[arg1],hold),ap(LEX_COUNT,arg1));
-    if(hold=='\n')hd[arg1]=(hd[arg1]>>8)+1<<8; 
+    if(hold=='\n')hd[arg1]=((hd[arg1]>>8)+1)<<8; 
     else { word col = hd[arg1]&255;
 	   col = hold=='\t'?(col/8+1)*8:col+1;
 	   hd[arg1] = hd[arg1]&(~255)|col; }
