@@ -1,0 +1,100 @@
+Differences between the releases of Miranda
+
+mira-2.066 2020-01-31
+
+* Made POSIX-compatible by replacing getw()/putw() with fread()/fwrite().
+
+mira-2.065 2020-01-24
+
+* A tiny syntax fix in reduce.c
+
+mira-2.064 2020-01-13
+
+* The Miranda source code has been revised to conform to the C11 standard and
+  to run on both 64 and 32 bit platforms. Earlier releases were 32 bit only
+  and C90.
+* Increases the default heap size from 250000 to 2500000 cells.
+
+mira-2.057 2019-12-08
+
+* Released as open source.
+* Miranda type `char' now includes all Unicode characters, which can be
+  specified by hexadecimal escape codes in char and string constants.
+  For example '\x5d2' is the Hebrew letter Gimel.
+* The lexical syntax of Miranda has been extended to include octal and
+  hexadecimal numerals - e.g. 0o777 is 511 and 0xffffffff is 4294967295.
+  See man section 11 (literals) for details of both the above.
+* Functions showoct, showhex :: num->[char] have been added to the
+  standard environment.
+* Data types with "laws", declared obsolete at release two, have finally
+  gone. Strictness annotations: `!' on fields of an algebraic data type
+  remain part of the language, see man section 20 (algebraic data types).
+* The flag -exp, for executable scripts, has gone and is replaced by
+  -exec, see man section 31/4 (Using Miranda to build UNIX commands).
+
+mira-2.044 2009-09
+
+* The environment variable MIRAPROMPT may be set to a string to be used
+  as the Miranda session prompt instead of the default "Miranda ".
+* For reading/writing binary files in UTF-8 locale, stdenv is extended by
+  readb, Stdoutb, Tofileb, Appendfileb. These behave similarly to
+  read, Stdout, Tofile, Appendfile but transfer data as bytes
+  with no conversions from/to UTF-8. See manual section 31/9.
+
+mira-2.042 2008-08
+
+* Only available as a binary for for i686-Linux
+
+mira-2.041 2008-08
+
+* Only available as a binary for Windows 32-bit cygwin
+* Detects if it is in UTF-8 locale and converts from/to UTF-8
+  on reading/writing string and char values
+* Fixes a bug in version 2.039 for Windows/Cygwin which, on certain platforms,
+  caused it to crash when compiling an algebraic data type definition
+  with parameters, such as that in the script ex/treesort.m
+
+mira-2.038
+
+* Only available for i86pc-SunOS
+
+mira-2.032 2006-05
+
+* Released as free software (but not open source).
+* The commands /nostrictif, /strictif to control enforcement of if in
+  guard syntax have gone. The if has been part of Miranda's syntax since 1988
+  so it seems pointless to retain this switch.
+  In case there are surviving if-less scripts, you can use mira -nostrictif
+  or set the environment variable NOSTRICTIF to any non-empty string.
+* New command /recheck makes mira check if any loaded script has been updated
+  before every evaluation, instead of only after /edit (/norecheck to disable).
+  Appropriate if an editor window is running concurrently with the Miranda
+  session window. The setting is remembered for subsequent sessions.
+  Formerly enabled by setting environment variable RECHECKMIRA to
+  a non-empty string - that method still works also.
+* A new flag mira -log assists debugging of miranda scripts running as
+  stand-alone programs. See manual section on using Miranda to build commands,
+  under UNIX/Miranda system interface (subsection 31/4). 
+* mira now checks that it has miralib of same version number - exits with
+  error message otherwise. An explicit mira -lib <path> overrides this but
+  it is in general inadvisable to run mira with the wrong miralib.
+* A number of minor bugs have been fixed, including one that prevented Miranda
+  from being used to write CGI scripts. 
+
+mira-2.0xx 1989-10
+
+* Added unbounded size integers, %free, faster SK reduction machine.
+* Around 550 sites by mid-90's.
+
+mira-1.009,1.016,1.019 1987-04
+
+* Added literate scripts, library mechanism: %export, %include, (n+k) patterns.
+* Around 250 sites.
+
+mira-0.292,0.293 1985-10
+
+* Beta test for VAX and Sun, distributed to 88 sites.
+
+mira-0.1 1985-05-01
+
+* Alpha test, released to the University of Kent only.
