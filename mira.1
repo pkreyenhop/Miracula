@@ -83,7 +83,8 @@ from within the miranda session by the command `/dic'.
 .B -heap SIZE
 Causes the heap to be SIZE cells (default 2500k).  This can
 changed within the miranda session by the command `/heap SIZE'.
-A cell is 9 bytes (2 words of 32 bits, and a tag field).
+A cell is 9 or 17 bytes (2 words of 32 or 64 bits, depending on
+your system, and a tag field).
 .TP
 .B -editor prog
 Causes the resident editor (usual default `\fBvi\fP') to be \fBprog\fP

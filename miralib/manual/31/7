@@ -61,7 +61,8 @@ to be set up with SIZE bytes instead of the default 24kb.
 	-heap SIZE
 Causes the heap to be set up with SIZE  cells  instead  of  the  default
 (currently 100k).  This can also be done from within the miranda session
-by the command `/heap SIZE'.  A cell currently occupies 9 bytes.
+by the command `/heap SIZE'.   A cell currently occupies 9/17 bytes on a
+32/64-bit system.
 
 	-editor name
 Causes the resident  editor  (initially  `vi',  unless  the  environment
@@ -139,8 +140,8 @@ source updates (toggled by the commands /recheck  /norecheck)  are  also
 saved in the users `.mirarc' file.
 
 The default settings of these entities, which will be picked up  by  new
-users  executing  `mira' for the first time, are dic 24000 (bytes), heap
-100000 (9-byte  cells),  editor  _v_i,  nolist,  norecheck.   The  current
+users  executing `mira' for the first time, are dic 100000 (bytes), heap
+2500000 (9/17-byte cells), editor _v_i, nolist,  norecheck.   The  current
 settings  can  be  interrogated  from  a  Miranda session by the command
 `/settings' or `/s'.
 

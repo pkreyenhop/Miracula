@@ -29,8 +29,8 @@ The sizes of either or both areas may be set by flags when invoking  the
 miranda system.  The following shows both possibilities
 	mira -dic 80000 -heap 2000000 [script]
 
-Note that the size of the heap is given in `cells' (a cell is  9  bytes,
-currently) and the size of the dictionary is in bytes.
+Note that the size of the heap is given in `cells' (a cell is 9/17 bytes
+on 32/64-bit systems) and the size of the dictionary is in bytes.
 
 The  most  recent settings of the workspace sizes are stored in the file
 ".mirarc" in the users home directory, and automatically carried over to
