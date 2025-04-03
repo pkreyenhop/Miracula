@@ -1,4 +1,3 @@
-all: mira miralib/menudriver exfiles
 #install paths relative to /
 #for linux, MacOS X, Cygwin:
 BIN=usr/bin
@@ -14,16 +13,41 @@ CFLAGS = #-O #-DCYGWIN #-DUWIN #-DIBMRISC #-Dsparc7 #-Dsparc8
 #if using gcc rather than clang try without -O first
 EX = #.exe        #needed for CYGWIN, UWIN
 YACC = byacc #Berkeley yacc, gnu yacc not compatible
+
+all: FORCE
+	@$(MAKE) mira miralib/menudriver exfiles
+
 # -Dsparc7 needed for Solaris 2.7
 # -Dsparc8 needed for Solaris 2.8 or later
-mira: big.o cmbnms.o data.o lex.o reduce.o steer.o trans.o types.o utf8.o y.tab.o \
-			    version.c miralib/.version fdate .host Makefile
-	$(CC) $(CFLAGS) -DVERS=`cat miralib/.version` -DVDATE="\"`./revdate`\"" \
-	    -DHOST="`./quotehostinfo`" version.c cmbnms.o y.tab.o data.o lex.o \
-	    big.o reduce.o steer.o trans.o types.o utf8.o -lm -o mira
+mira: big.o cmbnms.o data.o lex.o reduce.o steer.o trans.o types.o \
+      utf8.o y.tab.o version.o Makefile
+	$(CC) $(CFLAGS) -o mira version.o cmbnms.o y.tab.o data.o lex.o \
+	    big.o reduce.o steer.o trans.o types.o utf8.o -lm
 	strip mira$(EX)
+
+# It must always run this rule before building mira (or not)
+FORCE: fdate
+	@# Quietly check whether the host or last modification date have changed
+	@./hostinfo > .newhost
+	@ls -t `$(MAKE) -s sources` | ./fdate > .newvdate
+	@if cmp -s .host .newhost; \
+	 then rm .newhost; \
+	 else mv .newhost .host; \
+	 fi
+	@if cmp -s .vdate .newvdate; \
+	 then rm .newvdate; \
+	 else mv .newvdate .vdate; \
+	 fi
+
+version.o: version.c .host .vdate miralib/.version
+	$(CC) $(CFLAGS) -DVERS=`cat miralib/.version` \
+		        -DHOST="`./quotehostinfo`" \
+			-DVDATE="\"`cat .vdate`\"" \
+			-c version.c
+
 y.tab.c y.tab.h: rules.y
 	$(YACC) -d rules.y
+
 big.o cmbns.o data.o lex.o reduce.o steer.o trans.o types.o y.tab.o: \
                      data.h combs.h utf8.h y.tab.h Makefile
 data.o: .xversion
@@ -46,7 +70,6 @@ cleanup:
 	-rm -rf *.o fdate miralib/menudriver mira$(EX)
 	./unprotect
 	-rm -f miralib/preludx miralib/stdenv.x miralib/ex/*.x #miralib/ex/*/*.x
-	./hostinfo > .host
 install:
 	make -s all
 	cp mira$(EX) /$(BIN)

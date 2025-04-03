@@ -1,5 +1,7 @@
 *.x
 *.o
+/.host
+/.vdate
 /y.tab.c
 /y.tab.h
 /mira
