@@ -140,7 +140,18 @@ extern word col;
 char home_rc[pnlim+8];
 char lib_rc[pnlim+8];
 char *rc_error=NULL;
-#define badval(x) (x<1||x>478000000)
+
+/* A check only used for dic and heap sizes on the command line
+ * or from the config file and for the mira version number (like 2066) */
+#if __WORDSIZE == 32
+/* Avoid the 9-byte heap exceeding just under 3GB */
+#define badval(x) (x<1||x>350000000)
+#elif __WORDSIZE == 64
+/* No effective size limit with 64-bit pointers */
+#define badval(x) (x<1)
+#else
+# error "__WORDSIZE is unknown"
+#endif
 
 #include <setjmp.h> /* for longjmp() - see man (3) setjmp */
 jmp_buf env;
