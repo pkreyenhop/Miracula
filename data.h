@@ -76,6 +76,19 @@ extern YYSTYPE yylval;
 #define TOP (SPACE+ATOMLIMIT)
 #define isptr(x)  (ATOMLIMIT<=(x)&&(x)<TOP)
 
+/* __WORDSIZE is glibc-internal and "not intended for user use" so
+ * fall back to alternative ways to discover it at compile time. */
+#ifndef __WORDSIZE
+# include <limits.h>
+# if LONG_MAX==2147483647L
+#  define __WORDSIZE 32
+# elif LONG_MAX==9223372036854775807L
+#  define __WORDSIZE 64
+# else
+#  error "Can't discover __WORDSIZE"
+# endif
+#endif
+
 #define BACKSTOP (1l<<(__WORDSIZE-1))
 #define tlptrbit BACKSTOP
 #define tlptrbits (3l<<(__WORDSIZE-2))
