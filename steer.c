@@ -1201,7 +1201,7 @@ void namescom(word l)  /* l is an element of `files' */
 	    { word i,r,j;
 	      if(wp>1)i=(scrwd-col)/(wp-1),r=(scrwd-col)%(wp-1);
 	      else {
-	        fprintf(stderr, "Internal error: i and r used uninitialized in namescom()\n");
+	        fprintf(stderr, "Internal error: i and r used uninitialized in namescom()\nPlease report it to miranda@groups.io\n");
 		abort(); }
 	      if(i+(r>0)>tolerance)i=r=0;
 	      if(leftist)

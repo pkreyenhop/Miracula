@@ -398,7 +398,7 @@ static word transtries(word id,word x)
   if(fallible(hd[x])) /* add default last case */
     { word oldn=tag[id]==ID?datapair(get_id(id),0):0;
       r=ap(BADCASE,h=cons(oldn,0));
-      if (x==NIL) fprintf(stderr, "Internal error: `earliest' is used uninitialised in transtries()\n");
+      if (x==NIL) fprintf(stderr, "Internal error: `earliest' is used uninitialised in transtries()\nPlease report it to miranda@groups.io\n");
 	 /* 0 is placeholder for here-info */
          /* oldn omitted if id is pattern - FIX LATER */ }
   else r=codegen(earliest=hd[x]), x=tl[x];
