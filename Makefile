@@ -8,7 +8,7 @@ MAN=usr/share/man/man1
 #LIB=usr/local/lib#beware no spaces after LIB
 #MAN=usr/local/man/man1
 CC = gcc
-CFLAGS = -Wall #-O #-DCYGWIN #-DUWIN #-DIBMRISC #-Dsparc7 #-Dsparc8
+CFLAGS = -g -Wall #-O #-DCYGWIN #-DUWIN #-DIBMRISC #-Dsparc7 #-Dsparc8
 #be wary of using anything higher than -O as the garbage collector may fall over
 #if using gcc rather than clang try without -O first
 EX = #.exe        #needed for CYGWIN, UWIN
@@ -23,7 +23,6 @@ mira: big.o cmbnms.o data.o lex.o reduce.o steer.o trans.o types.o \
       utf8.o y.tab.o version.o Makefile
 	$(CC) $(CFLAGS) -o mira version.o cmbnms.o y.tab.o data.o lex.o \
 	    big.o reduce.o steer.o trans.o types.o utf8.o -lm
-	strip mira$(EX)
 
 # It must always run this rule before building mira (or not)
 FORCE: fdate
@@ -60,7 +59,6 @@ cmbnms.c combs.h: gencdecs
 miralib/menudriver: menudriver.c Makefile
 	$(CC) $(CFLAGS) menudriver.c -o miralib/menudriver
 	chmod 755 miralib/menudriver$(EX)
-	strip miralib/menudriver$(EX)
 #alternative: use shell script
 #	ln -s miralib/menudriver.sh miralib/menudriver
 tellcc:
@@ -72,10 +70,12 @@ cleanup:
 	-rm -f miralib/preludx miralib/stdenv.x miralib/ex/*.x #miralib/ex/*/*.x
 install:
 	make -s all
+	strip mira$(EX)
 	cp mira$(EX) /$(BIN)
 	cp mira.1 /$(MAN)
 	rm -rf /$(LIB)/miralib
 	./protect
+	strip miralib/menudriver$(EX)
 	cp -pPR miralib /$(LIB)/miralib
 	./unprotect
 	find /$(LIB)/miralib -exec chown `./ugroot` {} \;
