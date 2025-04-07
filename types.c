@@ -1512,7 +1512,7 @@ void out_formal1(FILE *f,word x)
 	     x=tl[x]; fprintf(f,","); }
       out_pattern(f,hd[x]); fprintf(f,","); out_pattern(f,tl[x]); 
       fprintf(f,")"); } else
-  if(tag[x]==INT&&neg(x)||tag[x]==DOUBLE&&get_dbl(x)<0)
+  if((tag[x]==INT&&neg(x))||(tag[x]==DOUBLE&&get_dbl(x)<0))
     { fprintf(f,"("); out(f,x); fprintf(f,")"); } /* -ve numbers */
   else
   out(f,x);  /* all other cases */
@@ -1583,7 +1583,7 @@ void out_type2(word t)
 	   if(isvar_t(t))
 	   { word n=gettvar(t);
 #if 0
-	   /*if(n<=26)putchar('a'+n-1); else /* experiment */
+	   if(n<=26)putchar('a'+n-1); else /* experiment */
 #endif
 	     if(n>0&&n<7)while(n--)putchar('*'); /* 6 stars max */
 	     else printf("%ld",n); }else

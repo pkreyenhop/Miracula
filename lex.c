@@ -70,7 +70,10 @@ struct passwd *getpwnam();
 #endif
 
 char *gethome(char *n) /* for expanding leading `~' in tokens and pathnames */
-{ struct passwd *pw;
+{
+#ifdef okgetpwnam
+  struct passwd *pw;
+#endif
   if(n[0]=='\0')return(getenv("HOME"));
 #ifdef okgetpwnam
   if(pw=getpwnam(n))return(pw->pw_dir); 
@@ -180,7 +183,7 @@ int getch() /* keeps track of current position in the variable "col"(column) */
   if(ch==EOF&&!atnl&&tl[fileq]==NIL) /* badly terminated top level file */
     { atnl=1; return('\n'); }
   if(atnl)
-    { if((line_no==0&&!commandmode||magic&&line_no==1)&&litstack==NIL)
+    { if(((line_no==0&&!commandmode)||(magic&&line_no==1&&litstack==NIL)))
 	litmain=literate= (ch=='>')||litname(get_fil(current_file));
       if(literate)
 	{ word i=0;
@@ -191,7 +194,7 @@ int getch() /* keeps track of current position in the variable "col"(column) */
 		     if(i==0&&line_no>1)chblank(dicp); i++;
 		     if(echoing)spaces(lverge),fputs(dicp,stdout);
 		     ch=getc(s_in); }
-	  if((i>1||line_no==1&&i==1)&&ch!=EOF)chblank(dicp);
+	  if((i>1||(line_no==1&&i==1))&&ch!=EOF)chblank(dicp);
 	  if(ch=='>')
 	    { if(echoing)putchar(ch),spaces(lverge);ch=getc(s_in); }
 	} /* supports alternative `literate' comment convention */
@@ -242,19 +245,19 @@ int getlitch()
         { if((ch1&0xc0)!=0x80)
             return -5; /* not valid UTF8 */
           c=getch();
-          return sto_char((ch&0x1f)<<6|ch1&0x3f); }
+          return sto_char((ch&0x1f)<<6|(ch1&0x3f)); }
       word ch2=c=getch();
       if((ch&0xf0)==0xe0) /* 3 bytes */
         { if((ch1&0xc0)!=0x80||(ch2&0xc0)!=0x80)
             return -5; /* not valid UTF8 */
           c=getch();
-          return sto_char((ch&0xf)<<12|(ch1&0x3f)<<6|ch2&0x3f); }
+          return sto_char((ch&0xf)<<12|(ch1&0x3f)<<6|(ch2&0x3f)); }
       word ch3=c=getch();
       if((ch&0xf8)==0xf0) /* 4 bytes, beyond basic multilingual plane */
         { if((ch1&0xc0)!=0x80||(ch2&0xc0)!=0x80||(ch3&0xc0)!=0x80)
             return -5; /* not valid UTF8 */
           c=getch();
-          return((ch&7)<<18|(ch1&0x3f)<<12|(ch2&0x3f)<<6|ch3&0x3f); }
+          return((ch&7)<<18|(ch1&0x3f)<<12|(ch2&0x3f)<<6|(ch3&0x3f)); }
       return(-5);
    /* not UTF8 */
     }
@@ -277,7 +280,9 @@ int getlitch()
                 char hold[8];
                 ch = c;
                 int count=0;
-             /* while(ch=='0'&&isxdigit(peekch()))ch=getch(); /* H-lose leading 0s */
+#ifdef HASKELL
+             while(ch=='0'&&isxdigit(peekch()))ch=getch(); /* lose leading 0s */
+#endif
                 while(isxdigit(ch)&&count<N)
                      hold[count++]=ch,ch=getch();
                 /* read upto N hex digits */
@@ -290,14 +295,19 @@ int getlitch()
     default: if('0'<=ch&&ch<='9')
              { word n=ch-'0',count=1,N=3; /* N=8 for Haskell escape rules */
                ch = c;
-            /* while(ch=='0'&&isdigit(peekch()))ch=getch(); /* H-lose leading 0s */
+#ifdef HASKELL
+               while(ch=='0'&&isdigit(peekch()))ch=getch(); /* lose leading 0s */
+#endif
                while(isdigit(ch)&&count<N)
                /* read upto N digits */
                { n = 10*n+ch-'0';
                  count++;
                  ch = getch(); }
                c = ch;
-               return /* n>UMAX?-4:  /* H \decimal out of range */
+               return
+#ifdef HASKELL
+                      n>UMAX?-4:  /* \decimal out of range */
+#endif
                       sto_char(n); }
              if(ch=='\''||ch=='"'||ch=='\\'||ch=='`')return(ch);  /* see note */
              if(ch=='&')return -7; /* Haskell null escape, accept silently */
@@ -312,7 +322,7 @@ char *rdline()  /* used by the "!" command -- see steer.c */
   char *p=linebuf;
   word ch=getchar(),expansion=0;
   while(ch==' '||ch=='\t')ch=getchar();
-  if(ch=='\n'||ch=='!'&&!(*linebuf))
+  if(ch=='\n'||(ch=='!'&&!(*linebuf)))
     { /* "!!" or "!" on its own means repeat last !command */
       if(*linebuf)printf("!%s",linebuf);
       while(ch!='\n'&&ch!=EOF)ch=getchar();
@@ -400,7 +410,7 @@ int yylex()         /* called by YACC to get the next symbol */
                      dicq[-1] = ' ',
                      *dicq++ = '\0';
                    return(identifier(0)); }
-  if('0'<=c&&c<='9'||c=='.'&&peekdig())
+  if(('0'<=c&&c<='9')||(c=='.'&&peekdig()))
   { if(c=='0'&&tolower(peekch())=='x')
       hexnumeral(); else /* added 21.11.2013 */
     if(c=='0'&&tolower(peekch())=='o')
@@ -547,7 +557,7 @@ int yylex()         /* called by YACC to get the next symbol */
 		  else yylval=ap(readvals(0,0),OFFSIDE);
 		  return(CONST); }}
             if(c=='$')
-              { if(!(inlex==2||commandmode&&compiling))
+              { if(!(inlex==2||(commandmode&&compiling)))
                   syntax("unexpected symbol $$\n"); else
                 { c=getch();
                   if(inlex) { yylval=mklexvar(0); return(NAME); }
@@ -563,12 +573,13 @@ int yylex()         /* called by YACC to get the next symbol */
 }}
 
 void layout()
-{L:while(c==' '||c=='\n'&&!commandmode||c=='\t') c= getch(); 
+{L:while(c==' '||(c=='\n'&&!commandmode)||c=='\t') c= getch(); 
    if(c==EOF&&commandmode){ c='\n'; return; }
-   if(c=='|'&&peekch()=='|'        /* ||comments */
-      || col==1&&line_no==1        /* added 19.11.2013 */
-         &&c=='#'&&peekch()=='!')  /* UNIX magic string */
-     { while((c=getch())!='\n'&&c!=EOF);
+   if((c=='|'&&peekch()=='|')      /* ||comments */
+      ||(col==1&&line_no==1        /* added 19.11.2013 */
+         &&c=='#'&&peekch()=='!')) /* UNIX magic string */
+     { while((c=getch())!='\n'&&c!=EOF)
+         ;
        if(c==EOF&&!commandmode)return;
        c= '\n';
        goto L; }
@@ -726,7 +737,7 @@ int openfile(char *n) /* returns 0 or 1 as indication of success
 
 int identifier(int s)  /* recognises reserved words */
        /* "s" flags looking for ul reserved words only */
-{ extern word lastid,initialising;
+{ extern word lastid;
   if(inbnf==1) 
     { /* only reserved nonterminals are `empty', `end', `error', `where' */
       if(is("empty ")||is("e_m_p_t_y"))return(EMPTYSY); else
@@ -870,11 +881,11 @@ word directive() /* these are of the form "%identifier" */
 }
 
 int okid(int ch)
-{ return('a'<=ch&&ch<='z'||'A'<=ch&&ch<='Z'||'0'<=ch&&ch<='9'
+{ return(('a'<=ch&&ch<='z')||('A'<=ch&&ch<='Z')||('0'<=ch&&ch<='9')
           ||ch=='_'||ch=='\''); }
 
 int okulid(int ch)
-{ return('a'<=ch&&ch<='z'||'A'<=ch&&ch<='Z'||'0'<=ch&&ch<='9'
+{ return(('a'<=ch&&ch<='z')||('A'<=ch&&ch<='Z')||('0'<=ch&&ch<='9')
           ||ch=='_'||ch==''||ch=='\''); }
 
 void kollect(int (*f)(word))
@@ -936,8 +947,7 @@ void numeral()
 }
 
 void hexnumeral()   /* added 21.11.2013 */
-{ word nflag=1;
-  dicq= dicp;
+{ dicq= dicp;
   *dicq++ = c, c=getch(); /* 0 */
   *dicq++ = c, c=getch(); /* x */
   if(!isxdigit(c)&&c!='.')syntax("malformed hex number\n");
@@ -968,8 +978,7 @@ void hexnumeral()   /* added 21.11.2013 */
 }
 
 void octnumeral()   /* added 21.11.2013 */
-{ word nflag=1;
-  dicq= dicp;
+{ dicq= dicp;
   if(!isdigit(c))syntax("malformed octal number\n");
   while(c=='0'&&isdigit(peekch()))c=getch(); /* skip zeros before first nonzero digit */
   while(isdigit(c)&&c<='7')
@@ -1075,7 +1084,7 @@ void mkprivate(word x)
                   /* disguise identifiers prior to removal from environment */
               /* used in setting up prelude - see main() in steer.c */
 { while(x!=NIL)
-  { char *s = get_id(hd[x]);
+  { /* char *s = get_id(hd[x]); unused variable & get_id has no side effects */
     get_id(hd[x])[0] += 128;  /* hack to make private internal name */
     x = tl[x]; }                /* NB - doesn't change hashbucket */
   inprelude=0;

@@ -40,7 +40,7 @@ int isnat(word x)
 word sto_int(long long i)  /* store C long long as mira bigint */
 { word s,x;
   if(i<0)s=SIGNBIT,i= -i; else s=0;
-  x=make(INT,s|i&MAXDIGIT,0);
+  x=make(INT,s|(i&MAXDIGIT),0);
   if(i>>=DIGITWIDTH)
     { word *p = &rest(x);
       *p=make(INT,i&MAXDIGIT,0),p= &rest(*p);
@@ -78,7 +78,7 @@ word bigplus(word x, word y)
 word big_plus(word x,word y,int signbit) /* ignore input signs, treat x,y as positive */
 { word d=digit0(x)+digit0(y);
   word carry = ((d&IBASE)!=0);
-  word r = make(INT,signbit|d&MAXDIGIT,0); /* result */
+  word r = make(INT,signbit|(d&MAXDIGIT),0); /* result */
   word *z = &rest(r); /* pointer to rest of result */
   x = rest(x); y = rest(y);
   while(x&&y) /* this loop has been unwrapped once, see above */
@@ -350,13 +350,12 @@ double bigtodbl(word x)
    but is used without surrounding sto_/set)dbl() only in compare() */
 
 #if 0
-/* not currently used
+/* not currently used */
 long double bigtoldbl(word x)
 { int s=neg(x);
   long double b=1.0L, r=digit0(x);
   x = rest(x);
   while(x)b=b*IBASE,r=r+b*digit(x),x=rest(x);
-/*printf("bigtoldbl returns %Le\n",s?-r:r); /* DEBUG
   if(s)return(-r);
   return(r);
 } /* not compatible with std=c90, lib fns eg sqrtl broken */
@@ -613,7 +612,7 @@ norm1(word x)
 #endif
 
 #if 0
-/* stall(s)
+stall(s)
 char *s;
 { fprintf(stderr,"big integer %s not yet implemented\n",s);
   exit(0);
@@ -624,4 +623,3 @@ char *s;
 #endif
 
 /* END OF MIRANDA INTEGER PACKAGE */
-

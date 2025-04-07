@@ -179,12 +179,10 @@ int main(int argc,char *argv[])
 { word manonly=0;
   char *home, *prs;
   int okhome_rc; /* flags valid HOME/.mirarc file present */
-  char *argv0=argv[0];
   char *initscript;
   int badlib=0;
   extern int ARGC; extern char **ARGV;
-  extern word newtyps,algshfns;
-  char *progname=rindex(argv[0],'/');
+  extern word newtyps;
   cstack= &manonly;
 /* used to indicate the base of the C stack for garbage collection purposes */
   unlimit_stack();
@@ -202,43 +200,43 @@ int main(int argc,char *argv[])
   the last such looked at.  */
   UTF8OUT=UTF8=utf8test();
   while(argc>1&&argv[1][0]=='-') /* strip off flags */
-  { if(strcmp(argv[1],"-stdenv")==0)nostdenv=1; else
-    if(strcmp(argv[1],"-count")==0)atcount=1; else
-    if(strcmp(argv[1],"-list")==0)listing=1; else
-    if(strcmp(argv[1],"-nolist")==0)listing=0; else
-    if(strcmp(argv[1],"-nostrictif")==0)strictif=0; else
-    if(strcmp(argv[1],"-gc")==0)atgc=1; else
-    if(strcmp(argv[1],"-object")==0)atobject=1; else
-    if(strcmp(argv[1],"-lib")==0)
+  { if(strcmp(argv[1],"-stdenv")==0)nostdenv=1;
+    else if(strcmp(argv[1],"-count")==0)atcount=1;
+    else if(strcmp(argv[1],"-list")==0)listing=1;
+    else if(strcmp(argv[1],"-nolist")==0)listing=0;
+    else if(strcmp(argv[1],"-nostrictif")==0)strictif=0;
+    else if(strcmp(argv[1],"-gc")==0)atgc=1;
+    else if(strcmp(argv[1],"-object")==0)atobject=1;
+    else if(strcmp(argv[1],"-lib")==0)
       { argc--,argv++;
 	if(argc==1)missparam("lib"); else miralib=argv[1];
-      } else
-    if(strcmp(argv[1],"-dic")==0)
+      }
+    else if(strcmp(argv[1],"-dic")==0)
       { argc--,argv++;
 	if(argc==1)missparam("dic"); else
 	if(sscanf(argv[1],"%ld",&DICSPACE)!=1||badval(DICSPACE))
 	  fprintf(stderr,"mira: bad value after flag \"-dic\"\n"),exit(1);
-      } else
-    if(strcmp(argv[1],"-heap")==0)
+      }
+    else if(strcmp(argv[1],"-heap")==0)
       { argc--,argv++;
 	if(argc==1)missparam("heap"); else
 	if(sscanf(argv[1],"%ld",&SPACELIMIT)!=1||badval(SPACELIMIT))
 	  fprintf(stderr,"mira: bad value after flag \"-heap\"\n"),exit(1);
-      } else
-    if(strcmp(argv[1],"-editor")==0)
+      }
+    else if(strcmp(argv[1],"-editor")==0)
       { argc--,argv++;
 	if(argc==1)missparam("editor");
 	else editor=argv[1],fixeditor();
-      } else
-    if(strcmp(argv[1],"-hush")==0)verbosity=0; else
-    if(strcmp(argv[1],"-nohush")==0)verbosity=1; else
-    if(strcmp(argv[1],"-exp")==0||strcmp(argv[1],"-log")==0)
+      }
+    else if(strcmp(argv[1],"-hush")==0)verbosity=0;
+    else if(strcmp(argv[1],"-nohush")==0)verbosity=1;
+    else if(strcmp(argv[1],"-exp")==0||strcmp(argv[1],"-log")==0)
       fprintf(stderr,"mira: obsolete flag \"%s\"\n"
               "use \"-exec\" or \"-exec2\", see manual\n",
-              argv[1]),exit(1); else
-    if(strcmp(argv[1],"-exec")==0) /* replaces -exp 26.11.2019 */
-      ARGC=argc-2,ARGV=argv+2,magic=1,verbosity=0; else
-    if(strcmp(argv[1],"-exec2")==0) /* version of -exec for debugging CGI scripts */
+              argv[1]),exit(1);
+    else if(strcmp(argv[1],"-exec")==0) /* replaces -exp 26.11.2019 */
+      ARGC=argc-2,ARGV=argv+2,magic=1,verbosity=0;
+    else if(strcmp(argv[1],"-exec2")==0) /* version of -exec for debugging CGI scripts */
       { if(argc<=2)fprintf(stderr,"incorrect use of -exec2 flag, missing filename\n"),exit(1);
         char *logfilname, *p=strrchr(argv[2],'/');
         FILE *fil=NULL;
@@ -250,16 +248,16 @@ int main(int argc,char *argv[])
         /* process requires write permission on local directory "miralog" */
         if(fil)dup2(fileno(fil),2); /* redirect stderr to log file */
         else fprintf(stderr,"could not open %s\n",logfilname);
-        ARGC=argc-2,ARGV=argv+2,magic=1,verbosity=0; } else
-    if(strcmp(argv[1],"-man")==0){ manonly=1; break; } else
-    if(strcmp(argv[1],"-version")==0)v_info(0),exit(0); else
-    if(strcmp(argv[1],"-V")==0)v_info(1),exit(0); else
-    if(strcmp(argv[1],"-make")==0) making=1,verbosity=0; else
-    if(strcmp(argv[1],"-exports")==0) making=mkexports=1,verbosity=0; else
-    if(strcmp(argv[1],"-sources")==0) making=mksources=1,verbosity=0; else
-    if(strcmp(argv[1],"-UTF-8")==0) UTF8=1; else
-    if(strcmp(argv[1],"-noUTF-8")==0) UTF8=0; else
-    fprintf(stderr,"mira: unknown flag \"%s\"\n",argv[1]),exit(1);
+        ARGC=argc-2,ARGV=argv+2,magic=1,verbosity=0; }
+    else if(strcmp(argv[1],"-man")==0){ manonly=1; break; }
+    else if(strcmp(argv[1],"-version")==0)v_info(0),exit(0);
+    else if(strcmp(argv[1],"-V")==0)v_info(1),exit(0);
+    else if(strcmp(argv[1],"-make")==0) making=1,verbosity=0;
+    else if(strcmp(argv[1],"-exports")==0) making=mkexports=1,verbosity=0;
+    else if(strcmp(argv[1],"-sources")==0) making=mksources=1,verbosity=0;
+    else if(strcmp(argv[1],"-UTF-8")==0) UTF8=1;
+    else if(strcmp(argv[1],"-noUTF-8")==0) UTF8=0;
+    else fprintf(stderr,"mira: unknown flag \"%s\"\n",argv[1]),exit(1);
     argc--,argv++; }
   if(argc>2&&!magic&&!making)fprintf(stderr,"mira: too many args\n"),exit(1);
   if(!miralib) /* no -lib flag */
@@ -373,7 +371,7 @@ int main(int argc,char *argv[])
 		   { s=addextn(1,*++argv);
 		     if(s==dicp)keep(dicp);
                      undump(s);
-		     if(ND!=NIL||files==NIL&&oldfiles!=NIL)
+		     if(ND!=NIL||(files==NIL&&oldfiles!=NIL))
 		       { if(make_status==1)make_status=0;
 		         make_status=strcons(s,make_status); }
 		     /* keep list of source files with error-dumps */
@@ -523,14 +521,14 @@ word rc_read(char *rcfile)
 }
 
 void fixeditor()
-{ if(strcmp(editor,"vi")==0)editor="vi +!"; else
-  if(strcmp(editor,"pico")==0)editor="pico +!"; else
-  if(strcmp(editor,"nano")==0)editor="nano +!"; else
-  if(strcmp(editor,"joe")==0)editor="joe +!"; else
-  if(strcmp(editor,"jpico")==0)editor="jpico +!"; else
-  if(strcmp(editor,"vim")==0)editor="vim +!"; else
-  if(strcmp(editor,"gvim")==0)editor="gvim +! % &"; else
-  if(strcmp(editor,"emacs")==0)editor="emacs +! % &";
+{ if(strcmp(editor,"vi")==0)editor="vi +!";
+  else if(strcmp(editor,"pico")==0)editor="pico +!";
+  else if(strcmp(editor,"nano")==0)editor="nano +!";
+  else if(strcmp(editor,"joe")==0)editor="joe +!";
+  else if(strcmp(editor,"jpico")==0)editor="jpico +!";
+  else if(strcmp(editor,"vim")==0)editor="vim +!";
+  else if(strcmp(editor,"gvim")==0)editor="gvim +! % &";
+  else if(strcmp(editor,"emacs")==0)editor="emacs +! % &";
   else { char *p=rindex(editor,'/');
 	 if(p==0)p=editor; else p++;
 	 if(strcmp(p,"vi")==0)strcat(p," +!");
@@ -701,7 +699,8 @@ word parseline(word t,FILE *f,word fil)
     if(ch=='|')
        { ch=getc(f);
 	 if(ch=='|') /* leading comment */
-	   { while((ch=getc(f))!='\n'&&ch!=EOF); 
+	   { while((ch=getc(f))!='\n'&&ch!=EOF)
+	       ; 
 	     if(ch!=EOF)continue; }
 	 else ungetc(ch,f); }
     if(ch==EOF)return(EOF);
@@ -764,7 +763,7 @@ void reset() /* interrupt catcher - see call to signal in commandloop */
 { extern word lineptr,ATNAMES,current_id;
   extern int blankerr,collecting;
 #if 0
-  /*if(!making)  /* see note below
+  if(!making)  /* see note below */
     (void)signal(SIGINT,SIG_IGN); /* dont interrupt me while I'm tidying up */
 #endif
   if(collecting)gcpatch();
@@ -906,7 +905,7 @@ void command()
                  /* could get multiple copies of filename in dictionary
 		    - FIX LATER */
 		 if(t)errs=errline=0; /* moved here from reset() */
-		 if(t)if(strcmp(t,current_script)||files==NIL&&okdump(t))
+		 if(t)if(strcmp(t,current_script)||(files==NIL&&okdump(t)))
 			{ extern word CLASHES;
 			  CLASHES=NIL;  /* normally done by load_script */
 			  undump(t); /* does not always call load_script */
@@ -1201,6 +1200,9 @@ void namescom(word l)  /* l is an element of `files' */
 	  if(wp&&col+w>=scrwd)
 	    { word i,r,j;
 	      if(wp>1)i=(scrwd-col)/(wp-1),r=(scrwd-col)%(wp-1);
+	      else {
+	        fprintf(stderr, "Internal error: i and r used uninitialized in namescom()\n");
+		abort(); }
 	      if(i+(r>0)>tolerance)i=r=0;
 	      if(leftist)
 	        for(col=0;col<wp;)
@@ -1266,7 +1268,7 @@ void loadfile(char *t)
   s_in = (FILE *)hd[hd[fileq]];
   adjust_prefix(t);
 #if 0
-/*if(magic&&!initialising)
+  if(magic&&!initialising)
     { if(!(getc(s_in)=='#'&&getc(s_in)=='!'))
 	{ files=NIL; return; }
       while(getc(s_in)!='\n');
@@ -1307,7 +1309,7 @@ void loadfile(char *t)
     files=append1(files,mkincludes(includees)),includees=NIL;
   ld_stuff=NIL;
   if(!SYNERR)
-    { if(verbosity||making&&!mkexports&&!mksources)
+    { if(verbosity||(making&&!mkexports&&!mksources))
 	printf("checking types in %s\n",t);
       checktypes();
     }
@@ -1331,7 +1333,8 @@ void loadfile(char *t)
       else exports=append1(alfasort(c),exports);
       if(n!=NIL)
 	{ printf("redundant entr%s in export list:",tl[n]==NIL?"y":"ies"); 
-	  while(n!=NIL)printf(" -%s",get_id(hd[n])),n=tl[n]; n=1; /* flag */
+	  while(n!=NIL)printf(" -%s",get_id(hd[n])),n=tl[n];
+	  n=1; /* flag */
 	  putchar('\n'); }
       if(u!=NIL)exports=NIL,
 	        printlist("undefined names in export list: ",u);
@@ -1546,7 +1549,7 @@ word mkincludes(word includees)
          setjmp(env); /* will return here on blankerr (via reset) */
 	 while(includees!=NIL&&!make_status) /* stop at first bad includee */
 	      { undump((char *)hd[hd[hd[includees]]]);
-	        if(ND!=NIL||files==NIL&&oldfiles!=NIL)make_status=1;
+	        if(ND!=NIL||(files==NIL&&oldfiles!=NIL))make_status=1;
 	        /* any errors in dump? */
 		includees=tl[includees];
 	      } /* obscure bug - undump above can reinvoke compiler, which
@@ -1791,7 +1794,7 @@ void unsetids(word d) /* d is a list of identifiers */
 }
 
 void unload()  /* clear out current script in preparation for reloading */
-{ extern word TABSTRS,SGC,speclocs,newtyps,rv_script,algshfns,nextpn,nolib,
+{ extern word TABSTRS,SGC,speclocs,newtyps,rv_script,algshfns,nextpn,
 	     includees,freeids;
   word x;
   sorted=0;

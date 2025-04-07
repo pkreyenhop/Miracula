@@ -46,7 +46,7 @@ unicode fromUTF8(FILE *fil)
     { /* 2 bytes */
       if((nextch(c1))==EOF)err2(c0,c1); 
       if((c1&0xc0)!=0x80)err2(c0,c1);
-      return((c0&0x1f)<<6|c1&0x3f);
+      return((c0&0x1f)<<6|(c1&0x3f));
     }
   if((c0&0xf0)==0xe0)
     { /* 3 bytes */
@@ -54,7 +54,7 @@ unicode fromUTF8(FILE *fil)
       if((c1&0xc0)!=0x80)err2(c0,c1);
       if((nextch(c2))==EOF)err3(c0,c1,c2);
       if((c2&0xc0)!=0x80)err3(c0,c1,c2);
-      return((c0&0xf)<<12|(c1&0x3f)<<6|c2&0x3f);
+      return((c0&0xf)<<12|(c1&0x3f)<<6|(c2&0x3f));
     }
   if((c0&0xf8)==0xf0)
     { /* 4 bytes */
@@ -64,9 +64,10 @@ unicode fromUTF8(FILE *fil)
       if((c2&0xc0)!=0x80)err3(c0,c1,c2);
       if((nextch(c3))==EOF)err4(c0,c1,c2,c3);
       if((c3&0xc0)!=0x80)err4(c0,c1,c2,c3);
-      return((c0&7)<<18|(c1&0x3f)<<12|(c2&0x3f)<<6|c3&0x3f);
+      return((c0&7)<<18|(c1&0x3f)<<12|(c2&0x3f)<<6|(c3&0x3f));
     }
   err(c0);
+  return(EOF); /* Never happens 'cos err() exits; silence compiler warning */
 }
 
 void outUTF8(unicode u, FILE *fil)
@@ -75,14 +76,14 @@ void outUTF8(unicode u, FILE *fil)
     out(u,fil); else
   if(u<=0x7ff)
   /* latin1 and other chars requiring 2 octets */
-    out(0xc0|(u&0x7c0)>>6,fil),out(0x80|u&0x3f,fil); else
+    out(0xc0|(u&0x7c0)>>6,fil),out(0x80|(u&0x3f),fil); else
   if(u<=0xffff)
   /* to here is basic multilingual plane */
-    out(0xe0|(u&0xf000)>>12,fil),out(0x80|(u&0xfc0)>>6,fil),out(0x80|u&0x3f,fil); else
+    out(0xe0|(u&0xf000)>>12,fil),out(0x80|(u&0xfc0)>>6,fil),out(0x80|(u&0x3f),fil); else
   if(u<=0x10ffff)
   /* other planes - rarely used - 4 octets */
     out(0xf0|(u&0x1c0000)>>18,fil),out(0x80|(u&0x3f000)>>12,fil),out(0x80|(u&0xfc0)>>6,fil),
-        out(0x80|u&0x3f,fil); else
+        out(0x80|(u&0x3f),fil); else
   /* codes above 0x10ffff not valid */
   fprintf(stderr,"char 0x%lx out of unicode range\n",u),exit(1);
 }

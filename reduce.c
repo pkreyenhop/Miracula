@@ -78,7 +78,7 @@ int compare(word a,word b)
       case UNICODE: return sign(get_char(a)-get_char(b));
       case ATOM:
         if(tag[b]==UNICODE) return sign(get_char(a)-get_char(b));
-	if(S<=a&&a<=ERROR||S<=b&&b<=ERROR)
+	if((S<=a&&a<=ERROR)||(S<=b&&b<=ERROR))
 	  fn_error("attempt to compare functions");
 	  /* what about constructors - FIX LATER */
         if(tag[b]==ATOM)return(sign(a-b)); /* order of declaration */
@@ -177,10 +177,9 @@ void output(word e)
 { 
   extern word *cstack;
   cstack = &e; /* don't follow C stack below this in gc */
-L:e= reduce(e);
+  e= reduce(e);
   while(tag[e]==CONS)
-  { word d;
-    hd[e]= reduce(hd[e]);
+  { hd[e]= reduce(hd[e]);
     switch(constr_tag(head(hd[e])))
     { case Stdout: print(tl[hd[e]]);
 		   break;
@@ -354,7 +353,7 @@ word reduce(word e)
       putchar('\n'); }
 #endif
 
-  OPDECODE:
+/*OPDECODE:*/
   cycles++;
   switch(e)
   {
@@ -685,7 +684,7 @@ word reduce(word e)
     arg1=tl[hd[e]]=reduce(tl[hd[e]]);  /* ### */
     lastarg=reduce(lastarg);  /* ### */
     if(lastarg==NIL)subs_error();
-    { long long indx;
+    { long long indx = 0; /* 0 is not used but int_error() calls exit() */
       if(tag[arg1]==ATOM)indx=arg1;/* small indexes represented directly */
       else if(tag[arg1]==INT)indx=get_int(arg1);
       else int_error("!");
@@ -1311,7 +1310,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
     if(hold=='\n')hd[arg1]=((hd[arg1]>>8)+1)<<8; 
     else { word col = hd[arg1]&255;
 	   col = hold=='\t'?(col/8+1)*8:col+1;
-	   hd[arg1] = hd[arg1]&(~255)|col; }
+	   hd[arg1] = (hd[arg1]&(~255))|col; }
     tl[arg1]=tl[tl[arg1]];
     goto DONE;
 
@@ -1488,13 +1487,13 @@ L3: if(arg1==NIL)lexfail(lastarg);
                         { tag[e]=AP; hd[e]=I; e=tl[e]=NIL; goto DONE; }
 		      stdinuse='+';
 		      hold=cons(tl[hd[e]],0),lastarg=(word)stdin; }
-		  else
-		    hold=cons(tl[hd[e]],lastarg),
+		  else {
+		    hold=cons(tl[hd[e]],lastarg);
                     lastarg=(word)fopen(fil=getstring(lastarg,"readvals"),"r");
-                  if((FILE *)lastarg==NULL)  /* cannot open file for reading  */
-                    /* { hd[e]=I; e=tl[e]=NIL; goto DONE; } */
-                    { fprintf(stderr,"\nreadvals, cannot open: \"%s\"\n",fil);
-	              outstats(); exit(1); } 
+                    if((FILE *)lastarg==NULL) /* cannot open file for reading */
+                      /* { hd[e]=I; e=tl[e]=NIL; goto DONE; } */
+                      { fprintf(stderr,"\nreadvals, cannot open: \"%s\"\n",fil);
+	                outstats(); exit(1); } }
                   hd[e]=ap(READVALS,hold); }
                   DOWNLEFT;
 		  DOWNLEFT;
@@ -1693,7 +1692,6 @@ L3: if(arg1==NIL)lexfail(lastarg);
           setcell(CONS,ap(READ,fp),cons(ap(READ,fp_a),ap(WAIT,pid)));
         }
       else { /* child (writer) */
-             word in;
              static char *shell="/bin/sh";
              dup2(fd[1],1); /* so pipe replaces stdout */
              dup2(fd_a[1],2); /* 2nd pipe replaces stderr */
@@ -1947,28 +1945,28 @@ L3: if(arg1==NIL)lexfail(lastarg);
     goto DONE;
 
 #if 0
-    /* paradigm for execution of strict diadic operator
+    /* paradigm for execution of strict diadic operator */
     case READY(DIOP):
-    RESTORE(e);  /* do not write modified form of operator back into graph
+    RESTORE(e);  /* do not write modified form of operator back into graph */
     GETARG(arg1);
     GETARG(arg2);
     hd[e]=I; e=tl[e]=diop(arg1,arg2);
-    goto NEXTREDEX;  */
+    goto NEXTREDEX;
 #endif
 
 #if 0
-/*  case READY(EQUAL): /* UNUSED
+    case READY(EQUAL): /* UNUSED */
     RESTORE(e);
     GETARG(arg1);
     GETARG(arg2);
     if(isap(arg1)&&hd[arg1]!=NUMBER&&isap(arg2)&&hd[arg2]!=NUMBER)
-      { /* recurse on components
+      { /* recurse on components */
         hd[e]=ap2(EQUAL,tl[arg1],tl[arg2]);
         hd[e]=ap3(EQUAL,hd[arg1],hd[arg2],hd[e]);
         tl[e]=False;
       }  
     else { hd[e]=I; e=tl[e]= (eqatom(arg1,arg2)?True:False); }
-    goto NEXTREDEX; */
+    goto NEXTREDEX;
 #endif
 
     case READY(ZIP):  /*  ZIP (a:x) (b:y) => (a,b) : ZIP x y
@@ -2229,7 +2227,7 @@ word g_residue(word toks2)
       return(cons(NIL,toks2)); /*no tokens examined, whole grammar is `error'*/
     }
   while(tag[tl[toks2]]==CONS)toks1=cons(hd[toks2],toks1),toks2=tl[toks2];
-  if(tl[toks2]==NIL||tag[tl[toks2]]==AP&&hd[tl[toks2]]==I&&tl[tl[toks2]]==NIL)
+  if(tl[toks2]==NIL||(tag[tl[toks2]]==AP&&hd[tl[toks2]]==I&&tl[tl[toks2]]==NIL))
     { toks1=cons(hd[toks2],toks1);
       return(cons(ap(DESTREV,toks1),NIL)); }
   return(cons(ap(DESTREV,toks1),toks2));

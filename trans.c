@@ -123,7 +123,7 @@ word abstr(word x,word e)
     case LEXER:
     case SHARE: fprintf(stderr,"impossible event in abstr (tag=%d)\n",tag[e]),
 		exit(1);
-    default: if(x==e||isvar_t(x)&&isvar_t(e)&&eqtvar(x,e))
+    default: if(x==e||(isvar_t(x)&&isvar_t(e)&&eqtvar(x,e)))
                return(I); /* see note */
              return(ap(K,e));
 }} /* note - we allow abstraction wrt tvars - see genshfns() */
@@ -270,8 +270,7 @@ word makeshow(word here,word type)
   extern word ND;
   was_poly=0; f=mkshow(0,0,type);
   if(here&&was_poly)
-    { extern char *current_script;
-      printf("type error in definition of %s\n",get_id(current_id));
+    { printf("type error in definition of %s\n",get_id(current_id));
       sayhere(here,0);
       printf(" use of \"show\" at polymorphic type ");
       out_type(redtvars(type));
@@ -351,7 +350,7 @@ void genshfns() /* called after meta type check - create show functions for
 	    while(tag[k]!=CONSTRUCTOR)k=tl[k];/* lawful and !'d constructors*/
 	    /* k now holds constructor(i,hd[r]) */
 #if 0
-	    /* k=constructor(hd[k],datapair(get_id(tl[k]),0));
+	    k=constructor(hd[k],datapair(get_id(tl[k]),0)); 
 	      /* this `freezes' the name of the constructor */
 	      /* incorrect, makes showfns immune to aliasing, should be
 		 done at mkshow time, not genshfn time - FIX LATER */
@@ -392,28 +391,30 @@ word abshfnck(word t,word f)
   return(f==t);
 }
 
-word transtries(word id,word x)
+static word transtries(word id,word x)
            /* x is a list of alternative values, in reverse order */
-{ word r,h=0,earliest;
+{ word r,h=0,earliest=0; /* gcc -Wall says earliest may be used uninitialised
+                          * but there is a runtime test instead */
   if(fallible(hd[x])) /* add default last case */
     { word oldn=tag[id]==ID?datapair(get_id(id),0):0;
       r=ap(BADCASE,h=cons(oldn,0));
+      if (x==NIL) fprintf(stderr, "Internal error: `earliest' is used uninitialised in transtries()\n");
 	 /* 0 is placeholder for here-info */
          /* oldn omitted if id is pattern - FIX LATER */ }
-  else r=codegen(earliest=hd[x]), x = tl[x];
+  else r=codegen(earliest=hd[x]), x=tl[x];
   while(x!=NIL)r=ap2(TRY,codegen(earliest=hd[x]),r), x=tl[x];
   if(h)tl[h]=hd[earliest]; /* first line-no is the best marker */
   return(r);
 }
 
-word translet(word d,word e) /* compile block with body e and def d */
+static word translet(word d,word e) /* compile block with body e and def d */
 { word x=mklazy(d);
   return(ap(abstract(dlhs(x),codegen(e)),codegen(dval(x))));
 }
 /* nasty bug, codegen(dval(x)) was interfering with abstract(dlhs(x)...
    to fix made codegen on tuples be NOT in situ 20/11/88  */
 
-word transletrec(word dd,word e)
+static word transletrec(word dd,word e)
                      /* better method,  using list indexing - Jan 88 */
 { word lhs=NIL,rhs=NIL,pn=1;
   /* list of defs (x=e) is combined to listwise def `xs=es' */
@@ -538,7 +539,7 @@ word compzf(word e,word qq,word diag)
    eg [p|p<-3] ==> 3  (reported by Ham Richards, Nov 89)
 */
 
-word transzf(word e,word qq,word conc)  /* Bird and Wadler page 63 */
+static word transzf(word e,word qq,word conc)  /* Bird and Wadler page 63 */
 { word q,q2;
   if(qq==NIL)return(cons(e,NIL));
   q=hd[qq];
@@ -720,10 +721,10 @@ word fallible(word e) /* e is "fallible" rhs - if not sure, says yes */
   */
 
 #if 0
-/* combinator to select i'th out of n args *//*
+/* combinator to select i'th out of n args */
 word k(word i,word n)
 { if(i==1)return(n==1?I:n==2?K:ap2(B,K,k(1,n-1)));
-  if(i==2&&n==2)return(KI); /* redundant but saves space *//*
+  if(i==2&&n==2)return(KI); /* redundant but saves space */
   return(ap(K,k(i-1,n-1)));
 } /* not currently used */
 #endif
@@ -797,7 +798,7 @@ word block(word defs,word e,word keep)
    where defs are all on which def immediately depends, plus self */
   g = tclos(g);  /* now g is list(cons(def,ultdefs)) */
   { /* check for unused definitions */
-    word x=intersection(deps(e),ids),y=NIL,*g1= &g;
+    word x=intersection(deps(e),ids),y=NIL;
     for(;x!=NIL;x=tl[x])
        { word d=invgetrel(deftoids,hd[x]);
          if(!member(y,d))y=UNION(y,getrel(g,d)); }

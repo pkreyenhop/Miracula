@@ -143,7 +143,7 @@ void obey(word x) /* like evaluate but no fork, no stats, no extra '\n' */
 }
 
 int isstring(word x)
-{ return(x==NILS||tag[x]==CONS&&is_char(hd[x]));
+{ return(x==NILS||(tag[x]==CONS&&is_char(hd[x])));
 }
 
 word compose(word x) /* used in compiling 'cases' */
@@ -381,7 +381,7 @@ entity:  /* the entity to be parsed is either a definition script or an
             }|
 
     EVAL exp TO
-        = { FILE *fil=NULL,*efil;
+        = { FILE *fil=NULL,*efil=NULL;
             word t=type_of($2);
             char *f=token(),*ef;
             if(f)keep(f); ef=token(); /* wasteful of dic space, FIX LATER */
@@ -403,7 +403,7 @@ entity:  /* the entity to be parsed is either a definition script or an
                   if(pid==-1)perror("cannot create process");
                   else printf("process %d\n",pid);
                   fclose(fil);
-                  if(ef)fclose(efil);
+                  if(efil)fclose(efil);
                   (void)signal(SIGINT,oldsig); }else
               { /* "child" */
                 (void)signal(SIGQUIT,SIG_IGN);   /* and quits */
@@ -1051,7 +1051,6 @@ def:
     INCLUDE bindings modifiers outdent
     /* fiddle - 'indent' done by yylex() on reading fileid */
         = { extern char *dicp;
-            extern word CLASHES,BAD_DUMP;
             includees=cons(cons($1,cons($3,$2)),includees);
                    /* $1 contains file+hereinfo */
             $$ = cons(nill,NIL); }|
@@ -1335,7 +1334,7 @@ argtype:
            /* necessary while prelude not meta_tchecked (for prelude)*/
     typevar
         = { if(tvarscope&&!memb(idsused,$1))
-            printf("%ssyntax error: unbound type variable ",echoing?"\n":""),
+              printf("%ssyntax error: unbound type variable ",echoing?"\n":""),
                  out_type($1),putchar('\n'),acterror();
             $$ = $1; }|
     '(' typelist ')'
@@ -1503,7 +1502,7 @@ names:          /* used twice - for bnf list, and for inherited attr list */
         = { $$ = NIL; }|
     names NAME
         = { if(member($1,$2))
-            printf("%ssyntax error: repeated identifier \"%s\" in %s list\n",
+              printf("%ssyntax error: repeated identifier \"%s\" in %s list\n",
                       echoing?"\n":"",get_id($2),inbnf?"bnf":"attribute"),
               acterror();
             $$ = inbnf?add1($2,$1):cons($2,$1);

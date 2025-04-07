@@ -37,7 +37,7 @@ stackp=dstack; /* if load_script made interruptible, add to reset */
 #endif
 
 #define poschar(c) !(negchar((c)-1))
-#define negchar(c) (c&128)
+#define negchar(c) ((c)&128)
    /* safest to test for -ve chars this way, since not all m/c's do sign
       extension - DT Jan 84 */
 
@@ -96,7 +96,8 @@ void resetgcstats()
 
 word make(unsigned char t,word x,word y)  /* creates a new cell with "tag" t,
                                              "hd" x and "tl" y  */
-{ while(poschar(tag[++listp]));
+{ while(poschar(tag[++listp]))
+    ;
        /* find next cell with zero or negative tag (=unwanted) */
   if(listp==TOP)
     { if(SPACE!=SPACELIMIT)
@@ -151,7 +152,6 @@ int collecting=0;  /* flag for reset(), in case interrupt strikes in gc */
 
 void gc()       /*  the "garbage collector"  */
 { char *p1;
-  extern word making;
   jmp_buf env;
   /* Dump all register variables on the stack
    * then call the real garbage collector */
@@ -209,7 +209,7 @@ void bases()  /*  marks everthing that must be saved  */
   extern word nill,standardout;
   extern word lexstates,lexdefs,oldfiles,includees,embargoes,exportfiles,
              exports,internals, freeids,tlost,detrop,rfl,bereaved,ld_stuff;
-  extern word CLASHES,ALIASES,SUPPRESSED,TSUPPRESSED,DETROP,MISSING,fnts,FBS;
+  extern word CLASHES,ALIASES,SUPPRESSED,TSUPPRESSED,DETROP,MISSING,FBS;
   extern word outfilq,waiting;
   p= (word *)&p;
 /* we follow everything on the C stack that looks like  a  pointer  into
@@ -225,8 +225,7 @@ collector will collect less garbage than it could have done */
   mark(outfilq);
   mark(waiting);
   if(compiling||rv_expr||rv_script) /* rv flags indicate `readvals' in use */
-  { extern YYSTYPE *yyvs, *yyvsp;
-    extern word namebucket[];
+  { extern word namebucket[];
     extern word *pnvec,nextpn;  /* private name vector */
     extern word make_status;
     word i;
@@ -285,7 +284,6 @@ collector will collect less garbage than it could have done */
     mark(standardout);
     mark(big_one);
     mark(yyval);
-/*  for(vp= yyvs;vp<=yyvsp;vp++)mark(*vp); */
     mark(yylval);
     mark(R);
     mark(TABSTRS);
@@ -388,7 +386,7 @@ word get_char(word x)
 }
 
 int is_char(word x)
-{ return 0<=x && x<256 || tag[x]==UNICODE; }
+{ return (0<=x && x<256) || tag[x]==UNICODE; }
 
 word sto_id(char *p1)
 { return(make(ID,cons(strcons(p1,NIL),undef_t),UNDEF)); }
@@ -616,9 +614,9 @@ void dump_defs(word defs,FILE *f)  /* write list of defs to file f */
 void dump_ob(word x,FILE *f)  /* write combinatory expression x to file f */
 {
   switch(tag[x])
-  { case ATOM: if(x<128)putc(x,f); else
-               if(x>=384)putc(x-256,f); else
-               putc(CHAR_X,f),putc(x-128,f);
+  { case ATOM: if(x<128)putc(x,f);
+               else if(x>=384)putc(x-256,f);
+	       else putc(CHAR_X,f),putc(x-128,f);
                return;
     case TVAR: putc(TVAR_X,f), putc(gettvar(x),f);
 	       if(gettvar(x)>255)
@@ -998,9 +996,9 @@ word load_defs(FILE *f)  /* load a sequence of definitions from file f, terminat
 			       if(a!=NIL) /* surely must hold ?? */
 			       TSUPPRESSED=cons(tl[hd[a]],TSUPPRESSED);
 #if 0
-			       /*if(akap==NIL)
-			         akap=datapair(get_id(tl[hd[a]]),0); */
-			     /*if(t_class(ch)==algebraic_t)
+			       if(akap==NIL)
+			         akap=datapair(get_id(tl[hd[a]]),0);
+			     if(t_class(ch)==algebraic_t)
 			     CSUPPRESS=append1(CSUPPRESS,t_info(ch));
 	                     t_info(ch)= cons(akap,fileinfo(CFN,0));
 	                     /* assists identifn of dangling typerefs 
@@ -1043,7 +1041,7 @@ word load_defs(FILE *f)  /* load a sequence of definitions from file f, terminat
 			  tl[tl[hd[hd[a]]]]= *--stackp; /* value */
 			  continue; }
 #if 0
-		      /*if(strcmp(CFN,hd[get_here(stackp[-1])]))
+		      if(strcmp(CFN,hd[get_here(stackp[-1])]))
 			/* EXPT (ignore clash if from same original file) */
 #endif
 		      CLASHES=add1(stackp[-1],CLASHES);
@@ -1091,8 +1089,8 @@ word geterrlin(char *t) /* returns errline from dump of t if relevant, 0 otherwi
   (void)strcpy(obf,t);
   (void)strcpy(obf+strlen(obf)-1,obsuffix);
   if(!(f=fopen(obf,"r")))return(0);
-  if(getc(f)!=XVERSION||(ch=getc(f))&&ch!=1){ fclose(f);
-                                              return(0); }
+  if(getc(f)!=XVERSION||((ch=getc(f))&&ch!=1)){ fclose(f);
+                                                return(0); }
   el=getword(f);
   /* now check this is right dump */
   setprefix(t);
