@@ -607,7 +607,8 @@ word genlhs(word x) /* x is an expression found on the lhs of <-
         hold=genlhs(hd[x]); return(make(tag[x],hold,genlhs(tl[x])));
     case ID:
         if(member(idsused,x))return(cons(CONST,x));
-        if(!isconstructor(x))idsused=cons(x,idsused); return(x);
+        if(!isconstructor(x))idsused=cons(x,idsused);
+	return(x);
     case INT: return(cons(CONST,x));
     case DOUBLE: syntax("floating point literal in pattern\n");
 		 return(nill);
