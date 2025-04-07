@@ -769,12 +769,12 @@ void reset() /* interrupt catcher - see call to signal in commandloop */
   if(collecting)gcpatch();
   if(loading)
     { if(!blankerr)
-	printf("\n<<compilation interrupted>>\n");
+	fprintf(stderr,"\n<<compilation interrupted>>\n");
       if(unlinkme)unlink(unlinkme);
       oldfiles=files,unload(),current_id=ATNAMES=loading=SYNERR=lineptr=0;
       if(blankerr)blankerr=0,makedump(); }
       /* magic script cannot be literate so no guard needed on makedump */
-  else printf("<<interrupt>>\n"); /* VAX, SUN, ^C does not cause newline */
+  else fprintf(stderr,"<<interrupt>>\n"); /* VAX, SUN, ^C does not cause newline */
   reset_state(); /* see LEX */
   if(collecting)collecting=0,gc(); /* to mark stdenv etc as wanted */
   if(making&&!make_status)make_status=1;
@@ -1887,7 +1887,7 @@ void mira_setup()
   primlib(); } /* sets up predefined ids, not referred to by rules.y */
 
 void dieclean()     /* called if evaluation is interrupted - see rules.y */
-{ printf("<<...interrupt>>\n");
+{ fprintf(stderr,"<<...interrupt>>\n");
 #ifndef NOSTATSONINT
   outstats();  /* suppress in presence of segfault on ^C with /count */
 #endif
@@ -1916,11 +1916,11 @@ word process()
     { char *cd=status&0200?" (core dumped)":"";
       char *pc=""; /* "probably caused by stack overflow\n";*/
       switch(WTERMSIG(status))
-      { case SIGBUS: printf("\n<<...bus error%s>>\n%s",cd,pc); break;
-        case SIGSEGV: printf("\n<<...segmentation fault%s>>\n%s",cd,pc); break;
-        default: printf("\n<<...uncaught signal %d>>\n",WTERMSIG(status));
+      { case SIGBUS: fprintf(stderr,"\n<<...bus error%s>>\n%s",cd,pc); break;
+        case SIGSEGV: fprintf(stderr,"\n<<...segmentation fault%s>>\n%s",cd,pc); break;
+        default: fprintf(stderr,"\n<<...uncaught signal %d>>\n",WTERMSIG(status));
     } }
-    /*if(status >>= 8)printf("\n(exit status %d)\n",status); */
+    /*if(status >>= 8)fprintf(stderr,"\n(exit status %d)\n",status); */
     (void)signal(SIGINT,oldsig); /* restore interrupt status */
     return(0); }
   else return(1); /* child */

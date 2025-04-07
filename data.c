@@ -113,7 +113,7 @@ word make(unsigned char t,word x,word y)  /* creates a new cell with "tag" t,
 		SPACE=5000*(1+(SPACE-1)/5000); /* round upwards */
 	      if(SPACE>SPACELIMIT)SPACE=SPACELIMIT;
 	      if(atgc&&SPACE>sp)
-		printf( "\n<<increase heap from %ld to %ld>>\n",sp,SPACE);
+		fprintf(stderr,"\n<<increase heap from %ld to %ld>>\n",sp,SPACE);
 	    }
         }
       if(listp==TOP)
@@ -159,7 +159,7 @@ void gc()       /*  the "garbage collector"  */
   collecting=1;
   p1= &(tag[ATOMLIMIT]);
   if(atgc)
-    printf("\n<<gc after %ld claims>>\n",claims);
+    fprintf(stderr,"\n<<gc after %ld claims>>\n",claims);
   if(claims<=SPACE/10 && nogcs>1 && SPACE==SPACELIMIT)
   { /* if heap utilisation exceeds 90% on 2 successive gc's, give up */
     static word hnogcs=0;
