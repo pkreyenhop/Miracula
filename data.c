@@ -147,9 +147,15 @@ void setwd(word x,word a,word b)
 
 int collecting=0;  /* flag for reset(), in case interrupt strikes in gc */
 
+#include <setjmp.h>
+
 void gc()       /*  the "garbage collector"  */
 { char *p1;
   extern word making;
+  jmp_buf env;
+  /* Dump all register variables on the stack
+   * then call the real garbage collector */
+  if (setjmp(env)) return;
   collecting=1;
   p1= &(tag[ATOMLIMIT]);
   if(atgc)
@@ -174,6 +180,7 @@ void gc()       /*  the "garbage collector"  */
   cellcount+= claims;
   claims= 0;
   collecting=0;
+  longjmp(env, 1);
 }
 
 void gcpatch() /* called when gc interrupted - see reset in steer.c */
