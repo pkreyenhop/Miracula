@@ -161,6 +161,19 @@ jmp_buf env;
 fp_except commonmask = FP_X_INV|FP_X_OFL|FP_X_DZ; /* invalid|ovflo|divzero */
 #endif
 
+/* On Linux the stack is limited by default to 8MB, on NetBSD to 4MB and
+ * "Upon reaching this limit, a SIGSEGV signal is generated." (setrlimit(2))
+ */
+#include <sys/resource.h>
+static void unlimit_stack(void)
+{
+  struct rlimit rlimit;
+  if (getrlimit(RLIMIT_STACK, &rlimit) == 0) {
+    rlimit.rlim_cur = rlimit.rlim_max; /* The more the better */
+    (void) setrlimit(RLIMIT_STACK, &rlimit);
+  }
+}
+
 /* system initialisation, followed by call to YACC */
 int main(int argc,char *argv[])
 { word manonly=0;
@@ -174,6 +187,7 @@ int main(int argc,char *argv[])
   char *progname=rindex(argv[0],'/');
   cstack= &manonly;
 /* used to indicate the base of the C stack for garbage collection purposes */
+  unlimit_stack();
   verbosity=isatty(0);
 /*if(isatty(1))*/ setbuf(stdout,NULL); /* for unbuffered tty output */
   if((home=getenv("HOME")))
