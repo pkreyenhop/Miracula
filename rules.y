@@ -177,18 +177,19 @@ word starts(word x) /* x is grammar rhs - returns list of nonterminals in start 
                   case G_STAR: x=tl[x]; goto L;
                   default: if(hd[x]==outdent_fn)
                              { x=tl[x]; goto L; }
-                           if(tag[hd[x]]==AP)
+                           if(tag[hd[x]]==AP) {
                              if(hd[hd[x]]==G_ERROR)
                                { x=tl[hd[x]]; goto L; }
                              if(hd[hd[x]]==G_SEQ)
                                { if(eprod(tl[hd[x]]))
-                               return(UNION(starts(tl[hd[x]]),starts(tl[x])));
-                                 x=tl[hd[x]]; goto L; } else
+                                   return(UNION(starts(tl[hd[x]]),starts(tl[x])));
+                                 x=tl[hd[x]]; goto L; }
                              if(hd[hd[x]]==G_ALT)
                                return(UNION(starts(tl[hd[x]]),starts(tl[x])));
-                             else
                              if(hd[hd[x]]==indent_fn)
                                { x=tl[x]; goto L; }
+			     fprintf(stderr, "Internal error: AP tag is followed by unhandled case in starts()\nPlease report it to miranda@groups.io\n");
+                           } else fprintf(stderr, "Internal error: AP tag is followed by neither outdent nor AP in starts()\nPlease report it to miranda@groups.io\n");
                 }
        default: return(NIL);
      }
@@ -210,16 +211,17 @@ int eprod(word x) /* x is grammar rhs - does x admit empty production? */
                   case G_STAR: return(1);
                   default: if(hd[x]==outdent_fn)
                              { x=tl[x]; goto L; }
-                           if(tag[hd[x]]==AP)
+                           if(tag[hd[x]]==AP) {
                              if(hd[hd[x]]==G_ERROR)
                                { x=tl[hd[x]]; goto L; }
                              if(hd[hd[x]]==G_SEQ)
                                return(eprod(tl[hd[x]])&&eprod(tl[x])); else
                              if(hd[hd[x]]==G_ALT)
                                return(eprod(tl[hd[x]])||eprod(tl[x]));
-                             else
                              if(hd[hd[x]]==indent_fn)
                                { x=tl[x]; goto L; }
+			     fprintf(stderr, "Internal error: AP tag is followed by unhandled case in eprod()\nPlease report it to miranda@groups.io\n");
+			   } else fprintf(stderr, "Internal error: AP tag is followed by neither outdent nor AP in eprod()\nPlease report it to miranda@groups.io\n");
                 }
        default: return(x==G_STATE||x==G_UNIT);
        /* G_END is special case, unclear whether it counts as an e-prodn.

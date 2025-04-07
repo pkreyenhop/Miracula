@@ -162,18 +162,19 @@ word starts(word x) /* x is grammar rhs - returns list of nonterminals in start 
                   case G_STAR: x=tl[x]; goto L;
                   default: if(hd[x]==outdent_fn)
                              { x=tl[x]; goto L; }
-                           if(tag[hd[x]]==AP)
+                           if(tag[hd[x]]==AP) {
                              if(hd[hd[x]]==G_ERROR)
                                { x=tl[hd[x]]; goto L; }
                              if(hd[hd[x]]==G_SEQ)
                                { if(eprod(tl[hd[x]]))
-                               return(UNION(starts(tl[hd[x]]),starts(tl[x])));
-                                 x=tl[hd[x]]; goto L; } else
+                                   return(UNION(starts(tl[hd[x]]),starts(tl[x])));
+                                 x=tl[hd[x]]; goto L; }
                              if(hd[hd[x]]==G_ALT)
                                return(UNION(starts(tl[hd[x]]),starts(tl[x])));
-                             else
                              if(hd[hd[x]]==indent_fn)
                                { x=tl[x]; goto L; }
+			     fprintf(stderr, "Internal error: AP tag is followed by unhandled case in starts()\nPlease report it to miranda@groups.io\n");
+                           } else fprintf(stderr, "Internal error: AP tag is followed by neither outdent nor AP in starts()\nPlease report it to miranda@groups.io\n");
                 }
        default: return(NIL);
      }
@@ -195,16 +196,17 @@ int eprod(word x) /* x is grammar rhs - does x admit empty production? */
                   case G_STAR: return(1);
                   default: if(hd[x]==outdent_fn)
                              { x=tl[x]; goto L; }
-                           if(tag[hd[x]]==AP)
+                           if(tag[hd[x]]==AP) {
                              if(hd[hd[x]]==G_ERROR)
                                { x=tl[hd[x]]; goto L; }
                              if(hd[hd[x]]==G_SEQ)
                                return(eprod(tl[hd[x]])&&eprod(tl[x])); else
                              if(hd[hd[x]]==G_ALT)
                                return(eprod(tl[hd[x]])||eprod(tl[x]));
-                             else
                              if(hd[hd[x]]==indent_fn)
                                { x=tl[x]; goto L; }
+			     fprintf(stderr, "Internal error: AP tag is followed by unhandled case in eprod()\nPlease report it to miranda@groups.io\n");
+			   } else fprintf(stderr, "Internal error: AP tag is followed by neither outdent nor AP in eprod()\nPlease report it to miranda@groups.io\n");
                 }
        default: return(x==G_STATE||x==G_UNIT);
        /* G_END is special case, unclear whether it counts as an e-prodn.
@@ -329,7 +331,7 @@ int e_re(word x) /* does regular expression x match empty string ? */
      return(0);
 }
 
-#line 333 "y.tab.c"
+#line 335 "y.tab.c"
 
 #if ! defined(YYSTYPE) && ! defined(YYSTYPE_IS_DECLARED)
 /* Default: YYSTYPE is the semantic value type. */
@@ -2290,10 +2292,10 @@ static YYINT  *yylexp = 0;
 
 static YYINT  *yylexemes = 0;
 #endif /* YYBTYACC */
-#line 1677 "rules.y"
+#line 1679 "rules.y"
 /*  end of Miranda rules  */
 
-#line 2297 "y.tab.c"
+#line 2299 "y.tab.c"
 
 /* For use in generated program */
 #define yydepth (int)(yystack.s_mark - yystack.s_base)
@@ -2964,24 +2966,24 @@ yyreduce:
     switch (yyn)
     {
 case 2:
-#line 357 "rules.y"
+#line 359 "rules.y"
 	{ lastname=0; /* outstats(); */  }
-#line 2970 "y.tab.c"
+#line 2972 "y.tab.c"
 break;
 case 3:
-#line 364 "rules.y"
+#line 366 "rules.y"
 	{ lastexp=yystack.l_mark[0]; }
-#line 2975 "y.tab.c"
+#line 2977 "y.tab.c"
 break;
 case 4:
-#line 367 "rules.y"
+#line 369 "rules.y"
 	{ if(!SYNERR&&yychar==0)
               { evaluate(yystack.l_mark[0]); }
           }
-#line 2982 "y.tab.c"
+#line 2984 "y.tab.c"
 break;
 case 5:
-#line 375 "rules.y"
+#line 377 "rules.y"
 	{ word t=type_of(yystack.l_mark[-1]);
               if(t!=wrong_t)
                 { lastexp=yystack.l_mark[-1];
@@ -2989,10 +2991,10 @@ case 5:
                   out_type(t);
                   putchar('\n'); }
             }
-#line 2993 "y.tab.c"
+#line 2995 "y.tab.c"
 break;
 case 6:
-#line 384 "rules.y"
+#line 386 "rules.y"
 	{ FILE *fil=NULL,*efil=NULL;
             word t=type_of(yystack.l_mark[-1]);
             char *f=token(),*ef;
@@ -3043,514 +3045,514 @@ case 6:
                 putchar('\n');
                 outstats();
                 exit(0); } } }
-#line 3047 "y.tab.c"
+#line 3049 "y.tab.c"
 break;
 case 11:
-#line 445 "rules.y"
+#line 447 "rules.y"
 	{ yyval = NOT; }
-#line 3052 "y.tab.c"
+#line 3054 "y.tab.c"
 break;
 case 12:
-#line 447 "rules.y"
+#line 449 "rules.y"
 	{ yyval = LENGTH; }
-#line 3057 "y.tab.c"
+#line 3059 "y.tab.c"
 break;
 case 14:
-#line 452 "rules.y"
+#line 454 "rules.y"
 	{ yyval = MINUS; }
-#line 3062 "y.tab.c"
+#line 3064 "y.tab.c"
 break;
 case 16:
-#line 457 "rules.y"
+#line 459 "rules.y"
 	{ yyval = PLUS; }
-#line 3067 "y.tab.c"
+#line 3069 "y.tab.c"
 break;
 case 17:
-#line 459 "rules.y"
+#line 461 "rules.y"
 	{ yyval = APPEND; }
-#line 3072 "y.tab.c"
+#line 3074 "y.tab.c"
 break;
 case 18:
-#line 461 "rules.y"
+#line 463 "rules.y"
 	{ yyval = P; }
-#line 3077 "y.tab.c"
+#line 3079 "y.tab.c"
 break;
 case 19:
-#line 463 "rules.y"
+#line 465 "rules.y"
 	{ yyval = listdiff_fn; }
-#line 3082 "y.tab.c"
+#line 3084 "y.tab.c"
 break;
 case 20:
-#line 465 "rules.y"
+#line 467 "rules.y"
 	{ yyval = OR; }
-#line 3087 "y.tab.c"
+#line 3089 "y.tab.c"
 break;
 case 21:
-#line 467 "rules.y"
+#line 469 "rules.y"
 	{ yyval = AND; }
-#line 3092 "y.tab.c"
+#line 3094 "y.tab.c"
 break;
 case 23:
-#line 470 "rules.y"
+#line 472 "rules.y"
 	{ yyval = TIMES; }
-#line 3097 "y.tab.c"
+#line 3099 "y.tab.c"
 break;
 case 24:
-#line 472 "rules.y"
+#line 474 "rules.y"
 	{ yyval = FDIV; }
-#line 3102 "y.tab.c"
+#line 3104 "y.tab.c"
 break;
 case 25:
-#line 474 "rules.y"
+#line 476 "rules.y"
 	{ yyval = INTDIV; }
-#line 3107 "y.tab.c"
+#line 3109 "y.tab.c"
 break;
 case 26:
-#line 476 "rules.y"
+#line 478 "rules.y"
 	{ yyval = MOD; }
-#line 3112 "y.tab.c"
+#line 3114 "y.tab.c"
 break;
 case 27:
-#line 478 "rules.y"
+#line 480 "rules.y"
 	{ yyval = POWER; }
-#line 3117 "y.tab.c"
+#line 3119 "y.tab.c"
 break;
 case 28:
-#line 480 "rules.y"
+#line 482 "rules.y"
 	{ yyval = B; }
-#line 3122 "y.tab.c"
+#line 3124 "y.tab.c"
 break;
 case 29:
-#line 482 "rules.y"
+#line 484 "rules.y"
 	{ yyval = ap(C,SUBSCRIPT); }
-#line 3127 "y.tab.c"
+#line 3129 "y.tab.c"
 break;
 case 32:
-#line 488 "rules.y"
+#line 490 "rules.y"
 	{ yyval = GR; }
-#line 3132 "y.tab.c"
+#line 3134 "y.tab.c"
 break;
 case 33:
-#line 490 "rules.y"
+#line 492 "rules.y"
 	{ yyval = GRE; }
-#line 3137 "y.tab.c"
+#line 3139 "y.tab.c"
 break;
 case 34:
-#line 492 "rules.y"
+#line 494 "rules.y"
 	{ yyval = EQ; }
-#line 3142 "y.tab.c"
+#line 3144 "y.tab.c"
 break;
 case 35:
-#line 494 "rules.y"
+#line 496 "rules.y"
 	{ yyval = NEQ; }
-#line 3147 "y.tab.c"
+#line 3149 "y.tab.c"
 break;
 case 36:
-#line 496 "rules.y"
+#line 498 "rules.y"
 	{ yyval = ap(C,GRE); }
-#line 3152 "y.tab.c"
+#line 3154 "y.tab.c"
 break;
 case 37:
-#line 498 "rules.y"
+#line 500 "rules.y"
 	{ yyval = ap(C,GR); }
-#line 3157 "y.tab.c"
+#line 3159 "y.tab.c"
 break;
 case 40:
-#line 506 "rules.y"
+#line 508 "rules.y"
 	{ yyval = block(yystack.l_mark[0],compose(yystack.l_mark[-2]),0); }
-#line 3162 "y.tab.c"
+#line 3164 "y.tab.c"
 break;
 case 41:
-#line 508 "rules.y"
+#line 510 "rules.y"
 	{ yyval = block(yystack.l_mark[0],yystack.l_mark[-2],0); }
-#line 3167 "y.tab.c"
+#line 3169 "y.tab.c"
 break;
 case 43:
-#line 511 "rules.y"
+#line 513 "rules.y"
 	{ yyval = compose(yystack.l_mark[0]); }
-#line 3172 "y.tab.c"
+#line 3174 "y.tab.c"
 break;
 case 44:
-#line 515 "rules.y"
+#line 517 "rules.y"
 	{ yyval = cons(ap2(COND,yystack.l_mark[0],yystack.l_mark[-3]),NIL); }
-#line 3177 "y.tab.c"
+#line 3179 "y.tab.c"
 break;
 case 45:
-#line 517 "rules.y"
+#line 519 "rules.y"
 	{ yyval = cons(ap(OTHERWISE,yystack.l_mark[-2]),NIL); }
-#line 3182 "y.tab.c"
+#line 3184 "y.tab.c"
 break;
 case 46:
-#line 519 "rules.y"
+#line 521 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],yystack.l_mark[-3]); 
              if(hd[hd[yystack.l_mark[-3]]]==OTHERWISE)
                syntax("\"otherwise\" must be last case\n"); }
-#line 3189 "y.tab.c"
+#line 3191 "y.tab.c"
 break;
 case 47:
-#line 525 "rules.y"
+#line 527 "rules.y"
 	{ errs=yystack.l_mark[-1],
              syntax("obsolete syntax, \", otherwise\" missing\n");
              yyval = ap(OTHERWISE,label(yystack.l_mark[-1],yystack.l_mark[0])); }
-#line 3196 "y.tab.c"
+#line 3198 "y.tab.c"
 break;
 case 48:
-#line 529 "rules.y"
+#line 531 "rules.y"
 	{ yyval = label(yystack.l_mark[-4],ap2(COND,yystack.l_mark[0],yystack.l_mark[-3])); }
-#line 3201 "y.tab.c"
+#line 3203 "y.tab.c"
 break;
 case 49:
-#line 531 "rules.y"
+#line 533 "rules.y"
 	{ yyval = ap(OTHERWISE,label(yystack.l_mark[-3],yystack.l_mark[-2])); }
-#line 3206 "y.tab.c"
+#line 3208 "y.tab.c"
 break;
 case 50:
-#line 535 "rules.y"
+#line 537 "rules.y"
 	{ extern word strictif;
             if(strictif)syntax("\"if\" missing\n"); }
-#line 3212 "y.tab.c"
+#line 3214 "y.tab.c"
 break;
 case 52:
-#line 541 "rules.y"
+#line 543 "rules.y"
 	{ if(!SYNERR){layout(); setlmargin();}
           }
-#line 3218 "y.tab.c"
+#line 3220 "y.tab.c"
 break;
 case 53:
-#line 549 "rules.y"
+#line 551 "rules.y"
 	{ unsetlmargin(); }
-#line 3223 "y.tab.c"
+#line 3225 "y.tab.c"
 break;
 case 56:
-#line 556 "rules.y"
+#line 558 "rules.y"
 	{ if(!SYNERR)
               { unsetlmargin(); layout(); setlmargin(); }
           }
-#line 3230 "y.tab.c"
+#line 3232 "y.tab.c"
 break;
 case 57:
-#line 562 "rules.y"
+#line 564 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],NIL); }
-#line 3235 "y.tab.c"
+#line 3237 "y.tab.c"
 break;
 case 58:
-#line 564 "rules.y"
+#line 566 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],yystack.l_mark[-2]); }
-#line 3240 "y.tab.c"
+#line 3242 "y.tab.c"
 break;
 case 59:
-#line 568 "rules.y"
+#line 570 "rules.y"
 	{ yyval = ap(NOT,yystack.l_mark[0]); }
-#line 3245 "y.tab.c"
+#line 3247 "y.tab.c"
 break;
 case 60:
-#line 570 "rules.y"
+#line 572 "rules.y"
 	{ yyval = ap2(APPEND,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3250 "y.tab.c"
+#line 3252 "y.tab.c"
 break;
 case 61:
-#line 572 "rules.y"
+#line 574 "rules.y"
 	{ yyval = cons(yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3255 "y.tab.c"
+#line 3257 "y.tab.c"
 break;
 case 62:
-#line 574 "rules.y"
+#line 576 "rules.y"
 	{ yyval = ap2(listdiff_fn,yystack.l_mark[-2],yystack.l_mark[0]);  }
-#line 3260 "y.tab.c"
+#line 3262 "y.tab.c"
 break;
 case 63:
-#line 576 "rules.y"
+#line 578 "rules.y"
 	{ yyval = ap2(OR,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3265 "y.tab.c"
+#line 3267 "y.tab.c"
 break;
 case 64:
-#line 578 "rules.y"
+#line 580 "rules.y"
 	{ yyval = ap2(AND,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3270 "y.tab.c"
+#line 3272 "y.tab.c"
 break;
 case 67:
-#line 584 "rules.y"
+#line 586 "rules.y"
 	{ yyval = ap(NOT,yystack.l_mark[0]); }
-#line 3275 "y.tab.c"
+#line 3277 "y.tab.c"
 break;
 case 68:
-#line 586 "rules.y"
+#line 588 "rules.y"
 	{ yyval = ap2(APPEND,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3280 "y.tab.c"
+#line 3282 "y.tab.c"
 break;
 case 69:
-#line 588 "rules.y"
+#line 590 "rules.y"
 	{ yyval = ap(APPEND,yystack.l_mark[-1]); }
-#line 3285 "y.tab.c"
+#line 3287 "y.tab.c"
 break;
 case 70:
-#line 590 "rules.y"
+#line 592 "rules.y"
 	{ yyval = cons(yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3290 "y.tab.c"
+#line 3292 "y.tab.c"
 break;
 case 71:
-#line 592 "rules.y"
+#line 594 "rules.y"
 	{ yyval = ap(P,yystack.l_mark[-1]); }
-#line 3295 "y.tab.c"
+#line 3297 "y.tab.c"
 break;
 case 72:
-#line 594 "rules.y"
+#line 596 "rules.y"
 	{ yyval = ap2(listdiff_fn,yystack.l_mark[-2],yystack.l_mark[0]);  }
-#line 3300 "y.tab.c"
+#line 3302 "y.tab.c"
 break;
 case 73:
-#line 596 "rules.y"
+#line 598 "rules.y"
 	{ yyval = ap(listdiff_fn,yystack.l_mark[-1]);  }
-#line 3305 "y.tab.c"
+#line 3307 "y.tab.c"
 break;
 case 74:
-#line 598 "rules.y"
+#line 600 "rules.y"
 	{ yyval = ap2(OR,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3310 "y.tab.c"
+#line 3312 "y.tab.c"
 break;
 case 75:
-#line 600 "rules.y"
+#line 602 "rules.y"
 	{ yyval = ap(OR,yystack.l_mark[-1]); }
-#line 3315 "y.tab.c"
+#line 3317 "y.tab.c"
 break;
 case 76:
-#line 602 "rules.y"
+#line 604 "rules.y"
 	{ yyval = ap2(AND,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3320 "y.tab.c"
+#line 3322 "y.tab.c"
 break;
 case 77:
-#line 604 "rules.y"
+#line 606 "rules.y"
 	{ yyval = ap(AND,yystack.l_mark[-1]); }
-#line 3325 "y.tab.c"
+#line 3327 "y.tab.c"
 break;
 case 80:
-#line 610 "rules.y"
+#line 612 "rules.y"
 	{ yyval = ap(NEG,yystack.l_mark[0]); }
-#line 3330 "y.tab.c"
+#line 3332 "y.tab.c"
 break;
 case 81:
-#line 612 "rules.y"
+#line 614 "rules.y"
 	{ yyval = ap(LENGTH,yystack.l_mark[0]);  }
-#line 3335 "y.tab.c"
+#line 3337 "y.tab.c"
 break;
 case 82:
-#line 614 "rules.y"
+#line 616 "rules.y"
 	{ yyval = ap2(PLUS,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3340 "y.tab.c"
+#line 3342 "y.tab.c"
 break;
 case 83:
-#line 616 "rules.y"
+#line 618 "rules.y"
 	{ yyval = ap2(MINUS,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3345 "y.tab.c"
+#line 3347 "y.tab.c"
 break;
 case 84:
-#line 618 "rules.y"
+#line 620 "rules.y"
 	{ yyval = ap2(TIMES,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3350 "y.tab.c"
+#line 3352 "y.tab.c"
 break;
 case 85:
-#line 620 "rules.y"
+#line 622 "rules.y"
 	{ yyval = ap2(FDIV,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3355 "y.tab.c"
+#line 3357 "y.tab.c"
 break;
 case 86:
-#line 622 "rules.y"
+#line 624 "rules.y"
 	{ yyval = ap2(INTDIV,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3360 "y.tab.c"
+#line 3362 "y.tab.c"
 break;
 case 87:
-#line 624 "rules.y"
+#line 626 "rules.y"
 	{ yyval = ap2(MOD,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3365 "y.tab.c"
+#line 3367 "y.tab.c"
 break;
 case 88:
-#line 626 "rules.y"
+#line 628 "rules.y"
 	{ yyval = ap2(POWER,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3370 "y.tab.c"
+#line 3372 "y.tab.c"
 break;
 case 89:
-#line 628 "rules.y"
+#line 630 "rules.y"
 	{ yyval = ap2(B,yystack.l_mark[-2],yystack.l_mark[0]);  }
-#line 3375 "y.tab.c"
+#line 3377 "y.tab.c"
 break;
 case 90:
-#line 630 "rules.y"
+#line 632 "rules.y"
 	{ yyval = ap2(SUBSCRIPT,yystack.l_mark[0],yystack.l_mark[-2]); }
-#line 3380 "y.tab.c"
+#line 3382 "y.tab.c"
 break;
 case 92:
-#line 635 "rules.y"
+#line 637 "rules.y"
 	{ yyval = ap(NEG,yystack.l_mark[0]); }
-#line 3385 "y.tab.c"
+#line 3387 "y.tab.c"
 break;
 case 93:
-#line 637 "rules.y"
+#line 639 "rules.y"
 	{ yyval = ap(LENGTH,yystack.l_mark[0]);  }
-#line 3390 "y.tab.c"
+#line 3392 "y.tab.c"
 break;
 case 94:
-#line 639 "rules.y"
+#line 641 "rules.y"
 	{ yyval = ap2(PLUS,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3395 "y.tab.c"
+#line 3397 "y.tab.c"
 break;
 case 95:
-#line 641 "rules.y"
+#line 643 "rules.y"
 	{ yyval = ap(PLUS,yystack.l_mark[-1]); }
-#line 3400 "y.tab.c"
+#line 3402 "y.tab.c"
 break;
 case 96:
-#line 643 "rules.y"
+#line 645 "rules.y"
 	{ yyval = ap2(MINUS,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3405 "y.tab.c"
+#line 3407 "y.tab.c"
 break;
 case 97:
-#line 645 "rules.y"
+#line 647 "rules.y"
 	{ yyval = ap(MINUS,yystack.l_mark[-1]); }
-#line 3410 "y.tab.c"
+#line 3412 "y.tab.c"
 break;
 case 98:
-#line 647 "rules.y"
+#line 649 "rules.y"
 	{ yyval = ap2(TIMES,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3415 "y.tab.c"
+#line 3417 "y.tab.c"
 break;
 case 99:
-#line 649 "rules.y"
+#line 651 "rules.y"
 	{ yyval = ap(TIMES,yystack.l_mark[-1]); }
-#line 3420 "y.tab.c"
+#line 3422 "y.tab.c"
 break;
 case 100:
-#line 651 "rules.y"
+#line 653 "rules.y"
 	{ yyval = ap2(FDIV,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3425 "y.tab.c"
+#line 3427 "y.tab.c"
 break;
 case 101:
-#line 653 "rules.y"
+#line 655 "rules.y"
 	{ yyval = ap(FDIV,yystack.l_mark[-1]); }
-#line 3430 "y.tab.c"
+#line 3432 "y.tab.c"
 break;
 case 102:
-#line 655 "rules.y"
+#line 657 "rules.y"
 	{ yyval = ap2(INTDIV,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3435 "y.tab.c"
+#line 3437 "y.tab.c"
 break;
 case 103:
-#line 657 "rules.y"
+#line 659 "rules.y"
 	{ yyval = ap(INTDIV,yystack.l_mark[-1]); }
-#line 3440 "y.tab.c"
+#line 3442 "y.tab.c"
 break;
 case 104:
-#line 659 "rules.y"
+#line 661 "rules.y"
 	{ yyval = ap2(MOD,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3445 "y.tab.c"
+#line 3447 "y.tab.c"
 break;
 case 105:
-#line 661 "rules.y"
+#line 663 "rules.y"
 	{ yyval = ap(MOD,yystack.l_mark[-1]); }
-#line 3450 "y.tab.c"
+#line 3452 "y.tab.c"
 break;
 case 106:
-#line 663 "rules.y"
+#line 665 "rules.y"
 	{ yyval = ap2(POWER,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3455 "y.tab.c"
+#line 3457 "y.tab.c"
 break;
 case 107:
-#line 665 "rules.y"
+#line 667 "rules.y"
 	{ yyval = ap(POWER,yystack.l_mark[-1]); }
-#line 3460 "y.tab.c"
+#line 3462 "y.tab.c"
 break;
 case 108:
-#line 667 "rules.y"
+#line 669 "rules.y"
 	{ yyval = ap2(B,yystack.l_mark[-2],yystack.l_mark[0]);  }
-#line 3465 "y.tab.c"
+#line 3467 "y.tab.c"
 break;
 case 109:
-#line 669 "rules.y"
+#line 671 "rules.y"
 	{ yyval = ap(B,yystack.l_mark[-1]);  }
-#line 3470 "y.tab.c"
+#line 3472 "y.tab.c"
 break;
 case 110:
-#line 671 "rules.y"
+#line 673 "rules.y"
 	{ yyval = ap2(SUBSCRIPT,yystack.l_mark[0],yystack.l_mark[-2]); }
-#line 3475 "y.tab.c"
+#line 3477 "y.tab.c"
 break;
 case 111:
-#line 673 "rules.y"
+#line 675 "rules.y"
 	{ yyval = ap2(C,SUBSCRIPT,yystack.l_mark[-1]); }
-#line 3480 "y.tab.c"
+#line 3482 "y.tab.c"
 break;
 case 113:
-#line 678 "rules.y"
-	{ yyval = ap2(yystack.l_mark[-1],yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3485 "y.tab.c"
-break;
-case 114:
 #line 680 "rules.y"
 	{ yyval = ap2(yystack.l_mark[-1],yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3490 "y.tab.c"
+#line 3487 "y.tab.c"
+break;
+case 114:
+#line 682 "rules.y"
+	{ yyval = ap2(yystack.l_mark[-1],yystack.l_mark[-2],yystack.l_mark[0]); }
+#line 3492 "y.tab.c"
 break;
 case 116:
-#line 685 "rules.y"
+#line 687 "rules.y"
 	{ yyval = ap2(yystack.l_mark[-1],yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3495 "y.tab.c"
+#line 3497 "y.tab.c"
 break;
 case 117:
-#line 687 "rules.y"
+#line 689 "rules.y"
 	{ yyval = ap(yystack.l_mark[0],yystack.l_mark[-1]); }
-#line 3500 "y.tab.c"
+#line 3502 "y.tab.c"
 break;
 case 118:
-#line 689 "rules.y"
+#line 691 "rules.y"
 	{ yyval = ap2(yystack.l_mark[-1],yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3505 "y.tab.c"
+#line 3507 "y.tab.c"
 break;
 case 119:
-#line 691 "rules.y"
+#line 693 "rules.y"
 	{ yyval = ap(yystack.l_mark[0],yystack.l_mark[-1]); }
-#line 3510 "y.tab.c"
+#line 3512 "y.tab.c"
 break;
 case 121:
-#line 696 "rules.y"
+#line 698 "rules.y"
 	{ yyval = ap(yystack.l_mark[-1],yystack.l_mark[0]); }
-#line 3515 "y.tab.c"
+#line 3517 "y.tab.c"
 break;
 case 123:
-#line 701 "rules.y"
+#line 703 "rules.y"
 	{ yyval = ap2(yystack.l_mark[-1],yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3520 "y.tab.c"
+#line 3522 "y.tab.c"
 break;
 case 124:
-#line 703 "rules.y"
+#line 705 "rules.y"
 	{ word subject;
             subject = hd[hd[yystack.l_mark[-2]]]==AND?tl[tl[yystack.l_mark[-2]]]:tl[yystack.l_mark[-2]];
             yyval = ap2(AND,yystack.l_mark[-2],ap2(yystack.l_mark[-1],subject,yystack.l_mark[0]));
           }
-#line 3528 "y.tab.c"
+#line 3530 "y.tab.c"
 break;
 case 125:
-#line 711 "rules.y"
+#line 713 "rules.y"
 	{ yyval = ap2(yystack.l_mark[-1],yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3533 "y.tab.c"
+#line 3535 "y.tab.c"
 break;
 case 126:
-#line 713 "rules.y"
+#line 715 "rules.y"
 	{ yyval = ap(yystack.l_mark[0],yystack.l_mark[-1]); }
-#line 3538 "y.tab.c"
+#line 3540 "y.tab.c"
 break;
 case 127:
-#line 715 "rules.y"
+#line 717 "rules.y"
 	{ word subject;
             subject = hd[hd[yystack.l_mark[-2]]]==AND?tl[tl[yystack.l_mark[-2]]]:tl[yystack.l_mark[-2]];
             yyval = ap2(AND,yystack.l_mark[-2],ap2(yystack.l_mark[-1],subject,yystack.l_mark[0]));
           }
-#line 3546 "y.tab.c"
+#line 3548 "y.tab.c"
 break;
 case 128:
-#line 722 "rules.y"
+#line 724 "rules.y"
 	{ if(!SYNERR)lexstates=NIL,inlex=1; }
-#line 3551 "y.tab.c"
+#line 3553 "y.tab.c"
 break;
 case 129:
-#line 724 "rules.y"
+#line 726 "rules.y"
 	{ inlex=0; lexdefs=NIL;
             if(lexstates!=NIL)
               { word echoed=0;
@@ -3571,98 +3573,98 @@ case 129:
                  cons(0-or-list-of-startconditions,1+newstartcondition)
             */
             yyval = yystack.l_mark[-1]; }
-#line 3575 "y.tab.c"
+#line 3577 "y.tab.c"
 break;
 case 133:
-#line 748 "rules.y"
+#line 750 "rules.y"
 	{ yyval = readvals(0,0); }
-#line 3580 "y.tab.c"
+#line 3582 "y.tab.c"
 break;
 case 134:
-#line 750 "rules.y"
+#line 752 "rules.y"
 	{ yyval = show(0,0); }
-#line 3585 "y.tab.c"
+#line 3587 "y.tab.c"
 break;
 case 135:
-#line 752 "rules.y"
+#line 754 "rules.y"
 	{ yyval = lastexp;
             if(lastexp==UNDEF)
             syntax("no previous expression to substitute for $$\n"); }
-#line 3592 "y.tab.c"
+#line 3594 "y.tab.c"
 break;
 case 136:
-#line 756 "rules.y"
+#line 758 "rules.y"
 	{ yyval = NIL; }
-#line 3597 "y.tab.c"
+#line 3599 "y.tab.c"
 break;
 case 137:
-#line 758 "rules.y"
+#line 760 "rules.y"
 	{ yyval = cons(yystack.l_mark[-1],NIL); }
-#line 3602 "y.tab.c"
+#line 3604 "y.tab.c"
 break;
 case 138:
-#line 760 "rules.y"
+#line 762 "rules.y"
 	{ yyval = cons(yystack.l_mark[-3],cons(yystack.l_mark[-1],NIL)); }
-#line 3607 "y.tab.c"
+#line 3609 "y.tab.c"
 break;
 case 139:
-#line 762 "rules.y"
+#line 764 "rules.y"
 	{ yyval = cons(yystack.l_mark[-5],cons(yystack.l_mark[-3],reverse(yystack.l_mark[-1]))); }
-#line 3612 "y.tab.c"
+#line 3614 "y.tab.c"
 break;
 case 140:
-#line 764 "rules.y"
+#line 766 "rules.y"
 	{ yyval = ap3(STEPUNTIL,big_one,yystack.l_mark[-1],yystack.l_mark[-3]); }
-#line 3617 "y.tab.c"
+#line 3619 "y.tab.c"
 break;
 case 141:
-#line 766 "rules.y"
+#line 768 "rules.y"
 	{ yyval = ap2(STEP,big_one,yystack.l_mark[-2]); }
-#line 3622 "y.tab.c"
+#line 3624 "y.tab.c"
 break;
 case 142:
-#line 768 "rules.y"
+#line 770 "rules.y"
 	{ yyval = ap3(STEPUNTIL,ap2(MINUS,yystack.l_mark[-3],yystack.l_mark[-5]),yystack.l_mark[-1],yystack.l_mark[-5]); }
-#line 3627 "y.tab.c"
+#line 3629 "y.tab.c"
 break;
 case 143:
-#line 770 "rules.y"
+#line 772 "rules.y"
 	{ yyval = ap2(STEP,ap2(MINUS,yystack.l_mark[-2],yystack.l_mark[-4]),yystack.l_mark[-4]); }
-#line 3632 "y.tab.c"
+#line 3634 "y.tab.c"
 break;
 case 144:
-#line 772 "rules.y"
+#line 774 "rules.y"
 	{ yyval = SYNERR?NIL:compzf(yystack.l_mark[-3],yystack.l_mark[-1],0);  }
-#line 3637 "y.tab.c"
+#line 3639 "y.tab.c"
 break;
 case 145:
-#line 774 "rules.y"
+#line 776 "rules.y"
 	{ yyval = SYNERR?NIL:compzf(yystack.l_mark[-3],yystack.l_mark[-1],1);  }
-#line 3642 "y.tab.c"
+#line 3644 "y.tab.c"
 break;
 case 146:
-#line 776 "rules.y"
-	{ yyval = yystack.l_mark[-1]; }
-#line 3647 "y.tab.c"
-break;
-case 147:
 #line 778 "rules.y"
 	{ yyval = yystack.l_mark[-1]; }
-#line 3652 "y.tab.c"
+#line 3649 "y.tab.c"
+break;
+case 147:
+#line 780 "rules.y"
+	{ yyval = yystack.l_mark[-1]; }
+#line 3654 "y.tab.c"
 break;
 case 148:
-#line 780 "rules.y"
+#line 782 "rules.y"
 	{ yyval = (tag[yystack.l_mark[-2]]==AP&&hd[yystack.l_mark[-2]]==C)?ap(tl[yystack.l_mark[-2]],yystack.l_mark[-1]): /* optimisation */
                  ap2(C,yystack.l_mark[-2],yystack.l_mark[-1]); }
-#line 3658 "y.tab.c"
+#line 3660 "y.tab.c"
 break;
 case 149:
-#line 783 "rules.y"
+#line 785 "rules.y"
 	{ yyval = Void; }
-#line 3663 "y.tab.c"
+#line 3665 "y.tab.c"
 break;
 case 150:
-#line 785 "rules.y"
+#line 787 "rules.y"
 	{ if(tl[yystack.l_mark[-1]]==NIL)yyval=pair(yystack.l_mark[-3],hd[yystack.l_mark[-1]]);
             else { yyval=pair(hd[tl[yystack.l_mark[-1]]],hd[yystack.l_mark[-1]]);
                    yystack.l_mark[-1]=tl[tl[yystack.l_mark[-1]]];
@@ -3671,38 +3673,38 @@ case 150:
           /* representation of the tuple (a1,...,an) is
              tcons(a1,tcons(a2,...pair(a(n-1),an))) */
           }
-#line 3675 "y.tab.c"
+#line 3677 "y.tab.c"
 break;
 case 151:
-#line 795 "rules.y"
+#line 797 "rules.y"
 	{ if(!SYNERR)inlex=2; }
-#line 3680 "y.tab.c"
+#line 3682 "y.tab.c"
 break;
 case 152:
-#line 796 "rules.y"
+#line 798 "rules.y"
 	{ if(!SYNERR)inlex=1; }
-#line 3685 "y.tab.c"
+#line 3687 "y.tab.c"
 break;
 case 153:
-#line 797 "rules.y"
+#line 799 "rules.y"
 	{ if(yystack.l_mark[-2]<0 && e_re(yystack.l_mark[-7]))
               errs=yystack.l_mark[-8],
               syntax("illegal lex rule - lhs matches empty\n");
             yyval = cons(cons(cons(yystack.l_mark[-9],1+yystack.l_mark[-2]),cons(yystack.l_mark[-7],label(yystack.l_mark[-8],yystack.l_mark[-3]))),yystack.l_mark[-10]); }
-#line 3693 "y.tab.c"
+#line 3695 "y.tab.c"
 break;
 case 154:
-#line 802 "rules.y"
+#line 804 "rules.y"
 	{ yyval = NIL; }
-#line 3698 "y.tab.c"
+#line 3700 "y.tab.c"
 break;
 case 155:
-#line 806 "rules.y"
+#line 808 "rules.y"
 	{ yyval = 0; }
-#line 3703 "y.tab.c"
+#line 3705 "y.tab.c"
 break;
 case 156:
-#line 808 "rules.y"
+#line 810 "rules.y"
 	{ word ns=NIL;
             for(;yystack.l_mark[-1]!=NIL;yystack.l_mark[-1]=tl[yystack.l_mark[-1]])
                { word *x = &lexstates,i=1;
@@ -3711,98 +3713,98 @@ case 156:
                  else tl[hd[*x]] |= 2; 
                  ns = add1(i,ns); }
             yyval = ns; }
-#line 3715 "y.tab.c"
+#line 3717 "y.tab.c"
 break;
 case 157:
-#line 819 "rules.y"
+#line 821 "rules.y"
 	{ yyval=cons(yystack.l_mark[0],NIL); }
-#line 3720 "y.tab.c"
+#line 3722 "y.tab.c"
 break;
 case 158:
-#line 821 "rules.y"
+#line 823 "rules.y"
 	{ if(member(yystack.l_mark[-1],yystack.l_mark[0]))
      printf("%ssyntax error: repeated name \"%s\" in start conditions\n",
                       echoing?"\n":"",get_id(yystack.l_mark[0])),
               acterror();
             yyval = cons(yystack.l_mark[0],yystack.l_mark[-1]); }
-#line 3729 "y.tab.c"
+#line 3731 "y.tab.c"
 break;
 case 159:
-#line 829 "rules.y"
+#line 831 "rules.y"
 	{ yyval = -1; }
-#line 3734 "y.tab.c"
+#line 3736 "y.tab.c"
 break;
 case 160:
-#line 831 "rules.y"
+#line 833 "rules.y"
 	{ word *x = &lexstates,i=1;
                 while(*x!=NIL&&hd[hd[*x]]!=yystack.l_mark[0])i++,x = &tl[*x];
                 if(*x == NIL)*x = cons(cons(yystack.l_mark[0],1),NIL);
                 else tl[hd[*x]] |= 1;
                 yyval = i;
               }
-#line 3744 "y.tab.c"
+#line 3746 "y.tab.c"
 break;
 case 161:
-#line 838 "rules.y"
+#line 840 "rules.y"
 	{ if(!isnat(yystack.l_mark[0])||get_int(yystack.l_mark[0])!=0)
                    syntax("%begin not followed by IDENTIFIER or 0\n");
                 yyval = 0; }
-#line 3751 "y.tab.c"
+#line 3753 "y.tab.c"
 break;
 case 162:
-#line 844 "rules.y"
+#line 846 "rules.y"
 	{ lexdefs = cons(cons(yystack.l_mark[-4],yystack.l_mark[-1]),lexdefs); }
-#line 3756 "y.tab.c"
+#line 3758 "y.tab.c"
 break;
 case 163:
-#line 846 "rules.y"
+#line 848 "rules.y"
 	{ lexdefs = NIL; }
-#line 3761 "y.tab.c"
+#line 3763 "y.tab.c"
 break;
 case 164:
-#line 850 "rules.y"
+#line 852 "rules.y"
 	{ yyval = ap2(LEX_OR,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3766 "y.tab.c"
+#line 3768 "y.tab.c"
 break;
 case 166:
-#line 855 "rules.y"
+#line 857 "rules.y"
 	{ yyval = ap2(LEX_RCONTEXT,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 3771 "y.tab.c"
+#line 3773 "y.tab.c"
 break;
 case 167:
-#line 857 "rules.y"
+#line 859 "rules.y"
 	{ yyval = ap2(LEX_RCONTEXT,yystack.l_mark[-1],0); }
-#line 3776 "y.tab.c"
+#line 3778 "y.tab.c"
 break;
 case 169:
-#line 862 "rules.y"
+#line 864 "rules.y"
 	{ yyval = ap2(LEX_SEQ,yystack.l_mark[-1],yystack.l_mark[0]); }
-#line 3781 "y.tab.c"
+#line 3783 "y.tab.c"
 break;
 case 171:
-#line 867 "rules.y"
+#line 869 "rules.y"
 	{ if(e_re(yystack.l_mark[-1]))
             syntax("illegal regular expression - arg of * matches empty\n");
           yyval = ap(LEX_STAR,yystack.l_mark[-1]); }
-#line 3788 "y.tab.c"
+#line 3790 "y.tab.c"
 break;
 case 172:
-#line 871 "rules.y"
+#line 873 "rules.y"
 	{ yyval = ap2(LEX_SEQ,yystack.l_mark[-1],ap(LEX_STAR,yystack.l_mark[-1])); }
-#line 3793 "y.tab.c"
+#line 3795 "y.tab.c"
 break;
 case 173:
-#line 873 "rules.y"
+#line 875 "rules.y"
 	{ yyval = ap(LEX_OPT,yystack.l_mark[-1]); }
-#line 3798 "y.tab.c"
+#line 3800 "y.tab.c"
 break;
 case 175:
-#line 878 "rules.y"
+#line 880 "rules.y"
 	{ yyval = yystack.l_mark[-1]; }
-#line 3803 "y.tab.c"
+#line 3805 "y.tab.c"
 break;
 case 176:
-#line 880 "rules.y"
+#line 882 "rules.y"
 	{ if(!isstring(yystack.l_mark[0]))
               printf("%ssyntax error - unexpected token \"",
                         echoing?"\n":""),
@@ -3812,27 +3814,27 @@ case 176:
                  tl[yystack.l_mark[0]]==NIL?ap(LEX_CHAR,hd[yystack.l_mark[0]]):
                              ap(LEX_STRING,yystack.l_mark[0]);
           }
-#line 3816 "y.tab.c"
+#line 3818 "y.tab.c"
 break;
 case 177:
-#line 890 "rules.y"
+#line 892 "rules.y"
 	{ if(yystack.l_mark[0]==NIL)
               syntax("empty character class `` cannot match\n");
             yyval = tl[yystack.l_mark[0]]==NIL?ap(LEX_CHAR,hd[yystack.l_mark[0]]):ap(LEX_CLASS,yystack.l_mark[0]); }
-#line 3823 "y.tab.c"
+#line 3825 "y.tab.c"
 break;
 case 178:
-#line 894 "rules.y"
+#line 896 "rules.y"
 	{ yyval = ap(LEX_CLASS,cons(ANTICHARCLASS,yystack.l_mark[0])); }
-#line 3828 "y.tab.c"
+#line 3830 "y.tab.c"
 break;
 case 179:
-#line 896 "rules.y"
+#line 898 "rules.y"
 	{ yyval = LEX_DOT; }
-#line 3833 "y.tab.c"
+#line 3835 "y.tab.c"
 break;
 case 180:
-#line 898 "rules.y"
+#line 900 "rules.y"
 	{ word x=lexdefs;
             while(x!=NIL&&hd[hd[x]]!=yystack.l_mark[0])x=tl[x];
             if(x==NIL)
@@ -3842,30 +3844,30 @@ case 180:
                       get_id(yystack.l_mark[0])),
                   acterror();
             else yyval = tl[hd[x]]; }
-#line 3846 "y.tab.c"
+#line 3848 "y.tab.c"
 break;
 case 183:
-#line 912 "rules.y"
+#line 914 "rules.y"
 	{ yyval = cons(cons(GUARD,yystack.l_mark[0]),NIL);  }
-#line 3851 "y.tab.c"
+#line 3853 "y.tab.c"
 break;
 case 184:
-#line 914 "rules.y"
+#line 916 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],NIL);  }
-#line 3856 "y.tab.c"
+#line 3858 "y.tab.c"
 break;
 case 185:
-#line 916 "rules.y"
+#line 918 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],yystack.l_mark[-2]);   }
-#line 3861 "y.tab.c"
+#line 3863 "y.tab.c"
 break;
 case 186:
-#line 918 "rules.y"
+#line 920 "rules.y"
 	{ yyval = cons(cons(GUARD,yystack.l_mark[0]),yystack.l_mark[-2]);   }
-#line 3866 "y.tab.c"
+#line 3868 "y.tab.c"
 break;
 case 187:
-#line 922 "rules.y"
+#line 924 "rules.y"
 	{ /* fix syntax to disallow patlist on lhs of iterate generator */
             if(hd[yystack.l_mark[0]]==GENERATOR)
               { word e=tl[tl[yystack.l_mark[0]]];
@@ -3873,41 +3875,41 @@ case 187:
                     (hd[hd[e]]==ITERATE||hd[hd[e]]==ITERATE1))
                   syntax("ill-formed generator\n"); }
             yyval = cons(REPEAT,cons(genlhs(yystack.l_mark[-2]),yystack.l_mark[0])); idsused=NIL;  }
-#line 3877 "y.tab.c"
+#line 3879 "y.tab.c"
 break;
 case 189:
-#line 933 "rules.y"
+#line 935 "rules.y"
 	{ yyval = cons(GENERATOR,cons(genlhs(yystack.l_mark[-2]),yystack.l_mark[0])); idsused=NIL;  }
-#line 3882 "y.tab.c"
+#line 3884 "y.tab.c"
 break;
 case 190:
-#line 935 "rules.y"
+#line 937 "rules.y"
 	{ word p = genlhs(yystack.l_mark[-5]); idsused=NIL;
             yyval = cons(GENERATOR,
                       cons(p,ap2(irrefutable(p)?ITERATE:ITERATE1,
                                  lambda(p,yystack.l_mark[-1]),yystack.l_mark[-3])));
           }
-#line 3891 "y.tab.c"
+#line 3893 "y.tab.c"
 break;
 case 193:
-#line 947 "rules.y"
+#line 949 "rules.y"
 	{ word l = yystack.l_mark[-6], r = yystack.l_mark[-1];
             word f = head(l);
             if(tag[f]==ID&&!isconstructor(f)) /* fnform defn */
               while(tag[l]==AP)r=lambda(tl[l],r),l=hd[l];
             r = label(yystack.l_mark[-2],r); /* to help locate type errors */
             declare(l,r),lastname=l; }
-#line 3901 "y.tab.c"
+#line 3903 "y.tab.c"
 break;
 case 194:
-#line 955 "rules.y"
+#line 957 "rules.y"
 	{ word h=reverse(hd[yystack.l_mark[0]]),hr=hd[tl[yystack.l_mark[0]]],t=tl[tl[yystack.l_mark[0]]];
             while(h!=NIL&&!SYNERR)specify(hd[h],t,hr),h=tl[h];
             yyval = cons(nill,NIL); }
-#line 3908 "y.tab.c"
+#line 3910 "y.tab.c"
 break;
 case 195:
-#line 960 "rules.y"
+#line 962 "rules.y"
 	{ extern word TABSTRS;
             extern char *dicp,*dicq;
             word x=reverse(yystack.l_mark[-1]),ids=NIL,tids=NIL;
@@ -3931,17 +3933,17 @@ case 195:
                  x=tl[x]; }
             TABSTRS = cons(cons(tids,ids),TABSTRS);
             yyval = cons(nill,NIL); }
-#line 3935 "y.tab.c"
+#line 3937 "y.tab.c"
 break;
 case 196:
-#line 985 "rules.y"
+#line 987 "rules.y"
 	{ word x=redtvars(ap(yystack.l_mark[-7],yystack.l_mark[-2]));
             decltype(hd[x],synonym_t,tl[x],yystack.l_mark[-4]);
             yyval = cons(nill,NIL); }
-#line 3942 "y.tab.c"
+#line 3944 "y.tab.c"
 break;
 case 197:
-#line 990 "rules.y"
+#line 992 "rules.y"
 	{ word rhs = yystack.l_mark[-2], r_ids = yystack.l_mark[-2], n=0;
             while(r_ids!=NIL)r_ids=tl[r_ids],n++;
             while(rhs!=NIL&&!SYNERR)
@@ -3970,10 +3972,10 @@ case 197:
                rhs = tl[rhs]; }
             if(!SYNERR)decltype(yystack.l_mark[-7],algebraic_t,r_ids,yystack.l_mark[-4]);
             yyval = cons(nill,NIL); }
-#line 3974 "y.tab.c"
+#line 3976 "y.tab.c"
 break;
 case 198:
-#line 1020 "rules.y"
+#line 1022 "rules.y"
 	{ inexplist=0;
             if(exports!=NIL)
               errs=yystack.l_mark[-3],
@@ -3982,10 +3984,10 @@ case 198:
 		     exportfiles=cons(PLUS,NIL);
                    exports=cons(yystack.l_mark[-3],yystack.l_mark[-1]); } /* cons(hereinfo,identifiers) */
             yyval = cons(nill,NIL); }
-#line 3986 "y.tab.c"
+#line 3988 "y.tab.c"
 break;
 case 199:
-#line 1030 "rules.y"
+#line 1032 "rules.y"
 	{ if(freeids!=NIL)
               errs=yystack.l_mark[-3],
               syntax("multiple %free statements are illegal\n"); else
@@ -4006,23 +4008,23 @@ case 199:
                  cons(id,cons(original_name,type)) */
             }
             yyval = cons(nill,NIL); }
-#line 4010 "y.tab.c"
+#line 4012 "y.tab.c"
 break;
 case 200:
-#line 1053 "rules.y"
+#line 1055 "rules.y"
 	{ extern char *dicp;
             includees=cons(cons(yystack.l_mark[-3],cons(yystack.l_mark[-1],yystack.l_mark[-2])),includees);
                    /* $1 contains file+hereinfo */
             yyval = cons(nill,NIL); }
-#line 4018 "y.tab.c"
+#line 4020 "y.tab.c"
 break;
 case 201:
-#line 1058 "rules.y"
+#line 1060 "rules.y"
 	{ startbnf(); inbnf=1;}
-#line 4023 "y.tab.c"
+#line 4025 "y.tab.c"
 break;
 case 202:
-#line 1060 "rules.y"
+#line 1062 "rules.y"
 	{ word lhs=NIL,p=yystack.l_mark[-1],subjects,body,startswith=NIL,leftrecs=NIL;
             ihlist=inbnf=0;
             nonterminals=UNION(nonterminals,yystack.l_mark[-3]);
@@ -4078,55 +4080,55 @@ case 202:
             }
             declare(subjects,label(yystack.l_mark[-6],block(yystack.l_mark[-1],body, 0)));
           }}
-#line 4082 "y.tab.c"
+#line 4084 "y.tab.c"
 break;
 case 203:
-#line 1118 "rules.y"
+#line 1120 "rules.y"
 	{ yyval=yystack.l_mark[0];
              inexplist=1; }
-#line 4088 "y.tab.c"
+#line 4090 "y.tab.c"
 break;
 case 204:
-#line 1123 "rules.y"
+#line 1125 "rules.y"
 	{ yyval = NIL; }
-#line 4093 "y.tab.c"
+#line 4095 "y.tab.c"
 break;
 case 205:
-#line 1125 "rules.y"
+#line 1127 "rules.y"
 	{ yyval = yystack.l_mark[-1]; }
-#line 4098 "y.tab.c"
+#line 4100 "y.tab.c"
 break;
 case 206:
-#line 1129 "rules.y"
+#line 1131 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],yystack.l_mark[-1]); }
-#line 4103 "y.tab.c"
+#line 4105 "y.tab.c"
 break;
 case 207:
-#line 1131 "rules.y"
+#line 1133 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],NIL); }
-#line 4108 "y.tab.c"
+#line 4110 "y.tab.c"
 break;
 case 208:
-#line 1135 "rules.y"
+#line 1137 "rules.y"
 	{ yyval = cons(yystack.l_mark[-4],yystack.l_mark[-1]); }
-#line 4113 "y.tab.c"
+#line 4115 "y.tab.c"
 break;
 case 209:
-#line 1137 "rules.y"
+#line 1139 "rules.y"
 	{ word x=redtvars(ap(yystack.l_mark[-6],yystack.l_mark[-2])); 
              word arity=0,h=hd[x];
              while(tag[h]==AP)arity++,h=hd[h];
              yyval = ap(h,make_typ(arity,0,synonym_t,tl[x]));
            }
-#line 4122 "y.tab.c"
+#line 4124 "y.tab.c"
 break;
 case 210:
-#line 1145 "rules.y"
+#line 1147 "rules.y"
 	{ yyval = NIL; }
-#line 4127 "y.tab.c"
+#line 4129 "y.tab.c"
 break;
 case 211:
-#line 1147 "rules.y"
+#line 1149 "rules.y"
 	{ word a,b,c=0;
              for(a=yystack.l_mark[0];a!=NIL;a=tl[a])
                 for(b=tl[a];b!=NIL;b=tl[b])
@@ -4139,63 +4141,63 @@ case 211:
                       get_id(c)),
                   acterror();
            }
-#line 4143 "y.tab.c"
+#line 4145 "y.tab.c"
 break;
 case 212:
-#line 1162 "rules.y"
+#line 1164 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],yystack.l_mark[-1]); }
-#line 4148 "y.tab.c"
+#line 4150 "y.tab.c"
 break;
 case 213:
-#line 1164 "rules.y"
+#line 1166 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],NIL); }
-#line 4153 "y.tab.c"
+#line 4155 "y.tab.c"
 break;
 case 214:
-#line 1168 "rules.y"
-	{ yyval = cons(yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 4158 "y.tab.c"
-break;
-case 215:
 #line 1170 "rules.y"
 	{ yyval = cons(yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 4163 "y.tab.c"
+#line 4160 "y.tab.c"
+break;
+case 215:
+#line 1172 "rules.y"
+	{ yyval = cons(yystack.l_mark[-2],yystack.l_mark[0]); }
+#line 4165 "y.tab.c"
 break;
 case 216:
-#line 1172 "rules.y"
+#line 1174 "rules.y"
 	{ yyval = cons(make_pn(UNDEF),yystack.l_mark[0]); }
-#line 4168 "y.tab.c"
+#line 4170 "y.tab.c"
 break;
 case 217:
-#line 1177 "rules.y"
+#line 1179 "rules.y"
 	{ extern word line_no;
              lasth = yyval = fileinfo(get_fil(current_file),line_no);
              /* (script,line_no) for diagnostics */
            }
-#line 4176 "y.tab.c"
+#line 4178 "y.tab.c"
 break;
 case 218:
-#line 1184 "rules.y"
+#line 1186 "rules.y"
 	{ tvarscope=1; }
-#line 4181 "y.tab.c"
+#line 4183 "y.tab.c"
 break;
 case 219:
-#line 1188 "rules.y"
+#line 1190 "rules.y"
 	{ tvarscope=0; idsused= NIL; }
-#line 4186 "y.tab.c"
+#line 4188 "y.tab.c"
 break;
 case 220:
-#line 1192 "rules.y"
+#line 1194 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],NIL);
             dval(yystack.l_mark[0]) = tries(dlhs(yystack.l_mark[0]),cons(dval(yystack.l_mark[0]),NIL));
             if(!SYNERR&&get_ids(dlhs(yystack.l_mark[0]))==NIL)
               errs=hd[hd[tl[dval(yystack.l_mark[0])]]],
               syntax("illegal lhs for local definition\n");
           }
-#line 4196 "y.tab.c"
+#line 4198 "y.tab.c"
 break;
 case 221:
-#line 1199 "rules.y"
+#line 1201 "rules.y"
 	{ if(dlhs(yystack.l_mark[0])==dlhs(hd[yystack.l_mark[-1]]) /*&&dval(hd[$1])!=UNDEF*/)
               { yyval = yystack.l_mark[-1];
                 if(!fallible(hd[tl[dval(hd[yystack.l_mark[-1]])]]))
@@ -4217,125 +4219,125 @@ unreachable case in defn of \"%s\"\n",echoing?"\n":"",get_id(dlhs(yystack.l_mark
                         /* potentially quadratic - fix later */
                  }
           }
-#line 4221 "y.tab.c"
+#line 4223 "y.tab.c"
 break;
 case 222:
-#line 1223 "rules.y"
+#line 1225 "rules.y"
 	{ errs=hd[tl[yystack.l_mark[0]]];
             syntax("`::' encountered in local defs\n");
             yyval = cons(nill,NIL); }
-#line 4228 "y.tab.c"
+#line 4230 "y.tab.c"
 break;
 case 223:
-#line 1227 "rules.y"
+#line 1229 "rules.y"
 	{ errs=yystack.l_mark[-1];
             syntax("`==' encountered in local defs\n");
             yyval = cons(nill,NIL); }
-#line 4235 "y.tab.c"
+#line 4237 "y.tab.c"
 break;
 case 224:
-#line 1231 "rules.y"
+#line 1233 "rules.y"
 	{ errs=yystack.l_mark[-1];
             syntax("`::=' encountered in local defs\n");
             yyval = cons(nill,NIL); }
-#line 4242 "y.tab.c"
+#line 4244 "y.tab.c"
 break;
 case 225:
-#line 1235 "rules.y"
+#line 1237 "rules.y"
 	{ word l = yystack.l_mark[-6], r = yystack.l_mark[-1];
             word f = head(l);
             if(tag[f]==ID&&!isconstructor(f)) /* fnform defn */
               while(tag[l]==AP)r=lambda(tl[l],r),l=hd[l];
             r = label(yystack.l_mark[-2],r); /* to help locate type errors */
             yyval = defn(l,undef_t,r); }
-#line 4252 "y.tab.c"
+#line 4254 "y.tab.c"
 break;
 case 226:
-#line 1244 "rules.y"
+#line 1246 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],NIL); }
-#line 4257 "y.tab.c"
+#line 4259 "y.tab.c"
 break;
 case 227:
-#line 1246 "rules.y"
+#line 1248 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],yystack.l_mark[-2]);  }
-#line 4262 "y.tab.c"
+#line 4264 "y.tab.c"
 break;
 case 229:
-#line 1251 "rules.y"
+#line 1253 "rules.y"
 	{ yyval = cons(yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 4267 "y.tab.c"
+#line 4269 "y.tab.c"
 break;
 case 230:
-#line 1255 "rules.y"
+#line 1257 "rules.y"
 	{ if(!isnat(yystack.l_mark[0]))
               syntax("inappropriate use of \"+\" in pattern\n");
             yyval = ap2(PLUS,yystack.l_mark[0],yystack.l_mark[-2]); }
-#line 4274 "y.tab.c"
+#line 4276 "y.tab.c"
 break;
 case 231:
-#line 1259 "rules.y"
+#line 1261 "rules.y"
 	{ /* if(tag[$2]==DOUBLE)
               $$ = cons(CONST,sto_dbl(-get_dbl($2))); else */
             if(tag[yystack.l_mark[0]]==INT)
               yyval = cons(CONST,bignegate(yystack.l_mark[0])); else
             syntax("inappropriate use of \"-\" in pattern\n"); }
-#line 4283 "y.tab.c"
+#line 4285 "y.tab.c"
 break;
 case 232:
-#line 1265 "rules.y"
-	{ yyval = ap2(yystack.l_mark[-1],yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 4288 "y.tab.c"
-break;
-case 233:
 #line 1267 "rules.y"
 	{ yyval = ap2(yystack.l_mark[-1],yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 4293 "y.tab.c"
+#line 4290 "y.tab.c"
+break;
+case 233:
+#line 1269 "rules.y"
+	{ yyval = ap2(yystack.l_mark[-1],yystack.l_mark[-2],yystack.l_mark[0]); }
+#line 4295 "y.tab.c"
 break;
 case 236:
-#line 1273 "rules.y"
+#line 1275 "rules.y"
 	{ yyval = ap(hd[yystack.l_mark[-1]]==CONST&&tag[tl[yystack.l_mark[-1]]]==ID?tl[yystack.l_mark[-1]]:yystack.l_mark[-1],yystack.l_mark[0]); }
-#line 4298 "y.tab.c"
+#line 4300 "y.tab.c"
 break;
 case 237:
-#line 1279 "rules.y"
+#line 1281 "rules.y"
 	{ if(sreds&&member(gvars,yystack.l_mark[0]))syntax("illegal use of $num symbol\n");
               /* cannot use grammar variable in a binding position */
             if(memb(idsused,yystack.l_mark[0]))yyval = cons(CONST,yystack.l_mark[0]);
                             /* picks up repeated names in a template */
             else idsused= cons(yystack.l_mark[0],idsused);   }
-#line 4307 "y.tab.c"
+#line 4309 "y.tab.c"
 break;
 case 239:
-#line 1286 "rules.y"
+#line 1288 "rules.y"
 	{ if(tag[yystack.l_mark[0]]==DOUBLE)
 	      syntax("use of floating point literal in pattern\n");
 	    yyval = cons(CONST,yystack.l_mark[0]); }
-#line 4314 "y.tab.c"
+#line 4316 "y.tab.c"
 break;
 case 240:
-#line 1290 "rules.y"
+#line 1292 "rules.y"
 	{ yyval = nill; }
-#line 4319 "y.tab.c"
+#line 4321 "y.tab.c"
 break;
 case 241:
-#line 1292 "rules.y"
+#line 1294 "rules.y"
 	{ word x=yystack.l_mark[-1],y=nill;
             while(x!=NIL)y = cons(hd[x],y), x = tl[x];
             yyval = y; }
-#line 4326 "y.tab.c"
+#line 4328 "y.tab.c"
 break;
 case 242:
-#line 1296 "rules.y"
+#line 1298 "rules.y"
 	{ yyval = Void; }
-#line 4331 "y.tab.c"
+#line 4333 "y.tab.c"
 break;
 case 243:
-#line 1298 "rules.y"
+#line 1300 "rules.y"
 	{ yyval = yystack.l_mark[-1]; }
-#line 4336 "y.tab.c"
+#line 4338 "y.tab.c"
 break;
 case 244:
-#line 1300 "rules.y"
+#line 1302 "rules.y"
 	{ if(tl[yystack.l_mark[-1]]==NIL)yyval=pair(yystack.l_mark[-3],hd[yystack.l_mark[-1]]);
             else { yyval=pair(hd[tl[yystack.l_mark[-1]]],hd[yystack.l_mark[-1]]);
                    yystack.l_mark[-1]=tl[tl[yystack.l_mark[-1]]];
@@ -4344,301 +4346,301 @@ case 244:
           /* representation of the tuple (a1,...,an) is
              tcons(a1,tcons(a2,...pair(a(n-1),an))) */
           }
-#line 4348 "y.tab.c"
+#line 4350 "y.tab.c"
 break;
 case 246:
-#line 1312 "rules.y"
+#line 1314 "rules.y"
 	{ yyval = ap2(arrow_t,yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 4353 "y.tab.c"
+#line 4355 "y.tab.c"
 break;
 case 247:
-#line 1316 "rules.y"
+#line 1318 "rules.y"
 	{ yyval = ap2(yystack.l_mark[-1],yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 4358 "y.tab.c"
+#line 4360 "y.tab.c"
 break;
 case 251:
-#line 1327 "rules.y"
-	{ yyval = ap(yystack.l_mark[-1],yystack.l_mark[0]); }
-#line 4363 "y.tab.c"
-break;
-case 252:
 #line 1329 "rules.y"
 	{ yyval = ap(yystack.l_mark[-1],yystack.l_mark[0]); }
-#line 4368 "y.tab.c"
+#line 4365 "y.tab.c"
+break;
+case 252:
+#line 1331 "rules.y"
+	{ yyval = ap(yystack.l_mark[-1],yystack.l_mark[0]); }
+#line 4370 "y.tab.c"
 break;
 case 253:
-#line 1333 "rules.y"
+#line 1335 "rules.y"
 	{ yyval = transtypeid(yystack.l_mark[0]); }
-#line 4373 "y.tab.c"
+#line 4375 "y.tab.c"
 break;
 case 254:
-#line 1336 "rules.y"
+#line 1338 "rules.y"
 	{ if(tvarscope&&!memb(idsused,yystack.l_mark[0]))
               printf("%ssyntax error: unbound type variable ",echoing?"\n":""),
                  out_type(yystack.l_mark[0]),putchar('\n'),acterror();
             yyval = yystack.l_mark[0]; }
-#line 4381 "y.tab.c"
+#line 4383 "y.tab.c"
 break;
 case 255:
-#line 1341 "rules.y"
+#line 1343 "rules.y"
 	{ yyval = yystack.l_mark[-1]; }
-#line 4386 "y.tab.c"
+#line 4388 "y.tab.c"
 break;
 case 256:
-#line 1343 "rules.y"
+#line 1345 "rules.y"
 	{ yyval = ap(list_t,yystack.l_mark[-1]); }
-#line 4391 "y.tab.c"
+#line 4393 "y.tab.c"
 break;
 case 257:
-#line 1345 "rules.y"
+#line 1347 "rules.y"
 	{ syntax(
              "tuple-type with missing parentheses (obsolete syntax)\n"); }
-#line 4397 "y.tab.c"
+#line 4399 "y.tab.c"
 break;
 case 258:
-#line 1350 "rules.y"
+#line 1352 "rules.y"
 	{ yyval = void_t; }
-#line 4402 "y.tab.c"
+#line 4404 "y.tab.c"
 break;
 case 260:
-#line 1353 "rules.y"
+#line 1355 "rules.y"
 	{ word x=yystack.l_mark[0],y=void_t;
             while(x!=NIL)y = ap2(comma_t,hd[x],y), x = tl[x];
             yyval = ap2(comma_t,yystack.l_mark[-2],y); }
-#line 4409 "y.tab.c"
+#line 4411 "y.tab.c"
 break;
 case 261:
-#line 1359 "rules.y"
+#line 1361 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],NIL); }
-#line 4414 "y.tab.c"
+#line 4416 "y.tab.c"
 break;
 case 262:
-#line 1361 "rules.y"
+#line 1363 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],yystack.l_mark[-2]); }
-#line 4419 "y.tab.c"
+#line 4421 "y.tab.c"
 break;
 case 263:
-#line 1365 "rules.y"
+#line 1367 "rules.y"
 	{ yyval = add1(yystack.l_mark[0],yystack.l_mark[-1]); }
-#line 4424 "y.tab.c"
+#line 4426 "y.tab.c"
 break;
 case 264:
-#line 1367 "rules.y"
+#line 1369 "rules.y"
 	{ yyval = yystack.l_mark[-2]; embargoes=add1(yystack.l_mark[0],embargoes); }
-#line 4429 "y.tab.c"
+#line 4431 "y.tab.c"
 break;
 case 265:
-#line 1369 "rules.y"
+#line 1371 "rules.y"
 	{ yyval = yystack.l_mark[-1]; }
-#line 4434 "y.tab.c"
+#line 4436 "y.tab.c"
 break;
 case 266:
-#line 1371 "rules.y"
+#line 1373 "rules.y"
 	{ yyval = yystack.l_mark[-1];
             exportfiles=cons(PLUS,exportfiles); }
-#line 4440 "y.tab.c"
+#line 4442 "y.tab.c"
 break;
 case 267:
-#line 1374 "rules.y"
+#line 1376 "rules.y"
 	{ yyval = add1(yystack.l_mark[0],NIL); }
-#line 4445 "y.tab.c"
+#line 4447 "y.tab.c"
 break;
 case 268:
-#line 1376 "rules.y"
+#line 1378 "rules.y"
 	{ yyval = NIL; embargoes=add1(yystack.l_mark[0],embargoes); }
-#line 4450 "y.tab.c"
+#line 4452 "y.tab.c"
 break;
 case 269:
-#line 1378 "rules.y"
+#line 1380 "rules.y"
 	{ yyval = NIL; }
-#line 4455 "y.tab.c"
+#line 4457 "y.tab.c"
 break;
 case 270:
-#line 1380 "rules.y"
+#line 1382 "rules.y"
 	{ yyval = NIL;
             exportfiles=cons(PLUS,exportfiles); }
-#line 4461 "y.tab.c"
+#line 4463 "y.tab.c"
 break;
 case 271:
-#line 1386 "rules.y"
+#line 1388 "rules.y"
 	{ word x=yystack.l_mark[-1],h=hd[yystack.l_mark[0]],t=tl[yystack.l_mark[0]];
             while(h!=NIL)x=cons(cons(hd[h],t),x),h=tl[h];
             yyval = x; }
-#line 4468 "y.tab.c"
+#line 4470 "y.tab.c"
 break;
 case 272:
-#line 1390 "rules.y"
+#line 1392 "rules.y"
 	{ word x=NIL,h=hd[yystack.l_mark[0]],t=tl[yystack.l_mark[0]];
             while(h!=NIL)x=cons(cons(hd[h],t),x),h=tl[h];
             yyval = x; }
-#line 4475 "y.tab.c"
+#line 4477 "y.tab.c"
 break;
 case 273:
-#line 1396 "rules.y"
+#line 1398 "rules.y"
 	{ yyval = cons(yystack.l_mark[-5],cons(yystack.l_mark[-3],yystack.l_mark[-1])); }
-#line 4480 "y.tab.c"
+#line 4482 "y.tab.c"
 break;
 case 274:
-#line 1402 "rules.y"
+#line 1404 "rules.y"
 	{ word x=yystack.l_mark[-1],h=hd[yystack.l_mark[0]],t=tl[yystack.l_mark[0]];
             while(h!=NIL)x=cons(cons(hd[h],t),x),h=tl[h];
             yyval = x; }
-#line 4487 "y.tab.c"
+#line 4489 "y.tab.c"
 break;
 case 275:
-#line 1406 "rules.y"
+#line 1408 "rules.y"
 	{ word x=NIL,h=hd[yystack.l_mark[0]],t=tl[yystack.l_mark[0]];
             while(h!=NIL)x=cons(cons(hd[h],t),x),h=tl[h];
             yyval = x; }
-#line 4494 "y.tab.c"
+#line 4496 "y.tab.c"
 break;
 case 276:
-#line 1411 "rules.y"
+#line 1413 "rules.y"
 	{inbnf=0;}
-#line 4499 "y.tab.c"
+#line 4501 "y.tab.c"
 break;
 case 277:
-#line 1412 "rules.y"
+#line 1414 "rules.y"
 	{ yyval = cons(yystack.l_mark[-6],cons(yystack.l_mark[-4],yystack.l_mark[-1])); }
-#line 4504 "y.tab.c"
+#line 4506 "y.tab.c"
 break;
 case 278:
-#line 1416 "rules.y"
+#line 1418 "rules.y"
 	{ yyval = cons(yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 4509 "y.tab.c"
+#line 4511 "y.tab.c"
 break;
 case 279:
-#line 1418 "rules.y"
+#line 1420 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],NIL); }
-#line 4514 "y.tab.c"
+#line 4516 "y.tab.c"
 break;
 case 280:
-#line 1422 "rules.y"
+#line 1424 "rules.y"
 	{ yyval = cons(yystack.l_mark[-1],yystack.l_mark[-3]); }
-#line 4519 "y.tab.c"
+#line 4521 "y.tab.c"
 break;
 case 281:
-#line 1424 "rules.y"
+#line 1426 "rules.y"
 	{ yyval = cons(yystack.l_mark[-1],NIL); }
-#line 4524 "y.tab.c"
+#line 4526 "y.tab.c"
 break;
 case 282:
-#line 1428 "rules.y"
+#line 1430 "rules.y"
 	{ syntax("upper case identifier out of context\n"); }
-#line 4529 "y.tab.c"
+#line 4531 "y.tab.c"
 break;
 case 283:
-#line 1430 "rules.y"
+#line 1432 "rules.y"
 	{ yyval = yystack.l_mark[-1];
             idsused=yystack.l_mark[0];
             while(yystack.l_mark[0]!=NIL)
               yyval = ap(yyval,hd[yystack.l_mark[0]]),yystack.l_mark[0] = tl[yystack.l_mark[0]];
           }
-#line 4538 "y.tab.c"
+#line 4540 "y.tab.c"
 break;
 case 284:
-#line 1436 "rules.y"
+#line 1438 "rules.y"
 	{ if(eqtvar(yystack.l_mark[-2],yystack.l_mark[0]))
               syntax("repeated type variable in typeform\n");
             idsused=cons(yystack.l_mark[-2],cons(yystack.l_mark[0],NIL));
             yyval = ap2(yystack.l_mark[-1],yystack.l_mark[-2],yystack.l_mark[0]); }
-#line 4546 "y.tab.c"
+#line 4548 "y.tab.c"
 break;
 case 285:
-#line 1441 "rules.y"
+#line 1443 "rules.y"
 	{ syntax("upper case identifier cannot be used as typename\n"); }
-#line 4551 "y.tab.c"
+#line 4553 "y.tab.c"
 break;
 case 287:
-#line 1446 "rules.y"
+#line 1448 "rules.y"
 	{ yyval = type_t; }
-#line 4556 "y.tab.c"
+#line 4558 "y.tab.c"
 break;
 case 288:
-#line 1450 "rules.y"
+#line 1452 "rules.y"
 	{ yyval = mktvar(1); }
-#line 4561 "y.tab.c"
+#line 4563 "y.tab.c"
 break;
 case 290:
-#line 1455 "rules.y"
+#line 1457 "rules.y"
 	{ yyval = NIL; }
-#line 4566 "y.tab.c"
+#line 4568 "y.tab.c"
 break;
 case 291:
-#line 1457 "rules.y"
+#line 1459 "rules.y"
 	{ if(memb(yystack.l_mark[0],yystack.l_mark[-1]))
               syntax("repeated type variable on lhs of type def\n");
             yyval = cons(yystack.l_mark[-1],yystack.l_mark[0]); }
-#line 4573 "y.tab.c"
+#line 4575 "y.tab.c"
 break;
 case 292:
-#line 1463 "rules.y"
+#line 1465 "rules.y"
 	{ extern word SGC;  /* keeps track of sui-generis constructors */
             if( tl[yystack.l_mark[0]]==NIL && tag[hd[yystack.l_mark[0]]]!=ID )
                             /* 2nd conjunct excludes singularity types */
               SGC=cons(head(hd[yystack.l_mark[0]]),SGC);
           }
-#line 4582 "y.tab.c"
+#line 4584 "y.tab.c"
 break;
 case 293:
-#line 1471 "rules.y"
+#line 1473 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],NIL); }
-#line 4587 "y.tab.c"
+#line 4589 "y.tab.c"
 break;
 case 294:
-#line 1473 "rules.y"
+#line 1475 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],yystack.l_mark[-2]); }
-#line 4592 "y.tab.c"
+#line 4594 "y.tab.c"
 break;
 case 295:
-#line 1477 "rules.y"
+#line 1479 "rules.y"
 	{ yyval = ap2(yystack.l_mark[-1],yystack.l_mark[-3],yystack.l_mark[0]); 
             id_who(yystack.l_mark[-1])=yystack.l_mark[-2]; }
-#line 4598 "y.tab.c"
+#line 4600 "y.tab.c"
 break;
 case 297:
-#line 1483 "rules.y"
+#line 1485 "rules.y"
 	{ yyval = yystack.l_mark[-1]; }
-#line 4603 "y.tab.c"
+#line 4605 "y.tab.c"
 break;
 case 298:
-#line 1485 "rules.y"
+#line 1487 "rules.y"
 	{ yyval = ap(yystack.l_mark[-1],yystack.l_mark[0]); }
-#line 4608 "y.tab.c"
+#line 4610 "y.tab.c"
 break;
 case 299:
-#line 1487 "rules.y"
+#line 1489 "rules.y"
 	{ yyval = yystack.l_mark[0];
             id_who(yystack.l_mark[0])=yystack.l_mark[-1]; }
-#line 4614 "y.tab.c"
+#line 4616 "y.tab.c"
 break;
 case 301:
-#line 1493 "rules.y"
+#line 1495 "rules.y"
 	{ yyval = ap(strict_t,yystack.l_mark[-1]); }
-#line 4619 "y.tab.c"
+#line 4621 "y.tab.c"
 break;
 case 302:
-#line 1497 "rules.y"
+#line 1499 "rules.y"
 	{ yyval = ap(strict_t,yystack.l_mark[-1]); }
-#line 4624 "y.tab.c"
+#line 4626 "y.tab.c"
 break;
 case 304:
-#line 1502 "rules.y"
+#line 1504 "rules.y"
 	{ yyval = NIL; }
-#line 4629 "y.tab.c"
+#line 4631 "y.tab.c"
 break;
 case 305:
-#line 1504 "rules.y"
+#line 1506 "rules.y"
 	{ if(member(yystack.l_mark[-1],yystack.l_mark[0]))
               printf("%ssyntax error: repeated identifier \"%s\" in %s list\n",
                       echoing?"\n":"",get_id(yystack.l_mark[0]),inbnf?"bnf":"attribute"),
               acterror();
             yyval = inbnf?add1(yystack.l_mark[0],yystack.l_mark[-1]):cons(yystack.l_mark[0],yystack.l_mark[-1]);
           }
-#line 4639 "y.tab.c"
+#line 4641 "y.tab.c"
 break;
 case 306:
-#line 1513 "rules.y"
+#line 1515 "rules.y"
 	{ word h=reverse(hd[yystack.l_mark[0]]),hr=hd[tl[yystack.l_mark[0]]],t=tl[tl[yystack.l_mark[0]]];
             inbnf=1;
             yyval=NIL;
@@ -4647,15 +4649,15 @@ case 306:
                  yyval=add_prod(defn(hd[h],t,UNDEF),yyval,hr),
                  h=tl[h];
           }
-#line 4651 "y.tab.c"
+#line 4653 "y.tab.c"
 break;
 case 307:
-#line 1522 "rules.y"
+#line 1524 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],NIL); }
-#line 4656 "y.tab.c"
+#line 4658 "y.tab.c"
 break;
 case 308:
-#line 1524 "rules.y"
+#line 1526 "rules.y"
 	{ word h=reverse(hd[yystack.l_mark[0]]),hr=hd[tl[yystack.l_mark[0]]],t=tl[tl[yystack.l_mark[0]]];
             inbnf=1;
             yyval=yystack.l_mark[-1];
@@ -4664,75 +4666,75 @@ case 308:
                  yyval=add_prod(defn(hd[h],t,UNDEF),yyval,hr),
                  h=tl[h];
           }
-#line 4668 "y.tab.c"
+#line 4670 "y.tab.c"
 break;
 case 309:
-#line 1533 "rules.y"
+#line 1535 "rules.y"
 	{ yyval = add_prod(yystack.l_mark[0],yystack.l_mark[-1],hd[dval(yystack.l_mark[0])]); }
-#line 4673 "y.tab.c"
+#line 4675 "y.tab.c"
 break;
 case 310:
-#line 1538 "rules.y"
+#line 1540 "rules.y"
 	{ yyval = defn(yystack.l_mark[-5],undef_t,yystack.l_mark[-1]); }
-#line 4678 "y.tab.c"
+#line 4680 "y.tab.c"
 break;
 case 311:
-#line 1542 "rules.y"
+#line 1544 "rules.y"
 	{ ihlist=0; }
-#line 4683 "y.tab.c"
+#line 4685 "y.tab.c"
 break;
 case 312:
-#line 1543 "rules.y"
+#line 1545 "rules.y"
 	{ inbnf=0; }
-#line 4688 "y.tab.c"
+#line 4690 "y.tab.c"
 break;
 case 313:
-#line 1544 "rules.y"
+#line 1546 "rules.y"
 	{ inbnf=1;
             if(yystack.l_mark[-1]==NIL)syntax("unexpected token ')'\n");
             ihlist=yystack.l_mark[-1]; }
-#line 4695 "y.tab.c"
+#line 4697 "y.tab.c"
 break;
 case 314:
-#line 1550 "rules.y"
+#line 1552 "rules.y"
 	{ yyval = label(yystack.l_mark[-1],yystack.l_mark[0]); }
-#line 4700 "y.tab.c"
+#line 4702 "y.tab.c"
 break;
 case 315:
-#line 1554 "rules.y"
+#line 1556 "rules.y"
 	{ yyval = ap2(G_ERROR,G_ZERO,yystack.l_mark[0]); }
-#line 4705 "y.tab.c"
+#line 4707 "y.tab.c"
 break;
 case 316:
-#line 1556 "rules.y"
+#line 1558 "rules.y"
 	{ yyval=hd[yystack.l_mark[0]], yystack.l_mark[0]=tl[yystack.l_mark[0]];
             while(yystack.l_mark[0]!=NIL)
                  yyval=label(hd[yystack.l_mark[0]],yyval),yystack.l_mark[0]=tl[yystack.l_mark[0]],
                  yyval=ap2(G_ALT,hd[yystack.l_mark[0]],yyval),yystack.l_mark[0]=tl[yystack.l_mark[0]];
         }
-#line 4714 "y.tab.c"
+#line 4716 "y.tab.c"
 break;
 case 317:
-#line 1562 "rules.y"
+#line 1564 "rules.y"
 	{ yyval=hd[yystack.l_mark[-2]], yystack.l_mark[-2]=tl[yystack.l_mark[-2]];
             while(yystack.l_mark[-2]!=NIL)
                  yyval=label(hd[yystack.l_mark[-2]],yyval),yystack.l_mark[-2]=tl[yystack.l_mark[-2]],
                  yyval=ap2(G_ALT,hd[yystack.l_mark[-2]],yyval),yystack.l_mark[-2]=tl[yystack.l_mark[-2]];
             yyval = ap2(G_ERROR,yyval,yystack.l_mark[0]); }
-#line 4723 "y.tab.c"
+#line 4725 "y.tab.c"
 break;
 case 318:
-#line 1571 "rules.y"
+#line 1573 "rules.y"
 	{ yyval=cons(yystack.l_mark[0],NIL); }
-#line 4728 "y.tab.c"
+#line 4730 "y.tab.c"
 break;
 case 319:
-#line 1573 "rules.y"
+#line 1575 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],cons(yystack.l_mark[-1],yystack.l_mark[-3])); }
-#line 4733 "y.tab.c"
+#line 4735 "y.tab.c"
 break;
 case 320:
-#line 1577 "rules.y"
+#line 1579 "rules.y"
 	{ word n=0,f=yystack.l_mark[0],rule=Void;
                          /* default value of a production is () */
                          /* rule=mkgvar(sreds);  formerly last symbol */
@@ -4743,15 +4745,15 @@ case 320:
             rule=ap(G_RULE,rule);
             while(f!=NIL)rule=ap2(G_SEQ,hd[f],rule),f=tl[f];
             yyval = rule; }
-#line 4747 "y.tab.c"
+#line 4749 "y.tab.c"
 break;
 case 321:
-#line 1587 "rules.y"
+#line 1589 "rules.y"
 	{inbnf=2;}
-#line 4752 "y.tab.c"
+#line 4754 "y.tab.c"
 break;
 case 322:
-#line 1588 "rules.y"
+#line 1590 "rules.y"
 	{ if(yystack.l_mark[-6]!=NIL&&hd[yystack.l_mark[-6]]==G_END)sreds++;
             if(sreds==1&&can_elide(yystack.l_mark[-1]))
               inbnf=1,sreds=0,yyval=hd[yystack.l_mark[-6]]; /* optimisation */
@@ -4765,46 +4767,46 @@ case 322:
               while(f!=NIL)rule=ap2(G_SEQ,hd[f],rule),f=tl[f];
               yyval = rule; }
           }
-#line 4769 "y.tab.c"
+#line 4771 "y.tab.c"
 break;
 case 323:
-#line 1604 "rules.y"
+#line 1606 "rules.y"
 	{ word rule = ap(K,Void); /* default value of a production is () */
             if(ihlist)rule=ih_abstr(rule);
             yyval = rule; }
-#line 4776 "y.tab.c"
+#line 4778 "y.tab.c"
 break;
 case 324:
-#line 1607 "rules.y"
+#line 1609 "rules.y"
 	{ inbnf=2,sreds=2; }
-#line 4781 "y.tab.c"
+#line 4783 "y.tab.c"
 break;
 case 325:
-#line 1608 "rules.y"
+#line 1610 "rules.y"
 	{ word rule = label(yystack.l_mark[-2],yystack.l_mark[-1]);
             if(ihlist)rule=ih_abstr(rule);
             yyval = lambda(pair(mkgvar(1),mkgvar(2)),rule);
             inbnf=1,sreds=0; }
-#line 4789 "y.tab.c"
+#line 4791 "y.tab.c"
 break;
 case 326:
-#line 1615 "rules.y"
+#line 1617 "rules.y"
 	{ sreds=0; yyval=NIL; }
-#line 4794 "y.tab.c"
+#line 4796 "y.tab.c"
 break;
 case 327:
-#line 1617 "rules.y"
+#line 1619 "rules.y"
 	{ syntax("unexpected token after empty\n");
             sreds=0; yyval=NIL; }
-#line 4800 "y.tab.c"
+#line 4802 "y.tab.c"
 break;
 case 328:
-#line 1619 "rules.y"
+#line 1621 "rules.y"
 	{ obrct=0; }
-#line 4805 "y.tab.c"
+#line 4807 "y.tab.c"
 break;
 case 329:
-#line 1620 "rules.y"
+#line 1622 "rules.y"
 	{ word f=yystack.l_mark[0];
             if(obrct)
               syntax(obrct>0?"unmatched { in grammar rule\n":
@@ -4812,99 +4814,99 @@ case 329:
             for(sreds=0;f!=NIL;f=tl[f])sreds++;
             if(hd[yystack.l_mark[0]]==G_END)sreds--;
             yyval = yystack.l_mark[0]; }
-#line 4816 "y.tab.c"
+#line 4818 "y.tab.c"
 break;
 case 330:
-#line 1630 "rules.y"
+#line 1632 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],NIL); }
-#line 4821 "y.tab.c"
+#line 4823 "y.tab.c"
 break;
 case 331:
-#line 1632 "rules.y"
+#line 1634 "rules.y"
 	{ if(hd[yystack.l_mark[-1]]==G_END)
                syntax("unexpected token after end\n");
              yyval = cons(yystack.l_mark[0],yystack.l_mark[-1]); }
-#line 4828 "y.tab.c"
+#line 4830 "y.tab.c"
 break;
 case 333:
-#line 1639 "rules.y"
+#line 1641 "rules.y"
 	{ yyval = ap(outdent_fn,ap2(indent_fn,getcol_fn(),yystack.l_mark[-1])); }
-#line 4833 "y.tab.c"
+#line 4835 "y.tab.c"
 break;
 case 334:
-#line 1641 "rules.y"
+#line 1643 "rules.y"
 	{ obrct++;
             yyval = ap2(indent_fn,getcol_fn(),yystack.l_mark[0]); }
-#line 4839 "y.tab.c"
+#line 4841 "y.tab.c"
 break;
 case 335:
-#line 1644 "rules.y"
+#line 1646 "rules.y"
 	{ if(--obrct<0)syntax("unmatched `}' in grammar rule\n");
             yyval = ap(outdent_fn,yystack.l_mark[-1]); }
-#line 4845 "y.tab.c"
+#line 4847 "y.tab.c"
 break;
 case 337:
-#line 1650 "rules.y"
+#line 1652 "rules.y"
 	{ yyval = ap(G_STAR,yystack.l_mark[-1]); }
-#line 4850 "y.tab.c"
+#line 4852 "y.tab.c"
 break;
 case 338:
-#line 1652 "rules.y"
+#line 1654 "rules.y"
 	{ yyval = ap2(G_SEQ,yystack.l_mark[-1],ap2(G_SEQ,ap(G_STAR,yystack.l_mark[-1]),ap(G_RULE,ap(C,P)))); }
-#line 4855 "y.tab.c"
+#line 4857 "y.tab.c"
 break;
 case 339:
-#line 1654 "rules.y"
+#line 1656 "rules.y"
 	{ yyval = ap(G_OPT,yystack.l_mark[-1]); }
-#line 4860 "y.tab.c"
+#line 4862 "y.tab.c"
 break;
 case 340:
-#line 1658 "rules.y"
+#line 1660 "rules.y"
 	{ extern word NEW;
             nonterminals=newadd1(yystack.l_mark[0],nonterminals);
             if(NEW)ntmap=cons(cons(yystack.l_mark[0],lasth),ntmap); }
-#line 4867 "y.tab.c"
+#line 4869 "y.tab.c"
 break;
 case 341:
-#line 1662 "rules.y"
+#line 1664 "rules.y"
 	{ yyval = G_END; }
-#line 4872 "y.tab.c"
+#line 4874 "y.tab.c"
 break;
 case 342:
-#line 1664 "rules.y"
+#line 1666 "rules.y"
 	{ if(!isstring(yystack.l_mark[0]))
               printf("%ssyntax error: illegal terminal ",echoing?"\n":""),
               out(stdout,yystack.l_mark[0]),printf(" (should be string-const)\n"),
               acterror();
             yyval = ap(G_SYMB,yystack.l_mark[0]); }
-#line 4881 "y.tab.c"
+#line 4883 "y.tab.c"
 break;
 case 343:
-#line 1670 "rules.y"
+#line 1672 "rules.y"
 	{ yyval=G_STATE; }
-#line 4886 "y.tab.c"
+#line 4888 "y.tab.c"
 break;
 case 344:
-#line 1671 "rules.y"
+#line 1673 "rules.y"
 	{inbnf=0;}
-#line 4891 "y.tab.c"
+#line 4893 "y.tab.c"
 break;
 case 345:
-#line 1671 "rules.y"
+#line 1673 "rules.y"
 	{inbnf=1;}
-#line 4896 "y.tab.c"
+#line 4898 "y.tab.c"
 break;
 case 346:
-#line 1672 "rules.y"
+#line 1674 "rules.y"
 	{ yyval = ap(G_SUCHTHAT,yystack.l_mark[-2]); }
-#line 4901 "y.tab.c"
+#line 4903 "y.tab.c"
 break;
 case 347:
-#line 1674 "rules.y"
+#line 1676 "rules.y"
 	{ yyval = G_ANY; }
-#line 4906 "y.tab.c"
-break;
 #line 4908 "y.tab.c"
+break;
+#line 4910 "y.tab.c"
     default:
         break;
     }
