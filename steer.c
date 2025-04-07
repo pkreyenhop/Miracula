@@ -1133,7 +1133,7 @@ void finger(char *n) /* find info about name stored at dicp */
 
 void diagnose(char *n)
 { int i=0;
-  if(isalpha(n[0]))
+  if(isalpha((int)n[0]))
     while(n[i]&&okid(n[i]))i++;
   if(n[i]){ printf("\"%s\" -- not an identifier\n",n); return; }
   for(i=0;presym[i];i++)
@@ -1512,7 +1512,7 @@ word publicise(word x) /* converse of the above, applied to the new id */
   return(i);
 }
 
-int sigflag=0;
+static int sigflag=0;
 
 void sigdefer()
 { sigflag=1; } /* delayed signal handler, installed during load_script() */

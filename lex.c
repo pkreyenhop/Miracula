@@ -999,7 +999,7 @@ int hash(char *s) /* returns a value in {0..127} */
 
 int isconstrname(char *s)
 { if(s[0]=='$')s++;
-  return isupper(*s); /* formerly !islower */
+  return isupper((int)*s); /* formerly !islower */
 }
 
 word getfname(word x)
