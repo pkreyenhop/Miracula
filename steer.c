@@ -2045,7 +2045,7 @@ void makedump()
 
 void undump(char *t) /* restore t from dump, or recompile if necessary */
 { extern word BAD_DUMP,CLASHES;
-  if(!normal(t)&&!initialising)return loadfile(t);
+  if(!normal(t)&&!initialising){ loadfile(t); return; }
   /* except for prelude, only .m files have dumps */
   char obf[pnlim];
   FILE *f;
