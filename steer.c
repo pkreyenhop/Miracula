@@ -392,6 +392,7 @@ int main(int argc,char *argv[])
   (void)signal(SIGTERM,(sighandler)exit); /* flush buffers if killed */
   commandloop(initscript);
 	     /* parameter is file given as argument */
+  return 0;
 }
 
 int vstack[4];  /* record of miralib versions looked at */

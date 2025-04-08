@@ -74,7 +74,8 @@ char *argv[];
   setupterm(0,1,&ok);
   if(ok!=1)fprintf(stderr,"warning: cannot find terminfo entry\n");
 #endif
-  menudrive(argc==1?".":argv[1]); }
+  menudrive(argc==1?".":argv[1]);
+  return 0; }
 
 int lastval() /* checks if last is a number (and if so leaves value in val) */
 { if(strcmp(last,".")==0&&subdir())
