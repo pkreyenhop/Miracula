@@ -48,7 +48,8 @@ word SPACELIMIT=DFLTSPACE,DICSPACE=DFLTDICSPACE;
 extern FILE *s_out;
 int UTF8=0, UTF8OUT=0;
 extern char *vdate, *host;
-extern word version, ND;
+extern int version;
+extern word ND;
 extern word *dstack,*stackp;
 
 static void allnamescom(void);
@@ -549,7 +550,7 @@ void rc_write()
   fprintf(out,"hdve");
   if(listing)fputc('l',out);
   if(rechecking==2)fputc('r',out);
-  fprintf(out," %ld %ld %ld %s\n",SPACELIMIT,DICSPACE,version,editor);
+  fprintf(out," %ld %ld %d %s\n",SPACELIMIT,DICSPACE,version,editor);
   fclose(out);
 }
 
