@@ -27,7 +27,8 @@ mira: big.o cmbnms.o data.o lex.o reduce.o steer.o trans.o types.o \
 # It must always run this rule before building mira (or not)
 FORCE: fdate
 	@# Quietly check whether the host or last modification date have changed
-	@./hostinfo > .newhost
+	@{ echo host: `uname -m` `uname -s` `uname -r` \
+	   gcc -v 2>&1 | tail -1 ; } > .newhost
 	@ls -t `$(MAKE) -s sources` | ./fdate > .newvdate
 	@if cmp -s .host .newhost; \
 	 then rm .newhost; \
