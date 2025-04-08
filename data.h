@@ -89,9 +89,9 @@ extern YYSTYPE yylval;
 # endif
 #endif
 
-#define BACKSTOP (1l<<(__WORDSIZE-1))
+#define BACKSTOP (word)(1ul<<(__WORDSIZE-1))
 #define tlptrbit BACKSTOP
-#define tlptrbits (3l<<(__WORDSIZE-2))
+#define tlptrbits (word)(3ul<<(__WORDSIZE-2))
 
 #define datapair(x,y) make(DATAPAIR,(word)x,(word)y)
 #define fileinfo(x,y) make(FILEINFO,(word)x,(word)y)
