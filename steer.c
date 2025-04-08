@@ -156,11 +156,6 @@ char *rc_error=NULL;
 #include <setjmp.h> /* for longjmp() - see man (3) setjmp */
 jmp_buf env;
 
-#ifdef sparc8
-#include <ieeefp.h>
-fp_except commonmask = FP_X_INV|FP_X_OFL|FP_X_DZ; /* invalid|ovflo|divzero */
-#endif
-
 /* On Linux the stack is limited by default to 8MB, on NetBSD to 4MB and
  * "Upon reaching this limit, a SIGSEGV signal is generated." (setrlimit(2))
  */
@@ -393,14 +388,7 @@ int main(int argc,char *argv[])
 	      exit(make_status); }
   initscript= argc==1?"script.m":magic?argv[1]:addextn(1,argv[1]);
   if(initscript==dicp)keep(dicp);
-#if sparc8
-  fpsetmask(commonmask);
-#elif defined sparc
-  ieee_handler("set","common",(sighandler)fpe_error);
-#endif
-#if !defined sparc | sparc8
   (void)signal(SIGFPE,(sighandler)fpe_error); /* catch arithmetic overflow */
-#endif
   (void)signal(SIGTERM,(sighandler)exit); /* flush buffers if killed */
   commandloop(initscript);
 	     /* parameter is file given as argument */

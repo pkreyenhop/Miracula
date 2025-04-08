@@ -344,15 +344,11 @@ double get_dbl(word x)
 #endif
   return(r.real); }
 
-/* Miranda's arithmetic model requires fp overflow trapped.  On sparc this
-   can be done by setting a trap with ieee_handler (see steer.c) otherwise
-   we test for overflow with isfinite() */
+/* Miranda's arithmetic model requires fp overflow trapped. */
 
 word sto_dbl(double R)
 { union fpdatum r;
-#if !defined sparc /* */
   if(!isfinite(R))fpe_error(); /* see note on arithmetic model above */
-#endif
   r.real=R;
 #ifdef splitdouble
   return(make(DOUBLE,r.bits.left,r.bits.right));
