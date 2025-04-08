@@ -17,11 +17,12 @@
 #include <sys/wait.h>
 #include <signal.h>
 typedef void (*sighandler)();
-#define pnlim 1024
-struct stat buf;
 
-char *menuviewer;
-char *viewer="less";
+#define pnlim 1024
+static struct stat buf;
+
+static char *menuviewer;
+static char *viewer="less";
 /*
 #ifdef UWIN
   "more -ne";
@@ -35,29 +36,31 @@ char *viewer="less";
    choice can be overriden by environment variable RETURNTOMENU=YES/NO */
 
 #ifdef VIEWERPAUSESATEND
-int fastback=1;
+static int fastback=1;
 #else
-int fastback=0;
+static int fastback=0;
 #endif
 
-void callshell(char[]);
-void clrscr(void);
-void menudrive(char*);
-void pushlast(void);
-void poplast(void);
-void settings(void);
-void singleton(char*);
-int subdir(void);
+static int lastval(void);
+static void menudrive(char*);
+static void singleton(char*);
+static void callshell(char[]);
+static void settings(void);
+static int subdir(void);
+static void pushlast(void);
+static void poplast(void);
+static void clrscr(void);
 
-char next[40]="",cmd[80],last[40]=".";
-int val, ok=0;
+static char next[40]="",cmd[80],last[40]=".";
+static int val;
+#ifdef CURSES
+static int ok=0;
+#endif
 
 #include <string.h>
 #define index(s,c) strchr(s,c)
 
-int main(argc,argv)
-int argc;
-char *argv[];
+int main(int argc,char *argv[])
 { char *v=getenv("VIEWER"),*fb=getenv("RETURNTOMENU");
   menuviewer=getenv("MENUVIEWER");
   if(argc>2)fprintf(stderr,"menudriver: wrong number of args\n"),exit(1);
@@ -77,7 +80,8 @@ char *argv[];
   menudrive(argc==1?".":argv[1]);
   return 0; }
 
-int lastval() /* checks if last is a number (and if so leaves value in val) */
+static int lastval(void) /* checks if last is a number
+                          * (and if so leaves value in val) */
 { if(strcmp(last,".")==0&&subdir())
     /* special case, have just entered subdir */
     { poplast();
@@ -87,8 +91,7 @@ int lastval() /* checks if last is a number (and if so leaves value in val) */
   return(sscanf(last,"%d",&val)==1);
 }
 
-void menudrive(dir)
-char *dir;
+static void menudrive(char *dir)
 { char *np;int c,bad=0;
   if(chdir(dir)==-1)singleton(dir); /* apparently not a directory */
   while(stat("contents",&buf)==0)
@@ -199,8 +202,7 @@ char *dir;
    and exit by chdir(hold) instead of chdir("..") - will need to make this
    recursive, or else have stack of holdwd's */
 
-void singleton(fil)
-char *fil;
+static void singleton(char *fil)
 { if(stat(fil,&buf)==0 && S_ISREG(buf.st_mode)) /* regular file */
     { clrscr();
 #ifndef UWIN
@@ -223,8 +225,7 @@ char *fil;
        exit(1);
 }
 
-void callshell(v)
-char v[];
+static void callshell(char v[])
 { static char *shell=NULL;
   sighandler oldsig; int pid;
   if(!shell)
@@ -240,7 +241,7 @@ char v[];
   else execl(shell,shell,"-c",v,(char *)0);
 }
 
-void settings()
+static void settings(void)
 { printf("current values of menudriver internal variables are\n\n");
   printf("        VIEWER=%s\n",viewer);
   printf("        MENUVIEWER=%s\n",menuviewer);
@@ -263,13 +264,13 @@ prompt at bottom of a manual section before getting back to the contents\n\
 page - to cure this set RETURNTOMENU=YES;\n\n");
 */
 
-char lastvec[100],*lastp=lastvec+1;
-int giveup=0;
+static char lastvec[100],*lastp=lastvec+1;
+static int giveup=0;
 
-int subdir()
+static int subdir(void)
 { return(lastp>lastvec+1); }
 
-void pushlast()
+static void pushlast(void)
 { int n=strlen(last);
   if(last[0]=='.') {
     /* pathological cases */
@@ -286,7 +287,7 @@ void pushlast()
   strcpy(lastp,last),lastp+=n+1,strcpy(last,".");
 }
 
-void poplast()
+static void poplast(void)
 { strcpy(lastp,last); /* just in case we come back immediately */
   lastp--;
   if(giveup||lastp<=lastvec)return; /* underflow */
@@ -297,7 +298,7 @@ void poplast()
 #ifndef CURSES
 
 /* to clear screen */
-void clrscr()
+static void clrscr(void)
 { printf("\x1b[2J\x1b[H"); fflush(stdout);
 }
 
@@ -313,11 +314,10 @@ void clrscr()
 #include <term.h>
 #endif
 
-void clrscr()
+static void clrscr(void)
 { if(ok!=1)return;
   putp(clear_screen);
   fflush(stdout);
 }
 /* end of clrscr method using curses */
 #endif
-
