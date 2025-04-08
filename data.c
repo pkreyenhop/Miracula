@@ -1208,8 +1208,8 @@ void out2(FILE *f,word x)
       return; }
   if(tag[x]==DOUBLE){ outr(f,get_dbl(x)); return; }
   if(tag[x]==ID){ fprintf(f,"%s",get_id(x)); return; }
-  if(x<256){ fprintf(f,"\'%s\'",charname(x)); return; }
-  if(tag[x]==UNICODE){ fprintf(f,"'\%lx'",hd[x]); return; }
+  if(x<256){ fprintf(f,"'%s'",charname(x)); return; }
+  if(tag[x]==UNICODE){ fprintf(f,"'%lx'",hd[x]); return; }
   if(tag[x]==ATOM)
     { fprintf(f,"%s",x<CMBASE?yysterm[x-256]:
 		     x==True?"True":

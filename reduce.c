@@ -227,7 +227,7 @@ void print(word e) /* evaluate list of chars and send to s_out */
   { unsigned c=get_char(hd[e]);
     if(UTF8)outUTF8(c,s_out); else
     if(c<256) putc(c,s_out);
-    else fprintf(stderr,"\n warning: non Latin1 char \%x in print, ignored\n",c);
+    else fprintf(stderr,"\n warning: non Latin1 char %x in print, ignored\n",c);
     e= tl[e]= reduce(tl[e]); }
   if(e==NIL)return;
   fprintf(stderr,"\nimpossible event in print\n"),
