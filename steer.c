@@ -89,6 +89,7 @@ static void stdlib(void);
 static char *strvers(int);
 static int twidth(void);
 static void undump(char*);
+static void unlimit_stack(void);
 static int utf8test(void);
 static void unfixexports(void);
 static void unlinkx(char*);
@@ -161,7 +162,7 @@ jmp_buf env;
  * "Upon reaching this limit, a SIGSEGV signal is generated." (setrlimit(2))
  */
 #include <sys/resource.h>
-static void unlimit_stack(void)
+void unlimit_stack(void)
 {
   struct rlimit rlimit;
   if (getrlimit(RLIMIT_STACK, &rlimit) == 0) {

@@ -80,7 +80,7 @@ int main(int argc,char *argv[])
   menudrive(argc==1?".":argv[1]);
   return 0; }
 
-static int lastval(void) /* checks if last is a number
+int lastval(void) /* checks if last is a number
                           * (and if so leaves value in val) */
 { if(strcmp(last,".")==0&&subdir())
     /* special case, have just entered subdir */
@@ -91,7 +91,7 @@ static int lastval(void) /* checks if last is a number
   return(sscanf(last,"%d",&val)==1);
 }
 
-static void menudrive(char *dir)
+void menudrive(char *dir)
 { char *np;int c,bad=0;
   if(chdir(dir)==-1)singleton(dir); /* apparently not a directory */
   while(stat("contents",&buf)==0)
@@ -202,7 +202,7 @@ static void menudrive(char *dir)
    and exit by chdir(hold) instead of chdir("..") - will need to make this
    recursive, or else have stack of holdwd's */
 
-static void singleton(char *fil)
+void singleton(char *fil)
 { if(stat(fil,&buf)==0 && S_ISREG(buf.st_mode)) /* regular file */
     { clrscr();
 #ifndef UWIN
@@ -225,7 +225,7 @@ static void singleton(char *fil)
        exit(1);
 }
 
-static void callshell(char v[])
+void callshell(char v[])
 { static char *shell=NULL;
   sighandler oldsig; int pid;
   if(!shell)
@@ -241,7 +241,7 @@ static void callshell(char v[])
   else execl(shell,shell,"-c",v,(char *)0);
 }
 
-static void settings(void)
+void settings(void)
 { printf("current values of menudriver internal variables are\n\n");
   printf("        VIEWER=%s\n",viewer);
   printf("        MENUVIEWER=%s\n",menuviewer);
@@ -267,10 +267,10 @@ page - to cure this set RETURNTOMENU=YES;\n\n");
 static char lastvec[100],*lastp=lastvec+1;
 static int giveup=0;
 
-static int subdir(void)
+int subdir(void)
 { return(lastp>lastvec+1); }
 
-static void pushlast(void)
+void pushlast(void)
 { int n=strlen(last);
   if(last[0]=='.') {
     /* pathological cases */
@@ -287,7 +287,7 @@ static void pushlast(void)
   strcpy(lastp,last),lastp+=n+1,strcpy(last,".");
 }
 
-static void poplast(void)
+void poplast(void)
 { strcpy(lastp,last); /* just in case we come back immediately */
   lastp--;
   if(giveup||lastp<=lastvec)return; /* underflow */
@@ -298,7 +298,7 @@ static void poplast(void)
 #ifndef CURSES
 
 /* to clear screen */
-static void clrscr(void)
+void clrscr(void)
 { printf("\x1b[2J\x1b[H"); fflush(stdout);
 }
 
@@ -314,7 +314,7 @@ static void clrscr(void)
 #include <term.h>
 #endif
 
-static void clrscr(void)
+void clrscr(void)
 { if(ok!=1)return;
   putp(clear_screen);
   fflush(stdout);

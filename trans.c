@@ -391,7 +391,7 @@ word abshfnck(word t,word f)
   return(f==t);
 }
 
-static word transtries(word id,word x)
+word transtries(word id,word x)
            /* x is a list of alternative values, in reverse order */
 { word r,h=0,earliest=0; /* gcc -Wall says earliest may be used uninitialised
                           * but there is a runtime test instead */
@@ -407,14 +407,14 @@ static word transtries(word id,word x)
   return(r);
 }
 
-static word translet(word d,word e) /* compile block with body e and def d */
+word translet(word d,word e) /* compile block with body e and def d */
 { word x=mklazy(d);
   return(ap(abstract(dlhs(x),codegen(e)),codegen(dval(x))));
 }
 /* nasty bug, codegen(dval(x)) was interfering with abstract(dlhs(x)...
    to fix made codegen on tuples be NOT in situ 20/11/88  */
 
-static word transletrec(word dd,word e)
+word transletrec(word dd,word e)
                      /* better method,  using list indexing - Jan 88 */
 { word lhs=NIL,rhs=NIL,pn=1;
   /* list of defs (x=e) is combined to listwise def `xs=es' */
@@ -539,7 +539,7 @@ word compzf(word e,word qq,word diag)
    eg [p|p<-3] ==> 3  (reported by Ham Richards, Nov 89)
 */
 
-static word transzf(word e,word qq,word conc)  /* Bird and Wadler page 63 */
+word transzf(word e,word qq,word conc)  /* Bird and Wadler page 63 */
 { word q,q2;
   if(qq==NIL)return(cons(e,NIL));
   q=hd[qq];
