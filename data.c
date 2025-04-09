@@ -359,9 +359,7 @@ word sto_dbl(double R)
 
 void setdbl(word x,double R)
 { union fpdatum r;
-#if !defined sparc /* */
   if(!isfinite(R))fpe_error(); /* see note on arithmetic model above */
-#endif
   r.real=R;
   tag[x]=DOUBLE;
 #ifdef splitdouble

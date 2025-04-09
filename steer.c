@@ -2119,9 +2119,6 @@ void unlinkx(char *t) /* remove orphaned .x file */
 void fpe_error()
 { if(compiling)
     { (void)signal(SIGFPE,(sighandler)fpe_error); /* reset SIGFPE trap */
-#ifdef sparc8
-      fpsetmask(commonmask);  /* to clear sticky bits */
-#endif
       syntax("floating point number out of range\n");
       SYNERR=0; longjmp(env,1);
       /* go straight back to commandloop - necessary because decoding very
