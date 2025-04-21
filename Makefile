@@ -64,6 +64,7 @@ miralib/menudriver: menudriver.c Makefile
 #	ln -s miralib/menudriver.sh miralib/menudriver
 tellcc:
 	@echo $(CC) $(CFLAGS)
+clean: cleanup
 cleanup:
 #to be done on moving to a new host
 	-rm -rf *.o fdate miralib/menudriver mira$(EX)
