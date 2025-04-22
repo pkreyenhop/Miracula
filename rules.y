@@ -1052,8 +1052,7 @@ def:
 
     INCLUDE bindings modifiers outdent
     /* fiddle - 'indent' done by yylex() on reading fileid */
-        = { extern char *dicp;
-            includees=cons(cons($1,cons($3,$2)),includees);
+        = { includees=cons(cons($1,cons($3,$2)),includees);
                    /* $1 contains file+hereinfo */
             $$ = cons(nill,NIL); }|
 

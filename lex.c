@@ -240,19 +240,19 @@ int getlitch()
   if(ch=='\n')return(ch); /* always an error */
   if(UTF8&&ch>127)
     { /* UTF-8 uses 2 or 3 bytes for unicode points to 0xffff */
-      word ch1=c=getch();
+      word ch1=c=getch(),ch2,ch3;
       if((ch&0xe0)==0xc0)  /* 2 bytes */
         { if((ch1&0xc0)!=0x80)
             return -5; /* not valid UTF8 */
           c=getch();
           return sto_char((ch&0x1f)<<6|(ch1&0x3f)); }
-      word ch2=c=getch();
+      ch2=c=getch();
       if((ch&0xf0)==0xe0) /* 3 bytes */
         { if((ch1&0xc0)!=0x80||(ch2&0xc0)!=0x80)
             return -5; /* not valid UTF8 */
           c=getch();
           return sto_char((ch&0xf)<<12|(ch1&0x3f)<<6|(ch2&0x3f)); }
-      word ch3=c=getch();
+      ch3=c=getch();
       if((ch&0xf8)==0xf0) /* 4 bytes, beyond basic multilingual plane */
         { if((ch1&0xc0)!=0x80||(ch2&0xc0)!=0x80||(ch3&0xc0)!=0x80)
             return -5; /* not valid UTF8 */
@@ -278,8 +278,8 @@ int getlitch()
     case 'x': if(isxdigit(c))
               { int value, N=ch=='x'?4:6; /* N=7 for Haskell escape rules */
                 char hold[8];
-                ch = c;
                 int count=0;
+                ch = c;
 #ifdef HASKELL
              while(ch=='0'&&isxdigit(peekch()))ch=getch(); /* lose leading 0s */
 #endif

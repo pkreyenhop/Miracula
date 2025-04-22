@@ -1837,12 +1837,12 @@ L3: if(arg1==NIL)lexfail(lastarg);
     case READY(DECODE):     /*  int to char type conversion */
     UPLEFT;
     if(tag[lastarg]==DOUBLE)int_error("decode");
-    long long val=get_int(lastarg);
-    if(val<0||val>UMAX)
-      { fprintf(stderr,"\nCHARACTER OUT-OF-RANGE decode(%lld)\n",val);
-        outstats();
-        exit(1); }
-    hd[e]=I; e=tl[e]=sto_char(val);
+    { long long val=get_int(lastarg);
+      if(val<0||val>UMAX)
+        { fprintf(stderr,"\nCHARACTER OUT-OF-RANGE decode(%lld)\n",val);
+          outstats();
+          exit(1); }
+      hd[e]=I; e=tl[e]=sto_char(val); }
     goto DONE;
 
     case READY(INTEGER):   /* predicate on numbers */
@@ -1856,9 +1856,9 @@ L3: if(arg1==NIL)lexfail(lastarg);
     { double x=get_dbl(lastarg);
 #ifndef RYU
       sprintf(linebuf,"%.16g",x);
-      char *p=linebuf;
-      while(isdigit((int)*p))p++; /* add .0 to false integer */
-      if(!*p)*p++='.',*p++='0',*p='\0';
+      { char *p=linebuf;
+        while(isdigit((int)*p))p++; /* add .0 to false integer */
+        if(!*p)*p++='.',*p++='0',*p='\0'; }
       hd[e]=I; e=tl[e]=str_conv(linebuf); }
 #else
       d2s_buffered(x,linebuf);

@@ -234,9 +234,10 @@ int main(int argc,char *argv[])
     else if(strcmp(argv[1],"-exec")==0) /* replaces -exp 26.11.2019 */
       ARGC=argc-2,ARGV=argv+2,magic=1,verbosity=0;
     else if(strcmp(argv[1],"-exec2")==0) /* version of -exec for debugging CGI scripts */
-      { if(argc<=2)fprintf(stderr,"incorrect use of -exec2 flag, missing filename\n"),exit(1);
-        char *logfilname, *p=strrchr(argv[2],'/');
+      { char *logfilname, *p;
         FILE *fil=NULL;
+        if(argc<=2)fprintf(stderr,"incorrect use of -exec2 flag, missing filename\n"),exit(1);
+        p=strrchr(argv[2],'/');
         if(!p)p=argv[2]; /* p now holds last component of prog name */
         if((logfilname=malloc((strlen(p)+9))))
           sprintf(logfilname,"miralog/%s",p),
@@ -2047,13 +2048,15 @@ void makedump()
 
 void undump(char *t) /* restore t from dump, or recompile if necessary */
 { extern word BAD_DUMP,CLASHES;
-  if(!normal(t)&&!initialising){ loadfile(t); return; }
-  /* except for prelude, only .m files have dumps */
   char obf[pnlim];
   FILE *f;
+  word flen;
+  time_t t1,t2;
   sighandler oldsig;
-  word flen=strlen(t);
-  time_t t1=fm_time(t),t2;
+  if(!normal(t)&&!initialising){ loadfile(t); return; }
+  /* except for prelude, only .m files have dumps */
+  flen=strlen(t);
+  t1=fm_time(t);
   if(flen>pnlim)
     { printf("sorry, pathname too long (limit=%d): %s\n",pnlim,t);
       return; } /* if anyone complains, should remove this limit */

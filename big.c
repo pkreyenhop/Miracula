@@ -164,12 +164,12 @@ int bigcmp(word x,word y)  /* returns +ve,0,-ve as x greater than, equal, less t
 }
 
 word bigtimes(word x,word y) /* naive multiply - quadratic */
-{ if(len(x)<len(y))
+{ word r,d,s,n=0;
+  if(len(x)<len(y))
     { word hold=x; x=y; y=hold; }  /* important optimisation */
-  word r=make(INT,0,0);
-  word d = digit0(y);
-  word s=neg(y);
-  word n=0;
+  r=make(INT,0,0);
+  d=digit0(y);
+  s=neg(y);
   if(bigzero(x))return(r);  /* short cut */
   for(;;)
      { if(d)r = bigplus(r,shift(n,stimes(x,d)));
@@ -444,10 +444,10 @@ word bigxscan(char *p,char *q)  /* read unsigned hex number in
   if(*p=='0'&&!p[1])return make(INT,0,0);
   while(q>p)
        { unsigned long long hold;
+         word count=4; /* 15 hex digits => 4 bignum digits */
          q = q-p<15 ? p : q-15; /* read upto 15 hex digits from small end */
          sscanf(q,"%llx",&hold);
          *q = '\0';
-         word count=4; /* 15 hex digits => 4 bignum digits */
          while(count-- && !(hold==0 && q==p))
               *x = make(INT,hold&MAXDIGIT,0),
               hold >>= DIGITWIDTH,
@@ -557,12 +557,13 @@ word bigtostrx(word x) /* integer to hexadecimal string (as Miranda list) */
        { word count=4; /* 60 bits => 20 octal digits => 4 bignum digits */
          unsigned long long factor=1;
          unsigned long long hold=0;
+	 char *q;
          while(count-- && x) /* calculate value of (upto) 4 bignum digits */
               hold=hold+factor*digit0(x),
               factor<<=15,
               x=rest(x);
          sprintf(dicp,"%.15llx",hold); /* 15 hex digits = 60 bits */
-         char *q=dicp+15;
+         q=dicp+15;
          while(--q>=dicp)r = cons(*q,r);
        }
   while(digit(r)=='0'&&rest(r)!=NIL)r=rest(r); /* remove redundant leading 0's */
