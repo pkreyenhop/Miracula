@@ -1649,9 +1649,15 @@ L3: if(arg1==NIL)lexfail(lastarg);
       unsigned char *p = (unsigned char *)getenv(a);
       hold = NIL;
       if(p){ word i;
-	     unsigned char *q=p, *r=p;
 	     if(UTF8)
-	     { while(*r) /* compress to Latin-1 in situ */
+	     { /* We shouldn't modify what getenv returns as on some systems
+	        * it may be a shared area, so copy it and modify the copy */
+	       unsigned char *qbuf=malloc(strlen((char *)p)+1);
+	       unsigned char *q, *r;
+	       if (qbuf == NULL) mallocfail("getenv");
+	       strcpy((char *)qbuf, (char *)p);
+	       q = r = qbuf;
+	       while(*r) /* compress to Latin-1 in situ */
 	       if(*r>127) /* start of multibyte */
 	         if((*r==194||*r==195)&&r[1]>=128&&r[1]<=191) /* Latin-1 */
 	           *q= *r==194?r[1]:r[1]+64, q++, r+=2;
@@ -1660,10 +1666,15 @@ L3: if(arg1==NIL)lexfail(lastarg);
                       *q++=*r++;
 	       else *q++=*r++;
 	       *q='\0';
+	       /* convert to list */
+	       i = strlen((char *)qbuf);
+	       while(i--)hold=cons(qbuf[i],hold);
+	       free(qbuf);
+	     } else {
+	       /* convert to list */
+	       i = strlen((char *)p);
+	       while(i--)hold=cons(p[i],hold);
 	     }
-	     /* convert p to list */
-	     i = strlen((char *)p);
-	     while(i--)hold=cons(p[i],hold);
 	   }
     }
     hd[e]=I; e=tl[e]=hold;
