@@ -15,10 +15,10 @@ it does not work at all with the supposedly compatible GNU `bison`.
 It is known to work on
 aarch, amd, arm, chrp, evbarm, loongarch, mips, powerpc, riscv and x86,
 on 32-bit and 64-bit, big-endian and little-endian systems running
-AIX, AlmaLinux, AlpineLinux, Archlinux, CentOS, Debian, FreeBSD,
+AIX, AlmaLinux, AlpineLinux, Archlinux, CentOS, Debian, FreeBSD, Haiku,
 MacOS X, NetBSD, OpenBSD, OpenSUSE and Rocky with all versions of
-GCC from 4 to 14 and clang 11 to 16 with no optimization enabled and
-some versions of gcc and clang up to `-O3` and the 64-bit version has been
+GCC from 2.95 to 14 and clang 11 to 16 with no optimization enabled and
+some versions of gcc and clang up to `-O3`. The 64-bit version has been
 tested with up to 2TB of RAM for the heap, over 100,000,000,000 cells.
 
 It compiles but does not work on Solaris or maybe just doesn't work on sparc
