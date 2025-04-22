@@ -55,7 +55,10 @@ big.o data.o lex.o reduce.o steer.o trans.o types.o: big.h
 big.o data.o lex.o reduce.o steer.o rules.y types.o: lex.h
 utf8.o: utf8.h Makefile
 cmbnms.o: cmbnms.c Makefile
-cmbnms.c combs.h: gencdecs
+# gendecs creates both files so avoid a parallel make running gendecs
+# twice in parallel and appending two copies of the lines to the output files.
+combs.h: cmbnms.c gencdecs
+cmbnms.c: gencdecs
 	./gencdecs
 miralib/menudriver: menudriver.c Makefile
 	$(CC) $(CFLAGS) menudriver.c -o miralib/menudriver
