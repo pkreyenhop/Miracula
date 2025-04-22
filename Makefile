@@ -29,6 +29,7 @@ FORCE: fdate
 	@# Quietly check whether the host or last modification date have changed
 	@{ echo host: `uname -m` `uname -s` `uname -r` \
 	   gcc -v 2>&1 | tail -1 ; } > .newhost
+	@rm -f sources
 	@ls -t `$(MAKE) -s sources` | ./fdate > .newvdate
 	@if cmp -s .host .newhost; \
 	 then rm .newhost; \
