@@ -96,7 +96,7 @@ release:
 SOURCES = .xversion big.c big.h gencdecs data.h data.c lex.h lex.c reduce.c rules.y \
           steer.c trans.c types.c utf8.h utf8.c version.c fdate.c
 sources: $(SOURCES); @echo $(SOURCES)
-exfiles:
+exfiles: mira
 	@-./mira -make -lib miralib ex/*.m
 mira.1.html: mira.1 Makefile
 	man2html mira.1 | sed '/Return to Main/d' > mira.1.html
