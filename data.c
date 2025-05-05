@@ -152,9 +152,23 @@ int collecting=0;  /* flag for reset(), in case interrupt strikes in gc */
 
 void gc()       /*  the "garbage collector"  */
 { char *p1;
+#if sparc
+  static int calls=0;
+#endif
   jmp_buf env;
+
+  /* Sparc9 has a "register window" which keeps 32 sets of registers
+   * in the CPU, a sort of virtual stack top, so recurse 32 times
+   * to flush them all onto the real stack before the setjmp() trick.
+   * Also, do something after the recursive call so that tail recursion
+   * is never optimized out.
+   * This makes it work with clang even with -O2, not gcc 14. - MG May 25 */
+#if sparc
+  if (calls<32) { calls++; gc(); calls--; return; }
+#endif
+
   /* Dump all register variables on the stack
-   * then call the real garbage collector */
+   * then run the real garbage collector */
   if (setjmp(env)) return;
   collecting=1;
   p1= &(tag[ATOMLIMIT]);
