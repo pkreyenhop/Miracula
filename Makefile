@@ -104,3 +104,14 @@ exfiles: mira
 	@-./mira -make -lib miralib ex/*.m
 mira.1.html: mira.1 Makefile
 	man2html mira.1 | sed '/Return to Main/d' > mira.1.html
+
+dist:
+	version=$$(cat .version | sed 's/./&\./'); \
+	rm -rf miranda-$$version; mkdir miranda-$$version; \
+	tar cpf - $$(git ls-files) | (cd miranda-$$version; tar xpf -); \
+	tar cfz miranda-$$version.tar.gz miranda-$$version; \
+	rm -f miranda-$$version.zip; \
+	git ls-files | zip -q -@ miranda-$$version.zip; \
+	md5sum miranda-$$version.tar.gz miranda-$$version.zip; \
+	sha256sum miranda-$$version.tar.gz miranda-$$version.zip; \
+	rm -rf miranda-$$version
