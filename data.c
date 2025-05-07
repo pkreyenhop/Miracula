@@ -819,7 +819,8 @@ void bindparams(word formal,word actual) /* process bindings of free ids */
   FBS=cons(formal,FBS);
   /* FBS is list of list of formals bound in current script */
   for(;;)
-     { word a; char *f;
+     { word a=0; /* Avoid compiler warning: may be used uninitialized */
+       char *f;
        while(formal!=NIL && (actual==NIL ||
    strcmp((f=(char *)hd[hd[tl[hd[formal]]]]),get_id(a=hd[hd[actual]]))<0))
 	 /* the_val(hd[hd[formal]])=findid((char *)hd[hd[tl[hd[formal]]]]),

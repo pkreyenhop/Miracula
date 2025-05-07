@@ -175,7 +175,7 @@ void unlimit_stack(void)
 int main(int argc,char *argv[])
 { word manonly=0;
   char *home, *prs;
-  int okhome_rc; /* flags valid HOME/.mirarc file present */
+  int okhome_rc=0; /* flags valid HOME/.mirarc file present */
   char *initscript;
   int badlib=0;
   extern int ARGC; extern char **ARGV;
@@ -1085,8 +1085,8 @@ void filequote(char *p) /* write p to stdout with <quotes> if appropriate */
 } /* PRELUDE is a convenient string with the miralib prefix */
 
 void finger(char *n) /* find info about name stored at dicp */
-{ word x; int line;
-  char *s;
+{ word x; int line = 0; /* Shut compiler warnings up */
+  char *s = NULL;
   x=findid(n);
   if(x!=NIL&&id_type(x)!=undef_t)
     { if(id_who(x)!=NIL)
@@ -1551,7 +1551,7 @@ word mkincludes(word includees)
   sigflag=0;
   for(;includees!=NIL;includees=tl[includees])
      { word x=NIL;
-       sighandler oldsig;
+       sighandler oldsig = NULL; /* Drop compiler warning: used uninitialized */
        FILE *f;
        char *fn=(char *)hd[hd[hd[includees]]];
        extern word DETROP,MISSING,ALIASES,TSUPPRESSED;
@@ -2052,7 +2052,7 @@ void undump(char *t) /* restore t from dump, or recompile if necessary */
   FILE *f;
   word flen;
   time_t t1,t2;
-  sighandler oldsig;
+  sighandler oldsig=0; /* Avoid compiler warning: oldsig used uninitialized */
   if(!normal(t)&&!initialising){ loadfile(t); return; }
   /* except for prelude, only .m files have dumps */
   flen=strlen(t);
