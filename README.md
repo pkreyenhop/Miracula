@@ -21,7 +21,10 @@ GCC from 2.95 to 14 and clang 11 to 16 with no optimization enabled and
 some versions of gcc and clang up to `-O3`. The 64-bit version has been
 tested with up to 2TB of RAM for the heap, over 100,000,000,000 cells.
 
-It compiles but does not work on Solaris or maybe just doesn't work on sparc
+You can see whether optimization will work for you in the table "Compilers"
+in https://codeberg.org/DATurner/miranda/issues/25 
+
+It compiles but does not work on Solaris with a sun4u processor
 and a Windows port has not yet been attempted.
 
 A release will be made on Codeberg when further portability
