@@ -74,6 +74,7 @@ cleanup:
 	-rm -rf *.o fdate miralib/menudriver mira$(EX)
 	./unprotect
 	-rm -f miralib/preludx miralib/stdenv.x miralib/ex/*.x #miralib/ex/*/*.x
+	-rm -f manual.html
 install:
 	make -s all
 	strip mira$(EX)
@@ -102,8 +103,11 @@ SOURCES = .xversion big.c big.h gencdecs data.h data.c lex.h lex.c reduce.c rule
 sources: $(SOURCES); @echo $(SOURCES)
 exfiles: mira
 	@-./mira -make -lib miralib ex/*.m
+html: mira.1.html manual.html
 mira.1.html: mira.1 Makefile
 	man2html mira.1 | sed '/Return to Main/d' > mira.1.html
+manual.html: manual.md mira.1.html
+	sh makehtml.sh manual.md
 
 dist:
 	version=$$(cat .version | sed 's/./&\./'); \
