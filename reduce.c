@@ -2342,18 +2342,18 @@ void outstats()
 #else
   end=clock();
 #endif
-  printf("||");
-  printf("reductions = %lld, cells claimed = %lld, ",
+  fprintf(stderr,"||");
+  fprintf(stderr,"reductions = %lld, cells claimed = %lld, ",
 		cycles,cellcount+claims);
-  printf("no of gc's = %ld, cpu = %0.2f",nogcs,
+  fprintf(stderr,"no of gc's = %ld, cpu = %0.2f",nogcs,
 #ifdef BSDCLOCK
 	    buffer.tms_utime/(CLK_TCK*1.0));
 #else
             ((double) (end - start)) / CLOCKS_PER_SEC);
 #endif
-  putchar('\n');
+  putc('\n',stderr);
 #ifdef DEBUG
-  printf("||maxr_depth=%d\n",maxrdepth);
+  fprintf(stderr,"||maxr_depth=%d\n",maxrdepth);
 #endif
 }
 
