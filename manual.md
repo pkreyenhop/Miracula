@@ -2,8 +2,8 @@
 
 Copyright Research Software Limited 1985-2020
 
-|&nbsp; |&nbsp;                          | &nbsp; |&nbsp;|
-|-:|:-                               |-: |:-|
+|    |                               |      |   |
+|-:|:-                               |-:    |:- |
 | 1. | How to use the manual system  |  20. | Algebraic types |
 | 2. | About the name "Miranda"      |  21. | Abstract types |
 | 3. | About this release            |  22. | Empty types |
@@ -84,18 +84,18 @@ interface).
 Whenever the manual system prompts the user for input -  by  asking  for
 "next selection" - the complete repertoire of possible responses is:
 
-|&nbsp;|&nbsp;|
-|:-|:-|
-|q 	  | quit the manual
-|[return] | exit one level of menu structure
-| 	  | (i.e. if at foot of section, return to menu
-|         |       if at submenu, return to master menu
-|         |       if at main menu, quit the manual)
-|[number] | display section from current contents page
-|.  	  | (dot) same again, i.e. redisplay last requested section 
-|+  	  | display next section in numerical order
-|-        | display previous section
-|!command | temporary escape to O/S, executes shell command
+|         |   |
+|:-       |:- |
+|q 	  | quit the manual |
+|[return] | exit one level of menu structure |
+| 	  | (i.e. if at foot of section, return to menu |
+|         |       if at submenu, return to master menu |
+|         |       if at main menu, quit the manual) |
+|[number] | display section from current contents page |
+|.  	  | (dot) same again, i.e. redisplay last requested section  |
+|+  	  | display next section in numerical order |
+|-        | display previous section |
+|!command | temporary escape to O/S, executes shell command |
 
 ### Summary of the behaviour of 'more'
 
@@ -385,8 +385,8 @@ information.
 
 ## 5. Summary of main available commands
 
-|&nbsp;|&nbsp;|
-|:-|:-|
+|                 |  |
+|:-               |:-|
 |`exp`            | Evaluate a Miranda expression |
 |`exp &> file`    | Send value of expression to file (background process) |
 |`exp &>> file`   | Append value of expression to file (background process) |
@@ -416,8 +416,8 @@ $$ is shorthand for the last expression evaluated (in expressions)
 
 ## 6. List of remaining commands
 
-|&nbsp;|&nbsp;|
-|:-|:-|
+|                   |   |
+|:-                 |:- |
 |`/aux /a`          | Print this list of auxiliary commands |
 |`/cd [dirname]`    | Change directory (defaults to home directory) |
 |`/count (/nocount)`| Statistics following each evaluation (default off) |
@@ -546,8 +546,8 @@ binding power. Operators given on the same line are of the same binding
 power. Prefix operators are identified as such in the comments - all
 others are infix.
 
-| &nbsp;                 | &nbsp; |
-|:- | :- |
+|                        |    |
+|:-                      | :- |
 | `: ++ --`              | right associative |
 | `\/`                   | associative |
 | `&`                    | associative |
@@ -980,8 +980,8 @@ The following abbreviations are provided for denoting lists, of type
 `[num]`, whose members form a finite or infinite arithmetic series.
 Let `a`, `b`, `c` stand for arbitrary numeric expressions.
 
-|&nbsp;|&nbsp;|
-|:-|:-|
+|            |   |
+|:-          |:- |
 |`[a..b]`    | list of numbers from a to b inclusive, interval = 1
 |`[a..]`     | infinite list starting at a and increasing by 1
 |`[a,b..c]`  | arithmetic series, first member `a`, second member `b`, last member not greater than `c` (if `b-a` non-negative) or not less than `c` (if `b-a` negative). |
@@ -2292,14 +2292,14 @@ has some previous exposure to this style of language.
 
 Key to abbreviations in syntax:-
 
-|&nbsp;|&nbsp;|
-|:-|:-|
+|                         |                    |  |
+|:-                       |:-                  |  |
 |alt=alternative          |decl=declaration    |def=definition |
 |e1=operator_expression   |exp=expression      |fnform=function_form |
 |libdir=library_directive |pat=pattern         |qualifs=qualifiers |
 |rhs=right_hand_side      |sig=signature       |spec=specification |
 |tdef=type_definition     |tform=typeform      |var=variable |
-|whdefs=where_defs | |
+|whdefs=where_defs | | |
 
 ### Conventions
 
@@ -2311,8 +2311,8 @@ language.)
 
 For any non-terminal `x`,
 
-|&nbsp;|&nbsp;|
-|:-|:-|
+|          |   |
+|:-        |:- |
 | `x*`     | means zero or more occurrences of `x` |
 | `x?`     | means the presence of `x` is optional |
 | `x-list` | means one or more `x`'s (separated by commas if >1) |
@@ -3228,6 +3228,7 @@ two-argument function.
 is the trigonometric cosine function, argument in radians.
 ```
 > cos :: num->num   ||defined internally
+```
 
 ### `decode`
 
