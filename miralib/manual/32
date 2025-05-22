@@ -1,5 +1,13 @@
 _R_E_C_E_N_T_ _C_H_A_N_G_E_S
 
+May 2025 (version 2.067)
+
+First maintenance release from codeberg.org/DATurner/miranda, working on
+aarch amd arm chrp loongarch mips powerpc riscv sun4m sun4v x86 32/64bit
+big- and little-endian, under AIX AlmaLinux AlpineLinux ArchLinux CentOS
+Debian FreeBSD MacOS/X NetBSD OpenBSD OpenSUSE Rocky and Solaris.
+Dumps core on sun4u processors.
+
 January 2020 (version 2.066)
 
 The Miranda source code has been revised to conform to the C11  standard
