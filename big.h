@@ -14,13 +14,13 @@
    /* 2^15 (ie 8^5) so digit is a positive short */
 #define MAXDIGIT 077777
 #define DIGITWIDTH 15
-#define digit0(x) (hd[x]&MAXDIGIT)
-#define digit(x) hd[x]
-#define rest(x) tl[x]
-#define poz(x) (!(hd[x]&SIGNBIT))
-#define neg(x) (hd[x]&SIGNBIT)
+#define digit0(x) (hd(x)&MAXDIGIT)
+#define digit(x) hd(x)
+#define rest(x) tl(x)
+#define poz(x) (!(hd(x)&SIGNBIT))
+#define neg(x) (hd(x)&SIGNBIT)
 #define bigzero(x) (!digit(x)&&!rest(x))
-#define getsmallint(x) (hd[x]&SIGNBIT?-digit0(x):digit(x))
+#define getsmallint(x) (hd(x)&SIGNBIT?-digit0(x):digit(x))
 #define stosmallint(x) make(INT,(x)<0?SIGNBIT|(-(x)):(x),0)
 long long get_int(word);
 word sto_int(long long);

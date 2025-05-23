@@ -180,7 +180,7 @@ int litname(char *s)
 
 int getch() /* keeps track of current position in the variable "col"(column) */
 { word ch= getc(s_in);
-  if(ch==EOF&&!atnl&&tl[fileq]==NIL) /* badly terminated top level file */
+  if(ch==EOF&&!atnl&&tl(fileq)==NIL) /* badly terminated top level file */
     { atnl=1; return('\n'); }
   if(atnl)
     { if(((line_no==0&&!commandmode)||(magic&&line_no==1&&litstack==NIL)))
@@ -357,8 +357,8 @@ void setlmargin()   /* this and the next routine are used to enforce the offside
 
 void unsetlmargin()
 { if(margstack==NIL)return;  /* in case called after `syntax("..")' */
-  lmargin= hd[margstack];
-  margstack= tl[margstack]; }
+  lmargin= hd(margstack);
+  margstack= tl(margstack); }
 
 int okulid(int);
 int PREL=1;
@@ -384,7 +384,7 @@ int yylex()         /* called by YACC to get the next symbol */
   if(c=='\n') /* can only occur in command mode */
     return(END);
   if(col<lmargin)
-    { if(c=='='&&(margstack==NIL||col>=hd[margstack]))/* && part fixes utah.bug*/
+    { if(c=='='&&(margstack==NIL||col>=hd(margstack)))/* && part fixes utah.bug*/
 	{ c = getch();
 	  return(ELSEQ);    /* ELSEQ means "OFFSIDE =" */
 	}
@@ -392,7 +392,7 @@ int yylex()         /* called by YACC to get the next symbol */
     }
   if(c==';') /* fixes utah2.bug */
     { c=getch(); layout();
-      if(c=='='&&(margstack==NIL||col>=hd[margstack]))
+      if(c=='='&&(margstack==NIL||col>=hd(margstack)))
         { c = getch();
           return(ELSEQ);    /* ELSEQ means "OFFSIDE =" */
         }
@@ -445,13 +445,13 @@ int yylex()         /* called by YACC to get the next symbol */
     if(c=='|'&&brct==0)
       return(OFFSIDE); }
   if(c==EOF)
-  { if(tl[fileq]==NIL&&margstack!=NIL)return(OFFSIDE); /* to fix dtbug */
-    fclose((FILE *)hd[hd[fileq]]);
-    fileq= tl[fileq]; insertdepth--;
-    if(fileq!=NIL&&hd[echostack])
+  { if(tl(fileq)==NIL&&margstack!=NIL)return(OFFSIDE); /* to fix dtbug */
+    fclose((FILE *)hd(hd(fileq)));
+    fileq= tl(fileq); insertdepth--;
+    if(fileq!=NIL&&hd(echostack))
       { if(literate)putchar('>'),spaces(lverge);
         printf("<end of insert>"); }
-    s_in= fileq==NIL?stdin:(FILE *)hd[hd[fileq]];
+    s_in= fileq==NIL?stdin:(FILE *)hd(hd(fileq));
     c= ' ';
     if(fileq==NIL)
       { lverge=c=col=lmargin=0;
@@ -463,17 +463,17 @@ int yylex()         /* called by YACC to get the next symbol */
 	line_no=0;
 	litmain=literate=0;
         return(END); }
-    else { current_file = tl[hd[fileq]];
-	   prefix=hd[prefixstack];
-	   prefixstack=tl[prefixstack];
-	   echoing=hd[echostack];
-	   echostack=tl[echostack];
-           lverge=hd[vergstack];
-           vergstack=tl[vergstack];
-           literate=hd[litstack];
-           litstack=tl[litstack];
-           line_no=hd[linostack];
-           linostack=tl[linostack]; }
+    else { current_file = tl(hd(fileq));
+	   prefix=hd(prefixstack);
+	   prefixstack=tl(prefixstack);
+	   echoing=hd(echostack);
+	   echostack=tl(echostack);
+           lverge=hd(vergstack);
+           vergstack=tl(vergstack);
+           literate=hd(litstack);
+           litstack=tl(litstack);
+           line_no=hd(linostack);
+           linostack=tl(linostack); }
     return(yylex());  }
   lastc= c;
   c= getch();
@@ -599,9 +599,9 @@ word mkgvar(word i)
 { word *p= &gvars;
   while(--i)
        { if(*p==NIL)*p=cons(sto_id("gvar"),NIL);
-	 p= &tl[*p]; }
+	 p= &tl(*p); }
   if(*p==NIL)*p=cons(sto_id("gvar"),NIL);
-  return(hd[*p]);
+  return(hd(*p));
 } /* all these variables have the same name, and are not in hashbucket */
 
 word lexvar=0;
@@ -611,9 +611,9 @@ word mklexvar(word i) /* similar - corresponds to $$, $# on rhs of %lex rule */
 { extern word ltchar;
   if(!lexvar)
     lexvar=cons(sto_id("lexvar"),sto_id("lexvar")),
-    id_type(hd[lexvar])=ltchar,
-    id_type(tl[lexvar])=genlstat_t();
-  return(i?tl[lexvar]:hd[lexvar]);
+    id_type(hd(lexvar))=ltchar,
+    id_type(tl(lexvar))=genlstat_t();
+  return(i?tl(lexvar):hd(lexvar));
 }
 
 int ARGC;
@@ -838,8 +838,8 @@ word directive() /* these are of the form "%identifier" */
                     keep(dicp);
 		    current_file = make_fil(f,fm_time(f),0,NIL);
 		    files = append1(files,cons(current_file,NIL));
-		    tl[hd[fileq]] = current_file;
-                    s_in = (FILE *)hd[hd[fileq]];
+		    tl(hd(fileq)) = current_file;
+                    s_in = (FILE *)hd(hd(fileq));
 		    literate= peekch()=='>'||litname(f);
 		    col=lverge=holdcol;
                     if(echoing)
@@ -1024,12 +1024,12 @@ int isnonterminal(word x)
 word name()
 { word q,h;
   q= namebucket[h=hash(dicp)];
-  while(q&&!is(get_id(hd[q])))q= tl[q];
+  while(q&&!is(get_id(hd(q))))q= tl(q);
   if(q==0)
   { q = sto_id(dicp);
     namebucket[h] = cons(q,namebucket[h]);
     keep(dicp); }
-  else q= hd[q]; 
+  else q= hd(q); 
   return(q); }
 /* note - keeping buckets sorted didn't seem to help (if anything slightly
    slower) probably because ordering only relevant if name not present, and
@@ -1049,8 +1049,8 @@ word findid(char *n)
                 /* like name() but returns NIL rather than create new id */
 { word q;
   q= namebucket[hash(n)];
-  while(q&&!(strcmp(n,get_id(hd[q]))==0))q= tl[q];
-  return(q?hd[q]:NIL); }
+  while(q&&!(strcmp(n,get_id(hd(q)))==0))q= tl(q);
+  return(q?hd(q):NIL); }
 
 word *pnvec=0,nextpn,pn_lim=200;  /* private name vector */
 
@@ -1084,9 +1084,9 @@ void mkprivate(word x)
                   /* disguise identifiers prior to removal from environment */
               /* used in setting up prelude - see main() in steer.c */
 { while(x!=NIL)
-  { /* char *s = get_id(hd[x]); unused variable & get_id has no side effects */
-    get_id(hd[x])[0] += 128;  /* hack to make private internal name */
-    x = tl[x]; }                /* NB - doesn't change hashbucket */
+  { /* char *s = get_id(hd(x)); unused variable & get_id has no side effects */
+    get_id(hd(x))[0] += 128;  /* hack to make private internal name */
+    x = tl(x); }                /* NB - doesn't change hashbucket */
   inprelude=0;
 }
 
@@ -1101,9 +1101,9 @@ void string()
   while(ch!=EOF&&rawch!='\"'&&rawch!='\n')
        if(ch==-7) ch=getlitch(); else /* skip \& */
        if(ch<0){ badch=ch; break; }
-       else { p= tl[p]= cons(ch,NIL);
+       else { p= tl(p)= cons(ch,NIL);
               ch= getlitch(); }
-  yylval= tl[yylval];
+  yylval= tl(yylval);
   if(badch)errclass(badch,1);
   if(rawch=='\n')
     syntax("non-escaped newline encountered inside string quotes\n"); else
@@ -1112,8 +1112,8 @@ void string()
     printf("syntax error: script ends inside unclosed string quotes - \n");
     printf("    \"");
     while(yylval!=NIL&& sl-- )
-    { putchar(hd[yylval]);
-      yylval= tl[yylval]; }
+    { putchar(hd(yylval));
+      yylval= tl(yylval); }
     printf("...\"\n");
     acterror(); }
 }
@@ -1128,18 +1128,18 @@ int charclass()
   while(ch!=EOF&&rawch!='`'&&rawch!='\n')
        if(ch==-7)ch=getlitch(); else /* skip \& */
        if(ch<0){ badch=ch; break; }
-       else { if(rawch=='-'&&hd[p]!=NIL&&hd[p]!=DOTDOT)
+       else { if(rawch=='-'&&hd(p)!=NIL&&hd(p)!=DOTDOT)
               ch=DOTDOT; /* non-initial, non-escaped '-' */
-              p= tl[p]= cons(ch,NIL);
+              p= tl(p)= cons(ch,NIL);
               ch= getlitch(); }
-  if(hd[p]==DOTDOT)hd[p]='-'; /* naturalise a trailing '-' */
-  for(p=yylval;tl[p]!=NIL;p=tl[p]) /* move each DOTDOT to front of range */
-     if(hd[tl[p]]==DOTDOT)
-       { hd[tl[p]]=hd[p],hd[p]=DOTDOT;
-         if(hd[tl[p]]>=hd[tl[tl[p]]])
+  if(hd(p)==DOTDOT)hd(p)='-'; /* naturalise a trailing '-' */
+  for(p=yylval;tl(p)!=NIL;p=tl(p)) /* move each DOTDOT to front of range */
+     if(hd(tl(p))==DOTDOT)
+       { hd(tl(p))=hd(p),hd(p)=DOTDOT;
+         if(hd(tl(p))>=hd(tl(tl(p))))
            syntax("illegal use of '-' in [charclass]\n");
        }
-  yylval= tl[yylval];
+  yylval= tl(yylval);
   if(badch)errclass(badch,2);
   if(rawch=='\n')
     syntax("non-escaped newline encountered in char class\n"); else
@@ -1149,8 +1149,8 @@ int charclass()
     "syntax error: script ends inside unclosed char class brackets - \n");
     printf("    [");
     while(yylval!=NIL&& sl-- )
-    { putchar(hd[yylval]);
-      yylval= tl[yylval]; }
+    { putchar(hd(yylval));
+      yylval= tl(yylval); }
     printf("...]\n");
     acterror(); }
   return(anti);
@@ -1163,17 +1163,17 @@ void reset_lex()  /* called after an error */
     { if(!errs)errs=fileinfo(get_fil(current_file),line_no);
       /* convention, if errs set contains location of error, otherwise pick up
          from current_file and line_no */
-      if(tl[errs]==0&&(char *)hd[errs]==current_script)
+      if(tl(errs)==0&&(char *)hd(errs)==current_script)
 	 /* at end of file, so line_no has been reset to 0 */
          printf("error occurs at end of ");
-      else printf("error found near line %ld of ",tl[errs]);
+      else printf("error found near line %ld of ",tl(errs));
       printf("%sfile \"%s\"\ncompilation abandoned\n",
-	       (char *)hd[errs]==current_script?"":"%insert ",
-	       (char *)hd[errs]);
-      if((char *)hd[errs]==current_script)
-        errline=tl[errs]==0?lastline:tl[errs],errs=0;
-      else { while(tl[linostack]!=NIL)linostack=tl[linostack];
-	     errline=hd[linostack]; }
+	       (char *)hd(errs)==current_script?"":"%insert ",
+	       (char *)hd(errs));
+      if((char *)hd(errs)==current_script)
+        errline=tl(errs)==0?lastline:tl(errs),errs=0;
+      else { while(tl(linostack)!=NIL)linostack=tl(linostack);
+	     errline=hd(linostack); }
       /* tells editor where to find error - errline contains location of 1st
          error in main script, errs is hereinfo of upto one error in %insert
          script (each is 0 if not set) - some errors can set both */
@@ -1186,7 +1186,7 @@ void reset_state()  /* reset all global variables used by compiler */
 	     rv_script,idsused;
   if(commandmode)
     while(c!='\n'&&c!=EOF)c=getc(s_in);  /* no echo */
-  while(fileq!=NIL)fclose((FILE *)hd[hd[fileq]]),fileq=tl[fileq];
+  while(fileq!=NIL)fclose((FILE *)hd(hd(fileq))),fileq=tl(fileq);
   insertdepth= -1;
   s_in=stdin;
   echostack=idsused=prefixstack=litstack=linostack=vergstack

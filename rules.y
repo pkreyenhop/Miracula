@@ -97,8 +97,8 @@ char *yysterm[]= {
 extern word nill,k_i,Void;
 extern word message,standardout;
 extern word big_one;
-#define isltmess_t(t) (islist_t(t)&&tl[t]==message)
-#define isstring_t(t) (islist_t(t)&&tl[t]==char_t)
+#define isltmess_t(t) (islist_t(t)&&tl(t)==message)
+#define isstring_t(t) (islist_t(t)&&tl(t)==char_t)
 extern word SYNERR,errs,echoing,gvars;
 extern word listdiff_fn,indent_fn,outdent_fn;
 word lastname=0;
@@ -143,18 +143,18 @@ void obey(word x) /* like evaluate but no fork, no stats, no extra '\n' */
 }
 
 int isstring(word x)
-{ return(x==NILS||(tag[x]==CONS&&is_char(hd[x])));
+{ return(x==NILS||(tag[x]==CONS&&is_char(hd(x))));
 }
 
 word compose(word x) /* used in compiling 'cases' */
-{ word y=hd[x];
-  if(hd[y]==OTHERWISE)y=tl[y]; /* OTHERWISE was just a marker - lose it */
-  else y=tag[y]==LABEL?label(hd[y],ap(tl[y],FAIL)):
+{ word y=hd(x);
+  if(hd(y)==OTHERWISE)y=tl(y); /* OTHERWISE was just a marker - lose it */
+  else y=tag[y]==LABEL?label(hd(y),ap(tl(y),FAIL)):
          ap(y,FAIL); /* if all guards false result is FAIL */
-  x = tl[x];
+  x = tl(x);
   if(x!=NIL)
-    { while(tl[x]!=NIL)y=label(hd[hd[x]],ap(tl[hd[x]],y)), x=tl[x];
-      y=ap(hd[x],y);
+    { while(tl(x)!=NIL)y=label(hd(hd(x)),ap(tl(hd(x)),y)), x=tl(x);
+      y=ap(hd(x),y);
      /* first alternative has no label - label of enclosing rhs applies */
     }
   return(y);
@@ -167,27 +167,27 @@ word starts(word x) /* x is grammar rhs - returns list of nonterminals in start 
      { case ID: return(cons(x,NIL));
        case LABEL:
        case LET:
-       case LETREC: x=tl[x]; goto L;
-       case AP: switch(hd[x])
+       case LETREC: x=tl(x); goto L;
+       case AP: switch(hd(x))
                 { case G_SYMB:
                   case G_SUCHTHAT:
                   case G_RULE: return(NIL);
                   case G_OPT:
                   case G_FBSTAR:
-                  case G_STAR: x=tl[x]; goto L;
-                  default: if(hd[x]==outdent_fn)
-                             { x=tl[x]; goto L; }
-                           if(tag[hd[x]]==AP) {
-                             if(hd[hd[x]]==G_ERROR)
-                               { x=tl[hd[x]]; goto L; }
-                             if(hd[hd[x]]==G_SEQ)
-                               { if(eprod(tl[hd[x]]))
-                                   return(UNION(starts(tl[hd[x]]),starts(tl[x])));
-                                 x=tl[hd[x]]; goto L; }
-                             if(hd[hd[x]]==G_ALT)
-                               return(UNION(starts(tl[hd[x]]),starts(tl[x])));
-                             if(hd[hd[x]]==indent_fn)
-                               { x=tl[x]; goto L; }
+                  case G_STAR: x=tl(x); goto L;
+                  default: if(hd(x)==outdent_fn)
+                             { x=tl(x); goto L; }
+                           if(tag[hd(x)]==AP) {
+                             if(hd(hd(x))==G_ERROR)
+                               { x=tl(hd(x)); goto L; }
+                             if(hd(hd(x))==G_SEQ)
+                               { if(eprod(tl(hd(x))))
+                                   return(UNION(starts(tl(hd(x))),starts(tl(x))));
+                                 x=tl(hd(x)); goto L; }
+                             if(hd(hd(x))==G_ALT)
+                               return(UNION(starts(tl(hd(x))),starts(tl(x))));
+                             if(hd(hd(x))==indent_fn)
+                               { x=tl(x); goto L; }
 			     fprintf(stderr, "Internal error: AP tag is followed by unhandled case in starts()\nPlease report it to miranda@groups.io\n");
                            } else fprintf(stderr, "Internal error: AP tag is followed by neither outdent nor AP in starts()\nPlease report it to miranda@groups.io\n");
                 }
@@ -200,8 +200,8 @@ int eprod(word x) /* x is grammar rhs - does x admit empty production? */
      { case ID: return(member(eprodnts,x));
        case LABEL:
        case LET:
-       case LETREC: x=tl[x]; goto L;
-       case AP: switch(hd[x])
+       case LETREC: x=tl(x); goto L;
+       case AP: switch(hd(x))
                 { case G_SUCHTHAT:
                   case G_ANY:
                   case G_SYMB: return(0);
@@ -209,17 +209,17 @@ int eprod(word x) /* x is grammar rhs - does x admit empty production? */
                   case G_OPT:
                   case G_FBSTAR:
                   case G_STAR: return(1);
-                  default: if(hd[x]==outdent_fn)
-                             { x=tl[x]; goto L; }
-                           if(tag[hd[x]]==AP) {
-                             if(hd[hd[x]]==G_ERROR)
-                               { x=tl[hd[x]]; goto L; }
-                             if(hd[hd[x]]==G_SEQ)
-                               return(eprod(tl[hd[x]])&&eprod(tl[x])); else
-                             if(hd[hd[x]]==G_ALT)
-                               return(eprod(tl[hd[x]])||eprod(tl[x]));
-                             if(hd[hd[x]]==indent_fn)
-                               { x=tl[x]; goto L; }
+                  default: if(hd(x)==outdent_fn)
+                             { x=tl(x); goto L; }
+                           if(tag[hd(x)]==AP) {
+                             if(hd(hd(x))==G_ERROR)
+                               { x=tl(hd(x)); goto L; }
+                             if(hd(hd(x))==G_SEQ)
+                               return(eprod(tl(hd(x)))&&eprod(tl(x))); else
+                             if(hd(hd(x))==G_ALT)
+                               return(eprod(tl(hd(x)))||eprod(tl(x)));
+                             if(hd(hd(x))==indent_fn)
+                               { x=tl(x); goto L; }
 			     fprintf(stderr, "Internal error: AP tag is followed by unhandled case in eprod()\nPlease report it to miranda@groups.io\n");
 			   } else fprintf(stderr, "Internal error: AP tag is followed by neither outdent nor AP in eprod()\nPlease report it to miranda@groups.io\n");
                 }
@@ -231,13 +231,13 @@ int eprod(word x) /* x is grammar rhs - does x admit empty production? */
 
 word add_prod(word d,word ps,word hr)
 { word p,n=dlhs(d);
-  for(p=ps;p!=NIL;p=tl[p])
-  if(dlhs(hd[p])==n) {
-     if(dtyp(d)==undef_t&&dval(hd[p])==UNDEF) {
-       dval(hd[p])=dval(d); return(ps);
+  for(p=ps;p!=NIL;p=tl(p))
+  if(dlhs(hd(p))==n) {
+     if(dtyp(d)==undef_t&&dval(hd(p))==UNDEF) {
+       dval(hd(p))=dval(d); return(ps);
      } else {
-       if(dtyp(d)!=undef_t&&dtyp(hd[p])==undef_t)
-	 { dtyp(hd[p])=dtyp(d); return(ps); }
+       if(dtyp(d)!=undef_t&&dtyp(hd(p))==undef_t)
+	 { dtyp(hd(p))=dtyp(d); return(ps); }
        else
 	 errs=hr,
 	 printf(
@@ -253,23 +253,23 @@ word add_prod(word d,word ps,word hr)
 /* clumsy - this algorithm is quadratic in number of prodns - fix later */
 
 word getloc(word nt,word prods)  /* get here info for nonterminal */
-{ while(prods!=NIL&&dlhs(hd[prods])!=nt)prods=tl[prods];
-  if(prods!=NIL)return(hd[dval(hd[prods])]);
+{ while(prods!=NIL&&dlhs(hd(prods))!=nt)prods=tl(prods);
+  if(prods!=NIL)return(hd(dval(hd(prods))));
   return(0);  /* should not happen, but just in case */
 }
 
 void findnt(word nt) /* set errs to here info of undefined nonterminal */
 { word p=ntmap;
-  while(p!=NIL&&hd[hd[p]]!=nt)p=tl[p];
+  while(p!=NIL&&hd(hd(p))!=nt)p=tl(p);
   if(p!=NIL)
-    { errs=tl[hd[p]]; return; }
+    { errs=tl(hd(p)); return; }
   p=ntspecmap;
-  while(p!=NIL&&hd[hd[p]]!=nt)p=tl[p];
-  if(p!=NIL)errs=tl[hd[p]];
+  while(p!=NIL&&hd(hd(p))!=nt)p=tl(p);
+  if(p!=NIL)errs=tl(hd(p));
 }
 
-#define isap2(fn,x) (tag[x]==AP&&tag[hd[x]]==AP&&hd[hd[x]]==(fn))
-#define firstsymb(term) tl[hd[term]]
+#define isap2(fn,x) (tag[x]==AP&&tag[hd(x)]==AP&&hd(hd(x))==(fn))
+#define firstsymb(term) tl(hd(term))
 
 void binom(word rhs,word x)
 /* performs the binomial optimisation on rhs of nonterminal x
@@ -277,25 +277,25 @@ void binom(word rhs,word x)
         ==>
     x: rest (alpha1|...|alphaN)*
 */
-{ word *p= &tl[rhs];  /* rhs is of form label(hereinf, stuff) */
+{ word *p= &tl(rhs);  /* rhs is of form label(hereinf, stuff) */
   word *lastp=0,*holdrhs,suffix,alpha=NIL;
-  if(tag[*p]==LETREC)p = &tl[*p]; /* ignore trailing `where defs' */
-  if(isap2(G_ERROR,*p))p = &tl[hd[*p]];
+  if(tag[*p]==LETREC)p = &tl(*p); /* ignore trailing `where defs' */
+  if(isap2(G_ERROR,*p))p = &tl(hd(*p));
   holdrhs=p;
   while(isap2(G_ALT,*p))
-    if(firstsymb(tl[hd[*p]])==x)
-       alpha=cons(tl[tl[hd[*p]]],alpha),
-       *p=tl[*p],p = &tl[*p];
-    else lastp=p,p = &tl[tl[*p]];
+    if(firstsymb(tl(hd(*p)))==x)
+       alpha=cons(tl(tl(hd(*p))),alpha),
+       *p=tl(*p),p = &tl(*p);
+    else lastp=p,p = &tl(tl(*p));
     /* note each (G_ALT a b) except the outermost is labelled */
   if(lastp&&firstsymb(*p)==x)
-    alpha=cons(tl[*p],alpha),
-    *lastp=tl[hd[*lastp]];
+    alpha=cons(tl(*p),alpha),
+    *lastp=tl(hd(*lastp));
   if(alpha==NIL)return;
-  suffix=hd[alpha],alpha=tl[alpha];
+  suffix=hd(alpha),alpha=tl(alpha);
   while(alpha!=NIL)
-       suffix=ap2(G_ALT,hd[alpha],suffix),
-       alpha=tl[alpha];
+       suffix=ap2(G_ALT,hd(alpha),suffix),
+       alpha=tl(alpha);
   *holdrhs=ap2(G_SEQ,*holdrhs,ap(G_FBSTAR,suffix));
 }
 /* should put some labels on the alpha's - fix later */
@@ -317,31 +317,31 @@ void startbnf()
 word ih_abstr(word x)  /* abstract inherited attributes from grammar rule */
 { word ih=ihlist;
   while(ih!=NIL)  /* relies on fact that ihlist is reversed */
-       x=lambda(hd[ih],x),ih=tl[ih];
+       x=lambda(hd(ih),x),ih=tl(ih);
   return(x);
 }
 
 int can_elide(word x) /* is x of the form $1 applied to ih attributes in order? */
 { word ih;
   if(ihlist)
-    for(ih=ihlist;ih!=NIL&&tag[x]==AP;ih=tl[ih],x=hd[x])
-       if(hd[ih]!=tl[x])return(0);
+    for(ih=ihlist;ih!=NIL&&tag[x]==AP;ih=tl(ih),x=hd(x))
+       if(hd(ih)!=tl(x))return(0);
   return(x==mkgvar(1));
 }
 
 int e_re(word x) /* does regular expression x match empty string ? */
 { L: if(tag[x]==AP)
-       { if(hd[x]==LEX_STAR||hd[x]==LEX_OPT)return(1);
-         if(hd[x]==LEX_STRING)return(tl[x]==NIL);
-         if(tag[hd[x]]!=AP)return(0);
-         if(hd[hd[x]]==LEX_OR)
-           { if(e_re(tl[hd[x]]))return(1);
-             x=tl[x]; goto L; } else
-         if(hd[hd[x]]==LEX_SEQ)
-           { if(!e_re(tl[hd[x]]))return(0);
-             x=tl[x]; goto L; } else
-         if(hd[hd[x]]==LEX_RCONTEXT)
-           { x=tl[hd[x]]; goto L; }
+       { if(hd(x)==LEX_STAR||hd(x)==LEX_OPT)return(1);
+         if(hd(x)==LEX_STRING)return(tl(x)==NIL);
+         if(tag[hd(x)]!=AP)return(0);
+         if(hd(hd(x))==LEX_OR)
+           { if(e_re(tl(hd(x))))return(1);
+             x=tl(x); goto L; } else
+         if(hd(hd(x))==LEX_SEQ)
+           { if(!e_re(tl(hd(x))))return(0);
+             x=tl(x); goto L; } else
+         if(hd(hd(x))==LEX_RCONTEXT)
+           { x=tl(hd(x)); goto L; }
        }
      return(0);
 }
@@ -519,7 +519,7 @@ cases:
         =  { $$ = cons(ap(OTHERWISE,$1),NIL); }|
     cases reindent ELSEQ alt
         =  { $$ = cons($4,$1); 
-             if(hd[hd[$1]]==OTHERWISE)
+             if(hd(hd($1))==OTHERWISE)
                syntax("\"otherwise\" must be last case\n"); };
 
 alt:
@@ -703,7 +703,7 @@ reln:
         = { $$ = ap2($2,$1,$3); }|
     reln relop e2
         = { word subject;
-            subject = hd[hd[$1]]==AND?tl[tl[$1]]:tl[$1];
+            subject = hd(hd($1))==AND?tl(tl($1)):tl($1);
             $$ = ap2(AND,$1,ap2($2,subject,$3));
           };  /* EFFICIENCY PROBLEM - subject gets re-evaluated (and
                  retypechecked) - fix later */
@@ -715,7 +715,7 @@ relsn:                     /* reln or presection */
         = { $$ = ap($2,$1); }|
     reln relop e2
         = { word subject;
-            subject = hd[hd[$1]]==AND?tl[tl[$1]]:tl[$1];
+            subject = hd(hd($1))==AND?tl(tl($1)):tl($1);
             $$ = ap2(AND,$1,ap2($2,subject,$3));
           };  /* EFFICIENCY PROBLEM - subject gets re-evaluated (and
                  retypechecked) - fix later */
@@ -726,14 +726,14 @@ arg:
         = { inlex=0; lexdefs=NIL;
             if(lexstates!=NIL)
               { word echoed=0;
-                for(;lexstates!=NIL;lexstates=tl[lexstates])
+                for(;lexstates!=NIL;lexstates=tl(lexstates))
                 { if(!echoed)printf(echoing?"\n":""),echoed=1;
-                  if(!(tl[hd[lexstates]]&1))
+                  if(!(tl(hd(lexstates))&1))
                     printf("warning: lex state %s is never entered\n",
-                           get_id(hd[hd[lexstates]])); else
-                  if(!(tl[hd[lexstates]]&2))
+                           get_id(hd(hd(lexstates)))); else
+                  if(!(tl(hd(lexstates))&2))
                     printf("warning: lex state %s has no associated rules\n",
-                           get_id(hd[hd[lexstates]])); }
+                           get_id(hd(hd(lexstates)))); }
               }
             if($3==NIL)syntax("%lex with no rules\n");
             else tag[$3]=LEXER;
@@ -779,15 +779,15 @@ arg:
     '(' es1 ')'          /* presection or parenthesised e1 */
         = { $$ = $2; }|
     '(' diop1 e1 ')'     /* postsection */
-        = { $$ = (tag[$2]==AP&&hd[$2]==C)?ap(tl[$2],$3): /* optimisation */
+        = { $$ = (tag[$2]==AP&&hd($2)==C)?ap(tl($2),$3): /* optimisation */
                  ap2(C,$2,$3); }|
     '(' ')'
         = { $$ = Void; }|  /* the void tuple */
     '(' exp ',' liste ')'
-        = { if(tl[$4]==NIL)$$=pair($2,hd[$4]);
-            else { $$=pair(hd[tl[$4]],hd[$4]);
-                   $4=tl[tl[$4]];
-                   while($4!=NIL)$$=tcons(hd[$4],$$),$4=tl[$4];
+        = { if(tl($4)==NIL)$$=pair($2,hd($4));
+            else { $$=pair(hd(tl($4)),hd($4));
+                   $4=tl(tl($4));
+                   while($4!=NIL)$$=tcons(hd($4),$$),$4=tl($4);
                    $$ = tcons($2,$$); }
           /* representation of the tuple (a1,...,an) is
              tcons(a1,tcons(a2,...pair(a(n-1),an))) */
@@ -808,11 +808,11 @@ lstart:
         = { $$ = 0; }|
     '<' cnames '>'
         = { word ns=NIL;
-            for(;$2!=NIL;$2=tl[$2])
+            for(;$2!=NIL;$2=tl($2))
                { word *x = &lexstates,i=1;
-                 while(*x!=NIL&&hd[hd[*x]]!=hd[$2])i++,x = &tl[*x];
-                 if(*x == NIL)*x = cons(cons(hd[$2],2),NIL);
-                 else tl[hd[*x]] |= 2; 
+                 while(*x!=NIL&&hd(hd(*x))!=hd($2))i++,x = &tl(*x);
+                 if(*x == NIL)*x = cons(cons(hd($2),2),NIL);
+                 else tl(hd(*x)) |= 2; 
                  ns = add1(i,ns); }
             $$ = ns; };
 
@@ -831,9 +831,9 @@ lpostfix:
             = { $$ = -1; }|
         LBEGIN CNAME
             = { word *x = &lexstates,i=1;
-                while(*x!=NIL&&hd[hd[*x]]!=$2)i++,x = &tl[*x];
+                while(*x!=NIL&&hd(hd(*x))!=$2)i++,x = &tl(*x);
                 if(*x == NIL)*x = cons(cons($2,1),NIL);
-                else tl[hd[*x]] |= 1;
+                else tl(hd(*x)) |= 1;
                 $$ = i;
               }|
         LBEGIN CONST
@@ -885,27 +885,27 @@ lunit:
               out(stdout,$1),printf("\" in regular expression\n"),
               acterror();
             $$ = $1==NILS?ap(LEX_STRING,NIL):
-                 tl[$1]==NIL?ap(LEX_CHAR,hd[$1]):
+                 tl($1)==NIL?ap(LEX_CHAR,hd($1)):
                              ap(LEX_STRING,$1);
           }|
     CHARCLASS
         = { if($1==NIL)
               syntax("empty character class `` cannot match\n");
-            $$ = tl[$1]==NIL?ap(LEX_CHAR,hd[$1]):ap(LEX_CLASS,$1); }|
+            $$ = tl($1)==NIL?ap(LEX_CHAR,hd($1)):ap(LEX_CLASS,$1); }|
     ANTICHARCLASS
         = { $$ = ap(LEX_CLASS,cons(ANTICHARCLASS,$1)); }|
     '.'
         = { $$ = LEX_DOT; }|
     name
         = { word x=lexdefs;
-            while(x!=NIL&&hd[hd[x]]!=$1)x=tl[x];
+            while(x!=NIL&&hd(hd(x))!=$1)x=tl(x);
             if(x==NIL)
               printf(
       "%ssyntax error: undefined lexeme %s in regular expression\n",
                       echoing?"\n":"",
                       get_id($1)),
                   acterror();
-            else $$ = tl[hd[x]]; };
+            else $$ = tl(hd(x)); };
 
 name: NAME|CNAME;
 
@@ -922,10 +922,10 @@ qualifiers:
 generator:
     e1 ',' generator
         = { /* fix syntax to disallow patlist on lhs of iterate generator */
-            if(hd[$3]==GENERATOR)
-              { word e=tl[tl[$3]];
-                if(tag[e]==AP&&tag[hd[e]]==AP&&
-                    (hd[hd[e]]==ITERATE||hd[hd[e]]==ITERATE1))
+            if(hd($3)==GENERATOR)
+              { word e=tl(tl($3));
+                if(tag[e]==AP&&tag[hd(e)]==AP&&
+                    (hd(hd(e))==ITERATE||hd(hd(e))==ITERATE1))
                   syntax("ill-formed generator\n"); }
             $$ = cons(REPEAT,cons(genlhs($1),$3)); idsused=NIL;  }|
     generator1;
@@ -949,13 +949,13 @@ def:
         = { word l = $1, r = $6;
             word f = head(l);
             if(tag[f]==ID&&!isconstructor(f)) /* fnform defn */
-              while(tag[l]==AP)r=lambda(tl[l],r),l=hd[l];
+              while(tag[l]==AP)r=lambda(tl(l),r),l=hd(l);
             r = label($5,r); /* to help locate type errors */
             declare(l,r),lastname=l; }|
 
     spec
-        = { word h=reverse(hd[$1]),hr=hd[tl[$1]],t=tl[tl[$1]];
-            while(h!=NIL&&!SYNERR)specify(hd[h],t,hr),h=tl[h];
+        = { word h=reverse(hd($1)),hr=hd(tl($1)),t=tl(tl($1));
+            while(h!=NIL&&!SYNERR)specify(hd(h),t,hr),h=tl(h);
             $$ = cons(nill,NIL); }|
 
     ABSTYPE here typeforms indent WITH lspecs outdent
@@ -963,58 +963,58 @@ def:
             extern char *dicp,*dicq;
             word x=reverse($6),ids=NIL,tids=NIL;
             while(x!=NIL&&!SYNERR)
-                 specify(hd[hd[x]],cons(tl[tl[hd[x]]],NIL),hd[tl[hd[x]]]),
-                  ids=cons(hd[hd[x]],ids),x=tl[x];
+                 specify(hd(hd(x)),cons(tl(tl(hd(x))),NIL),hd(tl(hd(x)))),
+                  ids=cons(hd(hd(x)),ids),x=tl(x);
             /* each id in specs has its id_type set to const(t,NIL) as a way
                of flagging that t is an abstract type */
             x=reverse($3);
             while(x!=NIL&&!SYNERR)
                { word shfn;
-                 decltype(hd[x],abstract_t,undef_t,$2);
-                 tids=cons(head(hd[x]),tids);
+                 decltype(hd(x),abstract_t,undef_t,$2);
+                 tids=cons(head(hd(x)),tids);
                  /* check for presence of showfunction */
                  (void)strcpy(dicp,"show");
-                 (void)strcat(dicp,get_id(hd[tids]));
+                 (void)strcat(dicp,get_id(hd(tids)));
                  dicq = dicp+strlen(dicp)+1;
                  shfn=name();
                  if(member(ids,shfn))
-                   t_showfn(hd[tids])=shfn;
-                 x=tl[x]; }
+                   t_showfn(hd(tids))=shfn;
+                 x=tl(x); }
             TABSTRS = cons(cons(tids,ids),TABSTRS);
             $$ = cons(nill,NIL); }|
 
     typeform indent act1 here EQEQ type act2 outdent
         = { word x=redtvars(ap($1,$6));
-            decltype(hd[x],synonym_t,tl[x],$4);
+            decltype(hd(x),synonym_t,tl(x),$4);
             $$ = cons(nill,NIL); }|
 
     typeform indent act1 here COLON2EQ construction act2 outdent
         = { word rhs = $6, r_ids = $6, n=0;
-            while(r_ids!=NIL)r_ids=tl[r_ids],n++;
+            while(r_ids!=NIL)r_ids=tl(r_ids),n++;
             while(rhs!=NIL&&!SYNERR)
-            {  word h=hd[rhs],t=$1,stricts=NIL,i=0;
+            {  word h=hd(rhs),t=$1,stricts=NIL,i=0;
                while(tag[h]==AP)
-                    { if(tag[tl[h]]==AP&&hd[tl[h]]==strict_t)
-                        stricts=cons(i,stricts),tl[h]=tl[tl[h]];
-                      t=ap2(arrow_t,tl[h],t),h=hd[h],i++; }
+                    { if(tag[tl(h)]==AP&&hd(tl(h))==strict_t)
+                        stricts=cons(i,stricts),tl(h)=tl(tl(h));
+                      t=ap2(arrow_t,tl(h),t),h=hd(h),i++; }
                if(tag[h]==ID)
                  declconstr(h,--n,t);
                  /* warning - type not yet in reduced form */
                else { stricts=NIL;
                       if(echoing)putchar('\n');
                       printf("syntax error: illegal construct \"");
-                      out_type(hd[rhs]);
+                      out_type(hd(rhs));
                       printf("\" on right of ::=\n");
                       acterror(); } /* can this still happen? check later */
                if(stricts!=NIL) /* ! operators were present */
                  { word k = id_val(h);
                    while(stricts!=NIL)
-                        k=ap2(MKSTRICT,i-hd[stricts],k),
-                        stricts=tl[stricts];
+                        k=ap2(MKSTRICT,i-hd(stricts),k),
+                        stricts=tl(stricts);
                    id_val(h)=k; /* overwrite id_val of original constructor */
                  }
                r_ids=cons(h,r_ids);
-               rhs = tl[rhs]; }
+               rhs = tl(rhs); }
             if(!SYNERR)decltype($1,algebraic_t,r_ids,$4);
             $$ = cons(nill,NIL); }|
 
@@ -1034,17 +1034,17 @@ def:
               syntax("multiple %free statements are illegal\n"); else
             { word x=reverse($4);
               while(x!=NIL&&!SYNERR)
-                 { specify(hd[hd[x]],tl[tl[hd[x]]],hd[tl[hd[x]]]);
-                   freeids=cons(head(hd[hd[x]]),freeids);
-                   if(tl[tl[hd[x]]]==type_t)
-                     t_class(hd[freeids])=free_t;
-                   else id_val(hd[freeids])=FREE; /* conventional value */
-                   x=tl[x]; }
-              fil_share(hd[files])=0; /* parameterised scripts unshareable */
+                 { specify(hd(hd(x)),tl(tl(hd(x))),hd(tl(hd(x))));
+                   freeids=cons(head(hd(hd(x))),freeids);
+                   if(tl(tl(hd(x)))==type_t)
+                     t_class(hd(freeids))=free_t;
+                   else id_val(hd(freeids))=FREE; /* conventional value */
+                   x=tl(x); }
+              fil_share(hd(files))=0; /* parameterised scripts unshareable */
               freeids=alfasort(freeids); 
-              for(x=freeids;x!=NIL;x=tl[x])
-                 hd[x]=cons(hd[x],cons(datapair(get_id(hd[x]),0),
-                       id_type(hd[x])));
+              for(x=freeids;x!=NIL;x=tl(x))
+                 hd(x)=cons(hd(x),cons(datapair(get_id(hd(x)),0),
+                       id_type(hd(x))));
               /* each element of freeids is of the form
                  cons(id,cons(original_name,type)) */
             }
@@ -1061,55 +1061,55 @@ def:
         = { word lhs=NIL,p=$6,subjects,body,startswith=NIL,leftrecs=NIL;
             ihlist=inbnf=0;
             nonterminals=UNION(nonterminals,$4);
-            for(;p!=NIL;p=tl[p])
-            if(dval(hd[p])==UNDEF)nonterminals=add1(dlhs(hd[p]),nonterminals);
-             else lhs=add1(dlhs(hd[p]),lhs);
+            for(;p!=NIL;p=tl(p))
+            if(dval(hd(p))==UNDEF)nonterminals=add1(dlhs(hd(p)),nonterminals);
+             else lhs=add1(dlhs(hd(p)),lhs);
             nonterminals=setdiff(nonterminals,lhs);
             if(nonterminals!=NIL)
               errs=$1,
-              member($4,hd[nonterminals])/*||findnt(hd[nonterminals])*/,
+              member($4,hd(nonterminals))/*||findnt(hd(nonterminals))*/,
               printf("%sfatal error in grammar, ",echoing?"\n":""),
               printf("undefined nonterminal%s: ",
-                      tl[nonterminals]==NIL?"":"s"),
+                      tl(nonterminals)==NIL?"":"s"),
               printlist("",nonterminals),
               acterror(); else
             { /* compute list of nonterminals admitting empty prodn */
             eprodnts=NIL;
-          L:for(p=$6;p!=NIL;p=tl[p])
-               if(!member(eprodnts,dlhs(hd[p]))&&eprod(dval(hd[p])))
-                 { eprodnts=cons(dlhs(hd[p]),eprodnts); goto L; }
+          L:for(p=$6;p!=NIL;p=tl(p))
+               if(!member(eprodnts,dlhs(hd(p)))&&eprod(dval(hd(p))))
+                 { eprodnts=cons(dlhs(hd(p)),eprodnts); goto L; }
             /* now compute startswith reln between nonterminals
                (performing binomial transformation en route)
                and use to detect unremoved left recursion */
-            for(p=$6;p!=NIL;p=tl[p])
-               if(member(lhs=starts(dval(hd[p])),dlhs(hd[p])))
-                 binom(dval(hd[p]),dlhs(hd[p])),
-                 startswith=cons(cons(dlhs(hd[p]),starts(dval(hd[p]))),
+            for(p=$6;p!=NIL;p=tl(p))
+               if(member(lhs=starts(dval(hd(p))),dlhs(hd(p))))
+                 binom(dval(hd(p)),dlhs(hd(p))),
+                 startswith=cons(cons(dlhs(hd(p)),starts(dval(hd(p)))),
                                  startswith);
-               else startswith=cons(cons(dlhs(hd[p]),lhs),startswith);
+               else startswith=cons(cons(dlhs(hd(p)),lhs),startswith);
             startswith=tclos(sortrel(startswith));
-            for(;startswith!=NIL;startswith=tl[startswith])
-               if(member(tl[hd[startswith]],hd[hd[startswith]]))
-                 leftrecs=add1(hd[hd[startswith]],leftrecs);
+            for(;startswith!=NIL;startswith=tl(startswith))
+               if(member(tl(hd(startswith)),hd(hd(startswith))))
+                 leftrecs=add1(hd(hd(startswith)),leftrecs);
             if(leftrecs!=NIL)
-              errs=getloc(hd[leftrecs],$6),
+              errs=getloc(hd(leftrecs),$6),
               printf("%sfatal error in grammar, ",echoing?"\n":""),
               printlist("irremovable left recursion: ",leftrecs),
               acterror();
             if($4==NIL) /* implied start symbol */
-              $4=cons(dlhs(hd[lastlink($6)]),NIL);
+              $4=cons(dlhs(hd(lastlink($6))),NIL);
             fnts=1; /* fnts is flag indicating %bnf in use */
-            if(tl[$4]==NIL) /* only one start symbol */
-              subjects=getfname(hd[$4]),
-              body=ap2(G_CLOSE,str_conv(get_id(hd[$4])),hd[$4]);
+            if(tl($4)==NIL) /* only one start symbol */
+              subjects=getfname(hd($4)),
+              body=ap2(G_CLOSE,str_conv(get_id(hd($4))),hd($4));
             else
             { body=subjects=Void;
               while($4!=NIL)
-                   subjects=pair(getfname(hd[$4]),subjects),
+                   subjects=pair(getfname(hd($4)),subjects),
                    body=pair(
-                         ap2(G_CLOSE,str_conv(get_id(hd[$4])),hd[$4]),
+                         ap2(G_CLOSE,str_conv(get_id(hd($4))),hd($4)),
                             body),
-                   $4=tl[$4];
+                   $4=tl($4);
             }
             declare(subjects,label($1,block($6,body, 0)));
           }};
@@ -1136,9 +1136,9 @@ binding:
         =  { $$ = cons($1,$4); }|
     typeform indent act1 EQEQ type act2 outdent
         =  { word x=redtvars(ap($1,$5)); 
-             word arity=0,h=hd[x];
-             while(tag[h]==AP)arity++,h=hd[h];
-             $$ = ap(h,make_typ(arity,0,synonym_t,tl[x]));
+             word arity=0,h=hd(x);
+             while(tag[h]==AP)arity++,h=hd(h);
+             $$ = ap(h,make_typ(arity,0,synonym_t,tl(x)));
            };
 
 modifiers:
@@ -1146,10 +1146,10 @@ modifiers:
         =  { $$ = NIL; }|
     negmods
         =  { word a,b,c=0;
-             for(a=$1;a!=NIL;a=tl[a])
-                for(b=tl[a];b!=NIL;b=tl[b])
-                   { if(hd[hd[a]]==hd[hd[b]])c=hd[hd[a]];
-                     if(tl[hd[a]]==tl[hd[b]])c=tl[hd[a]]; 
+             for(a=$1;a!=NIL;a=tl(a))
+                for(b=tl(a);b!=NIL;b=tl(b))
+                   { if(hd(hd(a))==hd(hd(b)))c=hd(hd(a));
+                     if(tl(hd(a))==tl(hd(b)))c=tl(hd(a)); 
                      if(c)break; }
              if(c)printf(
                   "%ssyntax error: conflicting aliases (\"%s\")\n",
@@ -1193,35 +1193,35 @@ ldefs:
         = { $$ = cons($1,NIL);
             dval($1) = tries(dlhs($1),cons(dval($1),NIL));
             if(!SYNERR&&get_ids(dlhs($1))==NIL)
-              errs=hd[hd[tl[dval($1)]]],
+              errs=hd(hd(tl(dval($1)))),
               syntax("illegal lhs for local definition\n");
           }|
     ldefs ldef
-        = { if(dlhs($2)==dlhs(hd[$1]) /*&&dval(hd[$1])!=UNDEF*/)
+        = { if(dlhs($2)==dlhs(hd($1)) /*&&dval(hd($1))!=UNDEF*/)
               { $$ = $1;
-                if(!fallible(hd[tl[dval(hd[$1])]]))
-                    errs=hd[dval($2)],
+                if(!fallible(hd(tl(dval(hd($1))))))
+                    errs=hd(dval($2)),
                     printf("%ssyntax error: \
 unreachable case in defn of \"%s\"\n",echoing?"\n":"",get_id(dlhs($2))),
                     acterror();
-                tl[dval(hd[$1])]=cons(dval($2),tl[dval(hd[$1])]); }
+                tl(dval(hd($1)))=cons(dval($2),tl(dval(hd($1)))); }
             else if(!SYNERR)
-                 { word ns=get_ids(dlhs($2)),hr=hd[dval($2)];
+                 { word ns=get_ids(dlhs($2)),hr=hd(dval($2));
                    if(ns==NIL)
                      errs=hr,
                      syntax("illegal lhs for local definition\n");
                    $$ = cons($2,$1);
                    dval($2)=tries(dlhs($2),cons(dval($2),NIL));
                    while(ns!=NIL&&!SYNERR) /* local nameclash check */
-                        { nclashcheck(hd[ns],$1,hr);
-                          ns=tl[ns]; }
+                        { nclashcheck(hd(ns),$1,hr);
+                          ns=tl(ns); }
                         /* potentially quadratic - fix later */
                  }
           };
 
 ldef:
     spec
-        = { errs=hd[tl[$1]];
+        = { errs=hd(tl($1));
             syntax("`::' encountered in local defs\n");
             $$ = cons(nill,NIL); }|
     typeform here EQEQ
@@ -1236,7 +1236,7 @@ ldef:
         = { word l = $1, r = $6;
             word f = head(l);
             if(tag[f]==ID&&!isconstructor(f)) /* fnform defn */
-              while(tag[l]==AP)r=lambda(tl[l],r),l=hd[l];
+              while(tag[l]==AP)r=lambda(tl(l),r),l=hd(l);
             r = label($5,r); /* to help locate type errors */
             $$ = defn(l,undef_t,r); };
 
@@ -1271,7 +1271,7 @@ v1:
 v2:
     v3 |
     v2 v3
-        = { $$ = ap(hd[$1]==CONST&&tag[tl[$1]]==ID?tl[$1]:$1,$2); };
+        = { $$ = ap(hd($1)==CONST&&tag[tl($1)]==ID?tl($1):$1,$2); };
         /* repeated name apparatus may have wrapped CONST around leading id
            - not wanted */
 
@@ -1291,17 +1291,17 @@ v3:
         = { $$ = nill; }|
     '[' vlist ']'
         = { word x=$2,y=nill;
-            while(x!=NIL)y = cons(hd[x],y), x = tl[x];
+            while(x!=NIL)y = cons(hd(x),y), x = tl(x);
             $$ = y; }|
     '(' ')'
         = { $$ = Void; }|
     '(' v ')'
         = { $$ = $2; }|
     '(' v ',' vlist ')'
-        = { if(tl[$4]==NIL)$$=pair($2,hd[$4]);
-            else { $$=pair(hd[tl[$4]],hd[$4]);
-                   $4=tl[tl[$4]];
-                   while($4!=NIL)$$=tcons(hd[$4],$$),$4=tl[$4];
+        = { if(tl($4)==NIL)$$=pair($2,hd($4));
+            else { $$=pair(hd(tl($4)),hd($4));
+                   $4=tl(tl($4));
+                   while($4!=NIL)$$=tcons(hd($4),$$),$4=tl($4);
                    $$ = tcons($2,$$); }
           /* representation of the tuple (a1,...,an) is
              tcons(a1,tcons(a2,...pair(a(n-1),an))) */
@@ -1352,7 +1352,7 @@ typelist:
     type |
     type ',' typel
         = { word x=$3,y=void_t;
-            while(x!=NIL)y = ap2(comma_t,hd[x],y), x = tl[x];
+            while(x!=NIL)y = ap2(comma_t,hd(x),y), x = tl(x);
             $$ = ap2(comma_t,$1,y); };
 
 typel:
@@ -1384,12 +1384,12 @@ parts: /* returned in reverse order */
 specs:  /* returns a list of cons(id,cons(here,type))
            in reverse order of appearance */
     specs spec
-        = { word x=$1,h=hd[$2],t=tl[$2];
-            while(h!=NIL)x=cons(cons(hd[h],t),x),h=tl[h];
+        = { word x=$1,h=hd($2),t=tl($2);
+            while(h!=NIL)x=cons(cons(hd(h),t),x),h=tl(h);
             $$ = x; }|
     spec
-        = { word x=NIL,h=hd[$1],t=tl[$1];
-            while(h!=NIL)x=cons(cons(hd[h],t),x),h=tl[h];
+        = { word x=NIL,h=hd($1),t=tl($1);
+            while(h!=NIL)x=cons(cons(hd(h),t),x),h=tl(h);
             $$ = x; };
 
 spec:
@@ -1400,12 +1400,12 @@ spec:
 lspecs:  /* returns a list of cons(id,cons(here,type))
            in reverse order of appearance */
     lspecs lspec
-        = { word x=$1,h=hd[$2],t=tl[$2];
-            while(h!=NIL)x=cons(cons(hd[h],t),x),h=tl[h];
+        = { word x=$1,h=hd($2),t=tl($2);
+            while(h!=NIL)x=cons(cons(hd(h),t),x),h=tl(h);
             $$ = x; }|
     lspec
-        = { word x=NIL,h=hd[$1],t=tl[$1];
-            while(h!=NIL)x=cons(cons(hd[h],t),x),h=tl[h];
+        = { word x=NIL,h=hd($1),t=tl($1);
+            while(h!=NIL)x=cons(cons(hd(h),t),x),h=tl(h);
             $$ = x; };
 
 lspec:
@@ -1431,7 +1431,7 @@ typeform:
         = { $$ = $1;
             idsused=$2;
             while($2!=NIL)
-              $$ = ap($$,hd[$2]),$2 = tl[$2];
+              $$ = ap($$,hd($2)),$2 = tl($2);
           }|
     typevar INFIXNAME typevar
         = { if(eqtvar($1,$3))
@@ -1462,9 +1462,9 @@ typevars:
 construction:
     constructs
         = { extern word SGC;  /* keeps track of sui-generis constructors */
-            if( tl[$1]==NIL && tag[hd[$1]]!=ID )
+            if( tl($1)==NIL && tag[hd($1)]!=ID )
                             /* 2nd conjunct excludes singularity types */
-              SGC=cons(head(hd[$1]),SGC);
+              SGC=cons(head(hd($1)),SGC);
           };
 
 constructs:
@@ -1511,27 +1511,27 @@ names:          /* used twice - for bnf list, and for inherited attr list */
 
 productions:
     lspec
-        = { word h=reverse(hd[$1]),hr=hd[tl[$1]],t=tl[tl[$1]];
+        = { word h=reverse(hd($1)),hr=hd(tl($1)),t=tl(tl($1));
             inbnf=1;
             $$=NIL;
             while(h!=NIL&&!SYNERR)
-                 ntspecmap=cons(cons(hd[h],hr),ntspecmap),
-                 $$=add_prod(defn(hd[h],t,UNDEF),$$,hr),
-                 h=tl[h];
+                 ntspecmap=cons(cons(hd(h),hr),ntspecmap),
+                 $$=add_prod(defn(hd(h),t,UNDEF),$$,hr),
+                 h=tl(h);
           }|
     production
         = { $$ = cons($1,NIL); }|
     productions lspec
-        = { word h=reverse(hd[$2]),hr=hd[tl[$2]],t=tl[tl[$2]];
+        = { word h=reverse(hd($2)),hr=hd(tl($2)),t=tl(tl($2));
             inbnf=1;
             $$=$1;
             while(h!=NIL&&!SYNERR)
-                 ntspecmap=cons(cons(hd[h],hr),ntspecmap),
-                 $$=add_prod(defn(hd[h],t,UNDEF),$$,hr),
-                 h=tl[h];
+                 ntspecmap=cons(cons(hd(h),hr),ntspecmap),
+                 $$=add_prod(defn(hd(h),t,UNDEF),$$,hr),
+                 h=tl(h);
           }|
     productions production
-        = { $$ = add_prod($2,$1,hd[dval($2)]); };
+        = { $$ = add_prod($2,$1,hd(dval($2))); };
 
 production:
     NAME params ':' indent grhs outdent
@@ -1554,16 +1554,16 @@ phrase:
     error_term
         = { $$ = ap2(G_ERROR,G_ZERO,$1); }|
     phrase1
-        = { $$=hd[$1], $1=tl[$1];
+        = { $$=hd($1), $1=tl($1);
             while($1!=NIL)
-                 $$=label(hd[$1],$$),$1=tl[$1],
-                 $$=ap2(G_ALT,hd[$1],$$),$1=tl[$1];
+                 $$=label(hd($1),$$),$1=tl($1),
+                 $$=ap2(G_ALT,hd($1),$$),$1=tl($1);
         }|
     phrase1 '|' error_term
-        = { $$=hd[$1], $1=tl[$1];
+        = { $$=hd($1), $1=tl($1);
             while($1!=NIL)
-                 $$=label(hd[$1],$$),$1=tl[$1],
-                 $$=ap2(G_ALT,hd[$1],$$),$1=tl[$1];
+                 $$=label(hd($1),$$),$1=tl($1),
+                 $$=ap2(G_ALT,hd($1),$$),$1=tl($1);
             $$ = ap2(G_ERROR,$$,$3); };
     /* we right rotate G_ALT's to facilitate left factoring (see trans) */
 
@@ -1578,17 +1578,17 @@ term:
         = { word n=0,f=$1,rule=Void;
                          /* default value of a production is () */
                          /* rule=mkgvar(sreds);  formerly last symbol */
-            if(f!=NIL&&hd[f]==G_END)sreds++;
+            if(f!=NIL&&hd(f)==G_END)sreds++;
             if(ihlist)rule=ih_abstr(rule);
             while(n<sreds)rule=lambda(mkgvar(++n),rule);
             sreds=0;
             rule=ap(G_RULE,rule);
-            while(f!=NIL)rule=ap2(G_SEQ,hd[f],rule),f=tl[f];
+            while(f!=NIL)rule=ap2(G_SEQ,hd(f),rule),f=tl(f);
             $$ = rule; }|
     count_factors {inbnf=2;} indent '=' here rhs outdent
-        = { if($1!=NIL&&hd[$1]==G_END)sreds++;
+        = { if($1!=NIL&&hd($1)==G_END)sreds++;
             if(sreds==1&&can_elide($6))
-              inbnf=1,sreds=0,$$=hd[$1]; /* optimisation */
+              inbnf=1,sreds=0,$$=hd($1); /* optimisation */
             else
             { word f=$1,rule=label($5,$6),n=0;
               inbnf=1;
@@ -1596,7 +1596,7 @@ term:
               while(n<sreds)rule=lambda(mkgvar(++n),rule);
               sreds=0;
               rule=ap(G_RULE,rule);
-              while(f!=NIL)rule=ap2(G_SEQ,hd[f],rule),f=tl[f];
+              while(f!=NIL)rule=ap2(G_SEQ,hd(f),rule),f=tl(f);
               $$ = rule; }
           };
 
@@ -1622,15 +1622,15 @@ count_factors:
             if(obrct)
               syntax(obrct>0?"unmatched { in grammar rule\n":
                              "unmatched } in grammar rule\n");
-            for(sreds=0;f!=NIL;f=tl[f])sreds++;
-            if(hd[$2]==G_END)sreds--;
+            for(sreds=0;f!=NIL;f=tl(f))sreds++;
+            if(hd($2)==G_END)sreds--;
             $$ = $2; };
 
 factors:
     factor
         =  { $$ = cons($1,NIL); }|
     factors factor
-        =  { if(hd[$1]==G_END)
+        =  { if(hd($1)==G_END)
                syntax("unexpected token after end\n");
              $$ = cons($2,$1); };
 

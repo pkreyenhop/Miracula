@@ -298,13 +298,13 @@ int main(int argc,char *argv[])
   if(verbosity)announce();
   files=NIL;
   undump(PRELUDE),okprel=1;
-  mkprivate(fil_defs(hd[files]));
+  mkprivate(fil_defs(hd(files)));
   files=NIL; /* don't wish unload() to unsetids on prelude */
   if(!nostdenv)
     { undump(STDENV);
       while(files!=NIL)  /* stdenv may have %include structure */
-           primenv=alfasort(append1(primenv,fil_defs(hd[files]))),
-	   files=tl[files];
+           primenv=alfasort(append1(primenv,fil_defs(hd(files)))),
+	   files=tl(files);
       primenv=alfasort(primenv);
       newtyps=files=NIL; /* don't wish unload() to unsetids */ }
   if(!magic)rc_write();
@@ -325,27 +325,27 @@ int main(int argc,char *argv[])
 	     if(argcount!=1)printf("%s\n",s);
 	     if(exports!=NIL)x=exports;
 		/* true (if ever) only if just recompiled */
-	     else for(f=files;f!=NIL;f=tl[f])x=append1(fil_defs(hd[f]),x);
+	     else for(f=files;f!=NIL;f=tl(f))x=append1(fil_defs(hd(f)),x);
 	          /* method very clumsy, because exports not saved in dump */
 	     if(freeids!=NIL)
 	       { word f=freeids;
 		 while(f!=NIL)
-		      { word n=findid((char *)hd[hd[tl[hd[f]]]]);
-			id_type(n)=tl[tl[hd[f]]];
-			id_val(n)=the_val(hd[hd[f]]);
-			hd[f]=n;
-			f=tl[f]; }
+		      { word n=findid((char *)hd(hd(tl(hd(f)))));
+			id_type(n)=tl(tl(hd(f)));
+			id_val(n)=the_val(hd(hd(f)));
+			hd(f)=n;
+			f=tl(f); }
 		 f=freeids=typesfirst(freeids);
 		 printf("\t%%free {\n");
 		 while(f!=NIL)
 		       putchar('\t'),
-		       report_type(hd[f]),
+		       report_type(hd(f)),
 		       putchar('\n'),
-		       f=tl[f];
+		       f=tl(f);
 		 printf("\t}\n"); }
-	     for(x=typesfirst(alfasort(x));x!=NIL;x=tl[x])
+	     for(x=typesfirst(alfasort(x));x!=NIL;x=tl(x))
 	        { putchar('\t');
-	          report_type(hd[x]);
+	          report_type(hd(x));
 		  putchar('\n'); } }
       exit(0); }
   if(mksources){ extern word oldfiles;
@@ -356,10 +356,10 @@ int main(int argc,char *argv[])
 		      if(stat((s=addextn(1,*++argv)),&buf)==0)
 		      { if(s==dicp)keep(dicp);
 			undump(s);
-                        for(f=files==NIL?oldfiles:files;f!=NIL;f=tl[f])
-		           if(!member(x,(word)get_fil(hd[f])))
-		             x=cons((word)get_fil(hd[f]),x),
-                             printf("%s\n",get_fil(hd[f]));
+                        for(f=files==NIL?oldfiles:files;f!=NIL;f=tl(f))
+		           if(!member(x,(word)get_fil(hd(f))))
+		             x=cons((word)get_fil(hd(f)),x),
+                             printf("%s\n",get_fil(hd(f)));
 		      }
 	         exit(0); }
   if(making){ extern word oldfiles;
@@ -378,14 +378,14 @@ int main(int argc,char *argv[])
 		{ word h=0,maxw=0,w,n;
 		  printf("errors or undefined names found in:-\n");
 		  while(make_status) /* reverse to get original order */
-		       { h=strcons(hd[make_status],h);
-		         w=strlen((char *)hd[h]);
+		       { h=strcons(hd(make_status),h);
+		         w=strlen((char *)hd(h));
 		         if(w>maxw)maxw=w;
-		         make_status=tl[make_status]; }
+		         make_status=tl(make_status); }
 		  maxw++;n=78/maxw;w=0;
 		  while(h)
-		       printf("%*s%s",(int)maxw,(char *)hd[h],(++w%n)?"":"\n"),
-		       h=tl[h];
+		       printf("%*s%s",(int)maxw,(char *)hd(h),(++w%n)?"":"\n"),
+		       h=tl(h);
 		  if(w%n)printf("\n");
 		  make_status=1; }
 	      exit(make_status); }
@@ -612,10 +612,10 @@ void commandloop(char *initscript)
 		         break; }
 		     lastid=x;
 		     x=id_who(x); /* get here info */
-		     if(tag[x]==CONS)aka=(char *)hd[hd[x]],x=tl[x];
+		     if(tag[x]==CONS)aka=(char *)hd(hd(x)),x=tl(x);
 		     if(aka)printf("originally defined as \"%s\"\n",
 			           aka);
-		     editfile((char *)hd[x],tl[x]);
+		     editfile((char *)hd(x),tl(x));
 		     break; }
 		 ungetc(ch,stdin);
 		 (void)token();
@@ -663,7 +663,7 @@ void commandloop(char *initscript)
                  exit(0);
       default: ungetc(ch,stdin);
 	       lastid=0;
-	       tl[hd[cook_stdin]]=0; /* unset type of $+ */
+	       tl(hd(cook_stdin))=0; /* unset type of $+ */
 	       rv_expr=0;
                c = EVAL;
 	       echoing=0;
@@ -731,8 +731,8 @@ word fm_time(char *f) /* time last modified of file f */
   /* non-existent file has conventional mtime of 0 */
 } /* we assume time_t can be stored in a word */
 
-#define same_file(x,y) (hd[fil_inodev(x)]==hd[fil_inodev(y)]&& \
-			tl[fil_inodev(x)]==tl[fil_inodev(y)])
+#define same_file(x,y) (hd(fil_inodev(x))==hd(fil_inodev(y))&& \
+			tl(fil_inodev(x))==tl(fil_inodev(y)))
 #define inodev(f) (stat(f,&buf)==0?datapair(buf.st_ino,buf.st_dev):\
 		   datapair(0,-1))
 
@@ -741,10 +741,10 @@ word oldfiles=NIL; /* most recent set of sources, in case of interrupted or
 int src_update() /* any sources modified ? */
 { word ft,f=files==NIL?oldfiles:files;
   while(f!=NIL)
-  { if((ft=fm_time(get_fil(hd[f])))!=fil_time(hd[f]))
-      { if(ft==0)unlinkx(get_fil(hd[f])); /* tidy up after eg `!rm %' */
+  { if((ft=fm_time(get_fil(hd(f))))!=fil_time(hd(f)))
+      { if(ft==0)unlinkx(get_fil(hd(f))); /* tidy up after eg `!rm %' */
 	return(1); }
-    f=tl[f]; }
+    f=tl(f); }
   return(0);
 }
 
@@ -863,7 +863,7 @@ void command()
 			 if(ch1!='y'&&ch1!='Y')return; }
 		     if(mf)filecp(mf,t); }
 		 editfile(t,strcmp(t,current_script)==0?errline:
-			    errs&&strcmp(t,(char *)hd[errs])==0?tl[errs]:
+			    errs&&strcmp(t,(char *)hd(errs))==0?tl(errs):
 			    geterrlin(t));
 		 return; }
 	     if(is("editor"))
@@ -910,9 +910,9 @@ void command()
 	     if(is("files")) /* info about internal state, not documented */
 	       { word f=files;
 		 checkeol;
-		 for(;f!=NIL;f=tl[f])
-		 printf("(%s,%ld,%ld)",get_fil(hd[f]),fil_time(hd[f]),
-			fil_share(hd[f])),printlist("",fil_defs(hd[f]));
+		 for(;f!=NIL;f=tl(f))
+		 printf("(%s,%ld,%ld)",get_fil(hd(f)),fil_time(hd(f)),
+			fil_share(hd(f))),printlist("",fil_defs(hd(f)));
 	         return; } /* DEBUG */
 	     if(is("find"))
 	       { word i=0;
@@ -921,15 +921,15 @@ void command()
 			i++;
 			if(x!=NIL)
 			{ char *n=get_id(x);
-			  for(y=primenv;y!=NIL;y=tl[y])
-			  if(tag[hd[y]]==ID)
-			  if(hd[y]==x||getaka(hd[y])==n)
-			    finger(get_id(hd[y]));
-			  for(f=files;f!=NIL;f=tl[f])
-			  for(y=fil_defs(hd[f]);y!=NIL;y=tl[y])
-			  if(tag[hd[y]]==ID)
-			  if(hd[y]==x||getaka(hd[y])==n)
-			    finger(get_id(hd[y])); }
+			  for(y=primenv;y!=NIL;y=tl(y))
+			  if(tag[hd(y)]==ID)
+			  if(hd(y)==x||getaka(hd(y))==n)
+			    finger(get_id(hd(y)));
+			  for(f=files;f!=NIL;f=tl(f))
+			  for(y=fil_defs(hd(f));y!=NIL;y=tl(y))
+			  if(tag[hd(y)]==ID)
+			  if(hd(y)==x||getaka(hd(y))==n)
+			    finger(get_id(hd(y))); }
 	              }
                  ch=getchar(); /* '\n' */
 		 if(i==0)printf("\7identifier needed after `/find'\n");
@@ -1057,12 +1057,12 @@ void xschars()
 
 word reverse(word x)  /* x is a cons list */
 { word y = NIL;
-  while(x!=NIL)y = cons(hd[x],y), x = tl[x];
+  while(x!=NIL)y = cons(hd(x),y), x = tl(x);
   return(y);
 }
 
 word shunt(word x,word y)  /* equivalent to append(reverse(x),y) */
-{ while(x!=NIL)y = cons(hd[x],y), x = tl[x];
+{ while(x!=NIL)y = cons(hd(x),y), x = tl(x);
   return(y);
 }
 
@@ -1090,7 +1090,7 @@ void finger(char *n) /* find info about name stored at dicp */
   x=findid(n);
   if(x!=NIL&&id_type(x)!=undef_t)
     { if(id_who(x)!=NIL)
-	s=(char *)hd[line=get_here(x)],line=tl[line];
+	s=(char *)hd(line=get_here(x)),line=tl(line);
       if(!lastid)lastid=x;
       report_type(x);
       if(id_who(x)==NIL)printf(" ||primitive to Miranda\n");
@@ -1145,27 +1145,27 @@ void allnamescom()
   word y=x,z=0;
   leftist=0;
   namescom(make_fil(nostdenv?0:(word)STDENV,0,0,primenv));
-  if(files==NIL)return; else s=tl[files];
-  while(s!=NIL)namescom(hd[s]),s=tl[s];
-  namescom(hd[files]);
+  if(files==NIL)return; else s=tl(files);
+  while(s!=NIL)namescom(hd(s)),s=tl(s);
+  namescom(hd(files));
   sorted=1;
   /* now print warnings, if any */
-  while(x!=NIL&&id_type(hd[x])==undef_t)x=tl[x];
-  while(y!=NIL&&id_type(hd[y])!=undef_t)y=tl[y];
+  while(x!=NIL&&id_type(hd(x))==undef_t)x=tl(x);
+  while(y!=NIL&&id_type(hd(y))!=undef_t)y=tl(y);
   if(x!=NIL)
     { printf("WARNING, SCRIPT CONTAINS TYPE ERRORS: ");
-      for(;x!=NIL;x=tl[x])
-         if(id_type(hd[x])!=undef_t)
+      for(;x!=NIL;x=tl(x))
+         if(id_type(hd(x))!=undef_t)
 	   { if(!z)z=1; else putchar(',');
-	     out(stdout,hd[x]); }
+	     out(stdout,hd(x)); }
       printf(";\n"); }
   if(y!=NIL)
     { printf("%s UNDEFINED NAMES: ",z?"AND":"WARNING, SCRIPT CONTAINS");
       z=0;
-      for(;y!=NIL;y=tl[y])
-         if(id_type(hd[y])==undef_t)
+      for(;y!=NIL;y=tl(y))
+         if(id_type(hd(y))==undef_t)
 	   { if(!z)z=1; else putchar(',');
-	     out(stdout,hd[y]); }
+	     out(stdout,hd(y)); }
       printf(";\n"); }
 }
 /* There are two kinds of entry in ND
@@ -1186,8 +1186,8 @@ void namescom(word l)  /* l is an element of `files' */
   else printf("primitive:");
   printf("\n");
   while(n!=NIL)
-    { if(id_type(hd[n])==wrong_t||id_val(hd[n])!=UNDEF)
-	{ word w=strlen(get_id(hd[n]));
+    { if(id_type(hd(n))==wrong_t||id_val(hd(n))!=UNDEF)
+	{ word w=strlen(get_id(hd(n)));
 	  if(col+w<scrwd)col += (col!=0); else
 	  if(wp&&col+w>=scrwd)
 	    { word i,r,j;
@@ -1208,9 +1208,9 @@ void namescom(word l)  /* l is an element of `files' */
 		       spaces(1+i+(r-- <=0)); }
 	      leftist=!leftist,wp=0,col=0,putchar('\n'); }
 	  col+=w;
-	  words[wp++]=hd[n]; }
-      else undefs=cons(hd[n],undefs); /* undefined but have good types */
-      n = tl[n]; }
+	  words[wp++]=hd(n); }
+      else undefs=cons(hd(n),undefs); /* undefined but have good types */
+      n = tl(n); }
   if(wp)
     for(col=0;col<wp;)
        printf("%s",get_id(words[col])),putc(++col==wp?'\n':' ',stdout);
@@ -1251,13 +1251,13 @@ void loadfile(char *t)
       loading=0;
       return; }
   files = cons(make_fil(t,fm_time(t),1,NIL),NIL);
-  current_file = hd[files],tl[hd[fileq]] = current_file;
+  current_file = hd(files),tl(hd(fileq)) = current_file;
   if(initialising&&strcmp(t,PRELUDE)==0)privlib(); else
   if(initialising||nostdenv==1)
     if(strcmp(t,STDENV)==0)stdlib();
   c = ' ';
   col = 0;
-  s_in = (FILE *)hd[hd[fileq]];
+  s_in = (FILE *)hd(hd(fileq));
   adjust_prefix(t);
 #if 0
   if(magic&&!initialising)
@@ -1277,24 +1277,24 @@ void loadfile(char *t)
   if(!SYNERR&&exportfiles!=NIL)
     { /* check pathnames in exportfiles have unique bindings */
       word s,i,count;
-      for(s=exportfiles;s!=NIL;s=tl[s])
-	 if(hd[s]==PLUS) /* add current script (less freeids) to exports */
-	 { for(i=fil_defs(hd[files]);i!=NIL;i=tl[i])
-              if(isvariable(hd[i])&&!isfreeid(hd[i]))
-	        tl[exports]=add1(hd[i],tl[exports]);
+      for(s=exportfiles;s!=NIL;s=tl(s))
+	 if(hd(s)==PLUS) /* add current script (less freeids) to exports */
+	 { for(i=fil_defs(hd(files));i!=NIL;i=tl(i))
+              if(isvariable(hd(i))&&!isfreeid(hd(i)))
+	        tl(exports)=add1(hd(i),tl(exports));
 	 } else
 	 /* pathnames are expanded to their contents in mkincludes */
-         { for(count=0,i=includees;i!=NIL;i=tl[i])
-              if(!strcmp((char *)hd[hd[hd[i]]],(char *)hd[s]))
-		hd[s]=hd[hd[hd[i]]]/*sharing*/,count++;
+         { for(count=0,i=includees;i!=NIL;i=tl(i))
+              if(!strcmp((char *)hd(hd(hd(i))),(char *)hd(s)))
+		hd(s)=hd(hd(hd(i)))/*sharing*/,count++;
 	   if(count!=1)
 	     SYNERR=1,
 	     printf("illegal fileid \"%s\" in export list (%s)\n",
-	            (char *)hd[s],
+	            (char *)hd(s),
 		    count?"ambiguous":"not %included in script");
 	 }
       if(SYNERR)
-	sayhere(hd[exports],1),
+	sayhere(hd(exports),1),
         printf("compilation abandoned\n");
     }
   if(!SYNERR&&includees!=NIL)
@@ -1310,22 +1310,22 @@ void loadfile(char *t)
     if(ND!=NIL)exports=NIL; else /* skip check, cannot be %included */
     { /* check exports all present and close under type info */
       word e,u=NIL,n=NIL,c=NIL;
-      h=hd[exports]; exports=tl[exports];
-      for(e=embargoes;e!=NIL;e=tl[e])
-	 { if(id_type(hd[e])==undef_t)u=cons(hd[e],u),ND=add1(hd[e],ND); else
-	   if(!member(exports,hd[e]))n=cons(hd[e],n); }
+      h=hd(exports); exports=tl(exports);
+      for(e=embargoes;e!=NIL;e=tl(e))
+	 { if(id_type(hd(e))==undef_t)u=cons(hd(e),u),ND=add1(hd(e),ND); else
+	   if(!member(exports,hd(e)))n=cons(hd(e),n); }
       if(embargoes!=NIL)
         exports=setdiff(exports,embargoes);
       exports=alfasort(exports);
-      for(e=exports;e!=NIL;e=tl[e])
-	 if(id_type(hd[e])==undef_t)u=cons(hd[e],u),ND=add1(hd[e],ND); else
-	 if(id_type(hd[e])==type_t&&t_class(hd[e])==algebraic_t)
-	   c=shunt(t_info(hd[e]),c);  /* constructors */
+      for(e=exports;e!=NIL;e=tl(e))
+	 if(id_type(hd(e))==undef_t)u=cons(hd(e),u),ND=add1(hd(e),ND); else
+	 if(id_type(hd(e))==type_t&&t_class(hd(e))==algebraic_t)
+	   c=shunt(t_info(hd(e)),c);  /* constructors */
       if(exports==NIL)printf("warning, export list has void contents\n");
       else exports=append1(alfasort(c),exports);
       if(n!=NIL)
-	{ printf("redundant entr%s in export list:",tl[n]==NIL?"y":"ies"); 
-	  while(n!=NIL)printf(" -%s",get_id(hd[n])),n=tl[n];
+	{ printf("redundant entr%s in export list:",tl(n)==NIL?"y":"ies"); 
+	  while(n!=NIL)printf(" -%s",get_id(hd(n))),n=tl(n);
 	  n=1; /* flag */
 	  putchar('\n'); }
       if(u!=NIL)exports=NIL,
@@ -1335,61 +1335,61 @@ void loadfile(char *t)
    /* for warnings call out_here not sayhere, so errinfo not saved in dump */
     }
   }
-  if(!SYNERR&&ND==NIL&&(exports!=NIL||tl[files]!=NIL))
+  if(!SYNERR&&ND==NIL&&(exports!=NIL||tl(files)!=NIL))
     { /* find out if script can create type orphans when %included */
       word e1,t;
       word r=NIL; /* collect list of referenced typenames */
       word e=NIL; /* and list of exported typenames */
       if(exports!=NIL)
-      for(e1=exports;e1!=NIL;e1=tl[e1])
-         { if((t=id_type(hd[e1]))==type_t)
-	     if(t_class(hd[e1])==synonym_t)
-	       r=UNION(r,deps(t_info(hd[e1])));
-	     else e=cons(hd[e1],e);
+      for(e1=exports;e1!=NIL;e1=tl(e1))
+         { if((t=id_type(hd(e1)))==type_t)
+	     if(t_class(hd(e1))==synonym_t)
+	       r=UNION(r,deps(t_info(hd(e1))));
+	     else e=cons(hd(e1),e);
 	   else r=UNION(r,deps(t)); } else
-      for(e1=fil_defs(hd[files]);e1!=NIL;e1=tl[e1])
-         { if((t=id_type(hd[e1]))==type_t)
-	     if(t_class(hd[e1])==synonym_t)
-	       r=UNION(r,deps(t_info(hd[e1])));
-	     else e=cons(hd[e1],e);
+      for(e1=fil_defs(hd(files));e1!=NIL;e1=tl(e1))
+         { if((t=id_type(hd(e1)))==type_t)
+	     if(t_class(hd(e1))==synonym_t)
+	       r=UNION(r,deps(t_info(hd(e1))));
+	     else e=cons(hd(e1),e);
 	   else r=UNION(r,deps(t)); }
-      for(e1=freeids;e1!=NIL;e1=tl[e1])
-	 if((t=id_type(hd[hd[e1]]))==type_t)
-	   if(t_class(hd[hd[e1]])==synonym_t)
-	     r=UNION(r,deps(t_info(hd[hd[e1]])));
-	   else e=cons(hd[hd[e1]],e);
+      for(e1=freeids;e1!=NIL;e1=tl(e1))
+	 if((t=id_type(hd(hd(e1))))==type_t)
+	   if(t_class(hd(hd(e1)))==synonym_t)
+	     r=UNION(r,deps(t_info(hd(hd(e1)))));
+	   else e=cons(hd(hd(e1)),e);
 	 else r=UNION(r,deps(t));
-      for(;r!=NIL;r=tl[r])
-	 if(!member(e,hd[r]))bereaved=cons(hd[r],bereaved);
+      for(;r!=NIL;r=tl(r))
+	 if(!member(e,hd(r)))bereaved=cons(hd(r),bereaved);
     }
   if(exports!=NIL&&bereaved!=NIL)
     { extern word newtyps;
       word b=intersection(bereaved,newtyps);
       if(b!=NIL)
 	printf("warning, export list is incomplete - missing typename%s: ",
-		tl[b]==NIL?"":"s"),
+		tl(b)==NIL?"":"s"),
 	printlist("",b);
       if(b!=NIL&&h!=NIL)out_here(stdout,h,1); /* sayhere(h,1) for error */
     }
   if(!SYNERR&&detrop!=NIL)
     { word gd=detrop; 
-      while(detrop!=NIL&&tag[dval(hd[detrop])]==LABEL)detrop=tl[detrop];
+      while(detrop!=NIL&&tag[dval(hd(detrop))]==LABEL)detrop=tl(detrop);
       if(detrop!=NIL)
         printf("warning, script contains unused local definitions:-\n");
       while(detrop!=NIL)
-	   { out_here(stdout,hd[hd[tl[dval(hd[detrop])]]],0), putchar('\t');
-             out_pattern(stdout,dlhs(hd[detrop])), putchar('\n');
-	     detrop=tl[detrop];
-             while(detrop!=NIL&&tag[dval(hd[detrop])]==LABEL)
-		  detrop=tl[detrop]; }
-      while(gd!=NIL&&tag[dval(hd[gd])]!=LABEL)gd=tl[gd];
+	   { out_here(stdout,hd(hd(tl(dval(hd(detrop))))),0), putchar('\t');
+             out_pattern(stdout,dlhs(hd(detrop))), putchar('\n');
+	     detrop=tl(detrop);
+             while(detrop!=NIL&&tag[dval(hd(detrop))]==LABEL)
+		  detrop=tl(detrop); }
+      while(gd!=NIL&&tag[dval(hd(gd))]!=LABEL)gd=tl(gd);
       if(gd!=NIL)
         printf("warning, grammar contains unused nonterminals:-\n");
       while(gd!=NIL)
-	   { out_here(stdout,hd[dval(hd[gd])],0), putchar('\t');
-             out_pattern(stdout,dlhs(hd[gd])), putchar('\n');
-	     gd=tl[gd];
-             while(gd!=NIL&&tag[dval(hd[gd])]!=LABEL)gd=tl[gd]; }
+	   { out_here(stdout,hd(dval(hd(gd))),0), putchar('\t');
+             out_pattern(stdout,dlhs(hd(gd))), putchar('\n');
+	     gd=tl(gd);
+             while(gd!=NIL&&tag[dval(hd(gd))]!=LABEL)gd=tl(gd); }
       /* note, usual rhs is tries(pat,list(label(here,exp)))
                grammar rhs is label(here,...) */
     }
@@ -1397,12 +1397,12 @@ void loadfile(char *t)
     { word x; extern int lfrule;
       /* we invoke the code generator */
       lfrule=0;
-      for(x=fil_defs(hd[files]);x!=NIL;x=tl[x])
-         if(id_type(hd[x])!=type_t)
-	   { current_id=hd[x];
+      for(x=fil_defs(hd(files));x!=NIL;x=tl(x))
+         if(id_type(hd(x))!=type_t)
+	   { current_id=hd(x);
 	     polyshowerror=0;
-	     id_val(hd[x])=codegen(id_val(hd[x]));
-	     if(polyshowerror)id_val(hd[x])=UNDEF;
+	     id_val(hd(x))=codegen(id_val(hd(x)));
+	     if(polyshowerror)id_val(hd(x))=UNDEF;
 	     /* nb - one remaining class of typerrs trapped in codegen,
 		namely polymorphic show or readvals */
            }
@@ -1416,8 +1416,8 @@ void loadfile(char *t)
       if(normal(t)) /* file ends ".m", formerly if(!magic) */
         fixexports(),makedump(),unfixexports();
       /* changed 26.11.2019 to allow dump of magic scripts ending ".m" */
-      if(!errline&&errs&&(char *)hd[errs]==current_script)
-	errline=tl[errs]; /* soft error (posn not saved in dump) */
+      if(!errline&&errs&&(char *)hd(errs)==current_script)
+	errline=tl(errs); /* soft error (posn not saved in dump) */
       ND=alfasort(ND);
       /* we could sort and remove pnames from each defs component immediately
          after makedump(), instead of doing this in namescom */
@@ -1439,34 +1439,34 @@ word isfreeid(word x)
 
 word internals=NIL; /* used by fix/unfixexports, list of names not exported */
 #define paint(x) id_val(x)=ap(EXPORT,id_val(x))
-#define unpainted(x)  (tag[id_val(x)]!=AP||hd[id_val(x)]!=EXPORT)
-#define unpaint(x)  id_val(x)=tl[id_val(x)]
+#define unpainted(x)  (tag[id_val(x)]!=AP||hd(id_val(x))!=EXPORT)
+#define unpaint(x)  id_val(x)=tl(id_val(x))
 
 void fixexports()
 { extern word exports,exportfiles,embargoes,freeids;
   word e=exports,f;
-  for(;e!=NIL;e=tl[e])paint(hd[e]);
+  for(;e!=NIL;e=tl(e))paint(hd(e));
   internals=NIL;
   if(exports==NIL&&exportfiles==NIL&&embargoes==NIL) /*no %export in script*/
-    { for(e=freeids;e!=NIL;e=tl[e])
-	 internals=cons(privatise(hd[hd[e]]),internals);
-      for(f=tl[files];f!=NIL;f=tl[f])
-         for(e=fil_defs(hd[f]);e!=NIL;e=tl[e])
-            { if(tag[hd[e]]==ID)
-                internals=cons(privatise(hd[e]),internals); }}
-  else for(f=files;f!=NIL;f=tl[f])
-          for(e=fil_defs(hd[f]);e!=NIL;e=tl[e])
-             { if(tag[hd[e]]==ID&&unpainted(hd[e]))
-                 internals=cons(privatise(hd[e]),internals); }
+    { for(e=freeids;e!=NIL;e=tl(e))
+	 internals=cons(privatise(hd(hd(e))),internals);
+      for(f=tl(files);f!=NIL;f=tl(f))
+         for(e=fil_defs(hd(f));e!=NIL;e=tl(e))
+            { if(tag[hd(e)]==ID)
+                internals=cons(privatise(hd(e)),internals); }}
+  else for(f=files;f!=NIL;f=tl(f))
+          for(e=fil_defs(hd(f));e!=NIL;e=tl(e))
+             { if(tag[hd(e)]==ID&&unpainted(hd(e)))
+                 internals=cons(privatise(hd(e)),internals); }
   /* optimisation, need not do this to `silent' components - fix later */
-  for(e=exports;e!=NIL;e=tl[e])unpaint(hd[e]);
+  for(e=exports;e!=NIL;e=tl(e))unpaint(hd(e));
 } /* may not be interrupt safe, re unload() */
 
 void unfixexports()
 { word i=internals;
   if(mkexports)return; /* in this case don't want internals restored */
   while(i!=NIL) /* lose */
-       publicise(hd[i]),i=tl[i];
+       publicise(hd(i)),i=tl(i);
   internals=NIL;
 } /* may not be interrupt safe, re unload() */
 
@@ -1483,11 +1483,11 @@ word privatise(word x) /* change id to pname, and return new id holding it as va
     id_val(x)= ap(datapair(getaka(x),0),get_here(x));
     /* this will generate sensible error message on attempt to use value
        see reduction rule for DATAPAIR */
-  pnvec[i=hd[n]]=x;
-  tag[n]=ID;hd[n]=hd[x];
-  tag[x]=STRCONS;hd[x]=i;
-  while(hd[h]!=x)h=tl[h];
-  hd[h]=n;
+  pnvec[i=hd(n)]=x;
+  tag[n]=ID;hd(n)=hd(x);
+  tag[x]=STRCONS;hd(x)=i;
+  while(hd(h)!=x)h=tl(h);
+  hd(h)=n;
   return(n);
 } /* WARNING - dependent on internal representation of ids and pnames */
 /* nasty problem - privatisation can screw AKA's */
@@ -1495,12 +1495,12 @@ word privatise(word x) /* change id to pname, and return new id holding it as va
 word publicise(word x) /* converse of the above, applied to the new id */
 { extern word namebucket[];
   word i=id_val(x),h=namebucket[hash(get_id(x))];
-  tag[i]=ID,hd[i]=hd[x]; 
+  tag[i]=ID,hd(i)=hd(x); 
     /* WARNING - USES FACT THAT tl HOLDS VALUE FOR BOTH ID AND PNAME */
-  if(tag[tl[i]]==AP&&tag[hd[tl[i]]]==DATAPAIR)
-    tl[i]=UNDEF; /* undo kludge, see above */
-  while(hd[h]!=x)h=tl[h];
-  hd[h]=i;
+  if(tag[tl(i)]==AP&&tag[hd(tl(i))]==DATAPAIR)
+    tl(i)=UNDEF; /* undo kludge, see above */
+  while(hd(h)!=x)h=tl(h);
+  hd(h)=i;
   return(i);
 }
 
@@ -1540,27 +1540,27 @@ word mkincludes(word includees)
 	 ideep++; making=1; make_status=0; echoing=listing=verbosity=magic=0;
          setjmp(env); /* will return here on blankerr (via reset) */
 	 while(includees!=NIL&&!make_status) /* stop at first bad includee */
-	      { undump((char *)hd[hd[hd[includees]]]);
+	      { undump((char *)hd(hd(hd(includees))));
 	        if(ND!=NIL||(files==NIL&&oldfiles!=NIL))make_status=1;
 	        /* any errors in dump? */
-		includees=tl[includees];
+		includees=tl(includees);
 	      } /* obscure bug - undump above can reinvoke compiler, which
 		   side effects compiler variable `includees' - to fix this 
 		   had to make sure child is holding local copy of includees*/
 	 exit(make_status); }
   sigflag=0;
-  for(;includees!=NIL;includees=tl[includees])
+  for(;includees!=NIL;includees=tl(includees))
      { word x=NIL;
        sighandler oldsig = NULL; /* Drop compiler warning: used uninitialized */
        FILE *f;
-       char *fn=(char *)hd[hd[hd[includees]]];
+       char *fn=(char *)hd(hd(hd(includees)));
        extern word DETROP,MISSING,ALIASES,TSUPPRESSED;
        (void)strcpy(dicp,fn);
        (void)strcpy(dicp+strlen(dicp)-1,obsuffix);
        if(!making) /* cannot interrupt load_script() */
 	 oldsig=signal(SIGINT,(sighandler)sigdefer);
        if((f=fopen(dicp,"r")))
-	 x=load_script(f,fn,hd[tl[hd[includees]]],tl[tl[hd[includees]]],0),
+	 x=load_script(f,fn,hd(tl(hd(includees))),tl(tl(hd(includees))),0),
 	   fclose(f);
        ld_stuff=cons(x,ld_stuff);
        if(!making)(void)signal(SIGINT,oldsig);
@@ -1578,50 +1578,50 @@ word mkincludes(word includees)
 	      different names. */
 	   word y,z;
 	   if(TORPHANS)rfl=shunt(x,rfl); /* file has type orphans */
-           for(y=x;y!=NIL;y=tl[y])fil_inodev(hd[y])=inodev(get_fil(hd[y]));
-           for(y=x;y!=NIL;y=tl[y])
-	      if(fil_share(hd[y]))
-	      for(z=result;z!=NIL;z=tl[z])
-	         if(fil_share(hd[z])&&same_file(hd[y],hd[z])
-		    &&fil_time(hd[y])==fil_time(hd[z]))
-		   { word p=fil_defs(hd[y]),q=fil_defs(hd[z]);
-		     for(;p!=NIL&&q!=NIL;p=tl[p],q=tl[q])
-			if(tag[hd[p]]==ID)
-			if(id_type(hd[p])==type_t&&
-			   (tag[hd[q]]==ID||tag[pn_val(hd[q])]==ID))
+           for(y=x;y!=NIL;y=tl(y))fil_inodev(hd(y))=inodev(get_fil(hd(y)));
+           for(y=x;y!=NIL;y=tl(y))
+	      if(fil_share(hd(y)))
+	      for(z=result;z!=NIL;z=tl(z))
+	         if(fil_share(hd(z))&&same_file(hd(y),hd(z))
+		    &&fil_time(hd(y))==fil_time(hd(z)))
+		   { word p=fil_defs(hd(y)),q=fil_defs(hd(z));
+		     for(;p!=NIL&&q!=NIL;p=tl(p),q=tl(q))
+			if(tag[hd(p)]==ID)
+			if(id_type(hd(p))==type_t&&
+			   (tag[hd(q)]==ID||tag[pn_val(hd(q))]==ID))
 			  { /* typeclash - record in tclashes */
 			    word w=tclashes;
-		            word orig=tag[hd[q]]==ID?hd[q]:pn_val(hd[q]);
-			    if(t_class(hd[p])==synonym_t)continue;
-			    while(w!=NIL&&((char *)hd[hd[w]]!=get_fil(hd[z])
-					||hd[tl[hd[w]]]!=orig))
-				 w=tl[w];
+		            word orig=tag[hd(q)]==ID?hd(q):pn_val(hd(q));
+			    if(t_class(hd(p))==synonym_t)continue;
+			    while(w!=NIL&&((char *)hd(hd(w))!=get_fil(hd(z))
+					||hd(tl(hd(w)))!=orig))
+				 w=tl(w);
 		            if(w==NIL)
-			      w=tclashes=cons(strcons(get_fil(hd[z]),
+			      w=tclashes=cons(strcons(get_fil(hd(z)),
 					       cons(orig,NIL)),tclashes);
-			    tl[tl[hd[w]]]=cons(hd[p],tl[tl[hd[w]]]); 
+			    tl(tl(hd(w)))=cons(hd(p),tl(tl(hd(w)))); 
 			  }
-			else the_val(hd[q])=hd[p];
-			else the_val(hd[p])=hd[q];
+			else the_val(hd(q))=hd(p);
+			else the_val(hd(p))=hd(q);
 		    /*following test redundant - remove when sure is ok*/
 		    if(p!=NIL||q!=NIL)
 		       fprintf(stderr,"impossible event in mkincludes\n");
 		   }
 	   if(member(exportfiles,(word)fn))
 	     { /* move ids of x onto exports */
-	       for(y=x;y!=NIL;y=tl[y])
-	       for(z=fil_defs(hd[y]);z!=NIL;z=tl[z])
-		  if(isvariable(hd[z])) 
-		    tl[exports]=add1(hd[z],tl[exports]);
+	       for(y=x;y!=NIL;y=tl(y))
+	       for(z=fil_defs(hd(y));z!=NIL;z=tl(z))
+		  if(isvariable(hd(z))) 
+		    tl(exports)=add1(hd(z),tl(exports));
 		  /* skip pnames, constructors (expanded later) */
 	     }
 	   result=append1(result,x);
 	   /* keep `result' in front-first order */
-	   if(hd[FBS]==NIL)FBS=tl[FBS];
-	   else hd[FBS]=cons(tl[hd[hd[includees]]],hd[FBS]); /* hereinfo */
+	   if(hd(FBS)==NIL)FBS=tl(FBS);
+	   else hd(FBS)=cons(tl(hd(hd(includees))),hd(FBS)); /* hereinfo */
 	   continue; }
        /* something wrong - find out what */
-       if(!f)result=cons(make_fil(hd[hd[hd[includees]]],
+       if(!f)result=cons(make_fil(hd(hd(hd(includees))),
 			  fm_time(fn),0,NIL),result); else
        if(x==NIL&&BAD_DUMP!= -2)result=append1(result,oldfiles),oldfiles=NIL;
        else result=append1(result,x);
@@ -1629,7 +1629,7 @@ word mkincludes(word includees)
        /* BAD_DUMP -2 is nameclashes due to aliasing */
        SYNERR=1; 
        printf("unsuccessful %%include directive ");
-       sayhere(tl[hd[hd[includees]]],1);
+       sayhere(tl(hd(hd(includees))),1);
 /*     if(!f)printf("\"%s\" non-existent or unreadable\n",fn), */
        if(!f)printf("\"%s\" cannot be loaded\n",fn),
 	     CLASHES=DETROP=MISSING=NIL; 
@@ -1641,14 +1641,14 @@ word mkincludes(word includees)
        if(ALIASES!=NIL||TSUPPRESSED!=NIL)
 	 { if(ALIASES!=NIL)
 	   printf("alias fails (name%s not found in file",
-		tl[ALIASES]==NIL?"":"s"),
+		tl(ALIASES)==NIL?"":"s"),
 	   printlist("): ",ALIASES),ALIASES=NIL; 
 	   if(TSUPPRESSED!=NIL)
 	     { printf("illegal alias (cannot suppress typename%s):",
-		tl[TSUPPRESSED]==NIL?"":"s");
+		tl(TSUPPRESSED)==NIL?"":"s");
 	       while(TSUPPRESSED!=NIL)
-		    printf(" -%s",get_id(hd[TSUPPRESSED])),
-		    TSUPPRESSED=tl[TSUPPRESSED];
+		    printf(" -%s",get_id(hd(TSUPPRESSED))),
+		    TSUPPRESSED=tl(TSUPPRESSED);
 	       putchar('\n'); }
 	 /* if -typename allowed, remember to look for type orphans */
 	 }else
@@ -1658,9 +1658,9 @@ word mkincludes(word includees)
 	 printf("\"%s\" contains undefined names or type errors\n",fn);
        if(ND==NIL&&CLASHES!=NIL) /* can have this and failed aliasing */
          printf("\"%s\" ",fn),printlist("causes nameclashes: ",CLASHES);
-       while(DETROP!=NIL&&tag[hd[DETROP]]==CONS)
-	    { word fa=hd[tl[hd[DETROP]]],ta=tl[tl[hd[DETROP]]];
-	      char *pn=get_id(hd[hd[DETROP]]);
+       while(DETROP!=NIL&&tag[hd(DETROP)]==CONS)
+	    { word fa=hd(tl(hd(DETROP))),ta=tl(tl(hd(DETROP)));
+	      char *pn=get_id(hd(hd(DETROP)));
 	      if(fa== -1||ta== -1)
 		printf("`%s' has binding of wrong kind ",pn),
 	        printf(fa== -1?"(should be \"= value\" not \"== type\")\n"
@@ -1668,28 +1668,28 @@ word mkincludes(word includees)
 	      else
 	        printf("`%s' has == binding of wrong arity ",pn),
 	        printf("(formal has arity %ld, actual has arity %ld)\n",fa,ta);
-	      DETROP=tl[DETROP]; }
+	      DETROP=tl(DETROP); }
        if(DETROP!=NIL)
 	 printf("illegal parameter binding (name%s not %%free in file",
-	                                        tl[DETROP]==NIL?"":"s"),
+	                                        tl(DETROP)==NIL?"":"s"),
 	 printlist("): ",DETROP),DETROP=NIL; 
        if(MISSING!=NIL)
-	 printf("missing parameter binding%s: ",tl[MISSING]==NIL?"":"s");
+	 printf("missing parameter binding%s: ",tl(MISSING)==NIL?"":"s");
        while(MISSING!=NIL)
-            printf("%s%s",(char *)hd[hd[MISSING]],tl[MISSING]==NIL?";\n":","),
-            MISSING=tl[MISSING];
+            printf("%s%s",(char *)hd(hd(MISSING)),tl(MISSING)==NIL?";\n":","),
+            MISSING=tl(MISSING);
        printf("compilation abandoned\n");
        stackp=dstack; /* in case of BAD_DUMP */
        return(result); } /* for unload() */
   if(tclashes!=NIL)
     { printf("TYPECLASH - the following type%s multiply named:\n",
-	      tl[tclashes]==NIL?" is":"s are");
+	      tl(tclashes)==NIL?" is":"s are");
       /* structure of tclashes is list of strcons(filname,list-of-ids) */
-      for(;tclashes!=NIL;tclashes=tl[tclashes])
+      for(;tclashes!=NIL;tclashes=tl(tclashes))
 	 { printf("\'%s\' of file \"%s\", as: ",
-		  getaka(hd[tl[hd[tclashes]]]),
-		  (char *)hd[hd[tclashes]]);
-	   printlist("",alfasort(tl[hd[tclashes]])); }
+		  getaka(hd(tl(hd(tclashes)))),
+		  (char *)hd(hd(tclashes)));
+	   printlist("",alfasort(tl(hd(tclashes)))); }
       printf("typecheck cannot proceed - compilation abandoned\n");
       SYNERR=1;
       return(result); } /* for unload */
@@ -1705,48 +1705,48 @@ void readoption() /* readopt type orphans */
   pfrts=tlost=NIL;
   /* exclude anonymous free types, these dealt with later by mcheckfbs() */
   if(FBS!=NIL)
-  for(f=FBS;f!=NIL;f=tl[f])
-     for(t=tl[hd[f]];t!=NIL;t=tl[t])
-        if(tag[hd[hd[t]]]==STRCONS&&tl[tl[hd[t]]]==type_t)
-          pfrts=cons(hd[hd[t]],pfrts);
+  for(f=FBS;f!=NIL;f=tl(f))
+     for(t=tl(hd(f));t!=NIL;t=tl(t))
+        if(tag[hd(hd(t))]==STRCONS&&tl(tl(hd(t)))==type_t)
+          pfrts=cons(hd(hd(t)),pfrts);
   /* this may needlessly scan `silent' files - fix later */
-  for(;rfl!=NIL;rfl=tl[rfl])
-  for(f=fil_defs(hd[rfl]);f!=NIL;f=tl[f])
-     if(tag[hd[f]]==ID)
+  for(;rfl!=NIL;rfl=tl(rfl))
+  for(f=fil_defs(hd(rfl));f!=NIL;f=tl(f))
+     if(tag[hd(f)]==ID)
        {
-	 if((t=id_type(hd[f]))==type_t)
-	   { if(t_class(hd[f])==synonym_t)
-	       t_info(hd[f])=fixtype(t_info(hd[f]),hd[f]); }
-	 else id_type(hd[f])=fixtype(t,hd[f]);
+	 if((t=id_type(hd(f)))==type_t)
+	   { if(t_class(hd(f))==synonym_t)
+	       t_info(hd(f))=fixtype(t_info(hd(f)),hd(f)); }
+	 else id_type(hd(f))=fixtype(t,hd(f));
        }
   if(tlost==NIL)return;
   TYPERRS++;
-  printf("MISSING TYPENAME%s\n",tl[tlost]==NIL?"":"S");
+  printf("MISSING TYPENAME%s\n",tl(tlost)==NIL?"":"S");
   printf("the following type%s no name in this scope:\n",
-         tl[tlost]==NIL?" is needed but has":"s are needed but have");
+         tl(tlost)==NIL?" is needed but has":"s are needed but have");
   /* structure of tlost is list of cons(losttype,list-of-ids) */
-  for(;tlost!=NIL;tlost=tl[tlost])
+  for(;tlost!=NIL;tlost=tl(tlost))
      { printf("\'%s\' of file \"%s\", needed by: ",
-       (char *)hd[hd[t_info(hd[hd[tlost]])]],
-       (char *)hd[tl[t_info(hd[hd[tlost]])]]);
-       printlist("",alfasort(tl[hd[tlost]])); }
+       (char *)hd(hd(t_info(hd(hd(tlost))))),
+       (char *)hd(tl(t_info(hd(hd(tlost))))));
+       printlist("",alfasort(tl(hd(tlost)))); }
 }
 
 word fixtype(word t,word x)  /* substitute out any indirected typenames in t */
 { switch(tag[t])
   { case AP: 
-    case CONS: tl[t]=fixtype(tl[t],x);
-               hd[t]=fixtype(hd[t],x);
+    case CONS: tl(t)=fixtype(tl(t),x);
+               hd(t)=fixtype(hd(t),x);
     default:   return(t);
     case STRCONS: if(member(pfrts,t))return(t);  /* see jrcfree.bug */
 		  while(tag[pn_val(t)]!=CONS)t=pn_val(t);/*at most twice*/
 		  if(tag[t]!=ID)
 		  { /* lost type - record in tlost */
 		    word w=tlost;
-		    while(w!=NIL&&hd[hd[w]]!=t)w=tl[w];
+		    while(w!=NIL&&hd(hd(w))!=t)w=tl(w);
 		    if(w==NIL)
 		      w=tlost=cons(cons(t,cons(x,NIL)),tlost);
-		    tl[hd[w]]=add1(x,tl[hd[w]]); 
+		    tl(hd(w))=add1(x,tl(hd(w))); 
 		  }
 		  return(t);
   }
@@ -1763,26 +1763,26 @@ word alfa_ls(char *a,char *b)  /* 'DICTIONARY ORDER' - not currently used */
 word alfasort(word x) /* also removes non_IDs from result */
 { word a=NIL,b=NIL,hold=NIL;
   if(x==NIL)return(NIL);
-  if(tl[x]==NIL)return(tag[hd[x]]!=ID?NIL:x);
+  if(tl(x)==NIL)return(tag[hd(x)]!=ID?NIL:x);
   while(x!=NIL) /* split x */
-       { if(tag[hd[x]]==ID)hold=a,a=cons(hd[x],b),b=hold;
-	 x=tl[x]; }
+       { if(tag[hd(x)]==ID)hold=a,a=cons(hd(x),b),b=hold;
+	 x=tl(x); }
   a=alfasort(a),b=alfasort(b);
   /* now merge two halves back together */
   while(a!=NIL&&b!=NIL)
-  if(strcmp(get_id(hd[a]),get_id(hd[b]))<0)x=cons(hd[a],x),a=tl[a];
-  else x=cons(hd[b],x),b=tl[b];
+  if(strcmp(get_id(hd(a)),get_id(hd(b)))<0)x=cons(hd(a),x),a=tl(a);
+  else x=cons(hd(b),x),b=tl(b);
   if(a==NIL)a=b;
-  while(a!=NIL)x=cons(hd[a],x),a=tl[a];
+  while(a!=NIL)x=cons(hd(a),x),a=tl(a);
   return(reverse(x));
 }
 
 void unsetids(word d) /* d is a list of identifiers */
 { while(d!=NIL)
-       { if(tag[hd[d]]==ID)id_val(hd[d])=UNDEF,
-			   id_who(hd[d])=NIL,
-			   id_type(hd[d])=undef_t;
-	 d=tl[d]; } /* should we remove from namebucket ? */
+       { if(tag[hd(d)]==ID)id_val(hd(d))=UNDEF,
+			   id_who(hd(d))=NIL,
+			   id_type(hd(d))=undef_t;
+	 d=tl(d); } /* should we remove from namebucket ? */
 }
 
 void unload()  /* clear out current script in preparation for reloading */
@@ -1801,11 +1801,11 @@ void unload()  /* clear out current script in preparation for reloading */
   unsetids(internals);
   internals=NIL;
   while(files!=NIL)
-  { unsetids(fil_defs(hd[files]));
-    fil_defs(hd[files])=NIL;
-    files = tl[files]; }
-  for(;ld_stuff!=NIL;ld_stuff=tl[ld_stuff])
-  for(x=hd[ld_stuff];x!=NIL;x=tl[x])unsetids(fil_defs(hd[x]));
+  { unsetids(fil_defs(hd(files)));
+    fil_defs(hd(files))=NIL;
+    files = tl(files); }
+  for(;ld_stuff!=NIL;ld_stuff=tl(ld_stuff))
+  for(x=hd(ld_stuff);x!=NIL;x=tl(x))unsetids(fil_defs(hd(x)));
 }
 
 void yyerror(char *s)  /* called by YACC in the event of a syntax error */
@@ -2022,8 +2022,8 @@ word size(word x)     /*  measures the size of a compiled expression   */
 { word s;
   s= 0;
   while(tag[x]==CONS||tag[x]==AP)
-  { s= s+1+size(hd[x]);
-    x= tl[x]; }
+  { s= s+1+size(hd(x));
+    x= tl(x); }
     return(s); }
 
 void makedump()

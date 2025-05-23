@@ -16,6 +16,9 @@ typedef long word;
    than long these will need to be changed, the gcc/clang option -Wformat
    will locate format/arg type mismatches. DT Jan 2020 */
 
+#define hd(x) hd[x]
+#define tl(x) tl[x]
+
 #define YYSTYPE word
 #define YYMAXDEPTH 1000
 extern YYSTYPE yylval;
@@ -114,15 +117,15 @@ extern YYSTYPE yylval;
 
 /* data abstractions for local definitions (as in LET, LETREC) */
 #define defn(x,t,y) cons(x,cons(t,y))
-#define dlhs(d) hd[d]
-#define dtyp(d) hd[tl[d]]
-#define dval(d) tl[tl[d]]
+#define dlhs(d) hd(d)
+#define dtyp(d) hd(tl(d))
+#define dval(d) tl(tl(d))
 
 /* data abstractions for identifiers (see also sto_id() in data.c) */
-#define get_id(x) ((char *)hd[hd[hd[x]]])
-#define id_who(x) tl[hd[hd[x]]]
-#define id_type(x) tl[hd[x]]
-#define id_val(x) tl[x]
+#define get_id(x) ((char *)hd(hd(hd(x))))
+#define id_who(x) tl(hd(hd(x)))
+#define id_type(x) tl(hd(x))
+#define id_val(x) tl(x)
 #define isconstructor(x) (tag[x]==ID&&isconstrname(get_id(x)))
 #define isvariable(x) (tag[x]==ID&&!isconstrname(get_id(x)))
 /* the who field contains NIL (for a name that is totally undefined)
@@ -132,10 +135,10 @@ is of the form datapair(oldn,0) oldn being a string */
 
 /* data abstractions for private names
 see also reset_pns(), make_pn(), sto_pn() in lex.c */
-#define get_pn(x)  hd[x]
-#define pn_val(x)  tl[x]
+#define get_pn(x)  hd(x)
+#define pn_val(x)  tl(x)
 
-#define the_val(x) tl[x]
+#define the_val(x) tl(x)
 /* works for both pnames and ids */
 
 extern int compiling,polyshowerror;
@@ -181,14 +184,14 @@ extern word files; /* a cons list of elements, each of which is of the form
 extern word current_file; /*pointer to current element of `files' during compilation*/
 #define make_fil(name,time,share,defs) cons(cons(fileinfo(name,time),\
 cons(share,NIL)),defs)
-#define get_fil(fil) ((char *)hd[hd[hd[fil]]])
-#define fil_time(fil) tl[hd[hd[fil]]]
-#define fil_share(fil) hd[tl[hd[fil]]]
-#define fil_inodev(fil) tl[tl[hd[fil]]]
+#define get_fil(fil) ((char *)hd(hd(hd(fil))))
+#define fil_time(fil) tl(hd(hd(fil)))
+#define fil_share(fil) hd(tl(hd(fil)))
+#define fil_inodev(fil) tl(tl(hd(fil)))
 /* leave a NIL as placeholder here - filled in by mkincludes */
-#define fil_defs(fil)  tl[fil]
+#define fil_defs(fil)  tl(fil)
 
-#define addtoenv(x) fil_defs(hd[files])=cons(x,fil_defs(hd[files]))
+#define addtoenv(x) fil_defs(hd(files))=cons(x,fil_defs(hd(files)))
 extern word lastexp;
 
 /* representation of types */
@@ -206,9 +209,9 @@ extern word lastexp;
 #define strict_t 11
 #define alias_t 12
 #define new_t 13
-#define isarrow_t(t) (tag[t]==AP&&tag[hd[t]]==AP&&hd[hd[t]]==arrow_t)
-#define iscomma_t(t) (tag[t]==AP&&tag[hd[t]]==AP&&hd[hd[t]]==comma_t)
-#define islist_t(t) (tag[t]==AP&&hd[t]==list_t)
+#define isarrow_t(t) (tag[t]==AP&&tag[hd(t)]==AP&&hd(hd(t))==arrow_t)
+#define iscomma_t(t) (tag[t]==AP&&tag[hd(t)]==AP&&hd(hd(t))==comma_t)
+#define islist_t(t) (tag[t]==AP&&hd(t)==list_t)
 #define isvar_t(t) (tag[t]==TVAR)
 #define iscompound_t(t) (tag[t]==AP)
 /* NOTES:
@@ -222,8 +225,8 @@ it is not to be instantiated. Applying strict_t to a type represents the
 #define hashsize 512
 /* size of hash table for unification algorithm in typechecker */
 #define mktvar(i) make(TVAR,0,i)
-#define gettvar(x) (tl[x])
-#define eqtvar(x,y) (tl[x]==tl[y])
+#define gettvar(x) (tl(x))
+#define eqtvar(x,y) (tl(x)==tl(y))
 #define hashval(x)  (gettvar(x)%hashsize)
 /* NB perhaps slightly wasteful to allocate a cell for each tvar,
 could be fixed by having unboxed repn for small integers */
@@ -237,10 +240,10 @@ cons(cons(arity,showfn),cons(free_t,NIL))
 */ /* suspicion - info field of typeval never used after compilation
 - check this later */
 #define make_typ(a,shf,class,info) cons(cons(a,shf),cons(class,info))
-#define t_arity(x) hd[hd[the_val(x)]]
-#define t_showfn(x) tl[hd[the_val(x)]]
-#define t_class(x) hd[tl[the_val(x)]]
-#define t_info(x) tl[tl[the_val(x)]]
+#define t_arity(x) hd(hd(the_val(x)))
+#define t_showfn(x) tl(hd(the_val(x)))
+#define t_class(x) hd(tl(the_val(x)))
+#define t_info(x) tl(tl(the_val(x)))
 #define algebraic_t 0
 #define synonym_t 1
 #define abstract_t 2

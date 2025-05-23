@@ -50,10 +50,10 @@ static void stdin_error(int);
 static void subs_error(void);
 static void int_error(char *);
 
-#define constr_tag(x) hd[x]
-#define idconstr_tag(x) hd[id_val(x)]
-#define constr_name(x)  (tag[tl[x]]==ID?get_id(tl[x]):get_id(pn_val(tl[x])))
-#define suppressed(x) (tag[tl[x]]==STRCONS&&tag[pn_val(tl[x])]!=ID)
+#define constr_tag(x) hd(x)
+#define idconstr_tag(x) hd(id_val(x))
+#define constr_name(x)  (tag[tl(x)]==ID?get_id(tl(x)):get_id(pn_val(tl(x))))
+#define suppressed(x) (tag[tl(x)]==STRCONS&&tag[pn_val(tl(x))]!=ID)
 	/* suppressed constructor */
 
 #define isodigit(x) ('0'<=(x) && (x)<='7')
@@ -90,11 +90,11 @@ int compare(word a,word b)
       case CONS: case AP:
       if(tag[a]==tag[b])
         { word temp;
-          hd[a]=reduce(hd[a]);
-          hd[b]=reduce(hd[b]);
-          if((temp=compare(hd[a],hd[b]))!=0)return(temp);
-          a=tl[a]=reduce(tl[a]);
-          b=tl[b]=reduce(tl[b]);
+          hd(a)=reduce(hd(a));
+          hd(b)=reduce(hd(b));
+          if((temp=compare(hd(a),hd(b)))!=0)return(temp);
+          a=tl(a)=reduce(tl(a));
+          b=tl(b)=reduce(tl(b));
           goto L; }
       else if(S<=b&&b<=ERROR)fn_error("attempt to compare functions");
 	   else return(1); /* non-atom greater than atom */
@@ -107,25 +107,25 @@ void force(word x) /* ensures that x is evaluated "all the way" */
                    /* x is already reduced */ /* ### */
 { word h;
   switch(tag[x])
-    { case AP: h=hd[x];
-	       while(tag[h]==AP)h=hd[h];
+    { case AP: h=hd(x);
+	       while(tag[h]==AP)h=hd(h);
                if(S<=h&&h<=ERROR)return; /* don't go inside functions */
 	       /* what about unsaturated constructors? fix later */
 	       while(tag[x]==AP)
-	            { tl[x]=reduce(tl[x]);
-	              force(tl[x]);
-	              x=hd[x]; }
+	            { tl(x)=reduce(tl(x));
+	              force(tl(x));
+	              x=hd(x); }
 	       return;
       case CONS: while(tag[x]==CONS)
-		      { hd[x]=reduce(hd[x]);
-	                force(hd[x]);
-	                x=tl[x]=reduce(tl[x]); }
+		      { hd(x)=reduce(hd(x));
+	                force(hd(x));
+	                x=tl(x)=reduce(tl(x)); }
     }
   return;
 }
 
 word head(word x)   /* finds the function part of x */
-{ while(tag[x]==AP)x= hd[x];
+{ while(tag[x]==AP)x= hd(x);
   return(x);
 }
 
@@ -138,10 +138,10 @@ char *getstring(word x, char *cmd)
 { word x1=x,n=0; 
   char *p=linebuf;
   while(tag[x]==CONS&&n<BUFSIZE)
-       n++, hd[x] = reduce(hd[x]), x=tl[x]=reduce(tl[x]);
+       n++, hd(x) = reduce(hd(x)), x=tl(x)=reduce(tl(x));
   x=x1;
   while(tag[x]==CONS&&n--)
-       *p++ = hd[x], x=tl[x];
+       *p++ = hd(x), x=tl(x);
   *p++ ='\0';
   if(p-linebuf>BUFSIZE)
     { if(cmd)fprintf(stderr,
@@ -179,40 +179,40 @@ void output(word e)
   cstack = &e; /* don't follow C stack below this in gc */
   e= reduce(e);
   while(tag[e]==CONS)
-  { hd[e]= reduce(hd[e]);
-    switch(constr_tag(head(hd[e])))
-    { case Stdout: print(tl[hd[e]]);
+  { hd(e)= reduce(hd(e));
+    switch(constr_tag(head(hd(e))))
+    { case Stdout: print(tl(hd(e)));
 		   break;
       case Stdoutb: UTF8OUT=0;
-                    print(tl[hd[e]]);
+                    print(tl(hd(e)));
 		    UTF8OUT=UTF8;
 		    break;
-      case Stderr: s_out=stderr; print(tl[hd[e]]); s_out=stdout;
+      case Stderr: s_out=stderr; print(tl(hd(e))); s_out=stdout;
 		   break;
-      case Tofile: outf(hd[e]);
+      case Tofile: outf(hd(e));
 		   break;
       case Tofileb: UTF8OUT=0;
-                    outf(hd[e]);
+                    outf(hd(e));
 		    UTF8OUT=UTF8;
 		    break;
-      case Closefile: closefile(tl[hd[e]]=reduce(tl[hd[e]]));
+      case Closefile: closefile(tl(hd(e))=reduce(tl(hd(e))));
 		      break;
-      case Appendfile: apfile(tl[hd[e]]=reduce(tl[hd[e]]));
+      case Appendfile: apfile(tl(hd(e))=reduce(tl(hd(e))));
 		       break;
       case Appendfileb: UTF8OUT=0;
-                        apfile(tl[hd[e]]=reduce(tl[hd[e]]));
+                        apfile(tl(hd(e))=reduce(tl(hd(e))));
 			UTF8OUT=UTF8;
 		        break;
-      case System: system(getstring(tl[hd[e]]=reduce(tl[hd[e]]),"System"));
+      case System: system(getstring(tl(hd(e))=reduce(tl(hd(e))),"System"));
                    break;
-      case Exit:     { word n=reduce(tl[hd[e]]);
+      case Exit:     { word n=reduce(tl(hd(e)));
 		       if(tag[n]==INT)n=digit0(n);
 		       else int_error("Exit");
 		       outstats(); exit(n); }
       default: fprintf(stderr,"\n<impossible event in output list: ");
-               out(stderr,hd[e]);
+               out(stderr,hd(e));
                fprintf(stderr,">\n"); }
-    e= tl[e]= reduce(tl[e]);
+    e= tl(e)= reduce(tl(e));
   }
   if(e==NIL)return;
   fprintf(stderr,"\nimpossible event in output\n"),
@@ -223,12 +223,12 @@ void output(word e)
 /* ### */
 void print(word e) /* evaluate list of chars and send to s_out */
 { e= reduce(e);
-  while(tag[e]==CONS && is_char(hd[e]=reduce(hd[e])))
-  { unsigned c=get_char(hd[e]);
+  while(tag[e]==CONS && is_char(hd(e)=reduce(hd(e))))
+  { unsigned c=get_char(hd(e));
     if(UTF8)outUTF8(c,s_out); else
     if(c<256) putc(c,s_out);
     else fprintf(stderr,"\n warning: non Latin1 char %x in print, ignored\n",c);
-    e= tl[e]= reduce(tl[e]); }
+    e= tl(e)= reduce(tl(e)); }
   if(e==NIL)return;
   fprintf(stderr,"\nimpossible event in print\n"),
    putc('<',stderr),out(stderr,e),fprintf(stderr,">\n"),
@@ -242,8 +242,8 @@ closed at end of expression evaluation, because of the fork-exit structure */
 /* ### */
 void outf(word e)   /*  e is of the form (Tofile f x)  */
 { word p=outfilq; /* have we already opened this file for output? */
-  char *f=getstring(tl[hd[e]]=reduce(tl[hd[e]]),"Tofile");
-  while(p!=NIL && strcmp((char *)hd[hd[p]],f)!=0)p=tl[p];
+  char *f=getstring(tl(hd(e))=reduce(tl(hd(e))),"Tofile");
+  while(p!=NIL && strcmp((char *)hd(hd(p)),f)!=0)p=tl(p);
   if(p==NIL)  /* new output file */
   { s_out= fopen(f,"w");
     if(s_out==NULL)
@@ -253,15 +253,15 @@ void outf(word e)   /*  e is of the form (Tofile f x)  */
       }
     if(isatty(fileno(s_out)))setbuf(s_out,NULL); /*for unbuffered tty output*/
     outfilq= cons(datapair(keep(f),s_out),outfilq); }
-  else s_out= (FILE *)tl[hd[p]];
-  print(tl[e]);
+  else s_out= (FILE *)tl(hd(p));
+  print(tl(e));
   s_out= stdout;
 }
 
 void apfile(word f) /* open file of name f for appending and add to outfilq */
 { word p=outfilq; /* is it already open? */
   char *fil=getstring(f,"Appendfile");
-  while(p!=NIL && strcmp((char *)hd[hd[p]],fil)!=0)p=tl[p];
+  while(p!=NIL && strcmp((char *)hd(hd(p)),fil)!=0)p=tl(p);
   if(p==NIL) /* no, so open in append mode */
     { FILE *s=fopen(fil,"a");
       if(s==NULL)
@@ -275,10 +275,10 @@ void closefile(word f)
                    /* remove file of name "f" from outfilq and close stream */
 { word *p= &outfilq; /* is this file open for output? */
   char *fil=getstring(f,"Closefile");
-  while(*p!=NIL && strcmp((char *)hd[hd[*p]],fil)!=0)p= &tl[*p];
+  while(*p!=NIL && strcmp((char *)hd(hd(*p)),fil)!=0)p= &tl(*p);
   if(*p!=NIL)  /* yes */
-    { fclose((FILE *)tl[hd[*p]]);
-	*p=tl[*p]; /* remove link from outfilq */}
+    { fclose((FILE *)tl(hd(*p)));
+	*p=tl(*p); /* remove link from outfilq */}
   /* otherwise ignore closefile request (harmless??) */
 }
 
@@ -303,16 +303,16 @@ word waiting=NIL;
 
 /* control abstractions */
 
-#define setcell(t,a,b)  tag[e]=t,hd[e]=a,tl[e]=b
-#define DOWNLEFT hold=s, s=e, e=hd[e], hd[s]=hold
-#define DOWNRIGHT hold=hd[s], hd[s]=e, e=tl[s], tl[s]=hold, mktlptr(s)
+#define setcell(t,a,b)  tag[e]=t,hd(e)=a,tl(e)=b
+#define DOWNLEFT hold=s, s=e, e=hd(e), hd(s)=hold
+#define DOWNRIGHT hold=hd(s), hd(s)=e, e=tl(s), tl(s)=hold, mktlptr(s)
 #define downright if(abnormal(s))goto DONE; DOWNRIGHT
-#define UPLEFT hold=s, s=hd[s], hd[hold]=e, e=hold
+#define UPLEFT hold=s, s=hd(s), hd(hold)=e, e=hold
 #define upleft if(abnormal(s))goto DONE; UPLEFT
-#define GETARG(a) UPLEFT, a=tl[e]
-#define getarg(a) upleft; a=tl[e]
-#define UPRIGHT mknormal(s), hold=tl[s], tl[s]=e, e=hd[s], hd[s]=hold
-#define lastarg tl[e]
+#define GETARG(a) UPLEFT, a=tl(e)
+#define getarg(a) upleft; a=tl(e)
+#define UPRIGHT mknormal(s), hold=tl(s), tl(s)=e, e=hd(s), hd(s)=hold
+#define lastarg tl(e)
 word reds=0;
 
 /* IMPORTANT WARNING - the macro's
@@ -320,7 +320,7 @@ word reds=0;
    MUST BE ENCLOSED IN BRACES when they occur as the body of a control
    structure (if, while etc.) */
 
-#define simpl(r) hd[e]=I, e=tl[e]=r
+#define simpl(r) hd(e)=I, e=tl(e)=r
 
 #ifdef DEBUG
 word maxrdepth=0,rdepth=0;
@@ -361,7 +361,7 @@ word reduce(word e)
     getarg(arg1);
     getarg(arg2);
     upleft;
-    hd[e]=ap(arg1,lastarg); tl[e]=ap(arg2,lastarg);
+    hd(e)=ap(arg1,lastarg); tl(e)=ap(arg2,lastarg);
     DOWNLEFT;
     DOWNLEFT;
     goto NEXTREDEX;
@@ -370,7 +370,7 @@ word reduce(word e)
     getarg(arg1);
     getarg(arg2);
     upleft;
-    hd[e]=arg1; tl[e]=ap(arg2,lastarg);
+    hd(e)=arg1; tl(e)=ap(arg2,lastarg);
     DOWNLEFT;
     goto NEXTREDEX;
 
@@ -378,7 +378,7 @@ word reduce(word e)
     getarg(arg1);
     getarg(arg2);
     upleft;
-    hd[e]=arg2; tl[e]=ap(arg1,lastarg);
+    hd(e)=arg2; tl(e)=ap(arg1,lastarg);
     DOWNLEFT;
     goto NEXTREDEX;
 
@@ -386,14 +386,14 @@ word reduce(word e)
     getarg(arg1);
     getarg(arg2);
     upleft;
-    hd[e]=ap(arg1,lastarg); tl[e]=arg2;
+    hd(e)=ap(arg1,lastarg); tl(e)=arg2;
     DOWNLEFT;
     DOWNLEFT;
     goto NEXTREDEX;
 
     case Y:        /*  Y h => self where self=(h self)  */
     upleft;
-    hd[e]=tl[e]; tl[e]=e;
+    hd(e)=tl(e); tl(e)=e;
     DOWNLEFT;
     goto NEXTREDEX;
 
@@ -401,14 +401,14 @@ word reduce(word e)
     case K:        /*  K x y => x */
     getarg(arg1);
     upleft;
-    hd[e]=I; e=tl[e]=arg1;
+    hd(e)=I; e=tl(e)=arg1;
     goto NEXTREDEX;  /* could make eager in first arg */
 
     L_KI:
     case KI:              /*  KI x y => y  */
     upleft;    /* lose first arg  */
     upleft;
-    hd[e]=I; e=lastarg;  /* ?? */
+    hd(e)=I; e=lastarg;  /* ?? */
     goto NEXTREDEX; /* could make eager in 2nd arg */
 
     case S1:          /* S1 k f g x => k(f x)(g x) */
@@ -416,9 +416,9 @@ word reduce(word e)
     getarg(arg2);
     getarg(arg3);
     upleft;
-    hd[e]=ap(arg2,lastarg); 
-    hd[e]=ap(arg1,hd[e]);
-    tl[e]=ap(arg3,lastarg);
+    hd(e)=ap(arg2,lastarg); 
+    hd(e)=ap(arg1,hd(e));
+    tl(e)=ap(arg3,lastarg);
     DOWNLEFT;
     DOWNLEFT;
     goto NEXTREDEX;
@@ -428,9 +428,9 @@ word reduce(word e)
     getarg(arg2);
     getarg(arg3);
     upleft;
-    hd[e]=arg1;
-    tl[e]=ap(arg3,lastarg);
-    tl[e]=ap(arg2,tl[e]);
+    hd(e)=arg1;
+    tl(e)=ap(arg3,lastarg);
+    tl(e)=ap(arg2,tl(e));
     DOWNLEFT;
     goto NEXTREDEX;
 
@@ -439,9 +439,9 @@ word reduce(word e)
     getarg(arg2);
     getarg(arg3);
     upleft;
-    hd[e]=ap(arg2,lastarg);
-    hd[e]=ap(arg1,hd[e]);
-    tl[e]=arg3;
+    hd(e)=ap(arg2,lastarg);
+    hd(e)=ap(arg1,hd(e));
+    tl(e)=arg3;
     DOWNLEFT;
     goto NEXTREDEX;
 
@@ -469,7 +469,7 @@ word reduce(word e)
     case ITERATE:      /*  ITERATE f x => x:ITERATE f (f x)  */
     getarg(arg1);
     upleft;
-    hold=ap(hd[e],ap(arg1,lastarg));
+    hold=ap(hd(e),ap(arg1,lastarg));
     setcell(CONS,lastarg,hold);
     goto DONE;
 
@@ -478,9 +478,9 @@ word reduce(word e)
     getarg(arg1);
     upleft;
     if((lastarg=reduce(lastarg))==FAIL)     /* ### */
-      { hd[e]=I;  e=tl[e]=NIL; }
+      { hd(e)=I;  e=tl(e)=NIL; }
     else
-      { hold=ap(hd[e],ap(arg1,lastarg));
+      { hold=ap(hd(e),ap(arg1,lastarg));
         setcell(CONS,lastarg,hold); }
     goto DONE;
 
@@ -495,8 +495,8 @@ word reduce(word e)
 	                    non-strict uncurry           */
     getarg(arg1);
     upleft;
-    hd[e]=ap(arg1,ap(HD,lastarg));
-    tl[e]=ap(TL,lastarg);
+    hd(e)=ap(arg1,ap(HD,lastarg));
+    tl(e)=ap(TL,lastarg);
     DOWNLEFT;
     DOWNLEFT;
     goto NEXTREDEX;
@@ -507,11 +507,11 @@ word reduce(word e)
     getarg(arg1);
     upleft;
     if(tag[head(lastarg)]==CONSTRUCTOR)  /* be eager if safe */
-      hd[e]=ap(arg1,hd[lastarg]),
-      tl[e]=tl[lastarg];
+      hd(e)=ap(arg1,hd(lastarg)),
+      tl(e)=tl(lastarg);
     else
-      hd[e]=ap(arg1,ap(BODY,lastarg)),
-      tl[e]=ap(LAST,lastarg);
+      hd(e)=ap(arg1,ap(BODY,lastarg)),
+      tl(e)=ap(LAST,lastarg);
     DOWNLEFT;
     DOWNLEFT;
     goto NEXTREDEX;
@@ -525,9 +525,9 @@ word reduce(word e)
     lastarg= reduce(lastarg);          /* ### */
     if(tag[lastarg]==INT)
       { hold = bigsub(lastarg,arg1);
-        if(poz(hold))hd[e]=arg2,tl[e]=hold;
-        else hd[e]=I,e=tl[e]=FAIL; }
-    else hd[e]=I,e=tl[e]=FAIL;
+        if(poz(hold))hd(e)=arg2,tl(e)=hold;
+        else hd(e)=I,e=tl(e)=FAIL; }
+    else hd(e)=I,e=tl(e)=FAIL;
     goto NEXTREDEX;
 
     case U_:                  /*    U_ f (a:b) => f a b
@@ -537,11 +537,11 @@ word reduce(word e)
     upleft;
     lastarg= reduce(lastarg);      /* ### */
     if(lastarg==NIL)
-    { hd[e]=I;
-      e=tl[e]=FAIL;
+    { hd(e)=I;
+      e=tl(e)=FAIL;
       goto NEXTREDEX; }
-    hd[e]=ap(arg1,hd[lastarg]);
-    tl[e]=tl[lastarg];
+    hd(e)=ap(arg1,hd(lastarg));
+    tl(e)=tl(lastarg);
     goto NEXTREDEX;
 
     case Ug:      /*  Ug k f (k x1 ... xn) => f x1 ... xn, n>=0
@@ -552,18 +552,18 @@ word reduce(word e)
     upleft;
     lastarg= reduce(lastarg);   /* ### */
     if(constr_tag(arg1)!=constr_tag(head(lastarg)))
-      { hd[e]=I;
-	e=tl[e]=FAIL;
+      { hd(e)=I;
+	e=tl(e)=FAIL;
 	goto NEXTREDEX; }
     if(tag[lastarg]==CONSTRUCTOR) /* case n=0 */
-      { hd[e]=I; e=tl[e]=arg2; goto NEXTREDEX; }
-    hd[e]=hd[lastarg];
-    tl[e]=tl[lastarg];
-    while(tag[hd[e]]!=CONSTRUCTOR)
+      { hd(e)=I; e=tl(e)=arg2; goto NEXTREDEX; }
+    hd(e)=hd(lastarg);
+    tl(e)=tl(lastarg);
+    while(tag[hd(e)]!=CONSTRUCTOR)
 	 /* go back to head of arg3, copying spine */
-	 { hd[e]=ap(hd[hd[e]],tl[hd[e]]);
+	 { hd(e)=ap(hd(hd(e)),tl(hd(e)));
 	   DOWNLEFT; }
-    hd[e]=arg2;   /* replace k with f */
+    hd(e)=arg2;   /* replace k with f */
     goto NEXTREDEX;
 
     case MATCH:               /*    MATCH a f a => f
@@ -575,8 +575,8 @@ word reduce(word e)
     getarg(arg2);
     upleft;
     lastarg=reduce(lastarg);   /* ### */
-    hd[e]=I;
-    e=tl[e]=compare(arg1,lastarg)?FAIL:arg2;
+    hd(e)=I;
+    e=tl(e)=compare(arg1,lastarg)?FAIL:arg2;
     goto NEXTREDEX;
 
     case MATCHINT:  /* same but 1st arg is integer literal */
@@ -584,8 +584,8 @@ word reduce(word e)
     getarg(arg2);
     upleft;
     lastarg=reduce(lastarg);   /* ### */
-    hd[e]=I;
-    e=tl[e]=(tag[lastarg]!=INT||bigcmp(arg1,lastarg))?FAIL:arg2;
+    hd(e)=I;
+    e=tl(e)=(tag[lastarg]!=INT||bigcmp(arg1,lastarg))?FAIL:arg2;
     /* note no coercion from INT to DOUBLE here */
     goto NEXTREDEX;
 
@@ -597,10 +597,10 @@ word reduce(word e)
 					     = -1, otherwise */
     GETARG(arg1);
     UPLEFT;
-    if(tl[arg1]!=NIL&&
-       (tag[arg1]==AP?compare(lastarg,tl[arg1]):compare(tl[arg1],lastarg))>0)
-      hd[e]=I, e=tl[e]=NIL;
-    else hold=ap(hd[e],numplus(lastarg,hd[arg1])),
+    if(tl(arg1)!=NIL&&
+       (tag[arg1]==AP?compare(lastarg,tl(arg1)):compare(tl(arg1),lastarg))>0)
+      hd(e)=I, e=tl(e)=NIL;
+    else hold=ap(hd(e),numplus(lastarg,hd(arg1))),
 	 setcell(CONS,lastarg,hold);
     goto DONE;
       /* efficiency hack - tag of arg1 encodes sign of step */
@@ -611,9 +611,9 @@ word reduce(word e)
     upleft;
     lastarg=reduce(lastarg);   /* ### */
     if(lastarg==NIL)
-      hd[e]=I, e=tl[e]=NIL;
-    else hold=ap(hd[e],tl[lastarg]),
-	 setcell(CONS,ap(arg1,hd[lastarg]),hold);
+      hd(e)=I, e=tl(e)=NIL;
+    else hold=ap(hd(e),tl(lastarg)),
+	 setcell(CONS,ap(arg1,hd(lastarg)),hold);
     goto DONE;
 
     case FLATMAP:           /* funny version of map for compiling zf exps
@@ -625,13 +625,13 @@ word reduce(word e)
     getarg(arg2);
  L1:arg2=reduce(arg2);    /* ### */
     if(arg2==NIL)
-      { hd[e]=I;
-	e=tl[e]=NIL;
+      { hd(e)=I;
+	e=tl(e)=NIL;
 	goto DONE; }
-    hold=reduce(hold=ap(arg1,hd[arg2]));
-    if(hold==FAIL||hold==NIL){ arg2=tl[arg2]; goto L1; }
-    tl[e]=ap(hd[e],tl[arg2]);
-    hd[e]=ap(APPEND,hold);
+    hold=reduce(hold=ap(arg1,hd(arg2)));
+    if(hold==FAIL||hold==NIL){ arg2=tl(arg2); goto L1; }
+    tl(e)=ap(hd(e),tl(arg2));
+    hd(e)=ap(APPEND,hold);
     goto NEXTREDEX;
 
     case FILTER:       /* FILTER f [] => []
@@ -640,20 +640,20 @@ word reduce(word e)
     getarg(arg1);
     upleft;
     lastarg=reduce(lastarg);   /* ### */
-    while(lastarg!=NIL&&reduce(ap(arg1,hd[lastarg]))==False)  /* ### */
-	 lastarg=reduce(tl[lastarg]);   /* ### */
+    while(lastarg!=NIL&&reduce(ap(arg1,hd(lastarg)))==False)  /* ### */
+	 lastarg=reduce(tl(lastarg));   /* ### */
     if(lastarg==NIL)
-      hd[e]=I, e=tl[e]=NIL;
-    else hold=ap(hd[e],tl[lastarg]),
-	 setcell(CONS,hd[lastarg],hold);
+      hd(e)=I, e=tl(e)=NIL;
+    else hold=ap(hd(e),tl(lastarg)),
+	 setcell(CONS,hd(lastarg),hold);
     goto DONE;
 
     case LIST_LAST:   /* LIST_LAST x  =>  x!(#x-1)  */
     upleft;
     if((lastarg=reduce(lastarg))==NIL)fn_error("last []");  /* ### */
-    while((tl[lastarg]=reduce(tl[lastarg]))!=NIL)    /* ### */
-         lastarg=tl[lastarg];
-    hd[e]=I; e=tl[e]=hd[lastarg];
+    while((tl(lastarg)=reduce(tl(lastarg)))!=NIL)    /* ### */
+         lastarg=tl(lastarg);
+    hd(e)=I; e=tl(e)=hd(lastarg);
     goto NEXTREDEX;
 
     case LENGTH:   /*  takes length of a list */
@@ -661,27 +661,27 @@ word reduce(word e)
     { long long n=0; /* problem - may be followed by gc */
       /* cannot make static because of ### below */
       while((lastarg=reduce(lastarg))!=NIL)  /* ### */
-	   lastarg=tl[lastarg],n++;
+	   lastarg=tl(lastarg),n++;
       simpl(sto_int(n)); }
     goto DONE;
 
     case DROP:
     getarg(arg1);
     upleft;
-    arg1=tl[hd[e]]=reduce(tl[hd[e]]);  /* ### */
+    arg1=tl(hd(e))=reduce(tl(hd(e)));  /* ### */
     if(tag[arg1]!=INT)int_error("drop");
     { long long n=get_int(arg1);
       while(n-- >0)
 	if((lastarg=reduce(lastarg))==NIL)  /* ### */
 	  { simpl(NIL); goto DONE; }
-	else lastarg=tl[lastarg]; }
+	else lastarg=tl(lastarg); }
     simpl(lastarg);
     goto NEXTREDEX;
 
     case SUBSCRIPT:   /* SUBSCRIPT i x  =>  x!i  */
     upleft;
     upleft;
-    arg1=tl[hd[e]]=reduce(tl[hd[e]]);  /* ### */
+    arg1=tl(hd(e))=reduce(tl(hd(e)));  /* ### */
     lastarg=reduce(lastarg);  /* ### */
     if(lastarg==NIL)subs_error();
     { long long indx = 0; /* 0 is not used but int_error() calls exit() */
@@ -692,19 +692,19 @@ word reduce(word e)
          - cannot make static, because of ### below */
       if(indx<0)subs_error();
       while(indx)
-      { lastarg= tl[lastarg]= reduce(tl[lastarg]);   /* ### */
+      { lastarg= tl(lastarg)= reduce(tl(lastarg));   /* ### */
         if(lastarg==NIL)subs_error();
         indx--; }
-      hd[e]= I;
-      e=tl[e]=hd[lastarg];  /* could be eager in tl[e] */
+      hd(e)= I;
+      e=tl(e)=hd(lastarg);  /* could be eager in tl(e) */
       goto NEXTREDEX; }
 
     case FOLDL1:      /* FOLDL1 op (a:x) => FOLDL op a x */
     getarg(arg1);
     upleft;
     if((lastarg=reduce(lastarg))!=NIL)   /* ### */
-      { hd[e]=ap2(FOLDL,arg1,hd[lastarg]);
-        tl[e]=tl[lastarg];
+      { hd(e)=ap2(FOLDL,arg1,hd(lastarg));
+        tl(e)=tl(lastarg);
 	goto NEXTREDEX; }
     else fn_error("foldl1 applied to []");
 
@@ -716,9 +716,9 @@ word reduce(word e)
     getarg(arg2);
     upleft;
     while((lastarg=reduce(lastarg))!=NIL)   /* ### */
-	 arg2=reduce(ap2(arg1,arg2,hd[lastarg])),   /* ^ ### */
-	 lastarg=tl[lastarg];
-    hd[e]=I, e=tl[e]=arg2;
+	 arg2=reduce(ap2(arg1,arg2,hd(lastarg))),   /* ^ ### */
+	 lastarg=tl(lastarg);
+    hd(e)=I, e=tl(e)=arg2;
     goto NEXTREDEX;
 
     case FOLDR:       /* FOLDR op r [] => r
@@ -728,9 +728,9 @@ word reduce(word e)
     upleft;
     lastarg=reduce(lastarg);   /* ### */
     if(lastarg==NIL)
-      hd[e]=I, e=tl[e]=arg2;
-    else hold=ap(hd[e],tl[lastarg]),
-	 hd[e]=ap(arg1,hd[lastarg]), tl[e]=hold;
+      hd(e)=I, e=tl(e)=arg2;
+    else hold=ap(hd(e),tl(lastarg)),
+	 hd(e)=ap(arg1,hd(lastarg)), tl(e)=hold;
     goto NEXTREDEX;
 
     L_READBIN:
@@ -741,14 +741,14 @@ word reduce(word e)
     if(lastarg==0) /* special case created by $:- */
       { if(stdinuse=='-')stdin_error(':');
         if(stdinuse)
-          { hd[e]=I; e=tl[e]=NIL; goto DONE; }
+          { hd(e)=I; e=tl(e)=NIL; goto DONE; }
         stdinuse=':';
-        tl[e]=(word)stdin; }
+        tl(e)=(word)stdin; }
     hold= getc((FILE *)lastarg);
     if(hold==EOF)
      {   fclose((FILE *)lastarg);
-	 hd[e]=I;
-         e=tl[e]= NIL;
+	 hd(e)=I;
+         e=tl(e)= NIL;
          goto DONE; }
     setcell(CONS,hold,ap(READBIN,lastarg));
     goto DONE;
@@ -761,14 +761,14 @@ word reduce(word e)
     if(lastarg==0) /* special case created by $- */
       { if(stdinuse==':')stdin_error('-');
         if(stdinuse)
-          { hd[e]=I; e=tl[e]=NIL; goto DONE; }
+          { hd(e)=I; e=tl(e)=NIL; goto DONE; }
 	stdinuse='-';
-	tl[e]=(word)stdin; }
+	tl(e)=(word)stdin; }
     hold=UTF8?sto_char(fromUTF8((FILE *)lastarg)):getc((FILE *)lastarg);
     if(hold==EOF)
      {   fclose((FILE *)lastarg);
-         hd[e]=I;
-         e=tl[e]= NIL;
+         hd(e)=I;
+         e=tl(e)= NIL;
          goto DONE; }
     setcell(CONS,hold,ap(READ,lastarg));
     goto DONE;
@@ -780,25 +780,25 @@ word reduce(word e)
 			 f, and taking next legal expr of type t */
     GETARG(arg1);
     upleft;
-    hold=parseline(hd[arg1],(FILE *)lastarg,tl[arg1]);
+    hold=parseline(hd(arg1),(FILE *)lastarg,tl(arg1));
     if(hold==EOF)
      {   fclose((FILE *)lastarg);
-	 hd[e]=I;
-         e=tl[e]= NIL;
+	 hd(e)=I;
+         e=tl(e)= NIL;
          goto DONE; }
-    arg2=ap(hd[e],lastarg);
+    arg2=ap(hd(e),lastarg);
     setcell(CONS,hold,arg2);
     goto DONE;
 
     case BADCASE:    /* BADCASE cons(oldn,here_info) => BOTTOM */
     UPLEFT;
-      { word subject= hd[lastarg];
+      { word subject= hd(lastarg);
 		      /* either datapair(oldn,0) or 0 */
 	fprintf(stderr,"\nprogram error: missing case in definition");
 	if(subject) /* cannot do patterns - FIX LATER */
-	  fprintf(stderr," of %s",(char *)hd[subject]);
+	  fprintf(stderr," of %s",(char *)hd(subject));
 	putc('\n',stderr);
-	out_here(stderr,tl[lastarg],1);
+	out_here(stderr,tl(lastarg),1);
       }
     outstats();
     exit(1);
@@ -814,7 +814,7 @@ word reduce(word e)
     UPLEFT;
     fprintf(stderr,"\nprogram error: lhs of definition doesn't match rhs");
     putc('\n',stderr);
-    out_here(stderr,tl[lastarg],1);
+    out_here(stderr,tl(lastarg),1);
     outstats();
     exit(1);
 
@@ -832,9 +832,9 @@ word reduce(word e)
     case WAIT:        /* WAIT pid => <exit_status of child process pid> */
     UPLEFT;
   { word *w= &waiting; /* list of terminated pid's and their exit statuses */
-    while(*w!=NIL&&hd[*w]!=lastarg)w= &tl[tl[*w]];
-    if(*w!=NIL)hold=hd[tl[*w]],
-	       *w=tl[tl[*w]];  /* remove entry */
+    while(*w!=NIL&&hd(*w)!=lastarg)w= &tl(tl(*w));
+    if(*w!=NIL)hold=hd(tl(*w)),
+	       *w=tl(tl(*w));  /* remove entry */
     else { int status;
 	   while((hold=wait(&status))!=lastarg&&hold!= -1)
 		waiting=cons(hold,cons(WEXITSTATUS(status),waiting));
@@ -888,15 +888,15 @@ word reduce(word e)
     getarg(arg2);
     while(!abnormal(s))
 	 { UPLEFT;
-	   hd[e]=ap(TRY,arg1=ap(arg1,lastarg));
-	   arg2=tl[e]=ap(arg2,lastarg); }
+	   hd(e)=ap(TRY,arg1=ap(arg1,lastarg));
+	   arg2=tl(e)=ap(arg2,lastarg); }
     DOWNLEFT;
     /* DOWNLEFT; DOWNRIGHT; equivalent to:*/
-    hold=s,s=e,e=tl[e],tl[s]=hold,mktlptr(s); /* now be strict in arg1 */
+    hold=s,s=e,e=tl(e),tl(s)=hold,mktlptr(s); /* now be strict in arg1 */
     goto NEXTREDEX;
 
     case FAIL:     /* FAIL x => FAIL */
-    while(!abnormal(s))hold=s,s=hd[s],hd[hold]=FAIL,tl[hold]=0;
+    while(!abnormal(s))hold=s,s=hd(s),hd(hold)=FAIL,tl(hold)=0;
     goto DONE;
 
 /*  case DIOP:   (all strict diadic operators share this code)  */
@@ -938,21 +938,21 @@ word reduce(word e)
     arg2=reduce(arg2);    /* ### */
     getarg(arg3);
     if(tag[arg1]==CONSTRUCTOR) /* don't parenthesise atom */
-      { hd[e]=I;
+      { hd(e)=I;
         if(suppressed(arg1))
-	  e=tl[e]=str_conv("<unprintable>");
-	else e=tl[e]=str_conv(constr_name(arg1));
+	  e=tl(e)=str_conv("<unprintable>");
+	else e=tl(e)=str_conv(constr_name(arg1));
 	goto DONE; }
     hold=arg2?cons(')',NIL):NIL;
     while(tag[arg1]!=CONSTRUCTOR)
-         hold=cons(' ',ap2(APPEND,ap(tl[arg1],ap(LAST,arg3)),hold)),
-         arg1=hd[arg1],arg3=ap(BODY,arg3);
+         hold=cons(' ',ap2(APPEND,ap(tl(arg1),ap(LAST,arg3)),hold)),
+         arg1=hd(arg1),arg3=ap(BODY,arg3);
     if(suppressed(arg1))
-      { hd[e]=I; e=tl[e]=str_conv("<unprintable>"); goto DONE; }
+      { hd(e)=I; e=tl(e)=str_conv("<unprintable>"); goto DONE; }
     hold=ap2(APPEND,str_conv(constr_name(arg1)),hold);
     if(arg2)
       { setcell(CONS,'(',hold); goto DONE; }
-    else { hd[e]=I; e=tl[e]=hold; goto NEXTREDEX; }
+    else { hd(e)=I; e=tl(e)=hold; goto NEXTREDEX; }
 
     case MKSTRICT:  /* MKSTRICT k f x1 ... xk => f x1 ... xk, xk~=BOT */
     GETARG(arg1);
@@ -961,9 +961,9 @@ word reduce(word e)
       while(i--) { upleft; } }
     lastarg=reduce(lastarg);         /* ### */
     while(--arg1)  /* go back towards head, copying spine */
-	 { hd[e]=ap(hd[hd[e]],tl[hd[e]]);
+	 { hd(e)=ap(hd(hd(e)),tl(hd(e)));
 	   DOWNLEFT;}
-    hd[e]=arg2;  /* overwrite (MKSTRICT k f) with f */
+    hd(e)=arg2;  /* overwrite (MKSTRICT k f) with f */
     goto NEXTREDEX;
 
     case G_ERROR:    /* G_ERROR f g toks = (g residue):[], fails(f toks)
@@ -974,7 +974,7 @@ word reduce(word e)
     hold=ap(arg1,lastarg);
     hold=reduce(hold);          /* ### */
     if(!fails(hold))
-      { hd[e]=I; e=tl[e]=hold; goto DONE; }
+      { hd(e)=I; e=tl(e)=hold; goto DONE; }
     hold=g_residue(lastarg);
     setcell(CONS,ap(arg2,hold),NIL);
     goto DONE;
@@ -987,8 +987,8 @@ word reduce(word e)
     hold=ap(arg1,lastarg);
     hold=reduce(hold);         /* ### */
     if(!fails(hold))
-      { hd[e]=I; e=tl[e]=hold; goto DONE; }
-    hd[e]=arg2;
+      { hd(e)=I; e=tl(e)=hold; goto DONE; }
+    hd(e)=arg2;
     DOWNLEFT;
     goto NEXTREDEX;
 
@@ -1002,7 +1002,7 @@ word reduce(word e)
     hold=reduce(hold);         /* ### */
     if(fails(hold))
       setcell(CONS,NIL,lastarg);
-    else setcell(CONS,cons(hd[hold],NIL),tl[hold]);
+    else setcell(CONS,cons(hd(hold),NIL),tl(hold));
     goto DONE;
 
     case G_STAR:   /* G_STAR f toks => []:toks, fails(f toks)
@@ -1017,8 +1017,8 @@ word reduce(word e)
     hold=reduce(hold);          /* ### */
     if(fails(hold))
       { setcell(CONS,NIL,lastarg); goto DONE; }
-    arg2=ap(hd[e],tl[hold]);  /* called z in above rules */
-    tag[e]=CONS;hd[e]=cons(hd[hold],ap(FST,arg2));tl[e]=ap(SND,arg2);
+    arg2=ap(hd(e),tl(hold));  /* called z in above rules */
+    tag[e]=CONS;hd(e)=cons(hd(hold),ap(FST,arg2));tl(e)=ap(SND,arg2);
     goto DONE;
 
     /* G_RULE has same action as P */
@@ -1034,7 +1034,7 @@ word reduce(word e)
     hold=reduce(hold);          /* ### */
     if(fails(hold))
       { setcell(CONS,I,lastarg); goto DONE; }
-    hd[e]=ap2(G_SEQ,hd[e],ap(G_RULE,ap(CB,hd[hold]))); tl[e]=tl[hold];
+    hd(e)=ap2(G_SEQ,hd(e),ap(G_RULE,ap(CB,hd(hold)))); tl(e)=tl(hold);
     goto NEXTREDEX;
 
     case G_SYMB:        /* G_SYMB t ((t,s):toks) = t:toks
@@ -1043,12 +1043,12 @@ word reduce(word e)
     upleft;
     lastarg=reduce(lastarg);          /* ### */
     if(lastarg==NIL)
-      { hd[e]=I,e=tl[e]=NIL; goto DONE; }
-    hd[lastarg]=reduce(hd[lastarg]);          /* ### */
-    hold=ap(FST,hd[lastarg]);
+      { hd(e)=I,e=tl(e)=NIL; goto DONE; }
+    hd(lastarg)=reduce(hd(lastarg));          /* ### */
+    hold=ap(FST,hd(lastarg));
     if(compare(arg1,reduce(hold)))            /* ### */
-      hd[e]=I,e=tl[e]=FAILURE;
-    else setcell(CONS,arg1,tl[lastarg]);
+      hd(e)=I,e=tl(e)=FAILURE;
+    else setcell(CONS,arg1,tl(lastarg));
     goto DONE;
 
     case G_ANY:         /* G_ANY ((t,s):toks) = t:toks
@@ -1056,8 +1056,8 @@ word reduce(word e)
     upleft;
     lastarg=reduce(lastarg);          /* ### */
     if(lastarg==NIL)
-      hd[e]=I,e=tl[e]=FAILURE;
-    else setcell(CONS,ap(FST,hd[lastarg]),tl[lastarg]);
+      hd(e)=I,e=tl(e)=FAILURE;
+    else setcell(CONS,ap(FST,hd(lastarg)),tl(lastarg));
     goto DONE;
 
     case G_SUCHTHAT:     /* G_SUCHTHAT f ((t,s):toks) = t:toks, f t
@@ -1066,12 +1066,12 @@ word reduce(word e)
     upleft;
     lastarg=reduce(lastarg);          /* ### */
     if(lastarg==NIL)
-      { hd[e]=I,e=tl[e]=FAILURE; goto DONE; }
-    hold=ap(FST,hd[lastarg]);
+      { hd(e)=I,e=tl(e)=FAILURE; goto DONE; }
+    hold=ap(FST,hd(lastarg));
     hold=reduce(hold);                /* ### */
     if(reduce(ap(arg1,hold))==True)          /* ### */
-      setcell(CONS,hold,tl[lastarg]);
-    else hd[e]=I,e=tl[e]=FAILURE;
+      setcell(CONS,hold,tl(lastarg));
+    else hd(e)=I,e=tl(e)=FAILURE;
     goto DONE;
       
 
@@ -1081,7 +1081,7 @@ word reduce(word e)
     lastarg=reduce(lastarg);
     if(lastarg==NIL)
       setcell(CONS,NIL,NIL);
-    else hd[e]=I,e=tl[e]=FAILURE;
+    else hd(e)=I,e=tl(e)=FAILURE;
     goto DONE;
 
     case G_STATE:       /* G_STATE ((t,s):toks) = s:((t,s):toks)
@@ -1089,8 +1089,8 @@ word reduce(word e)
     upleft;
     lastarg=reduce(lastarg);          /* ### */
     if(lastarg==NIL)
-      hd[e]=I,e=tl[e]=FAILURE;
-    else setcell(CONS,ap(SND,hd[lastarg]),lastarg);
+      hd(e)=I,e=tl(e)=FAILURE;
+    else setcell(CONS,ap(SND,hd(lastarg)),lastarg);
     goto DONE;
 
     case G_SEQ:         /* G_SEQ f g toks = FAILURE, fails(f toks)
@@ -1105,17 +1105,17 @@ word reduce(word e)
     hold=ap(arg1,lastarg);
     hold=reduce(hold);          /* ### */
     if(fails(hold))
-      { hd[e]=I,e=tl[e]=FAILURE; goto DONE; }
-    arg3=ap(arg2,tl[hold]);
+      { hd(e)=I,e=tl(e)=FAILURE; goto DONE; }
+    arg3=ap(arg2,tl(hold));
     arg3=reduce(arg3);          /* ### */
     if(fails(arg3))
-      { hd[e]=I,e=tl[e]=FAILURE; goto DONE; }
-    setcell(CONS,ap(hd[arg3],hd[hold]),tl[arg3]);
+      { hd(e)=I,e=tl(e)=FAILURE; goto DONE; }
+    setcell(CONS,ap(hd(arg3),hd(hold)),tl(arg3));
     goto DONE;
 
     case G_UNIT:   /* G_UNIT toks => I:toks */
     upleft;
-    tag[e]=CONS,hd[e]=I;
+    tag[e]=CONS,hd(e)=I;
     goto DONE;
     /* G_UNIT is right multiplicative identity, equivalent (G_RULE I) */
 
@@ -1140,12 +1140,12 @@ word reduce(word e)
     if(fails(hold))
       { fprintf(stderr,"\nPARSE OF %sFAILS WITH UNEXPECTED ",
 		getstring(arg1,0));
-	arg3=reduce(tl[g_residue(arg3)]);
+	arg3=reduce(tl(g_residue(arg3)));
 	if(arg3==NIL)
 	  fprintf(stderr,"END OF INPUT\n"),
 	  outstats(),
 	  exit(1);
-	hold=ap(FST,hd[arg3]);
+	hold=ap(FST,hd(arg3));
 	hold=reduce(hold);
 	fprintf(stderr,"TOKEN \"");
 	if(hold==OFFSIDE)fprintf(stderr,"offside"); /* not now possible */
@@ -1154,7 +1154,7 @@ word reduce(word e)
 	fprintf(stderr,"\"\n");
 	outstats();
 	exit(1); }
-    hd[e]=I,e=tl[e]=hd[hold];
+    hd(e)=I,e=tl(e)=hd(hold);
     goto NEXTREDEX;
 /* NOTE the atom OFFSIDE differs from every string and is used as a
    pseudotoken when implementing the offside rule - see `indent' in prelude */
@@ -1165,8 +1165,8 @@ word reduce(word e)
        last token examined, for syntax error location purposes */
     upleft;
     if((lastarg=reduce(lastarg))==NIL)   /* ### */
-      { hd[e]=I; e=tl[e]=NIL; goto DONE; }
-    setcell(CONS,hd[lastarg],ap(G_COUNT,tl[lastarg]));
+      { hd(e)=I; e=tl(e)=NIL; goto DONE; }
+    setcell(CONS,hd(lastarg),ap(G_COUNT,tl(lastarg)));
     goto DONE;
 
 /*  Explanation of %lex combinators.  A lex analyser is of type
@@ -1199,7 +1199,7 @@ word reduce(word e)
 		   */
     GETARG(arg1);
     UPLEFT;
-    hd[e]=ap(B,ap2(LEX_RPT,arg1,lastarg)); tl[e]=LEX_COUNT0;
+    hd(e)=ap(B,ap2(LEX_RPT,arg1,lastarg)); tl(e)=LEX_COUNT0;
     DOWNLEFT;
     DOWNLEFT;
     goto NEXTREDEX;
@@ -1215,18 +1215,18 @@ word reduce(word e)
     GETARG(arg2);
     upleft;
     if((lastarg=reduce(lastarg))==NIL)   /* ### */
-      { hd[e]=I; e=tl[e]=NIL; goto DONE; }
+      { hd(e)=I; e=tl(e)=NIL; goto DONE; }
     hold=ap2(arg1,arg2,lastarg);
-    arg1=hd[hd[e]];
+    arg1=hd(hd(e));
     hold=reduce(hold);
-    setcell(CONS,hd[hold],ap2(arg1,hd[tl[hold]],tl[tl[hold]]));
+    setcell(CONS,hd(hold),ap2(arg1,hd(tl(hold)),tl(tl(hold))));
     goto DONE;
 
     case LEX_TRY:
     upleft;
-    tl[e]=reduce(tl[e]);  /* ### */
-    force(tl[e]);
-    hd[e]=LEX_TRY_;
+    tl(e)=reduce(tl(e));  /* ### */
+    force(tl(e));
+    hd(e)=LEX_TRY_;
     DOWNLEFT;
     /* falls thru to next case */
 
@@ -1241,21 +1241,21 @@ word reduce(word e)
     GETARG(arg2);
     upleft;
 L2: if(arg1==NIL)lexfail(lastarg);
-    if(hd[hd[hd[arg1]]]&&!member(hd[hd[hd[arg1]]],arg2))
-      { arg1=tl[arg1]; goto L2; } /* hd[scstuff] is 0 or list of startconds */
-    hold=ap(hd[tl[hd[arg1]]],lastarg);
+    if(hd(hd(hd(arg1)))&&!member(hd(hd(hd(arg1))),arg2))
+      { arg1=tl(arg1); goto L2; } /* hd(scstuff) is 0 or list of startconds */
+    hold=ap(hd(tl(hd(arg1))),lastarg);
     if((hold=reduce(hold))==NIL)        /* ### */
-      { arg1=tl[arg1]; goto L2; }
-    setcell(CONS,ap(tl[tl[hd[arg1]]],ap(DESTREV,hd[hold])),
-		 cons(tl[hd[hd[arg1]]]?tl[hd[hd[arg1]]]-1:arg2,tl[hold]));
-	        /* tl[scstuff] is 1 + next start condition (0 = no change) */
+      { arg1=tl(arg1); goto L2; }
+    setcell(CONS,ap(tl(tl(hd(arg1))),ap(DESTREV,hd(hold))),
+		 cons(tl(hd(hd(arg1)))?tl(hd(hd(arg1)))-1:arg2,tl(hold)));
+	        /* tl(scstuff) is 1 + next start condition (0 = no change) */
     goto DONE;
 
     case LEX_TRY1:
     upleft;
-    tl[e]=reduce(tl[e]);  /* ### */
-    force(tl[e]);
-    hd[e]=LEX_TRY1_;
+    tl(e)=reduce(tl(e));  /* ### */
+    force(tl(e));
+    hd(e)=LEX_TRY1_;
     DOWNLEFT;
     /* falls thru to next case */
 
@@ -1271,29 +1271,29 @@ L2: if(arg1==NIL)lexfail(lastarg);
     GETARG(arg2);
     upleft;
 L3: if(arg1==NIL)lexfail(lastarg);
-    if(hd[hd[hd[arg1]]]&&!member(hd[hd[hd[arg1]]],arg2))
-      { arg1=tl[arg1]; goto L3; } /* hd[scstuff] is 0 or list of startconds */
-    hold=ap(hd[tl[hd[arg1]]],lastarg);
+    if(hd(hd(hd(arg1)))&&!member(hd(hd(hd(arg1))),arg2))
+      { arg1=tl(arg1); goto L3; } /* hd(scstuff) is 0 or list of startconds */
+    hold=ap(hd(tl(hd(arg1))),lastarg);
     if((hold=reduce(hold))==NIL)        /* ### */
-      { arg1=tl[arg1]; goto L3; }
-    setcell(CONS,ap2(tl[tl[hd[arg1]]],lexstate(lastarg),ap(DESTREV,hd[hold])),
-		 cons(tl[hd[hd[arg1]]]?tl[hd[hd[arg1]]]-1:arg2,tl[hold]));
-	        /* tl[scstuff] is 1 + next start condition (0 = no change) */
+      { arg1=tl(arg1); goto L3; }
+    setcell(CONS,ap2(tl(tl(hd(arg1))),lexstate(lastarg),ap(DESTREV,hd(hold))),
+		 cons(tl(hd(hd(arg1)))?tl(hd(hd(arg1)))-1:arg2,tl(hold)));
+	        /* tl(scstuff) is 1 + next start condition (0 = no change) */
     goto DONE;
 
     case DESTREV:  /* destructive reverse - used only by LEX_TRY */
     GETARG(arg1);  /* known to be an explicit list */
     arg2=NIL; /* to hold reversed list */
     while(arg1!=NIL)
-	 { if(tag[hd[arg1]]==STRCONS) /* strip off lex state if present */
-	     hd[arg1]=tl[hd[arg1]];
-	   hold=tl[arg1],tl[arg1]=arg2,arg2=arg1,arg1=hold; }
-    hd[e]=I; e=tl[e]=arg2;
+	 { if(tag[hd(arg1)]==STRCONS) /* strip off lex state if present */
+	     hd(arg1)=tl(hd(arg1));
+	   hold=tl(arg1),tl(arg1)=arg2,arg2=arg1,arg1=hold; }
+    hd(e)=I; e=tl(e)=arg2;
     goto DONE;
 
     case LEX_COUNT0:  /* LEX_COUNT0 x => LEX_COUNT (state0,x) */
     upleft;
-    hd[e]=LEX_COUNT; tl[e]=strcons(0,tl[e]);
+    hd(e)=LEX_COUNT; tl(e)=strcons(0,tl(e));
     DOWNLEFT;
     /* falls thru to next case */
 
@@ -1303,18 +1303,18 @@ L3: if(arg1==NIL)lexfail(lastarg);
 		       state == (line_no*256+col_no)
 		    */
     GETARG(arg1);
-    if((tl[arg1]=reduce(tl[arg1]))==NIL)   /* ### */
-      { hd[e]=I; e=tl[e]=NIL; goto DONE; }
-    hold=hd[tl[arg1]]; /* the char */
-    setcell(CONS,strcons(hd[arg1],hold),ap(LEX_COUNT,arg1));
-    if(hold=='\n')hd[arg1]=((hd[arg1]>>8)+1)<<8; 
-    else { word col = hd[arg1]&255;
+    if((tl(arg1)=reduce(tl(arg1)))==NIL)   /* ### */
+      { hd(e)=I; e=tl(e)=NIL; goto DONE; }
+    hold=hd(tl(arg1)); /* the char */
+    setcell(CONS,strcons(hd(arg1),hold),ap(LEX_COUNT,arg1));
+    if(hold=='\n')hd(arg1)=((hd(arg1)>>8)+1)<<8; 
+    else { word col = hd(arg1)&255;
 	   col = hold=='\t'?(col/8+1)*8:col+1;
-	   hd[arg1] = (hd[arg1]&(~255))|col; }
-    tl[arg1]=tl[tl[arg1]];
+	   hd(arg1) = (hd(arg1)&(~255))|col; }
+    tl(arg1)=tl(tl(arg1));
     goto DONE;
 
-#define lh(x) (tag[hd[x]]==STRCONS?tl[hd[x]]:hd[x])
+#define lh(x) (tag[hd(x)]==STRCONS?tl(hd(x)):hd(x))
   /* hd char of possibly lex-state-labelled string */
 
     case LEX_STRING: /*  LEX_STRING [] p x => p : x
@@ -1325,10 +1325,10 @@ L3: if(arg1==NIL)lexfail(lastarg);
     GETARG(arg2);
     upleft;
     while(arg1!=NIL)
-         { if((lastarg=reduce(lastarg))==NIL||lh(lastarg)!=hd[arg1]) /* ### */
-             { hd[e]=I; e=tl[e]=NIL; goto DONE; }
-	   arg1=tl[arg1]; arg2=cons(hd[lastarg],arg2); lastarg=tl[lastarg]; }
-    tag[e]=CONS; hd[e]=arg2;
+         { if((lastarg=reduce(lastarg))==NIL||lh(lastarg)!=hd(arg1)) /* ### */
+             { hd(e)=I; e=tl(e)=NIL; goto DONE; }
+	   arg1=tl(arg1); arg2=cons(hd(lastarg),arg2); lastarg=tl(lastarg); }
+    tag[e]=CONS; hd(e)=arg2;
     goto DONE;
 
     case LEX_CLASS: /* LEX_CLASS set p (c:x) => (c:p) : x, if c in set
@@ -1338,11 +1338,11 @@ L3: if(arg1==NIL)lexfail(lastarg);
     GETARG(arg2);
     upleft;
     if((lastarg=reduce(lastarg))==NIL||         /* ### */
-       (hd[arg1]==ANTICHARCLASS?memclass(lh(lastarg),tl[arg1])
+       (hd(arg1)==ANTICHARCLASS?memclass(lh(lastarg),tl(arg1))
                                :!memclass(lh(lastarg),arg1))
       )
-             { hd[e]=I; e=tl[e]=NIL; goto DONE; }
-    setcell(CONS,cons(hd[lastarg],arg2),tl[lastarg]);
+             { hd(e)=I; e=tl(e)=NIL; goto DONE; }
+    setcell(CONS,cons(hd(lastarg),arg2),tl(lastarg));
     goto DONE;
 
     case LEX_DOT: /* LEX_DOT p (c:x) => (c:p) : x
@@ -1351,8 +1351,8 @@ L3: if(arg1==NIL)lexfail(lastarg);
     GETARG(arg1);
     upleft;
     if((lastarg=reduce(lastarg))==NIL)    /* ### */
-             { hd[e]=I; e=tl[e]=NIL; goto DONE; }
-    setcell(CONS,cons(hd[lastarg],arg1),tl[lastarg]);
+             { hd(e)=I; e=tl(e)=NIL; goto DONE; }
+    setcell(CONS,cons(hd(lastarg),arg1),tl(lastarg));
     goto DONE;
 
     case LEX_CHAR: /* LEX_CHAR c p (c:x) => (c:p) : x
@@ -1362,8 +1362,8 @@ L3: if(arg1==NIL)lexfail(lastarg);
     GETARG(arg2);
     upleft;
     if((lastarg=reduce(lastarg))==NIL||lh(lastarg)!=arg1)    /* ### */
-             { hd[e]=I; e=tl[e]=NIL; goto DONE; }
-    setcell(CONS,cons(arg1,arg2),tl[lastarg]);
+             { hd(e)=I; e=tl(e)=NIL; goto DONE; }
+    setcell(CONS,cons(arg1,arg2),tl(lastarg));
     goto DONE;
 
     case LEX_SEQ:  /* LEX_SEQ f g p x => [], if f p x = []
@@ -1378,8 +1378,8 @@ L3: if(arg1==NIL)lexfail(lastarg);
     hold=ap2(arg1,arg3,lastarg);
     lastarg=NIL; /* anti-dragging measure */
     if((hold=reduce(hold))==NIL)     /* ### */
-      { hd[e]=I; e=tl[e]; goto DONE; }
-    hd[e]=ap(arg2,hd[hold]); tl[e]=tl[hold];
+      { hd(e)=I; e=tl(e); goto DONE; }
+    hd(e)=ap(arg2,hd(hold)); tl(e)=tl(hold);
     DOWNLEFT;
     DOWNLEFT;
     goto NEXTREDEX;
@@ -1393,8 +1393,8 @@ L3: if(arg1==NIL)lexfail(lastarg);
     upleft;
     hold=ap2(arg1,arg3,lastarg);
     if((hold=reduce(hold))==NIL)        /* ### */
-      { hd[e]=ap(arg2,arg3); DOWNLEFT; DOWNLEFT; goto NEXTREDEX; }
-    hd[e]=I; e=tl[e]=hold;
+      { hd(e)=ap(arg2,arg3); DOWNLEFT; DOWNLEFT; goto NEXTREDEX; }
+    hd(e)=I; e=tl(e)=hold;
     goto DONE;
 
     case LEX_RCONTEXT: /* LEX_RC f g p x => [], if f p x = []
@@ -1412,10 +1412,10 @@ L3: if(arg1==NIL)lexfail(lastarg);
     hold=ap2(arg1,arg3,lastarg);
     lastarg=NIL; /* anti-dragging measure */
     if((hold=reduce(hold))==NIL     /* ### */
-       || (arg2?(reduce(ap2(arg2,hd[hold],tl[hold]))==NIL)   /* ### */
-	      :(tl[hold]=reduce(tl[hold]))!=NIL ))
-      { hd[e]=I; e=tl[e]; goto DONE; }
-    hd[e]=I; e=tl[e]=hold;
+       || (arg2?(reduce(ap2(arg2,hd(hold),tl(hold)))==NIL)   /* ### */
+	      :(tl(hold)=reduce(tl(hold)))!=NIL ))
+      { hd(e)=I; e=tl(e); goto DONE; }
+    hd(e)=I; e=tl(e)=hold;
     goto DONE;
 
     case LEX_STAR: /* LEX_STAR f p x => p : x, if f p x = []
@@ -1428,8 +1428,8 @@ L3: if(arg1==NIL)lexfail(lastarg);
     upleft;
     hold=ap2(arg1,arg2,lastarg);
     while((hold=reduce(hold))!=NIL)   /* ### */
-         arg2=hd[hold],lastarg=tl[hold],hold=ap2(arg1,arg2,lastarg);
-    tag[e]=CONS; hd[e]=arg2;
+         arg2=hd(hold),lastarg=tl(hold),hold=ap2(arg1,arg2,lastarg);
+    tag[e]=CONS; hd(e)=arg2;
     goto DONE;
 
     case LEX_OPT: /* LEX_OPT f p x => p : x, if f p x = []
@@ -1440,8 +1440,8 @@ L3: if(arg1==NIL)lexfail(lastarg);
     upleft;
     hold=ap2(arg1,arg2,lastarg);
     if((hold=reduce(hold))==NIL)   /* ### */
-      { tag[e]=CONS; hd[e]=arg2; goto DONE; }
-    hd[e]=I; e=tl[e]=hold;
+      { tag[e]=CONS; hd(e)=arg2; goto DONE; }
+    hd(e)=I; e=tl(e)=hold;
     goto DONE;
 
     default: /* non combinator */
@@ -1465,7 +1465,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
                      upleft;
                      fprintf(stderr,
                      "\nUNDEFINED NAME (specified as \"%s\" in %s)\n",
-		                     (char *)hd[hd[e]],(char *)hd[lastarg]);
+		                     (char *)hd(hd(e)),(char *)hd(lastarg));
                      outstats();
                      exit(1);
       case ID: if(id_val(e)==UNDEF||id_val(e)==FREE)
@@ -1484,17 +1484,17 @@ L3: if(arg1==NIL)lexfail(lastarg);
 		  lastarg=reduce(lastarg);  /* ### */
 		  if(lastarg==OFFSIDE) /* special case, represents stdin */
 		    { if(stdinuse&&stdinuse!='+')
-                        { tag[e]=AP; hd[e]=I; e=tl[e]=NIL; goto DONE; }
+                        { tag[e]=AP; hd(e)=I; e=tl(e)=NIL; goto DONE; }
 		      stdinuse='+';
-		      hold=cons(tl[hd[e]],0),lastarg=(word)stdin; }
+		      hold=cons(tl(hd(e)),0),lastarg=(word)stdin; }
 		  else {
-		    hold=cons(tl[hd[e]],lastarg);
+		    hold=cons(tl(hd(e)),lastarg);
                     lastarg=(word)fopen(fil=getstring(lastarg,"readvals"),"r");
                     if((FILE *)lastarg==NULL) /* cannot open file for reading */
-                      /* { hd[e]=I; e=tl[e]=NIL; goto DONE; } */
+                      /* { hd(e)=I; e=tl(e)=NIL; goto DONE; } */
                       { fprintf(stderr,"\nreadvals, cannot open: \"%s\"\n",fil);
 	                outstats(); exit(1); } }
-                  hd[e]=ap(READVALS,hold); }
+                  hd(e)=ap(READVALS,hold); }
                   DOWNLEFT;
 		  DOWNLEFT;
                   goto L_READVALS;
@@ -1554,7 +1554,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
 /* paradigm for execution of strict monadic operator
     case READY(MONOP):
     GETARG(arg1);
-    hd[e]=I; e=tl[e]=do_monop(arg1);
+    hd(e)=I; e=tl(e)=do_monop(arg1);
     goto NEXTREDEX; */
 
     case READY(I):      /*  I x => x */
@@ -1565,13 +1565,13 @@ L3: if(arg1==NIL)lexfail(lastarg);
     case READY(SEQ):        /* SEQ a b => b, a~=BOTTOM  */
     UPLEFT;
     upleft;
-    hd[e]=I;e=lastarg;
+    hd(e)=I;e=lastarg;
     goto NEXTREDEX;
 
     case READY(FORCE):      /*  FORCE x => x, total x */
     UPLEFT;
     force(lastarg);
-    hd[e]=I;e=lastarg;
+    hd(e)=I;e=lastarg;
     goto NEXTREDEX;
 
     case READY(HD):
@@ -1579,7 +1579,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
     if(lastarg==NIL)
       { fprintf(stderr,"\nATTEMPT TO TAKE hd OF []\n");
 	outstats(); exit(1); }
-    hd[e]=I; e=tl[e]=hd[lastarg];
+    hd(e)=I; e=tl(e)=hd(lastarg);
     goto NEXTREDEX;
 
     case READY(TL):
@@ -1587,20 +1587,20 @@ L3: if(arg1==NIL)lexfail(lastarg);
     if(lastarg==NIL)
       { fprintf(stderr,"\nATTEMPT TO TAKE tl OF []\n");
 	outstats(); exit(1); }
-    hd[e]=I; e=tl[e]=tl[lastarg];
+    hd(e)=I; e=tl(e)=tl(lastarg);
     goto NEXTREDEX;
 
     case READY(BODY):
 	 /* BODY(k x1 .. xn) => k x1 ... x(n-1)
             for arbitrary constructor k */
     UPLEFT;
-    hd[e]=I; e=tl[e]=hd[lastarg];
+    hd(e)=I; e=tl(e)=hd(lastarg);
     goto NEXTREDEX;
 
     case READY(LAST):   /* LAST(k x1 .. xn) => xn
 			   for arbitrary constructor k */
     UPLEFT;
-    hd[e]=I; e=tl[e]=tl[lastarg];
+    hd(e)=I; e=tl(e)=tl(lastarg);
     goto NEXTREDEX;
 
     case READY(TAKE):
@@ -1610,7 +1610,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
     { long long n=get_int(arg1);
       if(n<=0||(lastarg=reduce(lastarg))==NIL)  /* ### */
 	  { simpl(NIL); goto DONE; }
-      setcell(CONS,hd[lastarg],ap2(TAKE,sto_int(n-1),tl[lastarg])); }
+      setcell(CONS,hd(lastarg),ap2(TAKE,sto_int(n-1),tl(lastarg))); }
     goto DONE;
 
     case READY(FILEMODE): /* FILEMODE string => string'
@@ -1625,7 +1625,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
 	word r=perm&04?'r':'-',w=perm&02?'w':'-',x=perm&01?'x':'-';
 	setcell(CONS,d,cons(r,cons(w,cons(x,NIL))));
       }
-    else hd[e]=I,e=tl[e]=NIL;
+    else hd(e)=I,e=tl(e)=NIL;
     goto DONE;
 
     case READY(FILESTAT): /* FILESTAT string => ((inode,dev),mtime) */
@@ -1677,7 +1677,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
 	     }
 	   }
     }
-    hd[e]=I; e=tl[e]=hold;
+    hd(e)=I; e=tl(e)=hold;
     goto DONE;
 
     case READY(EXEC):   /* EXEC string
@@ -1721,38 +1721,38 @@ L3: if(arg1==NIL)lexfail(lastarg);
     { word x=lastarg;
       word base=10;
       while(x!=NIL)
-           hd[x]=reduce(hd[x]),        /* ### */
-           x=tl[x]=reduce(tl[x]);  /* ### */
-      while(lastarg!=NIL&&isspace(hd[lastarg]))lastarg=tl[lastarg];
+           hd(x)=reduce(hd(x)),        /* ### */
+           x=tl(x)=reduce(tl(x));  /* ### */
+      while(lastarg!=NIL&&isspace(hd(lastarg)))lastarg=tl(lastarg);
       x=lastarg;
-      if(x!=NIL&&hd[x]=='-')x=tl[x];
-      if(hd[x]=='0'&&tl[x]!=NIL)
-      switch(tolower(hd[tl[x]]))
+      if(x!=NIL&&hd(x)=='-')x=tl(x);
+      if(hd(x)=='0'&&tl(x)!=NIL)
+      switch(tolower(hd(tl(x))))
         { case 'o':
               base=8;
-              x=tl[tl[x]];
-              while(x!=NIL&&isodigit(hd[x]))x=tl[x];
+              x=tl(tl(x));
+              while(x!=NIL&&isodigit(hd(x)))x=tl(x);
               break;
           case 'x':
               base=16;
-              x=tl[tl[x]];
-              while(x!=NIL&&isxdigit(hd[x]))x=tl[x];
+              x=tl(tl(x));
+              while(x!=NIL&&isxdigit(hd(x)))x=tl(x);
               break;
           default: goto L;
         }
-      else L: while(x!=NIL&&isdigit(hd[x]))x=tl[x];
+      else L: while(x!=NIL&&isdigit(hd(x)))x=tl(x);
       if(x==NIL)
-        hd[e]=I,e=tl[e]=strtobig(lastarg,base);
+        hd(e)=I,e=tl(e)=strtobig(lastarg,base);
       else { char *p=linebuf;
              double d; char junk=0;
              x=lastarg;
-             while(x!=NIL&&p-linebuf<BUFSIZE-1) *p++ = hd[x], x=tl[x];
+             while(x!=NIL&&p-linebuf<BUFSIZE-1) *p++ = hd(x), x=tl(x);
              *p++ ='\0';
              if(p-linebuf>60||sscanf(linebuf,"%lf%c",&d,&junk)!=1||junk)
              { fprintf(stderr,"\nbad arg for numval: \"%s\"\n",linebuf);
                outstats();
                exit(1); }
-             else hd[e]=I,e=tl[e]=sto_dbl(d); }
+             else hd(e)=I,e=tl(e)=sto_dbl(d); }
       goto DONE; }
 
     case READY(STARTREAD): /* STARTREAD filename => READ streamptr */
@@ -1762,7 +1762,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
       if((FILE *)lastarg==NULL)  /* cannot open file for reading  */
         { fprintf(stderr,"\nread, cannot open: \"%s\"\n",fil);
 	  outstats(); exit(1); } 
-      hd[e]=READ;
+      hd(e)=READ;
       DOWNLEFT; }
     goto L_READ;
 
@@ -1773,7 +1773,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
       if((FILE *)lastarg==NULL)  /* cannot open file for reading  */
         { fprintf(stderr,"\nreadb, cannot open: \"%s\"\n",fil);
 	  outstats(); exit(1); } 
-      hd[e]=READBIN;
+      hd(e)=READBIN;
       DOWNLEFT; }
     goto L_READBIN;
 
@@ -1782,21 +1782,21 @@ L3: if(arg1==NIL)lexfail(lastarg);
     GETARG(arg1);
     UPLEFT;
     if(arg1==FAIL)
-      { hd[e]=I; e=lastarg; goto NEXTREDEX; }
+      { hd(e)=I; e=lastarg; goto NEXTREDEX; }
     if(S<=(hold=head(arg1))&&hold<=ERROR)
       /* function - other than unsaturated constructor */
       goto DONE;/* nb! else may take premature decision(interacts with MOD1)*/
-    hd[e]=I;
-    e=tl[e]=arg1;
+    hd(e)=I;
+    e=tl(e)=arg1;
     goto NEXTREDEX;
 
     case READY(COND):      /* COND True => K
 			      COND False => KI  */
     UPLEFT;
-    hd[e]=I;
+    hd(e)=I;
     if(lastarg==True)
-      { e=tl[e]=K; goto L_K; }
-    else { e=tl[e]=KI; goto L_KI; }
+      { e=tl(e)=K; goto L_K; }
+    else { e=tl(e)=KI; goto L_KI; }
     /* goto OPDECODE;   to speed up we have set extra labels */
 
     /* alternative rules          COND True x => K x
@@ -1807,20 +1807,20 @@ L3: if(arg1==NIL)lexfail(lastarg);
     GETARG(arg1);
     upleft;
     if(arg1==NIL)
-      { hd[e]=I,e=lastarg; goto NEXTREDEX; }
-    setcell(CONS,hd[arg1],ap2(APPEND,tl[arg1],lastarg));
+      { hd(e)=I,e=lastarg; goto NEXTREDEX; }
+    setcell(CONS,hd(arg1),ap2(APPEND,tl(arg1),lastarg));
     goto DONE;
 
     case READY(AND):  /* AND True => I
 			 AND False => K False */
     UPLEFT;
     if(lastarg==True){ e=I; goto L_I; }
-    else { hd[e]=K,DOWNLEFT; goto L_K; }
+    else { hd(e)=K,DOWNLEFT; goto L_K; }
 
     case READY(OR):   /* OR True => K True
 			 OR False => I  */
     UPLEFT;
-    if(lastarg==True){ hd[e]=K; DOWNLEFT; goto L_K; }
+    if(lastarg==True){ hd(e)=K; DOWNLEFT; goto L_K; }
     else { e=I; goto L_I; }
 
     /* alternative rules     ??         AND True y => y
@@ -1831,7 +1831,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
     case READY(NOT):            /*    NOT True => False
                                       NOT False => True    */
     UPLEFT;
-    hd[e]=I; e=tl[e]=lastarg==True?False:True;
+    hd(e)=I; e=tl(e)=lastarg==True?False:True;
     goto DONE;
 
     case READY(NEG):         /*    NEG x => -x, if x is a number */
@@ -1853,12 +1853,12 @@ L3: if(arg1==NIL)lexfail(lastarg);
         { fprintf(stderr,"\nCHARACTER OUT-OF-RANGE decode(%lld)\n",val);
           outstats();
           exit(1); }
-      hd[e]=I; e=tl[e]=sto_char(val); }
+      hd(e)=I; e=tl(e)=sto_char(val); }
     goto DONE;
 
     case READY(INTEGER):   /* predicate on numbers */
     UPLEFT;
-    hd[e]=I; e=tl[e]=tag[lastarg]==INT?True:False;
+    hd(e)=I; e=tl(e)=tag[lastarg]==INT?True:False;
     goto NEXTREDEX;
 
     case READY(SHOWNUM):   /*  SHOWNUM number => numeral */
@@ -1870,13 +1870,13 @@ L3: if(arg1==NIL)lexfail(lastarg);
       { char *p=linebuf;
         while(isdigit((int)*p))p++; /* add .0 to false integer */
         if(!*p)*p++='.',*p++='0',*p='\0'; }
-      hd[e]=I; e=tl[e]=str_conv(linebuf); }
+      hd(e)=I; e=tl(e)=str_conv(linebuf); }
 #else
       d2s_buffered(x,linebuf);
       arg1=str_conv(linebuf);
       if(*linebuf=='.')arg1=cons('0',arg1);
-      if(*linebuf=='-'&&linebuf[1]=='.')arg1=cons('-',cons('0',tl[arg1]));
-      hd[e]=I; e=tl[e]=arg1; }
+      if(*linebuf=='-'&&linebuf[1]=='.')arg1=cons('-',cons('0',tl(arg1)));
+      hd(e)=I; e=tl(e)=arg1; }
 #endif
     else simpl(bigtostr(lastarg));
     goto DONE;
@@ -1885,7 +1885,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
     UPLEFT;
     if(tag[lastarg]==DOUBLE)
       { sprintf(linebuf,"%a",get_dbl(lastarg));
-        hd[e]=I; e=tl[e]=str_conv(linebuf); }
+        hd(e)=I; e=tl(e)=str_conv(linebuf); }
     else simpl(bigtostrx(lastarg));
     goto DONE;
 
@@ -1961,7 +1961,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
     RESTORE(e);  /* do not write modified form of operator back into graph */
     GETARG(arg1);
     GETARG(arg2);
-    hd[e]=I; e=tl[e]=diop(arg1,arg2);
+    hd(e)=I; e=tl(e)=diop(arg1,arg2);
     goto NEXTREDEX;
 #endif
 
@@ -1970,13 +1970,13 @@ L3: if(arg1==NIL)lexfail(lastarg);
     RESTORE(e);
     GETARG(arg1);
     GETARG(arg2);
-    if(isap(arg1)&&hd[arg1]!=NUMBER&&isap(arg2)&&hd[arg2]!=NUMBER)
+    if(isap(arg1)&&hd(arg1)!=NUMBER&&isap(arg2)&&hd(arg2)!=NUMBER)
       { /* recurse on components */
-        hd[e]=ap2(EQUAL,tl[arg1],tl[arg2]);
-        hd[e]=ap3(EQUAL,hd[arg1],hd[arg2],hd[e]);
-        tl[e]=False;
+        hd(e)=ap2(EQUAL,tl(arg1),tl(arg2));
+        hd(e)=ap3(EQUAL,hd(arg1),hd(arg2),hd(e));
+        tl(e)=False;
       }  
-    else { hd[e]=I; e=tl[e]= (eqatom(arg1,arg2)?True:False); }
+    else { hd(e)=I; e=tl(e)= (eqatom(arg1,arg2)?True:False); }
     goto NEXTREDEX;
 #endif
 
@@ -1986,8 +1986,8 @@ L3: if(arg1==NIL)lexfail(lastarg);
     GETARG(arg1);
     GETARG(arg2);
     if(arg1==NIL||arg2==NIL)
-     { hd[e]=I; e=tl[e]=NIL; goto DONE; }
-    setcell(CONS,cons(hd[arg1],hd[arg2]),ap2(ZIP,tl[arg1],tl[arg2]));
+     { hd(e)=I; e=tl(e)=NIL; goto DONE; }
+    setcell(CONS,cons(hd(arg1),hd(arg2)),ap2(ZIP,tl(arg1),tl(arg2)));
     goto DONE;
 
     case READY(EQ):       /*    EQ x x => True
@@ -1996,7 +1996,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    hd[e]=I; e=tl[e]=compare(arg1,lastarg)?False:True;  /* ### */
+    hd(e)=I; e=tl(e)=compare(arg1,lastarg)?False:True;  /* ### */
     goto DONE;
 
     case READY(NEQ):      /*    NEQ x x => False
@@ -2005,21 +2005,21 @@ L3: if(arg1==NIL)lexfail(lastarg);
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    hd[e]=I; e=tl[e]=compare(arg1,lastarg)?True:False;  /* ### */
+    hd(e)=I; e=tl(e)=compare(arg1,lastarg)?True:False;  /* ### */
     goto DONE;
 
     case READY(GR):
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    hd[e]=I; e=tl[e]=compare(arg1,lastarg)>0?True:False;  /* ### */
+    hd(e)=I; e=tl(e)=compare(arg1,lastarg)>0?True:False;  /* ### */
     goto DONE;
 
     case READY(GRE):
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    hd[e]=I; e=tl[e]=compare(arg1,lastarg)>=0?True:False;  /* ### */
+    hd(e)=I; e=tl(e)=compare(arg1,lastarg)>=0?True:False;  /* ### */
     goto DONE;
 
     case READY(PLUS):
@@ -2110,7 +2110,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
       int_error("showscaled");
     arg1=getsmallint(arg1);
     (void)sprintf(linebuf,"%.*e",(int)arg1,force_dbl(lastarg));
-    hd[e]=I; e=tl[e]=str_conv(linebuf);
+    hd(e)=I; e=tl(e)=str_conv(linebuf);
     goto DONE;
 
     case READY(SHOWFLOAT): /* SHOWFLOAT precision number => numeral */ 
@@ -2121,7 +2121,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
       int_error("showfloat");
     arg1=getsmallint(arg1);
     (void)sprintf(linebuf,"%.*f",(int)arg1,force_dbl(lastarg));
-    hd[e]=I; e=tl[e]=str_conv(linebuf);
+    hd(e)=I; e=tl(e)=str_conv(linebuf);
     goto DONE;
 
 #define coerce_dbl(x)  tag[x]==DOUBLE?(x):sto_dbl(bigtodbl(x))
@@ -2130,7 +2130,7 @@ L3: if(arg1==NIL)lexfail(lastarg);
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    hd[e]=ap(GENSEQ,cons(arg1,NIL));
+    hd(e)=ap(GENSEQ,cons(arg1,NIL));
     goto NEXTREDEX;
 
     case READY(MERGE): /* MERGE [] y => y
@@ -2142,10 +2142,10 @@ L3: if(arg1==NIL)lexfail(lastarg);
     UPLEFT;
     if(arg1==NIL)simpl(lastarg); else
     if(lastarg==NIL)simpl(arg1); else
-    if(compare(hd[arg1]=reduce(hd[arg1]),
-	       hd[lastarg]=reduce(hd[lastarg]))<=0)  /* ### */
-       setcell(CONS,hd[arg1],ap2(MERGE,tl[arg1],lastarg));
-    else setcell(CONS,hd[lastarg],ap2(MERGE,tl[lastarg],arg1));
+    if(compare(hd(arg1)=reduce(hd(arg1)),
+	       hd(lastarg)=reduce(hd(lastarg)))<=0)  /* ### */
+       setcell(CONS,hd(arg1),ap2(MERGE,tl(arg1),lastarg));
+    else setcell(CONS,hd(lastarg),ap2(MERGE,tl(lastarg),arg1));
     goto DONE;
 
     case READY(STEPUNTIL):  /* STEPUNTIL i a b => GENSEQ (i,b) a */
@@ -2153,9 +2153,9 @@ L3: if(arg1==NIL)lexfail(lastarg);
     GETARG(arg1);
     GETARG(arg2);
     UPLEFT;
-    hd[e]=ap(GENSEQ,cons(arg1,arg2));
+    hd(e)=ap(GENSEQ,cons(arg1,arg2));
     if(tag[arg1]==INT?poz(arg1):get_dbl(arg1)>=0.0)
-      tag[tl[hd[e]]]=AP; /* hack to record sign of step - see GENSEQ */
+      tag[tl(hd(e))]=AP; /* hack to record sign of step - see GENSEQ */
     goto NEXTREDEX;
 
     case READY(Ush):
@@ -2168,25 +2168,25 @@ L3: if(arg1==NIL)lexfail(lastarg);
     GETARG(arg2);
     GETARG(arg3);
     if(constr_tag(head(arg1))!=constr_tag(head(arg3)))
-      { hd[e]=I;
-	e=tl[e]=FAIL;
+      { hd(e)=I;
+	e=tl(e)=FAIL;
 	goto DONE; }  /* result is string, so cannot be more args */
     if(tag[arg1]==CONSTRUCTOR) /* don't parenthesise atom */
-      { hd[e]=I;
+      { hd(e)=I;
         if(suppressed(arg1))
-	  e=tl[e]=str_conv("<unprintable>");
-	else e=tl[e]=str_conv(constr_name(arg1));
+	  e=tl(e)=str_conv("<unprintable>");
+	else e=tl(e)=str_conv(constr_name(arg1));
 	goto DONE; }
     hold=arg2?cons(')',NIL):NIL;
     while(tag[arg1]!=CONSTRUCTOR)
-         hold=cons(' ',ap2(APPEND,ap(tl[arg1],tl[arg3]),hold)),
-         arg1=hd[arg1],arg3=hd[arg3];
+         hold=cons(' ',ap2(APPEND,ap(tl(arg1),tl(arg3)),hold)),
+         arg1=hd(arg1),arg3=hd(arg3);
     if(suppressed(arg1))
-      { hd[e]=I; e=tl[e]=str_conv("<unprintable>"); goto DONE; }
+      { hd(e)=I; e=tl(e)=str_conv("<unprintable>"); goto DONE; }
     hold=ap2(APPEND,str_conv(constr_name(arg1)),hold);
     if(arg2)
       { setcell(CONS,'(',hold); goto DONE; }
-    else { hd[e]=I; e=tl[e]=hold; goto NEXTREDEX; }
+    else { hd(e)=I; e=tl(e)=hold; goto NEXTREDEX; }
 
     default: fprintf(stderr,"\nimpossible event in reduce ("),
 	     out(stderr,e),fprintf(stderr,")\n"),
@@ -2198,12 +2198,12 @@ L3: if(arg1==NIL)lexfail(lastarg);
 
 int memclass(int c,word x) /* is char c in list x (may include ranges) */
 { while(x!=NIL)
-       { if(hd[x]==DOTDOT)
-           { x=tl[x];
-             if(hd[x]<=c&&c<=hd[tl[x]])return(1);
-             x=tl[x]; }
-         else if(c==hd[x])return(1);
-         x=tl[x]; }
+       { if(hd(x)==DOTDOT)
+           { x=tl(x);
+             if(hd(x)<=c&&c<=hd(tl(x)))return(1);
+             x=tl(x); }
+         else if(c==hd(x))return(1);
+         x=tl(x); }
   return(0);
 }
 
@@ -2212,7 +2212,7 @@ void lexfail(word x)  /* x is known to be a non-empty string (see LEX_RPT) */
   fprintf(stderr,"\nLEX FAILS WITH UNRECOGNISED INPUT: \"");
   while(i--&&x!=NIL&&0<=lh(x)&&lh(x)<=255)
      fprintf(stderr,"%s",charname(lh(x))),
-     x=tl[x];
+     x=tl(x);
   fprintf(stderr,"%s\"\n",x==NIL?"":"...");
   outstats();
   exit(1);
@@ -2221,7 +2221,7 @@ void lexfail(word x)  /* x is known to be a non-empty string (see LEX_RPT) */
 word lexstate(word x)
             /* extracts initial state info from list of chars labelled
                by LEX_COUNT - x is evaluated and known to be non-empty */
-{ x = hd[hd[x]]; /* count field of first char */
+{ x = hd(hd(x)); /* count field of first char */
   return(cons(sto_int(x>>8),stosmallint(x&255)));
 }
 
@@ -2233,13 +2233,13 @@ word g_residue(word toks2)
                        /* remainder of token stream from last token examined */
 { word toks1 = NIL;
   if(tag[toks2]!=CONS)
-    { if(tag[toks2]==AP&&hd[toks2]==I&&tl[toks2]==NIL)
+    { if(tag[toks2]==AP&&hd(toks2)==I&&tl(toks2)==NIL)
         return(cons(NIL,NIL));
       return(cons(NIL,toks2)); /*no tokens examined, whole grammar is `error'*/
     }
-  while(tag[tl[toks2]]==CONS)toks1=cons(hd[toks2],toks1),toks2=tl[toks2];
-  if(tl[toks2]==NIL||(tag[tl[toks2]]==AP&&hd[tl[toks2]]==I&&tl[tl[toks2]]==NIL))
-    { toks1=cons(hd[toks2],toks1);
+  while(tag[tl(toks2)]==CONS)toks1=cons(hd(toks2),toks1),toks2=tl(toks2);
+  if(tl(toks2)==NIL||(tag[tl(toks2)]==AP&&hd(tl(toks2))==I&&tl(tl(toks2))==NIL))
+    { toks1=cons(hd(toks2),toks1);
       return(cons(ap(DESTREV,toks1),NIL)); }
   return(cons(ap(DESTREV,toks1),toks2));
 }
@@ -2321,7 +2321,7 @@ void out_here(FILE *f,word h,word nl)  /* h is fileinfo(scriptname,line_no) */
 { extern word errs;
   if(tag[h]!=FILEINFO)
     { fprintf(stderr,"(impossible event in outhere)\n"); return; }
-  fprintf(f,"(line %3ld of \"%s\")",tl[h],(char *)hd[h]);
+  fprintf(f,"(line %3ld of \"%s\")",tl(h),(char *)hd(h));
   if(nl)putc('\n',f); else putc(' ',f);
   if(compiling&&!errs)errs=h; /* relevant only when called from steer.c */
 } /* `soft' error, set errs rather than errline, so not saved in dump */

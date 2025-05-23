@@ -63,7 +63,7 @@ long long get_int(word x) /* mira bigint to C long long */
 
 word bignegate(word x)
 { if(bigzero(x))return(x);
-  return(make(INT,hd[x]&SIGNBIT?hd[x]&MAXDIGIT:SIGNBIT|hd[x],tl[x]));
+  return(make(INT,hd(x)&SIGNBIT?hd(x)&MAXDIGIT:SIGNBIT|hd(x),tl(x)));
 }
 
 word bigplus(word x, word y)
@@ -483,12 +483,12 @@ word strtobig(word z,int base) /* numeral (as Miranda string) to big number */
 { word s=0,r=make(INT,0,0),PBASE=PTEN;
   if(base==16)PBASE=PSIXTEEN; else
   if(base==8)PBASE=PEIGHT;
-  if(z!=NIL&&hd[z]=='-')s=1,z=tl[z]; /* optional leading `-' (for NUMVAL) */
-  if(base!=10)z=tl[tl[z]]; /* remove "0x" or "0o" */
+  if(z!=NIL&&hd(z)=='-')s=1,z=tl(z); /* optional leading `-' (for NUMVAL) */
+  if(base!=10)z=tl(tl(z)); /* remove "0x" or "0o" */
   while(z!=NIL)
-       { word d=digitval(hd[z]),f=base;
-         z=tl[z];
-         while(z!=NIL&&f<PBASE)d=base*d+digitval(hd[z]),f=base*f,z=tl[z];
+       { word d=digitval(hd(z)),f=base;
+         z=tl(z);
+         while(z!=NIL&&f<PBASE)d=base*d+digitval(hd(z)),f=base*f,z=tl(z);
          /* rest of loop does r=f*r+d; (in situ) */
          d= f*digit(r)+d;
        { word carry=d>>DIGITWIDTH;

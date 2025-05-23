@@ -82,8 +82,8 @@ char *yysterm[]= {
 extern word nill,k_i,Void;
 extern word message,standardout;
 extern word big_one;
-#define isltmess_t(t) (islist_t(t)&&tl[t]==message)
-#define isstring_t(t) (islist_t(t)&&tl[t]==char_t)
+#define isltmess_t(t) (islist_t(t)&&tl(t)==message)
+#define isstring_t(t) (islist_t(t)&&tl(t)==char_t)
 extern word SYNERR,errs,echoing,gvars;
 extern word listdiff_fn,indent_fn,outdent_fn;
 word lastname=0;
@@ -128,18 +128,18 @@ void obey(word x) /* like evaluate but no fork, no stats, no extra '\n' */
 }
 
 int isstring(word x)
-{ return(x==NILS||(tag[x]==CONS&&is_char(hd[x])));
+{ return(x==NILS||(tag[x]==CONS&&is_char(hd(x))));
 }
 
 word compose(word x) /* used in compiling 'cases' */
-{ word y=hd[x];
-  if(hd[y]==OTHERWISE)y=tl[y]; /* OTHERWISE was just a marker - lose it */
-  else y=tag[y]==LABEL?label(hd[y],ap(tl[y],FAIL)):
+{ word y=hd(x);
+  if(hd(y)==OTHERWISE)y=tl(y); /* OTHERWISE was just a marker - lose it */
+  else y=tag[y]==LABEL?label(hd(y),ap(tl(y),FAIL)):
          ap(y,FAIL); /* if all guards false result is FAIL */
-  x = tl[x];
+  x = tl(x);
   if(x!=NIL)
-    { while(tl[x]!=NIL)y=label(hd[hd[x]],ap(tl[hd[x]],y)), x=tl[x];
-      y=ap(hd[x],y);
+    { while(tl(x)!=NIL)y=label(hd(hd(x)),ap(tl(hd(x)),y)), x=tl(x);
+      y=ap(hd(x),y);
      /* first alternative has no label - label of enclosing rhs applies */
     }
   return(y);
@@ -152,27 +152,27 @@ word starts(word x) /* x is grammar rhs - returns list of nonterminals in start 
      { case ID: return(cons(x,NIL));
        case LABEL:
        case LET:
-       case LETREC: x=tl[x]; goto L;
-       case AP: switch(hd[x])
+       case LETREC: x=tl(x); goto L;
+       case AP: switch(hd(x))
                 { case G_SYMB:
                   case G_SUCHTHAT:
                   case G_RULE: return(NIL);
                   case G_OPT:
                   case G_FBSTAR:
-                  case G_STAR: x=tl[x]; goto L;
-                  default: if(hd[x]==outdent_fn)
-                             { x=tl[x]; goto L; }
-                           if(tag[hd[x]]==AP) {
-                             if(hd[hd[x]]==G_ERROR)
-                               { x=tl[hd[x]]; goto L; }
-                             if(hd[hd[x]]==G_SEQ)
-                               { if(eprod(tl[hd[x]]))
-                                   return(UNION(starts(tl[hd[x]]),starts(tl[x])));
-                                 x=tl[hd[x]]; goto L; }
-                             if(hd[hd[x]]==G_ALT)
-                               return(UNION(starts(tl[hd[x]]),starts(tl[x])));
-                             if(hd[hd[x]]==indent_fn)
-                               { x=tl[x]; goto L; }
+                  case G_STAR: x=tl(x); goto L;
+                  default: if(hd(x)==outdent_fn)
+                             { x=tl(x); goto L; }
+                           if(tag[hd(x)]==AP) {
+                             if(hd(hd(x))==G_ERROR)
+                               { x=tl(hd(x)); goto L; }
+                             if(hd(hd(x))==G_SEQ)
+                               { if(eprod(tl(hd(x))))
+                                   return(UNION(starts(tl(hd(x))),starts(tl(x))));
+                                 x=tl(hd(x)); goto L; }
+                             if(hd(hd(x))==G_ALT)
+                               return(UNION(starts(tl(hd(x))),starts(tl(x))));
+                             if(hd(hd(x))==indent_fn)
+                               { x=tl(x); goto L; }
 			     fprintf(stderr, "Internal error: AP tag is followed by unhandled case in starts()\nPlease report it to miranda@groups.io\n");
                            } else fprintf(stderr, "Internal error: AP tag is followed by neither outdent nor AP in starts()\nPlease report it to miranda@groups.io\n");
                 }
@@ -185,8 +185,8 @@ int eprod(word x) /* x is grammar rhs - does x admit empty production? */
      { case ID: return(member(eprodnts,x));
        case LABEL:
        case LET:
-       case LETREC: x=tl[x]; goto L;
-       case AP: switch(hd[x])
+       case LETREC: x=tl(x); goto L;
+       case AP: switch(hd(x))
                 { case G_SUCHTHAT:
                   case G_ANY:
                   case G_SYMB: return(0);
@@ -194,17 +194,17 @@ int eprod(word x) /* x is grammar rhs - does x admit empty production? */
                   case G_OPT:
                   case G_FBSTAR:
                   case G_STAR: return(1);
-                  default: if(hd[x]==outdent_fn)
-                             { x=tl[x]; goto L; }
-                           if(tag[hd[x]]==AP) {
-                             if(hd[hd[x]]==G_ERROR)
-                               { x=tl[hd[x]]; goto L; }
-                             if(hd[hd[x]]==G_SEQ)
-                               return(eprod(tl[hd[x]])&&eprod(tl[x])); else
-                             if(hd[hd[x]]==G_ALT)
-                               return(eprod(tl[hd[x]])||eprod(tl[x]));
-                             if(hd[hd[x]]==indent_fn)
-                               { x=tl[x]; goto L; }
+                  default: if(hd(x)==outdent_fn)
+                             { x=tl(x); goto L; }
+                           if(tag[hd(x)]==AP) {
+                             if(hd(hd(x))==G_ERROR)
+                               { x=tl(hd(x)); goto L; }
+                             if(hd(hd(x))==G_SEQ)
+                               return(eprod(tl(hd(x)))&&eprod(tl(x))); else
+                             if(hd(hd(x))==G_ALT)
+                               return(eprod(tl(hd(x)))||eprod(tl(x)));
+                             if(hd(hd(x))==indent_fn)
+                               { x=tl(x); goto L; }
 			     fprintf(stderr, "Internal error: AP tag is followed by unhandled case in eprod()\nPlease report it to miranda@groups.io\n");
 			   } else fprintf(stderr, "Internal error: AP tag is followed by neither outdent nor AP in eprod()\nPlease report it to miranda@groups.io\n");
                 }
@@ -216,13 +216,13 @@ int eprod(word x) /* x is grammar rhs - does x admit empty production? */
 
 word add_prod(word d,word ps,word hr)
 { word p,n=dlhs(d);
-  for(p=ps;p!=NIL;p=tl[p])
-  if(dlhs(hd[p])==n) {
-     if(dtyp(d)==undef_t&&dval(hd[p])==UNDEF) {
-       dval(hd[p])=dval(d); return(ps);
+  for(p=ps;p!=NIL;p=tl(p))
+  if(dlhs(hd(p))==n) {
+     if(dtyp(d)==undef_t&&dval(hd(p))==UNDEF) {
+       dval(hd(p))=dval(d); return(ps);
      } else {
-       if(dtyp(d)!=undef_t&&dtyp(hd[p])==undef_t)
-	 { dtyp(hd[p])=dtyp(d); return(ps); }
+       if(dtyp(d)!=undef_t&&dtyp(hd(p))==undef_t)
+	 { dtyp(hd(p))=dtyp(d); return(ps); }
        else
 	 errs=hr,
 	 printf(
@@ -238,23 +238,23 @@ word add_prod(word d,word ps,word hr)
 /* clumsy - this algorithm is quadratic in number of prodns - fix later */
 
 word getloc(word nt,word prods)  /* get here info for nonterminal */
-{ while(prods!=NIL&&dlhs(hd[prods])!=nt)prods=tl[prods];
-  if(prods!=NIL)return(hd[dval(hd[prods])]);
+{ while(prods!=NIL&&dlhs(hd(prods))!=nt)prods=tl(prods);
+  if(prods!=NIL)return(hd(dval(hd(prods))));
   return(0);  /* should not happen, but just in case */
 }
 
 void findnt(word nt) /* set errs to here info of undefined nonterminal */
 { word p=ntmap;
-  while(p!=NIL&&hd[hd[p]]!=nt)p=tl[p];
+  while(p!=NIL&&hd(hd(p))!=nt)p=tl(p);
   if(p!=NIL)
-    { errs=tl[hd[p]]; return; }
+    { errs=tl(hd(p)); return; }
   p=ntspecmap;
-  while(p!=NIL&&hd[hd[p]]!=nt)p=tl[p];
-  if(p!=NIL)errs=tl[hd[p]];
+  while(p!=NIL&&hd(hd(p))!=nt)p=tl(p);
+  if(p!=NIL)errs=tl(hd(p));
 }
 
-#define isap2(fn,x) (tag[x]==AP&&tag[hd[x]]==AP&&hd[hd[x]]==(fn))
-#define firstsymb(term) tl[hd[term]]
+#define isap2(fn,x) (tag[x]==AP&&tag[hd(x)]==AP&&hd(hd(x))==(fn))
+#define firstsymb(term) tl(hd(term))
 
 void binom(word rhs,word x)
 /* performs the binomial optimisation on rhs of nonterminal x
@@ -262,25 +262,25 @@ void binom(word rhs,word x)
         ==>
     x: rest (alpha1|...|alphaN)*
 */
-{ word *p= &tl[rhs];  /* rhs is of form label(hereinf, stuff) */
+{ word *p= &tl(rhs);  /* rhs is of form label(hereinf, stuff) */
   word *lastp=0,*holdrhs,suffix,alpha=NIL;
-  if(tag[*p]==LETREC)p = &tl[*p]; /* ignore trailing `where defs' */
-  if(isap2(G_ERROR,*p))p = &tl[hd[*p]];
+  if(tag[*p]==LETREC)p = &tl(*p); /* ignore trailing `where defs' */
+  if(isap2(G_ERROR,*p))p = &tl(hd(*p));
   holdrhs=p;
   while(isap2(G_ALT,*p))
-    if(firstsymb(tl[hd[*p]])==x)
-       alpha=cons(tl[tl[hd[*p]]],alpha),
-       *p=tl[*p],p = &tl[*p];
-    else lastp=p,p = &tl[tl[*p]];
+    if(firstsymb(tl(hd(*p)))==x)
+       alpha=cons(tl(tl(hd(*p))),alpha),
+       *p=tl(*p),p = &tl(*p);
+    else lastp=p,p = &tl(tl(*p));
     /* note each (G_ALT a b) except the outermost is labelled */
   if(lastp&&firstsymb(*p)==x)
-    alpha=cons(tl[*p],alpha),
-    *lastp=tl[hd[*lastp]];
+    alpha=cons(tl(*p),alpha),
+    *lastp=tl(hd(*lastp));
   if(alpha==NIL)return;
-  suffix=hd[alpha],alpha=tl[alpha];
+  suffix=hd(alpha),alpha=tl(alpha);
   while(alpha!=NIL)
-       suffix=ap2(G_ALT,hd[alpha],suffix),
-       alpha=tl[alpha];
+       suffix=ap2(G_ALT,hd(alpha),suffix),
+       alpha=tl(alpha);
   *holdrhs=ap2(G_SEQ,*holdrhs,ap(G_FBSTAR,suffix));
 }
 /* should put some labels on the alpha's - fix later */
@@ -302,31 +302,31 @@ void startbnf()
 word ih_abstr(word x)  /* abstract inherited attributes from grammar rule */
 { word ih=ihlist;
   while(ih!=NIL)  /* relies on fact that ihlist is reversed */
-       x=lambda(hd[ih],x),ih=tl[ih];
+       x=lambda(hd(ih),x),ih=tl(ih);
   return(x);
 }
 
 int can_elide(word x) /* is x of the form $1 applied to ih attributes in order? */
 { word ih;
   if(ihlist)
-    for(ih=ihlist;ih!=NIL&&tag[x]==AP;ih=tl[ih],x=hd[x])
-       if(hd[ih]!=tl[x])return(0);
+    for(ih=ihlist;ih!=NIL&&tag[x]==AP;ih=tl(ih),x=hd(x))
+       if(hd(ih)!=tl(x))return(0);
   return(x==mkgvar(1));
 }
 
 int e_re(word x) /* does regular expression x match empty string ? */
 { L: if(tag[x]==AP)
-       { if(hd[x]==LEX_STAR||hd[x]==LEX_OPT)return(1);
-         if(hd[x]==LEX_STRING)return(tl[x]==NIL);
-         if(tag[hd[x]]!=AP)return(0);
-         if(hd[hd[x]]==LEX_OR)
-           { if(e_re(tl[hd[x]]))return(1);
-             x=tl[x]; goto L; } else
-         if(hd[hd[x]]==LEX_SEQ)
-           { if(!e_re(tl[hd[x]]))return(0);
-             x=tl[x]; goto L; } else
-         if(hd[hd[x]]==LEX_RCONTEXT)
-           { x=tl[hd[x]]; goto L; }
+       { if(hd(x)==LEX_STAR||hd(x)==LEX_OPT)return(1);
+         if(hd(x)==LEX_STRING)return(tl(x)==NIL);
+         if(tag[hd(x)]!=AP)return(0);
+         if(hd(hd(x))==LEX_OR)
+           { if(e_re(tl(hd(x))))return(1);
+             x=tl(x); goto L; } else
+         if(hd(hd(x))==LEX_SEQ)
+           { if(!e_re(tl(hd(x))))return(0);
+             x=tl(x); goto L; } else
+         if(hd(hd(x))==LEX_RCONTEXT)
+           { x=tl(hd(x)); goto L; }
        }
      return(0);
 }
@@ -3185,7 +3185,7 @@ break;
 case 46:
 #line 521 "rules.y"
 	{ yyval = cons(yystack.l_mark[0],yystack.l_mark[-3]); 
-             if(hd[hd[yystack.l_mark[-3]]]==OTHERWISE)
+             if(hd(hd(yystack.l_mark[-3]))==OTHERWISE)
                syntax("\"otherwise\" must be last case\n"); }
 #line 3191 "y.tab.c"
 break;
@@ -3523,7 +3523,7 @@ break;
 case 124:
 #line 705 "rules.y"
 	{ word subject;
-            subject = hd[hd[yystack.l_mark[-2]]]==AND?tl[tl[yystack.l_mark[-2]]]:tl[yystack.l_mark[-2]];
+            subject = hd(hd(yystack.l_mark[-2]))==AND?tl(tl(yystack.l_mark[-2])):tl(yystack.l_mark[-2]);
             yyval = ap2(AND,yystack.l_mark[-2],ap2(yystack.l_mark[-1],subject,yystack.l_mark[0]));
           }
 #line 3530 "y.tab.c"
@@ -3541,7 +3541,7 @@ break;
 case 127:
 #line 717 "rules.y"
 	{ word subject;
-            subject = hd[hd[yystack.l_mark[-2]]]==AND?tl[tl[yystack.l_mark[-2]]]:tl[yystack.l_mark[-2]];
+            subject = hd(hd(yystack.l_mark[-2]))==AND?tl(tl(yystack.l_mark[-2])):tl(yystack.l_mark[-2]);
             yyval = ap2(AND,yystack.l_mark[-2],ap2(yystack.l_mark[-1],subject,yystack.l_mark[0]));
           }
 #line 3548 "y.tab.c"
@@ -3556,14 +3556,14 @@ case 129:
 	{ inlex=0; lexdefs=NIL;
             if(lexstates!=NIL)
               { word echoed=0;
-                for(;lexstates!=NIL;lexstates=tl[lexstates])
+                for(;lexstates!=NIL;lexstates=tl(lexstates))
                 { if(!echoed)printf(echoing?"\n":""),echoed=1;
-                  if(!(tl[hd[lexstates]]&1))
+                  if(!(tl(hd(lexstates))&1))
                     printf("warning: lex state %s is never entered\n",
-                           get_id(hd[hd[lexstates]])); else
-                  if(!(tl[hd[lexstates]]&2))
+                           get_id(hd(hd(lexstates)))); else
+                  if(!(tl(hd(lexstates))&2))
                     printf("warning: lex state %s has no associated rules\n",
-                           get_id(hd[hd[lexstates]])); }
+                           get_id(hd(hd(lexstates)))); }
               }
             if(yystack.l_mark[-1]==NIL)syntax("%lex with no rules\n");
             else tag[yystack.l_mark[-1]]=LEXER;
@@ -3654,7 +3654,7 @@ case 147:
 break;
 case 148:
 #line 782 "rules.y"
-	{ yyval = (tag[yystack.l_mark[-2]]==AP&&hd[yystack.l_mark[-2]]==C)?ap(tl[yystack.l_mark[-2]],yystack.l_mark[-1]): /* optimisation */
+	{ yyval = (tag[yystack.l_mark[-2]]==AP&&hd(yystack.l_mark[-2])==C)?ap(tl(yystack.l_mark[-2]),yystack.l_mark[-1]): /* optimisation */
                  ap2(C,yystack.l_mark[-2],yystack.l_mark[-1]); }
 #line 3660 "y.tab.c"
 break;
@@ -3665,10 +3665,10 @@ case 149:
 break;
 case 150:
 #line 787 "rules.y"
-	{ if(tl[yystack.l_mark[-1]]==NIL)yyval=pair(yystack.l_mark[-3],hd[yystack.l_mark[-1]]);
-            else { yyval=pair(hd[tl[yystack.l_mark[-1]]],hd[yystack.l_mark[-1]]);
-                   yystack.l_mark[-1]=tl[tl[yystack.l_mark[-1]]];
-                   while(yystack.l_mark[-1]!=NIL)yyval=tcons(hd[yystack.l_mark[-1]],yyval),yystack.l_mark[-1]=tl[yystack.l_mark[-1]];
+	{ if(tl(yystack.l_mark[-1])==NIL)yyval=pair(yystack.l_mark[-3],hd(yystack.l_mark[-1]));
+            else { yyval=pair(hd(tl(yystack.l_mark[-1])),hd(yystack.l_mark[-1]));
+                   yystack.l_mark[-1]=tl(tl(yystack.l_mark[-1]));
+                   while(yystack.l_mark[-1]!=NIL)yyval=tcons(hd(yystack.l_mark[-1]),yyval),yystack.l_mark[-1]=tl(yystack.l_mark[-1]);
                    yyval = tcons(yystack.l_mark[-3],yyval); }
           /* representation of the tuple (a1,...,an) is
              tcons(a1,tcons(a2,...pair(a(n-1),an))) */
@@ -3706,11 +3706,11 @@ break;
 case 156:
 #line 810 "rules.y"
 	{ word ns=NIL;
-            for(;yystack.l_mark[-1]!=NIL;yystack.l_mark[-1]=tl[yystack.l_mark[-1]])
+            for(;yystack.l_mark[-1]!=NIL;yystack.l_mark[-1]=tl(yystack.l_mark[-1]))
                { word *x = &lexstates,i=1;
-                 while(*x!=NIL&&hd[hd[*x]]!=hd[yystack.l_mark[-1]])i++,x = &tl[*x];
-                 if(*x == NIL)*x = cons(cons(hd[yystack.l_mark[-1]],2),NIL);
-                 else tl[hd[*x]] |= 2; 
+                 while(*x!=NIL&&hd(hd(*x))!=hd(yystack.l_mark[-1]))i++,x = &tl(*x);
+                 if(*x == NIL)*x = cons(cons(hd(yystack.l_mark[-1]),2),NIL);
+                 else tl(hd(*x)) |= 2; 
                  ns = add1(i,ns); }
             yyval = ns; }
 #line 3717 "y.tab.c"
@@ -3737,9 +3737,9 @@ break;
 case 160:
 #line 833 "rules.y"
 	{ word *x = &lexstates,i=1;
-                while(*x!=NIL&&hd[hd[*x]]!=yystack.l_mark[0])i++,x = &tl[*x];
+                while(*x!=NIL&&hd(hd(*x))!=yystack.l_mark[0])i++,x = &tl(*x);
                 if(*x == NIL)*x = cons(cons(yystack.l_mark[0],1),NIL);
-                else tl[hd[*x]] |= 1;
+                else tl(hd(*x)) |= 1;
                 yyval = i;
               }
 #line 3746 "y.tab.c"
@@ -3811,7 +3811,7 @@ case 176:
               out(stdout,yystack.l_mark[0]),printf("\" in regular expression\n"),
               acterror();
             yyval = yystack.l_mark[0]==NILS?ap(LEX_STRING,NIL):
-                 tl[yystack.l_mark[0]]==NIL?ap(LEX_CHAR,hd[yystack.l_mark[0]]):
+                 tl(yystack.l_mark[0])==NIL?ap(LEX_CHAR,hd(yystack.l_mark[0])):
                              ap(LEX_STRING,yystack.l_mark[0]);
           }
 #line 3818 "y.tab.c"
@@ -3820,7 +3820,7 @@ case 177:
 #line 892 "rules.y"
 	{ if(yystack.l_mark[0]==NIL)
               syntax("empty character class `` cannot match\n");
-            yyval = tl[yystack.l_mark[0]]==NIL?ap(LEX_CHAR,hd[yystack.l_mark[0]]):ap(LEX_CLASS,yystack.l_mark[0]); }
+            yyval = tl(yystack.l_mark[0])==NIL?ap(LEX_CHAR,hd(yystack.l_mark[0])):ap(LEX_CLASS,yystack.l_mark[0]); }
 #line 3825 "y.tab.c"
 break;
 case 178:
@@ -3836,14 +3836,14 @@ break;
 case 180:
 #line 900 "rules.y"
 	{ word x=lexdefs;
-            while(x!=NIL&&hd[hd[x]]!=yystack.l_mark[0])x=tl[x];
+            while(x!=NIL&&hd(hd(x))!=yystack.l_mark[0])x=tl(x);
             if(x==NIL)
               printf(
       "%ssyntax error: undefined lexeme %s in regular expression\n",
                       echoing?"\n":"",
                       get_id(yystack.l_mark[0])),
                   acterror();
-            else yyval = tl[hd[x]]; }
+            else yyval = tl(hd(x)); }
 #line 3848 "y.tab.c"
 break;
 case 183:
@@ -3869,10 +3869,10 @@ break;
 case 187:
 #line 924 "rules.y"
 	{ /* fix syntax to disallow patlist on lhs of iterate generator */
-            if(hd[yystack.l_mark[0]]==GENERATOR)
-              { word e=tl[tl[yystack.l_mark[0]]];
-                if(tag[e]==AP&&tag[hd[e]]==AP&&
-                    (hd[hd[e]]==ITERATE||hd[hd[e]]==ITERATE1))
+            if(hd(yystack.l_mark[0])==GENERATOR)
+              { word e=tl(tl(yystack.l_mark[0]));
+                if(tag[e]==AP&&tag[hd(e)]==AP&&
+                    (hd(hd(e))==ITERATE||hd(hd(e))==ITERATE1))
                   syntax("ill-formed generator\n"); }
             yyval = cons(REPEAT,cons(genlhs(yystack.l_mark[-2]),yystack.l_mark[0])); idsused=NIL;  }
 #line 3879 "y.tab.c"
@@ -3896,15 +3896,15 @@ case 193:
 	{ word l = yystack.l_mark[-6], r = yystack.l_mark[-1];
             word f = head(l);
             if(tag[f]==ID&&!isconstructor(f)) /* fnform defn */
-              while(tag[l]==AP)r=lambda(tl[l],r),l=hd[l];
+              while(tag[l]==AP)r=lambda(tl(l),r),l=hd(l);
             r = label(yystack.l_mark[-2],r); /* to help locate type errors */
             declare(l,r),lastname=l; }
 #line 3903 "y.tab.c"
 break;
 case 194:
 #line 957 "rules.y"
-	{ word h=reverse(hd[yystack.l_mark[0]]),hr=hd[tl[yystack.l_mark[0]]],t=tl[tl[yystack.l_mark[0]]];
-            while(h!=NIL&&!SYNERR)specify(hd[h],t,hr),h=tl[h];
+	{ word h=reverse(hd(yystack.l_mark[0])),hr=hd(tl(yystack.l_mark[0])),t=tl(tl(yystack.l_mark[0]));
+            while(h!=NIL&&!SYNERR)specify(hd(h),t,hr),h=tl(h);
             yyval = cons(nill,NIL); }
 #line 3910 "y.tab.c"
 break;
@@ -3914,23 +3914,23 @@ case 195:
             extern char *dicp,*dicq;
             word x=reverse(yystack.l_mark[-1]),ids=NIL,tids=NIL;
             while(x!=NIL&&!SYNERR)
-                 specify(hd[hd[x]],cons(tl[tl[hd[x]]],NIL),hd[tl[hd[x]]]),
-                  ids=cons(hd[hd[x]],ids),x=tl[x];
+                 specify(hd(hd(x)),cons(tl(tl(hd(x))),NIL),hd(tl(hd(x)))),
+                  ids=cons(hd(hd(x)),ids),x=tl(x);
             /* each id in specs has its id_type set to const(t,NIL) as a way
                of flagging that t is an abstract type */
             x=reverse(yystack.l_mark[-4]);
             while(x!=NIL&&!SYNERR)
                { word shfn;
-                 decltype(hd[x],abstract_t,undef_t,yystack.l_mark[-5]);
-                 tids=cons(head(hd[x]),tids);
+                 decltype(hd(x),abstract_t,undef_t,yystack.l_mark[-5]);
+                 tids=cons(head(hd(x)),tids);
                  /* check for presence of showfunction */
                  (void)strcpy(dicp,"show");
-                 (void)strcat(dicp,get_id(hd[tids]));
+                 (void)strcat(dicp,get_id(hd(tids)));
                  dicq = dicp+strlen(dicp)+1;
                  shfn=name();
                  if(member(ids,shfn))
-                   t_showfn(hd[tids])=shfn;
-                 x=tl[x]; }
+                   t_showfn(hd(tids))=shfn;
+                 x=tl(x); }
             TABSTRS = cons(cons(tids,ids),TABSTRS);
             yyval = cons(nill,NIL); }
 #line 3937 "y.tab.c"
@@ -3938,38 +3938,38 @@ break;
 case 196:
 #line 987 "rules.y"
 	{ word x=redtvars(ap(yystack.l_mark[-7],yystack.l_mark[-2]));
-            decltype(hd[x],synonym_t,tl[x],yystack.l_mark[-4]);
+            decltype(hd(x),synonym_t,tl(x),yystack.l_mark[-4]);
             yyval = cons(nill,NIL); }
 #line 3944 "y.tab.c"
 break;
 case 197:
 #line 992 "rules.y"
 	{ word rhs = yystack.l_mark[-2], r_ids = yystack.l_mark[-2], n=0;
-            while(r_ids!=NIL)r_ids=tl[r_ids],n++;
+            while(r_ids!=NIL)r_ids=tl(r_ids),n++;
             while(rhs!=NIL&&!SYNERR)
-            {  word h=hd[rhs],t=yystack.l_mark[-7],stricts=NIL,i=0;
+            {  word h=hd(rhs),t=yystack.l_mark[-7],stricts=NIL,i=0;
                while(tag[h]==AP)
-                    { if(tag[tl[h]]==AP&&hd[tl[h]]==strict_t)
-                        stricts=cons(i,stricts),tl[h]=tl[tl[h]];
-                      t=ap2(arrow_t,tl[h],t),h=hd[h],i++; }
+                    { if(tag[tl(h)]==AP&&hd(tl(h))==strict_t)
+                        stricts=cons(i,stricts),tl(h)=tl(tl(h));
+                      t=ap2(arrow_t,tl(h),t),h=hd(h),i++; }
                if(tag[h]==ID)
                  declconstr(h,--n,t);
                  /* warning - type not yet in reduced form */
                else { stricts=NIL;
                       if(echoing)putchar('\n');
                       printf("syntax error: illegal construct \"");
-                      out_type(hd[rhs]);
+                      out_type(hd(rhs));
                       printf("\" on right of ::=\n");
                       acterror(); } /* can this still happen? check later */
                if(stricts!=NIL) /* ! operators were present */
                  { word k = id_val(h);
                    while(stricts!=NIL)
-                        k=ap2(MKSTRICT,i-hd[stricts],k),
-                        stricts=tl[stricts];
+                        k=ap2(MKSTRICT,i-hd(stricts),k),
+                        stricts=tl(stricts);
                    id_val(h)=k; /* overwrite id_val of original constructor */
                  }
                r_ids=cons(h,r_ids);
-               rhs = tl[rhs]; }
+               rhs = tl(rhs); }
             if(!SYNERR)decltype(yystack.l_mark[-7],algebraic_t,r_ids,yystack.l_mark[-4]);
             yyval = cons(nill,NIL); }
 #line 3976 "y.tab.c"
@@ -3993,17 +3993,17 @@ case 199:
               syntax("multiple %free statements are illegal\n"); else
             { word x=reverse(yystack.l_mark[-1]);
               while(x!=NIL&&!SYNERR)
-                 { specify(hd[hd[x]],tl[tl[hd[x]]],hd[tl[hd[x]]]);
-                   freeids=cons(head(hd[hd[x]]),freeids);
-                   if(tl[tl[hd[x]]]==type_t)
-                     t_class(hd[freeids])=free_t;
-                   else id_val(hd[freeids])=FREE; /* conventional value */
-                   x=tl[x]; }
-              fil_share(hd[files])=0; /* parameterised scripts unshareable */
+                 { specify(hd(hd(x)),tl(tl(hd(x))),hd(tl(hd(x))));
+                   freeids=cons(head(hd(hd(x))),freeids);
+                   if(tl(tl(hd(x)))==type_t)
+                     t_class(hd(freeids))=free_t;
+                   else id_val(hd(freeids))=FREE; /* conventional value */
+                   x=tl(x); }
+              fil_share(hd(files))=0; /* parameterised scripts unshareable */
               freeids=alfasort(freeids); 
-              for(x=freeids;x!=NIL;x=tl[x])
-                 hd[x]=cons(hd[x],cons(datapair(get_id(hd[x]),0),
-                       id_type(hd[x])));
+              for(x=freeids;x!=NIL;x=tl(x))
+                 hd(x)=cons(hd(x),cons(datapair(get_id(hd(x)),0),
+                       id_type(hd(x))));
               /* each element of freeids is of the form
                  cons(id,cons(original_name,type)) */
             }
@@ -4027,55 +4027,55 @@ case 202:
 	{ word lhs=NIL,p=yystack.l_mark[-1],subjects,body,startswith=NIL,leftrecs=NIL;
             ihlist=inbnf=0;
             nonterminals=UNION(nonterminals,yystack.l_mark[-3]);
-            for(;p!=NIL;p=tl[p])
-            if(dval(hd[p])==UNDEF)nonterminals=add1(dlhs(hd[p]),nonterminals);
-             else lhs=add1(dlhs(hd[p]),lhs);
+            for(;p!=NIL;p=tl(p))
+            if(dval(hd(p))==UNDEF)nonterminals=add1(dlhs(hd(p)),nonterminals);
+             else lhs=add1(dlhs(hd(p)),lhs);
             nonterminals=setdiff(nonterminals,lhs);
             if(nonterminals!=NIL)
               errs=yystack.l_mark[-6],
-              member(yystack.l_mark[-3],hd[nonterminals])/*||findnt(hd[nonterminals])*/,
+              member(yystack.l_mark[-3],hd(nonterminals))/*||findnt(hd(nonterminals))*/,
               printf("%sfatal error in grammar, ",echoing?"\n":""),
               printf("undefined nonterminal%s: ",
-                      tl[nonterminals]==NIL?"":"s"),
+                      tl(nonterminals)==NIL?"":"s"),
               printlist("",nonterminals),
               acterror(); else
             { /* compute list of nonterminals admitting empty prodn */
             eprodnts=NIL;
-          L:for(p=yystack.l_mark[-1];p!=NIL;p=tl[p])
-               if(!member(eprodnts,dlhs(hd[p]))&&eprod(dval(hd[p])))
-                 { eprodnts=cons(dlhs(hd[p]),eprodnts); goto L; }
+          L:for(p=yystack.l_mark[-1];p!=NIL;p=tl(p))
+               if(!member(eprodnts,dlhs(hd(p)))&&eprod(dval(hd(p))))
+                 { eprodnts=cons(dlhs(hd(p)),eprodnts); goto L; }
             /* now compute startswith reln between nonterminals
                (performing binomial transformation en route)
                and use to detect unremoved left recursion */
-            for(p=yystack.l_mark[-1];p!=NIL;p=tl[p])
-               if(member(lhs=starts(dval(hd[p])),dlhs(hd[p])))
-                 binom(dval(hd[p]),dlhs(hd[p])),
-                 startswith=cons(cons(dlhs(hd[p]),starts(dval(hd[p]))),
+            for(p=yystack.l_mark[-1];p!=NIL;p=tl(p))
+               if(member(lhs=starts(dval(hd(p))),dlhs(hd(p))))
+                 binom(dval(hd(p)),dlhs(hd(p))),
+                 startswith=cons(cons(dlhs(hd(p)),starts(dval(hd(p)))),
                                  startswith);
-               else startswith=cons(cons(dlhs(hd[p]),lhs),startswith);
+               else startswith=cons(cons(dlhs(hd(p)),lhs),startswith);
             startswith=tclos(sortrel(startswith));
-            for(;startswith!=NIL;startswith=tl[startswith])
-               if(member(tl[hd[startswith]],hd[hd[startswith]]))
-                 leftrecs=add1(hd[hd[startswith]],leftrecs);
+            for(;startswith!=NIL;startswith=tl(startswith))
+               if(member(tl(hd(startswith)),hd(hd(startswith))))
+                 leftrecs=add1(hd(hd(startswith)),leftrecs);
             if(leftrecs!=NIL)
-              errs=getloc(hd[leftrecs],yystack.l_mark[-1]),
+              errs=getloc(hd(leftrecs),yystack.l_mark[-1]),
               printf("%sfatal error in grammar, ",echoing?"\n":""),
               printlist("irremovable left recursion: ",leftrecs),
               acterror();
             if(yystack.l_mark[-3]==NIL) /* implied start symbol */
-              yystack.l_mark[-3]=cons(dlhs(hd[lastlink(yystack.l_mark[-1])]),NIL);
+              yystack.l_mark[-3]=cons(dlhs(hd(lastlink(yystack.l_mark[-1]))),NIL);
             fnts=1; /* fnts is flag indicating %bnf in use */
-            if(tl[yystack.l_mark[-3]]==NIL) /* only one start symbol */
-              subjects=getfname(hd[yystack.l_mark[-3]]),
-              body=ap2(G_CLOSE,str_conv(get_id(hd[yystack.l_mark[-3]])),hd[yystack.l_mark[-3]]);
+            if(tl(yystack.l_mark[-3])==NIL) /* only one start symbol */
+              subjects=getfname(hd(yystack.l_mark[-3])),
+              body=ap2(G_CLOSE,str_conv(get_id(hd(yystack.l_mark[-3]))),hd(yystack.l_mark[-3]));
             else
             { body=subjects=Void;
               while(yystack.l_mark[-3]!=NIL)
-                   subjects=pair(getfname(hd[yystack.l_mark[-3]]),subjects),
+                   subjects=pair(getfname(hd(yystack.l_mark[-3])),subjects),
                    body=pair(
-                         ap2(G_CLOSE,str_conv(get_id(hd[yystack.l_mark[-3]])),hd[yystack.l_mark[-3]]),
+                         ap2(G_CLOSE,str_conv(get_id(hd(yystack.l_mark[-3]))),hd(yystack.l_mark[-3])),
                             body),
-                   yystack.l_mark[-3]=tl[yystack.l_mark[-3]];
+                   yystack.l_mark[-3]=tl(yystack.l_mark[-3]);
             }
             declare(subjects,label(yystack.l_mark[-6],block(yystack.l_mark[-1],body, 0)));
           }}
@@ -4115,9 +4115,9 @@ break;
 case 209:
 #line 1138 "rules.y"
 	{ word x=redtvars(ap(yystack.l_mark[-6],yystack.l_mark[-2])); 
-             word arity=0,h=hd[x];
-             while(tag[h]==AP)arity++,h=hd[h];
-             yyval = ap(h,make_typ(arity,0,synonym_t,tl[x]));
+             word arity=0,h=hd(x);
+             while(tag[h]==AP)arity++,h=hd(h);
+             yyval = ap(h,make_typ(arity,0,synonym_t,tl(x)));
            }
 #line 4123 "y.tab.c"
 break;
@@ -4129,10 +4129,10 @@ break;
 case 211:
 #line 1148 "rules.y"
 	{ word a,b,c=0;
-             for(a=yystack.l_mark[0];a!=NIL;a=tl[a])
-                for(b=tl[a];b!=NIL;b=tl[b])
-                   { if(hd[hd[a]]==hd[hd[b]])c=hd[hd[a]];
-                     if(tl[hd[a]]==tl[hd[b]])c=tl[hd[a]]; 
+             for(a=yystack.l_mark[0];a!=NIL;a=tl(a))
+                for(b=tl(a);b!=NIL;b=tl(b))
+                   { if(hd(hd(a))==hd(hd(b)))c=hd(hd(a));
+                     if(tl(hd(a))==tl(hd(b)))c=tl(hd(a)); 
                      if(c)break; }
              if(c)printf(
                   "%ssyntax error: conflicting aliases (\"%s\")\n",
@@ -4190,31 +4190,31 @@ case 220:
 	{ yyval = cons(yystack.l_mark[0],NIL);
             dval(yystack.l_mark[0]) = tries(dlhs(yystack.l_mark[0]),cons(dval(yystack.l_mark[0]),NIL));
             if(!SYNERR&&get_ids(dlhs(yystack.l_mark[0]))==NIL)
-              errs=hd[hd[tl[dval(yystack.l_mark[0])]]],
+              errs=hd(hd(tl(dval(yystack.l_mark[0])))),
               syntax("illegal lhs for local definition\n");
           }
 #line 4197 "y.tab.c"
 break;
 case 221:
 #line 1200 "rules.y"
-	{ if(dlhs(yystack.l_mark[0])==dlhs(hd[yystack.l_mark[-1]]) /*&&dval(hd[$1])!=UNDEF*/)
+	{ if(dlhs(yystack.l_mark[0])==dlhs(hd(yystack.l_mark[-1])) /*&&dval(hd($1))!=UNDEF*/)
               { yyval = yystack.l_mark[-1];
-                if(!fallible(hd[tl[dval(hd[yystack.l_mark[-1]])]]))
-                    errs=hd[dval(yystack.l_mark[0])],
+                if(!fallible(hd(tl(dval(hd(yystack.l_mark[-1]))))))
+                    errs=hd(dval(yystack.l_mark[0])),
                     printf("%ssyntax error: \
 unreachable case in defn of \"%s\"\n",echoing?"\n":"",get_id(dlhs(yystack.l_mark[0]))),
                     acterror();
-                tl[dval(hd[yystack.l_mark[-1]])]=cons(dval(yystack.l_mark[0]),tl[dval(hd[yystack.l_mark[-1]])]); }
+                tl(dval(hd(yystack.l_mark[-1])))=cons(dval(yystack.l_mark[0]),tl(dval(hd(yystack.l_mark[-1])))); }
             else if(!SYNERR)
-                 { word ns=get_ids(dlhs(yystack.l_mark[0])),hr=hd[dval(yystack.l_mark[0])];
+                 { word ns=get_ids(dlhs(yystack.l_mark[0])),hr=hd(dval(yystack.l_mark[0]));
                    if(ns==NIL)
                      errs=hr,
                      syntax("illegal lhs for local definition\n");
                    yyval = cons(yystack.l_mark[0],yystack.l_mark[-1]);
                    dval(yystack.l_mark[0])=tries(dlhs(yystack.l_mark[0]),cons(dval(yystack.l_mark[0]),NIL));
                    while(ns!=NIL&&!SYNERR) /* local nameclash check */
-                        { nclashcheck(hd[ns],yystack.l_mark[-1],hr);
-                          ns=tl[ns]; }
+                        { nclashcheck(hd(ns),yystack.l_mark[-1],hr);
+                          ns=tl(ns); }
                         /* potentially quadratic - fix later */
                  }
           }
@@ -4222,7 +4222,7 @@ unreachable case in defn of \"%s\"\n",echoing?"\n":"",get_id(dlhs(yystack.l_mark
 break;
 case 222:
 #line 1224 "rules.y"
-	{ errs=hd[tl[yystack.l_mark[0]]];
+	{ errs=hd(tl(yystack.l_mark[0]));
             syntax("`::' encountered in local defs\n");
             yyval = cons(nill,NIL); }
 #line 4229 "y.tab.c"
@@ -4246,7 +4246,7 @@ case 225:
 	{ word l = yystack.l_mark[-6], r = yystack.l_mark[-1];
             word f = head(l);
             if(tag[f]==ID&&!isconstructor(f)) /* fnform defn */
-              while(tag[l]==AP)r=lambda(tl[l],r),l=hd[l];
+              while(tag[l]==AP)r=lambda(tl(l),r),l=hd(l);
             r = label(yystack.l_mark[-2],r); /* to help locate type errors */
             yyval = defn(l,undef_t,r); }
 #line 4253 "y.tab.c"
@@ -4294,7 +4294,7 @@ case 233:
 break;
 case 236:
 #line 1274 "rules.y"
-	{ yyval = ap(hd[yystack.l_mark[-1]]==CONST&&tag[tl[yystack.l_mark[-1]]]==ID?tl[yystack.l_mark[-1]]:yystack.l_mark[-1],yystack.l_mark[0]); }
+	{ yyval = ap(hd(yystack.l_mark[-1])==CONST&&tag[tl(yystack.l_mark[-1])]==ID?tl(yystack.l_mark[-1]):yystack.l_mark[-1],yystack.l_mark[0]); }
 #line 4299 "y.tab.c"
 break;
 case 237:
@@ -4321,7 +4321,7 @@ break;
 case 241:
 #line 1293 "rules.y"
 	{ word x=yystack.l_mark[-1],y=nill;
-            while(x!=NIL)y = cons(hd[x],y), x = tl[x];
+            while(x!=NIL)y = cons(hd(x),y), x = tl(x);
             yyval = y; }
 #line 4327 "y.tab.c"
 break;
@@ -4337,10 +4337,10 @@ case 243:
 break;
 case 244:
 #line 1301 "rules.y"
-	{ if(tl[yystack.l_mark[-1]]==NIL)yyval=pair(yystack.l_mark[-3],hd[yystack.l_mark[-1]]);
-            else { yyval=pair(hd[tl[yystack.l_mark[-1]]],hd[yystack.l_mark[-1]]);
-                   yystack.l_mark[-1]=tl[tl[yystack.l_mark[-1]]];
-                   while(yystack.l_mark[-1]!=NIL)yyval=tcons(hd[yystack.l_mark[-1]],yyval),yystack.l_mark[-1]=tl[yystack.l_mark[-1]];
+	{ if(tl(yystack.l_mark[-1])==NIL)yyval=pair(yystack.l_mark[-3],hd(yystack.l_mark[-1]));
+            else { yyval=pair(hd(tl(yystack.l_mark[-1])),hd(yystack.l_mark[-1]));
+                   yystack.l_mark[-1]=tl(tl(yystack.l_mark[-1]));
+                   while(yystack.l_mark[-1]!=NIL)yyval=tcons(hd(yystack.l_mark[-1]),yyval),yystack.l_mark[-1]=tl(yystack.l_mark[-1]);
                    yyval = tcons(yystack.l_mark[-3],yyval); }
           /* representation of the tuple (a1,...,an) is
              tcons(a1,tcons(a2,...pair(a(n-1),an))) */
@@ -4404,7 +4404,7 @@ break;
 case 260:
 #line 1354 "rules.y"
 	{ word x=yystack.l_mark[0],y=void_t;
-            while(x!=NIL)y = ap2(comma_t,hd[x],y), x = tl[x];
+            while(x!=NIL)y = ap2(comma_t,hd(x),y), x = tl(x);
             yyval = ap2(comma_t,yystack.l_mark[-2],y); }
 #line 4410 "y.tab.c"
 break;
@@ -4462,15 +4462,15 @@ case 270:
 break;
 case 271:
 #line 1387 "rules.y"
-	{ word x=yystack.l_mark[-1],h=hd[yystack.l_mark[0]],t=tl[yystack.l_mark[0]];
-            while(h!=NIL)x=cons(cons(hd[h],t),x),h=tl[h];
+	{ word x=yystack.l_mark[-1],h=hd(yystack.l_mark[0]),t=tl(yystack.l_mark[0]);
+            while(h!=NIL)x=cons(cons(hd(h),t),x),h=tl(h);
             yyval = x; }
 #line 4469 "y.tab.c"
 break;
 case 272:
 #line 1391 "rules.y"
-	{ word x=NIL,h=hd[yystack.l_mark[0]],t=tl[yystack.l_mark[0]];
-            while(h!=NIL)x=cons(cons(hd[h],t),x),h=tl[h];
+	{ word x=NIL,h=hd(yystack.l_mark[0]),t=tl(yystack.l_mark[0]);
+            while(h!=NIL)x=cons(cons(hd(h),t),x),h=tl(h);
             yyval = x; }
 #line 4476 "y.tab.c"
 break;
@@ -4481,15 +4481,15 @@ case 273:
 break;
 case 274:
 #line 1403 "rules.y"
-	{ word x=yystack.l_mark[-1],h=hd[yystack.l_mark[0]],t=tl[yystack.l_mark[0]];
-            while(h!=NIL)x=cons(cons(hd[h],t),x),h=tl[h];
+	{ word x=yystack.l_mark[-1],h=hd(yystack.l_mark[0]),t=tl(yystack.l_mark[0]);
+            while(h!=NIL)x=cons(cons(hd(h),t),x),h=tl(h);
             yyval = x; }
 #line 4488 "y.tab.c"
 break;
 case 275:
 #line 1407 "rules.y"
-	{ word x=NIL,h=hd[yystack.l_mark[0]],t=tl[yystack.l_mark[0]];
-            while(h!=NIL)x=cons(cons(hd[h],t),x),h=tl[h];
+	{ word x=NIL,h=hd(yystack.l_mark[0]),t=tl(yystack.l_mark[0]);
+            while(h!=NIL)x=cons(cons(hd(h),t),x),h=tl(h);
             yyval = x; }
 #line 4495 "y.tab.c"
 break;
@@ -4533,7 +4533,7 @@ case 283:
 	{ yyval = yystack.l_mark[-1];
             idsused=yystack.l_mark[0];
             while(yystack.l_mark[0]!=NIL)
-              yyval = ap(yyval,hd[yystack.l_mark[0]]),yystack.l_mark[0] = tl[yystack.l_mark[0]];
+              yyval = ap(yyval,hd(yystack.l_mark[0])),yystack.l_mark[0] = tl(yystack.l_mark[0]);
           }
 #line 4539 "y.tab.c"
 break;
@@ -4575,9 +4575,9 @@ break;
 case 292:
 #line 1464 "rules.y"
 	{ extern word SGC;  /* keeps track of sui-generis constructors */
-            if( tl[yystack.l_mark[0]]==NIL && tag[hd[yystack.l_mark[0]]]!=ID )
+            if( tl(yystack.l_mark[0])==NIL && tag[hd(yystack.l_mark[0])]!=ID )
                             /* 2nd conjunct excludes singularity types */
-              SGC=cons(head(hd[yystack.l_mark[0]]),SGC);
+              SGC=cons(head(hd(yystack.l_mark[0])),SGC);
           }
 #line 4583 "y.tab.c"
 break;
@@ -4640,13 +4640,13 @@ case 305:
 break;
 case 306:
 #line 1514 "rules.y"
-	{ word h=reverse(hd[yystack.l_mark[0]]),hr=hd[tl[yystack.l_mark[0]]],t=tl[tl[yystack.l_mark[0]]];
+	{ word h=reverse(hd(yystack.l_mark[0])),hr=hd(tl(yystack.l_mark[0])),t=tl(tl(yystack.l_mark[0]));
             inbnf=1;
             yyval=NIL;
             while(h!=NIL&&!SYNERR)
-                 ntspecmap=cons(cons(hd[h],hr),ntspecmap),
-                 yyval=add_prod(defn(hd[h],t,UNDEF),yyval,hr),
-                 h=tl[h];
+                 ntspecmap=cons(cons(hd(h),hr),ntspecmap),
+                 yyval=add_prod(defn(hd(h),t,UNDEF),yyval,hr),
+                 h=tl(h);
           }
 #line 4652 "y.tab.c"
 break;
@@ -4657,19 +4657,19 @@ case 307:
 break;
 case 308:
 #line 1525 "rules.y"
-	{ word h=reverse(hd[yystack.l_mark[0]]),hr=hd[tl[yystack.l_mark[0]]],t=tl[tl[yystack.l_mark[0]]];
+	{ word h=reverse(hd(yystack.l_mark[0])),hr=hd(tl(yystack.l_mark[0])),t=tl(tl(yystack.l_mark[0]));
             inbnf=1;
             yyval=yystack.l_mark[-1];
             while(h!=NIL&&!SYNERR)
-                 ntspecmap=cons(cons(hd[h],hr),ntspecmap),
-                 yyval=add_prod(defn(hd[h],t,UNDEF),yyval,hr),
-                 h=tl[h];
+                 ntspecmap=cons(cons(hd(h),hr),ntspecmap),
+                 yyval=add_prod(defn(hd(h),t,UNDEF),yyval,hr),
+                 h=tl(h);
           }
 #line 4669 "y.tab.c"
 break;
 case 309:
 #line 1534 "rules.y"
-	{ yyval = add_prod(yystack.l_mark[0],yystack.l_mark[-1],hd[dval(yystack.l_mark[0])]); }
+	{ yyval = add_prod(yystack.l_mark[0],yystack.l_mark[-1],hd(dval(yystack.l_mark[0]))); }
 #line 4674 "y.tab.c"
 break;
 case 310:
@@ -4706,19 +4706,19 @@ case 315:
 break;
 case 316:
 #line 1557 "rules.y"
-	{ yyval=hd[yystack.l_mark[0]], yystack.l_mark[0]=tl[yystack.l_mark[0]];
+	{ yyval=hd(yystack.l_mark[0]), yystack.l_mark[0]=tl(yystack.l_mark[0]);
             while(yystack.l_mark[0]!=NIL)
-                 yyval=label(hd[yystack.l_mark[0]],yyval),yystack.l_mark[0]=tl[yystack.l_mark[0]],
-                 yyval=ap2(G_ALT,hd[yystack.l_mark[0]],yyval),yystack.l_mark[0]=tl[yystack.l_mark[0]];
+                 yyval=label(hd(yystack.l_mark[0]),yyval),yystack.l_mark[0]=tl(yystack.l_mark[0]),
+                 yyval=ap2(G_ALT,hd(yystack.l_mark[0]),yyval),yystack.l_mark[0]=tl(yystack.l_mark[0]);
         }
 #line 4715 "y.tab.c"
 break;
 case 317:
 #line 1563 "rules.y"
-	{ yyval=hd[yystack.l_mark[-2]], yystack.l_mark[-2]=tl[yystack.l_mark[-2]];
+	{ yyval=hd(yystack.l_mark[-2]), yystack.l_mark[-2]=tl(yystack.l_mark[-2]);
             while(yystack.l_mark[-2]!=NIL)
-                 yyval=label(hd[yystack.l_mark[-2]],yyval),yystack.l_mark[-2]=tl[yystack.l_mark[-2]],
-                 yyval=ap2(G_ALT,hd[yystack.l_mark[-2]],yyval),yystack.l_mark[-2]=tl[yystack.l_mark[-2]];
+                 yyval=label(hd(yystack.l_mark[-2]),yyval),yystack.l_mark[-2]=tl(yystack.l_mark[-2]),
+                 yyval=ap2(G_ALT,hd(yystack.l_mark[-2]),yyval),yystack.l_mark[-2]=tl(yystack.l_mark[-2]);
             yyval = ap2(G_ERROR,yyval,yystack.l_mark[0]); }
 #line 4724 "y.tab.c"
 break;
@@ -4737,12 +4737,12 @@ case 320:
 	{ word n=0,f=yystack.l_mark[0],rule=Void;
                          /* default value of a production is () */
                          /* rule=mkgvar(sreds);  formerly last symbol */
-            if(f!=NIL&&hd[f]==G_END)sreds++;
+            if(f!=NIL&&hd(f)==G_END)sreds++;
             if(ihlist)rule=ih_abstr(rule);
             while(n<sreds)rule=lambda(mkgvar(++n),rule);
             sreds=0;
             rule=ap(G_RULE,rule);
-            while(f!=NIL)rule=ap2(G_SEQ,hd[f],rule),f=tl[f];
+            while(f!=NIL)rule=ap2(G_SEQ,hd(f),rule),f=tl(f);
             yyval = rule; }
 #line 4748 "y.tab.c"
 break;
@@ -4753,9 +4753,9 @@ case 321:
 break;
 case 322:
 #line 1589 "rules.y"
-	{ if(yystack.l_mark[-6]!=NIL&&hd[yystack.l_mark[-6]]==G_END)sreds++;
+	{ if(yystack.l_mark[-6]!=NIL&&hd(yystack.l_mark[-6])==G_END)sreds++;
             if(sreds==1&&can_elide(yystack.l_mark[-1]))
-              inbnf=1,sreds=0,yyval=hd[yystack.l_mark[-6]]; /* optimisation */
+              inbnf=1,sreds=0,yyval=hd(yystack.l_mark[-6]); /* optimisation */
             else
             { word f=yystack.l_mark[-6],rule=label(yystack.l_mark[-2],yystack.l_mark[-1]),n=0;
               inbnf=1;
@@ -4763,7 +4763,7 @@ case 322:
               while(n<sreds)rule=lambda(mkgvar(++n),rule);
               sreds=0;
               rule=ap(G_RULE,rule);
-              while(f!=NIL)rule=ap2(G_SEQ,hd[f],rule),f=tl[f];
+              while(f!=NIL)rule=ap2(G_SEQ,hd(f),rule),f=tl(f);
               yyval = rule; }
           }
 #line 4770 "y.tab.c"
@@ -4810,8 +4810,8 @@ case 329:
             if(obrct)
               syntax(obrct>0?"unmatched { in grammar rule\n":
                              "unmatched } in grammar rule\n");
-            for(sreds=0;f!=NIL;f=tl[f])sreds++;
-            if(hd[yystack.l_mark[0]]==G_END)sreds--;
+            for(sreds=0;f!=NIL;f=tl(f))sreds++;
+            if(hd(yystack.l_mark[0])==G_END)sreds--;
             yyval = yystack.l_mark[0]; }
 #line 4817 "y.tab.c"
 break;
@@ -4822,7 +4822,7 @@ case 330:
 break;
 case 331:
 #line 1633 "rules.y"
-	{ if(hd[yystack.l_mark[-1]]==G_END)
+	{ if(hd(yystack.l_mark[-1])==G_END)
                syntax("unexpected token after end\n");
              yyval = cons(yystack.l_mark[0],yystack.l_mark[-1]); }
 #line 4829 "y.tab.c"
