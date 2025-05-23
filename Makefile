@@ -74,7 +74,7 @@ cleanup:
 	-rm -rf *.o fdate miralib/menudriver mira$(EX)
 	./unprotect
 	-rm -f miralib/preludx miralib/stdenv.x miralib/ex/*.x #miralib/ex/*/*.x
-	-rm -f manual.html
+	-rm -f mira.1.pdf mira.man.pdf
 install:
 	make -s all
 	strip mira$(EX)
@@ -103,16 +103,17 @@ SOURCES = .xversion big.c big.h gencdecs data.h data.c lex.h lex.c reduce.c rule
 sources: $(SOURCES); @echo $(SOURCES)
 exfiles: mira
 	@-./mira -make -lib miralib ex/*.m
-html: mira.1.html manual.html
-mira.1.html: mira.1 Makefile
-	man2html mira.1 | sed '/Return to Main/d' > mira.1.html
-manual.html: manual.md mira.1.html
-	sh makehtml.sh manual.md
+PDF=mira.1.pdf mira.man.pdf
+pdf: $(PDF)
+mira.1.pdf: mira.1 Makefile
+	groff -man -Tpdf mira.1 > mira.1.pdf
+mira.man.pdf: mira.man.ms
+	tbl mira.man.ms | groff -Tpdf -ms > mira.man.pdf
 
-dist:
+dist: $(PDF)
 	version=$$(cat .version | sed 's/./&\./'); \
 	rm -rf miranda-$$version; mkdir miranda-$$version; \
-	tar cpf - $$(git ls-files) | (cd miranda-$$version; tar xpf -); \
+	tar cpf - $$(git ls-files) $(PDF) | (cd miranda-$$version; tar xpf -); \
 	tar cfz miranda-$$version.tar.gz miranda-$$version; \
 	rm -f miranda-$$version.zip; \
 	zip -rq miranda-$$version.zip miranda-$$version; \
