@@ -72,7 +72,6 @@ clean: cleanup
 cleanup:
 #to be done on moving to a new host
 	-rm -rf *.o fdate miralib/menudriver mira$(EX)
-	./unprotect
 	-rm -f miralib/preludx miralib/stdenv.x miralib/ex/*.x #miralib/ex/*/*.x
 	-rm -f mira.1.pdf mira.man.pdf
 install:
@@ -81,23 +80,8 @@ install:
 	cp mira$(EX) /$(BIN)
 	cp mira.1 /$(MAN)
 	rm -rf /$(LIB)/miralib
-	./protect
 	strip miralib/menudriver$(EX)
-	cp -pPR miralib /$(LIB)/miralib
-	./unprotect
-	find /$(LIB)/miralib -exec chown `./ugroot` {} \;
-release:
-	make -s all
-	-rm -rf usr
-	mkdir -p $(BIN) $(LIB) $(MAN)
-	cp mira$(EX) $(BIN)
-	cp mira.1 $(MAN)
-	./protect
-	cp -pPR miralib $(LIB)/miralib
-	./unprotect
-	find usr -exec chown `./ugroot` {} \;
-	tar czf `rname`.tgz ./usr
-	-rm -rf usr
+	cp -rp miralib /$(LIB)/miralib
 SOURCES = .xversion big.c big.h gencdecs data.h data.c lex.h lex.c reduce.c rules.y \
           steer.c trans.c types.c utf8.h utf8.c version.c fdate.c
 sources: $(SOURCES); @echo $(SOURCES)
