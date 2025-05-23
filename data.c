@@ -21,11 +21,11 @@ extern word SPACELIMIT; /* see steer.c for default value */
      /* Note: the size of a list cell is 2 ints + 1 char  */
 #define BIGTOP (SPACELIMIT + ATOMLIMIT)
 word listp=ATOMLIMIT-1;
+static word *heap;
 word *hd, *tl;
 char *tag;
 word files;
 word current_file;
-word *hdspace,*tlspace;
 long long cellcount=0;
 long claims=0;
 long nogcs=0;
@@ -55,14 +55,13 @@ word trueheapsize()
 { return(nogcs==0?listp-ATOMLIMIT+1:SPACE); }
 
 void setupheap()
-{ hdspace=(word *)malloc(SPACELIMIT*sizeof(word));
-  tlspace=(word *)malloc(SPACELIMIT*sizeof(word));
-  hd=hdspace-ATOMLIMIT; tl=tlspace-ATOMLIMIT;
-  if(SPACE>SPACELIMIT)SPACE=SPACELIMIT;
-  tag=(char *)calloc(BIGTOP+1,sizeof(char));
+{ heap=(word *)malloc(SPACELIMIT*sizeof(word)*2);
   /* NB use calloc because it sets contents to zero */
   /* tag[TOP] must be zero and exists as a sentinel */
-  if(hdspace==NULL||tlspace==NULL||tag==NULL)mallocfail("heap");
+  tag=(char *)calloc(BIGTOP+1,sizeof(char));
+  if(heap==NULL||tag==NULL)mallocfail("heap");
+  hd=heap-ATOMLIMIT*2; tl=hd+1;
+  if(SPACE>SPACELIMIT)SPACE=SPACELIMIT;
 }
 
 void resetheap()  /* warning - cannot do this dynamically, because both the 
@@ -70,13 +69,10 @@ void resetheap()  /* warning - cannot do this dynamically, because both the
 		during certain space consuming computations */
 { if(SPACELIMIT<trueheapsize())
     fprintf(stderr,"impossible event in resetheap\n"),exit(1);
-  hdspace=(word *)realloc((char *)hdspace,SPACELIMIT*sizeof(word));
-  if(hdspace==NULL)mallocfail("heap");
-  tlspace=(word *)realloc((char *)tlspace,SPACELIMIT*sizeof(word));
-  if(tlspace==NULL)mallocfail("heap");
-  hd=hdspace-ATOMLIMIT; tl=tlspace-ATOMLIMIT;
+  heap=(word *)realloc((char *)heap,SPACELIMIT*sizeof(word)*2);
   tag=(char *)realloc(tag,BIGTOP+1); 
-  if(tag==NULL)mallocfail("heap");
+  if(heap==NULL||tag==NULL)mallocfail("heap");
+  hd=heap-ATOMLIMIT*2; tl=hd+1;
   tag[BIGTOP]=0;
   if(SPACE>SPACELIMIT)SPACE=SPACELIMIT;
   if(SPACE<INITSPACE&&INITSPACE<=SPACELIMIT)SPACE=INITSPACE,tag[TOP]=0;
