@@ -25,19 +25,19 @@ variable MIRALIB, see next manual section.
 	-gc
 Switches on a flag causing the garbage collector  to  print  information
 each  time  a  garbage  collection  takes  place.  This flag can also be
-switched on and off from within the  miranda  session  by  the  commands
+switched on and off from within the  Miranda  session  by  the  commands
 `/gc', `/nogc'.
 
 	-count
 Switches  on  a  flag  causing  statistics  to  be  printed  after  each
 expression  evaluation.   This flag can also be switched on and off from
-within the miranda session by the commands `/count', `/nocount'.
+within the Miranda session by the commands `/count', `/nocount'.
 
 	-list
 	-nolist
 Switches on (off) a flag causing Miranda scripts to  be  listed  to  the
 screen  during  compilation.   This flag can also be switched on and off
-from within the miranda session by the commands `/list', `/nolist'.
+from within the Miranda session by the commands `/list', `/nolist'.
 
 	-nostrictif
 Enables  the  compiler  to  accept  old  Miranda  scripts  with  missing
@@ -46,12 +46,12 @@ retained just in case someone needs it.
 
 	-hush
 	-nohush
-The  miranda  system  decides  whether  or not to give prompts and other
+The  Miranda  system  decides  whether  or not to give prompts and other
 feedback by testing its standard input with `isatty'.  If  the  standard
 input  does not appear to be a terminal it assumes that prompts would be
 inappropriate, otherwise it gives them.  In either case  this  behaviour
 can be overriden by an explicit flag ("-hush" for silence, "-nohush" for
-prompts etc).  This switch is  also  available  from  within  a  miranda
+prompts etc).  This switch is  also  available  from  within  a  Miranda
 session by the commands `/hush', `/nohush'.
 
 	-dic SIZE
@@ -60,14 +60,14 @@ to be set up with SIZE bytes instead of the default 24kb.
 
 	-heap SIZE
 Causes the heap to be set up with SIZE  cells  instead  of  the  default
-(currently 100k).  This can also be done from within the miranda session
+(currently 100k).  This can also be done from within the Miranda session
 by the command `/heap SIZE'.   A cell currently occupies 9/17 bytes on a
 32/64-bit system.
 
 	-editor name
 Causes the resident  editor  (initially  `vi',  unless  the  environment
 variable  EDITOR  was set to something else) to be `name' instead.  This
-can also be done from within the miranda session by the command `/editor
+can also be done from within the Miranda session by the command `/editor
 name'.
 
 	-UTF-8
@@ -94,10 +94,10 @@ do  not  enter  a  Miranda  session  but  accomplish another purpose, as
 described below.
 
 	mira -man
-To enter the miranda online manual system directly from the UNIX shell.
+To enter the Miranda online manual system directly from the UNIX shell.
 
 	mira -exp
-Special call permitting the use of miranda script as a stand-alone  UNIX
+Special call permitting the use of Miranda script as a stand-alone  UNIX
 command.  See separate manual page for details.
 
 	mira -log
@@ -106,14 +106,14 @@ if  log  directory  exists  in  the current directory and mira has write
 permission to it.
 
 	mira -make [sourcefiles]
-Forces  a check that all the miranda source files listed have up-to-date
+Forces  a check that all the Miranda source files listed have up-to-date
 object code files, triggering compilation processes  if  necessary  (see
 manual subsection on the library mechanism: separate compilation).
 
 	mira -exports [sourcefiles]
 Sends  to  stdout  a  list  of  the  identifiers  exported  (see  manual
 subsection  on library mechanism: separate compilation) from each of the
-given miranda source files, together with their types  (may  also  force
+given Miranda source files, together with their types  (may  also  force
 recompilation if needed).
 
 	mira -sources [sourcefiles]
@@ -132,7 +132,7 @@ _S_E_T_U_P_ _F_I_L_E_S
 
 The current settings of _d_i_c, _h_e_a_p and  _e_d_i_t_o_r  are  saved  in  the  file
 `.mirarc'  in  the users home directory, and are thereby carried over to
-the next miranda session.  The  settings  of  the  compiler  flag  which
+the next Miranda session.  The  settings  of  the  compiler  flag  which
 controls   whether  or  not  source  is  listed  to  the  screen  during
 compilation (toggled by the commands  _/_l_i_s_t  _/_n_o_l_i_s_t  during  a  Miranda
 session)  and  of  the flag which controls the frequency of checking for
@@ -152,7 +152,7 @@ directory  (normally  found  at  /usr/lib/miralib).   The  user's  local
 mira, will override the global one, however.
 
 The behaviour of the `mira' program is also sensitive to the settings of
-certain environment variables - see separate manual entry about this.
+certain environment variables - see section 31/8.
 
 _O_U_T_P_U_T_ _B_U_F_F_E_R_I_N_G
  Output from the Miranda system to the user's  terminal  should  not  be

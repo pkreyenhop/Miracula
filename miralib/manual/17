@@ -61,6 +61,5 @@ script, so it would be inappropriate to insist that it's pathname end in
 
 %include %export %free
  These directives control the  identifier  bindings  between  separately
-compiled  scripts.  See separate manual entry on `the library mechanism'
-for details.
+compiled  scripts.  See section 27. `The library mechanism' for details.
 

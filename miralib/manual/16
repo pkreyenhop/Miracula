@@ -105,9 +105,9 @@ definition.
 
 _P_a_t_t_e_r_n_s_ _o_n_ _t_h_e_ _l_e_f_t_ _o_f_ _g_e_n_e_r_a_t_o_r_s
 
-In a list comprehension (see separate manual entry) the bound entity  on
-the  left  hand  side of an `<-' symbol can be any pattern.  We give two
-simple examples - in both examples we assume x is a list of 2-tuples.
+In a list comprehension (see section 13/2.) the bound entity on the left
+hand side of an `<-' symbol can be any  pattern.   We  give  two  simple
+examples - in both examples we assume x is a list of 2-tuples.
 
 To  denote  a  similar  list but with the elements of each tuple swapped
 over we can write

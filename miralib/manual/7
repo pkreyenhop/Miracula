@@ -17,19 +17,19 @@ operator expression, or an operator.
 
 _A_ _s_i_m_p_l_e_ _e_x_p_r_e_s_s_i_o_n_ _i_s_ _o_n_e_ _o_f_ _t_h_e_ _f_o_l_l_o_w_i_n_g:
 
-Identifier: (see separate manual entry) these are of two kinds based  on
-the case of the initial letter
+Identifier: (see section 10. `Identifiers') these are of two kinds based
+on the case of the initial letter
  - variable e.g. `x' or `map'
  - constructor e.g. `X' or `True'
 
-Literal, e.g. 136 or "fruit" (see separate manual entry)
+Literal, e.g. 136 or "fruit" (see section 11. `Literals')
 
-An operator section (see separate manual entry)
+An operator section (see section 9. `Operator sections')
 
 The keyword `_s_h_o_w' or `_r_e_a_d_v_a_l_s' (see separate manual entries)
 
 A list, such as `[1,5,7,9]' or a `dotdot' list or a  list  comprehension
-(see manual entry on iterative expressions).
+(see section 13. `Iterative expressions').
 
 A tuple, such as `(True,"green",37)'.  Tuples differ from lists in  that
 they  can  have  components  of mixed type.  They are always enclosed in
@@ -55,7 +55,7 @@ partially applied version of f.)
 _O_p_e_r_a_t_o_r_ _e_x_p_r_e_s_s_i_o_n_s
 	e.g. `5*x-17'
 There  are  a  variety of infix and prefix operators, of various binding
-powers (see manual entry on operators).  Note that function  application
+powers (see section 8. `Operators').  Note that function  application
 is more binding than any operator.
 
 An  operator  on  its  own  can be used as the name of the corresponding

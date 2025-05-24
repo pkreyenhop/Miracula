@@ -2,18 +2,18 @@ _U_s_i_n_g_ _M_i_r_a_n_d_a_ _t_o_ _b_u_i_l_d_ _e_x_e_
 
 FIRST METHOD (using a `magic string')
 
-Create a file, prog.m say, containing a normal miranda script, but  with
+Create a file, prog.m say, containing a normal Miranda script, but  with
 first line
 	#! /usr/bin/mira -exec
 
 The first two characters must be "#!" followed by an optional space  and
-the absolute pathname of the miranda interpreter.  This may be somewhere
+the absolute pathname of the Miranda interpreter.  This may be somewhere
 other than /usr/bin/mira, the UNIX shell  command  "which  mira"  should
 tell  you where it is.  The flag "-exec" is necessary and no other flags
 should be added.  (Note "-exec2" can be  substituted  for  "-exec",  see
 below.)
 
-The remainder of the file can be any legal  miranda  script,  which  may
+The remainder of the file can be any legal  Miranda  script,  which  may
 %include  other  scripts. Somewhere in the file, or in an included file,
 there must be a definition of `main'.  When `prog.m' is  executed  as  a
 UNIX  command,  the  result  will be that `main' is evaluated, using the
@@ -70,7 +70,7 @@ Stderr etc.
 The rule that Miranda source files must have names ending in ".m" is not
 enforced  for  "magic" scripts, in keeping with the UNIX convention that
 executables require no special suffix.  However  a  magic  script  whose
-name  ends  in  ".m"  can also be made the subject of a miranda session.
+name  ends  in  ".m"  can also be made the subject of a Miranda session.
 This is advantageous during development, as individual  definitions  can
 be tested.  A first line beginning #! is ignored by the Miranda compiler
 which treats it as a comment.  In this situation $* has  the  value  [],
@@ -130,16 +130,16 @@ sequence, on a line by itself, terminates the `here document'.
 
 Remember to make the file executable (by saying `chmod +x  prog').   Now
 when  `prog'  is executed as a UNIX command, the result will be that the
-miranda  expressions  `exp1',  `exp2'  ...  will  be  evaluated  in  the
+Miranda  expressions  `exp1',  `exp2'  ...  will  be  evaluated  in  the
 environment  defined  by  `script', and the results sent to the standard
 output.  As usual, if `script' is omitted, a default name `script.m'  is
 assumed.   The  text following the special redirection `<<!' is called a
 "here-document".  The contents of the here-document are fed to the  mira
 command  in place of its standard input.  (So anything you would type to
-the miranda system at top level can appear in the here document.)
+the Miranda system at top level can appear in the here document.)
 
 Here-documents are a normal feature of UNIX, not  something  special  to
-miranda.   Miranda's  only  contribution to making this work smoothly is
+Miranda.   Miranda's  only  contribution to making this work smoothly is
 that it detects when its input is not coming from  a  terminal,  and  in
 this  case  suppresses prompts and other extraneous feedback.  Note also
 that  lines  beginning  `||'  are  ignored  by   the   Miranda   command

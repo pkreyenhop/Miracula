@@ -10,7 +10,7 @@ setting  the  environment variable "MIRALIB".  An explicit -lib flag, if
 present, overrides this.
 
 The  first time it is called (i.e. if no .mirarc file is present, either
-in the home directory or in miralib) the miranda  system  picks  up  the
+in the home directory or in miralib) the Miranda  system  picks  up  the
 name  of  the  resident editor from the environment variable EDITOR - if
 this is not set it assumes `vi'.
 

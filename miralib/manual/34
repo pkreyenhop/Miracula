@@ -16,7 +16,7 @@ falls into this category.
 
 First check if the problem only occurs following a  garbage  collection.
 Garbage  collector  reports  can  be  turned  on  by `mira -gc' from the
-command line or by /gc within a miranda session.   If  your  error  does
+command line or by /gc within a Miranda session.   If  your  error  does
 appear to be associated with garbage collection you can try running with
 a bigger heap and/or  getting  mira  recompiled  at  a  lower  level  of
 optimisation  (eg  -O  instead  of  -O2, or without -O).  Miranda uses a

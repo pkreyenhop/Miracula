@@ -53,8 +53,8 @@ script "stdenv.m", contained in the directory /usr/lib/miralib.
     system take takewhile tinynum tl transpose undef until zip zip2 zip3
     zip4 zip5 zip6 (91)
 
-See manual entry `Standard environment' for a listing of  its  contents.
+See section 28. `The Standard environment' for a listing of its contents.
 
 [*You can suppress automatic inclusion of <stdenv> by  calling  mira  with
-  flag  "-stdenv".  See manual section 31/7 "Options, setup files etc"]
+  flag  "-stdenv".  See manual section 31/7. `Options, setup files etc']
 

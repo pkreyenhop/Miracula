@@ -58,7 +58,7 @@ curried function of two numeric arguments.
 
 In addition to the built-in types described above,  user  defined  types
 may  be  introduced - these are of three kinds, synonym types, algebraic
-types and abstract types - see separate manual entry for each.
+types and abstract types - see sections 19, 20 and 21 for each.
 
 _I_m_p_l_i_c_i_t_ _t_y_p_i_n_g
  In Miranda the types of identifiers do NOT normally need to be declared
@@ -109,6 +109,6 @@ correct type specification for undef is
 	undef :: *
 
 Many of the functions in the standard environment have polymorphic types
-- the text of the standard environment (see separate  manual  entry)  is
-therefore a useful source of examples.
+- the text of the standard environment (manual section 28) is  therefore
+a useful source of examples.
 

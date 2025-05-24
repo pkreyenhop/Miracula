@@ -2,8 +2,8 @@ _E_x_p_l_a_n_a_t_i_o_n_ _o_f_ _l_i_b_r_a_r_y_ _d_i_r_
 
 The three directives  %_i_n_c_l_u_d_e  %_e_x_p_o_r_t  %_f_r_e_e  constitute  the  Miranda
 library  mechanism,  which  controls  the sharing of identifiers between
-separately compiled scripts.   The  %_f_r_e_e  directive  is  covered  in  a
-separate manual entry and will not be discussed further here.
+separately  compiled  scripts.    The  %_f_r_e_e  directive  is  covered  in
+section 27/4 and will not be discussed further here.
 ------------------------------------------------------------------------
 
 %_i_n_c_l_u_d_e "file"
@@ -115,7 +115,7 @@ constructors  are AUTOMATICALLY exported along with it.  The consequence
 of this is that you cannot use %_e_x_p_o_r_t to create an abstract data  type,
 by  "hiding information" about how an algebraic type was formed.  If you
 want to create an abstract data type you must use the _a_b_s_t_y_p_e  mechanism
-- see separate manual entry.
+- see manual entry 21. `Abstract types'.
 
 If a fileid is present in the export list, this must be the  name  of  a
 file  which is %included in the exporting script, and the effect is that

@@ -11,7 +11,7 @@ reports the editor currently in use by the Miranda system.  To change it
 to (for example) pico, say
 	/editor pico
 
-Alternatively, when next invoking the miranda system from UNIX  you  can
+Alternatively, when next invoking the Miranda system from UNIX  you  can
 supply it with a flag requesting a specific editor by name, as follows:
 	mira -editor pico
 

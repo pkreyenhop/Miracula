@@ -41,7 +41,7 @@ omitted.
 _N_o_t_e_s
 
 The syntax of  the  library  directives  (denoted  by  the  non-terminal
-`libdir') is given in a separate manual entry.
+`libdir') is given in manual section 27/1.
 
 Ambiguities  in  the  syntax  for `type' and `construct' are resolved by
 noting that `->' is less binding than `$typename' or `$constructor'  and

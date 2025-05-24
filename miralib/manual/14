@@ -16,8 +16,8 @@ script.
 
 Here are the kinds of declaration that can occur in a script:
 
-1)  a  definition (of a function, data structure etc. - see manual entry
-`definitions' for more details).  Example
+1)  a  definition  (of a function, data structure etc. - see section 15.
+`Definitions' for more details).  Example
 	fac n = product[1..n]
 
 2) a specification of the type of one or more identifiers, of the form
@@ -31,18 +31,18 @@ identifiers.  It is however possible to introduce an identifier by means
 of a type specification only, without  giving  it  a  defining  equation
 (such  identifiers  are  said  to be `specified but not defined' and are
 useful  in  program  development).   A  special  case  of  this  is  the
-introduction  of  an  otherwise undefined typename - see separate manual
-entry on `placeholder types'.
+introduction  of  an  otherwise  undefined  typename  -  see section 22.
+`Placeholder types'.
 
 3) the definition of a user defined type - these  are  of  three  kinds,
-synonyms, algebraic types, and abstract types (see separate manual entry
+synonyms, algebraic types and abstract types (see sections 19, 20 and 21
 on each).
 
 4) a library directive (%export,  %include  or  %free)  these  are  used
 specify  the  interfaces  between  separately  compiled  scripts  -  see
-separate manual entry on the library mechanism.
+section 27. `The library mechanism'.
 
-There is a manual entry giving the formal syntax of Miranda scripts.
+Manual section 24. gives the formal syntax of Miranda scripts.
 
 _N_o_t_e
  A directory called `ex' (meaning `examples') containing a collection of
