@@ -22,9 +22,9 @@ code page".  The flag -UTF-8 or -noUTF-8, if present, overrides.
 If the environment variable RECHECKMIRA is set (to any non-empty string)
 the  Miranda  system  rechecks  to see if any relevant source files have
 been updated, and performs  any  necessary  recompilation,  before  each
-interaction  with the user - this is the appropriate behaviour if an (eg
-emacs) editor window is being kept open permanently during  the  Miranda
-session.   If  this  environment  variable  is  not  set,  the  check is
+interaction  with  the  user  -  this is the appropriate behaviour if an
+(e.g. emacs) editor window is being kept  open  permanently  during  the
+Miranda session.  If this environment variable is not set,  the check is
 performed only after `/e' commands and `!' escapes.
 
 To decide  what  shell  to  use  in  `!'  escapes,  mira  looks  in  the
@@ -49,8 +49,8 @@ variable RETURNTOMENU.
 RETURNTOMENU=YES prevents another prompt being  given  after  displaying
 each  section, causing instead an immediate return to contents page.  It
 should be `YES' if VIEWER is a program that pauses for input at  end  of
-file (eg "less"), `NO' if VIEWER is a program that quits silently at end
-of file (eg "more", "less -EX").
+file  (e.g. "less"),  `NO' if VIEWER is a program that quits silently at
+end of file (e.g. "more", "less -EX").
 
 Finally note that a third environment variable MENUVIEWER can be set  to
 choose  the  program  used to display contents pages (by default this is

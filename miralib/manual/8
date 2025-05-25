@@ -11,7 +11,7 @@ others are infix.
  \/ 				associative
  & 				associative
  ~ 				prefix
- > >= = ~= <= < 		continued relations allowed, eg 0<x<=10
+ > >= = ~= <= < 		continued relations allowed, e.g. 0<x<=10
  + - 				left associative
  - 				prefix
  * / _d_i_v _m_o_d 			left associative
@@ -44,9 +44,9 @@ Brief explanation of each operator:
 	times, divide, integer divide, integer remainder, 
 	all of type num->num->num
 	`/' can be applied to integers or fractional numbers, and
-	always gives a fractional result, so eg 6/2 is 3.0
+	always gives a fractional result, so e.g. 6/2 is 3.0
 	_d_i_v and _m_o_d can only be applied to integers and
-	give integer results, eg 7 div 2 is 3, 7 mod 2 is 1.
+	give integer results, e.g. 7 div 2 is 3, 7 mod 2 is 1.
 	_d_i_v and _m_o_d obey the following laws, for a b any integers
 	with b ~= 0
 	(i)  b * (a _d_i_v b) + a _m_o_d b  =  a

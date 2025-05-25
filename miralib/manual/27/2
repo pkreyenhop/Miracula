@@ -1,9 +1,9 @@
 _T_h_e_ _%_i_n_c_l_u_d_e_ _d_i_r_e_c_t_i_v_e_ _(_b_a_s_i_c_ _i_n_f_o_r_m_a_t_i_o_n_)
 
 Suppose the file "mylib.m" contains  some  Miranda  declarations  (which
-could be any kind of legal Miranda declaration, eg function definitions,
-type definitions etc).  To make these in scope in  another  script,  the
-latter will contain the directive
+could  be  any  kind  of  legal  Miranda  declaration,   e.g.   function
+definitions, type definitions etc).  To make these in scope  in  another
+script, the latter will contain the directive
 	%_i_n_c_l_u_d_e "mylib"
 
 This  can  come  anywhere  in  the  script  (there  is  for  example  no

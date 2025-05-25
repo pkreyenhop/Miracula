@@ -20,7 +20,7 @@ correctness.   At  a later stage the specification of widget as an empty
 type can be replaced by a non-empty type definition, using ==,  ::=,  or
 _a_b_s_t_y_p_e, allowing foo, gronk, to be defined.
 
-Typenames declared as empty can have any arity, eg
+Typenames declared as empty can have any arity, e.g.
 	table * ** :: _t_y_p_e
 This creates a family of empty types, such as `table num  bool'  and  so
 on.  They are all devoid of values (apart from undef).  The general form

@@ -19,7 +19,7 @@ Garbage  collector  reports  can  be  turned  on  by `mira -gc' from the
 command line or by /gc within a Miranda session.   If  your  error  does
 appear to be associated with garbage collection you can try running with
 a bigger heap and/or  getting  mira  recompiled  at  a  lower  level  of
-optimisation  (eg  -O  instead  of  -O2, or without -O).  Miranda uses a
+optimisation  (e.g.  -O  instead of -O2, or without -O).  Miranda uses a
 "conservative collector" which scans the C stack to follow  things  that
 are,  or  appear  to  be, pointers into the heap.  Unfortunately this is
 vulnerable to compiler optimisations affecting the state of the stack.
@@ -74,7 +74,7 @@ to be frozen to use the constructor names in the scope where it  occurs.
 Implementation restrictions not mentioned elsewhere in  the  manual:-
 
 A shell command called from mira using `!' is limited to 1024 characters
-in  length after any implied expansions (eg of `%') have been performed.
+in  length  after any implied expansions (like `%') have been performed.
 The same restriction applies to the  result  of  expanding  out  a  `/e'
 command.    The  pathnames  of  Miranda  scripts  are  limited  to  1024
 characters in length, including the `.m' extension.   The  name  of  the

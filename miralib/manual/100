@@ -61,7 +61,7 @@ parameter  -  its  scope  is  limited to the equation in which it occurs
 their scope).
 
 The most commonly used data structure is the list, which in  Miranda  is
-written with square brackets and commas, eg:
+written with square brackets and commas, e.g.:
 	week_days = ["Mon","Tue","Wed","Thur","Fri"]
 	days = week_days ++ ["Sat","Sun"]
 Lists  may be appended by the "++" operator.  Other useful operations on
@@ -373,8 +373,8 @@ has the following type
 	id :: * -> *
 this  means that the identity function has many types.  Namely all those
 which can be obtained by substituting an arbitrary type for the  generic
-type  variable, eg "num->num", "bool->bool", "(*->**) -> (*->**)" and so
-on.
+type  variable,  e.g. "num->num", "bool->bool", "(*->**) -> (*->**)" and
+so on.
 
 We  illustrate  the  Miranda type system by giving types for some of the
 functions so far defined in this article
@@ -417,7 +417,7 @@ tree (char->char), and so on.
 
 The  types introduced by "::=" definitions are called "algebraic types".
 Algebraic  types  are  a  very  general  idea.   They   include   scalar
-enumeration types, eg
+enumeration types, e.g.
 	color ::= Red | Orange | Yellow | Green | Blue | Indigo | Violet
 
 and also give us a way to do union types, for example
@@ -450,7 +450,7 @@ to  think  of them as macros.  It is also possible to introduce synonyms
 for families of types.  This is done by using generic  type  symbols  as
 formal parameters, as in
 	array * == [[*]]
-so now eg `array num' is the same type as `matrix'.
+so now e.g. `array num' is the same type as `matrix'.
 
 _A_b_s_t_r_a_c_t_ _d_a_t_a_ _t_y_p_e_s
  In  addition  to concrete types, introduced by "::=" or "==" equations,

@@ -109,7 +109,7 @@ A `.x' file records (inter alia) the names of all relevant source  files
 relative  to  the  directory  in which it is stored, together with their
 `date and time last modified'.  Note that the UNIX command `mv' does not
 alter the time-last-modified of the file being moved.  So it is possible
-when moving a Miranda source file (or a group of  interdependant  source
+when moving a Miranda source file (or a group of  interdependent  source
 files)  from  one  directory  to  another  to  save  mira  the bother of
 recompiling them, simply by moving all the relevant `.x' files into  the
 new directory along with the sources.  (This doesn't work however if you

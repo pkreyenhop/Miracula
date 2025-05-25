@@ -34,8 +34,8 @@ The manual is intended to provide online documentation  of  the  Miranda
 programming language and the command system in which it is embedded.  It
 is not intended to be a tutorial on functional programming.  It does not
 provide  information  about  the  operating  system,  for which separate
-documentation is available (but there is a section on  the  Miranda/UNIX
-interface).
+documentation is available (but there is a section on  the  UNIX/Miranda
+syatem interface).
 
 ------------------------------------------------------------------------
 _S_u_m_m_a_r_y_ _o_f_ _m_a_n_u_a_l_ _b_e_h_a_v_i_o_u_r_:
@@ -67,7 +67,7 @@ give generally include
 [return]   display one more line
 q          (quit) cease showing me this file
 b          (back) scroll backwards by one screenful
-/context   search for context (eg a word)
+/context   search for context (e.g. a word)
 ?context   search backwards for context
 h          help
 

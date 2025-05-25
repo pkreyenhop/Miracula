@@ -1,6 +1,6 @@
 _M_i_r_a_n_d_a_ _l_e_x_i_c_a_l_ _s_y_n_t_a_x
- In this section square brackets are used to enclose a  set  of  literal
-characters,  using lex-style conventions, so eg [a-z] means a lower case
+In this section square brackets are used to enclose  a  set  of  literal
+characters using lex-style conventions, so e.g. [a-z] means a lower case
 letter.   As  usual  *  and  ?   are  used  to  mean  zero-or-more,  and
 zero-or-one,  occurrences of the preceding entity.  Parentheses are used
 for grouping, and subtraction of one syntactic entity from another means
@@ -59,7 +59,7 @@ vertical_bar:= |
 
 _N_o_t_e_s
  visible means any  non-control  character,  including  space  (but  not
-including  eg  newline), nl means literal newline, and decimal_code is a
+including e.g. newline), nl means literal newline, and decimal_code is a
 nat in the range 0..255 (maximum length 3 digits).
 
 Notice that the syntax of `numeral' does not include  negative  numbers.

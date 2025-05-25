@@ -35,7 +35,7 @@ is certainly a lot clearer than the recursive definition,
 	cp [] y = []
 
 The standard environment contains a number  of  useful  list  processing
-functions  (eg  map filter reverse foldr foldl) with whose properties it
+functions (e.g. map filter reverse foldr foldl) with whose properties it
 is worth becoming familiar.  They capture common patterns  of  recursion
 over  lists, and can often be used to simplify your code, and reduce the
 reliance on `ad-hoc' recursion.  Programs using list comprehensions  and

@@ -26,7 +26,7 @@ A  command  of  this form can take data from the terminal.  The notation
 denote  the  list of characters taken from the standard input.  (That is
 `$-' behaves like a Miranda identifier of type [char].)
 
-The command can be invoked with arguments, eg
+The command can be invoked with arguments, e.g.
 	prog.m fig 23
 and the notation `$*' can be used in the script as a Miranda  identifier
 of  type  [[char]]  denoting the argument list, with the convention that
@@ -162,7 +162,7 @@ executed (in this case `prog').
 If the here-document contains instances of  `$'  which  you  don't  want
 replaced by something (for example inside a Miranda string), you have to
 escape them by preceding them with a backslash character.   But  if  the
-delimiter after the >> is in quotation marks, eg
+delimiter after the >> is in quotation marks, e.g.
 	mira [script] <<"!"
 	stuff
         !

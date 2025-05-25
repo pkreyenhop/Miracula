@@ -21,21 +21,21 @@ Copyright Research Software Limited 1985-2020
 .TS
 center;
 r l r l.
-1.	How to use the manual system 	 20.	Algebraic types
-2.	About the name "Miranda"     	 21.	Abstract types
-3.	About this release           	 22.	Empty types
+1.	How to use the manual system	20.	Algebraic types
+2.	About the name \(lqMiranda\(rq	21.	Abstract types
+3.	About this release	22.	Empty types
 4.	The Miranda command interpreter	23.	The special function \f(CWshow\fP
-5.	Brief summary of main commands	 24.	Formal syntax of Miranda scripts
-6.	List of remaining commands   	 25.	Comments on syntax
-7.	Expressions                  	 26.	Miranda lexical syntax
-8.	Operators                    	 27.	The library mechanism
-9.	Operator sections            	 28.	The standard environment
-10.	Identifiers                 	 29.	Literate scripts
-11.	Literals                    	 30.	Some hints on Miranda style
-12.	Tokenisation and layout     	 31.	UNIX/Miranda system interface
-13.	Iterative expressions       	 32.	-->> CHANGES <<--
-14.	Scripts, overview           	 33.	Copying
-15.	Definitions                 	 34.	Bug reports
+5.	Brief summary of main commands	24.	Formal syntax of Miranda scripts
+6.	List of remaining commands	25.	Comments on syntax
+7.	Expressions	26.	Miranda lexical syntax
+8.	Operators	27.	The library mechanism
+9.	Operator sections	28.	The standard environment
+10.	Identifiers	29.	Literate scripts
+11.	Literals	30.	Some hints on Miranda style
+12.	Tokenisation and layout	31.	UNIX/Miranda system interface
+13.	Iterative expressions	32.	-->> CHANGES <<--
+14.	Scripts, overview	33.	Copying
+15.	Definitions	34.	Bug reports
 16.	Pattern matching
 17.	Compiler directives
 18.	Basic type structure
@@ -44,71 +44,75 @@ r l r l.
 Printout of online manual pages for version 2067;
 manual pages last revised May 2025.
 .LP
-The  Miranda  System  Manual  is  Copyright  (c)  Research  Software
-Limited,  1985-2019.   It  may be freely reproduced, with or without
-changes, for use with the Miranda System but commercial  publication
+The Miranda System Manual is Copyright (c) Research Software
+Limited, 1985-2019. It may be freely reproduced, with or without
+changes, for use with the Miranda System but commercial publication
 rights are reserved to the Copyright holder. 
 .SH
 1. How to use the Miranda on-line reference manual
 .LP
-The manual is menu driven, and is  a  separate  subsystem  that  can  be
-invoked from the Miranda command interpreter.  To access the manual from
+The manual is menu driven, and is a separate subsystem that can be
+invoked from the Miranda command interpreter. To access the manual from
 Miranda, type
 .XE
     /man
 .XX
-followed by return.  To access the  manual  directly  from  the  command
+followed by return. To access the manual directly from the command
 line, without entering Miranda first, type the line
 .XE
     mira -man
 .XX
 as a shell command.
 .LP
-On entering the manual system  a  contents  page  is  displayed  listing
-numbered  sections.   In  response  to the question at the bottom of the
-page you should enter the number of the section  you  wish  to  see  and
-press  return  (i.e.   ENTER).   The  contents  of that section are then
-displayed to you.  When you are ready to leave the manual, press return,
-without  giving  ay  section  number, in response to the question at the
-foot of the contents page \- typing q (for "quit") has the same effect.
+On entering the manual system a contents page is displayed listing
+numbered sections. In response to the question at the bottom of the
+page you should enter the number of the section you wish to see and
+press return (i.e. ENTER). The contents of that section are then
+displayed to you. When you are ready to leave the manual, press return,
+without giving a section number, in response to the question at the
+foot of the contents page \- typing q (for \(lqquit\(rq) has the same effect.
 .LP
-If the section is more than one page long, you should  press  the  space
+If the section is more than one page long, you should press the space
 bar when you have finished reading a page, in order to see the next page
-(or press return to see one more line).  At the end of the section,  you
+(or press return to see one more line). At the end of the section, you
 may press return to go back to the contents page.
 .LP
-The manual is organised in short sections, each at  most  two  or  three
-screenfulls long.  Where a section would otherwise be too long to fit in
-with this philosophy, the  manual  is  organised  recursively  and  will
+The manual is organised in short sections, each at most two or three
+screenfulls long. Where a section would otherwise be too long to fit in
+with this philosophy, the manual is organised recursively and will
 display a subsidiary contents page, with a list of numbered subsections,
-which you may read, as before, by typing  the  appropriate  number.   To
-return  to  the  main  menu from a submenu, press return with no section
+which you may read, as before, by typing the appropriate number. To
+return to the main menu from a submenu, press return with no section
 number, in response to the question at the bottom of the page.
 .LP
-The manual is intended to provide online documentation  of  the  Miranda
-programming language and the command system in which it is embedded.  It
-is not intended to be a tutorial on functional programming.  It does not
-provide  information  about  the  operating  system,  for which separate
-documentation is available (but there is a section on  the  Miranda/UNIX
-interface).
+The manual is intended to provide online documentation of the Miranda
+programming language and the command system in which it is embedded. It
+is not intended to be a tutorial on functional programming. It does not
+provide information about the operating system, for which separate
+documentation is available (but there is a section on the \fIUNIX/Miranda
+system interface\fP).
 .SH
 Summary of manual behaviour
 .LP
 Whenever the manual system prompts the user for input \- by asking for
-"next selection" \- the complete repertoire of possible responses is:
+\(lqnext selection\(rq \- the complete repertoire of possible responses is:
 .TS
 l l.
 q	quit the manual
-[return] 	T{
-exit one level of menu structure
-(i.e. if at foot of section, return to menu
+<return> 	T{
+exit one level of menu structure (i.e.
+.RS
+if at foot of section, return to menu
+.br
 if at submenu, return to master menu
-if at main menu, quit the manual
+.br
+if at main menu, quit the manual)
+.RE
 T}
-[number]	display section from current contents page
+<number>	display section from current contents page
 .	(dot) same again, i.e. redisplay last requested section
 +	display next section in numerical order
--	display previous section
+\(mi	display previous section
 !command	temporary escape to O/S, executes shell command
 .TE
 .SH
@@ -116,7 +120,7 @@ Summary of the behaviour of \f(CWmore\fP
 .LP
 Individual sections of the manual are displayed to you using the UNIX
 program \f(CWmore\fP or an equivalent such as \f(CWless\fP
-(you can change this by setting an environment variable VIEWER (*)).
+(you can change this by setting an environment variable \f(CWVIEWER\fP (*)).
 These programs have their own UNIX manual page describing their features.
 The responses you can give generally include
 .TS
@@ -125,36 +129,33 @@ l l.
 [return]	display one more line
 q	(quit) cease showing me this file
 b	(back) scroll backwards by one screenful
-/context	search for context (eg a word)
+/context	search for context (e.g. a word)
 ?context	search backwards for context
 h	 help
 .TE
-(*) See the section on Environment Variables under  UNIX/Miranda  system
-interface.
+(*) See the section on Environment Variables under \fIUNIX/Miranda system
+interface\fP.
 .SH
-2. About the name "Miranda"
+2. About the name \(lqMiranda\(rq
 .LP
-The word "Miranda" is not an acronym.  It is a proper name (like "ADA").
+The word \(lqMiranda\(rq is not an acronym.
+It is a proper name (like \(lqAda\(rq).
 .LP
-"Miranda (f).  From the Latin meaning `to be admired'.   This  name  was
+\(lq\fBMiranda\fP (f). From the Latin meaning `to be admired'. This name was
 first used by Shakespeare for the heroine of \fIThe Tempest\fP, a young girl
-blessed with many admirable qualities.  Like other unusual Shakespearean
-names it has been used quite frequently in the 20th century."
+blessed with many admirable qualities. Like other unusual Shakespearean
+names it has been used quite frequently in the 20th century.\(rq
 .RS
-Collins Dictionary of First Names,
-.br
-William Collins and Son Ltd, London, 1967
+Collins Dictionary of First Names, William Collins and Son Ltd, London, 1967
 .RE
 .LP
-"O wonder! How many goodly creatures are there here! O brave new world."
+\(lqO wonder! How many goodly creatures are there here! O brave new world.\)rq
 .RS
-\fIThe Tempest\fP by William Shakespeare
-.br
-(from a speech by Miranda, Act 5, Scene 1)
+\fIThe Tempest\fP by William Shakespeare (from a speech by Miranda, Act 5, Scene 1)
 .RE
 .LP
 When used as the name of a functional programming system,
-"Miranda" is a trademark (tm) of Research Software Ltd.
+\(lqMiranda\(rq is a trademark (tm) of Research Software Ltd.
 .LP
 Note that only the first letter of Miranda is upper case \- it should
 never be written all in capitals.
@@ -184,7 +185,7 @@ are a beginner to functional programming you may find parts of the
 manual hard to follow, and will need to seek help elsewhere.
 .LP
 The following paper gives a convenient summary of the main features of
-Miranda: D. A. Turner "An Overview of Miranda", SIGPLAN Notices, December 1986.
+Miranda: D. A. Turner \fIAn Overview of Miranda\fP, SIGPLAN Notices, December 1986.
 .LP
 A copy of this paper is included in the manual pages, but this and other
 information about Miranda can be found on the world wide web at
@@ -193,7 +194,7 @@ miranda.org.uk
 Miranda has two available text books
 .LP
 .IP 1.
-Simon Thompson "Miranda: the Craft of Functional Programming",
+Simon Thompson \fIMiranda: the Craft of Functional Programming\fP,
 Addison-Wesley, 470 pages, 1995. ISBN 0-201-42279-4 (Paperback).
 A webpage for the book by the author is at
 .br
@@ -201,7 +202,7 @@ A webpage for the book by the author is at
 .br
 or follow the link under BOOKS at miranda.org.uk.
 .IP 2.
-Chris Clack, Colin Myers & Ellen Poon "Programming with Miranda",
+Chris Clack, Colin Myers & Ellen Poon \fIProgramming with Miranda\fP,
 Prentice Hall, 312 pages, 1995. ISBN 0-13-192592-X
 .br
 The rights in this book have reverted to the authors who have made it
@@ -210,13 +211,13 @@ available online \- follow the link under BOOKS at miranda.org.uk.
 There were two other texts, both now out of print, but there may be
 copies in a library or with second hand book sellers.
 .IP
-Richard Bird & Philip Wadler "An Introduction to Functional Programming",
+Richard Bird & Philip Wadler \fIAn Introduction to Functional Programming\fP,
 Prentice Hall, 293 pages, March 1988.
 .br
 This used a mathematical notation, quite closely based on Miranda but
 equally suitable for use with other functional languages.
 .IP
-Ian Holyer "Functional Programming with Miranda", Pitman, 215 pages, 1991.
+Ian Holyer \fIFunctional Programming with Miranda\fP, Pitman, 215 pages, 1991.
 .SH
 4. The Miranda command interpreter
 .LP
@@ -300,8 +301,8 @@ may be any currently in scope. Try for example \f(CW??map\fP
 .LP
 For this and several other features to work Miranda must be configured
 to use an appropriate editor \- the default is vi, but you can change
-this. See section 31 subheading 5 of this manual ("How to change the
-default editor").
+this. See section 31 subheading 5 of this manual (\fIHow to change the
+default editor\fP).
 .SH 2
 \f(CW!command\fP
 .LP
@@ -351,7 +352,7 @@ Change to new current script. Equivalent to quitting the Miranda
 system and reinvoking it with a new sourcefile. Like \f(CW/e\fP, \f(CW/f\fP adds \f(CW.m\fP
 to the end of the filename if missing.
 .LP
-Important special case \- reselecting the current script, eg by saying
+Important special case \- reselecting the current script, e.g. by saying
 .XE
     /f %
 .XX
@@ -389,9 +390,8 @@ For example
     sum $+
 .XX
 reads a sequence of numeric expressions from the standard input, and
-returns the sum of their values. See the manual section on reading with
-interpretation (under UNIX/Miranda system interface) for further
-information.
+returns the sum of their values. See the manual section 31/3 on reading with
+interpretation for further information.
 .SH
 .ne 20
 5. Summary of main available commands
@@ -478,8 +478,8 @@ operator expression, or an operator.
 .LP
 A simple expression is one of the following:
 .IP
-- Identifier: (see separate manual entry) these are of two kinds based on
-  the case of the initial letter
+Identifier: (see section 10.\ \fIIdentifiers\fP)
+these are of two kinds based on the case of the initial letter
 .RS
 .IP
 variable e.g. \f(CWx\fP or \f(CWmap\fP
@@ -487,14 +487,14 @@ variable e.g. \f(CWx\fP or \f(CWmap\fP
 constructor e.g. \f(CWX\fP or \f(CWTrue\fP
 .RE
 .IP
-Literal, e.g. \f(CW136\fP or \f(CW"fruit"\fP (see separate manual entry)
+Literal, e.g. \f(CW136\fP or \f(CW"fruit"\fP (see section 11.\ \fILiterals\fP)
 .IP
-An operator section (see separate manual entry)
+An operator section (see section 9.\ \fIOperator sections\fPy)
 .IP
-The keyword \f(CWshow\fP or \f(CWreadvals\fP (see separate manual entries)
+The keyword \f(CWshow\fP or \f(CWreadvals\fP (see sections 23.\ \f(CWshow\fP and 31/3.\ \f(CWreadvals\fP)
 .IP
 A list, such as \f(CW[1,5,7,9]\fP or a `dotdot' list or a list comprehension
-(see the manual entry on iterative expressions).
+(see section 13.\ \fIIterative expressions\fP).
 .IP
 A tuple, such as \f(CW(True,"green",37)\fP. Tuples differ from lists in that
 they can have components of mixed type. They are always enclosed in
@@ -526,7 +526,7 @@ For example
     5*x-17
 .XX
 There are a variety of infix and prefix operators, of various binding
-powers (see manual entry on operators). Note that function application
+powers (see section 8.\ \fIOperators\fP). Note that function application
 is more binding than any operator.
 .LP
 An operator on its own can be used as the name of the corresponding
@@ -585,7 +585,7 @@ list concatenation, list subtraction, both of type \f(CW[*]->[*]->[*]\fP
 .br
 A formal definition of list subtraction is given below.
 T}
-\f(CW\e/  &\fP	T{
+\f(CW\e/ &\fP	T{
 logical `or', `and', both of type \f(CWbool->bool->bool\fP
 T}
 \f(CW~\fP	T{
@@ -597,7 +597,7 @@ comparison operators, all of type \f(CW*->*->bool\fP
 Note that there is an ordering defined on every (non-function) type. In
 the case of numbers, characters and strings the order is as you would
 expect, on other types it as an arbitrary but reproducible ordering.
-Equality on structured data is a test for isomorphism.  (i.e. in LISP
+Equality on structured data is a test for isomorphism. (i.e. in LISP
 terms it is "EQUAL" not "EQ"). It is an error to test functions for
 equality or order.
 T}
@@ -620,7 +620,7 @@ e.g. \f(CW7\ div\ 2\fP is \f(CW3\fP, \f(CW7\ mod\ 2\fP is \f(CW1\fP.
 where \f(CWa\fP and \f(CWb\fP are any integers:
 .XE
 with b ~= 0
-(i)  b * (a div b) + a mod b  =  a
+(i)  b * (a div b) + a mod b = a
 (ii) if b>0 then 0 <= a mod b < b
      if b<0 then b < a mod b <= 0
 .XX
@@ -993,8 +993,7 @@ is the normal practise.
 pp157-165 (March 1966).]
 .LP
 Note that an additional comment convention applies in scripts whose
-first character is a \f(CW>\fP. See the separate manual entry on
-\fILiterate Scripts\fP.
+first character is a \f(CW>\fP. See section 29.\ \fILiterate Scripts\fP.
 .SH
 13. Iterative expressions
 .SH 2
@@ -1148,7 +1147,7 @@ script.
 Here are the kinds of declaration that can occur in a script:
 .IP 1)
 a definition (of a function, data structure etc. \-
-see manual entry `definitions' for more details). Example
+see section 15.\ \fIDefinitions\fP for more details). Example
 .XE
     fac n = product[1..n]
 .XX
@@ -1168,18 +1167,18 @@ identifiers. It is however possible to introduce an identifier by means
 of a type specification only, without giving it a defining equation
 (such identifiers are said to be `specified but not defined' and are
 useful in program development). A special case of this is the
-introduction of an otherwise undefined typename \- see separate manual
-entry on `placeholder types'.
+introduction of an otherwise undefined typename \- see section 
+22.\ \fIPlaceholder types\fP.
 .IP 3)
 the definition of a user defined type \- these are of three kinds,
-synonyms, algebraic types and abstract types (see the separate manual entry
+synonyms, algebraic types and abstract types (see sections 20. and 21.)
 on each).
 .IP 4)
 a library directive (\f(CW%export\fP, \f(CW%include\fP or \f(CW%free\fP) these are used
 specify the interfaces between separately compiled scripts \- see
-separate manual entry on the library mechanism.
+section 27.\ \fIThe library mechanism\fP.
 .LP
-There is a manual entry giving the formal syntax of Miranda scripts.
+Section 24. gives the formal syntax of Miranda scripts.
 .SH 2
 Note
 .LP
@@ -1197,7 +1196,7 @@ command
 .XE
     /cd <ex>
 .XX
-will change your current directory to be  \f(CW".../miralib/ex"\fP. You can
+will change your current directory to be \f(CW".../miralib/ex"\fP. You can
 then say, e.g.
 .XE
     !ls
@@ -1353,7 +1352,7 @@ Note that \f(CW:\fP is right associative (see manual section on Operators).
 where \f(CWp\fP is a pattern and \f(CWk\fP is a literal integer constant. This
 construction will succeed in matching a value n, if and only if \f(CWn\fP is an
 integer \f(CW>=k\fP, and in this case \f(CWp\fP is bound to \f(CW(n-k)\fP. Example, \f(CWy+1\fP
-matches any positive integer, and  \f(CWy\fP gets bound to the integer-minus-one.
+matches any positive integer, and \f(CWy\fP gets bound to the integer-minus-one.
 .LP
 Note that the automatic coercion from integer to floating point, which
 takes place in expression evaluation, does not occur in pattern
@@ -1417,13 +1416,13 @@ the value of \f(CWx\fP is neither \f(CW1\fP nor \f(CW2\fP, but `undefined' (i.e.
 will result if you try to access the value of \f(CWx\fP in any way).
 .LP
 As a constraint to prevent "nonsense" definitions, it is a rule that the
-pattern  on the left hand side of a conformal definition must contain at
+pattern on the left hand side of a conformal definition must contain at
 least one variable. So e.g. \f(CW1\ =\ 2\fP is not a syntactically valid
 definition.
 .SH 2
 Patterns on the left of generators
 .LP
-In a list comprehension (see separate manual entry) the bound entity on
+In a list comprehension (see section 13/2) the bound entity on
 the left hand side of an \f(CW<-\fP symbol can be any pattern. We give two
 simple examples \- in both examples we assume x is a list of 2-tuples.
 .LP
@@ -1539,7 +1538,7 @@ by the same amount as the initial \f(CW%\fP of the directive.
 .LP
 Insert directives may be invoked recursively, to a depth limit imposed
 by the operating system, typically about 16, which should be enough for
-any reasonable purpose.  Note that the pathnames are resolved
+any reasonable purpose. Note that the pathnames are resolved
 statically, not dynamically, so that the meaning of an \f(CW%insert\fP directive
 is computed relative to the file in which it occurs, NOT relative to the
 directory from which the compiler was invoked.
@@ -1566,7 +1565,7 @@ in all cases.
 \f(CW%include\fP \f(CW%export\fP \f(CW%free\fP
 .LP
 These directives control the identifier bindings between separately
-compiled scripts. See the separate manual entry \fIThe library mechanism\fP
+compiled scripts. See section 27.\ \fIThe library mechanism\fP
 for details.
 .SH
 18. Basic type structure and notation for types
@@ -1614,7 +1613,7 @@ Thus \f(CW[num]\fP is the type of lists of numbers such as \f(CW[1,2,3,4,5]\fP
 .LP
 \f(CW[[num]]\fP is the type of lists of lists of numbers, such as \f(CW[[1,2],[3,4]]\fP
 .LP
-\f(CW[char]\fP are lists of characters \- this is also the type of  string
+\f(CW[char]\fP are lists of characters \- this is also the type of string
 constants, so e.g. \f(CW['h','e','l','l','o']\fP and \f(CW"hello"\fP are interchangeable
 objects of this type.
 .SH 2
@@ -1643,7 +1642,7 @@ curried function of two numeric arguments.
 .LP
 In addition to the built-in types described above, user defined types
 may be introduced \- these are of three kinds, synonym types, algebraic
-types and abstract types \- see the separate manual entry for each.
+types and abstract types \- see sections 19, 20 and 21 for each.
 .SH 2
 Implicit typing
 .LP
@@ -1660,7 +1659,7 @@ desired, e.g. you could write (anywhere in the same script)
     plural :: [char]->[char]
 .XX
 and the compiler will check this for consistency with the defining
-equation (the symbol \f(CW::\fP means `is of type').  More generally the type
+equation (the symbol \f(CW::\fP means `is of type'). More generally the type
 declared may be an `instance' (see below) of the type implied by the
 definition \- in this case the effect of the declaration is to restrict
 the type of the identifier to be less general than it would otherwise
@@ -1701,7 +1700,7 @@ correct type specification for undef is
     undef :: *
 .XX
 Many of the functions in the standard environment have polymorphic types -
-the text of the standard environment (see the separate manual entry) is
+the text of the standard environment (see section 28) is
 therefore a useful source of examples.
 .SH
 19. Type synonym declarations
@@ -1918,8 +1917,8 @@ Miranda does not depend on the hiding of identifiers, and in this
 respect differs from the traditional approach. A fuller discussion of
 the Miranda \f(CWabstype\fP mechanism can be found in [*Turner 85].
 .LP
-(*) D. A. Turner "Miranda: A Non-Strict Functional Language with
-Polymorphic Types", Proceedings IFIP Conference on Functional
+(*) D. A. Turner \fIMiranda: A Non-Strict Functional Language with
+Polymorphic Types\fP, Proceedings IFIP Conference on Functional
 Programming Languages and Computer Architecture, Nancy, France,
 September 1985 (Springer Lecture Notes in Computer Science, vol. 201, pp
 1-16).
@@ -2009,7 +2008,7 @@ where the show function has no name.]
 22. Empty types (also called Placeholder types)
 .LP
 An empty type has no values belonging to it (apart from the undefined
-value,  \f(CWundef\fP, which is a member of every type). Empty types are
+value, \f(CWundef\fP, which is a member of every type). Empty types are
 declared as follows:
 .XE
     widget :: type
@@ -2028,7 +2027,7 @@ correctness. At a later stage the specification of widget as an empty
 type can be replaced by a non-empty type definition, using \f(CW==\fP, \f(CW::=\fP or
 \f(CWabstype\fP, allowing \f(CWfoo\fP, \f(CWgronk\fP, to be defined.
 .LP
-Typenames declared as empty can have any arity, eg
+Typenames declared as empty can have any arity, e.g.
 .XE
     table * ** :: type
 .XX
@@ -2216,7 +2215,7 @@ T}
 Notes
 .LP
 The syntax of the library directives (denoted by the non-terminal \f(CWlibdir\fP)
-is given in a separate manual entry.
+is given in manual section 27/1.)
 .LP
 Ambiguities in the syntax for \f(CWtype\fP and \f(CWconstruct\fP are resolved by
 noting that \f(CW->\fP is less binding than \f(CW$typename\fP or \f(CW$constructor\fP and
@@ -2256,7 +2255,7 @@ are given under Lexical Syntax (see next manual section).
 26. Miranda lexical syntax
 .LP
 In this section square brackets are used to enclose a set of literal
-characters, using lex-style conventions, so eg \f(CW[a-z]\fP means a lower case
+characters, using lex-style conventions, so e.g. \f(CW[a-z]\fP means a lower case
 letter. As usual, \f(CW*\fP and \f(CW?\fP are used to mean zero-or-more, and
 zero-or-one, occurrences of the preceding entity. Parentheses are used
 for grouping, and subtraction of one syntactic entity from another means
@@ -2362,7 +2361,7 @@ For the definition of \f(CWidentifier\fP and \f(CWIDENTIFIER\fP see Lexical Synt
 27/2. The \f(CW%include\fP directive (basic information)
 .LP
 Suppose the file \f(CW"mylib.m"\fP contains some Miranda declarations (which
-could be any kind of legal Miranda declaration, eg function definitions,
+could be any kind of legal Miranda declaration, e.g. function definitions,
 type definitions etc). To make these in scope in another script, the
 latter will contain the directive
 .XE
@@ -2411,8 +2410,8 @@ site.
 .LP
 The three directives \f(CW%include\fP \f(CW%export\fP \f(CW%free\fP constitute the Miranda
 library mechanism, which controls the sharing of identifiers between
-separately compiled scripts. The \f(CW%free\fP directive is covered in a
-separate manual entry and will not be discussed further here.
+separately compiled scripts. The \f(CW%free\fP directive is covered in
+section 27/4 and will not be discussed further here.
 .SH 3
 \f(CW%include "file"\fP
 .LP
@@ -2527,8 +2526,8 @@ an \f(CW%export\fP directive \- if you export an algebraic typename, its
 constructors are AUTOMATICALLY exported along with it. The consequence
 of this is that you cannot use \f(CW%export\fP to create an abstract data type,
 by "hiding information" about how an algebraic type was formed. If you
-want to create an abstract data type you must use the \f(CWabstype\fP mechanism -
-see separate manual entry.
+want to create an abstract data type you must use the \f(CWabstype\fP mechanism
+\- see section 21.\ \fIAbstract types\fP.
 .LP
 If a \f(CWfileid\fP is present in the export list, this must be the name of a
 file to \f(CW%include\fP in the exporting script, and the effect is that
@@ -2933,7 +2932,7 @@ A \f(CW.x\fP file records (inter alia) the names of all relevant source files
 relative to the directory in which it is stored, together with their `date
 and time last modified'. Note that the UNIX command \f(CWmv\fP does not
 alter the time-last-modified of the file being moved. So it is possible
-when moving a miranda source file (or a group of interdependant source
+when moving a Miranda source file (or a group of interdependent source
 files) from one directory to another to save mira the bother of
 recompiling them, simply by moving all the relevant \f(CW.x\fP files into the
 new directory along with the sources. (This doesn't work however if you
@@ -3498,7 +3497,7 @@ See also \f(CWmin\fP, \f(CWsort\fP.
 .LP
 \f(CWmax2\fP
 applied to two values of the same type returns the larger under
-the built in ordering of \f(CW>\fP.  See also \f(CWmin2\fP.
+the built in ordering of \f(CW>\fP. See also \f(CWmin2\fP.
 .XE
 > max2 :: *->*->*
 > max2 a b = a, if a>=b
@@ -3515,7 +3514,7 @@ value is or not present in the list.
 .LP
 \f(CWmerge\fP
 applied to two sorted lists merges them to produce a single
-sorted result.  Used to define \f(CWsort\fP, see later.
+sorted result. Used to define \f(CWsort\fP, see later.
 .XE
 > merge :: [*]->[*]->[*]  ||defined internally, as below
 
@@ -4011,7 +4010,7 @@ The compiler takes a decision on which comment convention applies by
 looking at the first line of a script. If this has a \f(CW>\fP in column 1,
 then it is a literate script, otherwise the compiler assumes it is a
 conventional script. Typically the first line of a literate script will
-just be a comment, eg
+just be a comment, e.g.
 .XE
 > ||This is a literate script
 .XX
@@ -4108,7 +4107,7 @@ is certainly a lot clearer than the recursive definition,
     cp [] y = []
 .XX
 The standard environment contains a number of useful list processing
-functions (eg \f(CWmap filter reverse foldr foldl\fP) with whose properties it
+functions (e.g. \f(CWmap filter reverse foldr foldl\fP) with whose properties it
 is worth becoming familiar. They capture common patterns of recursion
 over lists, and can often be used to simplify your code, and reduce the
 reliance on `ad-hoc' recursion. Programs using list comprehensions and
@@ -4340,7 +4339,7 @@ main) advantage is that for someone else reading the script, it
 explicitly documents the fact that a certain use of the function is
 considered an error.
 .SH
-31. UNIX/Miranda system interface information
+31. UNIX/Miranda system interface
 .LP
 .SH 2
 31/1. Input from UNIX files etc.
@@ -4435,7 +4434,7 @@ expression
 .XE
     system "date"
 .XX
-which gets date-and-time as a string.  Evaluating this twice in
+which gets date-and-time as a string. Evaluating this twice in
 succession is unlikely to produce the same result.
 .LP
 Strictly speaking all calls to \f(CWread\fP and the other functions in this
@@ -4527,7 +4526,7 @@ from the Miranda process.
 \f(CWExit num\fP
 .LP
 Causes the UNIX process evaluating the message list to terminate at this
-point with exit status \f(CWnum\fP (an  integer  between 0 and 127).
+point with exit status \f(CWnum\fP (an integer between 0 and 127).
 The remaining messages in the list (if any) are discarded. The exit status
 of a Miranda evaluation which terminates other than by a call to Exit
 will be 0 if it terminates successfully or 1 if it encounters a runtime
@@ -4571,7 +4570,7 @@ A Miranda command of the form
 causes a background process to be set up for the evaluation of \f(CWexp\fP,
 with both the standard output and the standard error output of the
 process redirected to \f(CWpathname\fP. If \f(CWexp\fP is of type \f(CW[sys_message]\fP,
-the  destination of \f(CWTofile\fP messages are not affected by the global
+the destination of \f(CWTofile\fP messages are not affected by the global
 redirection \- only messages which would otherwise have gone to the
 screen are sent to \f(CWpathname\fP.
 .LP
@@ -4587,7 +4586,7 @@ the relevant output is appended to the end of the file. Thus:
 .XE
     exp &>> pathname(s)
 .XX
-As with the \f(CW&>\fP command  either one or two pathnames can be given,
+As with the \f(CW&>\fP command either one or two pathnames can be given,
 depending on whether you wish standard error to be merged with standard
 out, or separated from it.
 .LP
@@ -4662,7 +4661,7 @@ but with first line
     #! /usr/bin/mira -exec
 .XX
 The first two characters must be \f(CW#!\fP followed by an optional space and
-the absolute pathname of the miranda interpreter. This may be somewhere
+the absolute pathname of the Miranda interpreter. This may be somewhere
 other than \f(CW/usr/bin/mira\fP, the UNIX shell command \f(CWwhich mira\fP
 should tell you where it is. The flag \f(CW-exec\fP is necessary and no other
 flags should be added.
@@ -4763,7 +4762,7 @@ If called from the UNIX command line,
 .XX
 will find and evaluate \f(CWmain\fP in \f(CWscript.m\fP and in this situation you can
 combine \f(CW-exec\fP with other flags, \f(CW-lib miralib\fP, \f(CW-heap N\fP, etc. preceding the
-name of the script.  Any additional arguments following \f(CWscript.m\fP will
+name of the script. Any additional arguments following \f(CWscript.m\fP will
 be found in \f(CW$*\fP.
 .SH 4
 Debugging stand-alone scripts
@@ -4816,7 +4815,7 @@ Miranda. Miranda's only contribution to making this work smoothly is
 that it detects when its input is not coming from a terminal, and in
 this case suppresses prompts and other extraneous feedback. Note also
 that lines beginning \f(CW||\fP are ignored by the Miranda command
-interpreter, which  gives  a way to include comments in the text of the
+interpreter, which gives a way to include comments in the text of the
 here-document.
 .LP
 The program \f(CWprog\fP might be invoked with one or more arguments, for
@@ -4832,12 +4831,12 @@ Other replacements carried out on the text of the here-document are -
 \f(CW$*\fP is replaced by all the arguments together, as a single piece of
 text, \f(CW$#\fP is replaced by the number of arguments present (\f(CW2\fP in the
 case shown above), and \f(CW$0\fP is replaced by the name of the program being
-executed (in this case \f(CWprog\fP).  
+executed (in this case \f(CWprog\fP).
 .LP
 If the here-document contains instances of \f(CW$\fP which you don't want
 replaced by something (for example inside a Miranda string), you have to
-escape them by preceding them with a backslash character.  But if the
-delimiter after the \f(CW>>\fP is in quotation marks, eg
+escape them by preceding them with a backslash character. But if the
+delimiter after the \f(CW>>\fP is in quotation marks, e.g.
 .XE
     mira [script] <<"!"
     stuff
@@ -4867,7 +4866,7 @@ to (for example) pico, say
 .XE
     /editor pico
 .XX
-Alternatively, when next invoking the miranda system from UNIX you can
+Alternatively, when next invoking the Miranda system from UNIX you can
 supply it with a flag requesting a specific editor by name, as follows:
 .XE
     mira -editor pico
@@ -5015,7 +5014,7 @@ on 32 or 64-bit systems) and the size of the dictionary is in bytes.
 .LP
 The most recent settings of the workspace sizes are stored in the file
 \f(CW.mirarc\fP in the users home directory, and automatically carried over to
-the next miranda session.
+the next Miranda session.
 .SH 2
 31/7. Options, setup files etc.
 .LP
@@ -5062,7 +5061,7 @@ within the Miranda session by the commands \f(CW/count\fP, \f(CW/nocount\fP.
 .LP
 Switches on (off) a flag causing Miranda scripts to be listed to the
 screen during compilation. This flag can also be switched on and off
-from within the miranda session by the commands \f(CW/list\fP, \f(CW/nolist\fP.
+from within the Miranda session by the commands \f(CW/list\fP, \f(CW/nolist\fP.
 .SH 3
 \f(CW-nostrictif\fP
 .LP
@@ -5089,7 +5088,7 @@ to be set up with \f(CWSIZE\fP bytes instead of the default 100kb.
 \f(CW-heap SIZE\fP
 .LP
 Causes the heap to be set up with SIZE cells instead of the default
-(currently 2,500,000). This can also be done from within the miranda session
+(currently 2,500,000). This can also be done from within the Miranda session
 by the command \f(CW/heap SIZE\fP. A cell currently occupies 9/17 bytes on a
 32/64-bit system.
 .SH 3
@@ -5142,7 +5141,7 @@ permission to it.
 .SH 3
 \f(CWmira -make [sourcefiles]\fP
 .LP
-Forces a check that all the miranda source files listed have up-to-date
+Forces a check that all the Miranda source files listed have up-to-date
 object code files, triggering compilation processes if necessary (see
 manual subsection on the library mechanism: separate compilation).
 .SH 3
@@ -5150,7 +5149,7 @@ manual subsection on the library mechanism: separate compilation).
 .LP
 Sends to stdout a list of the identifiers exported (see manual
 subsection on library mechanism: separate compilation) from each of the
-given miranda source files, together with their types (may also force
+given Miranda source files, together with their types (may also force
 recompilation if needed).
 .SH 3
 \f(CWmira -sources [sourcefiles]\fP
@@ -5172,7 +5171,7 @@ Setup Files
 .LP
 The current settings of \f(CWdic\fP, \f(CWheap\fP and \f(CWeditor\fP are saved in the file
 \f(CW.mirarc\fP in the users home directory, and are thereby carried over to
-the next miranda session. The settings of the compiler flag which
+the next Miranda session. The settings of the compiler flag which
 controls whether or not source is listed to the screen during
 compilation (toggled by the commands \f(CW/list\fP and \f(CW/nolist\fP during a Miranda
 session) and of the flag which controls the frequency of checking for
@@ -5192,7 +5191,7 @@ directory (normally found at \f(CW/usr/lib/miralib\fP). The user's local
 mira, will override the global one, however.
 .LP
 The behaviour of the \f(CWmira\fP program is also sensitive to the settings of
-certain environment variables \- see the separate manual entry about this.
+certain environment variables \- see section 31/8.
 .SH 3
 Output Buffering
 .LP
@@ -5213,8 +5212,8 @@ setting the environment variable \f(CWMIRALIB\fP. An explicit \f(CW-lib\fP flag,
 present, overrides this.
 .LP
 The first time it is called (i.e. if no \f(CW.mirarc\fP file is present, either
-in the home directory or in miralib) the Miranda  system  picks  up  the
-name  of  the  resident editor from the environment variable \f(CWEDITOR\fP \- if
+in the home directory or in miralib) the Miranda system picks up the
+name of the resident editor from the environment variable \f(CWEDITOR\fP \- if
 this is not set it assumes \f(CWvi\fP.
 .LP
 At startup (version 2.044 and later) \f(CWmira\fP inspects \f(CWLC_CTYPE\fP or if that
@@ -5239,7 +5238,7 @@ If environment variable \f(CWMIRAPROMPT\fP is set, its contents will be used as
 the session prompt, instead of the default prompt \f(CWMiranda \fP (version
 2.044 and later).
 .LP
-If the environment variable \f(CWNOSTRICTIF\fP is set (to any non-empty  string)
+If the environment variable \f(CWNOSTRICTIF\fP is set (to any non-empty string)
 Miranda accepts old scripts with no \f(CWif\fP after the guard comma.
 .LP
 For displaying pages of the manual, \f(CWmira\fP uses the program entered in the
@@ -5252,8 +5251,8 @@ variable \f(CWRETURNTOMENU\fP.
 \f(CWRETURNTOMENU=YES\fP prevents another prompt being given after displaying
 each section, causing instead an immediate return to contents page. It
 should be \f(CWYES\fP if \f(CWVIEWER\fP is a program that pauses for input at end of
-file (eg \f(CWless\fP), \f(CWNO\fP if \f(CWVIEWER\fP is a program that quits silently at end
-of file (eg \f(CWmore\fP, \f(CWless -EX\fP).
+file (e.g. \f(CWless\fP), \f(CWNO\fP if \f(CWVIEWER\fP is a program that quits silently at end
+of file (e.g. \f(CWmore\fP, \f(CWless -EX\fP).
 .LP
 Finally note that a third environment variable \f(CWMENUVIEWER\fP can be set to
 choose the program used to display contents pages (by default this is
@@ -5390,13 +5389,13 @@ change it to
     main = expression
     definitions...
 .XX
-The  new mechanism executes \f(CWmain\fP wherever it is in the script (whereas
+The new mechanism executes \f(CWmain\fP wherever it is in the script (whereas
 \f(CW-exp\fP required an expression on the second line).
 .SH 2
 September 2009 (version 2.044)
 .LP
 The environment variable \f(CWMIRAPROMPT\fP may be set to a string to be used as
-the Miranda session prompt instead of the default \f(CW"Miranda "\fP.
+the Miranda session prompt instead of the default "\f(CWMiranda\fP".
 .LP
 For reading/writing binary files in UTF-8 locale, \f(CWstdenv\fP is extended by
 .XE
@@ -5461,7 +5460,7 @@ Jan 2020 \- revised to C11 standard and made 64 bit compatible.
 33. License
 .LP
 The Miranda system is Copyright (c) Research Software Limited, 1985-2019
-and is distributed under an open source license.  For terms see the file
+and is distributed under an open source license. For terms see the file
 COPYING in the miralib directory.
 .SH
 34. Bug Reports
@@ -5485,10 +5484,10 @@ falls into this category.
 .LP
 First check if the problem only occurs following a garbage collection.
 Garbage collector reports can be turned on by \f(CWmira -gc\fP from the
-command line or by /gc within a miranda session. If your error does
+command line or by \f(CW/gc\fP within a Miranda session. If your error does
 appear to be associated with garbage collection you can try running with
 a bigger heap and/or getting mira recompiled at a lower level of
-optimisation (eg \f(CW-O\fP instead of \f(CW-O2\fP, or without \f(CW-O\fP). Miranda uses a
+optimisation (e.g. \f(CW-O\fP instead of \f(CW-O2\fP, or without \f(CW-O\fP). Miranda uses a
 \(lqconservative collector\(rq which scans the C stack to follow things that
 are, or appear to be, pointers into the heap. Unfortunately this is
 vulnerable to compiler optimisations affecting the state of the stack.
@@ -5546,7 +5545,7 @@ to be frozen to use the constructor names in the scope where it occurs.
 Implementation restrictions not mentioned elsewhere in the manual
 .LP
 A shell command called from \f(CWmira\fP using \f(CW!\fP is limited to
-1024 characters in length after any implied expansions (eg of \f(CW%\fP)
+1024 characters in length after any implied expansions (e.g. of \f(CW%\fP)
 have been performed.
 The same restriction applies to the result of expanding out a \f(CW/e\fP
 command. The pathnames of Miranda scripts are limited to 1024

@@ -37,7 +37,7 @@ The  compiler  takes  a  decision on which comment convention applies by
 looking at the first line of a script.  If this has a '>' in  column  1,
 then  it  is  a  literate script, otherwise the compiler assumes it is a
 conventional script.  Typically the first line of a literate script will
-just be a comment, eg
+just be a comment, e.g.
 
 > ||This is a literate script
 

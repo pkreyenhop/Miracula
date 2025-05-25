@@ -112,7 +112,7 @@ your home directory, and ~jack/file means file in jack's home directory.
 system  and  reinvoking it with a new sourcefile.  Like /e, /f adds ".m"
 to the end of the filename if missing.
 
-Important special case - reselecting the current script, eg by saying
+Important special case - reselecting the current script,  e.g. by saying
 	/f %
 forces the current script to be RECOMPILED - this is  useful  if  script
 has errors and you wish to see the error messages again.
