@@ -19,7 +19,7 @@ static int collectstars(void);
 static word directive(void);
 static void hexnumeral(void);
 static int identifier(int);
-static void kollect(int(*f)());
+static void kollect(int(*f)(int));
 static void numeral(void);
 static void octnumeral(void);
 static int peekch(void);
@@ -888,7 +888,7 @@ int okulid(int ch)
 { return(('a'<=ch&&ch<='z')||('A'<=ch&&ch<='Z')||('0'<=ch&&ch<='9')
           ||ch=='_'||ch==''||ch=='\''); }
 
-void kollect(int (*f)(word))
+void kollect(int (*f)(int))
 /* note top of dictionary used as work space to collect current token */
 { dicq= dicp;
   while((*f)(c)){ *dicq++ = c; c= getch(); }
