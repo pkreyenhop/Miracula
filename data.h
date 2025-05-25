@@ -153,7 +153,7 @@ void dieclean(void);
 #include <limits.h> /* MAX_DBL */
 #include <stdio.h>
 #include <signal.h>
-typedef void (*sighandler)();
+typedef void (*sighandler)(int);
 #include <math.h>
 #include <ctype.h>
 #include <string.h>
@@ -318,7 +318,7 @@ word alfasort(word);
 void dieclean(void);
 word fixtype(word,word);
 word fm_time(char *);  /* assumes type word same size as time_t */
-void fpe_error(void);
+void fpe_error(int);
 word parseline(word,FILE *,word);
 word process(void);
 void readoption(void);

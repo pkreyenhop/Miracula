@@ -1564,7 +1564,7 @@ word mkincludes(word includees)
 	   fclose(f);
        ld_stuff=cons(x,ld_stuff);
        if(!making)(void)signal(SIGINT,oldsig);
-       if(sigflag)sigflag=0,(* oldsig)(); /* take deferred interrupt */
+       if(sigflag)sigflag=0,(* oldsig)(SIGINT); /* take deferred interrupt */
        if(f&&!BAD_DUMP&&x!=NIL&&ND==NIL&&CLASHES==NIL&&ALIASES==NIL&&
 	  TSUPPRESSED==NIL&&DETROP==NIL&&MISSING==NIL)
 	  /* i.e. if load_script worked ok */
@@ -2086,7 +2086,7 @@ void undump(char *t) /* restore t from dump, or recompile if necessary */
       printf("(error %ld)\n",BAD_DUMP); }
   if(!initialising&&!making) /* restore interrupt handler */
     (void)signal(SIGINT,oldsig);
-  if(sigflag)sigflag=0,(*oldsig)(); /* take deferred interrupt */
+  if(sigflag)sigflag=0,(*oldsig)(SIGINT); /* take deferred interrupt */
   if(CLASHES!=NIL)
     { if(ideep==0)printf("cannot load %s ",obf),
                   printlist("due to name clashes: ",alfasort(CLASHES));
@@ -2119,9 +2119,9 @@ void unlinkx(char *t) /* remove orphaned .x file */
   if(!stat(obf,&buf))unlink(obf);
 }
 
-void fpe_error()
+void fpe_error(int sig)
 { if(compiling)
-    { (void)signal(SIGFPE,(sighandler)fpe_error); /* reset SIGFPE trap */
+    { (void)signal(sig,(sighandler)fpe_error); /* reset SIGFPE trap */
       syntax("floating point number out of range\n");
       SYNERR=0; longjmp(env,1);
       /* go straight back to commandloop - necessary because decoding very

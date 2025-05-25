@@ -358,7 +358,7 @@ double get_dbl(word x)
 
 word sto_dbl(double R)
 { union fpdatum r;
-  if(!isfinite(R))fpe_error(); /* see note on arithmetic model above */
+  if(!isfinite(R))fpe_error(SIGFPE); /* see note on arithmetic model above */
   r.real=R;
 #ifdef splitdouble
   return(make(DOUBLE,r.bits.left,r.bits.right));
@@ -369,7 +369,7 @@ word sto_dbl(double R)
 
 void setdbl(word x,double R)
 { union fpdatum r;
-  if(!isfinite(R))fpe_error(); /* see note on arithmetic model above */
+  if(!isfinite(R))fpe_error(SIGFPE); /* see note on arithmetic model above */
   r.real=R;
   tag[x]=DOUBLE;
 #ifdef splitdouble

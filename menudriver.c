@@ -16,7 +16,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
-typedef void (*sighandler)();
+typedef void (*sighandler)(int);
 
 #define pnlim 1024
 static struct stat buf;
