@@ -423,7 +423,7 @@ int yylex()         /* called by YACC to get the next symbol */
     yylval= getlitch();
     if(yylval<0){ errclass(yylval,0); return CONST; }
     if(!is_char(yylval))
-      printf("%simpossible event while reading char const ('\\%lu\')\n",
+      fprintf(stderr, "%simpossible event while reading char const ('\\%lu\')\n",
 	     echoing?"\n":"",yylval),
       acterror();
     if(rawch=='\n'||c!='\'')syntax("improperly terminated char const\n");

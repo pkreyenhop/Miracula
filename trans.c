@@ -322,7 +322,7 @@ word mkshow(word s,word p,word t)
 	     if(tag[t]==STRCONS) /* pname */ /* DEBUG */
 	       { printf("warning - mkshow applied to suppressed type\n");
 		 return(showwhat); }
-	     else { printf("impossible event in mkshow ("),
+	     else { fprintf(stderr, "impossible event in mkshow ("),
 	            out_type(t), printf(")\n");
 	            return(showwhat); }
   }
@@ -443,7 +443,7 @@ word transletrec(word dd,word e)
 word mklazy(word d) /* transforms local p=e to ids=($p.ids)e|conferror */
 { if(irrefutable(dlhs(d)))return(d);
 { word ids=mktuple(dlhs(d));
-  if(ids==NIL){ printf("impossible event in mklazy\n"); return(d); }
+  if(ids==NIL){ fprintf(stderr, "impossible event in mklazy\n"); return(d); }
   dval(d)=ap2(TRY,ap(lambda(dlhs(d),ids),dval(d)),
 			  ap(CONFERROR,cons(dlhs(d),here_inf(dval(d)))));
   dlhs(d)=ids;
@@ -454,7 +454,7 @@ word new_mklazy(word d)
               /* transforms local p=e to ids=($p.ids)e|conferror
                  with ids a LIST (not tuple as formerly) */
 { word ids=get_ids(dlhs(d));
-  if(ids==NIL){ printf("impossible event in new_mklazy\n"); return(d); }
+  if(ids==NIL){ fprintf(stderr, "impossible event in new_mklazy\n"); return(d); }
   dval(d)=ap2(TRY,ap(lambda(dlhs(d),ids),dval(d)),
 			  ap(CONFERROR,cons(dlhs(d),here_inf(dval(d)))));
   dlhs(d)=ids;
