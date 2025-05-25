@@ -8,7 +8,7 @@ MAN=usr/share/man/man1
 #LIB=usr/local/lib#beware no spaces after LIB
 #MAN=usr/local/man/man1
 CC = clang
-CFLAGS = -g -Wall #-O #-DCYGWIN #-DUWIN #-DIBMRISC #-Dsparc7 #-Dsparc8
+CFLAGS = #-O #-DCYGWIN #-DUWIN #-DIBMRISC #-Dsparc7 #-Dsparc8
 #be wary of using anything higher than -O as the garbage collector may fall over
 #if using gcc rather than clang try without -O first
 EX = #.exe        #needed for CYGWIN, UWIN
