@@ -11,7 +11,7 @@
 /* miranda symbols */
 
 %token VALUE EVAL WHERE IF TO LEFTARROW  COLONCOLON  COLON2EQ
-       TYPEVAR  NAME  CNAME  CONST  DOLLAR2  OFFSIDE  ELSEQ
+       TYPEVAR  NAME  CNAME  CONST  DOLLARS  OFFSIDE  ELSEQ
        ABSTYPE WITH DIAG EQEQ FREE INCLUDE  EXPORT  TYPE
        OTHERWISE  SHOWSYM  PATHNAME  BNF  LEX  ENDIR  ERRORSY ENDSY
        EMPTYSY READVALSY LEXDEF CHARCLASS ANTICHARCLASS LBEGIN
@@ -750,7 +750,7 @@ arg:
         = { $$ = readvals(0,0); }|
     SHOWSYM
         = { $$ = show(0,0); }|
-    DOLLAR2
+    DOLLARS
         = { $$ = lastexp;
             if(lastexp==UNDEF)
             syntax("no previous expression to substitute for $$\n"); }|

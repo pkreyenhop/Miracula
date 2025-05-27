@@ -386,7 +386,7 @@ extern int YYPARSE_DECL();
 #define NAME 266
 #define CNAME 267
 #define CONST 268
-#define DOLLAR2 269
+#define DOLLARS 269
 #define OFFSIDE 270
 #define ELSEQ 271
 #define ABSTYPE 272
@@ -1793,7 +1793,7 @@ static const char *const yyname[] = {
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,"error","VALUE","EVAL",
 "WHERE","IF","TO","LEFTARROW","COLONCOLON","COLON2EQ","TYPEVAR","NAME","CNAME",
-"CONST","DOLLAR2","OFFSIDE","ELSEQ","ABSTYPE","WITH","DIAG","EQEQ","FREE",
+"CONST","DOLLARS","OFFSIDE","ELSEQ","ABSTYPE","WITH","DIAG","EQEQ","FREE",
 "INCLUDE","EXPORT","TYPE","OTHERWISE","SHOWSYM","PATHNAME","BNF","LEX","ENDIR",
 "ERRORSY","ENDSY","EMPTYSY","READVALSY","LEXDEF","CHARCLASS","ANTICHARCLASS",
 "LBEGIN","ARROW","PLUSPLUS","MINUSMINUS","DOTDOT","VEL","GE","NE","LE","REM",
@@ -1948,7 +1948,7 @@ static const char *const yyrule[] = {
 "arg : CONST",
 "arg : READVALSY",
 "arg : SHOWSYM",
-"arg : DOLLAR2",
+"arg : DOLLARS",
 "arg : '[' ']'",
 "arg : '[' exp ']'",
 "arg : '[' exp ',' exp ']'",

@@ -13,7 +13,7 @@
 #define NAME 266
 #define CNAME 267
 #define CONST 268
-#define DOLLAR2 269
+#define DOLLARS 269
 #define OFFSIDE 270
 #define ELSEQ 271
 #define ABSTYPE 272

@@ -561,7 +561,7 @@ int yylex()         /* called by YACC to get the next symbol */
                   syntax("unexpected symbol $$\n"); else
                 { c=getch();
                   if(inlex) { yylval=mklexvar(0); return(NAME); }
-                  else return(DOLLAR2); }}
+                  else return(DOLLARS); }}
             if(c=='#')
               { if(inlex!=2)syntax("unexpected symbol $#\n"); else
                   { c=getch(); yylval=mklexvar(1); return(NAME); }}
