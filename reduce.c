@@ -17,7 +17,6 @@ static struct stat buf;  /* used only by code for FILEMODE, FILESTAT in reduce *
 #include "data.h"
 #include "big.h"
 #include "lex.h"
-#include "reduce.h"
 extern int debug, UTF8, UTF8OUT;
 #define FST HD
 #define SND TL
@@ -28,16 +27,19 @@ char* d2s(double);
 word d2s_buffered(double, char*);
 #endif
 
-double fa,fb;
-long long cycles=0;
-word stdinuse=0;
+static double fa,fb;
+static long long cycles=0;
+static word stdinuse=0;
 
 static void apfile(word);
 static void closefile(word);
+static int compare(word,word);
 static void div_error(void);
 static void fn_error(char *);
+static void force(word);
 static void getenv_error(char *);
 static word g_residue(word);
+static void int_error(char *);
 static void lexfail(word);
 static word lexstate(word);
 static int memclass(int,word);
@@ -47,8 +49,8 @@ static word piperrmess(word);
 static void print(word);
 static word reduce(word);
 static void stdin_error(int);
+static char *stdname(int);
 static void subs_error(void);
-static void int_error(char *);
 
 #define constr_tag(x) hd(x)
 #define idconstr_tag(x) hd(id_val(x))

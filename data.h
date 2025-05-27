@@ -146,7 +146,6 @@ see also reset_pns(), make_pn(), sto_pn() in lex.c */
 extern int compiling,polyshowerror;
 extern word *hd, *tl;
 extern char *tag;
-double get_dbl(word);
 void dieclean(void);
 #include <unistd.h> /* execl */
 #include <stdlib.h> /* malloc, calloc, realloc, getenv */
@@ -259,6 +258,7 @@ void gc(void);
 void gcpatch(void);
 char *getaka(word);
 word get_char(word);
+double get_dbl(word);
 word geterrlin(char *);
 word get_here(word);
 int is_char(word);
@@ -281,6 +281,7 @@ word sto_id(char *);
 word trueheapsize(void);
 
 /* function prototypes - reduce.c */
+char *getstring(word, char *);
 word head(word);
 void initclock(void);
 void math_error(char *);
@@ -315,7 +316,6 @@ word transtypeid(word);
 void acterror(void);
 word alfasort(word);
 void dieclean(void);
-word fixtype(word,word);
 word fm_time(char *);  /* assumes type word same size as time_t */
 void fpe_error(int);
 word parseline(word,FILE *,word);

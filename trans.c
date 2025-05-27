@@ -26,6 +26,8 @@ word SGC=NIL; /* list of user defined sui-generis constructors */
                        /* 3/10/88 decision to treat `()' as lifted */
 static word abshfnck(word,word);
 static word abstr(word,word);
+static word abstract(word,word);
+static word abstrlist(word,word);
 static word combine(word,word);
 static void decl1(word,word);
 static word fixrepeats(word);

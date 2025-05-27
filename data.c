@@ -12,15 +12,15 @@
 #include "big.h"
 #include "lex.h"
 #define INITSPACE 1250000
-word SPACE=INITSPACE; /* false ceiling in heap to improve paging behaviour
-			during compilation */
+static word SPACE=INITSPACE; /* false ceiling in heap to improve
+			        paging behaviour during compilation */
 extern word SPACELIMIT; /* see steer.c for default value */
      /* SPACELIMIT controls the size of the heap (i.e. the number of list
 	cells available) - the minimum survivable number given the need to 
 	compile the prelude etc is probably about 6000 */
      /* Note: the size of a list cell is 2 ints + 1 char  */
 #define BIGTOP (SPACELIMIT + ATOMLIMIT)
-word listp=ATOMLIMIT-1;
+static word listp=ATOMLIMIT-1;
 static word *heap;
 word *hd, *tl;
 char *tag;
@@ -31,7 +31,8 @@ long claims=0;
 long nogcs=0;
 extern int atgc,loading; /* flags, set in steer.c */
 
-word *dstack=0,*stackp,*dlim;
+word *dstack=0,*stackp;
+static word *dlim;
 #if 0
 stackp=dstack; /* if load_script made interruptible, add to reset */
 #endif
@@ -43,12 +44,21 @@ stackp=dstack; /* if load_script made interruptible, add to reset */
 
 static void bases(void);
 static void bindparams(word,word);
+static void dgrow(void);
 static void dsetup(void);
 static void dump_defs(word,FILE *);
 static void dump_ob(word,FILE *);
+static word getdbl(FILE *);
+static int  getint(FILE *);
+static word getword(FILE *);
 static word hdsort(word);
 static word load_defs(FILE *);
 static void mark(word);
+static char *mkrel(char *);
+static void putdbl(word,FILE *);
+static void putint(int,FILE *);
+static void putword(word,FILE *);
+static void setwd(word,word,word);
 static void unscramble(word);
 
 word trueheapsize()
@@ -528,7 +538,7 @@ word getdbl(FILE *f)
 }
 
 static char prefix[pnlim];
-word preflen;
+static word preflen;
 
 void setprefix(char *p)  /* to that of pathname p */
 { char *g;

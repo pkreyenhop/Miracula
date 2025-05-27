@@ -26,12 +26,13 @@ word showchain=NIL; /* links together all occurrences of special forms (show)
 extern word rfl;
 
 #include <setjmp.h>
-jmp_buf env1; /* for longjmp - see man (3) setjmp */
+static jmp_buf env1; /* for longjmp - see man (3) setjmp */
 
 static void abstr_check(word);
 static void abstr_mcheck(word);
 static void addsubst(word,word);
 static word ap_subst(word,word);
+static void checkcolfn(void);
 static void checkfbs(void);
 static int clear_SUBST(void);
 static void comp_deps(word);
@@ -43,7 +44,12 @@ static void fixshows(void);
 static void genbnft(void);
 static void infer_type(word);
 static word linst(word,word);
+static word lmap(word);
+static void locate(char*);
 static void locate_inc(void);
+static word lookup(word);
+static word mapdown(word);
+static word mapup(word);
 static void mcheckfbs(void);
 static word meta_tcheck(word);
 static int non_generic(word);
@@ -58,6 +64,8 @@ static void redtfr(word);
 static word rembvars(word,word);
 static word remove1(word,word*);
 static word rep_t(word,word);
+static word rep_t1(word,word);
+static word rhs_here(word);
 static void sterilise(word);
 static word subst(word);
 static word subsu1(word,word,word);
@@ -75,6 +83,7 @@ static void type_error8(word,word);
 static word ult(word);
 static int unify(word,word);
 static int unify1(word,word);
+static word walktype(word,word(*)(word));
 
 void checktypes() /* outcome indicated by setting of flags SYNERR, TYPERRS, ND */
 { word s;
@@ -535,12 +544,14 @@ void report_type(word x)
   out_type(id_type(x));
 }
 
+#if 0
 void report_types(char *header,word x)
 { printf("%s",header);
   while(x!=NIL)
        report_type(hd(x)),putchar(';'),x=tl(x);
   putchar('\n');
 }
+#endif
 
 word typesfirst(word x)  /* rearrange list of ids to put types first */
 { word *y= &x,z=NIL;
@@ -584,6 +595,7 @@ word type_of(word x)  /* returns the type of expression x, in reduced form */
   return(t);
 }
 
+#if 0
 word checktype(word x)  /* is expression x well-typed ? */
            /* not currently used */
 { TYPERRS=0;
@@ -591,6 +603,7 @@ word checktype(word x)  /* is expression x well-typed ? */
   reset_SUBST;
   return(!TYPERRS);
 }
+#endif
 
 #define bound_t(t) (iscompound_t(t)&&hd(t)==bind_t)
 #define tf(a,b) ap2(arrow_t,a,b)
@@ -1451,6 +1464,7 @@ word member(word s,word x)
   return(s!=NIL);
 }
 
+#if 0
 void printgraph(char *title,word g) /* for debugging info */
 { printf("%s\n",title);
   while(g!=NIL)
@@ -1458,6 +1472,7 @@ void printgraph(char *title,word g) /* for debugging info */
     printelement(tl(hd(g))); printf(";\n");
     g=tl(g); }
 }
+#endif
 
 void printelement(word x)
 { if(tag[x]!=CONS){ out(stdout,x); return; }
@@ -1478,6 +1493,7 @@ void printlist(char *title,word l) /* for debugging */
   printf(";\n");
 }
 
+#if 0
 word printob(char *title,word x) /* for debugging */
 { printf("%s",title); out(stdout,x); putchar('\n');
   return(x); }
@@ -1485,8 +1501,9 @@ word printob(char *title,word x) /* for debugging */
 void print2obs(char *title,char *title2,word x,word y) /* for debugging */
 { printf("%s",title); out(stdout,x); printf("%s",title2); out(stdout,y); putchar('\n');
 }
+#endif
 
-word allchars=0; /* flag used by tail */
+static word allchars=0; /* flag used by tail */
 
 void out_formal1(FILE *f,word x)
 { extern word nill;

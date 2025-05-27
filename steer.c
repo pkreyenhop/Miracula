@@ -19,16 +19,15 @@ static struct stat buf; /* see man(2) stat - gets file status */
 #include "data.h"
 #include "big.h"
 #include "lex.h"
-#include "reduce.h"
 #include <float.h>
 word nill,Void;
-word main_id; /* change to magic scripts 19.11.2013 */
+static word main_id; /* change to magic scripts 19.11.2013 */
 word message,standardout;
 word diagonalise,concat,indent_fn,outdent_fn,listdiff_fn;
 word shownum1,showbool,showchar,showlist,showstring,showparen,showpair,
     showvoid,showfunction,showabstract,showwhat;
 
-char PRELUDE[pnlim+10],STDENV[pnlim+9];
+static char PRELUDE[pnlim+10],STDENV[pnlim+9];
      /* if anyone complains, elasticate these buffers! */
 
 #define DFLTSPACE 2500000l
@@ -63,9 +62,11 @@ static void editfile(char*,int);
 static void ed_warn(void);
 static void filecopy(char*);
 static void filecp(char*,char*);
+static void filequote(char *);
 static void finger(char*);
 static void fixeditor(void);
 static void fixexports(void);
+static word fixtype(word,word);
 static int getln(FILE*,word,char*);
 static word isfreeid(word);
 static void libfails(void);
@@ -78,12 +79,16 @@ static char *mkabsolute(char*);
 static word mkincludes(word);
 static word mktiny(void);
 static void namescom(word);
+static int  normal(char *);
+static void predef(char *,word,word);
+static void primdef(char *,word,word);
 static void primlib(void);
 static word privatise(word);
 static void privlib(void);
 static word publicise(word);
 static word rc_read(char*);
 static void rc_write(void);
+static void sigdefer(void);
 static int src_update(void);
 static void stdlib(void);
 static char *strvers(int);
@@ -94,6 +99,7 @@ static int utf8test(void);
 static void unfixexports(void);
 static void unlinkx(char*);
 static void unload(void);
+static void unsetids(word);
 static void v_info(int);
 static void xschars(void);
 
@@ -162,7 +168,7 @@ sigjmp_buf env;
  * "Upon reaching this limit, a SIGSEGV signal is generated." (setrlimit(2))
  */
 #include <sys/resource.h>
-void unlimit_stack(void)
+static void unlimit_stack(void)
 {
   struct rlimit rlimit;
   if (getrlimit(RLIMIT_STACK, &rlimit) == 0) {
@@ -1752,6 +1758,7 @@ word fixtype(word t,word x)  /* substitute out any indirected typenames in t */
   }
 }
 
+#if 0
 #define mask(c) (c&0xDF)
 /* masks out lower case bit, which is 0x20  */
 word alfa_ls(char *a,char *b)  /* 'DICTIONARY ORDER' - not currently used */
@@ -1759,6 +1766,7 @@ word alfa_ls(char *a,char *b)  /* 'DICTIONARY ORDER' - not currently used */
   if(mask(*a)==mask(*b))return(strcmp(a,b)<0); /* lower case before upper */
   return(mask(*a)<mask(*b));
 }
+#endif
 
 word alfasort(word x) /* also removes non_IDs from result */
 { word a=NIL,b=NIL,hold=NIL;
