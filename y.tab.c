@@ -105,14 +105,14 @@ void evaluate(word x)
   if(polyshowerror)return;
   if(process())
                  /* setup new process for each evaluation */
-  { (void)signal(SIGINT,(sighandler)dieclean);
+  { (void)signals(SIGINT,(sighandler)dieclean);
       /* if interrupted will flush output etc before going */
     compiling=0;
     resetgcstats();
     output(isltmess_t(t)?x:
             cons(ap(standardout,isstring_t(t)?x
                            :ap(mkshow(0,0,t),x)),NIL));
-    (void)signal(SIGINT,SIG_IGN);/* otherwise could do outstats() twice */
+    (void)signals(SIGINT,SIG_IGN);/* otherwise could do outstats() twice */
     putchar('\n');
     outstats();
     exit(0); }
@@ -3011,18 +3011,18 @@ case 6:
             if(!polyshowerror&&t!=wrong_t&&fil!=NULL&&(!ef||efil))
             { int pid;/* launch a concurrent process to perform task */
               sighandler oldsig;
-              oldsig=signal(SIGINT,SIG_IGN); /* ignore interrupts */
+              oldsig=signals(SIGINT,SIG_IGN); /* ignore interrupts */
               if((pid=fork()))
                 { /* "parent" */
                   if(pid==-1)perror("cannot create process");
                   else printf("process %d\n",pid);
                   fclose(fil);
                   if(efil)fclose(efil);
-                  (void)signal(SIGINT,oldsig); }else
+                  (void)signals(SIGINT,oldsig); }else
               { /* "child" */
-                (void)signal(SIGQUIT,SIG_IGN);   /* and quits */
+                (void)signals(SIGQUIT,SIG_IGN);   /* and quits */
 #ifndef SYSTEM5
-                (void)signal(SIGTSTP,SIG_IGN);   /* and stops */
+                (void)signals(SIGTSTP,SIG_IGN);   /* and stops */
 #endif
                 close(1); dup(fileno(fil));  /* subvert stdout */
                 close(2); dup(fileno(ef?efil:fil)); /* subvert stderr */

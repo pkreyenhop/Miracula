@@ -15,8 +15,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <sys/wait.h>
-#include <signal.h>
-typedef void (*sighandler)(int);
+#include "signals.h"
 
 #define pnlim 1024
 static struct stat buf;
@@ -231,13 +230,13 @@ void callshell(char v[])
   if(!shell)
     { shell=getenv("SHELL");
       if(!shell)shell="/bin/sh"; }
-  oldsig= signal(SIGINT,SIG_IGN);
+  oldsig= signals(SIGINT,SIG_IGN);
   if((pid=fork()))
     { /* parent */
      if(pid==-1)
        perror("UNIX error - cannot create process");
      wait(0);
-     (void)signal(SIGINT,oldsig); }
+     (void)signals(SIGINT,oldsig); }
   else execl(shell,shell,"-c",v,(char *)0);
 }
 

@@ -152,8 +152,7 @@ void dieclean(void);
 #include <stdlib.h> /* malloc, calloc, realloc, getenv */
 #include <limits.h> /* MAX_DBL */
 #include <stdio.h>
-#include <signal.h>
-typedef void (*sighandler)(int);
+#include "signals.h"
 #include <math.h>
 #include <ctype.h>
 #include <string.h>

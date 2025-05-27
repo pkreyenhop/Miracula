@@ -391,8 +391,8 @@ int main(int argc,char *argv[])
 	      exit(make_status); }
   initscript= argc==1?"script.m":magic?argv[1]:addextn(1,argv[1]);
   if(initscript==dicp)keep(dicp);
-  (void)signal(SIGFPE,(sighandler)fpe_error); /* catch arithmetic overflow */
-  (void)signal(SIGTERM,(sighandler)exit); /* flush buffers if killed */
+  (void)signals(SIGFPE,(sighandler)fpe_error); /* catch arithmetic overflow */
+  (void)signals(SIGTERM,(sighandler)exit); /* flush buffers if killed */
   commandloop(initscript);
 	     /* parameter is file given as argument */
   return 0;
@@ -578,7 +578,7 @@ void commandloop(char *initscript)
                      exit(1); }
 		 magic=0; obey(main_id); exit(0); }
                  /* was obey(lastexp), change to magic scripts 19.11.2013 */
-      (void)signal(SIGINT,(sighandler)reset);
+      (void)signals(SIGINT,(sighandler)reset);
       undump(initscript);
       if(verbosity)printf("for help type /h\n"); }
   for(;;)
@@ -642,13 +642,13 @@ void commandloop(char *initscript)
 		     if(!shell)
 		       { shell=getenv("SHELL");
 		         if(!shell)shell="/bin/sh"; }
-                     oldsig= signal(SIGINT,SIG_IGN);
+                     oldsig= signals(SIGINT,SIG_IGN);
                      if((pid=fork()))
                        { /* parent */
                          if(pid==-1)
 	                   perror("UNIX error - cannot create process");
                          while(pid!=wait(0));
-			 (void)signal(SIGINT,oldsig); }
+			 (void)signals(SIGINT,oldsig); }
                      else execl(shell,shell,"-c",lb,(char *)0);
                      if(src_update())loadfile(current_script); }
 		 else printf(
@@ -756,7 +756,7 @@ void reset() /* interrupt catcher - see call to signal in commandloop */
   extern int blankerr,collecting;
 #if 0
   if(!making)  /* see note below */
-    (void)signal(SIGINT,SIG_IGN); /* dont interrupt me while I'm tidying up */
+    (void)signals(SIGINT,SIG_IGN); /* dont interrupt me while I'm tidying up */
 #endif
   if(collecting)gcpatch();
   if(loading)
@@ -771,7 +771,7 @@ void reset() /* interrupt catcher - see call to signal in commandloop */
   if(collecting)collecting=0,gc(); /* to mark stdenv etc as wanted */
   if(making&&!make_status)make_status=1;
 #ifdef SYSTEM5
-  else (void)signal(SIGINT,(sighandler)reset);/*ready for next interrupt*//*see note*/
+  else (void)signals(SIGINT,(sighandler)reset);/*ready for next interrupt*//*see note*/
 #endif
   /* during mira -make blankerr is only use of reset */
   siglongjmp(env,1);
@@ -1536,7 +1536,7 @@ word mkincludes(word includees)
     }
   else { /* child does equivalent of `mira -make' on each includee */
 	 extern word oldfiles;
-	 (void)signal(SIGINT,SIG_DFL); /* don't trap interrupts */
+	 (void)signals(SIGINT,SIG_DFL); /* don't trap interrupts */
 	 ideep++; making=1; make_status=0; echoing=listing=verbosity=magic=0;
          sigsetjmp(env,1); /* will return here on blankerr (via reset) */
 	 while(includees!=NIL&&!make_status) /* stop at first bad includee */
@@ -1558,12 +1558,12 @@ word mkincludes(word includees)
        (void)strcpy(dicp,fn);
        (void)strcpy(dicp+strlen(dicp)-1,obsuffix);
        if(!making) /* cannot interrupt load_script() */
-	 oldsig=signal(SIGINT,(sighandler)sigdefer);
+	 oldsig=signals(SIGINT,(sighandler)sigdefer);
        if((f=fopen(dicp,"r")))
 	 x=load_script(f,fn,hd(tl(hd(includees))),tl(tl(hd(includees))),0),
 	   fclose(f);
        ld_stuff=cons(x,ld_stuff);
-       if(!making)(void)signal(SIGINT,oldsig);
+       if(!making)(void)signals(SIGINT,oldsig);
        if(sigflag)sigflag=0,(* oldsig)(SIGINT); /* take deferred interrupt */
        if(f&&!BAD_DUMP&&x!=NIL&&ND==NIL&&CLASHES==NIL&&ALIASES==NIL&&
 	  TSUPPRESSED==NIL&&DETROP==NIL&&MISSING==NIL)
@@ -1892,7 +1892,7 @@ void dieclean()     /* called if evaluation is interrupted - see rules.y */
 word process()
 { int pid;
   sighandler oldsig;
-  oldsig = signal(SIGINT,SIG_IGN);
+  oldsig = signals(SIGINT,SIG_IGN);
         /* do not let parent receive interrupts intended for child */
   if((pid=fork()))
   { /* parent */
@@ -1913,7 +1913,7 @@ word process()
         default: fprintf(stderr,"\n<<...uncaught signal %d>>\n",WTERMSIG(status));
     } }
     /*if(status >>= 8)fprintf(stderr,"\n(exit status %d)\n",status); */
-    (void)signal(SIGINT,oldsig); /* restore interrupt status */
+    (void)signals(SIGINT,oldsig); /* restore interrupt status */
     return(0); }
   else return(1); /* child */
 }
@@ -1922,7 +1922,7 @@ word process()
    1) Each evaluation (see rules.y) is an interruptible process.
    2) If the command loop is interrupted outside an evaluation or during
       compilation it reverts to the top level prompt - see set_jmp and
-      signal(reset) in commandloop() */
+      signals(reset) in commandloop() */
 
 void primdef(char *n,word v,word t)      /*  used by "primlib", see below  */
 { word x;
@@ -2074,7 +2074,7 @@ void undump(char *t) /* restore t from dump, or recompile if necessary */
   unload();
   if(!initialising&&!making) /* ie this is the main script */
     sigflag=0,
-    oldsig=signal(SIGINT,(sighandler)sigdefer); 
+    oldsig=signals(SIGINT,(sighandler)sigdefer); 
     /* can't take interrupt during load_script */
   files=load_script(f,t,NIL,NIL,!making&!initialising);
   fclose(f);
@@ -2085,7 +2085,7 @@ void undump(char *t) /* restore t from dump, or recompile if necessary */
       if(BAD_DUMP==1)printf("(wrong source file)\n"); else
       printf("(error %ld)\n",BAD_DUMP); }
   if(!initialising&&!making) /* restore interrupt handler */
-    (void)signal(SIGINT,oldsig);
+    (void)signals(SIGINT,oldsig);
   if(sigflag)sigflag=0,(*oldsig)(SIGINT); /* take deferred interrupt */
   if(CLASHES!=NIL)
     { if(ideep==0)printf("cannot load %s ",obf),
@@ -2121,7 +2121,7 @@ void unlinkx(char *t) /* remove orphaned .x file */
 
 void fpe_error(int sig)
 { if(compiling)
-    { (void)signal(sig,(sighandler)fpe_error); /* reset SIGFPE trap */
+    { (void)signals(sig,(sighandler)fpe_error); /* reset SIGFPE trap */
       syntax("floating point number out of range\n");
       SYNERR=0; siglongjmp(env,1);
       /* go straight back to commandloop - necessary because decoding very
