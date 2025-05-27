@@ -156,7 +156,7 @@ char *rc_error=NULL;
 #endif
 
 #include <setjmp.h> /* for longjmp() - see man (3) setjmp */
-jmp_buf env;
+sigjmp_buf env;
 
 /* On Linux the stack is limited by default to 8MB, on NetBSD to 4MB and
  * "Upon reaching this limit, a SIGSEGV signal is generated." (setrlimit(2))
@@ -315,7 +315,7 @@ int main(int argc,char *argv[])
       word f,argcount=argc-1;
       extern word exports,freeids;
       char *s;
-      setjmp(env); /* will return here on blankerr (via reset) */
+      sigsetjmp(env,1); /* will return here on blankerr (via reset) */
       while(--argc) /* where do error messages go?? */
 	   { word x=NIL;
 	     s=addextn(1,*++argv);
@@ -351,7 +351,7 @@ int main(int argc,char *argv[])
   if(mksources){ extern word oldfiles;
 	         char *s;
 		 word f,x=NIL;
-                 setjmp(env); /* will return here on blankerr (via reset) */
+                 sigsetjmp(env,1); /* will return here on blankerr (via reset) */
 	         while(--argc)
 		      if(stat((s=addextn(1,*++argv)),&buf)==0)
 		      { if(s==dicp)keep(dicp);
@@ -364,7 +364,7 @@ int main(int argc,char *argv[])
 	         exit(0); }
   if(making){ extern word oldfiles;
 	      char *s;
-              setjmp(env); /* will return here on blankerr (via reset) */
+              sigsetjmp(env,1); /* will return here on blankerr (via reset) */
 	      while(--argc) /* where do error messages go?? */
 		   { s=addextn(1,*++argv);
 		     if(s==dicp)keep(dicp);
@@ -565,7 +565,7 @@ void commandloop(char *initscript)
   extern word cook_stdin;
   extern void obey(word);
   char *lb;
-  if(setjmp(env)==0) /* returns here if interrupted, 0 means first time thru */
+  if(sigsetjmp(env,1)==0) /* returns here if interrupted, 0 means first time thru */
     { if(magic){ undump(initscript); /* was loadfile() changed 26.11.2019
                                         to allow dump of magic scripts in ".m"*/
 		 if(files==NIL||ND!=NIL||id_val(main_id)==UNDEF)
@@ -774,7 +774,7 @@ void reset() /* interrupt catcher - see call to signal in commandloop */
   else (void)signal(SIGINT,(sighandler)reset);/*ready for next interrupt*//*see note*/
 #endif
   /* during mira -make blankerr is only use of reset */
-  longjmp(env,1);
+  siglongjmp(env,1);
 }/* under BSD and Linux installed signal remains installed after interrupt
     and further signals blocked until handler returns */
 
@@ -1538,7 +1538,7 @@ word mkincludes(word includees)
 	 extern word oldfiles;
 	 (void)signal(SIGINT,SIG_DFL); /* don't trap interrupts */
 	 ideep++; making=1; make_status=0; echoing=listing=verbosity=magic=0;
-         setjmp(env); /* will return here on blankerr (via reset) */
+         sigsetjmp(env,1); /* will return here on blankerr (via reset) */
 	 while(includees!=NIL&&!make_status) /* stop at first bad includee */
 	      { undump((char *)hd(hd(hd(includees))));
 	        if(ND!=NIL||(files==NIL&&oldfiles!=NIL))make_status=1;
@@ -2123,7 +2123,7 @@ void fpe_error(int sig)
 { if(compiling)
     { (void)signal(sig,(sighandler)fpe_error); /* reset SIGFPE trap */
       syntax("floating point number out of range\n");
-      SYNERR=0; longjmp(env,1);
+      SYNERR=0; siglongjmp(env,1);
       /* go straight back to commandloop - necessary because decoding very
 	 large numbers can cause huge no. of repeated SIGFPE exceptions */
     }
