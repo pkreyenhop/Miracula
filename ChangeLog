@@ -1,5 +1,10 @@
 Differences between the releases of Miranda
 
+mira-2.067-rc2 2025-05-31
+
+* Made portable to all compilers, Unices and architectures except sun4u
+* PDF of the online manual
+
 mira-2.066 2020-01-31
 
 * Made POSIX-compatible by replacing getw()/putw() with fread()/fwrite().
