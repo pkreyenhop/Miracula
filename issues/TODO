@@ -1,0 +1,7 @@
+If you migrate the pull requests but not the issues,
+does that keep the pull request numbers the same?
+Does it fuck with the issue numbers (almost certainly).
+
+When updating a title, report the old one not the new.
+
+If a title changes, rename the .md file and its dir.
