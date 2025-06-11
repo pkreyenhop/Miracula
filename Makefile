@@ -95,7 +95,7 @@ mira.man.pdf: mira.man.ms
 	tbl mira.man.ms | groff -Tpdf -ms > mira.man.pdf
 
 dist: $(PDF)
-	version=$$(cat .version | sed 's/./&\./')-rc2; \
+	version=$$(cat .version | sed 's/./&\./'); \
 	rm -rf miranda-$$version; mkdir miranda-$$version; \
 	tar cpf - $$(git ls-files) $(PDF) | (cd miranda-$$version; tar xpf -); \
 	tar cfz miranda-$$version.tar.gz miranda-$$version; \
