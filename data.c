@@ -58,7 +58,9 @@ static char *mkrel(char *);
 static void putdbl(word,FILE *);
 static void putint(int,FILE *);
 static void putword(word,FILE *);
+#if 0
 static void setwd(word,word,word);
+#endif
 static void unscramble(word);
 
 word trueheapsize()
@@ -148,9 +150,11 @@ word make(unsigned char t,word x,word y)  /* creates a new cell with "tag" t,
 /* cons ap ap2 ap3 are all #defined in terms of make
    - see MIRANDA DECLARATIONS */
 
+#if 0
 void setwd(word x,word a,word b)
 { hd(x)= a;
   tl(x)= b; }
+#endif
 
 int collecting=0;  /* flag for reset(), in case interrupt strikes in gc */
 

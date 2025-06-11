@@ -19,10 +19,10 @@ all: FORCE
 
 # -Dsparc7 needed for Solaris 2.7
 # -Dsparc8 needed for Solaris 2.8 or later
-mira: big.o cmbnms.o data.o lex.o reduce.o steer.o trans.o types.o \
+mira: big.o cmbnms.o data.o lex.o reduce.o signals.o steer.o trans.o types.o \
       utf8.o y.tab.o version.o Makefile
 	$(CC) $(CFLAGS) -o mira version.o cmbnms.o y.tab.o data.o lex.o \
-	    big.o reduce.o steer.o trans.o types.o utf8.o -lm
+	    big.o reduce.o signals.o steer.o trans.o types.o utf8.o -lm
 
 # It must always run this rule before building mira (or not)
 FORCE: fdate
@@ -61,8 +61,8 @@ cmbnms.o: cmbnms.c Makefile
 combs.h: cmbnms.c gencdecs
 cmbnms.c: gencdecs
 	./gencdecs
-miralib/menudriver: menudriver.c Makefile
-	$(CC) $(CFLAGS) menudriver.c -o miralib/menudriver
+miralib/menudriver: menudriver.c signals.c Makefile
+	$(CC) $(CFLAGS) menudriver.c signals.c -o miralib/menudriver
 	chmod 755 miralib/menudriver$(EX)
 #alternative: use shell script
 #	ln -s miralib/menudriver.sh miralib/menudriver
@@ -83,7 +83,7 @@ install:
 	strip miralib/menudriver$(EX)
 	cp -rp miralib /$(LIB)/miralib
 SOURCES = .xversion big.c big.h gencdecs data.h data.c lex.h lex.c reduce.c rules.y \
-          steer.c trans.c types.c utf8.h utf8.c version.c fdate.c
+          signals.c signals.h  steer.c trans.c types.c utf8.h utf8.c version.c fdate.c
 sources: $(SOURCES); @echo $(SOURCES)
 exfiles: mira
 	@-./mira -make -lib miralib ex/*.m
