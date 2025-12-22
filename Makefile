@@ -1,12 +1,10 @@
-#install paths relative to /
+#install paths
 #for linux, MacOS X, Cygwin:
-BIN=usr/bin
-LIB=usr/lib#beware no spaces after LIB
-MAN=usr/share/man/man1
+BIN=/usr/local/bin
+LIB=/usr/local/lib
+MAN=/usr/local/share/man/man1
 #for Solaris:
-#BIN=usr/local/bin
-#LIB=usr/local/lib#beware no spaces after LIB
-#MAN=usr/local/man/man1
+#MAN=/usr/local/man/man1
 CFLAGS = #-O #-DCYGWIN #-DUWIN #-DIBMRISC #-Dsparc7 #-Dsparc8
 #be wary of using anything higher than -O as the garbage collector may fall over
 #if using gcc rather than clang try without -O first
@@ -76,11 +74,11 @@ cleanup:
 install:
 	make -s all
 	strip mira$(EX)
-	cp mira$(EX) /$(BIN)
-	cp mira.1 /$(MAN)
-	rm -rf /$(LIB)/miralib
+	cp mira$(EX) $(BIN)/
+	cp mira.1 $(MAN)/
+	rm -rf $(LIB)/miralib
 	strip miralib/menudriver$(EX)
-	cp -rp miralib /$(LIB)/miralib
+	cp -rp miralib $(LIB)/
 SOURCES = .xversion big.c big.h gencdecs data.h data.c lex.h lex.c reduce.c rules.y \
           signals.c signals.h  steer.c trans.c types.c utf8.h utf8.c version.c fdate.c
 sources: $(SOURCES); @echo $(SOURCES)
