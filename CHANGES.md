@@ -42,6 +42,10 @@ repository checkout.
 - Changed the default `make check` path to run only the strict Clang C2y build,
   smoke tests, and tools. C++26 and Zig targets remain available explicitly, but
   are no longer part of the routine check loop.
+- Added smoke coverage for compile-time degradation, very long literals, and
+  compilation/runtime paths that must trigger garbage collection.
+- Added a timeout-bounded standard library load smoke test to catch gross
+  startup or standard-environment speed regressions.
 - Linked the Zig C++ compatibility build with `-nostdlib++`, because the code
   is C source compiled as C++ and does not use C++ standard-library symbols.
   This avoids warning output from Zig rebuilding bundled libc++ during links.
