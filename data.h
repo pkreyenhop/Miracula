@@ -1,5 +1,8 @@
 /* MISCELLANEOUS DECLARATIONS   */
 
+#ifndef MIRANDA_DATA_H
+#define MIRANDA_DATA_H
+
 /**************************************************************************
  * Copyright (C) Research Software Limited 1985-90.  All rights reserved. *
  * The Miranda system is distributed as free software under the terms in  *
@@ -8,13 +11,7 @@
  * Revised to C11 standard and made 64bit compatible, January 2020        *
  *------------------------------------------------------------------------*/
 
-typedef long word;
-/* word must be an integer type wide enough to also store (char*) or (FILE*).
-   Defining it as "long" works on the most common platforms both 32 and
-   64 bit.  Be aware that word==long is reflected in printf etc formats
-   e.g. %ld, in many places in the code.  If you define word to be other 
-   than long these will need to be changed, the gcc/clang option -Wformat
-   will locate format/arg type mismatches. DT Jan 2020 */
+#include "platform.h"
 
 #define YYSTYPE word
 #define YYMAXDEPTH 1000
@@ -23,8 +20,8 @@ extern YYSTYPE yylval;
 #include "combs.h" /* for combinators */
 #include "utf8.h"  /* for UMAX etc */
 #include ".xversion"
-   /* #define for XVERSION - we increase this by one at each non upwards
-      compatible change to dump format */
+/* #define for XVERSION - we increase this by one at each non upwards
+   compatible change to dump format */
 
 /* all Miranda values are of type word
 
@@ -47,8 +44,8 @@ extern YYSTYPE yylval;
    see setupheap() in data.c
 */
 
-#define hd(x) hd[(x)*2]
-#define tl(x) tl[(x)*2]
+#define hd(x) hd[(x) * 2]
+#define tl(x) tl[(x) * 2]
 
 #define ATOM 0
 #define DOUBLE 1
@@ -75,50 +72,50 @@ extern YYSTYPE yylval;
 #define PAIR 20
 #define UNICODE 21
 #define TCONS 22
-     /*  ATOM ... TCONS  are the possible values of the
-         "tag" field of a cell  */
+/*  ATOM ... TCONS  are the possible values of the
+    "tag" field of a cell  */
 
-#define TOP (SPACE+ATOMLIMIT)
-#define isptr(x)  (ATOMLIMIT<=(x)&&(x)<TOP)
+#define TOP (SPACE + ATOMLIMIT)
+#define isptr(x) (ATOMLIMIT <= (x) && (x) < TOP)
 
 /* __WORDSIZE is glibc-internal and "not intended for user use" so
  * fall back to alternative ways to discover it at compile time. */
 #ifndef __WORDSIZE
-# include <limits.h>
-# if LONG_MAX==2147483647L
-#  define __WORDSIZE 32
-# elif LONG_MAX==9223372036854775807L
-#  define __WORDSIZE 64
-# else
-#  error "Can't discover __WORDSIZE"
-# endif
+#include <limits.h>
+#if LONG_MAX == 2147483647L
+#define __WORDSIZE 32
+#elif LONG_MAX == 9223372036854775807L
+#define __WORDSIZE 64
+#else
+#error "Can't discover __WORDSIZE"
+#endif
 #endif
 
-#define BACKSTOP (word)(1ul<<(__WORDSIZE-1))
+#define BACKSTOP (word)(1ul << (__WORDSIZE - 1))
 #define tlptrbit BACKSTOP
-#define tlptrbits (word)(3ul<<(__WORDSIZE-2))
+#define tlptrbits (word)(3ul << (__WORDSIZE - 2))
 
-#define datapair(x,y) make(DATAPAIR,(word)x,(word)y)
-#define fileinfo(x,y) make(FILEINFO,(word)x,(word)y)
-#define constructor(n,x) make(CONSTRUCTOR,(word)n,(word)x)
-#define strcons(x,y) make(STRCONS,(word)x,y)
-#define cons(x,y) make(CONS,x,y)
-#define lambda(x,y) make(LAMBDA,x,y)
-#define let(x,y) make(LET,x,y)
-#define letrec(x,y) make(LETREC,x,y)
-#define share(x,y) make(SHARE,x,y)
-#define pair(x,y) make(PAIR,x,y)
-#define tcons(x,y) make(TCONS,x,y)
-#define tries(x,y) make(TRIES,x,y)
-#define label(x,y) make(LABEL,x,y)
-#define show(x,y) make(SHOW,x,y)
-#define readvals(x,y) make(STARTREADVALS,x,y)
-#define ap(x,y) make(AP,(word)(x),(word)(y))
-#define ap2(x,y,z) ap(ap(x,y),z)
-#define ap3(w,x,y,z) ap(ap2(w,x,y),z)
+#define datapair(x, y) make(DATAPAIR, (word)x, (word)y)
+#define fileinfo(x, y) make(FILEINFO, (word)x, (word)y)
+#define constructor(n, x) make(CONSTRUCTOR, (word)n, (word)x)
+#define strcons(x, y) make(STRCONS, (word)x, y)
+#define cons(x, y) make(CONS, x, y)
+#define lambda(x, y) make(LAMBDA, x, y)
+#define let(x, y) make(LET, x, y)
+#define letrec(x, y) make(LETREC, x, y)
+#define share(x, y) make(SHARE, x, y)
+#define pair(x, y) make(PAIR, x, y)
+#define tcons(x, y) make(TCONS, x, y)
+#define tries(x, y) make(TRIES, x, y)
+#define label(x, y) make(LABEL, x, y)
+#define show(x, y) make(SHOW, x, y)
+#define readvals(x, y) make(STARTREADVALS, x, y)
+#define ap(x, y) make(AP, (word)(x), (word)(y))
+#define ap2(x, y, z) ap(ap(x, y), z)
+#define ap3(w, x, y, z) ap(ap2(w, x, y), z)
 
 /* data abstractions for local definitions (as in LET, LETREC) */
-#define defn(x,t,y) cons(x,cons(t,y))
+#define defn(x, t, y) cons(x, cons(t, y))
 #define dlhs(d) hd(d)
 #define dtyp(d) hd(tl(d))
 #define dval(d) tl(tl(d))
@@ -128,8 +125,8 @@ extern YYSTYPE yylval;
 #define id_who(x) tl(hd(hd(x)))
 #define id_type(x) tl(hd(x))
 #define id_val(x) tl(x)
-#define isconstructor(x) (tag[x]==ID&&isconstrname(get_id(x)))
-#define isvariable(x) (tag[x]==ID&&!isconstrname(get_id(x)))
+#define isconstructor(x) (tag[x] == ID && isconstrname(get_id(x)))
+#define isvariable(x) (tag[x] == ID && !isconstrname(get_id(x)))
 /* the who field contains NIL (for a name that is totally undefined)
 hereinfo for a name that has been defined or specified and
 cons(aka,hereinfo) for a name that has been aliased, where aka
@@ -137,61 +134,45 @@ is of the form datapair(oldn,0) oldn being a string */
 
 /* data abstractions for private names
 see also reset_pns(), make_pn(), sto_pn() in lex.c */
-#define get_pn(x)  hd(x)
-#define pn_val(x)  tl(x)
+#define get_pn(x) hd(x)
+#define pn_val(x) tl(x)
 
 #define the_val(x) tl(x)
 /* works for both pnames and ids */
 
-extern int compiling,polyshowerror;
+extern int compiling, polyshowerror;
 extern word *hd, *tl;
 extern char *tag;
 void dieclean(void);
-#include <unistd.h> /* execl */
-#include <stdlib.h> /* malloc, calloc, realloc, getenv */
-#include <limits.h> /* MAX_DBL */
-#include <stdio.h>
-#include "signals.h"
-#include <math.h>
-#include <ctype.h>
-#include <string.h>
-#define index(s,c) strchr(s,c)
-#define rindex(s,c) strrchr(s,c)
-#if IBMRISC | sparc7
-union wait { word w_status; };
-#else
-#include <sys/wait.h>
-#endif
 #define END 0
-      /* YACC requires endmarker to be zero or -ve */
+/* YACC requires endmarker to be zero or -ve */
 #define GENERATOR 0
 #define GUARD 1
 #define REPEAT 2
-#define is(s) (strcmp(dicp,s)==0)
+#define is(s) (strcmp(dicp, s) == 0)
 extern word idsused;
 
 #define BUFSIZE 1024
 /* limit on length of shell commands (for /e, !, System) */
 #define pnlim 1024
 /* limit on length of pathnames */
-extern word files; /* a cons list of elements, each of which is of the form
-               cons(cons(fileinfo(filename,mtime),share),definienda) 
-               where share (=0,1) says if repeated instances are shareable. 
-               Current script at the front followed by subsidiary files
-               due to %insert and %include -- elements due to %insert have
-               NIL definienda (they are attributed to the inserting script)
-            */
+extern word files;        /* a cons list of elements, each of which is of the form
+                      cons(cons(fileinfo(filename,mtime),share),definienda)
+                      where share (=0,1) says if repeated instances are shareable.
+                      Current script at the front followed by subsidiary files
+                      due to %insert and %include -- elements due to %insert have
+                      NIL definienda (they are attributed to the inserting script)
+                   */
 extern word current_file; /*pointer to current element of `files' during compilation*/
-#define make_fil(name,time,share,defs) cons(cons(fileinfo(name,time),\
-cons(share,NIL)),defs)
+#define make_fil(name, time, share, defs) cons(cons(fileinfo(name, time), cons(share, NIL)), defs)
 #define get_fil(fil) ((char *)hd(hd(hd(fil))))
 #define fil_time(fil) tl(hd(hd(fil)))
 #define fil_share(fil) hd(tl(hd(fil)))
 #define fil_inodev(fil) tl(tl(hd(fil)))
 /* leave a NIL as placeholder here - filled in by mkincludes */
-#define fil_defs(fil)  tl(fil)
+#define fil_defs(fil) tl(fil)
 
-#define addtoenv(x) fil_defs(hd(files))=cons(x,fil_defs(hd(files)))
+#define addtoenv(x) fil_defs(hd(files)) = cons(x, fil_defs(hd(files)))
 extern word lastexp;
 
 /* representation of types */
@@ -209,11 +190,11 @@ extern word lastexp;
 #define strict_t 11
 #define alias_t 12
 #define new_t 13
-#define isarrow_t(t) (tag[t]==AP&&tag[hd(t)]==AP&&hd(hd(t))==arrow_t)
-#define iscomma_t(t) (tag[t]==AP&&tag[hd(t)]==AP&&hd(hd(t))==comma_t)
-#define islist_t(t) (tag[t]==AP&&hd(t)==list_t)
-#define isvar_t(t) (tag[t]==TVAR)
-#define iscompound_t(t) (tag[t]==AP)
+#define isarrow_t(t) (tag[t] == AP && tag[hd(t)] == AP && hd(hd(t)) == arrow_t)
+#define iscomma_t(t) (tag[t] == AP && tag[hd(t)] == AP && hd(hd(t)) == comma_t)
+#define islist_t(t) (tag[t] == AP && hd(t) == list_t)
+#define isvar_t(t) (tag[t] == TVAR)
+#define iscompound_t(t) (tag[t] == AP)
 /* NOTES:
 user defined types are represented by Miranda identifiers (of type "type"),
 generic types (e.g. "**") by Miranda numbers, and compound types are
@@ -224,10 +205,10 @@ it is not to be instantiated. Applying strict_t to a type represents the
 */
 #define hashsize 512
 /* size of hash table for unification algorithm in typechecker */
-#define mktvar(i) make(TVAR,0,i)
+#define mktvar(i) make(TVAR, 0, i)
 #define gettvar(x) (tl(x))
-#define eqtvar(x,y) (tl(x)==tl(y))
-#define hashval(x)  (gettvar(x)%hashsize)
+#define eqtvar(x, y) (tl(x) == tl(y))
+#define hashval(x) (gettvar(x) % hashsize)
 /* NB perhaps slightly wasteful to allocate a cell for each tvar,
 could be fixed by having unboxed repn for small integers */
 
@@ -239,7 +220,7 @@ cons(cons(arity,showfn),cons(placeholder_t,NIL))
 cons(cons(arity,showfn),cons(free_t,NIL))
 */ /* suspicion - info field of typeval never used after compilation
 - check this later */
-#define make_typ(a,shf,class,info) cons(cons(a,shf),cons(class,info))
+#define make_typ(a, shf, class, info) cons(cons(a, shf), cons(class, info))
 #define t_arity(x) hd(hd(the_val(x)))
 #define t_showfn(x) tl(hd(the_val(x)))
 #define t_class(x) hd(tl(the_val(x)))
@@ -251,9 +232,9 @@ cons(cons(arity,showfn),cons(free_t,NIL))
 #define free_t 4
 
 /* function prototypes - data.c */
-word append1(word,word);
+word append1(word, word);
 char *charname(word);
-void dump_script(word,FILE *);
+void dump_script(word, FILE *);
 void gc(void);
 void gcpatch(void);
 char *getaka(word);
@@ -262,17 +243,17 @@ double get_dbl(word);
 word geterrlin(char *);
 word get_here(word);
 int is_char(word);
-word load_script(FILE *,char *,word,word,word);
-word make(unsigned char,word,word);
+word load_script(FILE *, char *, word, word, word);
+word make(unsigned char, word, word);
 void mallocfail(char *);
 int okdump(char *);
-void out(FILE *,word);
-void out1(FILE *,word);
-void out2(FILE *,word);
-void outr(FILE *,double);
+void out(FILE *, word);
+void out1(FILE *, word);
+void out2(FILE *, word);
+void outr(FILE *, double);
 void resetgcstats(void);
 void resetheap(void);
-void setdbl(word,double);
+void setdbl(word, double);
 void setprefix(char *);
 void setupheap(void);
 word sto_char(int);
@@ -285,17 +266,17 @@ char *getstring(word, char *);
 word head(word);
 void initclock(void);
 void math_error(char *);
-void out_here(FILE *,word,word);
+void out_here(FILE *, word, word);
 void output(word);
 void outstats(void);
 
 /* function prototypes - trans.c */
-word block(word,word,word);
+word block(word, word, word);
 word codegen(word);
-word compzf(word,word,word);
-void declare(word,word);
-void declconstr(word,word,word);
-void decltype(word,word,word,word);
+word compzf(word, word, word);
+void declare(word, word);
+void declconstr(word, word, word);
+void decl_type(word, word, word, word);
 word fallible(word);
 word genlhs(word);
 void genshfns(void);
@@ -303,12 +284,12 @@ word get_ids(word);
 word getspecloc(word);
 word irrefutable(word);
 word lastlink(word);
-word memb(word,word);
-word mkshow(word,word,word);
-void nclashcheck(word,word,word);
-word same(word,word);
+word memb(word, word);
+word mkshow(word, word, word);
+void nclashcheck(word, word, word);
+word same(word, word);
 word sortrel(word);
-void specify(word,word,word);
+void specify(word, word, word);
 word tclos(word);
 word transtypeid(word);
 
@@ -316,45 +297,45 @@ word transtypeid(word);
 void acterror(void);
 word alfasort(word);
 void dieclean(void);
-word fm_time(char *);  /* assumes type word same size as time_t */
+word fm_time(char *); /* assumes type word same size as time_t */
 void fpe_error(int);
-word parseline(word,FILE *,word);
+word parseline(word, FILE *, word);
 word process(void);
 void readoption(void);
 void reset(void);
 word reverse(word);
-word shunt(word,word);
+word shunt(word, word);
 word size(word);
-void syntax(char *);
+void syntax(const char *);
 void yyerror(char *);
 
 /* function prototypes - types.c */
-word add1(word,word);
+word add1(word, word);
 void checktypes(void);
 word deps(word);
 word genlstat_t(void);
 word instantiate(word);
-word intersection(word,word);
+word intersection(word, word);
 int ispoly(word);
-word member(word,word);
+word member(word, word);
 word msc(word);
-word newadd1(word,word);
-void out_pattern(FILE *,word);
+word newadd1(word, word);
+void out_pattern(FILE *, word);
 void out_type(word);
-void printlist(char *,word);
+void printlist(char *, word);
 word redtvars(word);
 void report_type(word);
-void sayhere(word,word);
-word setdiff(word,word);
-word subsumes(word,word);
+void sayhere(word, word);
+word setdiff(word, word);
+word subsumes(word, word);
 void tsetup(void);
 word tsort(word);
 word type_of(word);
 word typesfirst(word);
-word UNION(word,word);
+word UNION(word, word);
 
 /* function prototype - y.tab.c */
-int yyparse();
+int yyparse(void);
 
 extern int yychar; /* defined in y.tab.c */
 
@@ -362,3 +343,4 @@ extern int yychar; /* defined in y.tab.c */
 
 /* end of MISCELLANEOUS DECLARATIONS */
 
+#endif

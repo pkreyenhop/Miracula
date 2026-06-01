@@ -5,10 +5,13 @@
  * because the semantics vary too much between platforms.
  * signal(2) * says to use sigaction() instead but mira uses signal()
  * all over the place to redirect to handlers.
- * 
+ *
  * Rather than reimplement every use of signal() to use sigaction()
  * this makes a version of signal() that has BSD semantics, which are
  * what it expects.
+ *
+ * This module is intentionally small: it centralises the platform-specific
+ * sigaction() wrapper so the rest of the old code can keep calling signals().
 
 signal():
   typedef void (*sighandler_t)(int);
@@ -36,13 +39,11 @@ sigaction():
 
 #include "signals.h"
 
-sighandler signals(int signum, sighandler handler)
-{
-  struct sigaction act,oldact;
+sighandler signals(int signum, sighandler handler) {
+  struct sigaction act, oldact;
 
-  act.sa_handler=handler;
+  act.sa_handler = handler;
   sigemptyset(&act.sa_mask);
-  act.sa_flags=SA_RESTART;
-  return sigaction(signum, &act, &oldact)==0
-         ? oldact.sa_handler : SIG_ERR;
+  act.sa_flags = SA_RESTART;
+  return sigaction(signum, &act, &oldact) == 0 ? oldact.sa_handler : SIG_ERR;
 }

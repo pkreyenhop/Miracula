@@ -300,7 +300,7 @@ void binom(word rhs,word x)
 }
 /* should put some labels on the alpha's - fix later */
 
-word getcol_fn()
+word getcol_fn(void)
 { extern char *dicp,*dicq;
   if(!col_fn)
     strcpy(dicp,"bnftokenindentation"),
@@ -309,7 +309,7 @@ word getcol_fn()
   return(col_fn);
 }
 
-void startbnf()
+void startbnf(void)
 { ntspecmap=ntmap=nonterminals=NIL; 
   if(fnts==0)col_fn=0; /* reinitialise, a precaution */
 }
@@ -970,7 +970,7 @@ def:
             x=reverse($3);
             while(x!=NIL&&!SYNERR)
                { word shfn;
-                 decltype(hd(x),abstract_t,undef_t,$2);
+                 decl_type(hd(x),abstract_t,undef_t,$2);
                  tids=cons(head(hd(x)),tids);
                  /* check for presence of showfunction */
                  (void)strcpy(dicp,"show");
@@ -985,7 +985,7 @@ def:
 
     typeform indent act1 here EQEQ type act2 outdent
         = { word x=redtvars(ap($1,$6));
-            decltype(hd(x),synonym_t,tl(x),$4);
+            decl_type(hd(x),synonym_t,tl(x),$4);
             $$ = cons(nill,NIL); }|
 
     typeform indent act1 here COLON2EQ construction act2 outdent
@@ -1015,7 +1015,7 @@ def:
                  }
                r_ids=cons(h,r_ids);
                rhs = tl(rhs); }
-            if(!SYNERR)decltype($1,algebraic_t,r_ids,$4);
+            if(!SYNERR)decl_type($1,algebraic_t,r_ids,$4);
             $$ = cons(nill,NIL); }|
 
     indent setexp EXPORT parts outdent
@@ -1676,4 +1676,3 @@ symbol:
 
 %%
 /*  end of Miranda rules  */
-

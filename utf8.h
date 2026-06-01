@@ -1,3 +1,6 @@
+#ifndef MIRANDA_UTF8_H
+#define MIRANDA_UTF8_H
+
 typedef unsigned long unicode;
 /* must be big enough to store codes up to UMAX */
 
@@ -7,3 +10,5 @@ typedef unsigned long unicode;
 #include <stdio.h>
 unicode fromUTF8(FILE *);
 void outUTF8(unicode, FILE *);
+
+#endif

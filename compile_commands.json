@@ -1,0 +1,179 @@
+[
+  {
+    "file": "fdate.c",
+    "arguments": [
+      "/usr/bin/clang",
+      "fdate.c",
+      "-o",
+      "fdate"
+    ],
+    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "output": "fdate"
+  },
+  {
+    "file": "big.c",
+    "arguments": [
+      "/usr/bin/clang",
+      "-c",
+      "-o",
+      "big.o",
+      "big.c"
+    ],
+    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "output": "big.o"
+  },
+  {
+    "file": "cmbnms.c",
+    "arguments": [
+      "/usr/bin/clang",
+      "-c",
+      "-o",
+      "cmbnms.o",
+      "cmbnms.c"
+    ],
+    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "output": "cmbnms.o"
+  },
+  {
+    "file": "data.c",
+    "arguments": [
+      "/usr/bin/clang",
+      "-c",
+      "-o",
+      "data.o",
+      "data.c"
+    ],
+    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "output": "data.o"
+  },
+  {
+    "file": "lex.c",
+    "arguments": [
+      "/usr/bin/clang",
+      "-c",
+      "-o",
+      "lex.o",
+      "lex.c"
+    ],
+    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "output": "lex.o"
+  },
+  {
+    "file": "reduce.c",
+    "arguments": [
+      "/usr/bin/clang",
+      "-c",
+      "-o",
+      "reduce.o",
+      "reduce.c"
+    ],
+    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "output": "reduce.o"
+  },
+  {
+    "file": "signals.c",
+    "arguments": [
+      "/usr/bin/clang",
+      "-c",
+      "-o",
+      "signals.o",
+      "signals.c"
+    ],
+    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "output": "signals.o"
+  },
+  {
+    "file": "steer.c",
+    "arguments": [
+      "/usr/bin/clang",
+      "-c",
+      "-o",
+      "steer.o",
+      "steer.c"
+    ],
+    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "output": "steer.o"
+  },
+  {
+    "file": "trans.c",
+    "arguments": [
+      "/usr/bin/clang",
+      "-c",
+      "-o",
+      "trans.o",
+      "trans.c"
+    ],
+    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "output": "trans.o"
+  },
+  {
+    "file": "types.c",
+    "arguments": [
+      "/usr/bin/clang",
+      "-c",
+      "-o",
+      "types.o",
+      "types.c"
+    ],
+    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "output": "types.o"
+  },
+  {
+    "file": "utf8.c",
+    "arguments": [
+      "/usr/bin/clang",
+      "-c",
+      "-o",
+      "utf8.o",
+      "utf8.c"
+    ],
+    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "output": "utf8.o"
+  },
+  {
+    "file": "y.tab.c",
+    "arguments": [
+      "/usr/bin/clang",
+      "-c",
+      "-o",
+      "y.tab.o",
+      "y.tab.c"
+    ],
+    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "output": "y.tab.o"
+  },
+  {
+    "file": "version.c",
+    "arguments": [
+      "/usr/bin/clang",
+      "-DVERS=2067",
+      "-DHOST=\"compiled: Sun May 31 09:38:44 PM NZST 2026\\nclang\\nhost: x86_64 Linux 7.0.9-zen2-1-zen gcc -v\\n\"",
+      "-DVDATE=\"31 May 2026\"",
+      "-c",
+      "version.c"
+    ],
+    "directory": "/home/pkreyenhop/src/miranda-zig"
+  },
+  {
+    "file": "menudriver.c",
+    "arguments": [
+      "/usr/bin/clang",
+      "menudriver.c",
+      "-o",
+      "miralib/menudriver"
+    ],
+    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "output": "miralib/menudriver"
+  },
+  {
+    "file": "signals.c",
+    "arguments": [
+      "/usr/bin/clang",
+      "signals.c",
+      "-o",
+      "miralib/menudriver"
+    ],
+    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "output": "miralib/menudriver"
+  }
+]
