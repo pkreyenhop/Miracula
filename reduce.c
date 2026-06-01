@@ -389,7 +389,6 @@ word waiting = NIL;
   a = tl(e)
 #define UPRIGHT mknormal(s), hold = tl(s), tl(s) = e, e = hd(s), hd(s) = hold
 #define lastarg tl(e)
-word reds = 0;
 
 /* IMPORTANT WARNING - the macro's
      `downright;' `upleft;' `getarg;'

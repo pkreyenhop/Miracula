@@ -32,7 +32,7 @@
 #define MAXBUF 3600
 #define MAXWIDTH 2400
 #define THRESHOLD 7
-int tolerance = 3;
+static int tolerance = 3;
 /* the largest insert of extra spaces we are willing to tolerate
    in one place */
 
@@ -95,7 +95,7 @@ static char buf[MAXBUF + 2], *bp = buf;
 #include <string.h>
 #define index(s, c) strchr(s, c)
 
-int linerr = 0;
+static int linerr = 0;
 
 static void justify(int width, FILE *fp, char *fn) {
   int c = ' '; /* c initialised to anything != EOF */

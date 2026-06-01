@@ -5,24 +5,7 @@ BIN=/usr/local/bin
 MAN=/usr/local/share/man/man1
 #for Solaris:
 #MAN=/usr/local/man/man1
-CFLAGS = -std=c2y -D_POSIX_C_SOURCE=200809L -Weverything -Werror \
-	-Wno-unsafe-buffer-usage -Wno-padded \
-	-Wno-c++98-compat -Wno-c++-compat -Wno-c++98-compat-pedantic \
-	-Wno-declaration-after-statement -Wno-comma \
-	-Wno-sign-conversion -Wno-conversion -Wno-shorten-64-to-32 \
-	-Wno-implicit-int-float-conversion -Wno-float-conversion \
-	-Wno-missing-prototypes -Wno-missing-variable-declarations \
-	-Wno-disabled-macro-expansion -Wno-switch-enum \
-	-Wno-covered-switch-default -Wno-cast-align -Wno-cast-qual \
-	-Wno-reserved-id-macro -Wno-reserved-identifier \
-	-Wno-documentation-unknown-command -Wno-undef -Wno-shadow \
-	-Wno-format-signedness -Wno-missing-noreturn \
-	-Wno-implicit-fallthrough -Wno-switch-default \
-	-Wno-bad-function-cast -Wno-unreachable-code-return \
-	-Wno-conditional-uninitialized -Wno-unused-macros \
-	-Wno-extra-semi-stmt -Wno-cast-function-type-strict \
-	-Wno-pre-c11-compat \
-	-Wno-poison-system-directories
+CFLAGS = -std=c23 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Wpedantic
 # Historical portability flags: #-O #-DCYGWIN #-DUWIN #-DIBMRISC #-Dsparc7 #-Dsparc8
 #be wary of using anything higher than -O as the garbage collector may fall over
 #if using gcc rather than clang try without -O first
@@ -34,10 +17,7 @@ CXXFLAGS = -std=c++26 -D_POSIX_C_SOURCE=200809L -Wno-deprecated \
 	-Wno-deprecated-register -Wno-writable-strings \
 	-Wno-c++98-compat -Wno-c++98-compat-pedantic
 CXX_COMPILEFLAGS = -x c++ $(CXXFLAGS)
-WARNING_AUDIT_DROP = -Wno-missing-prototypes \
-	-Wno-missing-variable-declarations -Wno-unsafe-buffer-usage \
-	-Wno-disabled-macro-expansion -Wno-shadow
-WARNING_AUDIT_CFLAGS = $(filter-out -Werror $(WARNING_AUDIT_DROP),$(CFLAGS))
+WARNING_AUDIT_CFLAGS = $(CFLAGS)
 LINK = $(CC)
 LDFLAGS =
 LDLIBS = -lm
@@ -52,10 +32,10 @@ MIRA_OBJS = version.o cmbnms.o y.tab.o data.o lex.o big.o reduce.o signals.o \
 	steer.o trans.o types.o utf8.o
 CORE_OBJS = big.o cmbnms.o data.o lex.o reduce.o signals.o steer.o trans.o \
 	types.o utf8.o y.tab.o
-RUNTIME_HEADERS = data.h platform.h runtime.h combs.h utf8.h y.tab.h
+RUNTIME_HEADERS = data.h platform.h runtime.h combs.h utf8.h version.h y.tab.h
 HEADER_CHECK_INCLUDES = '\#include "runtime.h"' '\#include "platform.h"' \
 	'\#include "signals.h"' '\#include "utf8.h"' '\#include "lex.h"' \
-	'\#include "big.h"' '\#include "data.h"'
+	'\#include "big.h"' '\#include "data.h"' '\#include "version.h"'
 .PHONY: all test check check-headers check-c cxx check-cxx zig-cc zig-cxx \
         check-zig tools check-tools clean clean-build-products cleanup install \
         sources exfiles pdf dist tellcc warning-audit FORCE
@@ -71,7 +51,7 @@ check: check-headers check-c check-tools
 warning-audit:
 	@$(MAKE) check-c
 	@$(MAKE) clean-build-products
-	@$(MAKE) CFLAGS="$(WARNING_AUDIT_CFLAGS)" mira
+	@$(MAKE) CFLAGS="$(WARNING_AUDIT_CFLAGS)" mira tools
 
 check-headers:
 	printf '%s\n' $(HEADER_CHECK_INCLUDES) 'int main(void) { return 0; }' | \
@@ -184,7 +164,7 @@ install:
 	cp -rp miralib $(LIB)/
 SOURCES = .xversion big.c big.h gencdecs data.h platform.h runtime.h data.c \
           lex.h lex.c reduce.c rules.y signals.c signals.h steer.c trans.c \
-          types.c utf8.h utf8.c version.c fdate.c
+          types.c utf8.h utf8.c version.h version.c fdate.c
 sources: $(SOURCES); @echo $(SOURCES)
 exfiles: mira
 	@-./mira -make -lib miralib ex/*.m

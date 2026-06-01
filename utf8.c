@@ -18,9 +18,9 @@ int nextch(void)
 */
 
 static char errs[24];
-char *p;
+static char *p;
 
-void utf8report(void) {
+static void utf8report(void) {
   fprintf(stderr, "protocol error - %s sequence:%s\n",
           strstr(errs, "EOF") ? "incomplete" : "invalid", errs);
   exit(1);

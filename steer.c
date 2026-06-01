@@ -21,6 +21,7 @@ static struct stat buf; /* see man(2) stat - gets file status */
 #include "data.h"
 #include "big.h"
 #include "lex.h"
+#include "version.h"
 #include <float.h>
 word nill, Void;
 static word main_id; /* change to magic scripts 19.11.2013 */
@@ -48,8 +49,6 @@ word SPACELIMIT = DFLTSPACE, DICSPACE = DFLTDICSPACE;
 
 extern FILE *s_out;
 int UTF8 = 0, UTF8OUT = 0;
-extern char *vdate, *host;
-extern int version;
 extern word ND;
 extern word *dstack, *stackp;
 

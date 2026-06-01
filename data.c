@@ -642,7 +642,7 @@ char *mkrel(char *p) /* makes pathname p correct relative to prefix */
 }
 
 #define bits_15 0xffff
-char *CFN;
+static char *CFN;
 
 void dump_script(word files, FILE *f) /* write compiled script files to file f */
 {
@@ -817,8 +817,8 @@ void dump_ob(word x, FILE *f) /* write combinatory expression x to file f */
 extern char *dic;
 extern word DICSPACE;
 
-word BAD_DUMP = 0, CLASHES = NIL, ALIASES = NIL, PNBASE = 0, SUPPRESSED = NIL, TSUPPRESSED = NIL,
-     TORPHANS = 0;
+word BAD_DUMP = 0, CLASHES = NIL, ALIASES = NIL, SUPPRESSED = NIL, TSUPPRESSED = NIL, TORPHANS = 0;
+static word PNBASE = 0;
 
 word load_script(FILE *f, char *src, word aliases, word params, word main)
 /* loads a compiled script from file f for source src */

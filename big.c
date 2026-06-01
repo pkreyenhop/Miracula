@@ -275,7 +275,7 @@ word stimes(word x, word n) /* multiply big x (>=0) by digit n (>0) */
   return (r);
 }
 
-word b_rem; /* contains remainder from last call to longdiv or shortdiv */
+static word b_rem; /* contains remainder from last call to longdiv or shortdiv */
 
 word bigdiv(word x, word y) /* may assume y~=0 */
 {
@@ -343,7 +343,7 @@ word bigmod(word x, word y) /* may assume y~=0 */
    dividend, quotient negative if signs of divi(sor/dend) mixed */
 
 word shortdiv(word x, word n) /* divide big x by single digit n returning
-                  big quotient and setting external b_rem as side effect */
+                  big quotient and setting module b_rem as side effect */
                               /* may assume - x>=0,n>0 */
 {
   word d = digit(x), s_rem, q = 0;
@@ -367,7 +367,7 @@ word shortdiv(word x, word n) /* divide big x by single digit n returning
 }
 
 word longdiv(word x, word y) /* divide big x by big y returning quotient,
-                 leaving remainder in extern variable b_rem */
+                 leaving remainder in module variable b_rem */
                              /* may assume - x>=0,y>0 */
 {
   word n, q, ly, y1, scale;
@@ -617,7 +617,7 @@ word bigoscan(char *p, char *q) /* read unsigned octal number in
   return r;
 }
 
-word digitval(char c) {
+static word digitval(char c) {
   return isdigit(c) ? c - '0' : isupper(c) ? 10 + c - 'A' : 10 + c - 'a';
 }
 

@@ -22,11 +22,18 @@ static word directive(void);
 static void hexnumeral(void);
 static int identifier(int);
 static void kollect(int (*f)(int));
+static int litname(char *);
 static void numeral(void);
 static void octnumeral(void);
+static int okpath(int);
 static int peekch(void);
 static int peekdig(void);
 static void string(void);
+static void errclass(word, word);
+static char *gethome(char *);
+static int getch(void);
+static int getlitch(void);
+static void spaces(word);
 
 extern word DICSPACE; /* see steer.c for default value */
 /* capacity in chars of dictionary space for storing identifiers and file names
@@ -72,7 +79,7 @@ void setupdic(void) {
 struct passwd *getpwnam(const char *);
 #endif
 
-char *gethome(char *n) /* for expanding leading `~' in tokens and pathnames */
+static char *gethome(char *n) /* for expanding leading `~' in tokens and pathnames */
 {
 #ifdef okgetpwnam
   struct passwd *pw;
@@ -195,19 +202,19 @@ char *addextn(word b, char *s)
   return (dicp);
 } /* NB - call keep(dicp) if the result is to be retained */
 
-word brct = 0;
+static word brct = 0;
 
-void spaces(word n) {
+static void spaces(word n) {
   while (n-- > 0)
     putchar(' ');
 }
 
-int litname(char *s) {
+static int litname(char *s) {
   word n = strlen(s);
   return (n >= 6 && strcmp(s + n - 6, ".lit.m") == 0);
 }
 
-int getch(void) /* keeps track of current position in the variable "col"(column) */
+static int getch(void) /* keeps track of current position in the variable "col"(column) */
 {
   word ch = getc(s_in);
   if (ch == EOF && !atnl && tl(fileq) == NIL) /* badly terminated top level file */
@@ -278,13 +285,13 @@ void chblank(char *s) {
    conventions if the char is backslash -- for use in reading character
    and string constants */
 
-int rawch;
+static int rawch;
 /* it is often important to know, when certain characters are returned (e.g.
    quotes and newlines) whether they were escaped or literal */
 
-int errch; /* for reporting unrecognised \escape */
+static int errch; /* for reporting unrecognised \escape */
 
-int getlitch(void) {
+static int getlitch(void) {
   extern int UTF8;
   int ch = c;
   rawch = ch;
@@ -453,7 +460,7 @@ void unsetlmargin(void) {
 int okulid(int);
 int PREL = 1;
 
-void errclass(word val, word string)
+static void errclass(word val, word string)
 /* diagnose error in charclass, string or char const */
 {
   const char *s = string == 2 ? "char class" : string ? "string" : "char const";
@@ -863,7 +870,7 @@ word str_conv(const char *s) /* convert C string to Miranda form */
   return (x);
 } /* opposite of getstring() - see reduce.c */
 
-int okpath(int ch) {
+static int okpath(int ch) {
   return (ch != '\"' && ch != '\n' && ch != '>');
 }
 
@@ -1344,14 +1351,6 @@ word getfname(word x)
   dicq[-2] = '\0'; /* overwrite last char */
   ovflocheck;
   return (name());
-}
-
-int isnonterminal(word x) {
-  char *n;
-  if (tag[x] != ID)
-    return (0);
-  n = get_id(x);
-  return (n[strlen(n) - 1] == ' ');
 }
 
 word name(void) {

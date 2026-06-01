@@ -9,11 +9,11 @@
 #include <unistd.h>
 #include <time.h>
 
-struct stat buf;
-struct tm *t;
+static struct stat buf;
+static struct tm *t;
 
-char *month[] = {"January", "February", "March",     "April",   "May",      "June",
-                 "July",    "August",   "September", "October", "November", "December"};
+static char *month[] = {"January", "February", "March",     "April",   "May",      "June",
+                        "July",    "August",   "September", "October", "November", "December"};
 int main(void) {
   char f[200];
   if (scanf("%s", f) == 1 && stat(f, &buf) == 0)

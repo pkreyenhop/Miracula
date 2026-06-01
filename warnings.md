@@ -1,12 +1,12 @@
 # Warning Inventory
 
-This inventory records the warning suppressions that keep the current strict
-build warning-clean. It is the Phase 1 baseline for warning reduction work.
+This inventory records the historical strict-warning suppressions that shaped
+the Phase 1 cleanup work.
 
 The default C profile is:
 
 ```text
--std=c2y -D_POSIX_C_SOURCE=200809L -Weverything -Werror
+-std=c23 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Wpedantic
 ```
 
 The compatibility C++ profile is:
@@ -17,20 +17,12 @@ The compatibility C++ profile is:
 
 ## Audit Target
 
-Use `make warning-audit` to run the current strict C smoke-test build, then
-rebuild `mira` with selected high-value suppressions removed and `-Werror`
-disabled.
+Use `make warning-audit` to run the current C smoke-test build, then rebuild
+`mira` and the standalone tools with the same default warning profile.
 
-The first audit removes:
-
-- `-Wno-missing-prototypes`
-- `-Wno-missing-variable-declarations`
-- `-Wno-unsafe-buffer-usage`
-- `-Wno-disabled-macro-expansion`
-- `-Wno-shadow`
-
-These categories are broad enough to expose real cleanup work, but narrow
-enough that the first audit remains readable.
+Earlier cleanup used a temporary `-Weverything` audit profile with selected
+suppressions removed. The default profile is now the requested C23 baseline
+using `-Wall -Wextra -Wpedantic`.
 
 ## High-Value Cleanup Warnings
 
@@ -216,5 +208,21 @@ integer literals have been converted to hex constants.
 ## Phase 1 Status
 
 - Current suppressions are inventoried and grouped by cleanup value.
-- `make warning-audit` provides a repeatable first-pass audit.
+- `make warning-audit` provides a repeatable C23 `-Wall -Wextra -Wpedantic`
+  audit for the interpreter and standalone tools.
+- Build/version metadata now has an explicit public declaration in `version.h`.
+- Standalone utility cleanup has started: `fdate.c` and `just.c` keep private
+  state file-local, and `menudriver.c` helper functions are consistently
+  file-local.
+- `utf8.c` now keeps its decoder error-reporting state and helper local to the
+  module.
+- `big.c` now keeps its division remainder state and digit-conversion helper
+  local to the module.
+- `data.c` now keeps dump/load filename tracking and private-name relocation
+  state local to the module.
+- `reduce.c` no longer defines an unused exported reducer step counter.
+- `types.c` now keeps its local typechecker counters and include-location
+  tracking state private.
+- `lex.c` now keeps lexer-only helper functions and character-class state
+  private, and no longer carries its unused nonterminal-name predicate.
 - Generated-code and handwritten-code separation remains future work.

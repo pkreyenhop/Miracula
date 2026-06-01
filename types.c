@@ -22,7 +22,8 @@ word ATNAMES;       /* global var set by abstr_check */
 word NT = NIL;      /* undefined typenames used in script */
 word TYPERRS;
 word bnf_t = 0;
-word current_id = 0, lastloc = 0, lineptr = 0; /* used to locate type errors */
+word current_id = 0, lineptr = 0; /* used to locate type errors */
+static word lastloc = 0;
 word showchain = NIL; /* links together all occurrences of special forms (show)
                         encountered during typecheck */
 extern word rfl;
@@ -379,7 +380,7 @@ void sterilise(word t) /* to prevent multiple reporting of metatype errors from
     hd(t) = list_t, tl(t) = num_t;
 }
 
-word tvcount = 1;
+static word tvcount = 1;
 #define NTV mktvar(tvcount++)
 /* brand new type variable */
 #define reset_SUBST (current_id = tvcount >= hashsize ? clear_SUBST() : 0)
@@ -427,8 +428,8 @@ void infer_type(word x)
   }
 }
 
-word hereinc; /* location of currently-being-processed %include */
-word lasthereinc;
+static word hereinc; /* location of currently-being-processed %include */
+static word lasthereinc;
 
 void mcheckfbs(void) {
   word ff, formals, n;
@@ -1638,7 +1639,7 @@ word subst(word t) /* returns fully substituted out value of type expression */
 }
 
 word localtvmap = NIL;
-word NGT = 0;
+static word NGT = 0;
 
 word lmap(word tv) {
   word l;

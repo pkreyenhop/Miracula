@@ -46,6 +46,24 @@ repository checkout.
   compilation/runtime paths that must trigger garbage collection.
 - Added a timeout-bounded standard library load smoke test to catch gross
   startup or standard-environment speed regressions.
+- Added `version.h` for build/version metadata, made `menudriver.c` helper
+  definitions consistently file-local, and moved `fdate.c` helper state behind
+  `static` storage.
+- Moved `just.c` utility state behind `static` storage so it no longer appears
+  as accidental exported data in the warning audit.
+- Made `utf8.c` decoder error-reporting state and helper function file-local.
+- Made `big.c`'s division remainder state and digit-conversion helper
+  file-local.
+- Made `data.c`'s dump/load filename cursor and private-name relocation base
+  file-local.
+- Removed `reduce.c`'s unused exported reducer step counter.
+- Made `types.c`'s typechecker counters and include-location tracking state
+  file-local where they are not shared with other modules.
+- Made lexer-only helpers and character-class tracking state in `lex.c`
+  file-local, and removed its unused nonterminal-name predicate.
+- Extended `make warning-audit` to include standalone tools as well as `mira`.
+- Switched the default C compile profile to Clang C23 with
+  `-Wall -Wextra -Wpedantic`.
 - Linked the Zig C++ compatibility build with `-nostdlib++`, because the code
   is C source compiled as C++ and does not use C++ standard-library symbols.
   This avoids warning output from Zig rebuilding bundled libc++ during links.
