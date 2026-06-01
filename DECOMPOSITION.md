@@ -230,11 +230,40 @@ should preserve those mechanics first, then gradually reduce macro scope.
    static void rewrite_to_value(word *e, word value);
    static void rewrite_to_nil(word *e);
    static void rewrite_to_fail(word *e);
+   static void rewrite_to_cons_head(word e, word hd_value);
+   static word rewrite_to_existing_tail(word e);
    static void rewrite_to_cons(word e, word hd_value, word tl_value);
+   static void rewrite_to_match_result(word *e, word left, word right, word success_value);
+   static void rewrite_to_compare_eq(word *e, word left, word right);
+   static void rewrite_to_string(word *e, const char *value);
    ```
 
    These helpers can replace repeated `hd(e) = I; e = tl(e) = ...` and
    `setcell(CONS, ...)` patterns before splitting switch sections.
+
+   Status: started. `reduce.c` now has `rewrite_to_value()`,
+   `rewrite_to_nil()`, `rewrite_to_fail()`, and `rewrite_to_failure()` for
+   already-computed values and constants. They are intentionally not used where
+   the replacement expression allocates cells, to avoid changing GC-visible
+   evaluation order. A second pass applied these helpers to list combinator
+   and stream EOF rewrites where the replacement was already available or a
+   constant. A third pass extended the same pattern through selected grammar,
+   lexer, and ready selector paths. A fourth pass covered additional ready
+   control, predicate, zip, and constructor-display rewrites whose replacement
+   values were constants or had already been computed. A fifth pass covered
+   more core, grammar, lexer, environment, numeric, and merge rewrites without
+   moving any allocation or comparison calls across graph mutation. A sixth
+   pass added `rewrite_to_cons_head()` for terminal `CONS` rewrites that
+   intentionally preserve the existing tail pointer. A seventh pass added
+   `rewrite_to_existing_tail()` for identity rewrites that continue through
+   the current node's existing tail rather than replacing `tl(e)`. An eighth
+   pass added `rewrite_to_cons()` for `CONS` rewrites whose head and tail
+   values were already computed locals or constants. A ninth pass added
+   comparison-specific rewrite helpers that preserve the old mutation order:
+   the expression head is rewritten to `I` before `compare()` or `bigcmp()`
+   can recursively reduce graph nodes. A tenth pass added `rewrite_to_string()`
+   for string conversion rewrites that must set the expression head before
+   calling `str_conv()`.
 
 3. **Extract error-only helpers first**
 

@@ -76,6 +76,26 @@ repository checkout.
 - Removed redundant local extern declarations for shared dictionary and lexer
   state in handwritten sources.
 - Removed the redundant local `col_fn` extern from `types.c`.
+- Started the `reduce()` decomposition by adding terminal rewrite helpers and
+  applying them to behaviour-preserving constant/value rewrites.
+- Expanded the initial `reduce()` helper pass across list and stream EOF
+  rewrites that do not allocate replacement values.
+- Continued the `reduce()` helper pass through grammar, lexer, and ready
+  selector rewrites that return constants or already-computed values.
+- Continued the `reduce()` helper pass through ready control, predicate, zip,
+  and constructor-display rewrites while preserving allocation order.
+- Continued the `reduce()` helper pass through more core, grammar, lexer,
+  environment, numeric, and merge terminal rewrites without moving allocations.
+- Added a reducer helper for terminal `CONS` rewrites that preserve the
+  existing tail pointer.
+- Added a reducer helper for identity rewrites that continue through the
+  current node's existing tail without replacing `tl(e)`.
+- Added a reducer helper for `CONS` rewrites whose head and tail values are
+  already computed locals or constants.
+- Added comparison-specific reducer helpers for match and equality/order
+  rewrites while preserving the original mutation-before-compare order.
+- Added a string-conversion reducer helper for display rewrites that must
+  mutate the expression head before calling `str_conv()`.
 - Extended `make warning-audit` to include standalone tools as well as `mira`.
 - Switched the default C compile profile to Clang C23 with
   `-Wall -Wextra -Wpedantic`.

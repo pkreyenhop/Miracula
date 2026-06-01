@@ -434,6 +434,74 @@ word maxrdepth = 0, rdepth = 0;
 #define FAILURE NIL
 /* used by grammar combinators */
 
+static void rewrite_to_value(word *expr, word value) {
+  hd(*expr) = I;
+  *expr = tl(*expr) = value;
+}
+
+static void rewrite_to_nil(word *expr) {
+  rewrite_to_value(expr, NIL);
+}
+
+static void rewrite_to_fail(word *expr) {
+  rewrite_to_value(expr, FAIL);
+}
+
+static void rewrite_to_failure(word *expr) {
+  rewrite_to_value(expr, FAILURE);
+}
+
+static void rewrite_to_cons_head(word expr, word head_value) {
+  tag[expr] = CONS;
+  hd(expr) = head_value;
+}
+
+static void rewrite_to_cons(word expr, word head_value, word tail_value) {
+  tag[expr] = CONS;
+  hd(expr) = head_value;
+  tl(expr) = tail_value;
+}
+
+static word rewrite_to_existing_tail(word expr) {
+  hd(expr) = I;
+  return tl(expr);
+}
+
+static void rewrite_to_match_result(word *expr, word left, word right, word success_value) {
+  hd(*expr) = I;
+  *expr = tl(*expr) = compare(left, right) ? FAIL : success_value;
+}
+
+static void rewrite_to_int_match_result(word *expr, word literal, word value, word success_value) {
+  hd(*expr) = I;
+  *expr = tl(*expr) = (tag[value] != INT || bigcmp(literal, value)) ? FAIL : success_value;
+}
+
+static void rewrite_to_compare_eq(word *expr, word left, word right) {
+  hd(*expr) = I;
+  *expr = tl(*expr) = compare(left, right) ? False : True;
+}
+
+static void rewrite_to_compare_neq(word *expr, word left, word right) {
+  hd(*expr) = I;
+  *expr = tl(*expr) = compare(left, right) ? True : False;
+}
+
+static void rewrite_to_compare_gt(word *expr, word left, word right) {
+  hd(*expr) = I;
+  *expr = tl(*expr) = compare(left, right) > 0 ? True : False;
+}
+
+static void rewrite_to_compare_ge(word *expr, word left, word right) {
+  hd(*expr) = I;
+  *expr = tl(*expr) = compare(left, right) >= 0 ? True : False;
+}
+
+static void rewrite_to_string(word *expr, const char *value) {
+  hd(*expr) = I;
+  *expr = tl(*expr) = str_conv(value);
+}
+
 /* reduce e to hnf, note that a function in hnf will have head h with
    S<=h<=ERROR all combinators lie in this range see combs.h */
 word reduce(word e) {
@@ -515,16 +583,14 @@ NEXTREDEX:
   case K: /*  K x y => x */
     getarg(arg1);
     upleft;
-    hd(e) = I;
-    e = tl(e) = arg1;
+    rewrite_to_value(&e, arg1);
     goto NEXTREDEX; /* could make eager in first arg */
 
   L_KI:
   case KI:  /*  KI x y => y  */
     upleft; /* lose first arg  */
     upleft;
-    hd(e) = I;
-    e = lastarg;    /* ?? */
+    e = rewrite_to_existing_tail(e); /* ?? */
     goto NEXTREDEX; /* could make eager in 2nd arg */
 
   case S1: /* S1 k f g x => k(f x)(g x) */
@@ -586,7 +652,7 @@ NEXTREDEX:
     getarg(arg1);
     upleft;
     hold = ap(hd(e), ap(arg1, lastarg));
-    setcell(CONS, lastarg, hold);
+    rewrite_to_cons(e, lastarg, hold);
     goto DONE;
 
   case ITERATE1: /*  ITERATE1 f x => [], x=FAIL
@@ -595,11 +661,10 @@ NEXTREDEX:
     upleft;
     if ((lastarg = reduce(lastarg)) == FAIL) /* ### */
     {
-      hd(e) = I;
-      e = tl(e) = NIL;
+      rewrite_to_nil(&e);
     } else {
       hold = ap(hd(e), ap(arg1, lastarg));
-      setcell(CONS, lastarg, hold);
+      rewrite_to_cons(e, lastarg, hold);
     }
     goto DONE;
 
@@ -607,7 +672,7 @@ NEXTREDEX:
   case P: /* P x y => x:y  */
     getarg(arg1);
     upleft;
-    setcell(CONS, arg1, lastarg);
+    rewrite_to_cons(e, arg1, lastarg);
     goto DONE;
 
   case U: /*    U f x => f (HD x) (TL x)
@@ -646,12 +711,10 @@ NEXTREDEX:
       if (poz(hold)) {
         hd(e) = arg2, tl(e) = hold;
       } else {
-        hd(e) = I, e = tl(e) = FAIL;
+        rewrite_to_fail(&e);
       }
     } else {
-      {
-        hd(e) = I, e = tl(e) = FAIL;
-      }
+      rewrite_to_fail(&e);
     }
     goto NEXTREDEX;
 
@@ -662,8 +725,7 @@ NEXTREDEX:
     upleft;
     lastarg = reduce(lastarg); /* ### */
     if (lastarg == NIL) {
-      hd(e) = I;
-      e = tl(e) = FAIL;
+      rewrite_to_fail(&e);
       goto NEXTREDEX;
     }
     hd(e) = ap(arg1, hd(lastarg));
@@ -678,14 +740,12 @@ NEXTREDEX:
     upleft;
     lastarg = reduce(lastarg); /* ### */
     if (constr_tag(arg1) != constr_tag(head(lastarg))) {
-      hd(e) = I;
-      e = tl(e) = FAIL;
+      rewrite_to_fail(&e);
       goto NEXTREDEX;
     }
     if (tag[lastarg] == CONSTRUCTOR) /* case n=0 */
     {
-      hd(e) = I;
-      e = tl(e) = arg2;
+      rewrite_to_value(&e, arg2);
       goto NEXTREDEX;
     }
     hd(e) = hd(lastarg);
@@ -708,8 +768,7 @@ NEXTREDEX:
     getarg(arg2);
     upleft;
     lastarg = reduce(lastarg); /* ### */
-    hd(e) = I;
-    e = tl(e) = compare(arg1, lastarg) ? FAIL : arg2;
+    rewrite_to_match_result(&e, arg1, lastarg, arg2);
     goto NEXTREDEX;
 
   case MATCHINT: /* same but 1st arg is integer literal */
@@ -717,8 +776,7 @@ NEXTREDEX:
     getarg(arg2);
     upleft;
     lastarg = reduce(lastarg); /* ### */
-    hd(e) = I;
-    e = tl(e) = (tag[lastarg] != INT || bigcmp(arg1, lastarg)) ? FAIL : arg2;
+    rewrite_to_int_match_result(&e, arg1, lastarg, arg2);
     /* note no coercion from INT to DOUBLE here */
     goto NEXTREDEX;
 
@@ -732,9 +790,10 @@ NEXTREDEX:
     UPLEFT;
     if (tl(arg1) != NIL &&
         (tag[arg1] == AP ? compare(lastarg, tl(arg1)) : compare(tl(arg1), lastarg)) > 0) {
-      hd(e) = I, e = tl(e) = NIL;
+      rewrite_to_nil(&e);
     } else {
-      hold = ap(hd(e), numplus(lastarg, hd(arg1))), setcell(CONS, lastarg, hold);
+      hold = ap(hd(e), numplus(lastarg, hd(arg1)));
+      rewrite_to_cons(e, lastarg, hold);
     }
     goto DONE;
     /* efficiency hack - tag of arg1 encodes sign of step */
@@ -745,7 +804,7 @@ NEXTREDEX:
     upleft;
     lastarg = reduce(lastarg); /* ### */
     if (lastarg == NIL) {
-      hd(e) = I, e = tl(e) = NIL;
+      rewrite_to_nil(&e);
     } else {
       hold = ap(hd(e), tl(lastarg)), setcell(CONS, ap(arg1, hd(lastarg)), hold);
     }
@@ -761,8 +820,7 @@ NEXTREDEX:
   L1:
     arg2 = reduce(arg2); /* ### */
     if (arg2 == NIL) {
-      hd(e) = I;
-      e = tl(e) = NIL;
+      rewrite_to_nil(&e);
       goto DONE;
     }
     hold = reduce(hold = ap(arg1, hd(arg2)));
@@ -784,7 +842,7 @@ NEXTREDEX:
       lastarg = reduce(tl(lastarg));                                   /* ### */
     }
     if (lastarg == NIL) {
-      hd(e) = I, e = tl(e) = NIL;
+      rewrite_to_nil(&e);
     } else {
       hold = ap(hd(e), tl(lastarg)), setcell(CONS, hd(lastarg), hold);
     }
@@ -798,8 +856,7 @@ NEXTREDEX:
     while ((tl(lastarg) = reduce(tl(lastarg))) != NIL) { /* ### */
       lastarg = tl(lastarg);
     }
-    hd(e) = I;
-    e = tl(e) = hd(lastarg);
+    rewrite_to_value(&e, hd(lastarg));
     goto NEXTREDEX;
 
   case LENGTH: /*  takes length of a list */
@@ -826,7 +883,7 @@ NEXTREDEX:
       while (n-- > 0) {
         if ((lastarg = reduce(lastarg)) == NIL) /* ### */
         {
-          simpl(NIL);
+          rewrite_to_nil(&e);
           goto DONE;
         } else {
           {
@@ -835,7 +892,7 @@ NEXTREDEX:
         }
       }
     }
-    simpl(lastarg);
+    rewrite_to_value(&e, lastarg);
     goto NEXTREDEX;
 
   case SUBSCRIPT: /* SUBSCRIPT i x  =>  x!i  */
@@ -867,8 +924,7 @@ NEXTREDEX:
         }
         indx--;
       }
-      hd(e) = I;
-      e = tl(e) = hd(lastarg); /* could be eager in tl(e) */
+      rewrite_to_value(&e, hd(lastarg)); /* could be eager in tl(e) */
       goto NEXTREDEX;
     }
 
@@ -897,7 +953,7 @@ NEXTREDEX:
       arg2 = reduce(ap2(arg1, arg2, hd(lastarg))), /* ^ ### */
           lastarg = tl(lastarg);
     }
-    hd(e) = I, e = tl(e) = arg2;
+    rewrite_to_value(&e, arg2);
     goto NEXTREDEX;
 
   case FOLDR: /* FOLDR op r [] => r
@@ -907,7 +963,7 @@ NEXTREDEX:
     upleft;
     lastarg = reduce(lastarg); /* ### */
     if (lastarg == NIL) {
-      hd(e) = I, e = tl(e) = arg2;
+      rewrite_to_value(&e, arg2);
     } else {
       hold = ap(hd(e), tl(lastarg)), hd(e) = ap(arg1, hd(lastarg)), tl(e) = hold;
     }
@@ -924,8 +980,7 @@ NEXTREDEX:
         stdin_error(':');
       }
       if (stdinuse) {
-        hd(e) = I;
-        e = tl(e) = NIL;
+        rewrite_to_nil(&e);
         goto DONE;
       }
       stdinuse = ':';
@@ -934,8 +989,7 @@ NEXTREDEX:
     hold = getc((FILE *)lastarg);
     if (hold == EOF) {
       fclose((FILE *)lastarg);
-      hd(e) = I;
-      e = tl(e) = NIL;
+      rewrite_to_nil(&e);
       goto DONE;
     }
     setcell(CONS, hold, ap(READBIN, lastarg));
@@ -952,8 +1006,7 @@ NEXTREDEX:
         stdin_error('-');
       }
       if (stdinuse) {
-        hd(e) = I;
-        e = tl(e) = NIL;
+        rewrite_to_nil(&e);
         goto DONE;
       }
       stdinuse = '-';
@@ -962,8 +1015,7 @@ NEXTREDEX:
     hold = UTF8 ? sto_char(fromUTF8((FILE *)lastarg)) : getc((FILE *)lastarg);
     if (hold == EOF) {
       fclose((FILE *)lastarg);
-      hd(e) = I;
-      e = tl(e) = NIL;
+      rewrite_to_nil(&e);
       goto DONE;
     }
     setcell(CONS, hold, ap(READ, lastarg));
@@ -979,12 +1031,11 @@ NEXTREDEX:
     hold = parseline(hd(arg1), (FILE *)lastarg, tl(arg1));
     if (hold == EOF) {
       fclose((FILE *)lastarg);
-      hd(e) = I;
-      e = tl(e) = NIL;
+      rewrite_to_nil(&e);
       goto DONE;
     }
     arg2 = ap(hd(e), lastarg);
-    setcell(CONS, hold, arg2);
+    rewrite_to_cons(e, hold, arg2);
     goto DONE;
 
   case BADCASE: /* BADCASE cons(oldn,here_info) => BOTTOM */
@@ -1157,11 +1208,10 @@ NEXTREDEX:
     getarg(arg3);
     if (tag[arg1] == CONSTRUCTOR) /* don't parenthesise atom */
     {
-      hd(e) = I;
       if (suppressed(arg1)) {
-        e = tl(e) = str_conv("<unprintable>");
+        rewrite_to_string(&e, "<unprintable>");
       } else {
-        e = tl(e) = str_conv(constr_name(arg1));
+        rewrite_to_string(&e, constr_name(arg1));
       }
       goto DONE;
     }
@@ -1171,8 +1221,7 @@ NEXTREDEX:
       arg3 = ap(BODY, arg3);
     }
     if (suppressed(arg1)) {
-      hd(e) = I;
-      e = tl(e) = str_conv("<unprintable>");
+      rewrite_to_string(&e, "<unprintable>");
       goto DONE;
     }
     hold = ap2(APPEND, str_conv(constr_name(arg1)), hold);
@@ -1180,8 +1229,7 @@ NEXTREDEX:
       setcell(CONS, '(', hold);
       goto DONE;
     } else {
-      hd(e) = I;
-      e = tl(e) = hold;
+      rewrite_to_value(&e, hold);
       goto NEXTREDEX;
     }
 
@@ -1211,8 +1259,7 @@ NEXTREDEX:
     hold = ap(arg1, lastarg);
     hold = reduce(hold); /* ### */
     if (!fails(hold)) {
-      hd(e) = I;
-      e = tl(e) = hold;
+      rewrite_to_value(&e, hold);
       goto DONE;
     }
     hold = g_residue(lastarg);
@@ -1227,8 +1274,7 @@ NEXTREDEX:
     hold = ap(arg1, lastarg);
     hold = reduce(hold); /* ### */
     if (!fails(hold)) {
-      hd(e) = I;
-      e = tl(e) = hold;
+      rewrite_to_value(&e, hold);
       goto DONE;
     }
     hd(e) = arg2;
@@ -1244,7 +1290,7 @@ NEXTREDEX:
     hold = ap(arg1, lastarg);
     hold = reduce(hold); /* ### */
     if (fails(hold)) {
-      setcell(CONS, NIL, lastarg);
+      rewrite_to_cons(e, NIL, lastarg);
     } else {
       setcell(CONS, cons(hd(hold), NIL), tl(hold));
     }
@@ -1261,7 +1307,7 @@ NEXTREDEX:
     hold = ap(arg1, lastarg);
     hold = reduce(hold); /* ### */
     if (fails(hold)) {
-      setcell(CONS, NIL, lastarg);
+      rewrite_to_cons(e, NIL, lastarg);
       goto DONE;
     }
     arg2 = ap(hd(e), tl(hold)); /* called z in above rules */
@@ -1282,7 +1328,7 @@ NEXTREDEX:
     hold = ap(arg1, lastarg);
     hold = reduce(hold); /* ### */
     if (fails(hold)) {
-      setcell(CONS, I, lastarg);
+      rewrite_to_cons(e, I, lastarg);
       goto DONE;
     }
     hd(e) = ap2(G_SEQ, hd(e), ap(G_RULE, ap(CB, hd(hold))));
@@ -1295,13 +1341,13 @@ NEXTREDEX:
     upleft;
     lastarg = reduce(lastarg); /* ### */
     if (lastarg == NIL) {
-      hd(e) = I, e = tl(e) = NIL;
+      rewrite_to_nil(&e);
       goto DONE;
     }
     hd(lastarg) = reduce(hd(lastarg)); /* ### */
     hold = ap(FST, hd(lastarg));
     if (compare(arg1, reduce(hold))) { /* ### */
-      hd(e) = I, e = tl(e) = FAILURE;
+      rewrite_to_failure(&e);
     } else {
       setcell(CONS, arg1, tl(lastarg));
     }
@@ -1312,7 +1358,7 @@ NEXTREDEX:
     upleft;
     lastarg = reduce(lastarg); /* ### */
     if (lastarg == NIL) {
-      hd(e) = I, e = tl(e) = FAILURE;
+      rewrite_to_failure(&e);
     } else {
       setcell(CONS, ap(FST, hd(lastarg)), tl(lastarg));
     }
@@ -1324,7 +1370,7 @@ NEXTREDEX:
     upleft;
     lastarg = reduce(lastarg); /* ### */
     if (lastarg == NIL) {
-      hd(e) = I, e = tl(e) = FAILURE;
+      rewrite_to_failure(&e);
       goto DONE;
     }
     hold = ap(FST, hd(lastarg));
@@ -1332,7 +1378,7 @@ NEXTREDEX:
     if (reduce(ap(arg1, hold)) == True) { /* ### */
       setcell(CONS, hold, tl(lastarg));
     } else {
-      hd(e) = I, e = tl(e) = FAILURE;
+      rewrite_to_failure(&e);
     }
     goto DONE;
 
@@ -1341,9 +1387,9 @@ NEXTREDEX:
     upleft;
     lastarg = reduce(lastarg);
     if (lastarg == NIL) {
-      setcell(CONS, NIL, NIL);
+      rewrite_to_cons(e, NIL, NIL);
     } else {
-      hd(e) = I, e = tl(e) = FAILURE;
+      rewrite_to_failure(&e);
     }
     goto DONE;
 
@@ -1352,7 +1398,7 @@ NEXTREDEX:
     upleft;
     lastarg = reduce(lastarg); /* ### */
     if (lastarg == NIL) {
-      hd(e) = I, e = tl(e) = FAILURE;
+      rewrite_to_failure(&e);
     } else {
       setcell(CONS, ap(SND, hd(lastarg)), lastarg);
     }
@@ -1370,13 +1416,13 @@ NEXTREDEX:
     hold = ap(arg1, lastarg);
     hold = reduce(hold); /* ### */
     if (fails(hold)) {
-      hd(e) = I, e = tl(e) = FAILURE;
+      rewrite_to_failure(&e);
       goto DONE;
     }
     arg3 = ap(arg2, tl(hold));
     arg3 = reduce(arg3); /* ### */
     if (fails(arg3)) {
-      hd(e) = I, e = tl(e) = FAILURE;
+      rewrite_to_failure(&e);
       goto DONE;
     }
     setcell(CONS, ap(hd(arg3), hd(hold)), tl(arg3));
@@ -1384,13 +1430,13 @@ NEXTREDEX:
 
   case G_UNIT: /* G_UNIT toks => I:toks */
     upleft;
-    tag[e] = CONS, hd(e) = I;
+    rewrite_to_cons_head(e, I);
     goto DONE;
     /* G_UNIT is right multiplicative identity, equivalent (G_RULE I) */
 
   case G_ZERO: /* G_ZERO toks => FAILURE */
     upleft;
-    simpl(FAILURE);
+    rewrite_to_failure(&e);
     goto DONE;
     /* G_ZERO is left additive identity */
 
@@ -1428,7 +1474,7 @@ NEXTREDEX:
       outstats();
       exit(1);
     }
-    hd(e) = I, e = tl(e) = hd(hold);
+    rewrite_to_value(&e, hd(hold));
     goto NEXTREDEX;
     /* NOTE the atom OFFSIDE differs from every string and is used as a
        pseudotoken when implementing the offside rule - see `indent' in prelude */
@@ -1440,8 +1486,7 @@ NEXTREDEX:
     upleft;
     if ((lastarg = reduce(lastarg)) == NIL) /* ### */
     {
-      hd(e) = I;
-      e = tl(e) = NIL;
+      rewrite_to_nil(&e);
       goto DONE;
     }
     setcell(CONS, hd(lastarg), ap(G_COUNT, tl(lastarg)));
@@ -1495,8 +1540,7 @@ NEXTREDEX:
     upleft;
     if ((lastarg = reduce(lastarg)) == NIL) /* ### */
     {
-      hd(e) = I;
-      e = tl(e) = NIL;
+      rewrite_to_nil(&e);
       goto DONE;
     }
     hold = ap2(arg1, arg2, lastarg);
@@ -1589,8 +1633,7 @@ NEXTREDEX:
       }
       hold = tl(arg1), tl(arg1) = arg2, arg2 = arg1, arg1 = hold;
     }
-    hd(e) = I;
-    e = tl(e) = arg2;
+    rewrite_to_value(&e, arg2);
     goto DONE;
 
   case LEX_COUNT0: /* LEX_COUNT0 x => LEX_COUNT (state0,x) */
@@ -1608,8 +1651,7 @@ NEXTREDEX:
     GETARG(arg1);
     if ((tl(arg1) = reduce(tl(arg1))) == NIL) /* ### */
     {
-      hd(e) = I;
-      e = tl(e) = NIL;
+      rewrite_to_nil(&e);
       goto DONE;
     }
     hold = hd(tl(arg1)); /* the char */
@@ -1639,16 +1681,14 @@ NEXTREDEX:
     while (arg1 != NIL) {
       if ((lastarg = reduce(lastarg)) == NIL || lh(lastarg) != hd(arg1)) /* ### */
       {
-        hd(e) = I;
-        e = tl(e) = NIL;
+        rewrite_to_nil(&e);
         goto DONE;
       }
       arg1 = tl(arg1);
       arg2 = cons(hd(lastarg), arg2);
       lastarg = tl(lastarg);
     }
-    tag[e] = CONS;
-    hd(e) = arg2;
+    rewrite_to_cons_head(e, arg2);
     goto DONE;
 
   case LEX_CLASS: /* LEX_CLASS set p (c:x) => (c:p) : x, if c in set
@@ -1660,8 +1700,7 @@ NEXTREDEX:
     if ((lastarg = reduce(lastarg)) == NIL || /* ### */
         (hd(arg1) == ANTICHARCLASS ? memclass(lh(lastarg), tl(arg1))
                                    : !memclass(lh(lastarg), arg1))) {
-      hd(e) = I;
-      e = tl(e) = NIL;
+      rewrite_to_nil(&e);
       goto DONE;
     }
     setcell(CONS, cons(hd(lastarg), arg2), tl(lastarg));
@@ -1674,8 +1713,7 @@ NEXTREDEX:
     upleft;
     if ((lastarg = reduce(lastarg)) == NIL) /* ### */
     {
-      hd(e) = I;
-      e = tl(e) = NIL;
+      rewrite_to_nil(&e);
       goto DONE;
     }
     setcell(CONS, cons(hd(lastarg), arg1), tl(lastarg));
@@ -1689,8 +1727,7 @@ NEXTREDEX:
     upleft;
     if ((lastarg = reduce(lastarg)) == NIL || lh(lastarg) != arg1) /* ### */
     {
-      hd(e) = I;
-      e = tl(e) = NIL;
+      rewrite_to_nil(&e);
       goto DONE;
     }
     setcell(CONS, cons(arg1, arg2), tl(lastarg));
@@ -1709,8 +1746,7 @@ NEXTREDEX:
     lastarg = NIL;                    /* anti-dragging measure */
     if ((hold = reduce(hold)) == NIL) /* ### */
     {
-      hd(e) = I;
-      e = tl(e);
+      e = rewrite_to_existing_tail(e);
       goto DONE;
     }
     hd(e) = ap(arg2, hd(hold));
@@ -1734,8 +1770,7 @@ NEXTREDEX:
       DOWNLEFT;
       goto NEXTREDEX;
     }
-    hd(e) = I;
-    e = tl(e) = hold;
+    rewrite_to_value(&e, hold);
     goto DONE;
 
   case LEX_RCONTEXT: /* LEX_RC f g p x => [], if f p x = []
@@ -1755,12 +1790,10 @@ NEXTREDEX:
     if ((hold = reduce(hold)) == NIL                              /* ### */
         || (arg2 ? (reduce(ap2(arg2, hd(hold), tl(hold))) == NIL) /* ### */
                  : (tl(hold) = reduce(tl(hold))) != NIL)) {
-      hd(e) = I;
-      e = tl(e);
+      e = rewrite_to_existing_tail(e);
       goto DONE;
     }
-    hd(e) = I;
-    e = tl(e) = hold;
+    rewrite_to_value(&e, hold);
     goto DONE;
 
   case LEX_STAR: /* LEX_STAR f p x => p : x, if f p x = []
@@ -1775,8 +1808,7 @@ NEXTREDEX:
     while ((hold = reduce(hold)) != NIL) { /* ### */
       arg2 = hd(hold), lastarg = tl(hold), hold = ap2(arg1, arg2, lastarg);
     }
-    tag[e] = CONS;
-    hd(e) = arg2;
+    rewrite_to_cons_head(e, arg2);
     goto DONE;
 
   case LEX_OPT: /* LEX_OPT f p x => p : x, if f p x = []
@@ -1788,12 +1820,10 @@ NEXTREDEX:
     hold = ap2(arg1, arg2, lastarg);
     if ((hold = reduce(hold)) == NIL) /* ### */
     {
-      tag[e] = CONS;
-      hd(e) = arg2;
+      rewrite_to_cons_head(e, arg2);
       goto DONE;
     }
-    hd(e) = I;
-    e = tl(e) = hold;
+    rewrite_to_value(&e, hold);
     goto DONE;
 
   default:           /* non combinator */
@@ -1846,8 +1876,7 @@ NEXTREDEX:
         {
           if (stdinuse && stdinuse != '+') {
             tag[e] = AP;
-            hd(e) = I;
-            e = tl(e) = NIL;
+            rewrite_to_nil(&e);
             goto DONE;
           }
           stdinuse = '+';
@@ -1938,15 +1967,13 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
   case READY(SEQ): /* SEQ a b => b, a~=BOTTOM  */
     UPLEFT;
     upleft;
-    hd(e) = I;
-    e = lastarg;
+    e = rewrite_to_existing_tail(e);
     goto NEXTREDEX;
 
   case READY(FORCE): /*  FORCE x => x, total x */
     UPLEFT;
     force(lastarg);
-    hd(e) = I;
-    e = lastarg;
+    e = rewrite_to_existing_tail(e);
     goto NEXTREDEX;
 
   case READY(HD):
@@ -1956,8 +1983,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
       outstats();
       exit(1);
     }
-    hd(e) = I;
-    e = tl(e) = hd(lastarg);
+    rewrite_to_value(&e, hd(lastarg));
     goto NEXTREDEX;
 
   case READY(TL):
@@ -1967,23 +1993,20 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
       outstats();
       exit(1);
     }
-    hd(e) = I;
-    e = tl(e) = tl(lastarg);
+    rewrite_to_value(&e, tl(lastarg));
     goto NEXTREDEX;
 
   case READY(BODY):
     /* BODY(k x1 .. xn) => k x1 ... x(n-1)
        for arbitrary constructor k */
     UPLEFT;
-    hd(e) = I;
-    e = tl(e) = hd(lastarg);
+    rewrite_to_value(&e, hd(lastarg));
     goto NEXTREDEX;
 
   case READY(LAST): /* LAST(k x1 .. xn) => xn
                        for arbitrary constructor k */
     UPLEFT;
-    hd(e) = I;
-    e = tl(e) = tl(lastarg);
+    rewrite_to_value(&e, tl(lastarg));
     goto NEXTREDEX;
 
   case READY(TAKE):
@@ -1996,7 +2019,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
       long long n = get_int(arg1);
       if (n <= 0 || (lastarg = reduce(lastarg)) == NIL) /* ### */
       {
-        simpl(NIL);
+        rewrite_to_nil(&e);
         goto DONE;
       }
       setcell(CONS, hd(lastarg), ap2(TAKE, sto_int(n - 1), tl(lastarg)));
@@ -2017,9 +2040,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
       word x = perm & 0x1 ? 'x' : '-';
       setcell(CONS, d, cons(r, cons(w, cons(x, NIL))));
     } else {
-      {
-        hd(e) = I, e = tl(e) = NIL;
-      }
+      rewrite_to_nil(&e);
     }
     goto DONE;
 
@@ -2229,27 +2250,24 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     GETARG(arg1);
     UPLEFT;
     if (arg1 == FAIL) {
-      hd(e) = I;
-      e = lastarg;
+      e = rewrite_to_existing_tail(e);
       goto NEXTREDEX;
     }
     if (S <= (hold = head(arg1)) && hold <= ERROR) {
       /* function - other than unsaturated constructor */
       goto DONE; /* nb! else may take premature decision(interacts with MOD1)*/
     }
-    hd(e) = I;
-    e = tl(e) = arg1;
+    rewrite_to_value(&e, arg1);
     goto NEXTREDEX;
 
   case READY(COND): /* COND True => K
                        COND False => KI  */
     UPLEFT;
-    hd(e) = I;
     if (lastarg == True) {
-      e = tl(e) = K;
+      rewrite_to_value(&e, K);
       goto L_K;
     } else {
-      e = tl(e) = KI;
+      rewrite_to_value(&e, KI);
       goto L_KI;
     }
     /* goto OPDECODE;   to speed up we have set extra labels */
@@ -2262,7 +2280,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     GETARG(arg1);
     upleft;
     if (arg1 == NIL) {
-      hd(e) = I, e = lastarg;
+      e = rewrite_to_existing_tail(e);
       goto NEXTREDEX;
     }
     setcell(CONS, hd(arg1), ap2(APPEND, tl(arg1), lastarg));
@@ -2299,8 +2317,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
   case READY(NOT): /*    NOT True => False
                          NOT False => True    */
     UPLEFT;
-    hd(e) = I;
-    e = tl(e) = lastarg == True ? False : True;
+    rewrite_to_value(&e, lastarg == True ? False : True);
     goto DONE;
 
   case READY(NEG): /*    NEG x => -x, if x is a number */
@@ -2336,8 +2353,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
 
   case READY(INTEGER): /* predicate on numbers */
     UPLEFT;
-    hd(e) = I;
-    e = tl(e) = tag[lastarg] == INT ? True : False;
+    rewrite_to_value(&e, tag[lastarg] == INT ? True : False);
     goto NEXTREDEX;
 
   case READY(SHOWNUM): /*  SHOWNUM number => numeral */
@@ -2355,8 +2371,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
           *p++ = '.', *p++ = '0', *p = '\0';
         }
       }
-      hd(e) = I;
-      e = tl(e) = str_conv(linebuf);
+      rewrite_to_string(&e, linebuf);
     }
 #else
       d2s_buffered(x, linebuf);
@@ -2365,8 +2380,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
         arg1 = cons('0', arg1);
       if (*linebuf == '-' && linebuf[1] == '.')
         arg1 = cons('-', cons('0', tl(arg1)));
-      hd(e) = I;
-      e = tl(e) = arg1;
+      rewrite_to_value(&e, arg1);
     }
 #endif
     else {
@@ -2380,8 +2394,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     UPLEFT;
     if (tag[lastarg] == DOUBLE) {
       sprintf(linebuf, "%a", get_dbl(lastarg));
-      hd(e) = I;
-      e = tl(e) = str_conv(linebuf);
+      rewrite_to_string(&e, linebuf);
     } else {
       {
         simpl(bigtostrx(lastarg));
@@ -2420,7 +2433,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
   case READY(ENTIER_FN): /* floor */
     UPLEFT;
     if (tag[lastarg] == INT) {
-      simpl(lastarg);
+      rewrite_to_value(&e, lastarg);
     } else {
       simpl(dbltobig(get_dbl(lastarg)));
     }
@@ -2516,8 +2529,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     GETARG(arg1);
     GETARG(arg2);
     if (arg1 == NIL || arg2 == NIL) {
-      hd(e) = I;
-      e = tl(e) = NIL;
+      rewrite_to_nil(&e);
       goto DONE;
     }
     setcell(CONS, cons(hd(arg1), hd(arg2)), ap2(ZIP, tl(arg1), tl(arg2)));
@@ -2529,8 +2541,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    hd(e) = I;
-    e = tl(e) = compare(arg1, lastarg) ? False : True; /* ### */
+    rewrite_to_compare_eq(&e, arg1, lastarg); /* ### */
     goto DONE;
 
   case READY(NEQ): /*    NEQ x x => False
@@ -2539,24 +2550,21 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    hd(e) = I;
-    e = tl(e) = compare(arg1, lastarg) ? True : False; /* ### */
+    rewrite_to_compare_neq(&e, arg1, lastarg); /* ### */
     goto DONE;
 
   case READY(GR):
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    hd(e) = I;
-    e = tl(e) = compare(arg1, lastarg) > 0 ? True : False; /* ### */
+    rewrite_to_compare_gt(&e, arg1, lastarg); /* ### */
     goto DONE;
 
   case READY(GRE):
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    hd(e) = I;
-    e = tl(e) = compare(arg1, lastarg) >= 0 ? True : False; /* ### */
+    rewrite_to_compare_ge(&e, arg1, lastarg); /* ### */
     goto DONE;
 
   case READY(PLUS):
@@ -2674,8 +2682,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     }
     arg1 = getsmallint(arg1);
     (void)sprintf(linebuf, "%.*e", (int)arg1, force_dbl(lastarg));
-    hd(e) = I;
-    e = tl(e) = str_conv(linebuf);
+    rewrite_to_string(&e, linebuf);
     goto DONE;
 
   case READY(SHOWFLOAT): /* SHOWFLOAT precision number => numeral */
@@ -2687,8 +2694,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     }
     arg1 = getsmallint(arg1);
     (void)sprintf(linebuf, "%.*f", (int)arg1, force_dbl(lastarg));
-    hd(e) = I;
-    e = tl(e) = str_conv(linebuf);
+    rewrite_to_string(&e, linebuf);
     goto DONE;
 
 #define coerce_dbl(x) tag[x] == DOUBLE ? (x) : sto_dbl(bigtodbl(x))
@@ -2708,9 +2714,9 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     GETARG(arg1);
     UPLEFT;
     if (arg1 == NIL) {
-      simpl(lastarg);
+      rewrite_to_value(&e, lastarg);
     } else if (lastarg == NIL) {
-      simpl(arg1);
+      rewrite_to_value(&e, arg1);
     } else if (compare(hd(arg1) = reduce(hd(arg1)), hd(lastarg) = reduce(hd(lastarg))) <=
                0) { /* ### */
       setcell(CONS, hd(arg1), ap2(MERGE, tl(arg1), lastarg));
@@ -2740,17 +2746,15 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     GETARG(arg2);
     GETARG(arg3);
     if (constr_tag(head(arg1)) != constr_tag(head(arg3))) {
-      hd(e) = I;
-      e = tl(e) = FAIL;
+      rewrite_to_fail(&e);
       goto DONE;
     } /* result is string, so cannot be more args */
     if (tag[arg1] == CONSTRUCTOR) /* don't parenthesise atom */
     {
-      hd(e) = I;
       if (suppressed(arg1)) {
-        e = tl(e) = str_conv("<unprintable>");
+        rewrite_to_string(&e, "<unprintable>");
       } else {
-        e = tl(e) = str_conv(constr_name(arg1));
+        rewrite_to_string(&e, constr_name(arg1));
       }
       goto DONE;
     }
@@ -2759,8 +2763,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
       hold = cons(' ', ap2(APPEND, ap(tl(arg1), tl(arg3)), hold)), arg1 = hd(arg1), arg3 = hd(arg3);
     }
     if (suppressed(arg1)) {
-      hd(e) = I;
-      e = tl(e) = str_conv("<unprintable>");
+      rewrite_to_string(&e, "<unprintable>");
       goto DONE;
     }
     hold = ap2(APPEND, str_conv(constr_name(arg1)), hold);
@@ -2768,8 +2771,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
       setcell(CONS, '(', hold);
       goto DONE;
     } else {
-      hd(e) = I;
-      e = tl(e) = hold;
+      rewrite_to_value(&e, hold);
       goto NEXTREDEX;
     }
 
