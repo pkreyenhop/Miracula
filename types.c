@@ -27,7 +27,6 @@ static word lastloc = 0;
 word showchain = NIL; /* links together all occurrences of special forms (show)
                         encountered during typecheck */
 
-
 #include <setjmp.h>
 static jmp_buf env1; /* for longjmp - see man (3) setjmp */
 
@@ -96,18 +95,18 @@ void checktypes(void) /* outcome indicated by setting of flags SYNERR, TYPERRS, 
   NT = R = SBND = ND = NIL; /* NT=R= added 4/6/88 */
   if (setjmp(env1) == 1) {
     goto L;
-}
+  }
   if (rfl != NIL) {
     readoption();
-}
+  }
   for (s = reverse(fil_defs(hd(files))); s != NIL; s = tl(s)) {
-    comp_deps(hd(s)); 
-}/* for each identifier in current script, compute
-                            dependencies to form R */
+    comp_deps(hd(s));
+  } /* for each identifier in current script, compute
+                               dependencies to form R */
   R = tclos(sortrel(R));
   if (FBS != NIL) {
     mcheckfbs();
-}
+  }
   abstr_mcheck(TABSTRS);
 L:
   if (TYPERRS) { /* badly formed types, so give up */
@@ -118,27 +117,27 @@ L:
   }
   if (freeids != NIL) {
     redtfr(freeids);
-}
+  }
   genshfns();
   if (fnts != NIL) {
     genbnft();
-}
+  }
   R = msc(R);
   s = tsort(R);
   NT = R = NIL; /* must be invariant across the call */
   while (s != NIL) {
     infer_type(hd(s)), s = tl(s);
-}
+  }
   checkfbs();
   while (TABSTRS != NIL) {
     abstr_check(hd(TABSTRS)), TABSTRS = tl(TABSTRS);
-}
+  }
   if (SBND != NIL) {
     printlist("SPECIFIED BUT NOT DEFINED: ", alfasort(SBND)), SBND = NIL;
-}
+  }
   fixshows();
   lastloc = 0;
-  }
+}
 
 /* NOTES
    let element ::= id | list(id)
@@ -184,7 +183,7 @@ current script upon which n directly depends */
             sayhere(id_who(n), 1), TYPERRS++;
       } else {
         current_id = n, t_info(n) = meta_tcheck(t_info(n));
-}
+      }
       break;
     default:
       /* placeholder types - no action */
@@ -195,7 +194,7 @@ current script upon which n directly depends */
   }
   if (tag[id_val(n)] == CONSTRUCTOR) {
     return;
-}
+  }
   /* primitive constructors require no type analysis */
   if (id_type(n) != undef_t) /* meta typecheck spec, if present */
   {
@@ -203,7 +202,7 @@ current script upon which n directly depends */
     if (tag[id_type(n)] == CONS) { /* signature identifier */
       if (id_val(n) == UNDEF) {
         SBND = add1(n, SBND);
-}
+      }
       id_type(n) = redtvars(meta_tcheck(hd(id_type(n))));
       current_id = 0;
       return;
@@ -212,8 +211,8 @@ current script upon which n directly depends */
     current_id = 0;
   }
   if (id_val(n) == FREE) {
-    return;               /* no further analysis required */
-}
+    return; /* no further analysis required */
+  }
   if (id_val(n) == UNDEF) /* name specified but not defined */
   {
     SBND = add1(n, SBND); /* change of policy (as for undefined sigid, above) */
@@ -225,7 +224,7 @@ current script upon which n directly depends */
       /* only defined names without explicitly assigned types
          cause dependency */
       rhs = add1(hd(r), rhs);
-}
+    }
     r = tl(r);
   }
   R = cons(cons(n, rhs), R);
@@ -237,7 +236,7 @@ word tsort(word g)
   it depends on */
 /* the structure of g is "graph2" see NOTES above */
 {
-  word NP = NIL;        /* NP is set of elements with no predecessor */
+  word NP = NIL; /* NP is set of elements with no predecessor */
   word g1 = g;
   word r = NIL; /* r is result */
   g = NIL;
@@ -246,7 +245,7 @@ word tsort(word g)
       NP = cons(hd(hd(g1)), NP);
     } else {
       g = cons(hd(g1), g);
-}
+    }
     g1 = tl(g1);
   }
   while (NP != NIL) {
@@ -257,7 +256,7 @@ word tsort(word g)
         D = add1(hd(NP), D);
       } else {
         D = UNION(D, hd(NP));
-}
+      }
       NP = tl(NP);
     }
     g1 = g;
@@ -268,13 +267,13 @@ word tsort(word g)
         NP = cons(hd(hd(g1)), NP);
       } else {
         tl(hd(g1)) = rhs, g = cons(hd(g1), g);
-}
+      }
       g1 = tl(g1);
     }
   }
   if (g != NIL) {
     fprintf(stderr, "error: impossible event in tsort\n");
-}
+  }
   return (reverse(r));
 }
 
@@ -293,15 +292,16 @@ word msc(word R)
         word *R2 = &tl(R1);
         while (*R2 != NIL && hd(hd(*R2)) != n) {
           R2 = &tl(*R2); /* find n-entry in R */
-}
+        }
         if (*R2 != NIL && member(tl(hd(*R2)), l)) {
           *r = tl(*r);   /* remove n from r */
           *R2 = tl(*R2); /* remove n's entry from R */
           hd(hd(R1)) = add1(n, hd(hd(R1)));
-        } else { {
-          r = &tl(*r);
-}
-}
+        } else {
+          {
+            r = &tl(*r);
+          }
+        }
       }
     }
     R1 = tl(R1);
@@ -320,10 +320,10 @@ word meta_tcheck(word t)
   /* TO DO -- TIDY UP ERROR MESSAGES AND SET ERRLINE (ERRS) IF POSS */
   while (iscompound_t(tn)) {
     tl(tn) = meta_tcheck(tl(tn)), i++, tn = hd(tn);
-}
+  }
   if (tag[tn] == STRCONS) {
     goto L; /* patch to handle free type bindings */
-}
+  }
   if (tag[tn] != ID) {
     if (i > 0 && (isvar_t(tn) || tn == bool_t || tn == num_t || tn == char_t)) {
       TYPERRS++;
@@ -338,7 +338,7 @@ word meta_tcheck(word t)
                    get_id(current_id)),
             printf("("), out_type(tn), printf(" has zero arity)\n"),
             sayhere(getspecloc(current_id), 1);
-}
+      }
       sterilise(t);
     }
     return t;
@@ -348,17 +348,18 @@ word meta_tcheck(word t)
     if (!member(NT, tn)) {
       if (tag[current_id] == DATAPAIR) {
         locate_inc();
-}
+      }
       printf("undeclared typename \"%s\" ", get_id(tn));
       if (tag[current_id] == DATAPAIR) {
         printf("in binding for %s\n", (char *)hd(current_id));
       } else {
         sayhere(getspecloc(current_id), 1);
-}
+      }
       NT = add1(tn, NT);
     }
     return t;
-  } if (id_type(tn) != type_t || t_arity(tn) != i) {
+  }
+  if (id_type(tn) != type_t || t_arity(tn) != i) {
     TYPERRS++;
     if (tag[current_id] == DATAPAIR) {
       locate_inc(), printf("badly formed type \""), out_type(t),
@@ -368,33 +369,33 @@ word meta_tcheck(word t)
           printf("\" in %s for \"%s\"\n",
                  id_type(current_id) == type_t ? "== binding" : "specification",
                  get_id(current_id));
-}
+    }
     if (id_type(tn) != type_t) {
       printf("(%s not defined as typename)\n", get_id(tn));
     } else {
       printf("(typename %s has arity %ld)\n", get_id(tn), t_arity(tn));
-}
+    }
     if (tag[current_id] != DATAPAIR) {
       sayhere(getspecloc(current_id), 1);
-}
+    }
     sterilise(t);
     return t;
   }
 L:
   if (t_class(tn) != synonym_t) {
     return t;
-}
+  }
   if (member(meta_pending, tn)) {
     TYPERRS++; /* report cycle */
     if (tag[current_id] == DATAPAIR) {
       locate_inc();
-}
+    }
     printf("error: cycle in type \"==\" definition%s ", meta_pending == NIL ? "" : "s");
     printelement(meta_pending);
     putchar('\n');
     if (tag[current_id] != DATAPAIR) {
       sayhere(id_who(tn), 1);
-}
+    }
     longjmp(env1, 1); /* fatal error - give up */
     return t;
   }
@@ -402,7 +403,7 @@ L:
   tn = NIL;
   while (iscompound_t(t)) {
     tn = cons(tl(t), tn), t = hd(t);
-}
+  }
   t = meta_tcheck(ap_subst(t_info(t), tn));
   meta_pending = tl(meta_pending);
   return t;
@@ -415,7 +416,7 @@ void sterilise(word t) /* to prevent multiple reporting of metatype errors from
 {
   if (tag[t] == AP) {
     hd(t) = list_t, tl(t) = num_t;
-}
+  }
 }
 
 static word tvcount = 1;
@@ -433,9 +434,11 @@ void infer_type(word x)
     word oldte = TYPERRS;
     current_id = x;
     t = subst(etype(id_val(x), NIL, NIL));
-    if (id_type(x) == undef_t) { {
-      id_type(x) = redtvars(t);
-    } } else /* x already has assigned type */
+    if (id_type(x) == undef_t) {
+      {
+        id_type(x) = redtvars(t);
+      }
+    } else /* x already has assigned type */
       if (!subsumes(t, instantiate(id_type(x)))) {
         TYPERRS++;
         printf("incorrect declaration ");
@@ -449,7 +452,7 @@ void infer_type(word x)
       }
     if (TYPERRS > oldte) {
       id_type(x) = wrong_t, id_val(x) = UNDEF, ND = add1(x, ND);
-}
+    }
     reset_SUBST;
   } else { /* recursive group of names */
     word x1;
@@ -457,19 +460,19 @@ void infer_type(word x)
     word ngt = NIL;
     for (x1 = x; x1 != NIL; x1 = tl(x1)) {
       ngt = cons(NTV, ngt), id_type(hd(x1)) = ap(bind_t, hd(ngt));
-}
+    }
     for (x1 = x; x1 != NIL; x1 = tl(x1)) {
       oldte = TYPERRS, current_id = hd(x1),
       unify(tl(id_type(hd(x1))), etype(id_val(hd(x1)), NIL, ngt));
       if (TYPERRS > oldte) {
         id_type(hd(x1)) = wrong_t, id_val(hd(x1)) = UNDEF, ND = add1(hd(x1), ND);
-}
+      }
     }
     for (x1 = x; x1 != NIL; x1 = tl(x1)) {
       if (id_type(hd(x1)) != wrong_t) {
         id_type(hd(x1)) = redtvars(ult(tl(id_type(hd(x1)))));
-}
-}
+      }
+    }
     reset_SUBST;
   }
 }
@@ -488,7 +491,7 @@ void mcheckfbs(void) {
       word t = tl(tl(hd(formals)));
       if (t != type_t) {
         continue;
-}
+      }
       current_id = hd(tl(hd(formals))); /* nb datapair(orig,0) not id */
       t_info(hd(hd(formals))) = meta_tcheck(t_info(hd(hd(formals))));
       /*ATNAMES=cons(hd(hd(formals)),ATNAMES?ATNAMES:NIL); */
@@ -496,12 +499,12 @@ void mcheckfbs(void) {
     }
     if (TYPERRS) {
       return; /* to avoid misleading error messages */
-}
+    }
     for (formals = tl(hd(ff)); formals != NIL; formals = tl(formals)) {
       word t = tl(tl(hd(formals)));
       if (t == type_t) {
         continue;
-}
+      }
       current_id = hd(tl(hd(formals))); /* nb datapair(orig,0) not id */
       tl(tl(hd(formals))) = redtvars(meta_tcheck(t));
       current_id = 0;
@@ -515,28 +518,29 @@ void mcheckfbs(void) {
   /* a problem with this is that types do not print in canonical form */
   if (TYPERRS) {
     return;
-}
+  }
   for (ff = tl(files); ff != NIL; ff = tl(ff)) {
     for (formals = fil_defs(hd(ff)); formals != NIL; formals = tl(formals)) {
       if (tag[n = hd(formals)] == ID) {
         if (id_type(n) == type_t) {
           if (t_class(n) == synonym_t) {
             t_info(n) = meta_tcheck(t_info(n));
-}
-        } else { {
-          id_type(n) = redtvars(meta_tcheck(id_type(n)));
-}
-}
+          }
+        } else {
+          {
+            id_type(n) = redtvars(meta_tcheck(id_type(n)));
+          }
+        }
       }
-}
-}
+    }
+  }
 } /* wasteful if many includes */
 
 void redtfr(word x) /* ensure types of freeids are in reduced form */
 {
   for (; x != NIL; x = tl(x)) {
     tl(tl(hd(x))) = id_type(hd(hd(x)));
-}
+  }
 }
 
 void checkfbs(void)
@@ -552,7 +556,7 @@ void checkfbs(void)
       word t1 = fix_type(tl(tl(hd(formals))));
       if (t1 == type_t) {
         continue;
-}
+      }
       current_id = hd(tl(hd(formals))); /* nb datapair(orig,0) not id */
       t = subst(etype(the_val(hd(hd(formals))), NIL, NIL));
       if (!subsumes(t, instantiate(t1))) {
@@ -567,9 +571,9 @@ void checkfbs(void)
       }
       the_val(hd(hd(formals))) = codegen(the_val(hd(hd(formals))));
     }
-}
+  }
   if (TYPERRS > oldte) { /* badly typed parameter bindings, so give up */
-    
+
     TABSTRS = NT = R = NIL;
     printf("compilation abandoned\n");
     SYNERR = 1;
@@ -589,7 +593,7 @@ word fix_type(word t) /* substitute out any indirected typenames in t */
   case STRCONS:
     while (tag[pn_val(t)] != CONS) {
       t = pn_val(t); /*at most twice*/
-}
+    }
     return t;
   }
 }
@@ -597,7 +601,7 @@ word fix_type(word t) /* substitute out any indirected typenames in t */
 void locate_inc(void) {
   if (lasthereinc == hereinc) {
     return;
-}
+  }
   printf("incorrect %%include directive ");
   sayhere(lasthereinc = hereinc, 1);
 }
@@ -610,7 +614,7 @@ void abstr_mcheck(word tabstrs) /* meta-typecheck abstract type declarations */
     word rtypes = NIL;
     if (cyclic_abstr(atnames)) {
       return;
-}
+    }
     while (sigids != NIL) /* compute representation types */
     {
       word rt = rep_t(id_type(hd(sigids)), atnames);
@@ -648,15 +652,15 @@ void abstr_check(word x)
     }
     if (TYPERRS > oldte) {
       id_type(hd(x)) = wrong_t, id_val(hd(x)) = UNDEF, ND = add1(hd(x), ND);
-}
+    }
     reset_SUBST;
   }
   /* restore the abstract types - for "finger" */
   for (x = sigids; x != NIL; x = tl(x), rtypes = tl(rtypes)) {
     if (id_type(hd(x)) != wrong_t) {
       id_type(hd(x)) = hd(rtypes);
-}
-}
+    }
+  }
   ATNAMES = 0;
 }
 
@@ -666,7 +670,7 @@ word cyclic_abstr(word atnames) /* immediately-cyclic acts of dta are illegal */
   word y = NIL;
   for (x = atnames; x != NIL; x = tl(x)) {
     y = ap(y, t_info(hd(x)));
-}
+  }
   for (x = atnames; x != NIL; x = tl(x)) {
     if (occurs(hd(x), y)) {
       printf("illegal type abstraction: cycle in \"==\" binding%s ", tl(atnames) == NIL ? "" : "s");
@@ -676,7 +680,7 @@ word cyclic_abstr(word atnames) /* immediately-cyclic acts of dta are illegal */
       TYPERRS++;
       return 1;
     }
-}
+  }
   return 0;
 }
 
@@ -694,16 +698,18 @@ void txchange(word ids, word x)
 void report_type(word x) {
   printf("%s", get_id(x));
   if (id_type(x) == type_t) {
-    if (t_arity(x) > 5) { {
-      printf("(arity %ld)", t_arity(x));
-    } } else {
+    if (t_arity(x) > 5) {
+      {
+        printf("(arity %ld)", t_arity(x));
+      }
+    } else {
       word i;
       word j;
       for (i = 1; i <= t_arity(x); i++) {
         putchar(' ');
         for (j = 0; j < i; j++) {
           putchar('*');
-}
+        }
       }
     }
   }
@@ -729,8 +735,8 @@ word typesfirst(word x) /* rearrange list of ids to put types first */
       z = cons(hd(*y), z), *y = tl(*y);
     } else {
       y = &tl(*y);
-}
-}
+    }
+  }
   return (shunt(z, x));
 }
 
@@ -747,20 +753,20 @@ word rep_t1(word T, word L)
     word a = rep_t1(tl(t1), L);
     if (a != tl(t1)) {
       changed = 1;
-}
+    }
     args = cons(a, args);
   }
   if (member(L, t1)) {
     return (ap_subst(t_info(t1), args));
-}
+  }
   /* call to redtvars removed 26/11/85
      leads to premature normalisation of subterms */
   if (!changed) {
     return T;
-}
+  }
   while (args != NIL) {
     t1 = ap(t1, hd(args)), args = tl(args);
-}
+  }
   return t1;
 }
 
@@ -778,7 +784,7 @@ word type_of(word x) /* returns the type of expression x, in reduced form */
   fixshows();
   if (TYPERRS > 0) {
     t = wrong_t;
-}
+  }
   return t;
 }
 
@@ -829,10 +835,10 @@ void genbnft(void) /* if %bnf used, find out input type of parsing fns */
       bnf_t = t_class(bnftokenstate) == synonym_t ? t_info(bnftokenstate) : bnftokenstate;
     } else {
       printf("warning - bnftokenstate has arity>0 (ignored by parser)\n"), bnf_t = void_t;
-}
+    }
   } else {
     bnf_t = void_t; /* now bnf_t holds the state type */
-}
+  }
   bnf_t = ap2(comma_t, ltchar, ap2(comma_t, bnf_t, void_t));
 } /* the input type for parsers is lt(bnf_t)
      note that tl(hd(tl(bnf_t))) holds the state type */
@@ -875,7 +881,7 @@ word etype(word x, word env, word ngt)
   case AP:
     if (hd(x) == BADCASE || hd(x) == CONFERROR) {
       return (NTV);
-}
+    }
     /* don't type check insides of error messages */
     {
       word ft = etype(hd(x), env, ngt);
@@ -888,10 +894,10 @@ word etype(word x, word env, word ngt)
             type_error8(at, tl(hd(ft)));
           } else {
             type_error("unify", "with", at, tl(hd(ft)));
-}
+          }
         } else {
           type_error("apply", "to", ft, at);
-}
+        }
         return (NTV);
       }
       return rt;
@@ -934,26 +940,29 @@ word etype(word x, word env, word ngt)
     while (a != NIL) { /* take local binding, if present */
       if (hd(hd(a)) == x) {
         return (linst(tl(hd(a)) = subst(tl(hd(a))), ngt));
-      }         a = tl(a);
-}
+      }
+      a = tl(a);
+    }
     a = id_type(x); /* otherwise pick up global binding */
     if (bound_t(a)) {
       return (tl(a));
-}
+    }
     if (a == type_t) {
       type_error1(x);
-}
+    }
     if (a == undef_t) {
-      
-      if (commandmode) { {
-        type_error2(x);
-      } } else if (!member(ND, x)) /* report first occurrence only */
+
+      if (commandmode) {
+        {
+          type_error2(x);
+        }
+      } else if (!member(ND, x)) /* report first occurrence only */
       {
         if (lineptr) {
           sayhere(lineptr, 0);
         } else if (tag[current_id] == DATAPAIR) { /* see checkfbs */
           locate_inc();
-}
+        }
         printf("undefined name \"%s\"\n", get_id(x));
         ND = add1(x, ND);
       }
@@ -961,7 +970,7 @@ word etype(word x, word env, word ngt)
     }
     if (a == wrong_t) {
       return (NTV);
-}
+    }
     return (instantiate(ATNAMES ? rep_t(a, ATNAMES) : a));
   case LAMBDA:
     a = NTV;
@@ -970,7 +979,7 @@ word etype(word x, word env, word ngt)
     c = conforms(hd(x), a, env, d);
     if (c == -1 || !unify(b, etype(tl(x), c, d))) {
       return (NTV);
-}
+    }
     return (tf(a, b));
   case LET: {
     word e;
@@ -984,7 +993,7 @@ word etype(word x, word env, word ngt)
     current_id = tl(current_id);
     if (e == -1 || !b) {
       return (NTV);
-}
+    }
     return (etype(tl(x), e, ngt));
   }
   case LETREC: {
@@ -1002,11 +1011,11 @@ word etype(word x, word env, word ngt)
         /* should do earlier, and locate errs properly*/
             s = cons(hd(d), s), /* specified defs */
             e = cons(cons(dlhs(hd(d)), dtyp(hd(d))), e);
-}
-}
+      }
+    }
     if (e == -1) {
       return (NTV);
-}
+    }
     b = 1;
     for (; a != NIL; a = tl(a)) {
       current_id = cons(dlhs(hd(a)), current_id);
@@ -1023,13 +1032,13 @@ word etype(word x, word env, word ngt)
       if (!subsumes(a = etype(dval(hd(s)), e, ngt), linst(dtyp(hd(s)), ngt))) {
         /* would be better to set lineptr to spec here */
         b = 0, type_error6(dlhs(hd(s)), dtyp(hd(s)), a);
-}
+      }
       lineptr = d;
       current_id = tl(current_id);
     }
     if (!b) {
       return (NTV);
-}
+    }
     return (etype(tl(x), e, ngt));
   }
   case TRIES: {
@@ -1038,11 +1047,11 @@ word etype(word x, word env, word ngt)
     x = tl(x);
     while (x != NIL && (lineptr = hd(hd(x)), unify(a, etype(tl(hd(x)), env, ngt)))) {
       x = tl(x);
-}
+    }
     lineptr = hold;
     if (x != NIL) {
       return (NTV);
-}
+    }
     return a;
   }
   case LABEL: {
@@ -1057,7 +1066,7 @@ word etype(word x, word env, word ngt)
     if (tl(x) == 0) {
       hd(x) = lineptr, /* insert here-info */
           tl(x) = NTV, showchain = cons(x, showchain);
-}
+    }
     return (tf(ltchar, lt(tl(x))));
   case SHOW:
     hd(x) = lineptr; /* insert here-info */
@@ -1069,7 +1078,7 @@ word etype(word x, word env, word ngt)
       tl(x) = subst(etype(hd(x), env, ngt));
       if (TYPERRS > h) {
         hd(x) = UNDEF, tl(x) = wrong_t;
-}
+      }
     }
     if (tl(x) == wrong_t) {
       TYPERRS++;
@@ -1084,7 +1093,7 @@ word etype(word x, word env, word ngt)
   case ATOM:
     if (x < 256) {
       return (char_t);
-}
+    }
     switch (x) {
     case S:
       a = NTV, b = NTV, c = NTV;
@@ -1233,21 +1242,21 @@ word etype(word x, word env, word ngt)
       if (!exec_t) {
         a = ap2(comma_t, ltchar, ap2(comma_t, num_t, void_t)),
         exec_t = tf(ltchar, ap2(comma_t, ltchar, a));
-}
+      }
       return exec_t;
     }
     case READBIN:
     case READ: {
       if (!read_t) {
         read_t = tf(char_t, ltchar);
-}
+      }
       /* $- is ap(READ,0) */
       return read_t;
     }
     case FILESTAT: {
       if (!filestat_t) {
         filestat_t = tf(ltchar, pair_t(pair_t(num_t, num_t), num_t));
-}
+      }
       return filestat_t;
     }
     case FILEMODE:
@@ -1341,10 +1350,10 @@ word etype(word x, word env, word ngt)
       if (col_fn) /* offside rule used */
       {
         if (col_fn == -1) { /* arbitrary flag */
-          TYPERRS++;      /*overkill, see note on checkcolfn*/
+          TYPERRS++;        /*overkill, see note on checkcolfn*/
         } else {
           checkcolfn();
-}
+        }
       }
       return (tf3(ltchar, a, lt(bnf_t), a));
     case OFFSIDE:
@@ -1374,10 +1383,10 @@ word etype(word x, word env, word ngt)
 word rhs_here(word r) {
   if (tag[r] == LABEL) {
     return (hd(r));
-}
+  }
   if (tag[r] == TRIES) {
     return (hd(hd(lastlink(tl(r)))));
-}
+  }
   return 0; /* something wrong */
 } /* efficiency hack, sometimes we set lineptr to rhs, can extract here_info
      as above when needed */
@@ -1388,10 +1397,10 @@ word conforms(word p, word t, word e, word ngt)
 {
   if (e == -1) {
     return (-1);
-}
+  }
   if (tag[p] == ID && !isconstructor(p)) {
     return (cons(cons(p, t), e));
-}
+  }
   if (hd(p) == CONST) {
     unify(etype(tl(p), e, ngt), t);
     return e;
@@ -1400,7 +1409,7 @@ word conforms(word p, word t, word e, word ngt)
     word at = NTV;
     if (!unify(lt(at), t)) {
       return (-1);
-}
+    }
     return (conforms(tl(p), t, conforms(hd(p), at, e, ngt), ngt));
   }
   if (tag[p] == TCONS) {
@@ -1408,7 +1417,7 @@ word conforms(word p, word t, word e, word ngt)
     word bt = NTV;
     if (!unify(ap2(comma_t, at, bt), t)) {
       return (-1);
-}
+    }
     return (conforms(tl(p), bt, conforms(hd(p), at, e, ngt), ngt));
   }
   if (tag[p] == PAIR) {
@@ -1416,14 +1425,14 @@ word conforms(word p, word t, word e, word ngt)
     word bt = NTV;
     if (!unify(ap2(comma_t, at, ap2(comma_t, bt, void_t)), t)) {
       return (-1);
-}
+    }
     return (conforms(tl(p), bt, conforms(hd(p), at, e, ngt), ngt));
   }
   if (tag[p] == AP && tag[hd(p)] == AP && hd(hd(p)) == PLUS) /* n+k pattern */
   {
     if (!unify(num_t, t)) {
       return 1;
-}
+    }
     return (conforms(tl(p), num_t, e, ngt));
   }
   {
@@ -1431,7 +1440,7 @@ word conforms(word p, word t, word e, word ngt)
     word pt;
     while (tag[p] == AP) {
       p_args = cons(tl(p), p_args), p = hd(p);
-}
+    }
     if (!isconstructor(p)) {
       type_error4(p);
       return (-1);
@@ -1446,7 +1455,7 @@ word conforms(word p, word t, word e, word ngt)
       e = conforms(hd(p_args), tl(hd(pt)), e, ngt), pt = tl(pt), p_args = tl(p_args);
       if (e == -1) {
         return (-1);
-}
+      }
     }
     if (p_args != NIL || isarrow_t(pt)) {
       type_error3(p);
@@ -1454,7 +1463,7 @@ word conforms(word p, word t, word e, word ngt)
     }
     if (!unify(pt, t)) {
       return (-1);
-}
+    }
     return e;
   }
 }
@@ -1470,29 +1479,30 @@ void locate(char *s) /* for locating type errors */
         locate_inc();
         printf("%s in binding for %s\n", s, (char *)hd(current_id));
         return;
-      }         
-        word x = current_id;
-        printf("%s in definition of ", s);
-        while (tag[x] == CONS) {
-          if (tag[tl(x)] == ID && member(fnts, tl(x))) {
-            printf("nonterminal "), x = hd(x);
-          } else { /*note1*/
-            out_formal1(stdout, hd(x)), printf(", subdef of "), x = tl(x);
-}
-}
-        printf("%s", get_id(x));
-        putchar('\n');
-     
-    } else { {
-      printf("%s in expression\n", s);
-}
-}
+      }
+      word x = current_id;
+      printf("%s in definition of ", s);
+      while (tag[x] == CONS) {
+        if (tag[tl(x)] == ID && member(fnts, tl(x))) {
+          printf("nonterminal "), x = hd(x);
+        } else { /*note1*/
+          out_formal1(stdout, hd(x)), printf(", subdef of "), x = tl(x);
+        }
+      }
+      printf("%s", get_id(x));
+      putchar('\n');
+
+    } else {
+      {
+        printf("%s in expression\n", s);
+      }
+    }
   }
   if (lineptr) {
     sayhere(lineptr, 0);
   } else if (current_id && id_who(current_id) != NIL) {
     sayhere(id_who(current_id), 0);
-}
+  }
   lastloc = current_id;
 }
 /* note1: this is hack to suppress extra `subdef of <fst start symb>' when
@@ -1503,7 +1513,7 @@ void sayhere(word h, word nl)
    and sets errline/errs if not already set */
 {
   extern word errs, errline;
-  
+
   if (tag[h] != FILEINFO) {
     h = rhs_here(h);
     if (tag[h] != FILEINFO) {
@@ -1517,15 +1527,15 @@ void sayhere(word h, word nl)
     putchar('\n');
   } else {
     putchar(' ');
-}
+  }
   if ((char *)hd(h) == current_script) {
     if (!errline) { /* tells editor where first error is */
       errline = tl(h);
-}
+    }
   } else {
     if (!errs) {
       errs = h;
-}
+    }
   }
 }
 
@@ -1551,7 +1561,7 @@ void type_error2(word x) /* undefined name in expression */
 {
   if (compiling) {
     return; /* treat as type error only in $+ data */
-}
+  }
   TYPERRS++;
   printf("undefined name - %s\n", get_id(x));
 }
@@ -1616,7 +1626,7 @@ void type_error8(word t1, word t2) {
   t2 = subst(t2);
   if (same(hd(t1), hd(t2))) {
     t1 = tl(t1), t2 = tl(t2); /* discard `[bnf_t]->' */
-}
+  }
   t1 = redtvars(ap(t1, t2));
   t2 = tl(t1);
   t1 = hd(t1);
@@ -1636,7 +1646,7 @@ or fails */
   t1 = subst(t1), t2 = subst(t2);
   if (t1 == t2) {
     return 1;
-}
+  }
   if (isvar_t(t1) && !occurs(t1, t2)) {
     addsubst(t1, t2);
     return 1;
@@ -1647,7 +1657,7 @@ or fails */
   }
   if (iscompound_t(t1) && iscompound_t(t2) && unify1(hd(t1), hd(t2)) && unify1(tl(t1), tl(t2))) {
     return 1;
-}
+  }
   type_error("unify", "with", t1, t2);
   return 0;
 }
@@ -1660,7 +1670,7 @@ int unify1(word t1, word t2)
   t1 = subst(t1), t2 = subst(t2);
   if (t1 == t2) {
     return 1;
-}
+  }
   if (isvar_t(t1) && !occurs(t1, t2)) {
     addsubst(t1, t2);
     return 1;
@@ -1671,7 +1681,7 @@ int unify1(word t1, word t2)
   }
   if (iscompound_t(t1) && iscompound_t(t2)) {
     return (unify1(hd(t1), hd(t2)) && unify1(tl(t1), tl(t2)));
-}
+  }
   return 0;
 }
 
@@ -1681,7 +1691,7 @@ word subsumes(word t1, word t2)
 {
   if (t2 == wrong_t) {
     return 1;
-}
+  }
   /* special case, shows up only when compiling prelude (changetype etc) */
   return (subsu1(t1, t2, t2));
 }
@@ -1690,14 +1700,14 @@ word subsu1(word t1, word t2, word T2) {
   t1 = subst(t1);
   if (t1 == t2) {
     return 1;
-}
+  }
   if (isvar_t(t1) && !occurs(t1, T2)) {
     addsubst(t1, t2);
     return 1;
   }
   if (iscompound_t(t1) && iscompound_t(t2)) {
     return (subsu1(hd(t1), hd(t2), T2) && subsu1(tl(t1), tl(t2), T2));
-}
+  }
   return 0;
 }
 
@@ -1706,7 +1716,7 @@ word walktype(word t, word (*f)(word))
 {
   if (isvar_t(t)) {
     return ((*f)(t));
-}
+  }
   if (iscompound_t(t)) {
     word h1 = walktype(hd(t), f);
     word t1 = walktype(tl(t), f);
@@ -1720,7 +1730,7 @@ int occurs(word tv, word t) /* does tv occur in type t? */
   while (iscompound_t(t)) {
     if (occurs(tv, tl(t))) {
       return 1;
-}
+    }
     t = hd(t);
   }
   return (tv == t);
@@ -1731,7 +1741,7 @@ int ispoly(word t) /* does t contain tvars? (should call subst first) */
   while (iscompound_t(t)) {
     if (ispoly(tl(t))) {
       return 1;
-}
+    }
     t = hd(t);
   }
   return (isvar_t(t));
@@ -1748,7 +1758,7 @@ int clear_SUBST(void)
   fixshows();
   for (i = 0; i < hashsize; i++) {
     SUBST[i] = 0;
-}
+  }
   tvcount = 1;
   return 0; /* see defn of reset_SUBST */
 }
@@ -1770,7 +1780,7 @@ word lookup(word tv) /* find current substitution for type variable */
   while (h) {
     if (eqtvar(hd(hd(h)), tv)) {
       return (tl(hd(h)));
-}
+    }
     h = tl(h);
   }
   return tv; /* no substitution found, so answer is self */
@@ -1800,12 +1810,12 @@ word lmap(word tv) {
   word l;
   if (non_generic(tv)) {
     return tv;
-}
+  }
   for (l = localtvmap; l != NIL; l = tl(l)) {
     if (hd(hd(l)) == tv) {
       return (tl(hd(l)));
-}
-}
+    }
+  }
   localtvmap = cons(cons(tv, l = NTV), localtvmap);
   return l;
 }
@@ -1823,8 +1833,8 @@ int non_generic(word tv) {
   for (x = NGT; x != NIL; x = tl(x)) {
     if (occurs(tv, subst(hd(x)))) {
       return 1;
-}
-}
+    }
+  }
   return 0;
 } /* note that when a non-generic tvar is unified against a texp, all tvars
      in texp become non-generic; this is catered for by call to subst above
@@ -1837,10 +1847,10 @@ word mapup(word tv) {
   tv = gettvar(tv);
   while (--tv) {
     m = &tl(*m);
-}
+  }
   if (*m == NIL) {
     *m = cons(NTV, NIL);
-}
+  }
   return (hd(*m));
 }
 
@@ -1867,10 +1877,10 @@ word mapdown(word tv) {
   word i = 1;
   while (*m != NIL && !eqtvar(hd(*m), tv)) {
     m = &tl(*m), i++;
-}
+  }
   if (*m == NIL) {
     *m = cons(tv, NIL);
-}
+  }
   return (mktvar(i));
 }
 
@@ -1888,10 +1898,10 @@ word remove1(word e, word *ss)
 {
   while (*ss != NIL && hd(*ss) < e) {
     ss = &tl(*ss); /* we assume set in address order */
-}
+  }
   if (*ss == NIL || hd(*ss) != e) {
     return 0;
-}
+  }
   *ss = tl(*ss);
   return 1;
 }
@@ -1908,8 +1918,8 @@ word setdiff(word s1, word s2) /* destructive on s1, returns set difference */
         ss1 = &tl(*ss1);
       } else {
         s2 = tl(s2);
-}
-}
+      }
+  }
   return s1;
 }
 
@@ -1919,18 +1929,18 @@ word add1(word e, word s)
   word s1 = s;
   if (s == NIL || e < hd(s)) {
     return (cons(e, s));
-}
+  }
   if (e == hd(s)) {
     return s; /* no duplicates! */
-}
+  }
   while (tl(s1) != NIL && e > hd(tl(s1))) {
     s1 = tl(s1);
-}
+  }
   if (tl(s1) == NIL) {
     tl(s1) = cons(e, NIL);
   } else if (e != hd(tl(s1))) {
     tl(s1) = cons(e, tl(s1));
-}
+  }
   return s;
 }
 
@@ -1942,21 +1952,21 @@ word newadd1(word e, word s) /* as above, but with side-effect on NEW */
   NEW = 1;
   if (s == NIL || e < hd(s)) {
     return (cons(e, s));
-}
+  }
   if (e == hd(s)) {
     NEW = 0;
     return s;
   } /* no duplicates! */
   while (tl(s1) != NIL && e > hd(tl(s1))) {
     s1 = tl(s1);
-}
+  }
   if (tl(s1) == NIL) {
     tl(s1) = cons(e, NIL);
   } else if (e != hd(tl(s1))) {
     tl(s1) = cons(e, tl(s1));
   } else {
     NEW = 0;
-}
+  }
   return s;
 }
 
@@ -1971,13 +1981,13 @@ word UNION(word s1, word s2)
       ss = &tl(*ss);
     } else {
       *ss = cons(hd(s2), *ss), ss = &tl(*ss), s2 = tl(s2);
-}
-}
+    }
+  }
   if (*ss == NIL) {
     while (s2 != NIL) {
       *ss = cons(hd(s2), *ss), ss = &tl(*ss), s2 = tl(s2);
-}
-}
+    }
+  }
   /* must copy tail of s2, in case of later destructive operations on s1 */
   return s1;
 }
@@ -1992,8 +2002,8 @@ word intersection(word s1, word s2) /* s1, s2 and result all in address order */
       s1 = tl(s1);
     } else {
       s2 = tl(s2);
-}
-}
+    }
+  }
   return (reverse(r));
 }
 
@@ -2022,16 +2032,16 @@ L:
     d = UNION(d, deps(tl(x)));
     for (y = hd(x); y != NIL; y = tl(y)) {
       d = UNION(d, deps(dval(hd(y))));
-}
+    }
     for (y = hd(x); y != NIL; y = tl(y)) {
       d = rembvars(d, dlhs(hd(y)));
-}
+    }
     return d;
   }
   case LEXER:
     while (x != NIL) {
       d = UNION(d, deps(tl(tl(hd(x))))), x = tl(x);
-}
+    }
     return d;
   case TRIES:
   case LABEL:
@@ -2056,14 +2066,16 @@ L:
   case CONS:
     if (hd(p) == CONST) {
       return x;
-}
+    }
     x = rembvars(x, hd(p));
     p = tl(p);
     goto L;
   case AP:
-    if (tag[hd(p)] == AP && hd(hd(p)) == PLUS) { {
-      p = tl(p); /* for n+k patterns */
-    } } else {
+    if (tag[hd(p)] == AP && hd(hd(p)) == PLUS) {
+      {
+        p = tl(p); /* for n+k patterns */
+      }
+    } else {
       x = rembvars(x, hd(p));
       p = tl(p);
     }
@@ -2082,7 +2094,7 @@ L:
 word member(word s, word x) {
   while (s != NIL && x != hd(s)) {
     s = tl(s);
-}
+  }
   return (s != NIL);
 }
 
@@ -2107,7 +2119,7 @@ void printelement(word x) {
     x = tl(x);
     if (x != NIL) {
       putchar(' ');
-}
+    }
   }
   putchar(')');
 }
@@ -2120,7 +2132,7 @@ void printlist(char *title, word l) /* for debugging */
     l = tl(l);
     if (l != NIL) {
       putchar(',');
-}
+    }
   }
   printf(";\n");
 }
@@ -2138,31 +2150,35 @@ void print2obs(char *title,char *title2,word x,word y) /* for debugging */
 static word allchars = 0; /* flag used by tail */
 
 void out_formal1(FILE *f, word x) {
-  
+
   if (hd(x) == CONST) {
     x = tl(x);
-}
-  if (x == NIL) { {
-    fprintf(f, "[]");
-  } } else if (tag[x] == CONS && tail(x) == NIL) { {
-    if (allchars) {
-      fprintf(f, "\"");
-      while (x != NIL) {
-        fprintf(f, "%s", charname(hd(x))), x = tl(x);
-}
-      fprintf(f, "\"");
-    } else {
-      fprintf(f, "[");
-      while (x != nill && x != NIL) {
-        out_pattern(f, hd(x));
-        x = tl(x);
-        if (x != nill && x != NIL) {
-          fprintf(f, ",");
-}
-      }
-      fprintf(f, "]");
+  }
+  if (x == NIL) {
+    {
+      fprintf(f, "[]");
     }
-  } } else if (tag[x] == AP || tag[x] == CONS) {
+  } else if (tag[x] == CONS && tail(x) == NIL) {
+    {
+      if (allchars) {
+        fprintf(f, "\"");
+        while (x != NIL) {
+          fprintf(f, "%s", charname(hd(x))), x = tl(x);
+        }
+        fprintf(f, "\"");
+      } else {
+        fprintf(f, "[");
+        while (x != nill && x != NIL) {
+          out_pattern(f, hd(x));
+          x = tl(x);
+          if (x != nill && x != NIL) {
+            fprintf(f, ",");
+          }
+        }
+        fprintf(f, "]");
+      }
+    }
+  } else if (tag[x] == AP || tag[x] == CONS) {
     fprintf(f, "(");
     out_pattern(f, x);
     fprintf(f, ")");
@@ -2182,10 +2198,11 @@ void out_formal1(FILE *f, word x) {
     out(f, x);
     fprintf(f, ")");
   } /* -ve numbers */
-  else { {
-    out(f, x); /* all other cases */
-}
-}
+  else {
+    {
+      out(f, x); /* all other cases */
+    }
+  }
 }
 
 void out_pattern(FILE *f, word x) {
@@ -2198,16 +2215,18 @@ void out_pattern(FILE *f, word x) {
       out_pattern(f, tl(x));
     } else {
       out_formal(f, x);
-}
+    }
   } else {
     out_formal(f, x);
-}
+  }
 }
 
 void out_formal(FILE *f, word x) {
-  if (tag[x] != AP) { {
-    out_formal1(f, x);
-  } } else if (tag[hd(x)] == AP && hd(hd(x)) == PLUS) /* n+k pattern */
+  if (tag[x] != AP) {
+    {
+      out_formal1(f, x);
+    }
+  } else if (tag[hd(x)] == AP && hd(hd(x)) == PLUS) /* n+k pattern */
   {
     out_formal(f, tl(x));
     fprintf(f, "+");
@@ -2223,7 +2242,7 @@ word tail(word x) {
   allchars = 1;
   while (tag[x] == CONS) {
     allchars &= (is_char(hd(x))), x = tl(x);
-}
+  }
   return x;
 }
 
@@ -2257,67 +2276,71 @@ void out_type2(word t) {
     out_typel(t);
     if (iscomma_t(t) && tl(t) == void_t) {
       putchar(',');
-}
+    }
     /* type of a one-tuple -- an anomaly that should never occur */
     putchar(')');
-  } else { {
-    switch (t) {
-    case bool_t:
-      printf("bool");
-      return;
-    case num_t:
-      printf("num");
-      return;
-    case char_t:
-      printf("char");
-      return;
-    case wrong_t:
-      printf("WRONG");
-      return;
-    case undef_t:
-      printf("UNKNOWN");
-      return;
-    case void_t:
-      printf("()");
-      return;
-    case type_t:
-      printf("type");
-      return;
-    default:
-      if (tag[t] == ID) { {
-        printf("%s", get_id(t));
-      } } else if (isvar_t(t)) {
-        word n = gettvar(t);
+  } else {
+    {
+      switch (t) {
+      case bool_t:
+        printf("bool");
+        return;
+      case num_t:
+        printf("num");
+        return;
+      case char_t:
+        printf("char");
+        return;
+      case wrong_t:
+        printf("WRONG");
+        return;
+      case undef_t:
+        printf("UNKNOWN");
+        return;
+      case void_t:
+        printf("()");
+        return;
+      case type_t:
+        printf("type");
+        return;
+      default:
+        if (tag[t] == ID) {
+          {
+            printf("%s", get_id(t));
+          }
+        } else if (isvar_t(t)) {
+          word n = gettvar(t);
 #if 0
 	   if(n<=26)putchar('a'+n-1); else /* experiment */
 #endif
-        if (n > 0 && n < 7) {
-          while (n--) {
-            putchar('*'); /* 6 stars max */
-}
+          if (n > 0 && n < 7) {
+            while (n--) {
+              putchar('*'); /* 6 stars max */
+            }
+          } else {
+            printf("%ld", n);
+          }
+        } else if (tag[t] == STRCONS) /* pname - see hack in privatise */
+        {
+
+          if (tag[pn_val(t)] == ID) {
+            printf("%s", get_id(pn_val(t)));
+          } else
+            /* ?? one level of indirection sometimes present */
+            if (strcmp((char *)hd(tl(t_info(t))), current_script) == 0) {
+              printf("%s", (char *)hd(hd(t_info(t))));
+            } else {                                       /* elision */
+              printf("`%s@%s'", (char *)hd(hd(t_info(t))), /* original typename */
+                     (char *)hd(tl(t_info(t))));           /* sourcefile */
+            }
         } else {
-          printf("%ld", n);
-}
-      } else if (tag[t] == STRCONS) /* pname - see hack in privatise */
-      {
-        
-        if (tag[pn_val(t)] == ID) {
-          printf("%s", get_id(pn_val(t)));
-        } else
-          /* ?? one level of indirection sometimes present */
-          if (strcmp((char *)hd(tl(t_info(t))), current_script) == 0) {
-            printf("%s", (char *)hd(hd(t_info(t))));
-          } else {                                           /* elision */
-            printf("`%s@%s'", (char *)hd(hd(t_info(t))), /* original typename */
-                   (char *)hd(tl(t_info(t))));           /* sourcefile */
-}
-      } else { {
-        printf("<BADLY FORMED TYPE:%d,%ld,%ld>", tag[t], hd(t), tl(t));
-}
-}
+          {
+            printf("<BADLY FORMED TYPE:%d,%ld,%ld>", tag[t], hd(t), tl(t));
+          }
+        }
+      }
     }
-}
-}
+  }
 }
 
 void out_typel(word t) {
@@ -2328,11 +2351,11 @@ void out_typel(word t) {
       putchar(',');
     } else if (t != void_t) {
       printf("<>");
-}
+    }
   } /* "tuple-cons", shouldn't occur free */
   if (t == void_t) {
     return;
-}
+  }
   out_type(t);
 }
 

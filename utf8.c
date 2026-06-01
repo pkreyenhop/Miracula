@@ -82,10 +82,10 @@ unicode fromUTF8(FILE *fil)
   int c3;
   if ((nextch(c0)) == EOF) {
     return ((unicode)EOF);
-}
+  }
   if (c0 <= 0x7f) { /* ascii */
     return ((unicode)c0);
-}
+  }
   if ((c0 & 0xe0) == 0xc0) { /* 2 bytes */
     if ((nextch(c1)) == EOF)
       err2(c0, c1);
@@ -141,5 +141,5 @@ void outUTF8(unicode u, FILE *fil) {
   } else {
     /* codes above 0x10ffff not valid */
     fprintf(stderr, "char 0x%lx out of unicode range\n", u), exit(1);
-}
+  }
 }

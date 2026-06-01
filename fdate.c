@@ -21,6 +21,6 @@ int main(void) {
     printf("%d %s %4d\n", (*t).tm_mday, month[(*t).tm_mon], (*t).tm_year + 1900);
   } else {
     fprintf(stderr, "fdate: bad file \"%s\"\n", f);
-}
+  }
   return 0;
 }

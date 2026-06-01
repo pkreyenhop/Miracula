@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
   if (j_in) {
     if (fscanf(j_in, "%d", &width) != 1) {
       width = 72;
-}
+    }
     fclose(j_in);
   }
   while (argc > 1 && argv[1][0] == '-') {
@@ -66,17 +66,18 @@ int main(int argc, char *argv[]) {
       sscanf(argv[1] + 1, "%d", &width);
       argc--;
       argv++;
-    } else { {
-      fprintf(stderr, "just: unknown flag %s\n", argv[1]), exit(1);
-}
-}
-}
+    } else {
+      {
+        fprintf(stderr, "just: unknown flag %s\n", argv[1]), exit(1);
+      }
+    }
+  }
   if (width < 0) {
     width = -width, tolerance = 0;
-}
+  }
   if (width == 0) {
     width = MAXWIDTH, tolerance = 0;
-}
+  }
   if (width < 6 || width > MAXWIDTH) {
     fprintf(stderr, "just: silly width %d\n", width);
     fprintf(stderr, "(legal widths are in the range 6 to %d)\n", MAXWIDTH);
@@ -90,9 +91,10 @@ int main(int argc, char *argv[]) {
       if (fp == NULL) {
         fprintf(stderr, "just: cannot open %s\n", *argv);
         break;
-      }         justify(width, fp, *argv);
+      }
+      justify(width, fp, *argv);
     }
-}
+  }
   exit(0);
 }
 
@@ -115,9 +117,11 @@ static void justify(int width, FILE *fp, char *fn) {
   linerr = 0;
   while (c != EOF && (c = getc(fp)) != EOF) {
     /* 1st part of test needed because ungetc(EOF,fp) ineffective */
-    if (c == '\f') { {
-      putchar('\f');
-    } } else /* formfeed counts as blank line */
+    if (c == '\f') {
+      {
+        putchar('\f');
+      }
+    } else /* formfeed counts as blank line */
     {
       ungetc(c, fp);
       getln(fp, 0);
@@ -139,47 +143,47 @@ static void justify(int width, FILE *fp, char *fn) {
             char *sp = index(buf, '\b'); /* correction for backspaces */
             while (sp && sp <= rp) {
               rp += 2, sp = index(sp + 1, '\b');
-}
+            }
           }
           while (*rp != ' ' && rp > buf) {
             rp--; /* searching for word break */
-}
+          }
           if (rp == buf) {
             worderr = 1;
             while (rp - buf < width - 1) {
               putchar(*rp++); /* print width-1 chars */
-}
-            putchar('-');     /* to signify forced word break */
+            }
+            putchar('-'); /* to signify forced word break */
             putchar('\n');
           } else {
             while (rp[-1] == ' ' || (rp[-1] == '\b' && rp[-2] == '_')) {
               rp -= rp[-1] == ' ' ? 1 : 2; /* find start of break */
-}
+            }
             if (*rp == '_' && rp[1] == '\b' && rp[2] == ' ') {
               rp += 2;
-}
+            }
             /* leave trace of underlined gap */
             while ((*rp == ' ' || (*rp == '_' && rp[1] == '\b' && rp[2] == ' ') ||
                     (*rp == '\b' && rp[1] == ' ')) &&
                    rp < bp) {
               *rp++ = '\0'; /* find end of break */
-}
+            }
             rjust(buf, width);
           }
           /* shuffle down what's left */
           strcpy(buf, rp);
           bp -= rp - buf;
         }
-}
+      }
       puts(bp = buf);
     }
-}
+  }
   if (worderr) {
     fprintf(stderr, "just: warning -- %s contained words too big for line\n", fn);
-}
+  }
   if (linerr) {
     fprintf(stderr, "just: warning -- %s contained disastrously long lines\n", fn);
-}
+  }
 }
 
 static void getln(FILE *fp, int crush) {
@@ -192,7 +196,7 @@ static void getln(FILE *fp, int crush) {
     char *p;
     while ((p = index(bp, '\t'))) {
       *p = ' '; /* replace each tab by one space */
-}
+    }
     /* WARNING - if THRESHOLD:=8 or greater, will need to change this to
        handle leading tabs more carefully, expanding each to right number
        of spaces, to preserve indentation */
@@ -200,17 +204,21 @@ static void getln(FILE *fp, int crush) {
        will be frozen anyway */
   }
   bp += strlen(bp);
-  if (bp[-1] == '\n') { {
-    *--bp = '\0';
-  } } else { /* amendment to cope with arbitrarily long input lines:
-            if no newline found, break at next beginning-of-word */
+  if (bp[-1] == '\n') {
+    {
+      *--bp = '\0';
+    }
+  } else { /* amendment to cope with arbitrarily long input lines:
+          if no newline found, break at next beginning-of-word */
     int c;
     while ((c = getc(fp)) != EOF && !isspace(c) && bp - buf < MAXBUF) {
       *bp++ = c;
-}
-    if (c == EOF || c == '\n') { {
-      *bp = '\0';
-    } } else if (bp - buf == MAXBUF) /* give up! */
+    }
+    if (c == EOF || c == '\n') {
+      {
+        *bp = '\0';
+      }
+    } else if (bp - buf == MAXBUF) /* give up! */
     {
       linerr = 1;
       *bp++ = '\\'; /* to signify forced break */
@@ -219,27 +227,27 @@ static void getln(FILE *fp, int crush) {
       *bp++ = ' ';
       while ((c = getc(fp)) == ' ' || c == '\t') {
         ;
-}
+      }
       if (c != EOF && c != '\n') {
         ungetc(c, fp);
-}
+      }
       *bp = '\0';
     }
   }
   /* remove trailing blanks */
   while (bp[-1] == ' ' && !(bp[-2] == '\b' && bp[-3] == '_')) {
     *--bp = '\0';
-}
+  }
   /* eliminate all but one underlined trailing space */
   if (crush) {
     while (bp[-1] == ' ' && bp[-2] == '\b' && bp[-3] == '_' && bp[-4] == ' ' && bp[-5] == '\b' &&
            bp[-6] == '_') {
       bp -= 3, *bp = '\0';
-}
-}
+    }
+  }
   if (crush) {
     squeeze(buf);
-}
+  }
 }
 
 static int indent(char *s) /* size of white space at front of s */
@@ -250,8 +258,8 @@ static int indent(char *s) /* size of white space at front of s */
       i++;
     } else {
       i = 8 * (1 + (i / 8));
-}
-}
+    }
+  }
   return i;
 }
 
@@ -266,30 +274,30 @@ static void squeeze(char *s) /* remove superfluous blanks between words */
   for (;;) {
     while (*t && *t != ' ' && !(*t == '_' && t[1] == '\b' && t[2] == ' ')) {
       *s++ = *t++;
-}
+    }
     eosen = istermch(t[-1]);
     *s++ = *t;
     if (*t == '\0') {
       break;
-}
+    }
     if (*t == ' ') {
       if (eosen && t[1] == ' ') {
-        *s++ = ' '; 
-}/* upto one extra space after
-                sentence terminator is preserved */
+        *s++ = ' ';
+      } /* upto one extra space after
+                       sentence terminator is preserved */
       while (*++t == ' ') {
-        ;    /* eat unnecessary spaces */
-}
+        ; /* eat unnecessary spaces */
+      }
     } else { /* deal with underlined spaces */
       *s++ = '\b';
       *s++ = ' ';
       if (eosen && t[3] == '_' && t[4] == '\b' && t[5] == ' ') {
         *s++ = '_', *s++ = '\b', *s++ = ' '; /* xta space after termch */
-}
+      }
       t += 3;
       while (t[0] == '_' && t[1] == '\b' && t[2] == ' ') {
         t += 3;
-}
+      }
     }
   }
   bp = s - 1;
@@ -310,30 +318,33 @@ static void rjust(char *s, int width) /* print s justified to width */
   static int leftist = 0; /* bias for odd spaces when r>0 */
   if (wc) {
     i = gap / wc, r = gap % wc;
-}
+  }
   if (wc == 0 || i + (r > 0) > tolerance) {
     char *t = s + strlen(s);
     fputs(s, stdout);
     if (t[-1] == '\b' && t[-2] == '_') {
       putchar(' ');
-}
+    }
     putchar('\n');
     return;
-  } if (leftist) { {
-    for (;;) {
-      s = printword(s);
-      if (!*s) {
-        break;
-}
-      spaces(i + (r-- > 0), s[0] == '_' && s[1] == '\b' && s[2] == ' ');
+  }
+  if (leftist) {
+    {
+      for (;;) {
+        s = printword(s);
+        if (!*s) {
+          break;
+        }
+        spaces(i + (r-- > 0), s[0] == '_' && s[1] == '\b' && s[2] == ' ');
+      }
     }
-  } } else {
+  } else {
     r = wc - r;
     for (;;) {
       s = printword(s);
       if (!*s) {
         break;
-}
+      }
       spaces(i + (r-- <= 0), s[0] == '_' && s[1] == '\b' && s[2] == ' ');
     }
   }
@@ -345,12 +356,12 @@ static void pad(void) /* insert space(s) if necessary when joining two lines */
 {
   if (bp[-1] != ' ') {
     *bp++ = ' ';
-}
+  }
   if (istermch(bp[-2])) {
     *bp++ = ' ';
   } else if (bp[-1] == ' ' && bp[-2] == '\b' && bp[-3] == '_' && istermch(bp[-4])) {
     *bp++ = '_', *bp++ = '\b', *bp++ = ' ';
-}
+  }
 }
 
 static void spaces(int n, int ul) {
@@ -359,8 +370,8 @@ static void spaces(int n, int ul) {
       printf("_\b ");
     } else {
       putchar(' ');
-}
-}
+    }
+  }
 }
 
 static int words(char *s) /* counts words (naively defined) in s */
@@ -369,8 +380,8 @@ static int words(char *s) /* counts words (naively defined) in s */
   while (*s) {
     if (*s++ != ' ' && s[-1] != '\b' && (*s == ' ' || (*s == '_' && s[1] == '\b' && s[2] == ' '))) {
       c++;
-}
-}
+    }
+  }
   return (c + 1);
 }
 
@@ -379,16 +390,16 @@ static char *printword(char *s) /* prints a word preceded by any leading spaces 
 {
   while (s[0] == '_' && s[1] == '\b' && s[2] == ' ') { /* underlined spaces */
     putchar(*s++), putchar(*s++), putchar(*s++);
-}
+  }
   while (*s == ' ') {
     putchar(*s++);
-}
+  }
   while (*s && *s != ' ' && !(*s == '_' && s[1] == '\b' && (s[2] == ' ' || s[2] == '\0'))) {
     putchar(*s++);
-}
+  }
   if (s[0] == '_' && s[1] == '\b' && s[2] == '\0') {
     s++, s++, printf("_\b ");
-}
+  }
   /* restore trailing underlined space */
   return s;
 }
@@ -399,10 +410,10 @@ static int bs_cor(char *s) /* correction to length due to backspaces in string s
   while (*s++) {
     if (s[-1] == '\b') {
       n += 2;
-}
-}
+    }
+  }
   if (s[-1] == '\0' && s[-2] == '\b' && s[-3] == '_') {
     n--; /* implied space before \0 */
-}
+  }
   return n;
 }
