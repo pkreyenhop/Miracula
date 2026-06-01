@@ -1,7 +1,7 @@
 /* extern declarations from .c files, grouped by type 10.1.2020 */
-extern char **ARGV,*current_script,*dic,*dicp,*dicp,*dicq,linebuf[],*miralib,*obsuffix,*vdate,*vdate,*host,*yysterm[],*cmbnms[];
+extern char **ARGV,*current_script,*dic,*dicp,*dicq,linebuf[],*miralib,*obsuffix,*vdate,*host,*yysterm[],*cmbnms[];
 extern FILE *s_in,*s_out;
-extern int ARGC,atcount,atgc,atobject,blankerr,collecting,debug,ideep,loading,lfrule,UTF8,UTF8OUT,version,yychar;
+extern int ARGC,atcount,atgc,blankerr,collecting,debug,ideep,loading,lfrule,UTF8,UTF8OUT,version,yychar;
 extern long claims,nogcs;
 extern long long cellcount;
 extern void obey(word);
@@ -69,7 +69,6 @@ extern word algshfns,
 	ltchar,
 	magic,
 	make_status,
-	making,
 	margstack,
 	message,
 	meta_pending,

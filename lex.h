@@ -3,6 +3,8 @@
 
 #include "runtime.h"
 
+extern word col;
+
 char *addextn(word, char *);
 void adjust_prefix(char *);
 word conv_args(void);

@@ -656,8 +656,6 @@ word strtobig(word z, int base) /* numeral (as Miranda string) to big number */
   return (r);
 }
 
-extern char *dicp;
-
 word bigtostr(word x) /* number to decimal string (as Miranda list) */
 {
   word x1, sign, s = NIL;
@@ -680,7 +678,6 @@ word bigtostr(word x) /* number to decimal string (as Miranda list) */
   }
 #endif
   if (rest(x) == 0) {
-    extern char *dicp;
     sprintf(dicp, "%ld", getsmallint(x));
     return (str_conv(dicp));
   }

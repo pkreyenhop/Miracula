@@ -25,6 +25,7 @@ static void kollect(int (*f)(int));
 static int litname(char *);
 static void numeral(void);
 static void octnumeral(void);
+static int okulid(int);
 static int okpath(int);
 static int peekch(void);
 static int peekdig(void);
@@ -35,26 +36,30 @@ static int getch(void);
 static int getlitch(void);
 static void spaces(word);
 
-extern word DICSPACE; /* see steer.c for default value */
 /* capacity in chars of dictionary space for storing identifiers and file names
    to get a larger name space just increase this number  */
 extern FILE *s_in;
 extern word echoing, listing, verbosity, magic, inbnf, inlex;
 word fileq = NIL; /* list of currently open-for-input files, of form
                     cons(strcons(stream,<ptr to element of 'files'>),...)*/
-word insertdepth = -1, margstack = NIL, col = 0, lmargin = 0;
-word echostack = NIL;
-word lverge = 0, vergstack = NIL;
-char *prefixbase;               /* stores prefixes for pathnames, to get static resolution */
-word prefixlimit = 1024;        /* initial size of space for prefixes */
-word prefix, prefixstack = NIL; /* current prefix, stack of old prefixes */
-word atnl = 1, line_no = 0;
-word lastline;
+static word insertdepth = -1, lmargin = 0;
+word margstack = NIL, col = 0;
+static word echostack = NIL;
+static word lverge = 0;
+word vergstack = NIL;
+static char *prefixbase;        /* stores prefixes for pathnames, to get static resolution */
+static word prefixlimit = 1024; /* initial size of space for prefixes */
+static word prefix;             /* current prefix */
+word prefixstack = NIL;         /* stack of old prefixes */
+static word atnl = 1;
+word line_no = 0;
+static word lastline;
 word litstack = NIL, linostack = NIL;
-word c = ' ', lastc;
+static word lastc;
+word c = ' ';
 extern word commandmode;
 word common_stdin, common_stdinb, cook_stdin;
-word litmain = 0, literate = 0; /* flags "literate" comment convention */
+static word litmain = 0, literate = 0; /* flags "literate" comment convention */
 char *dic, *dicp, *dicq;
 char *pathname(void);
 
@@ -456,9 +461,6 @@ void unsetlmargin(void) {
   lmargin = hd(margstack);
   margstack = tl(margstack);
 }
-
-int okulid(int);
-int PREL = 1;
 
 static void errclass(word val, word string)
 /* diagnose error in charclass, string or char const */
@@ -1184,7 +1186,7 @@ int okid(int ch) {
           ch == '_' || ch == '\'');
 }
 
-int okulid(int ch) {
+static int okulid(int ch) {
   return (('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z') || ('0' <= ch && ch <= '9') ||
           ch == '_' || ch == '' || ch == '\'');
 }
@@ -1370,7 +1372,7 @@ word name(void) {
    slower) probably because ordering only relevant if name not present, and
    outweighed by increased complexity of loop */
 
-int inprelude = 1;
+static int inprelude = 1;
 
 word make_id(char *n)
 /* used in mira_setup(), primdef(), predef(), all in steer.c */
@@ -1392,7 +1394,8 @@ word findid(char *n)
   return (q ? hd(q) : NIL);
 }
 
-word *pnvec = 0, nextpn, pn_lim = 200; /* private name vector */
+static word pn_lim = 200;
+word *pnvec = 0, nextpn; /* private name vector */
 
 void reset_pns(void) /* (re)initialise private name space */
 {
@@ -1441,7 +1444,7 @@ void mkprivate(word x)
   inprelude = 0;
 }
 
-word sl = 100;
+static word sl = 100;
 
 void string(void) {
   word p;

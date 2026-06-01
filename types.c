@@ -748,8 +748,6 @@ void genbnft(void) /* if %bnf used, find out input type of parsing fns */
 } /* the input type for parsers is lt(bnf_t)
      note that tl(hd(tl(bnf_t))) holds the state type */
 
-extern word col_fn;
-
 void checkcolfn(void) /* if offside rule used, check col_fn has right type */
 {
   word t = id_type(col_fn), f = tf(tl(hd(tl(bnf_t))), num_t);

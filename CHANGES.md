@@ -61,6 +61,21 @@ repository checkout.
   file-local where they are not shared with other modules.
 - Made lexer-only helpers and character-class tracking state in `lex.c`
   file-local, and removed its unused nonterminal-name predicate.
+- Made `steer.c` command-line, editor, recheck, and library-version
+  bookkeeping state file-local where it is only used by the driver.
+- Made additional `steer.c` driver-only buffers, parser jump state, keyword
+  metadata, and display bookkeeping file-local.
+- Made `lex.c` lexer-local layout, prefix, literate-mode, prelude, and
+  private-name capacity state file-local while preserving shared GC roots.
+- Made additional `steer.c` driver-only command flags file-local while
+  preserving GC/runtime-visible state, and removed their public declarations
+  from `allexterns`.
+- Removed duplicate `dicp` and `vdate` declarations from `allexterns`.
+- Declared shared lexer column state in `lex.h`, made lexer-only echo stack and
+  underlined-identifier helper file-local, and removed unused `PREL`.
+- Removed redundant local extern declarations for shared dictionary and lexer
+  state in handwritten sources.
+- Removed the redundant local `col_fn` extern from `types.c`.
 - Extended `make warning-audit` to include standalone tools as well as `mira`.
 - Switched the default C compile profile to Clang C23 with
   `-Wall -Wextra -Wpedantic`.

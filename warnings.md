@@ -225,4 +225,21 @@ integer literals have been converted to hex constants.
   tracking state private.
 - `lex.c` now keeps lexer-only helper functions and character-class state
   private, and no longer carries its unused nonterminal-name predicate.
+- `steer.c` now keeps command-line, editor, recheck, and library-version
+  bookkeeping state private where it is not shared with other modules.
+- More `steer.c` driver-only buffers, parser jump state, keyword metadata, and
+  display bookkeeping are now file-local.
+- `lex.c` now keeps lexer-local layout, prefix, literate-mode, prelude, and
+  private-name capacity state file-local while leaving GC-visible roots shared.
+- `steer.c` now keeps additional driver-only command flags private while
+  leaving GC/runtime-visible state shared; `allexterns` no longer declares
+  those private flags.
+- `allexterns` no longer carries duplicate declarations for shared dictionary
+  and version strings.
+- `lex.h` now declares the shared lexer column counter, while `lex.c` keeps the
+  echo stack and underlined-identifier helper private and drops unused `PREL`.
+- Removed redundant local extern declarations for shared dictionary and lexer
+  state now covered by headers and `allexterns`.
+- Removed the redundant local `col_fn` extern from `types.c`; the shared
+  parser declaration remains in `allexterns`.
 - Generated-code and handwritten-code separation remains future work.

@@ -814,9 +814,6 @@ void dump_ob(word x, FILE *f) /* write combinatory expression x to file f */
 #define ovflocheck                                                                                 \
   if (dicq - dic > DICSPACE)                                                                       \
   dicovflo()
-extern char *dic;
-extern word DICSPACE;
-
 word BAD_DUMP = 0, CLASHES = NIL, ALIASES = NIL, SUPPRESSED = NIL, TSUPPRESSED = NIL, TORPHANS = 0;
 static word PNBASE = 0;
 
@@ -825,7 +822,6 @@ word load_script(FILE *f, char *src, word aliases, word params, word main)
 /* main=1 if is being loaded as main script, 0 otherwise */
 {
   extern word nextpn, ND, errline, algshfns, internals, freeids, includees, SGC;
-  extern char *dicp, *dicq;
   word ch, files = NIL;
   TORPHANS = BAD_DUMP = 0;
   CLASHES = NIL;
@@ -1055,7 +1051,6 @@ void dgrow(void) {
 word load_defs(FILE *f) /* load a sequence of definitions from file f, terminated
                 by DEF_X, or a single object terminated by DEF_X */
 {
-  extern char *dicp, *dicq;
   extern word *pnvec, common_stdin, common_stdinb, nextpn, rv_script;
   word ch, defs = NIL;
   while ((ch = getc(f)) != EOF) {
@@ -1297,7 +1292,6 @@ int okdump(char *t) /* return 1 if script t has a non-syntax-error dump */
 word geterrlin(char *t) /* returns errline from dump of t if relevant, 0 otherwise */
 {
   char obf[120];
-  extern char *dicp, *dicq;
   int ch;
   word el;
   FILE *f;

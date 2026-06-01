@@ -104,26 +104,27 @@ static void unsetids(word);
 static void v_info(int);
 static void xschars(void);
 
-char *editor = NULL;
-word okprel = 0;   /* set to 1 when prelude loaded */
-word nostdenv = 0; /* if set to 1 mira does not load stdenv at startup */
+static char *editor = NULL;
+static word okprel = 0;   /* set to 1 when prelude loaded */
+static word nostdenv = 0; /* if set to 1 mira does not load stdenv at startup */
 /* to allow a NOSTDENV directive _in_the_script_ we would need to
     (i) replace isltmess() test in rules by eg is this a list of thing,
         where thing is algebraic type originally defined in STDENV
     (ii) arrange to pick up <stdenv> when current script not loaded
    not implemented */
-word baded = 0; /* see fixeditor() */
+static word baded = 0; /* see fixeditor() */
 char *miralib = NULL;
-char *mirahdr, *lmirahdr;
-char *promptstr = "Miranda ";
+static char *mirahdr, *lmirahdr;
+static char *promptstr = "Miranda ";
 char *obsuffix = "x";
 FILE *s_in = NULL;
 word commandmode = 0; /* true only when reading command-level expressions */
-int atobject = 0, atgc = 0, atcount = 0, debug = 0;
+static int atobject = 0;
+int atgc = 0, atcount = 0, debug = 0;
 word magic = 0;       /* set to 1 means script will start with UNIX magic string */
-word making = 0;      /* set only for mira -make */
-word mkexports = 0;   /* set only for mira -exports */
-word mksources = 0;   /* set only for mira -sources */
+static word making = 0; /* set only for mira -make */
+static word mkexports = 0;   /* set only for mira -exports */
+static word mksources = 0;   /* set only for mira -sources */
 word make_status = 0; /* exit status of -make */
 int compiling = 1;
 /* there are two types of MIRANDA process - compiling (the main process) and
@@ -136,19 +137,17 @@ word primenv = NIL;
 char *current_script;
 word lastexp = UNDEF; /* value of `$$' */
 word echoing = 0, listing = 0, verbosity;
-word strictif = 1, rechecking = 0;
+word strictif = 1;
+static word rechecking = 0;
 word errline = 0; /* records position of last error, for editor */
 word errs = 0;    /* secondary error location, in inserted script, if relevant */
 word *cstack;
-extern word c;
-extern char *dicp, *dicq;
 char linebuf[BUFSIZE]; /* used for assorted purposes */
 /* NB cannot share with linebuf in lex.c, or !! goes wrong */
 static char ebuf[pnlim];
-extern word col;
-char home_rc[pnlim + 8];
-char lib_rc[pnlim + 8];
-char *rc_error = NULL;
+static char home_rc[pnlim + 8];
+static char lib_rc[pnlim + 8];
+static char *rc_error = NULL;
 
 /* A check only used for dic and heap sizes on the command line
  * or from the config file and for the mira version number (like 2066) */
@@ -163,7 +162,7 @@ char *rc_error = NULL;
 #endif
 
 #include <setjmp.h> /* for longjmp() - see man (3) setjmp */
-sigjmp_buf env;
+static sigjmp_buf env;
 
 /* On Linux the stack is limited by default to 8MB, on NetBSD to 4MB and
  * "Upon reaching this limit, a SIGSEGV signal is generated." (setrlimit(2))
@@ -480,9 +479,9 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-int vstack[4];   /* record of miralib versions looked at */
-char *mstack[4]; /* and where found */
-int mvp = 0;
+static int vstack[4];   /* record of miralib versions looked at */
+static char *mstack[4]; /* and where found */
+static int mvp = 0;
 
 int checkversion(char *m)
 /* returns 1 iff m is directory with .version containing our version number */
@@ -532,7 +531,7 @@ void missparam(char *s) {
   exit(1);
 }
 
-int oldversion = 0;
+static int oldversion = 0;
 #define colmax 400
 #define spaces(s)                                                                                  \
   for (j = s; j > 0; j--)                                                                          \
@@ -945,7 +944,7 @@ int src_update(void) /* any sources modified ? */
 }
 
 int loading;
-char *unlinkme; /* if set, is name of partially created obfile */
+static char *unlinkme; /* if set, is name of partially created obfile */
 
 void reset(void) /* interrupt catcher - see call to signal in commandloop */
 {
@@ -987,7 +986,7 @@ void reset(void) /* interrupt catcher - see call to signal in commandloop */
   if (getchar() != '\n')                                                                           \
     break;
 
-int lose;
+static int lose;
 
 int normal(char *f) /* s has ".m" suffix */
 {
@@ -1039,7 +1038,6 @@ void command(void) {
     }
   case 'd':
     if (is("dic")) {
-      extern char *dic;
       if (!token()) {
         lose = getchar(); /* to eat \n */
         printf("%ld chars", DICSPACE);
@@ -1389,9 +1387,9 @@ word shunt(word x, word y) /* equivalent to append(reverse(x),y) */
   return (y);
 }
 
-char *presym[] = {"abstype", "div",   "if",   "mod", "otherwise", "readvals", "show",
-                  "type",    "where", "with", 0};
-int presym_n[] = {21, 8, 15, 8, 15, 31, 23, 22, 15, 21};
+static const char *const presym[] = {"abstype", "div",   "if",   "mod", "otherwise", "readvals",
+                                     "show",    "type",  "where", "with", 0};
+static const int presym_n[] = {21, 8, 15, 8, 15, 31, 23, 22, 15, 21};
 
 #include <ctype.h>
 
@@ -1470,9 +1468,9 @@ void diagnose(char *n) {
   printf("identifier \"%s\" not in scope\n", n);
 }
 
-int sorted = 0;    /* flag to avoid repeatedly sorting fil_defs */
-int leftist;       /* flag to alternate bias of padding in justification */
-int words[colmax]; /* max plausible size of screen */
+static int sorted = 0;    /* flag to avoid repeatedly sorting fil_defs */
+static int leftist;       /* flag to alternate bias of padding in justification */
+static int words[colmax]; /* max plausible size of screen */
 
 void allnamescom(void) {
   word s;
@@ -2142,7 +2140,7 @@ word mkincludes(word includees) {
 }
 
 word tlost = NIL;
-word pfrts = NIL; /* list of private free types bound in this script */
+static word pfrts = NIL; /* list of private free types bound in this script */
 
 void readoption(void) /* readopt type orphans */
 {
@@ -2659,7 +2657,7 @@ void fpe_error(int sig) {
     printf("\nFLOATING POINT OVERFLOW\n"), exit(1);
 }
 
-char fbuf[512];
+static char fbuf[512];
 
 void filecopy(char *fil) /* copy the file "fil" to standard out */
 {
