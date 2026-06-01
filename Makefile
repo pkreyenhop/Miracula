@@ -1,7 +1,7 @@
 #install paths
 #for linux, MacOS X, Cygwin:
 BIN=/usr/local/bin
-LIB=/usr/local/lib
+#LIB=/usr/local/lib
 MAN=/usr/local/share/man/man1
 #for Solaris:
 #MAN=/usr/local/man/man1
@@ -21,7 +21,8 @@ CFLAGS = -std=c2y -D_POSIX_C_SOURCE=200809L -Weverything -Werror \
 	-Wno-bad-function-cast -Wno-unreachable-code-return \
 	-Wno-conditional-uninitialized -Wno-unused-macros \
 	-Wno-extra-semi-stmt -Wno-cast-function-type-strict \
-	-Wno-pre-c11-compat
+	-Wno-pre-c11-compat \
+	-Wno-poison-system-directories
 # Historical portability flags: #-O #-DCYGWIN #-DUWIN #-DIBMRISC #-Dsparc7 #-Dsparc8
 #be wary of using anything higher than -O as the garbage collector may fall over
 #if using gcc rather than clang try without -O first
