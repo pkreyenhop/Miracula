@@ -5,7 +5,7 @@ BIN=/usr/local/bin
 MAN=/usr/local/share/man/man1
 #for Solaris:
 #MAN=/usr/local/man/man1
-CFLAGS = -std=c23 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Wpedantic
+CFLAGS = -std=c23 -Wall -Wextra -Wpedantic
 # Historical portability flags: #-O #-DCYGWIN #-DUWIN #-DIBMRISC #-Dsparc7 #-Dsparc8
 #be wary of using anything higher than -O as the garbage collector may fall over
 #if using gcc rather than clang try without -O first
