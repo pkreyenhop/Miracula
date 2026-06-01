@@ -66,7 +66,7 @@ all: FORCE
 test: mira
 	sh tests/smoke.sh
 
-check: check-headers check-c check-tools check-cxx check-zig
+check: check-headers check-c check-tools
 
 warning-audit:
 	@$(MAKE) check-c
@@ -76,8 +76,6 @@ warning-audit:
 check-headers:
 	printf '%s\n' $(HEADER_CHECK_INCLUDES) 'int main(void) { return 0; }' | \
 	    $(CC) $(CFLAGS) -fsyntax-only -x c -
-	printf '%s\n' $(HEADER_CHECK_INCLUDES) 'int main(void) { return 0; }' | \
-	    $(CXX) $(CXXFLAGS) -fsyntax-only -x c++ -
 
 check-c:
 	@$(MAKE) cleanup

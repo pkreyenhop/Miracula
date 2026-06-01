@@ -39,6 +39,9 @@ repository checkout.
 - Scoped `-Wno-deprecated-octal-literals` to `zig cc` builds only, because Zig's
   system header path expands glibc macros that still contain legacy octal
   literals under C2y.
+- Changed the default `make check` path to run only the strict Clang C2y build,
+  smoke tests, and tools. C++26 and Zig targets remain available explicitly, but
+  are no longer part of the routine check loop.
 - Linked the Zig C++ compatibility build with `-nostdlib++`, because the code
   is C source compiled as C++ and does not use C++ standard-library symbols.
   This avoids warning output from Zig rebuilding bundled libc++ during links.
@@ -158,9 +161,9 @@ cleanup/test/documentation change set described above.
 ## Verification
 
 - `make test` passes with `smoke tests passed`.
-- `make check` passes and covers the strict C build, smoke tests, tools, and
-  C++ compatibility target.
-- `make check-headers` passes for the project headers in both C and C++ modes.
+- `make check` passes and covers the strict Clang C2y build, smoke tests, and
+  tools.
+- `make check-headers` passes for the project headers in C2y mode.
 - `mira` builds cleanly with the default C2y `-Weverything -Werror` Makefile
   flags.
 - `just.c`, `fdate.c`, and `menudriver.c` also compile cleanly with the warning

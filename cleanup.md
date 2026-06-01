@@ -2,10 +2,12 @@
 
 This document outlines a staged plan to simplify the C codebase, make it more
 maintainable and extendable, reduce warning suppressions, and improve security.
-The current baseline is a warning-clean build through `make check`, including
-strict Clang C2y, C++26 compatibility, `zig cc`, and `zig c++`. The next work
-should focus on removing root causes that are currently hidden behind warning
-suppressions or historical coding patterns.
+The current default baseline is a warning-clean strict Clang C2y build through
+`make check`. C++26, `zig cc`, and `zig c++` compatibility targets remain
+available for explicit release or portability checks, but routine cleanup should
+use the faster Clang C2y path. The next work should focus on removing root
+causes that are currently hidden behind warning suppressions or historical
+coding patterns.
 
 ## Goals
 
