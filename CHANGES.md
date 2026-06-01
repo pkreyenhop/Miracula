@@ -6,10 +6,10 @@ repository checkout.
 ## Build And Tooling
 
 - Added a repeatable `clang-format` configuration in `.clang-format`.
-- Added a `test` target to `Makefile` that builds `mira` and runs
-  `tests/smoke.sh`.
+- Added a `test` target to `Makefile` that builds `mira` and runs the
+  Criterion test binary.
 - Added `check`, `check-c`, `check-tools`, and `check-cxx` Makefile targets
-  so local verification exercises the strict C build, smoke tests, standalone
+  so local verification exercises the strict C build, tests, standalone
   tools, and C++ compatibility build.
 - Added `check-headers` to syntax-check the project headers under both the
   strict C warning profile and the C++ compatibility profile.
@@ -40,7 +40,7 @@ repository checkout.
   system header path expands glibc macros that still contain legacy octal
   literals under C2y.
 - Changed the default `make check` path to run only the strict Clang C2y build,
-  smoke tests, and tools. C++26 and Zig targets remain available explicitly, but
+  tests, and tools. C++26 and Zig targets remain available explicitly, but
   are no longer part of the routine check loop.
 - Added smoke coverage for compile-time degradation, very long literals, and
   compilation/runtime paths that must trigger garbage collection.
@@ -109,8 +109,10 @@ repository checkout.
 
 - Added `tests/smoke.sh`, an integration smoke suite that runs the built
   interpreter with an isolated temporary `HOME`.
+- Replaced the `make test` shell smoke runner with a Criterion-based C test
+  binary in `tests/mira_tests.c`.
 - Named each smoke-test case so failures point at the affected behavior.
-- The smoke tests cover:
+- The Criterion tests cover:
   - standard arithmetic and standard-environment functions;
   - list output;
   - lazy list operations, list reversal, zipping, and string concatenation;
@@ -217,8 +219,8 @@ cleanup/test/documentation change set described above.
 
 ## Verification
 
-- `make test` passes with `smoke tests passed`.
-- `make check` passes and covers the strict Clang C2y build, smoke tests, and
+- `make test` passes through the Criterion test binary.
+- `make check` passes and covers the strict Clang C2y build, Criterion tests, and
   tools.
 - `make check-headers` passes for the project headers in C2y mode.
 - `mira` builds cleanly with the default C2y `-Weverything -Werror` Makefile

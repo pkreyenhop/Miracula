@@ -21,6 +21,8 @@ WARNING_AUDIT_CFLAGS = $(CFLAGS)
 LINK = $(CC)
 LDFLAGS =
 LDLIBS = -lm
+CRITERION_CFLAGS = $(shell pkg-config --cflags criterion)
+CRITERION_LIBS = $(shell pkg-config --libs criterion)
 ZIG_CC = zig cc
 ZIG_CXX = zig c++
 ZIG_CACHE_ENV = ZIG_GLOBAL_CACHE_DIR=$(CURDIR)/.zig-cache/global \
@@ -43,8 +45,8 @@ HEADER_CHECK_INCLUDES = '\#include "runtime.h"' '\#include "platform.h"' \
 all: FORCE
 	@$(MAKE) mira miralib/menudriver exfiles
 
-test: mira
-	sh tests/smoke.sh
+test: mira tests/mira_tests
+	./tests/mira_tests -j1
 
 check: check-headers check-c check-tools
 
@@ -142,6 +144,9 @@ miralib/menudriver: menudriver.c signals.c Makefile
 	$(LINK) $(LDFLAGS) -o miralib/menudriver menudriver.o \
 	    menudriver-signals.o
 	chmod 755 miralib/menudriver$(EX)
+tests/mira_tests: tests/mira_tests.c Makefile
+	$(CC) $(CFLAGS) $(CRITERION_CFLAGS) -o tests/mira_tests \
+	    tests/mira_tests.c $(CRITERION_LIBS)
 #alternative: use shell script
 #	ln -s miralib/menudriver.sh miralib/menudriver
 tellcc:
@@ -149,7 +154,7 @@ tellcc:
 clean: cleanup
 clean-build-products:
 #to be done on moving to a new host
-	-rm -rf *.o fdate just miralib/menudriver mira$(EX)
+	-rm -rf *.o fdate just miralib/menudriver mira$(EX) tests/mira_tests
 	-rm -f miralib/preludx miralib/stdenv.x miralib/ex/*.x #miralib/ex/*/*.x
 	-rm -f mira.1.pdf mira.man.pdf
 cleanup: clean-build-products

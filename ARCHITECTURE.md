@@ -8,8 +8,8 @@ generated from source inputs.
 
 - `Makefile` builds `mira`, `miralib/menudriver`, and the example `.x` files.
 - `make check` is the main local verification target. It runs a clean C build
-  with smoke tests, checks standalone header syntax in C and C++, builds
-  standalone tools, and then runs the C++ compatibility build.
+  with Criterion-backed integration tests, checks standalone header syntax in
+  C, and builds standalone tools.
 - `make cxx` force-rebuilds `mira` and `miralib/menudriver` with `clang++`
   as C++26. This is a compatibility check; the normal build remains C.
 - `make zig-cc` and `make zig-cxx` force-rebuild `mira` and
@@ -23,9 +23,9 @@ generated from source inputs.
   and numeric ids shared by the compiler and reducer.
 - `miralib/` contains the Miranda standard environment, prelude, manual, and
   example scripts.
-- `tests/smoke.sh` runs a small integration suite through the built `mira`
-  binary. Use `make test` for just the smoke suite or `make check` for the
-  broader local gate.
+- `tests/mira_tests.c` contains Criterion tests that run the built `mira`
+  binary with isolated temporary homes. Use `make test` for just the Criterion
+  suite or `make check` for the broader local gate.
 - `runtime.h` defines the core `word` scalar type used by the C runtime.
 - `platform.h` centralizes shared system includes and portability shims used by
   the runtime headers.
