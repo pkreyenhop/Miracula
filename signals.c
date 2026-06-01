@@ -40,7 +40,8 @@ sigaction():
 #include "signals.h"
 
 sighandler signals(int signum, sighandler handler) {
-  struct sigaction act, oldact;
+  struct sigaction act;
+  struct sigaction oldact;
 
   act.sa_handler = handler;
   sigemptyset(&act.sa_mask);

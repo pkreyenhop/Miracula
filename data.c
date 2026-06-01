@@ -16,7 +16,7 @@
 #define INITSPACE 1250000
 static word SPACE = INITSPACE; /* false ceiling in heap to improve
                                   paging behaviour during compilation */
-extern word SPACELIMIT;        /* see steer.c for default value */
+       /* see steer.c for default value */
                                /* SPACELIMIT controls the size of the heap (i.e. the number of list
                                   cells available) - the minimum survivable number given the need to
                                   compile the prelude etc is probably about 6000 */
@@ -45,25 +45,25 @@ stackp=dstack; /* if load_script made interruptible, add to reset */
    extension - DT Jan 84 */
 
 static void bases(void);
-static void bindparams(word, word);
+static void bindparams(word /*formal*/, word /*actual*/);
 static void dgrow(void);
 static void dsetup(void);
-static void dump_defs(word, FILE *);
-static void dump_ob(word, FILE *);
-static word getdbl(FILE *);
-static int getint(FILE *);
-static word getword(FILE *);
-static word hdsort(word);
-static word load_defs(FILE *);
-static void mark(word);
-static char *mkrel(char *);
-static void putdbl(word, FILE *);
-static void putint(int, FILE *);
-static void putword(word, FILE *);
+static void dump_defs(word /*defs*/, FILE * /*f*/);
+static void dump_ob(word /*x*/, FILE * /*f*/);
+static word getdbl(FILE * /*f*/);
+static int getint(FILE * /*f*/);
+static word getword(FILE * /*f*/);
+static word hdsort(word /*x*/);
+static word load_defs(FILE * /*f*/);
+static void mark(word /*x*/);
+static char *mkrel(char * /*p*/);
+static void putdbl(word /*x*/, FILE * /*f*/);
+static void putint(int /*n*/, FILE * /*f*/);
+static void putword(word /*x*/, FILE * /*f*/);
 #if 0
 static void setwd(word,word,word);
 #endif
-static void unscramble(word);
+static void unscramble(word /*aliases*/);
 
 word trueheapsize(void) {
   return (nogcs == 0 ? listp - ATOMLIMIT + 1 : SPACE);
@@ -74,31 +74,37 @@ void setupheap(void) {
   /* NB use calloc because it sets contents to zero */
   /* tag[TOP] must be zero and exists as a sentinel */
   tag = (char *)calloc(BIGTOP + 1, sizeof(char));
-  if (heap == NULL || tag == NULL)
+  if (heap == NULL || tag == NULL) {
     mallocfail("heap");
-  hd = heap - ATOMLIMIT * 2;
+}
+  hd = heap - (ATOMLIMIT * 2);
   tl = hd + 1;
-  if (SPACE > SPACELIMIT)
+  if (SPACE > SPACELIMIT) {
     SPACE = SPACELIMIT;
+}
 }
 
 void resetheap(void) /* warning - cannot do this dynamically, because both the
                compiler and the reducer hold onto absolute heap addresses
                during certain space consuming computations */
 {
-  if (SPACELIMIT < trueheapsize())
+  if (SPACELIMIT < trueheapsize()) {
     fprintf(stderr, "impossible event in resetheap\n"), exit(1);
+}
   heap = (word *)realloc((char *)heap, SPACELIMIT * sizeof(word) * 2);
   tag = (char *)realloc(tag, BIGTOP + 1);
-  if (heap == NULL || tag == NULL)
+  if (heap == NULL || tag == NULL) {
     mallocfail("heap");
-  hd = heap - ATOMLIMIT * 2;
+}
+  hd = heap - (ATOMLIMIT * 2);
   tl = hd + 1;
   tag[BIGTOP] = 0;
-  if (SPACE > SPACELIMIT)
+  if (SPACE > SPACELIMIT) {
     SPACE = SPACELIMIT;
-  if (SPACE < INITSPACE && INITSPACE <= SPACELIMIT)
+}
+  if (SPACE < INITSPACE && INITSPACE <= SPACELIMIT) {
     SPACE = INITSPACE, tag[TOP] = 0;
+}
   /* tag[TOP] is always zero and exists as a sentinel */
 }
 
@@ -116,44 +122,50 @@ void resetgcstats(void) {
 word make(unsigned char t, word x, word y) /* creates a new cell with "tag" t,
                                               "hd" x and "tl" y  */
 {
-  while (poschar(tag[++listp]))
+  while (poschar(tag[++listp])) {
     ;
+}
   /* find next cell with zero or negative tag (=unwanted) */
   if (listp == TOP) {
     if (SPACE != SPACELIMIT) {
-      if (!compiling)
+      if (!compiling) { {
         SPACE = SPACELIMIT;
-      else if (claims <= SPACE / 4 &&
+      } } else if (claims <= SPACE / 4 &&
                nogcs > 1) { /* during compilation we raise false ceiling whenever residency
                                reaches 75% on 2 successive gc's */
         static word wait = 0;
         word sp = SPACE;
-        if (wait)
+        if (wait) {
           wait--;
-        else
-          SPACE += SPACE / 2, wait = 2, SPACE = 5000 * (1 + (SPACE - 1) / 5000); /* round upwards */
-        if (SPACE > SPACELIMIT)
+        } else {
+          SPACE += SPACE / 2, wait = 2, SPACE = 5000 * (1 + ((SPACE - 1) / 5000)); /* round upwards */
+}
+        if (SPACE > SPACELIMIT) {
           SPACE = SPACELIMIT;
-        if (atgc && SPACE > sp)
+}
+        if (atgc && SPACE > sp) {
           fprintf(stderr, "\n<<increase heap from %ld to %ld>>\n", sp, SPACE);
+}
       }
     }
     if (listp == TOP) {
-#if defined ORION105
+#ifdef ORION105
       asm("savew6");
       gc();
       asm("restw6");
-#elif defined sparc
+#elifdef sparc
       asm("ta	0x03"); /* see /usr/include/sun4/trap.h */
                         /* asm("ta	ST_FLUSH_WINDOWS"); */
       gc();
 #else
       gc();
 #endif
-      if (t > STRCONS)
+      if (t > STRCONS) {
         mark(x);
-      if (t >= INT)
+}
+      if (t >= INT) {
         mark(y);
+}
       return (make(t, x, y));
     }
   }
@@ -161,7 +173,7 @@ word make(unsigned char t, word x, word y) /* creates a new cell with "tag" t,
   tag[listp] = t;
   hd(listp) = x;
   tl(listp) = y;
-  return (listp);
+  return listp;
 }
 
 /* cons ap ap2 ap3 are all #defined in terms of make
@@ -202,32 +214,39 @@ void gc(void) /*  the "garbage collector"  */
 
   /* Dump all register variables on the stack
    * then run the real garbage collector */
-  if (setjmp(env))
+  if (setjmp(env)) {
     return;
+}
   collecting = 1;
   p1 = &(tag[ATOMLIMIT]);
-  if (atgc)
+  if (atgc) {
     fprintf(stderr, "\n<<gc after %ld claims>>\n", claims);
+}
   if (claims <= SPACE / 10 && nogcs > 1 &&
       SPACE == SPACELIMIT) { /* if heap utilisation exceeds 90% on 2 successive gc's, give up */
     static word hnogcs = 0;
     if (nogcs == hnogcs) {
-      extern int ideep;
-      extern char *current_script;
+      
+      
       fprintf(stderr, "<<not enough heap space -- task abandoned>>\n");
-      if (!compiling)
+      if (!compiling) {
         outstats();
-      if (compiling && ideep == 0)
+}
+      if (compiling && ideep == 0) {
         fprintf(stderr, "not enough heap to compile current script\n"),
             fprintf(stderr, "script = \"%s\", heap = %ld\n", current_script, SPACE);
+}
       exit(1);
     } /* if compiling should reset() instead - FIX LATER */
-    else
+    else { {
       hnogcs = nogcs + 1;
+}
+}
   }
   nogcs++;
-  while ((*p1 = -*p1))
+  while ((*p1 = -*p1)) {
     p1++; /* make all tags -ve (= unwanted) */
+}
   bases();
   listp = ATOMLIMIT - 1;
   cellcount += claims;
@@ -240,17 +259,19 @@ void gcpatch(void) /* called when gc interrupted - see reset in steer.c */
 /* must not allocate any cells between calling this and next gc() */
 {
   char *p1;
-  for (p1 = &(tag[ATOMLIMIT]); *p1; p1++)
-    if (negchar(*p1))
+  for (p1 = &(tag[ATOMLIMIT]); *p1; p1++) {
+    if (negchar(*p1)) {
       *p1 = -*p1;
+}
+}
   /* otherwise mutator crashes on funny tags */
 }
 
 void bases(void) /*  marks everthing that must be saved  */
 {
   word *p;
-  extern YYSTYPE yyval;
-  extern word *cstack;
+  
+  
   extern word fileq, primenv;
   extern word cook_stdin, common_stdin, common_stdinb, rv_expr, rv_script;
   extern word margstack, vergstack, litstack, linostack, prefixstack;
@@ -261,7 +282,7 @@ void bases(void) /*  marks everthing that must be saved  */
   extern word SUBST[], tvmap, localtvmap;
   extern word tfnum, tfbool, tfbool2, tfnum2, tfstrstr, tfnumnum, ltchar, bnf_t, tstep, tstepuntil;
   extern word exec_t, read_t, filestat_t;
-  extern word big_one;
+  
   extern word nill, standardout;
   extern word lexstates, lexdefs, oldfiles, includees, embargoes, exportfiles, exports, internals,
       freeids, tlost, detrop, rfl, bereaved, ld_stuff;
@@ -272,21 +293,24 @@ void bases(void) /*  marks everthing that must be saved  */
   list space. This is failsafe in that the worst that can happen,if e.g. a
   stray integer happens to point into list  space,  is  that  the  garbage
   collector will collect less garbage than it could have done */
-  if (p < cstack) /* which way does stack grow? */
-    while (++p != cstack)
+  if (p < cstack) { /* which way does stack grow? */
+    while (++p != cstack) {
       mark(*p); /* for machines with stack growing downwards */
-  else
-    while (--p != cstack)
+}
+  } else {
+    while (--p != cstack) {
       mark(*p); /* for machines with stack growing upwards */
+}
+}
   mark(*cstack);
   /* now follow all pointer-containing external variables */
   mark(outfilq);
   mark(waiting);
   if (compiling || rv_expr || rv_script) /* rv flags indicate `readvals' in use */
   {
-    extern word namebucket[];
-    extern word *pnvec, nextpn; /* private name vector */
-    extern word make_status;
+    
+    /* private name vector */
+    
     word i;
     mark(make_status);
     mark(primenv);
@@ -322,11 +346,14 @@ void bases(void) /*  marks everthing that must be saved  */
     mark(FBS);
     mark(lexstates);
     mark(lexdefs);
-    for (i = 0; i < 128; i++)
-      if (namebucket[i])
+    for (i = 0; i < 128; i++) {
+      if (namebucket[i]) {
         mark(namebucket[i]);
-    for (p = dstack; p < stackp; p++)
+}
+}
+    for (p = dstack; p < stackp; p++) {
       mark(*p);
+}
     if (loading) {
       mark(algshfns);
       mark(speclocs);
@@ -337,8 +364,9 @@ void bases(void) /*  marks everthing that must be saved  */
       mark(bereaved);
       mark(ld_stuff);
       mark(tlost);
-      for (i = 0; i < nextpn; i++)
+      for (i = 0; i < nextpn; i++) {
         mark(pnvec[i]);
+}
     }
     mark(lastname);
     mark(suppressids);
@@ -374,8 +402,9 @@ void bases(void) /*  marks everthing that must be saved  */
     mark(tstepuntil);
     mark(tvmap);
     mark(localtvmap);
-    for (i = 0; i < hashsize; i++)
+    for (i = 0; i < hashsize; i++) {
       mark(SUBST[i]);
+}
   }
 }
 
@@ -383,10 +412,12 @@ void mark(word x) /* a marked cell is distinguished by having a +ve "tag" */
 {
   x &= ~tlptrbits; /* x may be a `reversed pointer' (see reduce.c) */
   while (isptr(x) && negchar(tag[x])) {
-    if ((tag[x] = -tag[x]) < INT)
+    if ((tag[x] = -tag[x]) < INT) {
       return;
-    if (tag[x] > STRCONS)
+}
+    if (tag[x] > STRCONS) {
       mark(hd(x));
+}
     x = tl(x) & ~tlptrbits;
   }
 }
@@ -426,8 +457,9 @@ double get_dbl(word x) {
 
 word sto_dbl(double R) {
   union fpdatum r;
-  if (!isfinite(R))
+  if (!isfinite(R)) {
     fpe_error(SIGFPE); /* see note on arithmetic model above */
+}
   r.real = R;
 #ifdef splitdouble
   return (make(DOUBLE, r.bits.left, r.bits.right));
@@ -438,8 +470,9 @@ word sto_dbl(double R) {
 
 void setdbl(word x, double R) {
   union fpdatum r;
-  if (!isfinite(R))
+  if (!isfinite(R)) {
     fpe_error(SIGFPE); /* see note on arithmetic model above */
+}
   r.real = R;
   tag[x] = DOUBLE;
 #ifdef splitdouble
@@ -457,10 +490,12 @@ word sto_char(int c) /* assumes 0<=c<=UMAX */
 }
 
 word get_char(word x) {
-  if (x < 256)
+  if (x < 256) {
     return x;
-  if (tag[x] == UNICODE)
+}
+  if (tag[x] == UNICODE) {
     return hd(x);
+}
   fprintf(stderr, "impossible event in get_char(x), tag[x]==%d\n", tag[x]);
   exit(1);
 }
@@ -577,15 +612,18 @@ word sto_id(char *p1) {
 void putword(word x, FILE *f) {
   int i = sizeof(word);
   putc(x & 255, f);
-  while (--i)
+  while (--i) {
     x >>= 8, putc(x & 255, f);
+}
 }
 
 word getword(FILE *f) {
-  int s = 0, i = sizeof(word);
+  int s = 0;
+  int i = sizeof(word);
   word x = getc(f);
-  while (--i)
+  while (--i) {
     s += 8, x |= (word)getc(f) << s;
+}
   return x;
 }
 
@@ -618,10 +656,11 @@ void setprefix(char *p) /* to that of pathname p */
   char *g;
   (void)strcpy(prefix, p);
   g = rindex(prefix, '/');
-  if (g)
+  if (g) {
     g[1] = '\0';
-  else
+  } else {
     *prefix = '\0';
+}
   preflen = strlen(prefix);
 } /* before calling dump_script or load_script must setprefix() to that
      of current pathname of file being dumped/loaded - to get correct
@@ -631,14 +670,16 @@ void setprefix(char *p) /* to that of pathname p */
 char *mkrel(char *p) /* makes pathname p correct relative to prefix */
                      /* must use when writing pathnames to dump */
 {
-  if (strncmp(prefix, p, preflen) == 0)
+  if (strncmp(prefix, p, preflen) == 0) {
     return (p + preflen);
-  if (p[0] == '/')
-    return (p);
+}
+  if (p[0] == '/') {
+    return p;
+}
   fprintf(stderr, "impossible event in mkrelative\n"); /* or use getwd */
   /* not possible because all relative pathnames in files were computed
      wrt current script */
-  return (p); /* proforma only */
+  return p; /* proforma only */
 }
 
 #define bits_15 0xffff
@@ -650,18 +691,20 @@ void dump_script(word files, FILE *f) /* write compiled script files to file f *
   putc(wordsize, f);
   putc(XVERSION, f);  /* identifies dump format */
   if (files == NIL) { /* source contains syntax or metatype error */
-    extern word oldfiles;
+    
     word x;
     putc(0, f);
     putword(errline, f);
-    for (x = oldfiles; x != NIL; x = tl(x))
+    for (x = oldfiles; x != NIL; x = tl(x)) {
       fprintf(f, "%s", mkrel(get_fil(hd(x)))), putc(0, f),
           /*filename*/
           putword(fil_time(hd(x)), f); /* mtime */
+}
     return;
   }
-  if (ND != NIL)
+  if (ND != NIL) {
     putc(1, f), putword(errline, f);
+}
   for (; files != NIL; files = tl(files)) {
     fprintf(f, "%s", mkrel(CFN = get_fil(hd(files)))); /* filename */
     putc(0, f);
@@ -671,10 +714,11 @@ void dump_script(word files, FILE *f) /* write compiled script files to file f *
   }
   putc(0, f); /* header - not a possible filename */
   dump_defs(algshfns, f);
-  if (ND == NIL && bereaved != NIL)
+  if (ND == NIL && bereaved != NIL) {
     dump_ob(True, f); /* special flag */
-  else
+  } else {
     dump_ob(ND, f);
+}
   putc(DEF_X, f);
   dump_ob(SGC, f);
   putc(DEF_X, f);
@@ -685,15 +729,16 @@ void dump_script(word files, FILE *f) /* write compiled script files to file f *
 
 void dump_defs(word defs, FILE *f) /* write list of defs to file f */
 {
-  while (defs != NIL)
+  while (defs != NIL) {
     if (tag[hd(defs)] == STRCONS) /* pname */
     {
       word v = get_pn(hd(defs));
       dump_ob(pn_val(hd(defs)), f);
-      if (v > bits_15)
+      if (v > bits_15) {
         putc(PN1_X, f), putint(v, f);
-      else
+      } else {
         putc(PN_X, f), putc(v & 255, f), putc(v >> 8, f);
+}
       putc(DEF_X, f);
       defs = tl(defs);
     } else {
@@ -706,6 +751,7 @@ void dump_defs(word defs, FILE *f) /* write list of defs to file f */
       putc(DEF_X, f);
       defs = tl(defs);
     }
+}
   putc(DEF_X, f); /* delimiter */
 }
 
@@ -713,23 +759,26 @@ void dump_ob(word x, FILE *f) /* write combinatory expression x to file f */
 {
   switch (tag[x]) {
   case ATOM:
-    if (x < 128)
+    if (x < 128) {
       putc(x, f);
-    else if (x >= 384)
+    } else if (x >= 384) {
       putc(x - 256, f);
-    else
+    } else {
       putc(CHAR_X, f), putc(x - 128, f);
+}
     return;
   case TVAR:
     putc(TVAR_X, f), putc(gettvar(x), f);
-    if (gettvar(x) > 255)
+    if (gettvar(x) > 255) {
       fprintf(stderr, "panic, tvar too large\n");
+}
     return;
   case INT: {
     word d = digit(x);
     if (rest(x) == 0 && (d & MAXDIGIT) <= 127) {
-      if (d & SIGNBIT)
+      if (d & SIGNBIT) {
         d = -(d & MAXDIGIT);
+}
       putc(SHORT_X, f);
       putc(d, f);
       return;
@@ -737,8 +786,9 @@ void dump_ob(word x, FILE *f) /* write combinatory expression x to file f */
     putc(INT_X, f);
     putint(d, f);
     x = rest(x);
-    while (x)
+    while (x) {
       putint(digit(x), f), x = rest(x);
+}
     putint(-1, f);
     return;
   }
@@ -763,15 +813,17 @@ void dump_ob(word x, FILE *f) /* write combinatory expression x to file f */
     return;
   case FILEINFO: {
     word line = tl(x);
-    if ((char *)hd(x) == CFN)
+    if ((char *)hd(x) == CFN) {
       putc(HERE_X, f);
-    else
+    } else {
       fprintf(f, "%c%s", HERE_X, mkrel((char *)(hd(x))));
+}
     putc(0, f);
     putc(line & 255, f);
     putc((line >>= 8) & 255, f);
-    if (line > 255)
+    if (line > 255) {
       fprintf(stderr, "impossible line number %ld in dump_ob\n", tl(x));
+}
     return;
   }
   case CONSTRUCTOR:
@@ -790,10 +842,11 @@ void dump_ob(word x, FILE *f) /* write combinatory expression x to file f */
     return;
   case STRCONS: {
     word v = get_pn(x); /* private name */
-    if (v > bits_15)
+    if (v > bits_15) {
       putc(PN1_X, f), putint(v, f);
-    else
+    } else {
       putc(PN_X, f), putc(v & 255, f), putc(v >> 8, f);
+}
     return;
   }
   case AP:
@@ -822,7 +875,8 @@ word load_script(FILE *f, char *src, word aliases, word params, word main)
 /* main=1 if is being loaded as main script, 0 otherwise */
 {
   extern word nextpn, ND, errline, algshfns, internals, freeids, includees, SGC;
-  word ch, files = NIL;
+  word ch;
+  word files = NIL;
   TORPHANS = BAD_DUMP = 0;
   CLASHES = NIL;
   dsetup();
@@ -833,16 +887,20 @@ word load_script(FILE *f, char *src, word aliases, word params, word main)
   }
   if (aliases != NIL) { /* for each `old' install diversion to `new' */
     /* if alias is of form -old `new' is a pname */
-    word a, hold;
+    word a;
+    word hold;
     ALIASES = aliases;
     for (a = aliases; a != NIL; a = tl(a)) {
-      word old = tl(hd(a)), new_id = hd(hd(a));
+      word old = tl(hd(a));
+      word new_id = hd(hd(a));
       hold = cons(id_who(old), cons(id_type(old), id_val(old)));
       id_type(old) = alias_t;
       id_val(old) = new_id;
-      if (tag[new_id] == ID)
-        if ((id_type(new_id) != undef_t || id_val(new_id) != UNDEF) && id_type(new_id) != alias_t)
+      if (tag[new_id] == ID) {
+        if ((id_type(new_id) != undef_t || id_val(new_id) != UNDEF) && id_type(new_id) != alias_t) {
           CLASHES = add1(new_id, CLASHES);
+}
+}
       hd(hd(a)) = hold;
     }
     if (CLASHES != NIL) {
@@ -850,39 +908,48 @@ word load_script(FILE *f, char *src, word aliases, word params, word main)
       unscramble(aliases);
       return (NIL);
     }
-    for (a = aliases; a != NIL; a = tl(a))   /* FIX1 */
-      if (tag[ch = id_val(tl(hd(a)))] == ID) /* FIX1 */
-        if (id_type(ch) != alias_t)          /* FIX1 */
+    for (a = aliases; a != NIL; a = tl(a)) {   /* FIX1 */
+      if (tag[ch = id_val(tl(hd(a)))] == ID) { /* FIX1 */
+        if (id_type(ch) != alias_t) {          /* FIX1 */
           id_type(ch) = new_t;               /* FIX1 */
+}
+}
+}
   }
   PNBASE = nextpn;   /* base for relocation of internal names in dump */
   SUPPRESSED = NIL;  /* list of `-id' aliases successfully obeyed */
   TSUPPRESSED = NIL; /* list of -typename aliases (illegal just now) */
   while ((ch = getc(f)) != 0 && ch != EOF && !BAD_DUMP) {
-    word s, holde = 0;
+    word s;
+    word holde = 0;
     dicq = dicp;
     if (files == NIL && ch == 1) /* type error script */
     {
       holde = getword(f), ch = getc(f);
-      if (main)
+      if (main) {
         errline = holde;
+}
     }
-    if (ch != '/')
+    if (ch != '/') {
       (void)strcpy(dicp, prefix), dicq += preflen;
+}
     /* locate wrt current posn */
     *dicq++ = ch;
-    while ((*dicq++ = ch = getc(f)) && ch != EOF)
+    while ((*dicq++ = ch = getc(f)) && ch != EOF) {
       ; /* filename */
+}
     ovflocheck;
     ch = getword(f);  /* mtime */
     s = getc(f);      /* share bit */
-    if (files == NIL) /* is this the right dump? */
+    if (files == NIL) { /* is this the right dump? */
       if (strcmp(dicp, src)) {
         BAD_DUMP = 1;
-        if (aliases != NIL)
+        if (aliases != NIL) {
           unscramble(aliases);
+}
         return (NIL);
       }
+}
     CFN = get_id(name()); /* wasteful way to share filename */
     files = cons(make_fil(CFN, ch, s, load_defs(f)), files);
   }
@@ -890,53 +957,65 @@ word load_script(FILE *f, char *src, word aliases, word params, word main)
   unload  until  attached  to  global `files', so interrupts are disabled during
   load_script - see steer.c */ /* for big dumps this may be too coarse - FIX */
   if (ch == EOF || BAD_DUMP) {
-    if (!BAD_DUMP)
+    if (!BAD_DUMP) {
       BAD_DUMP = 2;
-    if (aliases != NIL)
+}
+    if (aliases != NIL) {
       unscramble(aliases);
-    return (files);
+}
+    return files;
   }
   if (files == NIL) { /* dump of syntax error state */
-    extern word oldfiles;
+    
     ch = getword(f);
-    if (main)
+    if (main) {
       errline = ch;
+}
     while ((ch = getc(f)) != EOF) {
       dicq = dicp;
-      if (ch != '/')
+      if (ch != '/') {
         (void)strcpy(dicp, prefix), dicq += preflen;
+}
       /* locate wrt current posn */
       *dicq++ = ch;
-      while ((*dicq++ = ch = getc(f)) && ch != EOF)
+      while ((*dicq++ = ch = getc(f)) && ch != EOF) {
         ; /* filename */
+}
       ovflocheck;
       ch = getword(f);     /* mtime */
-      if (oldfiles == NIL) /* is this the right dump? */
+      if (oldfiles == NIL) { /* is this the right dump? */
         if (strcmp(dicp, src)) {
           BAD_DUMP = 1;
-          if (aliases != NIL)
+          if (aliases != NIL) {
             unscramble(aliases);
+}
           return (NIL);
         }
+}
       oldfiles = cons(make_fil(get_id(name()), ch, 0, NIL), oldfiles);
     }
-    if (aliases != NIL)
+    if (aliases != NIL) {
       unscramble(aliases);
+}
     return (NIL);
   }
   algshfns = append1(algshfns, load_defs(f));
   ND = load_defs(f);
-  if (ND == True)
+  if (ND == True) {
     ND = NIL, TORPHANS = 1;
+}
   SGC = append1(SGC, load_defs(f));
-  if (main || includees == NIL)
+  if (main || includees == NIL) {
     freeids = load_defs(f);
-  else
+  } else {
     bindparams(load_defs(f), hdsort(params));
-  if (aliases != NIL)
+}
+  if (aliases != NIL) {
     unscramble(aliases);
-  if (main)
+}
+  if (main) {
     internals = load_defs(f);
+}
   return (reverse(files));
 } /* was it necessary to unscramble aliases before error returns?
      check this later */
@@ -953,7 +1032,7 @@ void bindparams(word formal, word actual) /* process bindings of free ids */
 /* actual is list of cons(name,value) | ap(name,typevalue)) */
 /* both in alpha order of original name */
 {
-  extern word FBS;
+  
   word badkind = NIL;
   DETROP = MISSING = NIL;
   FBS = cons(formal, FBS);
@@ -962,33 +1041,38 @@ void bindparams(word formal, word actual) /* process bindings of free ids */
     word a = 0; /* Avoid compiler warning: may be used uninitialized */
     char *f;
     while (formal != NIL && (actual == NIL || strcmp((f = (char *)hd(hd(tl(hd(formal))))),
-                                                     get_id(a = hd(hd(actual)))) < 0))
+                                                     get_id(a = hd(hd(actual)))) < 0)) {
       /* the_val(hd(hd(formal)))=findid((char *)hd(hd(tl(hd(formal))))),
          above line picks up identifier of that name in current scope */
       MISSING = cons(hd(tl(hd(formal))), MISSING), formal = tl(formal);
-    if (actual == NIL)
+}
+    if (actual == NIL) {
       break;
-    if (formal == NIL || strcmp(f, get_id(a)))
+}
+    if (formal == NIL || strcmp(f, get_id(a))) { {
       DETROP = cons(a, DETROP);
-    else {
+    } } else {
       word fa = tl(tl(hd(formal))) == type_t ? t_arity(hd(hd(formal))) : -1;
       word ta = tag[hd(actual)] == AP ? t_arity(hd(actual)) : -1;
-      if (fa != ta)
+      if (fa != ta) {
         badkind = cons(cons(hd(hd(actual)), datapair(fa, ta)), badkind);
+}
       the_val(hd(hd(formal))) = tl(hd(actual));
       formal = tl(formal);
     }
     actual = tl(actual);
   }
-  for (; badkind != NIL; badkind = tl(badkind))
+  for (; badkind != NIL; badkind = tl(badkind)) {
     DETROP = cons(hd(badkind), DETROP);
+}
 }
 
 void unscramble(word aliases) /* remove old to new diversions installed above */
 {
   word a = NIL;
   for (; aliases != NIL; aliases = tl(aliases)) {
-    word old = tl(hd(aliases)), hold = hd(hd(aliases));
+    word old = tl(hd(aliases));
+    word hold = hd(hd(aliases));
     word new_id = id_val(old);
     hd(hd(aliases)) = new_id; /* put back for missing check, see below */
     id_who(old) = hd(hold);
@@ -1000,18 +1084,22 @@ void unscramble(word aliases) /* remove old to new diversions installed above */
     word new_id = hd(hd(ALIASES));
     word old = tl(hd(ALIASES));
     if (tag[new_id] != ID) {
-      if (!member(SUPPRESSED, new_id))
+      if (!member(SUPPRESSED, new_id)) {
         a = cons(old, a);
+}
       continue;
     } /* aka stuff irrelevant to pnames */
-    if (id_type(new_id) == new_t)
+    if (id_type(new_id) == new_t) {
       id_type(new_id) = undef_t; /* FIX1 */
-    if (id_type(new_id) == undef_t)
+}
+    if (id_type(new_id) == undef_t) {
       a = cons(old, a);
-    else if (!member(CLASHES, new_id))
+    } else if (!member(CLASHES, new_id)) {
       /* install aka info in new */
-      if (tag[id_who(new_id)] != CONS)
+      if (tag[id_who(new_id)] != CONS) {
         id_who(new_id) = cons(datapair(get_id(old), 0), id_who(new_id));
+}
+}
   }
   ALIASES = a; /* transmits info about missing aliasees */
 }
@@ -1032,8 +1120,9 @@ word get_here(word x) /* here info for id x */
 void dsetup(void) {
   if (!dstack) {
     dstack = (word *)malloc(1000 * sizeof(word));
-    if (dstack == NULL)
+    if (dstack == NULL) {
       mallocfail("dstack");
+}
     dlim = dstack + 1000;
   }
   stackp = dstack;
@@ -1042,9 +1131,10 @@ void dsetup(void) {
 void dgrow(void) {
   word *hold = dstack;
   dstack = (word *)realloc(dstack, 2 * (dlim - dstack) * sizeof(word));
-  if (dstack == NULL)
+  if (dstack == NULL) {
     mallocfail("dstack");
-  dlim = dstack + 2 * (dlim - hold);
+}
+  dlim = dstack + (2 * (dlim - hold));
   stackp += dstack - hold;
 }
 
@@ -1052,10 +1142,12 @@ word load_defs(FILE *f) /* load a sequence of definitions from file f, terminate
                 by DEF_X, or a single object terminated by DEF_X */
 {
   extern word *pnvec, common_stdin, common_stdinb, nextpn, rv_script;
-  word ch, defs = NIL;
+  word ch;
+  word defs = NIL;
   while ((ch = getc(f)) != EOF) {
-    if (stackp == dlim)
+    if (stackp == dlim) {
       dgrow();
+}
     switch (ch) {
     case CHAR_X:
       *stackp++ = getc(f) + 128;
@@ -1065,8 +1157,9 @@ word load_defs(FILE *f) /* load a sequence of definitions from file f, terminate
       continue;
     case SHORT_X:
       ch = getc(f);
-      if (ch & 128)
+      if (ch & 128) {
         ch = ch | (~127); /*force a sign extension*/
+}
       *stackp++ = stosmallint(ch);
       continue;
     case INT_X: {
@@ -1075,8 +1168,9 @@ word load_defs(FILE *f) /* load a sequence of definitions from file f, terminate
       *stackp++ = make(INT, ch, 0);
       x = &rest(stackp[-1]);
       ch = getint(f);
-      while (ch != -1)
+      while (ch != -1) {
         *x = make(INT, ch, 0), ch = getint(f), x = &rest(*x);
+}
       continue;
     }
     case DBL_X:
@@ -1114,19 +1208,22 @@ word load_defs(FILE *f) /* load a sequence of definitions from file f, terminate
       continue;
     case ID_X:
       dicq = dicp;
-      while ((*dicq++ = ch = getc(f)) && ch != EOF)
+      while ((*dicq++ = ch = getc(f)) && ch != EOF) {
         ;
+}
       ovflocheck;
       *stackp++ = name();               /* see lex.c */
-      if (id_type(stackp[-1]) == new_t) /* FIX1 (& next 2 lines) */
+      if (id_type(stackp[-1]) == new_t) { /* FIX1 (& next 2 lines) */
         CLASHES = add1(stackp[-1], CLASHES), stackp[-1] = NIL;
-      else if (id_type(stackp[-1]) == alias_t) /* follow alias */
+      } else if (id_type(stackp[-1]) == alias_t) { /* follow alias */
         stackp[-1] = id_val(stackp[-1]);
+}
       continue;
     case AKA_X:
       dicq = dicp;
-      while ((*dicq++ = ch = getc(f)) && ch != EOF)
+      while ((*dicq++ = ch = getc(f)) && ch != EOF) {
         ;
+}
       ovflocheck;
       *stackp++ = datapair(get_id(name()), 0);
       /* wasteful, to share string */
@@ -1141,11 +1238,13 @@ word load_defs(FILE *f) /* load a sequence of definitions from file f, terminate
         continue;
       }
       /* next line locates wrt current posn */
-      if (ch != '/')
+      if (ch != '/') {
         (void)strcpy(dicp, prefix), dicq += preflen;
+}
       *dicq++ = ch;
-      while ((*dicq++ = ch = getc(f)) && ch != EOF)
+      while ((*dicq++ = ch = getc(f)) && ch != EOF) {
         ;
+}
       ovflocheck;
       ch = getc(f);
       ch = ch | getc(f) << 8;
@@ -1174,7 +1273,7 @@ word load_defs(FILE *f) /* load a sequence of definitions from file f, terminate
             stackp -= 4;
             continue;
           } /* FIX1 */
-          else { /* id aliased to pname */
+          /* id aliased to pname */
             word akap;
             ch = *--stackp;
             SUPPRESSED = cons(ch, SUPPRESSED);
@@ -1186,10 +1285,12 @@ word load_defs(FILE *f) /* load a sequence of definitions from file f, terminate
             /* suppressed typename */
             {
               word a = ALIASES; /* reverse assoc in ALIASES */
-              while (a != NIL && id_val(tl(hd(a))) != ch)
+              while (a != NIL && id_val(tl(hd(a))) != ch) {
                 a = tl(a);
-              if (a != NIL) /* surely must hold ?? */
+}
+              if (a != NIL) { /* surely must hold ?? */
                 TSUPPRESSED = cons(tl(hd(a)), TSUPPRESSED);
+}
 #if 0
 			       if(akap==NIL)
 			         akap=datapair(get_id(tl(hd(a))),0);
@@ -1205,10 +1306,12 @@ word load_defs(FILE *f) /* load a sequence of definitions from file f, terminate
               if (akap == NIL) /* reverse assoc in ALIASES */
               {
                 word a = ALIASES;
-                while (a != NIL && id_val(tl(hd(a))) != ch)
+                while (a != NIL && id_val(tl(hd(a))) != ch) {
                   a = tl(a);
-                if (a != NIL)
+}
+                if (a != NIL) {
                   akap = datapair(get_id(tl(hd(a))), 0);
+}
               }
               pn_val(ch) = ap(akap, fileinfo(CFN, 0));
               /* this will generate sensible error message
@@ -1216,7 +1319,7 @@ word load_defs(FILE *f) /* load a sequence of definitions from file f, terminate
             }
             defs = cons(ch, defs);
             continue;
-          }
+         
         }
         if (id_type(stackp[-1]) != new_t &&                                  /* FIX1 */
             (id_type(stackp[-1]) != undef_t || id_val(stackp[-1]) != UNDEF)) /* nameclash */
@@ -1224,8 +1327,9 @@ word load_defs(FILE *f) /* load a sequence of definitions from file f, terminate
           if (id_type(stackp[-1]) == alias_t) /* cyclic aliasing */
           {
             word a = ALIASES;
-            while (a != NIL && tl(hd(a)) != stackp[-1])
+            while (a != NIL && tl(hd(a)) != stackp[-1]) {
               a = tl(a);
+}
             if (a == NIL) {
               fprintf(stderr, "impossible event in cyclic alias (%s)\n", get_id(stackp[-1]));
               stackp -= 4;
@@ -1243,23 +1347,26 @@ word load_defs(FILE *f) /* load a sequence of definitions from file f, terminate
 #endif
           CLASHES = add1(stackp[-1], CLASHES);
           stackp -= 4;
-        } else
+        } else { {
           defs = cons(*--stackp, defs), id_who(hd(defs)) = *--stackp, id_type(hd(defs)) = *--stackp,
           id_val(hd(defs)) = *--stackp;
+}
+}
         continue;
       default: {
         BAD_DUMP = 3;
-        return (defs);
+        return defs;
       } /* should unsetids */
       } /* of switch */
     case AP_X:
       ch = *--stackp;
-      if (stackp[-1] == READ && ch == 0)
+      if (stackp[-1] == READ && ch == 0) {
         stackp[-1] = common_stdin;
-      else if (stackp[-1] == READBIN && ch == 0)
+      } else if (stackp[-1] == READBIN && ch == 0) {
         stackp[-1] = common_stdinb;
-      else
+      } else {
         stackp[-1] = ap(stackp[-1], ch);
+}
       continue;
     case CONS_X:
       ch = *--stackp;
@@ -1270,10 +1377,10 @@ word load_defs(FILE *f) /* load a sequence of definitions from file f, terminate
     }
   }
   BAD_DUMP = 4; /* should unsetids */
-  return (defs);
+  return defs;
 }
 
-extern char *obsuffix;
+
 
 int okdump(char *t) /* return 1 if script t has a non-syntax-error dump */
 {
@@ -1284,9 +1391,9 @@ int okdump(char *t) /* return 1 if script t has a non-syntax-error dump */
   f = fopen(obf, "r");
   if (f && getc(f) == XVERSION && getc(f)) {
     fclose(f);
-    return (1);
+    return 1;
   }
-  return (0);
+  return 0;
 }
 
 word geterrlin(char *t) /* returns errline from dump of t if relevant, 0 otherwise */
@@ -1297,38 +1404,46 @@ word geterrlin(char *t) /* returns errline from dump of t if relevant, 0 otherwi
   FILE *f;
   (void)strcpy(obf, t);
   (void)strcpy(obf + strlen(obf) - 1, obsuffix);
-  if (!(f = fopen(obf, "r")))
-    return (0);
+  if (!(f = fopen(obf, "r"))) {
+    return 0;
+}
   if (getc(f) != XVERSION || ((ch = getc(f)) && ch != 1)) {
     fclose(f);
-    return (0);
+    return 0;
   }
   el = getword(f);
   /* now check this is right dump */
   setprefix(t);
   ch = getc(f);
   dicq = dicp;
-  if (ch != '/')
+  if (ch != '/') {
     (void)strcpy(dicp, prefix), dicq += preflen;
+}
   /* locate wrt current posn */
   *dicq++ = ch;
-  while ((*dicq++ = ch = getc(f)) && ch != EOF)
+  while ((*dicq++ = ch = getc(f)) && ch != EOF) {
     ;              /* filename */
+}
   ch = getword(f); /* mtime */
-  if (strcmp(dicp, t) || ch != fm_time(t))
-    return (0); /* wrong dump */
+  if (strcmp(dicp, t) || ch != fm_time(t)) {
+    return 0; /* wrong dump */
+}
   /* this test not foolproof, strictly should extract all files and check
      their mtimes, as in undump, but this involves reading the whole dump */
-  return (el);
+  return el;
 }
 
 word hdsort(word x) /* sorts list of name-value pairs on name */
 {
-  word a = NIL, b = NIL, hold = NIL;
-  if (x == NIL)
+  word a = NIL;
+  word b = NIL;
+  word hold = NIL;
+  if (x == NIL) {
     return (NIL);
-  if (tl(x) == NIL)
-    return (x);
+}
+  if (tl(x) == NIL) {
+    return x;
+}
   while (x != NIL) /* split x */
   {
     hold = a, a = cons(hd(x), b), b = hold;
@@ -1336,27 +1451,33 @@ word hdsort(word x) /* sorts list of name-value pairs on name */
   }
   a = hdsort(a), b = hdsort(b);
   /* now merge two halves back together */
-  while (a != NIL && b != NIL)
-    if (strcmp(get_id(hd(hd(a))), get_id(hd(hd(b)))) < 0)
+  while (a != NIL && b != NIL) {
+    if (strcmp(get_id(hd(hd(a))), get_id(hd(hd(b)))) < 0) {
       x = cons(hd(a), x), a = tl(a);
-    else
+    } else {
       x = cons(hd(b), x), b = tl(b);
-  if (a == NIL)
+}
+}
+  if (a == NIL) {
     a = b;
-  while (a != NIL)
+}
+  while (a != NIL) {
     x = cons(hd(a), x), a = tl(a);
+}
   return (reverse(x));
 }
 
 word append1(word x, word y) /* rude append */
 {
   word x1 = x;
-  if (x1 == NIL)
-    return (y);
-  while (tl(x1) != NIL)
+  if (x1 == NIL) {
+    return y;
+}
+  while (tl(x1) != NIL) {
     x1 = tl(x1);
+}
   tl(x1) = y;
-  return (x);
+  return x;
 }
 
 /* following is stuff for printing heap objects in readable form - used
@@ -1373,29 +1494,30 @@ char *charname(word c) {
   static char s[5];
   switch (c) {
   case '\n':
-    return ("\\n");
+    return "\\n";
   case '\t':
-    return ("\\t");
+    return "\\t";
   case '\b':
-    return ("\\b");
+    return "\\b";
   case '\f':
-    return ("\\f"); /* form feed */
+    return "\\f"; /* form feed */
   case '\r':
-    return ("\\r"); /* carriage return */
+    return "\\r"; /* carriage return */
   case '\\':
-    return ("\\\\");
+    return "\\\\";
   case '\'':
-    return ("\\'");
+    return "\\'";
   case '"':
-    return ("\\\"");
+    return "\\\"";
   /* we escape all quotes for safety, since the context could be either
      character or string quotation */
   default:
-    if (c < 32 || c > 126) /* miscellaneous unprintables -- convert to decimal */
+    if (c < 32 || c > 126) { /* miscellaneous unprintables -- convert to decimal */
       sprintf(s, "\\%ld", c);
-    else
+    } else {
       s[0] = c, s[1] = '\0';
-    return (s);
+}
+    return s;
   }
 }
 
@@ -1450,8 +1572,10 @@ void out1(FILE *f, word x) {
     out1(f, hd(x));
     putc(' ', f);
     out2(f, tl(x));
-  } else
+  } else { {
     out2(f, x);
+}
+}
 }
 
 void out2(FILE *f, word x) {
@@ -1463,10 +1587,13 @@ void out2(FILE *f, word x) {
   if (tag[x] == INT) {
     if (rest(x)) {
       x = bigtostr(x);
-      while (x)
+      while (x) {
         putc(hd(x), f), x = tl(x);
-    } else
+}
+    } else { {
       fprintf(f, "%ld", getsmallint(x));
+}
+}
     return;
   }
   if (tag[x] == DOUBLE) {
@@ -1497,8 +1624,9 @@ void out2(FILE *f, word x) {
   }
   if (tag[x] == TCONS || tag[x] == PAIR) {
     fprintf(f, "(");
-    while (tag[x] == TCONS)
+    while (tag[x] == TCONS) {
       out(f, hd(x)), putc(',', f), x = tl(x);
+}
     out(f, hd(x));
     putc(',', f);
     out(f, tl(x));
@@ -1549,8 +1677,9 @@ void out2(FILE *f, word x) {
     word body = tl(x);
     fprintf(f, "(LETREC ");
     x = hd(x);
-    while (x != NIL)
+    while (x != NIL) {
       out(f, dlhs(hd(x))), fprintf(f, "="), out(f, dval(hd(x))), fprintf(f, ";"), x = tl(x);
+}
     fprintf(f, "IN ");
     out(f, body);
     fprintf(f, ")");
@@ -1593,10 +1722,11 @@ void outr(FILE *f, double r) /*  prints a number  */
 {
   double p;
   p = r < 0 ? -r : r;
-  if (p >= 1000.0 || p <= .001)
+  if (p >= 1000.0 || p <= .001) {
     fprintf(f, "%e", r);
-  else
+  } else {
     fprintf(f, "%f", r);
+}
 }
 
 /*  end of MIRANDA DATA REPRESENTATIONS  */

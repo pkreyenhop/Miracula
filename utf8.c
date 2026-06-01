@@ -76,11 +76,16 @@ unicode scanUTF8(char **p)
 unicode fromUTF8(FILE *fil)
 /* returns a unicode value or EOF for end of input */
 {
-  int c0, c1, c2, c3;
-  if ((nextch(c0)) == EOF)
+  int c0;
+  int c1;
+  int c2;
+  int c3;
+  if ((nextch(c0)) == EOF) {
     return ((unicode)EOF);
-  if (c0 <= 0x7f) /* ascii */
+}
+  if (c0 <= 0x7f) { /* ascii */
     return ((unicode)c0);
+}
   if ((c0 & 0xe0) == 0xc0) { /* 2 bytes */
     if ((nextch(c1)) == EOF)
       err2(c0, c1);
@@ -119,21 +124,22 @@ unicode fromUTF8(FILE *fil)
 }
 
 void outUTF8(unicode u, FILE *fil) {
-  if (u <= 0x7f)
+  if (u <= 0x7f) {
     /* ascii */
     out(u, fil);
-  else if (u <= 0x7ff)
+  } else if (u <= 0x7ff) {
     /* latin1 and other chars requiring 2 octets */
     out(0xc0 | (u & 0x7c0) >> 6, fil), out(0x80 | (u & 0x3f), fil);
-  else if (u <= 0xffff)
+  } else if (u <= 0xffff) {
     /* to here is basic multilingual plane */
     out(0xe0 | (u & 0xf000) >> 12, fil), out(0x80 | (u & 0xfc0) >> 6, fil),
         out(0x80 | (u & 0x3f), fil);
-  else if (u <= 0x10ffff)
+  } else if (u <= 0x10ffff) {
     /* other planes - rarely used - 4 octets */
     out(0xf0 | (u & 0x1c0000) >> 18, fil), out(0x80 | (u & 0x3f000) >> 12, fil),
         out(0x80 | (u & 0xfc0) >> 6, fil), out(0x80 | (u & 0x3f), fil);
-  else
+  } else {
     /* codes above 0x10ffff not valid */
     fprintf(stderr, "char 0x%lx out of unicode range\n", u), exit(1);
+}
 }

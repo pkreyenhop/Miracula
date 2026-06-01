@@ -16,29 +16,29 @@
 #include <errno.h>
 
 static int charclass(void);
-static void chblank(char *);
+static void chblank(char * /*s*/);
 static int collectstars(void);
 static word directive(void);
 static void hexnumeral(void);
-static int identifier(int);
+static int identifier(int /*s*/);
 static void kollect(int (*f)(int));
-static int litname(char *);
+static int litname(char * /*s*/);
 static void numeral(void);
 static void octnumeral(void);
-static int okulid(int);
-static int okpath(int);
+static int okulid(int /*ch*/);
+static int okpath(int /*ch*/);
 static int peekch(void);
 static int peekdig(void);
 static void string(void);
-static void errclass(word, word);
-static char *gethome(char *);
+static void errclass(word /*val*/, word /*string*/);
+static char *gethome(const char * /*n*/);
 static int getch(void);
 static int getlitch(void);
-static void spaces(word);
+static void spaces(word /*n*/);
 
 /* capacity in chars of dictionary space for storing identifiers and file names
    to get a larger name space just increase this number  */
-extern FILE *s_in;
+
 extern word echoing, listing, verbosity, magic, inbnf, inlex;
 word fileq = NIL; /* list of currently open-for-input files, of form
                     cons(strcons(stream,<ptr to element of 'files'>),...)*/
@@ -57,7 +57,7 @@ static word lastline;
 word litstack = NIL, linostack = NIL;
 static word lastc;
 word c = ' ';
-extern word commandmode;
+
 word common_stdin, common_stdinb, cook_stdin;
 static word litmain = 0, literate = 0; /* flags "literate" comment convention */
 char *dic, *dicp, *dicq;
@@ -65,8 +65,9 @@ char *pathname(void);
 
 void setupdic(void) {
   dicp = dicq = dic = (char *)malloc(DICSPACE);
-  if (dic == NULL)
+  if (dic == NULL) {
     mallocfail("dictionary");
+}
   /* it is not permissible to realloc dic, because at the moment identifiers
      etc. contain absolute pointers into the dictionary space - so we must
      choose fairly large initial value for DICSPACE.  Fix this later */
@@ -84,13 +85,14 @@ void setupdic(void) {
 struct passwd *getpwnam(const char *);
 #endif
 
-static char *gethome(char *n) /* for expanding leading `~' in tokens and pathnames */
+static char *gethome(const char *n) /* for expanding leading `~' in tokens and pathnames */
 {
 #ifdef okgetpwnam
   struct passwd *pw;
 #endif
-  if (n[0] == '\0')
+  if (n[0] == '\0') {
     return (getenv("HOME"));
+}
 #ifdef okgetpwnam
   if (pw = getpwnam(n))
     return (pw->pw_dir);
@@ -110,22 +112,25 @@ void dicovflo(void) /* is this called everywhere it should be? Check later */
 
 char *token(void) /* lex analyser for command language (very simple) */
 {
-  extern char *current_script;
+  
   word ch = getchar();
   dicq = dicp; /* uses top of dictionary as temporary work space */
-  while (ch == ' ' || ch == '\t')
+  while (ch == ' ' || ch == '\t') {
     ch = getchar();
+}
   if (ch == '~') {
     char *h;
     *dicq++ = ch;
     ch = getchar();
-    while (isalnum(ch) || ch == '-' || ch == '_' || ch == '.')
+    while (isalnum(ch) || ch == '-' || ch == '_' || ch == '.') {
       *dicq++ = ch, ch = getchar();
+}
     /* NB csh does not allow `.' in user ids when expanding `~'
        but this may be a mistake */
     *dicq = '\0';
-    if ((h = gethome(dicp + 1)))
+    if ((h = gethome(dicp + 1))) {
       (void)strcpy(dicp, h), dicq = dicp + strlen(dicp);
+}
   }
 #ifdef SPACEINFILENAMES
   if (ch != '"' && ch != '<') /* test added 9.5.06 see else part */
@@ -133,10 +138,11 @@ char *token(void) /* lex analyser for command language (very simple) */
     while (!isspace(ch) && ch != EOF) {
       *dicq++ = ch;
       if (ch == '%') {
-        if (dicq[-2] == '\\')
+        if (dicq[-2] == '\\') {
           (--dicq)[-1] = '%';
-        else
+        } else {
           dicq--, (void)strcpy(dicq, current_script), dicq += strlen(dicq);
+}
       }
       ch = getchar();
     }
@@ -153,8 +159,9 @@ char *token(void) /* lex analyser for command language (very simple) */
 #endif
   *dicq++ = '\0';
   ovflocheck;
-  while (ch == ' ' || ch == '\t')
+  while (ch == ' ' || ch == '\t') {
     ch = getchar();
+}
   ungetc(ch, stdin);
   return (*dicp == '\0' ? (char *)NULL : dicp);
 } /* NB - if no token returns NULL rather than pointer to empty string */
@@ -162,13 +169,14 @@ char *token(void) /* lex analyser for command language (very simple) */
 char *addextn(word b, char *s)
 /* if(b)force s to end in ".m", and resolve <quotes> */
 {
-  extern char *miralib;
-  extern char linebuf[];
+  
+  
   word n = strlen(s);
   if (s[0] == '<' && s[n - 1] == '>') {
     static int miralen = 0; /* code to handle quotes added 21/1/87 */
-    if (!miralen)
+    if (!miralen) {
       miralen = strlen(miralib);
+}
     strcpy(linebuf, miralib);
     linebuf[miralen] = '/';
     strcpy(linebuf + miralen + 1, s + 1);
@@ -181,37 +189,42 @@ char *addextn(word b, char *s)
   } else if (s[0] == '\"' && s[n - 1] == '\"') { /*strip quotes */
     dicq = dicp;
     s++;
-    while (*s)
+    while (*s) {
       *dicq++ = *s++;
+}
     dicq[-1] = '\0'; /* overwrites '"' */
     s = dicp;
     n = n - 2;
   }
-  if (!b || strcmp(s + n - 2, ".m") == 0)
-    return (s);
-  if (s == dicp)
+  if (!b || strcmp(s + n - 2, ".m") == 0) {
+    return s;
+}
+  if (s == dicp) { {
     dicq--; /*if s in scratch area at top of dic, extend in situ*/
-  else {    /* otherwise build new copy at top of dic */
+  } } else {    /* otherwise build new copy at top of dic */
     dicq = dicp;
-    while (*s)
+    while (*s) {
       *dicq++ = *s++;
+}
     *dicq = '\0';
   }
-  if (strcmp(dicq - 2, ".x") == 0)
+  if (strcmp(dicq - 2, ".x") == 0) {
     dicq -= 2;
-  else if (dicq[-1] == '.')
+  } else if (dicq[-1] == '.') {
     dicq -= 1;
+}
   (void)strcpy(dicq, ".m");
   dicq += 3;
   ovflocheck;
-  return (dicp);
+  return dicp;
 } /* NB - call keep(dicp) if the result is to be retained */
 
 static word brct = 0;
 
 static void spaces(word n) {
-  while (n-- > 0)
+  while (n-- > 0) {
     putchar(' ');
+}
 }
 
 static int litname(char *s) {
@@ -225,62 +238,73 @@ static int getch(void) /* keeps track of current position in the variable "col"(
   if (ch == EOF && !atnl && tl(fileq) == NIL) /* badly terminated top level file */
   {
     atnl = 1;
-    return ('\n');
+    return '\n';
   }
   if (atnl) {
-    if (((line_no == 0 && !commandmode) || (magic && line_no == 1 && litstack == NIL)))
+    if (((line_no == 0 && !commandmode) || (magic && line_no == 1 && litstack == NIL))) {
       litmain = literate = (ch == '>') || litname(get_fil(current_file));
+}
     if (literate) {
       word i = 0;
       while (ch != EOF && ch != '>') {
         ungetc(ch, s_in);
         line_no++;
         (void)fgets(dicp, 250, s_in);
-        if (i == 0 && line_no > 1)
+        if (i == 0 && line_no > 1) {
           chblank(dicp);
+}
         i++;
-        if (echoing)
+        if (echoing) {
           spaces(lverge), fputs(dicp, stdout);
+}
         ch = getc(s_in);
       }
-      if ((i > 1 || (line_no == 1 && i == 1)) && ch != EOF)
+      if ((i > 1 || (line_no == 1 && i == 1)) && ch != EOF) {
         chblank(dicp);
+}
       if (ch == '>') {
-        if (echoing)
+        if (echoing) {
           putchar(ch), spaces(lverge);
+}
         ch = getc(s_in);
       }
     } /* supports alternative `literate' comment convention */
     atnl = 0;
     col = lverge + literate;
-    if (!commandmode && ch != EOF)
+    if (!commandmode && ch != EOF) {
       line_no++;
+}
   }
   if (echoing && ch != EOF) {
     putchar(ch);
     if (ch == '\n' && !literate) {
-      if (litmain)
+      if (litmain) {
         putchar('>'), spaces(lverge);
-      else
+      } else {
         spaces(lverge);
+}
     }
   }
-  if (ch == '\t')
-    col = ((col - lverge) / 8 + 1) * 8 + lverge;
-  else
+  if (ch == '\t') {
+    col = ((((col - lverge) / 8) + 1) * 8) + lverge;
+  } else {
     col++;
-  if (ch == '\n')
+}
+  if (ch == '\n') {
     atnl = 1;
-  return (ch);
+}
+  return ch;
 }
 
 int blankerr = 0;
 
 void chblank(char *s) {
-  while (*s == ' ' || *s == '\t')
+  while (*s == ' ' || *s == '\t') {
     s++;
-  if (*s == '\n')
+}
+  if (*s == '\n') {
     return;
+}
   syntax("formal text not delimited by blank line\n");
   blankerr = 1;
   reset(); /* easiest way to recover is to pretend it was an interrupt */
@@ -297,33 +321,39 @@ static int rawch;
 static int errch; /* for reporting unrecognised \escape */
 
 static int getlitch(void) {
-  extern int UTF8;
+  
   int ch = c;
   rawch = ch;
-  if (ch == '\n')
-    return (ch);          /* always an error */
+  if (ch == '\n') {
+    return ch;          /* always an error */
+}
   if (UTF8 && ch > 127) { /* UTF-8 uses 2 or 3 bytes for unicode points to 0xffff */
-    word ch1 = c = getch(), ch2, ch3;
+    word ch1 = c = getch();
+    word ch2;
+    word ch3;
     if ((ch & 0xe0) == 0xc0) /* 2 bytes */
     {
-      if ((ch1 & 0xc0) != 0x80)
+      if ((ch1 & 0xc0) != 0x80) {
         return -5; /* not valid UTF8 */
+}
       c = getch();
       return sto_char((ch & 0x1f) << 6 | (ch1 & 0x3f));
     }
     ch2 = c = getch();
     if ((ch & 0xf0) == 0xe0) /* 3 bytes */
     {
-      if ((ch1 & 0xc0) != 0x80 || (ch2 & 0xc0) != 0x80)
+      if ((ch1 & 0xc0) != 0x80 || (ch2 & 0xc0) != 0x80) {
         return -5; /* not valid UTF8 */
+}
       c = getch();
       return sto_char((ch & 0xf) << 12 | (ch1 & 0x3f) << 6 | (ch2 & 0x3f));
     }
     ch3 = c = getch();
     if ((ch & 0xf8) == 0xf0) /* 4 bytes, beyond basic multilingual plane */
     {
-      if ((ch1 & 0xc0) != 0x80 || (ch2 & 0xc0) != 0x80 || (ch3 & 0xc0) != 0x80)
+      if ((ch1 & 0xc0) != 0x80 || (ch2 & 0xc0) != 0x80 || (ch3 & 0xc0) != 0x80) {
         return -5; /* not valid UTF8 */
+}
       c = getch();
       return ((ch & 7) << 18 | (ch1 & 0x3f) << 12 | (ch2 & 0x3f) << 6 | (ch3 & 0x3f));
     }
@@ -332,7 +362,7 @@ static int getlitch(void) {
   }
   if (ch != '\\') {
     c = getch();
-    return (ch);
+    return ch;
   }
   ch = getch();
   c = getch();
@@ -340,23 +370,24 @@ static int getlitch(void) {
   case '\n':
     return (getlitch()); /* escaped nl was handled in 'getch()' */
   case 'a':
-    return ('\a');
+    return '\a';
   case 'b':
-    return ('\b');
+    return '\b';
   case 'f':
-    return ('\f'); /* form feed */
+    return '\f'; /* form feed */
   case 'n':
-    return ('\n'); /* newline, == linefeed */
+    return '\n'; /* newline, == linefeed */
   case 'r':
-    return ('\r'); /* carriage return */
+    return '\r'; /* carriage return */
   case 't':
-    return ('\t');
+    return '\t';
   case 'v':
-    return ('\v');
+    return '\v';
   case 'X': /* omit for Haskell escape rules, see also lines marked H */
   case 'x':
     if (isxdigit(c)) {
-      int value, N = ch == 'x' ? 4 : 6; /* N=7 for Haskell escape rules */
+      int value;
+      int N = ch == 'x' ? 4 : 6; /* N=7 for Haskell escape rules */
       char hold[8];
       int count = 0;
       ch = c;
@@ -364,19 +395,24 @@ static int getlitch(void) {
       while (ch == '0' && isxdigit(peekch()))
         ch = getch(); /* lose leading 0s */
 #endif
-      while (isxdigit(ch) && count < N)
+      while (isxdigit(ch) && count < N) {
         hold[count++] = ch, ch = getch();
+}
       /* read upto N hex digits */
       hold[count] = '\0';
       sscanf(hold, "%x", &value);
       c = ch;
       return value > UMAX ? -3 /* \x out of range */
                           : sto_char(value);
-    } else
+    } else { {
       return -2; /* \x with no hex digits */
+}
+}
   default:
     if ('0' <= ch && ch <= '9') {
-      word n = ch - '0', count = 1, N = 3; /* N=8 for Haskell escape rules */
+      word n = ch - '0';
+      word count = 1;
+      word N = 3; /* N=8 for Haskell escape rules */
       ch = c;
 #ifdef HASKELL
       while (ch == '0' && isdigit(peekch()))
@@ -385,7 +421,7 @@ static int getlitch(void) {
       while (isdigit(ch) && count < N)
       /* read upto N digits */
       {
-        n = 10 * n + ch - '0';
+        n = (10 * n) + ch - '0';
         count++;
         ch = getch();
       }
@@ -396,10 +432,12 @@ static int getlitch(void) {
 #endif
               sto_char(n);
     }
-    if (ch == '\'' || ch == '"' || ch == '\\' || ch == '`')
-      return (ch); /* see note */
-    if (ch == '&')
+    if (ch == '\'' || ch == '"' || ch == '\\' || ch == '`') {
+      return ch; /* see note */
+}
+    if (ch == '&') {
       return -7; /* Haskell null escape, accept silently */
+}
     errch = ch <= 255 ? ch : '?';
     return -6; /* unrecognised \something */
   }
@@ -407,57 +445,67 @@ static int getlitch(void) {
 
 char *rdline(void) /* used by the "!" command -- see steer.c */
 {
-  extern char *current_script;
+  
   static char linebuf[BUFSIZE];
   char *p = linebuf;
-  word ch = getchar(), expansion = 0;
-  while (ch == ' ' || ch == '\t')
+  word ch = getchar();
+  word expansion = 0;
+  while (ch == ' ' || ch == '\t') {
     ch = getchar();
+}
   if (ch == '\n' ||
       (ch == '!' && !(*linebuf))) { /* "!!" or "!" on its own means repeat last !command */
-    if (*linebuf)
+    if (*linebuf) {
       printf("!%s", linebuf);
-    while (ch != '\n' && ch != EOF)
+}
+    while (ch != '\n' && ch != EOF) {
       ch = getchar();
-    return (linebuf);
+}
+    return linebuf;
   }
-  if (ch == '!')
+  if (ch == '!') {
     expansion = 1, p = linebuf + strlen(linebuf) - 1; /* p now points at old '\n' */
-  else
+  } else {
     ungetc(ch, stdin);
-  while ((*p++ = ch = getchar()) != '\n' && ch != EOF)
+}
+  while ((*p++ = ch = getchar()) != '\n' && ch != EOF) {
     if (p - linebuf >= BUFSIZE) {
       *p = '\0';
       fprintf(stderr, "sorry, !command too long (limit=%d chars): %s...\n", BUFSIZE, linebuf);
-      while ((ch = getchar()) != '\n' && ch != EOF)
+      while ((ch = getchar()) != '\n' && ch != EOF) {
         ;
+}
       return (NULL);
-    } else if (p[-1] == '%') {
-      if (p > linebuf + 1 && p[-2] == '\\')
+    } if (p[-1] == '%') {
+      if (p > linebuf + 1 && p[-2] == '\\') { {
         (--p)[-1] = '%';
-      else {
+      } } else {
         (void)strncpy(p - 1, current_script, linebuf + BUFSIZE - p);
         p = linebuf + strlen(linebuf);
         expansion = 1;
       }
     }
+}
   *p = '\0';
-  if (expansion)
+  if (expansion) {
     printf("!%s", linebuf);
-  return (linebuf);
+}
+  return linebuf;
 }
 
 void setlmargin(void) /* this and the next routine are used to enforce the offside
                 rule ("yylex" refuses to read a symbol if col<lmargin) */
 {
   margstack = cons(lmargin, margstack);
-  if (lmargin < col)
+  if (lmargin < col) {
     lmargin = col;
+}
 } /* inner scope region cannot "protrude" */
 
 void unsetlmargin(void) {
-  if (margstack == NIL)
+  if (margstack == NIL) {
     return; /* in case called after `syntax("..")' */
+}
   lmargin = hd(margstack);
   margstack = tl(margstack);
 }
@@ -466,22 +514,23 @@ static void errclass(word val, word string)
 /* diagnose error in charclass, string or char const */
 {
   const char *s = string == 2 ? "char class" : string ? "string" : "char const";
-  if (val == -2)
+  if (val == -2) {
     printf("\\x with no xdigits in %s\n", s);
-  else if (val == -3)
+  } else if (val == -3) {
     printf("\\hexadecimal escape out of range in %s\n", s);
-  else if (val == -4)
+  } else if (val == -4) {
     printf("\\decimal escape out of range in %s\n", s);
-  else if (val == -5)
+  } else if (val == -5) {
     printf("unrecognised character in %s"
            "(UTF8 error)\n",
            s);
-  else if (val == -6)
+  } else if (val == -6) {
     printf("unrecognised escape \\%c in %s\n", errch, s);
-  else if (val == -7)
+  } else if (val == -7) {
     printf("illegal use of \\& in char const\n");
-  else
+  } else {
     printf("unknown error in %s\n", s);
+}
   acterror();
 }
 
@@ -489,18 +538,19 @@ int yylex(void) /* called by YACC to get the next symbol */
 {
   extern word SYNERR, exportfiles, inexplist, sreds;
   /* SYNERR flags context sensitive syntax error detected in actions */
-  if (SYNERR)
+  if (SYNERR) {
     return (END); /* tell YACC to go home */
+}
   layout();
-  if (c == '\n') /* can only occur in command mode */
+  if (c == '\n') { /* can only occur in command mode */
     return (END);
+}
   if (col < lmargin) {
     if (c == '=' && (margstack == NIL || col >= hd(margstack))) /* && part fixes utah.bug*/
     {
       c = getch();
       return (ELSEQ); /* ELSEQ means "OFFSIDE =" */
-    } else
-      return (OFFSIDE);
+    }       return (OFFSIDE);
   }
   if (c == ';') /* fixes utah2.bug */
   {
@@ -509,8 +559,7 @@ int yylex(void) /* called by YACC to get the next symbol */
     if (c == '=' && (margstack == NIL || col >= hd(margstack))) {
       c = getch();
       return (ELSEQ); /* ELSEQ means "OFFSIDE =" */
-    } else
-      return (';');
+    }       return ';';
   }
   if (isalpha(c)) {
     kollect(okid);
@@ -519,24 +568,27 @@ int yylex(void) /* called by YACC to get the next symbol */
       yylval = name();
       return (c == '=' ? LEXDEF : isconstructor(yylval) ? CNAME : NAME);
     }
-    if (inbnf == 1)
+    if (inbnf == 1) {
       /* add trailing space to nonterminal to avoid clash
          with ordinary names */
       dicq[-1] = ' ', *dicq++ = '\0';
+}
     return (identifier(0));
   }
   if (('0' <= c && c <= '9') || (c == '.' && peekdig())) {
-    if (c == '0' && tolower(peekch()) == 'x')
+    if (c == '0' && tolower(peekch()) == 'x') {
       hexnumeral();
-    else /* added 21.11.2013 */
-      if (c == '0' && tolower(peekch()) == 'o')
+    } else /* added 21.11.2013 */
+      if (c == '0' && tolower(peekch()) == 'o') {
         getch(), c = getch(), octnumeral(); /* added 21.11.2013 */
-      else
+      } else {
         numeral();
+}
     return (CONST);
   }
-  if (c == '%' && !commandmode)
+  if (c == '%' && !commandmode) {
     return (directive());
+}
   if (c == '\'') {
     c = getch();
     yylval = getlitch();
@@ -544,21 +596,24 @@ int yylex(void) /* called by YACC to get the next symbol */
       errclass(yylval, 0);
       return CONST;
     }
-    if (!is_char(yylval))
+    if (!is_char(yylval)) {
       fprintf(stderr, "%simpossible event while reading char const ('\\%lu\')\n",
               echoing ? "\n" : "", yylval),
           acterror();
-    if (rawch == '\n' || c != '\'')
+}
+    if (rawch == '\n' || c != '\'') {
       syntax("improperly terminated char const\n");
-    else
+    } else {
       c = getch();
+}
     return (CONST);
   }
   if (inexplist && (c == '\"' || c == '<')) {
-    if (!pathname())
+    if (!pathname()) {
       syntax("badly formed pathname in %export list\n");
-    else
+    } else {
       exportfiles = strcons(addextn(1, dicp), exportfiles), keep(dicp);
+}
     return (PATHNAME);
   }
   if (inlex == 1 && c == '`') {
@@ -566,28 +621,32 @@ int yylex(void) /* called by YACC to get the next symbol */
   }
   if (c == '\"') {
     string();
-    if (yylval == NIL)
+    if (yylval == NIL) {
       yylval = NILS; /* to help typechecker! */
+}
     return (CONST);
   }
   if (inbnf == 2) /* fiddle to offside rule in grammars */
   {
-    if (c == '[')
+    if (c == '[') {
       brct++;
-    else if (c == ']')
+    } else if (c == ']') {
       brct--;
-    else if (c == '|' && brct == 0)
+    } else if (c == '|' && brct == 0) {
       return (OFFSIDE);
+}
   }
   if (c == EOF) {
-    if (tl(fileq) == NIL && margstack != NIL)
+    if (tl(fileq) == NIL && margstack != NIL) {
       return (OFFSIDE); /* to fix dtbug */
+}
     fclose((FILE *)hd(hd(fileq)));
     fileq = tl(fileq);
     insertdepth--;
     if (fileq != NIL && hd(echostack)) {
-      if (literate)
+      if (literate) {
         putchar('>'), spaces(lverge);
+}
       printf("<end of insert>");
     }
     s_in = fileq == NIL ? stdin : (FILE *)hd(hd(fileq));
@@ -602,8 +661,7 @@ int yylex(void) /* called by YACC to get the next symbol */
       line_no = 0;
       litmain = literate = 0;
       return (END);
-    } else {
-      current_file = tl(hd(fileq));
+    }       current_file = tl(hd(fileq));
       prefix = hd(prefixstack);
       prefixstack = tl(prefixstack);
       echoing = hd(echostack);
@@ -614,7 +672,7 @@ int yylex(void) /* called by YACC to get the next symbol */
       litstack = tl(litstack);
       line_no = hd(linostack);
       linostack = tl(linostack);
-    }
+   
     return (yylex());
   }
   lastc = c;
@@ -637,67 +695,69 @@ int yylex(void) /* called by YACC to get the next symbol */
         c = getch();
         return (GE);
       }
-      if (c == '%' && !commandmode)
+      if (c == '%' && !commandmode) {
         return (directive());
+}
       if (isalpha(c)) /* underlined reserved word */
       {
         kollect(okulid);
-        if (dicp[1] == '_' && dicp[2] == '')
+        if (dicp[1] == '_' && dicp[2] == '') {
           return (identifier(1));
+}
       }
       syntax("illegal use of underlining\n");
-      return ('_');
+      return '_';
     }
-    return (lastc);
+    return lastc;
   case '-':
-    try('>', ARROW) try('-', MINUSMINUS) return (lastc);
+    try('>', ARROW) try('-', MINUSMINUS) return lastc;
   case '<':
-    try('-', LEFTARROW) try('=', LE) return (lastc);
+    try('-', LEFTARROW) try('=', LE) return lastc;
   case '=':
     if (c == '>') {
       syntax("unexpected symbol =>\n");
       return '=';
     }
-    try('=', EQEQ) return (lastc);
+    try('=', EQEQ) return lastc;
   case '+':
-    try('+', PLUSPLUS) return (lastc);
+    try('+', PLUSPLUS) return lastc;
   case '.':
     if (c == '.') {
       c = getch();
       return (DOTDOT);
     }
-    return (lastc);
+    return lastc;
   case '\\':
-    try('/', VEL) return (lastc);
+    try('/', VEL) return lastc;
   case '>':
-    try('=', GE) return (lastc);
+    try('=', GE) return lastc;
   case '~':
-    try('=', NE) return (lastc);
+    try('=', NE) return lastc;
   case '&':
     if (c == '>') {
       c = getch();
-      if (c == '>')
+      if (c == '>') {
         yylval = 1;
-      else
+      } else {
         yylval = 0, ungetc(c, s_in);
+}
       c = ' ';
       return (TO);
     }
-    return (lastc);
+    return lastc;
   case '/':
-    try('/', DIAG) return (lastc);
+    try('/', DIAG) return lastc;
   case '*':
-    try('*', collectstars()) return (lastc);
+    try('*', collectstars()) return lastc;
   case ':':
     if (c == ':') {
       c = getch();
       if (c == '=') {
         c = getch();
         return (COLON2EQ);
-      } else
-        return (COLONCOLON);
+      }         return (COLONCOLON);
     }
-    return (lastc);
+    return lastc;
   case '$':
     if (isalpha(c)) {
       int t;
@@ -708,22 +768,23 @@ int yylex(void) /* called by YACC to get the next symbol */
     /* the last alternative is an error - caveat */
     if ('1' <= c && c <= '9') {
       int n = 0;
-      while (isdigit(c) && n < 1e6)
-        n = 10 * n + c - '0', c = getch();
-      if (n > sreds)
+      while (isdigit(c) && n < 1e6) {
+        n = (10 * n) + c - '0', c = getch();
+}
+      if (n > sreds) { {
         /* sreds==0 everywhere except in semantic redn clause */
         printf("%ssyntax error: illegal symbol $%d%s\n", echoing ? "\n" : "", n,
                n >= 1e6 ? "..." : ""),
             acterror();
-      else {
+      } } else {
         yylval = mkgvar(n);
         return (NAME);
       }
     }
     if (c == '-') {
-      if (!compiling)
+      if (!compiling) { {
         syntax("unexpected symbol $-\n");
-      else {
+      } } else {
         c = getch();
         yylval = common_stdin;
         return (CONST);
@@ -733,12 +794,12 @@ int yylex(void) /* called by YACC to get the next symbol */
        whence addition of `compiling' to premises */
     if (c == ':') {
       c = getch();
-      if (c != '-')
+      if (c != '-') { {
         syntax("unexpected symbol $:\n");
-      else {
-        if (!compiling)
+      } } else {
+        if (!compiling) { {
           syntax("unexpected symbol $:-\n");
-        else {
+        } } else {
           c = getch();
           yylval = common_stdinb;
           return (CONST);
@@ -746,33 +807,33 @@ int yylex(void) /* called by YACC to get the next symbol */
       }
     } /* $:- */
     if (c == '+') {
-      if (!compiling)
+      if (!compiling) { {
         syntax("unexpected symbol $+\n");
-      else {
+      } } else {
         c = getch();
-        if (commandmode)
+        if (commandmode) {
           yylval = cook_stdin;
-        else
+        } else {
           yylval = ap(readvals(0, 0), OFFSIDE);
+}
         return (CONST);
       }
     }
     if (c == '$') {
-      if (!(inlex == 2 || (commandmode && compiling)))
+      if (!(inlex == 2 || (commandmode && compiling))) { {
         syntax("unexpected symbol $$\n");
-      else {
+      } } else {
         c = getch();
         if (inlex) {
           yylval = mklexvar(0);
           return (NAME);
-        } else
-          return (DOLLARS);
+        }           return (DOLLARS);
       }
     }
     if (c == '#') {
-      if (inlex != 2)
+      if (inlex != 2) { {
         syntax("unexpected symbol $#\n");
-      else {
+      } } else {
         c = getch();
         yylval = mklexvar(1);
         return (NAME);
@@ -783,17 +844,19 @@ int yylex(void) /* called by YACC to get the next symbol */
       yylval = ap(GETARGS, 0);
       return (CONST);
     }
-    if (c == '0')
+    if (c == '0') {
       syntax("illegal symbol $0\n");
+}
   default:
-    return (lastc);
+    return lastc;
   }
 }
 
 void layout(void) {
 L:
-  while (c == ' ' || (c == '\n' && !commandmode) || c == '\t')
+  while (c == ' ' || (c == '\n' && !commandmode) || c == '\t') {
     c = getch();
+}
   if (c == EOF && commandmode) {
     c = '\n';
     return;
@@ -802,10 +865,12 @@ L:
       || (col == 1 && line_no == 1         /* added 19.11.2013 */
           && c == '#' && peekch() == '!')) /* UNIX magic string */
   {
-    while ((c = getch()) != '\n' && c != EOF)
+    while ((c = getch()) != '\n' && c != EOF) {
       ;
-    if (c == EOF && !commandmode)
+}
+    if (c == EOF && !commandmode) {
       return;
+}
     c = '\n';
     goto L;
   }
@@ -813,8 +878,9 @@ L:
 
 int collectstars(void) {
   int n = 2;
-  while (c == '*')
+  while (c == '*') {
     c = getch(), n++;
+}
   yylval = mktvar(n);
   return (TYPEVAR);
 }
@@ -826,12 +892,14 @@ word mkgvar(word i)
 {
   word *p = &gvars;
   while (--i) {
-    if (*p == NIL)
+    if (*p == NIL) {
       *p = cons(sto_id("gvar"), NIL);
+}
     p = &tl(*p);
   }
-  if (*p == NIL)
+  if (*p == NIL) {
     *p = cons(sto_id("gvar"), NIL);
+}
   return (hd(*p));
 } /* all these variables have the same name, and are not in hashbucket */
 
@@ -840,10 +908,11 @@ word lexvar = 0;
 word mklexvar(word i) /* similar - corresponds to $$, $# on rhs of %lex rule */
                       /* i=0 or 1 */
 {
-  extern word ltchar;
-  if (!lexvar)
+  
+  if (!lexvar) {
     lexvar = cons(sto_id("lexvar"), sto_id("lexvar")), id_type(hd(lexvar)) = ltchar,
     id_type(tl(lexvar)) = genlstat_t();
+}
   return (i ? tl(lexvar) : hd(lexvar));
 }
 
@@ -853,23 +922,28 @@ char **ARGV; /* initialised in main(), see steer.c */
 word conv_args(void) /* used to give access to command line args
                see case GETARGS in reduce.c */
 {
-  word i = ARGC, x = NIL;
-  if (i == 0)
+  word i = ARGC;
+  word x = NIL;
+  if (i == 0) {
     return (NIL); /* possible only if not invoked from a magic script */
+}
   {
-    while (--i)
+    while (--i) {
       x = cons(str_conv(ARGV[i]), x);
+}
     x = cons(str_conv(ARGV[0]), x);
   }
-  return (x);
+  return x;
 }
 
 word str_conv(const char *s) /* convert C string to Miranda form */
 {
-  word x = NIL, i = strlen(s);
-  while (i--)
+  word x = NIL;
+  word i = strlen(s);
+  while (i--) {
     x = cons(s[i], x);
-  return (x);
+}
+  return x;
 } /* opposite of getstring() - see reduce.c */
 
 static int okpath(int ch) {
@@ -881,7 +955,7 @@ char *pathname(void) /* returns NULL if not valid pathname (in string quotes) */
   layout();
   if (c == '<') /* alternative quotes <..> for system libraries */
   {
-    extern char *miralib;
+    
     char *hold = dicp;
     c = getch();
     (void)strcpy(dicp, miralib);
@@ -889,43 +963,49 @@ char *pathname(void) /* returns NULL if not valid pathname (in string quotes) */
     *dicp++ = '/';
     kollect(okpath);
     dicp = hold;
-    if (c != '>')
+    if (c != '>') {
       return (NULL);
+}
     c = ' ';
-    return (dicp);
+    return dicp;
   }
-  if (c != '\"')
+  if (c != '\"') {
     return (NULL);
+}
   c = getch();
   if (c == '~') {
-    char *h, *hold = dicp;
-    extern char linebuf[];
+    char *h;
+    char *hold = dicp;
+    
     *dicp++ = c;
     c = getch();
-    while (isalnum(c) || c == '-' || c == '_' || c == '.')
+    while (isalnum(c) || c == '-' || c == '_' || c == '.') {
       *dicp++ = c, c = getch();
+}
     *dicp = '\0';
-    if ((h = gethome(hold + 1)))
+    if ((h = gethome(hold + 1))) {
       (void)strcpy(hold, h), dicp = hold + strlen(hold);
-    else
+    } else {
       (void)strcpy(&linebuf[0], hold), (void)strcpy(hold, prefixbase + prefix),
           dicp = hold + strlen(prefixbase + prefix), (void)strcpy(dicp, &linebuf[0]),
           dicp += strlen(dicp);
+}
     kollect(okpath);
     dicp = hold;
-  } else if (c == '/') /* absolute pathname */
+  } else if (c == '/') { { /* absolute pathname */
     kollect(okpath);
-  else { /* relative pathname */
+  } } else { /* relative pathname */
     char *hold = dicp;
     (void)strcpy(dicp, prefixbase + prefix);
     dicp += strlen(prefixbase + prefix);
     kollect(okpath);
     dicp = hold;
   }
-  if (c != '\"')
+  if (c != '\"') {
     return (NULL);
+}
   c = ' ';
-  return (dicp);
+  return dicp;
 } /* result is volatile - call keep(dicp) to retain */
 
 void adjust_prefix(char *f)
@@ -936,14 +1016,16 @@ resolution */
   char *g;
   prefixstack = strcons(prefix, prefixstack);
   prefix += strlen(prefixbase + prefix) + 1;
-  while ((size_t)prefix + strlen(f) >= (size_t)prefixlimit) /* check and fix overflow */
+  while ((size_t)prefix + strlen(f) >= (size_t)prefixlimit) { /* check and fix overflow */
     prefixlimit += 1024, prefixbase = (char *)realloc(prefixbase, prefixlimit);
+}
   (void)strcpy(prefixbase + prefix, f);
   g = rindex(prefixbase + prefix, '/');
-  if (g)
+  if (g) {
     g[1] = '\0';
-  else
+  } else {
     prefixbase[prefix] = '\0';
+}
 }
 
 /* NOTES on how static pathname resolution is achieved:
@@ -968,7 +1050,7 @@ int peekdig(void) {
 int peekch(void) {
   word ch = getc(s_in);
   ungetc(ch, s_in);
-  return (ch);
+  return ch;
 }
 
 int openfile(char *n) /* returns 0 or 1 as indication of success
@@ -976,35 +1058,39 @@ int openfile(char *n) /* returns 0 or 1 as indication of success
 {
   FILE *f;
   f = fopen(n, "r");
-  if (f == NULL)
-    return (0);
+  if (f == NULL) {
+    return 0;
+}
   fileq = cons(strcons(f, NIL), fileq);
   insertdepth++;
-  return (1);
+  return 1;
 }
 
 int identifier(int s) /* recognises reserved words */
                       /* "s" flags looking for ul reserved words only */
 {
-  extern word lastid;
+  
   if (inbnf == 1) { /* only reserved nonterminals are `empty', `end', `error', `where' */
-    if (is("empty ") || is("e_m_p_t_y"))
+    if (is("empty ") || is("e_m_p_t_y")) {
       return (EMPTYSY);
-    else if (is("end ") || is("e_n_d"))
+    } if (is("end ") || is("e_n_d")) {
       return (ENDSY);
-    else if (is("error ") || is("e_r_r_o_r"))
+    } if (is("error ") || is("e_r_r_o_r")) {
       return (ERRORSY);
-    else if (is("where ") || is("w_h_e_r_e"))
+    } if (is("where ") || is("w_h_e_r_e")) {
       return (WHERE);
-  } else
+}
+  } else { {
     switch (dicp[0]) {
     case 'a':
-      if (is("abstype") || is("a_b_s_t_y_p_e"))
+      if (is("abstype") || is("a_b_s_t_y_p_e")) {
         return (ABSTYPE);
+}
       break;
     case 'd':
-      if (is("div") || is("d_i_v"))
+      if (is("div") || is("d_i_v")) {
         return (DIV);
+}
       break;
     case 'F':
       if (is("False")) /* True, False alleged to be predefined, not
@@ -1015,24 +1101,29 @@ int identifier(int s) /* recognises reserved words */
       }
       break;
     case 'i':
-      if (is("if") || is("i_f"))
+      if (is("if") || is("i_f")) {
         return (IF);
+}
       break;
     case 'm':
-      if (is("mod") || is("m_o_d"))
+      if (is("mod") || is("m_o_d")) {
         return (REM);
+}
       break;
     case 'o':
-      if (is("otherwise") || is("o_t_h_e_r_w_i_s_e"))
+      if (is("otherwise") || is("o_t_h_e_r_w_i_s_e")) {
         return (OTHERWISE);
+}
       break;
     case 'r':
-      if (is("readvals") || is("r_e_a_d_v_a_l_s"))
+      if (is("readvals") || is("r_e_a_d_v_a_l_s")) {
         return (READVALSY);
+}
       break;
     case 's':
-      if (is("show") || is("s_h_o_w"))
+      if (is("show") || is("s_h_o_w")) {
         return (SHOWSYM);
+}
       break;
     case 'T':
       if (is("True")) {
@@ -1040,30 +1131,37 @@ int identifier(int s) /* recognises reserved words */
         return (CONST);
       }
     case 't':
-      if (is("type") || is("t_y_p_e"))
+      if (is("type") || is("t_y_p_e")) {
         return (TYPE);
+}
       break;
     case 'w':
-      if (is("where") || is("w_h_e_r_e"))
+      if (is("where") || is("w_h_e_r_e")) {
         return (WHERE);
-      if (is("with") || is("w_i_t_h"))
+}
+      if (is("with") || is("w_i_t_h")) {
         return (WITH);
+}
       break;
     }
+}
+}
   if (s) {
     syntax("illegal use of underlining\n");
-    return ('_');
+    return '_';
   }
   yylval = name(); /* not a reserved word */
-  if (commandmode && lastid == 0 && id_type(yylval) != undef_t)
+  if (commandmode && lastid == 0 && id_type(yylval) != undef_t) {
     lastid = yylval;
+}
   return (isconstructor(yylval) ? CNAME : NAME);
 }
 
 word directive(void) /* these are of the form "%identifier" */
 {
   extern word SYNERR, magic;
-  word holdcol = col - 1, holdlin = line_no;
+  word holdcol = col - 1;
+  word holdlin = line_no;
   c = getch();
   if (c == '%') {
     c = getch();
@@ -1072,9 +1170,11 @@ word directive(void) /* these are of the form "%identifier" */
   kollect(okulid);
   switch (dicp[0] == '_' && dicp[1] == '' ? dicp[2] : dicp[0]) {
   case 'b':
-    if (is("begin") || is("_^Hb_^He_^Hg_^Hi_^Hn"))
-      if (inlex)
+    if (is("begin") || is("_^Hb_^He_^Hg_^Hi_^Hn")) {
+      if (inlex) {
         return (LBEGIN);
+}
+}
     if (is("bnf") || is("_^Hb_^Hn_^Hf")) {
       setlmargin();
       col = holdcol + 4;
@@ -1084,15 +1184,17 @@ word directive(void) /* these are of the form "%identifier" */
     break;
   case 'e':
     if (is("export") || is("_e_x_p_o_r_t")) {
-      if (magic)
+      if (magic) {
         syntax("%export directive not permitted in \"-exp\" script\n");
+}
       return (EXPORT);
     }
     break;
   case 'f':
     if (is("free") || is("_f_r_e_e")) {
-      if (magic)
+      if (magic) {
         syntax("%free directive not permitted in \"-exp\" script\n");
+}
       return (FREE);
     }
     break;
@@ -1103,19 +1205,20 @@ word directive(void) /* these are of the form "%identifier" */
         setlmargin();
       }
       /* does `indent' for grammar */
-      if (!pathname())
+      if (!pathname()) {
         syntax("bad pathname after %include\n");
-      else
+      } else {
         yylval = strcons(addextn(1, dicp), fileinfo(get_fil(current_file), holdlin)),
         /* (includee,hereinfo) */
             keep(dicp);
+}
       return (INCLUDE);
     }
     if (is("insert") || is("_i_n_s_e_r_t")) {
       char *f = pathname();
-      if (!f)
+      if (!f) { {
         syntax("bad pathname after %insert\n");
-      else if (insertdepth < 12 && openfile(f)) {
+      } } else if (insertdepth < 12 && openfile(f)) {
         adjust_prefix(f);
         vergstack = cons(lverge, vergstack);
         echostack = cons(echoing, echostack);
@@ -1133,10 +1236,11 @@ word directive(void) /* these are of the form "%identifier" */
         if (echoing) {
           putchar('\n');
           if (!literate) {
-            if (litmain)
+            if (litmain) {
               putchar('>'), spaces(holdcol);
-            else
+            } else {
               spaces(holdcol);
+}
           }
         }
         c = getch();
@@ -1146,10 +1250,11 @@ word directive(void) /* these are of the form "%identifier" */
         int toomany = (insertdepth >= 12);
         printf("%s%%insert error - cannot open \"%s\"\n", echoing ? "\n" : "", f);
         keep(dicp);
-        if (toomany)
+        if (toomany) {
           printf("too many nested %%insert directives (limit=%ld)\n", insertdepth);
-        else
+        } else {
           files = append1(files, cons(make_fil(f, 0, 0, NIL), NIL));
+}
         /* line above for benefit of `oldfiles' */
         acterror();
       }
@@ -1158,8 +1263,9 @@ word directive(void) /* these are of the form "%identifier" */
     break;
   case 'l':
     if (is("lex") || is("_^Hl_^He_^Hx")) {
-      if (inlex)
+      if (inlex) {
         syntax("nested %lex not permitted\n");
+}
       /* due to use of global vars inlex, lexdefs */
       return (LEX);
     }
@@ -1175,8 +1281,9 @@ word directive(void) /* these are of the form "%identifier" */
     }
     break;
   }
-  if (echoing)
+  if (echoing) {
     putchar('\n');
+}
   printf("syntax error: unknown directive \"%%%s\"\n", dicp), acterror();
   return (END);
 }
@@ -1205,11 +1312,12 @@ void kollect(int (*f)(int))
 
 char *keep(char *p) /* call this to retain volatile string for later use */
 {
-  if (p == dicp)
+  if (p == dicp) {
     dicp = dicq;
-  else
+  } else {
     (void)strcpy(dicp, p), p = dicp, dicp = dicq = dicp + strlen(dicp) + 1, dic_check();
-  return (p);
+}
+  return p;
 }
 
 void dic_check(void) /* called from REDUCE */
@@ -1220,29 +1328,35 @@ void dic_check(void) /* called from REDUCE */
 void numeral(void) {
   word nflag = 1;
   dicq = dicp;
-  while (isdigit(c))
+  while (isdigit(c)) {
     *dicq++ = c, c = getch();
+}
   if (c == '.' && peekdig()) {
     *dicq++ = c, c = getch();
     nflag = 0;
-    while (isdigit(c))
+    while (isdigit(c)) {
       *dicq++ = c, c = getch();
+}
   }
   if (c == 'e') {
     word np = 0;
     *dicq++ = c, c = getch();
     nflag = 0;
-    if (c == '+')
+    if (c == '+') {
       c = getch();
-    else /* ignore + before exponent */
-      if (c == '-')
+    } else /* ignore + before exponent */
+      if (c == '-') {
         *dicq++ = c, c = getch();
-    if (!isdigit(c)) /* e must be followed by some digits */
+}
+    if (!isdigit(c)) { /* e must be followed by some digits */
       syntax("badly formed floating point number\n");
-    while (c == '0')
+}
+    while (c == '0') {
       *dicq++ = c, c = getch();
-    while (isdigit(c))
+}
+    while (isdigit(c)) {
       np++, *dicq++ = c, c = getch();
+}
     if (!nflag && np > 3) /* scanf falls over with silly exponents */
     {
       syntax("floating point number out of range\n");
@@ -1250,9 +1364,9 @@ void numeral(void) {
     }
   }
   ovflocheck;
-  if (nflag) /* `.' or `e' makes fractional */
+  if (nflag) { { /* `.' or `e' makes fractional */
     *dicq = '\0', yylval = bigscan(dicp);
-  else {
+  } } else {
     double r = 0.0;
     if (dicq - dicp > 60) /* this allows 59 chars */
     /* scanf crashes, on VAX, gives wrong answers, on ORION 1/05 */
@@ -1271,36 +1385,44 @@ void hexnumeral(void) /* added 21.11.2013 */
   dicq = dicp;
   *dicq++ = c, c = getch(); /* 0 */
   *dicq++ = c, c = getch(); /* x */
-  if (!isxdigit(c) && c != '.')
+  if (!isxdigit(c) && c != '.') {
     syntax("malformed hex number\n");
-  while (c == '0' && isxdigit(peekch()))
+}
+  while (c == '0' && isxdigit(peekch())) {
     c = getch(); /* skip zeros before first nonzero digit */
-  while (isxdigit(c))
+}
+  while (isxdigit(c)) {
     *dicq++ = c, c = getch();
+}
   ovflocheck;
   if (c == '.' || tolower(c) == 'p') /* hex float, added 20.11.19 */
   {
     double d;
     if (c == '.') {
       *dicq++ = c, c = getch();
-      while (isxdigit(c))
+      while (isxdigit(c)) {
         *dicq++ = c, c = getch();
+}
     }
     if (c == 'p') {
       *dicq++ = c, c = getch();
-      if (c == '+' || c == '-')
+      if (c == '+' || c == '-') {
         *dicq++ = c, c = getch();
-      if (!isdigit(c))
+}
+      if (!isdigit(c)) {
         syntax("malformed hex float\n");
-      while (isdigit(c))
+}
+      while (isdigit(c)) {
         *dicq++ = c, c = getch();
+}
     }
     ovflocheck;
     *dicq = '\0';
-    if (dicq - dicp > 60 || sscanf(dicp, "%lf", &d) != 1)
+    if (dicq - dicp > 60 || sscanf(dicp, "%lf", &d) != 1) {
       syntax("malformed hex float\n");
-    else
+    } else {
       yylval = sto_dbl(d);
+}
     return;
   }
   *dicq = '\0';
@@ -1310,14 +1432,18 @@ void hexnumeral(void) /* added 21.11.2013 */
 void octnumeral(void) /* added 21.11.2013 */
 {
   dicq = dicp;
-  if (!isdigit(c))
+  if (!isdigit(c)) {
     syntax("malformed octal number\n");
-  while (c == '0' && isdigit(peekch()))
+}
+  while (c == '0' && isdigit(peekch())) {
     c = getch(); /* skip zeros before first nonzero digit */
-  while (isdigit(c) && c <= '7')
+}
+  while (isdigit(c) && c <= '7') {
     *dicq++ = c, c = getch();
-  if (isdigit(c))
+}
+  if (isdigit(c)) {
     syntax("illegal digit in octal number\n");
+}
   ovflocheck;
   *dicq = '\0';
   yylval = bigoscan(dicp, dicq);
@@ -1328,15 +1454,18 @@ word namebucket[128]; /* each namebucket has a list terminated by 0, not NIL */
 int hash(char *s) /* returns a value in {0..127} */
 {
   int h = *s;
-  if (h)
-    while (*++s)
+  if (h) {
+    while (*++s) {
       h ^= *s; /* guard necessary to deal with s empty */
+}
+}
   return (h & 127);
 }
 
 int isconstrname(char *s) {
-  if (s[0] == '$')
+  if (s[0] == '$') {
     s++;
+}
   return isupper((int)*s); /* formerly !islower */
 }
 
@@ -1346,27 +1475,33 @@ word getfname(word x)
 {
   char *p = get_id(x);
   dicq = dicp;
-  while ((*dicq++ = *p++))
+  while ((*dicq++ = *p++)) {
     ;
-  if (dicq - dicp < 3)
+}
+  if (dicq - dicp < 3) {
     fprintf(stderr, "impossible event in getfname\n"), exit(1);
+}
   dicq[-2] = '\0'; /* overwrite last char */
   ovflocheck;
   return (name());
 }
 
 word name(void) {
-  word q, h;
+  word q;
+  word h;
   q = namebucket[h = hash(dicp)];
-  while (q && !is(get_id(hd(q))))
+  while (q && !is(get_id(hd(q)))) {
     q = tl(q);
+}
   if (q == 0) {
     q = sto_id(dicp);
     namebucket[h] = cons(q, namebucket[h]);
     keep(dicp);
-  } else
+  } else { {
     q = hd(q);
-  return (q);
+}
+}
+  return q;
 }
 /* note - keeping buckets sorted didn't seem to help (if anything slightly
    slower) probably because ordering only relevant if name not present, and
@@ -1377,11 +1512,12 @@ static int inprelude = 1;
 word make_id(char *n)
 /* used in mira_setup(), primdef(), predef(), all in steer.c */
 {
-  word x, h;
+  word x;
+  word h;
   h = hash(n);
   x = sto_id(inprelude ? keep(n) : n);
   namebucket[h] = cons(x, namebucket[h]);
-  return (x);
+  return x;
 }
 
 word findid(char *n)
@@ -1389,8 +1525,9 @@ word findid(char *n)
 {
   word q;
   q = namebucket[hash(n)];
-  while (q && !(strcmp(n, get_id(hd(q))) == 0))
+  while (q && !(strcmp(n, get_id(hd(q))) == 0)) {
     q = tl(q);
+}
   return (q ? hd(q) : NIL);
 }
 
@@ -1402,8 +1539,9 @@ void reset_pns(void) /* (re)initialise private name space */
   nextpn = 0;
   if (!pnvec) {
     pnvec = (word *)malloc(pn_lim * sizeof(word));
-    if (pnvec == NULL)
+    if (pnvec == NULL) {
       mallocfail("pnvec");
+}
   }
 }
 
@@ -1412,8 +1550,9 @@ word make_pn(word val) /* create new private name with value val */
   if (nextpn == pn_lim) {
     pn_lim += 400;
     pnvec = (word *)realloc(pnvec, pn_lim * sizeof(word));
-    if (pnvec == NULL)
+    if (pnvec == NULL) {
       mallocfail("pnvec");
+}
   }
   pnvec[nextpn] = strcons(nextpn, val);
   return (pnvec[nextpn++]);
@@ -1422,14 +1561,17 @@ word make_pn(word val) /* create new private name with value val */
 word sto_pn(word n) /* return n'th private name, extending pnvec if necessary */
 {
   if (n >= pn_lim) {
-    while (pn_lim <= n)
+    while (pn_lim <= n) {
       pn_lim += 400;
+}
     pnvec = (word *)realloc(pnvec, pn_lim * sizeof(word));
-    if (pnvec == NULL)
+    if (pnvec == NULL) {
       mallocfail("pnvec");
+}
   }
-  while (nextpn <= n) /* NB allocates all missing names upto and including nth*/
+  while (nextpn <= n) { /* NB allocates all missing names upto and including nth*/
     pnvec[nextpn] = strcons(nextpn, UNDEF), nextpn++;
+}
   return (pnvec[n]);
 }
 
@@ -1448,14 +1590,15 @@ static word sl = 100;
 
 void string(void) {
   word p;
-  word ch, badch = 0;
+  word ch;
+  word badch = 0;
   c = getch();
   ch = getlitch();
   p = yylval = cons(NIL, NIL);
-  while (ch != EOF && rawch != '\"' && rawch != '\n')
-    if (ch == -7)
+  while (ch != EOF && rawch != '\"' && rawch != '\n') {
+    if (ch == -7) { {
       ch = getlitch();
-    else /* skip \& */
+    } } else /* skip \& */
       if (ch < 0) {
         badch = ch;
         break;
@@ -1463,14 +1606,17 @@ void string(void) {
         p = tl(p) = cons(ch, NIL);
         ch = getlitch();
       }
+}
   yylval = tl(yylval);
-  if (badch)
+  if (badch) {
     errclass(badch, 1);
-  if (rawch == '\n')
+}
+  if (rawch == '\n') { {
     syntax("non-escaped newline encountered inside string quotes\n");
-  else if (ch == EOF) {
-    if (echoing)
+  } } else if (ch == EOF) {
+    if (echoing) {
       putchar('\n');
+}
     printf("syntax error: script ends inside unclosed string quotes - \n");
     printf("    \"");
     while (yylval != NIL && sl--) {
@@ -1484,41 +1630,51 @@ void string(void) {
 
 int charclass(void) {
   word p;
-  word ch, badch = 0, anti = 0;
+  word ch;
+  word badch = 0;
+  word anti = 0;
   c = getch();
-  if (c == '^')
+  if (c == '^') {
     anti = 1, c = getch();
+}
   ch = getlitch();
   p = yylval = cons(NIL, NIL);
-  while (ch != EOF && rawch != '`' && rawch != '\n')
-    if (ch == -7)
+  while (ch != EOF && rawch != '`' && rawch != '\n') {
+    if (ch == -7) { {
       ch = getlitch();
-    else /* skip \& */
+    } } else /* skip \& */
       if (ch < 0) {
         badch = ch;
         break;
       } else {
-        if (rawch == '-' && hd(p) != NIL && hd(p) != DOTDOT)
+        if (rawch == '-' && hd(p) != NIL && hd(p) != DOTDOT) {
           ch = DOTDOT; /* non-initial, non-escaped '-' */
+}
         p = tl(p) = cons(ch, NIL);
         ch = getlitch();
       }
-  if (hd(p) == DOTDOT)
+}
+  if (hd(p) == DOTDOT) {
     hd(p) = '-';                            /* naturalise a trailing '-' */
-  for (p = yylval; tl(p) != NIL; p = tl(p)) /* move each DOTDOT to front of range */
+}
+  for (p = yylval; tl(p) != NIL; p = tl(p)) { /* move each DOTDOT to front of range */
     if (hd(tl(p)) == DOTDOT) {
       hd(tl(p)) = hd(p), hd(p) = DOTDOT;
-      if (hd(tl(p)) >= hd(tl(tl(p))))
+      if (hd(tl(p)) >= hd(tl(tl(p)))) {
         syntax("illegal use of '-' in [charclass]\n");
+}
     }
+}
   yylval = tl(yylval);
-  if (badch)
+  if (badch) {
     errclass(badch, 2);
-  if (rawch == '\n')
+}
+  if (rawch == '\n') { {
     syntax("non-escaped newline encountered in char class\n");
-  else if (ch == EOF) {
-    if (echoing)
+  } } else if (ch == EOF) {
+    if (echoing) {
       putchar('\n');
+}
     printf("syntax error: script ends inside unclosed char class brackets - \n");
     printf("    [");
     while (yylval != NIL && sl--) {
@@ -1528,30 +1684,33 @@ int charclass(void) {
     printf("...]\n");
     acterror();
   }
-  return (anti);
+  return anti;
 }
 
 void reset_lex(void) /* called after an error */
 {
   extern word errs, errline;
-  extern char *current_script;
+  
   if (!commandmode) {
-    if (!errs)
+    if (!errs) {
       errs = fileinfo(get_fil(current_file), line_no);
+}
     /* convention, if errs set contains location of error, otherwise pick up
        from current_file and line_no */
-    if (tl(errs) == 0 && (char *)hd(errs) == current_script)
+    if (tl(errs) == 0 && (char *)hd(errs) == current_script) {
       /* at end of file, so line_no has been reset to 0 */
       printf("error occurs at end of ");
-    else
+    } else {
       printf("error found near line %ld of ", tl(errs));
+}
     printf("%sfile \"%s\"\ncompilation abandoned\n",
            (char *)hd(errs) == current_script ? "" : "%insert ", (char *)hd(errs));
-    if ((char *)hd(errs) == current_script)
+    if ((char *)hd(errs) == current_script) { {
       errline = tl(errs) == 0 ? lastline : tl(errs), errs = 0;
-    else {
-      while (tl(linostack) != NIL)
+    } } else {
+      while (tl(linostack) != NIL) {
         linostack = tl(linostack);
+}
       errline = hd(linostack);
     }
     /* tells editor where to find error - errline contains location of 1st
@@ -1564,11 +1723,14 @@ void reset_lex(void) /* called after an error */
 void reset_state(void) /* reset all global variables used by compiler */
 {
   extern word TABSTRS, SGC, newtyps, algshfns, showchain, inexplist, sreds, rv_script, idsused;
-  if (commandmode)
-    while (c != '\n' && c != EOF)
+  if (commandmode) {
+    while (c != '\n' && c != EOF) {
       c = getc(s_in); /* no echo */
-  while (fileq != NIL)
+}
+}
+  while (fileq != NIL) {
     fclose((FILE *)hd(hd(fileq))), fileq = tl(fileq);
+}
   insertdepth = -1;
   s_in = stdin;
   echostack = idsused = prefixstack = litstack = linostack = vergstack = margstack = NIL;

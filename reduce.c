@@ -33,25 +33,25 @@ static double fa, fb;
 static long long cycles = 0;
 static word stdinuse = 0;
 
-static void apfile(word);
-static void closefile(word);
-static int compare(word, word);
+static void apfile(word /*f*/);
+static void closefile(word /*f*/);
+static int compare(word /*a*/, word /*b*/);
 static void div_error(void);
-static void fn_error(char *);
-static void force(word);
-static void getenv_error(char *);
-static word g_residue(word);
-static void int_error(char *);
-static void lexfail(word);
-static word lexstate(word);
-static int memclass(int, word);
-static word numplus(word, word);
-static void outf(word);
-static word piperrmess(word);
-static void print(word);
-static word reduce(word);
-static void stdin_error(int);
-static const char *stdname(int);
+static void fn_error(char * /*s*/);
+static void force(word /*x*/);
+static void getenv_error(char * /*a*/);
+static word g_residue(word /*toks2*/);
+static void int_error(char * /*s*/);
+static void lexfail(word /*x*/);
+static word lexstate(word /*x*/);
+static int memclass(int /*c*/, word /*x*/);
+static word numplus(word /*x*/, word /*y*/);
+static void outf(word /*e*/);
+static word piperrmess(word /*pid*/);
+static void print(word /*e*/);
+static word reduce(word /*e*/);
+static void stdin_error(int /*c*/);
+static const char *stdname(int /*c*/);
 static void subs_error(void);
 
 #define constr_tag(x) hd(x)
@@ -76,51 +76,58 @@ int compare(word a, word b)
 L:
   switch (tag[a]) {
   case DOUBLE:
-    if (tag[b] == DOUBLE)
+    if (tag[b] == DOUBLE) {
       return (fsign(get_dbl(a) - get_dbl(b)));
-    else
+    } else {
       return (fsign(get_dbl(a) - bigtodbl(b)));
+}
   case INT:
-    if (tag[b] == INT)
+    if (tag[b] == INT) {
       return (bigcmp(a, b));
-    else
+    } else {
       return (fsign(bigtodbl(a) - get_dbl(b)));
+}
   case UNICODE:
     return sign(get_char(a) - get_char(b));
   case ATOM:
-    if (tag[b] == UNICODE)
+    if (tag[b] == UNICODE) {
       return sign(get_char(a) - get_char(b));
-    if ((S <= a && a <= ERROR) || (S <= b && b <= ERROR))
+}
+    if ((S <= a && a <= ERROR) || (S <= b && b <= ERROR)) {
       fn_error("attempt to compare functions");
+}
     /* what about constructors - FIX LATER */
-    if (tag[b] == ATOM)
+    if (tag[b] == ATOM) {
       return (sign(a - b)); /* order of declaration */
-    else
-      return (-1); /* atomic object always less than non-atomic */
+    }       return (-1); /* atomic object always less than non-atomic */
   case CONSTRUCTOR:
-    if (tag[b] == CONSTRUCTOR)
+    if (tag[b] == CONSTRUCTOR) {
       return (sign(constr_tag(a) - constr_tag(b))); /*order of declaration*/
-    else
+    } else {
       return (-1); /* atom less than non-atom */
+}
   case CONS:
   case AP:
     if (tag[a] == tag[b]) {
       word temp;
       hd(a) = reduce(hd(a));
       hd(b) = reduce(hd(b));
-      if ((temp = compare(hd(a), hd(b))) != 0)
-        return (temp);
+      if ((temp = compare(hd(a), hd(b))) != 0) {
+        return temp;
+}
       a = tl(a) = reduce(tl(a));
       b = tl(b) = reduce(tl(b));
       goto L;
-    } else if (S <= b && b <= ERROR)
+    } else if (S <= b && b <= ERROR) { {
       fn_error("attempt to compare functions");
-    else
-      return (1); /* non-atom greater than atom */
+    } } else { {
+      return 1; /* non-atom greater than atom */
+}
+}
   default:
     fprintf(stderr, "\nghastly error in compare\n");
   }
-  return (0);
+  return 0;
 }
 
 void force(word x)         /* ensures that x is evaluated "all the way" */
@@ -130,10 +137,12 @@ void force(word x)         /* ensures that x is evaluated "all the way" */
   switch (tag[x]) {
   case AP:
     h = hd(x);
-    while (tag[h] == AP)
+    while (tag[h] == AP) {
       h = hd(h);
-    if (S <= h && h <= ERROR)
+}
+    if (S <= h && h <= ERROR) {
       return; /* don't go inside functions */
+}
     /* what about unsaturated constructors? fix later */
     while (tag[x] == AP) {
       tl(x) = reduce(tl(x));
@@ -148,40 +157,44 @@ void force(word x)         /* ensures that x is evaluated "all the way" */
       x = tl(x) = reduce(tl(x));
     }
   }
-  return;
-}
+  }
 
 word head(word x) /* finds the function part of x */
 {
-  while (tag[x] == AP)
+  while (tag[x] == AP) {
     x = hd(x);
-  return (x);
+}
+  return x;
 }
 
-extern char linebuf[]; /* used as workspace in various places */
+/* used as workspace in various places */
 
 /* ### */ /* opposite is str_conv - see lex.c */
 char *getstring(word x, char *cmd)
 /* collect Miranda string - x is already reduced */
 /* cmd is context, for error message */
 {
-  word x1 = x, n = 0;
+  word x1 = x;
+  word n = 0;
   char *p = linebuf;
-  while (tag[x] == CONS && n < BUFSIZE)
+  while (tag[x] == CONS && n < BUFSIZE) {
     n++, hd(x) = reduce(hd(x)), x = tl(x) = reduce(tl(x));
+}
   x = x1;
-  while (tag[x] == CONS && n--)
+  while (tag[x] == CONS && n--) {
     *p++ = hd(x), x = tl(x);
+}
   *p++ = '\0';
   if (p - linebuf > BUFSIZE) {
-    if (cmd)
+    if (cmd) {
       fprintf(stderr, "\n%s, argument string too long (limit=%d chars): %s...\n", cmd, BUFSIZE,
               linebuf),
           outstats(), exit(1);
-    else
-      return (linebuf); /* see G_CLOSE */
+    } else {
+      return linebuf; /* see G_CLOSE */
+}
   }
-  return (linebuf); /* very inefficient to keep doing this for filenames etc.
+  return linebuf; /* very inefficient to keep doing this for filenames etc.
                     CANNOT WE SUPPORT A PACKED REPRESENTATION OF STRINGS? */
 } /* call keep(linebuf) if you want to save the string */
 
@@ -206,7 +219,7 @@ void output(word e)
    whole reduction process is driven by the need to print  */
 /* the value of the whole expression is a list of `messages' */
 {
-  extern word *cstack;
+  
   cstack = &e; /* don't follow C stack below this in gc */
   e = reduce(e);
   while (tag[e] == CONS) {
@@ -249,10 +262,11 @@ void output(word e)
       break;
     case Exit: {
       word n = reduce(tl(hd(e)));
-      if (tag[n] == INT)
+      if (tag[n] == INT) {
         n = digit0(n);
-      else
+      } else {
         int_error("Exit");
+}
       outstats();
       exit(n);
     }
@@ -263,8 +277,9 @@ void output(word e)
     }
     e = tl(e) = reduce(tl(e));
   }
-  if (e == NIL)
+  if (e == NIL) {
     return;
+}
   fprintf(stderr, "\nimpossible event in output\n"), putc('<', stderr), out(stderr, e),
       fprintf(stderr, ">\n");
   exit(1);
@@ -276,16 +291,18 @@ void print(word e) /* evaluate list of chars and send to s_out */
   e = reduce(e);
   while (tag[e] == CONS && is_char(hd(e) = reduce(hd(e)))) {
     unsigned c = get_char(hd(e));
-    if (UTF8)
+    if (UTF8) {
       outUTF8(c, s_out);
-    else if (c < 256)
+    } else if (c < 256) {
       putc(c, s_out);
-    else
+    } else {
       fprintf(stderr, "\n warning: non Latin1 char %x in print, ignored\n", c);
+}
     e = tl(e) = reduce(tl(e));
   }
-  if (e == NIL)
+  if (e == NIL) {
     return;
+}
   fprintf(stderr, "\nimpossible event in print\n"), putc('<', stderr), out(stderr, e),
       fprintf(stderr, ">\n"), exit(1);
 }
@@ -299,8 +316,9 @@ void outf(word e) /*  e is of the form (Tofile f x)  */
 {
   word p = outfilq; /* have we already opened this file for output? */
   char *f = getstring(tl(hd(e)) = reduce(tl(hd(e))), "Tofile");
-  while (p != NIL && strcmp((char *)hd(hd(p)), f) != 0)
+  while (p != NIL && strcmp((char *)hd(hd(p)), f) != 0) {
     p = tl(p);
+}
   if (p == NIL) /* new output file */
   {
     s_out = fopen(f, "w");
@@ -309,11 +327,14 @@ void outf(word e) /*  e is of the form (Tofile f x)  */
       s_out = stdout;
       return;
     }
-    if (isatty(fileno(s_out)))
+    if (isatty(fileno(s_out))) {
       setbuf(s_out, NULL); /*for unbuffered tty output*/
+}
     outfilq = cons(datapair(keep(f), s_out), outfilq);
-  } else
+  } else { {
     s_out = (FILE *)tl(hd(p));
+}
+}
   print(tl(e));
   s_out = stdout;
 }
@@ -322,15 +343,17 @@ void apfile(word f) /* open file of name f for appending and add to outfilq */
 {
   word p = outfilq; /* is it already open? */
   char *fil = getstring(f, "Appendfile");
-  while (p != NIL && strcmp((char *)hd(hd(p)), fil) != 0)
+  while (p != NIL && strcmp((char *)hd(hd(p)), fil) != 0) {
     p = tl(p);
+}
   if (p == NIL) /* no, so open in append mode */
   {
     FILE *s = fopen(fil, "a");
-    if (s == NULL)
+    if (s == NULL) {
       fprintf(stderr, "\nAppendfile: cannot write to \"%s\"\n", fil);
-    else
+    } else {
       outfilq = cons(datapair(keep(fil), s), outfilq);
+}
   }
   /* if already there do nothing */
 }
@@ -340,8 +363,9 @@ void closefile(word f)
 {
   word *p = &outfilq; /* is this file open for output? */
   char *fil = getstring(f, "Closefile");
-  while (*p != NIL && strcmp((char *)hd(hd(*p)), fil) != 0)
+  while (*p != NIL && strcmp((char *)hd(hd(*p)), fil) != 0) {
     p = &tl(*p);
+}
   if (*p != NIL) /* yes */
   {
     fclose((FILE *)tl(hd(*p)));
@@ -417,8 +441,9 @@ word reduce(word e) {
 #endif
 
 NEXTREDEX:
-  while (!abnormal(e) && tag[e] == AP)
+  while (!abnormal(e) && tag[e] == AP) {
     DOWNLEFT;
+}
 #ifdef HISTO
   histo(e);
 #endif
@@ -595,10 +620,11 @@ NEXTREDEX:
                  arbitrary constructors       */
     getarg(arg1);
     upleft;
-    if (tag[head(lastarg)] == CONSTRUCTOR) /* be eager if safe */
+    if (tag[head(lastarg)] == CONSTRUCTOR) { /* be eager if safe */
       hd(e) = ap(arg1, hd(lastarg)), tl(e) = tl(lastarg);
-    else
+    } else {
       hd(e) = ap(arg1, ap(BODY, lastarg)), tl(e) = ap(LAST, lastarg);
+}
     DOWNLEFT;
     DOWNLEFT;
     goto NEXTREDEX;
@@ -612,12 +638,15 @@ NEXTREDEX:
     lastarg = reduce(lastarg); /* ### */
     if (tag[lastarg] == INT) {
       hold = bigsub(lastarg, arg1);
-      if (poz(hold))
+      if (poz(hold)) {
         hd(e) = arg2, tl(e) = hold;
-      else
+      } else {
         hd(e) = I, e = tl(e) = FAIL;
-    } else
+}
+    } else { {
       hd(e) = I, e = tl(e) = FAIL;
+}
+}
     goto NEXTREDEX;
 
   case U_: /*    U_ f (a:b) => f a b
@@ -696,10 +725,11 @@ NEXTREDEX:
     GETARG(arg1);
     UPLEFT;
     if (tl(arg1) != NIL &&
-        (tag[arg1] == AP ? compare(lastarg, tl(arg1)) : compare(tl(arg1), lastarg)) > 0)
+        (tag[arg1] == AP ? compare(lastarg, tl(arg1)) : compare(tl(arg1), lastarg)) > 0) {
       hd(e) = I, e = tl(e) = NIL;
-    else
+    } else {
       hold = ap(hd(e), numplus(lastarg, hd(arg1))), setcell(CONS, lastarg, hold);
+}
     goto DONE;
     /* efficiency hack - tag of arg1 encodes sign of step */
 
@@ -708,10 +738,11 @@ NEXTREDEX:
     getarg(arg1);
     upleft;
     lastarg = reduce(lastarg); /* ### */
-    if (lastarg == NIL)
+    if (lastarg == NIL) {
       hd(e) = I, e = tl(e) = NIL;
-    else
+    } else {
       hold = ap(hd(e), tl(lastarg)), setcell(CONS, ap(arg1, hd(lastarg)), hold);
+}
     goto DONE;
 
   case FLATMAP: /* funny version of map for compiling zf exps
@@ -743,20 +774,24 @@ NEXTREDEX:
     getarg(arg1);
     upleft;
     lastarg = reduce(lastarg);                                       /* ### */
-    while (lastarg != NIL && reduce(ap(arg1, hd(lastarg))) == False) /* ### */
+    while (lastarg != NIL && reduce(ap(arg1, hd(lastarg))) == False) { /* ### */
       lastarg = reduce(tl(lastarg));                                 /* ### */
-    if (lastarg == NIL)
+}
+    if (lastarg == NIL) {
       hd(e) = I, e = tl(e) = NIL;
-    else
+    } else {
       hold = ap(hd(e), tl(lastarg)), setcell(CONS, hd(lastarg), hold);
+}
     goto DONE;
 
   case LIST_LAST: /* LIST_LAST x  =>  x!(#x-1)  */
     upleft;
-    if ((lastarg = reduce(lastarg)) == NIL)
+    if ((lastarg = reduce(lastarg)) == NIL) {
       fn_error("last []");                             /* ### */
-    while ((tl(lastarg) = reduce(tl(lastarg))) != NIL) /* ### */
+}
+    while ((tl(lastarg) = reduce(tl(lastarg))) != NIL) { /* ### */
       lastarg = tl(lastarg);
+}
     hd(e) = I;
     e = tl(e) = hd(lastarg);
     goto NEXTREDEX;
@@ -766,8 +801,9 @@ NEXTREDEX:
     {
       long long n = 0; /* problem - may be followed by gc */
       /* cannot make static because of ### below */
-      while ((lastarg = reduce(lastarg)) != NIL) /* ### */
+      while ((lastarg = reduce(lastarg)) != NIL) { /* ### */
         lastarg = tl(lastarg), n++;
+}
       simpl(sto_int(n));
     }
     goto DONE;
@@ -776,17 +812,21 @@ NEXTREDEX:
     getarg(arg1);
     upleft;
     arg1 = tl(hd(e)) = reduce(tl(hd(e))); /* ### */
-    if (tag[arg1] != INT)
+    if (tag[arg1] != INT) {
       int_error("drop");
+}
     {
       long long n = get_int(arg1);
-      while (n-- > 0)
+      while (n-- > 0) {
         if ((lastarg = reduce(lastarg)) == NIL) /* ### */
         {
           simpl(NIL);
           goto DONE;
-        } else
+        } else { {
           lastarg = tl(lastarg);
+}
+}
+}
     }
     simpl(lastarg);
     goto NEXTREDEX;
@@ -796,24 +836,28 @@ NEXTREDEX:
     upleft;
     arg1 = tl(hd(e)) = reduce(tl(hd(e))); /* ### */
     lastarg = reduce(lastarg);            /* ### */
-    if (lastarg == NIL)
+    if (lastarg == NIL) {
       subs_error();
+}
     {
       long long indx = 0; /* 0 is not used but int_error() calls exit() */
-      if (tag[arg1] == ATOM)
+      if (tag[arg1] == ATOM) {
         indx = arg1; /* small indexes represented directly */
-      else if (tag[arg1] == INT)
+      } else if (tag[arg1] == INT) {
         indx = get_int(arg1);
-      else
+      } else {
         int_error("!");
+}
       /* problem, indx may be followed by gc
          - cannot make static, because of ### below */
-      if (indx < 0)
+      if (indx < 0) {
         subs_error();
+}
       while (indx) {
         lastarg = tl(lastarg) = reduce(tl(lastarg)); /* ### */
-        if (lastarg == NIL)
+        if (lastarg == NIL) {
           subs_error();
+}
         indx--;
       }
       hd(e) = I;
@@ -829,8 +873,10 @@ NEXTREDEX:
       hd(e) = ap2(FOLDL, arg1, hd(lastarg));
       tl(e) = tl(lastarg);
       goto NEXTREDEX;
-    } else
+    } else { {
       fn_error("foldl1 applied to []");
+}
+}
 
   case FOLDL: /* FOLDL op r [] => r
                  FOLDL op r (a:x) => FOLDL op (op r a)^ x
@@ -839,9 +885,10 @@ NEXTREDEX:
     getarg(arg1);
     getarg(arg2);
     upleft;
-    while ((lastarg = reduce(lastarg)) != NIL)     /* ### */
+    while ((lastarg = reduce(lastarg)) != NIL) {     /* ### */
       arg2 = reduce(ap2(arg1, arg2, hd(lastarg))), /* ^ ### */
           lastarg = tl(lastarg);
+}
     hd(e) = I, e = tl(e) = arg2;
     goto NEXTREDEX;
 
@@ -851,10 +898,11 @@ NEXTREDEX:
     getarg(arg2);
     upleft;
     lastarg = reduce(lastarg); /* ### */
-    if (lastarg == NIL)
+    if (lastarg == NIL) {
       hd(e) = I, e = tl(e) = arg2;
-    else
+    } else {
       hold = ap(hd(e), tl(lastarg)), hd(e) = ap(arg1, hd(lastarg)), tl(e) = hold;
+}
     goto NEXTREDEX;
 
   L_READBIN:
@@ -864,8 +912,9 @@ NEXTREDEX:
     UPLEFT;           /* gc insecurity - arg is not a heap object */
     if (lastarg == 0) /* special case created by $:- */
     {
-      if (stdinuse == '-')
+      if (stdinuse == '-') {
         stdin_error(':');
+}
       if (stdinuse) {
         hd(e) = I;
         e = tl(e) = NIL;
@@ -891,8 +940,9 @@ NEXTREDEX:
     UPLEFT;           /* gc insecurity - arg is not a heap object */
     if (lastarg == 0) /* special case created by $- */
     {
-      if (stdinuse == ':')
+      if (stdinuse == ':') {
         stdin_error('-');
+}
       if (stdinuse) {
         hd(e) = I;
         e = tl(e) = NIL;
@@ -935,8 +985,9 @@ NEXTREDEX:
       word subject = hd(lastarg);
       /* either datapair(oldn,0) or 0 */
       fprintf(stderr, "\nprogram error: missing case in definition");
-      if (subject) /* cannot do patterns - FIX LATER */
+      if (subject) { /* cannot do patterns - FIX LATER */
         fprintf(stderr, " of %s", (char *)hd(subject));
+}
       putc('\n', stderr);
       out_here(stderr, tl(lastarg), 1);
     }
@@ -960,9 +1011,9 @@ NEXTREDEX:
 
   case ERROR: /* ERROR error_info => BOTTOM */
     upleft;
-    if (errtrap)
+    if (errtrap) { {
       fprintf(stderr, "\n(repeated error)\n");
-    else {
+    } } else {
       errtrap = 1;
       fprintf(stderr, "\nprogram error: ");
       s_out = stderr;
@@ -976,16 +1027,19 @@ NEXTREDEX:
     UPLEFT;
     {
       word *w = &waiting; /* list of terminated pid's and their exit statuses */
-      while (*w != NIL && hd(*w) != lastarg)
+      while (*w != NIL && hd(*w) != lastarg) {
         w = &tl(tl(*w));
-      if (*w != NIL)
+}
+      if (*w != NIL) { {
         hold = hd(tl(*w)), *w = tl(tl(*w)); /* remove entry */
-      else {
+      } } else {
         int status;
-        while ((hold = wait(&status)) != lastarg && hold != -1)
+        while ((hold = wait(&status)) != lastarg && hold != -1) {
           waiting = cons(hold, cons(WEXITSTATUS(status), waiting));
-        if (hold != -1)
+}
+        if (hold != -1) {
           hold = WEXITSTATUS(status);
+}
       }
     }
     simpl(stosmallint(hold));
@@ -1046,8 +1100,9 @@ NEXTREDEX:
     goto NEXTREDEX;
 
   case FAIL: /* FAIL x => FAIL */
-    while (!abnormal(s))
+    while (!abnormal(s)) {
       hold = s, s = hd(s), hd(hold) = FAIL, tl(hold) = 0;
+}
     goto DONE;
 
     /*  case DIOP:   (all strict diadic operators share this code)  */
@@ -1091,16 +1146,18 @@ NEXTREDEX:
     if (tag[arg1] == CONSTRUCTOR) /* don't parenthesise atom */
     {
       hd(e) = I;
-      if (suppressed(arg1))
+      if (suppressed(arg1)) {
         e = tl(e) = str_conv("<unprintable>");
-      else
+      } else {
         e = tl(e) = str_conv(constr_name(arg1));
+}
       goto DONE;
     }
     hold = arg2 ? cons(')', NIL) : NIL;
-    while (tag[arg1] != CONSTRUCTOR)
+    while (tag[arg1] != CONSTRUCTOR) {
       hold = cons(' ', ap2(APPEND, ap(tl(arg1), ap(LAST, arg3)), hold)), arg1 = hd(arg1),
       arg3 = ap(BODY, arg3);
+}
     if (suppressed(arg1)) {
       hd(e) = I;
       e = tl(e) = str_conv("<unprintable>");
@@ -1174,10 +1231,11 @@ NEXTREDEX:
     upleft;
     hold = ap(arg1, lastarg);
     hold = reduce(hold); /* ### */
-    if (fails(hold))
+    if (fails(hold)) {
       setcell(CONS, NIL, lastarg);
-    else
+    } else {
       setcell(CONS, cons(hd(hold), NIL), tl(hold));
+}
     goto DONE;
 
   case G_STAR: /* G_STAR f toks => []:toks, fails(f toks)
@@ -1230,20 +1288,22 @@ NEXTREDEX:
     }
     hd(lastarg) = reduce(hd(lastarg)); /* ### */
     hold = ap(FST, hd(lastarg));
-    if (compare(arg1, reduce(hold))) /* ### */
+    if (compare(arg1, reduce(hold))) { /* ### */
       hd(e) = I, e = tl(e) = FAILURE;
-    else
+    } else {
       setcell(CONS, arg1, tl(lastarg));
+}
     goto DONE;
 
   case G_ANY: /* G_ANY ((t,s):toks) = t:toks
                  G_ANY [] = FAILURE   */
     upleft;
     lastarg = reduce(lastarg); /* ### */
-    if (lastarg == NIL)
+    if (lastarg == NIL) {
       hd(e) = I, e = tl(e) = FAILURE;
-    else
+    } else {
       setcell(CONS, ap(FST, hd(lastarg)), tl(lastarg));
+}
     goto DONE;
 
   case G_SUCHTHAT: /* G_SUCHTHAT f ((t,s):toks) = t:toks, f t
@@ -1257,30 +1317,33 @@ NEXTREDEX:
     }
     hold = ap(FST, hd(lastarg));
     hold = reduce(hold);                /* ### */
-    if (reduce(ap(arg1, hold)) == True) /* ### */
+    if (reduce(ap(arg1, hold)) == True) { /* ### */
       setcell(CONS, hold, tl(lastarg));
-    else
+    } else {
       hd(e) = I, e = tl(e) = FAILURE;
+}
     goto DONE;
 
   case G_END: /* G_END [] = []:[]
                  G_END other = FAILURE */
     upleft;
     lastarg = reduce(lastarg);
-    if (lastarg == NIL)
+    if (lastarg == NIL) {
       setcell(CONS, NIL, NIL);
-    else
+    } else {
       hd(e) = I, e = tl(e) = FAILURE;
+}
     goto DONE;
 
   case G_STATE: /* G_STATE ((t,s):toks) = s:((t,s):toks)
                    G_STATE [] = FAILURE   */
     upleft;
     lastarg = reduce(lastarg); /* ### */
-    if (lastarg == NIL)
+    if (lastarg == NIL) {
       hd(e) = I, e = tl(e) = FAILURE;
-    else
+    } else {
       setcell(CONS, ap(SND, hd(lastarg)), lastarg);
+}
     goto DONE;
 
   case G_SEQ: /* G_SEQ f g toks = FAILURE, fails(f toks)
@@ -1334,17 +1397,20 @@ NEXTREDEX:
     if (fails(hold)) {
       fprintf(stderr, "\nPARSE OF %sFAILS WITH UNEXPECTED ", getstring(arg1, 0));
       arg3 = reduce(tl(g_residue(arg3)));
-      if (arg3 == NIL)
+      if (arg3 == NIL) {
         fprintf(stderr, "END OF INPUT\n"), outstats(), exit(1);
+}
       hold = ap(FST, hd(arg3));
       hold = reduce(hold);
       fprintf(stderr, "TOKEN \"");
-      if (hold == OFFSIDE)
+      if (hold == OFFSIDE) {
         fprintf(stderr, "offside"); /* not now possible */
+}
       {
         char *p = getstring(hold, 0);
-        while (*p)
+        while (*p) {
           fprintf(stderr, "%s", charname(*p++));
+}
       }
       fprintf(stderr, "\"\n");
       outstats();
@@ -1446,8 +1512,9 @@ NEXTREDEX:
     GETARG(arg2);
     upleft;
   L2:
-    if (arg1 == NIL)
+    if (arg1 == NIL) {
       lexfail(lastarg);
+}
     if (hd(hd(hd(arg1))) && !member(hd(hd(hd(arg1))), arg2)) {
       arg1 = tl(arg1);
       goto L2;
@@ -1483,8 +1550,9 @@ NEXTREDEX:
     GETARG(arg2);
     upleft;
   L3:
-    if (arg1 == NIL)
+    if (arg1 == NIL) {
       lexfail(lastarg);
+}
     if (hd(hd(hd(arg1))) && !member(hd(hd(hd(arg1))), arg2)) {
       arg1 = tl(arg1);
       goto L3;
@@ -1504,8 +1572,9 @@ NEXTREDEX:
     GETARG(arg1); /* known to be an explicit list */
     arg2 = NIL;   /* to hold reversed list */
     while (arg1 != NIL) {
-      if (tag[hd(arg1)] == STRCONS) /* strip off lex state if present */
+      if (tag[hd(arg1)] == STRCONS) { /* strip off lex state if present */
         hd(arg1) = tl(hd(arg1));
+}
       hold = tl(arg1), tl(arg1) = arg2, arg2 = arg1, arg1 = hold;
     }
     hd(e) = I;
@@ -1533,11 +1602,11 @@ NEXTREDEX:
     }
     hold = hd(tl(arg1)); /* the char */
     setcell(CONS, strcons(hd(arg1), hold), ap(LEX_COUNT, arg1));
-    if (hold == '\n')
+    if (hold == '\n') { {
       hd(arg1) = ((hd(arg1) >> 8) + 1) << 8;
-    else {
+    } } else {
       word col = hd(arg1) & 255;
-      col = hold == '\t' ? (col / 8 + 1) * 8 : col + 1;
+      col = hold == '\t' ? ((col / 8) + 1) * 8 : col + 1;
       hd(arg1) = (hd(arg1) & (~255)) | col;
     }
     tl(arg1) = tl(tl(arg1));
@@ -1689,8 +1758,9 @@ NEXTREDEX:
     GETARG(arg2);
     upleft;
     hold = ap2(arg1, arg2, lastarg);
-    while ((hold = reduce(hold)) != NIL) /* ### */
+    while ((hold = reduce(hold)) != NIL) { /* ### */
       arg2 = hd(hold), lastarg = tl(hold), hold = ap2(arg1, arg2, lastarg);
+}
     tag[e] = CONS;
     hd(e) = arg2;
     goto DONE;
@@ -1724,8 +1794,9 @@ NEXTREDEX:
     switch (tag[e]) {
     case STRCONS:
       e = pn_val(e); /* private name */
-      if (e == UNDEF || e == FREE)
+      if (e == UNDEF || e == FREE) {
         fprintf(stderr, "\nimpossible event in reduce - undefined pname\n"), exit(1);
+}
       /* redundant test - remove when sure */
       goto NEXTREDEX;
     case DATAPAIR: /* datapair(oldn,0)(fileinfo(filename,0))=>BOTTOM */
@@ -1806,7 +1877,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
       printf("result= "), out(stdout, e), putchar('\n');
     rdepth--;
 #endif
-    return (e); /* end of reduction */
+    return e; /* end of reduction */
   }
 
   /* otherwise deal with return from subtask */
@@ -1904,8 +1975,9 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
   case READY(TAKE):
     GETARG(arg1);
     upleft;
-    if (tag[arg1] != INT)
+    if (tag[arg1] != INT) {
       int_error("take");
+}
     {
       long long n = get_int(arg1);
       if (n <= 0 || (lastarg = reduce(lastarg)) == NIL) /* ### */
@@ -1926,10 +1998,14 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
       word perm = buf.st_uid == geteuid()   ? (mode & 0x1c0) >> 6
                   : buf.st_gid == getegid() ? (mode & 0x38) >> 3
                                             : mode & 0x7;
-      word r = perm & 0x4 ? 'r' : '-', w = perm & 0x2 ? 'w' : '-', x = perm & 0x1 ? 'x' : '-';
+      word r = perm & 0x4 ? 'r' : '-';
+      word w = perm & 0x2 ? 'w' : '-';
+      word x = perm & 0x1 ? 'x' : '-';
       setcell(CONS, d, cons(r, cons(w, cons(x, NIL))));
-    } else
+    } else { {
       hd(e) = I, e = tl(e) = NIL;
+}
+}
     goto DONE;
 
   case READY(FILESTAT): /* FILESTAT string => ((inode,dev),mtime) */
@@ -1937,10 +2013,11 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     /* Notes:
        Non-existent file has conventional ((inode,dev),mtime) of ((0,-1),0)
        We assume time_t can be stored in int field, this may not port   */
-    if (!stat(getstring(lastarg, "filestat"), &buf))
+    if (!stat(getstring(lastarg, "filestat"), &buf)) {
       setcell(CONS, cons(sto_int(buf.st_ino), sto_int(buf.st_dev)), sto_int(buf.st_mtime));
-    else
+    } else {
       setcell(CONS, cons(stosmallint(0), stosmallint(-1)), stosmallint(0));
+}
     goto DONE;
 
   case READY(GETENV): /* GETENV string => string'
@@ -1955,32 +2032,39 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
         if (UTF8) { /* We shouldn't modify what getenv returns as on some systems
                      * it may be a shared area, so copy it and modify the copy */
           unsigned char *qbuf = (unsigned char *)malloc(strlen((char *)p) + 1);
-          unsigned char *q, *r;
-          if (qbuf == NULL)
+          unsigned char *q;
+          unsigned char *r;
+          if (qbuf == NULL) {
             mallocfail("getenv");
+}
           strcpy((char *)qbuf, (char *)p);
           q = r = qbuf;
-          while (*r)      /* compress to Latin-1 in situ */
-            if (*r > 127) /* start of multibyte */
-              if ((*r == 194 || *r == 195) && r[1] >= 128 && r[1] <= 191) /* Latin-1 */
+          while (*r) {      /* compress to Latin-1 in situ */
+            if (*r > 127) { /* start of multibyte */
+              if ((*r == 194 || *r == 195) && r[1] >= 128 && r[1] <= 191) { /* Latin-1 */
                 *q = *r == 194 ? r[1] : r[1] + 64, q++, r += 2;
-              else
+              } else {
                 getenv_error(a),
                     /* or silently accept errors here? */
                     *q++ = *r++;
-            else
+}
+            } else {
               *q++ = *r++;
+}
+}
           *q = '\0';
           /* convert to list */
           i = strlen((char *)qbuf);
-          while (i--)
+          while (i--) {
             hold = cons(qbuf[i], hold);
+}
           free(qbuf);
         } else {
           /* convert to list */
           i = strlen((char *)p);
-          while (i--)
+          while (i--) {
             hold = cons(p[i], hold);
+}
         }
       }
     }
@@ -1995,19 +2079,24 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
                        convention: if fork fails, exit status is -1 */
     UPLEFT;
     {
-      int pid = (-1), fd[2], fd_a[2];
+      int pid = (-1);
+      int fd[2];
+      int fd_a[2];
       char *cp = getstring(lastarg, "system");
       /* pipe(fd) should return 0, -1 means fail */
       /* fd_a is 2nd pipe, for error messages */
       if (pipe(fd) == (-1) || pipe(fd_a) == (-1) || (pid = fork())) { /* parent (reader) */
-        FILE *fp, *fp_a;
-        if (pid != -1)
-          close(fd[1]), close(fd_a[1]), fp = (FILE *)fdopen(fd[0], "r"),
-                                        fp_a = (FILE *)fdopen(fd_a[0], "r");
-        if (pid == -1 || !fp || !fp_a)
+        FILE *fp;
+        FILE *fp_a;
+        if (pid != -1) {
+          close(fd[1]), close(fd_a[1]), fp = fdopen(fd[0], "r"),
+                                        fp_a = fdopen(fd_a[0], "r");
+}
+        if (pid == -1 || !fp || !fp_a) {
           setcell(CONS, NIL, cons(piperrmess(pid), sto_int(-1)));
-        else
+        } else {
           setcell(CONS, ap(READ, fp), cons(ap(READ, fp_a), ap(WAIT, pid)));
+}
       } else { /* child (writer) */
         static char *shell = "/bin/sh";
         dup2(fd[1], 1);   /* so pipe replaces stdout */
@@ -2027,51 +2116,61 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     {
       word x = lastarg;
       word base = 10;
-      while (x != NIL)
+      while (x != NIL) {
         hd(x) = reduce(hd(x)),         /* ### */
             x = tl(x) = reduce(tl(x)); /* ### */
-      while (lastarg != NIL && isspace(hd(lastarg)))
+}
+      while (lastarg != NIL && isspace(hd(lastarg))) {
         lastarg = tl(lastarg);
+}
       x = lastarg;
-      if (x != NIL && hd(x) == '-')
+      if (x != NIL && hd(x) == '-') {
         x = tl(x);
-      if (hd(x) == '0' && tl(x) != NIL)
+}
+      if (hd(x) == '0' && tl(x) != NIL) {
         switch (tolower(hd(tl(x)))) {
         case 'o':
           base = 8;
           x = tl(tl(x));
-          while (x != NIL && isodigit(hd(x)))
+          while (x != NIL && isodigit(hd(x))) {
             x = tl(x);
+}
           break;
         case 'x':
           base = 16;
           x = tl(tl(x));
-          while (x != NIL && isxdigit(hd(x)))
+          while (x != NIL && isxdigit(hd(x))) {
             x = tl(x);
+}
           break;
         default:
           goto L;
         }
-      else
+      } else {
       L:
-        while (x != NIL && isdigit(hd(x)))
+        while (x != NIL && isdigit(hd(x))) {
           x = tl(x);
-      if (x == NIL)
+}
+}
+      if (x == NIL) { {
         hd(e) = I, e = tl(e) = strtobig(lastarg, base);
-      else {
+      } } else {
         char *p = linebuf;
         double d;
         char junk = 0;
         x = lastarg;
-        while (x != NIL && p - linebuf < BUFSIZE - 1)
+        while (x != NIL && p - linebuf < BUFSIZE - 1) {
           *p++ = hd(x), x = tl(x);
+}
         *p++ = '\0';
         if (p - linebuf > 60 || sscanf(linebuf, "%lf%c", &d, &junk) != 1 || junk) {
           fprintf(stderr, "\nbad arg for numval: \"%s\"\n", linebuf);
           outstats();
           exit(1);
-        } else
+        } else { {
           hd(e) = I, e = tl(e) = sto_dbl(d);
+}
+}
       }
       goto DONE;
     }
@@ -2117,9 +2216,10 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
       e = lastarg;
       goto NEXTREDEX;
     }
-    if (S <= (hold = head(arg1)) && hold <= ERROR)
+    if (S <= (hold = head(arg1)) && hold <= ERROR) {
       /* function - other than unsaturated constructor */
       goto DONE; /* nb! else may take premature decision(interacts with MOD1)*/
+}
     hd(e) = I;
     e = tl(e) = arg1;
     goto NEXTREDEX;
@@ -2188,10 +2288,11 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
 
   case READY(NEG): /*    NEG x => -x, if x is a number */
     UPLEFT;
-    if (tag[lastarg] == INT)
+    if (tag[lastarg] == INT) {
       simpl(bignegate(lastarg));
-    else
+    } else {
       setdbl(e, -get_dbl(lastarg));
+}
     goto DONE;
 
   case READY(CODE): /*  miranda char to int type-conversion  */
@@ -2201,8 +2302,9 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
 
   case READY(DECODE): /*  int to char type conversion */
     UPLEFT;
-    if (tag[lastarg] == DOUBLE)
+    if (tag[lastarg] == DOUBLE) {
       int_error("decode");
+}
     {
       long long val = get_int(lastarg);
       if (val < 0 || val > UMAX) {
@@ -2229,10 +2331,12 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
       sprintf(linebuf, "%.16g", x);
       {
         char *p = linebuf;
-        while (isdigit((int)*p))
+        while (isdigit((int)*p)) {
           p++; /* add .0 to false integer */
-        if (!*p)
+}
+        if (!*p) {
           *p++ = '.', *p++ = '0', *p = '\0';
+}
       }
       hd(e) = I;
       e = tl(e) = str_conv(linebuf);
@@ -2248,8 +2352,10 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
       e = tl(e) = arg1;
     }
 #endif
-    else
+    else { {
       simpl(bigtostr(lastarg));
+}
+}
     goto DONE;
 
   case READY(SHOWHEX):
@@ -2258,16 +2364,19 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
       sprintf(linebuf, "%a", get_dbl(lastarg));
       hd(e) = I;
       e = tl(e) = str_conv(linebuf);
-    } else
+    } else { {
       simpl(bigtostrx(lastarg));
+}
+}
     goto DONE;
 
   case READY(SHOWOCT):
     UPLEFT;
-    if (tag[lastarg] == DOUBLE)
+    if (tag[lastarg] == DOUBLE) {
       int_error("showoct");
-    else
+    } else {
       simpl(bigtostr8(lastarg));
+}
     goto DONE;
 
   /* paradigm for strict monadic arithmetic fns */
@@ -2275,49 +2384,54 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     UPLEFT;
     errno = 0; /* to clear */
     setdbl(e, atan(force_dbl(lastarg)));
-    if (errno)
+    if (errno) {
       math_error("atan");
+}
     goto DONE;
 
   case READY(EXP_FN): /* exp */
     UPLEFT;
     errno = 0; /* to clear */
     setdbl(e, exp(force_dbl(lastarg)));
-    if (errno)
+    if (errno) {
       math_error("exp");
+}
     goto DONE;
 
   case READY(ENTIER_FN): /* floor */
     UPLEFT;
-    if (tag[lastarg] == INT)
+    if (tag[lastarg] == INT) {
       simpl(lastarg);
-    else
+    } else {
       simpl(dbltobig(get_dbl(lastarg)));
+}
     goto DONE;
 
   case READY(LOG_FN): /* log */
     UPLEFT;
-    if (tag[lastarg] == INT)
+    if (tag[lastarg] == INT) { {
       setdbl(e, biglog(lastarg));
-    else {
+    } } else {
       errno = 0; /* to clear */
       fa = force_dbl(lastarg);
       setdbl(e, log(fa));
-      if (errno)
+      if (errno) {
         math_error("log");
+}
     }
     goto DONE;
 
   case READY(LOG10_FN): /* log10 */
     UPLEFT;
-    if (tag[lastarg] == INT)
+    if (tag[lastarg] == INT) { {
       setdbl(e, biglog10(lastarg));
-    else {
+    } } else {
       errno = 0; /* to clear */
       fa = force_dbl(lastarg);
       setdbl(e, log10(fa));
-      if (errno)
+      if (errno) {
         math_error("log10");
+}
     }
     goto DONE;
 
@@ -2325,23 +2439,26 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     UPLEFT;
     errno = 0; /* to clear */
     setdbl(e, sin(force_dbl(lastarg)));
-    if (errno)
+    if (errno) {
       math_error("sin");
+}
     goto DONE;
 
   case READY(COS_FN): /* cos */
     UPLEFT;
     errno = 0; /* to clear */
     setdbl(e, cos(force_dbl(lastarg)));
-    if (errno)
+    if (errno) {
       math_error("cos");
+}
     goto DONE;
 
   case READY(SQRT_FN): /* sqrt */
     UPLEFT;
     fa = force_dbl(lastarg);
-    if (fa < 0.0)
+    if (fa < 0.0) {
       math_error("sqrt");
+}
     setdbl(e, sqrt(fa));
     goto DONE;
 
@@ -2423,46 +2540,51 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    if (tag[arg1] == DOUBLE)
+    if (tag[arg1] == DOUBLE) {
       setdbl(e, get_dbl(arg1) + force_dbl(lastarg));
-    else if (tag[lastarg] == DOUBLE)
+    } else if (tag[lastarg] == DOUBLE) {
       setdbl(e, bigtodbl(arg1) + get_dbl(lastarg));
-    else
+    } else {
       simpl(bigplus(arg1, lastarg));
+}
     goto DONE;
 
   case READY(MINUS):
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    if (tag[arg1] == DOUBLE)
+    if (tag[arg1] == DOUBLE) {
       setdbl(e, get_dbl(arg1) - force_dbl(lastarg));
-    else if (tag[lastarg] == DOUBLE)
+    } else if (tag[lastarg] == DOUBLE) {
       setdbl(e, bigtodbl(arg1) - get_dbl(lastarg));
-    else
+    } else {
       simpl(bigsub(arg1, lastarg));
+}
     goto DONE;
 
   case READY(TIMES):
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    if (tag[arg1] == DOUBLE)
+    if (tag[arg1] == DOUBLE) {
       setdbl(e, get_dbl(arg1) * force_dbl(lastarg));
-    else if (tag[lastarg] == DOUBLE)
+    } else if (tag[lastarg] == DOUBLE) {
       setdbl(e, bigtodbl(arg1) * get_dbl(lastarg));
-    else
+    } else {
       simpl(bigtimes(arg1, lastarg));
+}
     goto DONE;
 
   case READY(INTDIV):
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    if (tag[arg1] == DOUBLE || tag[lastarg] == DOUBLE)
+    if (tag[arg1] == DOUBLE || tag[lastarg] == DOUBLE) {
       int_error("div");
-    if (bigzero(lastarg))
+}
+    if (bigzero(lastarg)) {
       div_error(); /* build into bigmod ? */
+}
     simpl(bigdiv(arg1, lastarg));
     goto DONE;
 
@@ -2472,8 +2594,9 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     UPLEFT;
     fa = force_dbl(arg1);
     fb = force_dbl(lastarg);
-    if (fb == 0.0)
+    if (fb == 0.0) {
       div_error();
+}
     setdbl(e, fa / fb);
     goto DONE;
 
@@ -2481,10 +2604,12 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    if (tag[arg1] == DOUBLE || tag[lastarg] == DOUBLE)
+    if (tag[arg1] == DOUBLE || tag[lastarg] == DOUBLE) {
       int_error("mod");
-    if (bigzero(lastarg))
+}
+    if (bigzero(lastarg)) {
       div_error(); /* build into bigmod ? */
+}
     simpl(bigmod(arg1, lastarg));
     goto DONE;
 
@@ -2494,29 +2619,32 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     UPLEFT;
     if (tag[lastarg] == DOUBLE) {
       fa = force_dbl(arg1);
-      if (fa < 0.0)
+      if (fa < 0.0) {
         errno = EDOM, math_error("^");
+}
       fb = get_dbl(lastarg);
-    } else if (tag[arg1] == DOUBLE)
+    } else if (tag[arg1] == DOUBLE) { {
       fa = get_dbl(arg1), fb = bigtodbl(lastarg);
-    else if (neg(lastarg))
+    } } else if (neg(lastarg)) { {
       fa = bigtodbl(arg1), fb = bigtodbl(lastarg);
-    else {
+    } } else {
       simpl(bigpow(arg1, lastarg));
       goto DONE;
     }
     errno = 0; /* to clear */
     setdbl(e, pow(fa, fb));
-    if (errno)
+    if (errno) {
       math_error("power");
+}
     goto DONE;
 
   case READY(SHOWSCALED): /* SHOWSCALED precision number => numeral */
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    if (tag[arg1] == DOUBLE)
+    if (tag[arg1] == DOUBLE) {
       int_error("showscaled");
+}
     arg1 = getsmallint(arg1);
     (void)sprintf(linebuf, "%.*e", (int)arg1, force_dbl(lastarg));
     hd(e) = I;
@@ -2527,8 +2655,9 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    if (tag[arg1] == DOUBLE)
+    if (tag[arg1] == DOUBLE) {
       int_error("showfloat");
+}
     arg1 = getsmallint(arg1);
     (void)sprintf(linebuf, "%.*f", (int)arg1, force_dbl(lastarg));
     hd(e) = I;
@@ -2551,14 +2680,15 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    if (arg1 == NIL)
+    if (arg1 == NIL) {
       simpl(lastarg);
-    else if (lastarg == NIL)
+    } else if (lastarg == NIL) {
       simpl(arg1);
-    else if (compare(hd(arg1) = reduce(hd(arg1)), hd(lastarg) = reduce(hd(lastarg))) <= 0) /* ### */
+    } else if (compare(hd(arg1) = reduce(hd(arg1)), hd(lastarg) = reduce(hd(lastarg))) <= 0) { /* ### */
       setcell(CONS, hd(arg1), ap2(MERGE, tl(arg1), lastarg));
-    else
+    } else {
       setcell(CONS, hd(lastarg), ap2(MERGE, tl(lastarg), arg1));
+}
     goto DONE;
 
   case READY(STEPUNTIL): /* STEPUNTIL i a b => GENSEQ (i,b) a */
@@ -2567,8 +2697,9 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     GETARG(arg2);
     UPLEFT;
     hd(e) = ap(GENSEQ, cons(arg1, arg2));
-    if (tag[arg1] == INT ? poz(arg1) : get_dbl(arg1) >= 0.0)
+    if (tag[arg1] == INT ? poz(arg1) : get_dbl(arg1) >= 0.0) {
       tag[tl(hd(e))] = AP; /* hack to record sign of step - see GENSEQ */
+}
     goto NEXTREDEX;
 
   case READY(Ush):
@@ -2588,15 +2719,17 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
     if (tag[arg1] == CONSTRUCTOR) /* don't parenthesise atom */
     {
       hd(e) = I;
-      if (suppressed(arg1))
+      if (suppressed(arg1)) {
         e = tl(e) = str_conv("<unprintable>");
-      else
+      } else {
         e = tl(e) = str_conv(constr_name(arg1));
+}
       goto DONE;
     }
     hold = arg2 ? cons(')', NIL) : NIL;
-    while (tag[arg1] != CONSTRUCTOR)
+    while (tag[arg1] != CONSTRUCTOR) {
       hold = cons(' ', ap2(APPEND, ap(tl(arg1), tl(arg3)), hold)), arg1 = hd(arg1), arg3 = hd(arg3);
+}
     if (suppressed(arg1)) {
       hd(e) = I;
       e = tl(e) = str_conv("<unprintable>");
@@ -2615,7 +2748,7 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
   default:
     fprintf(stderr, "\nimpossible event in reduce ("), out(stderr, e), fprintf(stderr, ")\n"),
         exit(1);
-    return (0); /* proforma only - unreachable */
+    return 0; /* proforma only - unreachable */
   } /* end of "ready" switch */
 
 } /* end of reduce */
@@ -2625,22 +2758,26 @@ int memclass(int c, word x) /* is char c in list x (may include ranges) */
   while (x != NIL) {
     if (hd(x) == DOTDOT) {
       x = tl(x);
-      if (hd(x) <= c && c <= hd(tl(x)))
-        return (1);
+      if (hd(x) <= c && c <= hd(tl(x))) {
+        return 1;
+}
       x = tl(x);
-    } else if (c == hd(x))
-      return (1);
+    } else if (c == hd(x)) { {
+      return 1;
+}
+}
     x = tl(x);
   }
-  return (0);
+  return 0;
 }
 
 void lexfail(word x) /* x is known to be a non-empty string (see LEX_RPT) */
 {
   int i = 24;
   fprintf(stderr, "\nLEX FAILS WITH UNRECOGNISED INPUT: \"");
-  while (i-- && x != NIL && 0 <= lh(x) && lh(x) <= 255)
+  while (i-- && x != NIL && 0 <= lh(x) && lh(x) <= 255) {
     fprintf(stderr, "%s", charname(lh(x))), x = tl(x);
+}
   fprintf(stderr, "%s\"\n", x == NIL ? "" : "...");
   outstats();
   exit(1);
@@ -2663,12 +2800,14 @@ word g_residue(word toks2)
 {
   word toks1 = NIL;
   if (tag[toks2] != CONS) {
-    if (tag[toks2] == AP && hd(toks2) == I && tl(toks2) == NIL)
+    if (tag[toks2] == AP && hd(toks2) == I && tl(toks2) == NIL) {
       return (cons(NIL, NIL));
+}
     return (cons(NIL, toks2)); /*no tokens examined, whole grammar is `error'*/
   }
-  while (tag[tl(toks2)] == CONS)
+  while (tag[tl(toks2)] == CONS) {
     toks1 = cons(hd(toks2), toks1), toks2 = tl(toks2);
+}
   if (tl(toks2) == NIL || (tag[tl(toks2)] == AP && hd(tl(toks2)) == I && tl(tl(toks2)) == NIL)) {
     toks1 = cons(hd(toks2), toks1);
     return (cons(ap(DESTREV, toks1), NIL));
@@ -2677,10 +2816,12 @@ word g_residue(word toks2)
 }
 
 word numplus(word x, word y) {
-  if (tag[x] == DOUBLE)
+  if (tag[x] == DOUBLE) {
     return (sto_dbl(get_dbl(x) + force_dbl(y)));
-  if (tag[y] == DOUBLE)
+}
+  if (tag[y] == DOUBLE) {
     return (sto_dbl(bigtodbl(x) + get_dbl(y)));
+}
   return (bigplus(x, y));
 }
 
@@ -2726,11 +2867,12 @@ const char *stdname(int c) {
 }
 
 void stdin_error(int c) {
-  if (stdinuse == c)
+  if (stdinuse == c) {
     fprintf(stderr, "program error: duplicate use of %s\n", stdname(c));
-  else
+  } else {
     fprintf(stderr, "program error: simultaneous use of %s and %s\n", stdname(c),
             stdname(stdinuse));
+}
   outstats();
   exit(1);
 }
@@ -2755,32 +2897,35 @@ void initclock(void) {
 
 void out_here(FILE *f, word h, word nl) /* h is fileinfo(scriptname,line_no) */
 {
-  extern word errs;
+  
   if (tag[h] != FILEINFO) {
     fprintf(stderr, "(impossible event in outhere)\n");
     return;
   }
   fprintf(f, "(line %3ld of \"%s\")", tl(h), (char *)hd(h));
-  if (nl)
+  if (nl) {
     putc('\n', f);
-  else
+  } else {
     putc(' ', f);
-  if (compiling && !errs)
+}
+  if (compiling && !errs) {
     errs = h; /* relevant only when called from steer.c */
+}
 } /* `soft' error, set errs rather than errline, so not saved in dump */
 
 void outstats(void) {
-  extern long claims, nogcs;
-  extern int atcount;
-  extern long long cellcount;
+  
+  
+  
 #ifdef BSDCLOCK
   struct tms buffer;
 #endif
 #ifdef HISTO
   printhisto();
 #endif
-  if (!atcount)
+  if (!atcount) {
     return;
+}
 #ifdef BSDCLOCK
   times(&buffer);
 #else

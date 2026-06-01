@@ -16,10 +16,11 @@ static char *month[] = {"January", "February", "March",     "April",   "May",   
                         "July",    "August",   "September", "October", "November", "December"};
 int main(void) {
   char f[200];
-  if (scanf("%s", f) == 1 && stat(f, &buf) == 0)
+  if (scanf("%s", f) == 1 && stat(f, &buf) == 0) {
     t = localtime(&buf.st_mtime),
     printf("%d %s %4d\n", (*t).tm_mday, month[(*t).tm_mon], (*t).tm_year + 1900);
-  else
+  } else {
     fprintf(stderr, "fdate: bad file \"%s\"\n", f);
+}
   return 0;
 }

@@ -27,30 +27,30 @@
 #define bigzero(x) (!digit(x) && !rest(x))
 #define getsmallint(x) (hd(x) & SIGNBIT ? -digit0(x) : digit(x))
 #define stosmallint(x) make(INT, (x) < 0 ? SIGNBIT | (-(x)) : (x), 0)
-long long get_int(word);
-word sto_int(long long);
-double bigtodbl(word);
+long long get_int(word /*x*/);
+word sto_int(long long /*i*/);
+double bigtodbl(word /*x*/);
 long double bigtoldbl(word); /* not currently used */
-double biglog(word);
-double biglog10(word);
-int bigcmp(word, word);
-word bigdiv(word, word);
-word bigmod(word, word);
-word bignegate(word);
-word bigoscan(char *, char *);
-word bigplus(word, word);
-word bigpow(word, word);
-word bigscan(char *);
+double biglog(word /*x*/);
+double biglog10(word /*x*/);
+int bigcmp(word /*x*/, word /*y*/);
+word bigdiv(word /*x*/, word /*y*/);
+word bigmod(word /*x*/, word /*y*/);
+word bignegate(word /*x*/);
+word bigoscan(char * /*p*/, char * /*q*/);
+word bigplus(word /*x*/, word /*y*/);
+word bigpow(word /*x*/, word /*y*/);
+word bigscan(char * /*p*/);
 void bigsetup(void);
-word bigsub(word, word);
-word bigtimes(word, word);
-word bigtostr(word);
-word bigtostr8(word);
-word bigtostrx(word);
-word bigxscan(char *, char *);
-word dbltobig(double);
-int isnat(word);
-word strtobig(word, int);
+word bigsub(word /*x*/, word /*y*/);
+word bigtimes(word /*x*/, word /*y*/);
+word bigtostr(word /*x*/);
+word bigtostr8(word /*x*/);
+word bigtostrx(word /*x*/);
+word bigxscan(char * /*p*/, char * /*q*/);
+word dbltobig(double /*x*/);
+int isnat(word /*x*/);
+word strtobig(word /*z*/, int /*base*/);
 #define force_dbl(x) (tag[x] == INT ? bigtodbl(x) : get_dbl(x))
 #define PTEN 10000
 /* largest power of ten < IBASE (used by bigscan) */

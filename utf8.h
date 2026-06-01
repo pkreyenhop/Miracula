@@ -8,7 +8,7 @@ typedef unsigned long unicode;
 #define BMPMAX 0xffff
 
 #include <stdio.h>
-unicode fromUTF8(FILE *);
-void outUTF8(unicode, FILE *);
+unicode fromUTF8(FILE * /*fil*/);
+void outUTF8(unicode /*u*/, FILE * /*fil*/);
 
 #endif

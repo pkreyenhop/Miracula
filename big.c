@@ -19,15 +19,15 @@
 static double logIBASE, log10IBASE;
 word big_one;
 
-static word big_plus(word, word, int);
-static word big_sub(word, word);
-static word len(word);
-static word longdiv(word, word);
-static word ms2d(word);
-static word msd(word);
-static word shift(word, word);
-static word shortdiv(word, word);
-static word stimes(word, word);
+static word big_plus(word /*x*/, word /*y*/, int /*signbit*/);
+static word big_sub(word /*x*/, word /*y*/);
+static word len(word /*x*/);
+static word longdiv(word /*x*/, word /*y*/);
+static word ms2d(word /*x*/);
+static word msd(word /*x*/);
+static word shift(word /*n*/, word /*x*/);
+static word shortdiv(word /*x*/, word /*n*/);
+static word stimes(word /*x*/, word /*n*/);
 
 void bigsetup(void) {
   logIBASE = log((double)IBASE);
@@ -41,19 +41,22 @@ int isnat(word x) {
 
 word sto_int(long long i) /* store C long long as mira bigint */
 {
-  word s, x;
-  if (i < 0)
+  word s;
+  word x;
+  if (i < 0) {
     s = SIGNBIT, i = -i;
-  else
+  } else {
     s = 0;
+}
   x = make(INT, s | (i & MAXDIGIT), 0);
   if (i >>= DIGITWIDTH) {
     word *p = &rest(x);
     *p = make(INT, i & MAXDIGIT, 0), p = &rest(*p);
-    while (i >>= DIGITWIDTH)
+    while (i >>= DIGITWIDTH) {
       *p = make(INT, i & MAXDIGIT, 0), p = &rest(*p);
+}
   }
-  return (x);
+  return x;
 } /* change to long long, DT Oct 2019 */
 
 #define maxval (1ll << 60)
@@ -62,34 +65,36 @@ long long get_int(word x) /* mira bigint to C long long */
 {
   long long n = digit0(x);
   word sign = neg(x);
-  if (!(x = rest(x)))
+  if (!(x = rest(x))) {
     return (sign ? -n : n);
+}
   {
     word w = DIGITWIDTH;
-    while (x && w < 60)
+    while (x && w < 60) {
       n += (long long)digit(x) << w, w += DIGITWIDTH, x = rest(x);
-    if (x)
+}
+    if (x) {
       n = maxval; /* overflow, return large value */
+}
     return (sign ? -n : n);
   }
 } /* change to long long, DT Oct 2019 */
 
 word bignegate(word x) {
-  if (bigzero(x))
-    return (x);
+  if (bigzero(x)) {
+    return x;
+}
   return (make(INT, hd(x) & SIGNBIT ? hd(x) & MAXDIGIT : SIGNBIT | hd(x), tl(x)));
 }
 
 word bigplus(word x, word y) {
-  if (poz(x))
-    if (poz(y))
+  if (poz(x)) {
+    if (poz(y)) {
       return (big_plus(x, y, 0));
-    else
-      return (big_sub(x, y));
-  else if (poz(y))
+    }       return (big_sub(x, y));
+  } if (poz(y)) {
     return (big_sub(y, x));
-  else
-    return (big_plus(x, y, SIGNBIT)); /* both negative */
+  }     return (big_plus(x, y, SIGNBIT)); /* both negative */
 }
 
 word big_plus(word x, word y, int signbit) /* ignore input signs, treat x,y as positive */
@@ -109,8 +114,9 @@ word big_plus(word x, word y, int signbit) /* ignore input signs, treat x,y as p
     y = rest(y);
     z = &rest(*z);
   }
-  if (y)
+  if (y) {
     x = y; /* by convention x is the longer one */
+}
   while (x) {
     d = carry + digit(x);
     carry = ((d & IBASE) != 0);
@@ -118,21 +124,20 @@ word big_plus(word x, word y, int signbit) /* ignore input signs, treat x,y as p
     x = rest(x);
     z = &rest(*z);
   }
-  if (carry)
+  if (carry) {
     *z = make(INT, 1, 0);
-  return (r);
+}
+  return r;
 }
 
 word bigsub(word x, word y) {
-  if (poz(x))
-    if (poz(y))
+  if (poz(x)) {
+    if (poz(y)) {
       return (big_sub(x, y));
-    else
-      return (big_plus(x, y, 0)); /* poz x, negative y */
-  else if (poz(y))
+    }       return (big_plus(x, y, 0)); /* poz x, negative y */
+  } if (poz(y)) {
     return (big_plus(x, y, SIGNBIT)); /* negative x, poz y */
-  else
-    return (big_sub(y, x)); /* both negative */
+  }     return (big_sub(y, x)); /* both negative */
 }
 
 word big_sub(word x, word y) /* ignore input signs, treat x,y as positive */
@@ -150,10 +155,11 @@ word big_sub(word x, word y) /* ignore input signs, treat x,y as positive */
     borrow = (d & IBASE) != 0;
     d = d & MAXDIGIT;
     *z = make(INT, d, 0);
-    if (d)
+    if (d) {
       p = NULL;
-    else if (!p)
+    } else if (!p) {
       p = z;
+}
     x = rest(x);
     y = rest(y);
     z = &rest(*z);
@@ -164,10 +170,11 @@ word big_sub(word x, word y) /* ignore input signs, treat x,y as positive */
     borrow = ((d & IBASE) != 0);
     d = d & MAXDIGIT;
     *z = make(INT, d, 0);
-    if (d)
+    if (d) {
       p = NULL;
-    else if (!p)
+    } else if (!p) {
       p = z;
+}
     y = rest(y);
     z = &rest(*z);
   }
@@ -177,10 +184,11 @@ word big_sub(word x, word y) /* ignore input signs, treat x,y as positive */
     borrow = ((d & IBASE) != 0);
     d = d & MAXDIGIT;
     *z = make(INT, d, 0);
-    if (d)
+    if (d) {
       p = NULL;
-    else if (!p)
+    } else if (!p) {
       p = z;
+}
     x = rest(x);
     z = &rest(*z);
   }
@@ -195,44 +203,53 @@ word big_sub(word x, word y) /* ignore input signs, treat x,y as positive */
       d = (digit(*z) ^ MAXDIGIT) + borrow;
       borrow = ((d & IBASE) != 0);
       digit(*z) = d = d & MAXDIGIT;
-      if (d)
+      if (d) {
         p = NULL;
-      else if (!p)
+      } else if (!p) {
         p = z;
+}
       z = &rest(*z);
     }
   }
-  if (p)
+  if (p) {
     *p = 0; /* remove redundant (ie trailing) zeros */
-  return (r);
+}
+  return r;
 }
 
 int bigcmp(word x, word y) /* returns +ve,0,-ve as x greater than, equal, less than y */
 {
-  word d, r, s = neg(x);
-  if (neg(y) != s)
+  word d;
+  word r;
+  word s = neg(x);
+  if (neg(y) != s) {
     return (s ? -1 : 1);
+}
   r = digit0(x) - digit0(y);
   for (;;) {
     x = rest(x);
     y = rest(y);
     if (!x) {
-      if (y)
+      if (y) {
         return (s ? 1 : -1);
-      else
-        return (s ? -r : r);
+      }         return (s ? -r : r);
     }
-    if (!y)
+    if (!y) {
       return (s ? -1 : 1);
+}
     d = digit(x) - digit(y);
-    if (d)
+    if (d) {
       r = d;
+}
   }
 }
 
 word bigtimes(word x, word y) /* naive multiply - quadratic */
 {
-  word r, d, s, n = 0;
+  word r;
+  word d;
+  word s;
+  word n = 0;
   if (len(x) < len(y)) {
     word hold = x;
     x = y;
@@ -241,24 +258,28 @@ word bigtimes(word x, word y) /* naive multiply - quadratic */
   r = make(INT, 0, 0);
   d = digit0(y);
   s = neg(y);
-  if (bigzero(x))
-    return (r); /* short cut */
+  if (bigzero(x)) {
+    return r; /* short cut */
+}
   for (;;) {
-    if (d)
+    if (d) {
       r = bigplus(r, shift(n, stimes(x, d)));
+}
     n++;
     y = rest(y);
-    if (!y)
+    if (!y) {
       return (s != neg(x) ? bignegate(r) : r);
+}
     d = digit(y);
   }
 }
 
 word shift(word n, word x) /* multiply big x by n'th power of IBASE */
 {
-  while (n--)
+  while (n--) {
     x = make(INT, 0, x);
-  return (x);
+}
+  return x;
 } /* NB - we assume x non-zero, else unnormalised result */
 
 word stimes(word x, word n) /* multiply big x (>=0) by digit n (>0) */
@@ -267,31 +288,38 @@ word stimes(word x, word n) /* multiply big x (>=0) by digit n (>0) */
   word carry = d >> DIGITWIDTH;
   word r = make(INT, d & MAXDIGIT, 0);
   word *y = &rest(r);
-  while ((x = rest(x)))
-    d = n * digit(x) + carry, *y = make(INT, d & MAXDIGIT, 0), y = &rest(*y),
+  while ((x = rest(x))) {
+    d = (n * digit(x)) + carry, *y = make(INT, d & MAXDIGIT, 0), y = &rest(*y),
     carry = d >> DIGITWIDTH;
-  if (carry)
+}
+  if (carry) {
     *y = make(INT, carry, 0);
-  return (r);
+}
+  return r;
 }
 
 static word b_rem; /* contains remainder from last call to longdiv or shortdiv */
 
 word bigdiv(word x, word y) /* may assume y~=0 */
 {
-  word s1, s2, q;
+  word s1;
+  word s2;
+  word q;
   /* make x,y positive and remember signs */
-  if ((s1 = neg(y)))
+  if ((s1 = neg(y))) {
     y = make(INT, digit0(y), rest(y));
-  if (neg(x))
+}
+  if (neg(x)) {
     x = make(INT, digit0(x), rest(x)), s2 = !s1;
-  else
+  } else {
     s2 = s1;
+}
   /* effect: s1 set iff y negative, s2 set iff signs mixed */
-  if (rest(y))
+  if (rest(y)) {
     q = longdiv(x, y);
-  else
+  } else {
     q = shortdiv(x, digit(y));
+}
   if (s2) {
     if (!bigzero(b_rem)) {
       x = q;
@@ -301,34 +329,39 @@ word bigdiv(word x, word y) /* may assume y~=0 */
         if (!rest(x)) {
           rest(x) = make(INT, 1, 0);
           break;
-        } else
-          x = rest(x);
+        }           x = rest(x);
       }
     }
-    if (!bigzero(q))
+    if (!bigzero(q)) {
       digit(q) = SIGNBIT | digit(q);
+}
   }
-  return (q);
+  return q;
 }
 
 word bigmod(word x, word y) /* may assume y~=0 */
 {
-  word s1, s2;
+  word s1;
+  word s2;
   /* make x,y positive and remember signs */
-  if ((s1 = neg(y)))
+  if ((s1 = neg(y))) {
     y = make(INT, digit0(y), rest(y));
-  if (neg(x))
+}
+  if (neg(x)) {
     x = make(INT, digit0(x), rest(x)), s2 = !s1;
-  else
+  } else {
     s2 = s1;
+}
   /* effect: s1 set iff y negative, s2 set iff signs mixed */
-  if (rest(y))
+  if (rest(y)) {
     longdiv(x, y);
-  else
+  } else {
     shortdiv(x, digit(y));
+}
   if (s2) {
-    if (!bigzero(b_rem))
+    if (!bigzero(b_rem)) {
       b_rem = bigsub(y, b_rem);
+}
   }
   return (s1 ? bignegate(b_rem) : b_rem);
 }
@@ -346,71 +379,87 @@ word shortdiv(word x, word n) /* divide big x by single digit n returning
                   big quotient and setting module b_rem as side effect */
                               /* may assume - x>=0,n>0 */
 {
-  word d = digit(x), s_rem, q = 0;
-  while ((x = rest(x)))                /* reverse rest(x) into q */
+  word d = digit(x);
+  word s_rem;
+  word q = 0;
+  while ((x = rest(x))) {                /* reverse rest(x) into q */
     q = make(INT, d, q), d = digit(x); /* leaving most sig. digit in d */
+}
   {
     word tmp;
     x = q;
     s_rem = d % n;
     d = d / n;
-    if (d || !q)
+    if (d || !q) {
       q = make(INT, d, 0); /* put back first digit (if not leading 0) */
-    else
+    } else {
       q = 0;
-    while (x) /* in situ division of q by n AND destructive reversal */
-      d = s_rem * IBASE + digit(x), digit(x) = d / n, s_rem = d % n, tmp = x, x = rest(x),
+}
+    while (x) { /* in situ division of q by n AND destructive reversal */
+      d = (s_rem * IBASE) + digit(x), digit(x) = d / n, s_rem = d % n, tmp = x, x = rest(x),
       rest(tmp) = q, q = tmp;
+}
   }
   b_rem = make(INT, s_rem, 0);
-  return (q);
+  return q;
 }
 
 word longdiv(word x, word y) /* divide big x by big y returning quotient,
                  leaving remainder in module variable b_rem */
                              /* may assume - x>=0,y>0 */
 {
-  word n, q, ly, y1, scale;
+  word n;
+  word q;
+  word ly;
+  word y1;
+  word scale;
   if (bigcmp(x, y) < 0) {
     b_rem = x;
     return (make(INT, 0, 0));
   }
   y1 = msd(y);
-  if ((scale = IBASE / (y1 + 1)) > 1) /* rescale if necessary */
+  if ((scale = IBASE / (y1 + 1)) > 1) { /* rescale if necessary */
     x = stimes(x, scale), y = stimes(y, scale), y1 = msd(y);
+}
   n = q = 0;
   ly = len(y);
-  while (bigcmp(x, y = make(INT, 0, y)) >= 0)
+  while (bigcmp(x, y = make(INT, 0, y)) >= 0) {
     n++;
+}
   y = rest(y); /* want largest y not exceeding x */
   ly += n;
   for (;;) {
-    word d, lx = len(x);
-    if (lx < ly)
+    word d;
+    word lx = len(x);
+    if (lx < ly) { {
       d = 0;
-    else if (lx == ly)
-      if (bigcmp(x, y) >= 0)
+    } } else if (lx == ly) { {
+      if (bigcmp(x, y) >= 0) {
         x = bigsub(x, y), d = 1;
-      else
+      } else {
         d = 0;
-    else {
+}
+    } } else {
       d = ms2d(x) / y1;
-      if (d > MAXDIGIT)
+      if (d > MAXDIGIT) {
         d = MAXDIGIT;
-      if ((d -= 2) > 0)
+}
+      if ((d -= 2) > 0) {
         x = bigsub(x, stimes(y, d));
-      else
+      } else {
         d = 0;
+}
       if (bigcmp(x, y) >= 0) {
         x = bigsub(x, y), d++;
-        if (bigcmp(x, y) >= 0)
+        if (bigcmp(x, y) >= 0) {
           x = bigsub(x, y), d++;
+}
       }
     }
     q = make(INT, d, q);
     if (n-- == 0) {
       b_rem = scale == 1 ? x : shortdiv(x, scale);
-      return (q);
+      return q;
     }
     ly--;
     y = rest(y);
@@ -420,15 +469,17 @@ word longdiv(word x, word y) /* divide big x by big y returning quotient,
 word len(word x) /* no of digits in big x */
 {
   word n = 1;
-  while ((x = rest(x)))
+  while ((x = rest(x))) {
     n++;
-  return (n);
+}
+  return n;
 }
 
 word msd(word x) /* most significant digit of big x */
 {
-  while (rest(x))
+  while (rest(x)) {
     x = rest(x);
+}
   return (digit(x)); /* sign? */
 }
 
@@ -436,46 +487,54 @@ word ms2d(word x) /* most significant 2 digits of big x (len>=2) */
 {
   word d = digit(x);
   x = rest(x);
-  while (rest(x))
+  while (rest(x)) {
     d = digit(x), x = rest(x);
-  return (digit(x) * IBASE + d);
+}
+  return ((digit(x) * IBASE) + d);
 }
 
 word bigpow(word x, word y) /* assumes y poz */
 {
-  word d, r = make(INT, 1, 0);
+  word d;
+  word r = make(INT, 1, 0);
   while (rest(y)) /* this loop has been unwrapped once, see below */
   {
     word i = DIGITWIDTH;
     d = digit(y);
     while (i--) {
-      if (d & 1)
+      if (d & 1) {
         r = bigtimes(r, x);
+}
       x = bigtimes(x, x);
       d >>= 1;
     }
     y = rest(y);
   }
   d = digit(y);
-  if (d & 1)
+  if (d & 1) {
     r = bigtimes(r, x);
+}
   while (d >>= 1) {
     x = bigtimes(x, x);
-    if (d & 1)
+    if (d & 1) {
       r = bigtimes(r, x);
+}
   }
-  return (r);
+  return r;
 }
 
 double bigtodbl(word x) {
   word s = neg(x);
-  double b = 1.0, r = (double)digit0(x);
+  double b = 1.0;
+  double r = (double)digit0(x);
   x = rest(x);
-  while (x)
-    b = b * IBASE, r = r + b * digit(x), x = rest(x);
-  if (s)
+  while (x) {
+    b = b * IBASE, r = r + (b * digit(x)), x = rest(x);
+}
+  if (s) {
     return (-r);
-  return (r);
+}
+  return r;
 } /* small end first */
 /* note: can return oo, -oo
    but is used without surrounding sto_/set)dbl() only in compare() */
@@ -505,14 +564,16 @@ word dbltobig(double x) /* entier */
     double n = fmod(y, (double)IBASE);
     digit(*p) = (word)n;
     y = (y - n) / (double)IBASE;
-    if (y > 0.0)
+    if (y > 0.0) {
       rest(*p) = make(INT, 0, 0), p = &rest(*p);
-    else
+    } else {
       break;
+}
   }
-  if (s)
+  if (s) {
     digit(r) = SIGNBIT | digit(r);
-  return (r);
+}
+  return r;
 }
 /* produces junk in low order digits if x exceeds range in which integer
    can be held without error as a double -- NO, see next comment */
@@ -530,54 +591,65 @@ double biglog(word x) /* logarithm of big x */
 {
   word n = 0;
   double r = digit(x);
-  if (neg(x) || bigzero(x))
+  if (neg(x) || bigzero(x)) {
     errno = EDOM, math_error("log");
-  while ((x = rest(x)))
-    n++, r = digit(x) + r / IBASE;
-  return (log(r) + n * logIBASE);
+}
+  while ((x = rest(x))) {
+    n++, r = digit(x) + (r / IBASE);
+}
+  return (log(r) + (n * logIBASE));
 }
 
 double biglog10(word x) /* logarithm of big x */
 {
   word n = 0;
   double r = digit(x);
-  if (neg(x) || bigzero(x))
+  if (neg(x) || bigzero(x)) {
     errno = EDOM, math_error("log10");
-  while ((x = rest(x)))
-    n++, r = digit(x) + r / IBASE;
-  return (log10(r) + n * log10IBASE);
+}
+  while ((x = rest(x))) {
+    n++, r = digit(x) + (r / IBASE);
+}
+  return (log10(r) + (n * log10IBASE));
 }
 
 word bigscan(char *p) /* read a big number (in decimal) */
                       /* NB does NOT check for malformed number, assumes already done */
                       /* p is a pointer to a null terminated string of digits */
 {
-  word s = 0, r = make(INT, 0, 0);
-  if (*p == '-')
+  word s = 0;
+  word r = make(INT, 0, 0);
+  if (*p == '-') {
     s = 1, p++; /* optional leading `-' (for NUMVAL) */
+}
   while (*p) {
-    word d = *p - '0', f = 10;
+    word d = *p - '0';
+    word f = 10;
     p++;
-    while (*p && f < PTEN)
-      d = 10 * d + *p - '0', f = 10 * f, p++;
+    while (*p && f < PTEN) {
+      d = (10 * d) + *p - '0', f = 10 * f, p++;
+}
     /* rest of loop does r=f*r+d; (in situ) */
-    d = f * digit(r) + d;
+    d = (f * digit(r)) + d;
     {
       word carry = d >> DIGITWIDTH;
       word *x = &rest(r);
       digit(r) = d & MAXDIGIT;
-      while (*x)
-        d = f * digit(*x) + carry, digit(*x) = d & MAXDIGIT, carry = d >> DIGITWIDTH, x = &rest(*x);
-      if (carry)
+      while (*x) {
+        d = (f * digit(*x)) + carry, digit(*x) = d & MAXDIGIT, carry = d >> DIGITWIDTH, x = &rest(*x);
+}
+      if (carry) {
         *x = make(INT, carry, 0);
+}
     }
   }
   /*if(*p=='e')
       { int s=bigscan(p+1);
         r = bigtimes(r,bigpow(make(INT,10,0),s); } */
-  if (s && !bigzero(r))
+  if (s && !bigzero(r)) {
     digit(r) = digit(r) | SIGNBIT;
-  return (r);
+}
+  return r;
 }
 /* code to handle (unsigned) exponent commented out */
 
@@ -587,16 +659,18 @@ word bigxscan(char *p, char *q) /* read unsigned hex number in
 {
   word r; /* will hold result */
   word *x = &r;
-  if (*p == '0' && !p[1])
+  if (*p == '0' && !p[1]) {
     return make(INT, 0, 0);
+}
   while (q > p) {
     unsigned long long hold;
     word count = 4;              /* 15 hex digits => 4 bignum digits */
     q = q - p < 15 ? p : q - 15; /* read upto 15 hex digits from small end */
     sscanf(q, "%llx", &hold);
     *q = '\0';
-    while (count-- && !(hold == 0 && q == p))
+    while (count-- && !(hold == 0 && q == p)) {
       *x = make(INT, hold & MAXDIGIT, 0), hold >>= DIGITWIDTH, x = &rest(*x);
+}
   }
   return r;
 }
@@ -625,35 +699,45 @@ word strtobig(word z, int base) /* numeral (as Miranda string) to big number */
                                 /* does NOT check for malformed numeral, assumes
                                    done and that z fully evaluated */
 {
-  word s = 0, r = make(INT, 0, 0), PBASE = PTEN;
-  if (base == 16)
+  word s = 0;
+  word r = make(INT, 0, 0);
+  word PBASE = PTEN;
+  if (base == 16) {
     PBASE = PSIXTEEN;
-  else if (base == 8)
+  } else if (base == 8) {
     PBASE = PEIGHT;
-  if (z != NIL && hd(z) == '-')
+}
+  if (z != NIL && hd(z) == '-') {
     s = 1, z = tl(z); /* optional leading `-' (for NUMVAL) */
-  if (base != 10)
+}
+  if (base != 10) {
     z = tl(tl(z)); /* remove "0x" or "0o" */
+}
   while (z != NIL) {
-    word d = digitval(hd(z)), f = base;
+    word d = digitval(hd(z));
+    word f = base;
     z = tl(z);
-    while (z != NIL && f < PBASE)
-      d = base * d + digitval(hd(z)), f = base * f, z = tl(z);
+    while (z != NIL && f < PBASE) {
+      d = (base * d) + digitval(hd(z)), f = base * f, z = tl(z);
+}
     /* rest of loop does r=f*r+d; (in situ) */
-    d = f * digit(r) + d;
+    d = (f * digit(r)) + d;
     {
       word carry = d >> DIGITWIDTH;
       word *x = &rest(r);
       digit(r) = d & MAXDIGIT;
-      while (*x)
-        d = f * digit(*x) + carry, digit(*x) = d & MAXDIGIT, carry = d >> DIGITWIDTH, x = &rest(*x);
-      if (carry)
+      while (*x) {
+        d = (f * digit(*x)) + carry, digit(*x) = d & MAXDIGIT, carry = d >> DIGITWIDTH, x = &rest(*x);
+}
+      if (carry) {
         *x = make(INT, carry, 0);
+}
     }
   }
-  if (s && !bigzero(r))
+  if (s && !bigzero(r)) {
     digit(r) = digit(r) | SIGNBIT;
-  return (r);
+}
+  return r;
 }
 
 word bigtostr(word x) /* number to decimal string (as Miranda list) */
@@ -683,27 +767,33 @@ word bigtostr(word x) /* number to decimal string (as Miranda list) */
   }
   sign = neg(x);
   x1 = make(INT, digit0(x), 0); /* reverse x into x1 */
-  while ((x = rest(x)))
+  while ((x = rest(x))) {
     x1 = make(INT, digit(x), x1);
+}
   x = x1;
   for (;;) { /* in situ division of (reversed order) x by PTEN */
-    word d = digit(x), rem = d % PTEN;
+    word d = digit(x);
+    word rem = d % PTEN;
     d = d / PTEN;
     x1 = rest(x);
-    if (d)
+    if (d) {
       digit(x) = d;
-    else
+    } else {
       x = x1; /* remove leading zero from result */
-    while (x1)
-      d = rem * IBASE + digit(x1), digit(x1) = d / PTEN, rem = d % PTEN, x1 = rest(x1);
+}
+    while (x1) {
+      d = (rem * IBASE) + digit(x1), digit(x1) = d / PTEN, rem = d % PTEN, x1 = rest(x1);
+}
     /* end of in situ division (also uses x1 as temporary) */
     if (x) {
       word i = TENW;
-      while (i--)
+      while (i--) {
         s = cons('0' + rem % 10, s), rem = rem / 10;
+}
     } else {
-      while (rem)
+      while (rem) {
         s = cons('0' + rem % 10, s), rem = rem / 10;
+}
       return (sign ? cons('-', s) : s);
     }
   }
@@ -711,43 +801,52 @@ word bigtostr(word x) /* number to decimal string (as Miranda list) */
 
 word bigtostrx(word x) /* integer to hexadecimal string (as Miranda list) */
 {
-  word r = NIL, s = neg(x);
+  word r = NIL;
+  word s = neg(x);
   while (x) {
     word count = 4; /* 60 bits => 20 octal digits => 4 bignum digits */
     unsigned long long factor = 1;
     unsigned long long hold = 0;
     char *q;
-    while (count-- && x) /* calculate value of (upto) 4 bignum digits */
-      hold = hold + factor * digit0(x), factor <<= 15, x = rest(x);
+    while (count-- && x) { /* calculate value of (upto) 4 bignum digits */
+      hold = hold + (factor * digit0(x)), factor <<= 15, x = rest(x);
+}
     sprintf(dicp, "%.15llx", hold); /* 15 hex digits = 60 bits */
     q = dicp + 15;
-    while (--q >= dicp)
+    while (--q >= dicp) {
       r = cons(*q, r);
+}
   }
-  while (digit(r) == '0' && rest(r) != NIL)
+  while (digit(r) == '0' && rest(r) != NIL) {
     r = rest(r); /* remove redundant leading 0's */
+}
   r = cons('0', cons('x', r));
-  if (s)
+  if (s) {
     r = cons('-', r);
-  return (r);
+}
+  return r;
 }
 
 word bigtostr8(word x) /* integer to octal string (as Miranda list) */
 {
-  word r = NIL, s = neg(x);
+  word r = NIL;
+  word s = neg(x);
   while (x) {
     char *q = dicp + 5;
     sprintf(dicp, "%.5lo", digit0(x));
-    while (--q >= dicp)
+    while (--q >= dicp) {
       r = cons(*q, r);
+}
     x = rest(x);
   }
-  while (digit(r) == '0' && rest(r) != NIL)
+  while (digit(r) == '0' && rest(r) != NIL) {
     r = rest(r); /* remove redundant leading 0's */
+}
   r = cons('0', cons('o', r));
-  if (s)
+  if (s) {
     r = cons('-', r);
-  return (r);
+}
+  return r;
 }
 
 #ifdef DEBUG

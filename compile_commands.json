@@ -2,178 +2,255 @@
   {
     "file": "fdate.c",
     "arguments": [
-      "/usr/bin/clang",
+      "/opt/homebrew/opt/llvm/bin/clang",
+      "-std=c23",
+      "-D_POSIX_C_SOURCE=200809L",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
       "fdate.c",
       "-o",
       "fdate"
     ],
-    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "directory": "/Users/pkreyenhop/src/Miracula",
     "output": "fdate"
   },
   {
     "file": "big.c",
     "arguments": [
-      "/usr/bin/clang",
+      "/opt/homebrew/opt/llvm/bin/clang",
+      "-std=c23",
+      "-D_POSIX_C_SOURCE=200809L",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
       "-c",
       "-o",
       "big.o",
       "big.c"
     ],
-    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "directory": "/Users/pkreyenhop/src/Miracula",
     "output": "big.o"
   },
   {
     "file": "cmbnms.c",
     "arguments": [
-      "/usr/bin/clang",
+      "/opt/homebrew/opt/llvm/bin/clang",
+      "-std=c23",
+      "-D_POSIX_C_SOURCE=200809L",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
       "-c",
       "-o",
       "cmbnms.o",
       "cmbnms.c"
     ],
-    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "directory": "/Users/pkreyenhop/src/Miracula",
     "output": "cmbnms.o"
   },
   {
     "file": "data.c",
     "arguments": [
-      "/usr/bin/clang",
+      "/opt/homebrew/opt/llvm/bin/clang",
+      "-std=c23",
+      "-D_POSIX_C_SOURCE=200809L",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
       "-c",
       "-o",
       "data.o",
       "data.c"
     ],
-    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "directory": "/Users/pkreyenhop/src/Miracula",
     "output": "data.o"
   },
   {
     "file": "lex.c",
     "arguments": [
-      "/usr/bin/clang",
+      "/opt/homebrew/opt/llvm/bin/clang",
+      "-std=c23",
+      "-D_POSIX_C_SOURCE=200809L",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
       "-c",
       "-o",
       "lex.o",
       "lex.c"
     ],
-    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "directory": "/Users/pkreyenhop/src/Miracula",
     "output": "lex.o"
   },
   {
     "file": "reduce.c",
     "arguments": [
-      "/usr/bin/clang",
+      "/opt/homebrew/opt/llvm/bin/clang",
+      "-std=c23",
+      "-D_POSIX_C_SOURCE=200809L",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
       "-c",
       "-o",
       "reduce.o",
       "reduce.c"
     ],
-    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "directory": "/Users/pkreyenhop/src/Miracula",
     "output": "reduce.o"
   },
   {
     "file": "signals.c",
     "arguments": [
-      "/usr/bin/clang",
+      "/opt/homebrew/opt/llvm/bin/clang",
+      "-std=c23",
+      "-D_POSIX_C_SOURCE=200809L",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
       "-c",
       "-o",
       "signals.o",
       "signals.c"
     ],
-    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "directory": "/Users/pkreyenhop/src/Miracula",
     "output": "signals.o"
   },
   {
     "file": "steer.c",
     "arguments": [
-      "/usr/bin/clang",
+      "/opt/homebrew/opt/llvm/bin/clang",
+      "-std=c23",
+      "-D_POSIX_C_SOURCE=200809L",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
       "-c",
       "-o",
       "steer.o",
       "steer.c"
     ],
-    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "directory": "/Users/pkreyenhop/src/Miracula",
     "output": "steer.o"
   },
   {
     "file": "trans.c",
     "arguments": [
-      "/usr/bin/clang",
+      "/opt/homebrew/opt/llvm/bin/clang",
+      "-std=c23",
+      "-D_POSIX_C_SOURCE=200809L",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
       "-c",
       "-o",
       "trans.o",
       "trans.c"
     ],
-    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "directory": "/Users/pkreyenhop/src/Miracula",
     "output": "trans.o"
   },
   {
     "file": "types.c",
     "arguments": [
-      "/usr/bin/clang",
+      "/opt/homebrew/opt/llvm/bin/clang",
+      "-std=c23",
+      "-D_POSIX_C_SOURCE=200809L",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
       "-c",
       "-o",
       "types.o",
       "types.c"
     ],
-    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "directory": "/Users/pkreyenhop/src/Miracula",
     "output": "types.o"
   },
   {
     "file": "utf8.c",
     "arguments": [
-      "/usr/bin/clang",
+      "/opt/homebrew/opt/llvm/bin/clang",
+      "-std=c23",
+      "-D_POSIX_C_SOURCE=200809L",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
       "-c",
       "-o",
       "utf8.o",
       "utf8.c"
     ],
-    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "directory": "/Users/pkreyenhop/src/Miracula",
     "output": "utf8.o"
   },
   {
     "file": "y.tab.c",
     "arguments": [
-      "/usr/bin/clang",
+      "/opt/homebrew/opt/llvm/bin/clang",
+      "-std=c23",
+      "-D_POSIX_C_SOURCE=200809L",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
       "-c",
       "-o",
       "y.tab.o",
       "y.tab.c"
     ],
-    "directory": "/home/pkreyenhop/src/miranda-zig",
+    "directory": "/Users/pkreyenhop/src/Miracula",
     "output": "y.tab.o"
   },
   {
     "file": "version.c",
     "arguments": [
-      "/usr/bin/clang",
+      "/opt/homebrew/opt/llvm/bin/clang",
+      "-std=c23",
+      "-D_POSIX_C_SOURCE=200809L",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
       "-DVERS=2067",
-      "-DHOST=\"compiled: Sun May 31 09:38:44 PM NZST 2026\\nclang\\nhost: x86_64 Linux 7.0.9-zen2-1-zen gcc -v\\n\"",
-      "-DVDATE=\"31 May 2026\"",
+      "-DHOST=\"compiled: Mon 1 Jun 2026 17:05:48 NZST\\nclang -std=c23 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Wpedantic\\nhost: arm64 Darwin 25.5.0 gcc -v\\n\"",
+      "-DVDATE=\"1 June 2026\"",
       "-c",
       "version.c"
     ],
-    "directory": "/home/pkreyenhop/src/miranda-zig"
+    "directory": "/Users/pkreyenhop/src/Miracula"
   },
   {
     "file": "menudriver.c",
     "arguments": [
-      "/usr/bin/clang",
-      "menudriver.c",
+      "/opt/homebrew/opt/llvm/bin/clang",
+      "-std=c23",
+      "-D_POSIX_C_SOURCE=200809L",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-c",
       "-o",
-      "miralib/menudriver"
+      "menudriver.o",
+      "menudriver.c"
     ],
-    "directory": "/home/pkreyenhop/src/miranda-zig",
-    "output": "miralib/menudriver"
+    "directory": "/Users/pkreyenhop/src/Miracula",
+    "output": "menudriver.o"
   },
   {
     "file": "signals.c",
     "arguments": [
-      "/usr/bin/clang",
-      "signals.c",
+      "/opt/homebrew/opt/llvm/bin/clang",
+      "-std=c23",
+      "-D_POSIX_C_SOURCE=200809L",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-c",
       "-o",
-      "miralib/menudriver"
+      "menudriver-signals.o",
+      "signals.c"
     ],
-    "directory": "/home/pkreyenhop/src/miranda-zig",
-    "output": "miralib/menudriver"
+    "directory": "/Users/pkreyenhop/src/Miracula",
+    "output": "menudriver-signals.o"
   }
 ]
