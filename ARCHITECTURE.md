@@ -1,30 +1,32 @@
 # Architecture
 
 This repository builds the Miranda interpreter, `mira`, plus a few small
-support utilities. The code is mostly C, with parser and combinator tables
-generated from source inputs.
+support utilities. The build is driven by Zig. The code is still partly C, with
+parser and combinator tables generated from source inputs, but C compilation is
+done through Zig's toolchain rather than a direct system `clang` invocation.
 
 ## Build Layout
 
-- `Makefile` builds `mira`, `miralib/menudriver`, and the example `.x` files.
-- `make check` is the main local verification target. It runs a clean C build
-  with Criterion-backed integration tests, checks standalone header syntax in
-  C, and builds standalone tools.
-- `make cxx` force-rebuilds `mira` and `miralib/menudriver` with `clang++`
-  as C++26. This is a compatibility check; the normal build remains C.
-- `make zig-cc` and `make zig-cxx` force-rebuild `mira` and
-  `miralib/menudriver` with `zig cc` and `zig c++`, respectively. `make
-  check-zig` runs both, and `make check` includes that target. The Zig targets
-  use a project-local `.zig-cache/` so builds do not depend on a writable user
-  cache.
+- `build.zig` builds `mira`, `fdate`, `just`, `miralib/menudriver`, and the
+  installed `miralib` tree. `zig build` installs outputs under `zig-out/`.
+- `zig build check` is the main local verification target. It builds the
+  interpreter and tools, checks standalone header syntax, runs UTF-8 module
+  tests, and runs the interpreter integration suite.
+- `zig build test` runs all tests. `zig build test-mira` runs just the
+  interpreter integration tests.
+- `zig build tools` builds the support tools.
+- `zig build clean` removes Zig and legacy build outputs.
+- `Makefile` is now only a compatibility wrapper around `zig build` targets.
+- The Zig build defaults to `ReleaseFast` because Zig safety instrumentation
+  changes the GC-sensitive C stack shape.
 - `rules.y` is the yacc grammar. It generates `y.tab.c` and `y.tab.h` with
   Berkeley yacc (`byacc`); GNU bison is not compatible with this grammar.
-- `gencdecs` generates `cmbnms.c` and `combs.h`, which define combinator names
-  and numeric ids shared by the compiler and reducer.
+- `gencdecs` historically generated combinator metadata. The numeric ids remain
+  in `combs.h`; the active combinator-name table is now `cmbnms.zig`.
 - `miralib/` contains the Miranda standard environment, prelude, manual, and
   example scripts.
-- `tests/mira_tests.c` contains Criterion tests that run the built `mira`
-  binary with isolated temporary homes. Use `make test` for just the Criterion
+- `tests/mira_tests.zig` contains integration tests that run the built `mira`
+  binary with isolated temporary homes. Use `make test` for the interpreter
   suite or `make check` for the broader local gate.
 - `runtime.h` defines the core `word` scalar type used by the C runtime.
 - `platform.h` centralizes shared system includes and portability shims used by
@@ -46,8 +48,12 @@ and regenerating rather than hand-editing generated outputs.
 5. The command loop reads expressions or `/commands`, parses them, typechecks
    them, translates them, and sends them to the reducer.
 
-`version.c` is built with Makefile-generated defines for version, host, and
-source revision date metadata.
+`version.zig` exports the C ABI globals for version, host, and source revision
+date metadata. `build.zig` reads those values from the existing repository
+metadata files and passes them into the Zig object as build options.
+
+`cmbnms.zig` exports the C ABI `cmbnms` table consumed by `data.c` when printing
+combinator objects.
 
 ## Compiler Pipeline
 
@@ -86,8 +92,8 @@ undumping, identifier storage, and common object printing helpers.
 `big.c` owns Miranda arbitrary-precision integers. A bigint is an `INT` chain
 using base `IBASE`, with sign stored in the first digit word.
 
-`utf8.c` converts between Unicode code points and UTF-8 byte sequences for the
-lexer and runtime character I/O paths.
+`utf8.zig` converts between Unicode code points and UTF-8 byte sequences for
+the lexer and runtime character I/O paths.
 
 ## Reduction And I/O
 
@@ -110,12 +116,12 @@ pipeline unless the typechecker invariants are preserved.
 
 ## Utilities
 
-- `fdate.c` reads a filename from stdin and prints its last modification date.
-  The Makefile uses this to maintain the source revision date.
+- `fdate.zig` reads a filename from stdin and prints its last modification
+  date.
 - `menudriver.c` is a standalone browser for the installed manual tree.
-- `just.c` is a standalone text justification utility used by documentation
+- `just.zig` is a standalone text justification utility used by documentation
   tooling.
-- `signals.c` wraps `sigaction()` so the rest of the old code can keep using
+- `signals.zig` wraps `sigaction()` so the rest of the old code can keep using
   BSD-style signal semantics through `signals()`.
 
 ## Maintenance Notes

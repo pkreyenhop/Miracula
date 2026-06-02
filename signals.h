@@ -1,4 +1,4 @@
-/* signals.h: Declarations for signals.c */
+/* signals.h: Signal handling interface implemented by signals.zig. */
 
 #ifndef MIRANDA_SIGNALS_H
 #define MIRANDA_SIGNALS_H

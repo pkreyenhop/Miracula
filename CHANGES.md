@@ -7,7 +7,7 @@ repository checkout.
 
 - Added a repeatable `clang-format` configuration in `.clang-format`.
 - Added a `test` target to `Makefile` that builds `mira` and runs the
-  Criterion test binary.
+  integration test suite.
 - Added `check`, `check-c`, `check-tools`, and `check-cxx` Makefile targets
   so local verification exercises the strict C build, tests, standalone
   tools, and C++ compatibility build.
@@ -19,16 +19,12 @@ repository checkout.
   main interpreter link.
 - Added explicit `fdate` and `just` build rules so utility programs are checked
   with the same warning profile as the main interpreter.
-- Added a `cxx` target to `Makefile` that force-rebuilds `mira` and
-  `miralib/menudriver` with `clang++` as C++26.
-- Added `zig-cc`, `zig-cxx`, and `check-zig` targets so the interpreter and
-  menu driver also build warning-clean with `zig cc` and `zig c++`.
-- Split compile and link flags in the Makefile so C++-only source flags such as
-  `-x c++` do not leak into final link commands.
+- Earlier cleanup added C++ and Zig C compatibility targets; these have now
+  been superseded by the canonical `build.zig` build.
 - Routed Zig builds through a project-local `.zig-cache/` and made `cleanup`
   remove it.
-- Added an internal `clean-build-products` target so Zig checks can clean build
-  outputs without deleting the active Zig cache between `zig-cc` and `zig-cxx`.
+- Added Zig-owned clean/check/tool targets so build products are managed through
+  `build.zig`.
 - Added `warnings.md` and a `warning-audit` Makefile target to start cleanup
   Phase 1 by documenting current warning suppressions and exposing selected
   warning debt without `-Werror`.
@@ -36,22 +32,17 @@ repository checkout.
   accepted by the installed Clang.
 - Converted project-owned legacy octal integer literals to equivalent hex
   constants so the C2y build stays warning-clean.
-- Scoped `-Wno-deprecated-octal-literals` to `zig cc` builds only, because Zig's
-  system header path expands glibc macros that still contain legacy octal
-  literals under C2y.
-- Changed the default `make check` path to run only the strict Clang C2y build,
-  tests, and tools. C++26 and Zig targets remain available explicitly, but
-  are no longer part of the routine check loop.
+- Scoped Zig-specific C warning adjustments to the Zig build.
+- Changed the default `make check` path to delegate to `zig build check`.
 - Added smoke coverage for compile-time degradation, very long literals, and
   compilation/runtime paths that must trigger garbage collection.
 - Added a timeout-bounded standard library load smoke test to catch gross
   startup or standard-environment speed regressions.
 - Added `version.h` for build/version metadata, made `menudriver.c` helper
-  definitions consistently file-local, and moved `fdate.c` helper state behind
-  `static` storage.
-- Moved `just.c` utility state behind `static` storage so it no longer appears
-  as accidental exported data in the warning audit.
-- Made `utf8.c` decoder error-reporting state and helper function file-local.
+  definitions consistently file-local, and later replaced `fdate.c` with
+  `fdate.zig`.
+- Later replaced `just.c` with `just.zig`.
+- Later replaced `utf8.c` with `utf8.zig`.
 - Made `big.c`'s division remainder state and digit-conversion helper
   file-local.
 - Made `data.c`'s dump/load filename cursor and private-name relocation base
@@ -102,17 +93,27 @@ repository checkout.
 - Linked the Zig C++ compatibility build with `-nostdlib++`, because the code
   is C source compiled as C++ and does not use C++ standard-library symbols.
   This avoids warning output from Zig rebuilding bundled libc++ during links.
-- Preserved the local Makefile compiler edits that were already present:
-  `CC = clang` and the adjusted `CFLAGS` line.
+- Replaced the Makefile-driven build with `build.zig`. The Makefile is now a
+  compatibility wrapper around Zig targets and no longer invokes `clang`
+  directly.
+- Removed replaced C implementation files `fdate.c` and `utf8.c`; the active
+  implementations are `fdate.zig` and `utf8.zig`.
+- Replaced `just.c` with `just.zig` and added Zig unit coverage for ordinary
+  paragraph wrapping plus frozen-line preservation.
+- Replaced `signals.c` with `signals.zig`.
+- Replaced `version.c` with `version.zig`; build metadata now flows through
+  Zig build options while preserving the existing C header ABI.
+- Replaced `cmbnms.c` with `cmbnms.zig`; the generated combinator-name table is
+  now a Zig object linked into the interpreter.
 
 ## Tests
 
 - Added `tests/smoke.sh`, an integration smoke suite that runs the built
   interpreter with an isolated temporary `HOME`.
-- Replaced the `make test` shell smoke runner with a Criterion-based C test
-  binary in `tests/mira_tests.c`.
+- Replaced the `make test` shell smoke runner with a Zig integration test
+  module in `tests/mira_tests.zig`.
 - Named each smoke-test case so failures point at the affected behavior.
-- The Criterion tests cover:
+- The Zig integration tests cover:
   - standard arithmetic and standard-environment functions;
   - list output;
   - lazy list operations, list reversal, zipping, and string concatenation;
@@ -137,13 +138,13 @@ repository checkout.
 
 - Formatted top-level C and header files with `clang-format`.
 - The formatting pass touched both handwritten and checked-in generated files,
-  including `y.tab.c`, `cmbnms.c`, and `combs.h`.
+  including `y.tab.c` and `combs.h`.
 - Formatting is the dominant source of diff volume.
 
 ## ANSI/Modern C Cleanup
 
-- Converted old K&R-style function definitions in `just.c` to ANSI C prototype
-  definitions.
+- Converted old K&R-style function definitions in remaining C files to ANSI C
+  prototype definitions.
 - Added explicit `void` to no-argument function declarations and definitions
   across C sources, headers, and yacc source snippets.
 - Updated `rules.y` and the checked-in generated `y.tab.c` to keep parser code
@@ -163,23 +164,19 @@ repository checkout.
   `data.h`, `big.h`, `lex.h`, `signals.h`, and `utf8.h`.
 - Reduced `data.h` coupling by moving system include order, `index`/`rindex`
   compatibility macros, and legacy `union wait` handling into `platform.h`.
-- Added `runtime.h` and `platform.h` to the Makefile source and object
-  dependency lists so runtime-header edits trigger rebuilds.
+- Added `runtime.h` and `platform.h` to the build source and object dependency
+  lists so runtime-header edits trigger rebuilds.
 
 ## Warning Fixes
 
 - Cleaned remaining warnings under:
   `-std=c11 -D_POSIX_C_SOURCE=200809L -Wall -Wextra -Wstrict-prototypes -Wold-style-definition -Werror=implicit-int -Werror=implicit-function-declaration`
-- Switched the default Makefile `CFLAGS` to a Clang `-Weverything -Werror`
-  warning profile.
-- The `-Weverything` profile explicitly disables warning categories that are
-  not actionable for this codebase without redesigning the historical heap
-  macros, yacc output, global namespace, or signal-handler compatibility layer.
-- `utf8.c` now uses `int` byte temporaries where EOF must be represented, and
-  formats error bytes explicitly.
+- Switched the default C warning profile to the Zig build's C23
+  `-Wall -Wextra -Wpedantic` flags.
+- `utf8.zig` now owns UTF-8 conversion and fatal UTF-8 diagnostics.
 - `lex.c` now compares pathname prefix sizes with matching unsigned types.
-- `just.c` now has explicit logical grouping, no nested block comments, no
-  assignment-in-condition warning, and handles `fgets()` failure explicitly.
+- Remaining C files now have more explicit logical grouping, fewer nested block
+  comments, and fewer assignment-in-condition warnings.
 
 ## C++ Compatibility
 
@@ -191,7 +188,7 @@ repository checkout.
   `void *` implicitly.
 - Tightened a few string APIs to accept or return `const char *` where the
   caller passes string literals.
-- Verified `make cxx` builds the interpreter and menu driver with `clang++`.
+- Verified the Zig build compiles the interpreter and menu driver.
 - Updated the C++ compatibility profile from C++17 to C++26.
 
 ## Existing Local Source Edits
@@ -209,7 +206,6 @@ They remain in the working tree.
 
 The working tree also contains untracked local artifacts:
 
-- `compile_commands.json`
 - `big.zig`
 - `script.m`
 - `*.plist` files for the top-level C/generated sources
@@ -219,14 +215,10 @@ cleanup/test/documentation change set described above.
 
 ## Verification
 
-- `make test` passes through the Criterion test binary.
-- `make check` passes and covers the strict Clang C2y build, Criterion tests, and
-  tools.
+- `make test` passes through the Zig integration test module.
+- `make check` passes and delegates to `zig build check`.
 - `make check-headers` passes for the project headers in C2y mode.
-- `mira` builds cleanly with the default C2y `-Weverything -Werror` Makefile
-  flags.
-- `just.c`, `fdate.c`, and `menudriver.c` also compile cleanly with the warning
-  profile.
-- `make cxx` builds cleanly with `clang++` as C++26.
-- `make zig-cc` builds cleanly with `zig cc`.
-- `make zig-cxx` builds cleanly with `zig c++`.
+- `mira` builds cleanly through `build.zig`.
+- `menudriver.c` also compiles cleanly with the warning profile.
+- `zig build check` passes.
+- `zig build tools` builds the support tools.

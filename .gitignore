@@ -6,7 +6,12 @@
 /y.tab.h
 /mira
 /fdate
+/just
+/zig-out
+/.zig-cache
 /miralib/menudriver
 /miralib/preludx
+/tests/mira_tests
+/tests/utf8_tests
 /mira.1.pdf
 /mira.man.pdf

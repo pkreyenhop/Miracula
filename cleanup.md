@@ -56,7 +56,7 @@ global or fixed-size buffers.
 1. Introduce small local helpers for checked string copying, concatenation, and
    formatting. Prefer `snprintf`-style APIs that return failure on truncation.
 2. Replace command and path construction in `steer.c`, `lex.c`, `data.c`,
-   `menudriver.c`, `reduce.c`, `big.c`, and `utf8.c`.
+   `menudriver.c`, `reduce.c`, and `big.c`.
 3. Make buffer sizes explicit at call sites. Avoid helpers that infer capacity
    from a pointer.
 4. Convert repeated path-building idioms into named helpers, for example
@@ -126,8 +126,8 @@ is visible.
    - compiler/typechecker state;
    - reducer/evaluation state;
    - process configuration and paths.
-2. Start with leaf modules where the change is contained, such as `utf8.c`,
-   `big.c`, and standalone utilities.
+2. Start with leaf modules where the change is contained, such as `big.c` and
+   standalone utilities.
 3. Move initialization and reset functions onto those context structs.
 4. Keep compatibility shims during migration so behavior changes are isolated.
 5. Add tests around `/reload`, script loading, imports, interrupts, and command
@@ -160,7 +160,7 @@ Expected warning impact:
 
 ## Phase 7: Generated Code Boundary
 
-Generated files such as `y.tab.c`, `y.tab.h`, `cmbnms.c`, and `combs.h`
+Generated files such as `y.tab.c`, `y.tab.h`, and `combs.h`
 increase diff volume and make cleanup hard to review.
 
 1. Document the exact generation commands and tool versions.
@@ -265,7 +265,7 @@ coverage.
 ## Suggested First Pull Requests
 
 1. Add checked string formatting helpers and replace simple `sprintf` calls in
-   `big.c`, `reduce.c`, and `utf8.c`.
+   `big.c` and `reduce.c`.
 2. Replace command construction in `menudriver.c` with safer process execution
    or strict shell quoting.
 3. Split generated-code warning handling from handwritten-code warning handling.

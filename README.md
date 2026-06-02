@@ -8,7 +8,7 @@ Professor Turner only released it in source code form, of which
 his latest is 2.066 from Jan 2020, but those releases do not compile
 out of the box.
 
-To build it from source, you need `make` and a C compiler.
+To build it from source, you need Zig.
 If you need to modify `rules.y` you'll also need `byacc`;
 it does not work at all with the supposedly compatible GNU `bison`.
 
@@ -35,16 +35,16 @@ In the meantime, you can
 ```
 git clone https://codeberg.org/DATurner/miranda
 cd miranda
-make
-make install
+zig build
+zig build test
+zig build install
 ```
 
-which puts it in `/usr/bin/mira` and `/usr/lib/miralib`.
-To install it elsewhere or use a different compiler than GCC,
-edit `Makefile` before building.
+which puts build outputs under `zig-out/` by default. The Makefile is now only a
+compatibility wrapper around `zig build` targets.
 
 You can also test it in the source directory before installing it
-by running it as `./mira`
+by running it as `./zig-out/bin/mira -lib zig-out/lib/miralib`.
 
 There is a mailing list `miranda@groups.io` whose web site is
 `http://groups.io/g/miranda` and you can also subscribe to it

@@ -1,4 +1,4 @@
-/* Public build/version metadata exported by version.c. */
+/* Public build/version metadata exported by version.zig. */
 
 #ifndef MIRANDA_VERSION_H
 #define MIRANDA_VERSION_H
