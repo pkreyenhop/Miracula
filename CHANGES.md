@@ -105,6 +105,26 @@ repository checkout.
   Zig build options while preserving the existing C header ABI.
 - Replaced `cmbnms.c` with `cmbnms.zig`; the generated combinator-name table is
   now a Zig object linked into the interpreter.
+- Replaced `menudriver.c` with `menudriver.zig` and added Zig unit coverage for
+  shell quoting and executable-mode detection.
+- Replaced `big.c` with `big.zig`; the arbitrary-precision integer package now
+  uses the existing C heap/object ABI from Zig.
+- Moved selected `steer.c` leaf helpers into `steer_helpers.zig` while
+  preserving their C ABI entry points.
+- Moved selected `data.c` leaf helpers into `data_helpers.zig` while preserving
+  their C ABI entry points; this now includes character helpers, alias-name
+  lookup, definition-list sorting, and diagnostic character-name formatting.
+- Moved selected `lex.c` pure helpers into `lex_helpers.zig` and added Zig unit
+  coverage for their classification behavior.
+- Moved selected `trans.c` relation and ordered-set helpers into
+  `trans_helpers.zig` while preserving their C ABI entry points; this now also
+  owns repeated-name membership checks, structural equality, pattern-id
+  extraction, tuple-pattern reconstruction, pattern irrefutability/fallibility
+  checks, constructor-value extraction, simple list-tail lookup, and
+  translated-RHS here-info lookup; it also owns repeated zf generator
+  expansion.
+- Moved shared type/parser ordered-set helpers into `types_helpers.zig` while
+  preserving the existing C ABI entry points and `NEW` side effect.
 
 ## Tests
 
@@ -206,7 +226,6 @@ They remain in the working tree.
 
 The working tree also contains untracked local artifacts:
 
-- `big.zig`
 - `script.m`
 - `*.plist` files for the top-level C/generated sources
 
@@ -219,6 +238,6 @@ cleanup/test/documentation change set described above.
 - `make check` passes and delegates to `zig build check`.
 - `make check-headers` passes for the project headers in C2y mode.
 - `mira` builds cleanly through `build.zig`.
-- `menudriver.c` also compiles cleanly with the warning profile.
+- `menudriver.zig` builds and is installed through `build.zig`.
 - `zig build check` passes.
 - `zig build tools` builds the support tools.

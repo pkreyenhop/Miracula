@@ -64,7 +64,7 @@ static void out_typel(word /*t*/);
 static void printelement(word /*x*/);
 static void redtfr(word /*x*/);
 static word rembvars(word /*x*/, word /*p*/);
-static word remove1(word /*e*/, word * /*ss*/);
+word remove1(word /*e*/, word * /*ss*/);
 static word rep_t(word /*T*/, word /*L*/);
 static word rep_t1(word /*T*/, word /*L*/);
 static word rhs_here(word /*r*/);
@@ -1892,120 +1892,7 @@ word redtvars(word t)
   return (walktype(t, mapdown));
 }
 
-word remove1(word e, word *ss)
-/* destructively remove e from set with address ss, returning
-   1 if e was present, 0 otherwise */
-{
-  while (*ss != NIL && hd(*ss) < e) {
-    ss = &tl(*ss); /* we assume set in address order */
-  }
-  if (*ss == NIL || hd(*ss) != e) {
-    return 0;
-  }
-  *ss = tl(*ss);
-  return 1;
-}
-
-word setdiff(word s1, word s2) /* destructive on s1, returns set difference */
-                               /* both are in ascending address order */
-{
-  word *ss1 = &s1;
-  while (*ss1 != NIL && s2 != NIL) {
-    if (hd(*ss1) == hd(s2)) {
-      *ss1 = tl(*ss1);
-    } else /* removes element */
-      if (hd(*ss1) < hd(s2)) {
-        ss1 = &tl(*ss1);
-      } else {
-        s2 = tl(s2);
-      }
-  }
-  return s1;
-}
-
-word add1(word e, word s)
-/* inserts e destructively into set s, kept in ascending address order */
-{
-  word s1 = s;
-  if (s == NIL || e < hd(s)) {
-    return (cons(e, s));
-  }
-  if (e == hd(s)) {
-    return s; /* no duplicates! */
-  }
-  while (tl(s1) != NIL && e > hd(tl(s1))) {
-    s1 = tl(s1);
-  }
-  if (tl(s1) == NIL) {
-    tl(s1) = cons(e, NIL);
-  } else if (e != hd(tl(s1))) {
-    tl(s1) = cons(e, tl(s1));
-  }
-  return s;
-}
-
 word NEW; /* nasty hack, see rules */
-
-word newadd1(word e, word s) /* as above, but with side-effect on NEW */
-{
-  word s1 = s;
-  NEW = 1;
-  if (s == NIL || e < hd(s)) {
-    return (cons(e, s));
-  }
-  if (e == hd(s)) {
-    NEW = 0;
-    return s;
-  } /* no duplicates! */
-  while (tl(s1) != NIL && e > hd(tl(s1))) {
-    s1 = tl(s1);
-  }
-  if (tl(s1) == NIL) {
-    tl(s1) = cons(e, NIL);
-  } else if (e != hd(tl(s1))) {
-    tl(s1) = cons(e, tl(s1));
-  } else {
-    NEW = 0;
-  }
-  return s;
-}
-
-word UNION(word s1, word s2)
-/* destructive on s1; s1, s2 both in address order */
-{
-  word *ss = &s1;
-  while (*ss != NIL && s2 != NIL) {
-    if (hd(*ss) == hd(s2)) {
-      ss = &tl(*ss), s2 = tl(s2);
-    } else if (hd(*ss) < hd(s2)) {
-      ss = &tl(*ss);
-    } else {
-      *ss = cons(hd(s2), *ss), ss = &tl(*ss), s2 = tl(s2);
-    }
-  }
-  if (*ss == NIL) {
-    while (s2 != NIL) {
-      *ss = cons(hd(s2), *ss), ss = &tl(*ss), s2 = tl(s2);
-    }
-  }
-  /* must copy tail of s2, in case of later destructive operations on s1 */
-  return s1;
-}
-
-word intersection(word s1, word s2) /* s1, s2 and result all in address order */
-{
-  word r = NIL;
-  while (s1 != NIL && s2 != NIL) {
-    if (hd(s1) == hd(s2)) {
-      r = cons(hd(s1), r), s1 = tl(s1), s2 = tl(s2);
-    } else if (hd(s1) < hd(s2)) {
-      s1 = tl(s1);
-    } else {
-      s2 = tl(s2);
-    }
-  }
-  return (reverse(r));
-}
 
 word deps(word x) /* returns list of the free identifiers in expression x */
 {
@@ -2089,13 +1976,6 @@ L:
     fprintf(stderr, "impossible event in rembvars\n");
     return x;
   }
-}
-
-word member(word s, word x) {
-  while (s != NIL && x != hd(s)) {
-    s = tl(s);
-  }
-  return (s != NIL);
 }
 
 #if 0

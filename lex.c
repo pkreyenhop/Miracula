@@ -1320,11 +1320,6 @@ word directive(void) /* these are of the form "%identifier" */
   return (END);
 }
 
-int okid(int ch) {
-  return (('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z') || ('0' <= ch && ch <= '9') ||
-          ch == '_' || ch == '\'');
-}
-
 static int okulid(int ch) {
   return (('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z') || ('0' <= ch && ch <= '9') ||
           ch == '_' || ch == '' || ch == '\'');
@@ -1484,24 +1479,6 @@ void octnumeral(void) /* added 21.11.2013 */
 }
 
 word namebucket[128]; /* each namebucket has a list terminated by 0, not NIL */
-
-int hash(char *s) /* returns a value in {0..127} */
-{
-  int h = *s;
-  if (h) {
-    while (*++s) {
-      h ^= *s; /* guard necessary to deal with s empty */
-    }
-  }
-  return (h & 127);
-}
-
-int isconstrname(char *s) {
-  if (s[0] == '$') {
-    s++;
-  }
-  return isupper((int)*s); /* formerly !islower */
-}
 
 word getfname(word x)
 /* nonterminals have an added ' ', getfname returns the corresponding

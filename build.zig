@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const c_sources = [_][]const u8{
-    "big.c",
     "data.c",
     "lex.c",
     "reduce.c",
@@ -42,7 +41,13 @@ pub fn build(b: *std.Build) void {
     const signals_zig = addZigObject(b, "signals-zig", "signals.zig", target, optimize, true);
     const version_zig = addVersionObject(b, target, optimize);
     const cmbnms_zig = addZigObject(b, "cmbnms-zig", "cmbnms.zig", target, optimize, false);
-    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig);
+    const big_zig = addZigObject(b, "big-zig", "big.zig", target, optimize, true);
+    const steer_helpers_zig = addZigObject(b, "steer-helpers-zig", "steer_helpers.zig", target, optimize, true);
+    const data_helpers_zig = addZigObject(b, "data-helpers-zig", "data_helpers.zig", target, optimize, true);
+    const lex_helpers_zig = addZigObject(b, "lex-helpers-zig", "lex_helpers.zig", target, optimize, false);
+    const trans_helpers_zig = addZigObject(b, "trans-helpers-zig", "trans_helpers.zig", target, optimize, true);
+    const types_helpers_zig = addZigObject(b, "types-helpers-zig", "types_helpers.zig", target, optimize, true);
+    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_helpers_zig, data_helpers_zig, lex_helpers_zig, trans_helpers_zig, types_helpers_zig);
     const install_mira = b.addInstallArtifact(mira, .{});
     b.getInstallStep().dependOn(&install_mira.step);
 
@@ -54,8 +59,7 @@ pub fn build(b: *std.Build) void {
     const install_just = b.addInstallArtifact(just, .{});
     b.getInstallStep().dependOn(&install_just.step);
 
-    const menudriver = addCExecutable(b, "menudriver", &.{"menudriver.c"}, target, optimize);
-    menudriver.root_module.addObject(signals_zig);
+    const menudriver = addZigExecutable(b, "menudriver", "menudriver.zig", target, optimize, false);
     const install_menudriver = b.addInstallArtifact(menudriver, .{
         .dest_dir = .{ .override = .{ .custom = "lib/miralib" } },
     });
@@ -80,6 +84,34 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_just_tests = b.addRunArtifact(just_tests);
+    const menudriver_tests = b.addTest(.{
+        .name = "menudriver-tests",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("menudriver.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_menudriver_tests = b.addRunArtifact(menudriver_tests);
+    const steer_helpers_tests = b.addTest(.{
+        .name = "steer-helpers-tests",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("steer_helpers.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        }),
+    });
+    const run_steer_helpers_tests = b.addRunArtifact(steer_helpers_tests);
+    const lex_helpers_tests = b.addTest(.{
+        .name = "lex-helpers-tests",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("lex_helpers.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_lex_helpers_tests = b.addRunArtifact(lex_helpers_tests);
 
     const header_check = addHeaderCheck(b, target, optimize);
 
@@ -104,6 +136,9 @@ pub fn build(b: *std.Build) void {
     const test_step = b.step("test", "Run all tests");
     test_step.dependOn(&run_utf8_tests.step);
     test_step.dependOn(&run_just_tests.step);
+    test_step.dependOn(&run_menudriver_tests.step);
+    test_step.dependOn(&run_steer_helpers_tests.step);
+    test_step.dependOn(&run_lex_helpers_tests.step);
     test_step.dependOn(&run_mira_tests.step);
 
     const test_mira = b.step("test-mira", "Run Zig integration tests against mira");
@@ -125,6 +160,9 @@ pub fn build(b: *std.Build) void {
     check_step.dependOn(&install_menudriver.step);
     check_step.dependOn(&run_utf8_tests.step);
     check_step.dependOn(&run_just_tests.step);
+    check_step.dependOn(&run_menudriver_tests.step);
+    check_step.dependOn(&run_steer_helpers_tests.step);
+    check_step.dependOn(&run_lex_helpers_tests.step);
     check_step.dependOn(&run_mira_tests.step);
 
     const migration_check = b.step("check-migration", "Alias for the full Zig build verification gate");
@@ -156,12 +194,24 @@ fn addMira(
     signals_zig: *std.Build.Step.Compile,
     version_zig: *std.Build.Step.Compile,
     cmbnms_zig: *std.Build.Step.Compile,
+    big_zig: *std.Build.Step.Compile,
+    steer_helpers_zig: *std.Build.Step.Compile,
+    data_helpers_zig: *std.Build.Step.Compile,
+    lex_helpers_zig: *std.Build.Step.Compile,
+    trans_helpers_zig: *std.Build.Step.Compile,
+    types_helpers_zig: *std.Build.Step.Compile,
 ) *std.Build.Step.Compile {
     const mira = addCExecutable(b, "mira", &c_sources, target, optimize);
     mira.root_module.addObject(utf8_zig);
     mira.root_module.addObject(signals_zig);
     mira.root_module.addObject(version_zig);
     mira.root_module.addObject(cmbnms_zig);
+    mira.root_module.addObject(big_zig);
+    mira.root_module.addObject(steer_helpers_zig);
+    mira.root_module.addObject(data_helpers_zig);
+    mira.root_module.addObject(lex_helpers_zig);
+    mira.root_module.addObject(trans_helpers_zig);
+    mira.root_module.addObject(types_helpers_zig);
     mira.linkSystemLibrary("m");
     return mira;
 }

@@ -53,7 +53,7 @@ static void dump_ob(word /*x*/, FILE * /*f*/);
 static word getdbl(FILE * /*f*/);
 static int getint(FILE * /*f*/);
 static word getword(FILE * /*f*/);
-static word hdsort(word /*x*/);
+word hdsort(word /*x*/);
 static word load_defs(FILE * /*f*/);
 static void mark(word /*x*/);
 static char *mkrel(char * /*p*/);
@@ -484,26 +484,6 @@ void setdbl(word x, double R) {
   hd(x) = r.bits;
   tl(x) = 0;
 #endif
-}
-
-word sto_char(int c) /* assumes 0<=c<=UMAX */
-{
-  return c < 256 ? c : make(UNICODE, c, 0);
-}
-
-word get_char(word x) {
-  if (x < 256) {
-    return x;
-  }
-  if (tag[x] == UNICODE) {
-    return hd(x);
-  }
-  fprintf(stderr, "impossible event in get_char(x), tag[x]==%d\n", tag[x]);
-  exit(1);
-}
-
-int is_char(word x) {
-  return (0 <= x && x < 256) || tag[x] == UNICODE;
 }
 
 word sto_id(char *p1) {
@@ -1108,19 +1088,6 @@ void unscramble(word aliases) /* remove old to new diversions installed above */
   ALIASES = a; /* transmits info about missing aliasees */
 }
 
-/* returns true name of an identifier, even after aliasing (data.c) */
-char *getaka(word x) /* returns original name of x (as a string) */
-{
-  word y = id_who(x);
-  return (tag[y] != CONS ? get_id(x) : (char *)hd(hd(y)));
-}
-
-word get_here(word x) /* here info for id x */
-{
-  word y = id_who(x);
-  return (tag[y] == CONS ? tl(y) : y);
-}
-
 void dsetup(void) {
   if (!dstack) {
     dstack = (word *)malloc(1000 * sizeof(word));
@@ -1435,53 +1402,6 @@ word geterrlin(char *t) /* returns errline from dump of t if relevant, 0 otherwi
   return el;
 }
 
-word hdsort(word x) /* sorts list of name-value pairs on name */
-{
-  word a = NIL;
-  word b = NIL;
-  word hold = NIL;
-  if (x == NIL) {
-    return (NIL);
-  }
-  if (tl(x) == NIL) {
-    return x;
-  }
-  while (x != NIL) /* split x */
-  {
-    hold = a, a = cons(hd(x), b), b = hold;
-    x = tl(x);
-  }
-  a = hdsort(a), b = hdsort(b);
-  /* now merge two halves back together */
-  while (a != NIL && b != NIL) {
-    if (strcmp(get_id(hd(hd(a))), get_id(hd(hd(b)))) < 0) {
-      x = cons(hd(a), x), a = tl(a);
-    } else {
-      x = cons(hd(b), x), b = tl(b);
-    }
-  }
-  if (a == NIL) {
-    a = b;
-  }
-  while (a != NIL) {
-    x = cons(hd(a), x), a = tl(a);
-  }
-  return (reverse(x));
-}
-
-word append1(word x, word y) /* rude append */
-{
-  word x1 = x;
-  if (x1 == NIL) {
-    return y;
-  }
-  while (tl(x1) != NIL) {
-    x1 = tl(x1);
-  }
-  tl(x1) = y;
-  return x;
-}
-
 /* following is stuff for printing heap objects in readable form - used
    for miscellaneous diagnostics etc - main function is out(FILE *,object) */
 
@@ -1491,37 +1411,6 @@ word append1(word x, word y) /* rude append */
 
 /* WARNING - you should take a copy of the name if you intend to do anything
    with it other than print it immediately */
-
-char *charname(word c) {
-  static char s[5];
-  switch (c) {
-  case '\n':
-    return "\\n";
-  case '\t':
-    return "\\t";
-  case '\b':
-    return "\\b";
-  case '\f':
-    return "\\f"; /* form feed */
-  case '\r':
-    return "\\r"; /* carriage return */
-  case '\\':
-    return "\\\\";
-  case '\'':
-    return "\\'";
-  case '"':
-    return "\\\"";
-  /* we escape all quotes for safety, since the context could be either
-     character or string quotation */
-  default:
-    if (c < 32 || c > 126) { /* miscellaneous unprintables -- convert to decimal */
-      sprintf(s, "\\%ld", c);
-    } else {
-      s[0] = c, s[1] = '\0';
-    }
-    return s;
-  }
-}
 
 void out(FILE *f, word x)
 /* the routines "out","out1","out2" are for printing compiled expressions  */
@@ -1720,17 +1609,6 @@ void out2(FILE *f, word x) {
   putc('(', f);
   out(f, x);
   putc(')', f);
-}
-
-void outr(FILE *f, double r) /*  prints a number  */
-{
-  double p;
-  p = r < 0 ? -r : r;
-  if (p >= 1000.0 || p <= .001) {
-    fprintf(f, "%e", r);
-  } else {
-    fprintf(f, "%f", r);
-  }
 }
 
 /*  end of MIRANDA DATA REPRESENTATIONS  */

@@ -48,12 +48,42 @@ and regenerating rather than hand-editing generated outputs.
 5. The command loop reads expressions or `/commands`, parses them, typechecks
    them, translates them, and sends them to the reducer.
 
+`steer_helpers.zig` exports C ABI leaf helpers used by `steer.c` and related
+compiler modules, including list reversal helpers, source timestamp checks,
+simple file copying, source-suffix detection, expression sizing, and terminal
+width probing.
+
 `version.zig` exports the C ABI globals for version, host, and source revision
 date metadata. `build.zig` reads those values from the existing repository
 metadata files and passes them into the Zig object as build options.
 
 `cmbnms.zig` exports the C ABI `cmbnms` table consumed by `data.c` when printing
 combinator objects.
+
+`data_helpers.zig` exports small C ABI helpers formerly in `data.c`, including
+character boxing/unboxing, identifier here-info extraction, destructive list
+append, alias-name lookup, definition-list sorting, character-name formatting,
+and floating-number output formatting. Heap allocation, GC, dump/load, and most
+object printing still live in `data.c`.
+
+`lex_helpers.zig` exports pure C ABI lexer helpers for identifier character
+classification, constructor-name detection, and dictionary hash bucket
+selection. Lexer state and tokenization remain in `lex.c`.
+
+`trans_helpers.zig` exports C ABI relation and ordered-set helpers used by
+translation, typechecking, and grammar analysis. It owns relation lookup,
+transitive closure, set difference, address-order sorting helpers, repeated-name
+membership checks, structural equality, pattern-id extraction, tuple-pattern
+reconstruction, pattern irrefutability/fallibility checks, and
+constructor-value extraction. It also owns simple list tail and translated-RHS
+here-info lookup helpers used outside `trans.c`, plus repeated zf generator
+expansion; the main translation pipeline remains in `trans.c`.
+
+`types_helpers.zig` exports C ABI ordered-set helpers shared by parser,
+typechecker, translator, and steering code. It owns destructive set insertion,
+removal, union, difference, intersection, membership, and the `NEW` side-effect
+wrapper; type inference, substitution, abstract type checks, and type reporting
+remain in `types.c`.
 
 ## Compiler Pipeline
 
@@ -89,7 +119,7 @@ All Miranda values are represented as `word`, defined in `data.h`.
 `data.c` owns heap allocation, garbage collection support, object dumping and
 undumping, identifier storage, and common object printing helpers.
 
-`big.c` owns Miranda arbitrary-precision integers. A bigint is an `INT` chain
+`big.zig` owns Miranda arbitrary-precision integers. A bigint is an `INT` chain
 using base `IBASE`, with sign stored in the first digit word.
 
 `utf8.zig` converts between Unicode code points and UTF-8 byte sequences for
@@ -118,7 +148,7 @@ pipeline unless the typechecker invariants are preserved.
 
 - `fdate.zig` reads a filename from stdin and prints its last modification
   date.
-- `menudriver.c` is a standalone browser for the installed manual tree.
+- `menudriver.zig` is a standalone browser for the installed manual tree.
 - `just.zig` is a standalone text justification utility used by documentation
   tooling.
 - `signals.zig` wraps `sigaction()` so the rest of the old code can keep using

@@ -32,26 +32,26 @@ static word abstract(word /*x*/, word /*e*/);
 static word abstrlist(word /*x*/, word /*e*/);
 static word combine(word /*x*/, word /*y*/);
 static void decl1(word /*x*/, word /*e*/);
-static word fixrepeats(word /*qq*/);
-static word getrel(word /*r*/, word /*x*/);
-static word here_inf(word /*rhs*/);
-static word imageless(word /*r*/, word /*y*/, word /*z*/);
-static word invgetrel(word /*r*/, word /*x*/);
+word fixrepeats(word /*qq*/);
+word getrel(word /*r*/, word /*x*/);
+word here_inf(word /*rhs*/);
+word imageless(word /*r*/, word /*y*/, word /*z*/);
+word invgetrel(word /*r*/, word /*x*/);
 static word leftfactor(word /*x*/);
-static word less(word /*x*/, word /*y*/);
-static word less1(word /*x*/, word /*a*/);
+word less(word /*x*/, word /*y*/);
+word less1(word /*x*/, word /*a*/);
 static word liscomb(word /*x*/, word /*y*/);
 static word makeshow(word /*here*/, word /*type*/);
 static word mklazy(word /*d*/);
 static word mkshowt(word /*s*/, word /*t*/);
-static word mktuple(word /*x*/);
+word mktuple(word /*x*/);
 static void nameclash(word /*x*/);
 static int nclchk(word /*n*/, word /*p*/, word /*hr*/);
 static word new_mklazy(word /*d*/);
-static word primconstr(word /*x*/);
+word primconstr(word /*x*/);
 static void respec_error(word /*x*/);
 static word scanpattern(word /*p*/, word /*x*/, word /*e*/, word /*fail*/);
-static word sort(word /*x*/);
+word sort(word /*x*/);
 static word translet(word /*d*/, word /*e*/);
 static word transletrec(word /*dd*/, word /*e*/);
 static word transtries(word /*id*/, word /*x*/);
@@ -101,33 +101,6 @@ word abstract(word x, word e)
   out(stdout, x);
   printf("\n");
   return (NIL);
-}
-
-word primconstr(word x) {
-  x = id_val(x);
-  while (tag[x] != CONSTRUCTOR) {
-    x = tl(x);
-  }
-  return x;
-  /* => constructor values are of the form TRY f k where k is the
-     original constructor value, and ! constructors are of the form
-     MKSTRICT i k */
-}
-
-word memb(word l, word x)
-/* tests if x is a member of list "l" - used in testing for
-   repeated names - see rule for "v2" in rules.y */
-{
-  if (tag[x] == TVAR) { /* type variable! */
-    while (l != NIL && !eqtvar(hd(l), x)) {
-      l = tl(l);
-    }
-  } else {
-    while (l != NIL && hd(l) != x) {
-      l = tl(l);
-    }
-  }
-  return (l != NIL);
 }
 
 word abstr(word x, word e)
@@ -357,23 +330,6 @@ word leftfactor(word x)
     return (leftfactor(x));
   }
   return x;
-}
-
-word same(word x, word y) /* structural equality */
-{
-  if (x == y) {
-    return 1;
-  }
-  if (tag[x] == ATOM || tag[y] == ATOM || tag[x] != tag[y]) {
-    return 0;
-  }
-  if (tag[x] < INT) {
-    return (hd(x) == hd(y) && tl(x) == tl(y));
-  }
-  if (tag[x] > STRCONS) {
-    return (same(hd(x), hd(y)) && same(tl(x), tl(y)));
-  }
-  return (hd(x) == hd(y) && same(tl(x), tl(y))); /* INT..STRCONS */
 }
 
 static word was_poly;
@@ -668,33 +624,6 @@ word new_mklazy(word d)
   return d;
 }
 
-word here_inf(word rhs) /* rhs is of form tries(id,val_list) */
-{
-  word x = tl(rhs);
-  while (tl(x) != NIL) {
-    x = tl(x); /* find earliest alternative */
-  }
-  return (hd(hd(x))); /* hd(x) is of form label(here_info,value) */
-}
-
-word irrefutable(word x)
-/* x built from suigeneris constr's and (unrepeated) names */
-{
-  if (tag[x] == CONS) {
-    return 0; /* includes constants */
-  }
-  if (isconstructor(x)) {
-    return (sui_generis(x));
-  }
-  if (tag[x] == ID) {
-    return 1;
-  }
-  if (tag[x] == AP && tag[hd(x)] == AP && hd(hd(x)) == PLUS) { /* n+k pattern */
-    return 0;
-  }
-  return (irrefutable(hd(x)) && irrefutable(tl(x)));
-}
-
 word combine(word x, word y) {
   word a;
   word b;
@@ -846,32 +775,6 @@ word transzf(word e, word qq, word conc) /* Bird and Wadler page 63 */
   /* Rule 4 */
 }
 
-word fixrepeats(word qq) /* expands multi-lhs generators in zf expressions */
-{
-  word q = hd(qq);
-  word rhs = q;
-  qq = tl(qq);
-  while (hd(rhs) == REPEAT) {
-    rhs = tl(tl(rhs));
-  }
-  rhs = tl(tl(rhs)); /* rhs now contains the common right hand side */
-  while (hd(q) == REPEAT) {
-    qq = cons(cons(GENERATOR, cons(hd(tl(q)), rhs)), qq);
-    q = tl(tl(q));
-  }
-  return (cons(q, qq));
-} /* EFFICIENCY PROBLEM - rhs gets re-evaluated for each lhs, fix later */
-/* likewise re-typechecked, although this probably doesn't matter */
-
-word lastlink(word x)
-/* finds last link of a list -- needed with zf body elision */
-{
-  while (tl(x) != NIL) {
-    x = tl(x);
-  }
-  return x;
-}
-
 #define ischar(x) ((x) >= 0 && (x) <= 255)
 
 word genlhs(word x) /* x is an expression found on the lhs of <-
@@ -978,39 +881,6 @@ word scanpattern(word p, word x, word e, word fail)
   return (shunt(scanpattern(p, hd(x), e, fail), scanpattern(p, tl(x), e, fail)));
 }
 
-word get_ids(word x)
-/* return list of names in pattern x (without repetitions) */
-{
-  if (hd(x) == CONST || isconstructor(x)) {
-    return (NIL);
-  }
-  if (tag[x] == ID) {
-    return (cons(x, NIL));
-  }
-  if (tag[x] == AP && tag[hd(x)] == AP && hd(hd(x)) == PLUS) { /* n+k pattern */
-    return (get_ids(tl(x)));
-  }
-  return (UNION(get_ids(hd(x)), get_ids(tl(x))));
-}
-
-word mktuple(word x) /* extract tuple-structure of names from pattern x */
-{
-  if (hd(x) == CONST || isconstructor(x)) {
-    return (NIL);
-  }
-  if (tag[x] == ID) {
-    return x;
-  }
-  if (tag[x] == AP && tag[hd(x)] == AP && hd(hd(x)) == PLUS) { /* n+k pattern */
-    return (mktuple(tl(x)));
-  }
-  {
-    word y = mktuple(tl(x));
-    x = mktuple(hd(x));
-    return (x == NIL ? y : y == NIL ? x : pair(x, y));
-  }
-}
-
 void decl1(word x, word e) /* declare name x to have the value denoted by e */
 {
   if (id_val(x) != UNDEF && lastname != x) {
@@ -1044,27 +914,7 @@ void decl1(word x, word e) /* declare name x to have the value denoted by e */
      note that rhs_list is reversed - put right by code generation */
 }
 
-word fallible(word e) /* e is "fallible" rhs - if not sure, says yes */
-{
-  for (;;) {
-    if (tag[e] == LABEL) {
-      e = tl(e);
-    }
-    if (tag[e] == LETREC || tag[e] == LET) {
-      e = tl(e);
-    } else if (tag[e] == LAMBDA) {
-      if (irrefutable(hd(e))) {
-        e = tl(e);
-      } else {
-        return 1;
-      }
-    } else if (tag[e] == AP && tag[hd(e)] == AP && tag[hd(hd(e))] == AP && hd(hd(hd(e))) == COND) {
-      e = tl(e);
-    } else {
-      return (e == FAIL); /* test for nested (COND a b FAIL) */
-    }
-  }
-} /* NOTE
+/* NOTE
      When an rhs contains FAIL as a result of compiling an elseless guard set
      it is of the form
         XX ::= ap3(COND,a,b,FAIL) | let[rec](def[s],XX) | lambda(pat,XX)
@@ -1225,145 +1075,6 @@ word block(word defs, word e, word keep)
    was originally written on assumption that relation is over identifiers.
    Whence need to pretend all defs recursive until after tsort.
    Could do better - some defs may be subsidiary to others */
-
-word tclos(word r) /* fast transitive closure - destructive in r */
-                   /* r is of form list(cons(x,xs)) */
-{
-  word r1;
-  for (r1 = r; r1 != NIL; r1 = tl(r1)) {
-    word x = less1(tl(hd(r1)), hd(hd(r1)));
-    /* invariant x intersect tl(hd(r1)) = NIL */
-    while (x != NIL) {
-      x = imageless(r, x, tl(hd(r1)));
-      tl(hd(r1)) = UNION(tl(hd(r1)), x);
-    }
-  }
-  return r;
-}
-
-word getrel(word r, word x) /* r is list(cons(x,xs)) - return appropriate xs, else NIL */
-                            /* r is list(cons(x,xs)) - return appropriate xs, else NIL */
-{
-  while (r != NIL && hd(hd(r)) != x) {
-    r = tl(r);
-  }
-  return (r == NIL ? NIL : tl(hd(r)));
-}
-
-word invgetrel(word r, word x)
-/* return first x1 such that `x1 r x' error if none found */
-{
-  while (r != NIL && !member(tl(hd(r)), x)) {
-    r = tl(r);
-  }
-  if (r == NIL) {
-    fprintf(stderr, "impossible event in invgetrel\n"), exit(1);
-  }
-  return (hd(hd(r)));
-}
-
-word imageless(word r, word y, word z) /* image of set y in reln r, less set z */
-                                       /* image of set y in reln r, less set z */
-{
-  word i = NIL;
-  while (r != NIL && y != NIL) {
-    if (hd(hd(r)) == hd(y)) {
-      i = UNION(i, less(tl(hd(r)), z)), r = tl(r), y = tl(y);
-    } else if (hd(hd(r)) < hd(y)) {
-      r = tl(r);
-    } else {
-      y = tl(y);
-    }
-  }
-  return i;
-}
-
-word less(word x, word y) /* non-destructive set difference x-y */
-{
-  word r = NIL;
-  while (x != NIL && y != NIL) {
-    if (hd(x) == hd(y)) {
-      x = tl(x), y = tl(y);
-    } else if (hd(x) < hd(y)) {
-      r = cons(hd(x), r), x = tl(x);
-    } else {
-      y = tl(y);
-    }
-  }
-  return (shunt(r, x));
-}
-
-word less1(word x, word a) /* non-destructive set difference x- {a} */
-{
-  word r = NIL;
-  while (x != NIL && hd(x) != a) {
-    r = cons(hd(x), r), x = tl(x);
-  }
-  return (shunt(r, x == NIL ? NIL : tl(x)));
-}
-
-word sort(word x) /* into address order */
-{
-  word a = NIL;
-  word b = NIL;
-  word hold = NIL;
-  if (x == NIL || tl(x) == NIL) {
-    return x;
-  }
-  while (x != NIL) /* split x */
-  {
-    hold = a, a = cons(hd(x), b), b = hold;
-    x = tl(x);
-  }
-  a = sort(a), b = sort(b);
-  /* now merge two halves back together */
-  while (a != NIL && b != NIL) {
-    if (hd(a) < hd(b)) {
-      x = cons(hd(a), x), a = tl(a);
-    } else {
-      x = cons(hd(b), x), b = tl(b);
-    }
-  }
-  if (a == NIL) {
-    a = b;
-  }
-  while (a != NIL) {
-    x = cons(hd(a), x), a = tl(a);
-  }
-  return (reverse(x));
-}
-
-word sortrel(word x) /* sort relation into address order of first components */
-                     /* x is a list of cons(y,ys) */
-{
-  word a = NIL;
-  word b = NIL;
-  word hold = NIL;
-  if (x == NIL || tl(x) == NIL) {
-    return x;
-  }
-  while (x != NIL) /* split x */
-  {
-    hold = a, a = cons(hd(x), b), b = hold;
-    x = tl(x);
-  }
-  a = sortrel(a), b = sortrel(b);
-  /* now merge two halves back together */
-  while (a != NIL && b != NIL) {
-    if (hd(hd(a)) < hd(hd(b))) {
-      x = cons(hd(a), x), a = tl(a);
-    } else {
-      x = cons(hd(b), x), b = tl(b);
-    }
-  }
-  if (a == NIL) {
-    a = b;
-  }
-  while (a != NIL) {
-    x = cons(hd(a), x), a = tl(a);
-  }
-  return (reverse(x));
-}
 
 void specify(word x, word t, word h) /* semantics of a "::" statement */
                                      /* N.B. t not yet in reduced form */

@@ -204,6 +204,7 @@ fn caseBigIntegerSignsDivisionAndBases() !void {
             "(-12345678901234567890) mod 97\n" ++
             "12345678901234567890 > 12345678901234567889\n" ++
             "showhex 12345678901234567890\n" ++
+            "showoct 0\n" ++
             "numval \"0xab54a98ceb1f0ad2\"\n" ++
             "/q\n",
         &.{},
@@ -218,6 +219,7 @@ fn caseBigIntegerSignsDivisionAndBases() !void {
             "94\n" ++
             "True\n" ++
             "0xab54a98ceb1f0ad2\n" ++
+            "0o0\n" ++
             "12345678901234567890",
     );
 }

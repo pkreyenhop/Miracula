@@ -33,9 +33,8 @@ Classification: real code smell and security risk.
 Primary patterns:
 
 - manual `strcpy`, `strcat`, and `sprintf` into fixed-size or global buffers;
-- path and command string construction in `steer.c`, `lex.c`, `data.c`, and
-  `menudriver.c`;
-- formatter scratch buffers in `reduce.c` and `big.c`.
+- path and command string construction in `steer.c`, `lex.c`, and `data.c`;
+- formatter scratch buffers in `reduce.c`.
 
 Cleanup direction:
 
@@ -211,11 +210,10 @@ integer literals have been converted to hex constants.
 - `make warning-audit` provides a repeatable C23 `-Wall -Wextra -Wpedantic`
   audit for the interpreter and standalone tools.
 - Build/version metadata now has an explicit public declaration in `version.h`.
-- Standalone utility cleanup has started, and `menudriver.c` helper functions
-  are consistently file-local.
+- Standalone utility cleanup has started; `menudriver.c` has been replaced by
+  `menudriver.zig`.
 - UTF-8 conversion has moved to `utf8.zig`.
-- `big.c` now keeps its division remainder state and digit-conversion helper
-  local to the module.
+- Big integer support has moved to `big.zig`.
 - `data.c` now keeps dump/load filename tracking and private-name relocation
   state local to the module.
 - `reduce.c` no longer defines an unused exported reducer step counter.

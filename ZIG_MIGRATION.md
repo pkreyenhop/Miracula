@@ -42,16 +42,35 @@ runtime.
 
 Suggested order after the initial build harness:
 
-1. Standalone utilities. `fdate.c` has been replaced by `fdate.zig`, and
-   `just.c` has been replaced by `just.zig`.
+1. Standalone utilities. `fdate.c` has been replaced by `fdate.zig`,
+   `just.c` has been replaced by `just.zig`, and `menudriver.c` has been
+   replaced by `menudriver.zig`.
 2. UTF-8 runtime support. `utf8.c` has been replaced by `utf8.zig`.
 3. Signal handling. `signals.c` has been replaced by `signals.zig`.
 4. Build metadata. `version.c` has been replaced by `version.zig`.
 5. Combinator names. `cmbnms.c` has been replaced by `cmbnms.zig`.
-6. `big.c`, after focused arithmetic and conversion tests exist. The
-   interpreter suite now covers large signed arithmetic, `div`/`mod` laws,
-   comparison, `showhex`, and `numval`.
-7. Heap/data internals, after dump/undump and GC stress tests are strong.
-8. Lexer, translator, and typechecker.
-9. Reducer last, after the C decomposition plan has explicit context and action
+6. Big integers. `big.c` has been replaced by `big.zig`. The interpreter suite
+   covers large signed arithmetic, `div`/`mod` laws, comparison, `showhex`, and
+   `numval`.
+7. Steer leaf helpers. `steer_helpers.zig` now owns list reversal helpers,
+   source timestamp checks, simple file copying, `.m` suffix detection,
+   expression sizing, and terminal width probing.
+8. Data leaf helpers. `data_helpers.zig` now owns character boxing/unboxing,
+   identifier here-info extraction, destructive list append, alias-name lookup,
+   definition-list sorting, character-name formatting, and floating output
+   formatting.
+9. Lexer leaf helpers. `lex_helpers.zig` now owns identifier character
+   classification, constructor-name detection, and dictionary hashing.
+10. Translation relation helpers. `trans_helpers.zig` now owns relation lookup,
+   transitive closure, set difference, address-order sorting helpers,
+   repeated-name membership checks, structural equality, pattern-id extraction,
+   tuple-pattern reconstruction, pattern irrefutability/fallibility checks, and
+   constructor-value extraction. It also owns simple list tail and
+   translated-RHS here-info lookup helpers plus repeated zf generator expansion.
+11. Type ordered-set helpers. `types_helpers.zig` now owns destructive
+   insertion, removal, union, difference, intersection, membership, and the
+   `NEW` side-effect wrapper used by grammar analysis.
+12. Heap/data internals, after dump/undump and GC stress tests are strong.
+13. Lexer, translator, and typechecker.
+14. Reducer last, after the C decomposition plan has explicit context and action
    boundaries.

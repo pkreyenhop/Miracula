@@ -55,8 +55,8 @@ global or fixed-size buffers.
 
 1. Introduce small local helpers for checked string copying, concatenation, and
    formatting. Prefer `snprintf`-style APIs that return failure on truncation.
-2. Replace command and path construction in `steer.c`, `lex.c`, `data.c`,
-   `menudriver.c`, `reduce.c`, and `big.c`.
+2. Replace command and path construction in `steer.c`, `lex.c`, `data.c`, and
+   `reduce.c`.
 3. Make buffer sizes explicit at call sites. Avoid helpers that infer capacity
    from a pointer.
 4. Convert repeated path-building idioms into named helpers, for example
@@ -72,11 +72,12 @@ Expected warning impact:
 
 ## Phase 3: Command Execution Hardening
 
-`menudriver.c` and parts of `steer.c` build shell commands by concatenating
-strings. This is fragile and unsafe when paths or environment-derived values
-contain shell metacharacters.
+`menudriver.zig` now avoids fixed-size command buffers and quotes selected file
+paths before invoking shell-based viewers. Parts of `steer.c` still build shell
+commands by concatenating strings. This is fragile and unsafe when paths or
+environment-derived values contain shell metacharacters.
 
-1. Inventory every `system()` and command-building path.
+1. Inventory every remaining `system()` and command-building path.
 2. Replace shell command strings with direct process execution where practical.
    Use `fork`/`exec` on POSIX paths instead of `system()`.
 3. If shell execution must remain, add quoting helpers and tests for spaces,
@@ -126,8 +127,8 @@ is visible.
    - compiler/typechecker state;
    - reducer/evaluation state;
    - process configuration and paths.
-2. Start with leaf modules where the change is contained, such as `big.c` and
-   standalone utilities.
+2. Start with leaf modules where the change is contained, such as standalone
+   utilities.
 3. Move initialization and reset functions onto those context structs.
 4. Keep compatibility shims during migration so behavior changes are isolated.
 5. Add tests around `/reload`, script loading, imports, interrupts, and command
@@ -265,9 +266,9 @@ coverage.
 ## Suggested First Pull Requests
 
 1. Add checked string formatting helpers and replace simple `sprintf` calls in
-   `big.c` and `reduce.c`.
-2. Replace command construction in `menudriver.c` with safer process execution
-   or strict shell quoting.
+   `reduce.c`.
+2. Replace command construction in `steer.c` with safer process execution or
+   strict shell quoting.
 3. Split generated-code warning handling from handwritten-code warning handling.
 4. Make private helper functions and globals `static` module by module.
 5. Add long-input and unsafe-path smoke tests before changing path handling.

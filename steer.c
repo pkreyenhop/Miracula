@@ -60,8 +60,8 @@ static void commandloop(char * /*initscript*/);
 static void diagnose(char * /*n*/);
 static void editfile(char * /*t*/, int /*line*/);
 static void ed_warn(void);
-static void filecopy(char * /*fil*/);
-static void filecp(char * /*fil1*/, char * /*fil2*/);
+void filecopy(char * /*fil*/);
+void filecp(char * /*fil1*/, char * /*fil2*/);
 static void filequote(char * /*p*/);
 static void finger(char * /*n*/);
 static void fixeditor(void);
@@ -79,7 +79,7 @@ static char *mkabsolute(char * /*m*/);
 static word mkincludes(word /*includees*/);
 static word mktiny(void);
 static void namescom(word /*l*/);
-static int normal(char * /*f*/);
+int normal(char * /*f*/);
 static void predef(char * /*n*/, word /*v*/, word /*t*/);
 static void primdef(char * /*n*/, word /*v*/, word /*t*/);
 static void primlib(void);
@@ -92,7 +92,7 @@ static void sigdefer(void);
 static int src_update(void);
 static void stdlib(void);
 static char *strvers(int /*v*/);
-static int twidth(void);
+int twidth(void);
 static void undump(char * /*t*/);
 static void unlimit_stack(void);
 static int utf8test(void);
@@ -1091,12 +1091,6 @@ information.\n",
          editor);
 }
 
-word fm_time(char *f) /* time last modified of file f */
-{
-  return (stat(f, &buf) == 0 ? buf.st_mtime : 0);
-  /* non-existent file has conventional mtime of 0 */
-} /* we assume time_t can be stored in a word */
-
 #define same_file(x, y)                                                                            \
   (hd(fil_inodev(x)) == hd(fil_inodev(y)) && tl(fil_inodev(x)) == tl(fil_inodev(y)))
 #define inodev(f) (stat(f, &buf) == 0 ? datapair(buf.st_ino, buf.st_dev) : datapair(0, -1))
@@ -1171,12 +1165,6 @@ void reset(void) /* interrupt catcher - see call to signal in commandloop */
     break;
 
 static int lose;
-
-int normal(char *f) /* s has ".m" suffix */
-{
-  int n = strlen(f);
-  return n >= 2 && strcmp(f + n - 2, ".m") == 0;
-}
 
 void v_info(int full) {
   printf("%s last revised %s\n", strvers(version), vdate);
@@ -1604,23 +1592,6 @@ void xschars(void) {
   while ((ch = getchar()) != '\n' && ch != EOF) {
     ;
   }
-}
-
-word reverse(word x) /* x is a cons list */
-{
-  word y = NIL;
-  while (x != NIL) {
-    y = cons(hd(x), y), x = tl(x);
-  }
-  return y;
-}
-
-word shunt(word x, word y) /* equivalent to append(reverse(x),y) */
-{
-  while (x != NIL) {
-    y = cons(hd(x), y), x = tl(x);
-  }
-  return y;
 }
 
 static const char *const presym[] = {
@@ -2959,17 +2930,6 @@ word mktiny(void) {
   return (sto_dbl(x));
 }
 
-word size(word x) /*  measures the size of a compiled expression   */
-{
-  word s;
-  s = 0;
-  while (tag[x] == CONS || tag[x] == AP) {
-    s = s + 1 + size(hd(x));
-    x = tl(x);
-  }
-  return s;
-}
-
 void makedump(void) {
   char *obf = linebuf;
   FILE *f;
@@ -3121,54 +3081,6 @@ void fpe_error(int sig) {
       printf("\nFLOATING POINT OVERFLOW\n"), exit(1);
     }
   }
-}
-
-static char fbuf[512];
-
-void filecopy(char *fil) /* copy the file "fil" to standard out */
-{
-  word in = open(fil, 0);
-  word n;
-  if (in == -1) {
-    return;
-  }
-  while ((n = read(in, fbuf, 512)) > 0) {
-    write(1, fbuf, n);
-  }
-  close(in);
-}
-
-void filecp(char *fil1, char *fil2) /* copy file "fil1" to "fil2" (like `cp') */
-{
-  word in = open(fil1, 0);
-  word n;
-  word out = creat(fil2, 0x1a4);
-  if (in == -1 || out == -1) {
-    return;
-  }
-  while ((n = read(in, fbuf, 512)) > 0) {
-    write(out, fbuf, n);
-  }
-  close(in);
-  close(out);
-}
-
-/* to define winsize and TIOCGWINSZ for twidth() */
-#include <termios.h>
-#include <sys/ioctl.h>
-
-int twidth(void) /* returns width (in columns) of current window, less 2 */
-{
-#ifdef TIOCGWINSZ
-  static struct winsize tsize;
-  ioctl(fileno(stdout), TIOCGWINSZ, &tsize);
-  return (tsize.ws_col == 0) ? 78 : tsize.ws_col - 2;
-#else
-#error TIOCGWINSZ undefined
-  /* porting note: if you cannot find how to enable use of TIOCGWINSZ
-     comment out the above #error line */
-  return 78; /* give up, we will assume screen width to be 80 */
-#endif
 }
 
 /* was called when Miranda starts up and before /help, /aux
