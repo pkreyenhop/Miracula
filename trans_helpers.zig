@@ -9,6 +9,7 @@ const Word = c_long;
 const GENERATOR: Word = 0;
 const GUARD: Word = 1;
 const REPEAT: Word = 2;
+const undef_t: Word = 0;
 const bool_t: Word = 1;
 const num_t: Word = 2;
 const char_t: Word = 3;
@@ -16,6 +17,7 @@ const list_t: Word = 4;
 const comma_t: Word = 5;
 const arrow_t: Word = 6;
 const void_t: Word = 7;
+const type_t: Word = 10;
 const ATOM: u8 = 0;
 const DOUBLE: u8 = 1;
 const DATAPAIR: u8 = 2;
@@ -44,13 +46,20 @@ const C: Word = CMBASE + 3;
 const B: Word = CMBASE + 4;
 const I: Word = CMBASE + 6;
 const S_p: Word = CMBASE + 11;
+const U: Word = CMBASE + 12;
+const Uf: Word = CMBASE + 13;
+const U_: Word = CMBASE + 14;
+const Ug: Word = CMBASE + 15;
 const COND: Word = CMBASE + 16;
 const APPEND: Word = CMBASE + 23;
 const MAP: Word = CMBASE + 27;
 const FLATMAP: Word = CMBASE + 31;
 const FILTER: Word = CMBASE + 32;
+const MATCH: Word = CMBASE + 38;
+const MATCHINT: Word = CMBASE + 39;
 const TRY: Word = CMBASE + 40;
 const SUBSCRIPT: Word = CMBASE + 41;
+const ATLEAST: Word = CMBASE + 42;
 const P: Word = CMBASE + 43;
 const B_p: Word = CMBASE + 44;
 const C_p: Word = CMBASE + 45;
@@ -71,6 +80,10 @@ const NIL: Word = CMBASE + 138;
 const NILS: Word = CMBASE + 139;
 const UNDEF: Word = CMBASE + 140;
 const wrong_t: Word = 8;
+const placeholder_t: Word = 3;
+const algebraic_t: Word = 0;
+const synonym_t: Word = 1;
+const abstract_t: Word = 2;
 const CONST: Word = 268;
 
 extern var hd: [*]Word;
@@ -80,11 +93,15 @@ extern var current_id: Word;
 extern var SGC: Word;
 extern var ND: Word;
 extern var concat: Word;
+extern var detrop: Word;
 extern var diagonalise: Word;
 extern var echoing: Word;
 extern var errs: Word;
+extern var files: Word;
 extern var idsused: Word;
+extern var lastname: Word;
 extern var lfrule: c_int;
+extern var newtyps: Word;
 extern var nill: Word;
 extern var polyshowerror: c_int;
 extern var primenv: Word;
@@ -103,22 +120,30 @@ extern var speclocs: Word;
 extern var was_poly: Word;
 
 extern fn make(t: u8, x: Word, y: Word) Word;
+extern fn append1(x: Word, y: Word) Word;
 extern fn reverse(x: Word) Word;
 extern fn shunt(x: Word, y: Word) Word;
 extern fn member(s: Word, x: Word) Word;
 extern fn UNION(s1: Word, s2: Word) Word;
 extern fn add1(e: Word, s: Word) Word;
-extern fn abstract(x: Word, e: Word) Word;
 extern fn codegen(x: Word) Word;
+extern fn deps(x: Word) Word;
+extern fn intersection(s1: Word, s2: Word) Word;
 extern fn isnat(x: Word) c_int;
 extern fn isconstrname(a: [*:0]const u8) c_int;
+extern fn make_pn(val: Word) Word;
 extern fn mkgvar(i: Word) Word;
+extern fn out(file: [*c]c.FILE, x: Word) void;
 extern fn out_type(t: Word) void;
 extern fn redtvars(t: Word) Word;
 extern fn sayhere(here: Word, nl: Word) void;
+extern fn setdiff(s1: Word, s2: Word) Word;
 extern fn strcmp(a: [*:0]const u8, b: [*:0]const u8) c_int;
 extern fn syntax(s: [*:0]const u8) void;
 extern fn acterror() void;
+extern fn msc(r: Word) Word;
+extern fn tsort(g: Word) Word;
+extern var SYNERR: Word;
 
 fn h(x: Word) Word {
     return hd[@as(usize, @intCast(x)) * 2];
@@ -136,6 +161,14 @@ fn tp(x: Word) *Word {
     return &tl[@as(usize, @intCast(x)) * 2];
 }
 
+fn appHead(input_x: Word) Word {
+    var x = input_x;
+    while (tag[@intCast(x)] == AP) {
+        x = h(x);
+    }
+    return x;
+}
+
 fn cons(x: Word, y: Word) Word {
     return make(CONS, x, y);
 }
@@ -148,8 +181,28 @@ fn datapair(x: Word, y: Word) Word {
     return make(DATAPAIR, x, y);
 }
 
+fn constructor(n: Word, x: Word) Word {
+    return make(CONSTRUCTOR, n, x);
+}
+
 fn lambda(x: Word, y: Word) Word {
     return make(LAMBDA, x, y);
+}
+
+fn share(x: Word, y: Word) Word {
+    return make(SHARE, x, y);
+}
+
+fn tries(x: Word, y: Word) Word {
+    return make(TRIES, x, y);
+}
+
+fn let(x: Word, y: Word) Word {
+    return make(LET, x, y);
+}
+
+fn letrec(x: Word, y: Word) Word {
+    return make(LETREC, x, y);
 }
 
 fn ap(x: Word, y: Word) Word {
@@ -172,12 +225,33 @@ fn idWho(x: Word) Word {
     return t(h(h(x)));
 }
 
+fn setIdWho(x: Word, value: Word) void {
+    tp(h(h(x))).* = value;
+}
+
+fn idType(x: Word) Word {
+    return t(h(x));
+}
+
+fn idVal(x: Word) Word {
+    return t(x);
+}
+
 fn setIdType(x: Word, value: Word) void {
     tp(h(x)).* = value;
 }
 
 fn setIdVal(x: Word, value: Word) void {
     tp(x).* = value;
+}
+
+fn makeTyp(arity: Word, showfn: Word, class: Word, info: Word) Word {
+    return cons(cons(arity, showfn), cons(class, info));
+}
+
+fn addToEnv(x: Word) void {
+    const current_file_defs = h(files);
+    tp(current_file_defs).* = cons(x, t(current_file_defs));
 }
 
 fn isConstructor(x: Word) bool {
@@ -222,6 +296,18 @@ fn typeShowFn(x: Word) Word {
 
 fn typeClass(x: Word) Word {
     return h(t(t(x)));
+}
+
+fn setTypeClass(x: Word, value: Word) void {
+    hp(t(t(x))).* = value;
+}
+
+fn typeInfo(x: Word) Word {
+    return t(t(t(x)));
+}
+
+fn setTypeInfo(x: Word, value: Word) void {
+    tp(t(t(x))).* = value;
 }
 
 fn getTypeVariable(x: Word) Word {
@@ -468,6 +554,49 @@ export fn liscomb(x: Word, y: Word) Word {
         return ap2(C_p, x, t(y));
     }
     return ap2(S_p, x, y);
+}
+
+export fn abstract(input_x: Word, input_e: Word) Word {
+    var x = input_x;
+    var e = input_e;
+    switch (tag[@intCast(x)]) {
+        ID => {
+            if (isConstructor(x)) {
+                return if (member(SGC, x) != 0) ap(K, e) else ap2(Ug, primconstr(x), e);
+            }
+            return abstr(x, e);
+        },
+        CONS => {
+            if (h(x) == CONST) {
+                if (tag[@intCast(t(x))] == INT) {
+                    return ap2(MATCHINT, t(x), e);
+                }
+                return ap2(MATCH, if (t(x) == NILS) NIL else t(x), e);
+            }
+            return ap(U_, abstract(h(x), abstract(t(x), e)));
+        },
+        TCONS, PAIR => return ap(U, abstract(h(x), abstract(t(x), e))),
+        AP => {
+            if (member(SGC, appHead(x)) != 0) {
+                return ap(Uf, abstract(h(x), abstract(t(x), e)));
+            }
+            if (tag[@intCast(h(x))] == AP and h(h(x)) == PLUS) {
+                return ap2(ATLEAST, t(h(x)), abstract(t(x), e));
+            }
+            while (tag[@intCast(x)] == AP) {
+                e = abstract(t(x), e);
+                x = h(x);
+            }
+        },
+        else => {},
+    }
+    if (isConstructor(x)) {
+        return ap2(Ug, primconstr(x), e);
+    }
+    _ = c.printf("error in declaration of \"%s\", undeclared constructor in pattern: ", getId(current_id));
+    out(c.stdout(), x);
+    _ = c.printf("\n");
+    return NIL;
 }
 
 export fn abstr(x: Word, e: Word) Word {
@@ -927,6 +1056,229 @@ export fn nameclash(x: Word) void {
     const suffix: [*:0]const u8 = if (member(primenv, x) != 0) " (in standard environment)" else "";
     _ = c.printf("syntax error: nameclash, \"%s\" already defined%s\n", getId(x), suffix);
     acterror();
+}
+
+export fn declconstr(x: Word, n: Word, constr_type: Word) void {
+    setIdVal(x, constructor(n, x));
+    if ((n >> 16) != 0) {
+        syntax("algebraic type has too many constructors\n");
+        return;
+    }
+    if (idType(x) != undef_t) {
+        errs = idWho(x);
+        respec_error(x);
+        return;
+    }
+    addToEnv(x);
+    setIdType(x, constr_type);
+}
+
+export fn specify(input_x: Word, spec_type: Word, here: Word) void {
+    var x = input_x;
+    if (tag[@intCast(x)] != ID and spec_type != type_t) {
+        errs = here;
+        syntax("incorrect use of ::\n");
+        return;
+    }
+    if (spec_type == type_t) {
+        var arity: Word = 0;
+        while (tag[@intCast(x)] == AP) {
+            arity += 1;
+            x = h(x);
+        }
+        if (!(idVal(x) == UNDEF and idType(x) == undef_t)) {
+            errs = here;
+            nameclash(x);
+            return;
+        }
+        setIdType(x, type_t);
+        if (idWho(x) == NIL) {
+            setIdWho(x, here);
+        }
+        setIdVal(x, makeTyp(arity, showwhat, placeholder_t, NIL));
+        addToEnv(x);
+        newtyps = add1(x, newtyps);
+        return;
+    }
+    if (idType(x) != undef_t) {
+        errs = here;
+        respec_error(x);
+        return;
+    }
+    setIdType(x, spec_type);
+    if (idWho(x) == NIL) {
+        setIdWho(x, here);
+    } else {
+        speclocs = cons(cons(x, here), speclocs);
+    }
+    if (idVal(x) == UNDEF) {
+        addToEnv(x);
+    }
+}
+
+fn arityCheck(type_name: Word, arity: Word, here: Word) void {
+    if (typeArity(type_name) != arity) {
+        const prefix: [*:0]const u8 = if (echoing != 0) "\n" else "";
+        _ = c.printf(
+            "%ssyntax error: wrong number of parameters for typename \"%s\" (%ld expected)\n",
+            prefix,
+            getId(type_name),
+            typeArity(type_name),
+        );
+        errs = here;
+        acterror();
+    }
+}
+
+export fn decl_type(input_tf: Word, type_class: Word, info: Word, here: Word) void {
+    var tf = input_tf;
+    var arity: Word = 0;
+    while (tag[@intCast(tf)] == AP) {
+        arity += 1;
+        tf = h(tf);
+    }
+    if (type_class == synonym_t and idType(tf) == type_t and typeClass(tf) == abstract_t and typeInfo(tf) == undef_t) {
+        arityCheck(tf, arity, here);
+        setIdWho(tf, here);
+        setTypeInfo(tf, info);
+        return;
+    }
+    if (type_class == abstract_t and idType(tf) == type_t and typeClass(tf) == synonym_t) {
+        arityCheck(tf, arity, here);
+        setTypeClass(tf, abstract_t);
+        return;
+    }
+    if (idVal(tf) != UNDEF) {
+        errs = here;
+        nameclash(tf);
+        return;
+    }
+    if (type_class != synonym_t) {
+        newtyps = add1(tf, newtyps);
+    }
+    setIdVal(tf, makeTyp(arity, if (type_class == algebraic_t) make_pn(UNDEF) else 0, type_class, info));
+    if (idType(tf) != undef_t) {
+        errs = here;
+        respec_error(tf);
+        return;
+    }
+    addToEnv(tf);
+    setIdWho(tf, here);
+    setIdType(tf, type_t);
+}
+
+fn decl1(x: Word, e: Word) void {
+    if (idVal(x) != UNDEF and lastname != x) {
+        errs = h(e);
+        nameclash(x);
+        return;
+    }
+    if (idVal(x) == UNDEF) {
+        setIdVal(x, tries(x, cons(e, NIL)));
+        if (idWho(x) != NIL) {
+            speclocs = cons(cons(x, idWho(x)), speclocs);
+        }
+        setIdWho(x, h(e));
+        if (idType(x) == undef_t) {
+            addToEnv(x);
+        }
+    } else if (fallible(h(t(idVal(x)))) == 0) {
+        const prefix: [*:0]const u8 = if (echoing != 0) "\n" else "";
+        errs = h(e);
+        _ = c.printf("%ssyntax error: unreachable case in defn of \"%s\"\n", prefix, getId(x));
+        acterror();
+    } else {
+        tp(idVal(x)).* = cons(e, t(idVal(x)));
+    }
+}
+
+export fn declare(x: Word, e: Word) void {
+    if (tag[@intCast(x)] == ID and !isConstructor(x)) {
+        decl1(x, e);
+        return;
+    }
+    var bindings = scanpattern(x, x, share(tries(x, cons(e, NIL)), undef_t), ap(CONFERROR, cons(x, h(e))));
+    if (bindings == NIL) {
+        errs = h(e);
+        syntax("illegal lhs for definition\n");
+        return;
+    }
+    lastname = 0;
+    while (bindings != NIL) {
+        const binding = h(bindings);
+        const name = h(binding);
+        if (idVal(name) != UNDEF) {
+            errs = h(e);
+            nameclash(name);
+            return;
+        }
+        setIdVal(name, t(binding));
+        if (idWho(name) != NIL) {
+            speclocs = cons(cons(name, idWho(name)), speclocs);
+        }
+        setIdWho(name, h(e));
+        if (idType(name) == undef_t) {
+            addToEnv(name);
+        }
+        bindings = t(bindings);
+    }
+}
+
+export fn block(input_defs: Word, input_e: Word, keep: Word) Word {
+    var defs = input_defs;
+    var e = input_e;
+    var ids: Word = NIL;
+    var deftoids: Word = NIL;
+    var g: Word = NIL;
+    if (SYNERR != 0) {
+        return NIL;
+    }
+    var d = defs;
+    while (d != NIL) : (d = t(d)) {
+        const x = get_ids(dlhs(h(d)));
+        ids = UNION(ids, x);
+        deftoids = cons(cons(h(d), x), deftoids);
+    }
+    defs = sort(defs);
+    d = defs;
+    while (d != NIL) : (d = t(d)) {
+        var x = intersection(deps(dval(h(d))), ids);
+        var y: Word = NIL;
+        while (x != NIL) : (x = t(x)) {
+            y = add1(invgetrel(deftoids, h(x)), y);
+        }
+        g = cons(cons(h(d), add1(h(d), y)), g);
+    }
+    g = reverse(g);
+    g = tclos(g);
+    {
+        var x = intersection(deps(e), ids);
+        var y: Word = NIL;
+        while (x != NIL) : (x = t(x)) {
+            d = invgetrel(deftoids, h(x));
+            if (member(y, d) == 0) {
+                y = UNION(y, getrel(g, d));
+            }
+        }
+        defs = setdiff(defs, y);
+        if (defs != NIL) {
+            detrop = append1(detrop, defs);
+        }
+        if (keep != 0) {
+            return letrec(y, e);
+        }
+    }
+    g = msc(g);
+    g = tsort(g);
+    g = reverse(g);
+    while (g != NIL) : (g = t(g)) {
+        if (t(h(g)) == NIL and intersection(get_ids(dlhs(h(h(g)))), deps(dval(h(h(g))))) == NIL) {
+            e = let(h(h(g)), e);
+        } else {
+            e = letrec(h(g), e);
+        }
+    }
+    return e;
 }
 
 export fn tclos(r: Word) Word {

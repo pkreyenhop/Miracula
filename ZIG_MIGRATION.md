@@ -67,17 +67,18 @@ Suggested order after the initial build harness:
    tuple-pattern reconstruction, pattern irrefutability/fallibility checks, and
    constructor-value extraction. It also owns simple list tail,
    translated-RHS here-info lookup helpers, repeated zf generator expansion,
-   bracket-abstraction combinator rewrite helpers, single-variable bracket
-   abstraction, and list-variable abstraction. Pattern binding scans for
-   top-level declarations are also in
-   `trans_helpers.zig`, along with lazy local-pattern rewrites and zf
-   comprehension compilation. Spec-location lookup and literal type-name
+   bracket-abstraction combinator rewrite helpers, pattern abstraction, and
+   list-variable abstraction. Pattern binding scans for top-level declarations
+   are also in `trans_helpers.zig`, along with lazy local-pattern rewrites and
+   zf comprehension compilation. Spec-location lookup and literal type-name
    recognition are also exported from the helper object, as is lhs pattern
    normalisation for generators, grammar left-factor rewriting, and
    abstract-type show-function validation. Local where-clause name clash
-   checking and declaration diagnostic helpers are also exported from Zig for
-   C callers, along with local `let`/`letrec` compilation wrappers and `tries`
-   fallback compilation. Show-function construction is also a Zig export.
+   checking, declaration diagnostic helpers, and value, constructor, type, and
+   type-specification declaration handling are also exported from Zig for C
+   callers, along with local `let`/`letrec` compilation wrappers and `tries`
+   fallback compilation. Where-block dependency orchestration and show-function
+   construction are also Zig exports.
 11. Type ordered-set helpers. `types_helpers.zig` now owns destructive
    insertion, removal, union, difference, intersection, membership, and the
    `NEW` side-effect wrapper used by grammar analysis.

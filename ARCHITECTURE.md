@@ -77,18 +77,18 @@ membership checks, structural equality, pattern-id extraction, tuple-pattern
 reconstruction, pattern irrefutability/fallibility checks, and
 constructor-value extraction. It also owns simple list tail and translated-RHS
 here-info lookup helpers used outside `trans.c`, plus repeated zf generator
-expansion, bracket-abstraction combinator rewrite helpers, single-variable
-bracket abstraction, and list-variable abstraction. Pattern binding scans for
-top-level declarations are also in `trans_helpers.zig`, along with lazy
-local-pattern rewrites and zf
+expansion, bracket-abstraction combinator rewrite helpers, pattern abstraction,
+and list-variable abstraction. Pattern binding scans for top-level declarations
+are also in `trans_helpers.zig`, along with lazy local-pattern rewrites and zf
 comprehension compilation. Spec-location lookup and literal type-name
 recognition are also exported from the helper object, as is lhs pattern
 normalisation for generators, grammar left-factor rewriting, and abstract-type
 show-function validation. Local where-clause name clash checking is also
-exported from Zig for the parser, along with declaration diagnostic helpers;
-local `let`/`letrec` compilation wrappers and `tries` fallback compilation have
-moved there as well, as has show-function construction. The main translation
-pipeline remains in `trans.c`.
+exported from Zig for the parser, along with declaration diagnostic helpers and
+value, constructor, type, and type-specification declaration handling; local
+`let`/`letrec` compilation wrappers and `tries` fallback compilation have moved
+there as well, as has where-block dependency orchestration and show-function
+construction. The main translation pipeline remains in `trans.c`.
 
 `types_helpers.zig` exports C ABI ordered-set helpers shared by parser,
 typechecker, translator, and steering code. It owns destructive set insertion,
