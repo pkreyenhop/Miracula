@@ -122,7 +122,16 @@ repository checkout.
   extraction, tuple-pattern reconstruction, pattern irrefutability/fallibility
   checks, constructor-value extraction, simple list-tail lookup, and
   translated-RHS here-info lookup; it also owns repeated zf generator
-  expansion.
+  expansion, bracket-abstraction combinator rewrites, single-variable bracket
+  abstraction, and list-variable abstraction, plus pattern binding scans for
+  top-level declarations and lazy local-pattern rewrites. Zf comprehension
+  compilation, spec-location lookup, literal type-name recognition, lhs pattern
+  normalisation, and grammar left-factor rewriting now live there too, along
+  with abstract-type
+  show-function validation, local where-clause name clash checking, and
+  declaration diagnostic helpers. Local `let`/`letrec` compilation wrappers
+  and `tries` fallback compilation are now Zig exports too, along with
+  show-function construction.
 - Moved shared type/parser ordered-set helpers into `types_helpers.zig` while
   preserving the existing C ABI entry points and `NEW` side effect.
 

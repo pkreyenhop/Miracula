@@ -26,36 +26,35 @@ word newtyps = NIL; /* list of typenames declared in current script */
 word SGC = NIL;     /* list of user defined sui-generis constructors */
 #define sui_generis(k) (/* k==Void|| */ member(SGC, k))
 /* 3/10/88 decision to treat `()' as lifted */
-static word abshfnck(word /*t*/, word /*f*/);
-static word abstr(word /*x*/, word /*e*/);
-static word abstract(word /*x*/, word /*e*/);
-static word abstrlist(word /*x*/, word /*e*/);
-static word combine(word /*x*/, word /*y*/);
+word abshfnck(word /*t*/, word /*f*/);
+word abstr(word /*x*/, word /*e*/);
+word abstract(word /*x*/, word /*e*/);
+word abstrlist(word /*x*/, word /*e*/);
+word combine(word /*x*/, word /*y*/);
 static void decl1(word /*x*/, word /*e*/);
 word fixrepeats(word /*qq*/);
 word getrel(word /*r*/, word /*x*/);
 word here_inf(word /*rhs*/);
 word imageless(word /*r*/, word /*y*/, word /*z*/);
 word invgetrel(word /*r*/, word /*x*/);
-static word leftfactor(word /*x*/);
+word leftfactor(word /*x*/);
 word less(word /*x*/, word /*y*/);
 word less1(word /*x*/, word /*a*/);
-static word liscomb(word /*x*/, word /*y*/);
-static word makeshow(word /*here*/, word /*type*/);
-static word mklazy(word /*d*/);
-static word mkshowt(word /*s*/, word /*t*/);
+word liscomb(word /*x*/, word /*y*/);
+word makeshow(word /*here*/, word /*type*/);
+word mklazy(word /*d*/);
+word mkshowt(word /*s*/, word /*t*/);
 word mktuple(word /*x*/);
-static void nameclash(word /*x*/);
-static int nclchk(word /*n*/, word /*p*/, word /*hr*/);
-static word new_mklazy(word /*d*/);
+void nameclash(word /*x*/);
+word new_mklazy(word /*d*/);
 word primconstr(word /*x*/);
-static void respec_error(word /*x*/);
-static word scanpattern(word /*p*/, word /*x*/, word /*e*/, word /*fail*/);
+void respec_error(word /*x*/);
+word scanpattern(word /*p*/, word /*x*/, word /*e*/, word /*fail*/);
 word sort(word /*x*/);
-static word translet(word /*d*/, word /*e*/);
-static word transletrec(word /*dd*/, word /*e*/);
-static word transtries(word /*id*/, word /*x*/);
-static word transzf(word /*e*/, word /*qq*/, word /*conc*/);
+word translet(word /*d*/, word /*e*/);
+word transletrec(word /*dd*/, word /*e*/);
+word transtries(word /*id*/, word /*x*/);
+word transzf(word /*e*/, word /*qq*/, word /*conc*/);
 
 word abstract(word x, word e)
 /* abstraction of template x from compiled expression e */
@@ -103,74 +102,8 @@ word abstract(word x, word e)
   return (NIL);
 }
 
-word abstr(word x, word e)
-/*  "bracket abstraction" of variable x from code e */
-{
-  switch (tag[e]) {
-  case TCONS:
-  case PAIR:
-  case CONS:
-    return (liscomb(abstr(x, hd(e)), abstr(x, tl(e))));
-  case AP:
-    if (hd(e) == BADCASE || hd(e) == CONFERROR) {
-      return (ap(K, e)); /* don't go inside error info */
-    }
-    return (combine(abstr(x, hd(e)), abstr(x, tl(e))));
-  case LAMBDA:
-  case LET:
-  case LETREC:
-  case TRIES:
-  case LABEL:
-  case SHOW:
-  case LEXER:
-  case SHARE:
-    fprintf(stderr, "impossible event in abstr (tag=%d)\n", tag[e]), exit(1);
-  default:
-    if (x == e || (isvar_t(x) && isvar_t(e) && eqtvar(x, e))) {
-      return (I); /* see note */
-    }
-    return (ap(K, e));
-  }
-} /* note - we allow abstraction wrt tvars - see genshfns() */
-
 #define mkindex(i) ((i) < 256 ? (i) : make(INT, i, 0))
 /* will fall over if i >= IBASE */
-
-word abstrlist(word x, word e)
-/* abstraction of list of variables x from code e */
-{
-  switch (tag[e]) {
-  case TCONS:
-  case PAIR:
-  case CONS:
-    return (liscomb(abstrlist(x, hd(e)), abstrlist(x, tl(e))));
-  case AP:
-    if (hd(e) == BADCASE || hd(e) == CONFERROR) {
-      return (ap(K, e)); /* don't go inside error info */
-    } else {
-      return (combine(abstrlist(x, hd(e)), abstrlist(x, tl(e))));
-    }
-  case LAMBDA:
-  case LET:
-  case LETREC:
-  case TRIES:
-  case LABEL:
-  case SHOW:
-  case LEXER:
-  case SHARE:
-    fprintf(stderr, "impossible event in abstrlist (tag=%d)\n", tag[e]), exit(1);
-  default: {
-    word i = 0;
-    while (x != NIL && hd(x) != e) {
-      i++, x = tl(x);
-    }
-    if (x == NIL) {
-      return (ap(K, e));
-    }
-    return (ap(SUBSCRIPT, mkindex(i)));
-  }
-  }
-}
 
 word rv_script = 0; /* flags readvals in use (for garbage collector) */
 
@@ -277,161 +210,8 @@ word codegen(word x) /* returns expression x with abstractions performed */
 
 int lfrule = 0;
 
-word leftfactor(word x)
-/* grammar optimisations - x is of the form ap2(G_ALT,...)
-   G_ALT(G_SEQ a b) a  => G_SEQ a (G_ALT b G_UNIT)
-   G_ALT(G_SEQ a b)(G_SEQ a c) => G_SEQ a (G_ALT b c)
-   G_ALT(G_SEQ a b)(G_ALT a d) => G_ALT(G_SEQ a (G_ALT b G_UNIT)) d
-   G_ALT(G_SEQ a b)(G_ALT(G_SEQ a c) d) => G_ALT(G_SEQ a (G_ALT b c)) d
-*/
-{
-  word a;
-  word b;
-  word c;
-  word d;
-  if (tag[c = tl(hd(x))] == AP && tag[hd(c)] == AP && hd(hd(c)) == G_SEQ) {
-    a = tl(hd(c)), b = tl(c);
-  } else {
-    return x;
-  }
-  if (same(a, d = tl(x))) {
-    hd(x) = ap(G_SEQ, a), tl(x) = ap2(G_ALT, b, G_UNIT);
-    lfrule++;
-    /* printob("rule1: ",x); */
-    return x;
-  }
-  if (tag[d] == AP && tag[hd(d)] == AP) {
-    c = hd(hd(d));
-  } else {
-    return x;
-  }
-  if (c == G_SEQ && same(a, tl(hd(d)))) {
-    c = tl(d), hd(x) = ap(G_SEQ, a), tl(x) = leftfactor(ap2(G_ALT, b, c));
-    lfrule++;
-    /* printob("rule2: ",x); */
-    return x;
-  }
-  if (c != G_ALT) {
-    return x;
-  }
-  if (same(a, c = tl(hd(d)))) {
-    d = tl(d);
-    hd(x) = ap(G_ALT, ap2(G_SEQ, a, ap2(G_ALT, b, G_UNIT)));
-    tl(x) = d;
-    lfrule++;
-    /* printob("rule3: ",x); */
-    return (leftfactor(x));
-  }
-  if (tag[c] == AP && tag[hd(c)] == AP && hd(hd(c)) == G_SEQ && same(a, tl(hd(c)))) {
-    c = tl(c), d = tl(d), hd(x) = ap(G_ALT, ap2(G_SEQ, a, leftfactor(ap2(G_ALT, b, c))));
-    tl(x) = d;
-    lfrule++;
-    /* printob("rule4: ",x); */
-    return (leftfactor(x));
-  }
-  return x;
-}
-
-static word was_poly;
+word was_poly;
 int polyshowerror = 0;
-
-word makeshow(word here, word type) {
-  word f;
-
-  was_poly = 0;
-  f = mkshow(0, 0, type);
-  if (here && was_poly) {
-    printf("type error in definition of %s\n", get_id(current_id));
-    sayhere(here, 0);
-    printf(" use of \"show\" at polymorphic type ");
-    out_type(redtvars(type));
-    putchar('\n');
-    id_type(current_id) = wrong_t;
-    id_val(current_id) = UNDEF;
-    polyshowerror = 1;
-    ND = add1(current_id, ND);
-    was_poly = 0;
-  }
-  return f;
-}
-
-word mkshow(word s, word p, word t)
-/* build a show function appropriate to type t */
-/* p is precedence - 0 for top level, 1 for internal */
-/* s flags special case invoked from genshfns */
-{
-  extern word shownum1, showbool, showchar, showlist, showstring, showparen, showvoid, showpair,
-      showfunction, showabstract, showwhat;
-  word a = NIL;
-  while (tag[t] == AP) {
-    a = cons(tl(t), a), t = hd(t);
-  }
-  switch (t) {
-  case num_t:
-    return (p ? shownum1 : SHOWNUM);
-  case bool_t:
-    return showbool;
-  case char_t:
-    return showchar;
-  case list_t:
-    if (hd(a) == char_t) {
-      return showstring;
-    }
-    return (ap(showlist, mkshow(s, 0, hd(a))));
-  case comma_t:
-    return (ap(showparen, ap2(showpair, mkshow(s, 0, hd(a)), mkshowt(s, hd(tl(a))))));
-  case void_t:
-    return showvoid;
-  case arrow_t:
-    return showfunction;
-  default:
-    if (tag[t] == ID) {
-      word r = t_showfn(t);
-      if (r == 0) { /* abstype without show function */
-        return showabstract;
-      }
-      if (r == showwhat) { /* dont apply to parameter showfns */
-        return r;
-      }
-      while (a != NIL) {
-        r = ap(r, mkshow(s, 1, hd(a))), a = tl(a);
-      }
-      if (t_class(t) == algebraic_t) {
-        r = ap(r, p);
-      }
-      return r;
-      /* note that abstype-showfns have only one precedence
-         and show their components (if any) at precedence 1
-         - if the latter is a problem could do parenthesis
-         stripping */
-    }
-    if (isvar_t(t)) {
-      if (s) {
-        return t; /* see genshfns */
-      }
-      was_poly = 1;
-      return showwhat;
-    }
-    /* arbitrary - could be any strict function */
-    if (tag[t] == STRCONS) /* pname */ /* DEBUG */
-    {
-      printf("warning - mkshow applied to suppressed type\n");
-      return showwhat;
-    }
-    fprintf(stderr, "impossible event in mkshow ("), out_type(t), printf(")\n");
-    return showwhat;
-  }
-}
-
-word mkshowt(word s, word t) /* t is a (possibly singleton) tuple type */
-                             /* flags special call from genshfns */
-{
-
-  if (tl(t) == void_t) {
-    return (mkshow(s, 0, tl(hd(t))));
-  }
-  return (ap2(showpair, mkshow(s, 0, tl(hd(t))), mkshowt(s, tl(t))));
-}
 
 word algshfns = NIL; /* list of showfunctions for all algebraic  types in scope
                        (list of pnames) - needed to make dumps */
@@ -489,341 +269,9 @@ void genshfns(void) /* called after meta type check - create show functions for
   }
 }
 
-word abshfnck(word t, word f)
-/* t is an abstype, is f right type for its showfn? */
-{
-  word n = t_arity(t);
-  word i = 1;
-  while (i <= n) {
-    if (isarrow_t(f)) {
-      word h = tl(hd(f));
-      if (!(isarrow_t(h) && isvar_t(tl(hd(h))) && gettvar(tl(hd(h))) == i && islist_t(tl(h)) &&
-            tl(tl(h)) == char_t)) {
-        return 0;
-      }
-      i++, f = tl(f);
-    } else {
-      {
-        return 0;
-      }
-    }
-  }
-  if (!(isarrow_t(f) && islist_t(tl(f)) && tl(tl(f)) == char_t)) {
-    return 0;
-  }
-  f = tl(hd(f));
-  while (iscompound_t(f) && isvar_t(tl(f)) && gettvar(tl(f)) == n--) {
-    f = hd(f);
-  }
-  return (f == t);
-}
-
-word transtries(word id, word x)
-/* x is a list of alternative values, in reverse order */
-{
-  word r;
-  word h = 0;
-  word earliest = 0;   /* gcc -Wall says earliest may be used uninitialised
-                        * but there is a runtime test instead */
-  if (fallible(hd(x))) /* add default last case */
-  {
-    word oldn = tag[id] == ID ? datapair(get_id(id), 0) : 0;
-    r = ap(BADCASE, h = cons(oldn, 0));
-    if (x == NIL) {
-      fprintf(stderr, "Internal error: `earliest' is used uninitialised in transtries()\nPlease "
-                      "report it to miranda@groups.io\n");
-    }
-  /* 0 is placeholder for here-info */
-  /* oldn omitted if id is pattern - FIX LATER */ } else {
-    {
-      r = codegen(earliest = hd(x)), x = tl(x);
-    }
-  }
-  while (x != NIL) {
-    r = ap2(TRY, codegen(earliest = hd(x)), r), x = tl(x);
-  }
-  if (h) {
-    tl(h) = hd(earliest); /* first line-no is the best marker */
-  }
-  return r;
-}
-
-word translet(word d, word e) /* compile block with body e and def d */
-{
-  word x = mklazy(d);
-  return (ap(abstract(dlhs(x), codegen(e)), codegen(dval(x))));
-}
-/* nasty bug, codegen(dval(x)) was interfering with abstract(dlhs(x)...
-   to fix made codegen on tuples be NOT in situ 20/11/88  */
-
-word transletrec(word dd, word e)
-/* better method,  using list indexing - Jan 88 */
-{
-  word lhs = NIL;
-  word rhs = NIL;
-  word pn = 1;
-  /* list of defs (x=e) is combined to listwise def `xs=es' */
-  for (; dd != NIL; dd = tl(dd)) {
-    word x = hd(dd);
-    if (tag[dlhs(x)] == ID) {
-      { /* couldn't be constructor, by grammar */
-        lhs = cons(dlhs(x), lhs), rhs = cons(codegen(dval(x)), rhs);
-      }
-    } else {
-      word i = 0;
-      word ids;
-      word p = mkgvar(pn++); /* see note 1 */
-      x = new_mklazy(x);
-      ids = dlhs(x);
-      lhs = cons(p, lhs), rhs = cons(codegen(dval(x)), rhs);
-      for (; ids != NIL; ids = tl(ids), i++) {
-        lhs = cons(hd(ids), lhs), rhs = cons(ap2(SUBSCRIPT, mkindex(i), p), rhs);
-      }
-    }
-  }
-  if (tl(lhs) == NIL) { /* singleton */
-    return (ap(abstr(hd(lhs), codegen(e)), ap(Y, abstr(hd(lhs), hd(rhs)))));
-  }
-  return (ap(abstrlist(lhs, codegen(e)), ap(Y, abstrlist(lhs, rhs))));
-}
-/* note 1: we here use the alternative `mklazy' transformation
-   pat = e =>  x1=p!0;...;xn=p!(n-1);p=(lambda(pat)[xs])e|conferror;
-   where p is a private name (need be unique only within a given letrec)
-*/
-
-word mklazy(word d) /* transforms local p=e to ids=($p.ids)e|conferror */
-{
-  if (irrefutable(dlhs(d))) {
-    return d;
-  }
-  {
-    word ids = mktuple(dlhs(d));
-    if (ids == NIL) {
-      fprintf(stderr, "impossible event in mklazy\n");
-      return d;
-    }
-    dval(d) = ap2(TRY, ap(lambda(dlhs(d), ids), dval(d)),
-                  ap(CONFERROR, cons(dlhs(d), here_inf(dval(d)))));
-    dlhs(d) = ids;
-    return d;
-  }
-}
-
-word new_mklazy(word d)
-/* transforms local p=e to ids=($p.ids)e|conferror
-   with ids a LIST (not tuple as formerly) */
-{
-  word ids = get_ids(dlhs(d));
-  if (ids == NIL) {
-    fprintf(stderr, "impossible event in new_mklazy\n");
-    return d;
-  }
-  dval(d) =
-      ap2(TRY, ap(lambda(dlhs(d), ids), dval(d)), ap(CONFERROR, cons(dlhs(d), here_inf(dval(d)))));
-  dlhs(d) = ids;
-  return d;
-}
-
-word combine(word x, word y) {
-  word a;
-  word b;
-  word a1;
-  word b1;
-  a = tag[x] == AP && hd(x) == K;
-  b = tag[y] == AP && hd(y) == K;
-  if (a && b) {
-    return (ap(K, ap(tl(x), tl(y))));
-  }
-  /* rule of K propagation */
-  if (a && y == I) {
-    return (tl(x));
-  }
-  /* rule 'eta */
-  b1 = tag[y] == AP && tag[hd(y)] == AP && hd(hd(y)) == B;
-  if (a) {
-    if (b1) {
-      {
-        return (ap3(B1, tl(x), tl(hd(y)), tl(y)));
-      }
-    } /* Mark Scheevel's new B1 introduction rule -- adopted Aug 83 */
-    if (tag[tl(x)] == AP && tag[hd(tl(x))] == AP && hd(hd(tl(x))) == COND) {
-      return (ap3(COND, tl(hd(tl(x))), ap(K, tl(tl(x))), y));
-    }
-    return (ap2(B, tl(x), y));
-  }
-  a1 = tag[x] == AP && tag[hd(x)] == AP && hd(hd(x)) == B;
-  if (b) {
-    if (a1) {
-      if (tag[tl(hd(x))] == AP && hd(tl(hd(x))) == COND) {
-        return (ap3(COND, tl(tl(hd(x))), tl(x), y));
-      }
-      return (ap3(C1, tl(hd(x)), tl(x), tl(y)));
-    }
-    {
-      return (ap2(C, x, tl(y)));
-    }
-  }
-  if (a1) {
-    if (tag[tl(hd(x))] == AP && hd(tl(hd(x))) == COND) {
-      return (ap3(COND, tl(tl(hd(x))), tl(x), y));
-    }
-    return (ap3(S1, tl(hd(x)), tl(x), y));
-  }
-  {
-    return (ap2(S, x, y));
-  }
-}
-
-word liscomb(word x, word y) /* the CONSy analogue of "combine" */
-{
-  word a;
-  word b;
-  a = tag[x] == AP && hd(x) == K;
-  b = tag[y] == AP && hd(y) == K;
-  if (a && b) {
-    return (ap(K, cons(tl(x), tl(y))));
-  }
-  /* K propagation again */
-  if (a) {
-    if (y == I) {
-      return (ap(P, tl(x))); /* eta P - new rule added 20/11/88 */
-    }
-    return (ap2(B_p, tl(x), y));
-  }
-  if (b) {
-    return (ap2(C_p, x, tl(y)));
-  }
-  return (ap2(S_p, x, y));
-}
-/* B_p,C_p,S_p are the CONSy analogues of B,C,S
-   see MIRANDA REDUCE for their definitions */
-
-word compzf(word e, word qq, word diag)
-/* compile a zf expression with body e and qualifiers qq
-   (listed in reverse order); diag is 0 for sequential
-   and 1 for diagonalising zf expressions */
-{
-  word hold = NIL;
-  word r = 0;
-  word g1 = -1;     /* r is number of generators */
-  while (qq != NIL) /* unreverse qualifier list */
-  {
-    if (hd(hd(qq)) == REPEAT) {
-      qq = fixrepeats(qq);
-    }
-    hold = cons(hd(qq), hold);
-    if (hd(hd(qq)) == GUARD) {
-      r++; /* count filters */
-    }
-    qq = tl(qq);
-  }
-  for (qq = hold; qq != NIL && hd(hd(qq)) == GUARD; qq = tl(qq)) {
-    r--; /* less leading filters */
-  }
-  if (hd(hd(hold)) == GENERATOR) {
-    g1 = tl(tl(hd(hold))); /* rhs of 1st generator */
-  }
-  e = transzf(e, hold, diag ? diagonalise : concat);
-  /* diagonalise [ // ] comprehensions, but not [ | ] ones */
-  if (diag) {
-    while (r--) {
-      e = ap(concat, e); /* see funny version of rule 3 below */
-    }
-  }
-  return (e == g1 ? ap2(APPEND, NIL, e) : e); /* test in g1 is to fix HR bug */
-}
-/* HR bug - if Rule 1 applied at outermost level, type info is lost
-   eg [p|p<-3] ==> 3  (reported by Ham Richards, Nov 89)
-*/
-
-word transzf(word e, word qq, word conc) /* Bird and Wadler page 63 */
-{
-  word q;
-  word q2;
-  if (qq == NIL) {
-    return (cons(e, NIL));
-  }
-  q = hd(qq);
-  if (hd(q) == GUARD) {
-    return (ap3(COND, tl(q), transzf(e, tl(qq), conc), NIL));
-  }
-  if (tl(qq) == NIL) {
-    if (hd(tl(q)) == e && isvariable(e)) {
-      {
-        return (tl(tl(q))); /* Rule 1 */
-      }
-    }
-    if (irrefutable(hd(tl(q)))) {
-      return (ap2(MAP, lambda(hd(tl(q)), e), tl(tl(q)))); /* Rule 2 */
-    } /* Rule 2 warped for refutable patterns */
-    return (ap2(FLATMAP, lambda(hd(tl(q)), cons(e, NIL)), tl(tl(q))));
-  }
-  q2 = hd(tl(qq));
-  if (hd(q2) == GUARD) {
-    if (conc == concat) /* Rule 3 */
-    {
-      tl(tl(q)) = ap2(FILTER, lambda(hd(tl(q)), tl(q2)), tl(tl(q)));
-      tl(qq) = tl(tl(qq));
-      return (transzf(e, qq, conc));
-    } /* funny [//] version of Rule 3 to avoid creating weak lists */
-    e = ap3(COND, tl(q2), cons(e, NIL), NIL);
-    tl(qq) = tl(tl(qq));
-    return (transzf(e, qq, conc));
-    /* plus wrap result with concat */
-  }
-  return (ap(conc, transzf(transzf(e, tl(qq), conc), cons(q, NIL), conc)));
-  /* Rule 4 */
-}
-
-#define ischar(x) ((x) >= 0 && (x) <= 255)
-
-word genlhs(word x) /* x is an expression found on the lhs of <-
-             and genlhs returns the corresponding pattern */
-{
-  word hold;
-  switch (tag[x]) {
-  case AP:
-    if (tag[hd(x)] == AP && hd(hd(x)) == PLUS && isnat(tl(x))) {
-      return (ap2(PLUS, tl(x), genlhs(tl(hd(x))))); /* n+k pattern */
-    }
-  case CONS:
-  case TCONS:
-  case PAIR:
-    hold = genlhs(hd(x));
-    return (make(tag[x], hold, genlhs(tl(x))));
-  case ID:
-    if (member(idsused, x)) {
-      return (cons(CONST, x));
-    }
-    if (!isconstructor(x)) {
-      idsused = cons(x, idsused);
-    }
-    return x;
-  case INT:
-    return (cons(CONST, x));
-  case DOUBLE:
-    syntax("floating point literal in pattern\n");
-    return nill;
-  case ATOM:
-    if (x == True || x == False || x == NILS || x == NIL || ischar(x)) {
-      return (cons(CONST, x));
-    }
-  default:
-    syntax("illegal form on left of <-\n");
-    return nill;
-  }
-}
-
 word speclocs = NIL; /* list of cons(id,hereinfo) giving location of spec for
                        ids both defined and specified - needed to locate errs
                        in meta_tcheck, abstr_mcheck */
-word getspecloc(word x) {
-  word s = speclocs;
-  while (s != NIL && hd(hd(s)) != x) {
-    s = tl(s);
-  }
-  return (s == NIL ? id_who(x) : tl(hd(s)));
-}
 
 void declare(word x, word e)
 /* translates  <pattern> = <exp>  at top level  */
@@ -862,23 +310,6 @@ void declare(word x, word e)
       bindings = tl(bindings);
     }
   }
-}
-
-word scanpattern(word p, word x, word e, word fail)
-/* declare ids in x as components of `p=e', each as
-   n = ($p.n)e,  result is list of bindings */
-{
-  if (hd(x) == CONST || isconstructor(x)) {
-    return (NIL);
-  }
-  if (tag[x] == ID) {
-    word binding = cons(x, ap2(TRY, ap(lambda(p, x), e), fail));
-    return (cons(binding, NIL));
-  }
-  if (tag[x] == AP && tag[hd(x)] == AP && hd(hd(x)) == PLUS) { /* n+k pattern */
-    return (scanpattern(p, tl(x), e, fail));
-  }
-  return (shunt(scanpattern(p, hd(x), e, fail), scanpattern(p, tl(x), e, fail)));
 }
 
 void decl1(word x, word e) /* declare name x to have the value denoted by e */
@@ -1119,69 +550,6 @@ void specify(word x, word t, word h) /* semantics of a "::" statement */
   if (id_val(x) == UNDEF) {
     addtoenv(x);
   }
-}
-
-void respec_error(word x)
-/* only one type spec per name allowed - IS THIS RIGHT? */
-{
-
-  if (echoing) {
-    putchar('\n');
-  }
-  printf("syntax error: type of \"%s\" already declared%s\n", get_id(x),
-         member(primenv, x) ? " (in standard environment)" : "");
-  acterror();
-}
-
-void nameclash(word x) /* only one top level binding per name allowed */
-{
-
-  if (echoing) {
-    putchar('\n');
-  }
-  printf("syntax error: nameclash, \"%s\" already defined%s\n", get_id(x),
-         member(primenv, x) ? " (in standard environment)" : "");
-  acterror();
-}
-
-void nclashcheck(word n, word dd, word hr)
-/* is n already bound in list of definitions dd */
-{
-  while (dd != NIL && !nclchk(n, dlhs(hd(dd)), hr)) {
-    dd = tl(dd);
-  }
-}
-
-int nclchk(word n, word p, word hr) /* is n already bound in pattern p */
-{
-  if (hd(p) == CONST) {
-    return 0;
-  }
-  if (tag[p] == ID) {
-    if (n != p) {
-      return 0;
-    }
-    if (echoing) {
-      putchar('\n');
-    }
-    errs = hr,
-    printf("syntax error: conflicting definitions of \"%s\" in where clause\n", get_id(n)),
-    acterror();
-    return 1;
-  }
-  if (tag[p] == AP && hd(p) == PLUS) { /* hd of n+k pattern */
-    return 0;
-  }
-  return (nclchk(n, hd(p), hr) || nclchk(n, tl(p), hr));
-}
-
-word transtypeid(word x) /* recognises literal type constants - see rules.y */
-{
-  char *n = get_id(x);
-  return (strcmp(n, "bool") == 0   ? bool_t
-          : strcmp(n, "num") == 0  ? num_t
-          : strcmp(n, "char") == 0 ? char_t
-                                   : x);
 }
 
 /* end of MIRANDA TRANS */
