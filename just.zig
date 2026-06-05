@@ -45,9 +45,9 @@ pub fn main() !void {
         std.process.exit(1);
     }
 
-    const stdout = std.fs.File.stdout();
+    const stdout = std.io.getStdOut();
     if (first_file == args.len) {
-        const input = try std.fs.File.stdin().readToEndAlloc(allocator, max_input);
+        const input = try std.io.getStdIn().readToEndAlloc(allocator, max_input);
         defer allocator.free(input);
         const output = try formatText(allocator, input, width, tolerance);
         defer allocator.free(output);
@@ -76,9 +76,9 @@ fn readWidthFile() ?usize {
 }
 
 fn formatText(allocator: std.mem.Allocator, input: []const u8, width: usize, tolerance: usize) ![]u8 {
-    var output: std.ArrayList(u8) = .empty;
+    var output: std.ArrayListUnmanaged(u8) = .{};
     errdefer output.deinit(allocator);
-    var paragraph: std.ArrayList(u8) = .empty;
+    var paragraph: std.ArrayListUnmanaged(u8) = .{};
     defer paragraph.deinit(allocator);
 
     var cursor: usize = 0;
@@ -114,8 +114,8 @@ fn formatText(allocator: std.mem.Allocator, input: []const u8, width: usize, tol
 
 fn flushParagraph(
     allocator: std.mem.Allocator,
-    output: *std.ArrayList(u8),
-    paragraph: *std.ArrayList(u8),
+    output: *std.ArrayListUnmanaged(u8),
+    paragraph: *std.ArrayListUnmanaged(u8),
     width: usize,
     tolerance: usize,
 ) !void {
@@ -126,12 +126,12 @@ fn flushParagraph(
 
 fn formatParagraph(
     allocator: std.mem.Allocator,
-    output: *std.ArrayList(u8),
+    output: *std.ArrayListUnmanaged(u8),
     paragraph: []const u8,
     width: usize,
     tolerance: usize,
 ) !void {
-    var words: std.ArrayList([]const u8) = .empty;
+    var words: std.ArrayListUnmanaged([]const u8) = .{};
     defer words.deinit(allocator);
     var it = std.mem.tokenizeAny(u8, paragraph, " \t");
     while (it.next()) |word| {
@@ -157,7 +157,7 @@ fn formatParagraph(
 
 fn emitLine(
     allocator: std.mem.Allocator,
-    output: *std.ArrayList(u8),
+    output: *std.ArrayListUnmanaged(u8),
     words: []const []const u8,
     width: usize,
     tolerance: usize,
@@ -186,14 +186,14 @@ fn emitLine(
     try output.append(allocator, '\n');
 }
 
-fn appendSpaces(allocator: std.mem.Allocator, output: *std.ArrayList(u8), count: usize) !void {
+fn appendSpaces(allocator: std.mem.Allocator, output: *std.ArrayListUnmanaged(u8), count: usize) !void {
     for (0..count) |_| {
         try output.append(allocator, ' ');
     }
 }
 
 fn squeezeLine(allocator: std.mem.Allocator, line: []const u8) ![]u8 {
-    var out: std.ArrayList(u8) = .empty;
+    var out: std.ArrayListUnmanaged(u8) = .{};
     errdefer out.deinit(allocator);
     var cursor = indent(line);
     var previous_was_space = false;

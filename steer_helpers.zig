@@ -72,7 +72,7 @@ export fn size(input: Word) Word {
 export fn filecopy(path: [*:0]const u8) void {
     var input = std.fs.cwd().openFile(std.mem.span(path), .{}) catch return;
     defer input.close();
-    var stdout = std.fs.File.stdout();
+    var stdout = std.io.getStdOut();
     copyFile(&input, &stdout) catch return;
 }
 

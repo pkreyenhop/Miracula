@@ -7,10 +7,10 @@ const Driver = struct {
     viewer: []const u8,
     menuviewer: []const u8,
     fastback: bool,
-    next: std.ArrayList(u8) = .empty,
-    last: std.ArrayList(u8) = .empty,
-    last_stack: std.ArrayList([]u8) = .empty,
-    shell_command: std.ArrayList(u8) = .empty,
+    next: std.ArrayListUnmanaged(u8) = .{},
+    last: std.ArrayListUnmanaged(u8) = .{},
+    last_stack: std.ArrayListUnmanaged([]u8) = .{},
+    shell_command: std.ArrayListUnmanaged(u8) = .{},
 
     fn init(allocator: std.mem.Allocator) !Driver {
         var driver = Driver{
@@ -48,7 +48,7 @@ const Driver = struct {
                 try clearScreen();
                 if (bad) {
                     if (std.mem.eql(u8, self.next.items, ".")) {
-                        try std.fs.File.stdout().writeAll("no previous selection to substitute for \".\"\n");
+                        try std.io.getStdOut().writeAll("no previous selection to substitute for \".\"\n");
                     } else {
                         std.debug.print("selection \"{s}\" not valid\n", .{self.next.items});
                     }
@@ -56,7 +56,7 @@ const Driver = struct {
                 }
 
                 try self.runViewer(self.menuviewer, "contents");
-                try std.fs.File.stdout().writeAll("::please type selection number (or return to exit):");
+                try std.io.getStdOut().writeAll("::please type selection number (or return to exit):");
                 try self.readSelection();
             }
 
@@ -143,7 +143,7 @@ const Driver = struct {
         std.process.exit(0);
     }
 
-    fn showFile(self: *Driver, path: []const u8, mode: u32) !void {
+    fn showFile(self: *Driver, path: []const u8, mode: usize) !void {
         try clearScreen();
         if (isOwnerExecutable(mode)) {
             try runExecutable(self.allocator, path);
@@ -160,7 +160,7 @@ const Driver = struct {
             return;
         }
 
-        try std.fs.File.stdout().writeAll("::next selection (or return to go back to menu, or q to quit):");
+        try std.io.getStdOut().writeAll("::next selection (or return to go back to menu, or q to quit):");
         try self.readSelection();
     }
 
@@ -181,7 +181,7 @@ const Driver = struct {
     }
 
     fn settings(self: *Driver) !void {
-        const stdout = std.fs.File.stdout();
+        const stdout = std.io.getStdOut();
         try stdout.writeAll("current values of menudriver internal variables are\n\n");
         try stdout.writeAll("        VIEWER=");
         try stdout.writeAll(self.viewer);
@@ -208,7 +208,7 @@ const Driver = struct {
                 }
                 std.debug.print("!{s}\n", .{self.shell_command.items});
             } else {
-                try std.fs.File.stdout().writeAll("no previous shell command to substitute for \"!\"\n");
+                try std.io.getStdOut().writeAll("no previous shell command to substitute for \"!\"\n");
             }
         } else {
             self.shell_command.clearRetainingCapacity();
@@ -225,7 +225,7 @@ const Driver = struct {
         var byte: [1]u8 = undefined;
         var saw_nonleading = false;
         while (true) {
-            const read = try std.fs.File.stdin().read(&byte);
+            const read = try std.io.getStdIn().read(&byte);
             if (read == 0) std.process.exit(0);
             if (byte[0] == '\n') break;
             if (!saw_nonleading and (byte[0] == ' ' or byte[0] == '\t')) continue;
@@ -318,19 +318,19 @@ pub fn main() !void {
 }
 
 fn clearScreen() !void {
-    const stdout = std.fs.File.stdout();
+    const stdout = std.io.getStdOut();
     try stdout.writeAll("\x1b[2J\x1b[H");
 }
 
 fn waitForReturn() !void {
-    try std.fs.File.stdout().writeAll("[Hit return to continue]");
+    try std.io.getStdOut().writeAll("[Hit return to continue]");
     var byte: [1]u8 = undefined;
-    while (try std.fs.File.stdin().read(&byte) != 0) {
+    while (try std.io.getStdIn().read(&byte) != 0) {
         if (byte[0] == '\n') break;
     }
 }
 
-fn isOwnerExecutable(mode: u32) bool {
+fn isOwnerExecutable(mode: usize) bool {
     return mode & 0o100 != 0;
 }
 
@@ -357,7 +357,7 @@ fn runChild(allocator: std.mem.Allocator, argv: []const []const u8) !void {
 }
 
 fn shellQuote(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
-    var out: std.ArrayList(u8) = .empty;
+    var out: std.ArrayListUnmanaged(u8) = .{};
     errdefer out.deinit(allocator);
     try out.append(allocator, '\'');
     for (text) |ch| {
