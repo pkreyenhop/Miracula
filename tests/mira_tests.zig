@@ -82,18 +82,18 @@ fn runMira(env: *const TestEnv, script: ?[]const u8, input: []const u8, extra_ar
     child.stdin.?.close();
     child.stdin = null;
 
-    var stdout: std.ArrayList(u8) = .empty;
+    var stdout: std.ArrayListUnmanaged(u8) = .{};
     defer stdout.deinit(allocator);
-    var stderr: std.ArrayList(u8) = .empty;
+    var stderr: std.ArrayListUnmanaged(u8) = .{};
     defer stderr.deinit(allocator);
     try child.collectOutput(allocator, &stdout, &stderr, 1024 * 1024);
 
     const term = try child.wait();
     var stdout_text = try stdout.toOwnedSlice(allocator);
-    stdout = .empty;
+    stdout = .{};
     stdout_text = try chompStdout(stdout_text);
     const stderr_text = try stderr.toOwnedSlice(allocator);
-    stderr = .empty;
+    stderr = .{};
 
     return .{ .term = term, .stdout = stdout_text, .stderr = stderr_text };
 }
