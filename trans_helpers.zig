@@ -594,7 +594,7 @@ export fn abstract(input_x: Word, input_e: Word) Word {
         return ap2(Ug, primconstr(x), e);
     }
     _ = c.printf("error in declaration of \"%s\", undeclared constructor in pattern: ", getId(current_id));
-    out(c.stdout(), x);
+    out(c.stdout, x);
     _ = c.printf("\n");
     return NIL;
 }

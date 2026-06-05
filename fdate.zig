@@ -22,7 +22,7 @@ const months = [_][*:0]const u8{
 
 pub fn main() !void {
     var input: [200]u8 = undefined;
-    const bytes_read = try std.fs.File.stdin().read(&input);
+    const bytes_read = try std.io.getStdIn().read(&input);
     const text = std.mem.trim(u8, input[0..bytes_read], " \t\r\n");
     const token_end = std.mem.indexOfAny(u8, text, " \t\r\n") orelse text.len;
     const path = text[0..token_end];
