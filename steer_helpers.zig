@@ -3,6 +3,9 @@ const std = @import("std");
 const c = @cImport({
     @cInclude("sys/ioctl.h");
     @cInclude("unistd.h");
+    @cInclude("sys/stat.h");
+    @cInclude("fcntl.h");
+    @cInclude("stdio.h");
 });
 
 const Word = c_long;
@@ -17,6 +20,26 @@ extern var tag: [*]u8;
 
 extern fn make(t: u8, x: Word, y: Word) Word;
 
+var test_heap_heads: [2]Word = .{ 0, 0 };
+var test_heap_tails: [2]Word = .{ 0, 0 };
+var test_heap_tags: [1]u8 = .{0};
+var test_hd: [*]Word = test_heap_heads[0..].ptr;
+var test_tl: [*]Word = test_heap_tails[0..].ptr;
+var test_tag: [*]u8 = test_heap_tags[0..].ptr;
+
+comptime {
+    if (@import("builtin").is_test) {
+        @export(&test_hd, .{ .name = "hd" });
+        @export(&test_tl, .{ .name = "tl" });
+        @export(&test_tag, .{ .name = "tag" });
+        @export(&testMake, .{ .name = "make" });
+    }
+}
+
+fn testMake(_: u8, _: Word, _: Word) callconv(.c) Word {
+    unreachable;
+}
+
 fn h(x: Word) Word {
     return hd[@as(usize, @intCast(x)) * 2];
 }
@@ -30,8 +53,9 @@ fn cons(x: Word, y: Word) Word {
 }
 
 export fn fm_time(path: [*:0]const u8) Word {
-    const stat = std.fs.cwd().statFile(std.mem.span(path)) catch return 0;
-    return @intCast(@divFloor(stat.mtime, std.time.ns_per_s));
+    var stat: c.struct_stat = undefined;
+    if (c.stat(path, &stat) != 0) return 0;
+    return @intCast(stat.st_mtim.tv_sec);
 }
 
 export fn normal(path: [*:0]const u8) c_int {
@@ -70,26 +94,32 @@ export fn size(input: Word) Word {
 }
 
 export fn filecopy(path: [*:0]const u8) void {
-    var input = std.fs.cwd().openFile(std.mem.span(path), .{}) catch return;
-    defer input.close();
-    var stdout = std.io.getStdOut();
-    copyFile(&input, &stdout) catch return;
+    const fd = c.open(path, c.O_RDONLY);
+    if (fd < 0) return;
+    defer _ = c.close(fd);
+
+    var buffer: [512]u8 = undefined;
+    while (true) {
+        const n = c.read(fd, &buffer, buffer.len);
+        if (n <= 0) break;
+        _ = c.write(c.STDOUT_FILENO, &buffer, @intCast(n));
+    }
 }
 
 export fn filecp(from: [*:0]const u8, to: [*:0]const u8) void {
-    var input = std.fs.cwd().openFile(std.mem.span(from), .{}) catch return;
-    defer input.close();
-    var output = std.fs.cwd().createFile(std.mem.span(to), .{ .mode = 0o644 }) catch return;
-    defer output.close();
-    copyFile(&input, &output) catch return;
-}
+    const f_in = c.open(from, c.O_RDONLY);
+    if (f_in < 0) return;
+    defer _ = c.close(f_in);
 
-fn copyFile(input: *std.fs.File, output: *std.fs.File) !void {
+    const f_out = c.open(to, c.O_WRONLY | c.O_CREAT | c.O_TRUNC, @as(c_uint, 0o644));
+    if (f_out < 0) return;
+    defer _ = c.close(f_out);
+
     var buffer: [512]u8 = undefined;
     while (true) {
-        const n = try input.read(&buffer);
-        if (n == 0) break;
-        try output.writeAll(buffer[0..n]);
+        const n = c.read(f_in, &buffer, buffer.len);
+        if (n <= 0) break;
+        _ = c.write(f_out, &buffer, @intCast(n));
     }
 }
 

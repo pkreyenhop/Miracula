@@ -26,6 +26,19 @@ export fn okid(ch: c_int) c_int {
         ch == '\'') 1 else 0;
 }
 
+export fn okulid(ch: c_int) c_int {
+    return if ((ch >= 'a' and ch <= 'z') or
+        (ch >= 'A' and ch <= 'Z') or
+        (ch >= '0' and ch <= '9') or
+        ch == '_' or
+        ch == 0x08 or
+        ch == '\'') 1 else 0;
+}
+
+export fn okpath(ch: c_int) c_int {
+    return if (ch != '"' and ch != '\n' and ch != '>') 1 else 0;
+}
+
 test "hash matches xor into seven-bit bucket" {
     try std.testing.expectEqual(@as(c_int, 0), hash(""));
     try std.testing.expectEqual(@as(c_int, 'a'), hash("a"));
@@ -39,4 +52,10 @@ test "identifier classification matches Miranda lexer rules" {
     try std.testing.expect(okid('a') == 1);
     try std.testing.expect(okid('\'') == 1);
     try std.testing.expect(okid('-') == 0);
+    try std.testing.expect(okulid(0x08) == 1);
+    try std.testing.expect(okulid('-') == 0);
+    try std.testing.expect(okpath('a') == 1);
+    try std.testing.expect(okpath('"') == 0);
+    try std.testing.expect(okpath('\n') == 0);
+    try std.testing.expect(okpath('>') == 0);
 }

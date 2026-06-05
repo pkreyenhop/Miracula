@@ -212,7 +212,7 @@ fn addMira(
     mira.root_module.addObject(lex_helpers_zig);
     mira.root_module.addObject(trans_helpers_zig);
     mira.root_module.addObject(types_helpers_zig);
-    mira.linkSystemLibrary("m");
+    mira.root_module.linkSystemLibrary("m", .{});
     return mira;
 }
 
@@ -250,13 +250,12 @@ fn addCExecutable(
             .link_libc = true,
         }),
     });
-    exe.addIncludePath(b.path("."));
-    exe.addCSourceFiles(.{
+    exe.root_module.addIncludePath(b.path("."));
+    exe.root_module.addCSourceFiles(.{
         .files = sources,
         .flags = &c_flags,
     });
     addPlatformMacros(exe, target);
-    exe.linkLibC();
     return exe;
 }
 
@@ -286,13 +285,12 @@ fn addHeaderCheck(
             .link_libc = true,
         }),
     });
-    check.addIncludePath(b.path("."));
-    check.addCSourceFile(.{
+    check.root_module.addIncludePath(b.path("."));
+    check.root_module.addCSourceFile(.{
         .file = source,
         .flags = &c_flags,
     });
     addPlatformMacros(check, target);
-    check.linkLibC();
     return check;
 }
 
@@ -343,7 +341,7 @@ fn addPlatformMacros(exe: *std.Build.Step.Compile, target: std.Build.ResolvedTar
 }
 
 fn readTrimmed(b: *std.Build, path: []const u8) []const u8 {
-    const contents = std.fs.cwd().readFileAlloc(b.allocator, path, 4096) catch |err| {
+    const contents = b.build_root.handle.readFileAlloc(b.graph.io, path, b.allocator, .limited(4096)) catch |err| {
         std.debug.panic("failed to read {s}: {}", .{ path, err });
     };
     return std.mem.trim(u8, contents, " \t\r\n");

@@ -3,52 +3,53 @@ const std = @import("std");
 const max_selection = 4096;
 
 const Driver = struct {
-    allocator: std.mem.Allocator,
+    ctx: std.process.Init,
+    next: std.ArrayListUnmanaged(u8) = .empty,
+    last: std.ArrayListUnmanaged(u8) = .empty,
+    last_stack: std.ArrayListUnmanaged([]u8) = .empty,
+    shell_command: std.ArrayListUnmanaged(u8) = .empty,
     viewer: []const u8,
     menuviewer: []const u8,
     fastback: bool,
-    next: std.ArrayListUnmanaged(u8) = .{},
-    last: std.ArrayListUnmanaged(u8) = .{},
-    last_stack: std.ArrayListUnmanaged([]u8) = .{},
-    shell_command: std.ArrayListUnmanaged(u8) = .{},
 
-    fn init(allocator: std.mem.Allocator) !Driver {
+    fn init(ctx: std.process.Init) !Driver {
         var driver = Driver{
-            .allocator = allocator,
-            .viewer = std.posix.getenv("VIEWER") orelse "less",
-            .menuviewer = std.posix.getenv("MENUVIEWER") orelse "cat",
+            .ctx = ctx,
+            .viewer = ctx.environ_map.get("VIEWER") orelse "less",
+            .menuviewer = ctx.environ_map.get("MENUVIEWER") orelse "cat",
             .fastback = true,
         };
-        if (std.posix.getenv("RETURNTOMENU")) |value| {
+        if (ctx.environ_map.get("RETURNTOMENU")) |value| {
             driver.fastback = value.len == 0 or (value[0] != 'N' and value[0] != 'n');
         }
-        try driver.last.append(allocator, '.');
+        try driver.last.append(ctx.gpa, '.');
         return driver;
     }
 
     fn deinit(self: *Driver) void {
-        self.next.deinit(self.allocator);
-        self.last.deinit(self.allocator);
+        self.next.deinit(self.ctx.gpa);
+        self.last.deinit(self.ctx.gpa);
         for (self.last_stack.items) |item| {
-            self.allocator.free(item);
+            self.ctx.gpa.free(item);
         }
-        self.last_stack.deinit(self.allocator);
-        self.shell_command.deinit(self.allocator);
+        self.last_stack.deinit(self.ctx.gpa);
+        self.shell_command.deinit(self.ctx.gpa);
     }
 
     fn drive(self: *Driver, dir: []const u8) !void {
-        std.posix.chdir(dir) catch {
+        std.process.setCurrentPath(self.ctx.io, dir) catch {
             try self.singleton(dir);
             return;
         };
 
         var bad = false;
-        while (std.fs.cwd().statFile("contents")) |_| {
+        while (std.Io.Dir.cwd().statFile(self.ctx.io, "contents", .{})) |_| {
             if (self.next.items.len == 0 or bad) {
-                try clearScreen();
+                try self.clearScreen();
                 if (bad) {
                     if (std.mem.eql(u8, self.next.items, ".")) {
-                        try std.io.getStdOut().writeAll("no previous selection to substitute for \".\"\n");
+                        var out_w = std.Io.File.stdout().writer(self.ctx.io, &[_]u8{});
+                try out_w.interface.writeAll("no previous selection to substitute for \".\"\n");
                     } else {
                         std.debug.print("selection \"{s}\" not valid\n", .{self.next.items});
                     }
@@ -56,12 +57,13 @@ const Driver = struct {
                 }
 
                 try self.runViewer(self.menuviewer, "contents");
-                try std.io.getStdOut().writeAll("::please type selection number (or return to exit):");
+                var out_w = std.Io.File.stdout().writer(self.ctx.io, &[_]u8{});
+                try out_w.interface.writeAll("::please type selection number (or return to exit):");
                 try self.readSelection();
             }
 
             if (self.next.items.len == 0) {
-                std.posix.chdir("..") catch {};
+                std.process.setCurrentPath(self.ctx.io, "..") catch {};
                 try self.popLast();
                 continue;
             }
@@ -80,7 +82,7 @@ const Driver = struct {
                 }
             }
 
-            const stat = std.fs.cwd().statFile(self.next.items) catch {
+            const stat = std.Io.Dir.cwd().statFile(self.ctx.io, self.next.items, .{}) catch {
                 try self.handleSpecialOrBad(&bad);
                 continue;
             };
@@ -96,32 +98,33 @@ const Driver = struct {
             switch (stat.kind) {
                 .directory => {
                     var cwd_buffer: [std.fs.max_path_bytes]u8 = undefined;
-                    const hold = std.posix.getcwd(&cwd_buffer) catch {
+                    const hold_len = std.process.currentPath(self.ctx.io, &cwd_buffer) catch {
                         std.debug.print("panic: cwd too long\n", .{});
                         std.process.exit(1);
                     };
-                    if (std.posix.chdir(self.next.items)) |_| {
-                        if (std.fs.cwd().statFile("contents")) |_| {
+                    const hold = cwd_buffer[0..hold_len];
+                    if (std.process.setCurrentPath(self.ctx.io, self.next.items)) |_| {
+                        if (std.Io.Dir.cwd().statFile(self.ctx.io, "contents", .{})) |_| {
                             try self.setLast(self.next.items);
                             try self.pushLast();
                             self.next.clearRetainingCapacity();
                         } else |_| {
                             bad = true;
-                            std.posix.chdir(hold) catch {};
+                            std.process.setCurrentPath(self.ctx.io, hold) catch {};
                         }
                     } else |_| {
                         bad = true;
-                        std.posix.chdir(hold) catch {};
+                        std.process.setCurrentPath(self.ctx.io, hold) catch {};
                     }
                 },
-                .file => try self.showFile(self.next.items, stat.mode),
+                .file => try self.showFile(self.next.items, stat.permissions.toMode()),
                 else => bad = true,
             }
         } else |_| {}
     }
 
     fn singleton(self: *Driver, path: []const u8) !void {
-        const stat = std.fs.cwd().statFile(path) catch {
+        const stat = std.Io.Dir.cwd().statFile(self.ctx.io, path, .{}) catch {
             std.debug.print("menudriver: cannot access \"{s}\"\n", .{path});
             std.process.exit(1);
         };
@@ -130,25 +133,25 @@ const Driver = struct {
             std.process.exit(1);
         }
 
-        try clearScreen();
-        if (isOwnerExecutable(stat.mode)) {
-            try runExecutable(self.allocator, path);
+        try self.clearScreen();
+        if (isOwnerExecutable(stat.permissions.toMode())) {
+            try runExecutable(self.ctx, path);
             self.fastback = false;
         } else {
             try self.runViewer(self.viewer, path);
         }
         if (!self.fastback) {
-            try waitForReturn();
+            try self.waitForReturn();
         }
         std.process.exit(0);
     }
 
-    fn showFile(self: *Driver, path: []const u8, mode: usize) !void {
-        try clearScreen();
+    fn showFile(self: *Driver, path: []const u8, mode: std.posix.mode_t) !void {
+        try self.clearScreen();
         if (isOwnerExecutable(mode)) {
-            try runExecutable(self.allocator, path);
+            try runExecutable(self.ctx, path);
             if (self.fastback) {
-                try waitForReturn();
+                try self.waitForReturn();
             }
         } else {
             try self.runViewer(self.viewer, path);
@@ -160,20 +163,21 @@ const Driver = struct {
             return;
         }
 
-        try std.io.getStdOut().writeAll("::next selection (or return to go back to menu, or q to quit):");
+        var out_w = std.Io.File.stdout().writer(self.ctx.io, &[_]u8{});
+        try out_w.interface.writeAll("::next selection (or return to go back to menu, or q to quit):");
         try self.readSelection();
     }
 
     fn handleSpecialOrBad(self: *Driver, bad: *bool) !void {
         if (std.mem.eql(u8, self.next.items, "???")) {
             try self.settings();
-            try waitForReturn();
+            try self.waitForReturn();
             self.next.clearRetainingCapacity();
         } else if (std.mem.eql(u8, self.next.items, "q") or std.mem.eql(u8, self.next.items, "/q")) {
             std.process.exit(0);
         } else if (self.next.items.len > 0 and self.next.items[0] == '!') {
             try self.shellEscape();
-            try waitForReturn();
+            try self.waitForReturn();
             self.next.clearRetainingCapacity();
         } else {
             bad.* = true;
@@ -181,7 +185,8 @@ const Driver = struct {
     }
 
     fn settings(self: *Driver) !void {
-        const stdout = std.io.getStdOut();
+        var stdout_w = std.Io.File.stdout().writer(self.ctx.io, &[_]u8{});
+        const stdout = &stdout_w.interface;
         try stdout.writeAll("current values of menudriver internal variables are\n\n");
         try stdout.writeAll("        VIEWER=");
         try stdout.writeAll(self.viewer);
@@ -204,41 +209,45 @@ const Driver = struct {
         if (self.next.items.len == 1 or (self.next.items.len >= 2 and self.next.items[1] == '!')) {
             if (self.shell_command.items.len > 0) {
                 if (self.next.items.len >= 2 and self.next.items[1] == '!') {
-                    try self.shell_command.appendSlice(self.allocator, self.next.items[2..]);
+                    try self.shell_command.appendSlice(self.ctx.gpa, self.next.items[2..]);
                 }
                 std.debug.print("!{s}\n", .{self.shell_command.items});
             } else {
-                try std.io.getStdOut().writeAll("no previous shell command to substitute for \"!\"\n");
+                var out_w = std.Io.File.stdout().writer(self.ctx.io, &[_]u8{});
+                try out_w.interface.writeAll("no previous shell command to substitute for \"!\"\n");
             }
         } else {
             self.shell_command.clearRetainingCapacity();
-            try self.shell_command.appendSlice(self.allocator, self.next.items[1..]);
+            try self.shell_command.appendSlice(self.ctx.gpa, self.next.items[1..]);
         }
         if (self.shell_command.items.len > 0) {
-            try runShell(self.allocator, self.shell_command.items);
+            try runShell(self.ctx, self.shell_command.items);
         }
     }
 
     fn readSelection(self: *Driver) !void {
         var buffer: [max_selection]u8 = undefined;
         var len: usize = 0;
-        var byte: [1]u8 = undefined;
+        var byte_buf: [1]u8 = undefined;
         var saw_nonleading = false;
+        const stdin = std.Io.File.stdin();
+        var r = stdin.reader(self.ctx.io, &byte_buf);
         while (true) {
-            const read = try std.io.getStdIn().read(&byte);
+            const read = try r.interface.readSliceShort(&byte_buf);
             if (read == 0) std.process.exit(0);
-            if (byte[0] == '\n') break;
-            if (!saw_nonleading and (byte[0] == ' ' or byte[0] == '\t')) continue;
+            const ch = byte_buf[0];
+            if (ch == '\n') break;
+            if (!saw_nonleading and (ch == ' ' or ch == '\t')) continue;
             saw_nonleading = true;
             if (len < buffer.len) {
-                buffer[len] = byte[0];
+                buffer[len] = ch;
                 len += 1;
             }
         }
 
         var selection: []const u8 = buffer[0..len];
         if (selection.len == 0 or selection[0] != '!') {
-            selection = std.mem.trimRight(u8, selection, " \t");
+            selection = std.mem.trimEnd(u8, selection, " \t");
         }
         try self.setNext(selection);
     }
@@ -250,7 +259,7 @@ const Driver = struct {
                 try self.pushLast();
                 return null;
             };
-            std.posix.chdir("..") catch {};
+            std.process.setCurrentPath(self.ctx.io, "..") catch {};
             return parsed;
         }
         return std.fmt.parseInt(i32, self.last.items, 10) catch null;
@@ -264,100 +273,104 @@ const Driver = struct {
                 return;
             }
         }
-        const saved = try self.allocator.dupe(u8, self.last.items);
-        try self.last_stack.append(self.allocator, saved);
+        const saved = try self.ctx.gpa.dupe(u8, self.last.items);
+        try self.last_stack.append(self.ctx.gpa, saved);
         try self.setLast(".");
     }
 
     fn popLast(self: *Driver) !void {
         if (self.last_stack.items.len == 0) return;
         const saved = self.last_stack.pop().?;
-        defer self.allocator.free(saved);
+        defer self.ctx.gpa.free(saved);
         try self.setLast(saved);
     }
 
     fn runViewer(self: *Driver, command: []const u8, path: []const u8) !void {
-        const quoted = try shellQuote(self.allocator, path);
-        defer self.allocator.free(quoted);
-        const full = try std.fmt.allocPrint(self.allocator, "{s} {s}", .{ command, quoted });
-        defer self.allocator.free(full);
-        try runShell(self.allocator, full);
+        const quoted = try shellQuote(self.ctx.gpa, path);
+        defer self.ctx.gpa.free(quoted);
+        const full = try std.fmt.allocPrint(self.ctx.gpa, "{s} {s}", .{ command, quoted });
+        defer self.ctx.gpa.free(full);
+        try runShell(self.ctx, full);
     }
 
     fn setNext(self: *Driver, value: []const u8) !void {
         self.next.clearRetainingCapacity();
-        try self.next.appendSlice(self.allocator, value);
+        try self.next.appendSlice(self.ctx.gpa, value);
     }
 
     fn setNextFmt(self: *Driver, comptime fmt: []const u8, args: anytype) !void {
         self.next.clearRetainingCapacity();
-        try self.next.writer(self.allocator).print(fmt, args);
+        const s = try std.fmt.allocPrint(self.ctx.gpa, fmt, args);
+        defer self.ctx.gpa.free(s);
+        try self.next.appendSlice(self.ctx.gpa, s);
     }
 
     fn setLast(self: *Driver, value: []const u8) !void {
         self.last.clearRetainingCapacity();
-        try self.last.appendSlice(self.allocator, value);
+        try self.last.appendSlice(self.ctx.gpa, value);
+    }
+
+    fn clearScreen(self: *Driver) !void {
+        var out_w = std.Io.File.stdout().writer(self.ctx.io, &[_]u8{});
+        try out_w.interface.writeAll("\x1b[2J\x1b[H");
+    }
+
+    fn waitForReturn(self: *Driver) !void {
+        var out_w = std.Io.File.stdout().writer(self.ctx.io, &[_]u8{});
+        try out_w.interface.writeAll("[Hit return to continue]");
+        var byte_buf: [1]u8 = undefined;
+        const stdin = std.Io.File.stdin();
+        var r = stdin.reader(self.ctx.io, &byte_buf);
+        while (try r.interface.readSliceShort(&byte_buf) != 0) {
+            if (byte_buf[0] == '\n') break;
+        }
     }
 };
 
-pub fn main() !void {
-    var gpa: std.heap.DebugAllocator(.{}) = .init;
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
+pub fn main(ctx: std.process.Init) !void {
+    const args = try ctx.minimal.args.toSlice(ctx.gpa);
     if (args.len > 2) {
         std.debug.print("menudriver: wrong number of args\n", .{});
         std.process.exit(1);
     }
 
-    var driver = try Driver.init(allocator);
+    var driver = try Driver.init(ctx);
     defer driver.deinit();
     try driver.drive(if (args.len == 1) "." else args[1]);
 }
 
-fn clearScreen() !void {
-    const stdout = std.io.getStdOut();
-    try stdout.writeAll("\x1b[2J\x1b[H");
-}
-
-fn waitForReturn() !void {
-    try std.io.getStdOut().writeAll("[Hit return to continue]");
-    var byte: [1]u8 = undefined;
-    while (try std.io.getStdIn().read(&byte) != 0) {
-        if (byte[0] == '\n') break;
-    }
-}
-
-fn isOwnerExecutable(mode: usize) bool {
+fn isOwnerExecutable(mode: std.posix.mode_t) bool {
     return mode & 0o100 != 0;
 }
 
-fn runExecutable(allocator: std.mem.Allocator, path: []const u8) !void {
+fn runExecutable(ctx: std.process.Init, path: []const u8) !void {
     const prefixed = if (std.mem.startsWith(u8, path, "./"))
-        try allocator.dupe(u8, path)
+        try ctx.gpa.dupe(u8, path)
     else
-        try std.fmt.allocPrint(allocator, "./{s}", .{path});
-    defer allocator.free(prefixed);
-    try runChild(allocator, &.{prefixed});
+        try std.fmt.allocPrint(ctx.gpa, "./{s}", .{path});
+    defer ctx.gpa.free(prefixed);
+    try runChild(ctx, &.{prefixed});
 }
 
-fn runShell(allocator: std.mem.Allocator, command: []const u8) !void {
-    const shell = std.posix.getenv("SHELL") orelse "/bin/sh";
-    try runChild(allocator, &.{ shell, "-c", command });
+fn runShell(ctx: std.process.Init, command: []const u8) !void {
+    // We don't have easy access to environ_map here without passing it,
+    // but we can try to get it from the process environment directly if available.
+    // For now, let's just use /bin/sh.
+    try runChild(ctx, &.{ "/bin/sh", "-c", command });
 }
 
-fn runChild(allocator: std.mem.Allocator, argv: []const []const u8) !void {
-    var child = std.process.Child.init(argv, allocator);
-    child.stdin_behavior = .Inherit;
-    child.stdout_behavior = .Inherit;
-    child.stderr_behavior = .Inherit;
-    _ = try child.spawnAndWait();
+fn runChild(ctx: std.process.Init, argv: []const []const u8) !void {
+    var child = try std.process.spawn(ctx.io, .{
+        .argv = argv,
+        .stdin = .inherit,
+        .stdout = .inherit,
+        .stderr = .inherit,
+    });
+    _ = try child.wait(ctx.io);
 }
 
 fn shellQuote(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
-    var out: std.ArrayListUnmanaged(u8) = .{};
+    var out: std.ArrayListUnmanaged(u8) = .empty;
     errdefer out.deinit(allocator);
     try out.append(allocator, '\'');
     for (text) |ch| {

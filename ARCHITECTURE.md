@@ -66,9 +66,9 @@ append, alias-name lookup, definition-list sorting, character-name formatting,
 and floating-number output formatting. Heap allocation, GC, dump/load, and most
 object printing still live in `data.c`.
 
-`lex_helpers.zig` exports pure C ABI lexer helpers for identifier character
-classification, constructor-name detection, and dictionary hash bucket
-selection. Lexer state and tokenization remain in `lex.c`.
+`lex_helpers.zig` exports pure C ABI lexer helpers for identifier and path
+character classification, constructor-name detection, and dictionary hash
+bucket selection. Lexer state and tokenization remain in `lex.c`.
 
 `trans_helpers.zig` exports C ABI relation and ordered-set helpers used by
 translation, typechecking, and grammar analysis. It owns relation lookup,

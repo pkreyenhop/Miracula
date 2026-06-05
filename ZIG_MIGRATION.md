@@ -59,8 +59,8 @@ Suggested order after the initial build harness:
    identifier here-info extraction, destructive list append, alias-name lookup,
    definition-list sorting, character-name formatting, and floating output
    formatting.
-9. Lexer leaf helpers. `lex_helpers.zig` now owns identifier character
-   classification, constructor-name detection, and dictionary hashing.
+9. Lexer leaf helpers. `lex_helpers.zig` now owns identifier and path
+   character classification, constructor-name detection, and dictionary hashing.
 10. Translation relation helpers. `trans_helpers.zig` now owns relation lookup,
    transitive closure, set difference, address-order sorting helpers,
    repeated-name membership checks, structural equality, pattern-id extraction,

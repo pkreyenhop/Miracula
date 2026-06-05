@@ -25,8 +25,8 @@ static void kollect(int (*f)(int));
 static int litname(char * /*s*/);
 static void numeral(void);
 static void octnumeral(void);
-static int okulid(int /*ch*/);
-static int okpath(int /*ch*/);
+int okulid(int /*ch*/);
+int okpath(int /*ch*/);
 static int peekch(void);
 static int peekdig(void);
 static void string(void);
@@ -970,10 +970,6 @@ word str_conv(const char *s) /* convert C string to Miranda form */
   return x;
 } /* opposite of getstring() - see reduce.c */
 
-static int okpath(int ch) {
-  return (ch != '\"' && ch != '\n' && ch != '>');
-}
-
 char *pathname(void) /* returns NULL if not valid pathname (in string quotes) */
 {
   layout();
@@ -1318,11 +1314,6 @@ word directive(void) /* these are of the form "%identifier" */
   }
   printf("syntax error: unknown directive \"%%%s\"\n", dicp), acterror();
   return (END);
-}
-
-static int okulid(int ch) {
-  return (('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z') || ('0' <= ch && ch <= '9') ||
-          ch == '_' || ch == '' || ch == '\'');
 }
 
 void kollect(int (*f)(int))

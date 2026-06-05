@@ -10,21 +10,21 @@ const TestEnv = struct {
 
     fn init() !TestEnv {
         var random: [8]u8 = undefined;
-        std.crypto.random.bytes(&random);
+        testing.io.random(&random);
         const home = try std.fmt.allocPrint(allocator, "/tmp/mira-test-{x}", .{std.mem.readInt(u64, &random, .little)});
         errdefer allocator.free(home);
-        std.crypto.random.bytes(&random);
+        testing.io.random(&random);
         const work = try std.fmt.allocPrint(allocator, "/tmp/mira-work-{x}", .{std.mem.readInt(u64, &random, .little)});
         errdefer allocator.free(work);
-        try std.fs.makeDirAbsolute(home);
-        errdefer std.fs.deleteTreeAbsolute(home) catch {};
-        try std.fs.makeDirAbsolute(work);
+        try std.Io.Dir.createDirAbsolute(testing.io, home, .default_dir);
+        errdefer std.Io.Dir.cwd().deleteTree(testing.io, home) catch {};
+        try std.Io.Dir.createDirAbsolute(testing.io, work, .default_dir);
         return .{ .home = home, .work = work };
     }
 
     fn deinit(self: *TestEnv) void {
-        std.fs.deleteTreeAbsolute(self.home) catch {};
-        std.fs.deleteTreeAbsolute(self.work) catch {};
+        std.Io.Dir.cwd().deleteTree(testing.io, self.home) catch {};
+        std.Io.Dir.cwd().deleteTree(testing.io, self.work) catch {};
         allocator.free(self.home);
         allocator.free(self.work);
     }
@@ -66,34 +66,42 @@ fn runMira(env: *const TestEnv, script: ?[]const u8, input: []const u8, extra_ar
         }
     }
 
-    var env_map = try std.process.getEnvMap(allocator);
+    var env_map = std.process.Environ.Map.init(allocator);
     defer env_map.deinit();
     try env_map.put("HOME", env.home);
 
-    var child = std.process.Child.init(argv, allocator);
-    child.env_map = &env_map;
-    child.stdin_behavior = .Pipe;
-    child.stdout_behavior = .Pipe;
-    child.stderr_behavior = .Pipe;
-    try child.spawn();
-    errdefer _ = child.kill() catch {};
+    var child = try std.process.spawn(testing.io, .{
+        .argv = argv,
+        .environ_map = &env_map,
+        .stdin = .pipe,
+        .stdout = .pipe,
+        .stderr = .pipe,
+    });
+    errdefer child.kill(testing.io);
 
-    try child.stdin.?.writeAll(input);
-    child.stdin.?.close();
+    try child.stdin.?.writeStreamingAll(testing.io, input);
+    child.stdin.?.close(testing.io);
     child.stdin = null;
 
-    var stdout: std.ArrayListUnmanaged(u8) = .{};
-    defer stdout.deinit(allocator);
-    var stderr: std.ArrayListUnmanaged(u8) = .{};
-    defer stderr.deinit(allocator);
-    try child.collectOutput(allocator, &stdout, &stderr, 1024 * 1024);
+    var multi_reader_buffer: std.Io.File.MultiReader.Buffer(2) = undefined;
+    var multi_reader: std.Io.File.MultiReader = undefined;
+    multi_reader.init(allocator, testing.io, multi_reader_buffer.toStreams(), &.{ child.stdout.?, child.stderr.? });
+    defer multi_reader.deinit();
 
-    const term = try child.wait();
-    var stdout_text = try stdout.toOwnedSlice(allocator);
-    stdout = .{};
+    while (multi_reader.fill(64, .none)) |_| {
+        if (multi_reader.reader(0).buffered().len > 1024 * 1024 or multi_reader.reader(1).buffered().len > 1024 * 1024) {
+            return error.StreamTooLong;
+        }
+    } else |err| switch (err) {
+        error.EndOfStream => {},
+        else => |e| return e,
+    }
+    try multi_reader.checkAnyError();
+
+    const term = try child.wait(testing.io);
+    var stdout_text = try multi_reader.toOwnedSlice(0);
     stdout_text = try chompStdout(stdout_text);
-    const stderr_text = try stderr.toOwnedSlice(allocator);
-    stderr = .{};
+    const stderr_text = try multi_reader.toOwnedSlice(1);
 
     return .{ .term = term, .stdout = stdout_text, .stderr = stderr_text };
 }
@@ -117,7 +125,7 @@ fn assertSuccessOutput(name: []const u8, result: *const RunResult, expected: []c
 
 fn assertSuccessStatus(name: []const u8, result: *const RunResult) !void {
     switch (result.term) {
-        .Exited => |code| {
+        .exited => |code| {
             if (code != 0) {
                 std.debug.print("{s} exited with {d}\nstdout:\n{s}\nstderr:\n{s}\n", .{
                     name,
@@ -142,21 +150,21 @@ fn repeatChar(count: usize, value: u8) ![]u8 {
 }
 
 fn writeFile(path: []const u8, contents: []const u8) !void {
-    var file = try std.fs.createFileAbsolute(path, .{});
-    defer file.close();
-    try file.writeAll(contents);
+    const file = try std.Io.Dir.createFileAbsolute(testing.io, path, .{});
+    defer file.close(testing.io);
+    try file.writeStreamingAll(testing.io, contents);
 }
 
 fn writeCompileStressScript(path: []const u8, items: usize) !void {
-    var file = try std.fs.createFileAbsolute(path, .{});
-    defer file.close();
-    try file.writeAll("stress_list\n=[\n");
+    const file = try std.Io.Dir.createFileAbsolute(testing.io, path, .{});
+    defer file.close(testing.io);
+    try file.writeStreamingAll(testing.io, "stress_list\n=[\n");
     for (0..items) |i| {
         const line = try std.fmt.allocPrint(allocator, "  \"compile-time-stress-{d:0>4}\",\n", .{i});
         defer allocator.free(line);
-        try file.writeAll(line);
+        try file.writeStreamingAll(testing.io, line);
     }
-    try file.writeAll("  \"compile-time-stress-end\"]\nstress_len = # stress_list\n");
+    try file.writeStreamingAll(testing.io, "  \"compile-time-stress-end\"]\nstress_len = # stress_list\n");
 }
 
 test "mira integration suite" {

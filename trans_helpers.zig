@@ -133,7 +133,7 @@ extern fn isnat(x: Word) c_int;
 extern fn isconstrname(a: [*:0]const u8) c_int;
 extern fn make_pn(val: Word) Word;
 extern fn mkgvar(i: Word) Word;
-extern fn out(file: [*c]c.FILE, x: Word) void;
+extern fn out(file: ?*c.FILE, x: Word) void;
 extern fn out_type(t: Word) void;
 extern fn redtvars(t: Word) Word;
 extern fn sayhere(here: Word, nl: Word) void;
@@ -594,8 +594,7 @@ export fn abstract(input_x: Word, input_e: Word) Word {
         return ap2(Ug, primconstr(x), e);
     }
     _ = c.printf("error in declaration of \"%s\", undeclared constructor in pattern: ", getId(current_id));
-    const stdout_type = @TypeOf(c.stdout);
-    const stdout_val = if (@typeInfo(stdout_type) == .pointer) c.stdout else c.stdout();
+    const stdout_val = c.stdout;
     out(stdout_val, x);
     _ = c.printf("\n");
     return NIL;

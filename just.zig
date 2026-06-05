@@ -5,16 +5,14 @@ const max_width = 2400;
 const threshold = 7;
 const max_input = 16 * 1024 * 1024;
 
-pub fn main() !void {
-    var gpa: std.heap.DebugAllocator(.{}) = .init;
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+pub fn main(ctx: std.process.Init) !void {
+    const allocator = ctx.gpa;
 
-    var width: usize = readWidthFile() orelse default_width;
+    var width: usize = readWidthFile(ctx) orelse default_width;
     var tolerance: usize = 3;
 
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
+    const args = try ctx.minimal.args.toSlice(allocator);
+    // defer allocator.free(args); // toSlice returns an owned slice of owned strings
 
     var first_file: usize = 1;
     while (first_file < args.len and std.mem.startsWith(u8, args[first_file], "-")) {
@@ -45,40 +43,44 @@ pub fn main() !void {
         std.process.exit(1);
     }
 
-    const stdout = std.io.getStdOut();
+    const stdout = std.Io.File.stdout();
+    var out_w = stdout.writer(ctx.io, &[_]u8{});
     if (first_file == args.len) {
-        const input = try std.io.getStdIn().readToEndAlloc(allocator, max_input);
+        const stdin = std.Io.File.stdin();
+        var r = stdin.reader(ctx.io, &[_]u8{});
+        const input = try r.interface.allocRemaining(allocator, .limited(max_input));
         defer allocator.free(input);
         const output = try formatText(allocator, input, width, tolerance);
         defer allocator.free(output);
-        try stdout.writeAll(output);
+        try out_w.interface.writeAll(output);
     } else {
         for (args[first_file..]) |path| {
-            const input = std.fs.cwd().readFileAlloc(allocator, path, max_input) catch {
+            const input = std.Io.Dir.cwd().readFileAlloc(ctx.io, path, allocator, .limited(max_input)) catch {
                 std.debug.print("just: cannot open {s}\n", .{path});
                 break;
             };
             defer allocator.free(input);
             const output = try formatText(allocator, input, width, tolerance);
             defer allocator.free(output);
-            try stdout.writeAll(output);
+            try out_w.interface.writeAll(output);
         }
     }
 }
 
-fn readWidthFile() ?usize {
-    var file = std.fs.cwd().openFile(".justwidth", .{}) catch return null;
-    defer file.close();
+fn readWidthFile(ctx: std.process.Init) ?usize {
+    var file = std.Io.Dir.cwd().openFile(ctx.io, ".justwidth", .{}) catch return null;
+    defer file.close(ctx.io);
     var buffer: [64]u8 = undefined;
-    const len = file.readAll(&buffer) catch return null;
+    var r = file.reader(ctx.io, &buffer);
+    const len = r.interface.readSliceShort(&buffer) catch return null;
     const text = std.mem.trim(u8, buffer[0..len], " \t\r\n");
     return std.fmt.parseUnsigned(usize, text, 10) catch null;
 }
 
 fn formatText(allocator: std.mem.Allocator, input: []const u8, width: usize, tolerance: usize) ![]u8 {
-    var output: std.ArrayListUnmanaged(u8) = .{};
+    var output: std.ArrayListUnmanaged(u8) = .empty;
     errdefer output.deinit(allocator);
-    var paragraph: std.ArrayListUnmanaged(u8) = .{};
+    var paragraph: std.ArrayListUnmanaged(u8) = .empty;
     defer paragraph.deinit(allocator);
 
     var cursor: usize = 0;
@@ -131,7 +133,7 @@ fn formatParagraph(
     width: usize,
     tolerance: usize,
 ) !void {
-    var words: std.ArrayListUnmanaged([]const u8) = .{};
+    var words: std.ArrayListUnmanaged([]const u8) = .empty;
     defer words.deinit(allocator);
     var it = std.mem.tokenizeAny(u8, paragraph, " \t");
     while (it.next()) |word| {
@@ -193,7 +195,7 @@ fn appendSpaces(allocator: std.mem.Allocator, output: *std.ArrayListUnmanaged(u8
 }
 
 fn squeezeLine(allocator: std.mem.Allocator, line: []const u8) ![]u8 {
-    var out: std.ArrayListUnmanaged(u8) = .{};
+    var out: std.ArrayListUnmanaged(u8) = .empty;
     errdefer out.deinit(allocator);
     var cursor = indent(line);
     var previous_was_space = false;
