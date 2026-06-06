@@ -6,6 +6,7 @@ const c = @cImport({
     @cInclude("sys/stat.h");
     @cInclude("fcntl.h");
     @cInclude("stdio.h");
+    @cInclude("data.h");
 });
 
 const Word = c_long;
@@ -138,6 +139,163 @@ export fn twidth() c_int {
         return 78;
     }
     return @as(c_int, @intCast(window.ws_col)) - 2;
+}
+
+extern fn sto_dbl(d: f64) Word;
+extern var version: c_int;
+extern var obsuffix: [*:0]const u8;
+extern var TABSTRS: Word;
+extern var SGC: Word;
+extern var speclocs: Word;
+extern var newtyps: Word;
+extern var rv_script: Word;
+extern var algshfns: Word;
+extern var nextpn: Word;
+extern var includees: Word;
+extern var freeids: Word;
+extern var internals: Word;
+extern var files: Word;
+extern var ld_stuff: Word;
+extern var sorted: c_int;
+extern var ND: Word;
+
+var vstack: [4]c_int = undefined;
+var mstack: [4][*:0]const u8 = undefined;
+var mvp: usize = 0;
+var vbuf: [12]u8 = undefined;
+
+fn hp(x: Word) *Word {
+    return &hd[@as(usize, @intCast(x)) * 2];
+}
+
+fn tp(x: Word) *Word {
+    return &tl[@as(usize, @intCast(x)) * 2];
+}
+
+export fn mktiny() Word {
+    var x: f64 = 1.0;
+    var x1: f64 = x / 2.0;
+    while (x1 > 0.0) {
+        x = x1;
+        x1 = x1 / 2.0;
+    }
+    return sto_dbl(x);
+}
+
+export fn checkversion(m: [*:0]const u8) c_int {
+    var path_buf: [1024]u8 = undefined;
+    const path = std.fmt.bufPrintZ(&path_buf, "{s}/.version", .{m}) catch return 0;
+    const f = c.fopen(path.ptr, "r");
+    var v1: c_uint = 0;
+    var read_ok: bool = false;
+    var r: c_int = 0;
+    if (f != null) {
+        if (c.fscanf(f, "%u", &v1) == 1) {
+            r = if (v1 == version) 1 else 0;
+            read_ok = true;
+        }
+        _ = c.fclose(f);
+    }
+    if (read_ok and r == 0) {
+        if (mvp < 4) {
+            mstack[mvp] = m;
+            vstack[mvp] = @intCast(v1);
+            mvp += 1;
+        }
+    }
+    return r;
+}
+
+fn getStderr() ?*c.FILE {
+    const T = @TypeOf(c.stderr);
+    if (comptime @typeInfo(T) == .@"fn") {
+        return c.stderr();
+    } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
+        return c.stderr();
+    } else {
+        return c.stderr;
+    }
+}
+
+export fn libfails() void {
+    const stderr = getStderr().?;
+    _ = c.fprintf(stderr, "found");
+    var i: usize = 0;
+    while (i < mvp) : (i += 1) {
+        _ = c.fprintf(stderr, "\tversion %s at: %s\n", strvers(vstack[i]), mstack[i]);
+    }
+}
+
+export fn strvers(v: c_int) [*:0]const u8 {
+    if (v < 0 or v > 999999) {
+        return "???";
+    }
+    _ = c.snprintf(&vbuf, vbuf.len, "%.3f", @as(f64, @floatFromInt(v)) / 1000.0);
+    return @ptrCast(&vbuf);
+}
+
+export fn unlinkx(t_path: [*:0]const u8) void {
+    var obf_buf: [1024]u8 = undefined;
+    const t_slice = std.mem.span(t_path);
+    if (t_slice.len == 0) return;
+    const len = t_slice.len;
+    
+    // Copy the path up to len - 1
+    @memcpy(obf_buf[0 .. len - 1], t_slice[0 .. len - 1]);
+    
+    // Copy obsuffix
+    const obsuffix_slice = std.mem.span(obsuffix);
+    @memcpy(obf_buf[len - 1 .. len - 1 + obsuffix_slice.len], obsuffix_slice);
+    obf_buf[len - 1 + obsuffix_slice.len] = 0;
+    
+    const obf = @as([*:0]const u8, @ptrCast(obf_buf[0..].ptr));
+    var stat_buf: c.struct_stat = undefined;
+    if (c.stat(obf, &stat_buf) == 0) {
+        _ = c.unlink(obf);
+    }
+}
+
+export fn unsetids(d_val: Word) void {
+    var d = d_val;
+    while (d != NIL) : (d = t(d)) {
+        const item = h(d);
+        if (tag[@intCast(item)] == c.ID) {
+            tp(item).* = c.UNDEF;
+            tp(h(h(item))).* = c.NIL;
+            tp(h(item)).* = c.undef_t;
+        }
+    }
+}
+
+export fn unload() void {
+    sorted = 0;
+    speclocs = NIL;
+    nextpn = 0;
+    rv_script = 0;
+    algshfns = NIL;
+    unsetids(newtyps);
+    newtyps = NIL;
+    unsetids(freeids);
+    freeids = NIL;
+    includees = NIL;
+    SGC = NIL;
+    TABSTRS = NIL;
+    ND = NIL;
+    unsetids(internals);
+    internals = NIL;
+    while (files != NIL) : (files = t(files)) {
+        const fil = h(files);
+        unsetids(t(fil));
+        tp(fil).* = c.NIL;
+    }
+    var ld = ld_stuff;
+    while (ld != NIL) : (ld = t(ld)) {
+        var x = h(ld);
+        while (x != NIL) : (x = t(x)) {
+            unsetids(t(h(x)));
+        }
+    }
+    ld_stuff = NIL;
 }
 
 test "normal recognizes Miranda source suffix" {

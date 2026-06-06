@@ -54,53 +54,53 @@ extern word *dstack, *stackp;
 static void allnamescom(void);
 static void announce(void);
 static int badeditor(void);
-static int checkversion(char * /*m*/);
+int checkversion(char *m);
 static void command(void);
-static void commandloop(char * /*initscript*/);
-static void diagnose(char * /*n*/);
-static void editfile(char * /*t*/, int /*line*/);
+static void commandloop(char *initscript);
+static void diagnose(char *n);
+static void editfile(char *t, int line);
 static void ed_warn(void);
-void filecopy(char * /*fil*/);
-void filecp(char * /*fil1*/, char * /*fil2*/);
-static void filequote(char * /*p*/);
-static void finger(char * /*n*/);
+void filecopy(char *fil);
+void filecp(char *fil1, char *fil2);
+static void filequote(char *p);
+static void finger(char *n);
 static void fixeditor(void);
 static void fixexports(void);
-static word fixtype(word /*t*/, word /*x*/);
-static int getln(FILE * /*in*/, word /*n*/, char * /*s*/);
-static word isfreeid(word /*x*/);
-static void libfails(void);
-static void loadfile(char * /*t*/);
+static word fixtype(word t, word x);
+static int getln(FILE *in, word n, char *s);
+static word isfreeid(word x);
+void libfails(void);
+static void loadfile(char *t);
 static void makedump(void);
 static void manaction(void);
 static void mira_setup(void);
-static void missparam(char * /*s*/);
-static char *mkabsolute(char * /*m*/);
-static word mkincludes(word /*includees*/);
-static word mktiny(void);
-static void namescom(word /*l*/);
-int normal(char * /*f*/);
-static void predef(char * /*n*/, word /*v*/, word /*t*/);
-static void primdef(char * /*n*/, word /*v*/, word /*t*/);
+static void missparam(char *s);
+static char *mkabsolute(char *m);
+static word mkincludes(word includees);
+word mktiny(void);
+static void namescom(word l);
+int normal(char *f);
+static void predef(char *n, word v, word t);
+static void primdef(char *n, word v, word t);
 static void primlib(void);
-static word privatise(word /*x*/);
+static word privatise(word x);
 static void privlib(void);
-static word publicise(word /*x*/);
-static word rc_read(char * /*rcfile*/);
+static word publicise(word x);
+static word rc_read(char *rcfile);
 static void rc_write(void);
 static void sigdefer(void);
 static int src_update(void);
 static void stdlib(void);
-static char *strvers(int /*v*/);
+char *strvers(int v);
 int twidth(void);
-static void undump(char * /*t*/);
+static void undump(char *t);
 static void unlimit_stack(void);
 static int utf8test(void);
 static void unfixexports(void);
-static void unlinkx(char * /*t*/);
-static void unload(void);
-static void unsetids(word /*d*/);
-static void v_info(int /*full*/);
+void unlinkx(char *t);
+void unload(void);
+void unsetids(word d);
+static void v_info(int full);
 static void xschars(void);
 
 static char *editor = NULL;
@@ -558,45 +558,7 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-static int vstack[4];   /* record of miralib versions looked at */
-static char *mstack[4]; /* and where found */
-static int mvp = 0;
 
-int checkversion(char *m)
-/* returns 1 iff m is directory with .version containing our version number */
-{
-  int v1;
-  int read = 0;
-  int r = 0;
-  FILE *f = fopen(strcat(strcpy(linebuf, m), "/.version"), "r");
-  if (f && fscanf(f, "%u", &v1) == 1) {
-    r = v1 == version, read = 1;
-  }
-  if (f) {
-    fclose(f);
-  }
-  if (read && !r) {
-    mstack[mvp] = m, vstack[mvp++] = v1;
-  }
-  return r;
-}
-
-void libfails(void) {
-  word i = 0;
-  fprintf(stderr, "found");
-  for (; i < mvp; i++) {
-    fprintf(stderr, "\tversion %s at: %s\n", strvers(vstack[i]), mstack[i]);
-  }
-}
-
-char *strvers(int v) {
-  static char vbuf[12];
-  if (v < 0 || v > 999999) {
-    return "\?\?\?";
-  }
-  snprintf(vbuf, 12, "%.3f", v / 1000.0);
-  return vbuf;
-}
 
 char *mkabsolute(char *m) /* make sure m is an absolute pathname */
 {
@@ -1689,7 +1651,7 @@ void diagnose(char *n) {
   printf("identifier \"%s\" not in scope\n", n);
 }
 
-static int sorted = 0;    /* flag to avoid repeatedly sorting fil_defs */
+int sorted = 0;    /* flag to avoid repeatedly sorting fil_defs */
 static int leftist;       /* flag to alternate bias of padding in justification */
 static int words[colmax]; /* max plausible size of screen */
 
@@ -2642,42 +2604,7 @@ word alfasort(word x) /* also removes non_IDs from result */
   return (reverse(x));
 }
 
-void unsetids(word d) /* d is a list of identifiers */
-{
-  while (d != NIL) {
-    if (tag[hd(d)] == ID) {
-      id_val(hd(d)) = UNDEF, id_who(hd(d)) = NIL, id_type(hd(d)) = undef_t;
-    }
-    d = tl(d);
-  } /* should we remove from namebucket ? */
-}
 
-void unload(void) /* clear out current script in preparation for reloading */
-{
-  extern word TABSTRS, SGC, speclocs, newtyps, rv_script, algshfns, nextpn, includees, freeids;
-  word x;
-  sorted = 0;
-  speclocs = NIL;
-  nextpn = 0; /* lose pnames */
-  rv_script = 0;
-  algshfns = NIL;
-  unsetids(newtyps);
-  newtyps = NIL;
-  unsetids(freeids);
-  freeids = includees = SGC = TABSTRS = ND = NIL;
-  unsetids(internals);
-  internals = NIL;
-  while (files != NIL) {
-    unsetids(fil_defs(hd(files)));
-    fil_defs(hd(files)) = NIL;
-    files = tl(files);
-  }
-  for (; ld_stuff != NIL; ld_stuff = tl(ld_stuff)) {
-    for (x = hd(ld_stuff); x != NIL; x = tl(x)) {
-      unsetids(fil_defs(hd(x)));
-    }
-  }
-}
 
 void yyerror(char *s) /* called by YACC in the event of a syntax error */
 {
@@ -2921,14 +2848,7 @@ void stdlib(void) /*  called when compiling <stdenv>, adds some
   predef("zip2", ZIP, undef_t);         /* new at release 2 */
 }
 
-word mktiny(void) {
-  volatile double x = 1.0;
-  volatile double x1 = x / 2.0;
-  while (x1 > 0.0) {
-    x = x1, x1 /= 2.0;
-  }
-  return (sto_dbl(x));
-}
+
 
 void makedump(void) {
   char *obf = linebuf;
@@ -3058,15 +2978,7 @@ void undump(char *t) /* restore t from dump, or recompile if necessary */
   loading = 0;
 }
 
-void unlinkx(char *t) /* remove orphaned .x file */
-{
-  char *obf = linebuf;
-  (void)strcpy(obf, t);
-  (void)strcpy(obf + strlen(t) - 1, obsuffix);
-  if (!stat(obf, &buf)) {
-    unlink(obf);
-  }
-}
+
 
 void fpe_error(int sig) {
   if (compiling) {

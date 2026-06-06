@@ -99,6 +99,7 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_steer_helpers_tests = b.addRunArtifact(steer_helpers_tests);
+    steer_helpers_tests.root_module.addIncludePath(b.path("."));
     const lex_tests = b.addTest(.{
         .name = "lex-tests",
         .root_module = b.createModule(.{
