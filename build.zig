@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const c_sources = [_][]const u8{
-    "data.c",
     "reduce.c",
     "steer.c",
     "y.tab.c",

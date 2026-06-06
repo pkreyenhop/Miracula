@@ -233,6 +233,25 @@ cons(cons(arity,showfn),cons(free_t,NIL))
 #define placeholder_t 3
 #define free_t 4
 
+#define XBASE (ATOMLIMIT - 256)
+#define CHAR_X (XBASE)
+#define SHORT_X (XBASE + 1)
+#define INT_X (XBASE + 2)
+#define DBL_X (XBASE + 3)
+#define ID_X (XBASE + 4)
+#define AKA_X (XBASE + 5)
+#define HERE_X (XBASE + 6)
+#define CONSTRUCT_X (XBASE + 7)
+#define RV_X (XBASE + 8)
+#define PN_X (XBASE + 9)
+#define PN1_X (XBASE + 10)
+#define DEF_X (XBASE + 11)
+#define AP_X (XBASE + 12)
+#define CONS_X (XBASE + 13)
+#define TVAR_X (XBASE + 14)
+#define UNICODE_X (XBASE + 15)
+#define XLIMIT (XBASE + 16)
+
 /* function prototypes - data.c */
 word append1(word /*x*/, word /*y*/);
 char *charname(word /*c*/);
