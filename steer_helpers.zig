@@ -55,7 +55,13 @@ fn cons(x: Word, y: Word) Word {
 export fn fm_time(path: [*:0]const u8) Word {
     var stat: c.struct_stat = undefined;
     if (c.stat(path, &stat) != 0) return 0;
-    return @intCast(stat.st_mtim.tv_sec);
+    if (comptime @hasField(c.struct_stat, "st_mtim")) {
+        return @intCast(stat.st_mtim.tv_sec);
+    } else if (comptime @hasField(c.struct_stat, "st_mtimespec")) {
+        return @intCast(stat.st_mtimespec.tv_sec);
+    } else {
+        return @intCast(stat.st_mtime);
+    }
 }
 
 export fn normal(path: [*:0]const u8) c_int {

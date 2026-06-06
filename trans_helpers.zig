@@ -5,6 +5,17 @@ const c = @cImport({
     @cInclude("stdio.h");
 });
 
+fn getStdout() ?*c.FILE {
+    const T = @TypeOf(c.stdout);
+    if (comptime @typeInfo(T) == .@"fn") {
+        return c.stdout();
+    } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
+        return c.stdout();
+    } else {
+        return c.stdout;
+    }
+}
+
 const Word = c_long;
 const GENERATOR: Word = 0;
 const GUARD: Word = 1;
@@ -594,7 +605,7 @@ export fn abstract(input_x: Word, input_e: Word) Word {
         return ap2(Ug, primconstr(x), e);
     }
     _ = c.printf("error in declaration of \"%s\", undeclared constructor in pattern: ", getId(current_id));
-    const stdout_val = c.stdout;
+    const stdout_val = getStdout();
     out(stdout_val, x);
     _ = c.printf("\n");
     return NIL;
