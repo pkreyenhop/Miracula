@@ -2,7 +2,6 @@ const std = @import("std");
 
 const c_sources = [_][]const u8{
     "data.c",
-    "lex.c",
     "reduce.c",
     "steer.c",
     "y.tab.c",
@@ -42,10 +41,10 @@ pub fn build(b: *std.Build) void {
     const big_zig = addZigObject(b, "big-zig", "big.zig", target, optimize, true);
     const steer_helpers_zig = addZigObject(b, "steer-helpers-zig", "steer_helpers.zig", target, optimize, true);
     const data_helpers_zig = addZigObject(b, "data-helpers-zig", "data_helpers.zig", target, optimize, true);
-    const lex_helpers_zig = addZigObject(b, "lex-helpers-zig", "lex_helpers.zig", target, optimize, false);
+    const lex_zig = addZigObject(b, "lex-zig", "lex.zig", target, optimize, true);
     const trans_zig = addZigObject(b, "trans-zig", "trans.zig", target, optimize, true);
     const types_zig = addZigObject(b, "types-zig", "types.zig", target, optimize, true);
-    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_helpers_zig, data_helpers_zig, lex_helpers_zig, trans_zig, types_zig);
+    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_helpers_zig, data_helpers_zig, lex_zig, trans_zig, types_zig);
     const install_mira = b.addInstallArtifact(mira, .{});
     b.getInstallStep().dependOn(&install_mira.step);
 
@@ -101,15 +100,17 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_steer_helpers_tests = b.addRunArtifact(steer_helpers_tests);
-    const lex_helpers_tests = b.addTest(.{
-        .name = "lex-helpers-tests",
+    const lex_tests = b.addTest(.{
+        .name = "lex-tests",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("lex_helpers.zig"),
+            .root_source_file = b.path("lex.zig"),
             .target = target,
             .optimize = optimize,
+            .link_libc = true,
         }),
     });
-    const run_lex_helpers_tests = b.addRunArtifact(lex_helpers_tests);
+    lex_tests.root_module.addIncludePath(b.path("."));
+    const run_lex_tests = b.addRunArtifact(lex_tests);
 
     const header_check = addHeaderCheck(b, target, optimize);
 
@@ -136,7 +137,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_just_tests.step);
     test_step.dependOn(&run_menudriver_tests.step);
     test_step.dependOn(&run_steer_helpers_tests.step);
-    test_step.dependOn(&run_lex_helpers_tests.step);
+    test_step.dependOn(&run_lex_tests.step);
     test_step.dependOn(&run_mira_tests.step);
 
     const test_mira = b.step("test-mira", "Run Zig integration tests against mira");
@@ -160,7 +161,7 @@ pub fn build(b: *std.Build) void {
     check_step.dependOn(&run_just_tests.step);
     check_step.dependOn(&run_menudriver_tests.step);
     check_step.dependOn(&run_steer_helpers_tests.step);
-    check_step.dependOn(&run_lex_helpers_tests.step);
+    check_step.dependOn(&run_lex_tests.step);
     check_step.dependOn(&run_mira_tests.step);
 
     const migration_check = b.step("check-migration", "Alias for the full Zig build verification gate");
@@ -195,7 +196,7 @@ fn addMira(
     big_zig: *std.Build.Step.Compile,
     steer_helpers_zig: *std.Build.Step.Compile,
     data_helpers_zig: *std.Build.Step.Compile,
-    lex_helpers_zig: *std.Build.Step.Compile,
+    lex_zig: *std.Build.Step.Compile,
     trans_zig: *std.Build.Step.Compile,
     types_zig: *std.Build.Step.Compile,
 ) *std.Build.Step.Compile {
@@ -207,7 +208,7 @@ fn addMira(
     mira.root_module.addObject(big_zig);
     mira.root_module.addObject(steer_helpers_zig);
     mira.root_module.addObject(data_helpers_zig);
-    mira.root_module.addObject(lex_helpers_zig);
+    mira.root_module.addObject(lex_zig);
     mira.root_module.addObject(trans_zig);
     mira.root_module.addObject(types_zig);
     mira.root_module.linkSystemLibrary("m", .{});
