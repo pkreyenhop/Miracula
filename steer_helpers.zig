@@ -158,6 +158,16 @@ extern var files: Word;
 extern var ld_stuff: Word;
 extern var sorted: c_int;
 extern var ND: Word;
+extern var editor: ?[*:0]u8;
+extern var SPACELIMIT: Word;
+extern var DICSPACE: Word;
+extern var oldversion: c_int;
+extern var baded: Word;
+extern var listing: Word;
+extern var rechecking: Word;
+extern var rc_error: ?[*:0]const u8;
+extern var home_rc: [c.pnlim + 8]u8;
+extern var ebuf: [c.pnlim]u8;
 
 var vstack: [4]c_int = undefined;
 var mstack: [4][*:0]const u8 = undefined;
@@ -296,6 +306,177 @@ export fn unload() void {
         }
     }
     ld_stuff = NIL;
+}
+
+fn badval(x: Word) bool {
+    if (@sizeOf(Word) == 4) {
+        return (x < 1 or x > 350000000);
+    } else {
+        return (x < 1 or x > 50000000000);
+    }
+}
+
+export fn getln(in: ?*c.FILE, n_val: Word, s_ptr: [*]u8) c_int {
+    var n = n_val;
+    var s = s_ptr;
+    while (n > 0) {
+        n -= 1;
+        const ch = c.getc(in);
+        s[0] = @intCast(ch);
+        if (ch == '\n') break;
+        if (ch == c.EOF) {
+            return 0;
+        }
+        s += 1;
+    }
+    if (s[0] != '\n' or n < 0) {
+        return 0;
+    }
+    s[0] = 0;
+    return 1;
+}
+
+export fn badeditor() c_int {
+    const ed = editor orelse {
+        baded = 1;
+        return 1;
+    };
+    var p = c.index(ed, '!');
+    while (p != null) {
+        const offset = @intFromPtr(p.?) - @intFromPtr(ed);
+        if (offset > 0 and (p.? - 1)[0] == '\\') {
+            p = c.index(p.? + 1, '!');
+        } else {
+            break;
+        }
+    }
+    baded = if (p == null) 1 else 0;
+    return @intCast(baded);
+}
+
+export fn fixeditor() void {
+    const ed = editor orelse return;
+    if (c.strcmp(ed, "vi") == 0) {
+        editor = @constCast("vi +!");
+    } else if (c.strcmp(ed, "pico") == 0) {
+        editor = @constCast("pico +!");
+    } else if (c.strcmp(ed, "nano") == 0) {
+        editor = @constCast("nano +!");
+    } else if (c.strcmp(ed, "joe") == 0) {
+        editor = @constCast("joe +!");
+    } else if (c.strcmp(ed, "jpico") == 0) {
+        editor = @constCast("jpico +!");
+    } else if (c.strcmp(ed, "vim") == 0) {
+        editor = @constCast("vim +!");
+    } else if (c.strcmp(ed, "gvim") == 0) {
+        editor = @constCast("gvim +! % &");
+    } else if (c.strcmp(ed, "emacs") == 0) {
+        editor = @constCast("emacs +! % &");
+    } else {
+        var p = c.rindex(ed, '/');
+        if (p == null) {
+            p = ed;
+        } else {
+            p = p.? + 1;
+        }
+        if (c.strcmp(p.?, "vi") == 0) {
+            _ = c.strcat(p.?, " +!");
+        }
+    }
+    if (c.rindex(editor.?, '&') != null) {
+        rechecking = 2;
+    }
+    listing = @intCast(badeditor());
+}
+
+export fn rc_read(rcfile: [*:0]const u8) Word {
+    var z: [20]u8 = undefined;
+    var h_val: Word = 0;
+    var d_val: Word = 0;
+    var v_val: Word = 0;
+    var s_val: Word = 0;
+    var r: Word = 0;
+    oldversion = version;
+    const in = c.fopen(rcfile, "r");
+    if (in == null) return 0;
+    defer _ = c.fclose(in.?);
+
+    if (c.fscanf(in.?, "%19s", @as([*c]u8, @ptrCast(&z))) != 1) {
+        return 0;
+    }
+    const z_slice = std.mem.span(@as([*:0]const u8, @ptrCast(&z)));
+    if (std.mem.startsWith(u8, z_slice, "hdve") or std.mem.eql(u8, z_slice, "lhdve")) {
+        var z1 = @as([*:0]u8, @ptrCast(&z)) + 3;
+        if (z[0] == 'l') {
+            listing = 1;
+            z1 += 1;
+        }
+        while (z1[0] != 0) : (z1 += 1) {
+            if (z1[0] == 'l') {
+                listing = 1;
+            } else if (z1[0] == 's') {
+                // ignore
+            } else if (z1[0] == 'r') {
+                rechecking = 2;
+            } else {
+                rc_error = rcfile;
+            }
+        }
+        if (c.fscanf(in.?, "%ld%ld%ld%*c", &h_val, &d_val, &v_val) != 3 or getln(in.?, c.pnlim - 1, @as([*]u8, @ptrCast(&ebuf))) == 0 or badval(h_val) or badval(d_val) or badval(v_val)) {
+            rc_error = rcfile;
+        } else {
+            editor = @ptrCast(&ebuf);
+            SPACELIMIT = h_val;
+            DICSPACE = d_val;
+            r = 1;
+            oldversion = @intCast(v_val);
+        }
+    } else if (std.mem.eql(u8, z_slice, "ehdsv")) {
+        if (c.fscanf(in.?, "%19s%ld%ld%ld%ld", @as([*c]u8, @ptrCast(&ebuf)), &h_val, &d_val, &s_val, &v_val) != 5 or badval(h_val) or badval(d_val) or badval(v_val)) {
+            rc_error = rcfile;
+        } else {
+            editor = @ptrCast(&ebuf);
+            SPACELIMIT = h_val;
+            DICSPACE = d_val;
+            r = 1;
+            oldversion = @intCast(v_val);
+        }
+    } else if (std.mem.eql(u8, z_slice, "ehds")) {
+        if (c.fscanf(in.?, "%s%ld%ld%ld", @as([*c]u8, @ptrCast(&ebuf)), &h_val, &d_val, &s_val) != 4 or badval(h_val) or badval(d_val)) {
+            rc_error = rcfile;
+        } else {
+            editor = @ptrCast(&ebuf);
+            SPACELIMIT = h_val;
+            DICSPACE = d_val;
+            r = 1;
+            oldversion = 1;
+        }
+    } else {
+        rc_error = rcfile;
+    }
+    if (editor != null) {
+        fixeditor();
+    }
+    return r;
+}
+
+export fn rc_write() void {
+    const out = c.fopen(@ptrCast(&home_rc), "w");
+    if (out == null) {
+        const stderr = getStderr().?;
+        _ = c.fprintf(stderr, "warning: cannot write to \"%s\"\n", @as([*:0]const u8, @ptrCast(&home_rc)));
+        return;
+    }
+    defer _ = c.fclose(out.?);
+
+    _ = c.fprintf(out.?, "hdve");
+    if (listing != 0) {
+        _ = c.fputc('l', out.?);
+    }
+    if (rechecking == 2) {
+        _ = c.fputc('r', out.?);
+    }
+    _ = c.fprintf(out.?, " %ld %ld %d %s\n", SPACELIMIT, DICSPACE, version, editor orelse @constCast(""));
 }
 
 test "normal recognizes Miranda source suffix" {

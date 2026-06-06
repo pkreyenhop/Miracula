@@ -53,7 +53,7 @@ extern word *dstack, *stackp;
 
 static void allnamescom(void);
 static void announce(void);
-static int badeditor(void);
+int badeditor(void);
 int checkversion(char *m);
 static void command(void);
 static void commandloop(char *initscript);
@@ -64,10 +64,10 @@ void filecopy(char *fil);
 void filecp(char *fil1, char *fil2);
 static void filequote(char *p);
 static void finger(char *n);
-static void fixeditor(void);
+void fixeditor(void);
 static void fixexports(void);
 static word fixtype(word t, word x);
-static int getln(FILE *in, word n, char *s);
+int getln(FILE *in, word n, char *s);
 static word isfreeid(word x);
 void libfails(void);
 static void loadfile(char *t);
@@ -86,8 +86,8 @@ static void primlib(void);
 static word privatise(word x);
 static void privlib(void);
 static word publicise(word x);
-static word rc_read(char *rcfile);
-static void rc_write(void);
+word rc_read(char *rcfile);
+void rc_write(void);
 static void sigdefer(void);
 static int src_update(void);
 static void stdlib(void);
@@ -103,7 +103,7 @@ void unsetids(word d);
 static void v_info(int full);
 static void xschars(void);
 
-static char *editor = NULL;
+char *editor = NULL;
 static word okprel = 0;   /* set to 1 when prelude loaded */
 static word nostdenv = 0; /* if set to 1 mira does not load stdenv at startup */
 /* to allow a NOSTDENV directive _in_the_script_ we would need to
@@ -111,7 +111,7 @@ static word nostdenv = 0; /* if set to 1 mira does not load stdenv at startup */
         where thing is algebraic type originally defined in STDENV
     (ii) arrange to pick up <stdenv> when current script not loaded
    not implemented */
-static word baded = 0; /* see fixeditor() */
+word baded = 0; /* see fixeditor() */
 char *miralib = NULL;
 static char *mirahdr, *lmirahdr;
 static char *promptstr = "Miranda ";
@@ -137,16 +137,16 @@ char *current_script;
 word lastexp = UNDEF; /* value of `$$' */
 word echoing = 0, listing = 0, verbosity;
 word strictif = 1;
-static word rechecking = 0;
+word rechecking = 0;
 word errline = 0; /* records position of last error, for editor */
 word errs = 0;    /* secondary error location, in inserted script, if relevant */
 word *cstack;
 char linebuf[BUFSIZE]; /* used for assorted purposes */
 /* NB cannot share with linebuf in lex.c, or !! goes wrong */
-static char ebuf[pnlim];
-static char home_rc[pnlim + 8];
-static char lib_rc[pnlim + 8];
-static char *rc_error = NULL;
+char ebuf[pnlim];
+char home_rc[pnlim + 8];
+char lib_rc[pnlim + 8];
+char *rc_error = NULL;
 
 /* A check only used for dic and heap sizes on the command line
  * or from the config file and for the mira version number (like 2066) */
@@ -581,7 +581,7 @@ void missparam(char *s) {
   exit(1);
 }
 
-static int oldversion = 0;
+int oldversion = 0;
 #define colmax 400
 #define spaces(s)                                                                                  \
   for (j = s; j > 0; j--)                                                                          \
@@ -625,161 +625,7 @@ the system - please read the `CHANGES' section of the /man pages !!!\n\n");
   }
 }
 
-word rc_read(char *rcfile)
-/* get settings of system parameters from setup file */
-{
-  FILE *in;
-  char z[20];
-  word h;
-  word d;
-  word v;
-  word s;
-  word r = 0;
-  oldversion = version; /* default assumption */
-  in = fopen(rcfile, "r");
-  if (in == NULL || fscanf(in, "%19s", z) != 1) {
-    return 0; /* file not present, or not readable */
-  }
-  if (strncmp(z, "hdve", 4) == 0  /* current .mirarc format */
-      || strcmp(z, "lhdve") == 0) /* alternative format used at release one */
-  {
-    char *z1 = &z[3];
-    if (z[0] == 'l') {
-      listing = 1, z1++;
-    }
-    while (*++z1) {
-      if (*z1 == 'l') {
-        listing = 1;
-      } else if (*z1 == 's') { /* ignore */
-        ;
-      } else if (*z1 == 'r') {
-        rechecking = 2;
-      } else {
-        rc_error = rcfile;
-      }
-    }
-    if (fscanf(in, "%ld%ld%ld%*c", &h, &d, &v) != 3 || !getln(in, pnlim - 1, ebuf) || badval(h) ||
-        badval(d) || badval(v)) {
-      rc_error = rcfile;
-    } else {
-      editor = ebuf, SPACELIMIT = h, DICSPACE = d, r = 1, oldversion = v;
-    }
-  } else if (strcmp(z, "ehdsv") == 0) /* versions before 550 */
-  {
-    if (fscanf(in, "%19s%ld%ld%ld%ld", ebuf, &h, &d, &s, &v) != 5 || badval(h) || badval(d) ||
-        badval(v)) {
-      rc_error = rcfile;
-    } else {
-      editor = ebuf, SPACELIMIT = h, DICSPACE = d, r = 1, oldversion = v;
-    }
-  } else if (strcmp(z, "ehds") == 0) /* versions before 326, "s" was stacklimit (ignore) */
-  {
-    if (fscanf(in, "%s%ld%ld%ld", ebuf, &h, &d, &s) != 4 || badval(h) || badval(d)) {
-      rc_error = rcfile;
-    } else {
-      editor = ebuf, SPACELIMIT = h, DICSPACE = d, r = 1, oldversion = 1;
-    }
-  } else {
-    {
-      rc_error = rcfile; /* unrecognised format */
-    }
-  }
-  if (editor) {
-    fixeditor();
-  }
-  fclose(in);
-  return r;
-}
 
-void fixeditor(void) {
-  if (strcmp(editor, "vi") == 0) {
-    {
-      editor = "vi +!";
-    }
-  } else if (strcmp(editor, "pico") == 0) {
-    {
-      editor = "pico +!";
-    }
-  } else if (strcmp(editor, "nano") == 0) {
-    {
-      editor = "nano +!";
-    }
-  } else if (strcmp(editor, "joe") == 0) {
-    {
-      editor = "joe +!";
-    }
-  } else if (strcmp(editor, "jpico") == 0) {
-    {
-      editor = "jpico +!";
-    }
-  } else if (strcmp(editor, "vim") == 0) {
-    {
-      editor = "vim +!";
-    }
-  } else if (strcmp(editor, "gvim") == 0) {
-    {
-      editor = "gvim +! % &";
-    }
-  } else if (strcmp(editor, "emacs") == 0) {
-    {
-      editor = "emacs +! % &";
-    }
-  } else {
-    char *p = rindex(editor, '/');
-    if (p == 0) {
-      p = editor;
-    } else {
-      p++;
-    }
-    if (strcmp(p, "vi") == 0) {
-      strcat(p, " +!");
-    }
-  }
-  if (rindex(editor, '&')) {
-    rechecking = 2;
-  }
-  listing = badeditor();
-}
-
-int badeditor(void) /* does editor know how to open file at line? */
-{
-  char *p = index(editor, '!');
-  while (p && p[-1] == '\\') {
-    p = index(p + 1, '!');
-  }
-  return (baded = !p);
-}
-
-int getln(FILE *in, word n, char *s)
-/* reads line (<=n chars) from in into s - returns 1 if ok */
-/* the newline is discarded, and the result '\0' terminated */
-{
-  while (n-- && (*s = getc(in)) != '\n') {
-    s++;
-  }
-  if (*s != '\n' || n < 0) {
-    return 0;
-  }
-  *s = '\0';
-  return 1;
-}
-
-void rc_write(void) {
-  FILE *out = fopen(home_rc, "w");
-  if (out == NULL) {
-    fprintf(stderr, "warning: cannot write to \"%s\"\n", home_rc);
-    return;
-  }
-  fprintf(out, "hdve");
-  if (listing) {
-    fputc('l', out);
-  }
-  if (rechecking == 2) {
-    fputc('r', out);
-  }
-  fprintf(out, " %ld %ld %d %s\n", SPACELIMIT, DICSPACE, version, editor);
-  fclose(out);
-}
 
 word lastid = 0; /* first inscope identifier of immediately preceding command */
 word rv_expr = 0;
