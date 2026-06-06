@@ -141,6 +141,8 @@ see also reset_pns(), make_pn(), sto_pn() in lex.c */
 /* works for both pnames and ids */
 
 extern int compiling, polyshowerror;
+extern char *yysterm[];
+extern char *cmbnms[];
 extern word *hd, *tl;
 extern char *tag;
 void dieclean(void);

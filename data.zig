@@ -847,6 +847,231 @@ export fn geterrlin(t_ptr: [*:0]const u8) Word {
     return el;
 }
 
+extern fn bigtostr(input_x: Word) Word;
+
+const SIGNBIT = 0x10000000;
+const MAXDIGIT = 0x7fff;
+
+fn rest(x: Word) Word {
+    return t(x);
+}
+
+fn digit(x: Word) Word {
+    return h(x);
+}
+
+fn digit0(x: Word) Word {
+    return h(x) & MAXDIGIT;
+}
+
+fn getsmallint(x: Word) Word {
+    return if ((h(x) & SIGNBIT) != 0) -digit0(x) else digit(x);
+}
+
+fn dlhs(d: Word) Word {
+    return h(d);
+}
+
+fn dval(d: Word) Word {
+    return t(t(d));
+}
+
+fn get_id(x: Word) [*:0]const u8 {
+    return getId(x);
+}
+
+fn castPtr(val: Word) [*:0]const u8 {
+    return @ptrFromInt(@as(usize, @intCast(val)));
+}
+
+export fn out(file: ?*c.FILE, x_val: Word) void {
+    var x = x_val;
+    if (x < 0 or x > TOP()) {
+        _ = c.fprintf(file, "<%ld>", x);
+        return;
+    }
+    if (tag.?[@intCast(x)] == c.LAMBDA) {
+        _ = c.fprintf(file, "$(");
+        out(file, h(x));
+        _ = c.putc(')', file);
+        out(file, t(x));
+    } else {
+        while (tag.?[@intCast(x)] == c.CONS) {
+            out1(file, h(x));
+            _ = c.putc(':', file);
+            x = t(x);
+        }
+        out1(file, x);
+    }
+}
+
+export fn out1(file: ?*c.FILE, x: Word) void {
+    if (x < 0 or x > TOP()) {
+        _ = c.fprintf(file, "<%ld>", x);
+        return;
+    }
+    if (tag.?[@intCast(x)] == c.AP) {
+        out1(file, h(x));
+        _ = c.putc(' ', file);
+        out2(file, t(x));
+    } else {
+        out2(file, x);
+    }
+}
+
+export fn out2(file: ?*c.FILE, x_val: Word) void {
+    var x = x_val;
+    if (x < 0 or x > TOP()) {
+        _ = c.fprintf(file, "<%ld>", x);
+        return;
+    }
+    const tag_val = tag.?[@intCast(x)];
+    if (tag_val == c.INT) {
+        if (rest(x) != 0) {
+            x = bigtostr(x);
+            while (x != 0) {
+                _ = c.putc(@intCast(h(x)), file);
+                x = t(x);
+            }
+        } else {
+            _ = c.fprintf(file, "%ld", getsmallint(x));
+        }
+        return;
+    }
+    if (tag_val == c.DOUBLE) {
+        outr(file, get_dbl(x));
+        return;
+    }
+    if (tag_val == c.ID) {
+        _ = c.fprintf(file, "%s", get_id(x));
+        return;
+    }
+    if (x < 256) {
+        _ = c.fprintf(file, "'%s'", charname(x));
+        return;
+    }
+    if (tag_val == c.UNICODE) {
+        _ = c.fprintf(file, "'%lx'", h(x));
+        return;
+    }
+    if (tag_val == c.ATOM) {
+        const str: [*:0]const u8 = if (x < c.CMBASE)
+            @ptrCast(c.yysterm[@intCast(x - 256)])
+        else if (x == c.True)
+            "True"
+        else if (x == c.False)
+            "False"
+        else if (x == c.NIL)
+            "[]"
+        else if (x == c.NILS)
+            "\"\""
+        else
+            @ptrCast(c.cmbnms[@intCast(x - c.CMBASE)]);
+        _ = c.fprintf(file, "%s", str);
+        return;
+    }
+    if (tag_val == c.TCONS or tag_val == c.PAIR) {
+        _ = c.fprintf(file, "(");
+        while (tag.?[@intCast(x)] == c.TCONS) {
+            out(file, h(x));
+            _ = c.putc(',', file);
+            x = t(x);
+        }
+        out(file, h(x));
+        _ = c.putc(',', file);
+        out(file, t(x));
+        _ = c.putc(')', file);
+        return;
+    }
+    if (tag_val == c.TRIES) {
+        _ = c.fprintf(file, "TRIES(");
+        out(file, h(x));
+        _ = c.putc(',', file);
+        out(file, t(x));
+        _ = c.putc(')', file);
+        return;
+    }
+    if (tag_val == c.LABEL) {
+        _ = c.fprintf(file, "LABEL(");
+        out(file, h(x));
+        _ = c.putc(',', file);
+        out(file, t(x));
+        _ = c.putc(')', file);
+        return;
+    }
+    if (tag_val == c.SHOW) {
+        _ = c.fprintf(file, "SHOW(");
+        out(file, h(x));
+        _ = c.putc(',', file);
+        out(file, t(x));
+        _ = c.putc(')', file);
+        return;
+    }
+    if (tag_val == c.STARTREADVALS) {
+        _ = c.fprintf(file, "READVALS(");
+        out(file, h(x));
+        _ = c.putc(',', file);
+        out(file, t(x));
+        _ = c.putc(')', file);
+        return;
+    }
+    if (tag_val == c.LET) {
+        _ = c.fprintf(file, "(LET ");
+        out(file, dlhs(h(x)));
+        _ = c.fprintf(file, "=");
+        out(file, dval(h(x)));
+        _ = c.fprintf(file, ";IN ");
+        out(file, t(x));
+        _ = c.fprintf(file, ")");
+        return;
+    }
+    if (tag_val == c.LETREC) {
+        const body = t(x);
+        _ = c.fprintf(file, "(LETREC ");
+        x = h(x);
+        while (x != c.NIL) {
+            out(file, dlhs(h(x)));
+            _ = c.fprintf(file, "=");
+            out(file, dval(h(x)));
+            _ = c.fprintf(file, ";");
+            x = t(x);
+        }
+        _ = c.fprintf(file, "IN ");
+        out(file, body);
+        _ = c.fprintf(file, ")");
+        return;
+    }
+    if (tag_val == c.DATAPAIR) {
+        _ = c.fprintf(file, "DATAPAIR(%s,%ld)", castPtr(h(x)), t(x));
+        return;
+    }
+    if (tag_val == c.FILEINFO) {
+        _ = c.fprintf(file, "FILEINFO(%s,%ld)", castPtr(h(x)), t(x));
+        return;
+    }
+    if (tag_val == c.CONSTRUCTOR) {
+        _ = c.fprintf(file, "CONSTRUCTOR(%ld)", h(x));
+        return;
+    }
+    if (tag_val == c.STRCONS) {
+        _ = c.fprintf(file, "<$%ld>", h(x));
+        return;
+    }
+    if (tag_val == c.SHARE) {
+        _ = c.fprintf(file, "(SHARE:");
+        out(file, h(x));
+        _ = c.fprintf(file, ")");
+        return;
+    }
+    if (tag_val != c.CONS and tag_val != c.AP and tag_val != c.LAMBDA) {
+        _ = c.fprintf(file, "<%ld|tag=%d>", x, tag_val);
+        return;
+    }
+    _ = c.putc('(', file);
+    out(file, x);
+    _ = c.putc(')', file);
+}
+
 
 test "sto_char returns atoms for Latin-1 values" {
     try std.testing.expectEqual(@as(Word, 65), sto_char(65));
