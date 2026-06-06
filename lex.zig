@@ -890,7 +890,10 @@ export fn yylex() c_int {
             return @intCast(lastc);
         },
         '*' => {
-            if (tryCh('*', @intCast(collectstars()))) |ret| return ret;
+            if (c == '*') {
+                c = getch();
+                return @intCast(collectstars());
+            }
             return @intCast(lastc);
         },
         ':' => {
