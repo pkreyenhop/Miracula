@@ -43,6 +43,7 @@ const CONS: u8 = 11;
 const TRIES: u8 = 12;
 const LABEL: u8 = 13;
 const SHOW: u8 = 14;
+const STARTREADVALS: u8 = 15;
 const LET: u8 = 16;
 const LETREC: u8 = 17;
 const SHARE: u8 = 18;
@@ -101,7 +102,7 @@ extern var hd: [*]Word;
 extern var tl: [*]Word;
 extern var tag: [*]u8;
 extern var current_id: Word;
-extern var SGC: Word;
+export var SGC: Word = CMBASE + 138; // NIL
 extern var ND: Word;
 extern var concat: Word;
 extern var detrop: Word;
@@ -111,10 +112,10 @@ extern var errs: Word;
 extern var files: Word;
 extern var idsused: Word;
 extern var lastname: Word;
-extern var lfrule: c_int;
-extern var newtyps: Word;
+export var lfrule: c_int = 0;
+export var newtyps: Word = CMBASE + 138; // NIL
 extern var nill: Word;
-extern var polyshowerror: c_int;
+export var polyshowerror: c_int = 0;
 extern var primenv: Word;
 extern var showabstract: Word;
 extern var showbool: Word;
@@ -127,8 +128,15 @@ extern var shownum1: Word;
 extern var showstring: Word;
 extern var showvoid: Word;
 extern var showwhat: Word;
-extern var speclocs: Word;
-extern var was_poly: Word;
+export var speclocs: Word = CMBASE + 138; // NIL
+export var was_poly: Word = 0;
+export var algshfns: Word = CMBASE + 138; // NIL
+export var rv_script: Word = 0;
+extern var commandmode: Word;
+extern var cook_stdin: Word;
+extern var common_stdin: Word;
+extern var common_stdinb: Word;
+extern var rv_expr: Word;
 
 extern fn make(t: u8, x: Word, y: Word) Word;
 extern fn append1(x: Word, y: Word) Word;
@@ -137,7 +145,6 @@ extern fn shunt(x: Word, y: Word) Word;
 extern fn member(s: Word, x: Word) Word;
 extern fn UNION(s1: Word, s2: Word) Word;
 extern fn add1(e: Word, s: Word) Word;
-extern fn codegen(x: Word) Word;
 extern fn deps(x: Word) Word;
 extern fn intersection(s1: Word, s2: Word) Word;
 extern fn isnat(x: Word) c_int;
@@ -1425,4 +1432,218 @@ export fn sortrel(input_x: Word) Word {
         a = t(a);
     }
     return reverse(x);
+}
+
+const Ush: Word = CMBASE + 93;
+const Ush1: Word = CMBASE + 94;
+const LEX_RPT: Word = CMBASE + 112;
+const LEX_RPT1: Word = CMBASE + 113;
+const LEX_TRY: Word = CMBASE + 114;
+const LEX_TRY1: Word = CMBASE + 116;
+
+extern fn mklexvar(i: Word) Word;
+extern fn ispoly(t_val: Word) c_int;
+
+fn isarrow_t(type_node: Word) bool {
+    return tag[@intCast(type_node)] == AP and tag[@intCast(h(type_node))] == AP and h(h(type_node)) == arrow_t;
+}
+fn iscomma_t(type_node: Word) bool {
+    return tag[@intCast(type_node)] == AP and tag[@intCast(h(type_node))] == AP and h(h(type_node)) == comma_t;
+}
+fn islist_t(type_node: Word) bool {
+    return tag[@intCast(type_node)] == AP and h(type_node) == list_t;
+}
+fn isvar_t(type_node: Word) bool {
+    return tag[@intCast(type_node)] == TVAR;
+}
+fn iscompound_t(type_node: Word) bool {
+    return tag[@intCast(type_node)] == AP;
+}
+
+fn t_showfn(x: Word) Word {
+    return t(h(t(x)));
+}
+fn t_class(x: Word) Word {
+    return h(t(t(x)));
+}
+fn t_info(x: Word) Word {
+    return t(t(t(x)));
+}
+
+fn isconstructor(x: Word) bool {
+    return tag[@intCast(x)] == ID and isconstrname(getId(x)) != 0;
+}
+fn isvariable(x: Word) bool {
+    return tag[@intCast(x)] == ID and isconstrname(getId(x)) == 0;
+}
+
+fn get_pn(x: Word) Word {
+    return h(x);
+}
+fn pn_val(x: Word) Word {
+    return t(x);
+}
+
+fn sui_generis(k: Word) bool {
+    return member(SGC, k) != 0;
+}
+
+
+export fn codegen(x: Word) Word {
+    switch (tag[@intCast(x)]) {
+        AP => {
+            if (commandmode != 0 // beware of corrupting lastexp
+                and x != cook_stdin and x != common_stdin and x != common_stdinb) { // but share $+ $-
+                return make(AP, codegen(h(x)), codegen(t(x)));
+            }
+            if (tag[@intCast(h(x))] == AP and h(h(x)) == APPEND and t(h(x)) == NIL) {
+                return codegen(t(x)); // post typecheck reversal of HR bug fix
+            }
+            hp(x).* = codegen(h(x));
+            tp(x).* = codegen(t(x));
+            // otherwise do in situ
+            return if (tag[@intCast(h(x))] == AP and h(h(x)) == G_ALT) leftfactor(x) else x;
+        },
+        TCONS, PAIR => {
+            return make(CONS, codegen(h(x)), codegen(t(x)));
+        },
+        CONS => {
+            if (commandmode != 0) {
+                return make(CONS, codegen(h(x)), codegen(t(x)));
+            }
+            // otherwise do in situ (see declare)
+            hp(x).* = codegen(h(x));
+            tp(x).* = codegen(t(x));
+            return x;
+        },
+        LAMBDA => {
+            return abstract(h(x), codegen(t(x)));
+        },
+        LET => {
+            return translet(h(x), t(x));
+        },
+        LETREC => {
+            return transletrec(h(x), t(x));
+        },
+        TRIES => {
+            return transtries(h(x), t(x));
+        },
+        LABEL => {
+            return codegen(t(x));
+        },
+        SHOW => {
+            return makeshow(h(x), t(x));
+        },
+        LEXER => {
+            var r: Word = NIL;
+            var uses_state: Word = 0;
+            var cur_x = x;
+            while (cur_x != NIL) {
+                var rule = abstr(mklexvar(0), codegen(t(t(h(cur_x)))));
+                rule = abstr(mklexvar(1), rule);
+                if (!(tag[@intCast(rule)] == AP and h(rule) == K)) {
+                    uses_state = 1;
+                }
+                r = cons(cons(h(h(cur_x)), // start condition stuff
+                             cons(ap(h(t(h(cur_x))), NIL), // matcher []
+                                  rule)),
+                         r);
+                cur_x = t(cur_x);
+            }
+            if (uses_state == 0) { // strip off (K -) from each rule
+                var cur_y = r;
+                while (cur_y != NIL) {
+                    tp(t(h(cur_y))).* = t(t(t(h(cur_y))));
+                    cur_y = t(cur_y);
+                }
+                r = ap(LEX_RPT, ap(LEX_TRY, r));
+            } else {
+                r = ap(LEX_RPT1, ap(LEX_TRY1, r));
+            }
+            return ap(r, 0); // 0 startcond
+        },
+        STARTREADVALS => {
+            if (ispoly(t(x)) != 0) {
+                const name_str: [*:0]const u8 = if (cook_stdin != 0 and x == h(cook_stdin)) "$+" else "readvals or $+";
+                _ = c.printf("type error - %s used at polymorphic type :: [", name_str);
+                out_type(redtvars(t(x)));
+                _ = c.printf("]\n");
+                polyshowerror = 1;
+                if (current_id != 0) {
+                    ND = add1(current_id, ND);
+                    setIdType(current_id, wrong_t);
+                    setIdVal(current_id, UNDEF);
+                }
+                if (h(x) != 0) {
+                    sayhere(h(x), 1);
+                }
+            }
+            if (commandmode != 0) {
+                rv_expr = 1;
+            } else {
+                rv_script = 1;
+            }
+            return x;
+        },
+        SHARE => {
+            if (t(x) != -1) { // arbitrary flag for already visited
+                hp(x).* = codegen(h(x));
+                tp(x).* = -1;
+            }
+            return h(x);
+        },
+        else => {
+            if (x == NILS) {
+                return NIL;
+            }
+            return x; // identifier, private name, or constant
+        }
+    }
+}
+
+export fn genshfns() void {
+    var s = newtyps;
+    while (s != NIL) {
+        if (t_class(h(s)) == algebraic_t) {
+            var f: Word = 0;
+            var r = t_info(h(s)); // r is list of constructors
+            const ush = if (t(r) == NIL and member(SGC, h(r)) != 0) Ush1 else Ush;
+            while (r != NIL) {
+                var type_var = idType(h(r));
+                var k = idVal(h(r));
+                while (tag[@intCast(k)] != CONSTRUCTOR) {
+                    k = t(k); // lawful and !'d constructors
+                }
+                // k now holds constructor(i,hd(r))
+                while (isarrow_t(type_var)) {
+                    k = ap(k, mkshow(1, 1, t(h(type_var))));
+                    type_var = t(type_var);
+                }
+                k = ap(ush, k);
+                while (iscompound_t(type_var)) {
+                    k = abstr(t(type_var), k);
+                    type_var = h(type_var);
+                }
+                // see kahrs.bug.m (this is the fix)
+                if (f != 0) {
+                    f = ap2(TRY, k, f);
+                } else {
+                    f = k;
+                }
+                r = t(r);
+            }
+            // f ~= 0, placeholder types dealt with in specify()
+            tp(t_showfn(h(s))).* = f;
+            algshfns = cons(t_showfn(h(s)), algshfns);
+        } else if (t_class(h(s)) == abstract_t) {
+            if (t_showfn(h(s)) != 0) {
+                if (abshfnck(h(s), idType(t_showfn(h(s)))) == 0) {
+                    _ = c.printf("warning - \"%s\" has type inappropriate for a show-function\n",
+                        getId(t_showfn(h(s))));
+                    tp(t_showfn(h(s))).* = 0;
+                }
+            }
+        }
+        s = t(s);
+    }
 }

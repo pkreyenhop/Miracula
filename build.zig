@@ -5,7 +5,6 @@ const c_sources = [_][]const u8{
     "lex.c",
     "reduce.c",
     "steer.c",
-    "trans.c",
     "types.c",
     "y.tab.c",
 };
@@ -45,9 +44,9 @@ pub fn build(b: *std.Build) void {
     const steer_helpers_zig = addZigObject(b, "steer-helpers-zig", "steer_helpers.zig", target, optimize, true);
     const data_helpers_zig = addZigObject(b, "data-helpers-zig", "data_helpers.zig", target, optimize, true);
     const lex_helpers_zig = addZigObject(b, "lex-helpers-zig", "lex_helpers.zig", target, optimize, false);
-    const trans_helpers_zig = addZigObject(b, "trans-helpers-zig", "trans_helpers.zig", target, optimize, true);
+    const trans_zig = addZigObject(b, "trans-zig", "trans.zig", target, optimize, true);
     const types_helpers_zig = addZigObject(b, "types-helpers-zig", "types_helpers.zig", target, optimize, true);
-    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_helpers_zig, data_helpers_zig, lex_helpers_zig, trans_helpers_zig, types_helpers_zig);
+    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_helpers_zig, data_helpers_zig, lex_helpers_zig, trans_zig, types_helpers_zig);
     const install_mira = b.addInstallArtifact(mira, .{});
     b.getInstallStep().dependOn(&install_mira.step);
 
@@ -198,7 +197,7 @@ fn addMira(
     steer_helpers_zig: *std.Build.Step.Compile,
     data_helpers_zig: *std.Build.Step.Compile,
     lex_helpers_zig: *std.Build.Step.Compile,
-    trans_helpers_zig: *std.Build.Step.Compile,
+    trans_zig: *std.Build.Step.Compile,
     types_helpers_zig: *std.Build.Step.Compile,
 ) *std.Build.Step.Compile {
     const mira = addCExecutable(b, "mira", &c_sources, target, optimize);
@@ -210,7 +209,7 @@ fn addMira(
     mira.root_module.addObject(steer_helpers_zig);
     mira.root_module.addObject(data_helpers_zig);
     mira.root_module.addObject(lex_helpers_zig);
-    mira.root_module.addObject(trans_helpers_zig);
+    mira.root_module.addObject(trans_zig);
     mira.root_module.addObject(types_helpers_zig);
     mira.root_module.linkSystemLibrary("m", .{});
     return mira;

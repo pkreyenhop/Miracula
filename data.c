@@ -426,65 +426,6 @@ void mark(word x) /* a marked cell is distinguished by having a +ve "tag" */
 
 /* test added Jan 2020 - DT */
 #define wordsize (__WORDSIZE)
-#if wordsize == 32
-#define splitdouble
-union fpdatum {
-  double real;
-  struct {
-    word left;
-    word right;
-  } bits;
-};
-#elif wordsize == 64
-union fpdatum {
-  double real;
-  word bits;
-};
-#else
-#error "platform has unknown word size"
-#endif
-
-double get_dbl(word x) {
-  union fpdatum r;
-#ifdef splitdouble
-  r.bits.left = hd(x);
-  r.bits.right = tl(x);
-#else
-  r.bits = hd(x);
-#endif
-  return (r.real);
-}
-
-/* Miranda's arithmetic model requires fp overflow trapped. */
-
-word sto_dbl(double R) {
-  union fpdatum r;
-  if (!isfinite(R)) {
-    fpe_error(SIGFPE); /* see note on arithmetic model above */
-  }
-  r.real = R;
-#ifdef splitdouble
-  return (make(DOUBLE, r.bits.left, r.bits.right));
-#else
-  return (make(DOUBLE, r.bits, 0));
-#endif
-}
-
-void setdbl(word x, double R) {
-  union fpdatum r;
-  if (!isfinite(R)) {
-    fpe_error(SIGFPE); /* see note on arithmetic model above */
-  }
-  r.real = R;
-  tag[x] = DOUBLE;
-#ifdef splitdouble
-  hd(x) = r.bits.left;
-  tl(x) = r.bits.right;
-#else
-  hd(x) = r.bits;
-  tl(x) = 0;
-#endif
-}
 
 word sto_id(char *p1) {
   return (make(ID, cons(strcons(p1, NIL), undef_t), UNDEF));

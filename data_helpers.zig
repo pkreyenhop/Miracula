@@ -3,9 +3,11 @@ const std = @import("std");
 const c = @cImport({
     @cInclude("stdio.h");
     @cInclude("stdlib.h");
+    @cInclude("signal.h");
 });
 
 const Word = c_long;
+const DOUBLE: u8 = 1;
 const ID: u8 = 8;
 const UNICODE: u8 = 21;
 const CONS: u8 = 11;
@@ -17,6 +19,23 @@ extern var tag: [*]u8;
 extern fn make(t: u8, x: Word, y: Word) Word;
 extern fn reverse(x: Word) Word;
 extern fn strcmp(a: [*:0]const u8, b: [*:0]const u8) c_int;
+extern fn fpe_error(sig: c_int) void;
+
+const fpdatum = if (@sizeOf(Word) == 4)
+    extern union {
+        real: f64,
+        bits: extern struct {
+            left: Word,
+            right: Word,
+        },
+    }
+else if (@sizeOf(Word) == 8)
+    extern union {
+        real: f64,
+        bits: Word,
+    }
+else
+    @compileError("platform has unknown word size");
 
 var charname_buffer: [8]u8 = undefined;
 
@@ -142,6 +161,46 @@ export fn outr(file: ?*c.FILE, value: f64) void {
         _ = c.fprintf(file, "%e", value);
     } else {
         _ = c.fprintf(file, "%f", value);
+    }
+}
+
+export fn get_dbl(x: Word) f64 {
+    var r: fpdatum = undefined;
+    if (comptime @sizeOf(Word) == 4) {
+        r.bits.left = h(x);
+        r.bits.right = t(x);
+    } else {
+        r.bits = h(x);
+    }
+    return r.real;
+}
+
+export fn sto_dbl(R: f64) Word {
+    if (!std.math.isFinite(R)) {
+        fpe_error(c.SIGFPE);
+    }
+    var r: fpdatum = undefined;
+    r.real = R;
+    if (comptime @sizeOf(Word) == 4) {
+        return make(DOUBLE, r.bits.left, r.bits.right);
+    } else {
+        return make(DOUBLE, r.bits, 0);
+    }
+}
+
+export fn setdbl(x: Word, R: f64) void {
+    if (!std.math.isFinite(R)) {
+        fpe_error(c.SIGFPE);
+    }
+    var r: fpdatum = undefined;
+    r.real = R;
+    tag[@intCast(x)] = DOUBLE;
+    if (comptime @sizeOf(Word) == 4) {
+        hp(x).* = r.bits.left;
+        tp(x).* = r.bits.right;
+    } else {
+        hp(x).* = r.bits;
+        tp(x).* = 0;
     }
 }
 
