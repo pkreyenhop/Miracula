@@ -13,6 +13,7 @@ const CONS: u8 = 11;
 const AP: u8 = 9;
 const CMBASE: Word = 306;
 const NIL: Word = CMBASE + 138;
+const ATOMLIMIT: Word = CMBASE + 141;
 
 extern var hd: [*]Word;
 extern var tl: [*]Word;
@@ -41,10 +42,12 @@ fn testMake(_: u8, _: Word, _: Word) callconv(.c) Word {
 }
 
 fn h(x: Word) Word {
+    if (x < ATOMLIMIT) return 0;
     return hd[@as(usize, @intCast(x)) * 2];
 }
 
 fn t(x: Word) Word {
+    if (x < ATOMLIMIT) return 0;
     return tl[@as(usize, @intCast(x)) * 2];
 }
 

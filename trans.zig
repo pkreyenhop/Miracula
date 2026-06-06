@@ -97,6 +97,7 @@ const algebraic_t: Word = 0;
 const synonym_t: Word = 1;
 const abstract_t: Word = 2;
 const CONST: Word = 268;
+const ATOMLIMIT: Word = CMBASE + 141;
 
 extern var hd: [*]Word;
 extern var tl: [*]Word;
@@ -164,18 +165,22 @@ extern fn tsort(g: Word) Word;
 extern var SYNERR: Word;
 
 fn h(x: Word) Word {
+    if (x < ATOMLIMIT) return 0;
     return hd[@as(usize, @intCast(x)) * 2];
 }
 
 fn hp(x: Word) *Word {
+    std.debug.assert(x >= ATOMLIMIT);
     return &hd[@as(usize, @intCast(x)) * 2];
 }
 
 fn t(x: Word) Word {
+    if (x < ATOMLIMIT) return 0;
     return tl[@as(usize, @intCast(x)) * 2];
 }
 
 fn tp(x: Word) *Word {
+    std.debug.assert(x >= ATOMLIMIT);
     return &tl[@as(usize, @intCast(x)) * 2];
 }
 
@@ -393,6 +398,9 @@ export fn same(x: Word, y: Word) Word {
 }
 
 export fn get_ids(x: Word) Word {
+    if (x < ATOMLIMIT) {
+        return NIL;
+    }
     if (h(x) == CONST or isConstructor(x)) {
         return NIL;
     }
@@ -407,6 +415,9 @@ export fn get_ids(x: Word) Word {
 
 export fn mktuple(input_x: Word) Word {
     var x = input_x;
+    if (x < ATOMLIMIT) {
+        return NIL;
+    }
     if (h(x) == CONST or isConstructor(x)) {
         return NIL;
     }
@@ -422,6 +433,9 @@ export fn mktuple(input_x: Word) Word {
 }
 
 export fn irrefutable(x: Word) Word {
+    if (x < ATOMLIMIT) {
+        return 0;
+    }
     if (tag[@intCast(x)] == CONS) {
         return 0;
     }

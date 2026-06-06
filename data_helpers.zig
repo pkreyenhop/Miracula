@@ -37,21 +37,26 @@ else if (@sizeOf(Word) == 8)
 else
     @compileError("platform has unknown word size");
 
+const ATOMLIMIT: Word = 447;
 var charname_buffer: [8]u8 = undefined;
 
 fn h(x: Word) Word {
+    if (x < ATOMLIMIT) return 0;
     return hd[@as(usize, @intCast(x)) * 2];
 }
 
 fn hp(x: Word) *Word {
+    std.debug.assert(x >= ATOMLIMIT);
     return &hd[@as(usize, @intCast(x)) * 2];
 }
 
 fn t(x: Word) Word {
+    if (x < ATOMLIMIT) return 0;
     return tl[@as(usize, @intCast(x)) * 2];
 }
 
 fn tp(x: Word) *Word {
+    std.debug.assert(x >= ATOMLIMIT);
     return &tl[@as(usize, @intCast(x)) * 2];
 }
 

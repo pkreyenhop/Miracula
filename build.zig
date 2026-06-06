@@ -5,7 +5,6 @@ const c_sources = [_][]const u8{
     "lex.c",
     "reduce.c",
     "steer.c",
-    "types.c",
     "y.tab.c",
 };
 
@@ -45,8 +44,8 @@ pub fn build(b: *std.Build) void {
     const data_helpers_zig = addZigObject(b, "data-helpers-zig", "data_helpers.zig", target, optimize, true);
     const lex_helpers_zig = addZigObject(b, "lex-helpers-zig", "lex_helpers.zig", target, optimize, false);
     const trans_zig = addZigObject(b, "trans-zig", "trans.zig", target, optimize, true);
-    const types_helpers_zig = addZigObject(b, "types-helpers-zig", "types_helpers.zig", target, optimize, true);
-    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_helpers_zig, data_helpers_zig, lex_helpers_zig, trans_zig, types_helpers_zig);
+    const types_zig = addZigObject(b, "types-zig", "types.zig", target, optimize, true);
+    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_helpers_zig, data_helpers_zig, lex_helpers_zig, trans_zig, types_zig);
     const install_mira = b.addInstallArtifact(mira, .{});
     b.getInstallStep().dependOn(&install_mira.step);
 
@@ -198,7 +197,7 @@ fn addMira(
     data_helpers_zig: *std.Build.Step.Compile,
     lex_helpers_zig: *std.Build.Step.Compile,
     trans_zig: *std.Build.Step.Compile,
-    types_helpers_zig: *std.Build.Step.Compile,
+    types_zig: *std.Build.Step.Compile,
 ) *std.Build.Step.Compile {
     const mira = addCExecutable(b, "mira", &c_sources, target, optimize);
     mira.root_module.addObject(utf8_zig);
@@ -210,7 +209,7 @@ fn addMira(
     mira.root_module.addObject(data_helpers_zig);
     mira.root_module.addObject(lex_helpers_zig);
     mira.root_module.addObject(trans_zig);
-    mira.root_module.addObject(types_helpers_zig);
+    mira.root_module.addObject(types_zig);
     mira.root_module.linkSystemLibrary("m", .{});
     return mira;
 }
@@ -301,7 +300,7 @@ fn addZigObject(
     optimize: std.builtin.OptimizeMode,
     link_libc: bool,
 ) *std.Build.Step.Compile {
-    return b.addObject(.{
+    const obj = b.addObject(.{
         .name = name,
         .root_module = b.createModule(.{
             .root_source_file = b.path(path),
@@ -310,6 +309,8 @@ fn addZigObject(
             .link_libc = link_libc,
         }),
     });
+    obj.root_module.addIncludePath(b.path("."));
+    return obj;
 }
 
 fn addVersionObject(

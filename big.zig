@@ -20,6 +20,7 @@ const CONS: u8 = 11;
 const INT: u8 = 5;
 const CMBASE: Word = 306;
 const NIL: Word = CMBASE + 138;
+const ATOMLIMIT: Word = CMBASE + 141;
 
 extern var hd: [*]Word;
 extern var tl: [*]Word;
@@ -34,18 +35,22 @@ var b_rem: Word = 0;
 export var big_one: Word = 0;
 
 fn h(x: Word) Word {
+    if (x < ATOMLIMIT) return 0;
     return hd[@as(usize, @intCast(x)) * 2];
 }
 
 fn hp(x: Word) *Word {
+    std.debug.assert(x >= ATOMLIMIT);
     return &hd[@as(usize, @intCast(x)) * 2];
 }
 
 fn t(x: Word) Word {
+    if (x < ATOMLIMIT) return 0;
     return tl[@as(usize, @intCast(x)) * 2];
 }
 
 fn tp(x: Word) *Word {
+    std.debug.assert(x >= ATOMLIMIT);
     return &tl[@as(usize, @intCast(x)) * 2];
 }
 
