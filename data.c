@@ -13,31 +13,19 @@
 #include "data.h"
 #include "big.h"
 #include "lex.h"
-#define INITSPACE 1250000
-static word SPACE = INITSPACE; /* false ceiling in heap to improve
-                                  paging behaviour during compilation */
-                               /* see steer.c for default value */
-                               /* SPACELIMIT controls the size of the heap (i.e. the number of list
-                                  cells available) - the minimum survivable number given the need to
-                                  compile the prelude etc is probably about 6000 */
-                               /* Note: the size of a list cell is 2 ints + 1 char  */
-#define BIGTOP (SPACELIMIT + ATOMLIMIT)
-static word listp = ATOMLIMIT - 1;
-static word *heap;
-word *hd, *tl;
-char *tag;
-word files;
-word current_file;
-long long cellcount = 0;
-long claims = 0;
-long nogcs = 0;
-extern int atgc, loading; /* flags, set in steer.c */
+extern word SPACE;
+extern word listp;
+extern word *hd, *tl;
+extern char *tag;
+extern word files;
+extern word current_file;
+extern long long cellcount;
+extern long claims;
+extern long nogcs;
+extern int atgc, loading;
 
-word *dstack = 0, *stackp;
+extern word *dstack, *stackp;
 static word *dlim;
-#if 0
-stackp=dstack; /* if load_script made interruptible, add to reset */
-#endif
 
 #define poschar(c) !(negchar((c) - 1))
 #define negchar(c) ((c) & 128)
@@ -52,384 +40,29 @@ static void dump_defs(word /*defs*/, FILE * /*f*/);
 static void dump_ob(word /*x*/, FILE * /*f*/);
 static word getdbl(FILE * /*f*/);
 static int getint(FILE * /*f*/);
-static word getword(FILE * /*f*/);
+extern word getword(FILE *f);
 word hdsort(word /*x*/);
 static word load_defs(FILE * /*f*/);
 static void mark(word /*x*/);
-static char *mkrel(char * /*p*/);
+extern char *mkrel(char *p);
 static void putdbl(word /*x*/, FILE * /*f*/);
 static void putint(int /*n*/, FILE * /*f*/);
-static void putword(word /*x*/, FILE * /*f*/);
+extern void putword(word x, FILE *f);
 #if 0
 static void setwd(word,word,word);
 #endif
 static void unscramble(word /*aliases*/);
-
-word trueheapsize(void) {
-  return (nogcs == 0 ? listp - ATOMLIMIT + 1 : SPACE);
-}
-
-void setupheap(void) {
-  heap = (word *)malloc(SPACELIMIT * sizeof(word) * 2);
-  /* NB use calloc because it sets contents to zero */
-  /* tag[TOP] must be zero and exists as a sentinel */
-  tag = (char *)calloc(BIGTOP + 1, sizeof(char));
-  if (heap == NULL || tag == NULL) {
-    mallocfail("heap");
-  }
-  hd = heap - (ATOMLIMIT * 2);
-  tl = hd + 1;
-  if (SPACE > SPACELIMIT) {
-    SPACE = SPACELIMIT;
-  }
-}
-
-void resetheap(void) /* warning - cannot do this dynamically, because both the
-               compiler and the reducer hold onto absolute heap addresses
-               during certain space consuming computations */
-{
-  if (SPACELIMIT < trueheapsize()) {
-    fprintf(stderr, "impossible event in resetheap\n"), exit(1);
-  }
-  heap = (word *)realloc((char *)heap, SPACELIMIT * sizeof(word) * 2);
-  tag = (char *)realloc(tag, BIGTOP + 1);
-  if (heap == NULL || tag == NULL) {
-    mallocfail("heap");
-  }
-  hd = heap - (ATOMLIMIT * 2);
-  tl = hd + 1;
-  tag[BIGTOP] = 0;
-  if (SPACE > SPACELIMIT) {
-    SPACE = SPACELIMIT;
-  }
-  if (SPACE < INITSPACE && INITSPACE <= SPACELIMIT) {
-    SPACE = INITSPACE, tag[TOP] = 0;
-  }
-  /* tag[TOP] is always zero and exists as a sentinel */
-}
-
-void mallocfail(char *x) {
-  fprintf(stderr, "panic: cannot find enough free space for %s\n", x);
-  exit(1);
-}
-
-void resetgcstats(void) {
-  cellcount = -claims;
-  nogcs = 0;
-  initclock();
-}
-
-word make(unsigned char t, word x, word y) /* creates a new cell with "tag" t,
-                                              "hd" x and "tl" y  */
-{
-  while (poschar(tag[++listp])) {
-    ;
-  }
-  /* find next cell with zero or negative tag (=unwanted) */
-  if (listp == TOP) {
-    if (SPACE != SPACELIMIT) {
-      if (!compiling) {
-        {
-          SPACE = SPACELIMIT;
-        }
-      } else if (claims <= SPACE / 4 &&
-                 nogcs > 1) { /* during compilation we raise false ceiling whenever residency
-                                 reaches 75% on 2 successive gc's */
-        static word wait = 0;
-        word sp = SPACE;
-        if (wait) {
-          wait--;
-        } else {
-          SPACE += SPACE / 2, wait = 2,
-                              SPACE = 5000 * (1 + ((SPACE - 1) / 5000)); /* round upwards */
-        }
-        if (SPACE > SPACELIMIT) {
-          SPACE = SPACELIMIT;
-        }
-        if (atgc && SPACE > sp) {
-          fprintf(stderr, "\n<<increase heap from %ld to %ld>>\n", sp, SPACE);
-        }
-      }
-    }
-    if (listp == TOP) {
-#ifdef ORION105
-      asm("savew6");
-      gc();
-      asm("restw6");
-#elifdef sparc
-      asm("ta	0x03"); /* see /usr/include/sun4/trap.h */
-                        /* asm("ta	ST_FLUSH_WINDOWS"); */
-      gc();
-#else
-      gc();
-#endif
-      if (t > STRCONS) {
-        mark(x);
-      }
-      if (t >= INT) {
-        mark(y);
-      }
-      return (make(t, x, y));
-    }
-  }
-  claims++;
-  tag[listp] = t;
-  hd(listp) = x;
-  tl(listp) = y;
-  return listp;
-}
-
-/* cons ap ap2 ap3 are all #defined in terms of make
-   - see MIRANDA DECLARATIONS */
-
-#if 0
-void setwd(word x,word a,word b)
-{ hd(x)= a;
-  tl(x)= b; }
-#endif
-
-int collecting = 0; /* flag for reset(), in case interrupt strikes in gc */
-
-#include <setjmp.h>
-
-void gc(void) /*  the "garbage collector"  */
-{
-  char *p1;
-#if sparc
-  static int calls = 0;
-#endif
-  jmp_buf env;
-
-  /* Sparc9 has a "register window" which keeps 32 sets of registers
-   * in the CPU, a sort of virtual stack top, so recurse 32 times
-   * to flush them all onto the real stack before the setjmp() trick.
-   * Also, do something after the recursive call so that tail recursion
-   * is never optimized out.
-   * This makes it work with clang even with -O2, not gcc 14. - MG May 25 */
-#if sparc
-  if (calls < 32) {
-    calls++;
-    gc();
-    calls--;
-    return;
-  }
-#endif
-
-  /* Dump all register variables on the stack
-   * then run the real garbage collector */
-  if (setjmp(env)) {
-    return;
-  }
-  collecting = 1;
-  p1 = &(tag[ATOMLIMIT]);
-  if (atgc) {
-    fprintf(stderr, "\n<<gc after %ld claims>>\n", claims);
-  }
-  if (claims <= SPACE / 10 && nogcs > 1 &&
-      SPACE == SPACELIMIT) { /* if heap utilisation exceeds 90% on 2 successive gc's, give up */
-    static word hnogcs = 0;
-    if (nogcs == hnogcs) {
-
-      fprintf(stderr, "<<not enough heap space -- task abandoned>>\n");
-      if (!compiling) {
-        outstats();
-      }
-      if (compiling && ideep == 0) {
-        fprintf(stderr, "not enough heap to compile current script\n"),
-            fprintf(stderr, "script = \"%s\", heap = %ld\n", current_script, SPACE);
-      }
-      exit(1);
-    } /* if compiling should reset() instead - FIX LATER */
-    else {
-      {
-        hnogcs = nogcs + 1;
-      }
-    }
-  }
-  nogcs++;
-  while ((*p1 = -*p1)) {
-    p1++; /* make all tags -ve (= unwanted) */
-  }
-  bases();
-  listp = ATOMLIMIT - 1;
-  cellcount += claims;
-  claims = 0;
-  collecting = 0;
-  longjmp(env, 1);
-}
-
-void gcpatch(void) /* called when gc interrupted - see reset in steer.c */
-/* must not allocate any cells between calling this and next gc() */
-{
-  char *p1;
-  for (p1 = &(tag[ATOMLIMIT]); *p1; p1++) {
-    if (negchar(*p1)) {
-      *p1 = -*p1;
-    }
-  }
-  /* otherwise mutator crashes on funny tags */
-}
-
-void bases(void) /*  marks everthing that must be saved  */
-{
-  word *p;
-
-  extern word fileq, primenv;
-  extern word cook_stdin, common_stdin, common_stdinb, rv_expr, rv_script;
-  extern word margstack, vergstack, litstack, linostack, prefixstack;
-  extern word idsused, suppressids, lastname, eprodnts, nonterminals, ntmap, ihlist, ntspecmap,
-      gvars, lexvar;
-  extern word R, TABSTRS, SGC, ND, SBND, NT, current_id, meta_pending;
-  extern word showchain, newtyps, algshfns, errs, speclocs;
-  extern word SUBST[], tvmap, localtvmap;
-  extern word tfnum, tfbool, tfbool2, tfnum2, tfstrstr, tfnumnum, ltchar, bnf_t, tstep, tstepuntil;
-  extern word exec_t, read_t, filestat_t;
-
-  extern word nill, standardout;
-  extern word lexstates, lexdefs, oldfiles, includees, embargoes, exportfiles, exports, internals,
-      freeids, tlost, detrop, rfl, bereaved, ld_stuff;
-  extern word CLASHES, ALIASES, SUPPRESSED, TSUPPRESSED, DETROP, MISSING, FBS;
-  extern word outfilq, waiting;
-  p = (word *)&p;
-  /* we follow everything on the C stack that looks like  a  pointer  into
-  list space. This is failsafe in that the worst that can happen,if e.g. a
-  stray integer happens to point into list  space,  is  that  the  garbage
-  collector will collect less garbage than it could have done */
-  if (p < cstack) { /* which way does stack grow? */
-    while (++p != cstack) {
-      mark(*p); /* for machines with stack growing downwards */
-    }
-  } else {
-    while (--p != cstack) {
-      mark(*p); /* for machines with stack growing upwards */
-    }
-  }
-  mark(*cstack);
-  /* now follow all pointer-containing external variables */
-  mark(outfilq);
-  mark(waiting);
-  if (compiling || rv_expr || rv_script) /* rv flags indicate `readvals' in use */
-  {
-
-    /* private name vector */
-
-    word i;
-    mark(make_status);
-    mark(primenv);
-    mark(fileq);
-    mark(idsused);
-    mark(eprodnts);
-    mark(nonterminals);
-    mark(ntmap);
-    mark(ihlist);
-    mark(ntspecmap);
-    mark(gvars);
-    mark(lexvar);
-    mark(common_stdin);
-    mark(common_stdinb);
-    mark(cook_stdin);
-    mark(margstack);
-    mark(vergstack);
-    mark(litstack);
-    mark(linostack);
-    mark(prefixstack);
-    mark(files);
-    mark(oldfiles);
-    mark(includees);
-    mark(freeids);
-    mark(exports);
-    mark(internals);
-    mark(CLASHES);
-    mark(ALIASES);
-    mark(SUPPRESSED);
-    mark(TSUPPRESSED);
-    mark(DETROP);
-    mark(MISSING);
-    mark(FBS);
-    mark(lexstates);
-    mark(lexdefs);
-    for (i = 0; i < 128; i++) {
-      if (namebucket[i]) {
-        mark(namebucket[i]);
-      }
-    }
-    for (p = dstack; p < stackp; p++) {
-      mark(*p);
-    }
-    if (loading) {
-      mark(algshfns);
-      mark(speclocs);
-      mark(exportfiles);
-      mark(embargoes);
-      mark(rfl);
-      mark(detrop);
-      mark(bereaved);
-      mark(ld_stuff);
-      mark(tlost);
-      for (i = 0; i < nextpn; i++) {
-        mark(pnvec[i]);
-      }
-    }
-    mark(lastname);
-    mark(suppressids);
-    mark(lastexp);
-    mark(nill);
-    mark(standardout);
-    mark(big_one);
-    mark(yyval);
-    mark(yylval);
-    mark(R);
-    mark(TABSTRS);
-    mark(SGC);
-    mark(ND);
-    mark(SBND);
-    mark(NT);
-    mark(current_id);
-    mark(meta_pending);
-    mark(newtyps);
-    mark(showchain);
-    mark(errs);
-    mark(tfnum);
-    mark(tfbool);
-    mark(tfbool2);
-    mark(tfnum2);
-    mark(tfstrstr);
-    mark(tfnumnum);
-    mark(ltchar);
-    mark(bnf_t);
-    mark(exec_t);
-    mark(read_t);
-    mark(filestat_t);
-    mark(tstep);
-    mark(tstepuntil);
-    mark(tvmap);
-    mark(localtvmap);
-    for (i = 0; i < hashsize; i++) {
-      mark(SUBST[i]);
-    }
-  }
-}
-
-void mark(word x) /* a marked cell is distinguished by having a +ve "tag" */
-{
-  x &= ~tlptrbits; /* x may be a `reversed pointer' (see reduce.c) */
-  while (isptr(x) && negchar(tag[x])) {
-    if ((tag[x] = -tag[x]) < INT) {
-      return;
-    }
-    if (tag[x] > STRCONS) {
-      mark(hd(x));
-    }
-    x = tl(x) & ~tlptrbits;
-  }
-}
+extern void setprefix(char *p);
+extern int okdump(char *t);
+extern word geterrlin(char *t);
+extern word sto_id(char *p1);
+extern char prefix[];
+extern word preflen;
 
 /* test added Jan 2020 - DT */
 #define wordsize (__WORDSIZE)
 
-word sto_id(char *p1) {
-  return (make(ID, cons(strcons(p1, NIL), undef_t), UNDEF));
-}
+
 /* the hd of an ID contains cons(strcons(name,who),type) and
    the tl has the value */
 /* who is NIL, hereinfo, or cons(aka,hereinfo) where aka
@@ -532,23 +165,7 @@ word sto_id(char *p1) {
 #error "coding scheme breaks down: XLIMIT>512"
 #endif
 
-void putword(word x, FILE *f) {
-  int i = sizeof(word);
-  putc(x & 255, f);
-  while (--i) {
-    x >>= 8, putc(x & 255, f);
-  }
-}
 
-word getword(FILE *f) {
-  int s = 0;
-  int i = sizeof(word);
-  word x = getc(f);
-  while (--i) {
-    s += 8, x |= (word)getc(f) << s;
-  }
-  return x;
-}
 
 void putint(int n, FILE *f) {
   fwrite(&n, sizeof(int), 1, f);
@@ -571,39 +188,7 @@ word getdbl(FILE *f) {
   return sto_dbl(d);
 }
 
-static char prefix[pnlim];
-static word preflen;
 
-void setprefix(char *p) /* to that of pathname p */
-{
-  char *g;
-  (void)strcpy(prefix, p);
-  g = rindex(prefix, '/');
-  if (g) {
-    g[1] = '\0';
-  } else {
-    *prefix = '\0';
-  }
-  preflen = strlen(prefix);
-} /* before calling dump_script or load_script must setprefix() to that
-     of current pathname of file being dumped/loaded - to get correct
-     translation between internal pathnames (relative to dump script)
-     and external pathnames */
-
-char *mkrel(char *p) /* makes pathname p correct relative to prefix */
-                     /* must use when writing pathnames to dump */
-{
-  if (strncmp(prefix, p, preflen) == 0) {
-    return (p + preflen);
-  }
-  if (p[0] == '/') {
-    return p;
-  }
-  fprintf(stderr, "impossible event in mkrelative\n"); /* or use getwd */
-  /* not possible because all relative pathnames in files were computed
-     wrt current script */
-  return p; /* proforma only */
-}
 
 #define bits_15 0xffff
 static char *CFN;
@@ -1292,56 +877,7 @@ word load_defs(FILE *f) /* load a sequence of definitions from file f, terminate
   return defs;
 }
 
-int okdump(char *t) /* return 1 if script t has a non-syntax-error dump */
-{
-  char obf[120];
-  FILE *f;
-  (void)strcpy(obf, t);
-  (void)strcpy(obf + strlen(obf) - 1, obsuffix);
-  f = fopen(obf, "r");
-  if (f && getc(f) == XVERSION && getc(f)) {
-    fclose(f);
-    return 1;
-  }
-  return 0;
-}
 
-word geterrlin(char *t) /* returns errline from dump of t if relevant, 0 otherwise */
-{
-  char obf[120];
-  int ch;
-  word el;
-  FILE *f;
-  (void)strcpy(obf, t);
-  (void)strcpy(obf + strlen(obf) - 1, obsuffix);
-  if (!(f = fopen(obf, "r"))) {
-    return 0;
-  }
-  if (getc(f) != XVERSION || ((ch = getc(f)) && ch != 1)) {
-    fclose(f);
-    return 0;
-  }
-  el = getword(f);
-  /* now check this is right dump */
-  setprefix(t);
-  ch = getc(f);
-  dicq = dicp;
-  if (ch != '/') {
-    (void)strcpy(dicp, prefix), dicq += preflen;
-  }
-  /* locate wrt current posn */
-  *dicq++ = ch;
-  while ((*dicq++ = ch = getc(f)) && ch != EOF) {
-    ; /* filename */
-  }
-  ch = getword(f); /* mtime */
-  if (strcmp(dicp, t) || ch != fm_time(t)) {
-    return 0; /* wrong dump */
-  }
-  /* this test not foolproof, strictly should extract all files and check
-     their mtimes, as in undump, but this involves reading the whole dump */
-  return el;
-}
 
 /* following is stuff for printing heap objects in readable form - used
    for miscellaneous diagnostics etc - main function is out(FILE *,object) */

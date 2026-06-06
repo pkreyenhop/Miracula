@@ -40,11 +40,11 @@ pub fn build(b: *std.Build) void {
     const cmbnms_zig = addZigObject(b, "cmbnms-zig", "cmbnms.zig", target, optimize, false);
     const big_zig = addZigObject(b, "big-zig", "big.zig", target, optimize, true);
     const steer_helpers_zig = addZigObject(b, "steer-helpers-zig", "steer_helpers.zig", target, optimize, true);
-    const data_helpers_zig = addZigObject(b, "data-helpers-zig", "data_helpers.zig", target, optimize, true);
+    const data_zig = addZigObject(b, "data-zig", "data.zig", target, optimize, true);
     const lex_zig = addZigObject(b, "lex-zig", "lex.zig", target, optimize, true);
     const trans_zig = addZigObject(b, "trans-zig", "trans.zig", target, optimize, true);
     const types_zig = addZigObject(b, "types-zig", "types.zig", target, optimize, true);
-    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_helpers_zig, data_helpers_zig, lex_zig, trans_zig, types_zig);
+    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_helpers_zig, data_zig, lex_zig, trans_zig, types_zig);
     const install_mira = b.addInstallArtifact(mira, .{});
     b.getInstallStep().dependOn(&install_mira.step);
 
@@ -195,7 +195,7 @@ fn addMira(
     cmbnms_zig: *std.Build.Step.Compile,
     big_zig: *std.Build.Step.Compile,
     steer_helpers_zig: *std.Build.Step.Compile,
-    data_helpers_zig: *std.Build.Step.Compile,
+    data_zig: *std.Build.Step.Compile,
     lex_zig: *std.Build.Step.Compile,
     trans_zig: *std.Build.Step.Compile,
     types_zig: *std.Build.Step.Compile,
@@ -207,7 +207,7 @@ fn addMira(
     mira.root_module.addObject(cmbnms_zig);
     mira.root_module.addObject(big_zig);
     mira.root_module.addObject(steer_helpers_zig);
-    mira.root_module.addObject(data_helpers_zig);
+    mira.root_module.addObject(data_zig);
     mira.root_module.addObject(lex_zig);
     mira.root_module.addObject(trans_zig);
     mira.root_module.addObject(types_zig);
