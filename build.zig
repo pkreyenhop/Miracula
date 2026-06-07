@@ -2,7 +2,6 @@ const std = @import("std");
 
 const c_sources = [_][]const u8{
     "reduce.c",
-    "steer.c",
     "y.tab.c",
 };
 
@@ -38,12 +37,12 @@ pub fn build(b: *std.Build) void {
     const version_zig = addVersionObject(b, target, optimize);
     const cmbnms_zig = addZigObject(b, "cmbnms-zig", "cmbnms.zig", target, optimize, false);
     const big_zig = addZigObject(b, "big-zig", "big.zig", target, optimize, true);
-    const steer_helpers_zig = addZigObject(b, "steer-helpers-zig", "steer_helpers.zig", target, optimize, true);
+    const steer_zig = addZigObject(b, "steer-zig", "steer.zig", target, optimize, true);
     const data_zig = addZigObject(b, "data-zig", "data.zig", target, optimize, true);
     const lex_zig = addZigObject(b, "lex-zig", "lex.zig", target, optimize, true);
     const trans_zig = addZigObject(b, "trans-zig", "trans.zig", target, optimize, true);
     const types_zig = addZigObject(b, "types-zig", "types.zig", target, optimize, true);
-    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_helpers_zig, data_zig, lex_zig, trans_zig, types_zig);
+    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_zig, data_zig, lex_zig, trans_zig, types_zig);
     const install_mira = b.addInstallArtifact(mira, .{});
     b.getInstallStep().dependOn(&install_mira.step);
 
@@ -89,17 +88,17 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_menudriver_tests = b.addRunArtifact(menudriver_tests);
-    const steer_helpers_tests = b.addTest(.{
-        .name = "steer-helpers-tests",
+    const steer_tests = b.addTest(.{
+        .name = "steer-tests",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("steer_helpers.zig"),
+            .root_source_file = b.path("steer.zig"),
             .target = target,
             .optimize = optimize,
             .link_libc = true,
         }),
     });
-    const run_steer_helpers_tests = b.addRunArtifact(steer_helpers_tests);
-    steer_helpers_tests.root_module.addIncludePath(b.path("."));
+    const run_steer_tests = b.addRunArtifact(steer_tests);
+    steer_tests.root_module.addIncludePath(b.path("."));
     const lex_tests = b.addTest(.{
         .name = "lex-tests",
         .root_module = b.createModule(.{
@@ -136,7 +135,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_utf8_tests.step);
     test_step.dependOn(&run_just_tests.step);
     test_step.dependOn(&run_menudriver_tests.step);
-    test_step.dependOn(&run_steer_helpers_tests.step);
+    test_step.dependOn(&run_steer_tests.step);
     test_step.dependOn(&run_lex_tests.step);
     test_step.dependOn(&run_mira_tests.step);
 
@@ -160,7 +159,7 @@ pub fn build(b: *std.Build) void {
     check_step.dependOn(&run_utf8_tests.step);
     check_step.dependOn(&run_just_tests.step);
     check_step.dependOn(&run_menudriver_tests.step);
-    check_step.dependOn(&run_steer_helpers_tests.step);
+    check_step.dependOn(&run_steer_tests.step);
     check_step.dependOn(&run_lex_tests.step);
     check_step.dependOn(&run_mira_tests.step);
 
