@@ -31,7 +31,7 @@ word d2s_buffered(double, char *);
 
 static double fa, fb;
 static long long cycles = 0;
-static word stdinuse = 0;
+word stdinuse = 0;
 
 static void apfile(word /*f*/);
 static void closefile(word /*f*/);
@@ -40,7 +40,7 @@ static void div_error(void);
 static void fn_error(char * /*s*/);
 static void force(word /*x*/);
 static void getenv_error(char * /*a*/);
-static word g_residue(word /*toks2*/);
+word g_residue(word /*toks2*/);
 static void int_error(char * /*s*/);
 static void lexfail(word /*x*/);
 static word lexstate(word /*x*/);
@@ -49,8 +49,8 @@ static word numplus(word /*x*/, word /*y*/);
 static void outf(word /*e*/);
 static word piperrmess(word /*pid*/);
 static void print(word /*e*/);
-static word reduce(word /*e*/);
-static void stdin_error(int /*c*/);
+word reduce(word /*e*/);
+void stdin_error(int /*c*/);
 static const char *stdname(int /*c*/);
 static void subs_error(void);
 
@@ -223,7 +223,7 @@ void output(word e)
    whole reduction process is driven by the need to print  */
 /* the value of the whole expression is a list of `messages' */
 {
-
+  word *old_cstack = cstack;
   cstack = &e; /* don't follow C stack below this in gc */
   e = reduce(e);
   while (tag[e] == CONS) {
@@ -282,6 +282,7 @@ void output(word e)
     e = tl(e) = reduce(tl(e));
   }
   if (e == NIL) {
+    cstack = old_cstack;
     return;
   }
   fprintf(stderr, "\nimpossible event in output\n"), putc('<', stderr), out(stderr, e),
@@ -501,6 +502,30 @@ static void rewrite_to_string(word *expr, const char *value) {
   hd(*expr) = I;
   *expr = tl(*expr) = str_conv(value);
 }
+
+extern void reduce_badcase_error(word arg_info);
+extern void reduce_conf_error(word arg_info);
+extern void reduce_parse_close_error(word arg1, word arg3);
+
+enum reduce_action {
+  REDUCE_NOT_HANDLED,
+  REDUCE_NEXT,
+  REDUCE_DONE,
+  REDUCE_RETURN
+};
+
+struct reduce_ctx {
+  word e;
+  word s;
+  word hold;
+  word arg1;
+  word arg2;
+  word arg3;
+};
+
+extern enum reduce_action reduce_stream_read(struct reduce_ctx *ctx, word op);
+
+
 
 /* reduce e to hnf, note that a function in hnf will have head h with
    S<=h<=ERROR all combinators lie in this range see combs.h */
@@ -969,89 +994,43 @@ NEXTREDEX:
     }
     goto NEXTREDEX;
 
-  L_READBIN:
   case READBIN:       /*    READBIN streamptr => nextchar : READBIN streamptr
                             if end of file,    READBIN file => NIL
                             READBIN does no UTF-8 conversion        */
-    UPLEFT;           /* gc insecurity - arg is not a heap object */
-    if (lastarg == 0) /* special case created by $:- */
     {
-      if (stdinuse == '-') {
-        stdin_error(':');
-      }
-      if (stdinuse) {
-        rewrite_to_nil(&e);
-        goto DONE;
-      }
-      stdinuse = ':';
-      tl(e) = (word)stdin;
+      struct reduce_ctx call_ctx = { .e = e, .s = s, .hold = hold, .arg1 = arg1, .arg2 = arg2, .arg3 = arg3 };
+      enum reduce_action act = reduce_stream_read(&call_ctx, READBIN);
+      e = call_ctx.e; s = call_ctx.s; hold = call_ctx.hold; arg1 = call_ctx.arg1; arg2 = call_ctx.arg2; arg3 = call_ctx.arg3;
+      if (act == REDUCE_DONE) goto DONE;
+      if (act == REDUCE_NEXT) goto NEXTREDEX;
     }
-    hold = getc((FILE *)lastarg);
-    if (hold == EOF) {
-      fclose((FILE *)lastarg);
-      rewrite_to_nil(&e);
-      goto DONE;
-    }
-    setcell(CONS, hold, ap(READBIN, lastarg));
-    goto DONE;
 
-  L_READ:
   case READ:          /*    READ streamptr => nextchar : READ streamptr
                             if end of file,    READ file => NIL
                             does UTF-8 conversion where appropriate     */
-    UPLEFT;           /* gc insecurity - arg is not a heap object */
-    if (lastarg == 0) /* special case created by $- */
     {
-      if (stdinuse == ':') {
-        stdin_error('-');
-      }
-      if (stdinuse) {
-        rewrite_to_nil(&e);
-        goto DONE;
-      }
-      stdinuse = '-';
-      tl(e) = (word)stdin;
+      struct reduce_ctx call_ctx = { .e = e, .s = s, .hold = hold, .arg1 = arg1, .arg2 = arg2, .arg3 = arg3 };
+      enum reduce_action act = reduce_stream_read(&call_ctx, READ);
+      e = call_ctx.e; s = call_ctx.s; hold = call_ctx.hold; arg1 = call_ctx.arg1; arg2 = call_ctx.arg2; arg3 = call_ctx.arg3;
+      if (act == REDUCE_DONE) goto DONE;
+      if (act == REDUCE_NEXT) goto NEXTREDEX;
     }
-    hold = UTF8 ? sto_char(fromUTF8((FILE *)lastarg)) : getc((FILE *)lastarg);
-    if (hold == EOF) {
-      fclose((FILE *)lastarg);
-      rewrite_to_nil(&e);
-      goto DONE;
-    }
-    setcell(CONS, hold, ap(READ, lastarg));
-    goto DONE;
 
-  L_READVALS:
   case READVALS: /*  READVALS (t:fil) f => [], EOF from FILE *f
                                         => val : READVALS t f, otherwise
                      where val is obtained by parsing lines of
                      f, and taking next legal expr of type t */
-    GETARG(arg1);
-    upleft;
-    hold = parseline(hd(arg1), (FILE *)lastarg, tl(arg1));
-    if (hold == EOF) {
-      fclose((FILE *)lastarg);
-      rewrite_to_nil(&e);
-      goto DONE;
+    {
+      struct reduce_ctx call_ctx = { .e = e, .s = s, .hold = hold, .arg1 = arg1, .arg2 = arg2, .arg3 = arg3 };
+      enum reduce_action act = reduce_stream_read(&call_ctx, READVALS);
+      e = call_ctx.e; s = call_ctx.s; hold = call_ctx.hold; arg1 = call_ctx.arg1; arg2 = call_ctx.arg2; arg3 = call_ctx.arg3;
+      if (act == REDUCE_DONE) goto DONE;
+      if (act == REDUCE_NEXT) goto NEXTREDEX;
     }
-    arg2 = ap(hd(e), lastarg);
-    rewrite_to_cons(e, hold, arg2);
-    goto DONE;
 
   case BADCASE: /* BADCASE cons(oldn,here_info) => BOTTOM */
     UPLEFT;
-    {
-      word subject = hd(lastarg);
-      /* either datapair(oldn,0) or 0 */
-      fprintf(stderr, "\nprogram error: missing case in definition");
-      if (subject) { /* cannot do patterns - FIX LATER */
-        fprintf(stderr, " of %s", (char *)hd(subject));
-      }
-      putc('\n', stderr);
-      out_here(stderr, tl(lastarg), 1);
-    }
-    outstats();
-    exit(1);
+    reduce_badcase_error(lastarg);
 
   case GETARGS: /* GETARGS 0 => argv  ||`$*' = command line args */
     UPLEFT;
@@ -1062,11 +1041,7 @@ NEXTREDEX:
     /* if(nargs<1)fprintf(stderr,"\nimpossible event in reduce\n"),
        exit(1); */
     UPLEFT;
-    fprintf(stderr, "\nprogram error: lhs of definition doesn't match rhs");
-    putc('\n', stderr);
-    out_here(stderr, tl(lastarg), 1);
-    outstats();
-    exit(1);
+    reduce_conf_error(lastarg);
 
   case ERROR: /* ERROR error_info => BOTTOM */
     upleft;
@@ -1453,26 +1428,7 @@ NEXTREDEX:
     hold = ap(arg2, arg3);
     hold = reduce(hold); /* ### */
     if (fails(hold)) {
-      fprintf(stderr, "\nPARSE OF %sFAILS WITH UNEXPECTED ", getstring(arg1, 0));
-      arg3 = reduce(tl(g_residue(arg3)));
-      if (arg3 == NIL) {
-        fprintf(stderr, "END OF INPUT\n"), outstats(), exit(1);
-      }
-      hold = ap(FST, hd(arg3));
-      hold = reduce(hold);
-      fprintf(stderr, "TOKEN \"");
-      if (hold == OFFSIDE) {
-        fprintf(stderr, "offside"); /* not now possible */
-      }
-      {
-        char *p = getstring(hold, 0);
-        while (*p) {
-          fprintf(stderr, "%s", charname(*p++));
-        }
-      }
-      fprintf(stderr, "\"\n");
-      outstats();
-      exit(1);
+      reduce_parse_close_error(arg1, arg3);
     }
     rewrite_to_value(&e, hd(hold));
     goto NEXTREDEX;
@@ -1896,7 +1852,13 @@ NEXTREDEX:
       }
       DOWNLEFT;
       DOWNLEFT;
-      goto L_READVALS;
+      {
+        struct reduce_ctx call_ctx = { .e = e, .s = s, .hold = hold, .arg1 = arg1, .arg2 = arg2, .arg3 = arg3 };
+        enum reduce_action act = reduce_stream_read(&call_ctx, READVALS);
+        e = call_ctx.e; s = call_ctx.s; hold = call_ctx.hold; arg1 = call_ctx.arg1; arg2 = call_ctx.arg2; arg3 = call_ctx.arg3;
+        if (act == REDUCE_DONE) goto DONE;
+        if (act == REDUCE_NEXT) goto NEXTREDEX;
+      }
     case ATOM: /* for(;;){upleft; } */
                /* as above if there are constructors with tag ATOM
                   and +ve arity.  Since there are none we could test
@@ -2227,7 +2189,13 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
       hd(e) = READ;
       DOWNLEFT;
     }
-    goto L_READ;
+    {
+      struct reduce_ctx call_ctx = { .e = e, .s = s, .hold = hold, .arg1 = arg1, .arg2 = arg2, .arg3 = arg3 };
+      enum reduce_action act = reduce_stream_read(&call_ctx, READ);
+      e = call_ctx.e; s = call_ctx.s; hold = call_ctx.hold; arg1 = call_ctx.arg1; arg2 = call_ctx.arg2; arg3 = call_ctx.arg3;
+      if (act == REDUCE_DONE) goto DONE;
+      if (act == REDUCE_NEXT) goto NEXTREDEX;
+    }
 
   case READY(STARTREADBIN): /* STARTREADBIN filename => READBIN streamptr */
     UPLEFT;
@@ -2243,7 +2211,13 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
       hd(e) = READBIN;
       DOWNLEFT;
     }
-    goto L_READBIN;
+    {
+      struct reduce_ctx call_ctx = { .e = e, .s = s, .hold = hold, .arg1 = arg1, .arg2 = arg2, .arg3 = arg3 };
+      enum reduce_action act = reduce_stream_read(&call_ctx, READBIN);
+      e = call_ctx.e; s = call_ctx.s; hold = call_ctx.hold; arg1 = call_ctx.arg1; arg2 = call_ctx.arg2; arg3 = call_ctx.arg3;
+      if (act == REDUCE_DONE) goto DONE;
+      if (act == REDUCE_NEXT) goto NEXTREDEX;
+    }
 
   case READY(TRY): /* TRY FAIL y => y
                       TRY other y => other  */
@@ -2778,7 +2752,6 @@ DONE: /* sub task completed -- s is either BACKSTOP or a tailpointer */
   default:
     fprintf(stderr, "\nimpossible event in reduce ("), out(stderr, e), fprintf(stderr, ")\n"),
         exit(1);
-    return 0; /* proforma only - unreachable */
   } /* end of "ready" switch */
 
 } /* end of reduce */

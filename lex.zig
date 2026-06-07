@@ -53,7 +53,7 @@ export var dicq: [*:0]u8 = undefined;
 
 var insertdepth: Word = -1;
 var lmargin: Word = 0;
-var echostack: Word = NIL;
+export var echostack: Word = NIL;
 var lverge: Word = 0;
 var prefixbase: ?[*]u8 = null;
 var prefixlimit: Word = 1024;

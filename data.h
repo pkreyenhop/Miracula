@@ -357,6 +357,8 @@ word UNION(word /*s1*/, word /*s2*/);
 
 /* function prototype - y.tab.c */
 int yyparse(void);
+void mark_parser_stack(void);
+
 
 extern int yychar; /* defined in y.tab.c */
 

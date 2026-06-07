@@ -1293,8 +1293,8 @@ export fn printlist(title: [*:0]const u8, l_in: Word) void {
     _ = c.printf(";\n");
 }
 
-var hereinc: Word = 0;
-var lasthereinc: Word = 0;
+export var hereinc: Word = 0;
+export var lasthereinc: Word = 0;
 
 fn id_who(x: Word) Word {
     return t(h(h(x)));

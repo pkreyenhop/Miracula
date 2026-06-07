@@ -31,7 +31,7 @@ extern fn math_error(s: [*:0]const u8) void;
 
 var logIBASE: f64 = 0;
 var log10IBASE: f64 = 0;
-var b_rem: Word = 0;
+export var b_rem: Word = 0;
 export var big_one: Word = 0;
 
 fn h(x: Word) Word {

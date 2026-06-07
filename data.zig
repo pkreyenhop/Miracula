@@ -297,6 +297,7 @@ extern var lastexp: Word;
 extern var nill: Word;
 extern var standardout: Word;
 extern var big_one: Word;
+extern var b_rem: Word;
 extern var yyval: Word;
 extern var yylval: Word;
 extern var R: Word;
@@ -618,6 +619,7 @@ export fn bases() void {
         mark(nill);
         mark(standardout);
         mark(big_one);
+        mark(b_rem);
         mark(yyval);
         mark(yylval);
         mark(R);

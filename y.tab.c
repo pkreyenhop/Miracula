@@ -5608,3 +5608,22 @@ yyreturn:
   yyfreestack(&yystack);
   return (yyresult);
 }
+
+void mark_parser_stack(void) {
+  extern void mark(word);
+  if (yystack.l_base) {
+    YYSTYPE *pv;
+    for (pv = yystack.l_base; pv <= yystack.l_mark; ++pv) {
+      mark(*pv);
+    }
+  }
+#if YYBTYACC
+  if (yylvals && yylve) {
+    YYSTYPE *pv;
+    for (pv = yylvals; pv < yylve; ++pv) {
+      mark(*pv);
+    }
+  }
+#endif
+}
+

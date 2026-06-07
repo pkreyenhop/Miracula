@@ -27,7 +27,7 @@ const c_flags = [_][]const u8{
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
-    const optimize = b.option(std.builtin.OptimizeMode, "optimize", "Prioritize performance, safety, or binary size") orelse .ReleaseFast;
+    const optimize = b.option(std.builtin.OptimizeMode, "optimize", "Prioritize performance, safety, or binary size") orelse .ReleaseSafe;
     const configured_mira_path = b.option([]const u8, "mira-path", "Path to the mira binary used by tests");
     const mira_path = configured_mira_path orelse "./zig-out/bin/mira";
     const lib_path = b.option([]const u8, "lib-path", "Path to the miralib directory used by tests") orelse "./miralib";
@@ -42,7 +42,8 @@ pub fn build(b: *std.Build) void {
     const lex_zig = addZigObject(b, "lex-zig", "lex.zig", target, optimize, true);
     const trans_zig = addZigObject(b, "trans-zig", "trans.zig", target, optimize, true);
     const types_zig = addZigObject(b, "types-zig", "types.zig", target, optimize, true);
-    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_zig, data_zig, lex_zig, trans_zig, types_zig);
+    const reduce_zig = addZigObject(b, "reduce-zig", "reduce.zig", target, optimize, true);
+    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_zig, data_zig, lex_zig, trans_zig, types_zig, reduce_zig);
     const install_mira = b.addInstallArtifact(mira, .{});
     b.getInstallStep().dependOn(&install_mira.step);
 
@@ -198,6 +199,7 @@ fn addMira(
     lex_zig: *std.Build.Step.Compile,
     trans_zig: *std.Build.Step.Compile,
     types_zig: *std.Build.Step.Compile,
+    reduce_zig: *std.Build.Step.Compile,
 ) *std.Build.Step.Compile {
     const mira = addCExecutable(b, "mira", &c_sources, target, optimize);
     mira.root_module.addObject(utf8_zig);
@@ -210,6 +212,7 @@ fn addMira(
     mira.root_module.addObject(lex_zig);
     mira.root_module.addObject(trans_zig);
     mira.root_module.addObject(types_zig);
+    mira.root_module.addObject(reduce_zig);
     mira.root_module.linkSystemLibrary("m", .{});
     return mira;
 }
