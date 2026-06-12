@@ -785,3 +785,10 @@ export fn output(arg_e: Word) void {
     _ = clib.fprintf(getStderr().?, ">\n");
     clib.exit(1);
 }
+
+comptime {
+    _ = @import("src/reducer/reduce.zig");
+    _ = @import("src/reducer/combinators.zig");
+    _ = @import("src/reducer/ready.zig");
+}
+

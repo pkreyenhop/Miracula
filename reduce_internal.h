@@ -218,6 +218,8 @@ static inline void rewrite_to_string(word *expr, const char *value) {
 // Function Prototypes for Modular Reducer Files
 
 // Combinators (reduce_combinators.c)
+extern void zig_handleI(ReductionCtx *ctx);
+extern void zig_handleK(ReductionCtx *ctx);
 void handle_S(ReductionCtx *ctx);
 void handle_B(ReductionCtx *ctx);
 void handle_CB(ReductionCtx *ctx);

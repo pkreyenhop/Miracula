@@ -79,7 +79,7 @@ NEXTREDEX:
   case CB: handle_CB(ctx); break;
   case C: handle_C(ctx); break;
   case Y: handle_Y(ctx); break;
-  case K: handle_K(ctx); break;
+  case K: zig_handleK(ctx); break;
   case KI: handle_KI(ctx); break;
   case S1: handle_S1(ctx); break;
   case B1: handle_B1(ctx); break;
@@ -120,6 +120,9 @@ NEXTREDEX:
   case MKSTRICT: handle_MKSTRICT(ctx); break;
 
   case I:
+    zig_handleI(ctx);
+    break;
+
   case SEQ:
   case FORCE:
   case HD:
