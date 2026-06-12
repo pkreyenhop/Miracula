@@ -1,7 +1,11 @@
 const std = @import("std");
 
 const c_sources = [_][]const u8{
-    "reduce.c",
+    "reduce_core.c",
+    "reduce_combinators.c",
+    "reduce_ready.c",
+    "reduce_lex.c",
+    "reduce_io.c",
     "y.tab.c",
 };
 
@@ -19,7 +23,7 @@ const header_check_includes =
 ;
 
 const c_flags = [_][]const u8{
-    "-std=c23",
+    "-std=c11",
     "-Wall",
     "-Wextra",
     "-Wpedantic",
