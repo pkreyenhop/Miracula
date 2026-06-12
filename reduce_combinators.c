@@ -218,7 +218,7 @@ void handle_U(ReductionCtx *ctx) {
 void handle_Uf(ReductionCtx *ctx) {
   getarg(arg1);
   upleft;
-  if (tag[head(lastarg)] == CONSTRUCTOR) {
+  if (is_constructor(head(lastarg))) {
     hd(e) = ap(arg1, hd(lastarg)), tl(e) = tl(lastarg);
   } else {
     hd(e) = ap(arg1, ap(BODY, lastarg)), tl(e) = ap(LAST, lastarg);
@@ -233,7 +233,7 @@ void handle_ATLEAST(ReductionCtx *ctx) {
   getarg(arg2);
   upleft;
   lastarg = reduce(lastarg);
-  if (tag[lastarg] == INT) {
+  if (is_int(lastarg)) {
     hold = bigsub(lastarg, arg1);
     if (poz(hold)) {
       hd(e) = arg2, tl(e) = hold;
@@ -270,14 +270,14 @@ void handle_Ug(ReductionCtx *ctx) {
     ctx->action = ACT_NEXTREDEX;
     return;
   }
-  if (tag[lastarg] == CONSTRUCTOR) {
+  if (is_constructor(lastarg)) {
     rewrite_to_value(&e, arg2);
     ctx->action = ACT_NEXTREDEX;
     return;
   }
   hd(e) = hd(lastarg);
   tl(e) = tl(lastarg);
-  while (tag[hd(e)] != CONSTRUCTOR) {
+  while (!is_constructor(hd(e))) {
     hd(e) = ap(hd(hd(e)), tl(hd(e)));
     DOWNLEFT;
   }
@@ -308,7 +308,7 @@ void handle_GENSEQ(ReductionCtx *ctx) {
   GETARG(arg1);
   UPLEFT;
   if (tl(arg1) != NIL &&
-      (tag[arg1] == AP ? compare(lastarg, tl(arg1)) : compare(tl(arg1), lastarg)) > 0) {
+      (is_ap(arg1) ? compare(lastarg, tl(arg1)) : compare(tl(arg1), lastarg)) > 0) {
     rewrite_to_nil(&e);
   } else {
     hold = ap(hd(e), numplus(lastarg, hd(arg1)));
@@ -392,7 +392,7 @@ void handle_DROP(ReductionCtx *ctx) {
   getarg(arg1);
   upleft;
   arg1 = tl(hd(e)) = reduce(tl(hd(e)));
-  if (tag[arg1] != INT) {
+  if (!is_int(arg1)) {
     int_error("drop");
   }
   {
@@ -421,9 +421,9 @@ void handle_SUBSCRIPT(ReductionCtx *ctx) {
   }
   {
     long long indx = 0;
-    if (tag[arg1] == ATOM) {
+    if (is_atom(arg1)) {
       indx = arg1;
-    } else if (tag[arg1] == INT) {
+    } else if (is_int(arg1)) {
       indx = get_int(arg1);
     } else {
       int_error("!");
@@ -560,7 +560,7 @@ void handle_Ush1(ReductionCtx *ctx) {
   getarg(arg2);
   arg2 = reduce(arg2);
   getarg(arg3);
-  if (tag[arg1] == CONSTRUCTOR) {
+  if (is_constructor(arg1)) {
     if (suppressed(arg1)) {
       rewrite_to_string(&e, "<unprintable>");
     } else {
@@ -570,7 +570,7 @@ void handle_Ush1(ReductionCtx *ctx) {
     return;
   }
   hold = arg2 ? cons(')', NIL) : NIL;
-  while (tag[arg1] != CONSTRUCTOR) {
+  while (!is_constructor(arg1)) {
     hold = cons(' ', ap2(APPEND, ap(tl(arg1), ap(LAST, arg3)), hold)), arg1 = hd(arg1),
     arg3 = ap(BODY, arg3);
   }

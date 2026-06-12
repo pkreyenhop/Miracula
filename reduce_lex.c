@@ -342,7 +342,7 @@ void handle_DESTREV(ReductionCtx *ctx) {
   GETARG(arg1);
   arg2 = NIL;
   while (arg1 != NIL) {
-    if (tag[hd(arg1)] == STRCONS) {
+    if (is_strcons(hd(arg1))) {
       hd(arg1) = tl(hd(arg1));
     }
     hold = tl(arg1), tl(arg1) = arg2, arg2 = arg1, arg1 = hold;
@@ -380,7 +380,7 @@ void handle_LEX_COUNT(ReductionCtx *ctx) {
 }
 
 #undef lh
-#define lh(x) (tag[hd(x)] == STRCONS ? tl(hd(x)) : hd(x))
+#define lh(x) (is_strcons(hd(x)) ? tl(hd(x)) : hd(x))
 
 void handle_LEX_STRING(ReductionCtx *ctx) {
   GETARG(arg1);

@@ -53,7 +53,7 @@ word reduce(word e_val) {
 #endif
 
 NEXTREDEX:
-  while (!abnormal(ctx->e) && tag[ctx->e] == AP) {
+  while (is_ap(ctx->e)) {
     ctx_down_left(ctx);
   }
 #ifdef HISTO
@@ -305,7 +305,7 @@ DONE:
 
   ctx_up_right(ctx);
 
-  if (tag[ctx->e] == AP) {
+  if (is_ap(ctx->e)) {
     ctx_down_left(ctx);
     ctx_down_right(ctx);
     goto NEXTREDEX;

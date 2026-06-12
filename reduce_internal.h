@@ -90,6 +90,20 @@ static inline bool ctx_getarg(ReductionCtx *ctx, word *a) {
 #define hd(x) hd[clean_ptr(x) * 2]
 #define tl(x) tl[clean_ptr(x) * 2]
 
+// Tag Helper Functions
+static inline bool is_ap(word x) { return !abnormal(x) && tag[x] == AP; }
+static inline bool is_num(word x) { return !abnormal(x) && (tag[x] == INT || tag[x] == DOUBLE); }
+static inline bool is_constructor(word x) { return !abnormal(x) && tag[x] == CONSTRUCTOR; }
+static inline bool is_int(word x) { return !abnormal(x) && tag[x] == INT; }
+static inline bool is_double(word x) { return !abnormal(x) && tag[x] == DOUBLE; }
+static inline bool is_atom(word x) { return !abnormal(x) && tag[x] == ATOM; }
+static inline bool is_strcons(word x) { return !abnormal(x) && tag[x] == STRCONS; }
+static inline bool is_id(word x) { return !abnormal(x) && tag[x] == ID; }
+static inline bool is_datapair(word x) { return !abnormal(x) && tag[x] == DATAPAIR; }
+static inline bool is_startreadvals(word x) { return !abnormal(x) && tag[x] == STARTREADVALS; }
+static inline bool is_cons(word x) { return !abnormal(x) && tag[x] == CONS; }
+static inline bool is_unicode(word x) { return !abnormal(x) && tag[x] == UNICODE; }
+
 // Rewrite Helper Functions
 
 static inline void rewrite_to_value(word *expr, word value) {

@@ -68,9 +68,9 @@ static struct stat buf;
 #define L_KI (KI)
 #define L_I (I)
 
-#define coerce_dbl(x) (tag[x] == DOUBLE ? (x) : sto_dbl(bigtodbl(x)))
-#define suppressed(x) (tag[tl(x)] == STRCONS && tag[pn_val(tl(x))] != ID)
-#define constr_name(x) (tag[tl(x)] == ID ? get_id(tl(x)) : get_id(pn_val(tl(x))))
+#define coerce_dbl(x) (is_double(x) ? (x) : sto_dbl(bigtodbl(x)))
+#define suppressed(x) (is_strcons(tl(x)) && !is_id(pn_val(tl(x))))
+#define constr_name(x) (is_id(tl(x)) ? get_id(tl(x)) : get_id(pn_val(tl(x))))
 
 void handle_ready_state(ReductionCtx *ctx) {
 #ifdef DEBUG
@@ -140,7 +140,7 @@ void handle_ready_state(ReductionCtx *ctx) {
   case READY(TAKE):
     GETARG(arg1);
     upleft;
-    if (tag[arg1] != INT) {
+    if (!is_int(arg1)) {
       int_error("take");
     }
     {
@@ -430,7 +430,7 @@ void handle_ready_state(ReductionCtx *ctx) {
 
   case READY(NEG):
     UPLEFT;
-    if (tag[lastarg] == INT) {
+    if (is_int(lastarg)) {
       simpl(bignegate(lastarg));
     } else {
       setdbl(e, -get_dbl(lastarg));
@@ -446,7 +446,7 @@ void handle_ready_state(ReductionCtx *ctx) {
 
   case READY(DECODE):
     UPLEFT;
-    if (tag[lastarg] == DOUBLE) {
+    if (is_double(lastarg)) {
       int_error("decode");
     }
     {
@@ -464,13 +464,13 @@ void handle_ready_state(ReductionCtx *ctx) {
 
   case READY(INTEGER):
     UPLEFT;
-    rewrite_to_value(&e, tag[lastarg] == INT ? True : False);
+    rewrite_to_value(&e, is_int(lastarg) ? True : False);
     ctx->action = ACT_NEXTREDEX;
     return;
 
   case READY(SHOWNUM):
     UPLEFT;
-    if (tag[lastarg] == DOUBLE) {
+    if (is_double(lastarg)) {
       double x = get_dbl(lastarg);
 #ifndef RYU
       sprintf(linebuf, "%.16g", x);
@@ -502,7 +502,7 @@ void handle_ready_state(ReductionCtx *ctx) {
 
   case READY(SHOWHEX):
     UPLEFT;
-    if (tag[lastarg] == DOUBLE) {
+    if (is_double(lastarg)) {
       sprintf(linebuf, "%a", get_dbl(lastarg));
       rewrite_to_string(&e, linebuf);
     } else {
@@ -513,7 +513,7 @@ void handle_ready_state(ReductionCtx *ctx) {
 
   case READY(SHOWOCT):
     UPLEFT;
-    if (tag[lastarg] == DOUBLE) {
+    if (is_double(lastarg)) {
       int_error("showoct");
     } else {
       simpl(bigtostr8(lastarg));
@@ -543,7 +543,7 @@ void handle_ready_state(ReductionCtx *ctx) {
 
   case READY(ENTIER_FN):
     UPLEFT;
-    if (tag[lastarg] == INT) {
+    if (is_int(lastarg)) {
       rewrite_to_value(&e, lastarg);
     } else {
       simpl(dbltobig(get_dbl(lastarg)));
@@ -553,7 +553,7 @@ void handle_ready_state(ReductionCtx *ctx) {
 
   case READY(LOG_FN):
     UPLEFT;
-    if (tag[lastarg] == INT) {
+    if (is_int(lastarg)) {
       setdbl(e, biglog(lastarg));
     } else {
       errno = 0;
@@ -568,7 +568,7 @@ void handle_ready_state(ReductionCtx *ctx) {
 
   case READY(LOG10_FN):
     UPLEFT;
-    if (tag[lastarg] == INT) {
+    if (is_int(lastarg)) {
       setdbl(e, biglog10(lastarg));
     } else {
       errno = 0;
@@ -660,9 +660,9 @@ void handle_ready_state(ReductionCtx *ctx) {
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    if (tag[arg1] == DOUBLE) {
+    if (is_double(arg1)) {
       setdbl(e, get_dbl(arg1) + force_dbl(lastarg));
-    } else if (tag[lastarg] == DOUBLE) {
+    } else if (is_double(lastarg)) {
       setdbl(e, bigtodbl(arg1) + get_dbl(lastarg));
     } else {
       simpl(bigplus(arg1, lastarg));
@@ -674,9 +674,9 @@ void handle_ready_state(ReductionCtx *ctx) {
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    if (tag[arg1] == DOUBLE) {
+    if (is_double(arg1)) {
       setdbl(e, get_dbl(arg1) - force_dbl(lastarg));
-    } else if (tag[lastarg] == DOUBLE) {
+    } else if (is_double(lastarg)) {
       setdbl(e, bigtodbl(arg1) - get_dbl(lastarg));
     } else {
       simpl(bigsub(arg1, lastarg));
@@ -688,9 +688,9 @@ void handle_ready_state(ReductionCtx *ctx) {
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    if (tag[arg1] == DOUBLE) {
+    if (is_double(arg1)) {
       setdbl(e, get_dbl(arg1) * force_dbl(lastarg));
-    } else if (tag[lastarg] == DOUBLE) {
+    } else if (is_double(lastarg)) {
       setdbl(e, bigtodbl(arg1) * get_dbl(lastarg));
     } else {
       simpl(bigtimes(arg1, lastarg));
@@ -702,7 +702,7 @@ void handle_ready_state(ReductionCtx *ctx) {
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    if (tag[arg1] == DOUBLE || tag[lastarg] == DOUBLE) {
+    if (is_double(arg1) || is_double(lastarg)) {
       int_error("div");
     }
     if (bigzero(lastarg)) {
@@ -729,7 +729,7 @@ void handle_ready_state(ReductionCtx *ctx) {
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    if (tag[arg1] == DOUBLE || tag[lastarg] == DOUBLE) {
+    if (is_double(arg1) || is_double(lastarg)) {
       int_error("mod");
     }
     if (bigzero(lastarg)) {
@@ -743,13 +743,13 @@ void handle_ready_state(ReductionCtx *ctx) {
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    if (tag[lastarg] == DOUBLE) {
+    if (is_double(lastarg)) {
       fa = force_dbl(arg1);
       if (fa < 0.0) {
         errno = EDOM, math_error("^");
       }
       fb = get_dbl(lastarg);
-    } else if (tag[arg1] == DOUBLE) {
+    } else if (is_double(arg1)) {
       fa = get_dbl(arg1), fb = bigtodbl(lastarg);
     } else if (neg(lastarg)) {
       fa = bigtodbl(arg1), fb = bigtodbl(lastarg);
@@ -770,7 +770,7 @@ void handle_ready_state(ReductionCtx *ctx) {
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    if (tag[arg1] == DOUBLE) {
+    if (is_double(arg1)) {
       int_error("showscaled");
     }
     arg1 = getsmallint(arg1);
@@ -783,7 +783,7 @@ void handle_ready_state(ReductionCtx *ctx) {
     RESTORE(e);
     GETARG(arg1);
     UPLEFT;
-    if (tag[arg1] == DOUBLE) {
+    if (is_double(arg1)) {
       int_error("showfloat");
     }
     arg1 = getsmallint(arg1);
@@ -822,7 +822,7 @@ void handle_ready_state(ReductionCtx *ctx) {
     GETARG(arg2);
     UPLEFT;
     hd(e) = ap(GENSEQ, cons(arg1, arg2));
-    if (tag[arg1] == INT ? poz(arg1) : get_dbl(arg1) >= 0.0) {
+    if (is_int(arg1) ? poz(arg1) : get_dbl(arg1) >= 0.0) {
       tag[tl(hd(e))] = AP;
     }
     ctx->action = ACT_NEXTREDEX;
@@ -838,7 +838,7 @@ void handle_ready_state(ReductionCtx *ctx) {
       ctx->action = ACT_DONE;
       return;
     }
-    if (tag[arg1] == CONSTRUCTOR) {
+    if (is_constructor(arg1)) {
       if (suppressed(arg1)) {
         rewrite_to_string(&e, "<unprintable>");
       } else {
@@ -848,7 +848,7 @@ void handle_ready_state(ReductionCtx *ctx) {
       return;
     }
     hold = arg2 ? cons(')', NIL) : NIL;
-    while (tag[arg1] != CONSTRUCTOR) {
+    while (!is_constructor(arg1)) {
       hold = cons(' ', ap2(APPEND, ap(tl(arg1), tl(arg3)), hold)), arg1 = hd(arg1), arg3 = hd(arg3);
     }
     if (suppressed(arg1)) {
