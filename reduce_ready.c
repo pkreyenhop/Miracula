@@ -69,8 +69,6 @@ static struct stat buf;
 #define L_I (I)
 
 #define coerce_dbl(x) (is_double(x) ? (x) : sto_dbl(bigtodbl(x)))
-#define suppressed(x) (is_strcons(tl(x)) && !is_id(pn_val(tl(x))))
-#define constr_name(x) (is_id(tl(x)) ? get_id(tl(x)) : get_id(pn_val(tl(x))))
 
 void handle_ready_state(ReductionCtx *ctx) {
 #ifdef DEBUG
@@ -380,10 +378,10 @@ void handle_ready_state(ReductionCtx *ctx) {
     UPLEFT;
     if (lastarg == True) {
       rewrite_to_value(&e, K);
-      handle_K(ctx);
+      zig_handleK(ctx);
     } else {
       rewrite_to_value(&e, KI);
-      handle_KI(ctx);
+      zig_handleKI(ctx);
     }
     return;
 
@@ -406,7 +404,7 @@ void handle_ready_state(ReductionCtx *ctx) {
       handle_strict_monadic(ctx);
     } else {
       hd(e) = K, DOWNLEFT;
-      handle_K(ctx);
+      zig_handleK(ctx);
     }
     return;
 
@@ -415,7 +413,7 @@ void handle_ready_state(ReductionCtx *ctx) {
     if (lastarg == True) {
       hd(e) = K;
       DOWNLEFT;
-      handle_K(ctx);
+      zig_handleK(ctx);
     } else {
       e = I;
       handle_strict_monadic(ctx);

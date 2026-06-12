@@ -140,3 +140,8 @@ pub inline fn rewrite_to_existing_tail(expr: Word) Word {
     return tl_get(expr);
 }
 
+pub inline fn ap(x: Word, y: Word) Word {
+    return clib.make(clib.AP, x, y);
+}
+
+

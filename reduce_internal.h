@@ -147,8 +147,8 @@ extern word str_conv(const char *s_val);
 // Helper macros from original reduce.c
 #define constr_tag(x) hd(x)
 #define idconstr_tag(x) hd(id_val(x))
-#define constr_name(x) (tag[tl(x)] == ID ? get_id(tl(x)) : get_id(pn_val(tl(x))))
-#define suppressed(x) (tag[tl(x)] == STRCONS && tag[pn_val(tl(x))] != ID)
+#define constr_name(x) (is_id(tl(x)) ? get_id(tl(x)) : get_id(pn_val(tl(x))))
+#define suppressed(x) (is_strcons(tl(x)) && !is_id(pn_val(tl(x))))
 #define isodigit(x) ('0' <= (x) && (x) <= '7')
 #define sign(x) (x)
 
@@ -220,19 +220,18 @@ static inline void rewrite_to_string(word *expr, const char *value) {
 // Combinators (reduce_combinators.c)
 extern void zig_handleI(ReductionCtx *ctx);
 extern void zig_handleK(ReductionCtx *ctx);
-void handle_S(ReductionCtx *ctx);
-void handle_B(ReductionCtx *ctx);
-void handle_CB(ReductionCtx *ctx);
-void handle_C(ReductionCtx *ctx);
-void handle_Y(ReductionCtx *ctx);
-void handle_K(ReductionCtx *ctx);
-void handle_KI(ReductionCtx *ctx);
-void handle_S1(ReductionCtx *ctx);
-void handle_B1(ReductionCtx *ctx);
-void handle_C1(ReductionCtx *ctx);
-void handle_S_p(ReductionCtx *ctx);
-void handle_B_p(ReductionCtx *ctx);
-void handle_C_p(ReductionCtx *ctx);
+extern void zig_handleS(ReductionCtx *ctx);
+extern void zig_handleB(ReductionCtx *ctx);
+extern void zig_handleCB(ReductionCtx *ctx);
+extern void zig_handleC(ReductionCtx *ctx);
+extern void zig_handleY(ReductionCtx *ctx);
+extern void zig_handleKI(ReductionCtx *ctx);
+extern void zig_handleS1(ReductionCtx *ctx);
+extern void zig_handleB1(ReductionCtx *ctx);
+extern void zig_handleC1(ReductionCtx *ctx);
+extern void zig_handleS_p(ReductionCtx *ctx);
+extern void zig_handleB_p(ReductionCtx *ctx);
+extern void zig_handleC_p(ReductionCtx *ctx);
 void handle_ITERATE(ReductionCtx *ctx);
 void handle_ITERATE1(ReductionCtx *ctx);
 void handle_P(ReductionCtx *ctx);

@@ -74,19 +74,19 @@ NEXTREDEX:
   ctx->action = ACT_NONE;
 
   switch (ctx->e) {
-  case S: handle_S(ctx); break;
-  case B: handle_B(ctx); break;
-  case CB: handle_CB(ctx); break;
-  case C: handle_C(ctx); break;
-  case Y: handle_Y(ctx); break;
+  case S: zig_handleS(ctx); break;
+  case B: zig_handleB(ctx); break;
+  case CB: zig_handleCB(ctx); break;
+  case C: zig_handleC(ctx); break;
+  case Y: zig_handleY(ctx); break;
   case K: zig_handleK(ctx); break;
-  case KI: handle_KI(ctx); break;
-  case S1: handle_S1(ctx); break;
-  case B1: handle_B1(ctx); break;
-  case C1: handle_C1(ctx); break;
-  case S_p: handle_S_p(ctx); break;
-  case B_p: handle_B_p(ctx); break;
-  case C_p: handle_C_p(ctx); break;
+  case KI: zig_handleKI(ctx); break;
+  case S1: zig_handleS1(ctx); break;
+  case B1: zig_handleB1(ctx); break;
+  case C1: zig_handleC1(ctx); break;
+  case S_p: zig_handleS_p(ctx); break;
+  case B_p: zig_handleB_p(ctx); break;
+  case C_p: zig_handleC_p(ctx); break;
   case ITERATE: handle_ITERATE(ctx); break;
   case ITERATE1: handle_ITERATE1(ctx); break;
   case P:
