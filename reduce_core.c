@@ -87,37 +87,37 @@ NEXTREDEX:
   case S_p: zig_handleS_p(ctx); break;
   case B_p: zig_handleB_p(ctx); break;
   case C_p: zig_handleC_p(ctx); break;
-  case ITERATE: handle_ITERATE(ctx); break;
-  case ITERATE1: handle_ITERATE1(ctx); break;
+  case ITERATE: zig_handleITERATE(ctx); break;
+  case ITERATE1: zig_handleITERATE1(ctx); break;
   case P:
-  case G_RULE: handle_P(ctx); break;
-  case U: handle_U(ctx); break;
-  case Uf: handle_Uf(ctx); break;
-  case ATLEAST: handle_ATLEAST(ctx); break;
-  case U_: handle_U_(ctx); break;
-  case Ug: handle_Ug(ctx); break;
-  case MATCH: handle_MATCH(ctx); break;
-  case MATCHINT: handle_MATCHINT(ctx); break;
-  case GENSEQ: handle_GENSEQ(ctx); break;
-  case MAP: handle_MAP(ctx); break;
-  case FLATMAP: handle_FLATMAP(ctx); break;
-  case FILTER: handle_FILTER(ctx); break;
-  case LIST_LAST: handle_LIST_LAST(ctx); break;
-  case LENGTH: handle_LENGTH(ctx); break;
-  case DROP: handle_DROP(ctx); break;
-  case SUBSCRIPT: handle_SUBSCRIPT(ctx); break;
-  case FOLDL1: handle_FOLDL1(ctx); break;
-  case FOLDL: handle_FOLDL(ctx); break;
-  case FOLDR: handle_FOLDR(ctx); break;
-  case BADCASE: handle_BADCASE(ctx); break;
-  case GETARGS: handle_GETARGS(ctx); break;
-  case CONFERROR: handle_CONFERROR(ctx); break;
-  case ERROR: handle_ERROR(ctx); break;
-  case WAIT: handle_WAIT(ctx); break;
-  case TRY: handle_TRY(ctx); break;
-  case FAIL: handle_FAIL(ctx); break;
-  case Ush1: handle_Ush1(ctx); break;
-  case MKSTRICT: handle_MKSTRICT(ctx); break;
+  case G_RULE: zig_handleP(ctx); break;
+  case U: zig_handleU(ctx); break;
+  case Uf: zig_handleUf(ctx); break;
+  case ATLEAST: zig_handleATLEAST(ctx); break;
+  case U_: zig_handleU_(ctx); break;
+  case Ug: zig_handleUg(ctx); break;
+  case MATCH: zig_handleMATCH(ctx); break;
+  case MATCHINT: zig_handleMATCHINT(ctx); break;
+  case GENSEQ: zig_handleGENSEQ(ctx); break;
+  case MAP: zig_handleMAP(ctx); break;
+  case FLATMAP: zig_handleFLATMAP(ctx); break;
+  case FILTER: zig_handleFILTER(ctx); break;
+  case LIST_LAST: zig_handleLIST_LAST(ctx); break;
+  case LENGTH: zig_handleLENGTH(ctx); break;
+  case DROP: zig_handleDROP(ctx); break;
+  case SUBSCRIPT: zig_handleSUBSCRIPT(ctx); break;
+  case FOLDL1: zig_handleFOLDL1(ctx); break;
+  case FOLDL: zig_handleFOLDL(ctx); break;
+  case FOLDR: zig_handleFOLDR(ctx); break;
+  case BADCASE: zig_handleBADCASE(ctx); break;
+  case GETARGS: zig_handleGETARGS(ctx); break;
+  case CONFERROR: zig_handleCONFERROR(ctx); break;
+  case ERROR: zig_handleERROR(ctx); break;
+  case WAIT: zig_handleWAIT(ctx); break;
+  case TRY: zig_handleTRY(ctx); break;
+  case FAIL: zig_handleFAIL(ctx); break;
+  case Ush1: zig_handleUsh1(ctx); break;
+  case MKSTRICT: zig_handleMKSTRICT(ctx); break;
 
   case I:
     zig_handleI(ctx);
@@ -158,7 +158,7 @@ NEXTREDEX:
   case SIN_FN:
   case COS_FN:
   case SQRT_FN:
-    handle_strict_monadic(ctx);
+    zig_handle_strict_monadic(ctx);
     break;
 
   case ZIP:
@@ -177,12 +177,12 @@ NEXTREDEX:
   case SHOWSCALED:
   case SHOWFLOAT:
   case MERGE:
-    handle_strict_diadic(ctx);
+    zig_handle_strict_diadic(ctx);
     break;
 
   case Ush:
   case STEPUNTIL:
-    handle_strict_triadic(ctx);
+    zig_handle_strict_triadic(ctx);
     break;
 
   // Grammar Combinators (reduce_lex.c)

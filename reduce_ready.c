@@ -401,7 +401,7 @@ void handle_ready_state(ReductionCtx *ctx) {
     UPLEFT;
     if (lastarg == True) {
       e = I;
-      handle_strict_monadic(ctx);
+      zig_handle_strict_monadic(ctx);
     } else {
       hd(e) = K, DOWNLEFT;
       zig_handleK(ctx);
@@ -416,7 +416,7 @@ void handle_ready_state(ReductionCtx *ctx) {
       zig_handleK(ctx);
     } else {
       e = I;
-      handle_strict_monadic(ctx);
+      zig_handle_strict_monadic(ctx);
     }
     return;
 
