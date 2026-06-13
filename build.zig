@@ -27,7 +27,7 @@ const c_flags = [_][]const u8{
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
-    const optimize = b.option(std.builtin.OptimizeMode, "optimize", "Prioritize performance, safety, or binary size") orelse .ReleaseSafe;
+    const optimize = b.option(std.builtin.OptimizeMode, "optimize", "Prioritize performance, safety, or binary size") orelse .Debug;
     const configured_mira_path = b.option([]const u8, "mira-path", "Path to the mira binary used by tests");
     const mira_path = configured_mira_path orelse "./zig-out/bin/mira";
     const lib_path = b.option([]const u8, "lib-path", "Path to the miralib directory used by tests") orelse "./miralib";
