@@ -587,40 +587,28 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.STEP => {
             reduce.GETARG(ctx, &ctx.args[0]);
-            if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
-                return;
-            }
+            reduce.upLeft(ctx);
             reduce.hd_set(ctx.e, reduce.ap(clib.GENSEQ, reduce.cons(ctx.args[0], clib.NIL)));
             ctx.action = clib.ACT_NEXTREDEX;
             return;
         },
         clib.EQ => {
             reduce.GETARG(ctx, &ctx.args[0]);
-            if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
-                return;
-            }
+            reduce.upLeft(ctx);
             reduce.rewrite_to_compare_eq(&ctx.e, ctx.args[0], lastarg(ctx));
             ctx.action = clib.ACT_DONE;
             return;
         },
         clib.NEQ => {
             reduce.GETARG(ctx, &ctx.args[0]);
-            if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
-                return;
-            }
+            reduce.upLeft(ctx);
             reduce.rewrite_to_compare_neq(&ctx.e, ctx.args[0], lastarg(ctx));
             ctx.action = clib.ACT_DONE;
             return;
         },
         clib.PLUS => {
             reduce.GETARG(ctx, &ctx.args[0]);
-            if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
-                return;
-            }
+            reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0])) {
                 clib.setdbl(ctx.e, clib.get_dbl(ctx.args[0]) + reduce.force_dbl(lastarg(ctx)));
             } else if (reduce.is_double(lastarg(ctx))) {
@@ -633,10 +621,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.MINUS => {
             reduce.GETARG(ctx, &ctx.args[0]);
-            if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
-                return;
-            }
+            reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0])) {
                 clib.setdbl(ctx.e, clib.get_dbl(ctx.args[0]) - reduce.force_dbl(lastarg(ctx)));
             } else if (reduce.is_double(lastarg(ctx))) {
@@ -649,10 +634,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.TIMES => {
             reduce.GETARG(ctx, &ctx.args[0]);
-            if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
-                return;
-            }
+            reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0])) {
                 clib.setdbl(ctx.e, clib.get_dbl(ctx.args[0]) * reduce.force_dbl(lastarg(ctx)));
             } else if (reduce.is_double(lastarg(ctx))) {
@@ -665,10 +647,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.INTDIV => {
             reduce.GETARG(ctx, &ctx.args[0]);
-            if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
-                return;
-            }
+            reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0]) or reduce.is_double(lastarg(ctx))) {
                 clib.int_error("div");
             }
@@ -681,10 +660,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.FDIV => {
             reduce.GETARG(ctx, &ctx.args[0]);
-            if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
-                return;
-            }
+            reduce.upLeft(ctx);
             const fa = reduce.force_dbl(ctx.args[0]);
             const fb = reduce.force_dbl(lastarg(ctx));
             if (fb == 0.0) {
@@ -696,10 +672,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.MOD => {
             reduce.GETARG(ctx, &ctx.args[0]);
-            if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
-                return;
-            }
+            reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0]) or reduce.is_double(lastarg(ctx))) {
                 clib.int_error("mod");
             }
@@ -712,30 +685,21 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.GRE => {
             reduce.GETARG(ctx, &ctx.args[0]);
-            if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
-                return;
-            }
+            reduce.upLeft(ctx);
             reduce.rewrite_to_compare_ge(&ctx.e, ctx.args[0], lastarg(ctx));
             ctx.action = clib.ACT_DONE;
             return;
         },
         clib.GR => {
             reduce.GETARG(ctx, &ctx.args[0]);
-            if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
-                return;
-            }
+            reduce.upLeft(ctx);
             reduce.rewrite_to_compare_gt(&ctx.e, ctx.args[0], lastarg(ctx));
             ctx.action = clib.ACT_DONE;
             return;
         },
         clib.POWER => {
             reduce.GETARG(ctx, &ctx.args[0]);
-            if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
-                return;
-            }
+            reduce.upLeft(ctx);
             var fa: f64 = 0.0;
             var fb: f64 = 0.0;
             if (reduce.is_double(lastarg(ctx))) {
@@ -766,10 +730,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.SHOWSCALED => {
             reduce.GETARG(ctx, &ctx.args[0]);
-            if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
-                return;
-            }
+            reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0])) {
                 clib.int_error("showscaled");
             }
@@ -781,10 +742,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.SHOWFLOAT => {
             reduce.GETARG(ctx, &ctx.args[0]);
-            if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
-                return;
-            }
+            reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0])) {
                 clib.int_error("showfloat");
             }
@@ -796,10 +754,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.MERGE => {
             reduce.GETARG(ctx, &ctx.args[0]);
-            if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
-                return;
-            }
+            reduce.upLeft(ctx);
             if (ctx.args[0] == clib.NIL) {
                 reduce.rewrite_to_value(&ctx.e, lastarg(ctx));
             } else if (lastarg(ctx) == clib.NIL) {
@@ -821,10 +776,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         clib.STEPUNTIL => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.GETARG(ctx, &ctx.args[1]);
-            if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
-                return;
-            }
+            reduce.upLeft(ctx);
             reduce.hd_set(ctx.e, reduce.ap(clib.GENSEQ, reduce.cons(ctx.args[0], ctx.args[1])));
             if (if (reduce.is_int(ctx.args[0])) reduce.poz(ctx.args[0]) else reduce.force_dbl(ctx.args[0]) >= 0.0) {
                 tag[reduce.clean_ptr(reduce.tl_get(reduce.hd_get(ctx.e)))] = clib.AP;
@@ -872,10 +824,9 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
             return;
         },
         else => {
-            _ = clib.fprintf(reduce.getStderr().?, "\nimpossible event in reduce (");
-            clib.out_here(reduce.getStderr().?, e_val, 0);
-            _ = clib.fprintf(reduce.getStderr().?, ")\n");
-            clib.exit(1);
+            const tag_val = tag[reduce.clean_ptr(e_val)];
+            _ = clib.fprintf(reduce.getStderr().?, "\nimpossible event in reduce (val: %ld, tag: %d)\n", e_val, tag_val);
+            std.process.exit(1);
         },
     }
 }

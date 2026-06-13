@@ -618,11 +618,11 @@ export fn zig_handleTRY(ctx: *ReductionCtx) void {
         reduce.tl_set(ctx.e, arg2);
     }
     reduce.downLeft(ctx);
-    ctx.hold = ctx.s;
-    ctx.s = ctx.e;
-    ctx.e = reduce.tl_get(ctx.e);
-    reduce.tl_set(ctx.hold, ctx.s);
-    ctx.s |= clib.tlptrbit;
+    const old_e = ctx.s;
+    const old_hd_e = ctx.e;
+    ctx.e = reduce.tl_get(old_hd_e);
+    reduce.tl_set(old_hd_e, old_e);
+    ctx.s = old_hd_e | clib.tlptrbit;
     ctx.action = clib.ACT_NEXTREDEX;
 }
 

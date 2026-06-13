@@ -791,5 +791,7 @@ comptime {
     _ = @import("src/reducer/reduce.zig");
     _ = @import("src/reducer/combinators.zig");
     _ = @import("src/reducer/ready.zig");
+    _ = @import("src/reducer/io.zig");
+    _ = @import("src/reducer/lex.zig");
 }
 

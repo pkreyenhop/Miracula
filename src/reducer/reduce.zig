@@ -26,6 +26,7 @@ extern var hd: [*]Word;
 extern var tl: [*]Word;
 extern var tag: [*]u8;
 extern var cycles: i64;
+pub extern var stdinuse: Word;
 
 extern fn handle_ready_state(ctx: *ReductionCtx) void;
 
