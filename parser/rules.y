@@ -94,6 +94,7 @@ char *yysterm[]= {
 #include "data.h"
 #include "big.h"
 #include "lex.h"
+#include "parser_bridge.h"
 extern word nill,k_i,Void;
 extern word message,standardout;
 extern word big_one;
@@ -505,32 +506,28 @@ eqop:
 
 rhs:
     cases WHERE ldefs 
-        = { $$ = block($3,compose($1),0); }|
+        = { $$ = parse_rhs_cases_where($1, $3); }|
     exp WHERE ldefs 
-        = { $$ = block($3,$1,0); }|
+        = { $$ = parse_rhs_exp_where($1, $3); }|
     exp|
     cases
-        =  { $$ = compose($1); };
+        =  { $$ = parse_rhs_cases($1); };
 
 cases:
     exp ',' if exp
-        =  { $$ = cons(ap2(COND,$4,$1),NIL); }|
+        =  { $$ = parse_case_first($1, $4); }|
     exp ',' OTHERWISE
-        =  { $$ = cons(ap(OTHERWISE,$1),NIL); }|
+        =  { $$ = parse_case_otherwise_first($1); }|
     cases reindent ELSEQ alt
-        =  { $$ = cons($4,$1); 
-             if(hd(hd($1))==OTHERWISE)
-               syntax("\"otherwise\" must be last case\n"); };
+        =  { $$ = parse_case_add($1, $4); };
 
 alt:
     here exp
-        =  { errs=$1,
-             syntax("obsolete syntax, \", otherwise\" missing\n");
-             $$ = ap(OTHERWISE,label($1,$2)); }|
+        =  { $$ = parse_alt_obsolete($1, $2); }|
     here exp ',' if exp
-        =  { $$ = label($1,ap2(COND,$5,$2)); }|
+        =  { $$ = parse_alt_cond($1, $2, $5); }|
     here exp ',' OTHERWISE
-        =  { $$ = ap(OTHERWISE,label($1,$2)); };
+        =  { $$ = parse_alt_otherwise($1, $2); };
 
 if:
     /* empty */
@@ -561,146 +558,146 @@ reindent:
  
 liste:  /* NB - returns list in reverse order */
     exp
-        = { $$ = cons($1,NIL); }|
+        = { $$ = parse_liste_first($1); }|
     liste ',' exp  /* left recursive so as not to eat YACC stack */
-        = { $$ = cons($3,$1); };
+        = { $$ = parse_liste_next($1, $3); };
 
 e1:
     '~' e1 %prec '='
-        = { $$ = ap(NOT,$2); }|
+        = { $$ = parse_neg($2); }|
     e1 PLUSPLUS e1
-        = { $$ = ap2(APPEND,$1,$3); }|
+        = { $$ = parse_append($1,$3); }|
     e1 ':' e1
-        = { $$ = cons($1,$3); }|
+        = { $$ = parse_cons($1,$3); }|
     e1 MINUSMINUS e1
-        = { $$ = ap2(listdiff_fn,$1,$3);  }|
+        = { $$ = parse_listdiff($1,$3);  }|
     e1 VEL e1
-        = { $$ = ap2(OR,$1,$3); }|
+        = { $$ = parse_or($1,$3); }|
     e1 '&' e1
-        = { $$ = ap2(AND,$1,$3); }|
+        = { $$ = parse_and($1,$3); }|
     reln |
     e2;
 
 es1:                     /* e1 or presection */
     '~' e1 %prec '='
-        = { $$ = ap(NOT,$2); }|
+        = { $$ = parse_neg($2); }|
     e1 PLUSPLUS e1
-        = { $$ = ap2(APPEND,$1,$3); }|
+        = { $$ = parse_append($1,$3); }|
     e1 PLUSPLUS
-        = { $$ = ap(APPEND,$1); }|
+        = { $$ = parse_append_pre($1); }|
     e1 ':' e1
-        = { $$ = cons($1,$3); }|
+        = { $$ = parse_cons($1,$3); }|
     e1 ':'
-        = { $$ = ap(P,$1); }|
+        = { $$ = parse_cons_pre($1); }|
     e1 MINUSMINUS e1
-        = { $$ = ap2(listdiff_fn,$1,$3);  }|
+        = { $$ = parse_listdiff($1,$3);  }|
     e1 MINUSMINUS
-        = { $$ = ap(listdiff_fn,$1);  }|
+        = { $$ = parse_listdiff_pre($1);  }|
     e1 VEL e1
-        = { $$ = ap2(OR,$1,$3); }|
+        = { $$ = parse_or($1,$3); }|
     e1 VEL
-        = { $$ = ap(OR,$1); }|
+        = { $$ = parse_or_pre($1); }|
     e1 '&' e1
-        = { $$ = ap2(AND,$1,$3); }|
+        = { $$ = parse_and($1,$3); }|
     e1 '&'
-        = { $$ = ap(AND,$1); }|
+        = { $$ = parse_and_pre($1); }|
     relsn |
     es2;
 
 e2:
     '-' e2 %prec '-'
-        = { $$ = ap(NEG,$2); }|
+        = { $$ = parse_neg($2); }|
     '#' e2 %prec '.'
-        = { $$ = ap(LENGTH,$2);  }|
+        = { $$ = parse_length($2);  }|
     e2 '+' e2
-        = { $$ = ap2(PLUS,$1,$3); }|
+        = { $$ = parse_plus($1,$3); }|
     e2 '-' e2
-        = { $$ = ap2(MINUS,$1,$3); }|
+        = { $$ = parse_minus($1,$3); }|
     e2 '*' e2
-        = { $$ = ap2(TIMES,$1,$3); }|
+        = { $$ = parse_times($1,$3); }|
     e2 '/' e2
-        = { $$ = ap2(FDIV,$1,$3); }|
+        = { $$ = parse_fdiv($1,$3); }|
     e2 DIV e2
-        = { $$ = ap2(INTDIV,$1,$3); } |
+        = { $$ = parse_intdiv($1,$3); } |
     e2 REM e2
-        = { $$ = ap2(MOD,$1,$3); }|
+        = { $$ = parse_mod($1,$3); }|
     e2 '^' e2
-        = { $$ = ap2(POWER,$1,$3); } |
+        = { $$ = parse_power($1,$3); } |
     e2 '.' e2
-        = { $$ = ap2(B,$1,$3);  }|
+        = { $$ = parse_b($1,$3);  }|
     e2 '!' e2
-        = { $$ = ap2(SUBSCRIPT,$3,$1); }|
+        = { $$ = parse_subscript($1,$3); }|
     e3;
 
 es2:               /* e2 or presection */
     '-' e2 %prec '-'
-        = { $$ = ap(NEG,$2); }|
+        = { $$ = parse_neg($2); }|
     '#' e2 %prec '.'
-        = { $$ = ap(LENGTH,$2);  }|
+        = { $$ = parse_length($2);  }|
     e2 '+' e2
-        = { $$ = ap2(PLUS,$1,$3); }|
+        = { $$ = parse_plus($1,$3); }|
     e2 '+'
-        = { $$ = ap(PLUS,$1); }|
+        = { $$ = parse_plus_pre($1); }|
     e2 '-' e2
-        = { $$ = ap2(MINUS,$1,$3); }|
+        = { $$ = parse_minus($1,$3); }|
     e2 '-'
-        = { $$ = ap(MINUS,$1); }|
+        = { $$ = parse_minus_pre($1); }|
     e2 '*' e2
-        = { $$ = ap2(TIMES,$1,$3); }|
+        = { $$ = parse_times($1,$3); }|
     e2 '*'
-        = { $$ = ap(TIMES,$1); }|
+        = { $$ = parse_times_pre($1); }|
     e2 '/' e2
-        = { $$ = ap2(FDIV,$1,$3); }|
+        = { $$ = parse_fdiv($1,$3); }|
     e2 '/'
-        = { $$ = ap(FDIV,$1); }|
+        = { $$ = parse_fdiv_pre($1); }|
     e2 DIV e2
-        = { $$ = ap2(INTDIV,$1,$3); } |
+        = { $$ = parse_intdiv($1,$3); } |
     e2 DIV
-        = { $$ = ap(INTDIV,$1); } |
+        = { $$ = parse_intdiv_pre($1); } |
     e2 REM e2
-        = { $$ = ap2(MOD,$1,$3); }|
+        = { $$ = parse_mod($1,$3); }|
     e2 REM
-        = { $$ = ap(MOD,$1); }|
+        = { $$ = parse_mod_pre($1); }|
     e2 '^' e2
-        = { $$ = ap2(POWER,$1,$3); } |
+        = { $$ = parse_power($1,$3); } |
     e2 '^'
-        = { $$ = ap(POWER,$1); } |
+        = { $$ = parse_power_pre($1); } |
     e2 '.' e2
-        = { $$ = ap2(B,$1,$3);  }|
+        = { $$ = parse_b($1,$3);  }|
     e2 '.'
-        = { $$ = ap(B,$1);  }|
+        = { $$ = parse_b_pre($1);  }|
     e2 '!' e2
-        = { $$ = ap2(SUBSCRIPT,$3,$1); }|
+        = { $$ = parse_subscript($1,$3); }|
     e2 '!'
-        = { $$ = ap2(C,SUBSCRIPT,$1); }|
+        = { $$ = parse_subscript_pre($1); }|
     es3;
 
 e3:
     comb INFIXNAME e3
-        = { $$ = ap2($2,$1,$3); }|
+        = { $$ = parse_infix($2,$1,$3); }|
     comb INFIXCNAME e3
-        = { $$ = ap2($2,$1,$3); }|
+        = { $$ = parse_infix($2,$1,$3); }|
     comb;
 
 es3:                     /* e3 or presection */
     comb INFIXNAME e3
-        = { $$ = ap2($2,$1,$3); }|
+        = { $$ = parse_infix($2,$1,$3); }|
     comb INFIXNAME
-        = { $$ = ap($2,$1); }|
+        = { $$ = parse_infix_pre($2,$1); }|
     comb INFIXCNAME e3
-        = { $$ = ap2($2,$1,$3); }|
+        = { $$ = parse_infix($2,$1,$3); }|
     comb INFIXCNAME
-        = { $$ = ap($2,$1); }|
+        = { $$ = parse_infix_pre($2,$1); }|
     comb;
 
 comb:
     comb arg
-        = { $$ = ap($1,$2); }|
+        = { $$ = parse_comb_arg($1,$2); }|
     arg;
 
 reln:
     e2 relop e2
-        = { $$ = ap2($2,$1,$3); }|
+        = { $$ = parse_infix($2,$1,$3); }|
     reln relop e2
         = { word subject;
             subject = hd(hd($1))==AND?tl(tl($1)):tl($1);
@@ -710,9 +707,9 @@ reln:
 
 relsn:                     /* reln or presection */
     e2 relop e2
-        = { $$ = ap2($2,$1,$3); }|
+        = { $$ = parse_infix($2,$1,$3); }|
     e2 relop
-        = { $$ = ap($2,$1); }|
+        = { $$ = parse_infix_pre($2,$1); }|
     reln relop e2
         = { word subject;
             subject = hd(hd($1))==AND?tl(tl($1)):tl($1);
@@ -1500,14 +1497,9 @@ field1:
 
 names:          /* used twice - for bnf list, and for inherited attr list */
     /* empty */
-        = { $$ = NIL; }|
+        = { $$ = parse_nil(); }|
     names NAME
-        = { if(member($1,$2))
-              printf("%ssyntax error: repeated identifier \"%s\" in %s list\n",
-                      echoing?"\n":"",get_id($2),inbnf?"bnf":"attribute"),
-              acterror();
-            $$ = inbnf?add1($2,$1):cons($2,$1);
-          };
+        = { $$ = parse_names_add($1, $2); };
 
 productions:
     lspec

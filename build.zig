@@ -1,7 +1,8 @@
 const std = @import("std");
 
 const c_sources = [_][]const u8{
-    "y.tab.c",
+    "parser/y.tab.c",
+    "parser/parser_bridge.c",
 };
 
 const header_check_includes =
@@ -42,7 +43,8 @@ pub fn build(b: *std.Build) void {
     const trans_zig = addZigObject(b, "trans-zig", "trans.zig", target, optimize, true);
     const types_zig = addZigObject(b, "types-zig", "types.zig", target, optimize, true);
     const reduce_zig = addZigObject(b, "reduce-zig", "reduce.zig", target, optimize, true);
-    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_zig, data_zig, lex_zig, trans_zig, types_zig, reduce_zig);
+    const parse_actions_zig = addZigObject(b, "parse-actions-zig", "parser/parse_actions.zig", target, optimize, true);
+    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_zig, data_zig, lex_zig, trans_zig, types_zig, reduce_zig, parse_actions_zig);
     const install_mira = b.addInstallArtifact(mira, .{});
     b.getInstallStep().dependOn(&install_mira.step);
 
@@ -99,6 +101,7 @@ pub fn build(b: *std.Build) void {
     });
     const run_steer_tests = b.addRunArtifact(steer_tests);
     steer_tests.root_module.addIncludePath(b.path("."));
+    steer_tests.root_module.addIncludePath(b.path("parser"));
     const lex_tests = b.addTest(.{
         .name = "lex-tests",
         .root_module = b.createModule(.{
@@ -109,6 +112,7 @@ pub fn build(b: *std.Build) void {
         }),
     });
     lex_tests.root_module.addIncludePath(b.path("."));
+    lex_tests.root_module.addIncludePath(b.path("parser"));
     const run_lex_tests = b.addRunArtifact(lex_tests);
 
     const header_check = addHeaderCheck(b, target, optimize);
@@ -199,6 +203,7 @@ fn addMira(
     trans_zig: *std.Build.Step.Compile,
     types_zig: *std.Build.Step.Compile,
     reduce_zig: *std.Build.Step.Compile,
+    parse_actions_zig: *std.Build.Step.Compile,
 ) *std.Build.Step.Compile {
     const mira = addCExecutable(b, "mira", &c_sources, target, optimize);
     mira.root_module.addObject(utf8_zig);
@@ -212,6 +217,7 @@ fn addMira(
     mira.root_module.addObject(trans_zig);
     mira.root_module.addObject(types_zig);
     mira.root_module.addObject(reduce_zig);
+    mira.root_module.addObject(parse_actions_zig);
     mira.root_module.linkSystemLibrary("m", .{});
     return mira;
 }
@@ -251,6 +257,7 @@ fn addCExecutable(
         }),
     });
     exe.root_module.addIncludePath(b.path("."));
+    exe.root_module.addIncludePath(b.path("parser"));
     exe.root_module.addCSourceFiles(.{
         .files = sources,
         .flags = &c_flags,
@@ -286,6 +293,7 @@ fn addHeaderCheck(
         }),
     });
     check.root_module.addIncludePath(b.path("."));
+    check.root_module.addIncludePath(b.path("parser"));
     check.root_module.addCSourceFile(.{
         .file = source,
         .flags = &c_flags,
@@ -312,6 +320,7 @@ fn addZigObject(
         }),
     });
     obj.root_module.addIncludePath(b.path("."));
+    obj.root_module.addIncludePath(b.path("parser"));
     return obj;
 }
 

@@ -18,6 +18,7 @@ const c_raw = @cImport({
     @cInclude("big.h");
     @cInclude("lex.h");
     @cInclude("version.h");
+    @cInclude("parser/parser_bridge.h");
 });
 
 const clib = c_raw;
@@ -193,7 +194,6 @@ export var internals: Word = NIL;
 extern var TABSTRS: Word;
 extern var ND: Word;
 extern var polyshowerror: c_int;
-extern var yychar: c_int;
 extern var fileq: Word;
 
 extern fn setupheap() void;
@@ -204,7 +204,6 @@ extern fn resetgcstats() void;
 extern fn reset_state() void;
 extern fn reset_lex() void;
 extern fn dic_check() void;
-extern fn yyparse() c_int;
 extern fn isconstrname(input: [*:0]const u8) c_int;
 
 // Local tests heap definitions
@@ -967,7 +966,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                 echoing = 0;
                 polyshowerror = 0;
                 commandmode = 1;
-                _ = yyparse();
+                _ = clib.mira_parse_current();
                 if (SYNERR != 0) {
                     SYNERR = 0;
                 } else if (c != '\n') {
@@ -1014,7 +1013,7 @@ export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
         echoing = 0;
         commandmode = 1;
         s_in = f;
-        _ = yyparse();
+        _ = clib.mira_parse_current();
         s_in = getStdin();
         if (SYNERR != 0) {
             SYNERR = 0;
@@ -1875,7 +1874,7 @@ fn loadfile(t_val: [*:0]const u8) void {
     includees = NIL;
     FBS = NIL;
 
-    _ = yyparse();
+    _ = clib.mira_parse_current();
 
     if (SYNERR == 0 and exportfiles != NIL) {
         var s = exportfiles;
@@ -2700,27 +2699,27 @@ fn stdlib() void {
     predef("zip2", clib.ZIP, clib.undef_t);
 }
 
-export fn yyerror(s: [*:0]const u8) void {
+export fn mira_report_parser_error(s: [*:0]const u8, yychar_val: c_int, lookahead_c: Word) void {
     if (SYNERR != 0) return;
     if (echoing != 0) {
         _ = clib.printf("\n");
     }
     _ = clib.printf("%s - unexpected ", s);
-    if (yychar == clib.OFFSIDE and (c == clib.EOF or c == '|')) {
-        if (c == clib.EOF) {
+    if (yychar_val == clib.OFFSIDE and (lookahead_c == clib.EOF or lookahead_c == '|')) {
+        if (lookahead_c == clib.EOF) {
             _ = clib.printf("end of file");
         } else {
             _ = clib.printf("token '|'");
         }
     } else {
-        _ = clib.printf(if (yychar == 0) (if (commandmode != 0) "newline" else "end of file") else "token ");
-        if (yychar >= 256) {
+        _ = clib.printf(if (yychar_val == 0) (if (commandmode != 0) "newline" else "end of file") else "token ");
+        if (yychar_val >= 256) {
             _ = clib.putchar('\"');
         }
-        if (yychar != 0) {
-            clib.out2(getStdout(), yychar);
+        if (yychar_val != 0) {
+            clib.out2(getStdout(), yychar_val);
         }
-        if (yychar >= 256) {
+        if (yychar_val >= 256) {
             _ = clib.putchar('\"');
         }
     }
