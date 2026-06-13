@@ -219,8 +219,6 @@ pub fn build(b: *std.Build) void {
     clean_step.dependOn(&clean.step);
 }
 
-
-
 fn addZigExecutable(
     b: *std.Build,
     name: []const u8,
@@ -323,9 +321,14 @@ fn addZigObject(
     return obj;
 }
 
-
-
 fn addPlatformMacros(exe: *std.Build.Step.Compile, target: std.Build.ResolvedTarget) void {
+    // 1. Force override GLIBC fortification checks globally
+    exe.root_module.addCMacro("_FORTIFY_SOURCE", "0");
+
+    // 2. Enable standard GNU extensions to let fcntl functions compile cleanly
+    exe.root_module.addCMacro("_GNU_SOURCE", "1");
+
+    // 3. Keep your existing platform-specific target definitions intact
     if (target.result.os.tag == .macos) {
         exe.root_module.addCMacro("_DARWIN_C_SOURCE", "1");
     } else {
