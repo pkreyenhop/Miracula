@@ -1,18 +1,37 @@
-*.x
+# Zig build outputs
+.zig-cache/
+zig-cache/
+zig-out/
+
+# Object files and libraries
 *.o
-/.host
-/.vdate
-/y.tab.c
-/y.tab.h
+*.obj
+*.a
+*.so
+*.dll
+*.dylib
+
+# Compiled / generated Miranda formats
+*.x
 /mira
 /fdate
 /just
-/zig-out
-/.zig-cache
 /miralib/menudriver
 /miralib/preludx
 /tests/mira_tests
 /tests/utf8_tests
+
+# Documents and host metadata
+/.host
+/.vdate
 /mira.1.pdf
 /mira.man.pdf
+
+# Logs and environment files
+build_errors.log
 .aider*
+*.txt
+/linux_stat_test
+/mira_original
+/mira_original_debug
+

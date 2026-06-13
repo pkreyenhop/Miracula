@@ -1,55 +1,70 @@
-# Maintenance of Miranda
+# Miracula
 
-The Miranda source code is now maintained on `codeberg.org/DATurner/miranda`
+Miracula is a modern, high-performance implementation of the **Miranda** programming language, migrated to the **Zig** programming language. 
 
-This is particularly relevant because the last binary release
-on miranda.org.uk was of mira 2.042 in Sep 2008 and since then
-Professor Turner only released it in source code form, of which
-his latest is 2.066 from Jan 2020, but those releases do not compile
-out of the box.
+The project's goal is to transition the original, historical C codebase into an idiomatic, pure-Zig implementation with clean module boundaries, solid cross-compilation support, and zero legacy build headaches.
 
-To build it from source, you need Zig.
-If you need to modify `rules.y` you'll also need `byacc`;
-it does not work at all with the supposedly compatible GNU `bison`.
+---
 
-It is known to work on
-aarch, amd, arm, chrp, evbarm, loongarch, mips, powerpc, riscv and x86,
-on 32-bit and 64-bit, big-endian and little-endian systems running
-AIX, AlmaLinux, AlpineLinux, Archlinux, CentOS, Debian, FreeBSD, Haiku,
-MacOS X, NetBSD, OpenBSD, OpenSUSE and Rocky with all versions of
-GCC from 2.95 to 14 and clang 11 to 16 with no optimization enabled and
-some versions of gcc and clang up to `-O3`. The 64-bit version has been
-tested with up to 2TB of RAM for the heap, over 100,000,000,000 cells.
+## Current Status
 
-You can see whether optimization will work for you in the table "Compilers"
-in https://codeberg.org/DATurner/miranda/issues/25 
+* **✔ Runtime Migrated to Zig**: The garbage-collected graph reduction runtime is fully rewritten and functioning in Zig.
+* **✔ Unified Zig Build System**: Replaced the legacy Makefiles and build scripts with `build.zig`.
+* **✔ Modular Source Structure**: Reorganized the source tree into logical packages (runtime, compiler, parser, and IO subsystems).
+* **✔ Tests Passing**: The test suites and regression scripts pass completely.
+* **⚠ Legacy Yacc Parser**: The semantic actions are in Zig, but `rules.y` remains the source of truth, compiling to C parser structures.
+* **⚠ libc Linked**: libc remains linked to support the legacy parser and platform abstractions.
 
-It compiles but does not work on Solaris with a sun4u processor
-and a Windows port has not yet been attempted.
+---
 
-A release will be made on Codeberg when further portability
-and testing are complete, currently scheduled for 1st May 2025.
+## Repository Layout
 
-In the meantime, you can
+* [src/runtime](file:///Users/pkreyenhop/src/Miracula/src/runtime) — The graph reduction engine, big integers, and heap/garbage collector.
+* [src/compiler](file:///Users/pkreyenhop/src/Miracula/src/compiler) — The typechecker, code generator, and translation structures.
+* [src/parser](file:///Users/pkreyenhop/src/Miracula/src/parser) — Lexer and semantic actions bridging the yacc-generated parser.
+* [src/io](file:///Users/pkreyenhop/src/Miracula/src/io) — UTF-8 and signals platform IO abstractions.
+* [tests](file:///Users/pkreyenhop/src/Miracula/tests) — Integration, golden, and regression tests.
+* [miralib](file:///Users/pkreyenhop/src/Miracula/miralib) — Miranda standard environment prelude and libraries.
 
-```
-git clone https://codeberg.org/DATurner/miranda
-cd miranda
+---
+
+## Building
+
+To build the `mira` executable:
+
+```bash
 zig build
-zig build test
-zig build install
 ```
 
-which puts build outputs under `zig-out/` by default. The Makefile is now only a
-compatibility wrapper around `zig build` targets.
+This compiles the executable and places it in `zig-out/bin/mira`.
 
-You can also test it in the source directory before installing it
-by running it as `./zig-out/bin/mira -lib zig-out/lib/miralib`.
+---
 
-There is a mailing list `miranda@groups.io` whose web site is
-`http://groups.io/g/miranda` and you can also subscribe to it
-by sending an email to `miranda+subscribe@groups.io`
+## Running Tests
 
-His earlier language, KRC, is maintained at `codeberg.org/DATurner/KRC`
+To run all native unit and integration tests:
 
-    Martin Guy <martinwguy@gmail.com>, April 2025.
+```bash
+zig build test --summary all
+```
+
+---
+
+## Target Platforms
+
+Miracula officially supports and cross-compiles for:
+* **Apple Silicon macOS** (`aarch64-macos`)
+* **Intel 64-bit Linux** (`x86_64-linux`)
+
+---
+
+## Current Migration Roadmap
+
+| Phase | Description | Status |
+| --- | --- | --- |
+| **Phase 1** | Runtime Migration to Zig | **Complete** ✔ |
+| **Phase 2** | Source Modularization | **Complete** ✔ |
+| **Phase 3** | Unified Build System | **Complete** ✔ |
+| **Phase 4** | libc Dependency Reduction | **Complete** ✔ |
+| **Phase 5** | Pure Zig Parser (No Yacc/C) | *Planned* |
+| **Phase 6** | Pure Zig Implementation (No libc) | *Planned* |

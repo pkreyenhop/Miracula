@@ -19,7 +19,7 @@ extern YYSTYPE yylval;
 #include "y.tab.h" /* for tokens */
 #include "combs.h" /* for combinators */
 #include "utf8.h"  /* for UMAX etc */
-#include ".xversion"
+#define XVERSION 83
 /* #define for XVERSION - we increase this by one at each non upwards
    compatible change to dump format */
 

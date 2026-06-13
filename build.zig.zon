@@ -1,0 +1,13 @@
+.{
+    .name = .miracula,
+    .version = "2.0.66",
+    .fingerprint = 0x5a0e163111a41824,
+    .minimum_zig_version = "0.16.0",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "LICENSE",
+        "README.md",
+    },
+}
