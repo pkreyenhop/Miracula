@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const c_sources = [_][]const u8{
-    "parser/y.tab.c",
-    "parser/parser_bridge.c",
+    "parser/legacy/y.tab.c",
+    "parser/legacy/parser_bridge.c",
 };
 
 const header_check_includes =
@@ -101,7 +101,7 @@ pub fn build(b: *std.Build) void {
     });
     const run_steer_tests = b.addRunArtifact(steer_tests);
     steer_tests.root_module.addIncludePath(b.path("."));
-    steer_tests.root_module.addIncludePath(b.path("parser"));
+    steer_tests.root_module.addIncludePath(b.path("parser/legacy"));
     const lex_tests = b.addTest(.{
         .name = "lex-tests",
         .root_module = b.createModule(.{
@@ -112,7 +112,7 @@ pub fn build(b: *std.Build) void {
         }),
     });
     lex_tests.root_module.addIncludePath(b.path("."));
-    lex_tests.root_module.addIncludePath(b.path("parser"));
+    lex_tests.root_module.addIncludePath(b.path("parser/legacy"));
     const run_lex_tests = b.addRunArtifact(lex_tests);
 
     const header_check = addHeaderCheck(b, target, optimize);
@@ -257,7 +257,7 @@ fn addCExecutable(
         }),
     });
     exe.root_module.addIncludePath(b.path("."));
-    exe.root_module.addIncludePath(b.path("parser"));
+    exe.root_module.addIncludePath(b.path("parser/legacy"));
     exe.root_module.addCSourceFiles(.{
         .files = sources,
         .flags = &c_flags,
@@ -293,7 +293,7 @@ fn addHeaderCheck(
         }),
     });
     check.root_module.addIncludePath(b.path("."));
-    check.root_module.addIncludePath(b.path("parser"));
+    check.root_module.addIncludePath(b.path("parser/legacy"));
     check.root_module.addCSourceFile(.{
         .file = source,
         .flags = &c_flags,
@@ -320,7 +320,7 @@ fn addZigObject(
         }),
     });
     obj.root_module.addIncludePath(b.path("."));
-    obj.root_module.addIncludePath(b.path("parser"));
+    obj.root_module.addIncludePath(b.path("parser/legacy"));
     return obj;
 }
 

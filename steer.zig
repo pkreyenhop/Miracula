@@ -18,7 +18,7 @@ const c_raw = @cImport({
     @cInclude("big.h");
     @cInclude("lex.h");
     @cInclude("version.h");
-    @cInclude("parser/parser_bridge.h");
+    @cInclude("parser_bridge.h");
 });
 
 const clib = c_raw;
