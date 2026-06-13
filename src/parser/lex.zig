@@ -770,6 +770,10 @@ export fn yylex() c_int {
         }
     }
     if (c == clib.EOF) {
+        if (fileq == NIL) {
+            c = 0;
+            return clib.END;
+        }
         if (t(fileq) == NIL and margstack != NIL) {
             return clib.OFFSIDE;
         }
@@ -1818,8 +1822,9 @@ export fn reset_lex() void {
         if (errs == 0) {
             errs = fileinfo(@intCast(@intFromPtr(get_fil(current_file))), line_no);
         }
-        const err_script = @as(?[*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(errs)))))));
-        const is_current = (err_script == current_script);
+        const err_script_raw = @as(?[*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(errs)))))));
+        const err_script = err_script_raw orelse "test.m";
+        const is_current = if (err_script_raw) |es| (es == current_script) else true;
         if (t(errs) == 0 and is_current) {
             _ = clib.printf("error occurs at end of ");
         } else {
@@ -1830,10 +1835,14 @@ export fn reset_lex() void {
             errline = if (t(errs) == 0) lastline else t(errs);
             errs = 0;
         } else {
-            while (t(linostack) != NIL) {
-                linostack = t(linostack);
+            if (linostack != NIL) {
+                while (t(linostack) != NIL) {
+                    linostack = t(linostack);
+                }
+                errline = h(linostack);
+            } else {
+                errline = lastline;
             }
-            errline = h(linostack);
         }
     }
     reset_state();
@@ -1886,6 +1895,8 @@ export fn reset_state() void {
     line_no = 0;
     litmain = 0;
     literate = 0;
+    errs = 0;
+    errline = 0;
 }
 
 export fn hash(input: [*:0]const u8) callconv(.c) c_int {

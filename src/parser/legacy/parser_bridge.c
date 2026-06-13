@@ -43,7 +43,7 @@ void mira_lex_setup_string(const char *source) {
 }
 
 void mira_lex_cleanup(void) {
-    if (s_in) {
+    if (s_in && s_in != stdin && s_in != stdout && s_in != stderr) {
         fclose(s_in);
         s_in = NULL;
     }

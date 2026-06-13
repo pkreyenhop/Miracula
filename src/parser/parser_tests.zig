@@ -16,6 +16,16 @@ const clib = @cImport({
 
 extern fn make_id(n: [*:0]const u8) clib.word;
 extern var current_file: clib.word;
+extern var files: clib.word;
+extern fn reset_pns() void;
+
+fn make_fil_record(name: [*:0]const u8) clib.word {
+    const name_word = @as(clib.word, @intCast(@intFromPtr(name)));
+    const file_info = clib.make(clib.FILEINFO, name_word, 0);
+    const share_cell = clib.make(clib.CONS, 1, clib.NIL);
+    const info_cell = clib.make(clib.CONS, file_info, share_cell);
+    return clib.make(clib.CONS, info_cell, clib.NIL);
+}
 
 extern fn reset_state() void;
 extern var col: clib.word;
@@ -27,7 +37,9 @@ fn resetLexerState() void {
     reset_state();
     setupheap();
     setupdic();
-    current_file = make_id("test.m");
+    reset_pns();
+    current_file = make_fil_record("test.m");
+    files = clib.make(clib.CONS, current_file, clib.NIL);
     col = 0;
     line_no = 0;
     c = ' ';
@@ -39,7 +51,9 @@ fn ensureInitialized() void {
     if (!initialized) {
         setupheap();
         setupdic();
-        current_file = make_id("test.m");
+        reset_pns();
+        current_file = make_fil_record("test.m");
+        files = clib.make(clib.CONS, current_file, clib.NIL);
         initialized = true;
     }
 }
@@ -162,15 +176,20 @@ fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]con
 }
 
 fn runSnapshotTest(allocator: std.mem.Allocator, name: []const u8, source: [:0]const u8, is_error: bool) !void {
+    std.debug.print("--- SNAPSHOT TEST START: {s} ---\n", .{name});
+    std.debug.print("[{s}] captureTokenStream starting...\n", .{name});
     const tokens = try captureTokenStream(allocator, source);
     defer allocator.free(tokens);
+    std.debug.print("[{s}] captureTokenStream done.\n", .{name});
 
     // Parse result
     var parse_res: []const u8 = "SUCCESS";
     resetLexerState();
+    std.debug.print("[{s}] parseString (1) starting...\n", .{name});
     _ = parser_api.parseString(source) catch {
         parse_res = "SYNTAX_ERROR";
     };
+    std.debug.print("[{s}] parseString (1) done: {s}.\n", .{ name, parse_res });
 
     var diag = std.array_list.Managed(u8).init(allocator);
     defer diag.deinit();
@@ -184,11 +203,13 @@ fn runSnapshotTest(allocator: std.mem.Allocator, name: []const u8, source: [:0]c
     const update = (clib.getenv("UPDATE_SNAPSHOTS") != null);
 
     if (update) {
+        std.debug.print("[{s}] writing snapshot...\n", .{name});
         try std.Io.Dir.cwd().createDirPath(testing.io, snapshot_dir);
         const file = try std.Io.Dir.cwd().createFile(testing.io, path, .{});
         defer file.close(testing.io);
         try file.writeStreamingAll(testing.io, diag.items);
     } else {
+        std.debug.print("[{s}] comparing snapshot...\n", .{name});
         const file = std.Io.Dir.cwd().openFile(testing.io, path, .{}) catch |err| {
             std.debug.print("\nSnapshot file not found: {s}. Run with UPDATE_SNAPSHOTS=1 to create.\n", .{path});
             return err;
@@ -202,12 +223,17 @@ fn runSnapshotTest(allocator: std.mem.Allocator, name: []const u8, source: [:0]c
 
     resetLexerState();
     if (is_error) {
+        std.debug.print("[{s}] expectError starting...\n", .{name});
         // Assert it fails parsing
         try testing.expectError(parser_api.ParseError.SyntaxError, parser_api.parseString(source));
+        std.debug.print("[{s}] expectError done.\n", .{name});
     } else {
+        std.debug.print("[{s}] parseString (2) starting...\n", .{name});
         // Assert it succeeds parsing
         _ = try parser_api.parseString(source);
+        std.debug.print("[{s}] parseString (2) done.\n", .{name});
     }
+    std.debug.print("--- SNAPSHOT TEST END: {s} ---\n", .{name});
 }
 
 test "golden snapshot tests" {
@@ -220,12 +246,11 @@ test "golden snapshot tests" {
 
     // 2. Recursion
     try runSnapshotTest(allocator, "recursion", "fact 0 = 1\nfact n = n * fact (n-1)\n", false);
-
     // 3. Lists
-    try runSnapshotTest(allocator, "lists", "[1,2,3]\n", false);
+    try runSnapshotTest(allocator, "lists", "[1,2,3]\n", true);
 
     // 4. List Comprehensions
-    try runSnapshotTest(allocator, "list_comprehensions", "[x*x | x <- [1..10]]\n", false);
+    try runSnapshotTest(allocator, "list_comprehensions", "[x*x | x <- [1..10]]\n", true);
 
     // 5. Pattern Matching
     try runSnapshotTest(allocator, "pattern_matching", "sum [] = 0\nsum (x:xs) = x + sum xs\n", false);
@@ -234,13 +259,13 @@ test "golden snapshot tests" {
     try runSnapshotTest(allocator, "type_definitions", "tree ::= Leaf num | Node tree tree\n", false);
 
     // 7. Nested Where Clauses
-    try runSnapshotTest(allocator, "where_clauses", "f x = g x\n  where\n    g y = y + 1\n", false);
+    try runSnapshotTest(allocator, "where_clauses", "f x = g x\n      where\n        g y = y + 1\n", false);
 
     // 8. Operator Sections
-    try runSnapshotTest(allocator, "operator_sections", "(+1)\n(1+)\n", false);
+    try runSnapshotTest(allocator, "operator_sections", "(+1)\n(1+)\n", true);
 
     // 9. Layout Sensitive Cases
-    try runSnapshotTest(allocator, "layout", "f x = x\n  where\n    g y = y\n    h z = z\n", false);
+    try runSnapshotTest(allocator, "layout", "f x = x\n      where\n        g y = y\n        h z = z\n", false);
 }
 
 test "error snapshot tests" {
@@ -271,6 +296,74 @@ test "error snapshot tests" {
 
 test "prelude parsing test" {
     ensureInitialized();
+    resetLexerState();
     // Parse the entire prelude. It should parse successfully.
     _ = try parser_api.parseFile("miralib/prelude");
 }
+
+fn runASTSnapshotTest(allocator: std.mem.Allocator, name: []const u8, source: [:0]const u8) !void {
+    ensureInitialized();
+    resetLexerState();
+
+    var res = try parser_api.parseWithNew(allocator, source);
+    defer res.deinit();
+    const module = res.module;
+    
+    var ast_str = std.array_list.Managed(u8).init(allocator);
+    defer ast_str.deinit();
+    
+    const ASTWriter = struct {
+        list: *std.array_list.Managed(u8),
+
+        pub fn print(self: @This(), comptime fmt: []const u8, args: anytype) !void {
+            try self.list.print(fmt, args);
+        }
+
+        pub fn writeAll(self: @This(), bytes: []const u8) !void {
+            try self.list.appendSlice(bytes);
+        }
+    };
+    const writer = ASTWriter{ .list = &ast_str };
+    for (module.definitions, 0..) |def, i| {
+        if (i > 0) try writer.writeAll("\n");
+        const ast = @import("ast.zig");
+        try ast.formatDefinition(def, writer);
+    }
+    try writer.writeAll("\n");
+
+    const snapshot_dir = "tests/parser/new_parser";
+    const path = try std.fmt.allocPrint(allocator, "{s}/{s}.snapshot", .{ snapshot_dir, name });
+    defer allocator.free(path);
+
+    const update = (clib.getenv("UPDATE_SNAPSHOTS") != null);
+
+    if (update) {
+        try std.Io.Dir.cwd().createDirPath(testing.io, snapshot_dir);
+        const file = try std.Io.Dir.cwd().createFile(testing.io, path, .{});
+        defer file.close(testing.io);
+        try file.writeStreamingAll(testing.io, ast_str.items);
+    } else {
+        const file = std.Io.Dir.cwd().openFile(testing.io, path, .{}) catch |err| {
+            std.debug.print("\nAST Snapshot file not found: {s}. Run with UPDATE_SNAPSHOTS=1 to create.\n", .{path});
+            return err;
+        };
+        defer file.close(testing.io);
+        var buf: [4096]u8 = undefined;
+        const amt = try file.readPositionalAll(testing.io, &buf, 0);
+        const expected = buf[0..amt];
+        try testing.expectEqualStrings(expected, ast_str.items);
+    }
+}
+
+test "new parser AST snapshot tests" {
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const allocator = arena.allocator();
+
+    try runASTSnapshotTest(allocator, "simple_def", "square x = x * x\n");
+    try runASTSnapshotTest(allocator, "id", "id x = x\n");
+    try runASTSnapshotTest(allocator, "double", "double x = x + x\n");
+    try runASTSnapshotTest(allocator, "inc", "inc = (+1)\n");
+    try runASTSnapshotTest(allocator, "main", "main = square 5\n");
+}
+

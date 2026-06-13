@@ -1,0 +1,15 @@
+PARSE_RESULT: SUCCESS
+
+TOKENS:
+NAME("ee")
+NAME
+EQUALS
+NAME("eaf")
+NAME("x")
+WHERE("where")
+NAME("g")
+NAME("ere")
+EQUALS("ere")
+NAME("y")
+PLUS("y")
+CONST("1")

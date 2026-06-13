@@ -177,6 +177,9 @@ pub fn build(b: *std.Build) void {
     const test_mira = b.step("test-mira", "Run Zig integration tests against mira");
     test_mira.dependOn(&run_mira_tests.step);
 
+    const test_steer = b.step("test-steer", "Run only steer tests");
+    test_steer.dependOn(&run_steer_tests.step);
+
     const header_check_step = b.step("check-headers", "Compile standalone public-header check");
     header_check_step.dependOn(&header_check.step);
 

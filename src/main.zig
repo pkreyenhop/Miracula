@@ -2945,11 +2945,16 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             UTF8 = 1;
         } else if (clib.strcmp(arg, "-noUTF-8") == 0) {
             UTF8 = 0;
+        } else if (clib.strcmp(arg, "--parser=new") == 0 or clib.strcmp(arg, "-parser=new") == 0) {
+            parser_api.parser_mode = .new;
+        } else if (clib.strcmp(arg, "--parser=legacy") == 0 or clib.strcmp(arg, "-parser=legacy") == 0) {
+            parser_api.parser_mode = .legacy;
         } else {
             _ = clib.fprintf(getStderr(), "mira: unknown flag \"%s\"\n", arg);
             clib.exit(1);
         }
         arg_idx += 1;
+
     }
 
     const remaining_argc = argc_u - arg_idx;
