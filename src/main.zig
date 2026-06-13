@@ -206,26 +206,7 @@ extern fn reset_lex() void;
 extern fn dic_check() void;
 extern fn isconstrname(input: [*:0]const u8) c_int;
 
-// Local tests heap definitions
-var test_heap_heads: [2]Word = .{ 0, 0 };
-var test_heap_tails: [2]Word = .{ 0, 0 };
-var test_heap_tags: [1]u8 = .{0};
-var test_hd: [*]Word = test_heap_heads[0..].ptr;
-var test_tl: [*]Word = test_heap_tails[0..].ptr;
-var test_tag: [*]u8 = test_heap_tags[0..].ptr;
 
-comptime {
-    if (@import("builtin").is_test) {
-        @export(&test_hd, .{ .name = "hd" });
-        @export(&test_tl, .{ .name = "tl" });
-        @export(&test_tag, .{ .name = "tag" });
-        @export(&testMake, .{ .name = "make" });
-    }
-}
-
-fn testMake(_: u8, _: Word, _: Word) callconv(.c) Word {
-    unreachable;
-}
 
 fn h(x: Word) Word {
     if (x < ATOMLIMIT) return 0;
@@ -3462,8 +3443,24 @@ fn addtoenv(x: Word) void {
     tp(h(files)).* = cons(x, t(h(files)));
 }
 
+pub fn main(ctx: std.process.Init) !void {
+    const raw_args = ctx.minimal.args.vector;
+    const argv: [*][*:0]u8 = @ptrCast(@constCast(raw_args.ptr));
+    const argc: c_int = @intCast(raw_args.len);
+    const exit_code = main_entry(argc, argv);
+    std.process.exit(@intCast(exit_code));
+}
+
 comptime {
-    if (!@import("builtin").is_test) {
-        @export(&main_entry, .{ .name = "main" });
-    }
+    _ = @import("runtime/heap.zig");
+    _ = @import("runtime/reduce.zig");
+    _ = @import("runtime/combinator.zig");
+    _ = @import("runtime/big.zig");
+    _ = @import("parser/lex.zig");
+    _ = @import("parser/parse_actions.zig");
+    _ = @import("compiler/trans.zig");
+    _ = @import("compiler/types.zig");
+    _ = @import("io/utf8.zig");
+    _ = @import("io/signals.zig");
+    _ = @import("version.zig");
 }

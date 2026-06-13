@@ -32,21 +32,38 @@ pub fn build(b: *std.Build) void {
     const mira_path = configured_mira_path orelse "./zig-out/bin/mira";
     const lib_path = b.option([]const u8, "lib-path", "Path to the miralib directory used by tests") orelse "./miralib";
 
-    const utf8_zig = addZigObject(b, "utf8-zig", "src/io/utf8.zig", target, optimize, true);
-    const signals_zig = addZigObject(b, "signals-zig", "src/io/signals.zig", target, optimize, true);
-    const version_zig = addVersionObject(b, target, optimize);
-    const cmbnms_zig = addZigObject(b, "cmbnms-zig", "src/runtime/combinator.zig", target, optimize, false);
-    const big_zig = addZigObject(b, "big-zig", "src/runtime/big.zig", target, optimize, true);
-    const steer_zig = addZigObject(b, "steer-zig", "src/main.zig", target, optimize, true);
-    const data_zig = addZigObject(b, "data-zig", "src/runtime/heap.zig", target, optimize, true);
-    const lex_zig = addZigObject(b, "lex-zig", "src/parser/lex.zig", target, optimize, true);
-    const trans_zig = addZigObject(b, "trans-zig", "src/compiler/trans.zig", target, optimize, true);
-    const types_zig = addZigObject(b, "types-zig", "src/compiler/types.zig", target, optimize, true);
-    const reduce_zig = addZigObject(b, "reduce-zig", "src/runtime/reduce.zig", target, optimize, true);
-    const parse_actions_zig = addZigObject(b, "parse-actions-zig", "src/parser/parse_actions.zig", target, optimize, true);
-    const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_zig, data_zig, lex_zig, trans_zig, types_zig, reduce_zig, parse_actions_zig);
+    const version_text = readTrimmed(b, "miralib/.version");
+    const vdate = readTrimmed(b, ".vdate");
+    const host = readTrimmed(b, ".host");
+
+    const version_options = b.addOptions();
+    version_options.addOption(i32, "version", parseVersion(version_text));
+    version_options.addOption([]const u8, "vdate", vdate);
+    version_options.addOption([]const u8, "host", b.fmt("compiled by zig build\n{s}\n", .{host}));
+
+    const mira = b.addExecutable(.{
+        .name = "mira",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/main.zig"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        }),
+    });
+    mira.root_module.addOptions("version_options", version_options);
+    mira.root_module.addIncludePath(b.path("."));
+    mira.root_module.addIncludePath(b.path("src/parser/legacy"));
+    mira.root_module.addCSourceFiles(.{
+        .files = &c_sources,
+        .flags = &c_flags,
+    });
+    addPlatformMacros(mira, target);
+    mira.root_module.linkSystemLibrary("m", .{});
+
     const install_mira = b.addInstallArtifact(mira, .{});
     b.getInstallStep().dependOn(&install_mira.step);
+
+    const utf8_zig = addZigObject(b, "utf8-zig", "src/io/utf8.zig", target, optimize, true);
 
     const fdate = addZigExecutable(b, "fdate", "fdate.zig", target, optimize, true);
     const install_fdate = b.addInstallArtifact(fdate, .{});
@@ -102,6 +119,7 @@ pub fn build(b: *std.Build) void {
     const run_steer_tests = b.addRunArtifact(steer_tests);
     steer_tests.root_module.addIncludePath(b.path("."));
     steer_tests.root_module.addIncludePath(b.path("src/parser/legacy"));
+    steer_tests.root_module.addOptions("version_options", version_options);
     const lex_tests = b.addTest(.{
         .name = "lex-tests",
         .root_module = b.createModule(.{
@@ -188,39 +206,7 @@ pub fn build(b: *std.Build) void {
     clean_step.dependOn(&clean.step);
 }
 
-fn addMira(
-    b: *std.Build,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    utf8_zig: *std.Build.Step.Compile,
-    signals_zig: *std.Build.Step.Compile,
-    version_zig: *std.Build.Step.Compile,
-    cmbnms_zig: *std.Build.Step.Compile,
-    big_zig: *std.Build.Step.Compile,
-    steer_helpers_zig: *std.Build.Step.Compile,
-    data_zig: *std.Build.Step.Compile,
-    lex_zig: *std.Build.Step.Compile,
-    trans_zig: *std.Build.Step.Compile,
-    types_zig: *std.Build.Step.Compile,
-    reduce_zig: *std.Build.Step.Compile,
-    parse_actions_zig: *std.Build.Step.Compile,
-) *std.Build.Step.Compile {
-    const mira = addCExecutable(b, "mira", &c_sources, target, optimize);
-    mira.root_module.addObject(utf8_zig);
-    mira.root_module.addObject(signals_zig);
-    mira.root_module.addObject(version_zig);
-    mira.root_module.addObject(cmbnms_zig);
-    mira.root_module.addObject(big_zig);
-    mira.root_module.addObject(steer_helpers_zig);
-    mira.root_module.addObject(data_zig);
-    mira.root_module.addObject(lex_zig);
-    mira.root_module.addObject(trans_zig);
-    mira.root_module.addObject(types_zig);
-    mira.root_module.addObject(reduce_zig);
-    mira.root_module.addObject(parse_actions_zig);
-    mira.root_module.linkSystemLibrary("m", .{});
-    return mira;
-}
+
 
 fn addZigExecutable(
     b: *std.Build,
@@ -324,24 +310,7 @@ fn addZigObject(
     return obj;
 }
 
-fn addVersionObject(
-    b: *std.Build,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-) *std.Build.Step.Compile {
-    const version_text = readTrimmed(b, "miralib/.version");
-    const vdate = readTrimmed(b, ".vdate");
-    const host = readTrimmed(b, ".host");
 
-    const options = b.addOptions();
-    options.addOption(i32, "version", parseVersion(version_text));
-    options.addOption([]const u8, "vdate", vdate);
-    options.addOption([]const u8, "host", b.fmt("compiled by zig build\n{s}\n", .{host}));
-
-    const version = addZigObject(b, "version-zig", "src/version.zig", target, optimize, false);
-    version.root_module.addOptions("version_options", options);
-    return version;
-}
 
 fn addPlatformMacros(exe: *std.Build.Step.Compile, target: std.Build.ResolvedTarget) void {
     if (target.result.os.tag == .macos) {
