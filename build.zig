@@ -1,8 +1,8 @@
 const std = @import("std");
 
 const c_sources = [_][]const u8{
-    "parser/legacy/y.tab.c",
-    "parser/legacy/parser_bridge.c",
+    "src/parser/legacy/y.tab.c",
+    "src/parser/legacy/parser_bridge.c",
 };
 
 const header_check_includes =
@@ -32,18 +32,18 @@ pub fn build(b: *std.Build) void {
     const mira_path = configured_mira_path orelse "./zig-out/bin/mira";
     const lib_path = b.option([]const u8, "lib-path", "Path to the miralib directory used by tests") orelse "./miralib";
 
-    const utf8_zig = addZigObject(b, "utf8-zig", "utf8.zig", target, optimize, true);
-    const signals_zig = addZigObject(b, "signals-zig", "signals.zig", target, optimize, true);
+    const utf8_zig = addZigObject(b, "utf8-zig", "src/io/utf8.zig", target, optimize, true);
+    const signals_zig = addZigObject(b, "signals-zig", "src/io/signals.zig", target, optimize, true);
     const version_zig = addVersionObject(b, target, optimize);
-    const cmbnms_zig = addZigObject(b, "cmbnms-zig", "cmbnms.zig", target, optimize, false);
-    const big_zig = addZigObject(b, "big-zig", "big.zig", target, optimize, true);
-    const steer_zig = addZigObject(b, "steer-zig", "steer.zig", target, optimize, true);
-    const data_zig = addZigObject(b, "data-zig", "data.zig", target, optimize, true);
-    const lex_zig = addZigObject(b, "lex-zig", "lex.zig", target, optimize, true);
-    const trans_zig = addZigObject(b, "trans-zig", "trans.zig", target, optimize, true);
-    const types_zig = addZigObject(b, "types-zig", "types.zig", target, optimize, true);
-    const reduce_zig = addZigObject(b, "reduce-zig", "reduce.zig", target, optimize, true);
-    const parse_actions_zig = addZigObject(b, "parse-actions-zig", "parser/parse_actions.zig", target, optimize, true);
+    const cmbnms_zig = addZigObject(b, "cmbnms-zig", "src/runtime/combinator.zig", target, optimize, false);
+    const big_zig = addZigObject(b, "big-zig", "src/runtime/big.zig", target, optimize, true);
+    const steer_zig = addZigObject(b, "steer-zig", "src/main.zig", target, optimize, true);
+    const data_zig = addZigObject(b, "data-zig", "src/runtime/heap.zig", target, optimize, true);
+    const lex_zig = addZigObject(b, "lex-zig", "src/parser/lex.zig", target, optimize, true);
+    const trans_zig = addZigObject(b, "trans-zig", "src/compiler/trans.zig", target, optimize, true);
+    const types_zig = addZigObject(b, "types-zig", "src/compiler/types.zig", target, optimize, true);
+    const reduce_zig = addZigObject(b, "reduce-zig", "src/runtime/reduce.zig", target, optimize, true);
+    const parse_actions_zig = addZigObject(b, "parse-actions-zig", "src/parser/parse_actions.zig", target, optimize, true);
     const mira = addMira(b, target, optimize, utf8_zig, signals_zig, version_zig, cmbnms_zig, big_zig, steer_zig, data_zig, lex_zig, trans_zig, types_zig, reduce_zig, parse_actions_zig);
     const install_mira = b.addInstallArtifact(mira, .{});
     b.getInstallStep().dependOn(&install_mira.step);
@@ -93,7 +93,7 @@ pub fn build(b: *std.Build) void {
     const steer_tests = b.addTest(.{
         .name = "steer-tests",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("steer.zig"),
+            .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
             .link_libc = true,
@@ -101,18 +101,18 @@ pub fn build(b: *std.Build) void {
     });
     const run_steer_tests = b.addRunArtifact(steer_tests);
     steer_tests.root_module.addIncludePath(b.path("."));
-    steer_tests.root_module.addIncludePath(b.path("parser/legacy"));
+    steer_tests.root_module.addIncludePath(b.path("src/parser/legacy"));
     const lex_tests = b.addTest(.{
         .name = "lex-tests",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("lex.zig"),
+            .root_source_file = b.path("src/parser/lex.zig"),
             .target = target,
             .optimize = optimize,
             .link_libc = true,
         }),
     });
     lex_tests.root_module.addIncludePath(b.path("."));
-    lex_tests.root_module.addIncludePath(b.path("parser/legacy"));
+    lex_tests.root_module.addIncludePath(b.path("src/parser/legacy"));
     const run_lex_tests = b.addRunArtifact(lex_tests);
 
     const header_check = addHeaderCheck(b, target, optimize);
@@ -257,7 +257,7 @@ fn addCExecutable(
         }),
     });
     exe.root_module.addIncludePath(b.path("."));
-    exe.root_module.addIncludePath(b.path("parser/legacy"));
+    exe.root_module.addIncludePath(b.path("src/parser/legacy"));
     exe.root_module.addCSourceFiles(.{
         .files = sources,
         .flags = &c_flags,
@@ -293,7 +293,7 @@ fn addHeaderCheck(
         }),
     });
     check.root_module.addIncludePath(b.path("."));
-    check.root_module.addIncludePath(b.path("parser/legacy"));
+    check.root_module.addIncludePath(b.path("src/parser/legacy"));
     check.root_module.addCSourceFile(.{
         .file = source,
         .flags = &c_flags,
@@ -320,7 +320,7 @@ fn addZigObject(
         }),
     });
     obj.root_module.addIncludePath(b.path("."));
-    obj.root_module.addIncludePath(b.path("parser/legacy"));
+    obj.root_module.addIncludePath(b.path("src/parser/legacy"));
     return obj;
 }
 
@@ -338,7 +338,7 @@ fn addVersionObject(
     options.addOption([]const u8, "vdate", vdate);
     options.addOption([]const u8, "host", b.fmt("compiled by zig build\n{s}\n", .{host}));
 
-    const version = addZigObject(b, "version-zig", "version.zig", target, optimize, false);
+    const version = addZigObject(b, "version-zig", "src/version.zig", target, optimize, false);
     version.root_module.addOptions("version_options", options);
     return version;
 }

@@ -788,10 +788,10 @@ export fn output(arg_e: Word) void {
 
 comptime {
     @setEvalBranchQuota(50000);
-    _ = @import("src/reducer/reduce.zig");
-    _ = @import("src/reducer/combinators.zig");
-    _ = @import("src/reducer/ready.zig");
-    _ = @import("src/reducer/io.zig");
-    _ = @import("src/reducer/lex.zig");
+    _ = @import("reducer/reduce.zig");
+    _ = @import("reducer/combinators.zig");
+    _ = @import("reducer/ready.zig");
+    _ = @import("reducer/io.zig");
+    _ = @import("reducer/lex.zig");
 }
 
