@@ -1,5 +1,6 @@
 const std = @import("std");
 const platform = @import("io/platform.zig");
+const parser_api = @import("parser/parser_api.zig");
 
 const c_raw = @cImport({
     @cInclude("sys/ioctl.h");
@@ -19,7 +20,6 @@ const c_raw = @cImport({
     @cInclude("big.h");
     @cInclude("lex.h");
     @cInclude("version.h");
-    @cInclude("parser_bridge.h");
 });
 
 const clib = c_raw;
@@ -946,7 +946,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                 echoing = 0;
                 polyshowerror = 0;
                 commandmode = 1;
-                _ = clib.mira_parse_current();
+                _ = parser_api.parseCurrent() catch {};
                 if (SYNERR != 0) {
                     SYNERR = 0;
                 } else if (c != '\n') {
@@ -993,7 +993,7 @@ export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
         echoing = 0;
         commandmode = 1;
         s_in = f;
-        _ = clib.mira_parse_current();
+        _ = parser_api.parseCurrent() catch {};
         s_in = getStdin();
         if (SYNERR != 0) {
             SYNERR = 0;
@@ -1852,7 +1852,7 @@ fn loadfile(t_val: [*:0]const u8) void {
     includees = NIL;
     FBS = NIL;
 
-    _ = clib.mira_parse_current();
+    _ = parser_api.parseCurrent() catch {};
 
     if (SYNERR == 0 and exportfiles != NIL) {
         var s = exportfiles;
@@ -3454,6 +3454,7 @@ comptime {
     _ = @import("runtime/big.zig");
     _ = @import("parser/lex.zig");
     _ = @import("parser/parse_actions.zig");
+    _ = @import("parser/parser_tests.zig");
     _ = @import("compiler/trans.zig");
     _ = @import("compiler/types.zig");
     _ = @import("io/utf8.zig");

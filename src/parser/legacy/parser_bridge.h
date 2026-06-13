@@ -36,6 +36,9 @@ int mira_parse_string(const char *source);
  */
 int mira_parse_current(void);
 
+void mira_lex_setup_string(const char *source);
+void mira_lex_cleanup(void);
+
 
 /* ----------------------------------------------------------------------------
  * 2. Semantic Actions (AST & Runtime construction)
@@ -98,5 +101,10 @@ word parse_liste_next(word liste_val, word exp_val);
 
 /* Symbol table & Name list management */
 word parse_names_add(word names_val, word name_val);
+
+/**
+ * Marks parser-internal roots (yyval, yylval) for garbage collection.
+ */
+void mira_parser_mark_roots(void);
 
 #endif // PARSER_BRIDGE_H

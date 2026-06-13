@@ -274,7 +274,10 @@ fn makeTyp(arity: Word, showfn: Word, class: Word, info: Word) Word {
 
 fn addToEnv(x: Word) void {
     const current_file_defs = h(files);
-    tp(current_file_defs).* = cons(x, t(current_file_defs));
+    if (current_file_defs >= ATOMLIMIT) {
+        const idx = @as(usize, @intCast(current_file_defs)) * 2;
+        tl[idx] = cons(x, tl[idx]);
+    }
 }
 
 fn isConstructor(x: Word) bool {
