@@ -5,7 +5,7 @@
 extern int yyparse(void);
 extern FILE *s_in;
 extern word fileq;
-extern int insertdepth;
+extern word insertdepth;
 extern int openfile(const char *n);
 
 int mira_parse_file(const char *filename) {

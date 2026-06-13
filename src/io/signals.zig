@@ -1,12 +1,8 @@
 const std = @import("std");
 
-const c = @cImport({
-    @cInclude("signal.h");
-});
-
 const SigAction = extern struct {
     handler: usize,
-    sa_mask: c.sigset_t,
+    sa_mask: std.posix.sigset_t,
     sa_flags: c_int,
 };
 
@@ -17,8 +13,8 @@ export fn signals(signum: c_int, handler: usize) usize {
     var oldact: SigAction = undefined;
 
     act.handler = handler;
-    _ = c.sigemptyset(&act.sa_mask);
-    act.sa_flags = c.SA_RESTART;
+    act.sa_mask = std.posix.sigemptyset();
+    act.sa_flags = std.posix.SA.RESTART;
 
     if (sigaction(signum, &act, &oldact) == 0) {
         return oldact.handler;

@@ -1,14 +1,12 @@
 const std = @import("std");
 
-const c = @cImport({
-    @cInclude("stdio.h");
-    @cInclude("stdlib.h");
-});
+pub const FILE = opaque {};
+extern fn getc(fil: ?*FILE) c_int;
+extern fn putc(ch: c_int, fil: ?*FILE) c_int;
+const EOF: c_int = -1;
 
-const EOF = c.EOF;
-
-export fn fromUTF8(fil: *c.FILE) c_ulong {
-    const c0 = c.getc(fil);
+export fn fromUTF8(fil: ?*FILE) c_ulong {
+    const c0 = getc(fil);
     if (c0 == EOF) {
         return std.math.maxInt(c_ulong);
     }
@@ -17,7 +15,7 @@ export fn fromUTF8(fil: *c.FILE) c_ulong {
     }
 
     if ((c0 & 0xe0) == 0xc0) {
-        const c1 = c.getc(fil);
+        const c1 = getc(fil);
         if (c1 == EOF or (c1 & 0xc0) != 0x80) {
             reportError(&.{ c0, c1 });
         }
@@ -25,11 +23,11 @@ export fn fromUTF8(fil: *c.FILE) c_ulong {
     }
 
     if ((c0 & 0xf0) == 0xe0) {
-        const c1 = c.getc(fil);
+        const c1 = getc(fil);
         if (c1 == EOF or (c1 & 0xc0) != 0x80) {
             reportError(&.{ c0, c1 });
         }
-        const c2 = c.getc(fil);
+        const c2 = getc(fil);
         if (c2 == EOF or (c2 & 0xc0) != 0x80) {
             reportError(&.{ c0, c1, c2 });
         }
@@ -37,15 +35,15 @@ export fn fromUTF8(fil: *c.FILE) c_ulong {
     }
 
     if ((c0 & 0xf8) == 0xf0) {
-        const c1 = c.getc(fil);
+        const c1 = getc(fil);
         if (c1 == EOF or (c1 & 0xc0) != 0x80) {
             reportError(&.{ c0, c1 });
         }
-        const c2 = c.getc(fil);
+        const c2 = getc(fil);
         if (c2 == EOF or (c2 & 0xc0) != 0x80) {
             reportError(&.{ c0, c1, c2 });
         }
-        const c3 = c.getc(fil);
+        const c3 = getc(fil);
         if (c3 == EOF or (c3 & 0xc0) != 0x80) {
             reportError(&.{ c0, c1, c2, c3 });
         }
@@ -55,7 +53,7 @@ export fn fromUTF8(fil: *c.FILE) c_ulong {
     reportError(&.{c0});
 }
 
-export fn outUTF8(u: c_ulong, fil: *c.FILE) void {
+export fn outUTF8(u: c_ulong, fil: ?*FILE) void {
     if (u <= 0x7f) {
         out(u, fil);
     } else if (u <= 0x7ff) {
@@ -72,12 +70,12 @@ export fn outUTF8(u: c_ulong, fil: *c.FILE) void {
         out(0x80 | (u & 0x3f), fil);
     } else {
         std.debug.print("char 0x{x} out of unicode range\n", .{u});
-        c.exit(1);
+        std.process.exit(1);
     }
 }
 
-fn out(byte: c_ulong, fil: *c.FILE) void {
-    _ = c.putc(@intCast(byte), fil);
+fn out(byte: c_ulong, fil: ?*FILE) void {
+    _ = putc(@intCast(byte), fil);
 }
 
 fn reportError(bytes: []const c_int) noreturn {
@@ -99,5 +97,5 @@ fn reportError(bytes: []const c_int) noreturn {
         }
     }
     std.debug.print("\n", .{});
-    c.exit(1);
+    std.process.exit(1);
 }

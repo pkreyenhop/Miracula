@@ -3,6 +3,8 @@ const reduce = @import("reduce.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
 const clib = reduce.clib;
+const platform = @import("../../io/platform.zig");
+
 
 extern var tag: [*]u8;
 extern var hd: [*]Word;
@@ -111,11 +113,10 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.FILEMODE => {
             reduce.upLeft(ctx);
-            var stat_buf: clib.struct_stat = undefined;
-            if (clib.stat(reduce.getstring(lastarg(ctx), "filemode"), &stat_buf) == 0) {
-                const mode = stat_buf.st_mode;
-                const d = if (((mode) & 0o170000) == 0o040000) @as(Word, 'd') else '-';
-                const perm = if (stat_buf.st_uid == clib.geteuid()) (mode & 0o700) >> 6 else if (stat_buf.st_gid == clib.getegid()) (mode & 0o070) >> 3 else mode & 0o007;
+            if (platform.getFileInfo(reduce.getstring(lastarg(ctx), "filemode"))) |info| {
+                const mode = info.mode;
+                const d = if ((mode & 0o170000) == 0o040000) @as(Word, 'd') else '-';
+                const perm = if (info.uid == platform.geteuid()) (mode & 0o700) >> 6 else if (info.gid == platform.getegid()) (mode & 0o070) >> 3 else mode & 0o007;
                 const r = if ((perm & 0o4) != 0) @as(Word, 'r') else '-';
                 const w = if ((perm & 0o2) != 0) @as(Word, 'w') else '-';
                 const x = if ((perm & 0o1) != 0) @as(Word, 'x') else '-';
@@ -128,9 +129,8 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.FILESTAT => {
             reduce.upLeft(ctx);
-            var stat_buf: clib.struct_stat = undefined;
-            if (clib.stat(reduce.getstring(lastarg(ctx), "filestat"), &stat_buf) == 0) {
-                reduce.rewrite_to_cons(ctx.e, reduce.cons(clib.sto_int(@intCast(stat_buf.st_ino)), clib.sto_int(@intCast(stat_buf.st_dev))), clib.sto_int(@intCast(stat_buf.st_mtimespec.tv_sec)));
+            if (platform.getFileInfo(reduce.getstring(lastarg(ctx), "filestat"))) |info| {
+                reduce.rewrite_to_cons(ctx.e, reduce.cons(clib.sto_int(@intCast(info.ino)), clib.sto_int(@intCast(info.dev))), clib.sto_int(@intCast(info.mtime)));
             } else {
                 reduce.rewrite_to_cons(ctx.e, reduce.cons(clib.stosmallint(0), clib.stosmallint(-1)), clib.stosmallint(0));
             }
@@ -487,9 +487,9 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.ARCTAN_FN => {
             reduce.upLeft(ctx);
-            clib.__error().* = 0;
+            platform.setErrno(0);
             clib.setdbl(ctx.e, std.math.atan(reduce.force_dbl(lastarg(ctx))));
-            if (clib.__error().* != 0) {
+            if (platform.getErrno() != 0) {
                 clib.math_error(@constCast("atan"));
             }
             ctx.action = clib.ACT_DONE;
@@ -497,9 +497,9 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.EXP_FN => {
             reduce.upLeft(ctx);
-            clib.__error().* = 0;
+            platform.setErrno(0);
             clib.setdbl(ctx.e, std.math.exp(reduce.force_dbl(lastarg(ctx))));
-            if (clib.__error().* != 0) {
+            if (platform.getErrno() != 0) {
                 clib.math_error(@constCast("exp"));
             }
             ctx.action = clib.ACT_DONE;
@@ -520,9 +520,9 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
             if (reduce.is_int(lastarg(ctx))) {
                 clib.setdbl(ctx.e, clib.biglog(lastarg(ctx)));
             } else {
-                clib.__error().* = 0;
+                platform.setErrno(0);
                 clib.setdbl(ctx.e, @log(reduce.force_dbl(lastarg(ctx))));
-                if (clib.__error().* != 0) {
+                if (platform.getErrno() != 0) {
                     clib.math_error(@constCast("log"));
                 }
             }
@@ -534,9 +534,9 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
             if (reduce.is_int(lastarg(ctx))) {
                 clib.setdbl(ctx.e, clib.biglog10(lastarg(ctx)));
             } else {
-                clib.__error().* = 0;
+                platform.setErrno(0);
                 clib.setdbl(ctx.e, @log10(reduce.force_dbl(lastarg(ctx))));
-                if (clib.__error().* != 0) {
+                if (platform.getErrno() != 0) {
                     clib.math_error(@constCast("log10"));
                 }
             }
@@ -545,9 +545,9 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.SIN_FN => {
             reduce.upLeft(ctx);
-            clib.__error().* = 0;
+            platform.setErrno(0);
             clib.setdbl(ctx.e, std.math.sin(reduce.force_dbl(lastarg(ctx))));
-            if (clib.__error().* != 0) {
+            if (platform.getErrno() != 0) {
                 clib.math_error(@constCast("sin"));
             }
             ctx.action = clib.ACT_DONE;
@@ -555,9 +555,9 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.COS_FN => {
             reduce.upLeft(ctx);
-            clib.__error().* = 0;
+            platform.setErrno(0);
             clib.setdbl(ctx.e, std.math.cos(reduce.force_dbl(lastarg(ctx))));
-            if (clib.__error().* != 0) {
+            if (platform.getErrno() != 0) {
                 clib.math_error(@constCast("cos"));
             }
             ctx.action = clib.ACT_DONE;
@@ -565,9 +565,9 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         clib.SQRT_FN => {
             reduce.upLeft(ctx);
-            clib.__error().* = 0;
+            platform.setErrno(0);
             clib.setdbl(ctx.e, std.math.sqrt(reduce.force_dbl(lastarg(ctx))));
-            if (clib.__error().* != 0) {
+            if (platform.getErrno() != 0) {
                 clib.math_error(@constCast("sqrt"));
             }
             ctx.action = clib.ACT_DONE;
@@ -705,7 +705,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
             if (reduce.is_double(lastarg(ctx))) {
                 fa = reduce.force_dbl(ctx.args[0]);
                 if (fa < 0.0) {
-                    clib.__error().* = clib.EDOM;
+                    platform.setErrno(clib.EDOM);
                     clib.math_error(@constCast("^"));
                 }
                 fb = clib.get_dbl(lastarg(ctx));
@@ -720,9 +720,9 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
                 ctx.action = clib.ACT_DONE;
                 return;
             }
-            clib.__error().* = 0;
+            platform.setErrno(0);
             clib.setdbl(ctx.e, std.math.pow(f64, fa, fb));
-            if (clib.__error().* != 0) {
+            if (platform.getErrno() != 0) {
                 clib.math_error(@constCast("power"));
             }
             ctx.action = clib.ACT_DONE;

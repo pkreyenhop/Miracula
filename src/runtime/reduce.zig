@@ -1,4 +1,5 @@
 const std = @import("std");
+const platform = @import("../io/platform.zig");
 const clib = @cImport({
     @cInclude("sys/types.h");
     @cInclude("sys/stat.h");
@@ -427,7 +428,7 @@ export fn div_error() void {
 }
 
 export fn math_error(s: [*:0]const u8) void {
-    const err_val = clib.__error().*;
+    const err_val = platform.getErrno();
     const err_type: [*:0]const u8 = if (err_val == clib.EDOM) "domain " else if (err_val == clib.ERANGE) "range " else "";
     _ = clib.fprintf(getStderr().?, "\nmath function %serror (%s)\n", err_type, s);
     outstats();

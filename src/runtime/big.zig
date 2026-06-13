@@ -1,10 +1,6 @@
 const std = @import("std");
 
-const c = @cImport({
-    @cInclude("ctype.h");
-    @cInclude("errno.h");
-    @cInclude("math.h");
-});
+const platform = @import("../io/platform.zig");
 
 const Word = c_long;
 
@@ -95,8 +91,8 @@ fn cons(x: Word, y: Word) Word {
 }
 
 export fn bigsetup() void {
-    logIBASE = c.log(@floatFromInt(IBASE));
-    log10IBASE = c.log10(@floatFromInt(IBASE));
+    logIBASE = std.math.log(f64, std.math.e, @as(f64, @floatFromInt(IBASE)));
+    log10IBASE = std.math.log10(@as(f64, @floatFromInt(IBASE)));
     big_one = make(INT, 1, 0);
 }
 
@@ -524,9 +520,9 @@ export fn dbltobig(input: f64) Word {
     const s = input < 0;
     const r = make(INT, 0, 0);
     var ptr = r;
-    var y = @abs(c.floor(input));
+    var y = @abs(std.math.floor(input));
     while (true) {
-        const n = c.fmod(y, @floatFromInt(IBASE));
+        const n = @rem(y, @as(f64, @floatFromInt(IBASE)));
         digitp(ptr).* = @intFromFloat(n);
         y = (y - n) / @as(f64, @floatFromInt(IBASE));
         if (y > 0.0) {
@@ -551,7 +547,7 @@ export fn biglog(input_x: Word) f64 {
         n += 1;
         r = @as(f64, @floatFromInt(digit(x))) + (r / @as(f64, @floatFromInt(IBASE)));
     }
-    return c.log(r) + (@as(f64, @floatFromInt(n)) * logIBASE);
+    return std.math.log(f64, std.math.e, r) + (@as(f64, @floatFromInt(n)) * logIBASE);
 }
 
 export fn biglog10(input_x: Word) f64 {
@@ -567,11 +563,11 @@ export fn biglog10(input_x: Word) f64 {
         n += 1;
         r = @as(f64, @floatFromInt(digit(x))) + (r / @as(f64, @floatFromInt(IBASE)));
     }
-    return c.log10(r) + (@as(f64, @floatFromInt(n)) * log10IBASE);
+    return std.math.log10(r) + (@as(f64, @floatFromInt(n)) * log10IBASE);
 }
 
 fn setErrnoDom() void {
-    if (@hasDecl(c, "__error")) c.__error().* = c.EDOM;
+    platform.setErrno(@intCast(@intFromEnum(std.posix.E.DOM)));
 }
 
 export fn bigscan(p: [*:0]const u8) Word {

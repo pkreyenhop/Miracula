@@ -119,11 +119,17 @@ pub fn build(b: *std.Build) void {
     const run_steer_tests = b.addRunArtifact(steer_tests);
     steer_tests.root_module.addIncludePath(b.path("."));
     steer_tests.root_module.addIncludePath(b.path("src/parser/legacy"));
+    steer_tests.root_module.addCSourceFiles(.{
+        .files = &c_sources,
+        .flags = &c_flags,
+    });
+    addPlatformMacros(steer_tests, target);
+    steer_tests.root_module.linkSystemLibrary("m", .{});
     steer_tests.root_module.addOptions("version_options", version_options);
     const lex_tests = b.addTest(.{
         .name = "lex-tests",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("src/parser/lex.zig"),
+            .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
             .link_libc = true,
@@ -131,6 +137,13 @@ pub fn build(b: *std.Build) void {
     });
     lex_tests.root_module.addIncludePath(b.path("."));
     lex_tests.root_module.addIncludePath(b.path("src/parser/legacy"));
+    lex_tests.root_module.addCSourceFiles(.{
+        .files = &c_sources,
+        .flags = &c_flags,
+    });
+    addPlatformMacros(lex_tests, target);
+    lex_tests.root_module.linkSystemLibrary("m", .{});
+    lex_tests.root_module.addOptions("version_options", version_options);
     const run_lex_tests = b.addRunArtifact(lex_tests);
 
     const header_check = addHeaderCheck(b, target, optimize);

@@ -51,7 +51,7 @@ export var dic: ?[*]u8 = null;
 export var dicp: [*:0]u8 = undefined;
 export var dicq: [*:0]u8 = undefined;
 
-var insertdepth: Word = -1;
+export var insertdepth: Word = -1;
 var lmargin: Word = 0;
 export var echostack: Word = NIL;
 var lverge: Word = 0;

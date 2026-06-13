@@ -1,4 +1,5 @@
 const std = @import("std");
+const platform = @import("io/platform.zig");
 
 const c_raw = @cImport({
     @cInclude("sys/ioctl.h");
@@ -332,12 +333,15 @@ fn same_file(x: Word, y: Word) bool {
 }
 
 fn inodev(path: [*:0]const u8) Word {
-    var stat_buf: clib.struct_stat = undefined;
-    if (clib.stat(path, &stat_buf) == 0) {
-        return clib.datapair(stat_buf.st_ino, stat_buf.st_dev);
+    if (platform.getFileInfo(path)) |info| {
+        return clib.datapair(info.ino, @as(Word, @bitCast(info.dev)));
     } else {
         return clib.datapair(0, -1);
     }
+}
+
+fn fileExists(path: [*:0]const u8) bool {
+    return platform.getFileInfo(path) != null;
 }
 
 fn is(s: [*:0]const u8) bool {
@@ -391,14 +395,10 @@ fn constructor(n: Word, x: anytype) Word {
 const EDITOR = "vi +!";
 
 export fn fm_time(path: [*:0]const u8) Word {
-    var stat: clib.struct_stat = undefined;
-    if (clib.stat(path, &stat) != 0) return 0;
-    if (comptime @hasField(clib.struct_stat, "st_mtim")) {
-        return @intCast(stat.st_mtim.tv_sec);
-    } else if (comptime @hasField(clib.struct_stat, "st_mtimespec")) {
-        return @intCast(stat.st_mtimespec.tv_sec);
+    if (platform.getFileInfo(path)) |info| {
+        return @intCast(info.mtime);
     } else {
-        return @intCast(stat.st_mtime);
+        return 0;
     }
 }
 
@@ -539,8 +539,7 @@ export fn unlinkx(t_path: [*:0]const u8) void {
     obf_buf[len - 1 + obsuffix_slice.len] = 0;
     
     const obf = @as([*:0]const u8, @ptrCast(obf_buf[0..].ptr));
-    var stat_buf: clib.struct_stat = undefined;
-    if (clib.stat(obf, &stat_buf) == 0) {
+    if (fileExists(obf)) {
         _ = clib.unlink(obf);
     }
 }
@@ -1154,8 +1153,7 @@ fn command() void {
                     t_val = current_script;
                 }
                 if (clib.getchar() != '\n') return;
-                var stat_buf: clib.struct_stat = undefined;
-                if (clib.stat(t_val.?, &stat_buf) != 0) { // new file
+                if (!fileExists(t_val.?)) { // new file
                     if (lmirahdr == null) {
                         dicp = dicq;
                         _ = clib.strcpy(dicp, clib.getenv("HOME"));
@@ -1166,7 +1164,7 @@ fn command() void {
                         lmirahdr = dicp;
                         dicq = dicp + clib.strlen(dicp) + 1;
                     }
-                    if (clib.stat(lmirahdr.?, &stat_buf) == 0) {
+                    if (fileExists(lmirahdr.?)) {
                         mf = lmirahdr;
                     }
                     if (mf == null and mirahdr == null) {
@@ -1176,7 +1174,7 @@ fn command() void {
                         mirahdr = dicp;
                         dicq = dicp + clib.strlen(dicp) + 1;
                     }
-                    if (mf == null and clib.stat(mirahdr.?, &stat_buf) == 0) {
+                    if (mf == null and fileExists(mirahdr.?)) {
                         mf = mirahdr;
                     }
                     if (mf != null and t_val != current_script) {
@@ -1788,8 +1786,7 @@ fn loadfile(t_val: [*:0]const u8) void {
     oldfiles = NIL;
     unload();
 
-    var stat_buf: clib.struct_stat = undefined;
-    if (clib.stat(t_val, &stat_buf) != 0) {
+    if (!fileExists(t_val)) {
         if (initialising != 0) {
             _ = clib.fprintf(getStderr(), "panic: %s not found\n", t_val);
             clib.exit(1);
@@ -3125,8 +3122,7 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         var cur_argv_idx = arg_idx;
         while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
             s = clib.addextn(1, argv[cur_argv_idx]);
-            var stat_buf: clib.struct_stat = undefined;
-            if (clib.stat(s, &stat_buf) == 0) {
+            if (fileExists(s)) {
                 if (s == dicp) {
                     _ = clib.keep(dicp);
                 }
