@@ -508,36 +508,42 @@ Miranda evaluator and GC assume specific tag/arity combinations.
 
 ---
 
-# Phase 11 – Error Recovery
+# Phase 11 – Error Recovery ✔ DONE
 
 ## Goal
 
 Replace yacc error handling.
 
-## Create
+## Status
+
+`Diagnostic` struct added to `parser.zig`:
 
 ```zig
-pub const ParseError = struct {
-    message: []const u8,
+pub const Diagnostic = struct {
     span: Span,
+    message: []const u8,
 };
 ```
 
-Support:
+`Parser` carries a `diagnostics: std.ArrayList(Diagnostic)` accumulator.
+`parseScript` catches per-item parse errors, records a `Diagnostic`, calls
+`syncToNextItem()` to skip to the next OFFSIDE boundary, and continues
+parsing the remainder of the script.  OOM is the only fatal error.
+
+`parseWithNew` in `parser_api.zig` prints each diagnostic to stderr
+(`std.debug.print`) and sets `SYNERR = 1` if any errors were found, matching
+the Miranda REPL error-reporting contract.
+
+Supported error classes:
 
 ```text
-unexpected token
-missing ')'
-missing '='
-invalid pattern
+unexpected token    (error.UnexpectedToken)
+unexpected EOF      (error.UnexpectedEof)
 ```
 
-Parser must:
-
-* continue after recoverable errors
-* report multiple errors
-* preserve the `yyerror()` → `mira_report_parser_error()` error reporting
-  contract for the REPL's interactive use case
+Sub-expression errors propagate up to the item boundary before recovery.
+Recovery is at the top-level-item granularity: a bad definition is skipped,
+valid definitions in the same file continue to parse normally.
 
 ---
 

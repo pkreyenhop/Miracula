@@ -101,6 +101,7 @@ pub const NewParseResult = struct {
 
 /// Parse a Miranda source string through the Zig lexer bridge + recursive-descent parser.
 /// Uses an arena so all intermediate allocations are freed on return.
+/// On parse errors, diagnostics are printed to stderr and SYNERR is set.
 pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!NewParseResult {
     var arena = std.heap.ArenaAllocator.init(gpa);
     defer arena.deinit();
@@ -111,6 +112,15 @@ pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!Ne
 
     var p = parser_mod.Parser.init(alloc, tokens);
     const script = parser_mod.parseScript(&p) catch return ParseError.ParseFailed;
+
+    // Report accumulated diagnostics before the arena is freed.
+    for (p.diagnostics.items) |d| {
+        std.debug.print("{d}:{d}: {s}\n", .{ d.span.line, d.span.col, d.message });
+    }
+    if (p.diagnostics.items.len > 0) {
+        SYNERR = 1;
+        return ParseError.ParseFailed;
+    }
 
     codegen.codegenScript(alloc, script);
 

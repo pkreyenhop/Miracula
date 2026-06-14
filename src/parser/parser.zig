@@ -20,17 +20,30 @@ const TokenStream = pratt.TokenStream;
 const ParseError = pratt.ParseError;
 
 // ---------------------------------------------------------------------------
+// Diagnostics
+// ---------------------------------------------------------------------------
+
+/// A structured parse error recorded during error recovery.
+pub const Diagnostic = struct {
+    span: Span,
+    message: []const u8,
+};
+
+// ---------------------------------------------------------------------------
 // Parser state
 // ---------------------------------------------------------------------------
 
 pub const Parser = struct {
     gpa: Allocator,
     ts: TokenStream,
+    /// Errors accumulated during error-recovery parsing.
+    diagnostics: std.ArrayList(Diagnostic),
 
     pub fn init(gpa: Allocator, tokens: []const Token) Parser {
         return .{
-            .gpa = gpa,
-            .ts  = TokenStream{ .tokens = tokens },
+            .gpa         = gpa,
+            .ts          = TokenStream{ .tokens = tokens },
+            .diagnostics = .empty,
         };
     }
 
@@ -46,6 +59,32 @@ pub const Parser = struct {
     }
 
     fn span(self: *Parser) Span { return self.peek().span; }
+
+    /// Record a structured diagnostic.  OOM propagates to the caller.
+    pub fn addError(self: *Parser, sp: Span, comptime fmt: []const u8, args: anytype) !void {
+        const msg = try std.fmt.allocPrint(self.gpa, fmt, args);
+        try self.diagnostics.append(self.gpa, .{ .span = sp, .message = msg });
+    }
+
+    /// Skip tokens until the next top-level sync point.
+    ///
+    /// Advances past nested blocks (elseq increases depth, offside decreases
+    /// it).  Stops when an offside at depth 0 is reached, leaving it in the
+    /// stream for the caller's layout-skip loop to consume, or at EOF.
+    pub fn syncToNextItem(self: *Parser) void {
+        var depth: i32 = 0;
+        while (!self.check(.eof)) {
+            switch (self.peek().id) {
+                .elseq   => depth += 1,
+                .offside => {
+                    if (depth <= 0) return; // leave this OFFSIDE for caller
+                    depth -= 1;
+                },
+                else => {},
+            }
+            _ = self.advance();
+        }
+    }
 };
 
 // ---------------------------------------------------------------------------
@@ -409,7 +448,20 @@ pub fn parseScript(p: *Parser) ParseError!ast.Script {
         while (p.eat(.offside) or p.eat(.elseq) or p.eat(.semicolon)) {}
         if (p.check(.eof)) break;
 
-        const item = try parseTopLevel(p);
+        const sp = p.span();
+        const item = parseTopLevel(p) catch |err| {
+            // OOM is fatal; all other parse errors trigger recovery.
+            if (err == error.OutOfMemory) return err;
+            const kind: []const u8 = if (err == error.UnexpectedEof)
+                "unexpected end of file"
+            else
+                "unexpected token";
+            p.addError(sp, "syntax error at {d}:{d} - {s}", .{
+                sp.line, sp.col, kind,
+            }) catch return error.OutOfMemory;
+            p.syncToNextItem();
+            continue;
+        };
         try items.append(p.gpa, item);
     }
 
@@ -751,4 +803,37 @@ test "parsePat: empty list pattern" {
     defer gpa.free(pat.list);
     try std.testing.expectEqual(std.meta.Tag(ast.Pat).list, std.meta.activeTag(pat));
     try std.testing.expectEqual(@as(usize, 0), pat.list.len);
+}
+
+test "parseScript: error recovery records diagnostic and parses remaining items" {
+    // Use an arena so all parser allocations (including diagnostic messages)
+    // are freed together without per-allocation tracking.
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const gpa = arena.allocator();
+
+    // Tokens: bare `=` (syntax error), OFFSIDE, then `id x = x` (valid def).
+    const tokens = [_]Token{
+        // Bad item: `=` cannot start a definition LHS
+        .{ .id = .eq,      .span = .{ .line = 1, .col = 1 } },
+        // Layout separator between items
+        .{ .id = .offside, .span = .{ .line = 2, .col = 1 } },
+        // Valid item: id x = x
+        .{ .id = .name,    .span = .{ .line = 2, .col = 1 }, .text = "id" },
+        .{ .id = .name,    .span = .{ .line = 2, .col = 4 }, .text = "x"  },
+        .{ .id = .eq,      .span = .{ .line = 2, .col = 6 } },
+        .{ .id = .name,    .span = .{ .line = 2, .col = 8 }, .text = "x"  },
+        .{ .id = .eof,     .span = .{ .line = 2, .col = 9 } },
+    };
+    var p = Parser.init(gpa, &tokens);
+    const script = try parseScript(&p);
+
+    // Exactly one diagnostic for the bad item
+    try std.testing.expectEqual(@as(usize, 1), p.diagnostics.items.len);
+    // Exactly one successfully parsed item
+    try std.testing.expectEqual(@as(usize, 1), script.items.len);
+    try std.testing.expectEqual(
+        std.meta.Tag(ast.TopLevel).definition,
+        std.meta.activeTag(script.items[0]),
+    );
 }

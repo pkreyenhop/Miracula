@@ -131,13 +131,23 @@ The 2 non-passing tests are pre-existing crashes in `steer-tests` and
 present before Phase 10 work began.  They are caused by the legacy
 `parseString` / snapshot-comparison path, not by the new parser or codegen.
 
+### Phase 11 – Error Recovery ✔
+`Diagnostic` struct added to `parser.zig` (`span` + `message`).  `Parser`
+carries a `diagnostics: std.ArrayList(Diagnostic)` accumulator.
+`parseScript` catches per-item parse errors, records a diagnostic, then calls
+`syncToNextItem()` to advance past the broken item to the next OFFSIDE
+boundary and continue parsing.  OOM remains fatal; all other parse errors are
+recoverable.
+
+`parseWithNew` in `parser_api.zig` prints each diagnostic to stderr and sets
+`SYNERR = 1` when errors are present, matching the Miranda REPL contract.
+
+Test baseline: 14/14 pure-Zig tests pass (up from 13/13); 59/61 full-build
+tests pass (2 pre-existing crashes unchanged).
+
 ---
 
-## Next Steps (Phase 11+)
-
-**Phase 11 – Error Recovery**: structured `ParseError` accumulator so the
-parser reports multiple errors and continues rather than aborting on the
-first failure.
+## Next Steps (Phase 12+)
 
 **Phase 12 – Differential Validation**: run both parsers against
 `miralib/prelude`, `miralib/stdenv`, and the test suite; compare heap graphs
