@@ -1,0 +1,12 @@
+PARSE_RESULT: SYNTAX_ERROR
+
+TOKENS:
+NAME("1")
+NAME("g")
+EQUALS("g")
+NAME("x")
+WHERE("where")
+NAME("ere")
+NAME("e")
+EQUALS("e")
+NAME("y")

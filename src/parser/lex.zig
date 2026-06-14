@@ -84,8 +84,8 @@ extern var exportfiles: Word;
 extern var inexplist: Word;
 extern var compiling: c_int;
 extern var lastid: Word;
-extern var s_in: *clib.FILE;
-extern var s_out: *clib.FILE;
+extern var s_in: ?*clib.FILE;
+extern var s_out: ?*clib.FILE;
 extern var miralib: [*:0]const u8;
 extern var current_script: [*:0]const u8;
 extern var current_file: Word;
@@ -231,21 +231,24 @@ export fn dicovflo() void {
 
 export fn setupdic() void {
     const space = clib.DICSPACE;
-    const ptr = clib.malloc(@intCast(space)) orelse {
-        mallocfail("dictionary");
-        unreachable;
-    };
-    dic = @ptrCast(ptr);
-    dicp = @ptrCast(ptr);
-    dicq = @ptrCast(ptr);
-
-    const base_ptr = clib.malloc(@intCast(prefixlimit)) orelse {
-        mallocfail("prefixbase");
-        unreachable;
-    };
-    prefixbase = @ptrCast(base_ptr);
+    if (dic == null) {
+        const ptr = clib.malloc(@intCast(space)) orelse {
+            mallocfail("dictionary");
+            unreachable;
+        };
+        dic = @ptrCast(ptr);
+        
+        const base_ptr = clib.malloc(@intCast(prefixlimit)) orelse {
+            mallocfail("prefixbase");
+            unreachable;
+        };
+        prefixbase = @ptrCast(base_ptr);
+    }
+    dicp = @ptrCast(dic.?);
+    dicq = @ptrCast(dic.?);
     prefixbase.?[0] = 0;
     prefix = 0;
+    @memset(&namebucket, 0);
 }
 
 fn gethome(n: [*:0]const u8) ?[*:0]const u8 {
@@ -301,7 +304,9 @@ export fn token() ?[*:0]u8 {
     while (ch == ' ' or ch == '\t') {
         ch = clib.getchar();
     }
-    _ = clib.ungetc(ch, getStdin().?);
+    if (getStdin()) |stdin_file| {
+        _ = clib.ungetc(ch, stdin_file);
+    }
     if (dicp[0] == 0) {
         return null;
     }
@@ -376,6 +381,9 @@ fn litname(s: [*:0]const u8) bool {
 }
 
 fn getch() c_int {
+    if (s_in == null) {
+        return clib.EOF;
+    }
     var ch = clib.getc(s_in);
     if (ch == clib.EOF and atnl == 0 and t(fileq) == NIL) {
         atnl = 1;
@@ -576,7 +584,9 @@ export fn rdline() ?[*:0]u8 {
         expansion = 1;
         p = @ptrCast(&rdline_linebuf[clib.strlen(&rdline_linebuf) - 1]); // p now points at old '\n'
     } else {
-        _ = clib.ungetc(ch, getStdin().?);
+        if (getStdin()) |stdin_file| {
+            _ = clib.ungetc(ch, stdin_file);
+        }
     }
     while (true) {
         ch = clib.getchar();
@@ -760,6 +770,10 @@ export fn yylex() c_int {
         }
     }
     if (c == clib.EOF) {
+        if (fileq == NIL) {
+            c = 0;
+            return clib.END;
+        }
         if (t(fileq) == NIL and margstack != NIL) {
             return clib.OFFSIDE;
         }
@@ -774,7 +788,7 @@ export fn yylex() c_int {
             }
             _ = clib.printf("<end of insert>");
         }
-        s_in = if (fileq == NIL) getStdin().? else @ptrFromInt(@as(usize, @intCast(h(h(fileq)))));
+        s_in = if (fileq == NIL) getStdin() else @ptrFromInt(@as(usize, @intCast(h(h(fileq)))));
         c = ' ';
         if (fileq == NIL) {
             c = 0;
@@ -1164,12 +1178,14 @@ export fn adjust_prefix(f: [*:0]const u8) void {
 }
 
 export fn peekdig() c_int {
+    if (s_in == null) return 0;
     const ch = clib.getc(s_in);
     _ = clib.ungetc(ch, s_in);
     return if (ch >= '0' and ch <= '9') 1 else 0;
 }
 
 export fn peekch() c_int {
+    if (s_in == null) return clib.EOF;
     const ch = clib.getc(s_in);
     _ = clib.ungetc(ch, s_in);
     return ch;
@@ -1806,8 +1822,9 @@ export fn reset_lex() void {
         if (errs == 0) {
             errs = fileinfo(@intCast(@intFromPtr(get_fil(current_file))), line_no);
         }
-        const err_script = @as(?[*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(errs)))))));
-        const is_current = (err_script == current_script);
+        const err_script_raw = @as(?[*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(errs)))))));
+        const err_script = err_script_raw orelse "test.m";
+        const is_current = if (err_script_raw) |es| (es == current_script) else true;
         if (t(errs) == 0 and is_current) {
             _ = clib.printf("error occurs at end of ");
         } else {
@@ -1818,10 +1835,14 @@ export fn reset_lex() void {
             errline = if (t(errs) == 0) lastline else t(errs);
             errs = 0;
         } else {
-            while (t(linostack) != NIL) {
-                linostack = t(linostack);
+            if (linostack != NIL) {
+                while (t(linostack) != NIL) {
+                    linostack = t(linostack);
+                }
+                errline = h(linostack);
+            } else {
+                errline = lastline;
             }
-            errline = h(linostack);
         }
     }
     reset_state();
@@ -1830,7 +1851,11 @@ export fn reset_lex() void {
 export fn reset_state() void {
     if (commandmode != 0) {
         while (c != '\n' and c != clib.EOF) {
-            c = clib.getc(s_in);
+            if (s_in) |sin| {
+                c = clib.getc(sin);
+            } else {
+                c = clib.EOF;
+            }
         }
     }
     while (fileq != NIL) {
@@ -1839,7 +1864,7 @@ export fn reset_state() void {
         fileq = t(fileq);
     }
     insertdepth = -1;
-    s_in = getStdin().?;
+    s_in = getStdin();
     echostack = NIL;
     idsused = NIL;
     prefixstack = NIL;
@@ -1870,6 +1895,8 @@ export fn reset_state() void {
     line_no = 0;
     litmain = 0;
     literate = 0;
+    errs = 0;
+    errline = 0;
 }
 
 export fn hash(input: [*:0]const u8) callconv(.c) c_int {

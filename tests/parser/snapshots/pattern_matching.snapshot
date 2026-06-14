@@ -1,0 +1,19 @@
+PARSE_RESULT: SUCCESS
+
+TOKENS:
+NAME
+LBRACKET
+RBRACKET
+EQUALS
+CONST("0")
+NAME("sum")
+LPAREN("sum")
+NAME("m")
+COLON("m")
+NAME("ct")
+RPAREN("ct")
+EQUALS("ct")
+NAME("x")
+PLUS("x")
+NAME("sum")
+NAME("xs")

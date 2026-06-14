@@ -298,8 +298,7 @@ extern var nill: Word;
 extern var standardout: Word;
 extern var big_one: Word;
 extern var b_rem: Word;
-extern var yyval: Word;
-extern var yylval: Word;
+extern fn mira_parser_mark_roots() void;
 extern var R: Word;
 extern var TABSTRS: Word;
 extern var SGC: Word;
@@ -359,24 +358,28 @@ export fn trueheapsize() Word {
 
 export fn setupheap() void {
     const size = @as(usize, @intCast(SPACELIMIT));
-    const ptr = c.malloc(size * @sizeOf(Word) * 2) orelse {
-        mallocfail("heap");
-        unreachable;
-    };
-    heap = @ptrCast(@alignCast(ptr));
-    
-    const bigtop_val = @as(usize, @intCast(BIGTOP()));
-    const tag_ptr = c.calloc(bigtop_val + 1, @sizeOf(u8)) orelse {
-        mallocfail("heap");
-        unreachable;
-    };
-    tag = @ptrCast(@alignCast(tag_ptr));
+    if (heap == null) {
+        const ptr = c.malloc(size * @sizeOf(Word) * 2) orelse {
+            mallocfail("heap");
+            unreachable;
+        };
+        heap = @ptrCast(@alignCast(ptr));
+        
+        const bigtop_val = @as(usize, @intCast(BIGTOP()));
+        const tag_ptr = c.calloc(bigtop_val + 1, @sizeOf(u8)) orelse {
+            mallocfail("heap");
+            unreachable;
+        };
+        tag = @ptrCast(@alignCast(tag_ptr));
+    }
     
     hd = heap.? - @as(usize, @intCast(ATOMLIMIT * 2));
     tl = hd.? + 1;
     if (SPACE > SPACELIMIT) {
         SPACE = SPACELIMIT;
     }
+    listp = ATOMLIMIT - 1;
+    @memset(tag.?[@intCast(ATOMLIMIT)..@intCast(BIGTOP())], 0);
 }
 
 export fn resetheap() void {
@@ -620,8 +623,7 @@ export fn bases() void {
         mark(standardout);
         mark(big_one);
         mark(b_rem);
-        mark(yyval);
-        mark(yylval);
+        mira_parser_mark_roots();
         mark(R);
         mark(TABSTRS);
         mark(SGC);
