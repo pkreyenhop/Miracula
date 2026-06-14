@@ -27,7 +27,7 @@ const c_flags = [_][]const u8{
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
-    const optimize = b.option(std.builtin.OptimizeMode, "optimize", "Prioritize performance, safety, or binary size") orelse .ReleaseSafe;
+    const optimize = b.option(std.builtin.OptimizeMode, "optimize", "Prioritize performance, safety, or binary size") orelse .Debug;
     const configured_mira_path = b.option([]const u8, "mira-path", "Path to the mira binary used by tests");
     const mira_path = configured_mira_path orelse "./zig-out/bin/mira";
     const lib_path = b.option([]const u8, "lib-path", "Path to the miralib directory used by tests") orelse "./miralib";
@@ -146,6 +146,16 @@ pub fn build(b: *std.Build) void {
     lex_tests.root_module.addOptions("version_options", version_options);
     const run_lex_tests = b.addRunArtifact(lex_tests);
 
+    const parser_tests = b.addTest(.{
+        .name = "parser-tests",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/parser/parser.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    const run_parser_tests = b.addRunArtifact(parser_tests);
+
     const header_check = addHeaderCheck(b, target, optimize);
 
     const mira_test_options = b.addOptions();
@@ -173,6 +183,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_steer_tests.step);
     test_step.dependOn(&run_lex_tests.step);
     test_step.dependOn(&run_mira_tests.step);
+    test_step.dependOn(&run_parser_tests.step);
 
     const test_mira = b.step("test-mira", "Run Zig integration tests against mira");
     test_mira.dependOn(&run_mira_tests.step);
@@ -197,6 +208,7 @@ pub fn build(b: *std.Build) void {
     check_step.dependOn(&run_steer_tests.step);
     check_step.dependOn(&run_lex_tests.step);
     check_step.dependOn(&run_mira_tests.step);
+    check_step.dependOn(&run_parser_tests.step);
 
     const migration_check = b.step("check-migration", "Alias for the full Zig build verification gate");
     migration_check.dependOn(check_step);

@@ -33,7 +33,7 @@ This document outlines the history, completed milestones, and future plans for t
 
 ```text
 ┌──────────────────────────┐
-│  Phase 5: Zig Parser     │  ◄── Next Phase: Replace yacc rules.y with pure Zig parser
+│  Phase 5: Zig Parser     │  ◄── IN PROGRESS — see docs/PARSER_MIGRATION.md
 └─────────────┬────────────┘
               │
               ▼
@@ -42,9 +42,28 @@ This document outlines the history, completed milestones, and future plans for t
 └──────────────────────────┘
 ```
 
-### Phase 5: Pure Zig Parser
-* **Goal**: Replace the legacy yacc-based grammar compiler (`rules.y`, `y.tab.c`, `y.tab.h`) with a hand-written or parser-combinator-based pure Zig parser.
-* **Impact**: Will allow removing the Berkeley yacc (`byacc`) build tool dependency and clean up all remaining `@cInclude` references to macro-coupled C headers in the compiler modules.
+### Phase 5: Pure Zig Parser (in progress)
+
+**Goal**: Replace the legacy yacc-based grammar compiler (`rules.y`, `y.tab.c`, `y.tab.h`) with a handwritten recursive-descent + Pratt parser pipeline in Zig.
+
+**Detailed plan**: see [`docs/PARSER_MIGRATION_PLAN.md`](PARSER_MIGRATION_PLAN.md).
+
+**Completed sub-phases:**
+* `token_filter.zig` — full `TokenId` enum, `Token` / `Span` structs (106 lines, compiles clean)
+* `ast.zig` — all AST node types: `TypeExpr`, `Expr`, `Pat`, `Def`, `TypeDecl`, `Script` (153 lines)
+* `pratt.zig` — Pratt expression parser with Miranda operator-precedence table (427 lines)
+* `parser.zig` — recursive-descent parser covering the core grammar (537 lines)
+* `build.zig` updated — `parser-tests` binary wired into `test` and `check` steps
+* `zig build` and `zig build test` both exit 0
+
+**Remaining sub-phases:**
+* Phase 7 — Lexer bridge: connect `lex.zig` output to the new `TokenStream`
+* Phase 8 — Codegen: walk `ast.Script` and emit Miranda `Word` heap values
+* Phase 9 — Grammar completeness: list comprehensions, sections, abstype…with, module directives
+* Phase 10 — Integration: wire new parser into `main.zig` behind a build flag
+* Phase 11 — Removal: delete legacy parser files once `mira-tests` passes 100%
+
+**Impact**: Removes the Berkeley yacc (`byacc`) build tool dependency and all `@cInclude` references to macro-coupled C headers in the parser subsystem.
 
 ### Phase 6: Pure Zig Implementation
 * **Goal**: Fully eliminate C code from the project.
