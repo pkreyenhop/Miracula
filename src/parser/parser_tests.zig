@@ -313,10 +313,26 @@ test "new parser AST snapshot tests" {
     defer arena.deinit();
     const allocator = arena.allocator();
 
+    // Phase 8 baseline
     try runASTSnapshotTest(allocator, "simple_def", "square x = x * x\n");
     try runASTSnapshotTest(allocator, "id", "id x = x\n");
     try runASTSnapshotTest(allocator, "double", "double x = x + x\n");
     try runASTSnapshotTest(allocator, "inc", "inc = (+1)\n");
     try runASTSnapshotTest(allocator, "main", "main = square 5\n");
+
+    // Phase 9.2: operator-as-function section (+)
+    try runASTSnapshotTest(allocator, "op_func", "add = (+)\n");
+
+    // Phase 9.1: list comprehensions and range expressions
+    try runASTSnapshotTest(allocator, "listcomp", "evens = [x | x <- xs]\n");
+    try runASTSnapshotTest(allocator, "range_to", "r = [1..10]\n");
+    try runASTSnapshotTest(allocator, "range_open", "nats = [1..]\n");
+    try runASTSnapshotTest(allocator, "range_step", "odds = [1,3..99]\n");
+
+    // Phase 9.3 / type declarations
+    try runASTSnapshotTest(allocator, "algebraic_type", "colour ::= Red | Green | Blue\n");
+    try runASTSnapshotTest(allocator, "algebraic_type_param", "tree * ::= Leaf | Node (tree *) * (tree *)\n");
+    // Miranda type synonym names are lowercase identifiers
+    try runASTSnapshotTest(allocator, "type_synonym", "type pair * ** == (*, **)\n");
 }
 

@@ -15,8 +15,6 @@ pub const TypeExpr = union(enum) {
     /// Function arrow type: `A -> B`
     arrow: struct { from: *TypeExpr, to: *TypeExpr },
     /// Type-constructor application: `Tree *a` or `Either *a *b`.
-    /// `args` is a non-empty heap-allocated slice — never a pointer to a
-    /// stack / comptime array literal.
     type_app: struct { func: *TypeExpr, args: []TypeExpr },
     /// Tuple type: `(A, B)`, `(A, B, C)`, …
     tuple: []TypeExpr,
@@ -40,6 +38,12 @@ pub const Literal = union(enum) {
 // ---------------------------------------------------------------------------
 // Expressions
 // ---------------------------------------------------------------------------
+
+/// A list-comprehension qualifier: generator (`pat <- src`) or guard (`pred`).
+pub const Qualifier = union(enum) {
+    generator: struct { pat: Expr, source: *Expr },
+    guard: *Expr,
+};
 
 pub const Expr = union(enum) {
     name: struct { text: []const u8, span: Span },
@@ -69,6 +73,12 @@ pub const Expr = union(enum) {
     section_right: struct { op: []const u8, arg: *Expr },
     /// Left operator section: `(expr op)` — e.g. `(1+)` means `\x -> 1 + x`
     section_left: struct { arg: *Expr, op: []const u8 },
+    /// Operator-as-function: `(+)`, `(*)`, etc.  Field is the token tag-name.
+    op_func: []const u8,
+    /// Arithmetic sequence: `[from..]`, `[from..to]`, `[from,step..]`, `[from,step..to]`
+    range: struct { from: *Expr, step: ?*Expr, to: ?*Expr },
+    /// List comprehension: `[body | q1; q2; …]`
+    listcomp: struct { body: *Expr, qualifiers: []Qualifier },
 };
 
 // ---------------------------------------------------------------------------
@@ -113,6 +123,13 @@ pub const Def = struct {
 // Type declarations
 // ---------------------------------------------------------------------------
 
+/// A bundled type specification: `names :: type`
+pub const TypeSpec = struct {
+    names: [][]const u8,
+    typ: TypeExpr,
+    span: Span,
+};
+
 pub const Constructor = struct {
     name: []const u8,
     fields: []TypeExpr,
@@ -135,6 +152,7 @@ pub const TypeDecl = union(enum) {
     abstype: struct {
         name: []const u8,
         params: [][]const u8,
+        specs: []TypeSpec,
         span: Span,
     },
 };
@@ -145,11 +163,12 @@ pub const TypeDecl = union(enum) {
 
 pub const TopLevel = union(enum) {
     definition: Def,
-    type_spec: struct { names: [][]const u8, typ: TypeExpr, span: Span },
+    type_spec: TypeSpec,
     type_decl: TypeDecl,
     eval: Expr,
     include: struct { path: []const u8, span: Span },
     export_list: struct { names: [][]const u8, span: Span },
+    free_directive: struct { specs: []TypeSpec, span: Span },
 };
 
 pub const Script = struct {

@@ -7,6 +7,7 @@ const clib = @cImport({
 
 const lex_bridge = @import("lex_bridge.zig");
 const parser_mod = @import("parser.zig");
+const codegen = @import("codegen.zig");
 
 extern var SYNERR: clib.word;
 
@@ -109,7 +110,9 @@ pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!Ne
     const tokens = lex_bridge.tokenize(alloc, source_span) catch return ParseError.ParseFailed;
 
     var p = parser_mod.Parser.init(alloc, tokens);
-    _ = parser_mod.parseScript(&p) catch return ParseError.ParseFailed;
+    const script = parser_mod.parseScript(&p) catch return ParseError.ParseFailed;
+
+    codegen.codegenScript(alloc, script);
 
     return NewParseResult{};
 }

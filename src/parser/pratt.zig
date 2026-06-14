@@ -201,12 +201,58 @@ pub fn parseExpr(
 
             .lbracket => inner: {
                 if (ts.eat(.rbracket)) break :inner Expr{ .list_nil = {} };
-                var elems: std.ArrayList(Expr) = .empty;
-                errdefer elems.deinit(gpa);
-                try elems.append(gpa, try parseExpr(gpa, ts, 0));
-                while (ts.eat(.comma)) {
-                    try elems.append(gpa, try parseExpr(gpa, ts, 0));
+                const first = try parseExpr(gpa, ts, 0);
+
+                // [from..] or [from..to]
+                if (ts.eat(.dot_dot)) {
+                    const fp = try gpa.create(Expr); fp.* = first;
+                    if (ts.eat(.rbracket))
+                        break :inner Expr{ .range = .{ .from = fp, .step = null, .to = null } };
+                    const to = try parseExpr(gpa, ts, 0);
+                    _ = try ts.expect(.rbracket);
+                    const tp = try gpa.create(Expr); tp.* = to;
+                    break :inner Expr{ .range = .{ .from = fp, .step = null, .to = tp } };
                 }
+
+                // [body | quals]
+                if (ts.eat(.pipe)) {
+                    const bp = try gpa.create(Expr); bp.* = first;
+                    var qs: std.ArrayList(ast.Qualifier) = .empty;
+                    errdefer qs.deinit(gpa);
+                    try qs.append(gpa, try parseQualifier(gpa, ts));
+                    while (ts.check(.semicolon) or ts.check(.comma)) {
+                        _ = ts.advance();
+                        if (ts.check(.rbracket)) break;
+                        try qs.append(gpa, try parseQualifier(gpa, ts));
+                    }
+                    _ = try ts.expect(.rbracket);
+                    break :inner Expr{ .listcomp = .{
+                        .body = bp,
+                        .qualifiers = try qs.toOwnedSlice(gpa),
+                    } };
+                }
+
+                // [first] or [first, ...] or [first, step..to?]
+                var elems: std.ArrayList(Expr) = .empty;
+                try elems.append(gpa, first);
+
+                while (ts.eat(.comma)) {
+                    const elem = try parseExpr(gpa, ts, 0);
+                    // [first, elem..to?] → arithmetic sequence with step
+                    if (ts.eat(.dot_dot)) {
+                        const fp = try gpa.create(Expr); fp.* = elems.items[0];
+                        const sp2 = try gpa.create(Expr); sp2.* = elem;
+                        elems.deinit(gpa);
+                        if (ts.eat(.rbracket))
+                            break :inner Expr{ .range = .{ .from = fp, .step = sp2, .to = null } };
+                        const to = try parseExpr(gpa, ts, 0);
+                        _ = try ts.expect(.rbracket);
+                        const tp = try gpa.create(Expr); tp.* = to;
+                        break :inner Expr{ .range = .{ .from = fp, .step = sp2, .to = tp } };
+                    }
+                    try elems.append(gpa, elem);
+                }
+
                 _ = try ts.expect(.rbracket);
                 break :inner Expr{ .list = try elems.toOwnedSlice(gpa) };
             },
@@ -217,10 +263,13 @@ pub fn parseExpr(
                     const items = try gpa.alloc(Expr, 0);
                     break :inner Expr{ .tuple = items };
                 }
-                // Right operator section: (op expr) — e.g. (+1), (*2)
+                // (op) → operator as function;  (op expr) → right section.
                 // An infix-only operator here cannot start a normal prefix expression.
                 if (isRightSectionOp(ts.peek().id)) {
                     const op_tok = ts.advance();
+                    // (op) — operator lifted to a function value, e.g. (+)
+                    if (ts.eat(.rparen)) break :inner Expr{ .op_func = @tagName(op_tok.id) };
+                    // (op expr) — right section, e.g. (+1)
                     const arg = try parseExpr(gpa, ts, 0);
                     _ = try ts.expect(.rparen);
                     const argp = try gpa.create(Expr);
@@ -262,6 +311,7 @@ pub fn parseExpr(
             .comma, .semicolon, .offside, .elseq,
             .kw_where, .kw_if, .kw_otherwise,
             .coloncolon, .arrow, .dot_dot,
+            .pipe, .left_arrow,
             => break,
             else => {},
         }
@@ -299,6 +349,23 @@ pub fn parseExpr(
     }
 
     return lhs;
+}
+
+/// Parse one list-comprehension qualifier: `pat <- source` or `guard`.
+///
+/// The pattern position is parsed as an expression first; if `<-` follows it
+/// is treated as a generator, otherwise as a guard predicate.
+fn parseQualifier(gpa: Allocator, ts: *TokenStream) ParseError!ast.Qualifier {
+    const e = try parseExpr(gpa, ts, 0);
+    if (ts.eat(.left_arrow)) {
+        const src = try parseExpr(gpa, ts, 0);
+        const srcp = try gpa.create(Expr);
+        srcp.* = src;
+        return ast.Qualifier{ .generator = .{ .pat = e, .source = srcp } };
+    }
+    const ep = try gpa.create(Expr);
+    ep.* = e;
+    return ast.Qualifier{ .guard = ep };
 }
 
 // ---------------------------------------------------------------------------
@@ -382,6 +449,42 @@ pub fn cloneExpr(gpa: Allocator, src: *const Expr) ParseError!Expr {
             const tp = try gpa.create(Expr);
             tp.* = try cloneExpr(gpa, src.cond.then_expr);
             break :ret Expr{ .cond = .{ .guard = gp, .then_expr = tp } };
+        },
+
+        .section_right => ret: {
+            const ap = try gpa.create(Expr);
+            ap.* = try cloneExpr(gpa, src.section_right.arg);
+            break :ret Expr{ .section_right = .{ .op = src.section_right.op, .arg = ap } };
+        },
+        .section_left => ret: {
+            const ap = try gpa.create(Expr);
+            ap.* = try cloneExpr(gpa, src.section_left.arg);
+            break :ret Expr{ .section_left = .{ .arg = ap, .op = src.section_left.op } };
+        },
+
+        .op_func => |op| Expr{ .op_func = op },
+
+        .range => ret: {
+            const fp = try gpa.create(Expr);
+            fp.* = try cloneExpr(gpa, src.range.from);
+            const sp2: ?*Expr = if (src.range.step) |s| blk: {
+                const p = try gpa.create(Expr);
+                p.* = try cloneExpr(gpa, s);
+                break :blk p;
+            } else null;
+            const tp: ?*Expr = if (src.range.to) |t| blk: {
+                const p = try gpa.create(Expr);
+                p.* = try cloneExpr(gpa, t);
+                break :blk p;
+            } else null;
+            break :ret Expr{ .range = .{ .from = fp, .step = sp2, .to = tp } };
+        },
+
+        // List comprehension: shallow clone of qualifiers (arena-backed usage).
+        .listcomp => ret: {
+            const bp = try gpa.create(Expr);
+            bp.* = try cloneExpr(gpa, src.listcomp.body);
+            break :ret Expr{ .listcomp = .{ .body = bp, .qualifiers = src.listcomp.qualifiers } };
         },
     };
 }

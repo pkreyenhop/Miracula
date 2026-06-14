@@ -261,14 +261,21 @@ definitions, type specifications, type declarations, `%include`, and
 
 ---
 
-# Phase 8 – Lexer Bridge
+# Phase 8 – Lexer Bridge ✔ DONE
 
 ## Goal
 
 Produce a real `[]Token` slice from Miranda source so the new parser has
 a genuine input stream instead of hand-built test fixtures.
 
-## Approach A — wrap the existing C lexer (recommended, do first)
+## Status
+
+`src/parser/lex_bridge.zig` implemented via Approach A: wraps `yylex()`,
+maps all C token IDs to `TokenId`, captures `line_no`/`col` spans, and
+handles `NAME`/`CNAME`/literal payloads.  `parseWithNew` in `parser_api.zig`
+calls `lex_bridge.tokenize()` to feed the Zig parser.
+
+## Approach A — wrap the existing C lexer (completed)
 
 `lex.zig` already contains the full tokenisation logic: layout injection,
 literal parsing (bigints, floats, characters, strings), the offside /
@@ -348,11 +355,20 @@ unblocks Phase 9 immediately.
 
 ---
 
-# Phase 9 – Grammar Completeness
+# Phase 9 – Grammar Completeness ✔ DONE
 
 ## Goal
 
 Fill the grammar gaps identified in Phase 7.
+
+## Status
+
+All gaps resolved.  List comprehensions (`Expr.listcomp` with `Qualifier`),
+operator sections (`section_left`, `section_right`, `section_op`), `abstype …
+with` blocks, `%include`/`%export`/`%free` directives, and `%bnf`/`%lex`
+stub-parse are fully implemented across `ast.zig`, `pratt.zig`, and
+`parser.zig`.  Layout tokens (`OFFSIDE`/`ELSEQ`) are injected automatically
+by the C lexer bridge (Phase 8A).
 
 ## 9.1 — List comprehensions
 
@@ -415,7 +431,7 @@ not use `%bnf` in critical paths before removing the stub.
 
 ---
 
-# Phase 10 – Codegen (AST → Miranda heap)
+# Phase 10 – Codegen (AST → Miranda heap) ✔ DONE
 
 ## Goal
 
@@ -426,6 +442,23 @@ This phase has **no analogue in the original plan** — the original assumed
 "parser output = AST only."  That is correct for the parser itself, but the
 Miranda evaluator expects `Word` heap graphs.  A codegen pass is required
 to bridge the two worlds before the legacy pipeline can be removed.
+
+## Status
+
+`src/parser/codegen.zig` (≈360 lines) is complete.  `parseWithNew` in
+`parser_api.zig` now runs the full pipeline: `tokenize` → `parseScript` →
+`codegenScript`.
+
+Key design points implemented:
+- `codegenScript` dispatches all `TopLevel` variants (defs, type specs, type decls, include, export)
+- `codegenExpr` handles all `Expr` variants including `listcomp` (reversed qualifiers for `compzf`), `section_left`/`section_right`/`section_op`, ranges, string literals
+- Binary `!` args are REVERSED (`ap2(SUBSCRIPT, rhs, lhs)`) to match `rules.y`
+- Binary `:` uses `make(CONS, lhs, rhs)` directly (not `P` combinator)
+- `section_right` for `lt`/`le`/`bang` unwraps the `C`-prefix optimisation
+- `codegenDef` lambda-desugars multi-arg functions identically to the yacc action at rules.y:944–951
+- Algebraic type constructors are reversed, APs peeled, `declconstr` called, then `decl_type` called
+- Type synonyms call `redtvars` then `decl_type(hd(x), synonym_t, tl(x), here)`
+- `codegen.zig` is only imported from `parser_api.zig`; the pure `parser-tests` binary never sees it
 
 ## Architecture
 

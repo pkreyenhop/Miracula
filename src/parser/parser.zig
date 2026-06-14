@@ -183,7 +183,7 @@ pub fn parseTypeSpec(p: *Parser) ParseError!ast.TopLevel {
     _ = try p.expect(.coloncolon);
     const typ = try parseType(p);
 
-    return ast.TopLevel{ .type_spec = .{
+    return ast.TopLevel{ .type_spec = ast.TypeSpec{
         .names = try names.toOwnedSlice(p.gpa),
         .typ   = typ,
         .span  = sp,
@@ -364,9 +364,11 @@ pub fn parseRhs(p: *Parser) ParseError!ast.Expr {
     var defs: std.ArrayList(ast.Def) = .empty;
     errdefer defs.deinit(p.gpa);
 
-    // Consume at least one local definition
+    // Consume at least one local definition; skip layout between defs
     try defs.append(p.gpa, try parseDef(p));
-    while (p.check(.name) or p.check(.cname)) {
+    while (true) {
+        while (p.eat(.offside) or p.eat(.elseq) or p.eat(.semicolon)) {}
+        if (!p.check(.name) and !p.check(.cname)) break;
         try defs.append(p.gpa, try parseDef(p));
     }
 
@@ -404,7 +406,7 @@ pub fn parseScript(p: *Parser) ParseError!ast.Script {
 
     while (!p.check(.eof)) {
         // Skip layout tokens between items
-        while (p.eat(.offside) or p.eat(.semicolon)) {}
+        while (p.eat(.offside) or p.eat(.elseq) or p.eat(.semicolon)) {}
         if (p.check(.eof)) break;
 
         const item = try parseTopLevel(p);
@@ -417,23 +419,236 @@ pub fn parseScript(p: *Parser) ParseError!ast.Script {
 fn parseTopLevel(p: *Parser) ParseError!ast.TopLevel {
     const tok = p.peek();
 
-    // Type specification:  NAME (',' NAME)* '::' type
-    if (tok.id == .name) {
-        // Lookahead: is this a type-spec or a definition?
-        var i: usize = 1;
-        while (p.ts.peekAt(i).id == .comma) {
-            i += 1;
-            if (p.ts.peekAt(i).id != .name) break;
-            i += 1;
-        }
-        if (p.ts.peekAt(i).id == .coloncolon) {
-            return parseTypeSpec(p);
-        }
+    switch (tok.id) {
+        // Type synonym: `type Name params == body`
+        .kw_type     => return parseTypeSynonym(p),
+        // Abstract type: `abstype name params with specs`
+        .kw_abstype  => return parseAbstype(p),
+        // Module directives
+        .kw_include  => return parseInclude(p),
+        .kw_export   => return parseExport(p),
+        .kw_free     => return parseFree(p),
+        // BNF / LEX sections — parse and discard
+        .kw_bnf, .kw_lex => return parseDiscardSection(p),
+        else => {},
     }
 
-    // Eval statement (bare expression — not yet a EVAL token in this stage)
+    // When the item starts with a lowercase name, look ahead to decide between:
+    //   type spec:       `Name (, Name)* :: type`
+    //   algebraic type:  `name (typevar | *)* ::= constructors`
+    //   definition:      everything else
+    if (tok.id == .name) {
+        // Check for algebraic type declaration: skip type params to find ::=
+        var i: usize = 1;
+        while (p.ts.peekAt(i).id == .typevar or p.ts.peekAt(i).id == .star) i += 1;
+        if (p.ts.peekAt(i).id == .colon2eq) return parseAlgebraicType(p);
+
+        // Check for type specification: NAME (, NAME)* ::
+        var j: usize = 1;
+        while (p.ts.peekAt(j).id == .comma) {
+            j += 1;
+            if (p.ts.peekAt(j).id != .name) break;
+            j += 1;
+        }
+        if (p.ts.peekAt(j).id == .coloncolon) return parseTypeSpec(p);
+    }
+
     const def = try parseDef(p);
     return ast.TopLevel{ .definition = def };
+}
+
+// ---------------------------------------------------------------------------
+// Type declaration parsers (algebraic, synonym, abstype)
+// ---------------------------------------------------------------------------
+
+/// Parse a constructor: `CNAME argtype*`
+fn parseConstructor(p: *Parser) ParseError!ast.Constructor {
+    const sp = p.span();
+    const name_tok = try p.expect(.cname);
+    var fields: std.ArrayList(ast.TypeExpr) = .empty;
+    errdefer fields.deinit(p.gpa);
+    while (isArgtypeStart(p.peek().id)) {
+        try fields.append(p.gpa, try parseArgtype(p));
+    }
+    return ast.Constructor{
+        .name   = name_tok.text,
+        .fields = try fields.toOwnedSlice(p.gpa),
+        .span   = sp,
+    };
+}
+
+/// Parse `name (typevar | *)* ::= Constructor1 type* | Constructor2 type* | …`
+fn parseAlgebraicType(p: *Parser) ParseError!ast.TopLevel {
+    const sp = p.span();
+    const name_tok = try p.expect(.name);
+
+    var params: std.ArrayList([]const u8) = .empty;
+    errdefer params.deinit(p.gpa);
+    while (p.check(.typevar) or p.check(.star)) {
+        const pv = p.advance();
+        try params.append(p.gpa, pv.text);
+    }
+
+    _ = try p.expect(.colon2eq);
+
+    var ctors: std.ArrayList(ast.Constructor) = .empty;
+    errdefer ctors.deinit(p.gpa);
+    try ctors.append(p.gpa, try parseConstructor(p));
+    while (p.eat(.pipe)) {
+        try ctors.append(p.gpa, try parseConstructor(p));
+    }
+
+    return ast.TopLevel{ .type_decl = .{ .algebraic = .{
+        .name         = name_tok.text,
+        .params       = try params.toOwnedSlice(p.gpa),
+        .constructors = try ctors.toOwnedSlice(p.gpa),
+        .span         = sp,
+    } } };
+}
+
+/// Parse `type Name params == body`
+fn parseTypeSynonym(p: *Parser) ParseError!ast.TopLevel {
+    const sp = p.span();
+    _ = try p.expect(.kw_type);
+    const name_tok = try p.expect(.name);
+
+    var params: std.ArrayList([]const u8) = .empty;
+    errdefer params.deinit(p.gpa);
+    while (p.check(.typevar) or p.check(.star)) {
+        const pv = p.advance();
+        try params.append(p.gpa, pv.text);
+    }
+
+    _ = try p.expect(.eq_eq);
+    const body = try parseType(p);
+
+    return ast.TopLevel{ .type_decl = .{ .synonym = .{
+        .name   = name_tok.text,
+        .params = try params.toOwnedSlice(p.gpa),
+        .body   = body,
+        .span   = sp,
+    } } };
+}
+
+/// Parse a single type-spec inside an abstype/free block: `name (, name)* :: type`
+fn parseOneTypeSpec(p: *Parser) ParseError!ast.TypeSpec {
+    const sp = p.span();
+    var names: std.ArrayList([]const u8) = .empty;
+    errdefer names.deinit(p.gpa);
+    const first = try p.expect(.name);
+    try names.append(p.gpa, first.text);
+    while (p.eat(.comma)) {
+        const n = try p.expect(.name);
+        try names.append(p.gpa, n.text);
+    }
+    _ = try p.expect(.coloncolon);
+    const typ = try parseType(p);
+    return ast.TypeSpec{
+        .names = try names.toOwnedSlice(p.gpa),
+        .typ   = typ,
+        .span  = sp,
+    };
+}
+
+/// Parse `abstype name params with name :: type …`
+fn parseAbstype(p: *Parser) ParseError!ast.TopLevel {
+    const sp = p.span();
+    _ = try p.expect(.kw_abstype);
+    const name_tok = try p.expect(.name);
+
+    var params: std.ArrayList([]const u8) = .empty;
+    errdefer params.deinit(p.gpa);
+    while (p.check(.typevar) or p.check(.star)) {
+        const pv = p.advance();
+        try params.append(p.gpa, pv.text);
+    }
+
+    // Skip layout / additional typeforms until `with`
+    while (!p.check(.kw_with) and !p.check(.eof)) _ = p.advance();
+    _ = try p.expect(.kw_with);
+
+    // Parse indented type specs
+    while (p.eat(.offside) or p.eat(.elseq) or p.eat(.semicolon)) {}
+    var specs: std.ArrayList(ast.TypeSpec) = .empty;
+    errdefer specs.deinit(p.gpa);
+    while (p.check(.name)) {
+        try specs.append(p.gpa, try parseOneTypeSpec(p));
+        while (p.eat(.offside) or p.eat(.elseq) or p.eat(.semicolon)) {}
+    }
+
+    return ast.TopLevel{ .type_decl = .{ .abstype = .{
+        .name   = name_tok.text,
+        .params = try params.toOwnedSlice(p.gpa),
+        .specs  = try specs.toOwnedSlice(p.gpa),
+        .span   = sp,
+    } } };
+}
+
+// ---------------------------------------------------------------------------
+// Module directive parsers
+// ---------------------------------------------------------------------------
+
+/// Parse `%include <pathname>`
+fn parseInclude(p: *Parser) ParseError!ast.TopLevel {
+    const sp = p.span();
+    _ = try p.expect(.kw_include);
+    const path_tok = try p.expect(.pathname);
+    return ast.TopLevel{ .include = .{ .path = path_tok.text, .span = sp } };
+}
+
+/// Parse `%export name …`
+fn parseExport(p: *Parser) ParseError!ast.TopLevel {
+    const sp = p.span();
+    _ = try p.expect(.kw_export);
+    var names: std.ArrayList([]const u8) = .empty;
+    errdefer names.deinit(p.gpa);
+    while (p.check(.name) or p.check(.cname)) {
+        try names.append(p.gpa, p.advance().text);
+    }
+    return ast.TopLevel{ .export_list = .{
+        .names = try names.toOwnedSlice(p.gpa),
+        .span  = sp,
+    } };
+}
+
+/// Parse `%free name :: type …`  (opaque type with external implementations)
+fn parseFree(p: *Parser) ParseError!ast.TopLevel {
+    const sp = p.span();
+    _ = try p.expect(.kw_free);
+    while (p.eat(.offside) or p.eat(.elseq) or p.eat(.semicolon)) {}
+    var specs: std.ArrayList(ast.TypeSpec) = .empty;
+    errdefer specs.deinit(p.gpa);
+    while (p.check(.name)) {
+        try specs.append(p.gpa, try parseOneTypeSpec(p));
+        while (p.eat(.offside) or p.eat(.elseq) or p.eat(.semicolon)) {}
+    }
+    return ast.TopLevel{ .free_directive = .{
+        .specs = try specs.toOwnedSlice(p.gpa),
+        .span  = sp,
+    } };
+}
+
+/// Consume a `%bnf` or `%lex` section and discard its content.
+///
+/// BNF/LEX sections end when the layout mechanism returns to the enclosing
+/// indentation level (OFFSIDE after the section body).  We consume tokens
+/// until we see either EOF or an OFFSIDE that brings us back to depth 0.
+fn parseDiscardSection(p: *Parser) ParseError!ast.TopLevel {
+    _ = p.advance(); // consume kw_bnf or kw_lex
+    var depth: i32 = 0;
+    while (!p.check(.eof)) {
+        const t = p.peek();
+        if (t.id == .offside) {
+            if (depth <= 0) break;
+            depth -= 1;
+        } else if (t.id == .elseq) {
+            depth += 1;
+        }
+        _ = p.advance();
+    }
+    // Return an empty tuple as a placeholder eval expression
+    const unit = try p.gpa.alloc(ast.Expr, 0);
+    return ast.TopLevel{ .eval = ast.Expr{ .tuple = unit } };
 }
 
 // ---------------------------------------------------------------------------
