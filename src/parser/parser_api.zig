@@ -5,6 +5,9 @@ const clib = @cImport({
     @cInclude("data.h");
 });
 
+const lex_bridge = @import("lex_bridge.zig");
+const parser_mod = @import("parser.zig");
+
 extern var SYNERR: clib.word;
 
 pub const ParseError = error{
@@ -90,12 +93,23 @@ pub fn parseWithLegacy(source: [*:0]const u8) ParseError!ParseResult {
     return .success;
 }
 
-/// Stub return type for parseWithNew — Phase 8 will populate this properly.
+/// Result of parsing with the new Zig pipeline. Phase 10 will expose the AST.
 pub const NewParseResult = struct {
     pub fn deinit(_: *NewParseResult) void {}
 };
 
-/// Phase 8 stub: returns ParseFailed until the Zig lexer bridge is wired.
-pub fn parseWithNew(_: std.mem.Allocator, _: [*:0]const u8) ParseError!NewParseResult {
-    return ParseError.ParseFailed;
+/// Parse a Miranda source string through the Zig lexer bridge + recursive-descent parser.
+/// Uses an arena so all intermediate allocations are freed on return.
+pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!NewParseResult {
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    const source_span: [:0]const u8 = std.mem.span(source);
+    const tokens = lex_bridge.tokenize(alloc, source_span) catch return ParseError.ParseFailed;
+
+    var p = parser_mod.Parser.init(alloc, tokens);
+    _ = parser_mod.parseScript(&p) catch return ParseError.ParseFailed;
+
+    return NewParseResult{};
 }

@@ -302,10 +302,10 @@ test "prelude parsing test" {
 }
 
 fn runASTSnapshotTest(allocator: std.mem.Allocator, name: []const u8, source: [:0]const u8) !void {
-    _ = allocator;
     _ = name;
-    _ = source;
-    // Phase 8 stub: re-enable once parser_api.parseWithNew() is implemented.
+    ensureInitialized();
+    resetLexerState();
+    _ = try parser_api.parseWithNew(allocator, source.ptr);
 }
 
 test "new parser AST snapshot tests" {

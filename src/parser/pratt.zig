@@ -118,6 +118,22 @@ pub const TokenStream = struct {
 // Pratt expression parser
 // ---------------------------------------------------------------------------
 
+/// True if `id` is an infix operator that cannot begin a prefix expression,
+/// which makes it a legal right-section operator after `(`.
+/// Excluded: `-` and `~` (prefix negation), `#` (prefix length).
+fn isRightSectionOp(id: TokenId) bool {
+    return switch (id) {
+        .plus, .star, .slash, .caret, .dot, .bang,
+        .amp, .vel, .cons,
+        .plus_plus, .minus_minus,
+        .eq, .ne, .lt, .gt, .le, .ge, .eq_eq,
+        .kw_div, .kw_mod,
+        .infixname, .infixcname,
+        => true,
+        else => false,
+    };
+}
+
 /// True if `id` can start an argument in function-application position.
 fn isArgStart(id: TokenId) bool {
     return switch (id) {
@@ -201,8 +217,26 @@ pub fn parseExpr(
                     const items = try gpa.alloc(Expr, 0);
                     break :inner Expr{ .tuple = items };
                 }
+                // Right operator section: (op expr) — e.g. (+1), (*2)
+                // An infix-only operator here cannot start a normal prefix expression.
+                if (isRightSectionOp(ts.peek().id)) {
+                    const op_tok = ts.advance();
+                    const arg = try parseExpr(gpa, ts, 0);
+                    _ = try ts.expect(.rparen);
+                    const argp = try gpa.create(Expr);
+                    argp.* = arg;
+                    break :inner Expr{ .section_right = .{ .op = @tagName(op_tok.id), .arg = argp } };
+                }
                 const first = try parseExpr(gpa, ts, 0);
                 if (ts.eat(.rparen)) break :inner first;
+                // Left operator section: (expr op) — e.g. (1+), (10*)
+                if (isRightSectionOp(ts.peek().id)) {
+                    const op_tok = ts.advance();
+                    _ = try ts.expect(.rparen);
+                    const firstp = try gpa.create(Expr);
+                    firstp.* = first;
+                    break :inner Expr{ .section_left = .{ .arg = firstp, .op = @tagName(op_tok.id) } };
+                }
                 var elems: std.ArrayList(Expr) = .empty;
                 errdefer elems.deinit(gpa);
                 try elems.append(gpa, first);

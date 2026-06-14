@@ -381,7 +381,9 @@ pub fn parseRhs(p: *Parser) ParseError!ast.Expr {
 /// Parse one definition: `lhs_expr = rhs_expr`
 pub fn parseDef(p: *Parser) ParseError!ast.Def {
     const sp = p.span();
-    const lhs = try parseExpr(p);
+    // Parse LHS with min_bp > 40 so the definition '=' (bp.left=40) is not
+    // consumed as an infix equality operator — it is the definition separator.
+    const lhs = try pratt.parseExpr(p.gpa, &p.ts, 41);
     _ = try p.expect(.eq);
     const rhs_expr = try parseRhs(p);
     return ast.Def{

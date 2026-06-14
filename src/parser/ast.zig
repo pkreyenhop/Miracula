@@ -65,6 +65,10 @@ pub const Expr = union(enum) {
     where: struct { body: *Expr, defs: []Def },
     /// Conditional guard (internal): `expr, if cond`
     cond: struct { guard: *Expr, then_expr: *Expr },
+    /// Right operator section: `(op expr)` — e.g. `(+1)` means `\x -> x + 1`
+    section_right: struct { op: []const u8, arg: *Expr },
+    /// Left operator section: `(expr op)` — e.g. `(1+)` means `\x -> 1 + x`
+    section_left: struct { arg: *Expr, op: []const u8 },
 };
 
 // ---------------------------------------------------------------------------
