@@ -10,6 +10,7 @@ const parser_mod = @import("parser.zig");
 const codegen = @import("codegen.zig");
 
 extern var SYNERR: clib.word;
+extern var commandmode: clib.word;
 
 pub const ParseError = error{
     SyntaxError,
@@ -38,10 +39,41 @@ pub fn parseCurrent() ParseError!ParseResult {
             return .success;
         },
         .new => {
-            // Phase 8: wire the Zig parser here once the lexer bridge is ready.
-            return ParseError.ParseFailed;
+            // REPL (commandmode != 0) stays on legacy: the interactive parser
+            // uses Miranda's line-by-line protocol which the Zig pipeline does
+            // not yet replicate.
+            if (commandmode != 0) {
+                const res = clib.mira_parse_current();
+                if (res != 0 or SYNERR != 0) return ParseError.SyntaxError;
+                return .success;
+            }
+            return parseCurrentNew();
         },
     }
+}
+
+/// Run the Zig pipeline on the currently active Miranda lex stream.
+/// s_in must already be opened (e.g. by openfile() in lex.zig).
+fn parseCurrentNew() ParseError!ParseResult {
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    const tokens = lex_bridge.tokenizeCurrent(alloc) catch return ParseError.ParseFailed;
+
+    var p = parser_mod.Parser.init(alloc, tokens);
+    const script = parser_mod.parseScript(&p) catch return ParseError.ParseFailed;
+
+    for (p.diagnostics.items) |d| {
+        std.debug.print("{d}:{d}: {s}\n", .{ d.span.line, d.span.col, d.message });
+    }
+    if (p.diagnostics.items.len > 0) {
+        SYNERR = 1;
+        return ParseError.SyntaxError;
+    }
+
+    codegen.codegenScript(alloc, script);
+    return .success;
 }
 
 /// Parses a script file by filename.
@@ -72,8 +104,10 @@ pub fn parseString(source: [*:0]const u8) ParseError!ParseResult {
             return .success;
         },
         .new => {
-            // Phase 8: wire the Zig parser here once the lexer bridge is ready.
-            return ParseError.ParseFailed;
+            var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+            defer arena.deinit();
+            _ = try parseWithNew(arena.allocator(), source);
+            return .success;
         },
     }
 }

@@ -27,6 +27,7 @@ const ATOMLIMIT: clib.word = CMBASE + 141;
 extern var yylval: clib.word;
 extern var line_no: clib.word;
 extern var col: clib.word;
+extern var tok_start_col: clib.word;
 extern var dicp: [*:0]u8;
 // Heap arrays (data.h: hd and tl are offset so hd[x*2] / tl[x*2] index cell x).
 extern var hd: [*]clib.word;
@@ -36,6 +37,9 @@ extern var tag: [*]u8;
 extern fn yylex() c_int;
 extern fn is_char(x: clib.word) c_int;
 extern fn get_dbl(x: clib.word) f64;
+extern fn layout() void;
+extern fn setlmargin() void;
+extern fn unsetlmargin() void;
 
 // C macro equivalents: hd(x) == hd[(x)*2], tl(x) == tl[(x)*2]
 inline fn hd_of(x: clib.word) clib.word {
@@ -231,7 +235,19 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
 pub fn tokenize(gpa: Allocator, source: [:0]const u8) ![]Token {
     clib.mira_lex_setup_string(source.ptr);
     defer clib.mira_lex_cleanup();
+    return try tokenizeLoop(gpa);
+}
 
+/// Tokenize the currently active Miranda lex stream (s_in already opened).
+/// Does NOT call mira_lex_setup_string or mira_lex_cleanup; the caller is
+/// responsible for the stream lifetime.  Used in Phase 13 to drive yylex()
+/// from whatever file openfile() opened.
+pub fn tokenizeCurrent(gpa: Allocator) ![]Token {
+    return try tokenizeLoop(gpa);
+}
+
+/// Inner tokenize loop shared by tokenize() and tokenizeCurrent().
+fn tokenizeLoop(gpa: Allocator) ![]Token {
     var toks: std.ArrayList(Token) = .empty;
     errdefer {
         for (toks.items) |tok| {
@@ -240,15 +256,117 @@ pub fn tokenize(gpa: Allocator, source: [:0]const u8) ![]Token {
         toks.deinit(gpa);
     }
 
+    // Layout state mirrors the YACC grammar actions:
+    //
+    //   indent  (before definition '='): layout(); setlmargin()
+    //   outdent (after OFFSIDE):         unsetlmargin()
+    //   reindent (before ELSEQ alt):     unsetlmargin(); layout(); setlmargin()
+    //
+    // CRITICAL: only the DEFINITION '=' triggers setlmargin(), NOT comparison
+    // '=' inside expressions (e.g. `if a=b`).  We distinguish them by tracking
+    // whether we have already seen the definition '=' for the current item.
+    //
+    //   seen_def_eq – true once setlmargin() has been called for the current
+    //                 definition; prevents inner '=' from re-calling it.
+    //   paren_depth – definition '=' never appears inside () or []; any '='
+    //                 inside brackets is definitely a comparison.
+    var seen_def_eq: bool = false;
+    var paren_depth: i32 = 0;
+
     while (true) {
+        const raw = yylex();
+        // Capture span AFTER yylex so that line_no reflects the line that was
+        // just processed. Use tok_start_col (set by yylex right after layout())
+        // for the column — this is the column at the START of the token, before
+        // any characters are read. Using col (post-read) would give different
+        // columns for same-indented identifiers of different lengths.
         const span = Span{
             .line = @intCast(line_no),
-            .col = @intCast(col),
+            .col = @intCast(tok_start_col),
         };
-        const raw = yylex();
         if (try mapToken(gpa, raw, span)) |tok| {
             try toks.append(gpa, tok);
             if (tok.id == .eof or tok.id == .error_tok) break;
+
+            switch (tok.id) {
+                // Track bracket nesting: '=' inside brackets is always a comparison.
+                .lparen, .lbracket, .lbrace => paren_depth += 1,
+                .rparen, .rbracket, .rbrace => paren_depth -= 1,
+
+                // Definition '=': call layout()+setlmargin() exactly once per
+                // definition.  Subsequent '=' (comparisons) are skipped.
+                .eq => {
+                    if (paren_depth == 0 and !seen_def_eq) {
+                        layout();
+                        setlmargin();
+                        seen_def_eq = true;
+                    }
+                },
+
+                // OFFSIDE ends the current definition; restore outer lmargin and
+                // reset seen_def_eq so the next definition '=' triggers setlmargin.
+                .offside => {
+                    unsetlmargin();
+                    seen_def_eq = false;
+                    paren_depth = 0;
+                },
+
+                // ELSEQ is the layout-generated '=' that starts an alternative
+                // guard case.  Mirror YACC's `reindent` production:
+                //   unsetlmargin(); layout(); setlmargin()
+                // Then mark seen_def_eq=true because the ELSEQ itself consumed
+                // the '=' — the next RHS body should not trigger setlmargin again.
+                .elseq => {
+                    unsetlmargin();
+                    layout();
+                    setlmargin();
+                    seen_def_eq = true;
+                },
+
+                // WHERE begins local definitions; reset seen_def_eq so each local
+                // definition '=' correctly triggers setlmargin.
+                .kw_where => {
+                    seen_def_eq = false;
+                },
+
+                // COLON2EQ (::=) opens an algebraic type body.
+                // Mirror YACC's `typeform indent act1 here COLON2EQ` where the
+                // `indent` mid-rule action fires (with ::= as lookahead) and calls
+                // layout()+setlmargin(), setting lmargin to the column of the first
+                // constructor.  This prevents tokens on a new line at col < lmargin
+                // from being consumed as constructor field types.
+                .colon2eq => {
+                    layout();
+                    setlmargin();
+                },
+
+                // EQEQ (==) opens a type synonym body (only at top-level).
+                // Same treatment as COLON2EQ.  Guard on !seen_def_eq so that ==
+                // used as an equality comparison inside a function body is skipped.
+                .eq_eq => {
+                    if (!seen_def_eq) {
+                        layout();
+                        setlmargin();
+                    }
+                },
+
+                // COLONCOLON (::) introduces a type signature body.
+                // Mirror YACC's `namelist indent here COLONCOLON type outdent` where
+                // the `indent` mid-rule fires before COLONCOLON: layout()+setlmargin()
+                // sets lmargin to the column of the type body.  The matching OFFSIDE
+                // (generated at the start of the next top-level definition) will call
+                // unsetlmargin() to restore the outer margin.
+                // Guard on paren_depth==0 so that `expr :: type` casts inside
+                // expressions do not affect lmargin.
+                .coloncolon => {
+                    if (paren_depth == 0) {
+                        layout();
+                        setlmargin();
+                    }
+                },
+
+                else => {},
+            }
         }
         if (raw == 0) break; // END/EOF without a mapped token (shouldn't happen)
     }

@@ -361,7 +361,7 @@ fn setDval(d: Word, value: Word) void {
 }
 
 export fn primconstr(input_x: Word) Word {
-    var x = t(h(input_x));
+    var x = t(input_x); // idVal(x) = CONSTRUCTOR cell (or MKSTRICT wrapper for strict ctors)
     while (tag[@intCast(x)] != CONSTRUCTOR) {
         x = t(x);
     }
