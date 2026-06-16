@@ -228,14 +228,18 @@ const Driver = struct {
     fn readSelection(self: *Driver) !void {
         var buffer: [max_selection]u8 = undefined;
         var len: usize = 0;
-        var byte_buf: [1]u8 = undefined;
         var saw_nonleading = false;
+        // reader_buf and dest_buf MUST be separate: Zig's writableVector adds both
+        // the internal reader buffer and the destination slice to the same readv iovec,
+        // so if they alias, the OS overwrites the destination byte before we read it.
+        var reader_buf: [256]u8 = undefined;
+        var dest_buf: [1]u8 = undefined;
         const stdin = std.Io.File.stdin();
-        var r = stdin.reader(self.ctx.io, &byte_buf);
+        var r = stdin.readerStreaming(self.ctx.io, &reader_buf);
         while (true) {
-            const read = try r.interface.readSliceShort(&byte_buf);
+            const read = try r.interface.readSliceShort(&dest_buf);
             if (read == 0) std.process.exit(0);
-            const ch = byte_buf[0];
+            const ch = dest_buf[0];
             if (ch == '\n') break;
             if (!saw_nonleading and (ch == ' ' or ch == '\t')) continue;
             saw_nonleading = true;
