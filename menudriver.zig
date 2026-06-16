@@ -329,6 +329,7 @@ const Driver = struct {
 
 pub fn main(ctx: std.process.Init) !void {
     const args = try ctx.minimal.args.toSlice(ctx.gpa);
+    defer ctx.gpa.free(args);
     if (args.len > 2) {
         std.debug.print("menudriver: wrong number of args\n", .{});
         std.process.exit(1);
