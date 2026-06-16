@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const clib = @cImport({
-    @cInclude("parser_bridge.h");
     @cInclude("data.h");
 });
 
@@ -11,6 +10,12 @@ const codegen = @import("codegen.zig");
 
 extern var SYNERR: clib.word;
 extern var commandmode: clib.word;
+extern var lastexp: clib.word;
+extern fn mira_lex_setup_string(source: [*:0]const u8) void;
+extern fn mira_lex_cleanup() void;
+extern fn mira_lex_setup_file(filename: [*:0]const u8) c_int;
+// Forks like the original C evaluate(): compiling=0 only in child; parent's heap is safe.
+extern fn evaluate_repl(x: clib.word) void;
 
 pub const ParseError = error{
     SyntaxError,
@@ -21,35 +26,9 @@ pub const ParseResult = enum {
     success,
 };
 
-pub const ParserMode = enum {
-    legacy,
-    new,
-};
-
-pub var parser_mode: ParserMode = .legacy;
-
 /// Parses the currently active stream.
 pub fn parseCurrent() ParseError!ParseResult {
-    switch (parser_mode) {
-        .legacy => {
-            const res = clib.mira_parse_current();
-            if (res != 0 or SYNERR != 0) {
-                return ParseError.SyntaxError;
-            }
-            return .success;
-        },
-        .new => {
-            // REPL (commandmode != 0) stays on legacy: the interactive parser
-            // uses Miranda's line-by-line protocol which the Zig pipeline does
-            // not yet replicate.
-            if (commandmode != 0) {
-                const res = clib.mira_parse_current();
-                if (res != 0 or SYNERR != 0) return ParseError.SyntaxError;
-                return .success;
-            }
-            return parseCurrentNew();
-        },
-    }
+    return parseCurrentNew();
 }
 
 /// Run the Zig pipeline on the currently active Miranda lex stream.
@@ -62,6 +41,27 @@ fn parseCurrentNew() ParseError!ParseResult {
     const tokens = lex_bridge.tokenizeCurrent(alloc) catch return ParseError.ParseFailed;
 
     var p = parser_mod.Parser.init(alloc, tokens);
+
+    // Command mode: the user typed an expression at the REPL prompt.
+    // In the old YACC grammar this was handled by `EVAL exp { evaluate($2); }`.
+    // We parse one expression, codegen it, then fork via evaluate_repl().
+    if (commandmode != 0) {
+        const expr = parser_mod.parseExpr(&p) catch {
+            SYNERR = 1;
+            return ParseError.SyntaxError;
+        };
+        if (!p.ts.check(.eof) and !p.ts.check(.offside)) {
+            // Trailing tokens after the expression — treat as syntax error.
+            SYNERR = 1;
+            return ParseError.SyntaxError;
+        }
+        const expr_word = codegen.codegenExpr(alloc, expr);
+        lastexp = expr_word; // anchor as GC root before type_of() inside evaluate_repl() can trigger GC
+        evaluate_repl(expr_word);
+        // Child prints newline before exit(0); parent returns here.
+        return .success;
+    }
+
     const script = parser_mod.parseScript(&p) catch return ParseError.ParseFailed;
 
     for (p.diagnostics.items) |d| {
@@ -78,57 +78,29 @@ fn parseCurrentNew() ParseError!ParseResult {
 
 /// Parses a script file by filename.
 pub fn parseFile(filename: [*:0]const u8) ParseError!ParseResult {
-    switch (parser_mode) {
-        .legacy => {
-            const res = clib.mira_parse_file(filename);
-            if (res != 0 or SYNERR != 0) {
-                return ParseError.SyntaxError;
-            }
-            return .success;
-        },
-        .new => {
-            // Phase 8: wire the Zig parser here once the lexer bridge is ready.
-            return ParseError.ParseFailed;
-        },
+    if (mira_lex_setup_file(filename) == 0) {
+        return ParseError.ParseFailed;
     }
+    return parseCurrentNew();
 }
 
 /// Parses a source string.
 pub fn parseString(source: [*:0]const u8) ParseError!ParseResult {
-    switch (parser_mode) {
-        .legacy => {
-            const res = clib.mira_parse_string(source);
-            if (res != 0 or SYNERR != 0) {
-                return ParseError.SyntaxError;
-            }
-            return .success;
-        },
-        .new => {
-            var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-            defer arena.deinit();
-            _ = try parseWithNew(arena.allocator(), source);
-            return .success;
-        },
-    }
-}
-
-pub fn lexSetupString(source: [*:0]const u8) void {
-    clib.mira_lex_setup_string(source);
-}
-
-pub fn lexCleanup() void {
-    clib.mira_lex_cleanup();
-}
-
-pub fn parseWithLegacy(source: [*:0]const u8) ParseError!ParseResult {
-    const res = clib.mira_parse_string(source);
-    if (res != 0 or SYNERR != 0) {
-        return ParseError.SyntaxError;
-    }
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    _ = try parseWithNew(arena.allocator(), source);
     return .success;
 }
 
-/// Result of parsing with the new Zig pipeline. Phase 10 will expose the AST.
+pub fn lexSetupString(source: [*:0]const u8) void {
+    mira_lex_setup_string(source);
+}
+
+pub fn lexCleanup() void {
+    mira_lex_cleanup();
+}
+
+/// Result of parsing with the new Zig pipeline.
 pub const NewParseResult = struct {
     pub fn deinit(_: *NewParseResult) void {}
 };

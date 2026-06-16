@@ -14,16 +14,20 @@ const Span = tf.Span;
 const clib = @cImport({
     @cInclude("data.h");
     @cInclude("y.tab.h");
-    @cInclude("parser_bridge.h");
 });
+
+extern fn mira_lex_setup_string(source: [*:0]const u8) void;
+extern fn mira_lex_cleanup() void;
 
 // Miranda atom-range constants (from lex.zig — keep in sync with CMBASE = 306).
 const CMBASE: clib.word = 306;
+const FALSE_ATOM: clib.word = CMBASE + 136;  // Miranda boolean False
+const TRUE_ATOM: clib.word = CMBASE + 137;   // Miranda boolean True
 const NIL_ATOM: clib.word = CMBASE + 138;
 const NILS_ATOM: clib.word = CMBASE + 139;
 const ATOMLIMIT: clib.word = CMBASE + 141;
 
-// Lexer globals exported by lex.zig / y.tab.c.
+// Lexer globals exported by lex.zig.
 extern var yylval: clib.word;
 extern var line_no: clib.word;
 extern var col: clib.word;
@@ -139,6 +143,12 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
             .text = try gpa.dupe(u8, getIdText(w)),
         },
         clib.CONST => blk: {
+            // 0. Miranda boolean atoms: True and False are returned by the lexer
+            //    as CONST with predefined atom values, not as CNAME. Map them to
+            //    CNAME so the parser handles them as constructor patterns/exprs.
+            //    The codegen emits the atom word directly for "True"/"False".
+            if (w == TRUE_ATOM) break :blk Token{ .id = .cname, .span = span, .text = try gpa.dupe(u8, "True") };
+            if (w == FALSE_ATOM) break :blk Token{ .id = .cname, .span = span, .text = try gpa.dupe(u8, "False") };
             // 1. Char literal: is_char() handles atoms 0-255 and UNICODE heap cells.
             if (is_char(w) != 0) {
                 const cp: u21 = if (w < ATOMLIMIT)
@@ -233,8 +243,8 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
 /// drives it to EOF, and maps each C token to our TokenId vocabulary.
 /// Caller owns the result; call deinit() to free.
 pub fn tokenize(gpa: Allocator, source: [:0]const u8) ![]Token {
-    clib.mira_lex_setup_string(source.ptr);
-    defer clib.mira_lex_cleanup();
+    mira_lex_setup_string(source.ptr);
+    defer mira_lex_cleanup();
     return try tokenizeLoop(gpa);
 }
 

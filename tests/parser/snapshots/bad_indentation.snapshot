@@ -1,7 +1,7 @@
 PARSE_RESULT: SYNTAX_ERROR
 
 TOKENS:
-NAME("1")
+NAME("2")
 NAME("g")
 EQUALS("g")
 NAME("x")

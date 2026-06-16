@@ -39,6 +39,14 @@ int mira_parse_current(void);
 void mira_lex_setup_string(const char *source);
 void mira_lex_cleanup(void);
 
+/**
+ * Opens a script file and sets s_in, but does NOT invoke yyparse().
+ * Used by the Zig parser pipeline to prepare the lex stream before
+ * calling tokenizeCurrent().
+ * Returns 1 on success, 0 if the file could not be opened.
+ */
+int mira_lex_setup_file(const char *filename);
+
 
 /* ----------------------------------------------------------------------------
  * 2. Semantic Actions (AST & Runtime construction)

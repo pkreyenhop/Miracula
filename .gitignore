@@ -35,3 +35,6 @@ build_errors.log
 /mira_original
 /mira_original_debug
 
+# Reference copy of original Miranda C distribution (not compiled, not part of the build)
+/miranda/
+

@@ -1,6 +1,6 @@
 # Miracula
 
-Miracula is a modern, high-performance implementation of the **Miranda** programming language, migrated to the **Zig** programming language. 
+Miracula is a modern implementation of the **Miranda** programming language, migrated to the **Zig** programming language.
 
 The project's goal is to transition the original, historical C codebase into an idiomatic, pure-Zig implementation with clean module boundaries, solid cross-compilation support, and zero legacy build headaches.
 
@@ -11,20 +11,21 @@ The project's goal is to transition the original, historical C codebase into an 
 * **✔ Runtime Migrated to Zig**: The garbage-collected graph reduction runtime is fully rewritten and functioning in Zig.
 * **✔ Unified Zig Build System**: Replaced the legacy Makefiles and build scripts with `build.zig`.
 * **✔ Modular Source Structure**: Reorganized the source tree into logical packages (runtime, compiler, parser, and IO subsystems).
-* **✔ Tests Passing**: The test suites and regression scripts pass completely.
-* **⚠ Legacy Yacc Parser**: The semantic actions are in Zig, but `rules.y` remains the source of truth, compiling to C parser structures.
-* **⚠ libc Linked**: libc remains linked to support the legacy parser and platform abstractions.
+* **✔ Pure Zig Parser**: The YACC/C parser (`rules.y` / `y.tab.c`) has been fully replaced with a recursive-descent + Pratt parser in Zig. No C parser files are compiled.
+* **✔ REPL Works Correctly**: The interactive REPL evaluates expressions with proper fork-based isolation — heavy computations (e.g. `fib 32`) do not corrupt the heap for subsequent evaluations.
+* **✔ Tests Passing**: 21/21 tests pass.
+* **⚠ libc Linked**: libc remains linked to support platform abstractions (signals, file I/O, big integers).
 
 ---
 
 ## Repository Layout
 
-* [src/runtime](file:///Users/pkreyenhop/src/Miracula/src/runtime) — The graph reduction engine, big integers, and heap/garbage collector.
-* [src/compiler](file:///Users/pkreyenhop/src/Miracula/src/compiler) — The typechecker, code generator, and translation structures.
-* [src/parser](file:///Users/pkreyenhop/src/Miracula/src/parser) — Lexer and semantic actions bridging the yacc-generated parser.
-* [src/io](file:///Users/pkreyenhop/src/Miracula/src/io) — UTF-8 and signals platform IO abstractions.
-* [tests](file:///Users/pkreyenhop/src/Miracula/tests) — Integration, golden, and regression tests.
-* [miralib](file:///Users/pkreyenhop/src/Miracula/miralib) — Miranda standard environment prelude and libraries.
+* [src/runtime](src/runtime) — Graph reduction engine, big integers, and heap/garbage collector.
+* [src/compiler](src/compiler) — Typechecker, code generator, and translation structures.
+* [src/parser](src/parser) — Pure Zig lexer, recursive-descent + Pratt parser, and codegen bridge to the Miranda heap.
+* [src/io](src/io) — UTF-8 and signals platform IO abstractions.
+* [tests](tests) — Integration, golden, and regression tests.
+* [miralib](miralib) — Miranda standard environment prelude and libraries.
 
 ---
 
@@ -40,12 +41,28 @@ This compiles the executable and places it in `zig-out/bin/mira`.
 
 ---
 
+## Running
+
+```bash
+./zig-out/bin/mira            # load script.m and start REPL
+./zig-out/bin/mira myfile.m   # load a script and start REPL
+./zig-out/bin/mira -lib miralib miralib/stdenv.m   # load stdenv explicitly
+```
+
+---
+
 ## Running Tests
 
 To run all native unit and integration tests:
 
 ```bash
 zig build test --summary all
+```
+
+To run only the main steer tests (fastest):
+
+```bash
+zig build test-steer --summary all
 ```
 
 ---
@@ -58,7 +75,7 @@ Miracula officially supports and cross-compiles for:
 
 ---
 
-## Current Migration Roadmap
+## Migration Roadmap
 
 | Phase | Description | Status |
 | --- | --- | --- |
@@ -66,5 +83,5 @@ Miracula officially supports and cross-compiles for:
 | **Phase 2** | Source Modularization | **Complete** ✔ |
 | **Phase 3** | Unified Build System | **Complete** ✔ |
 | **Phase 4** | libc Dependency Reduction | **Complete** ✔ |
-| **Phase 5** | Pure Zig Parser (No Yacc/C) | *Planned* |
+| **Phase 5** | Pure Zig Parser (No Yacc/C) | **Complete** ✔ |
 | **Phase 6** | Pure Zig Implementation (No libc) | *Planned* |

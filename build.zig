@@ -1,9 +1,6 @@
 const std = @import("std");
 
-const c_sources = [_][]const u8{
-    "src/parser/legacy/y.tab.c",
-    "src/parser/legacy/parser_bridge.c",
-};
+const c_sources = [_][]const u8{};
 
 const header_check_includes =
     \\#include "runtime.h"

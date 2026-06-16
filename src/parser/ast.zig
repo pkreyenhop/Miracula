@@ -42,6 +42,8 @@ pub const Literal = union(enum) {
 /// A list-comprehension qualifier: generator (`pat <- src`) or guard (`pred`).
 pub const Qualifier = union(enum) {
     generator: struct { pat: Expr, source: *Expr },
+    /// Sequence generator: `pat <- src, step ..`  →  ITERATE/ITERATE1 combinator.
+    sequence_generator: struct { pat: Expr, source: *Expr, step: *Expr },
     guard: *Expr,
 };
 
@@ -104,6 +106,9 @@ pub const Pat = union(enum) {
 pub const Guard = struct {
     cond: Expr,
     body: Expr,
+    /// True when the guard is `body, otherwise` (always-true branch).
+    /// When true, `cond` is a placeholder and should not be evaluated.
+    is_otherwise: bool,
     span: Span,
 };
 

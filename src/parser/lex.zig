@@ -31,6 +31,7 @@ extern var tag: [*]u8;
 export var fileq: Word = NIL;
 export var margstack: Word = NIL;
 export var col: Word = 0;
+export var tok_start_col: Word = 0;
 export var vergstack: Word = NIL;
 export var line_no: Word = 0;
 export var litstack: Word = NIL;
@@ -52,7 +53,7 @@ export var dicp: [*:0]u8 = undefined;
 export var dicq: [*:0]u8 = undefined;
 
 export var insertdepth: Word = -1;
-var lmargin: Word = 0;
+export var lmargin: Word = 0;
 export var echostack: Word = NIL;
 var lverge: Word = 0;
 var prefixbase: ?[*]u8 = null;
@@ -75,13 +76,13 @@ extern var echoing: Word;
 extern var listing: Word;
 extern var verbosity: Word;
 extern var magic: Word;
-extern var inbnf: Word;
-extern var inlex: Word;
+export var inbnf: Word = 0;
+export var inlex: Word = 0;
 extern var files: Word;
 extern var SYNERR: Word;
-extern var sreds: Word;
-extern var exportfiles: Word;
-extern var inexplist: Word;
+export var sreds: Word = 0;
+export var exportfiles: Word = NIL;
+export var inexplist: Word = 0;
 extern var compiling: c_int;
 extern var lastid: Word;
 extern var s_in: ?*clib.FILE;
@@ -100,11 +101,11 @@ extern var newtyps: Word;
 extern var showchain: Word;
 extern var algshfns: Word;
 extern var rv_script: Word;
-extern var idsused: Word;
+export var idsused: Word = NIL;
 export var ARGC: c_int = 0;
 export var ARGV: [*]?[*:0]u8 = undefined;
 extern var UTF8: c_int;
-extern var yylval: Word;
+export var yylval: Word = NIL;
 extern var commandmode: Word;
 
 extern fn make(t_tag: u8, x: Word, y: Word) Word;
@@ -122,6 +123,30 @@ extern fn acterror() void;
 extern fn syntax(s: [*:0]const u8) void;
 extern fn reset() void;
 extern fn is_char(x: Word) c_int;
+
+export fn mira_lex_setup_string(source: [*:0]const u8) void {
+    const len = std.mem.len(source);
+    const f = clib.fmemopen(@ptrCast(@constCast(source)), len, "r") orelse return;
+    fileq = cons(make(STRCONS, @intCast(@intFromPtr(f)), NIL), fileq);
+    insertdepth += 1;
+    s_in = f;
+}
+
+export fn mira_lex_cleanup() void {
+    if (s_in) |f| {
+        const is_stdio = (f == getStdin()) or (f == getStdout()) or (f == getStderr());
+        if (!is_stdio) {
+            _ = clib.fclose(f);
+            s_in = null;
+        }
+    }
+}
+
+export fn mira_lex_setup_file(filename: [*:0]const u8) c_int {
+    if (openfile(filename) == 0) return 0;
+    s_in = @ptrFromInt(@as(usize, @intCast(h(h(fileq)))));
+    return 1;
+}
 
 const FILEINFO: u8 = 3;
 const TVAR: u8 = 4;
@@ -674,6 +699,7 @@ export fn yylex() c_int {
         return clib.END;
     }
     layout();
+    tok_start_col = col;
     if (c == '\n') {
         return clib.END;
     }
@@ -1826,11 +1852,11 @@ export fn reset_lex() void {
         const err_script = err_script_raw orelse "test.m";
         const is_current = if (err_script_raw) |es| (es == current_script) else true;
         if (t(errs) == 0 and is_current) {
-            _ = clib.printf("error occurs at end of ");
+            _ = clib.fprintf(getStderr().?, "error occurs at end of ");
         } else {
-            _ = clib.printf("error found near line %ld of ", t(errs));
+            _ = clib.fprintf(getStderr().?, "error found near line %ld of ", t(errs));
         }
-        _ = clib.printf("%sfile \"%s\"\ncompilation abandoned\n", if (is_current) @as([*:0]const u8, "") else "%insert ", err_script);
+        _ = clib.fprintf(getStderr().?, "%sfile \"%s\"\ncompilation abandoned\n", if (is_current) @as([*:0]const u8, "") else "%insert ", err_script);
         if (is_current) {
             errline = if (t(errs) == 0) lastline else t(errs);
             errs = 0;

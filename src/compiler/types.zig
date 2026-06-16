@@ -1563,7 +1563,7 @@ export fn checkfbs() void {
         TABSTRS = NIL;
         NT = NIL;
         R = NIL;
-        _ = c.printf("compilation abandoned\n");
+        _ = c.fprintf(getStderr().?, "compilation abandoned\n");
         SYNERR = 1;
     }
     reset_SUBST();
@@ -2476,7 +2476,7 @@ export fn checktypes() void {
         TABSTRS = NIL;
         NT = NIL;
         R = NIL;
-        _ = c.printf("typecheck cannot proceed - compilation abandoned\n");
+        _ = c.fprintf(getStderr().?, "typecheck cannot proceed - compilation abandoned\n");
         SYNERR = 1;
         return;
     }

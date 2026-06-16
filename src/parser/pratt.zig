@@ -18,6 +18,42 @@ const Span = ast.Span;
 
 pub const ParseError = error{ UnexpectedToken, UnexpectedEof, OutOfMemory };
 
+/// True for the six Miranda relational operators.
+fn isRelopId(id: TokenId) bool {
+    return switch (id) {
+        .eq, .ne, .lt, .gt, .le, .ge => true,
+        else => false,
+    };
+}
+
+fn isRelopName(op: []const u8) bool {
+    const relops = [_][]const u8{ "eq", "ne", "lt", "gt", "le", "ge" };
+    for (relops) |r| if (std.mem.eql(u8, op, r)) return true;
+    return false;
+}
+
+/// For a chained comparison `lhs relop rhs`, extract the subject (the
+/// right operand of the previous comparison) so we can build
+///   AND(lhs, subject relop2 next)
+/// Returns null if `e` is not a comparison or AND-chain of comparisons.
+fn chainSubject(e: *const Expr) ?*const Expr {
+    switch (e.*) {
+        .infix => |*inf| {
+            if (isRelopName(inf.op)) return inf.rhs;
+            if (std.mem.eql(u8, inf.op, "amp")) {
+                // AND(A, B): subject is rhs of B (the rightmost comparison)
+                if (std.meta.activeTag(inf.rhs.*) == .infix and
+                    isRelopName(inf.rhs.*.infix.op))
+                {
+                    return inf.rhs.*.infix.rhs;
+                }
+            }
+            return null;
+        },
+        else => return null,
+    }
+}
+
 /// Infix operator binding-power entry.
 const InfixBp = struct { id: TokenId, left: u8, right: u8 };
 
@@ -163,6 +199,14 @@ pub fn parseExpr(
             .name  => Expr{ .name  = .{ .text = tok.text, .span = tok.span } },
             .cname => Expr{ .cname = .{ .text = tok.text, .span = tok.span } },
 
+            // Miranda built-in primitives emitted as keyword tokens by the C lexer.
+            // `show` → make(SHOW, 0, 0); `readvals` → make(STARTREADVALS, 0, 0);
+            // `$$`   → lastexp (REPL only; codegen handles it).
+            // We encode them as op_func nodes so opWord() in codegen can map them.
+            .kw_show     => Expr{ .op_func = "kw_show" },
+            .kw_readvals => Expr{ .op_func = "kw_readvals" },
+            .dollars     => Expr{ .op_func = "dollars" },
+
             .const_int => Expr{ .literal = .{
                 .value = .{ .int = tok.int_val },
                 .span  = tok.span,
@@ -219,11 +263,11 @@ pub fn parseExpr(
                     const bp = try gpa.create(Expr); bp.* = first;
                     var qs: std.ArrayList(ast.Qualifier) = .empty;
                     errdefer qs.deinit(gpa);
-                    try qs.append(gpa, try parseQualifier(gpa, ts));
-                    while (ts.check(.semicolon) or ts.check(.comma)) {
+                    try parseQualifier(gpa, ts, &qs);
+                    while (ts.check(.semicolon)) {
                         _ = ts.advance();
                         if (ts.check(.rbracket)) break;
-                        try qs.append(gpa, try parseQualifier(gpa, ts));
+                        try parseQualifier(gpa, ts, &qs);
                     }
                     _ = try ts.expect(.rbracket);
                     break :inner Expr{ .listcomp = .{
@@ -331,14 +375,32 @@ pub fn parseExpr(
         // Named infix operator
         if (infixBp(tok.id)) |bp| {
             if (bp.left <= min_bp) break;
+            // `(expr op)` left-section: the operator is immediately followed by `)`.
+            // Stop here so the enclosing paren handler can recognise the section.
+            if (isRightSectionOp(tok.id) and ts.peekAt(1).id == .rparen) break;
+            const op_id = tok.id;
             _ = ts.advance();
             const rhs = try parseExpr(gpa, ts, bp.right);
             const lp = try gpa.create(Expr);
             lp.* = lhs;
             const rp = try gpa.create(Expr);
             rp.* = rhs;
+
+            // Chained comparison: `a < b < c` → `(a < b) && (b < c)`
+            // Mirrors the YACC `reln relop e2` rule in rules.y.
+            if (isRelopId(op_id)) {
+                if (chainSubject(&lhs)) |subj| {
+                    const sp = try gpa.create(Expr);
+                    sp.* = try cloneExpr(gpa, subj);
+                    const inner = try gpa.create(Expr);
+                    inner.* = Expr{ .infix = .{ .op = @tagName(op_id), .lhs = sp, .rhs = rp } };
+                    lhs = Expr{ .infix = .{ .op = "amp", .lhs = lp, .rhs = inner } };
+                    continue;
+                }
+            }
+
             lhs = Expr{ .infix = .{
-                .op  = @tagName(tok.id),
+                .op  = @tagName(op_id),
                 .lhs = lp,
                 .rhs = rp,
             } };
@@ -351,21 +413,72 @@ pub fn parseExpr(
     return lhs;
 }
 
-/// Parse one list-comprehension qualifier: `pat <- source` or `guard`.
+/// Parse one list-comprehension qualifier and append it to `qs`.
 ///
-/// The pattern position is parsed as an expression first; if `<-` follows it
-/// is treated as a generator, otherwise as a guard predicate.
-fn parseQualifier(gpa: Allocator, ts: *TokenStream) ParseError!ast.Qualifier {
+/// Handles three forms:
+///   pat <- source          → single generator
+///   pat1, pat2 <- source   → two generators (cartesian-product, mirroring the
+///                            YACC `e1 ',' generator` / REPEAT rule in rules.y)
+///   expr                   → guard predicate
+///
+/// NOTE: inside `[body | quals]`, Miranda uses `;` (not `,`) as the
+/// qualifier separator.  A `,` here is always part of a multi-var generator.
+fn parseQualifier(
+    gpa: Allocator,
+    ts: *TokenStream,
+    qs: *std.ArrayList(ast.Qualifier),
+) ParseError!void {
     const e = try parseExpr(gpa, ts, 0);
     if (ts.eat(.left_arrow)) {
         const src = try parseExpr(gpa, ts, 0);
+        // Sequence generator: `pat <- src, step ..`  →  ITERATE/ITERATE1 combinator.
+        // The `,` here is INSIDE the generator rule, not a qualifier separator.
+        if (ts.eat(.comma)) {
+            const step = try parseExpr(gpa, ts, 0);
+            _ = try ts.expect(.dot_dot);
+            const srcp = try gpa.create(Expr);
+            srcp.* = src;
+            const stepp = try gpa.create(Expr);
+            stepp.* = step;
+            try qs.append(gpa, ast.Qualifier{ .sequence_generator = .{
+                .pat = e, .source = srcp, .step = stepp,
+            } });
+            return;
+        }
         const srcp = try gpa.create(Expr);
         srcp.* = src;
-        return ast.Qualifier{ .generator = .{ .pat = e, .source = srcp } };
+        try qs.append(gpa, ast.Qualifier{ .generator = .{ .pat = e, .source = srcp } });
+        return;
     }
+    // Multi-var generator: `a, b, … <- source`
+    // Collect all LHS patterns, then consume `<-` and the source.
+    // Desugar to one generator per variable so that the code generator sees
+    // independent generators producing the Cartesian product (matching legacy
+    // behaviour: `a,b <- xs` ≡ `a <- xs ; b <- xs`).
+    if (ts.check(.comma)) {
+        var vars: std.ArrayList(Expr) = .empty;
+        defer vars.deinit(gpa);
+        try vars.append(gpa, e);
+        while (ts.eat(.comma)) {
+            try vars.append(gpa, try parseExpr(gpa, ts, 0));
+        }
+        _ = try ts.expect(.left_arrow);
+        const src = try parseExpr(gpa, ts, 0);
+        for (vars.items, 0..) |v, i| {
+            const sp = try gpa.create(Expr);
+            if (i + 1 < vars.items.len) {
+                sp.* = try cloneExpr(gpa, &src);
+            } else {
+                sp.* = src;
+            }
+            try qs.append(gpa, ast.Qualifier{ .generator = .{ .pat = v, .source = sp } });
+        }
+        return;
+    }
+    // Guard expression
     const ep = try gpa.create(Expr);
     ep.* = e;
-    return ast.Qualifier{ .guard = ep };
+    try qs.append(gpa, ast.Qualifier{ .guard = ep });
 }
 
 // ---------------------------------------------------------------------------

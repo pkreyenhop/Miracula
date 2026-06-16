@@ -49,6 +49,14 @@ void mira_lex_cleanup(void) {
     }
 }
 
+int mira_lex_setup_file(const char *filename) {
+    if (!openfile(filename)) {
+        return 0;
+    }
+    s_in = (FILE *)hd(hd(fileq));
+    return 1;
+}
+
 extern void mira_report_parser_error(const char *err_s, int yychar_val, word lookahead_c);
 extern int yychar;
 extern word c;

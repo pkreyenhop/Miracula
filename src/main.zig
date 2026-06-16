@@ -104,7 +104,7 @@ extern var DETROP: Word;
 extern var MISSING: Word;
 extern var ALIASES: Word;
 extern var TSUPPRESSED: Word;
-extern var fnts: Word;
+export var fnts: Word = NIL;
 
 extern fn signals(signum: c_int, handler: usize) usize;
 
@@ -180,11 +180,11 @@ extern var files: Word;
 extern var current_file: Word;
 extern var collecting: Word;
 export var oldfiles: Word = NIL;
-extern var includees: Word;
-extern var freeids: Word;
-extern var exports: Word;
+export var includees: Word = NIL;
+export var freeids: Word = NIL;
+export var exports: Word = NIL;
 extern var exportfiles: Word;
-extern var embargoes: Word;
+export var embargoes: Word = NIL;
 extern var newtyps: Word;
 extern var SGC: Word;
 extern var speclocs: Word;
@@ -192,6 +192,16 @@ extern var rv_script: Word;
 extern var algshfns: Word;
 extern var nextpn: Word;
 export var internals: Word = NIL;
+export var lastname: Word = 0;
+export var suppressids: Word = NIL;
+export var col_fn: Word = 0;
+export var eprodnts: Word = NIL;
+export var nonterminals: Word = NIL;
+export var ntmap: Word = NIL;
+export var ihlist: Word = 0;
+export var ntspecmap: Word = NIL;
+export var lexstates: Word = NIL;
+export var lexdefs: Word = NIL;
 extern var TABSTRS: Word;
 extern var ND: Word;
 extern var polyshowerror: c_int;
@@ -229,6 +239,121 @@ fn tp(x: Word) *Word {
 
 fn cons(x: Word, y: Word) Word {
     return clib.make(clib.CONS, x, y);
+}
+
+// Token names for out2(): replaces y.tab.c's yysterm[].
+// Index i corresponds to lexical token (256 + i).
+const yysterm_data = [_]?[*:0]const u8{
+    null,             // 0: placeholder (no token 256)
+    "VALUE",          // 1: 257
+    "EVAL",           // 2: 258
+    "where",          // 3: WHERE=259
+    "if",             // 4: IF=260
+    "&>",             // 5: 261
+    "<-",             // 6: LEFTARROW=262
+    "::",             // 7: COLONCOLON=263
+    "::=",            // 8: COLON2EQ=264
+    "TYPEVAR",        // 9: TYPEVAR=265
+    "NAME",           // 10: NAME=266
+    "CONSTRUCTOR-NAME", // 11: CNAME=267
+    "CONST",          // 12: CONST=268
+    "$$",             // 13: DOLLARS=269
+    "OFFSIDE",        // 14: OFFSIDE=270
+    "OFFSIDE =",      // 15: ELSEQ=271
+    "abstype",        // 16: ABSTYPE=272
+    "with",           // 17: WITH=273
+    "//",             // 18: 274
+    "==",             // 19: EQEQ=275
+    "%free",          // 20: FREE=276
+    "%include",       // 21: INCLUDE=277
+    "%export",        // 22: EXPORT=278
+    "type",           // 23: TYPE=279
+    "otherwise",      // 24: OTHERWISE=280
+    "show",           // 25: SHOWSYM=281
+    "PATHNAME",       // 26: PATHNAME=282
+    "%bnf",           // 27: BNF=283
+    "%lex",           // 28: LEX=284
+    "%%",             // 29: 285
+    "error",          // 30: 286
+    "end",            // 31: 287
+    "empty",          // 32: 288
+    "readvals",       // 33: READVALSY=289
+    "NAME",           // 34: 290
+    "`char-class`",   // 35: 291
+    "`char-class`",   // 36: 292
+    "%%begin",        // 37: 293
+    "->",             // 38: ARROW=294
+    "++",             // 39: PLUSPLUS=295
+    "--",             // 40: MINUSMINUS=296
+    "..",             // 41: DOTDOT=297
+    "\\/",            // 42: VEL=298
+    ">=",             // 43: GE=299
+    "~=",             // 44: NE=300
+    "<=",             // 45: LE=301
+    "mod",            // 46: REM=302
+    "div",            // 47: DIV=303
+    "$NAME",          // 48: INFIXNAME=304
+    "$CONSTRUCTOR",   // 49: INFIXCNAME=305
+};
+export var yysterm = yysterm_data;
+
+// Equivalent of y.tab.c obey(): evaluate x without forking, no stats, no trailing newline.
+export fn obey(x_in: Word) void {
+    var x = x_in;
+    const typ = clib.type_of(x);
+    x = clib.codegen(x);
+    if (polyshowerror != 0) return;
+    compiling = 0;
+    const list_t: Word = 4;
+    const char_t: Word = 3;
+    const islist = typ >= ATOMLIMIT and tag[@intCast(typ)] == AP and h(typ) == list_t;
+    const out_val: Word = if (islist and t(typ) == message)
+        x
+    else blk: {
+        const inner: Word = if (islist and t(typ) == char_t)
+            x
+        else
+            clib.make(AP, clib.mkshow(0, 0, typ), x);
+        break :blk clib.make(CONS, clib.make(AP, standardout, inner), NIL);
+    };
+    clib.output(out_val);
+}
+
+// Equivalent of y.tab.c evaluate(): type-check, fork a child to reduce and print,
+// then wait for the child in the parent.  The parent's heap/type state is preserved.
+// Called from parser_api.parseCurrent() in command mode.
+export fn evaluate_repl(x_in: Word) void {
+    var x = x_in;
+    const typ = clib.type_of(x);
+    if (typ == clib.wrong_t) return;
+    lastexp = x;
+    x = clib.codegen(x);
+    if (polyshowerror != 0) return;
+    const list_t: Word = 4;
+    const char_t: Word = 3;
+    // Build the output expression here in the parent so it's in the child's
+    // address space after fork() (copy-on-write).
+    const islist = typ >= ATOMLIMIT and tag[@intCast(typ)] == AP and h(typ) == list_t;
+    const out_val: Word = if (islist and t(typ) == message)
+        x
+    else blk: {
+        const inner: Word = if (islist and t(typ) == char_t)
+            x
+        else
+            clib.make(AP, clib.mkshow(0, 0, typ), x);
+        break :blk clib.make(CONS, clib.make(AP, standardout, inner), NIL);
+    };
+    if (clib.process() != 0) {
+        // Child: evaluate and print, then exit (compiling=0 only here, parent unaffected).
+        _ = signals(clib.SIGINT, @intFromPtr(&dieclean));
+        compiling = 0;
+        resetgcstats();
+        clib.output(out_val);
+        _ = clib.putchar('\n');
+        clib.outstats();
+        clib.exit(0);
+    }
+    // Parent returns here; heap and compiling flag are unchanged.
 }
 
 fn getStdin_helper() ?*c_raw.FILE {
@@ -1881,7 +2006,7 @@ fn loadfile(t_val: [*:0]const u8) void {
         }
         if (SYNERR != 0) {
             clib.sayhere(h(exports), 1);
-            _ = clib.printf("compilation abandoned\n");
+            _ = clib.fprintf(getStderr().?, "compilation abandoned\n");
         }
     }
 
@@ -2493,24 +2618,24 @@ fn mkincludes(includees_val: Word) Word {
         }
 
         while (MISSING != NIL) {
-            _ = clib.printf("%s%s", @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(MISSING)))))), @as([*:0]const u8, if (t(MISSING) == NIL) ";\n" else ","));
+            _ = clib.fprintf(getStderr().?, "%s%s", @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(MISSING)))))), @as([*:0]const u8, if (t(MISSING) == NIL) ";\n" else ","));
             MISSING = t(MISSING);
         }
 
-        _ = clib.printf("compilation abandoned\n");
+        _ = clib.fprintf(getStderr().?, "compilation abandoned\n");
         stackp = dstack;
         includees_list = t(includees_list);
         return result;
     }
 
     if (tclashes != NIL) {
-        _ = clib.printf("TYPECLASH - the following type%s multiply named:\n", @as([*:0]const u8, if (t(tclashes) == NIL) " is" else "s are"));
+        _ = clib.fprintf(getStderr().?, "TYPECLASH - the following type%s multiply named:\n", @as([*:0]const u8, if (t(tclashes) == NIL) " is" else "s are"));
         while (tclashes != NIL) {
-            _ = clib.printf("\'%s\' of file \"%s\", as: ", clib.getaka(h(t(h(tclashes)))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(tclashes)))))));
+            _ = clib.fprintf(getStderr().?, "\'%s\' of file \"%s\", as: ", clib.getaka(h(t(h(tclashes)))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(tclashes)))))));
             clib.printlist(@constCast(""), alfasort(t(t(h(tclashes)))));
             tclashes = t(tclashes);
         }
-        _ = clib.printf("typecheck cannot proceed - compilation abandoned\n");
+        _ = clib.fprintf(getStderr().?, "typecheck cannot proceed - compilation abandoned\n");
         SYNERR = 1;
         return result;
     }
@@ -2677,41 +2802,12 @@ fn stdlib() void {
     predef("zip2", clib.ZIP, clib.undef_t);
 }
 
-export fn mira_report_parser_error(s: [*:0]const u8, yychar_val: c_int, lookahead_c: Word) void {
-    if (SYNERR != 0) return;
-    if (echoing != 0) {
-        _ = clib.printf("\n");
-    }
-    _ = clib.printf("%s - unexpected ", s);
-    if (yychar_val == clib.OFFSIDE and (lookahead_c == clib.EOF or lookahead_c == '|')) {
-        if (lookahead_c == clib.EOF) {
-            _ = clib.printf("end of file");
-        } else {
-            _ = clib.printf("token '|'");
-        }
-    } else {
-        _ = clib.printf(if (yychar_val == 0) (if (commandmode != 0) "newline" else "end of file") else "token ");
-        if (yychar_val >= 256) {
-            _ = clib.putchar('\"');
-        }
-        if (yychar_val != 0) {
-            clib.out2(getStdout(), yychar_val);
-        }
-        if (yychar_val >= 256) {
-            _ = clib.putchar('\"');
-        }
-    }
-    _ = clib.printf("\n");
-    SYNERR = 1;
-    reset_lex();
-}
-
 export fn syntax(s: [*:0]const u8) void {
     if (SYNERR != 0) return;
     if (echoing != 0) {
-        _ = clib.printf("\n");
+        _ = clib.fprintf(getStderr().?, "\n");
     }
-    _ = clib.printf("syntax error: %s", s);
+    _ = clib.fprintf(getStderr().?, "syntax error: %s", s);
     SYNERR = 1;
     reset_lex();
 }
@@ -2945,10 +3041,6 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             UTF8 = 1;
         } else if (clib.strcmp(arg, "-noUTF-8") == 0) {
             UTF8 = 0;
-        } else if (clib.strcmp(arg, "--parser=new") == 0 or clib.strcmp(arg, "-parser=new") == 0) {
-            parser_api.parser_mode = .new;
-        } else if (clib.strcmp(arg, "--parser=legacy") == 0 or clib.strcmp(arg, "-parser=legacy") == 0) {
-            parser_api.parser_mode = .legacy;
         } else {
             _ = clib.fprintf(getStderr(), "mira: unknown flag \"%s\"\n", arg);
             clib.exit(1);
@@ -3458,7 +3550,6 @@ comptime {
     _ = @import("runtime/combinator.zig");
     _ = @import("runtime/big.zig");
     _ = @import("parser/lex.zig");
-    _ = @import("parser/parse_actions.zig");
     _ = @import("parser/parser_tests.zig");
     _ = @import("compiler/trans.zig");
     _ = @import("compiler/types.zig");

@@ -11,10 +11,14 @@ const clib = @cImport({
     @cInclude("data.h");
     @cInclude("combs.h");
     @cInclude("big.h");
-    @cInclude("parser_bridge.h");
 });
 
 const Word = clib.word;
+
+// Miranda predefined atom words (from lex.zig — keep in sync with CMBASE = 306).
+const CMBASE: Word = 306;
+const FALSE_ATOM: Word = CMBASE + 136;
+const TRUE_ATOM: Word = CMBASE + 137;
 
 // ---------------------------------------------------------------------------
 // Heap cell accessors
@@ -23,6 +27,7 @@ const Word = clib.word;
 extern var hd: [*]Word;
 extern var tl: [*]Word;
 extern var tag: [*]u8;
+extern var lastexp: Word;
 
 inline fn h(x: Word) Word {
     return hd[@as(usize, @intCast(x)) * 2];
@@ -68,6 +73,7 @@ inline fn mktcons(x: Word, y: Word) Word {
 // ---------------------------------------------------------------------------
 
 extern fn genlhs(x: Word) Word;
+extern fn irrefutable(x: Word) c_int;
 extern fn compzf(e: Word, qq: Word, diag: Word) Word;
 extern fn block(defs: Word, e: Word, keep: Word) Word;
 extern fn declare(x: Word, e: Word) void;
@@ -78,6 +84,9 @@ extern fn redtvars(t_word: Word) Word;
 extern fn bigscan(p: [*:0]const u8) Word;
 extern fn sto_dbl(R: f64) Word;
 extern fn sto_id(p: [*:0]const u8) Word;
+extern fn keep(p: [*:0]u8) [*:0]u8;
+extern fn findid(p: [*:0]const u8) Word;
+extern fn make_id(p: [*:0]const u8) Word;
 extern fn sto_char(ch: c_int) Word;
 extern fn head(x: Word) Word;
 extern fn isconstrname(s: [*:0]const u8) c_int;
@@ -90,6 +99,9 @@ extern var listdiff_fn: Word;
 extern var Void: Word;
 extern var big_one: Word;
 extern var current_file: Word;
+extern var lastname: Word;
+extern var nill: Word;
+extern var idsused: Word;
 
 // ---------------------------------------------------------------------------
 // Type constants (from data.h — replicated so we don't need the macros)
@@ -131,7 +143,15 @@ fn nameWord(name: []const u8) Word {
     const n = @min(name.len, buf.len - 1);
     @memcpy(buf[0..n], name[0..n]);
     buf[n] = 0;
-    return sto_id(buf[0..n :0]);
+    // Look up the interned atom from the name table (populated by yylex's
+    // name() calls during tokenization). This ensures the same source name
+    // always maps to the same heap atom, which is required for multi-equation
+    // definitions: decl1() checks `lastname == x` using pointer equality.
+    const existing = findid(&buf);
+    if (existing != clib.NIL) return existing;
+    // Not yet in the name table (e.g., synthesised names). Intern it now.
+    const perm = keep(@as([*:0]u8, @ptrCast(&buf)));
+    return make_id(perm);
 }
 
 // ---------------------------------------------------------------------------
@@ -211,35 +231,79 @@ fn opWord(op: []const u8) Word {
     if (std.mem.eql(u8, op, "caret"))     return clib.POWER;
     if (std.mem.eql(u8, op, "dot"))       return clib.B;              // function composition
     if (std.mem.eql(u8, op, "bang"))      return ap(clib.C, clib.SUBSCRIPT); // '!'
-    if (std.mem.eql(u8, op, "tilde"))     return clib.NOT;
-    if (std.mem.eql(u8, op, "hash"))      return clib.LENGTH;
+    if (std.mem.eql(u8, op, "tilde"))        return clib.NOT;
+    if (std.mem.eql(u8, op, "hash"))         return clib.LENGTH;
+    // Miranda keyword built-ins emitted as keyword tokens by the C lexer.
+    // SHOWSYM → make(SHOW, 0, 0); READVALSY → make(STARTREADVALS, 0, 0).
+    if (std.mem.eql(u8, op, "kw_show"))      return clib.make(clib.SHOW, 0, 0);
+    if (std.mem.eql(u8, op, "kw_readvals"))  return clib.make(clib.STARTREADVALS, 0, 0);
+    if (std.mem.eql(u8, op, "dollars"))      return lastexp;
     // Fall back: user-defined infix operator stored as an identifier
     return nameWord(op);
 }
 
 // ---------------------------------------------------------------------------
 // Guarded alternatives: build COND chain (mirrors parse_compose logic)
+//
+// Legacy representation built by YACC (cases list, newest-first):
+//   [otherwise_alt, ..., middle_alts, first_alt]
+// parse_compose walks it:
+//   1. y = last (at h of list); if OTHERWISE, strip marker: y = t(y)
+//      else: if tg(y)==LABEL, y = label(h(y), ap(t(y),FAIL)); else y = ap(y,FAIL)
+//   2. fold remaining alts (middle, then first): y = label(h, ap(body, y)); y = ap(first, y)
+//
+// We replicate the output directly from our ordered guards list:
+//   guards[0]     = first  (no LABEL wrapper in output)
+//   guards[1..N-2] = middle (each wrapped in LABEL)
+//   guards[N-1]   = last   (otherwise → bare body; conditional → LABEL(COND x y FAIL))
 // ---------------------------------------------------------------------------
 
 fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
-    if (guards.len == 0) return clib.FAIL;
+    const N = guards.len;
+    if (N == 0) return clib.FAIL;
 
-    // Build from last guard backwards.  Result shape matches parse_compose output:
-    //   COND p0 b0 (label_h1 (COND p1 b1) (label_h2 ... FAIL))
-    var i: usize = guards.len;
-    var result: Word = clib.FAIL;
-    while (i > 0) {
-        i -= 1;
-        const g = guards[i];
-        const cond_w = codegenExpr(alloc, g.cond);
-        const body_w = codegenExpr(alloc, g.body);
-        result = ap(ap2(clib.COND, cond_w, body_w), result);
-        if (i > 0) {
-            const ghere = makeHere(@intCast(g.span.line));
-            result = mklabel(ghere, result);
+    const last = guards[N - 1];
+
+    // ── Build starting from the LAST guard ─────────────────────────────────
+    var y: Word = undefined;
+    if (last.is_otherwise) {
+        if (N == 1) {
+            // Single `body, otherwise` → just body (parse_compose strips OTHERWISE)
+            return codegenExpr(alloc, last.body);
+        }
+        // Multi-case last otherwise: LABEL here body
+        y = mklabel(makeHere(@intCast(last.span.line)), codegenExpr(alloc, last.body));
+    } else {
+        // Last case is a conditional: LABEL here (COND cond body FAIL) [if N>1]
+        //                          or just COND cond body FAIL           [if N==1]
+        const cond_w = codegenExpr(alloc, last.cond);
+        const body_w = codegenExpr(alloc, last.body);
+        y = ap(ap2(clib.COND, cond_w, body_w), clib.FAIL);
+        if (N > 1) {
+            y = mklabel(makeHere(@intCast(last.span.line)), y);
         }
     }
-    return result;
+
+    // ── Fold middle guards (indices N-2 down to 1) ─────────────────────────
+    if (N > 2) {
+        var j: usize = N - 2;
+        while (j > 0) : (j -= 1) {
+            const g = guards[j];
+            const body_w = codegenExpr(alloc, g.body);
+            const cond_w = codegenExpr(alloc, g.cond);
+            y = mklabel(makeHere(@intCast(g.span.line)), ap(ap2(clib.COND, cond_w, body_w), y));
+        }
+    }
+
+    // ── Apply the FIRST guard (index 0) without a LABEL wrapper ────────────
+    if (N > 1) {
+        const first = guards[0];
+        const cond_w = codegenExpr(alloc, first.cond);
+        const body_w = codegenExpr(alloc, first.body);
+        y = ap(ap2(clib.COND, cond_w, body_w), y);
+    }
+
+    return y;
 }
 
 // ---------------------------------------------------------------------------
@@ -260,6 +324,89 @@ fn codegenString(s: []const u8) Word {
 }
 
 // ---------------------------------------------------------------------------
+// Pattern codegen: like codegenExpr but for LHS pattern positions.
+//
+// In Miranda, the LHS of a function definition uses `nill` (not NIL) for
+// the empty list pattern `[]`.  The YACC grammar v3 production returns
+// `nill` directly; we must replicate that here.
+// ---------------------------------------------------------------------------
+
+fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
+    return switch (e) {
+        // `[]` in a pattern → nill (the empty list pattern atom).
+        .list_nil => nill,
+
+        // Literal constants in patterns must be tagged with `cons(CONST, value)`
+        // so the Miranda runtime distinguishes them from binding positions.
+        // YACC grammar: `v3: CONST = { $$ = cons(CONST, $1); }`
+        // Float literals are invalid in patterns and are rejected here by
+        // falling through to codegenExpr (which will produce a heap constant
+        // — the type checker will emit the real error).
+        .literal => |lit| blk: {
+            const val: Word = switch (lit.value) {
+                .int    => |v| blk2: {
+                    var buf: [64:0]u8 = undefined;
+                    const s = std.fmt.bufPrintZ(&buf, "{}", .{v}) catch break :blk2 clib.NIL;
+                    break :blk2 bigscan(s.ptr);
+                },
+                .char   => |c| sto_char(@intCast(c)),
+                .string => |s| codegenString(s),
+                .float  => |v| sto_dbl(v), // type checker will reject this later
+            };
+            break :blk mkcons(clib.CONST, val);
+        },
+
+        // Non-empty list literal patterns: cons-chain terminated with nill.
+        .list => |items| blk: {
+            var result: Word = nill;
+            var i: usize = items.len;
+            while (i > 0) {
+                i -= 1;
+                result = mkcons(codegenPattern(alloc, items[i]), result);
+            }
+            break :blk result;
+        },
+
+        // Infix patterns: `:` is list cons; others fall through to expr.
+        .infix => |inf| blk: {
+            if (std.mem.eql(u8, inf.op, "cons"))
+                break :blk mkcons(codegenPattern(alloc, inf.lhs.*), codegenPattern(alloc, inf.rhs.*));
+            break :blk codegenExpr(alloc, e);
+        },
+
+        // Constructor application in patterns (e.g. `Node l r`).
+        .application => |app| ap(codegenPattern(alloc, app.func.*), codegenPattern(alloc, app.arg.*)),
+
+        // Tuple patterns: pair / tcons chain.
+        .tuple => |items| blk: {
+            if (items.len == 0) break :blk Void;
+            if (items.len == 1) break :blk codegenPattern(alloc, items[0]);
+            var result = mkpair(
+                codegenPattern(alloc, items[items.len - 2]),
+                codegenPattern(alloc, items[items.len - 1]),
+            );
+            var i: usize = items.len - 2;
+            while (i > 0) {
+                i -= 1;
+                result = mktcons(codegenPattern(alloc, items[i]), result);
+            }
+            break :blk result;
+        },
+
+        // True/False are CONST tokens in YACC (not CNAME), so patterns using
+        // them are wrapped: cons(CONST, atom). Mirror that here.
+        .cname => |n| blk: {
+            if (std.mem.eql(u8, n.text, "True"))  break :blk mkcons(clib.CONST, TRUE_ATOM);
+            if (std.mem.eql(u8, n.text, "False")) break :blk mkcons(clib.CONST, FALSE_ATOM);
+            break :blk codegenExpr(alloc, e); // regular constructor: used as-is
+        },
+
+        // Names and other cases used as-is.
+        else => codegenExpr(alloc, e),
+    };
+}
+
+// ---------------------------------------------------------------------------
 // Expression codegen (the heart of Phase 10)
 // ---------------------------------------------------------------------------
 
@@ -267,15 +414,17 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
     return switch (e) {
         // --- Identifiers ---
         .name  => |n| nameWord(n.text),
-        .cname => |n| nameWord(n.text),
+        // True/False are Miranda predefined atoms, not regular dictionary entries.
+        .cname => |n| if (std.mem.eql(u8, n.text, "True")) TRUE_ATOM
+                      else if (std.mem.eql(u8, n.text, "False")) FALSE_ATOM
+                      else nameWord(n.text),
 
         // --- Literals ---
         .literal => |lit| switch (lit.value) {
             .int => |v| blk: {
                 var buf: [64:0]u8 = undefined;
                 const s = std.fmt.bufPrintZ(&buf, "{}", .{v}) catch break :blk clib.NIL;
-                _ = s;
-                break :blk bigscan(buf[0.. :0]);
+                break :blk bigscan(s.ptr);
             },
             .float  => |v| sto_dbl(v),
             .char   => |c| sto_char(@intCast(c)),
@@ -338,13 +487,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         .typed => |typed| codegenExpr(alloc, typed.expr.*),
 
         // --- Where clause: block(ldefs, body, 0) ---
-        .where => |w| blk: {
-            var ldefs: Word = clib.NIL;
-            for (w.defs) |def| {
-                ldefs = mkcons(codegenLocalDef(alloc, def), ldefs);
-            }
-            break :blk block(ldefs, codegenExpr(alloc, w.body.*), 0);
-        },
+        .where => |w| applyWhereDefs(alloc, codegenExpr(alloc, w.body.*), w.defs),
 
         // --- Conditional guard (internal) ---
         .cond => |c| ap2(clib.COND, codegenExpr(alloc, c.guard.*), codegenExpr(alloc, c.then_expr.*)),
@@ -396,16 +539,53 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
             var qq: Word = clib.NIL;
             for (lc.qualifiers) |q| {
                 const qw: Word = switch (q) {
-                    .generator => |g| mkcons(
-                        clib.GENERATOR,
-                        mkcons(genlhs(codegenExpr(alloc, g.pat)), codegenExpr(alloc, g.source.*)),
-                    ),
+                    .generator => |g| gen: {
+                        // The YACC grammar resets `idsused=NIL` after each
+                        // generator's genlhs() call (rules.y:927,932,934).
+                        // Mirror that here so each generator's LHS variables
+                        // are treated as fresh bindings, not references.
+                        idsused = clib.NIL;
+                        const lhs_w = genlhs(codegenExpr(alloc, g.pat));
+                        idsused = clib.NIL;
+                        break :gen mkcons(
+                            clib.GENERATOR,
+                            mkcons(lhs_w, codegenExpr(alloc, g.source.*)),
+                        );
+                    },
+                    // Sequence generator: `pat <- src, step ..`
+                    // Mirrors rules.y: cons(GENERATOR, cons(p, ap2(ITERATE/ITERATE1, lambda(p,step), src)))
+                    .sequence_generator => |sg| sgen: {
+                        idsused = clib.NIL;
+                        const lhs_w = genlhs(codegenExpr(alloc, sg.pat));
+                        idsused = clib.NIL;
+                        const src_w = codegenExpr(alloc, sg.source.*);
+                        const step_w = codegenExpr(alloc, sg.step.*);
+                        const comb: Word = if (irrefutable(lhs_w) != 0) clib.ITERATE else clib.ITERATE1;
+                        break :sgen mkcons(
+                            clib.GENERATOR,
+                            mkcons(lhs_w, ap2(comb, mklambda(lhs_w, step_w), src_w)),
+                        );
+                    },
                     .guard => |gp| mkcons(clib.GUARD, codegenExpr(alloc, gp.*)),
                 };
                 qq = mkcons(qw, qq); // prepend → reverses order
             }
             break :blk compzf(codegenExpr(alloc, lc.body.*), qq, 0);
         },
+    };
+}
+
+// ---------------------------------------------------------------------------
+// LHS expression codegen: function application arguments use codegenPattern.
+//
+// The LHS of a definition is structured as ap(ap(f, arg1), arg2) etc.
+// Each arg is a PATTERN, so use codegenPattern instead of codegenExpr.
+// ---------------------------------------------------------------------------
+
+fn codegenLhsExpr(alloc: Allocator, e: ast.Expr) Word {
+    return switch (e) {
+        .application => |app| ap(codegenLhsExpr(alloc, app.func.*), codegenPattern(alloc, app.arg.*)),
+        else => codegenExpr(alloc, e),
     };
 }
 
@@ -421,14 +601,19 @@ fn codegenRhs(alloc: Allocator, rhs: ast.Rhs) Word {
 }
 
 // ---------------------------------------------------------------------------
-// Local definition codegen (for where clauses)
-// Returns a defn(lhs, undef_t, label(here, rhs)) cell.
+// Where-clause codegen helpers
 // ---------------------------------------------------------------------------
 
+// Mirrors the YACC `ldef` production: returns defn(lhs, undef_t, label(here, rhs)).
+// The tries() wrapping is NOT done here — buildLdefs handles it so consecutive
+// equations for the same function can be merged into a single TRIES list.
 fn codegenLocalDef(alloc: Allocator, def: ast.Def) Word {
     const here = makeHere(@intCast(def.span.line));
-    var lhs = codegenExpr(alloc, def.lhs);
+    var lhs = codegenLhsExpr(alloc, def.lhs);
     var rhs = codegenRhs(alloc, def.rhs);
+
+    // Apply nested where clause before lambda-desugaring.
+    rhs = applyWhereDefs(alloc, rhs, def.where_defs);
 
     // Lambda-desugar: f x y = body → lhs becomes f, rhs gets lambda wrappers
     const f = head(lhs);
@@ -438,8 +623,43 @@ fn codegenLocalDef(alloc: Allocator, def: ast.Def) Word {
             lhs = h(lhs);
         }
     }
-    // defn(lhs, undef_t, label(here, rhs)) = cons(lhs, cons(undef_t, label(here, rhs)))
-    return mkcons(lhs, mkcons(undef_t, mklabel(here, rhs)));
+    const labeled = mklabel(here, rhs);
+    return mkcons(lhs, mkcons(undef_t, labeled));
+}
+
+// Mirrors the YACC `ldefs` production: builds the defn list and merges
+// consecutive equations for the same function into one defn with a shared
+// TRIES list. Without merging, block() sees two separate defns for `f` and
+// marks the second as unused via invgetrel().
+//
+// YACC rule (rules.y:1199):
+//   if(dlhs($2)==dlhs(hd($1)))
+//     tl(dval(hd($1)))=cons(dval($2),tl(dval(hd($1))));   // merge
+//   else { $$=cons($2,$1); dval($2)=tries(...); }          // new entry
+fn buildLdefs(alloc: Allocator, where_defs: []const ast.Def) Word {
+    var ldefs: Word = clib.NIL;
+    for (where_defs) |wd| {
+        const cell = codegenLocalDef(alloc, wd);  // defn(lhs, undef_t, labeled)
+        const lhs_word = h(cell);
+        const labeled = t(t(cell));  // dval(cell) = the labeled rhs
+        if (ldefs != clib.NIL and h(h(ldefs)) == lhs_word) {
+            // Same function as head of ldefs: prepend labeled to its tries list.
+            // tries_cell = dval(hd(ldefs)) = tl(tl(hd(ldefs)))
+            const tries_cell = t(t(h(ldefs)));
+            tl[@as(usize, @intCast(tries_cell)) * 2] = mkcons(labeled, t(tries_cell));
+        } else {
+            // New function: wrap dval in tries(lhs, [labeled]) and prepend to ldefs.
+            const new_tries = clib.tries(lhs_word, mkcons(labeled, clib.NIL));
+            tl[@as(usize, @intCast(t(cell))) * 2] = new_tries;
+            ldefs = mkcons(cell, ldefs);
+        }
+    }
+    return ldefs;
+}
+
+fn applyWhereDefs(alloc: Allocator, e: Word, where_defs: []const ast.Def) Word {
+    if (where_defs.len == 0) return e;
+    return block(buildLdefs(alloc, where_defs), e, 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -448,8 +668,11 @@ fn codegenLocalDef(alloc: Allocator, def: ast.Def) Word {
 
 fn codegenDef(alloc: Allocator, def: ast.Def) void {
     const here = makeHere(@intCast(def.span.line));
-    var lhs = codegenExpr(alloc, def.lhs);
+    var lhs = codegenLhsExpr(alloc, def.lhs);
     var rhs = codegenRhs(alloc, def.rhs);
+
+    // Apply where clause (block wraps the rhs before lambda-desugaring).
+    rhs = applyWhereDefs(alloc, rhs, def.where_defs);
 
     // Lambda-desugar
     const f = head(lhs);
@@ -461,6 +684,10 @@ fn codegenDef(alloc: Allocator, def: ast.Def) void {
     }
     rhs = mklabel(here, rhs);
     declare(lhs, rhs);
+    // Mirror the YACC grammar: `declare(l,r), lastname=l` — allows
+    // consecutive equations for the same function to be accumulated
+    // by decl1 rather than triggering a nameclash error.
+    lastname = lhs;
 }
 
 // ---------------------------------------------------------------------------

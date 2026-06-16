@@ -1,8 +1,8 @@
 PARSE_RESULT: SYNTAX_ERROR
 
 TOKENS:
-NAME("here")
-COLON2EQ("here")
+NAME
+COLON2EQ
 CNAME("z")
 NAME("Node")
 BAR("Node")

@@ -395,42 +395,166 @@ pub fn parseExpr(p: *Parser) ParseError!ast.Expr {
 // Right-hand side and definition parsers
 // ---------------------------------------------------------------------------
 
-/// Parse an expression optionally followed by a `where` clause.
-pub fn parseRhs(p: *Parser) ParseError!ast.Expr {
+/// Parse a Miranda RHS: expression or guarded alternatives.
+/// Does NOT consume a trailing `where` clause — that is handled by `parseDef`.
+pub fn parseRhs(p: *Parser) ParseError!ast.Rhs {
     const body = try parseExpr(p);
-    if (!p.eat(.kw_where)) return body;
 
+    // Check for guarded RHS: `body , if cond` or `body , otherwise`
+    if (p.check(.comma)) {
+        const next_id = p.ts.peekAt(1).id;
+        if (next_id == .kw_if or next_id == .kw_otherwise) {
+            return try parseGuardedRhs(p, body);
+        }
+    }
+
+    return ast.Rhs{ .expr = body };
+}
+
+/// Parse one guard alternative starting from the ',' that follows the body.
+/// The caller has already parsed `body` and confirmed the lookahead is ',' followed
+/// by `if` or `otherwise`.
+fn parseGuardedRhs(p: *Parser, first_body: ast.Expr) ParseError!ast.Rhs {
+    var guards: std.ArrayList(ast.Guard) = .empty;
+    errdefer guards.deinit(p.gpa);
+
+    // First alternative: body already parsed, consume ',' then guard.
+    const first_sp = p.span();
+    _ = p.advance(); // consume ','
+    try guards.append(p.gpa, try parseSingleGuard(p, first_body, first_sp));
+
+    // Additional alternatives via ELSEQ tokens.
+    // ELSEQ is the layout-generated '=' that starts the next guarded case.
+    // It has already consumed the literal '=' character, so after ELSEQ we
+    // parse the next body expression directly.
+    while (p.check(.elseq)) {
+        _ = p.advance(); // consume ELSEQ
+        const alt_sp = p.span();
+        const alt_body = try parseExpr(p);
+
+        if (p.check(.comma)) {
+            const next_id = p.ts.peekAt(1).id;
+            if (next_id == .kw_if or next_id == .kw_otherwise) {
+                _ = p.advance(); // consume ','
+                try guards.append(p.gpa, try parseSingleGuard(p, alt_body, alt_sp));
+                continue;
+            }
+        }
+        // Alternative without an explicit guard — treat as `otherwise`
+        // (deprecated bare-alt syntax; generate an otherwise guard).
+        try guards.append(p.gpa, ast.Guard{
+            .cond         = ast.Expr{ .list_nil = {} }, // unused placeholder
+            .body         = alt_body,
+            .is_otherwise = true,
+            .span         = alt_sp,
+        });
+    }
+
+    return ast.Rhs{ .guarded = try guards.toOwnedSlice(p.gpa) };
+}
+
+/// Parse a single guard suffix: `if cond` or `otherwise`.
+/// The ',' has already been consumed by the caller.
+fn parseSingleGuard(p: *Parser, body: ast.Expr, sp: Span) ParseError!ast.Guard {
+    if (p.eat(.kw_otherwise)) {
+        return ast.Guard{
+            .cond         = ast.Expr{ .list_nil = {} }, // unused
+            .body         = body,
+            .is_otherwise = true,
+            .span         = sp,
+        };
+    }
+    // `if` is optional in Miranda when strictif is off (default).
+    _ = p.eat(.kw_if);
+    const cond = try parseExpr(p);
+    return ast.Guard{
+        .cond         = cond,
+        .body         = body,
+        .is_otherwise = false,
+        .span         = sp,
+    };
+}
+
+/// Parse a `where` block: one or more local definitions separated by layout.
+///
+/// We track the column of the FIRST where-def (`where_col`) and stop
+/// whenever a subsequent name/cname token appears at a STRICTLY LOWER column.
+/// This prevents `parseWhereDefs` from swallowing top-level definitions that
+/// follow the where block (which are at a lower indentation level).
+fn parseWhereDefs(p: *Parser, min_col: u32) ParseError![]ast.Def {
     var defs: std.ArrayList(ast.Def) = .empty;
     errdefer defs.deinit(p.gpa);
 
-    // Consume at least one local definition; skip layout between defs
-    try defs.append(p.gpa, try parseDef(p));
-    while (true) {
-        while (p.eat(.offside) or p.eat(.elseq) or p.eat(.semicolon)) {}
-        if (!p.check(.name) and !p.check(.cname)) break;
-        try defs.append(p.gpa, try parseDef(p));
+    // Skip any layout tokens before the first where-def.
+    while (p.eat(.offside) or p.eat(.semicolon)) {}
+
+    // The column of the first where-def anchors the block indentation.
+    const where_col: u32 = p.span().col;
+
+    // When called via OFFSIDE+WHERE, min_col is the OFFSIDE column. Where-defs
+    // must be indented strictly to the right of that position.
+    if (min_col > 0 and where_col < min_col) {
+        const sp = p.span();
+        try p.addError(sp, "syntax error at {d}:{d} - bad indentation in where clause", .{
+            sp.line, sp.col,
+        });
+        return defs.toOwnedSlice(p.gpa);
     }
 
-    const body_ptr = try p.gpa.create(ast.Expr);
-    body_ptr.* = body;
-    return ast.Expr{ .where = .{
-        .body = body_ptr,
-        .defs = try defs.toOwnedSlice(p.gpa),
-    } };
+    while (p.check(.name) or p.check(.cname) or p.check(.lparen) or p.check(.lbracket)) {
+        try defs.append(p.gpa, try parseDef(p));
+        // Eat layout tokens, but only if the NEXT token is at the same
+        // or higher column as the where-block anchor. If it's indented LESS,
+        // stop — that token belongs to the outer scope.
+        while (p.check(.offside) or p.check(.semicolon)) {
+            const next = p.ts.peekAt(1);
+            const is_def_start = next.id == .name or next.id == .cname or
+                                 next.id == .lparen or next.id == .lbracket;
+            if (is_def_start and next.span.col < where_col) break;
+            _ = p.advance();
+        }
+    }
+    return defs.toOwnedSlice(p.gpa);
 }
 
-/// Parse one definition: `lhs_expr = rhs_expr`
+/// Parse one definition: `lhs_expr = rhs  [where local_defs]`
 pub fn parseDef(p: *Parser) ParseError!ast.Def {
     const sp = p.span();
     // Parse LHS with min_bp > 40 so the definition '=' (bp.left=40) is not
     // consumed as an infix equality operator — it is the definition separator.
     const lhs = try pratt.parseExpr(p.gpa, &p.ts, 41);
     _ = try p.expect(.eq);
-    const rhs_expr = try parseRhs(p);
+    const rhs = try parseRhs(p);
+
+    // Optional where clause.  Two positions are legal in the token stream:
+    //
+    //   1. Immediately after the RHS (same-line `where`):
+    //        f x = g x where g y = y + 1
+    //      → kw_where appears directly.
+    //
+    //   2. After an OFFSIDE that terminates the RHS line, followed by `where`
+    //      indented LESS than the RHS but still belonging to this def:
+    //        f x = g x
+    //          where
+    //            g y = y + 1
+    //      → OFFSIDE then kw_where.
+    //
+    // In case 2 we consume the OFFSIDE here (not in parseScript) so that
+    // parseWhereDefs can see the local defs on the following lines.
+    var where_defs: []ast.Def = &.{};
+    if (p.eat(.kw_where)) {
+        where_defs = try parseWhereDefs(p, 0);
+    } else if (p.check(.offside) and p.ts.peekAt(1).id == .kw_where) {
+        const offside_col = p.span().col;
+        _ = p.eat(.offside);
+        _ = p.eat(.kw_where);
+        where_defs = try parseWhereDefs(p, offside_col);
+    }
+
     return ast.Def{
         .lhs        = lhs,
-        .rhs        = .{ .expr = rhs_expr },
-        .where_defs = &.{},
+        .rhs        = rhs,
+        .where_defs = where_defs,
         .span       = sp,
     };
 }
