@@ -99,7 +99,7 @@ const Driver = struct {
                 .directory => {
                     var cwd_buffer: [std.fs.max_path_bytes]u8 = undefined;
                     const hold_len = std.process.currentPath(self.ctx.io, &cwd_buffer) catch {
-                        std.debug.print("panic: cwd too long\n", .{});
+                        std.debug.print("menudriver: cwd path too long\n", .{});
                         std.process.exit(1);
                     };
                     const hold = cwd_buffer[0..hold_len];
@@ -290,7 +290,7 @@ const Driver = struct {
         defer self.ctx.gpa.free(quoted);
         const full = try std.fmt.allocPrint(self.ctx.gpa, "{s} {s}", .{ command, quoted });
         defer self.ctx.gpa.free(full);
-        try runShell(self.ctx, full);
+        try runShellViewer(self.ctx, full);
     }
 
     fn setNext(self: *Driver, value: []const u8) !void {
@@ -350,20 +350,28 @@ fn runExecutable(ctx: std.process.Init, path: []const u8) !void {
     else
         try std.fmt.allocPrint(ctx.gpa, "./{s}", .{path});
     defer ctx.gpa.free(prefixed);
-    try runChild(ctx, &.{prefixed});
+    try runChild(ctx, &.{prefixed}, .inherit);
 }
 
+// Run a shell command for display purposes (viewer, menuviewer).
+// stdin is redirected to /dev/null so that the shell itself cannot read-ahead
+// and consume buffered terminal input that belongs to the menudriver's own
+// readSelection().  Pagers like `less` open /dev/tty independently for
+// interactive keystrokes, so they work correctly even with stdin closed.
+fn runShellViewer(ctx: std.process.Init, command: []const u8) !void {
+    try runChild(ctx, &.{ "/bin/sh", "-c", command }, .ignore);
+}
+
+// Run a shell command for interactive use (shell escapes via !cmd).
+// stdin is inherited so the user can interact with the spawned shell.
 fn runShell(ctx: std.process.Init, command: []const u8) !void {
-    // We don't have easy access to environ_map here without passing it,
-    // but we can try to get it from the process environment directly if available.
-    // For now, let's just use /bin/sh.
-    try runChild(ctx, &.{ "/bin/sh", "-c", command });
+    try runChild(ctx, &.{ "/bin/sh", "-c", command }, .inherit);
 }
 
-fn runChild(ctx: std.process.Init, argv: []const []const u8) !void {
+fn runChild(ctx: std.process.Init, argv: []const []const u8, stdin_mode: std.process.SpawnOptions.StdIo) !void {
     var child = try std.process.spawn(ctx.io, .{
         .argv = argv,
-        .stdin = .inherit,
+        .stdin = stdin_mode,
         .stdout = .inherit,
         .stderr = .inherit,
     });
