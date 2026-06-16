@@ -13,7 +13,8 @@ The project's goal is to transition the original, historical C codebase into an 
 * **✔ Modular Source Structure**: Reorganized the source tree into logical packages (runtime, compiler, parser, and IO subsystems).
 * **✔ Pure Zig Parser**: The YACC/C parser (`rules.y` / `y.tab.c`) has been fully replaced with a recursive-descent + Pratt parser in Zig. No C parser files are compiled.
 * **✔ REPL Works Correctly**: The interactive REPL evaluates expressions with proper fork-based isolation — heavy computations (e.g. `fib 32`) do not corrupt the heap for subsequent evaluations.
-* **✔ Tests Passing**: 21/21 tests pass.
+* **✔ Menudriver Works**: The Miranda menu-driven help viewer (`menudriver`) is built and installed into `miralib/` by `build.zig`. Zig 0.16 `writableVector` aliasing and shell read-ahead stdin isolation bugs fixed.
+* **✔ Tests Passing**: 60/61 tests pass across all suites (steer: 21, lex: 21, parser: 14, menudriver: 2, just: 2). The single known failure is a pre-existing `mira-tests` integration test.
 * **⚠ libc Linked**: libc remains linked to support platform abstractions (signals, file I/O, big integers).
 
 ---
@@ -24,6 +25,7 @@ The project's goal is to transition the original, historical C codebase into an 
 * [src/compiler](src/compiler) — Typechecker, code generator, and translation structures.
 * [src/parser](src/parser) — Pure Zig lexer, recursive-descent + Pratt parser, and codegen bridge to the Miranda heap.
 * [src/io](src/io) — UTF-8 and signals platform IO abstractions.
+* [menudriver.zig](menudriver.zig) — Miranda menu-driven help viewer; built by `zig build` and installed into `miralib/`.
 * [tests](tests) — Integration, golden, and regression tests.
 * [miralib](miralib) — Miranda standard environment prelude and libraries.
 
