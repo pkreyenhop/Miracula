@@ -807,6 +807,8 @@ export fn rc_read(rcfile: [*:0]const u8) Word {
             listing = 1;
             z1 += 1;
         }
+        // C original: while (*++z1) — pre-increment skips the 'e' in "hdve" before checking flags.
+        z1 += 1;
         while (z1[0] != 0) : (z1 += 1) {
             if (z1[0] == 'l') {
                 listing = 1;

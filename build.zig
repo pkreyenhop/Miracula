@@ -76,6 +76,14 @@ pub fn build(b: *std.Build) void {
     });
     b.getInstallStep().dependOn(&install_menudriver.step);
 
+    // Also place menudriver in the source miralib/ directory (gitignored) so that
+    // running `./zig-out/bin/mira` from the project root can find it without -lib.
+    const copy_menudriver = b.addSystemCommand(&.{"cp"});
+    copy_menudriver.addFileArg(menudriver.getEmittedBin());
+    copy_menudriver.addArg(b.pathFromRoot("miralib/menudriver"));
+    copy_menudriver.step.dependOn(&menudriver.step);
+    b.getInstallStep().dependOn(&copy_menudriver.step);
+
     const install_miralib = b.addInstallDirectory(.{
         .source_dir = b.path("miralib"),
         .install_dir = .lib,
