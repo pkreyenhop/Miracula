@@ -5,6 +5,21 @@ const Word = reduce.Word;
 const clib = reduce.clib;
 const platform = @import("../../io/platform.zig");
 
+// ASCII ctype helpers — safe for Word values including EOF (-1)
+inline fn ctypeSpace(ch: Word) bool {
+    return ch == ' ' or ch == '\t' or ch == '\n' or ch == '\r' or ch == '\x0c' or ch == '\x0b';
+}
+inline fn ctypeXDigit(ch: Word) bool {
+    return (ch >= '0' and ch <= '9') or (ch >= 'a' and ch <= 'f') or (ch >= 'A' and ch <= 'F');
+}
+inline fn ctypeDigit(ch: anytype) bool {
+    return ch >= '0' and ch <= '9';
+}
+inline fn ctypeLower(ch: Word) Word {
+    if (ch >= 'A' and ch <= 'Z') return ch + ('a' - 'A');
+    return ch;
+}
+
 
 extern var tag: [*]u8;
 extern var hd: [*]Word;
@@ -238,7 +253,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
                 reduce.tl_set(x, next_tl);
                 x = next_tl;
             }
-            while (lastarg(ctx) != clib.NIL and clib.isspace(@intCast(reduce.hd_get(lastarg(ctx)))) != 0) {
+            while (lastarg(ctx) != clib.NIL and ctypeSpace(reduce.hd_get(lastarg(ctx)))) {
                 set_lastarg(ctx, reduce.tl_get(lastarg(ctx)));
             }
             x = lastarg(ctx);
@@ -246,7 +261,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
                 x = reduce.tl_get(x);
             }
             if (reduce.hd_get(x) == '0' and reduce.tl_get(x) != clib.NIL) {
-                switch (clib.tolower(@intCast(reduce.hd_get(reduce.tl_get(x))))) {
+                switch (ctypeLower(reduce.hd_get(reduce.tl_get(x)))) {
                     'o' => {
                         base = 8;
                         x = reduce.tl_get(reduce.tl_get(x));
@@ -257,14 +272,14 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
                     'x' => {
                         base = 16;
                         x = reduce.tl_get(reduce.tl_get(x));
-                        while (x != clib.NIL and (clib.isxdigit(@intCast(reduce.hd_get(x))) != 0)) {
+                        while (x != clib.NIL and ctypeXDigit(reduce.hd_get(x))) {
                             x = reduce.tl_get(x);
                         }
                     },
                     else => {},
                 }
             } else {
-                while (x != clib.NIL and (clib.isdigit(@intCast(reduce.hd_get(x))) != 0)) {
+                while (x != clib.NIL and ctypeDigit(reduce.hd_get(x))) {
                     x = reduce.tl_get(x);
                 }
             }
@@ -449,7 +464,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
                 const x = clib.get_dbl(lastarg(ctx));
                 _ = clib.sprintf(&linebuf, "%.16g", x);
                 var p_idx: usize = 0;
-                while (clib.isdigit(@intCast(linebuf[p_idx])) != 0) {
+                while (ctypeDigit(linebuf[p_idx])) {
                     p_idx += 1;
                 }
                 if (linebuf[p_idx] == 0) {

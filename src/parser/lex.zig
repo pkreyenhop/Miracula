@@ -4,7 +4,6 @@ const clib = @cImport({
     @cInclude("stdlib.h");
     @cInclude("stdio.h");
     @cInclude("string.h");
-    @cInclude("ctype.h");
 });
 
 const Word = c_long;
@@ -170,6 +169,24 @@ extern fn acterror() void;
 extern fn syntax(s: [*:0]const u8) void;
 extern fn reset() void;
 extern fn is_char(x: Word) c_int;
+
+// ASCII ctype helpers — safe for Word/c_int values including EOF (-1)
+inline fn ctypeAlpha(ch: anytype) bool {
+    return (ch >= 'A' and ch <= 'Z') or (ch >= 'a' and ch <= 'z');
+}
+inline fn ctypeAlnum(ch: anytype) bool {
+    return ctypeAlpha(ch) or (ch >= '0' and ch <= '9');
+}
+inline fn ctypeSpace(ch: anytype) bool {
+    return ch == ' ' or ch == '\t' or ch == '\n' or ch == '\r' or ch == '\x0c' or ch == '\x0b';
+}
+inline fn ctypeXDigit(ch: anytype) bool {
+    return (ch >= '0' and ch <= '9') or (ch >= 'a' and ch <= 'f') or (ch >= 'A' and ch <= 'F');
+}
+inline fn ctypeLower(ch: anytype) @TypeOf(ch) {
+    if (ch >= 'A' and ch <= 'Z') return ch + ('a' - 'A');
+    return ch;
+}
 
 export fn mira_lex_setup_string(source: [*:0]const u8) void {
     const len = std.mem.len(source);
@@ -343,7 +360,7 @@ export fn token() ?[*:0]u8 {
         dicq[0] = @intCast(ch);
         dicq += 1;
         ch = clib.getchar();
-        while (clib.isalnum(ch) != 0 or ch == '-' or ch == '_' or ch == '.') {
+        while (ctypeAlnum(ch) or ch == '-' or ch == '_' or ch == '.') {
             dicq[0] = @intCast(ch);
             dicq += 1;
             ch = clib.getchar();
@@ -354,7 +371,7 @@ export fn token() ?[*:0]u8 {
             dicq = dicp + clib.strlen(dicp);
         }
     }
-    while (ch != clib.EOF and clib.isspace(ch) == 0) {
+    while (ch != clib.EOF and !ctypeSpace(ch)) {
         dicq[0] = @intCast(ch);
         dicq += 1;
         if (ch == '%') {
@@ -589,13 +606,13 @@ fn getlitch() Word {
         't' => return '\t',
         'v' => return '\x0b',
         'X', 'x' => {
-            if (clib.isxdigit(@intCast(c)) != 0) {
+            if (ctypeXDigit(c)) {
                 var value: c_uint = 0;
                 const N: usize = if (escaped_ch == 'x') 4 else 6;
                 var hold = std.mem.zeroes([8]u8);
                 var count: usize = 0;
                 var xch = c;
-                while (clib.isxdigit(@intCast(xch)) != 0 and count < N) {
+                while (ctypeXDigit(xch) and count < N) {
                     hold[count] = @intCast(xch);
                     count += 1;
                     xch = getch();
@@ -766,7 +783,7 @@ export fn yylex() c_int {
         }
         return ';';
     }
-    if (clib.isalpha(@intCast(c)) != 0) {
+    if (ctypeAlpha(c)) {
         kollect(okid);
         if (inlex == 1) {
             layout();
@@ -781,9 +798,9 @@ export fn yylex() c_int {
         return @intCast(identifier(0));
     }
     if ((c >= '0' and c <= '9') or (c == '.' and peekdig() != 0)) {
-        if (c == '0' and clib.tolower(@intCast(peekch())) == 'x') {
+        if (c == '0' and ctypeLower(peekch()) == 'x') {
             hexnumeral();
-        } else if (c == '0' and clib.tolower(@intCast(peekch())) == 'o') {
+        } else if (c == '0' and ctypeLower(peekch()) == 'o') {
             _ = getch();
             c = getch();
             octnumeral();
@@ -906,7 +923,7 @@ export fn yylex() c_int {
                 if (c == '%' and commandmode == 0) {
                     return @intCast(directive());
                 }
-                if (clib.isalpha(@intCast(c)) != 0) {
+                if (ctypeAlpha(c)) {
                     kollect(okulid);
                     if (dicp[1] == '_' and dicp[2] == ' ') {
                         return @intCast(identifier(1));
@@ -995,7 +1012,7 @@ export fn yylex() c_int {
             return @intCast(lastc);
         },
         '$' => {
-            if (clib.isalpha(@intCast(c)) != 0) {
+            if (ctypeAlpha(c)) {
                 kollect(okid);
                 const t_val = identifier(0);
                 return if (t_val == NAME) INFIXNAME else if (t_val == CNAME) INFIXCNAME else '$';
@@ -1196,7 +1213,7 @@ export fn pathname() ?[*:0]u8 {
         dicp[0] = @intCast(c);
         dicp += 1;
         c = getch();
-        while (clib.isalnum(@intCast(c)) != 0 or c == '-' or c == '_' or c == '.') {
+        while (ctypeAlnum(c) or c == '-' or c == '_' or c == '.') {
             dicp[0] = @intCast(c);
             dicp += 1;
             c = getch();
@@ -1599,25 +1616,25 @@ export fn hexnumeral() void {
     dicq[0] = @intCast(c); // x
     dicq += 1;
     c = getch();
-    if (clib.isxdigit(@intCast(c)) == 0 and c != '.') {
+    if (!ctypeXDigit(c) and c != '.') {
         syntax("malformed hex number\n");
     }
-    while (c == '0' and clib.isxdigit(@intCast(peekch())) != 0) {
+    while (c == '0' and ctypeXDigit(peekch())) {
         c = getch(); // skip zeros before first nonzero digit
     }
-    while (clib.isxdigit(@intCast(c)) != 0) {
+    while (ctypeXDigit(c)) {
         dicq[0] = @intCast(c);
         dicq += 1;
         c = getch();
     }
     ovflocheck();
-    if (c == '.' or clib.tolower(@intCast(c)) == 'p') {
+    if (c == '.' or ctypeLower(c) == 'p') {
         var d: f64 = 0.0;
         if (c == '.') {
             dicq[0] = @intCast(c);
             dicq += 1;
             c = getch();
-            while (clib.isxdigit(@intCast(c)) != 0) {
+            while (ctypeXDigit(c)) {
                 dicq[0] = @intCast(c);
                 dicq += 1;
                 c = getch();

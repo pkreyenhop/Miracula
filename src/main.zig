@@ -12,12 +12,10 @@ const c_raw = @cImport({
     @cInclude("setjmp.h");
     @cInclude("sys/resource.h");
     @cInclude("sys/wait.h");
-    @cInclude("float.h");
     @cInclude("data.h");
     @cInclude("signals.h");
     @cInclude("string.h");
     @cInclude("stdlib.h");
-    @cInclude("ctype.h");
     @cInclude("lex.h");
     @cInclude("version.h");
 });
@@ -1760,7 +1758,7 @@ fn finger(n: [*:0]const u8) void {
 
 fn diagnose(n: [*:0]const u8) void {
     var i: usize = 0;
-    if (clib.isalpha(@intCast(n[0])) != 0) {
+    if ((n[0] >= 'A' and n[0] <= 'Z') or (n[0] >= 'a' and n[0] <= 'z')) {
         while (n[i] != 0 and clib.okid(n[i]) != 0) {
             i += 1;
         }
@@ -2799,7 +2797,7 @@ fn stdlib() void {
     predef("filestat", clib.FILESTAT, undef_t);
     predef("foldl", clib.FOLDL, undef_t);
     predef("foldl1", clib.FOLDL1, undef_t);
-    predef("hugenum", sto_dbl(clib.DBL_MAX), undef_t);
+    predef("hugenum", sto_dbl(std.math.floatMax(f64)), undef_t);
     predef("last", clib.LIST_LAST, undef_t);
     predef("foldr", clib.FOLDR, undef_t);
     predef("force", clib.FORCE, undef_t);

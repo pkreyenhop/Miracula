@@ -55,7 +55,6 @@ pub fn build(b: *std.Build) void {
         .flags = &c_flags,
     });
     addPlatformMacros(mira, target);
-    mira.root_module.linkSystemLibrary("m", .{});
 
     const install_mira = b.addInstallArtifact(mira, .{});
     b.getInstallStep().dependOn(&install_mira.step);
@@ -129,7 +128,6 @@ pub fn build(b: *std.Build) void {
         .flags = &c_flags,
     });
     addPlatformMacros(steer_tests, target);
-    steer_tests.root_module.linkSystemLibrary("m", .{});
     steer_tests.root_module.addOptions("version_options", version_options);
     const lex_tests = b.addTest(.{
         .name = "lex-tests",
@@ -147,7 +145,6 @@ pub fn build(b: *std.Build) void {
         .flags = &c_flags,
     });
     addPlatformMacros(lex_tests, target);
-    lex_tests.root_module.linkSystemLibrary("m", .{});
     lex_tests.root_module.addOptions("version_options", version_options);
     const run_lex_tests = b.addRunArtifact(lex_tests);
 
