@@ -11,50 +11,47 @@ const TokenId = tf.TokenId;
 const Token = tf.Token;
 const Span = tf.Span;
 
-const clib = @cImport({
-    @cInclude("data.h");
-    @cInclude("y.tab.h");
-});
+const wc = @import("../runtime/word.zig");
 
 extern fn mira_lex_setup_string(source: [*:0]const u8) void;
 extern fn mira_lex_cleanup() void;
 
 // Miranda atom-range constants (from lex.zig — keep in sync with CMBASE = 306).
-const CMBASE: clib.word = 306;
-const FALSE_ATOM: clib.word = CMBASE + 136;  // Miranda boolean False
-const TRUE_ATOM: clib.word = CMBASE + 137;   // Miranda boolean True
-const NIL_ATOM: clib.word = CMBASE + 138;
-const NILS_ATOM: clib.word = CMBASE + 139;
-const ATOMLIMIT: clib.word = CMBASE + 141;
+const CMBASE: wc.Word = 306;
+const FALSE_ATOM: wc.Word = CMBASE + 136;  // Miranda boolean False
+const TRUE_ATOM: wc.Word = CMBASE + 137;   // Miranda boolean True
+const NIL_ATOM: wc.Word = CMBASE + 138;
+const NILS_ATOM: wc.Word = CMBASE + 139;
+const ATOMLIMIT: wc.Word = CMBASE + 141;
 
 // Lexer globals exported by lex.zig.
-extern var yylval: clib.word;
-extern var line_no: clib.word;
-extern var col: clib.word;
-extern var tok_start_col: clib.word;
+extern var yylval: wc.Word;
+extern var line_no: wc.Word;
+extern var col: wc.Word;
+extern var tok_start_col: wc.Word;
 extern var dicp: [*:0]u8;
 // Heap arrays (data.h: hd and tl are offset so hd[x*2] / tl[x*2] index cell x).
-extern var hd: [*]clib.word;
-extern var tl: [*]clib.word;
+extern var hd: [*]wc.Word;
+extern var tl: [*]wc.Word;
 extern var tag: [*]u8;
 
 extern fn yylex() c_int;
-extern fn is_char(x: clib.word) c_int;
-extern fn get_dbl(x: clib.word) f64;
+extern fn is_char(x: wc.Word) c_int;
+extern fn get_dbl(x: wc.Word) f64;
 extern fn layout() void;
 extern fn setlmargin() void;
 extern fn unsetlmargin() void;
 
 // C macro equivalents: hd(x) == hd[(x)*2], tl(x) == tl[(x)*2]
-inline fn hd_of(x: clib.word) clib.word {
+inline fn hd_of(x: wc.Word) wc.Word {
     return hd[@as(usize, @intCast(x)) * 2];
 }
-inline fn tl_of(x: clib.word) clib.word {
+inline fn tl_of(x: wc.Word) wc.Word {
     return tl[@as(usize, @intCast(x)) * 2];
 }
 
 // C macro: get_id(x) == (char*)hd(hd(hd(x)))
-fn getIdText(x: clib.word) []const u8 {
+fn getIdText(x: wc.Word) []const u8 {
     const ptr: usize = @intCast(hd_of(hd_of(hd_of(x))));
     const p: [*:0]const u8 = @ptrFromInt(ptr);
     return std.mem.span(p);
@@ -64,12 +61,12 @@ fn getIdText(x: clib.word) []const u8 {
 /// String literals in Miranda are represented as CONS (tag=11) chains, NOT STRCONS.
 /// Each cell hd is either an atom 0-127 (direct ASCII code point) or a UNICODE
 /// heap cell (tag=21) whose tl holds the code point.
-fn stringFromCons(gpa: Allocator, cell: clib.word) ![]u8 {
+fn stringFromCons(gpa: Allocator, cell: wc.Word) ![]u8 {
     var buf: std.ArrayList(u8) = .empty;
     errdefer buf.deinit(gpa);
     var cur = cell;
-    while (cur >= ATOMLIMIT and tag[@as(usize, @intCast(cur))] == clib.CONS) {
-        const ch_val: clib.word = hd_of(cur);
+    while (cur >= ATOMLIMIT and tag[@as(usize, @intCast(cur))] == wc.CONS) {
+        const ch_val: wc.Word = hd_of(cur);
         cur = tl_of(cur);
         const codepoint: u21 = if (ch_val < ATOMLIMIT)
             @intCast(ch_val) // ASCII/Latin-1 atom: value IS the code point
@@ -89,7 +86,7 @@ fn stringFromCons(gpa: Allocator, cell: clib.word) ![]u8 {
 /// Map one yylex() return value to a Token.
 /// Returns null for internal tokens that the Zig parser should skip.
 fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
-    const w: clib.word = yylval;
+    const w: wc.Word = yylval;
 
     return switch (raw) {
         // EOF / END (both == 0 from data.h)
@@ -122,27 +119,27 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
         ':' => Token{ .id = .cons, .span = span },
 
         // --- multi-character and keyword tokens ---
-        clib.WHERE => Token{ .id = .kw_where, .span = span },
-        clib.IF => Token{ .id = .kw_if, .span = span },
-        clib.LEFTARROW => Token{ .id = .left_arrow, .span = span },
-        clib.COLONCOLON => Token{ .id = .coloncolon, .span = span },
-        clib.COLON2EQ => Token{ .id = .colon2eq, .span = span },
-        clib.TYPEVAR => Token{
+        wc.WHERE => Token{ .id = .kw_where, .span = span },
+        wc.IF => Token{ .id = .kw_if, .span = span },
+        wc.LEFTARROW => Token{ .id = .left_arrow, .span = span },
+        wc.COLONCOLON => Token{ .id = .coloncolon, .span = span },
+        wc.COLON2EQ => Token{ .id = .colon2eq, .span = span },
+        wc.TYPEVAR => Token{
             .id = .typevar,
             .span = span,
             .int_val = @intCast(tl_of(w)), // number of stars stored in tl
         },
-        clib.NAME => Token{
+        wc.NAME => Token{
             .id = .name,
             .span = span,
             .text = try gpa.dupe(u8, getIdText(w)),
         },
-        clib.CNAME => Token{
+        wc.CNAME => Token{
             .id = .cname,
             .span = span,
             .text = try gpa.dupe(u8, getIdText(w)),
         },
-        clib.CONST => blk: {
+        wc.CONST => blk: {
             // 0. Miranda boolean atoms: True and False are returned by the lexer
             //    as CONST with predefined atom values, not as CNAME. Map them to
             //    CNAME so the parser handles them as constructor patterns/exprs.
@@ -164,7 +161,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
             if (w >= ATOMLIMIT) {
                 const t_tag = tag[@as(usize, @intCast(w))];
                 // 3. Non-empty string literal: CONS chain of char values
-                if (t_tag == clib.CONS) {
+                if (t_tag == wc.CONS) {
                     break :blk Token{
                         .id = .const_str,
                         .span = span,
@@ -172,7 +169,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
                     };
                 }
                 // 4. Float literal: DOUBLE-tagged heap cell; text in dicp
-                if (t_tag == clib.DOUBLE) {
+                if (t_tag == wc.DOUBLE) {
                     break :blk Token{
                         .id = .const_float,
                         .span = span,
@@ -180,7 +177,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
                     };
                 }
                 // 5. Integer literal: INT-tagged heap cell; decimal text in dicp
-                if (t_tag == clib.INT) {
+                if (t_tag == wc.INT) {
                     const text_slice = std.mem.span(dicp);
                     const int_val: i64 = if (std.mem.startsWith(u8, text_slice, "0x") or
                         std.mem.startsWith(u8, text_slice, "0X"))
@@ -193,42 +190,42 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
             // Unknown CONST form (e.g. $* internal syntax)
             break :blk Token{ .id = .error_tok, .span = span };
         },
-        clib.DOLLARS => Token{ .id = .dollars, .span = span },
-        clib.OFFSIDE => Token{ .id = .offside, .span = span },
-        clib.ELSEQ => Token{ .id = .elseq, .span = span },
-        clib.ABSTYPE => Token{ .id = .kw_abstype, .span = span },
-        clib.WITH => Token{ .id = .kw_with, .span = span },
-        clib.EQEQ => Token{ .id = .eq_eq, .span = span },
-        clib.FREE => Token{ .id = .kw_free, .span = span },
-        clib.INCLUDE => Token{ .id = .kw_include, .span = span },
-        clib.EXPORT => Token{ .id = .kw_export, .span = span },
-        clib.TYPE => Token{ .id = .kw_type, .span = span },
-        clib.OTHERWISE => Token{ .id = .kw_otherwise, .span = span },
-        clib.SHOWSYM => Token{ .id = .kw_show, .span = span },
-        clib.PATHNAME => Token{
+        wc.DOLLARS => Token{ .id = .dollars, .span = span },
+        wc.OFFSIDE => Token{ .id = .offside, .span = span },
+        wc.ELSEQ => Token{ .id = .elseq, .span = span },
+        wc.ABSTYPE => Token{ .id = .kw_abstype, .span = span },
+        wc.WITH => Token{ .id = .kw_with, .span = span },
+        wc.EQEQ => Token{ .id = .eq_eq, .span = span },
+        wc.FREE => Token{ .id = .kw_free, .span = span },
+        wc.INCLUDE => Token{ .id = .kw_include, .span = span },
+        wc.EXPORT => Token{ .id = .kw_export, .span = span },
+        wc.TYPE => Token{ .id = .kw_type, .span = span },
+        wc.OTHERWISE => Token{ .id = .kw_otherwise, .span = span },
+        wc.SHOWSYM => Token{ .id = .kw_show, .span = span },
+        wc.PATHNAME => Token{
             .id = .pathname,
             .span = span,
             .text = try gpa.dupe(u8, std.mem.span(dicp)),
         },
-        clib.BNF => Token{ .id = .kw_bnf, .span = span },
-        clib.LEX => Token{ .id = .kw_lex, .span = span },
-        clib.READVALSY => Token{ .id = .kw_readvals, .span = span },
-        clib.ARROW => Token{ .id = .arrow, .span = span },
-        clib.PLUSPLUS => Token{ .id = .plus_plus, .span = span },
-        clib.MINUSMINUS => Token{ .id = .minus_minus, .span = span },
-        clib.DOTDOT => Token{ .id = .dot_dot, .span = span },
-        clib.VEL => Token{ .id = .vel, .span = span },
-        clib.GE => Token{ .id = .ge, .span = span },
-        clib.NE => Token{ .id = .ne, .span = span },
-        clib.LE => Token{ .id = .le, .span = span },
-        clib.REM => Token{ .id = .kw_mod, .span = span },
-        clib.DIV => Token{ .id = .kw_div, .span = span },
-        clib.INFIXNAME => Token{
+        wc.BNF => Token{ .id = .kw_bnf, .span = span },
+        wc.LEX => Token{ .id = .kw_lex, .span = span },
+        wc.READVALSY => Token{ .id = .kw_readvals, .span = span },
+        wc.ARROW => Token{ .id = .arrow, .span = span },
+        wc.PLUSPLUS => Token{ .id = .plus_plus, .span = span },
+        wc.MINUSMINUS => Token{ .id = .minus_minus, .span = span },
+        wc.DOTDOT => Token{ .id = .dot_dot, .span = span },
+        wc.VEL => Token{ .id = .vel, .span = span },
+        wc.GE => Token{ .id = .ge, .span = span },
+        wc.NE => Token{ .id = .ne, .span = span },
+        wc.LE => Token{ .id = .le, .span = span },
+        wc.REM => Token{ .id = .kw_mod, .span = span },
+        wc.DIV => Token{ .id = .kw_div, .span = span },
+        wc.INFIXNAME => Token{
             .id = .infixname,
             .span = span,
             .text = try gpa.dupe(u8, getIdText(w)),
         },
-        clib.INFIXCNAME => Token{
+        wc.INFIXCNAME => Token{
             .id = .infixcname,
             .span = span,
             .text = try gpa.dupe(u8, getIdText(w)),

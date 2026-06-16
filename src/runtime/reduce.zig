@@ -1,22 +1,42 @@
 const std = @import("std");
 const platform = @import("../io/platform.zig");
+const w = @import("word.zig");
 const clib = @cImport({
     @cInclude("sys/types.h");
     @cInclude("sys/stat.h");
     @cInclude("sys/times.h");
     @cInclude("unistd.h");
     @cInclude("errno.h");
-    @cInclude("data.h");
-    @cInclude("big.h");
-    @cInclude("lex.h");
     @cInclude("utf8.h");
+    @cInclude("stdlib.h");
+    @cInclude("string.h");
 });
 
 const Word = c_long;
-const NIL: Word = clib.CMBASE + 138;
-const NILS: Word = clib.CMBASE + 139;
-const ATOMLIMIT: Word = clib.CMBASE + 141;
-const FST = clib.HD;
+const CMBASE = w.CMBASE;
+const NIL: Word = w.NIL;
+const NILS: Word = w.NILS;
+const ATOMLIMIT: Word = w.ATOMLIMIT;
+const FST = w.HD;
+const STRCONS = w.STRCONS;
+const INT = w.INT;
+const DOUBLE = w.DOUBLE;
+const AP = w.AP;
+const CONS = w.CONS;
+const DATAPAIR = w.DATAPAIR;
+const FILEINFO = w.FILEINFO;
+const UNICODE = w.UNICODE;
+const ATOM = w.ATOM;
+const CONSTRUCTOR = w.CONSTRUCTOR;
+const READBIN = w.READBIN;
+const READ = w.READ;
+const I = w.I;
+const S = w.S;
+const ERROR = w.ERROR;
+const OFFSIDE = w.OFFSIDE;
+const READVALS = w.READVALS;
+const DESTREV = w.DESTREV;
+const DOTDOT = w.DOTDOT;
 const MAXDIGIT = 0x7fff;
 const SIGNBIT = 0x10000000;
 
@@ -25,6 +45,19 @@ extern var tl: [*]Word;
 extern var tag: [*]u8;
 
 extern var UTF8: c_int;
+extern fn bigtodbl(x: Word) f64;
+extern fn get_dbl(x: Word) f64;
+extern fn sto_dbl(d: f64) Word;
+extern fn sto_int(val: Word) Word;
+extern fn bigplus(x: Word, y: Word) Word;
+extern fn bigcmp(x: Word, y: Word) c_int;
+extern fn str_conv(s: [*:0]const u8) Word;
+extern fn keep(p: [*:0]const u8) [*:0]u8;
+extern fn is_char(x: Word) c_int;
+extern fn get_char(x: Word) Word;
+extern fn out(f: *anyopaque, x: Word) void;
+extern fn make(t: u8, x: Word, y: Word) Word;
+
 extern var UTF8OUT: c_int;
 extern var cstack: ?[*]Word;
 extern var compiling: c_int;
@@ -75,7 +108,7 @@ inline fn isptr(x: Word) bool {
 }
 
 inline fn lh(x: Word) Word {
-    if (tag[@as(usize, @intCast(h(x)))] == clib.STRCONS) {
+    if (tag[@as(usize, @intCast(h(x)))] == STRCONS) {
         return t(h(x));
     } else {
         return h(x);
@@ -83,10 +116,10 @@ inline fn lh(x: Word) Word {
 }
 
 inline fn force_dbl(x: Word) f64 {
-    if (tag[@as(usize, @intCast(x))] == clib.INT) {
-        return clib.bigtodbl(x);
+    if (tag[@as(usize, @intCast(x))] == INT) {
+        return bigtodbl(x);
     } else {
-        return clib.get_dbl(x);
+        return get_dbl(x);
     }
 }
 
@@ -103,11 +136,11 @@ inline fn sign(x: c_long) c_int {
 }
 
 inline fn cons(x: Word, y: Word) Word {
-    return clib.make(clib.CONS, x, y);
+    return make(CONS, x, y);
 }
 
 inline fn ap(x: Word, y: Word) Word {
-    return clib.make(clib.AP, x, y);
+    return make(AP, x, y);
 }
 
 inline fn ap2(f: Word, x: Word, y: Word) Word {
@@ -115,7 +148,7 @@ inline fn ap2(f: Word, x: Word, y: Word) Word {
 }
 
 inline fn datapair(x: Word, y: Word) Word {
-    return clib.make(clib.DATAPAIR, x, y);
+    return make(DATAPAIR, x, y);
 }
 
 inline fn digit0(x: Word) Word {
@@ -124,7 +157,7 @@ inline fn digit0(x: Word) Word {
 
 inline fn stosmallint(x: Word) Word {
     const val = if (x < 0) SIGNBIT | (-x) else x;
-    return clib.make(clib.INT, val, 0);
+    return make(INT, val, 0);
 }
 
 const reduce_ctx = extern struct {
@@ -177,7 +210,7 @@ fn getStdout() ?*clib.FILE {
 }
 
 inline fn rewrite_to_value(expr: *Word, value: Word) void {
-    hd[@as(usize, @intCast(expr.*)) * 2] = clib.I;
+    hd[@as(usize, @intCast(expr.*)) * 2] = I;
     expr.* = value;
     tl[@as(usize, @intCast(expr.*)) * 2] = value;
 }
@@ -193,7 +226,7 @@ inline fn setcell(e: Word, t_val: u8, a: Word, b: Word) void {
 }
 
 inline fn rewrite_to_cons(e: Word, hd_value: Word, tl_value: Word) void {
-    setcell(e, clib.CONS, hd_value, tl_value);
+    setcell(e, CONS, hd_value, tl_value);
 }
 
 export fn reduce_badcase_error(arg_info: Word) void {
@@ -223,10 +256,10 @@ export fn reduce_parse_close_error(arg1: Word, arg3: Word) void {
         outstats();
         clib.exit(1);
     }
-    var hold_val = clib.make(clib.AP, FST, h(arg3_reduced));
+    var hold_val = make(AP, FST, h(arg3_reduced));
     hold_val = reduce(hold_val);
     _ = clib.fprintf(getStderr().?, "TOKEN \"");
-    if (hold_val == clib.OFFSIDE) {
+    if (hold_val == OFFSIDE) {
         _ = clib.fprintf(getStderr().?, "offside");
     }
     const p = getstring(hold_val, null);
@@ -244,7 +277,7 @@ export fn reduce_parse_close_error(arg1: Word, arg3: Word) void {
 export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
     const lastarg = t(ctx.e);
     switch (op) {
-        clib.READBIN => {
+        READBIN => {
             // UPLEFT
             ctx.hold = ctx.s;
             ctx.s = h(ctx.s);
@@ -268,10 +301,10 @@ export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
                 rewrite_to_nil(&ctx.e);
                 return .REDUCE_DONE;
             }
-            rewrite_to_cons(ctx.e, hold_char, clib.make(clib.AP, clib.READBIN, t(ctx.e)));
+            rewrite_to_cons(ctx.e, hold_char, make(AP, READBIN, t(ctx.e)));
             return .REDUCE_DONE;
         },
-        clib.READ => {
+        READ => {
             // UPLEFT
             ctx.hold = ctx.s;
             ctx.s = h(ctx.s);
@@ -295,10 +328,10 @@ export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
                 rewrite_to_nil(&ctx.e);
                 return .REDUCE_DONE;
             }
-            rewrite_to_cons(ctx.e, hold_char, clib.make(clib.AP, clib.READ, t(ctx.e)));
+            rewrite_to_cons(ctx.e, hold_char, make(AP, READ, t(ctx.e)));
             return .REDUCE_DONE;
         },
-        clib.READVALS => {
+        READVALS => {
             // GETARG(arg1)
             ctx.hold = ctx.s;
             ctx.s = h(ctx.s);
@@ -320,7 +353,7 @@ export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
                 rewrite_to_nil(&ctx.e);
                 return .REDUCE_DONE;
             }
-            ctx.arg2 = clib.make(clib.AP, h(ctx.e), lastarg);
+            ctx.arg2 = make(AP, h(ctx.e), lastarg);
             rewrite_to_cons(ctx.e, val, ctx.arg2);
             return .REDUCE_DONE;
         },
@@ -335,7 +368,7 @@ export fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     const x1 = x;
     var n: usize = 0;
     const buf_size = 1024;
-    while (tag[@as(usize, @intCast(curr_x))] == clib.CONS and n < buf_size) {
+    while (tag[@as(usize, @intCast(curr_x))] == CONS and n < buf_size) {
         n += 1;
         hp(curr_x).* = reduce(h(curr_x));
         tp(curr_x).* = reduce(t(curr_x));
@@ -343,7 +376,7 @@ export fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     }
     curr_x = x1;
     var p_idx: usize = 0;
-    while (tag[@as(usize, @intCast(curr_x))] == clib.CONS and n > 0) {
+    while (tag[@as(usize, @intCast(curr_x))] == CONS and n > 0) {
         n -= 1;
         linebuf[p_idx] = @intCast(h(curr_x));
         p_idx += 1;
@@ -378,7 +411,7 @@ export fn outstats() void {
 }
 
 export fn out_here(f: ?*clib.FILE, h_val: Word, nl: c_int) void {
-    if (tag[@as(usize, @intCast(h_val))] != clib.FILEINFO) {
+    if (tag[@as(usize, @intCast(h_val))] != FILEINFO) {
         _ = clib.fprintf(getStderr().?, "(impossible event in outhere)\n");
         return;
     }
@@ -442,39 +475,39 @@ export fn int_error(s: [*:0]const u8) void {
 }
 
 export fn numplus(x: Word, y: Word) Word {
-    if (tag[@as(usize, @intCast(x))] == clib.DOUBLE) {
-        return clib.sto_dbl(clib.get_dbl(x) + force_dbl(y));
+    if (tag[@as(usize, @intCast(x))] == DOUBLE) {
+        return sto_dbl(get_dbl(x) + force_dbl(y));
     }
-    if (tag[@as(usize, @intCast(y))] == clib.DOUBLE) {
-        return clib.sto_dbl(clib.bigtodbl(x) + clib.get_dbl(y));
+    if (tag[@as(usize, @intCast(y))] == DOUBLE) {
+        return sto_dbl(bigtodbl(x) + get_dbl(y));
     }
-    return clib.bigplus(x, y);
+    return bigplus(x, y);
 }
 
 export fn g_residue(toks2: Word) Word {
     var curr_toks2 = toks2;
     var toks1 = NIL;
-    if (tag[@as(usize, @intCast(curr_toks2))] != clib.CONS) {
-        if (tag[@as(usize, @intCast(curr_toks2))] == clib.AP and h(curr_toks2) == clib.I and t(curr_toks2) == NIL) {
+    if (tag[@as(usize, @intCast(curr_toks2))] != CONS) {
+        if (tag[@as(usize, @intCast(curr_toks2))] == AP and h(curr_toks2) == I and t(curr_toks2) == NIL) {
             return cons(NIL, NIL);
         }
         return cons(NIL, curr_toks2);
     }
-    while (tag[@as(usize, @intCast(t(curr_toks2)))] == clib.CONS) {
+    while (tag[@as(usize, @intCast(t(curr_toks2)))] == CONS) {
         toks1 = cons(h(curr_toks2), toks1);
         curr_toks2 = t(curr_toks2);
     }
-    if (t(curr_toks2) == NIL or (tag[@as(usize, @intCast(t(curr_toks2)))] == clib.AP and h(t(curr_toks2)) == clib.I and t(t(curr_toks2)) == NIL)) {
+    if (t(curr_toks2) == NIL or (tag[@as(usize, @intCast(t(curr_toks2)))] == AP and h(t(curr_toks2)) == I and t(t(curr_toks2)) == NIL)) {
         toks1 = cons(h(curr_toks2), toks1);
-        return cons(ap(clib.DESTREV, toks1), NIL);
+        return cons(ap(DESTREV, toks1), NIL);
     }
-    return cons(ap(clib.DESTREV, toks1), t(curr_toks2));
+    return cons(ap(DESTREV, toks1), t(curr_toks2));
 }
 
 export fn memclass(c_val: c_int, x_val: Word) c_int {
     var x = x_val;
     while (x != NIL) {
-        if (h(x) == clib.DOTDOT) {
+        if (h(x) == DOTDOT) {
             x = t(x);
             if (h(x) <= c_val and c_val <= h(t(x))) {
                 return 1;
@@ -504,11 +537,11 @@ export fn lexfail(x_val: Word) void {
 
 export fn lexstate(x: Word) Word {
     const val = h(h(x));
-    return cons(clib.sto_int(val >> 8), stosmallint(val & 255));
+    return cons(sto_int(val >> 8), stosmallint(val & 255));
 }
 
 export fn piperrmess(pid: Word) Word {
-    return clib.str_conv(if (pid == -1) "cannot create process\n" else "cannot open pipe\n");
+    return str_conv(if (pid == -1) "cannot create process\n" else "cannot open pipe\n");
 }
 
 export fn compare(arg_a: Word, arg_b: Word) c_int {
@@ -518,43 +551,43 @@ export fn compare(arg_a: Word, arg_b: Word) c_int {
         const tag_a = tag[@as(usize, @intCast(a))];
         const tag_b = tag[@as(usize, @intCast(b))];
         switch (tag_a) {
-            clib.DOUBLE => {
-                if (tag_b == clib.DOUBLE) {
-                    return fsign(clib.get_dbl(a) - clib.get_dbl(b));
+            DOUBLE => {
+                if (tag_b == DOUBLE) {
+                    return fsign(get_dbl(a) - get_dbl(b));
                 } else {
-                    return fsign(clib.get_dbl(a) - clib.bigtodbl(b));
+                    return fsign(get_dbl(a) - bigtodbl(b));
                 }
             },
-            clib.INT => {
-                if (tag_b == clib.INT) {
-                    return clib.bigcmp(a, b);
+            INT => {
+                if (tag_b == INT) {
+                    return bigcmp(a, b);
                 } else {
-                    return fsign(clib.bigtodbl(a) - clib.get_dbl(b));
+                    return fsign(bigtodbl(a) - get_dbl(b));
                 }
             },
-            clib.UNICODE => {
-                return sign(clib.get_char(a) - clib.get_char(b));
+            UNICODE => {
+                return sign(get_char(a) - get_char(b));
             },
-            clib.ATOM => {
-                if (tag_b == clib.UNICODE) {
-                    return sign(clib.get_char(a) - clib.get_char(b));
+            ATOM => {
+                if (tag_b == UNICODE) {
+                    return sign(get_char(a) - get_char(b));
                 }
-                if ((clib.S <= a and a <= clib.ERROR) or (clib.S <= b and b <= clib.ERROR)) {
+                if ((S <= a and a <= ERROR) or (S <= b and b <= ERROR)) {
                     fn_error("attempt to compare functions");
                 }
-                if (tag_b == clib.ATOM) {
+                if (tag_b == ATOM) {
                     return sign(a - b);
                 }
                 return -1;
             },
-            clib.CONSTRUCTOR => {
-                if (tag_b == clib.CONSTRUCTOR) {
+            CONSTRUCTOR => {
+                if (tag_b == CONSTRUCTOR) {
                     return sign(h(a) - h(b));
                 } else {
                     return -1;
                 }
             },
-            clib.CONS, clib.AP => {
+            CONS, AP => {
                 if (tag_a == tag_b) {
                     hp(a).* = reduce(h(a));
                     hp(b).* = reduce(h(b));
@@ -567,7 +600,7 @@ export fn compare(arg_a: Word, arg_b: Word) c_int {
                     tp(b).* = reduce(t(b));
                     b = t(b);
                     continue;
-                } else if (clib.S <= b and b <= clib.ERROR) {
+                } else if (S <= b and b <= ERROR) {
                     fn_error("attempt to compare functions");
                 } else {
                     return 1;
@@ -584,23 +617,23 @@ export fn compare(arg_a: Word, arg_b: Word) c_int {
 export fn force(x_val: Word) void {
     var x = x_val;
     switch (tag[@as(usize, @intCast(x))]) {
-        clib.AP => {
+        AP => {
             var curr_h = h(x);
-            while (tag[@as(usize, @intCast(curr_h))] == clib.AP) {
+            while (tag[@as(usize, @intCast(curr_h))] == AP) {
                 curr_h = h(curr_h);
             }
-            if (clib.S <= curr_h and curr_h <= clib.ERROR) {
+            if (S <= curr_h and curr_h <= ERROR) {
                 return;
             }
-            while (tag[@as(usize, @intCast(x))] == clib.AP) {
+            while (tag[@as(usize, @intCast(x))] == AP) {
                 tp(x).* = reduce(t(x));
                 force(t(x));
                 x = h(x);
             }
             return;
         },
-        clib.CONS => {
-            while (tag[@as(usize, @intCast(x))] == clib.CONS) {
+        CONS => {
+            while (tag[@as(usize, @intCast(x))] == CONS) {
                 hp(x).* = reduce(h(x));
                 force(h(x));
                 tp(x).* = reduce(t(x));
@@ -613,7 +646,7 @@ export fn force(x_val: Word) void {
 
 export fn head(x_val: Word) Word {
     var x = x_val;
-    while (tag[@as(usize, @intCast(x))] == clib.AP) {
+    while (tag[@as(usize, @intCast(x))] == AP) {
         x = h(x);
     }
     return x;
@@ -630,7 +663,7 @@ export fn apfile(f: Word) void {
         if (s == null) {
             _ = clib.fprintf(getStderr().?, "\nAppendfile: cannot write to \"%s\"\n", fil);
         } else {
-            outfilq = cons(datapair(@intCast(@intFromPtr(clib.keep(fil))), @intCast(@intFromPtr(s.?))), outfilq);
+            outfilq = cons(datapair(@intCast(@intFromPtr(keep(fil.?))), @intCast(@intFromPtr(s.?))), outfilq);
         }
     }
 }
@@ -663,7 +696,7 @@ export fn outf(e: Word) void {
         if (clib.isatty(clib.fileno(s_out.?)) != 0) {
             clib.setbuf(s_out.?, null);
         }
-        outfilq = cons(datapair(@intCast(@intFromPtr(clib.keep(f))), @intCast(@intFromPtr(s_out.?))), outfilq);
+        outfilq = cons(datapair(@intCast(@intFromPtr(keep(f.?))), @intCast(@intFromPtr(s_out.?))), outfilq);
     } else {
         s_out = @ptrFromInt(@as(usize, @intCast(t(h(p)))));
     }
@@ -671,12 +704,12 @@ export fn outf(e: Word) void {
 
 export fn print(arg_e: Word) void {
     var e = reduce(arg_e);
-    while (tag[@as(usize, @intCast(e))] == clib.CONS) {
+    while (tag[@as(usize, @intCast(e))] == CONS) {
         hp(e).* = reduce(h(e));
-        if (clib.is_char(h(e)) == 0) {
+        if (is_char(h(e)) == 0) {
             break;
         }
-        const c = @as(u32, @intCast(clib.get_char(h(e))));
+        const c = @as(u32, @intCast(get_char(h(e))));
         if (UTF8 != 0) {
             clib.outUTF8(c, s_out);
         } else if (c < 256) {
@@ -692,7 +725,7 @@ export fn print(arg_e: Word) void {
     }
     _ = clib.fprintf(getStderr().?, "\nimpossible event in print\n");
     _ = clib.putc('<', getStderr().?);
-    clib.out(getStderr().?, e);
+    out(getStderr().?, e);
     _ = clib.fprintf(getStderr().?, ">\n");
     clib.exit(1);
 }
@@ -715,7 +748,7 @@ export fn output(arg_e: Word) void {
     defer cstack = old_cstack;
 
     e = reduce(e);
-    while (tag[@as(usize, @intCast(e))] == clib.CONS) {
+    while (tag[@as(usize, @intCast(e))] == CONS) {
         hp(e).* = reduce(h(e));
         switch (h(head(h(e)))) {
             Stdout => {
@@ -760,7 +793,7 @@ export fn output(arg_e: Word) void {
             },
             Exit => {
                 var n = reduce(t(h(e)));
-                if (tag[@as(usize, @intCast(n))] == clib.INT) {
+                if (tag[@as(usize, @intCast(n))] == INT) {
                     n = digit0(n);
                 } else {
                     int_error("Exit");
@@ -770,7 +803,7 @@ export fn output(arg_e: Word) void {
             },
             else => {
                 _ = clib.fprintf(getStderr().?, "\n<impossible event in output list: ");
-                clib.out(getStderr().?, h(e));
+                out(getStderr().?, h(e));
                 _ = clib.fprintf(getStderr().?, ">\n");
             },
         }
@@ -782,7 +815,7 @@ export fn output(arg_e: Word) void {
     }
     _ = clib.fprintf(getStderr().?, "\nimpossible event in output\n");
     _ = clib.putc('<', getStderr().?);
-    clib.out(getStderr().?, e);
+    out(getStderr().?, e);
     _ = clib.fprintf(getStderr().?, ">\n");
     clib.exit(1);
 }

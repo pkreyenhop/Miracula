@@ -6,31 +6,29 @@ extern fn setupheap() void;
 extern fn setupdic() void;
 extern fn yylex() c_int;
 extern var dicp: [*:0]u8;
-extern var yylval: clib.word;
+extern var yylval: w.Word;
 
-const clib = @cImport({
-    @cInclude("data.h");
-    @cInclude("y.tab.h");
-});
+const w = @import("../runtime/word.zig");
 
-extern fn make_id(n: [*:0]const u8) clib.word;
-extern var current_file: clib.word;
-extern var files: clib.word;
+extern fn make(t: u8, x: w.Word, y: w.Word) w.Word;
+extern fn make_id(n: [*:0]const u8) w.Word;
+extern var current_file: w.Word;
+extern var files: w.Word;
 extern fn reset_pns() void;
 
-fn make_fil_record(name: [*:0]const u8) clib.word {
-    const name_word = @as(clib.word, @intCast(@intFromPtr(name)));
-    const file_info = clib.make(clib.FILEINFO, name_word, 0);
-    const share_cell = clib.make(clib.CONS, 1, clib.NIL);
-    const info_cell = clib.make(clib.CONS, file_info, share_cell);
-    return clib.make(clib.CONS, info_cell, clib.NIL);
+fn make_fil_record(name: [*:0]const u8) w.Word {
+    const name_word = @as(w.Word, @intCast(@intFromPtr(name)));
+    const file_info = make(w.FILEINFO, name_word, 0);
+    const share_cell = make(w.CONS, 1, w.NIL);
+    const info_cell = make(w.CONS, file_info, share_cell);
+    return make(w.CONS, info_cell, w.NIL);
 }
 
 extern fn reset_state() void;
-extern var col: clib.word;
-extern var line_no: clib.word;
-extern var c: clib.word;
-extern var SYNERR: clib.word;
+extern var col: w.Word;
+extern var line_no: w.Word;
+extern var c: w.Word;
+extern var SYNERR: w.Word;
 
 fn resetLexerState() void {
     reset_state();
@@ -38,7 +36,7 @@ fn resetLexerState() void {
     setupdic();
     reset_pns();
     current_file = make_fil_record("test.m");
-    files = clib.make(clib.CONS, current_file, clib.NIL);
+    files = make(w.CONS, current_file, w.NIL);
     col = 0;
     line_no = 0;
     c = ' ';
@@ -52,7 +50,7 @@ fn ensureInitialized() void {
         setupdic();
         reset_pns();
         current_file = make_fil_record("test.m");
-        files = clib.make(clib.CONS, current_file, clib.NIL);
+        files = make(w.CONS, current_file, w.NIL);
         initialized = true;
     }
 }
@@ -150,7 +148,7 @@ fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]con
 
     while (true) {
         const tok = yylex();
-        if (tok == 0 or tok == clib.END) break;
+        if (tok == 0 or tok == w.END) break;
 
         const name = tokenName(tok);
         const lexeme = std.mem.span(dicp);
@@ -199,7 +197,7 @@ fn runSnapshotTest(allocator: std.mem.Allocator, name: []const u8, source: [:0]c
     const path = try std.fmt.allocPrint(allocator, "{s}/{s}.snapshot", .{ snapshot_dir, name });
     defer allocator.free(path);
 
-    const update = (clib.getenv("UPDATE_SNAPSHOTS") != null);
+    const update = (std.c.getenv("UPDATE_SNAPSHOTS") != null);
 
     if (update) {
         std.debug.print("[{s}] writing snapshot...\n", .{name});

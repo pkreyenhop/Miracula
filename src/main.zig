@@ -1,4 +1,5 @@
 const std = @import("std");
+const word_consts = @import("runtime/word.zig");
 const platform = @import("io/platform.zig");
 const parser_api = @import("parser/parser_api.zig");
 
@@ -17,7 +18,6 @@ const c_raw = @cImport({
     @cInclude("string.h");
     @cInclude("stdlib.h");
     @cInclude("ctype.h");
-    @cInclude("big.h");
     @cInclude("lex.h");
     @cInclude("version.h");
 });
@@ -35,11 +35,30 @@ inline fn get_fil(fil: Word) ?[*:0]const u8 {
 }
 
 const Word = c_long;
-const CONS: u8 = 11;
-const AP: u8 = 9;
-const CMBASE: Word = 306;
-const NIL: Word = CMBASE + 138;
-const ATOMLIMIT: Word = CMBASE + 141;
+const CONS = word_consts.CONS;
+const AP = word_consts.AP;
+const CMBASE = word_consts.CMBASE;
+const NIL = word_consts.NIL;
+const ATOMLIMIT = word_consts.ATOMLIMIT;
+const UNDEF = word_consts.UNDEF;
+const ID = word_consts.ID;
+const CONSTRUCTOR = word_consts.CONSTRUCTOR;
+const wrong_t = word_consts.wrong_t;
+const free_t = word_consts.free_t;
+const type_t = word_consts.type_t;
+const undef_t = word_consts.undef_t;
+const EVAL = word_consts.EVAL;
+const FREE = word_consts.FREE;
+const VALUE = word_consts.VALUE;
+const BUFSIZE = word_consts.BUFSIZE;
+const pnlim: usize = @intCast(word_consts.pnlim);
+const abstract_t = word_consts.abstract_t;
+const algebraic_t = word_consts.algebraic_t;
+const placeholder_t = word_consts.placeholder_t;
+const synonym_t = word_consts.synonym_t;
+const PLUS = word_consts.PLUS;
+const FILEINFO = word_consts.FILEINFO;
+const XVERSION = word_consts.XVERSION;
 
 extern var hd: [*]Word;
 extern var tl: [*]Word;
@@ -66,6 +85,8 @@ extern var ATNAMES: Word;
 extern var lineptr: Word;
 
 extern var lfrule: c_int;
+extern fn make(t: u8, x: Word, y: Word) Word;
+extern fn sto_dbl(d: f64) Word;
 
 // Global variables exported to C
 export var nill: Word = 0;
@@ -90,8 +111,8 @@ export var showfunction: Word = 0;
 export var showabstract: Word = 0;
 export var showwhat: Word = 0;
 
-var PRELUDE: [clib.pnlim + 10]u8 = undefined;
-var STDENV: [clib.pnlim + 9]u8 = undefined;
+var PRELUDE: [pnlim + 10]u8 = undefined;
+var STDENV: [pnlim + 9]u8 = undefined;
 var vstack: [4]c_int = undefined;
 var mstack: [4][*:0]const u8 = undefined;
 var mvp: usize = 0;
@@ -138,7 +159,7 @@ export var SYNERR: Word = 0;
 export var initialising: Word = 1;
 export var primenv: Word = NIL;
 export var current_script: ?[*:0]u8 = null;
-export var lastexp: Word = clib.UNDEF;
+export var lastexp: Word = UNDEF;
 export var echoing: Word = 0;
 export var listing: Word = 0;
 export var verbosity: Word = 0;
@@ -147,10 +168,10 @@ export var rechecking: Word = 0;
 export var errline: Word = 0;
 export var errs: Word = 0;
 export var cstack: ?[*]Word = null;
-export var linebuf: [clib.BUFSIZE]u8 = undefined;
-export var ebuf: [clib.pnlim]u8 = undefined;
-export var home_rc: [clib.pnlim + 8]u8 = undefined;
-export var lib_rc: [clib.pnlim + 8]u8 = undefined;
+export var linebuf: [BUFSIZE]u8 = undefined;
+export var ebuf: [pnlim]u8 = undefined;
+export var home_rc: [pnlim + 8]u8 = undefined;
+export var lib_rc: [pnlim + 8]u8 = undefined;
 export var rc_error: ?[*:0]const u8 = null;
 
 var env: clib.sigjmp_buf = undefined;
@@ -238,7 +259,7 @@ fn tp(x: Word) *Word {
 }
 
 fn cons(x: Word, y: Word) Word {
-    return clib.make(clib.CONS, x, y);
+    return make(CONS, x, y);
 }
 
 // Token names for out2(): replaces y.tab.c's yysterm[].
@@ -313,8 +334,8 @@ export fn obey(x_in: Word) void {
         const inner: Word = if (islist and t(typ) == char_t)
             x
         else
-            clib.make(AP, clib.mkshow(0, 0, typ), x);
-        break :blk clib.make(CONS, clib.make(AP, standardout, inner), NIL);
+            make(AP, clib.mkshow(0, 0, typ), x);
+        break :blk make(CONS, make(AP, standardout, inner), NIL);
     };
     clib.output(out_val);
 }
@@ -325,7 +346,7 @@ export fn obey(x_in: Word) void {
 export fn evaluate_repl(x_in: Word) void {
     var x = x_in;
     const typ = clib.type_of(x);
-    if (typ == clib.wrong_t) return;
+    if (typ == wrong_t) return;
     lastexp = x;
     x = clib.codegen(x);
     if (polyshowerror != 0) return;
@@ -340,8 +361,8 @@ export fn evaluate_repl(x_in: Word) void {
         const inner: Word = if (islist and t(typ) == char_t)
             x
         else
-            clib.make(AP, clib.mkshow(0, 0, typ), x);
-        break :blk clib.make(CONS, clib.make(AP, standardout, inner), NIL);
+            make(AP, clib.mkshow(0, 0, typ), x);
+        break :blk make(CONS, make(AP, standardout, inner), NIL);
     };
     if (clib.process() != 0) {
         // Child: evaluate and print, then exit (compiling=0 only here, parent unaffected).
@@ -482,15 +503,15 @@ fn badval(x: Word) bool {
 }
 
 fn isfreeid(x: Word) bool {
-    return if (id_type(x) == clib.type_t) t_class(x) == clib.free_t else id_val(x) == clib.FREE;
+    return if (id_type(x) == type_t) t_class(x) == free_t else id_val(x) == FREE;
 }
 
 fn isconstructor(x: Word) bool {
-    return tag[@intCast(x)] == clib.ID and isconstrname(get_id(x)) != 0;
+    return tag[@intCast(x)] == ID and isconstrname(get_id(x)) != 0;
 }
 
 fn isvariable(x: Word) bool {
-    return tag[@intCast(x)] == clib.ID and isconstrname(get_id(x)) == 0;
+    return tag[@intCast(x)] == ID and isconstrname(get_id(x)) == 0;
 }
 
 fn token() ?[*:0]u8 {
@@ -503,7 +524,7 @@ fn rdline() ?[*:0]u8 {
 
 fn make_fil(name: ?[*:0]const u8, time: Word, share: Word, defs: Word) Word {
     const name_word = @as(Word, @intCast(@intFromPtr(name)));
-    const fil_info = clib.make(clib.FILEINFO, name_word, time);
+    const fil_info = make(FILEINFO, name_word, time);
     return cons(cons(fil_info, cons(share, NIL)), defs);
 }
 
@@ -514,7 +535,7 @@ fn constructor(n: Word, x: anytype) Word {
         [*:0]const u8, [*:0]u8 => @intCast(@intFromPtr(x)),
         else => @compileError("Unsupported type for constructor"),
     };
-    return clib.make(clib.CONSTRUCTOR, n, x_val);
+    return make(CONSTRUCTOR, n, x_val);
 }
 
 const EDITOR = "vi +!";
@@ -607,7 +628,7 @@ export fn mktiny() Word {
         x = x1;
         x1 = x1 / 2.0;
     }
-    return clib.sto_dbl(x);
+    return sto_dbl(x);
 }
 
 export fn checkversion(m: [*:0]const u8) c_int {
@@ -673,10 +694,10 @@ export fn unsetids(d_val: Word) void {
     var d = d_val;
     while (d != NIL) : (d = t(d)) {
         const item = h(d);
-        if (tag[@intCast(item)] == clib.ID) {
-            tp(item).* = clib.UNDEF;
+        if (tag[@intCast(item)] == ID) {
+            tp(item).* = UNDEF;
             tp(h(h(item))).* = NIL;
-            tp(h(item)).* = clib.undef_t;
+            tp(h(item)).* = undef_t;
         }
     }
 }
@@ -820,7 +841,7 @@ export fn rc_read(rcfile: [*:0]const u8) Word {
                 rc_error = rcfile;
             }
         }
-        if (clib.fscanf(in.?, "%ld%ld%ld%*c", &h_val, &d_val, &v_val) != 3 or getln(in.?, clib.pnlim - 1, @as([*]u8, @ptrCast(&ebuf))) == 0 or badval(h_val) or badval(d_val) or badval(v_val)) {
+        if (clib.fscanf(in.?, "%ld%ld%ld%*c", &h_val, &d_val, &v_val) != 3 or getln(in.?, pnlim - 1, @as([*]u8, @ptrCast(&ebuf))) == 0 or badval(h_val) or badval(d_val) or badval(v_val)) {
             rc_error = rcfile;
         } else {
             editor = @ptrCast(&ebuf);
@@ -919,8 +940,8 @@ export fn commandloop(initscript: [*:0]u8) void {
     if (clib.sigsetjmp(&env, 1) == 0) {
         if (magic != 0) {
             undump(initscript);
-            if (files == NIL or ND != NIL or id_val(main_id) == clib.UNDEF) {
-                if (files != NIL and ND == NIL and id_val(main_id) == clib.UNDEF) {
+            if (files == NIL or ND != NIL or id_val(main_id) == UNDEF) {
+                if (files != NIL and ND == NIL and id_val(main_id) == UNDEF) {
                     _ = clib.fprintf(getStderr(), "%s: main not defined\n", initscript);
                 }
                 _ = clib.fprintf(getStderr(), "mira: incorrect use of \"-exec\" flag\n");
@@ -974,7 +995,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                         _ = clib.printf("??%s\n", get_id(lastid));
                         x = lastid;
                     }
-                    if (x == NIL or id_type(x) == clib.undef_t) {
+                    if (x == NIL or id_type(x) == undef_t) {
                         diagnose(if (dicp[0] != 0) dicp else get_id(lastid));
                         lastid = 0;
                         continue;
@@ -1069,7 +1090,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                 lastid = 0;
                 tp(h(cook_stdin)).* = 0;
                 rv_expr = 0;
-                c = clib.EVAL;
+                c = EVAL;
                 echoing = 0;
                 polyshowerror = 0;
                 commandmode = 1;
@@ -1092,7 +1113,7 @@ export fn commandloop(initscript: [*:0]u8) void {
 export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
     var t1: Word = undefined;
     var ch: c_int = undefined;
-    lastexp = clib.UNDEF;
+    lastexp = UNDEF;
     while (true) {
         ch = clib.getc(f);
         while (ch == ' ' or ch == '\t' or ch == '\n') {
@@ -1116,7 +1137,7 @@ export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
             return clib.EOF;
         }
         _ = clib.ungetc(ch, f);
-        c = clib.VALUE;
+        c = VALUE;
         echoing = 0;
         commandmode = 1;
         s_in = f;
@@ -1124,21 +1145,21 @@ export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
         s_in = getStdin();
         if (SYNERR != 0) {
             SYNERR = 0;
-            lastexp = clib.UNDEF;
+            lastexp = UNDEF;
         } else {
             t1 = clib.type_of(lastexp);
-            if (t1 == clib.wrong_t) {
-                lastexp = clib.UNDEF;
+            if (t1 == wrong_t) {
+                lastexp = UNDEF;
             } else if (clib.subsumes(clib.instantiate(t1), t_val) == 0) {
                 _ = clib.printf("data has wrong type :: ");
                 clib.out_type(t1);
                 _ = clib.printf("\nshould be :: ");
                 clib.out_type(t_val);
                  _ = clib.putc('\n', getStdout());
-                lastexp = clib.UNDEF;
+                lastexp = UNDEF;
             }
         }
-        if (lastexp != clib.UNDEF) {
+        if (lastexp != UNDEF) {
             return clib.codegen(lastexp);
         }
         if (clib.isatty(clib.fileno(f)) != 0) {
@@ -1215,7 +1236,7 @@ fn v_info(full: c_int) void {
     _ = clib.printf("%s last revised %s\n", strvers(version), vdate);
     if (full == 0) return;
     _ = clib.printf("%s", host);
-    _ = clib.printf("XVERSION %u\n", @as(c_uint, clib.XVERSION));
+    _ = clib.printf("XVERSION %u\n", @as(c_uint, XVERSION));
 }
 
 fn command() void {
@@ -1327,7 +1348,7 @@ fn command() void {
             }
             if (is("editor")) {
                 const hold = @as([*]u8, @ptrCast(&linebuf[0]));
-                if (getln(getStdin(), clib.pnlim - 1, hold) == 0) {
+                if (getln(getStdin(), pnlim - 1, hold) == 0) {
                     return;
                 }
                 if (hold[0] == 0) {
@@ -1409,7 +1430,7 @@ fn command() void {
                         const n = get_id(x);
                         var y = primenv;
                         while (y != NIL) : (y = t(y)) {
-                            if (tag[@intCast(h(y))] == clib.ID) {
+                            if (tag[@intCast(h(y))] == ID) {
                                 if (h(y) == x or clib.strcmp(clib.getaka(h(y)), n) == 0) {
                                     finger(get_id(h(y)));
                                 }
@@ -1419,7 +1440,7 @@ fn command() void {
                         while (f != NIL) : (f = t(f)) {
                             var y_def = fil_defs(h(f));
                             while (y_def != NIL) : (y_def = t(y_def)) {
-                                if (tag[@intCast(h(y_def))] == clib.ID) {
+                                if (tag[@intCast(h(y_def))] == ID) {
                                     if (h(y_def) == x or clib.strcmp(clib.getaka(h(y_def)), n) == 0) {
                                         finger(get_id(h(y_def)));
                                     }
@@ -1632,7 +1653,7 @@ fn editfile(t_val: [*:0]const u8, line: c_int) void {
         } else if ((p - 1)[0] == '%') {
             (p - 1)[0] = '"';
             p[0] = 0;
-            const limit = @as(usize, @intCast(clib.BUFSIZE + @intFromPtr(ebuf_local) - @intFromPtr(p)));
+            const limit = @as(usize, @intCast(BUFSIZE)) + @intFromPtr(ebuf_local) - @intFromPtr(p);
             _ = clib.strncat(p, t_val, limit);
             p += clib.strlen(p);
             p[0] = '"';
@@ -1647,7 +1668,7 @@ fn editfile(t_val: [*:0]const u8, line: c_int) void {
         p[0] = '"';
         p += 1;
         p[0] = 0;
-        const limit = @as(usize, @intCast(clib.BUFSIZE + @intFromPtr(ebuf_local) - @intFromPtr(p)));
+        const limit = @as(usize, @intCast(@as(usize, @intCast(BUFSIZE)) + @intFromPtr(ebuf_local) - @intFromPtr(p)));
         _ = clib.strncat(p, t_val, limit);
         p += clib.strlen(p);
         p[0] = '"';
@@ -1688,7 +1709,7 @@ fn finger(n: [*:0]const u8) void {
     const x = clib.findid(@constCast(n));
     var line: Word = 0;
     var s: ?[*:0]u8 = null;
-    if (x != NIL and id_type(x) != clib.undef_t) {
+    if (x != NIL and id_type(x) != undef_t) {
         if (id_who(x) != NIL) {
             const here_val = get_here(x);
             s = @ptrFromInt(@as(usize, @intCast(h(here_val))));
@@ -1703,17 +1724,17 @@ fn finger(n: [*:0]const u8) void {
         } else {
             const aka = clib.getaka(x);
             const aka_opt: ?[*:0]const u8 = if (clib.strcmp(aka, get_id(x)) == 0) null else aka;
-            if (id_val(x) == clib.UNDEF and id_type(x) != clib.wrong_t) {
+            if (id_val(x) == UNDEF and id_type(x) != wrong_t) {
                 _ = clib.printf(" ||(UNDEFINED) specified in ");
-            } else if (id_val(x) == clib.FREE) {
+            } else if (id_val(x) == FREE) {
                 _ = clib.printf(" ||(FREE) specified in ");
-            } else if (id_type(x) == clib.type_t and t_class(x) == clib.free_t) {
+            } else if (id_type(x) == type_t and t_class(x) == free_t) {
                 _ = clib.printf(" ||(free type) specified in ");
             } else {
-                const class_str: [*:0]const u8 = if (id_type(x) == clib.type_t and t_class(x) == clib.abstract_t) "(abstract type) "
-                    else if (id_type(x) == clib.type_t and t_class(x) == clib.algebraic_t) "(algebraic type) "
-                    else if (id_type(x) == clib.type_t and t_class(x) == clib.placeholder_t) "(placeholder type) "
-                    else if (id_type(x) == clib.type_t and t_class(x) == clib.synonym_t) "(synonym type) "
+                const class_str: [*:0]const u8 = if (id_type(x) == type_t and t_class(x) == abstract_t) "(abstract type) "
+                    else if (id_type(x) == type_t and t_class(x) == algebraic_t) "(algebraic type) "
+                    else if (id_type(x) == type_t and t_class(x) == placeholder_t) "(placeholder type) "
+                    else if (id_type(x) == type_t and t_class(x) == synonym_t) "(synonym type) "
                     else "";
                 _ = clib.printf(" ||%sdefined in ", class_str);
             }
@@ -1776,16 +1797,16 @@ fn allnamescom() void {
     namescom(h(files));
     sorted = 1;
 
-    while (x != NIL and id_type(h(x)) == clib.undef_t) {
+    while (x != NIL and id_type(h(x)) == undef_t) {
         x = t(x);
     }
-    while (y != NIL and id_type(h(y)) != clib.undef_t) {
+    while (y != NIL and id_type(h(y)) != undef_t) {
         y = t(y);
     }
     if (x != NIL) {
         _ = clib.printf("WARNING, SCRIPT CONTAINS TYPE ERRORS: ");
         while (x != NIL) : (x = t(x)) {
-            if (id_type(h(x)) != clib.undef_t) {
+            if (id_type(h(x)) != undef_t) {
                 if (z == 0) {
                     z = 1;
                 } else {
@@ -1800,7 +1821,7 @@ fn allnamescom() void {
         _ = clib.printf("%s UNDEFINED NAMES: ", @as([*:0]const u8, if (z != 0) "AND" else "WARNING, SCRIPT CONTAINS"));
         z = 0;
         while (y != NIL) : (y = t(y)) {
-            if (id_type(h(y)) == clib.undef_t) {
+            if (id_type(h(y)) == undef_t) {
                 if (z == 0) {
                     z = 1;
                 } else {
@@ -1838,7 +1859,7 @@ fn namescom(l: Word) void {
     }
     _ = clib.printf("\n");
     while (n != NIL) {
-        if (id_type(h(n)) == clib.wrong_t or id_val(h(n)) != clib.UNDEF) {
+        if (id_type(h(n)) == wrong_t or id_val(h(n)) != UNDEF) {
             const w = @as(Word, @intCast(clib.strlen(get_id(h(n)))));
             if (col_local + w < @as(Word, @intCast(scrwd))) {
                 col_local += if (col_local != 0) 1 else 0;
@@ -1984,7 +2005,7 @@ fn loadfile(t_val: [*:0]const u8) void {
     if (SYNERR == 0 and exportfiles != NIL) {
         var s = exportfiles;
         while (s != NIL) : (s = t(s)) {
-            if (h(s) == clib.PLUS) {
+            if (h(s) == PLUS) {
                 var i = fil_defs(h(files));
                 while (i != NIL) : (i = t(i)) {
                     if (isvariable(h(i)) and !isfreeid(h(i))) {
@@ -2037,7 +2058,7 @@ fn loadfile(t_val: [*:0]const u8) void {
             exports = t(exports);
 
             while (e != NIL) : (e = t(e)) {
-                if (id_type(h(e)) == clib.undef_t) {
+                if (id_type(h(e)) == undef_t) {
                     u = cons(h(e), u);
                     ND = clib.add1(h(e), ND);
                 } else if (clib.member(exports, h(e)) == 0) {
@@ -2052,10 +2073,10 @@ fn loadfile(t_val: [*:0]const u8) void {
 
             e = exports;
             while (e != NIL) : (e = t(e)) {
-                if (id_type(h(e)) == clib.undef_t) {
+                if (id_type(h(e)) == undef_t) {
                     u = cons(h(e), u);
                     ND = clib.add1(h(e), ND);
-                } else if (id_type(h(e)) == clib.type_t and t_class(h(e)) == clib.algebraic_t) {
+                } else if (id_type(h(e)) == type_t and t_class(h(e)) == algebraic_t) {
                     c_ctr = shunt(t_info(h(e)), c_ctr);
                 }
             }
@@ -2096,8 +2117,8 @@ fn loadfile(t_val: [*:0]const u8) void {
         if (exports != NIL) {
             while (e1 != NIL) : (e1 = t(e1)) {
                 const ty = id_type(h(e1));
-                if (ty == clib.type_t) {
-                    if (t_class(h(e1)) == clib.synonym_t) {
+                if (ty == type_t) {
+                    if (t_class(h(e1)) == synonym_t) {
                         r = clib.UNION(r, clib.deps(t_info(h(e1))));
                     } else {
                         e = cons(h(e1), e);
@@ -2110,8 +2131,8 @@ fn loadfile(t_val: [*:0]const u8) void {
             e1 = fil_defs(h(files));
             while (e1 != NIL) : (e1 = t(e1)) {
                 const ty = id_type(h(e1));
-                if (ty == clib.type_t) {
-                    if (t_class(h(e1)) == clib.synonym_t) {
+                if (ty == type_t) {
+                    if (t_class(h(e1)) == synonym_t) {
                         r = clib.UNION(r, clib.deps(t_info(h(e1))));
                     } else {
                         e = cons(h(e1), e);
@@ -2125,8 +2146,8 @@ fn loadfile(t_val: [*:0]const u8) void {
         e1 = freeids;
         while (e1 != NIL) : (e1 = t(e1)) {
             const ty = id_type(h(h(e1)));
-            if (ty == clib.type_t) {
-                if (t_class(h(h(e1))) == clib.synonym_t) {
+            if (ty == type_t) {
+                if (t_class(h(h(e1))) == synonym_t) {
                     r = clib.UNION(r, clib.deps(t_info(h(h(e1)))));
                 } else {
                     e = cons(h(h(e1)), e);
@@ -2196,12 +2217,12 @@ fn loadfile(t_val: [*:0]const u8) void {
         var x = fil_defs(h(files));
         lfrule = 0;
         while (x != NIL) : (x = t(x)) {
-            if (id_type(h(x)) != clib.type_t) {
+            if (id_type(h(x)) != type_t) {
                 current_id = h(x);
                 polyshowerror = 0;
                 tp(h(x)).* = clib.codegen(id_val(h(x)));
                 if (polyshowerror != 0) {
-                    tp(h(x)).* = clib.UNDEF;
+                    tp(h(x)).* = UNDEF;
                 }
             }
         }
@@ -2257,7 +2278,7 @@ fn fixexports() void {
         while (f != NIL) : (f = t(f)) {
             var e_def = fil_defs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
-                if (tag[@intCast(h(e_def))] == clib.ID) {
+                if (tag[@intCast(h(e_def))] == ID) {
                     internals = cons(privatise(h(e_def)), internals);
                 }
             }
@@ -2267,7 +2288,7 @@ fn fixexports() void {
         while (f != NIL) : (f = t(f)) {
             var e_def = fil_defs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
-                if (tag[@intCast(h(e_def))] == clib.ID and unpainted(h(e_def))) {
+                if (tag[@intCast(h(e_def))] == ID and unpainted(h(e_def))) {
                     internals = cons(privatise(h(e_def)), internals);
                 }
             }
@@ -2285,7 +2306,7 @@ fn paint(x: Word) void {
 
 fn unpainted(x: Word) bool {
     const v = id_val(x);
-    return tag[@intCast(v)] != clib.AP or h(v) != clib.EXPORT;
+    return tag[@intCast(v)] != AP or h(v) != clib.EXPORT;
 }
 
 fn unpaint(x: Word) void {
@@ -2307,16 +2328,16 @@ fn privatise(x: Word) Word {
     const hash_idx = hash(get_id(x));
     const i = h(n);
 
-    if (id_type(x) == clib.type_t) {
+    if (id_type(x) == type_t) {
         tp(t_info(x)).* = cons(clib.datapair(clib.getaka(x), 0), get_here(x));
     }
 
-    if (id_val(x) == clib.UNDEF) {
+    if (id_val(x) == UNDEF) {
         tp(x).* = clib.ap(clib.datapair(clib.getaka(x), 0), get_here(x));
     }
 
     pnvec.?[@as(usize, @intCast(i))] = x;
-    tag[@intCast(n)] = clib.ID;
+    tag[@intCast(n)] = ID;
     hp(n).* = h(x);
     tag[@intCast(x)] = clib.STRCONS;
     hp(x).* = i;
@@ -2347,12 +2368,12 @@ fn publicise(x: Word) Word {
     const i = id_val(x);
     const hash_idx = hash(get_id(x));
 
-    tag[@intCast(i)] = clib.ID;
+    tag[@intCast(i)] = ID;
     hp(i).* = h(x);
 
     const val = t(i);
-    if (tag[@intCast(val)] == clib.AP and tag[@intCast(h(val))] == clib.DATAPAIR) {
-        tp(i).* = clib.UNDEF;
+    if (tag[@intCast(val)] == AP and tag[@intCast(h(val))] == clib.DATAPAIR) {
+        tp(i).* = UNDEF;
     }
 
     const current_bucket = namebucket[hash_idx];
@@ -2491,11 +2512,11 @@ fn mkincludes(includees_val: Word) Word {
                             var p = fil_defs(h(y));
                             var q = fil_defs(h(z));
                             while (p != NIL and q != NIL) {
-                                if (tag[@intCast(h(p))] == clib.ID) {
-                                    if (id_type(h(p)) == clib.type_t and (tag[@intCast(h(q))] == clib.ID or tag[@intCast(pn_val(h(q)))] == clib.ID)) {
+                                if (tag[@intCast(h(p))] == ID) {
+                                    if (id_type(h(p)) == type_t and (tag[@intCast(h(q))] == ID or tag[@intCast(pn_val(h(q)))] == ID)) {
                                         var w = tclashes;
-                                        const orig = if (tag[@intCast(h(q))] == clib.ID) h(q) else pn_val(h(q));
-                                        if (t_class(h(p)) == clib.synonym_t) {
+                                        const orig = if (tag[@intCast(h(q))] == ID) h(q) else pn_val(h(q));
+                                        if (t_class(h(p)) == synonym_t) {
                                             p = t(p);
                                             q = t(q);
                                             continue;
@@ -2595,7 +2616,7 @@ fn mkincludes(includees_val: Word) Word {
             clib.printlist(@constCast("causes nameclashes: "), CLASHES);
         }
 
-        while (DETROP != NIL and tag[@intCast(h(DETROP))] == clib.CONS) {
+        while (DETROP != NIL and tag[@intCast(h(DETROP))] == CONS) {
             const fa = h(t(h(DETROP)));
             const ta = t(t(h(DETROP)));
             const pn = get_id(h(h(DETROP)));
@@ -2657,7 +2678,7 @@ export fn readoption() void {
         while (f != NIL) : (f = t(f)) {
             t_val = t(h(f));
             while (t_val != NIL) : (t_val = t(t_val)) {
-                if (tag[@intCast(h(h(t_val)))] == clib.STRCONS and t(t(h(h(t_val)))) == clib.type_t) {
+                if (tag[@intCast(h(h(t_val)))] == clib.STRCONS and t(t(h(h(t_val)))) == type_t) {
                     pfrts = cons(h(h(t_val)), pfrts);
                 }
             }
@@ -2668,10 +2689,10 @@ export fn readoption() void {
     while (rfl_ptr != NIL) : (rfl_ptr = t(rfl_ptr)) {
         f = fil_defs(h(rfl_ptr));
         while (f != NIL) : (f = t(f)) {
-            if (tag[@intCast(h(f))] == clib.ID) {
+            if (tag[@intCast(h(f))] == ID) {
                 t_val = id_type(h(f));
-                if (t_val == clib.type_t) {
-                    if (t_class(h(f)) == clib.synonym_t) {
+                if (t_val == type_t) {
+                    if (t_class(h(f)) == synonym_t) {
                         tp(t_info(h(f))).* = fixtype(t_info(h(f)), h(f));
                     }
                 } else {
@@ -2694,7 +2715,7 @@ export fn readoption() void {
 
 fn fixtype(t_val: Word, x: Word) Word {
     switch (tag[@intCast(t_val)]) {
-        clib.AP, clib.CONS => {
+        AP, CONS => {
             tp(t_val).* = fixtype(t(t_val), x);
             hp(t_val).* = fixtype(h(t_val), x);
             return t_val;
@@ -2704,10 +2725,10 @@ fn fixtype(t_val: Word, x: Word) Word {
                 return t_val;
             }
             var cur_t = t_val;
-            while (tag[@intCast(pn_val(cur_t))] != clib.CONS) {
+            while (tag[@intCast(pn_val(cur_t))] != CONS) {
                 cur_t = pn_val(cur_t);
             }
-            if (tag[@intCast(cur_t)] != clib.ID) {
+            if (tag[@intCast(cur_t)] != ID) {
                 var w = tlost;
                 while (w != NIL and h(h(w)) != cur_t) {
                     w = t(w);
@@ -2739,69 +2760,69 @@ fn predef(n: [*:0]const u8, v: Word, t_val: Word) void {
 }
 
 fn primlib() void {
-    primdef("num", clib.make_typ(0, 0, clib.synonym_t, clib.num_t), clib.type_t);
-    primdef("char", clib.make_typ(0, 0, clib.synonym_t, clib.char_t), clib.type_t);
-    primdef("bool", clib.make_typ(0, 0, clib.synonym_t, clib.bool_t), clib.type_t);
+    primdef("num", clib.make_typ(0, 0, synonym_t, clib.num_t), type_t);
+    primdef("char", clib.make_typ(0, 0, synonym_t, clib.char_t), type_t);
+    primdef("bool", clib.make_typ(0, 0, synonym_t, clib.bool_t), type_t);
     primdef("True", 1, clib.bool_t);
     primdef("False", 0, clib.bool_t);
 }
 
 fn privlib() void {
     predef("offside", clib.OFFSIDE, clib.ltchar);
-    predef("changetype", clib.I, clib.wrong_t);
-    predef("first", clib.HD, clib.wrong_t);
-    predef("rest", clib.TL, clib.wrong_t);
-    predef("code", clib.CODE, clib.undef_t);
-    predef("concat", clib.ap2(clib.FOLDR, clib.APPEND, NIL), clib.undef_t);
-    predef("decode", clib.DECODE, clib.undef_t);
-    predef("drop", clib.DROP, clib.undef_t);
-    predef("error", clib.ERROR, clib.undef_t);
-    predef("filter", clib.FILTER, clib.undef_t);
-    predef("foldr", clib.FOLDR, clib.undef_t);
-    predef("hd", clib.HD, clib.undef_t);
-    predef("map", clib.MAP, clib.undef_t);
-    predef("shownum", clib.SHOWNUM, clib.undef_t);
-    predef("take", clib.TAKE, clib.undef_t);
-    predef("tl", clib.TL, clib.undef_t);
+    predef("changetype", clib.I, wrong_t);
+    predef("first", clib.HD, wrong_t);
+    predef("rest", clib.TL, wrong_t);
+    predef("code", clib.CODE, undef_t);
+    predef("concat", clib.ap2(clib.FOLDR, clib.APPEND, NIL), undef_t);
+    predef("decode", clib.DECODE, undef_t);
+    predef("drop", clib.DROP, undef_t);
+    predef("error", clib.ERROR, undef_t);
+    predef("filter", clib.FILTER, undef_t);
+    predef("foldr", clib.FOLDR, undef_t);
+    predef("hd", clib.HD, undef_t);
+    predef("map", clib.MAP, undef_t);
+    predef("shownum", clib.SHOWNUM, undef_t);
+    predef("take", clib.TAKE, undef_t);
+    predef("tl", clib.TL, undef_t);
 }
 
 fn stdlib() void {
-    predef("arctan", clib.ARCTAN_FN, clib.undef_t);
-    predef("code", clib.CODE, clib.undef_t);
-    predef("cos", clib.COS_FN, clib.undef_t);
-    predef("decode", clib.DECODE, clib.undef_t);
-    predef("drop", clib.DROP, clib.undef_t);
-    predef("entier", clib.ENTIER_FN, clib.undef_t);
-    predef("error", clib.ERROR, clib.undef_t);
-    predef("exp", clib.EXP_FN, clib.undef_t);
-    predef("filemode", clib.FILEMODE, clib.undef_t);
-    predef("filestat", clib.FILESTAT, clib.undef_t);
-    predef("foldl", clib.FOLDL, clib.undef_t);
-    predef("foldl1", clib.FOLDL1, clib.undef_t);
-    predef("hugenum", clib.sto_dbl(clib.DBL_MAX), clib.undef_t);
-    predef("last", clib.LIST_LAST, clib.undef_t);
-    predef("foldr", clib.FOLDR, clib.undef_t);
-    predef("force", clib.FORCE, clib.undef_t);
-    predef("getenv", clib.GETENV, clib.undef_t);
-    predef("integer", clib.INTEGER, clib.undef_t);
-    predef("log", clib.LOG_FN, clib.undef_t);
-    predef("log10", clib.LOG10_FN, clib.undef_t);
-    predef("merge", clib.MERGE, clib.undef_t);
-    predef("numval", clib.NUMVAL, clib.undef_t);
-    predef("read", clib.STARTREAD, clib.undef_t);
-    predef("readb", clib.STARTREADBIN, clib.undef_t);
-    predef("seq", clib.SEQ, clib.undef_t);
-    predef("shownum", clib.SHOWNUM, clib.undef_t);
-    predef("showhex", clib.SHOWHEX, clib.undef_t);
-    predef("showoct", clib.SHOWOCT, clib.undef_t);
-    predef("showfloat", clib.SHOWFLOAT, clib.undef_t);
-    predef("showscaled", clib.SHOWSCALED, clib.undef_t);
-    predef("sin", clib.SIN_FN, clib.undef_t);
-    predef("sqrt", clib.SQRT_FN, clib.undef_t);
-    predef("system", clib.EXEC, clib.undef_t);
-    predef("take", clib.TAKE, clib.undef_t);
-    predef("tinynum", mktiny(), clib.undef_t);
-    predef("zip2", clib.ZIP, clib.undef_t);
+    predef("arctan", clib.ARCTAN_FN, undef_t);
+    predef("code", clib.CODE, undef_t);
+    predef("cos", clib.COS_FN, undef_t);
+    predef("decode", clib.DECODE, undef_t);
+    predef("drop", clib.DROP, undef_t);
+    predef("entier", clib.ENTIER_FN, undef_t);
+    predef("error", clib.ERROR, undef_t);
+    predef("exp", clib.EXP_FN, undef_t);
+    predef("filemode", clib.FILEMODE, undef_t);
+    predef("filestat", clib.FILESTAT, undef_t);
+    predef("foldl", clib.FOLDL, undef_t);
+    predef("foldl1", clib.FOLDL1, undef_t);
+    predef("hugenum", sto_dbl(clib.DBL_MAX), undef_t);
+    predef("last", clib.LIST_LAST, undef_t);
+    predef("foldr", clib.FOLDR, undef_t);
+    predef("force", clib.FORCE, undef_t);
+    predef("getenv", clib.GETENV, undef_t);
+    predef("integer", clib.INTEGER, undef_t);
+    predef("log", clib.LOG_FN, undef_t);
+    predef("log10", clib.LOG10_FN, undef_t);
+    predef("merge", clib.MERGE, undef_t);
+    predef("numval", clib.NUMVAL, undef_t);
+    predef("read", clib.STARTREAD, undef_t);
+    predef("readb", clib.STARTREADBIN, undef_t);
+    predef("seq", clib.SEQ, undef_t);
+    predef("shownum", clib.SHOWNUM, undef_t);
+    predef("showhex", clib.SHOWHEX, undef_t);
+    predef("showoct", clib.SHOWOCT, undef_t);
+    predef("showfloat", clib.SHOWFLOAT, undef_t);
+    predef("showscaled", clib.SHOWSCALED, undef_t);
+    predef("sin", clib.SIN_FN, undef_t);
+    predef("sqrt", clib.SQRT_FN, undef_t);
+    predef("system", clib.EXEC, undef_t);
+    predef("take", clib.TAKE, undef_t);
+    predef("tinynum", mktiny(), undef_t);
+    predef("zip2", clib.ZIP, undef_t);
 }
 
 export fn syntax(s: [*:0]const u8) void {
@@ -3324,10 +3345,10 @@ export fn alfasort(x_val: Word) Word {
         return NIL;
     }
     if (t(x) == NIL) {
-        return if (tag[@intCast(h(x))] != clib.ID) NIL else x;
+        return if (tag[@intCast(h(x))] != ID) NIL else x;
     }
     while (x != NIL) {
-        if (tag[@intCast(h(x))] == clib.ID) {
+        if (tag[@intCast(h(x))] == ID) {
             hold = a;
             a = cons(h(x), b);
             b = hold;
@@ -3374,7 +3395,7 @@ fn utf8test() c_int {
 }
 
 fn undump(t_val: [*:0]const u8) void {
-    var obf: [clib.pnlim]u8 = undefined;
+    var obf: [pnlim]u8 = undefined;
     var f: ?*clib.FILE = null;
     var flen: Word = undefined;
     var t1: clib.time_t = undefined;
@@ -3388,8 +3409,8 @@ fn undump(t_val: [*:0]const u8) void {
 
     flen = @intCast(clib.strlen(t_val));
     t1 = @intCast(fm_time(t_val));
-    if (flen > clib.pnlim) {
-        _ = clib.printf("sorry, pathname too long (limit=%d): %s\n", clib.pnlim, t_val);
+    if (flen > pnlim) {
+        _ = clib.printf("sorry, pathname too long (limit=%d): %s\n", pnlim, t_val);
         return;
     }
 
@@ -3521,7 +3542,7 @@ fn mkabsolute(m: [*:0]u8) [*:0]u8 {
     if (m[0] == '/') {
         return m;
     }
-    if (clib.getcwd(dicp, clib.pnlim) == null) {
+    if (clib.getcwd(dicp, pnlim) == null) {
         _ = clib.fprintf(getStderr(), "panic: cwd too long\n");
         clib.exit(1);
     }

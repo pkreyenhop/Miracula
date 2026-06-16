@@ -3,14 +3,126 @@ const c = @cImport({
     @cInclude("stdlib.h");
     @cInclude("stdio.h");
     @cInclude("setjmp.h");
-    @cInclude("data.h");
-    @cInclude("combs.h");
 });
 
 const Word = c_long;
 const CMBASE: Word = 306;
 const NIL: Word = CMBASE + 138;
 const ATOMLIMIT: Word = CMBASE + 141;
+
+// Combinator codes derived from CMBASE (formerly from combs.h)
+const S: Word = CMBASE + 0;
+const K: Word = CMBASE + 1;
+const Y: Word = CMBASE + 2;
+const C: Word = CMBASE + 3;
+const B: Word = CMBASE + 4;
+const I: Word = CMBASE + 6;
+const HD: Word = CMBASE + 7;
+const TL: Word = CMBASE + 8;
+const BODY: Word = CMBASE + 9;
+const LAST: Word = CMBASE + 10;
+const S_p: Word = CMBASE + 11;
+const U: Word = CMBASE + 12;
+const Uf: Word = CMBASE + 13;
+const U_: Word = CMBASE + 14;
+const COND: Word = CMBASE + 16;
+const EQ: Word = CMBASE + 17;
+const NEQ: Word = CMBASE + 18;
+const NEG: Word = CMBASE + 19;
+const AND: Word = CMBASE + 20;
+const OR: Word = CMBASE + 21;
+const NOT: Word = CMBASE + 22;
+const APPEND: Word = CMBASE + 23;
+const STEP: Word = CMBASE + 24;
+const STEPUNTIL: Word = CMBASE + 25;
+const MAP: Word = CMBASE + 27;
+const ZIP: Word = CMBASE + 28;
+const TAKE: Word = CMBASE + 29;
+const DROP: Word = CMBASE + 30;
+const FLATMAP: Word = CMBASE + 31;
+const FILTER: Word = CMBASE + 32;
+const FOLDL: Word = CMBASE + 33;
+const MERGE: Word = CMBASE + 34;
+const FOLDL1: Word = CMBASE + 35;
+const LIST_LAST: Word = CMBASE + 36;
+const FOLDR: Word = CMBASE + 37;
+const MATCH: Word = CMBASE + 38;
+const MATCHINT: Word = CMBASE + 39;
+const TRY: Word = CMBASE + 40;
+const SUBSCRIPT: Word = CMBASE + 41;
+const P: Word = CMBASE + 43;
+const B_p: Word = CMBASE + 44;
+const C_p: Word = CMBASE + 45;
+const S1: Word = CMBASE + 46;
+const B1: Word = CMBASE + 47;
+const C1: Word = CMBASE + 48;
+const ITERATE: Word = CMBASE + 49;
+const ITERATE1: Word = CMBASE + 50;
+const SEQ: Word = CMBASE + 51;
+const FORCE: Word = CMBASE + 52;
+const MINUS: Word = CMBASE + 53;
+const PLUS: Word = CMBASE + 54;
+const TIMES: Word = CMBASE + 55;
+const INTDIV: Word = CMBASE + 56;
+const FDIV: Word = CMBASE + 57;
+const MOD: Word = CMBASE + 58;
+const GR: Word = CMBASE + 59;
+const GRE: Word = CMBASE + 60;
+const POWER: Word = CMBASE + 61;
+const CODE: Word = CMBASE + 62;
+const DECODE: Word = CMBASE + 63;
+const LENGTH: Word = CMBASE + 64;
+const ARCTAN_FN: Word = CMBASE + 65;
+const EXP_FN: Word = CMBASE + 66;
+const ENTIER_FN: Word = CMBASE + 67;
+const LOG_FN: Word = CMBASE + 68;
+const LOG10_FN: Word = CMBASE + 69;
+const SIN_FN: Word = CMBASE + 70;
+const COS_FN: Word = CMBASE + 71;
+const SQRT_FN: Word = CMBASE + 72;
+const FILEMODE: Word = CMBASE + 73;
+const FILESTAT: Word = CMBASE + 74;
+const GETENV: Word = CMBASE + 75;
+const EXEC: Word = CMBASE + 76;
+const INTEGER: Word = CMBASE + 78;
+const SHOWNUM: Word = CMBASE + 79;
+const SHOWHEX: Word = CMBASE + 80;
+const SHOWOCT: Word = CMBASE + 81;
+const SHOWSCALED: Word = CMBASE + 82;
+const SHOWFLOAT: Word = CMBASE + 83;
+const NUMVAL: Word = CMBASE + 84;
+const STARTREAD: Word = CMBASE + 85;
+const STARTREADBIN: Word = CMBASE + 86;
+const NB_STARTREAD: Word = CMBASE + 87;
+const READ: Word = CMBASE + 90;
+const READBIN: Word = CMBASE + 91;
+const GETARGS: Word = CMBASE + 92;
+const G_ERROR: Word = CMBASE + 96;
+const G_ALT: Word = CMBASE + 97;
+const G_OPT: Word = CMBASE + 98;
+const G_STAR: Word = CMBASE + 99;
+const G_FBSTAR: Word = CMBASE + 100;
+const G_SYMB: Word = CMBASE + 101;
+const G_ANY: Word = CMBASE + 102;
+const G_SUCHTHAT: Word = CMBASE + 103;
+const G_END: Word = CMBASE + 104;
+const G_STATE: Word = CMBASE + 105;
+const G_SEQ: Word = CMBASE + 106;
+const G_RULE: Word = CMBASE + 107;
+const G_UNIT: Word = CMBASE + 108;
+const G_ZERO: Word = CMBASE + 109;
+const G_CLOSE: Word = CMBASE + 110;
+const MKSTRICT: Word = CMBASE + 131;
+const BADCASE: Word = CMBASE + 132;
+const CONFERROR: Word = CMBASE + 133;
+const ERROR: Word = CMBASE + 134;
+const FAIL: Word = CMBASE + 135;
+const False: Word = CMBASE + 136;
+const True: Word = CMBASE + 137;
+const NILS: Word = CMBASE + 139;
+const UNDEF: Word = CMBASE + 140;
+// Token value (y.tab.h)
+const OFFSIDE: Word = 270;
 
 extern var hd: [*]Word;
 extern var tl: [*]Word;
@@ -348,7 +460,6 @@ const char_t: Word = 3;
 const list_t: Word = 4;
 const synonym_t: Word = 1;
 const abstract_t: Word = 2;
-const UNDEF: Word = CMBASE + 140;
 
 fn iscompound_t(type_node: Word) bool {
     return tag[@intCast(type_node)] == AP;
@@ -994,7 +1105,6 @@ fn pn_val(x: Word) Word {
     return t(x);
 }
 
-const PLUS: Word = CMBASE + 54;
 
 fn neg(x: Word) Word {
     return h(x) & 0x10000000;
@@ -1734,7 +1844,7 @@ fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) Word {
         }
         return conforms(t(p), bt, conforms(h(p), at, e, ngt), ngt);
     }
-    if (tag[@intCast(p)] == AP and tag[@intCast(h(p))] == AP and h(h(p)) == c.PLUS) { // n+k pattern
+    if (tag[@intCast(p)] == AP and tag[@intCast(h(p))] == AP and h(h(p)) == PLUS) { // n+k pattern
         if (unify(num_t, t_val) == 0) {
             return 1;
         }
@@ -1779,7 +1889,7 @@ fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) Word {
 fn etype(x: Word, env: Word, ngt: Word) Word {
     switch (tag[@intCast(x)]) {
         AP => {
-            if (h(x) == c.BADCASE or h(x) == c.CONFERROR) {
+            if (h(x) == BADCASE or h(x) == CONFERROR) {
                 return NTV();
             }
             const ft_val = etype(h(x), env, ngt);
@@ -1788,7 +1898,7 @@ fn etype(x: Word, env: Word, ngt: Word) Word {
             if (unify1(ft_val, ap2(arrow_t, at, rt)) == 0) {
                 const ft = subst(ft_val);
                 if (isarrow_t(ft)) {
-                    if (tag[@intCast(h(x))] == AP and h(h(x)) == c.G_ERROR) {
+                    if (tag[@intCast(h(x))] == AP and h(h(x)) == G_ERROR) {
                         type_error8(at, t(h(ft)));
                     } else {
                         type_error("unify", "with", at, t(h(ft)));
@@ -2020,280 +2130,280 @@ fn etype(x: Word, env: Word, ngt: Word) Word {
                 return char_t;
             }
             switch (x) {
-                c.S => {
+                S => {
                     const a = NTV(); const b = NTV(); const c_local = NTV();
                     const d = tf3(tf2(a, b, c_local), tf(a, b), a, c_local);
                     return d;
                 },
-                c.K => {
+                K => {
                     const a = NTV(); const b = NTV();
                     return tf2(a, b, a);
                 },
-                c.Y => {
+                Y => {
                     const a = NTV();
                     return tf(tf(a, a), a);
                 },
-                c.C => {
+                C => {
                     const a = NTV(); const b = NTV(); const c_local = NTV();
                     return tf3(tf2(a, b, c_local), b, a, c_local);
                 },
-                c.B => {
+                B => {
                     const a = NTV(); const b = NTV(); const c_local = NTV();
                     return tf3(tf(a, b), tf(c_local, a), c_local, b);
                 },
-                c.FORCE, c.G_UNIT, c.G_RULE, c.I => {
+                FORCE, G_UNIT, G_RULE, I => {
                     const a = NTV();
                     return tf(a, a);
                 },
-                c.G_ZERO => {
+                G_ZERO => {
                     return NTV();
                 },
-                c.HD => {
+                HD => {
                     const a = NTV();
                     return tf(lt(a), a);
                 },
-                c.TL => {
+                TL => {
                     const a = lt(NTV());
                     return tf(a, a);
                 },
-                c.BODY => {
+                BODY => {
                     const a = NTV(); const b = NTV();
                     return tf(ap(a, b), a);
                 },
-                c.LAST => {
+                LAST => {
                     const a = NTV(); const b = NTV();
                     return tf(ap(a, b), b);
                 },
-                c.S_p => {
+                S_p => {
                     const a = NTV(); const b = NTV();
                     const c_local = lt(b);
                     return tf3(tf(a, b), tf(a, c_local), a, c_local);
                 },
-                c.U, c.U_ => {
+                U, U_ => {
                     const a = NTV(); const b = NTV();
                     const c_local = lt(a);
                     return tf2(tf2(a, c_local, b), c_local, b);
                 },
-                c.Uf => {
+                Uf => {
                     const a = NTV(); const b = NTV(); const c_local = NTV();
                     return tf2(tf2(tf(a, b), a, c_local), b, c_local);
                 },
-                c.COND => {
+                COND => {
                     const a = NTV();
                     return tf3(bool_t, a, a, a);
                 },
-                c.EQ, c.GR, c.GRE, c.NEQ => {
+                EQ, GR, GRE, NEQ => {
                     const a = NTV();
                     return tf2(a, a, bool_t);
                 },
-                c.NEG => {
+                NEG => {
                     return tfnum;
                 },
-                c.AND, c.OR => {
+                AND, OR => {
                     return tfbool2;
                 },
-                c.NOT => {
+                NOT => {
                     return tfbool;
                 },
-                c.MERGE, c.APPEND => {
+                MERGE, APPEND => {
                     const a = lt(NTV());
                     return tf2(a, a, a);
                 },
-                c.STEP => {
+                STEP => {
                     return tstep;
                 },
-                c.STEPUNTIL => {
+                STEPUNTIL => {
                     return tstepuntil;
                 },
-                c.MAP => {
+                MAP => {
                     const a = NTV();
                     const b = NTV();
                     return tf2(tf(a, b), lt(a), lt(b));
                 },
-                c.FLATMAP => {
+                FLATMAP => {
                     const a = NTV(); const b = lt(NTV());
                     return tf2(tf(a, b), lt(a), b);
                 },
-                c.FILTER => {
+                FILTER => {
                     const a = NTV();
                     const b = lt(a);
                     return tf2(tf(a, bool_t), b, b);
                 },
-                c.ZIP => {
+                ZIP => {
                     const a = NTV();
                     const b = NTV();
                     return tf2(lt(a), lt(b), lt(pair_t(a, b)));
                 },
-                c.FOLDL => {
+                FOLDL => {
                     const a = NTV();
                     const b = NTV();
                     return tf3(tf2(a, b, a), a, lt(b), a);
                 },
-                c.FOLDL1 => {
+                FOLDL1 => {
                     const a = NTV();
                     return tf2(tf2(a, a, a), lt(a), a);
                 },
-                c.LIST_LAST => {
+                LIST_LAST => {
                     const a = NTV();
                     return tf(lt(a), a);
                 },
-                c.FOLDR => {
+                FOLDR => {
                     const a = NTV();
                     const b = NTV();
                     return tf3(tf2(a, b, b), b, lt(a), b);
                 },
-                c.MATCHINT, c.MATCH => {
+                MATCHINT, MATCH => {
                     const a = NTV(); const b = NTV();
                     return tf3(a, b, a, b);
                 },
-                c.TRY => {
+                TRY => {
                     const a = NTV();
                     return tf2(a, a, a);
                 },
-                c.DROP, c.TAKE => {
+                DROP, TAKE => {
                     const a = lt(NTV());
                     return tf2(num_t, a, a);
                 },
-                c.SUBSCRIPT => {
+                SUBSCRIPT => {
                     const a = NTV();
                     return tf2(num_t, lt(a), a);
                 },
-                c.P => {
+                P => {
                     const a = NTV();
                     const b = lt(a);
                     return tf2(a, b, b);
                 },
-                c.B_p => {
+                B_p => {
                     const a = NTV(); const b = NTV();
                     const c_local = lt(a);
                     return tf3(a, tf(b, c_local), b, c_local);
                 },
-                c.C_p => {
+                C_p => {
                     const a = NTV(); const b = NTV();
                     const c_local = lt(b);
                     return tf3(tf(a, b), c_local, a, c_local);
                 },
-                c.S1 => {
+                S1 => {
                     const a = NTV(); const b = NTV(); const c_local = NTV(); const d = NTV();
                     return tf4(tf2(a, b, c_local), tf(d, a), tf(d, b), d, c_local);
                 },
-                c.B1 => {
+                B1 => {
                     const a = NTV(); const b = NTV(); const c_local = NTV(); const d = NTV();
                     return tf4(tf(a, b), tf(c_local, a), tf(d, c_local), d, b);
                 },
-                c.C1 => {
+                C1 => {
                     const a = NTV(); const b = NTV(); const c_local = NTV(); const d = NTV();
                     return tf4(tf2(a, b, c_local), tf(d, a), b, d, c_local);
                 },
-                c.SEQ => {
+                SEQ => {
                     const a = NTV(); const b = NTV();
                     return tf2(a, b, b);
                 },
-                c.ITERATE1, c.ITERATE => {
+                ITERATE1, ITERATE => {
                     const a = NTV();
                     return tf2(tf(a, a), a, lt(a));
                 },
-                c.EXEC => {
+                EXEC => {
                     if (exec_t == 0) {
                         const a = ap2(comma_t, ltchar, ap2(comma_t, num_t, void_t));
                         exec_t = tf(ltchar, ap2(comma_t, ltchar, a));
                     }
                     return exec_t;
                 },
-                c.READBIN, c.READ => {
+                READBIN, READ => {
                     if (read_t == 0) {
                         read_t = tf(char_t, ltchar);
                     }
                     return read_t;
                 },
-                c.FILESTAT => {
+                FILESTAT => {
                     return genlstat_t();
                 },
-                c.FILEMODE, c.GETENV, c.NB_STARTREAD, c.STARTREADBIN, c.STARTREAD => {
+                FILEMODE, GETENV, NB_STARTREAD, STARTREADBIN, STARTREAD => {
                     return tfstrstr;
                 },
-                c.GETARGS => {
+                GETARGS => {
                     return tf(char_t, lt(ltchar));
                 },
-                c.SHOWHEX, c.SHOWOCT, c.SHOWNUM => {
+                SHOWHEX, SHOWOCT, SHOWNUM => {
                     return tf(num_t, ltchar);
                 },
-                c.SHOWFLOAT, c.SHOWSCALED => {
+                SHOWFLOAT, SHOWSCALED => {
                     return tf2(num_t, num_t, ltchar);
                 },
-                c.NUMVAL => {
+                NUMVAL => {
                     return tf(ltchar, num_t);
                 },
-                c.INTEGER => {
+                INTEGER => {
                     return tf(num_t, bool_t);
                 },
-                c.CODE => {
+                CODE => {
                     return tf(char_t, num_t);
                 },
-                c.DECODE => {
+                DECODE => {
                     return tf(num_t, char_t);
                 },
-                c.LENGTH => {
+                LENGTH => {
                     return tf(lt(NTV()), num_t);
                 },
-                c.ENTIER_FN, c.ARCTAN_FN, c.EXP_FN, c.SIN_FN, c.COS_FN, c.SQRT_FN, c.LOG_FN, c.LOG10_FN => {
+                ENTIER_FN, ARCTAN_FN, EXP_FN, SIN_FN, COS_FN, SQRT_FN, LOG_FN, LOG10_FN => {
                     return tfnumnum;
                 },
-                c.MINUS, c.PLUS, c.TIMES, c.INTDIV, c.FDIV, c.MOD, c.POWER => {
+                MINUS, PLUS, TIMES, INTDIV, FDIV, MOD, POWER => {
                     return tfnum2;
                 },
-                c.True, c.False => {
+                True, False => {
                     return bool_t;
                 },
                 NIL => {
                     const a = lt(NTV());
                     return a;
                 },
-                c.NILS => {
+                NILS => {
                     return ltchar;
                 },
-                c.MKSTRICT => {
+                MKSTRICT => {
                     const a = NTV();
                     return tf(char_t, tf(a, a));
                 },
-                c.G_ALT => {
+                G_ALT => {
                     const a = NTV();
                     return tf2(a, a, a);
                 },
-                c.G_ERROR => {
+                G_ERROR => {
                     const a = NTV();
                     return tf2(a, tf(lt(bnf_t), a), a);
                 },
-                c.G_OPT, c.G_STAR => {
+                G_OPT, G_STAR => {
                     const a = NTV();
                     return tf(a, lt(a));
                 },
-                c.G_FBSTAR => {
+                G_FBSTAR => {
                     const a = NTV();
                     const b = tf(a, a);
                     return tf(b, b);
                 },
-                c.G_SYMB => {
+                G_SYMB => {
                     return tfstrstr;
                 },
-                c.G_ANY => {
+                G_ANY => {
                     return ltchar;
                 },
-                c.G_SUCHTHAT => {
+                G_SUCHTHAT => {
                     return tf(tf(ltchar, bool_t), ltchar);
                 },
-                c.G_END => {
+                G_END => {
                     return lt(bnf_t);
                 },
-                c.G_STATE => {
+                G_STATE => {
                     return t(h(t(bnf_t)));
                 },
-                c.G_SEQ => {
+                G_SEQ => {
                     const a = NTV();
                     const b = NTV();
                     return tf2(a, tf(a, b), b);
                 },
-                c.G_CLOSE => {
+                G_CLOSE => {
                     const a = NTV();
                     if (col_fn != 0) {
                         if (col_fn == -1) {
@@ -2304,13 +2414,13 @@ fn etype(x: Word, env: Word, ngt: Word) Word {
                     }
                     return tf3(ltchar, a, lt(bnf_t), a);
                 },
-                c.OFFSIDE => {
+                OFFSIDE => {
                     return ltchar;
                 },
-                c.FAIL, c.CONFERROR, c.BADCASE, UNDEF => {
+                FAIL, CONFERROR, BADCASE, UNDEF => {
                     return NTV();
                 },
-                c.ERROR => {
+                ERROR => {
                     return tf(ltchar, NTV());
                 },
                 else => {

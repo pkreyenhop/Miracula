@@ -7,13 +7,9 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ast = @import("ast.zig");
 
-const clib = @cImport({
-    @cInclude("data.h");
-    @cInclude("combs.h");
-    @cInclude("big.h");
-});
+const wc = @import("../runtime/word.zig");
 
-const Word = clib.word;
+const Word = wc.Word;
 
 // Miranda predefined atom words (from lex.zig — keep in sync with CMBASE = 306).
 const CMBASE: Word = 306;
@@ -44,34 +40,35 @@ inline fn tg(x: Word) u8 {
 // ---------------------------------------------------------------------------
 
 inline fn ap(x: Word, y: Word) Word {
-    return clib.make(clib.AP, x, y);
+    return make(wc.AP, x, y);
 }
 inline fn ap2(x: Word, y: Word, z: Word) Word {
     return ap(ap(x, y), z);
 }
-inline fn ap3(w: Word, x: Word, y: Word, z: Word) Word {
-    return ap(ap2(w, x, y), z);
+inline fn ap3(a: Word, x: Word, y: Word, z: Word) Word {
+    return ap(ap2(a, x, y), z);
 }
 inline fn mkcons(x: Word, y: Word) Word {
-    return clib.make(clib.CONS, x, y);
+    return make(wc.CONS, x, y);
 }
 inline fn mklabel(x: Word, y: Word) Word {
-    return clib.make(clib.LABEL, x, y);
+    return make(wc.LABEL, x, y);
 }
 inline fn mklambda(x: Word, y: Word) Word {
-    return clib.make(clib.LAMBDA, x, y);
+    return make(wc.LAMBDA, x, y);
 }
 inline fn mkpair(x: Word, y: Word) Word {
-    return clib.make(clib.PAIR, x, y);
+    return make(wc.PAIR, x, y);
 }
 inline fn mktcons(x: Word, y: Word) Word {
-    return clib.make(clib.TCONS, x, y);
+    return make(wc.TCONS, x, y);
 }
 
 // ---------------------------------------------------------------------------
 // C function externs
 // ---------------------------------------------------------------------------
 
+extern fn make(t: u8, x: Word, y: Word) Word;
 extern fn genlhs(x: Word) Word;
 extern fn irrefutable(x: Word) c_int;
 extern fn compzf(e: Word, qq: Word, diag: Word) Word;
@@ -120,7 +117,7 @@ const void_t: Word = 7;  // #define void_t  7
 fn makeHere(line: u32) Word {
     // get_fil(current_file) = (char*)hd(hd(hd(current_file)))
     const fil_name = h(h(h(current_file)));
-    return clib.make(clib.FILEINFO, fil_name, @intCast(line));
+    return make(wc.FILEINFO, fil_name, @intCast(line));
 }
 
 // ---------------------------------------------------------------------------
@@ -128,7 +125,7 @@ fn makeHere(line: u32) Word {
 // ---------------------------------------------------------------------------
 
 fn isConstructorWord(x: Word) bool {
-    if (tg(x) != clib.ID) return false;
+    if (tg(x) != wc.ID) return false;
     // get_id(x) = (char*)hd(hd(hd(x)))
     const name_ptr: [*:0]const u8 = @ptrFromInt(@as(usize, @intCast(h(h(h(x))))));
     return isconstrname(name_ptr) != 0;
@@ -148,7 +145,7 @@ fn nameWord(name: []const u8) Word {
     // always maps to the same heap atom, which is required for multi-equation
     // definitions: decl1() checks `lastname == x` using pointer equality.
     const existing = findid(&buf);
-    if (existing != clib.NIL) return existing;
+    if (existing != wc.NIL) return existing;
     // Not yet in the name table (e.g., synthesised names). Intern it now.
     const perm = keep(@as([*:0]u8, @ptrCast(&buf)));
     return make_id(perm);
@@ -169,7 +166,7 @@ fn codegenTypeVar(name: []const u8) Word {
     }
     if (star_count == @as(Word, @intCast(name.len))) {
         // Pure-star type variable: *, **, ***, …
-        return clib.make(clib.TVAR, 0, star_count);
+        return make(wc.TVAR, 0, star_count);
     }
     // Named type variable like *a, *b — treat as identifier for now
     return nameWord(name);
@@ -210,33 +207,33 @@ fn codegenType(te: ast.TypeExpr) Word {
 // ---------------------------------------------------------------------------
 
 fn opWord(op: []const u8) Word {
-    if (std.mem.eql(u8, op, "vel"))       return clib.OR;
-    if (std.mem.eql(u8, op, "amp"))       return clib.AND;
-    if (std.mem.eql(u8, op, "eq"))        return clib.EQ;
-    if (std.mem.eql(u8, op, "eqeq"))      return clib.EQ;
-    if (std.mem.eql(u8, op, "ne"))        return clib.NEQ;
-    if (std.mem.eql(u8, op, "gt"))        return clib.GR;
-    if (std.mem.eql(u8, op, "lt"))        return ap(clib.C, clib.GR);  // relop '<'
-    if (std.mem.eql(u8, op, "ge"))        return clib.GRE;
-    if (std.mem.eql(u8, op, "le"))        return ap(clib.C, clib.GRE); // relop LE
-    if (std.mem.eql(u8, op, "cons"))      return clib.P;               // ':' as section
-    if (std.mem.eql(u8, op, "plus_plus")) return clib.APPEND;
+    if (std.mem.eql(u8, op, "vel"))       return wc.OR;
+    if (std.mem.eql(u8, op, "amp"))       return wc.AND;
+    if (std.mem.eql(u8, op, "eq"))        return wc.EQ;
+    if (std.mem.eql(u8, op, "eqeq"))      return wc.EQ;
+    if (std.mem.eql(u8, op, "ne"))        return wc.NEQ;
+    if (std.mem.eql(u8, op, "gt"))        return wc.GR;
+    if (std.mem.eql(u8, op, "lt"))        return ap(wc.C, wc.GR);  // relop '<'
+    if (std.mem.eql(u8, op, "ge"))        return wc.GRE;
+    if (std.mem.eql(u8, op, "le"))        return ap(wc.C, wc.GRE); // relop LE
+    if (std.mem.eql(u8, op, "cons"))      return wc.P;               // ':' as section
+    if (std.mem.eql(u8, op, "plus_plus")) return wc.APPEND;
     if (std.mem.eql(u8, op, "minus_minus")) return listdiff_fn;
-    if (std.mem.eql(u8, op, "plus"))      return clib.PLUS;
-    if (std.mem.eql(u8, op, "minus"))     return clib.MINUS;
-    if (std.mem.eql(u8, op, "star"))      return clib.TIMES;
-    if (std.mem.eql(u8, op, "slash"))     return clib.FDIV;
-    if (std.mem.eql(u8, op, "kw_div"))    return clib.INTDIV;
-    if (std.mem.eql(u8, op, "kw_mod"))    return clib.MOD;
-    if (std.mem.eql(u8, op, "caret"))     return clib.POWER;
-    if (std.mem.eql(u8, op, "dot"))       return clib.B;              // function composition
-    if (std.mem.eql(u8, op, "bang"))      return ap(clib.C, clib.SUBSCRIPT); // '!'
-    if (std.mem.eql(u8, op, "tilde"))        return clib.NOT;
-    if (std.mem.eql(u8, op, "hash"))         return clib.LENGTH;
+    if (std.mem.eql(u8, op, "plus"))      return wc.PLUS;
+    if (std.mem.eql(u8, op, "minus"))     return wc.MINUS;
+    if (std.mem.eql(u8, op, "star"))      return wc.TIMES;
+    if (std.mem.eql(u8, op, "slash"))     return wc.FDIV;
+    if (std.mem.eql(u8, op, "kw_div"))    return wc.INTDIV;
+    if (std.mem.eql(u8, op, "kw_mod"))    return wc.MOD;
+    if (std.mem.eql(u8, op, "caret"))     return wc.POWER;
+    if (std.mem.eql(u8, op, "dot"))       return wc.B;              // function composition
+    if (std.mem.eql(u8, op, "bang"))      return ap(wc.C, wc.SUBSCRIPT); // '!'
+    if (std.mem.eql(u8, op, "tilde"))        return wc.NOT;
+    if (std.mem.eql(u8, op, "hash"))         return wc.LENGTH;
     // Miranda keyword built-ins emitted as keyword tokens by the C lexer.
     // SHOWSYM → make(SHOW, 0, 0); READVALSY → make(STARTREADVALS, 0, 0).
-    if (std.mem.eql(u8, op, "kw_show"))      return clib.make(clib.SHOW, 0, 0);
-    if (std.mem.eql(u8, op, "kw_readvals"))  return clib.make(clib.STARTREADVALS, 0, 0);
+    if (std.mem.eql(u8, op, "kw_show"))      return make(wc.SHOW, 0, 0);
+    if (std.mem.eql(u8, op, "kw_readvals"))  return make(wc.STARTREADVALS, 0, 0);
     if (std.mem.eql(u8, op, "dollars"))      return lastexp;
     // Fall back: user-defined infix operator stored as an identifier
     return nameWord(op);
@@ -260,7 +257,7 @@ fn opWord(op: []const u8) Word {
 
 fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
     const N = guards.len;
-    if (N == 0) return clib.FAIL;
+    if (N == 0) return wc.FAIL;
 
     const last = guards[N - 1];
 
@@ -278,7 +275,7 @@ fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
         //                          or just COND cond body FAIL           [if N==1]
         const cond_w = codegenExpr(alloc, last.cond);
         const body_w = codegenExpr(alloc, last.body);
-        y = ap(ap2(clib.COND, cond_w, body_w), clib.FAIL);
+        y = ap(ap2(wc.COND, cond_w, body_w), wc.FAIL);
         if (N > 1) {
             y = mklabel(makeHere(@intCast(last.span.line)), y);
         }
@@ -291,7 +288,7 @@ fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
             const g = guards[j];
             const body_w = codegenExpr(alloc, g.body);
             const cond_w = codegenExpr(alloc, g.cond);
-            y = mklabel(makeHere(@intCast(g.span.line)), ap(ap2(clib.COND, cond_w, body_w), y));
+            y = mklabel(makeHere(@intCast(g.span.line)), ap(ap2(wc.COND, cond_w, body_w), y));
         }
     }
 
@@ -300,7 +297,7 @@ fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
         const first = guards[0];
         const cond_w = codegenExpr(alloc, first.cond);
         const body_w = codegenExpr(alloc, first.body);
-        y = ap(ap2(clib.COND, cond_w, body_w), y);
+        y = ap(ap2(wc.COND, cond_w, body_w), y);
     }
 
     return y;
@@ -312,7 +309,7 @@ fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
 
 fn codegenString(s: []const u8) Word {
     // Walk the UTF-8 string right-to-left; decode codepoints for sto_char.
-    var result: Word = clib.NIL;
+    var result: Word = wc.NIL;
     var i: usize = s.len;
     while (i > 0) {
         // Simple byte-by-byte (ASCII) walk.  For multi-byte UTF-8 we'd need
@@ -346,14 +343,14 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
             const val: Word = switch (lit.value) {
                 .int    => |v| blk2: {
                     var buf: [64:0]u8 = undefined;
-                    const s = std.fmt.bufPrintZ(&buf, "{}", .{v}) catch break :blk2 clib.NIL;
+                    const s = std.fmt.bufPrintZ(&buf, "{}", .{v}) catch break :blk2 wc.NIL;
                     break :blk2 bigscan(s.ptr);
                 },
                 .char   => |c| sto_char(@intCast(c)),
                 .string => |s| codegenString(s),
                 .float  => |v| sto_dbl(v), // type checker will reject this later
             };
-            break :blk mkcons(clib.CONST, val);
+            break :blk mkcons(wc.CONST, val);
         },
 
         // Non-empty list literal patterns: cons-chain terminated with nill.
@@ -396,8 +393,8 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
         // True/False are CONST tokens in YACC (not CNAME), so patterns using
         // them are wrapped: cons(CONST, atom). Mirror that here.
         .cname => |n| blk: {
-            if (std.mem.eql(u8, n.text, "True"))  break :blk mkcons(clib.CONST, TRUE_ATOM);
-            if (std.mem.eql(u8, n.text, "False")) break :blk mkcons(clib.CONST, FALSE_ATOM);
+            if (std.mem.eql(u8, n.text, "True"))  break :blk mkcons(wc.CONST, TRUE_ATOM);
+            if (std.mem.eql(u8, n.text, "False")) break :blk mkcons(wc.CONST, FALSE_ATOM);
             break :blk codegenExpr(alloc, e); // regular constructor: used as-is
         },
 
@@ -423,7 +420,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         .literal => |lit| switch (lit.value) {
             .int => |v| blk: {
                 var buf: [64:0]u8 = undefined;
-                const s = std.fmt.bufPrintZ(&buf, "{}", .{v}) catch break :blk clib.NIL;
+                const s = std.fmt.bufPrintZ(&buf, "{}", .{v}) catch break :blk wc.NIL;
                 break :blk bigscan(s.ptr);
             },
             .float  => |v| sto_dbl(v),
@@ -440,7 +437,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
             const lhs = codegenExpr(alloc, inf.lhs.*);
             const rhs_w = codegenExpr(alloc, inf.rhs.*);
             // '!' subscript: args are REVERSED — ap2(SUBSCRIPT, rhs, lhs)
-            if (std.mem.eql(u8, op, "bang"))  break :blk ap2(clib.SUBSCRIPT, rhs_w, lhs);
+            if (std.mem.eql(u8, op, "bang"))  break :blk ap2(wc.SUBSCRIPT, rhs_w, lhs);
             // ':' list cons: make(CONS, lhs, rhs)
             if (std.mem.eql(u8, op, "cons"))  break :blk mkcons(lhs, rhs_w);
             // All other operators: ap2(opWord, lhs, rhs)
@@ -448,13 +445,13 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         },
 
         // --- Unary operators ---
-        .neg    => |ep| ap(clib.NEG,    codegenExpr(alloc, ep.*)),
-        .length => |ep| ap(clib.LENGTH, codegenExpr(alloc, ep.*)),
+        .neg    => |ep| ap(wc.NEG,    codegenExpr(alloc, ep.*)),
+        .length => |ep| ap(wc.LENGTH, codegenExpr(alloc, ep.*)),
 
         // --- List literals ---
-        .list_nil => clib.NIL,
+        .list_nil => wc.NIL,
         .list     => |items| blk: {
-            var result: Word = clib.NIL;
+            var result: Word = wc.NIL;
             var i: usize = items.len;
             while (i > 0) {
                 i -= 1;
@@ -490,7 +487,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         .where => |w| applyWhereDefs(alloc, codegenExpr(alloc, w.body.*), w.defs),
 
         // --- Conditional guard (internal) ---
-        .cond => |c| ap2(clib.COND, codegenExpr(alloc, c.guard.*), codegenExpr(alloc, c.then_expr.*)),
+        .cond => |c| ap2(wc.COND, codegenExpr(alloc, c.guard.*), codegenExpr(alloc, c.then_expr.*)),
 
         // --- Left section (e op) → ap(opWord, e) ---
         .section_left => |s| ap(opWord(s.op), codegenExpr(alloc, s.arg.*)),
@@ -500,10 +497,10 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         .section_right => |s| blk: {
             const arg_w = codegenExpr(alloc, s.arg.*);
             // Special-case operators whose opWord is already ap(C,x):
-            if (std.mem.eql(u8, s.op, "lt"))   break :blk ap(clib.GR,         arg_w);
-            if (std.mem.eql(u8, s.op, "le"))   break :blk ap(clib.GRE,        arg_w);
-            if (std.mem.eql(u8, s.op, "bang")) break :blk ap(clib.SUBSCRIPT,  arg_w);
-            break :blk ap2(clib.C, opWord(s.op), arg_w);
+            if (std.mem.eql(u8, s.op, "lt"))   break :blk ap(wc.GR,         arg_w);
+            if (std.mem.eql(u8, s.op, "le"))   break :blk ap(wc.GRE,        arg_w);
+            if (std.mem.eql(u8, s.op, "bang")) break :blk ap(wc.SUBSCRIPT,  arg_w);
+            break :blk ap2(wc.C, opWord(s.op), arg_w);
         },
 
         // --- Operator-as-function: (+), (*), … ---
@@ -518,17 +515,17 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
             const from_w = codegenExpr(alloc, r.from.*);
             if (r.step) |step_ptr| {
                 const step_w = codegenExpr(alloc, step_ptr.*);
-                const delta = ap2(clib.MINUS, step_w, from_w);
+                const delta = ap2(wc.MINUS, step_w, from_w);
                 if (r.to) |to_ptr| {
-                    break :blk ap3(clib.STEPUNTIL, delta, codegenExpr(alloc, to_ptr.*), from_w);
+                    break :blk ap3(wc.STEPUNTIL, delta, codegenExpr(alloc, to_ptr.*), from_w);
                 } else {
-                    break :blk ap2(clib.STEP, delta, from_w);
+                    break :blk ap2(wc.STEP, delta, from_w);
                 }
             } else {
                 if (r.to) |to_ptr| {
-                    break :blk ap3(clib.STEPUNTIL, big_one, codegenExpr(alloc, to_ptr.*), from_w);
+                    break :blk ap3(wc.STEPUNTIL, big_one, codegenExpr(alloc, to_ptr.*), from_w);
                 } else {
-                    break :blk ap2(clib.STEP, big_one, from_w);
+                    break :blk ap2(wc.STEP, big_one, from_w);
                 }
             }
         },
@@ -536,7 +533,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         // --- List comprehension: compzf(body, qualifiers, 0) ---
         // Qualifiers must be passed in REVERSED order (newest first).
         .listcomp => |lc| blk: {
-            var qq: Word = clib.NIL;
+            var qq: Word = wc.NIL;
             for (lc.qualifiers) |q| {
                 const qw: Word = switch (q) {
                     .generator => |g| gen: {
@@ -544,29 +541,29 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
                         // generator's genlhs() call (rules.y:927,932,934).
                         // Mirror that here so each generator's LHS variables
                         // are treated as fresh bindings, not references.
-                        idsused = clib.NIL;
+                        idsused = wc.NIL;
                         const lhs_w = genlhs(codegenExpr(alloc, g.pat));
-                        idsused = clib.NIL;
+                        idsused = wc.NIL;
                         break :gen mkcons(
-                            clib.GENERATOR,
+                            wc.GENERATOR,
                             mkcons(lhs_w, codegenExpr(alloc, g.source.*)),
                         );
                     },
                     // Sequence generator: `pat <- src, step ..`
                     // Mirrors rules.y: cons(GENERATOR, cons(p, ap2(ITERATE/ITERATE1, lambda(p,step), src)))
                     .sequence_generator => |sg| sgen: {
-                        idsused = clib.NIL;
+                        idsused = wc.NIL;
                         const lhs_w = genlhs(codegenExpr(alloc, sg.pat));
-                        idsused = clib.NIL;
+                        idsused = wc.NIL;
                         const src_w = codegenExpr(alloc, sg.source.*);
                         const step_w = codegenExpr(alloc, sg.step.*);
-                        const comb: Word = if (irrefutable(lhs_w) != 0) clib.ITERATE else clib.ITERATE1;
+                        const comb: Word = if (irrefutable(lhs_w) != 0) wc.ITERATE else wc.ITERATE1;
                         break :sgen mkcons(
-                            clib.GENERATOR,
+                            wc.GENERATOR,
                             mkcons(lhs_w, ap2(comb, mklambda(lhs_w, step_w), src_w)),
                         );
                     },
-                    .guard => |gp| mkcons(clib.GUARD, codegenExpr(alloc, gp.*)),
+                    .guard => |gp| mkcons(wc.GUARD, codegenExpr(alloc, gp.*)),
                 };
                 qq = mkcons(qw, qq); // prepend → reverses order
             }
@@ -617,8 +614,8 @@ fn codegenLocalDef(alloc: Allocator, def: ast.Def) Word {
 
     // Lambda-desugar: f x y = body → lhs becomes f, rhs gets lambda wrappers
     const f = head(lhs);
-    if (tg(f) == clib.ID and !isConstructorWord(f)) {
-        while (tg(lhs) == clib.AP) {
+    if (tg(f) == wc.ID and !isConstructorWord(f)) {
+        while (tg(lhs) == wc.AP) {
             rhs = mklambda(t(lhs), rhs);
             lhs = h(lhs);
         }
@@ -637,19 +634,19 @@ fn codegenLocalDef(alloc: Allocator, def: ast.Def) Word {
 //     tl(dval(hd($1)))=cons(dval($2),tl(dval(hd($1))));   // merge
 //   else { $$=cons($2,$1); dval($2)=tries(...); }          // new entry
 fn buildLdefs(alloc: Allocator, where_defs: []const ast.Def) Word {
-    var ldefs: Word = clib.NIL;
+    var ldefs: Word = wc.NIL;
     for (where_defs) |wd| {
         const cell = codegenLocalDef(alloc, wd);  // defn(lhs, undef_t, labeled)
         const lhs_word = h(cell);
         const labeled = t(t(cell));  // dval(cell) = the labeled rhs
-        if (ldefs != clib.NIL and h(h(ldefs)) == lhs_word) {
+        if (ldefs != wc.NIL and h(h(ldefs)) == lhs_word) {
             // Same function as head of ldefs: prepend labeled to its tries list.
             // tries_cell = dval(hd(ldefs)) = tl(tl(hd(ldefs)))
             const tries_cell = t(t(h(ldefs)));
             tl[@as(usize, @intCast(tries_cell)) * 2] = mkcons(labeled, t(tries_cell));
         } else {
             // New function: wrap dval in tries(lhs, [labeled]) and prepend to ldefs.
-            const new_tries = clib.tries(lhs_word, mkcons(labeled, clib.NIL));
+            const new_tries = make(wc.TRIES, lhs_word, mkcons(labeled, wc.NIL));
             tl[@as(usize, @intCast(t(cell))) * 2] = new_tries;
             ldefs = mkcons(cell, ldefs);
         }
@@ -676,8 +673,8 @@ fn codegenDef(alloc: Allocator, def: ast.Def) void {
 
     // Lambda-desugar
     const f = head(lhs);
-    if (tg(f) == clib.ID and !isConstructorWord(f)) {
-        while (tg(lhs) == clib.AP) {
+    if (tg(f) == wc.ID and !isConstructorWord(f)) {
+        while (tg(lhs) == wc.AP) {
             rhs = mklambda(t(lhs), rhs);
             lhs = h(lhs);
         }
@@ -717,7 +714,7 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
             // redtvars(ap(typeform, body)) normalises type vars
             const body_w = codegenType(s.body);
             const x = redtvars(ap(tf, body_w));
-            decl_type(h(x), clib.synonym_t, t(x), here);
+            decl_type(h(x), wc.synonym_t, t(x), here);
         },
 
         // --- algebraic type: name params ::= C1 fields | C2 fields | … ---
@@ -727,7 +724,7 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
             for (a.params) |p| tf = ap(tf, codegenTypeVar(p));
 
             // Build construction list in REVERSED order (mirrors rules.y `constructs`)
-            var construction: Word = clib.NIL;
+            var construction: Word = wc.NIL;
             for (a.constructors) |ctor| {
                 var cw = nameWord(ctor.name);
                 for (ctor.fields) |field| cw = ap(cw, codegenType(field));
@@ -736,12 +733,12 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
 
             // Iterate through reversed construction; peel AP fields to build ctor type
             var n: Word = @intCast(a.constructors.len);
-            var r_ids: Word = clib.NIL;
+            var r_ids: Word = wc.NIL;
             var rhs = construction;
-            while (rhs != clib.NIL) {
+            while (rhs != wc.NIL) {
                 var hv = h(rhs);
                 var ct = tf;
-                while (tg(hv) == clib.AP) {
+                while (tg(hv) == wc.AP) {
                     ct = ap2(arrow_t, t(hv), ct);
                     hv = h(hv);
                 }
@@ -750,7 +747,7 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
                 r_ids = mkcons(hv, r_ids);
                 rhs = t(rhs);
             }
-            decl_type(tf, clib.algebraic_t, r_ids, here);
+            decl_type(tf, wc.algebraic_t, r_ids, here);
         },
 
         // --- abstype: abstype name params with specs ---
@@ -767,7 +764,7 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
             // Declare the abstract type itself
             var tf = nameWord(a.name);
             for (a.params) |p| tf = ap(tf, codegenTypeVar(p));
-            decl_type(tf, clib.abstract_t, clib.undef_t, here);
+            decl_type(tf, wc.abstract_t, wc.undef_t, here);
         },
     }
 }
