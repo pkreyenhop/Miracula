@@ -234,8 +234,6 @@ export fn typesfirst(input_x: Word) Word {
     return shunt(z, x);
 }
 
-
-
 fn getStderr() ?*c.FILE {
     const T = @TypeOf(c.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
@@ -1304,7 +1302,6 @@ fn the_val(x: Word) Word {
     return t(x);
 }
 
-
 fn reset_SUBST() void {
     current_id = if (tvcount >= @as(Word, @intCast(hashsize))) clear_SUBST() else 0;
 }
@@ -1634,7 +1631,6 @@ fn dtyp(d: Word) Word {
 fn dval(d: Word) Word {
     return t(t(d));
 }
-
 
 export fn subsu1(t1_in: Word, t2: Word, T2: Word) Word {
     const t1 = subst(t1_in);
@@ -2021,12 +2017,15 @@ fn etype(x: Word, env: Word, ngt: Word) Word {
             }
             switch (x) {
                 c.S => {
-                    const a = NTV(); const b = NTV(); const c_local = NTV();
+                    const a = NTV();
+                    const b = NTV();
+                    const c_local = NTV();
                     const d = tf3(tf2(a, b, c_local), tf(a, b), a, c_local);
                     return d;
                 },
                 c.K => {
-                    const a = NTV(); const b = NTV();
+                    const a = NTV();
+                    const b = NTV();
                     return tf2(a, b, a);
                 },
                 c.Y => {
@@ -2034,11 +2033,15 @@ fn etype(x: Word, env: Word, ngt: Word) Word {
                     return tf(tf(a, a), a);
                 },
                 c.C => {
-                    const a = NTV(); const b = NTV(); const c_local = NTV();
+                    const a = NTV();
+                    const b = NTV();
+                    const c_local = NTV();
                     return tf3(tf2(a, b, c_local), b, a, c_local);
                 },
                 c.B => {
-                    const a = NTV(); const b = NTV(); const c_local = NTV();
+                    const a = NTV();
+                    const b = NTV();
+                    const c_local = NTV();
                     return tf3(tf(a, b), tf(c_local, a), c_local, b);
                 },
                 c.FORCE, c.G_UNIT, c.G_RULE, c.I => {
@@ -2057,25 +2060,31 @@ fn etype(x: Word, env: Word, ngt: Word) Word {
                     return tf(a, a);
                 },
                 c.BODY => {
-                    const a = NTV(); const b = NTV();
+                    const a = NTV();
+                    const b = NTV();
                     return tf(ap(a, b), a);
                 },
                 c.LAST => {
-                    const a = NTV(); const b = NTV();
+                    const a = NTV();
+                    const b = NTV();
                     return tf(ap(a, b), b);
                 },
                 c.S_p => {
-                    const a = NTV(); const b = NTV();
+                    const a = NTV();
+                    const b = NTV();
                     const c_local = lt(b);
                     return tf3(tf(a, b), tf(a, c_local), a, c_local);
                 },
                 c.U, c.U_ => {
-                    const a = NTV(); const b = NTV();
+                    const a = NTV();
+                    const b = NTV();
                     const c_local = lt(a);
                     return tf2(tf2(a, c_local, b), c_local, b);
                 },
                 c.Uf => {
-                    const a = NTV(); const b = NTV(); const c_local = NTV();
+                    const a = NTV();
+                    const b = NTV();
+                    const c_local = NTV();
                     return tf2(tf2(tf(a, b), a, c_local), b, c_local);
                 },
                 c.COND => {
@@ -2111,7 +2120,8 @@ fn etype(x: Word, env: Word, ngt: Word) Word {
                     return tf2(tf(a, b), lt(a), lt(b));
                 },
                 c.FLATMAP => {
-                    const a = NTV(); const b = lt(NTV());
+                    const a = NTV();
+                    const b = lt(NTV());
                     return tf2(tf(a, b), lt(a), b);
                 },
                 c.FILTER => {
@@ -2143,7 +2153,8 @@ fn etype(x: Word, env: Word, ngt: Word) Word {
                     return tf3(tf2(a, b, b), b, lt(a), b);
                 },
                 c.MATCHINT, c.MATCH => {
-                    const a = NTV(); const b = NTV();
+                    const a = NTV();
+                    const b = NTV();
                     return tf3(a, b, a, b);
                 },
                 c.TRY => {
@@ -2164,29 +2175,41 @@ fn etype(x: Word, env: Word, ngt: Word) Word {
                     return tf2(a, b, b);
                 },
                 c.B_p => {
-                    const a = NTV(); const b = NTV();
+                    const a = NTV();
+                    const b = NTV();
                     const c_local = lt(a);
                     return tf3(a, tf(b, c_local), b, c_local);
                 },
                 c.C_p => {
-                    const a = NTV(); const b = NTV();
+                    const a = NTV();
+                    const b = NTV();
                     const c_local = lt(b);
                     return tf3(tf(a, b), c_local, a, c_local);
                 },
                 c.S1 => {
-                    const a = NTV(); const b = NTV(); const c_local = NTV(); const d = NTV();
+                    const a = NTV();
+                    const b = NTV();
+                    const c_local = NTV();
+                    const d = NTV();
                     return tf4(tf2(a, b, c_local), tf(d, a), tf(d, b), d, c_local);
                 },
                 c.B1 => {
-                    const a = NTV(); const b = NTV(); const c_local = NTV(); const d = NTV();
+                    const a = NTV();
+                    const b = NTV();
+                    const c_local = NTV();
+                    const d = NTV();
                     return tf4(tf(a, b), tf(c_local, a), tf(d, c_local), d, b);
                 },
                 c.C1 => {
-                    const a = NTV(); const b = NTV(); const c_local = NTV(); const d = NTV();
+                    const a = NTV();
+                    const b = NTV();
+                    const c_local = NTV();
+                    const d = NTV();
                     return tf4(tf2(a, b, c_local), tf(d, a), b, d, c_local);
                 },
                 c.SEQ => {
-                    const a = NTV(); const b = NTV();
+                    const a = NTV();
+                    const b = NTV();
                     return tf2(a, b, b);
                 },
                 c.ITERATE1, c.ITERATE => {
@@ -2435,7 +2458,6 @@ fn infer_type(x: Word) void {
     current_id = 0;
 }
 
-
 export fn tsetup() void {
     tfnum = tf(num_t, num_t);
     tfbool = tf(bool_t, bool_t);
@@ -2507,8 +2529,3 @@ export fn checktypes() void {
     fixshows();
     lastloc = 0;
 }
-
-
-
-
-

@@ -262,7 +262,7 @@ export fn setupdic() void {
             unreachable;
         };
         dic = @ptrCast(ptr);
-        
+
         const base_ptr = clib.malloc(@intCast(prefixlimit)) orelse {
             mallocfail("prefixbase");
             unreachable;

@@ -357,7 +357,7 @@ fn addPlatformMacros(exe: *std.Build.Step.Compile, target: std.Build.ResolvedTar
 }
 
 fn readTrimmed(b: *std.Build, path: []const u8) []const u8 {
-    const contents = b.build_root.handle.readFileAlloc(b.graph.io, path, b.allocator, .limited(4096)) catch |err| {
+    const contents = b.build_root.handle.readFileAlloc(b.allocator, path, 4096) catch |err| {
         std.debug.panic("failed to read {s}: {}", .{ path, err });
     };
     return std.mem.trim(u8, contents, " \t\r\n");

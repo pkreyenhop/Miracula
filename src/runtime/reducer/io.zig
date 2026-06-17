@@ -24,10 +24,10 @@ export fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
         ctx.action = clib.ACT_DONE;
         return;
     }
-    
+
     const lastarg_val = reduce.reduce(reduce.tl_get(ctx.e));
     reduce.tl_set(ctx.e, lastarg_val);
-    
+
     if (lastarg_val == clib.OFFSIDE) {
         if (reduce.stdinuse != 0 and reduce.stdinuse != '+') {
             tag[reduce.clean_ptr(ctx.e)] = clib.AP;
@@ -49,7 +49,7 @@ export fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
         }
         reduce.tl_set(ctx.e, @intCast(@intFromPtr(f.?)));
     }
-    
+
     reduce.hd_set(ctx.e, reduce.ap(clib.READVALS, ctx.hold));
     reduce.downLeft(ctx);
     reduce.downLeft(ctx);

@@ -96,61 +96,11 @@ pub export fn reduce(e_val: Word) Word {
 
             clib.I => clib.zig_handleI(@ptrCast(&ctx)),
 
-            clib.SEQ,
-            clib.FORCE,
-            clib.HD,
-            clib.TL,
-            clib.BODY,
-            clib.LAST,
-            clib.EXEC,
-            clib.FILEMODE,
-            clib.FILESTAT,
-            clib.GETENV,
-            clib.INTEGER,
-            clib.NUMVAL,
-            clib.TAKE,
-            clib.STARTREAD,
-            clib.STARTREADBIN,
-            clib.NB_STARTREAD,
-            clib.COND,
-            clib.APPEND,
-            clib.AND,
-            clib.OR,
-            clib.NOT,
-            clib.NEG,
-            clib.CODE,
-            clib.DECODE,
-            clib.SHOWNUM,
-            clib.SHOWHEX,
-            clib.SHOWOCT,
-            clib.ARCTAN_FN,
-            clib.EXP_FN,
-            clib.ENTIER_FN,
-            clib.LOG_FN,
-            clib.LOG10_FN,
-            clib.SIN_FN,
-            clib.COS_FN,
-            clib.SQRT_FN => clib.zig_handle_strict_monadic(@ptrCast(&ctx)),
+            clib.SEQ, clib.FORCE, clib.HD, clib.TL, clib.BODY, clib.LAST, clib.EXEC, clib.FILEMODE, clib.FILESTAT, clib.GETENV, clib.INTEGER, clib.NUMVAL, clib.TAKE, clib.STARTREAD, clib.STARTREADBIN, clib.NB_STARTREAD, clib.COND, clib.APPEND, clib.AND, clib.OR, clib.NOT, clib.NEG, clib.CODE, clib.DECODE, clib.SHOWNUM, clib.SHOWHEX, clib.SHOWOCT, clib.ARCTAN_FN, clib.EXP_FN, clib.ENTIER_FN, clib.LOG_FN, clib.LOG10_FN, clib.SIN_FN, clib.COS_FN, clib.SQRT_FN => clib.zig_handle_strict_monadic(@ptrCast(&ctx)),
 
-            clib.ZIP,
-            clib.STEP,
-            clib.EQ,
-            clib.NEQ,
-            clib.PLUS,
-            clib.MINUS,
-            clib.TIMES,
-            clib.INTDIV,
-            clib.FDIV,
-            clib.MOD,
-            clib.GRE,
-            clib.GR,
-            clib.POWER,
-            clib.SHOWSCALED,
-            clib.SHOWFLOAT,
-            clib.MERGE => clib.zig_handle_strict_diadic(@ptrCast(&ctx)),
+            clib.ZIP, clib.STEP, clib.EQ, clib.NEQ, clib.PLUS, clib.MINUS, clib.TIMES, clib.INTDIV, clib.FDIV, clib.MOD, clib.GRE, clib.GR, clib.POWER, clib.SHOWSCALED, clib.SHOWFLOAT, clib.MERGE => clib.zig_handle_strict_diadic(@ptrCast(&ctx)),
 
-            clib.Ush,
-            clib.STEPUNTIL => clib.zig_handle_strict_triadic(@ptrCast(&ctx)),
+            clib.Ush, clib.STEPUNTIL => clib.zig_handle_strict_triadic(@ptrCast(&ctx)),
 
             // Grammar Combinators (reduce_lex.c)
             clib.G_ERROR => clib.handle_G_ERROR(@ptrCast(&ctx)),
@@ -587,8 +537,3 @@ pub inline fn getsmallint(x: Word) Word {
     const h_val = hd_get(x);
     return if ((h_val & clib.SIGNBIT) != 0) -(h_val & clib.MAXDIGIT) else h_val;
 }
-
-
-
-
-

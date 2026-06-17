@@ -154,7 +154,7 @@ fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]con
 
         const name = tokenName(tok);
         const lexeme = std.mem.span(dicp);
-        
+
         try list.print("{s}", .{name});
         if (lexeme.len > 0) {
             // For safety, only print clean ASCII lexemes
@@ -338,4 +338,3 @@ test "new parser AST snapshot tests" {
     // Miranda type synonym names are lowercase identifiers
     try runASTSnapshotTest(allocator, "type_synonym", "type pair * ** == (*, **)\n");
 }
-

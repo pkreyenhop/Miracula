@@ -109,9 +109,9 @@ extern var idsused: Word;
 
 const undef_t: Word = 0; // #define undef_t 0
 const arrow_t: Word = 6; // #define arrow_t 6
-const list_t: Word = 4;  // #define list_t  4
+const list_t: Word = 4; // #define list_t  4
 const comma_t: Word = 5; // #define comma_t 5
-const void_t: Word = 7;  // #define void_t  7
+const void_t: Word = 7; // #define void_t  7
 
 // ---------------------------------------------------------------------------
 // 'here' generation: fileinfo(get_fil(current_file), line_no)
@@ -210,34 +210,34 @@ fn codegenType(te: ast.TypeExpr) Word {
 // ---------------------------------------------------------------------------
 
 fn opWord(op: []const u8) Word {
-    if (std.mem.eql(u8, op, "vel"))       return clib.OR;
-    if (std.mem.eql(u8, op, "amp"))       return clib.AND;
-    if (std.mem.eql(u8, op, "eq"))        return clib.EQ;
-    if (std.mem.eql(u8, op, "eqeq"))      return clib.EQ;
-    if (std.mem.eql(u8, op, "ne"))        return clib.NEQ;
-    if (std.mem.eql(u8, op, "gt"))        return clib.GR;
-    if (std.mem.eql(u8, op, "lt"))        return ap(clib.C, clib.GR);  // relop '<'
-    if (std.mem.eql(u8, op, "ge"))        return clib.GRE;
-    if (std.mem.eql(u8, op, "le"))        return ap(clib.C, clib.GRE); // relop LE
-    if (std.mem.eql(u8, op, "cons"))      return clib.P;               // ':' as section
+    if (std.mem.eql(u8, op, "vel")) return clib.OR;
+    if (std.mem.eql(u8, op, "amp")) return clib.AND;
+    if (std.mem.eql(u8, op, "eq")) return clib.EQ;
+    if (std.mem.eql(u8, op, "eqeq")) return clib.EQ;
+    if (std.mem.eql(u8, op, "ne")) return clib.NEQ;
+    if (std.mem.eql(u8, op, "gt")) return clib.GR;
+    if (std.mem.eql(u8, op, "lt")) return ap(clib.C, clib.GR); // relop '<'
+    if (std.mem.eql(u8, op, "ge")) return clib.GRE;
+    if (std.mem.eql(u8, op, "le")) return ap(clib.C, clib.GRE); // relop LE
+    if (std.mem.eql(u8, op, "cons")) return clib.P; // ':' as section
     if (std.mem.eql(u8, op, "plus_plus")) return clib.APPEND;
     if (std.mem.eql(u8, op, "minus_minus")) return listdiff_fn;
-    if (std.mem.eql(u8, op, "plus"))      return clib.PLUS;
-    if (std.mem.eql(u8, op, "minus"))     return clib.MINUS;
-    if (std.mem.eql(u8, op, "star"))      return clib.TIMES;
-    if (std.mem.eql(u8, op, "slash"))     return clib.FDIV;
-    if (std.mem.eql(u8, op, "kw_div"))    return clib.INTDIV;
-    if (std.mem.eql(u8, op, "kw_mod"))    return clib.MOD;
-    if (std.mem.eql(u8, op, "caret"))     return clib.POWER;
-    if (std.mem.eql(u8, op, "dot"))       return clib.B;              // function composition
-    if (std.mem.eql(u8, op, "bang"))      return ap(clib.C, clib.SUBSCRIPT); // '!'
-    if (std.mem.eql(u8, op, "tilde"))        return clib.NOT;
-    if (std.mem.eql(u8, op, "hash"))         return clib.LENGTH;
+    if (std.mem.eql(u8, op, "plus")) return clib.PLUS;
+    if (std.mem.eql(u8, op, "minus")) return clib.MINUS;
+    if (std.mem.eql(u8, op, "star")) return clib.TIMES;
+    if (std.mem.eql(u8, op, "slash")) return clib.FDIV;
+    if (std.mem.eql(u8, op, "kw_div")) return clib.INTDIV;
+    if (std.mem.eql(u8, op, "kw_mod")) return clib.MOD;
+    if (std.mem.eql(u8, op, "caret")) return clib.POWER;
+    if (std.mem.eql(u8, op, "dot")) return clib.B; // function composition
+    if (std.mem.eql(u8, op, "bang")) return ap(clib.C, clib.SUBSCRIPT); // '!'
+    if (std.mem.eql(u8, op, "tilde")) return clib.NOT;
+    if (std.mem.eql(u8, op, "hash")) return clib.LENGTH;
     // Miranda keyword built-ins emitted as keyword tokens by the C lexer.
     // SHOWSYM → make(SHOW, 0, 0); READVALSY → make(STARTREADVALS, 0, 0).
-    if (std.mem.eql(u8, op, "kw_show"))      return clib.make(clib.SHOW, 0, 0);
-    if (std.mem.eql(u8, op, "kw_readvals"))  return clib.make(clib.STARTREADVALS, 0, 0);
-    if (std.mem.eql(u8, op, "dollars"))      return lastexp;
+    if (std.mem.eql(u8, op, "kw_show")) return clib.make(clib.SHOW, 0, 0);
+    if (std.mem.eql(u8, op, "kw_readvals")) return clib.make(clib.STARTREADVALS, 0, 0);
+    if (std.mem.eql(u8, op, "dollars")) return lastexp;
     // Fall back: user-defined infix operator stored as an identifier
     return nameWord(op);
 }
@@ -344,14 +344,14 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
         // — the type checker will emit the real error).
         .literal => |lit| blk: {
             const val: Word = switch (lit.value) {
-                .int    => |v| blk2: {
+                .int => |v| blk2: {
                     var buf: [64:0]u8 = undefined;
                     const s = std.fmt.bufPrintZ(&buf, "{}", .{v}) catch break :blk2 clib.NIL;
                     break :blk2 bigscan(s.ptr);
                 },
-                .char   => |c| sto_char(@intCast(c)),
+                .char => |c| sto_char(@intCast(c)),
                 .string => |s| codegenString(s),
-                .float  => |v| sto_dbl(v), // type checker will reject this later
+                .float => |v| sto_dbl(v), // type checker will reject this later
             };
             break :blk mkcons(clib.CONST, val);
         },
@@ -396,7 +396,7 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
         // True/False are CONST tokens in YACC (not CNAME), so patterns using
         // them are wrapped: cons(CONST, atom). Mirror that here.
         .cname => |n| blk: {
-            if (std.mem.eql(u8, n.text, "True"))  break :blk mkcons(clib.CONST, TRUE_ATOM);
+            if (std.mem.eql(u8, n.text, "True")) break :blk mkcons(clib.CONST, TRUE_ATOM);
             if (std.mem.eql(u8, n.text, "False")) break :blk mkcons(clib.CONST, FALSE_ATOM);
             break :blk codegenExpr(alloc, e); // regular constructor: used as-is
         },
@@ -413,11 +413,9 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
 pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
     return switch (e) {
         // --- Identifiers ---
-        .name  => |n| nameWord(n.text),
+        .name => |n| nameWord(n.text),
         // True/False are Miranda predefined atoms, not regular dictionary entries.
-        .cname => |n| if (std.mem.eql(u8, n.text, "True")) TRUE_ATOM
-                      else if (std.mem.eql(u8, n.text, "False")) FALSE_ATOM
-                      else nameWord(n.text),
+        .cname => |n| if (std.mem.eql(u8, n.text, "True")) TRUE_ATOM else if (std.mem.eql(u8, n.text, "False")) FALSE_ATOM else nameWord(n.text),
 
         // --- Literals ---
         .literal => |lit| switch (lit.value) {
@@ -426,8 +424,8 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
                 const s = std.fmt.bufPrintZ(&buf, "{}", .{v}) catch break :blk clib.NIL;
                 break :blk bigscan(s.ptr);
             },
-            .float  => |v| sto_dbl(v),
-            .char   => |c| sto_char(@intCast(c)),
+            .float => |v| sto_dbl(v),
+            .char => |c| sto_char(@intCast(c)),
             .string => |s| codegenString(s),
         },
 
@@ -440,20 +438,20 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
             const lhs = codegenExpr(alloc, inf.lhs.*);
             const rhs_w = codegenExpr(alloc, inf.rhs.*);
             // '!' subscript: args are REVERSED — ap2(SUBSCRIPT, rhs, lhs)
-            if (std.mem.eql(u8, op, "bang"))  break :blk ap2(clib.SUBSCRIPT, rhs_w, lhs);
+            if (std.mem.eql(u8, op, "bang")) break :blk ap2(clib.SUBSCRIPT, rhs_w, lhs);
             // ':' list cons: make(CONS, lhs, rhs)
-            if (std.mem.eql(u8, op, "cons"))  break :blk mkcons(lhs, rhs_w);
+            if (std.mem.eql(u8, op, "cons")) break :blk mkcons(lhs, rhs_w);
             // All other operators: ap2(opWord, lhs, rhs)
             break :blk ap2(opWord(op), lhs, rhs_w);
         },
 
         // --- Unary operators ---
-        .neg    => |ep| ap(clib.NEG,    codegenExpr(alloc, ep.*)),
+        .neg => |ep| ap(clib.NEG, codegenExpr(alloc, ep.*)),
         .length => |ep| ap(clib.LENGTH, codegenExpr(alloc, ep.*)),
 
         // --- List literals ---
         .list_nil => clib.NIL,
-        .list     => |items| blk: {
+        .list => |items| blk: {
             var result: Word = clib.NIL;
             var i: usize = items.len;
             while (i > 0) {
@@ -500,9 +498,9 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         .section_right => |s| blk: {
             const arg_w = codegenExpr(alloc, s.arg.*);
             // Special-case operators whose opWord is already ap(C,x):
-            if (std.mem.eql(u8, s.op, "lt"))   break :blk ap(clib.GR,         arg_w);
-            if (std.mem.eql(u8, s.op, "le"))   break :blk ap(clib.GRE,        arg_w);
-            if (std.mem.eql(u8, s.op, "bang")) break :blk ap(clib.SUBSCRIPT,  arg_w);
+            if (std.mem.eql(u8, s.op, "lt")) break :blk ap(clib.GR, arg_w);
+            if (std.mem.eql(u8, s.op, "le")) break :blk ap(clib.GRE, arg_w);
+            if (std.mem.eql(u8, s.op, "bang")) break :blk ap(clib.SUBSCRIPT, arg_w);
             break :blk ap2(clib.C, opWord(s.op), arg_w);
         },
 
@@ -595,7 +593,7 @@ fn codegenLhsExpr(alloc: Allocator, e: ast.Expr) Word {
 
 fn codegenRhs(alloc: Allocator, rhs: ast.Rhs) Word {
     return switch (rhs) {
-        .expr    => |e|      codegenExpr(alloc, e),
+        .expr => |e| codegenExpr(alloc, e),
         .guarded => |guards| codegenGuarded(alloc, guards),
     };
 }
@@ -639,9 +637,9 @@ fn codegenLocalDef(alloc: Allocator, def: ast.Def) Word {
 fn buildLdefs(alloc: Allocator, where_defs: []const ast.Def) Word {
     var ldefs: Word = clib.NIL;
     for (where_defs) |wd| {
-        const cell = codegenLocalDef(alloc, wd);  // defn(lhs, undef_t, labeled)
+        const cell = codegenLocalDef(alloc, wd); // defn(lhs, undef_t, labeled)
         const lhs_word = h(cell);
-        const labeled = t(t(cell));  // dval(cell) = the labeled rhs
+        const labeled = t(t(cell)); // dval(cell) = the labeled rhs
         if (ldefs != clib.NIL and h(h(ldefs)) == lhs_word) {
             // Same function as head of ldefs: prepend labeled to its tries list.
             // tries_cell = dval(hd(ldefs)) = tl(tl(hd(ldefs)))
@@ -779,10 +777,12 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
 pub fn codegenScript(alloc: Allocator, script: ast.Script) void {
     for (script.items) |item| {
         switch (item) {
-            .definition  => |def| codegenDef(alloc, def),
-            .type_spec   => |ts|  codegenTypeSpec(ts),
-            .type_decl   => |td|  codegenTypeDecl(td),
-            .eval        => |e|   { _ = codegenExpr(alloc, e); },
+            .definition => |def| codegenDef(alloc, def),
+            .type_spec => |ts| codegenTypeSpec(ts),
+            .type_decl => |td| codegenTypeDecl(td),
+            .eval => |e| {
+                _ = codegenExpr(alloc, e);
+            },
             // Directives are handled at a higher level (file inclusion etc.)
             .include, .export_list, .free_directive => {},
         }
