@@ -43,7 +43,7 @@ export fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
         const fil = reduce.getstring(lastarg_val, "readvals");
         const f = clib.fopen(fil, "r");
         if (f == null) {
-            _ = clib.fprintf(reduce.getStderr().?, "\nreadvals, cannot open: \"%s\"\n", fil);
+            _ = clib.fprintf(reduce.getStderr().?, "\nreadvals, cannot open: \"%s\"\n", .{.{fil}});
             clib.outstats();
             clib.exit(1);
         }

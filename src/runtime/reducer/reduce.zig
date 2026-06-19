@@ -137,7 +137,7 @@ pub export fn reduce(e_val: Word) Word {
             else => {
                 cycles -= 1;
                 if (abnormal(ctx.e)) {
-                    _ = clib.fprintf(getStderr().?, "\nBLACK HOLE\n");
+                    _ = clib.fprintf(getStderr().?, "\nBLACK HOLE\n", .{.{}});
                     clib.outstats();
                     clib.exit(1);
                 }
@@ -146,20 +146,20 @@ pub export fn reduce(e_val: Word) Word {
                     clib.STRCONS => {
                         ctx.e = pn_val(ctx.e);
                         if (ctx.e == clib.UNDEF or ctx.e == clib.FREE) {
-                            _ = clib.fprintf(getStderr().?, "\nimpossible event in reduce - undefined pname\n");
+                            _ = clib.fprintf(getStderr().?, "\nimpossible event in reduce - undefined pname\n", .{.{}});
                             clib.exit(1);
                         }
                         ctx.action = clib.ACT_NEXTREDEX;
                     },
                     clib.DATAPAIR => {
                         upLeft(&ctx);
-                        _ = clib.fprintf(getStderr().?, "\nUNDEFINED NAME (specified as \"%s\" in %s)\n", @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(hd_get(hd_get(ctx.e)))))))), @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(tl_get(ctx.e))))))));
+                        _ = clib.fprintf(getStderr().?, "\nUNDEFINED NAME (specified as \"%s\" in %s)\n", .{.{@as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(hd_get(hd_get(ctx.e)))))))), @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(tl_get(ctx.e)))))))}});
                         clib.outstats();
                         clib.exit(1);
                     },
                     clib.ID => {
                         if (id_val(ctx.e) == clib.UNDEF or id_val(ctx.e) == clib.FREE) {
-                            _ = clib.fprintf(getStderr().?, "\nUNDEFINED NAME - %s\n", get_id(ctx.e));
+                            _ = clib.fprintf(getStderr().?, "\nUNDEFINED NAME - %s\n", .{.{get_id(ctx.e)}});
                             clib.outstats();
                             clib.exit(1);
                         }
@@ -181,7 +181,7 @@ pub export fn reduce(e_val: Word) Word {
                         ctx.action = clib.ACT_DONE;
                     },
                     else => {
-                        _ = clib.fprintf(getStderr().?, "\nimpossible tag (%d) in reduce\n", tag[@as(usize, @intCast(ctx.e))]);
+                        _ = clib.fprintf(getStderr().?, "\nimpossible tag (%d) in reduce\n", .{.{tag[@as(usize, @intCast(ctx.e))]}});
                         clib.exit(1);
                     },
                 }

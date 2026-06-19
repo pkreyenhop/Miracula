@@ -188,9 +188,9 @@ inline fn rewrite_to_cons(e: Word, hd_value: Word, tl_value: Word) void {
 
 export fn reduce_badcase_error(arg_info: Word) void {
     const subject = h(arg_info);
-    _ = clib.fprintf(getStderr().?, "\nprogram error: missing case in definition");
+    _ = clib.fprintf(getStderr().?, "\nprogram error: missing case in definition", .{.{}});
     if (subject != 0) {
-        _ = clib.fprintf(getStderr().?, " of %s", getstring(subject, null));
+        _ = clib.fprintf(getStderr().?, " of %s", .{.{getstring(subject, null)}});
     }
     _ = clib.putc('\n', getStderr().?);
     out_here(getStderr().?, t(arg_info), 1);
@@ -199,34 +199,34 @@ export fn reduce_badcase_error(arg_info: Word) void {
 }
 
 export fn reduce_conf_error(arg_info: Word) void {
-    _ = clib.fprintf(getStderr().?, "\nprogram error: lhs of definition doesn't match rhs\n");
+    _ = clib.fprintf(getStderr().?, "\nprogram error: lhs of definition doesn't match rhs\n", .{.{}});
     out_here(getStderr().?, t(arg_info), 1);
     outstats();
     clib.exit(1);
 }
 
 export fn reduce_parse_close_error(arg1: Word, arg3: Word) void {
-    _ = clib.fprintf(getStderr().?, "\nPARSE OF %sFAILS WITH UNEXPECTED ", getstring(arg1, null));
+    _ = clib.fprintf(getStderr().?, "\nPARSE OF %sFAILS WITH UNEXPECTED ", .{.{getstring(arg1, null)}});
     const arg3_reduced = reduce(t(g_residue(arg3)));
     if (arg3_reduced == NIL) {
-        _ = clib.fprintf(getStderr().?, "END OF INPUT\n");
+        _ = clib.fprintf(getStderr().?, "END OF INPUT\n", .{.{}});
         outstats();
         clib.exit(1);
     }
     var hold_val = clib.make(clib.AP, FST, h(arg3_reduced));
     hold_val = reduce(hold_val);
-    _ = clib.fprintf(getStderr().?, "TOKEN \"");
+    _ = clib.fprintf(getStderr().?, "TOKEN \"", .{.{}});
     if (hold_val == clib.OFFSIDE) {
-        _ = clib.fprintf(getStderr().?, "offside");
+        _ = clib.fprintf(getStderr().?, "offside", .{.{}});
     }
     const p = getstring(hold_val, null);
     if (p) |ptr| {
         var i: usize = 0;
         while (ptr[i] != 0) : (i += 1) {
-            _ = clib.fprintf(getStderr().?, "%s", charname(ptr[i]));
+            _ = clib.fprintf(getStderr().?, "%s", .{.{charname(ptr[i])}});
         }
     }
-    _ = clib.fprintf(getStderr().?, "\"\n");
+    _ = clib.fprintf(getStderr().?, "\"\n", .{.{}});
     outstats();
     clib.exit(1);
 }
@@ -343,7 +343,7 @@ export fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     p_idx += 1;
     if (p_idx > buf_size) {
         if (cmd) |cmd_str| {
-            _ = clib.fprintf(getStderr().?, "\n%s, argument string too long (limit=%d chars): %s...\n", cmd_str, @as(c_int, buf_size), &linebuf);
+            _ = clib.fprintf(getStderr().?, "\n%s, argument string too long (limit=%d chars): %s...\n", .{.{cmd_str, @as(c_int, buf_size), &linebuf}});
             outstats();
             clib.exit(1);
         } else {
@@ -361,18 +361,18 @@ export fn outstats() void {
     }
     var buffer: clib.struct_tms = undefined;
     _ = clib.times(&buffer);
-    _ = clib.fprintf(getStderr().?, "||");
-    _ = clib.fprintf(getStderr().?, "reductions = %lld, cells claimed = %lld, ", cycles, cellcount + claims);
+    _ = clib.fprintf(getStderr().?, "||", .{.{}});
+    _ = clib.fprintf(getStderr().?, "reductions = %lld, cells claimed = %lld, ", .{.{cycles, cellcount + claims}});
     const clk_tck = @as(f64, @floatFromInt(clib.sysconf(clib._SC_CLK_TCK)));
-    _ = clib.fprintf(getStderr().?, "no of gc's = %ld, cpu = %0.2f\n", nogcs, @as(f64, @floatFromInt(buffer.tms_utime)) / clk_tck);
+    _ = clib.fprintf(getStderr().?, "no of gc's = %ld, cpu = %0.2f\n", .{.{nogcs, @as(f64, @floatFromInt(buffer.tms_utime)) / clk_tck}});
 }
 
 export fn out_here(f: ?*clib.FILE, h_val: Word, nl: c_int) void {
     if (tag[@as(usize, @intCast(h_val))] != clib.FILEINFO) {
-        _ = clib.fprintf(getStderr().?, "(impossible event in outhere)\n");
+        _ = clib.fprintf(getStderr().?, "(impossible event in outhere)\n", .{.{}});
         return;
     }
-    _ = clib.fprintf(f.?, "(line %3ld of \"%s\")", t(h_val), @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(h_val))))))));
+    _ = clib.fprintf(f.?, "(line %3ld of \"%s\")", .{.{t(h_val), @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(h_val)))))))}});
     if (nl != 0) {
         _ = clib.putc('\n', f.?);
     } else {
@@ -389,22 +389,22 @@ fn stdname(c_val: c_int) [*:0]const u8 {
 
 export fn stdin_error(c_val: c_int) void {
     if (stdinuse == c_val) {
-        _ = clib.fprintf(getStderr().?, "program error: duplicate use of %s\n", stdname(c_val));
+        _ = clib.fprintf(getStderr().?, "program error: duplicate use of %s\n", .{.{stdname(c_val)}});
     } else {
-        _ = clib.fprintf(getStderr().?, "program error: simultaneous use of %s and %s\n", stdname(c_val), stdname(@intCast(stdinuse)));
+        _ = clib.fprintf(getStderr().?, "program error: simultaneous use of %s and %s\n", .{.{stdname(c_val), stdname(@intCast(stdinuse))}});
     }
     outstats();
     clib.exit(1);
 }
 
 export fn fn_error(s: [*:0]const u8) void {
-    _ = clib.fprintf(getStderr().?, "\nprogram error: %s\n", s);
+    _ = clib.fprintf(getStderr().?, "\nprogram error: %s\n", .{.{s}});
     outstats();
     clib.exit(1);
 }
 
 export fn getenv_error(a: [*:0]const u8) void {
-    _ = clib.fprintf(getStderr().?, "program error: getenv(%s): illegal characters in result string\n", a);
+    _ = clib.fprintf(getStderr().?, "program error: getenv(%s): illegal characters in result string\n", .{.{a}});
     outstats();
     clib.exit(1);
 }
@@ -420,13 +420,13 @@ export fn div_error() void {
 export fn math_error(s: [*:0]const u8) void {
     const err_val = platform.getErrno();
     const err_type: [*:0]const u8 = if (err_val == clib.EDOM) "domain " else if (err_val == clib.ERANGE) "range " else "";
-    _ = clib.fprintf(getStderr().?, "\nmath function %serror (%s)\n", err_type, s);
+    _ = clib.fprintf(getStderr().?, "\nmath function %serror (%s)\n", .{.{err_type, s}});
     outstats();
     clib.exit(1);
 }
 
 export fn int_error(s: [*:0]const u8) void {
-    _ = clib.fprintf(getStderr().?, "\nprogram error: fractional number where integer expected (%s)\n", s);
+    _ = clib.fprintf(getStderr().?, "\nprogram error: fractional number where integer expected (%s)\n", .{.{s}});
     outstats();
     clib.exit(1);
 }
@@ -481,13 +481,13 @@ export fn memclass(c_val: c_int, x_val: Word) c_int {
 export fn lexfail(x_val: Word) void {
     var x = x_val;
     var i: c_int = 24;
-    _ = clib.fprintf(getStderr().?, "\nLEX FAILS WITH UNRECOGNISED INPUT: \"");
+    _ = clib.fprintf(getStderr().?, "\nLEX FAILS WITH UNRECOGNISED INPUT: \"", .{.{}});
     while (i > 0 and x != NIL and 0 <= lh(x) and lh(x) <= 255) {
         i -= 1;
-        _ = clib.fprintf(getStderr().?, "%s", charname(@intCast(lh(x))));
+        _ = clib.fprintf(getStderr().?, "%s", .{.{charname(@intCast(lh(x)))}});
         x = t(x);
     }
-    _ = clib.fprintf(getStderr().?, "%s\"\n", if (x == NIL) @as([*:0]const u8, "") else "...");
+    _ = clib.fprintf(getStderr().?, "%s\"\n", .{.{if (x == NIL) @as([*:0]const u8, "") else "..."}});
     outstats();
     clib.exit(1);
 }
@@ -564,7 +564,7 @@ export fn compare(arg_a: Word, arg_b: Word) c_int {
                 }
             },
             else => {
-                _ = clib.fprintf(getStderr().?, "\nghastly error in compare\n");
+                _ = clib.fprintf(getStderr().?, "\nghastly error in compare\n", .{.{}});
             },
         }
         return 0;
@@ -618,7 +618,7 @@ export fn apfile(f: Word) void {
     if (p == NIL) {
         const s = clib.fopen(fil, "a");
         if (s == null) {
-            _ = clib.fprintf(getStderr().?, "\nAppendfile: cannot write to \"%s\"\n", fil);
+            _ = clib.fprintf(getStderr().?, "\nAppendfile: cannot write to \"%s\"\n", .{.{fil}});
         } else {
             outfilq = cons(datapair(@intCast(@intFromPtr(clib.keep(fil.?))), @intCast(@intFromPtr(s.?))), outfilq);
         }
@@ -646,7 +646,7 @@ export fn outf(e: Word) void {
     if (p == NIL) {
         s_out = clib.fopen(f, "w");
         if (s_out == null) {
-            _ = clib.fprintf(getStderr().?, "\nTofile: cannot write to \"%s\"\n", f);
+            _ = clib.fprintf(getStderr().?, "\nTofile: cannot write to \"%s\"\n", .{.{f}});
             s_out = getStdout();
             return;
         }
@@ -672,7 +672,7 @@ export fn print(arg_e: Word) void {
         } else if (c < 256) {
             _ = clib.putc(@intCast(c), s_out.?);
         } else {
-            _ = clib.fprintf(getStderr().?, "\n warning: non Latin1 char %x in print, ignored\n", c);
+            _ = clib.fprintf(getStderr().?, "\n warning: non Latin1 char %x in print, ignored\n", .{.{c}});
         }
         tp(e).* = reduce(t(e));
         e = t(e);
@@ -680,10 +680,10 @@ export fn print(arg_e: Word) void {
     if (e == NIL) {
         return;
     }
-    _ = clib.fprintf(getStderr().?, "\nimpossible event in print\n");
+    _ = clib.fprintf(getStderr().?, "\nimpossible event in print\n", .{.{}});
     _ = clib.putc('<', getStderr().?);
     clib.out(getStderr().?, e);
-    _ = clib.fprintf(getStderr().?, ">\n");
+    _ = clib.fprintf(getStderr().?, ">\n", .{.{}});
     clib.exit(1);
 }
 
@@ -759,9 +759,9 @@ export fn output(arg_e: Word) void {
                 clib.exit(@intCast(n));
             },
             else => {
-                _ = clib.fprintf(getStderr().?, "\n<impossible event in output list: ");
+                _ = clib.fprintf(getStderr().?, "\n<impossible event in output list: ", .{.{}});
                 clib.out(getStderr().?, h(e));
-                _ = clib.fprintf(getStderr().?, ">\n");
+                _ = clib.fprintf(getStderr().?, ">\n", .{.{}});
             },
         }
         tp(e).* = reduce(t(e));
@@ -770,10 +770,10 @@ export fn output(arg_e: Word) void {
     if (e == NIL) {
         return;
     }
-    _ = clib.fprintf(getStderr().?, "\nimpossible event in output\n");
+    _ = clib.fprintf(getStderr().?, "\nimpossible event in output\n", .{.{}});
     _ = clib.putc('<', getStderr().?);
     clib.out(getStderr().?, e);
-    _ = clib.fprintf(getStderr().?, ">\n");
+    _ = clib.fprintf(getStderr().?, ">\n", .{.{}});
     clib.exit(1);
 }
 

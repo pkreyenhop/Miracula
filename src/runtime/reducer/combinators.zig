@@ -815,10 +815,10 @@ export fn zig_handleERROR(ctx: *ReductionCtx) void {
     }
     const lastarg = reduce.tl_get(ctx.e);
     if (reduce.errtrap != 0) {
-        _ = clib.fprintf(reduce.getStderr().?, "\n(repeated error)\n");
+        _ = clib.fprintf(reduce.getStderr().?, "\n(repeated error)\n", .{.{}});
     } else {
         reduce.errtrap = 1;
-        _ = clib.fprintf(reduce.getStderr().?, "\nprogram error: ");
+        _ = clib.fprintf(reduce.getStderr().?, "\nprogram error: ", .{.{}});
         reduce.s_out = reduce.getStderr();
         reduce.print(lastarg);
         _ = clib.putc('\n', reduce.getStderr().?);

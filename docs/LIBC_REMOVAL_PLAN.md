@@ -69,83 +69,62 @@ Also replace `isdigit(c)`, `isspace(c)`, `isalpha(c)` from `<ctype.h>` with `std
 
 ---
 
-## Sub-phase 6c: Port `FILE*` stdio to `std.io` (In Progress)
+## Sub-phase 6c: Port `FILE*` stdio to `std.io` (Completed — approach changed)
 
-**What**: Replace all `FILE*`-based I/O with Zig file handles and writer/reader interfaces. This is the largest refactor.
+**What**: Replace all `FILE*`-based I/O. Original plan was to convert each call site to `std.fs.File`/`std.io` idioms. **Actual approach**: build a Zig-native C stdlib shim in `main_clib.zig` that preserves the `FILE*` ABI while removing the C header dependency. This minimizes call-site changes.
 
-**Core types to change**:
+**Key change in `word.zig`**: Added a Zig-native `FILE` struct backed by a raw fd (`fd: c_int`) with `readByte`, `ungetc`, `writeByte`, `writeAll`, `writeByteNTimes` methods using `std.posix` syscalls directly.
 
-- `export var s_in: ?*clib.FILE` → `export var s_in: std.fs.File`
-- `extern var s_out: ?*clib.FILE` → `export var s_out: std.fs.File`
+**`main_clib.zig` now implements** (as Zig functions, no `@cImport` except `setjmp.h`):
+- `stdin()`, `stdout()`, `stderr()` → return `?*FILE` pointing to static `std_in/std_out/std_err` with hardcoded fds 0/1/2
+- `fopen`, `fclose`, `fileno`, `setbuf` — backed by `std.fs.cwd().openFileZ` / `std.posix`; 16-slot static file pool
+- `getc`, `putc`, `fputc`, `putchar`, `getchar`, `ungetc`, `fgets`, `fputs`
+- `outUTF8`, `fromUTF8` — UTF-8 encode/decode using our `putc`/`getc` (moved from `src/io/utf8.zig` to avoid linking to C library `putc`)
+- `fprintf`, `printf` — custom `formatC` parser handling `%s %c %d %i %u %x %o %f %g %e` with width/flags; transparently unwraps double-wrapped tuple args `.{.{a,b}}` → `.{a,b}`
+- `sprintf`, `snprintf` — same formatter to a `BufferWriter`
+- `fscanf`, `sscanf` — custom scanner for the same specifiers
+- `fread`, `fwrite`, `fmemopen`, `fdopen`
+- `malloc`, `free`, `calloc`, `realloc` — via `std.heap.page_allocator`
+- `strlen`, `strcmp`, `strncmp`, `strcpy`, `strcat`, `strncat`, `strncpy`, `strchr`, `strrchr`, `strstr`
+- `isalpha`, `isalnum`, `isdigit`, `isxdigit`, `isspace`, `tolower` — via `std.ascii`
+- `exit`, `abort`, `perror`, `getcwd`, `chdir`, `getenv`, `system`, `execl`
+- `pipe`, `dup2`, `fork`, `wait`, `open`, `close`, `read`, `write`, `ioctl`, `unlink`
+- `getrlimit`, `setrlimit`, `geteuid`, `getegid`, `sysconf`, `times`, `localtime`, `rindex`
 
-Both are currently init'd to `stdin`/`stdout`. In Zig: `std.io.getStdIn()` / `std.io.getStdOut()`.
+**`c_abi.zig`** now re-exports everything from `main_clib.zig` (was previously duplicating definitions).
 
-**Function-by-function replacements**:
+**`main_clib.zig` `@cImport` reduced to**:
+```zig
+pub const c = @cImport({
+    @cInclude("setjmp.h");
+});
+```
 
-| Old | New |
-|---|---|
-| `clib.fopen(path, "r")` | `std.fs.cwd().openFile(path, .{})` |
-| `clib.fopen(path, "w")` | `std.fs.cwd().createFile(path, .{})` |
-| `clib.fclose(f)` | `f.close()` |
-| `clib.fprintf(f, fmt, ...)` | `f.writer().print(fmt, ...)` (Zig fmt syntax) |
-| `clib.printf(fmt, ...)` | `std.io.getStdOut().writer().print(fmt, ...)` |
-| `clib.fscanf(f, fmt, ...)` | Manual: `f.reader().readUntilDelimiter(...)` + parse |
-| `clib.getc(f)` | `f.reader().readByte()` |
-| `clib.putc(ch, f)` | `f.writer().writeByte(ch)` |
-| `clib.fputc(ch, f)` | `f.writer().writeByte(ch)` |
-| `clib.putchar(ch)` | `std.io.getStdOut().writer().writeByte(ch)` |
-| `clib.snprintf(&buf, len, fmt, ...)` | `std.fmt.bufPrint(&buf, fmt, ...)` |
-| `clib.sprintf(&buf, fmt, ...)` | `std.fmt.bufPrint(&buf, fmt, ...)` |
+**Outcome**: All `stdio.h`, `string.h`, `stdlib.h`, `ctype.h`, `float.h`, `sys/ioctl.h`, `unistd.h`, `sys/stat.h`, `fcntl.h`, `sys/wait.h`, `sys/resource.h` removed from `@cImport`. Only `setjmp.h` remains.
 
-**Functions that take `FILE*` parameters — port signatures**:
+**Build**: clean (0 errors). **Tests**: 40/40 pass (including the previously-failing mira-tests).
 
-- `getln(in: ?*clib.FILE, n: Word, s_ptr: [*]u8) c_int` (main.zig:715)  
-  → `getln(in: std.fs.File, n: Word, s_ptr: [*]u8) c_int`  
-  — body: replace `clib.getc(in)` with `in.reader().readByte() catch -1`
-
-- `parseline(t_val: Word, f: std.fs.File, fil: Word) Word` (main.zig:1092)  
-  — pass `std.io.getStdIn()` at call sites
-
-- `fromUTF8(f: std.fs.File) Word` (extern fn in reduce.zig:46, impl in utf8.zig)  
-  — `utf8.zig`: replace `extern fn getc(FILE)` with `f.reader().readByte()`
-
-- `out(f: std.fs.File, x: Word)` (types.zig:60, trans.zig:155)  
-  — propagate `std.fs.File` through the call chain
-
-**`fscanf` in `rc_read()`** (main.zig:823): Replace with buffered line read + manual integer parsing using `std.fmt.parseInt`.
-
-**`getStdin/getStdout/getStderr` helpers** (main.zig:359–398): Delete entirely; use `std.io.getStdIn()` etc. directly.
-
-**Outcome**: All `stdio.h` imports removed. `@cImport` for `stdio.h` and `FILE` types gone from all files.
+Key fixes resolved during implementation:
+- `FILE` struct uses `.fd: c_int` not `.file`; `fopen`/`fclose` use `std.posix.openatZ`/`system.close`
+- O flags use packed struct `std.posix.O{ .ACCMODE = .WRONLY, ... }`; RLIMIT/SIG use `@intFromEnum`
+- `signals.zig` uses `extern fn sigaction(signum: c_int, ...)` to avoid enum type mismatch
+- `platform.zig` uses `extern fn stat` + Zig 0.16 field names (`ino`, `dev`, `mode`, `uid`, `gid`, `mtimespec.sec`)
+- `formatArg`/`scanVal`/`scanValFromFile` rewritten with comptime type guards (`is_int_child`, `is_float_child`)
+- Character classifiers (`isalpha` etc.) guard against negative input (e.g., EOF = -1) via `safeChar` helper
+- `getcwd`/`chdir` forwarded to libc via `extern fn` wrappers; `open` uses `openatZ(AT.FDCWD, ...)`
 
 ---
 
-## Sub-phase 6d: Port POSIX process and signal calls to `std.posix`
+## Sub-phase 6d: Port POSIX process and signal calls to `std.posix` (Completed)
 
-**What**: Replace raw C POSIX wrappers (`clib.fork`, `clib.wait`, `clib.open`, `clib.close`, `clib.read`, `clib.write`, `clib.ioctl`) with `std.posix.*` equivalents that work without `linkLibC()`.
+**What**: Replace raw C POSIX wrappers with `std.posix.*` equivalents.
 
-**Mapping**:
+**Completed**:
+- `src/io/signals.zig`: Uses `extern fn sigaction(signum: c_int, ...)` (not `std.posix.sigaction`) to avoid Zig 0.16's typed-enum signum mismatch. `std.posix.Sigaction`, `std.posix.sigemptyset()`, `std.posix.SA.RESTART` used otherwise.
+- `src/io/platform.zig`: `@cImport` removed entirely. Uses `extern fn stat` + Zig 0.16 field names (`ino`/`dev`/`mode`/`uid`/`gid`, `mtimespec.sec`). Linux path uses `std.os.linux.statx`.
+- `main_clib.zig`: All POSIX calls (`fork`, `wait`, `open`, `close`, `read`, `write`, `ioctl`, `unlink`, `getrlimit`, `setrlimit`, `dup2`, `pipe`, `execl`, `geteuid`, `getegid`) implemented as Zig wrappers using `std.posix.system.*`. `getcwd`/`chdir` use `extern fn` forwarding (macOS libSystem).
 
-| Old (`@cImport` + clib) | New |
-|---|---|
-| `clib.fork()` | `std.posix.fork()` |
-| `clib.wait(&status)` | `std.posix.wait()` / `std.posix.waitpid(pid, 0)` |
-| `clib.open(path, flags)` | `std.posix.open(path, flags, 0)` |
-| `clib.close(fd)` | `std.posix.close(fd)` |
-| `clib.read(fd, buf, n)` | `std.posix.read(fd, buf)` |
-| `clib.write(fd, buf, n)` | `std.posix.write(fd, buf)` |
-| `clib.ioctl(fd, TIOCGWINSZ, &win)` | `std.posix.ioctl(fd, std.os.linux.T.IOCGWINSZ, &win)` |
-| `clib.unlink(path)` | `std.posix.unlink(path)` |
-| `clib.exit(n)` | `std.process.exit(n)` |
-| `clib.perror(msg)` | `std.debug.print("{s}: {s}\n", .{msg, @errorName(err)})` |
-
-**Signals** (`src/io/signals.zig`): Replace `extern fn sigaction(...)` (line 9) with `std.posix.sigaction()`. The `SigAction` struct is available as `std.posix.Sigaction`. Signal numbers (`SIGINT`, `SIGBUS`, `SIGSEGV`, `SIGFPE`) are available as `std.posix.SIG.*`.
-
-**`src/io/platform.zig`**: The `stat()`-based file-modification-time query can be replaced with `std.fs.File.stat()` which returns `std.fs.File.Stat` containing `.mtime`. Drop `@cImport` of `sys/stat.h` and `unistd.h`. The Linux-vs-macOS errno pointer hack (`__errno_location` / `__error`) can be replaced by letting `std.posix` calls return Zig errors directly.
-
-**`twidth()` / `TIOCGWINSZ`** (main.zig:595–601): Replace with `std.posix.ioctl` and the `winsize` struct from `std.os.linux` / `std.posix`.
-
-**Outcome**: All `unistd.h`, `fcntl.h`, `sys/wait.h`, `sys/ioctl.h`, `sys/stat.h`, `signal.h` `@cImport`s removed. Only `setjmp.h` remains.
+**Outcome**: `unistd.h`, `fcntl.h`, `sys/wait.h`, `sys/ioctl.h`, `sys/stat.h`, `signal.h` removed from all `@cImport`s. Only `setjmp.h` remains. Build is clean; 40/40 tests pass.
 
 ---
 

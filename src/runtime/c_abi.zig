@@ -285,147 +285,108 @@ pub const ACT_NONE = 0;
 pub const ACT_NEXTREDEX = 1;
 pub const ACT_DONE = 2;
 
-pub const FILE = opaque {};
-pub const time_t = c_long;
-pub const DBL_MAX = std.math.floatMax(f64);
-pub const EOF = -1;
-pub const EDOM = 33;
-pub const ERANGE = 34;
-pub const O_RDONLY = 0;
-pub const O_WRONLY = 1;
-pub const O_CREAT = 0x0200;
-pub const O_TRUNC = 0x0400;
-pub const STDOUT_FILENO = 1;
+const main_clib = @import("../main_clib.zig");
+pub const FILE = main_clib.FILE;
+pub const time_t = main_clib.time_t;
+pub const DBL_MAX = main_clib.DBL_MAX;
+pub const EOF = main_clib.EOF;
+pub const EDOM = main_clib.EDOM;
+pub const ERANGE = main_clib.ERANGE;
+pub const O_RDONLY = main_clib.O_RDONLY;
+pub const O_WRONLY = main_clib.O_WRONLY;
+pub const O_CREAT = main_clib.O_CREAT;
+pub const O_TRUNC = main_clib.O_TRUNC;
+pub const STDOUT_FILENO = main_clib.STDOUT_FILENO;
 pub const _SC_CLK_TCK = 3;
-pub const SIGINT = 2;
-pub const SIGBUS = 10;
-pub const SIGSEGV = 11;
-pub const SIGTERM = 15;
-pub const SIGFPE = 8;
-pub const TIOCGWINSZ = 0x40087468;
-pub const RLIMIT_STACK = 3;
+pub const SIGINT = main_clib.SIGINT;
+pub const SIGBUS = main_clib.SIGBUS;
+pub const SIGSEGV = main_clib.SIGSEGV;
+pub const SIGTERM = main_clib.SIGTERM;
+pub const SIGFPE = main_clib.SIGFPE;
+pub const TIOCGWINSZ = main_clib.TIOCGWINSZ;
+pub const RLIMIT_STACK = main_clib.RLIMIT_STACK;
 
-pub const struct_tms = extern struct {
-    tms_utime: c_long,
-    tms_stime: c_long,
-    tms_cutime: c_long,
-    tms_cstime: c_long,
-};
+pub const struct_tms = main_clib.struct_tms;
+pub const struct_winsize = main_clib.struct_winsize;
+pub const struct_rlimit = main_clib.struct_rlimit;
 
-pub const struct_winsize = extern struct {
-    ws_row: c_ushort,
-    ws_col: c_ushort,
-    ws_xpixel: c_ushort,
-    ws_ypixel: c_ushort,
-};
+pub const stdin = main_clib.stdin;
+pub const stdout = main_clib.stdout;
+pub const stderr = main_clib.stderr;
 
-pub const struct_rlimit = extern struct {
-    rlim_cur: u64,
-    rlim_max: u64,
-};
+pub const printf = main_clib.printf;
+pub const fprintf = main_clib.fprintf;
+pub const sprintf = main_clib.sprintf;
+pub const snprintf = main_clib.snprintf;
+pub const fscanf = main_clib.fscanf;
+pub const sscanf = main_clib.sscanf;
+pub const fputs = main_clib.fputs;
+pub const fputc = main_clib.fputc;
+pub const putc = main_clib.putc;
+pub const putchar = main_clib.putchar;
+pub const getc = main_clib.getc;
+pub const getchar = main_clib.getchar;
+pub const ungetc = main_clib.ungetc;
+pub const fopen = main_clib.fopen;
+pub const fdopen = main_clib.fdopen;
+pub const fmemopen = main_clib.fmemopen;
+pub const fclose = main_clib.fclose;
+pub const fread = main_clib.fread;
+pub const fwrite = main_clib.fwrite;
+pub const fgets = main_clib.fgets;
+pub const fileno = main_clib.fileno;
+pub const setbuf = main_clib.setbuf;
+pub const perror = main_clib.perror;
 
-pub fn stdin() ?*FILE {
-    if (builtin.os.tag == .macos) return __stdinp;
-    return @ptrCast(std.c.stdin);
-}
+pub const malloc = main_clib.malloc;
+pub const calloc = main_clib.calloc;
+pub const realloc = main_clib.realloc;
+pub const free = main_clib.free;
+pub const exit = main_clib.exit;
+pub const abort = main_clib.abort;
+pub const getenv = main_clib.getenv;
+pub const system = main_clib.system;
+pub const chdir = main_clib.chdir;
+pub const getcwd = main_clib.getcwd;
+pub const fork = main_clib.fork;
+pub const pipe = main_clib.pipe;
+pub const dup2 = main_clib.dup2;
+pub const close = main_clib.close;
+pub const read = main_clib.read;
+pub const write = main_clib.write;
+pub const open = main_clib.open;
+pub const unlink = main_clib.unlink;
+pub const execl = main_clib.execl;
+pub const wait = main_clib.wait;
+pub const isatty = main_clib.isatty;
+pub const ioctl = main_clib.ioctl;
+pub const times = main_clib.times;
+pub const sysconf = main_clib.sysconf;
+pub const getrlimit = main_clib.getrlimit;
+pub const setrlimit = main_clib.setrlimit;
+pub const geteuid = main_clib.geteuid;
+pub const getegid = main_clib.getegid;
 
-pub fn stdout() ?*FILE {
-    if (builtin.os.tag == .macos) return __stdoutp;
-    return @ptrCast(std.c.stdout);
-}
+pub const strlen = main_clib.strlen;
+pub const strcmp = main_clib.strcmp;
+pub const strncmp = main_clib.strncmp;
+pub const strcpy = main_clib.strcpy;
+pub const strncpy = main_clib.strncpy;
+pub const strcat = main_clib.strcat;
+pub const strncat = main_clib.strncat;
+pub const strchr = main_clib.strchr;
+pub const strrchr = main_clib.strrchr;
+pub const strstr = main_clib.strstr;
+pub const rindex = main_clib.rindex;
 
-pub fn stderr() ?*FILE {
-    if (builtin.os.tag == .macos) return __stderrp;
-    return @ptrCast(std.c.stderr);
-}
+pub const isalpha = main_clib.isalpha;
+pub const isalnum = main_clib.isalnum;
+pub const isdigit = main_clib.isdigit;
+pub const isxdigit = main_clib.isxdigit;
+pub const isspace = main_clib.isspace;
+pub const tolower = main_clib.tolower;
 
-extern var __stdinp: ?*FILE;
-extern var __stdoutp: ?*FILE;
-extern var __stderrp: ?*FILE;
-
-pub extern fn printf(format: [*:0]const u8, ...) c_int;
-pub extern fn fprintf(file: ?*FILE, format: [*:0]const u8, ...) c_int;
-pub extern fn sprintf(buf: [*]u8, format: [*:0]const u8, ...) c_int;
-pub extern fn snprintf(buf: [*]u8, size: usize, format: [*:0]const u8, ...) c_int;
-pub extern fn fscanf(file: ?*FILE, format: [*:0]const u8, ...) c_int;
-pub extern fn sscanf(buf: ?*const anyopaque, format: [*:0]const u8, ...) c_int;
-pub extern fn fputs(s: [*:0]const u8, file: ?*FILE) c_int;
-pub extern fn fputc(ch: c_int, file: ?*FILE) c_int;
-pub extern fn putc(ch: c_int, file: ?*FILE) c_int;
-pub extern fn putchar(ch: c_int) c_int;
-pub extern fn getc(file: ?*FILE) c_int;
-pub extern fn getchar() c_int;
-pub extern fn ungetc(ch: c_int, file: ?*FILE) c_int;
-pub extern fn fopen(path: ?*const anyopaque, mode: [*:0]const u8) ?*FILE;
-pub extern fn fdopen(fd: c_int, mode: [*:0]const u8) ?*FILE;
-pub extern fn fmemopen(buf: ?*anyopaque, size: usize, mode: [*:0]const u8) ?*FILE;
-pub extern fn fclose(file: ?*FILE) c_int;
-pub extern fn fread(ptr: ?*anyopaque, size: usize, nmemb: usize, file: ?*FILE) usize;
-pub extern fn fwrite(ptr: ?*const anyopaque, size: usize, nmemb: usize, file: ?*FILE) usize;
-pub extern fn fgets(buf: [*]u8, size: c_int, file: ?*FILE) ?[*]u8;
-pub extern fn fileno(file: ?*FILE) c_int;
-pub extern fn setbuf(file: ?*FILE, buf: ?[*]u8) void;
-pub extern fn perror(s: [*:0]const u8) void;
-
-pub extern fn malloc(size: usize) ?*anyopaque;
-pub extern fn calloc(nmemb: usize, size: usize) ?*anyopaque;
-pub extern fn realloc(ptr: ?*anyopaque, size: usize) ?*anyopaque;
-pub extern fn free(ptr: ?*anyopaque) void;
-pub extern fn exit(status: c_int) noreturn;
-pub extern fn abort() noreturn;
-pub extern fn getenv(name: ?*const anyopaque) ?[*:0]u8;
-pub extern fn system(cmd: ?*const anyopaque) c_int;
-pub extern fn chdir(path: [*:0]const u8) c_int;
-pub extern fn getcwd(buf: [*]u8, size: usize) ?[*]u8;
-pub extern fn fork() c_int;
-pub extern fn pipe(fds: *[2]c_int) c_int;
-pub extern fn dup2(oldfd: c_int, newfd: c_int) c_int;
-pub extern fn close(fd: c_int) c_int;
-pub extern fn read(fd: c_int, buf: ?*anyopaque, count: usize) isize;
-pub extern fn write(fd: c_int, buf: ?*const anyopaque, count: usize) isize;
-pub extern fn open(path: [*:0]const u8, flags: c_int, ...) c_int;
-pub extern fn unlink(path: [*:0]const u8) c_int;
-pub extern fn execl(path: [*:0]const u8, arg0: [*:0]const u8, ...) c_int;
-pub extern fn wait(status: ?*c_int) c_int;
-pub extern fn isatty(fd: c_int) c_int;
-pub extern fn ioctl(fd: c_int, request: c_ulong, ...) c_int;
-pub extern fn times(buf: *struct_tms) c_long;
-pub extern fn sysconf(name: c_int) c_long;
-pub extern fn getrlimit(resource: c_int, rlp: *struct_rlimit) c_int;
-pub extern fn setrlimit(resource: c_int, rlp: *const struct_rlimit) c_int;
-pub extern fn geteuid() c_uint;
-pub extern fn getegid() c_uint;
-
-pub extern fn strlen(s: ?*const anyopaque) usize;
-pub extern fn strcmp(a: ?*const anyopaque, b: ?*const anyopaque) c_int;
-pub extern fn strncmp(a: ?*const anyopaque, b: ?*const anyopaque, n: usize) c_int;
-pub extern fn strcpy(dst: ?*anyopaque, src: ?*const anyopaque) ?*anyopaque;
-pub extern fn strncpy(dst: ?*anyopaque, src: ?*const anyopaque, n: usize) ?*anyopaque;
-pub extern fn strcat(dst: ?*anyopaque, src: ?*const anyopaque) ?*anyopaque;
-pub extern fn strncat(dst: ?*anyopaque, src: ?*const anyopaque, n: usize) ?*anyopaque;
-pub extern fn strchr(s: ?*const anyopaque, c: c_int) ?[*:0]u8;
-pub extern fn strrchr(s: ?*const anyopaque, c: c_int) ?[*:0]u8;
-pub extern fn strstr(haystack: ?*const anyopaque, needle: ?*const anyopaque) ?[*:0]u8;
-pub extern fn rindex(s: ?*const anyopaque, c: c_int) ?[*:0]u8;
-
-pub extern fn isalpha(ch: c_int) c_int;
-pub extern fn isalnum(ch: c_int) c_int;
-pub extern fn isdigit(ch: c_int) c_int;
-pub extern fn isxdigit(ch: c_int) c_int;
-pub extern fn isspace(ch: c_int) c_int;
-pub extern fn tolower(ch: c_int) c_int;
-
-pub extern fn localtime(timer: *const time_t) ?*extern struct {
-    tm_sec: c_int,
-    tm_min: c_int,
-    tm_hour: c_int,
-    tm_mday: c_int,
-    tm_mon: c_int,
-    tm_year: c_int,
-    tm_wday: c_int,
-    tm_yday: c_int,
-    tm_isdst: c_int,
-};
+pub const localtime = main_clib.localtime;
 
 pub extern fn make(t: u8, x: word, y: word) word;
 pub inline fn cons(x: word, y: word) word {

@@ -248,5 +248,54 @@ pub const abstract_t: Word = 3;
 pub const free_t: Word = 4;
 pub const placeholder_t: Word = 5;
 
-pub var s_in: ?std.fs.File = null;
-pub var s_out: ?std.fs.File = null;
+pub const FILE = struct {
+    fd: c_int = -1,
+    pushback: ?u8 = null,
+    mem_buf: ?[]const u8 = null,
+    mem_pos: usize = 0,
+
+    pub fn readByte(self: *FILE) !u8 {
+        if (self.pushback) |pb| {
+            self.pushback = null;
+            return pb;
+        }
+        if (self.mem_buf) |buf| {
+            if (self.mem_pos < buf.len) {
+                const b = buf[self.mem_pos];
+                self.mem_pos += 1;
+                return b;
+            }
+            return error.EndOfStream;
+        }
+        var buf: [1]u8 = undefined;
+        const n = try std.posix.read(self.fd, &buf);
+        if (n == 0) return error.EndOfStream;
+        return buf[0];
+    }
+
+    pub fn ungetc(self: *FILE, c: u8) void {
+        self.pushback = c;
+    }
+
+    pub fn writeByte(self: *FILE, c: u8) !void {
+        const buf = [1]u8{c};
+        const rc = std.posix.system.write(self.fd, &buf, 1);
+        if (rc < 0) return error.WriteFailed;
+    }
+
+    pub fn writeAll(self: *FILE, slice: []const u8) !void {
+        var written: usize = 0;
+        while (written < slice.len) {
+            const rc = std.posix.system.write(self.fd, slice[written..].ptr, slice.len - written);
+            if (rc < 0) return error.WriteFailed;
+            written += @intCast(rc);
+        }
+    }
+
+    pub fn writeByteNTimes(self: *FILE, c: u8, count: usize) !void {
+        var i: usize = 0;
+        while (i < count) : (i += 1) {
+            try self.writeByte(c);
+        }
+    }
+};

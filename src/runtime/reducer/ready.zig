@@ -58,7 +58,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         clib.HD => {
             reduce.upLeft(ctx);
             if (lastarg(ctx) == clib.NIL) {
-                _ = clib.fprintf(reduce.getStderr().?, "\nATTEMPT TO TAKE hd OF []\n");
+                _ = clib.fprintf(reduce.getStderr().?, "\nATTEMPT TO TAKE hd OF []\n", .{.{}});
                 clib.outstats();
                 clib.exit(1);
             }
@@ -69,7 +69,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         clib.TL => {
             reduce.upLeft(ctx);
             if (lastarg(ctx) == clib.NIL) {
-                _ = clib.fprintf(reduce.getStderr().?, "\nATTEMPT TO TAKE tl OF []\n");
+                _ = clib.fprintf(reduce.getStderr().?, "\nATTEMPT TO TAKE tl OF []\n", .{.{}});
                 clib.outstats();
                 clib.exit(1);
             }
@@ -222,7 +222,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
                 _ = clib.close(fd_a[1]);
                 _ = clib.close(fd_a[0]);
                 _ = clib.fclose(reduce.getStdin().?);
-                _ = clib.execl(shell, shell, "-c", cp, @as(?*anyopaque, null));
+                _ = clib.execl(shell, .{shell, "-c", cp});
             }
             ctx.action = clib.ACT_DONE;
             return;
@@ -285,8 +285,8 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
                 }
                 p[p_idx] = 0;
                 p_idx += 1;
-                if (p_idx > 60 or clib.sscanf(@ptrCast(p), "%lf%c", &d, &junk) != 1 or junk != 0) {
-                    _ = clib.fprintf(reduce.getStderr().?, "\nbad arg for numval: \"%s\"\n", @as([*:0]const u8, @ptrCast(p)));
+                if (p_idx > 60 or clib.sscanf(@ptrCast(p), "%lf%c", .{&d, &junk}) != 1 or junk != 0) {
+                    _ = clib.fprintf(reduce.getStderr().?, "\nbad arg for numval: \"%s\"\n", .{.{@as([*:0]const u8, @ptrCast(p))}});
                     clib.outstats();
                     clib.exit(1);
                 } else {
@@ -304,7 +304,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
             const fil = reduce.getstring(lastarg(ctx), "read");
             const f = clib.fopen(fil, "r");
             if (f == null) {
-                _ = clib.fprintf(reduce.getStderr().?, "\nread, cannot open: \"%s\"\n", fil);
+                _ = clib.fprintf(reduce.getStderr().?, "\nread, cannot open: \"%s\"\n", .{.{fil}});
                 clib.outstats();
                 clib.exit(1);
             }
@@ -319,7 +319,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
             const fil = reduce.getstring(lastarg(ctx), "readb");
             const f = clib.fopen(fil, "r");
             if (f == null) {
-                _ = clib.fprintf(reduce.getStderr().?, "\nreadb, cannot open: \"%s\"\n", fil);
+                _ = clib.fprintf(reduce.getStderr().?, "\nreadb, cannot open: \"%s\"\n", .{.{fil}});
                 clib.outstats();
                 clib.exit(1);
             }
@@ -425,7 +425,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
             }
             const val = clib.get_int(lastarg(ctx));
             if (val < 0 or val > clib.UMAX) {
-                _ = clib.fprintf(reduce.getStderr().?, "\nCHARACTER OUT-OF-RANGE decode(%lld)\n", val);
+                _ = clib.fprintf(reduce.getStderr().?, "\nCHARACTER OUT-OF-RANGE decode(%lld)\n", .{.{val}});
                 clib.outstats();
                 clib.exit(1);
             }
@@ -446,7 +446,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
             reduce.upLeft(ctx);
             if (reduce.is_double(lastarg(ctx))) {
                 const x = clib.get_dbl(lastarg(ctx));
-                _ = clib.sprintf(&linebuf, "%.16g", x);
+                _ = clib.sprintf(&linebuf, "%.16g", .{x});
                 var p_idx: usize = 0;
                 while (clib.isdigit(@intCast(linebuf[p_idx])) != 0) {
                     p_idx += 1;
@@ -466,7 +466,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         clib.SHOWHEX => {
             reduce.upLeft(ctx);
             if (reduce.is_double(lastarg(ctx))) {
-                _ = clib.sprintf(&linebuf, "%a", clib.get_dbl(lastarg(ctx)));
+                _ = clib.sprintf(&linebuf, "%a", .{clib.get_dbl(lastarg(ctx))});
                 reduce.rewrite_to_string(&ctx.e, @ptrCast(&linebuf));
             } else {
                 reduce.simpl(ctx, clib.bigtostrx(lastarg(ctx)));
@@ -734,7 +734,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
                 clib.int_error("showscaled");
             }
             const arg1_int = reduce.getsmallint(ctx.args[0]);
-            _ = clib.sprintf(&linebuf, "%.*e", @as(c_int, @intCast(arg1_int)), reduce.force_dbl(lastarg(ctx)));
+            _ = clib.sprintf(&linebuf, "%.*e", .{@as(c_int, @intCast(arg1_int)), reduce.force_dbl(lastarg(ctx))});
             reduce.rewrite_to_string(&ctx.e, @ptrCast(&linebuf));
             ctx.action = clib.ACT_DONE;
             return;
@@ -746,7 +746,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
                 clib.int_error("showfloat");
             }
             const arg1_int = reduce.getsmallint(ctx.args[0]);
-            _ = clib.sprintf(&linebuf, "%.*f", @as(c_int, @intCast(arg1_int)), reduce.force_dbl(lastarg(ctx)));
+            _ = clib.sprintf(&linebuf, "%.*f", .{@as(c_int, @intCast(arg1_int)), reduce.force_dbl(lastarg(ctx))});
             reduce.rewrite_to_string(&ctx.e, @ptrCast(&linebuf));
             ctx.action = clib.ACT_DONE;
             return;
@@ -824,7 +824,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         else => {
             const tag_val = tag[reduce.clean_ptr(e_val)];
-            _ = clib.fprintf(reduce.getStderr().?, "\nimpossible event in reduce (val: %ld, tag: %d)\n", e_val, tag_val);
+            _ = clib.fprintf(reduce.getStderr().?, "\nimpossible event in reduce (val: %ld, tag: %d)\n", .{.{e_val, tag_val}});
             std.process.exit(1);
         },
     }

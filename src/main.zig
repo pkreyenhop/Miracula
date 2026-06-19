@@ -336,47 +336,14 @@ export fn evaluate_repl(x_in: Word) void {
     // Parent returns here; heap and compiling flag are unchanged.
 }
 
-fn getStdin_helper() ?*clib.FILE {
-    const T = @TypeOf(clib.stdin);
-    if (comptime @typeInfo(T) == .@"fn") {
-        return clib.stdin();
-    } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return clib.stdin();
-    } else {
-        return clib.stdin;
-    }
-}
-
-fn getStdout_helper() ?*clib.FILE {
-    const T = @TypeOf(clib.stdout);
-    if (comptime @typeInfo(T) == .@"fn") {
-        return clib.stdout();
-    } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return clib.stdout();
-    } else {
-        return clib.stdout;
-    }
-}
-
-fn getStderr_helper() ?*clib.FILE {
-    const T = @TypeOf(clib.stderr);
-    if (comptime @typeInfo(T) == .@"fn") {
-        return clib.stderr();
-    } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return clib.stderr();
-    } else {
-        return clib.stderr;
-    }
-}
-
 inline fn getStdin() ?*clib.FILE {
-    return getStdin_helper();
+    return clib.stdin();
 }
 inline fn getStdout() ?*clib.FILE {
-    return getStdout_helper();
+    return clib.stdout();
 }
 inline fn getStderr() ?*clib.FILE {
-    return getStderr_helper();
+    return clib.stderr();
 }
 
 fn fil_time(fil: Word) Word {
@@ -543,7 +510,7 @@ export fn size(input: Word) Word {
 }
 
 export fn filecopy(path: [*:0]const u8) void {
-    const fd = clib.open(path, clib.O_RDONLY);
+    const fd = clib.open(path, clib.O_RDONLY, 0);
     if (fd < 0) return;
     defer _ = clib.close(fd);
 
@@ -556,7 +523,7 @@ export fn filecopy(path: [*:0]const u8) void {
 }
 
 export fn filecp(from: [*:0]const u8, to: [*:0]const u8) void {
-    const f_in = clib.open(from, clib.O_RDONLY);
+    const f_in = clib.open(from, clib.O_RDONLY, 0);
     if (f_in < 0) return;
     defer _ = clib.close(f_in);
 
@@ -598,7 +565,7 @@ export fn checkversion(m: [*:0]const u8) c_int {
     var read_ok: bool = false;
     var r: c_int = 0;
     if (f != null) {
-        if (clib.fscanf(f, "%u", &v1) == 1) {
+        if (clib.fscanf(f, "%u", .{&v1}) == 1) {
             r = if (v1 == version) 1 else 0;
             read_ok = true;
         }
@@ -616,10 +583,10 @@ export fn checkversion(m: [*:0]const u8) c_int {
 
 export fn libfails() void {
     const stderr = getStderr().?;
-    _ = clib.fprintf(stderr, "found");
+    _ = clib.fprintf(stderr, "found", .{.{}});
     var i: usize = 0;
     while (i < mvp) : (i += 1) {
-        _ = clib.fprintf(stderr, "\tversion %s at: %s\n", strvers(vstack[i]), mstack[i]);
+        _ = clib.fprintf(stderr, "\tversion %s at: %s\n", .{.{strvers(vstack[i]), mstack[i]}});
     }
 }
 
@@ -627,7 +594,7 @@ export fn strvers(v: c_int) [*:0]const u8 {
     if (v < 0 or v > 999999) {
         return "???";
     }
-    _ = clib.snprintf(&vbuf, vbuf.len, "%.3f", @as(f64, @floatFromInt(v)) / 1000.0);
+    _ = clib.snprintf(&vbuf, vbuf.len, "%.3f", .{@as(f64, @floatFromInt(v)) / 1000.0});
     return @ptrCast(&vbuf);
 }
 
@@ -777,7 +744,7 @@ export fn rc_read(rcfile: [*:0]const u8) Word {
     if (in == null) return 0;
     defer _ = clib.fclose(in.?);
 
-    if (clib.fscanf(in.?, "%19s", @as([*c]u8, @ptrCast(&z))) != 1) {
+    if (clib.fscanf(in.?, "%19s", .{@as([*c]u8, @ptrCast(&z))}) != 1) {
         return 0;
     }
     const z_slice = std.mem.span(@as([*:0]const u8, @ptrCast(&z)));
@@ -800,7 +767,7 @@ export fn rc_read(rcfile: [*:0]const u8) Word {
                 rc_error = rcfile;
             }
         }
-        if (clib.fscanf(in.?, "%ld%ld%ld%*c", &h_val, &d_val, &v_val) != 3 or getln(in.?, clib.pnlim - 1, @as([*]u8, @ptrCast(&ebuf))) == 0 or badval(h_val) or badval(d_val) or badval(v_val)) {
+        if (clib.fscanf(in.?, "%ld%ld%ld%*c", .{&h_val, &d_val, &v_val}) != 3 or getln(in.?, clib.pnlim - 1, @as([*]u8, @ptrCast(&ebuf))) == 0 or badval(h_val) or badval(d_val) or badval(v_val)) {
             rc_error = rcfile;
         } else {
             editor = @ptrCast(&ebuf);
@@ -810,7 +777,7 @@ export fn rc_read(rcfile: [*:0]const u8) Word {
             oldversion = @intCast(v_val);
         }
     } else if (std.mem.eql(u8, z_slice, "ehdsv")) {
-        if (clib.fscanf(in.?, "%19s%ld%ld%ld%ld", @as([*c]u8, @ptrCast(&ebuf)), &h_val, &d_val, &s_val, &v_val) != 5 or badval(h_val) or badval(d_val) or badval(v_val)) {
+        if (clib.fscanf(in.?, "%19s%ld%ld%ld%ld", .{@as([*c]u8, @ptrCast(&ebuf)), &h_val, &d_val, &s_val, &v_val}) != 5 or badval(h_val) or badval(d_val) or badval(v_val)) {
             rc_error = rcfile;
         } else {
             editor = @ptrCast(&ebuf);
@@ -820,7 +787,7 @@ export fn rc_read(rcfile: [*:0]const u8) Word {
             oldversion = @intCast(v_val);
         }
     } else if (std.mem.eql(u8, z_slice, "ehds")) {
-        if (clib.fscanf(in.?, "%s%ld%ld%ld", @as([*c]u8, @ptrCast(&ebuf)), &h_val, &d_val, &s_val) != 4 or badval(h_val) or badval(d_val)) {
+        if (clib.fscanf(in.?, "%s%ld%ld%ld", .{@as([*c]u8, @ptrCast(&ebuf)), &h_val, &d_val, &s_val}) != 4 or badval(h_val) or badval(d_val)) {
             rc_error = rcfile;
         } else {
             editor = @ptrCast(&ebuf);
@@ -842,50 +809,50 @@ export fn rc_write() void {
     const out = clib.fopen(@ptrCast(&home_rc), "w");
     if (out == null) {
         const stderr = getStderr().?;
-        _ = clib.fprintf(stderr, "warning: cannot write to \"%s\"\n", @as([*:0]const u8, @ptrCast(&home_rc)));
+        _ = clib.fprintf(stderr, "warning: cannot write to \"%s\"\n", .{.{@as([*:0]const u8, @ptrCast(&home_rc))}});
         return;
     }
     defer _ = clib.fclose(out.?);
 
-    _ = clib.fprintf(out.?, "hdve");
+    _ = clib.fprintf(out.?, "hdve", .{.{}});
     if (listing != 0) {
         _ = clib.fputc('l', out.?);
     }
     if (rechecking == 2) {
         _ = clib.fputc('r', out.?);
     }
-    _ = clib.fprintf(out.?, " %ld %ld %d %s\n", SPACELIMIT, DICSPACE, version, editor orelse @constCast(""));
+    _ = clib.fprintf(out.?, " %ld %ld %d %s\n", .{.{SPACELIMIT, DICSPACE, version, editor orelse @constCast("")}});
 }
 
 export var oldversion: c_int = 0;
 
 fn announce() void {
     const w = @divTrunc(twidth() - 50, 2);
-    _ = clib.printf("\n\n");
+    _ = clib.printf("\n\n", .{.{}});
     spaces(w);
-    _ = clib.printf("   T h e   M i r a n d a   S y s t e m\n\n");
+    _ = clib.printf("   T h e   M i r a n d a   S y s t e m\n\n", .{.{}});
     spaces(w + 5 - @divTrunc(@as(Word, @intCast(clib.strlen(vdate))), 2));
-    _ = clib.printf("  version %s last revised %s\n\n", strvers(version), vdate);
+    _ = clib.printf("  version %s last revised %s\n\n", .{.{strvers(version), vdate}});
     spaces(w);
-    _ = clib.printf("Copyright Research Software Ltd 1985-2020\n\n");
+    _ = clib.printf("Copyright Research Software Ltd 1985-2020\n\n", .{.{}});
     spaces(w);
-    _ = clib.printf("  World Wide Web: http://miranda.org.uk\n\n\n");
+    _ = clib.printf("  World Wide Web: http://miranda.org.uk\n\n\n", .{.{}});
     if (SPACELIMIT != 2500000) {
-        _ = clib.printf("(%ld cells)\n", SPACELIMIT);
+        _ = clib.printf("(%ld cells)\n", .{.{SPACELIMIT}});
     }
     if (strictif == 0) {
-        _ = clib.printf("(-nostrictif : deprecated!)\n");
+        _ = clib.printf("(-nostrictif : deprecated!)\n", .{.{}});
     }
     if (oldversion < 1999) {
-        _ = clib.printf("WARNING:\na new release of Miranda has been installed since you last used\nthe system - please read the `CHANGES' section of the /man pages !!!\n\n");
+        _ = clib.printf("WARNING:\na new release of Miranda has been installed since you last used\nthe system - please read the `CHANGES' section of the /man pages !!!\n\n", .{.{}});
     } else if (version > oldversion) {
-        _ = clib.printf("a new version of Miranda has been installed since you last\nused the system - see under `CHANGES' in the /man pages\n\n");
+        _ = clib.printf("a new version of Miranda has been installed since you last\nused the system - see under `CHANGES' in the /man pages\n\n", .{.{}});
     }
     if (version < oldversion) {
-        _ = clib.printf("warning - this is an older version of Miranda than the one\nyou last used on this machine!!\n\n");
+        _ = clib.printf("warning - this is an older version of Miranda than the one\nyou last used on this machine!!\n\n", .{.{}});
     }
     if (rc_error) |rc_err| {
-        _ = clib.printf("warning: \"%s\" contained bad data (ignored)\n", rc_err);
+        _ = clib.printf("warning: \"%s\" contained bad data (ignored)\n", .{.{rc_err}});
     }
 }
 
@@ -901,9 +868,9 @@ export fn commandloop(initscript: [*:0]u8) void {
             undump(initscript);
             if (files == NIL or ND != NIL or id_val(main_id) == clib.UNDEF) {
                 if (files != NIL and ND == NIL and id_val(main_id) == clib.UNDEF) {
-                    _ = clib.fprintf(getStderr(), "%s: main not defined\n", initscript);
+                    _ = clib.fprintf(getStderr(), "%s: main not defined\n", .{.{initscript}});
                 }
-                _ = clib.fprintf(getStderr(), "mira: incorrect use of \"-exec\" flag\n");
+                _ = clib.fprintf(getStderr(), "mira: incorrect use of \"-exec\" flag\n", .{.{}});
                 clib.exit(1);
             }
             magic = 0;
@@ -913,14 +880,14 @@ export fn commandloop(initscript: [*:0]u8) void {
         _ = signals(clib.SIGINT, @intFromPtr(&reset));
         undump(initscript);
         if (verbosity != 0) {
-            _ = clib.printf("for help type /h\n");
+            _ = clib.printf("for help type /h\n", .{.{}});
         }
     }
 
     while (true) {
         resetgcstats();
         if (verbosity != 0) {
-            _ = clib.printf("%s", promptstr);
+            _ = clib.printf("%s", .{.{promptstr}});
         }
         ch = clib.getchar();
         if (rechecking != 0 and src_update() != 0) {
@@ -936,7 +903,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                     var x: Word = undefined;
                     var aka: ?[*:0]u8 = null;
                     if (token() == null and lastid == 0) {
-                        _ = clib.printf("\x07identifier needed after `??'\n");
+                        _ = clib.printf("\x07identifier needed after `??'\n", .{.{}});
                         ch = clib.getchar();
                         continue;
                     }
@@ -951,7 +918,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                     if (dicp[0] != 0) {
                         x = clib.findid(dicp);
                     } else {
-                        _ = clib.printf("??%s\n", get_id(lastid));
+                        _ = clib.printf("??%s\n", .{.{get_id(lastid)}});
                         x = lastid;
                     }
                     if (x == NIL or id_type(x) == clib.undef_t) {
@@ -960,7 +927,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                         continue;
                     }
                     if (id_who(x) == NIL) {
-                        _ = clib.printf("%s -- primitive to Miranda\n", if (dicp[0] != 0) dicp else get_id(lastid));
+                        _ = clib.printf("%s -- primitive to Miranda\n", .{.{if (dicp[0] != 0) dicp else get_id(lastid)}});
                         lastid = 0;
                         continue;
                     }
@@ -971,7 +938,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                         x = t(x);
                     }
                     if (aka != null) {
-                        _ = clib.printf("originally defined as \"%s\"\n", aka.?);
+                        _ = clib.printf("originally defined as \"%s\"\n", .{.{aka.?}});
                     }
                     editfile(@ptrFromInt(@as(usize, @intCast(h(x)))), @intCast(t(x)));
                 } else {
@@ -1019,19 +986,19 @@ export fn commandloop(initscript: [*:0]u8) void {
                         while (pid != clib.wait(null)) {}
                         _ = signals(clib.SIGINT, oldsig);
                     } else { // child
-                        _ = clib.execl(shell.?, shell.?, "-c", lb.?, @as(?*anyopaque, null));
+                        _ = clib.execl(shell.?, .{shell.?, "-c", lb.?});
                     }
                     if (src_update() != 0) {
                         loadfile(current_script.?);
                     }
                 } else {
-                    _ = clib.printf("No previous shell command to substitute for \"!\"\n");
+                    _ = clib.printf("No previous shell command to substitute for \"!\"\n", .{.{}});
                 }
             },
             '|' => {
                 ch = clib.getchar();
                 if (ch != '|') {
-                    _ = clib.printf("\x07unknown command - type /h for help\n");
+                    _ = clib.printf("\x07unknown command - type /h for help\n", .{.{}});
                 }
                 while (ch != '\n' and ch != clib.EOF) {
                     ch = clib.getchar();
@@ -1040,7 +1007,7 @@ export fn commandloop(initscript: [*:0]u8) void {
             '\n' => {},
             clib.EOF => {
                 if (verbosity != 0) {
-                    _ = clib.printf("\nmiranda logout\n");
+                    _ = clib.printf("\nmiranda logout\n", .{.{}});
                 }
                 clib.exit(0);
             },
@@ -1057,7 +1024,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                 if (SYNERR != 0) {
                     SYNERR = 0;
                 } else if (c != '\n') {
-                    _ = clib.printf("syntax error\n");
+                    _ = clib.printf("syntax error\n", .{.{}});
                     while (c != '\n' and c != clib.EOF) {
                         c = clib.getchar();
                     }
@@ -1110,9 +1077,9 @@ export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
             if (t1 == clib.wrong_t) {
                 lastexp = clib.UNDEF;
             } else if (clib.subsumes(clib.instantiate(t1), t_val) == 0) {
-                _ = clib.printf("data has wrong type :: ");
+                _ = clib.printf("data has wrong type :: ", .{.{}});
                 clib.out_type(t1);
-                _ = clib.printf("\nshould be :: ");
+                _ = clib.printf("\nshould be :: ", .{.{}});
                 clib.out_type(t_val);
                 _ = clib.putc('\n', getStdout());
                 lastexp = clib.UNDEF;
@@ -1122,12 +1089,12 @@ export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
             return clib.codegen(lastexp);
         }
         if (clib.isatty(clib.fileno(f)) != 0) {
-            _ = clib.printf("please re-enter data:\n");
+            _ = clib.printf("please re-enter data:\n", .{.{}});
         } else {
             if (fil != 0) {
-                _ = clib.fprintf(getStderr(), "readvals: bad data in file \"%s\"\n", clib.getstring(fil, @constCast("")));
+                _ = clib.fprintf(getStderr(), "readvals: bad data in file \"%s\"\n", .{.{clib.getstring(fil, @constCast(""))}});
             } else {
-                _ = clib.fprintf(getStderr(), "bad data in $+ input\n");
+                _ = clib.fprintf(getStderr(), "bad data in $+ input\n", .{.{}});
             }
             clib.outstats();
             clib.exit(1);
@@ -1136,7 +1103,7 @@ export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
 }
 
 fn ed_warn() void {
-    _ = clib.printf("The currently installed editor command, \"%s\", does not\ninclude a facility for opening a file at a specified line number.  As a\nresult the `??' command and certain other features of the Miranda system\nare disabled.  See manual section 31/5 on changing the editor for more\ninformation.\n", editor orelse @constCast(""));
+    _ = clib.printf("The currently installed editor command, \"%s\", does not\ninclude a facility for opening a file at a specified line number.  As a\nresult the `??' command and certain other features of the Miranda system\nare disabled.  See manual section 31/5 on changing the editor for more\ninformation.\n", .{.{editor orelse @constCast("")}});
 }
 
 fn src_update() c_int {
@@ -1161,7 +1128,7 @@ export fn reset() void {
     }
     if (loading != 0) {
         if (blankerr == 0) {
-            _ = clib.fprintf(getStderr(), "\n<<compilation interrupted>>\n");
+            _ = clib.fprintf(getStderr(), "\n<<compilation interrupted>>\n", .{.{}});
         }
         if (unlinkme) |u| {
             _ = clib.unlink(u);
@@ -1178,7 +1145,7 @@ export fn reset() void {
             makedump();
         }
     } else {
-        _ = clib.fprintf(getStderr(), "<<interrupt>>\n");
+        _ = clib.fprintf(getStderr(), "<<interrupt>>\n", .{.{}});
     }
     reset_state();
     if (collecting != 0) {
@@ -1192,10 +1159,10 @@ export fn reset() void {
 }
 
 fn v_info(full: c_int) void {
-    _ = clib.printf("%s last revised %s\n", strvers(version), vdate);
+    _ = clib.printf("%s last revised %s\n", .{.{strvers(version), vdate}});
     if (full == 0) return;
-    _ = clib.printf("%s", host);
-    _ = clib.printf("XVERSION %u\n", @as(c_uint, clib.XVERSION));
+    _ = clib.printf("%s", .{.{host}});
+    _ = clib.printf("XVERSION %u\n", .{.{@as(c_uint, clib.XVERSION)}});
 }
 
 fn command() void {
@@ -1227,7 +1194,7 @@ fn command() void {
                 }
                 if (clib.getchar() != '\n') return;
                 if (clib.chdir(d.?) == -1) {
-                    _ = clib.printf("cannot cd to %s\n", d.?);
+                    _ = clib.printf("cannot cd to %s\n", .{.{d.?}});
                 } else if (src_update() != 0) {
                     undump(current_script.?);
                 }
@@ -1238,16 +1205,16 @@ fn command() void {
             if (is("dic")) {
                 if (token() == null) {
                     lose = clib.getchar();
-                    _ = clib.printf("%ld chars", DICSPACE);
+                    _ = clib.printf("%ld chars", .{.{DICSPACE}});
                     if (DICSPACE != 100000) {
-                        _ = clib.printf(" (default=%ld)", @as(c_long, 100000));
+                        _ = clib.printf(" (default=%ld)", .{.{@as(c_long, 100000)}});
                     }
-                    _ = clib.printf(" %ld in use\n", @as(c_long, @intCast(@intFromPtr(dicq) - @intFromPtr(dic.?))));
+                    _ = clib.printf(" %ld in use\n", .{.{@as(c_long, @intCast(@intFromPtr(dicq) - @intFromPtr(dic.?)))}});
                     return;
                 }
                 if (clib.getchar() != '\n') return;
-                _ = clib.printf("sorry, cannot change size of dictionary while in use\n");
-                _ = clib.printf("(/q and reinvoke with flag: mira -dic %s ... )\n", dicp);
+                _ = clib.printf("sorry, cannot change size of dictionary while in use\n", .{.{}});
+                _ = clib.printf("(/q and reinvoke with flag: mira -dic %s ... )\n", .{.{dicp}});
                 return;
             }
         },
@@ -1285,7 +1252,7 @@ fn command() void {
                         mf = mirahdr;
                     }
                     if (mf != null and t_val != current_script) {
-                        _ = clib.printf("open new script \"%s\"? [ny]", t_val.?);
+                        _ = clib.printf("open new script \"%s\"? [ny]", .{.{t_val.?}});
                         ch1 = clib.getchar();
                         ch = ch1;
                         while (ch != '\n' and ch != clib.EOF) {
@@ -1309,7 +1276,7 @@ fn command() void {
                     return;
                 }
                 if (hold[0] == 0) {
-                    _ = clib.printf("%s\n", editor orelse @constCast(""));
+                    _ = clib.printf("%s\n", .{.{editor orelse @constCast("")}});
                     return;
                 }
                 var h_ptr = hold + clib.strlen(hold);
@@ -1318,17 +1285,17 @@ fn command() void {
                     h_ptr[0] = 0;
                 }
                 if (hold[0] == '"' or hold[0] == '\'') {
-                    _ = clib.printf("please type name of editor without quotation marks\n");
+                    _ = clib.printf("please type name of editor without quotation marks\n", .{.{}});
                     return;
                 }
-                _ = clib.printf("change editor to: \"%s\"? [ny]", hold);
+                _ = clib.printf("change editor to: \"%s\"? [ny]", .{.{hold}});
                 ch1 = clib.getchar();
                 ch = ch1;
                 while (ch != '\n' and ch != clib.EOF) {
                     ch = clib.getchar();
                 }
                 if (ch1 != 'y' and ch1 != 'Y') {
-                    _ = clib.printf("editor not changed\n");
+                    _ = clib.printf("editor not changed\n", .{.{}});
                     return;
                 }
                 _ = clib.strcpy(&ebuf, hold);
@@ -1336,7 +1303,7 @@ fn command() void {
                 fixeditor();
                 echoing = verbosity & listing;
                 rc_write();
-                _ = clib.printf("editor = %s\n", editor orelse @constCast(""));
+                _ = clib.printf("editor = %s\n", .{.{editor orelse @constCast("")}});
                 return;
             }
         },
@@ -1365,7 +1332,7 @@ fn command() void {
                         loadfile(t_val.?);
                     }
                 } else {
-                    _ = clib.printf("%s%s\n", current_script.?, @as([*:0]const u8, if (files == NIL) " (not loaded)" else ""));
+                    _ = clib.printf("%s%s\n", .{.{current_script.?, @as([*:0]const u8, if (files == NIL) " (not loaded)" else "")}});
                 }
                 return;
             }
@@ -1373,7 +1340,7 @@ fn command() void {
                 if (clib.getchar() != '\n') return;
                 var f = files;
                 while (f != NIL) : (f = t(f)) {
-                    _ = clib.printf("(%s,%ld,%ld)", get_fil(h(f)), fil_time(h(f)), fil_share(h(f)));
+                    _ = clib.printf("(%s,%ld,%ld)", .{.{get_fil(h(f)), fil_time(h(f)), fil_share(h(f))}});
                     clib.printlist(@constCast(""), fil_defs(h(f)));
                 }
                 return;
@@ -1408,7 +1375,7 @@ fn command() void {
                 }
                 ch = clib.getchar();
                 if (i == 0) {
-                    _ = clib.printf("\x07extra characters at end of command\n");
+                    _ = clib.printf("\x07extra characters at end of command\n", .{.{}});
                 }
                 return;
             }
@@ -1432,26 +1399,26 @@ fn command() void {
                 var x: c_long = undefined;
                 if (token() == null) {
                     lose = clib.getchar();
-                    _ = clib.printf("%ld cells", SPACELIMIT);
+                    _ = clib.printf("%ld cells", .{.{SPACELIMIT}});
                     if (SPACELIMIT != 2500000) {
-                        _ = clib.printf(" (default=%ld)", @as(c_long, 2500000));
+                        _ = clib.printf(" (default=%ld)", .{.{@as(c_long, 2500000)}});
                     }
-                    _ = clib.printf("\n");
+                    _ = clib.printf("\n", .{.{}});
                     return;
                 }
                 if (clib.getchar() != '\n') return;
-                if (clib.sscanf(dicp, "%ld", &x) != 1 or badval(x)) {
-                    _ = clib.printf("illegal value (heap unchanged)\n");
+                if (clib.sscanf(dicp, "%ld", .{&x}) != 1 or badval(x)) {
+                    _ = clib.printf("illegal value (heap unchanged)\n", .{.{}});
                     return;
                 }
                 if (x < clib.trueheapsize()) {
-                    _ = clib.printf("sorry, cannot shrink heap to %ld at this time\n", x);
+                    _ = clib.printf("sorry, cannot shrink heap to %ld at this time\n", .{.{x}});
                 } else {
                     if (x != SPACELIMIT) {
                         SPACELIMIT = x;
                         clib.resetheap();
                     }
-                    _ = clib.printf("heaplimit = %ld cells\n", SPACELIMIT);
+                    _ = clib.printf("heaplimit = %ld cells\n", .{.{SPACELIMIT}});
                     rc_write();
                 }
                 return;
@@ -1480,7 +1447,7 @@ fn command() void {
             }
             if (is("miralib")) {
                 if (clib.getchar() != '\n') return;
-                _ = clib.printf("%s\n", miralib.?);
+                _ = clib.printf("%s\n", .{.{miralib.?}});
                 return;
             }
         },
@@ -1519,7 +1486,7 @@ fn command() void {
             if (is("q") or is("quit")) {
                 if (clib.getchar() != '\n') return;
                 if (verbosity != 0) {
-                    _ = clib.printf("miranda logout\n");
+                    _ = clib.printf("miranda logout\n", .{.{}});
                 }
                 clib.exit(0);
             }
@@ -1535,30 +1502,30 @@ fn command() void {
         's' => {
             if (is("s") or is("settings")) {
                 if (clib.getchar() != '\n') return;
-                _ = clib.printf("*\theap %ld\n", SPACELIMIT);
-                _ = clib.printf("*\tdic %ld\n", DICSPACE);
-                _ = clib.printf("*\teditor = %s\n", editor orelse @constCast(""));
-                _ = clib.printf("*\t%slist\n", @as([*:0]const u8, if (listing != 0) "" else "no"));
-                _ = clib.printf("*\t%srecheck\n", @as([*:0]const u8, if (rechecking != 0) "" else "no"));
+                _ = clib.printf("*\theap %ld\n", .{.{SPACELIMIT}});
+                _ = clib.printf("*\tdic %ld\n", .{.{DICSPACE}});
+                _ = clib.printf("*\teditor = %s\n", .{.{editor orelse @constCast("")}});
+                _ = clib.printf("*\t%slist\n", .{.{@as([*:0]const u8, if (listing != 0) "" else "no")}});
+                _ = clib.printf("*\t%srecheck\n", .{.{@as([*:0]const u8, if (rechecking != 0) "" else "no")}});
                 if (strictif == 0) {
-                    _ = clib.printf("\t-nostrictif (deprecated!)\n");
+                    _ = clib.printf("\t-nostrictif (deprecated!)\n", .{.{}});
                 }
                 if (atcount != 0) {
-                    _ = clib.printf("\tcount\n");
+                    _ = clib.printf("\tcount\n", .{.{}});
                 }
                 if (atgc != 0) {
-                    _ = clib.printf("\tgc\n");
+                    _ = clib.printf("\tgc\n", .{.{}});
                 }
                 if (UTF8 != 0) {
-                    _ = clib.printf("\tUTF-8 i/o\n");
+                    _ = clib.printf("\tUTF-8 i/o\n", .{.{}});
                 }
                 if (verbosity == 0) {
-                    _ = clib.printf("\thush\n");
+                    _ = clib.printf("\thush\n", .{.{}});
                 }
                 if (debug != 0) {
-                    _ = clib.printf("\tdebug 0%o\n", debug);
+                    _ = clib.printf("\tdebug 0%o\n", .{.{debug}});
                 }
-                _ = clib.printf("\n* items remembered between sessions\n");
+                _ = clib.printf("\n* items remembered between sessions\n", .{.{}});
                 return;
             }
         },
@@ -1582,7 +1549,7 @@ fn command() void {
 }
 
 fn manaction() void {
-    _ = clib.sprintf(&linebuf, "\"%s/menudriver\" \"%s/manual\"", miralib.?, miralib.?);
+    _ = clib.sprintf(&linebuf, "\"%s/menudriver\" \"%s/manual\"", .{miralib.?, miralib.?});
     _ = clib.system(&linebuf);
 }
 
@@ -1605,7 +1572,7 @@ fn editfile(t_val: [*:0]const u8, line: c_int) void {
             q += 1;
         } else if ((p - 1)[0] == '!') {
             p -= 1;
-            _ = clib.sprintf(p, "%d", line_val);
+            _ = clib.sprintf(p, "%d", .{line_val});
             p += clib.strlen(p);
         } else if ((p - 1)[0] == '%') {
             (p - 1)[0] = '"';
@@ -1641,7 +1608,7 @@ fn editfile(t_val: [*:0]const u8, line: c_int) void {
 
 fn xschars() void {
     var ch: c_int = undefined;
-    _ = clib.printf("\x07extra characters at end of command\n");
+    _ = clib.printf("\x07extra characters at end of command\n", .{.{}});
     while (true) {
         ch = clib.getchar();
         if (ch == '\n' or ch == clib.EOF) break;
@@ -1657,9 +1624,9 @@ fn filequote(p: [*:0]const u8) void {
         }
     }
     if (clib.strncmp(p, &PRELUDE, filequote_mlen) == 0) {
-        _ = clib.printf("<%s>", p + filequote_mlen);
+        _ = clib.printf("<%s>", .{.{p + filequote_mlen}});
     } else {
-        _ = clib.printf("\"%s\"", p);
+        _ = clib.printf("\"%s\"", .{.{p}});
     }
 }
 
@@ -1678,32 +1645,32 @@ fn finger(n: [*:0]const u8) void {
         }
         clib.report_type(x);
         if (id_who(x) == NIL) {
-            _ = clib.printf(" ||primitive to Miranda\n");
+            _ = clib.printf(" ||primitive to Miranda\n", .{.{}});
         } else {
             const aka = clib.getaka(x);
             const aka_opt: ?[*:0]const u8 = if (clib.strcmp(aka, get_id(x)) == 0) null else aka;
             if (id_val(x) == clib.UNDEF and id_type(x) != clib.wrong_t) {
-                _ = clib.printf(" ||(UNDEFINED) specified in ");
+                _ = clib.printf(" ||(UNDEFINED) specified in ", .{.{}});
             } else if (id_val(x) == clib.FREE) {
-                _ = clib.printf(" ||(FREE) specified in ");
+                _ = clib.printf(" ||(FREE) specified in ", .{.{}});
             } else if (id_type(x) == clib.type_t and t_class(x) == clib.free_t) {
-                _ = clib.printf(" ||(free type) specified in ");
+                _ = clib.printf(" ||(free type) specified in ", .{.{}});
             } else {
                 const class_str: [*:0]const u8 = if (id_type(x) == clib.type_t and t_class(x) == clib.abstract_t) "(abstract type) " else if (id_type(x) == clib.type_t and t_class(x) == clib.algebraic_t) "(algebraic type) " else if (id_type(x) == clib.type_t and t_class(x) == clib.placeholder_t) "(placeholder type) " else if (id_type(x) == clib.type_t and t_class(x) == clib.synonym_t) "(synonym type) " else "";
-                _ = clib.printf(" ||%sdefined in ", class_str);
+                _ = clib.printf(" ||%sdefined in ", .{.{class_str}});
             }
             filequote(s.?);
             if (baded != 0 or rechecking != 0) {
-                _ = clib.printf(" line %ld", line);
+                _ = clib.printf(" line %ld", .{.{line}});
             }
             if (aka_opt) |aka_s| {
-                _ = clib.printf(" (as \"%s\")\n", aka_s);
+                _ = clib.printf(" (as \"%s\")\n", .{.{aka_s}});
             } else {
                 _ = clib.putchar('\n');
             }
         }
         if (atobject != 0) {
-            _ = clib.printf("%s = ", get_id(x));
+            _ = clib.printf("%s = ", .{.{get_id(x)}});
             clib.out(getStdout(), id_val(x));
             _ = clib.putchar('\n');
         }
@@ -1720,7 +1687,7 @@ fn diagnose(n: [*:0]const u8) void {
         }
     }
     if (n[i] != 0) {
-        _ = clib.printf("\"%s\" -- not an identifier\n", n);
+        _ = clib.printf("\"%s\" -- not an identifier\n", .{.{n}});
         return;
     }
     const presym = [_][*:0]const u8{
@@ -1729,11 +1696,11 @@ fn diagnose(n: [*:0]const u8) void {
     const presym_n = [_]c_int{ 21, 8, 15, 8, 15, 31, 23, 22, 15, 21 };
     inline for (presym, presym_n) |sym, sym_n| {
         if (clib.strcmp(n, sym) == 0) {
-            _ = clib.printf("%s -- keyword (see manual, section %d)\n", n, sym_n);
+            _ = clib.printf("%s -- keyword (see manual, section %d)\n", .{.{n, sym_n}});
             return;
         }
     }
-    _ = clib.printf("identifier \"%s\" not in scope\n", n);
+    _ = clib.printf("identifier \"%s\" not in scope\n", .{.{n}});
 }
 
 fn allnamescom() void {
@@ -1758,7 +1725,7 @@ fn allnamescom() void {
         y = t(y);
     }
     if (x != NIL) {
-        _ = clib.printf("WARNING, SCRIPT CONTAINS TYPE ERRORS: ");
+        _ = clib.printf("WARNING, SCRIPT CONTAINS TYPE ERRORS: ", .{.{}});
         while (x != NIL) : (x = t(x)) {
             if (id_type(h(x)) != clib.undef_t) {
                 if (z == 0) {
@@ -1769,10 +1736,10 @@ fn allnamescom() void {
                 clib.out(getStdout(), h(x));
             }
         }
-        _ = clib.printf(";\n");
+        _ = clib.printf(";\n", .{.{}});
     }
     if (y != NIL) {
-        _ = clib.printf("%s UNDEFINED NAMES: ", @as([*:0]const u8, if (z != 0) "AND" else "WARNING, SCRIPT CONTAINS"));
+        _ = clib.printf("%s UNDEFINED NAMES: ", .{.{@as([*:0]const u8, if (z != 0) "AND" else "WARNING, SCRIPT CONTAINS")}});
         z = 0;
         while (y != NIL) : (y = t(y)) {
             if (id_type(h(y)) == clib.undef_t) {
@@ -1784,7 +1751,7 @@ fn allnamescom() void {
                 clib.out(getStdout(), h(y));
             }
         }
-        _ = clib.printf(";\n");
+        _ = clib.printf(";\n", .{.{}});
     }
 }
 
@@ -1809,9 +1776,9 @@ fn namescom(l: Word) void {
     if (get_fil(l)) |gf| {
         filequote(gf);
     } else {
-        _ = clib.printf("primitive:");
+        _ = clib.printf("primitive:", .{.{}});
     }
-    _ = clib.printf("\n");
+    _ = clib.printf("\n", .{.{}});
     while (n != NIL) {
         if (id_type(h(n)) == clib.wrong_t or id_val(h(n)) != clib.UNDEF) {
             const w = @as(Word, @intCast(clib.strlen(get_id(h(n)))));
@@ -1824,7 +1791,7 @@ fn namescom(l: Word) void {
                     i = @divTrunc(@as(Word, @intCast(scrwd)) - col_local, @as(Word, @intCast(wp - 1)));
                     r = @mod(@as(Word, @intCast(scrwd)) - col_local, @as(Word, @intCast(wp - 1)));
                 } else {
-                    _ = clib.fprintf(getStderr(), "Internal error: i and r used uninitialized in namescom()\nPlease report it to miranda@groups.io\n");
+                    _ = clib.fprintf(getStderr(), "Internal error: i and r used uninitialized in namescom()\nPlease report it to miranda@groups.io\n", .{.{}});
                     clib.abort();
                 }
                 if (i + (if (r > 0) @as(Word, 1) else 0) > 3) { // tolerance is 3
@@ -1834,7 +1801,7 @@ fn namescom(l: Word) void {
                 if (leftist != 0) {
                     col_local = 0;
                     while (col_local < wp) {
-                        _ = clib.printf("%s", get_id(words[@as(usize, @intCast(col_local))]));
+                        _ = clib.printf("%s", .{.{get_id(words[@as(usize, @intCast(col_local))])}});
                         col_local += 1;
                         if (col_local < wp) {
                             spaces(1 + i + if (r > 0) @as(Word, 1) else @as(Word, 0));
@@ -1845,7 +1812,7 @@ fn namescom(l: Word) void {
                     r = @as(Word, @intCast(wp)) - 1 - r;
                     col_local = 0;
                     while (col_local < wp) {
-                        _ = clib.printf("%s", get_id(words[@as(usize, @intCast(col_local))]));
+                        _ = clib.printf("%s", .{.{get_id(words[@as(usize, @intCast(col_local))])}});
                         col_local += 1;
                         if (col_local < wp) {
                             spaces(1 + i + if (r <= 0) @as(Word, 1) else @as(Word, 0));
@@ -1869,7 +1836,7 @@ fn namescom(l: Word) void {
     if (wp > 0) {
         col_local = 0;
         while (col_local < wp) {
-            _ = clib.printf("%s", get_id(words[@as(usize, @intCast(col_local))]));
+            _ = clib.printf("%s", .{.{get_id(words[@as(usize, @intCast(col_local))])}});
             col_local += 1;
             _ = clib.putc(if (col_local == wp) '\n' else ' ', getStdout());
         }
@@ -1890,18 +1857,18 @@ fn loadfile(t_val: [*:0]const u8) void {
 
     if (!fileExists(t_val)) {
         if (initialising != 0) {
-            _ = clib.fprintf(getStderr(), "panic: %s not found\n", t_val);
+            _ = clib.fprintf(getStderr(), "panic: %s not found\n", .{.{t_val}});
             clib.exit(1);
         }
         if (verbosity != 0) {
-            _ = clib.printf("new file %s\n", t_val);
+            _ = clib.printf("new file %s\n", .{.{t_val}});
         }
         if (magic != 0) {
-            _ = clib.fprintf(getStderr(), "mira -exec %s: no such file\n", t_val);
+            _ = clib.fprintf(getStderr(), "mira -exec %s: no such file\n", .{.{t_val}});
             clib.exit(1);
         }
         if (making != 0 and ideep == 0) {
-            _ = clib.printf("mira -make %s: no such file\n", t_val);
+            _ = clib.printf("mira -make %s: no such file\n", .{.{t_val}});
         } else {
             oldfiles = cons(make_fil(t_val, 0, 0, NIL), NIL);
         }
@@ -1911,10 +1878,10 @@ fn loadfile(t_val: [*:0]const u8) void {
 
     if (clib.openfile(@constCast(t_val)) == 0) {
         if (initialising != 0) {
-            _ = clib.fprintf(getStderr(), "panic: cannot open %s\n", t_val);
+            _ = clib.fprintf(getStderr(), "panic: cannot open %s\n", .{.{t_val}});
             clib.exit(1);
         }
-        _ = clib.printf("cannot open %s\n", t_val);
+        _ = clib.printf("cannot open %s\n", .{.{t_val}});
         oldfiles = cons(make_fil(t_val, 0, 0, NIL), NIL);
         loading = 0;
         return;
@@ -1939,7 +1906,7 @@ fn loadfile(t_val: [*:0]const u8) void {
 
     commandmode = 0;
     if (verbosity != 0 or making != 0) {
-        _ = clib.printf("compiling %s\n", t_val);
+        _ = clib.printf("compiling %s\n", .{.{t_val}});
     }
     nextpn = 0;
     embargoes = NIL;
@@ -1977,13 +1944,13 @@ fn loadfile(t_val: [*:0]const u8) void {
                 }
                 if (count != 1) {
                     SYNERR = 1;
-                    _ = clib.printf("illegal fileid \"%s\" in export list (%s)\n", @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(s))))), @as([*:0]const u8, if (count != 0) "ambiguous" else "not %%included in script"));
+                    _ = clib.printf("illegal fileid \"%s\" in export list (%s)\n", .{.{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(s))))), @as([*:0]const u8, if (count != 0) "ambiguous" else "not %%included in script")}});
                 }
             }
         }
         if (SYNERR != 0) {
             clib.sayhere(h(exports), 1);
-            _ = clib.fprintf(getStderr().?, "compilation abandoned\n");
+            _ = clib.fprintf(getStderr().?, "compilation abandoned\n", .{.{}});
         }
     }
 
@@ -1995,7 +1962,7 @@ fn loadfile(t_val: [*:0]const u8) void {
 
     if (SYNERR == 0) {
         if (verbosity != 0 or (making != 0 and mkexports == 0 and mksources == 0)) {
-            _ = clib.printf("checking types in %s\n", t_val);
+            _ = clib.printf("checking types in %s\n", .{.{t_val}});
         }
         clib.checktypes();
     }
@@ -2036,15 +2003,15 @@ fn loadfile(t_val: [*:0]const u8) void {
             }
 
             if (exports == NIL) {
-                _ = clib.printf("warning, export list has void contents\n");
+                _ = clib.printf("warning, export list has void contents\n", .{.{}});
             } else {
                 exports = clib.append1(alfasort(c_ctr), exports);
             }
 
             if (n != NIL) {
-                _ = clib.printf("redundant entry in export list:");
+                _ = clib.printf("redundant entry in export list:", .{.{}});
                 while (n != NIL) : (n = t(n)) {
-                    _ = clib.printf(" -%s", get_id(h(n)));
+                    _ = clib.printf(" -%s", .{.{get_id(h(n))}});
                 }
                 _ = clib.putchar('\n');
             }
@@ -2121,7 +2088,7 @@ fn loadfile(t_val: [*:0]const u8) void {
     if (exports != NIL and bereaved != NIL) {
         const b = clib.intersection(bereaved, clib.newtyps);
         if (b != NIL) {
-            _ = clib.printf("warning, export list is incomplete - missing typename: ");
+            _ = clib.printf("warning, export list is incomplete - missing typename: ", .{.{}});
             clib.printlist(@constCast(""), b);
         }
         if (b != NIL and h_val != NIL) {
@@ -2135,7 +2102,7 @@ fn loadfile(t_val: [*:0]const u8) void {
             detrop = t(detrop);
         }
         if (detrop != NIL) {
-            _ = clib.printf("warning, script contains unused local definitions:-\n");
+            _ = clib.printf("warning, script contains unused local definitions:-\n", .{.{}});
         }
         while (detrop != NIL) {
             clib.out_here(getStdout(), h(h(t(dval(h(detrop))))), 0);
@@ -2153,7 +2120,7 @@ fn loadfile(t_val: [*:0]const u8) void {
             gd_mut = t(gd_mut);
         }
         if (gd_mut != NIL) {
-            _ = clib.printf("warning, grammar contains unused nonterminals:-\n");
+            _ = clib.printf("warning, grammar contains unused nonterminals:-\n", .{.{}});
         }
         while (gd_mut != NIL) {
             clib.out_here(getStdout(), h(dval(h(gd_mut))), 0);
@@ -2182,10 +2149,10 @@ fn loadfile(t_val: [*:0]const u8) void {
         }
         current_id = 0;
         if (lfrule != 0 and (verbosity != 0 or making != 0)) {
-            _ = clib.printf("grammar optimisation: %d common left factors found\n", lfrule);
+            _ = clib.printf("grammar optimisation: %d common left factors found\n", .{.{lfrule}});
         }
         if (initialising != 0 and ND != NIL) {
-            _ = clib.fprintf(getStderr(), "panic: %s contains errors\n", @as([*:0]const u8, if (okprel != 0) "stdenv" else "prelude"));
+            _ = clib.fprintf(getStderr(), "panic: %s contains errors\n", .{.{@as([*:0]const u8, if (okprel != 0) "stdenv" else "prelude")}});
             clib.exit(1);
         }
         if (initialising != 0) {
@@ -2204,7 +2171,7 @@ fn loadfile(t_val: [*:0]const u8) void {
     }
 
     if (initialising != 0) {
-        _ = clib.fprintf(getStderr(), "panic: cannot compile %s\n", @as([*:0]const u8, if (okprel != 0) "stdenv" else "prelude"));
+        _ = clib.fprintf(getStderr(), "panic: cannot compile %s\n", .{.{@as([*:0]const u8, if (okprel != 0) "stdenv" else "prelude")}});
         clib.exit(1);
     }
     oldfiles = files;
@@ -2374,13 +2341,13 @@ fn mkincludes(includees_val: Word) Word {
         if (pid == -1) {
             clib.perror("UNIX error - cannot create process");
             if (ideep > 6) {
-                _ = clib.fprintf(getStderr(), "error occurs %d deep in %%include files\n", ideep);
+                _ = clib.fprintf(getStderr(), "error occurs %d deep in %%include files\n", .{.{ideep}});
             }
             if (ideep != 0) {
                 clib.exit(2);
             }
             SYNERR = 2;
-            _ = clib.printf("compilation of \"%s\" abandoned\n", current_script.?);
+            _ = clib.printf("compilation of \"%s\" abandoned\n", .{.{current_script.?}});
             return NIL;
         }
         while (pid != clib.wait(&status)) {}
@@ -2389,7 +2356,7 @@ fn mkincludes(includees_val: Word) Word {
                 clib.exit(2);
             } else {
                 SYNERR = 2;
-                _ = clib.printf("compilation of \"%s\" abandoned\n", current_script.?);
+                _ = clib.printf("compilation of \"%s\" abandoned\n", .{.{current_script.?}});
                 return NIL;
             }
         }
@@ -2492,7 +2459,7 @@ fn mkincludes(includees_val: Word) Word {
                                 q = t(q);
                             }
                             if (p != NIL or q != NIL) {
-                                _ = clib.fprintf(getStderr(), "impossible event in mkincludes\n");
+                                _ = clib.fprintf(getStderr(), "impossible event in mkincludes\n", .{.{}});
                             }
                         }
                     }
@@ -2531,11 +2498,11 @@ fn mkincludes(includees_val: Word) Word {
         }
 
         SYNERR = 1;
-        _ = clib.printf("unsuccessful %%include directive ");
+        _ = clib.printf("unsuccessful %%include directive ", .{.{}});
         clib.sayhere(t(h(h(includees_list))), 1);
 
         if (f == null) {
-            _ = clib.printf("\"%s\" cannot be loaded\n", fn_str);
+            _ = clib.printf("\"%s\" cannot be loaded\n", .{.{fn_str}});
             CLASHES = NIL;
             DETROP = NIL;
             MISSING = NIL;
@@ -2544,28 +2511,28 @@ fn mkincludes(includees_val: Word) Word {
             CLASHES = NIL;
         } else if (ALIASES != NIL or TSUPPRESSED != NIL) {
             if (ALIASES != NIL) {
-                _ = clib.printf("alias fails (name%s not found in file", @as([*:0]const u8, if (t(ALIASES) == NIL) "" else "s"));
+                _ = clib.printf("alias fails (name%s not found in file", .{.{@as([*:0]const u8, if (t(ALIASES) == NIL) "" else "s")}});
                 clib.printlist(@constCast("): "), ALIASES);
                 ALIASES = NIL;
             }
             if (TSUPPRESSED != NIL) {
-                _ = clib.printf("illegal alias (cannot suppress typename%s):", @as([*:0]const u8, if (t(TSUPPRESSED) == NIL) "" else "s"));
+                _ = clib.printf("illegal alias (cannot suppress typename%s):", .{.{@as([*:0]const u8, if (t(TSUPPRESSED) == NIL) "" else "s")}});
                 var ts = TSUPPRESSED;
                 while (ts != NIL) : (ts = t(ts)) {
-                    _ = clib.printf(" -%s", get_id(h(ts)));
+                    _ = clib.printf(" -%s", .{.{get_id(h(ts))}});
                 }
                 _ = clib.putchar('\n');
             }
         } else if (clib.BAD_DUMP != 0) {
-            _ = clib.printf("\"%s\" has bad data in dump file\n", fn_str);
+            _ = clib.printf("\"%s\" has bad data in dump file\n", .{.{fn_str}});
         } else if (x == NIL) {
-            _ = clib.printf("\"%s\" contains syntax error\n", fn_str);
+            _ = clib.printf("\"%s\" contains syntax error\n", .{.{fn_str}});
         } else if (ND != NIL) {
-            _ = clib.printf("\"%s\" contains undefined names or type errors\n", fn_str);
+            _ = clib.printf("\"%s\" contains undefined names or type errors\n", .{.{fn_str}});
         }
 
         if (ND == NIL and CLASHES != NIL) {
-            _ = clib.printf("\"%s\" ", fn_str);
+            _ = clib.printf("\"%s\" ", .{.{fn_str}});
             clib.printlist(@constCast("causes nameclashes: "), CLASHES);
         }
 
@@ -2574,44 +2541,44 @@ fn mkincludes(includees_val: Word) Word {
             const ta = t(t(h(DETROP)));
             const pn = get_id(h(h(DETROP)));
             if (fa == -1 or ta == -1) {
-                _ = clib.printf("`%s' has binding of wrong kind ", pn);
-                _ = clib.printf(if (fa == -1) "(should be \"= value\" not \"== type\")\n" else "(should be \"== type\" not \"= value\")\n");
+                _ = clib.printf("`%s' has binding of wrong kind ", .{.{pn}});
+                _ = clib.printf(if (fa == -1) "(should be \"= value\" not \"== type\")\n" else "(should be \"== type\" not \"= value\")\n", .{.{}});
             } else {
-                _ = clib.printf("`%s' has == binding of wrong arity ", pn);
-                _ = clib.printf("(formal has arity %ld, actual has arity %ld)\n", fa, ta);
+                _ = clib.printf("`%s' has == binding of wrong arity ", .{.{pn}});
+                _ = clib.printf("(formal has arity %ld, actual has arity %ld)\n", .{.{fa, ta}});
             }
             DETROP = t(DETROP);
         }
 
         if (DETROP != NIL) {
-            _ = clib.printf("illegal parameter binding (name%s not %%free in file", @as([*:0]const u8, if (t(DETROP) == NIL) "" else "s"));
+            _ = clib.printf("illegal parameter binding (name%s not %%free in file", .{.{@as([*:0]const u8, if (t(DETROP) == NIL) "" else "s")}});
             clib.printlist(@constCast("): "), DETROP);
             DETROP = NIL;
         }
 
         if (MISSING != NIL) {
-            _ = clib.printf("missing parameter binding%s: ", @as([*:0]const u8, if (t(MISSING) == NIL) "" else "s"));
+            _ = clib.printf("missing parameter binding%s: ", .{.{@as([*:0]const u8, if (t(MISSING) == NIL) "" else "s")}});
         }
 
         while (MISSING != NIL) {
-            _ = clib.fprintf(getStderr().?, "%s%s", @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(MISSING)))))), @as([*:0]const u8, if (t(MISSING) == NIL) ";\n" else ","));
+            _ = clib.fprintf(getStderr().?, "%s%s", .{.{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(MISSING)))))), @as([*:0]const u8, if (t(MISSING) == NIL) ";\n" else ",")}});
             MISSING = t(MISSING);
         }
 
-        _ = clib.fprintf(getStderr().?, "compilation abandoned\n");
+        _ = clib.fprintf(getStderr().?, "compilation abandoned\n", .{.{}});
         stackp = dstack;
         includees_list = t(includees_list);
         return result;
     }
 
     if (tclashes != NIL) {
-        _ = clib.fprintf(getStderr().?, "TYPECLASH - the following type%s multiply named:\n", @as([*:0]const u8, if (t(tclashes) == NIL) " is" else "s are"));
+        _ = clib.fprintf(getStderr().?, "TYPECLASH - the following type%s multiply named:\n", .{.{@as([*:0]const u8, if (t(tclashes) == NIL) " is" else "s are")}});
         while (tclashes != NIL) {
-            _ = clib.fprintf(getStderr().?, "\'%s\' of file \"%s\", as: ", clib.getaka(h(t(h(tclashes)))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(tclashes)))))));
+            _ = clib.fprintf(getStderr().?, "\'%s\' of file \"%s\", as: ", .{.{clib.getaka(h(t(h(tclashes)))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(tclashes))))))}});
             clib.printlist(@constCast(""), alfasort(t(t(h(tclashes)))));
             tclashes = t(tclashes);
         }
-        _ = clib.fprintf(getStderr().?, "typecheck cannot proceed - compilation abandoned\n");
+        _ = clib.fprintf(getStderr().?, "typecheck cannot proceed - compilation abandoned\n", .{.{}});
         SYNERR = 1;
         return result;
     }
@@ -2657,10 +2624,10 @@ export fn readoption() void {
 
     if (tlost == NIL) return;
     TYPERRS += 1;
-    _ = clib.printf("MISSING TYPENAME%s\n", if (t(tlost) == NIL) @as([*:0]const u8, "") else @as([*:0]const u8, "S"));
-    _ = clib.printf("the following type%s no name in this scope:\n", if (t(tlost) == NIL) @as([*:0]const u8, " is needed but has") else @as([*:0]const u8, "s are needed but have"));
+    _ = clib.printf("MISSING TYPENAME%s\n", .{.{if (t(tlost) == NIL) @as([*:0]const u8, "") else @as([*:0]const u8, "S")}});
+    _ = clib.printf("the following type%s no name in this scope:\n", .{.{if (t(tlost) == NIL) @as([*:0]const u8, " is needed but has") else @as([*:0]const u8, "s are needed but have")}});
     while (tlost != NIL) {
-        _ = clib.printf("\'%s\' of file \"%s\", needed by: ", @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(t_info(h(h(tlost))))))))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(t_info(h(h(tlost))))))))));
+        _ = clib.printf("\'%s\' of file \"%s\", needed by: ", .{.{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(t_info(h(h(tlost))))))))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(t_info(h(h(tlost)))))))))}});
         clib.printlist(@constCast(""), alfasort(t(h(tlost))));
         tlost = t(tlost);
     }
@@ -2781,9 +2748,9 @@ fn stdlib() void {
 export fn syntax(s: [*:0]const u8) void {
     if (SYNERR != 0) return;
     if (echoing != 0) {
-        _ = clib.fprintf(getStderr().?, "\n");
+        _ = clib.fprintf(getStderr().?, "\n", .{.{}});
     }
-    _ = clib.fprintf(getStderr().?, "syntax error: %s", s);
+    _ = clib.fprintf(getStderr().?, "syntax error: %s", .{.{s}});
     SYNERR = 1;
     reset_lex();
 }
@@ -2829,7 +2796,7 @@ fn mira_setup() void {
 }
 
 export fn dieclean() void {
-    _ = clib.fprintf(getStderr(), "<<...interrupt>>\n");
+    _ = clib.fprintf(getStderr(), "<<...interrupt>>\n", .{.{}});
     clib.outstats();
     clib.exit(0);
 }
@@ -2849,9 +2816,9 @@ export fn process() Word {
             const cd: [*:0]const u8 = if ((status & 0x80) != 0) " (core dumped)" else "";
             const sig = WTERMSIG(status);
             switch (sig) {
-                clib.SIGBUS => _ = clib.fprintf(getStderr(), "\n<<...bus error%s>>\n", cd),
-                clib.SIGSEGV => _ = clib.fprintf(getStderr(), "\n<<...segmentation fault%s>>\n", cd),
-                else => _ = clib.fprintf(getStderr(), "\n<<...uncaught signal %d>>\n", sig),
+                clib.SIGBUS => _ = clib.fprintf(getStderr(), "\n<<...bus error%s>>\n", .{.{cd}}),
+                clib.SIGSEGV => _ = clib.fprintf(getStderr(), "\n<<...segmentation fault%s>>\n", .{.{cd}}),
+                else => _ = clib.fprintf(getStderr(), "\n<<...uncaught signal %d>>\n", .{.{sig}}),
             }
         }
         _ = signals(clib.SIGINT, oldsig);
@@ -2867,7 +2834,7 @@ export fn fpe_error(sig: c_int) void {
         SYNERR = 0;
         clib.siglongjmp(&env, 1);
     } else {
-        _ = clib.printf("\nFLOATING POINT OVERFLOW\n");
+        _ = clib.printf("\nFLOATING POINT OVERFLOW\n", .{.{}});
         clib.exit(1);
     }
 }
@@ -2924,8 +2891,8 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 missparam("dic");
             } else {
                 var val: c_long = 0;
-                if (clib.sscanf(argv[arg_idx], "%ld", &val) != 1 or badval(val)) {
-                    _ = clib.fprintf(getStderr(), "mira: bad value after flag \"-dic\"\n");
+                if (clib.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or badval(val)) {
+                    _ = clib.fprintf(getStderr(), "mira: bad value after flag \"-dic\"\n", .{.{}});
                     clib.exit(1);
                 }
                 DICSPACE = val;
@@ -2936,8 +2903,8 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 missparam("heap");
             } else {
                 var val: c_long = 0;
-                if (clib.sscanf(argv[arg_idx], "%ld", &val) != 1 or badval(val)) {
-                    _ = clib.fprintf(getStderr(), "mira: bad value after flag \"-heap\"\n");
+                if (clib.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or badval(val)) {
+                    _ = clib.fprintf(getStderr(), "mira: bad value after flag \"-heap\"\n", .{.{}});
                     clib.exit(1);
                 }
                 SPACELIMIT = val;
@@ -2955,7 +2922,7 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         } else if (clib.strcmp(arg, "-nohush") == 0) {
             verbosity = 1;
         } else if (clib.strcmp(arg, "-exp") == 0 or clib.strcmp(arg, "-log") == 0) {
-            _ = clib.fprintf(getStderr(), "mira: obsolete flag \"%s\"\nuse \"-exec\" or \"-exec2\", see manual\n", arg);
+            _ = clib.fprintf(getStderr(), "mira: obsolete flag \"%s\"\nuse \"-exec\" or \"-exec2\", see manual\n", .{.{arg}});
             clib.exit(1);
         } else if (clib.strcmp(arg, "-exec") == 0) {
             ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
@@ -2966,7 +2933,7 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             break;
         } else if (clib.strcmp(arg, "-exec2") == 0) {
             if (arg_idx + 1 >= argc_u) {
-                _ = clib.fprintf(getStderr(), "incorrect use of -exec2 flag, missing filename\n");
+                _ = clib.fprintf(getStderr(), "incorrect use of -exec2 flag, missing filename\n", .{.{}});
                 clib.exit(1);
             }
             const filename = argv[arg_idx + 1];
@@ -2980,12 +2947,12 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             if (logfilname == null) {
                 clib.mallocfail(@constCast("logfile name"));
             }
-            _ = clib.sprintf(logfilname.?, "miralog/%s", p.?);
+            _ = clib.sprintf(logfilname.?, "miralog/%s", .{p.?});
             const fil = clib.fopen(logfilname.?, "a");
             if (fil != null) {
                 _ = clib.dup2(clib.fileno(fil), 2);
             } else {
-                _ = clib.fprintf(getStderr(), "could not open %s\n", logfilname.?);
+                _ = clib.fprintf(getStderr(), "could not open %s\n", .{.{logfilname.?}});
             }
             ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
             ARGV = @ptrCast(argv + arg_idx + 1);
@@ -3017,7 +2984,7 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         } else if (clib.strcmp(arg, "-noUTF-8") == 0) {
             UTF8 = 0;
         } else {
-            _ = clib.fprintf(getStderr(), "mira: unknown flag \"%s\"\n", arg);
+            _ = clib.fprintf(getStderr(), "mira: unknown flag \"%s\"\n", .{.{arg}});
             clib.exit(1);
         }
         arg_idx += 1;
@@ -3025,7 +2992,7 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
 
     const remaining_argc = argc_u - arg_idx;
     if (remaining_argc > 1 and magic == 0 and making == 0) {
-        _ = clib.fprintf(getStderr(), "mira: too many args\n");
+        _ = clib.fprintf(getStderr(), "mira: too many args\n", .{.{}});
         clib.exit(1);
     }
 
@@ -3045,7 +3012,7 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
     }
 
     if (badlib != 0) {
-        _ = clib.fprintf(getStderr(), "fatal error: miralib version %s not found\n", strvers(@intCast(version)));
+        _ = clib.fprintf(getStderr(), "fatal error: miralib version %s not found\n", .{.{strvers(@intCast(version))}});
         libfails();
         clib.exit(1);
     }
@@ -3146,7 +3113,7 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 continue;
             }
             if (arg_count != 1) {
-                _ = clib.printf("%s\n", s);
+                _ = clib.printf("%s\n", .{.{s}});
             }
             if (exports != NIL) {
                 x = exports;
@@ -3167,13 +3134,13 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 }
                 freeids = clib.typesfirst(freeids);
                 f = freeids;
-                _ = clib.printf("\t%%free {\n");
+                _ = clib.printf("\t%%free {\n", .{.{}});
                 while (f != NIL) : (f = t(f)) {
                     _ = clib.putchar('\t');
                     clib.report_type(h(f));
                     _ = clib.putchar('\n');
                 }
-                _ = clib.printf("\t}\n");
+                _ = clib.printf("\t}\n", .{.{}});
             }
 
             var item = clib.typesfirst(alfasort(x));
@@ -3203,7 +3170,7 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                     const filename_str = get_fil(h(f)).?;
                     if (clib.member(x, @intCast(@intFromPtr(filename_str))) == 0) {
                         x = cons(@intCast(@intFromPtr(filename_str)), x);
-                        _ = clib.printf("%s\n", filename_str);
+                        _ = clib.printf("%s\n", .{.{filename_str}});
                     }
                 }
             }
@@ -3231,7 +3198,7 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         if (tag[@intCast(make_status)] == clib.STRCONS) {
             var h_val: Word = 0;
             var maxw: Word = 0;
-            _ = clib.printf("errors or undefined names found in:-\n");
+            _ = clib.printf("errors or undefined names found in:-\n", .{.{}});
             while (make_status != 0) {
                 h_val = clib.strcons(h(make_status), h_val);
                 const w = @as(Word, @intCast(clib.strlen(@ptrFromInt(@as(usize, @intCast(h(h_val)))))));
@@ -3245,11 +3212,11 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             var w: Word = 0;
             while (h_val != 0) {
                 w += 1;
-                _ = clib.printf("%*s%s", @as(c_int, @intCast(maxw)), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h_val))))), @as([*:0]const u8, if ((@rem(w, n)) != 0) "" else "\n"));
+                _ = clib.printf("%*s%s", .{.{@as(c_int, @intCast(maxw)), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h_val))))), @as([*:0]const u8, if ((@rem(w, n)) != 0) "" else "\n")}});
                 h_val = t(h_val);
             }
             if ((@rem(w, n)) != 0) {
-                _ = clib.printf("\n");
+                _ = clib.printf("\n", .{.{}});
             }
             make_status = 1;
         }
@@ -3361,7 +3328,7 @@ fn undump(t_val: [*:0]const u8) void {
     flen = @intCast(clib.strlen(t_val));
     t1 = @intCast(fm_time(t_val));
     if (flen > clib.pnlim) {
-        _ = clib.printf("sorry, pathname too long (limit=%d): %s\n", clib.pnlim, t_val);
+        _ = clib.printf("sorry, pathname too long (limit=%d): %s\n", .{.{clib.pnlim, t_val}});
         return;
     }
 
@@ -3379,7 +3346,7 @@ fn undump(t_val: [*:0]const u8) void {
 
     f = clib.fopen(&obf, "r");
     if (f == null) {
-        _ = clib.printf("cannot open %s\n", @as([*:0]const u8, @ptrCast(&obf)));
+        _ = clib.printf("cannot open %s\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
         loadfile(t_val);
         return;
     }
@@ -3402,13 +3369,13 @@ fn undump(t_val: [*:0]const u8) void {
         unload();
         CLASHES = NIL;
         stackp = dstack;
-        _ = clib.printf("warning: %s contains incorrect data (file removed)\n", @as([*:0]const u8, @ptrCast(&obf)));
+        _ = clib.printf("warning: %s contains incorrect data (file removed)\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
         if (BAD_DUMP == -1) {
-            _ = clib.printf("(unrecognised dump format)\n");
+            _ = clib.printf("(unrecognised dump format)\n", .{.{}});
         } else if (BAD_DUMP == 1) {
-            _ = clib.printf("(wrong source file)\n");
+            _ = clib.printf("(wrong source file)\n", .{.{}});
         } else {
-            _ = clib.printf("(error %ld)\n", BAD_DUMP);
+            _ = clib.printf("(error %ld)\n", .{.{BAD_DUMP}});
         }
     }
 
@@ -3425,7 +3392,7 @@ fn undump(t_val: [*:0]const u8) void {
 
     if (CLASHES != NIL) {
         if (ideep == 0) {
-            _ = clib.printf("cannot load %s ", @as([*:0]const u8, @ptrCast(&obf)));
+            _ = clib.printf("cannot load %s ", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
             clib.printlist(@constCast("due to name clashes: "), alfasort(CLASHES));
         }
         unload();
@@ -3437,18 +3404,18 @@ fn undump(t_val: [*:0]const u8) void {
         loadfile(t_val);
     } else if (initialising != 0) {
         if (ND != NIL or files == NIL) {
-            _ = clib.fprintf(getStderr(), "panic: %s contains errors\n", @as([*:0]const u8, @ptrCast(&obf)));
+            _ = clib.fprintf(getStderr(), "panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
             clib.exit(1);
         }
     } else {
         if (verbosity != 0 or magic != 0 or mkexports != 0) {
             if (files == NIL) {
-                _ = clib.printf("%s contains syntax error\n", t_val);
+                _ = clib.printf("%s contains syntax error\n", .{.{t_val}});
             } else {
                 if (ND != NIL) {
-                    _ = clib.printf("%s contains undefined names or type errors\n", t_val);
+                    _ = clib.printf("%s contains undefined names or type errors\n", .{.{t_val}});
                 } else if (making == 0 and magic == 0) {
-                    _ = clib.printf("%s\n", t_val);
+                    _ = clib.printf("%s\n", .{.{t_val}});
                 }
             }
         }
@@ -3461,7 +3428,7 @@ fn undump(t_val: [*:0]const u8) void {
 }
 
 fn missparam(s: [*:0]const u8) void {
-    _ = clib.fprintf(getStderr(), "mira: missing param after flag \"-%s\"\n", s);
+    _ = clib.fprintf(getStderr(), "mira: missing param after flag \"-%s\"\n", .{.{s}});
     clib.exit(1);
 }
 
@@ -3473,9 +3440,9 @@ fn makedump() void {
     _ = clib.strcpy(obf[len - 1 ..].ptr, obsuffix);
     f = clib.fopen(obf, "w");
     if (f == null) {
-        _ = clib.printf("WARNING: CANNOT WRITE TO %s\n", @as([*:0]const u8, @ptrCast(obf)));
+        _ = clib.printf("WARNING: CANNOT WRITE TO %s\n", .{.{@as([*:0]const u8, @ptrCast(obf))}});
         if (clib.strcmp(current_script.?, &PRELUDE) == 0 or clib.strcmp(current_script.?, &STDENV) == 0) {
-            _ = clib.printf("TO FIX THIS PROBLEM PLEASE GET SUPER-USER TO EXECUTE `mira'\n");
+            _ = clib.printf("TO FIX THIS PROBLEM PLEASE GET SUPER-USER TO EXECUTE `mira'\n", .{.{}});
         }
         if (making != 0 and make_status == 0) {
             make_status = 1;
@@ -3494,7 +3461,7 @@ fn mkabsolute(m: [*:0]u8) [*:0]u8 {
         return m;
     }
     if (clib.getcwd(dicp, clib.pnlim) == null) {
-        _ = clib.fprintf(getStderr(), "panic: cwd too long\n");
+        _ = clib.fprintf(getStderr(), "panic: cwd too long\n", .{.{}});
         clib.exit(1);
     }
     _ = clib.strcat(dicp, "/");
@@ -3511,6 +3478,7 @@ fn addtoenv(x: Word) void {
 }
 
 pub fn main(ctx: std.process.Init) !void {
+    clib.env_slice = ctx.minimal.environ.block.slice;
     const raw_args = ctx.minimal.args.vector;
     const argv: [*][*:0]u8 = @ptrCast(@constCast(raw_args.ptr));
     const argc: c_int = @intCast(raw_args.len);
@@ -3527,7 +3495,6 @@ comptime {
     _ = @import("parser/parser_tests.zig");
     _ = @import("compiler/trans.zig");
     _ = @import("compiler/types.zig");
-    _ = @import("io/utf8.zig");
     _ = @import("io/signals.zig");
     _ = @import("version.zig");
 }

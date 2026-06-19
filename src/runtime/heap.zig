@@ -183,9 +183,9 @@ export fn charname(ch: Word) [*:0]const u8 {
 export fn outr(file: ?*c.FILE, value: f64) void {
     const magnitude = if (value < 0) -value else value;
     if (magnitude >= 1000.0 or magnitude <= 0.001) {
-        _ = c.fprintf(file, "%e", value);
+        _ = c.fprintf(file, "%e", .{value});
     } else {
-        _ = c.fprintf(file, "%f", value);
+        _ = c.fprintf(file, "%f", .{value});
     }
 }
 
@@ -381,7 +381,7 @@ export fn setupheap() void {
 export fn resetheap() void {
     if (SPACELIMIT < trueheapsize()) {
         const stderr = getStderr().?;
-        _ = c.fprintf(stderr, "impossible event in resetheap\n");
+        _ = c.fprintf(stderr, "impossible event in resetheap\n", .{.{}});
         c.exit(1);
     }
     const size = @as(usize, @intCast(SPACELIMIT));
@@ -412,7 +412,7 @@ export fn resetheap() void {
 
 export fn mallocfail(x: [*:0]const u8) void {
     const stderr = getStderr().?;
-    _ = c.fprintf(stderr, "panic: cannot find enough free space for %s\n", x);
+    _ = c.fprintf(stderr, "panic: cannot find enough free space for %s\n", .{x});
     c.exit(1);
 }
 
@@ -452,7 +452,7 @@ export fn make(t_val: u8, x: Word, y: Word) Word {
                     SPACE = SPACELIMIT;
                 }
                 if (atgc != 0 and SPACE > sp) {
-                    _ = c.fprintf(getStderr().?, "\n<<increase heap from %ld to %ld>>\n", sp, SPACE);
+                    _ = c.fprintf(getStderr().?, "\n<<increase heap from %ld to %ld>>\n", .{sp, SPACE});
                 }
             }
         }
@@ -482,18 +482,18 @@ export fn gc() void {
     collecting = 1;
     var idx = @as(usize, @intCast(ATOMLIMIT));
     if (atgc != 0) {
-        _ = c.fprintf(getStderr().?, "\n<<gc after %ld claims>>\n", claims);
+        _ = c.fprintf(getStderr().?, "\n<<gc after %ld claims>>\n", .{claims});
     }
     if (claims <= @divTrunc(SPACE, 10) and nogcs > 1 and SPACE == SPACELIMIT) {
         var hnogcs: Word = 0;
         if (nogcs == hnogcs) {
-            _ = c.fprintf(getStderr().?, "<<not enough heap space -- task abandoned>>\n");
+            _ = c.fprintf(getStderr().?, "<<not enough heap space -- task abandoned>>\n", .{.{}});
             if (compiling == 0) {
                 outstats();
             }
             if (compiling != 0 and ideep == 0) {
-                _ = c.fprintf(getStderr().?, "not enough heap to compile current script\n");
-                _ = c.fprintf(getStderr().?, "script = \"%s\", heap = %ld\n", current_script, SPACE);
+                _ = c.fprintf(getStderr().?, "not enough heap to compile current script\n", .{.{}});
+                _ = c.fprintf(getStderr().?, "script = \"%s\", heap = %ld\n", .{current_script, SPACE});
             }
             c.exit(1);
         } else {
@@ -766,7 +766,7 @@ export fn mkrel(p: [*:0]const u8) [*:0]const u8 {
         return p;
     }
     const stderr = getStderr().?;
-    _ = c.fprintf(stderr, "impossible event in mkrelative\n");
+    _ = c.fprintf(stderr, "impossible event in mkrelative\n", .{.{}});
     return p;
 }
 
@@ -907,11 +907,11 @@ fn castPtr(val: Word) [*:0]const u8 {
 export fn out(file: ?*c.FILE, x_val: Word) void {
     var x = x_val;
     if (x < 0 or x > TOP()) {
-        _ = c.fprintf(file, "<%ld>", x);
+        _ = c.fprintf(file, "<%ld>", .{x});
         return;
     }
     if (tag.?[@intCast(x)] == c.LAMBDA) {
-        _ = c.fprintf(file, "$(");
+        _ = c.fprintf(file, "$(", .{.{}});
         out(file, h(x));
         _ = c.putc(')', file);
         out(file, t(x));
@@ -927,7 +927,7 @@ export fn out(file: ?*c.FILE, x_val: Word) void {
 
 export fn out1(file: ?*c.FILE, x: Word) void {
     if (x < 0 or x > TOP()) {
-        _ = c.fprintf(file, "<%ld>", x);
+        _ = c.fprintf(file, "<%ld>", .{x});
         return;
     }
     if (tag.?[@intCast(x)] == c.AP) {
@@ -942,7 +942,7 @@ export fn out1(file: ?*c.FILE, x: Word) void {
 export fn out2(file: ?*c.FILE, x_val: Word) void {
     var x = x_val;
     if (x < 0 or x > TOP()) {
-        _ = c.fprintf(file, "<%ld>", x);
+        _ = c.fprintf(file, "<%ld>", .{x});
         return;
     }
     const tag_val = tag.?[@intCast(x)];
@@ -954,7 +954,7 @@ export fn out2(file: ?*c.FILE, x_val: Word) void {
                 x = t(x);
             }
         } else {
-            _ = c.fprintf(file, "%ld", getsmallint(x));
+            _ = c.fprintf(file, "%ld", .{getsmallint(x)});
         }
         return;
     }
@@ -963,15 +963,15 @@ export fn out2(file: ?*c.FILE, x_val: Word) void {
         return;
     }
     if (tag_val == c.ID) {
-        _ = c.fprintf(file, "%s", get_id(x));
+        _ = c.fprintf(file, "%s", .{get_id(x)});
         return;
     }
     if (x < 256) {
-        _ = c.fprintf(file, "'%s'", charname(x));
+        _ = c.fprintf(file, "'%s'", .{charname(x)});
         return;
     }
     if (tag_val == c.UNICODE) {
-        _ = c.fprintf(file, "'%lx'", h(x));
+        _ = c.fprintf(file, "'%lx'", .{h(x)});
         return;
     }
     if (tag_val == c.ATOM) {
@@ -987,11 +987,11 @@ export fn out2(file: ?*c.FILE, x_val: Word) void {
             "\"\""
         else
             @ptrCast(c.cmbnms[@intCast(x - c.CMBASE)]);
-        _ = c.fprintf(file, "%s", str);
+        _ = c.fprintf(file, "%s", .{str});
         return;
     }
     if (tag_val == c.TCONS or tag_val == c.PAIR) {
-        _ = c.fprintf(file, "(");
+        _ = c.fprintf(file, "(", .{.{}});
         while (tag.?[@intCast(x)] == c.TCONS) {
             out(file, h(x));
             _ = c.putc(',', file);
@@ -1004,7 +1004,7 @@ export fn out2(file: ?*c.FILE, x_val: Word) void {
         return;
     }
     if (tag_val == c.TRIES) {
-        _ = c.fprintf(file, "TRIES(");
+        _ = c.fprintf(file, "TRIES(", .{.{}});
         out(file, h(x));
         _ = c.putc(',', file);
         out(file, t(x));
@@ -1012,7 +1012,7 @@ export fn out2(file: ?*c.FILE, x_val: Word) void {
         return;
     }
     if (tag_val == c.LABEL) {
-        _ = c.fprintf(file, "LABEL(");
+        _ = c.fprintf(file, "LABEL(", .{.{}});
         out(file, h(x));
         _ = c.putc(',', file);
         out(file, t(x));
@@ -1020,7 +1020,7 @@ export fn out2(file: ?*c.FILE, x_val: Word) void {
         return;
     }
     if (tag_val == c.SHOW) {
-        _ = c.fprintf(file, "SHOW(");
+        _ = c.fprintf(file, "SHOW(", .{.{}});
         out(file, h(x));
         _ = c.putc(',', file);
         out(file, t(x));
@@ -1028,7 +1028,7 @@ export fn out2(file: ?*c.FILE, x_val: Word) void {
         return;
     }
     if (tag_val == c.STARTREADVALS) {
-        _ = c.fprintf(file, "READVALS(");
+        _ = c.fprintf(file, "READVALS(", .{.{}});
         out(file, h(x));
         _ = c.putc(',', file);
         out(file, t(x));
@@ -1036,55 +1036,55 @@ export fn out2(file: ?*c.FILE, x_val: Word) void {
         return;
     }
     if (tag_val == c.LET) {
-        _ = c.fprintf(file, "(LET ");
+        _ = c.fprintf(file, "(LET ", .{.{}});
         out(file, dlhs(h(x)));
-        _ = c.fprintf(file, "=");
+        _ = c.fprintf(file, "=", .{.{}});
         out(file, dval(h(x)));
-        _ = c.fprintf(file, ";IN ");
+        _ = c.fprintf(file, ";IN ", .{.{}});
         out(file, t(x));
-        _ = c.fprintf(file, ")");
+        _ = c.fprintf(file, ")", .{.{}});
         return;
     }
     if (tag_val == c.LETREC) {
         const body = t(x);
-        _ = c.fprintf(file, "(LETREC ");
+        _ = c.fprintf(file, "(LETREC ", .{.{}});
         x = h(x);
         while (x != c.NIL) {
             out(file, dlhs(h(x)));
-            _ = c.fprintf(file, "=");
+            _ = c.fprintf(file, "=", .{.{}});
             out(file, dval(h(x)));
-            _ = c.fprintf(file, ";");
+            _ = c.fprintf(file, ";", .{.{}});
             x = t(x);
         }
-        _ = c.fprintf(file, "IN ");
+        _ = c.fprintf(file, "IN ", .{.{}});
         out(file, body);
-        _ = c.fprintf(file, ")");
+        _ = c.fprintf(file, ")", .{.{}});
         return;
     }
     if (tag_val == c.DATAPAIR) {
-        _ = c.fprintf(file, "DATAPAIR(%s,%ld)", castPtr(h(x)), t(x));
+        _ = c.fprintf(file, "DATAPAIR(%s,%ld)", .{castPtr(h(x)), t(x)});
         return;
     }
     if (tag_val == c.FILEINFO) {
-        _ = c.fprintf(file, "FILEINFO(%s,%ld)", castPtr(h(x)), t(x));
+        _ = c.fprintf(file, "FILEINFO(%s,%ld)", .{castPtr(h(x)), t(x)});
         return;
     }
     if (tag_val == c.CONSTRUCTOR) {
-        _ = c.fprintf(file, "CONSTRUCTOR(%ld)", h(x));
+        _ = c.fprintf(file, "CONSTRUCTOR(%ld)", .{h(x)});
         return;
     }
     if (tag_val == c.STRCONS) {
-        _ = c.fprintf(file, "<$%ld>", h(x));
+        _ = c.fprintf(file, "<$%ld>", .{h(x)});
         return;
     }
     if (tag_val == c.SHARE) {
-        _ = c.fprintf(file, "(SHARE:");
+        _ = c.fprintf(file, "(SHARE:", .{.{}});
         out(file, h(x));
-        _ = c.fprintf(file, ")");
+        _ = c.fprintf(file, ")", .{.{}});
         return;
     }
     if (tag_val != c.CONS and tag_val != c.AP and tag_val != c.LAMBDA) {
-        _ = c.fprintf(file, "<%ld|tag=%d>", x, tag_val);
+        _ = c.fprintf(file, "<%ld|tag=%d>", .{x, tag_val});
         return;
     }
     _ = c.putc(')', file);
@@ -1233,7 +1233,7 @@ export fn dump_script(files_val: Word, file: ?*c.FILE) void {
         putword(errline, file);
         var x = oldfiles;
         while (x != c.NIL) : (x = t(x)) {
-            _ = c.fprintf(file, "%s", mkrel(get_fil(h(x))));
+            _ = c.fprintf(file, "%s", .{mkrel(get_fil(h(x)))});
             _ = c.putc(0, file);
             putword(fil_time(h(x)), file);
         }
@@ -1248,7 +1248,7 @@ export fn dump_script(files_val: Word, file: ?*c.FILE) void {
     var f_list = files_val;
     while (f_list != c.NIL) : (f_list = t(f_list)) {
         CFN = get_fil(h(f_list));
-        _ = c.fprintf(file, "%s", mkrel(CFN.?));
+        _ = c.fprintf(file, "%s", .{mkrel(CFN.?)});
         _ = c.putc(0, file);
         putword(fil_time(h(f_list)), file);
         _ = c.putc(@intCast(fil_share(h(f_list))), file);
@@ -1290,7 +1290,7 @@ export fn dump_defs(defs_val: Word, file: ?*c.FILE) void {
             dump_ob(id_type(item), file);
             dump_ob(id_who(item), file);
             _ = c.putc(c.ID_X, file);
-            _ = c.fprintf(file, "%s", get_id(item));
+            _ = c.fprintf(file, "%s", .{get_id(item)});
             _ = c.putc(0, file);
             _ = c.putc(c.DEF_X, file);
         }
@@ -1347,7 +1347,7 @@ export fn dump_ob(x: Word, file: ?*c.FILE) void {
             putint(@intCast(h(x)), file);
         },
         c.DATAPAIR => {
-            _ = c.fprintf(file, "%c%s", c.AKA_X, castPtr(h(x)));
+            _ = c.fprintf(file, "%c%s", .{c.AKA_X, castPtr(h(x))});
             _ = c.putc(0, file);
         },
         c.FILEINFO => {
@@ -1356,7 +1356,7 @@ export fn dump_ob(x: Word, file: ?*c.FILE) void {
             if (c.strcmp(path, CFN.?) == 0) {
                 _ = c.putc(c.HERE_X, file);
             } else {
-                _ = c.fprintf(file, "%c%s", c.HERE_X, mkrel(path));
+                _ = c.fprintf(file, "%c%s", .{c.HERE_X, mkrel(path)});
             }
             _ = c.putc(0, file);
             _ = c.putc(@intCast(line & 255), file);
@@ -1377,7 +1377,7 @@ export fn dump_ob(x: Word, file: ?*c.FILE) void {
             _ = c.putc(c.RV_X, file);
         },
         c.ID => {
-            _ = c.fprintf(file, "%c%s", c.ID_X, get_id(x));
+            _ = c.fprintf(file, "%c%s", .{c.ID_X, get_id(x)});
             _ = c.putc(0, file);
         },
         c.STRCONS => {
