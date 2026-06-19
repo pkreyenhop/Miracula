@@ -1,5 +1,5 @@
-# No Header Changes
+# Header Verification
 
-After thorough exploration of the repository and its active migration from C to Zig, it has been verified that all `*.h` header files (`big.h`, `combs.h`, `data.h`, `lex.h`, `platform.h`, `reduce_internal.h`, `runtime.h`, `signals.h`, `utf8.h`, `version.h`, `src/parser/legacy/parser_bridge.h`, and `src/parser/legacy/y.tab.h`) are still strictly required.
+After thorough exploration of the repository and its active migration from C to Zig, it has been verified that all `*.h` header files except `reduce_internal.h` are still required.
 
-The new Zig implementation deeply relies on these legacy C headers through `@cInclude` directives (for constants, macros, and structs) while the legacy C parser (`y.tab.c`, `parser_bridge.c`) also continues to import them. Removing any of these headers would break the build.
+`reduce_internal.h` was found to be completely unused by both the C and Zig source code and has been removed. All other headers (`big.h`, `combs.h`, `data.h`, `lex.h`, `platform.h`, `runtime.h`, `signals.h`, `utf8.h`, and `version.h`) are still strictly required as they are imported by Zig files via `@cInclude` directives for constants, macros, and structures.

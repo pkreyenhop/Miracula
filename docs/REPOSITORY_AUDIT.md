@@ -44,7 +44,7 @@ This document inventories and classifies all top-level files and directories in 
 | `miralib/` | `Active` | Miranda standard library scripts and system preludes. |
 | `platform.h` | `Legacy` | C header file imported by Zig and legacy C parser code. |
 | `quotehostinfo` | `Obsolete` | Shell script to format host compile info; replaced by `build.zig`. |
-| `reduce_internal.h` | `Legacy` | C header file imported by Zig and legacy C parser code. |
+| `reduce_internal.h` | `Obsolete` | Unused C header file; removed. |
 | `revdate` | `Obsolete` | Shell script to compute revision date; replaced by `build.zig`. |
 | `runtime.h` | `Legacy` | C header file imported by Zig and legacy C parser code. |
 | `script.m` | `Legacy` | Simple example Miranda script. |

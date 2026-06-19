@@ -44,13 +44,19 @@ fn parseCurrentNew() ParseError!ParseResult {
     // In the old YACC grammar this was handled by `EVAL exp { evaluate($2); }`.
     // We parse one expression, codegen it, then fork via evaluate_repl().
     if (commandmode != 0) {
-        const expr = parser_mod.parseExpr(&p) catch {
+        const expr = parser_mod.parseExpr(&p) catch |err| {
             SYNERR = 1;
+            if (err == error.UnexpectedEof) {
+                _ = clib.printf("syntax error - unexpected newline\n");
+            } else {
+                _ = clib.printf("syntax error - unexpected token\n");
+            }
             return ParseError.SyntaxError;
         };
         if (!p.ts.check(.eof) and !p.ts.check(.offside)) {
             // Trailing tokens after the expression — treat as syntax error.
             SYNERR = 1;
+            _ = clib.printf("syntax error - unexpected token\n");
             return ParseError.SyntaxError;
         }
         const expr_word = codegen.codegenExpr(alloc, expr);

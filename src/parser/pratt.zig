@@ -679,7 +679,7 @@ test "parse name atom" {
 test "parse integer literal" {
     const gpa = std.testing.allocator;
     const tokens = [_]Token{
-        .{ .id = .const_int, .span = .{ .line = 1, .col = 1 }, .int_val = 42 },
+        .{ .id = .const_int, .span = .{ .line = 1, .col = 1 }, .text = "42", .int_val = 42 },
         .{ .id = .eof, .span = .{ .line = 1, .col = 3 } },
     };
     var ts = TokenStream{ .tokens = &tokens };
@@ -704,7 +704,7 @@ test "parse cons infix" {
     // 1 : []
     const gpa = std.testing.allocator;
     const tokens = [_]Token{
-        .{ .id = .const_int, .span = .{ .line = 1, .col = 1 }, .int_val = 1 },
+        .{ .id = .const_int, .span = .{ .line = 1, .col = 1 }, .text = "1", .int_val = 1 },
         .{ .id = .cons, .span = .{ .line = 1, .col = 3 } },
         .{ .id = .lbracket, .span = .{ .line = 1, .col = 5 } },
         .{ .id = .rbracket, .span = .{ .line = 1, .col = 6 } },
