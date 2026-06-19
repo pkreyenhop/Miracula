@@ -247,3 +247,6 @@ pub const algebraic_t: Word = 2;
 pub const abstract_t: Word = 3;
 pub const free_t: Word = 4;
 pub const placeholder_t: Word = 5;
+
+pub var s_in: ?std.fs.File = null;
+pub var s_out: ?std.fs.File = null;

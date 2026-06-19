@@ -69,7 +69,7 @@ Also replace `isdigit(c)`, `isspace(c)`, `isalpha(c)` from `<ctype.h>` with `std
 
 ---
 
-## Sub-phase 6c: Port `FILE*` stdio to `std.io`
+## Sub-phase 6c: Port `FILE*` stdio to `std.io` (In Progress)
 
 **What**: Replace all `FILE*`-based I/O with Zig file handles and writer/reader interfaces. This is the largest refactor.
 
