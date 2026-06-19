@@ -1,4 +1,6 @@
-#include "../utf8.h"
+typedef unsigned long unicode;
+extern unicode fromUTF8(void *fil);
+extern void outUTF8(unicode u, void *fil);
 
 #include <sys/wait.h>
 #include <unistd.h>

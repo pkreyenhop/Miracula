@@ -1,20 +1,5 @@
 const std = @import("std");
 
-const c_sources = [_][]const u8{};
-
-const header_check_includes =
-    \\#include "runtime.h"
-    \\#include "platform.h"
-    \\#include "signals.h"
-    \\#include "utf8.h"
-    \\#include "lex.h"
-    \\#include "big.h"
-    \\#include "data.h"
-    \\#include "version.h"
-    \\int main(void) { return 0; }
-    \\
-;
-
 const c_flags = [_][]const u8{
     "-std=c11",
     "-Wall",
@@ -52,13 +37,6 @@ pub fn build(b: *std.Build) void {
         }),
     });
     mira.root_module.addOptions("version_options", version_options);
-    mira.root_module.addIncludePath(b.path("."));
-    mira.root_module.addIncludePath(b.path("src/parser/legacy"));
-    mira.root_module.addCSourceFiles(.{
-        .files = &c_sources,
-        .flags = &c_flags,
-    });
-    addPlatformMacros(mira, target);
 
     const install_mira = b.addInstallArtifact(mira, .{});
     b.getInstallStep().dependOn(&install_mira.step);
@@ -125,14 +103,6 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_main_tests = b.addRunArtifact(main_tests);
-    main_tests.root_module.addIncludePath(b.path("."));
-    main_tests.root_module.addIncludePath(b.path("src/parser/legacy"));
-    main_tests.root_module.addCSourceFiles(.{
-        .files = &c_sources,
-        .flags = &c_flags,
-    });
-
-    addPlatformMacros(main_tests, target);
     main_tests.root_module.addOptions("version_options", version_options);
 
     const parser_tests = b.addTest(.{
@@ -144,8 +114,6 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_parser_tests = b.addRunArtifact(parser_tests);
-
-    const header_check = addHeaderCheck(b, target, optimize);
 
     const mira_test_options = b.addOptions();
     mira_test_options.addOption([]const u8, "mira_path", mira_path);
@@ -179,16 +147,12 @@ pub fn build(b: *std.Build) void {
     const test_steer = b.step("test-steer", "Run only steer tests");
     test_steer.dependOn(&run_main_tests.step);
 
-    const header_check_step = b.step("check-headers", "Compile standalone public-header check");
-    header_check_step.dependOn(&header_check.step);
-
     const tools_step = b.step("tools", "Build support tools");
     tools_step.dependOn(&install_fdate.step);
     tools_step.dependOn(&install_just.step);
     tools_step.dependOn(&install_menudriver.step);
 
     const check_step = b.step("check", "Run the full Zig build verification gate");
-    check_step.dependOn(&header_check.step);
     check_step.dependOn(&install_mira.step);
     check_step.dependOn(&install_fdate.step);
     check_step.dependOn(&install_just.step);
@@ -240,65 +204,26 @@ fn addZigExecutable(
     });
 }
 
-fn addCExecutable(
-    b: *std.Build,
-    name: []const u8,
-    sources: []const []const u8,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-) *std.Build.Step.Compile {
-    const exe = b.addExecutable(.{
-        .name = name,
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-        }),
-    });
-    exe.root_module.addIncludePath(b.path("."));
-    exe.root_module.addIncludePath(b.path("src/parser/legacy"));
-    exe.root_module.addCSourceFiles(.{
-        .files = sources,
-        .flags = &c_flags,
-    });
-    addPlatformMacros(exe, target);
-    return exe;
-}
-
 fn addUtf8Tests(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
     utf8_zig: *std.Build.Step.Compile,
 ) *std.Build.Step.Compile {
-    const utf8_tests = addCExecutable(b, "utf8-tests-zig", &.{"tests/utf8_tests.c"}, target, optimize);
-    utf8_tests.root_module.addObject(utf8_zig);
-    return utf8_tests;
-}
-
-fn addHeaderCheck(
-    b: *std.Build,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-) *std.Build.Step.Compile {
-    const generated = b.addWriteFiles();
-    const source = generated.add("header_check.c", header_check_includes);
-    const check = b.addExecutable(.{
-        .name = "header-check",
+    const utf8_tests = b.addExecutable(.{
+        .name = "utf8-tests-zig",
         .root_module = b.createModule(.{
             .target = target,
             .optimize = optimize,
             .link_libc = true,
         }),
     });
-    check.root_module.addIncludePath(b.path("."));
-    check.root_module.addIncludePath(b.path("src/parser/legacy"));
-    check.root_module.addCSourceFile(.{
-        .file = source,
+    utf8_tests.root_module.addCSourceFiles(.{
+        .files = &.{"tests/utf8_tests.c"},
         .flags = &c_flags,
     });
-    addPlatformMacros(check, target);
-    return check;
+    utf8_tests.root_module.addObject(utf8_zig);
+    return utf8_tests;
 }
 
 fn addZigObject(
@@ -309,7 +234,7 @@ fn addZigObject(
     optimize: std.builtin.OptimizeMode,
     link_libc: bool,
 ) *std.Build.Step.Compile {
-    const obj = b.addObject(.{
+    return b.addObject(.{
         .name = name,
         .root_module = b.createModule(.{
             .root_source_file = b.path(path),
@@ -318,19 +243,11 @@ fn addZigObject(
             .link_libc = link_libc,
         }),
     });
-    obj.root_module.addIncludePath(b.path("."));
-    obj.root_module.addIncludePath(b.path("src/parser/legacy"));
-    return obj;
 }
 
 fn addPlatformMacros(exe: *std.Build.Step.Compile, target: std.Build.ResolvedTarget) void {
-    // 1. Force override GLIBC fortification checks globally
     exe.root_module.addCMacro("_FORTIFY_SOURCE", "0");
-
-    // 2. Enable standard GNU extensions to let fcntl functions compile cleanly
     exe.root_module.addCMacro("_GNU_SOURCE", "1");
-
-    // 3. Keep your existing platform-specific target definitions intact
     if (target.result.os.tag == .macos) {
         exe.root_module.addCMacro("_DARWIN_C_SOURCE", "1");
     } else {
