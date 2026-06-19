@@ -1643,7 +1643,8 @@ fn editfile(t_val: [*:0]const u8, line: c_int) void {
     }
     p[0] = 0;
     if (tdone == 0) {
-        (p - 1)[0] = ' ';
+        p[0] = ' ';
+        p += 1;
         p[0] = '"';
         p += 1;
         p[0] = 0;
