@@ -38,13 +38,17 @@ pub fn build(b: *std.Build) void {
     version_options.addOption([]const u8, "vdate", vdate);
     version_options.addOption([]const u8, "host", b.fmt("compiled by zig build\n{s}\n", .{host}));
 
+    // On macOS, libSystem is implicitly linked by the OS linker — no explicit link_libc needed.
+    // On Linux (including musl targets), link musl/glibc so setjmp, strcmp, getcwd etc. resolve.
+    // With a musl target the link is static, producing a self-contained binary.
+    const need_libc = target.result.os.tag != .macos;
     const mira = b.addExecutable(.{
         .name = "mira",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
-            .link_libc = false,
+            .link_libc = need_libc,
         }),
     });
     mira.root_module.addOptions("version_options", version_options);
@@ -117,7 +121,7 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
-            .link_libc = false,
+            .link_libc = need_libc,
         }),
     });
     const run_main_tests = b.addRunArtifact(main_tests);

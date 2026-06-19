@@ -4,6 +4,20 @@ const builtin = @import("builtin");
 
 pub var env_slice: [:null]const ?[*:0]const u8 = &[_:null]?[*:0]const u8{};
 
+// Syscall return-value helper: converts platform-specific return types to c_int.
+// - usize (raw Linux kernel): bitcast to signed isize, then truncate to c_int
+// - Any other integer (c_int, pid_t/i32, etc.): direct intCast (safe for small values)
+inline fn syscallResult(rc: anytype) c_int {
+    if (comptime @TypeOf(rc) == usize) {
+        return @truncate(@as(isize, @bitCast(rc)));
+    }
+    return @intCast(rc);
+}
+
+// waitpid status is always *c_int when using libc (std.c.waitpid on all platforms).
+// Raw Linux syscall (std.os.linux.waitpid) would need *u32, but we always link libc on Linux.
+const WaitStatusType = c_int;
+
 // Word types
 pub const word = word_mod.Word;
 pub const unicode = word_mod.Unicode;
@@ -1192,12 +1206,12 @@ pub fn fork() c_int {
 }
 
 pub fn wait(status: ?*c_int) c_int {
-    var raw_status: c_int = 0;
+    var raw_status: WaitStatusType = 0;
     const pid = std.posix.system.waitpid(-1, &raw_status, 0);
     if (status) |s| {
         s.* = raw_status;
     }
-    return @intCast(pid);
+    return syscallResult(pid);
 }
 
 pub fn open(path: [*:0]const u8, flags: c_int, mode: c_uint) c_int {
@@ -1206,7 +1220,7 @@ pub fn open(path: [*:0]const u8, flags: c_int, mode: c_uint) c_int {
 }
 
 pub fn close(fd: c_int) c_int {
-    return std.posix.system.close(fd);
+    return syscallResult(std.posix.system.close(@intCast(fd)));
 }
 
 pub fn read(fd: c_int, buf: ?*anyopaque, count: usize) isize {
@@ -1223,11 +1237,11 @@ pub fn write(fd: c_int, buf: ?*const anyopaque, count: usize) isize {
 }
 
 pub fn ioctl(fd: c_int, request: c_ulong, window: *struct_winsize) c_int {
-    return std.posix.system.ioctl(fd, @intCast(request), @intFromPtr(window));
+    return syscallResult(std.posix.system.ioctl(@intCast(fd), @intCast(request), @intFromPtr(window)));
 }
 
 pub fn unlink(path: [*:0]const u8) c_int {
-    return std.posix.system.unlink(path);
+    return syscallResult(std.posix.system.unlink(path));
 }
 
 pub fn exit(status: c_int) noreturn {
@@ -1290,9 +1304,9 @@ pub fn system(cmd: ?*const anyopaque) c_int {
         _ = std.posix.system.execve("/bin/sh", &argv, envp);
         std.process.exit(127);
     } else {
-        var status: c_int = 0;
-        _ = std.posix.system.waitpid(pid, &status, 0);
-        return status;
+        var raw_status: WaitStatusType = 0;
+        _ = std.posix.system.waitpid(pid, &raw_status, 0);
+        return raw_status;
     }
 }
 
@@ -1555,7 +1569,7 @@ pub fn realloc(ptr: ?*anyopaque, size: usize) ?*anyopaque {
 }
 
 pub fn pipe(fds: *[2]c_int) c_int {
-    return std.posix.system.pipe(fds);
+    return syscallResult(std.posix.system.pipe(fds));
 }
 
 pub fn strncpy(dst: ?*anyopaque, src: ?*const anyopaque, n: usize) ?*anyopaque {
