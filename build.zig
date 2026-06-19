@@ -112,8 +112,8 @@ pub fn build(b: *std.Build) void {
         }),
     });
     const run_menudriver_tests = b.addRunArtifact(menudriver_tests);
-    const steer_tests = b.addTest(.{
-        .name = "steer-tests",
+    const main_tests = b.addTest(.{
+        .name = "main-tests",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
@@ -121,35 +121,16 @@ pub fn build(b: *std.Build) void {
             .link_libc = true,
         }),
     });
-    const run_steer_tests = b.addRunArtifact(steer_tests);
-    steer_tests.root_module.addIncludePath(b.path("."));
-    steer_tests.root_module.addIncludePath(b.path("src/parser/legacy"));
-    steer_tests.root_module.addCSourceFiles(.{
+    const run_main_tests = b.addRunArtifact(main_tests);
+    main_tests.root_module.addIncludePath(b.path("."));
+    main_tests.root_module.addIncludePath(b.path("src/parser/legacy"));
+    main_tests.root_module.addCSourceFiles(.{
         .files = &c_sources,
         .flags = &c_flags,
     });
-    addPlatformMacros(steer_tests, target);
-    steer_tests.root_module.linkSystemLibrary("m", .{});
-    steer_tests.root_module.addOptions("version_options", version_options);
-    const lex_tests = b.addTest(.{
-        .name = "lex-tests",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-        }),
-    });
-    lex_tests.root_module.addIncludePath(b.path("."));
-    lex_tests.root_module.addIncludePath(b.path("src/parser/legacy"));
-    lex_tests.root_module.addCSourceFiles(.{
-        .files = &c_sources,
-        .flags = &c_flags,
-    });
-    addPlatformMacros(lex_tests, target);
-    lex_tests.root_module.linkSystemLibrary("m", .{});
-    lex_tests.root_module.addOptions("version_options", version_options);
-    const run_lex_tests = b.addRunArtifact(lex_tests);
+    addPlatformMacros(main_tests, target);
+    main_tests.root_module.linkSystemLibrary("m", .{});
+    main_tests.root_module.addOptions("version_options", version_options);
 
     const parser_tests = b.addTest(.{
         .name = "parser-tests",
@@ -185,8 +166,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_utf8_tests.step);
     test_step.dependOn(&run_just_tests.step);
     test_step.dependOn(&run_menudriver_tests.step);
-    test_step.dependOn(&run_steer_tests.step);
-    test_step.dependOn(&run_lex_tests.step);
+    test_step.dependOn(&run_main_tests.step);
     test_step.dependOn(&run_mira_tests.step);
     test_step.dependOn(&run_parser_tests.step);
 
@@ -194,7 +174,7 @@ pub fn build(b: *std.Build) void {
     test_mira.dependOn(&run_mira_tests.step);
 
     const test_steer = b.step("test-steer", "Run only steer tests");
-    test_steer.dependOn(&run_steer_tests.step);
+    test_steer.dependOn(&run_main_tests.step);
 
     const header_check_step = b.step("check-headers", "Compile standalone public-header check");
     header_check_step.dependOn(&header_check.step);
@@ -213,8 +193,7 @@ pub fn build(b: *std.Build) void {
     check_step.dependOn(&run_utf8_tests.step);
     check_step.dependOn(&run_just_tests.step);
     check_step.dependOn(&run_menudriver_tests.step);
-    check_step.dependOn(&run_steer_tests.step);
-    check_step.dependOn(&run_lex_tests.step);
+    check_step.dependOn(&run_main_tests.step);
     check_step.dependOn(&run_mira_tests.step);
     check_step.dependOn(&run_parser_tests.step);
 
