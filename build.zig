@@ -44,7 +44,7 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
-            .link_libc = true,
+            .link_libc = false,
         }),
     });
     mira.root_module.addOptions("version_options", version_options);
@@ -117,7 +117,7 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
-            .link_libc = true,
+            .link_libc = false,
         }),
     });
     const run_main_tests = b.addRunArtifact(main_tests);

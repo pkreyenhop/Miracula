@@ -1,9 +1,7 @@
 const std = @import("std");
 
 const c = @import("c_abi.zig");
-const c_jmp = @cImport({
-    @cInclude("setjmp.h");
-});
+const c_jmp = c; // jmp_buf/setjmp/longjmp re-exported from c_abi
 
 const Word = c_long;
 const wordsize = @sizeOf(Word) * 8;

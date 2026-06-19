@@ -287,6 +287,12 @@ pub const ACT_DONE = 2;
 
 const main_clib = @import("../main_clib.zig");
 pub const FILE = main_clib.FILE;
+pub const jmp_buf = main_clib.jmp_buf;
+pub const sigjmp_buf = main_clib.sigjmp_buf;
+pub const setjmp = main_clib.setjmp;
+pub const longjmp = main_clib.longjmp;
+pub const sigsetjmp = main_clib.sigsetjmp;
+pub const siglongjmp = main_clib.siglongjmp;
 pub const time_t = main_clib.time_t;
 pub const DBL_MAX = main_clib.DBL_MAX;
 pub const EOF = main_clib.EOF;

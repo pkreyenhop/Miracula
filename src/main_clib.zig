@@ -8,9 +8,14 @@ pub var env_slice: [:null]const ?[*:0]const u8 = &[_:null]?[*:0]const u8{};
 pub const word = word_mod.Word;
 pub const unicode = word_mod.Unicode;
 
-pub const c = @cImport({
-    @cInclude("setjmp.h");
-});
+// jmp_buf/sigjmp_buf: opaque buffers large enough for all supported platforms.
+// setjmp/longjmp/sigsetjmp/siglongjmp live in libSystem on macOS and libc on Linux.
+pub const jmp_buf = extern struct { __opaque: [512]u8 align(16) = [_]u8{0} ** 512 };
+pub const sigjmp_buf = extern struct { __opaque: [520]u8 align(16) = [_]u8{0} ** 520 };
+pub extern fn setjmp(env: *anyopaque) c_int;
+pub extern fn longjmp(env: *anyopaque, val: c_int) noreturn;
+pub extern fn sigsetjmp(env: *anyopaque, savemask: c_int) c_int;
+pub extern fn siglongjmp(env: *anyopaque, val: c_int) noreturn;
 
 // Definitions from data.h / combs.h
 pub const pnlim: c_int = 1024;
@@ -159,9 +164,7 @@ pub extern fn resetheap() void;
 pub extern fn sayhere(h_val: Word, nl: Word) void;
 pub extern fn setprefix(p: [*:0]u8) void;
 pub extern fn setupdic() void;
-pub const sigjmp_buf = c.sigjmp_buf;
-pub const siglongjmp = c.siglongjmp;
-pub const sigsetjmp = c.sigsetjmp;
+// sigjmp_buf, sigsetjmp, siglongjmp are declared above with the jmp_buf family.
 pub const EDOM = 33;
 pub const ERANGE = 34;
 

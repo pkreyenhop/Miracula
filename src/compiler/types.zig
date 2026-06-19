@@ -1,20 +1,16 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
-const clib = @cImport({
-    @cInclude("stdlib.h");
-    @cInclude("stdio.h");
-    @cInclude("setjmp.h");
-});
+const shim = @import("../runtime/c_abi.zig");
 const c = struct {
-    pub const printf = clib.printf;
-    pub const fprintf = clib.fprintf;
-    pub const putchar = clib.putchar;
-    pub const FILE = clib.FILE;
-    pub const stderr = clib.stderr;
-    pub const stdout = clib.stdout;
-    pub const jmp_buf = clib.jmp_buf;
-    pub const setjmp = clib.setjmp;
-    pub const longjmp = clib.longjmp;
+    pub const printf = shim.printf;
+    pub const fprintf = shim.fprintf;
+    pub const putchar = shim.putchar;
+    pub const FILE = shim.FILE;
+    pub const stderr = shim.stderr;
+    pub const stdout = shim.stdout;
+    pub const jmp_buf = shim.jmp_buf;
+    pub const setjmp = shim.setjmp;
+    pub const longjmp = shim.longjmp;
 
     pub const Y = word.Y;
 
@@ -185,7 +181,7 @@ extern fn alfasort(x: Word) Word;
 extern fn readoption() void;
 export var env1: c.jmp_buf = undefined;
 export fn types_abort() noreturn {
-    c.longjmp(&env1[0], 1);
+    c.longjmp(&env1, 1);
 }
 extern fn out(f: *c.FILE, x: Word) void;
 extern fn is_char(x: Word) c_int;
@@ -413,7 +409,7 @@ export fn tsort(g_input: Word) Word {
         }
     }
     if (g != NIL) {
-        _ = c.fprintf(getStderr(), "error: impossible event in tsort\n");
+        _ = c.fprintf(getStderr(), "error: impossible event in tsort\n", .{});
     }
     return reverse(r);
 }
@@ -532,20 +528,20 @@ fn meta_tcheck(t_val: Word) Word {
                 TYPERRS += 1;
                 if (tag[@intCast(current_id)] == DATAPAIR) {
                     locate_inc();
-                    _ = c.printf("badly formed type \"");
+                    _ = c.printf("badly formed type \"", .{});
                     out_type(t_val);
-                    _ = c.printf("\" in binding for \"%s\"\n", @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(current_id))))));
-                    _ = c.printf("(");
+                    _ = c.printf("\" in binding for \"%s\"\n", .{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(current_id)))))});
+                    _ = c.printf("(", .{});
                     out_type(tn);
-                    _ = c.printf(" has zero arity)\n");
+                    _ = c.printf(" has zero arity)\n", .{});
                 } else {
-                    _ = c.printf("badly formed type \"");
+                    _ = c.printf("badly formed type \"", .{});
                     out_type(t_val);
                     const msg: [*:0]const u8 = if (idType(current_id) == type_t) "== binding" else "specification";
-                    _ = c.printf("\" in %s for \"%s\"\n", msg, getId(current_id));
-                    _ = c.printf("(");
+                    _ = c.printf("\" in %s for \"%s\"\n", .{msg, getId(current_id)});
+                    _ = c.printf("(", .{});
                     out_type(tn);
-                    _ = c.printf(" has zero arity)\n");
+                    _ = c.printf(" has zero arity)\n", .{});
                     sayhere(getspecloc(current_id), 1);
                 }
                 sterilise(t_val);
@@ -557,9 +553,9 @@ fn meta_tcheck(t_val: Word) Word {
                 if (tag[@intCast(current_id)] == DATAPAIR) {
                     locate_inc();
                 }
-                _ = c.printf("undeclared typename \"%s\" ", getId(tn));
+                _ = c.printf("undeclared typename \"%s\" ", .{getId(tn)});
                 if (tag[@intCast(current_id)] == DATAPAIR) {
-                    _ = c.printf("in binding for %s\n", @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(current_id))))));
+                    _ = c.printf("in binding for %s\n", .{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(current_id)))))});
                 } else {
                     sayhere(getspecloc(current_id), 1);
                 }
@@ -570,19 +566,19 @@ fn meta_tcheck(t_val: Word) Word {
             TYPERRS += 1;
             if (tag[@intCast(current_id)] == DATAPAIR) {
                 locate_inc();
-                _ = c.printf("badly formed type \"");
+                _ = c.printf("badly formed type \"", .{});
                 out_type(t_val);
-                _ = c.printf("\" in binding for \"%s\"\n", @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(current_id))))));
+                _ = c.printf("\" in binding for \"%s\"\n", .{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(current_id)))))});
             } else {
-                _ = c.printf("badly formed type \"");
+                _ = c.printf("badly formed type \"", .{});
                 out_type(t_val);
                 const msg: [*:0]const u8 = if (idType(current_id) == type_t) "== binding" else "specification";
-                _ = c.printf("\" in %s for \"%s\"\n", msg, getId(current_id));
+                _ = c.printf("\" in %s for \"%s\"\n", .{msg, getId(current_id)});
             }
             if (idType(tn) != type_t) {
-                _ = c.printf("(%s not defined as typename)\n", getId(tn));
+                _ = c.printf("(%s not defined as typename)\n", .{getId(tn)});
             } else {
-                _ = c.printf("(typename %s has arity %ld)\n", getId(tn), t_arity(tn));
+                _ = c.printf("(typename %s has arity %ld)\n", .{getId(tn), t_arity(tn)});
             }
             if (tag[@intCast(current_id)] != DATAPAIR) {
                 sayhere(getspecloc(current_id), 1);
@@ -601,9 +597,9 @@ fn meta_tcheck(t_val: Word) Word {
             locate_inc();
         }
         const suffix: [*:0]const u8 = if (meta_pending == NIL) "" else "s";
-        _ = c.printf("error: cycle in type \"==\" definition%s ", suffix);
+        _ = c.printf("error: cycle in type \"==\" definition%s ", .{suffix});
         printelement(meta_pending);
-        _ = c.printf("\n");
+        _ = c.printf("\n", .{});
         if (tag[@intCast(current_id)] != DATAPAIR) {
             sayhere(idWho(tn), 1);
         }
@@ -826,25 +822,25 @@ export fn locate(s: [*:0]const u8) void {
         if (current_id != 0) {
             if (tag[@intCast(current_id)] == DATAPAIR) {
                 locate_inc();
-                _ = c.printf("%s in binding for %s\n", s, @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(current_id))))));
+                _ = c.printf("%s in binding for %s\n", .{s, @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(current_id)))))});
                 return;
             }
             var x = current_id;
-            _ = c.printf("%s in definition of ", s);
+            _ = c.printf("%s in definition of ", .{s});
             while (tag[@intCast(x)] == CONS) {
                 if (tag[@intCast(t(x))] == ID and member(fnts, t(x)) != 0) {
-                    _ = c.printf("nonterminal ");
+                    _ = c.printf("nonterminal ", .{});
                     x = h(x);
                 } else {
                     out_formal1(getStdout().?, h(x));
-                    _ = c.printf(", subdef of ");
+                    _ = c.printf(", subdef of ", .{});
                     x = t(x);
                 }
             }
-            _ = c.printf("%s", getId(x));
-            _ = c.printf("\n");
+            _ = c.printf("%s", .{getId(x)});
+            _ = c.printf("\n", .{});
         } else {
-            _ = c.printf("%s in expression\n", s);
+            _ = c.printf("%s in expression\n", .{s});
         }
     }
     if (lineptr != 0) {
@@ -870,18 +866,18 @@ export fn sayhere(h_val: Word, nl: Word) void {
     if (tag[@intCast(h_node)] != FILEINFO) {
         h_node = rhs_here(h_node);
         if (tag[@intCast(h_node)] != FILEINFO) {
-            _ = c.fprintf(getStderr().?, "(impossible event in sayhere)\n");
+            _ = c.fprintf(getStderr().?, "(impossible event in sayhere)\n", .{});
             return;
         }
     }
     const h_str = @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h_node)))));
     const eq = std.mem.eql(u8, std.mem.span(h_str), std.mem.span(current_script));
     const prefix: [*:0]const u8 = if (eq) "" else "%insert file ";
-    _ = c.printf("(line %3ld of %s\"%s\")", t(h_node), prefix, h_str);
+    _ = c.printf("(line %3ld of %s\"%s\")", .{t(h_node), prefix, h_str});
     if (nl != 0) {
-        _ = c.printf("\n");
+        _ = c.printf("\n", .{});
     } else {
-        _ = c.printf(" ");
+        _ = c.printf(" ", .{});
     }
     if (eq) {
         if (errline == 0) {
@@ -895,23 +891,23 @@ export fn sayhere(h_val: Word, nl: Word) void {
 }
 
 export fn report_type(x: Word) void {
-    _ = c.printf("%s", getId(x));
+    _ = c.printf("%s", .{getId(x)});
     if (idType(x) == type_t) {
         const arity = t_arity(x);
         if (arity > 5) {
-            _ = c.printf("(arity %ld)", arity);
+            _ = c.printf("(arity %ld)", .{arity});
         } else {
             var i: Word = 1;
             while (i <= arity) : (i += 1) {
-                _ = c.printf(" ");
+                _ = c.printf(" ", .{});
                 var j: Word = 0;
                 while (j < i) : (j += 1) {
-                    _ = c.printf("*");
+                    _ = c.printf("*", .{});
                 }
             }
         }
     }
-    _ = c.printf(" :: ");
+    _ = c.printf(" :: ", .{});
     out_type(idType(x));
 }
 
@@ -920,16 +916,16 @@ export fn type_error(a: [*:0]const u8, b: [*:0]const u8, t1_val: Word, t2_val: W
     const t2 = t(t1);
     t1 = h(t1);
     locate("type error");
-    _ = c.printf("cannot %s ", a);
+    _ = c.printf("cannot %s ", .{a});
     out_type(t1);
-    _ = c.printf(" %s ", b);
+    _ = c.printf(" %s ", .{b});
     out_type(t2);
-    _ = c.printf("\n");
+    _ = c.printf("\n", .{});
 }
 
 export fn type_error1(x: Word) void {
     locate("type error");
-    _ = c.printf("typename used as identifier (%s)\n", getId(x));
+    _ = c.printf("typename used as identifier (%s)\n", .{getId(x)});
 }
 
 export fn type_error2(x: Word) void {
@@ -937,48 +933,48 @@ export fn type_error2(x: Word) void {
         return;
     }
     TYPERRS += 1;
-    _ = c.printf("undefined name - %s\n", getId(x));
+    _ = c.printf("undefined name - %s\n", .{getId(x)});
 }
 
 export fn type_error3(x: Word) void {
     locate("error");
-    _ = c.printf("constructor \"%s\" used at wrong arity in formal\n", getId(x));
+    _ = c.printf("constructor \"%s\" used at wrong arity in formal\n", .{getId(x)});
 }
 
 export fn type_error4(x: Word) void {
     locate("error");
-    _ = c.printf("illegal object \"");
+    _ = c.printf("illegal object \"", .{});
     out_pattern(getStdout().?, x);
-    _ = c.printf("\" as head of formal\n");
+    _ = c.printf("\" as head of formal\n", .{});
 }
 
 export fn type_error5(x: Word) void {
     locate("error");
-    _ = c.printf("undeclared constructor \"");
+    _ = c.printf("undeclared constructor \"", .{});
     out_pattern(getStdout().?, x);
-    _ = c.printf("\" in formal\n");
+    _ = c.printf("\" in formal\n", .{});
     ND = add1(x, ND);
 }
 
 export fn type_error6(x: Word, f: Word, a: Word) void {
     TYPERRS += 1;
-    _ = c.printf("incorrect declaration ");
+    _ = c.printf("incorrect declaration ", .{});
     sayhere(lineptr, 1);
-    _ = c.printf("specified, %s :: ", getId(x));
+    _ = c.printf("specified, %s :: ", .{getId(x)});
     out_type(f);
-    _ = c.printf("\n");
-    _ = c.printf("inferred,  %s :: ", getId(x));
+    _ = c.printf("\n", .{});
+    _ = c.printf("inferred,  %s :: ", .{getId(x)});
     out_type(redtvars(subst(a)));
-    _ = c.printf("\n");
+    _ = c.printf("\n", .{});
 }
 
 export fn type_error7(a: Word, b: Word) void {
     locate("type error");
-    _ = c.printf("\nrhs of lex rule :: ");
+    _ = c.printf("\nrhs of lex rule :: ", .{});
     out_type(redtvars(subst(b)));
-    _ = c.printf("\n type expected  :: ");
+    _ = c.printf("\n type expected  :: ", .{});
     out_type(redtvars(subst(a)));
-    _ = c.printf("\n");
+    _ = c.printf("\n", .{});
 }
 
 export fn type_error8(t1_val: Word, t2_val: Word) void {
@@ -994,12 +990,12 @@ export fn type_error8(t1_val: Word, t2_val: Word) void {
     const big = size(t1) >= 10 or size(t2) >= 10;
     locate("type error");
     const prefix: [*:0]const u8 = if (big) "\n " else " ";
-    _ = c.printf("cannot unify%s ", prefix);
+    _ = c.printf("cannot unify%s ", .{prefix});
     out_type(t1);
     const infix: [*:0]const u8 = if (big) "\nwith\n  " else " with ";
-    _ = c.printf("%s", infix);
+    _ = c.printf("%s", .{infix});
     out_type(t2);
-    _ = c.printf("\n");
+    _ = c.printf("\n", .{});
 }
 
 const comma_t: Word = 5;
@@ -1021,7 +1017,7 @@ export fn out_type(t_val: Word) void {
     var type_node = t_val;
     while (isarrow_t(type_node)) {
         out_type1(t(h(type_node)));
-        _ = c.printf("->");
+        _ = c.printf("->", .{});
         type_node = t(type_node);
     }
     out_type1(type_node);
@@ -1031,7 +1027,7 @@ export fn out_type1(t_val: Word) void {
     var type_node = t_val;
     if (iscompound_t(type_node) and !iscomma_t(type_node) and !islist_t(type_node) and !isarrow_t(type_node)) {
         out_type1(h(type_node));
-        _ = c.printf(" ");
+        _ = c.printf(" ", .{});
         type_node = t(type_node);
     }
     out_type2(type_node);
@@ -1039,62 +1035,62 @@ export fn out_type1(t_val: Word) void {
 
 export fn out_type2(t_val: Word) void {
     if (islist_t(t_val)) {
-        _ = c.printf("[");
+        _ = c.printf("[", .{});
         out_type(t(t_val));
-        _ = c.printf("]");
+        _ = c.printf("]", .{});
     } else if (iscompound_t(t_val)) {
-        _ = c.printf("(");
+        _ = c.printf("(", .{});
         out_typel(t_val);
         if (iscomma_t(t_val) and t(t_val) == void_t) {
-            _ = c.printf(",");
+            _ = c.printf(",", .{});
         }
-        _ = c.printf(")");
+        _ = c.printf(")", .{});
     } else {
         switch (t_val) {
             bool_t => {
-                _ = c.printf("bool");
+                _ = c.printf("bool", .{});
             },
             num_t => {
-                _ = c.printf("num");
+                _ = c.printf("num", .{});
             },
             char_t => {
-                _ = c.printf("char");
+                _ = c.printf("char", .{});
             },
             wrong_t => {
-                _ = c.printf("WRONG");
+                _ = c.printf("WRONG", .{});
             },
             undef_t => {
-                _ = c.printf("UNKNOWN");
+                _ = c.printf("UNKNOWN", .{});
             },
             void_t => {
-                _ = c.printf("()");
+                _ = c.printf("()", .{});
             },
             type_t => {
-                _ = c.printf("type");
+                _ = c.printf("type", .{});
             },
             else => {
                 if (tag[@intCast(t_val)] == ID) {
-                    _ = c.printf("%s", getId(t_val));
+                    _ = c.printf("%s", .{getId(t_val)});
                 } else if (isvar_t(t_val)) {
                     var n = gettvar(t_val);
                     if (n > 0 and n < 7) {
                         while (n > 0) : (n -= 1) {
-                            _ = c.printf("*");
+                            _ = c.printf("*", .{});
                         }
                     } else {
-                        _ = c.printf("%ld", n);
+                        _ = c.printf("%ld", .{n});
                     }
                 } else if (tag[@intCast(t_val)] == STRCONS) {
                     const pn_val_node = pn_val(t_val);
                     if (tag[@intCast(pn_val_node)] == ID) {
-                        _ = c.printf("%s", getId(pn_val_node));
+                        _ = c.printf("%s", .{getId(pn_val_node)});
                     } else if (std.mem.eql(u8, std.mem.span(@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(t_info(t_val)))))))), std.mem.span(current_script))) {
-                        _ = c.printf("%s", @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(t_info(t_val))))))));
+                        _ = c.printf("%s", .{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(t_info(t_val)))))))});
                     } else {
-                        _ = c.printf("`%s@%s'", @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(t_info(t_val))))))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(t_info(t_val))))))));
+                        _ = c.printf("`%s@%s'", .{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(t_info(t_val))))))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(t_info(t_val)))))))});
                     }
                 } else {
-                    _ = c.printf("<BADLY FORMED TYPE:%d,%ld,%ld>", tag[@intCast(t_val)], h(t_val), t(t_val));
+                    _ = c.printf("<BADLY FORMED TYPE:%d,%ld,%ld>", .{tag[@intCast(t_val)], h(t_val), t(t_val)});
                 }
             },
         }
@@ -1107,9 +1103,9 @@ export fn out_typel(t_val: Word) void {
         out_type(t(h(type_node)));
         type_node = t(type_node);
         if (iscomma_t(type_node)) {
-            _ = c.printf(",");
+            _ = c.printf(",", .{});
         } else if (type_node != void_t) {
-            _ = c.printf("<>");
+            _ = c.printf("<>", .{});
         }
     }
     if (type_node == void_t) {
@@ -1147,45 +1143,45 @@ export fn out_formal1(f: *c.FILE, x_in: Word) void {
         x = t(x);
     }
     if (x == NIL) {
-        _ = c.fprintf(f, "[]");
+        _ = c.fprintf(f, "[]", .{});
     } else if (tag[@intCast(x)] == CONS and tail(x) == NIL) {
         if (allchars != 0) {
-            _ = c.fprintf(f, "\"");
+            _ = c.fprintf(f, "\"", .{});
             while (x != NIL) {
-                _ = c.fprintf(f, "%s", charname(h(x)));
+                _ = c.fprintf(f, "%s", .{charname(h(x))});
                 x = t(x);
             }
-            _ = c.fprintf(f, "\"");
+            _ = c.fprintf(f, "\"", .{});
         } else {
-            _ = c.fprintf(f, "[");
+            _ = c.fprintf(f, "[", .{});
             while (x != nill and x != NIL) {
                 out_pattern(f, h(x));
                 x = t(x);
                 if (x != nill and x != NIL) {
-                    _ = c.fprintf(f, ",");
+                    _ = c.fprintf(f, ",", .{});
                 }
             }
-            _ = c.fprintf(f, "]");
+            _ = c.fprintf(f, "]", .{});
         }
     } else if (tag[@intCast(x)] == AP or tag[@intCast(x)] == CONS) {
-        _ = c.fprintf(f, "(");
+        _ = c.fprintf(f, "(", .{});
         out_pattern(f, x);
-        _ = c.fprintf(f, ")");
+        _ = c.fprintf(f, ")", .{});
     } else if (tag[@intCast(x)] == TCONS or tag[@intCast(x)] == PAIR) {
-        _ = c.fprintf(f, "(");
+        _ = c.fprintf(f, "(", .{});
         while (tag[@intCast(x)] == TCONS) {
             out_pattern(f, h(x));
             x = t(x);
-            _ = c.fprintf(f, ",");
+            _ = c.fprintf(f, ",", .{});
         }
         out_pattern(f, h(x));
-        _ = c.fprintf(f, ",");
+        _ = c.fprintf(f, ",", .{});
         out_pattern(f, t(x));
-        _ = c.fprintf(f, ")");
+        _ = c.fprintf(f, ")", .{});
     } else if ((tag[@intCast(x)] == INT and neg(x) != 0) or (tag[@intCast(x)] == DOUBLE and get_dbl(x) < 0)) {
-        _ = c.fprintf(f, "(");
+        _ = c.fprintf(f, "(", .{});
         out(f, x);
-        _ = c.fprintf(f, ")");
+        _ = c.fprintf(f, ")", .{});
     } else {
         out(f, x);
     }
@@ -1197,7 +1193,7 @@ export fn out_pattern(f: *c.FILE, x: Word) void {
             out(f, t(x));
         } else if (h(x) != CONST and tail(x) != NIL) {
             out_formal(f, h(x));
-            _ = c.fprintf(f, ":");
+            _ = c.fprintf(f, ":", .{});
             out_pattern(f, t(x));
         } else {
             out_formal(f, x);
@@ -1212,11 +1208,11 @@ export fn out_formal(f: *c.FILE, x: Word) void {
         out_formal1(f, x);
     } else if (tag[@intCast(h(x))] == AP and h(h(x)) == PLUS) {
         out_formal(f, t(x));
-        _ = c.fprintf(f, "+");
+        _ = c.fprintf(f, "+", .{});
         out(f, t(h(x)));
     } else {
         out_formal(f, h(x));
-        _ = c.fprintf(f, " ");
+        _ = c.fprintf(f, " ", .{});
         out_formal1(f, t(x));
     }
 }
@@ -1256,7 +1252,7 @@ export fn rembvars(x_in: Word, p_in: Word) Word {
                 p = t(p);
             },
             else => {
-                _ = c.fprintf(getStderr().?, "impossible event in rembvars\n");
+                _ = c.fprintf(getStderr().?, "impossible event in rembvars\n", .{});
                 return x;
             },
         }
@@ -1334,7 +1330,7 @@ export fn comp_deps(n: Word) void {
             },
             abstract_t => {
                 if (t_info(n) == undef_t) {
-                    _ = c.printf("error: script contains no binding for abstract typename \"%s\"\n", getId(n));
+                    _ = c.printf("error: script contains no binding for abstract typename \"%s\"\n", .{getId(n)});
                     sayhere(idWho(n), 1);
                     TYPERRS += 1;
                 } else {
@@ -1396,29 +1392,29 @@ export fn printelement(x: Word) void {
         out(getStdout().?, x);
         return;
     }
-    _ = c.printf("(");
+    _ = c.printf("(", .{});
     var cur = x;
     while (cur != NIL) {
         out(getStdout().?, h(cur));
         cur = t(cur);
         if (cur != NIL) {
-            _ = c.printf(" ");
+            _ = c.printf(" ", .{});
         }
     }
-    _ = c.printf(")");
+    _ = c.printf(")", .{});
 }
 
 export fn printlist(title: [*:0]const u8, l_in: Word) void {
     var l = l_in;
-    _ = c.printf("%s", title);
+    _ = c.printf("%s", .{title});
     while (l != NIL) {
         printelement(h(l));
         l = t(l);
         if (l != NIL) {
-            _ = c.printf(",");
+            _ = c.printf(",", .{});
         }
     }
-    _ = c.printf(";\n");
+    _ = c.printf(";\n", .{});
 }
 
 export var hereinc: Word = 0;
@@ -1440,7 +1436,7 @@ export fn locate_inc() void {
     if (lasthereinc == hereinc) {
         return;
     }
-    _ = c.printf("incorrect %%include directive ");
+    _ = c.printf("incorrect %%include directive ", .{});
     lasthereinc = hereinc;
     sayhere(hereinc, 1);
 }
@@ -1455,7 +1451,7 @@ export fn cyclic_abstr(atnames: Word) Word {
     x = atnames;
     while (x != NIL) {
         if (occurs(h(x), y) != 0) {
-            _ = c.printf("illegal type abstraction: cycle in \"==\" binding%s ", if (t(atnames) == NIL) @as([*:0]const u8, "") else @as([*:0]const u8, "s"));
+            _ = c.printf("illegal type abstraction: cycle in \"==\" binding%s ", .{if (t(atnames) == NIL) @as([*:0]const u8, "") else @as([*:0]const u8, "s")});
             printelement(atnames);
             _ = c.putchar('\n');
             sayhere(id_who(h(x)), 1);
@@ -1542,10 +1538,10 @@ export fn abstr_check(x_in: Word) void {
         const t_val = subst(etype(idVal(h(x)), NIL, NIL));
         if (subsumes(t_val, instantiate(idType(h(x)))) == 0) {
             TYPERRS += 1;
-            _ = c.printf("abstype implementation error\n");
-            _ = c.printf("\"%s\" is bound to value of type: ", getId(h(x)));
+            _ = c.printf("abstype implementation error\n", .{});
+            _ = c.printf("\"%s\" is bound to value of type: ", .{getId(h(x))});
             out_type(redtvars(t_val));
-            _ = c.printf("\ntype expected: ");
+            _ = c.printf("\ntype expected: ", .{});
             out_type(idType(h(x)));
             _ = c.putchar('\n');
             sayhere(id_who(h(x)), 1);
@@ -1674,10 +1670,10 @@ export fn checkfbs() void {
             if (subsumes(t_val, instantiate(t1)) == 0) {
                 TYPERRS += 1;
                 locate_inc();
-                _ = c.printf("binding for parameter `%s' has wrong type\n", @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(current_id))))));
-                _ = c.printf("required :: ");
+                _ = c.printf("binding for parameter `%s' has wrong type\n", .{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(current_id)))))});
+                _ = c.printf("required :: ", .{});
                 out_type(t(t(h(formals))));
-                _ = c.printf("\n  actual :: ");
+                _ = c.printf("\n  actual :: ", .{});
                 out_type(redtvars(t_val));
                 _ = c.putchar('\n');
             }
@@ -1690,7 +1686,7 @@ export fn checkfbs() void {
         TABSTRS = NIL;
         NT = NIL;
         R = NIL;
-        _ = c.fprintf(getStderr().?, "compilation abandoned\n");
+        _ = c.fprintf(getStderr().?, "compilation abandoned\n", .{});
         SYNERR = 1;
     }
     reset_SUBST();
@@ -1990,7 +1986,7 @@ fn etype(x: Word, env: Word, ngt: Word) Word {
                     } else if (tag[@intCast(current_id)] == DATAPAIR) {
                         locate_inc();
                     }
-                    _ = c.printf("undefined name \"%s\"\n", getId(x));
+                    _ = c.printf("undefined name \"%s\"\n", .{getId(x)});
                     ND = add1(x, ND);
                 }
                 return NTV();
@@ -2467,7 +2463,7 @@ fn etype(x: Word, env: Word, ngt: Word) Word {
                     return tf(ltchar, NTV());
                 },
                 else => {
-                    _ = c.printf("do not know type of ");
+                    _ = c.printf("do not know type of ", .{});
                     out(getStdout().?, x);
                     _ = c.putchar('\n');
                     return wrong_t;
@@ -2475,7 +2471,7 @@ fn etype(x: Word, env: Word, ngt: Word) Word {
             }
         },
         else => {
-            _ = c.printf("unexpected tag in etype ");
+            _ = c.printf("unexpected tag in etype ", .{});
             out(getStdout().?, tag[@intCast(x)]);
             _ = c.putchar('\n');
             return wrong_t;
@@ -2490,11 +2486,11 @@ export fn checkcolfn() void {
         col_fn = 0;
         return;
     }
-    _ = c.printf("`bnftokenindentation' has wrong type for use in offside rule\n");
-    _ = c.printf("type required :: ");
+    _ = c.printf("`bnftokenindentation' has wrong type for use in offside rule\n", .{});
+    _ = c.printf("type required :: ", .{});
     out_type(f);
     _ = c.putchar('\n');
-    _ = c.printf("  actual type :: ");
+    _ = c.printf("  actual type :: ", .{});
     out_type(t_val);
     _ = c.putchar('\n');
     sayhere(getspecloc(col_fn), 1);
@@ -2508,7 +2504,7 @@ export fn genbnft() void {
         if (t_arity(bnftokenstate) == 0) {
             bnf_t = if (t_class(bnftokenstate) == synonym_t) t_info(bnftokenstate) else bnftokenstate;
         } else {
-            _ = c.printf("warning - bnftokenstate has arity>0 (ignored by parser)\n");
+            _ = c.printf("warning - bnftokenstate has arity>0 (ignored by parser)\n", .{});
             bnf_t = void_t;
         }
     } else {
@@ -2607,7 +2603,7 @@ export fn checktypes() void {
     R = NIL;
     SBND = NIL;
     ND = NIL;
-    if (c.setjmp(&env1[0]) == 1) {
+    if (c.setjmp(&env1) == 1) {
         // jumped back on error
     } else {
         if (rfl != NIL) {
@@ -2628,7 +2624,7 @@ export fn checktypes() void {
         TABSTRS = NIL;
         NT = NIL;
         R = NIL;
-        _ = c.fprintf(getStderr().?, "typecheck cannot proceed - compilation abandoned\n");
+        _ = c.fprintf(getStderr().?, "typecheck cannot proceed - compilation abandoned\n", .{});
         SYNERR = 1;
         return;
     }
