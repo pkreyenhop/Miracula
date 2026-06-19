@@ -1,8 +1,6 @@
 const std = @import("std");
 
-const clib = @cImport({
-    @cInclude("data.h");
-});
+const clib = @import("../runtime/c_abi.zig");
 
 const lex_bridge = @import("lex_bridge.zig");
 const parser_mod = @import("parser.zig");

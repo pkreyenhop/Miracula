@@ -7,11 +7,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ast = @import("ast.zig");
 
-const clib = @cImport({
-    @cInclude("data.h");
-    @cInclude("combs.h");
-    @cInclude("big.h");
-});
+const clib = @import("../runtime/c_abi.zig");
 
 const Word = clib.word;
 
@@ -90,6 +86,11 @@ extern fn make_id(p: [*:0]const u8) Word;
 extern fn sto_char(ch: c_int) Word;
 extern fn head(x: Word) Word;
 extern fn isconstrname(s: [*:0]const u8) c_int;
+
+fn bigscanZ(alloc: Allocator, text: []const u8) Word {
+    const z = alloc.dupeZ(u8, text) catch return clib.NIL;
+    return bigscan(z.ptr);
+}
 
 // ---------------------------------------------------------------------------
 // Runtime globals
@@ -344,11 +345,7 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
         // — the type checker will emit the real error).
         .literal => |lit| blk: {
             const val: Word = switch (lit.value) {
-                .int    => |v| blk2: {
-                    var buf: [64:0]u8 = undefined;
-                    const s = std.fmt.bufPrintZ(&buf, "{}", .{v}) catch break :blk2 clib.NIL;
-                    break :blk2 bigscan(s.ptr);
-                },
+                .int    => |v| bigscanZ(alloc, v),
                 .char   => |c| sto_char(@intCast(c)),
                 .string => |s| codegenString(s),
                 .float  => |v| sto_dbl(v), // type checker will reject this later
@@ -421,11 +418,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
 
         // --- Literals ---
         .literal => |lit| switch (lit.value) {
-            .int => |v| blk: {
-                var buf: [64:0]u8 = undefined;
-                const s = std.fmt.bufPrintZ(&buf, "{}", .{v}) catch break :blk clib.NIL;
-                break :blk bigscan(s.ptr);
-            },
+            .int => |v| bigscanZ(alloc, v),
             .float  => |v| sto_dbl(v),
             .char   => |c| sto_char(@intCast(c)),
             .string => |s| codegenString(s),

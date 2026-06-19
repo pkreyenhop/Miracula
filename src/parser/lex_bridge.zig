@@ -11,10 +11,7 @@ const TokenId = tf.TokenId;
 const Token = tf.Token;
 const Span = tf.Span;
 
-const clib = @cImport({
-    @cInclude("data.h");
-    @cInclude("y.tab.h");
-});
+const clib = @import("../runtime/c_abi.zig");
 
 extern fn mira_lex_setup_string(source: [*:0]const u8) void;
 extern fn mira_lex_cleanup() void;
@@ -179,15 +176,12 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
                         .float_val = get_dbl(w),
                     };
                 }
-                // 5. Integer literal: INT-tagged heap cell; decimal text in dicp
+                // 5. Integer literal: INT-tagged heap cell; decimal text in dicp.
+                // Keep the original text so arbitrary precision values are not
+                // truncated to a machine integer before codegen calls bigscan().
                 if (t_tag == clib.INT) {
                     const text_slice = std.mem.span(dicp);
-                    const int_val: i64 = if (std.mem.startsWith(u8, text_slice, "0x") or
-                        std.mem.startsWith(u8, text_slice, "0X"))
-                        std.fmt.parseInt(i64, text_slice[2..], 16) catch 0
-                    else
-                        std.fmt.parseInt(i64, text_slice, 10) catch 0;
-                    break :blk Token{ .id = .const_int, .span = span, .int_val = int_val };
+                    break :blk Token{ .id = .const_int, .span = span, .text = try gpa.dupe(u8, text_slice) };
                 }
             }
             // Unknown CONST form (e.g. $* internal syntax)

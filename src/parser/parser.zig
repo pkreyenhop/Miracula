@@ -270,8 +270,9 @@ fn parsePatV1(p: *Parser) ParseError!ast.Pat {
     if (tok.id == .minus) {
         _ = p.advance();
         const lit_tok = try p.expect(.const_int);
+        const neg_text = try std.fmt.allocPrint(p.gpa, "-{s}", .{lit_tok.text});
         return ast.Pat{ .literal = .{
-            .value = .{ .int = -lit_tok.int_val },
+            .value = .{ .int = neg_text },
             .span  = tok.span,
         } };
     }
@@ -335,7 +336,7 @@ fn parsePatV3(p: *Parser) ParseError!ast.Pat {
         .cname => ast.Pat{ .cname = .{ .text = tok.text, .span = tok.span } },
 
         .const_int => ast.Pat{ .literal = .{
-            .value = .{ .int = tok.int_val },
+            .value = .{ .int = tok.text },
             .span  = tok.span,
         } },
         .const_float => ast.Pat{ .literal = .{

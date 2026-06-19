@@ -8,10 +8,7 @@ extern fn yylex() c_int;
 extern var dicp: [*:0]u8;
 extern var yylval: clib.word;
 
-const clib = @cImport({
-    @cInclude("data.h");
-    @cInclude("y.tab.h");
-});
+const clib = @import("../runtime/c_abi.zig");
 
 extern fn make_id(n: [*:0]const u8) clib.word;
 extern var current_file: clib.word;
@@ -338,4 +335,3 @@ test "new parser AST snapshot tests" {
     // Miranda type synonym names are lowercase identifiers
     try runASTSnapshotTest(allocator, "type_synonym", "type pair * ** == (*, **)\n");
 }
-

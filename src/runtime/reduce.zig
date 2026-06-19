@@ -1,16 +1,6 @@
 const std = @import("std");
 const platform = @import("../io/platform.zig");
-const clib = @cImport({
-    @cInclude("sys/types.h");
-    @cInclude("sys/stat.h");
-    @cInclude("sys/times.h");
-    @cInclude("unistd.h");
-    @cInclude("errno.h");
-    @cInclude("data.h");
-    @cInclude("big.h");
-    @cInclude("lex.h");
-    @cInclude("utf8.h");
-});
+const clib = @import("c_abi.zig");
 
 const Word = c_long;
 const NIL: Word = clib.CMBASE + 138;
@@ -622,7 +612,7 @@ export fn head(x_val: Word) Word {
 export fn apfile(f: Word) void {
     var p = outfilq;
     const fil = getstring(f, "Appendfile");
-    while (p != NIL and clib.strcmp(h(h(p)), fil) != 0) {
+    while (p != NIL and clib.strcmp(@ptrFromInt(@as(usize, @intCast(h(h(p))))), fil) != 0) {
         p = t(p);
     }
     if (p == NIL) {
@@ -630,7 +620,7 @@ export fn apfile(f: Word) void {
         if (s == null) {
             _ = clib.fprintf(getStderr().?, "\nAppendfile: cannot write to \"%s\"\n", fil);
         } else {
-            outfilq = cons(datapair(@intCast(@intFromPtr(clib.keep(fil))), @intCast(@intFromPtr(s.?))), outfilq);
+            outfilq = cons(datapair(@intCast(@intFromPtr(clib.keep(fil.?))), @intCast(@intFromPtr(s.?))), outfilq);
         }
     }
 }
@@ -638,7 +628,7 @@ export fn apfile(f: Word) void {
 export fn closefile(f: Word) void {
     var p = &outfilq;
     const fil = getstring(f, "Closefile");
-    while (p.* != NIL and clib.strcmp(h(h(p.*)), fil) != 0) {
+    while (p.* != NIL and clib.strcmp(@ptrFromInt(@as(usize, @intCast(h(h(p.*))))), fil) != 0) {
         p = tp(p.*);
     }
     if (p.* != NIL) {
@@ -650,7 +640,7 @@ export fn closefile(f: Word) void {
 export fn outf(e: Word) void {
     var p = outfilq;
     const f = getstring(t(h(e)), "Tofile");
-    while (p != NIL and clib.strcmp(h(h(p)), f) != 0) {
+    while (p != NIL and clib.strcmp(@ptrFromInt(@as(usize, @intCast(h(h(p))))), f) != 0) {
         p = t(p);
     }
     if (p == NIL) {
@@ -663,7 +653,7 @@ export fn outf(e: Word) void {
         if (clib.isatty(clib.fileno(s_out.?)) != 0) {
             clib.setbuf(s_out.?, null);
         }
-        outfilq = cons(datapair(@intCast(@intFromPtr(clib.keep(f))), @intCast(@intFromPtr(s_out.?))), outfilq);
+        outfilq = cons(datapair(@intCast(@intFromPtr(clib.keep(f.?))), @intCast(@intFromPtr(s_out.?))), outfilq);
     } else {
         s_out = @ptrFromInt(@as(usize, @intCast(t(h(p)))));
     }
@@ -795,4 +785,3 @@ comptime {
     _ = @import("reducer/io.zig");
     _ = @import("reducer/lex.zig");
 }
-

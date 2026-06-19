@@ -1,13 +1,5 @@
 const std = @import("std");
-const clib = @cImport({
-    @cInclude("stdlib.h");
-    @cInclude("stdio.h");
-    @cInclude("string.h");
-    @cInclude("ctype.h");
-    @cInclude("data.h");
-    @cInclude("combs.h");
-    @cInclude("y.tab.h");
-});
+const clib = @import("../runtime/c_abi.zig");
 
 const Word = c_long;
 const CMBASE: Word = 306;
@@ -1196,8 +1188,8 @@ export fn adjust_prefix(f: [*:0]const u8) void {
     }
     _ = clib.strcpy(prefixbase.? + @as(usize, @intCast(prefix)), f);
     const g = clib.rindex(prefixbase.? + @as(usize, @intCast(prefix)), '/');
-    if (g != null) {
-        g[1] = 0;
+    if (g) |gp| {
+        gp[1] = 0;
     } else {
         (prefixbase.? + @as(usize, @intCast(prefix)))[0] = 0;
     }

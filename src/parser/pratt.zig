@@ -208,7 +208,7 @@ pub fn parseExpr(
             .dollars     => Expr{ .op_func = "dollars" },
 
             .const_int => Expr{ .literal = .{
-                .value = .{ .int = tok.int_val },
+                .value = .{ .int = tok.text },
                 .span  = tok.span,
             } },
             .const_float => Expr{ .literal = .{
@@ -642,7 +642,7 @@ test "parse integer literal" {
     var ts = TokenStream{ .tokens = &tokens };
     const expr = try parseExpr(gpa, &ts, 0);
     try std.testing.expectEqual(std.meta.Tag(Expr).literal, std.meta.activeTag(expr));
-    try std.testing.expectEqual(@as(i64, 42), expr.literal.value.int);
+    try std.testing.expectEqualStrings("42", expr.literal.value.int);
 }
 
 test "parse empty list" {

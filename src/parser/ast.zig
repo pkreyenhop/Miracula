@@ -29,7 +29,7 @@ pub const TypeExpr = union(enum) {
 // ---------------------------------------------------------------------------
 
 pub const Literal = union(enum) {
-    int: i64,
+    int: []const u8,
     float: f64,
     string: []const u8,
     char: u21,

@@ -1,13 +1,8 @@
 const std = @import("std");
 
-const c = @cImport({
-    @cInclude("stdio.h");
-    @cInclude("stdlib.h");
-    @cInclude("signal.h");
+const c = @import("c_abi.zig");
+const c_jmp = @cImport({
     @cInclude("setjmp.h");
-    @cInclude("data.h");
-    @cInclude("combs.h");
-    @cInclude("lex.h");
 });
 
 const Word = c_long;
@@ -480,8 +475,8 @@ export fn make(t_val: u8, x: Word, y: Word) Word {
 }
 
 export fn gc() void {
-    var env: c.jmp_buf = undefined;
-    if (c.setjmp(&env) != 0) {
+    var env: c_jmp.jmp_buf = undefined;
+    if (c_jmp.setjmp(&env) != 0) {
         return;
     }
     collecting = 1;
@@ -518,7 +513,7 @@ export fn gc() void {
     cellcount += claims;
     claims = 0;
     collecting = 0;
-    c.longjmp(&env, 1);
+    c_jmp.longjmp(&env, 1);
 }
 
 export fn gcpatch() void {

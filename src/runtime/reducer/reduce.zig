@@ -1,15 +1,5 @@
 const std = @import("std");
-pub const clib = @cImport({
-    @cInclude("sys/types.h");
-    @cInclude("sys/stat.h");
-    @cInclude("unistd.h");
-    @cInclude("errno.h");
-    @cInclude("data.h");
-    @cInclude("big.h");
-    @cInclude("lex.h");
-    @cInclude("combs.h");
-    @cInclude("reduce_internal.h");
-});
+pub const clib = @import("../c_abi.zig");
 
 pub const Word = c_long;
 
@@ -587,7 +577,6 @@ pub inline fn getsmallint(x: Word) Word {
     const h_val = hd_get(x);
     return if ((h_val & clib.SIGNBIT) != 0) -(h_val & clib.MAXDIGIT) else h_val;
 }
-
 
 
 

@@ -97,7 +97,7 @@ pub const Span = struct {
 pub const Token = struct {
     id: TokenId,
     span: Span,
-    /// Raw text for name / cname / string tokens.
+    /// Raw text for name / cname / string / integer tokens.
     text: []const u8 = &.{},
     int_val: i64 = 0,
     float_val: f64 = 0.0,
