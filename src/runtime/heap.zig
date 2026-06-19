@@ -360,7 +360,7 @@ export fn setupheap() void {
             unreachable;
         };
         heap = @ptrCast(@alignCast(ptr));
-        
+
         const bigtop_val = @as(usize, @intCast(BIGTOP()));
         const tag_ptr = c.calloc(bigtop_val + 1, @sizeOf(u8)) orelse {
             mallocfail("heap");
@@ -368,7 +368,7 @@ export fn setupheap() void {
         };
         tag = @ptrCast(@alignCast(tag_ptr));
     }
-    
+
     hd = heap.? - @as(usize, @intCast(ATOMLIMIT * 2));
     tl = hd.? + 1;
     if (SPACE > SPACELIMIT) {
@@ -390,14 +390,14 @@ export fn resetheap() void {
         unreachable;
     };
     heap = @ptrCast(@alignCast(ptr));
-    
+
     const bigtop_val = @as(usize, @intCast(BIGTOP()));
     const tag_ptr = c.realloc(tag, bigtop_val + 1) orelse {
         mallocfail("heap");
         unreachable;
     };
     tag = @ptrCast(@alignCast(tag_ptr));
-    
+
     hd = heap.? - @as(usize, @intCast(ATOMLIMIT * 2));
     tl = hd.? + 1;
     tag.?[@intCast(bigtop_val)] = 0;
@@ -501,13 +501,13 @@ export fn gc() void {
         }
     }
     nogcs += 1;
-    
+
     while (tag.?[idx] != 0) {
         const signed_val = @as(i8, @bitCast(tag.?[idx]));
         tag.?[idx] = @bitCast(-signed_val);
         idx += 1;
     }
-    
+
     bases();
     listp = ATOMLIMIT - 1;
     cellcount += claims;
@@ -670,7 +670,7 @@ export fn mark(x_val: Word) void {
         const signed_tag = @as(i8, @bitCast(p1.*));
         const new_signed_tag = -signed_tag;
         p1.* = @bitCast(new_signed_tag);
-        
+
         const new_tag = p1.*;
         if (new_tag > c.STRCONS) {
             mark(h(x));
@@ -737,7 +737,7 @@ export fn setprefix(p: [*:0]const u8) void {
     }
     @memcpy(prefix[0..p_len], p[0..p_len]);
     prefix[p_len] = 0;
-    
+
     var last_slash: ?usize = null;
     var i: usize = p_len;
     while (i > 0) {
@@ -778,7 +778,7 @@ export fn okdump(t_ptr: [*:0]const u8) c_int {
     }
     @memcpy(obf[0..t_len], t_ptr[0..t_len]);
     obf[t_len] = 0;
-    
+
     const suffix_str = std.mem.span(obsuffix);
     const suffix_len = suffix_str.len;
     if (t_len + suffix_len - 1 >= obf.len) {
@@ -786,10 +786,10 @@ export fn okdump(t_ptr: [*:0]const u8) c_int {
     }
     @memcpy(obf[t_len - 1 .. t_len - 1 + suffix_len], suffix_str.ptr);
     obf[t_len - 1 + suffix_len] = 0;
-    
+
     const f = c.fopen(&obf, "r") orelse return 0;
     defer _ = c.fclose(f);
-    
+
     const ch1 = c.getc(f);
     const ch2 = c.getc(f);
     if (ch1 == c.XVERSION and ch2 != 0) {
@@ -806,7 +806,7 @@ export fn geterrlin(t_ptr: [*:0]const u8) Word {
     }
     @memcpy(obf[0..t_len], t_ptr[0..t_len]);
     obf[t_len] = 0;
-    
+
     const suffix_str = std.mem.span(obsuffix);
     const suffix_len = suffix_str.len;
     if (t_len + suffix_len - 1 >= obf.len) {
@@ -814,22 +814,22 @@ export fn geterrlin(t_ptr: [*:0]const u8) Word {
     }
     @memcpy(obf[t_len - 1 .. t_len - 1 + suffix_len], suffix_str.ptr);
     obf[t_len - 1 + suffix_len] = 0;
-    
+
     const f = c.fopen(&obf, "r") orelse return 0;
     defer _ = c.fclose(f);
-    
+
     const ch1 = c.getc(f);
     if (ch1 != c.XVERSION) {
         return 0;
     }
-    
+
     const ch2 = c.getc(f);
     if (ch2 != 0 and ch2 != 1) {
         return 0;
     }
-    
+
     const el = getword(f);
-    
+
     // now check this is right dump
     setprefix(t_ptr);
     var ch = c.getc(f);
@@ -840,11 +840,11 @@ export fn geterrlin(t_ptr: [*:0]const u8) Word {
         dicp[prefix_len] = 0;
         dicq = dicp + prefix_len;
     }
-    
+
     // locate wrt current posn
     dicq[0] = @intCast(ch);
     dicq += 1;
-    
+
     while (true) {
         ch = c.getc(f);
         dicq[0] = @intCast(ch);
@@ -853,12 +853,12 @@ export fn geterrlin(t_ptr: [*:0]const u8) Word {
             break;
         }
     }
-    
+
     const mtime = getword(f);
     if (c.strcmp(dicp, t_ptr) != 0 or mtime != fm_time(t_ptr)) {
         return 0; // wrong dump
     }
-    
+
     return el;
 }
 
@@ -1227,7 +1227,7 @@ export fn getdbl(file: ?*c.FILE) Word {
 export fn dump_script(files_val: Word, file: ?*c.FILE) void {
     _ = c.putc(@intCast(wordsize), file);
     _ = c.putc(c.XVERSION, file);
-    
+
     if (files_val == c.NIL) {
         _ = c.putc(0, file);
         putword(errline, file);
@@ -1239,12 +1239,12 @@ export fn dump_script(files_val: Word, file: ?*c.FILE) void {
         }
         return;
     }
-    
+
     if (ND != c.NIL) {
         _ = c.putc(1, file);
         putword(errline, file);
     }
-    
+
     var f_list = files_val;
     while (f_list != c.NIL) : (f_list = t(f_list)) {
         CFN = get_fil(h(f_list));
@@ -1451,7 +1451,7 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
     PNBASE = nextpn;
     SUPPRESSED = c.NIL;
     TSUPPRESSED = c.NIL;
-    
+
     var files_list: Word = c.NIL;
     var ch: Word = c.getc(file);
     while (ch != 0 and ch != c.EOF and BAD_DUMP == 0) {
@@ -1579,7 +1579,7 @@ export fn bindparams(formal_val: Word, actual_val: Word) void {
     DETROP = c.NIL;
     MISSING = c.NIL;
     FBS = cons(formal, FBS);
-    
+
     while (true) {
         var a: Word = 0;
         var f: [*:0]const u8 = undefined;
@@ -1607,7 +1607,7 @@ export fn bindparams(formal_val: Word, actual_val: Word) void {
         }
         actual = t(actual);
     }
-    
+
     var bk = badkind;
     while (bk != c.NIL) : (bk = t(bk)) {
         DETROP = cons(h(bk), DETROP);
@@ -1828,7 +1828,7 @@ export fn load_defs(file: ?*c.FILE) Word {
                             const akap = if (tag.?[@intCast(who_val)] == c.CONS) h(who_val) else c.NIL;
                             const type_val = stackp_pop(); // type
                             pn_val_ptr(ch_val).* = stackp_pop();
-                            
+
                             if (type_val == c.type_t and t_class(ch_val) != c.synonym_t) {
                                 var a = ALIASES;
                                 while (a != c.NIL and id_val(t(h(a))) != ch_val) : (a = t(a)) {}

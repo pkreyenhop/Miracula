@@ -8,16 +8,16 @@ const std = @import("std");
 
 pub const TokenId = enum {
     // --- identifiers and literals ---
-    name,        // lowercase identifier
-    cname,       // constructor / uppercase identifier
-    typevar,     // type variable (*a, *b, …)
+    name, // lowercase identifier
+    cname, // constructor / uppercase identifier
+    typevar, // type variable (*a, *b, …)
     const_int,
     const_float,
     const_str,
     const_char,
-    infixname,   // `name`
-    infixcname,  // `Cname`
-    dollars,     // $$
+    infixname, // `name`
+    infixcname, // `Cname`
+    dollars, // $$
     pathname,
 
     // --- keywords ---
@@ -38,51 +38,51 @@ pub const TokenId = enum {
     kw_mod,
 
     // --- single-character tokens ---
-    plus,       // +
-    minus,      // -
-    star,       // *
-    slash,      // /
-    caret,      // ^
-    dot,        // .   (function composition)
-    bang,       // !   (list subscript)
-    tilde,      // ~   (logical / unary negation)
-    hash,       // #   (list length)
-    eq,         // =
-    lt,         // <
-    gt,         // >
-    amp,        // &   (logical and)
-    pipe,       // |   (list-compr. / constructor alt separator)
-    lparen,     // (
-    rparen,     // )
-    lbracket,   // [
-    rbracket,   // ]
-    lbrace,     // {
-    rbrace,     // }
-    comma,      // ,
-    semicolon,  // ;
-    question,   // ?   (lex optional quantifier)
+    plus, // +
+    minus, // -
+    star, // *
+    slash, // /
+    caret, // ^
+    dot, // .   (function composition)
+    bang, // !   (list subscript)
+    tilde, // ~   (logical / unary negation)
+    hash, // #   (list length)
+    eq, // =
+    lt, // <
+    gt, // >
+    amp, // &   (logical and)
+    pipe, // |   (list-compr. / constructor alt separator)
+    lparen, // (
+    rparen, // )
+    lbracket, // [
+    rbracket, // ]
+    lbrace, // {
+    rbrace, // }
+    comma, // ,
+    semicolon, // ;
+    question, // ?   (lex optional quantifier)
 
     /// `:` — Miranda list-cons operator.
     /// Named `cons` (not `colon`) to avoid confusion with `::` and `::=`.
     cons,
 
     // --- multi-character tokens ---
-    arrow,          // ->
-    plus_plus,      // ++
-    minus_minus,    // --
-    dot_dot,        // ..
-    vel,            // \/  (logical disjunction)
-    ge,             // >=
-    ne,             // ~=
-    le,             // <=
-    left_arrow,     // <-
-    coloncolon,     // ::
-    colon2eq,       // ::=
-    eq_eq,          // ==
+    arrow, // ->
+    plus_plus, // ++
+    minus_minus, // --
+    dot_dot, // ..
+    vel, // \/  (logical disjunction)
+    ge, // >=
+    ne, // ~=
+    le, // <=
+    left_arrow, // <-
+    coloncolon, // ::
+    colon2eq, // ::=
+    eq_eq, // ==
 
     // --- layout tokens injected by the filter pass ---
     offside,
-    elseq,      // OFFSIDE =
+    elseq, // OFFSIDE =
 
     // --- specials ---
     eof,

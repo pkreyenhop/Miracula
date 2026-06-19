@@ -1505,12 +1505,11 @@ fn sui_generis(k: Word) bool {
     return member(SGC, k) != 0;
 }
 
-
 export fn codegen(x: Word) Word {
     switch (tag[@intCast(x)]) {
         AP => {
             if (commandmode != 0 // beware of corrupting lastexp
-                and x != cook_stdin and x != common_stdin and x != common_stdinb) { // but share $+ $-
+            and x != cook_stdin and x != common_stdin and x != common_stdinb) { // but share $+ $-
                 return make(AP, codegen(h(x)), codegen(t(x)));
             }
             if (tag[@intCast(h(x))] == AP and h(h(x)) == APPEND and t(h(x)) == NIL) {
@@ -1562,9 +1561,8 @@ export fn codegen(x: Word) Word {
                     uses_state = 1;
                 }
                 r = cons(cons(h(h(cur_x)), // start condition stuff
-                             cons(ap(h(t(h(cur_x))), NIL), // matcher []
-                                  rule)),
-                         r);
+                    cons(ap(h(t(h(cur_x))), NIL), // matcher []
+                        rule)), r);
                 cur_x = t(cur_x);
             }
             if (uses_state == 0) { // strip off (K -) from each rule
@@ -1614,7 +1612,7 @@ export fn codegen(x: Word) Word {
                 return NIL;
             }
             return x; // identifier, private name, or constant
-        }
+        },
     }
 }
 
@@ -1655,8 +1653,7 @@ export fn genshfns() void {
         } else if (t_class(h(s)) == abstract_t) {
             if (t_showfn(h(s)) != 0) {
                 if (abshfnck(h(s), idType(t_showfn(h(s)))) == 0) {
-                    _ = c.printf("warning - \"%s\" has type inappropriate for a show-function\n",
-                        getId(t_showfn(h(s))));
+                    _ = c.printf("warning - \"%s\" has type inappropriate for a show-function\n", getId(t_showfn(h(s))));
                     tp(t_showfn(h(s))).* = 0;
                 }
             }

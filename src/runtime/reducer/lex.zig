@@ -343,8 +343,7 @@ export fn handle_LEX_TRY_(ctx: *ReductionCtx) void {
             continue;
         }
         const tl_hd_hd_arg1 = reduce.tl_get(reduce.hd_get(reduce.hd_get(ctx.args[0])));
-        reduce.rewrite_to_cons(ctx.e, reduce.ap(reduce.tl_get(reduce.tl_get(reduce.hd_get(ctx.args[0]))), reduce.ap(clib.DESTREV, reduce.hd_get(ctx.hold))),
-            reduce.cons(if (tl_hd_hd_arg1 != 0) tl_hd_hd_arg1 - 1 else ctx.args[1], reduce.tl_get(ctx.hold)));
+        reduce.rewrite_to_cons(ctx.e, reduce.ap(reduce.tl_get(reduce.tl_get(reduce.hd_get(ctx.args[0]))), reduce.ap(clib.DESTREV, reduce.hd_get(ctx.hold))), reduce.cons(if (tl_hd_hd_arg1 != 0) tl_hd_hd_arg1 - 1 else ctx.args[1], reduce.tl_get(ctx.hold)));
         ctx.action = clib.ACT_DONE;
         return;
     }
@@ -385,8 +384,7 @@ export fn handle_LEX_TRY1_(ctx: *ReductionCtx) void {
             continue;
         }
         const tl_hd_hd_arg1 = reduce.tl_get(reduce.hd_get(reduce.hd_get(ctx.args[0])));
-        reduce.rewrite_to_cons(ctx.e, reduce.ap2(reduce.tl_get(reduce.tl_get(reduce.hd_get(ctx.args[0]))), clib.lexstate(lastarg(ctx)), reduce.ap(clib.DESTREV, reduce.hd_get(ctx.hold))),
-            reduce.cons(if (tl_hd_hd_arg1 != 0) tl_hd_hd_arg1 - 1 else ctx.args[1], reduce.tl_get(ctx.hold)));
+        reduce.rewrite_to_cons(ctx.e, reduce.ap2(reduce.tl_get(reduce.tl_get(reduce.hd_get(ctx.args[0]))), clib.lexstate(lastarg(ctx)), reduce.ap(clib.DESTREV, reduce.hd_get(ctx.hold))), reduce.cons(if (tl_hd_hd_arg1 != 0) tl_hd_hd_arg1 - 1 else ctx.args[1], reduce.tl_get(ctx.hold)));
         ctx.action = clib.ACT_DONE;
         return;
     }
@@ -476,7 +474,7 @@ export fn handle_LEX_CLASS(ctx: *ReductionCtx) void {
     if (lastarg_reduced == clib.NIL or
         (if (reduce.hd_get(ctx.args[0]) == clib.ANTICHARCLASS)
             clib.memclass(@intCast(lh(lastarg_reduced)), reduce.tl_get(ctx.args[0])) != 0
-         else
+        else
             clib.memclass(@intCast(lh(lastarg_reduced)), ctx.args[0]) == 0))
     {
         reduce.rewrite_to_nil(&ctx.e);
@@ -580,11 +578,11 @@ export fn handle_LEX_RCONTEXT(ctx: *ReductionCtx) void {
     if (ctx.hold == clib.NIL or
         (if (ctx.args[1] != 0)
             reduce.reduce(reduce.ap2(ctx.args[1], reduce.hd_get(ctx.hold), reduce.tl_get(ctx.hold))) == clib.NIL
-         else blk: {
-             const next_tl = reduce.reduce(reduce.tl_get(ctx.hold));
-             reduce.tl_set(ctx.hold, next_tl);
-             break :blk next_tl != clib.NIL;
-         }))
+        else blk: {
+            const next_tl = reduce.reduce(reduce.tl_get(ctx.hold));
+            reduce.tl_set(ctx.hold, next_tl);
+            break :blk next_tl != clib.NIL;
+        }))
     {
         ctx.e = reduce.rewrite_to_existing_tail(ctx.e);
         ctx.action = clib.ACT_DONE;

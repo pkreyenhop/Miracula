@@ -18,8 +18,8 @@ extern fn mira_lex_cleanup() void;
 
 // Miranda atom-range constants (from lex.zig — keep in sync with CMBASE = 306).
 const CMBASE: clib.word = 306;
-const FALSE_ATOM: clib.word = CMBASE + 136;  // Miranda boolean False
-const TRUE_ATOM: clib.word = CMBASE + 137;   // Miranda boolean True
+const FALSE_ATOM: clib.word = CMBASE + 136; // Miranda boolean False
+const TRUE_ATOM: clib.word = CMBASE + 137; // Miranda boolean True
 const NIL_ATOM: clib.word = CMBASE + 138;
 const NILS_ATOM: clib.word = CMBASE + 139;
 const ATOMLIMIT: clib.word = CMBASE + 141;

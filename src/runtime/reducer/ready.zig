@@ -5,7 +5,6 @@ const Word = reduce.Word;
 const clib = reduce.clib;
 const platform = @import("../../io/platform.zig");
 
-
 extern var tag: [*]u8;
 extern var hd: [*]Word;
 extern var tl: [*]Word;

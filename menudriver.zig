@@ -49,7 +49,7 @@ const Driver = struct {
                 if (bad) {
                     if (std.mem.eql(u8, self.next.items, ".")) {
                         var out_w = std.Io.File.stdout().writer(self.ctx.io, &[_]u8{});
-                try out_w.interface.writeAll("no previous selection to substitute for \".\"\n");
+                        try out_w.interface.writeAll("no previous selection to substitute for \".\"\n");
                     } else {
                         std.debug.print("selection \"{s}\" not valid\n", .{self.next.items});
                     }

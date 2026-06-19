@@ -41,24 +41,34 @@ pub const Parser = struct {
 
     pub fn init(gpa: Allocator, tokens: []const Token) Parser {
         return .{
-            .gpa         = gpa,
-            .ts          = TokenStream{ .tokens = tokens },
+            .gpa = gpa,
+            .ts = TokenStream{ .tokens = tokens },
             .diagnostics = .empty,
         };
     }
 
-    fn peek(self: *Parser) Token    { return self.ts.peek(); }
-    fn advance(self: *Parser) Token { return self.ts.advance(); }
+    fn peek(self: *Parser) Token {
+        return self.ts.peek();
+    }
+    fn advance(self: *Parser) Token {
+        return self.ts.advance();
+    }
 
-    fn check(self: *Parser, id: TokenId) bool { return self.ts.check(id); }
+    fn check(self: *Parser, id: TokenId) bool {
+        return self.ts.check(id);
+    }
 
-    fn eat(self: *Parser, id: TokenId) bool { return self.ts.eat(id); }
+    fn eat(self: *Parser, id: TokenId) bool {
+        return self.ts.eat(id);
+    }
 
     fn expect(self: *Parser, id: TokenId) ParseError!Token {
         return self.ts.expect(id);
     }
 
-    fn span(self: *Parser) Span { return self.peek().span; }
+    fn span(self: *Parser) Span {
+        return self.peek().span;
+    }
 
     /// Record a structured diagnostic.  OOM propagates to the caller.
     pub fn addError(self: *Parser, sp: Span, comptime fmt: []const u8, args: anytype) !void {
@@ -75,7 +85,7 @@ pub const Parser = struct {
         var depth: i32 = 0;
         while (!self.check(.eof)) {
             switch (self.peek().id) {
-                .elseq   => depth += 1,
+                .elseq => depth += 1,
                 .offside => {
                     if (depth <= 0) return; // leave this OFFSIDE for caller
                     depth -= 1;
@@ -224,8 +234,8 @@ pub fn parseTypeSpec(p: *Parser) ParseError!ast.TopLevel {
 
     return ast.TopLevel{ .type_spec = ast.TypeSpec{
         .names = try names.toOwnedSlice(p.gpa),
-        .typ   = typ,
-        .span  = sp,
+        .typ = typ,
+        .span = sp,
     } };
 }
 
@@ -273,7 +283,7 @@ fn parsePatV1(p: *Parser) ParseError!ast.Pat {
         const neg_text = try std.fmt.allocPrint(p.gpa, "-{s}", .{lit_tok.text});
         return ast.Pat{ .literal = .{
             .value = .{ .int = neg_text },
-            .span  = tok.span,
+            .span = tok.span,
         } };
     }
 
@@ -321,8 +331,14 @@ fn parsePatV2(p: *Parser) ParseError!ast.Pat {
 
 fn isPatV3Start(id: TokenId) bool {
     return switch (id) {
-        .name, .cname, .const_int, .const_float, .const_str, .const_char,
-        .lbracket, .lparen,
+        .name,
+        .cname,
+        .const_int,
+        .const_float,
+        .const_str,
+        .const_char,
+        .lbracket,
+        .lparen,
         => true,
         else => false,
     };
@@ -337,19 +353,19 @@ fn parsePatV3(p: *Parser) ParseError!ast.Pat {
 
         .const_int => ast.Pat{ .literal = .{
             .value = .{ .int = tok.text },
-            .span  = tok.span,
+            .span = tok.span,
         } },
         .const_float => ast.Pat{ .literal = .{
             .value = .{ .float = tok.float_val },
-            .span  = tok.span,
+            .span = tok.span,
         } },
         .const_str => ast.Pat{ .literal = .{
             .value = .{ .string = tok.text },
-            .span  = tok.span,
+            .span = tok.span,
         } },
         .const_char => ast.Pat{ .literal = .{
             .value = .{ .char = tok.char_val },
-            .span  = tok.span,
+            .span = tok.span,
         } },
 
         .lbracket => list: {
@@ -444,10 +460,10 @@ fn parseGuardedRhs(p: *Parser, first_body: ast.Expr) ParseError!ast.Rhs {
         // Alternative without an explicit guard — treat as `otherwise`
         // (deprecated bare-alt syntax; generate an otherwise guard).
         try guards.append(p.gpa, ast.Guard{
-            .cond         = ast.Expr{ .list_nil = {} }, // unused placeholder
-            .body         = alt_body,
+            .cond = ast.Expr{ .list_nil = {} }, // unused placeholder
+            .body = alt_body,
             .is_otherwise = true,
-            .span         = alt_sp,
+            .span = alt_sp,
         });
     }
 
@@ -459,20 +475,20 @@ fn parseGuardedRhs(p: *Parser, first_body: ast.Expr) ParseError!ast.Rhs {
 fn parseSingleGuard(p: *Parser, body: ast.Expr, sp: Span) ParseError!ast.Guard {
     if (p.eat(.kw_otherwise)) {
         return ast.Guard{
-            .cond         = ast.Expr{ .list_nil = {} }, // unused
-            .body         = body,
+            .cond = ast.Expr{ .list_nil = {} }, // unused
+            .body = body,
             .is_otherwise = true,
-            .span         = sp,
+            .span = sp,
         };
     }
     // `if` is optional in Miranda when strictif is off (default).
     _ = p.eat(.kw_if);
     const cond = try parseExpr(p);
     return ast.Guard{
-        .cond         = cond,
-        .body         = body,
+        .cond = cond,
+        .body = body,
         .is_otherwise = false,
-        .span         = sp,
+        .span = sp,
     };
 }
 
@@ -510,7 +526,7 @@ fn parseWhereDefs(p: *Parser, min_col: u32) ParseError![]ast.Def {
         while (p.check(.offside) or p.check(.semicolon)) {
             const next = p.ts.peekAt(1);
             const is_def_start = next.id == .name or next.id == .cname or
-                                 next.id == .lparen or next.id == .lbracket;
+                next.id == .lparen or next.id == .lbracket;
             if (is_def_start and next.span.col < where_col) break;
             _ = p.advance();
         }
@@ -553,10 +569,10 @@ pub fn parseDef(p: *Parser) ParseError!ast.Def {
     }
 
     return ast.Def{
-        .lhs        = lhs,
-        .rhs        = rhs,
+        .lhs = lhs,
+        .rhs = rhs,
         .where_defs = where_defs,
-        .span       = sp,
+        .span = sp,
     };
 }
 
@@ -598,13 +614,13 @@ fn parseTopLevel(p: *Parser) ParseError!ast.TopLevel {
 
     switch (tok.id) {
         // Type synonym: `type Name params == body`
-        .kw_type     => return parseTypeSynonym(p),
+        .kw_type => return parseTypeSynonym(p),
         // Abstract type: `abstype name params with specs`
-        .kw_abstype  => return parseAbstype(p),
+        .kw_abstype => return parseAbstype(p),
         // Module directives
-        .kw_include  => return parseInclude(p),
-        .kw_export   => return parseExport(p),
-        .kw_free     => return parseFree(p),
+        .kw_include => return parseInclude(p),
+        .kw_export => return parseExport(p),
+        .kw_free => return parseFree(p),
         // BNF / LEX sections — parse and discard
         .kw_bnf, .kw_lex => return parseDiscardSection(p),
         else => {},
@@ -648,9 +664,9 @@ fn parseConstructor(p: *Parser) ParseError!ast.Constructor {
         try fields.append(p.gpa, try parseArgtype(p));
     }
     return ast.Constructor{
-        .name   = name_tok.text,
+        .name = name_tok.text,
         .fields = try fields.toOwnedSlice(p.gpa),
-        .span   = sp,
+        .span = sp,
     };
 }
 
@@ -676,10 +692,10 @@ fn parseAlgebraicType(p: *Parser) ParseError!ast.TopLevel {
     }
 
     return ast.TopLevel{ .type_decl = .{ .algebraic = .{
-        .name         = name_tok.text,
-        .params       = try params.toOwnedSlice(p.gpa),
+        .name = name_tok.text,
+        .params = try params.toOwnedSlice(p.gpa),
         .constructors = try ctors.toOwnedSlice(p.gpa),
-        .span         = sp,
+        .span = sp,
     } } };
 }
 
@@ -700,10 +716,10 @@ fn parseTypeSynonym(p: *Parser) ParseError!ast.TopLevel {
     const body = try parseType(p);
 
     return ast.TopLevel{ .type_decl = .{ .synonym = .{
-        .name   = name_tok.text,
+        .name = name_tok.text,
         .params = try params.toOwnedSlice(p.gpa),
-        .body   = body,
-        .span   = sp,
+        .body = body,
+        .span = sp,
     } } };
 }
 
@@ -722,8 +738,8 @@ fn parseOneTypeSpec(p: *Parser) ParseError!ast.TypeSpec {
     const typ = try parseType(p);
     return ast.TypeSpec{
         .names = try names.toOwnedSlice(p.gpa),
-        .typ   = typ,
-        .span  = sp,
+        .typ = typ,
+        .span = sp,
     };
 }
 
@@ -754,10 +770,10 @@ fn parseAbstype(p: *Parser) ParseError!ast.TopLevel {
     }
 
     return ast.TopLevel{ .type_decl = .{ .abstype = .{
-        .name   = name_tok.text,
+        .name = name_tok.text,
         .params = try params.toOwnedSlice(p.gpa),
-        .specs  = try specs.toOwnedSlice(p.gpa),
-        .span   = sp,
+        .specs = try specs.toOwnedSlice(p.gpa),
+        .span = sp,
     } } };
 }
 
@@ -784,7 +800,7 @@ fn parseExport(p: *Parser) ParseError!ast.TopLevel {
     }
     return ast.TopLevel{ .export_list = .{
         .names = try names.toOwnedSlice(p.gpa),
-        .span  = sp,
+        .span = sp,
     } };
 }
 
@@ -801,7 +817,7 @@ fn parseFree(p: *Parser) ParseError!ast.TopLevel {
     }
     return ast.TopLevel{ .free_directive = .{
         .specs = try specs.toOwnedSlice(p.gpa),
-        .span  = sp,
+        .span = sp,
     } };
 }
 
@@ -836,7 +852,7 @@ test "parseType: simple name" {
     const gpa = std.testing.allocator;
     const tokens = [_]Token{
         .{ .id = .name, .span = .{ .line = 1, .col = 1 }, .text = "num" },
-        .{ .id = .eof,  .span = .{ .line = 1, .col = 4 } },
+        .{ .id = .eof, .span = .{ .line = 1, .col = 4 } },
     };
     var p = Parser.init(gpa, &tokens);
     const te = try parseType(&p);
@@ -848,9 +864,9 @@ test "parseType: list type [num]" {
     const gpa = std.testing.allocator;
     const tokens = [_]Token{
         .{ .id = .lbracket, .span = .{ .line = 1, .col = 1 } },
-        .{ .id = .name,     .span = .{ .line = 1, .col = 2 }, .text = "num" },
+        .{ .id = .name, .span = .{ .line = 1, .col = 2 }, .text = "num" },
         .{ .id = .rbracket, .span = .{ .line = 1, .col = 5 } },
-        .{ .id = .eof,      .span = .{ .line = 1, .col = 6 } },
+        .{ .id = .eof, .span = .{ .line = 1, .col = 6 } },
     };
     var p = Parser.init(gpa, &tokens);
     const te = try parseType(&p);
@@ -862,10 +878,10 @@ test "parseType: list type [num]" {
 test "parseType: arrow type num -> bool" {
     const gpa = std.testing.allocator;
     const tokens = [_]Token{
-        .{ .id = .name,  .span = .{ .line = 1, .col = 1 }, .text = "num" },
+        .{ .id = .name, .span = .{ .line = 1, .col = 1 }, .text = "num" },
         .{ .id = .arrow, .span = .{ .line = 1, .col = 5 } },
-        .{ .id = .name,  .span = .{ .line = 1, .col = 8 }, .text = "bool" },
-        .{ .id = .eof,   .span = .{ .line = 1, .col = 12 } },
+        .{ .id = .name, .span = .{ .line = 1, .col = 8 }, .text = "bool" },
+        .{ .id = .eof, .span = .{ .line = 1, .col = 12 } },
     };
     var p = Parser.init(gpa, &tokens);
     const te = try parseType(&p);
@@ -881,9 +897,9 @@ test "parseType: arrow type num -> bool" {
 test "parseTap: type application Tree *a" {
     const gpa = std.testing.allocator;
     const tokens = [_]Token{
-        .{ .id = .name,    .span = .{ .line = 1, .col = 1 }, .text = "Tree" },
+        .{ .id = .name, .span = .{ .line = 1, .col = 1 }, .text = "Tree" },
         .{ .id = .typevar, .span = .{ .line = 1, .col = 6 }, .text = "*a" },
-        .{ .id = .eof,     .span = .{ .line = 1, .col = 9 } },
+        .{ .id = .eof, .span = .{ .line = 1, .col = 9 } },
     };
     var p = Parser.init(gpa, &tokens);
     const te = try parseType(&p);
@@ -903,7 +919,7 @@ test "parsePat: cons pattern x : xs" {
         .{ .id = .name, .span = .{ .line = 1, .col = 1 }, .text = "x" },
         .{ .id = .cons, .span = .{ .line = 1, .col = 3 } }, // `:` is .cons, not .colon
         .{ .id = .name, .span = .{ .line = 1, .col = 5 }, .text = "xs" },
-        .{ .id = .eof,  .span = .{ .line = 1, .col = 7 } },
+        .{ .id = .eof, .span = .{ .line = 1, .col = 7 } },
     };
     var p = Parser.init(gpa, &tokens);
     const pat = try parsePat(&p);
@@ -921,7 +937,7 @@ test "parsePat: empty list pattern" {
     const tokens = [_]Token{
         .{ .id = .lbracket, .span = .{ .line = 1, .col = 1 } },
         .{ .id = .rbracket, .span = .{ .line = 1, .col = 2 } },
-        .{ .id = .eof,      .span = .{ .line = 1, .col = 3 } },
+        .{ .id = .eof, .span = .{ .line = 1, .col = 3 } },
     };
     var p = Parser.init(gpa, &tokens);
     const pat = try parsePat(&p);
@@ -940,15 +956,15 @@ test "parseScript: error recovery records diagnostic and parses remaining items"
     // Tokens: bare `=` (syntax error), OFFSIDE, then `id x = x` (valid def).
     const tokens = [_]Token{
         // Bad item: `=` cannot start a definition LHS
-        .{ .id = .eq,      .span = .{ .line = 1, .col = 1 } },
+        .{ .id = .eq, .span = .{ .line = 1, .col = 1 } },
         // Layout separator between items
         .{ .id = .offside, .span = .{ .line = 2, .col = 1 } },
         // Valid item: id x = x
-        .{ .id = .name,    .span = .{ .line = 2, .col = 1 }, .text = "id" },
-        .{ .id = .name,    .span = .{ .line = 2, .col = 4 }, .text = "x"  },
-        .{ .id = .eq,      .span = .{ .line = 2, .col = 6 } },
-        .{ .id = .name,    .span = .{ .line = 2, .col = 8 }, .text = "x"  },
-        .{ .id = .eof,     .span = .{ .line = 2, .col = 9 } },
+        .{ .id = .name, .span = .{ .line = 2, .col = 1 }, .text = "id" },
+        .{ .id = .name, .span = .{ .line = 2, .col = 4 }, .text = "x" },
+        .{ .id = .eq, .span = .{ .line = 2, .col = 6 } },
+        .{ .id = .name, .span = .{ .line = 2, .col = 8 }, .text = "x" },
+        .{ .id = .eof, .span = .{ .line = 2, .col = 9 } },
     };
     var p = Parser.init(gpa, &tokens);
     const script = try parseScript(&p);

@@ -217,8 +217,6 @@ extern fn reset_lex() void;
 extern fn dic_check() void;
 extern fn isconstrname(input: [*:0]const u8) c_int;
 
-
-
 fn h(x: Word) Word {
     if (x < ATOMLIMIT) return 0;
     return hd[@as(usize, @intCast(x)) * 2];
@@ -244,56 +242,56 @@ fn cons(x: Word, y: Word) Word {
 // Token names for out2(): replaces y.tab.c's yysterm[].
 // Index i corresponds to lexical token (256 + i).
 const yysterm_data = [_]?[*:0]const u8{
-    null,             // 0: placeholder (no token 256)
-    "VALUE",          // 1: 257
-    "EVAL",           // 2: 258
-    "where",          // 3: WHERE=259
-    "if",             // 4: IF=260
-    "&>",             // 5: 261
-    "<-",             // 6: LEFTARROW=262
-    "::",             // 7: COLONCOLON=263
-    "::=",            // 8: COLON2EQ=264
-    "TYPEVAR",        // 9: TYPEVAR=265
-    "NAME",           // 10: NAME=266
+    null, // 0: placeholder (no token 256)
+    "VALUE", // 1: 257
+    "EVAL", // 2: 258
+    "where", // 3: WHERE=259
+    "if", // 4: IF=260
+    "&>", // 5: 261
+    "<-", // 6: LEFTARROW=262
+    "::", // 7: COLONCOLON=263
+    "::=", // 8: COLON2EQ=264
+    "TYPEVAR", // 9: TYPEVAR=265
+    "NAME", // 10: NAME=266
     "CONSTRUCTOR-NAME", // 11: CNAME=267
-    "CONST",          // 12: CONST=268
-    "$$",             // 13: DOLLARS=269
-    "OFFSIDE",        // 14: OFFSIDE=270
-    "OFFSIDE =",      // 15: ELSEQ=271
-    "abstype",        // 16: ABSTYPE=272
-    "with",           // 17: WITH=273
-    "//",             // 18: 274
-    "==",             // 19: EQEQ=275
-    "%free",          // 20: FREE=276
-    "%include",       // 21: INCLUDE=277
-    "%export",        // 22: EXPORT=278
-    "type",           // 23: TYPE=279
-    "otherwise",      // 24: OTHERWISE=280
-    "show",           // 25: SHOWSYM=281
-    "PATHNAME",       // 26: PATHNAME=282
-    "%bnf",           // 27: BNF=283
-    "%lex",           // 28: LEX=284
-    "%%",             // 29: 285
-    "error",          // 30: 286
-    "end",            // 31: 287
-    "empty",          // 32: 288
-    "readvals",       // 33: READVALSY=289
-    "NAME",           // 34: 290
-    "`char-class`",   // 35: 291
-    "`char-class`",   // 36: 292
-    "%%begin",        // 37: 293
-    "->",             // 38: ARROW=294
-    "++",             // 39: PLUSPLUS=295
-    "--",             // 40: MINUSMINUS=296
-    "..",             // 41: DOTDOT=297
-    "\\/",            // 42: VEL=298
-    ">=",             // 43: GE=299
-    "~=",             // 44: NE=300
-    "<=",             // 45: LE=301
-    "mod",            // 46: REM=302
-    "div",            // 47: DIV=303
-    "$NAME",          // 48: INFIXNAME=304
-    "$CONSTRUCTOR",   // 49: INFIXCNAME=305
+    "CONST", // 12: CONST=268
+    "$$", // 13: DOLLARS=269
+    "OFFSIDE", // 14: OFFSIDE=270
+    "OFFSIDE =", // 15: ELSEQ=271
+    "abstype", // 16: ABSTYPE=272
+    "with", // 17: WITH=273
+    "//", // 18: 274
+    "==", // 19: EQEQ=275
+    "%free", // 20: FREE=276
+    "%include", // 21: INCLUDE=277
+    "%export", // 22: EXPORT=278
+    "type", // 23: TYPE=279
+    "otherwise", // 24: OTHERWISE=280
+    "show", // 25: SHOWSYM=281
+    "PATHNAME", // 26: PATHNAME=282
+    "%bnf", // 27: BNF=283
+    "%lex", // 28: LEX=284
+    "%%", // 29: 285
+    "error", // 30: 286
+    "end", // 31: 287
+    "empty", // 32: 288
+    "readvals", // 33: READVALSY=289
+    "NAME", // 34: 290
+    "`char-class`", // 35: 291
+    "`char-class`", // 36: 292
+    "%%begin", // 37: 293
+    "->", // 38: ARROW=294
+    "++", // 39: PLUSPLUS=295
+    "--", // 40: MINUSMINUS=296
+    "..", // 41: DOTDOT=297
+    "\\/", // 42: VEL=298
+    ">=", // 43: GE=299
+    "~=", // 44: NE=300
+    "<=", // 45: LE=301
+    "mod", // 46: REM=302
+    "div", // 47: DIV=303
+    "$NAME", // 48: INFIXNAME=304
+    "$CONSTRUCTOR", // 49: INFIXCNAME=305
 };
 export var yysterm = yysterm_data;
 
@@ -656,13 +654,13 @@ export fn unlinkx(t_path: [*:0]const u8) void {
     const t_slice = std.mem.span(t_path);
     if (t_slice.len == 0) return;
     const len = t_slice.len;
-    
+
     @memcpy(obf_buf[0 .. len - 1], t_slice[0 .. len - 1]);
-    
+
     const obsuffix_slice = std.mem.span(obsuffix);
     @memcpy(obf_buf[len - 1 .. len - 1 + obsuffix_slice.len], obsuffix_slice);
     obf_buf[len - 1 + obsuffix_slice.len] = 0;
-    
+
     const obf = @as([*:0]const u8, @ptrCast(obf_buf[0..].ptr));
     if (fileExists(obf)) {
         _ = clib.unlink(obf);
@@ -1084,7 +1082,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                 }
                 commandmode = 0;
                 echoing = verbosity & listing;
-            }
+            },
         }
     }
 }
@@ -1134,7 +1132,7 @@ export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
                 clib.out_type(t1);
                 _ = clib.printf("\nshould be :: ");
                 clib.out_type(t_val);
-                 _ = clib.putc('\n', getStdout());
+                _ = clib.putc('\n', getStdout());
                 lastexp = clib.UNDEF;
             }
         }
@@ -1319,9 +1317,7 @@ fn command() void {
                         filecp(mf.?, t_val.?);
                     }
                 }
-                const err_line_num: c_int = if (clib.strcmp(t_val.?, current_script.?) == 0) @intCast(errline)
-                    else if (errs != 0 and clib.strcmp(t_val.?, @ptrFromInt(@as(usize, @intCast(h(errs))))) == 0) @intCast(t(errs))
-                    else @intCast(clib.geterrlin(t_val.?));
+                const err_line_num: c_int = if (clib.strcmp(t_val.?, current_script.?) == 0) @intCast(errline) else if (errs != 0 and clib.strcmp(t_val.?, @ptrFromInt(@as(usize, @intCast(h(errs))))) == 0) @intCast(t(errs)) else @intCast(clib.geterrlin(t_val.?));
                 editfile(t_val.?, err_line_num);
                 return;
             }
@@ -1711,11 +1707,7 @@ fn finger(n: [*:0]const u8) void {
             } else if (id_type(x) == clib.type_t and t_class(x) == clib.free_t) {
                 _ = clib.printf(" ||(free type) specified in ");
             } else {
-                const class_str: [*:0]const u8 = if (id_type(x) == clib.type_t and t_class(x) == clib.abstract_t) "(abstract type) "
-                    else if (id_type(x) == clib.type_t and t_class(x) == clib.algebraic_t) "(algebraic type) "
-                    else if (id_type(x) == clib.type_t and t_class(x) == clib.placeholder_t) "(placeholder type) "
-                    else if (id_type(x) == clib.type_t and t_class(x) == clib.synonym_t) "(synonym type) "
-                    else "";
+                const class_str: [*:0]const u8 = if (id_type(x) == clib.type_t and t_class(x) == clib.abstract_t) "(abstract type) " else if (id_type(x) == clib.type_t and t_class(x) == clib.algebraic_t) "(algebraic type) " else if (id_type(x) == clib.type_t and t_class(x) == clib.placeholder_t) "(placeholder type) " else if (id_type(x) == clib.type_t and t_class(x) == clib.synonym_t) "(synonym type) " else "";
                 _ = clib.printf(" ||%sdefined in ", class_str);
             }
             filequote(s.?);
@@ -2303,7 +2295,6 @@ fn unfixexports() void {
 }
 
 fn privatise(x: Word) Word {
-
     const n = clib.make_pn(x);
     const hash_idx = hash(get_id(x));
     const i = h(n);
@@ -2822,7 +2813,6 @@ export fn acterror() void {
 }
 
 fn mira_setup() void {
-
     setupheap();
     tsetup();
     reset_pns();
@@ -3049,7 +3039,6 @@ fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             clib.exit(1);
         }
         arg_idx += 1;
-
     }
 
     const remaining_argc = argc_u - arg_idx;

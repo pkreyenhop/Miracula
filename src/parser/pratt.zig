@@ -62,26 +62,26 @@ const InfixBp = struct { id: TokenId, left: u8, right: u8 };
 /// `left` == `right` would be non-associative (not used here; we let the
 /// grammar reject chaining via type checking instead).
 const infix_bp = [_]InfixBp{
-    .{ .id = .vel,         .left = 20, .right = 19 }, // \/ right-assoc
-    .{ .id = .amp,         .left = 30, .right = 29 }, // &  right-assoc
-    .{ .id = .eq,          .left = 40, .right = 41 }, // =  left (non-assoc enforced later)
-    .{ .id = .ne,          .left = 40, .right = 41 }, // ~=
-    .{ .id = .lt,          .left = 40, .right = 41 }, // <
-    .{ .id = .gt,          .left = 40, .right = 41 }, // >
-    .{ .id = .le,          .left = 40, .right = 41 }, // <=
-    .{ .id = .ge,          .left = 40, .right = 41 }, // >=
-    .{ .id = .cons,        .left = 50, .right = 49 }, // :  right-assoc (list cons)
-    .{ .id = .plus_plus,   .left = 50, .right = 49 }, // ++ right-assoc
+    .{ .id = .vel, .left = 20, .right = 19 }, // \/ right-assoc
+    .{ .id = .amp, .left = 30, .right = 29 }, // &  right-assoc
+    .{ .id = .eq, .left = 40, .right = 41 }, // =  left (non-assoc enforced later)
+    .{ .id = .ne, .left = 40, .right = 41 }, // ~=
+    .{ .id = .lt, .left = 40, .right = 41 }, // <
+    .{ .id = .gt, .left = 40, .right = 41 }, // >
+    .{ .id = .le, .left = 40, .right = 41 }, // <=
+    .{ .id = .ge, .left = 40, .right = 41 }, // >=
+    .{ .id = .cons, .left = 50, .right = 49 }, // :  right-assoc (list cons)
+    .{ .id = .plus_plus, .left = 50, .right = 49 }, // ++ right-assoc
     .{ .id = .minus_minus, .left = 50, .right = 49 }, // -- right-assoc
-    .{ .id = .plus,        .left = 60, .right = 61 }, // +  left-assoc
-    .{ .id = .minus,       .left = 60, .right = 61 }, // -  left-assoc
-    .{ .id = .star,        .left = 70, .right = 71 }, // *  left-assoc
-    .{ .id = .slash,       .left = 70, .right = 71 }, // /  left-assoc
-    .{ .id = .kw_div,      .left = 70, .right = 71 }, // div left-assoc
-    .{ .id = .kw_mod,      .left = 70, .right = 71 }, // mod left-assoc
-    .{ .id = .caret,       .left = 79, .right = 78 }, // ^  right-assoc
-    .{ .id = .dot,         .left = 80, .right = 81 }, // .  left-assoc (compose)
-    .{ .id = .bang,        .left = 90, .right = 91 }, // !  left-assoc (subscript)
+    .{ .id = .plus, .left = 60, .right = 61 }, // +  left-assoc
+    .{ .id = .minus, .left = 60, .right = 61 }, // -  left-assoc
+    .{ .id = .star, .left = 70, .right = 71 }, // *  left-assoc
+    .{ .id = .slash, .left = 70, .right = 71 }, // /  left-assoc
+    .{ .id = .kw_div, .left = 70, .right = 71 }, // div left-assoc
+    .{ .id = .kw_mod, .left = 70, .right = 71 }, // mod left-assoc
+    .{ .id = .caret, .left = 79, .right = 78 }, // ^  right-assoc
+    .{ .id = .dot, .left = 80, .right = 81 }, // .  left-assoc (compose)
+    .{ .id = .bang, .left = 90, .right = 91 }, // !  left-assoc (subscript)
 };
 
 /// Returns the infix binding powers for `id`, or `null` if it is not infix.
@@ -96,9 +96,9 @@ pub fn infixBp(id: TokenId) ?struct { left: u8, right: u8 } {
 pub fn prefixBp(id: TokenId) ?u8 {
     return switch (id) {
         .tilde => 35, // ~expr  logical negation
-        .hash  => 85, // #expr  list length
+        .hash => 85, // #expr  list length
         .minus => 65, // -expr  arithmetic negation (above + but below *)
-        else   => null,
+        else => null,
     };
 }
 
@@ -159,12 +159,28 @@ pub const TokenStream = struct {
 /// Excluded: `-` and `~` (prefix negation), `#` (prefix length).
 fn isRightSectionOp(id: TokenId) bool {
     return switch (id) {
-        .plus, .star, .slash, .caret, .dot, .bang,
-        .amp, .vel, .cons,
-        .plus_plus, .minus_minus,
-        .eq, .ne, .lt, .gt, .le, .ge, .eq_eq,
-        .kw_div, .kw_mod,
-        .infixname, .infixcname,
+        .plus,
+        .star,
+        .slash,
+        .caret,
+        .dot,
+        .bang,
+        .amp,
+        .vel,
+        .cons,
+        .plus_plus,
+        .minus_minus,
+        .eq,
+        .ne,
+        .lt,
+        .gt,
+        .le,
+        .ge,
+        .eq_eq,
+        .kw_div,
+        .kw_mod,
+        .infixname,
+        .infixcname,
         => true,
         else => false,
     };
@@ -173,9 +189,17 @@ fn isRightSectionOp(id: TokenId) bool {
 /// True if `id` can start an argument in function-application position.
 fn isArgStart(id: TokenId) bool {
     return switch (id) {
-        .name, .cname, .const_int, .const_float,
-        .const_str, .const_char, .lparen, .lbracket,
-        .dollars, .kw_readvals, .kw_show,
+        .name,
+        .cname,
+        .const_int,
+        .const_float,
+        .const_str,
+        .const_char,
+        .lparen,
+        .lbracket,
+        .dollars,
+        .kw_readvals,
+        .kw_show,
         => true,
         else => false,
     };
@@ -196,32 +220,32 @@ pub fn parseExpr(
     var lhs: Expr = blk: {
         const tok = ts.advance();
         break :blk switch (tok.id) {
-            .name  => Expr{ .name  = .{ .text = tok.text, .span = tok.span } },
+            .name => Expr{ .name = .{ .text = tok.text, .span = tok.span } },
             .cname => Expr{ .cname = .{ .text = tok.text, .span = tok.span } },
 
             // Miranda built-in primitives emitted as keyword tokens by the C lexer.
             // `show` → make(SHOW, 0, 0); `readvals` → make(STARTREADVALS, 0, 0);
             // `$$`   → lastexp (REPL only; codegen handles it).
             // We encode them as op_func nodes so opWord() in codegen can map them.
-            .kw_show     => Expr{ .op_func = "kw_show" },
+            .kw_show => Expr{ .op_func = "kw_show" },
             .kw_readvals => Expr{ .op_func = "kw_readvals" },
-            .dollars     => Expr{ .op_func = "dollars" },
+            .dollars => Expr{ .op_func = "dollars" },
 
             .const_int => Expr{ .literal = .{
                 .value = .{ .int = tok.text },
-                .span  = tok.span,
+                .span = tok.span,
             } },
             .const_float => Expr{ .literal = .{
                 .value = .{ .float = tok.float_val },
-                .span  = tok.span,
+                .span = tok.span,
             } },
             .const_str => Expr{ .literal = .{
                 .value = .{ .string = tok.text },
-                .span  = tok.span,
+                .span = tok.span,
             } },
             .const_char => Expr{ .literal = .{
                 .value = .{ .char = tok.char_val },
-                .span  = tok.span,
+                .span = tok.span,
             } },
 
             .tilde => inner: {
@@ -249,18 +273,21 @@ pub fn parseExpr(
 
                 // [from..] or [from..to]
                 if (ts.eat(.dot_dot)) {
-                    const fp = try gpa.create(Expr); fp.* = first;
+                    const fp = try gpa.create(Expr);
+                    fp.* = first;
                     if (ts.eat(.rbracket))
                         break :inner Expr{ .range = .{ .from = fp, .step = null, .to = null } };
                     const to = try parseExpr(gpa, ts, 0);
                     _ = try ts.expect(.rbracket);
-                    const tp = try gpa.create(Expr); tp.* = to;
+                    const tp = try gpa.create(Expr);
+                    tp.* = to;
                     break :inner Expr{ .range = .{ .from = fp, .step = null, .to = tp } };
                 }
 
                 // [body | quals]
                 if (ts.eat(.pipe)) {
-                    const bp = try gpa.create(Expr); bp.* = first;
+                    const bp = try gpa.create(Expr);
+                    bp.* = first;
                     var qs: std.ArrayList(ast.Qualifier) = .empty;
                     errdefer qs.deinit(gpa);
                     try parseQualifier(gpa, ts, &qs);
@@ -284,14 +311,17 @@ pub fn parseExpr(
                     const elem = try parseExpr(gpa, ts, 0);
                     // [first, elem..to?] → arithmetic sequence with step
                     if (ts.eat(.dot_dot)) {
-                        const fp = try gpa.create(Expr); fp.* = elems.items[0];
-                        const sp2 = try gpa.create(Expr); sp2.* = elem;
+                        const fp = try gpa.create(Expr);
+                        fp.* = elems.items[0];
+                        const sp2 = try gpa.create(Expr);
+                        sp2.* = elem;
                         elems.deinit(gpa);
                         if (ts.eat(.rbracket))
                             break :inner Expr{ .range = .{ .from = fp, .step = sp2, .to = null } };
                         const to = try parseExpr(gpa, ts, 0);
                         _ = try ts.expect(.rbracket);
-                        const tp = try gpa.create(Expr); tp.* = to;
+                        const tp = try gpa.create(Expr);
+                        tp.* = to;
                         break :inner Expr{ .range = .{ .from = fp, .step = sp2, .to = tp } };
                     }
                     try elems.append(gpa, elem);
@@ -340,8 +370,8 @@ pub fn parseExpr(
                 break :inner Expr{ .tuple = try elems.toOwnedSlice(gpa) };
             },
 
-            .eof  => return error.UnexpectedEof,
-            else  => return error.UnexpectedToken,
+            .eof => return error.UnexpectedEof,
+            else => return error.UnexpectedToken,
         };
     };
 
@@ -351,11 +381,22 @@ pub fn parseExpr(
 
         // Tokens that terminate an expression at this level
         switch (tok.id) {
-            .eof, .rparen, .rbracket, .rbrace,
-            .comma, .semicolon, .offside, .elseq,
-            .kw_where, .kw_if, .kw_otherwise,
-            .coloncolon, .arrow, .dot_dot,
-            .pipe, .left_arrow,
+            .eof,
+            .rparen,
+            .rbracket,
+            .rbrace,
+            .comma,
+            .semicolon,
+            .offside,
+            .elseq,
+            .kw_where,
+            .kw_if,
+            .kw_otherwise,
+            .coloncolon,
+            .arrow,
+            .dot_dot,
+            .pipe,
+            .left_arrow,
             => break,
             else => {},
         }
@@ -400,7 +441,7 @@ pub fn parseExpr(
             }
 
             lhs = Expr{ .infix = .{
-                .op  = @tagName(op_id),
+                .op = @tagName(op_id),
                 .lhs = lp,
                 .rhs = rp,
             } };
@@ -441,7 +482,9 @@ fn parseQualifier(
             const stepp = try gpa.create(Expr);
             stepp.* = step;
             try qs.append(gpa, ast.Qualifier{ .sequence_generator = .{
-                .pat = e, .source = srcp, .step = stepp,
+                .pat = e,
+                .source = srcp,
+                .step = stepp,
             } });
             return;
         }
@@ -498,10 +541,10 @@ pub fn boxExpr(gpa: Allocator, e: Expr) Allocator.Error!*Expr {
 /// (e.g. when desugaring `f x y` into nested applications).
 pub fn cloneExpr(gpa: Allocator, src: *const Expr) ParseError!Expr {
     return switch (src.*) {
-        .name     => |n|   Expr{ .name    = n },
-        .cname    => |cn|  Expr{ .cname   = cn },
-        .literal  => |lit| Expr{ .literal = lit },
-        .list_nil          => Expr{ .list_nil = {} },
+        .name => |n| Expr{ .name = n },
+        .cname => |cn| Expr{ .cname = cn },
+        .literal => |lit| Expr{ .literal = lit },
+        .list_nil => Expr{ .list_nil = {} },
 
         .neg => |p| ret: {
             const q = try gpa.create(Expr);
@@ -625,7 +668,7 @@ test "parse name atom" {
     const gpa = std.testing.allocator;
     const tokens = [_]Token{
         .{ .id = .name, .span = .{ .line = 1, .col = 1 }, .text = "foo" },
-        .{ .id = .eof,  .span = .{ .line = 1, .col = 4 } },
+        .{ .id = .eof, .span = .{ .line = 1, .col = 4 } },
     };
     var ts = TokenStream{ .tokens = &tokens };
     const expr = try parseExpr(gpa, &ts, 0);
@@ -637,7 +680,7 @@ test "parse integer literal" {
     const gpa = std.testing.allocator;
     const tokens = [_]Token{
         .{ .id = .const_int, .span = .{ .line = 1, .col = 1 }, .int_val = 42 },
-        .{ .id = .eof,       .span = .{ .line = 1, .col = 3 } },
+        .{ .id = .eof, .span = .{ .line = 1, .col = 3 } },
     };
     var ts = TokenStream{ .tokens = &tokens };
     const expr = try parseExpr(gpa, &ts, 0);
@@ -650,12 +693,11 @@ test "parse empty list" {
     const tokens = [_]Token{
         .{ .id = .lbracket, .span = .{ .line = 1, .col = 1 } },
         .{ .id = .rbracket, .span = .{ .line = 1, .col = 2 } },
-        .{ .id = .eof,      .span = .{ .line = 1, .col = 3 } },
+        .{ .id = .eof, .span = .{ .line = 1, .col = 3 } },
     };
     var ts = TokenStream{ .tokens = &tokens };
     const expr = try parseExpr(gpa, &ts, 0);
     try std.testing.expectEqual(std.meta.Tag(Expr).list_nil, std.meta.activeTag(expr));
-
 }
 
 test "parse cons infix" {
@@ -663,10 +705,10 @@ test "parse cons infix" {
     const gpa = std.testing.allocator;
     const tokens = [_]Token{
         .{ .id = .const_int, .span = .{ .line = 1, .col = 1 }, .int_val = 1 },
-        .{ .id = .cons,      .span = .{ .line = 1, .col = 3 } },
-        .{ .id = .lbracket,  .span = .{ .line = 1, .col = 5 } },
-        .{ .id = .rbracket,  .span = .{ .line = 1, .col = 6 } },
-        .{ .id = .eof,       .span = .{ .line = 1, .col = 7 } },
+        .{ .id = .cons, .span = .{ .line = 1, .col = 3 } },
+        .{ .id = .lbracket, .span = .{ .line = 1, .col = 5 } },
+        .{ .id = .rbracket, .span = .{ .line = 1, .col = 6 } },
+        .{ .id = .eof, .span = .{ .line = 1, .col = 7 } },
     };
     var ts = TokenStream{ .tokens = &tokens };
     const expr = try parseExpr(gpa, &ts, 0);

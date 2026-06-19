@@ -151,7 +151,7 @@ fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]con
 
         const name = tokenName(tok);
         const lexeme = std.mem.span(dicp);
-        
+
         try list.print("{s}", .{name});
         if (lexeme.len > 0) {
             // For safety, only print clean ASCII lexemes
