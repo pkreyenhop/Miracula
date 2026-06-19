@@ -55,7 +55,6 @@ pub fn build(b: *std.Build) void {
         .flags = &c_flags,
     });
     addPlatformMacros(mira, target);
-    mira.root_module.linkSystemLibrary("m", .{});
 
     const install_mira = b.addInstallArtifact(mira, .{});
     b.getInstallStep().dependOn(&install_mira.step);
@@ -128,8 +127,8 @@ pub fn build(b: *std.Build) void {
         .files = &c_sources,
         .flags = &c_flags,
     });
+
     addPlatformMacros(main_tests, target);
-    main_tests.root_module.linkSystemLibrary("m", .{});
     main_tests.root_module.addOptions("version_options", version_options);
 
     const parser_tests = b.addTest(.{

@@ -1,0 +1,649 @@
+const std = @import("std");
+const builtin = @import("builtin");
+
+pub const word = c_long;
+pub const unicode = c_ulong;
+
+pub const CMBASE: word = 306;
+
+pub const VALUE = 257;
+pub const EVAL = 258;
+pub const WHERE = 259;
+pub const IF = 260;
+pub const TO = 261;
+pub const LEFTARROW = 262;
+pub const COLONCOLON = 263;
+pub const COLON2EQ = 264;
+pub const TYPEVAR = 265;
+pub const NAME = 266;
+pub const CNAME = 267;
+pub const CONST = 268;
+pub const DOLLARS = 269;
+pub const OFFSIDE = 270;
+pub const ELSEQ = 271;
+pub const ABSTYPE = 272;
+pub const WITH = 273;
+pub const DIAG = 274;
+pub const EQEQ = 275;
+pub const FREE = 276;
+pub const INCLUDE = 277;
+pub const EXPORT = 278;
+pub const TYPE = 279;
+pub const OTHERWISE = 280;
+pub const SHOWSYM = 281;
+pub const PATHNAME = 282;
+pub const BNF = 283;
+pub const LEX = 284;
+pub const ENDIR = 285;
+pub const ERRORSY = 286;
+pub const ENDSY = 287;
+pub const EMPTYSY = 288;
+pub const READVALSY = 289;
+pub const LEXDEF = 290;
+pub const CHARCLASS = 291;
+pub const ANTICHARCLASS = 292;
+pub const LBEGIN = 293;
+pub const ARROW = 294;
+pub const PLUSPLUS = 295;
+pub const MINUSMINUS = 296;
+pub const DOTDOT = 297;
+pub const VEL = 298;
+pub const GE = 299;
+pub const NE = 300;
+pub const LE = 301;
+pub const REM = 302;
+pub const DIV = 303;
+pub const INFIXNAME = 304;
+pub const INFIXCNAME = 305;
+
+pub const S = CMBASE + 0;
+pub const K = CMBASE + 1;
+pub const Y = CMBASE + 2;
+pub const C = CMBASE + 3;
+pub const B = CMBASE + 4;
+pub const CB = CMBASE + 5;
+pub const I = CMBASE + 6;
+pub const HD = CMBASE + 7;
+pub const TL = CMBASE + 8;
+pub const BODY = CMBASE + 9;
+pub const LAST = CMBASE + 10;
+pub const S_p = CMBASE + 11;
+pub const U = CMBASE + 12;
+pub const Uf = CMBASE + 13;
+pub const U_ = CMBASE + 14;
+pub const Ug = CMBASE + 15;
+pub const COND = CMBASE + 16;
+pub const EQ = CMBASE + 17;
+pub const NEQ = CMBASE + 18;
+pub const NEG = CMBASE + 19;
+pub const AND = CMBASE + 20;
+pub const OR = CMBASE + 21;
+pub const NOT = CMBASE + 22;
+pub const APPEND = CMBASE + 23;
+pub const STEP = CMBASE + 24;
+pub const STEPUNTIL = CMBASE + 25;
+pub const GENSEQ = CMBASE + 26;
+pub const MAP = CMBASE + 27;
+pub const ZIP = CMBASE + 28;
+pub const TAKE = CMBASE + 29;
+pub const DROP = CMBASE + 30;
+pub const FLATMAP = CMBASE + 31;
+pub const FILTER = CMBASE + 32;
+pub const FOLDL = CMBASE + 33;
+pub const MERGE = CMBASE + 34;
+pub const FOLDL1 = CMBASE + 35;
+pub const LIST_LAST = CMBASE + 36;
+pub const FOLDR = CMBASE + 37;
+pub const MATCH = CMBASE + 38;
+pub const MATCHINT = CMBASE + 39;
+pub const TRY = CMBASE + 40;
+pub const SUBSCRIPT = CMBASE + 41;
+pub const ATLEAST = CMBASE + 42;
+pub const P = CMBASE + 43;
+pub const B_p = CMBASE + 44;
+pub const C_p = CMBASE + 45;
+pub const S1 = CMBASE + 46;
+pub const B1 = CMBASE + 47;
+pub const C1 = CMBASE + 48;
+pub const ITERATE = CMBASE + 49;
+pub const ITERATE1 = CMBASE + 50;
+pub const SEQ = CMBASE + 51;
+pub const FORCE = CMBASE + 52;
+pub const MINUS = CMBASE + 53;
+pub const PLUS = CMBASE + 54;
+pub const TIMES = CMBASE + 55;
+pub const INTDIV = CMBASE + 56;
+pub const FDIV = CMBASE + 57;
+pub const MOD = CMBASE + 58;
+pub const GR = CMBASE + 59;
+pub const GRE = CMBASE + 60;
+pub const POWER = CMBASE + 61;
+pub const CODE = CMBASE + 62;
+pub const DECODE = CMBASE + 63;
+pub const LENGTH = CMBASE + 64;
+pub const ARCTAN_FN = CMBASE + 65;
+pub const EXP_FN = CMBASE + 66;
+pub const ENTIER_FN = CMBASE + 67;
+pub const LOG_FN = CMBASE + 68;
+pub const LOG10_FN = CMBASE + 69;
+pub const SIN_FN = CMBASE + 70;
+pub const COS_FN = CMBASE + 71;
+pub const SQRT_FN = CMBASE + 72;
+pub const FILEMODE = CMBASE + 73;
+pub const FILESTAT = CMBASE + 74;
+pub const GETENV = CMBASE + 75;
+pub const EXEC = CMBASE + 76;
+pub const WAIT = CMBASE + 77;
+pub const INTEGER = CMBASE + 78;
+pub const SHOWNUM = CMBASE + 79;
+pub const SHOWHEX = CMBASE + 80;
+pub const SHOWOCT = CMBASE + 81;
+pub const SHOWSCALED = CMBASE + 82;
+pub const SHOWFLOAT = CMBASE + 83;
+pub const NUMVAL = CMBASE + 84;
+pub const STARTREAD = CMBASE + 85;
+pub const STARTREADBIN = CMBASE + 86;
+pub const NB_STARTREAD = CMBASE + 87;
+pub const READVALS = CMBASE + 88;
+pub const NB_READ = CMBASE + 89;
+pub const READ = CMBASE + 90;
+pub const READBIN = CMBASE + 91;
+pub const GETARGS = CMBASE + 92;
+pub const Ush = CMBASE + 93;
+pub const Ush1 = CMBASE + 94;
+pub const KI = CMBASE + 95;
+pub const G_ERROR = CMBASE + 96;
+pub const G_ALT = CMBASE + 97;
+pub const G_OPT = CMBASE + 98;
+pub const G_STAR = CMBASE + 99;
+pub const G_FBSTAR = CMBASE + 100;
+pub const G_SYMB = CMBASE + 101;
+pub const G_ANY = CMBASE + 102;
+pub const G_SUCHTHAT = CMBASE + 103;
+pub const G_END = CMBASE + 104;
+pub const G_STATE = CMBASE + 105;
+pub const G_SEQ = CMBASE + 106;
+pub const G_RULE = CMBASE + 107;
+pub const G_UNIT = CMBASE + 108;
+pub const G_ZERO = CMBASE + 109;
+pub const G_CLOSE = CMBASE + 110;
+pub const G_COUNT = CMBASE + 111;
+pub const LEX_RPT = CMBASE + 112;
+pub const LEX_RPT1 = CMBASE + 113;
+pub const LEX_TRY = CMBASE + 114;
+pub const LEX_TRY_ = CMBASE + 115;
+pub const LEX_TRY1 = CMBASE + 116;
+pub const LEX_TRY1_ = CMBASE + 117;
+pub const DESTREV = CMBASE + 118;
+pub const LEX_COUNT = CMBASE + 119;
+pub const LEX_COUNT0 = CMBASE + 120;
+pub const LEX_FAIL = CMBASE + 121;
+pub const LEX_STRING = CMBASE + 122;
+pub const LEX_CLASS = CMBASE + 123;
+pub const LEX_CHAR = CMBASE + 124;
+pub const LEX_DOT = CMBASE + 125;
+pub const LEX_SEQ = CMBASE + 126;
+pub const LEX_OR = CMBASE + 127;
+pub const LEX_RCONTEXT = CMBASE + 128;
+pub const LEX_STAR = CMBASE + 129;
+pub const LEX_OPT = CMBASE + 130;
+pub const MKSTRICT = CMBASE + 131;
+pub const BADCASE = CMBASE + 132;
+pub const CONFERROR = CMBASE + 133;
+pub const ERROR = CMBASE + 134;
+pub const FAIL = CMBASE + 135;
+pub const False = CMBASE + 136;
+pub const True = CMBASE + 137;
+pub const NIL = CMBASE + 138;
+pub const NILS = CMBASE + 139;
+pub const UNDEF = CMBASE + 140;
+pub const ATOMLIMIT = CMBASE + 141;
+
+pub const ATOM = 0;
+pub const DOUBLE = 1;
+pub const DATAPAIR = 2;
+pub const FILEINFO = 3;
+pub const TVAR = 4;
+pub const INT = 5;
+pub const CONSTRUCTOR = 6;
+pub const STRCONS = 7;
+pub const ID = 8;
+pub const AP = 9;
+pub const LAMBDA = 10;
+pub const CONS = 11;
+pub const TRIES = 12;
+pub const LABEL = 13;
+pub const SHOW = 14;
+pub const STARTREADVALS = 15;
+pub const LET = 16;
+pub const LETREC = 17;
+pub const SHARE = 18;
+pub const LEXER = 19;
+pub const PAIR = 20;
+pub const UNICODE = 21;
+pub const TCONS = 22;
+
+pub extern var SPACE: word;
+pub extern var DICSPACE: word;
+pub const BACKSTOP: word = @as(word, 1) << (@bitSizeOf(word) - 1);
+pub const tlptrbit = BACKSTOP;
+pub const tlptrbits: word = @as(word, 3) << (@bitSizeOf(word) - 2);
+
+pub const END = 0;
+pub const GENERATOR = 0;
+pub const GUARD = 1;
+pub const REPEAT = 2;
+pub const BUFSIZE = 1024;
+pub const pnlim = 1024;
+
+pub const undef_t = 0;
+pub const bool_t = 1;
+pub const num_t = 2;
+pub const char_t = 3;
+pub const list_t = 4;
+pub const comma_t = 5;
+pub const arrow_t = 6;
+pub const void_t = 7;
+pub const wrong_t = 8;
+pub const bind_t = 9;
+pub const type_t = 10;
+pub const strict_t = 11;
+pub const alias_t = 12;
+pub const new_t = 13;
+pub const hashsize = 512;
+
+pub const algebraic_t = 0;
+pub const synonym_t = 1;
+pub const abstract_t = 2;
+pub const placeholder_t = 3;
+pub const free_t = 4;
+
+pub const XBASE = ATOMLIMIT - 256;
+pub const CHAR_X = XBASE;
+pub const SHORT_X = XBASE + 1;
+pub const INT_X = XBASE + 2;
+pub const DBL_X = XBASE + 3;
+pub const ID_X = XBASE + 4;
+pub const AKA_X = XBASE + 5;
+pub const HERE_X = XBASE + 6;
+pub const CONSTRUCT_X = XBASE + 7;
+pub const RV_X = XBASE + 8;
+pub const PN_X = XBASE + 9;
+pub const PN1_X = XBASE + 10;
+pub const DEF_X = XBASE + 11;
+pub const AP_X = XBASE + 12;
+pub const CONS_X = XBASE + 13;
+pub const TVAR_X = XBASE + 14;
+pub const UNICODE_X = XBASE + 15;
+
+pub const SIGNBIT = 0x10000000;
+pub const MAXDIGIT = 0x7fff;
+pub const UMAX = 0x10ffff;
+pub const XVERSION = 83;
+
+pub const ACT_NONE = 0;
+pub const ACT_NEXTREDEX = 1;
+pub const ACT_DONE = 2;
+
+pub const FILE = opaque {};
+pub const time_t = c_long;
+pub const DBL_MAX = std.math.floatMax(f64);
+pub const EOF = -1;
+pub const EDOM = 33;
+pub const ERANGE = 34;
+pub const O_RDONLY = 0;
+pub const O_WRONLY = 1;
+pub const O_CREAT = 0x0200;
+pub const O_TRUNC = 0x0400;
+pub const STDOUT_FILENO = 1;
+pub const _SC_CLK_TCK = 3;
+pub const SIGINT = 2;
+pub const SIGBUS = 10;
+pub const SIGSEGV = 11;
+pub const SIGTERM = 15;
+pub const SIGFPE = 8;
+pub const TIOCGWINSZ = 0x40087468;
+pub const RLIMIT_STACK = 3;
+
+pub const struct_tms = extern struct {
+    tms_utime: c_long,
+    tms_stime: c_long,
+    tms_cutime: c_long,
+    tms_cstime: c_long,
+};
+
+pub const struct_winsize = extern struct {
+    ws_row: c_ushort,
+    ws_col: c_ushort,
+    ws_xpixel: c_ushort,
+    ws_ypixel: c_ushort,
+};
+
+pub const struct_rlimit = extern struct {
+    rlim_cur: u64,
+    rlim_max: u64,
+};
+
+pub fn stdin() ?*FILE {
+    if (builtin.os.tag == .macos) return __stdinp;
+    return @ptrCast(std.c.stdin);
+}
+
+pub fn stdout() ?*FILE {
+    if (builtin.os.tag == .macos) return __stdoutp;
+    return @ptrCast(std.c.stdout);
+}
+
+pub fn stderr() ?*FILE {
+    if (builtin.os.tag == .macos) return __stderrp;
+    return @ptrCast(std.c.stderr);
+}
+
+extern var __stdinp: ?*FILE;
+extern var __stdoutp: ?*FILE;
+extern var __stderrp: ?*FILE;
+
+pub extern fn printf(format: [*:0]const u8, ...) c_int;
+pub extern fn fprintf(file: ?*FILE, format: [*:0]const u8, ...) c_int;
+pub extern fn sprintf(buf: [*]u8, format: [*:0]const u8, ...) c_int;
+pub extern fn snprintf(buf: [*]u8, size: usize, format: [*:0]const u8, ...) c_int;
+pub extern fn fscanf(file: ?*FILE, format: [*:0]const u8, ...) c_int;
+pub extern fn sscanf(buf: ?*const anyopaque, format: [*:0]const u8, ...) c_int;
+pub extern fn fputs(s: [*:0]const u8, file: ?*FILE) c_int;
+pub extern fn fputc(ch: c_int, file: ?*FILE) c_int;
+pub extern fn putc(ch: c_int, file: ?*FILE) c_int;
+pub extern fn putchar(ch: c_int) c_int;
+pub extern fn getc(file: ?*FILE) c_int;
+pub extern fn getchar() c_int;
+pub extern fn ungetc(ch: c_int, file: ?*FILE) c_int;
+pub extern fn fopen(path: ?*const anyopaque, mode: [*:0]const u8) ?*FILE;
+pub extern fn fdopen(fd: c_int, mode: [*:0]const u8) ?*FILE;
+pub extern fn fmemopen(buf: ?*anyopaque, size: usize, mode: [*:0]const u8) ?*FILE;
+pub extern fn fclose(file: ?*FILE) c_int;
+pub extern fn fread(ptr: ?*anyopaque, size: usize, nmemb: usize, file: ?*FILE) usize;
+pub extern fn fwrite(ptr: ?*const anyopaque, size: usize, nmemb: usize, file: ?*FILE) usize;
+pub extern fn fgets(buf: [*]u8, size: c_int, file: ?*FILE) ?[*]u8;
+pub extern fn fileno(file: ?*FILE) c_int;
+pub extern fn setbuf(file: ?*FILE, buf: ?[*]u8) void;
+pub extern fn perror(s: [*:0]const u8) void;
+
+pub extern fn malloc(size: usize) ?*anyopaque;
+pub extern fn calloc(nmemb: usize, size: usize) ?*anyopaque;
+pub extern fn realloc(ptr: ?*anyopaque, size: usize) ?*anyopaque;
+pub extern fn free(ptr: ?*anyopaque) void;
+pub extern fn exit(status: c_int) noreturn;
+pub extern fn abort() noreturn;
+pub extern fn getenv(name: ?*const anyopaque) ?[*:0]u8;
+pub extern fn system(cmd: ?*const anyopaque) c_int;
+pub extern fn chdir(path: [*:0]const u8) c_int;
+pub extern fn getcwd(buf: [*]u8, size: usize) ?[*]u8;
+pub extern fn fork() c_int;
+pub extern fn pipe(fds: *[2]c_int) c_int;
+pub extern fn dup2(oldfd: c_int, newfd: c_int) c_int;
+pub extern fn close(fd: c_int) c_int;
+pub extern fn read(fd: c_int, buf: ?*anyopaque, count: usize) isize;
+pub extern fn write(fd: c_int, buf: ?*const anyopaque, count: usize) isize;
+pub extern fn open(path: [*:0]const u8, flags: c_int, ...) c_int;
+pub extern fn unlink(path: [*:0]const u8) c_int;
+pub extern fn execl(path: [*:0]const u8, arg0: [*:0]const u8, ...) c_int;
+pub extern fn wait(status: ?*c_int) c_int;
+pub extern fn isatty(fd: c_int) c_int;
+pub extern fn ioctl(fd: c_int, request: c_ulong, ...) c_int;
+pub extern fn times(buf: *struct_tms) c_long;
+pub extern fn sysconf(name: c_int) c_long;
+pub extern fn getrlimit(resource: c_int, rlp: *struct_rlimit) c_int;
+pub extern fn setrlimit(resource: c_int, rlp: *const struct_rlimit) c_int;
+pub extern fn geteuid() c_uint;
+pub extern fn getegid() c_uint;
+
+pub extern fn strlen(s: ?*const anyopaque) usize;
+pub extern fn strcmp(a: ?*const anyopaque, b: ?*const anyopaque) c_int;
+pub extern fn strncmp(a: ?*const anyopaque, b: ?*const anyopaque, n: usize) c_int;
+pub extern fn strcpy(dst: ?*anyopaque, src: ?*const anyopaque) ?*anyopaque;
+pub extern fn strncpy(dst: ?*anyopaque, src: ?*const anyopaque, n: usize) ?*anyopaque;
+pub extern fn strcat(dst: ?*anyopaque, src: ?*const anyopaque) ?*anyopaque;
+pub extern fn strncat(dst: ?*anyopaque, src: ?*const anyopaque, n: usize) ?*anyopaque;
+pub extern fn strchr(s: ?*const anyopaque, c: c_int) ?[*:0]u8;
+pub extern fn strrchr(s: ?*const anyopaque, c: c_int) ?[*:0]u8;
+pub extern fn strstr(haystack: ?*const anyopaque, needle: ?*const anyopaque) ?[*:0]u8;
+pub extern fn rindex(s: ?*const anyopaque, c: c_int) ?[*:0]u8;
+
+pub extern fn isalpha(ch: c_int) c_int;
+pub extern fn isalnum(ch: c_int) c_int;
+pub extern fn isdigit(ch: c_int) c_int;
+pub extern fn isxdigit(ch: c_int) c_int;
+pub extern fn isspace(ch: c_int) c_int;
+pub extern fn tolower(ch: c_int) c_int;
+
+pub extern fn localtime(timer: *const time_t) ?*extern struct {
+    tm_sec: c_int,
+    tm_min: c_int,
+    tm_hour: c_int,
+    tm_mday: c_int,
+    tm_mon: c_int,
+    tm_year: c_int,
+    tm_wday: c_int,
+    tm_yday: c_int,
+    tm_isdst: c_int,
+};
+
+pub extern fn make(t: u8, x: word, y: word) word;
+pub inline fn cons(x: word, y: word) word {
+    return make(CONS, x, y);
+}
+pub inline fn strcons(x: word, y: word) word {
+    return make(STRCONS, x, y);
+}
+pub inline fn tries(x: word, y: word) word {
+    return make(TRIES, x, y);
+}
+pub inline fn stosmallint(x: word) word {
+    return make(INT, if (x < 0) SIGNBIT | -x else x, 0);
+}
+pub extern fn sto_int(i: c_longlong) word;
+pub extern fn get_int(x: word) c_longlong;
+pub extern fn sto_dbl(x: f64) word;
+pub extern fn get_dbl(x: word) f64;
+pub extern fn setdbl(x: word, r: f64) void;
+pub extern fn bigtodbl(x: word) f64;
+pub extern fn biglog(x: word) f64;
+pub extern fn biglog10(x: word) f64;
+pub extern fn bigcmp(x: word, y: word) c_int;
+pub extern fn bigdiv(x: word, y: word) word;
+pub extern fn bigmod(x: word, y: word) word;
+pub extern fn bignegate(x: word) word;
+pub extern fn bigplus(x: word, y: word) word;
+pub extern fn bigpow(x: word, y: word) word;
+pub extern fn bigscan(p: [*:0]const u8) word;
+pub extern fn bigoscan(p: [*:0]const u8, q: [*:0]const u8) word;
+pub extern fn bigxscan(p: [*:0]const u8, q: [*:0]const u8) word;
+pub extern fn bigsub(x: word, y: word) word;
+pub extern fn bigtimes(x: word, y: word) word;
+pub extern fn bigtostr(x: word) word;
+pub extern fn bigtostr8(x: word) word;
+pub extern fn bigtostrx(x: word) word;
+pub extern fn dbltobig(x: f64) word;
+pub extern fn strtobig(z: word, base: c_int) word;
+
+pub extern fn sto_char(ch: c_int) word;
+pub extern fn get_char(x: word) word;
+pub extern fn is_char(x: word) c_int;
+pub extern fn str_conv(s: [*:0]const u8) word;
+pub extern fn keep(p: [*:0]u8) [*:0]u8;
+pub extern fn make_id(p: [*:0]const u8) word;
+pub extern fn findid(p: [*:0]const u8) word;
+pub extern fn sto_id(p: [*:0]const u8) word;
+pub extern fn sto_pn(n: word) word;
+pub extern fn make_pn(val: word) word;
+pub extern fn isconstrname(s: [*:0]const u8) c_int;
+pub extern fn okid(ch: c_int) c_int;
+pub extern fn token() [*:0]u8;
+pub extern fn mallocfail(s: [*:0]const u8) void;
+pub extern fn out(f: ?*FILE, x: word) void;
+pub extern fn out_here(f: ?*FILE, h: word, nl: word) void;
+pub extern fn output(e: word) void;
+pub extern fn outstats() void;
+pub extern fn getstring(x: word, cmd: ?[*:0]const u8) [*:0]const u8;
+pub extern fn compare(a: word, b: word) c_int;
+pub extern fn reverse(x: word) word;
+pub extern fn append1(x: word, y: word) word;
+pub extern fn resetheap() void;
+pub extern fn setupdic() void;
+pub extern fn gc() void;
+pub extern fn gcpatch() void;
+pub extern fn charname(c: word) [*:0]const u8;
+pub extern fn dump_script(files: word, f: ?*FILE) void;
+pub extern fn load_script(f: ?*FILE, src: [*:0]u8, aliases: word, params: word, main: word) word;
+pub extern fn okdump(t: [*:0]u8) c_int;
+pub extern fn trueheapsize() word;
+pub extern fn setprefix(p: [*:0]u8) void;
+pub extern fn fm_time(f: [*:0]const u8) word;
+pub extern fn parseline(t: word, f: ?*FILE, fil: word) word;
+pub extern fn process() word;
+pub extern fn yyparse() c_int;
+pub extern fn yylex() c_int;
+pub extern fn layout() void;
+pub extern fn setlmargin() void;
+pub extern fn unsetlmargin() void;
+pub extern fn openfile(n: [*:0]const u8) c_int;
+pub extern fn rdline() [*:0]u8;
+pub extern fn addextn(b: word, s: [*:0]u8) [*:0]u8;
+pub extern fn adjust_prefix(f: [*:0]u8) void;
+pub extern fn dicovflo() void;
+pub extern fn mkprivate(x: word) void;
+pub extern fn outUTF8(u: unicode, fil: ?*FILE) void;
+pub extern fn fromUTF8(fil: ?*FILE) unicode;
+pub extern fn type_of(x: word) word;
+pub extern fn checktypes() void;
+pub extern fn report_type(x: word) void;
+pub extern fn out_type(t: word) void;
+pub extern fn out_pattern(f: ?*FILE, x: word) void;
+pub extern fn printlist(title: [*:0]const u8, l: word) void;
+pub extern fn typesfirst(x: word) word;
+pub extern fn instantiate(t: word) word;
+pub extern fn deps(x: word) word;
+pub extern fn add1(e: word, s: word) word;
+pub extern fn member(s: word, x: word) word;
+pub extern fn intersection(s1: word, s2: word) word;
+pub extern fn setdiff(s1: word, s2: word) word;
+pub extern fn UNION(s1: word, s2: word) word;
+pub extern fn subsumes(t1: word, t2: word) word;
+pub extern fn make_typ(a: word, shf: word, class: word, info: word) word;
+pub extern fn block(defs: word, e: word, keep: word) word;
+pub extern fn codegen(x: word) word;
+pub extern fn compzf(e: word, qq: word, diag: word) word;
+pub extern fn declare(x: word, e: word) void;
+pub extern fn declconstr(x: word, n: word, t: word) word;
+pub extern fn decl_type(tf: word, type_class: word, info: word, here: word) void;
+pub extern fn genlhs(x: word) word;
+pub extern fn irrefutable(x: word) c_int;
+pub extern fn mkshow(s: word, p: word, t: word) word;
+pub extern fn redtvars(t: word) word;
+pub extern fn specify(x: word, t: word, h: word) void;
+pub extern fn math_error(s: [*:0]u8) void;
+pub extern fn int_error(s: [*:0]const u8) void;
+pub extern fn div_error() void;
+pub extern fn fn_error(s: [*:0]const u8) void;
+pub extern fn getenv_error(s: ?*const anyopaque) void;
+pub extern fn subs_error() void;
+pub extern fn lexfail(x: word) void;
+pub extern fn lexstate(x: word) word;
+pub extern fn memclass(c: c_int, x: word) c_int;
+pub extern fn g_residue(toks2: word) word;
+pub extern fn reduce_parse_close_error(arg1: word, arg3: word) void;
+pub extern fn piperrmess(pid: word) word;
+pub extern fn numplus(x: word, y: word) word;
+
+pub extern fn zig_handleS(ctx: ?*anyopaque) void;
+pub extern fn zig_handleB(ctx: ?*anyopaque) void;
+pub extern fn zig_handleCB(ctx: ?*anyopaque) void;
+pub extern fn zig_handleC(ctx: ?*anyopaque) void;
+pub extern fn zig_handleY(ctx: ?*anyopaque) void;
+pub extern fn zig_handleK(ctx: ?*anyopaque) void;
+pub extern fn zig_handleI(ctx: ?*anyopaque) void;
+pub extern fn zig_handleKI(ctx: ?*anyopaque) void;
+pub extern fn zig_handleS1(ctx: ?*anyopaque) void;
+pub extern fn zig_handleB1(ctx: ?*anyopaque) void;
+pub extern fn zig_handleC1(ctx: ?*anyopaque) void;
+pub extern fn zig_handleS_p(ctx: ?*anyopaque) void;
+pub extern fn zig_handleB_p(ctx: ?*anyopaque) void;
+pub extern fn zig_handleC_p(ctx: ?*anyopaque) void;
+pub extern fn zig_handleITERATE(ctx: ?*anyopaque) void;
+pub extern fn zig_handleITERATE1(ctx: ?*anyopaque) void;
+pub extern fn zig_handleP(ctx: ?*anyopaque) void;
+pub extern fn zig_handleU(ctx: ?*anyopaque) void;
+pub extern fn zig_handleUf(ctx: ?*anyopaque) void;
+pub extern fn zig_handleATLEAST(ctx: ?*anyopaque) void;
+pub extern fn zig_handleU_(ctx: ?*anyopaque) void;
+pub extern fn zig_handleUg(ctx: ?*anyopaque) void;
+pub extern fn zig_handleMATCH(ctx: ?*anyopaque) void;
+pub extern fn zig_handleMATCHINT(ctx: ?*anyopaque) void;
+pub extern fn zig_handleGENSEQ(ctx: ?*anyopaque) void;
+pub extern fn zig_handleMAP(ctx: ?*anyopaque) void;
+pub extern fn zig_handleFLATMAP(ctx: ?*anyopaque) void;
+pub extern fn zig_handleFILTER(ctx: ?*anyopaque) void;
+pub extern fn zig_handleLIST_LAST(ctx: ?*anyopaque) void;
+pub extern fn zig_handleLENGTH(ctx: ?*anyopaque) void;
+pub extern fn zig_handleDROP(ctx: ?*anyopaque) void;
+pub extern fn zig_handleSUBSCRIPT(ctx: ?*anyopaque) void;
+pub extern fn zig_handleFOLDL1(ctx: ?*anyopaque) void;
+pub extern fn zig_handleFOLDL(ctx: ?*anyopaque) void;
+pub extern fn zig_handleFOLDR(ctx: ?*anyopaque) void;
+pub extern fn zig_handleBADCASE(ctx: ?*anyopaque) void;
+pub extern fn zig_handleGETARGS(ctx: ?*anyopaque) void;
+pub extern fn zig_handleCONFERROR(ctx: ?*anyopaque) void;
+pub extern fn zig_handleERROR(ctx: ?*anyopaque) void;
+pub extern fn zig_handleFAIL(ctx: ?*anyopaque) void;
+pub extern fn zig_handleMKSTRICT(ctx: ?*anyopaque) void;
+pub extern fn zig_handleWAIT(ctx: ?*anyopaque) void;
+pub extern fn zig_handleUsh1(ctx: ?*anyopaque) void;
+pub extern fn zig_handleTRY(ctx: ?*anyopaque) void;
+pub extern fn zig_handle_strict_monadic(ctx: ?*anyopaque) void;
+pub extern fn zig_handle_strict_diadic(ctx: ?*anyopaque) void;
+pub extern fn zig_handle_strict_triadic(ctx: ?*anyopaque) void;
+
+pub extern var hd: [*]word;
+pub extern var tl: [*]word;
+pub extern var tag: [*]u8;
+pub extern var UTF8: c_int;
+pub extern var yylval: word;
+pub extern var yysterm: [*][*:0]u8;
+pub extern var cmbnms: [*][*:0]u8;
+
+pub extern fn handle_G_ERROR(ctx: ?*anyopaque) void;
+pub extern fn handle_G_ALT(ctx: ?*anyopaque) void;
+pub extern fn handle_G_OPT(ctx: ?*anyopaque) void;
+pub extern fn handle_G_STAR(ctx: ?*anyopaque) void;
+pub extern fn handle_G_FBSTAR(ctx: ?*anyopaque) void;
+pub extern fn handle_G_SYMB(ctx: ?*anyopaque) void;
+pub extern fn handle_G_ANY(ctx: ?*anyopaque) void;
+pub extern fn handle_G_SUCHTHAT(ctx: ?*anyopaque) void;
+pub extern fn handle_G_END(ctx: ?*anyopaque) void;
+pub extern fn handle_G_STATE(ctx: ?*anyopaque) void;
+pub extern fn handle_G_SEQ(ctx: ?*anyopaque) void;
+pub extern fn handle_G_UNIT(ctx: ?*anyopaque) void;
+pub extern fn handle_G_ZERO(ctx: ?*anyopaque) void;
+pub extern fn handle_G_CLOSE(ctx: ?*anyopaque) void;
+pub extern fn handle_G_COUNT(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_RPT(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_RPT1(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_TRY(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_TRY_(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_TRY1(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_TRY1_(ctx: ?*anyopaque) void;
+pub extern fn handle_DESTREV(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_COUNT(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_COUNT0(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_STRING(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_CLASS(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_CHAR(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_DOT(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_SEQ(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_OR(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_RCONTEXT(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_STAR(ctx: ?*anyopaque) void;
+pub extern fn handle_LEX_OPT(ctx: ?*anyopaque) void;
+pub extern fn handle_READ(ctx: ?*anyopaque) void;
+pub extern fn handle_READBIN(ctx: ?*anyopaque) void;
+pub extern fn handle_READVALS(ctx: ?*anyopaque) void;
+pub extern fn handle_STARTREADVALS(ctx: ?*anyopaque) void;

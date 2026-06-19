@@ -2,27 +2,9 @@ const std = @import("std");
 const platform = @import("io/platform.zig");
 const parser_api = @import("parser/parser_api.zig");
 
-const c_raw = @cImport({
-    @cInclude("sys/ioctl.h");
-    @cInclude("unistd.h");
-    @cInclude("sys/stat.h");
-    @cInclude("fcntl.h");
-    @cInclude("stdio.h");
-    @cInclude("setjmp.h");
-    @cInclude("sys/resource.h");
-    @cInclude("sys/wait.h");
-    @cInclude("float.h");
-    @cInclude("data.h");
-    @cInclude("signals.h");
-    @cInclude("string.h");
-    @cInclude("stdlib.h");
-    @cInclude("ctype.h");
-    @cInclude("big.h");
-    @cInclude("lex.h");
-    @cInclude("version.h");
-});
+const word_mod = @import("runtime/word.zig");
 
-const clib = c_raw;
+const clib = @import("main_clib.zig");
 
 inline fn get_id(x: Word) [*:0]const u8 {
     return @ptrFromInt(@as(usize, @intCast(h(h(h(x))))));
@@ -354,46 +336,46 @@ export fn evaluate_repl(x_in: Word) void {
     // Parent returns here; heap and compiling flag are unchanged.
 }
 
-fn getStdin_helper() ?*c_raw.FILE {
-    const T = @TypeOf(c_raw.stdin);
+fn getStdin_helper() ?*clib.FILE {
+    const T = @TypeOf(clib.stdin);
     if (comptime @typeInfo(T) == .@"fn") {
-        return c_raw.stdin();
+        return clib.stdin();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return c_raw.stdin();
+        return clib.stdin();
     } else {
-        return c_raw.stdin;
+        return clib.stdin;
     }
 }
 
-fn getStdout_helper() ?*c_raw.FILE {
-    const T = @TypeOf(c_raw.stdout);
+fn getStdout_helper() ?*clib.FILE {
+    const T = @TypeOf(clib.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
-        return c_raw.stdout();
+        return clib.stdout();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return c_raw.stdout();
+        return clib.stdout();
     } else {
-        return c_raw.stdout;
+        return clib.stdout;
     }
 }
 
-fn getStderr_helper() ?*c_raw.FILE {
-    const T = @TypeOf(c_raw.stderr);
+fn getStderr_helper() ?*clib.FILE {
+    const T = @TypeOf(clib.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
-        return c_raw.stderr();
+        return clib.stderr();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return c_raw.stderr();
+        return clib.stderr();
     } else {
-        return c_raw.stderr;
+        return clib.stderr;
     }
 }
 
-inline fn getStdin() ?*c_raw.FILE {
+inline fn getStdin() ?*clib.FILE {
     return getStdin_helper();
 }
-inline fn getStdout() ?*c_raw.FILE {
+inline fn getStdout() ?*clib.FILE {
     return getStdout_helper();
 }
-inline fn getStderr() ?*c_raw.FILE {
+inline fn getStderr() ?*clib.FILE {
     return getStderr_helper();
 }
 
@@ -457,7 +439,7 @@ fn same_file(x: Word, y: Word) bool {
 
 fn inodev(path: [*:0]const u8) Word {
     if (platform.getFileInfo(path)) |info| {
-        return clib.datapair(info.ino, @as(Word, @bitCast(info.dev)));
+        return clib.datapair(@as(Word, @bitCast(info.ino)), @as(Word, @bitCast(info.dev)));
     } else {
         return clib.datapair(0, -1);
     }
@@ -2300,11 +2282,11 @@ fn privatise(x: Word) Word {
     const i = h(n);
 
     if (id_type(x) == clib.type_t) {
-        tp(t_info(x)).* = cons(clib.datapair(clib.getaka(x), 0), get_here(x));
+        tp(t_info(x)).* = cons(clib.datapair(@as(Word, @intCast(@intFromPtr(clib.getaka(x)))), 0), get_here(x));
     }
 
     if (id_val(x) == clib.UNDEF) {
-        tp(x).* = clib.ap(clib.datapair(clib.getaka(x), 0), get_here(x));
+        tp(x).* = clib.ap(clib.datapair(@as(Word, @intCast(@intFromPtr(clib.getaka(x)))), 0), get_here(x));
     }
 
     pnvec.?[@as(usize, @intCast(i))] = x;
@@ -3388,7 +3370,7 @@ fn undump(t_val: [*:0]const u8) void {
     t2 = @intCast(fm_time(@as([*:0]const u8, @ptrCast(&obf))));
     if (t2 != 0 and t1 == 0) {
         t2 = 0;
-        _ = clib.unlink(&obf);
+        _ = clib.unlink(@as([*:0]const u8, @ptrCast(&obf)));
     }
     if (t2 == 0 or t2 < t1) {
         loadfile(t_val);
@@ -3416,7 +3398,7 @@ fn undump(t_val: [*:0]const u8) void {
     _ = clib.fclose(f.?);
 
     if (BAD_DUMP != 0) {
-        _ = clib.unlink(&obf);
+        _ = clib.unlink(@as([*:0]const u8, @ptrCast(&obf)));
         unload();
         CLASHES = NIL;
         stackp = dstack;

@@ -16,9 +16,11 @@ In addition, `linkSystemLibrary("m")` links the C math library (`libm`) for floa
 
 The migration is divided into six sub-phases in dependency order. Each sub-phase produces a green build with passing tests before the next begins.
 
+*Note: During a preliminary header audit, `reduce_internal.h` was found to be obsolete and has been removed from the repository. All other header files are verified as required via @cInclude and will be replaced by native Zig definitions during this phase.*
+
 ---
 
-## Sub-phase 6a: Extract C header constants to Zig
+## Sub-phase 6a: Extract C header constants to Zig (Completed)
 
 **What**: Replace `@cImport` of `data.h`, `combs.h`, and `lex.h` with native Zig definitions. These headers are imported for integer constants (cell tags, combinator codes, sentinel values) and the `word` type alias.
 
@@ -38,7 +40,7 @@ The migration is divided into six sub-phases in dependency order. Each sub-phase
 
 ---
 
-## Sub-phase 6b: Replace libm with std.math
+## Sub-phase 6b: Replace libm with std.math (Completed)
 
 **What**: Remove `linkSystemLibrary("m")` by replacing all C math function calls with `std.math` equivalents.
 
