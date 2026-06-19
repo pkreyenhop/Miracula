@@ -237,6 +237,19 @@ pub fn build(b: *std.Build) void {
     });
     const clean_step = b.step("clean", "Remove Zig and legacy build outputs");
     clean_step.dependOn(&clean.step);
+
+    const fmt = b.addFmt(.{
+        .paths = &.{
+            "src",
+            "tests",
+            "build.zig",
+            "just.zig",
+            "menudriver.zig",
+            "fdate.zig",
+        },
+    });
+    const fmt_step = b.step("fmt", "Format Zig source files");
+    fmt_step.dependOn(&fmt.step);
 }
 
 fn addZigExecutable(
@@ -357,7 +370,7 @@ fn addPlatformMacros(exe: *std.Build.Step.Compile, target: std.Build.ResolvedTar
 }
 
 fn readTrimmed(b: *std.Build, path: []const u8) []const u8 {
-    const contents = b.build_root.handle.readFileAlloc(b.allocator, path, 4096) catch |err| {
+    const contents = b.build_root.handle.readFileAlloc(b.graph.io, path, b.allocator, .limited(4096)) catch |err| {
         std.debug.panic("failed to read {s}: {}", .{ path, err });
     };
     return std.mem.trim(u8, contents, " \t\r\n");
