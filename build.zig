@@ -213,6 +213,7 @@ pub fn build(b: *std.Build) void {
         "tests/mira_tests",
         "miralib/preludx",
         "miralib/stdenv.x",
+        "script.x",
     });
     const clean_step = b.step("clean", "Remove Zig and legacy build outputs");
     clean_step.dependOn(&clean.step);
