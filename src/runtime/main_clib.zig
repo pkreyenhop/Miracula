@@ -14,8 +14,6 @@ inline fn syscallResult(rc: anytype) c_int {
     return @intCast(rc);
 }
 
-// waitpid status is always *c_int when using libc (std.c.waitpid on all platforms).
-// Raw Linux syscall (std.os.linux.waitpid) would need *u32, but we always link libc on Linux.
 const WaitStatusType = c_int;
 
 // Word types

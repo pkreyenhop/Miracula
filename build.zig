@@ -58,14 +58,6 @@ pub fn build(b: *std.Build) void {
     const install_mira = b.addInstallArtifact(mira, .{});
     b.getInstallStep().dependOn(&install_mira.step);
 
-    const utf8_zig = b.addObject(.{
-        .name = "utf8-zig",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/io/utf8.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
 
     const fdate = b.addExecutable(.{
         .name = "fdate",
@@ -111,7 +103,21 @@ pub fn build(b: *std.Build) void {
     b.getInstallStep().dependOn(&install_miralib.step);
 
     // Build Tests
-    const utf8_tests = addUtf8Tests(b, target, optimize, utf8_zig);
+    const utf8_module = b.createModule(.{
+        .root_source_file = b.path("src/io/utf8.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const utf8_tests = b.addTest(.{
+        .name = "utf8-tests",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/utf8_tests.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+    utf8_tests.root_module.addImport("utf8", utf8_module);
     const run_utf8_tests = b.addRunArtifact(utf8_tests);
 
     const just_tests = b.addTest(.{
@@ -212,27 +218,6 @@ pub fn build(b: *std.Build) void {
     clean_step.dependOn(&clean.step);
 }
 
-fn addUtf8Tests(
-    b: *std.Build,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    utf8_zig: *std.Build.Step.Compile,
-) *std.Build.Step.Compile {
-    const utf8_tests = b.addExecutable(.{
-        .name = "utf8-tests-zig",
-        .root_module = b.createModule(.{
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-        }),
-    });
-    utf8_tests.root_module.addCSourceFiles(.{
-        .files = &.{"tests/utf8_tests.c"},
-        .flags = &c_flags,
-    });
-    utf8_tests.root_module.addObject(utf8_zig);
-    return utf8_tests;
-}
 
 fn readTrimmed(b: *std.Build, path: []const u8) []const u8 {
     const contents = b.build_root.handle.readFileAlloc(b.graph.io, path, b.allocator, .limited(4096)) catch |err| {

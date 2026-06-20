@@ -5,7 +5,7 @@ extern fn getc(fil: ?*FILE) c_int;
 extern fn putc(ch: c_int, fil: ?*FILE) c_int;
 const EOF: c_int = -1;
 
-export fn fromUTF8(fil: ?*FILE) c_ulong {
+pub export fn fromUTF8(fil: ?*FILE) c_ulong {
     const c0 = getc(fil);
     if (c0 == EOF) {
         return std.math.maxInt(c_ulong);
@@ -53,7 +53,7 @@ export fn fromUTF8(fil: ?*FILE) c_ulong {
     reportError(&.{c0});
 }
 
-export fn outUTF8(u: c_ulong, fil: ?*FILE) void {
+pub export fn outUTF8(u: c_ulong, fil: ?*FILE) void {
     if (u <= 0x7f) {
         out(u, fil);
     } else if (u <= 0x7ff) {
