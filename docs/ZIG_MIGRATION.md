@@ -70,3 +70,12 @@ Rather than referencing external libc libraries, standard POSIX functions requir
 * **Linux x86_64 Verification**:
   - Building for `x86_64-linux-musl` and running `file zig-out/bin/mira` confirms a fully `statically linked` ELF binary, depending on zero dynamic library configurations.
   - Building for `x86_64-linux-gnu` compiles and links successfully against standard glibc targets.
+
+### 3. Known ELF Linker Issue on Recent Linux Distributions (glibc 2.43+ / GCC 15+)
+When building a Debug binary on rolling-release or highly up-to-date Linux distributions (e.g., Arch Linux, Ubuntu 24.10+, Fedora), the compile/link step may fail with an ELF linker relocation error.
+* **Cause**: This is due to a known upstream bug in Zig's self-hosted ELF linker ([ziglang/zig#31272](https://github.com/ziglang/zig/issues/31272)). Recent updates to glibc (2.43+) or GCC (15+) introduced `.sframe` stack trace sections containing `R_X86_64_PC64` relocations, which Zig's native self-hosted ELF linker does not yet support in Debug mode.
+* **Workaround**: Force a Release build using LLVM instead of the self-hosted linker by specifying the optimization level using `-Doptimize=ReleaseSafe` (or `ReleaseFast` / `ReleaseSmall`):
+  ```bash
+  zig build -Doptimize=ReleaseSafe
+  ```
+
