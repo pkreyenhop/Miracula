@@ -26,7 +26,14 @@ pub const jmp_buf = extern struct { __opaque: [512]u8 align(16) = [_]u8{0} ** 51
 pub const sigjmp_buf = extern struct { __opaque: [520]u8 align(16) = [_]u8{0} ** 520 };
 pub extern fn setjmp(env: *anyopaque) c_int;
 pub extern fn longjmp(env: *anyopaque, val: c_int) noreturn;
-pub extern fn sigsetjmp(env: *anyopaque, savemask: c_int) c_int;
+pub const sigsetjmp = if (builtin.os.tag == .macos)
+    struct {
+        extern fn sigsetjmp(env: *anyopaque, savemask: c_int) c_int;
+    }.sigsetjmp
+else
+    struct {
+        extern fn __sigsetjmp(env: *anyopaque, savemask: c_int) c_int;
+    }.__sigsetjmp;
 pub extern fn siglongjmp(env: *anyopaque, val: c_int) noreturn;
 
 // Definitions from data.h / combs.h
