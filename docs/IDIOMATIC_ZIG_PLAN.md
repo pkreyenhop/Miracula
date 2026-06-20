@@ -64,8 +64,8 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 *Goal: Leverage Zig's type system at the newly established API boundaries.*
 
 * **C1: `NodeTag` Enum**
-    * *Status:* Not started
-    * *Details:* Replace raw `u8` constants (`ATOM`, `AP`, `CONS`) in `c_abi.zig` with a typed `NodeTag = enum(u8)`. Apply `@enumFromInt` at read/write boundaries.
+    * *Status:* **Complete**
+    * *Details:* Added `pub const NodeTag = enum(u8) { ATOM=0, ..., TCONS=22, _ }` to `c_abi.zig`. Non-exhaustive (`_`) because GC marking temporarily negates tag bytes (sign-bit trick), producing values outside the defined range. Integer aliases kept for backward compatibility with `make(t: u8, ...)` calls. `pub fn getTag(x: Word) c.NodeTag` added to `heap.zig` as the typed read boundary (`@enumFromInt(tag[x])`). Internal heap code and all callers unchanged — they continue to use raw `tag[x] == CONS` comparisons (comptime-int coercion applies). Build clean, test baseline maintained.
 * **C2: API Boundary Domain Types**
     * *Status:* Not started
     * *Details:* Introduce `FileNode`, `Identifier`, `TypeRef`, and `NodeRef` as single-item structs wrapping `Word`.
@@ -111,7 +111,7 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 | A | A5 | Extract State Dumping (dump.zig) | **Complete** |
 | B | B1 | Introduce RuntimeState (includes boolean conversion) | **Complete** |
 | B | B2 | Encapsulate Heap Access | **Complete** |
-| C | C1 | NodeTag Enum | Not started |
+| C | C1 | NodeTag Enum | **Complete** |
 | C | C2 | API Boundary Domain Types | Not started |
 | D | D1 | Internal String Slices | Not started |
 | D | D2 | Domain Methods | Not started |

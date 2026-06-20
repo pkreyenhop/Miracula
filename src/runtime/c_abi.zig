@@ -1,6 +1,3 @@
-// TODO: Phase 7 - Idiomatic Zig Modernization:
-// - Step 4: Replace magic constant values (such as ATOM, DOUBLE, AP, CONS, etc.) with type-safe enums.
-
 const std = @import("std");
 const builtin = @import("builtin");
 
@@ -202,6 +199,36 @@ pub const NILS = CMBASE + 139;
 pub const UNDEF = CMBASE + 140;
 pub const ATOMLIMIT = CMBASE + 141;
 
+/// Heap-cell tag values. Non-exhaustive because GC marking temporarily negates
+/// tag bytes (flips the sign bit) — those modified bytes are not valid enum tags.
+pub const NodeTag = enum(u8) {
+    ATOM = 0,
+    DOUBLE = 1,
+    DATAPAIR = 2,
+    FILEINFO = 3,
+    TVAR = 4,
+    INT = 5,
+    CONSTRUCTOR = 6,
+    STRCONS = 7,
+    ID = 8,
+    AP = 9,
+    LAMBDA = 10,
+    CONS = 11,
+    TRIES = 12,
+    LABEL = 13,
+    SHOW = 14,
+    STARTREADVALS = 15,
+    LET = 16,
+    LETREC = 17,
+    SHARE = 18,
+    LEXER = 19,
+    PAIR = 20,
+    UNICODE = 21,
+    TCONS = 22,
+    _,
+};
+
+// Integer aliases kept for backward compatibility with make() calls and C ABI.
 pub const ATOM = 0;
 pub const DOUBLE = 1;
 pub const DATAPAIR = 2;

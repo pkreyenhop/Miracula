@@ -62,6 +62,12 @@ else
 
 var charname_buffer: [8]u8 = undefined;
 
+/// Typed read boundary for the tag array. Returns NodeTag for the heap cell at x.
+/// Do not use during GC — tag bytes may hold negated GC-marking values.
+pub fn getTag(x: Word) c.NodeTag {
+    return @enumFromInt(tag.?[@intCast(x)]);
+}
+
 pub fn h(x: Word) Word {
     if (x < ATOMLIMIT) return 0;
     return hd.?[@as(usize, @intCast(x)) * 2];
