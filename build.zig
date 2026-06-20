@@ -115,6 +115,7 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("tests/utf8_tests.zig"),
             .target = target,
             .optimize = optimize,
+            .link_libc = need_libc,
         }),
     });
     utf8_tests.root_module.addImport("utf8", utf8_module);

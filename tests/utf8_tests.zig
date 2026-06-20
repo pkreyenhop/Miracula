@@ -109,7 +109,7 @@ fn runExpectFatal(action: anytype, arg: anytype, expected_stderr: []const u8) !v
         _ = std.posix.system.close(pipe_fds[0]);
 
         var status: c_int = 0;
-        _ = std.posix.system.waitpid(pid, &status, 0);
+        _ = std.posix.system.waitpid(pid, @ptrCast(&status), 0);
         try testing.expect(status != 0);
         try testing.expectEqualStrings(expected_stderr, buf[0..total_read]);
     }
