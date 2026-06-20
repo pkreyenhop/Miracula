@@ -108,8 +108,6 @@ pub var okprel: Word = 0;
 pub var nostdenv: Word = 0;
 pub export var baded: Word = 0;
 pub export var miralib: ?[*:0]u8 = null;
-var mirahdr: ?[*:0]u8 = null;
-var lmirahdr: ?[*:0]u8 = null;
 pub var promptstr: [*:0]const u8 = "Miranda ";
 export var obsuffix: [*:0]const u8 = "x";
 pub export var s_in: ?*clib.FILE = null;
@@ -135,8 +133,8 @@ pub export var listing: Word = 0;
 pub export var verbosity: Word = 0;
 pub export var strictif: Word = 1;
 pub export var rechecking: Word = 0;
-export var errline: Word = 0;
-export var errs: Word = 0;
+pub export var errline: Word = 0;
+pub export var errs: Word = 0;
 pub export var cstack: ?[*]Word = null;
 pub export var linebuf: [clib.BUFSIZE]u8 = undefined;
 pub export var ebuf: [clib.pnlim]u8 = undefined;
@@ -146,10 +144,7 @@ pub export var rc_error: ?[*:0]const u8 = null;
 
 pub var env: clib.sigjmp_buf = undefined;
 var unlinkme: ?[*:0]const u8 = null;
-var lose: c_int = 0;
-export var sorted: c_int = 0;
-var leftist: c_int = 0;
-var words: [400]Word = undefined; // colmax is 400
+pub export var sorted: c_int = 0;
 export var detrop: Word = NIL;
 export var rfl: Word = NIL;
 export var bereaved: Word = 0;
@@ -355,11 +350,11 @@ pub inline fn getStderr() ?*clib.FILE {
     return clib.stderr();
 }
 
-fn fil_time(fil: Word) Word {
+pub fn fil_time(fil: Word) Word {
     return t(h(h(fil)));
 }
 
-fn fil_share(fil: Word) Word {
+pub fn fil_share(fil: Word) Word {
     return h(t(h(fil)));
 }
 
@@ -379,7 +374,7 @@ inline fn dlhs(d: Word) Word {
     return h(d);
 }
 
-fn get_here(x: Word) Word {
+pub fn get_here(x: Word) Word {
     return clib.get_here(x);
 }
 
@@ -387,7 +382,7 @@ pub fn the_val(x: Word) Word {
     return t(x);
 }
 
-fn t_class(x: Word) Word {
+pub fn t_class(x: Word) Word {
     return h(t(the_val(x)));
 }
 
@@ -425,11 +420,7 @@ pub fn fileExists(path: [*:0]const u8) bool {
     return platform.getFileInfo(path) != null;
 }
 
-fn is(s: [*:0]const u8) bool {
-    return std.mem.eql(u8, std.mem.span(dicp), std.mem.span(s));
-}
-
-fn badval(x: Word) bool {
+pub fn badval(x: Word) bool {
     if (@sizeOf(Word) == 4) {
         return (x < 1 or x > 350000000);
     } else {
@@ -449,15 +440,7 @@ fn isvariable(x: Word) bool {
     return tag[@intCast(x)] == clib.ID and isconstrname(get_id(x)) == 0;
 }
 
-fn token() ?[*:0]u8 {
-    return clib.token();
-}
-
-fn rdline() ?[*:0]u8 {
-    return clib.rdline();
-}
-
-fn make_fil(name: ?[*:0]const u8, time: Word, share: Word, defs: Word) Word {
+pub fn make_fil(name: ?[*:0]const u8, time: Word, share: Word, defs: Word) Word {
     const name_word = @as(Word, @intCast(@intFromPtr(name)));
     const fil_info = clib.make(clib.FILEINFO, name_word, time);
     return cons(cons(fil_info, cons(share, NIL)), defs);
@@ -488,7 +471,7 @@ export fn normal(path: [*:0]const u8) c_int {
     return if (text.len >= 2 and std.mem.eql(u8, text[text.len - 2 ..], ".m")) 1 else 0;
 }
 
-export fn reverse(input: Word) Word {
+pub export fn reverse(input: Word) Word {
     var x = input;
     var y: Word = NIL;
     while (x != NIL) {
@@ -518,7 +501,7 @@ export fn size(input: Word) Word {
     return s;
 }
 
-export fn filecopy(path: [*:0]const u8) void {
+pub export fn filecopy(path: [*:0]const u8) void {
     const fd = clib.open(path, clib.O_RDONLY, 0);
     if (fd < 0) return;
     defer _ = clib.close(fd);
@@ -531,7 +514,7 @@ export fn filecopy(path: [*:0]const u8) void {
     }
 }
 
-export fn filecp(from: [*:0]const u8, to: [*:0]const u8) void {
+pub export fn filecp(from: [*:0]const u8, to: [*:0]const u8) void {
     const f_in = clib.open(from, clib.O_RDONLY, 0);
     if (f_in < 0) return;
     defer _ = clib.close(f_in);
@@ -548,7 +531,7 @@ export fn filecp(from: [*:0]const u8, to: [*:0]const u8) void {
     }
 }
 
-export fn twidth() c_int {
+pub export fn twidth() c_int {
     var window: clib.struct_winsize = undefined;
     if (clib.ioctl(clib.STDOUT_FILENO, clib.TIOCGWINSZ, &window) == -1 or window.ws_col == 0) {
         return 78;
@@ -668,7 +651,7 @@ export fn unload() void {
     ld_stuff = NIL;
 }
 
-export fn getln(in: ?*clib.FILE, n_val: Word, s_ptr: [*]u8) c_int {
+pub export fn getln(in: ?*clib.FILE, n_val: Word, s_ptr: [*]u8) c_int {
     var n = n_val;
     var s = s_ptr;
     while (n > 0) {
@@ -999,686 +982,21 @@ pub fn v_info(full: c_int) void {
     _ = clib.printf("XVERSION %u\n", .{.{@as(c_uint, clib.XVERSION)}});
 }
 
-pub fn command() void {
-    var t_val: ?[*:0]u8 = undefined;
-    var ch: c_int = undefined;
-    var ch1: c_int = undefined;
-    switch (dicp[0]) {
-        'a' => {
-            if (is("a") or is("aux")) {
-                if (clib.getchar() != '\n') return;
-                _ = clib.strcpy(&linebuf, miralib.?);
-                _ = clib.strcat(&linebuf, "/auxfile");
-                filecopy(@as([*:0]const u8, @ptrCast(&linebuf)));
-                return;
-            }
-        },
-        'c' => {
-            if (is("count")) {
-                if (clib.getchar() != '\n') return;
-                atcount = 1;
-                return;
-            }
-            if (is("cd")) {
-                var d = token();
-                if (d == null) {
-                    d = @constCast(clib.getenv("HOME"));
-                } else {
-                    d = clib.addextn(0, d.?);
-                }
-                if (clib.getchar() != '\n') return;
-                if (clib.chdir(d.?) == -1) {
-                    _ = clib.printf("cannot cd to %s\n", .{.{d.?}});
-                } else if (src_update() != 0) {
-                    undump(current_script.?);
-                }
-                return;
-            }
-        },
-        'd' => {
-            if (is("dic")) {
-                if (token() == null) {
-                    lose = clib.getchar();
-                    _ = clib.printf("%ld chars", .{.{DICSPACE}});
-                    if (DICSPACE != 100000) {
-                        _ = clib.printf(" (default=%ld)", .{.{@as(c_long, 100000)}});
-                    }
-                    _ = clib.printf(" %ld in use\n", .{.{@as(c_long, @intCast(@intFromPtr(dicq) - @intFromPtr(dic.?)))}});
-                    return;
-                }
-                if (clib.getchar() != '\n') return;
-                _ = clib.printf("sorry, cannot change size of dictionary while in use\n", .{.{}});
-                _ = clib.printf("(/q and reinvoke with flag: mira -dic %s ... )\n", .{.{dicp}});
-                return;
-            }
-        },
-        'e' => {
-            if (is("e") or is("edit")) {
-                var mf: ?[*:0]u8 = null;
-                if (token()) |tok| {
-                    t_val = clib.addextn(1, tok);
-                } else {
-                    t_val = current_script;
-                }
-                if (clib.getchar() != '\n') return;
-                if (!fileExists(t_val.?)) { // new file
-                    if (lmirahdr == null) {
-                        dicp = dicq;
-                        _ = clib.strcpy(dicp, clib.getenv("HOME"));
-                        if (clib.strcmp(dicp, "/") == 0) {
-                            dicp[0] = 0;
-                        }
-                        _ = clib.strcat(dicp, "/.mirahdr");
-                        lmirahdr = dicp;
-                        dicq = dicp + clib.strlen(dicp) + 1;
-                    }
-                    if (fileExists(lmirahdr.?)) {
-                        mf = lmirahdr;
-                    }
-                    if (mf == null and mirahdr == null) {
-                        dicp = dicq;
-                        _ = clib.strcpy(dicp, miralib.?);
-                        _ = clib.strcat(dicp, "/.mirahdr");
-                        mirahdr = dicp;
-                        dicq = dicp + clib.strlen(dicp) + 1;
-                    }
-                    if (mf == null and fileExists(mirahdr.?)) {
-                        mf = mirahdr;
-                    }
-                    if (mf != null and t_val != current_script) {
-                        _ = clib.printf("open new script \"%s\"? [ny]", .{.{t_val.?}});
-                        ch1 = clib.getchar();
-                        ch = ch1;
-                        while (ch != '\n' and ch != clib.EOF) {
-                            ch = clib.getchar();
-                        }
-                        if (ch1 != 'y' and ch1 != 'Y') {
-                            return;
-                        }
-                    }
-                    if (mf != null) {
-                        filecp(mf.?, t_val.?);
-                    }
-                }
-                const err_line_num: c_int = if (clib.strcmp(t_val.?, current_script.?) == 0) @intCast(errline) else if (errs != 0 and clib.strcmp(t_val.?, @ptrFromInt(@as(usize, @intCast(h(errs))))) == 0) @intCast(t(errs)) else @intCast(clib.geterrlin(t_val.?));
-                editfile(t_val.?, err_line_num);
-                return;
-            }
-            if (is("editor")) {
-                const hold = @as([*]u8, @ptrCast(&linebuf[0]));
-                if (getln(getStdin(), clib.pnlim - 1, hold) == 0) {
-                    return;
-                }
-                if (hold[0] == 0) {
-                    _ = clib.printf("%s\n", .{.{editor orelse @constCast("")}});
-                    return;
-                }
-                var h_ptr = hold + clib.strlen(hold);
-                while ((h_ptr - 1)[0] == ' ' or (h_ptr - 1)[0] == '\t') {
-                    h_ptr -= 1;
-                    h_ptr[0] = 0;
-                }
-                if (hold[0] == '"' or hold[0] == '\'') {
-                    _ = clib.printf("please type name of editor without quotation marks\n", .{.{}});
-                    return;
-                }
-                _ = clib.printf("change editor to: \"%s\"? [ny]", .{.{hold}});
-                ch1 = clib.getchar();
-                ch = ch1;
-                while (ch != '\n' and ch != clib.EOF) {
-                    ch = clib.getchar();
-                }
-                if (ch1 != 'y' and ch1 != 'Y') {
-                    _ = clib.printf("editor not changed\n", .{.{}});
-                    return;
-                }
-                _ = clib.strcpy(&ebuf, hold);
-                editor = @as([*:0]u8, @ptrCast(&ebuf));
-                fixeditor();
-                echoing = verbosity & listing;
-                rc_write();
-                _ = clib.printf("editor = %s\n", .{.{editor orelse @constCast("")}});
-                return;
-            }
-        },
-        'f' => {
-            if (is("f") or is("file")) {
-                const t_tok = token();
-                if (clib.getchar() != '\n') return;
-                if (t_tok) |tok| {
-                    t_val = clib.addextn(1, tok);
-                    _ = clib.keep(t_val.?);
-                } else {
-                    t_val = null;
-                }
-                if (t_val != null) {
-                    errline = 0;
-                    errs = 0;
-                }
-                if (t_val != null) {
-                    if (clib.strcmp(t_val.?, current_script.?) != 0 or (files == NIL and clib.okdump(t_val.?) != 0)) {
-                        CLASHES = NIL;
-                        undump(t_val.?);
-                        if (CLASHES != NIL) {
-                            loadfile(t_val.?);
-                        }
-                    } else {
-                        loadfile(t_val.?);
-                    }
-                } else {
-                    _ = clib.printf("%s%s\n", .{.{current_script.?, @as([*:0]const u8, if (files == NIL) " (not loaded)" else "")}});
-                }
-                return;
-            }
-            if (is("files")) {
-                if (clib.getchar() != '\n') return;
-                var f = files;
-                while (f != NIL) : (f = t(f)) {
-                    _ = clib.printf("(%s,%ld,%ld)", .{.{get_fil(h(f)), fil_time(h(f)), fil_share(h(f))}});
-                    clib.printlist(@constCast(""), fil_defs(h(f)));
-                }
-                return;
-            }
-            if (is("find")) {
-                var i: Word = 0;
-                while (token() != null) {
-                    const x = clib.findid(dicp);
-                    i += 1;
-                    if (x != NIL) {
-                        const n = get_id(x);
-                        var y = primenv;
-                        while (y != NIL) : (y = t(y)) {
-                            if (tag[@intCast(h(y))] == clib.ID) {
-                                if (h(y) == x or clib.strcmp(clib.getaka(h(y)), n) == 0) {
-                                    finger(get_id(h(y)));
-                                }
-                            }
-                        }
-                        var f = files;
-                        while (f != NIL) : (f = t(f)) {
-                            var y_def = fil_defs(h(f));
-                            while (y_def != NIL) : (y_def = t(y_def)) {
-                                if (tag[@intCast(h(y_def))] == clib.ID) {
-                                    if (h(y_def) == x or clib.strcmp(clib.getaka(h(y_def)), n) == 0) {
-                                        finger(get_id(h(y_def)));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                ch = clib.getchar();
-                if (i == 0) {
-                    _ = clib.printf("\x07extra characters at end of command\n", .{.{}});
-                }
-                return;
-            }
-        },
-        'g' => {
-            if (is("gc")) {
-                if (clib.getchar() != '\n') return;
-                atgc = 1;
-                return;
-            }
-        },
-        'h' => {
-            if (is("h") or is("help")) {
-                if (clib.getchar() != '\n') return;
-                _ = clib.strcpy(&linebuf, miralib.?);
-                _ = clib.strcat(&linebuf, "/helpfile");
-                filecopy(@as([*:0]const u8, @ptrCast(&linebuf)));
-                return;
-            }
-            if (is("heap")) {
-                var x: c_long = undefined;
-                if (token() == null) {
-                    lose = clib.getchar();
-                    _ = clib.printf("%ld cells", .{.{SPACELIMIT}});
-                    if (SPACELIMIT != 2500000) {
-                        _ = clib.printf(" (default=%ld)", .{.{@as(c_long, 2500000)}});
-                    }
-                    _ = clib.printf("\n", .{.{}});
-                    return;
-                }
-                if (clib.getchar() != '\n') return;
-                if (clib.sscanf(dicp, "%ld", .{&x}) != 1 or badval(x)) {
-                    _ = clib.printf("illegal value (heap unchanged)\n", .{.{}});
-                    return;
-                }
-                if (x < clib.trueheapsize()) {
-                    _ = clib.printf("sorry, cannot shrink heap to %ld at this time\n", .{.{x}});
-                } else {
-                    if (x != SPACELIMIT) {
-                        SPACELIMIT = x;
-                        clib.resetheap();
-                    }
-                    _ = clib.printf("heaplimit = %ld cells\n", .{.{SPACELIMIT}});
-                    rc_write();
-                }
-                return;
-            }
-            if (is("hush")) {
-                if (clib.getchar() != '\n') return;
-                echoing = 0;
-                verbosity = 0;
-                return;
-            }
-        },
-        'l' => {
-            if (is("list")) {
-                if (clib.getchar() != '\n') return;
-                listing = 1;
-                echoing = verbosity & listing;
-                rc_write();
-                return;
-            }
-        },
-        'm' => {
-            if (is("m") or is("man")) {
-                if (clib.getchar() != '\n') return;
-                manaction();
-                return;
-            }
-            if (is("miralib")) {
-                if (clib.getchar() != '\n') return;
-                _ = clib.printf("%s\n", .{.{miralib.?}});
-                return;
-            }
-        },
-        'n' => {
-            if (is("nocount")) {
-                if (clib.getchar() != '\n') return;
-                atcount = 0;
-                return;
-            }
-            if (is("nogc")) {
-                if (clib.getchar() != '\n') return;
-                atgc = 0;
-                return;
-            }
-            if (is("nohush")) {
-                if (clib.getchar() != '\n') return;
-                echoing = listing;
-                verbosity = 1;
-                return;
-            }
-            if (is("nolist")) {
-                if (clib.getchar() != '\n') return;
-                listing = 0;
-                echoing = 0;
-                rc_write();
-                return;
-            }
-            if (is("norecheck")) {
-                if (clib.getchar() != '\n') return;
-                rechecking = 0;
-                rc_write();
-                return;
-            }
-        },
-        'q' => {
-            if (is("q") or is("quit")) {
-                if (clib.getchar() != '\n') return;
-                if (verbosity != 0) {
-                    _ = clib.printf("miranda logout\n", .{.{}});
-                }
-                clib.exit(0);
-            }
-        },
-        'r' => {
-            if (is("recheck")) {
-                if (clib.getchar() != '\n') return;
-                rechecking = 2;
-                rc_write();
-                return;
-            }
-        },
-        's' => {
-            if (is("s") or is("settings")) {
-                if (clib.getchar() != '\n') return;
-                _ = clib.printf("*\theap %ld\n", .{.{SPACELIMIT}});
-                _ = clib.printf("*\tdic %ld\n", .{.{DICSPACE}});
-                _ = clib.printf("*\teditor = %s\n", .{.{editor orelse @constCast("")}});
-                _ = clib.printf("*\t%slist\n", .{.{@as([*:0]const u8, if (listing != 0) "" else "no")}});
-                _ = clib.printf("*\t%srecheck\n", .{.{@as([*:0]const u8, if (rechecking != 0) "" else "no")}});
-                if (strictif == 0) {
-                    _ = clib.printf("\t-nostrictif (deprecated!)\n", .{.{}});
-                }
-                if (atcount != 0) {
-                    _ = clib.printf("\tcount\n", .{.{}});
-                }
-                if (atgc != 0) {
-                    _ = clib.printf("\tgc\n", .{.{}});
-                }
-                if (UTF8 != 0) {
-                    _ = clib.printf("\tUTF-8 i/o\n", .{.{}});
-                }
-                if (verbosity == 0) {
-                    _ = clib.printf("\thush\n", .{.{}});
-                }
-                if (debug != 0) {
-                    _ = clib.printf("\tdebug 0%o\n", .{.{debug}});
-                }
-                _ = clib.printf("\n* items remembered between sessions\n", .{.{}});
-                return;
-            }
-        },
-        'v' => {
-            if (is("v") or is("version")) {
-                if (clib.getchar() != '\n') return;
-                v_info(0);
-                return;
-            }
-        },
-        'V' => {
-            if (is("V")) {
-                if (clib.getchar() != '\n') return;
-                v_info(1);
-                return;
-            }
-        },
-        else => {},
-    }
-    xschars();
-}
+pub extern fn command() void;
+pub extern fn manaction() void;
+pub extern fn editfile(t_val: [*:0]const u8, line: c_int) void;
+pub extern fn xschars() void;
+pub extern fn finger(n: [*:0]const u8) void;
+pub extern fn diagnose(n: [*:0]const u8) void;
+pub extern fn allnamescom() void;
 
-pub fn manaction() void {
-    _ = clib.sprintf(&linebuf, "\"%s/menudriver\" \"%s/manual\"", .{miralib.?, miralib.?});
-    _ = clib.system(&linebuf);
-}
-
-pub fn editfile(t_val: [*:0]const u8, line: c_int) void {
-    var line_val = line;
-    const ebuf_local = @as([*]u8, @ptrCast(&linebuf[0]));
-    var p = ebuf_local;
-    var q = editor.?;
-    var tdone: c_int = 0;
-    if (line_val == 0) {
-        line_val = 1;
-    }
-    while (q[0] != 0) {
-        const ch = q[0];
-        q += 1;
-        p[0] = ch;
-        p += 1;
-        if ((p - 1)[0] == '\\' and (q[0] == '!' or q[0] == '%')) {
-            (p - 1)[0] = q[0];
-            q += 1;
-        } else if ((p - 1)[0] == '!') {
-            p -= 1;
-            _ = clib.sprintf(p, "%d", .{line_val});
-            p += clib.strlen(p);
-        } else if ((p - 1)[0] == '%') {
-            (p - 1)[0] = '"';
-            p[0] = 0;
-            const limit = @as(usize, @intCast(clib.BUFSIZE + @intFromPtr(ebuf_local) - @intFromPtr(p)));
-            _ = clib.strncat(p, t_val, limit);
-            p += clib.strlen(p);
-            p[0] = '"';
-            p += 1;
-            p[0] = 0;
-            tdone = 1;
-        }
-    }
-    p[0] = 0;
-    if (tdone == 0) {
-        p[0] = ' ';
-        p += 1;
-        p[0] = '"';
-        p += 1;
-        p[0] = 0;
-        const limit = @as(usize, @intCast(clib.BUFSIZE + @intFromPtr(ebuf_local) - @intFromPtr(p)));
-        _ = clib.strncat(p, t_val, limit);
-        p += clib.strlen(p);
-        p[0] = '"';
-        p += 1;
-        p[0] = 0;
-    }
-    _ = clib.system(ebuf_local);
-    if (src_update() != 0) {
-        loadfile(current_script.?);
-    }
-}
-
-pub fn xschars() void {
-    var ch: c_int = undefined;
-    _ = clib.printf("\x07extra characters at end of command\n", .{.{}});
-    while (true) {
-        ch = clib.getchar();
-        if (ch == '\n' or ch == clib.EOF) break;
-    }
-}
-
-var filequote_mlen: usize = 0;
-fn filequote(p: [*:0]const u8) void {
-    if (filequote_mlen == 0) {
-        const last_slash = clib.strrchr(&PRELUDE, '/');
-        if (last_slash != null) {
-            filequote_mlen = @intFromPtr(last_slash.?) - @intFromPtr(&PRELUDE) + 1;
-        }
-    }
-    if (clib.strncmp(p, &PRELUDE, filequote_mlen) == 0) {
-        _ = clib.printf("<%s>", .{.{p + filequote_mlen}});
-    } else {
-        _ = clib.printf("\"%s\"", .{.{p}});
-    }
-}
-
-pub fn finger(n: [*:0]const u8) void {
-    const x = clib.findid(@constCast(n));
-    var line: Word = 0;
-    var s: ?[*:0]u8 = null;
-    if (x != NIL and id_type(x) != clib.undef_t) {
-        if (id_who(x) != NIL) {
-            const here_val = get_here(x);
-            s = @ptrFromInt(@as(usize, @intCast(h(here_val))));
-            line = t(here_val);
-        }
-        if (lastid == 0) {
-            lastid = x;
-        }
-        clib.report_type(x);
-        if (id_who(x) == NIL) {
-            _ = clib.printf(" ||primitive to Miranda\n", .{.{}});
-        } else {
-            const aka = clib.getaka(x);
-            const aka_opt: ?[*:0]const u8 = if (clib.strcmp(aka, get_id(x)) == 0) null else aka;
-            if (id_val(x) == clib.UNDEF and id_type(x) != clib.wrong_t) {
-                _ = clib.printf(" ||(UNDEFINED) specified in ", .{.{}});
-            } else if (id_val(x) == clib.FREE) {
-                _ = clib.printf(" ||(FREE) specified in ", .{.{}});
-            } else if (id_type(x) == clib.type_t and t_class(x) == clib.free_t) {
-                _ = clib.printf(" ||(free type) specified in ", .{.{}});
-            } else {
-                const class_str: [*:0]const u8 = if (id_type(x) == clib.type_t and t_class(x) == clib.abstract_t) "(abstract type) " else if (id_type(x) == clib.type_t and t_class(x) == clib.algebraic_t) "(algebraic type) " else if (id_type(x) == clib.type_t and t_class(x) == clib.placeholder_t) "(placeholder type) " else if (id_type(x) == clib.type_t and t_class(x) == clib.synonym_t) "(synonym type) " else "";
-                _ = clib.printf(" ||%sdefined in ", .{.{class_str}});
-            }
-            filequote(s.?);
-            if (baded != 0 or rechecking != 0) {
-                _ = clib.printf(" line %ld", .{.{line}});
-            }
-            if (aka_opt) |aka_s| {
-                _ = clib.printf(" (as \"%s\")\n", .{.{aka_s}});
-            } else {
-                _ = clib.putchar('\n');
-            }
-        }
-        if (atobject != 0) {
-            _ = clib.printf("%s = ", .{.{get_id(x)}});
-            clib.out(getStdout(), id_val(x));
-            _ = clib.putchar('\n');
-        }
-        return;
-    }
-    diagnose(n);
-}
-
-pub fn diagnose(n: [*:0]const u8) void {
-    var i: usize = 0;
-    if (clib.isalpha(@intCast(n[0])) != 0) {
-        while (n[i] != 0 and clib.okid(n[i]) != 0) {
-            i += 1;
-        }
-    }
-    if (n[i] != 0) {
-        _ = clib.printf("\"%s\" -- not an identifier\n", .{.{n}});
-        return;
-    }
-    const presym = [_][*:0]const u8{
-        "abstype", "div", "if", "mod", "otherwise", "readvals", "show", "type", "where", "with",
-    };
-    const presym_n = [_]c_int{ 21, 8, 15, 8, 15, 31, 23, 22, 15, 21 };
-    inline for (presym, presym_n) |sym, sym_n| {
-        if (clib.strcmp(n, sym) == 0) {
-            _ = clib.printf("%s -- keyword (see manual, section %d)\n", .{.{n, sym_n}});
-            return;
-        }
-    }
-    _ = clib.printf("identifier \"%s\" not in scope\n", .{.{n}});
-}
-
-pub fn allnamescom() void {
-    var s: Word = undefined;
-    var x = ND;
-    var y = ND;
-    var z: Word = 0;
-    leftist = 0;
-    namescom(make_fil(if (nostdenv != 0) null else @as([*:0]const u8, @ptrCast(&STDENV)), 0, 0, primenv));
-    if (files == NIL) return;
-    s = t(files);
-    while (s != NIL) : (s = t(s)) {
-        namescom(h(s));
-    }
-    namescom(h(files));
-    sorted = 1;
-
-    while (x != NIL and id_type(h(x)) == clib.undef_t) {
-        x = t(x);
-    }
-    while (y != NIL and id_type(h(y)) != clib.undef_t) {
-        y = t(y);
-    }
-    if (x != NIL) {
-        _ = clib.printf("WARNING, SCRIPT CONTAINS TYPE ERRORS: ", .{.{}});
-        while (x != NIL) : (x = t(x)) {
-            if (id_type(h(x)) != clib.undef_t) {
-                if (z == 0) {
-                    z = 1;
-                } else {
-                    _ = clib.putchar(',');
-                }
-                clib.out(getStdout(), h(x));
-            }
-        }
-        _ = clib.printf(";\n", .{.{}});
-    }
-    if (y != NIL) {
-        _ = clib.printf("%s UNDEFINED NAMES: ", .{.{@as([*:0]const u8, if (z != 0) "AND" else "WARNING, SCRIPT CONTAINS")}});
-        z = 0;
-        while (y != NIL) : (y = t(y)) {
-            if (id_type(h(y)) == clib.undef_t) {
-                if (z == 0) {
-                    z = 1;
-                } else {
-                    _ = clib.putchar(',');
-                }
-                clib.out(getStdout(), h(y));
-            }
-        }
-        _ = clib.printf(";\n", .{.{}});
-    }
-}
-
-fn spaces(s: Word) void {
+pub fn spaces(s: Word) void {
     var j = s;
     while (j > 0) : (j -= 1) {
         _ = clib.putchar(' ');
     }
 }
 
-fn namescom(l: Word) void {
-    var n = fil_defs(l);
-    var col_local: Word = 0;
-    var undefs: Word = NIL;
-    var wp: usize = 0;
-    const scrwd = twidth();
-    if (sorted == 0 and n != primenv) {
-        n = alfasort(n);
-        tp(l).* = n;
-    }
-    if (n == NIL) return;
-    if (get_fil(l)) |gf| {
-        filequote(gf);
-    } else {
-        _ = clib.printf("primitive:", .{.{}});
-    }
-    _ = clib.printf("\n", .{.{}});
-    while (n != NIL) {
-        if (id_type(h(n)) == clib.wrong_t or id_val(h(n)) != clib.UNDEF) {
-            const w = @as(Word, @intCast(clib.strlen(get_id(h(n)))));
-            if (col_local + w < @as(Word, @intCast(scrwd))) {
-                col_local += if (col_local != 0) 1 else 0;
-            } else if (wp > 0 and col_local + w >= @as(Word, @intCast(scrwd))) {
-                var i: Word = 0;
-                var r: Word = 0;
-                if (wp > 1) {
-                    i = @divTrunc(@as(Word, @intCast(scrwd)) - col_local, @as(Word, @intCast(wp - 1)));
-                    r = @mod(@as(Word, @intCast(scrwd)) - col_local, @as(Word, @intCast(wp - 1)));
-                } else {
-                    _ = clib.fprintf(getStderr(), "Internal error: i and r used uninitialized in namescom()\nPlease report it to miranda@groups.io\n", .{.{}});
-                    clib.abort();
-                }
-                if (i + (if (r > 0) @as(Word, 1) else 0) > 3) { // tolerance is 3
-                    i = 0;
-                    r = 0;
-                }
-                if (leftist != 0) {
-                    col_local = 0;
-                    while (col_local < wp) {
-                        _ = clib.printf("%s", .{.{get_id(words[@as(usize, @intCast(col_local))])}});
-                        col_local += 1;
-                        if (col_local < wp) {
-                            spaces(1 + i + if (r > 0) @as(Word, 1) else @as(Word, 0));
-                            r -= 1;
-                        }
-                    }
-                } else {
-                    r = @as(Word, @intCast(wp)) - 1 - r;
-                    col_local = 0;
-                    while (col_local < wp) {
-                        _ = clib.printf("%s", .{.{get_id(words[@as(usize, @intCast(col_local))])}});
-                        col_local += 1;
-                        if (col_local < wp) {
-                            spaces(1 + i + if (r <= 0) @as(Word, 1) else @as(Word, 0));
-                            r -= 1;
-                        }
-                    }
-                }
-                leftist = if (leftist == 0) 1 else 0;
-                wp = 0;
-                col_local = 0;
-                _ = clib.putchar('\n');
-            }
-            col_local += w;
-            words[wp] = h(n);
-            wp += 1;
-        } else {
-            undefs = cons(h(n), undefs);
-        }
-        n = t(n);
-    }
-    if (wp > 0) {
-        col_local = 0;
-        while (col_local < wp) {
-            _ = clib.printf("%s", .{.{get_id(words[@as(usize, @intCast(col_local))])}});
-            col_local += 1;
-            _ = clib.putc(if (col_local == wp) '\n' else ' ', getStdout());
-        }
-    }
-    if (undefs == NIL) return;
-    undefs = reverse(undefs);
-    clib.printlist(@constCast("SPECIFIED BUT NOT DEFINED: "), undefs);
-}
 
 pub fn loadfile(t_val: [*:0]const u8) void {
     var h_val: Word = NIL;
@@ -2868,6 +2186,7 @@ pub fn main(ctx: std.process.Init) !void {
 comptime {
     _ = @import("driver/startup.zig");
     _ = @import("driver/repl.zig");
+    _ = @import("driver/commands.zig");
     _ = @import("runtime/heap.zig");
     _ = @import("runtime/reduce.zig");
     _ = @import("runtime/combinator.zig");

@@ -52,13 +52,29 @@ The goal is to eliminate the linker-as-module-system anti-pattern in `repl.zig`.
 
 **A2: Finish the module split (original Step 1 completion)**
 
-With globals consolidated in `globals.zig`, the remaining extractions are safe:
-- Extract `src/driver/commands.zig`: `command()` and its helpers (`editfile`, `xschars`, `filequote`, `finger`, `diagnose`, `allnamescom`, `namescom`, `manaction`) — ~550 lines total
-- Extract `src/compiler/module_loader.zig`: `loadfile`, `undump`, `makedump`, `mkincludes`, `fixexports`, `unfixexports`, `primdef`, `predef`, `primlib`, `privlib`, `stdlib`, `mira_setup`, and all the related paint/hash helpers — ~1200 lines total
+**Status: Partial (commands.zig complete 2026-06-20; module_loader.zig not started)**
 
-After these two extractions, `main.zig` should be under 200 lines: the entry point `main()`, the `RuntimeState` initialization stub, and thin composition glue.
+**A2a — `src/driver/commands.zig` — Complete (2026-06-20)**
 
-*Definition of done*: `main.zig` < 200 lines. No business logic in `main.zig`. Each extracted module has at least one embedded `test` block for its primary function.
+Extracted `command()` and its helpers from `main.zig` into a new `src/driver/commands.zig`:
+- `command()` — REPL `:` command dispatcher (~383 lines)
+- `manaction()`, `editfile()`, `xschars()`, `finger()`, `diagnose()`, `allnamescom()`, `namescom()` — all helpers (~295 lines)
+- Private helpers `is()`, `filequote()`, `filequote_mlen`, `lmirahdr`, `mirahdr`, `leftist`, `words[]` — moved to commands.zig as file-private state
+- `badval()` kept in main.zig as `pub fn` (also used by `undump()`)
+- `spaces()` kept in main.zig as `pub fn` (also used by `announce()`)
+- `token()` and `rdline()` wrappers removed from main.zig; commands.zig uses `extern fn token()` directly
+- 14 declarations in main.zig gained `pub` or `pub export` to enable cross-module access via `main.xxx`
+- `export var debug` NOT made pub — doing so collides with Zig's `std.debug` namespace introspection; commands.zig uses `extern var debug: c_int` directly
+- main.zig shrank from ~2856 lines to ~2200 lines
+
+**A2b — `src/compiler/module_loader.zig` — Not started**
+
+Planned extraction:
+- `loadfile`, `undump`, `makedump`, `mkincludes`, `fixexports`, `unfixexports`, `primdef`, `predef`, `primlib`, `privlib`, `stdlib`, `mira_setup`, and all the related paint/hash helpers — ~1200 lines total
+
+After A2b, `main.zig` should be under 200 lines: the entry point `main()`, the `RuntimeState` initialization stub, and thin composition glue.
+
+*Definition of done for A2*: `main.zig` < 200 lines. No business logic in `main.zig`. Each extracted module has at least one embedded `test` block for its primary function.
 
 ---
 
@@ -208,7 +224,8 @@ Do not defer tests. Add at least one `test` block per module when it is created 
 | Cluster | Step | Title | Status |
 |---------|------|-------|--------|
 | A | A1 | Replace `extern var` in `repl.zig` with `@import()` | **Complete** |
-| A | A2 | Finish module split (commands + module_loader) | Not started |
+| A | A2a | Extract commands.zig from main.zig | **Complete** |
+| A | A2b | Extract module_loader.zig from main.zig | Not started |
 | B | B | Introduce RuntimeState; delete globals.zig | Not started |
 | B | B1 | Remove duplicate h/t/hp/tp; introduce Heap struct | Not started |
 | C | C1 | Replace integer flags with booleans | Not started |
@@ -222,7 +239,7 @@ Do not defer tests. Add at least one `test` block per module when it is created 
 
 | Step | Title | Status |
 |------|-------|--------|
-| 1 | Split `main.zig` into Logical Modules | Partial (~25%) |
+| 1 | Split `main.zig` into Logical Modules | Partial (~50%) |
 | 2 | Introduce `RuntimeState` | Not started |
 | 3 | Encapsulate Heap Access | Not started |
 | 4 | Replace Magic Constants with Enums | Not started |
@@ -246,13 +263,13 @@ Do not defer tests. Add at least one `test` block per module when it is created 
   - `src/main.zig` (Entry point and initialization wrapper)
   - `src/driver/startup.zig` (Command-line argument parsing and startup orchestration) ✅ Done
   - `src/driver/repl.zig` (Interactive read-eval-print loop execution) ✅ Done
-  - `src/driver/commands.zig` (REPL colon commands and compiler driver invocations) ❌ Not done — `command()` is still in `main.zig`
+  - `src/driver/commands.zig` (REPL colon commands and compiler driver invocations) ✅ Done
   - `src/compiler/module_loader.zig` (Miranda source file loading and dependency parsing) ❌ Not done — `loadfile()`, `undump()`, `makedump()` still in `main.zig`
   - `src/compiler/exports.zig` (Verification of type/symbol exports) ❌ Not done
   - `src/compiler/dependency_graph.zig` (Where-block dependency sort and letrec bindings) ❌ Not done
   - `src/filesystem/file_registry.zig` (I/O structures, path tracking, and stat helpers) ❌ Not done
 
-* **Notes**: `main.zig` is still 2882 lines and carries a TODO comment at the top referencing this step. The remaining extraction work is the bulk of the step.
+* **Notes**: `main.zig` is now ~2200 lines after commands.zig extraction. The remaining major extraction is `module_loader.zig` (~1200 lines), after which `main.zig` should approach 200 lines.
 
 ---
 
