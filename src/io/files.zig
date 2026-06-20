@@ -5,8 +5,8 @@ const platform = @import("platform.zig");
 
 const Word = main.Word;
 const NIL = main.NIL;
-const t = main.t;
-const h = main.h;
+const t = main.heap.t;
+const h = main.heap.h;
 
 pub export fn fm_time(path: [*:0]const u8) Word {
     if (platform.getFileInfo(path)) |info| {

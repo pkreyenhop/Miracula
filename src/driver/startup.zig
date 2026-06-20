@@ -5,8 +5,8 @@ const clib = @import("../runtime/main_clib.zig");
 const Word = main.Word;
 const NIL = main.NIL;
 const CONS = main.CONS;
-const h = main.h;
-const t = main.t;
+const h = main.heap.h;
+const t = main.heap.t;
 
 extern var tag: [*]u8;
 
@@ -24,49 +24,49 @@ fn unlimit_stack() void {
 
 export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
     var manonly: Word = 0;
-    main.cstack = @ptrCast(&manonly);
+    main.rs.cstack = @ptrCast(&manonly);
     unlimit_stack();
-    main.verbosity = if (clib.isatty(0) != 0) 1 else 0;
+    main.rs.verbosity = if (clib.isatty(0) != 0) 1 else 0;
     clib.setbuf(main.getStdout(), null);
 
     const home = clib.getenv("HOME");
     var okhome_rc: Word = 0;
     if (home != null) {
-        _ = clib.strcpy(&main.home_rc, home);
-        if (clib.strcmp(&main.home_rc, "/") == 0) {
-            main.home_rc[0] = 0;
+        _ = clib.strcpy(&main.rs.home_rc, home);
+        if (clib.strcmp(&main.rs.home_rc, "/") == 0) {
+            main.rs.home_rc[0] = 0;
         }
-        _ = clib.strcat(&main.home_rc, "/.mirarc");
-        okhome_rc = main.rc_read(@as([*:0]const u8, @ptrCast(&main.home_rc)));
+        _ = clib.strcat(&main.rs.home_rc, "/.mirarc");
+        okhome_rc = main.rc_read(@as([*:0]const u8, @ptrCast(&main.rs.home_rc)));
     }
 
-    main.UTF8 = main.utf8test();
-    main.UTF8OUT = main.UTF8;
+    main.rs.UTF8 = main.utf8test();
+    main.rs.UTF8OUT = main.rs.UTF8;
 
     var arg_idx: usize = 1;
     const argc_u = @as(usize, @intCast(argc));
     while (arg_idx < argc_u and argv[arg_idx][0] == '-') {
         const arg = argv[arg_idx];
         if (clib.strcmp(arg, "-stdenv") == 0) {
-            main.nostdenv = 1;
+            main.rs.nostdenv = 1;
         } else if (clib.strcmp(arg, "-count") == 0) {
-            main.atcount = 1;
+            main.rs.atcount = 1;
         } else if (clib.strcmp(arg, "-list") == 0) {
-            main.listing = 1;
+            main.rs.listing = 1;
         } else if (clib.strcmp(arg, "-nolist") == 0) {
-            main.listing = 0;
+            main.rs.listing = 0;
         } else if (clib.strcmp(arg, "-nostrictif") == 0) {
-            main.strictif = 0;
+            main.rs.strictif = false;
         } else if (clib.strcmp(arg, "-gc") == 0) {
-            main.atgc = 1;
+            main.rs.atgc = 1;
         } else if (clib.strcmp(arg, "-object") == 0) {
-            main.atobject = 1;
+            main.rs.atobject = 1;
         } else if (clib.strcmp(arg, "-lib") == 0) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
                 main.missparam("lib");
             } else {
-                main.miralib = argv[arg_idx];
+                main.rs.miralib = argv[arg_idx];
             }
         } else if (clib.strcmp(arg, "-dic") == 0) {
             arg_idx += 1;
@@ -78,7 +78,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                     _ = clib.fprintf(main.getStderr(), "mira: bad value after flag \"-dic\"\n", .{.{}});
                     clib.exit(1);
                 }
-                main.DICSPACE = val;
+                main.rs.DICSPACE = val;
             }
         } else if (clib.strcmp(arg, "-heap") == 0) {
             arg_idx += 1;
@@ -90,28 +90,28 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                     _ = clib.fprintf(main.getStderr(), "mira: bad value after flag \"-heap\"\n", .{.{}});
                     clib.exit(1);
                 }
-                main.SPACELIMIT = val;
+                main.rs.SPACELIMIT = val;
             }
         } else if (clib.strcmp(arg, "-editor") == 0) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
                 main.missparam("editor");
             } else {
-                main.editor = argv[arg_idx];
+                main.rs.editor = argv[arg_idx];
                 main.fixeditor();
             }
         } else if (clib.strcmp(arg, "-hush") == 0) {
-            main.verbosity = 0;
+            main.rs.verbosity = 0;
         } else if (clib.strcmp(arg, "-nohush") == 0) {
-            main.verbosity = 1;
+            main.rs.verbosity = 1;
         } else if (clib.strcmp(arg, "-exp") == 0 or clib.strcmp(arg, "-log") == 0) {
             _ = clib.fprintf(main.getStderr(), "mira: obsolete flag \"%s\"\nuse \"-exec\" or \"-exec2\", see manual\n", .{.{arg}});
             clib.exit(1);
         } else if (clib.strcmp(arg, "-exec") == 0) {
             main.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
             main.ARGV = @ptrCast(argv + arg_idx + 1);
-            main.magic = 1;
-            main.verbosity = 0;
+            main.rs.magic = 1;
+            main.rs.verbosity = 0;
             arg_idx = argc_u;
             break;
         } else if (clib.strcmp(arg, "-exec2") == 0) {
@@ -139,8 +139,8 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             }
             main.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
             main.ARGV = @ptrCast(argv + arg_idx + 1);
-            main.magic = 1;
-            main.verbosity = 0;
+            main.rs.magic = 1;
+            main.rs.verbosity = 0;
             arg_idx = argc_u;
             break;
         } else if (clib.strcmp(arg, "-man") == 0) {
@@ -152,20 +152,20 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             main.v_info(1);
             clib.exit(0);
         } else if (clib.strcmp(arg, "-make") == 0) {
-            main.making = 1;
-            main.verbosity = 0;
+            main.rs.making = 1;
+            main.rs.verbosity = 0;
         } else if (clib.strcmp(arg, "-exports") == 0) {
-            main.making = 1;
-            main.mkexports = 1;
-            main.verbosity = 0;
+            main.rs.making = 1;
+            main.rs.mkexports = 1;
+            main.rs.verbosity = 0;
         } else if (clib.strcmp(arg, "-sources") == 0) {
-            main.making = 1;
-            main.mksources = 1;
-            main.verbosity = 0;
+            main.rs.making = 1;
+            main.rs.mksources = 1;
+            main.rs.verbosity = 0;
         } else if (clib.strcmp(arg, "-UTF-8") == 0) {
-            main.UTF8 = 1;
+            main.rs.UTF8 = 1;
         } else if (clib.strcmp(arg, "-noUTF-8") == 0) {
-            main.UTF8 = 0;
+            main.rs.UTF8 = 0;
         } else {
             _ = clib.fprintf(main.getStderr(), "mira: unknown flag \"%s\"\n", .{.{arg}});
             clib.exit(1);
@@ -174,21 +174,21 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
     }
 
     const remaining_argc = argc_u - arg_idx;
-    if (remaining_argc > 1 and main.magic == 0 and main.making == 0) {
+    if (remaining_argc > 1 and main.rs.magic == 0 and main.rs.making == 0) {
         _ = clib.fprintf(main.getStderr(), "mira: too many args\n", .{.{}});
         clib.exit(1);
     }
 
     var badlib: c_int = 0;
-    if (main.miralib == null) {
+    if (main.rs.miralib == null) {
         if (clib.getenv("MIRALIB")) |m| {
-            main.miralib = @constCast(m);
+            main.rs.miralib = @constCast(m);
         } else if (main.checkversion("/usr/lib/miralib") != 0) {
-            main.miralib = @constCast("/usr/lib/miralib");
+            main.rs.miralib = @constCast("/usr/lib/miralib");
         } else if (main.checkversion("/usr/local/lib/miralib") != 0) {
-            main.miralib = @constCast("/usr/local/lib/miralib");
+            main.rs.miralib = @constCast("/usr/local/lib/miralib");
         } else if (main.checkversion("miralib") != 0) {
-            main.miralib = @constCast("miralib");
+            main.rs.miralib = @constCast("miralib");
         } else {
             badlib = 1;
         }
@@ -201,89 +201,89 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
     }
 
     if (okhome_rc == 0) {
-        if (main.rc_error == @as(?[*:0]const u8, @ptrCast(&main.lib_rc))) {
-            main.rc_error = null;
+        if (main.rs.rc_error == @as(?[*:0]const u8, @ptrCast(&main.rs.lib_rc))) {
+            main.rs.rc_error = null;
         }
-        _ = clib.strcpy(&main.lib_rc, main.miralib.?);
-        _ = clib.strcat(&main.lib_rc, "/.mirarc");
-        _ = main.rc_read(@as([*:0]const u8, @ptrCast(&main.lib_rc)));
+        _ = clib.strcpy(&main.rs.lib_rc, main.rs.miralib.?);
+        _ = clib.strcat(&main.rs.lib_rc, "/.mirarc");
+        _ = main.rc_read(@as([*:0]const u8, @ptrCast(&main.rs.lib_rc)));
     }
 
-    if (main.editor == null) {
+    if (main.rs.editor == null) {
         if (clib.getenv("EDITOR")) |ed| {
-            main.editor = @constCast(ed);
+            main.rs.editor = @constCast(ed);
         } else {
-            main.editor = @constCast(main.EDITOR);
+            main.rs.editor = @constCast(main.EDITOR);
         }
-        if (main.editor != null) {
-            _ = clib.strcpy(&main.ebuf, main.editor.?);
-            main.editor = @as([*:0]u8, @ptrCast(&main.ebuf));
+        if (main.rs.editor != null) {
+            _ = clib.strcpy(&main.rs.ebuf, main.rs.editor.?);
+            main.rs.editor = @as([*:0]u8, @ptrCast(&main.rs.ebuf));
             main.fixeditor();
         }
     }
 
     if (clib.getenv("MIRAPROMPT")) |prs| {
-        main.promptstr = prs;
+        main.rs.promptstr = prs;
     }
 
-    if (clib.getenv("RECHECKMIRA") != null and main.rechecking == 0) {
-        main.rechecking = 1;
+    if (clib.getenv("RECHECKMIRA") != null and main.rs.rechecking == 0) {
+        main.rs.rechecking = 1;
     }
 
     if (clib.getenv("NOSTRICTIF") != null) {
-        main.strictif = 0;
+        main.rs.strictif = false;
     }
 
     clib.setupdic();
-    main.s_in = main.getStdin();
+    main.rs.s_in = main.getStdin();
     main.s_out = main.getStdout();
-    main.miralib = main.mkabsolute(main.miralib.?);
+    main.rs.miralib = main.mkabsolute(main.rs.miralib.?);
 
     if (manonly != 0) {
         main.manaction();
         clib.exit(0);
     }
 
-    _ = clib.strcpy(&main.PRELUDE, main.miralib.?);
-    _ = clib.strcat(&main.PRELUDE, "/prelude");
+    _ = clib.strcpy(&main.rs.PRELUDE, main.rs.miralib.?);
+    _ = clib.strcat(&main.rs.PRELUDE, "/prelude");
 
-    _ = clib.strcpy(&main.STDENV, main.miralib.?);
-    _ = clib.strcat(&main.STDENV, "/stdenv.m");
+    _ = clib.strcpy(&main.rs.STDENV, main.rs.miralib.?);
+    _ = clib.strcat(&main.rs.STDENV, "/stdenv.m");
 
     main.mira_setup();
 
-    if (main.verbosity != 0) {
+    if (main.rs.verbosity != 0) {
         main.announce();
     }
 
     main.files = NIL;
-    main.undump(@as([*:0]const u8, @ptrCast(&main.PRELUDE)));
-    main.okprel = 1;
-    clib.mkprivate(main.fil_defs(main.h(main.files)));
+    main.undump(@as([*:0]const u8, @ptrCast(&main.rs.PRELUDE)));
+    main.rs.okprel = 1;
+    clib.mkprivate(main.fil_defs(main.heap.h(main.files)));
     main.files = NIL;
 
-    if (main.nostdenv == 0) {
-        main.undump(@as([*:0]const u8, @ptrCast(&main.STDENV)));
+    if (main.rs.nostdenv == 0) {
+        main.undump(@as([*:0]const u8, @ptrCast(&main.rs.STDENV)));
         while (main.files != NIL) {
-            main.primenv = main.alfasort(clib.append1(main.primenv, main.fil_defs(main.h(main.files))));
-            main.files = main.t(main.files);
+            main.rs.primenv = main.alfasort(clib.append1(main.rs.primenv, main.fil_defs(main.heap.h(main.files))));
+            main.files = main.heap.t(main.files);
         }
-        main.primenv = main.alfasort(main.primenv);
+        main.rs.primenv = main.alfasort(main.rs.primenv);
         main.newtyps = NIL;
         main.files = NIL;
     }
 
-    if (main.magic == 0) {
+    if (main.rs.magic == 0) {
         main.rc_write();
     }
 
-    main.echoing = main.verbosity & main.listing;
-    main.initialising = 0;
+    main.rs.echoing = main.rs.verbosity & main.rs.listing;
+    main.rs.initialising = 0;
 
-    if (main.mkexports != 0) {
+    if (main.rs.mkexports != 0) {
         const arg_count: usize = remaining_argc;
         var s: [*:0]u8 = undefined;
-        _ = clib.sigsetjmp(&main.env, 1);
+        _ = clib.sigsetjmp(&main.rs.env, 1);
         var cur_argv_idx = arg_idx;
         while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
             var x: Word = NIL;
@@ -298,48 +298,48 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             if (arg_count != 1) {
                 _ = clib.printf("%s\n", .{.{s}});
             }
-            if (main.exports != NIL) {
-                x = main.exports;
+            if (main.rs.exports != NIL) {
+                x = main.rs.exports;
             } else {
                 var f = main.files;
-                while (f != NIL) : (f = main.t(f)) {
-                    x = clib.append1(main.fil_defs(main.h(f)), x);
+                while (f != NIL) : (f = main.heap.t(f)) {
+                    x = clib.append1(main.fil_defs(main.heap.h(f)), x);
                 }
             }
 
-            if (main.freeids != NIL) {
-                var f = main.freeids;
-                while (f != NIL) : (f = main.t(f)) {
-                    const n = clib.findid(@constCast(main.get_id(main.h(f))));
-                    main.tp(n).* = main.t(main.t(main.h(f)));
-                    main.tp(main.h(main.h(n))).* = main.the_val(main.h(f));
-                    main.hp(f).* = n;
+            if (main.rs.freeids != NIL) {
+                var f = main.rs.freeids;
+                while (f != NIL) : (f = main.heap.t(f)) {
+                    const n = clib.findid(@constCast(main.get_id(main.heap.h(f))));
+                    main.heap.tp(n).* = main.heap.t(main.heap.t(main.heap.h(f)));
+                    main.heap.tp(main.heap.h(main.heap.h(n))).* = main.the_val(main.heap.h(f));
+                    main.heap.hp(f).* = n;
                 }
-                main.freeids = clib.typesfirst(main.freeids);
-                f = main.freeids;
+                main.rs.freeids = clib.typesfirst(main.rs.freeids);
+                f = main.rs.freeids;
                 _ = clib.printf("\t%%free {\n", .{.{}});
-                while (f != NIL) : (f = main.t(f)) {
+                while (f != NIL) : (f = main.heap.t(f)) {
                     _ = clib.putchar('\t');
-                    clib.report_type(main.h(f));
+                    clib.report_type(main.heap.h(f));
                     _ = clib.putchar('\n');
                 }
                 _ = clib.printf("\t}\n", .{.{}});
             }
 
             var item = clib.typesfirst(main.alfasort(x));
-            while (item != NIL) : (item = main.t(item)) {
+            while (item != NIL) : (item = main.heap.t(item)) {
                 _ = clib.putchar('\t');
-                clib.report_type(main.h(item));
+                clib.report_type(main.heap.h(item));
                 _ = clib.putchar('\n');
             }
         }
         clib.exit(0);
     }
 
-    if (main.mksources != 0) {
+    if (main.rs.mksources != 0) {
         var s: [*:0]u8 = undefined;
         var x: Word = NIL;
-        _ = clib.sigsetjmp(&main.env, 1);
+        _ = clib.sigsetjmp(&main.rs.env, 1);
         var cur_argv_idx = arg_idx;
         while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
             s = clib.addextn(1, argv[cur_argv_idx]);
@@ -348,9 +348,9 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                     _ = clib.keep(main.dicp);
                 }
                 main.undump(s);
-                var f = if (main.files == NIL) main.oldfiles else main.files;
-                while (f != NIL) : (f = main.t(f)) {
-                    const filename_str = main.get_fil(main.h(f)).?;
+                var f = if (main.files == NIL) main.rs.oldfiles else main.files;
+                while (f != NIL) : (f = main.heap.t(f)) {
+                    const filename_str = main.get_fil(main.heap.h(f)).?;
                     if (clib.member(x, @intCast(@intFromPtr(filename_str))) == 0) {
                         x = main.cons(@intCast(@intFromPtr(filename_str)), x);
                         _ = clib.printf("%s\n", .{.{filename_str}});
@@ -361,9 +361,9 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         clib.exit(0);
     }
 
-    if (main.making != 0) {
+    if (main.rs.making != 0) {
         var s: [*:0]u8 = undefined;
-        _ = clib.sigsetjmp(&main.env, 1);
+        _ = clib.sigsetjmp(&main.rs.env, 1);
         var cur_argv_idx = arg_idx;
         while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
             s = clib.addextn(1, argv[cur_argv_idx]);
@@ -371,45 +371,45 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 _ = clib.keep(main.dicp);
             }
             main.undump(s);
-            if (main.ND != NIL or (main.files == NIL and main.oldfiles != NIL)) {
-                if (main.make_status == 1) {
-                    main.make_status = 0;
+            if (main.ND != NIL or (main.files == NIL and main.rs.oldfiles != NIL)) {
+                if (main.rs.make_status == 1) {
+                    main.rs.make_status = 0;
                 }
-                main.make_status = clib.strcons(@as(Word, @intCast(@intFromPtr(s))), main.make_status);
+                main.rs.make_status = clib.strcons(@as(Word, @intCast(@intFromPtr(s))), main.rs.make_status);
             }
         }
-        if (tag[@intCast(main.make_status)] == clib.STRCONS) {
+        if (tag[@intCast(main.rs.make_status)] == clib.STRCONS) {
             var h_val: Word = 0;
             var maxw: Word = 0;
             _ = clib.printf("errors or undefined names found in:-\n", .{.{}});
-            while (main.make_status != 0) {
-                h_val = clib.strcons(main.h(main.make_status), h_val);
-                const w = @as(Word, @intCast(clib.strlen(@ptrFromInt(@as(usize, @intCast(main.h(h_val)))))));
+            while (main.rs.make_status != 0) {
+                h_val = clib.strcons(main.heap.h(main.rs.make_status), h_val);
+                const w = @as(Word, @intCast(clib.strlen(@ptrFromInt(@as(usize, @intCast(main.heap.h(h_val)))))));
                 if (w > maxw) {
                     maxw = w;
                 }
-                main.make_status = main.t(main.make_status);
+                main.rs.make_status = main.heap.t(main.rs.make_status);
             }
             maxw += 1;
             const n = @divTrunc(@as(Word, 78), maxw);
             var w: Word = 0;
             while (h_val != 0) {
                 w += 1;
-                _ = clib.printf("%*s%s", .{.{@as(c_int, @intCast(maxw)), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.h(h_val))))), @as([*:0]const u8, if ((@rem(w, n)) != 0) "" else "\n")}});
-                h_val = main.t(h_val);
+                _ = clib.printf("%*s%s", .{.{@as(c_int, @intCast(maxw)), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(h_val))))), @as([*:0]const u8, if ((@rem(w, n)) != 0) "" else "\n")}});
+                h_val = main.heap.t(h_val);
             }
             if ((@rem(w, n)) != 0) {
                 _ = clib.printf("\n", .{.{}});
             }
-            main.make_status = 1;
+            main.rs.make_status = 1;
         }
-        clib.exit(@intCast(main.make_status));
+        clib.exit(@intCast(main.rs.make_status));
     }
 
     var initscript: [*:0]const u8 = undefined;
     if (remaining_argc == 0) {
         initscript = "script.m";
-    } else if (main.magic != 0) {
+    } else if (main.rs.magic != 0) {
         initscript = argv[arg_idx];
     } else {
         initscript = clib.addextn(1, argv[arg_idx]);
@@ -460,9 +460,9 @@ pub export fn rc_read(rcfile: [*:0]const u8) Word {
     x = main.fil_defs(h(main.files));
     while (x != NIL) : (x = t(x)) {
         if (main.id_type(h(x)) == clib.synonym_t) {
-            main.tp(main.t_info(h(x))).* = main.dump.fixtype(main.t_info(h(x)), h(x));
+            main.heap.tp(main.t_info(h(x))).* = main.dump.fixtype(main.t_info(h(x)), h(x));
         } else {
-            main.tp(h(h(x))).* = main.dump.fixtype(main.id_type(h(x)), h(x));
+            main.heap.tp(h(h(x))).* = main.dump.fixtype(main.id_type(h(x)), h(x));
         }
     }
     return 1;
@@ -471,10 +471,10 @@ pub export fn rc_read(rcfile: [*:0]const u8) Word {
 pub export fn rc_write() void {
     const home = clib.getenv("HOME");
     var f: ?*clib.FILE = null;
-    if (home == null or main.home_rc[0] == 0) return;
-    f = clib.fopen(&main.home_rc, "w");
+    if (home == null or main.rs.home_rc[0] == 0) return;
+    f = clib.fopen(&main.rs.home_rc, "w");
     if (f == null) return;
-    clib.setprefix(@ptrCast(&main.home_rc));
+    clib.setprefix(@ptrCast(&main.rs.home_rc));
     clib.dump_script(main.files, f.?);
     _ = clib.fclose(f.?);
 }

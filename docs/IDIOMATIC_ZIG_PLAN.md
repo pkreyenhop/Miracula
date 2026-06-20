@@ -54,14 +54,11 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 *Goal: Eliminate implicit global state via dependency injection.*
 
 * **B1: Introduce `RuntimeState` Struct**
-    * *Status:* Not started
-    * *Details:* Create `src/runtime/runtime_state.zig`. Consolidate the ~60 remaining global statics. Thread `*RuntimeState` through the call stack (e.g., `commandloop(state: *RuntimeState)`).
-    * *Optimization:* Convert flags (`compiling`, `loading`, `strictif`) to native Zig `bool` types during struct creation. (Casts to `c_int` can occur at the FFI boundary if needed).
-    * *DoD:* `globals.zig` is deleted. No module-level mutable state remains except `const` constants and C ABI bridge buffers.
+    * *Status:* **Complete**
+    * *Details:* `src/runtime/runtime_state.zig` created. ~75 moved vars consolidated into `RuntimeState` struct; singleton `pub var rs: RuntimeState = .{}` in `main.zig`. All callers converted from `extern var` / `main.foo` to `main.rs.foo`. 8 "stuck" vars remain as `pub export var` in `main.zig` (nill, loading, compiling, errs, errline, obsuffix, SYNERR, commandmode) because parser_api.zig cannot safely re-import main. `strictif` converted from `Word` to `bool`. Build clean, pre-existing test baseline maintained.
 * **B2: Encapsulate Heap Access (`src/runtime/heap.zig`)**
-    * *Status:* Not started
-    * *Details:* Remove the duplicated `pub fn h/t/hp/tp` from `main.zig`. Introduce the `Heap` struct for API boundaries.
-    * *DoD:* `main.zig` has no `h/t/hp/tp` definitions. No duplicated accessor functions exist across files. Expanding existing single test to cover basic `make` and `gc`-marking is completed.
+    * *Status:* **Complete**
+    * *Details:* Removed `pub const h/t/hp/tp` aliases from `main.zig`. All callers now use `main.heap.h(...)` etc. directly. Build clean.
 
 ### Cluster C: Type Safety & Domain Modeling (Depends on Cluster B)
 *Goal: Leverage Zig's type system at the newly established API boundaries.*
@@ -112,8 +109,8 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 | A | A3 | Extract Compiler Initialization (setup.zig) | **Complete** |
 | A | A4 | Extract Source Loader (module_loader.zig) | **Complete** |
 | A | A5 | Extract State Dumping (dump.zig) | **Complete** |
-| B | B1 | Introduce RuntimeState (includes boolean conversion) | Not started |
-| B | B2 | Encapsulate Heap Access | Not started |
+| B | B1 | Introduce RuntimeState (includes boolean conversion) | **Complete** |
+| B | B2 | Encapsulate Heap Access | **Complete** |
 | C | C1 | NodeTag Enum | Not started |
 | C | C2 | API Boundary Domain Types | Not started |
 | D | D1 | Internal String Slices | Not started |

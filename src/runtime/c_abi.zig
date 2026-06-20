@@ -227,7 +227,6 @@ pub const UNICODE = 21;
 pub const TCONS = 22;
 
 pub extern var SPACE: word;
-pub extern var DICSPACE: word;
 pub const BACKSTOP: word = @as(word, 1) << (@bitSizeOf(word) - 1);
 pub const tlptrbit = BACKSTOP;
 pub const tlptrbits: word = @as(word, 3) << (@bitSizeOf(word) - 2);
@@ -575,7 +574,6 @@ pub extern fn zig_handle_strict_triadic(ctx: ?*anyopaque) void;
 pub extern var hd: [*]word;
 pub extern var tl: [*]word;
 pub extern var tag: [*]u8;
-pub extern var UTF8: c_int;
 pub extern var yylval: word;
 pub extern var yysterm: [*][*:0]u8;
 pub extern var cmbnms: [*][*:0]u8;

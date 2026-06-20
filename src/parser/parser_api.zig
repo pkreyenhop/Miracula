@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const clib = @import("../runtime/c_abi.zig");
+const main = @import("../main.zig");
 
 const lex_bridge = @import("lex_bridge.zig");
 const parser_mod = @import("parser.zig");
@@ -8,7 +9,6 @@ const codegen = @import("codegen.zig");
 
 extern var SYNERR: clib.word;
 extern var commandmode: clib.word;
-extern var lastexp: clib.word;
 extern fn mira_lex_setup_string(source: [*:0]const u8) void;
 extern fn mira_lex_cleanup() void;
 extern fn mira_lex_setup_file(filename: [*:0]const u8) c_int;
@@ -60,7 +60,7 @@ fn parseCurrentNew() ParseError!ParseResult {
             return ParseError.SyntaxError;
         }
         const expr_word = codegen.codegenExpr(alloc, expr);
-        lastexp = expr_word; // anchor as GC root before type_of() inside evaluate_repl() can trigger GC
+        main.rs.lastexp = expr_word; // anchor as GC root before type_of() inside evaluate_repl() can trigger GC
         evaluate_repl(expr_word);
         // Child prints newline before exit(0); parent returns here.
         return .success;

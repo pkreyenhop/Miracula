@@ -4,10 +4,10 @@ const clib = @import("../runtime/main_clib.zig");
 
 const Word = main.Word;
 const NIL = main.NIL;
-const t = main.t;
-const h = main.h;
-const tp = main.tp;
-const hp = main.hp;
+const t = main.heap.t;
+const h = main.heap.h;
+const tp = main.heap.tp;
+const hp = main.heap.hp;
 extern var tag: [*]u8;
 
 pub export var internals: Word = NIL;
@@ -15,14 +15,14 @@ pub export var tlost: Word = NIL;
 var pfrts: Word = NIL;
 
 pub fn fixexports() void {
-    var e = main.exports;
+    var e = main.rs.exports;
     var f: Word = undefined;
     while (e != NIL) : (e = t(e)) {
         paint(h(e));
     }
     internals = NIL;
-    if (main.exports == NIL and main.exportfiles == NIL and main.embargoes == NIL) {
-        e = main.freeids;
+    if (main.rs.exports == NIL and main.exportfiles == NIL and main.rs.embargoes == NIL) {
+        e = main.rs.freeids;
         while (e != NIL) : (e = t(e)) {
             internals = main.cons(privatise(h(h(e))), internals);
         }
@@ -46,7 +46,7 @@ pub fn fixexports() void {
             }
         }
     }
-    e = main.exports;
+    e = main.rs.exports;
     while (e != NIL) : (e = t(e)) {
         unpaint(h(e));
     }
@@ -67,7 +67,7 @@ fn unpaint(x: Word) void {
 
 pub fn unfixexports() void {
     var i = internals;
-    if (main.mkexports != 0) return;
+    if (main.rs.mkexports != 0) return;
     while (i != NIL) : (i = t(i)) {
         _ = publicise(h(i));
     }
@@ -146,7 +146,7 @@ fn publicise(x: Word) Word {
 }
 
 pub fn sigdefer(_: c_int) callconv(.c) void {
-    main.sigflag = 1;
+    main.rs.sigflag = 1;
 }
 
 pub export fn readoption() void {
@@ -168,7 +168,7 @@ pub export fn readoption() void {
         }
     }
 
-    var rfl_ptr = main.rfl;
+    var rfl_ptr = main.rs.rfl;
     while (rfl_ptr != NIL) : (rfl_ptr = t(rfl_ptr)) {
         f = main.fil_defs(h(rfl_ptr));
         while (f != NIL) : (f = t(f)) {
@@ -240,7 +240,7 @@ pub fn undump(t_val: [*:0]const u8) void {
     var t2: clib.time_t = undefined;
     var oldsig: usize = 0;
 
-    if (main.normal(t_val) == 0 and main.initialising == 0) {
+    if (main.normal(t_val) == 0 and main.rs.initialising == 0) {
         main.loadfile(t_val);
         return;
     }
@@ -271,17 +271,17 @@ pub fn undump(t_val: [*:0]const u8) void {
         return;
     }
 
-    main.current_script = @constCast(t_val);
+    main.rs.current_script = @constCast(t_val);
     main.loading = 1;
-    main.oldfiles = NIL;
+    main.rs.oldfiles = NIL;
     main.unload();
 
-    if (main.initialising == 0 and main.making == 0) {
-        main.sigflag = 0;
+    if (main.rs.initialising == 0 and main.rs.making == 0) {
+        main.rs.sigflag = 0;
         oldsig = main.signals(clib.SIGINT, @intFromPtr(&sigdefer));
     }
 
-    main.files = clib.load_script(f.?, @constCast(t_val), NIL, NIL, if (main.making == 0 and main.initialising == 0) 1 else 0);
+    main.files = clib.load_script(f.?, @constCast(t_val), NIL, NIL, if (main.rs.making == 0 and main.rs.initialising == 0) 1 else 0);
     _ = clib.fclose(f.?);
 
     if (main.BAD_DUMP != 0) {
@@ -299,11 +299,11 @@ pub fn undump(t_val: [*:0]const u8) void {
         }
     }
 
-    if (main.initialising == 0 and main.making == 0) {
+    if (main.rs.initialising == 0 and main.rs.making == 0) {
         _ = main.signals(clib.SIGINT, oldsig);
     }
-    if (main.sigflag != 0) {
-        main.sigflag = 0;
+    if (main.rs.sigflag != 0) {
+        main.rs.sigflag = 0;
         if (oldsig > 1) {
             const handler: *const fn (c_int) callconv(.c) void = @ptrFromInt(oldsig);
             handler(clib.SIGINT);
@@ -311,7 +311,7 @@ pub fn undump(t_val: [*:0]const u8) void {
     }
 
     if (main.CLASHES != NIL) {
-        if (main.ideep == 0) {
+        if (main.rs.ideep == 0) {
             _ = clib.printf("cannot load %s ", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
             clib.printlist(@constCast("due to name clashes: "), main.alfasort(main.CLASHES));
         }
@@ -322,52 +322,52 @@ pub fn undump(t_val: [*:0]const u8) void {
 
     if (main.BAD_DUMP != 0 or main.src_update() != 0) {
         main.loadfile(t_val);
-    } else if (main.initialising != 0) {
+    } else if (main.rs.initialising != 0) {
         if (main.ND != NIL or main.files == NIL) {
             _ = clib.fprintf(main.getStderr(), "panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
             clib.exit(1);
         }
     } else {
-        if (main.verbosity != 0 or main.magic != 0 or main.mkexports != 0) {
+        if (main.rs.verbosity != 0 or main.rs.magic != 0 or main.rs.mkexports != 0) {
             if (main.files == NIL) {
                 _ = clib.printf("%s contains syntax error\n", .{.{t_val}});
             } else {
                 if (main.ND != NIL) {
                     _ = clib.printf("%s contains undefined names or type errors\n", .{.{t_val}});
-                } else if (main.making == 0 and main.magic == 0) {
+                } else if (main.rs.making == 0 and main.rs.magic == 0) {
                     _ = clib.printf("%s\n", .{.{t_val}});
                 }
             }
         }
     }
 
-    if (main.files != NIL and main.making == 0 and main.initialising == 0) {
+    if (main.files != NIL and main.rs.making == 0 and main.rs.initialising == 0) {
         unfixexports();
     }
     main.loading = 0;
 }
 
 pub fn makedump() void {
-    const obf = &main.linebuf;
+    const obf = &main.rs.linebuf;
     var f: ?*clib.FILE = null;
-    _ = clib.strcpy(obf, main.current_script.?);
+    _ = clib.strcpy(obf, main.rs.current_script.?);
     const len = clib.strlen(obf);
     _ = clib.strcpy(obf[len - 1 ..].ptr, main.obsuffix);
     f = clib.fopen(obf, "w");
     if (f == null) {
         _ = clib.printf("WARNING: CANNOT WRITE TO %s\n", .{.{@as([*:0]const u8, @ptrCast(obf))}});
-        if (clib.strcmp(main.current_script.?, &main.PRELUDE) == 0 or clib.strcmp(main.current_script.?, &main.STDENV) == 0) {
+        if (clib.strcmp(main.rs.current_script.?, &main.rs.PRELUDE) == 0 or clib.strcmp(main.rs.current_script.?, &main.rs.STDENV) == 0) {
             _ = clib.printf("TO FIX THIS PROBLEM PLEASE GET SUPER-USER TO EXECUTE `mira'\n", .{.{}});
         }
-        if (main.making != 0 and main.make_status == 0) {
-            main.make_status = 1;
+        if (main.rs.making != 0 and main.rs.make_status == 0) {
+            main.rs.make_status = 1;
         }
         return;
     }
-    main.unlinkme = @ptrCast(obf);
-    clib.setprefix(main.current_script.?);
+    main.rs.unlinkme = @ptrCast(obf);
+    clib.setprefix(main.rs.current_script.?);
     clib.dump_script(main.files, f.?);
-    main.unlinkme = null;
+    main.rs.unlinkme = null;
     _ = clib.fclose(f.?);
 }
 

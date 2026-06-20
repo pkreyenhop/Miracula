@@ -8,6 +8,7 @@ const Allocator = std.mem.Allocator;
 const ast = @import("ast.zig");
 
 const clib = @import("../runtime/c_abi.zig");
+const main = @import("../main.zig");
 
 const Word = clib.word;
 
@@ -23,7 +24,6 @@ const TRUE_ATOM: Word = CMBASE + 137;
 extern var hd: [*]Word;
 extern var tl: [*]Word;
 extern var tag: [*]u8;
-extern var lastexp: Word;
 
 inline fn h(x: Word) Word {
     return hd[@as(usize, @intCast(x)) * 2];
@@ -96,11 +96,8 @@ fn bigscanZ(alloc: Allocator, text: []const u8) Word {
 // Runtime globals
 // ---------------------------------------------------------------------------
 
-extern var listdiff_fn: Word;
-extern var Void: Word;
 extern var big_one: Word;
 extern var current_file: Word;
-extern var lastname: Word;
 extern var nill: Word;
 extern var idsused: Word;
 
@@ -147,7 +144,7 @@ fn nameWord(name: []const u8) Word {
     // Look up the interned atom from the name table (populated by yylex's
     // name() calls during tokenization). This ensures the same source name
     // always maps to the same heap atom, which is required for multi-equation
-    // definitions: decl1() checks `lastname == x` using pointer equality.
+    // definitions: decl1() checks `main.rs.lastname == x` using pointer equality.
     const existing = findid(&buf);
     if (existing != clib.NIL) return existing;
     // Not yet in the name table (e.g., synthesised names). Intern it now.
@@ -222,7 +219,7 @@ fn opWord(op: []const u8) Word {
     if (std.mem.eql(u8, op, "le")) return ap(clib.C, clib.GRE); // relop LE
     if (std.mem.eql(u8, op, "cons")) return clib.P; // ':' as section
     if (std.mem.eql(u8, op, "plus_plus")) return clib.APPEND;
-    if (std.mem.eql(u8, op, "minus_minus")) return listdiff_fn;
+    if (std.mem.eql(u8, op, "minus_minus")) return main.rs.listdiff_fn;
     if (std.mem.eql(u8, op, "plus")) return clib.PLUS;
     if (std.mem.eql(u8, op, "minus")) return clib.MINUS;
     if (std.mem.eql(u8, op, "star")) return clib.TIMES;
@@ -238,7 +235,7 @@ fn opWord(op: []const u8) Word {
     // SHOWSYM → make(SHOW, 0, 0); READVALSY → make(STARTREADVALS, 0, 0).
     if (std.mem.eql(u8, op, "kw_show")) return clib.make(clib.SHOW, 0, 0);
     if (std.mem.eql(u8, op, "kw_readvals")) return clib.make(clib.STARTREADVALS, 0, 0);
-    if (std.mem.eql(u8, op, "dollars")) return lastexp;
+    if (std.mem.eql(u8, op, "dollars")) return main.rs.lastexp;
     // Fall back: user-defined infix operator stored as an identifier
     return nameWord(op);
 }
@@ -376,7 +373,7 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
 
         // Tuple patterns: pair / tcons chain.
         .tuple => |items| blk: {
-            if (items.len == 0) break :blk Void;
+            if (items.len == 0) break :blk main.rs.Void;
             if (items.len == 1) break :blk codegenPattern(alloc, items[0]);
             var result = mkpair(
                 codegenPattern(alloc, items[items.len - 2]),
@@ -458,9 +455,9 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         // (a, b)       → pair(a, b)
         // (a, b, c)    → tcons(a, pair(b, c))
         // (a, b, c, d) → tcons(a, tcons(b, pair(c, d)))
-        // ()           → Void
+        // ()           → main.rs.Void
         .tuple => |items| blk: {
-            if (items.len == 0) break :blk Void;
+            if (items.len == 0) break :blk main.rs.Void;
             if (items.len == 1) break :blk codegenExpr(alloc, items[0]); // degenerate
             var result = mkpair(
                 codegenExpr(alloc, items[items.len - 2]),
@@ -675,10 +672,10 @@ fn codegenDef(alloc: Allocator, def: ast.Def) void {
     }
     rhs = mklabel(here, rhs);
     declare(lhs, rhs);
-    // Mirror the YACC grammar: `declare(l,r), lastname=l` — allows
+    // Mirror the YACC grammar: `declare(l,r), main.rs.lastname=l` — allows
     // consecutive equations for the same function to be accumulated
     // by decl1 rather than triggering a nameclash error.
-    lastname = lhs;
+    main.rs.lastname = lhs;
 }
 
 // ---------------------------------------------------------------------------

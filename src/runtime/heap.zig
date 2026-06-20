@@ -249,23 +249,11 @@ export var collecting: c_int = 0;
 var heap: ?[*]Word = null;
 var dlim: ?[*]Word = null;
 
-extern var SPACELIMIT: Word;
-extern var atgc: c_int;
 extern var loading: c_int;
 extern var compiling: c_int;
-extern var rv_expr: Word;
 extern var rv_script: Word;
-extern var cstack: ?[*]Word;
 extern var fileq: Word;
-extern var primenv: Word;
-extern var ideep: c_int;
-extern var make_status: Word;
 extern var idsused: Word;
-extern var eprodnts: Word;
-extern var nonterminals: Word;
-extern var ntmap: Word;
-extern var ihlist: Word;
-extern var ntspecmap: Word;
 extern var gvars: Word;
 extern var lexvar: Word;
 extern var common_stdin: Word;
@@ -276,23 +264,13 @@ extern var vergstack: Word;
 extern var litstack: Word;
 extern var linostack: Word;
 extern var prefixstack: Word;
-extern var oldfiles: Word;
-extern var includees: Word;
-extern var freeids: Word;
-extern var exports: Word;
 extern var exportfiles: Word;
 extern var internals: Word;
 extern var FBS: Word;
-extern var lexstates: Word;
-extern var lexdefs: Word;
 extern var namebucket: [128]Word;
 extern var nextpn: Word;
 extern var pnvec: ?[*]Word;
-extern var lastname: Word;
-extern var suppressids: Word;
-extern var lastexp: Word;
 extern var nill: Word;
-extern var standardout: Word;
 extern var big_one: Word;
 extern var b_rem: Word;
 extern var yylval: Word;
@@ -330,14 +308,8 @@ extern var errline: Word;
 
 extern fn outstats() void;
 extern fn initclock() void;
-extern var current_script: [*:0]const u8;
 extern var speclocs: Word;
 extern var algshfns: Word;
-extern var embargoes: Word;
-extern var rfl: Word;
-extern var bereaved: Word;
-extern var ld_stuff: Word;
-extern var detrop: Word;
 extern var tlost: Word;
 
 const hashsize = c.hashsize;
@@ -347,7 +319,7 @@ fn TOP() Word {
 }
 
 fn BIGTOP() Word {
-    return SPACELIMIT + ATOMLIMIT;
+    return main.rs.SPACELIMIT + ATOMLIMIT;
 }
 
 export fn trueheapsize() Word {
@@ -355,7 +327,7 @@ export fn trueheapsize() Word {
 }
 
 export fn setupheap() void {
-    const heap_alloc_size = @as(usize, @intCast(SPACELIMIT));
+    const heap_alloc_size = @as(usize, @intCast(main.rs.SPACELIMIT));
     if (heap == null) {
         const ptr = c.malloc(heap_alloc_size * @sizeOf(Word) * 2) orelse {
             mallocfail("heap");
@@ -373,20 +345,20 @@ export fn setupheap() void {
 
     hd = heap.? - @as(usize, @intCast(ATOMLIMIT * 2));
     tl = hd.? + 1;
-    if (SPACE > SPACELIMIT) {
-        SPACE = SPACELIMIT;
+    if (SPACE > main.rs.SPACELIMIT) {
+        SPACE = main.rs.SPACELIMIT;
     }
     listp = ATOMLIMIT - 1;
     @memset(tag.?[@intCast(ATOMLIMIT)..@intCast(BIGTOP())], 0);
 }
 
 export fn resetheap() void {
-    if (SPACELIMIT < trueheapsize()) {
+    if (main.rs.SPACELIMIT < trueheapsize()) {
         const stderr = getStderr().?;
         _ = c.fprintf(stderr, "impossible event in resetheap\n", .{.{}});
         c.exit(1);
     }
-    const heap_alloc_size = @as(usize, @intCast(SPACELIMIT));
+    const heap_alloc_size = @as(usize, @intCast(main.rs.SPACELIMIT));
     const ptr = c.realloc(heap, heap_alloc_size * @sizeOf(Word) * 2) orelse {
         mallocfail("heap");
         unreachable;
@@ -403,10 +375,10 @@ export fn resetheap() void {
     hd = heap.? - @as(usize, @intCast(ATOMLIMIT * 2));
     tl = hd.? + 1;
     tag.?[@intCast(bigtop_val)] = 0;
-    if (SPACE > SPACELIMIT) {
-        SPACE = SPACELIMIT;
+    if (SPACE > main.rs.SPACELIMIT) {
+        SPACE = main.rs.SPACELIMIT;
     }
-    if (SPACE < 1250000 and 1250000 <= SPACELIMIT) {
+    if (SPACE < 1250000 and 1250000 <= main.rs.SPACELIMIT) {
         SPACE = 1250000;
         tag.?[@intCast(TOP())] = 0;
     }
@@ -437,9 +409,9 @@ export fn make(t_val: u8, x: Word, y: Word) Word {
         }
     }
     if (listp == TOP()) {
-        if (SPACE != SPACELIMIT) {
+        if (SPACE != main.rs.SPACELIMIT) {
             if (compiling == 0) {
-                SPACE = SPACELIMIT;
+                SPACE = main.rs.SPACELIMIT;
             } else if (claims <= @divTrunc(SPACE, 4) and nogcs > 1) {
                 var wait: Word = 0;
                 const sp = SPACE;
@@ -450,10 +422,10 @@ export fn make(t_val: u8, x: Word, y: Word) Word {
                     wait = 2;
                     SPACE = 5000 * (1 + @divTrunc(SPACE - 1, 5000));
                 }
-                if (SPACE > SPACELIMIT) {
-                    SPACE = SPACELIMIT;
+                if (SPACE > main.rs.SPACELIMIT) {
+                    SPACE = main.rs.SPACELIMIT;
                 }
-                if (atgc != 0 and SPACE > sp) {
+                if (main.rs.atgc != 0 and SPACE > sp) {
                     _ = c.fprintf(getStderr().?, "\n<<increase heap from %ld to %ld>>\n", .{sp, SPACE});
                 }
             }
@@ -483,19 +455,19 @@ export fn gc() void {
     }
     collecting = 1;
     var idx = @as(usize, @intCast(ATOMLIMIT));
-    if (atgc != 0) {
+    if (main.rs.atgc != 0) {
         _ = c.fprintf(getStderr().?, "\n<<gc after %ld claims>>\n", .{claims});
     }
-    if (claims <= @divTrunc(SPACE, 10) and nogcs > 1 and SPACE == SPACELIMIT) {
+    if (claims <= @divTrunc(SPACE, 10) and nogcs > 1 and SPACE == main.rs.SPACELIMIT) {
         var hnogcs: Word = 0;
         if (nogcs == hnogcs) {
             _ = c.fprintf(getStderr().?, "<<not enough heap space -- task abandoned>>\n", .{.{}});
             if (compiling == 0) {
                 outstats();
             }
-            if (compiling != 0 and ideep == 0) {
+            if (compiling != 0 and main.rs.ideep == 0) {
                 _ = c.fprintf(getStderr().?, "not enough heap to compile current script\n", .{.{}});
-                _ = c.fprintf(getStderr().?, "script = \"%s\", heap = %ld\n", .{current_script, SPACE});
+                _ = c.fprintf(getStderr().?, "script = \"%s\", heap = %ld\n", .{main.rs.current_script, SPACE});
             }
             c.exit(1);
         } else {
@@ -532,7 +504,7 @@ export fn gcpatch() void {
 export fn bases() void {
     var p: [*]Word = undefined;
     p = @ptrCast(@alignCast(&p));
-    const cstack_ptr = cstack.?;
+    const cstack_ptr = main.rs.cstack.?;
     if (@intFromPtr(p) < @intFromPtr(cstack_ptr)) {
         p += 1;
         while (@intFromPtr(p) < @intFromPtr(cstack_ptr)) : (p += 1) {
@@ -548,16 +520,16 @@ export fn bases() void {
 
     mark(outfilq);
     mark(waiting);
-    if (compiling != 0 or rv_expr != 0 or rv_script != 0) {
-        mark(make_status);
-        mark(primenv);
+    if (compiling != 0 or main.rs.rv_expr != 0 or rv_script != 0) {
+        mark(main.rs.make_status);
+        mark(main.rs.primenv);
         mark(fileq);
         mark(idsused);
-        mark(eprodnts);
-        mark(nonterminals);
-        mark(ntmap);
-        mark(ihlist);
-        mark(ntspecmap);
+        mark(main.rs.eprodnts);
+        mark(main.rs.nonterminals);
+        mark(main.rs.ntmap);
+        mark(main.rs.ihlist);
+        mark(main.rs.ntspecmap);
         mark(gvars);
         mark(lexvar);
         mark(common_stdin);
@@ -569,10 +541,10 @@ export fn bases() void {
         mark(linostack);
         mark(prefixstack);
         mark(files);
-        mark(oldfiles);
-        mark(includees);
-        mark(freeids);
-        mark(exports);
+        mark(main.rs.oldfiles);
+        mark(main.rs.includees);
+        mark(main.rs.freeids);
+        mark(main.rs.exports);
         mark(internals);
         mark(CLASHES);
         mark(ALIASES);
@@ -581,8 +553,8 @@ export fn bases() void {
         mark(DETROP);
         mark(MISSING);
         mark(FBS);
-        mark(lexstates);
-        mark(lexdefs);
+        mark(main.rs.lexstates);
+        mark(main.rs.lexdefs);
         var i: usize = 0;
         while (i < 128) : (i += 1) {
             if (namebucket[i] != 0) {
@@ -602,11 +574,11 @@ export fn bases() void {
             mark(algshfns);
             mark(speclocs);
             mark(exportfiles);
-            mark(embargoes);
-            mark(rfl);
-            mark(detrop);
-            mark(bereaved);
-            mark(ld_stuff);
+            mark(main.rs.embargoes);
+            mark(main.rs.rfl);
+            mark(main.rs.detrop);
+            mark(main.rs.bereaved);
+            mark(main.rs.ld_stuff);
             mark(tlost);
             i = 0;
             const nextpn_val = @as(usize, @intCast(nextpn));
@@ -614,11 +586,11 @@ export fn bases() void {
                 mark(pnvec.?[i]);
             }
         }
-        mark(lastname);
-        mark(suppressids);
-        mark(lastexp);
+        mark(main.rs.lastname);
+        mark(main.rs.suppressids);
+        mark(main.rs.lastexp);
         mark(nill);
-        mark(standardout);
+        mark(main.rs.standardout);
         mark(big_one);
         mark(b_rem);
         mark(yylval);
@@ -1244,7 +1216,7 @@ export fn dump_script(files_val: Word, file: ?*c.FILE) void {
     if (files_val == c.NIL) {
         _ = c.putc(0, file);
         putword(errline, file);
-        var x = oldfiles;
+        var x = main.rs.oldfiles;
         while (x != c.NIL) : (x = t(x)) {
             _ = c.fprintf(file, "%s", .{mkrel(get_fil(h(x)))});
             _ = c.putc(0, file);
@@ -1269,7 +1241,7 @@ export fn dump_script(files_val: Word, file: ?*c.FILE) void {
     }
     _ = c.putc(0, file);
     dump_defs(algshfns, file);
-    if (ND == c.NIL and bereaved != c.NIL) {
+    if (ND == c.NIL and main.rs.bereaved != c.NIL) {
         dump_ob(c.True, file);
     } else {
         dump_ob(ND, file);
@@ -1277,7 +1249,7 @@ export fn dump_script(files_val: Word, file: ?*c.FILE) void {
     _ = c.putc(c.DEF_X, file);
     dump_ob(SGC, file);
     _ = c.putc(c.DEF_X, file);
-    dump_ob(freeids, file);
+    dump_ob(main.rs.freeids, file);
     _ = c.putc(c.DEF_X, file);
     dump_defs(internals, file);
 }
@@ -1492,7 +1464,7 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
                 break;
             }
         }
-        if (@intFromPtr(dicq) - @intFromPtr(dicp) > c.DICSPACE) {
+        if (@intFromPtr(dicq) - @intFromPtr(dicp) > main.rs.DICSPACE) {
             c.dicovflo();
         }
         ch = getword(file);
@@ -1544,11 +1516,11 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
                     break;
                 }
             }
-            if (@intFromPtr(dicq) - @intFromPtr(dicp) > c.DICSPACE) {
+            if (@intFromPtr(dicq) - @intFromPtr(dicp) > main.rs.DICSPACE) {
                 c.dicovflo();
             }
             ch = getword(file);
-            if (oldfiles == c.NIL) {
+            if (main.rs.oldfiles == c.NIL) {
                 if (c.strcmp(dicp, src) != 0) {
                     BAD_DUMP = 1;
                     if (aliases != c.NIL) {
@@ -1557,7 +1529,7 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
                     return c.NIL;
                 }
             }
-            oldfiles = cons(make_fil(get_id(name()), ch, 0, c.NIL), oldfiles);
+            main.rs.oldfiles = cons(make_fil(get_id(name()), ch, 0, c.NIL), main.rs.oldfiles);
         }
         if (aliases != c.NIL) {
             unscramble(aliases);
@@ -1571,8 +1543,8 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
         TORPHANS = 1;
     }
     SGC = append1(SGC, load_defs(file));
-    if (main_flag != 0 or includees == c.NIL) {
-        freeids = load_defs(file);
+    if (main_flag != 0 or main.rs.includees == c.NIL) {
+        main.rs.freeids = load_defs(file);
     } else {
         bindparams(load_defs(file), hdsort(params));
     }
@@ -1755,7 +1727,7 @@ export fn load_defs(file: ?*c.FILE) Word {
                         break;
                     }
                 }
-                if (@intFromPtr(dicq) - @intFromPtr(dicp) > c.DICSPACE) {
+                if (@intFromPtr(dicq) - @intFromPtr(dicp) > main.rs.DICSPACE) {
                     c.dicovflo();
                 }
                 stackp_push(name());
@@ -1777,7 +1749,7 @@ export fn load_defs(file: ?*c.FILE) Word {
                         break;
                     }
                 }
-                if (@intFromPtr(dicq) - @intFromPtr(dicp) > c.DICSPACE) {
+                if (@intFromPtr(dicq) - @intFromPtr(dicp) > main.rs.DICSPACE) {
                     c.dicovflo();
                 }
                 stackp_push(datapair(@intCast(@intFromPtr(get_id(name()))), 0));
@@ -1804,7 +1776,7 @@ export fn load_defs(file: ?*c.FILE) Word {
                             break;
                         }
                     }
-                    if (@intFromPtr(dicq) - @intFromPtr(dicp) > c.DICSPACE) {
+                    if (@intFromPtr(dicq) - @intFromPtr(dicp) > main.rs.DICSPACE) {
                         c.dicovflo();
                     }
                     var line = c.getc(file);
@@ -2055,16 +2027,16 @@ pub export fn unsetids(d_val: Word) void {
 }
 
 pub export fn unload() void {
-    main.sorted = 0;
+    main.rs.sorted = 0;
     main.speclocs = NIL;
     main.nextpn = 0;
     main.rv_script = 0;
     main.algshfns = NIL;
     unsetids(main.newtyps);
     main.newtyps = NIL;
-    unsetids(main.freeids);
-    main.freeids = NIL;
-    main.includees = NIL;
+    unsetids(main.rs.freeids);
+    main.rs.freeids = NIL;
+    main.rs.includees = NIL;
     main.SGC = NIL;
     main.TABSTRS = NIL;
     main.ND = NIL;
@@ -2075,19 +2047,19 @@ pub export fn unload() void {
         unsetids(t(fil));
         tp(fil).* = NIL;
     }
-    var ld = main.ld_stuff;
+    var ld = main.rs.ld_stuff;
     while (ld != NIL and ld != 0) : (ld = t(ld)) {
         var x = h(ld);
         while (x != NIL and x != 0) : (x = t(x)) {
             unsetids(t(h(x)));
         }
     }
-    main.ld_stuff = NIL;
+    main.rs.ld_stuff = NIL;
 }
 
 pub fn src_update() c_int {
     var ft: Word = undefined;
-    var f = if (main.files == NIL) main.oldfiles else main.files;
+    var f = if (main.files == NIL) main.rs.oldfiles else main.files;
     while (f != NIL) {
         if ((main.fm_time(main.get_fil(h(f)).?)) != fil_time(h(f))) {
             ft = main.fm_time(main.get_fil(h(f)).?);

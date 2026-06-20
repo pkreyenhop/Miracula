@@ -8,7 +8,7 @@ const NIL = main.NIL;
 // State owned by heap.zig / reduce.zig — not yet accessible via @import.
 extern var tag: [*]u8;
 extern var CLASHES: Word;
-extern var debug: c_int;
+
 
 extern fn token() ?[*:0]u8;
 
@@ -36,12 +36,12 @@ fn is(s: [*:0]const u8) bool {
 
 fn filequote(p: [*:0]const u8) void {
     if (filequote_mlen == 0) {
-        const last_slash = clib.strrchr(&main.PRELUDE, '/');
+        const last_slash = clib.strrchr(&main.rs.PRELUDE, '/');
         if (last_slash != null) {
-            filequote_mlen = @intFromPtr(last_slash.?) - @intFromPtr(&main.PRELUDE) + 1;
+            filequote_mlen = @intFromPtr(last_slash.?) - @intFromPtr(&main.rs.PRELUDE) + 1;
         }
     }
-    if (clib.strncmp(p, &main.PRELUDE, filequote_mlen) == 0) {
+    if (clib.strncmp(p, &main.rs.PRELUDE, filequote_mlen) == 0) {
         _ = clib.printf("<%s>", .{.{p + filequote_mlen}});
     } else {
         _ = clib.printf("\"%s\"", .{.{p}});
@@ -54,9 +54,9 @@ fn namescom(l: Word) void {
     var undefs: Word = NIL;
     var wp: usize = 0;
     const scrwd = main.twidth();
-    if (main.sorted == 0 and n != main.primenv) {
+    if (main.rs.sorted == 0 and n != main.rs.primenv) {
         n = main.alfasort(n);
-        main.tp(l).* = n;
+        main.heap.tp(l).* = n;
     }
     if (n == NIL) return;
     if (main.get_fil(l)) |gf| {
@@ -66,8 +66,8 @@ fn namescom(l: Word) void {
     }
     _ = clib.printf("\n", .{.{}});
     while (n != NIL) {
-        if (main.id_type(main.h(n)) == clib.wrong_t or main.id_val(main.h(n)) != clib.UNDEF) {
-            const w = @as(Word, @intCast(clib.strlen(main.get_id(main.h(n)))));
+        if (main.id_type(main.heap.h(n)) == clib.wrong_t or main.id_val(main.heap.h(n)) != clib.UNDEF) {
+            const w = @as(Word, @intCast(clib.strlen(main.get_id(main.heap.h(n)))));
             if (col_local + w < @as(Word, @intCast(scrwd))) {
                 col_local += if (col_local != 0) 1 else 0;
             } else if (wp > 0 and col_local + w >= @as(Word, @intCast(scrwd))) {
@@ -112,12 +112,12 @@ fn namescom(l: Word) void {
                 _ = clib.putchar('\n');
             }
             col_local += w;
-            words[wp] = main.h(n);
+            words[wp] = main.heap.h(n);
             wp += 1;
         } else {
-            undefs = main.cons(main.h(n), undefs);
+            undefs = main.cons(main.heap.h(n), undefs);
         }
-        n = main.t(n);
+        n = main.heap.t(n);
     }
     if (wp > 0) {
         col_local = 0;
@@ -140,16 +140,16 @@ pub export fn command() void {
         'a' => {
             if (is("a") or is("aux")) {
                 if (clib.getchar() != '\n') return;
-                _ = clib.strcpy(&main.linebuf, main.miralib.?);
-                _ = clib.strcat(&main.linebuf, "/auxfile");
-                main.filecopy(@as([*:0]const u8, @ptrCast(&main.linebuf)));
+                _ = clib.strcpy(&main.rs.linebuf, main.rs.miralib.?);
+                _ = clib.strcat(&main.rs.linebuf, "/auxfile");
+                main.filecopy(@as([*:0]const u8, @ptrCast(&main.rs.linebuf)));
                 return;
             }
         },
         'c' => {
             if (is("count")) {
                 if (clib.getchar() != '\n') return;
-                main.atcount = 1;
+                main.rs.atcount = 1;
                 return;
             }
             if (is("cd")) {
@@ -163,7 +163,7 @@ pub export fn command() void {
                 if (clib.chdir(d.?) == -1) {
                     _ = clib.printf("cannot cd to %s\n", .{.{d.?}});
                 } else if (main.src_update() != 0) {
-                    main.undump(main.current_script.?);
+                    main.undump(main.rs.current_script.?);
                 }
                 return;
             }
@@ -172,8 +172,8 @@ pub export fn command() void {
             if (is("dic")) {
                 if (token() == null) {
                     _ = clib.getchar();
-                    _ = clib.printf("%ld chars", .{.{main.DICSPACE}});
-                    if (main.DICSPACE != 100000) {
+                    _ = clib.printf("%ld chars", .{.{main.rs.DICSPACE}});
+                    if (main.rs.DICSPACE != 100000) {
                         _ = clib.printf(" (default=%ld)", .{.{@as(c_long, 100000)}});
                     }
                     _ = clib.printf(" %ld in use\n", .{.{@as(c_long, @intCast(@intFromPtr(main.dicq) - @intFromPtr(main.dic.?)))}});
@@ -191,7 +191,7 @@ pub export fn command() void {
                 if (token()) |tok| {
                     t_val = clib.addextn(1, tok);
                 } else {
-                    t_val = main.current_script;
+                    t_val = main.rs.current_script;
                 }
                 if (clib.getchar() != '\n') return;
                 if (!main.fileExists(t_val.?)) {
@@ -210,7 +210,7 @@ pub export fn command() void {
                     }
                     if (mf == null and mirahdr == null) {
                         main.dicp = main.dicq;
-                        _ = clib.strcpy(main.dicp, main.miralib.?);
+                        _ = clib.strcpy(main.dicp, main.rs.miralib.?);
                         _ = clib.strcat(main.dicp, "/.mirahdr");
                         mirahdr = main.dicp;
                         main.dicq = main.dicp + clib.strlen(main.dicp) + 1;
@@ -218,7 +218,7 @@ pub export fn command() void {
                     if (mf == null and main.fileExists(mirahdr.?)) {
                         mf = mirahdr;
                     }
-                    if (mf != null and t_val != main.current_script) {
+                    if (mf != null and t_val != main.rs.current_script) {
                         _ = clib.printf("open new script \"%s\"? [ny]", .{.{t_val.?}});
                         ch1 = clib.getchar();
                         ch = ch1;
@@ -233,17 +233,17 @@ pub export fn command() void {
                         main.filecp(mf.?, t_val.?);
                     }
                 }
-                const err_line_num: c_int = if (clib.strcmp(t_val.?, main.current_script.?) == 0) @intCast(main.errline) else if (main.errs != 0 and clib.strcmp(t_val.?, @ptrFromInt(@as(usize, @intCast(main.h(main.errs))))) == 0) @intCast(main.t(main.errs)) else @intCast(clib.geterrlin(t_val.?));
+                const err_line_num: c_int = if (clib.strcmp(t_val.?, main.rs.current_script.?) == 0) @intCast(main.errline) else if (main.errs != 0 and clib.strcmp(t_val.?, @ptrFromInt(@as(usize, @intCast(main.heap.h(main.errs))))) == 0) @intCast(main.heap.t(main.errs)) else @intCast(clib.geterrlin(t_val.?));
                 editfile(t_val.?, err_line_num);
                 return;
             }
             if (is("editor")) {
-                const hold = @as([*]u8, @ptrCast(&main.linebuf[0]));
+                const hold = @as([*]u8, @ptrCast(&main.rs.linebuf[0]));
                 if (main.getln(main.getStdin(), clib.pnlim - 1, hold) == 0) {
                     return;
                 }
                 if (hold[0] == 0) {
-                    _ = clib.printf("%s\n", .{.{main.editor orelse @constCast("")}});
+                    _ = clib.printf("%s\n", .{.{main.rs.editor orelse @constCast("")}});
                     return;
                 }
                 var h_ptr = hold + clib.strlen(hold);
@@ -265,12 +265,12 @@ pub export fn command() void {
                     _ = clib.printf("editor not changed\n", .{.{}});
                     return;
                 }
-                _ = clib.strcpy(&main.ebuf, hold);
-                main.editor = @as([*:0]u8, @ptrCast(&main.ebuf));
+                _ = clib.strcpy(&main.rs.ebuf, hold);
+                main.rs.editor = @as([*:0]u8, @ptrCast(&main.rs.ebuf));
                 main.fixeditor();
-                main.echoing = main.verbosity & main.listing;
+                main.rs.echoing = main.rs.verbosity & main.rs.listing;
                 main.rc_write();
-                _ = clib.printf("editor = %s\n", .{.{main.editor orelse @constCast("")}});
+                _ = clib.printf("editor = %s\n", .{.{main.rs.editor orelse @constCast("")}});
                 return;
             }
         },
@@ -289,7 +289,7 @@ pub export fn command() void {
                     main.errs = 0;
                 }
                 if (t_val != null) {
-                    if (clib.strcmp(t_val.?, main.current_script.?) != 0 or (main.files == NIL and clib.okdump(t_val.?) != 0)) {
+                    if (clib.strcmp(t_val.?, main.rs.current_script.?) != 0 or (main.files == NIL and clib.okdump(t_val.?) != 0)) {
                         CLASHES = NIL;
                         main.undump(t_val.?);
                         if (CLASHES != NIL) {
@@ -299,16 +299,16 @@ pub export fn command() void {
                         main.loadfile(t_val.?);
                     }
                 } else {
-                    _ = clib.printf("%s%s\n", .{.{main.current_script.?, @as([*:0]const u8, if (main.files == NIL) " (not loaded)" else "")}});
+                    _ = clib.printf("%s%s\n", .{.{main.rs.current_script.?, @as([*:0]const u8, if (main.files == NIL) " (not loaded)" else "")}});
                 }
                 return;
             }
             if (is("files")) {
                 if (clib.getchar() != '\n') return;
                 var f = main.files;
-                while (f != NIL) : (f = main.t(f)) {
-                    _ = clib.printf("(%s,%ld,%ld)", .{.{main.get_fil(main.h(f)), main.fil_time(main.h(f)), main.fil_share(main.h(f))}});
-                    clib.printlist(@constCast(""), main.fil_defs(main.h(f)));
+                while (f != NIL) : (f = main.heap.t(f)) {
+                    _ = clib.printf("(%s,%ld,%ld)", .{.{main.get_fil(main.heap.h(f)), main.fil_time(main.heap.h(f)), main.fil_share(main.heap.h(f))}});
+                    clib.printlist(@constCast(""), main.fil_defs(main.heap.h(f)));
                 }
                 return;
             }
@@ -319,21 +319,21 @@ pub export fn command() void {
                     i += 1;
                     if (x != NIL) {
                         const n = main.get_id(x);
-                        var y = main.primenv;
-                        while (y != NIL) : (y = main.t(y)) {
-                            if (tag[@intCast(main.h(y))] == clib.ID) {
-                                if (main.h(y) == x or clib.strcmp(clib.getaka(main.h(y)), n) == 0) {
-                                    finger(main.get_id(main.h(y)));
+                        var y = main.rs.primenv;
+                        while (y != NIL) : (y = main.heap.t(y)) {
+                            if (tag[@intCast(main.heap.h(y))] == clib.ID) {
+                                if (main.heap.h(y) == x or clib.strcmp(clib.getaka(main.heap.h(y)), n) == 0) {
+                                    finger(main.get_id(main.heap.h(y)));
                                 }
                             }
                         }
                         var ff = main.files;
-                        while (ff != NIL) : (ff = main.t(ff)) {
-                            var y_def = main.fil_defs(main.h(ff));
-                            while (y_def != NIL) : (y_def = main.t(y_def)) {
-                                if (tag[@intCast(main.h(y_def))] == clib.ID) {
-                                    if (main.h(y_def) == x or clib.strcmp(clib.getaka(main.h(y_def)), n) == 0) {
-                                        finger(main.get_id(main.h(y_def)));
+                        while (ff != NIL) : (ff = main.heap.t(ff)) {
+                            var y_def = main.fil_defs(main.heap.h(ff));
+                            while (y_def != NIL) : (y_def = main.heap.t(y_def)) {
+                                if (tag[@intCast(main.heap.h(y_def))] == clib.ID) {
+                                    if (main.heap.h(y_def) == x or clib.strcmp(clib.getaka(main.heap.h(y_def)), n) == 0) {
+                                        finger(main.get_id(main.heap.h(y_def)));
                                     }
                                 }
                             }
@@ -350,24 +350,24 @@ pub export fn command() void {
         'g' => {
             if (is("gc")) {
                 if (clib.getchar() != '\n') return;
-                main.atgc = 1;
+                main.rs.atgc = 1;
                 return;
             }
         },
         'h' => {
             if (is("h") or is("help")) {
                 if (clib.getchar() != '\n') return;
-                _ = clib.strcpy(&main.linebuf, main.miralib.?);
-                _ = clib.strcat(&main.linebuf, "/helpfile");
-                main.filecopy(@as([*:0]const u8, @ptrCast(&main.linebuf)));
+                _ = clib.strcpy(&main.rs.linebuf, main.rs.miralib.?);
+                _ = clib.strcat(&main.rs.linebuf, "/helpfile");
+                main.filecopy(@as([*:0]const u8, @ptrCast(&main.rs.linebuf)));
                 return;
             }
             if (is("heap")) {
                 var x: c_long = undefined;
                 if (token() == null) {
                     _ = clib.getchar();
-                    _ = clib.printf("%ld cells", .{.{main.SPACELIMIT}});
-                    if (main.SPACELIMIT != 2500000) {
+                    _ = clib.printf("%ld cells", .{.{main.rs.SPACELIMIT}});
+                    if (main.rs.SPACELIMIT != 2500000) {
                         _ = clib.printf(" (default=%ld)", .{.{@as(c_long, 2500000)}});
                     }
                     _ = clib.printf("\n", .{.{}});
@@ -381,27 +381,27 @@ pub export fn command() void {
                 if (x < clib.trueheapsize()) {
                     _ = clib.printf("sorry, cannot shrink heap to %ld at this time\n", .{.{x}});
                 } else {
-                    if (x != main.SPACELIMIT) {
-                        main.SPACELIMIT = x;
+                    if (x != main.rs.SPACELIMIT) {
+                        main.rs.SPACELIMIT = x;
                         clib.resetheap();
                     }
-                    _ = clib.printf("heaplimit = %ld cells\n", .{.{main.SPACELIMIT}});
+                    _ = clib.printf("heaplimit = %ld cells\n", .{.{main.rs.SPACELIMIT}});
                     main.rc_write();
                 }
                 return;
             }
             if (is("hush")) {
                 if (clib.getchar() != '\n') return;
-                main.echoing = 0;
-                main.verbosity = 0;
+                main.rs.echoing = 0;
+                main.rs.verbosity = 0;
                 return;
             }
         },
         'l' => {
             if (is("list")) {
                 if (clib.getchar() != '\n') return;
-                main.listing = 1;
-                main.echoing = main.verbosity & main.listing;
+                main.rs.listing = 1;
+                main.rs.echoing = main.rs.verbosity & main.rs.listing;
                 main.rc_write();
                 return;
             }
@@ -414,37 +414,37 @@ pub export fn command() void {
             }
             if (is("miralib")) {
                 if (clib.getchar() != '\n') return;
-                _ = clib.printf("%s\n", .{.{main.miralib.?}});
+                _ = clib.printf("%s\n", .{.{main.rs.miralib.?}});
                 return;
             }
         },
         'n' => {
             if (is("nocount")) {
                 if (clib.getchar() != '\n') return;
-                main.atcount = 0;
+                main.rs.atcount = 0;
                 return;
             }
             if (is("nogc")) {
                 if (clib.getchar() != '\n') return;
-                main.atgc = 0;
+                main.rs.atgc = 0;
                 return;
             }
             if (is("nohush")) {
                 if (clib.getchar() != '\n') return;
-                main.echoing = main.listing;
-                main.verbosity = 1;
+                main.rs.echoing = main.rs.listing;
+                main.rs.verbosity = 1;
                 return;
             }
             if (is("nolist")) {
                 if (clib.getchar() != '\n') return;
-                main.listing = 0;
-                main.echoing = 0;
+                main.rs.listing = 0;
+                main.rs.echoing = 0;
                 main.rc_write();
                 return;
             }
             if (is("norecheck")) {
                 if (clib.getchar() != '\n') return;
-                main.rechecking = 0;
+                main.rs.rechecking = 0;
                 main.rc_write();
                 return;
             }
@@ -452,7 +452,7 @@ pub export fn command() void {
         'q' => {
             if (is("q") or is("quit")) {
                 if (clib.getchar() != '\n') return;
-                if (main.verbosity != 0) {
+                if (main.rs.verbosity != 0) {
                     _ = clib.printf("miranda logout\n", .{.{}});
                 }
                 clib.exit(0);
@@ -461,7 +461,7 @@ pub export fn command() void {
         'r' => {
             if (is("recheck")) {
                 if (clib.getchar() != '\n') return;
-                main.rechecking = 2;
+                main.rs.rechecking = 2;
                 main.rc_write();
                 return;
             }
@@ -469,28 +469,28 @@ pub export fn command() void {
         's' => {
             if (is("s") or is("settings")) {
                 if (clib.getchar() != '\n') return;
-                _ = clib.printf("*\theap %ld\n", .{.{main.SPACELIMIT}});
-                _ = clib.printf("*\tdic %ld\n", .{.{main.DICSPACE}});
-                _ = clib.printf("*\teditor = %s\n", .{.{main.editor orelse @constCast("")}});
-                _ = clib.printf("*\t%slist\n", .{.{@as([*:0]const u8, if (main.listing != 0) "" else "no")}});
-                _ = clib.printf("*\t%srecheck\n", .{.{@as([*:0]const u8, if (main.rechecking != 0) "" else "no")}});
-                if (main.strictif == 0) {
+                _ = clib.printf("*\theap %ld\n", .{.{main.rs.SPACELIMIT}});
+                _ = clib.printf("*\tdic %ld\n", .{.{main.rs.DICSPACE}});
+                _ = clib.printf("*\teditor = %s\n", .{.{main.rs.editor orelse @constCast("")}});
+                _ = clib.printf("*\t%slist\n", .{.{@as([*:0]const u8, if (main.rs.listing != 0) "" else "no")}});
+                _ = clib.printf("*\t%srecheck\n", .{.{@as([*:0]const u8, if (main.rs.rechecking != 0) "" else "no")}});
+                if (!main.rs.strictif) {
                     _ = clib.printf("\t-nostrictif (deprecated!)\n", .{.{}});
                 }
-                if (main.atcount != 0) {
+                if (main.rs.atcount != 0) {
                     _ = clib.printf("\tcount\n", .{.{}});
                 }
-                if (main.atgc != 0) {
+                if (main.rs.atgc != 0) {
                     _ = clib.printf("\tgc\n", .{.{}});
                 }
-                if (main.UTF8 != 0) {
+                if (main.rs.UTF8 != 0) {
                     _ = clib.printf("\tUTF-8 i/o\n", .{.{}});
                 }
-                if (main.verbosity == 0) {
+                if (main.rs.verbosity == 0) {
                     _ = clib.printf("\thush\n", .{.{}});
                 }
-                if (debug != 0) {
-                    _ = clib.printf("\tdebug 0%o\n", .{.{debug}});
+                if (main.rs.debug != 0) {
+                    _ = clib.printf("\tdebug 0%o\n", .{.{main.rs.debug}});
                 }
                 _ = clib.printf("\n* items remembered between sessions\n", .{.{}});
                 return;
@@ -516,15 +516,15 @@ pub export fn command() void {
 }
 
 pub export fn manaction() void {
-    _ = clib.sprintf(&main.linebuf, "\"%s/menudriver\" \"%s/manual\"", .{main.miralib.?, main.miralib.?});
-    _ = clib.system(&main.linebuf);
+    _ = clib.sprintf(&main.rs.linebuf, "\"%s/menudriver\" \"%s/manual\"", .{main.rs.miralib.?, main.rs.miralib.?});
+    _ = clib.system(&main.rs.linebuf);
 }
 
 pub export fn editfile(t_val: [*:0]const u8, line: c_int) void {
     var line_val = line;
-    const ebuf_local = @as([*]u8, @ptrCast(&main.linebuf[0]));
+    const ebuf_local = @as([*]u8, @ptrCast(&main.rs.linebuf[0]));
     var p = ebuf_local;
-    var q = main.editor.?;
+    var q = main.rs.editor.?;
     var tdone: c_int = 0;
     if (line_val == 0) {
         line_val = 1;
@@ -569,7 +569,7 @@ pub export fn editfile(t_val: [*:0]const u8, line: c_int) void {
     }
     _ = clib.system(ebuf_local);
     if (main.src_update() != 0) {
-        main.loadfile(main.current_script.?);
+        main.loadfile(main.rs.current_script.?);
     }
 }
 
@@ -589,11 +589,11 @@ pub export fn finger(n: [*:0]const u8) void {
     if (x != NIL and main.id_type(x) != clib.undef_t) {
         if (main.id_who(x) != NIL) {
             const here_val = main.get_here(x);
-            s = @ptrFromInt(@as(usize, @intCast(main.h(here_val))));
-            line = main.t(here_val);
+            s = @ptrFromInt(@as(usize, @intCast(main.heap.h(here_val))));
+            line = main.heap.t(here_val);
         }
-        if (main.lastid == 0) {
-            main.lastid = x;
+        if (main.rs.lastid == 0) {
+            main.rs.lastid = x;
         }
         clib.report_type(x);
         if (main.id_who(x) == NIL) {
@@ -612,7 +612,7 @@ pub export fn finger(n: [*:0]const u8) void {
                 _ = clib.printf(" ||%sdefined in ", .{.{class_str}});
             }
             filequote(s.?);
-            if (main.baded != 0 or main.rechecking != 0) {
+            if (main.rs.baded != 0 or main.rs.rechecking != 0) {
                 _ = clib.printf(" line %ld", .{.{line}});
             }
             if (aka_opt) |aka_s| {
@@ -621,7 +621,7 @@ pub export fn finger(n: [*:0]const u8) void {
                 _ = clib.putchar('\n');
             }
         }
-        if (main.atobject != 0) {
+        if (main.rs.atobject != 0) {
             _ = clib.printf("%s = ", .{.{main.get_id(x)}});
             clib.out(main.getStdout(), main.id_val(x));
             _ = clib.putchar('\n');
@@ -661,31 +661,31 @@ pub export fn allnamescom() void {
     var y = main.ND;
     var z: Word = 0;
     leftist = 0;
-    namescom(main.make_fil(if (main.nostdenv != 0) null else @as([*:0]const u8, @ptrCast(&main.STDENV)), 0, 0, main.primenv));
+    namescom(main.make_fil(if (main.rs.nostdenv != 0) null else @as([*:0]const u8, @ptrCast(&main.rs.STDENV)), 0, 0, main.rs.primenv));
     if (main.files == NIL) return;
-    s = main.t(main.files);
-    while (s != NIL) : (s = main.t(s)) {
-        namescom(main.h(s));
+    s = main.heap.t(main.files);
+    while (s != NIL) : (s = main.heap.t(s)) {
+        namescom(main.heap.h(s));
     }
-    namescom(main.h(main.files));
-    main.sorted = 1;
+    namescom(main.heap.h(main.files));
+    main.rs.sorted = 1;
 
-    while (x != NIL and main.id_type(main.h(x)) == clib.undef_t) {
-        x = main.t(x);
+    while (x != NIL and main.id_type(main.heap.h(x)) == clib.undef_t) {
+        x = main.heap.t(x);
     }
-    while (y != NIL and main.id_type(main.h(y)) != clib.undef_t) {
-        y = main.t(y);
+    while (y != NIL and main.id_type(main.heap.h(y)) != clib.undef_t) {
+        y = main.heap.t(y);
     }
     if (x != NIL) {
         _ = clib.printf("WARNING, SCRIPT CONTAINS TYPE ERRORS: ", .{.{}});
-        while (x != NIL) : (x = main.t(x)) {
-            if (main.id_type(main.h(x)) != clib.undef_t) {
+        while (x != NIL) : (x = main.heap.t(x)) {
+            if (main.id_type(main.heap.h(x)) != clib.undef_t) {
                 if (z == 0) {
                     z = 1;
                 } else {
                     _ = clib.putchar(',');
                 }
-                clib.out(main.getStdout(), main.h(x));
+                clib.out(main.getStdout(), main.heap.h(x));
             }
         }
         _ = clib.printf(";\n", .{.{}});
@@ -693,14 +693,14 @@ pub export fn allnamescom() void {
     if (y != NIL) {
         _ = clib.printf("%s UNDEFINED NAMES: ", .{.{@as([*:0]const u8, if (z != 0) "AND" else "WARNING, SCRIPT CONTAINS")}});
         z = 0;
-        while (y != NIL) : (y = main.t(y)) {
-            if (main.id_type(main.h(y)) == clib.undef_t) {
+        while (y != NIL) : (y = main.heap.t(y)) {
+            if (main.id_type(main.heap.h(y)) == clib.undef_t) {
                 if (z == 0) {
                     z = 1;
                 } else {
                     _ = clib.putchar(',');
                 }
-                clib.out(main.getStdout(), main.h(y));
+                clib.out(main.getStdout(), main.heap.h(y));
             }
         }
         _ = clib.printf(";\n", .{.{}});

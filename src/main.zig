@@ -3,6 +3,7 @@ const platform = @import("io/platform.zig");
 const parser_api = @import("parser/parser_api.zig");
 const word_mod = @import("runtime/word.zig");
 const clib = @import("runtime/main_clib.zig");
+const rt = @import("runtime/runtime_state.zig");
 const setup = @import("compiler/setup.zig");
 const module_loader = @import("compiler/module_loader.zig");
 const commands = @import("driver/commands.zig");
@@ -20,7 +21,11 @@ pub const CMBASE: Word = 306;
 pub const NIL: Word = CMBASE + 138;
 pub const ATOMLIMIT: Word = CMBASE + 141;
 
-// Global state variables (referenced by C ABI and other modules)
+// RuntimeState: all mutable interpreter state not constrained by extern var circularity
+pub const RuntimeState = rt.RuntimeState;
+pub var rs: RuntimeState = .{};
+
+// Global state variables (TYPE B: defined in other modules, re-exported here)
 pub extern var hd: [*]Word;
 pub extern var tl: [*]Word;
 pub extern var tag: [*]u8;
@@ -47,34 +52,17 @@ extern var lineptr: Word;
 
 pub extern var lfrule: c_int;
 
-// Global variables exported to C
+// Stuck export vars: must remain here because heap.zig / parser_api.zig access
+// them via extern var and cannot @import main.zig (would create a circular import).
 pub export var nill: Word = 0;
-pub export var Void: Word = 0;
-pub var main_id: Word = 0;
-pub export var message: Word = 0;
-pub export var standardout: Word = 0;
-pub export var diagonalise: Word = 0;
-pub export var concat: Word = 0;
-pub export var indent_fn: Word = 0;
-pub export var outdent_fn: Word = 0;
-pub export var listdiff_fn: Word = 0;
-pub export var shownum1: Word = 0;
-pub export var showbool: Word = 0;
-pub export var showchar: Word = 0;
-pub export var showlist: Word = 0;
-pub export var showstring: Word = 0;
-pub export var showparen: Word = 0;
-pub export var showpair: Word = 0;
-pub export var showvoid: Word = 0;
-pub export var showfunction: Word = 0;
-pub export var showabstract: Word = 0;
-pub export var showwhat: Word = 0;
-pub export var lastid: Word = 0;
-pub export var rv_expr: Word = 0;
-
-pub var PRELUDE: [clib.pnlim + 10]u8 = undefined;
-pub var STDENV: [clib.pnlim + 9]u8 = undefined;
 pub export var loading: c_int = 0;
+pub export var compiling: c_int = 1;
+pub export var errs: Word = 0;
+pub export var errline: Word = 0;
+pub export var obsuffix: [*:0]const u8 = "x";
+pub export var SYNERR: Word = 0;
+pub export var commandmode: Word = 0;
+
 pub extern var BAD_DUMP: Word;
 pub extern var CLASHES: Word;
 extern var col: Word;
@@ -82,60 +70,8 @@ extern var DETROP: Word;
 extern var MISSING: Word;
 extern var ALIASES: Word;
 extern var TSUPPRESSED: Word;
-pub export var fnts: Word = NIL;
 
-pub export var SPACELIMIT: Word = 2500000;
-pub export var DICSPACE: Word = 100000;
-pub export var UTF8: c_int = 0;
-pub export var UTF8OUT: c_int = 0;
-pub export var editor: ?[*:0]u8 = null;
 pub const EDITOR: [*:0]const u8 = "vi +!";
-pub var okprel: Word = 0;
-pub var nostdenv: Word = 0;
-pub export var baded: Word = 0;
-pub export var miralib: ?[*:0]u8 = null;
-pub var promptstr: [*:0]const u8 = "Miranda ";
-pub export var obsuffix: [*:0]const u8 = "x";
-pub export var s_in: ?*clib.FILE = null;
-pub export var commandmode: Word = 0;
-pub var atobject: c_int = 0;
-pub export var atgc: c_int = 0;
-pub export var atcount: c_int = 0;
-export var debug: c_int = 0;
-pub export var magic: Word = 0;
-pub var making: Word = 0;
-pub var mkexports: Word = 0;
-pub var mksources: Word = 0;
-pub export var make_status: Word = 0;
-pub export var compiling: c_int = 1;
-pub export var ideep: c_int = 0;
-pub export var SYNERR: Word = 0;
-pub export var initialising: Word = 1;
-pub export var primenv: Word = NIL;
-pub export var current_script: ?[*:0]u8 = null;
-pub export var lastexp: Word = clib.UNDEF;
-pub export var echoing: Word = 0;
-pub export var listing: Word = 0;
-pub export var verbosity: Word = 0;
-pub export var strictif: Word = 1;
-pub export var rechecking: Word = 0;
-pub export var errline: Word = 0;
-pub export var errs: Word = 0;
-pub export var cstack: ?[*]Word = null;
-pub export var linebuf: [clib.BUFSIZE]u8 = undefined;
-pub export var ebuf: [clib.pnlim]u8 = undefined;
-pub export var home_rc: [clib.pnlim + 8]u8 = undefined;
-pub export var lib_rc: [clib.pnlim + 8]u8 = undefined;
-pub export var rc_error: ?[*:0]const u8 = null;
-
-pub var env: clib.sigjmp_buf = undefined;
-pub var unlinkme: ?[*:0]const u8 = null;
-pub export var sorted: c_int = 0;
-pub export var detrop: Word = NIL;
-pub export var rfl: Word = NIL;
-pub export var bereaved: Word = 0;
-pub export var ld_stuff: Word = NIL;
-pub var sigflag: c_int = 0;
 
 pub extern var namebucket: [128]Word;
 pub extern var pnvec: ?[*]Word;
@@ -149,28 +85,13 @@ extern var c: Word;
 pub extern var files: Word;
 pub extern var current_file: Word;
 extern var collecting: Word;
-pub export var oldfiles: Word = NIL;
-pub export var includees: Word = NIL;
-pub export var freeids: Word = NIL;
-pub export var exports: Word = NIL;
 pub extern var exportfiles: Word;
-pub export var embargoes: Word = NIL;
 pub extern var newtyps: Word;
 pub extern var SGC: Word;
 pub extern var speclocs: Word;
 pub extern var rv_script: Word;
 pub extern var algshfns: Word;
 pub extern var nextpn: Word;
-export var lastname: Word = 0;
-export var suppressids: Word = NIL;
-export var col_fn: Word = 0;
-export var eprodnts: Word = NIL;
-export var nonterminals: Word = NIL;
-export var ntmap: Word = NIL;
-export var ihlist: Word = 0;
-export var ntspecmap: Word = NIL;
-export var lexstates: Word = NIL;
-export var lexdefs: Word = NIL;
 pub extern var TABSTRS: Word;
 pub extern var ND: Word;
 pub extern var polyshowerror: c_int;
@@ -193,13 +114,13 @@ extern fn reset_lex() void;
 pub extern fn dic_check() void;
 extern fn isconstrname(input: [*:0]const u8) c_int;
 
-// Inline functions
+// Inline helpers (use heap module directly — B2: no h/t aliases here)
 pub inline fn get_id(x: Word) [*:0]const u8 {
-    return @ptrFromInt(@as(usize, @intCast(h(h(h(x))))));
+    return @ptrFromInt(@as(usize, @intCast(heap.h(heap.h(heap.h(x))))));
 }
 
 pub inline fn get_fil(fil: Word) ?[*:0]const u8 {
-    const val = h(h(h(fil)));
+    const val = heap.h(heap.h(heap.h(fil)));
     if (val == 0) return null;
     return @ptrFromInt(@as(usize, @intCast(val)));
 }
@@ -214,8 +135,7 @@ pub inline fn getStderr() ?*clib.FILE {
     return clib.stderr();
 }
 
-// Relocated aliases
-// Compiler Setup
+// Relocated aliases — Compiler Setup
 pub const privlib = setup.privlib;
 pub const stdlib = setup.stdlib;
 pub const mira_setup = setup.mira_setup;
@@ -244,11 +164,8 @@ pub const unlinkx = files_mod.unlinkx;
 pub const mkabsolute = files_mod.mkabsolute;
 pub const twidth = files_mod.twidth;
 
-// Heap accessors & constructors
-pub const h = heap.h;
-pub const t = heap.t;
-pub const hp = heap.hp;
-pub const tp = heap.tp;
+// Heap accessors — B2: h/t/hp/tp removed; callers use main.heap.h/t/hp/tp directly.
+// Other heap aliases kept to avoid churn in call sites not covered by B2.
 pub const cons = heap.cons;
 pub const fil_time = heap.fil_time;
 pub const fil_share = heap.fil_share;
@@ -335,4 +252,5 @@ comptime {
     _ = @import("io/files.zig");
     _ = @import("io/signals.zig");
     _ = @import("runtime/version.zig");
+    _ = @import("runtime/runtime_state.zig");
 }

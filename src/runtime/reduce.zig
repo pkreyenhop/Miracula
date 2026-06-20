@@ -1,6 +1,7 @@
 const std = @import("std");
 const platform = @import("../io/platform.zig");
 const clib = @import("c_abi.zig");
+const main = @import("../main.zig");
 
 const Word = c_long;
 const NIL: Word = clib.CMBASE + 138;
@@ -14,16 +15,12 @@ extern var hd: [*]Word;
 extern var tl: [*]Word;
 extern var tag: [*]u8;
 
-extern var UTF8: c_int;
-extern var UTF8OUT: c_int;
-extern var cstack: ?[*]Word;
 extern var compiling: c_int;
 extern var errs: Word;
 
 extern var nogcs: c_long;
 extern var claims: c_long;
 extern var cellcount: i64;
-extern var atcount: c_int;
 
 export var stdinuse: Word = 0;
 export var outfilq: Word = NIL;
@@ -279,7 +276,7 @@ export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
                 stdinuse = '-';
                 tp(ctx.e).* = @intCast(@intFromPtr(getStdin().?));
             }
-            const hold_char = if (UTF8 != 0) sto_char(fromUTF8(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))))) else clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
+            const hold_char = if (main.rs.UTF8 != 0) sto_char(fromUTF8(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))))) else clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
             if (hold_char == clib.EOF) {
                 _ = clib.fclose(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
                 rewrite_to_nil(&ctx.e);
@@ -318,7 +315,6 @@ export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
     }
 }
 
-extern var linebuf: [1024]u8;
 
 export fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     var curr_x = x;
@@ -335,28 +331,28 @@ export fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     var p_idx: usize = 0;
     while (tag[@as(usize, @intCast(curr_x))] == clib.CONS and n > 0) {
         n -= 1;
-        linebuf[p_idx] = @intCast(h(curr_x));
+        main.rs.linebuf[p_idx] = @intCast(h(curr_x));
         p_idx += 1;
         curr_x = t(curr_x);
     }
-    linebuf[p_idx] = 0;
+    main.rs.linebuf[p_idx] = 0;
     p_idx += 1;
     if (p_idx > buf_size) {
         if (cmd) |cmd_str| {
-            _ = clib.fprintf(getStderr().?, "\n%s, argument string too long (limit=%d chars): %s...\n", .{.{cmd_str, @as(c_int, buf_size), &linebuf}});
+            _ = clib.fprintf(getStderr().?, "\n%s, argument string too long (limit=%d chars): %s...\n", .{.{cmd_str, @as(c_int, buf_size), &main.rs.linebuf}});
             outstats();
             clib.exit(1);
         } else {
-            return @ptrCast(&linebuf);
+            return @ptrCast(&main.rs.linebuf);
         }
     }
-    return @ptrCast(&linebuf);
+    return @ptrCast(&main.rs.linebuf);
 }
 
 export fn initclock() void {}
 
 export fn outstats() void {
-    if (atcount == 0) {
+    if (main.rs.atcount == 0) {
         return;
     }
     var buffer: clib.struct_tms = undefined;
@@ -667,7 +663,7 @@ export fn print(arg_e: Word) void {
             break;
         }
         const c = @as(u32, @intCast(clib.get_char(h(e))));
-        if (UTF8 != 0) {
+        if (main.rs.UTF8 != 0) {
             clib.outUTF8(c, s_out);
         } else if (c < 256) {
             _ = clib.putc(@intCast(c), s_out.?);
@@ -700,9 +696,9 @@ const Appendfileb = 9;
 
 export fn output(arg_e: Word) void {
     var e = arg_e;
-    const old_cstack = cstack;
-    cstack = @ptrCast(&e);
-    defer cstack = old_cstack;
+    const old_cstack = main.rs.cstack;
+    main.rs.cstack = @ptrCast(&e);
+    defer main.rs.cstack = old_cstack;
 
     e = reduce(e);
     while (tag[@as(usize, @intCast(e))] == clib.CONS) {
@@ -712,9 +708,9 @@ export fn output(arg_e: Word) void {
                 print(t(h(e)));
             },
             Stdoutb => {
-                UTF8OUT = 0;
+                main.rs.UTF8OUT = 0;
                 print(t(h(e)));
-                UTF8OUT = UTF8;
+                main.rs.UTF8OUT = main.rs.UTF8;
             },
             Stderr => {
                 s_out = getStderr();
@@ -725,9 +721,9 @@ export fn output(arg_e: Word) void {
                 outf(h(e));
             },
             Tofileb => {
-                UTF8OUT = 0;
+                main.rs.UTF8OUT = 0;
                 outf(h(e));
-                UTF8OUT = UTF8;
+                main.rs.UTF8OUT = main.rs.UTF8;
             },
             Closefile => {
                 tp(h(e)).* = reduce(t(h(e)));
@@ -738,10 +734,10 @@ export fn output(arg_e: Word) void {
                 apfile(t(h(e)));
             },
             Appendfileb => {
-                UTF8OUT = 0;
+                main.rs.UTF8OUT = 0;
                 tp(h(e)).* = reduce(t(h(e)));
                 apfile(t(h(e)));
-                UTF8OUT = UTF8;
+                main.rs.UTF8OUT = main.rs.UTF8;
             },
             System => {
                 tp(h(e)).* = reduce(t(h(e)));

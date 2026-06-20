@@ -74,7 +74,7 @@ export var yysterm = yysterm_data;
 
 export fn syntax(s: [*:0]const u8) void {
     if (main.SYNERR != 0) return;
-    if (main.echoing != 0) {
+    if (main.rs.echoing != 0) {
         _ = clib.fprintf(main.getStderr().?, "\n", .{.{}});
     }
     _ = clib.fprintf(main.getStderr().?, "syntax error: %s", .{.{s}});
@@ -90,16 +90,16 @@ export fn acterror() void {
 
 pub fn primdef(n: [*:0]const u8, v: Word, t_val: Word) void {
     const x = clib.make_id(@constCast(n));
-    main.primenv = main.cons(x, main.primenv);
-    main.tp(x).* = v;
-    main.tp(main.h(x)).* = t_val;
+    main.rs.primenv = main.cons(x, main.rs.primenv);
+    main.heap.tp(x).* = v;
+    main.heap.tp(main.heap.h(x)).* = t_val;
 }
 
 pub fn predef(n: [*:0]const u8, v: Word, t_val: Word) void {
     const x = clib.make_id(@constCast(n));
     main.addtoenv(x);
-    main.tp(x).* = if (main.isconstructor(x)) main.constructor(v, x) else v;
-    main.tp(main.h(x)).* = t_val;
+    main.heap.tp(x).* = if (main.isconstructor(x)) main.constructor(v, x) else v;
+    main.heap.tp(main.heap.h(x)).* = t_val;
 }
 
 pub fn primlib() void {
@@ -187,28 +187,28 @@ pub fn mira_setup() void {
     common_stdinb = clib.ap(clib.READBIN, 0);
     cook_stdin = clib.ap(clib.readvals(0, 0), clib.OFFSIDE);
     main.nill = main.cons(clib.CONST, NIL);
-    main.Void = clib.make_id(@constCast("()"));
-    main.tp(main.h(main.Void)).* = clib.void_t;
-    main.tp(main.Void).* = main.constructor(0, main.Void);
-    main.message = clib.make_id(@constCast("sys_message"));
-    main.main_id = clib.make_id(@constCast("main"));
-    main.concat = clib.make_id(@constCast("concat"));
-    main.diagonalise = clib.make_id(@constCast("diagonalise"));
-    main.standardout = main.constructor(0, @as([*:0]const u8, "Stdout"));
-    main.indent_fn = clib.make_id(@constCast("indent"));
-    main.outdent_fn = clib.make_id(@constCast("outdent"));
-    main.listdiff_fn = clib.make_id(@constCast("listdiff"));
-    main.shownum1 = clib.make_id(@constCast("shownum1"));
-    main.showbool = clib.make_id(@constCast("showbool"));
-    main.showchar = clib.make_id(@constCast("showchar"));
-    main.showlist = clib.make_id(@constCast("showlist"));
-    main.showstring = clib.make_id(@constCast("showstring"));
-    main.showparen = clib.make_id(@constCast("showparen"));
-    main.showpair = clib.make_id(@constCast("showpair"));
-    main.showvoid = clib.make_id(@constCast("showvoid"));
-    main.showfunction = clib.make_id(@constCast("showfunction"));
-    main.showabstract = clib.make_id(@constCast("showabstract"));
-    main.showwhat = clib.make_id(@constCast("showwhat"));
+    main.rs.Void = clib.make_id(@constCast("()"));
+    main.heap.tp(main.heap.h(main.rs.Void)).* = clib.void_t;
+    main.heap.tp(main.rs.Void).* = main.constructor(0, main.rs.Void);
+    main.rs.message = clib.make_id(@constCast("sys_message"));
+    main.rs.main_id = clib.make_id(@constCast("main"));
+    main.rs.concat = clib.make_id(@constCast("concat"));
+    main.rs.diagonalise = clib.make_id(@constCast("diagonalise"));
+    main.rs.standardout = main.constructor(0, @as([*:0]const u8, "Stdout"));
+    main.rs.indent_fn = clib.make_id(@constCast("indent"));
+    main.rs.outdent_fn = clib.make_id(@constCast("outdent"));
+    main.rs.listdiff_fn = clib.make_id(@constCast("listdiff"));
+    main.rs.shownum1 = clib.make_id(@constCast("shownum1"));
+    main.rs.showbool = clib.make_id(@constCast("showbool"));
+    main.rs.showchar = clib.make_id(@constCast("showchar"));
+    main.rs.showlist = clib.make_id(@constCast("showlist"));
+    main.rs.showstring = clib.make_id(@constCast("showstring"));
+    main.rs.showparen = clib.make_id(@constCast("showparen"));
+    main.rs.showpair = clib.make_id(@constCast("showpair"));
+    main.rs.showvoid = clib.make_id(@constCast("showvoid"));
+    main.rs.showfunction = clib.make_id(@constCast("showfunction"));
+    main.rs.showabstract = clib.make_id(@constCast("showabstract"));
+    main.rs.showwhat = clib.make_id(@constCast("showwhat"));
     primlib();
 }
 
@@ -217,7 +217,7 @@ test "mira_setup initialisation and primitive seeding" {
     mira_setup();
 
     // Verify primitives from primlib are seeded correctly
-    try std.testing.expect(main.primenv != NIL);
-    try std.testing.expect(main.Void != 0);
-    try std.testing.expect(main.standardout != 0);
+    try std.testing.expect(main.rs.primenv != NIL);
+    try std.testing.expect(main.rs.Void != 0);
+    try std.testing.expect(main.rs.standardout != 0);
 }

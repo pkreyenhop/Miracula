@@ -1,5 +1,6 @@
 const std = @import("std");
 const clib = @import("../runtime/c_abi.zig");
+const main = @import("../main.zig");
 
 const Word = c_long;
 const CMBASE: Word = 306;
@@ -64,10 +65,6 @@ var sl: Word = 100;
 var pn_lim: Word = 200;
 var atnl: Word = 1;
 
-extern var echoing: Word;
-extern var listing: Word;
-extern var verbosity: Word;
-extern var magic: Word;
 export var inbnf: Word = 0;
 export var inlex: Word = 0;
 extern var files: Word;
@@ -76,15 +73,10 @@ export var sreds: Word = 0;
 export var exportfiles: Word = NIL;
 export var inexplist: Word = 0;
 extern var compiling: c_int;
-extern var lastid: Word;
-extern var s_in: ?*clib.FILE;
 extern var s_out: ?*clib.FILE;
-extern var miralib: [*:0]const u8;
-extern var current_script: [*:0]const u8;
 extern var current_file: Word;
 extern var errs: Word;
 extern var errline: Word;
-extern var linebuf: [1024]u8;
 extern var ltchar: Word;
 
 extern var TABSTRS: Word;
@@ -96,7 +88,6 @@ extern var rv_script: Word;
 export var idsused: Word = NIL;
 export var ARGC: c_int = 0;
 export var ARGV: [*]?[*:0]u8 = undefined;
-extern var UTF8: c_int;
 export var yylval: Word = NIL;
 extern var commandmode: Word;
 
@@ -121,22 +112,22 @@ export fn mira_lex_setup_string(source: [*:0]const u8) void {
     const f = clib.fmemopen(@ptrCast(@constCast(source)), len, "r") orelse return;
     fileq = cons(make(STRCONS, @intCast(@intFromPtr(f)), NIL), fileq);
     insertdepth += 1;
-    s_in = f;
+    main.rs.s_in = f;
 }
 
 export fn mira_lex_cleanup() void {
-    if (s_in) |f| {
+    if (main.rs.s_in) |f| {
         const is_stdio = (f == getStdin()) or (f == getStdout()) or (f == getStderr());
         if (!is_stdio) {
             _ = clib.fclose(f);
-            s_in = null;
+            main.rs.s_in = null;
         }
     }
 }
 
 export fn mira_lex_setup_file(filename: [*:0]const u8) c_int {
     if (openfile(filename) == 0) return 0;
-    s_in = @ptrFromInt(@as(usize, @intCast(h(h(fileq)))));
+    main.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(h(fileq)))));
     return 1;
 }
 
@@ -236,7 +227,7 @@ fn is(s: [*:0]const u8) bool {
 fn ovflocheck() void {
     const d_ptr = @as(usize, @intFromPtr(dicq));
     const start_ptr = @as(usize, @intFromPtr(dic));
-    if (d_ptr - start_ptr > @as(usize, @intCast(clib.DICSPACE))) {
+    if (d_ptr - start_ptr > @as(usize, @intCast(main.rs.DICSPACE))) {
         dicovflo();
     }
 }
@@ -247,7 +238,7 @@ export fn dicovflo() void {
 }
 
 export fn setupdic() void {
-    const space = clib.DICSPACE;
+    const space = main.rs.DICSPACE;
     if (dic == null) {
         const ptr = clib.malloc(@intCast(space)) orelse {
             mallocfail("dictionary");
@@ -309,8 +300,8 @@ export fn token() ?[*:0]u8 {
                 dicq -= 1;
             } else {
                 dicq -= 1;
-                _ = clib.strcpy(dicq, current_script);
-                dicq += clib.strlen(current_script);
+                _ = clib.strcpy(dicq, main.rs.current_script.?);
+                dicq += clib.strlen(main.rs.current_script.?);
             }
         }
         ch = clib.getchar();
@@ -336,12 +327,12 @@ export fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
     if (s[0] == '<' and s[@intCast(n - 1)] == '>') {
         var miralen: usize = 0;
         if (miralen == 0) {
-            miralen = clib.strlen(miralib);
+            miralen = clib.strlen(main.rs.miralib.?);
         }
-        _ = clib.strcpy(&linebuf[0], miralib);
-        linebuf[miralen] = '/';
-        _ = clib.strcpy(&linebuf[miralen + 1], s + 1);
-        _ = clib.strcpy(dicp, &linebuf[0]);
+        _ = clib.strcpy(&main.rs.linebuf[0], main.rs.miralib.?);
+        main.rs.linebuf[miralen] = '/';
+        _ = clib.strcpy(&main.rs.linebuf[miralen + 1], s + 1);
+        _ = clib.strcpy(dicp, &main.rs.linebuf[0]);
         s = dicp;
         n = n + @as(Word, @intCast(miralen)) - 1;
         dicq = dicp + @as(usize, @intCast(n + 1));
@@ -398,16 +389,16 @@ fn litname(s: [*:0]const u8) bool {
 }
 
 fn getch() c_int {
-    if (s_in == null) {
+    if (main.rs.s_in == null) {
         return clib.EOF;
     }
-    var ch = clib.getc(s_in);
+    var ch = clib.getc(main.rs.s_in);
     if (ch == clib.EOF and atnl == 0 and t(fileq) == NIL) {
         atnl = 1;
         return '\n';
     }
     if (atnl != 0) {
-        if ((line_no == 0 and commandmode == 0) or (magic != 0 and line_no == 1 and litstack == NIL)) {
+        if ((line_no == 0 and commandmode == 0) or (main.rs.magic != 0 and line_no == 1 and litstack == NIL)) {
             const is_lit = (ch == '>') or litname(get_fil(current_file));
             literate = if (is_lit) 1 else 0;
             litmain = literate;
@@ -415,28 +406,28 @@ fn getch() c_int {
         if (literate != 0) {
             var i: Word = 0;
             while (ch != clib.EOF and ch != '>') {
-                _ = clib.ungetc(ch, s_in);
+                _ = clib.ungetc(ch, main.rs.s_in);
                 line_no += 1;
-                _ = clib.fgets(dicp, 250, s_in);
+                _ = clib.fgets(dicp, 250, main.rs.s_in);
                 if (i == 0 and line_no > 1) {
                     chblank(dicp);
                 }
                 i += 1;
-                if (echoing != 0) {
+                if (main.rs.echoing != 0) {
                     spaces(lverge);
                     _ = clib.fputs(dicp, getStdout());
                 }
-                ch = clib.getc(s_in);
+                ch = clib.getc(main.rs.s_in);
             }
             if ((i > 1 or (line_no == 1 and i == 1)) and ch != clib.EOF) {
                 chblank(dicp);
             }
             if (ch == '>') {
-                if (echoing != 0) {
+                if (main.rs.echoing != 0) {
                     _ = clib.putchar(ch);
                     spaces(lverge);
                 }
-                ch = clib.getc(s_in);
+                ch = clib.getc(main.rs.s_in);
             }
         }
         atnl = 0;
@@ -445,7 +436,7 @@ fn getch() c_int {
             line_no += 1;
         }
     }
-    if (echoing != 0 and ch != clib.EOF) {
+    if (main.rs.echoing != 0 and ch != clib.EOF) {
         _ = clib.putchar(ch);
         if (ch == '\n' and literate == 0) {
             if (litmain != 0) {
@@ -488,12 +479,12 @@ fn getlitch() Word {
     if (ch == '\n') {
         return ch; // always an error
     }
-    if (UTF8 != 0 and ch > 127) {
+    if (main.rs.UTF8 != 0 and ch > 127) {
         const ch1 = getch();
         c = ch1;
         if ((ch & 0xe0) == 0xc0) { // 2 bytes
             if ((ch1 & 0xc0) != 0x80) {
-                return -5; // not valid UTF8
+                return -5; // not valid main.rs.UTF8
             }
             c = getch();
             return sto_char(((ch & 0x1f) << 6) | (ch1 & 0x3f));
@@ -502,7 +493,7 @@ fn getlitch() Word {
         c = ch2;
         if ((ch & 0xf0) == 0xe0) { // 3 bytes
             if ((ch1 & 0xc0) != 0x80 or (ch2 & 0xc0) != 0x80) {
-                return -5; // not valid UTF8
+                return -5; // not valid main.rs.UTF8
             }
             c = getch();
             return sto_char(((ch & 0xf) << 12) | ((ch1 & 0x3f) << 6) | (ch2 & 0x3f));
@@ -511,7 +502,7 @@ fn getlitch() Word {
         c = ch3;
         if ((ch & 0xf8) == 0xf0) { // 4 bytes
             if ((ch1 & 0xc0) != 0x80 or (ch2 & 0xc0) != 0x80 or (ch3 & 0xc0) != 0x80) {
-                return -5; // not valid UTF8
+                return -5; // not valid main.rs.UTF8
             }
             c = getch();
             return ((ch & 7) << 18) | ((ch1 & 0x3f) << 12) | ((ch2 & 0x3f) << 6) | (ch3 & 0x3f);
@@ -630,7 +621,7 @@ export fn rdline() ?[*:0]u8 {
                 p -= 1;
             } else {
                 const remaining = 1024 - (@as(usize, @intFromPtr(p - 1)) - @as(usize, @intFromPtr(&rdline_linebuf)));
-                _ = clib.strncpy(p - 1, current_script, remaining);
+                _ = clib.strncpy(p - 1, main.rs.current_script.?, remaining);
                 p = @ptrCast(&rdline_linebuf[clib.strlen(&rdline_linebuf)]);
                 expansion = 1;
             }
@@ -667,7 +658,7 @@ fn errclass(val: Word, string_flag: Word) void {
     } else if (val == -4) {
         _ = clib.printf("\\decimal escape out of range in %s\n", .{.{s}});
     } else if (val == -5) {
-        _ = clib.printf("unrecognised character in %s(UTF8 error)\n", .{.{s}});
+        _ = clib.printf("unrecognised character in %s(main.rs.UTF8 error)\n", .{.{s}});
     } else if (val == -6) {
         _ = clib.printf("unrecognised escape \\%c in %s\n", .{.{errch, s}});
     } else if (val == -7) {
@@ -748,7 +739,7 @@ export fn yylex() c_int {
             return clib.CONST;
         }
         if (is_char(yylval) == 0) {
-            const prefix_str: [*:0]const u8 = if (echoing != 0) "\n" else "";
+            const prefix_str: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
             _ = clib.fprintf(getStderr().?, "%simpossible event while reading char const ('\\%lu')\n", .{.{prefix_str, yylval}});
             acterror();
         }
@@ -806,7 +797,7 @@ export fn yylex() c_int {
             }
             _ = clib.printf("<end of insert>", .{.{}});
         }
-        s_in = if (fileq == NIL) getStdin() else @ptrFromInt(@as(usize, @intCast(h(h(fileq)))));
+        main.rs.s_in = if (fileq == NIL) getStdin() else @ptrFromInt(@as(usize, @intCast(h(h(fileq)))));
         c = ' ';
         if (fileq == NIL) {
             c = 0;
@@ -814,7 +805,7 @@ export fn yylex() c_int {
             lmargin = 0;
             lverge = 0;
             atnl = 1;
-            echoing = verbosity & listing;
+            main.rs.echoing = main.rs.verbosity & main.rs.listing;
             lastline = line_no;
             line_no = 0;
             literate = 0;
@@ -824,7 +815,7 @@ export fn yylex() c_int {
         current_file = t(h(fileq));
         prefix = h(prefixstack);
         prefixstack = t(prefixstack);
-        echoing = h(echostack);
+        main.rs.echoing = h(echostack);
         echostack = t(echostack);
         lverge = h(vergstack);
         vergstack = t(vergstack);
@@ -910,7 +901,7 @@ export fn yylex() c_int {
                     yylval = 1;
                 } else {
                     yylval = 0;
-                    _ = clib.ungetc(@intCast(c), s_in);
+                    _ = clib.ungetc(@intCast(c), main.rs.s_in);
                 }
                 c = ' ';
                 return clib.TO;
@@ -952,7 +943,7 @@ export fn yylex() c_int {
                     c = getch();
                 }
                 if (n > sreds) {
-                    _ = clib.printf("%ssyntax error: illegal symbol $%ld%s\n", .{.{if (echoing != 0) @as([*:0]const u8, "\n") else "", n, if (n >= 1000000) @as([*:0]const u8, "...") else ""}});
+                    _ = clib.printf("%ssyntax error: illegal symbol $%ld%s\n", .{.{if (main.rs.echoing != 0) @as([*:0]const u8, "\n") else "", n, if (n >= 1000000) @as([*:0]const u8, "...") else ""}});
                     acterror();
                 } else {
                     yylval = mkgvar(n);
@@ -1120,8 +1111,8 @@ export fn pathname() ?[*:0]u8 {
     if (c == '<') {
         const hold = dicp;
         c = getch();
-        _ = clib.strcpy(dicp, miralib);
-        dicp += clib.strlen(miralib);
+        _ = clib.strcpy(dicp, main.rs.miralib.?);
+        dicp += clib.strlen(main.rs.miralib.?);
         dicp[0] = '/';
         dicp += 1;
         kollect(okpath);
@@ -1151,10 +1142,10 @@ export fn pathname() ?[*:0]u8 {
             _ = clib.strcpy(hold, h_dir);
             dicp = hold + clib.strlen(hold);
         } else {
-            _ = clib.strcpy(&linebuf[0], hold);
+            _ = clib.strcpy(&main.rs.linebuf[0], hold);
             _ = clib.strcpy(hold, prefixbase.? + @as(usize, @intCast(prefix)));
             dicp = hold + clib.strlen(prefixbase.? + @as(usize, @intCast(prefix)));
-            _ = clib.strcpy(dicp, &linebuf[0]);
+            _ = clib.strcpy(dicp, &main.rs.linebuf[0]);
             dicp += clib.strlen(dicp);
         }
         kollect(okpath);
@@ -1196,16 +1187,16 @@ export fn adjust_prefix(f: [*:0]const u8) void {
 }
 
 export fn peekdig() c_int {
-    if (s_in == null) return 0;
-    const ch = clib.getc(s_in);
-    _ = clib.ungetc(ch, s_in);
+    if (main.rs.s_in == null) return 0;
+    const ch = clib.getc(main.rs.s_in);
+    _ = clib.ungetc(ch, main.rs.s_in);
     return if (ch >= '0' and ch <= '9') 1 else 0;
 }
 
 export fn peekch() c_int {
-    if (s_in == null) return clib.EOF;
-    const ch = clib.getc(s_in);
-    _ = clib.ungetc(ch, s_in);
+    if (main.rs.s_in == null) return clib.EOF;
+    const ch = clib.getc(main.rs.s_in);
+    _ = clib.ungetc(ch, main.rs.s_in);
     return ch;
 }
 
@@ -1300,9 +1291,9 @@ fn identifier(s: c_int) c_int {
         return '_';
     }
     yylval = name();
-    if (commandmode != 0 and lastid == 0 and h(yylval) != 0) {
+    if (commandmode != 0 and main.rs.lastid == 0 and h(yylval) != 0) {
         if (t(h(yylval)) != 0) {
-            lastid = yylval;
+            main.rs.lastid = yylval;
         }
     }
     return if (isconstructor(yylval)) clib.CNAME else clib.NAME;
@@ -1333,7 +1324,7 @@ export fn directive() Word {
         },
         'e' => {
             if (is("export") or is("_ e_ x_ p_ o_ r_ t")) {
-                if (magic != 0) {
+                if (main.rs.magic != 0) {
                     syntax("%export directive not permitted in \"-exp\" script\n");
                 }
                 return clib.EXPORT;
@@ -1341,7 +1332,7 @@ export fn directive() Word {
         },
         'f' => {
             if (is("free") or is("_ f_ r_ e_ e")) {
-                if (magic != 0) {
+                if (main.rs.magic != 0) {
                     syntax("%free directive not permitted in \"-exp\" script\n");
                 }
                 return clib.FREE;
@@ -1368,7 +1359,7 @@ export fn directive() Word {
                 } else if (insertdepth < 12 and openfile(f.?) != 0) {
                     adjust_prefix(f.?);
                     vergstack = cons(lverge, vergstack);
-                    echostack = cons(echoing, echostack);
+                    echostack = cons(main.rs.echoing, echostack);
                     litstack = cons(literate, litstack);
                     linostack = make(STRCONS, line_no, linostack);
                     line_no = 0;
@@ -1377,12 +1368,12 @@ export fn directive() Word {
                     current_file = make_fil(f.?, fm_time(f.?), 0, NIL);
                     files = append1(files, cons(current_file, NIL));
                     tp(h(fileq)).* = current_file;
-                    s_in = @ptrFromInt(@as(usize, @intCast(h(h(fileq)))));
+                    main.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(h(fileq)))));
                     const is_lit = (peekch() == '>') or litname(f.?);
                     literate = if (is_lit) 1 else 0;
                     col = holdcol;
                     lverge = holdcol;
-                    if (echoing != 0) {
+                    if (main.rs.echoing != 0) {
                         _ = clib.putchar('\n');
                         if (literate == 0) {
                             if (litmain != 0) {
@@ -1396,7 +1387,7 @@ export fn directive() Word {
                     c = getch();
                 } else {
                     const toomany = (insertdepth >= 12);
-                    const prefix_str: [*:0]const u8 = if (echoing != 0) "\n" else "";
+                    const prefix_str: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
                     _ = clib.printf("%s%%insert error - cannot open \"%s\"\n", .{.{prefix_str, f.?}});
                     _ = keep(dicp);
                     if (toomany) {
@@ -1417,19 +1408,19 @@ export fn directive() Word {
                 return clib.LEX;
             }
             if (is("list") or is("_ l_ i_ s_ t")) {
-                echoing = verbosity;
+                main.rs.echoing = main.rs.verbosity;
                 return yylex();
             }
         },
         'n' => {
             if (is("nolist") or is("_ n_ o_ l_ i_ s_ t")) {
-                echoing = 0;
+                main.rs.echoing = 0;
                 return yylex();
             }
         },
         else => {},
     }
-    if (echoing != 0) {
+    if (main.rs.echoing != 0) {
         _ = clib.putchar('\n');
     }
     _ = clib.printf("syntax error: unknown directive \"%%%s\"\n", .{.{dicp}});
@@ -1755,7 +1746,7 @@ export fn string() void {
     if (rawch == '\n') {
         syntax("non-escaped newline encountered inside string quotes\n");
     } else if (ch == clib.EOF) {
-        if (echoing != 0) {
+        if (main.rs.echoing != 0) {
             _ = clib.putchar('\n');
         }
         _ = clib.printf("syntax error: script ends inside unclosed string quotes - \n", .{.{}});
@@ -1819,7 +1810,7 @@ export fn charclass() c_int {
     if (rawch == '\n') {
         syntax("non-escaped newline encountered in char class\n");
     } else if (ch == clib.EOF) {
-        if (echoing != 0) {
+        if (main.rs.echoing != 0) {
             _ = clib.putchar('\n');
         }
         _ = clib.printf("syntax error: script ends inside unclosed char class brackets - \n", .{.{}});
@@ -1842,7 +1833,9 @@ export fn reset_lex() void {
         }
         const err_script_raw = @as(?[*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(errs)))))));
         const err_script = err_script_raw orelse "test.m";
-        const is_current = if (err_script_raw) |es| (es == current_script) else true;
+        const is_current = if (err_script_raw) |es|
+            (if (main.rs.current_script) |cs| es == @as([*:0]const u8, @ptrCast(cs)) else false)
+            else true;
         if (t(errs) == 0 and is_current) {
             _ = clib.fprintf(getStderr().?, "error occurs at end of ", .{.{}});
         } else {
@@ -1869,7 +1862,7 @@ export fn reset_lex() void {
 export fn reset_state() void {
     if (commandmode != 0) {
         while (c != '\n' and c != clib.EOF) {
-            if (s_in) |sin| {
+            if (main.rs.s_in) |sin| {
                 c = clib.getc(sin);
             } else {
                 c = clib.EOF;
@@ -1882,7 +1875,7 @@ export fn reset_state() void {
         fileq = t(fileq);
     }
     insertdepth = -1;
-    s_in = getStdin();
+    main.rs.s_in = getStdin();
     echostack = NIL;
     idsused = NIL;
     prefixstack = NIL;
@@ -1892,7 +1885,7 @@ export fn reset_state() void {
     margstack = NIL;
     prefix = 0;
     prefixbase.?[0] = 0;
-    echoing = verbosity & listing;
+    main.rs.echoing = main.rs.verbosity & main.rs.listing;
     brct = 0;
     inbnf = 0;
     sreds = 0;

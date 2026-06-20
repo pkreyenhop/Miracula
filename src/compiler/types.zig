@@ -1,6 +1,7 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const shim = @import("../runtime/c_abi.zig");
+const main = @import("../main.zig");
 const c = struct {
     pub const printf = shim.printf;
     pub const fprintf = shim.fprintf;
@@ -146,9 +147,7 @@ export var TYPERRS: Word = 0;
 export var current_id: Word = 0;
 export var NT: Word = 306 + 138; // CMBASE + 138 is NIL
 export var ND: Word = 306 + 138; // CMBASE + 138 is NIL
-extern var fnts: Word;
 export var lineptr: Word = 0;
-extern var current_script: [*:0]const u8;
 extern var errs: Word;
 extern var errline: Word;
 extern var nill: Word;
@@ -164,9 +163,6 @@ extern var SYNERR: Word;
 export var TABSTRS: Word = 306 + 138; // CMBASE + 138 is NIL
 export var bnf_t: Word = 0;
 
-extern var freeids: Word;
-extern var rfl: Word;
-extern var col_fn: Word;
 
 extern fn make(t: u8, x: Word, y: Word) Word;
 extern fn reverse(x: Word) Word;
@@ -828,7 +824,7 @@ export fn locate(s: [*:0]const u8) void {
             var x = current_id;
             _ = c.printf("%s in definition of ", .{s});
             while (tag[@intCast(x)] == CONS) {
-                if (tag[@intCast(t(x))] == ID and member(fnts, t(x)) != 0) {
+                if (tag[@intCast(t(x))] == ID and member(main.rs.fnts, t(x)) != 0) {
                     _ = c.printf("nonterminal ", .{});
                     x = h(x);
                 } else {
@@ -871,7 +867,7 @@ export fn sayhere(h_val: Word, nl: Word) void {
         }
     }
     const h_str = @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h_node)))));
-    const eq = std.mem.eql(u8, std.mem.span(h_str), std.mem.span(current_script));
+    const eq = std.mem.eql(u8, std.mem.span(h_str), std.mem.span(main.rs.current_script.?));
     const prefix: [*:0]const u8 = if (eq) "" else "%insert file ";
     _ = c.printf("(line %3ld of %s\"%s\")", .{t(h_node), prefix, h_str});
     if (nl != 0) {
@@ -1084,7 +1080,7 @@ export fn out_type2(t_val: Word) void {
                     const pn_val_node = pn_val(t_val);
                     if (tag[@intCast(pn_val_node)] == ID) {
                         _ = c.printf("%s", .{getId(pn_val_node)});
-                    } else if (std.mem.eql(u8, std.mem.span(@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(t_info(t_val)))))))), std.mem.span(current_script))) {
+                    } else if (std.mem.eql(u8, std.mem.span(@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(t_info(t_val)))))))), std.mem.span(main.rs.current_script.?))) {
                         _ = c.printf("%s", .{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(t_info(t_val)))))))});
                     } else {
                         _ = c.printf("`%s@%s'", .{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(t_info(t_val))))))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(t_info(t_val)))))))});
@@ -2444,8 +2440,8 @@ fn etype(x: Word, env: Word, ngt: Word) Word {
                 },
                 c.G_CLOSE => {
                     const a = NTV();
-                    if (col_fn != 0) {
-                        if (col_fn == -1) {
+                    if (main.rs.col_fn != 0) {
+                        if (main.rs.col_fn == -1) {
                             TYPERRS += 1;
                         } else {
                             checkcolfn();
@@ -2480,10 +2476,10 @@ fn etype(x: Word, env: Word, ngt: Word) Word {
 }
 
 export fn checkcolfn() void {
-    const t_val = idType(col_fn);
+    const t_val = idType(main.rs.col_fn);
     const f = tf(t(h(t(bnf_t))), num_t);
     if (t_val == undef_t or t_val == wrong_t or subsumes(instantiate(t_val), f) != 0) {
-        col_fn = 0;
+        main.rs.col_fn = 0;
         return;
     }
     _ = c.printf("`bnftokenindentation' has wrong type for use in offside rule\n", .{});
@@ -2493,9 +2489,9 @@ export fn checkcolfn() void {
     _ = c.printf("  actual type :: ", .{});
     out_type(t_val);
     _ = c.putchar('\n');
-    sayhere(getspecloc(col_fn), 1);
+    sayhere(getspecloc(main.rs.col_fn), 1);
     TYPERRS += 1;
-    col_fn = -1;
+    main.rs.col_fn = -1;
 }
 
 export fn genbnft() void {
@@ -2606,7 +2602,7 @@ export fn checktypes() void {
     if (c.setjmp(&env1) == 1) {
         // jumped back on error
     } else {
-        if (rfl != NIL) {
+        if (main.rs.rfl != NIL) {
             readoption();
         }
         var s = reverse(t(h(files)));
@@ -2628,11 +2624,11 @@ export fn checktypes() void {
         SYNERR = 1;
         return;
     }
-    if (freeids != NIL) {
-        redtfr(freeids);
+    if (main.rs.freeids != NIL) {
+        redtfr(main.rs.freeids);
     }
     genshfns();
-    if (fnts != NIL) {
+    if (main.rs.fnts != NIL) {
         genbnft();
     }
     R = msc(R);
