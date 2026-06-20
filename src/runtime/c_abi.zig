@@ -285,7 +285,7 @@ pub const ACT_NONE = 0;
 pub const ACT_NEXTREDEX = 1;
 pub const ACT_DONE = 2;
 
-const main_clib = @import("../main_clib.zig");
+const main_clib = @import("main_clib.zig");
 pub const FILE = main_clib.FILE;
 pub const jmp_buf = main_clib.jmp_buf;
 pub const sigjmp_buf = main_clib.sigjmp_buf;

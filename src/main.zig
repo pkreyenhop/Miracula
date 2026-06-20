@@ -4,7 +4,7 @@ const parser_api = @import("parser/parser_api.zig");
 
 const word_mod = @import("runtime/word.zig");
 
-const clib = @import("main_clib.zig");
+const clib = @import("runtime/main_clib.zig");
 
 inline fn get_id(x: Word) [*:0]const u8 {
     return @ptrFromInt(@as(usize, @intCast(h(h(h(x))))));
@@ -3496,5 +3496,5 @@ comptime {
     _ = @import("compiler/trans.zig");
     _ = @import("compiler/types.zig");
     _ = @import("io/signals.zig");
-    _ = @import("version.zig");
+    _ = @import("runtime/version.zig");
 }

@@ -1,4 +1,4 @@
-const word_mod = @import("runtime/word.zig");
+const word_mod = @import("word.zig");
 const std = @import("std");
 const builtin = @import("builtin");
 

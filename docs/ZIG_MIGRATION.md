@@ -8,7 +8,7 @@ This document outlines the history, completed milestones, target platform suppor
 
 ### ✔ Phase 1: Standalone Utilities & Leaf Helpers Migration
 * Ported all standalone utilities (`fdate`, `just`, and `menudriver`) to Zig.
-* Ported C leaf utility functions (UTF-8 transcoding, signal handling, and version info) to Zig modules (`utf8.zig`, `signals.zig`, `version.zig`).
+* Ported C leaf utility functions (UTF-8 transcoding, signal handling, and version info) to Zig modules (`utf8.zig`, `signals.zig`, `src/runtime/version.zig`).
 
 ### ✔ Phase 2: Runtime & Compiler Core Migration
 * Ported the graph reduction engine, combinator execution rules, and arbitrary-precision bigint math to Zig (`reduce.zig`, `combinator.zig`, `big.zig`).
@@ -34,7 +34,7 @@ This document outlines the history, completed milestones, target platform suppor
 * **Goal**: Fully eliminate C code and remove standard C library dependencies (`exe.linkLibC()`) to enable building completely portable, static/native pure-Zig binaries.
 * **Outcome**:
   - All `@cImport` / `@cInclude` statements have been removed from the Zig source files.
-  - A custom, pure-Zig C standard library shim was implemented in `main_clib.zig` to resolve standard Unix symbols (POSIX/file-io/string functions) directly against the OS.
+  - A custom, pure-Zig C standard library shim was implemented in `src/runtime/main_clib.zig` to resolve standard Unix symbols (POSIX/file-io/string functions) directly against the OS.
   - Linked C math library `libm` has been entirely replaced with native `std.math` equivalents.
   - The build target `link_libc` has been disabled on macOS, where the OS linker implicitly links `libSystem.dylib`.
   - The binary successfully cross-compiles cleanly to statically linked ELF binaries on Linux (`x86_64-linux-musl`) and Mach-O binaries on macOS (`aarch64-macos`).
@@ -55,7 +55,7 @@ We verify cross-compilation and linking for both required target platforms:
 
 ## 🛠️ Technical Details of Libc Removal
 
-### 1. Zig-Native C Standard Library Shim (`main_clib.zig`)
+### 1. Zig-Native C Standard Library Shim (`src/runtime/main_clib.zig`)
 Rather than referencing external libc libraries, standard POSIX functions required by the legacy runtime are implemented in pure Zig:
 - **`FILE*`-based stdio**: Backed by custom `FILE` structures wrapping file descriptors via `std.posix` system calls. Implements `fopen`, `fclose`, `getc`, `putc`, `fgets`, `fputs`, `fread`, `fwrite`, and custom `printf`/`fprintf`/`sprintf`/`fscanf` parsers.
 - **Memory Management**: Implements `malloc`, `calloc`, `realloc`, and `free` using `std.heap.page_allocator`.
