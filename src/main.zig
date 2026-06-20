@@ -15,7 +15,7 @@ pub inline fn get_id(x: Word) [*:0]const u8 {
     return @ptrFromInt(@as(usize, @intCast(h(h(h(x))))));
 }
 
-inline fn get_fil(fil: Word) ?[*:0]const u8 {
+pub inline fn get_fil(fil: Word) ?[*:0]const u8 {
     const val = h(h(h(fil)));
     if (val == 0) return null;
     return @ptrFromInt(@as(usize, @intCast(val)));
@@ -32,21 +32,21 @@ extern var hd: [*]Word;
 extern var tl: [*]Word;
 extern var tag: [*]u8;
 
-extern var s_out: ?*clib.FILE;
+pub extern var s_out: ?*clib.FILE;
 extern var dstack: ?[*]Word;
 extern var stackp: ?[*]Word;
 
-extern var dicp: [*:0]u8;
-extern var dicq: [*:0]u8;
-extern var dic: ?[*]u8;
+pub extern var dicp: [*:0]u8;
+pub extern var dicq: [*:0]u8;
+pub extern var dic: ?[*]u8;
 
-extern var version: c_int;
-extern var vdate: [*:0]const u8;
-extern var host: [*:0]const u8;
+pub extern var version: c_int;
+pub extern var vdate: [*:0]const u8;
+pub extern var host: [*:0]const u8;
 
 extern var blankerr: c_int;
-extern var ARGC: c_int;
-extern var ARGV: [*]?[*:0]u8;
+pub extern var ARGC: c_int;
+pub extern var ARGV: [*]?[*:0]u8;
 
 extern var current_id: Word;
 extern var ATNAMES: Word;
@@ -77,8 +77,8 @@ export var showfunction: Word = 0;
 export var showabstract: Word = 0;
 export var showwhat: Word = 0;
 
-var PRELUDE: [clib.pnlim + 10]u8 = undefined;
-var STDENV: [clib.pnlim + 9]u8 = undefined;
+pub var PRELUDE: [clib.pnlim + 10]u8 = undefined;
+pub var STDENV: [clib.pnlim + 9]u8 = undefined;
 var vstack: [4]c_int = undefined;
 var mstack: [4][*:0]const u8 = undefined;
 var mvp: usize = 0;
@@ -93,55 +93,56 @@ extern var ALIASES: Word;
 extern var TSUPPRESSED: Word;
 export var fnts: Word = NIL;
 
-extern fn signals(signum: c_int, handler: usize) usize;
-extern fn dieclean() void;
-extern fn fpe_error(sig: c_int) void;
-extern fn commandloop(initscript: [*:0]u8) void;
+pub extern fn signals(signum: c_int, handler: usize) usize;
+pub extern fn dieclean() void;
+pub extern fn fpe_error(sig: c_int) void;
+pub extern fn commandloop(initscript: [*:0]u8) void;
+pub extern fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int;
 
-export var SPACELIMIT: Word = 2500000;
-export var DICSPACE: Word = 100000;
-export var UTF8: c_int = 0;
-export var UTF8OUT: c_int = 0;
-export var editor: ?[*:0]u8 = null;
-var okprel: Word = 0;
-var nostdenv: Word = 0;
-export var baded: Word = 0;
-export var miralib: ?[*:0]u8 = null;
+pub export var SPACELIMIT: Word = 2500000;
+pub export var DICSPACE: Word = 100000;
+pub export var UTF8: c_int = 0;
+pub export var UTF8OUT: c_int = 0;
+pub export var editor: ?[*:0]u8 = null;
+pub var okprel: Word = 0;
+pub var nostdenv: Word = 0;
+pub export var baded: Word = 0;
+pub export var miralib: ?[*:0]u8 = null;
 var mirahdr: ?[*:0]u8 = null;
 var lmirahdr: ?[*:0]u8 = null;
 pub var promptstr: [*:0]const u8 = "Miranda ";
 export var obsuffix: [*:0]const u8 = "x";
-export var s_in: ?*clib.FILE = null;
+pub export var s_in: ?*clib.FILE = null;
 export var commandmode: Word = 0;
-var atobject: c_int = 0;
-export var atgc: c_int = 0;
-export var atcount: c_int = 0;
+pub var atobject: c_int = 0;
+pub export var atgc: c_int = 0;
+pub export var atcount: c_int = 0;
 export var debug: c_int = 0;
-export var magic: Word = 0;
-var making: Word = 0;
-var mkexports: Word = 0;
-var mksources: Word = 0;
-export var make_status: Word = 0;
-export var compiling: c_int = 1;
+pub export var magic: Word = 0;
+pub var making: Word = 0;
+pub var mkexports: Word = 0;
+pub var mksources: Word = 0;
+pub export var make_status: Word = 0;
+pub export var compiling: c_int = 1;
 export var ideep: c_int = 0;
 export var SYNERR: Word = 0;
-export var initialising: Word = 1;
-export var primenv: Word = NIL;
+pub export var initialising: Word = 1;
+pub export var primenv: Word = NIL;
 export var current_script: ?[*:0]u8 = null;
 export var lastexp: Word = clib.UNDEF;
-export var echoing: Word = 0;
-export var listing: Word = 0;
-export var verbosity: Word = 0;
-export var strictif: Word = 1;
-export var rechecking: Word = 0;
+pub export var echoing: Word = 0;
+pub export var listing: Word = 0;
+pub export var verbosity: Word = 0;
+pub export var strictif: Word = 1;
+pub export var rechecking: Word = 0;
 export var errline: Word = 0;
 export var errs: Word = 0;
-export var cstack: ?[*]Word = null;
-export var linebuf: [clib.BUFSIZE]u8 = undefined;
-export var ebuf: [clib.pnlim]u8 = undefined;
-export var home_rc: [clib.pnlim + 8]u8 = undefined;
-export var lib_rc: [clib.pnlim + 8]u8 = undefined;
-export var rc_error: ?[*:0]const u8 = null;
+pub export var cstack: ?[*]Word = null;
+pub export var linebuf: [clib.BUFSIZE]u8 = undefined;
+pub export var ebuf: [clib.pnlim]u8 = undefined;
+pub export var home_rc: [clib.pnlim + 8]u8 = undefined;
+pub export var lib_rc: [clib.pnlim + 8]u8 = undefined;
+pub export var rc_error: ?[*:0]const u8 = null;
 
 pub var env: clib.sigjmp_buf = undefined;
 var unlinkme: ?[*:0]const u8 = null;
@@ -166,16 +167,16 @@ extern var common_stdinb: Word;
 extern var cook_stdin: Word;
 extern var c: Word;
 
-extern var files: Word;
+pub extern var files: Word;
 extern var current_file: Word;
 extern var collecting: Word;
-export var oldfiles: Word = NIL;
-export var includees: Word = NIL;
-export var freeids: Word = NIL;
-export var exports: Word = NIL;
+pub export var oldfiles: Word = NIL;
+pub export var includees: Word = NIL;
+pub export var freeids: Word = NIL;
+pub export var exports: Word = NIL;
 extern var exportfiles: Word;
 export var embargoes: Word = NIL;
-extern var newtyps: Word;
+pub extern var newtyps: Word;
 extern var SGC: Word;
 extern var speclocs: Word;
 extern var rv_script: Word;
@@ -193,7 +194,7 @@ export var ntspecmap: Word = NIL;
 export var lexstates: Word = NIL;
 export var lexdefs: Word = NIL;
 extern var TABSTRS: Word;
-extern var ND: Word;
+pub extern var ND: Word;
 extern var polyshowerror: c_int;
 extern var fileq: Word;
 
@@ -225,7 +226,7 @@ pub fn tp(x: Word) *Word {
     return &tl[@as(usize, @intCast(x)) * 2];
 }
 
-fn cons(x: Word, y: Word) Word {
+pub fn cons(x: Word, y: Word) Word {
     return clib.make(clib.CONS, x, y);
 }
 
@@ -366,7 +367,7 @@ fn fil_inodev(fil: Word) Word {
     return t(t(h(fil)));
 }
 
-fn fil_defs(fil: Word) Word {
+pub fn fil_defs(fil: Word) Word {
     return t(fil);
 }
 
@@ -382,7 +383,7 @@ fn get_here(x: Word) Word {
     return clib.get_here(x);
 }
 
-fn the_val(x: Word) Word {
+pub fn the_val(x: Word) Word {
     return t(x);
 }
 
@@ -420,7 +421,7 @@ fn inodev(path: [*:0]const u8) Word {
     }
 }
 
-fn fileExists(path: [*:0]const u8) bool {
+pub fn fileExists(path: [*:0]const u8) bool {
     return platform.getFileInfo(path) != null;
 }
 
@@ -472,7 +473,7 @@ fn constructor(n: Word, x: anytype) Word {
     return clib.make(clib.CONSTRUCTOR, n, x_val);
 }
 
-const EDITOR = "vi +!";
+pub const EDITOR = "vi +!";
 
 export fn fm_time(path: [*:0]const u8) Word {
     if (platform.getFileInfo(path)) |info| {
@@ -565,7 +566,7 @@ export fn mktiny() Word {
     return clib.sto_dbl(x);
 }
 
-export fn checkversion(m: [*:0]const u8) c_int {
+pub export fn checkversion(m: [*:0]const u8) c_int {
     var path_buf: [1024]u8 = undefined;
     const path = std.fmt.bufPrintZ(&path_buf, "{s}/.version", .{m}) catch return 0;
     const f = clib.fopen(path.ptr, "r");
@@ -589,7 +590,7 @@ export fn checkversion(m: [*:0]const u8) c_int {
     return r;
 }
 
-export fn libfails() void {
+pub export fn libfails() void {
     const stderr = getStderr().?;
     _ = clib.fprintf(stderr, "found", .{.{}});
     var i: usize = 0;
@@ -598,7 +599,7 @@ export fn libfails() void {
     }
 }
 
-export fn strvers(v: c_int) [*:0]const u8 {
+pub export fn strvers(v: c_int) [*:0]const u8 {
     if (v < 0 or v > 999999) {
         return "???";
     }
@@ -705,7 +706,7 @@ export fn badeditor() c_int {
     return @intCast(baded);
 }
 
-export fn fixeditor() void {
+pub export fn fixeditor() void {
     const ed = editor orelse return;
     if (clib.strcmp(ed, "vi") == 0) {
         editor = @constCast("vi +!");
@@ -740,7 +741,7 @@ export fn fixeditor() void {
     listing = @intCast(badeditor());
 }
 
-export fn rc_read(rcfile: [*:0]const u8) Word {
+pub export fn rc_read(rcfile: [*:0]const u8) Word {
     var z: [20]u8 = undefined;
     var h_val: Word = 0;
     var d_val: Word = 0;
@@ -813,7 +814,7 @@ export fn rc_read(rcfile: [*:0]const u8) Word {
     return r;
 }
 
-export fn rc_write() void {
+pub export fn rc_write() void {
     const out = clib.fopen(@ptrCast(&home_rc), "w");
     if (out == null) {
         const stderr = getStderr().?;
@@ -834,7 +835,7 @@ export fn rc_write() void {
 
 export var oldversion: c_int = 0;
 
-fn announce() void {
+pub fn announce() void {
     const w = @divTrunc(twidth() - 50, 2);
     _ = clib.printf("\n\n", .{.{}});
     spaces(w);
@@ -991,7 +992,7 @@ pub export fn reset() void {
     clib.siglongjmp(&env, 1);
 }
 
-fn v_info(full: c_int) void {
+pub fn v_info(full: c_int) void {
     _ = clib.printf("%s last revised %s\n", .{.{strvers(version), vdate}});
     if (full == 0) return;
     _ = clib.printf("%s", .{.{host}});
@@ -1381,7 +1382,7 @@ pub fn command() void {
     xschars();
 }
 
-fn manaction() void {
+pub fn manaction() void {
     _ = clib.sprintf(&linebuf, "\"%s/menudriver\" \"%s/manual\"", .{miralib.?, miralib.?});
     _ = clib.system(&linebuf);
 }
@@ -2594,7 +2595,7 @@ export fn acterror() void {
     reset_lex();
 }
 
-fn mira_setup() void {
+pub fn mira_setup() void {
     setupheap();
     tsetup();
     reset_pns();
@@ -2628,425 +2629,11 @@ fn mira_setup() void {
     primlib();
 }
 
-
-
-
-fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
-    var manonly: Word = 0;
-    cstack = @ptrCast(&manonly);
-    unlimit_stack();
-    verbosity = if (clib.isatty(0) != 0) 1 else 0;
-    clib.setbuf(getStdout(), null);
-
-    const home = clib.getenv("HOME");
-    var okhome_rc: Word = 0;
-    if (home != null) {
-        _ = clib.strcpy(&home_rc, home);
-        if (clib.strcmp(&home_rc, "/") == 0) {
-            home_rc[0] = 0;
-        }
-        _ = clib.strcat(&home_rc, "/.mirarc");
-        okhome_rc = rc_read(@as([*:0]const u8, @ptrCast(&home_rc)));
-    }
-
-    UTF8 = utf8test();
-    UTF8OUT = UTF8;
-
-    var arg_idx: usize = 1;
-    const argc_u = @as(usize, @intCast(argc));
-    while (arg_idx < argc_u and argv[arg_idx][0] == '-') {
-        const arg = argv[arg_idx];
-        if (clib.strcmp(arg, "-stdenv") == 0) {
-            nostdenv = 1;
-        } else if (clib.strcmp(arg, "-count") == 0) {
-            atcount = 1;
-        } else if (clib.strcmp(arg, "-list") == 0) {
-            listing = 1;
-        } else if (clib.strcmp(arg, "-nolist") == 0) {
-            listing = 0;
-        } else if (clib.strcmp(arg, "-nostrictif") == 0) {
-            strictif = 0;
-        } else if (clib.strcmp(arg, "-gc") == 0) {
-            atgc = 1;
-        } else if (clib.strcmp(arg, "-object") == 0) {
-            atobject = 1;
-        } else if (clib.strcmp(arg, "-lib") == 0) {
-            arg_idx += 1;
-            if (arg_idx == argc_u) {
-                missparam("lib");
-            } else {
-                miralib = argv[arg_idx];
-            }
-        } else if (clib.strcmp(arg, "-dic") == 0) {
-            arg_idx += 1;
-            if (arg_idx == argc_u) {
-                missparam("dic");
-            } else {
-                var val: c_long = 0;
-                if (clib.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or badval(val)) {
-                    _ = clib.fprintf(getStderr(), "mira: bad value after flag \"-dic\"\n", .{.{}});
-                    clib.exit(1);
-                }
-                DICSPACE = val;
-            }
-        } else if (clib.strcmp(arg, "-heap") == 0) {
-            arg_idx += 1;
-            if (arg_idx == argc_u) {
-                missparam("heap");
-            } else {
-                var val: c_long = 0;
-                if (clib.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or badval(val)) {
-                    _ = clib.fprintf(getStderr(), "mira: bad value after flag \"-heap\"\n", .{.{}});
-                    clib.exit(1);
-                }
-                SPACELIMIT = val;
-            }
-        } else if (clib.strcmp(arg, "-editor") == 0) {
-            arg_idx += 1;
-            if (arg_idx == argc_u) {
-                missparam("editor");
-            } else {
-                editor = argv[arg_idx];
-                fixeditor();
-            }
-        } else if (clib.strcmp(arg, "-hush") == 0) {
-            verbosity = 0;
-        } else if (clib.strcmp(arg, "-nohush") == 0) {
-            verbosity = 1;
-        } else if (clib.strcmp(arg, "-exp") == 0 or clib.strcmp(arg, "-log") == 0) {
-            _ = clib.fprintf(getStderr(), "mira: obsolete flag \"%s\"\nuse \"-exec\" or \"-exec2\", see manual\n", .{.{arg}});
-            clib.exit(1);
-        } else if (clib.strcmp(arg, "-exec") == 0) {
-            ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
-            ARGV = @ptrCast(argv + arg_idx + 1);
-            magic = 1;
-            verbosity = 0;
-            arg_idx = argc_u;
-            break;
-        } else if (clib.strcmp(arg, "-exec2") == 0) {
-            if (arg_idx + 1 >= argc_u) {
-                _ = clib.fprintf(getStderr(), "incorrect use of -exec2 flag, missing filename\n", .{.{}});
-                clib.exit(1);
-            }
-            const filename = argv[arg_idx + 1];
-            var p = clib.strrchr(filename, '/');
-            if (p == null) {
-                p = filename;
-            } else {
-                p = p.? + 1;
-            }
-            const logfilname = @as(?[*:0]u8, @ptrCast(clib.malloc(clib.strlen(p.?) + 9)));
-            if (logfilname == null) {
-                clib.mallocfail(@constCast("logfile name"));
-            }
-            _ = clib.sprintf(logfilname.?, "miralog/%s", .{p.?});
-            const fil = clib.fopen(logfilname.?, "a");
-            if (fil != null) {
-                _ = clib.dup2(clib.fileno(fil), 2);
-            } else {
-                _ = clib.fprintf(getStderr(), "could not open %s\n", .{.{logfilname.?}});
-            }
-            ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
-            ARGV = @ptrCast(argv + arg_idx + 1);
-            magic = 1;
-            verbosity = 0;
-            arg_idx = argc_u;
-            break;
-        } else if (clib.strcmp(arg, "-man") == 0) {
-            manonly = 1;
-        } else if (clib.strcmp(arg, "-version") == 0) {
-            v_info(0);
-            clib.exit(0);
-        } else if (clib.strcmp(arg, "-V") == 0) {
-            v_info(1);
-            clib.exit(0);
-        } else if (clib.strcmp(arg, "-make") == 0) {
-            making = 1;
-            verbosity = 0;
-        } else if (clib.strcmp(arg, "-exports") == 0) {
-            making = 1;
-            mkexports = 1;
-            verbosity = 0;
-        } else if (clib.strcmp(arg, "-sources") == 0) {
-            making = 1;
-            mksources = 1;
-            verbosity = 0;
-        } else if (clib.strcmp(arg, "-UTF-8") == 0) {
-            UTF8 = 1;
-        } else if (clib.strcmp(arg, "-noUTF-8") == 0) {
-            UTF8 = 0;
-        } else {
-            _ = clib.fprintf(getStderr(), "mira: unknown flag \"%s\"\n", .{.{arg}});
-            clib.exit(1);
-        }
-        arg_idx += 1;
-    }
-
-    const remaining_argc = argc_u - arg_idx;
-    if (remaining_argc > 1 and magic == 0 and making == 0) {
-        _ = clib.fprintf(getStderr(), "mira: too many args\n", .{.{}});
-        clib.exit(1);
-    }
-
-    var badlib: c_int = 0;
-    if (miralib == null) {
-        if (clib.getenv("MIRALIB")) |m| {
-            miralib = @constCast(m);
-        } else if (checkversion("/usr/lib/miralib") != 0) {
-            miralib = @constCast("/usr/lib/miralib");
-        } else if (checkversion("/usr/local/lib/miralib") != 0) {
-            miralib = @constCast("/usr/local/lib/miralib");
-        } else if (checkversion("miralib") != 0) {
-            miralib = @constCast("miralib");
-        } else {
-            badlib = 1;
-        }
-    }
-
-    if (badlib != 0) {
-        _ = clib.fprintf(getStderr(), "fatal error: miralib version %s not found\n", .{.{strvers(@intCast(version))}});
-        libfails();
-        clib.exit(1);
-    }
-
-    if (okhome_rc == 0) {
-        if (rc_error == @as(?[*:0]const u8, @ptrCast(&lib_rc))) {
-            rc_error = null;
-        }
-        _ = clib.strcpy(&lib_rc, miralib.?);
-        _ = clib.strcat(&lib_rc, "/.mirarc");
-        _ = rc_read(@as([*:0]const u8, @ptrCast(&lib_rc)));
-    }
-
-    if (editor == null) {
-        if (clib.getenv("EDITOR")) |ed| {
-            editor = @constCast(ed);
-        } else {
-            editor = @constCast(EDITOR);
-        }
-        if (editor != null) {
-            _ = clib.strcpy(&ebuf, editor.?);
-            editor = @as([*:0]u8, @ptrCast(&ebuf));
-            fixeditor();
-        }
-    }
-
-    if (clib.getenv("MIRAPROMPT")) |prs| {
-        promptstr = prs;
-    }
-
-    if (clib.getenv("RECHECKMIRA") != null and rechecking == 0) {
-        rechecking = 1;
-    }
-
-    if (clib.getenv("NOSTRICTIF") != null) {
-        strictif = 0;
-    }
-
-    clib.setupdic();
-    s_in = getStdin();
-    s_out = getStdout();
-    miralib = mkabsolute(miralib.?);
-
-    if (manonly != 0) {
-        manaction();
-        clib.exit(0);
-    }
-
-    _ = clib.strcpy(&PRELUDE, miralib.?);
-    _ = clib.strcat(&PRELUDE, "/prelude");
-
-    _ = clib.strcpy(&STDENV, miralib.?);
-    _ = clib.strcat(&STDENV, "/stdenv.m");
-
-    mira_setup();
-
-    if (verbosity != 0) {
-        announce();
-    }
-
-    files = NIL;
-    undump(@as([*:0]const u8, @ptrCast(&PRELUDE)));
-    okprel = 1;
-    clib.mkprivate(fil_defs(h(files)));
-    files = NIL;
-
-    if (nostdenv == 0) {
-        undump(@as([*:0]const u8, @ptrCast(&STDENV)));
-        while (files != NIL) {
-            primenv = alfasort(clib.append1(primenv, fil_defs(h(files))));
-            files = t(files);
-        }
-        primenv = alfasort(primenv);
-        newtyps = NIL;
-        files = NIL;
-    }
-
-    if (magic == 0) {
-        rc_write();
-    }
-
-    echoing = verbosity & listing;
-    initialising = 0;
-
-    if (mkexports != 0) {
-        const arg_count: usize = remaining_argc;
-        var s: [*:0]u8 = undefined;
-        _ = clib.sigsetjmp(&env, 1);
-        var cur_argv_idx = arg_idx;
-        while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
-            var x: Word = NIL;
-            s = clib.addextn(1, argv[cur_argv_idx]);
-            if (s == dicp) {
-                _ = clib.keep(dicp);
-            }
-            undump(s);
-            if (files == NIL or ND != NIL) {
-                continue;
-            }
-            if (arg_count != 1) {
-                _ = clib.printf("%s\n", .{.{s}});
-            }
-            if (exports != NIL) {
-                x = exports;
-            } else {
-                var f = files;
-                while (f != NIL) : (f = t(f)) {
-                    x = clib.append1(fil_defs(h(f)), x);
-                }
-            }
-
-            if (freeids != NIL) {
-                var f = freeids;
-                while (f != NIL) : (f = t(f)) {
-                    const n = clib.findid(@constCast(get_id(h(f))));
-                    tp(n).* = t(t(h(f)));
-                    tp(h(h(n))).* = the_val(h(h(f)));
-                    hp(f).* = n;
-                }
-                freeids = clib.typesfirst(freeids);
-                f = freeids;
-                _ = clib.printf("\t%%free {\n", .{.{}});
-                while (f != NIL) : (f = t(f)) {
-                    _ = clib.putchar('\t');
-                    clib.report_type(h(f));
-                    _ = clib.putchar('\n');
-                }
-                _ = clib.printf("\t}\n", .{.{}});
-            }
-
-            var item = clib.typesfirst(alfasort(x));
-            while (item != NIL) : (item = t(item)) {
-                _ = clib.putchar('\t');
-                clib.report_type(h(item));
-                _ = clib.putchar('\n');
-            }
-        }
-        clib.exit(0);
-    }
-
-    if (mksources != 0) {
-        var s: [*:0]u8 = undefined;
-        var x: Word = NIL;
-        _ = clib.sigsetjmp(&env, 1);
-        var cur_argv_idx = arg_idx;
-        while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
-            s = clib.addextn(1, argv[cur_argv_idx]);
-            if (fileExists(s)) {
-                if (s == dicp) {
-                    _ = clib.keep(dicp);
-                }
-                undump(s);
-                var f = if (files == NIL) oldfiles else files;
-                while (f != NIL) : (f = t(f)) {
-                    const filename_str = get_fil(h(f)).?;
-                    if (clib.member(x, @intCast(@intFromPtr(filename_str))) == 0) {
-                        x = cons(@intCast(@intFromPtr(filename_str)), x);
-                        _ = clib.printf("%s\n", .{.{filename_str}});
-                    }
-                }
-            }
-        }
-        clib.exit(0);
-    }
-
-    if (making != 0) {
-        var s: [*:0]u8 = undefined;
-        _ = clib.sigsetjmp(&env, 1);
-        var cur_argv_idx = arg_idx;
-        while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
-            s = clib.addextn(1, argv[cur_argv_idx]);
-            if (s == dicp) {
-                _ = clib.keep(dicp);
-            }
-            undump(s);
-            if (ND != NIL or (files == NIL and oldfiles != NIL)) {
-                if (make_status == 1) {
-                    make_status = 0;
-                }
-                make_status = clib.strcons(@as(Word, @intCast(@intFromPtr(s))), make_status);
-            }
-        }
-        if (tag[@intCast(make_status)] == clib.STRCONS) {
-            var h_val: Word = 0;
-            var maxw: Word = 0;
-            _ = clib.printf("errors or undefined names found in:-\n", .{.{}});
-            while (make_status != 0) {
-                h_val = clib.strcons(h(make_status), h_val);
-                const w = @as(Word, @intCast(clib.strlen(@ptrFromInt(@as(usize, @intCast(h(h_val)))))));
-                if (w > maxw) {
-                    maxw = w;
-                }
-                make_status = t(make_status);
-            }
-            maxw += 1;
-            const n = @divTrunc(@as(Word, 78), maxw);
-            var w: Word = 0;
-            while (h_val != 0) {
-                w += 1;
-                _ = clib.printf("%*s%s", .{.{@as(c_int, @intCast(maxw)), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h_val))))), @as([*:0]const u8, if ((@rem(w, n)) != 0) "" else "\n")}});
-                h_val = t(h_val);
-            }
-            if ((@rem(w, n)) != 0) {
-                _ = clib.printf("\n", .{.{}});
-            }
-            make_status = 1;
-        }
-        clib.exit(@intCast(make_status));
-    }
-
-    var initscript: [*:0]const u8 = undefined;
-    if (remaining_argc == 0) {
-        initscript = "script.m";
-    } else if (magic != 0) {
-        initscript = argv[arg_idx];
-    } else {
-        initscript = clib.addextn(1, argv[arg_idx]);
-    }
-
-    if (initscript == dicp) {
-        _ = clib.keep(dicp);
-    }
-
-    _ = signals(clib.SIGFPE, @intFromPtr(&fpe_error));
-    _ = signals(clib.SIGTERM, @intFromPtr(&clib.exit));
-    commandloop(@constCast(initscript));
-    return 0;
-}
-
-fn unlimit_stack() void {
-    var rlimit: clib.struct_rlimit = undefined;
-    if (clib.getrlimit(clib.RLIMIT_STACK, &rlimit) == 0) {
-        rlimit.rlim_cur = rlimit.rlim_max;
-        _ = clib.setrlimit(clib.RLIMIT_STACK, &rlimit);
-    }
-}
-
 inline fn pn_val(x: Word) Word {
     return t(x);
 }
 
-export fn alfasort(x_val: Word) Word {
+pub export fn alfasort(x_val: Word) Word {
     var x = x_val;
     var a = NIL;
     var b = NIL;
@@ -3087,7 +2674,7 @@ export fn alfasort(x_val: Word) Word {
     return reverse(x);
 }
 
-fn utf8test() c_int {
+pub fn utf8test() c_int {
     var lang = clib.getenv("LC_CTYPE");
     if (lang == null) {
         lang = clib.getenv("LANG");
@@ -3219,7 +2806,7 @@ pub fn undump(t_val: [*:0]const u8) void {
     loading = 0;
 }
 
-fn missparam(s: [*:0]const u8) void {
+pub fn missparam(s: [*:0]const u8) void {
     _ = clib.fprintf(getStderr(), "mira: missing param after flag \"-%s\"\n", .{.{s}});
     clib.exit(1);
 }
@@ -3248,7 +2835,7 @@ fn makedump() void {
     _ = clib.fclose(f.?);
 }
 
-fn mkabsolute(m: [*:0]u8) [*:0]u8 {
+pub fn mkabsolute(m: [*:0]u8) [*:0]u8 {
     if (m[0] == '/') {
         return m;
     }
@@ -3279,6 +2866,7 @@ pub fn main(ctx: std.process.Init) !void {
 }
 
 comptime {
+    _ = @import("driver/startup.zig");
     _ = @import("driver/repl.zig");
     _ = @import("runtime/heap.zig");
     _ = @import("runtime/reduce.zig");
