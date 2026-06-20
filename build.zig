@@ -27,31 +27,68 @@ pub fn build(b: *std.Build) void {
     // On Linux (including musl targets), link musl/glibc so setjmp, strcmp, getcwd etc. resolve.
     // With a musl target the link is static, producing a self-contained binary.
     const need_libc = target.result.os.tag != .macos;
+
+    // Define reusable modules to avoid compiling the same code units multiple times
+    const mira_module = b.createModule(.{
+        .root_source_file = b.path("src/main.zig"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = need_libc,
+    });
+    mira_module.addOptions("version_options", version_options);
+
+    const just_module = b.createModule(.{
+        .root_source_file = b.path("src/tools/just.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const menudriver_module = b.createModule(.{
+        .root_source_file = b.path("src/tools/menudriver.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    // Build Executables
     const mira = b.addExecutable(.{
         .name = "mira",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .link_libc = need_libc,
-        }),
+        .root_module = mira_module,
     });
-    mira.root_module.addOptions("version_options", version_options);
 
     const install_mira = b.addInstallArtifact(mira, .{});
     b.getInstallStep().dependOn(&install_mira.step);
 
-    const utf8_zig = addZigObject(b, "utf8-zig", "src/io/utf8.zig", target, optimize, true);
+    const utf8_zig = b.addObject(.{
+        .name = "utf8-zig",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/io/utf8.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
 
-    const fdate = addZigExecutable(b, "fdate", "src/tools/fdate.zig", target, optimize, true);
+    const fdate = b.addExecutable(.{
+        .name = "fdate",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/tools/fdate.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
     const install_fdate = b.addInstallArtifact(fdate, .{});
     b.getInstallStep().dependOn(&install_fdate.step);
 
-    const just = addZigExecutable(b, "just", "src/tools/just.zig", target, optimize, false);
+    const just = b.addExecutable(.{
+        .name = "just",
+        .root_module = just_module,
+    });
     const install_just = b.addInstallArtifact(just, .{});
     b.getInstallStep().dependOn(&install_just.step);
 
-    const menudriver = addZigExecutable(b, "menudriver", "src/tools/menudriver.zig", target, optimize, false);
+    const menudriver = b.addExecutable(.{
+        .name = "menudriver",
+        .root_module = menudriver_module,
+    });
     const install_menudriver = b.addInstallArtifact(menudriver, .{
         .dest_dir = .{ .override = .{ .custom = "lib/miralib" } },
     });
@@ -73,37 +110,27 @@ pub fn build(b: *std.Build) void {
     });
     b.getInstallStep().dependOn(&install_miralib.step);
 
+    // Build Tests
     const utf8_tests = addUtf8Tests(b, target, optimize, utf8_zig);
     const run_utf8_tests = b.addRunArtifact(utf8_tests);
+
     const just_tests = b.addTest(.{
         .name = "just-tests",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/tools/just.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
+        .root_module = just_module,
     });
     const run_just_tests = b.addRunArtifact(just_tests);
+
     const menudriver_tests = b.addTest(.{
         .name = "menudriver-tests",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/tools/menudriver.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
+        .root_module = menudriver_module,
     });
     const run_menudriver_tests = b.addRunArtifact(menudriver_tests);
+
     const main_tests = b.addTest(.{
         .name = "main-tests",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("src/main.zig"),
-            .target = target,
-            .optimize = optimize,
-            .link_libc = need_libc,
-        }),
+        .root_module = mira_module,
     });
     const run_main_tests = b.addRunArtifact(main_tests);
-    main_tests.root_module.addOptions("version_options", version_options);
 
     const parser_tests = b.addTest(.{
         .name = "parser-tests",
@@ -185,25 +212,6 @@ pub fn build(b: *std.Build) void {
     clean_step.dependOn(&clean.step);
 }
 
-fn addZigExecutable(
-    b: *std.Build,
-    name: []const u8,
-    path: []const u8,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    link_libc: bool,
-) *std.Build.Step.Compile {
-    return b.addExecutable(.{
-        .name = name,
-        .root_module = b.createModule(.{
-            .root_source_file = b.path(path),
-            .target = target,
-            .optimize = optimize,
-            .link_libc = link_libc,
-        }),
-    });
-}
-
 fn addUtf8Tests(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
@@ -224,35 +232,6 @@ fn addUtf8Tests(
     });
     utf8_tests.root_module.addObject(utf8_zig);
     return utf8_tests;
-}
-
-fn addZigObject(
-    b: *std.Build,
-    name: []const u8,
-    path: []const u8,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    link_libc: bool,
-) *std.Build.Step.Compile {
-    return b.addObject(.{
-        .name = name,
-        .root_module = b.createModule(.{
-            .root_source_file = b.path(path),
-            .target = target,
-            .optimize = optimize,
-            .link_libc = link_libc,
-        }),
-    });
-}
-
-fn addPlatformMacros(exe: *std.Build.Step.Compile, target: std.Build.ResolvedTarget) void {
-    exe.root_module.addCMacro("_FORTIFY_SOURCE", "0");
-    exe.root_module.addCMacro("_GNU_SOURCE", "1");
-    if (target.result.os.tag == .macos) {
-        exe.root_module.addCMacro("_DARWIN_C_SOURCE", "1");
-    } else {
-        exe.root_module.addCMacro("_POSIX_C_SOURCE", "200809L");
-    }
 }
 
 fn readTrimmed(b: *std.Build, path: []const u8) []const u8 {
