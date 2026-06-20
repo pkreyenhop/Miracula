@@ -13,31 +13,31 @@ The lifecycle of a Miranda script or interactive expression follows this pipelin
                │
                ▼
    ┌───────────────────────┐
-   │        Parser         │  (lex.zig, parser_bridge.c, parse_actions.zig)
-   └───────────────────────┘
-               │
-               ▼  Abstract Syntax Tree (AST)
-   ┌───────────────────────┐
-   │      Translator       │  (trans.zig, types.zig)
-   └───────────────────────┘
-               │
-               ▼  Combinator Code Graph
-   ┌───────────────────────┐
-   │     Graph Builder     │  (heap.zig)
-   └───────────────────────┘
-               │
-               ▼  Heap Cells
-   ┌───────────────────────┐
-   │        Reducer        │  (reduce.zig)
-   └───────────────────────┘
-               │
-               ▼  Reductions & System IO
-   ┌───────────────────────┐
-   │        Runtime        │  (combinator.zig, big.zig, platform.zig)
-   └───────────────────────┘
+    │        Parser         │  (parser.zig, pratt.zig, lex_bridge.zig, lex.zig)
+    └───────────────────────┘
+                │
+                ▼  Abstract Syntax Tree (AST)
+    ┌───────────────────────┐
+    │      Translator       │  (trans.zig, types.zig)
+    └───────────────────────┘
+                │
+                ▼  Combinator Code Graph
+    ┌───────────────────────┐
+    │     Graph Builder     │  (heap.zig)
+    └───────────────────────┘
+                │
+                ▼  Heap Cells
+    ┌───────────────────────┐
+    │        Reducer        │  (reduce.zig)
+    └───────────────────────┘
+                │
+                ▼  Reductions & System IO
+    ┌───────────────────────┐
+    │        Runtime        │  (combinator.zig, big.zig, platform.zig)
+    └───────────────────────┘
 ```
 
-1. **Parser**: Reads the source input, lexes tokens, and builds the initial Abstract Syntax Tree (AST) cells in the heap.
+1. **Parser**: Reads the source input, lexes tokens, and builds the Abstract Syntax Tree (AST) representing definitions, types, and expressions.
 2. **Translator (Compiler)**: Typechecks the AST and performs bracket abstraction to convert user-defined functions and pattern matches into target combinator graphs.
 3. **Graph Builder**: Instantiates compile-time combinator expressions into active runtime heap cells.
 4. **Reducer**: Runs the main graph reduction loop, applying combinators on the graph until a weak head normal form (WHNF) is reached.
@@ -58,9 +58,11 @@ The lifecycle of a Miranda script or interactive expression follows this pipelin
 * **`big.zig`**: Provides arbitrary-precision integer arithmetic and helper methods for converting floating-point values to bigint components.
 
 ### 3. Parser Subsystem (`src/parser/`)
-* **`lex.zig`**: Lexical analyzer that scans characters, handles offside layout rules, and produces tokens.
-* **`parse_actions.zig`**: Semantic actions implemented in Zig that compile the parsed grammar rules into AST structures.
-* **`legacy/`**: Isolated legacy C parser boundary containing `y.tab.c`, `y.tab.h`, and `parser_bridge.c` which parses the grammar via Berkeley yacc.
+* **`parser.zig`**: Implements a recursive-descent parser covering grammar structures (scripts, declarations, local definitions, type specs).
+* **`pratt.zig`**: Implements a Pratt parser for expressions using the Miranda operator binding-powers table.
+* **`ast.zig`**: Defines the stateless AST representations in pure Zig.
+* **`codegen.zig`**: Lowers AST structures into active heap cell graphs.
+* **`lex.zig` & `lex_bridge.zig`**: Handles layout-sensitive indentation, comments, lexical tokens, and bridge stream buffering.
 
 ### 4. IO Subsystem (`src/io/`)
 * **`utf8.zig`**: Standard console and file character transcoding support.
