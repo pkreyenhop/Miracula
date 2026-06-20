@@ -11,7 +11,7 @@ const word_mod = @import("runtime/word.zig");
 
 const clib = @import("runtime/main_clib.zig");
 
-inline fn get_id(x: Word) [*:0]const u8 {
+pub inline fn get_id(x: Word) [*:0]const u8 {
     return @ptrFromInt(@as(usize, @intCast(h(h(h(x))))));
 }
 
@@ -21,12 +21,12 @@ inline fn get_fil(fil: Word) ?[*:0]const u8 {
     return @ptrFromInt(@as(usize, @intCast(val)));
 }
 
-const Word = c_long;
-const CONS: u8 = 11;
-const AP: u8 = 9;
-const CMBASE: Word = 306;
-const NIL: Word = CMBASE + 138;
-const ATOMLIMIT: Word = CMBASE + 141;
+pub const Word = c_long;
+pub const CONS: u8 = 11;
+pub const AP: u8 = 9;
+pub const CMBASE: Word = 306;
+pub const NIL: Word = CMBASE + 138;
+pub const ATOMLIMIT: Word = CMBASE + 141;
 
 extern var hd: [*]Word;
 extern var tl: [*]Word;
@@ -57,7 +57,7 @@ extern var lfrule: c_int;
 // Global variables exported to C
 export var nill: Word = 0;
 export var Void: Word = 0;
-var main_id: Word = 0;
+pub var main_id: Word = 0;
 export var message: Word = 0;
 export var standardout: Word = 0;
 export var diagonalise: Word = 0;
@@ -94,6 +94,9 @@ extern var TSUPPRESSED: Word;
 export var fnts: Word = NIL;
 
 extern fn signals(signum: c_int, handler: usize) usize;
+extern fn dieclean() void;
+extern fn fpe_error(sig: c_int) void;
+extern fn commandloop(initscript: [*:0]u8) void;
 
 export var SPACELIMIT: Word = 2500000;
 export var DICSPACE: Word = 100000;
@@ -106,7 +109,7 @@ export var baded: Word = 0;
 export var miralib: ?[*:0]u8 = null;
 var mirahdr: ?[*:0]u8 = null;
 var lmirahdr: ?[*:0]u8 = null;
-var promptstr: [*:0]const u8 = "Miranda ";
+pub var promptstr: [*:0]const u8 = "Miranda ";
 export var obsuffix: [*:0]const u8 = "x";
 export var s_in: ?*clib.FILE = null;
 export var commandmode: Word = 0;
@@ -140,7 +143,7 @@ export var home_rc: [clib.pnlim + 8]u8 = undefined;
 export var lib_rc: [clib.pnlim + 8]u8 = undefined;
 export var rc_error: ?[*:0]const u8 = null;
 
-var env: clib.sigjmp_buf = undefined;
+pub var env: clib.sigjmp_buf = undefined;
 var unlinkme: ?[*:0]const u8 = null;
 var lose: c_int = 0;
 export var sorted: c_int = 0;
@@ -204,21 +207,21 @@ extern fn reset_lex() void;
 extern fn dic_check() void;
 extern fn isconstrname(input: [*:0]const u8) c_int;
 
-fn h(x: Word) Word {
+pub fn h(x: Word) Word {
     if (x < ATOMLIMIT) return 0;
     return hd[@as(usize, @intCast(x)) * 2];
 }
 
-fn t(x: Word) Word {
+pub fn t(x: Word) Word {
     if (x < ATOMLIMIT) return 0;
     return tl[@as(usize, @intCast(x)) * 2];
 }
 
-fn hp(x: Word) *Word {
+pub fn hp(x: Word) *Word {
     return &hd[@as(usize, @intCast(x)) * 2];
 }
 
-fn tp(x: Word) *Word {
+pub fn tp(x: Word) *Word {
     return &tl[@as(usize, @intCast(x)) * 2];
 }
 
@@ -341,13 +344,13 @@ export fn evaluate_repl(x_in: Word) void {
     // Parent returns here; heap and compiling flag are unchanged.
 }
 
-inline fn getStdin() ?*clib.FILE {
+pub inline fn getStdin() ?*clib.FILE {
     return clib.stdin();
 }
-inline fn getStdout() ?*clib.FILE {
+pub inline fn getStdout() ?*clib.FILE {
     return clib.stdout();
 }
-inline fn getStderr() ?*clib.FILE {
+pub inline fn getStderr() ?*clib.FILE {
     return clib.stderr();
 }
 
@@ -391,15 +394,15 @@ fn t_info(x: Word) Word {
     return t(t(the_val(x)));
 }
 
-fn id_val(x: Word) Word {
+pub fn id_val(x: Word) Word {
     return t(x);
 }
 
-fn id_type(x: Word) Word {
+pub fn id_type(x: Word) Word {
     return t(h(x));
 }
 
-fn id_who(x: Word) Word {
+pub fn id_who(x: Word) Word {
     return t(h(h(x)));
 }
 
@@ -864,182 +867,7 @@ fn announce() void {
 export var lastid: Word = 0;
 export var rv_expr: Word = 0;
 
-export fn commandloop(initscript: [*:0]u8) void {
-    var ch: c_int = undefined;
-    var lb: ?[*:0]u8 = undefined;
 
-    if (clib.sigsetjmp(&env, 1) == 0) {
-        if (magic != 0) {
-            undump(initscript);
-            if (files == NIL or ND != NIL or id_val(main_id) == clib.UNDEF) {
-                if (files != NIL and ND == NIL and id_val(main_id) == clib.UNDEF) {
-                    _ = clib.fprintf(getStderr(), "%s: main not defined\n", .{.{initscript}});
-                }
-                _ = clib.fprintf(getStderr(), "mira: incorrect use of \"-exec\" flag\n", .{.{}});
-                clib.exit(1);
-            }
-            magic = 0;
-            clib.obey(main_id);
-            clib.exit(0);
-        }
-        _ = signals(clib.SIGINT, @intFromPtr(&reset));
-        undump(initscript);
-        if (verbosity != 0) {
-            _ = clib.printf("for help type /h\n", .{.{}});
-        }
-    }
-
-    while (true) {
-        resetgcstats();
-        if (verbosity != 0) {
-            _ = clib.printf("%s", .{.{promptstr}});
-        }
-        ch = clib.getchar();
-        if (rechecking != 0 and src_update() != 0) {
-            loadfile(current_script.?);
-        }
-        while (ch == ' ' or ch == '\t') {
-            ch = clib.getchar();
-        }
-        switch (ch) {
-            '?' => {
-                ch = clib.getchar();
-                if (ch == '?') {
-                    var x: Word = undefined;
-                    var aka: ?[*:0]u8 = null;
-                    if (token() == null and lastid == 0) {
-                        _ = clib.printf("\x07identifier needed after `??'\n", .{.{}});
-                        ch = clib.getchar();
-                        continue;
-                    }
-                    if (clib.getchar() != '\n') {
-                        xschars();
-                        continue;
-                    }
-                    if (baded != 0) {
-                        ed_warn();
-                        continue;
-                    }
-                    if (dicp[0] != 0) {
-                        x = clib.findid(dicp);
-                    } else {
-                        _ = clib.printf("??%s\n", .{.{get_id(lastid)}});
-                        x = lastid;
-                    }
-                    if (x == NIL or id_type(x) == clib.undef_t) {
-                        diagnose(if (dicp[0] != 0) dicp else get_id(lastid));
-                        lastid = 0;
-                        continue;
-                    }
-                    if (id_who(x) == NIL) {
-                        _ = clib.printf("%s -- primitive to Miranda\n", .{.{if (dicp[0] != 0) dicp else get_id(lastid)}});
-                        lastid = 0;
-                        continue;
-                    }
-                    lastid = x;
-                    x = id_who(x);
-                    if (tag[@intCast(x)] == CONS) {
-                        aka = @ptrFromInt(@as(usize, @intCast(h(h(x)))));
-                        x = t(x);
-                    }
-                    if (aka != null) {
-                        _ = clib.printf("originally defined as \"%s\"\n", .{.{aka.?}});
-                    }
-                    editfile(@ptrFromInt(@as(usize, @intCast(h(x)))), @intCast(t(x)));
-                } else {
-                    _ = clib.ungetc(ch, getStdin().?);
-                    _ = token();
-                    lastid = 0;
-                    if (dicp[0] == 0) {
-                        if (clib.getchar() != '\n') {
-                            xschars();
-                        } else {
-                            allnamescom();
-                        }
-                    } else {
-                        while (dicp[0] != 0) {
-                            finger(dicp);
-                            _ = token();
-                        }
-                        ch = clib.getchar();
-                    }
-                }
-            },
-            ':', '/' => {
-                _ = token();
-                lastid = 0;
-                command();
-            },
-            '!' => {
-                lb = rdline();
-                if (lb == null) continue;
-                lastid = 0;
-                if (lb.?[0] != 0) {
-                    var shell: ?[*:0]const u8 = null;
-                    var oldsig: usize = undefined;
-                    var pid: c_int = undefined;
-                    shell = clib.getenv("SHELL");
-                    if (shell == null) {
-                        shell = "/bin/sh";
-                    }
-                    oldsig = signals(clib.SIGINT, 1);
-                    pid = clib.fork();
-                    if (pid != 0) { // parent
-                        if (pid == -1) {
-                            clib.perror("UNIX error - cannot create process");
-                        }
-                        while (pid != clib.wait(null)) {}
-                        _ = signals(clib.SIGINT, oldsig);
-                    } else { // child
-                        _ = clib.execl(shell.?, .{shell.?, "-c", lb.?});
-                    }
-                    if (src_update() != 0) {
-                        loadfile(current_script.?);
-                    }
-                } else {
-                    _ = clib.printf("No previous shell command to substitute for \"!\"\n", .{.{}});
-                }
-            },
-            '|' => {
-                ch = clib.getchar();
-                if (ch != '|') {
-                    _ = clib.printf("\x07unknown command - type /h for help\n", .{.{}});
-                }
-                while (ch != '\n' and ch != clib.EOF) {
-                    ch = clib.getchar();
-                }
-            },
-            '\n' => {},
-            clib.EOF => {
-                if (verbosity != 0) {
-                    _ = clib.printf("\nmiranda logout\n", .{.{}});
-                }
-                clib.exit(0);
-            },
-            else => {
-                _ = clib.ungetc(ch, getStdin().?);
-                lastid = 0;
-                tp(h(cook_stdin)).* = 0;
-                rv_expr = 0;
-                c = clib.EVAL;
-                echoing = 0;
-                polyshowerror = 0;
-                commandmode = 1;
-                _ = parser_api.parseCurrent() catch {};
-                if (SYNERR != 0) {
-                    SYNERR = 0;
-                } else if (c != '\n') {
-                    _ = clib.printf("syntax error\n", .{.{}});
-                    while (c != '\n' and c != clib.EOF) {
-                        c = clib.getchar();
-                    }
-                }
-                commandmode = 0;
-                echoing = verbosity & listing;
-            },
-        }
-    }
-}
 
 export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
     var t1: Word = undefined;
@@ -1107,11 +935,11 @@ export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
     }
 }
 
-fn ed_warn() void {
+pub fn ed_warn() void {
     _ = clib.printf("The currently installed editor command, \"%s\", does not\ninclude a facility for opening a file at a specified line number.  As a\nresult the `??' command and certain other features of the Miranda system\nare disabled.  See manual section 31/5 on changing the editor for more\ninformation.\n", .{.{editor orelse @constCast("")}});
 }
 
-fn src_update() c_int {
+pub fn src_update() c_int {
     var ft: Word = undefined;
     var f = if (files == NIL) oldfiles else files;
     while (f != NIL) {
@@ -1127,7 +955,7 @@ fn src_update() c_int {
     return 0;
 }
 
-export fn reset() void {
+pub export fn reset() void {
     if (collecting != 0) {
         clib.gcpatch();
     }
@@ -1170,7 +998,7 @@ fn v_info(full: c_int) void {
     _ = clib.printf("XVERSION %u\n", .{.{@as(c_uint, clib.XVERSION)}});
 }
 
-fn command() void {
+pub fn command() void {
     var t_val: ?[*:0]u8 = undefined;
     var ch: c_int = undefined;
     var ch1: c_int = undefined;
@@ -1558,7 +1386,7 @@ fn manaction() void {
     _ = clib.system(&linebuf);
 }
 
-fn editfile(t_val: [*:0]const u8, line: c_int) void {
+pub fn editfile(t_val: [*:0]const u8, line: c_int) void {
     var line_val = line;
     const ebuf_local = @as([*]u8, @ptrCast(&linebuf[0]));
     var p = ebuf_local;
@@ -1611,7 +1439,7 @@ fn editfile(t_val: [*:0]const u8, line: c_int) void {
     }
 }
 
-fn xschars() void {
+pub fn xschars() void {
     var ch: c_int = undefined;
     _ = clib.printf("\x07extra characters at end of command\n", .{.{}});
     while (true) {
@@ -1635,7 +1463,7 @@ fn filequote(p: [*:0]const u8) void {
     }
 }
 
-fn finger(n: [*:0]const u8) void {
+pub fn finger(n: [*:0]const u8) void {
     const x = clib.findid(@constCast(n));
     var line: Word = 0;
     var s: ?[*:0]u8 = null;
@@ -1684,7 +1512,7 @@ fn finger(n: [*:0]const u8) void {
     diagnose(n);
 }
 
-fn diagnose(n: [*:0]const u8) void {
+pub fn diagnose(n: [*:0]const u8) void {
     var i: usize = 0;
     if (clib.isalpha(@intCast(n[0])) != 0) {
         while (n[i] != 0 and clib.okid(n[i]) != 0) {
@@ -1708,7 +1536,7 @@ fn diagnose(n: [*:0]const u8) void {
     _ = clib.printf("identifier \"%s\" not in scope\n", .{.{n}});
 }
 
-fn allnamescom() void {
+pub fn allnamescom() void {
     var s: Word = undefined;
     var x = ND;
     var y = ND;
@@ -1851,7 +1679,7 @@ fn namescom(l: Word) void {
     clib.printlist(@constCast("SPECIFIED BUT NOT DEFINED: "), undefs);
 }
 
-fn loadfile(t_val: [*:0]const u8) void {
+pub fn loadfile(t_val: [*:0]const u8) void {
     var h_val: Word = NIL;
     loading = 1;
     errs = 0;
@@ -2800,49 +2628,8 @@ fn mira_setup() void {
     primlib();
 }
 
-export fn dieclean() void {
-    _ = clib.fprintf(getStderr(), "<<...interrupt>>\n", .{.{}});
-    clib.outstats();
-    clib.exit(0);
-}
 
-export fn process() Word {
-    var oldsig: usize = undefined;
-    oldsig = signals(clib.SIGINT, 1);
-    const pid = clib.fork();
-    if (pid != 0) { // parent
-        var status: c_int = 0;
-        if (pid == -1) {
-            clib.perror("UNIX error - cannot create process");
-            return 0;
-        }
-        while (pid != clib.wait(&status)) {}
-        if (WIFSIGNALED(status)) {
-            const cd: [*:0]const u8 = if ((status & 0x80) != 0) " (core dumped)" else "";
-            const sig = WTERMSIG(status);
-            switch (sig) {
-                clib.SIGBUS => _ = clib.fprintf(getStderr(), "\n<<...bus error%s>>\n", .{.{cd}}),
-                clib.SIGSEGV => _ = clib.fprintf(getStderr(), "\n<<...segmentation fault%s>>\n", .{.{cd}}),
-                else => _ = clib.fprintf(getStderr(), "\n<<...uncaught signal %d>>\n", .{.{sig}}),
-            }
-        }
-        _ = signals(clib.SIGINT, oldsig);
-        return 0;
-    }
-    return 1; // child
-}
 
-export fn fpe_error(sig: c_int) void {
-    if (compiling != 0) {
-        _ = signals(sig, @intFromPtr(&fpe_error));
-        syntax("floating point number out of range\n");
-        SYNERR = 0;
-        clib.siglongjmp(&env, 1);
-    } else {
-        _ = clib.printf("\nFLOATING POINT OVERFLOW\n", .{.{}});
-        clib.exit(1);
-    }
-}
 
 fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
     var manonly: Word = 0;
@@ -3317,7 +3104,7 @@ fn utf8test() c_int {
     return 0;
 }
 
-fn undump(t_val: [*:0]const u8) void {
+pub fn undump(t_val: [*:0]const u8) void {
     var obf: [clib.pnlim]u8 = undefined;
     var f: ?*clib.FILE = null;
     var flen: Word = undefined;
@@ -3492,6 +3279,7 @@ pub fn main(ctx: std.process.Init) !void {
 }
 
 comptime {
+    _ = @import("driver/repl.zig");
     _ = @import("runtime/heap.zig");
     _ = @import("runtime/reduce.zig");
     _ = @import("runtime/combinator.zig");
