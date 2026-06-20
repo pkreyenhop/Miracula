@@ -237,8 +237,8 @@ fn nil() Word {
 
 export var SPACE: Word = 1250000;
 export var listp: Word = ATOMLIMIT - 1;
-export var files: Word = 0;
-export var current_file: Word = 0;
+export var files: Word = c.NIL;
+export var current_file: Word = c.NIL;
 export var cellcount: i64 = 0;
 export var claims: c_long = 0;
 export var nogcs: c_long = 0;

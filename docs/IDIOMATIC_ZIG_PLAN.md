@@ -42,7 +42,7 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
     * *Details:* Extract `mira_setup`, `primdef`, `predef`, `primlib`, `privlib`, and `stdlib`.
     * *DoD:* `main()` successfully calls the extracted setup without linker errors. Includes at least one `test` block.
 * **A4: Extract Source Loader (`src/compiler/module_loader.zig`)**
-    * *Status:* Not started
+    * *Status:* **Complete**
     * *Details:* Extract `loadfile`, `mkincludes`, and path tracking.
     * *DoD:* Can successfully load and parse a basic `.m` script. Includes at least one `test` block for file resolution.
 * **A5: Extract State Dumping (`src/compiler/dump.zig`)**
@@ -87,8 +87,22 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
     * *Status:* Not started
     * *Details:* Add `///` docs to all `pub` declarations in the newly split modules, specifically calling out invariants and ownership.
 
----
 
+### Cluster E: Control Flow & Error Handling (Deferred)
+*Goal: Eliminate C standard library dependencies (`setjmp`, `longjmp`, `siglongjmp`) by replacing non-local control flow with Zig's native error unions.*
+
+* **E1: Define Domain Errors**
+    * *Status:* Not started
+    * *Details:* Create specific error types (e.g., `error.SyntaxError`, `error.EvaluationFailed`) for the parser and evaluator.
+* **E2: Error Union Signatures & Bubbling**
+    * *Status:* Not started
+    * *Details:* Change the return signatures of deeply nested functions from `T` to `!T`. Propagate errors up the call stack using the `try` keyword.
+* **E3: Top-Level Error Handling**
+    * *Status:* Not started
+    * *Details:* Catch and handle the errors gracefully at the top-level loop (e.g., inside `commandloop`) using `catch`, replacing the `setjmp` recovery points.
+    * *Constraint:* Do not begin this work until Clusters A through D are fully complete to avoid destabilizing the structural refactoring.
+
+---
 ## Progress Summary
 
 | Cluster | Step | Title | Status |
@@ -96,7 +110,7 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 | A | A1 | Replace `extern var` in `repl.zig` with `@import()` | **Complete** |
 | A | A2 | Extract commands.zig from main.zig | **Complete** |
 | A | A3 | Extract Compiler Initialization (setup.zig) | **Complete** |
-| A | A4 | Extract Source Loader (module_loader.zig) | Not started |
+| A | A4 | Extract Source Loader (module_loader.zig) | **Complete** |
 | A | A5 | Extract State Dumping (dump.zig) | Not started |
 | B | B1 | Introduce RuntimeState (includes boolean conversion) | Not started |
 | B | B2 | Encapsulate Heap Access | Not started |
@@ -105,3 +119,6 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 | D | D1 | Internal String Slices | Not started |
 | D | D2 | Domain Methods | Not started |
 | D | D3 | Documentation | Not started |
+| E | E1 | Define Domain Errors | Not started |
+| E | E2 | Error Union Signatures & Bubbling | Not started |
+| E | E3 | Top-Level Error Handling | Not started |
