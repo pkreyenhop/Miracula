@@ -15,7 +15,7 @@ The project's goal is to transition the original, historical C codebase into an 
 * **✔ REPL Works Correctly**: The interactive REPL evaluates expressions with proper fork-based isolation — heavy computations (e.g. `fib 32`) do not corrupt the heap for subsequent evaluations.
 * **✔ Menudriver Works**: The Miranda menu-driven help viewer (`menudriver`) is built and installed into `miralib/` by `build.zig`. Zig 0.16 `writableVector` aliasing and shell read-ahead stdin isolation bugs fixed.
 * **✔ Tests Passing**: 60/61 tests pass across all suites (steer: 21, lex: 21, parser: 14, menudriver: 2, just: 2). The single known failure is a pre-existing `mira-tests` integration test.
-* **⚠ libc Linked**: libc remains linked to support platform abstractions (signals, file I/O, big integers).
+* **✔ Pure Zig Subsystem (No libc)**: Removed C standard library dependencies from the core interpreter. On macOS, it builds against libSystem, and on Linux, it compiles to statically linked ELF binaries via Musl, or dynamically linked binaries via glibc.
 
 ---
 
@@ -40,6 +40,15 @@ zig build
 ```
 
 This compiles the executable and places it in `zig-out/bin/mira`.
+
+> [!IMPORTANT]
+> **Linux Build Relocation Error Workaround (glibc 2.43+ / GCC 15+)**
+> If you are compiling a Debug binary on rolling-release Linux distros (such as Arch Linux, Fedora, or Ubuntu 24.10+) and hit an ELF linker relocation error (related to `R_X86_64_PC64` in `.sframe` sections), you are running into a known upstream Zig compiler bug ([ziglang/zig#31272](https://github.com/ziglang/zig/issues/31272)).
+>
+> To bypass this linker bug, compile with Release optimization enabled (which forces the use of LLVM instead of the self-hosted linker):
+> ```bash
+> zig build -Doptimize=ReleaseSafe
+> ```
 
 ---
 
@@ -86,4 +95,4 @@ Miracula officially supports and cross-compiles for:
 | **Phase 3** | Unified Build System | **Complete** ✔ |
 | **Phase 4** | libc Dependency Reduction | **Complete** ✔ |
 | **Phase 5** | Pure Zig Parser (No Yacc/C) | **Complete** ✔ |
-| **Phase 6** | Pure Zig Implementation (No libc) | *Planned* |
+| **Phase 6** | Pure Zig Implementation (No libc) | **Complete** ✔ |
