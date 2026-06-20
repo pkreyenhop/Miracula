@@ -39,6 +39,10 @@ This document outlines the history, completed milestones, target platform suppor
   - The binary successfully cross-compiles cleanly to statically linked ELF binaries on Linux (`x86_64-linux-musl`), dynamically linked ELF binaries on glibc-based Linux (`x86_64-linux-gnu`), and Mach-O binaries on macOS (`aarch64-macos`).
   - Fixed compilation of the C test harness and resolved linking issues for the test suite (`utf8-tests`) under cross-compilation target environments.
 
+### 📅 Phase 7: Idiomatic Zig Modernization
+* **Goal**: Refactor the codebase from a direct C translation to a native, idiomatic Zig codebase (split monolithic `main.zig`, encapsulate heap access, replace magic constants with enums, introduce `RuntimeState`, use domain types, and utilize Zig slices/strings).
+* **Details**: Refer to the step-by-step priority list and instructions in [IDIOMATIC_ZIG_PLAN.md](file:///Users/pkreyenhop/src/experiments/Miracula/docs/IDIOMATIC_ZIG_PLAN.md).
+
 ---
 
 ## 💻 Target Platform Build Status

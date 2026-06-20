@@ -1,3 +1,8 @@
+// TODO: Phase 7 - Idiomatic Zig Modernization:
+// - Step 1: Split monolithic main.zig into logical driver/compiler/filesystem modules.
+// - Step 2: Introduce RuntimeState struct to group global static variables.
+// - Step 5: Replace integer flags (compiling, echoing, listing, etc.) with booleans.
+
 const std = @import("std");
 const platform = @import("io/platform.zig");
 const parser_api = @import("parser/parser_api.zig");

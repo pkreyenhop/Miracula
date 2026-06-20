@@ -1,3 +1,7 @@
+// TODO: Phase 7 - Idiomatic Zig Modernization:
+// - Step 1: Replace C types (c_long/c_ulong) with standard Zig types (i64/u64).
+// - Step 4: Convert cell tags (lines 65-87) and representation types (lines 230-250) to type-safe enums.
+
 const std = @import("std");
 
 pub const Word = c_long;

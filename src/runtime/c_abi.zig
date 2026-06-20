@@ -1,3 +1,6 @@
+// TODO: Phase 7 - Idiomatic Zig Modernization:
+// - Step 4: Replace magic constant values (such as ATOM, DOUBLE, AP, CONS, etc.) with type-safe enums.
+
 const std = @import("std");
 const builtin = @import("builtin");
 
