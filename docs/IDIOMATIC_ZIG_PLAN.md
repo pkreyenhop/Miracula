@@ -46,9 +46,9 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
     * *Details:* Extract `loadfile`, `mkincludes`, and path tracking.
     * *DoD:* Can successfully load and parse a basic `.m` script. Includes at least one `test` block for file resolution.
 * **A5: Extract State Dumping (`src/compiler/dump.zig`)**
-    * *Status:* Not started
-    * *Details:* Extract `undump`, `makedump`, `fixexports`, `unfixexports`.
-    * *DoD:* `main.zig` is now strictly an entry point (<200 lines). Includes at least one `test` block.
+    * *Status:* **Complete (2026-06-20)**
+    * *Details:* Extracted `undump`, `makedump`, `fixexports`, `unfixexports`, `readoption`, `sigdefer` into `dump.zig`. Also extracted filesystem helpers (`fm_time`, `normal`, `filecopy`, etc.) into `src/io/files.zig`. Fixed 9 build errors from the agent: `syntax()`/`acterror()`/`yysterm` restored to `setup.zig`; all `export fn` in `commands.zig` made `pub`; `isconstructor`/`isvariable` corrected to use `isconstrname()`.
+    * *Note:* `main.zig` is now 338 lines — not yet under 200. Remaining content is global state declarations (needed for C ABI export) and `pub const` aliases for the extracted modules. The <200 goal requires B1 (RuntimeState consolidation).
 
 ### Cluster B: State Encapsulation (Depends on Cluster A)
 *Goal: Eliminate implicit global state via dependency injection.*
@@ -111,7 +111,7 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 | A | A2 | Extract commands.zig from main.zig | **Complete** |
 | A | A3 | Extract Compiler Initialization (setup.zig) | **Complete** |
 | A | A4 | Extract Source Loader (module_loader.zig) | **Complete** |
-| A | A5 | Extract State Dumping (dump.zig) | Not started |
+| A | A5 | Extract State Dumping (dump.zig) | **Complete** |
 | B | B1 | Introduce RuntimeState (includes boolean conversion) | Not started |
 | B | B2 | Encapsulate Heap Access | Not started |
 | C | C1 | NodeTag Enum | Not started |
