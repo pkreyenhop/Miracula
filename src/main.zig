@@ -156,11 +156,11 @@ pub export var exports: Word = NIL;
 pub extern var exportfiles: Word;
 pub export var embargoes: Word = NIL;
 pub extern var newtyps: Word;
-extern var SGC: Word;
+pub extern var SGC: Word;
 pub extern var speclocs: Word;
-extern var rv_script: Word;
-extern var algshfns: Word;
-extern var nextpn: Word;
+pub extern var rv_script: Word;
+pub extern var algshfns: Word;
+pub extern var nextpn: Word;
 export var lastname: Word = 0;
 export var suppressids: Word = NIL;
 export var col_fn: Word = 0;
@@ -171,7 +171,7 @@ export var ihlist: Word = 0;
 export var ntspecmap: Word = NIL;
 export var lexstates: Word = NIL;
 export var lexdefs: Word = NIL;
-extern var TABSTRS: Word;
+pub extern var TABSTRS: Word;
 pub extern var ND: Word;
 pub extern var polyshowerror: c_int;
 extern var fileq: Word;
@@ -190,7 +190,7 @@ extern fn bigsetup() void;
 extern fn resetgcstats() void;
 extern fn reset_state() void;
 extern fn reset_lex() void;
-extern fn dic_check() void;
+pub extern fn dic_check() void;
 extern fn isconstrname(input: [*:0]const u8) c_int;
 
 // Inline functions
@@ -291,6 +291,8 @@ pub const fixeditor = repl.fixeditor;
 pub const parseline = repl.parseline;
 
 // Commands driver helpers
+pub const command = commands.command;
+pub const manaction = commands.manaction;
 pub const diagnose = commands.diagnose;
 pub const editfile = commands.editfile;
 pub const allnamescom = commands.allnamescom;

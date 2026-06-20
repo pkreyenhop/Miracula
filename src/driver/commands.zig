@@ -23,6 +23,13 @@ var words: [400]Word = undefined;
 // File-private state for filequote.
 var filequote_mlen: usize = 0;
 
+fn spaces(s: Word) void {
+    var j = s;
+    while (j > 0) : (j -= 1) {
+        _ = clib.putchar(' ');
+    }
+}
+
 fn is(s: [*:0]const u8) bool {
     return std.mem.eql(u8, std.mem.span(main.dicp), std.mem.span(s));
 }
@@ -83,7 +90,7 @@ fn namescom(l: Word) void {
                         _ = clib.printf("%s", .{.{main.get_id(words[@as(usize, @intCast(col_local))])}});
                         col_local += 1;
                         if (col_local < wp) {
-                            main.spaces(1 + i + if (r > 0) @as(Word, 1) else @as(Word, 0));
+                            spaces(1 + i + if (r > 0) @as(Word, 1) else @as(Word, 0));
                             r -= 1;
                         }
                     }
@@ -94,7 +101,7 @@ fn namescom(l: Word) void {
                         _ = clib.printf("%s", .{.{main.get_id(words[@as(usize, @intCast(col_local))])}});
                         col_local += 1;
                         if (col_local < wp) {
-                            main.spaces(1 + i + if (r <= 0) @as(Word, 1) else @as(Word, 0));
+                            spaces(1 + i + if (r <= 0) @as(Word, 1) else @as(Word, 0));
                             r -= 1;
                         }
                     }
@@ -125,7 +132,7 @@ fn namescom(l: Word) void {
     clib.printlist(@constCast("SPECIFIED BUT NOT DEFINED: "), undefs);
 }
 
-export fn command() void {
+pub export fn command() void {
     var t_val: ?[*:0]u8 = undefined;
     var ch: c_int = undefined;
     var ch1: c_int = undefined;
@@ -508,12 +515,12 @@ export fn command() void {
     xschars();
 }
 
-export fn manaction() void {
+pub export fn manaction() void {
     _ = clib.sprintf(&main.linebuf, "\"%s/menudriver\" \"%s/manual\"", .{main.miralib.?, main.miralib.?});
     _ = clib.system(&main.linebuf);
 }
 
-export fn editfile(t_val: [*:0]const u8, line: c_int) void {
+pub export fn editfile(t_val: [*:0]const u8, line: c_int) void {
     var line_val = line;
     const ebuf_local = @as([*]u8, @ptrCast(&main.linebuf[0]));
     var p = ebuf_local;
@@ -566,7 +573,7 @@ export fn editfile(t_val: [*:0]const u8, line: c_int) void {
     }
 }
 
-export fn xschars() void {
+pub export fn xschars() void {
     var ch: c_int = undefined;
     _ = clib.printf("\x07extra characters at end of command\n", .{.{}});
     while (true) {
@@ -575,7 +582,7 @@ export fn xschars() void {
     }
 }
 
-export fn finger(n: [*:0]const u8) void {
+pub export fn finger(n: [*:0]const u8) void {
     const x = clib.findid(@constCast(n));
     var line: Word = 0;
     var s: ?[*:0]u8 = null;
@@ -624,7 +631,7 @@ export fn finger(n: [*:0]const u8) void {
     diagnose(n);
 }
 
-export fn diagnose(n: [*:0]const u8) void {
+pub export fn diagnose(n: [*:0]const u8) void {
     var i: usize = 0;
     if (clib.isalpha(@intCast(n[0])) != 0) {
         while (n[i] != 0 and clib.okid(n[i]) != 0) {
@@ -648,7 +655,7 @@ export fn diagnose(n: [*:0]const u8) void {
     _ = clib.printf("identifier \"%s\" not in scope\n", .{.{n}});
 }
 
-export fn allnamescom() void {
+pub export fn allnamescom() void {
     var s: Word = undefined;
     var x = main.ND;
     var y = main.ND;

@@ -1507,7 +1507,7 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
             }
         }
         CFN = get_id(name());
-        files_list = cons(make_fil(@intCast(@intFromPtr(CFN.?)), ch, s, load_defs(file)), files_list);
+        files_list = cons(make_fil(CFN, ch, s, load_defs(file)), files_list);
         ch = c.getc(file);
     }
     if (ch == c.EOF or BAD_DUMP != 0) {
@@ -1557,7 +1557,7 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
                     return c.NIL;
                 }
             }
-            oldfiles = cons(make_fil(@intCast(@intFromPtr(get_id(name()))), ch, 0, c.NIL), oldfiles);
+            oldfiles = cons(make_fil(get_id(name()), ch, 0, c.NIL), oldfiles);
         }
         if (aliases != c.NIL) {
             unscramble(aliases);
@@ -1941,12 +1941,14 @@ pub fn isfreeid(x: Word) bool {
     return id_type(x) == c.undef_t and id_val(x) == c.UNDEF;
 }
 
+extern fn isconstrname(input: [*:0]const u8) c_int;
+
 pub fn isconstructor(x: Word) bool {
-    return id_type(x) == c.constructor_t or id_type(x) == c.new_t;
+    return tag.?[@intCast(x)] == c.ID and isconstrname(main.get_id(x)) != 0;
 }
 
 pub fn isvariable(x: Word) bool {
-    return id_type(x) == c.var_t or id_type(x) == c.synonym_t or id_type(x) == c.type_t;
+    return tag.?[@intCast(x)] == c.ID and isconstrname(main.get_id(x)) == 0;
 }
 
 pub fn addtoenv(x: Word) void {
