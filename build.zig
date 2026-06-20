@@ -43,15 +43,15 @@ pub fn build(b: *std.Build) void {
 
     const utf8_zig = addZigObject(b, "utf8-zig", "src/io/utf8.zig", target, optimize, true);
 
-    const fdate = addZigExecutable(b, "fdate", "fdate.zig", target, optimize, true);
+    const fdate = addZigExecutable(b, "fdate", "src/tools/fdate.zig", target, optimize, true);
     const install_fdate = b.addInstallArtifact(fdate, .{});
     b.getInstallStep().dependOn(&install_fdate.step);
 
-    const just = addZigExecutable(b, "just", "just.zig", target, optimize, false);
+    const just = addZigExecutable(b, "just", "src/tools/just.zig", target, optimize, false);
     const install_just = b.addInstallArtifact(just, .{});
     b.getInstallStep().dependOn(&install_just.step);
 
-    const menudriver = addZigExecutable(b, "menudriver", "menudriver.zig", target, optimize, false);
+    const menudriver = addZigExecutable(b, "menudriver", "src/tools/menudriver.zig", target, optimize, false);
     const install_menudriver = b.addInstallArtifact(menudriver, .{
         .dest_dir = .{ .override = .{ .custom = "lib/miralib" } },
     });
@@ -78,7 +78,7 @@ pub fn build(b: *std.Build) void {
     const just_tests = b.addTest(.{
         .name = "just-tests",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("just.zig"),
+            .root_source_file = b.path("src/tools/just.zig"),
             .target = target,
             .optimize = optimize,
         }),
@@ -87,7 +87,7 @@ pub fn build(b: *std.Build) void {
     const menudriver_tests = b.addTest(.{
         .name = "menudriver-tests",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("menudriver.zig"),
+            .root_source_file = b.path("src/tools/menudriver.zig"),
             .target = target,
             .optimize = optimize,
         }),
@@ -257,6 +257,11 @@ fn addPlatformMacros(exe: *std.Build.Step.Compile, target: std.Build.ResolvedTar
 
 fn readTrimmed(b: *std.Build, path: []const u8) []const u8 {
     const contents = b.build_root.handle.readFileAlloc(b.graph.io, path, b.allocator, .limited(4096)) catch |err| {
+        if (std.mem.eql(u8, path, ".vdate")) {
+            return "unknown-date";
+        } else if (std.mem.eql(u8, path, ".host")) {
+            return "unknown-host";
+        }
         std.debug.panic("failed to read {s}: {}", .{ path, err });
     };
     return std.mem.trim(u8, contents, " \t\r\n");

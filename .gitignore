@@ -38,3 +38,6 @@ build_errors.log
 # Reference copy of original Miranda C distribution (not compiled, not part of the build)
 /miranda/
 
+# Editor and metadata
+.DS_Store
+.claude/
