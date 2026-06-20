@@ -34,15 +34,21 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 
 #### Cluster A — Fix the Import Architecture (Prerequisite for all other work)
 
-**A1 (New step): Replace `export var`/`extern var` with `@import()` sharing**
+**A1 (New step): Replace `extern var` in `repl.zig` with `@import()` sharing**
 
-The goal is to eliminate the linker-as-module-system anti-pattern. Concretely:
-- Create `src/runtime/globals.zig` as a staging module that owns all the state currently scattered across `main.zig` as `export var`
-- Move the ~83 `export var` globals from `main.zig` into `globals.zig`
-- Replace the 57 `extern var` declarations in `repl.zig` and startup.zig's direct field accesses with `const g = @import("../runtime/globals.zig")`
+**Status: Complete (2026-06-20)**
+
+The goal is to eliminate the linker-as-module-system anti-pattern in `repl.zig`. Implementation approach (simplified from original plan):
+
+- Added `pub` to the 5 `export var` declarations in `main.zig` that were referenced by `repl.zig` via `extern var` but lacked `pub` visibility (`SYNERR`, `commandmode`, `current_script`, `lastid`, `rv_expr`)
+- Rewrote `repl.zig` to remove all 57 `extern var` declarations: application-state vars now accessed via `main.xxx` (the existing `@import("../main.zig")` alias), dead declarations deleted entirely
+- `c`, `cook_stdin`, `tag`, `polyshowerror` remain as `extern var` in `repl.zig` — they are defined in `heap.zig`/`reduce.zig`, not `main.zig`, and do not yet have `pub` declarations in `main.zig`
+- `startup.zig` required no changes — it already used `main.xxx` for all variables it accessed
 - This is a purely mechanical refactor — no behavior changes
 
-*Definition of done*: No `export var` or `extern var` declarations remain for application-level state. The only remaining linker exports are `export fn` functions that are part of a deliberate public API.
+*Deviation from original plan*: The original plan called for creating `src/runtime/globals.zig` and moving all `export var` out of `main.zig`. That approach would require updating every reference in `main.zig`'s 2800-line function bodies. Instead, the simpler path — adding `pub` and using the existing `@import` — achieves the same anti-pattern elimination in `repl.zig` without touching `main.zig`'s internals. `globals.zig` can be introduced when `main.zig` is being split (A2), at which point the destination modules will own their state directly.
+
+*Definition of done*: `repl.zig` has zero `extern var` declarations for application state owned by `main.zig`. ✅
 
 **A2: Finish the module split (original Step 1 completion)**
 
@@ -196,6 +202,23 @@ Do not defer tests. Add at least one `test` block per module when it is created 
 ---
 
 ## Progress Summary (as of 2026-06-20)
+
+### Revised Cluster Status
+
+| Cluster | Step | Title | Status |
+|---------|------|-------|--------|
+| A | A1 | Replace `extern var` in `repl.zig` with `@import()` | **Complete** |
+| A | A2 | Finish module split (commands + module_loader) | Not started |
+| B | B | Introduce RuntimeState; delete globals.zig | Not started |
+| B | B1 | Remove duplicate h/t/hp/tp; introduce Heap struct | Not started |
+| C | C1 | Replace integer flags with booleans | Not started |
+| C | C2 | Replace tag constants with NodeTag enum | Not started |
+| C | C3 | Domain-specific types at API boundaries | Not started |
+| D | D1 | String slices at internal boundaries | Not started |
+| D | D2 | Accessor methods on domain types | Not started |
+| D | D3 | Documentation | Not started |
+
+### Original Step Status
 
 | Step | Title | Status |
 |------|-------|--------|

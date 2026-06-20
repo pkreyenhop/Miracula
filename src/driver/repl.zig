@@ -7,67 +7,13 @@ const Word = main.Word;
 const NIL = main.NIL;
 const CONS = main.CONS;
 
-// Relink to variables and helper functions from main/compiler/runtime via the linker
-extern var magic: Word;
-extern var files: Word;
-extern var ND: Word;
-extern var verbosity: Word;
-extern var rechecking: Word;
-extern var current_script: ?[*:0]u8;
-extern var lastid: Word;
-extern var baded: Word;
-extern var dicp: [*:0]u8;
-extern var Void: Word;
-extern var message: Word;
-extern var lastexp: Word;
-extern var SYNERR: Word;
-extern var rv_expr: Word;
+// State owned by reduce.zig / heap.zig — not yet accessible via @import.
 extern var c: Word;
-extern var echoing: Word;
-extern var listing: Word;
-extern var commandmode: Word;
 extern var cook_stdin: Word;
-extern var exports: Word;
-extern var freeids: Word;
-extern var mksources: Word;
-extern var argv: [*][*:0]u8;
-extern var arg_idx: usize;
-extern var argc_u: usize;
-extern var remaining_argc: usize;
-extern var making: Word;
-extern var oldfiles: Word;
-extern var badlib: c_int;
-extern var dicq: [*:0]u8;
-extern var dic: ?[*]u8;
-extern var lmirahdr: ?[*:0]u8;
-extern var mirahdr: ?[*:0]u8;
-extern var errline: Word;
-extern var errs: Word;
-extern var s_in: ?*clib.FILE;
-extern var s_out: ?*clib.FILE;
-extern var DICSPACE: Word;
-extern var editor: ?[*:0]u8;
-extern var D_OUT: ?*clib.FILE;
-extern var make_status: Word;
 extern var tag: [*]u8;
-extern var compiling: c_int;
-
-extern var PRELUDE: [clib.pnlim + 10]u8;
-extern var STDENV: [clib.pnlim + 9]u8;
-extern var ebuf: [clib.pnlim]u8;
-extern var lib_rc: [clib.pnlim + 8]u8;
-extern var okhome_rc: Word;
-extern var rc_error: ?[*:0]const u8;
-extern var strictif: Word;
-extern var initialising: Word;
-extern var okprel: Word;
-extern var nostdenv: Word;
-extern var primenv: Word;
-extern var newtyps: Word;
-extern var home_rc: [clib.pnlim + 8]u8;
+extern var polyshowerror: c_int;
 
 extern fn signals(signum: c_int, handler: usize) usize;
-extern var polyshowerror: c_int;
 extern fn resetgcstats() void;
 extern fn outstats() void;
 extern fn syntax(s: [*:0]const u8) void;
@@ -88,34 +34,34 @@ export fn commandloop(initscript: [*:0]u8) void {
     var lb: ?[*:0]u8 = undefined;
 
     if (clib.sigsetjmp(&main.env, 1) == 0) {
-        if (magic != 0) {
+        if (main.magic != 0) {
             main.undump(initscript);
-            if (files == NIL or ND != NIL or main.id_val(main.main_id) == clib.UNDEF) {
-                if (files != NIL and ND == NIL and main.id_val(main.main_id) == clib.UNDEF) {
+            if (main.files == NIL or main.ND != NIL or main.id_val(main.main_id) == clib.UNDEF) {
+                if (main.files != NIL and main.ND == NIL and main.id_val(main.main_id) == clib.UNDEF) {
                     _ = clib.fprintf(main.getStderr(), "%s: main not defined\n", .{.{initscript}});
                 }
                 _ = clib.fprintf(main.getStderr(), "mira: incorrect use of \"-exec\" flag\n", .{.{}});
                 clib.exit(1);
             }
-            magic = 0;
+            main.magic = 0;
             clib.obey(main.main_id);
             clib.exit(0);
         }
         _ = signals(clib.SIGINT, @intFromPtr(&main.reset));
         main.undump(initscript);
-        if (verbosity != 0) {
+        if (main.verbosity != 0) {
             _ = clib.printf("for help type /h\n", .{.{}});
         }
     }
 
     while (true) {
         resetgcstats();
-        if (verbosity != 0) {
+        if (main.verbosity != 0) {
             _ = clib.printf("%s", .{.{main.promptstr}});
         }
         ch = clib.getchar();
-        if (rechecking != 0 and main.src_update() != 0) {
-            main.loadfile(current_script.?);
+        if (main.rechecking != 0 and main.src_update() != 0) {
+            main.loadfile(main.current_script.?);
         }
         while (ch == ' ' or ch == '\t') {
             ch = clib.getchar();
@@ -126,7 +72,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                 if (ch == '?') {
                     var x: Word = undefined;
                     var aka: ?[*:0]u8 = null;
-                    if (token() == null and lastid == 0) {
+                    if (token() == null and main.lastid == 0) {
                         _ = clib.printf("\x07identifier needed after `??'\n", .{.{}});
                         ch = clib.getchar();
                         continue;
@@ -135,27 +81,27 @@ export fn commandloop(initscript: [*:0]u8) void {
                         main.xschars();
                         continue;
                     }
-                    if (baded != 0) {
+                    if (main.baded != 0) {
                         main.ed_warn();
                         continue;
                     }
-                    if (dicp[0] != 0) {
-                        x = clib.findid(dicp);
+                    if (main.dicp[0] != 0) {
+                        x = clib.findid(main.dicp);
                     } else {
-                        _ = clib.printf("??%s\n", .{.{main.get_id(lastid)}});
-                        x = lastid;
+                        _ = clib.printf("??%s\n", .{.{main.get_id(main.lastid)}});
+                        x = main.lastid;
                     }
                     if (x == NIL or main.id_type(x) == clib.undef_t) {
-                        main.diagnose(if (dicp[0] != 0) dicp else main.get_id(lastid));
-                        lastid = 0;
+                        main.diagnose(if (main.dicp[0] != 0) main.dicp else main.get_id(main.lastid));
+                        main.lastid = 0;
                         continue;
                     }
                     if (main.id_who(x) == NIL) {
-                        _ = clib.printf("%s -- primitive to Miranda\n", .{.{if (dicp[0] != 0) dicp else main.get_id(lastid)}});
-                        lastid = 0;
+                        _ = clib.printf("%s -- primitive to Miranda\n", .{.{if (main.dicp[0] != 0) main.dicp else main.get_id(main.lastid)}});
+                        main.lastid = 0;
                         continue;
                     }
-                    lastid = x;
+                    main.lastid = x;
                     x = main.id_who(x);
                     if (tag[@intCast(x)] == CONS) {
                         aka = @ptrFromInt(@as(usize, @intCast(main.h(main.h(x)))));
@@ -168,16 +114,16 @@ export fn commandloop(initscript: [*:0]u8) void {
                 } else {
                     _ = clib.ungetc(ch, main.getStdin().?);
                     _ = token();
-                    lastid = 0;
-                    if (dicp[0] == 0) {
+                    main.lastid = 0;
+                    if (main.dicp[0] == 0) {
                         if (clib.getchar() != '\n') {
                             main.xschars();
                         } else {
                             main.allnamescom();
                         }
                     } else {
-                        while (dicp[0] != 0) {
-                            main.finger(dicp);
+                        while (main.dicp[0] != 0) {
+                            main.finger(main.dicp);
                             _ = token();
                         }
                         ch = clib.getchar();
@@ -186,13 +132,13 @@ export fn commandloop(initscript: [*:0]u8) void {
             },
             ':', '/' => {
                 _ = token();
-                lastid = 0;
+                main.lastid = 0;
                 main.command();
             },
             '!' => {
                 lb = rdline();
                 if (lb == null) continue;
-                lastid = 0;
+                main.lastid = 0;
                 if (lb.?[0] != 0) {
                     var shell: ?[*:0]const u8 = null;
                     var oldsig: usize = undefined;
@@ -213,7 +159,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                         _ = clib.execl(shell.?, .{shell.?, "-c", lb.?});
                     }
                     if (main.src_update() != 0) {
-                        main.loadfile(current_script.?);
+                        main.loadfile(main.current_script.?);
                     }
                 } else {
                     _ = clib.printf("No previous shell command to substitute for \"!\"\n", .{.{}});
@@ -230,31 +176,31 @@ export fn commandloop(initscript: [*:0]u8) void {
             },
             '\n' => {},
             clib.EOF => {
-                if (verbosity != 0) {
+                if (main.verbosity != 0) {
                     _ = clib.printf("\nmiranda logout\n", .{.{}});
                 }
                 clib.exit(0);
             },
             else => {
                 _ = clib.ungetc(ch, main.getStdin().?);
-                lastid = 0;
+                main.lastid = 0;
                 main.tp(main.h(cook_stdin)).* = 0;
-                rv_expr = 0;
+                main.rv_expr = 0;
                 c = clib.EVAL;
-                echoing = 0;
+                main.echoing = 0;
                 polyshowerror = 0;
-                commandmode = 1;
+                main.commandmode = 1;
                 _ = parser_api.parseCurrent() catch {};
-                if (SYNERR != 0) {
-                    SYNERR = 0;
+                if (main.SYNERR != 0) {
+                    main.SYNERR = 0;
                 } else if (c != '\n') {
                     _ = clib.printf("syntax error\n", .{.{}});
                     while (c != '\n' and c != clib.EOF) {
                         c = clib.getchar();
                     }
                 }
-                commandmode = 0;
-                echoing = verbosity & listing;
+                main.commandmode = 0;
+                main.echoing = main.verbosity & main.listing;
             },
         }
     }
@@ -293,10 +239,10 @@ export fn dieclean() void {
 }
 
 export fn fpe_error(sig: c_int) void {
-    if (compiling != 0) {
+    if (main.compiling != 0) {
         _ = signals(sig, @intFromPtr(&fpe_error));
         syntax("floating point number out of range\n");
-        SYNERR = 0;
+        main.SYNERR = 0;
         clib.siglongjmp(&main.env, 1);
     } else {
         _ = clib.printf("\nFLOATING POINT OVERFLOW\n", .{.{}});

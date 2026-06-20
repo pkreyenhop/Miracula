@@ -113,7 +113,7 @@ var lmirahdr: ?[*:0]u8 = null;
 pub var promptstr: [*:0]const u8 = "Miranda ";
 export var obsuffix: [*:0]const u8 = "x";
 pub export var s_in: ?*clib.FILE = null;
-export var commandmode: Word = 0;
+pub export var commandmode: Word = 0;
 pub var atobject: c_int = 0;
 pub export var atgc: c_int = 0;
 pub export var atcount: c_int = 0;
@@ -125,10 +125,10 @@ pub var mksources: Word = 0;
 pub export var make_status: Word = 0;
 pub export var compiling: c_int = 1;
 export var ideep: c_int = 0;
-export var SYNERR: Word = 0;
+pub export var SYNERR: Word = 0;
 pub export var initialising: Word = 1;
 pub export var primenv: Word = NIL;
-export var current_script: ?[*:0]u8 = null;
+pub export var current_script: ?[*:0]u8 = null;
 export var lastexp: Word = clib.UNDEF;
 pub export var echoing: Word = 0;
 pub export var listing: Word = 0;
@@ -865,8 +865,8 @@ pub fn announce() void {
     }
 }
 
-export var lastid: Word = 0;
-export var rv_expr: Word = 0;
+pub export var lastid: Word = 0;
+pub export var rv_expr: Word = 0;
 
 
 
