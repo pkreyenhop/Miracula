@@ -3,6 +3,7 @@
 // - Step 8: Replace C-style accessor functions (e.g. id_type, fil_time, t_class) with structs/methods.
 
 const std = @import("std");
+const main = @import("../main.zig");
 
 const c = @import("c_abi.zig");
 const c_jmp = c; // jmp_buf/setjmp/longjmp re-exported from c_abi
@@ -11,7 +12,7 @@ const Word = c_long;
 const wordsize = @sizeOf(Word) * 8;
 const bits_15 = 0xffff;
 
-inline fn the_val(x: Word) Word {
+pub inline fn the_val(x: Word) Word {
     return t(x);
 }
 
@@ -40,7 +41,6 @@ export var hd: ?[*]Word = null;
 export var tl: ?[*]Word = null;
 export var tag: ?[*]u8 = null;
 
-extern fn reverse(x: Word) Word;
 extern fn strcmp(a: [*:0]const u8, b: [*:0]const u8) c_int;
 extern fn fpe_error(sig: c_int) void;
 
@@ -62,27 +62,27 @@ else
 
 var charname_buffer: [8]u8 = undefined;
 
-fn h(x: Word) Word {
+pub fn h(x: Word) Word {
     if (x < ATOMLIMIT) return 0;
     return hd.?[@as(usize, @intCast(x)) * 2];
 }
 
-fn hp(x: Word) *Word {
+pub fn hp(x: Word) *Word {
     std.debug.assert(x >= ATOMLIMIT);
     return &hd.?[@as(usize, @intCast(x)) * 2];
 }
 
-fn t(x: Word) Word {
+pub fn t(x: Word) Word {
     if (x < ATOMLIMIT) return 0;
     return tl.?[@as(usize, @intCast(x)) * 2];
 }
 
-fn tp(x: Word) *Word {
+pub fn tp(x: Word) *Word {
     std.debug.assert(x >= ATOMLIMIT);
     return &tl.?[@as(usize, @intCast(x)) * 2];
 }
 
-fn cons(x: Word, y: Word) Word {
+pub fn cons(x: Word, y: Word) Word {
     return make(CONS, x, y);
 }
 
@@ -111,7 +111,7 @@ export fn is_char(x: Word) c_int {
     return 0;
 }
 
-export fn get_here(x: Word) Word {
+pub export fn get_here(x: Word) Word {
     const y = idWho(x);
     return if (tag.?[@intCast(y)] == CONS) t(y) else y;
 }
@@ -355,9 +355,9 @@ export fn trueheapsize() Word {
 }
 
 export fn setupheap() void {
-    const size = @as(usize, @intCast(SPACELIMIT));
+    const heap_alloc_size = @as(usize, @intCast(SPACELIMIT));
     if (heap == null) {
-        const ptr = c.malloc(size * @sizeOf(Word) * 2) orelse {
+        const ptr = c.malloc(heap_alloc_size * @sizeOf(Word) * 2) orelse {
             mallocfail("heap");
             unreachable;
         };
@@ -386,8 +386,8 @@ export fn resetheap() void {
         _ = c.fprintf(stderr, "impossible event in resetheap\n", .{.{}});
         c.exit(1);
     }
-    const size = @as(usize, @intCast(SPACELIMIT));
-    const ptr = c.realloc(heap, size * @sizeOf(Word) * 2) orelse {
+    const heap_alloc_size = @as(usize, @intCast(SPACELIMIT));
+    const ptr = c.realloc(heap, heap_alloc_size * @sizeOf(Word) * 2) orelse {
         mallocfail("heap");
         unreachable;
     };
@@ -890,11 +890,11 @@ fn stosmallint(x: Word) Word {
     return make(c.INT, val, 0);
 }
 
-fn dlhs(d: Word) Word {
+pub inline fn dlhs(d: Word) Word {
     return h(d);
 }
 
-fn dval(d: Word) Word {
+pub inline fn dval(d: Word) Word {
     return t(t(d));
 }
 
@@ -1111,20 +1111,21 @@ fn get_fil(fil: Word) [*:0]const u8 {
     return castPtr(h(h(h(fil))));
 }
 
-fn fil_time(fil: Word) Word {
+pub fn fil_time(fil: Word) Word {
     return t(h(h(fil)));
 }
 
-fn fil_share(fil: Word) Word {
+pub fn fil_share(fil: Word) Word {
     return h(t(h(fil)));
 }
 
-fn fil_defs(fil: Word) Word {
+pub fn fil_defs(fil: Word) Word {
     return t(fil);
 }
 
-fn make_fil(name_val: Word, time_val: Word, share: Word, defs: Word) Word {
-    return cons(cons(make(c.FILEINFO, name_val, time_val), cons(share, c.NIL)), defs);
+pub fn make_fil(fil_name: ?[*:0]const u8, time_val: Word, share: Word, defs: Word) Word {
+    const name_word = if (fil_name) |n| @as(Word, @intCast(@intFromPtr(n))) else 0;
+    return cons(cons(make(c.FILEINFO, name_word, time_val), cons(share, c.NIL)), defs);
 }
 
 fn get_pn(x: Word) Word {
@@ -1135,15 +1136,15 @@ fn pn_val(x: Word) Word {
     return t(x);
 }
 
-fn id_who(x: Word) Word {
+pub fn id_who(x: Word) Word {
     return t(h(h(x)));
 }
 
-fn id_type(x: Word) Word {
+pub fn id_type(x: Word) Word {
     return t(h(x));
 }
 
-fn id_val(x: Word) Word {
+pub fn id_val(x: Word) Word {
     return t(x);
 }
 
@@ -1163,8 +1164,12 @@ fn pn_val_ptr(x: Word) *Word {
     return tp(x);
 }
 
-fn t_class(x: Word) Word {
+pub fn t_class(x: Word) Word {
     return h(t(the_val(x)));
+}
+
+pub fn t_info(x: Word) Word {
+    return t(t(x));
 }
 
 fn stackp_push(val: Word) void {
@@ -1193,8 +1198,14 @@ fn fileinfo(x: Word, y: Word) Word {
     return make(c.FILEINFO, x, y);
 }
 
-fn constructor(x: Word, y: Word) Word {
-    return make(c.CONSTRUCTOR, x, y);
+pub fn constructor(n: Word, x: anytype) Word {
+    const x_val: Word = switch (@TypeOf(x)) {
+        Word => x,
+        c_int, c_uint => @intCast(x),
+        [*:0]const u8, [*:0]u8 => @intCast(@intFromPtr(x)),
+        else => @compileError("Unsupported type for constructor"),
+    };
+    return make(c.CONSTRUCTOR, n, x_val);
 }
 
 fn readvals(x: Word, y: Word) Word {
@@ -1409,7 +1420,7 @@ export fn dump_ob(x: Word, file: ?*c.FILE) void {
     }
 }
 
-export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params: Word, main: Word) Word {
+export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
     TORPHANS = 0;
     BAD_DUMP = 0;
     CLASHES = c.NIL;
@@ -1463,7 +1474,7 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
         if (files_list == c.NIL and ch == 1) {
             holde = getword(file);
             ch = c.getc(file);
-            if (main != 0) {
+            if (main_flag != 0) {
                 errline = holde;
             }
         }
@@ -1510,7 +1521,7 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
     }
     if (files_list == c.NIL) {
         ch = getword(file);
-        if (main != 0) {
+        if (main_flag != 0) {
             errline = ch;
         }
         while (true) {
@@ -1560,7 +1571,7 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
         TORPHANS = 1;
     }
     SGC = append1(SGC, load_defs(file));
-    if (main != 0 or includees == c.NIL) {
+    if (main_flag != 0 or includees == c.NIL) {
         freeids = load_defs(file);
     } else {
         bindparams(load_defs(file), hdsort(params));
@@ -1568,7 +1579,7 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
     if (aliases != c.NIL) {
         unscramble(aliases);
     }
-    if (main != 0) {
+    if (main_flag != 0) {
         internals = load_defs(file);
     }
     return reverse(files_list);
@@ -1909,6 +1920,183 @@ export fn load_defs(file: ?*c.FILE) Word {
     }
     BAD_DUMP = 4;
     return defs;
+}
+
+// Relocated heap/node domain metadata accessors and lifecycle utilities
+pub fn fil_inodev(fil: Word) Word {
+    return t(t(h(fil)));
+}
+
+pub fn same_file(x: Word, y: Word) bool {
+    const ix = fil_inodev(x);
+    const iy = fil_inodev(y);
+    return h(ix) == h(iy) and t(ix) == t(iy);
+}
+
+pub fn badval(x: Word) bool {
+    return x < 100 or x > 50000000;
+}
+
+pub fn isfreeid(x: Word) bool {
+    return id_type(x) == c.undef_t and id_val(x) == c.UNDEF;
+}
+
+pub fn isconstructor(x: Word) bool {
+    return id_type(x) == c.constructor_t or id_type(x) == c.new_t;
+}
+
+pub fn isvariable(x: Word) bool {
+    return id_type(x) == c.var_t or id_type(x) == c.synonym_t or id_type(x) == c.type_t;
+}
+
+pub fn addtoenv(x: Word) void {
+    tp(h(main.files)).* = cons(x, t(h(main.files)));
+}
+
+pub export fn reverse(input: Word) Word {
+    var x = input;
+    var y: Word = NIL;
+    while (x != NIL) {
+        y = cons(h(x), y);
+        x = t(x);
+    }
+    return y;
+}
+
+pub export fn shunt(input_x: Word, input_y: Word) Word {
+    var x = input_x;
+    var y = input_y;
+    while (x != NIL) {
+        y = cons(h(x), y);
+        x = t(x);
+    }
+    return y;
+}
+
+pub export fn size(input: Word) Word {
+    var x = input;
+    var s: Word = 0;
+    while (tag.?[@intCast(x)] == CONS or tag.?[@intCast(x)] == c.AP) {
+        s += 1 + size(h(x));
+        x = t(x);
+    }
+    return s;
+}
+
+pub export fn alfasort(x_val: Word) Word {
+    var x = x_val;
+    var a = NIL;
+    var b = NIL;
+    var hold = NIL;
+    if (x == NIL) {
+        return NIL;
+    }
+    if (t(x) == NIL) {
+        return if (tag.?[@intCast(h(x))] != c.ID) NIL else x;
+    }
+    while (x != NIL) {
+        if (tag.?[@intCast(h(x))] == c.ID) {
+            hold = a;
+            a = cons(h(x), b);
+            b = hold;
+        }
+        x = t(x);
+    }
+    a = alfasort(a);
+    b = alfasort(b);
+    x = NIL;
+    while (a != NIL and b != NIL) {
+        if (strcmp(main.get_id(h(a)), main.get_id(h(b))) < 0) {
+            x = cons(h(a), x);
+            a = t(a);
+        } else {
+            x = cons(h(b), x);
+            b = t(b);
+        }
+    }
+    if (a == NIL) {
+        a = b;
+    }
+    while (a != NIL) {
+        x = cons(h(a), x);
+        a = t(a);
+    }
+    return reverse(x);
+}
+
+pub fn utf8test() c_int {
+    var lang = c.getenv("LC_CTYPE");
+    if (lang == null) {
+        lang = c.getenv("LANG");
+    }
+    if (lang) |l| {
+        if (c.strstr(l, "UTF-8") != null or
+            c.strstr(l, "UTF8") != null or
+            c.strstr(l, "utf-8") != null or
+            c.strstr(l, "utf8") != null)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+pub export fn unsetids(d_val: Word) void {
+    var d = d_val;
+    while (d != NIL and d != 0) : (d = t(d)) {
+        const item = h(d);
+        if (tag.?[@intCast(item)] == c.ID) {
+            tp(item).* = c.UNDEF;
+            tp(h(h(item))).* = NIL;
+        }
+    }
+}
+
+pub export fn unload() void {
+    main.sorted = 0;
+    main.speclocs = NIL;
+    main.nextpn = 0;
+    main.rv_script = 0;
+    main.algshfns = NIL;
+    unsetids(main.newtyps);
+    main.newtyps = NIL;
+    unsetids(main.freeids);
+    main.freeids = NIL;
+    main.includees = NIL;
+    main.SGC = NIL;
+    main.TABSTRS = NIL;
+    main.ND = NIL;
+    unsetids(main.dump.internals);
+    main.dump.internals = NIL;
+    while (main.files != NIL and main.files != 0) : (main.files = t(main.files)) {
+        const fil = h(main.files);
+        unsetids(t(fil));
+        tp(fil).* = NIL;
+    }
+    var ld = main.ld_stuff;
+    while (ld != NIL and ld != 0) : (ld = t(ld)) {
+        var x = h(ld);
+        while (x != NIL and x != 0) : (x = t(x)) {
+            unsetids(t(h(x)));
+        }
+    }
+    main.ld_stuff = NIL;
+}
+
+pub fn src_update() c_int {
+    var ft: Word = undefined;
+    var f = if (main.files == NIL) main.oldfiles else main.files;
+    while (f != NIL) {
+        if ((main.fm_time(main.get_fil(h(f)).?)) != fil_time(h(f))) {
+            ft = main.fm_time(main.get_fil(h(f)).?);
+            if (ft == 0) {
+                main.unlinkx(main.get_fil(h(f)).?);
+            }
+            return 1;
+        }
+        f = t(f);
+    }
+    return 0;
 }
 
 test "sto_char returns atoms for Latin-1 values" {

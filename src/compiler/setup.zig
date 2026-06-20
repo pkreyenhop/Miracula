@@ -92,8 +92,18 @@ pub fn stdlib() void {
     predef("sqrt", clib.SQRT_FN, clib.undef_t);
     predef("system", clib.EXEC, clib.undef_t);
     predef("take", clib.TAKE, clib.undef_t);
-    predef("tinynum", main.mktiny(), clib.undef_t);
+    predef("tinynum", mktiny(), clib.undef_t);
     predef("zip2", clib.ZIP, clib.undef_t);
+}
+
+fn mktiny() Word {
+    var x: f64 = 1.0;
+    var x1: f64 = x / 2.0;
+    while (x1 > 0.0) {
+        x = x1;
+        x1 = x1 / 2.0;
+    }
+    return clib.sto_dbl(x);
 }
 
 pub fn mira_setup() void {

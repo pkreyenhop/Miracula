@@ -6,6 +6,9 @@ const parser_api = @import("../parser/parser_api.zig");
 const Word = main.Word;
 const NIL = main.NIL;
 const CONS = main.CONS;
+const AP = main.AP;
+const h = main.h;
+const t = main.t;
 
 // State owned by reduce.zig / heap.zig — not yet accessible via @import.
 extern var c: Word;
@@ -249,3 +252,191 @@ export fn fpe_error(sig: c_int) void {
         clib.exit(1);
     }
 }
+
+// Relocated REPL and interactive driver functions
+pub export fn obey(x_in: Word) void {
+    var x = x_in;
+    const typ = clib.type_of(x);
+    x = clib.codegen(x);
+    if (main.polyshowerror != 0) return;
+    main.compiling = 0;
+    const list_t: Word = 4;
+    const char_t: Word = 3;
+    const islist = typ >= main.ATOMLIMIT and tag[@intCast(typ)] == AP and h(typ) == list_t;
+    const out_val: Word = if (islist and t(typ) == main.message)
+        x
+    else blk: {
+        const inner: Word = if (islist and t(typ) == char_t)
+            x
+        else
+            clib.make(AP, clib.mkshow(0, 0, typ), x);
+        break :blk clib.make(CONS, clib.make(AP, main.standardout, inner), NIL);
+    };
+    clib.output(out_val);
+}
+
+pub export fn evaluate_repl(x_in: Word) void {
+    var x = x_in;
+    const typ = clib.type_of(x);
+    if (typ == clib.wrong_t) return;
+    main.lastexp = x;
+    x = clib.codegen(x);
+    if (main.polyshowerror != 0) return;
+    const list_t: Word = 4;
+    const char_t: Word = 3;
+    const islist = typ >= main.ATOMLIMIT and tag[@intCast(typ)] == AP and h(typ) == list_t;
+    const out_val: Word = if (islist and t(typ) == main.message)
+        x
+    else blk: {
+        const inner: Word = if (islist and t(typ) == char_t)
+            x
+        else
+            clib.make(AP, clib.mkshow(0, 0, typ), x);
+        break :blk clib.make(CONS, clib.make(AP, main.standardout, inner), NIL);
+    };
+    if (process() != 0) {
+        // Child: evaluate and print, then exit (compiling=0 only here, parent unaffected).
+        _ = signals(clib.SIGINT, @intFromPtr(&dieclean));
+        main.compiling = 0;
+        resetgcstats();
+        clib.output(out_val);
+        _ = clib.putchar('\n');
+        outstats();
+        clib.exit(0);
+    }
+    // Parent returns here; heap and compiling flag are unchanged.
+}
+
+pub export fn reset() void {
+    if (main.echoing != 0) {
+        _ = clib.putchar('\n');
+    }
+    main.s_in = main.getStdin();
+    main.echoing = 0;
+    main.listing = 0;
+    main.compiling = 0;
+    main.commandmode = 0;
+    main.SYNERR = 0;
+    main.sigflag = 0;
+    if (main.unlinkme) |u| {
+        _ = clib.unlink(u);
+        main.unlinkme = null;
+    }
+    clib.siglongjmp(&main.env, 1);
+}
+
+pub fn ed_warn() void {
+    _ = clib.printf("The currently installed editor command, \"%s\", does not\ninclude a facility for opening a file at a specified line number.  As a\nresult the `??' command and certain other features of the Miranda system\nare disabled.  See manual section 31/5 on changing the editor for more\ninformation.\n", .{.{main.editor orelse @constCast("")}});
+}
+
+pub fn announce() void {
+    _ = clib.printf("Miranda release %s", .{.{main.strvers(main.version)}});
+    if (main.utf8test() != 0) {
+        _ = clib.printf(" (UTF-8)", .{.{}});
+    }
+    _ = clib.printf("\n", .{.{}});
+}
+
+pub export fn getln(in: ?*clib.FILE, n_val: Word, s_ptr: [*]u8) c_int {
+    var s = s_ptr;
+    var n = n_val;
+    var ch: c_int = undefined;
+    while (n > 1) : (n -= 1) {
+        ch = clib.getc(in);
+        if (ch == clib.EOF) break;
+        s[0] = @intCast(ch);
+        s += 1;
+        if (ch == '\n') break;
+    }
+    s[0] = 0;
+    return if (ch == clib.EOF) 0 else 1;
+}
+
+pub export fn badeditor() c_int {
+    const e = main.editor orelse return 0;
+    if (clib.strstr(e, "+!") != null or clib.strstr(e, "%d") != null or clib.strstr(e, "%l") != null) {
+        return 0;
+    }
+    return 1;
+}
+
+pub export fn fixeditor() void {
+    const e = main.editor orelse return;
+    const len = clib.strlen(e);
+    var p = e + len - 1;
+    while (p != e and p[0] == ' ') : (p -= 1) {}
+    if (p[0] == '!') {
+        p -= 1;
+        while (p != e and p[0] == ' ') : (p -= 1) {}
+        if (p[0] == '+') {
+            p[0] = 0;
+        }
+    }
+}
+
+pub export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
+    var t1: Word = undefined;
+    var ch: c_int = undefined;
+    main.lastexp = clib.UNDEF;
+    while (true) {
+        ch = clib.getc(f);
+        while (ch == ' ' or ch == '\t' or ch == '\n') {
+            ch = clib.getc(f);
+        }
+        if (ch == '|') {
+            ch = clib.getc(f);
+            if (ch == '|') {
+                ch = clib.getc(f);
+                while (ch != '\n' and ch != clib.EOF) {
+                    ch = clib.getc(f);
+                }
+                if (ch != clib.EOF) {
+                    continue;
+                }
+            } else {
+                _ = clib.ungetc(ch, f);
+            }
+        }
+        if (ch == clib.EOF) {
+            return clib.EOF;
+        }
+        _ = clib.ungetc(ch, f);
+        c = clib.VALUE;
+        main.echoing = 0;
+        main.commandmode = 1;
+        main.s_in = f;
+        _ = parser_api.parseCurrent() catch {};
+        main.s_in = main.getStdin();
+        if (main.SYNERR != 0) {
+            main.SYNERR = 0;
+            main.lastexp = clib.UNDEF;
+        } else {
+            t1 = clib.type_of(main.lastexp);
+            if (t1 == clib.wrong_t) {
+                main.lastexp = clib.UNDEF;
+            } else if (clib.subsumes(clib.instantiate(t1), t_val) == 0) {
+                _ = clib.printf("data has wrong type :: ", .{.{}});
+                clib.out_type(t1);
+                _ = clib.printf("\nshould be :: ", .{.{}});
+                clib.out_type(t_val);
+                _ = clib.putc('\n', main.getStdout());
+                main.lastexp = clib.UNDEF;
+            }
+        }
+        if (main.lastexp != clib.UNDEF) {
+            return clib.codegen(main.lastexp);
+        }
+        if (clib.isatty(clib.fileno(f)) != 0) {
+            _ = clib.printf("please re-enter data:\n", .{.{}});
+        } else {
+            if (fil != 0) {
+                _ = clib.fprintf(main.getStderr(), "readvals: bad data in file \"%s\"\n", .{.{clib.getstring(fil, @constCast(""))}});
+            } else {
+                _ = clib.fprintf(main.getStderr(), "bad data in $+ input\n", .{.{}});
+            }
+            clib.outstats();
+            clib.exit(1);
+        }
+    }
+}
+

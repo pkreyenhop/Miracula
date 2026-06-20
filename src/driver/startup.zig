@@ -5,6 +5,8 @@ const clib = @import("../runtime/main_clib.zig");
 const Word = main.Word;
 const NIL = main.NIL;
 const CONS = main.CONS;
+const h = main.h;
+const t = main.t;
 
 extern var tag: [*]u8;
 
@@ -422,3 +424,112 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
     main.commandloop(@constCast(initscript));
     return 0;
 }
+
+// Relocated startup configuration and version verification
+var vstack: [4]c_int = undefined;
+var mstack: [4][*:0]const u8 = undefined;
+var mvp: usize = 0;
+var vbuf: [12]u8 = undefined;
+
+pub export fn rc_read(rcfile: [*:0]const u8) Word {
+    var f: ?*clib.FILE = null;
+    var x: Word = undefined;
+    var res: Word = 0;
+    f = clib.fopen(rcfile, "r");
+    if (f == null) return 0;
+    main.loading = 1;
+    res = clib.load_script(f.?, @constCast(rcfile), NIL, NIL, 0);
+    _ = clib.fclose(f.?);
+    if (main.BAD_DUMP != 0) {
+        main.unload();
+        main.CLASHES = NIL;
+        main.stackp = main.dstack;
+        main.loading = 0;
+        return 0;
+    }
+    if (main.CLASHES != NIL) {
+        main.unload();
+        main.loading = 0;
+        return 0;
+    }
+    if (main.src_update() != 0) {
+        main.loadfile(rcfile);
+    }
+    main.loading = 0;
+    if (main.ND != NIL or main.files == NIL) return 0;
+    x = main.fil_defs(h(main.files));
+    while (x != NIL) : (x = t(x)) {
+        if (main.id_type(h(x)) == clib.synonym_t) {
+            main.tp(main.t_info(h(x))).* = main.dump.fixtype(main.t_info(h(x)), h(x));
+        } else {
+            main.tp(h(h(x))).* = main.dump.fixtype(main.id_type(h(x)), h(x));
+        }
+    }
+    return 1;
+}
+
+pub export fn rc_write() void {
+    const home = clib.getenv("HOME");
+    var f: ?*clib.FILE = null;
+    if (home == null or main.home_rc[0] == 0) return;
+    f = clib.fopen(&main.home_rc, "w");
+    if (f == null) return;
+    clib.setprefix(@ptrCast(&main.home_rc));
+    clib.dump_script(main.files, f.?);
+    _ = clib.fclose(f.?);
+}
+
+pub fn missparam(s: [*:0]const u8) void {
+    _ = clib.fprintf(main.getStderr(), "mira: missing param after flag \"-%s\"\n", .{.{s}});
+    clib.exit(1);
+}
+
+pub export fn checkversion(m: [*:0]const u8) c_int {
+    var path_buf: [1024]u8 = undefined;
+    const path = std.fmt.bufPrintZ(&path_buf, "{s}/.version", .{m}) catch return 0;
+    const f = clib.fopen(path.ptr, "r");
+    var v1: c_uint = 0;
+    var read_ok: bool = false;
+    var r: c_int = 0;
+    if (f != null) {
+        if (clib.fscanf(f, "%u", .{&v1}) == 1) {
+            r = if (v1 == main.version) 1 else 0;
+            read_ok = true;
+        }
+        _ = clib.fclose(f);
+    }
+    if (read_ok and r == 0) {
+        if (mvp < 4) {
+            mstack[mvp] = m;
+            vstack[mvp] = @intCast(v1);
+            mvp += 1;
+        }
+    }
+    return r;
+}
+
+pub export fn libfails() void {
+    const stderr = main.getStderr().?;
+    _ = clib.fprintf(stderr, "found", .{.{}});
+    var i: usize = 0;
+    while (i < mvp) : (i += 1) {
+        _ = clib.fprintf(stderr, "\tversion %s at: %s\n", .{.{strvers(vstack[i]), mstack[i]}});
+    }
+}
+
+pub export fn strvers(v: c_int) [*:0]const u8 {
+    if (v < 0 or v > 999999) {
+        return "???";
+    }
+    _ = clib.snprintf(&vbuf, vbuf.len, "%.3f", .{@as(f64, @floatFromInt(v)) / 1000.0});
+    return @ptrCast(&vbuf);
+}
+
+pub fn v_info(full: c_int) void {
+    _ = clib.printf("%s last revised %s\n", .{.{strvers(main.version), main.vdate}});
+    if (full == 0) return;
+    _ = clib.printf("%s", .{.{main.host}});
+    _ = clib.printf("XVERSION %u\n", .{.{@as(c_uint, @intCast(clib.XVERSION))}});
+}
+
+
