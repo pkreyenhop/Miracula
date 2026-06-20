@@ -202,22 +202,21 @@ Instead of converting setjmp to Zig error propagation, all remaining `@cImport` 
 
 ---
 
-## Sub-phase 6f: Remove linkLibC() and audit the result (Completed — macOS)
+## Sub-phase 6f: Remove linkLibC() and audit the result (Completed)
 
 **What**: Remove `link_libc = true` from `build.zig` for the main binary and test binary. Verify clean build and passing tests.
 
 **Completed (2026-06-20)**:
-- Changed `.link_libc = true` to `.link_libc = false` in `mira` executable and `main-tests` test binary
-- Build is clean on macOS arm64 (Apple Silicon): libSystem.dylib is implicitly linked by the macOS linker, so all POSIX symbols (`setjmp`/`longjmp`/`sigsetjmp`/`siglongjmp` plus our `getcwd`/`chdir`/`isatty` extern fn wrappers) continue to resolve
-- `addCExecutable` and `addHeaderCheck` still use `.link_libc = true` (they compile pure C test harnesses)
+- Changed `.link_libc = true` to `.link_libc = false` in `mira` executable and `main-tests` test binary for macOS targets.
+- Build is clean on macOS arm64 (Apple Silicon): libSystem.dylib is implicitly linked by the macOS linker, so all POSIX symbols (`setjmp`/`longjmp`/`sigsetjmp`/`siglongjmp` plus our `getcwd`/`chdir`/`isatty` extern fn wrappers) continue to resolve.
+- `addCExecutable` and `addHeaderCheck` still use `.link_libc = true` (they compile pure C test harnesses).
 
-**Remaining verification**:
-1. Cross-compile check (not yet done):
-   ```bash
-   zig build -Dtarget=x86_64-linux-musl
-   zig build -Dtarget=aarch64-macos
-   ```
-2. Verify with `otool -L zig-out/bin/mira` (macOS) or `ldd zig-out/bin/mira` (Linux) that `libc.so` / `libstdc++` are not listed.
+**Verification Completed**:
+1. **Cross-compile check**: Verified that `zig build -Dtarget=x86_64-linux-musl` and `zig build -Dtarget=aarch64-macos` both compile successfully and cleanly.
+2. **Dynamic Dependency Audit**:
+   - Running `otool -L zig-out/bin/mira` on the native and cross-compiled macOS binaries confirms they only link against `/usr/lib/libSystem.B.dylib` (Apple's standard system entrypoint).
+   - Running `file zig-out/bin/mira` on the Linux target confirms that it produces a fully `statically linked` ELF binary, depending on no external/dynamic `libc.so`.
+3. **C Test Harness Fix**: Resolved a compilation failure in the `utf8-tests-zig` executable by explicitly defining `UMAX` as `0x10ffff` in `tests/utf8_tests.c`, since the legacy C header `utf8.h` was removed.
 
 **Note on `zig build test` vs direct test run**: The `main-tests` binary writes diagnostic text to stdout during test 6 ("prelude parsing test"), which corrupts the `--listen=-` protocol used by `zig build test`. Running the binary directly (`./main-tests --seed=0`) shows all 21 tests pass. This stdout-during-test issue is pre-existing (present before 6e/6f changes) and is a separate cleanup item.
 

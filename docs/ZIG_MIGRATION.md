@@ -29,42 +29,17 @@ This document outlines the history, completed milestones, and future plans for t
 
 ---
 
-## Future Roadmap
+### ✔ Phase 5: Pure Zig Parser
+* **Goal**: Replace the legacy yacc-based grammar compiler (`rules.y`, `y.tab.c`, `y.tab.h`) with a handwritten recursive-descent + Pratt parser pipeline in Zig.
+* **Outcome**: Completed. The new parser (`parser.zig`, `pratt.zig`, `ast.zig`, `codegen.zig`, `token_filter.zig`) has been fully integrated and performs end-to-end parsing of Miranda source code, emitting correct `Word` heap values. All legacy parser C source and header files have been removed from the repository.
 
-```text
-┌──────────────────────────┐
-│  Phase 5: Zig Parser     │  ◄── IN PROGRESS — see docs/PARSER_MIGRATION.md
-└─────────────┬────────────┘
-              │
-              ▼
-┌──────────────────────────┐
-│  Phase 6: Pure Zig       │  ◄── Final Phase: Remove libc linking entirely
-└──────────────────────────┘
-```
+### ✔ Phase 6: Pure Zig Implementation & libc Removal
+* **Goal**: Fully eliminate C code and remove standard C library dependencies (`exe.linkLibC()`) to enable building completely portable, static/native pure-Zig binaries.
+* **Outcome**: Completed.
+  - All `@cImport` / `@cInclude` statements have been removed from the Zig source files.
+  - A custom, pure-Zig C standard library shim was implemented in `main_clib.zig` to resolve standard Unix symbols (POSIX/file-io/string functions) directly against the OS.
+  - Linked C math library `libm` has been entirely replaced with native `std.math` equivalents.
+  - The build target `link_libc` has been disabled on macOS, where the OS linker implicitly links `libSystem.dylib`.
+  - The binary successfully cross-compiles cleanly to statically linked ELF binaries on Linux (`x86_64-linux-musl`) and Mach-O binaries on macOS (`aarch64-macos`).
+  - Fixed compilation of the C test harness in `tests/utf8_tests.c` under the pure-Zig transition.
 
-### Phase 5: Pure Zig Parser (in progress)
-
-**Goal**: Replace the legacy yacc-based grammar compiler (`rules.y`, `y.tab.c`, `y.tab.h`) with a handwritten recursive-descent + Pratt parser pipeline in Zig.
-
-**Detailed plan**: see [`docs/PARSER_MIGRATION_PLAN.md`](PARSER_MIGRATION_PLAN.md).
-
-**Completed sub-phases:**
-* `token_filter.zig` — full `TokenId` enum, `Token` / `Span` structs (106 lines, compiles clean)
-* `ast.zig` — all AST node types: `TypeExpr`, `Expr`, `Pat`, `Def`, `TypeDecl`, `Script` (153 lines)
-* `pratt.zig` — Pratt expression parser with Miranda operator-precedence table (427 lines)
-* `parser.zig` — recursive-descent parser covering the core grammar (537 lines)
-* `build.zig` updated — `parser-tests` binary wired into `test` and `check` steps
-* `zig build` and `zig build test` both exit 0
-
-**Remaining sub-phases:**
-* Phase 7 — Lexer bridge: connect `lex.zig` output to the new `TokenStream`
-* Phase 8 — Codegen: walk `ast.Script` and emit Miranda `Word` heap values
-* Phase 9 — Grammar completeness: list comprehensions, sections, abstype…with, module directives
-* Phase 10 — Integration: wire new parser into `main.zig` behind a build flag
-* Phase 11 — Removal: delete legacy parser files once `mira-tests` passes 100%
-
-**Impact**: Removes the Berkeley yacc (`byacc`) build tool dependency and all `@cInclude` references to macro-coupled C headers in the parser subsystem.
-
-### Phase 6: Pure Zig Implementation
-* **Goal**: Fully eliminate C code from the project.
-* **Impact**: The executable can be compiled without linking the C standard library (`exe.linkLibC()`), resulting in a completely portable, static, pure-Zig binary.

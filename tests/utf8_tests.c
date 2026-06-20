@@ -2,6 +2,9 @@ typedef unsigned long unicode;
 extern unicode fromUTF8(void *fil);
 extern void outUTF8(unicode u, void *fil);
 
+#define UMAX 0x10ffff
+
+
 #include <sys/wait.h>
 #include <unistd.h>
 #include <stdio.h>
