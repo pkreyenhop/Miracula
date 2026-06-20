@@ -38,7 +38,7 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
     * *Status:* **Complete**
     * *Details:* Extracted `command()` dispatcher and helpers. `main.zig` reduced to ~2200 lines.
 * **A3: Extract Compiler Initialization (`src/compiler/setup.zig`)**
-    * *Status:* Not started
+    * *Status:* **Complete**
     * *Details:* Extract `mira_setup`, `primdef`, `predef`, `primlib`, `privlib`, and `stdlib`.
     * *DoD:* `main()` successfully calls the extracted setup without linker errors. Includes at least one `test` block.
 * **A4: Extract Source Loader (`src/compiler/module_loader.zig`)**
@@ -95,7 +95,7 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 |---------|------|-------|--------|
 | A | A1 | Replace `extern var` in `repl.zig` with `@import()` | **Complete** |
 | A | A2 | Extract commands.zig from main.zig | **Complete** |
-| A | A3 | Extract Compiler Initialization (setup.zig) | Not started |
+| A | A3 | Extract Compiler Initialization (setup.zig) | **Complete** |
 | A | A4 | Extract Source Loader (module_loader.zig) | Not started |
 | A | A5 | Extract State Dumping (dump.zig) | Not started |
 | B | B1 | Introduce RuntimeState (includes boolean conversion) | Not started |

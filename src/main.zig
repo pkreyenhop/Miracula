@@ -10,6 +10,7 @@ const parser_api = @import("parser/parser_api.zig");
 const word_mod = @import("runtime/word.zig");
 
 const clib = @import("runtime/main_clib.zig");
+const setup = @import("compiler/setup.zig");
 
 pub inline fn get_id(x: Word) [*:0]const u8 {
     return @ptrFromInt(@as(usize, @intCast(h(h(h(x))))));
@@ -55,27 +56,27 @@ extern var lineptr: Word;
 extern var lfrule: c_int;
 
 // Global variables exported to C
-export var nill: Word = 0;
-export var Void: Word = 0;
+pub export var nill: Word = 0;
+pub export var Void: Word = 0;
 pub var main_id: Word = 0;
-export var message: Word = 0;
-export var standardout: Word = 0;
-export var diagonalise: Word = 0;
-export var concat: Word = 0;
-export var indent_fn: Word = 0;
-export var outdent_fn: Word = 0;
-export var listdiff_fn: Word = 0;
-export var shownum1: Word = 0;
-export var showbool: Word = 0;
-export var showchar: Word = 0;
-export var showlist: Word = 0;
-export var showstring: Word = 0;
-export var showparen: Word = 0;
-export var showpair: Word = 0;
-export var showvoid: Word = 0;
-export var showfunction: Word = 0;
-export var showabstract: Word = 0;
-export var showwhat: Word = 0;
+pub export var message: Word = 0;
+pub export var standardout: Word = 0;
+pub export var diagonalise: Word = 0;
+pub export var concat: Word = 0;
+pub export var indent_fn: Word = 0;
+pub export var outdent_fn: Word = 0;
+pub export var listdiff_fn: Word = 0;
+pub export var shownum1: Word = 0;
+pub export var showbool: Word = 0;
+pub export var showchar: Word = 0;
+pub export var showlist: Word = 0;
+pub export var showstring: Word = 0;
+pub export var showparen: Word = 0;
+pub export var showpair: Word = 0;
+pub export var showvoid: Word = 0;
+pub export var showfunction: Word = 0;
+pub export var showabstract: Word = 0;
+pub export var showwhat: Word = 0;
 
 pub var PRELUDE: [clib.pnlim + 10]u8 = undefined;
 pub var STDENV: [clib.pnlim + 9]u8 = undefined;
@@ -432,7 +433,7 @@ fn isfreeid(x: Word) bool {
     return if (id_type(x) == clib.type_t) t_class(x) == clib.free_t else id_val(x) == clib.FREE;
 }
 
-fn isconstructor(x: Word) bool {
+pub fn isconstructor(x: Word) bool {
     return tag[@intCast(x)] == clib.ID and isconstrname(get_id(x)) != 0;
 }
 
@@ -446,7 +447,7 @@ pub fn make_fil(name: ?[*:0]const u8, time: Word, share: Word, defs: Word) Word 
     return cons(cons(fil_info, cons(share, NIL)), defs);
 }
 
-fn constructor(n: Word, x: anytype) Word {
+pub fn constructor(n: Word, x: anytype) Word {
     const x_val: Word = switch (@TypeOf(x)) {
         Word => x,
         c_int, c_uint => @intCast(x),
@@ -539,7 +540,7 @@ pub export fn twidth() c_int {
     return @as(c_int, @intCast(window.ws_col)) - 2;
 }
 
-export fn mktiny() Word {
+pub export fn mktiny() Word {
     var x: f64 = 1.0;
     var x1: f64 = x / 2.0;
     while (x1 > 0.0) {
@@ -1044,10 +1045,10 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     tp(h(fileq)).* = current_file;
 
     if (initialising != 0 and clib.strcmp(t_val, @as([*:0]const u8, @ptrCast(&PRELUDE))) == 0) {
-        privlib();
+        setup.privlib();
     } else if (initialising != 0 or nostdenv == 1) {
         if (clib.strcmp(t_val, @as([*:0]const u8, @ptrCast(&STDENV))) == 0) {
-            stdlib();
+            setup.stdlib();
         }
     }
 
@@ -1817,85 +1818,8 @@ fn fixtype(t_val: Word, x: Word) Word {
     }
 }
 
-fn primdef(n: [*:0]const u8, v: Word, t_val: Word) void {
-    const x = clib.make_id(@constCast(n));
-    primenv = cons(x, primenv);
-    tp(x).* = v;
-    tp(h(x)).* = t_val;
-}
-
-fn predef(n: [*:0]const u8, v: Word, t_val: Word) void {
-    const x = clib.make_id(@constCast(n));
-    addtoenv(x);
-    tp(x).* = if (isconstructor(x)) constructor(v, x) else v;
-    tp(h(x)).* = t_val;
-}
-
-fn primlib() void {
-    primdef("num", clib.make_typ(0, 0, clib.synonym_t, clib.num_t), clib.type_t);
-    primdef("char", clib.make_typ(0, 0, clib.synonym_t, clib.char_t), clib.type_t);
-    primdef("bool", clib.make_typ(0, 0, clib.synonym_t, clib.bool_t), clib.type_t);
-    primdef("True", 1, clib.bool_t);
-    primdef("False", 0, clib.bool_t);
-}
-
-fn privlib() void {
-    predef("offside", clib.OFFSIDE, clib.ltchar);
-    predef("changetype", clib.I, clib.wrong_t);
-    predef("first", clib.HD, clib.wrong_t);
-    predef("rest", clib.TL, clib.wrong_t);
-    predef("code", clib.CODE, clib.undef_t);
-    predef("concat", clib.ap2(clib.FOLDR, clib.APPEND, NIL), clib.undef_t);
-    predef("decode", clib.DECODE, clib.undef_t);
-    predef("drop", clib.DROP, clib.undef_t);
-    predef("error", clib.ERROR, clib.undef_t);
-    predef("filter", clib.FILTER, clib.undef_t);
-    predef("foldr", clib.FOLDR, clib.undef_t);
-    predef("hd", clib.HD, clib.undef_t);
-    predef("map", clib.MAP, clib.undef_t);
-    predef("shownum", clib.SHOWNUM, clib.undef_t);
-    predef("take", clib.TAKE, clib.undef_t);
-    predef("tl", clib.TL, clib.undef_t);
-}
-
-fn stdlib() void {
-    predef("arctan", clib.ARCTAN_FN, clib.undef_t);
-    predef("code", clib.CODE, clib.undef_t);
-    predef("cos", clib.COS_FN, clib.undef_t);
-    predef("decode", clib.DECODE, clib.undef_t);
-    predef("drop", clib.DROP, clib.undef_t);
-    predef("entier", clib.ENTIER_FN, clib.undef_t);
-    predef("error", clib.ERROR, clib.undef_t);
-    predef("exp", clib.EXP_FN, clib.undef_t);
-    predef("filemode", clib.FILEMODE, clib.undef_t);
-    predef("filestat", clib.FILESTAT, clib.undef_t);
-    predef("foldl", clib.FOLDL, clib.undef_t);
-    predef("foldl1", clib.FOLDL1, clib.undef_t);
-    predef("hugenum", clib.sto_dbl(clib.DBL_MAX), clib.undef_t);
-    predef("last", clib.LIST_LAST, clib.undef_t);
-    predef("foldr", clib.FOLDR, clib.undef_t);
-    predef("force", clib.FORCE, clib.undef_t);
-    predef("getenv", clib.GETENV, clib.undef_t);
-    predef("integer", clib.INTEGER, clib.undef_t);
-    predef("log", clib.LOG_FN, clib.undef_t);
-    predef("log10", clib.LOG10_FN, clib.undef_t);
-    predef("merge", clib.MERGE, clib.undef_t);
-    predef("numval", clib.NUMVAL, clib.undef_t);
-    predef("read", clib.STARTREAD, clib.undef_t);
-    predef("readb", clib.STARTREADBIN, clib.undef_t);
-    predef("seq", clib.SEQ, clib.undef_t);
-    predef("shownum", clib.SHOWNUM, clib.undef_t);
-    predef("showhex", clib.SHOWHEX, clib.undef_t);
-    predef("showoct", clib.SHOWOCT, clib.undef_t);
-    predef("showfloat", clib.SHOWFLOAT, clib.undef_t);
-    predef("showscaled", clib.SHOWSCALED, clib.undef_t);
-    predef("sin", clib.SIN_FN, clib.undef_t);
-    predef("sqrt", clib.SQRT_FN, clib.undef_t);
-    predef("system", clib.EXEC, clib.undef_t);
-    predef("take", clib.TAKE, clib.undef_t);
-    predef("tinynum", mktiny(), clib.undef_t);
-    predef("zip2", clib.ZIP, clib.undef_t);
-}
+pub const privlib = setup.privlib;
+pub const stdlib = setup.stdlib;
 
 export fn syntax(s: [*:0]const u8) void {
     if (SYNERR != 0) return;
@@ -1913,39 +1837,7 @@ export fn acterror() void {
     reset_lex();
 }
 
-pub fn mira_setup() void {
-    setupheap();
-    tsetup();
-    reset_pns();
-    bigsetup();
-    common_stdin = clib.ap(clib.READ, 0);
-    common_stdinb = clib.ap(clib.READBIN, 0);
-    cook_stdin = clib.ap(clib.readvals(0, 0), clib.OFFSIDE);
-    nill = cons(clib.CONST, NIL);
-    Void = clib.make_id(@constCast("()"));
-    tp(h(Void)).* = clib.void_t;
-    tp(Void).* = constructor(0, Void);
-    message = clib.make_id(@constCast("sys_message"));
-    main_id = clib.make_id(@constCast("main"));
-    concat = clib.make_id(@constCast("concat"));
-    diagonalise = clib.make_id(@constCast("diagonalise"));
-    standardout = constructor(0, @as([*:0]const u8, "Stdout"));
-    indent_fn = clib.make_id(@constCast("indent"));
-    outdent_fn = clib.make_id(@constCast("outdent"));
-    listdiff_fn = clib.make_id(@constCast("listdiff"));
-    shownum1 = clib.make_id(@constCast("shownum1"));
-    showbool = clib.make_id(@constCast("showbool"));
-    showchar = clib.make_id(@constCast("showchar"));
-    showlist = clib.make_id(@constCast("showlist"));
-    showstring = clib.make_id(@constCast("showstring"));
-    showparen = clib.make_id(@constCast("showparen"));
-    showpair = clib.make_id(@constCast("showpair"));
-    showvoid = clib.make_id(@constCast("showvoid"));
-    showfunction = clib.make_id(@constCast("showfunction"));
-    showabstract = clib.make_id(@constCast("showabstract"));
-    showwhat = clib.make_id(@constCast("showwhat"));
-    primlib();
-}
+pub const mira_setup = setup.mira_setup;
 
 inline fn pn_val(x: Word) Word {
     return t(x);
@@ -2170,7 +2062,7 @@ pub fn mkabsolute(m: [*:0]u8) [*:0]u8 {
     return m_new;
 }
 
-fn addtoenv(x: Word) void {
+pub fn addtoenv(x: Word) void {
     tp(h(files)).* = cons(x, t(h(files)));
 }
 
@@ -2195,6 +2087,7 @@ comptime {
     _ = @import("parser/parser_tests.zig");
     _ = @import("compiler/trans.zig");
     _ = @import("compiler/types.zig");
+    _ = @import("compiler/setup.zig");
     _ = @import("io/signals.zig");
     _ = @import("runtime/version.zig");
 }
