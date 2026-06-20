@@ -1,6 +1,6 @@
 # Miranda Grammar Specification
 
-This document describes the formal syntax of the Miranda programming language as implemented in the legacy parser (`src/parser/legacy/rules.y`).
+This document describes the formal syntax of the Miranda programming language as implemented in the handwritten recursive-descent + Pratt parser pipeline in [parser.zig](file:///Users/pkreyenhop/src/experiments/Miracula/src/parser/parser.zig).
 
 ## 1. Lexical Conventions
 
@@ -20,7 +20,7 @@ Miranda uses indentation levels rather than explicit brackets to delimit block s
 
 ## 2. Grammar Rules (BNF)
 
-Below is the simplified Backus-Naur Form (BNF) structure of the grammar rules defined in `rules.y`.
+Below is the simplified Backus-Naur Form (BNF) structure of the grammar rules.
 
 ### 2.1. Top-Level Structure
 ```bnf

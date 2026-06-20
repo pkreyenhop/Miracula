@@ -235,11 +235,10 @@ They remain in the working tree.
 
 The working tree also contains untracked local artifacts:
 
-- `script.m`
 - `*.plist` files for the top-level C/generated sources
 
 These are present in the working tree but are not part of the intentional C
-cleanup/test/documentation change set described above.
+cleanup/test/documentation change set described above. Note that `script.m` has been restored to the project root directory and compiles to `script.x` (which is cleaned up by `zig build clean`).
 
 ## Verification
 

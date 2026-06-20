@@ -53,8 +53,14 @@ The lifecycle of a Miranda script or interactive expression follows this pipelin
 
 ### 2. Runtime Subsystem (`src/runtime/`)
 * **`heap.zig`**: Manages the cell allocation space. Implements a mark-and-sweep garbage collector that scans the stack and active roots.
-* **`reduce.zig`**: The central graph reduction engine. It drives the reduction loop and evaluates expressions.
-* **`combinator.zig`**: Implements the execution rules for all built-in combinators (such as `S`, `K`, `I`, `COND`, arithmetic, and list operations).
+* **`reduce.zig`**: The entry point for the C-ABI runtime wrapper.
+* **`combinator.zig`**: Contains the generated combinator names table `cmbnms`.
+* **`reducer/`**: The core graph reduction engine modules:
+  - **`reduce.zig`**: The central graph reduction loop and DSW spine traversal.
+  - **`combinators.zig`**: Implements execution rules for built-in combinators (e.g. `S`, `K`, `I`, `COND`).
+  - **`ready.zig`**: Handles operator evaluation and stack unwinding.
+  - **`lex.zig`**: Implements grammar and lexer reduction rules.
+  - **`io.zig`**: Implements stream and file IO reduction rules.
 * **`big.zig`**: Provides arbitrary-precision integer arithmetic and helper methods for converting floating-point values to bigint components.
 
 ### 3. Parser Subsystem (`src/parser/`)
