@@ -369,7 +369,7 @@ export fn out_here(f: ?*word.FILE, h_val: Word, nl: c_int) void {
         word.printErr("(impossible event in outhere)\n", .{});
         return;
     }
-    _ = word.fprintf(f.?, "(line %3ld of \"%s\")", .{.{ t(h_val), @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(h_val))))))) }});
+    f.?.print("(line {d:>3} of \"{s}\")", .{.{ t(h_val), @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(h_val))))))) }});
     if (nl != 0) {
         _ = word.putc('\n', f.?);
     } else {

@@ -837,7 +837,7 @@ export fn sayhere(h_val: Word, nl: Word) void {
     const h_str = @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h_node)))));
     const eq = std.mem.eql(u8, std.mem.span(h_str), std.mem.span(main.rs.current_script.?));
     const prefix: [*:0]const u8 = if (eq) "" else "%insert file ";
-    _ = word.printf("(line %3ld of %s\"%s\")", .{ t(h_node), prefix, h_str });
+    word.print("(line {d:>3} of {s}\"{s}\")", .{ t(h_node), prefix, h_str });
     if (nl != 0) {
         _ = word.print("\n", .{});
     } else {

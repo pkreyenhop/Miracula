@@ -564,6 +564,13 @@ pub fn printErr(comptime fmt: []const u8, args: anytype) void {
     stderr_writer.interface.flush() catch {};
 }
 
+/// Zig-native formatted write to an optional file (the `fprintf` analogue):
+/// a no-op when `file` is null, matching the old shim's behaviour. Lets
+/// file-targeted call sites convert without sprinkling `.?`.
+pub fn fprint(file: ?*FILE, comptime fmt: []const u8, args: anytype) void {
+    if (file) |f| f.print(fmt, args);
+}
+
 pub fn flush() void {
     if (writers_initialized) {
         stdout_writer.interface.flush() catch {};
