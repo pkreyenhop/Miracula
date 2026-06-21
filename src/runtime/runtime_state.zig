@@ -153,3 +153,21 @@ test "RuntimeState default values are self-consistent" {
     try std.testing.expectEqual(@as(Word, 1), rs.initialising);
     try std.testing.expectEqual(@as(Word, 2500000), rs.SPACELIMIT);
 }
+
+test "RuntimeState bool fields default to false" {
+    const rs: RuntimeState = .{};
+    try std.testing.expect(!rs.magic);
+    try std.testing.expect(!rs.making);
+    try std.testing.expect(!rs.mkexports);
+    try std.testing.expect(!rs.mksources);
+    try std.testing.expect(!rs.okprel);
+    try std.testing.expect(!rs.nostdenv);
+}
+
+test "RuntimeState null-initialised optional fields" {
+    const rs: RuntimeState = .{};
+    try std.testing.expectEqual(@as(?[*:0]u8, null), rs.editor);
+    try std.testing.expectEqual(@as(?[*:0]u8, null), rs.current_script);
+    try std.testing.expectEqual(@as(?[*:0]const u8, null), rs.rc_error);
+    try std.testing.expectEqual(@as(?[*:0]const u8, null), rs.unlinkme);
+}

@@ -2129,24 +2129,24 @@ pub const NodeRef = struct {
     word: Word,
 };
 
-test "domain type methods delegate to the same values as procedural accessors" {
-    // FileNode — compare method results to the procedural accessor results.
-    // We need a real file heap node. Use make_fil to build one.
-    // Note: heap must be initialised (setupheap called) for make_fil to work;
-    // this test is deliberately unit-level and avoids that. We verify structural
-    // equivalence by round-tripping through the type.
+test "domain type wrappers preserve their word value" {
     const w: Word = 42;
-    const fn_ref = FileNode{ .word = w };
-    try std.testing.expectEqual(w, fn_ref.word);
+    try std.testing.expectEqual(w, (FileNode{ .word = w }).word);
+    try std.testing.expectEqual(w, (Identifier{ .word = w }).word);
+    try std.testing.expectEqual(w, (TypeRef{ .word = w }).word);
+    try std.testing.expectEqual(w, (NodeRef{ .word = w }).word);
+}
 
-    const id_ref = Identifier{ .word = w };
-    try std.testing.expectEqual(w, id_ref.word);
-
-    const ty_ref = TypeRef{ .word = w };
-    try std.testing.expectEqual(w, ty_ref.word);
-
-    const node = NodeRef{ .word = w };
-    try std.testing.expectEqual(w, node.word);
+test "domain type methods are callable at comptime (signature check)" {
+    // Verify each method can be resolved — the heap accessors they delegate to
+    // are export fn and require a live heap, so we only check that the call
+    // compiles; the actual values are tested via the procedural accessor tests.
+    const FileNodeTimeFn = @TypeOf(FileNode.time);
+    const IdentifierTypFn = @TypeOf(Identifier.typ);
+    const TypeRefClassFn = @TypeOf(TypeRef.class);
+    try std.testing.expect(FileNodeTimeFn == fn (FileNode) Word);
+    try std.testing.expect(IdentifierTypFn == fn (Identifier) Word);
+    try std.testing.expect(TypeRefClassFn == fn (TypeRef) Word);
 }
 
 test "sto_char returns atoms for Latin-1 values" {

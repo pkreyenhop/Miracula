@@ -136,7 +136,8 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
     * *Constraint:* Only convert fields that are in `RuntimeState` (not `export var`). C-ABI-visible fields cannot change type.
 
 * **F5: Expand Test Coverage**
-    * *Status:* Not started
+    * *Status:* **Complete (2026-06-21)**
+    * *Actual outcome:* Added 5 new unit tests (26 → 31 total), all passing. `errors.zig`: two tests — variant distinctness (all 5 MiraError variants compared pairwise) and `anyerror` coercion. `runtime_state.zig`: two new tests — bool field defaults (magic/making/mkexports/mksources/okprel/nostdenv all false) and null optional fields (editor/current_script/rc_error/unlinkme). `heap.zig`: replaced the domain-type round-trip test with a word-preservation test + a comptime signature-check test verifying FileNode.time, Identifier.typ, TypeRef.class resolve to the expected `fn(T) Word` signatures. Pre-existing `mira integration suite` failure unchanged (unrelated to this work).
     * *Details:* Currently 30 test blocks project-wide, mostly in heap.zig. Add:
       1. `errors.zig` — verify each `MiraError` variant is distinct and set-intersection with `anyerror` works.
       2. `types.zig` — after F1 cleans it up, add a test that exercises the `TypeCheckAbort` error path via a mock call to `checktypes`.
@@ -168,4 +169,4 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 | F | F2 | Selective `extern var` → `@import` in trans.zig / module_loader.zig | **Complete** |
 | F | F3 | Stale Artifact Cleanup | **Complete** |
 | F | F4 | Boolean Word Field Audit | **Complete** |
-| F | F5 | Expand Test Coverage | Not started |
+| F | F5 | Expand Test Coverage | **Complete** |

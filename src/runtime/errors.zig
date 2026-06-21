@@ -30,3 +30,25 @@ pub const MiraError = error{
     /// intent without replacing the signal mechanism.
     EvaluationInterrupted,
 };
+
+const std = @import("std");
+
+test "MiraError variants are all distinct" {
+    const variants = [_]MiraError{
+        error.SyntaxError,
+        error.TypeCheckAbort,
+        error.HeapExhausted,
+        error.LoadError,
+        error.EvaluationInterrupted,
+    };
+    for (variants, 0..) |a, i| {
+        for (variants, 0..) |b, j| {
+            if (i != j) try std.testing.expect(a != b);
+        }
+    }
+}
+
+test "MiraError is a subset of anyerror" {
+    const e: anyerror = error.TypeCheckAbort;
+    try std.testing.expectEqual(error.TypeCheckAbort, e);
+}
