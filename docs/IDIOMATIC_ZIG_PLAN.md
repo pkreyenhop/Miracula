@@ -106,6 +106,42 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
     * *Status:* **Complete (2026-06-21)**
     * *Details:* The `commandloop` recovery point (`sigsetjmp(&rs.env, 1)`) and signal handlers (`reset`, `fpe_error`) in `repl.zig` CANNOT be converted to Zig error unions. POSIX signal handlers are asynchronous — the handler fires on any call stack, making stack-unwinding error propagation impossible. The `sigjmp_buf rs.env` field in `RuntimeState` MUST remain. This constraint is documented in `errors.zig` (preamble), in the `rs.env` field doc comment in `runtime_state.zig`, and in this plan. No code change is possible or appropriate for this site. All actionable setjmp/longjmp sites have been addressed in E2.
 
+### Cluster F: Linker-Symbol Elimination & Code Health (Depends on Cluster E)
+*Goal: Finish removing the linker-as-module-system anti-pattern from the compiler modules, clean up stale artifacts, expand test coverage, and audit remaining Word-typed boolean fields.*
+
+* **F1: Eliminate `extern var` from `types.zig`**
+    * *Status:* **Complete (2026-06-21)**
+    * *Details:* `types.zig` already `const main = @import("../main.zig")` but still has 10 `extern var` declarations for symbols that are all `pub` in `main.zig` (`hd`, `tl`, `tag`, `errs`, `errline`, `nill`, `compiling`, `commandmode`, `files`, `SYNERR`). Replace every `extern var` with a reference via `main.*`. This eliminates the last linker-symbol reads in the type checker and makes all state access explicit.
+    * *Scope:* types.zig only. Do not touch trans.zig, lex.zig, or heap.zig in this step.
+
+* **F2: Selective `extern var` → `@import` in `trans.zig` and `module_loader.zig`**
+    * *Status:* **Complete (2026-06-21)**
+    * *Actual outcome:* Converted 10/14 extern vars in trans.zig and 12/19 in module_loader.zig. Remaining non-convertible vars: trans.zig keeps `idsused` (parser/lex.zig), `cook_stdin`/`common_stdin`/`common_stdinb` (C-side); module_loader.zig keeps `fileq` (lex.zig), `c`/`col` (C-side), `ALIASES`/`TSUPPRESSED`/`DETROP`/`MISSING` (not pub in main).
+    * *Details:* Both files already import `main`. A subset of their `extern var` declarations refer to `pub` symbols in `main.zig`. Convert only those; leave vars that live in `lex.zig` or other modules without a circular-safe import path. Expected wins: `errs`, `nill`, `compiling`, `commandmode`, `SYNERR`, `files`, `current_file`, `ND`, `hd`, `tl`, `tag` in trans.zig; `current_file`, `ND`, `exportfiles`, `stackp`, `dstack`, `lfrule`, `polyshowerror`, `FBS`, `tag`, `hd`, `tl` in module_loader.zig (those that are `pub` in main).
+    * *Constraint:* Do not add new `@import` edges that would create circular dependencies.
+
+* **F3: Stale Artifact Cleanup**
+    * *Status:* Not started
+    * *Details:* Remove stale code left by completed refactors:
+      1. `heap.zig` line 9: `const c_jmp = c;` — this alias was used only by the `gc()` setjmp/longjmp removed in E2. Delete the alias and any remaining dead `c_jmp.*` call sites.
+      2. `heap.zig` lines 1-3: TODO comment block from pre-plan era — these tasks are now complete (heap access is in B2, domain methods are in D2). Remove the comment.
+      3. `word.zig` line 1: Same pre-plan TODO comment. Remove it.
+      4. `c_abi.zig`: `jmp_buf`, `setjmp`, `longjmp` re-exports (lines 319-322) — only `sigjmp_buf`/`sigsetjmp`/`siglongjmp` are still needed (E3 constraint). Remove the four non-signal re-exports and fix any call sites.
+
+* **F4: Boolean Word Field Audit**
+    * *Status:* Not started
+    * *Details:* B1 converted `strictif` from `Word` to `bool`. Audit remaining `Word`-typed fields in `RuntimeState` and module-level `export var` declarations that are semantically boolean (only ever assigned 0 or 1). Confirmed candidates from code inspection: `magic`, `making`, `mkexports`, `mksources`, `rechecking`, `bereaved`, `okprel`, `nostdenv`, `baded`. For each, verify all assignment sites use 0/1, convert to `bool`, update all call sites. Skip fields visible to C ABI (those that remain `export var` in main.zig).
+    * *Constraint:* Only convert fields that are in `RuntimeState` (not `export var`). C-ABI-visible fields cannot change type.
+
+* **F5: Expand Test Coverage**
+    * *Status:* Not started
+    * *Details:* Currently 30 test blocks project-wide, mostly in heap.zig. Add:
+      1. `errors.zig` — verify each `MiraError` variant is distinct and set-intersection with `anyerror` works.
+      2. `types.zig` — after F1 cleans it up, add a test that exercises the `TypeCheckAbort` error path via a mock call to `checktypes`.
+      3. `runtime_state.zig` — extend the existing default-values test to cover newly converted bool fields from F4.
+      4. `heap.zig` — extend domain-type round-trip tests to cover `FileNode`, `Identifier`, `TypeRef` method forwarding.
+    * *Constraint:* Do not add tests that require a live heap or running interpreter — keep tests pure unit tests that compile without linking the Miranda runtime.
+
 ---
 ## Progress Summary
 
@@ -126,3 +162,8 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 | E | E1 | Define Domain Errors | **Complete** |
 | E | E2 | Error Union Signatures & Bubbling | **Complete** |
 | E | E3 | Top-Level Error Handling | **Complete** |
+| F | F1 | Eliminate `extern var` from `types.zig` | **Complete** |
+| F | F2 | Selective `extern var` → `@import` in trans.zig / module_loader.zig | **Complete** |
+| F | F3 | Stale Artifact Cleanup | Not started |
+| F | F4 | Boolean Word Field Audit | Not started |
+| F | F5 | Expand Test Coverage | Not started |
