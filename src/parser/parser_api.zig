@@ -46,16 +46,16 @@ fn parseCurrentNew() ParseError!ParseResult {
         const expr = parser_mod.parseExpr(&p) catch |err| {
             core.SYNERR = 1;
             if (err == error.UnexpectedEof) {
-                _ = word.printf("syntax error - unexpected newline\n", .{.{}});
+                _ = word.print("syntax error - unexpected newline\n", .{.{}});
             } else {
-                _ = word.printf("syntax error - unexpected token\n", .{.{}});
+                _ = word.print("syntax error - unexpected token\n", .{.{}});
             }
             return ParseError.SyntaxError;
         };
         if (!p.ts.check(.eof) and !p.ts.check(.offside)) {
             // Trailing tokens after the expression — treat as syntax error.
             core.SYNERR = 1;
-            _ = word.printf("syntax error - unexpected token\n", .{.{}});
+            _ = word.print("syntax error - unexpected token\n", .{.{}});
             return ParseError.SyntaxError;
         }
         const expr_word = codegen.codegenExpr(alloc, expr);

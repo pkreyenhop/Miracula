@@ -335,6 +335,21 @@ pub const FILE = struct {
             try self.writeByte(c);
         }
     }
+
+    /// Zig-native formatted write to this file (R1.4): the file analogue of
+    /// `word.print`/`printErr`. Buffers via a std.Io writer and flushes, so
+    /// output of any length is handled.
+    pub fn print(self: *FILE, comptime fmt: []const u8, args: anytype) void {
+        var buf: [4096]u8 = undefined;
+        var fw = self.file.writer(std.Options.debug_io, &buf);
+        const fs = std.meta.fields(@TypeOf(args));
+        if (comptime (fs.len == 1 and @typeInfo(fs[0].type) == .@"struct")) {
+            fw.interface.print(fmt, @field(args, fs[0].name)) catch {};
+        } else {
+            fw.interface.print(fmt, args) catch {};
+        }
+        fw.interface.flush() catch {};
+    }
 };
 
 pub fn castToCStr(val: anytype) ?[*:0]const u8 {
@@ -521,15 +536,31 @@ pub fn initWriters() void {
     writers_initialized = true;
 }
 
+// The Zig-native printers below tolerate a double-wrapped arg tuple
+// `.{.{a,b}}` (the convention inherited from the C-format shim) by unwrapping
+// when the single field is itself a tuple. Scalar/string args like `.{x}` pass
+// through untouched, so existing single-brace call sites are unaffected. This
+// lets call sites be converted from `printf`/`fprintf` by translating only the
+// format string, leaving the arg tuple as-is (R1.4 polish).
 pub fn print(comptime fmt: []const u8, args: anytype) void {
     initWriters();
-    stdout_writer.interface.print(fmt, args) catch {};
+    const fs = std.meta.fields(@TypeOf(args));
+    if (comptime (fs.len == 1 and @typeInfo(fs[0].type) == .@"struct")) {
+        stdout_writer.interface.print(fmt, @field(args, fs[0].name)) catch {};
+    } else {
+        stdout_writer.interface.print(fmt, args) catch {};
+    }
     stdout_writer.interface.flush() catch {};
 }
 
 pub fn printErr(comptime fmt: []const u8, args: anytype) void {
     initWriters();
-    stderr_writer.interface.print(fmt, args) catch {};
+    const fs = std.meta.fields(@TypeOf(args));
+    if (comptime (fs.len == 1 and @typeInfo(fs[0].type) == .@"struct")) {
+        stderr_writer.interface.print(fmt, @field(args, fs[0].name)) catch {};
+    } else {
+        stderr_writer.interface.print(fmt, args) catch {};
+    }
     stderr_writer.interface.flush() catch {};
 }
 
