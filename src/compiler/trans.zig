@@ -331,7 +331,7 @@ fn setDval(d: Word, value: Word) void {
     tp(t(d)).* = value;
 }
 
-export fn primconstr(input_x: Word) Word {
+pub fn primconstr(input_x: Word) Word {
     var x = t(input_x); // idVal(x) = CONSTRUCTOR cell (or MKSTRICT wrapper for strict ctors)
     while (main.tag[@intCast(x)] != CONSTRUCTOR) {
         x = t(x);
@@ -339,7 +339,7 @@ export fn primconstr(input_x: Word) Word {
     return x;
 }
 
-export fn memb(input_l: Word, x: Word) Word {
+pub fn memb(input_l: Word, x: Word) Word {
     var l = input_l;
     if (main.tag[@intCast(x)] == TVAR) {
         while (l != NIL and t(h(l)) != t(x)) {
@@ -371,7 +371,7 @@ export fn same(x: Word, y: Word) Word {
     return if (h(x) == h(y) and same(t(x), t(y)) != 0) 1 else 0;
 }
 
-export fn get_ids(x: Word) Word {
+pub fn get_ids(x: Word) Word {
     if (x < ATOMLIMIT) {
         return NIL;
     }
@@ -425,7 +425,7 @@ export fn irrefutable(x: Word) Word {
     return if (irrefutable(h(x)) != 0 and irrefutable(t(x)) != 0) 1 else 0;
 }
 
-export fn fallible(input_e: Word) Word {
+pub fn fallible(input_e: Word) Word {
     var e = input_e;
     while (true) {
         const e_tag = main.tag[@intCast(e)];
@@ -449,7 +449,7 @@ export fn fallible(input_e: Word) Word {
     }
 }
 
-export fn here_inf(rhs: Word) Word {
+pub fn here_inf(rhs: Word) Word {
     var x = t(rhs);
     while (t(x) != NIL) {
         x = t(x);
@@ -465,7 +465,7 @@ export fn lastlink(input_x: Word) Word {
     return x;
 }
 
-export fn fixrepeats(input_qq: Word) Word {
+pub fn fixrepeats(input_qq: Word) Word {
     var q = h(input_qq);
     var rhs = q;
     var qq = t(input_qq);
@@ -480,7 +480,7 @@ export fn fixrepeats(input_qq: Word) Word {
     return cons(q, qq);
 }
 
-export fn abshfnck(t_type: Word, f_input: Word) Word {
+pub fn abshfnck(t_type: Word, f_input: Word) Word {
     var f = f_input;
     var n = typeArity(t_type);
     var i: Word = 1;
@@ -506,7 +506,7 @@ export fn abshfnck(t_type: Word, f_input: Word) Word {
     return if (f == t_type) 1 else 0;
 }
 
-export fn combine(x: Word, y: Word) Word {
+pub fn combine(x: Word, y: Word) Word {
     const a = main.tag[@intCast(x)] == AP and h(x) == K;
     const b = main.tag[@intCast(y)] == AP and h(y) == K;
     if (a and b) {
@@ -544,7 +544,7 @@ export fn combine(x: Word, y: Word) Word {
     return ap2(S, x, y);
 }
 
-export fn liscomb(x: Word, y: Word) Word {
+pub fn liscomb(x: Word, y: Word) Word {
     const a = main.tag[@intCast(x)] == AP and h(x) == K;
     const b = main.tag[@intCast(y)] == AP and h(y) == K;
     if (a and b) {
@@ -562,7 +562,7 @@ export fn liscomb(x: Word, y: Word) Word {
     return ap2(S_p, x, y);
 }
 
-export fn abstract(input_x: Word, input_e: Word) Word {
+pub fn abstract(input_x: Word, input_e: Word) Word {
     var x = input_x;
     var e = input_e;
     switch (main.tag[@intCast(x)]) {
@@ -606,7 +606,7 @@ export fn abstract(input_x: Word, input_e: Word) Word {
     return NIL;
 }
 
-export fn abstr(x: Word, e: Word) Word {
+pub fn abstr(x: Word, e: Word) Word {
     switch (main.tag[@intCast(e)]) {
         TCONS, PAIR, CONS => return liscomb(abstr(x, h(e)), abstr(x, t(e))),
         AP => {
@@ -628,7 +628,7 @@ export fn abstr(x: Word, e: Word) Word {
     }
 }
 
-export fn abstrlist(x_input: Word, e: Word) Word {
+pub fn abstrlist(x_input: Word, e: Word) Word {
     switch (main.tag[@intCast(e)]) {
         TCONS, PAIR, CONS => return liscomb(abstrlist(x_input, h(e)), abstrlist(x_input, t(e))),
         AP => {
@@ -656,7 +656,7 @@ export fn abstrlist(x_input: Word, e: Word) Word {
     }
 }
 
-export fn scanpattern(p: Word, x: Word, e: Word, fail: Word) Word {
+pub fn scanpattern(p: Word, x: Word, e: Word, fail: Word) Word {
     if (h(x) == CONST or isConstructor(x)) {
         return NIL;
     }
@@ -670,7 +670,7 @@ export fn scanpattern(p: Word, x: Word, e: Word, fail: Word) Word {
     return shunt(scanpattern(p, h(x), e, fail), scanpattern(p, t(x), e, fail));
 }
 
-export fn mklazy(d: Word) Word {
+pub fn mklazy(d: Word) Word {
     if (irrefutable(dlhs(d)) != 0) {
         return d;
     }
@@ -684,7 +684,7 @@ export fn mklazy(d: Word) Word {
     return d;
 }
 
-export fn new_mklazy(d: Word) Word {
+pub fn new_mklazy(d: Word) Word {
     const ids = get_ids(dlhs(d));
     if (ids == NIL) {
         std.debug.print("impossible event in new_mklazy\n", .{});
@@ -729,7 +729,7 @@ export fn compzf(input_e: Word, input_qq: Word, diag: Word) Word {
     return if (e == g1) ap2(APPEND, NIL, e) else e;
 }
 
-export fn transzf(e_input: Word, qq_input: Word, conc: Word) Word {
+pub fn transzf(e_input: Word, qq_input: Word, conc: Word) Word {
     var e = e_input;
     const qq = qq_input;
     if (qq == NIL) {
@@ -770,7 +770,7 @@ export fn getspecloc(x: Word) Word {
     return if (s == NIL) idWho(x) else t(h(s));
 }
 
-export fn transtypeid(x: Word) Word {
+pub fn transtypeid(x: Word) Word {
     const n = getId(x);
     if (strcmp(n, "bool") == 0) return bool_t;
     if (strcmp(n, "num") == 0) return num_t;
@@ -816,7 +816,7 @@ export fn genlhs(x: Word) Word {
     return main.nill;
 }
 
-export fn leftfactor(x: Word) Word {
+pub fn leftfactor(x: Word) Word {
     var a: Word = undefined;
     var b: Word = undefined;
     var rhs = t(h(x));
@@ -868,12 +868,12 @@ export fn leftfactor(x: Word) Word {
     return x;
 }
 
-export fn translet(d: Word, e: Word) Word {
+pub fn translet(d: Word, e: Word) Word {
     const x = mklazy(d);
     return ap(abstract(dlhs(x), codegen(e)), codegen(dval(x)));
 }
 
-export fn transletrec(input_dd: Word, e: Word) Word {
+pub fn transletrec(input_dd: Word, e: Word) Word {
     var dd = input_dd;
     var lhs: Word = NIL;
     var rhs: Word = NIL;
@@ -905,7 +905,7 @@ export fn transletrec(input_dd: Word, e: Word) Word {
     return ap(abstrlist(lhs, codegen(e)), ap(Y, abstrlist(lhs, rhs)));
 }
 
-export fn transtries(id: Word, input_x: Word) Word {
+pub fn transtries(id: Word, input_x: Word) Word {
     var x = input_x;
     var info: Word = 0;
     var earliest: Word = 0;
@@ -933,7 +933,7 @@ export fn transtries(id: Word, input_x: Word) Word {
     return r;
 }
 
-export fn makeshow(here: Word, type_node: Word) Word {
+pub fn makeshow(here: Word, type_node: Word) Word {
     cs.was_poly = 0;
     const f = mkshow(0, 0, type_node);
     if (here != 0 and cs.was_poly != 0) {
@@ -1008,7 +1008,7 @@ export fn mkshow(s: Word, p: Word, input_t: Word) Word {
     }
 }
 
-export fn mkshowt(s: Word, type_tuple: Word) Word {
+pub fn mkshowt(s: Word, type_tuple: Word) Word {
     if (t(type_tuple) == void_t) {
         return mkshow(s, 0, t(h(type_tuple)));
     }
@@ -1040,14 +1040,14 @@ fn nclchk(n: Word, p: Word, hr: Word) c_int {
     return nclchk(n, t(p), hr);
 }
 
-export fn nclashcheck(n: Word, input_dd: Word, hr: Word) void {
+pub fn nclashcheck(n: Word, input_dd: Word, hr: Word) void {
     var dd = input_dd;
     while (dd != NIL and nclchk(n, dlhs(h(dd)), hr) == 0) {
         dd = t(dd);
     }
 }
 
-export fn respec_error(x: Word) void {
+pub fn respec_error(x: Word) void {
     if (main.rs.echoing != 0) {
         _ = c.putchar('\n');
     }
@@ -1056,7 +1056,7 @@ export fn respec_error(x: Word) void {
     acterror();
 }
 
-export fn nameclash(x: Word) void {
+pub fn nameclash(x: Word) void {
     if (main.rs.echoing != 0) {
         _ = c.putchar('\n');
     }
@@ -1299,13 +1299,13 @@ export fn tclos(r: Word) Word {
     return r;
 }
 
-export fn getrel(input_r: Word, x: Word) Word {
+pub fn getrel(input_r: Word, x: Word) Word {
     var r = input_r;
     while (r != NIL and h(h(r)) != x) r = t(r);
     return if (r == NIL) NIL else t(h(r));
 }
 
-export fn invgetrel(input_r: Word, x: Word) Word {
+pub fn invgetrel(input_r: Word, x: Word) Word {
     var r = input_r;
     while (r != NIL and member(t(h(r)), x) == 0) r = t(r);
     if (r == NIL) {
@@ -1315,7 +1315,7 @@ export fn invgetrel(input_r: Word, x: Word) Word {
     return h(h(r));
 }
 
-export fn imageless(input_r: Word, input_y: Word, z: Word) Word {
+pub fn imageless(input_r: Word, input_y: Word, z: Word) Word {
     var r = input_r;
     var y = input_y;
     var i: Word = NIL;
@@ -1333,7 +1333,7 @@ export fn imageless(input_r: Word, input_y: Word, z: Word) Word {
     return i;
 }
 
-export fn less(input_x: Word, input_y: Word) Word {
+pub fn less(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
     var r: Word = NIL;
@@ -1351,7 +1351,7 @@ export fn less(input_x: Word, input_y: Word) Word {
     return shunt(r, x);
 }
 
-export fn less1(input_x: Word, a: Word) Word {
+pub fn less1(input_x: Word, a: Word) Word {
     var x = input_x;
     var r: Word = NIL;
     while (x != NIL and h(x) != a) {
@@ -1361,7 +1361,7 @@ export fn less1(input_x: Word, a: Word) Word {
     return shunt(r, if (x == NIL) NIL else t(x));
 }
 
-export fn sort(input_x: Word) Word {
+pub fn sort(input_x: Word) Word {
     var x = input_x;
     var a: Word = NIL;
     var b: Word = NIL;

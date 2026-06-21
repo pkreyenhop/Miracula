@@ -383,7 +383,7 @@ fn stdname(c_val: c_int) [*:0]const u8 {
     return if (c_val == ':') "$:-" else if (c_val == '-') "$-" else "$+";
 }
 
-export fn stdin_error(c_val: c_int) void {
+pub fn stdin_error(c_val: c_int) void {
     if (stdinuse == c_val) {
         _ = clib.fprintf(getStderr().?, "program error: duplicate use of %s\n", .{.{stdname(c_val)}});
     } else {
@@ -605,7 +605,7 @@ export fn head(x_val: Word) Word {
     return x;
 }
 
-export fn apfile(f: Word) void {
+pub fn apfile(f: Word) void {
     var p = outfilq;
     const fil = getstring(f, "Appendfile");
     while (p != NIL and clib.strcmp(@ptrFromInt(@as(usize, @intCast(h(h(p))))), fil) != 0) {
@@ -621,7 +621,7 @@ export fn apfile(f: Word) void {
     }
 }
 
-export fn closefile(f: Word) void {
+pub fn closefile(f: Word) void {
     var p = &outfilq;
     const fil = getstring(f, "Closefile");
     while (p.* != NIL and clib.strcmp(@ptrFromInt(@as(usize, @intCast(h(h(p.*))))), fil) != 0) {
@@ -633,7 +633,7 @@ export fn closefile(f: Word) void {
     }
 }
 
-export fn outf(e: Word) void {
+pub fn outf(e: Word) void {
     var p = outfilq;
     const f = getstring(t(h(e)), "Tofile");
     while (p != NIL and clib.strcmp(@ptrFromInt(@as(usize, @intCast(h(h(p))))), f) != 0) {

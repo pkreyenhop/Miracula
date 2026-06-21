@@ -565,7 +565,7 @@ fn negchar(val: u8) bool {
     return signed_val < 0;
 }
 
-pub export fn mark(x_val: Word) void {
+pub fn mark(x_val: Word) void {
     var x = x_val & ~c.tlptrbits;
     while (isptr(x) and negchar(tag.?[@intCast(x)])) {
         const p1 = &tag.?[@intCast(x)];
@@ -839,7 +839,7 @@ pub fn out1(file: ?*c.FILE, x: Word) void {
     }
 }
 
-pub export fn out2(file: ?*c.FILE, x_val: Word) void {
+pub fn out2(file: ?*c.FILE, x_val: Word) void {
     var x = x_val;
     if (x < 0 or x > TOP()) {
         _ = c.fprintf(file, "<%ld>", .{x});
@@ -2084,7 +2084,7 @@ test "domain type wrappers preserve their word value" {
 
 test "domain type methods are callable at comptime (signature check)" {
     // Verify each method can be resolved — the heap accessors they delegate to
-    // are export fn and require a live heap, so we only check that the call
+    // are pub fn and require a live heap, so we only check that the call
     // compiles; the actual values are tested via the procedural accessor tests.
     const FileNodeTimeFn = @TypeOf(FileNode.time);
     const IdentifierTypFn = @TypeOf(Identifier.typ);

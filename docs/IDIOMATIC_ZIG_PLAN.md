@@ -594,14 +594,19 @@ documented accessor-mirror / `_t`-type-vocabulary exemptions, not arbitrary snak
   string before startup fills them — negligible cost (singleton), removes read-before-write UB
   risk. Metric 8: 92 → 86. Retained `undefined` are the documented FFI/scratch-buffer pattern
   plus the `lex_state` pointer fields (`dicp`/`dicq`/`ARGV`, set at setup, used non-optional).
-* **Q2 — `export fn` → `pub fn` audit** ◐ *(audit complete + first module, 2026-06-21)*
-  Audit (set-difference of `export fn` names against `extern fn` / `clib.`·`c.` references /
-  `callconv(.c)`): of **284** non-shim `export fn`, **116** have no linker-symbol caller and are
-  convertible to `pub fn` (reached by direct `@import`/`main.*` re-export). **Converted the 7 in
-  `commands.zig`** (`command`, `manaction`, `editfile`, `xschars`, `finger`, `diagnose`,
-  `allnamescom`) — all called only via `main.*`; verified by build + tests. export-fn count
-  277. The remaining ~109 candidates are recorded for per-module follow-up; build+test is the
-  safety net (a wrongly-converted symbol fails to link). *Risk: medium (C-callback pointers).*
+* **Q2 — `export fn` → `pub fn`** ✅ *(2026-06-21)*
+  Candidate set = `export fn` names minus those referenced via `extern fn` / `clib.`·`c.` /
+  `callconv(.c)` / **address-taken `&fn`** (the last excludes signal-handler & dispatch-table
+  callbacks the build can't catch). Converted **110 functions** across 9 files: `commands.zig`
+  (7, earlier) then `types.zig`, `trans.zig`, `lex.zig`, `startup.zig`, `reduce.zig`,
+  `files.zig`, `heap.zig`, `repl.zig`. Non-shim `export fn` **284 → 174**.
+  **One refinement the build caught:** `ult`/`lmap`/`mapup`/`mapdown` are passed *by bare name*
+  to `walktype(_, f: *const fn(Word) callconv(.c) Word)`, so they need C calling convention —
+  reverted those 4 to `export fn`. (A calling-convention mismatch is a compile error, so the
+  build is a complete detector for the fn-pointer case.) The residual 174 `export fn` are all
+  genuinely C-ABI-bound: `extern fn`-declared, `clib.`-called, `callconv(.c)`, address-taken
+  callbacks, or C-fn-pointer arguments. Build clean; full test suite (incl. integration runs of
+  real `.m` programs) green.
 
 ### Sequencing
 
@@ -679,4 +684,4 @@ together they move four of the eight scorecard metrics.
 | P | P1d | Private `fn` in `driver/`+`io/` → camelCase (1 renamed) | 7 | low | ✅ Complete |
 | P | P2 | Non-FFI `pub fn` → camelCase (per module) | 7 | medium | ⬜ Planned |
 | Q | Q1 | `= undefined` audit (92→86; 6 fields zero-init) | 8 | low-med | ✅ Complete |
-| Q | Q2 | `export fn` → `pub fn` (116 found; commands.zig done) | — | medium | ◐ Audit + 1 module |
+| Q | Q2 | `export fn` → `pub fn` (110 converted; 284→174) | — | medium | ✅ Complete |

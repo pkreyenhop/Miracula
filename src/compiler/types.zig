@@ -191,7 +191,7 @@ fn cons(x: Word, y: Word) Word {
     return make(CONS, x, y);
 }
 
-export fn remove1(e: Word, ss: *Word) Word {
+pub fn remove1(e: Word, ss: *Word) Word {
     var p = ss;
     while (p.* != NIL and h(p.*) < e) {
         p = tp(p.*);
@@ -238,7 +238,7 @@ export fn add1(e: Word, s_input: Word) Word {
     return s_input;
 }
 
-export fn newadd1(e: Word, s_input: Word) Word {
+pub fn newadd1(e: Word, s_input: Word) Word {
     var s = s_input;
     cs.NEW = 1;
     if (s == NIL or e < h(s)) {
@@ -480,7 +480,7 @@ fn getId(x: Word) [*:0]const u8 {
     return @ptrFromInt(@as(usize, @intCast(h(h(h(x))))));
 }
 
-export fn sterilise(t_val: Word) void {
+pub fn sterilise(t_val: Word) void {
     if (main.tag[@intCast(t_val)] == AP) {
         hp(t_val).* = list_t;
         tp(t_val).* = num_t;
@@ -614,21 +614,21 @@ fn NTV() Word {
     return res;
 }
 
-export fn clear_SUBST() Word {
+pub fn clear_SUBST() Word {
     fixshows();
     @memset(&cs.SUBST, 0);
     cs.tvcount = 1;
     return 0;
 }
 
-export fn fixshows() void {
+pub fn fixshows() void {
     while (cs.showchain != NIL) {
         tp(h(cs.showchain)).* = subst(t(h(cs.showchain)));
         cs.showchain = t(cs.showchain);
     }
 }
 
-export fn lookup(tv: Word) Word {
+pub fn lookup(tv: Word) Word {
     var h_val = cs.SUBST[hashval(tv)];
     while (h_val != 0) {
         if (eqtvar(h(h(h_val)), tv)) {
@@ -639,7 +639,7 @@ export fn lookup(tv: Word) Word {
     return tv;
 }
 
-export fn addsubst(tv: Word, term: Word) void {
+pub fn addsubst(tv: Word, term: Word) void {
     const hv = hashval(tv);
     cs.SUBST[hv] = cons(cons(tv, term), cs.SUBST[hv]);
 }
@@ -665,7 +665,7 @@ fn walktype(term: Word, f: *const fn (Word) callconv(.c) Word) Word {
     return term;
 }
 
-export fn subst(term: Word) Word {
+pub fn subst(term: Word) Word {
     return walktype(term, ult);
 }
 
@@ -687,13 +687,13 @@ export fn lmap(tv: Word) Word {
     return new_var;
 }
 
-export fn linst(term: Word, ngt: Word) Word {
+pub fn linst(term: Word, ngt: Word) Word {
     cs.localtvmap = NIL;
     NGT = ngt;
     return walktype(term, lmap);
 }
 
-export fn non_generic(tv: Word) c_int {
+pub fn non_generic(tv: Word) c_int {
     var x = NGT;
     while (x != NIL) {
         if (occurs(tv, subst(h(x))) != 0) {
@@ -722,7 +722,7 @@ export fn instantiate(term: Word) Word {
     return walktype(term, mapup);
 }
 
-export fn ap_subst(term: Word, args: Word) Word {
+pub fn ap_subst(term: Word, args: Word) Word {
     cs.tvmap = args;
     const r = walktype(term, mapup);
     cs.tvmap = NIL;
@@ -747,7 +747,7 @@ export fn redtvars(term: Word) Word {
     return walktype(term, mapdown);
 }
 
-export fn occurs(tv: Word, t_val: Word) c_int {
+pub fn occurs(tv: Word, t_val: Word) c_int {
     var term = t_val;
     while (iscompound_t(term)) {
         if (occurs(tv, t(term)) != 0) {
@@ -780,7 +780,7 @@ fn getStdout() ?*c.FILE {
     }
 }
 
-export fn locate(s: [*:0]const u8) void {
+pub fn locate(s: [*:0]const u8) void {
     cs.TYPERRS += 1;
     if (cs.TYPERRS == 1 or cs.lastloc != cs.current_id) {
         if (cs.current_id != 0) {
@@ -815,7 +815,7 @@ export fn locate(s: [*:0]const u8) void {
     cs.lastloc = cs.current_id;
 }
 
-export fn rhs_here(r: Word) Word {
+pub fn rhs_here(r: Word) Word {
     if (main.tag[@intCast(r)] == LABEL) {
         return h(r);
     }
@@ -875,7 +875,7 @@ export fn report_type(x: Word) void {
     out_type(idType(x));
 }
 
-export fn type_error(a: [*:0]const u8, b: [*:0]const u8, t1_val: Word, t2_val: Word) void {
+pub fn type_error(a: [*:0]const u8, b: [*:0]const u8, t1_val: Word, t2_val: Word) void {
     var t1 = redtvars(ap(subst(t1_val), subst(t2_val)));
     const t2 = t(t1);
     t1 = h(t1);
@@ -887,12 +887,12 @@ export fn type_error(a: [*:0]const u8, b: [*:0]const u8, t1_val: Word, t2_val: W
     _ = c.printf("\n", .{});
 }
 
-export fn type_error1(x: Word) void {
+pub fn type_error1(x: Word) void {
     locate("type error");
     _ = c.printf("typename used as identifier (%s)\n", .{getId(x)});
 }
 
-export fn type_error2(x: Word) void {
+pub fn type_error2(x: Word) void {
     if (main.compiling != 0) {
         return;
     }
@@ -900,19 +900,19 @@ export fn type_error2(x: Word) void {
     _ = c.printf("undefined name - %s\n", .{getId(x)});
 }
 
-export fn type_error3(x: Word) void {
+pub fn type_error3(x: Word) void {
     locate("error");
     _ = c.printf("constructor \"%s\" used at wrong arity in formal\n", .{getId(x)});
 }
 
-export fn type_error4(x: Word) void {
+pub fn type_error4(x: Word) void {
     locate("error");
     _ = c.printf("illegal object \"", .{});
     out_pattern(getStdout().?, x);
     _ = c.printf("\" as head of formal\n", .{});
 }
 
-export fn type_error5(x: Word) void {
+pub fn type_error5(x: Word) void {
     locate("error");
     _ = c.printf("undeclared constructor \"", .{});
     out_pattern(getStdout().?, x);
@@ -920,7 +920,7 @@ export fn type_error5(x: Word) void {
     cs.ND = add1(x, cs.ND);
 }
 
-export fn type_error6(x: Word, f: Word, a: Word) void {
+pub fn type_error6(x: Word, f: Word, a: Word) void {
     cs.TYPERRS += 1;
     _ = c.printf("incorrect declaration ", .{});
     sayhere(cs.lineptr, 1);
@@ -932,7 +932,7 @@ export fn type_error6(x: Word, f: Word, a: Word) void {
     _ = c.printf("\n", .{});
 }
 
-export fn type_error7(a: Word, b: Word) void {
+pub fn type_error7(a: Word, b: Word) void {
     locate("type error");
     _ = c.printf("\nrhs of lex rule :: ", .{});
     out_type(redtvars(subst(b)));
@@ -941,7 +941,7 @@ export fn type_error7(a: Word, b: Word) void {
     _ = c.printf("\n", .{});
 }
 
-export fn type_error8(t1_val: Word, t2_val: Word) void {
+pub fn type_error8(t1_val: Word, t2_val: Word) void {
     var t1 = subst(t1_val);
     var t2 = subst(t2_val);
     if (same(h(t1), h(t2)) != 0) {
@@ -987,7 +987,7 @@ export fn out_type(t_val: Word) void {
     out_type1(type_node);
 }
 
-export fn out_type1(t_val: Word) void {
+pub fn out_type1(t_val: Word) void {
     var type_node = t_val;
     if (iscompound_t(type_node) and !iscomma_t(type_node) and !islist_t(type_node) and !isarrow_t(type_node)) {
         out_type1(h(type_node));
@@ -997,7 +997,7 @@ export fn out_type1(t_val: Word) void {
     out_type2(type_node);
 }
 
-export fn out_type2(t_val: Word) void {
+pub fn out_type2(t_val: Word) void {
     if (islist_t(t_val)) {
         _ = c.printf("[", .{});
         out_type(t(t_val));
@@ -1061,7 +1061,7 @@ export fn out_type2(t_val: Word) void {
     }
 }
 
-export fn out_typel(t_val: Word) void {
+pub fn out_typel(t_val: Word) void {
     var type_node = t_val;
     while (iscomma_t(type_node)) {
         out_type(t(h(type_node)));
@@ -1090,7 +1090,7 @@ fn neg(x: Word) Word {
 
 var allchars: Word = 0;
 
-export fn tail(x_in: Word) Word {
+pub fn tail(x_in: Word) Word {
     var x = x_in;
     allchars = 1;
     while (main.tag[@intCast(x)] == CONS) {
@@ -1101,7 +1101,7 @@ export fn tail(x_in: Word) Word {
     return x;
 }
 
-export fn out_formal1(f: *c.FILE, x_in: Word) void {
+pub fn out_formal1(f: *c.FILE, x_in: Word) void {
     var x = x_in;
     if (h(x) == CONST) {
         x = t(x);
@@ -1167,7 +1167,7 @@ export fn out_pattern(f: *c.FILE, x: Word) void {
     }
 }
 
-export fn out_formal(f: *c.FILE, x: Word) void {
+pub fn out_formal(f: *c.FILE, x: Word) void {
     if (main.tag[@intCast(x)] != AP) {
         out_formal1(f, x);
     } else if (main.tag[@intCast(h(x))] == AP and h(h(x)) == PLUS) {
@@ -1187,7 +1187,7 @@ fn isConstructor(x: Word) bool {
     return main.tag[@intCast(x)] == ID and isconstrname(getId(x)) != 0;
 }
 
-export fn rembvars(x_in: Word, p_in: Word) Word {
+pub fn rembvars(x_in: Word, p_in: Word) Word {
     var x = x_in;
     var p = p_in;
     while (true) {
@@ -1343,7 +1343,7 @@ fn compDeps(n: Word) main.MiraError!void {
 const algebraic_t: Word = 0;
 const FREE: Word = 276;
 
-export fn redtfr(x_in: Word) void {
+pub fn redtfr(x_in: Word) void {
     var x = x_in;
     while (x != NIL) {
         tp(t(h(x))).* = idType(h(h(x)));
@@ -1351,7 +1351,7 @@ export fn redtfr(x_in: Word) void {
     }
 }
 
-export fn printelement(x: Word) void {
+pub fn printelement(x: Word) void {
     if (main.tag[@intCast(x)] != CONS) {
         out(getStdout().?, x);
         return;
@@ -1393,7 +1393,7 @@ fn resetSubst() void {
     cs.current_id = if (cs.tvcount >= @as(Word, @intCast(hashsize))) clear_SUBST() else 0;
 }
 
-export fn locate_inc() void {
+pub fn locate_inc() void {
     if (cs.lasthereinc == cs.hereinc) {
         return;
     }
@@ -1402,7 +1402,7 @@ export fn locate_inc() void {
     sayhere(cs.hereinc, 1);
 }
 
-export fn cyclic_abstr(atnames: Word) Word {
+pub fn cyclic_abstr(atnames: Word) Word {
     var x = atnames;
     var y = NIL;
     while (x != NIL) {
@@ -1424,7 +1424,7 @@ export fn cyclic_abstr(atnames: Word) Word {
     return 0;
 }
 
-export fn txchange(ids_in: Word, x_in: Word) void {
+pub fn txchange(ids_in: Word, x_in: Word) void {
     var ids = ids_in;
     var x = x_in;
     while (ids != NIL) {
@@ -1436,7 +1436,7 @@ export fn txchange(ids_in: Word, x_in: Word) void {
     }
 }
 
-export fn rep_t1(T: Word, L: Word) Word {
+pub fn rep_t1(T: Word, L: Word) Word {
     var args = NIL;
     var t1 = T;
     var changed = false;
@@ -1461,12 +1461,12 @@ export fn rep_t1(T: Word, L: Word) Word {
     return t1;
 }
 
-export fn rep_t(T: Word, L: Word) Word {
+pub fn rep_t(T: Word, L: Word) Word {
     const t_val = rep_t1(T, L);
     return if (t_val == T) t_val else redtvars(t_val);
 }
 
-export fn fix_type(t_val: Word) Word {
+pub fn fix_type(t_val: Word) Word {
     var t_node = t_val;
     switch (main.tag[@intCast(t_node)]) {
         AP, CONS => {
@@ -1612,7 +1612,7 @@ fn mcheckfbs() main.MiraError!void {
     }
 }
 
-export fn checkfbs() void {
+pub fn checkfbs() void {
     const oldte = cs.TYPERRS;
     var formals: Word = undefined;
     cs.lasthereinc = 0;
@@ -1706,7 +1706,7 @@ fn dval(d: Word) Word {
     return t(t(d));
 }
 
-export fn subsu1(t1_in: Word, t2: Word, T2: Word) Word {
+pub fn subsu1(t1_in: Word, t2: Word, T2: Word) Word {
     const t1 = subst(t1_in);
     if (t1 == t2) {
         return 1;
@@ -2455,7 +2455,7 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
     }
 }
 
-export fn checkcolfn() void {
+pub fn checkcolfn() void {
     const t_val = idType(main.rs.col_fn);
     const f = tf(t(h(t(cs.bnf_t))), num_t);
     if (t_val == undef_t or t_val == wrong_t or subsumes(instantiate(t_val), f) != 0) {
@@ -2474,7 +2474,7 @@ export fn checkcolfn() void {
     main.rs.col_fn = -1;
 }
 
-export fn genbnft() void {
+pub fn genbnft() void {
     const bnftokenstate = findid("bnftokenstate");
     if (bnftokenstate != NIL and idType(bnftokenstate) == type_t) {
         if (t_arity(bnftokenstate) == 0) {
@@ -2489,7 +2489,7 @@ export fn genbnft() void {
     cs.bnf_t = ap2(comma_t, cs.ltchar, ap2(comma_t, cs.bnf_t, void_t));
 }
 
-export fn checktype(x: Word) Word {
+pub fn checktype(x: Word) Word {
     cs.TYPERRS = 0;
     _ = etype(x, NIL, NIL) catch return 0;
     resetSubst();

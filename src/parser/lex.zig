@@ -410,7 +410,7 @@ fn getch() c_int {
     return ch;
 }
 
-export fn chblank(s_input: [*:0]u8) void {
+pub fn chblank(s_input: [*:0]u8) void {
     var s = s_input;
     while (s[0] == ' ' or s[0] == '\t') {
         s += 1;
@@ -1058,7 +1058,7 @@ export fn str_conv(s: [*:0]const u8) Word {
     return x;
 }
 
-export fn pathname() ?[*:0]u8 {
+pub fn pathname() ?[*:0]u8 {
     layout();
     if (ls.c == '<') {
         const hold = ls.dicp;
@@ -1135,14 +1135,14 @@ export fn adjust_prefix(f: [*:0]const u8) void {
     }
 }
 
-export fn peekdig() c_int {
+pub fn peekdig() c_int {
     if (main.rs.s_in == null) return 0;
     const ch = clib.getc(main.rs.s_in);
     _ = clib.ungetc(ch, main.rs.s_in);
     return if (ch >= '0' and ch <= '9') 1 else 0;
 }
 
-export fn peekch() c_int {
+pub fn peekch() c_int {
     if (main.rs.s_in == null) return clib.EOF;
     const ch = clib.getc(main.rs.s_in);
     _ = clib.ungetc(ch, main.rs.s_in);
@@ -1248,7 +1248,7 @@ fn identifier(s: c_int) c_int {
     return if (isconstructor(ls.yylval)) clib.CNAME else clib.NAME;
 }
 
-export fn directive() Word {
+pub fn directive() Word {
     const holdcol = ls.col - 1;
     const holdlin = ls.line_no;
     ls.c = getch();
@@ -1407,7 +1407,7 @@ export fn dic_check() void {
     ovflocheck();
 }
 
-export fn numeral() void {
+pub fn numeral() void {
     var nflag: Word = 1;
     ls.dicq = ls.dicp;
     while (ls.c >= '0' and ls.c <= '9') {
@@ -1476,7 +1476,7 @@ export fn numeral() void {
     }
 }
 
-export fn hexnumeral() void {
+pub fn hexnumeral() void {
     ls.dicq = ls.dicp;
     ls.dicq[0] = @intCast(ls.c); // 0
     ls.dicq += 1;
@@ -1540,7 +1540,7 @@ export fn hexnumeral() void {
     ls.yylval = bigxscan(ls.dicp + 2, ls.dicq);
 }
 
-export fn octnumeral() void {
+pub fn octnumeral() void {
     ls.dicq = ls.dicp;
     if (ls.c < '0' or ls.c > '9') {
         syntax("malformed octal number\n");
@@ -1561,7 +1561,7 @@ export fn octnumeral() void {
     ls.yylval = bigoscan(ls.dicp, ls.dicq);
 }
 
-export fn getfname(x: Word) Word {
+pub fn getfname(x: Word) Word {
     const p = get_id(x);
     ls.dicq = ls.dicp;
     var i: usize = 0;
@@ -1658,7 +1658,7 @@ export fn mkprivate(x_input: Word) void {
     inprelude = false;
 }
 
-export fn string() void {
+pub fn string() void {
     var p: Word = undefined;
     var ch: Word = undefined;
     var badch: Word = 0;
@@ -1700,7 +1700,7 @@ export fn string() void {
     }
 }
 
-export fn charclass() c_int {
+pub fn charclass() c_int {
     var p: Word = undefined;
     var ch: Word = undefined;
     var badch: Word = 0;

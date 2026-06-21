@@ -22,7 +22,7 @@ pub export fn fm_time(path: [*:0]const u8) Word {
 }
 
 /// Returns 1 if `path` ends in ".m" (a Miranda source file), 0 otherwise.
-pub export fn normal(path: [*:0]const u8) c_int {
+pub fn normal(path: [*:0]const u8) c_int {
     const text = std.mem.span(path);
     return if (text.len >= 2 and std.mem.eql(u8, text[text.len - 2 ..], ".m")) 1 else 0;
 }
@@ -54,7 +54,7 @@ pub fn fileExists(path: [*:0]const u8) bool {
 }
 
 /// Copies the contents of `path` to stdout. Used by the `//f` command to display source.
-pub export fn filecopy(path: [*:0]const u8) void {
+pub fn filecopy(path: [*:0]const u8) void {
     const fd = clib.open(path, clib.O_RDONLY, 0);
     if (fd < 0) return;
     defer _ = clib.close(fd);
@@ -68,7 +68,7 @@ pub export fn filecopy(path: [*:0]const u8) void {
 }
 
 /// Copies file `from` to file `to`, creating or truncating `to`. Used during dump/undump.
-pub export fn filecp(from: [*:0]const u8, to: [*:0]const u8) void {
+pub fn filecp(from: [*:0]const u8, to: [*:0]const u8) void {
     const f_in = clib.open(from, clib.O_RDONLY, 0);
     if (f_in < 0) return;
     defer _ = clib.close(f_in);
@@ -125,7 +125,7 @@ pub fn mkabsolute(m: [*:0]u8) [*:0]u8 {
 }
 
 /// Returns the terminal column width minus 2, defaulting to 78 if unavailable.
-pub export fn twidth() c_int {
+pub fn twidth() c_int {
     var window: clib.struct_winsize = undefined;
     if (clib.ioctl(clib.STDOUT_FILENO, clib.TIOCGWINSZ, &window) == -1 or window.ws_col == 0) {
         return 78;

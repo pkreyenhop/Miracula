@@ -336,7 +336,7 @@ pub fn announce() void {
     _ = clib.printf("\n", .{.{}});
 }
 
-pub export fn getln(in: ?*clib.FILE, n_val: Word, s_ptr: [*]u8) c_int {
+pub fn getln(in: ?*clib.FILE, n_val: Word, s_ptr: [*]u8) c_int {
     var s = s_ptr;
     var n = n_val;
     var ch: c_int = undefined;
@@ -351,7 +351,7 @@ pub export fn getln(in: ?*clib.FILE, n_val: Word, s_ptr: [*]u8) c_int {
     return if (ch == clib.EOF) 0 else 1;
 }
 
-pub export fn badeditor() c_int {
+pub fn badeditor() c_int {
     const e = main.rs.editor orelse return 0;
     if (clib.strstr(e, "+!") != null or clib.strstr(e, "%d") != null or clib.strstr(e, "%l") != null) {
         return 0;
@@ -359,7 +359,7 @@ pub export fn badeditor() c_int {
     return 1;
 }
 
-pub export fn fixeditor() void {
+pub fn fixeditor() void {
     const e = main.rs.editor orelse return;
     const len = clib.strlen(e);
     var p = e + len - 1;

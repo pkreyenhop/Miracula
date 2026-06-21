@@ -428,7 +428,7 @@ var mstack: [4][*:0]const u8 = undefined;
 var mvp: usize = 0;
 var vbuf: [12]u8 = undefined;
 
-pub export fn rc_read(rcfile: [*:0]const u8) Word {
+pub fn rc_read(rcfile: [*:0]const u8) Word {
     var f: ?*clib.FILE = null;
     var x: Word = undefined;
     var res: Word = 0;
@@ -465,7 +465,7 @@ pub export fn rc_read(rcfile: [*:0]const u8) Word {
     return 1;
 }
 
-pub export fn rc_write() void {
+pub fn rc_write() void {
     const home = clib.getenv("HOME");
     var f: ?*clib.FILE = null;
     if (home == null or main.rs.home_rc[0] == 0) return;
@@ -480,7 +480,7 @@ pub fn missparam(s: [:0]const u8) noreturn {
     main.fatal("mira: missing param after flag \"-%s\"\n", .{.{s.ptr}});
 }
 
-pub export fn checkversion(m: [*:0]const u8) c_int {
+pub fn checkversion(m: [*:0]const u8) c_int {
     var path_buf: [1024]u8 = undefined;
     const path = std.fmt.bufPrintZ(&path_buf, "{s}/.version", .{m}) catch return 0;
     const f = clib.fopen(path.ptr, "r");
@@ -504,7 +504,7 @@ pub export fn checkversion(m: [*:0]const u8) c_int {
     return r;
 }
 
-pub export fn libfails() void {
+pub fn libfails() void {
     const stderr = main.getStderr().?;
     _ = clib.fprintf(stderr, "found", .{.{}});
     var i: usize = 0;
@@ -513,7 +513,7 @@ pub export fn libfails() void {
     }
 }
 
-pub export fn strvers(v: c_int) [*:0]const u8 {
+pub fn strvers(v: c_int) [*:0]const u8 {
     if (v < 0 or v > 999999) {
         return "???";
     }
