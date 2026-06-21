@@ -206,6 +206,8 @@ pub const missparam = startup.missparam;
 pub const v_info = startup.v_info;
 
 pub fn main(ctx: std.process.Init) !void {
+    rt.io = ctx.io;
+    rt.environ = ctx.minimal.environ;
     rt.allocator = rt.gpa.allocator();
     clib.env_slice = ctx.minimal.environ.block.slice;
     const raw_args = ctx.minimal.args.vector;

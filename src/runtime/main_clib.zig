@@ -1,6 +1,7 @@
 const word_mod = @import("word.zig");
 const std = @import("std");
 const builtin = @import("builtin");
+const rt = @import("runtime_state.zig");
 
 pub var env_slice: [:null]const ?[*:0]const u8 = &[_:null]?[*:0]const u8{};
 
@@ -1307,15 +1308,8 @@ pub fn chdir(path: [*:0]const u8) c_int {
 pub fn getenv(name: ?*const anyopaque) ?[*:0]u8 {
     if (name == null) return null;
     const name_str = std.mem.span(@as([*:0]const u8, @ptrCast(name.?)));
-
-    for (env_slice) |entry_opt| {
-        if (entry_opt) |entry| {
-            const entry_str = std.mem.span(entry);
-            if (std.mem.startsWith(u8, entry_str, name_str) and entry_str.len > name_str.len and entry_str[name_str.len] == '=') {
-                const val_ptr = entry + name_str.len + 1;
-                return @ptrCast(@constCast(val_ptr));
-            }
-        }
+    if (std.process.Environ.getPosix(rt.environ, name_str)) |val| {
+        return @ptrCast(@constCast(val.ptr));
     }
     return null;
 }
@@ -1324,21 +1318,19 @@ pub fn system(cmd: ?*const anyopaque) c_int {
     if (cmd == null) return 1;
     const cmd_str = @as([*:0]const u8, @ptrCast(cmd.?));
 
-    const pid = fork();
-    if (pid == -1) return -1;
-    if (pid == 0) {
-        const argv = [_:null]?[*:0]const u8{
-            "/bin/sh",
-            "-c",
-            cmd_str,
-        };
-        const envp = env_slice.ptr;
-        _ = std.posix.system.execve("/bin/sh", &argv, envp);
-        std.process.exit(127);
-    } else {
-        var raw_status: WaitStatusType = 0;
-        _ = std.posix.system.waitpid(pid, &raw_status, 0);
-        return raw_status;
+    const argv = [_][]const u8{ "/bin/sh", "-c", std.mem.span(cmd_str) };
+    var child = std.process.spawn(rt.io, .{
+        .argv = &argv,
+        .stdin = .inherit,
+        .stdout = .inherit,
+        .stderr = .inherit,
+    }) catch return -1;
+    const term = child.wait(rt.io) catch return -1;
+    switch (term) {
+        .exited => |code| return @intCast(code),
+        .signal => |sig| return @intCast(@intFromEnum(sig)),
+        .stopped => |sig| return @intCast(@intFromEnum(sig)),
+        .unknown => |val| return @intCast(val),
     }
 }
 
