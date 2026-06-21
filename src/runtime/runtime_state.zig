@@ -37,8 +37,9 @@ pub const RuntimeState = struct {
     rv_expr: Word = 0,
 
     // File paths — null-terminated byte arrays populated by startup; treated as C strings.
-    PRELUDE: [clib.pnlim + 10]u8 = undefined,
-    STDENV: [clib.pnlim + 9]u8 = undefined,
+    // Zero-initialised so a `.{}` singleton reads as the empty string before startup fills them.
+    PRELUDE: [clib.pnlim + 10]u8 = std.mem.zeroes([clib.pnlim + 10]u8),
+    STDENV: [clib.pnlim + 9]u8 = std.mem.zeroes([clib.pnlim + 9]u8),
 
     // Compiler flags (Word-typed because they are linker-visible to lex.zig / trans.zig
     // which CAN switch to @import — no circular constraint, but keep as Word for now)
@@ -99,10 +100,11 @@ pub const RuntimeState = struct {
     cstack: ?[*]Word = null,
 
     // Working buffers — sized for the longest supported pathname (pnlim).
-    linebuf: [clib.BUFSIZE]u8 = undefined,
-    ebuf: [clib.pnlim]u8 = undefined,
-    home_rc: [clib.pnlim + 8]u8 = undefined,
-    lib_rc: [clib.pnlim + 8]u8 = undefined,
+    // Zero-initialised (see above): cheap for a singleton, removes read-before-write UB risk.
+    linebuf: [clib.BUFSIZE]u8 = std.mem.zeroes([clib.BUFSIZE]u8),
+    ebuf: [clib.pnlim]u8 = std.mem.zeroes([clib.pnlim]u8),
+    home_rc: [clib.pnlim + 8]u8 = std.mem.zeroes([clib.pnlim + 8]u8),
+    lib_rc: [clib.pnlim + 8]u8 = std.mem.zeroes([clib.pnlim + 8]u8),
     /// Non-null when rc_read fails; points into home_rc or lib_rc (not heap-allocated).
     rc_error: ?[*:0]const u8 = null,
 

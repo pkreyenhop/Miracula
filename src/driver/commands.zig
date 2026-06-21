@@ -133,7 +133,7 @@ fn namescom(l: Word) void {
     clib.printlist(@constCast("SPECIFIED BUT NOT DEFINED: "), undefs);
 }
 
-pub export fn command() void {
+pub fn command() void {
     var t_val: ?[*:0]u8 = undefined;
     var ch: c_int = undefined;
     var ch1: c_int = undefined;
@@ -516,12 +516,12 @@ pub export fn command() void {
     xschars();
 }
 
-pub export fn manaction() void {
+pub fn manaction() void {
     _ = clib.sprintf(&main.rs.linebuf, "\"%s/menudriver\" \"%s/manual\"", .{ main.rs.miralib.?, main.rs.miralib.? });
     _ = clib.system(&main.rs.linebuf);
 }
 
-pub export fn editfile(t_val: [*:0]const u8, line: c_int) void {
+pub fn editfile(t_val: [*:0]const u8, line: c_int) void {
     var line_val = line;
     const ebuf_local = @as([*]u8, @ptrCast(&main.rs.linebuf[0]));
     var p = ebuf_local;
@@ -574,7 +574,7 @@ pub export fn editfile(t_val: [*:0]const u8, line: c_int) void {
     }
 }
 
-pub export fn xschars() void {
+pub fn xschars() void {
     var ch: c_int = undefined;
     _ = clib.printf("\x07extra characters at end of command\n", .{.{}});
     while (true) {
@@ -583,7 +583,7 @@ pub export fn xschars() void {
     }
 }
 
-pub export fn finger(n: [*:0]const u8) void {
+pub fn finger(n: [*:0]const u8) void {
     const x = clib.findid(@constCast(n));
     var line: Word = 0;
     var s: ?[*:0]u8 = null;
@@ -632,7 +632,7 @@ pub export fn finger(n: [*:0]const u8) void {
     diagnose(n);
 }
 
-pub export fn diagnose(n: [*:0]const u8) void {
+pub fn diagnose(n: [*:0]const u8) void {
     var i: usize = 0;
     if (clib.isalpha(@intCast(n[0])) != 0) {
         while (n[i] != 0 and clib.okid(n[i]) != 0) {
@@ -656,7 +656,7 @@ pub export fn diagnose(n: [*:0]const u8) void {
     _ = clib.printf("identifier \"%s\" not in scope\n", .{.{n}});
 }
 
-pub export fn allnamescom() void {
+pub fn allnamescom() void {
     var s: Word = undefined;
     var x = main.cs.ND;
     var y = main.cs.ND;

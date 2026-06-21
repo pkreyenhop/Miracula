@@ -425,7 +425,7 @@ Baseline captured 2026-06-21 (script output at L0):
 | 5 | `return NIL` as an error signal | 12 | n/a — all return NIL-the-value | O1 (analysed: no-op) |
 | 6 | bare `clib.exit(1)` (use `fatal()`) | 46 → 30 | evaluator-abort residual | O2 |
 | 7 | file-private `fn` with `snake_case` | 50 → 36 | domain-vocabulary exemptions only | P1 (✅ for P1a–d) |
-| 8 | `= undefined` initialisers (non-FFI) | 92 | audited + documented | Q1 |
+| 8 | `= undefined` initialisers (non-FFI) | 92 → 86 | audited (FFI/scratch-buffer pattern) | Q1 |
 
 **Domain-vocabulary exemption (metric 7).** Like the FFI exemption, a fixed set of
 file-private names deliberately mirrors the public `heap.zig` accessor API and the Miranda
@@ -574,14 +574,24 @@ documented accessor-mirror / `_t`-type-vocabulary exemptions, not arbitrary snak
 
 ### Cluster Q — Polish (closes metric 8)
 
-* **Q1 — `= undefined` audit (108 sites)** ⬜
-  Convert to zero/sensible defaults where the value is always written before read is not
-  guaranteed; document each retained `undefined` with the invariant that makes it safe.
-  *Risk: low-med.*
-* **Q2 — `export fn` → `pub fn` audit** ⬜
-  Of 286 `export fn`, only 12 are `callconv(.c)`. Identify which of the rest still need a linker
-  symbol (referenced from `main_clib.zig`/the C harness) versus those that can become `pub fn`
-  reached by direct `@import`. Convert the safe subset, one module per commit. *Risk: medium.*
+* **Q1 — `= undefined` audit** ✅ *(2026-06-21)*
+  Audited all 92 non-FFI sites. The large majority are the **idiomatic FFI/scratch-output
+  pattern** — C structs filled by syscalls (`Stat`, `winsize`, `tms`, `rlimit`, `Sigaction`)
+  and `[N]u8` buffers filled by `sprintf`/`strcpy` before any read — where `undefined` is the
+  correct, standard-Zig choice. **Change:** zero-initialised the 6 `RuntimeState` char-buffer
+  **struct fields** (`PRELUDE`, `STDENV`, `linebuf`, `ebuf`, `home_rc`, `lib_rc`) via
+  `std.mem.zeroes(...)` so a `.{}` singleton has no `undefined` fields and reads as the empty
+  string before startup fills them — negligible cost (singleton), removes read-before-write UB
+  risk. Metric 8: 92 → 86. Retained `undefined` are the documented FFI/scratch-buffer pattern
+  plus the `lex_state` pointer fields (`dicp`/`dicq`/`ARGV`, set at setup, used non-optional).
+* **Q2 — `export fn` → `pub fn` audit** ◐ *(audit complete + first module, 2026-06-21)*
+  Audit (set-difference of `export fn` names against `extern fn` / `clib.`·`c.` references /
+  `callconv(.c)`): of **284** non-shim `export fn`, **116** have no linker-symbol caller and are
+  convertible to `pub fn` (reached by direct `@import`/`main.*` re-export). **Converted the 7 in
+  `commands.zig`** (`command`, `manaction`, `editfile`, `xschars`, `finger`, `diagnose`,
+  `allnamescom`) — all called only via `main.*`; verified by build + tests. export-fn count
+  277. The remaining ~109 candidates are recorded for per-module follow-up; build+test is the
+  safety net (a wrongly-converted symbol fails to link). *Risk: medium (C-callback pointers).*
 
 ### Sequencing
 
@@ -658,5 +668,5 @@ together they move four of the eight scorecard metrics.
 | P | P1c | Private `fn` in `parser/` → camelCase (1 renamed, 4→3) | 7 | low | ✅ Complete |
 | P | P1d | Private `fn` in `driver/`+`io/` → camelCase (1 renamed) | 7 | low | ✅ Complete |
 | P | P2 | Non-FFI `pub fn` → camelCase (per module) | 7 | medium | ⬜ Planned |
-| Q | Q1 | `= undefined` audit (108 sites) | 8 | low-med | ⬜ Planned |
-| Q | Q2 | `export fn` → `pub fn` audit (286 → ?) | — | medium | ⬜ Planned |
+| Q | Q1 | `= undefined` audit (92→86; 6 fields zero-init) | 8 | low-med | ✅ Complete |
+| Q | Q2 | `export fn` → `pub fn` (116 found; commands.zig done) | — | medium | ◐ Audit + 1 module |
