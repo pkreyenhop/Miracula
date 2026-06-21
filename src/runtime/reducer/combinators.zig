@@ -316,7 +316,7 @@ pub fn handleITERATE1(ctx: *ReductionCtx) void {
     }
     var lastarg = reduce.tl_get(ctx.e);
     lastarg = reduce.reduce(lastarg);
-    if (lastarg == clib.FAIL) {
+    if (lastarg == word.FAIL) {
         reduce.rewrite_to_nil(&ctx.e);
     } else {
         const hold = reduce.ap(reduce.hd_get(ctx.e), reduce.ap(arg1, lastarg));
@@ -351,8 +351,8 @@ pub fn handleU(ctx: *ReductionCtx) void {
         return;
     }
     const lastarg = reduce.tl_get(ctx.e);
-    reduce.hd_set(ctx.e, reduce.ap(arg1, reduce.ap(clib.HD, lastarg)));
-    reduce.tl_set(ctx.e, reduce.ap(clib.TL, lastarg));
+    reduce.hd_set(ctx.e, reduce.ap(arg1, reduce.ap(word.HD, lastarg)));
+    reduce.tl_set(ctx.e, reduce.ap(word.TL, lastarg));
     reduce.downLeft(ctx);
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
@@ -373,8 +373,8 @@ pub fn handleUf(ctx: *ReductionCtx) void {
         reduce.hd_set(ctx.e, reduce.ap(arg1, reduce.hd_get(lastarg)));
         reduce.tl_set(ctx.e, reduce.tl_get(lastarg));
     } else {
-        reduce.hd_set(ctx.e, reduce.ap(arg1, reduce.ap(clib.BODY, lastarg)));
-        reduce.tl_set(ctx.e, reduce.ap(clib.LAST, lastarg));
+        reduce.hd_set(ctx.e, reduce.ap(arg1, reduce.ap(word.BODY, lastarg)));
+        reduce.tl_set(ctx.e, reduce.ap(word.LAST, lastarg));
     }
     reduce.downLeft(ctx);
     reduce.downLeft(ctx);
@@ -570,12 +570,12 @@ pub fn handleFLATMAP(ctx: *ReductionCtx) void {
             return;
         }
         const hold = reduce.reduce(reduce.ap(arg1, reduce.hd_get(arg2)));
-        if (hold == clib.FAIL or hold == word.NIL) {
+        if (hold == word.FAIL or hold == word.NIL) {
             arg2 = reduce.tl_get(arg2);
             continue;
         }
         reduce.tl_set(ctx.e, reduce.ap(reduce.hd_get(ctx.e), reduce.tl_get(arg2)));
-        reduce.hd_set(ctx.e, reduce.ap(clib.APPEND, hold));
+        reduce.hd_set(ctx.e, reduce.ap(word.APPEND, hold));
         ctx.action = word.ACT_NEXTREDEX;
         return;
     }
@@ -722,7 +722,7 @@ pub fn handleFOLDL1(ctx: *ReductionCtx) void {
     }
     const lastarg = reduce.reduce(reduce.tl_get(ctx.e));
     if (lastarg != word.NIL) {
-        reduce.hd_set(ctx.e, reduce.ap2(clib.FOLDL, arg1, reduce.hd_get(lastarg)));
+        reduce.hd_set(ctx.e, reduce.ap2(word.FOLDL, arg1, reduce.hd_get(lastarg)));
         reduce.tl_set(ctx.e, reduce.tl_get(lastarg));
         ctx.action = word.ACT_NEXTREDEX;
     } else {
@@ -882,7 +882,7 @@ pub fn handleTRY(ctx: *ReductionCtx) void {
         }
         const lastarg = reduce.tl_get(ctx.e);
         arg1 = reduce.ap(arg1, lastarg);
-        reduce.hd_set(ctx.e, reduce.ap(clib.TRY, arg1));
+        reduce.hd_set(ctx.e, reduce.ap(word.TRY, arg1));
         arg2 = reduce.ap(arg2, lastarg);
         reduce.tl_set(ctx.e, arg2);
     }
@@ -899,7 +899,7 @@ pub fn handleFAIL(ctx: *ReductionCtx) void {
     while (!reduce.abnormal(ctx.s)) {
         ctx.hold = ctx.s;
         ctx.s = reduce.hd_get(ctx.s);
-        reduce.hd_set(ctx.hold, clib.FAIL);
+        reduce.hd_set(ctx.hold, word.FAIL);
         reduce.tl_set(ctx.hold, 0);
     }
     ctx.action = word.ACT_DONE;
@@ -934,16 +934,16 @@ pub fn handleUsh1(ctx: *ReductionCtx) void {
     }
     var hold = if (arg2 != 0) reduce.cons(')', word.NIL) else word.NIL;
     while (!reduce.is_constructor(arg1)) {
-        hold = reduce.cons(' ', reduce.ap2(clib.APPEND, reduce.ap(reduce.tl_get(arg1), reduce.ap(clib.LAST, arg3)), hold));
+        hold = reduce.cons(' ', reduce.ap2(word.APPEND, reduce.ap(reduce.tl_get(arg1), reduce.ap(word.LAST, arg3)), hold));
         arg1 = reduce.hd_get(arg1);
-        arg3 = reduce.ap(clib.BODY, arg3);
+        arg3 = reduce.ap(word.BODY, arg3);
     }
     if (reduce.suppressed(arg1)) {
         reduce.rewrite_to_string(&ctx.e, "<unprintable>");
         ctx.action = word.ACT_DONE;
         return;
     }
-    hold = reduce.ap2(clib.APPEND, clib.str_conv(reduce.constr_name(arg1)), hold);
+    hold = reduce.ap2(word.APPEND, clib.str_conv(reduce.constr_name(arg1)), hold);
     if (arg2 != 0) {
         reduce.rewrite_to_cons(ctx.e, '(', hold);
         ctx.action = word.ACT_DONE;

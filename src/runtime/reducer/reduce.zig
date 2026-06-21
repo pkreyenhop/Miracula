@@ -37,99 +37,99 @@ pub export fn reduce(e_val: Word) Word {
         ctx.action = word.ACT_NONE;
 
         switch (ctx.e) {
-            clib.S => combinators.handleS(&ctx),
-            clib.B => combinators.handleB(&ctx),
-            clib.CB => combinators.handleCB(&ctx),
-            clib.C => combinators.handleC(&ctx),
-            clib.Y => combinators.handleY(&ctx),
-            clib.K => combinators.handleK(&ctx),
-            clib.KI => combinators.handleKI(&ctx),
-            clib.S1 => combinators.handleS1(&ctx),
-            clib.B1 => combinators.handleB1(&ctx),
-            clib.C1 => combinators.handleC1(&ctx),
-            clib.S_p => combinators.handleS_p(&ctx),
-            clib.B_p => combinators.handleB_p(&ctx),
-            clib.C_p => combinators.handleC_p(&ctx),
-            clib.ITERATE => combinators.handleITERATE(&ctx),
-            clib.ITERATE1 => combinators.handleITERATE1(&ctx),
-            clib.P, clib.G_RULE => combinators.handleP(&ctx),
-            clib.U => combinators.handleU(&ctx),
-            clib.Uf => combinators.handleUf(&ctx),
-            clib.ATLEAST => combinators.handleATLEAST(&ctx),
-            clib.U_ => combinators.handleU_(&ctx),
-            clib.Ug => combinators.handleUg(&ctx),
-            clib.MATCH => combinators.handleMATCH(&ctx),
-            clib.MATCHINT => combinators.handleMATCHINT(&ctx),
-            clib.GENSEQ => combinators.handleGENSEQ(&ctx),
-            clib.MAP => combinators.handleMAP(&ctx),
-            clib.FLATMAP => combinators.handleFLATMAP(&ctx),
-            clib.FILTER => combinators.handleFILTER(&ctx),
-            clib.LIST_LAST => combinators.handleLIST_LAST(&ctx),
-            clib.LENGTH => combinators.handleLENGTH(&ctx),
-            clib.DROP => combinators.handleDROP(&ctx),
-            clib.SUBSCRIPT => combinators.handleSUBSCRIPT(&ctx),
-            clib.FOLDL1 => combinators.handleFOLDL1(&ctx),
-            clib.FOLDL => combinators.handleFOLDL(&ctx),
-            clib.FOLDR => combinators.handleFOLDR(&ctx),
-            clib.BADCASE => combinators.handleBADCASE(&ctx),
-            clib.GETARGS => combinators.handleGETARGS(&ctx),
-            clib.CONFERROR => combinators.handleCONFERROR(&ctx),
-            clib.ERROR => combinators.handleERROR(&ctx),
-            clib.WAIT => combinators.handleWAIT(&ctx),
-            clib.TRY => combinators.handleTRY(&ctx),
-            clib.FAIL => combinators.handleFAIL(&ctx),
-            clib.Ush1 => combinators.handleUsh1(&ctx),
-            clib.MKSTRICT => combinators.handleMKSTRICT(&ctx),
+            word.S => combinators.handleS(&ctx),
+            word.B => combinators.handleB(&ctx),
+            word.CB => combinators.handleCB(&ctx),
+            word.C => combinators.handleC(&ctx),
+            word.Y => combinators.handleY(&ctx),
+            word.K => combinators.handleK(&ctx),
+            word.KI => combinators.handleKI(&ctx),
+            word.S1 => combinators.handleS1(&ctx),
+            word.B1 => combinators.handleB1(&ctx),
+            word.C1 => combinators.handleC1(&ctx),
+            word.S_p => combinators.handleS_p(&ctx),
+            word.B_p => combinators.handleB_p(&ctx),
+            word.C_p => combinators.handleC_p(&ctx),
+            word.ITERATE => combinators.handleITERATE(&ctx),
+            word.ITERATE1 => combinators.handleITERATE1(&ctx),
+            word.P, word.G_RULE => combinators.handleP(&ctx),
+            word.U => combinators.handleU(&ctx),
+            word.Uf => combinators.handleUf(&ctx),
+            word.ATLEAST => combinators.handleATLEAST(&ctx),
+            word.U_ => combinators.handleU_(&ctx),
+            word.Ug => combinators.handleUg(&ctx),
+            word.MATCH => combinators.handleMATCH(&ctx),
+            word.MATCHINT => combinators.handleMATCHINT(&ctx),
+            word.GENSEQ => combinators.handleGENSEQ(&ctx),
+            word.MAP => combinators.handleMAP(&ctx),
+            word.FLATMAP => combinators.handleFLATMAP(&ctx),
+            word.FILTER => combinators.handleFILTER(&ctx),
+            word.LIST_LAST => combinators.handleLIST_LAST(&ctx),
+            word.LENGTH => combinators.handleLENGTH(&ctx),
+            word.DROP => combinators.handleDROP(&ctx),
+            word.SUBSCRIPT => combinators.handleSUBSCRIPT(&ctx),
+            word.FOLDL1 => combinators.handleFOLDL1(&ctx),
+            word.FOLDL => combinators.handleFOLDL(&ctx),
+            word.FOLDR => combinators.handleFOLDR(&ctx),
+            word.BADCASE => combinators.handleBADCASE(&ctx),
+            word.GETARGS => combinators.handleGETARGS(&ctx),
+            word.CONFERROR => combinators.handleCONFERROR(&ctx),
+            word.ERROR => combinators.handleERROR(&ctx),
+            word.WAIT => combinators.handleWAIT(&ctx),
+            word.TRY => combinators.handleTRY(&ctx),
+            word.FAIL => combinators.handleFAIL(&ctx),
+            word.Ush1 => combinators.handleUsh1(&ctx),
+            word.MKSTRICT => combinators.handleMKSTRICT(&ctx),
 
-            clib.I => combinators.handleI(&ctx),
+            word.I => combinators.handleI(&ctx),
 
-            clib.SEQ, clib.FORCE, clib.HD, clib.TL, clib.BODY, clib.LAST, clib.EXEC, clib.FILEMODE, clib.FILESTAT, clib.GETENV, clib.INTEGER, clib.NUMVAL, clib.TAKE, clib.STARTREAD, clib.STARTREADBIN, clib.NB_STARTREAD, clib.COND, clib.APPEND, clib.AND, clib.OR, clib.NOT, clib.NEG, clib.CODE, clib.DECODE, clib.SHOWNUM, clib.SHOWHEX, clib.SHOWOCT, clib.ARCTAN_FN, clib.EXP_FN, clib.ENTIER_FN, clib.LOG_FN, clib.LOG10_FN, clib.SIN_FN, clib.COS_FN, clib.SQRT_FN => combinators.handle_strict_monadic(&ctx),
+            word.SEQ, word.FORCE, word.HD, word.TL, word.BODY, word.LAST, word.EXEC, word.FILEMODE, word.FILESTAT, word.GETENV, word.INTEGER, word.NUMVAL, word.TAKE, word.STARTREAD, word.STARTREADBIN, word.NB_STARTREAD, word.COND, word.APPEND, word.AND, word.OR, word.NOT, word.NEG, word.CODE, word.DECODE, word.SHOWNUM, word.SHOWHEX, word.SHOWOCT, word.ARCTAN_FN, word.EXP_FN, word.ENTIER_FN, word.LOG_FN, word.LOG10_FN, word.SIN_FN, word.COS_FN, word.SQRT_FN => combinators.handle_strict_monadic(&ctx),
 
-            clib.ZIP, clib.STEP, clib.EQ, clib.NEQ, clib.PLUS, clib.MINUS, clib.TIMES, clib.INTDIV, clib.FDIV, clib.MOD, clib.GRE, clib.GR, clib.POWER, clib.SHOWSCALED, clib.SHOWFLOAT, clib.MERGE => combinators.handle_strict_diadic(&ctx),
+            word.ZIP, word.STEP, word.EQ, word.NEQ, word.PLUS, word.MINUS, word.TIMES, word.INTDIV, word.FDIV, word.MOD, word.GRE, word.GR, word.POWER, word.SHOWSCALED, word.SHOWFLOAT, word.MERGE => combinators.handle_strict_diadic(&ctx),
 
-            clib.Ush, clib.STEPUNTIL => combinators.handle_strict_triadic(&ctx),
+            word.Ush, word.STEPUNTIL => combinators.handle_strict_triadic(&ctx),
 
             // Grammar Combinators (lex.zig)
-            clib.G_ERROR => lex_handlers.handle_G_ERROR(&ctx),
-            clib.G_ALT => lex_handlers.handle_G_ALT(&ctx),
-            clib.G_OPT => lex_handlers.handle_G_OPT(&ctx),
-            clib.G_STAR => lex_handlers.handle_G_STAR(&ctx),
-            clib.G_FBSTAR => lex_handlers.handle_G_FBSTAR(&ctx),
-            clib.G_SYMB => lex_handlers.handle_G_SYMB(&ctx),
-            clib.G_ANY => lex_handlers.handle_G_ANY(&ctx),
-            clib.G_SUCHTHAT => lex_handlers.handle_G_SUCHTHAT(&ctx),
-            clib.G_END => lex_handlers.handle_G_END(&ctx),
-            clib.G_STATE => lex_handlers.handle_G_STATE(&ctx),
-            clib.G_SEQ => lex_handlers.handle_G_SEQ(&ctx),
-            clib.G_UNIT => lex_handlers.handle_G_UNIT(&ctx),
-            clib.G_ZERO => lex_handlers.handle_G_ZERO(&ctx),
-            clib.G_CLOSE => lex_handlers.handle_G_CLOSE(&ctx),
-            clib.G_COUNT => lex_handlers.handle_G_COUNT(&ctx),
+            word.G_ERROR => lex_handlers.handle_G_ERROR(&ctx),
+            word.G_ALT => lex_handlers.handle_G_ALT(&ctx),
+            word.G_OPT => lex_handlers.handle_G_OPT(&ctx),
+            word.G_STAR => lex_handlers.handle_G_STAR(&ctx),
+            word.G_FBSTAR => lex_handlers.handle_G_FBSTAR(&ctx),
+            word.G_SYMB => lex_handlers.handle_G_SYMB(&ctx),
+            word.G_ANY => lex_handlers.handle_G_ANY(&ctx),
+            word.G_SUCHTHAT => lex_handlers.handle_G_SUCHTHAT(&ctx),
+            word.G_END => lex_handlers.handle_G_END(&ctx),
+            word.G_STATE => lex_handlers.handle_G_STATE(&ctx),
+            word.G_SEQ => lex_handlers.handle_G_SEQ(&ctx),
+            word.G_UNIT => lex_handlers.handle_G_UNIT(&ctx),
+            word.G_ZERO => lex_handlers.handle_G_ZERO(&ctx),
+            word.G_CLOSE => lex_handlers.handle_G_CLOSE(&ctx),
+            word.G_COUNT => lex_handlers.handle_G_COUNT(&ctx),
 
             // Lexer Combinators (lex.zig)
-            clib.LEX_RPT1 => lex_handlers.handle_LEX_RPT1(&ctx),
-            clib.LEX_RPT => lex_handlers.handle_LEX_RPT(&ctx),
-            clib.LEX_TRY => lex_handlers.handle_LEX_TRY(&ctx),
-            clib.LEX_TRY_ => lex_handlers.handle_LEX_TRY_(&ctx),
-            clib.LEX_TRY1 => lex_handlers.handle_LEX_TRY1(&ctx),
-            clib.LEX_TRY1_ => lex_handlers.handle_LEX_TRY1_(&ctx),
-            clib.DESTREV => lex_handlers.handle_DESTREV(&ctx),
-            clib.LEX_COUNT0 => lex_handlers.handle_LEX_COUNT0(&ctx),
-            clib.LEX_COUNT => lex_handlers.handle_LEX_COUNT(&ctx),
-            clib.LEX_STRING => lex_handlers.handle_LEX_STRING(&ctx),
-            clib.LEX_CLASS => lex_handlers.handle_LEX_CLASS(&ctx),
-            clib.LEX_DOT => lex_handlers.handle_LEX_DOT(&ctx),
-            clib.LEX_CHAR => lex_handlers.handle_LEX_CHAR(&ctx),
-            clib.LEX_SEQ => lex_handlers.handle_LEX_SEQ(&ctx),
-            clib.LEX_OR => lex_handlers.handle_LEX_OR(&ctx),
-            clib.LEX_RCONTEXT => lex_handlers.handle_LEX_RCONTEXT(&ctx),
-            clib.LEX_STAR => lex_handlers.handle_LEX_STAR(&ctx),
-            clib.LEX_OPT => lex_handlers.handle_LEX_OPT(&ctx),
+            word.LEX_RPT1 => lex_handlers.handle_LEX_RPT1(&ctx),
+            word.LEX_RPT => lex_handlers.handle_LEX_RPT(&ctx),
+            word.LEX_TRY => lex_handlers.handle_LEX_TRY(&ctx),
+            word.LEX_TRY_ => lex_handlers.handle_LEX_TRY_(&ctx),
+            word.LEX_TRY1 => lex_handlers.handle_LEX_TRY1(&ctx),
+            word.LEX_TRY1_ => lex_handlers.handle_LEX_TRY1_(&ctx),
+            word.DESTREV => lex_handlers.handle_DESTREV(&ctx),
+            word.LEX_COUNT0 => lex_handlers.handle_LEX_COUNT0(&ctx),
+            word.LEX_COUNT => lex_handlers.handle_LEX_COUNT(&ctx),
+            word.LEX_STRING => lex_handlers.handle_LEX_STRING(&ctx),
+            word.LEX_CLASS => lex_handlers.handle_LEX_CLASS(&ctx),
+            word.LEX_DOT => lex_handlers.handle_LEX_DOT(&ctx),
+            word.LEX_CHAR => lex_handlers.handle_LEX_CHAR(&ctx),
+            word.LEX_SEQ => lex_handlers.handle_LEX_SEQ(&ctx),
+            word.LEX_OR => lex_handlers.handle_LEX_OR(&ctx),
+            word.LEX_RCONTEXT => lex_handlers.handle_LEX_RCONTEXT(&ctx),
+            word.LEX_STAR => lex_handlers.handle_LEX_STAR(&ctx),
+            word.LEX_OPT => lex_handlers.handle_LEX_OPT(&ctx),
 
             // IO (io.zig)
-            clib.READ => io_handlers.handle_READ(&ctx),
-            clib.READBIN => io_handlers.handle_READBIN(&ctx),
-            clib.READVALS => io_handlers.handle_READVALS(&ctx),
+            word.READ => io_handlers.handle_READ(&ctx),
+            word.READBIN => io_handlers.handle_READBIN(&ctx),
+            word.READVALS => io_handlers.handle_READVALS(&ctx),
 
             else => {
                 cycles -= 1;
@@ -142,7 +142,7 @@ pub export fn reduce(e_val: Word) Word {
                 switch (tag[@as(usize, @intCast(ctx.e))]) {
                     word.STRCONS => {
                         ctx.e = pn_val(ctx.e);
-                        if (ctx.e == word.UNDEF or ctx.e == clib.FREE) {
+                        if (ctx.e == word.UNDEF or ctx.e == word.FREE) {
                             word.printErr("\nimpossible event in reduce - undefined pname\n", .{});
                             clib.exit(1);
                         }
@@ -155,7 +155,7 @@ pub export fn reduce(e_val: Word) Word {
                         clib.exit(1);
                     },
                     word.ID => {
-                        if (id_val(ctx.e) == word.UNDEF or id_val(ctx.e) == clib.FREE) {
+                        if (id_val(ctx.e) == word.UNDEF or id_val(ctx.e) == word.FREE) {
                             word.printErr("\nUNDEFINED NAME - {s}\n", .{get_id(ctx.e)});
                             clib.outstats();
                             clib.exit(1);
@@ -212,7 +212,7 @@ pub export fn reduce(e_val: Word) Word {
 pub extern fn print(e_val: Word) void;
 pub extern var waiting: Word;
 pub extern var errtrap: Word;
-pub extern var s_out: ?*clib.FILE;
+pub extern var s_out: ?*word.FILE;
 pub extern fn reduce_badcase_error(arg_info: Word) void;
 pub extern fn reduce_conf_error(arg_info: Word) void;
 pub extern fn conv_args() Word;
@@ -302,7 +302,7 @@ pub inline fn getarg(ctx: *ReductionCtx, a: *Word) bool {
 }
 
 pub inline fn simpl(ctx: *ReductionCtx, r: Word) void {
-    hd_set(ctx.e, clib.I);
+    hd_set(ctx.e, word.I);
     tl_set(ctx.e, r);
     ctx.e = r;
 }
@@ -353,7 +353,7 @@ pub inline fn is_unicode(x: Word) bool {
 }
 
 pub inline fn rewrite_to_value(expr: *Word, value: Word) void {
-    hd_set(expr.*, clib.I);
+    hd_set(expr.*, word.I);
     tl_set(expr.*, value);
     expr.* = value;
 }
@@ -363,7 +363,7 @@ pub inline fn rewrite_to_nil(expr: *Word) void {
 }
 
 pub inline fn rewrite_to_fail(expr: *Word) void {
-    rewrite_to_value(expr, clib.FAIL);
+    rewrite_to_value(expr, word.FAIL);
 }
 
 pub inline fn rewrite_to_failure(expr: *Word) void {
@@ -382,7 +382,7 @@ pub inline fn rewrite_to_cons(expr: Word, head_value: Word, tail_value: Word) vo
 }
 
 pub inline fn rewrite_to_existing_tail(expr: Word) Word {
-    hd_set(expr, clib.I);
+    hd_set(expr, word.I);
     return tl_get(expr);
 }
 
@@ -391,21 +391,21 @@ pub inline fn ap(x: Word, y: Word) Word {
 }
 
 pub inline fn rewrite_to_match_result(expr: *Word, left: Word, right: Word, success_value: Word) void {
-    hd_set(expr.*, clib.I);
-    const val = if (clib.compare(left, right) == 0) success_value else clib.FAIL;
+    hd_set(expr.*, word.I);
+    const val = if (clib.compare(left, right) == 0) success_value else word.FAIL;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_int_match_result(expr: *Word, literal: Word, value: Word, success_value: Word) void {
-    hd_set(expr.*, clib.I);
-    const val = if (!is_int(value) or clib.bigcmp(literal, value) != 0) clib.FAIL else success_value;
+    hd_set(expr.*, word.I);
+    const val = if (!is_int(value) or clib.bigcmp(literal, value) != 0) word.FAIL else success_value;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_string(expr: *Word, value: [*:0]const u8) void {
-    hd_set(expr.*, clib.I);
+    hd_set(expr.*, word.I);
     const val = clib.str_conv(value);
     tl_set(expr.*, val);
     expr.* = val;
@@ -444,7 +444,7 @@ pub inline fn suppressed(x: Word) bool {
     return is_strcons(tlx) and !is_id(pn_val(tlx));
 }
 
-pub fn getStderr() ?*clib.FILE {
+pub fn getStderr() ?*word.FILE {
     const T = @TypeOf(clib.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
         return clib.stderr();
@@ -454,7 +454,7 @@ pub fn getStderr() ?*clib.FILE {
         return clib.stderr;
     }
 }
-pub fn getStdout() ?*clib.FILE {
+pub fn getStdout() ?*word.FILE {
     const T = @TypeOf(clib.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
         return clib.stdout();
@@ -464,7 +464,7 @@ pub fn getStdout() ?*clib.FILE {
         return clib.stdout;
     }
 }
-pub fn getStdin() ?*clib.FILE {
+pub fn getStdin() ?*word.FILE {
     const T = @TypeOf(clib.stdin);
     if (comptime @typeInfo(T) == .@"fn") {
         return clib.stdin();
@@ -489,28 +489,28 @@ pub inline fn coerce_dbl(x: Word) Word {
 }
 
 pub inline fn rewrite_to_compare_eq(expr: *Word, left: Word, right: Word) void {
-    hd_set(expr.*, clib.I);
+    hd_set(expr.*, word.I);
     const val = if (clib.compare(left, right) == 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_neq(expr: *Word, left: Word, right: Word) void {
-    hd_set(expr.*, clib.I);
+    hd_set(expr.*, word.I);
     const val = if (clib.compare(left, right) != 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_gt(expr: *Word, left: Word, right: Word) void {
-    hd_set(expr.*, clib.I);
+    hd_set(expr.*, word.I);
     const val = if (clib.compare(left, right) > 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_ge(expr: *Word, left: Word, right: Word) void {
-    hd_set(expr.*, clib.I);
+    hd_set(expr.*, word.I);
     const val = if (clib.compare(left, right) >= 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;

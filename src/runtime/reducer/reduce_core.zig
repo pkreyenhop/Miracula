@@ -19,7 +19,7 @@ extern var tag: [*]u8;
 pub extern var stdinuse: Word;
 pub extern var waiting: Word;
 pub extern var errtrap: Word;
-pub extern var s_out: ?*clib.FILE;
+pub extern var s_out: ?*word.FILE;
 
 pub extern fn print(e_val: Word) void;
 pub extern fn reduce_badcase_error(arg_info: Word) void;
@@ -110,7 +110,7 @@ pub inline fn getarg(ctx: *ReductionCtx, a: *Word) bool {
 }
 
 pub inline fn simpl(ctx: *ReductionCtx, r: Word) void {
-    hd_set(ctx.e, clib.I);
+    hd_set(ctx.e, word.I);
     tl_set(ctx.e, r);
     ctx.e = r;
 }
@@ -161,7 +161,7 @@ pub inline fn is_unicode(x: Word) bool {
 }
 
 pub inline fn rewrite_to_value(expr: *Word, value: Word) void {
-    hd_set(expr.*, clib.I);
+    hd_set(expr.*, word.I);
     tl_set(expr.*, value);
     expr.* = value;
 }
@@ -171,7 +171,7 @@ pub inline fn rewrite_to_nil(expr: *Word) void {
 }
 
 pub inline fn rewrite_to_fail(expr: *Word) void {
-    rewrite_to_value(expr, clib.FAIL);
+    rewrite_to_value(expr, word.FAIL);
 }
 
 pub inline fn rewrite_to_failure(expr: *Word) void {
@@ -190,7 +190,7 @@ pub inline fn rewrite_to_cons(expr: Word, head_value: Word, tail_value: Word) vo
 }
 
 pub inline fn rewrite_to_existing_tail(expr: Word) Word {
-    hd_set(expr, clib.I);
+    hd_set(expr, word.I);
     return tl_get(expr);
 }
 
@@ -199,21 +199,21 @@ pub inline fn ap(x: Word, y: Word) Word {
 }
 
 pub inline fn rewrite_to_match_result(expr: *Word, left: Word, right: Word, success_value: Word) void {
-    hd_set(expr.*, clib.I);
-    const val = if (clib.compare(left, right) == 0) success_value else clib.FAIL;
+    hd_set(expr.*, word.I);
+    const val = if (clib.compare(left, right) == 0) success_value else word.FAIL;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_int_match_result(expr: *Word, literal: Word, value: Word, success_value: Word) void {
-    hd_set(expr.*, clib.I);
-    const val = if (!is_int(value) or clib.bigcmp(literal, value) != 0) clib.FAIL else success_value;
+    hd_set(expr.*, word.I);
+    const val = if (!is_int(value) or clib.bigcmp(literal, value) != 0) word.FAIL else success_value;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_string(expr: *Word, value: [*:0]const u8) void {
-    hd_set(expr.*, clib.I);
+    hd_set(expr.*, word.I);
     const val = clib.str_conv(value);
     tl_set(expr.*, val);
     expr.* = val;
@@ -252,7 +252,7 @@ pub inline fn suppressed(x: Word) bool {
     return is_strcons(tlx) and !is_id(pn_val(tlx));
 }
 
-pub fn getStderr() ?*clib.FILE {
+pub fn getStderr() ?*word.FILE {
     const T = @TypeOf(clib.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
         return clib.stderr();
@@ -262,7 +262,7 @@ pub fn getStderr() ?*clib.FILE {
         return clib.stderr;
     }
 }
-pub fn getStdout() ?*clib.FILE {
+pub fn getStdout() ?*word.FILE {
     const T = @TypeOf(clib.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
         return clib.stdout();
@@ -272,7 +272,7 @@ pub fn getStdout() ?*clib.FILE {
         return clib.stdout;
     }
 }
-pub fn getStdin() ?*clib.FILE {
+pub fn getStdin() ?*word.FILE {
     const T = @TypeOf(clib.stdin);
     if (comptime @typeInfo(T) == .@"fn") {
         return clib.stdin();
@@ -297,28 +297,28 @@ pub inline fn coerce_dbl(x: Word) Word {
 }
 
 pub inline fn rewrite_to_compare_eq(expr: *Word, left: Word, right: Word) void {
-    hd_set(expr.*, clib.I);
+    hd_set(expr.*, word.I);
     const val = if (clib.compare(left, right) == 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_neq(expr: *Word, left: Word, right: Word) void {
-    hd_set(expr.*, clib.I);
+    hd_set(expr.*, word.I);
     const val = if (clib.compare(left, right) != 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_gt(expr: *Word, left: Word, right: Word) void {
-    hd_set(expr.*, clib.I);
+    hd_set(expr.*, word.I);
     const val = if (clib.compare(left, right) > 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_ge(expr: *Word, left: Word, right: Word) void {
-    hd_set(expr.*, clib.I);
+    hd_set(expr.*, word.I);
     const val = if (clib.compare(left, right) >= 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;

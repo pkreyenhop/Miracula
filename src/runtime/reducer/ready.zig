@@ -36,67 +36,67 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
     const e_val = ctx.e;
 
     switch (e_val) {
-        clib.I => {
+        word.I => {
             reduce.upLeft(ctx);
             ctx.e = reduce.tl_get(ctx.e);
-            ctx.action = clib.ACT_NEXTREDEX;
+            ctx.action = word.ACT_NEXTREDEX;
             return;
         },
-        clib.SEQ => {
+        word.SEQ => {
             reduce.upLeft(ctx);
             if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
+                ctx.action = word.ACT_DONE;
                 return;
             }
             ctx.e = reduce.rewrite_to_existing_tail(ctx.e);
-            ctx.action = clib.ACT_NEXTREDEX;
+            ctx.action = word.ACT_NEXTREDEX;
             return;
         },
-        clib.FORCE => {
+        word.FORCE => {
             reduce.upLeft(ctx);
             reduce.force(lastarg(ctx));
             ctx.e = reduce.rewrite_to_existing_tail(ctx.e);
-            ctx.action = clib.ACT_NEXTREDEX;
+            ctx.action = word.ACT_NEXTREDEX;
             return;
         },
-        clib.HD => {
+        word.HD => {
             reduce.upLeft(ctx);
-            if (lastarg(ctx) == clib.NIL) {
+            if (lastarg(ctx) == word.NIL) {
                 word.printErr("\nATTEMPT TO TAKE hd OF []\n", .{});
                 clib.outstats();
                 clib.exit(1);
             }
             reduce.rewrite_to_value(&ctx.e, reduce.hd_get(lastarg(ctx)));
-            ctx.action = clib.ACT_NEXTREDEX;
+            ctx.action = word.ACT_NEXTREDEX;
             return;
         },
-        clib.TL => {
+        word.TL => {
             reduce.upLeft(ctx);
-            if (lastarg(ctx) == clib.NIL) {
+            if (lastarg(ctx) == word.NIL) {
                 word.printErr("\nATTEMPT TO TAKE tl OF []\n", .{});
                 clib.outstats();
                 clib.exit(1);
             }
             reduce.rewrite_to_value(&ctx.e, reduce.tl_get(lastarg(ctx)));
-            ctx.action = clib.ACT_NEXTREDEX;
+            ctx.action = word.ACT_NEXTREDEX;
             return;
         },
-        clib.BODY => {
+        word.BODY => {
             reduce.upLeft(ctx);
             reduce.rewrite_to_value(&ctx.e, reduce.hd_get(lastarg(ctx)));
-            ctx.action = clib.ACT_NEXTREDEX;
+            ctx.action = word.ACT_NEXTREDEX;
             return;
         },
-        clib.LAST => {
+        word.LAST => {
             reduce.upLeft(ctx);
             reduce.rewrite_to_value(&ctx.e, reduce.tl_get(lastarg(ctx)));
-            ctx.action = clib.ACT_NEXTREDEX;
+            ctx.action = word.ACT_NEXTREDEX;
             return;
         },
-        clib.TAKE => {
+        word.TAKE => {
             reduce.GETARG(ctx, &ctx.args[0]);
             if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
+                ctx.action = word.ACT_DONE;
                 return;
             }
             if (!reduce.is_int(ctx.args[0])) {
@@ -105,16 +105,16 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             const n = clib.get_int(ctx.args[0]);
             const lastarg_reduced = reduce.reduce(lastarg(ctx));
             set_lastarg(ctx, lastarg_reduced);
-            if (n <= 0 or lastarg_reduced == clib.NIL) {
+            if (n <= 0 or lastarg_reduced == word.NIL) {
                 reduce.rewrite_to_nil(&ctx.e);
-                ctx.action = clib.ACT_DONE;
+                ctx.action = word.ACT_DONE;
                 return;
             }
-            reduce.rewrite_to_cons(ctx.e, reduce.hd_get(lastarg_reduced), reduce.ap2(clib.TAKE, clib.sto_int(n - 1), reduce.tl_get(lastarg_reduced)));
-            ctx.action = clib.ACT_DONE;
+            reduce.rewrite_to_cons(ctx.e, reduce.hd_get(lastarg_reduced), reduce.ap2(word.TAKE, clib.sto_int(n - 1), reduce.tl_get(lastarg_reduced)));
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.FILEMODE => {
+        word.FILEMODE => {
             reduce.upLeft(ctx);
             if (platform.getFileInfo(reduce.getstring(lastarg(ctx), "filemode"))) |info| {
                 const mode = info.mode;
@@ -123,28 +123,28 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 const r = if ((perm & 0o4) != 0) @as(Word, 'r') else '-';
                 const w = if ((perm & 0o2) != 0) @as(Word, 'w') else '-';
                 const x = if ((perm & 0o1) != 0) @as(Word, 'x') else '-';
-                reduce.rewrite_to_cons(ctx.e, d, reduce.cons(r, reduce.cons(w, reduce.cons(x, clib.NIL))));
+                reduce.rewrite_to_cons(ctx.e, d, reduce.cons(r, reduce.cons(w, reduce.cons(x, word.NIL))));
             } else {
                 reduce.rewrite_to_nil(&ctx.e);
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.FILESTAT => {
+        word.FILESTAT => {
             reduce.upLeft(ctx);
             if (platform.getFileInfo(reduce.getstring(lastarg(ctx), "filestat"))) |info| {
                 reduce.rewrite_to_cons(ctx.e, reduce.cons(clib.sto_int(@intCast(info.ino)), clib.sto_int(@intCast(info.dev))), clib.sto_int(@intCast(info.mtime)));
             } else {
                 reduce.rewrite_to_cons(ctx.e, reduce.cons(clib.stosmallint(0), clib.stosmallint(-1)), clib.stosmallint(0));
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.GETENV => {
+        word.GETENV => {
             reduce.upLeft(ctx);
             const a = reduce.getstring(lastarg(ctx), "getenv");
             const p = clib.getenv(a);
-            ctx.hold = clib.NIL;
+            ctx.hold = word.NIL;
             if (p) |ptr| {
                 var i = word.strlen(ptr);
                 if (main.rs.UTF8 != 0) {
@@ -185,13 +185,13 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                     }
                 }
             }
-            reduce.hd_set(ctx.e, clib.I);
+            reduce.hd_set(ctx.e, word.I);
             reduce.tl_set(ctx.e, ctx.hold);
             ctx.e = ctx.hold;
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.EXEC => {
+        word.EXEC => {
             reduce.upLeft(ctx);
             var pid: c_int = -1;
             var fd: [2]c_int = undefined;
@@ -205,8 +205,8 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 cond = (pid != 0);
             }
             if (cond) {
-                var fp: ?*clib.FILE = null;
-                var fp_a: ?*clib.FILE = null;
+                var fp: ?*word.FILE = null;
+                var fp_a: ?*word.FILE = null;
                 if (pid != -1) {
                     _ = clib.close(fd[1]);
                     _ = clib.close(fd_a[1]);
@@ -214,9 +214,9 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                     fp_a = clib.fdopen(fd_a[0], "r");
                 }
                 if (pid == -1 or fp == null or fp_a == null) {
-                    reduce.rewrite_to_cons(ctx.e, clib.NIL, reduce.cons(clib.piperrmess(pid), clib.sto_int(-1)));
+                    reduce.rewrite_to_cons(ctx.e, word.NIL, reduce.cons(clib.piperrmess(pid), clib.sto_int(-1)));
                 } else {
-                    reduce.rewrite_to_cons(ctx.e, reduce.ap(clib.READ, @intCast(@intFromPtr(fp.?))), reduce.cons(reduce.ap(clib.READ, @intCast(@intFromPtr(fp_a.?))), reduce.ap(clib.WAIT, pid)));
+                    reduce.rewrite_to_cons(ctx.e, reduce.ap(word.READ, @intCast(@intFromPtr(fp.?))), reduce.cons(reduce.ap(word.READ, @intCast(@intFromPtr(fp_a.?))), reduce.ap(word.WAIT, pid)));
                 }
             } else {
                 const shell = "/bin/sh";
@@ -229,51 +229,51 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 _ = clib.fclose(reduce.getStdin().?);
                 _ = clib.execl(shell, .{ shell, "-c", cp });
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.NUMVAL => {
+        word.NUMVAL => {
             reduce.upLeft(ctx);
             var x = lastarg(ctx);
             var base: c_int = 10;
-            while (x != clib.NIL) {
+            while (x != word.NIL) {
                 reduce.hd_set(x, reduce.reduce(reduce.hd_get(x)));
                 const next_tl = reduce.reduce(reduce.tl_get(x));
                 reduce.tl_set(x, next_tl);
                 x = next_tl;
             }
-            while (lastarg(ctx) != clib.NIL and clib.isspace(@intCast(reduce.hd_get(lastarg(ctx)))) != 0) {
+            while (lastarg(ctx) != word.NIL and clib.isspace(@intCast(reduce.hd_get(lastarg(ctx)))) != 0) {
                 set_lastarg(ctx, reduce.tl_get(lastarg(ctx)));
             }
             x = lastarg(ctx);
-            if (x != clib.NIL and reduce.hd_get(x) == '-') {
+            if (x != word.NIL and reduce.hd_get(x) == '-') {
                 x = reduce.tl_get(x);
             }
-            if (reduce.hd_get(x) == '0' and reduce.tl_get(x) != clib.NIL) {
+            if (reduce.hd_get(x) == '0' and reduce.tl_get(x) != word.NIL) {
                 switch (clib.tolower(@intCast(reduce.hd_get(reduce.tl_get(x))))) {
                     'o' => {
                         base = 8;
                         x = reduce.tl_get(reduce.tl_get(x));
-                        while (x != clib.NIL and ('0' <= reduce.hd_get(x) and reduce.hd_get(x) <= '7')) {
+                        while (x != word.NIL and ('0' <= reduce.hd_get(x) and reduce.hd_get(x) <= '7')) {
                             x = reduce.tl_get(x);
                         }
                     },
                     'x' => {
                         base = 16;
                         x = reduce.tl_get(reduce.tl_get(x));
-                        while (x != clib.NIL and (clib.isxdigit(@intCast(reduce.hd_get(x))) != 0)) {
+                        while (x != word.NIL and (clib.isxdigit(@intCast(reduce.hd_get(x))) != 0)) {
                             x = reduce.tl_get(x);
                         }
                     },
                     else => {},
                 }
             } else {
-                while (x != clib.NIL and (clib.isdigit(@intCast(reduce.hd_get(x))) != 0)) {
+                while (x != word.NIL and (clib.isdigit(@intCast(reduce.hd_get(x))) != 0)) {
                     x = reduce.tl_get(x);
                 }
             }
-            if (x == clib.NIL) {
-                reduce.hd_set(ctx.e, clib.I);
+            if (x == word.NIL) {
+                reduce.hd_set(ctx.e, word.I);
                 const val = clib.strtobig(lastarg(ctx), base);
                 reduce.tl_set(ctx.e, val);
                 ctx.e = val;
@@ -283,7 +283,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 var junk: u8 = 0;
                 x = lastarg(ctx);
                 var p_idx: usize = 0;
-                while (x != clib.NIL and p_idx < 1023) {
+                while (x != word.NIL and p_idx < 1023) {
                     p[p_idx] = @intCast(reduce.hd_get(x));
                     p_idx += 1;
                     x = reduce.tl_get(x);
@@ -295,16 +295,16 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                     clib.outstats();
                     clib.exit(1);
                 } else {
-                    reduce.hd_set(ctx.e, clib.I);
+                    reduce.hd_set(ctx.e, word.I);
                     const val = clib.sto_dbl(d);
                     reduce.tl_set(ctx.e, val);
                     ctx.e = val;
                 }
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.STARTREAD => {
+        word.STARTREAD => {
             reduce.upLeft(ctx);
             const fil = reduce.getstring(lastarg(ctx), "read");
             const f = clib.fopen(fil, "r");
@@ -314,12 +314,12 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 clib.exit(1);
             }
             set_lastarg(ctx, @intCast(@intFromPtr(f.?)));
-            reduce.hd_set(ctx.e, clib.READ);
+            reduce.hd_set(ctx.e, word.READ);
             reduce.downLeft(ctx);
             io_handlers.handle_READ(ctx);
             return;
         },
-        clib.STARTREADBIN => {
+        word.STARTREADBIN => {
             reduce.upLeft(ctx);
             const fil = reduce.getstring(lastarg(ctx), "readb");
             const f = clib.fopen(fil, "r");
@@ -329,125 +329,125 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 clib.exit(1);
             }
             set_lastarg(ctx, @intCast(@intFromPtr(f.?)));
-            reduce.hd_set(ctx.e, clib.READBIN);
+            reduce.hd_set(ctx.e, word.READBIN);
             reduce.downLeft(ctx);
             io_handlers.handle_READBIN(ctx);
             return;
         },
-        clib.TRY => {
+        word.TRY => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
-            if (ctx.args[0] == clib.FAIL) {
+            if (ctx.args[0] == word.FAIL) {
                 ctx.e = reduce.rewrite_to_existing_tail(ctx.e);
-                ctx.action = clib.ACT_NEXTREDEX;
+                ctx.action = word.ACT_NEXTREDEX;
                 return;
             }
             ctx.hold = reduce.head(ctx.args[0]);
-            if (clib.S <= ctx.hold and ctx.hold <= clib.ERROR) {
-                ctx.action = clib.ACT_DONE;
+            if (word.S <= ctx.hold and ctx.hold <= word.ERROR) {
+                ctx.action = word.ACT_DONE;
                 return;
             }
             reduce.rewrite_to_value(&ctx.e, ctx.args[0]);
-            ctx.action = clib.ACT_NEXTREDEX;
+            ctx.action = word.ACT_NEXTREDEX;
             return;
         },
-        clib.COND => {
+        word.COND => {
             reduce.upLeft(ctx);
-            if (lastarg(ctx) == clib.True) {
-                reduce.rewrite_to_value(&ctx.e, clib.K);
+            if (lastarg(ctx) == word.True) {
+                reduce.rewrite_to_value(&ctx.e, word.K);
                 combinators.handleK(ctx);
             } else {
-                reduce.rewrite_to_value(&ctx.e, clib.KI);
+                reduce.rewrite_to_value(&ctx.e, word.KI);
                 combinators.handleKI(ctx);
             }
             return;
         },
-        clib.APPEND => {
+        word.APPEND => {
             reduce.GETARG(ctx, &ctx.args[0]);
             if (reduce.upleft(ctx)) {
-                ctx.action = clib.ACT_DONE;
+                ctx.action = word.ACT_DONE;
                 return;
             }
-            if (ctx.args[0] == clib.NIL) {
+            if (ctx.args[0] == word.NIL) {
                 ctx.e = reduce.rewrite_to_existing_tail(ctx.e);
-                ctx.action = clib.ACT_NEXTREDEX;
+                ctx.action = word.ACT_NEXTREDEX;
                 return;
             }
-            reduce.rewrite_to_cons(ctx.e, reduce.hd_get(ctx.args[0]), reduce.ap2(clib.APPEND, reduce.tl_get(ctx.args[0]), lastarg(ctx)));
-            ctx.action = clib.ACT_DONE;
+            reduce.rewrite_to_cons(ctx.e, reduce.hd_get(ctx.args[0]), reduce.ap2(word.APPEND, reduce.tl_get(ctx.args[0]), lastarg(ctx)));
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.AND => {
+        word.AND => {
             reduce.upLeft(ctx);
-            if (lastarg(ctx) == clib.True) {
-                ctx.e = clib.I;
+            if (lastarg(ctx) == word.True) {
+                ctx.e = word.I;
                 combinators.handle_strict_monadic(ctx);
             } else {
-                reduce.hd_set(ctx.e, clib.K);
+                reduce.hd_set(ctx.e, word.K);
                 reduce.downLeft(ctx);
                 combinators.handleK(ctx);
             }
             return;
         },
-        clib.OR => {
+        word.OR => {
             reduce.upLeft(ctx);
-            if (lastarg(ctx) == clib.True) {
-                reduce.hd_set(ctx.e, clib.K);
+            if (lastarg(ctx) == word.True) {
+                reduce.hd_set(ctx.e, word.K);
                 reduce.downLeft(ctx);
                 combinators.handleK(ctx);
             } else {
-                ctx.e = clib.I;
+                ctx.e = word.I;
                 combinators.handle_strict_monadic(ctx);
             }
             return;
         },
-        clib.NOT => {
+        word.NOT => {
             reduce.upLeft(ctx);
-            reduce.rewrite_to_value(&ctx.e, if (lastarg(ctx) == clib.True) clib.False else clib.True);
-            ctx.action = clib.ACT_DONE;
+            reduce.rewrite_to_value(&ctx.e, if (lastarg(ctx) == word.True) word.False else word.True);
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.NEG => {
+        word.NEG => {
             reduce.upLeft(ctx);
             if (reduce.is_int(lastarg(ctx))) {
                 reduce.simpl(ctx, clib.bignegate(lastarg(ctx)));
             } else {
                 clib.setdbl(ctx.e, -clib.get_dbl(lastarg(ctx)));
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.CODE => {
+        word.CODE => {
             reduce.upLeft(ctx);
-            reduce.simpl(ctx, clib.make(clib.INT, clib.get_char(lastarg(ctx)), 0));
-            ctx.action = clib.ACT_DONE;
+            reduce.simpl(ctx, clib.make(word.INT, clib.get_char(lastarg(ctx)), 0));
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.DECODE => {
+        word.DECODE => {
             reduce.upLeft(ctx);
             if (reduce.is_double(lastarg(ctx))) {
                 clib.int_error("decode");
             }
             const val = clib.get_int(lastarg(ctx));
-            if (val < 0 or val > clib.UMAX) {
+            if (val < 0 or val > word.UMAX) {
                 word.printErr("\nCHARACTER OUT-OF-RANGE decode({})\n", .{val});
                 clib.outstats();
                 clib.exit(1);
             }
-            reduce.hd_set(ctx.e, clib.I);
+            reduce.hd_set(ctx.e, word.I);
             const val_char = clib.sto_char(@intCast(val));
             reduce.tl_set(ctx.e, val_char);
             ctx.e = val_char;
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.INTEGER => {
+        word.INTEGER => {
             reduce.upLeft(ctx);
-            reduce.rewrite_to_value(&ctx.e, if (reduce.is_int(lastarg(ctx))) clib.True else clib.False);
-            ctx.action = clib.ACT_NEXTREDEX;
+            reduce.rewrite_to_value(&ctx.e, if (reduce.is_int(lastarg(ctx))) word.True else word.False);
+            ctx.action = word.ACT_NEXTREDEX;
             return;
         },
-        clib.SHOWNUM => {
+        word.SHOWNUM => {
             reduce.upLeft(ctx);
             if (reduce.is_double(lastarg(ctx))) {
                 const x = clib.get_dbl(lastarg(ctx));
@@ -465,10 +465,10 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             } else {
                 reduce.simpl(ctx, clib.bigtostr(lastarg(ctx)));
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.SHOWHEX => {
+        word.SHOWHEX => {
             reduce.upLeft(ctx);
             if (reduce.is_double(lastarg(ctx))) {
                 _ = clib.sprintf(&main.rs.linebuf, "%a", .{clib.get_dbl(lastarg(ctx))});
@@ -476,50 +476,50 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             } else {
                 reduce.simpl(ctx, clib.bigtostrx(lastarg(ctx)));
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.SHOWOCT => {
+        word.SHOWOCT => {
             reduce.upLeft(ctx);
             if (reduce.is_double(lastarg(ctx))) {
                 clib.int_error("showoct");
             } else {
                 reduce.simpl(ctx, clib.bigtostr8(lastarg(ctx)));
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.ARCTAN_FN => {
+        word.ARCTAN_FN => {
             reduce.upLeft(ctx);
             platform.setErrno(0);
             clib.setdbl(ctx.e, std.math.atan(reduce.force_dbl(lastarg(ctx))));
             if (platform.getErrno() != 0) {
                 clib.math_error(@constCast("atan"));
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.EXP_FN => {
+        word.EXP_FN => {
             reduce.upLeft(ctx);
             platform.setErrno(0);
             clib.setdbl(ctx.e, std.math.exp(reduce.force_dbl(lastarg(ctx))));
             if (platform.getErrno() != 0) {
                 clib.math_error(@constCast("exp"));
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.ENTIER_FN => {
+        word.ENTIER_FN => {
             reduce.upLeft(ctx);
             if (reduce.is_int(lastarg(ctx))) {
                 reduce.rewrite_to_value(&ctx.e, lastarg(ctx));
             } else {
                 reduce.simpl(ctx, clib.dbltobig(clib.get_dbl(lastarg(ctx))));
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.LOG_FN => {
+        word.LOG_FN => {
             reduce.upLeft(ctx);
             if (reduce.is_int(lastarg(ctx))) {
                 clib.setdbl(ctx.e, clib.biglog(lastarg(ctx)));
@@ -530,10 +530,10 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                     clib.math_error(@constCast("log"));
                 }
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.LOG10_FN => {
+        word.LOG10_FN => {
             reduce.upLeft(ctx);
             if (reduce.is_int(lastarg(ctx))) {
                 clib.setdbl(ctx.e, clib.biglog10(lastarg(ctx)));
@@ -544,73 +544,73 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                     clib.math_error(@constCast("log10"));
                 }
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.SIN_FN => {
+        word.SIN_FN => {
             reduce.upLeft(ctx);
             platform.setErrno(0);
             clib.setdbl(ctx.e, std.math.sin(reduce.force_dbl(lastarg(ctx))));
             if (platform.getErrno() != 0) {
                 clib.math_error(@constCast("sin"));
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.COS_FN => {
+        word.COS_FN => {
             reduce.upLeft(ctx);
             platform.setErrno(0);
             clib.setdbl(ctx.e, std.math.cos(reduce.force_dbl(lastarg(ctx))));
             if (platform.getErrno() != 0) {
                 clib.math_error(@constCast("cos"));
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.SQRT_FN => {
+        word.SQRT_FN => {
             reduce.upLeft(ctx);
             platform.setErrno(0);
             clib.setdbl(ctx.e, std.math.sqrt(reduce.force_dbl(lastarg(ctx))));
             if (platform.getErrno() != 0) {
                 clib.math_error(@constCast("sqrt"));
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.ZIP => {
+        word.ZIP => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.GETARG(ctx, &ctx.args[1]);
-            if (ctx.args[0] == clib.NIL or ctx.args[1] == clib.NIL) {
+            if (ctx.args[0] == word.NIL or ctx.args[1] == word.NIL) {
                 reduce.rewrite_to_nil(&ctx.e);
-                ctx.action = clib.ACT_DONE;
+                ctx.action = word.ACT_DONE;
                 return;
             }
-            reduce.rewrite_to_cons(ctx.e, reduce.cons(reduce.hd_get(ctx.args[0]), reduce.hd_get(ctx.args[1])), reduce.ap2(clib.ZIP, reduce.tl_get(ctx.args[0]), reduce.tl_get(ctx.args[1])));
-            ctx.action = clib.ACT_DONE;
+            reduce.rewrite_to_cons(ctx.e, reduce.cons(reduce.hd_get(ctx.args[0]), reduce.hd_get(ctx.args[1])), reduce.ap2(word.ZIP, reduce.tl_get(ctx.args[0]), reduce.tl_get(ctx.args[1])));
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.STEP => {
+        word.STEP => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
-            reduce.hd_set(ctx.e, reduce.ap(clib.GENSEQ, reduce.cons(ctx.args[0], clib.NIL)));
-            ctx.action = clib.ACT_NEXTREDEX;
+            reduce.hd_set(ctx.e, reduce.ap(word.GENSEQ, reduce.cons(ctx.args[0], word.NIL)));
+            ctx.action = word.ACT_NEXTREDEX;
             return;
         },
-        clib.EQ => {
+        word.EQ => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             reduce.rewrite_to_compare_eq(&ctx.e, ctx.args[0], lastarg(ctx));
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.NEQ => {
+        word.NEQ => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             reduce.rewrite_to_compare_neq(&ctx.e, ctx.args[0], lastarg(ctx));
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.PLUS => {
+        word.PLUS => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0])) {
@@ -620,10 +620,10 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             } else {
                 reduce.simpl(ctx, clib.bigplus(ctx.args[0], lastarg(ctx)));
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.MINUS => {
+        word.MINUS => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0])) {
@@ -633,10 +633,10 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             } else {
                 reduce.simpl(ctx, clib.bigsub(ctx.args[0], lastarg(ctx)));
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.TIMES => {
+        word.TIMES => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0])) {
@@ -646,10 +646,10 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             } else {
                 reduce.simpl(ctx, clib.bigtimes(ctx.args[0], lastarg(ctx)));
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.INTDIV => {
+        word.INTDIV => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0]) or reduce.is_double(lastarg(ctx))) {
@@ -659,10 +659,10 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 clib.div_error();
             }
             reduce.simpl(ctx, clib.bigdiv(ctx.args[0], lastarg(ctx)));
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.FDIV => {
+        word.FDIV => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             const fa = reduce.force_dbl(ctx.args[0]);
@@ -671,10 +671,10 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 clib.div_error();
             }
             clib.setdbl(ctx.e, fa / fb);
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.MOD => {
+        word.MOD => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0]) or reduce.is_double(lastarg(ctx))) {
@@ -684,24 +684,24 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 clib.div_error();
             }
             reduce.simpl(ctx, clib.bigmod(ctx.args[0], lastarg(ctx)));
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.GRE => {
+        word.GRE => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             reduce.rewrite_to_compare_ge(&ctx.e, ctx.args[0], lastarg(ctx));
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.GR => {
+        word.GR => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             reduce.rewrite_to_compare_gt(&ctx.e, ctx.args[0], lastarg(ctx));
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.POWER => {
+        word.POWER => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             var fa: f64 = 0.0;
@@ -721,7 +721,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 fb = clib.bigtodbl(lastarg(ctx));
             } else {
                 reduce.simpl(ctx, clib.bigpow(ctx.args[0], lastarg(ctx)));
-                ctx.action = clib.ACT_DONE;
+                ctx.action = word.ACT_DONE;
                 return;
             }
             platform.setErrno(0);
@@ -729,10 +729,10 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             if (platform.getErrno() != 0) {
                 clib.math_error(@constCast("power"));
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.SHOWSCALED => {
+        word.SHOWSCALED => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0])) {
@@ -741,10 +741,10 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             const arg1_int = reduce.getsmallint(ctx.args[0]);
             _ = clib.sprintf(&main.rs.linebuf, "%.*e", .{ @as(c_int, @intCast(arg1_int)), reduce.force_dbl(lastarg(ctx)) });
             reduce.rewrite_to_string(&ctx.e, @ptrCast(&main.rs.linebuf));
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.SHOWFLOAT => {
+        word.SHOWFLOAT => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0])) {
@@ -753,15 +753,15 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             const arg1_int = reduce.getsmallint(ctx.args[0]);
             _ = clib.sprintf(&main.rs.linebuf, "%.*f", .{ @as(c_int, @intCast(arg1_int)), reduce.force_dbl(lastarg(ctx)) });
             reduce.rewrite_to_string(&ctx.e, @ptrCast(&main.rs.linebuf));
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.MERGE => {
+        word.MERGE => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
-            if (ctx.args[0] == clib.NIL) {
+            if (ctx.args[0] == word.NIL) {
                 reduce.rewrite_to_value(&ctx.e, lastarg(ctx));
-            } else if (lastarg(ctx) == clib.NIL) {
+            } else if (lastarg(ctx) == word.NIL) {
                 reduce.rewrite_to_value(&ctx.e, ctx.args[0]);
             } else {
                 const hd_arg1 = reduce.reduce(reduce.hd_get(ctx.args[0]));
@@ -769,32 +769,32 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 const hd_lastarg = reduce.reduce(reduce.hd_get(lastarg(ctx)));
                 reduce.hd_set(lastarg(ctx), hd_lastarg);
                 if (clib.compare(hd_arg1, hd_lastarg) <= 0) {
-                    reduce.rewrite_to_cons(ctx.e, hd_arg1, reduce.ap2(clib.MERGE, reduce.tl_get(ctx.args[0]), lastarg(ctx)));
+                    reduce.rewrite_to_cons(ctx.e, hd_arg1, reduce.ap2(word.MERGE, reduce.tl_get(ctx.args[0]), lastarg(ctx)));
                 } else {
-                    reduce.rewrite_to_cons(ctx.e, hd_lastarg, reduce.ap2(clib.MERGE, reduce.tl_get(lastarg(ctx)), ctx.args[0]));
+                    reduce.rewrite_to_cons(ctx.e, hd_lastarg, reduce.ap2(word.MERGE, reduce.tl_get(lastarg(ctx)), ctx.args[0]));
                 }
             }
-            ctx.action = clib.ACT_DONE;
+            ctx.action = word.ACT_DONE;
             return;
         },
-        clib.STEPUNTIL => {
+        word.STEPUNTIL => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.GETARG(ctx, &ctx.args[1]);
             reduce.upLeft(ctx);
-            reduce.hd_set(ctx.e, reduce.ap(clib.GENSEQ, reduce.cons(ctx.args[0], ctx.args[1])));
+            reduce.hd_set(ctx.e, reduce.ap(word.GENSEQ, reduce.cons(ctx.args[0], ctx.args[1])));
             if (if (reduce.is_int(ctx.args[0])) reduce.poz(ctx.args[0]) else reduce.force_dbl(ctx.args[0]) >= 0.0) {
-                tag[reduce.clean_ptr(reduce.tl_get(reduce.hd_get(ctx.e)))] = clib.AP;
+                tag[reduce.clean_ptr(reduce.tl_get(reduce.hd_get(ctx.e)))] = word.AP;
             }
-            ctx.action = clib.ACT_NEXTREDEX;
+            ctx.action = word.ACT_NEXTREDEX;
             return;
         },
-        clib.Ush => {
+        word.Ush => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.GETARG(ctx, &ctx.args[1]);
             reduce.GETARG(ctx, &ctx.args[2]);
             if (reduce.hd_get(reduce.head(ctx.args[0])) != reduce.hd_get(reduce.head(ctx.args[2]))) {
                 reduce.rewrite_to_fail(&ctx.e);
-                ctx.action = clib.ACT_DONE;
+                ctx.action = word.ACT_DONE;
                 return;
             }
             if (reduce.is_constructor(ctx.args[0])) {
@@ -803,27 +803,27 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 } else {
                     reduce.rewrite_to_string(&ctx.e, reduce.constr_name(ctx.args[0]));
                 }
-                ctx.action = clib.ACT_DONE;
+                ctx.action = word.ACT_DONE;
                 return;
             }
-            ctx.hold = if (ctx.args[1] != 0) reduce.cons(')', clib.NIL) else clib.NIL;
+            ctx.hold = if (ctx.args[1] != 0) reduce.cons(')', word.NIL) else word.NIL;
             while (!reduce.is_constructor(ctx.args[0])) {
-                ctx.hold = reduce.cons(' ', reduce.ap2(clib.APPEND, reduce.ap(reduce.tl_get(ctx.args[0]), reduce.tl_get(ctx.args[2])), ctx.hold));
+                ctx.hold = reduce.cons(' ', reduce.ap2(word.APPEND, reduce.ap(reduce.tl_get(ctx.args[0]), reduce.tl_get(ctx.args[2])), ctx.hold));
                 ctx.args[0] = reduce.hd_get(ctx.args[0]);
                 ctx.args[2] = reduce.hd_get(ctx.args[2]);
             }
             if (reduce.suppressed(ctx.args[0])) {
                 reduce.rewrite_to_string(&ctx.e, "<unprintable>");
-                ctx.action = clib.ACT_DONE;
+                ctx.action = word.ACT_DONE;
                 return;
             }
-            ctx.hold = reduce.ap2(clib.APPEND, clib.str_conv(reduce.constr_name(ctx.args[0])), ctx.hold);
+            ctx.hold = reduce.ap2(word.APPEND, clib.str_conv(reduce.constr_name(ctx.args[0])), ctx.hold);
             if (ctx.args[1] != 0) {
                 reduce.rewrite_to_cons(ctx.e, '(', ctx.hold);
-                ctx.action = clib.ACT_DONE;
+                ctx.action = word.ACT_DONE;
             } else {
                 reduce.rewrite_to_value(&ctx.e, ctx.hold);
-                ctx.action = clib.ACT_NEXTREDEX;
+                ctx.action = word.ACT_NEXTREDEX;
             }
             return;
         },
