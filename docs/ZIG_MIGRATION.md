@@ -39,9 +39,15 @@ This document outlines the history, completed milestones, target platform suppor
   - The binary successfully cross-compiles cleanly to statically linked ELF binaries on Linux (`x86_64-linux-musl`), dynamically linked ELF binaries on glibc-based Linux (`x86_64-linux-gnu`), and Mach-O binaries on macOS (`aarch64-macos`).
   - Fixed compilation of the C test harness and resolved linking issues for the test suite (`utf8-tests`) under cross-compilation target environments.
 
-### 📅 Phase 7: Idiomatic Zig Modernization
-* **Goal**: Refactor the codebase from a direct C translation to a native, idiomatic Zig codebase (split monolithic `main.zig`, encapsulate heap access, replace magic constants with enums, introduce `RuntimeState`, use domain types, and utilize Zig slices/strings).
-* **Details**: Refer to the step-by-step priority list and instructions in [IDIOMATIC_ZIG_PLAN.md](file:///Users/pkreyenhop/src/experiments/Miracula/docs/IDIOMATIC_ZIG_PLAN.md).
+### ✔ Phase 7: Idiomatic Zig Modernization *(2026-06-21)*
+* **Goal**: Refactor the codebase from a direct C translation to a native, idiomatic Zig codebase.
+* **Outcome**: All 20 steps across 6 clusters are complete. Full details in [IDIOMATIC_ZIG_PLAN.md](IDIOMATIC_ZIG_PLAN.md).
+  - **Cluster A** — Monolithic `main.zig` decomposed: extracted `commands.zig`, `setup.zig`, `module_loader.zig`, `dump.zig`, `files.zig`. `repl.zig`'s 57 `extern var` declarations replaced with `@import`. `main.zig` reduced to ~267 lines (composition root + 8 C-ABI-constrained export vars).
+  - **Cluster B** — `RuntimeState` struct introduced in `src/runtime/runtime_state.zig`; ~75 global variables consolidated into a single `pub var rs`. Heap array accessors (`h`/`t`/`hp`/`tp`) no longer re-exported from `main.zig`.
+  - **Cluster C** — `NodeTag` non-exhaustive enum added. `FileNode`, `Identifier`, `TypeRef`, `NodeRef` domain types added as typed wrappers over heap `Word` values.
+  - **Cluster D** — Internal string parameters converted from `[*:0]` to `[:0]` at appropriate boundaries. Domain type methods added. `///` doc comments added to all public API functions.
+  - **Cluster E** — `MiraError` error set defined. `gc()` local setjmp/longjmp removed (was a masked `return`). `types.zig` type-checker abort chain converted to Zig error unions (`meta_tcheck`, `etype`, `conforms`, and 4 callers). Signal-handler `sigsetjmp`/`siglongjmp` paths documented as permanent (POSIX async constraint).
+  - **Cluster F** — `extern var` eliminated from `types.zig` (10 vars) and reduced in `trans.zig` (10 of 14) and `module_loader.zig` (12 of 19). Stale `c_jmp` alias and pre-plan TODO blocks removed. 6 more `RuntimeState` boolean fields converted from `Word` to `bool`. Unit test count increased from 26 to 31.
 
 ---
 
