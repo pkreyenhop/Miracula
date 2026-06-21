@@ -182,7 +182,7 @@ fn get_fil(x: Word) [*:0]const u8 {
 }
 
 fn is(s: [*:0]const u8) bool {
-    return clib.strcmp(ls.dicp, s) == 0;
+    return std.mem.eql(u8, std.mem.span(ls.dicp), std.mem.span(s));
 }
 
 fn ovflocheck() void {
@@ -240,8 +240,8 @@ export fn token() ?[*:0]u8 {
         }
         ls.dicq[0] = 0;
         if (gethome(ls.dicp + 1)) |h_dir| {
-            _ = clib.strcpy(ls.dicp, h_dir);
-            ls.dicq = ls.dicp + clib.strlen(ls.dicp);
+            _ = word.strcpy(ls.dicp, h_dir);
+            ls.dicq = ls.dicp + word.strlen(ls.dicp);
         }
     }
     while (ch != clib.EOF and clib.isspace(ch) == 0) {
@@ -254,8 +254,8 @@ export fn token() ?[*:0]u8 {
                 ls.dicq -= 1;
             } else {
                 ls.dicq -= 1;
-                _ = clib.strcpy(ls.dicq, main.rs.current_script.?);
-                ls.dicq += clib.strlen(main.rs.current_script.?);
+                _ = word.strcpy(ls.dicq, main.rs.current_script.?);
+                ls.dicq += word.strlen(main.rs.current_script.?);
             }
         }
         ch = clib.getchar();
@@ -277,16 +277,16 @@ export fn token() ?[*:0]u8 {
 
 export fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
     var s = s_input;
-    var n: Word = @intCast(clib.strlen(s));
+    var n: Word = @intCast(word.strlen(s));
     if (s[0] == '<' and s[@intCast(n - 1)] == '>') {
         var miralen: usize = 0;
         if (miralen == 0) {
-            miralen = clib.strlen(main.rs.miralib.?);
+            miralen = word.strlen(main.rs.miralib.?);
         }
-        _ = clib.strcpy(&main.rs.linebuf[0], main.rs.miralib.?);
+        _ = word.strcpy(&main.rs.linebuf[0], main.rs.miralib.?);
         main.rs.linebuf[miralen] = '/';
-        _ = clib.strcpy(&main.rs.linebuf[miralen + 1], s + 1);
-        _ = clib.strcpy(ls.dicp, &main.rs.linebuf[0]);
+        _ = word.strcpy(&main.rs.linebuf[miralen + 1], s + 1);
+        _ = word.strcpy(ls.dicp, &main.rs.linebuf[0]);
         s = ls.dicp;
         n = n + @as(Word, @intCast(miralen)) - 1;
         ls.dicq = ls.dicp + @as(usize, @intCast(n + 1));
@@ -304,7 +304,7 @@ export fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
         s = ls.dicp;
         n = n - 2;
     }
-    if (b == 0 or (n >= 2 and clib.strcmp(s + @as(usize, @intCast(n - 2)), ".m") == 0)) {
+    if (b == 0 or (n >= 2 and std.mem.eql(u8, std.mem.span(s + @as(usize, @intCast(n - 2))), ".m"))) {
         return s;
     }
     if (s == ls.dicp) {
@@ -319,12 +319,12 @@ export fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
         }
         ls.dicq[0] = 0;
     }
-    if (clib.strcmp(ls.dicq - 2, ".x") == 0) {
+    if (std.mem.eql(u8, std.mem.span(ls.dicq - 2), ".x")) {
         ls.dicq -= 2;
     } else if ((ls.dicq - 1)[0] == '.') {
         ls.dicq -= 1;
     }
-    _ = clib.strcpy(ls.dicq, ".m");
+    _ = word.strcpy(ls.dicq, ".m");
     ls.dicq += 3;
     ovflocheck();
     return ls.dicp;
@@ -338,8 +338,8 @@ fn spaces(n_input: Word) void {
 }
 
 fn litname(s: [*:0]const u8) bool {
-    const n = clib.strlen(s);
-    return n >= 6 and clib.strcmp(s + n - 6, ".lit.m") == 0;
+    const n = word.strlen(s);
+    return n >= 6 and std.mem.eql(u8, std.mem.span(s + @as(usize, @intCast(n - 6))), ".lit.m");
 }
 
 fn getch() c_int {
@@ -544,7 +544,7 @@ export fn rdline() ?[*:0]u8 {
     }
     if (ch == '!') {
         expansion = 1;
-        p = @ptrCast(&rdline_linebuf[clib.strlen(&rdline_linebuf) - 1]); // p now points at old '\n'
+        p = @ptrCast(&rdline_linebuf[word.strlen(&rdline_linebuf) - 1]); // p now points at old '\n'
     } else {
         if (getStdin()) |stdin_file| {
             _ = clib.ungetc(ch, stdin_file);
@@ -575,8 +575,8 @@ export fn rdline() ?[*:0]u8 {
                 p -= 1;
             } else {
                 const remaining = 1024 - (@as(usize, @intFromPtr(p - 1)) - @as(usize, @intFromPtr(&rdline_linebuf)));
-                _ = clib.strncpy(p - 1, main.rs.current_script.?, remaining);
-                p = @ptrCast(&rdline_linebuf[clib.strlen(&rdline_linebuf)]);
+                _ = word.strncpy(p - 1, main.rs.current_script.?, remaining);
+                p = @ptrCast(&rdline_linebuf[word.strlen(&rdline_linebuf)]);
                 expansion = 1;
             }
         }
@@ -1052,7 +1052,7 @@ export fn conv_args() Word {
 
 export fn str_conv(s: [*:0]const u8) Word {
     var x = NIL;
-    var i = clib.strlen(s);
+    var i = word.strlen(s);
     while (i > 0) {
         i -= 1;
         x = cons(s[i], x);
@@ -1065,8 +1065,8 @@ pub fn pathname() ?[*:0]u8 {
     if (ls.c == '<') {
         const hold = ls.dicp;
         ls.c = getch();
-        _ = clib.strcpy(ls.dicp, main.rs.miralib.?);
-        ls.dicp += clib.strlen(main.rs.miralib.?);
+        _ = word.strcpy(ls.dicp, main.rs.miralib.?);
+        ls.dicp += word.strlen(main.rs.miralib.?);
         ls.dicp[0] = '/';
         ls.dicp += 1;
         kollect(okpath);
@@ -1093,14 +1093,14 @@ pub fn pathname() ?[*:0]u8 {
         }
         ls.dicp[0] = 0;
         if (gethome(hold + 1)) |h_dir| {
-            _ = clib.strcpy(hold, h_dir);
-            ls.dicp = hold + clib.strlen(hold);
+            _ = word.strcpy(hold, h_dir);
+            ls.dicp = hold + word.strlen(hold);
         } else {
-            _ = clib.strcpy(&main.rs.linebuf[0], hold);
-            _ = clib.strcpy(hold, prefixbase.? + @as(usize, @intCast(prefix)));
-            ls.dicp = hold + clib.strlen(prefixbase.? + @as(usize, @intCast(prefix)));
-            _ = clib.strcpy(ls.dicp, &main.rs.linebuf[0]);
-            ls.dicp += clib.strlen(ls.dicp);
+            _ = word.strcpy(&main.rs.linebuf[0], hold);
+            _ = word.strcpy(hold, prefixbase.? + @as(usize, @intCast(prefix)));
+            ls.dicp = hold + word.strlen(prefixbase.? + @as(usize, @intCast(prefix)));
+            _ = word.strcpy(ls.dicp, &main.rs.linebuf[0]);
+            ls.dicp += word.strlen(ls.dicp);
         }
         kollect(okpath);
         ls.dicp = hold;
@@ -1108,8 +1108,8 @@ pub fn pathname() ?[*:0]u8 {
         kollect(okpath);
     } else {
         const hold = ls.dicp;
-        _ = clib.strcpy(ls.dicp, prefixbase.? + @as(usize, @intCast(prefix)));
-        ls.dicp += clib.strlen(prefixbase.? + @as(usize, @intCast(prefix)));
+        _ = word.strcpy(ls.dicp, prefixbase.? + @as(usize, @intCast(prefix)));
+        ls.dicp += word.strlen(prefixbase.? + @as(usize, @intCast(prefix)));
         kollect(okpath);
         ls.dicp = hold;
     }
@@ -1122,16 +1122,16 @@ pub fn pathname() ?[*:0]u8 {
 
 export fn adjust_prefix(f: [*:0]const u8) void {
     ls.prefixstack = cons(prefix, ls.prefixstack);
-    prefix += @as(Word, @intCast(clib.strlen(prefixbase.? + @as(usize, @intCast(prefix))))) + 1;
-    while (@as(usize, @intCast(prefix)) + clib.strlen(f) >= @as(usize, @intCast(prefixlimit))) {
+    prefix += @as(Word, @intCast(word.strlen(prefixbase.? + @as(usize, @intCast(prefix))))) + 1;
+    while (@as(usize, @intCast(prefix)) + word.strlen(f) >= @as(usize, @intCast(prefixlimit))) {
         const old_limit = prefixlimit;
         prefixlimit += 1024;
         const old_slice = prefixbase.?[0..@intCast(old_limit)];
         const new_slice = rt.allocator.realloc(old_slice, @intCast(prefixlimit)) catch mallocPanic("prefixbase");
         prefixbase = new_slice.ptr;
     }
-    _ = clib.strcpy(prefixbase.? + @as(usize, @intCast(prefix)), f);
-    const g = clib.rindex(prefixbase.? + @as(usize, @intCast(prefix)), '/');
+    _ = word.strcpy(prefixbase.? + @as(usize, @intCast(prefix)), f);
+    const g = word.rindex(prefixbase.? + @as(usize, @intCast(prefix)), '/');
     if (g) |gp| {
         gp[1] = 0;
     } else {
@@ -1397,9 +1397,9 @@ export fn keep(p: [*:0]u8) [*:0]u8 {
     if (p == ls.dicp) {
         ls.dicp = ls.dicq;
     } else {
-        _ = clib.strcpy(ls.dicp, p);
+        _ = word.strcpy(ls.dicp, p);
         const ret = ls.dicp;
-        ls.dicp = ls.dicp + clib.strlen(ls.dicp) + 1;
+        ls.dicp = ls.dicp + word.strlen(ls.dicp) + 1;
         ls.dicq = ls.dicp;
         dic_check();
         return ret;
@@ -1612,7 +1612,7 @@ export fn make_id(n: [*:0]const u8) Word {
 export fn findid(n: [*:0]const u8) Word {
     const h_idx = @as(usize, @intCast(hash(n)));
     var q = ls.namebucket[h_idx];
-    while (q != 0 and clib.strcmp(n, get_id(h(q))) != 0) {
+    while (q != 0 and !std.mem.eql(u8, std.mem.span(n), std.mem.span(get_id(h(q))))) {
         q = t(q);
     }
     return if (q != 0) h(q) else NIL;

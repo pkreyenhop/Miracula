@@ -1,4 +1,5 @@
 const std = @import("std");
+const word = @import("../runtime/word.zig");
 const main = @import("../main.zig");
 const clib = @import("../runtime/main_clib.zig");
 const platform = @import("platform.zig");
@@ -115,10 +116,10 @@ pub fn mkabsolute(m: [*:0]u8) [*:0]u8 {
     if (clib.getcwd(ls.dicp, clib.pnlim) == null) {
         main.fatal("panic: cwd too long\n", .{.{}});
     }
-    _ = clib.strcat(ls.dicp, "/");
-    _ = clib.strcat(ls.dicp, m);
+    _ = word.strcat(ls.dicp, "/");
+    _ = word.strcat(ls.dicp, m);
     const m_new = ls.dicp;
-    ls.dicq += clib.strlen(ls.dicp) + 1;
+    ls.dicq += word.strlen(ls.dicp) + 1;
     ls.dicp = ls.dicq;
     main.dic_check();
     return m_new;

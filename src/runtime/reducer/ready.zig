@@ -1,4 +1,5 @@
 const std = @import("std");
+const word = @import("../word.zig");
 const reduce = @import("reduce_core.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
@@ -145,11 +146,11 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             const p = clib.getenv(a);
             ctx.hold = clib.NIL;
             if (p) |ptr| {
-                var i = clib.strlen(ptr);
+                var i = word.strlen(ptr);
                 if (main.rs.UTF8 != 0) {
                     const qbuf_slice = rt.allocator.alloc(u8, i + 1) catch main.heap.mallocPanic("utf8 conversion buffer");
                     const qbuf = qbuf_slice.ptr;
-                    _ = clib.strcpy(@ptrCast(qbuf), ptr);
+                    _ = word.strcpy(@as([*:0]u8, @ptrCast(qbuf)), ptr);
                     var q = qbuf;
                     var r = qbuf;
                     while (r[0] != 0) {
@@ -171,7 +172,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                         }
                     }
                     q[0] = 0;
-                    i = clib.strlen(@ptrCast(qbuf));
+                    i = word.strlen(@as([*:0]const u8, @ptrCast(qbuf)));
                     while (i > 0) {
                         i -= 1;
                         ctx.hold = reduce.cons(qbuf[i], ctx.hold);

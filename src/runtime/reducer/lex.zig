@@ -1,4 +1,5 @@
 const std = @import("std");
+const word = @import("../word.zig");
 const reduce = @import("reduce_core.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;

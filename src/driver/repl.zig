@@ -1,4 +1,5 @@
 const std = @import("std");
+const word = @import("../runtime/word.zig");
 const main = @import("../main.zig");
 const clib = @import("../runtime/main_clib.zig");
 const parser_api = @import("../parser/parser_api.zig");
@@ -353,7 +354,7 @@ pub fn getln(in: ?*clib.FILE, n_val: Word, s_ptr: [*]u8) c_int {
 
 pub fn badeditor() c_int {
     const e = main.rs.editor orelse return 0;
-    if (clib.strstr(e, "+!") != null or clib.strstr(e, "%d") != null or clib.strstr(e, "%l") != null) {
+    if (word.strstr(e, "+!") != null or word.strstr(e, "%d") != null or word.strstr(e, "%l") != null) {
         return 0;
     }
     return 1;
@@ -361,7 +362,7 @@ pub fn badeditor() c_int {
 
 pub fn fixeditor() void {
     const e = main.rs.editor orelse return;
-    const len = clib.strlen(e);
+    const len = word.strlen(e);
     var p = e + len - 1;
     while (p != e and p[0] == ' ') : (p -= 1) {}
     if (p[0] == '!') {

@@ -1,4 +1,5 @@
 const std = @import("std");
+const word = @import("../runtime/word.zig");
 const main = @import("../main.zig");
 const clib = @import("../runtime/main_clib.zig");
 
@@ -35,11 +36,11 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
     const home = clib.getenv("HOME");
     var okhome_rc: Word = 0;
     if (home != null) {
-        _ = clib.strcpy(&main.rs.home_rc, home);
-        if (clib.strcmp(&main.rs.home_rc, "/") == 0) {
+        _ = word.strcpy(&main.rs.home_rc, home);
+        if (word.strcmp(&main.rs.home_rc, "/") == 0) {
             main.rs.home_rc[0] = 0;
         }
-        _ = clib.strcat(&main.rs.home_rc, "/.mirarc");
+        _ = word.strcat(&main.rs.home_rc, "/.mirarc");
         okhome_rc = main.rc_read(@as([*:0]const u8, @ptrCast(&main.rs.home_rc)));
     }
 
@@ -50,28 +51,28 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
     const argc_u = @as(usize, @intCast(argc));
     while (arg_idx < argc_u and argv[arg_idx][0] == '-') {
         const arg = argv[arg_idx];
-        if (clib.strcmp(arg, "-stdenv") == 0) {
+        if (word.strcmp(arg, "-stdenv") == 0) {
             main.rs.nostdenv = true;
-        } else if (clib.strcmp(arg, "-count") == 0) {
+        } else if (word.strcmp(arg, "-count") == 0) {
             main.rs.atcount = 1;
-        } else if (clib.strcmp(arg, "-list") == 0) {
+        } else if (word.strcmp(arg, "-list") == 0) {
             main.rs.listing = 1;
-        } else if (clib.strcmp(arg, "-nolist") == 0) {
+        } else if (word.strcmp(arg, "-nolist") == 0) {
             main.rs.listing = 0;
-        } else if (clib.strcmp(arg, "-nostrictif") == 0) {
+        } else if (word.strcmp(arg, "-nostrictif") == 0) {
             main.rs.strictif = false;
-        } else if (clib.strcmp(arg, "-gc") == 0) {
+        } else if (word.strcmp(arg, "-gc") == 0) {
             main.rs.atgc = 1;
-        } else if (clib.strcmp(arg, "-object") == 0) {
+        } else if (word.strcmp(arg, "-object") == 0) {
             main.rs.atobject = 1;
-        } else if (clib.strcmp(arg, "-lib") == 0) {
+        } else if (word.strcmp(arg, "-lib") == 0) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
                 main.missparam("lib");
             } else {
                 main.rs.miralib = argv[arg_idx];
             }
-        } else if (clib.strcmp(arg, "-dic") == 0) {
+        } else if (word.strcmp(arg, "-dic") == 0) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
                 main.missparam("dic");
@@ -82,7 +83,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 }
                 main.rs.DICSPACE = val;
             }
-        } else if (clib.strcmp(arg, "-heap") == 0) {
+        } else if (word.strcmp(arg, "-heap") == 0) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
                 main.missparam("heap");
@@ -93,7 +94,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 }
                 main.rs.SPACELIMIT = val;
             }
-        } else if (clib.strcmp(arg, "-editor") == 0) {
+        } else if (word.strcmp(arg, "-editor") == 0) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
                 main.missparam("editor");
@@ -101,32 +102,32 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 main.rs.editor = argv[arg_idx];
                 main.fixeditor();
             }
-        } else if (clib.strcmp(arg, "-hush") == 0) {
+        } else if (word.strcmp(arg, "-hush") == 0) {
             main.rs.verbosity = 0;
-        } else if (clib.strcmp(arg, "-nohush") == 0) {
+        } else if (word.strcmp(arg, "-nohush") == 0) {
             main.rs.verbosity = 1;
-        } else if (clib.strcmp(arg, "-exp") == 0 or clib.strcmp(arg, "-log") == 0) {
+        } else if (word.strcmp(arg, "-exp") == 0 or word.strcmp(arg, "-log") == 0) {
             main.fatal("mira: obsolete flag \"%s\"\nuse \"-exec\" or \"-exec2\", see manual\n", .{.{arg}});
-        } else if (clib.strcmp(arg, "-exec") == 0) {
+        } else if (word.strcmp(arg, "-exec") == 0) {
             ls.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
             ls.ARGV = @ptrCast(argv + arg_idx + 1);
             main.rs.magic = true;
             main.rs.verbosity = 0;
             arg_idx = argc_u;
             break;
-        } else if (clib.strcmp(arg, "-exec2") == 0) {
+        } else if (word.strcmp(arg, "-exec2") == 0) {
             if (arg_idx + 1 >= argc_u) {
                 main.fatal("incorrect use of -exec2 flag, missing filename\n", .{.{}});
             }
             const filename = argv[arg_idx + 1];
-            var p = clib.strrchr(filename, '/');
+            var p = word.strrchr(filename, '/');
             if (p == null) {
                 p = filename;
             } else {
                 p = p.? + 1;
             }
             const rt = @import("../runtime/runtime_state.zig");
-            const len = clib.strlen(p.?) + 9;
+            const len = word.strlen(p.?) + 9;
             const slice = rt.allocator.allocSentinel(u8, len, 0) catch {
                 clib.mallocfail(@constCast("logfile name"));
                 unreachable;
@@ -145,28 +146,28 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             main.rs.verbosity = 0;
             arg_idx = argc_u;
             break;
-        } else if (clib.strcmp(arg, "-man") == 0) {
+        } else if (word.strcmp(arg, "-man") == 0) {
             manonly = 1;
-        } else if (clib.strcmp(arg, "-version") == 0) {
+        } else if (word.strcmp(arg, "-version") == 0) {
             main.v_info(0);
             clib.exit(0);
-        } else if (clib.strcmp(arg, "-V") == 0) {
+        } else if (word.strcmp(arg, "-V") == 0) {
             main.v_info(1);
             clib.exit(0);
-        } else if (clib.strcmp(arg, "-make") == 0) {
+        } else if (word.strcmp(arg, "-make") == 0) {
             main.rs.making = true;
             main.rs.verbosity = 0;
-        } else if (clib.strcmp(arg, "-exports") == 0) {
+        } else if (word.strcmp(arg, "-exports") == 0) {
             main.rs.making = true;
             main.rs.mkexports = true;
             main.rs.verbosity = 0;
-        } else if (clib.strcmp(arg, "-sources") == 0) {
+        } else if (word.strcmp(arg, "-sources") == 0) {
             main.rs.making = true;
             main.rs.mksources = true;
             main.rs.verbosity = 0;
-        } else if (clib.strcmp(arg, "-UTF-8") == 0) {
+        } else if (word.strcmp(arg, "-UTF-8") == 0) {
             main.rs.UTF8 = 1;
-        } else if (clib.strcmp(arg, "-noUTF-8") == 0) {
+        } else if (word.strcmp(arg, "-noUTF-8") == 0) {
             main.rs.UTF8 = 0;
         } else {
             main.fatal("mira: unknown flag \"%s\"\n", .{.{arg}});
@@ -204,8 +205,8 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         if (main.rs.rc_error == @as(?[*:0]const u8, @ptrCast(&main.rs.lib_rc))) {
             main.rs.rc_error = null;
         }
-        _ = clib.strcpy(&main.rs.lib_rc, main.rs.miralib.?);
-        _ = clib.strcat(&main.rs.lib_rc, "/.mirarc");
+        _ = word.strcpy(&main.rs.lib_rc, main.rs.miralib.?);
+        _ = word.strcat(&main.rs.lib_rc, "/.mirarc");
         _ = main.rc_read(@as([*:0]const u8, @ptrCast(&main.rs.lib_rc)));
     }
 
@@ -216,7 +217,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             main.rs.editor = @constCast(main.EDITOR);
         }
         if (main.rs.editor != null) {
-            _ = clib.strcpy(&main.rs.ebuf, main.rs.editor.?);
+            _ = word.strcpy(&main.rs.ebuf, main.rs.editor.?);
             main.rs.editor = @as([*:0]u8, @ptrCast(&main.rs.ebuf));
             main.fixeditor();
         }
@@ -244,11 +245,11 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         clib.exit(0);
     }
 
-    _ = clib.strcpy(&main.rs.PRELUDE, main.rs.miralib.?);
-    _ = clib.strcat(&main.rs.PRELUDE, "/prelude");
+    _ = word.strcpy(&main.rs.PRELUDE, main.rs.miralib.?);
+    _ = word.strcat(&main.rs.PRELUDE, "/prelude");
 
-    _ = clib.strcpy(&main.rs.STDENV, main.rs.miralib.?);
-    _ = clib.strcat(&main.rs.STDENV, "/stdenv.m");
+    _ = word.strcpy(&main.rs.STDENV, main.rs.miralib.?);
+    _ = word.strcat(&main.rs.STDENV, "/stdenv.m");
 
     main.mira_setup();
 
@@ -384,7 +385,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             _ = clib.printf("errors or undefined names found in:-\n", .{.{}});
             while (main.rs.make_status != 0) {
                 h_val = clib.strcons(main.heap.h(main.rs.make_status), h_val);
-                const w = @as(Word, @intCast(clib.strlen(@ptrFromInt(@as(usize, @intCast(main.heap.h(h_val)))))));
+                const w = @as(Word, @intCast(word.strlen(@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(h_val))))))));
                 if (w > maxw) {
                     maxw = w;
                 }

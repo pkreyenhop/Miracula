@@ -1,4 +1,5 @@
 const std = @import("std");
+const word = @import("../runtime/word.zig");
 const main = @import("../main.zig");
 const clib = @import("../runtime/main_clib.zig");
 
@@ -37,12 +38,12 @@ fn is(s: [:0]const u8) bool {
 
 fn filequote(p: [:0]const u8) void {
     if (filequote_mlen == 0) {
-        const last_slash = clib.strrchr(&main.rs.PRELUDE, '/');
+        const last_slash = word.strrchr(&main.rs.PRELUDE, '/');
         if (last_slash != null) {
             filequote_mlen = @intFromPtr(last_slash.?) - @intFromPtr(&main.rs.PRELUDE) + 1;
         }
     }
-    if (clib.strncmp(p.ptr, &main.rs.PRELUDE, filequote_mlen) == 0) {
+    if (word.strncmp(p.ptr, &main.rs.PRELUDE, filequote_mlen) == 0) {
         _ = clib.printf("<%s>", .{.{p.ptr + filequote_mlen}});
     } else {
         _ = clib.printf("\"%s\"", .{.{p.ptr}});
@@ -68,7 +69,7 @@ fn namescom(l: Word) void {
     _ = clib.printf("\n", .{.{}});
     while (n != NIL) {
         if (main.id_type(main.heap.h(n)) == clib.wrong_t or main.id_val(main.heap.h(n)) != clib.UNDEF) {
-            const w = @as(Word, @intCast(clib.strlen(main.get_id(main.heap.h(n)))));
+            const w = @as(Word, @intCast(word.strlen(main.get_id(main.heap.h(n)))));
             if (col_local + w < @as(Word, @intCast(scrwd))) {
                 col_local += if (col_local != 0) 1 else 0;
             } else if (wp > 0 and col_local + w >= @as(Word, @intCast(scrwd))) {
@@ -141,8 +142,8 @@ pub fn command() void {
         'a' => {
             if (is("a") or is("aux")) {
                 if (clib.getchar() != '\n') return;
-                _ = clib.strcpy(&main.rs.linebuf, main.rs.miralib.?);
-                _ = clib.strcat(&main.rs.linebuf, "/auxfile");
+                _ = word.strcpy(&main.rs.linebuf, main.rs.miralib.?);
+                _ = word.strcat(&main.rs.linebuf, "/auxfile");
                 main.filecopy(@as([*:0]const u8, @ptrCast(&main.rs.linebuf)));
                 return;
             }
@@ -198,23 +199,23 @@ pub fn command() void {
                 if (!main.fileExists(t_val.?)) {
                     if (lmirahdr == null) {
                         ls.dicp = ls.dicq;
-                        _ = clib.strcpy(ls.dicp, clib.getenv("HOME"));
-                        if (clib.strcmp(ls.dicp, "/") == 0) {
+                        _ = word.strcpy(ls.dicp, clib.getenv("HOME"));
+                        if (word.strcmp(ls.dicp, "/") == 0) {
                             ls.dicp[0] = 0;
                         }
-                        _ = clib.strcat(ls.dicp, "/.mirahdr");
+                        _ = word.strcat(ls.dicp, "/.mirahdr");
                         lmirahdr = ls.dicp;
-                        ls.dicq = ls.dicp + clib.strlen(ls.dicp) + 1;
+                        ls.dicq = ls.dicp + word.strlen(ls.dicp) + 1;
                     }
                     if (main.fileExists(lmirahdr.?)) {
                         mf = lmirahdr;
                     }
                     if (mf == null and mirahdr == null) {
                         ls.dicp = ls.dicq;
-                        _ = clib.strcpy(ls.dicp, main.rs.miralib.?);
-                        _ = clib.strcat(ls.dicp, "/.mirahdr");
+                        _ = word.strcpy(ls.dicp, main.rs.miralib.?);
+                        _ = word.strcat(ls.dicp, "/.mirahdr");
                         mirahdr = ls.dicp;
-                        ls.dicq = ls.dicp + clib.strlen(ls.dicp) + 1;
+                        ls.dicq = ls.dicp + word.strlen(ls.dicp) + 1;
                     }
                     if (mf == null and main.fileExists(mirahdr.?)) {
                         mf = mirahdr;
@@ -234,7 +235,7 @@ pub fn command() void {
                         main.filecp(mf.?, t_val.?);
                     }
                 }
-                const err_line_num: c_int = if (clib.strcmp(t_val.?, main.rs.current_script.?) == 0) @intCast(main.errline) else if (main.errs != 0 and clib.strcmp(t_val.?, @ptrFromInt(@as(usize, @intCast(main.heap.h(main.errs))))) == 0) @intCast(main.heap.t(main.errs)) else @intCast(clib.geterrlin(t_val.?));
+                const err_line_num: c_int = if (word.strcmp(t_val.?, main.rs.current_script.?) == 0) @intCast(main.errline) else if (main.errs != 0 and word.strcmp(t_val.?, @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(main.errs)))))) == 0) @intCast(main.heap.t(main.errs)) else @intCast(clib.geterrlin(t_val.?));
                 editfile(t_val.?, err_line_num);
                 return;
             }
@@ -247,7 +248,7 @@ pub fn command() void {
                     _ = clib.printf("%s\n", .{.{main.rs.editor orelse @constCast("")}});
                     return;
                 }
-                var h_ptr = hold + clib.strlen(hold);
+                var h_ptr = hold + word.strlen(hold);
                 while ((h_ptr - 1)[0] == ' ' or (h_ptr - 1)[0] == '\t') {
                     h_ptr -= 1;
                     h_ptr[0] = 0;
@@ -266,7 +267,7 @@ pub fn command() void {
                     _ = clib.printf("editor not changed\n", .{.{}});
                     return;
                 }
-                _ = clib.strcpy(&main.rs.ebuf, hold);
+                _ = word.strcpy(&main.rs.ebuf, hold);
                 main.rs.editor = @as([*:0]u8, @ptrCast(&main.rs.ebuf));
                 main.fixeditor();
                 main.rs.echoing = main.rs.verbosity & main.rs.listing;
@@ -290,7 +291,7 @@ pub fn command() void {
                     main.errs = 0;
                 }
                 if (t_val != null) {
-                    if (clib.strcmp(t_val.?, main.rs.current_script.?) != 0 or (main.files == NIL and clib.okdump(t_val.?) != 0)) {
+                    if (word.strcmp(t_val.?, main.rs.current_script.?) != 0 or (main.files == NIL and clib.okdump(t_val.?) != 0)) {
                         main.cs.CLASHES = NIL;
                         main.undump(t_val.?);
                         if (main.cs.CLASHES != NIL) {
@@ -323,7 +324,7 @@ pub fn command() void {
                         var y = main.rs.primenv;
                         while (y != NIL) : (y = main.heap.t(y)) {
                             if (tag[@intCast(main.heap.h(y))] == clib.ID) {
-                                if (main.heap.h(y) == x or clib.strcmp(clib.getaka(main.heap.h(y)), n) == 0) {
+                                if (main.heap.h(y) == x or word.strcmp(clib.getaka(main.heap.h(y)), n) == 0) {
                                     finger(main.get_id(main.heap.h(y)));
                                 }
                             }
@@ -333,7 +334,7 @@ pub fn command() void {
                             var y_def = main.fil_defs(main.heap.h(ff));
                             while (y_def != NIL) : (y_def = main.heap.t(y_def)) {
                                 if (tag[@intCast(main.heap.h(y_def))] == clib.ID) {
-                                    if (main.heap.h(y_def) == x or clib.strcmp(clib.getaka(main.heap.h(y_def)), n) == 0) {
+                                    if (main.heap.h(y_def) == x or word.strcmp(clib.getaka(main.heap.h(y_def)), n) == 0) {
                                         finger(main.get_id(main.heap.h(y_def)));
                                     }
                                 }
@@ -358,8 +359,8 @@ pub fn command() void {
         'h' => {
             if (is("h") or is("help")) {
                 if (clib.getchar() != '\n') return;
-                _ = clib.strcpy(&main.rs.linebuf, main.rs.miralib.?);
-                _ = clib.strcat(&main.rs.linebuf, "/helpfile");
+                _ = word.strcpy(&main.rs.linebuf, main.rs.miralib.?);
+                _ = word.strcat(&main.rs.linebuf, "/helpfile");
                 main.filecopy(@as([*:0]const u8, @ptrCast(&main.rs.linebuf)));
                 return;
             }
@@ -541,13 +542,13 @@ pub fn editfile(t_val: [*:0]const u8, line: c_int) void {
         } else if ((p - 1)[0] == '!') {
             p -= 1;
             _ = clib.sprintf(p, "%d", .{line_val});
-            p += clib.strlen(p);
+            p += word.strlen(p);
         } else if ((p - 1)[0] == '%') {
             (p - 1)[0] = '"';
             p[0] = 0;
             const limit = @as(usize, @intCast(clib.BUFSIZE + @intFromPtr(ebuf_local) - @intFromPtr(p)));
-            _ = clib.strncat(p, t_val, limit);
-            p += clib.strlen(p);
+            _ = word.strncat(p, t_val, limit);
+            p += word.strlen(p);
             p[0] = '"';
             p += 1;
             p[0] = 0;
@@ -562,8 +563,8 @@ pub fn editfile(t_val: [*:0]const u8, line: c_int) void {
         p += 1;
         p[0] = 0;
         const limit = @as(usize, @intCast(clib.BUFSIZE + @intFromPtr(ebuf_local) - @intFromPtr(p)));
-        _ = clib.strncat(p, t_val, limit);
-        p += clib.strlen(p);
+        _ = word.strncat(p, t_val, limit);
+        p += word.strlen(p);
         p[0] = '"';
         p += 1;
         p[0] = 0;
@@ -601,7 +602,7 @@ pub fn finger(n: [*:0]const u8) void {
             _ = clib.printf(" ||primitive to Miranda\n", .{.{}});
         } else {
             const aka = clib.getaka(x);
-            const aka_opt: ?[*:0]const u8 = if (clib.strcmp(aka, main.get_id(x)) == 0) null else aka;
+            const aka_opt: ?[*:0]const u8 = if (word.strcmp(aka, main.get_id(x)) == 0) null else aka;
             if (main.id_val(x) == clib.UNDEF and main.id_type(x) != clib.wrong_t) {
                 _ = clib.printf(" ||(UNDEFINED) specified in ", .{.{}});
             } else if (main.id_val(x) == clib.FREE) {
@@ -648,7 +649,7 @@ pub fn diagnose(n: [*:0]const u8) void {
     };
     const presym_n = [_]i32{ 21, 8, 15, 8, 15, 31, 23, 22, 15, 21 };
     inline for (presym, presym_n) |sym, sym_n| {
-        if (clib.strcmp(n, sym) == 0) {
+        if (word.strcmp(n, sym) == 0) {
             _ = clib.printf("%s -- keyword (see manual, section %d)\n", .{.{ n, sym_n }});
             return;
         }

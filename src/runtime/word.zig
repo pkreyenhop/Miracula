@@ -328,3 +328,184 @@ pub const FILE = struct {
         }
     }
 };
+
+pub fn castToCStr(val: anytype) ?[*:0]const u8 {
+    const T = @TypeOf(val);
+    if (T == @TypeOf(null)) return null;
+    if (@typeInfo(T) == .optional) {
+        if (val) |v| {
+            return @ptrCast(v);
+        } else {
+            return null;
+        }
+    }
+    return @ptrCast(val);
+}
+
+pub fn castToCStrMut(val: anytype) ?[*:0]u8 {
+    const T = @TypeOf(val);
+    if (T == @TypeOf(null)) return null;
+    if (@typeInfo(T) == .optional) {
+        if (val) |v| {
+            return @ptrCast(v);
+        } else {
+            return null;
+        }
+    }
+    return @ptrCast(val);
+}
+
+pub fn strcpy(dst_any: anytype, src_any: anytype) ?[*:0]u8 {
+    const dst = castToCStrMut(dst_any);
+    const src = castToCStr(src_any);
+    if (dst == null or src == null) return dst;
+    const d = dst.?;
+    const s = src.?;
+    const src_len = std.mem.span(s).len;
+    @memcpy(d[0..src_len], s[0..src_len]);
+    d[src_len] = 0;
+    return dst;
+}
+
+pub fn strcat(dst_any: anytype, src_any: anytype) ?[*:0]u8 {
+    const dst = castToCStrMut(dst_any);
+    const src = castToCStr(src_any);
+    if (dst == null or src == null) return dst;
+    const d = dst.?;
+    const s = src.?;
+    const dst_len = std.mem.span(d).len;
+    const src_len = std.mem.span(s).len;
+    @memcpy(d[dst_len .. dst_len + src_len], s[0..src_len]);
+    d[dst_len + src_len] = 0;
+    return dst;
+}
+
+pub fn strlen(s_any: anytype) usize {
+    const s = castToCStr(s_any);
+    if (s == null) return 0;
+    return std.mem.span(s.?).len;
+}
+
+pub fn strcmp(s1_any: anytype, s2_any: anytype) c_int {
+    const s1 = castToCStr(s1_any);
+    const s2 = castToCStr(s2_any);
+    if (s1 == null or s2 == null) return 0;
+    const span1 = std.mem.span(s1.?);
+    const span2 = std.mem.span(s2.?);
+    const order = std.mem.order(u8, span1, span2);
+    return switch (order) {
+        .lt => -1,
+        .eq => 0,
+        .gt => 1,
+    };
+}
+
+pub fn strncmp(s1_any: anytype, s2_any: anytype, n: usize) c_int {
+    const s1 = castToCStr(s1_any);
+    const s2 = castToCStr(s2_any);
+    if (s1 == null or s2 == null) return 0;
+    const span1 = std.mem.span(s1.?);
+    const span2 = std.mem.span(s2.?);
+    const sa = span1[0..@min(span1.len, n)];
+    const sb = span2[0..@min(span2.len, n)];
+    const order = std.mem.order(u8, sa, sb);
+    return switch (order) {
+        .lt => -1,
+        .eq => 0,
+        .gt => 1,
+    };
+}
+
+pub fn strncpy(dst_any: anytype, src_any: anytype, n: usize) ?[*:0]u8 {
+    const dst = castToCStrMut(dst_any);
+    const src = castToCStr(src_any);
+    if (dst == null or src == null) return dst;
+    const d = dst.?;
+    const s = src.?;
+    const src_span = std.mem.span(s);
+    const limit = @min(src_span.len, n);
+    @memcpy(d[0..limit], src_span[0..limit]);
+    if (limit < n) {
+        @memset(d[limit..n], 0);
+    }
+    return dst;
+}
+
+pub fn strncat(dst_any: anytype, src_any: anytype, n: usize) ?[*:0]u8 {
+    const dst = castToCStrMut(dst_any);
+    const src = castToCStr(src_any);
+    if (dst == null or src == null) return dst;
+    const d = dst.?;
+    const s = src.?;
+    const dst_len = std.mem.span(d).len;
+    const src_span = std.mem.span(s);
+    const limit = @min(src_span.len, n);
+    @memcpy(d[dst_len .. dst_len + limit], src_span[0..limit]);
+    d[dst_len + limit] = 0;
+    return dst;
+}
+
+pub fn strchr(s_any: anytype, char: c_int) ?[*:0]const u8 {
+    const s = castToCStr(s_any);
+    if (s == null) return null;
+    const ptr = s.?;
+    const span = std.mem.span(ptr);
+    const ch: u8 = @intCast(char);
+    for (span, 0..) |item, i| {
+        if (item == ch) {
+            return ptr + i;
+        }
+    }
+    return null;
+}
+
+pub fn strrchr(s_any: anytype, char: c_int) ?[*:0]u8 {
+    const s = castToCStr(s_any);
+    if (s == null) return null;
+    const ptr = @constCast(s.?);
+    const span = std.mem.span(ptr);
+    const ch: u8 = @intCast(char);
+    var i = span.len;
+    while (i > 0) {
+        i -= 1;
+        if (span[i] == ch) {
+            return ptr + i;
+        }
+    }
+    return null;
+}
+
+pub fn strstr(haystack_any: anytype, needle_any: anytype) ?[*:0]const u8 {
+    const haystack = castToCStr(haystack_any);
+    const needle = castToCStr(needle_any);
+    if (haystack == null or needle == null) return null;
+    const h_ptr = haystack.?;
+    const n_ptr = needle.?;
+    const h_span = std.mem.span(h_ptr);
+    const n_span = std.mem.span(n_ptr);
+    if (n_span.len == 0) return h_ptr;
+    if (h_span.len < n_span.len) return null;
+    const limit = h_span.len - n_span.len + 1;
+    var i: usize = 0;
+    while (i < limit) : (i += 1) {
+        if (std.mem.eql(u8, h_span[i .. i + n_span.len], n_span)) {
+            return h_ptr + i;
+        }
+    }
+    return null;
+}
+
+pub fn rindex(s_any: anytype, char: c_int) ?[*:0]u8 {
+    return strrchr(s_any, char);
+}
+
+test "string helpers strcpy and strcat" {
+    var buf1: [32:0]u8 = undefined;
+    _ = strcpy(&buf1, "hello");
+    try std.testing.expectEqualSlices(u8, "hello", std.mem.span(@as([*:0]u8, &buf1)));
+    
+    _ = strcat(&buf1, " world");
+    try std.testing.expectEqualSlices(u8, "hello world", std.mem.span(@as([*:0]u8, &buf1)));
+}
+
+

@@ -1,4 +1,5 @@
 const std = @import("std");
+const word = @import("../runtime/word.zig");
 const main = @import("../main.zig");
 const clib = @import("../runtime/main_clib.zig");
 const parser_api = @import("../parser/parser_api.zig");
@@ -69,10 +70,10 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     main.current_file = main.heap.h(main.files);
     main.heap.tp(main.heap.h(ls.fileq)).* = main.current_file;
 
-    if (main.rs.initialising != 0 and clib.strcmp(t_val, @as([*:0]const u8, @ptrCast(&main.rs.PRELUDE))) == 0) {
+    if (main.rs.initialising != 0 and word.strcmp(t_val, @as([*:0]const u8, @ptrCast(&main.rs.PRELUDE))) == 0) {
         setup.privlib();
     } else if (main.rs.initialising != 0 or main.rs.nostdenv) {
-        if (clib.strcmp(t_val, @as([*:0]const u8, @ptrCast(&main.rs.STDENV))) == 0) {
+        if (word.strcmp(t_val, @as([*:0]const u8, @ptrCast(&main.rs.STDENV))) == 0) {
             setup.stdlib();
         }
     }
@@ -115,7 +116,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
                 var count: Word = 0;
                 var i = main.rs.includees;
                 while (i != NIL) : (i = main.heap.t(i)) {
-                    if (clib.strcmp(@ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(main.heap.h(i)))))), @ptrFromInt(@as(usize, @intCast(main.heap.h(s))))) == 0) {
+                    if (word.strcmp(@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(main.heap.h(i))))))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(s)))))) == 0) {
                         main.heap.hp(s).* = main.heap.h(main.heap.h(main.heap.h(i)));
                         count += 1;
                     }
@@ -339,7 +340,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             main.makedump();
             main.unfixexports();
         }
-        if (main.errline == 0 and main.errs != 0 and clib.strcmp(@ptrFromInt(@as(usize, @intCast(main.heap.h(main.errs)))), main.rs.current_script.?) == 0) {
+        if (main.errline == 0 and main.errs != 0 and word.strcmp(@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(main.errs))))), main.rs.current_script.?) == 0) {
             main.errline = main.heap.t(main.errs);
         }
         main.cs.ND = main.alfasort(main.cs.ND);
@@ -418,8 +419,8 @@ pub fn mkincludes(includees_val: Word) Word {
         var f: ?*clib.FILE = null;
         const fn_str = @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(main.heap.h(includees_list)))))));
 
-        _ = clib.strcpy(ls.dicp, fn_str);
-        _ = clib.strcpy(ls.dicp + clib.strlen(ls.dicp) - 1, main.obsuffix);
+        _ = word.strcpy(ls.dicp, fn_str);
+        _ = word.strcpy(ls.dicp + word.strlen(ls.dicp) - 1, main.obsuffix);
 
         if (!main.rs.making) {
             oldsig = signals(clib.SIGINT, @intFromPtr(&main.sigdefer));
@@ -472,7 +473,7 @@ pub fn mkincludes(includees_val: Word) Word {
                                             q = main.heap.t(q);
                                             continue;
                                         }
-                                        while (w != NIL and (clib.strcmp(main.get_fil(main.heap.h(w)).?, main.get_fil(main.heap.h(z)).?) != 0 or main.heap.h(main.heap.t(main.heap.h(w))) != orig)) {
+                                        while (w != NIL and (word.strcmp(main.get_fil(main.heap.h(w)).?, main.get_fil(main.heap.h(z)).?) != 0 or main.heap.h(main.heap.t(main.heap.h(w))) != orig)) {
                                             w = main.heap.t(w);
                                         }
                                         if (w == NIL) {

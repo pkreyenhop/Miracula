@@ -1,4 +1,5 @@
 const std = @import("std");
+const word = @import("../runtime/word.zig");
 const main = @import("../main.zig");
 const clib = @import("../runtime/main_clib.zig");
 const lex_state = @import("../parser/lex_state.zig");
@@ -122,7 +123,7 @@ fn privatise(x: Word) Word {
 }
 
 fn hash(s: [*:0]const u8) usize {
-    return (@as(usize, s[0]) + @as(usize, s[clib.strlen(s) - 1])) & 127;
+    return (@as(usize, s[0]) + @as(usize, s[word.strlen(s) - 1])) & 127;
 }
 
 fn publicise(x: Word) Word {
@@ -264,15 +265,15 @@ pub fn undump(t_val: [*:0]const u8) void {
         return;
     }
 
-    flen = @intCast(clib.strlen(t_val));
+    flen = @intCast(word.strlen(t_val));
     t1 = @intCast(main.fm_time(t_val));
     if (flen > clib.pnlim) {
         _ = clib.printf("sorry, pathname too long (limit=%d): %s\n", .{.{ clib.pnlim, t_val }});
         return;
     }
 
-    _ = clib.strcpy(&obf, t_val);
-    _ = clib.strcpy(obf[@intCast(flen - 1)..].ptr, main.obsuffix);
+    _ = word.strcpy(&obf, t_val);
+    _ = word.strcpy(obf[@intCast(flen - 1)..].ptr, main.obsuffix);
     t2 = @intCast(main.fm_time(@as([*:0]const u8, @ptrCast(&obf))));
     if (t2 != 0 and t1 == 0) {
         t2 = 0;
@@ -371,13 +372,13 @@ pub fn undump(t_val: [*:0]const u8) void {
 pub fn makedump() void {
     const obf = &main.rs.linebuf;
     var f: ?*clib.FILE = null;
-    _ = clib.strcpy(obf, main.rs.current_script.?);
-    const len = clib.strlen(obf);
-    _ = clib.strcpy(obf[len - 1 ..].ptr, main.obsuffix);
+    _ = word.strcpy(obf, main.rs.current_script.?);
+    const len = word.strlen(obf);
+    _ = word.strcpy(obf[len - 1 ..].ptr, main.obsuffix);
     f = clib.fopen(obf, "w");
     if (f == null) {
         _ = clib.printf("WARNING: CANNOT WRITE TO %s\n", .{.{@as([*:0]const u8, @ptrCast(obf))}});
-        if (clib.strcmp(main.rs.current_script.?, &main.rs.PRELUDE) == 0 or clib.strcmp(main.rs.current_script.?, &main.rs.STDENV) == 0) {
+        if (word.strcmp(main.rs.current_script.?, &main.rs.PRELUDE) == 0 or word.strcmp(main.rs.current_script.?, &main.rs.STDENV) == 0) {
             _ = clib.printf("TO FIX THIS PROBLEM PLEASE GET SUPER-USER TO EXECUTE `mira'\n", .{.{}});
         }
         if (main.rs.making and main.rs.make_status == 0) {
