@@ -418,14 +418,22 @@ Baseline captured 2026-06-21 (script output at L0):
 
 | # | Metric (non-FFI scope) | Now | Target | Driven by |
 |---|------------------------|-----|--------|-----------|
-| 1 | internal `c_int`/`c_long`/`c_uint` (incl. `@as(c_int,…)` printf casts) | 107 → 95 | FFI-bound residual (getc/fork/wait/errno/printf casts) | L1–L3 ✅ |
-| 2 | `[*:0]` on Zig-only signatures | 161 | enumerated (inherent C-string flow) | M (analysed: no-op) |
+| 1 | internal `c_int`/`c_long`/`c_uint` (incl. `@as(c_int,…)` printf casts) | 107→95→107* | FFI-bound residual (getc/fork/wait/errno/printf casts) | L1–L3 ✅ |
+| 2 | `[*:0]` on Zig-only signatures | 161→176* | enumerated (inherent C-string flow) | M (analysed: no-op) |
 | 3 | `[*]Word` / `?[*]Word` non-FFI | 9 | enumerated (raw heap/stack storage) | M (analysed: no-op) |
 | 4 | sentinel `== NIL` / `!= NIL` | 347 | n/a — NIL is a heap value, not absence | N (analysed: no-op) |
 | 5 | `return NIL` as an error signal | 12 | n/a — all return NIL-the-value | O1 (analysed: no-op) |
 | 6 | bare `clib.exit(1)` (use `fatal()`) | 46 → 30 | evaluator-abort residual | O2 |
-| 7 | file-private `fn` with `snake_case` | 50 → 36 | domain-vocabulary exemptions only | P1 (✅ for P1a–d) |
+| 7 | file-private `fn` with `snake_case` | 50 → 36 | domain-vocabulary exemptions only | P1 ✅ |
 | 8 | `= undefined` initialisers (non-FFI) | 92 → 86 | audited (FFI/scratch-buffer pattern) | Q1 |
+| 9 | **`export fn` (C-ABI linker symbols)** — headline | **284 → 174** | FFI-only | Q2 ✅ |
+
+\* **Metric 1 & 2 Q2 artifact.** L1–L3 genuinely cut internal `c_int` to 95, but Q2
+reclassified ~110 functions from `export fn` (excluded by the scorecard's FFI filter) to
+`pub fn` (counted). Those functions legitimately take C-string (`[*:0]`) and `c_int` params at
+the C-heap interface — the documented metric 2 / FFI-bound-`c_int` exemptions — so the raw
+counts rose even though no non-idiomatic code was added. The durable win is **metric 9**:
+`export fn` (the actual C-ABI smell) fell 284 → 174.
 
 **Domain-vocabulary exemption (metric 7).** Like the FFI exemption, a fixed set of
 file-private names deliberately mirrors the public `heap.zig` accessor API and the Miranda

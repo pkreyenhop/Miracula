@@ -78,5 +78,12 @@ IDX=8
 m8=$(zg '= undefined' | drop_ffi)
 metric "= undefined initialisers" "$(printf '%s' "$m8" | grep -c . || true)" "audited" "$m8"
 
+IDX=9
+# Headline metric: C-ABI export fn linker symbols outside the shims. Lower is more idiomatic.
+# (Converting these to pub fn moves their C-type params onto pub-fn lines, which inflates
+#  metrics 1-2 — those params are the inherent C-heap/C-string interface, not new code.)
+m9=$(grep -rnE --include='*.zig' 'export fn ' "$SRC" | grep -vE "$EXEMPT")
+metric "export fn (C-ABI linker symbols)" "$(printf '%s' "$m9" | grep -c . || true)" "FFI-only" "$m9"
+
 echo "------------------------------------------------------------------------------"
 echo "Run with -v to list the matching source lines for each metric."
