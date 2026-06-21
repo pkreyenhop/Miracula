@@ -53,10 +53,10 @@ pub const RuntimeState = struct {
 
     // Configuration — set from CLI flags or .mirarc before mira_setup().
     editor: ?[*:0]u8 = null,
-    /// Non-zero when the prelude has been accepted without error.
-    okprel: Word = 0,
-    /// Non-zero when `-nostandard` flag suppresses loading STDENV.
-    nostdenv: Word = 0,
+    /// True when the prelude has been accepted without error.
+    okprel: bool = false,
+    /// True when `-nostandard` flag suppresses loading STDENV.
+    nostdenv: bool = false,
     /// Non-zero when the configured editor command is invalid.
     baded: Word = 0,
     miralib: ?[*:0]u8 = null,
@@ -70,13 +70,13 @@ pub const RuntimeState = struct {
     debug: c_int = 0,
 
     // Evaluation control flags
-    /// Non-zero when building a .mirarc dump; suppresses side-effects.
-    magic: Word = 0,
-    /// Non-zero when `//make` is in progress.
-    making: Word = 0,
-    /// Non-zero when `//exports` should write an export header.
-    mkexports: Word = 0,
-    mksources: Word = 0,
+    /// True when building a .mirarc dump; suppresses side-effects.
+    magic: bool = false,
+    /// True when `//make` is in progress.
+    making: bool = false,
+    /// True when `//exports` should write an export header.
+    mkexports: bool = false,
+    mksources: bool = false,
     make_status: Word = 0,
     ideep: c_int = 0,
     /// Non-zero during the one-time startup before `commandloop` begins.

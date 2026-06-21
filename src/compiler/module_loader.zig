@@ -48,11 +48,11 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         if (main.rs.verbosity != 0) {
             _ = clib.printf("new file %s\n", .{.{t_val}});
         }
-        if (main.rs.magic != 0) {
+        if (main.rs.magic) {
             _ = clib.fprintf(main.getStderr(), "mira -exec %s: no such file\n", .{.{t_val}});
             clib.exit(1);
         }
-        if (main.rs.making != 0 and main.rs.ideep == 0) {
+        if (main.rs.making and main.rs.ideep == 0) {
             _ = clib.printf("mira -make %s: no such file\n", .{.{t_val}});
         } else {
             main.rs.oldfiles = main.cons(main.make_fil(t_val, 0, 0, NIL), NIL);
@@ -78,7 +78,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
 
     if (main.rs.initialising != 0 and clib.strcmp(t_val, @as([*:0]const u8, @ptrCast(&main.rs.PRELUDE))) == 0) {
         setup.privlib();
-    } else if (main.rs.initialising != 0 or main.rs.nostdenv == 1) {
+    } else if (main.rs.initialising != 0 or main.rs.nostdenv) {
         if (clib.strcmp(t_val, @as([*:0]const u8, @ptrCast(&main.rs.STDENV))) == 0) {
             setup.stdlib();
         }
@@ -90,7 +90,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     clib.adjust_prefix(@constCast(t_val));
 
     main.commandmode = 0;
-    if (main.rs.verbosity != 0 or main.rs.making != 0) {
+    if (main.rs.verbosity != 0 or main.rs.making) {
         _ = clib.printf("compiling %s\n", .{.{t_val}});
     }
     main.nextpn = 0;
@@ -146,7 +146,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     main.rs.ld_stuff = NIL;
 
     if (main.SYNERR == 0) {
-        if (main.rs.verbosity != 0 or (main.rs.making != 0 and main.rs.mkexports == 0 and main.rs.mksources == 0)) {
+        if (main.rs.verbosity != 0 or (main.rs.making and !main.rs.mkexports and !main.rs.mksources)) {
             _ = clib.printf("checking types in %s\n", .{.{t_val}});
         }
         clib.checktypes();
@@ -333,11 +333,11 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             }
         }
         main.current_id = 0;
-        if (main.lfrule != 0 and (main.rs.verbosity != 0 or main.rs.making != 0)) {
+        if (main.lfrule != 0 and (main.rs.verbosity != 0 or main.rs.making)) {
             _ = clib.printf("grammar optimisation: %d common left factors found\n", .{.{main.lfrule}});
         }
         if (main.rs.initialising != 0 and main.ND != NIL) {
-            _ = clib.fprintf(main.getStderr(), "panic: %s contains errors\n", .{.{@as([*:0]const u8, if (main.rs.okprel != 0) "stdenv" else "prelude")}});
+            _ = clib.fprintf(main.getStderr(), "panic: %s contains errors\n", .{.{@as([*:0]const u8, if (main.rs.okprel) "stdenv" else "prelude")}});
             clib.exit(1);
         }
         if (main.rs.initialising != 0) {
@@ -356,7 +356,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     }
 
     if (main.rs.initialising != 0) {
-        _ = clib.fprintf(main.getStderr(), "panic: cannot compile %s\n", .{.{@as([*:0]const u8, if (main.rs.okprel != 0) "stdenv" else "prelude")}});
+        _ = clib.fprintf(main.getStderr(), "panic: cannot compile %s\n", .{.{@as([*:0]const u8, if (main.rs.okprel) "stdenv" else "prelude")}});
         clib.exit(1);
     }
     main.rs.oldfiles = main.files;
@@ -403,12 +403,12 @@ pub fn mkincludes(includees_val: Word) Word {
     } else { // child
         _ = signals(clib.SIGINT, 0);
         main.rs.ideep += 1;
-        main.rs.making = 1;
+        main.rs.making = true;
         main.rs.make_status = 0;
         main.rs.echoing = 0;
         main.rs.listing = 0;
         main.rs.verbosity = 0;
-        main.rs.magic = 0;
+        main.rs.magic = false;
         _ = clib.sigsetjmp(&main.rs.env, 1);
         while (includees_list != NIL and main.rs.make_status == 0) {
             main.undump(@ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(main.heap.h(includees_list)))))));
@@ -430,7 +430,7 @@ pub fn mkincludes(includees_val: Word) Word {
         _ = clib.strcpy(main.dicp, fn_str);
         _ = clib.strcpy(main.dicp + clib.strlen(main.dicp) - 1, main.obsuffix);
 
-        if (main.rs.making == 0) {
+        if (!main.rs.making) {
             oldsig = signals(clib.SIGINT, @intFromPtr(&main.sigdefer));
         }
 
@@ -441,7 +441,7 @@ pub fn mkincludes(includees_val: Word) Word {
         }
 
         main.rs.ld_stuff = main.cons(x, main.rs.ld_stuff);
-        if (main.rs.making == 0) {
+        if (!main.rs.making) {
             _ = signals(clib.SIGINT, oldsig);
         }
 

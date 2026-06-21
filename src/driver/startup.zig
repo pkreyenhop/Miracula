@@ -48,7 +48,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
     while (arg_idx < argc_u and argv[arg_idx][0] == '-') {
         const arg = argv[arg_idx];
         if (clib.strcmp(arg, "-stdenv") == 0) {
-            main.rs.nostdenv = 1;
+            main.rs.nostdenv = true;
         } else if (clib.strcmp(arg, "-count") == 0) {
             main.rs.atcount = 1;
         } else if (clib.strcmp(arg, "-list") == 0) {
@@ -110,7 +110,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         } else if (clib.strcmp(arg, "-exec") == 0) {
             main.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
             main.ARGV = @ptrCast(argv + arg_idx + 1);
-            main.rs.magic = 1;
+            main.rs.magic = true;
             main.rs.verbosity = 0;
             arg_idx = argc_u;
             break;
@@ -139,7 +139,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             }
             main.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
             main.ARGV = @ptrCast(argv + arg_idx + 1);
-            main.rs.magic = 1;
+            main.rs.magic = true;
             main.rs.verbosity = 0;
             arg_idx = argc_u;
             break;
@@ -152,15 +152,15 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             main.v_info(1);
             clib.exit(0);
         } else if (clib.strcmp(arg, "-make") == 0) {
-            main.rs.making = 1;
+            main.rs.making = true;
             main.rs.verbosity = 0;
         } else if (clib.strcmp(arg, "-exports") == 0) {
-            main.rs.making = 1;
-            main.rs.mkexports = 1;
+            main.rs.making = true;
+            main.rs.mkexports = true;
             main.rs.verbosity = 0;
         } else if (clib.strcmp(arg, "-sources") == 0) {
-            main.rs.making = 1;
-            main.rs.mksources = 1;
+            main.rs.making = true;
+            main.rs.mksources = true;
             main.rs.verbosity = 0;
         } else if (clib.strcmp(arg, "-UTF-8") == 0) {
             main.rs.UTF8 = 1;
@@ -174,7 +174,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
     }
 
     const remaining_argc = argc_u - arg_idx;
-    if (remaining_argc > 1 and main.rs.magic == 0 and main.rs.making == 0) {
+    if (remaining_argc > 1 and !main.rs.magic and !main.rs.making) {
         _ = clib.fprintf(main.getStderr(), "mira: too many args\n", .{.{}});
         clib.exit(1);
     }
@@ -258,11 +258,11 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
 
     main.files = NIL;
     main.undump(@as([*:0]const u8, @ptrCast(&main.rs.PRELUDE)));
-    main.rs.okprel = 1;
+    main.rs.okprel = true;
     clib.mkprivate(main.fil_defs(main.heap.h(main.files)));
     main.files = NIL;
 
-    if (main.rs.nostdenv == 0) {
+    if (!main.rs.nostdenv) {
         main.undump(@as([*:0]const u8, @ptrCast(&main.rs.STDENV)));
         while (main.files != NIL) {
             main.rs.primenv = main.alfasort(clib.append1(main.rs.primenv, main.fil_defs(main.heap.h(main.files))));
@@ -273,14 +273,14 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         main.files = NIL;
     }
 
-    if (main.rs.magic == 0) {
+    if (!main.rs.magic) {
         main.rc_write();
     }
 
     main.rs.echoing = main.rs.verbosity & main.rs.listing;
     main.rs.initialising = 0;
 
-    if (main.rs.mkexports != 0) {
+    if (main.rs.mkexports) {
         const arg_count: usize = remaining_argc;
         var s: [*:0]u8 = undefined;
         _ = clib.sigsetjmp(&main.rs.env, 1);
@@ -336,7 +336,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         clib.exit(0);
     }
 
-    if (main.rs.mksources != 0) {
+    if (main.rs.mksources) {
         var s: [*:0]u8 = undefined;
         var x: Word = NIL;
         _ = clib.sigsetjmp(&main.rs.env, 1);
@@ -361,7 +361,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         clib.exit(0);
     }
 
-    if (main.rs.making != 0) {
+    if (main.rs.making) {
         var s: [*:0]u8 = undefined;
         _ = clib.sigsetjmp(&main.rs.env, 1);
         var cur_argv_idx = arg_idx;
@@ -409,7 +409,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
     var initscript: [*:0]const u8 = undefined;
     if (remaining_argc == 0) {
         initscript = "script.m";
-    } else if (main.rs.magic != 0) {
+    } else if (main.rs.magic) {
         initscript = argv[arg_idx];
     } else {
         initscript = clib.addextn(1, argv[arg_idx]);

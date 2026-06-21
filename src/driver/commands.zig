@@ -661,7 +661,7 @@ pub export fn allnamescom() void {
     var y = main.ND;
     var z: Word = 0;
     leftist = 0;
-    namescom(main.make_fil(if (main.rs.nostdenv != 0) null else @as([*:0]const u8, @ptrCast(&main.rs.STDENV)), 0, 0, main.rs.primenv));
+    namescom(main.make_fil(if (main.rs.nostdenv) null else @as([*:0]const u8, @ptrCast(&main.rs.STDENV)), 0, 0, main.rs.primenv));
     if (main.files == NIL) return;
     s = main.heap.t(main.files);
     while (s != NIL) : (s = main.heap.t(s)) {

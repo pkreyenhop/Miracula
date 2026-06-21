@@ -1,12 +1,7 @@
-// TODO: Phase 7 - Idiomatic Zig Modernization:
-// - Step 3: Encapsulate Heap Access (h, t, hp, tp) into a central Heap struct definition.
-// - Step 8: Replace C-style accessor functions (e.g. id_type, fil_time, t_class) with structs/methods.
-
 const std = @import("std");
 const main = @import("../main.zig");
 
 const c = @import("c_abi.zig");
-const c_jmp = c; // jmp_buf/setjmp/longjmp re-exported from c_abi
 
 const Word = c_long;
 const wordsize = @sizeOf(Word) * 8;

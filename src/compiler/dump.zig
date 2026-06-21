@@ -75,7 +75,7 @@ fn unpaint(x: Word) void {
 /// No-op when `rs.mkexports != 0` (the dump is being kept for distribution).
 pub fn unfixexports() void {
     var i = internals;
-    if (main.rs.mkexports != 0) return;
+    if (main.rs.mkexports) return;
     while (i != NIL) : (i = t(i)) {
         _ = publicise(h(i));
     }
@@ -293,12 +293,12 @@ pub fn undump(t_val: [*:0]const u8) void {
     main.rs.oldfiles = NIL;
     main.unload();
 
-    if (main.rs.initialising == 0 and main.rs.making == 0) {
+    if (main.rs.initialising == 0 and !main.rs.making) {
         main.rs.sigflag = 0;
         oldsig = main.signals(clib.SIGINT, @intFromPtr(&sigdefer));
     }
 
-    main.files = clib.load_script(f.?, @constCast(t_val), NIL, NIL, if (main.rs.making == 0 and main.rs.initialising == 0) 1 else 0);
+    main.files = clib.load_script(f.?, @constCast(t_val), NIL, NIL, if (!main.rs.making and main.rs.initialising == 0) 1 else 0);
     _ = clib.fclose(f.?);
 
     if (main.BAD_DUMP != 0) {
@@ -316,7 +316,7 @@ pub fn undump(t_val: [*:0]const u8) void {
         }
     }
 
-    if (main.rs.initialising == 0 and main.rs.making == 0) {
+    if (main.rs.initialising == 0 and !main.rs.making) {
         _ = main.signals(clib.SIGINT, oldsig);
     }
     if (main.rs.sigflag != 0) {
@@ -345,20 +345,20 @@ pub fn undump(t_val: [*:0]const u8) void {
             clib.exit(1);
         }
     } else {
-        if (main.rs.verbosity != 0 or main.rs.magic != 0 or main.rs.mkexports != 0) {
+        if (main.rs.verbosity != 0 or main.rs.magic or main.rs.mkexports) {
             if (main.files == NIL) {
                 _ = clib.printf("%s contains syntax error\n", .{.{t_val}});
             } else {
                 if (main.ND != NIL) {
                     _ = clib.printf("%s contains undefined names or type errors\n", .{.{t_val}});
-                } else if (main.rs.making == 0 and main.rs.magic == 0) {
+                } else if (!main.rs.making and !main.rs.magic) {
                     _ = clib.printf("%s\n", .{.{t_val}});
                 }
             }
         }
     }
 
-    if (main.files != NIL and main.rs.making == 0 and main.rs.initialising == 0) {
+    if (main.files != NIL and !main.rs.making and main.rs.initialising == 0) {
         unfixexports();
     }
     main.loading = 0;
@@ -379,7 +379,7 @@ pub fn makedump() void {
         if (clib.strcmp(main.rs.current_script.?, &main.rs.PRELUDE) == 0 or clib.strcmp(main.rs.current_script.?, &main.rs.STDENV) == 0) {
             _ = clib.printf("TO FIX THIS PROBLEM PLEASE GET SUPER-USER TO EXECUTE `mira'\n", .{.{}});
         }
-        if (main.rs.making != 0 and main.rs.make_status == 0) {
+        if (main.rs.making and main.rs.make_status == 0) {
             main.rs.make_status = 1;
         }
         return;

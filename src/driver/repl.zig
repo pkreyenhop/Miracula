@@ -37,7 +37,7 @@ export fn commandloop(initscript: [*:0]u8) void {
     var lb: ?[*:0]u8 = undefined;
 
     if (clib.sigsetjmp(&main.rs.env, 1) == 0) {
-        if (main.rs.magic != 0) {
+        if (main.rs.magic) {
             main.undump(initscript);
             if (main.files == NIL or main.ND != NIL or main.id_val(main.rs.main_id) == clib.UNDEF) {
                 if (main.files != NIL and main.ND == NIL and main.id_val(main.rs.main_id) == clib.UNDEF) {
@@ -46,7 +46,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                 _ = clib.fprintf(main.getStderr(), "mira: incorrect use of \"-exec\" flag\n", .{.{}});
                 clib.exit(1);
             }
-            main.rs.magic = 0;
+            main.rs.magic = false;
             clib.obey(main.rs.main_id);
             clib.exit(0);
         }

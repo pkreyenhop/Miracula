@@ -398,7 +398,7 @@ fn getch() c_int {
         return '\n';
     }
     if (atnl != 0) {
-        if ((line_no == 0 and commandmode == 0) or (main.rs.magic != 0 and line_no == 1 and litstack == NIL)) {
+        if ((line_no == 0 and commandmode == 0) or (main.rs.magic and line_no == 1 and litstack == NIL)) {
             const is_lit = (ch == '>') or litname(get_fil(current_file));
             literate = if (is_lit) 1 else 0;
             litmain = literate;
@@ -1324,7 +1324,7 @@ export fn directive() Word {
         },
         'e' => {
             if (is("export") or is("_ e_ x_ p_ o_ r_ t")) {
-                if (main.rs.magic != 0) {
+                if (main.rs.magic) {
                     syntax("%export directive not permitted in \"-exp\" script\n");
                 }
                 return clib.EXPORT;
@@ -1332,7 +1332,7 @@ export fn directive() Word {
         },
         'f' => {
             if (is("free") or is("_ f_ r_ e_ e")) {
-                if (main.rs.magic != 0) {
+                if (main.rs.magic) {
                     syntax("%free directive not permitted in \"-exp\" script\n");
                 }
                 return clib.FREE;

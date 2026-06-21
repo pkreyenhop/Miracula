@@ -121,7 +121,8 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
     * *Constraint:* Do not add new `@import` edges that would create circular dependencies.
 
 * **F3: Stale Artifact Cleanup**
-    * *Status:* Not started
+    * *Status:* **Complete (2026-06-21)**
+    * *Actual outcome:* Removed `const c_jmp = c;` alias from `heap.zig` (dead since E2 removed gc() setjmp). Removed pre-plan TODO comment blocks from `heap.zig` and `word.zig`. Pruned `c_abi.zig` jmp re-exports to signal-only (`jmp_buf`/`setjmp`/`longjmp` removed; `sigjmp_buf`/`sigsetjmp`/`siglongjmp` kept per E3 constraint).
     * *Details:* Remove stale code left by completed refactors:
       1. `heap.zig` line 9: `const c_jmp = c;` — this alias was used only by the `gc()` setjmp/longjmp removed in E2. Delete the alias and any remaining dead `c_jmp.*` call sites.
       2. `heap.zig` lines 1-3: TODO comment block from pre-plan era — these tasks are now complete (heap access is in B2, domain methods are in D2). Remove the comment.
@@ -129,7 +130,8 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
       4. `c_abi.zig`: `jmp_buf`, `setjmp`, `longjmp` re-exports (lines 319-322) — only `sigjmp_buf`/`sigsetjmp`/`siglongjmp` are still needed (E3 constraint). Remove the four non-signal re-exports and fix any call sites.
 
 * **F4: Boolean Word Field Audit**
-    * *Status:* Not started
+    * *Status:* **Complete (2026-06-21)**
+    * *Actual outcome:* Converted 6 RuntimeState fields from `Word = 0` to `bool = false`: `magic`, `making`, `mkexports`, `mksources`, `okprel`, `nostdenv`. Updated all assignment and comparison sites across startup.zig, repl.zig, commands.zig, dump.zig, module_loader.zig, lex.zig, runtime_state.zig. Skipped: `rechecking` (can be 2), `bereaved` (heap cons Word), `baded` (written by C runtime), `verbosity`/`initialising` (deferred).
     * *Details:* B1 converted `strictif` from `Word` to `bool`. Audit remaining `Word`-typed fields in `RuntimeState` and module-level `export var` declarations that are semantically boolean (only ever assigned 0 or 1). Confirmed candidates from code inspection: `magic`, `making`, `mkexports`, `mksources`, `rechecking`, `bereaved`, `okprel`, `nostdenv`, `baded`. For each, verify all assignment sites use 0/1, convert to `bool`, update all call sites. Skip fields visible to C ABI (those that remain `export var` in main.zig).
     * *Constraint:* Only convert fields that are in `RuntimeState` (not `export var`). C-ABI-visible fields cannot change type.
 
@@ -164,6 +166,6 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 | E | E3 | Top-Level Error Handling | **Complete** |
 | F | F1 | Eliminate `extern var` from `types.zig` | **Complete** |
 | F | F2 | Selective `extern var` → `@import` in trans.zig / module_loader.zig | **Complete** |
-| F | F3 | Stale Artifact Cleanup | Not started |
-| F | F4 | Boolean Word Field Audit | Not started |
+| F | F3 | Stale Artifact Cleanup | **Complete** |
+| F | F4 | Boolean Word Field Audit | **Complete** |
 | F | F5 | Expand Test Coverage | Not started |
