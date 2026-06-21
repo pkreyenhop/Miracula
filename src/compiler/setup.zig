@@ -1,6 +1,7 @@
 const std = @import("std");
 const main = @import("../main.zig");
 const clib = @import("../runtime/main_clib.zig");
+const heap = @import("../runtime/heap.zig");
 
 const Word = main.Word;
 const NIL = main.NIL;
@@ -11,7 +12,7 @@ const ls = &lex_state.ls;
 // Global variables defined/exported in parser/lex.zig
 
 // Exported initialization functions from other modules
-extern fn setupheap() void;
+const setupheap = heap.setupheap;
 extern fn tsetup() void;
 extern fn reset_pns() void;
 extern fn bigsetup() void;

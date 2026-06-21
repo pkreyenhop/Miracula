@@ -1,8 +1,9 @@
 const std = @import("std");
 const parser_api = @import("parser_api.zig");
 const testing = std.testing;
+const heap = @import("../runtime/heap.zig");
 
-extern fn setupheap() void;
+const setupheap = heap.setupheap;
 extern fn setupdic() void;
 extern fn yylex() c_int;
 const clib = @import("../runtime/c_abi.zig");

@@ -11,6 +11,8 @@ const clib = @import("../runtime/c_abi.zig");
 const main = @import("../main.zig");
 const lex_state = @import("lex_state.zig");
 const ls = &lex_state.ls;
+const heap = @import("../runtime/heap.zig");
+
 
 const Word = clib.word;
 
@@ -80,12 +82,12 @@ extern fn decl_type(tf: Word, type_class: Word, info: Word, here: Word) void;
 extern fn declconstr(x: Word, n: Word, t_word: Word) Word;
 extern fn redtvars(t_word: Word) Word;
 extern fn bigscan(p: [*:0]const u8) Word;
-extern fn sto_dbl(R: f64) Word;
-extern fn sto_id(p: [*:0]const u8) Word;
+const sto_dbl = heap.sto_dbl;
+const sto_id = heap.sto_id;
 extern fn keep(p: [*:0]u8) [*:0]u8;
 extern fn findid(p: [*:0]const u8) Word;
 extern fn make_id(p: [*:0]const u8) Word;
-extern fn sto_char(ch: c_int) Word;
+const sto_char = heap.sto_char;
 extern fn head(x: Word) Word;
 extern fn isconstrname(s: [*:0]const u8) c_int;
 

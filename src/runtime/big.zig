@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const platform = @import("../io/platform.zig");
+const heap = @import("heap.zig");
 
 const Word = c_long;
 
@@ -22,7 +23,7 @@ extern var hd: [*]Word;
 extern var tl: [*]Word;
 extern var tag: [*]u8;
 
-extern fn make(t: u8, x: Word, y: Word) Word;
+const make = heap.make;
 extern fn math_error(s: [*:0]const u8) void;
 
 var logIBASE: f64 = 0;

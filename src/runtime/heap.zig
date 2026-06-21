@@ -98,18 +98,18 @@ fn getId(x: Word) [*:0]const u8 {
     return @ptrFromInt(@as(usize, @intCast(h(h(h(x))))));
 }
 
-export fn sto_char(ch: c_int) Word {
+pub export fn sto_char(ch: Word) Word {
     return if (ch < 256) ch else make(UNICODE, ch, 0);
 }
 
-export fn get_char(x: Word) Word {
+pub export fn get_char(x: Word) Word {
     if (x < 256) return x;
     if (tag.?[@intCast(x)] == UNICODE) return h(x);
     std.debug.print("impossible event in get_char(x), tag[x]=={d}\n", .{tag.?[@intCast(x)]});
     c.exit(1);
 }
 
-export fn is_char(x: Word) c_int {
+pub export fn is_char(x: Word) c_int {
     if (0 <= x and x < 256) return 1;
     if (x >= 0 and tag.?[@intCast(x)] == UNICODE) return 1;
     return 0;
@@ -125,7 +125,7 @@ export fn getaka(x: Word) [*:0]const u8 {
     return if (tag.?[@intCast(y)] != CONS) getId(x) else @ptrFromInt(@as(usize, @intCast(h(h(y)))));
 }
 
-export fn append1(x: Word, y: Word) Word {
+pub export fn append1(x: Word, y: Word) Word {
     var x1 = x;
     if (x1 == nil()) return y;
     while (t(x1) != nil()) x1 = t(x1);
@@ -133,7 +133,7 @@ export fn append1(x: Word, y: Word) Word {
     return x;
 }
 
-export fn hdsort(input: Word) Word {
+pub export fn hdsort(input: Word) Word {
     var x = input;
     var a: Word = nil();
     var b: Word = nil();
@@ -164,7 +164,7 @@ export fn hdsort(input: Word) Word {
     return reverse(x);
 }
 
-export fn charname(ch: Word) [*:0]const u8 {
+pub export fn charname(ch: Word) [*:0]const u8 {
     return switch (ch) {
         '\n' => "\\n",
         '\t' => "\\t",
@@ -186,7 +186,7 @@ export fn charname(ch: Word) [*:0]const u8 {
     };
 }
 
-export fn outr(file: ?*c.FILE, value: f64) void {
+pub export fn outr(file: ?*c.FILE, value: f64) void {
     const magnitude = if (value < 0) -value else value;
     if (magnitude >= 1000.0 or magnitude <= 0.001) {
         _ = c.fprintf(file, "%e", .{value});
@@ -195,7 +195,7 @@ export fn outr(file: ?*c.FILE, value: f64) void {
     }
 }
 
-export fn get_dbl(x: Word) f64 {
+pub export fn get_dbl(x: Word) f64 {
     var r: fpdatum = undefined;
     if (comptime @sizeOf(Word) == 4) {
         r.bits.left = h(x);
@@ -206,7 +206,7 @@ export fn get_dbl(x: Word) f64 {
     return r.real;
 }
 
-export fn sto_dbl(R_val: f64) Word {
+pub export fn sto_dbl(R_val: f64) Word {
     if (!std.math.isFinite(R_val)) {
         fpe_error(c.SIGFPE);
     }
@@ -219,7 +219,7 @@ export fn sto_dbl(R_val: f64) Word {
     }
 }
 
-export fn setdbl(x: Word, R_val: f64) void {
+pub export fn setdbl(x: Word, R_val: f64) void {
     if (!std.math.isFinite(R_val)) {
         fpe_error(c.SIGFPE);
     }
@@ -307,7 +307,7 @@ export fn trueheapsize() Word {
     return if (nogcs == 0) listp - ATOMLIMIT + 1 else SPACE;
 }
 
-export fn setupheap() void {
+pub export fn setupheap() void {
     const heap_alloc_size = @as(usize, @intCast(rt.rs.SPACELIMIT));
     if (heap == null) {
         const ptr = c.malloc(heap_alloc_size * @sizeOf(Word) * 2) orelse {
@@ -365,13 +365,13 @@ export fn resetheap() void {
     }
 }
 
-export fn mallocfail(x: [*:0]const u8) void {
+pub export fn mallocfail(x: [*:0]const u8) void {
     const stderr = getStderr().?;
     _ = c.fprintf(stderr, "panic: cannot find enough free space for %s\n", .{x});
     c.exit(1);
 }
 
-export fn resetgcstats() void {
+pub export fn resetgcstats() void {
     cellcount = -claims;
     nogcs = 0;
     initclock();
@@ -382,7 +382,7 @@ fn poschar(val: u8) bool {
     return signed_val > 0;
 }
 
-export fn make(t_val: u8, x: Word, y: Word) Word {
+pub export fn make(t_val: u8, x: Word, y: Word) Word {
     while (true) {
         listp += 1;
         if (!poschar(tag.?[@intCast(listp)])) {
@@ -477,7 +477,7 @@ export fn gcpatch() void {
     }
 }
 
-export fn bases() void {
+pub export fn bases() void {
     var p: [*]Word = undefined;
     p = @ptrCast(@alignCast(&p));
     const cstack_ptr = rt.rs.cstack.?;
@@ -613,7 +613,7 @@ fn negchar(val: u8) bool {
     return signed_val < 0;
 }
 
-export fn mark(x_val: Word) void {
+pub export fn mark(x_val: Word) void {
     var x = x_val & ~c.tlptrbits;
     while (isptr(x) and negchar(tag.?[@intCast(x)])) {
         const p1 = &tag.?[@intCast(x)];
@@ -651,11 +651,11 @@ export var preflen: Word = 0;
 extern fn fm_time(path: [*:0]const u8) Word;
 extern fn unlinkx(path: [*:0]const u8) void;
 
-export fn sto_id(p1: [*:0]const u8) Word {
+pub export fn sto_id(p1: [*:0]const u8) Word {
     return make(c.ID, cons(make(c.STRCONS, @intCast(@intFromPtr(p1)), c.NIL), c.undef_t), c.UNDEF);
 }
 
-export fn getword(file: ?*c.FILE) Word {
+pub export fn getword(file: ?*c.FILE) Word {
     var s: i32 = 0;
     var i: usize = @sizeOf(Word);
     var x = @as(Word, @intCast(c.getc(file)));
@@ -668,7 +668,7 @@ export fn getword(file: ?*c.FILE) Word {
     return x;
 }
 
-export fn putword(x_val: Word, file: ?*c.FILE) void {
+pub export fn putword(x_val: Word, file: ?*c.FILE) void {
     var x = x_val;
     var i: usize = @sizeOf(Word);
     _ = c.putc(@intCast(x & 255), file);
@@ -705,7 +705,7 @@ export fn setprefix(p: [*:0]const u8) void {
     }
 }
 
-export fn mkrel(p: [*:0]const u8) [*:0]const u8 {
+pub export fn mkrel(p: [*:0]const u8) [*:0]const u8 {
     const p_len = std.mem.len(p);
     const prefix_len = @as(usize, @intCast(preflen));
     if (prefix_len <= p_len and std.mem.eql(u8, prefix[0..prefix_len], p[0..prefix_len])) {
@@ -874,7 +874,7 @@ export fn out(file: ?*c.FILE, x_val: Word) void {
     }
 }
 
-export fn out1(file: ?*c.FILE, x: Word) void {
+pub export fn out1(file: ?*c.FILE, x: Word) void {
     if (x < 0 or x > TOP()) {
         _ = c.fprintf(file, "<%ld>", .{x});
         return;
@@ -888,7 +888,7 @@ export fn out1(file: ?*c.FILE, x: Word) void {
     }
 }
 
-export fn out2(file: ?*c.FILE, x_val: Word) void {
+pub export fn out2(file: ?*c.FILE, x_val: Word) void {
     var x = x_val;
     if (x < 0 or x > TOP()) {
         _ = c.fprintf(file, "<%ld>", .{x});
@@ -1163,22 +1163,22 @@ fn ap(x: Word, y: Word) Word {
     return make(c.AP, x, y);
 }
 
-export fn putint(n: c_int, file: ?*c.FILE) void {
+pub export fn putint(n: c_int, file: ?*c.FILE) void {
     _ = c.fwrite(&n, @sizeOf(c_int), 1, file);
 }
 
-export fn getint(file: ?*c.FILE) c_int {
+pub export fn getint(file: ?*c.FILE) c_int {
     var r: c_int = 0;
     _ = c.fread(&r, @sizeOf(c_int), 1, file);
     return r;
 }
 
-export fn putdbl(x: Word, file: ?*c.FILE) void {
+pub export fn putdbl(x: Word, file: ?*c.FILE) void {
     var d = get_dbl(x);
     _ = c.fwrite(&d, @sizeOf(f64), 1, file);
 }
 
-export fn getdbl(file: ?*c.FILE) Word {
+pub export fn getdbl(file: ?*c.FILE) Word {
     var d: f64 = 0;
     _ = c.fread(&d, @sizeOf(f64), 1, file);
     return sto_dbl(d);
@@ -1229,7 +1229,7 @@ export fn dump_script(files_val: Word, file: ?*c.FILE) void {
     dump_defs(internals, file);
 }
 
-export fn dump_defs(defs_val: Word, file: ?*c.FILE) void {
+pub export fn dump_defs(defs_val: Word, file: ?*c.FILE) void {
     var defs = defs_val;
     while (defs != c.NIL) : (defs = t(defs)) {
         const item = h(defs);
@@ -1258,7 +1258,7 @@ export fn dump_defs(defs_val: Word, file: ?*c.FILE) void {
     _ = c.putc(c.DEF_X, file);
 }
 
-export fn dump_ob(x: Word, file: ?*c.FILE) void {
+pub export fn dump_ob(x: Word, file: ?*c.FILE) void {
     switch (tag.?[@intCast(x)]) {
         c.ATOM => {
             if (x < 128) {
@@ -1532,7 +1532,7 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
     return reverse(files_list);
 }
 
-export fn bindparams(formal_val: Word, actual_val: Word) void {
+pub export fn bindparams(formal_val: Word, actual_val: Word) void {
     var formal = formal_val;
     var actual = actual_val;
     var badkind: Word = c.NIL;
@@ -1574,7 +1574,7 @@ export fn bindparams(formal_val: Word, actual_val: Word) void {
     }
 }
 
-export fn unscramble(aliases: Word) void {
+pub export fn unscramble(aliases: Word) void {
     var a = aliases;
     while (a != c.NIL) : (a = t(a)) {
         const old = t(h(a));
@@ -1611,7 +1611,7 @@ export fn unscramble(aliases: Word) void {
     ALIASES = a;
 }
 
-export fn dsetup() void {
+pub export fn dsetup() void {
     if (dstack == null) {
         const ptr = c.malloc(1000 * @sizeOf(Word)) orelse {
             mallocfail("dstack");
@@ -1623,7 +1623,7 @@ export fn dsetup() void {
     stackp = dstack;
 }
 
-export fn dgrow() void {
+pub export fn dgrow() void {
     const hold = dstack.?;
     const num_elements = dlim.? - hold;
     const ptr = c.realloc(hold, num_elements * 2 * @sizeOf(Word)) orelse {
@@ -1635,7 +1635,7 @@ export fn dgrow() void {
     stackp = dstack.? + (stackp.? - hold);
 }
 
-export fn load_defs(file: ?*c.FILE) Word {
+pub export fn load_defs(file: ?*c.FILE) Word {
     var ch = c.getc(file);
     var defs: Word = c.NIL;
     while (ch != c.EOF) {

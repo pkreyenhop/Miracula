@@ -2,6 +2,7 @@ const std = @import("std");
 const platform = @import("../io/platform.zig");
 const clib = @import("c_abi.zig");
 const main = @import("../main.zig");
+const heap = @import("heap.zig");
 
 const Word = c_long;
 const NIL: Word = clib.CMBASE + 138;
@@ -29,11 +30,11 @@ export var s_out: ?*clib.FILE = null;
 export var errtrap: Word = 0;
 export var cycles: i64 = 0;
 
-extern fn sto_char(c_val: Word) Word;
+const sto_char = heap.sto_char;
 extern fn fromUTF8(f: ?*clib.FILE) Word;
 extern fn parseline(x: Word, f: ?*clib.FILE, y: Word) Word;
 extern fn reduce(e: Word) Word;
-extern fn charname(c_val: c_int) [*:0]const u8;
+const charname = heap.charname;
 
 inline fn h(x: Word) Word {
     if (x < ATOMLIMIT) return 0;

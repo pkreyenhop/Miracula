@@ -3,6 +3,8 @@ const clib = @import("../runtime/c_abi.zig");
 const lex_state = @import("lex_state.zig");
 const ls = &lex_state.ls;
 const main = @import("../main.zig");
+const heap = @import("../runtime/heap.zig");
+
 
 const Word = c_long;
 const CMBASE: Word = 306;
@@ -59,21 +61,21 @@ extern var algshfns: Word;
 extern var rv_script: Word;
 extern var commandmode: Word;
 
-extern fn make(t_tag: u8, x: Word, y: Word) Word;
-extern fn mallocfail(s: [*:0]const u8) void;
+const make = heap.make;
+const mallocfail = heap.mallocfail;
 extern fn bigscan(s: [*:0]const u8) Word;
 extern fn bigxscan(s: [*:0]const u8, limit: [*:0]const u8) Word;
 extern fn bigoscan(s: [*:0]const u8, limit: [*:0]const u8) Word;
-extern fn sto_dbl(d: f64) Word;
-extern fn sto_id(s: [*:0]const u8) Word;
-extern fn sto_char(ch: Word) Word;
+const sto_dbl = heap.sto_dbl;
+const sto_id = heap.sto_id;
+const sto_char = heap.sto_char;
 extern fn fm_time(path: [*:0]const u8) Word;
-extern fn append1(list: Word, el: Word) Word;
+const append1 = heap.append1;
 extern fn genlstat_t() Word;
 extern fn acterror() void;
 extern fn syntax(s: [*:0]const u8) void;
 extern fn reset() void;
-extern fn is_char(x: Word) c_int;
+const is_char = heap.is_char;
 
 export fn mira_lex_setup_string(source: [*:0]const u8) void {
     const len = std.mem.len(source);

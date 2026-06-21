@@ -377,5 +377,5 @@ These are known, bounded issues not yet addressed. Cluster G targets the first t
 | F | F5 | Expand unit test coverage (26 → 31) | ✅ Complete |
 | G | G1 | Break `heap.zig ↔ main.zig` circular dependency via `core_state.zig` | ✅ Complete |
 | G | G2 | Reducer direct dispatch (eliminate ~84 extern fn ↔ export fn pairs) | ✅ Complete |
-| G | G3 | Migrate `lex.zig` state to `LexState` struct | ⬜ Planned |
-| G | G4 | Convert heap accessor `extern fn` calls to direct imports | ⬜ Planned |
+| G | G3 | Migrate `lex.zig` state to `LexState` struct | ✅ Complete |
+| G | G4 | Convert heap accessor `extern fn` calls to direct imports | ✅ Complete |
