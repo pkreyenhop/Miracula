@@ -5,6 +5,7 @@ const lex_state = @import("lex_state.zig");
 const ls = &lex_state.ls;
 const main = @import("../main.zig");
 const heap = @import("../runtime/heap.zig");
+const rt = @import("../runtime/runtime_state.zig");
 
 const Word = c_long;
 const CMBASE: Word = 306;
@@ -199,11 +200,11 @@ export fn dicovflo() void {
 export fn setupdic() void {
     const space = main.rs.DICSPACE;
     if (ls.dic == null) {
-        const ptr = clib.malloc(@intCast(space)) orelse mallocPanic("dictionary");
-        ls.dic = @ptrCast(ptr);
+        const dict_slice = rt.allocator.alloc(u8, @intCast(space)) catch mallocPanic("dictionary");
+        ls.dic = dict_slice.ptr;
 
-        const base_ptr = clib.malloc(@intCast(prefixlimit)) orelse mallocPanic("prefixbase");
-        prefixbase = @ptrCast(base_ptr);
+        const base_slice = rt.allocator.alloc(u8, @intCast(prefixlimit)) catch mallocPanic("prefixbase");
+        prefixbase = base_slice.ptr;
     }
     ls.dicp = @ptrCast(ls.dic.?);
     ls.dicq = @ptrCast(ls.dic.?);
@@ -1123,9 +1124,11 @@ export fn adjust_prefix(f: [*:0]const u8) void {
     ls.prefixstack = cons(prefix, ls.prefixstack);
     prefix += @as(Word, @intCast(clib.strlen(prefixbase.? + @as(usize, @intCast(prefix))))) + 1;
     while (@as(usize, @intCast(prefix)) + clib.strlen(f) >= @as(usize, @intCast(prefixlimit))) {
+        const old_limit = prefixlimit;
         prefixlimit += 1024;
-        const new_ptr = clib.realloc(prefixbase, @intCast(prefixlimit)) orelse mallocPanic("prefixbase");
-        prefixbase = @ptrCast(new_ptr);
+        const old_slice = prefixbase.?[0..@intCast(old_limit)];
+        const new_slice = rt.allocator.realloc(old_slice, @intCast(prefixlimit)) catch mallocPanic("prefixbase");
+        prefixbase = new_slice.ptr;
     }
     _ = clib.strcpy(prefixbase.? + @as(usize, @intCast(prefix)), f);
     const g = clib.rindex(prefixbase.? + @as(usize, @intCast(prefix)), '/');
@@ -1618,16 +1621,18 @@ export fn findid(n: [*:0]const u8) Word {
 export fn reset_pns() void {
     ls.nextpn = 0;
     if (ls.pnvec == null) {
-        const ptr = clib.malloc(@intCast(pn_lim * @sizeOf(Word))) orelse mallocPanic("ls.pnvec");
-        ls.pnvec = @ptrCast(@alignCast(ptr));
+        const slice = rt.allocator.alloc(Word, @intCast(pn_lim)) catch mallocPanic("ls.pnvec");
+        ls.pnvec = slice.ptr;
     }
 }
 
 export fn make_pn(val: Word) Word {
     if (ls.nextpn == pn_lim) {
+        const old_lim = pn_lim;
         pn_lim += 400;
-        const ptr = clib.realloc(ls.pnvec, @intCast(pn_lim * @sizeOf(Word))) orelse mallocPanic("ls.pnvec");
-        ls.pnvec = @ptrCast(@alignCast(ptr));
+        const old_slice = ls.pnvec.?[0..@intCast(old_lim)];
+        const slice = rt.allocator.realloc(old_slice, @intCast(pn_lim)) catch mallocPanic("ls.pnvec");
+        ls.pnvec = slice.ptr;
     }
     ls.pnvec.?[@intCast(ls.nextpn)] = make(STRCONS, ls.nextpn, val);
     const ret = ls.pnvec.?[@intCast(ls.nextpn)];
@@ -1637,11 +1642,13 @@ export fn make_pn(val: Word) Word {
 
 export fn sto_pn(n: Word) Word {
     if (n >= pn_lim) {
+        const old_lim = pn_lim;
         while (pn_lim <= n) {
             pn_lim += 400;
         }
-        const ptr = clib.realloc(ls.pnvec, @intCast(pn_lim * @sizeOf(Word))) orelse mallocPanic("ls.pnvec");
-        ls.pnvec = @ptrCast(@alignCast(ptr));
+        const old_slice = ls.pnvec.?[0..@intCast(old_lim)];
+        const slice = rt.allocator.realloc(old_slice, @intCast(pn_lim)) catch mallocPanic("ls.pnvec");
+        ls.pnvec = slice.ptr;
     }
     while (ls.nextpn <= n) {
         ls.pnvec.?[@intCast(ls.nextpn)] = make(STRCONS, ls.nextpn, UNDEF);

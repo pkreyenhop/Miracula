@@ -281,15 +281,22 @@ export fn trueheapsize() Word {
     return if (nogcs == 0) listp - ATOMLIMIT + 1 else SPACE;
 }
 
+var allocated_heap_size: usize = 0;
+var allocated_tag_size: usize = 0;
+var allocated_dstack_size: usize = 0;
+
 pub export fn setupheap() void {
     const heap_alloc_size = @as(usize, @intCast(rt.rs.SPACELIMIT));
     if (heap == null) {
-        const ptr = c.malloc(heap_alloc_size * @sizeOf(Word) * 2) orelse mallocPanic("heap");
-        heap = @ptrCast(@alignCast(ptr));
+        const heap_slice = rt.allocator.alloc(Word, heap_alloc_size * 2) catch mallocPanic("heap");
+        heap = heap_slice.ptr;
+        allocated_heap_size = heap_alloc_size * 2;
 
         const bigtop_val = @as(usize, @intCast(BIGTOP()));
-        const tag_ptr = c.calloc(bigtop_val + 1, @sizeOf(u8)) orelse mallocPanic("heap");
-        tag = @ptrCast(@alignCast(tag_ptr));
+        const tag_slice = rt.allocator.alloc(u8, bigtop_val + 1) catch mallocPanic("heap");
+        @memset(tag_slice, 0);
+        tag = tag_slice.ptr;
+        allocated_tag_size = bigtop_val + 1;
     }
 
     hd = heap.? - @as(usize, @intCast(ATOMLIMIT * 2));
@@ -308,12 +315,16 @@ export fn resetheap() void {
         c.exit(1);
     }
     const heap_alloc_size = @as(usize, @intCast(rt.rs.SPACELIMIT));
-    const ptr = c.realloc(heap, heap_alloc_size * @sizeOf(Word) * 2) orelse mallocPanic("heap");
-    heap = @ptrCast(@alignCast(ptr));
+    const old_heap_slice = heap.?[0..allocated_heap_size];
+    const heap_slice = rt.allocator.realloc(old_heap_slice, heap_alloc_size * 2) catch mallocPanic("heap");
+    heap = heap_slice.ptr;
+    allocated_heap_size = heap_alloc_size * 2;
 
     const bigtop_val = @as(usize, @intCast(BIGTOP()));
-    const tag_ptr = c.realloc(tag, bigtop_val + 1) orelse mallocPanic("heap");
-    tag = @ptrCast(@alignCast(tag_ptr));
+    const old_tag_slice = tag.?[0..allocated_tag_size];
+    const tag_slice = rt.allocator.realloc(old_tag_slice, bigtop_val + 1) catch mallocPanic("heap");
+    tag = tag_slice.ptr;
+    allocated_tag_size = bigtop_val + 1;
 
     hd = heap.? - @as(usize, @intCast(ATOMLIMIT * 2));
     tl = hd.? + 1;
@@ -1557,9 +1568,10 @@ pub fn unscramble(aliases: Word) void {
 
 pub fn dsetup() void {
     if (dstack == null) {
-        const ptr = c.malloc(1000 * @sizeOf(Word)) orelse mallocPanic("dstack");
-        dstack = @ptrCast(@alignCast(ptr));
+        const slice = rt.allocator.alloc(Word, 1000) catch mallocPanic("dstack");
+        dstack = slice.ptr;
         dlim = dstack.? + 1000;
+        allocated_dstack_size = 1000;
     }
     stackp = dstack;
 }
@@ -1567,10 +1579,13 @@ pub fn dsetup() void {
 pub fn dgrow() void {
     const hold = dstack.?;
     const num_elements = dlim.? - hold;
-    const ptr = c.realloc(hold, num_elements * 2 * @sizeOf(Word)) orelse mallocPanic("dstack");
-    dstack = @ptrCast(@alignCast(ptr));
-    dlim = dstack.? + num_elements * 2;
+    const old_slice = hold[0..allocated_dstack_size];
+    const new_size = num_elements * 2;
+    const slice = rt.allocator.realloc(old_slice, new_size) catch mallocPanic("dstack");
+    dstack = slice.ptr;
+    dlim = dstack.? + new_size;
     stackp = dstack.? + (stackp.? - hold);
+    allocated_dstack_size = new_size;
 }
 
 pub fn load_defs(file: ?*c.FILE) Word {

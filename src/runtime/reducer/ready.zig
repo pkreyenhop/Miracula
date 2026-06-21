@@ -7,6 +7,7 @@ const platform = @import("../../io/platform.zig");
 const main = @import("../../main.zig");
 const combinators = @import("combinators.zig");
 const io_handlers = @import("io.zig");
+const rt = @import("../runtime_state.zig");
 
 extern var tag: [*]u8;
 extern var hd: [*]Word;
@@ -146,7 +147,8 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             if (p) |ptr| {
                 var i = clib.strlen(ptr);
                 if (main.rs.UTF8 != 0) {
-                    const qbuf = @as([*]u8, @ptrCast(@alignCast(clib.malloc(i + 1) orelse main.heap.mallocPanic("utf8 conversion buffer"))));
+                    const qbuf_slice = rt.allocator.alloc(u8, i + 1) catch main.heap.mallocPanic("utf8 conversion buffer");
+                    const qbuf = qbuf_slice.ptr;
                     _ = clib.strcpy(@ptrCast(qbuf), ptr);
                     var q = qbuf;
                     var r = qbuf;
@@ -174,7 +176,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                         i -= 1;
                         ctx.hold = reduce.cons(qbuf[i], ctx.hold);
                     }
-                    clib.free(qbuf);
+                    rt.allocator.free(qbuf_slice);
                 } else {
                     while (i > 0) {
                         i -= 1;

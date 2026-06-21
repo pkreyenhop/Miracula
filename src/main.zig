@@ -206,11 +206,13 @@ pub const missparam = startup.missparam;
 pub const v_info = startup.v_info;
 
 pub fn main(ctx: std.process.Init) !void {
+    rt.allocator = rt.gpa.allocator();
     clib.env_slice = ctx.minimal.environ.block.slice;
     const raw_args = ctx.minimal.args.vector;
     const argv: [*][*:0]u8 = @ptrCast(@constCast(raw_args.ptr));
     const argc: c_int = @intCast(raw_args.len);
     const exit_code = main_entry(argc, argv);
+    _ = rt.gpa.deinit();
     std.process.exit(@intCast(exit_code));
 }
 

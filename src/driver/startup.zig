@@ -125,16 +125,19 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             } else {
                 p = p.? + 1;
             }
-            const logfilname = @as(?[*:0]u8, @ptrCast(clib.malloc(clib.strlen(p.?) + 9)));
-            if (logfilname == null) {
+            const rt = @import("../runtime/runtime_state.zig");
+            const len = clib.strlen(p.?) + 9;
+            const slice = rt.allocator.allocSentinel(u8, len, 0) catch {
                 clib.mallocfail(@constCast("logfile name"));
-            }
-            _ = clib.sprintf(logfilname.?, "miralog/%s", .{p.?});
-            const fil = clib.fopen(logfilname.?, "a");
+                unreachable;
+            };
+            const logfilname = slice.ptr;
+            _ = clib.sprintf(logfilname, "miralog/%s", .{p.?});
+            const fil = clib.fopen(logfilname, "a");
             if (fil != null) {
                 _ = clib.dup2(clib.fileno(fil), 2);
             } else {
-                _ = clib.fprintf(main.getStderr(), "could not open %s\n", .{.{logfilname.?}});
+                _ = clib.fprintf(main.getStderr(), "could not open %s\n", .{.{logfilname}});
             }
             ls.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
             ls.ARGV = @ptrCast(argv + arg_idx + 1);

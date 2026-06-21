@@ -1,6 +1,9 @@
 const std = @import("std");
 const clib = @import("main_clib.zig");
 
+pub var gpa = std.heap.DebugAllocator(.{}){};
+pub var allocator: std.mem.Allocator = std.heap.page_allocator;
+
 const Word = c_long;
 const CMBASE: Word = 306;
 const NIL: Word = CMBASE + 138;
