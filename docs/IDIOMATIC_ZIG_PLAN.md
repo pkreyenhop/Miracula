@@ -3,7 +3,11 @@
 ## Objective
 
 Transform Miracula from a direct C-to-Zig translation into an idiomatic, maintainable Zig
-codebase while preserving identical runtime behaviour. All seven clusters are now complete.
+codebase while preserving identical runtime behaviour. Clusters A–G (Phase 7) and the
+encapsulation/formatting work of Phase 8 (H, I2, K1, K3) are complete. The remaining work is
+captured as the **Phase 9 fine-grained plan** below: small, single-commit, measurable
+micro-steps whose collective Definition of Done is *"a reviewer skimming any non-FFI source
+file recognises the code as idiomatic Zig."*
 
 ---
 
@@ -176,7 +180,7 @@ chain were fully convertible to Zig error unions. Signal-handler sites were not.
 
 ---
 
-### Cluster G: Module Graph Repair (Planned)
+### Cluster G: Module Graph Repair ✅
 
 *Goal: Eliminate the remaining linker-as-module-system connections by giving every Zig module
 a proper `@import` dependency graph. The two structural blockers are the `heap.zig ↔ main.zig`
@@ -337,7 +341,7 @@ Recommended sequence: **G1 → G2 → G3 → G4**, committing after each.
 
 ---
 
-## Phase 8: Deep Idiomatic Zig & Code Modernization (Planned)
+## Phase 8: Deep Idiomatic Zig & Code Modernization
 
 ### Objective
 
@@ -349,12 +353,21 @@ Building on the modular boundaries established in Phase 7, this phase eliminates
 
 *Goal: Replace remaining linker-based symbol coupling with clean Zig import graphs and state structs.*
 
-* **H1 — Encapsulate Compiler State (`CompilerState`)** ⬜
-  Create `src/compiler/compiler_state.zig` with a `CompilerState` struct to hold compiler/typechecker globals (`FBS`, `speclocs`, `newtyps`, `algshfns`, `DETROP`, `MISSING`, `ALIASES`, `TSUPPRESSED`, `TYPERRS`, etc.), eliminating the ~60 `extern var` references between `heap.zig` and the compiler.
-* **H2 — Convert Compiler/Types Chains** ⬜
-  Convert remaining `export fn`/`extern fn` pairs in `types.zig` and `trans.zig` into direct `@import` function calls.
-* **H3 — Unlink FFI-private Heap Accessors** ⬜
-  Remove remaining `export` keywords from heap accessors that are not called by C code or the legacy C-ABI test harness.
+* **H1 — Encapsulate Compiler State (`CompilerState`)** ✅ *(2026-06-21)*
+  Created `src/compiler/compiler_state.zig` with a `CompilerState` struct holding ~50
+  compiler/typechecker globals (`FBS`, `speclocs`, `newtyps`, `algshfns`, `DETROP`, `MISSING`,
+  `ALIASES`, `TSUPPRESSED`, `TYPERRS`, `current_id`, `ND`, …). Singleton `pub var cs`; accessed
+  via `main.cs` (`*CompilerState`). Replaced the `export var`/`extern var` web between
+  `heap.zig`, `types.zig`, and `trans.zig`.
+* **H2 — Convert Compiler/Types Chains** ✅ *(2026-06-21)*
+  `type_of`, `checktypes` (`types.zig`) and `codegen` (`trans.zig`) converted from
+  `clib.*` linker calls to direct `@import` aliases re-exported through `main.zig`.
+  Removed the three `pub extern fn` declarations from `c_abi.zig`.
+* **H3 — Unlink FFI-private Heap Accessors** ✅ *(2026-06-21)*
+  Stripped `export` from 20 `heap.zig` functions never referenced via `extern fn`
+  (`bases`, `bindparams`, `dgrow`, `dsetup`, `dump_defs`, `dump_ob`, `getdbl`, `getint`,
+  `getword`, `hdsort`, `load_defs`, `mkrel`, `out1`, `outr`, `putdbl`, `putint`, `putword`,
+  `unload`, `unscramble`, `unsetids`). C-ABI-reachable accessors kept `export`.
 
 ---
 
@@ -362,50 +375,149 @@ Building on the modular boundaries established in Phase 7, this phase eliminates
 
 *Goal: Leverage Zig's safety features and type system at all internal API boundaries.*
 
-* **I1 — Slices instead of Raw Pointers** ⬜
-  Audit and convert C-style raw pointers (`[*]Word`, `?[*]Word`, `[*:0]u8`) at internal boundaries to native Zig slices (`[]Word`, `[]u8`, `[:0]u8`).
-* **I2 — Native Integers** ⬜
-  Replace platform-dependent C types (`c_int`, `c_long`, `c_uint`) with native Zig types (`i32`, `i64`, `usize`, `u32`) where FFI boundaries are not violated.
-* **I3 — Optional Types** ⬜
-  Replace raw sentinel value checks (e.g. `x == NIL`) at high-level boundaries with optional types (`?Word` or custom optional domain types).
-
----
-
-### Cluster J: Comprehensive Error Union Propagation
-
-*Goal: Use Zig error sets and try/catch instead of sentinel error codes.*
-
-* **J1 — Propagation via Error Unions** ⬜
-  Refactor parser and compiler helper functions (in `parser.zig`, `codegen.zig`, `types.zig`, `trans.zig`) that currently return `NIL` or check global error flags (`SYNERR`, `errs`) to return structured `MiraError` unions.
-* **J2 — Standardize Panics and Assertions** ⬜
-  Replace C-style exit calls (`c.exit(1)`) or assertion printfs inside runtime/heap routines with proper error returns or structured panics.
+* **I1 — Slices instead of Raw Pointers** ⬜ *(broken into Cluster M below)*
+* **I2 — Native Integers (struct fields)** ✅ *(2026-06-21)*
+  Converted the non-FFI `c_int` fields in `RuntimeState` (`UTF8`, `UTF8OUT`, `atobject`,
+  `atgc`, `atcount`, `debug`, `ideep`, `sigflag`, `sorted`) and `CompilerState`
+  (`lfrule`, `polyshowerror`) to native `i32`. Internal *local/var* `c_int` leftovers are
+  finished in Cluster L below.
+* **I3 — Optional Types** ⬜ *(broken into Cluster N below)*
 
 ---
 
 ### Cluster K: Code Style, Formatting, and Naming Standards
 
-*Goal: Align the code layout and names with standard Zig design guidelines.*
-
-* **K1 — Formatting Gate** ⬜
-  Format the entire codebase via `zig fmt` and verify compilation.
-* **K2 — Naming Conventions** ⬜
-  Standardize internal function and variable naming from `snake_case` or run-together names (e.g. `isconstrname`, `loadfile`) to standard Zig `camelCase`.
-* **K3 — Documentation** ⬜
-  Ensure all public structures, methods, and functions have comprehensive `///` doc comments.
+* **K1 — Formatting Gate** ✅ *(2026-06-21)* — `zig fmt src/` applied; build verified.
+* **K2 — Naming Conventions** ⬜ *(broken into Cluster P below)*
+* **K3 — Documentation** ✅ *(2026-06-21)*
+  `///` doc comments added to `CompilerState` and `core_state.zig` (the structs introduced
+  in Phase 8). Earlier `pub` API docs were completed in D3.
 
 ---
 
-## Remaining Patterns
+## Phase 9: Idiomatic Zig Finishing — Fine-Grained Plan
 
-These are known, bounded issues not yet addressed. Clusters H, I, J, and K target these patterns.
+This phase replaces the coarse I1/I3/J/K2 bullets with small, single-commit micro-steps.
+Each micro-step touches **one pattern in one (or a few) files**, makes **no behavioural
+change**, and is *Done* only when `zig build` is clean and all **31 unit tests** pass.
 
-| Pattern | Count | Target Cluster | Notes |
-|---------|-------|----------------|-------|
-| `extern var` | ~60 | H1 | Compiler globals (`FBS`, `speclocs`, etc.) and some remaining `heap.zig` globals |
-| `export fn` / `extern fn` pairs | ~250 | H2, H3 | Compiler/types chains and FFI-private heap accessors |
-| `[*:0]` at internal boundaries | ~340 | I1 | Can be converted to native slices `[]const u8` or `[:0]const u8` |
-| `c_int` / `c_long` types | ~340 | I2 | Convert to standard types like `i32`/`i64` or `usize` |
-| `= undefined` initialisations | ~100 | — | Audit for zero-init opportunities |
+### FFI exemption (applies to every metric below)
+
+These boundaries legitimately use C types/pointers/`snake_case` and are **out of scope**:
+`src/runtime/main_clib.zig`, `src/runtime/c_abi.zig`, any `extern fn`/`extern var`
+declaration, any `export fn` or `callconv(.c)` function signature (the C runtime and the
+legacy test harness call these by name and ABI), and `src/tools/*` standalone utilities.
+
+### Definition of Done — measurable scorecard
+
+Counts captured 2026-06-21. A grep-based `scripts/idiomatic-check.sh` (to be added in L0)
+codifies these so progress is objective.
+
+| # | Metric (non-FFI scope) | Verification command | Now | Target |
+|---|------------------------|----------------------|-----|--------|
+| 1 | `c_int`/`c_long`/`c_uint` in internal vars/locals | `grep -rn 'c_int\|c_long\|c_uint' src` minus FFI sigs | ~25 internal | 0 |
+| 2 | `[*:0]` params on Zig-only functions | `grep -rn '\[\*:0\]' src` minus FFI sigs | ~40 internal | enumerated exceptions only |
+| 3 | `[*]Word` / `?[*]Word` outside heap storage + FFI | `grep -rn '\[\*\]Word' src` | 38 | enumerated exceptions only |
+| 4 | sentinel `== NIL` / `!= NIL` at lookup boundaries | `grep -rn '!= NIL\|== NIL' src` | 359 | reduced at converted fns |
+| 5 | `return NIL` used as an error signal | `grep -rn 'return NIL' src` | 12 | 0 |
+| 6 | bare `clib.exit(1)` outside a `fatal()` helper | `grep -rn 'clib.exit(1)' src` | 61 | 0 |
+| 7 | file-private `fn` in `snake_case`/run-on | see P-step greps | 174 | 0 |
+| 8 | `= undefined` initialisers (non-FFI) | `grep -rn '= undefined' src` | 108 | audited + documented |
+
+---
+
+### Cluster L — Finish Native Integers (closes metric 1)
+
+* **L0 — Add `scripts/idiomatic-check.sh`** ⬜
+  A shell script emitting the scorecard above. Establishes the measurable baseline and makes
+  every later micro-step self-verifying. *Risk: none (tooling only).*
+* **L1 — `lex.zig` internal `c_int` → `i32`** ⬜
+  Module vars `rawch`, `errch`, `inprelude`; locals `anti`, `h_val`. Exempt: `export fn`
+  signatures, `extern var compiling`. *~5 sites. Risk: low (i32 ≡ c_int ABI).*
+* **L2 — `heap.zig` internal `c_int` → `i32`/`usize`** ⬜
+  Locals in `getint`, `charclass`-style counters; audit `collecting` (`export var` — keep).
+  Keep return types of `export fn` (`is_char`, `okdump`, `src_update`, `utf8test`). *Risk: low.*
+* **L3 — Driver/runtime internal `c_int` → `i32`** ⬜
+  Per-file sweep of locals in `reduce.zig`, `reducer/ready.zig`, `repl.zig`, `startup.zig`,
+  `commands.zig`, `platform.zig`. One commit per file. *Risk: low.*
+  *DoD: scorecard metric 1 = 0.*
+
+### Cluster M — Slices at Internal Boundaries (closes metrics 2–3; was I1)
+
+* **M1 — `startup.zig` string params `[*:0]const u8` → `[:0]const u8`** ⬜
+  Continue D1's pattern; add `std.mem.span()` at the C-originated entry points. *Risk: low-med.*
+* **M2 — `commands.zig` + `module_loader.zig` string params** ⬜  *Risk: low-med.*
+* **M3 — Known-length `[*]Word` scratch buffers → `[]Word`** ⬜
+  Target the `dstack`/`stackp` pair and local fixed buffers where length is statically known.
+  *Risk: medium (pointer arithmetic → slice indexing).*
+* **M4 — Document the deferred heap-storage exception** ⬜
+  The raw `hd`/`tl`/`tag` arrays stay `[*]` — they are private storage behind the `h()`/`t()`
+  accessor API and never surface in a public signature. Record this as an accepted, enumerated
+  exception rather than converting. *Risk: none (doc only).*
+  *DoD: every remaining `[*]`/`[*:0]` in a non-FFI signature is on the enumerated-exceptions list.*
+
+### Cluster N — Optional Types (was I3; closes metric 4 at converted sites)
+
+* **N1 — `get_id` → `?[*:0]const u8`** ⬜
+  Mirror the existing `get_fil` (already optional). Update callers to `if (… ) |id|`. *Risk: med.*
+* **N2 — Lookup functions returning `NIL`-for-absent → `?Word`** ⬜
+  Convert one function per commit (`findid` and peers). Each commit replaces that function's
+  `== NIL` call-site checks with optional unwrapping. *Risk: medium (all callers per fn).*
+
+### Cluster O — Error Unions & Panics (was J1/J2; closes metrics 5–6)
+
+* **O1 — `return NIL`-as-error → `MiraError`** ⬜
+  Enumerate the 12 sites; convert the parser/loader ones to `error.SyntaxError`/`LoadError`
+  with `try` propagation. *Risk: medium.*
+* **O2 — Centralise fatal exits behind `fatal()`** ⬜
+  Add `fn fatal(comptime fmt, args) noreturn` that prints a diagnostic then exits. Replace bare
+  `clib.exit(1)` in `startup.zig`, `repl.zig`, `files.zig` with messaged `fatal(...)`.
+  *Risk: low (behaviour-preserving + better messages). DoD: metric 6 = 0.*
+* **O3 — `unreachable` audit (18 sites)** ⬜
+  Replace logic-reachable `unreachable` with `@panic("reason")`; keep provably-unreachable ones
+  and add a one-line justification comment. *Risk: low.*
+
+### Cluster P — Naming Conventions (was K2; closes metric 7)
+
+Staged file-private-first so each commit has zero cross-module impact. **Exempt:** `export fn`,
+`callconv(.c)`, and any `pub fn` referenced as an extern symbol — these keep their legacy C
+names. Rename only Zig-internal definitions and their Zig callers.
+
+* **P1a — Private `fn` in `runtime/` → camelCase** ⬜  (~50 fns) *Risk: low (file-local).*
+* **P1b — Private `fn` in `compiler/` → camelCase** ⬜  (~87 fns) *Risk: low (file-local).*
+* **P1c — Private `fn` in `parser/` → camelCase** ⬜  (~30 fns) *Risk: low (file-local).*
+* **P1d — Private `fn` in `driver/` + `io/` → camelCase** ⬜  (~7 fns) *Risk: low (file-local).*
+* **P2 — Non-FFI `pub fn` → camelCase** ⬜
+  `pub fn` that are neither `export` nor extern-referenced, updating cross-module callers
+  (mostly via the `main.*` re-export aliases). One module per commit. *Risk: medium.*
+  *DoD: metric 7 = 0; remaining `snake_case` fns are all the documented FFI exemption.*
+
+### Cluster Q — Polish (closes metric 8)
+
+* **Q1 — `= undefined` audit (108 sites)** ⬜
+  Convert to zero/sensible defaults where the value is always written before read is not
+  guaranteed; document each retained `undefined` with the invariant that makes it safe.
+  *Risk: low-med.*
+* **Q2 — `export fn` → `pub fn` audit** ⬜
+  Of 286 `export fn`, only 12 are `callconv(.c)`. Identify which of the rest still need a linker
+  symbol (referenced from `main_clib.zig`/the C harness) versus those that can become `pub fn`
+  reached by direct `@import`. Convert the safe subset, one module per commit. *Risk: medium.*
+
+### Sequencing
+
+```
+L0 (scorecard tooling)
+ ├─► L1, L2, L3   (native ints — independent, lowest risk)
+ ├─► O2, O3       (fatal/unreachable — independent, low risk)
+ └─► P1a–P1d      (file-local renames — independent, low risk)
+M1 → M2 → M3 → M4 (slices — medium risk, ordered)
+N1 → N2           (optionals — medium risk)
+O1                (error unions — medium risk)
+P2, Q1, Q2        (cross-module — do after the file-local passes land)
+```
+
+Recommended start: **L0 → L1 → O2 → P1a** — all low-risk, each independently verifiable,
+together they move four of the eight scorecard metrics.
 
 ---
 
@@ -440,11 +552,31 @@ These are known, bounded issues not yet addressed. Clusters H, I, J, and K targe
 | H | H1 | Encapsulate Compiler State (`CompilerState`) | ✅ Complete |
 | H | H2 | Convert Compiler/Types Chains | ✅ Complete |
 | H | H3 | Unlink FFI-private Heap Accessors | ✅ Complete |
-| I | I1 | Slices instead of Raw Pointers | ⬜ Planned |
-| I | I2 | Native Integers | ✅ Complete |
-| I | I3 | Optional Types | ⬜ Planned |
-| J | J1 | Propagation via Error Unions | ⬜ Planned |
-| J | J2 | Standardize Panics and Assertions | ⬜ Planned |
+| I | I2 | Native Integers (struct fields) | ✅ Complete |
 | K | K1 | Formatting Gate | ✅ Complete |
-| K | K2 | Naming Conventions | ⬜ Planned |
 | K | K3 | Documentation | ✅ Complete |
+
+### Phase 9 — Fine-Grained (single-commit micro-steps)
+
+| Cluster | Step | Title | Metric | Risk | Status |
+|---------|------|-------|--------|------|--------|
+| L | L0 | Add `scripts/idiomatic-check.sh` scorecard | tooling | none | ⬜ Planned |
+| L | L1 | `lex.zig` internal `c_int` → `i32` | 1 | low | ⬜ Planned |
+| L | L2 | `heap.zig` internal `c_int` → `i32`/`usize` | 1 | low | ⬜ Planned |
+| L | L3 | Driver/runtime internal `c_int` → `i32` (per file) | 1 | low | ⬜ Planned |
+| M | M1 | `startup.zig` string params → `[:0]const u8` | 2 | low-med | ⬜ Planned |
+| M | M2 | `commands.zig` + `module_loader.zig` string params | 2 | low-med | ⬜ Planned |
+| M | M3 | Known-length `[*]Word` scratch → `[]Word` | 3 | medium | ⬜ Planned |
+| M | M4 | Document deferred heap-storage `[*]` exception | 3 | none | ⬜ Planned |
+| N | N1 | `get_id` → `?[*:0]const u8` | 4 | medium | ⬜ Planned |
+| N | N2 | Lookup fns `NIL`-absent → `?Word` (per fn) | 4 | medium | ⬜ Planned |
+| O | O1 | `return NIL`-as-error → `MiraError` (12 sites) | 5 | medium | ⬜ Planned |
+| O | O2 | Centralise fatal exits behind `fatal()` | 6 | low | ⬜ Planned |
+| O | O3 | `unreachable` audit (18 sites) | — | low | ⬜ Planned |
+| P | P1a | Private `fn` in `runtime/` → camelCase (~50) | 7 | low | ⬜ Planned |
+| P | P1b | Private `fn` in `compiler/` → camelCase (~87) | 7 | low | ⬜ Planned |
+| P | P1c | Private `fn` in `parser/` → camelCase (~30) | 7 | low | ⬜ Planned |
+| P | P1d | Private `fn` in `driver/`+`io/` → camelCase (~7) | 7 | low | ⬜ Planned |
+| P | P2 | Non-FFI `pub fn` → camelCase (per module) | 7 | medium | ⬜ Planned |
+| Q | Q1 | `= undefined` audit (108 sites) | 8 | low-med | ⬜ Planned |
+| Q | Q2 | `export fn` → `pub fn` audit (286 → ?) | — | medium | ⬜ Planned |
