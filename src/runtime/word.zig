@@ -282,6 +282,9 @@ pub const FILE = struct {
     pushback: ?u8 = null,
     mem_buf: ?[]const u8 = null,
     mem_pos: usize = 0,
+    buf: [8192]u8 = undefined,
+    buf_start: usize = 0,
+    buf_end: usize = 0,
 
     pub fn readByte(self: *FILE) !u8 {
         if (self.pushback) |pb| {
@@ -296,10 +299,15 @@ pub const FILE = struct {
             }
             return error.EndOfStream;
         }
-        var buf: [1]u8 = undefined;
-        const n = try std.posix.read(self.fd, &buf);
-        if (n == 0) return error.EndOfStream;
-        return buf[0];
+        if (self.buf_start >= self.buf_end) {
+            const n = try std.posix.read(self.fd, &self.buf);
+            if (n == 0) return error.EndOfStream;
+            self.buf_start = 0;
+            self.buf_end = n;
+        }
+        const b = self.buf[self.buf_start];
+        self.buf_start += 1;
+        return b;
     }
 
     pub fn ungetc(self: *FILE, c: u8) void {
