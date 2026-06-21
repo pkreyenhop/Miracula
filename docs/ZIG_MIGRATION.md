@@ -41,7 +41,7 @@ This document outlines the history, completed milestones, target platform suppor
 
 ### ✔ Phase 7: Idiomatic Zig Modernization *(2026-06-21)*
 * **Goal**: Refactor the codebase from a direct C translation to a native, idiomatic Zig codebase.
-* **Outcome**: All 24 steps across 7 clusters are complete. Full details in [IDIOMATIC_ZIG_PLAN.md](IDIOMATIC_ZIG_PLAN.md).
+* **Outcome**: All 24 steps across clusters A–G are complete. Full details in [IDIOMATIC_ZIG_PLAN.md](IDIOMATIC_ZIG_PLAN.md).
   - **Cluster A** — Monolithic `main.zig` decomposed: extracted `commands.zig`, `setup.zig`, `module_loader.zig`, `dump.zig`, `files.zig`. `repl.zig`'s 57 `extern var` declarations replaced with `@import`. `main.zig` reduced to ~267 lines (composition root + 8 C-ABI-constrained export vars).
   - **Cluster B** — `RuntimeState` struct introduced in `src/runtime/runtime_state.zig`; ~75 global variables consolidated into a single `pub var rs`. Heap array accessors (`h`/`t`/`hp`/`tp`) no longer re-exported from `main.zig`.
   - **Cluster C** — `NodeTag` non-exhaustive enum added. `FileNode`, `Identifier`, `TypeRef`, `NodeRef` domain types added as typed wrappers over heap `Word` values.
@@ -49,6 +49,13 @@ This document outlines the history, completed milestones, target platform suppor
   - **Cluster E** — `MiraError` error set defined. `gc()` local setjmp/longjmp removed (was a masked `return`). `types.zig` type-checker abort chain converted to Zig error unions (`meta_tcheck`, `etype`, `conforms`, and 4 callers). Signal-handler `sigsetjmp`/`siglongjmp` paths documented as permanent (POSIX async constraint).
   - **Cluster F** — `extern var` eliminated from `types.zig` (10 vars) and reduced in `trans.zig` (10 of 14) and `module_loader.zig` (12 of 19). Stale `c_jmp` alias and pre-plan TODO blocks removed. 6 more `RuntimeState` boolean fields converted from `Word` to `bool`. Unit test count increased from 26 to 31.
   - **Cluster G** — `Module Graph Repair`: broke circular dependency between `heap.zig` and `main.zig` via `core_state.zig`, converted reducer handlers to direct calls, migrated `lex.zig` state to a `LexState` struct, and converted heap accessor `extern fn` calls to direct imports.
+
+### ✔ Phase 8: Deep Idiomatic Zig & Code Modernization *(2026-06-21)*
+* **Goal**: Eliminate remaining C-style patterns and platform assumptions to produce a fully native, type-safe, and standards-adhering Zig codebase.
+* **Outcome**: Clusters H, I (I2), and K (K1, K3) complete. Full details in [IDIOMATIC_ZIG_PLAN.md](IDIOMATIC_ZIG_PLAN.md).
+  - **Cluster H** — Compiler state encapsulated into `CompilerState` struct (`compiler_state.zig`). Key compiler functions (`type_of`, `checktypes`, `codegen`) converted from `clib.*` linker calls to direct `@import` aliases via `main.zig`. 20 FFI-private heap accessor `export` keywords removed.
+  - **Cluster I (partial)** — `c_int` fields in `RuntimeState` and `CompilerState` converted to native `i32` where no C-ABI boundary is crossed.
+  - **Cluster K (partial)** — `zig fmt` applied to entire codebase (K1). `///` doc comments added to `CompilerState` and `core_state.zig` exports (K3).
 
 ---
 
