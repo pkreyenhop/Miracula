@@ -77,9 +77,9 @@ export var yysterm = yysterm_data;
 export fn syntax(s: [*:0]const u8) void {
     if (main.SYNERR != 0) return;
     if (main.rs.echoing != 0) {
-        _ = clib.fprintf(main.getStderr().?, "\n", .{.{}});
+        _ = word.fprintf(main.getStderr().?, "\n", .{.{}});
     }
-    _ = clib.fprintf(main.getStderr().?, "syntax error: %s", .{.{s}});
+    _ = word.fprintf(main.getStderr().?, "syntax error: %s", .{.{s}});
     main.SYNERR = 1;
     reset_lex();
 }

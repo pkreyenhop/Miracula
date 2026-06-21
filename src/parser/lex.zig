@@ -333,7 +333,7 @@ export fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
 fn spaces(n_input: Word) void {
     var n = n_input;
     while (n > 0) : (n -= 1) {
-        _ = clib.putchar(' ');
+        _ = word.putchar(' ');
     }
 }
 
@@ -378,7 +378,7 @@ fn getch() c_int {
             }
             if (ch == '>') {
                 if (main.rs.echoing != 0) {
-                    _ = clib.putchar(ch);
+                    _ = word.putchar(ch);
                     spaces(lverge);
                 }
                 ch = clib.getc(main.rs.s_in);
@@ -391,10 +391,10 @@ fn getch() c_int {
         }
     }
     if (main.rs.echoing != 0 and ch != clib.EOF) {
-        _ = clib.putchar(ch);
+        _ = word.putchar(ch);
         if (ch == '\n' and literate == 0) {
             if (litmain != 0) {
-                _ = clib.putchar('>');
+                _ = word.putchar('>');
                 spaces(lverge);
             } else {
                 spaces(lverge);
@@ -746,7 +746,7 @@ export fn yylex() c_int {
         ls.insertdepth -= 1;
         if (ls.fileq != NIL and h(ls.echostack) != 0) {
             if (literate != 0) {
-                _ = clib.putchar('>');
+                _ = word.putchar('>');
                 spaces(lverge);
             }
             word.print("<end of insert>", .{});
@@ -1327,10 +1327,10 @@ pub fn directive() Word {
                     ls.col = holdcol;
                     lverge = holdcol;
                     if (main.rs.echoing != 0) {
-                        _ = clib.putchar('\n');
+                        _ = word.putchar('\n');
                         if (literate == 0) {
                             if (litmain != 0) {
-                                _ = clib.putchar('>');
+                                _ = word.putchar('>');
                                 spaces(holdcol);
                             } else {
                                 spaces(holdcol);
@@ -1374,7 +1374,7 @@ pub fn directive() Word {
         else => {},
     }
     if (main.rs.echoing != 0) {
-        _ = clib.putchar('\n');
+        _ = word.putchar('\n');
     }
     word.print("syntax error: unknown directive \"%{s}\"\n", .{ls.dicp});
     acterror();
@@ -1694,12 +1694,12 @@ pub fn string() void {
         syntax("non-escaped newline encountered inside string quotes\n");
     } else if (ch == clib.EOF) {
         if (main.rs.echoing != 0) {
-            _ = clib.putchar('\n');
+            _ = word.putchar('\n');
         }
         word.print("syntax error: script ends inside unclosed string quotes - \n", .{});
         word.print("    \"", .{});
         while (ls.yylval != NIL and sl > 0) {
-            _ = clib.putchar(@intCast(h(ls.yylval)));
+            _ = word.putchar(@intCast(h(ls.yylval)));
             ls.yylval = t(ls.yylval);
             sl -= 1;
         }
@@ -1758,12 +1758,12 @@ pub fn charclass() c_int {
         syntax("non-escaped newline encountered in char class\n");
     } else if (ch == clib.EOF) {
         if (main.rs.echoing != 0) {
-            _ = clib.putchar('\n');
+            _ = word.putchar('\n');
         }
         word.print("syntax error: script ends inside unclosed char class brackets - \n", .{});
         word.print("    [", .{});
         while (ls.yylval != NIL and sl > 0) {
-            _ = clib.putchar(@intCast(h(ls.yylval)));
+            _ = word.putchar(@intCast(h(ls.yylval)));
             ls.yylval = t(ls.yylval);
             sl -= 1;
         }

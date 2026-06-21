@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const clib = @import("../runtime/c_abi.zig");
+const word = @import("../runtime/word.zig");
 const main = @import("../main.zig");
 const core = @import("../runtime/core_state.zig");
 
@@ -45,16 +46,16 @@ fn parseCurrentNew() ParseError!ParseResult {
         const expr = parser_mod.parseExpr(&p) catch |err| {
             core.SYNERR = 1;
             if (err == error.UnexpectedEof) {
-                _ = clib.printf("syntax error - unexpected newline\n", .{.{}});
+                _ = word.printf("syntax error - unexpected newline\n", .{.{}});
             } else {
-                _ = clib.printf("syntax error - unexpected token\n", .{.{}});
+                _ = word.printf("syntax error - unexpected token\n", .{.{}});
             }
             return ParseError.SyntaxError;
         };
         if (!p.ts.check(.eof) and !p.ts.check(.offside)) {
             // Trailing tokens after the expression — treat as syntax error.
             core.SYNERR = 1;
-            _ = clib.printf("syntax error - unexpected token\n", .{.{}});
+            _ = word.printf("syntax error - unexpected token\n", .{.{}});
             return ParseError.SyntaxError;
         }
         const expr_word = codegen.codegenExpr(alloc, expr);

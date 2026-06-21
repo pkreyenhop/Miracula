@@ -300,7 +300,7 @@ pub export fn evaluate_repl(x_in: Word) void {
         main.compiling = 0;
         resetgcstats();
         clib.output(out_val);
-        _ = clib.putchar('\n');
+        _ = word.putchar('\n');
         outstats();
         clib.exit(0);
     }
@@ -309,7 +309,7 @@ pub export fn evaluate_repl(x_in: Word) void {
 
 pub export fn reset() void {
     if (main.rs.echoing != 0) {
-        _ = clib.putchar('\n');
+        _ = word.putchar('\n');
     }
     main.rs.s_in = main.getStdin();
     main.rs.echoing = 0;
@@ -419,7 +419,7 @@ pub export fn parseline(t_val: Word, f: ?*word.FILE, fil: Word) Word {
                 clib.out_type(t1);
                 word.print("\nshould be :: ", .{});
                 clib.out_type(t_val);
-                _ = clib.putc('\n', main.getStdout());
+                _ = word.putc('\n', main.getStdout());
                 main.rs.lastexp = word.UNDEF;
             }
         }

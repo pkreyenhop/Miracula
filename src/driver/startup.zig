@@ -320,18 +320,18 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 f = main.rs.freeids;
                 word.print("\t%free {{\n", .{});
                 while (f != NIL) : (f = main.heap.t(f)) {
-                    _ = clib.putchar('\t');
+                    _ = word.putchar('\t');
                     clib.report_type(main.heap.h(f));
-                    _ = clib.putchar('\n');
+                    _ = word.putchar('\n');
                 }
                 word.print("\t}}\n", .{});
             }
 
             var item = clib.typesfirst(main.alfasort(x));
             while (item != NIL) : (item = main.heap.t(item)) {
-                _ = clib.putchar('\t');
+                _ = word.putchar('\t');
                 clib.report_type(main.heap.h(item));
-                _ = clib.putchar('\n');
+                _ = word.putchar('\n');
             }
         }
         clib.exit(0);

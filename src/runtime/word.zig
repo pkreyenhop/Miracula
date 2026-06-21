@@ -540,6 +540,251 @@ pub fn flush() void {
     }
 }
 
+// ── C-style formatted output (R1.4) ─────────────────────────────────────────
+// Moved here from main_clib.zig so call sites can use `word.printf`/`fprintf`/
+// `putc`/`putchar` directly and the `clib` shim can eventually be deleted.
+// Output is unbuffered (FILE.writeByte/writeAll do direct syscalls), matching
+// the previous `clib` behaviour byte-for-byte.
+
+pub var c_stdout = FILE{ .file = .{ .handle = std.posix.STDOUT_FILENO, .flags = .{ .nonblocking = false } } };
+pub var c_stderr = FILE{ .file = .{ .handle = std.posix.STDERR_FILENO, .flags = .{ .nonblocking = false } } };
+
+fn formatArg(
+    writer: anytype,
+    val: anytype,
+    specifier: u8,
+    left_align: bool,
+    zero_pad: bool,
+    width: usize,
+    precision: ?usize,
+) !void {
+    _ = precision;
+    const T = @TypeOf(val);
+    const is_int = comptime @typeInfo(T) == .int or @typeInfo(T) == .comptime_int;
+    const is_float = comptime @typeInfo(T) == .float or @typeInfo(T) == .comptime_float;
+    var buf: [128]u8 = undefined;
+    var str: []const u8 = "";
+
+    switch (specifier) {
+        's' => {
+            if (comptime T == ?[*:0]const u8 or T == ?[*:0]u8) {
+                if (val) |p| {
+                    str = std.mem.span(p);
+                } else {
+                    str = "(null)";
+                }
+            } else if (comptime T == [*:0]const u8 or T == [*:0]u8) {
+                str = std.mem.span(val);
+            } else if (comptime @typeInfo(T) == .pointer) {
+                str = std.mem.span(@as([*:0]const u8, @ptrCast(val)));
+            } else {
+                str = "(invalid string type)";
+            }
+        },
+        'c' => {
+            if (comptime is_int) {
+                buf[0] = @intCast(val);
+            } else {
+                buf[0] = '?';
+            }
+            str = buf[0..1];
+        },
+        'd', 'i' => {
+            if (comptime is_int) {
+                str = try std.fmt.bufPrint(&buf, "{d}", .{val});
+            } else if (comptime is_float) {
+                str = try std.fmt.bufPrint(&buf, "{d}", .{@as(i64, @intFromFloat(val))});
+            } else {
+                str = "0";
+            }
+        },
+        'u' => {
+            if (comptime is_int and @typeInfo(T).int.signedness == .signed) {
+                const UInt = std.meta.Int(.unsigned, @typeInfo(T).int.bits);
+                str = try std.fmt.bufPrint(&buf, "{d}", .{@as(UInt, @bitCast(val))});
+            } else if (comptime is_int) {
+                str = try std.fmt.bufPrint(&buf, "{d}", .{val});
+            } else {
+                str = "0";
+            }
+        },
+        'x' => {
+            if (comptime is_int) {
+                str = try std.fmt.bufPrint(&buf, "{x}", .{val});
+            } else {
+                str = "0";
+            }
+        },
+        'o' => {
+            if (comptime is_int) {
+                str = try std.fmt.bufPrint(&buf, "{o}", .{val});
+            } else {
+                str = "0";
+            }
+        },
+        'f', 'g', 'e', 'a' => {
+            if (comptime is_float) {
+                str = try std.fmt.bufPrint(&buf, "{d}", .{val});
+            } else if (comptime is_int) {
+                str = try std.fmt.bufPrint(&buf, "{d}", .{@as(f64, @floatFromInt(val))});
+            } else {
+                str = "0.0";
+            }
+        },
+        else => {
+            str = "?INVALID_SPECIFIER?";
+        },
+    }
+
+    if (str.len < width) {
+        const pad_len = width - str.len;
+        if (left_align) {
+            try writer.writeAll(str);
+            try writer.writeByteNTimes(' ', pad_len);
+        } else if (zero_pad and (specifier == 'd' or specifier == 'i' or specifier == 'u' or specifier == 'x' or specifier == 'o' or specifier == 'f')) {
+            var actual_str = str;
+            if (str.len > 0 and str[0] == '-') {
+                try writer.writeByte('-');
+                actual_str = str[1..];
+            }
+            try writer.writeByteNTimes('0', pad_len);
+            try writer.writeAll(actual_str);
+        } else {
+            try writer.writeByteNTimes(' ', pad_len);
+            try writer.writeAll(str);
+        }
+    } else {
+        try writer.writeAll(str);
+    }
+}
+
+pub fn formatC(writer: anytype, format: [*:0]const u8, args: anytype) !void {
+    const fmt = std.mem.span(format);
+    // Transparently unwrap double-wrapped tuples: .{.{a,b}} → .{a,b}
+    const unwrapped_args = blk: {
+        const ArgsType = @TypeOf(args);
+        const fs = std.meta.fields(ArgsType);
+        if (comptime (fs.len == 1 and @typeInfo(fs[0].type) == .@"struct")) {
+            break :blk @field(args, fs[0].name);
+        }
+        break :blk args;
+    };
+    const ArgsType = @TypeOf(unwrapped_args);
+    const fields = std.meta.fields(ArgsType);
+
+    var arg_idx: usize = 0;
+    var i: usize = 0;
+
+    while (i < fmt.len) {
+        if (fmt[i] == '%') {
+            i += 1;
+            if (i >= fmt.len) break;
+            if (fmt[i] == '%') {
+                try writer.writeByte('%');
+                i += 1;
+                continue;
+            }
+
+            var left_align = false;
+            var zero_pad = false;
+            while (i < fmt.len) {
+                if (fmt[i] == '-') {
+                    left_align = true;
+                    i += 1;
+                } else if (fmt[i] == '0') {
+                    zero_pad = true;
+                    i += 1;
+                } else {
+                    break;
+                }
+            }
+
+            var width: usize = 0;
+            while (i < fmt.len and fmt[i] >= '0' and fmt[i] <= '9') {
+                width = width * 10 + (fmt[i] - '0');
+                i += 1;
+            }
+
+            var precision: ?usize = null;
+            if (i < fmt.len and fmt[i] == '.') {
+                i += 1;
+                var prec_val: usize = 0;
+                while (i < fmt.len and fmt[i] >= '0' and fmt[i] <= '9') {
+                    prec_val = prec_val * 10 + (fmt[i] - '0');
+                    i += 1;
+                }
+                precision = prec_val;
+            }
+
+            while (i < fmt.len and (fmt[i] == 'l' or fmt[i] == 'h' or fmt[i] == 'z' or fmt[i] == 'j' or fmt[i] == 't')) {
+                i += 1;
+            }
+
+            if (i >= fmt.len) break;
+            const spec = fmt[i];
+            i += 1;
+
+            if (arg_idx >= fields.len) {
+                try writer.writeAll("%ERR_MISSING_ARG%");
+                continue;
+            }
+
+            inline for (fields, 0..) |field, idx| {
+                if (idx == arg_idx) {
+                    const val = @field(unwrapped_args, field.name);
+                    try formatArg(writer, val, spec, left_align, zero_pad, width, precision);
+                }
+            }
+            arg_idx += 1;
+        } else {
+            const start = i;
+            while (i < fmt.len and fmt[i] != '%') : (i += 1) {}
+            try writer.writeAll(fmt[start..i]);
+        }
+    }
+}
+
+pub fn fprintf(file: ?*FILE, format: [*:0]const u8, args: anytype) c_int {
+    const f = file orelse return -1;
+    const CountingWriter = struct {
+        file: *FILE,
+        written: usize = 0,
+        pub fn writeByte(self: *@This(), b: u8) !void {
+            try self.file.writeByte(b);
+            self.written += 1;
+        }
+        pub fn writeAll(self: *@This(), bytes: []const u8) !void {
+            try self.file.writeAll(bytes);
+            self.written += bytes.len;
+        }
+        pub fn writeByteNTimes(self: *@This(), b: u8, count: usize) !void {
+            try self.file.writeByteNTimes(b, count);
+            self.written += count;
+        }
+    };
+    var cw = CountingWriter{ .file = f };
+    formatC(&cw, format, args) catch return -1;
+    return @intCast(cw.written);
+}
+
+pub fn printf(format: [*:0]const u8, args: anytype) c_int {
+    return fprintf(&c_stdout, format, args);
+}
+
+pub fn putc(ch: c_int, file: ?*FILE) c_int {
+    const f = file orelse return -1;
+    f.writeByte(@intCast(@as(u8, @intCast(ch)))) catch return -1;
+    return ch;
+}
+
+pub fn fputc(ch: c_int, file: ?*FILE) c_int {
+    return putc(ch, file);
+}
+
+pub fn putchar(ch: c_int) c_int {
+    return putc(ch, &c_stdout);
+}
+
 test "string helpers strcpy and strcat" {
     var buf1: [32:0]u8 = undefined;
     _ = strcpy(&buf1, "hello");

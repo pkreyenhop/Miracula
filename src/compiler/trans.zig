@@ -600,10 +600,10 @@ pub fn abstract(input_x: Word, input_e: Word) Word {
     if (isConstructor(x)) {
         return ap2(Ug, primconstr(x), e);
     }
-    _ = c.printf("error in declaration of \"%s\", undeclared constructor in pattern: ", .{getId(cs.current_id)});
+    _ = word.printf("error in declaration of \"%s\", undeclared constructor in pattern: ", .{getId(cs.current_id)});
     const stdout_val = getStdout();
     out(stdout_val, x);
-    _ = c.printf("\n", .{});
+    _ = word.printf("\n", .{});
     return NIL;
 }
 
@@ -938,11 +938,11 @@ pub fn makeshow(here: Word, type_node: Word) Word {
     cs.was_poly = 0;
     const f = mkshow(0, 0, type_node);
     if (here != 0 and cs.was_poly != 0) {
-        _ = c.printf("type error in definition of %s\n", .{getId(cs.current_id)});
+        _ = word.printf("type error in definition of %s\n", .{getId(cs.current_id)});
         sayhere(here, 0);
-        _ = c.printf(" use of \"show\" at polymorphic type ", .{});
+        _ = word.printf(" use of \"show\" at polymorphic type ", .{});
         out_type(redtvars(type_node));
-        _ = c.putchar('\n');
+        _ = word.putchar('\n');
         setIdType(cs.current_id, wrong_t);
         setIdVal(cs.current_id, UNDEF);
         cs.polyshowerror = 1;
@@ -998,12 +998,12 @@ export fn mkshow(s: Word, p: Word, input_t: Word) Word {
                 return main.rs.showwhat;
             }
             if (main.tag[@intCast(type_node)] == STRCONS) {
-                _ = c.printf("warning - mkshow applied to suppressed type\n", .{});
+                _ = word.printf("warning - mkshow applied to suppressed type\n", .{});
                 return main.rs.showwhat;
             }
-            _ = c.printf("impossible event in mkshow (", .{});
+            _ = word.printf("impossible event in mkshow (", .{});
             out_type(type_node);
-            _ = c.printf(")\n", .{});
+            _ = word.printf(")\n", .{});
             return main.rs.showwhat;
         },
     }
@@ -1025,10 +1025,10 @@ fn nclchk(n: Word, p: Word, hr: Word) c_int {
             return 0;
         }
         if (main.rs.echoing != 0) {
-            _ = c.putchar('\n');
+            _ = word.putchar('\n');
         }
         main.errs = hr;
-        _ = c.printf("syntax error: conflicting definitions of \"%s\" in where clause\n", .{getId(n)});
+        _ = word.printf("syntax error: conflicting definitions of \"%s\" in where clause\n", .{getId(n)});
         acterror();
         return 1;
     }
@@ -1050,19 +1050,19 @@ pub fn nclashcheck(n: Word, input_dd: Word, hr: Word) void {
 
 pub fn respec_error(x: Word) void {
     if (main.rs.echoing != 0) {
-        _ = c.putchar('\n');
+        _ = word.putchar('\n');
     }
     const suffix: [*:0]const u8 = if (member(main.rs.primenv, x) != 0) " (in standard environment)" else "";
-    _ = c.printf("syntax error: type of \"%s\" already declared%s\n", .{ getId(x), suffix });
+    _ = word.printf("syntax error: type of \"%s\" already declared%s\n", .{ getId(x), suffix });
     acterror();
 }
 
 pub fn nameclash(x: Word) void {
     if (main.rs.echoing != 0) {
-        _ = c.putchar('\n');
+        _ = word.putchar('\n');
     }
     const suffix: [*:0]const u8 = if (member(main.rs.primenv, x) != 0) " (in standard environment)" else "";
-    _ = c.printf("syntax error: nameclash, \"%s\" already defined%s\n", .{ getId(x), suffix });
+    _ = word.printf("syntax error: nameclash, \"%s\" already defined%s\n", .{ getId(x), suffix });
     acterror();
 }
 
@@ -1127,7 +1127,7 @@ export fn specify(input_x: Word, spec_type: Word, here: Word) void {
 fn arityCheck(type_name: Word, arity: Word, here: Word) void {
     if (typeArity(type_name) != arity) {
         const prefix: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
-        _ = c.printf("%ssyntax error: wrong number of parameters for typename \"%s\" (%ld expected)\n", .{
+        _ = word.printf("%ssyntax error: wrong number of parameters for typename \"%s\" (%ld expected)\n", .{
             prefix,
             getId(type_name),
             typeArity(type_name),
@@ -1192,7 +1192,7 @@ fn decl1(x: Word, e: Word) void {
     } else if (fallible(h(t(idVal(x)))) == 0) {
         const prefix: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
         main.errs = h(e);
-        _ = c.printf("%ssyntax error: unreachable case in defn of \"%s\"\n", .{ prefix, getId(x) });
+        _ = word.printf("%ssyntax error: unreachable case in defn of \"%s\"\n", .{ prefix, getId(x) });
         acterror();
     } else {
         tp(idVal(x)).* = cons(e, t(idVal(x)));
@@ -1551,9 +1551,9 @@ pub export fn codegen(x: Word) Word {
         STARTREADVALS => {
             if (ispoly(t(x)) != 0) {
                 const name_str: [*:0]const u8 = if (ls.cook_stdin != 0 and x == h(ls.cook_stdin)) "$+" else "readvals or $+";
-                _ = c.printf("type error - %s used at polymorphic type :: [", .{name_str});
+                _ = word.printf("type error - %s used at polymorphic type :: [", .{name_str});
                 out_type(redtvars(t(x)));
-                _ = c.printf("]\n", .{});
+                _ = word.printf("]\n", .{});
                 cs.polyshowerror = 1;
                 if (cs.current_id != 0) {
                     cs.ND = add1(cs.current_id, cs.ND);
@@ -1624,7 +1624,7 @@ export fn genshfns() void {
         } else if (t_class(h(s)) == abstract_t) {
             if (t_showfn(h(s)) != 0) {
                 if (abshfnck(h(s), idType(t_showfn(h(s)))) == 0) {
-                    _ = c.printf("warning - \"%s\" has type inappropriate for a show-function\n", .{getId(t_showfn(h(s)))});
+                    _ = word.printf("warning - \"%s\" has type inappropriate for a show-function\n", .{getId(t_showfn(h(s)))});
                     tp(t_showfn(h(s))).* = 0;
                 }
             }

@@ -28,7 +28,7 @@ var filequote_mlen: usize = 0;
 fn spaces(s: Word) void {
     var j = s;
     while (j > 0) : (j -= 1) {
-        _ = clib.putchar(' ');
+        _ = word.putchar(' ');
     }
 }
 
@@ -111,7 +111,7 @@ fn namescom(l: Word) void {
                 leftist = !leftist;
                 wp = 0;
                 col_local = 0;
-                _ = clib.putchar('\n');
+                _ = word.putchar('\n');
             }
             col_local += w;
             words[wp] = main.heap.h(n);
@@ -126,7 +126,7 @@ fn namescom(l: Word) void {
         while (col_local < wp) {
             word.print("{s}", .{main.get_id(words[@as(usize, @intCast(col_local))])});
             col_local += 1;
-            _ = clib.putc(if (col_local == wp) '\n' else ' ', main.getStdout());
+            _ = word.putc(if (col_local == wp) '\n' else ' ', main.getStdout());
         }
     }
     if (undefs == NIL) return;
@@ -620,13 +620,13 @@ pub fn finger(n: [*:0]const u8) void {
             if (aka_opt) |aka_s| {
                 word.print(" (as \"{s}\")\n", .{aka_s});
             } else {
-                _ = clib.putchar('\n');
+                _ = word.putchar('\n');
             }
         }
         if (main.rs.atobject != 0) {
             word.print("{s} = ", .{main.get_id(x)});
             clib.out(main.getStdout(), main.id_val(x));
-            _ = clib.putchar('\n');
+            _ = word.putchar('\n');
         }
         return;
     }
@@ -685,7 +685,7 @@ pub fn allnamescom() void {
                 if (z == 0) {
                     z = 1;
                 } else {
-                    _ = clib.putchar(',');
+                    _ = word.putchar(',');
                 }
                 clib.out(main.getStdout(), main.heap.h(x));
             }
@@ -700,7 +700,7 @@ pub fn allnamescom() void {
                 if (z == 0) {
                     z = 1;
                 } else {
-                    _ = clib.putchar(',');
+                    _ = word.putchar(',');
                 }
                 clib.out(main.getStdout(), main.heap.h(y));
             }

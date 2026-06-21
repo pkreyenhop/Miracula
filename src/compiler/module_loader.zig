@@ -192,7 +192,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
                 while (n != NIL) : (n = main.heap.t(n)) {
                     word.print(" -{s}", .{main.get_id(main.heap.h(n))});
                 }
-                _ = clib.putchar('\n');
+                _ = word.putchar('\n');
             }
 
             if (u != NIL) {
@@ -285,9 +285,9 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         }
         while (main.rs.detrop != NIL) {
             clib.out_here(main.getStdout(), main.heap.h(main.heap.h(main.heap.t(main.dval(main.heap.h(main.rs.detrop))))), 0);
-            _ = clib.putchar('\t');
+            _ = word.putchar('\t');
             clib.out_pattern(main.getStdout(), main.dlhs(main.heap.h(main.rs.detrop)));
-            _ = clib.putchar('\n');
+            _ = word.putchar('\n');
             main.rs.detrop = main.heap.t(main.rs.detrop);
             while (main.rs.detrop != NIL and main.tag[@intCast(main.dval(main.heap.h(main.rs.detrop)))] == word.LABEL) {
                 main.rs.detrop = main.heap.t(main.rs.detrop);
@@ -303,9 +303,9 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         }
         while (gd_mut != NIL) {
             clib.out_here(main.getStdout(), main.heap.h(main.dval(main.heap.h(gd_mut))), 0);
-            _ = clib.putchar('\t');
+            _ = word.putchar('\t');
             clib.out_pattern(main.getStdout(), main.dlhs(main.heap.h(gd_mut)));
-            _ = clib.putchar('\n');
+            _ = word.putchar('\n');
             gd_mut = main.heap.t(gd_mut);
             while (gd_mut != NIL and main.tag[@intCast(main.dval(main.heap.h(gd_mut)))] != word.LABEL) {
                 gd_mut = main.heap.t(gd_mut);
@@ -553,7 +553,7 @@ pub fn mkincludes(includees_val: Word) Word {
                 while (ts != NIL) : (ts = main.heap.t(ts)) {
                     word.print(" -{s}", .{main.get_id(main.heap.h(ts))});
                 }
-                _ = clib.putchar('\n');
+                _ = word.putchar('\n');
             }
         } else if (main.cs.BAD_DUMP != 0) {
             word.print("\"{s}\" has bad data in dump file\n", .{fn_str});

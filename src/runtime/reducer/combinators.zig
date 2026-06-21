@@ -822,7 +822,7 @@ pub fn handleERROR(ctx: *ReductionCtx) void {
         word.printErr("\nprogram error: ", .{});
         reduce.s_out = reduce.getStderr();
         reduce.print(lastarg);
-        _ = clib.putc('\n', reduce.getStderr().?);
+        _ = word.putc('\n', reduce.getStderr().?);
     }
     clib.outstats();
     clib.exit(1);

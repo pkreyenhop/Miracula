@@ -191,7 +191,7 @@ export fn reduce_badcase_error(arg_info: Word) void {
     if (subject != 0) {
         word.printErr(" of {s}", .{std.mem.span(getstring(subject, null).?)});
     }
-    _ = clib.putc('\n', getStderr().?);
+    _ = word.putc('\n', getStderr().?);
     out_here(getStderr().?, t(arg_info), 1);
     outstats();
     clib.exit(1);
@@ -369,11 +369,11 @@ export fn out_here(f: ?*word.FILE, h_val: Word, nl: c_int) void {
         word.printErr("(impossible event in outhere)\n", .{});
         return;
     }
-    _ = clib.fprintf(f.?, "(line %3ld of \"%s\")", .{.{ t(h_val), @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(h_val))))))) }});
+    _ = word.fprintf(f.?, "(line %3ld of \"%s\")", .{.{ t(h_val), @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(h_val))))))) }});
     if (nl != 0) {
-        _ = clib.putc('\n', f.?);
+        _ = word.putc('\n', f.?);
     } else {
-        _ = clib.putc(' ', f.?);
+        _ = word.putc(' ', f.?);
     }
     if (compiling != 0 and errs == 0) {
         errs = h_val;
@@ -667,7 +667,7 @@ export fn print(arg_e: Word) void {
         if (main.rs.UTF8 != 0) {
             clib.outUTF8(c, s_out);
         } else if (c < 256) {
-            _ = clib.putc(@intCast(c), s_out.?);
+            _ = word.putc(@intCast(c), s_out.?);
         } else {
             word.printErr("\n warning: non Latin1 char {x} in print, ignored\n", .{c});
         }
@@ -678,7 +678,7 @@ export fn print(arg_e: Word) void {
         return;
     }
     word.printErr("\nimpossible event in print\n", .{});
-    _ = clib.putc('<', getStderr().?);
+    _ = word.putc('<', getStderr().?);
     clib.out(getStderr().?, e);
     word.printErr(">\n", .{});
     clib.exit(1);
@@ -768,7 +768,7 @@ export fn output(arg_e: Word) void {
         return;
     }
     word.printErr("\nimpossible event in output\n", .{});
-    _ = clib.putc('<', getStderr().?);
+    _ = word.putc('<', getStderr().?);
     clib.out(getStderr().?, e);
     word.printErr(">\n", .{});
     clib.exit(1);
