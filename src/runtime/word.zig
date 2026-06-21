@@ -278,7 +278,7 @@ pub const UNICODE_X: Word = XBASE + 15;
 
 
 pub const FILE = struct {
-    fd: c_int = -1,
+    file: std.Io.File = .{ .handle = -1, .flags = .{ .nonblocking = false } },
     pushback: ?u8 = null,
     mem_buf: ?[]const u8 = null,
     mem_pos: usize = 0,
@@ -300,7 +300,7 @@ pub const FILE = struct {
             return error.EndOfStream;
         }
         if (self.buf_start >= self.buf_end) {
-            const n = try std.posix.read(self.fd, &self.buf);
+            const n = try std.posix.read(self.file.handle, &self.buf);
             if (n == 0) return error.EndOfStream;
             self.buf_start = 0;
             self.buf_end = n;
@@ -316,14 +316,14 @@ pub const FILE = struct {
 
     pub fn writeByte(self: *FILE, c: u8) !void {
         const buf = [1]u8{c};
-        const rc = std.posix.system.write(self.fd, &buf, 1);
+        const rc = std.posix.system.write(self.file.handle, &buf, 1);
         if (rc < 0) return error.WriteFailed;
     }
 
     pub fn writeAll(self: *FILE, slice: []const u8) !void {
         var written: usize = 0;
         while (written < slice.len) {
-            const rc = std.posix.system.write(self.fd, slice[written..].ptr, slice.len - written);
+            const rc = std.posix.system.write(self.file.handle, slice[written..].ptr, slice.len - written);
             if (rc < 0) return error.WriteFailed;
             written += @intCast(rc);
         }

@@ -217,9 +217,9 @@ pub const void_t = word_mod.void_t;
 pub const wrong_t = word_mod.wrong_t;
 
 // Std streams setup
-pub var std_in = FILE{ .fd = std.posix.STDIN_FILENO };
-pub var std_out = FILE{ .fd = std.posix.STDOUT_FILENO };
-pub var std_err = FILE{ .fd = std.posix.STDERR_FILENO };
+pub var std_in = FILE{ .file = .{ .handle = std.posix.STDIN_FILENO, .flags = .{ .nonblocking = false } } };
+pub var std_out = FILE{ .file = .{ .handle = std.posix.STDOUT_FILENO, .flags = .{ .nonblocking = false } } };
+pub var std_err = FILE{ .file = .{ .handle = std.posix.STDERR_FILENO, .flags = .{ .nonblocking = false } } };
 
 pub fn stdin() ?*FILE {
     return &std_in;
@@ -239,7 +239,7 @@ fn allocFile() ?*FILE {
     for (&file_in_use, 0..) |*in_use, idx| {
         if (!in_use.*) {
             in_use.* = true;
-            file_pool[idx] = FILE{ .fd = -1 };
+            file_pool[idx] = FILE{ .file = .{ .handle = -1, .flags = .{ .nonblocking = false } } };
             return &file_pool[idx];
         }
     }
@@ -271,22 +271,28 @@ pub fn fopen(path: ?*const anyopaque, mode: [*:0]const u8) ?*FILE {
         if (mc == 'a') for_append = true;
     }
 
-    const flags: std.posix.O = if (for_read)
-        .{}
+    const io = std.Options.debug_io;
+    const dir = std.Io.Dir.cwd();
+
+    const file = if (for_read)
+        dir.openFile(io, std.mem.span(path_str), .{}) catch return null
     else if (for_write)
-        .{ .ACCMODE = .WRONLY, .CREAT = true, .TRUNC = true }
-    else if (for_append)
-        .{ .ACCMODE = .WRONLY, .CREAT = true, .APPEND = true }
-    else
+        dir.createFile(io, std.mem.span(path_str), .{}) catch return null
+    else if (for_append) d: {
+        const f = dir.createFile(io, std.mem.span(path_str), .{ .truncate = false }) catch return null;
+        _ = std.posix.system.lseek(f.handle, 0, 2);
+        break :d f;
+    } else
         return null;
 
-    const fd = std.posix.openatZ(std.posix.AT.FDCWD, path_str, flags, 0o666) catch return null;
     const f_ptr = allocFile() orelse {
-        _ = std.posix.system.close(@intCast(fd));
+        file.close(io);
         return null;
     };
-    f_ptr.fd = @intCast(fd);
+    f_ptr.file = file;
     f_ptr.pushback = null;
+    f_ptr.buf_start = 0;
+    f_ptr.buf_end = 0;
     return f_ptr;
 }
 
@@ -295,7 +301,11 @@ pub fn fclose(file: ?*FILE) c_int {
         if (f == &std_in or f == &std_out or f == &std_err) {
             return 0;
         }
-        if (f.fd >= 0) _ = std.posix.system.close(f.fd);
+        if (f.file.handle >= 0) {
+            const io = std.Options.debug_io;
+            f.file.close(io);
+            f.file.handle = -1;
+        }
         freeFile(f);
         return 0;
     }
@@ -303,7 +313,7 @@ pub fn fclose(file: ?*FILE) c_int {
 }
 
 pub fn fileno(file: ?*FILE) c_int {
-    if (file) |f| return f.fd;
+    if (file) |f| return f.file.handle;
     return -1;
 }
 
@@ -1534,7 +1544,7 @@ pub fn fmemopen(buf: ?*anyopaque, size: usize, mode: [*:0]const u8) ?*FILE {
     _ = mode;
     if (buf == null) return null;
     const f_ptr = allocFile() orelse return null;
-    f_ptr.fd = -1;
+    f_ptr.file = .{ .handle = -1, .flags = .{ .nonblocking = false } };
     f_ptr.pushback = null;
     f_ptr.mem_buf = @as([*]const u8, @ptrCast(buf.?))[0..size];
     f_ptr.mem_pos = 0;
@@ -1631,7 +1641,7 @@ pub fn localtime(timer: *const time_t) ?*struct_tm {
 pub fn fdopen(fd: c_int, mode: [*:0]const u8) ?*FILE {
     _ = mode;
     const f_ptr = allocFile() orelse return null;
-    f_ptr.fd = fd;
+    f_ptr.file = .{ .handle = fd, .flags = .{ .nonblocking = false } };
     f_ptr.pushback = null;
     f_ptr.mem_buf = null;
     f_ptr.mem_pos = 0;
