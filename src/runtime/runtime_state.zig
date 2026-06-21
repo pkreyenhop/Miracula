@@ -107,6 +107,10 @@ pub const RuntimeState = struct {
     rc_error: ?[*:0]const u8 = null,
 
     // Signal / longjmp recovery
+    /// Recovery point for SIGINT and SIGFPE via siglongjmp().  POSIX signal
+    /// handlers are asynchronous (fire on any call stack) and cannot propagate
+    /// Zig error unions via stack unwinding.  This sigjmp_buf MUST remain —
+    /// it cannot be replaced with error{EvaluationInterrupted}.
     env: clib.sigjmp_buf = .{},
     /// Path of a temp file to unlink if a signal fires during dump/undump.
     unlinkme: ?[*:0]const u8 = null,

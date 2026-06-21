@@ -102,10 +102,9 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
       1. `gc()` in `heap.zig`: The `setjmp`/`longjmp` pair was a self-contained "local return" within the same stack frame — removed both, gc() now returns normally. The jmp_buf import is no longer referenced in heap.zig.
       2. `types.zig` type-checker abort path: Removed `export var env1`, `export fn types_abort()`, and the `setjmp` wrapper in `checktypes()`. Converted `meta_tcheck`, `etype`, `conforms`, `comp_deps`, `abstr_check`, `abstr_mcheck`, `mcheckfbs` to `!Word`/`!void` return types. Error propagates via `try`; callers that cannot propagate use `catch return` / `catch {}`. `export fn checktypes() void` catches with a labeled `outer:` block.
       Signal-handler paths (`sigsetjmp`/`siglongjmp` on `rs.env` for SIGINT/SIGFPE) are unchanged — POSIX signal handlers are asynchronous and cannot propagate Zig errors.
-* **E3: Top-Level Error Handling**
-    * *Status:* Not started
-    * *Details:* Catch and handle the errors gracefully at the top-level loop (e.g., inside `commandloop`) using `catch`, replacing the `setjmp` recovery points.
-    * *Constraint:* Do not begin this work until Clusters A through D are fully complete to avoid destabilizing the structural refactoring.
+* **E3: Top-Level Error Handling — Signal-Handler Constraint Documentation**
+    * *Status:* **Complete (2026-06-21)**
+    * *Details:* The `commandloop` recovery point (`sigsetjmp(&rs.env, 1)`) and signal handlers (`reset`, `fpe_error`) in `repl.zig` CANNOT be converted to Zig error unions. POSIX signal handlers are asynchronous — the handler fires on any call stack, making stack-unwinding error propagation impossible. The `sigjmp_buf rs.env` field in `RuntimeState` MUST remain. This constraint is documented in `errors.zig` (preamble), in the `rs.env` field doc comment in `runtime_state.zig`, and in this plan. No code change is possible or appropriate for this site. All actionable setjmp/longjmp sites have been addressed in E2.
 
 ---
 ## Progress Summary
@@ -126,4 +125,4 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 | D | D3 | Documentation | **Complete** |
 | E | E1 | Define Domain Errors | **Complete** |
 | E | E2 | Error Union Signatures & Bubbling | **Complete** |
-| E | E3 | Top-Level Error Handling | Not started |
+| E | E3 | Top-Level Error Handling | **Complete** |
