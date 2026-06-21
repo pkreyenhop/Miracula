@@ -487,11 +487,11 @@ export fn sterilise(t_val: Word) void {
     }
 }
 
-fn meta_tcheck(t_val: Word) main.MiraError!Word {
+fn metaTcheck(t_val: Word) main.MiraError!Word {
     var tn = t_val;
     var i: Word = 0;
     while (iscompound_t(tn)) {
-        tp(tn).* = try meta_tcheck(t(tn));
+        tp(tn).* = try metaTcheck(t(tn));
         i += 1;
         tn = h(tn);
     }
@@ -585,7 +585,7 @@ fn meta_tcheck(t_val: Word) main.MiraError!Word {
         tn = cons(t(cur_t), tn);
         cur_t = h(cur_t);
     }
-    const res = try meta_tcheck(ap_subst(t_info(cur_t), tn));
+    const res = try metaTcheck(ap_subst(t_info(cur_t), tn));
     cs.meta_pending = t(cs.meta_pending);
     return res;
 }
@@ -1275,7 +1275,7 @@ export fn deps(x_in: Word) Word {
     }
 }
 
-fn comp_deps(n: Word) main.MiraError!void {
+fn compDeps(n: Word) main.MiraError!void {
     var rhs = NIL;
     var r: Word = 0;
     if (idType(n) == type_t) {
@@ -1284,13 +1284,13 @@ fn comp_deps(n: Word) main.MiraError!void {
                 r = t_info(n);
                 while (r != NIL) {
                     cs.current_id = h(r);
-                    tp(h(h(r))).* = redtvars(try meta_tcheck(idType(h(r))));
+                    tp(h(h(r))).* = redtvars(try metaTcheck(idType(h(r))));
                     r = t(r);
                 }
             },
             synonym_t => {
                 cs.current_id = n;
-                tp(t(t(n))).* = try meta_tcheck(t_info(n));
+                tp(t(t(n))).* = try metaTcheck(t_info(n));
             },
             abstract_t => {
                 if (t_info(n) == undef_t) {
@@ -1299,7 +1299,7 @@ fn comp_deps(n: Word) main.MiraError!void {
                     cs.TYPERRS += 1;
                 } else {
                     cs.current_id = n;
-                    tp(t(t(n))).* = try meta_tcheck(t_info(n));
+                    tp(t(t(n))).* = try metaTcheck(t_info(n));
                 }
             },
             else => {},
@@ -1316,11 +1316,11 @@ fn comp_deps(n: Word) main.MiraError!void {
             if (t(n) == UNDEF) {
                 cs.SBND = add1(n, cs.SBND);
             }
-            tp(h(n)).* = redtvars(try meta_tcheck(h(idType(n))));
+            tp(h(n)).* = redtvars(try metaTcheck(h(idType(n))));
             cs.current_id = 0;
             return;
         }
-        tp(h(n)).* = redtvars(try meta_tcheck(idType(n)));
+        tp(h(n)).* = redtvars(try metaTcheck(idType(n)));
         cs.current_id = 0;
     }
     if (t(n) == FREE) {
@@ -1389,7 +1389,7 @@ fn the_val(x: Word) Word {
     return t(x);
 }
 
-fn reset_SUBST() void {
+fn resetSubst() void {
     cs.current_id = if (cs.tvcount >= @as(Word, @intCast(hashsize))) clear_SUBST() else 0;
 }
 
@@ -1486,7 +1486,7 @@ export fn fix_type(t_val: Word) Word {
     }
 }
 
-fn abstr_check(x_in: Word) main.MiraError!void {
+fn abstrCheck(x_in: Word) main.MiraError!void {
     var x = x_in;
     const rtypes = t(h(x));
     const sigids = t(x);
@@ -1512,7 +1512,7 @@ fn abstr_check(x_in: Word) main.MiraError!void {
             tp(h(x)).* = UNDEF;
             cs.ND = add1(h(x), cs.ND);
         }
-        reset_SUBST();
+        resetSubst();
         x = t(x);
     }
     // restore the abstract types - for "finger"
@@ -1528,7 +1528,7 @@ fn abstr_check(x_in: Word) main.MiraError!void {
     cs.ATNAMES = 0;
 }
 
-fn abstr_mcheck(tabstrs_in: Word) main.MiraError!void {
+fn abstrMcheck(tabstrs_in: Word) main.MiraError!void {
     var tabstrs = tabstrs_in;
     while (tabstrs != NIL) {
         const atnames = h(h(tabstrs));
@@ -1542,7 +1542,7 @@ fn abstr_mcheck(tabstrs_in: Word) main.MiraError!void {
             if (t_val == undef_t) {
                 rtypes = cons(undef_t, rtypes);
             } else {
-                rtypes = cons(try meta_tcheck(t_val), rtypes);
+                rtypes = cons(try metaTcheck(t_val), rtypes);
             }
             sigids = t(sigids);
         }
@@ -1568,7 +1568,7 @@ fn mcheckfbs() main.MiraError!void {
                 continue;
             }
             cs.current_id = h(t(h(formals))); // nb datapair(orig,0) not id
-            tp(t(t(h(h(formals))))).* = try meta_tcheck(t_info(h(h(formals))));
+            tp(t(t(h(h(formals))))).* = try metaTcheck(t_info(h(h(formals))));
             cs.current_id = 0;
             formals = t(formals);
         }
@@ -1583,7 +1583,7 @@ fn mcheckfbs() main.MiraError!void {
                 continue;
             }
             cs.current_id = h(t(h(formals))); // nb datapair(orig,0) not id
-            tp(t(h(formals))).* = redtvars(try meta_tcheck(t_val));
+            tp(t(h(formals))).* = redtvars(try metaTcheck(t_val));
             cs.current_id = 0;
             formals = t(formals);
         }
@@ -1600,10 +1600,10 @@ fn mcheckfbs() main.MiraError!void {
             if (main.tag[@intCast(n)] == ID) {
                 if (idType(n) == type_t) {
                     if (t_class(n) == synonym_t) {
-                        tp(t(t(n))).* = try meta_tcheck(t_info(n));
+                        tp(t(t(n))).* = try metaTcheck(t_info(n));
                     }
                 } else {
-                    tp(h(n)).* = redtvars(try meta_tcheck(idType(n)));
+                    tp(h(n)).* = redtvars(try metaTcheck(idType(n)));
                 }
             }
             formals = t(formals);
@@ -1650,7 +1650,7 @@ export fn checkfbs() void {
         _ = c.fprintf(getStderr().?, "compilation abandoned\n", .{});
         main.SYNERR = 1;
     }
-    reset_SUBST();
+    resetSubst();
 }
 
 export fn genlstat_t() Word {
@@ -2012,7 +2012,7 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
                     c_local = cons(b, c_local);
                     e = try conforms(dlhs(h(cur_d)), b, e, c_local);
                 } else {
-                    hp(t(h(cur_d))).* = try meta_tcheck(dtyp(h(cur_d)));
+                    hp(t(h(cur_d))).* = try metaTcheck(dtyp(h(cur_d)));
                     s = cons(h(cur_d), s);
                     e = cons(cons(dlhs(h(cur_d)), dtyp(h(cur_d))), e);
                 }
@@ -2492,7 +2492,7 @@ export fn genbnft() void {
 export fn checktype(x: Word) Word {
     cs.TYPERRS = 0;
     _ = etype(x, NIL, NIL) catch return 0;
-    reset_SUBST();
+    resetSubst();
     return if (cs.TYPERRS == 0) 1 else 0;
 }
 
@@ -2506,7 +2506,7 @@ pub export fn type_of(x: Word) Word {
     return t_val;
 }
 
-fn infer_type(x: Word) void {
+fn inferType(x: Word) void {
     if (main.tag[@intCast(x)] == ID) {
         var t_val: Word = undefined;
         const oldte = cs.TYPERRS;
@@ -2526,7 +2526,7 @@ fn infer_type(x: Word) void {
         } else if (idType(x) == undef_t) {
             tp(h(x)).* = redtvars(t_val);
         }
-        reset_SUBST();
+        resetSubst();
     } else {
         var x1 = x;
         var oldte: Word = undefined;
@@ -2555,7 +2555,7 @@ fn infer_type(x: Word) void {
             }
             x1 = t(x1);
         }
-        reset_SUBST();
+        resetSubst();
     }
     cs.current_id = 0;
 }
@@ -2585,14 +2585,14 @@ pub export fn checktypes() void {
         }
         var s = reverse(t(h(main.files)));
         while (s != NIL) {
-            comp_deps(h(s)) catch break :outer;
+            compDeps(h(s)) catch break :outer;
             s = t(s);
         }
         cs.R = tclos(sortrel(cs.R));
         if (cs.FBS != NIL) {
             mcheckfbs() catch break :outer;
         }
-        abstr_mcheck(cs.TABSTRS) catch break :outer;
+        abstrMcheck(cs.TABSTRS) catch break :outer;
     }
     if (cs.TYPERRS != 0) {
         cs.TABSTRS = NIL;
@@ -2614,12 +2614,12 @@ pub export fn checktypes() void {
     cs.NT = NIL;
     cs.R = NIL;
     while (s != NIL) {
-        infer_type(h(s));
+        inferType(h(s));
         s = t(s);
     }
     checkfbs();
     while (cs.TABSTRS != NIL) {
-        abstr_check(h(cs.TABSTRS)) catch {};
+        abstrCheck(h(cs.TABSTRS)) catch {};
         cs.TABSTRS = t(cs.TABSTRS);
     }
     if (cs.SBND != NIL) {
