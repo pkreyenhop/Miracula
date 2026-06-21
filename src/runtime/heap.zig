@@ -178,6 +178,7 @@ pub export fn charname(ch: Word) [*:0]const u8 {
         '"' => "\\\"",
         else => blk: {
             if (ch < 32 or ch > 126) {
+                // "\NNN" is at most 4 bytes + NUL; charname_buffer is sized for it.
                 const text = std.fmt.bufPrintZ(&charname_buffer, "\\{d}", .{ch}) catch unreachable;
                 break :blk text.ptr;
             }
@@ -282,17 +283,11 @@ export fn trueheapsize() Word {
 pub export fn setupheap() void {
     const heap_alloc_size = @as(usize, @intCast(rt.rs.SPACELIMIT));
     if (heap == null) {
-        const ptr = c.malloc(heap_alloc_size * @sizeOf(Word) * 2) orelse {
-            mallocfail("heap");
-            unreachable;
-        };
+        const ptr = c.malloc(heap_alloc_size * @sizeOf(Word) * 2) orelse mallocPanic("heap");
         heap = @ptrCast(@alignCast(ptr));
 
         const bigtop_val = @as(usize, @intCast(BIGTOP()));
-        const tag_ptr = c.calloc(bigtop_val + 1, @sizeOf(u8)) orelse {
-            mallocfail("heap");
-            unreachable;
-        };
+        const tag_ptr = c.calloc(bigtop_val + 1, @sizeOf(u8)) orelse mallocPanic("heap");
         tag = @ptrCast(@alignCast(tag_ptr));
     }
 
@@ -312,17 +307,11 @@ export fn resetheap() void {
         c.exit(1);
     }
     const heap_alloc_size = @as(usize, @intCast(rt.rs.SPACELIMIT));
-    const ptr = c.realloc(heap, heap_alloc_size * @sizeOf(Word) * 2) orelse {
-        mallocfail("heap");
-        unreachable;
-    };
+    const ptr = c.realloc(heap, heap_alloc_size * @sizeOf(Word) * 2) orelse mallocPanic("heap");
     heap = @ptrCast(@alignCast(ptr));
 
     const bigtop_val = @as(usize, @intCast(BIGTOP()));
-    const tag_ptr = c.realloc(tag, bigtop_val + 1) orelse {
-        mallocfail("heap");
-        unreachable;
-    };
+    const tag_ptr = c.realloc(tag, bigtop_val + 1) orelse mallocPanic("heap");
     tag = @ptrCast(@alignCast(tag_ptr));
 
     hd = heap.? - @as(usize, @intCast(ATOMLIMIT * 2));
@@ -341,6 +330,15 @@ pub export fn mallocfail(x: [*:0]const u8) void {
     const stderr = getStderr().?;
     _ = c.fprintf(stderr, "panic: cannot find enough free space for %s\n", .{x});
     c.exit(1);
+}
+
+/// `noreturn` wrapper around the C-ABI `mallocfail`, for use as
+/// `alloc(...) orelse mallocPanic("what")`. Concentrates the one `unreachable`
+/// the allocation-failure path needs (the compiler cannot see that the C-ABI
+/// `mallocfail`, typed `void`, never returns) into a single justified place.
+pub fn mallocPanic(what: [*:0]const u8) noreturn {
+    mallocfail(what);
+    unreachable; // mallocfail prints a diagnostic and calls exit(1)
 }
 
 pub export fn resetgcstats() void {
@@ -1558,10 +1556,7 @@ pub fn unscramble(aliases: Word) void {
 
 pub fn dsetup() void {
     if (dstack == null) {
-        const ptr = c.malloc(1000 * @sizeOf(Word)) orelse {
-            mallocfail("dstack");
-            unreachable;
-        };
+        const ptr = c.malloc(1000 * @sizeOf(Word)) orelse mallocPanic("dstack");
         dstack = @ptrCast(@alignCast(ptr));
         dlim = dstack.? + 1000;
     }
@@ -1571,10 +1566,7 @@ pub fn dsetup() void {
 pub fn dgrow() void {
     const hold = dstack.?;
     const num_elements = dlim.? - hold;
-    const ptr = c.realloc(hold, num_elements * 2 * @sizeOf(Word)) orelse {
-        mallocfail("dstack");
-        unreachable;
-    };
+    const ptr = c.realloc(hold, num_elements * 2 * @sizeOf(Word)) orelse mallocPanic("dstack");
     dstack = @ptrCast(@alignCast(ptr));
     dlim = dstack.? + num_elements * 2;
     stackp = dstack.? + (stackp.? - hold);

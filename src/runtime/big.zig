@@ -732,6 +732,7 @@ export fn bigtostr(input_x: Word) Word {
 
 fn wordToDecimalList(value: Word) Word {
     var buffer: [64]u8 = undefined;
+    // 64 bytes holds any decimal Word (<= 20 digits); bufPrint cannot overflow.
     const text = std.fmt.bufPrint(&buffer, "{d}", .{value}) catch unreachable;
     var result: Word = NIL;
     var i = text.len;
@@ -756,6 +757,7 @@ export fn bigtostrx(input_x: Word) Word {
             x = rest(x);
         }
         var buffer: [16]u8 = undefined;
+        // exactly 15 hex digits formatted into a 16-byte buffer; cannot overflow.
         const text = std.fmt.bufPrint(&buffer, "{x:0>15}", .{hold}) catch unreachable;
         var i = text.len;
         while (i != 0) {
@@ -775,6 +777,7 @@ export fn bigtostr8(input_x: Word) Word {
     const s = neg(x) != 0;
     while (x != 0) {
         var buffer: [6]u8 = undefined;
+        // exactly 5 octal digits formatted into a 6-byte buffer; cannot overflow.
         const text = std.fmt.bufPrint(&buffer, "{o:0>5}", .{@as(u64, @intCast(digit0(x)))}) catch unreachable;
         var i = text.len;
         while (i != 0) {

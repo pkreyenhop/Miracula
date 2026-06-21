@@ -494,9 +494,15 @@ only the genuine verb-helpers outside this set.
   `evalAbort()` helper), multi-step shutdowns that run cleanup between print and exit
   (`startup.zig` `libfails`, `repl.zig` `$+`), the FPE message that prints to **stdout**
   (stream-preserving), and the single canonical `exit(1)` *inside* `fatal()` itself.
-* **O3 — `unreachable` audit (18 sites)** ⬜
-  Replace logic-reachable `unreachable` with `@panic("reason")`; keep provably-unreachable ones
-  and add a one-line justification comment. *Risk: low.*
+* **O3 — `unreachable` audit (18 sites)** ✅ *(2026-06-21)*
+  Added `heap.mallocPanic(what) noreturn` (wraps the C-ABI `void` `mallocfail`, which exits).
+  Routed the **12 load-bearing `alloc(...) orelse { mallocfail(); unreachable; }`** blocks
+  (6 in `heap.zig`, 6 in `lex.zig`) through it — each is now an idiomatic
+  `orelse mallocPanic("what")` one-liner and the single justified `unreachable` lives only in
+  `mallocPanic`. Fixed a latent bug at `ready.zig:149` (`malloc(...) orelse unreachable` — a
+  real allocation failure would have hit UB) to use `mallocPanic`. The 4 `bufPrint(...) catch
+  unreachable` format-asserts (fixed-size buffers) are kept with a one-line size-invariant
+  justification each. (`trans.zig:1194` was a string-literal false positive.)
 
 ### Cluster P — Naming Conventions (was K2; closes metric 7)
 
@@ -606,7 +612,7 @@ together they move four of the eight scorecard metrics.
 | N | N2 | Lookup fns `NIL`-absent → `?Word` (per fn) | 4 | medium | ⬜ Planned |
 | O | O1 | `return NIL`-as-error → `MiraError` (12 sites) | 5 | medium | ⬜ Planned |
 | O | O2 | Centralise fatal exits behind `fatal()` | 6 | low | ✅ Complete |
-| O | O3 | `unreachable` audit (18 sites) | — | low | ⬜ Planned |
+| O | O3 | `unreachable` audit (18 sites) | — | low | ✅ Complete |
 | P | P1a | Private `fn` in `runtime/` → camelCase (6 renamed, 14→8) | 7 | low | ✅ Complete |
 | P | P1b | Private `fn` in `compiler/` → camelCase (6 renamed, 31→25) | 7 | low | ✅ Complete |
 | P | P1c | Private `fn` in `parser/` → camelCase (1 renamed, 4→3) | 7 | low | ✅ Complete |

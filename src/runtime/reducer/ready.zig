@@ -146,7 +146,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             if (p) |ptr| {
                 var i = clib.strlen(ptr);
                 if (main.rs.UTF8 != 0) {
-                    const qbuf = @as([*]u8, @ptrCast(@alignCast(clib.malloc(i + 1) orelse unreachable)));
+                    const qbuf = @as([*]u8, @ptrCast(@alignCast(clib.malloc(i + 1) orelse main.heap.mallocPanic("utf8 conversion buffer"))));
                     _ = clib.strcpy(@ptrCast(qbuf), ptr);
                     var q = qbuf;
                     var r = qbuf;

@@ -51,7 +51,7 @@ extern var errline: Word;
 extern var commandmode: Word;
 
 const make = heap.make;
-const mallocfail = heap.mallocfail;
+const mallocPanic = heap.mallocPanic;
 extern fn bigscan(s: [*:0]const u8) Word;
 extern fn bigxscan(s: [*:0]const u8, limit: [*:0]const u8) Word;
 extern fn bigoscan(s: [*:0]const u8, limit: [*:0]const u8) Word;
@@ -198,16 +198,10 @@ export fn dicovflo() void {
 export fn setupdic() void {
     const space = main.rs.DICSPACE;
     if (ls.dic == null) {
-        const ptr = clib.malloc(@intCast(space)) orelse {
-            mallocfail("dictionary");
-            unreachable;
-        };
+        const ptr = clib.malloc(@intCast(space)) orelse mallocPanic("dictionary");
         ls.dic = @ptrCast(ptr);
 
-        const base_ptr = clib.malloc(@intCast(prefixlimit)) orelse {
-            mallocfail("prefixbase");
-            unreachable;
-        };
+        const base_ptr = clib.malloc(@intCast(prefixlimit)) orelse mallocPanic("prefixbase");
         prefixbase = @ptrCast(base_ptr);
     }
     ls.dicp = @ptrCast(ls.dic.?);
@@ -1129,10 +1123,7 @@ export fn adjust_prefix(f: [*:0]const u8) void {
     prefix += @as(Word, @intCast(clib.strlen(prefixbase.? + @as(usize, @intCast(prefix))))) + 1;
     while (@as(usize, @intCast(prefix)) + clib.strlen(f) >= @as(usize, @intCast(prefixlimit))) {
         prefixlimit += 1024;
-        const new_ptr = clib.realloc(prefixbase, @intCast(prefixlimit)) orelse {
-            mallocfail("prefixbase");
-            unreachable;
-        };
+        const new_ptr = clib.realloc(prefixbase, @intCast(prefixlimit)) orelse mallocPanic("prefixbase");
         prefixbase = @ptrCast(new_ptr);
     }
     _ = clib.strcpy(prefixbase.? + @as(usize, @intCast(prefix)), f);
@@ -1626,10 +1617,7 @@ export fn findid(n: [*:0]const u8) Word {
 export fn reset_pns() void {
     ls.nextpn = 0;
     if (ls.pnvec == null) {
-        const ptr = clib.malloc(@intCast(pn_lim * @sizeOf(Word))) orelse {
-            mallocfail("ls.pnvec");
-            unreachable;
-        };
+        const ptr = clib.malloc(@intCast(pn_lim * @sizeOf(Word))) orelse mallocPanic("ls.pnvec");
         ls.pnvec = @ptrCast(@alignCast(ptr));
     }
 }
@@ -1637,10 +1625,7 @@ export fn reset_pns() void {
 export fn make_pn(val: Word) Word {
     if (ls.nextpn == pn_lim) {
         pn_lim += 400;
-        const ptr = clib.realloc(ls.pnvec, @intCast(pn_lim * @sizeOf(Word))) orelse {
-            mallocfail("ls.pnvec");
-            unreachable;
-        };
+        const ptr = clib.realloc(ls.pnvec, @intCast(pn_lim * @sizeOf(Word))) orelse mallocPanic("ls.pnvec");
         ls.pnvec = @ptrCast(@alignCast(ptr));
     }
     ls.pnvec.?[@intCast(ls.nextpn)] = make(STRCONS, ls.nextpn, val);
@@ -1654,10 +1639,7 @@ export fn sto_pn(n: Word) Word {
         while (pn_lim <= n) {
             pn_lim += 400;
         }
-        const ptr = clib.realloc(ls.pnvec, @intCast(pn_lim * @sizeOf(Word))) orelse {
-            mallocfail("ls.pnvec");
-            unreachable;
-        };
+        const ptr = clib.realloc(ls.pnvec, @intCast(pn_lim * @sizeOf(Word))) orelse mallocPanic("ls.pnvec");
         ls.pnvec = @ptrCast(@alignCast(ptr));
     }
     while (ls.nextpn <= n) {
