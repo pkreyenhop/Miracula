@@ -94,8 +94,8 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 *Goal: Eliminate C standard library dependencies (`setjmp`, `longjmp`, `siglongjmp`) by replacing non-local control flow with Zig's native error unions.*
 
 * **E1: Define Domain Errors**
-    * *Status:* Not started
-    * *Details:* Create specific error types (e.g., `error.SyntaxError`, `error.EvaluationFailed`) for the parser and evaluator.
+    * *Status:* **Complete (2026-06-21)**
+    * *Details:* Created `src/runtime/errors.zig` with `pub const MiraError = error{ SyntaxError, TypeCheckAbort, HeapExhausted, LoadError, EvaluationInterrupted }`. Each variant documents its invariants and the signal-handler constraint. Re-exported as `pub const MiraError` from `main.zig`; module included in the `comptime` block.
 * **E2: Error Union Signatures & Bubbling**
     * *Status:* Not started
     * *Details:* Change the return signatures of deeply nested functions from `T` to `!T`. Propagate errors up the call stack using the `try` keyword.
@@ -121,6 +121,6 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 | D | D1 | Internal String Slices | **Complete** |
 | D | D2 | Domain Methods | **Complete** |
 | D | D3 | Documentation | **Complete** |
-| E | E1 | Define Domain Errors | Not started |
+| E | E1 | Define Domain Errors | **Complete** |
 | E | E2 | Error Union Signatures & Bubbling | Not started |
 | E | E3 | Top-Level Error Handling | Not started |

@@ -12,6 +12,8 @@ pub const files_mod = @import("io/files.zig");
 pub const heap = @import("runtime/heap.zig");
 pub const repl = @import("driver/repl.zig");
 pub const startup = @import("driver/startup.zig");
+const errors_mod = @import("runtime/errors.zig");
+pub const MiraError = errors_mod.MiraError;
 
 // Type and core constants
 pub const Word = c_long;
@@ -246,6 +248,7 @@ comptime {
     _ = @import("driver/repl.zig");
     _ = @import("driver/commands.zig");
     _ = @import("runtime/heap.zig");
+    _ = @import("runtime/errors.zig");
     _ = @import("runtime/reduce.zig");
     _ = @import("runtime/combinator.zig");
     _ = @import("runtime/big.zig");
