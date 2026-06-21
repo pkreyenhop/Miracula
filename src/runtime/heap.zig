@@ -455,10 +455,6 @@ export fn make(t_val: u8, x: Word, y: Word) Word {
 }
 
 export fn gc() void {
-    var env: c_jmp.jmp_buf = undefined;
-    if (c_jmp.setjmp(&env) != 0) {
-        return;
-    }
     collecting = 1;
     var idx = @as(usize, @intCast(ATOMLIMIT));
     if (main.rs.atgc != 0) {
@@ -493,7 +489,6 @@ export fn gc() void {
     cellcount += claims;
     claims = 0;
     collecting = 0;
-    c_jmp.longjmp(&env, 1);
 }
 
 export fn gcpatch() void {

@@ -97,8 +97,11 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
     * *Status:* **Complete (2026-06-21)**
     * *Details:* Created `src/runtime/errors.zig` with `pub const MiraError = error{ SyntaxError, TypeCheckAbort, HeapExhausted, LoadError, EvaluationInterrupted }`. Each variant documents its invariants and the signal-handler constraint. Re-exported as `pub const MiraError` from `main.zig`; module included in the `comptime` block.
 * **E2: Error Union Signatures & Bubbling**
-    * *Status:* Not started
-    * *Details:* Change the return signatures of deeply nested functions from `T` to `!T`. Propagate errors up the call stack using the `try` keyword.
+    * *Status:* **Complete (2026-06-21)**
+    * *Details:* Two setjmp/longjmp sites converted:
+      1. `gc()` in `heap.zig`: The `setjmp`/`longjmp` pair was a self-contained "local return" within the same stack frame — removed both, gc() now returns normally. The jmp_buf import is no longer referenced in heap.zig.
+      2. `types.zig` type-checker abort path: Removed `export var env1`, `export fn types_abort()`, and the `setjmp` wrapper in `checktypes()`. Converted `meta_tcheck`, `etype`, `conforms`, `comp_deps`, `abstr_check`, `abstr_mcheck`, `mcheckfbs` to `!Word`/`!void` return types. Error propagates via `try`; callers that cannot propagate use `catch return` / `catch {}`. `export fn checktypes() void` catches with a labeled `outer:` block.
+      Signal-handler paths (`sigsetjmp`/`siglongjmp` on `rs.env` for SIGINT/SIGFPE) are unchanged — POSIX signal handlers are asynchronous and cannot propagate Zig errors.
 * **E3: Top-Level Error Handling**
     * *Status:* Not started
     * *Details:* Catch and handle the errors gracefully at the top-level loop (e.g., inside `commandloop`) using `catch`, replacing the `setjmp` recovery points.
@@ -122,5 +125,5 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 | D | D2 | Domain Methods | **Complete** |
 | D | D3 | Documentation | **Complete** |
 | E | E1 | Define Domain Errors | **Complete** |
-| E | E2 | Error Union Signatures & Bubbling | Not started |
+| E | E2 | Error Union Signatures & Bubbling | **Complete** |
 | E | E3 | Top-Level Error Handling | Not started |
