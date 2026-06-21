@@ -1106,13 +1106,13 @@ fn ap(x: Word, y: Word) Word {
     return make(c.AP, x, y);
 }
 
-pub fn putint(n: c_int, file: ?*c.FILE) void {
-    _ = c.fwrite(&n, @sizeOf(c_int), 1, file);
+pub fn putint(n: i32, file: ?*c.FILE) void {
+    _ = c.fwrite(&n, @sizeOf(i32), 1, file);
 }
 
-pub fn getint(file: ?*c.FILE) c_int {
-    var r: c_int = 0;
-    _ = c.fread(&r, @sizeOf(c_int), 1, file);
+pub fn getint(file: ?*c.FILE) i32 {
+    var r: i32 = 0;
+    _ = c.fread(&r, @sizeOf(i32), 1, file);
     return r;
 }
 

@@ -448,9 +448,14 @@ only the genuine verb-helpers outside this set.
   `rawch`, `errch` → `i32`; `inprelude` → `bool` (it was a 0/1 flag — more idiomatic than a
   native int). Left as `c_int`: `anti` and `h_val`, which are the direct return values of the
   C-ABI `export fn charclass()` / `hash()` (FFI-adjacent). lex.zig `c_int` count 25 → 22.
-* **L2 — `heap.zig` internal `c_int` → `i32`/`usize`** ⬜
-  Locals in `getint`, `charclass`-style counters; audit `collecting` (`export var` — keep).
-  Keep return types of `export fn` (`is_char`, `okdump`, `src_update`, `utf8test`). *Risk: low.*
+* **L2 — `heap.zig` internal `c_int` → `i32`/`usize`** ✅ *(2026-06-21)*
+  Converted the dump-serialization pair `putint`/`getint` (param, return, local `r`, and
+  `@sizeOf`) from `c_int` to `i32`. `@sizeOf(i32)` == `@sizeOf(c_int)` == 4 bytes on all
+  targets, so existing `.x` dumps stay compatible and the on-disk field width is now
+  platform-independent by construction; callers widen the `i32` result into `Word` arithmetic
+  identically. heap.zig `c_int` 16 → 11. Kept (legitimately C-bound): `extern fn` decls, the
+  `export fn` returns (`is_char`, `okdump`, `src_update`, `utf8test`), the `collecting`
+  `export var`, the `constructor()` type-switch case, and the `c.getc`-result sign-extension.
 * **L3 — Driver/runtime internal `c_int` → `i32`** ⬜
   Per-file sweep of locals in `reduce.zig`, `reducer/ready.zig`, `repl.zig`, `startup.zig`,
   `commands.zig`, `platform.zig`. One commit per file. *Risk: low.*
@@ -652,7 +657,7 @@ together they move four of the eight scorecard metrics.
 |---------|------|-------|--------|------|--------|
 | L | L0 | Add `scripts/idiomatic-check.sh` scorecard | tooling | none | ✅ Complete |
 | L | L1 | `lex.zig` internal `c_int` → `i32` | 1 | low | ✅ Complete |
-| L | L2 | `heap.zig` internal `c_int` → `i32`/`usize` | 1 | low | ⬜ Planned |
+| L | L2 | `heap.zig` internal `c_int` → `i32` (putint/getint; 16→11) | 1 | low | ✅ Complete |
 | L | L3 | Driver/runtime internal `c_int` → `i32` (per file) | 1 | low | ⬜ Planned |
 | M | M1 | `startup.zig` string params (all `export` — none convertible) | 2 | low-med | ✅ Analysed (no-op) |
 | M | M2 | `loadfile` string param (net-negative — keep `[*:0]`) | 2 | low-med | ✅ Analysed (no-op) |
