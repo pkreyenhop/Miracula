@@ -272,7 +272,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             main.files = main.heap.t(main.files);
         }
         main.rs.primenv = main.alfasort(main.rs.primenv);
-        main.newtyps = NIL;
+        main.cs.newtyps = NIL;
         main.files = NIL;
     }
 
@@ -295,7 +295,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 _ = clib.keep(ls.dicp);
             }
             main.undump(s);
-            if (main.files == NIL or main.ND != NIL) {
+            if (main.files == NIL or main.cs.ND != NIL) {
                 continue;
             }
             if (arg_count != 1) {
@@ -374,7 +374,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 _ = clib.keep(ls.dicp);
             }
             main.undump(s);
-            if (main.ND != NIL or (main.files == NIL and main.rs.oldfiles != NIL)) {
+            if (main.cs.ND != NIL or (main.files == NIL and main.rs.oldfiles != NIL)) {
                 if (main.rs.make_status == 1) {
                     main.rs.make_status = 0;
                 }
@@ -443,14 +443,14 @@ pub export fn rc_read(rcfile: [*:0]const u8) Word {
     main.loading = 1;
     res = clib.load_script(f.?, @constCast(rcfile), NIL, NIL, 0);
     _ = clib.fclose(f.?);
-    if (main.BAD_DUMP != 0) {
+    if (main.cs.BAD_DUMP != 0) {
         main.unload();
-        main.CLASHES = NIL;
+        main.cs.CLASHES = NIL;
         main.stackp = main.dstack;
         main.loading = 0;
         return 0;
     }
-    if (main.CLASHES != NIL) {
+    if (main.cs.CLASHES != NIL) {
         main.unload();
         main.loading = 0;
         return 0;
@@ -459,7 +459,7 @@ pub export fn rc_read(rcfile: [*:0]const u8) Word {
         main.loadfile(rcfile);
     }
     main.loading = 0;
-    if (main.ND != NIL or main.files == NIL) return 0;
+    if (main.cs.ND != NIL or main.files == NIL) return 0;
     x = main.fil_defs(h(main.files));
     while (x != NIL) : (x = t(x)) {
         if (main.id_type(h(x)) == clib.synonym_t) {

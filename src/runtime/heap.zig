@@ -5,6 +5,8 @@ const lex_state = @import("../parser/lex_state.zig");
 const ls = &lex_state.ls;
 
 const c = @import("c_abi.zig");
+const compiler_state = @import("../compiler/compiler_state.zig");
+const cs = &compiler_state.cs;
 
 const Word = c_long;
 const wordsize = @sizeOf(Word) * 8;
@@ -253,45 +255,15 @@ export var collecting: c_int = 0;
 var heap: ?[*]Word = null;
 var dlim: ?[*]Word = null;
 
-extern var rv_script: Word;
 extern var internals: Word;
-extern var FBS: Word;
 extern var big_one: Word;
 extern var b_rem: Word;
-extern var R: Word;
-extern var TABSTRS: Word;
-extern var SGC: Word;
-extern var ND: Word;
-extern var SBND: Word;
-extern var NT: Word;
-extern var current_id: Word;
-extern var meta_pending: Word;
-extern var newtyps: Word;
-extern var showchain: Word;
-extern var tfnum: Word;
-extern var tfbool: Word;
-extern var tfbool2: Word;
-extern var tfnum2: Word;
-extern var tfstrstr: Word;
-extern var tfnumnum: Word;
-extern var ltchar: Word;
-extern var bnf_t: Word;
-extern var exec_t: Word;
-extern var read_t: Word;
-extern var filestat_t: Word;
-extern var tstep: Word;
-extern var tstepuntil: Word;
-extern var tvmap: Word;
-extern var localtvmap: Word;
-extern var SUBST: [hashsize]Word;
 extern var outfilq: Word;
 extern var waiting: Word;
+extern var tlost: Word;
 
 extern fn outstats() void;
 extern fn initclock() void;
-extern var speclocs: Word;
-extern var algshfns: Word;
-extern var tlost: Word;
 
 const hashsize = c.hashsize;
 
@@ -496,7 +468,7 @@ pub export fn bases() void {
 
     mark(outfilq);
     mark(waiting);
-    if (core.compiling != 0 or rt.rs.rv_expr != 0 or rv_script != 0) {
+    if (core.compiling != 0 or rt.rs.rv_expr != 0 or cs.rv_script != 0) {
         mark(rt.rs.make_status);
         mark(rt.rs.primenv);
         mark(ls.fileq);
@@ -522,13 +494,6 @@ pub export fn bases() void {
         mark(rt.rs.freeids);
         mark(rt.rs.exports);
         mark(internals);
-        mark(CLASHES);
-        mark(ALIASES);
-        mark(SUPPRESSED);
-        mark(TSUPPRESSED);
-        mark(DETROP);
-        mark(MISSING);
-        mark(FBS);
         mark(rt.rs.lexstates);
         mark(rt.rs.lexdefs);
         var i: usize = 0;
@@ -547,8 +512,6 @@ pub export fn bases() void {
             }
         }
         if (core.loading != 0) {
-            mark(algshfns);
-            mark(speclocs);
             mark(ls.exportfiles);
             mark(rt.rs.embargoes);
             mark(rt.rs.rfl);
@@ -571,35 +534,26 @@ pub export fn bases() void {
         mark(b_rem);
         mark(ls.yylval);
         mark(ls.echostack);
-        mark(R);
-        mark(TABSTRS);
-        mark(SGC);
-        mark(ND);
-        mark(SBND);
-        mark(NT);
-        mark(current_id);
-        mark(meta_pending);
-        mark(newtyps);
-        mark(showchain);
         mark(core.errs);
-        mark(tfnum);
-        mark(tfbool);
-        mark(tfbool2);
-        mark(tfnum2);
-        mark(tfstrstr);
-        mark(tfnumnum);
-        mark(ltchar);
-        mark(bnf_t);
-        mark(exec_t);
-        mark(read_t);
-        mark(filestat_t);
-        mark(tstep);
-        mark(tstepuntil);
-        mark(tvmap);
-        mark(localtvmap);
-        i = 0;
-        while (i < hashsize) : (i += 1) {
-            mark(SUBST[i]);
+
+        // Automatically trace all active roots in CompilerState cs singleton using compile-time reflection.
+        inline for (std.meta.fields(compiler_state.CompilerState)) |field| {
+            const T = field.type;
+            switch (@typeInfo(T)) {
+                .int => {
+                    if (T == Word) {
+                        mark(@field(cs, field.name));
+                    }
+                },
+                .array => |info| {
+                    if (info.child == Word) {
+                        for (@field(cs, field.name)) |elem| {
+                            mark(elem);
+                        }
+                    }
+                },
+                else => {},
+            }
         }
     }
 }
@@ -1039,14 +993,7 @@ pub export fn out2(file: ?*c.FILE, x_val: Word) void {
     _ = c.putc(')', file);
 }
 
-export var BAD_DUMP: Word = 0;
-export var CLASHES: Word = 0;
-export var ALIASES: Word = 0;
-export var SUPPRESSED: Word = 0;
-export var TSUPPRESSED: Word = 0;
-export var TORPHANS: Word = 0;
-export var DETROP: Word = 0;
-export var MISSING: Word = 0;
+
 var PNBASE: Word = 0;
 var CFN: ?[*:0]const u8 = null;
 
@@ -1200,7 +1147,7 @@ export fn dump_script(files_val: Word, file: ?*c.FILE) void {
         return;
     }
 
-    if (ND != c.NIL) {
+    if (cs.ND != c.NIL) {
         _ = c.putc(1, file);
         putword(core.errline, file);
     }
@@ -1215,14 +1162,14 @@ export fn dump_script(files_val: Word, file: ?*c.FILE) void {
         dump_defs(fil_defs(h(f_list)), file);
     }
     _ = c.putc(0, file);
-    dump_defs(algshfns, file);
-    if (ND == c.NIL and rt.rs.bereaved != c.NIL) {
+    dump_defs(cs.algshfns, file);
+    if (cs.ND == c.NIL and rt.rs.bereaved != c.NIL) {
         dump_ob(c.True, file);
     } else {
-        dump_ob(ND, file);
+        dump_ob(cs.ND, file);
     }
     _ = c.putc(c.DEF_X, file);
-    dump_ob(SGC, file);
+    dump_ob(cs.SGC, file);
     _ = c.putc(c.DEF_X, file);
     dump_ob(rt.rs.freeids, file);
     _ = c.putc(c.DEF_X, file);
@@ -1368,18 +1315,18 @@ pub export fn dump_ob(x: Word, file: ?*c.FILE) void {
 }
 
 export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
-    TORPHANS = 0;
-    BAD_DUMP = 0;
-    CLASHES = c.NIL;
+    cs.TORPHANS = 0;
+    cs.BAD_DUMP = 0;
+    cs.CLASHES = c.NIL;
     dsetup();
     setprefix(src);
     if (c.getc(file) != wordsize or c.getc(file) != c.XVERSION) {
-        BAD_DUMP = -1;
+        cs.BAD_DUMP = -1;
         return c.NIL;
     }
     if (aliases != c.NIL) {
         var a = aliases;
-        ALIASES = aliases;
+        cs.ALIASES = aliases;
         while (a != c.NIL) : (a = t(a)) {
             const old = t(h(a));
             const new_id = h(h(a));
@@ -1388,13 +1335,13 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
             id_val_ptr(old).* = new_id;
             if (tag.?[@intCast(new_id)] == c.ID) {
                 if ((id_type(new_id) != c.undef_t or id_val(new_id) != c.UNDEF) and id_type(new_id) != c.alias_t) {
-                    CLASHES = add1(new_id, CLASHES);
+                    cs.CLASHES = add1(new_id, cs.CLASHES);
                 }
             }
             hp(h(a)).* = hold;
         }
-        if (CLASHES != c.NIL) {
-            BAD_DUMP = -2;
+        if (cs.CLASHES != c.NIL) {
+            cs.BAD_DUMP = -2;
             unscramble(aliases);
             return c.NIL;
         }
@@ -1409,12 +1356,12 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
         }
     }
     PNBASE = ls.nextpn;
-    SUPPRESSED = c.NIL;
-    TSUPPRESSED = c.NIL;
+    cs.SUPPRESSED = c.NIL;
+    cs.TSUPPRESSED = c.NIL;
 
     var files_list: Word = c.NIL;
     var ch: Word = c.getc(file);
-    while (ch != 0 and ch != c.EOF and BAD_DUMP == 0) {
+    while (ch != 0 and ch != c.EOF and cs.BAD_DUMP == 0) {
         var s: Word = 0;
         var holde: Word = 0;
         ls.dicq = ls.dicp;
@@ -1446,7 +1393,7 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
         s = c.getc(file);
         if (files_list == c.NIL) {
             if (c.strcmp(ls.dicp, src) != 0) {
-                BAD_DUMP = 1;
+                cs.BAD_DUMP = 1;
                 if (aliases != c.NIL) {
                     unscramble(aliases);
                 }
@@ -1457,9 +1404,9 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
         files_list = cons(make_fil(CFN, ch, s, load_defs(file)), files_list);
         ch = c.getc(file);
     }
-    if (ch == c.EOF or BAD_DUMP != 0) {
-        if (BAD_DUMP == 0) {
-            BAD_DUMP = 2;
+    if (ch == c.EOF or cs.BAD_DUMP != 0) {
+        if (cs.BAD_DUMP == 0) {
+            cs.BAD_DUMP = 2;
         }
         if (aliases != c.NIL) {
             unscramble(aliases);
@@ -1497,7 +1444,7 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
             ch = getword(file);
             if (rt.rs.oldfiles == c.NIL) {
                 if (c.strcmp(ls.dicp, src) != 0) {
-                    BAD_DUMP = 1;
+                    cs.BAD_DUMP = 1;
                     if (aliases != c.NIL) {
                         unscramble(aliases);
                     }
@@ -1511,13 +1458,13 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
         }
         return c.NIL;
     }
-    algshfns = append1(algshfns, load_defs(file));
-    ND = load_defs(file);
-    if (ND == c.True) {
-        ND = c.NIL;
-        TORPHANS = 1;
+    cs.algshfns = append1(cs.algshfns, load_defs(file));
+    cs.ND = load_defs(file);
+    if (cs.ND == c.True) {
+        cs.ND = c.NIL;
+        cs.TORPHANS = 1;
     }
-    SGC = append1(SGC, load_defs(file));
+    cs.SGC = append1(cs.SGC, load_defs(file));
     if (main_flag != 0 or rt.rs.includees == c.NIL) {
         rt.rs.freeids = load_defs(file);
     } else {
@@ -1536,9 +1483,9 @@ pub export fn bindparams(formal_val: Word, actual_val: Word) void {
     var formal = formal_val;
     var actual = actual_val;
     var badkind: Word = c.NIL;
-    DETROP = c.NIL;
-    MISSING = c.NIL;
-    FBS = cons(formal, FBS);
+    cs.DETROP = c.NIL;
+    cs.MISSING = c.NIL;
+    cs.FBS = cons(formal, cs.FBS);
 
     while (true) {
         var a: Word = 0;
@@ -1548,14 +1495,14 @@ pub export fn bindparams(formal_val: Word, actual_val: Word) void {
             a = h(h(actual));
             break :blk c.strcmp(f, get_id(a)) < 0;
         })) {
-            MISSING = cons(h(t(h(formal))), MISSING);
+            cs.MISSING = cons(h(t(h(formal))), cs.MISSING);
             formal = t(formal);
         }
         if (actual == c.NIL) {
             break;
         }
         if (formal == c.NIL or c.strcmp(f, get_id(a)) != 0) {
-            DETROP = cons(a, DETROP);
+            cs.DETROP = cons(a, cs.DETROP);
         } else {
             const fa = if (t(t(h(formal))) == c.type_t) t_arity(h(h(formal))) else -1;
             const ta = if (tag.?[@intCast(h(actual))] == c.AP) t_arity(h(actual)) else -1;
@@ -1570,7 +1517,7 @@ pub export fn bindparams(formal_val: Word, actual_val: Word) void {
 
     var bk = badkind;
     while (bk != c.NIL) : (bk = t(bk)) {
-        DETROP = cons(h(bk), DETROP);
+        cs.DETROP = cons(h(bk), cs.DETROP);
     }
 }
 
@@ -1586,13 +1533,13 @@ pub export fn unscramble(aliases: Word) void {
         id_type_ptr(old).* = h(hold);
         id_val_ptr(old).* = t(hold);
     }
-    var al = ALIASES;
+    var al = cs.ALIASES;
     a = c.NIL;
     while (al != c.NIL) : (al = t(al)) {
         const new_id = h(h(al));
         const old = t(h(al));
         if (tag.?[@intCast(new_id)] != c.ID) {
-            if (member(SUPPRESSED, new_id) == 0) {
+            if (member(cs.SUPPRESSED, new_id) == 0) {
                 a = cons(old, a);
             }
             continue;
@@ -1602,13 +1549,13 @@ pub export fn unscramble(aliases: Word) void {
         }
         if (id_type(new_id) == c.undef_t) {
             a = cons(old, a);
-        } else if (member(CLASHES, new_id) == 0) {
+        } else if (member(cs.CLASHES, new_id) == 0) {
             if (tag.?[@intCast(id_who(new_id))] != c.CONS) {
                 id_who_ptr(new_id).* = cons(datapair(@intCast(@intFromPtr(get_id(old))), 0), id_who(new_id));
             }
         }
     }
-    ALIASES = a;
+    cs.ALIASES = a;
 }
 
 pub export fn dsetup() void {
@@ -1690,7 +1637,7 @@ pub export fn load_defs(file: ?*c.FILE) Word {
             },
             c.RV_X => {
                 stackp_set_top(readvals(0, stackp_top()));
-                rv_script = 1;
+                cs.rv_script = 1;
             },
             c.ID_X => {
                 ls.dicq = ls.dicp;
@@ -1708,7 +1655,7 @@ pub export fn load_defs(file: ?*c.FILE) Word {
                 stackp_push(name());
                 const top = stackp_top();
                 if (id_type(top) == c.new_t) {
-                    CLASHES = add1(top, CLASHES);
+                    cs.CLASHES = add1(top, cs.CLASHES);
                     stackp_set_top(c.NIL);
                 } else if (id_type(top) == c.alias_t) {
                     stackp_set_top(id_val(top));
@@ -1782,7 +1729,7 @@ pub export fn load_defs(file: ?*c.FILE) Word {
                                 continue;
                             }
                             const ch_val = stackp_pop();
-                            SUPPRESSED = cons(ch_val, SUPPRESSED);
+                            cs.SUPPRESSED = cons(ch_val, cs.SUPPRESSED);
                             _ = stackp_pop(); // who
                             const who_val = stackp_top();
                             const akap = if (tag.?[@intCast(who_val)] == c.CONS) h(who_val) else c.NIL;
@@ -1790,15 +1737,15 @@ pub export fn load_defs(file: ?*c.FILE) Word {
                             pn_val_ptr(ch_val).* = stackp_pop();
 
                             if (type_val == c.type_t and t_class(ch_val) != c.synonym_t) {
-                                var a = ALIASES;
+                                var a = cs.ALIASES;
                                 while (a != c.NIL and id_val(t(h(a))) != ch_val) : (a = t(a)) {}
                                 if (a != c.NIL) {
-                                    TSUPPRESSED = cons(t(h(a)), TSUPPRESSED);
+                                    cs.TSUPPRESSED = cons(t(h(a)), cs.TSUPPRESSED);
                                 }
                             } else if (pn_val(ch_val) == c.UNDEF) {
                                 var akap_val = akap;
                                 if (akap_val == c.NIL) {
-                                    var a = ALIASES;
+                                    var a = cs.ALIASES;
                                     while (a != c.NIL) : (a = t(a)) {
                                         if (id_val(t(h(a))) == ch_val) {
                                             akap_val = datapair(@intCast(@intFromPtr(get_id(t(h(a))))), 0);
@@ -1815,7 +1762,7 @@ pub export fn load_defs(file: ?*c.FILE) Word {
                         const top_val = stackp_top();
                         if (id_type(top_val) != c.new_t and (id_type(top_val) != c.undef_t or id_val(top_val) != c.UNDEF)) {
                             if (id_type(top_val) == c.alias_t) {
-                                var a = ALIASES;
+                                var a = cs.ALIASES;
                                 while (a != c.NIL and t(h(a)) != top_val) : (a = t(a)) {}
                                 if (a == c.NIL) {
                                     std.debug.print("impossible event in cyclic alias ({s})\n", .{get_id(top_val)});
@@ -1830,7 +1777,7 @@ pub export fn load_defs(file: ?*c.FILE) Word {
                                 ch = c.getc(file);
                                 continue;
                             }
-                            CLASHES = add1(top_val, CLASHES);
+                            cs.CLASHES = add1(top_val, cs.CLASHES);
                             stackp = stackp.? - 4;
                         } else {
                             defs = cons(stackp_pop(), defs);
@@ -1865,7 +1812,7 @@ pub export fn load_defs(file: ?*c.FILE) Word {
         }
         ch = c.getc(file);
     }
-    BAD_DUMP = 4;
+    cs.BAD_DUMP = 4;
     return defs;
 }
 
@@ -2003,18 +1950,18 @@ pub export fn unsetids(d_val: Word) void {
 
 pub export fn unload() void {
     rt.rs.sorted = 0;
-    speclocs = NIL;
+    cs.speclocs = NIL;
     ls.nextpn = 0;
-    rv_script = 0;
-    algshfns = NIL;
-    unsetids(newtyps);
-    newtyps = NIL;
+    cs.rv_script = 0;
+    cs.algshfns = NIL;
+    unsetids(cs.newtyps);
+    cs.newtyps = NIL;
     unsetids(rt.rs.freeids);
     rt.rs.freeids = NIL;
     rt.rs.includees = NIL;
-    SGC = NIL;
-    TABSTRS = NIL;
-    ND = NIL;
+    cs.SGC = NIL;
+    cs.TABSTRS = NIL;
+    cs.ND = NIL;
     unsetids(internals);
     internals = NIL;
     while (files != NIL and files != 0) : (files = t(files)) {

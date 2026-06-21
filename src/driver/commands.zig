@@ -7,7 +7,7 @@ const NIL = main.NIL;
 
 // State owned by heap.zig / reduce.zig — not yet accessible via @import.
 extern var tag: [*]u8;
-extern var CLASHES: Word;
+
 
 const lex_state = @import("../parser/lex_state.zig");
 const ls = &lex_state.ls;
@@ -293,9 +293,9 @@ pub export fn command() void {
                 }
                 if (t_val != null) {
                     if (clib.strcmp(t_val.?, main.rs.current_script.?) != 0 or (main.files == NIL and clib.okdump(t_val.?) != 0)) {
-                        CLASHES = NIL;
+                        main.cs.CLASHES = NIL;
                         main.undump(t_val.?);
-                        if (CLASHES != NIL) {
+                        if (main.cs.CLASHES != NIL) {
                             main.loadfile(t_val.?);
                         }
                     } else {
@@ -660,8 +660,8 @@ pub export fn diagnose(n: [*:0]const u8) void {
 
 pub export fn allnamescom() void {
     var s: Word = undefined;
-    var x = main.ND;
-    var y = main.ND;
+    var x = main.cs.ND;
+    var y = main.cs.ND;
     var z: Word = 0;
     leftist = 0;
     namescom(main.make_fil(if (main.rs.nostdenv) null else @as([*:0]const u8, @ptrCast(&main.rs.STDENV)), 0, 0, main.rs.primenv));

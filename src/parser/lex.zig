@@ -51,14 +51,14 @@ extern var s_out: ?*clib.FILE;
 extern var current_file: Word;
 extern var errs: Word;
 extern var errline: Word;
-extern var ltchar: Word;
 
-extern var TABSTRS: Word;
-extern var SGC: Word;
-extern var newtyps: Word;
-extern var showchain: Word;
-extern var algshfns: Word;
-extern var rv_script: Word;
+
+
+
+
+
+
+
 extern var commandmode: Word;
 
 const make = heap.make;
@@ -1045,7 +1045,7 @@ export fn mkgvar(i_input: Word) Word {
 export fn mklexvar(i: Word) Word {
     if (ls.lexvar == 0) {
         ls.lexvar = cons(sto_id("ls.lexvar"), sto_id("ls.lexvar"));
-        tp(h(ls.lexvar)).* = ltchar;
+        tp(h(ls.lexvar)).* = main.cs.ltchar;
         tp(t(ls.lexvar)).* = genlstat_t();
     }
     return if (i != 0) t(ls.lexvar) else h(ls.lexvar);
@@ -1866,12 +1866,12 @@ export fn reset_state() void {
     ls.col = 0;
     ls.lmargin = 0;
     atnl = 1;
-    rv_script = 0;
-    algshfns = NIL;
-    newtyps = NIL;
-    showchain = NIL;
-    SGC = NIL;
-    TABSTRS = NIL;
+    main.cs.rv_script = 0;
+    main.cs.algshfns = NIL;
+    main.cs.newtyps = NIL;
+    main.cs.showchain = NIL;
+    main.cs.SGC = NIL;
+    main.cs.TABSTRS = NIL;
     ls.c = ' ';
     ls.line_no = 0;
     litmain = 0;

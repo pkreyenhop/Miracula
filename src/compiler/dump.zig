@@ -170,8 +170,8 @@ pub export fn readoption() void {
     pfrts = NIL;
     tlost = NIL;
 
-    if (main.FBS != NIL) {
-        f = main.FBS;
+    if (main.cs.FBS != NIL) {
+        f = main.cs.FBS;
         while (f != NIL) : (f = t(f)) {
             t_val = t(h(f));
             while (t_val != NIL) : (t_val = t(t_val)) {
@@ -200,8 +200,8 @@ pub export fn readoption() void {
     }
 
     if (tlost == NIL) return;
-    main.TYPERRS += 1;
-    _ = clib.printf("MISSING TYPENAME%s\n", .{.{if (t(tlost) == NIL) @as([*:0]const u8, "") else @as([*:0]const u8, "S")}});
+    main.cs.TYPERRS += 1;
+    _ = clib.printf("main.cs.MISSING TYPENAME%s\n", .{.{if (t(tlost) == NIL) @as([*:0]const u8, "") else @as([*:0]const u8, "S")}});
     _ = clib.printf("the following type%s no name in this scope:\n", .{.{if (t(tlost) == NIL) @as([*:0]const u8, " is needed but has") else @as([*:0]const u8, "s are needed but have")}});
     while (tlost != NIL) {
         _ = clib.printf("\'%s\' of file \"%s\", needed by: ", .{.{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(main.t_info(h(h(tlost))))))))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(main.t_info(h(h(tlost)))))))))}});
@@ -303,18 +303,18 @@ pub fn undump(t_val: [*:0]const u8) void {
     main.files = clib.load_script(f.?, @constCast(t_val), NIL, NIL, if (!main.rs.making and main.rs.initialising == 0) 1 else 0);
     _ = clib.fclose(f.?);
 
-    if (main.BAD_DUMP != 0) {
+    if (main.cs.BAD_DUMP != 0) {
         _ = clib.unlink(@as([*:0]const u8, @ptrCast(&obf)));
         main.unload();
-        main.CLASHES = NIL;
+        main.cs.CLASHES = NIL;
         main.stackp = main.dstack;
         _ = clib.printf("warning: %s contains incorrect data (file removed)\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
-        if (main.BAD_DUMP == -1) {
+        if (main.cs.BAD_DUMP == -1) {
             _ = clib.printf("(unrecognised dump format)\n", .{.{}});
-        } else if (main.BAD_DUMP == 1) {
+        } else if (main.cs.BAD_DUMP == 1) {
             _ = clib.printf("(wrong source file)\n", .{.{}});
         } else {
-            _ = clib.printf("(error %ld)\n", .{.{main.BAD_DUMP}});
+            _ = clib.printf("(error %ld)\n", .{.{main.cs.BAD_DUMP}});
         }
     }
 
@@ -329,20 +329,20 @@ pub fn undump(t_val: [*:0]const u8) void {
         }
     }
 
-    if (main.CLASHES != NIL) {
+    if (main.cs.CLASHES != NIL) {
         if (main.rs.ideep == 0) {
             _ = clib.printf("cannot load %s ", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
-            clib.printlist(@constCast("due to name clashes: "), main.alfasort(main.CLASHES));
+            clib.printlist(@constCast("due to name clashes: "), main.alfasort(main.cs.CLASHES));
         }
         main.unload();
         main.loading = 0;
         return;
     }
 
-    if (main.BAD_DUMP != 0 or main.src_update() != 0) {
+    if (main.cs.BAD_DUMP != 0 or main.src_update() != 0) {
         main.loadfile(t_val);
     } else if (main.rs.initialising != 0) {
-        if (main.ND != NIL or main.files == NIL) {
+        if (main.cs.ND != NIL or main.files == NIL) {
             _ = clib.fprintf(main.getStderr(), "panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
             clib.exit(1);
         }
@@ -351,7 +351,7 @@ pub fn undump(t_val: [*:0]const u8) void {
             if (main.files == NIL) {
                 _ = clib.printf("%s contains syntax error\n", .{.{t_val}});
             } else {
-                if (main.ND != NIL) {
+                if (main.cs.ND != NIL) {
                     _ = clib.printf("%s contains undefined names or type errors\n", .{.{t_val}});
                 } else if (!main.rs.making and !main.rs.magic) {
                     _ = clib.printf("%s\n", .{.{t_val}});

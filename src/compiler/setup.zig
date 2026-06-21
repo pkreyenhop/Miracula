@@ -121,7 +121,7 @@ pub fn primlib() void {
 /// Seeds the private-prelude identifiers (offside, changetype, hd/tl, etc.) that are
 /// always in scope but not user-visible. Called during prelude loading.
 pub fn privlib() void {
-    predef("offside", clib.OFFSIDE, clib.ltchar);
+    predef("offside", clib.OFFSIDE, main.cs.ltchar);
     predef("changetype", clib.I, clib.wrong_t);
     predef("first", clib.HD, clib.wrong_t);
     predef("rest", clib.TL, clib.wrong_t);

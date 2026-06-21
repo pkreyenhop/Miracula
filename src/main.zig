@@ -44,12 +44,6 @@ pub extern var host: [*:0]const u8;
 
 
 
-pub extern var current_id: Word;
-extern var ATNAMES: Word;
-extern var lineptr: Word;
-
-pub extern var lfrule: c_int;
-
 // Stuck vars now live in core_state.zig; re-declared here as extern var so
 // callers using main.X still compile without modification.
 pub extern var nill: Word;
@@ -61,30 +55,15 @@ pub extern var obsuffix: [*:0]const u8;
 pub extern var SYNERR: Word;
 pub extern var commandmode: Word;
 
-pub extern var BAD_DUMP: Word;
-pub extern var CLASHES: Word;
-
-extern var DETROP: Word;
-extern var MISSING: Word;
-extern var ALIASES: Word;
-extern var TSUPPRESSED: Word;
-
 pub const EDITOR: [*:0]const u8 = "vi +!";
-
-pub extern var TYPERRS: Word;
-pub extern var FBS: Word;
 
 pub extern var files: Word;
 pub extern var current_file: Word;
 extern var collecting: Word;
-pub extern var newtyps: Word;
-pub extern var SGC: Word;
-pub extern var speclocs: Word;
-pub extern var rv_script: Word;
-pub extern var algshfns: Word;
-pub extern var TABSTRS: Word;
-pub extern var ND: Word;
-pub extern var polyshowerror: c_int;
+
+// Re-export compiler_state and cs pointer to singleton
+pub const compiler_state = @import("compiler/compiler_state.zig");
+pub const cs = &compiler_state.cs;
 
 // External / runtime function declarations
 pub extern fn signals(signum: c_int, handler: usize) usize;

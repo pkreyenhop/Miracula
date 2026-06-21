@@ -15,7 +15,7 @@ const ls = &lex_state.ls;
 
 // State owned by reduce.zig / heap.zig — not yet accessible via @import.
 extern var tag: [*]u8;
-extern var polyshowerror: c_int;
+
 
 extern fn signals(signum: c_int, handler: usize) usize;
 extern fn resetgcstats() void;
@@ -40,8 +40,8 @@ export fn commandloop(initscript: [*:0]u8) void {
     if (clib.sigsetjmp(&main.rs.env, 1) == 0) {
         if (main.rs.magic) {
             main.undump(initscript);
-            if (main.files == NIL or main.ND != NIL or main.id_val(main.rs.main_id) == clib.UNDEF) {
-                if (main.files != NIL and main.ND == NIL and main.id_val(main.rs.main_id) == clib.UNDEF) {
+            if (main.files == NIL or main.cs.ND != NIL or main.id_val(main.rs.main_id) == clib.UNDEF) {
+                if (main.files != NIL and main.cs.ND == NIL and main.id_val(main.rs.main_id) == clib.UNDEF) {
                     _ = clib.fprintf(main.getStderr(), "%s: main not defined\n", .{.{initscript}});
                 }
                 _ = clib.fprintf(main.getStderr(), "mira: incorrect use of \"-exec\" flag\n", .{.{}});
@@ -192,7 +192,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                 main.rs.rv_expr = 0;
                 ls.c = clib.EVAL;
                 main.rs.echoing = 0;
-                polyshowerror = 0;
+                main.cs.polyshowerror = 0;
                 main.commandmode = 1;
                 _ = parser_api.parseCurrent() catch {};
                 if (main.SYNERR != 0) {
@@ -259,7 +259,7 @@ pub export fn obey(x_in: Word) void {
     var x = x_in;
     const typ = clib.type_of(x);
     x = clib.codegen(x);
-    if (main.polyshowerror != 0) return;
+    if (main.cs.polyshowerror != 0) return;
     main.compiling = 0;
     const list_t: Word = 4;
     const char_t: Word = 3;
@@ -282,7 +282,7 @@ pub export fn evaluate_repl(x_in: Word) void {
     if (typ == clib.wrong_t) return;
     main.rs.lastexp = x;
     x = clib.codegen(x);
-    if (main.polyshowerror != 0) return;
+    if (main.cs.polyshowerror != 0) return;
     const list_t: Word = 4;
     const char_t: Word = 3;
     const islist = typ >= main.ATOMLIMIT and tag[@intCast(typ)] == AP and h(typ) == list_t;

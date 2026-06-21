@@ -2,6 +2,9 @@ const std = @import("std");
 
 const shim = @import("../runtime/c_abi.zig");
 const main = @import("../main.zig");
+
+const compiler_state = @import("compiler_state.zig");
+const cs = &compiler_state.cs;
 const c = struct {
     pub const printf = shim.printf;
     pub const putchar = shim.putchar;
@@ -100,14 +103,14 @@ const abstract_t: Word = 2;
 const CONST: Word = 268;
 const ATOMLIMIT: Word = CMBASE + 141;
 
-export var SGC: Word = CMBASE + 138; // NIL
-export var lfrule: c_int = 0;
-export var newtyps: Word = CMBASE + 138; // NIL
-export var polyshowerror: c_int = 0;
-export var speclocs: Word = CMBASE + 138; // NIL
-export var was_poly: Word = 0;
-export var algshfns: Word = CMBASE + 138; // NIL
-export var rv_script: Word = 0;
+ // NIL
+
+ // NIL
+
+ // NIL
+
+ // NIL
+
 
 extern fn make(t: u8, x: Word, y: Word) Word;
 extern fn append1(x: Word, y: Word) Word;
@@ -412,7 +415,7 @@ export fn irrefutable(x: Word) Word {
         return 0;
     }
     if (isConstructor(x)) {
-        return member(SGC, x);
+        return member(cs.SGC, x);
     }
     if (main.tag[@intCast(x)] == ID) {
         return 1;
@@ -566,7 +569,7 @@ export fn abstract(input_x: Word, input_e: Word) Word {
     switch (main.tag[@intCast(x)]) {
         ID => {
             if (isConstructor(x)) {
-                return if (member(SGC, x) != 0) ap(K, e) else ap2(Ug, primconstr(x), e);
+                return if (member(cs.SGC, x) != 0) ap(K, e) else ap2(Ug, primconstr(x), e);
             }
             return abstr(x, e);
         },
@@ -581,7 +584,7 @@ export fn abstract(input_x: Word, input_e: Word) Word {
         },
         TCONS, PAIR => return ap(U, abstract(h(x), abstract(t(x), e))),
         AP => {
-            if (member(SGC, appHead(x)) != 0) {
+            if (member(cs.SGC, appHead(x)) != 0) {
                 return ap(Uf, abstract(h(x), abstract(t(x), e)));
             }
             if (main.tag[@intCast(h(x))] == AP and h(h(x)) == PLUS) {
@@ -597,7 +600,7 @@ export fn abstract(input_x: Word, input_e: Word) Word {
     if (isConstructor(x)) {
         return ap2(Ug, primconstr(x), e);
     }
-    _ = c.printf("error in declaration of \"%s\", undeclared constructor in pattern: ", .{getId(main.current_id)});
+    _ = c.printf("error in declaration of \"%s\", undeclared constructor in pattern: ", .{getId(cs.current_id)});
     const stdout_val = getStdout();
     out(stdout_val, x);
     _ = c.printf("\n", .{});
@@ -761,7 +764,7 @@ export fn transzf(e_input: Word, qq_input: Word, conc: Word) Word {
 }
 
 export fn getspecloc(x: Word) Word {
-    var s = speclocs;
+    var s = cs.speclocs;
     while (s != NIL and h(h(s)) != x) {
         s = t(s);
     }
@@ -829,7 +832,7 @@ export fn leftfactor(x: Word) Word {
     if (same(a, d) != 0) {
         hp(x).* = ap(G_SEQ, a);
         tp(x).* = ap2(G_ALT, b, G_UNIT);
-        lfrule += 1;
+        cs.lfrule += 1;
         return x;
     }
     if (main.tag[@intCast(d)] == AP and main.tag[@intCast(h(d))] == AP) {
@@ -841,7 +844,7 @@ export fn leftfactor(x: Word) Word {
         rhs = t(d);
         hp(x).* = ap(G_SEQ, a);
         tp(x).* = leftfactor(ap2(G_ALT, b, rhs));
-        lfrule += 1;
+        cs.lfrule += 1;
         return x;
     }
     if (rhs != G_ALT) {
@@ -852,7 +855,7 @@ export fn leftfactor(x: Word) Word {
         d = t(d);
         hp(x).* = ap(G_ALT, ap2(G_SEQ, a, ap2(G_ALT, b, G_UNIT)));
         tp(x).* = d;
-        lfrule += 1;
+        cs.lfrule += 1;
         return leftfactor(x);
     }
     if (main.tag[@intCast(rhs)] == AP and main.tag[@intCast(h(rhs))] == AP and h(h(rhs)) == G_SEQ and same(a, t(h(rhs))) != 0) {
@@ -860,7 +863,7 @@ export fn leftfactor(x: Word) Word {
         d = t(d);
         hp(x).* = ap(G_ALT, ap2(G_SEQ, a, leftfactor(ap2(G_ALT, b, rhs))));
         tp(x).* = d;
-        lfrule += 1;
+        cs.lfrule += 1;
         return leftfactor(x);
     }
     return x;
@@ -932,19 +935,19 @@ export fn transtries(id: Word, input_x: Word) Word {
 }
 
 export fn makeshow(here: Word, type_node: Word) Word {
-    was_poly = 0;
+    cs.was_poly = 0;
     const f = mkshow(0, 0, type_node);
-    if (here != 0 and was_poly != 0) {
-        _ = c.printf("type error in definition of %s\n", .{getId(main.current_id)});
+    if (here != 0 and cs.was_poly != 0) {
+        _ = c.printf("type error in definition of %s\n", .{getId(cs.current_id)});
         sayhere(here, 0);
         _ = c.printf(" use of \"show\" at polymorphic type ", .{});
         out_type(redtvars(type_node));
         _ = c.putchar('\n');
-        setIdType(main.current_id, wrong_t);
-        setIdVal(main.current_id, UNDEF);
-        polyshowerror = 1;
-        main.ND = add1(main.current_id, main.ND);
-        was_poly = 0;
+        setIdType(cs.current_id, wrong_t);
+        setIdVal(cs.current_id, UNDEF);
+        cs.polyshowerror = 1;
+        cs.ND = add1(cs.current_id, cs.ND);
+        cs.was_poly = 0;
     }
     return f;
 }
@@ -991,7 +994,7 @@ export fn mkshow(s: Word, p: Word, input_t: Word) Word {
                 if (s != 0) {
                     return type_node;
                 }
-                was_poly = 1;
+                cs.was_poly = 1;
                 return main.rs.showwhat;
             }
             if (main.tag[@intCast(type_node)] == STRCONS) {
@@ -1102,7 +1105,7 @@ export fn specify(input_x: Word, spec_type: Word, here: Word) void {
         }
         setIdVal(x, makeTyp(arity, main.rs.showwhat, placeholder_t, NIL));
         addToEnv(x);
-        newtyps = add1(x, newtyps);
+        cs.newtyps = add1(x, cs.newtyps);
         return;
     }
     if (idType(x) != undef_t) {
@@ -1114,7 +1117,7 @@ export fn specify(input_x: Word, spec_type: Word, here: Word) void {
     if (idWho(x) == NIL) {
         setIdWho(x, here);
     } else {
-        speclocs = cons(cons(x, here), speclocs);
+        cs.speclocs = cons(cons(x, here), cs.speclocs);
     }
     if (idVal(x) == UNDEF) {
         addToEnv(x);
@@ -1154,7 +1157,7 @@ export fn decl_type(input_tf: Word, type_class: Word, info: Word, here: Word) vo
         return;
     }
     if (type_class != synonym_t) {
-        newtyps = add1(tf, newtyps);
+        cs.newtyps = add1(tf, cs.newtyps);
     }
     setIdVal(tf, makeTyp(arity, if (type_class == algebraic_t) make_pn(UNDEF) else 0, type_class, info));
     if (idType(tf) != undef_t) {
@@ -1176,7 +1179,7 @@ fn decl1(x: Word, e: Word) void {
     if (idVal(x) == UNDEF) {
         setIdVal(x, tries(x, cons(e, NIL)));
         if (idWho(x) != NIL) {
-            speclocs = cons(cons(x, idWho(x)), speclocs);
+            cs.speclocs = cons(cons(x, idWho(x)), cs.speclocs);
         }
         setIdWho(x, h(e));
         if (idType(x) == undef_t) {
@@ -1214,7 +1217,7 @@ export fn declare(x: Word, e: Word) void {
         }
         setIdVal(name, t(binding));
         if (idWho(name) != NIL) {
-            speclocs = cons(cons(name, idWho(name)), speclocs);
+            cs.speclocs = cons(cons(name, idWho(name)), cs.speclocs);
         }
         setIdWho(name, h(e));
         if (idType(name) == undef_t) {
@@ -1466,7 +1469,7 @@ fn pn_val(x: Word) Word {
 }
 
 fn sui_generis(k: Word) bool {
-    return member(SGC, k) != 0;
+    return member(cs.SGC, k) != 0;
 }
 
 export fn codegen(x: Word) Word {
@@ -1547,11 +1550,11 @@ export fn codegen(x: Word) Word {
                 _ = c.printf("type error - %s used at polymorphic type :: [", .{name_str});
                 out_type(redtvars(t(x)));
                 _ = c.printf("]\n", .{});
-                polyshowerror = 1;
-                if (main.current_id != 0) {
-                    main.ND = add1(main.current_id, main.ND);
-                    setIdType(main.current_id, wrong_t);
-                    setIdVal(main.current_id, UNDEF);
+                cs.polyshowerror = 1;
+                if (cs.current_id != 0) {
+                    cs.ND = add1(cs.current_id, cs.ND);
+                    setIdType(cs.current_id, wrong_t);
+                    setIdVal(cs.current_id, UNDEF);
                 }
                 if (h(x) != 0) {
                     sayhere(h(x), 1);
@@ -1560,7 +1563,7 @@ export fn codegen(x: Word) Word {
             if (main.commandmode != 0) {
                 main.rs.rv_expr = 1;
             } else {
-                rv_script = 1;
+                cs.rv_script = 1;
             }
             return x;
         },
@@ -1581,12 +1584,12 @@ export fn codegen(x: Word) Word {
 }
 
 export fn genshfns() void {
-    var s = newtyps;
+    var s = cs.newtyps;
     while (s != NIL) {
         if (t_class(h(s)) == algebraic_t) {
             var f: Word = 0;
             var r = t_info(h(s)); // r is list of constructors
-            const ush = if (t(r) == NIL and member(SGC, h(r)) != 0) Ush1 else Ush;
+            const ush = if (t(r) == NIL and member(cs.SGC, h(r)) != 0) Ush1 else Ush;
             while (r != NIL) {
                 var type_var = idType(h(r));
                 var k = idVal(h(r));
@@ -1613,7 +1616,7 @@ export fn genshfns() void {
             }
             // f ~= 0, placeholder types dealt with in specify()
             tp(t_showfn(h(s))).* = f;
-            algshfns = cons(t_showfn(h(s)), algshfns);
+            cs.algshfns = cons(t_showfn(h(s)), cs.algshfns);
         } else if (t_class(h(s)) == abstract_t) {
             if (t_showfn(h(s)) != 0) {
                 if (abshfnck(h(s), idType(t_showfn(h(s)))) == 0) {
