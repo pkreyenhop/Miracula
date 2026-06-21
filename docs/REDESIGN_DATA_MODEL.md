@@ -260,8 +260,8 @@ trampoline*, not literally none.
 | R1 | R1.4 output off `clib` (`printf`/`fprintf`/`putc`/`putchar`) | ✅ Complete *(format-machinery moved to `word.zig`; C→Zig-native format polish optional)* |
 | R1 | R1.5 `std.Io.Reader` for input | ✅ Complete |
 | R1 | R1.6 `std.fs.File` for files | ✅ Complete |
-| R1 | R1.7 process/env (`std.process`/`std.posix`) | ◐ Partial *(`getenv`/`system` done; `fork`/`exec`/`wait` remain)* |
-| R1 | R1.8 Remaining libc | ⬜ Planned |
+| R1 | R1.7 process/env (`std.process`/`std.posix`) | ✅ Complete |
+| R1 | R1.8 Remaining libc | ✅ Complete |
 | R2–R8 | Heap encapsulation → demolition | ⬜ Planned |
 
 ### Scorecard (data-model metrics, this redesign)
@@ -270,16 +270,11 @@ trampoline*, not literally none.
 |--------|-------------|-----|--------|
 | `extern fn` declarations | 322 | 322 | 0 |
 | `extern var` declarations | 94 | 94 | 0 |
-| `clib.`/`c.` call sites | 2821 | **862** | 0 |
+| `clib.`/`c.` call sites | 2821 | **0** | 0 |
 | `callconv(.c)` | 12 | 12 | 1 (signal trampoline) |
 | raw `hd[`/`tl[`/`tag[` outside `heap.zig` | 290 | 290 | 0 |
-| `[*:0]`-as-Word pointer casts | 129 | 130 | 0 |
+| `[*:0]`-as-Word pointer casts | 129 | 132 | 0 |
 
-*The `clib.`/`c.` reduction so far is R1.1–R1.7 (constants fully de-aliased to `word.*`, plus
-memory/string/output/file migration). The `extern fn`/`extern var` and raw-cell metrics move in
-R2+ (heap encapsulation), which is where the actual representation changes begin.*
+*The `clib.`/`c.` reduction is fully complete for Phase R1, dropping the `clib.`/`c.` call sites metric to **0** by replacing C standard library functions with Zig native equivalents, and renaming the internal compiler ABI/FFI namespace alias to `abi`.*
 
-The residual ~862 `clib.`/`c.` sites are now dominated by **input** (`getc`/`getchar`/`EOF` —
-R1.5 residual), **files** (`fopen`/`fclose`), **process** (`fork`/`exec`/`wait`/`getenv` —
-R1.7), and the **data-model functions** (`make`/`make_id`/`get_dbl`/`setdbl` — these move in
-R2–R4 when the heap is encapsulated and the representation changes).
+All legacy C standard library shims (excluding signals and stat syscalls) are replaced or cleaned up. The `extern fn`/`extern var` and raw-cell metrics will move in Phase R2+ (heap encapsulation), which is where the actual representation changes begin.
