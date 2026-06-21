@@ -52,21 +52,22 @@ data flows through the compiler pipeline to the graph reduction execution engine
 
 ### `src/main.zig` — Composition Root
 
-`main.zig` is intentionally thin (~267 lines). It holds:
+`main.zig` is intentionally thin (~237 lines). It is the composition root and re-export hub:
 
-- The 8 C-ABI-constrained `pub export var` globals (`nill`, `loading`, `compiling`, `errs`,
-  `errline`, `obsuffix`, `SYNERR`, `commandmode`) that cannot move into `RuntimeState`
-  because `heap.zig` and `parser_api.zig` reference them via `extern var` and cannot
-  `@import main.zig` without a circular dependency.
-- `pub var rs: RuntimeState` — the singleton interpreter state struct.
-- `pub const` aliases re-exporting functions from all subsystem modules so callers have a
-  single import point.
+- `pub extern var` aliases for the 8 C-ABI globals defined in `core_state.zig` (`nill`,
+  `loading`, `compiling`, `errs`, `errline`, `obsuffix`, `SYNERR`, `commandmode`).  Callers
+  using `main.X` syntax continue to compile; the linker resolves them to `core_state.zig`.
+- `pub const rs: *RuntimeState = &rt.rs` — pointer to the singleton interpreter state.
+- `pub const cs = &compiler_state.cs` — pointer to the singleton compiler/typechecker state.
+- `pub const` aliases for compiler entry points `type_of`, `checktypes`, `codegen` (H2) and
+  all other subsystem functions, so every caller can `@import("main.zig")` as a single hub.
 - `pub fn main()` — entry point that delegates immediately to the C-ABI `main_entry`.
 
 ### `src/runtime/` — Runtime Core
 
 | File | Responsibility |
 |------|----------------|
+| `core_state.zig` | Leaf module holding the 8 C-ABI-constrained `export var` globals (`nill`, `loading`, `compiling`, `errs`, `errline`, `obsuffix`, `SYNERR`, `commandmode`). Extracted in G1 to break the `heap.zig ↔ main.zig` circular dependency. No imports from the Miracula source tree. |
 | `runtime_state.zig` | `RuntimeState` struct — all mutable interpreter state that doesn't require a C-ABI linker symbol. ~75 fields covering identity atoms, file paths, compiler flags, evaluation control, I/O flags, working buffers, and signal recovery. |
 | `heap.zig` | Cell allocation space and mark-and-sweep GC. Exports typed domain wrappers (`FileNode`, `Identifier`, `TypeRef`, `NodeRef`) and accessor functions (`fil_time`, `id_type`, etc.). The `hd`/`tl`/`tag` arrays are the raw heap storage. |
 | `errors.zig` | `MiraError` error set (`SyntaxError`, `TypeCheckAbort`, `HeapExhausted`, `LoadError`, `EvaluationInterrupted`). Documents the POSIX signal-handler constraint: `siglongjmp` paths cannot be replaced with error unions. |
@@ -87,6 +88,7 @@ data flows through the compiler pipeline to the graph reduction execution engine
 
 | File | Responsibility |
 |------|----------------|
+| `compiler_state.zig` | `CompilerState` struct — all mutable typechecker and translator state extracted from `types.zig`, `trans.zig`, and `heap.zig` in H1. Accessed via `main.cs` (`*CompilerState`). No C-ABI linker symbols. |
 | `types.zig` | Type checker and type inference. Uses `MiraError!T` return types; `TypeCheckAbort` propagates via `try`/`catch` rather than `setjmp`/`longjmp` (converted in E2). |
 | `trans.zig` | AST → combinator graph translator. Handles pattern matching, list comprehensions, and bracket abstraction. |
 | `setup.zig` | Interpreter initialisation: `mira_setup`, `primdef`, `predef`, `primlib`, `privlib`, `stdlib`. |
@@ -129,44 +131,49 @@ data flows through the compiler pipeline to the graph reduction execution engine
 
 ## Key Invariants
 
-**Circular-dependency boundary.** `heap.zig` imports `main.zig` (for `rs` and the 8 stuck
-export vars). `main.zig` imports `heap.zig` (for domain types and accessors). Any module
-that imports both must do so transitively through `main.zig` only. Modules that define
-`export var` state reached by `heap.zig` must keep those vars as top-level exports rather
-than moving them into `RuntimeState`.
+**Circular-dependency boundary.** `heap.zig` cannot `@import` `main.zig` without creating
+a cycle.  The `core_state.zig` leaf module (G1) holds the 8 C-ABI export vars that `heap.zig`
+needs (`nill`, `loading`, `compiling`, `errs`, `errline`, `obsuffix`, `SYNERR`, `commandmode`),
+and `runtime_state.zig` holds `pub var rs: RuntimeState`.  `main.zig` re-exports both as
+`pub extern var` aliases so callers using `main.X` syntax are unaffected.
 
-**C-ABI linker protocol.** Functions marked `export fn` are reachable across the
-linker-as-module boundary. The Phase 7 refactor reduced but did not eliminate this pattern;
-~350 `export fn` declarations remain in the compiler and runtime modules. New cross-module
-calls should use `@import` instead.
+**C-ABI linker protocol.** Functions marked `export fn` are callable across the
+linker-as-module boundary.  Phase 7 and Phase 8 reduced this count significantly:
+- Reducer handlers (G2) converted to direct `@import` calls (~86 pairs removed).
+- Heap accessors (H3) that were never referenced via `extern fn` had `export` stripped (20 functions).
+- Compiler entry points `type_of`, `checktypes`, `codegen` are now reached via `main.zig`
+  re-exports rather than `clib.*` linker resolution (H2).
+New cross-module calls should use `@import` rather than `extern fn` / `export fn`.
+
+**Compiler state.** All mutable typechecker and translator state lives in `CompilerState`
+(`src/compiler/compiler_state.zig`), accessed via `main.cs` (a `*CompilerState` pointer).
+The singleton is `pub var cs: CompilerState` in that module; `main.zig` re-exports the pointer
+as `pub const cs = &compiler_state.cs`.  None of these fields are C-ABI linker symbols.
 
 **Signal-handler safety.** `reset()` and `fpe_error()` in `repl.zig` are POSIX signal
-handlers. They call `siglongjmp(&main.rs.env, 1)` to restore the REPL recovery point.
+handlers.  They call `siglongjmp(&main.rs.env, 1)` to restore the REPL recovery point.
 No Zig error union can cross this path — signal handlers are asynchronous and cannot
 unwind the Zig call stack.
 
 **`MiraError` coverage.** `error.TypeCheckAbort` is the only `MiraError` variant currently
-wired to Zig error union propagation. The remaining variants (`SyntaxError`, `HeapExhausted`,
+wired to Zig error union propagation.  The remaining variants (`SyntaxError`, `HeapExhausted`,
 `LoadError`, `EvaluationInterrupted`) document intent and are available for future work.
 
 ---
 
-## Planned: Cluster G — Module Graph Repair
+## Remaining Modernization Opportunities
 
-The module graph has two remaining structural problems targeted by Cluster G
-(see `IDIOMATIC_ZIG_PLAN.md` for full details):
+The items below are captured in `IDIOMATIC_ZIG_PLAN.md` (Clusters I1, I3, J, K2) but not
+yet started.  They are higher-risk or higher-effort than the completed clusters.
 
-1. **`heap.zig ↔ main.zig` circular dependency (G1).** Extract `src/runtime/core_state.zig`
-   for the 8 C-ABI export vars; move `pub var rs` into `runtime_state.zig`. After G1,
-   `heap.zig` imports `runtime_state.zig` and `core_state.zig` directly rather than `main.zig`.
-
-2. **Reducer dispatch via C-ABI linker (G2).** The 84 handler functions in `reducer/` are
-   called from `reduce.zig` via `extern fn` / `export fn` pairs. Convert to direct `@import`
-   calls within the subsystem.
-
-3. **`lex.zig` global state (G3).** ~40 `export var` globals in `lex.zig` should be
-   consolidated into a `LexState` struct (analogous to `RuntimeState` from B1).
-
-4. **Heap accessor `extern fn` → direct imports (G4).** After G1, `lex.zig`, `codegen.zig`,
-   `big.zig`, etc. can import `heap.zig` directly instead of using linker-resolved `extern fn`
-   for `make`, `gc`, `sto_char`, etc.
+- **I1 — Slices.** Replace `[*]Word` / `?[*]Word` / `[*:0]u8` at internal boundaries with
+  native Zig slices (`[]Word`, `?[]Word`, `[:0]u8`).  Primary targets: the `hd`/`tl` heap
+  arrays and the parser's token buffer.  High-effort: requires updating all pointer arithmetic.
+- **I3 — Optional types.** Replace `NIL`-sentinel checks at high-level boundaries with
+  `?Word`.  Incremental; can be done per-function.
+- **J1 — Error union propagation.** Extend `MiraError` to cover `SyntaxError` and
+  `LoadError`, replacing `NIL`-return patterns in the parser and module loader.
+- **J2 — Standardize panics.** Replace remaining `c.exit(1)` calls with structured Zig
+  `@panic` / `std.process.exit` with diagnostic messages.
+- **K2 — Naming conventions.** Rename internal functions from C-style `snake_CASE` to Zig
+  `camelCase`.  Large surface area; best done in a single automated pass.
