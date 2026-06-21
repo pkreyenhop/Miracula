@@ -176,7 +176,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         main.fatal("mira: too many args\n", .{.{}});
     }
 
-    var badlib: c_int = 0;
+    var badlib: bool = false;
     if (main.rs.miralib == null) {
         if (clib.getenv("MIRALIB")) |m| {
             main.rs.miralib = @constCast(m);
@@ -187,11 +187,11 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         } else if (main.checkversion("miralib") != 0) {
             main.rs.miralib = @constCast("miralib");
         } else {
-            badlib = 1;
+            badlib = true;
         }
     }
 
-    if (badlib != 0) {
+    if (badlib) {
         _ = clib.fprintf(main.getStderr(), "fatal error: miralib version %s not found\n", .{.{main.strvers(@intCast(main.version))}});
         main.libfails();
         clib.exit(1);

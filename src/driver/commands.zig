@@ -18,7 +18,7 @@ var mirahdr: ?[*:0]u8 = null;
 var lmirahdr: ?[*:0]u8 = null;
 
 // File-private state for allnamescom / namescom.
-var leftist: c_int = 0;
+var leftist: bool = false;
 var words: [400]Word = undefined;
 
 // File-private state for filequote.
@@ -85,7 +85,7 @@ fn namescom(l: Word) void {
                     i = 0;
                     r = 0;
                 }
-                if (leftist != 0) {
+                if (leftist) {
                     col_local = 0;
                     while (col_local < wp) {
                         _ = clib.printf("%s", .{.{main.get_id(words[@as(usize, @intCast(col_local))])}});
@@ -107,7 +107,7 @@ fn namescom(l: Word) void {
                         }
                     }
                 }
-                leftist = if (leftist == 0) 1 else 0;
+                leftist = !leftist;
                 wp = 0;
                 col_local = 0;
                 _ = clib.putchar('\n');
@@ -526,7 +526,7 @@ pub fn editfile(t_val: [*:0]const u8, line: c_int) void {
     const ebuf_local = @as([*]u8, @ptrCast(&main.rs.linebuf[0]));
     var p = ebuf_local;
     var q = main.rs.editor.?;
-    var tdone: c_int = 0;
+    var tdone: bool = false;
     if (line_val == 0) {
         line_val = 1;
     }
@@ -551,11 +551,11 @@ pub fn editfile(t_val: [*:0]const u8, line: c_int) void {
             p[0] = '"';
             p += 1;
             p[0] = 0;
-            tdone = 1;
+            tdone = true;
         }
     }
     p[0] = 0;
-    if (tdone == 0) {
+    if (!tdone) {
         p[0] = ' ';
         p += 1;
         p[0] = '"';
@@ -646,7 +646,7 @@ pub fn diagnose(n: [*:0]const u8) void {
     const presym = [_][*:0]const u8{
         "abstype", "div", "if", "mod", "otherwise", "readvals", "show", "type", "where", "with",
     };
-    const presym_n = [_]c_int{ 21, 8, 15, 8, 15, 31, 23, 22, 15, 21 };
+    const presym_n = [_]i32{ 21, 8, 15, 8, 15, 31, 23, 22, 15, 21 };
     inline for (presym, presym_n) |sym, sym_n| {
         if (clib.strcmp(n, sym) == 0) {
             _ = clib.printf("%s -- keyword (see manual, section %d)\n", .{.{ n, sym_n }});
@@ -661,7 +661,7 @@ pub fn allnamescom() void {
     var x = main.cs.ND;
     var y = main.cs.ND;
     var z: Word = 0;
-    leftist = 0;
+    leftist = false;
     namescom(main.make_fil(if (main.rs.nostdenv) null else @as([*:0]const u8, @ptrCast(&main.rs.STDENV)), 0, 0, main.rs.primenv));
     if (main.files == NIL) return;
     s = main.heap.t(main.files);

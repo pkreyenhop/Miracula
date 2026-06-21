@@ -476,7 +476,7 @@ export fn memclass(c_val: c_int, x_val: Word) c_int {
 
 export fn lexfail(x_val: Word) void {
     var x = x_val;
-    var i: c_int = 24;
+    var i: i32 = 24;
     _ = clib.fprintf(getStderr().?, "\nLEX FAILS WITH UNRECOGNISED INPUT: \"", .{.{}});
     while (i > 0 and x != NIL and 0 <= lh(x) and lh(x) <= 255) {
         i -= 1;

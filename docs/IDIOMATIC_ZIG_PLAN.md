@@ -418,7 +418,7 @@ Baseline captured 2026-06-21 (script output at L0):
 
 | # | Metric (non-FFI scope) | Now | Target | Driven by |
 |---|------------------------|-----|--------|-----------|
-| 1 | internal `c_int`/`c_long`/`c_uint` (incl. `@as(c_int,…)` printf casts) | 107 | printf-cast residual only | L1–L3 |
+| 1 | internal `c_int`/`c_long`/`c_uint` (incl. `@as(c_int,…)` printf casts) | 107 → 95 | FFI-bound residual (getc/fork/wait/errno/printf casts) | L1–L3 ✅ |
 | 2 | `[*:0]` on Zig-only signatures | 161 | enumerated (inherent C-string flow) | M (analysed: no-op) |
 | 3 | `[*]Word` / `?[*]Word` non-FFI | 9 | enumerated (raw heap/stack storage) | M (analysed: no-op) |
 | 4 | sentinel `== NIL` / `!= NIL` | 347 | n/a — NIL is a heap value, not absence | N (analysed: no-op) |
@@ -456,10 +456,15 @@ only the genuine verb-helpers outside this set.
   identically. heap.zig `c_int` 16 → 11. Kept (legitimately C-bound): `extern fn` decls, the
   `export fn` returns (`is_char`, `okdump`, `src_update`, `utf8test`), the `collecting`
   `export var`, the `constructor()` type-switch case, and the `c.getc`-result sign-extension.
-* **L3 — Driver/runtime internal `c_int` → `i32`** ⬜
-  Per-file sweep of locals in `reduce.zig`, `reducer/ready.zig`, `repl.zig`, `startup.zig`,
-  `commands.zig`, `platform.zig`. One commit per file. *Risk: low.*
-  *DoD: scorecard metric 1 = 0.*
+* **L3 — Driver/runtime internal `c_int` → `i32`/`bool`** ✅ *(2026-06-21)*
+  Converted the genuinely-internal locals: `reduce.zig` `lexfail` counter `i` → `i32`;
+  `commands.zig` `presym_n` manual-section table → `[_]i32`; and three 0/1 flags to idiomatic
+  `bool` (`startup.zig` `badlib`, `commands.zig` `leftist`/`tdone`). Metric 1: 105 → 95.
+  **Left as `c_int` (FFI-bound):** `getc`/`fork`/`wait`-result locals (`ch`, `pid`, `status`),
+  `errno`/`stat`/`pipe-fd` in `platform.zig` and `ready.zig`, `argc` arithmetic and
+  `@as(c_int, …)` printf casts, `ready.zig` `base` (→ `clib.strtobig`), `startup.zig` `vstack`
+  (→ `strvers`), and the `reduce_action` `enum(c_int)` (an `export fn` return type).
+  *DoD note: metric 1's residual is exactly this FFI-bound set, not "0".*
 
 ### Cluster M — Slices at Internal Boundaries (was I1)
 
@@ -658,7 +663,7 @@ together they move four of the eight scorecard metrics.
 | L | L0 | Add `scripts/idiomatic-check.sh` scorecard | tooling | none | ✅ Complete |
 | L | L1 | `lex.zig` internal `c_int` → `i32` | 1 | low | ✅ Complete |
 | L | L2 | `heap.zig` internal `c_int` → `i32` (putint/getint; 16→11) | 1 | low | ✅ Complete |
-| L | L3 | Driver/runtime internal `c_int` → `i32` (per file) | 1 | low | ⬜ Planned |
+| L | L3 | Driver/runtime internal `c_int` → `i32`/`bool` (105→95) | 1 | low | ✅ Complete |
 | M | M1 | `startup.zig` string params (all `export` — none convertible) | 2 | low-med | ✅ Analysed (no-op) |
 | M | M2 | `loadfile` string param (net-negative — keep `[*:0]`) | 2 | low-med | ✅ Analysed (no-op) |
 | M | M3 | `[*]Word` (all raw storage / stack-walk — keep `[*]`) | 3 | medium | ✅ Analysed (no-op) |
