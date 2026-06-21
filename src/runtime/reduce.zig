@@ -316,7 +316,6 @@ export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
     }
 }
 
-
 export fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     var curr_x = x;
     const x1 = x;
@@ -340,7 +339,7 @@ export fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     p_idx += 1;
     if (p_idx > buf_size) {
         if (cmd) |cmd_str| {
-            _ = clib.fprintf(getStderr().?, "\n%s, argument string too long (limit=%d chars): %s...\n", .{.{cmd_str, @as(c_int, buf_size), &main.rs.linebuf}});
+            _ = clib.fprintf(getStderr().?, "\n%s, argument string too long (limit=%d chars): %s...\n", .{.{ cmd_str, @as(c_int, buf_size), &main.rs.linebuf }});
             outstats();
             clib.exit(1);
         } else {
@@ -359,9 +358,9 @@ export fn outstats() void {
     var buffer: clib.struct_tms = undefined;
     _ = clib.times(&buffer);
     _ = clib.fprintf(getStderr().?, "||", .{.{}});
-    _ = clib.fprintf(getStderr().?, "reductions = %lld, cells claimed = %lld, ", .{.{cycles, cellcount + claims}});
+    _ = clib.fprintf(getStderr().?, "reductions = %lld, cells claimed = %lld, ", .{.{ cycles, cellcount + claims }});
     const clk_tck = @as(f64, @floatFromInt(clib.sysconf(clib._SC_CLK_TCK)));
-    _ = clib.fprintf(getStderr().?, "no of gc's = %ld, cpu = %0.2f\n", .{.{nogcs, @as(f64, @floatFromInt(buffer.tms_utime)) / clk_tck}});
+    _ = clib.fprintf(getStderr().?, "no of gc's = %ld, cpu = %0.2f\n", .{.{ nogcs, @as(f64, @floatFromInt(buffer.tms_utime)) / clk_tck }});
 }
 
 export fn out_here(f: ?*clib.FILE, h_val: Word, nl: c_int) void {
@@ -369,7 +368,7 @@ export fn out_here(f: ?*clib.FILE, h_val: Word, nl: c_int) void {
         _ = clib.fprintf(getStderr().?, "(impossible event in outhere)\n", .{.{}});
         return;
     }
-    _ = clib.fprintf(f.?, "(line %3ld of \"%s\")", .{.{t(h_val), @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(h_val)))))))}});
+    _ = clib.fprintf(f.?, "(line %3ld of \"%s\")", .{.{ t(h_val), @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(h_val))))))) }});
     if (nl != 0) {
         _ = clib.putc('\n', f.?);
     } else {
@@ -388,7 +387,7 @@ export fn stdin_error(c_val: c_int) void {
     if (stdinuse == c_val) {
         _ = clib.fprintf(getStderr().?, "program error: duplicate use of %s\n", .{.{stdname(c_val)}});
     } else {
-        _ = clib.fprintf(getStderr().?, "program error: simultaneous use of %s and %s\n", .{.{stdname(c_val), stdname(@intCast(stdinuse))}});
+        _ = clib.fprintf(getStderr().?, "program error: simultaneous use of %s and %s\n", .{.{ stdname(c_val), stdname(@intCast(stdinuse)) }});
     }
     outstats();
     clib.exit(1);
@@ -417,7 +416,7 @@ export fn div_error() void {
 export fn math_error(s: [*:0]const u8) void {
     const err_val = platform.getErrno();
     const err_type: [*:0]const u8 = if (err_val == clib.EDOM) "domain " else if (err_val == clib.ERANGE) "range " else "";
-    _ = clib.fprintf(getStderr().?, "\nmath function %serror (%s)\n", .{.{err_type, s}});
+    _ = clib.fprintf(getStderr().?, "\nmath function %serror (%s)\n", .{.{ err_type, s }});
     outstats();
     clib.exit(1);
 }

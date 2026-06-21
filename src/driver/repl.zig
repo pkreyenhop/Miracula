@@ -16,7 +16,6 @@ const ls = &lex_state.ls;
 // State owned by reduce.zig / heap.zig — not yet accessible via @import.
 extern var tag: [*]u8;
 
-
 extern fn signals(signum: c_int, handler: usize) usize;
 extern fn resetgcstats() void;
 extern fn outstats() void;
@@ -160,7 +159,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                         while (pid != clib.wait(null)) {}
                         _ = signals(clib.SIGINT, oldsig);
                     } else { // child
-                        _ = clib.execl(shell.?, .{shell.?, "-c", lb.?});
+                        _ = clib.execl(shell.?, .{ shell.?, "-c", lb.? });
                     }
                     if (main.src_update() != 0) {
                         main.loadfile(main.rs.current_script.?);
@@ -440,4 +439,3 @@ pub export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
         }
     }
 }
-

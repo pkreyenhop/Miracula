@@ -149,7 +149,7 @@ pub export fn reduce(e_val: Word) Word {
                     },
                     clib.DATAPAIR => {
                         upLeft(&ctx);
-                        _ = clib.fprintf(getStderr().?, "\nUNDEFINED NAME (specified as \"%s\" in %s)\n", .{.{@as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(hd_get(hd_get(ctx.e)))))))), @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(tl_get(ctx.e)))))))}});
+                        _ = clib.fprintf(getStderr().?, "\nUNDEFINED NAME (specified as \"%s\" in %s)\n", .{.{ @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(hd_get(hd_get(ctx.e)))))))), @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(tl_get(ctx.e))))))) }});
                         clib.outstats();
                         clib.exit(1);
                     },

@@ -204,7 +204,7 @@ pub export fn readoption() void {
     _ = clib.printf("main.cs.MISSING TYPENAME%s\n", .{.{if (t(tlost) == NIL) @as([*:0]const u8, "") else @as([*:0]const u8, "S")}});
     _ = clib.printf("the following type%s no name in this scope:\n", .{.{if (t(tlost) == NIL) @as([*:0]const u8, " is needed but has") else @as([*:0]const u8, "s are needed but have")}});
     while (tlost != NIL) {
-        _ = clib.printf("\'%s\' of file \"%s\", needed by: ", .{.{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(main.t_info(h(h(tlost))))))))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(main.t_info(h(h(tlost)))))))))}});
+        _ = clib.printf("\'%s\' of file \"%s\", needed by: ", .{.{ @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(main.t_info(h(h(tlost))))))))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(main.t_info(h(h(tlost))))))))) }});
         clib.printlist(@constCast(""), main.alfasort(t(h(tlost))));
         tlost = t(tlost);
     }
@@ -267,7 +267,7 @@ pub fn undump(t_val: [*:0]const u8) void {
     flen = @intCast(clib.strlen(t_val));
     t1 = @intCast(main.fm_time(t_val));
     if (flen > clib.pnlim) {
-        _ = clib.printf("sorry, pathname too long (limit=%d): %s\n", .{.{clib.pnlim, t_val}});
+        _ = clib.printf("sorry, pathname too long (limit=%d): %s\n", .{.{ clib.pnlim, t_val }});
         return;
     }
 

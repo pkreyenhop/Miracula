@@ -379,7 +379,7 @@ pub export fn make(t_val: u8, x: Word, y: Word) Word {
                     SPACE = rt.rs.SPACELIMIT;
                 }
                 if (rt.rs.atgc != 0 and SPACE > sp) {
-                    _ = c.fprintf(getStderr().?, "\n<<increase heap from %ld to %ld>>\n", .{sp, SPACE});
+                    _ = c.fprintf(getStderr().?, "\n<<increase heap from %ld to %ld>>\n", .{ sp, SPACE });
                 }
             }
         }
@@ -416,7 +416,7 @@ export fn gc() void {
             }
             if (core.compiling != 0 and rt.rs.ideep == 0) {
                 _ = c.fprintf(getStderr().?, "not enough heap to compile current script\n", .{.{}});
-                _ = c.fprintf(getStderr().?, "script = \"%s\", heap = %ld\n", .{rt.rs.current_script, SPACE});
+                _ = c.fprintf(getStderr().?, "script = \"%s\", heap = %ld\n", .{ rt.rs.current_script, SPACE });
             }
             c.exit(1);
         } else {
@@ -600,7 +600,6 @@ fn getStderr() ?*c.FILE {
 
 export var prefix: [c.pnlim]u8 = undefined;
 export var preflen: Word = 0;
-
 
 extern fn fm_time(path: [*:0]const u8) Word;
 extern fn unlinkx(path: [*:0]const u8) void;
@@ -965,11 +964,11 @@ pub export fn out2(file: ?*c.FILE, x_val: Word) void {
         return;
     }
     if (tag_val == c.DATAPAIR) {
-        _ = c.fprintf(file, "DATAPAIR(%s,%ld)", .{castPtr(h(x)), t(x)});
+        _ = c.fprintf(file, "DATAPAIR(%s,%ld)", .{ castPtr(h(x)), t(x) });
         return;
     }
     if (tag_val == c.FILEINFO) {
-        _ = c.fprintf(file, "FILEINFO(%s,%ld)", .{castPtr(h(x)), t(x)});
+        _ = c.fprintf(file, "FILEINFO(%s,%ld)", .{ castPtr(h(x)), t(x) });
         return;
     }
     if (tag_val == c.CONSTRUCTOR) {
@@ -987,12 +986,11 @@ pub export fn out2(file: ?*c.FILE, x_val: Word) void {
         return;
     }
     if (tag_val != c.CONS and tag_val != c.AP and tag_val != c.LAMBDA) {
-        _ = c.fprintf(file, "<%ld|tag=%d>", .{x, tag_val});
+        _ = c.fprintf(file, "<%ld|tag=%d>", .{ x, tag_val });
         return;
     }
     _ = c.putc(')', file);
 }
-
 
 var PNBASE: Word = 0;
 var CFN: ?[*:0]const u8 = null;
@@ -1254,7 +1252,7 @@ pub fn dump_ob(x: Word, file: ?*c.FILE) void {
             putint(@intCast(h(x)), file);
         },
         c.DATAPAIR => {
-            _ = c.fprintf(file, "%c%s", .{c.AKA_X, castPtr(h(x))});
+            _ = c.fprintf(file, "%c%s", .{ c.AKA_X, castPtr(h(x)) });
             _ = c.putc(0, file);
         },
         c.FILEINFO => {
@@ -1263,7 +1261,7 @@ pub fn dump_ob(x: Word, file: ?*c.FILE) void {
             if (c.strcmp(path, CFN.?) == 0) {
                 _ = c.putc(c.HERE_X, file);
             } else {
-                _ = c.fprintf(file, "%c%s", .{c.HERE_X, mkrel(path)});
+                _ = c.fprintf(file, "%c%s", .{ c.HERE_X, mkrel(path) });
             }
             _ = c.putc(0, file);
             _ = c.putc(@intCast(line & 255), file);
@@ -1284,7 +1282,7 @@ pub fn dump_ob(x: Word, file: ?*c.FILE) void {
             _ = c.putc(c.RV_X, file);
         },
         c.ID => {
-            _ = c.fprintf(file, "%c%s", .{c.ID_X, get_id(x)});
+            _ = c.fprintf(file, "%c%s", .{ c.ID_X, get_id(x) });
             _ = c.putc(0, file);
         },
         c.STRCONS => {
@@ -2007,15 +2005,25 @@ pub const FileNode = struct {
     word: Word,
 
     /// The modification time recorded in the heap for this file (seconds since epoch).
-    pub fn time(self: FileNode) Word { return fil_time(self.word); }
+    pub fn time(self: FileNode) Word {
+        return fil_time(self.word);
+    }
     /// Share flag: 1 for system/shared files (prelude, stdlib), 0 for user scripts.
-    pub fn share(self: FileNode) Word { return fil_share(self.word); }
+    pub fn share(self: FileNode) Word {
+        return fil_share(self.word);
+    }
     /// The definitions list (environment entries compiled from this file).
-    pub fn defs(self: FileNode) Word { return fil_defs(self.word); }
+    pub fn defs(self: FileNode) Word {
+        return fil_defs(self.word);
+    }
     /// A `(dev . ino)` cons cell identifying this file's filesystem inode.
-    pub fn inodev(self: FileNode) Word { return fil_inodev(self.word); }
+    pub fn inodev(self: FileNode) Word {
+        return fil_inodev(self.word);
+    }
     /// True if this file and `other` refer to the same filesystem inode.
-    pub fn sameAs(self: FileNode, other: FileNode) bool { return same_file(self.word, other.word); }
+    pub fn sameAs(self: FileNode, other: FileNode) bool {
+        return same_file(self.word, other.word);
+    }
 };
 
 /// A heap node that represents a Miranda identifier (name/binding).
@@ -2024,19 +2032,33 @@ pub const Identifier = struct {
     word: Word,
 
     /// The declared type of this identifier (a type node Word).
-    pub fn typ(self: Identifier) Word { return id_type(self.word); }
+    pub fn typ(self: Identifier) Word {
+        return id_type(self.word);
+    }
     /// The current reduction value of this identifier (combinator or UNDEF).
-    pub fn val(self: Identifier) Word { return id_val(self.word); }
+    pub fn val(self: Identifier) Word {
+        return id_val(self.word);
+    }
     /// Provenance: a cons list of datapairs recording where this name was defined.
-    pub fn who(self: Identifier) Word { return id_who(self.word); }
+    pub fn who(self: Identifier) Word {
+        return id_who(self.word);
+    }
     /// True if this identifier names a constructor (starts with upper-case or is an operator).
-    pub fn isConstructor(self: Identifier) bool { return isconstructor(self.word); }
+    pub fn isConstructor(self: Identifier) bool {
+        return isconstructor(self.word);
+    }
     /// True if this identifier names a type variable (lower-case, not a constructor).
-    pub fn isVariable(self: Identifier) bool { return isvariable(self.word); }
+    pub fn isVariable(self: Identifier) bool {
+        return isvariable(self.word);
+    }
     /// True if this identifier has no definition yet (undef_t type and UNDEF value).
-    pub fn isFreeId(self: Identifier) bool { return isfreeid(self.word); }
+    pub fn isFreeId(self: Identifier) bool {
+        return isfreeid(self.word);
+    }
     /// Prepends this identifier to the current file's environment definition list.
-    pub fn addToEnv(self: Identifier) void { addtoenv(self.word); }
+    pub fn addToEnv(self: Identifier) void {
+        addtoenv(self.word);
+    }
 };
 
 /// A heap node that represents a Miranda type expression or type constructor.
@@ -2045,9 +2067,13 @@ pub const TypeRef = struct {
     word: Word,
 
     /// The type class tag (e.g. `c_abi.synonym_t`, `algebraic_t`, `abstract_t`).
-    pub fn class(self: TypeRef) Word { return t_class(self.word); }
+    pub fn class(self: TypeRef) Word {
+        return t_class(self.word);
+    }
     /// Auxiliary info: parameter list for synonyms, constructor list for algebraics.
-    pub fn info(self: TypeRef) Word { return t_info(self.word); }
+    pub fn info(self: TypeRef) Word {
+        return t_info(self.word);
+    }
 };
 
 /// Generic typed wrapper for any heap node where the specific domain is not yet refined.

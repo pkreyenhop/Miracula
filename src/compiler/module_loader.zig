@@ -12,10 +12,6 @@ const ls = &lex_state.ls;
 
 // Global variables defined/exported in parser/lex.zig
 
-
-
-
-
 // C ABI / linked symbols
 extern fn signals(signum: c_int, handler: usize) usize;
 
@@ -129,7 +125,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
                 }
                 if (count != 1) {
                     main.SYNERR = 1;
-                    _ = clib.printf("illegal fileid \"%s\" in export list (%s)\n", .{.{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(s))))), @as([*:0]const u8, if (count != 0) "ambiguous" else "not %included in script")}});
+                    _ = clib.printf("illegal fileid \"%s\" in export list (%s)\n", .{.{ @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(s))))), @as([*:0]const u8, if (count != 0) "ambiguous" else "not %included in script") }});
                 }
             }
         }
@@ -585,7 +581,7 @@ pub fn mkincludes(includees_val: Word) Word {
                 _ = clib.printf(if (fa == -1) "(should be \"= value\" not \"== type\")\n" else "(should be \"== type\" not \"= value\")\n", .{.{}});
             } else {
                 _ = clib.printf("`%s' has == binding of wrong arity ", .{.{pn}});
-                _ = clib.printf("(formal has arity %ld, actual has arity %ld)\n", .{.{fa, ta}});
+                _ = clib.printf("(formal has arity %ld, actual has arity %ld)\n", .{.{ fa, ta }});
             }
             main.cs.DETROP = main.heap.t(main.cs.DETROP);
         }
@@ -601,7 +597,7 @@ pub fn mkincludes(includees_val: Word) Word {
         }
 
         while (main.cs.MISSING != NIL) {
-            _ = clib.fprintf(main.getStderr().?, "%s%s", .{.{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(main.cs.MISSING)))))), @as([*:0]const u8, if (main.heap.t(main.cs.MISSING) == NIL) ";\n" else ",")}});
+            _ = clib.fprintf(main.getStderr().?, "%s%s", .{.{ @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(main.cs.MISSING)))))), @as([*:0]const u8, if (main.heap.t(main.cs.MISSING) == NIL) ";\n" else ",") }});
             main.cs.MISSING = main.heap.t(main.cs.MISSING);
         }
 
@@ -614,7 +610,7 @@ pub fn mkincludes(includees_val: Word) Word {
     if (tclashes != NIL) {
         _ = clib.fprintf(main.getStderr().?, "TYPECLASH - the following type%s multiply named:\n", .{.{@as([*:0]const u8, if (main.heap.t(tclashes) == NIL) " is" else "s are")}});
         while (tclashes != NIL) {
-            _ = clib.fprintf(main.getStderr().?, "\'%s\' of file \"%s\", as: ", .{.{clib.getaka(main.heap.h(main.heap.t(main.heap.h(tclashes)))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(tclashes))))))}});
+            _ = clib.fprintf(main.getStderr().?, "\'%s\' of file \"%s\", as: ", .{.{ clib.getaka(main.heap.h(main.heap.t(main.heap.h(tclashes)))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(tclashes)))))) }});
             clib.printlist(@constCast(""), main.alfasort(main.heap.t(main.heap.t(main.heap.h(tclashes)))));
             tclashes = main.heap.t(tclashes);
         }

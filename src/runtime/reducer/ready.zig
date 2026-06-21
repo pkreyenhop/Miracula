@@ -224,7 +224,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 _ = clib.close(fd_a[1]);
                 _ = clib.close(fd_a[0]);
                 _ = clib.fclose(reduce.getStdin().?);
-                _ = clib.execl(shell, .{shell, "-c", cp});
+                _ = clib.execl(shell, .{ shell, "-c", cp });
             }
             ctx.action = clib.ACT_DONE;
             return;
@@ -287,7 +287,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 }
                 p[p_idx] = 0;
                 p_idx += 1;
-                if (p_idx > 60 or clib.sscanf(@ptrCast(p), "%lf%c", .{&d, &junk}) != 1 or junk != 0) {
+                if (p_idx > 60 or clib.sscanf(@ptrCast(p), "%lf%c", .{ &d, &junk }) != 1 or junk != 0) {
                     _ = clib.fprintf(reduce.getStderr().?, "\nbad arg for numval: \"%s\"\n", .{.{@as([*:0]const u8, @ptrCast(p))}});
                     clib.outstats();
                     clib.exit(1);
@@ -736,7 +736,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 clib.int_error("showscaled");
             }
             const arg1_int = reduce.getsmallint(ctx.args[0]);
-            _ = clib.sprintf(&main.rs.linebuf, "%.*e", .{@as(c_int, @intCast(arg1_int)), reduce.force_dbl(lastarg(ctx))});
+            _ = clib.sprintf(&main.rs.linebuf, "%.*e", .{ @as(c_int, @intCast(arg1_int)), reduce.force_dbl(lastarg(ctx)) });
             reduce.rewrite_to_string(&ctx.e, @ptrCast(&main.rs.linebuf));
             ctx.action = clib.ACT_DONE;
             return;
@@ -748,7 +748,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 clib.int_error("showfloat");
             }
             const arg1_int = reduce.getsmallint(ctx.args[0]);
-            _ = clib.sprintf(&main.rs.linebuf, "%.*f", .{@as(c_int, @intCast(arg1_int)), reduce.force_dbl(lastarg(ctx))});
+            _ = clib.sprintf(&main.rs.linebuf, "%.*f", .{ @as(c_int, @intCast(arg1_int)), reduce.force_dbl(lastarg(ctx)) });
             reduce.rewrite_to_string(&ctx.e, @ptrCast(&main.rs.linebuf));
             ctx.action = clib.ACT_DONE;
             return;
@@ -826,7 +826,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         else => {
             const tag_val = tag[reduce.clean_ptr(e_val)];
-            _ = clib.fprintf(reduce.getStderr().?, "\nimpossible event in reduce (val: %ld, tag: %d)\n", .{.{e_val, tag_val}});
+            _ = clib.fprintf(reduce.getStderr().?, "\nimpossible event in reduce (val: %ld, tag: %d)\n", .{.{ e_val, tag_val }});
             std.process.exit(1);
         },
     }

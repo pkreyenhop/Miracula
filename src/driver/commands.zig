@@ -8,10 +8,8 @@ const NIL = main.NIL;
 // State owned by heap.zig / reduce.zig — not yet accessible via @import.
 extern var tag: [*]u8;
 
-
 const lex_state = @import("../parser/lex_state.zig");
 const ls = &lex_state.ls;
-
 
 extern fn token() ?[*:0]u8;
 
@@ -302,7 +300,7 @@ pub export fn command() void {
                         main.loadfile(t_val.?);
                     }
                 } else {
-                    _ = clib.printf("%s%s\n", .{.{main.rs.current_script.?, @as([*:0]const u8, if (main.files == NIL) " (not loaded)" else "")}});
+                    _ = clib.printf("%s%s\n", .{.{ main.rs.current_script.?, @as([*:0]const u8, if (main.files == NIL) " (not loaded)" else "") }});
                 }
                 return;
             }
@@ -310,7 +308,7 @@ pub export fn command() void {
                 if (clib.getchar() != '\n') return;
                 var f = main.files;
                 while (f != NIL) : (f = main.heap.t(f)) {
-                    _ = clib.printf("(%s,%ld,%ld)", .{.{main.get_fil(main.heap.h(f)), main.fil_time(main.heap.h(f)), main.fil_share(main.heap.h(f))}});
+                    _ = clib.printf("(%s,%ld,%ld)", .{.{ main.get_fil(main.heap.h(f)), main.fil_time(main.heap.h(f)), main.fil_share(main.heap.h(f)) }});
                     clib.printlist(@constCast(""), main.fil_defs(main.heap.h(f)));
                 }
                 return;
@@ -519,7 +517,7 @@ pub export fn command() void {
 }
 
 pub export fn manaction() void {
-    _ = clib.sprintf(&main.rs.linebuf, "\"%s/menudriver\" \"%s/manual\"", .{main.rs.miralib.?, main.rs.miralib.?});
+    _ = clib.sprintf(&main.rs.linebuf, "\"%s/menudriver\" \"%s/manual\"", .{ main.rs.miralib.?, main.rs.miralib.? });
     _ = clib.system(&main.rs.linebuf);
 }
 
@@ -651,7 +649,7 @@ pub export fn diagnose(n: [*:0]const u8) void {
     const presym_n = [_]c_int{ 21, 8, 15, 8, 15, 31, 23, 22, 15, 21 };
     inline for (presym, presym_n) |sym, sym_n| {
         if (clib.strcmp(n, sym) == 0) {
-            _ = clib.printf("%s -- keyword (see manual, section %d)\n", .{.{n, sym_n}});
+            _ = clib.printf("%s -- keyword (see manual, section %d)\n", .{.{ n, sym_n }});
             return;
         }
     }

@@ -138,20 +138,14 @@ const CMBASE = word.CMBASE;
 const NIL = word.NIL;
 const ATOMLIMIT = word.ATOMLIMIT;
 
+// CMBASE + 138 is NIL
+// CMBASE + 138 is NIL
 
+// CMBASE + 138 is NIL
+// CMBASE + 138 is NIL
+// CMBASE + 138 is NIL
 
-
- // CMBASE + 138 is NIL
- // CMBASE + 138 is NIL
-
-
- // CMBASE + 138 is NIL
- // CMBASE + 138 is NIL
- // CMBASE + 138 is NIL
-
- // CMBASE + 138 is NIL
-
-
+// CMBASE + 138 is NIL
 
 extern fn make(t: u8, x: Word, y: Word) Word;
 extern fn reverse(x: Word) Word;
@@ -486,8 +480,6 @@ fn getId(x: Word) [*:0]const u8 {
     return @ptrFromInt(@as(usize, @intCast(h(h(h(x))))));
 }
 
-
-
 export fn sterilise(t_val: Word) void {
     if (main.tag[@intCast(t_val)] == AP) {
         hp(t_val).* = list_t;
@@ -519,7 +511,7 @@ fn meta_tcheck(t_val: Word) main.MiraError!Word {
                     _ = c.printf("badly formed type \"", .{});
                     out_type(t_val);
                     const msg: [*:0]const u8 = if (idType(cs.current_id) == type_t) "== binding" else "specification";
-                    _ = c.printf("\" in %s for \"%s\"\n", .{msg, getId(cs.current_id)});
+                    _ = c.printf("\" in %s for \"%s\"\n", .{ msg, getId(cs.current_id) });
                     _ = c.printf("(", .{});
                     out_type(tn);
                     _ = c.printf(" has zero arity)\n", .{});
@@ -554,12 +546,12 @@ fn meta_tcheck(t_val: Word) main.MiraError!Word {
                 _ = c.printf("badly formed type \"", .{});
                 out_type(t_val);
                 const msg: [*:0]const u8 = if (idType(cs.current_id) == type_t) "== binding" else "specification";
-                _ = c.printf("\" in %s for \"%s\"\n", .{msg, getId(cs.current_id)});
+                _ = c.printf("\" in %s for \"%s\"\n", .{ msg, getId(cs.current_id) });
             }
             if (idType(tn) != type_t) {
                 _ = c.printf("(%s not defined as typename)\n", .{getId(tn)});
             } else {
-                _ = c.printf("(typename %s has arity %ld)\n", .{getId(tn), t_arity(tn)});
+                _ = c.printf("(typename %s has arity %ld)\n", .{ getId(tn), t_arity(tn) });
             }
             if (main.tag[@intCast(cs.current_id)] != DATAPAIR) {
                 sayhere(getspecloc(cs.current_id), 1);
@@ -597,13 +589,6 @@ fn meta_tcheck(t_val: Word) main.MiraError!Word {
     cs.meta_pending = t(cs.meta_pending);
     return res;
 }
-
-
-
-
-
-
-
 
 fn mktvar(i: Word) Word {
     return make(TVAR, 0, i);
@@ -795,15 +780,13 @@ fn getStdout() ?*c.FILE {
     }
 }
 
-
-
 export fn locate(s: [*:0]const u8) void {
     cs.TYPERRS += 1;
     if (cs.TYPERRS == 1 or cs.lastloc != cs.current_id) {
         if (cs.current_id != 0) {
             if (main.tag[@intCast(cs.current_id)] == DATAPAIR) {
                 locate_inc();
-                _ = c.printf("%s in binding for %s\n", .{s, @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(cs.current_id)))))});
+                _ = c.printf("%s in binding for %s\n", .{ s, @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(cs.current_id))))) });
                 return;
             }
             var x = cs.current_id;
@@ -854,7 +837,7 @@ export fn sayhere(h_val: Word, nl: Word) void {
     const h_str = @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h_node)))));
     const eq = std.mem.eql(u8, std.mem.span(h_str), std.mem.span(main.rs.current_script.?));
     const prefix: [*:0]const u8 = if (eq) "" else "%insert file ";
-    _ = c.printf("(line %3ld of %s\"%s\")", .{t(h_node), prefix, h_str});
+    _ = c.printf("(line %3ld of %s\"%s\")", .{ t(h_node), prefix, h_str });
     if (nl != 0) {
         _ = c.printf("\n", .{});
     } else {
@@ -1068,10 +1051,10 @@ export fn out_type2(t_val: Word) void {
                     } else if (std.mem.eql(u8, std.mem.span(@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(t_info(t_val)))))))), std.mem.span(main.rs.current_script.?))) {
                         _ = c.printf("%s", .{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(t_info(t_val)))))))});
                     } else {
-                        _ = c.printf("`%s@%s'", .{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(t_info(t_val))))))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(t_info(t_val)))))))});
+                        _ = c.printf("`%s@%s'", .{ @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(t_info(t_val))))))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(t_info(t_val))))))) });
                     }
                 } else {
-                    _ = c.printf("<BADLY FORMED TYPE:%d,%ld,%ld>", .{main.tag[@intCast(t_val)], h(t_val), t(t_val)});
+                    _ = c.printf("<BADLY FORMED TYPE:%d,%ld,%ld>", .{ main.tag[@intCast(t_val)], h(t_val), t(t_val) });
                 }
             },
         }
@@ -1398,9 +1381,6 @@ export fn printlist(title: [*:0]const u8, l_in: Word) void {
     _ = c.printf(";\n", .{});
 }
 
-
-
-
 fn id_who(x: Word) Word {
     return t(h(h(x)));
 }
@@ -1672,19 +1652,6 @@ export fn checkfbs() void {
     }
     reset_SUBST();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 export fn genlstat_t() Word {
     if (cs.filestat_t == 0) {

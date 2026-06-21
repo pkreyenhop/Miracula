@@ -18,7 +18,7 @@ const months = [_][*:0]const u8{
 fn epochToDate(epoch_secs: u64) struct { day: u8, month: u8, year: u16 } {
     const secs = epoch_secs;
     const days_in_month = [_]u8{ 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-    
+
     var days = secs / 86400;
     var year: u16 = 1970;
     while (true) {
@@ -31,7 +31,7 @@ fn epochToDate(epoch_secs: u64) struct { day: u8, month: u8, year: u16 } {
             break;
         }
     }
-    
+
     const is_leap = (year % 4 == 0 and year % 100 != 0) or (year % 400 == 0);
     var month: u8 = 0;
     while (month < 12) : (month += 1) {
@@ -43,7 +43,7 @@ fn epochToDate(epoch_secs: u64) struct { day: u8, month: u8, year: u16 } {
             break;
         }
     }
-    
+
     return .{
         .day = @intCast(days + 1),
         .month = month,

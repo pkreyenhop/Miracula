@@ -13,7 +13,6 @@ const lex_state = @import("lex_state.zig");
 const ls = &lex_state.ls;
 const heap = @import("../runtime/heap.zig");
 
-
 const Word = clib.word;
 
 // Miranda predefined atom words (from lex.zig — keep in sync with CMBASE = 306).

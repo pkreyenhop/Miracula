@@ -398,7 +398,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             var w: Word = 0;
             while (h_val != 0) {
                 w += 1;
-                _ = clib.printf("%*s%s", .{.{@as(c_int, @intCast(maxw)), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(h_val))))), @as([*:0]const u8, if ((@rem(w, n)) != 0) "" else "\n")}});
+                _ = clib.printf("%*s%s", .{.{ @as(c_int, @intCast(maxw)), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(h_val))))), @as([*:0]const u8, if ((@rem(w, n)) != 0) "" else "\n") }});
                 h_val = main.heap.t(h_val);
             }
             if ((@rem(w, n)) != 0) {
@@ -516,7 +516,7 @@ pub export fn libfails() void {
     _ = clib.fprintf(stderr, "found", .{.{}});
     var i: usize = 0;
     while (i < mvp) : (i += 1) {
-        _ = clib.fprintf(stderr, "\tversion %s at: %s\n", .{.{strvers(vstack[i]), mstack[i]}});
+        _ = clib.fprintf(stderr, "\tversion %s at: %s\n", .{.{ strvers(vstack[i]), mstack[i] }});
     }
 }
 
@@ -529,10 +529,8 @@ pub export fn strvers(v: c_int) [*:0]const u8 {
 }
 
 pub fn v_info(full: c_int) void {
-    _ = clib.printf("%s last revised %s\n", .{.{strvers(main.version), main.vdate}});
+    _ = clib.printf("%s last revised %s\n", .{.{ strvers(main.version), main.vdate }});
     if (full == 0) return;
     _ = clib.printf("%s", .{.{main.host}});
     _ = clib.printf("XVERSION %u\n", .{.{@as(c_uint, @intCast(clib.XVERSION))}});
 }
-
-

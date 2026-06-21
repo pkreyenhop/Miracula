@@ -38,13 +38,9 @@ pub extern var s_out: ?*clib.FILE;
 pub extern var dstack: ?[*]Word;
 pub extern var stackp: ?[*]Word;
 
-
-
 pub extern var version: c_int;
 pub extern var vdate: [*:0]const u8;
 pub extern var host: [*:0]const u8;
-
-
 
 // Stuck vars now live in core_state.zig; re-declared here as extern var so
 // callers using main.X still compile without modification.

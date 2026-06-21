@@ -123,15 +123,23 @@ pub extern fn add1(e: word, s: word) word;
 pub extern fn addextn(b: word, s: [*:0]u8) [*:0]u8;
 pub extern fn adjust_prefix(f: [*:0]u8) void;
 pub const algebraic_t = word_mod.algebraic_t;
-pub fn ap(x: Word, y: Word) Word { return make(AP, x, y); }
-pub fn ap2(x: Word, y: Word, z: Word) Word { return ap(ap(x, y), z); }
+pub fn ap(x: Word, y: Word) Word {
+    return make(AP, x, y);
+}
+pub fn ap2(x: Word, y: Word, z: Word) Word {
+    return ap(ap(x, y), z);
+}
 pub extern fn append1(x: word, y: word) word;
 pub const bool_t = word_mod.bool_t;
 pub const char_t = word_mod.char_t;
 pub extern fn checktypes() void;
 pub extern fn codegen(x: word) word;
-pub fn cons(x: Word, y: Word) Word { return make(word_mod.CONS, x, y); }
-pub fn datapair(x: Word, y: Word) Word { return make(DATAPAIR, x, y); }
+pub fn cons(x: Word, y: Word) Word {
+    return make(word_mod.CONS, x, y);
+}
+pub fn datapair(x: Word, y: Word) Word {
+    return make(DATAPAIR, x, y);
+}
 pub extern fn deps(x: word) word;
 pub extern fn dump_script(files: word, f: ?*FILE) void;
 pub extern fn findid(p: [*:0]const u8) word;
@@ -150,7 +158,9 @@ pub extern fn make_id(p: [*:0]const u8) word;
 pub extern fn mallocfail(s: [*:0]const u8) void;
 pub extern fn setdiff(s1: word, s2: word) word;
 pub extern fn make_pn(val: word) word;
-pub fn make_typ(a: Word, shf: Word, class: Word, info: Word) Word { return cons(cons(a, shf), cons(class, info)); }
+pub fn make_typ(a: Word, shf: Word, class: Word, info: Word) Word {
+    return cons(cons(a, shf), cons(class, info));
+}
 pub extern fn member(s: word, x: word) word;
 pub extern fn mkprivate(x: word) void;
 pub extern fn mkshow(s: word, p: word, t: word) word;
@@ -168,7 +178,9 @@ pub extern fn outstats() void;
 pub extern fn printlist(title: [*:0]const u8, l: word) void;
 pub extern fn process() word;
 pub extern fn rdline() [*:0]u8;
-pub fn readvals(x: Word, y: Word) Word { return make(word_mod.STARTREADVALS, x, y); }
+pub fn readvals(x: Word, y: Word) Word {
+    return make(word_mod.STARTREADVALS, x, y);
+}
 pub extern fn report_type(x: word) void;
 pub extern fn resetheap() void;
 pub extern fn sayhere(h_val: Word, nl: Word) void;
@@ -179,7 +191,9 @@ pub const EDOM = 33;
 pub const ERANGE = 34;
 
 pub extern fn sto_dbl(x: f64) word;
-pub fn strcons(x: Word, y: Word) Word { return make(STRCONS, x, y); }
+pub fn strcons(x: Word, y: Word) Word {
+    return make(STRCONS, x, y);
+}
 pub const struct_winsize = extern struct {
     ws_row: c_ushort,
     ws_col: c_ushort,
@@ -207,9 +221,15 @@ pub var std_in = FILE{ .fd = std.posix.STDIN_FILENO };
 pub var std_out = FILE{ .fd = std.posix.STDOUT_FILENO };
 pub var std_err = FILE{ .fd = std.posix.STDERR_FILENO };
 
-pub fn stdin() ?*FILE { return &std_in; }
-pub fn stdout() ?*FILE { return &std_out; }
-pub fn stderr() ?*FILE { return &std_err; }
+pub fn stdin() ?*FILE {
+    return &std_in;
+}
+pub fn stdout() ?*FILE {
+    return &std_out;
+}
+pub fn stderr() ?*FILE {
+    return &std_err;
+}
 
 // Fixed file pool
 var file_pool: [16]FILE = undefined;
@@ -477,7 +497,7 @@ fn formatArg(
             str = "?INVALID_SPECIFIER?";
         },
     }
-    
+
     if (str.len < width) {
         const pad_len = width - str.len;
         if (left_align) {
@@ -514,10 +534,10 @@ pub fn formatC(writer: anytype, format: [*:0]const u8, args: anytype) !void {
     };
     const ArgsType = @TypeOf(unwrapped_args);
     const fields = std.meta.fields(ArgsType);
-    
+
     var arg_idx: usize = 0;
     var i: usize = 0;
-    
+
     while (i < fmt.len) {
         if (fmt[i] == '%') {
             i += 1;
@@ -527,7 +547,7 @@ pub fn formatC(writer: anytype, format: [*:0]const u8, args: anytype) !void {
                 i += 1;
                 continue;
             }
-            
+
             var left_align = false;
             var zero_pad = false;
             while (i < fmt.len) {
@@ -541,13 +561,13 @@ pub fn formatC(writer: anytype, format: [*:0]const u8, args: anytype) !void {
                     break;
                 }
             }
-            
+
             var width: usize = 0;
             while (i < fmt.len and fmt[i] >= '0' and fmt[i] <= '9') {
                 width = width * 10 + (fmt[i] - '0');
                 i += 1;
             }
-            
+
             var precision: ?usize = null;
             if (i < fmt.len and fmt[i] == '.') {
                 i += 1;
@@ -558,20 +578,20 @@ pub fn formatC(writer: anytype, format: [*:0]const u8, args: anytype) !void {
                 }
                 precision = prec_val;
             }
-            
+
             while (i < fmt.len and (fmt[i] == 'l' or fmt[i] == 'h' or fmt[i] == 'z' or fmt[i] == 'j' or fmt[i] == 't')) {
                 i += 1;
             }
-            
+
             if (i >= fmt.len) break;
             const spec = fmt[i];
             i += 1;
-            
+
             if (arg_idx >= fields.len) {
                 try writer.writeAll("%ERR_MISSING_ARG%");
                 continue;
             }
-            
+
             inline for (fields, 0..) |field, idx| {
                 if (idx == arg_idx) {
                     const val = @field(unwrapped_args, field.name);
@@ -618,15 +638,15 @@ const BufferWriter = struct {
     buf: [*]u8,
     size: usize,
     pos: usize,
-    
+
     pub const Error = error{NoSpace};
-    
+
     pub fn writeByte(self: *@This(), b: u8) Error!void {
         if (self.pos >= self.size) return error.NoSpace;
         self.buf[self.pos] = b;
         self.pos += 1;
     }
-    
+
     pub fn writeAll(self: *@This(), bytes: []const u8) Error!void {
         if (self.pos + bytes.len > self.size) return error.NoSpace;
         @memcpy(self.buf[self.pos .. self.pos + bytes.len], bytes);
@@ -756,7 +776,7 @@ fn scanVal(str: []const u8, s_idx: *usize, spec: u8, width: ?usize, ptr: anytype
             if (comptime !is_int_child) return false;
             const start = s_idx.*;
             var end = start;
-            if (end + 1 < str.len and str[end] == '0' and (str[end+1] == 'x' or str[end+1] == 'X')) end += 2;
+            if (end + 1 < str.len and str[end] == '0' and (str[end + 1] == 'x' or str[end + 1] == 'X')) end += 2;
             const hex_start = end;
             while (end < str.len and ((str[end] >= '0' and str[end] <= '9') or
                 (str[end] >= 'a' and str[end] <= 'f') or (str[end] >= 'A' and str[end] <= 'F'))) end += 1;
@@ -796,16 +816,16 @@ fn scanVal(str: []const u8, s_idx: *usize, spec: u8, width: ?usize, ptr: anytype
 pub fn sscanf(buf: ?*const anyopaque, format: [*:0]const u8, args: anytype) c_int {
     if (buf == null) return -1;
     const str = std.mem.span(@as([*:0]const u8, @ptrCast(buf.?)));
-    
+
     const fmt = std.mem.span(format);
     const ArgsType = @TypeOf(args);
     const fields = std.meta.fields(ArgsType);
-    
+
     var s_idx: usize = 0;
     var f_idx: usize = 0;
     var arg_idx: usize = 0;
     var parsed_count: c_int = 0;
-    
+
     while (f_idx < fmt.len) {
         if (fmt[f_idx] == '%') {
             f_idx += 1;
@@ -816,13 +836,13 @@ pub fn sscanf(buf: ?*const anyopaque, format: [*:0]const u8, args: anytype) c_in
                 f_idx += 1;
                 continue;
             }
-            
+
             var suppress = false;
             if (fmt[f_idx] == '*') {
                 suppress = true;
                 f_idx += 1;
             }
-            
+
             var width: ?usize = null;
             var w_val: usize = 0;
             var has_w = false;
@@ -832,26 +852,26 @@ pub fn sscanf(buf: ?*const anyopaque, format: [*:0]const u8, args: anytype) c_in
                 f_idx += 1;
             }
             if (has_w) width = w_val;
-            
+
             while (f_idx < fmt.len and (fmt[f_idx] == 'l' or fmt[f_idx] == 'h')) {
                 f_idx += 1;
             }
-            
+
             if (f_idx >= fmt.len) break;
             const spec = fmt[f_idx];
             f_idx += 1;
-            
+
             if (spec != 'c') {
                 while (s_idx < str.len and std.ascii.isWhitespace(str[s_idx])) {
                     s_idx += 1;
                 }
             }
-            
+
             if (s_idx >= str.len) {
                 if (parsed_count == 0) return -1;
                 return parsed_count;
             }
-            
+
             if (suppress) {
                 if (spec == 'c') {
                     s_idx += 1;
@@ -862,16 +882,16 @@ pub fn sscanf(buf: ?*const anyopaque, format: [*:0]const u8, args: anytype) c_in
                 }
                 continue;
             }
-            
+
             if (arg_idx >= fields.len) return parsed_count;
-            
+
             const success = inline for (fields, 0..) |field, idx| {
                 if (idx == arg_idx) {
                     const ptr = @field(args, field.name);
                     break scanVal(str, &s_idx, spec, width, ptr);
                 }
             } else false;
-            
+
             if (!success) return parsed_count;
             parsed_count += 1;
             arg_idx += 1;
@@ -888,7 +908,7 @@ pub fn sscanf(buf: ?*const anyopaque, format: [*:0]const u8, args: anytype) c_in
             f_idx += 1;
         }
     }
-    
+
     return parsed_count;
 }
 
@@ -1062,11 +1082,11 @@ pub fn fscanf(file: ?*FILE, format: [*:0]const u8, args: anytype) c_int {
     const fmt = std.mem.span(format);
     const ArgsType = @TypeOf(args);
     const fields = std.meta.fields(ArgsType);
-    
+
     var f_idx: usize = 0;
     var arg_idx: usize = 0;
     var parsed_count: c_int = 0;
-    
+
     while (f_idx < fmt.len) {
         if (fmt[f_idx] == '%') {
             f_idx += 1;
@@ -1080,13 +1100,13 @@ pub fn fscanf(file: ?*FILE, format: [*:0]const u8, args: anytype) c_int {
                 f_idx += 1;
                 continue;
             }
-            
+
             var suppress = false;
             if (fmt[f_idx] == '*') {
                 suppress = true;
                 f_idx += 1;
             }
-            
+
             var width: ?usize = null;
             var w_val: usize = 0;
             var has_w = false;
@@ -1096,15 +1116,15 @@ pub fn fscanf(file: ?*FILE, format: [*:0]const u8, args: anytype) c_int {
                 f_idx += 1;
             }
             if (has_w) width = w_val;
-            
+
             while (f_idx < fmt.len and (fmt[f_idx] == 'l' or fmt[f_idx] == 'h')) {
                 f_idx += 1;
             }
-            
+
             if (f_idx >= fmt.len) break;
             const spec = fmt[f_idx];
             f_idx += 1;
-            
+
             if (spec != 'c') {
                 while (true) {
                     const ch = getc(f);
@@ -1118,7 +1138,7 @@ pub fn fscanf(file: ?*FILE, format: [*:0]const u8, args: anytype) c_int {
                     }
                 }
             }
-            
+
             if (suppress) {
                 if (spec == 'c') {
                     _ = getc(f);
@@ -1134,16 +1154,16 @@ pub fn fscanf(file: ?*FILE, format: [*:0]const u8, args: anytype) c_int {
                 }
                 continue;
             }
-            
+
             if (arg_idx >= fields.len) return parsed_count;
-            
+
             const success = inline for (fields, 0..) |field, idx| {
                 if (idx == arg_idx) {
                     const ptr = @field(args, field.name);
                     break scanValFromFile(f, spec, width, ptr);
                 }
             } else false;
-            
+
             if (!success) return parsed_count;
             parsed_count += 1;
             arg_idx += 1;
@@ -1166,7 +1186,7 @@ pub fn fscanf(file: ?*FILE, format: [*:0]const u8, args: anytype) c_int {
             f_idx += 1;
         }
     }
-    
+
     return parsed_count;
 }
 
@@ -1254,24 +1274,30 @@ pub fn perror(s: [*:0]const u8) void {
 }
 
 pub fn isatty(fd: c_int) c_int {
-    const C = struct { extern fn isatty(fd: c_int) c_int; };
+    const C = struct {
+        extern fn isatty(fd: c_int) c_int;
+    };
     return C.isatty(fd);
 }
 
 pub fn getcwd(buf: [*]u8, size: usize) ?[*]u8 {
-    const C = struct { extern fn getcwd(buf: [*]u8, size: usize) ?[*]u8; };
+    const C = struct {
+        extern fn getcwd(buf: [*]u8, size: usize) ?[*]u8;
+    };
     return C.getcwd(buf, size);
 }
 
 pub fn chdir(path: [*:0]const u8) c_int {
-    const C = struct { extern fn chdir(path: [*:0]const u8) c_int; };
+    const C = struct {
+        extern fn chdir(path: [*:0]const u8) c_int;
+    };
     return C.chdir(path);
 }
 
 pub fn getenv(name: ?*const anyopaque) ?[*:0]u8 {
     if (name == null) return null;
     const name_str = std.mem.span(@as([*:0]const u8, @ptrCast(name.?)));
-    
+
     for (env_slice) |entry_opt| {
         if (entry_opt) |entry| {
             const entry_str = std.mem.span(entry);
@@ -1287,7 +1313,7 @@ pub fn getenv(name: ?*const anyopaque) ?[*:0]u8 {
 pub fn system(cmd: ?*const anyopaque) c_int {
     if (cmd == null) return 1;
     const cmd_str = @as([*:0]const u8, @ptrCast(cmd.?));
-    
+
     const pid = fork();
     if (pid == -1) return -1;
     if (pid == 0) {
@@ -1330,7 +1356,7 @@ pub fn dup2(oldfd: c_int, newfd: c_int) c_int {
 pub fn execl(path: [*:0]const u8, args: anytype) c_int {
     const ArgsType = @TypeOf(args);
     const fields = std.meta.fields(ArgsType);
-    
+
     var argv: [fields.len:null]?[*:0]const u8 = undefined;
     inline for (fields, 0..) |field, idx| {
         const val = @field(args, field.name);
@@ -1457,7 +1483,7 @@ pub fn strstr(haystack: ?*const anyopaque, needle: ?*const anyopaque) ?[*:0]u8 {
     const h_str = std.mem.span(@as([*:0]const u8, @ptrCast(haystack.?)));
     const n_str = std.mem.span(@as([*:0]const u8, @ptrCast(needle.?)));
     if (n_str.len == 0) return @ptrCast(@constCast(@as([*:0]const u8, @ptrCast(haystack.?))));
-    
+
     const idx = std.mem.indexOf(u8, h_str, n_str) orelse return null;
     const ptr = @as([*:0]u8, @ptrCast(@constCast(@as([*:0]const u8, @ptrCast(haystack.?)))));
     return @ptrCast(ptr + idx);

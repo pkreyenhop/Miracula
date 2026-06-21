@@ -5,7 +5,6 @@ const ls = &lex_state.ls;
 const main = @import("../main.zig");
 const heap = @import("../runtime/heap.zig");
 
-
 const Word = c_long;
 const CMBASE: Word = 306;
 const NIL: Word = CMBASE + 138;
@@ -24,9 +23,6 @@ const True: Word = CMBASE + 137;
 extern var hd: [*]Word;
 extern var tl: [*]Word;
 extern var tag: [*]u8;
-
-
-
 
 var lverge: Word = 0;
 var prefixbase: ?[*]u8 = null;
@@ -51,13 +47,6 @@ extern var s_out: ?*clib.FILE;
 extern var current_file: Word;
 extern var errs: Word;
 extern var errline: Word;
-
-
-
-
-
-
-
 
 extern var commandmode: Word;
 
@@ -576,7 +565,7 @@ export fn rdline() ?[*:0]u8 {
         const offset = @as(usize, @intFromPtr(p)) - @as(usize, @intFromPtr(&rdline_linebuf));
         if (offset >= 1024) {
             p[0] = 0;
-            _ = clib.fprintf(getStderr().?, "sorry, !command too long (limit=%d chars): %s...\n", .{.{@as(c_int, 1024), &rdline_linebuf}});
+            _ = clib.fprintf(getStderr().?, "sorry, !command too long (limit=%d chars): %s...\n", .{.{ @as(c_int, 1024), &rdline_linebuf }});
             while (true) {
                 ch = clib.getchar();
                 if (ch == '\n' or ch == clib.EOF) {
@@ -630,7 +619,7 @@ fn errclass(val: Word, string_flag: Word) void {
     } else if (val == -5) {
         _ = clib.printf("unrecognised character in %s(main.rs.UTF8 error)\n", .{.{s}});
     } else if (val == -6) {
-        _ = clib.printf("unrecognised escape \\%c in %s\n", .{.{errch, s}});
+        _ = clib.printf("unrecognised escape \\%c in %s\n", .{.{ errch, s }});
     } else if (val == -7) {
         _ = clib.printf("illegal use of \\& in char const\n", .{.{}});
     } else {
@@ -710,7 +699,7 @@ export fn yylex() c_int {
         }
         if (is_char(ls.yylval) == 0) {
             const prefix_str: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
-            _ = clib.fprintf(getStderr().?, "%simpossible event while reading char const ('\\%lu')\n", .{.{prefix_str, ls.yylval}});
+            _ = clib.fprintf(getStderr().?, "%simpossible event while reading char const ('\\%lu')\n", .{.{ prefix_str, ls.yylval }});
             acterror();
         }
         if (rawch == '\n' or ls.c != '\'') {
@@ -913,7 +902,7 @@ export fn yylex() c_int {
                     ls.c = getch();
                 }
                 if (n > ls.sreds) {
-                    _ = clib.printf("%ssyntax error: illegal symbol $%ld%s\n", .{.{if (main.rs.echoing != 0) @as([*:0]const u8, "\n") else "", n, if (n >= 1000000) @as([*:0]const u8, "...") else ""}});
+                    _ = clib.printf("%ssyntax error: illegal symbol $%ld%s\n", .{.{ if (main.rs.echoing != 0) @as([*:0]const u8, "\n") else "", n, if (n >= 1000000) @as([*:0]const u8, "...") else "" }});
                     acterror();
                 } else {
                     ls.yylval = mkgvar(n);
@@ -1358,7 +1347,7 @@ export fn directive() Word {
                 } else {
                     const toomany = (ls.insertdepth >= 12);
                     const prefix_str: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
-                    _ = clib.printf("%s%%insert error - cannot open \"%s\"\n", .{.{prefix_str, f.?}});
+                    _ = clib.printf("%s%%insert error - cannot open \"%s\"\n", .{.{ prefix_str, f.? }});
                     _ = keep(ls.dicp);
                     if (toomany) {
                         _ = clib.printf("too many nested %%insert directives (limit=%ld)\n", .{.{ls.insertdepth}});
@@ -1805,13 +1794,14 @@ export fn reset_lex() void {
         const err_script = err_script_raw orelse "test.m";
         const is_current = if (err_script_raw) |es|
             (if (main.rs.current_script) |cs| es == @as([*:0]const u8, @ptrCast(cs)) else false)
-            else true;
+        else
+            true;
         if (t(errs) == 0 and is_current) {
             _ = clib.fprintf(getStderr().?, "error occurs at end of ", .{.{}});
         } else {
             _ = clib.fprintf(getStderr().?, "error found near line %ld of ", .{.{t(errs)}});
         }
-        _ = clib.fprintf(getStderr().?, "%sfile \"%s\"\ncompilation abandoned\n", .{.{if (is_current) @as([*:0]const u8, "") else "%insert ", err_script}});
+        _ = clib.fprintf(getStderr().?, "%sfile \"%s\"\ncompilation abandoned\n", .{.{ if (is_current) @as([*:0]const u8, "") else "%insert ", err_script }});
         if (is_current) {
             errline = if (t(errs) == 0) lastline else t(errs);
             errs = 0;

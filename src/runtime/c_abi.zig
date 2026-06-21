@@ -544,11 +544,9 @@ pub extern fn reduce_parse_close_error(arg1: word, arg3: word) void;
 pub extern fn piperrmess(pid: word) word;
 pub extern fn numplus(x: word, y: word) word;
 
-
 pub extern var hd: [*]word;
 pub extern var tl: [*]word;
 pub extern var tag: [*]u8;
 pub extern var yylval: word;
 pub extern var yysterm: [*][*:0]u8;
 pub extern var cmbnms: [*][*:0]u8;
-

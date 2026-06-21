@@ -103,14 +103,13 @@ const abstract_t: Word = 2;
 const CONST: Word = 268;
 const ATOMLIMIT: Word = CMBASE + 141;
 
- // NIL
+// NIL
 
- // NIL
+// NIL
 
- // NIL
+// NIL
 
- // NIL
-
+// NIL
 
 extern fn make(t: u8, x: Word, y: Word) Word;
 extern fn append1(x: Word, y: Word) Word;
@@ -1053,7 +1052,7 @@ export fn respec_error(x: Word) void {
         _ = c.putchar('\n');
     }
     const suffix: [*:0]const u8 = if (member(main.rs.primenv, x) != 0) " (in standard environment)" else "";
-    _ = c.printf("syntax error: type of \"%s\" already declared%s\n", .{getId(x), suffix});
+    _ = c.printf("syntax error: type of \"%s\" already declared%s\n", .{ getId(x), suffix });
     acterror();
 }
 
@@ -1062,7 +1061,7 @@ export fn nameclash(x: Word) void {
         _ = c.putchar('\n');
     }
     const suffix: [*:0]const u8 = if (member(main.rs.primenv, x) != 0) " (in standard environment)" else "";
-    _ = c.printf("syntax error: nameclash, \"%s\" already defined%s\n", .{getId(x), suffix});
+    _ = c.printf("syntax error: nameclash, \"%s\" already defined%s\n", .{ getId(x), suffix });
     acterror();
 }
 
@@ -1127,7 +1126,11 @@ export fn specify(input_x: Word, spec_type: Word, here: Word) void {
 fn arityCheck(type_name: Word, arity: Word, here: Word) void {
     if (typeArity(type_name) != arity) {
         const prefix: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
-        _ = c.printf("%ssyntax error: wrong number of parameters for typename \"%s\" (%ld expected)\n", .{prefix, getId(type_name), typeArity(type_name), });
+        _ = c.printf("%ssyntax error: wrong number of parameters for typename \"%s\" (%ld expected)\n", .{
+            prefix,
+            getId(type_name),
+            typeArity(type_name),
+        });
         main.errs = here;
         acterror();
     }
@@ -1188,7 +1191,7 @@ fn decl1(x: Word, e: Word) void {
     } else if (fallible(h(t(idVal(x)))) == 0) {
         const prefix: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
         main.errs = h(e);
-        _ = c.printf("%ssyntax error: unreachable case in defn of \"%s\"\n", .{prefix, getId(x)});
+        _ = c.printf("%ssyntax error: unreachable case in defn of \"%s\"\n", .{ prefix, getId(x) });
         acterror();
     } else {
         tp(idVal(x)).* = cons(e, t(idVal(x)));
