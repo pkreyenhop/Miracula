@@ -148,3 +148,25 @@ unwind the Zig call stack.
 **`MiraError` coverage.** `error.TypeCheckAbort` is the only `MiraError` variant currently
 wired to Zig error union propagation. The remaining variants (`SyntaxError`, `HeapExhausted`,
 `LoadError`, `EvaluationInterrupted`) document intent and are available for future work.
+
+---
+
+## Planned: Cluster G — Module Graph Repair
+
+The module graph has two remaining structural problems targeted by Cluster G
+(see `IDIOMATIC_ZIG_PLAN.md` for full details):
+
+1. **`heap.zig ↔ main.zig` circular dependency (G1).** Extract `src/runtime/core_state.zig`
+   for the 8 C-ABI export vars; move `pub var rs` into `runtime_state.zig`. After G1,
+   `heap.zig` imports `runtime_state.zig` and `core_state.zig` directly rather than `main.zig`.
+
+2. **Reducer dispatch via C-ABI linker (G2).** The 84 handler functions in `reducer/` are
+   called from `reduce.zig` via `extern fn` / `export fn` pairs. Convert to direct `@import`
+   calls within the subsystem.
+
+3. **`lex.zig` global state (G3).** ~40 `export var` globals in `lex.zig` should be
+   consolidated into a `LexState` struct (analogous to `RuntimeState` from B1).
+
+4. **Heap accessor `extern fn` → direct imports (G4).** After G1, `lex.zig`, `codegen.zig`,
+   `big.zig`, etc. can import `heap.zig` directly instead of using linker-resolved `extern fn`
+   for `make`, `gc`, `sto_char`, etc.

@@ -174,17 +174,180 @@ chain were fully convertible to Zig error unions. Signal-handler sites were not.
 
 ---
 
-## Remaining Patterns (not addressed in this phase)
+---
 
-These are known, bounded issues. They are safe to leave for a future phase.
+### Cluster G: Module Graph Repair (Planned)
 
-| Pattern | Location | Count | Notes |
-|---------|----------|-------|-------|
-| `extern var` (non-convertible) | heap.zig (62), trans.zig (4), module_loader.zig (7), others | ~130 | Vars owned by lex.zig / C runtime; need circular-dep fix or state migration |
-| `export fn` (linker-as-module) | types.zig (69), trans.zig (49), heap.zig (44), lex.zig (45)… | ~350 | Functions called cross-module via linker; conversion requires establishing direct import paths |
-| `[*:0]` at internal call sites | various | ~349 | FFI boundaries are correct as-is; internal helpers could use `[:0]` |
-| `c_int` / `c_long` types | various | ~340 | `Word = c_long` is platform-correct; safe to alias to `i64` on known platforms |
-| `= undefined` initialisations | various | ~108 | Many are buffers; worth auditing for zero-init where appropriate |
+*Goal: Eliminate the remaining linker-as-module-system connections by giving every Zig module
+a proper `@import` dependency graph. The two structural blockers are the `heap.zig ↔ main.zig`
+circular import and the reducer subsystem's handler dispatch through the C-ABI linker.*
+
+---
+
+#### G1 — Break the `heap.zig ↔ main.zig` circular dependency
+
+**Why it exists.** `heap.zig` imports `main.zig` to access `RuntimeState` (`rs.*`) and
+miscellaneous state aliases (`main.files`, `main.SGC`, `main.get_id`, …). But `main.zig`
+imports `heap.zig` for domain types and accessors. This circle forces the 8 "stuck" export
+vars (`nill`, `loading`, `compiling`, `errs`, `errline`, `obsuffix`, `SYNERR`, `commandmode`)
+to live in `main.zig` rather than `RuntimeState`, and it forces `heap.zig` to declare them
+as `extern var` rather than reading them from a named import.
+
+**Solution: extract a new `src/runtime/core_state.zig`.**
+
+`core_state.zig` is a leaf module with no imports from the Miracula tree. It holds exactly
+the 8 C-ABI-constrained export vars:
+
+```zig
+// src/runtime/core_state.zig
+pub export var nill: Word = 0;
+pub export var loading: c_int = 0;
+pub export var compiling: c_int = 1;
+pub export var errs: Word = 0;
+pub export var errline: Word = 0;
+pub export var obsuffix: [*:0]const u8 = "x";
+pub export var SYNERR: Word = 0;
+pub export var commandmode: Word = 0;
+```
+
+**`runtime_state.zig` becomes self-hosting.** Move `pub var rs: RuntimeState = .{}` from
+`main.zig` into `runtime_state.zig`. This makes `RuntimeState` and its singleton available
+without importing `main.zig`.
+
+**Dependency changes:**
+- `heap.zig`: replace `@import("../main.zig")` with
+  `@import("runtime_state.zig")` (for `rs`) and `@import("core_state.zig")` (for the 8
+  stuck vars). Replace all `main.rs.*` with `rt.rs.*`. Replace bare `compiling`, `nill`, etc.
+  with `core.compiling`, `core.nill`, etc.
+- `main.zig`: remove `pub export var` for the 8 stuck vars; re-export them from `core_state.zig`
+  via `pub const nill = &core_state.nill` or simply include `core_state.zig` in the comptime
+  block. Keep `pub var rs` as an alias `pub const rs = &rt.rs` for backward compat, or update
+  all callers.
+- `parser_api.zig`: import `core_state.zig` instead of using `extern var SYNERR` /
+  `extern var commandmode`.
+
+**Remaining `main.*` uses in `heap.zig`** (non-rs, non-stuck-var):
+- `main.files`, `main.SGC`, `main.TABSTRS`, `main.ND`, `main.newtyps`, `main.speclocs`,
+  `main.rv_script`, `main.algshfns` — these are `pub extern var` aliases in main.zig pointing
+  to state owned by `types.zig`, `trans.zig`, etc. Convert to direct `extern var` declarations
+  in `heap.zig` (they are already C-ABI-visible from their source modules).
+- `main.get_id(x)` — an inline function; inline its body directly in heap.zig
+  (`@ptrFromInt(@as(usize, @intCast(h(h(h(x))))))`) since heap.zig owns `h()`.
+- `main.get_fil(x)` — similarly inline.
+- `main.fm_time()`, `main.unlinkx()` — import `io/files.zig` directly; no circular dependency.
+- `main.dump.internals` — declare `extern var internals: Word` (already exported from dump.zig).
+
+*DoD:* `heap.zig` no longer contains `@import("../main.zig")`. Build clean, test baseline
+maintained. `main.zig` shrinks by 8 `pub export var` declarations.
+
+---
+
+#### G2 — Reducer subsystem: direct dispatch (eliminate ~84 extern fn ↔ export fn pairs)
+
+**Why it exists.** `reducer/reduce.zig` dispatches to 84 handler functions via `extern fn`
+declarations in `c_abi.zig` (`zig_handleS`, `handle_G_ALT`, etc.) that resolve through the
+linker to `export fn` in `reducer/combinators.zig`, `reducer/io.zig`, `reducer/lex.zig`, and
+`reducer/ready.zig`. All four handler modules already `@import("reduce.zig")` for
+`ReductionCtx` — the dependency direction already exists; the call direction just goes via
+the linker instead of a direct call.
+
+**Solution:** make `reducer/reduce.zig` import its handler modules directly.
+
+```zig
+// reducer/reduce.zig
+const combinators = @import("combinators.zig");
+const io_handlers = @import("io.zig");
+const lex_handlers = @import("lex.zig");
+const ready = @import("ready.zig");
+```
+
+Replace each `clib.zig_handleS(@ptrCast(&ctx))` call with `combinators.handleS(&ctx)` (etc.).
+Remove `export` from all handler functions; make them `pub fn`. Remove the ~84 `pub extern fn`
+declarations from `c_abi.zig`. Remove the `extern fn handle_ready_state` declaration from
+`reducer/reduce.zig`.
+
+`ReductionCtx` can lose `extern struct` and become a plain `pub const ReductionCtx = struct`
+since it no longer crosses an ABI boundary — unless `handle_ready_state` (in `ready.zig`,
+currently `export fn`) is called from C code. Verify first.
+
+*DoD:* `c_abi.zig` loses ~84 `pub extern fn zig_handle*` / `pub extern fn handle_*` lines.
+All reducer handler calls in `reduce.zig` are direct Zig calls. Build clean.
+
+---
+
+#### G3 — Migrate `lex.zig` state to a `LexState` struct
+
+**Why it matters.** `lex.zig` owns ~40 `export var` globals (`fileq`, `margstack`, `col`,
+`gvars`, `lexvar`, `namebucket`, `dicp`, `dicq`, `common_stdin`, …). These are reached by
+`heap.zig` (15 vars), `trans.zig`, `module_loader.zig`, and others via `extern var`. This is
+the same pattern that was fixed for runtime state in B1 (`RuntimeState`).
+
+**Solution:** create `src/parser/lex_state.zig` with a `LexState` struct and
+`pub var ls: LexState = .{}`. Consolidate all the `export var` globals into `ls`. Update all
+callers to use `lex_mod.ls.field`. The linker symbols disappear; cross-module access becomes
+a typed struct field read.
+
+This is analogous to B1 but for the parser/lexer subsystem. Approximate scope:
+- ~40 fields move into `LexState`
+- Call sites in `heap.zig`, `trans.zig`, `module_loader.zig`, `types.zig`, `setup.zig`, and
+  the reducer modules need updating
+- After G3, many of `heap.zig`'s remaining `extern var` (currently pointing at lex.zig vars)
+  become `lex_mod.ls.field` reads — a direct `@import` path exists since heap.zig won't
+  import main.zig after G1
+
+*Constraint:* `lex.zig` already imports `main.zig`. After G1 moves `rs` into `runtime_state.zig`,
+verify that `lex.zig`'s import of `main.zig` doesn't reintroduce a cycle.
+
+*DoD:* `lex.zig` has zero `export var`. `LexState` has a default-value test. Build clean.
+
+---
+
+#### G4 — Convert heap accessor `extern fn` calls to direct imports
+
+**Why it matters.** Functions defined in `heap.zig` as `export fn` (`make`, `gc`, `sto_char`,
+`charname`, `get_dbl`, `sto_dbl`, …) are called from `lex.zig`, `codegen.zig`, `big.zig`,
+`setup.zig`, and `reduce.zig` via `extern fn` declarations — either declared locally or pulled
+from `c_abi.zig`. After G1 breaks the heap ↔ main cycle, these modules can import `heap.zig`
+directly without creating new circular dependencies.
+
+For each affected module:
+1. Add `const heap = @import("../runtime/heap.zig")` (adjust path as needed).
+2. Replace local `extern fn make(…)` / `clib.make(…)` with `heap.make(…)`.
+3. Remove the now-unused `export` keyword from the heap functions (where safe — some may still
+   need to be C-ABI-visible for `main_clib.zig` compatibility).
+
+*Constraint:* Do not remove `export` from heap functions that are declared in `main_clib.zig`
+as `pub extern fn` — those are called by the legacy C-ABI test harness. Audit before removing.
+
+*DoD:* `lex.zig`, `codegen.zig`, `big.zig`, `setup.zig`, `reduce.zig` no longer have
+`extern fn make` / `extern fn gc` / `extern fn sto_char` local declarations. Build clean.
+
+---
+
+#### Dependency order
+
+```
+G1 (break heap ↔ main cycle)
+ └─► G4 (heap accessor direct imports — needs G1 so heap isn't circular)
+G3 (LexState) — independent of G1/G2, but benefits from G1 being done first
+G2 (reducer dispatch) — independent, can be done at any time
+```
+
+Recommended sequence: **G1 → G2 → G3 → G4**, committing after each.
+
+---
+
+## Remaining Patterns
+
+These are known, bounded issues not yet addressed. Cluster G targets the first two directly.
+
+| Pattern | Count | Cluster G target? | Notes |
+|---------|-------|-------------------|-------|
+| `extern var` (non-convertible in F) | ~130 | G1, G3 | heap.zig (62) blocked by circular dep (G1); lex.zig-owned vars blocked by missing `LexState` (G3) |
+| `export fn` / `extern fn` pairs (linker-as-module) | ~350 | G2, G4 | Reducer handlers (G2); heap accessors (G4); compiler/types chains (future) |
+| `[*:0]` at internal boundaries | ~349 | — | FFI-boundary uses are correct; internal helpers can be converted incrementally |
+| `c_int` / `c_long` types | ~340 | — | `Word = c_long` is platform-correct; aliasing to `i64` is safe but low priority |
+| `= undefined` initialisations | ~108 | — | Many are write-before-read buffers (correct); audit for zero-init opportunities |
 
 ---
 
@@ -212,3 +375,7 @@ These are known, bounded issues. They are safe to leave for a future phase.
 | F | F3 | Stale artefact cleanup | ✅ Complete |
 | F | F4 | Boolean Word field audit (6 fields) | ✅ Complete |
 | F | F5 | Expand unit test coverage (26 → 31) | ✅ Complete |
+| G | G1 | Break `heap.zig ↔ main.zig` circular dependency via `core_state.zig` | ⬜ Planned |
+| G | G2 | Reducer direct dispatch (eliminate ~84 extern fn ↔ export fn pairs) | ⬜ Planned |
+| G | G3 | Migrate `lex.zig` state to `LexState` struct | ⬜ Planned |
+| G | G4 | Convert heap accessor `extern fn` calls to direct imports | ⬜ Planned |
