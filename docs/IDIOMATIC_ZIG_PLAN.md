@@ -444,9 +444,10 @@ only the genuine verb-helpers outside this set.
   Shell script emitting the 8-metric scorecard (with the FFI exemption baked in) and a `-v`
   mode listing matching lines. Establishes the measurable baseline (107/161/9/347/12/46/50/92)
   and makes every later micro-step self-verifying. *Risk: none (tooling only).*
-* **L1 — `lex.zig` internal `c_int` → `i32`** ⬜
-  Module vars `rawch`, `errch`, `inprelude`; locals `anti`, `h_val`. Exempt: `export fn`
-  signatures, `extern var compiling`. *~5 sites. Risk: low (i32 ≡ c_int ABI).*
+* **L1 — `lex.zig` internal `c_int` → `i32`** ✅ *(2026-06-21)*
+  `rawch`, `errch` → `i32`; `inprelude` → `bool` (it was a 0/1 flag — more idiomatic than a
+  native int). Left as `c_int`: `anti` and `h_val`, which are the direct return values of the
+  C-ABI `export fn charclass()` / `hash()` (FFI-adjacent). lex.zig `c_int` count 25 → 22.
 * **L2 — `heap.zig` internal `c_int` → `i32`/`usize`** ⬜
   Locals in `getint`, `charclass`-style counters; audit `collecting` (`export var` — keep).
   Keep return types of `export fn` (`is_char`, `okdump`, `src_update`, `utf8test`). *Risk: low.*
@@ -574,7 +575,7 @@ together they move four of the eight scorecard metrics.
 | Cluster | Step | Title | Metric | Risk | Status |
 |---------|------|-------|--------|------|--------|
 | L | L0 | Add `scripts/idiomatic-check.sh` scorecard | tooling | none | ✅ Complete |
-| L | L1 | `lex.zig` internal `c_int` → `i32` | 1 | low | ⬜ Planned |
+| L | L1 | `lex.zig` internal `c_int` → `i32` | 1 | low | ✅ Complete |
 | L | L2 | `heap.zig` internal `c_int` → `i32`/`usize` | 1 | low | ⬜ Planned |
 | L | L3 | Driver/runtime internal `c_int` → `i32` (per file) | 1 | low | ⬜ Planned |
 | M | M1 | `startup.zig` string params → `[:0]const u8` | 2 | low-med | ⬜ Planned |

@@ -33,9 +33,9 @@ var lastc: Word = 0;
 var litmain: Word = 0;
 var literate: Word = 0;
 var brct: Word = 0;
-var rawch: c_int = 0;
-var errch: c_int = 0;
-var inprelude: c_int = 1;
+var rawch: i32 = 0;
+var errch: i32 = 0;
+var inprelude: bool = true;
 var sl: Word = 100;
 var pn_lim: Word = 200;
 var atnl: Word = 1;
@@ -1611,7 +1611,7 @@ export fn name() Word {
 
 export fn make_id(n: [*:0]const u8) Word {
     const h_idx = @as(usize, @intCast(hash(n)));
-    const x = sto_id(if (inprelude != 0) keep(@constCast(n)) else n);
+    const x = sto_id(if (inprelude) keep(@constCast(n)) else n);
     ls.namebucket[h_idx] = cons(x, ls.namebucket[h_idx]);
     return x;
 }
@@ -1675,7 +1675,7 @@ export fn mkprivate(x_input: Word) void {
         get_id(h(x))[0] += 128;
         x = t(x);
     }
-    inprelude = 0;
+    inprelude = false;
 }
 
 export fn string() void {
