@@ -32,6 +32,23 @@ pub const MiraError = error{
 };
 
 const std = @import("std");
+const clib = @import("main_clib.zig");
+
+/// Print a diagnostic to stderr and terminate the process with status 1.
+///
+/// Use for unrecoverable command-line, startup, and source-load errors — the
+/// cases that previously open-coded an `fprintf(stderr, …)` immediately
+/// followed by `exit(1)`. This centralises the "print then die" idiom so the
+/// diagnostic and the exit status can never drift apart.
+///
+/// Not for the evaluator's heap-exhaustion / impossible-state aborts, which
+/// dump interpreter statistics via `outstats()` before exiting — those remain
+/// their own category. `fmt`/`args` follow the `clib.fprintf` printf-style
+/// convention (both `.{a}` and `.{.{a}}` arg tuples are accepted).
+pub fn fatal(fmt: [*:0]const u8, args: anytype) noreturn {
+    _ = clib.fprintf(clib.stderr(), fmt, args);
+    clib.exit(1);
+}
 
 test "MiraError variants are all distinct" {
     const variants = [_]MiraError{

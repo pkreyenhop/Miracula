@@ -423,7 +423,7 @@ Baseline captured 2026-06-21 (script output at L0):
 | 3 | `[*]Word` / `?[*]Word` non-FFI | 9 | enumerated exceptions only | M3–M4 |
 | 4 | sentinel `== NIL` / `!= NIL` | 347 | reduced at converted fns | N1–N2 |
 | 5 | `return NIL` as an error signal | 12 | 0 | O1 |
-| 6 | bare `clib.exit(1)` (use `fatal()`) | 46 | 0 | O2 |
+| 6 | bare `clib.exit(1)` (use `fatal()`) | 46 → 30 | evaluator-abort residual | O2 |
 | 7 | file-private `fn` with `snake_case` | 50 | domain-vocabulary exemptions only | P1 |
 | 8 | `= undefined` initialisers (non-FFI) | 92 | audited + documented | Q1 |
 
@@ -483,10 +483,17 @@ only the genuine verb-helpers outside this set.
 * **O1 — `return NIL`-as-error → `MiraError`** ⬜
   Enumerate the 12 sites; convert the parser/loader ones to `error.SyntaxError`/`LoadError`
   with `try` propagation. *Risk: medium.*
-* **O2 — Centralise fatal exits behind `fatal()`** ⬜
-  Add `fn fatal(comptime fmt, args) noreturn` that prints a diagnostic then exits. Replace bare
-  `clib.exit(1)` in `startup.zig`, `repl.zig`, `files.zig` with messaged `fatal(...)`.
-  *Risk: low (behaviour-preserving + better messages). DoD: metric 6 = 0.*
+* **O2 — Centralise fatal exits behind `fatal()`** ✅ *(2026-06-21)*
+  Added `errors.fatal(fmt, args) noreturn` (re-exported as `main.fatal`) — one place that does
+  `fprintf(stderr, …)` then `exit(1)`, so the diagnostic and exit status can never drift apart.
+  Converted the **17 clean `fprintf(stderr,…)+exit(1)` pairs** in `startup.zig` (7, incl.
+  `missparam` → `noreturn`), `repl.zig` (1), `files.zig` (1), `module_loader.zig` (5),
+  `lex.zig` (2), `dump.zig` (1). Metric 6: 46 → 30.
+  **Residual (documented, out of O2 scope):** the evaluator's `outstats()+exit(1)` aborts in
+  `reduce.zig`/`ready.zig`/`reducer/*` (a distinct "dump stats then die" category — future
+  `evalAbort()` helper), multi-step shutdowns that run cleanup between print and exit
+  (`startup.zig` `libfails`, `repl.zig` `$+`), the FPE message that prints to **stdout**
+  (stream-preserving), and the single canonical `exit(1)` *inside* `fatal()` itself.
 * **O3 — `unreachable` audit (18 sites)** ⬜
   Replace logic-reachable `unreachable` with `@panic("reason")`; keep provably-unreachable ones
   and add a one-line justification comment. *Risk: low.*
@@ -585,7 +592,7 @@ together they move four of the eight scorecard metrics.
 | N | N1 | `get_id` → `?[*:0]const u8` | 4 | medium | ⬜ Planned |
 | N | N2 | Lookup fns `NIL`-absent → `?Word` (per fn) | 4 | medium | ⬜ Planned |
 | O | O1 | `return NIL`-as-error → `MiraError` (12 sites) | 5 | medium | ⬜ Planned |
-| O | O2 | Centralise fatal exits behind `fatal()` | 6 | low | ⬜ Planned |
+| O | O2 | Centralise fatal exits behind `fatal()` | 6 | low | ✅ Complete |
 | O | O3 | `unreachable` audit (18 sites) | — | low | ⬜ Planned |
 | P | P1a | Private `fn` in `runtime/` → camelCase (~50) | 7 | low | ⬜ Planned |
 | P | P1b | Private `fn` in `compiler/` → camelCase (~87) | 7 | low | ⬜ Planned |

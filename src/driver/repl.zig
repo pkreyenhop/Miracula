@@ -43,8 +43,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                 if (main.files != NIL and main.cs.ND == NIL and main.id_val(main.rs.main_id) == clib.UNDEF) {
                     _ = clib.fprintf(main.getStderr(), "%s: main not defined\n", .{.{initscript}});
                 }
-                _ = clib.fprintf(main.getStderr(), "mira: incorrect use of \"-exec\" flag\n", .{.{}});
-                clib.exit(1);
+                main.fatal("mira: incorrect use of \"-exec\" flag\n", .{.{}});
             }
             main.rs.magic = false;
             clib.obey(main.rs.main_id);

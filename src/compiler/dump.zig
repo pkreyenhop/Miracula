@@ -343,8 +343,7 @@ pub fn undump(t_val: [*:0]const u8) void {
         main.loadfile(t_val);
     } else if (main.rs.initialising != 0) {
         if (main.cs.ND != NIL or main.files == NIL) {
-            _ = clib.fprintf(main.getStderr(), "panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
-            clib.exit(1);
+            main.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
         }
     } else {
         if (main.rs.verbosity != 0 or main.rs.magic or main.rs.mkexports) {

@@ -78,8 +78,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             } else {
                 var val: c_long = 0;
                 if (clib.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or badval(val)) {
-                    _ = clib.fprintf(main.getStderr(), "mira: bad value after flag \"-dic\"\n", .{.{}});
-                    clib.exit(1);
+                    main.fatal("mira: bad value after flag \"-dic\"\n", .{.{}});
                 }
                 main.rs.DICSPACE = val;
             }
@@ -90,8 +89,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             } else {
                 var val: c_long = 0;
                 if (clib.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or badval(val)) {
-                    _ = clib.fprintf(main.getStderr(), "mira: bad value after flag \"-heap\"\n", .{.{}});
-                    clib.exit(1);
+                    main.fatal("mira: bad value after flag \"-heap\"\n", .{.{}});
                 }
                 main.rs.SPACELIMIT = val;
             }
@@ -108,8 +106,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         } else if (clib.strcmp(arg, "-nohush") == 0) {
             main.rs.verbosity = 1;
         } else if (clib.strcmp(arg, "-exp") == 0 or clib.strcmp(arg, "-log") == 0) {
-            _ = clib.fprintf(main.getStderr(), "mira: obsolete flag \"%s\"\nuse \"-exec\" or \"-exec2\", see manual\n", .{.{arg}});
-            clib.exit(1);
+            main.fatal("mira: obsolete flag \"%s\"\nuse \"-exec\" or \"-exec2\", see manual\n", .{.{arg}});
         } else if (clib.strcmp(arg, "-exec") == 0) {
             ls.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
             ls.ARGV = @ptrCast(argv + arg_idx + 1);
@@ -119,8 +116,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             break;
         } else if (clib.strcmp(arg, "-exec2") == 0) {
             if (arg_idx + 1 >= argc_u) {
-                _ = clib.fprintf(main.getStderr(), "incorrect use of -exec2 flag, missing filename\n", .{.{}});
-                clib.exit(1);
+                main.fatal("incorrect use of -exec2 flag, missing filename\n", .{.{}});
             }
             const filename = argv[arg_idx + 1];
             var p = clib.strrchr(filename, '/');
@@ -170,16 +166,14 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         } else if (clib.strcmp(arg, "-noUTF-8") == 0) {
             main.rs.UTF8 = 0;
         } else {
-            _ = clib.fprintf(main.getStderr(), "mira: unknown flag \"%s\"\n", .{.{arg}});
-            clib.exit(1);
+            main.fatal("mira: unknown flag \"%s\"\n", .{.{arg}});
         }
         arg_idx += 1;
     }
 
     const remaining_argc = argc_u - arg_idx;
     if (remaining_argc > 1 and !main.rs.magic and !main.rs.making) {
-        _ = clib.fprintf(main.getStderr(), "mira: too many args\n", .{.{}});
-        clib.exit(1);
+        main.fatal("mira: too many args\n", .{.{}});
     }
 
     var badlib: c_int = 0;
@@ -482,9 +476,8 @@ pub export fn rc_write() void {
     _ = clib.fclose(f.?);
 }
 
-pub fn missparam(s: [:0]const u8) void {
-    _ = clib.fprintf(main.getStderr(), "mira: missing param after flag \"-%s\"\n", .{.{s.ptr}});
-    clib.exit(1);
+pub fn missparam(s: [:0]const u8) noreturn {
+    main.fatal("mira: missing param after flag \"-%s\"\n", .{.{s.ptr}});
 }
 
 pub export fn checkversion(m: [*:0]const u8) c_int {

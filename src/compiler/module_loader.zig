@@ -38,15 +38,13 @@ pub fn loadfile(t_val: [*:0]const u8) void {
 
     if (!main.fileExists(t_val)) {
         if (main.rs.initialising != 0) {
-            _ = clib.fprintf(main.getStderr(), "panic: %s not found\n", .{.{t_val}});
-            clib.exit(1);
+            main.fatal("panic: %s not found\n", .{.{t_val}});
         }
         if (main.rs.verbosity != 0) {
             _ = clib.printf("new file %s\n", .{.{t_val}});
         }
         if (main.rs.magic) {
-            _ = clib.fprintf(main.getStderr(), "mira -exec %s: no such file\n", .{.{t_val}});
-            clib.exit(1);
+            main.fatal("mira -exec %s: no such file\n", .{.{t_val}});
         }
         if (main.rs.making and main.rs.ideep == 0) {
             _ = clib.printf("mira -make %s: no such file\n", .{.{t_val}});
@@ -59,8 +57,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
 
     if (clib.openfile(@constCast(t_val)) == 0) {
         if (main.rs.initialising != 0) {
-            _ = clib.fprintf(main.getStderr(), "panic: cannot open %s\n", .{.{t_val}});
-            clib.exit(1);
+            main.fatal("panic: cannot open %s\n", .{.{t_val}});
         }
         _ = clib.printf("cannot open %s\n", .{.{t_val}});
         main.rs.oldfiles = main.cons(main.make_fil(t_val, 0, 0, NIL), NIL);
@@ -333,8 +330,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             _ = clib.printf("grammar optimisation: %d common left factors found\n", .{.{main.cs.lfrule}});
         }
         if (main.rs.initialising != 0 and main.cs.ND != NIL) {
-            _ = clib.fprintf(main.getStderr(), "panic: %s contains errors\n", .{.{@as([*:0]const u8, if (main.rs.okprel) "stdenv" else "prelude")}});
-            clib.exit(1);
+            main.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, if (main.rs.okprel) "stdenv" else "prelude")}});
         }
         if (main.rs.initialising != 0) {
             main.makedump();
@@ -352,8 +348,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     }
 
     if (main.rs.initialising != 0) {
-        _ = clib.fprintf(main.getStderr(), "panic: cannot compile %s\n", .{.{@as([*:0]const u8, if (main.rs.okprel) "stdenv" else "prelude")}});
-        clib.exit(1);
+        main.fatal("panic: cannot compile %s\n", .{.{@as([*:0]const u8, if (main.rs.okprel) "stdenv" else "prelude")}});
     }
     main.rs.oldfiles = main.files;
     main.unload();

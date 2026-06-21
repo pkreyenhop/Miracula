@@ -113,8 +113,7 @@ pub fn mkabsolute(m: [*:0]u8) [*:0]u8 {
         return m;
     }
     if (clib.getcwd(ls.dicp, clib.pnlim) == null) {
-        _ = clib.fprintf(main.getStderr(), "panic: cwd too long\n", .{.{}});
-        clib.exit(1);
+        main.fatal("panic: cwd too long\n", .{.{}});
     }
     _ = clib.strcat(ls.dicp, "/");
     _ = clib.strcat(ls.dicp, m);

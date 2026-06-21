@@ -16,6 +16,8 @@ pub const repl = @import("driver/repl.zig");
 pub const startup = @import("driver/startup.zig");
 const errors_mod = @import("runtime/errors.zig");
 pub const MiraError = errors_mod.MiraError;
+/// Print a diagnostic to stderr and exit(1). See `errors.fatal`.
+pub const fatal = errors_mod.fatal;
 
 // Type and core constants
 pub const Word = c_long;

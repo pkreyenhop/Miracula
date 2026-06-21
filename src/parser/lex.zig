@@ -192,8 +192,7 @@ fn ovflocheck() void {
 }
 
 export fn dicovflo() void {
-    _ = clib.fprintf(getStderr().?, "\npanic: dictionary overflow\n", .{.{}});
-    clib.exit(1);
+    main.fatal("\npanic: dictionary overflow\n", .{.{}});
 }
 
 export fn setupdic() void {
@@ -1585,8 +1584,7 @@ export fn getfname(x: Word) Word {
     ls.dicq += i + 1;
     const len = @as(usize, @intFromPtr(ls.dicq)) - @as(usize, @intFromPtr(ls.dicp));
     if (len < 3) {
-        _ = clib.fprintf(getStderr().?, "impossible event in getfname\n", .{.{}});
-        clib.exit(1);
+        main.fatal("impossible event in getfname\n", .{.{}});
     }
     (ls.dicq - 2)[0] = 0;
     ovflocheck();
