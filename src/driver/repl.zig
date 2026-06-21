@@ -1,7 +1,7 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const main = @import("../main.zig");
-const clib = @import("../runtime/main_clib.zig");
+const abi = @import("../runtime/main_clib.zig");
 const parser_api = @import("../parser/parser_api.zig");
 
 const Word = main.Word;
@@ -37,7 +37,7 @@ export fn commandloop(initscript: [*:0]u8) void {
     var ch: c_int = undefined;
     var lb: ?[*:0]u8 = undefined;
 
-    if (clib.sigsetjmp(&main.rs.env, 1) == 0) {
+    if (abi.sigsetjmp(&main.rs.env, 1) == 0) {
         if (main.rs.magic) {
             main.undump(initscript);
             if (main.files == NIL or main.cs.ND != NIL or main.id_val(main.rs.main_id) == word.UNDEF) {
@@ -47,10 +47,10 @@ export fn commandloop(initscript: [*:0]u8) void {
                 main.fatal("mira: incorrect use of \"-exec\" flag\n", .{.{}});
             }
             main.rs.magic = false;
-            clib.obey(main.rs.main_id);
-            clib.exit(0);
+            abi.obey(main.rs.main_id);
+            abi.exit(0);
         }
-        _ = signals(clib.SIGINT, @intFromPtr(&main.reset));
+        _ = signals(abi.SIGINT, @intFromPtr(&main.reset));
         main.undump(initscript);
         if (main.rs.verbosity != 0) {
             word.print("for help type /h\n", .{});
@@ -62,25 +62,25 @@ export fn commandloop(initscript: [*:0]u8) void {
         if (main.rs.verbosity != 0) {
             word.print("{s}", .{main.rs.promptstr});
         }
-        ch = clib.getchar();
+        ch = abi.getchar();
         if (main.rs.rechecking != 0 and main.src_update() != 0) {
             main.loadfile(main.rs.current_script.?);
         }
         while (ch == ' ' or ch == '\t') {
-            ch = clib.getchar();
+            ch = abi.getchar();
         }
         switch (ch) {
             '?' => {
-                ch = clib.getchar();
+                ch = abi.getchar();
                 if (ch == '?') {
                     var x: Word = undefined;
                     var aka: ?[*:0]u8 = null;
                     if (token() == null and main.rs.lastid == 0) {
                         word.print("\x07identifier needed after `??'\n", .{});
-                        ch = clib.getchar();
+                        ch = abi.getchar();
                         continue;
                     }
-                    if (clib.getchar() != '\n') {
+                    if (abi.getchar() != '\n') {
                         main.xschars();
                         continue;
                     }
@@ -89,7 +89,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                         continue;
                     }
                     if (ls.dicp[0] != 0) {
-                        x = clib.findid(ls.dicp);
+                        x = abi.findid(ls.dicp);
                     } else {
                         word.print("??{s}\n", .{main.get_id(main.rs.lastid)});
                         x = main.rs.lastid;
@@ -115,11 +115,11 @@ export fn commandloop(initscript: [*:0]u8) void {
                     }
                     main.editfile(@ptrFromInt(@as(usize, @intCast(main.heap.h(x)))), @intCast(main.heap.t(x)));
                 } else {
-                    _ = clib.ungetc(ch, main.getStdin().?);
+                    _ = abi.ungetc(ch, main.getStdin().?);
                     _ = token();
                     main.rs.lastid = 0;
                     if (ls.dicp[0] == 0) {
-                        if (clib.getchar() != '\n') {
+                        if (abi.getchar() != '\n') {
                             main.xschars();
                         } else {
                             main.allnamescom();
@@ -129,7 +129,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                             main.finger(ls.dicp);
                             _ = token();
                         }
-                        ch = clib.getchar();
+                        ch = abi.getchar();
                     }
                 }
             },
@@ -146,20 +146,20 @@ export fn commandloop(initscript: [*:0]u8) void {
                     var shell: ?[*:0]const u8 = null;
                     var oldsig: usize = undefined;
                     var pid: c_int = undefined;
-                    shell = clib.getenv("SHELL");
+                    shell = abi.getenv("SHELL");
                     if (shell == null) {
                         shell = "/bin/sh";
                     }
-                    oldsig = signals(clib.SIGINT, 1);
-                    pid = clib.fork();
+                    oldsig = signals(abi.SIGINT, 1);
+                    pid = abi.fork();
                     if (pid != 0) { // parent
                         if (pid == -1) {
-                            clib.perror("UNIX error - cannot create process");
+                            abi.perror("UNIX error - cannot create process");
                         }
-                        while (pid != clib.wait(null)) {}
-                        _ = signals(clib.SIGINT, oldsig);
+                        while (pid != abi.wait(null)) {}
+                        _ = signals(abi.SIGINT, oldsig);
                     } else { // child
-                        _ = clib.execl(shell.?, .{ shell.?, "-c", lb.? });
+                        _ = abi.execl(shell.?, .{ shell.?, "-c", lb.? });
                     }
                     if (main.src_update() != 0) {
                         main.loadfile(main.rs.current_script.?);
@@ -169,23 +169,23 @@ export fn commandloop(initscript: [*:0]u8) void {
                 }
             },
             '|' => {
-                ch = clib.getchar();
+                ch = abi.getchar();
                 if (ch != '|') {
                     word.print("\x07unknown command - type /h for help\n", .{});
                 }
-                while (ch != '\n' and ch != clib.EOF) {
-                    ch = clib.getchar();
+                while (ch != '\n' and ch != abi.EOF) {
+                    ch = abi.getchar();
                 }
             },
             '\n' => {},
-            clib.EOF => {
+            abi.EOF => {
                 if (main.rs.verbosity != 0) {
                     word.print("\nmiranda logout\n", .{});
                 }
-                clib.exit(0);
+                abi.exit(0);
             },
             else => {
-                _ = clib.ungetc(ch, main.getStdin().?);
+                _ = abi.ungetc(ch, main.getStdin().?);
                 main.rs.lastid = 0;
                 main.heap.tp(main.heap.h(ls.cook_stdin)).* = 0;
                 main.rs.rv_expr = 0;
@@ -198,8 +198,8 @@ export fn commandloop(initscript: [*:0]u8) void {
                     main.SYNERR = 0;
                 } else if (ls.c != '\n') {
                     word.print("syntax error\n", .{});
-                    while (ls.c != '\n' and ls.c != clib.EOF) {
-                        ls.c = clib.getchar();
+                    while (ls.c != '\n' and ls.c != abi.EOF) {
+                        ls.c = abi.getchar();
                     }
                 }
                 main.commandmode = 0;
@@ -211,25 +211,25 @@ export fn commandloop(initscript: [*:0]u8) void {
 
 export fn process() Word {
     var oldsig: usize = undefined;
-    oldsig = signals(clib.SIGINT, 1);
-    const pid = clib.fork();
+    oldsig = signals(abi.SIGINT, 1);
+    const pid = abi.fork();
     if (pid != 0) { // parent
         var status: c_int = 0;
         if (pid == -1) {
-            clib.perror("UNIX error - cannot create process");
+            abi.perror("UNIX error - cannot create process");
             return 0;
         }
-        while (pid != clib.wait(&status)) {}
+        while (pid != abi.wait(&status)) {}
         if (WIFSIGNALED(status)) {
             const cd: [*:0]const u8 = if ((status & 0x80) != 0) " (core dumped)" else "";
             const sig = WTERMSIG(status);
             switch (sig) {
-                clib.SIGBUS => word.printErr("\n<<...bus error{s}>>\n", .{cd}),
-                clib.SIGSEGV => word.printErr("\n<<...segmentation fault{s}>>\n", .{cd}),
+                abi.SIGBUS => word.printErr("\n<<...bus error{s}>>\n", .{cd}),
+                abi.SIGSEGV => word.printErr("\n<<...segmentation fault{s}>>\n", .{cd}),
                 else => word.printErr("\n<<...uncaught signal {}>>\n", .{sig}),
             }
         }
-        _ = signals(clib.SIGINT, oldsig);
+        _ = signals(abi.SIGINT, oldsig);
         return 0;
     }
     return 1; // child
@@ -238,7 +238,7 @@ export fn process() Word {
 export fn dieclean() void {
     word.printErr("<<...interrupt>>\n", .{});
     outstats();
-    clib.exit(0);
+    abi.exit(0);
 }
 
 export fn fpe_error(sig: c_int) void {
@@ -246,10 +246,10 @@ export fn fpe_error(sig: c_int) void {
         _ = signals(sig, @intFromPtr(&fpe_error));
         syntax("floating point number out of range\n");
         main.SYNERR = 0;
-        clib.siglongjmp(&main.rs.env, 1);
+        abi.siglongjmp(&main.rs.env, 1);
     } else {
         word.print("\nFLOATING POINT OVERFLOW\n", .{});
-        clib.exit(1);
+        abi.exit(1);
     }
 }
 
@@ -269,10 +269,10 @@ pub export fn obey(x_in: Word) void {
         const inner: Word = if (islist and t(typ) == char_t)
             x
         else
-            clib.make(AP, clib.mkshow(0, 0, typ), x);
-        break :blk clib.make(CONS, clib.make(AP, main.rs.standardout, inner), NIL);
+            abi.make(AP, abi.mkshow(0, 0, typ), x);
+        break :blk abi.make(CONS, abi.make(AP, main.rs.standardout, inner), NIL);
     };
-    clib.output(out_val);
+    abi.output(out_val);
 }
 
 pub export fn evaluate_repl(x_in: Word) void {
@@ -291,18 +291,18 @@ pub export fn evaluate_repl(x_in: Word) void {
         const inner: Word = if (islist and t(typ) == char_t)
             x
         else
-            clib.make(AP, clib.mkshow(0, 0, typ), x);
-        break :blk clib.make(CONS, clib.make(AP, main.rs.standardout, inner), NIL);
+            abi.make(AP, abi.mkshow(0, 0, typ), x);
+        break :blk abi.make(CONS, abi.make(AP, main.rs.standardout, inner), NIL);
     };
     if (process() != 0) {
         // Child: evaluate and print, then exit (compiling=0 only here, parent unaffected).
-        _ = signals(clib.SIGINT, @intFromPtr(&dieclean));
+        _ = signals(abi.SIGINT, @intFromPtr(&dieclean));
         main.compiling = 0;
         resetgcstats();
-        clib.output(out_val);
+        abi.output(out_val);
         _ = word.putchar('\n');
         outstats();
-        clib.exit(0);
+        abi.exit(0);
     }
     // Parent returns here; heap and compiling flag are unchanged.
 }
@@ -319,10 +319,10 @@ pub export fn reset() void {
     main.SYNERR = 0;
     main.rs.sigflag = 0;
     if (main.rs.unlinkme) |u| {
-        _ = clib.unlink(u);
+        _ = abi.unlink(u);
         main.rs.unlinkme = null;
     }
-    clib.siglongjmp(&main.rs.env, 1);
+    abi.siglongjmp(&main.rs.env, 1);
 }
 
 pub fn ed_warn() void {
@@ -342,14 +342,14 @@ pub fn getln(in: ?*word.FILE, n_val: Word, s_ptr: [*]u8) c_int {
     var n = n_val;
     var ch: c_int = undefined;
     while (n > 1) : (n -= 1) {
-        ch = clib.getc(in);
-        if (ch == clib.EOF) break;
+        ch = abi.getc(in);
+        if (ch == abi.EOF) break;
         s[0] = @intCast(ch);
         s += 1;
         if (ch == '\n') break;
     }
     s[0] = 0;
-    return if (ch == clib.EOF) 0 else 1;
+    return if (ch == abi.EOF) 0 else 1;
 }
 
 pub fn badeditor() c_int {
@@ -379,28 +379,28 @@ pub export fn parseline(t_val: Word, f: ?*word.FILE, fil: Word) Word {
     var ch: c_int = undefined;
     main.rs.lastexp = word.UNDEF;
     while (true) {
-        ch = clib.getc(f);
+        ch = abi.getc(f);
         while (ch == ' ' or ch == '\t' or ch == '\n') {
-            ch = clib.getc(f);
+            ch = abi.getc(f);
         }
         if (ch == '|') {
-            ch = clib.getc(f);
+            ch = abi.getc(f);
             if (ch == '|') {
-                ch = clib.getc(f);
-                while (ch != '\n' and ch != clib.EOF) {
-                    ch = clib.getc(f);
+                ch = abi.getc(f);
+                while (ch != '\n' and ch != abi.EOF) {
+                    ch = abi.getc(f);
                 }
-                if (ch != clib.EOF) {
+                if (ch != abi.EOF) {
                     continue;
                 }
             } else {
-                _ = clib.ungetc(ch, f);
+                _ = abi.ungetc(ch, f);
             }
         }
-        if (ch == clib.EOF) {
-            return clib.EOF;
+        if (ch == abi.EOF) {
+            return abi.EOF;
         }
-        _ = clib.ungetc(ch, f);
+        _ = abi.ungetc(ch, f);
         ls.c = word.VALUE;
         main.rs.echoing = 0;
         main.commandmode = 1;
@@ -414,11 +414,11 @@ pub export fn parseline(t_val: Word, f: ?*word.FILE, fil: Word) Word {
             t1 = main.type_of(main.rs.lastexp);
             if (t1 == word.wrong_t) {
                 main.rs.lastexp = word.UNDEF;
-            } else if (clib.subsumes(clib.instantiate(t1), t_val) == 0) {
+            } else if (abi.subsumes(abi.instantiate(t1), t_val) == 0) {
                 word.print("data has wrong type :: ", .{});
-                clib.out_type(t1);
+                abi.out_type(t1);
                 word.print("\nshould be :: ", .{});
-                clib.out_type(t_val);
+                abi.out_type(t_val);
                 _ = word.putc('\n', main.getStdout());
                 main.rs.lastexp = word.UNDEF;
             }
@@ -426,16 +426,16 @@ pub export fn parseline(t_val: Word, f: ?*word.FILE, fil: Word) Word {
         if (main.rs.lastexp != word.UNDEF) {
             return main.codegen(main.rs.lastexp);
         }
-        if (clib.isatty(word.fileno(f)) != 0) {
+        if (abi.isatty(word.fileno(f)) != 0) {
             word.print("please re-enter data:\n", .{});
         } else {
             if (fil != 0) {
-                word.printErr("readvals: bad data in file \"{s}\"\n", .{clib.getstring(fil, @constCast(""))});
+                word.printErr("readvals: bad data in file \"{s}\"\n", .{abi.getstring(fil, @constCast(""))});
             } else {
                 word.printErr("bad data in $+ input\n", .{});
             }
-            clib.outstats();
-            clib.exit(1);
+            abi.outstats();
+            abi.exit(1);
         }
     }
 }

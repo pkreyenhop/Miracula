@@ -1,5 +1,5 @@
 const std = @import("std");
-const clib = @import("main_clib.zig");
+const abi = @import("main_clib.zig");
 
 pub var gpa = std.heap.DebugAllocator(.{}){};
 pub var allocator: std.mem.Allocator = std.heap.page_allocator;
@@ -43,8 +43,8 @@ pub const RuntimeState = struct {
 
     // File paths — null-terminated byte arrays populated by startup; treated as C strings.
     // Zero-initialised so a `.{}` singleton reads as the empty string before startup fills them.
-    PRELUDE: [clib.pnlim + 10]u8 = std.mem.zeroes([clib.pnlim + 10]u8),
-    STDENV: [clib.pnlim + 9]u8 = std.mem.zeroes([clib.pnlim + 9]u8),
+    PRELUDE: [abi.pnlim + 10]u8 = std.mem.zeroes([abi.pnlim + 10]u8),
+    STDENV: [abi.pnlim + 9]u8 = std.mem.zeroes([abi.pnlim + 9]u8),
 
     // Compiler flags (Word-typed because they are linker-visible to lex.zig / trans.zig
     // which CAN switch to @import — no circular constraint, but keep as Word for now)
@@ -67,7 +67,7 @@ pub const RuntimeState = struct {
     baded: Word = 0,
     miralib: ?[*:0]u8 = null,
     promptstr: [*:0]const u8 = "Miranda ",
-    s_in: ?*clib.FILE = null,
+    s_in: ?*abi.FILE = null,
 
     // Runtime counters (all updated by the GC and evaluator; read by //stats).
     atobject: i32 = 0,
@@ -106,10 +106,10 @@ pub const RuntimeState = struct {
 
     // Working buffers — sized for the longest supported pathname (pnlim).
     // Zero-initialised (see above): cheap for a singleton, removes read-before-write UB risk.
-    linebuf: [clib.BUFSIZE]u8 = std.mem.zeroes([clib.BUFSIZE]u8),
-    ebuf: [clib.pnlim]u8 = std.mem.zeroes([clib.pnlim]u8),
-    home_rc: [clib.pnlim + 8]u8 = std.mem.zeroes([clib.pnlim + 8]u8),
-    lib_rc: [clib.pnlim + 8]u8 = std.mem.zeroes([clib.pnlim + 8]u8),
+    linebuf: [abi.BUFSIZE]u8 = std.mem.zeroes([abi.BUFSIZE]u8),
+    ebuf: [abi.pnlim]u8 = std.mem.zeroes([abi.pnlim]u8),
+    home_rc: [abi.pnlim + 8]u8 = std.mem.zeroes([abi.pnlim + 8]u8),
+    lib_rc: [abi.pnlim + 8]u8 = std.mem.zeroes([abi.pnlim + 8]u8),
     /// Non-null when rc_read fails; points into home_rc or lib_rc (not heap-allocated).
     rc_error: ?[*:0]const u8 = null,
 
@@ -118,7 +118,7 @@ pub const RuntimeState = struct {
     /// handlers are asynchronous (fire on any call stack) and cannot propagate
     /// Zig error unions via stack unwinding.  This sigjmp_buf MUST remain —
     /// it cannot be replaced with error{EvaluationInterrupted}.
-    env: clib.sigjmp_buf = .{},
+    env: abi.sigjmp_buf = .{},
     /// Path of a temp file to unlink if a signal fires during dump/undump.
     unlinkme: ?[*:0]const u8 = null,
     sigflag: i32 = 0,

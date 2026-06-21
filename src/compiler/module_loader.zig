@@ -1,7 +1,7 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const main = @import("../main.zig");
-const clib = @import("../runtime/main_clib.zig");
+const abi = @import("../runtime/main_clib.zig");
 const parser_api = @import("../parser/parser_api.zig");
 const setup = @import("setup.zig");
 
@@ -56,7 +56,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         return;
     }
 
-    if (clib.openfile(@constCast(t_val)) == 0) {
+    if (abi.openfile(@constCast(t_val)) == 0) {
         if (main.rs.initialising != 0) {
             main.fatal("panic: cannot open %s\n", .{.{t_val}});
         }
@@ -81,7 +81,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     ls.c = ' ';
     ls.col = 0;
     main.rs.s_in = @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(ls.fileq)))));
-    clib.adjust_prefix(@constCast(t_val));
+    abi.adjust_prefix(@constCast(t_val));
 
     main.commandmode = 0;
     if (main.rs.verbosity != 0 or main.rs.making) {
@@ -109,7 +109,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
                 var i = main.fil_defs(main.heap.h(main.files));
                 while (i != NIL) : (i = main.heap.t(i)) {
                     if (main.isvariable(main.heap.h(i)) and !main.isfreeid(main.heap.h(i))) {
-                        main.heap.tp(main.rs.exports).* = clib.add1(main.heap.h(i), main.heap.t(main.rs.exports));
+                        main.heap.tp(main.rs.exports).* = abi.add1(main.heap.h(i), main.heap.t(main.rs.exports));
                     }
                 }
             } else {
@@ -128,13 +128,13 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             }
         }
         if (main.SYNERR != 0) {
-            clib.sayhere(main.heap.h(main.rs.exports), 1);
+            abi.sayhere(main.heap.h(main.rs.exports), 1);
             word.printErr("compilation abandoned\n", .{});
         }
     }
 
     if (main.SYNERR == 0 and main.rs.includees != NIL) {
-        main.files = clib.append1(main.files, mkincludes(main.rs.includees));
+        main.files = abi.append1(main.files, mkincludes(main.rs.includees));
         main.rs.includees = NIL;
     }
     main.rs.ld_stuff = NIL;
@@ -160,14 +160,14 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             while (e != NIL) : (e = main.heap.t(e)) {
                 if (main.id_type(main.heap.h(e)) == word.undef_t) {
                     u = main.cons(main.heap.h(e), u);
-                    main.cs.ND = clib.add1(main.heap.h(e), main.cs.ND);
-                } else if (clib.member(main.rs.exports, main.heap.h(e)) == 0) {
+                    main.cs.ND = abi.add1(main.heap.h(e), main.cs.ND);
+                } else if (abi.member(main.rs.exports, main.heap.h(e)) == 0) {
                     n = main.cons(main.heap.h(e), n);
                 }
             }
 
             if (main.rs.embargoes != NIL) {
-                main.rs.exports = clib.setdiff(main.rs.exports, main.rs.embargoes);
+                main.rs.exports = abi.setdiff(main.rs.exports, main.rs.embargoes);
             }
             main.rs.exports = main.alfasort(main.rs.exports);
 
@@ -175,7 +175,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             while (e != NIL) : (e = main.heap.t(e)) {
                 if (main.id_type(main.heap.h(e)) == word.undef_t) {
                     u = main.cons(main.heap.h(e), u);
-                    main.cs.ND = clib.add1(main.heap.h(e), main.cs.ND);
+                    main.cs.ND = abi.add1(main.heap.h(e), main.cs.ND);
                 } else if (main.id_type(main.heap.h(e)) == word.type_t and main.t_class(main.heap.h(e)) == word.algebraic_t) {
                     c_ctr = main.shunt(main.t_info(main.heap.h(e)), c_ctr);
                 }
@@ -184,7 +184,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             if (main.rs.exports == NIL) {
                 word.print("warning, export list has void contents\n", .{});
             } else {
-                main.rs.exports = clib.append1(main.alfasort(c_ctr), main.rs.exports);
+                main.rs.exports = abi.append1(main.alfasort(c_ctr), main.rs.exports);
             }
 
             if (n != NIL) {
@@ -197,14 +197,14 @@ pub fn loadfile(t_val: [*:0]const u8) void {
 
             if (u != NIL) {
                 main.rs.exports = NIL;
-                clib.printlist(@constCast("undefined names in export list: "), u);
+                abi.printlist(@constCast("undefined names in export list: "), u);
             }
 
             if (u != NIL) {
-                clib.sayhere(h_val, 1);
+                abi.sayhere(h_val, 1);
                 h_val = NIL;
             } else if (main.rs.exports == NIL or n != NIL) {
-                clib.out_here(main.getStderr(), h_val, 1);
+                abi.out_here(main.getStderr(), h_val, 1);
                 h_val = NIL;
             }
         }
@@ -219,12 +219,12 @@ pub fn loadfile(t_val: [*:0]const u8) void {
                 const ty = main.id_type(main.heap.h(e1));
                 if (ty == word.type_t) {
                     if (main.t_class(main.heap.h(e1)) == word.synonym_t) {
-                        r = clib.UNION(r, clib.deps(main.t_info(main.heap.h(e1))));
+                        r = abi.UNION(r, abi.deps(main.t_info(main.heap.h(e1))));
                     } else {
                         e = main.cons(main.heap.h(e1), e);
                     }
                 } else {
-                    r = clib.UNION(r, clib.deps(ty));
+                    r = abi.UNION(r, abi.deps(ty));
                 }
             }
         } else {
@@ -233,12 +233,12 @@ pub fn loadfile(t_val: [*:0]const u8) void {
                 const ty = main.id_type(main.heap.h(e1));
                 if (ty == word.type_t) {
                     if (main.t_class(main.heap.h(e1)) == word.synonym_t) {
-                        r = clib.UNION(r, clib.deps(main.t_info(main.heap.h(e1))));
+                        r = abi.UNION(r, abi.deps(main.t_info(main.heap.h(e1))));
                     } else {
                         e = main.cons(main.heap.h(e1), e);
                     }
                 } else {
-                    r = clib.UNION(r, clib.deps(ty));
+                    r = abi.UNION(r, abi.deps(ty));
                 }
             }
         }
@@ -248,30 +248,30 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             const ty = main.id_type(main.heap.h(main.heap.h(e1)));
             if (ty == word.type_t) {
                 if (main.t_class(main.heap.h(main.heap.h(e1))) == word.synonym_t) {
-                    r = clib.UNION(r, clib.deps(main.t_info(main.heap.h(main.heap.h(e1)))));
+                    r = abi.UNION(r, abi.deps(main.t_info(main.heap.h(main.heap.h(e1)))));
                 } else {
                     e = main.cons(main.heap.h(main.heap.h(e1)), e);
                 }
             } else {
-                r = clib.UNION(r, clib.deps(ty));
+                r = abi.UNION(r, abi.deps(ty));
             }
         }
 
         while (r != NIL) : (r = main.heap.t(r)) {
-            if (clib.member(e, main.heap.h(r)) == 0) {
+            if (abi.member(e, main.heap.h(r)) == 0) {
                 main.rs.bereaved = main.cons(main.heap.h(r), main.rs.bereaved);
             }
         }
     }
 
     if (main.rs.exports != NIL and main.rs.bereaved != NIL) {
-        const b = clib.intersection(main.rs.bereaved, main.cs.newtyps);
+        const b = abi.intersection(main.rs.bereaved, main.cs.newtyps);
         if (b != NIL) {
             word.print("warning, export list is incomplete - missing typename: ", .{});
-            clib.printlist(@constCast(""), b);
+            abi.printlist(@constCast(""), b);
         }
         if (b != NIL and h_val != NIL) {
-            clib.out_here(main.getStdout(), h_val, 1);
+            abi.out_here(main.getStdout(), h_val, 1);
         }
     }
 
@@ -284,9 +284,9 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             word.print("warning, script contains unused local definitions:-\n", .{});
         }
         while (main.rs.detrop != NIL) {
-            clib.out_here(main.getStdout(), main.heap.h(main.heap.h(main.heap.t(main.dval(main.heap.h(main.rs.detrop))))), 0);
+            abi.out_here(main.getStdout(), main.heap.h(main.heap.h(main.heap.t(main.dval(main.heap.h(main.rs.detrop))))), 0);
             _ = word.putchar('\t');
-            clib.out_pattern(main.getStdout(), main.dlhs(main.heap.h(main.rs.detrop)));
+            abi.out_pattern(main.getStdout(), main.dlhs(main.heap.h(main.rs.detrop)));
             _ = word.putchar('\n');
             main.rs.detrop = main.heap.t(main.rs.detrop);
             while (main.rs.detrop != NIL and main.tag[@intCast(main.dval(main.heap.h(main.rs.detrop)))] == word.LABEL) {
@@ -302,9 +302,9 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             word.print("warning, grammar contains unused nonterminals:-\n", .{});
         }
         while (gd_mut != NIL) {
-            clib.out_here(main.getStdout(), main.heap.h(main.dval(main.heap.h(gd_mut))), 0);
+            abi.out_here(main.getStdout(), main.heap.h(main.dval(main.heap.h(gd_mut))), 0);
             _ = word.putchar('\t');
-            clib.out_pattern(main.getStdout(), main.dlhs(main.heap.h(gd_mut)));
+            abi.out_pattern(main.getStdout(), main.dlhs(main.heap.h(gd_mut)));
             _ = word.putchar('\n');
             gd_mut = main.heap.t(gd_mut);
             while (gd_mut != NIL and main.tag[@intCast(main.dval(main.heap.h(gd_mut)))] != word.LABEL) {
@@ -367,25 +367,25 @@ pub fn mkincludes(includees_val: Word) Word {
     var result: Word = NIL;
     var tclashes: Word = NIL;
     includees_list = main.reverse(includees_list);
-    const pid = clib.fork();
+    const pid = abi.fork();
     if (pid != 0) { // parent
         var status: c_int = 0;
         if (pid == -1) {
-            clib.perror("UNIX error - cannot create process");
+            abi.perror("UNIX error - cannot create process");
             if (main.rs.ideep > 6) {
                 word.printErr("error occurs {} deep in %include files\n", .{main.rs.ideep});
             }
             if (main.rs.ideep != 0) {
-                clib.exit(2);
+                abi.exit(2);
             }
             main.SYNERR = 2;
             word.print("compilation of \"{s}\" abandoned\n", .{main.rs.current_script.?});
             return NIL;
         }
-        while (pid != clib.wait(&status)) {}
+        while (pid != abi.wait(&status)) {}
         if (WEXITSTATUS(status) == 2) {
             if (main.rs.ideep != 0) {
-                clib.exit(2);
+                abi.exit(2);
             } else {
                 main.SYNERR = 2;
                 word.print("compilation of \"{s}\" abandoned\n", .{main.rs.current_script.?});
@@ -393,7 +393,7 @@ pub fn mkincludes(includees_val: Word) Word {
             }
         }
     } else { // child
-        _ = signals(clib.SIGINT, 0);
+        _ = signals(abi.SIGINT, 0);
         main.rs.ideep += 1;
         main.rs.making = true;
         main.rs.make_status = 0;
@@ -401,7 +401,7 @@ pub fn mkincludes(includees_val: Word) Word {
         main.rs.listing = 0;
         main.rs.verbosity = 0;
         main.rs.magic = false;
-        _ = clib.sigsetjmp(&main.rs.env, 1);
+        _ = abi.sigsetjmp(&main.rs.env, 1);
         while (includees_list != NIL and main.rs.make_status == 0) {
             main.undump(@ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(main.heap.h(includees_list)))))));
             if (main.cs.ND != NIL or (main.files == NIL and main.rs.oldfiles != NIL)) {
@@ -409,7 +409,7 @@ pub fn mkincludes(includees_val: Word) Word {
             }
             includees_list = main.heap.t(includees_list);
         }
-        clib.exit(@intCast(main.rs.make_status));
+        abi.exit(@intCast(main.rs.make_status));
     }
 
     main.rs.sigflag = 0;
@@ -423,25 +423,25 @@ pub fn mkincludes(includees_val: Word) Word {
         _ = word.strcpy(ls.dicp + word.strlen(ls.dicp) - 1, main.obsuffix);
 
         if (!main.rs.making) {
-            oldsig = signals(clib.SIGINT, @intFromPtr(&main.sigdefer));
+            oldsig = signals(abi.SIGINT, @intFromPtr(&main.sigdefer));
         }
 
         f = word.fopen(ls.dicp, "r");
         if (f != null) {
-            x = clib.load_script(f.?, @constCast(fn_str), main.heap.h(main.heap.t(main.heap.h(includees_list))), main.heap.t(main.heap.t(main.heap.h(includees_list))), 0);
+            x = abi.load_script(f.?, @constCast(fn_str), main.heap.h(main.heap.t(main.heap.h(includees_list))), main.heap.t(main.heap.t(main.heap.h(includees_list))), 0);
             _ = word.fclose(f.?);
         }
 
         main.rs.ld_stuff = main.cons(x, main.rs.ld_stuff);
         if (!main.rs.making) {
-            _ = signals(clib.SIGINT, oldsig);
+            _ = signals(abi.SIGINT, oldsig);
         }
 
         if (main.rs.sigflag != 0) {
             main.rs.sigflag = 0;
             if (oldsig > 1) {
                 const handler: *const fn (c_int) callconv(.c) void = @ptrFromInt(oldsig);
-                handler(clib.SIGINT);
+                handler(abi.SIGINT);
             }
         }
 
@@ -477,7 +477,7 @@ pub fn mkincludes(includees_val: Word) Word {
                                             w = main.heap.t(w);
                                         }
                                         if (w == NIL) {
-                                            tclashes = main.cons(clib.strcons(@as(Word, @intCast(@intFromPtr(main.get_fil(main.heap.h(z)).?))), main.cons(orig, NIL)), tclashes);
+                                            tclashes = main.cons(abi.strcons(@as(Word, @intCast(@intFromPtr(main.get_fil(main.heap.h(z)).?))), main.cons(orig, NIL)), tclashes);
                                             w = tclashes;
                                         }
                                         main.heap.tp(main.heap.t(main.heap.t(main.heap.h(w)))).* = main.cons(main.heap.h(p), main.heap.t(main.heap.t(main.heap.h(w))));
@@ -498,19 +498,19 @@ pub fn mkincludes(includees_val: Word) Word {
                 }
             }
 
-            if (clib.member(ls.exportfiles, @intCast(@intFromPtr(fn_str))) != 0) {
+            if (abi.member(ls.exportfiles, @intCast(@intFromPtr(fn_str))) != 0) {
                 y = x;
                 while (y != NIL) : (y = main.heap.t(y)) {
                     var z = main.fil_defs(main.heap.h(y));
                     while (z != NIL) : (z = main.heap.t(z)) {
                         if (main.isvariable(main.heap.h(z))) {
-                            main.heap.tp(main.rs.exports).* = clib.add1(main.heap.h(z), main.heap.t(main.rs.exports));
+                            main.heap.tp(main.rs.exports).* = abi.add1(main.heap.h(z), main.heap.t(main.rs.exports));
                         }
                     }
                 }
             }
 
-            result = clib.append1(result, x);
+            result = abi.append1(result, x);
             if (main.heap.h(main.cs.FBS) == NIL) {
                 main.cs.FBS = main.heap.t(main.cs.FBS);
             } else {
@@ -523,15 +523,15 @@ pub fn mkincludes(includees_val: Word) Word {
         if (f == null) {
             result = main.cons(main.make_fil(fn_str, main.fm_time(fn_str), 0, NIL), result);
         } else if (x == NIL and main.cs.BAD_DUMP != -2) {
-            result = clib.append1(result, main.rs.oldfiles);
+            result = abi.append1(result, main.rs.oldfiles);
             main.rs.oldfiles = NIL;
         } else {
-            result = clib.append1(result, x);
+            result = abi.append1(result, x);
         }
 
         main.SYNERR = 1;
         word.print("unsuccessful %include directive ", .{});
-        clib.sayhere(main.heap.t(main.heap.h(main.heap.h(includees_list))), 1);
+        abi.sayhere(main.heap.t(main.heap.h(main.heap.h(includees_list))), 1);
 
         if (f == null) {
             word.print("\"{s}\" cannot be loaded\n", .{fn_str});
@@ -539,12 +539,12 @@ pub fn mkincludes(includees_val: Word) Word {
             main.cs.DETROP = NIL;
             main.cs.MISSING = NIL;
         } else if (main.cs.BAD_DUMP == -2) {
-            clib.printlist(@constCast("aliasing causes nameclashes: "), main.cs.CLASHES);
+            abi.printlist(@constCast("aliasing causes nameclashes: "), main.cs.CLASHES);
             main.cs.CLASHES = NIL;
         } else if (main.cs.ALIASES != NIL or main.cs.TSUPPRESSED != NIL) {
             if (main.cs.ALIASES != NIL) {
                 word.print("alias fails (name{s} not found in file", .{@as([*:0]const u8, if (main.heap.t(main.cs.ALIASES) == NIL) "" else "s")});
-                clib.printlist(@constCast("): "), main.cs.ALIASES);
+                abi.printlist(@constCast("): "), main.cs.ALIASES);
                 main.cs.ALIASES = NIL;
             }
             if (main.cs.TSUPPRESSED != NIL) {
@@ -565,7 +565,7 @@ pub fn mkincludes(includees_val: Word) Word {
 
         if (main.cs.ND == NIL and main.cs.CLASHES != NIL) {
             word.print("\"{s}\" ", .{fn_str});
-            clib.printlist(@constCast("causes nameclashes: "), main.cs.CLASHES);
+            abi.printlist(@constCast("causes nameclashes: "), main.cs.CLASHES);
         }
 
         while (main.cs.DETROP != NIL and main.tag[@intCast(main.heap.h(main.cs.DETROP))] == word.CONS) {
@@ -584,7 +584,7 @@ pub fn mkincludes(includees_val: Word) Word {
 
         if (main.cs.DETROP != NIL) {
             word.print("illegal parameter binding (name{s} not %free in file", .{@as([*:0]const u8, if (main.heap.t(main.cs.DETROP) == NIL) "" else "s")});
-            clib.printlist(@constCast("): "), main.cs.DETROP);
+            abi.printlist(@constCast("): "), main.cs.DETROP);
             main.cs.DETROP = NIL;
         }
 
@@ -606,8 +606,8 @@ pub fn mkincludes(includees_val: Word) Word {
     if (tclashes != NIL) {
         word.printErr("TYPECLASH - the following type{s} multiply named:\n", .{@as([*:0]const u8, if (main.heap.t(tclashes) == NIL) " is" else "s are")});
         while (tclashes != NIL) {
-            word.printErr("\'{s}\' of file \"{s}\", as: ", .{clib.getaka(main.heap.h(main.heap.t(main.heap.h(tclashes)))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(tclashes))))))});
-            clib.printlist(@constCast(""), main.alfasort(main.heap.t(main.heap.t(main.heap.h(tclashes)))));
+            word.printErr("\'{s}\' of file \"{s}\", as: ", .{abi.getaka(main.heap.h(main.heap.t(main.heap.h(tclashes)))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(tclashes))))))});
+            abi.printlist(@constCast(""), main.alfasort(main.heap.t(main.heap.t(main.heap.h(tclashes)))));
             tclashes = main.heap.t(tclashes);
         }
         word.printErr("typecheck cannot proceed - compilation abandoned\n", .{});

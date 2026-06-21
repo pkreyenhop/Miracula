@@ -1,7 +1,7 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const main = @import("../main.zig");
-const clib = @import("../runtime/main_clib.zig");
+const abi = @import("../runtime/main_clib.zig");
 const platform = @import("platform.zig");
 
 const lex_state = @import("../parser/lex_state.zig");
@@ -56,33 +56,33 @@ pub fn fileExists(path: [*:0]const u8) bool {
 
 /// Copies the contents of `path` to stdout. Used by the `//f` command to display source.
 pub fn filecopy(path: [*:0]const u8) void {
-    const fd = clib.open(path, clib.O_RDONLY, 0);
+    const fd = abi.open(path, abi.O_RDONLY, 0);
     if (fd < 0) return;
-    defer _ = clib.close(fd);
+    defer _ = abi.close(fd);
 
     var buffer: [512]u8 = undefined;
     while (true) {
-        const n = clib.read(fd, &buffer, buffer.len);
+        const n = abi.read(fd, &buffer, buffer.len);
         if (n <= 0) break;
-        _ = clib.write(clib.STDOUT_FILENO, &buffer, @intCast(n));
+        _ = abi.write(abi.STDOUT_FILENO, &buffer, @intCast(n));
     }
 }
 
 /// Copies file `from` to file `to`, creating or truncating `to`. Used during dump/undump.
 pub fn filecp(from: [*:0]const u8, to: [*:0]const u8) void {
-    const f_in = clib.open(from, clib.O_RDONLY, 0);
+    const f_in = abi.open(from, abi.O_RDONLY, 0);
     if (f_in < 0) return;
-    defer _ = clib.close(f_in);
+    defer _ = abi.close(f_in);
 
-    const f_out = clib.open(to, clib.O_WRONLY | clib.O_CREAT | clib.O_TRUNC, @as(c_uint, 0o644));
+    const f_out = abi.open(to, abi.O_WRONLY | abi.O_CREAT | abi.O_TRUNC, @as(c_uint, 0o644));
     if (f_out < 0) return;
-    defer _ = clib.close(f_out);
+    defer _ = abi.close(f_out);
 
     var buffer: [512]u8 = undefined;
     while (true) {
-        const n = clib.read(f_in, &buffer, buffer.len);
+        const n = abi.read(f_in, &buffer, buffer.len);
         if (n <= 0) break;
-        _ = clib.write(f_out, &buffer, @intCast(n));
+        _ = abi.write(f_out, &buffer, @intCast(n));
     }
 }
 
@@ -102,7 +102,7 @@ pub export fn unlinkx(t_path: [*:0]const u8) void {
 
     const obf = @as([*:0]const u8, @ptrCast(obf_buf[0..].ptr));
     if (fileExists(obf)) {
-        _ = clib.unlink(obf);
+        _ = abi.unlink(obf);
     }
 }
 
@@ -113,7 +113,7 @@ pub fn mkabsolute(m: [*:0]u8) [*:0]u8 {
     if (m[0] == '/') {
         return m;
     }
-    if (clib.getcwd(ls.dicp, clib.pnlim) == null) {
+    if (abi.getcwd(ls.dicp, abi.pnlim) == null) {
         main.fatal("panic: cwd too long\n", .{.{}});
     }
     _ = word.strcat(ls.dicp, "/");
@@ -127,8 +127,8 @@ pub fn mkabsolute(m: [*:0]u8) [*:0]u8 {
 
 /// Returns the terminal column width minus 2, defaulting to 78 if unavailable.
 pub fn twidth() c_int {
-    var window: clib.struct_winsize = undefined;
-    if (clib.ioctl(clib.STDOUT_FILENO, clib.TIOCGWINSZ, &window) == -1 or window.ws_col == 0) {
+    var window: abi.struct_winsize = undefined;
+    if (abi.ioctl(abi.STDOUT_FILENO, abi.TIOCGWINSZ, &window) == -1 or window.ws_col == 0) {
         return 78;
     }
     return @as(c_int, @intCast(window.ws_col)) - 2;

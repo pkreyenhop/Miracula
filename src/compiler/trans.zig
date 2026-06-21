@@ -6,7 +6,7 @@ const main = @import("../main.zig");
 
 const compiler_state = @import("compiler_state.zig");
 const cs = &compiler_state.cs;
-const c = struct {
+const abi = struct {
     pub const printf = shim.printf;
     pub const putchar = shim.putchar;
     pub const FILE = shim.FILE;
@@ -618,7 +618,7 @@ pub fn abstr(x: Word, e: Word) Word {
         },
         LAMBDA, LET, LETREC, TRIES, LABEL, SHOW, LEXER, SHARE => {
             std.debug.print("impossible event in abstr (main.tag={d})\n", .{main.tag[@intCast(e)]});
-            c.exit(1);
+            abi.exit(1);
         },
         else => {
             if (x == e or (isTypeVariable(x) and isTypeVariable(e) and getTypeVariable(x) == getTypeVariable(e))) {
@@ -640,7 +640,7 @@ pub fn abstrlist(x_input: Word, e: Word) Word {
         },
         LAMBDA, LET, LETREC, TRIES, LABEL, SHOW, LEXER, SHARE => {
             std.debug.print("impossible event in abstrlist (main.tag={d})\n", .{main.tag[@intCast(e)]});
-            c.exit(1);
+            abi.exit(1);
         },
         else => {
             var i: Word = 0;
@@ -1311,7 +1311,7 @@ pub fn invgetrel(input_r: Word, x: Word) Word {
     while (r != NIL and member(t(h(r)), x) == 0) r = t(r);
     if (r == NIL) {
         std.debug.print("impossible event in invgetrel\n", .{});
-        c.exit(1);
+        abi.exit(1);
     }
     return h(h(r));
 }

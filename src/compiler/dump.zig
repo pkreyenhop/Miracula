@@ -1,7 +1,7 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const main = @import("../main.zig");
-const clib = @import("../runtime/main_clib.zig");
+const abi = @import("../runtime/main_clib.zig");
 const lex_state = @import("../parser/lex_state.zig");
 const ls = &lex_state.ls;
 
@@ -62,7 +62,7 @@ pub fn fixexports() void {
 }
 
 fn paint(x: Word) void {
-    tp(x).* = clib.ap(word.EXPORT, main.id_val(x));
+    tp(x).* = abi.ap(word.EXPORT, main.id_val(x));
 }
 
 fn unpainted(x: Word) bool {
@@ -86,16 +86,16 @@ pub fn unfixexports() void {
 }
 
 fn privatise(x: Word) Word {
-    const n = clib.make_pn(x);
+    const n = abi.make_pn(x);
     const hash_idx = hash(main.get_id(x));
     const i = h(n);
 
     if (main.id_type(x) == word.type_t) {
-        tp(main.t_info(x)).* = main.cons(clib.datapair(@as(Word, @intCast(@intFromPtr(clib.getaka(x)))), 0), main.get_here(x));
+        tp(main.t_info(x)).* = main.cons(abi.datapair(@as(Word, @intCast(@intFromPtr(abi.getaka(x)))), 0), main.get_here(x));
     }
 
     if (main.id_val(x) == word.UNDEF) {
-        tp(x).* = clib.ap(clib.datapair(@as(Word, @intCast(@intFromPtr(clib.getaka(x)))), 0), main.get_here(x));
+        tp(x).* = abi.ap(abi.datapair(@as(Word, @intCast(@intFromPtr(abi.getaka(x)))), 0), main.get_here(x));
     }
 
     ls.pnvec.?[@as(usize, @intCast(i))] = x;
@@ -206,7 +206,7 @@ pub export fn readoption() void {
     word.print("the following type{s} no name in this scope:\n", .{if (t(tlost) == NIL) " is needed but has" else "s are needed but have"});
     while (tlost != NIL) {
         word.print("\'{s}\' of file \"{s}\", needed by: ", .{ @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(main.t_info(h(h(tlost))))))))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(main.t_info(h(h(tlost))))))))) });
-        clib.printlist(@constCast(""), main.alfasort(t(h(tlost))));
+        abi.printlist(@constCast(""), main.alfasort(t(h(tlost))));
         tlost = t(tlost);
     }
 }
@@ -221,7 +221,7 @@ pub fn fixtype(t_val: Word, x: Word) Word {
             return t_val;
         },
         word.STRCONS => {
-            if (clib.member(pfrts, t_val) != 0) {
+            if (abi.member(pfrts, t_val) != 0) {
                 return t_val;
             }
             var cur_t = t_val;
@@ -237,7 +237,7 @@ pub fn fixtype(t_val: Word, x: Word) Word {
                     tlost = main.cons(main.cons(cur_t, main.cons(x, NIL)), tlost);
                     w = tlost;
                 }
-                tp(h(w)).* = clib.add1(x, t(h(w)));
+                tp(h(w)).* = abi.add1(x, t(h(w)));
             }
             return cur_t;
         },
@@ -253,11 +253,11 @@ inline fn pn_val(x: Word) Word {
 /// than the source, otherwise falls back to `loadfile()`. Handles the case where
 /// the source does not exist (initialising-only panic) or the dump is missing/stale.
 pub fn undump(t_val: [*:0]const u8) void {
-    var obf: [clib.pnlim]u8 = undefined;
+    var obf: [abi.pnlim]u8 = undefined;
     var f: ?*word.FILE = null;
     var flen: Word = undefined;
-    var t1: clib.time_t = undefined;
-    var t2: clib.time_t = undefined;
+    var t1: Word = undefined;
+    var t2: Word = undefined;
     var oldsig: usize = 0;
 
     if (main.normal(t_val) == 0 and main.rs.initialising == 0) {
@@ -266,18 +266,18 @@ pub fn undump(t_val: [*:0]const u8) void {
     }
 
     flen = @intCast(word.strlen(t_val));
-    t1 = @intCast(main.fm_time(t_val));
-    if (flen > clib.pnlim) {
-        word.print("sorry, pathname too long (limit={}): {s}\n", .{ clib.pnlim, std.mem.span(t_val) });
+    t1 = main.fm_time(t_val);
+    if (flen > abi.pnlim) {
+        word.print("sorry, pathname too long (limit={}): {s}\n", .{ abi.pnlim, std.mem.span(t_val) });
         return;
     }
 
     _ = word.strcpy(&obf, t_val);
     _ = word.strcpy(obf[@intCast(flen - 1)..].ptr, main.obsuffix);
-    t2 = @intCast(main.fm_time(@as([*:0]const u8, @ptrCast(&obf))));
+    t2 = main.fm_time(@as([*:0]const u8, @ptrCast(&obf)));
     if (t2 != 0 and t1 == 0) {
         t2 = 0;
-        _ = clib.unlink(@as([*:0]const u8, @ptrCast(&obf)));
+        _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
     }
     if (t2 == 0 or t2 < t1) {
         main.loadfile(t_val);
@@ -298,14 +298,14 @@ pub fn undump(t_val: [*:0]const u8) void {
 
     if (main.rs.initialising == 0 and !main.rs.making) {
         main.rs.sigflag = 0;
-        oldsig = main.signals(clib.SIGINT, @intFromPtr(&sigdefer));
+        oldsig = main.signals(abi.SIGINT, @intFromPtr(&sigdefer));
     }
 
-    main.files = clib.load_script(f.?, @constCast(t_val), NIL, NIL, if (!main.rs.making and main.rs.initialising == 0) 1 else 0);
+    main.files = abi.load_script(f.?, @constCast(t_val), NIL, NIL, if (!main.rs.making and main.rs.initialising == 0) 1 else 0);
     _ = word.fclose(f.?);
 
     if (main.cs.BAD_DUMP != 0) {
-        _ = clib.unlink(@as([*:0]const u8, @ptrCast(&obf)));
+        _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
         main.unload();
         main.cs.CLASHES = NIL;
         main.stackp = main.dstack;
@@ -320,20 +320,20 @@ pub fn undump(t_val: [*:0]const u8) void {
     }
 
     if (main.rs.initialising == 0 and !main.rs.making) {
-        _ = main.signals(clib.SIGINT, oldsig);
+        _ = main.signals(abi.SIGINT, oldsig);
     }
     if (main.rs.sigflag != 0) {
         main.rs.sigflag = 0;
         if (oldsig > 1) {
             const handler: *const fn (c_int) callconv(.c) void = @ptrFromInt(oldsig);
-            handler(clib.SIGINT);
+            handler(abi.SIGINT);
         }
     }
 
     if (main.cs.CLASHES != NIL) {
         if (main.rs.ideep == 0) {
             word.print("cannot load {s} ", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
-            clib.printlist(@constCast("due to name clashes: "), main.alfasort(main.cs.CLASHES));
+            abi.printlist(@constCast("due to name clashes: "), main.alfasort(main.cs.CLASHES));
         }
         main.unload();
         main.loading = 0;
@@ -387,8 +387,8 @@ pub fn makedump() void {
         return;
     }
     main.rs.unlinkme = @ptrCast(obf);
-    clib.setprefix(main.rs.current_script.?);
-    clib.dump_script(main.files, f.?);
+    abi.setprefix(main.rs.current_script.?);
+    abi.dump_script(main.files, f.?);
     main.rs.unlinkme = null;
     _ = word.fclose(f.?);
 }

@@ -2,7 +2,7 @@ const std = @import("std");
 const platform = @import("io/platform.zig");
 const parser_api = @import("parser/parser_api.zig");
 const word_mod = @import("runtime/word.zig");
-const clib = @import("runtime/main_clib.zig");
+const abi = @import("runtime/main_clib.zig");
 const rt = @import("runtime/runtime_state.zig");
 const setup = @import("compiler/setup.zig");
 const module_loader = @import("compiler/module_loader.zig");
@@ -36,7 +36,7 @@ pub extern var hd: [*]Word;
 pub extern var tl: [*]Word;
 pub extern var tag: [*]u8;
 
-pub extern var s_out: ?*clib.FILE;
+pub extern var s_out: ?*abi.FILE;
 pub extern var dstack: ?[*]Word;
 pub extern var stackp: ?[*]Word;
 
@@ -93,14 +93,14 @@ pub inline fn get_fil(fil: Word) ?[*:0]const u8 {
     return @ptrFromInt(@as(usize, @intCast(val)));
 }
 
-pub inline fn getStdin() ?*clib.FILE {
-    return clib.stdin();
+pub inline fn getStdin() ?*abi.FILE {
+    return abi.stdin();
 }
-pub inline fn getStdout() ?*clib.FILE {
-    return clib.stdout();
+pub inline fn getStdout() ?*abi.FILE {
+    return abi.stdout();
 }
-pub inline fn getStderr() ?*clib.FILE {
-    return clib.stderr();
+pub inline fn getStderr() ?*abi.FILE {
+    return abi.stderr();
 }
 
 // Relocated aliases — Compiler Setup
@@ -112,7 +112,7 @@ pub const mira_setup = setup.mira_setup;
 pub const loadfile = module_loader.loadfile;
 pub const mkincludes = module_loader.mkincludes;
 
-// Compiler entry points — direct imports eliminate clib.* linker coupling (H2)
+// Compiler entry points — direct imports eliminate abi.* linker coupling (H2)
 pub const type_of = types_mod.type_of;
 pub const checktypes = types_mod.checktypes;
 pub const codegen = trans_mod.codegen;
@@ -209,7 +209,7 @@ pub fn main(ctx: std.process.Init) !void {
     rt.io = ctx.io;
     rt.environ = ctx.minimal.environ;
     rt.allocator = rt.gpa.allocator();
-    clib.env_slice = ctx.minimal.environ.block.slice;
+    abi.env_slice = ctx.minimal.environ.block.slice;
     const raw_args = ctx.minimal.args.vector;
     const argv: [*][*:0]u8 = @ptrCast(@constCast(raw_args.ptr));
     const argc: c_int = @intCast(raw_args.len);

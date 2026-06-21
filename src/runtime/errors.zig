@@ -32,7 +32,7 @@ pub const MiraError = error{
 };
 
 const std = @import("std");
-const clib = @import("main_clib.zig");
+const abi = @import("main_clib.zig");
 const word = @import("word.zig");
 
 /// Print a diagnostic to stderr and terminate the process with status 1.
@@ -47,8 +47,8 @@ const word = @import("word.zig");
 /// their own category. `fmt`/`args` follow the `word.fprintf` printf-style
 /// convention (both `.{a}` and `.{.{a}}` arg tuples are accepted).
 pub fn fatal(fmt: [*:0]const u8, args: anytype) noreturn {
-    _ = word.fprintf(clib.stderr(), fmt, args);
-    clib.exit(1);
+    _ = word.fprintf(abi.stderr(), fmt, args);
+    abi.exit(1);
 }
 
 test "MiraError variants are all distinct" {

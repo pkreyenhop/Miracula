@@ -12,7 +12,7 @@ const TokenId = tf.TokenId;
 const Token = tf.Token;
 const Span = tf.Span;
 
-const clib = @import("../runtime/c_abi.zig");
+const abi = @import("../runtime/c_abi.zig");
 const lex_state = @import("lex_state.zig");
 const ls = &lex_state.ls;
 
@@ -20,36 +20,36 @@ extern fn mira_lex_setup_string(source: [*:0]const u8) void;
 extern fn mira_lex_cleanup() void;
 
 // Miranda atom-range constants (from lex.zig — keep in sync with CMBASE = 306).
-const CMBASE: clib.word = 306;
-const FALSE_ATOM: clib.word = CMBASE + 136; // Miranda boolean False
-const TRUE_ATOM: clib.word = CMBASE + 137; // Miranda boolean True
-const NIL_ATOM: clib.word = CMBASE + 138;
-const NILS_ATOM: clib.word = CMBASE + 139;
-const ATOMLIMIT: clib.word = CMBASE + 141;
+const CMBASE: abi.word = 306;
+const FALSE_ATOM: abi.word = CMBASE + 136; // Miranda boolean False
+const TRUE_ATOM: abi.word = CMBASE + 137; // Miranda boolean True
+const NIL_ATOM: abi.word = CMBASE + 138;
+const NILS_ATOM: abi.word = CMBASE + 139;
+const ATOMLIMIT: abi.word = CMBASE + 141;
 
 // Lexer globals exported by lex.zig.
 // Heap arrays (data.h: hd and tl are offset so hd[x*2] / tl[x*2] index cell x).
-extern var hd: [*]clib.word;
-extern var tl: [*]clib.word;
+extern var hd: [*]abi.word;
+extern var tl: [*]abi.word;
 extern var tag: [*]u8;
 
 extern fn yylex() c_int;
-extern fn is_char(x: clib.word) c_int;
-extern fn get_dbl(x: clib.word) f64;
+extern fn is_char(x: abi.word) c_int;
+extern fn get_dbl(x: abi.word) f64;
 extern fn layout() void;
 extern fn setlmargin() void;
 extern fn unsetlmargin() void;
 
 // C macro equivalents: hd(x) == hd[(x)*2], tl(x) == tl[(x)*2]
-inline fn hd_of(x: clib.word) clib.word {
+inline fn hd_of(x: abi.word) abi.word {
     return hd[@as(usize, @intCast(x)) * 2];
 }
-inline fn tl_of(x: clib.word) clib.word {
+inline fn tl_of(x: abi.word) abi.word {
     return tl[@as(usize, @intCast(x)) * 2];
 }
 
 // C macro: get_id(x) == (char*)hd(hd(hd(x)))
-fn getIdText(x: clib.word) []const u8 {
+fn getIdText(x: abi.word) []const u8 {
     const ptr: usize = @intCast(hd_of(hd_of(hd_of(x))));
     const p: [*:0]const u8 = @ptrFromInt(ptr);
     return std.mem.span(p);
@@ -59,12 +59,12 @@ fn getIdText(x: clib.word) []const u8 {
 /// String literals in Miranda are represented as CONS (tag=11) chains, NOT STRCONS.
 /// Each cell hd is either an atom 0-127 (direct ASCII code point) or a UNICODE
 /// heap cell (tag=21) whose tl holds the code point.
-fn stringFromCons(gpa: Allocator, cell: clib.word) ![]u8 {
+fn stringFromCons(gpa: Allocator, cell: abi.word) ![]u8 {
     var buf: std.ArrayList(u8) = .empty;
     errdefer buf.deinit(gpa);
     var cur = cell;
     while (cur >= ATOMLIMIT and tag[@as(usize, @intCast(cur))] == word.CONS) {
-        const ch_val: clib.word = hd_of(cur);
+        const ch_val: abi.word = hd_of(cur);
         cur = tl_of(cur);
         const codepoint: u21 = if (ch_val < ATOMLIMIT)
             @intCast(ch_val) // ASCII/Latin-1 atom: value IS the code point
@@ -84,7 +84,7 @@ fn stringFromCons(gpa: Allocator, cell: clib.word) ![]u8 {
 /// Map one yylex() return value to a Token.
 /// Returns null for internal tokens that the Zig parser should skip.
 fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
-    const w: clib.word = ls.yylval;
+    const w: abi.word = ls.yylval;
 
     return switch (raw) {
         // EOF / END (both == 0 from data.h)

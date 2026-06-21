@@ -8,13 +8,13 @@ const word = @import("../runtime/word.zig");
 const Allocator = std.mem.Allocator;
 const ast = @import("ast.zig");
 
-const clib = @import("../runtime/c_abi.zig");
+const abi = @import("../runtime/c_abi.zig");
 const main = @import("../main.zig");
 const lex_state = @import("lex_state.zig");
 const ls = &lex_state.ls;
 const heap = @import("../runtime/heap.zig");
 
-const Word = clib.word;
+const Word = abi.word;
 
 // Miranda predefined atom words (from lex.zig — keep in sync with CMBASE = 306).
 const CMBASE: Word = 306;
@@ -44,7 +44,7 @@ inline fn tg(x: Word) u8 {
 // ---------------------------------------------------------------------------
 
 inline fn ap(x: Word, y: Word) Word {
-    return clib.make(word.AP, x, y);
+    return abi.make(word.AP, x, y);
 }
 inline fn ap2(x: Word, y: Word, z: Word) Word {
     return ap(ap(x, y), z);
@@ -53,19 +53,19 @@ inline fn ap3(w: Word, x: Word, y: Word, z: Word) Word {
     return ap(ap2(w, x, y), z);
 }
 inline fn mkcons(x: Word, y: Word) Word {
-    return clib.make(word.CONS, x, y);
+    return abi.make(word.CONS, x, y);
 }
 inline fn mklabel(x: Word, y: Word) Word {
-    return clib.make(word.LABEL, x, y);
+    return abi.make(word.LABEL, x, y);
 }
 inline fn mklambda(x: Word, y: Word) Word {
-    return clib.make(word.LAMBDA, x, y);
+    return abi.make(word.LAMBDA, x, y);
 }
 inline fn mkpair(x: Word, y: Word) Word {
-    return clib.make(word.PAIR, x, y);
+    return abi.make(word.PAIR, x, y);
 }
 inline fn mktcons(x: Word, y: Word) Word {
-    return clib.make(word.TCONS, x, y);
+    return abi.make(word.TCONS, x, y);
 }
 
 // ---------------------------------------------------------------------------
@@ -121,7 +121,7 @@ const void_t: Word = 7; // #define void_t  7
 fn makeHere(line: u32) Word {
     // get_fil(current_file) = (char*)hd(hd(hd(current_file)))
     const fil_name = h(h(h(current_file)));
-    return clib.make(word.FILEINFO, fil_name, @intCast(line));
+    return abi.make(word.FILEINFO, fil_name, @intCast(line));
 }
 
 // ---------------------------------------------------------------------------
@@ -170,7 +170,7 @@ fn codegenTypeVar(name: []const u8) Word {
     }
     if (star_count == @as(Word, @intCast(name.len))) {
         // Pure-star type variable: *, **, ***, …
-        return clib.make(word.TVAR, 0, star_count);
+        return abi.make(word.TVAR, 0, star_count);
     }
     // Named type variable like *a, *b — treat as identifier for now
     return nameWord(name);
@@ -236,8 +236,8 @@ fn opWord(op: []const u8) Word {
     if (std.mem.eql(u8, op, "hash")) return word.LENGTH;
     // Miranda keyword built-ins emitted as keyword tokens by the C lexer.
     // SHOWSYM → make(SHOW, 0, 0); READVALSY → make(STARTREADVALS, 0, 0).
-    if (std.mem.eql(u8, op, "kw_show")) return clib.make(word.SHOW, 0, 0);
-    if (std.mem.eql(u8, op, "kw_readvals")) return clib.make(word.STARTREADVALS, 0, 0);
+    if (std.mem.eql(u8, op, "kw_show")) return abi.make(word.SHOW, 0, 0);
+    if (std.mem.eql(u8, op, "kw_readvals")) return abi.make(word.STARTREADVALS, 0, 0);
     if (std.mem.eql(u8, op, "dollars")) return main.rs.lastexp;
     // Fall back: user-defined infix operator stored as an identifier
     return nameWord(op);
@@ -481,7 +481,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         .where => |w| applyWhereDefs(alloc, codegenExpr(alloc, w.body.*), w.defs),
 
         // --- Conditional guard (internal) ---
-        .cond => |c| ap2(word.COND, codegenExpr(alloc, c.guard.*), codegenExpr(alloc, c.then_expr.*)),
+        .cond => |cond| ap2(word.COND, codegenExpr(alloc, cond.guard.*), codegenExpr(alloc, cond.then_expr.*)),
 
         // --- Left section (e op) → ap(opWord, e) ---
         .section_left => |s| ap(opWord(s.op), codegenExpr(alloc, s.arg.*)),
@@ -539,7 +539,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
                         const lhs_w = genlhs(codegenExpr(alloc, g.pat));
                         ls.idsused = word.NIL;
                         break :gen mkcons(
-                            clib.GENERATOR,
+                            abi.GENERATOR,
                             mkcons(lhs_w, codegenExpr(alloc, g.source.*)),
                         );
                     },
@@ -553,11 +553,11 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
                         const step_w = codegenExpr(alloc, sg.step.*);
                         const comb: Word = if (irrefutable(lhs_w) != 0) word.ITERATE else word.ITERATE1;
                         break :sgen mkcons(
-                            clib.GENERATOR,
+                            abi.GENERATOR,
                             mkcons(lhs_w, ap2(comb, mklambda(lhs_w, step_w), src_w)),
                         );
                     },
-                    .guard => |gp| mkcons(clib.GUARD, codegenExpr(alloc, gp.*)),
+                    .guard => |gp| mkcons(abi.GUARD, codegenExpr(alloc, gp.*)),
                 };
                 qq = mkcons(qw, qq); // prepend → reverses order
             }
@@ -640,7 +640,7 @@ fn buildLdefs(alloc: Allocator, where_defs: []const ast.Def) Word {
             tl[@as(usize, @intCast(tries_cell)) * 2] = mkcons(labeled, t(tries_cell));
         } else {
             // New function: wrap dval in tries(lhs, [labeled]) and prepend to ldefs.
-            const new_tries = clib.tries(lhs_word, mkcons(labeled, word.NIL));
+            const new_tries = abi.tries(lhs_word, mkcons(labeled, word.NIL));
             tl[@as(usize, @intCast(t(cell))) * 2] = new_tries;
             ldefs = mkcons(cell, ldefs);
         }

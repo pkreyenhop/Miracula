@@ -1,6 +1,6 @@
 const std = @import("std");
 const word = @import("../word.zig");
-pub const clib = @import("../c_abi.zig");
+pub const abi = @import("../c_abi.zig");
 
 pub const Word = c_long;
 
@@ -31,7 +31,7 @@ pub extern fn force(x_val: Word) void;
 pub extern fn reduce(e_val: Word) Word;
 
 pub inline fn clean_ptr(x: Word) usize {
-    return @as(usize, @intCast(x & ~clib.tlptrbits));
+    return @as(usize, @intCast(x & ~abi.tlptrbits));
 }
 
 pub inline fn hd_get(x: Word) Word {
@@ -62,7 +62,7 @@ pub inline fn downRight(ctx: *ReductionCtx) void {
     hd_set(ctx.s, ctx.e);
     ctx.e = tl_get(ctx.s);
     tl_set(ctx.s, ctx.hold);
-    ctx.s |= clib.tlptrbit;
+    ctx.s |= abi.tlptrbit;
 }
 
 pub inline fn downright(ctx: *ReductionCtx) bool {
@@ -89,7 +89,7 @@ pub inline fn upleft(ctx: *ReductionCtx) bool {
 }
 
 pub inline fn upRight(ctx: *ReductionCtx) void {
-    ctx.s &= ~clib.tlptrbits;
+    ctx.s &= ~abi.tlptrbits;
     ctx.hold = tl_get(ctx.s);
     tl_set(ctx.s, ctx.e);
     ctx.e = hd_get(ctx.s);
@@ -195,32 +195,32 @@ pub inline fn rewrite_to_existing_tail(expr: Word) Word {
 }
 
 pub inline fn ap(x: Word, y: Word) Word {
-    return clib.make(word.AP, x, y);
+    return abi.make(word.AP, x, y);
 }
 
 pub inline fn rewrite_to_match_result(expr: *Word, left: Word, right: Word, success_value: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (clib.compare(left, right) == 0) success_value else word.FAIL;
+    const val = if (abi.compare(left, right) == 0) success_value else word.FAIL;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_int_match_result(expr: *Word, literal: Word, value: Word, success_value: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (!is_int(value) or clib.bigcmp(literal, value) != 0) word.FAIL else success_value;
+    const val = if (!is_int(value) or abi.bigcmp(literal, value) != 0) word.FAIL else success_value;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_string(expr: *Word, value: [*:0]const u8) void {
     hd_set(expr.*, word.I);
-    const val = clib.str_conv(value);
+    const val = abi.str_conv(value);
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn cons(x: Word, y: Word) Word {
-    return clib.make(word.CONS, x, y);
+    return abi.make(word.CONS, x, y);
 }
 
 pub inline fn ap2(f: Word, x: Word, y: Word) Word {
@@ -253,73 +253,73 @@ pub inline fn suppressed(x: Word) bool {
 }
 
 pub fn getStderr() ?*word.FILE {
-    const T = @TypeOf(clib.stderr);
+    const T = @TypeOf(abi.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
-        return clib.stderr();
+        return abi.stderr();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return clib.stderr();
+        return abi.stderr();
     } else {
-        return clib.stderr;
+        return abi.stderr;
     }
 }
 pub fn getStdout() ?*word.FILE {
-    const T = @TypeOf(clib.stdout);
+    const T = @TypeOf(abi.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
-        return clib.stdout();
+        return abi.stdout();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return clib.stdout();
+        return abi.stdout();
     } else {
-        return clib.stdout;
+        return abi.stdout;
     }
 }
 pub fn getStdin() ?*word.FILE {
-    const T = @TypeOf(clib.stdin);
+    const T = @TypeOf(abi.stdin);
     if (comptime @typeInfo(T) == .@"fn") {
-        return clib.stdin();
+        return abi.stdin();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return clib.stdin();
+        return abi.stdin();
     } else {
-        return clib.stdin;
+        return abi.stdin;
     }
 }
 
 pub inline fn force_dbl(x: Word) f64 {
     if (is_int(x)) {
-        return clib.bigtodbl(x);
+        return abi.bigtodbl(x);
     } else {
-        return clib.get_dbl(x);
+        return abi.get_dbl(x);
     }
 }
 
 pub inline fn coerce_dbl(x: Word) Word {
     if (is_double(x)) return x;
-    return clib.sto_dbl(clib.bigtodbl(x));
+    return abi.sto_dbl(abi.bigtodbl(x));
 }
 
 pub inline fn rewrite_to_compare_eq(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (clib.compare(left, right) == 0) word.True else word.False;
+    const val = if (abi.compare(left, right) == 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_neq(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (clib.compare(left, right) != 0) word.True else word.False;
+    const val = if (abi.compare(left, right) != 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_gt(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (clib.compare(left, right) > 0) word.True else word.False;
+    const val = if (abi.compare(left, right) > 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_ge(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (clib.compare(left, right) >= 0) word.True else word.False;
+    const val = if (abi.compare(left, right) >= 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }

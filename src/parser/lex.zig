@@ -1,6 +1,6 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
-const clib = @import("../runtime/c_abi.zig");
+const abi = @import("../runtime/c_abi.zig");
 const lex_state = @import("lex_state.zig");
 const ls = &lex_state.ls;
 const main = @import("../main.zig");
@@ -113,35 +113,35 @@ fn mktvar(n: Word) Word {
 }
 
 fn getStdout() ?*word.FILE {
-    const T = @TypeOf(clib.stdout);
+    const T = @TypeOf(abi.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
-        return clib.stdout();
+        return abi.stdout();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return clib.stdout();
+        return abi.stdout();
     } else {
-        return clib.stdout;
+        return abi.stdout;
     }
 }
 
 fn getStdin() ?*word.FILE {
-    const T = @TypeOf(clib.stdin);
+    const T = @TypeOf(abi.stdin);
     if (comptime @typeInfo(T) == .@"fn") {
-        return clib.stdin();
+        return abi.stdin();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return clib.stdin();
+        return abi.stdin();
     } else {
-        return clib.stdin;
+        return abi.stdin;
     }
 }
 
 fn getStderr() ?*word.FILE {
-    const T = @TypeOf(clib.stderr);
+    const T = @TypeOf(abi.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
-        return clib.stderr();
+        return abi.stderr();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return clib.stderr();
+        return abi.stderr();
     } else {
-        return clib.stderr;
+        return abi.stderr;
     }
 }
 
@@ -215,7 +215,7 @@ export fn setupdic() void {
 
 fn gethome(n: [*:0]const u8) ?[*:0]const u8 {
     if (n[0] == 0) {
-        if (clib.getenv("HOME")) |h_dir| {
+        if (abi.getenv("HOME")) |h_dir| {
             return h_dir;
         }
         return null;
@@ -224,19 +224,19 @@ fn gethome(n: [*:0]const u8) ?[*:0]const u8 {
 }
 
 export fn token() ?[*:0]u8 {
-    var ch = clib.getchar();
+    var ch = abi.getchar();
     ls.dicq = ls.dicp; // uses top of dictionary as temporary work space
     while (ch == ' ' or ch == '\t') {
-        ch = clib.getchar();
+        ch = abi.getchar();
     }
     if (ch == '~') {
         ls.dicq[0] = @intCast(ch);
         ls.dicq += 1;
-        ch = clib.getchar();
-        while (clib.isalnum(ch) != 0 or ch == '-' or ch == '_' or ch == '.') {
+        ch = abi.getchar();
+        while (word.isalnum(ch) or ch == '-' or ch == '_' or ch == '.') {
             ls.dicq[0] = @intCast(ch);
             ls.dicq += 1;
-            ch = clib.getchar();
+            ch = abi.getchar();
         }
         ls.dicq[0] = 0;
         if (gethome(ls.dicp + 1)) |h_dir| {
@@ -244,7 +244,7 @@ export fn token() ?[*:0]u8 {
             ls.dicq = ls.dicp + word.strlen(ls.dicp);
         }
     }
-    while (ch != clib.EOF and clib.isspace(ch) == 0) {
+    while (ch != abi.EOF and !word.isspace(ch)) {
         ls.dicq[0] = @intCast(ch);
         ls.dicq += 1;
         if (ch == '%') {
@@ -258,16 +258,16 @@ export fn token() ?[*:0]u8 {
                 ls.dicq += word.strlen(main.rs.current_script.?);
             }
         }
-        ch = clib.getchar();
+        ch = abi.getchar();
     }
     ls.dicq[0] = 0;
     ls.dicq += 1;
     ovflocheck();
     while (ch == ' ' or ch == '\t') {
-        ch = clib.getchar();
+        ch = abi.getchar();
     }
     if (getStdin()) |stdin_file| {
-        _ = clib.ungetc(ch, stdin_file);
+        _ = abi.ungetc(ch, stdin_file);
     }
     if (ls.dicp[0] == 0) {
         return null;
@@ -344,10 +344,10 @@ fn litname(s: [*:0]const u8) bool {
 
 fn getch() c_int {
     if (main.rs.s_in == null) {
-        return clib.EOF;
+        return abi.EOF;
     }
-    var ch = clib.getc(main.rs.s_in);
-    if (ch == clib.EOF and atnl == 0 and t(ls.fileq) == NIL) {
+    var ch = abi.getc(main.rs.s_in);
+    if (ch == abi.EOF and atnl == 0 and t(ls.fileq) == NIL) {
         atnl = 1;
         return '\n';
     }
@@ -359,8 +359,8 @@ fn getch() c_int {
         }
         if (literate != 0) {
             var i: Word = 0;
-            while (ch != clib.EOF and ch != '>') {
-                _ = clib.ungetc(ch, main.rs.s_in);
+            while (ch != abi.EOF and ch != '>') {
+                _ = abi.ungetc(ch, main.rs.s_in);
                 ls.line_no += 1;
                 _ = word.fgets(ls.dicp, 250, main.rs.s_in);
                 if (i == 0 and ls.line_no > 1) {
@@ -369,11 +369,11 @@ fn getch() c_int {
                 i += 1;
                 if (main.rs.echoing != 0) {
                     spaces(lverge);
-                    _ = clib.fputs(ls.dicp, getStdout());
+                    _ = abi.fputs(ls.dicp, getStdout());
                 }
-                ch = clib.getc(main.rs.s_in);
+                ch = abi.getc(main.rs.s_in);
             }
-            if ((i > 1 or (ls.line_no == 1 and i == 1)) and ch != clib.EOF) {
+            if ((i > 1 or (ls.line_no == 1 and i == 1)) and ch != abi.EOF) {
                 chblank(ls.dicp);
             }
             if (ch == '>') {
@@ -381,16 +381,16 @@ fn getch() c_int {
                     _ = word.putchar(ch);
                     spaces(lverge);
                 }
-                ch = clib.getc(main.rs.s_in);
+                ch = abi.getc(main.rs.s_in);
             }
         }
         atnl = 0;
         ls.col = lverge + literate;
-        if (commandmode == 0 and ch != clib.EOF) {
+        if (commandmode == 0 and ch != abi.EOF) {
             ls.line_no += 1;
         }
     }
-    if (main.rs.echoing != 0 and ch != clib.EOF) {
+    if (main.rs.echoing != 0 and ch != abi.EOF) {
         _ = word.putchar(ch);
         if (ch == '\n' and literate == 0) {
             if (litmain != 0) {
@@ -479,19 +479,19 @@ fn getlitch() Word {
         't' => return '\t',
         'v' => return '\x0b',
         'X', 'x' => {
-            if (clib.isxdigit(@intCast(ls.c)) != 0) {
+            if (word.isxdigit(ls.c)) {
                 var value: c_uint = 0;
                 const N: usize = if (escaped_ch == 'x') 4 else 6;
                 var hold = std.mem.zeroes([8]u8);
                 var count: usize = 0;
                 var xch = ls.c;
-                while (clib.isxdigit(@intCast(xch)) != 0 and count < N) {
+                while (word.isxdigit(xch) and count < N) {
                     hold[count] = @intCast(xch);
                     count += 1;
                     xch = getch();
                 }
                 hold[count] = 0;
-                _ = clib.sscanf(&hold[0], "%x", .{&value});
+                _ = abi.sscanf(&hold[0], "%x", .{&value});
                 ls.c = xch;
                 return if (value > UMAX) -3 else sto_char(@intCast(value));
             } else {
@@ -528,17 +528,17 @@ var rdline_linebuf: [1024]u8 = std.mem.zeroes([1024]u8);
 
 export fn rdline() ?[*:0]u8 {
     var p: [*]u8 = &rdline_linebuf;
-    var ch = clib.getchar();
+    var ch = abi.getchar();
     var expansion: Word = 0;
     while (ch == ' ' or ch == '\t') {
-        ch = clib.getchar();
+        ch = abi.getchar();
     }
     if (ch == '\n' or (ch == '!' and rdline_linebuf[0] == 0)) {
         if (rdline_linebuf[0] != 0) {
             word.print("!{s}", .{@as([*:0]const u8, @ptrCast(&rdline_linebuf))});
         }
-        while (ch != '\n' and ch != clib.EOF) {
-            ch = clib.getchar();
+        while (ch != '\n' and ch != abi.EOF) {
+            ch = abi.getchar();
         }
         return @ptrCast(&rdline_linebuf);
     }
@@ -547,14 +547,14 @@ export fn rdline() ?[*:0]u8 {
         p = @ptrCast(&rdline_linebuf[word.strlen(&rdline_linebuf) - 1]); // p now points at old '\n'
     } else {
         if (getStdin()) |stdin_file| {
-            _ = clib.ungetc(ch, stdin_file);
+            _ = abi.ungetc(ch, stdin_file);
         }
     }
     while (true) {
-        ch = clib.getchar();
+        ch = abi.getchar();
         p[0] = @intCast(ch);
         p += 1;
-        if (ch == '\n' or ch == clib.EOF) {
+        if (ch == '\n' or ch == abi.EOF) {
             break;
         }
         const offset = @as(usize, @intFromPtr(p)) - @as(usize, @intFromPtr(&rdline_linebuf));
@@ -562,8 +562,8 @@ export fn rdline() ?[*:0]u8 {
             p[0] = 0;
             word.printErr("sorry, !command too long (limit={} chars): {s}...\n", .{@as(c_int, 1024), @as([*:0]const u8, @ptrCast(&rdline_linebuf))});
             while (true) {
-                ch = clib.getchar();
-                if (ch == '\n' or ch == clib.EOF) {
+                ch = abi.getchar();
+                if (ch == '\n' or ch == abi.EOF) {
                     break;
                 }
             }
@@ -633,12 +633,12 @@ inline fn tryCh(x: Word, y: c_int) ?c_int {
 
 export fn yylex() c_int {
     if (SYNERR != 0) {
-        return clib.END;
+        return abi.END;
     }
     layout();
     ls.tok_start_col = ls.col;
     if (ls.c == '\n') {
-        return clib.END;
+        return abi.END;
     }
     if (ls.col < ls.lmargin) {
         if (ls.c == '=' and (ls.margstack == NIL or ls.col >= h(ls.margstack))) {
@@ -656,7 +656,7 @@ export fn yylex() c_int {
         }
         return ';';
     }
-    if (clib.isalpha(@intCast(ls.c)) != 0) {
+    if (word.isalpha(ls.c)) {
         kollect(okid);
         if (ls.inlex == 1) {
             layout();
@@ -671,9 +671,9 @@ export fn yylex() c_int {
         return @intCast(identifier(0));
     }
     if ((ls.c >= '0' and ls.c <= '9') or (ls.c == '.' and peekdig() != 0)) {
-        if (ls.c == '0' and clib.tolower(@intCast(peekch())) == 'x') {
+        if (ls.c == '0' and word.tolower(peekch()) == 'x') {
             hexnumeral();
-        } else if (ls.c == '0' and clib.tolower(@intCast(peekch())) == 'o') {
+        } else if (ls.c == '0' and word.tolower(peekch()) == 'o') {
             _ = getch();
             ls.c = getch();
             octnumeral();
@@ -732,10 +732,10 @@ export fn yylex() c_int {
             return word.OFFSIDE;
         }
     }
-    if (ls.c == clib.EOF) {
+    if (ls.c == abi.EOF) {
         if (ls.fileq == NIL) {
             ls.c = 0;
-            return clib.END;
+            return abi.END;
         }
         if (t(ls.fileq) == NIL and ls.margstack != NIL) {
             return word.OFFSIDE;
@@ -764,7 +764,7 @@ export fn yylex() c_int {
             ls.line_no = 0;
             literate = 0;
             litmain = 0;
-            return clib.END;
+            return abi.END;
         }
         current_file = t(h(ls.fileq));
         prefix = h(ls.prefixstack);
@@ -796,7 +796,7 @@ export fn yylex() c_int {
                 if (ls.c == '%' and commandmode == 0) {
                     return @intCast(directive());
                 }
-                if (clib.isalpha(@intCast(ls.c)) != 0) {
+                if (word.isalpha(ls.c)) {
                     kollect(okulid);
                     if (ls.dicp[1] == '_' and ls.dicp[2] == ' ') {
                         return @intCast(identifier(1));
@@ -855,7 +855,7 @@ export fn yylex() c_int {
                     ls.yylval = 1;
                 } else {
                     ls.yylval = 0;
-                    _ = clib.ungetc(@intCast(ls.c), main.rs.s_in);
+                    _ = abi.ungetc(@intCast(ls.c), main.rs.s_in);
                 }
                 ls.c = ' ';
                 return word.TO;
@@ -885,7 +885,7 @@ export fn yylex() c_int {
             return @intCast(lastc);
         },
         '$' => {
-            if (clib.isalpha(@intCast(ls.c)) != 0) {
+            if (word.isalpha(ls.c)) {
                 kollect(okid);
                 const t_val = identifier(0);
                 return if (t_val == word.NAME) word.INFIXNAME else if (t_val == word.CNAME) word.INFIXCNAME else '$';
@@ -981,16 +981,16 @@ export fn layout() void {
             ls.c = getch();
             continue;
         }
-        if (ls.c == clib.EOF and commandmode != 0) {
+        if (ls.c == abi.EOF and commandmode != 0) {
             ls.c = '\n';
             return;
         }
         if ((ls.c == '|' and peekch() == '|') or (ls.col == 1 and ls.line_no == 1 and ls.c == '#' and peekch() == '!')) {
             ls.c = getch();
-            while (ls.c != '\n' and ls.c != clib.EOF) {
+            while (ls.c != '\n' and ls.c != abi.EOF) {
                 ls.c = getch();
             }
-            if (ls.c == clib.EOF and commandmode == 0) {
+            if (ls.c == abi.EOF and commandmode == 0) {
                 return;
             }
             ls.c = '\n';
@@ -1086,7 +1086,7 @@ pub fn pathname() ?[*:0]u8 {
         ls.dicp[0] = @intCast(ls.c);
         ls.dicp += 1;
         ls.c = getch();
-        while (clib.isalnum(@intCast(ls.c)) != 0 or ls.c == '-' or ls.c == '_' or ls.c == '.') {
+        while (word.isalnum(ls.c) or ls.c == '-' or ls.c == '_' or ls.c == '.') {
             ls.dicp[0] = @intCast(ls.c);
             ls.dicp += 1;
             ls.c = getch();
@@ -1141,15 +1141,15 @@ export fn adjust_prefix(f: [*:0]const u8) void {
 
 pub fn peekdig() c_int {
     if (main.rs.s_in == null) return 0;
-    const ch = clib.getc(main.rs.s_in);
-    _ = clib.ungetc(ch, main.rs.s_in);
+    const ch = abi.getc(main.rs.s_in);
+    _ = abi.ungetc(ch, main.rs.s_in);
     return if (ch >= '0' and ch <= '9') 1 else 0;
 }
 
 pub fn peekch() c_int {
-    if (main.rs.s_in == null) return clib.EOF;
-    const ch = clib.getc(main.rs.s_in);
-    _ = clib.ungetc(ch, main.rs.s_in);
+    if (main.rs.s_in == null) return abi.EOF;
+    const ch = abi.getc(main.rs.s_in);
+    _ = abi.ungetc(ch, main.rs.s_in);
     return ch;
 }
 
@@ -1378,7 +1378,7 @@ pub fn directive() Word {
     }
     word.print("syntax error: unknown directive \"%{s}\"\n", .{ls.dicp});
     acterror();
-    return clib.END;
+    return abi.END;
 }
 
 fn kollect(f: fn (c_int) callconv(.c) c_int) void {
@@ -1475,7 +1475,7 @@ pub fn numeral() void {
         }
         ls.dicq[0] = '\n';
         ls.dicq[1] = 0;
-        _ = clib.sscanf(ls.dicp, "%lf", .{&r});
+        _ = abi.sscanf(ls.dicp, "%lf", .{&r});
         ls.yylval = sto_dbl(r);
     }
 }
@@ -1488,25 +1488,25 @@ pub fn hexnumeral() void {
     ls.dicq[0] = @intCast(ls.c); // x
     ls.dicq += 1;
     ls.c = getch();
-    if (clib.isxdigit(@intCast(ls.c)) == 0 and ls.c != '.') {
+    if (!word.isxdigit(ls.c) and ls.c != '.') {
         syntax("malformed hex number\n");
     }
-    while (ls.c == '0' and clib.isxdigit(@intCast(peekch())) != 0) {
+    while (ls.c == '0' and word.isxdigit(peekch())) {
         ls.c = getch(); // skip zeros before first nonzero digit
     }
-    while (clib.isxdigit(@intCast(ls.c)) != 0) {
+    while (word.isxdigit(ls.c)) {
         ls.dicq[0] = @intCast(ls.c);
         ls.dicq += 1;
         ls.c = getch();
     }
     ovflocheck();
-    if (ls.c == '.' or clib.tolower(@intCast(ls.c)) == 'p') {
+    if (ls.c == '.' or word.tolower(ls.c) == 'p') {
         var d: f64 = 0.0;
         if (ls.c == '.') {
             ls.dicq[0] = @intCast(ls.c);
             ls.dicq += 1;
             ls.c = getch();
-            while (clib.isxdigit(@intCast(ls.c)) != 0) {
+            while (word.isxdigit(ls.c)) {
                 ls.dicq[0] = @intCast(ls.c);
                 ls.dicq += 1;
                 ls.c = getch();
@@ -1533,7 +1533,7 @@ pub fn hexnumeral() void {
         ovflocheck();
         ls.dicq[0] = 0;
         const len = @as(usize, @intFromPtr(ls.dicq)) - @as(usize, @intFromPtr(ls.dicp));
-        if (len > 60 or clib.sscanf(ls.dicp, "%lf", .{&d}) != 1) {
+        if (len > 60 or abi.sscanf(ls.dicp, "%lf", .{&d}) != 1) {
             syntax("malformed hex float\n");
         } else {
             ls.yylval = sto_dbl(d);
@@ -1674,7 +1674,7 @@ pub fn string() void {
     ch = getlitch();
     ls.yylval = cons(NIL, NIL);
     p = ls.yylval;
-    while (ch != clib.EOF and rawch != '"' and rawch != '\n') {
+    while (ch != abi.EOF and rawch != '"' and rawch != '\n') {
         if (ch == -7) {
             ch = getlitch();
         } else if (ch < 0) {
@@ -1692,7 +1692,7 @@ pub fn string() void {
     }
     if (rawch == '\n') {
         syntax("non-escaped newline encountered inside string quotes\n");
-    } else if (ch == clib.EOF) {
+    } else if (ch == abi.EOF) {
         if (main.rs.echoing != 0) {
             _ = word.putchar('\n');
         }
@@ -1721,7 +1721,7 @@ pub fn charclass() c_int {
     ch = getlitch();
     ls.yylval = cons(NIL, NIL);
     p = ls.yylval;
-    while (ch != clib.EOF and rawch != '`' and rawch != '\n') {
+    while (ch != abi.EOF and rawch != '`' and rawch != '\n') {
         if (ch == -7) {
             ch = getlitch();
         } else if (ch < 0) {
@@ -1756,7 +1756,7 @@ pub fn charclass() c_int {
     }
     if (rawch == '\n') {
         syntax("non-escaped newline encountered in char class\n");
-    } else if (ch == clib.EOF) {
+    } else if (ch == abi.EOF) {
         if (main.rs.echoing != 0) {
             _ = word.putchar('\n');
         }
@@ -1809,11 +1809,11 @@ export fn reset_lex() void {
 
 export fn reset_state() void {
     if (commandmode != 0) {
-        while (ls.c != '\n' and ls.c != clib.EOF) {
+        while (ls.c != '\n' and ls.c != abi.EOF) {
             if (main.rs.s_in) |sin| {
-                ls.c = clib.getc(sin);
+                ls.c = abi.getc(sin);
             } else {
-                ls.c = clib.EOF;
+                ls.c = abi.EOF;
             }
         }
     }

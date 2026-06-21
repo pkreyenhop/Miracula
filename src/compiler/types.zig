@@ -5,7 +5,7 @@ const main = @import("../main.zig");
 
 const compiler_state = @import("compiler_state.zig");
 const cs = &compiler_state.cs;
-const c = struct {
+const abi = struct {
     pub const printf = shim.printf;
     pub const fprintf = shim.fprintf;
     pub const putchar = shim.putchar;
@@ -336,13 +336,13 @@ export fn typesfirst(input_x: Word) Word {
 }
 
 fn getStderr() ?*word.FILE {
-    const T = @TypeOf(c.stderr);
+    const T = @TypeOf(abi.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
-        return c.stderr();
+        return abi.stderr();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return c.stderr();
+        return abi.stderr();
     } else {
-        return c.stderr;
+        return abi.stderr;
     }
 }
 
@@ -770,13 +770,13 @@ export fn ispoly(t_val: Word) c_int {
 }
 
 fn getStdout() ?*word.FILE {
-    const T = @TypeOf(c.stdout);
+    const T = @TypeOf(abi.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
-        return c.stdout();
+        return abi.stdout();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return c.stdout();
+        return abi.stdout();
     } else {
-        return c.stdout;
+        return abi.stdout;
     }
 }
 

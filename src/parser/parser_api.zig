@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const clib = @import("../runtime/c_abi.zig");
+const abi = @import("../runtime/c_abi.zig");
 const word = @import("../runtime/word.zig");
 const main = @import("../main.zig");
 const core = @import("../runtime/core_state.zig");
@@ -12,7 +12,7 @@ extern fn mira_lex_setup_string(source: [*:0]const u8) void;
 extern fn mira_lex_cleanup() void;
 extern fn mira_lex_setup_file(filename: [*:0]const u8) c_int;
 // Forks like the original C evaluate(): compiling=0 only in child; parent's heap is safe.
-extern fn evaluate_repl(x: clib.word) void;
+extern fn evaluate_repl(x: abi.word) void;
 
 pub const ParseError = error{
     SyntaxError,

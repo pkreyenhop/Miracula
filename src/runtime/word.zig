@@ -1010,6 +1010,32 @@ pub fn putchar(ch: c_int) c_int {
     return putc(ch, &std_out);
 }
 
+pub inline fn isspace(ch: anytype) bool {
+    const val: i64 = @intCast(ch);
+    return val >= 0 and val <= 255 and std.ascii.isWhitespace(@intCast(val));
+}
+pub inline fn isdigit(ch: anytype) bool {
+    const val: i64 = @intCast(ch);
+    return val >= 0 and val <= 255 and std.ascii.isDigit(@intCast(val));
+}
+pub inline fn isxdigit(ch: anytype) bool {
+    const val: i64 = @intCast(ch);
+    return val >= 0 and val <= 255 and std.ascii.isHex(@intCast(val));
+}
+pub inline fn isalpha(ch: anytype) bool {
+    const val: i64 = @intCast(ch);
+    return val >= 0 and val <= 255 and std.ascii.isAlphabetic(@intCast(val));
+}
+pub inline fn isalnum(ch: anytype) bool {
+    const val: i64 = @intCast(ch);
+    return val >= 0 and val <= 255 and std.ascii.isAlphanumeric(@intCast(val));
+}
+pub inline fn tolower(ch: anytype) u8 {
+    const val: i64 = @intCast(ch);
+    if (val < 0 or val > 255) return 0;
+    return std.ascii.toLower(@intCast(val));
+}
+
 test "string helpers strcpy and strcat" {
     var buf1: [32:0]u8 = undefined;
     _ = strcpy(&buf1, "hello");

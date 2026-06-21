@@ -1,7 +1,7 @@
 const std = @import("std");
 const main = @import("../main.zig");
 const word = @import("../runtime/word.zig");
-const clib = @import("../runtime/main_clib.zig");
+const abi = @import("../runtime/main_clib.zig");
 const heap = @import("../runtime/heap.zig");
 
 const Word = main.Word;
@@ -93,7 +93,7 @@ export fn acterror() void {
 /// Registers a primitive identifier `n` in the private primitive environment (`rs.primenv`).
 /// `v` is the combinator value; `t_val` is the type node. Called only from primlib().
 pub fn primdef(n: [*:0]const u8, v: Word, t_val: Word) void {
-    const x = clib.make_id(@constCast(n));
+    const x = abi.make_id(@constCast(n));
     main.rs.primenv = main.cons(x, main.rs.primenv);
     main.heap.tp(x).* = v;
     main.heap.tp(main.heap.h(x)).* = t_val;
@@ -103,7 +103,7 @@ pub fn primdef(n: [*:0]const u8, v: Word, t_val: Word) void {
 /// `v` is the combinator value (wrapped in `constructor()` if `n` is a constructor);
 /// `t_val` is the type node. Called from privlib() and stdlib().
 pub fn predef(n: [*:0]const u8, v: Word, t_val: Word) void {
-    const x = clib.make_id(@constCast(n));
+    const x = abi.make_id(@constCast(n));
     main.addtoenv(x);
     main.heap.tp(x).* = if (main.isconstructor(x)) main.constructor(v, x) else v;
     main.heap.tp(main.heap.h(x)).* = t_val;
@@ -112,9 +112,9 @@ pub fn predef(n: [*:0]const u8, v: Word, t_val: Word) void {
 /// Seeds the primitive type aliases (num, char, bool) and built-in constructors
 /// (True, False) into the private primitive environment. Called by mira_setup().
 pub fn primlib() void {
-    primdef("num", clib.make_typ(0, 0, word.synonym_t, word.num_t), word.type_t);
-    primdef("char", clib.make_typ(0, 0, word.synonym_t, word.char_t), word.type_t);
-    primdef("bool", clib.make_typ(0, 0, word.synonym_t, word.bool_t), word.type_t);
+    primdef("num", abi.make_typ(0, 0, word.synonym_t, word.num_t), word.type_t);
+    primdef("char", abi.make_typ(0, 0, word.synonym_t, word.char_t), word.type_t);
+    primdef("bool", abi.make_typ(0, 0, word.synonym_t, word.bool_t), word.type_t);
     primdef("True", 1, word.bool_t);
     primdef("False", 0, word.bool_t);
 }
@@ -127,7 +127,7 @@ pub fn privlib() void {
     predef("first", word.HD, word.wrong_t);
     predef("rest", word.TL, word.wrong_t);
     predef("code", word.CODE, word.undef_t);
-    predef("concat", clib.ap2(word.FOLDR, word.APPEND, NIL), word.undef_t);
+    predef("concat", abi.ap2(word.FOLDR, word.APPEND, NIL), word.undef_t);
     predef("decode", word.DECODE, word.undef_t);
     predef("drop", word.DROP, word.undef_t);
     predef("error", word.ERROR, word.undef_t);
@@ -155,7 +155,7 @@ pub fn stdlib() void {
     predef("filestat", word.FILESTAT, word.undef_t);
     predef("foldl", word.FOLDL, word.undef_t);
     predef("foldl1", word.FOLDL1, word.undef_t);
-    predef("hugenum", clib.sto_dbl(clib.DBL_MAX), word.undef_t);
+    predef("hugenum", abi.sto_dbl(abi.DBL_MAX), word.undef_t);
     predef("last", word.LIST_LAST, word.undef_t);
     predef("foldr", word.FOLDR, word.undef_t);
     predef("force", word.FORCE, word.undef_t);
@@ -188,7 +188,7 @@ fn mktiny() Word {
         x = x1;
         x1 = x1 / 2.0;
     }
-    return clib.sto_dbl(x);
+    return abi.sto_dbl(x);
 }
 
 /// Performs one-time interpreter initialisation: sets up the heap, type system,
@@ -199,37 +199,37 @@ pub fn mira_setup() void {
     tsetup();
     reset_pns();
     bigsetup();
-    ls.common_stdin = clib.ap(word.READ, 0);
-    ls.common_stdinb = clib.ap(word.READBIN, 0);
-    ls.cook_stdin = clib.ap(clib.readvals(0, 0), word.OFFSIDE);
+    ls.common_stdin = abi.ap(word.READ, 0);
+    ls.common_stdinb = abi.ap(word.READBIN, 0);
+    ls.cook_stdin = abi.ap(abi.readvals(0, 0), word.OFFSIDE);
     main.nill = main.cons(word.CONST, NIL);
-    main.rs.Void = clib.make_id(@constCast("()"));
+    main.rs.Void = abi.make_id(@constCast("()"));
     main.heap.tp(main.heap.h(main.rs.Void)).* = word.void_t;
     main.heap.tp(main.rs.Void).* = main.constructor(0, main.rs.Void);
-    main.rs.message = clib.make_id(@constCast("sys_message"));
-    main.rs.main_id = clib.make_id(@constCast("main"));
-    main.rs.concat = clib.make_id(@constCast("concat"));
-    main.rs.diagonalise = clib.make_id(@constCast("diagonalise"));
+    main.rs.message = abi.make_id(@constCast("sys_message"));
+    main.rs.main_id = abi.make_id(@constCast("main"));
+    main.rs.concat = abi.make_id(@constCast("concat"));
+    main.rs.diagonalise = abi.make_id(@constCast("diagonalise"));
     main.rs.standardout = main.constructor(0, @as([*:0]const u8, "Stdout"));
-    main.rs.indent_fn = clib.make_id(@constCast("indent"));
-    main.rs.outdent_fn = clib.make_id(@constCast("outdent"));
-    main.rs.listdiff_fn = clib.make_id(@constCast("listdiff"));
-    main.rs.shownum1 = clib.make_id(@constCast("shownum1"));
-    main.rs.showbool = clib.make_id(@constCast("showbool"));
-    main.rs.showchar = clib.make_id(@constCast("showchar"));
-    main.rs.showlist = clib.make_id(@constCast("showlist"));
-    main.rs.showstring = clib.make_id(@constCast("showstring"));
-    main.rs.showparen = clib.make_id(@constCast("showparen"));
-    main.rs.showpair = clib.make_id(@constCast("showpair"));
-    main.rs.showvoid = clib.make_id(@constCast("showvoid"));
-    main.rs.showfunction = clib.make_id(@constCast("showfunction"));
-    main.rs.showabstract = clib.make_id(@constCast("showabstract"));
-    main.rs.showwhat = clib.make_id(@constCast("showwhat"));
+    main.rs.indent_fn = abi.make_id(@constCast("indent"));
+    main.rs.outdent_fn = abi.make_id(@constCast("outdent"));
+    main.rs.listdiff_fn = abi.make_id(@constCast("listdiff"));
+    main.rs.shownum1 = abi.make_id(@constCast("shownum1"));
+    main.rs.showbool = abi.make_id(@constCast("showbool"));
+    main.rs.showchar = abi.make_id(@constCast("showchar"));
+    main.rs.showlist = abi.make_id(@constCast("showlist"));
+    main.rs.showstring = abi.make_id(@constCast("showstring"));
+    main.rs.showparen = abi.make_id(@constCast("showparen"));
+    main.rs.showpair = abi.make_id(@constCast("showpair"));
+    main.rs.showvoid = abi.make_id(@constCast("showvoid"));
+    main.rs.showfunction = abi.make_id(@constCast("showfunction"));
+    main.rs.showabstract = abi.make_id(@constCast("showabstract"));
+    main.rs.showwhat = abi.make_id(@constCast("showwhat"));
     primlib();
 }
 
 test "mira_setup initialisation and primitive seeding" {
-    clib.setupdic();
+    abi.setupdic();
     mira_setup();
 
     // Verify primitives from primlib are seeded correctly
