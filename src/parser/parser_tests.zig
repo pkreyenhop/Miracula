@@ -15,7 +15,7 @@ extern var current_file: clib.word;
 extern var files: clib.word;
 extern fn reset_pns() void;
 
-fn make_fil_record(name: [*:0]const u8) clib.word {
+fn makeFilRecord(name: [*:0]const u8) clib.word {
     const name_word = @as(clib.word, @intCast(@intFromPtr(name)));
     const file_info = clib.make(clib.FILEINFO, name_word, 0);
     const share_cell = clib.make(clib.CONS, 1, clib.NIL);
@@ -32,7 +32,7 @@ fn resetLexerState() void {
     setupheap();
     setupdic();
     reset_pns();
-    current_file = make_fil_record("test.m");
+    current_file = makeFilRecord("test.m");
     files = clib.make(clib.CONS, current_file, clib.NIL);
     ls.col = 0;
     ls.line_no = 0;
@@ -46,7 +46,7 @@ fn ensureInitialized() void {
         setupheap();
         setupdic();
         reset_pns();
-        current_file = make_fil_record("test.m");
+        current_file = makeFilRecord("test.m");
         files = clib.make(clib.CONS, current_file, clib.NIL);
         initialized = true;
     }
