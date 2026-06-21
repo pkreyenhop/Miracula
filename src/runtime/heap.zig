@@ -1064,21 +1064,21 @@ pub fn t_info(x: Word) Word {
     return t(t(x));
 }
 
-fn stackp_push(val: Word) void {
+fn stackpPush(val: Word) void {
     stackp.?[0] = val;
     stackp = stackp.? + 1;
 }
 
-fn stackp_pop() Word {
+fn stackpPop() Word {
     stackp = stackp.? - 1;
     return stackp.?[0];
 }
 
-fn stackp_top() Word {
+fn stackpTop() Word {
     return (stackp.? - 1)[0];
 }
 
-fn stackp_set_top(val: Word) void {
+fn stackpSetTop(val: Word) void {
     (stackp.? - 1)[0] = val;
 }
 
@@ -1589,22 +1589,22 @@ pub fn load_defs(file: ?*c.FILE) Word {
         }
         switch (ch) {
             c.CHAR_X => {
-                stackp_push(c.getc(file) + 128);
+                stackpPush(c.getc(file) + 128);
             },
             c.TVAR_X => {
-                stackp_push(mktvar(c.getc(file)));
+                stackpPush(mktvar(c.getc(file)));
             },
             c.SHORT_X => {
                 var val = c.getc(file);
                 if ((val & 128) != 0) {
                     val = val | (~@as(c_int, 127));
                 }
-                stackp_push(stosmallint(val));
+                stackpPush(stosmallint(val));
             },
             c.INT_X => {
                 const val = getint(file);
-                stackp_push(make(c.INT, val, 0));
-                var x = &tp(stackp_top()).*;
+                stackpPush(make(c.INT, val, 0));
+                var x = &tp(stackpTop()).*;
                 var next = getint(file);
                 while (next != -1) {
                     x.* = make(c.INT, next, 0);
@@ -1613,28 +1613,28 @@ pub fn load_defs(file: ?*c.FILE) Word {
                 }
             },
             c.DBL_X => {
-                stackp_push(getdbl(file));
+                stackpPush(getdbl(file));
             },
             c.UNICODE_X => {
-                stackp_push(make(c.UNICODE, getint(file), 0));
+                stackpPush(make(c.UNICODE, getint(file), 0));
             },
             c.PN_X => {
                 var val = c.getc(file);
                 val = val | (c.getc(file) << 8);
                 const idx = PNBASE + val;
-                stackp_push(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else c.sto_pn(idx));
+                stackpPush(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else c.sto_pn(idx));
             },
             c.PN1_X => {
                 const idx = PNBASE + getint(file);
-                stackp_push(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else c.sto_pn(idx));
+                stackpPush(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else c.sto_pn(idx));
             },
             c.CONSTRUCT_X => {
                 var val = c.getc(file);
                 val = val | (c.getc(file) << 8);
-                stackp_set_top(constructor(val, stackp_top()));
+                stackpSetTop(constructor(val, stackpTop()));
             },
             c.RV_X => {
-                stackp_set_top(readvals(0, stackp_top()));
+                stackpSetTop(readvals(0, stackpTop()));
                 cs.rv_script = 1;
             },
             c.ID_X => {
@@ -1650,13 +1650,13 @@ pub fn load_defs(file: ?*c.FILE) Word {
                 if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
                     c.dicovflo();
                 }
-                stackp_push(name());
-                const top = stackp_top();
+                stackpPush(name());
+                const top = stackpTop();
                 if (id_type(top) == c.new_t) {
                     cs.CLASHES = add1(top, cs.CLASHES);
-                    stackp_set_top(c.NIL);
+                    stackpSetTop(c.NIL);
                 } else if (id_type(top) == c.alias_t) {
-                    stackp_set_top(id_val(top));
+                    stackpSetTop(id_val(top));
                 }
             },
             c.AKA_X => {
@@ -1672,7 +1672,7 @@ pub fn load_defs(file: ?*c.FILE) Word {
                 if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
                     c.dicovflo();
                 }
-                stackp_push(datapair(@intCast(@intFromPtr(get_id(name()))), 0));
+                stackpPush(datapair(@intCast(@intFromPtr(get_id(name()))), 0));
             },
             c.HERE_X => {
                 ls.dicq = ls.dicp;
@@ -1680,7 +1680,7 @@ pub fn load_defs(file: ?*c.FILE) Word {
                 if (next == 0) {
                     next = c.getc(file);
                     next = next | (c.getc(file) << 8);
-                    stackp_push(fileinfo(@intCast(@intFromPtr(CFN.?)), next));
+                    stackpPush(fileinfo(@intCast(@intFromPtr(CFN.?)), next));
                 } else {
                     if (next != '/') {
                         _ = c.strcpy(ls.dicp, &prefix);
@@ -1701,7 +1701,7 @@ pub fn load_defs(file: ?*c.FILE) Word {
                     }
                     var line = c.getc(file);
                     line = line | (c.getc(file) << 8);
-                    stackp_push(fileinfo(@intCast(@intFromPtr(get_id(name()))), line));
+                    stackpPush(fileinfo(@intCast(@intFromPtr(get_id(name()))), line));
                 }
             },
             c.DEF_X => {
@@ -1711,28 +1711,28 @@ pub fn load_defs(file: ?*c.FILE) Word {
                         return reverse(defs);
                     },
                     1 => {
-                        return stackp_pop();
+                        return stackpPop();
                     },
                     2 => {
-                        const ch_val = stackp_pop();
-                        pn_val_ptr(ch_val).* = stackp_pop();
+                        const ch_val = stackpPop();
+                        pn_val_ptr(ch_val).* = stackpPop();
                         defs = cons(ch_val, defs);
                     },
                     4 => {
-                        const top = stackp_top();
+                        const top = stackpTop();
                         if (tag.?[@intCast(top)] != c.ID) {
                             if (top == c.NIL) {
                                 stackp = stackp.? - 4;
                                 ch = c.getc(file);
                                 continue;
                             }
-                            const ch_val = stackp_pop();
+                            const ch_val = stackpPop();
                             cs.SUPPRESSED = cons(ch_val, cs.SUPPRESSED);
-                            _ = stackp_pop(); // who
-                            const who_val = stackp_top();
+                            _ = stackpPop(); // who
+                            const who_val = stackpTop();
                             const akap = if (tag.?[@intCast(who_val)] == c.CONS) h(who_val) else c.NIL;
-                            const type_val = stackp_pop(); // type
-                            pn_val_ptr(ch_val).* = stackp_pop();
+                            const type_val = stackpPop(); // type
+                            pn_val_ptr(ch_val).* = stackpPop();
 
                             if (type_val == c.type_t and t_class(ch_val) != c.synonym_t) {
                                 var a = cs.ALIASES;
@@ -1757,7 +1757,7 @@ pub fn load_defs(file: ?*c.FILE) Word {
                             ch = c.getc(file);
                             continue;
                         }
-                        const top_val = stackp_top();
+                        const top_val = stackpTop();
                         if (id_type(top_val) != c.new_t and (id_type(top_val) != c.undef_t or id_val(top_val) != c.UNDEF)) {
                             if (id_type(top_val) == c.alias_t) {
                                 var a = cs.ALIASES;
@@ -1768,20 +1768,20 @@ pub fn load_defs(file: ?*c.FILE) Word {
                                     ch = c.getc(file);
                                     continue;
                                 }
-                                defs = cons(stackp_pop(), defs);
-                                hp(h(h(a))).* = stackp_pop(); // who
-                                hp(t(h(h(a)))).* = stackp_pop(); // type
-                                tp(t(h(h(a)))).* = stackp_pop(); // value
+                                defs = cons(stackpPop(), defs);
+                                hp(h(h(a))).* = stackpPop(); // who
+                                hp(t(h(h(a)))).* = stackpPop(); // type
+                                tp(t(h(h(a)))).* = stackpPop(); // value
                                 ch = c.getc(file);
                                 continue;
                             }
                             cs.CLASHES = add1(top_val, cs.CLASHES);
                             stackp = stackp.? - 4;
                         } else {
-                            defs = cons(stackp_pop(), defs);
-                            id_who_ptr(h(defs)).* = stackp_pop();
-                            id_type_ptr(h(defs)).* = stackp_pop();
-                            id_val_ptr(h(defs)).* = stackp_pop();
+                            defs = cons(stackpPop(), defs);
+                            id_who_ptr(h(defs)).* = stackpPop();
+                            id_type_ptr(h(defs)).* = stackpPop();
+                            id_val_ptr(h(defs)).* = stackpPop();
                         }
                     },
                     else => {
@@ -1790,22 +1790,22 @@ pub fn load_defs(file: ?*c.FILE) Word {
                 }
             },
             c.AP_X => {
-                const ch_val = stackp_pop();
-                const top = stackp_top();
+                const ch_val = stackpPop();
+                const top = stackpTop();
                 if (top == c.READ and ch_val == 0) {
-                    stackp_set_top(ls.common_stdin);
+                    stackpSetTop(ls.common_stdin);
                 } else if (top == c.READBIN and ch_val == 0) {
-                    stackp_set_top(ls.common_stdinb);
+                    stackpSetTop(ls.common_stdinb);
                 } else {
-                    stackp_set_top(ap(top, ch_val));
+                    stackpSetTop(ap(top, ch_val));
                 }
             },
             c.CONS_X => {
-                const ch_val = stackp_pop();
-                stackp_set_top(cons(ch_val, stackp_top()));
+                const ch_val = stackpPop();
+                stackpSetTop(cons(ch_val, stackpTop()));
             },
             else => {
-                stackp_push(if (ch > 127) ch + 256 else ch);
+                stackpPush(if (ch > 127) ch + 256 else ch);
             },
         }
         ch = c.getc(file);

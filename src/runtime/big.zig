@@ -150,14 +150,14 @@ export fn bignegate(x: Word) Word {
 
 export fn bigplus(x: Word, y: Word) Word {
     if (poz(x)) {
-        if (poz(y)) return big_plus(x, y, 0);
-        return big_sub(x, y);
+        if (poz(y)) return bigPlus(x, y, 0);
+        return bigSub(x, y);
     }
-    if (poz(y)) return big_sub(y, x);
-    return big_plus(x, y, SIGNBIT);
+    if (poz(y)) return bigSub(y, x);
+    return bigPlus(x, y, SIGNBIT);
 }
 
-fn big_plus(input_x: Word, input_y: Word, signbit: Word) Word {
+fn bigPlus(input_x: Word, input_y: Word, signbit: Word) Word {
     var x = input_x;
     var y = input_y;
     var d = digit0(x) + digit0(y);
@@ -188,14 +188,14 @@ fn big_plus(input_x: Word, input_y: Word, signbit: Word) Word {
 
 export fn bigsub(x: Word, y: Word) Word {
     if (poz(x)) {
-        if (poz(y)) return big_sub(x, y);
-        return big_plus(x, y, 0);
+        if (poz(y)) return bigSub(x, y);
+        return bigPlus(x, y, 0);
     }
-    if (poz(y)) return big_plus(x, y, SIGNBIT);
-    return big_sub(y, x);
+    if (poz(y)) return bigPlus(x, y, SIGNBIT);
+    return bigSub(y, x);
 }
 
-fn big_sub(input_x: Word, input_y: Word) Word {
+fn bigSub(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
     var d = digit0(x) - digit0(y);
