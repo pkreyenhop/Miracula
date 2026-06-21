@@ -419,8 +419,8 @@ Baseline captured 2026-06-21 (script output at L0):
 | # | Metric (non-FFI scope) | Now | Target | Driven by |
 |---|------------------------|-----|--------|-----------|
 | 1 | internal `c_int`/`c_long`/`c_uint` (incl. `@as(c_int,…)` printf casts) | 107 | printf-cast residual only | L1–L3 |
-| 2 | `[*:0]` on Zig-only signatures | 161 | enumerated exceptions only | M1–M2 |
-| 3 | `[*]Word` / `?[*]Word` non-FFI | 9 | enumerated exceptions only | M3–M4 |
+| 2 | `[*:0]` on Zig-only signatures | 161 | enumerated (inherent C-string flow) | M (analysed: no-op) |
+| 3 | `[*]Word` / `?[*]Word` non-FFI | 9 | enumerated (raw heap/stack storage) | M (analysed: no-op) |
 | 4 | sentinel `== NIL` / `!= NIL` | 347 | reduced at converted fns | N1–N2 |
 | 5 | `return NIL` as an error signal | 12 | 0 | O1 |
 | 6 | bare `clib.exit(1)` (use `fatal()`) | 46 → 30 | evaluator-abort residual | O2 |
@@ -456,19 +456,43 @@ only the genuine verb-helpers outside this set.
   `commands.zig`, `platform.zig`. One commit per file. *Risk: low.*
   *DoD: scorecard metric 1 = 0.*
 
-### Cluster M — Slices at Internal Boundaries (closes metrics 2–3; was I1)
+### Cluster M — Slices at Internal Boundaries (was I1)
 
-* **M1 — `startup.zig` string params `[*:0]const u8` → `[:0]const u8`** ⬜
-  Continue D1's pattern; add `std.mem.span()` at the C-originated entry points. *Risk: low-med.*
-* **M2 — `commands.zig` + `module_loader.zig` string params** ⬜  *Risk: low-med.*
-* **M3 — Known-length `[*]Word` scratch buffers → `[]Word`** ⬜
-  Target the `dstack`/`stackp` pair and local fixed buffers where length is statically known.
-  *Risk: medium (pointer arithmetic → slice indexing).*
-* **M4 — Document the deferred heap-storage exception** ⬜
-  The raw `hd`/`tl`/`tag` arrays stay `[*]` — they are private storage behind the `h()`/`t()`
-  accessor API and never surface in a public signature. Record this as an accepted, enumerated
-  exception rather than converting. *Risk: none (doc only).*
-  *DoD: every remaining `[*]`/`[*:0]` in a non-FFI signature is on the enumerated-exceptions list.*
+**Finding (2026-06-21): this codebase has no net-positive slice conversions.** Auditing every
+non-FFI `[*:0]`/`[*]Word` site showed the pointer/string surface is *inherent* to the C-heap
+interpreter design, not an artefact of the C-to-Zig translation. Forcing slices would add
+`.ptr` / `std.mem.span()` round-trips at every boundary **without** shrinking the surface — the
+opposite of the DoD. M1–M3 are therefore recorded as analysed-no-op; **M4 (documentation) is
+the deliverable.**
+
+* **M1 — `startup.zig` string params** ✅ *(analysed — no-op, 2026-06-21)*
+  Every `[*:0]` function in `startup.zig` (`main_entry`, `rc_read`, `checkversion`, `strvers`)
+  is `export fn` — C-ABI, must keep many-pointers. No Zig-only candidates.
+* **M2 — `commands.zig` + `module_loader.zig` string params** ✅ *(analysed — no-op, 2026-06-21)*
+  The only non-`export` `[*:0]` signature is `loadfile(t_val)`, which sits mid-stream in an
+  all-C-string data flow (`argv` → `rs.current_script` (`?[*:0]u8`) → `fileExists`/`openfile`/
+  `make_fil`/`printf`). Converting it alone would add `std.mem.span` at ~11 callers plus `.ptr`
+  at ~6 internal C-string sinks — net pointer-juggling increase. Left as `[*:0]`.
+* **M3 — `[*]Word` scratch buffers** ✅ *(analysed — no-op, 2026-06-21)*
+  All 9 non-FFI `[*]Word`/`?[*]Word` are raw heap/stack **storage**: `hd`/`tl`/`dstack`/`stackp`
+  (`export var`), `heap`/`dlim`/`cstack`/`pnvec` (grown/indexed by pointer arithmetic), and the
+  `bases()` local `p` (walks the machine C-stack via `@intFromPtr` for GC root scanning).
+  None has a statically-known slice length; all are pointer-appropriate.
+* **M4 — Document the enumerated pointer exception** ✅ *(2026-06-21)*
+  Recorded below as an accepted exception (analogous to the FFI and domain-vocabulary
+  exemptions). Metric 2/3 targets are "enumerated exceptions only", and these *are* the
+  enumeration.
+
+**Enumerated raw-pointer exception (metrics 2–3).** Idiomatic Zig keeps a raw pointer at
+genuine C-FFI and raw-memory boundaries; it does not wrap every C pointer in a slice. The
+accepted non-FFI pointers are:
+- **C-string flow (`[*:0]`):** Miranda identifiers, filenames, and dictionary strings are
+  null-terminated C strings end-to-end (heap `id`/`fil` nodes store `[*:0]`, the lexer and
+  `clib` string routines consume `[*:0]`). `loadfile` and friends stay `[*:0]const u8`.
+- **Heap/stack storage (`[*]Word`):** `hd`/`tl` (cell store), `dstack`/`stackp`/`dlim` (data
+  stack), `heap` (base), `cstack` (combinator stack), `pnvec` (pattern-node vector) — grown
+  via `realloc` and addressed by pointer arithmetic behind the `h()`/`t()` accessor API.
+- **Stack-walking:** the `bases()` GC root scanner walks raw machine-stack addresses.
 
 ### Cluster N — Optional Types (was I3; closes metric 4 at converted sites)
 
@@ -604,10 +628,10 @@ together they move four of the eight scorecard metrics.
 | L | L1 | `lex.zig` internal `c_int` → `i32` | 1 | low | ✅ Complete |
 | L | L2 | `heap.zig` internal `c_int` → `i32`/`usize` | 1 | low | ⬜ Planned |
 | L | L3 | Driver/runtime internal `c_int` → `i32` (per file) | 1 | low | ⬜ Planned |
-| M | M1 | `startup.zig` string params → `[:0]const u8` | 2 | low-med | ⬜ Planned |
-| M | M2 | `commands.zig` + `module_loader.zig` string params | 2 | low-med | ⬜ Planned |
-| M | M3 | Known-length `[*]Word` scratch → `[]Word` | 3 | medium | ⬜ Planned |
-| M | M4 | Document deferred heap-storage `[*]` exception | 3 | none | ⬜ Planned |
+| M | M1 | `startup.zig` string params (all `export` — none convertible) | 2 | low-med | ✅ Analysed (no-op) |
+| M | M2 | `loadfile` string param (net-negative — keep `[*:0]`) | 2 | low-med | ✅ Analysed (no-op) |
+| M | M3 | `[*]Word` (all raw storage / stack-walk — keep `[*]`) | 3 | medium | ✅ Analysed (no-op) |
+| M | M4 | Document enumerated raw-pointer exception | 3 | none | ✅ Complete |
 | N | N1 | `get_id` → `?[*:0]const u8` | 4 | medium | ⬜ Planned |
 | N | N2 | Lookup fns `NIL`-absent → `?Word` (per fn) | 4 | medium | ⬜ Planned |
 | O | O1 | `return NIL`-as-error → `MiraError` (12 sites) | 5 | medium | ⬜ Planned |
