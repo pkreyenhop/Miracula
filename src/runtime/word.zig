@@ -337,18 +337,16 @@ pub const FILE = struct {
     }
 
     /// Zig-native formatted write to this file (R1.4): the file analogue of
-    /// `word.print`/`printErr`. Buffers via a std.Io writer and flushes, so
-    /// output of any length is handled.
+    /// `word.print`/`printErr`. Formats to a stack buffer and writes using
+    /// writeAll to maintain correct streaming file offsets.
     pub fn print(self: *FILE, comptime fmt: []const u8, args: anytype) void {
         var buf: [4096]u8 = undefined;
-        var fw = self.file.writer(std.Options.debug_io, &buf);
         const fs = std.meta.fields(@TypeOf(args));
-        if (comptime (fs.len == 1 and @typeInfo(fs[0].type) == .@"struct")) {
-            fw.interface.print(fmt, @field(args, fs[0].name)) catch {};
-        } else {
-            fw.interface.print(fmt, args) catch {};
-        }
-        fw.interface.flush() catch {};
+        const slice = if (comptime (fs.len == 1 and @typeInfo(fs[0].type) == .@"struct"))
+            std.fmt.bufPrint(&buf, fmt, @field(args, fs[0].name)) catch return
+        else
+            std.fmt.bufPrint(&buf, fmt, args) catch return;
+        self.writeAll(slice) catch {};
     }
 };
 
@@ -659,6 +657,8 @@ pub fn fopen(path: ?*const anyopaque, mode: [*:0]const u8) ?*FILE {
     };
     f_ptr.file = file;
     f_ptr.pushback = null;
+    f_ptr.mem_buf = null;
+    f_ptr.mem_pos = 0;
     f_ptr.buf_start = 0;
     f_ptr.buf_end = 0;
     return f_ptr;
