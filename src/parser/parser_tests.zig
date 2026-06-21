@@ -148,7 +148,7 @@ fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]con
         if (tok == 0 or tok == clib.END) break;
 
         const name = tokenName(tok);
-        const lexeme = std.mem.span(ls.dicp);
+        const lexeme = std.mem.span(@as([*:0]u8, @ptrCast(ls.dicp)));
 
         try list.print("{s}", .{name});
         if (lexeme.len > 0) {

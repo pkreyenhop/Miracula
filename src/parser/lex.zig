@@ -182,7 +182,7 @@ fn get_fil(x: Word) [*:0]const u8 {
 }
 
 fn is(s: [*:0]const u8) bool {
-    return std.mem.eql(u8, std.mem.span(ls.dicp), std.mem.span(s));
+    return std.mem.eql(u8, std.mem.span(@as([*:0]u8, @ptrCast(ls.dicp))), std.mem.span(s));
 }
 
 fn ovflocheck() void {
@@ -535,7 +535,7 @@ export fn rdline() ?[*:0]u8 {
     }
     if (ch == '\n' or (ch == '!' and rdline_linebuf[0] == 0)) {
         if (rdline_linebuf[0] != 0) {
-            _ = clib.printf("!%s", .{.{&rdline_linebuf}});
+            word.print("!{s}", .{@as([*:0]const u8, @ptrCast(&rdline_linebuf))});
         }
         while (ch != '\n' and ch != clib.EOF) {
             ch = clib.getchar();
@@ -560,7 +560,7 @@ export fn rdline() ?[*:0]u8 {
         const offset = @as(usize, @intFromPtr(p)) - @as(usize, @intFromPtr(&rdline_linebuf));
         if (offset >= 1024) {
             p[0] = 0;
-            _ = clib.fprintf(getStderr().?, "sorry, !command too long (limit=%d chars): %s...\n", .{.{ @as(c_int, 1024), &rdline_linebuf }});
+            word.printErr("sorry, !command too long (limit={} chars): {s}...\n", .{@as(c_int, 1024), @as([*:0]const u8, @ptrCast(&rdline_linebuf))});
             while (true) {
                 ch = clib.getchar();
                 if (ch == '\n' or ch == clib.EOF) {
@@ -583,7 +583,7 @@ export fn rdline() ?[*:0]u8 {
     }
     p[0] = 0;
     if (expansion != 0) {
-        _ = clib.printf("!%s", .{.{&rdline_linebuf}});
+        word.print("!{s}", .{@as([*:0]const u8, @ptrCast(&rdline_linebuf))});
     }
     return @ptrCast(&rdline_linebuf);
 }
@@ -606,19 +606,19 @@ export fn unsetlmargin() void {
 fn errclass(val: Word, string_flag: Word) void {
     const s: [*:0]const u8 = if (string_flag == 2) "char class" else if (string_flag != 0) "string" else "char const";
     if (val == -2) {
-        _ = clib.printf("\\x with no xdigits in %s\n", .{.{s}});
+        word.print("\\x with no xdigits in {s}\n", .{s});
     } else if (val == -3) {
-        _ = clib.printf("\\hexadecimal escape out of range in %s\n", .{.{s}});
+        word.print("\\hexadecimal escape out of range in {s}\n", .{s});
     } else if (val == -4) {
-        _ = clib.printf("\\decimal escape out of range in %s\n", .{.{s}});
+        word.print("\\decimal escape out of range in {s}\n", .{s});
     } else if (val == -5) {
-        _ = clib.printf("unrecognised character in %s(main.rs.UTF8 error)\n", .{.{s}});
+        word.print("unrecognised character in {s}(main.rs.UTF8 error)\n", .{s});
     } else if (val == -6) {
-        _ = clib.printf("unrecognised escape \\%c in %s\n", .{.{ errch, s }});
+        word.print("unrecognised escape \\{c} in {s}\n", .{@as(u8, @intCast(errch)), s});
     } else if (val == -7) {
-        _ = clib.printf("illegal use of \\& in char const\n", .{.{}});
+        word.print("illegal use of \\& in char const\n", .{});
     } else {
-        _ = clib.printf("unknown error in %s\n", .{.{s}});
+        word.print("unknown error in {s}\n", .{s});
     }
     acterror();
 }
@@ -694,7 +694,7 @@ export fn yylex() c_int {
         }
         if (is_char(ls.yylval) == 0) {
             const prefix_str: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
-            _ = clib.fprintf(getStderr().?, "%simpossible event while reading char const ('\\%lu')\n", .{.{ prefix_str, ls.yylval }});
+            word.printErr("{s}impossible event while reading char const ('\\{}')\n", .{prefix_str, ls.yylval});
             acterror();
         }
         if (rawch == '\n' or ls.c != '\'') {
@@ -749,7 +749,7 @@ export fn yylex() c_int {
                 _ = clib.putchar('>');
                 spaces(lverge);
             }
-            _ = clib.printf("<end of insert>", .{.{}});
+            word.print("<end of insert>", .{});
         }
         main.rs.s_in = if (ls.fileq == NIL) getStdin() else @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
         ls.c = ' ';
@@ -897,7 +897,7 @@ export fn yylex() c_int {
                     ls.c = getch();
                 }
                 if (n > ls.sreds) {
-                    _ = clib.printf("%ssyntax error: illegal symbol $%ld%s\n", .{.{ if (main.rs.echoing != 0) @as([*:0]const u8, "\n") else "", n, if (n >= 1000000) @as([*:0]const u8, "...") else "" }});
+                    word.print("{s}syntax error: illegal symbol ${}{s}\n", .{if (main.rs.echoing != 0) @as([*:0]const u8, "\n") else "", n, if (n >= 1000000) @as([*:0]const u8, "...") else ""});
                     acterror();
                 } else {
                     ls.yylval = mkgvar(n);
@@ -1341,10 +1341,10 @@ pub fn directive() Word {
                 } else {
                     const toomany = (ls.insertdepth >= 12);
                     const prefix_str: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
-                    _ = clib.printf("%s%%insert error - cannot open \"%s\"\n", .{.{ prefix_str, f.? }});
+                    word.print("{s}%insert error - cannot open \"{s}\"\n", .{prefix_str, f.?});
                     _ = keep(ls.dicp);
                     if (toomany) {
-                        _ = clib.printf("too many nested %%insert directives (limit=%ld)\n", .{.{ls.insertdepth}});
+                        word.print("too many nested %insert directives (limit={})\n", .{ls.insertdepth});
                     } else {
                         files = append1(files, cons(make_fil(f.?, 0, 0, NIL), NIL));
                     }
@@ -1376,7 +1376,7 @@ pub fn directive() Word {
     if (main.rs.echoing != 0) {
         _ = clib.putchar('\n');
     }
-    _ = clib.printf("syntax error: unknown directive \"%%%s\"\n", .{.{ls.dicp}});
+    word.print("syntax error: unknown directive \"%{s}\"\n", .{ls.dicp});
     acterror();
     return clib.END;
 }
@@ -1696,14 +1696,14 @@ pub fn string() void {
         if (main.rs.echoing != 0) {
             _ = clib.putchar('\n');
         }
-        _ = clib.printf("syntax error: script ends inside unclosed string quotes - \n", .{.{}});
-        _ = clib.printf("    \"", .{.{}});
+        word.print("syntax error: script ends inside unclosed string quotes - \n", .{});
+        word.print("    \"", .{});
         while (ls.yylval != NIL and sl > 0) {
             _ = clib.putchar(@intCast(h(ls.yylval)));
             ls.yylval = t(ls.yylval);
             sl -= 1;
         }
-        _ = clib.printf("...\"\n", .{.{}});
+        word.print("...\"\n", .{});
         acterror();
     }
 }
@@ -1760,14 +1760,14 @@ pub fn charclass() c_int {
         if (main.rs.echoing != 0) {
             _ = clib.putchar('\n');
         }
-        _ = clib.printf("syntax error: script ends inside unclosed char class brackets - \n", .{.{}});
-        _ = clib.printf("    [", .{.{}});
+        word.print("syntax error: script ends inside unclosed char class brackets - \n", .{});
+        word.print("    [", .{});
         while (ls.yylval != NIL and sl > 0) {
             _ = clib.putchar(@intCast(h(ls.yylval)));
             ls.yylval = t(ls.yylval);
             sl -= 1;
         }
-        _ = clib.printf("...]\n", .{.{}});
+        word.print("...]\n", .{});
         acterror();
     }
     return anti;
@@ -1785,11 +1785,11 @@ export fn reset_lex() void {
         else
             true;
         if (t(errs) == 0 and is_current) {
-            _ = clib.fprintf(getStderr().?, "error occurs at end of ", .{.{}});
+            word.printErr("error occurs at end of ", .{});
         } else {
-            _ = clib.fprintf(getStderr().?, "error found near line %ld of ", .{.{t(errs)}});
+            word.printErr("error found near line {} of ", .{t(errs)});
         }
-        _ = clib.fprintf(getStderr().?, "%sfile \"%s\"\ncompilation abandoned\n", .{.{ if (is_current) @as([*:0]const u8, "") else "%insert ", err_script }});
+        word.printErr("{s}file \"{s}\"\ncompilation abandoned\n", .{if (is_current) @as([*:0]const u8, "") else "%insert ", err_script});
         if (is_current) {
             errline = if (t(errs) == 0) lastline else t(errs);
             errs = 0;

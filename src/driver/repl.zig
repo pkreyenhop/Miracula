@@ -42,7 +42,7 @@ export fn commandloop(initscript: [*:0]u8) void {
             main.undump(initscript);
             if (main.files == NIL or main.cs.ND != NIL or main.id_val(main.rs.main_id) == clib.UNDEF) {
                 if (main.files != NIL and main.cs.ND == NIL and main.id_val(main.rs.main_id) == clib.UNDEF) {
-                    _ = clib.fprintf(main.getStderr(), "%s: main not defined\n", .{.{initscript}});
+                    word.printErr("{s}: main not defined\n", .{initscript});
                 }
                 main.fatal("mira: incorrect use of \"-exec\" flag\n", .{.{}});
             }
@@ -53,14 +53,14 @@ export fn commandloop(initscript: [*:0]u8) void {
         _ = signals(clib.SIGINT, @intFromPtr(&main.reset));
         main.undump(initscript);
         if (main.rs.verbosity != 0) {
-            _ = clib.printf("for help type /h\n", .{.{}});
+            word.print("for help type /h\n", .{});
         }
     }
 
     while (true) {
         resetgcstats();
         if (main.rs.verbosity != 0) {
-            _ = clib.printf("%s", .{.{main.rs.promptstr}});
+            word.print("{s}", .{main.rs.promptstr});
         }
         ch = clib.getchar();
         if (main.rs.rechecking != 0 and main.src_update() != 0) {
@@ -76,7 +76,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                     var x: Word = undefined;
                     var aka: ?[*:0]u8 = null;
                     if (token() == null and main.rs.lastid == 0) {
-                        _ = clib.printf("\x07identifier needed after `??'\n", .{.{}});
+                        word.print("\x07identifier needed after `??'\n", .{});
                         ch = clib.getchar();
                         continue;
                     }
@@ -91,7 +91,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                     if (ls.dicp[0] != 0) {
                         x = clib.findid(ls.dicp);
                     } else {
-                        _ = clib.printf("??%s\n", .{.{main.get_id(main.rs.lastid)}});
+                        word.print("??{s}\n", .{main.get_id(main.rs.lastid)});
                         x = main.rs.lastid;
                     }
                     if (x == NIL or main.id_type(x) == clib.undef_t) {
@@ -100,7 +100,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                         continue;
                     }
                     if (main.id_who(x) == NIL) {
-                        _ = clib.printf("%s -- primitive to Miranda\n", .{.{if (ls.dicp[0] != 0) ls.dicp else main.get_id(main.rs.lastid)}});
+                        word.print("{s} -- primitive to Miranda\n", .{@as([*:0]const u8, @ptrCast(if (ls.dicp[0] != 0) ls.dicp else main.get_id(main.rs.lastid)))});
                         main.rs.lastid = 0;
                         continue;
                     }
@@ -111,7 +111,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                         x = main.heap.t(x);
                     }
                     if (aka != null) {
-                        _ = clib.printf("originally defined as \"%s\"\n", .{.{aka.?}});
+                        word.print("originally defined as \"{s}\"\n", .{aka.?});
                     }
                     main.editfile(@ptrFromInt(@as(usize, @intCast(main.heap.h(x)))), @intCast(main.heap.t(x)));
                 } else {
@@ -165,13 +165,13 @@ export fn commandloop(initscript: [*:0]u8) void {
                         main.loadfile(main.rs.current_script.?);
                     }
                 } else {
-                    _ = clib.printf("No previous shell command to substitute for \"!\"\n", .{.{}});
+                    word.print("No previous shell command to substitute for \"!\"\n", .{});
                 }
             },
             '|' => {
                 ch = clib.getchar();
                 if (ch != '|') {
-                    _ = clib.printf("\x07unknown command - type /h for help\n", .{.{}});
+                    word.print("\x07unknown command - type /h for help\n", .{});
                 }
                 while (ch != '\n' and ch != clib.EOF) {
                     ch = clib.getchar();
@@ -180,7 +180,7 @@ export fn commandloop(initscript: [*:0]u8) void {
             '\n' => {},
             clib.EOF => {
                 if (main.rs.verbosity != 0) {
-                    _ = clib.printf("\nmiranda logout\n", .{.{}});
+                    word.print("\nmiranda logout\n", .{});
                 }
                 clib.exit(0);
             },
@@ -197,7 +197,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                 if (main.SYNERR != 0) {
                     main.SYNERR = 0;
                 } else if (ls.c != '\n') {
-                    _ = clib.printf("syntax error\n", .{.{}});
+                    word.print("syntax error\n", .{});
                     while (ls.c != '\n' and ls.c != clib.EOF) {
                         ls.c = clib.getchar();
                     }
@@ -224,9 +224,9 @@ export fn process() Word {
             const cd: [*:0]const u8 = if ((status & 0x80) != 0) " (core dumped)" else "";
             const sig = WTERMSIG(status);
             switch (sig) {
-                clib.SIGBUS => _ = clib.fprintf(main.getStderr(), "\n<<...bus error%s>>\n", .{.{cd}}),
-                clib.SIGSEGV => _ = clib.fprintf(main.getStderr(), "\n<<...segmentation fault%s>>\n", .{.{cd}}),
-                else => _ = clib.fprintf(main.getStderr(), "\n<<...uncaught signal %d>>\n", .{.{sig}}),
+                clib.SIGBUS => word.printErr("\n<<...bus error{s}>>\n", .{cd}),
+                clib.SIGSEGV => word.printErr("\n<<...segmentation fault{s}>>\n", .{cd}),
+                else => word.printErr("\n<<...uncaught signal {}>>\n", .{sig}),
             }
         }
         _ = signals(clib.SIGINT, oldsig);
@@ -236,7 +236,7 @@ export fn process() Word {
 }
 
 export fn dieclean() void {
-    _ = clib.fprintf(main.getStderr(), "<<...interrupt>>\n", .{.{}});
+    word.printErr("<<...interrupt>>\n", .{});
     outstats();
     clib.exit(0);
 }
@@ -248,7 +248,7 @@ export fn fpe_error(sig: c_int) void {
         main.SYNERR = 0;
         clib.siglongjmp(&main.rs.env, 1);
     } else {
-        _ = clib.printf("\nFLOATING POINT OVERFLOW\n", .{.{}});
+        word.print("\nFLOATING POINT OVERFLOW\n", .{});
         clib.exit(1);
     }
 }
@@ -326,15 +326,15 @@ pub export fn reset() void {
 }
 
 pub fn ed_warn() void {
-    _ = clib.printf("The currently installed editor command, \"%s\", does not\ninclude a facility for opening a file at a specified line number.  As a\nresult the `??' command and certain other features of the Miranda system\nare disabled.  See manual section 31/5 on changing the editor for more\ninformation.\n", .{.{main.rs.editor orelse @constCast("")}});
+    word.print("The currently installed editor command, \"{s}\", does not\ninclude a facility for opening a file at a specified line number.  As a\nresult the `??' command and certain other features of the Miranda system\nare disabled.  See manual section 31/5 on changing the editor for more\ninformation.\n", .{main.rs.editor orelse @constCast("")});
 }
 
 pub fn announce() void {
-    _ = clib.printf("Miranda release %s", .{.{main.strvers(main.version)}});
+    word.print("Miranda release {s}", .{main.strvers(main.version)});
     if (main.utf8test() != 0) {
-        _ = clib.printf(" (UTF-8)", .{.{}});
+        word.print(" (UTF-8)", .{});
     }
-    _ = clib.printf("\n", .{.{}});
+    word.print("\n", .{});
 }
 
 pub fn getln(in: ?*clib.FILE, n_val: Word, s_ptr: [*]u8) c_int {
@@ -415,9 +415,9 @@ pub export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
             if (t1 == clib.wrong_t) {
                 main.rs.lastexp = clib.UNDEF;
             } else if (clib.subsumes(clib.instantiate(t1), t_val) == 0) {
-                _ = clib.printf("data has wrong type :: ", .{.{}});
+                word.print("data has wrong type :: ", .{});
                 clib.out_type(t1);
-                _ = clib.printf("\nshould be :: ", .{.{}});
+                word.print("\nshould be :: ", .{});
                 clib.out_type(t_val);
                 _ = clib.putc('\n', main.getStdout());
                 main.rs.lastexp = clib.UNDEF;
@@ -427,12 +427,12 @@ pub export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
             return main.codegen(main.rs.lastexp);
         }
         if (clib.isatty(clib.fileno(f)) != 0) {
-            _ = clib.printf("please re-enter data:\n", .{.{}});
+            word.print("please re-enter data:\n", .{});
         } else {
             if (fil != 0) {
-                _ = clib.fprintf(main.getStderr(), "readvals: bad data in file \"%s\"\n", .{.{clib.getstring(fil, @constCast(""))}});
+                word.printErr("readvals: bad data in file \"{s}\"\n", .{clib.getstring(fil, @constCast(""))});
             } else {
-                _ = clib.fprintf(main.getStderr(), "bad data in $+ input\n", .{.{}});
+                word.printErr("bad data in $+ input\n", .{});
             }
             clib.outstats();
             clib.exit(1);

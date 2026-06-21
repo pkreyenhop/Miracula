@@ -202,10 +202,10 @@ pub export fn readoption() void {
 
     if (tlost == NIL) return;
     main.cs.TYPERRS += 1;
-    _ = clib.printf("main.cs.MISSING TYPENAME%s\n", .{.{if (t(tlost) == NIL) @as([*:0]const u8, "") else @as([*:0]const u8, "S")}});
-    _ = clib.printf("the following type%s no name in this scope:\n", .{.{if (t(tlost) == NIL) @as([*:0]const u8, " is needed but has") else @as([*:0]const u8, "s are needed but have")}});
+    word.print("main.cs.MISSING TYPENAME{s}\n", .{if (t(tlost) == NIL) "" else "S"});
+    word.print("the following type{s} no name in this scope:\n", .{if (t(tlost) == NIL) " is needed but has" else "s are needed but have"});
     while (tlost != NIL) {
-        _ = clib.printf("\'%s\' of file \"%s\", needed by: ", .{.{ @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(main.t_info(h(h(tlost))))))))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(main.t_info(h(h(tlost))))))))) }});
+        word.print("\'{s}\' of file \"{s}\", needed by: ", .{ @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(main.t_info(h(h(tlost))))))))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(main.t_info(h(h(tlost))))))))) });
         clib.printlist(@constCast(""), main.alfasort(t(h(tlost))));
         tlost = t(tlost);
     }
@@ -268,7 +268,7 @@ pub fn undump(t_val: [*:0]const u8) void {
     flen = @intCast(word.strlen(t_val));
     t1 = @intCast(main.fm_time(t_val));
     if (flen > clib.pnlim) {
-        _ = clib.printf("sorry, pathname too long (limit=%d): %s\n", .{.{ clib.pnlim, t_val }});
+        word.print("sorry, pathname too long (limit={}): {s}\n", .{ clib.pnlim, std.mem.span(t_val) });
         return;
     }
 
@@ -286,7 +286,7 @@ pub fn undump(t_val: [*:0]const u8) void {
 
     f = clib.fopen(&obf, "r");
     if (f == null) {
-        _ = clib.printf("cannot open %s\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
+        word.print("cannot open {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
         main.loadfile(t_val);
         return;
     }
@@ -309,13 +309,13 @@ pub fn undump(t_val: [*:0]const u8) void {
         main.unload();
         main.cs.CLASHES = NIL;
         main.stackp = main.dstack;
-        _ = clib.printf("warning: %s contains incorrect data (file removed)\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
+        word.print("warning: {s} contains incorrect data (file removed)\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
         if (main.cs.BAD_DUMP == -1) {
-            _ = clib.printf("(unrecognised dump format)\n", .{.{}});
+            word.print("(unrecognised dump format)\n", .{});
         } else if (main.cs.BAD_DUMP == 1) {
-            _ = clib.printf("(wrong source file)\n", .{.{}});
+            word.print("(wrong source file)\n", .{});
         } else {
-            _ = clib.printf("(error %ld)\n", .{.{main.cs.BAD_DUMP}});
+            word.print("(error {})\n", .{main.cs.BAD_DUMP});
         }
     }
 
@@ -332,7 +332,7 @@ pub fn undump(t_val: [*:0]const u8) void {
 
     if (main.cs.CLASHES != NIL) {
         if (main.rs.ideep == 0) {
-            _ = clib.printf("cannot load %s ", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
+            word.print("cannot load {s} ", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
             clib.printlist(@constCast("due to name clashes: "), main.alfasort(main.cs.CLASHES));
         }
         main.unload();
@@ -349,12 +349,12 @@ pub fn undump(t_val: [*:0]const u8) void {
     } else {
         if (main.rs.verbosity != 0 or main.rs.magic or main.rs.mkexports) {
             if (main.files == NIL) {
-                _ = clib.printf("%s contains syntax error\n", .{.{t_val}});
+                word.print("{s} contains syntax error\n", .{std.mem.span(t_val)});
             } else {
                 if (main.cs.ND != NIL) {
-                    _ = clib.printf("%s contains undefined names or type errors\n", .{.{t_val}});
+                    word.print("{s} contains undefined names or type errors\n", .{std.mem.span(t_val)});
                 } else if (!main.rs.making and !main.rs.magic) {
-                    _ = clib.printf("%s\n", .{.{t_val}});
+                    word.print("{s}\n", .{std.mem.span(t_val)});
                 }
             }
         }
@@ -377,9 +377,9 @@ pub fn makedump() void {
     _ = word.strcpy(obf[len - 1 ..].ptr, main.obsuffix);
     f = clib.fopen(obf, "w");
     if (f == null) {
-        _ = clib.printf("WARNING: CANNOT WRITE TO %s\n", .{.{@as([*:0]const u8, @ptrCast(obf))}});
+        word.print("WARNING: CANNOT WRITE TO {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(obf)))});
         if (word.strcmp(main.rs.current_script.?, &main.rs.PRELUDE) == 0 or word.strcmp(main.rs.current_script.?, &main.rs.STDENV) == 0) {
-            _ = clib.printf("TO FIX THIS PROBLEM PLEASE GET SUPER-USER TO EXECUTE `mira'\n", .{.{}});
+            word.print("TO FIX THIS PROBLEM PLEASE GET SUPER-USER TO EXECUTE `mira'\n", .{});
         }
         if (main.rs.making and main.rs.make_status == 0) {
             main.rs.make_status = 1;

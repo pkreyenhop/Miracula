@@ -62,7 +62,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
         clib.HD => {
             reduce.upLeft(ctx);
             if (lastarg(ctx) == clib.NIL) {
-                _ = clib.fprintf(reduce.getStderr().?, "\nATTEMPT TO TAKE hd OF []\n", .{.{}});
+                word.printErr("\nATTEMPT TO TAKE hd OF []\n", .{});
                 clib.outstats();
                 clib.exit(1);
             }
@@ -73,7 +73,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
         clib.TL => {
             reduce.upLeft(ctx);
             if (lastarg(ctx) == clib.NIL) {
-                _ = clib.fprintf(reduce.getStderr().?, "\nATTEMPT TO TAKE tl OF []\n", .{.{}});
+                word.printErr("\nATTEMPT TO TAKE tl OF []\n", .{});
                 clib.outstats();
                 clib.exit(1);
             }
@@ -291,7 +291,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 p[p_idx] = 0;
                 p_idx += 1;
                 if (p_idx > 60 or clib.sscanf(@ptrCast(p), "%lf%c", .{ &d, &junk }) != 1 or junk != 0) {
-                    _ = clib.fprintf(reduce.getStderr().?, "\nbad arg for numval: \"%s\"\n", .{.{@as([*:0]const u8, @ptrCast(p))}});
+                    word.printErr("\nbad arg for numval: \"{s}\"\n", .{@as([*:0]const u8, @ptrCast(p))});
                     clib.outstats();
                     clib.exit(1);
                 } else {
@@ -309,7 +309,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             const fil = reduce.getstring(lastarg(ctx), "read");
             const f = clib.fopen(fil, "r");
             if (f == null) {
-                _ = clib.fprintf(reduce.getStderr().?, "\nread, cannot open: \"%s\"\n", .{.{fil}});
+                word.printErr("\nread, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
                 clib.outstats();
                 clib.exit(1);
             }
@@ -324,7 +324,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             const fil = reduce.getstring(lastarg(ctx), "readb");
             const f = clib.fopen(fil, "r");
             if (f == null) {
-                _ = clib.fprintf(reduce.getStderr().?, "\nreadb, cannot open: \"%s\"\n", .{.{fil}});
+                word.printErr("\nreadb, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
                 clib.outstats();
                 clib.exit(1);
             }
@@ -430,7 +430,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             }
             const val = clib.get_int(lastarg(ctx));
             if (val < 0 or val > clib.UMAX) {
-                _ = clib.fprintf(reduce.getStderr().?, "\nCHARACTER OUT-OF-RANGE decode(%lld)\n", .{.{val}});
+                word.printErr("\nCHARACTER OUT-OF-RANGE decode({})\n", .{val});
                 clib.outstats();
                 clib.exit(1);
             }
@@ -829,7 +829,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
         },
         else => {
             const tag_val = tag[reduce.clean_ptr(e_val)];
-            _ = clib.fprintf(reduce.getStderr().?, "\nimpossible event in reduce (val: %ld, tag: %d)\n", .{.{ e_val, tag_val }});
+            word.printErr("\nimpossible event in reduce (val: {}, tag: {})\n", .{e_val, tag_val});
             std.process.exit(1);
         },
     }

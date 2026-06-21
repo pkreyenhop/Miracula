@@ -816,10 +816,10 @@ pub fn handleERROR(ctx: *ReductionCtx) void {
     }
     const lastarg = reduce.tl_get(ctx.e);
     if (reduce.errtrap != 0) {
-        _ = clib.fprintf(reduce.getStderr().?, "\n(repeated error)\n", .{.{}});
+        word.printErr("\n(repeated error)\n", .{});
     } else {
         reduce.errtrap = 1;
-        _ = clib.fprintf(reduce.getStderr().?, "\nprogram error: ", .{.{}});
+        word.printErr("\nprogram error: ", .{});
         reduce.s_out = reduce.getStderr();
         reduce.print(lastarg);
         _ = clib.putc('\n', reduce.getStderr().?);

@@ -178,7 +178,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
                 // Keep the original text so arbitrary precision values are not
                 // truncated to a machine integer before codegen calls bigscan().
                 if (t_tag == word.INT) {
-                    const text_slice = std.mem.span(ls.dicp);
+                    const text_slice = std.mem.span(@as([*:0]u8, @ptrCast(ls.dicp)));
                     break :blk Token{ .id = .const_int, .span = span, .text = try gpa.dupe(u8, text_slice) };
                 }
             }
@@ -200,7 +200,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
         clib.PATHNAME => Token{
             .id = .pathname,
             .span = span,
-            .text = try gpa.dupe(u8, std.mem.span(ls.dicp)),
+            .text = try gpa.dupe(u8, std.mem.span(@as([*:0]u8, @ptrCast(ls.dicp)))),
         },
         clib.BNF => Token{ .id = .kw_bnf, .span = span },
         clib.LEX => Token{ .id = .kw_lex, .span = span },

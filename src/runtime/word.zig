@@ -499,6 +499,39 @@ pub fn rindex(s_any: anytype, char: c_int) ?[*:0]u8 {
     return strrchr(s_any, char);
 }
 
+pub var stdout_buf: [8192]u8 = undefined;
+pub var stderr_buf: [8192]u8 = undefined;
+pub var stdout_writer: std.Io.File.Writer = undefined;
+pub var stderr_writer: std.Io.File.Writer = undefined;
+pub var writers_initialized: bool = false;
+
+pub fn initWriters() void {
+    if (writers_initialized) return;
+    const io = std.Options.debug_io;
+    stdout_writer = std.Io.File.stdout().writer(io, &stdout_buf);
+    stderr_writer = std.Io.File.stderr().writer(io, &stderr_buf);
+    writers_initialized = true;
+}
+
+pub fn print(comptime fmt: []const u8, args: anytype) void {
+    initWriters();
+    stdout_writer.interface.print(fmt, args) catch {};
+    stdout_writer.interface.flush() catch {};
+}
+
+pub fn printErr(comptime fmt: []const u8, args: anytype) void {
+    initWriters();
+    stderr_writer.interface.print(fmt, args) catch {};
+    stderr_writer.interface.flush() catch {};
+}
+
+pub fn flush() void {
+    if (writers_initialized) {
+        stdout_writer.interface.flush() catch {};
+        stderr_writer.interface.flush() catch {};
+    }
+}
+
 test "string helpers strcpy and strcat" {
     var buf1: [32:0]u8 = undefined;
     _ = strcpy(&buf1, "hello");

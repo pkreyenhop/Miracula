@@ -138,7 +138,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             if (fil != null) {
                 _ = clib.dup2(clib.fileno(fil), 2);
             } else {
-                _ = clib.fprintf(main.getStderr(), "could not open %s\n", .{.{logfilname}});
+                word.printErr("could not open {s}\n", .{logfilname});
             }
             ls.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
             ls.ARGV = @ptrCast(argv + arg_idx + 1);
@@ -196,7 +196,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
     }
 
     if (badlib) {
-        _ = clib.fprintf(main.getStderr(), "fatal error: miralib version %s not found\n", .{.{main.strvers(@intCast(main.version))}});
+        word.printErr("fatal error: miralib version {s} not found\n", .{main.strvers(@intCast(main.version))});
         main.libfails();
         clib.exit(1);
     }
@@ -297,7 +297,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 continue;
             }
             if (arg_count != 1) {
-                _ = clib.printf("%s\n", .{.{s}});
+                word.print("{s}\n", .{s});
             }
             if (main.rs.exports != NIL) {
                 x = main.rs.exports;
@@ -318,13 +318,13 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 }
                 main.rs.freeids = clib.typesfirst(main.rs.freeids);
                 f = main.rs.freeids;
-                _ = clib.printf("\t%%free {\n", .{.{}});
+                word.print("\t%free {{\n", .{});
                 while (f != NIL) : (f = main.heap.t(f)) {
                     _ = clib.putchar('\t');
                     clib.report_type(main.heap.h(f));
                     _ = clib.putchar('\n');
                 }
-                _ = clib.printf("\t}\n", .{.{}});
+                word.print("\t}}\n", .{});
             }
 
             var item = clib.typesfirst(main.alfasort(x));
@@ -354,7 +354,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                     const filename_str = main.get_fil(main.heap.h(f)).?;
                     if (clib.member(x, @intCast(@intFromPtr(filename_str))) == 0) {
                         x = main.cons(@intCast(@intFromPtr(filename_str)), x);
-                        _ = clib.printf("%s\n", .{.{filename_str}});
+                        word.print("{s}\n", .{filename_str});
                     }
                 }
             }
@@ -382,7 +382,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         if (tag[@intCast(main.rs.make_status)] == clib.STRCONS) {
             var h_val: Word = 0;
             var maxw: Word = 0;
-            _ = clib.printf("errors or undefined names found in:-\n", .{.{}});
+            word.print("errors or undefined names found in:-\n", .{});
             while (main.rs.make_status != 0) {
                 h_val = clib.strcons(main.heap.h(main.rs.make_status), h_val);
                 const w = @as(Word, @intCast(word.strlen(@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(h_val))))))));
@@ -396,11 +396,19 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             var w: Word = 0;
             while (h_val != 0) {
                 w += 1;
-                _ = clib.printf("%*s%s", .{.{ @as(c_int, @intCast(maxw)), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(h_val))))), @as([*:0]const u8, if ((@rem(w, n)) != 0) "" else "\n") }});
+                const str = @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(h_val)))));
+                const len = word.strlen(str);
+                const spaces_needed = if (@as(usize, @intCast(maxw)) > len) @as(usize, @intCast(maxw)) - len else 0;
+                var pad_idx: usize = 0;
+                while (pad_idx < spaces_needed) : (pad_idx += 1) {
+                    word.print(" ", .{});
+                }
+                const next_newline = if ((@rem(w, n)) != 0) "" else "\n";
+                word.print("{s}{s}", .{ str, next_newline });
                 h_val = main.heap.t(h_val);
             }
             if ((@rem(w, n)) != 0) {
-                _ = clib.printf("\n", .{.{}});
+                word.print("\n", .{});
             }
             main.rs.make_status = 1;
         }
@@ -509,11 +517,10 @@ pub fn checkversion(m: [*:0]const u8) c_int {
 }
 
 pub fn libfails() void {
-    const stderr = main.getStderr().?;
-    _ = clib.fprintf(stderr, "found", .{.{}});
+    word.printErr("found", .{});
     var i: usize = 0;
     while (i < mvp) : (i += 1) {
-        _ = clib.fprintf(stderr, "\tversion %s at: %s\n", .{.{ strvers(vstack[i]), mstack[i] }});
+        word.printErr("\tversion {s} at: {s}\n", .{strvers(vstack[i]), mstack[i]});
     }
 }
 
@@ -526,8 +533,8 @@ pub fn strvers(v: c_int) [*:0]const u8 {
 }
 
 pub fn v_info(full: c_int) void {
-    _ = clib.printf("%s last revised %s\n", .{.{ strvers(main.version), main.vdate }});
+    word.print("{s} last revised {s}\n", .{strvers(main.version), main.vdate});
     if (full == 0) return;
-    _ = clib.printf("%s", .{.{main.host}});
-    _ = clib.printf("XVERSION %u\n", .{.{@as(c_uint, @intCast(clib.XVERSION))}});
+    word.print("{s}", .{main.host});
+    word.print("XVERSION {}\n", .{@as(c_uint, @intCast(clib.XVERSION))});
 }
