@@ -337,17 +337,75 @@ Recommended sequence: **G1 → G2 → G3 → G4**, committing after each.
 
 ---
 
+## Phase 8: Deep Idiomatic Zig & Code Modernization (Planned)
+
+### Objective
+
+Building on the modular boundaries established in Phase 7, this phase eliminates the remaining C-style patterns, FFI coupling, and platform assumptions to produce a fully native, type-safe, and standard-adhering Zig codebase.
+
+---
+
+### Cluster H: Complete Elimination of `extern var` and `extern fn` Module Coupling
+
+*Goal: Replace remaining linker-based symbol coupling with clean Zig import graphs and state structs.*
+
+* **H1 — Encapsulate Compiler State (`CompilerState`)** ⬜
+  Create `src/compiler/compiler_state.zig` with a `CompilerState` struct to hold compiler/typechecker globals (`FBS`, `speclocs`, `newtyps`, `algshfns`, `DETROP`, `MISSING`, `ALIASES`, `TSUPPRESSED`, `TYPERRS`, etc.), eliminating the ~60 `extern var` references between `heap.zig` and the compiler.
+* **H2 — Convert Compiler/Types Chains** ⬜
+  Convert remaining `export fn`/`extern fn` pairs in `types.zig` and `trans.zig` into direct `@import` function calls.
+* **H3 — Unlink FFI-private Heap Accessors** ⬜
+  Remove remaining `export` keywords from heap accessors that are not called by C code or the legacy C-ABI test harness.
+
+---
+
+### Cluster I: Native Zig Types & API Modernization
+
+*Goal: Leverage Zig's safety features and type system at all internal API boundaries.*
+
+* **I1 — Slices instead of Raw Pointers** ⬜
+  Audit and convert C-style raw pointers (`[*]Word`, `?[*]Word`, `[*:0]u8`) at internal boundaries to native Zig slices (`[]Word`, `[]u8`, `[:0]u8`).
+* **I2 — Native Integers** ⬜
+  Replace platform-dependent C types (`c_int`, `c_long`, `c_uint`) with native Zig types (`i32`, `i64`, `usize`, `u32`) where FFI boundaries are not violated.
+* **I3 — Optional Types** ⬜
+  Replace raw sentinel value checks (e.g. `x == NIL`) at high-level boundaries with optional types (`?Word` or custom optional domain types).
+
+---
+
+### Cluster J: Comprehensive Error Union Propagation
+
+*Goal: Use Zig error sets and try/catch instead of sentinel error codes.*
+
+* **J1 — Propagation via Error Unions** ⬜
+  Refactor parser and compiler helper functions (in `parser.zig`, `codegen.zig`, `types.zig`, `trans.zig`) that currently return `NIL` or check global error flags (`SYNERR`, `errs`) to return structured `MiraError` unions.
+* **J2 — Standardize Panics and Assertions** ⬜
+  Replace C-style exit calls (`c.exit(1)`) or assertion printfs inside runtime/heap routines with proper error returns or structured panics.
+
+---
+
+### Cluster K: Code Style, Formatting, and Naming Standards
+
+*Goal: Align the code layout and names with standard Zig design guidelines.*
+
+* **K1 — Formatting Gate** ⬜
+  Format the entire codebase via `zig fmt` and verify compilation.
+* **K2 — Naming Conventions** ⬜
+  Standardize internal function and variable naming from `snake_case` or run-together names (e.g. `isconstrname`, `loadfile`) to standard Zig `camelCase`.
+* **K3 — Documentation** ⬜
+  Ensure all public structures, methods, and functions have comprehensive `///` doc comments.
+
+---
+
 ## Remaining Patterns
 
-These are known, bounded issues not yet addressed. Cluster G targets the first two directly.
+These are known, bounded issues not yet addressed. Clusters H, I, J, and K target these patterns.
 
-| Pattern | Count | Cluster G target? | Notes |
-|---------|-------|-------------------|-------|
-| `extern var` (non-convertible in F) | ~130 | G1, G3 | heap.zig (62) blocked by circular dep (G1); lex.zig-owned vars blocked by missing `LexState` (G3) |
-| `export fn` / `extern fn` pairs (linker-as-module) | ~350 | G2, G4 | Reducer handlers (G2); heap accessors (G4); compiler/types chains (future) |
-| `[*:0]` at internal boundaries | ~349 | — | FFI-boundary uses are correct; internal helpers can be converted incrementally |
-| `c_int` / `c_long` types | ~340 | — | `Word = c_long` is platform-correct; aliasing to `i64` is safe but low priority |
-| `= undefined` initialisations | ~108 | — | Many are write-before-read buffers (correct); audit for zero-init opportunities |
+| Pattern | Count | Target Cluster | Notes |
+|---------|-------|----------------|-------|
+| `extern var` | ~60 | H1 | Compiler globals (`FBS`, `speclocs`, etc.) and some remaining `heap.zig` globals |
+| `export fn` / `extern fn` pairs | ~250 | H2, H3 | Compiler/types chains and FFI-private heap accessors |
+| `[*:0]` at internal boundaries | ~340 | I1 | Can be converted to native slices `[]const u8` or `[:0]const u8` |
+| `c_int` / `c_long` types | ~340 | I2 | Convert to standard types like `i32`/`i64` or `usize` |
+| `= undefined` initialisations | ~100 | — | Audit for zero-init opportunities |
 
 ---
 
@@ -379,3 +437,14 @@ These are known, bounded issues not yet addressed. Cluster G targets the first t
 | G | G2 | Reducer direct dispatch (eliminate ~84 extern fn ↔ export fn pairs) | ✅ Complete |
 | G | G3 | Migrate `lex.zig` state to `LexState` struct | ✅ Complete |
 | G | G4 | Convert heap accessor `extern fn` calls to direct imports | ✅ Complete |
+| H | H1 | Encapsulate Compiler State (`CompilerState`) | ⬜ Planned |
+| H | H2 | Convert Compiler/Types Chains | ⬜ Planned |
+| H | H3 | Unlink FFI-private Heap Accessors | ⬜ Planned |
+| I | I1 | Slices instead of Raw Pointers | ⬜ Planned |
+| I | I2 | Native Integers | ⬜ Planned |
+| I | I3 | Optional Types | ⬜ Planned |
+| J | J1 | Propagation via Error Unions | ⬜ Planned |
+| J | J2 | Standardize Panics and Assertions | ⬜ Planned |
+| K | K1 | Formatting Gate | ⬜ Planned |
+| K | K2 | Naming Conventions | ⬜ Planned |
+| K | K3 | Documentation | ⬜ Planned |
