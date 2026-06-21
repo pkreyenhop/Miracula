@@ -41,9 +41,9 @@ pub const CompilerState = struct {
 
     // From trans.zig
     SGC: Word = NIL,
-    lfrule: c_int = 0,
+    lfrule: i32 = 0,
     newtyps: Word = NIL,
-    polyshowerror: c_int = 0,
+    polyshowerror: i32 = 0,
     speclocs: Word = NIL,
     was_poly: Word = 0,
     algshfns: Word = NIL,

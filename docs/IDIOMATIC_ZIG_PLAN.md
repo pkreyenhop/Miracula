@@ -441,10 +441,10 @@ These are known, bounded issues not yet addressed. Clusters H, I, J, and K targe
 | H | H2 | Convert Compiler/Types Chains | ✅ Complete |
 | H | H3 | Unlink FFI-private Heap Accessors | ✅ Complete |
 | I | I1 | Slices instead of Raw Pointers | ⬜ Planned |
-| I | I2 | Native Integers | ⬜ Planned |
+| I | I2 | Native Integers | ✅ Complete |
 | I | I3 | Optional Types | ⬜ Planned |
 | J | J1 | Propagation via Error Unions | ⬜ Planned |
 | J | J2 | Standardize Panics and Assertions | ⬜ Planned |
-| K | K1 | Formatting Gate | ⬜ Planned |
+| K | K1 | Formatting Gate | ✅ Complete |
 | K | K2 | Naming Conventions | ⬜ Planned |
 | K | K3 | Documentation | ⬜ Planned |

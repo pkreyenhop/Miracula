@@ -48,8 +48,8 @@ pub const RuntimeState = struct {
     SPACELIMIT: Word = 2500000,
     /// Dictionary space in bytes; set from `-dic N` CLI flag.
     DICSPACE: Word = 100000,
-    UTF8: c_int = 0,
-    UTF8OUT: c_int = 0,
+    UTF8: i32 = 0,
+    UTF8OUT: i32 = 0,
 
     // Configuration — set from CLI flags or .mirarc before mira_setup().
     editor: ?[*:0]u8 = null,
@@ -64,10 +64,10 @@ pub const RuntimeState = struct {
     s_in: ?*clib.FILE = null,
 
     // Runtime counters (all updated by the GC and evaluator; read by //stats).
-    atobject: c_int = 0,
-    atgc: c_int = 0,
-    atcount: c_int = 0,
-    debug: c_int = 0,
+    atobject: i32 = 0,
+    atgc: i32 = 0,
+    atcount: i32 = 0,
+    debug: i32 = 0,
 
     // Evaluation control flags
     /// True when building a .mirarc dump; suppresses side-effects.
@@ -78,7 +78,7 @@ pub const RuntimeState = struct {
     mkexports: bool = false,
     mksources: bool = false,
     make_status: Word = 0,
-    ideep: c_int = 0,
+    ideep: i32 = 0,
     /// Non-zero during the one-time startup before `commandloop` begins.
     /// Guards paths that must not repeat (e.g. panic on missing prelude).
     initialising: Word = 1,
@@ -114,10 +114,10 @@ pub const RuntimeState = struct {
     env: clib.sigjmp_buf = .{},
     /// Path of a temp file to unlink if a signal fires during dump/undump.
     unlinkme: ?[*:0]const u8 = null,
-    sigflag: c_int = 0,
+    sigflag: i32 = 0,
 
     // Sorted output and GC-adjacent state
-    sorted: c_int = 0,
+    sorted: i32 = 0,
     detrop: Word = NIL,
     /// Reload-file list: heap list of file nodes needing re-checking after a change.
     rfl: Word = NIL,
