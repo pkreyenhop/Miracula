@@ -1,5 +1,5 @@
 const std = @import("std");
-const reduce = @import("reduce.zig");
+const reduce = @import("reduce_core.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
 const clib = reduce.clib;
@@ -7,19 +7,19 @@ const clib = reduce.clib;
 extern var tag: [*]u8;
 extern fn reduce_stream_read(ctx: ?*anyopaque, op: Word) c_int;
 
-export fn handle_READ(ctx: *ReductionCtx) void {
+pub fn handle_READ(ctx: *ReductionCtx) void {
     ctx.action = reduce_stream_read(ctx, clib.READ);
 }
 
-export fn handle_READBIN(ctx: *ReductionCtx) void {
+pub fn handle_READBIN(ctx: *ReductionCtx) void {
     ctx.action = reduce_stream_read(ctx, clib.READBIN);
 }
 
-export fn handle_READVALS(ctx: *ReductionCtx) void {
+pub fn handle_READVALS(ctx: *ReductionCtx) void {
     ctx.action = reduce_stream_read(ctx, clib.READVALS);
 }
 
-export fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
+pub fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;

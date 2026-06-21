@@ -1,15 +1,13 @@
 const std = @import("std");
 pub const clib = @import("../c_abi.zig");
+const core = @import("reduce_core.zig");
+const combinators = @import("combinators.zig");
+const ready = @import("ready.zig");
+const lex_handlers = @import("lex.zig");
+const io_handlers = @import("io.zig");
 
-pub const Word = c_long;
-
-pub const ReductionCtx = extern struct {
-    e: Word,
-    s: Word,
-    hold: Word,
-    args: [4]Word,
-    action: c_int,
-};
+pub const Word = core.Word;
+pub const ReductionCtx = core.ReductionCtx;
 
 // Extern globals referenced by reducer helpers
 extern var hd: [*]Word;
@@ -17,8 +15,6 @@ extern var tl: [*]Word;
 extern var tag: [*]u8;
 extern var cycles: i64;
 pub extern var stdinuse: Word;
-
-extern fn handle_ready_state(ctx: *ReductionCtx) void;
 
 pub export fn reduce(e_val: Word) Word {
     var ctx: ReductionCtx = undefined;
@@ -40,99 +36,99 @@ pub export fn reduce(e_val: Word) Word {
         ctx.action = clib.ACT_NONE;
 
         switch (ctx.e) {
-            clib.S => clib.zig_handleS(@ptrCast(&ctx)),
-            clib.B => clib.zig_handleB(@ptrCast(&ctx)),
-            clib.CB => clib.zig_handleCB(@ptrCast(&ctx)),
-            clib.C => clib.zig_handleC(@ptrCast(&ctx)),
-            clib.Y => clib.zig_handleY(@ptrCast(&ctx)),
-            clib.K => clib.zig_handleK(@ptrCast(&ctx)),
-            clib.KI => clib.zig_handleKI(@ptrCast(&ctx)),
-            clib.S1 => clib.zig_handleS1(@ptrCast(&ctx)),
-            clib.B1 => clib.zig_handleB1(@ptrCast(&ctx)),
-            clib.C1 => clib.zig_handleC1(@ptrCast(&ctx)),
-            clib.S_p => clib.zig_handleS_p(@ptrCast(&ctx)),
-            clib.B_p => clib.zig_handleB_p(@ptrCast(&ctx)),
-            clib.C_p => clib.zig_handleC_p(@ptrCast(&ctx)),
-            clib.ITERATE => clib.zig_handleITERATE(@ptrCast(&ctx)),
-            clib.ITERATE1 => clib.zig_handleITERATE1(@ptrCast(&ctx)),
-            clib.P, clib.G_RULE => clib.zig_handleP(@ptrCast(&ctx)),
-            clib.U => clib.zig_handleU(@ptrCast(&ctx)),
-            clib.Uf => clib.zig_handleUf(@ptrCast(&ctx)),
-            clib.ATLEAST => clib.zig_handleATLEAST(@ptrCast(&ctx)),
-            clib.U_ => clib.zig_handleU_(@ptrCast(&ctx)),
-            clib.Ug => clib.zig_handleUg(@ptrCast(&ctx)),
-            clib.MATCH => clib.zig_handleMATCH(@ptrCast(&ctx)),
-            clib.MATCHINT => clib.zig_handleMATCHINT(@ptrCast(&ctx)),
-            clib.GENSEQ => clib.zig_handleGENSEQ(@ptrCast(&ctx)),
-            clib.MAP => clib.zig_handleMAP(@ptrCast(&ctx)),
-            clib.FLATMAP => clib.zig_handleFLATMAP(@ptrCast(&ctx)),
-            clib.FILTER => clib.zig_handleFILTER(@ptrCast(&ctx)),
-            clib.LIST_LAST => clib.zig_handleLIST_LAST(@ptrCast(&ctx)),
-            clib.LENGTH => clib.zig_handleLENGTH(@ptrCast(&ctx)),
-            clib.DROP => clib.zig_handleDROP(@ptrCast(&ctx)),
-            clib.SUBSCRIPT => clib.zig_handleSUBSCRIPT(@ptrCast(&ctx)),
-            clib.FOLDL1 => clib.zig_handleFOLDL1(@ptrCast(&ctx)),
-            clib.FOLDL => clib.zig_handleFOLDL(@ptrCast(&ctx)),
-            clib.FOLDR => clib.zig_handleFOLDR(@ptrCast(&ctx)),
-            clib.BADCASE => clib.zig_handleBADCASE(@ptrCast(&ctx)),
-            clib.GETARGS => clib.zig_handleGETARGS(@ptrCast(&ctx)),
-            clib.CONFERROR => clib.zig_handleCONFERROR(@ptrCast(&ctx)),
-            clib.ERROR => clib.zig_handleERROR(@ptrCast(&ctx)),
-            clib.WAIT => clib.zig_handleWAIT(@ptrCast(&ctx)),
-            clib.TRY => clib.zig_handleTRY(@ptrCast(&ctx)),
-            clib.FAIL => clib.zig_handleFAIL(@ptrCast(&ctx)),
-            clib.Ush1 => clib.zig_handleUsh1(@ptrCast(&ctx)),
-            clib.MKSTRICT => clib.zig_handleMKSTRICT(@ptrCast(&ctx)),
+            clib.S => combinators.zig_handleS(&ctx),
+            clib.B => combinators.zig_handleB(&ctx),
+            clib.CB => combinators.zig_handleCB(&ctx),
+            clib.C => combinators.zig_handleC(&ctx),
+            clib.Y => combinators.zig_handleY(&ctx),
+            clib.K => combinators.zig_handleK(&ctx),
+            clib.KI => combinators.zig_handleKI(&ctx),
+            clib.S1 => combinators.zig_handleS1(&ctx),
+            clib.B1 => combinators.zig_handleB1(&ctx),
+            clib.C1 => combinators.zig_handleC1(&ctx),
+            clib.S_p => combinators.zig_handleS_p(&ctx),
+            clib.B_p => combinators.zig_handleB_p(&ctx),
+            clib.C_p => combinators.zig_handleC_p(&ctx),
+            clib.ITERATE => combinators.zig_handleITERATE(&ctx),
+            clib.ITERATE1 => combinators.zig_handleITERATE1(&ctx),
+            clib.P, clib.G_RULE => combinators.zig_handleP(&ctx),
+            clib.U => combinators.zig_handleU(&ctx),
+            clib.Uf => combinators.zig_handleUf(&ctx),
+            clib.ATLEAST => combinators.zig_handleATLEAST(&ctx),
+            clib.U_ => combinators.zig_handleU_(&ctx),
+            clib.Ug => combinators.zig_handleUg(&ctx),
+            clib.MATCH => combinators.zig_handleMATCH(&ctx),
+            clib.MATCHINT => combinators.zig_handleMATCHINT(&ctx),
+            clib.GENSEQ => combinators.zig_handleGENSEQ(&ctx),
+            clib.MAP => combinators.zig_handleMAP(&ctx),
+            clib.FLATMAP => combinators.zig_handleFLATMAP(&ctx),
+            clib.FILTER => combinators.zig_handleFILTER(&ctx),
+            clib.LIST_LAST => combinators.zig_handleLIST_LAST(&ctx),
+            clib.LENGTH => combinators.zig_handleLENGTH(&ctx),
+            clib.DROP => combinators.zig_handleDROP(&ctx),
+            clib.SUBSCRIPT => combinators.zig_handleSUBSCRIPT(&ctx),
+            clib.FOLDL1 => combinators.zig_handleFOLDL1(&ctx),
+            clib.FOLDL => combinators.zig_handleFOLDL(&ctx),
+            clib.FOLDR => combinators.zig_handleFOLDR(&ctx),
+            clib.BADCASE => combinators.zig_handleBADCASE(&ctx),
+            clib.GETARGS => combinators.zig_handleGETARGS(&ctx),
+            clib.CONFERROR => combinators.zig_handleCONFERROR(&ctx),
+            clib.ERROR => combinators.zig_handleERROR(&ctx),
+            clib.WAIT => combinators.zig_handleWAIT(&ctx),
+            clib.TRY => combinators.zig_handleTRY(&ctx),
+            clib.FAIL => combinators.zig_handleFAIL(&ctx),
+            clib.Ush1 => combinators.zig_handleUsh1(&ctx),
+            clib.MKSTRICT => combinators.zig_handleMKSTRICT(&ctx),
 
-            clib.I => clib.zig_handleI(@ptrCast(&ctx)),
+            clib.I => combinators.zig_handleI(&ctx),
 
-            clib.SEQ, clib.FORCE, clib.HD, clib.TL, clib.BODY, clib.LAST, clib.EXEC, clib.FILEMODE, clib.FILESTAT, clib.GETENV, clib.INTEGER, clib.NUMVAL, clib.TAKE, clib.STARTREAD, clib.STARTREADBIN, clib.NB_STARTREAD, clib.COND, clib.APPEND, clib.AND, clib.OR, clib.NOT, clib.NEG, clib.CODE, clib.DECODE, clib.SHOWNUM, clib.SHOWHEX, clib.SHOWOCT, clib.ARCTAN_FN, clib.EXP_FN, clib.ENTIER_FN, clib.LOG_FN, clib.LOG10_FN, clib.SIN_FN, clib.COS_FN, clib.SQRT_FN => clib.zig_handle_strict_monadic(@ptrCast(&ctx)),
+            clib.SEQ, clib.FORCE, clib.HD, clib.TL, clib.BODY, clib.LAST, clib.EXEC, clib.FILEMODE, clib.FILESTAT, clib.GETENV, clib.INTEGER, clib.NUMVAL, clib.TAKE, clib.STARTREAD, clib.STARTREADBIN, clib.NB_STARTREAD, clib.COND, clib.APPEND, clib.AND, clib.OR, clib.NOT, clib.NEG, clib.CODE, clib.DECODE, clib.SHOWNUM, clib.SHOWHEX, clib.SHOWOCT, clib.ARCTAN_FN, clib.EXP_FN, clib.ENTIER_FN, clib.LOG_FN, clib.LOG10_FN, clib.SIN_FN, clib.COS_FN, clib.SQRT_FN => combinators.zig_handle_strict_monadic(&ctx),
 
-            clib.ZIP, clib.STEP, clib.EQ, clib.NEQ, clib.PLUS, clib.MINUS, clib.TIMES, clib.INTDIV, clib.FDIV, clib.MOD, clib.GRE, clib.GR, clib.POWER, clib.SHOWSCALED, clib.SHOWFLOAT, clib.MERGE => clib.zig_handle_strict_diadic(@ptrCast(&ctx)),
+            clib.ZIP, clib.STEP, clib.EQ, clib.NEQ, clib.PLUS, clib.MINUS, clib.TIMES, clib.INTDIV, clib.FDIV, clib.MOD, clib.GRE, clib.GR, clib.POWER, clib.SHOWSCALED, clib.SHOWFLOAT, clib.MERGE => combinators.zig_handle_strict_diadic(&ctx),
 
-            clib.Ush, clib.STEPUNTIL => clib.zig_handle_strict_triadic(@ptrCast(&ctx)),
+            clib.Ush, clib.STEPUNTIL => combinators.zig_handle_strict_triadic(&ctx),
 
-            // Grammar Combinators (reduce_lex.c)
-            clib.G_ERROR => clib.handle_G_ERROR(@ptrCast(&ctx)),
-            clib.G_ALT => clib.handle_G_ALT(@ptrCast(&ctx)),
-            clib.G_OPT => clib.handle_G_OPT(@ptrCast(&ctx)),
-            clib.G_STAR => clib.handle_G_STAR(@ptrCast(&ctx)),
-            clib.G_FBSTAR => clib.handle_G_FBSTAR(@ptrCast(&ctx)),
-            clib.G_SYMB => clib.handle_G_SYMB(@ptrCast(&ctx)),
-            clib.G_ANY => clib.handle_G_ANY(@ptrCast(&ctx)),
-            clib.G_SUCHTHAT => clib.handle_G_SUCHTHAT(@ptrCast(&ctx)),
-            clib.G_END => clib.handle_G_END(@ptrCast(&ctx)),
-            clib.G_STATE => clib.handle_G_STATE(@ptrCast(&ctx)),
-            clib.G_SEQ => clib.handle_G_SEQ(@ptrCast(&ctx)),
-            clib.G_UNIT => clib.handle_G_UNIT(@ptrCast(&ctx)),
-            clib.G_ZERO => clib.handle_G_ZERO(@ptrCast(&ctx)),
-            clib.G_CLOSE => clib.handle_G_CLOSE(@ptrCast(&ctx)),
-            clib.G_COUNT => clib.handle_G_COUNT(@ptrCast(&ctx)),
+            // Grammar Combinators (lex.zig)
+            clib.G_ERROR => lex_handlers.handle_G_ERROR(&ctx),
+            clib.G_ALT => lex_handlers.handle_G_ALT(&ctx),
+            clib.G_OPT => lex_handlers.handle_G_OPT(&ctx),
+            clib.G_STAR => lex_handlers.handle_G_STAR(&ctx),
+            clib.G_FBSTAR => lex_handlers.handle_G_FBSTAR(&ctx),
+            clib.G_SYMB => lex_handlers.handle_G_SYMB(&ctx),
+            clib.G_ANY => lex_handlers.handle_G_ANY(&ctx),
+            clib.G_SUCHTHAT => lex_handlers.handle_G_SUCHTHAT(&ctx),
+            clib.G_END => lex_handlers.handle_G_END(&ctx),
+            clib.G_STATE => lex_handlers.handle_G_STATE(&ctx),
+            clib.G_SEQ => lex_handlers.handle_G_SEQ(&ctx),
+            clib.G_UNIT => lex_handlers.handle_G_UNIT(&ctx),
+            clib.G_ZERO => lex_handlers.handle_G_ZERO(&ctx),
+            clib.G_CLOSE => lex_handlers.handle_G_CLOSE(&ctx),
+            clib.G_COUNT => lex_handlers.handle_G_COUNT(&ctx),
 
-            // Lexer Combinators (reduce_lex.c)
-            clib.LEX_RPT1 => clib.handle_LEX_RPT1(@ptrCast(&ctx)),
-            clib.LEX_RPT => clib.handle_LEX_RPT(@ptrCast(&ctx)),
-            clib.LEX_TRY => clib.handle_LEX_TRY(@ptrCast(&ctx)),
-            clib.LEX_TRY_ => clib.handle_LEX_TRY_(@ptrCast(&ctx)),
-            clib.LEX_TRY1 => clib.handle_LEX_TRY1(@ptrCast(&ctx)),
-            clib.LEX_TRY1_ => clib.handle_LEX_TRY1_(@ptrCast(&ctx)),
-            clib.DESTREV => clib.handle_DESTREV(@ptrCast(&ctx)),
-            clib.LEX_COUNT0 => clib.handle_LEX_COUNT0(@ptrCast(&ctx)),
-            clib.LEX_COUNT => clib.handle_LEX_COUNT(@ptrCast(&ctx)),
-            clib.LEX_STRING => clib.handle_LEX_STRING(@ptrCast(&ctx)),
-            clib.LEX_CLASS => clib.handle_LEX_CLASS(@ptrCast(&ctx)),
-            clib.LEX_DOT => clib.handle_LEX_DOT(@ptrCast(&ctx)),
-            clib.LEX_CHAR => clib.handle_LEX_CHAR(@ptrCast(&ctx)),
-            clib.LEX_SEQ => clib.handle_LEX_SEQ(@ptrCast(&ctx)),
-            clib.LEX_OR => clib.handle_LEX_OR(@ptrCast(&ctx)),
-            clib.LEX_RCONTEXT => clib.handle_LEX_RCONTEXT(@ptrCast(&ctx)),
-            clib.LEX_STAR => clib.handle_LEX_STAR(@ptrCast(&ctx)),
-            clib.LEX_OPT => clib.handle_LEX_OPT(@ptrCast(&ctx)),
+            // Lexer Combinators (lex.zig)
+            clib.LEX_RPT1 => lex_handlers.handle_LEX_RPT1(&ctx),
+            clib.LEX_RPT => lex_handlers.handle_LEX_RPT(&ctx),
+            clib.LEX_TRY => lex_handlers.handle_LEX_TRY(&ctx),
+            clib.LEX_TRY_ => lex_handlers.handle_LEX_TRY_(&ctx),
+            clib.LEX_TRY1 => lex_handlers.handle_LEX_TRY1(&ctx),
+            clib.LEX_TRY1_ => lex_handlers.handle_LEX_TRY1_(&ctx),
+            clib.DESTREV => lex_handlers.handle_DESTREV(&ctx),
+            clib.LEX_COUNT0 => lex_handlers.handle_LEX_COUNT0(&ctx),
+            clib.LEX_COUNT => lex_handlers.handle_LEX_COUNT(&ctx),
+            clib.LEX_STRING => lex_handlers.handle_LEX_STRING(&ctx),
+            clib.LEX_CLASS => lex_handlers.handle_LEX_CLASS(&ctx),
+            clib.LEX_DOT => lex_handlers.handle_LEX_DOT(&ctx),
+            clib.LEX_CHAR => lex_handlers.handle_LEX_CHAR(&ctx),
+            clib.LEX_SEQ => lex_handlers.handle_LEX_SEQ(&ctx),
+            clib.LEX_OR => lex_handlers.handle_LEX_OR(&ctx),
+            clib.LEX_RCONTEXT => lex_handlers.handle_LEX_RCONTEXT(&ctx),
+            clib.LEX_STAR => lex_handlers.handle_LEX_STAR(&ctx),
+            clib.LEX_OPT => lex_handlers.handle_LEX_OPT(&ctx),
 
-            // IO (reduce_io.c)
-            clib.READ => clib.handle_READ(@ptrCast(&ctx)),
-            clib.READBIN => clib.handle_READBIN(@ptrCast(&ctx)),
-            clib.READVALS => clib.handle_READVALS(@ptrCast(&ctx)),
+            // IO (io.zig)
+            clib.READ => io_handlers.handle_READ(&ctx),
+            clib.READBIN => io_handlers.handle_READBIN(&ctx),
+            clib.READVALS => io_handlers.handle_READVALS(&ctx),
 
             else => {
                 cycles -= 1;
@@ -175,7 +171,7 @@ pub export fn reduce(e_val: Word) Word {
                         }
                     },
                     clib.STARTREADVALS => {
-                        clib.handle_STARTREADVALS(@ptrCast(&ctx));
+                        io_handlers.handle_STARTREADVALS(&ctx);
                     },
                     clib.ATOM, clib.INT, clib.UNICODE, clib.DOUBLE, clib.CONS => {
                         ctx.action = clib.ACT_DONE;
@@ -205,7 +201,7 @@ pub export fn reduce(e_val: Word) Word {
                 continue :main_loop;
             }
 
-            handle_ready_state(&ctx);
+            ready.handle_ready_state(&ctx);
             if (ctx.action == clib.ACT_NEXTREDEX) {
                 continue :main_loop;
             }

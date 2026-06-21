@@ -1,10 +1,12 @@
 const std = @import("std");
-const reduce = @import("reduce.zig");
+const reduce = @import("reduce_core.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
 const clib = reduce.clib;
 const platform = @import("../../io/platform.zig");
 const main = @import("../../main.zig");
+const combinators = @import("combinators.zig");
+const io_handlers = @import("io.zig");
 
 extern var tag: [*]u8;
 extern var hd: [*]Word;
@@ -17,7 +19,7 @@ inline fn set_lastarg(ctx: *ReductionCtx, val: Word) void {
     reduce.tl_set(ctx.e, val);
 }
 
-export fn handle_ready_state(ctx: *ReductionCtx) void {
+pub fn handle_ready_state(ctx: *ReductionCtx) void {
     @setEvalBranchQuota(50000);
     // shadow vars to replicate C macro-mappings
     // #define e (ctx->e)
@@ -311,7 +313,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
             set_lastarg(ctx, @intCast(@intFromPtr(f.?)));
             reduce.hd_set(ctx.e, clib.READ);
             reduce.downLeft(ctx);
-            clib.handle_READ(@ptrCast(ctx));
+            io_handlers.handle_READ(ctx);
             return;
         },
         clib.STARTREADBIN => {
@@ -326,7 +328,7 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
             set_lastarg(ctx, @intCast(@intFromPtr(f.?)));
             reduce.hd_set(ctx.e, clib.READBIN);
             reduce.downLeft(ctx);
-            clib.handle_READBIN(@ptrCast(ctx));
+            io_handlers.handle_READBIN(ctx);
             return;
         },
         clib.TRY => {
@@ -350,10 +352,10 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
             reduce.upLeft(ctx);
             if (lastarg(ctx) == clib.True) {
                 reduce.rewrite_to_value(&ctx.e, clib.K);
-                clib.zig_handleK(@ptrCast(ctx));
+                combinators.zig_handleK(ctx);
             } else {
                 reduce.rewrite_to_value(&ctx.e, clib.KI);
-                clib.zig_handleKI(@ptrCast(ctx));
+                combinators.zig_handleKI(ctx);
             }
             return;
         },
@@ -376,11 +378,11 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
             reduce.upLeft(ctx);
             if (lastarg(ctx) == clib.True) {
                 ctx.e = clib.I;
-                clib.zig_handle_strict_monadic(@ptrCast(ctx));
+                combinators.zig_handle_strict_monadic(ctx);
             } else {
                 reduce.hd_set(ctx.e, clib.K);
                 reduce.downLeft(ctx);
-                clib.zig_handleK(@ptrCast(ctx));
+                combinators.zig_handleK(ctx);
             }
             return;
         },
@@ -389,10 +391,10 @@ export fn handle_ready_state(ctx: *ReductionCtx) void {
             if (lastarg(ctx) == clib.True) {
                 reduce.hd_set(ctx.e, clib.K);
                 reduce.downLeft(ctx);
-                clib.zig_handleK(@ptrCast(ctx));
+                combinators.zig_handleK(ctx);
             } else {
                 ctx.e = clib.I;
-                clib.zig_handle_strict_monadic(@ptrCast(ctx));
+                combinators.zig_handle_strict_monadic(ctx);
             }
             return;
         },

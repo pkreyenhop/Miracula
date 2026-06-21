@@ -1,12 +1,12 @@
 const std = @import("std");
-const reduce = @import("reduce.zig");
+const reduce = @import("reduce_core.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
 const clib = reduce.clib;
 
 extern var tl: [*]Word;
 
-export fn zig_handleI(ctx: *ReductionCtx) void {
+pub fn zig_handleI(ctx: *ReductionCtx) void {
     if (reduce.downright(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -14,7 +14,7 @@ export fn zig_handleI(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleK(ctx: *ReductionCtx) void {
+pub fn zig_handleK(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
         ctx.action = clib.ACT_DONE;
@@ -28,7 +28,7 @@ export fn zig_handleK(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleS(ctx: *ReductionCtx) void {
+pub fn zig_handleS(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -51,7 +51,7 @@ export fn zig_handleS(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleB(ctx: *ReductionCtx) void {
+pub fn zig_handleB(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -73,7 +73,7 @@ export fn zig_handleB(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleCB(ctx: *ReductionCtx) void {
+pub fn zig_handleCB(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -95,7 +95,7 @@ export fn zig_handleCB(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleC(ctx: *ReductionCtx) void {
+pub fn zig_handleC(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -118,7 +118,7 @@ export fn zig_handleC(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleY(ctx: *ReductionCtx) void {
+pub fn zig_handleY(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -129,7 +129,7 @@ export fn zig_handleY(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleKI(ctx: *ReductionCtx) void {
+pub fn zig_handleKI(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -142,7 +142,7 @@ export fn zig_handleKI(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleS1(ctx: *ReductionCtx) void {
+pub fn zig_handleS1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     var arg3: Word = 0;
@@ -171,7 +171,7 @@ export fn zig_handleS1(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleB1(ctx: *ReductionCtx) void {
+pub fn zig_handleB1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     var arg3: Word = 0;
@@ -199,7 +199,7 @@ export fn zig_handleB1(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleC1(ctx: *ReductionCtx) void {
+pub fn zig_handleC1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     var arg3: Word = 0;
@@ -227,7 +227,7 @@ export fn zig_handleC1(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleS_p(ctx: *ReductionCtx) void {
+pub fn zig_handleS_p(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -247,7 +247,7 @@ export fn zig_handleS_p(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn zig_handleB_p(ctx: *ReductionCtx) void {
+pub fn zig_handleB_p(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -267,7 +267,7 @@ export fn zig_handleB_p(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn zig_handleC_p(ctx: *ReductionCtx) void {
+pub fn zig_handleC_p(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -287,7 +287,7 @@ export fn zig_handleC_p(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn zig_handleITERATE(ctx: *ReductionCtx) void {
+pub fn zig_handleITERATE(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
         ctx.action = clib.ACT_DONE;
@@ -303,7 +303,7 @@ export fn zig_handleITERATE(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn zig_handleITERATE1(ctx: *ReductionCtx) void {
+pub fn zig_handleITERATE1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
         ctx.action = clib.ACT_DONE;
@@ -324,7 +324,7 @@ export fn zig_handleITERATE1(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn zig_handleP(ctx: *ReductionCtx) void {
+pub fn zig_handleP(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
         ctx.action = clib.ACT_DONE;
@@ -339,7 +339,7 @@ export fn zig_handleP(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn zig_handleU(ctx: *ReductionCtx) void {
+pub fn zig_handleU(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
         ctx.action = clib.ACT_DONE;
@@ -357,7 +357,7 @@ export fn zig_handleU(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleUf(ctx: *ReductionCtx) void {
+pub fn zig_handleUf(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
         ctx.action = clib.ACT_DONE;
@@ -380,7 +380,7 @@ export fn zig_handleUf(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleATLEAST(ctx: *ReductionCtx) void {
+pub fn zig_handleATLEAST(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -411,7 +411,7 @@ export fn zig_handleATLEAST(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleU_(ctx: *ReductionCtx) void {
+pub fn zig_handleU_(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
         ctx.action = clib.ACT_DONE;
@@ -433,7 +433,7 @@ export fn zig_handleU_(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleUg(ctx: *ReductionCtx) void {
+pub fn zig_handleUg(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -470,7 +470,7 @@ export fn zig_handleUg(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleMATCH(ctx: *ReductionCtx) void {
+pub fn zig_handleMATCH(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -491,7 +491,7 @@ export fn zig_handleMATCH(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleMATCHINT(ctx: *ReductionCtx) void {
+pub fn zig_handleMATCHINT(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -511,7 +511,7 @@ export fn zig_handleMATCHINT(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleGENSEQ(ctx: *ReductionCtx) void {
+pub fn zig_handleGENSEQ(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     reduce.GETARG(ctx, &arg1);
     if (reduce.upleft(ctx)) {
@@ -530,7 +530,7 @@ export fn zig_handleGENSEQ(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn zig_handleMAP(ctx: *ReductionCtx) void {
+pub fn zig_handleMAP(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
         ctx.action = clib.ACT_DONE;
@@ -550,7 +550,7 @@ export fn zig_handleMAP(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn zig_handleFLATMAP(ctx: *ReductionCtx) void {
+pub fn zig_handleFLATMAP(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -580,7 +580,7 @@ export fn zig_handleFLATMAP(ctx: *ReductionCtx) void {
     }
 }
 
-export fn zig_handleFILTER(ctx: *ReductionCtx) void {
+pub fn zig_handleFILTER(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
         ctx.action = clib.ACT_DONE;
@@ -603,7 +603,7 @@ export fn zig_handleFILTER(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn zig_handleLIST_LAST(ctx: *ReductionCtx) void {
+pub fn zig_handleLIST_LAST(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -622,7 +622,7 @@ export fn zig_handleLIST_LAST(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleLENGTH(ctx: *ReductionCtx) void {
+pub fn zig_handleLENGTH(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -639,7 +639,7 @@ export fn zig_handleLENGTH(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn zig_handleDROP(ctx: *ReductionCtx) void {
+pub fn zig_handleDROP(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
         ctx.action = clib.ACT_DONE;
@@ -670,7 +670,7 @@ export fn zig_handleDROP(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleSUBSCRIPT(ctx: *ReductionCtx) void {
+pub fn zig_handleSUBSCRIPT(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -709,7 +709,7 @@ export fn zig_handleSUBSCRIPT(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleFOLDL1(ctx: *ReductionCtx) void {
+pub fn zig_handleFOLDL1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
         ctx.action = clib.ACT_DONE;
@@ -729,7 +729,7 @@ export fn zig_handleFOLDL1(ctx: *ReductionCtx) void {
     }
 }
 
-export fn zig_handleFOLDL(ctx: *ReductionCtx) void {
+pub fn zig_handleFOLDL(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -755,7 +755,7 @@ export fn zig_handleFOLDL(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleFOLDR(ctx: *ReductionCtx) void {
+pub fn zig_handleFOLDR(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -781,7 +781,7 @@ export fn zig_handleFOLDR(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleBADCASE(ctx: *ReductionCtx) void {
+pub fn zig_handleBADCASE(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -790,7 +790,7 @@ export fn zig_handleBADCASE(ctx: *ReductionCtx) void {
     reduce.reduce_badcase_error(lastarg);
 }
 
-export fn zig_handleGETARGS(ctx: *ReductionCtx) void {
+pub fn zig_handleGETARGS(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -799,7 +799,7 @@ export fn zig_handleGETARGS(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn zig_handleCONFERROR(ctx: *ReductionCtx) void {
+pub fn zig_handleCONFERROR(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -808,7 +808,7 @@ export fn zig_handleCONFERROR(ctx: *ReductionCtx) void {
     reduce.reduce_conf_error(lastarg);
 }
 
-export fn zig_handleERROR(ctx: *ReductionCtx) void {
+pub fn zig_handleERROR(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -831,7 +831,7 @@ fn WEXITSTATUS(status: c_int) c_int {
     return (status >> 8) & 0xff;
 }
 
-export fn zig_handleWAIT(ctx: *ReductionCtx) void {
+pub fn zig_handleWAIT(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -863,7 +863,7 @@ export fn zig_handleWAIT(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn zig_handleTRY(ctx: *ReductionCtx) void {
+pub fn zig_handleTRY(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -894,7 +894,7 @@ export fn zig_handleTRY(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handleFAIL(ctx: *ReductionCtx) void {
+pub fn zig_handleFAIL(ctx: *ReductionCtx) void {
     while (!reduce.abnormal(ctx.s)) {
         ctx.hold = ctx.s;
         ctx.s = reduce.hd_get(ctx.s);
@@ -904,7 +904,7 @@ export fn zig_handleFAIL(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn zig_handleUsh1(ctx: *ReductionCtx) void {
+pub fn zig_handleUsh1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     var arg3: Word = 0;
@@ -952,7 +952,7 @@ export fn zig_handleUsh1(ctx: *ReductionCtx) void {
     }
 }
 
-export fn zig_handleMKSTRICT(ctx: *ReductionCtx) void {
+pub fn zig_handleMKSTRICT(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     reduce.GETARG(ctx, &arg1);
@@ -981,7 +981,7 @@ export fn zig_handleMKSTRICT(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handle_strict_monadic(ctx: *ReductionCtx) void {
+pub fn zig_handle_strict_monadic(ctx: *ReductionCtx) void {
     if (reduce.downright(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -989,7 +989,7 @@ export fn zig_handle_strict_monadic(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handle_strict_diadic(ctx: *ReductionCtx) void {
+pub fn zig_handle_strict_diadic(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -1001,7 +1001,7 @@ export fn zig_handle_strict_diadic(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn zig_handle_strict_triadic(ctx: *ReductionCtx) void {
+pub fn zig_handle_strict_triadic(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;

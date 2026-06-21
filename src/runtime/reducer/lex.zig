@@ -1,5 +1,5 @@
 const std = @import("std");
-const reduce = @import("reduce.zig");
+const reduce = @import("reduce_core.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
 const clib = reduce.clib;
@@ -18,7 +18,7 @@ inline fn lh(x: Word) Word {
     return if (reduce.is_strcons(h_x)) reduce.tl_get(h_x) else h_x;
 }
 
-export fn handle_G_ERROR(ctx: *ReductionCtx) void {
+pub fn handle_G_ERROR(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     if (reduce.upleft(ctx)) {
@@ -37,7 +37,7 @@ export fn handle_G_ERROR(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_G_ALT(ctx: *ReductionCtx) void {
+pub fn handle_G_ALT(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     if (reduce.upleft(ctx)) {
@@ -56,7 +56,7 @@ export fn handle_G_ALT(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn handle_G_OPT(ctx: *ReductionCtx) void {
+pub fn handle_G_OPT(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
@@ -72,7 +72,7 @@ export fn handle_G_OPT(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_G_STAR(ctx: *ReductionCtx) void {
+pub fn handle_G_STAR(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
@@ -92,7 +92,7 @@ export fn handle_G_STAR(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_G_FBSTAR(ctx: *ReductionCtx) void {
+pub fn handle_G_FBSTAR(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
@@ -110,7 +110,7 @@ export fn handle_G_FBSTAR(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn handle_G_SYMB(ctx: *ReductionCtx) void {
+pub fn handle_G_SYMB(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
@@ -133,7 +133,7 @@ export fn handle_G_SYMB(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_G_ANY(ctx: *ReductionCtx) void {
+pub fn handle_G_ANY(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -148,7 +148,7 @@ export fn handle_G_ANY(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_G_SUCHTHAT(ctx: *ReductionCtx) void {
+pub fn handle_G_SUCHTHAT(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
@@ -171,7 +171,7 @@ export fn handle_G_SUCHTHAT(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_G_END(ctx: *ReductionCtx) void {
+pub fn handle_G_END(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -186,7 +186,7 @@ export fn handle_G_END(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_G_STATE(ctx: *ReductionCtx) void {
+pub fn handle_G_STATE(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -201,7 +201,7 @@ export fn handle_G_STATE(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_G_SEQ(ctx: *ReductionCtx) void {
+pub fn handle_G_SEQ(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     if (reduce.upleft(ctx)) {
@@ -226,7 +226,7 @@ export fn handle_G_SEQ(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_G_UNIT(ctx: *ReductionCtx) void {
+pub fn handle_G_UNIT(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -235,7 +235,7 @@ export fn handle_G_UNIT(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_G_ZERO(ctx: *ReductionCtx) void {
+pub fn handle_G_ZERO(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -244,7 +244,7 @@ export fn handle_G_ZERO(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_G_CLOSE(ctx: *ReductionCtx) void {
+pub fn handle_G_CLOSE(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     if (reduce.upleft(ctx)) {
@@ -261,7 +261,7 @@ export fn handle_G_CLOSE(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn handle_G_COUNT(ctx: *ReductionCtx) void {
+pub fn handle_G_COUNT(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -277,7 +277,7 @@ export fn handle_G_COUNT(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_LEX_RPT1(ctx: *ReductionCtx) void {
+pub fn handle_LEX_RPT1(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.upLeft(ctx);
     reduce.hd_set(ctx.e, reduce.ap(clib.B, reduce.ap2(clib.LEX_RPT, ctx.args[0], lastarg(ctx))));
@@ -287,7 +287,7 @@ export fn handle_LEX_RPT1(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn handle_LEX_RPT(ctx: *ReductionCtx) void {
+pub fn handle_LEX_RPT(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     if (reduce.upleft(ctx)) {
@@ -308,7 +308,7 @@ export fn handle_LEX_RPT(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_LEX_TRY(ctx: *ReductionCtx) void {
+pub fn handle_LEX_TRY(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -320,7 +320,7 @@ export fn handle_LEX_TRY(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn handle_LEX_TRY_(ctx: *ReductionCtx) void {
+pub fn handle_LEX_TRY_(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     if (reduce.upleft(ctx)) {
@@ -349,7 +349,7 @@ export fn handle_LEX_TRY_(ctx: *ReductionCtx) void {
     }
 }
 
-export fn handle_LEX_TRY1(ctx: *ReductionCtx) void {
+pub fn handle_LEX_TRY1(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -361,7 +361,7 @@ export fn handle_LEX_TRY1(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn handle_LEX_TRY1_(ctx: *ReductionCtx) void {
+pub fn handle_LEX_TRY1_(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     if (reduce.upleft(ctx)) {
@@ -390,7 +390,7 @@ export fn handle_LEX_TRY1_(ctx: *ReductionCtx) void {
     }
 }
 
-export fn handle_DESTREV(ctx: *ReductionCtx) void {
+pub fn handle_DESTREV(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     ctx.args[1] = clib.NIL;
     while (ctx.args[0] != clib.NIL) {
@@ -406,7 +406,7 @@ export fn handle_DESTREV(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_LEX_COUNT0(ctx: *ReductionCtx) void {
+pub fn handle_LEX_COUNT0(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
         return;
@@ -417,7 +417,7 @@ export fn handle_LEX_COUNT0(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn handle_LEX_COUNT(ctx: *ReductionCtx) void {
+pub fn handle_LEX_COUNT(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     const next_tl = reduce.reduce(reduce.tl_get(ctx.args[0]));
     reduce.tl_set(ctx.args[0], next_tl);
@@ -439,7 +439,7 @@ export fn handle_LEX_COUNT(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_LEX_STRING(ctx: *ReductionCtx) void {
+pub fn handle_LEX_STRING(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     if (reduce.upleft(ctx)) {
@@ -462,7 +462,7 @@ export fn handle_LEX_STRING(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_LEX_CLASS(ctx: *ReductionCtx) void {
+pub fn handle_LEX_CLASS(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     if (reduce.upleft(ctx)) {
@@ -485,7 +485,7 @@ export fn handle_LEX_CLASS(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_LEX_DOT(ctx: *ReductionCtx) void {
+pub fn handle_LEX_DOT(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     if (reduce.upleft(ctx)) {
         ctx.action = clib.ACT_DONE;
@@ -502,7 +502,7 @@ export fn handle_LEX_DOT(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_LEX_CHAR(ctx: *ReductionCtx) void {
+pub fn handle_LEX_CHAR(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     if (reduce.upleft(ctx)) {
@@ -520,7 +520,7 @@ export fn handle_LEX_CHAR(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_LEX_SEQ(ctx: *ReductionCtx) void {
+pub fn handle_LEX_SEQ(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     reduce.GETARG(ctx, &ctx.args[2]);
@@ -543,7 +543,7 @@ export fn handle_LEX_SEQ(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_NEXTREDEX;
 }
 
-export fn handle_LEX_OR(ctx: *ReductionCtx) void {
+pub fn handle_LEX_OR(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     reduce.GETARG(ctx, &ctx.args[2]);
@@ -564,7 +564,7 @@ export fn handle_LEX_OR(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_LEX_RCONTEXT(ctx: *ReductionCtx) void {
+pub fn handle_LEX_RCONTEXT(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     reduce.GETARG(ctx, &ctx.args[2]);
@@ -592,7 +592,7 @@ export fn handle_LEX_RCONTEXT(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_LEX_STAR(ctx: *ReductionCtx) void {
+pub fn handle_LEX_STAR(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     if (reduce.upleft(ctx)) {
@@ -611,7 +611,7 @@ export fn handle_LEX_STAR(ctx: *ReductionCtx) void {
     ctx.action = clib.ACT_DONE;
 }
 
-export fn handle_LEX_OPT(ctx: *ReductionCtx) void {
+pub fn handle_LEX_OPT(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     if (reduce.upleft(ctx)) {
