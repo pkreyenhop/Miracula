@@ -424,7 +424,7 @@ Baseline captured 2026-06-21 (script output at L0):
 | 4 | sentinel `== NIL` / `!= NIL` | 347 | reduced at converted fns | N1–N2 |
 | 5 | `return NIL` as an error signal | 12 | 0 | O1 |
 | 6 | bare `clib.exit(1)` (use `fatal()`) | 46 → 30 | evaluator-abort residual | O2 |
-| 7 | file-private `fn` with `snake_case` | 50 | domain-vocabulary exemptions only | P1 |
+| 7 | file-private `fn` with `snake_case` | 50 → 36 | domain-vocabulary exemptions only | P1 (✅ for P1a–d) |
 | 8 | `= undefined` initialisers (non-FFI) | 92 | audited + documented | Q1 |
 
 **Domain-vocabulary exemption (metric 7).** Like the FFI exemption, a fixed set of
@@ -501,17 +501,30 @@ only the genuine verb-helpers outside this set.
 ### Cluster P — Naming Conventions (was K2; closes metric 7)
 
 Staged file-private-first so each commit has zero cross-module impact. **Exempt:** `export fn`,
-`callconv(.c)`, and any `pub fn` referenced as an extern symbol — these keep their legacy C
-names. Rename only Zig-internal definitions and their Zig callers.
+`callconv(.c)`, any `pub fn` referenced as an extern symbol, and the metric-7
+domain-vocabulary set (accessor mirrors + `_t` type predicates/constructors + `sui_generis`).
+Rename only genuine Zig-internal verb-helpers and their (same-file) callers.
 
-* **P1a — Private `fn` in `runtime/` → camelCase** ⬜  (~50 fns) *Risk: low (file-local).*
-* **P1b — Private `fn` in `compiler/` → camelCase** ⬜  (~87 fns) *Risk: low (file-local).*
-* **P1c — Private `fn` in `parser/` → camelCase** ⬜  (~30 fns) *Risk: low (file-local).*
-* **P1d — Private `fn` in `driver/` + `io/` → camelCase** ⬜  (~7 fns) *Risk: low (file-local).*
+* **P1a — Private `fn` in `runtime/` → camelCase** ✅ *(2026-06-21)*
+  `big_plus`→`bigPlus`, `big_sub`→`bigSub`, `stackp_push/pop/top/set_top`→`stackpPush/Pop/Top/SetTop`.
+  Kept the accessor mirrors (`get_id`, `get_fil`, `get_pn`, `pn_val`, `*_ptr`). 14 → 8.
+* **P1b — Private `fn` in `compiler/` → camelCase** ✅ *(2026-06-21)*
+  `meta_tcheck`→`metaTcheck`, `comp_deps`→`compDeps`, `abstr_check`→`abstrCheck`,
+  `abstr_mcheck`→`abstrMcheck`, `infer_type`→`inferType`, `reset_SUBST`→`resetSubst`.
+  Kept the `t_*`/`is*_t`/`*_t` type vocabulary and accessor mirrors; `clear_SUBST` stays
+  (it is an `export fn`). 31 → 25.
+* **P1c — Private `fn` in `parser/` → camelCase** ✅ *(2026-06-21)*
+  `make_fil_record`→`makeFilRecord` (test helper). The other three (`make_fil`, `get_id`,
+  `get_fil` in `lex.zig`) are accessor-mirror exemptions. 4 → 3.
+* **P1d — Private `fn` in `driver/` + `io/` → camelCase** ✅ *(2026-06-21)*
+  `unlimit_stack`→`unlimitStack`. io/ had none. driver/+io → 0.
 * **P2 — Non-FFI `pub fn` → camelCase** ⬜
   `pub fn` that are neither `export` nor extern-referenced, updating cross-module callers
   (mostly via the `main.*` re-export aliases). One module per commit. *Risk: medium.*
-  *DoD: metric 7 = 0; remaining `snake_case` fns are all the documented FFI exemption.*
+  *DoD: metric 7 = the documented domain-vocabulary exemption set only.*
+
+*P1 outcome:* file-private `snake_case` fns **50 → 36**; the 36 residual are exactly the
+documented accessor-mirror / `_t`-type-vocabulary exemptions, not arbitrary snake_case.
 
 ### Cluster Q — Polish (closes metric 8)
 
@@ -594,10 +607,10 @@ together they move four of the eight scorecard metrics.
 | O | O1 | `return NIL`-as-error → `MiraError` (12 sites) | 5 | medium | ⬜ Planned |
 | O | O2 | Centralise fatal exits behind `fatal()` | 6 | low | ✅ Complete |
 | O | O3 | `unreachable` audit (18 sites) | — | low | ⬜ Planned |
-| P | P1a | Private `fn` in `runtime/` → camelCase (~50) | 7 | low | ⬜ Planned |
-| P | P1b | Private `fn` in `compiler/` → camelCase (~87) | 7 | low | ⬜ Planned |
-| P | P1c | Private `fn` in `parser/` → camelCase (~30) | 7 | low | ⬜ Planned |
-| P | P1d | Private `fn` in `driver/`+`io/` → camelCase (~7) | 7 | low | ⬜ Planned |
+| P | P1a | Private `fn` in `runtime/` → camelCase (6 renamed, 14→8) | 7 | low | ✅ Complete |
+| P | P1b | Private `fn` in `compiler/` → camelCase (6 renamed, 31→25) | 7 | low | ✅ Complete |
+| P | P1c | Private `fn` in `parser/` → camelCase (1 renamed, 4→3) | 7 | low | ✅ Complete |
+| P | P1d | Private `fn` in `driver/`+`io/` → camelCase (1 renamed) | 7 | low | ✅ Complete |
 | P | P2 | Non-FFI `pub fn` → camelCase (per module) | 7 | medium | ⬜ Planned |
 | Q | Q1 | `= undefined` audit (108 sites) | 8 | low-med | ⬜ Planned |
 | Q | Q2 | `export fn` → `pub fn` audit (286 → ?) | — | medium | ⬜ Planned |
