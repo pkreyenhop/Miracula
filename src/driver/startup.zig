@@ -17,7 +17,7 @@ fn badval(x: Word) bool {
     return x < 100 or x > 50000000;
 }
 
-fn unlimit_stack() void {
+fn unlimitStack() void {
     var rlimit: clib.struct_rlimit = undefined;
     if (clib.getrlimit(clib.RLIMIT_STACK, &rlimit) == 0) {
         rlimit.rlim_cur = rlimit.rlim_max;
@@ -28,7 +28,7 @@ fn unlimit_stack() void {
 export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
     var manonly: Word = 0;
     main.rs.cstack = @ptrCast(&manonly);
-    unlimit_stack();
+    unlimitStack();
     main.rs.verbosity = if (clib.isatty(0) != 0) 1 else 0;
     clib.setbuf(main.getStdout(), null);
 
