@@ -88,6 +88,8 @@ export fn acterror() void {
     reset_lex();
 }
 
+/// Registers a primitive identifier `n` in the private primitive environment (`rs.primenv`).
+/// `v` is the combinator value; `t_val` is the type node. Called only from primlib().
 pub fn primdef(n: [*:0]const u8, v: Word, t_val: Word) void {
     const x = clib.make_id(@constCast(n));
     main.rs.primenv = main.cons(x, main.rs.primenv);
@@ -95,6 +97,9 @@ pub fn primdef(n: [*:0]const u8, v: Word, t_val: Word) void {
     main.heap.tp(main.heap.h(x)).* = t_val;
 }
 
+/// Registers a predefined identifier `n` in the global environment.
+/// `v` is the combinator value (wrapped in `constructor()` if `n` is a constructor);
+/// `t_val` is the type node. Called from privlib() and stdlib().
 pub fn predef(n: [*:0]const u8, v: Word, t_val: Word) void {
     const x = clib.make_id(@constCast(n));
     main.addtoenv(x);
@@ -102,6 +107,8 @@ pub fn predef(n: [*:0]const u8, v: Word, t_val: Word) void {
     main.heap.tp(main.heap.h(x)).* = t_val;
 }
 
+/// Seeds the primitive type aliases (num, char, bool) and built-in constructors
+/// (True, False) into the private primitive environment. Called by mira_setup().
 pub fn primlib() void {
     primdef("num", clib.make_typ(0, 0, clib.synonym_t, clib.num_t), clib.type_t);
     primdef("char", clib.make_typ(0, 0, clib.synonym_t, clib.char_t), clib.type_t);
@@ -110,6 +117,8 @@ pub fn primlib() void {
     primdef("False", 0, clib.bool_t);
 }
 
+/// Seeds the private-prelude identifiers (offside, changetype, hd/tl, etc.) that are
+/// always in scope but not user-visible. Called during prelude loading.
 pub fn privlib() void {
     predef("offside", clib.OFFSIDE, clib.ltchar);
     predef("changetype", clib.I, clib.wrong_t);
@@ -129,6 +138,8 @@ pub fn privlib() void {
     predef("tl", clib.TL, clib.undef_t);
 }
 
+/// Seeds the standard-library identifiers (map, filter, foldr, trig fns, etc.) into
+/// the global environment. Called when STDENV is loaded successfully.
 pub fn stdlib() void {
     predef("arctan", clib.ARCTAN_FN, clib.undef_t);
     predef("code", clib.CODE, clib.undef_t);
@@ -178,6 +189,9 @@ fn mktiny() Word {
     return clib.sto_dbl(x);
 }
 
+/// Performs one-time interpreter initialisation: sets up the heap, type system,
+/// dictionary, and parser state, then seeds the primitive environment.
+/// Must be called exactly once before any source file is loaded.
 pub fn mira_setup() void {
     setupheap();
     tsetup();

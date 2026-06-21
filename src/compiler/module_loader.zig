@@ -41,6 +41,10 @@ inline fn pn_val(x: Word) Word {
     return main.heap.t(x);
 }
 
+/// Parses and compiles the Miranda source file at `t_val`, updating the global file
+/// list and environment. Sets `loading=1` for the duration; clears it on return.
+/// If the file does not exist during `initialising`, panics; otherwise prints a notice.
+/// Callers that want dump-or-load semantics should call `undump()` instead.
 pub fn loadfile(t_val: [*:0]const u8) void {
     var h_val: Word = NIL;
     main.loading = 1;
@@ -378,6 +382,8 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     main.loading = 0;
 }
 
+/// Resolves a list of `%include` file nodes (`includees_val`) into a heap list
+/// of loaded file nodes, detecting and reporting clashes. Returns the resolved list.
 pub fn mkincludes(includees_val: Word) Word {
     var includees_list = includees_val;
     var result: Word = NIL;

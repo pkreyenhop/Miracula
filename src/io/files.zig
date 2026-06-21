@@ -8,6 +8,8 @@ const NIL = main.NIL;
 const t = main.heap.t;
 const h = main.heap.h;
 
+/// Returns the mtime of `path` as a Word, or 0 if the file does not exist.
+/// Called from C ABI — parameter must remain a C string pointer.
 pub export fn fm_time(path: [*:0]const u8) Word {
     if (platform.getFileInfo(path)) |info| {
         return @intCast(info.mtime);
@@ -16,17 +18,21 @@ pub export fn fm_time(path: [*:0]const u8) Word {
     }
 }
 
+/// Returns 1 if `path` ends in ".m" (a Miranda source file), 0 otherwise.
 pub export fn normal(path: [*:0]const u8) c_int {
     const text = std.mem.span(path);
     return if (text.len >= 2 and std.mem.eql(u8, text[text.len - 2 ..], ".m")) 1 else 0;
 }
 
+/// Returns true if heap nodes `x` and `y` refer to the same filesystem inode.
 pub fn same_file(x: Word, y: Word) bool {
     const ix = main.fil_inodev(x);
     const iy = main.fil_inodev(y);
     return h(ix) == h(iy) and t(ix) == t(iy);
 }
 
+/// Returns a heap cons cell `(dev . ino)` for `path`, used to track file identity across loads.
+/// Returns `(0 . 0)` if the file does not exist.
 pub fn inodev(path: [*:0]const u8) Word {
     if (platform.getFileInfo(path)) |info| {
         return main.cons(main.cons(@intCast(info.dev), @intCast(info.ino)), main.NIL);
@@ -35,6 +41,7 @@ pub fn inodev(path: [*:0]const u8) Word {
     }
 }
 
+/// Returns true if `path` exists and is stat-able.
 pub fn fileExists(path: [*:0]const u8) bool {
     if (platform.getFileInfo(path)) |_| {
         return true;
@@ -43,6 +50,7 @@ pub fn fileExists(path: [*:0]const u8) bool {
     }
 }
 
+/// Copies the contents of `path` to stdout. Used by the `//f` command to display source.
 pub export fn filecopy(path: [*:0]const u8) void {
     const fd = clib.open(path, clib.O_RDONLY, 0);
     if (fd < 0) return;
@@ -56,6 +64,7 @@ pub export fn filecopy(path: [*:0]const u8) void {
     }
 }
 
+/// Copies file `from` to file `to`, creating or truncating `to`. Used during dump/undump.
 pub export fn filecp(from: [*:0]const u8, to: [*:0]const u8) void {
     const f_in = clib.open(from, clib.O_RDONLY, 0);
     if (f_in < 0) return;
@@ -73,6 +82,8 @@ pub export fn filecp(from: [*:0]const u8, to: [*:0]const u8) void {
     }
 }
 
+/// Deletes the object-file counterpart of `t_path` (replaces the final char with `obsuffix`).
+/// No-op if the object file does not exist.
 pub export fn unlinkx(t_path: [*:0]const u8) void {
     var obf_buf: [1024]u8 = undefined;
     const t_slice = std.mem.span(t_path);
@@ -91,6 +102,9 @@ pub export fn unlinkx(t_path: [*:0]const u8) void {
     }
 }
 
+/// Converts `m` to an absolute path by prepending cwd if needed. The result is
+/// interned in the dictionary (`dicp`/`dicq`) and the original pointer updated.
+/// Invariant: `m` must point into mutable, writable memory (not a string literal).
 pub fn mkabsolute(m: [*:0]u8) [*:0]u8 {
     if (m[0] == '/') {
         return m;
@@ -108,6 +122,7 @@ pub fn mkabsolute(m: [*:0]u8) [*:0]u8 {
     return m_new;
 }
 
+/// Returns the terminal column width minus 2, defaulting to 78 if unavailable.
 pub export fn twidth() c_int {
     var window: clib.struct_winsize = undefined;
     if (clib.ioctl(clib.STDOUT_FILENO, clib.TIOCGWINSZ, &window) == -1 or window.ws_col == 0) {

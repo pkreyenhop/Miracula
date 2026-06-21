@@ -164,6 +164,13 @@ pub const unlinkx = files_mod.unlinkx;
 pub const mkabsolute = files_mod.mkabsolute;
 pub const twidth = files_mod.twidth;
 
+// Domain types (C2) — typed wrappers for heap node Words.
+// Use these at API boundaries; `.word` unwraps to raw Word for legacy accessors.
+pub const FileNode = heap.FileNode;
+pub const Identifier = heap.Identifier;
+pub const TypeRef = heap.TypeRef;
+pub const NodeRef = heap.NodeRef;
+
 // Heap accessors — B2: h/t/hp/tp removed; callers use main.heap.h/t/hp/tp directly.
 // Other heap aliases kept to avoid churn in call sites not covered by B2.
 pub const cons = heap.cons;

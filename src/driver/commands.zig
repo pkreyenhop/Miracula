@@ -30,21 +30,21 @@ fn spaces(s: Word) void {
     }
 }
 
-fn is(s: [*:0]const u8) bool {
-    return std.mem.eql(u8, std.mem.span(main.dicp), std.mem.span(s));
+fn is(s: [:0]const u8) bool {
+    return std.mem.eql(u8, std.mem.span(main.dicp), s);
 }
 
-fn filequote(p: [*:0]const u8) void {
+fn filequote(p: [:0]const u8) void {
     if (filequote_mlen == 0) {
         const last_slash = clib.strrchr(&main.rs.PRELUDE, '/');
         if (last_slash != null) {
             filequote_mlen = @intFromPtr(last_slash.?) - @intFromPtr(&main.rs.PRELUDE) + 1;
         }
     }
-    if (clib.strncmp(p, &main.rs.PRELUDE, filequote_mlen) == 0) {
-        _ = clib.printf("<%s>", .{.{p + filequote_mlen}});
+    if (clib.strncmp(p.ptr, &main.rs.PRELUDE, filequote_mlen) == 0) {
+        _ = clib.printf("<%s>", .{.{p.ptr + filequote_mlen}});
     } else {
-        _ = clib.printf("\"%s\"", .{.{p}});
+        _ = clib.printf("\"%s\"", .{.{p.ptr}});
     }
 }
 
@@ -60,7 +60,7 @@ fn namescom(l: Word) void {
     }
     if (n == NIL) return;
     if (main.get_fil(l)) |gf| {
-        filequote(gf);
+        filequote(std.mem.span(gf));
     } else {
         _ = clib.printf("primitive:", .{.{}});
     }
@@ -611,7 +611,7 @@ pub export fn finger(n: [*:0]const u8) void {
                 const class_str: [*:0]const u8 = if (main.id_type(x) == clib.type_t and main.t_class(x) == clib.abstract_t) "(abstract type) " else if (main.id_type(x) == clib.type_t and main.t_class(x) == clib.algebraic_t) "(algebraic type) " else if (main.id_type(x) == clib.type_t and main.t_class(x) == clib.placeholder_t) "(placeholder type) " else if (main.id_type(x) == clib.type_t and main.t_class(x) == clib.synonym_t) "(synonym type) " else "";
                 _ = clib.printf(" ||%sdefined in ", .{.{class_str}});
             }
-            filequote(s.?);
+            filequote(std.mem.span(s.?));
             if (main.rs.baded != 0 or main.rs.rechecking != 0) {
                 _ = clib.printf(" line %ld", .{.{line}});
             }

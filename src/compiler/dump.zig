@@ -10,10 +10,16 @@ const tp = main.heap.tp;
 const hp = main.heap.hp;
 extern var tag: [*]u8;
 
+/// Heap list of identifiers hidden from the exported interface (privatised).
+/// Populated by fixexports(); cleared by unfixexports().
 pub export var internals: Word = NIL;
+/// Heap list of types that are needed by the current script but have no name in scope.
+/// Non-NIL after readoption() means the dump cannot be used and type errors will be reported.
 pub export var tlost: Word = NIL;
 var pfrts: Word = NIL;
 
+/// Marks all exported identifiers and privatises the rest.
+/// Must be paired with a call to unfixexports() once the dump is written.
 pub fn fixexports() void {
     var e = main.rs.exports;
     var f: Word = undefined;
@@ -65,6 +71,8 @@ fn unpaint(x: Word) void {
     tp(x).* = t(main.id_val(x));
 }
 
+/// Reverses the privatisation done by fixexports(), restoring all `internals` to public.
+/// No-op when `rs.mkexports != 0` (the dump is being kept for distribution).
 pub fn unfixexports() void {
     var i = internals;
     if (main.rs.mkexports != 0) return;
@@ -145,10 +153,14 @@ fn publicise(x: Word) Word {
     return i;
 }
 
+/// Signal handler that defers delivery by setting `rs.sigflag`.
+/// Installed during dump I/O so that SIGINT cannot corrupt the dump file mid-write.
 pub fn sigdefer(_: c_int) callconv(.c) void {
     main.rs.sigflag = 1;
 }
 
+/// Repairs type references after loading a dump: re-resolves STRCONS nodes and
+/// reports types that are in the dump but missing from the current scope (`tlost`).
 pub export fn readoption() void {
     var f: Word = undefined;
     var t_val: Word = undefined;
@@ -196,6 +208,8 @@ pub export fn readoption() void {
     }
 }
 
+/// Resolves STRCONS type nodes to their canonical ID form when loading a dump.
+/// Adds unresolvable types to `tlost` for deferred error reporting.
 pub fn fixtype(t_val: Word, x: Word) Word {
     switch (tag[@intCast(t_val)]) {
         clib.AP, clib.CONS => {
@@ -232,6 +246,9 @@ inline fn pn_val(x: Word) Word {
     return t(x);
 }
 
+/// Loads `t_val` from its pre-compiled dump file (.mx suffix) if the dump is newer
+/// than the source, otherwise falls back to `loadfile()`. Handles the case where
+/// the source does not exist (initialising-only panic) or the dump is missing/stale.
 pub fn undump(t_val: [*:0]const u8) void {
     var obf: [clib.pnlim]u8 = undefined;
     var f: ?*clib.FILE = null;
@@ -347,6 +364,9 @@ pub fn undump(t_val: [*:0]const u8) void {
     main.loading = 0;
 }
 
+/// Writes a binary dump of the current heap state to the .mx file corresponding to
+/// `rs.current_script`. Installs `sigdefer` during the write so a SIGINT cannot
+/// leave a partial dump; re-raises any deferred signal afterward.
 pub fn makedump() void {
     const obf = &main.rs.linebuf;
     var f: ?*clib.FILE = null;

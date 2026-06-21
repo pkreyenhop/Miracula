@@ -11,7 +11,7 @@ const UNDEF: Word = CMBASE + 140;
 /// parser_api.zig circular-import constraints: loading, compiling, nill, errs,
 /// errline, obsuffix, SYNERR, commandmode).
 pub const RuntimeState = struct {
-    // Identity atoms set by mira_setup()
+    // Identity atoms — heap node IDs set by mira_setup(); valid after setup, zero before.
     Void: Word = 0,
     main_id: Word = 0,
     message: Word = 0,
@@ -32,45 +32,59 @@ pub const RuntimeState = struct {
     showfunction: Word = 0,
     showabstract: Word = 0,
     showwhat: Word = 0,
+    /// Last identifier referenced interactively; used for `//f` finger command.
     lastid: Word = 0,
     rv_expr: Word = 0,
 
-    // File paths (populated at startup)
+    // File paths — null-terminated byte arrays populated by startup; treated as C strings.
     PRELUDE: [clib.pnlim + 10]u8 = undefined,
     STDENV: [clib.pnlim + 9]u8 = undefined,
 
     // Compiler flags (Word-typed because they are linker-visible to lex.zig / trans.zig
     // which CAN switch to @import — no circular constraint, but keep as Word for now)
+    /// Heap node holding the list of free-name-to-type bindings for %bnf rules.
     fnts: Word = NIL,
+    /// Maximum heap cells before GC triggers; set from `-heap N` CLI flag.
     SPACELIMIT: Word = 2500000,
+    /// Dictionary space in bytes; set from `-dic N` CLI flag.
     DICSPACE: Word = 100000,
     UTF8: c_int = 0,
     UTF8OUT: c_int = 0,
 
-    // Configuration (set from CLI / .mirarc before mira_setup)
+    // Configuration — set from CLI flags or .mirarc before mira_setup().
     editor: ?[*:0]u8 = null,
+    /// Non-zero when the prelude has been accepted without error.
     okprel: Word = 0,
+    /// Non-zero when `-nostandard` flag suppresses loading STDENV.
     nostdenv: Word = 0,
+    /// Non-zero when the configured editor command is invalid.
     baded: Word = 0,
     miralib: ?[*:0]u8 = null,
     promptstr: [*:0]const u8 = "Miranda ",
     s_in: ?*clib.FILE = null,
 
-    // Runtime counters
+    // Runtime counters (all updated by the GC and evaluator; read by //stats).
     atobject: c_int = 0,
     atgc: c_int = 0,
     atcount: c_int = 0,
     debug: c_int = 0,
 
     // Evaluation control flags
+    /// Non-zero when building a .mirarc dump; suppresses side-effects.
     magic: Word = 0,
+    /// Non-zero when `//make` is in progress.
     making: Word = 0,
+    /// Non-zero when `//exports` should write an export header.
     mkexports: Word = 0,
     mksources: Word = 0,
     make_status: Word = 0,
     ideep: c_int = 0,
+    /// Non-zero during the one-time startup before `commandloop` begins.
+    /// Guards paths that must not repeat (e.g. panic on missing prelude).
     initialising: Word = 1,
+    /// Heap list of primitive environment bindings, built by primlib().
     primenv: Word = NIL,
+    /// Path of the .m file currently being loaded; null outside a load.
     current_script: ?[*:0]u8 = null,
     lastexp: Word = UNDEF,
 
@@ -78,30 +92,36 @@ pub const RuntimeState = struct {
     echoing: Word = 0,
     listing: Word = 0,
     verbosity: Word = 0,
-    strictif: bool = true, // bool conversion from Word (only boolean use)
+    /// When true, `if` guards are strict (unevaluated guards are errors).
+    /// Converted from Word at B1; only ever true/false.
+    strictif: bool = true,
     rechecking: Word = 0,
     cstack: ?[*]Word = null,
 
-    // Working buffers
+    // Working buffers — sized for the longest supported pathname (pnlim).
     linebuf: [clib.BUFSIZE]u8 = undefined,
     ebuf: [clib.pnlim]u8 = undefined,
     home_rc: [clib.pnlim + 8]u8 = undefined,
     lib_rc: [clib.pnlim + 8]u8 = undefined,
+    /// Non-null when rc_read fails; points into home_rc or lib_rc (not heap-allocated).
     rc_error: ?[*:0]const u8 = null,
 
     // Signal / longjmp recovery
     env: clib.sigjmp_buf = .{},
+    /// Path of a temp file to unlink if a signal fires during dump/undump.
     unlinkme: ?[*:0]const u8 = null,
     sigflag: c_int = 0,
 
     // Sorted output and GC-adjacent state
     sorted: c_int = 0,
     detrop: Word = NIL,
+    /// Reload-file list: heap list of file nodes needing re-checking after a change.
     rfl: Word = NIL,
     bereaved: Word = 0,
     ld_stuff: Word = NIL,
 
     // Module / name tables
+    /// Snapshot of `files` at the start of a load; restored on error.
     oldfiles: Word = NIL,
     includees: Word = NIL,
     freeids: Word = NIL,

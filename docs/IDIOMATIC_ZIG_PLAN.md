@@ -67,22 +67,27 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
     * *Status:* **Complete**
     * *Details:* Added `pub const NodeTag = enum(u8) { ATOM=0, ..., TCONS=22, _ }` to `c_abi.zig`. Non-exhaustive (`_`) because GC marking temporarily negates tag bytes (sign-bit trick), producing values outside the defined range. Integer aliases kept for backward compatibility with `make(t: u8, ...)` calls. `pub fn getTag(x: Word) c.NodeTag` added to `heap.zig` as the typed read boundary (`@enumFromInt(tag[x])`). Internal heap code and all callers unchanged — they continue to use raw `tag[x] == CONS` comparisons (comptime-int coercion applies). Build clean, test baseline maintained.
 * **C2: API Boundary Domain Types**
-    * *Status:* Not started
-    * *Details:* Introduce `FileNode`, `Identifier`, `TypeRef`, and `NodeRef` as single-item structs wrapping `Word`.
+    * *Status:* **Complete (2026-06-21)**
+    * *Details:* Added `FileNode`, `Identifier`, `TypeRef`, and `NodeRef` as `pub const` structs in `heap.zig`, each wrapping a single `.word: Word` field. Re-exported from `main.zig`. Existing procedural accessor functions (`fil_time`, `id_type`, etc.) are unchanged — the types wrap them via methods (see D2). Internal heap.zig implementation code and all existing call sites are unmodified, following the C1 precedent of adding a typed boundary without breaking the existing API.
     * *Constraint:* Apply *only* to `RuntimeState` fields and `pub` function signatures in `heap.zig`. Do not attempt to convert internal implementation code.
 
 ### Cluster D: Ergonomics (Can be done incrementally)
 *Goal: Modernize internal syntax and improve codebase discoverability.*
 
 * **D1: Internal String Slices**
-    * *Status:* Not started
-    * *Details:* Replace `[*:0]const u8` with `[:0]const u8` for internal function parameters. Convert to C pointers only at external FFI boundaries.
+    * *Status:* **Complete (2026-06-21)**
+    * *Details:* Converted `is()`, `filequote()` (commands.zig) and `missparam()` (startup.zig) from `[*:0]const u8` to `[:0]const u8`. Call sites updated (`std.mem.span()` at the two points where C-originated pointers enter). Remaining `pub export fn` parameters kept as `[*:0]const u8` (FFI boundary). Functions whose callers are predominantly C-originated strings (`fileExists`, `inodev`) left unconverted — the conversion would add noise at every call site without reducing total `std.mem.span` count.
 * **D2: Domain Methods**
-    * *Status:* Not started
-    * *Details:* Move procedural accessors (e.g., `id_type(id)`) onto their respective structs (e.g., `id.typ`). Depends on C2.
+    * *Status:* **Complete (2026-06-21)**
+    * *Details:* Methods added to all four domain types in `heap.zig`:
+      - `FileNode`: `.time()`, `.share()`, `.defs()`, `.inodev()`, `.sameAs(other)`
+      - `Identifier`: `.typ()`, `.val()`, `.who()`, `.isConstructor()`, `.isVariable()`, `.isFreeId()`, `.addToEnv()`
+      - `TypeRef`: `.class()`, `.info()`
+      - `NodeRef`: (wrapper only; specialized types preferred)
+      Each method delegates to the existing procedural accessor. New code can use `id.typ()` style; existing call sites are unmodified.
 * **D3: Documentation**
-    * *Status:* Not started
-    * *Details:* Add `///` docs to all `pub` declarations in the newly split modules, specifically calling out invariants and ownership.
+    * *Status:* **Complete (2026-06-21)**
+    * *Details:* Added `///` doc comments to all `pub` declarations in `src/io/files.zig`, `src/runtime/runtime_state.zig` (struct + key fields), `src/compiler/setup.zig` (primdef/predef/primlib/privlib/stdlib/mira_setup), `src/compiler/dump.zig` (internals/tlost/fixexports/unfixexports/fixtype/undump/makedump/sigdefer/readoption), and `src/compiler/module_loader.zig` (loadfile/mkincludes). Comments focus on invariants, ownership, and non-obvious contracts.
 
 
 ### Cluster E: Control Flow & Error Handling (Deferred)
@@ -112,10 +117,10 @@ Work is organized into four clusters based on dependency. Each cluster is a prer
 | B | B1 | Introduce RuntimeState (includes boolean conversion) | **Complete** |
 | B | B2 | Encapsulate Heap Access | **Complete** |
 | C | C1 | NodeTag Enum | **Complete** |
-| C | C2 | API Boundary Domain Types | Not started |
-| D | D1 | Internal String Slices | Not started |
-| D | D2 | Domain Methods | Not started |
-| D | D3 | Documentation | Not started |
+| C | C2 | API Boundary Domain Types | **Complete** |
+| D | D1 | Internal String Slices | **Complete** |
+| D | D2 | Domain Methods | **Complete** |
+| D | D3 | Documentation | **Complete** |
 | E | E1 | Define Domain Errors | Not started |
 | E | E2 | Error Union Signatures & Bubbling | Not started |
 | E | E3 | Top-Level Error Handling | Not started |

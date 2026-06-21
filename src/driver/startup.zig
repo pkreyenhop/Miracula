@@ -479,8 +479,8 @@ pub export fn rc_write() void {
     _ = clib.fclose(f.?);
 }
 
-pub fn missparam(s: [*:0]const u8) void {
-    _ = clib.fprintf(main.getStderr(), "mira: missing param after flag \"-%s\"\n", .{.{s}});
+pub fn missparam(s: [:0]const u8) void {
+    _ = clib.fprintf(main.getStderr(), "mira: missing param after flag \"-%s\"\n", .{.{s.ptr}});
     clib.exit(1);
 }
 
