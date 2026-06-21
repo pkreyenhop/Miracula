@@ -45,7 +45,7 @@ var atnl: Word = 1;
 extern var files: Word;
 extern var SYNERR: Word;
 extern var compiling: c_int;
-extern var s_out: ?*clib.FILE;
+extern var s_out: ?*word.FILE;
 extern var current_file: Word;
 extern var errs: Word;
 extern var errline: Word;
@@ -112,7 +112,7 @@ fn mktvar(n: Word) Word {
     return make(TVAR, 0, n);
 }
 
-fn getStdout() ?*clib.FILE {
+fn getStdout() ?*word.FILE {
     const T = @TypeOf(clib.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
         return clib.stdout();
@@ -123,7 +123,7 @@ fn getStdout() ?*clib.FILE {
     }
 }
 
-fn getStdin() ?*clib.FILE {
+fn getStdin() ?*word.FILE {
     const T = @TypeOf(clib.stdin);
     if (comptime @typeInfo(T) == .@"fn") {
         return clib.stdin();
@@ -134,7 +134,7 @@ fn getStdin() ?*clib.FILE {
     }
 }
 
-fn getStderr() ?*clib.FILE {
+fn getStderr() ?*word.FILE {
     const T = @TypeOf(clib.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
         return clib.stderr();
@@ -643,16 +643,16 @@ export fn yylex() c_int {
     if (ls.col < ls.lmargin) {
         if (ls.c == '=' and (ls.margstack == NIL or ls.col >= h(ls.margstack))) {
             ls.c = getch();
-            return clib.ELSEQ;
+            return word.ELSEQ;
         }
-        return clib.OFFSIDE;
+        return word.OFFSIDE;
     }
     if (ls.c == ';') {
         ls.c = getch();
         layout();
         if (ls.c == '=' and (ls.margstack == NIL or ls.col >= h(ls.margstack))) {
             ls.c = getch();
-            return clib.ELSEQ;
+            return word.ELSEQ;
         }
         return ';';
     }
@@ -661,7 +661,7 @@ export fn yylex() c_int {
         if (ls.inlex == 1) {
             layout();
             ls.yylval = name();
-            return if (ls.c == '=') clib.LEXDEF else if (isconstructor(ls.yylval)) clib.CNAME else clib.NAME;
+            return if (ls.c == '=') word.LEXDEF else if (isconstructor(ls.yylval)) word.CNAME else word.NAME;
         }
         if (ls.inbnf == 1) {
             (ls.dicq - 1)[0] = ' ';
@@ -680,7 +680,7 @@ export fn yylex() c_int {
         } else {
             numeral();
         }
-        return clib.CONST;
+        return word.CONST;
     }
     if (ls.c == '%' and commandmode == 0) {
         return @intCast(directive());
@@ -690,7 +690,7 @@ export fn yylex() c_int {
         ls.yylval = getlitch();
         if (ls.yylval < 0) {
             errclass(ls.yylval, 0);
-            return clib.CONST;
+            return word.CONST;
         }
         if (is_char(ls.yylval) == 0) {
             const prefix_str: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
@@ -702,7 +702,7 @@ export fn yylex() c_int {
         } else {
             ls.c = getch();
         }
-        return clib.CONST;
+        return word.CONST;
     }
     if (ls.inexplist != 0 and (ls.c == '"' or ls.c == '<')) {
         if (pathname() == null) {
@@ -711,17 +711,17 @@ export fn yylex() c_int {
             ls.exportfiles = cons(@intCast(@intFromPtr(addextn(1, ls.dicp))), ls.exportfiles);
             _ = keep(ls.dicp);
         }
-        return clib.PATHNAME;
+        return word.PATHNAME;
     }
     if (ls.inlex == 1 and ls.c == '`') {
-        return if (charclass() != 0) clib.ANTICHARCLASS else clib.CHARCLASS;
+        return if (charclass() != 0) word.ANTICHARCLASS else word.CHARCLASS;
     }
     if (ls.c == '"') {
         string();
         if (ls.yylval == NIL) {
             ls.yylval = NILS;
         }
-        return clib.CONST;
+        return word.CONST;
     }
     if (ls.inbnf == 2) {
         if (ls.c == '[') {
@@ -729,7 +729,7 @@ export fn yylex() c_int {
         } else if (ls.c == ']') {
             brct -= 1;
         } else if (ls.c == '|' and brct == 0) {
-            return clib.OFFSIDE;
+            return word.OFFSIDE;
         }
     }
     if (ls.c == clib.EOF) {
@@ -738,9 +738,9 @@ export fn yylex() c_int {
             return clib.END;
         }
         if (t(ls.fileq) == NIL and ls.margstack != NIL) {
-            return clib.OFFSIDE;
+            return word.OFFSIDE;
         }
-        const file_ptr: ?*clib.FILE = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
+        const file_ptr: ?*word.FILE = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
         _ = clib.fclose(file_ptr);
         ls.fileq = t(ls.fileq);
         ls.insertdepth -= 1;
@@ -787,11 +787,11 @@ export fn yylex() c_int {
                 ls.c = getch();
                 if (ls.c == '<') {
                     ls.c = getch();
-                    return clib.LE;
+                    return word.LE;
                 }
                 if (ls.c == '>') {
                     ls.c = getch();
-                    return clib.GE;
+                    return word.GE;
                 }
                 if (ls.c == '%' and commandmode == 0) {
                     return @intCast(directive());
@@ -808,13 +808,13 @@ export fn yylex() c_int {
             return @intCast(lastc);
         },
         '-' => {
-            if (tryCh('>', clib.ARROW)) |ret| return ret;
-            if (tryCh('-', clib.MINUSMINUS)) |ret| return ret;
+            if (tryCh('>', word.ARROW)) |ret| return ret;
+            if (tryCh('-', word.MINUSMINUS)) |ret| return ret;
             return @intCast(lastc);
         },
         '<' => {
-            if (tryCh('-', clib.LEFTARROW)) |ret| return ret;
-            if (tryCh('=', clib.LE)) |ret| return ret;
+            if (tryCh('-', word.LEFTARROW)) |ret| return ret;
+            if (tryCh('=', word.LE)) |ret| return ret;
             return @intCast(lastc);
         },
         '=' => {
@@ -822,30 +822,30 @@ export fn yylex() c_int {
                 syntax("unexpected symbol =>\n");
                 return '=';
             }
-            if (tryCh('=', clib.EQEQ)) |ret| return ret;
+            if (tryCh('=', word.EQEQ)) |ret| return ret;
             return @intCast(lastc);
         },
         '+' => {
-            if (tryCh('+', clib.PLUSPLUS)) |ret| return ret;
+            if (tryCh('+', word.PLUSPLUS)) |ret| return ret;
             return @intCast(lastc);
         },
         '.' => {
             if (ls.c == '.') {
                 ls.c = getch();
-                return clib.DOTDOT;
+                return word.DOTDOT;
             }
             return @intCast(lastc);
         },
         '\\' => {
-            if (tryCh('/', clib.VEL)) |ret| return ret;
+            if (tryCh('/', word.VEL)) |ret| return ret;
             return @intCast(lastc);
         },
         '>' => {
-            if (tryCh('=', clib.GE)) |ret| return ret;
+            if (tryCh('=', word.GE)) |ret| return ret;
             return @intCast(lastc);
         },
         '~' => {
-            if (tryCh('=', clib.NE)) |ret| return ret;
+            if (tryCh('=', word.NE)) |ret| return ret;
             return @intCast(lastc);
         },
         '&' => {
@@ -858,12 +858,12 @@ export fn yylex() c_int {
                     _ = clib.ungetc(@intCast(ls.c), main.rs.s_in);
                 }
                 ls.c = ' ';
-                return clib.TO;
+                return word.TO;
             }
             return @intCast(lastc);
         },
         '/' => {
-            if (tryCh('/', clib.DIAG)) |ret| return ret;
+            if (tryCh('/', word.DIAG)) |ret| return ret;
             return @intCast(lastc);
         },
         '*' => {
@@ -878,9 +878,9 @@ export fn yylex() c_int {
                 ls.c = getch();
                 if (ls.c == '=') {
                     ls.c = getch();
-                    return clib.COLON2EQ;
+                    return word.COLON2EQ;
                 }
-                return clib.COLONCOLON;
+                return word.COLONCOLON;
             }
             return @intCast(lastc);
         },
@@ -888,7 +888,7 @@ export fn yylex() c_int {
             if (clib.isalpha(@intCast(ls.c)) != 0) {
                 kollect(okid);
                 const t_val = identifier(0);
-                return if (t_val == clib.NAME) clib.INFIXNAME else if (t_val == clib.CNAME) clib.INFIXCNAME else '$';
+                return if (t_val == word.NAME) word.INFIXNAME else if (t_val == word.CNAME) word.INFIXCNAME else '$';
             }
             if (ls.c >= '1' and ls.c <= '9') {
                 var n: Word = 0;
@@ -901,7 +901,7 @@ export fn yylex() c_int {
                     acterror();
                 } else {
                     ls.yylval = mkgvar(n);
-                    return clib.NAME;
+                    return word.NAME;
                 }
             }
             if (ls.c == '-') {
@@ -910,7 +910,7 @@ export fn yylex() c_int {
                 } else {
                     ls.c = getch();
                     ls.yylval = ls.common_stdin;
-                    return clib.CONST;
+                    return word.CONST;
                 }
             }
             if (ls.c == ':') {
@@ -923,7 +923,7 @@ export fn yylex() c_int {
                     } else {
                         ls.c = getch();
                         ls.yylval = ls.common_stdinb;
-                        return clib.CONST;
+                        return word.CONST;
                     }
                 }
             }
@@ -935,9 +935,9 @@ export fn yylex() c_int {
                     if (commandmode != 0) {
                         ls.yylval = ls.cook_stdin;
                     } else {
-                        ls.yylval = make(CONS, readvals(0, 0), clib.OFFSIDE);
+                        ls.yylval = make(CONS, readvals(0, 0), word.OFFSIDE);
                     }
-                    return clib.CONST;
+                    return word.CONST;
                 }
             }
             if (ls.c == '$') {
@@ -947,9 +947,9 @@ export fn yylex() c_int {
                     ls.c = getch();
                     if (ls.inlex != 0) {
                         ls.yylval = mklexvar(0);
-                        return clib.NAME;
+                        return word.NAME;
                     }
-                    return clib.DOLLARS;
+                    return word.DOLLARS;
                 }
             }
             if (ls.c == '#') {
@@ -958,13 +958,13 @@ export fn yylex() c_int {
                 } else {
                     ls.c = getch();
                     ls.yylval = mklexvar(1);
-                    return clib.NAME;
+                    return word.NAME;
                 }
             }
             if (ls.c == '*') {
                 ls.c = getch();
-                ls.yylval = make(AP, clib.GETARGS, 0);
-                return clib.CONST;
+                ls.yylval = make(AP, word.GETARGS, 0);
+                return word.CONST;
             }
             if (ls.c == '0') {
                 syntax("illegal symbol $0\n");
@@ -1007,7 +1007,7 @@ fn collectstars() Word {
         n += 1;
     }
     ls.yylval = mktvar(n);
-    return clib.TYPEVAR;
+    return word.TYPEVAR;
 }
 
 export fn mkgvar(i_input: Word) Word {
@@ -1163,77 +1163,77 @@ export fn openfile(n: [*:0]const u8) c_int {
 fn identifier(s: c_int) c_int {
     if (ls.inbnf == 1) {
         if (is("empty ") or is("e_ m_ p_ t_ y")) {
-            return clib.EMPTYSY;
+            return word.EMPTYSY;
         }
         if (is("end ") or is("e_ n_ d")) {
-            return clib.ENDSY;
+            return word.ENDSY;
         }
         if (is("error ") or is("e_ r_ r_ o_ r")) {
-            return clib.ERRORSY;
+            return word.ERRORSY;
         }
         if (is("where ") or is("w_ h_ e_ r_ e")) {
-            return clib.WHERE;
+            return word.WHERE;
         }
     } else {
         switch (ls.dicp[0]) {
             'a' => {
                 if (is("abstype") or is("a_ b_ s_ t_ y_ p_ e")) {
-                    return clib.ABSTYPE;
+                    return word.ABSTYPE;
                 }
             },
             'd' => {
                 if (is("div") or is("d_ i_ v")) {
-                    return clib.DIV;
+                    return word.DIV;
                 }
             },
             'F' => {
                 if (is("False")) {
                     ls.yylval = False;
-                    return clib.CONST;
+                    return word.CONST;
                 }
             },
             'i' => {
                 if (is("if") or is("i_ f")) {
-                    return clib.IF;
+                    return word.IF;
                 }
             },
             'm' => {
                 if (is("mod") or is("m_ o_ d")) {
-                    return clib.REM;
+                    return word.REM;
                 }
             },
             'o' => {
                 if (is("otherwise") or is("o_ t_ h_ e_ r_ w_ i_ s_ e")) {
-                    return clib.OTHERWISE;
+                    return word.OTHERWISE;
                 }
             },
             'r' => {
                 if (is("readvals") or is("r_ e_ a_ d_ v_ a_ l_ s")) {
-                    return clib.READVALSY;
+                    return word.READVALSY;
                 }
             },
             's' => {
                 if (is("show") or is("s_ h_ o_ w")) {
-                    return clib.SHOWSYM;
+                    return word.SHOWSYM;
                 }
             },
             'T' => {
                 if (is("True")) {
                     ls.yylval = True;
-                    return clib.CONST;
+                    return word.CONST;
                 }
             },
             't' => {
                 if (is("type") or is("t_ y_ p_ e")) {
-                    return clib.TYPE;
+                    return word.TYPE;
                 }
             },
             'w' => {
                 if (is("where") or is("w_ h_ e_ r_ e")) {
-                    return clib.WHERE;
+                    return word.WHERE;
                 }
                 if (is("with") or is("w_ i_ t_ h")) {
-                    return clib.WITH;
+                    return word.WITH;
                 }
             },
             else => {},
@@ -1249,7 +1249,7 @@ fn identifier(s: c_int) c_int {
             main.rs.lastid = ls.yylval;
         }
     }
-    return if (isconstructor(ls.yylval)) clib.CNAME else clib.NAME;
+    return if (isconstructor(ls.yylval)) word.CNAME else word.NAME;
 }
 
 pub fn directive() Word {
@@ -1258,7 +1258,7 @@ pub fn directive() Word {
     ls.c = getch();
     if (ls.c == '%') {
         ls.c = getch();
-        return clib.ENDIR;
+        return word.ENDIR;
     }
     kollect(okulid);
     const first_char = if (ls.dicp[0] == '_' and ls.dicp[1] == ' ') ls.dicp[2] else ls.dicp[0];
@@ -1266,13 +1266,13 @@ pub fn directive() Word {
         'b' => {
             if (is("begin") or is("_^Hb_^He_^Hg_^Hi_^Hn")) {
                 if (ls.inlex != 0) {
-                    return clib.LBEGIN;
+                    return word.LBEGIN;
                 }
             }
             if (is("bnf") or is("_^Hb_^Hn_^Hf")) {
                 setlmargin();
                 ls.col = holdcol + 4;
-                return clib.BNF;
+                return word.BNF;
             }
         },
         'e' => {
@@ -1280,7 +1280,7 @@ pub fn directive() Word {
                 if (main.rs.magic) {
                     syntax("%export directive not permitted in \"-exp\" script\n");
                 }
-                return clib.EXPORT;
+                return word.EXPORT;
             }
         },
         'f' => {
@@ -1288,7 +1288,7 @@ pub fn directive() Word {
                 if (main.rs.magic) {
                     syntax("%free directive not permitted in \"-exp\" script\n");
                 }
-                return clib.FREE;
+                return word.FREE;
             }
         },
         'i' => {
@@ -1303,7 +1303,7 @@ pub fn directive() Word {
                     ls.yylval = make(STRCONS, @intCast(@intFromPtr(addextn(1, ls.dicp))), fileinfo(@intCast(@intFromPtr(get_fil(current_file))), holdlin));
                     _ = keep(ls.dicp);
                 }
-                return clib.INCLUDE;
+                return word.INCLUDE;
             }
             if (is("insert") or is("_ i_ n_ s_ e_ r_ t")) {
                 const f = pathname();
@@ -1358,7 +1358,7 @@ pub fn directive() Word {
                 if (ls.inlex != 0) {
                     syntax("nested %lex not permitted\n");
                 }
-                return clib.LEX;
+                return word.LEX;
             }
             if (is("list") or is("_ l_ i_ s_ t")) {
                 main.rs.echoing = main.rs.verbosity;
@@ -1728,22 +1728,22 @@ pub fn charclass() c_int {
             badch = ch;
             break;
         } else {
-            if (rawch == '-' and h(p) != NIL and h(p) != clib.DOTDOT) {
-                ch = clib.DOTDOT;
+            if (rawch == '-' and h(p) != NIL and h(p) != word.DOTDOT) {
+                ch = word.DOTDOT;
             }
             tp(p).* = cons(ch, NIL);
             p = t(p);
             ch = getlitch();
         }
     }
-    if (h(p) == clib.DOTDOT) {
+    if (h(p) == word.DOTDOT) {
         hp(p).* = '-';
     }
     p = ls.yylval;
     while (t(p) != NIL) {
-        if (h(t(p)) == clib.DOTDOT) {
+        if (h(t(p)) == word.DOTDOT) {
             hp(t(p)).* = h(p);
-            hp(p).* = clib.DOTDOT;
+            hp(p).* = word.DOTDOT;
             if (h(t(p)) >= h(t(t(p)))) {
                 syntax("illegal use of '-' in [charclass]\n");
             }
@@ -1818,7 +1818,7 @@ export fn reset_state() void {
         }
     }
     while (ls.fileq != NIL) {
-        const file_ptr: ?*clib.FILE = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
+        const file_ptr: ?*word.FILE = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
         _ = clib.fclose(file_ptr);
         ls.fileq = t(ls.fileq);
     }

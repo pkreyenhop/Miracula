@@ -190,7 +190,7 @@ pub export fn charname(ch: Word) [*:0]const u8 {
     };
 }
 
-pub fn outr(file: ?*c.FILE, value: f64) void {
+pub fn outr(file: ?*word.FILE, value: f64) void {
     const magnitude = if (value < 0) -value else value;
     if (magnitude >= 1000.0 or magnitude <= 0.001) {
         _ = c.fprintf(file, "%e", .{value});
@@ -597,7 +597,7 @@ pub fn mark(x_val: Word) void {
     }
 }
 
-fn getStderr() ?*c.FILE {
+fn getStderr() ?*word.FILE {
     const T = @TypeOf(c.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
         return c.stderr();
@@ -618,7 +618,7 @@ pub export fn sto_id(p1: [*:0]const u8) Word {
     return make(word.ID, cons(make(word.STRCONS, @intCast(@intFromPtr(p1)), word.NIL), word.undef_t), word.UNDEF);
 }
 
-pub fn getword(file: ?*c.FILE) Word {
+pub fn getword(file: ?*word.FILE) Word {
     var s: i32 = 0;
     var i: usize = @sizeOf(Word);
     var x = @as(Word, @intCast(c.getc(file)));
@@ -631,7 +631,7 @@ pub fn getword(file: ?*c.FILE) Word {
     return x;
 }
 
-pub fn putword(x_val: Word, file: ?*c.FILE) void {
+pub fn putword(x_val: Word, file: ?*word.FILE) void {
     var x = x_val;
     var i: usize = @sizeOf(Word);
     _ = c.putc(@intCast(x & 255), file);
@@ -816,7 +816,7 @@ fn castPtr(val: Word) [*:0]const u8 {
     return @ptrFromInt(@as(usize, @intCast(val)));
 }
 
-export fn out(file: ?*c.FILE, x_val: Word) void {
+export fn out(file: ?*word.FILE, x_val: Word) void {
     var x = x_val;
     if (x < 0 or x > TOP()) {
         _ = c.fprintf(file, "<%ld>", .{x});
@@ -837,7 +837,7 @@ export fn out(file: ?*c.FILE, x_val: Word) void {
     }
 }
 
-pub fn out1(file: ?*c.FILE, x: Word) void {
+pub fn out1(file: ?*word.FILE, x: Word) void {
     if (x < 0 or x > TOP()) {
         _ = c.fprintf(file, "<%ld>", .{x});
         return;
@@ -851,7 +851,7 @@ pub fn out1(file: ?*c.FILE, x: Word) void {
     }
 }
 
-pub fn out2(file: ?*c.FILE, x_val: Word) void {
+pub fn out2(file: ?*word.FILE, x_val: Word) void {
     var x = x_val;
     if (x < 0 or x > TOP()) {
         _ = c.fprintf(file, "<%ld>", .{x});
@@ -887,7 +887,7 @@ pub fn out2(file: ?*c.FILE, x_val: Word) void {
         return;
     }
     if (tag_val == word.ATOM) {
-        const str: [*:0]const u8 = if (x < c.CMBASE)
+        const str: [*:0]const u8 = if (x < word.CMBASE)
             @ptrCast(c.yysterm[@intCast(x - 256)])
         else if (x == word.True)
             "True"
@@ -898,7 +898,7 @@ pub fn out2(file: ?*c.FILE, x_val: Word) void {
         else if (x == word.NILS)
             "\"\""
         else
-            @ptrCast(c.cmbnms[@intCast(x - c.CMBASE)]);
+            @ptrCast(c.cmbnms[@intCast(x - word.CMBASE)]);
         _ = c.fprintf(file, "%s", .{str});
         return;
     }
@@ -1118,28 +1118,28 @@ fn ap(x: Word, y: Word) Word {
     return make(word.AP, x, y);
 }
 
-pub fn putint(n: i32, file: ?*c.FILE) void {
+pub fn putint(n: i32, file: ?*word.FILE) void {
     _ = c.fwrite(&n, @sizeOf(i32), 1, file);
 }
 
-pub fn getint(file: ?*c.FILE) i32 {
+pub fn getint(file: ?*word.FILE) i32 {
     var r: i32 = 0;
     _ = c.fread(&r, @sizeOf(i32), 1, file);
     return r;
 }
 
-pub fn putdbl(x: Word, file: ?*c.FILE) void {
+pub fn putdbl(x: Word, file: ?*word.FILE) void {
     var d = get_dbl(x);
     _ = c.fwrite(&d, @sizeOf(f64), 1, file);
 }
 
-pub fn getdbl(file: ?*c.FILE) Word {
+pub fn getdbl(file: ?*word.FILE) Word {
     var d: f64 = 0;
     _ = c.fread(&d, @sizeOf(f64), 1, file);
     return sto_dbl(d);
 }
 
-export fn dump_script(files_val: Word, file: ?*c.FILE) void {
+export fn dump_script(files_val: Word, file: ?*word.FILE) void {
     _ = c.putc(@intCast(wordsize), file);
     _ = c.putc(word.XVERSION, file);
 
@@ -1184,7 +1184,7 @@ export fn dump_script(files_val: Word, file: ?*c.FILE) void {
     dump_defs(internals, file);
 }
 
-pub fn dump_defs(defs_val: Word, file: ?*c.FILE) void {
+pub fn dump_defs(defs_val: Word, file: ?*word.FILE) void {
     var defs = defs_val;
     while (defs != word.NIL) : (defs = t(defs)) {
         const item = h(defs);
@@ -1213,7 +1213,7 @@ pub fn dump_defs(defs_val: Word, file: ?*c.FILE) void {
     _ = c.putc(word.DEF_X, file);
 }
 
-pub fn dump_ob(x: Word, file: ?*c.FILE) void {
+pub fn dump_ob(x: Word, file: ?*word.FILE) void {
     switch (tag.?[@intCast(x)]) {
         word.ATOM => {
             if (x < 128) {
@@ -1322,7 +1322,7 @@ pub fn dump_ob(x: Word, file: ?*c.FILE) void {
     }
 }
 
-export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
+export fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
     cs.TORPHANS = 0;
     cs.BAD_DUMP = 0;
     cs.CLASHES = word.NIL;
@@ -1588,7 +1588,7 @@ pub fn dgrow() void {
     allocated_dstack_size = new_size;
 }
 
-pub fn load_defs(file: ?*c.FILE) Word {
+pub fn load_defs(file: ?*word.FILE) Word {
     var ch = c.getc(file);
     var defs: Word = word.NIL;
     while (ch != c.EOF) {
@@ -1800,9 +1800,9 @@ pub fn load_defs(file: ?*c.FILE) Word {
             word.AP_X => {
                 const ch_val = stackpPop();
                 const top = stackpTop();
-                if (top == c.READ and ch_val == 0) {
+                if (top == word.READ and ch_val == 0) {
                     stackpSetTop(ls.common_stdin);
-                } else if (top == c.READBIN and ch_val == 0) {
+                } else if (top == word.READBIN and ch_val == 0) {
                     stackpSetTop(ls.common_stdinb);
                 } else {
                     stackpSetTop(ap(top, ch_val));

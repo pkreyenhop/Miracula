@@ -211,29 +211,29 @@ fn codegenType(te: ast.TypeExpr) Word {
 // ---------------------------------------------------------------------------
 
 fn opWord(op: []const u8) Word {
-    if (std.mem.eql(u8, op, "vel")) return clib.OR;
-    if (std.mem.eql(u8, op, "amp")) return clib.AND;
-    if (std.mem.eql(u8, op, "eq")) return clib.EQ;
-    if (std.mem.eql(u8, op, "eqeq")) return clib.EQ;
-    if (std.mem.eql(u8, op, "ne")) return clib.NEQ;
-    if (std.mem.eql(u8, op, "gt")) return clib.GR;
-    if (std.mem.eql(u8, op, "lt")) return ap(clib.C, clib.GR); // relop '<'
-    if (std.mem.eql(u8, op, "ge")) return clib.GRE;
-    if (std.mem.eql(u8, op, "le")) return ap(clib.C, clib.GRE); // relop LE
-    if (std.mem.eql(u8, op, "cons")) return clib.P; // ':' as section
-    if (std.mem.eql(u8, op, "plus_plus")) return clib.APPEND;
+    if (std.mem.eql(u8, op, "vel")) return word.OR;
+    if (std.mem.eql(u8, op, "amp")) return word.AND;
+    if (std.mem.eql(u8, op, "eq")) return word.EQ;
+    if (std.mem.eql(u8, op, "eqeq")) return word.EQ;
+    if (std.mem.eql(u8, op, "ne")) return word.NEQ;
+    if (std.mem.eql(u8, op, "gt")) return word.GR;
+    if (std.mem.eql(u8, op, "lt")) return ap(word.C, word.GR); // relop '<'
+    if (std.mem.eql(u8, op, "ge")) return word.GRE;
+    if (std.mem.eql(u8, op, "le")) return ap(word.C, word.GRE); // relop LE
+    if (std.mem.eql(u8, op, "cons")) return word.P; // ':' as section
+    if (std.mem.eql(u8, op, "plus_plus")) return word.APPEND;
     if (std.mem.eql(u8, op, "minus_minus")) return main.rs.listdiff_fn;
-    if (std.mem.eql(u8, op, "plus")) return clib.PLUS;
-    if (std.mem.eql(u8, op, "minus")) return clib.MINUS;
-    if (std.mem.eql(u8, op, "star")) return clib.TIMES;
-    if (std.mem.eql(u8, op, "slash")) return clib.FDIV;
-    if (std.mem.eql(u8, op, "kw_div")) return clib.INTDIV;
-    if (std.mem.eql(u8, op, "kw_mod")) return clib.MOD;
-    if (std.mem.eql(u8, op, "caret")) return clib.POWER;
-    if (std.mem.eql(u8, op, "dot")) return clib.B; // function composition
-    if (std.mem.eql(u8, op, "bang")) return ap(clib.C, clib.SUBSCRIPT); // '!'
-    if (std.mem.eql(u8, op, "tilde")) return clib.NOT;
-    if (std.mem.eql(u8, op, "hash")) return clib.LENGTH;
+    if (std.mem.eql(u8, op, "plus")) return word.PLUS;
+    if (std.mem.eql(u8, op, "minus")) return word.MINUS;
+    if (std.mem.eql(u8, op, "star")) return word.TIMES;
+    if (std.mem.eql(u8, op, "slash")) return word.FDIV;
+    if (std.mem.eql(u8, op, "kw_div")) return word.INTDIV;
+    if (std.mem.eql(u8, op, "kw_mod")) return word.MOD;
+    if (std.mem.eql(u8, op, "caret")) return word.POWER;
+    if (std.mem.eql(u8, op, "dot")) return word.B; // function composition
+    if (std.mem.eql(u8, op, "bang")) return ap(word.C, word.SUBSCRIPT); // '!'
+    if (std.mem.eql(u8, op, "tilde")) return word.NOT;
+    if (std.mem.eql(u8, op, "hash")) return word.LENGTH;
     // Miranda keyword built-ins emitted as keyword tokens by the C lexer.
     // SHOWSYM → make(SHOW, 0, 0); READVALSY → make(STARTREADVALS, 0, 0).
     if (std.mem.eql(u8, op, "kw_show")) return clib.make(word.SHOW, 0, 0);
@@ -261,7 +261,7 @@ fn opWord(op: []const u8) Word {
 
 fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
     const N = guards.len;
-    if (N == 0) return clib.FAIL;
+    if (N == 0) return word.FAIL;
 
     const last = guards[N - 1];
 
@@ -279,7 +279,7 @@ fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
         //                          or just COND cond body FAIL           [if N==1]
         const cond_w = codegenExpr(alloc, last.cond);
         const body_w = codegenExpr(alloc, last.body);
-        y = ap(ap2(clib.COND, cond_w, body_w), clib.FAIL);
+        y = ap(ap2(word.COND, cond_w, body_w), word.FAIL);
         if (N > 1) {
             y = mklabel(makeHere(@intCast(last.span.line)), y);
         }
@@ -292,7 +292,7 @@ fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
             const g = guards[j];
             const body_w = codegenExpr(alloc, g.body);
             const cond_w = codegenExpr(alloc, g.cond);
-            y = mklabel(makeHere(@intCast(g.span.line)), ap(ap2(clib.COND, cond_w, body_w), y));
+            y = mklabel(makeHere(@intCast(g.span.line)), ap(ap2(word.COND, cond_w, body_w), y));
         }
     }
 
@@ -301,7 +301,7 @@ fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
         const first = guards[0];
         const cond_w = codegenExpr(alloc, first.cond);
         const body_w = codegenExpr(alloc, first.body);
-        y = ap(ap2(clib.COND, cond_w, body_w), y);
+        y = ap(ap2(word.COND, cond_w, body_w), y);
     }
 
     return y;
@@ -350,7 +350,7 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
                 .string => |s| codegenString(s),
                 .float => |v| sto_dbl(v), // type checker will reject this later
             };
-            break :blk mkcons(clib.CONST, val);
+            break :blk mkcons(word.CONST, val);
         },
 
         // Non-empty list literal patterns: cons-chain terminated with nill.
@@ -393,8 +393,8 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
         // True/False are CONST tokens in YACC (not CNAME), so patterns using
         // them are wrapped: cons(CONST, atom). Mirror that here.
         .cname => |n| blk: {
-            if (std.mem.eql(u8, n.text, "True")) break :blk mkcons(clib.CONST, TRUE_ATOM);
-            if (std.mem.eql(u8, n.text, "False")) break :blk mkcons(clib.CONST, FALSE_ATOM);
+            if (std.mem.eql(u8, n.text, "True")) break :blk mkcons(word.CONST, TRUE_ATOM);
+            if (std.mem.eql(u8, n.text, "False")) break :blk mkcons(word.CONST, FALSE_ATOM);
             break :blk codegenExpr(alloc, e); // regular constructor: used as-is
         },
 
@@ -431,7 +431,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
             const lhs = codegenExpr(alloc, inf.lhs.*);
             const rhs_w = codegenExpr(alloc, inf.rhs.*);
             // '!' subscript: args are REVERSED — ap2(SUBSCRIPT, rhs, lhs)
-            if (std.mem.eql(u8, op, "bang")) break :blk ap2(clib.SUBSCRIPT, rhs_w, lhs);
+            if (std.mem.eql(u8, op, "bang")) break :blk ap2(word.SUBSCRIPT, rhs_w, lhs);
             // ':' list cons: make(CONS, lhs, rhs)
             if (std.mem.eql(u8, op, "cons")) break :blk mkcons(lhs, rhs_w);
             // All other operators: ap2(opWord, lhs, rhs)
@@ -439,8 +439,8 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         },
 
         // --- Unary operators ---
-        .neg => |ep| ap(clib.NEG, codegenExpr(alloc, ep.*)),
-        .length => |ep| ap(clib.LENGTH, codegenExpr(alloc, ep.*)),
+        .neg => |ep| ap(word.NEG, codegenExpr(alloc, ep.*)),
+        .length => |ep| ap(word.LENGTH, codegenExpr(alloc, ep.*)),
 
         // --- List literals ---
         .list_nil => word.NIL,
@@ -481,7 +481,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         .where => |w| applyWhereDefs(alloc, codegenExpr(alloc, w.body.*), w.defs),
 
         // --- Conditional guard (internal) ---
-        .cond => |c| ap2(clib.COND, codegenExpr(alloc, c.guard.*), codegenExpr(alloc, c.then_expr.*)),
+        .cond => |c| ap2(word.COND, codegenExpr(alloc, c.guard.*), codegenExpr(alloc, c.then_expr.*)),
 
         // --- Left section (e op) → ap(opWord, e) ---
         .section_left => |s| ap(opWord(s.op), codegenExpr(alloc, s.arg.*)),
@@ -491,10 +491,10 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         .section_right => |s| blk: {
             const arg_w = codegenExpr(alloc, s.arg.*);
             // Special-case operators whose opWord is already ap(C,x):
-            if (std.mem.eql(u8, s.op, "lt")) break :blk ap(clib.GR, arg_w);
-            if (std.mem.eql(u8, s.op, "le")) break :blk ap(clib.GRE, arg_w);
-            if (std.mem.eql(u8, s.op, "bang")) break :blk ap(clib.SUBSCRIPT, arg_w);
-            break :blk ap2(clib.C, opWord(s.op), arg_w);
+            if (std.mem.eql(u8, s.op, "lt")) break :blk ap(word.GR, arg_w);
+            if (std.mem.eql(u8, s.op, "le")) break :blk ap(word.GRE, arg_w);
+            if (std.mem.eql(u8, s.op, "bang")) break :blk ap(word.SUBSCRIPT, arg_w);
+            break :blk ap2(word.C, opWord(s.op), arg_w);
         },
 
         // --- Operator-as-function: (+), (*), … ---
@@ -509,17 +509,17 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
             const from_w = codegenExpr(alloc, r.from.*);
             if (r.step) |step_ptr| {
                 const step_w = codegenExpr(alloc, step_ptr.*);
-                const delta = ap2(clib.MINUS, step_w, from_w);
+                const delta = ap2(word.MINUS, step_w, from_w);
                 if (r.to) |to_ptr| {
-                    break :blk ap3(clib.STEPUNTIL, delta, codegenExpr(alloc, to_ptr.*), from_w);
+                    break :blk ap3(word.STEPUNTIL, delta, codegenExpr(alloc, to_ptr.*), from_w);
                 } else {
-                    break :blk ap2(clib.STEP, delta, from_w);
+                    break :blk ap2(word.STEP, delta, from_w);
                 }
             } else {
                 if (r.to) |to_ptr| {
-                    break :blk ap3(clib.STEPUNTIL, big_one, codegenExpr(alloc, to_ptr.*), from_w);
+                    break :blk ap3(word.STEPUNTIL, big_one, codegenExpr(alloc, to_ptr.*), from_w);
                 } else {
-                    break :blk ap2(clib.STEP, big_one, from_w);
+                    break :blk ap2(word.STEP, big_one, from_w);
                 }
             }
         },
@@ -551,7 +551,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
                         ls.idsused = word.NIL;
                         const src_w = codegenExpr(alloc, sg.source.*);
                         const step_w = codegenExpr(alloc, sg.step.*);
-                        const comb: Word = if (irrefutable(lhs_w) != 0) clib.ITERATE else clib.ITERATE1;
+                        const comb: Word = if (irrefutable(lhs_w) != 0) word.ITERATE else word.ITERATE1;
                         break :sgen mkcons(
                             clib.GENERATOR,
                             mkcons(lhs_w, ap2(comb, mklambda(lhs_w, step_w), src_w)),

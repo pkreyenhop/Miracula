@@ -379,7 +379,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 main.rs.make_status = clib.strcons(@as(Word, @intCast(@intFromPtr(s))), main.rs.make_status);
             }
         }
-        if (tag[@intCast(main.rs.make_status)] == clib.STRCONS) {
+        if (tag[@intCast(main.rs.make_status)] == word.STRCONS) {
             var h_val: Word = 0;
             var maxw: Word = 0;
             word.print("errors or undefined names found in:-\n", .{});
@@ -441,7 +441,7 @@ var mvp: usize = 0;
 var vbuf: [12]u8 = undefined;
 
 pub fn rc_read(rcfile: [*:0]const u8) Word {
-    var f: ?*clib.FILE = null;
+    var f: ?*word.FILE = null;
     var x: Word = undefined;
     var res: Word = 0;
     f = clib.fopen(rcfile, "r");
@@ -468,7 +468,7 @@ pub fn rc_read(rcfile: [*:0]const u8) Word {
     if (main.cs.ND != NIL or main.files == NIL) return 0;
     x = main.fil_defs(h(main.files));
     while (x != NIL) : (x = t(x)) {
-        if (main.id_type(h(x)) == clib.synonym_t) {
+        if (main.id_type(h(x)) == word.synonym_t) {
             main.heap.tp(main.t_info(h(x))).* = main.dump.fixtype(main.t_info(h(x)), h(x));
         } else {
             main.heap.tp(h(h(x))).* = main.dump.fixtype(main.id_type(h(x)), h(x));
@@ -479,7 +479,7 @@ pub fn rc_read(rcfile: [*:0]const u8) Word {
 
 pub fn rc_write() void {
     const home = clib.getenv("HOME");
-    var f: ?*clib.FILE = null;
+    var f: ?*word.FILE = null;
     if (home == null or main.rs.home_rc[0] == 0) return;
     f = clib.fopen(&main.rs.home_rc, "w");
     if (f == null) return;
@@ -536,5 +536,5 @@ pub fn v_info(full: c_int) void {
     word.print("{s} last revised {s}\n", .{strvers(main.version), main.vdate});
     if (full == 0) return;
     word.print("{s}", .{main.host});
-    word.print("XVERSION {}\n", .{@as(c_uint, @intCast(clib.XVERSION))});
+    word.print("XVERSION {}\n", .{@as(c_uint, @intCast(word.XVERSION))});
 }

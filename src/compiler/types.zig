@@ -158,7 +158,7 @@ extern fn sortrel(x: Word) Word;
 extern fn genshfns() void;
 extern fn alfasort(x: Word) Word;
 extern fn readoption() void;
-extern fn out(f: *c.FILE, x: Word) void;
+extern fn out(f: *word.FILE, x: Word) void;
 extern fn is_char(x: Word) c_int;
 extern fn charname(ch: Word) [*:0]const u8;
 extern fn size(x: Word) Word;
@@ -335,7 +335,7 @@ export fn typesfirst(input_x: Word) Word {
     return shunt(z, x);
 }
 
-fn getStderr() ?*c.FILE {
+fn getStderr() ?*word.FILE {
     const T = @TypeOf(c.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
         return c.stderr();
@@ -769,7 +769,7 @@ export fn ispoly(t_val: Word) c_int {
     return if (isvar_t(term)) 1 else 0;
 }
 
-fn getStdout() ?*c.FILE {
+fn getStdout() ?*word.FILE {
     const T = @TypeOf(c.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
         return c.stdout();
@@ -1101,7 +1101,7 @@ pub fn tail(x_in: Word) Word {
     return x;
 }
 
-pub fn out_formal1(f: *c.FILE, x_in: Word) void {
+pub fn out_formal1(f: *word.FILE, x_in: Word) void {
     var x = x_in;
     if (h(x) == CONST) {
         x = t(x);
@@ -1151,7 +1151,7 @@ pub fn out_formal1(f: *c.FILE, x_in: Word) void {
     }
 }
 
-export fn out_pattern(f: *c.FILE, x: Word) void {
+export fn out_pattern(f: *word.FILE, x: Word) void {
     if (main.tag[@intCast(x)] == CONS) {
         if (h(x) == CONST and (main.tag[@intCast(t(x))] == INT or main.tag[@intCast(t(x))] == DOUBLE)) {
             out(f, t(x));
@@ -1167,7 +1167,7 @@ export fn out_pattern(f: *c.FILE, x: Word) void {
     }
 }
 
-pub fn out_formal(f: *c.FILE, x: Word) void {
+pub fn out_formal(f: *word.FILE, x: Word) void {
     if (main.tag[@intCast(x)] != AP) {
         out_formal1(f, x);
     } else if (main.tag[@intCast(h(x))] == AP and h(h(x)) == PLUS) {
@@ -1804,7 +1804,7 @@ fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) main.MiraError!Word {
         }
         return try conforms(t(p), bt, try conforms(h(p), at, e, ngt), ngt);
     }
-    if (main.tag[@intCast(p)] == AP and main.tag[@intCast(h(p))] == AP and h(h(p)) == c.PLUS) { // n+k pattern
+    if (main.tag[@intCast(p)] == AP and main.tag[@intCast(h(p))] == AP and h(h(p)) == word.PLUS) { // n+k pattern
         if (unify(num_t, t_val) == 0) {
             return 1;
         }
@@ -1849,7 +1849,7 @@ fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) main.MiraError!Word {
 fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
     switch (main.tag[@intCast(x)]) {
         AP => {
-            if (h(x) == c.BADCASE or h(x) == c.CONFERROR) {
+            if (h(x) == word.BADCASE or h(x) == word.CONFERROR) {
                 return NTV();
             }
             const ft_val = try etype(h(x), env, ngt);
@@ -1858,7 +1858,7 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
             if (unify1(ft_val, ap2(arrow_t, at, rt)) == 0) {
                 const ft = subst(ft_val);
                 if (isarrow_t(ft)) {
-                    if (main.tag[@intCast(h(x))] == AP and h(h(x)) == c.G_ERROR) {
+                    if (main.tag[@intCast(h(x))] == AP and h(h(x)) == word.G_ERROR) {
                         type_error8(at, t(h(ft)));
                     } else {
                         type_error("unify", "with", at, t(h(ft)));
@@ -2118,253 +2118,253 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
                 return char_t;
             }
             switch (x) {
-                c.S => {
+                word.S => {
                     const a = NTV();
                     const b = NTV();
                     const c_local = NTV();
                     const d = tf3(tf2(a, b, c_local), tf(a, b), a, c_local);
                     return d;
                 },
-                c.K => {
+                word.K => {
                     const a = NTV();
                     const b = NTV();
                     return tf2(a, b, a);
                 },
-                c.Y => {
+                word.Y => {
                     const a = NTV();
                     return tf(tf(a, a), a);
                 },
-                c.C => {
+                word.C => {
                     const a = NTV();
                     const b = NTV();
                     const c_local = NTV();
                     return tf3(tf2(a, b, c_local), b, a, c_local);
                 },
-                c.B => {
+                word.B => {
                     const a = NTV();
                     const b = NTV();
                     const c_local = NTV();
                     return tf3(tf(a, b), tf(c_local, a), c_local, b);
                 },
-                c.FORCE, c.G_UNIT, c.G_RULE, c.I => {
+                word.FORCE, word.G_UNIT, word.G_RULE, word.I => {
                     const a = NTV();
                     return tf(a, a);
                 },
-                c.G_ZERO => {
+                word.G_ZERO => {
                     return NTV();
                 },
-                c.HD => {
+                word.HD => {
                     const a = NTV();
                     return tf(lt(a), a);
                 },
-                c.TL => {
+                word.TL => {
                     const a = lt(NTV());
                     return tf(a, a);
                 },
-                c.BODY => {
+                word.BODY => {
                     const a = NTV();
                     const b = NTV();
                     return tf(ap(a, b), a);
                 },
-                c.LAST => {
+                word.LAST => {
                     const a = NTV();
                     const b = NTV();
                     return tf(ap(a, b), b);
                 },
-                c.S_p => {
+                word.S_p => {
                     const a = NTV();
                     const b = NTV();
                     const c_local = lt(b);
                     return tf3(tf(a, b), tf(a, c_local), a, c_local);
                 },
-                c.U, c.U_ => {
+                word.U, word.U_ => {
                     const a = NTV();
                     const b = NTV();
                     const c_local = lt(a);
                     return tf2(tf2(a, c_local, b), c_local, b);
                 },
-                c.Uf => {
+                word.Uf => {
                     const a = NTV();
                     const b = NTV();
                     const c_local = NTV();
                     return tf2(tf2(tf(a, b), a, c_local), b, c_local);
                 },
-                c.COND => {
+                word.COND => {
                     const a = NTV();
                     return tf3(bool_t, a, a, a);
                 },
-                c.EQ, c.GR, c.GRE, c.NEQ => {
+                word.EQ, word.GR, word.GRE, word.NEQ => {
                     const a = NTV();
                     return tf2(a, a, bool_t);
                 },
-                c.NEG => {
+                word.NEG => {
                     return cs.tfnum;
                 },
-                c.AND, c.OR => {
+                word.AND, word.OR => {
                     return cs.tfbool2;
                 },
-                c.NOT => {
+                word.NOT => {
                     return cs.tfbool;
                 },
-                c.MERGE, c.APPEND => {
+                word.MERGE, word.APPEND => {
                     const a = lt(NTV());
                     return tf2(a, a, a);
                 },
-                c.STEP => {
+                word.STEP => {
                     return cs.tstep;
                 },
-                c.STEPUNTIL => {
+                word.STEPUNTIL => {
                     return cs.tstepuntil;
                 },
-                c.MAP => {
+                word.MAP => {
                     const a = NTV();
                     const b = NTV();
                     return tf2(tf(a, b), lt(a), lt(b));
                 },
-                c.FLATMAP => {
+                word.FLATMAP => {
                     const a = NTV();
                     const b = lt(NTV());
                     return tf2(tf(a, b), lt(a), b);
                 },
-                c.FILTER => {
+                word.FILTER => {
                     const a = NTV();
                     const b = lt(a);
                     return tf2(tf(a, bool_t), b, b);
                 },
-                c.ZIP => {
+                word.ZIP => {
                     const a = NTV();
                     const b = NTV();
                     return tf2(lt(a), lt(b), lt(pair_t(a, b)));
                 },
-                c.FOLDL => {
+                word.FOLDL => {
                     const a = NTV();
                     const b = NTV();
                     return tf3(tf2(a, b, a), a, lt(b), a);
                 },
-                c.FOLDL1 => {
+                word.FOLDL1 => {
                     const a = NTV();
                     return tf2(tf2(a, a, a), lt(a), a);
                 },
-                c.LIST_LAST => {
+                word.LIST_LAST => {
                     const a = NTV();
                     return tf(lt(a), a);
                 },
-                c.FOLDR => {
+                word.FOLDR => {
                     const a = NTV();
                     const b = NTV();
                     return tf3(tf2(a, b, b), b, lt(a), b);
                 },
-                c.MATCHINT, c.MATCH => {
+                word.MATCHINT, word.MATCH => {
                     const a = NTV();
                     const b = NTV();
                     return tf3(a, b, a, b);
                 },
-                c.TRY => {
+                word.TRY => {
                     const a = NTV();
                     return tf2(a, a, a);
                 },
-                c.DROP, c.TAKE => {
+                word.DROP, word.TAKE => {
                     const a = lt(NTV());
                     return tf2(num_t, a, a);
                 },
-                c.SUBSCRIPT => {
+                word.SUBSCRIPT => {
                     const a = NTV();
                     return tf2(num_t, lt(a), a);
                 },
-                c.P => {
+                word.P => {
                     const a = NTV();
                     const b = lt(a);
                     return tf2(a, b, b);
                 },
-                c.B_p => {
+                word.B_p => {
                     const a = NTV();
                     const b = NTV();
                     const c_local = lt(a);
                     return tf3(a, tf(b, c_local), b, c_local);
                 },
-                c.C_p => {
+                word.C_p => {
                     const a = NTV();
                     const b = NTV();
                     const c_local = lt(b);
                     return tf3(tf(a, b), c_local, a, c_local);
                 },
-                c.S1 => {
+                word.S1 => {
                     const a = NTV();
                     const b = NTV();
                     const c_local = NTV();
                     const d = NTV();
                     return tf4(tf2(a, b, c_local), tf(d, a), tf(d, b), d, c_local);
                 },
-                c.B1 => {
+                word.B1 => {
                     const a = NTV();
                     const b = NTV();
                     const c_local = NTV();
                     const d = NTV();
                     return tf4(tf(a, b), tf(c_local, a), tf(d, c_local), d, b);
                 },
-                c.C1 => {
+                word.C1 => {
                     const a = NTV();
                     const b = NTV();
                     const c_local = NTV();
                     const d = NTV();
                     return tf4(tf2(a, b, c_local), tf(d, a), b, d, c_local);
                 },
-                c.SEQ => {
+                word.SEQ => {
                     const a = NTV();
                     const b = NTV();
                     return tf2(a, b, b);
                 },
-                c.ITERATE1, c.ITERATE => {
+                word.ITERATE1, word.ITERATE => {
                     const a = NTV();
                     return tf2(tf(a, a), a, lt(a));
                 },
-                c.EXEC => {
+                word.EXEC => {
                     if (cs.exec_t == 0) {
                         const a = ap2(comma_t, cs.ltchar, ap2(comma_t, num_t, void_t));
                         cs.exec_t = tf(cs.ltchar, ap2(comma_t, cs.ltchar, a));
                     }
                     return cs.exec_t;
                 },
-                c.READBIN, c.READ => {
+                word.READBIN, word.READ => {
                     if (cs.read_t == 0) {
                         cs.read_t = tf(char_t, cs.ltchar);
                     }
                     return cs.read_t;
                 },
-                c.FILESTAT => {
+                word.FILESTAT => {
                     return genlstat_t();
                 },
-                c.FILEMODE, c.GETENV, c.NB_STARTREAD, c.STARTREADBIN, c.STARTREAD => {
+                word.FILEMODE, word.GETENV, word.NB_STARTREAD, word.STARTREADBIN, word.STARTREAD => {
                     return cs.tfstrstr;
                 },
-                c.GETARGS => {
+                word.GETARGS => {
                     return tf(char_t, lt(cs.ltchar));
                 },
-                c.SHOWHEX, c.SHOWOCT, c.SHOWNUM => {
+                word.SHOWHEX, word.SHOWOCT, word.SHOWNUM => {
                     return tf(num_t, cs.ltchar);
                 },
-                c.SHOWFLOAT, c.SHOWSCALED => {
+                word.SHOWFLOAT, word.SHOWSCALED => {
                     return tf2(num_t, num_t, cs.ltchar);
                 },
-                c.NUMVAL => {
+                word.NUMVAL => {
                     return tf(cs.ltchar, num_t);
                 },
-                c.INTEGER => {
+                word.INTEGER => {
                     return tf(num_t, bool_t);
                 },
-                c.CODE => {
+                word.CODE => {
                     return tf(char_t, num_t);
                 },
-                c.DECODE => {
+                word.DECODE => {
                     return tf(num_t, char_t);
                 },
-                c.LENGTH => {
+                word.LENGTH => {
                     return tf(lt(NTV()), num_t);
                 },
-                c.ENTIER_FN, c.ARCTAN_FN, c.EXP_FN, c.SIN_FN, c.COS_FN, c.SQRT_FN, c.LOG_FN, c.LOG10_FN => {
+                word.ENTIER_FN, word.ARCTAN_FN, word.EXP_FN, word.SIN_FN, word.COS_FN, word.SQRT_FN, word.LOG_FN, word.LOG10_FN => {
                     return cs.tfnumnum;
                 },
-                c.MINUS, c.PLUS, c.TIMES, c.INTDIV, c.FDIV, c.MOD, c.POWER => {
+                word.MINUS, word.PLUS, word.TIMES, word.INTDIV, word.FDIV, word.MOD, word.POWER => {
                     return cs.tfnum2;
                 },
                 word.True, word.False => {
@@ -2377,48 +2377,48 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
                 word.NILS => {
                     return cs.ltchar;
                 },
-                c.MKSTRICT => {
+                word.MKSTRICT => {
                     const a = NTV();
                     return tf(char_t, tf(a, a));
                 },
-                c.G_ALT => {
+                word.G_ALT => {
                     const a = NTV();
                     return tf2(a, a, a);
                 },
-                c.G_ERROR => {
+                word.G_ERROR => {
                     const a = NTV();
                     return tf2(a, tf(lt(cs.bnf_t), a), a);
                 },
-                c.G_OPT, c.G_STAR => {
+                word.G_OPT, word.G_STAR => {
                     const a = NTV();
                     return tf(a, lt(a));
                 },
-                c.G_FBSTAR => {
+                word.G_FBSTAR => {
                     const a = NTV();
                     const b = tf(a, a);
                     return tf(b, b);
                 },
-                c.G_SYMB => {
+                word.G_SYMB => {
                     return cs.tfstrstr;
                 },
-                c.G_ANY => {
+                word.G_ANY => {
                     return cs.ltchar;
                 },
-                c.G_SUCHTHAT => {
+                word.G_SUCHTHAT => {
                     return tf(tf(cs.ltchar, bool_t), cs.ltchar);
                 },
-                c.G_END => {
+                word.G_END => {
                     return lt(cs.bnf_t);
                 },
-                c.G_STATE => {
+                word.G_STATE => {
                     return t(h(t(cs.bnf_t)));
                 },
-                c.G_SEQ => {
+                word.G_SEQ => {
                     const a = NTV();
                     const b = NTV();
                     return tf2(a, tf(a, b), b);
                 },
-                c.G_CLOSE => {
+                word.G_CLOSE => {
                     const a = NTV();
                     if (main.rs.col_fn != 0) {
                         if (main.rs.col_fn == -1) {
@@ -2429,13 +2429,13 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
                     }
                     return tf3(cs.ltchar, a, lt(cs.bnf_t), a);
                 },
-                c.OFFSIDE => {
+                word.OFFSIDE => {
                     return cs.ltchar;
                 },
-                c.FAIL, c.CONFERROR, c.BADCASE, UNDEF => {
+                word.FAIL, word.CONFERROR, word.BADCASE, UNDEF => {
                     return NTV();
                 },
-                c.ERROR => {
+                word.ERROR => {
                     return tf(cs.ltchar, NTV());
                 },
                 else => {

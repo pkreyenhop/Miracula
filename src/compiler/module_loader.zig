@@ -105,7 +105,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     if (main.SYNERR == 0 and ls.exportfiles != NIL) {
         var s = ls.exportfiles;
         while (s != NIL) : (s = main.heap.t(s)) {
-            if (main.heap.h(s) == clib.PLUS) {
+            if (main.heap.h(s) == word.PLUS) {
                 var i = main.fil_defs(main.heap.h(main.files));
                 while (i != NIL) : (i = main.heap.t(i)) {
                     if (main.isvariable(main.heap.h(i)) and !main.isfreeid(main.heap.h(i))) {
@@ -158,7 +158,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             main.rs.exports = main.heap.t(main.rs.exports);
 
             while (e != NIL) : (e = main.heap.t(e)) {
-                if (main.id_type(main.heap.h(e)) == clib.undef_t) {
+                if (main.id_type(main.heap.h(e)) == word.undef_t) {
                     u = main.cons(main.heap.h(e), u);
                     main.cs.ND = clib.add1(main.heap.h(e), main.cs.ND);
                 } else if (clib.member(main.rs.exports, main.heap.h(e)) == 0) {
@@ -173,10 +173,10 @@ pub fn loadfile(t_val: [*:0]const u8) void {
 
             e = main.rs.exports;
             while (e != NIL) : (e = main.heap.t(e)) {
-                if (main.id_type(main.heap.h(e)) == clib.undef_t) {
+                if (main.id_type(main.heap.h(e)) == word.undef_t) {
                     u = main.cons(main.heap.h(e), u);
                     main.cs.ND = clib.add1(main.heap.h(e), main.cs.ND);
-                } else if (main.id_type(main.heap.h(e)) == clib.type_t and main.t_class(main.heap.h(e)) == clib.algebraic_t) {
+                } else if (main.id_type(main.heap.h(e)) == word.type_t and main.t_class(main.heap.h(e)) == word.algebraic_t) {
                     c_ctr = main.shunt(main.t_info(main.heap.h(e)), c_ctr);
                 }
             }
@@ -217,8 +217,8 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         if (main.rs.exports != NIL) {
             while (e1 != NIL) : (e1 = main.heap.t(e1)) {
                 const ty = main.id_type(main.heap.h(e1));
-                if (ty == clib.type_t) {
-                    if (main.t_class(main.heap.h(e1)) == clib.synonym_t) {
+                if (ty == word.type_t) {
+                    if (main.t_class(main.heap.h(e1)) == word.synonym_t) {
                         r = clib.UNION(r, clib.deps(main.t_info(main.heap.h(e1))));
                     } else {
                         e = main.cons(main.heap.h(e1), e);
@@ -231,8 +231,8 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             e1 = main.fil_defs(main.heap.h(main.files));
             while (e1 != NIL) : (e1 = main.heap.t(e1)) {
                 const ty = main.id_type(main.heap.h(e1));
-                if (ty == clib.type_t) {
-                    if (main.t_class(main.heap.h(e1)) == clib.synonym_t) {
+                if (ty == word.type_t) {
+                    if (main.t_class(main.heap.h(e1)) == word.synonym_t) {
                         r = clib.UNION(r, clib.deps(main.t_info(main.heap.h(e1))));
                     } else {
                         e = main.cons(main.heap.h(e1), e);
@@ -246,8 +246,8 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         e1 = main.rs.freeids;
         while (e1 != NIL) : (e1 = main.heap.t(e1)) {
             const ty = main.id_type(main.heap.h(main.heap.h(e1)));
-            if (ty == clib.type_t) {
-                if (main.t_class(main.heap.h(main.heap.h(e1))) == clib.synonym_t) {
+            if (ty == word.type_t) {
+                if (main.t_class(main.heap.h(main.heap.h(e1))) == word.synonym_t) {
                     r = clib.UNION(r, clib.deps(main.t_info(main.heap.h(main.heap.h(e1)))));
                 } else {
                     e = main.cons(main.heap.h(main.heap.h(e1)), e);
@@ -277,7 +277,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
 
     if (main.SYNERR == 0 and main.rs.detrop != NIL) {
         const gd = main.rs.detrop;
-        while (main.rs.detrop != NIL and main.tag[@intCast(main.dval(main.heap.h(main.rs.detrop)))] == clib.LABEL) {
+        while (main.rs.detrop != NIL and main.tag[@intCast(main.dval(main.heap.h(main.rs.detrop)))] == word.LABEL) {
             main.rs.detrop = main.heap.t(main.rs.detrop);
         }
         if (main.rs.detrop != NIL) {
@@ -289,13 +289,13 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             clib.out_pattern(main.getStdout(), main.dlhs(main.heap.h(main.rs.detrop)));
             _ = clib.putchar('\n');
             main.rs.detrop = main.heap.t(main.rs.detrop);
-            while (main.rs.detrop != NIL and main.tag[@intCast(main.dval(main.heap.h(main.rs.detrop)))] == clib.LABEL) {
+            while (main.rs.detrop != NIL and main.tag[@intCast(main.dval(main.heap.h(main.rs.detrop)))] == word.LABEL) {
                 main.rs.detrop = main.heap.t(main.rs.detrop);
             }
         }
 
         var gd_mut = gd;
-        while (gd_mut != NIL and main.tag[@intCast(main.dval(main.heap.h(gd_mut)))] != clib.LABEL) {
+        while (gd_mut != NIL and main.tag[@intCast(main.dval(main.heap.h(gd_mut)))] != word.LABEL) {
             gd_mut = main.heap.t(gd_mut);
         }
         if (gd_mut != NIL) {
@@ -307,7 +307,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             clib.out_pattern(main.getStdout(), main.dlhs(main.heap.h(gd_mut)));
             _ = clib.putchar('\n');
             gd_mut = main.heap.t(gd_mut);
-            while (gd_mut != NIL and main.tag[@intCast(main.dval(main.heap.h(gd_mut)))] != clib.LABEL) {
+            while (gd_mut != NIL and main.tag[@intCast(main.dval(main.heap.h(gd_mut)))] != word.LABEL) {
                 gd_mut = main.heap.t(gd_mut);
             }
         }
@@ -317,12 +317,12 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         var x = main.fil_defs(main.heap.h(main.files));
         main.cs.lfrule = 0;
         while (x != NIL) : (x = main.heap.t(x)) {
-            if (main.id_type(main.heap.h(x)) != clib.type_t) {
+            if (main.id_type(main.heap.h(x)) != word.type_t) {
                 main.cs.current_id = main.heap.h(x);
                 main.cs.polyshowerror = 0;
                 main.heap.tp(main.heap.h(x)).* = main.codegen(main.id_val(main.heap.h(x)));
                 if (main.cs.polyshowerror != 0) {
-                    main.heap.tp(main.heap.h(x)).* = clib.UNDEF;
+                    main.heap.tp(main.heap.h(x)).* = word.UNDEF;
                 }
             }
         }
@@ -416,7 +416,7 @@ pub fn mkincludes(includees_val: Word) Word {
     while (includees_list != NIL) {
         var x: Word = NIL;
         var oldsig: usize = 0;
-        var f: ?*clib.FILE = null;
+        var f: ?*word.FILE = null;
         const fn_str = @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(main.heap.h(includees_list)))))));
 
         _ = word.strcpy(ls.dicp, fn_str);
@@ -464,11 +464,11 @@ pub fn mkincludes(includees_val: Word) Word {
                             var p = main.fil_defs(main.heap.h(y));
                             var q = main.fil_defs(main.heap.h(z));
                             while (p != NIL and q != NIL) {
-                                if (main.tag[@intCast(main.heap.h(p))] == clib.ID) {
-                                    if (main.id_type(main.heap.h(p)) == clib.type_t and (main.tag[@intCast(main.heap.h(q))] == clib.ID or main.tag[@intCast(pn_val(main.heap.h(q)))] == clib.ID)) {
+                                if (main.tag[@intCast(main.heap.h(p))] == word.ID) {
+                                    if (main.id_type(main.heap.h(p)) == word.type_t and (main.tag[@intCast(main.heap.h(q))] == word.ID or main.tag[@intCast(pn_val(main.heap.h(q)))] == word.ID)) {
                                         var w = tclashes;
-                                        const orig = if (main.tag[@intCast(main.heap.h(q))] == clib.ID) main.heap.h(q) else pn_val(main.heap.h(q));
-                                        if (main.t_class(main.heap.h(p)) == clib.synonym_t) {
+                                        const orig = if (main.tag[@intCast(main.heap.h(q))] == word.ID) main.heap.h(q) else pn_val(main.heap.h(q));
+                                        if (main.t_class(main.heap.h(p)) == word.synonym_t) {
                                             p = main.heap.t(p);
                                             q = main.heap.t(q);
                                             continue;
@@ -568,7 +568,7 @@ pub fn mkincludes(includees_val: Word) Word {
             clib.printlist(@constCast("causes nameclashes: "), main.cs.CLASHES);
         }
 
-        while (main.cs.DETROP != NIL and main.tag[@intCast(main.heap.h(main.cs.DETROP))] == clib.CONS) {
+        while (main.cs.DETROP != NIL and main.tag[@intCast(main.heap.h(main.cs.DETROP))] == word.CONS) {
             const fa = main.heap.h(main.heap.t(main.heap.h(main.cs.DETROP)));
             const ta = main.heap.t(main.heap.t(main.heap.h(main.cs.DETROP)));
             const pn = main.get_id(main.heap.h(main.heap.h(main.cs.DETROP)));

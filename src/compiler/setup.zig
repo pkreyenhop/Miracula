@@ -1,5 +1,6 @@
 const std = @import("std");
 const main = @import("../main.zig");
+const word = @import("../runtime/word.zig");
 const clib = @import("../runtime/main_clib.zig");
 const heap = @import("../runtime/heap.zig");
 
@@ -111,73 +112,73 @@ pub fn predef(n: [*:0]const u8, v: Word, t_val: Word) void {
 /// Seeds the primitive type aliases (num, char, bool) and built-in constructors
 /// (True, False) into the private primitive environment. Called by mira_setup().
 pub fn primlib() void {
-    primdef("num", clib.make_typ(0, 0, clib.synonym_t, clib.num_t), clib.type_t);
-    primdef("char", clib.make_typ(0, 0, clib.synonym_t, clib.char_t), clib.type_t);
-    primdef("bool", clib.make_typ(0, 0, clib.synonym_t, clib.bool_t), clib.type_t);
-    primdef("True", 1, clib.bool_t);
-    primdef("False", 0, clib.bool_t);
+    primdef("num", clib.make_typ(0, 0, word.synonym_t, word.num_t), word.type_t);
+    primdef("char", clib.make_typ(0, 0, word.synonym_t, word.char_t), word.type_t);
+    primdef("bool", clib.make_typ(0, 0, word.synonym_t, word.bool_t), word.type_t);
+    primdef("True", 1, word.bool_t);
+    primdef("False", 0, word.bool_t);
 }
 
 /// Seeds the private-prelude identifiers (offside, changetype, hd/tl, etc.) that are
 /// always in scope but not user-visible. Called during prelude loading.
 pub fn privlib() void {
-    predef("offside", clib.OFFSIDE, main.cs.ltchar);
-    predef("changetype", clib.I, clib.wrong_t);
-    predef("first", clib.HD, clib.wrong_t);
-    predef("rest", clib.TL, clib.wrong_t);
-    predef("code", clib.CODE, clib.undef_t);
-    predef("concat", clib.ap2(clib.FOLDR, clib.APPEND, NIL), clib.undef_t);
-    predef("decode", clib.DECODE, clib.undef_t);
-    predef("drop", clib.DROP, clib.undef_t);
-    predef("error", clib.ERROR, clib.undef_t);
-    predef("filter", clib.FILTER, clib.undef_t);
-    predef("foldr", clib.FOLDR, clib.undef_t);
-    predef("hd", clib.HD, clib.undef_t);
-    predef("map", clib.MAP, clib.undef_t);
-    predef("shownum", clib.SHOWNUM, clib.undef_t);
-    predef("take", clib.TAKE, clib.undef_t);
-    predef("tl", clib.TL, clib.undef_t);
+    predef("offside", word.OFFSIDE, main.cs.ltchar);
+    predef("changetype", word.I, word.wrong_t);
+    predef("first", word.HD, word.wrong_t);
+    predef("rest", word.TL, word.wrong_t);
+    predef("code", word.CODE, word.undef_t);
+    predef("concat", clib.ap2(word.FOLDR, word.APPEND, NIL), word.undef_t);
+    predef("decode", word.DECODE, word.undef_t);
+    predef("drop", word.DROP, word.undef_t);
+    predef("error", word.ERROR, word.undef_t);
+    predef("filter", word.FILTER, word.undef_t);
+    predef("foldr", word.FOLDR, word.undef_t);
+    predef("hd", word.HD, word.undef_t);
+    predef("map", word.MAP, word.undef_t);
+    predef("shownum", word.SHOWNUM, word.undef_t);
+    predef("take", word.TAKE, word.undef_t);
+    predef("tl", word.TL, word.undef_t);
 }
 
 /// Seeds the standard-library identifiers (map, filter, foldr, trig fns, etc.) into
 /// the global environment. Called when STDENV is loaded successfully.
 pub fn stdlib() void {
-    predef("arctan", clib.ARCTAN_FN, clib.undef_t);
-    predef("code", clib.CODE, clib.undef_t);
-    predef("cos", clib.COS_FN, clib.undef_t);
-    predef("decode", clib.DECODE, clib.undef_t);
-    predef("drop", clib.DROP, clib.undef_t);
-    predef("entier", clib.ENTIER_FN, clib.undef_t);
-    predef("error", clib.ERROR, clib.undef_t);
-    predef("exp", clib.EXP_FN, clib.undef_t);
-    predef("filemode", clib.FILEMODE, clib.undef_t);
-    predef("filestat", clib.FILESTAT, clib.undef_t);
-    predef("foldl", clib.FOLDL, clib.undef_t);
-    predef("foldl1", clib.FOLDL1, clib.undef_t);
-    predef("hugenum", clib.sto_dbl(clib.DBL_MAX), clib.undef_t);
-    predef("last", clib.LIST_LAST, clib.undef_t);
-    predef("foldr", clib.FOLDR, clib.undef_t);
-    predef("force", clib.FORCE, clib.undef_t);
-    predef("getenv", clib.GETENV, clib.undef_t);
-    predef("integer", clib.INTEGER, clib.undef_t);
-    predef("log", clib.LOG_FN, clib.undef_t);
-    predef("log10", clib.LOG10_FN, clib.undef_t);
-    predef("merge", clib.MERGE, clib.undef_t);
-    predef("numval", clib.NUMVAL, clib.undef_t);
-    predef("read", clib.STARTREAD, clib.undef_t);
-    predef("readb", clib.STARTREADBIN, clib.undef_t);
-    predef("seq", clib.SEQ, clib.undef_t);
-    predef("shownum", clib.SHOWNUM, clib.undef_t);
-    predef("showhex", clib.SHOWHEX, clib.undef_t);
-    predef("showoct", clib.SHOWOCT, clib.undef_t);
-    predef("showfloat", clib.SHOWFLOAT, clib.undef_t);
-    predef("showscaled", clib.SHOWSCALED, clib.undef_t);
-    predef("sin", clib.SIN_FN, clib.undef_t);
-    predef("sqrt", clib.SQRT_FN, clib.undef_t);
-    predef("system", clib.EXEC, clib.undef_t);
-    predef("take", clib.TAKE, clib.undef_t);
-    predef("tinynum", mktiny(), clib.undef_t);
-    predef("zip2", clib.ZIP, clib.undef_t);
+    predef("arctan", word.ARCTAN_FN, word.undef_t);
+    predef("code", word.CODE, word.undef_t);
+    predef("cos", word.COS_FN, word.undef_t);
+    predef("decode", word.DECODE, word.undef_t);
+    predef("drop", word.DROP, word.undef_t);
+    predef("entier", word.ENTIER_FN, word.undef_t);
+    predef("error", word.ERROR, word.undef_t);
+    predef("exp", word.EXP_FN, word.undef_t);
+    predef("filemode", word.FILEMODE, word.undef_t);
+    predef("filestat", word.FILESTAT, word.undef_t);
+    predef("foldl", word.FOLDL, word.undef_t);
+    predef("foldl1", word.FOLDL1, word.undef_t);
+    predef("hugenum", clib.sto_dbl(clib.DBL_MAX), word.undef_t);
+    predef("last", word.LIST_LAST, word.undef_t);
+    predef("foldr", word.FOLDR, word.undef_t);
+    predef("force", word.FORCE, word.undef_t);
+    predef("getenv", word.GETENV, word.undef_t);
+    predef("integer", word.INTEGER, word.undef_t);
+    predef("log", word.LOG_FN, word.undef_t);
+    predef("log10", word.LOG10_FN, word.undef_t);
+    predef("merge", word.MERGE, word.undef_t);
+    predef("numval", word.NUMVAL, word.undef_t);
+    predef("read", word.STARTREAD, word.undef_t);
+    predef("readb", word.STARTREADBIN, word.undef_t);
+    predef("seq", word.SEQ, word.undef_t);
+    predef("shownum", word.SHOWNUM, word.undef_t);
+    predef("showhex", word.SHOWHEX, word.undef_t);
+    predef("showoct", word.SHOWOCT, word.undef_t);
+    predef("showfloat", word.SHOWFLOAT, word.undef_t);
+    predef("showscaled", word.SHOWSCALED, word.undef_t);
+    predef("sin", word.SIN_FN, word.undef_t);
+    predef("sqrt", word.SQRT_FN, word.undef_t);
+    predef("system", word.EXEC, word.undef_t);
+    predef("take", word.TAKE, word.undef_t);
+    predef("tinynum", mktiny(), word.undef_t);
+    predef("zip2", word.ZIP, word.undef_t);
 }
 
 fn mktiny() Word {
@@ -198,12 +199,12 @@ pub fn mira_setup() void {
     tsetup();
     reset_pns();
     bigsetup();
-    ls.common_stdin = clib.ap(clib.READ, 0);
-    ls.common_stdinb = clib.ap(clib.READBIN, 0);
-    ls.cook_stdin = clib.ap(clib.readvals(0, 0), clib.OFFSIDE);
-    main.nill = main.cons(clib.CONST, NIL);
+    ls.common_stdin = clib.ap(word.READ, 0);
+    ls.common_stdinb = clib.ap(word.READBIN, 0);
+    ls.cook_stdin = clib.ap(clib.readvals(0, 0), word.OFFSIDE);
+    main.nill = main.cons(word.CONST, NIL);
     main.rs.Void = clib.make_id(@constCast("()"));
-    main.heap.tp(main.heap.h(main.rs.Void)).* = clib.void_t;
+    main.heap.tp(main.heap.h(main.rs.Void)).* = word.void_t;
     main.heap.tp(main.rs.Void).* = main.constructor(0, main.rs.Void);
     main.rs.message = clib.make_id(@constCast("sys_message"));
     main.rs.main_id = clib.make_id(@constCast("main"));

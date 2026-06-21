@@ -40,8 +40,8 @@ export fn commandloop(initscript: [*:0]u8) void {
     if (clib.sigsetjmp(&main.rs.env, 1) == 0) {
         if (main.rs.magic) {
             main.undump(initscript);
-            if (main.files == NIL or main.cs.ND != NIL or main.id_val(main.rs.main_id) == clib.UNDEF) {
-                if (main.files != NIL and main.cs.ND == NIL and main.id_val(main.rs.main_id) == clib.UNDEF) {
+            if (main.files == NIL or main.cs.ND != NIL or main.id_val(main.rs.main_id) == word.UNDEF) {
+                if (main.files != NIL and main.cs.ND == NIL and main.id_val(main.rs.main_id) == word.UNDEF) {
                     word.printErr("{s}: main not defined\n", .{initscript});
                 }
                 main.fatal("mira: incorrect use of \"-exec\" flag\n", .{.{}});
@@ -94,7 +94,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                         word.print("??{s}\n", .{main.get_id(main.rs.lastid)});
                         x = main.rs.lastid;
                     }
-                    if (x == NIL or main.id_type(x) == clib.undef_t) {
+                    if (x == NIL or main.id_type(x) == word.undef_t) {
                         main.diagnose(if (ls.dicp[0] != 0) ls.dicp else main.get_id(main.rs.lastid));
                         main.rs.lastid = 0;
                         continue;
@@ -189,7 +189,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                 main.rs.lastid = 0;
                 main.heap.tp(main.heap.h(ls.cook_stdin)).* = 0;
                 main.rs.rv_expr = 0;
-                ls.c = clib.EVAL;
+                ls.c = word.EVAL;
                 main.rs.echoing = 0;
                 main.cs.polyshowerror = 0;
                 main.commandmode = 1;
@@ -278,7 +278,7 @@ pub export fn obey(x_in: Word) void {
 pub export fn evaluate_repl(x_in: Word) void {
     var x = x_in;
     const typ = main.type_of(x);
-    if (typ == clib.wrong_t) return;
+    if (typ == word.wrong_t) return;
     main.rs.lastexp = x;
     x = main.codegen(x);
     if (main.cs.polyshowerror != 0) return;
@@ -337,7 +337,7 @@ pub fn announce() void {
     word.print("\n", .{});
 }
 
-pub fn getln(in: ?*clib.FILE, n_val: Word, s_ptr: [*]u8) c_int {
+pub fn getln(in: ?*word.FILE, n_val: Word, s_ptr: [*]u8) c_int {
     var s = s_ptr;
     var n = n_val;
     var ch: c_int = undefined;
@@ -374,10 +374,10 @@ pub fn fixeditor() void {
     }
 }
 
-pub export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
+pub export fn parseline(t_val: Word, f: ?*word.FILE, fil: Word) Word {
     var t1: Word = undefined;
     var ch: c_int = undefined;
-    main.rs.lastexp = clib.UNDEF;
+    main.rs.lastexp = word.UNDEF;
     while (true) {
         ch = clib.getc(f);
         while (ch == ' ' or ch == '\t' or ch == '\n') {
@@ -401,7 +401,7 @@ pub export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
             return clib.EOF;
         }
         _ = clib.ungetc(ch, f);
-        ls.c = clib.VALUE;
+        ls.c = word.VALUE;
         main.rs.echoing = 0;
         main.commandmode = 1;
         main.rs.s_in = f;
@@ -409,21 +409,21 @@ pub export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
         main.rs.s_in = main.getStdin();
         if (main.SYNERR != 0) {
             main.SYNERR = 0;
-            main.rs.lastexp = clib.UNDEF;
+            main.rs.lastexp = word.UNDEF;
         } else {
             t1 = main.type_of(main.rs.lastexp);
-            if (t1 == clib.wrong_t) {
-                main.rs.lastexp = clib.UNDEF;
+            if (t1 == word.wrong_t) {
+                main.rs.lastexp = word.UNDEF;
             } else if (clib.subsumes(clib.instantiate(t1), t_val) == 0) {
                 word.print("data has wrong type :: ", .{});
                 clib.out_type(t1);
                 word.print("\nshould be :: ", .{});
                 clib.out_type(t_val);
                 _ = clib.putc('\n', main.getStdout());
-                main.rs.lastexp = clib.UNDEF;
+                main.rs.lastexp = word.UNDEF;
             }
         }
-        if (main.rs.lastexp != clib.UNDEF) {
+        if (main.rs.lastexp != word.UNDEF) {
             return main.codegen(main.rs.lastexp);
         }
         if (clib.isatty(clib.fileno(f)) != 0) {

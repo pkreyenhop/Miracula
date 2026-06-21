@@ -39,7 +39,7 @@ pub fn fixexports() void {
         while (f != NIL) : (f = t(f)) {
             var e_def = main.fil_defs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
-                if (tag[@intCast(h(e_def))] == clib.ID) {
+                if (tag[@intCast(h(e_def))] == word.ID) {
                     internals = main.cons(privatise(h(e_def)), internals);
                 }
             }
@@ -49,7 +49,7 @@ pub fn fixexports() void {
         while (f != NIL) : (f = t(f)) {
             var e_def = main.fil_defs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
-                if (tag[@intCast(h(e_def))] == clib.ID and unpainted(h(e_def))) {
+                if (tag[@intCast(h(e_def))] == word.ID and unpainted(h(e_def))) {
                     internals = main.cons(privatise(h(e_def)), internals);
                 }
             }
@@ -62,12 +62,12 @@ pub fn fixexports() void {
 }
 
 fn paint(x: Word) void {
-    tp(x).* = clib.ap(clib.EXPORT, main.id_val(x));
+    tp(x).* = clib.ap(word.EXPORT, main.id_val(x));
 }
 
 fn unpainted(x: Word) bool {
     const v = main.id_val(x);
-    return tag[@intCast(v)] != clib.AP or h(v) != clib.EXPORT;
+    return tag[@intCast(v)] != word.AP or h(v) != word.EXPORT;
 }
 
 fn unpaint(x: Word) void {
@@ -90,18 +90,18 @@ fn privatise(x: Word) Word {
     const hash_idx = hash(main.get_id(x));
     const i = h(n);
 
-    if (main.id_type(x) == clib.type_t) {
+    if (main.id_type(x) == word.type_t) {
         tp(main.t_info(x)).* = main.cons(clib.datapair(@as(Word, @intCast(@intFromPtr(clib.getaka(x)))), 0), main.get_here(x));
     }
 
-    if (main.id_val(x) == clib.UNDEF) {
+    if (main.id_val(x) == word.UNDEF) {
         tp(x).* = clib.ap(clib.datapair(@as(Word, @intCast(@intFromPtr(clib.getaka(x)))), 0), main.get_here(x));
     }
 
     ls.pnvec.?[@as(usize, @intCast(i))] = x;
-    tag[@intCast(n)] = clib.ID;
+    tag[@intCast(n)] = word.ID;
     hp(n).* = h(x);
-    tag[@intCast(x)] = clib.STRCONS;
+    tag[@intCast(x)] = word.STRCONS;
     hp(x).* = i;
 
     const current_bucket = ls.namebucket[hash_idx];
@@ -130,12 +130,12 @@ fn publicise(x: Word) Word {
     const i = main.id_val(x);
     const hash_idx = hash(main.get_id(x));
 
-    tag[@intCast(i)] = clib.ID;
+    tag[@intCast(i)] = word.ID;
     hp(i).* = h(x);
 
     const val = t(i);
-    if (tag[@intCast(val)] == clib.AP and tag[@intCast(h(val))] == clib.DATAPAIR) {
-        tp(i).* = clib.UNDEF;
+    if (tag[@intCast(val)] == word.AP and tag[@intCast(h(val))] == word.DATAPAIR) {
+        tp(i).* = word.UNDEF;
     }
 
     const current_bucket = ls.namebucket[hash_idx];
@@ -176,7 +176,7 @@ pub export fn readoption() void {
         while (f != NIL) : (f = t(f)) {
             t_val = t(h(f));
             while (t_val != NIL) : (t_val = t(t_val)) {
-                if (tag[@intCast(h(h(t_val)))] == clib.STRCONS and t(t(h(h(t_val)))) == clib.type_t) {
+                if (tag[@intCast(h(h(t_val)))] == word.STRCONS and t(t(h(h(t_val)))) == word.type_t) {
                     pfrts = main.cons(h(h(t_val)), pfrts);
                 }
             }
@@ -187,10 +187,10 @@ pub export fn readoption() void {
     while (rfl_ptr != NIL) : (rfl_ptr = t(rfl_ptr)) {
         f = main.fil_defs(h(rfl_ptr));
         while (f != NIL) : (f = t(f)) {
-            if (tag[@intCast(h(f))] == clib.ID) {
+            if (tag[@intCast(h(f))] == word.ID) {
                 t_val = main.id_type(h(f));
-                if (t_val == clib.type_t) {
-                    if (main.t_class(h(f)) == clib.synonym_t) {
+                if (t_val == word.type_t) {
+                    if (main.t_class(h(f)) == word.synonym_t) {
                         tp(main.t_info(h(f))).* = fixtype(main.t_info(h(f)), h(f));
                     }
                 } else {
@@ -215,20 +215,20 @@ pub export fn readoption() void {
 /// Adds unresolvable types to `tlost` for deferred error reporting.
 pub fn fixtype(t_val: Word, x: Word) Word {
     switch (tag[@intCast(t_val)]) {
-        clib.AP, clib.CONS => {
+        word.AP, word.CONS => {
             tp(t_val).* = fixtype(t(t_val), x);
             hp(t_val).* = fixtype(h(t_val), x);
             return t_val;
         },
-        clib.STRCONS => {
+        word.STRCONS => {
             if (clib.member(pfrts, t_val) != 0) {
                 return t_val;
             }
             var cur_t = t_val;
-            while (tag[@intCast(pn_val(cur_t))] != clib.CONS) {
+            while (tag[@intCast(pn_val(cur_t))] != word.CONS) {
                 cur_t = pn_val(cur_t);
             }
-            if (tag[@intCast(cur_t)] != clib.ID) {
+            if (tag[@intCast(cur_t)] != word.ID) {
                 var w = tlost;
                 while (w != NIL and h(h(w)) != cur_t) {
                     w = t(w);
@@ -254,7 +254,7 @@ inline fn pn_val(x: Word) Word {
 /// the source does not exist (initialising-only panic) or the dump is missing/stale.
 pub fn undump(t_val: [*:0]const u8) void {
     var obf: [clib.pnlim]u8 = undefined;
-    var f: ?*clib.FILE = null;
+    var f: ?*word.FILE = null;
     var flen: Word = undefined;
     var t1: clib.time_t = undefined;
     var t2: clib.time_t = undefined;
@@ -371,7 +371,7 @@ pub fn undump(t_val: [*:0]const u8) void {
 /// leave a partial dump; re-raises any deferred signal afterward.
 pub fn makedump() void {
     const obf = &main.rs.linebuf;
-    var f: ?*clib.FILE = null;
+    var f: ?*word.FILE = null;
     _ = word.strcpy(obf, main.rs.current_script.?);
     const len = word.strlen(obf);
     _ = word.strcpy(obf[len - 1 ..].ptr, main.obsuffix);

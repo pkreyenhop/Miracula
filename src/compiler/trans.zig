@@ -17,7 +17,7 @@ const c = struct {
 const lex_state = @import("../parser/lex_state.zig");
 const ls = &lex_state.ls;
 
-fn getStdout() ?*c.FILE {
+fn getStdout() ?*word.FILE {
     return shim.stdout();
 }
 
@@ -125,7 +125,7 @@ extern fn isnat(x: Word) c_int;
 extern fn isconstrname(a: [*:0]const u8) c_int;
 extern fn make_pn(val: Word) Word;
 extern fn mkgvar(i: Word) Word;
-extern fn out(file: ?*c.FILE, x: Word) void;
+extern fn out(file: ?*word.FILE, x: Word) void;
 extern fn out_type(t: Word) void;
 extern fn redtvars(t: Word) Word;
 extern fn sayhere(here: Word, nl: Word) void;

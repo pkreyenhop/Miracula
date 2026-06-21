@@ -117,27 +117,27 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
         ':' => Token{ .id = .cons, .span = span },
 
         // --- multi-character and keyword tokens ---
-        clib.WHERE => Token{ .id = .kw_where, .span = span },
-        clib.IF => Token{ .id = .kw_if, .span = span },
-        clib.LEFTARROW => Token{ .id = .left_arrow, .span = span },
-        clib.COLONCOLON => Token{ .id = .coloncolon, .span = span },
-        clib.COLON2EQ => Token{ .id = .colon2eq, .span = span },
-        clib.TYPEVAR => Token{
+        word.WHERE => Token{ .id = .kw_where, .span = span },
+        word.IF => Token{ .id = .kw_if, .span = span },
+        word.LEFTARROW => Token{ .id = .left_arrow, .span = span },
+        word.COLONCOLON => Token{ .id = .coloncolon, .span = span },
+        word.COLON2EQ => Token{ .id = .colon2eq, .span = span },
+        word.TYPEVAR => Token{
             .id = .typevar,
             .span = span,
             .int_val = @intCast(tl_of(w)), // number of stars stored in tl
         },
-        clib.NAME => Token{
+        word.NAME => Token{
             .id = .name,
             .span = span,
             .text = try gpa.dupe(u8, getIdText(w)),
         },
-        clib.CNAME => Token{
+        word.CNAME => Token{
             .id = .cname,
             .span = span,
             .text = try gpa.dupe(u8, getIdText(w)),
         },
-        clib.CONST => blk: {
+        word.CONST => blk: {
             // 0. Miranda boolean atoms: True and False are returned by the lexer
             //    as CONST with predefined atom values, not as CNAME. Map them to
             //    CNAME so the parser handles them as constructor patterns/exprs.
@@ -185,42 +185,42 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
             // Unknown CONST form (e.g. $* internal syntax)
             break :blk Token{ .id = .error_tok, .span = span };
         },
-        clib.DOLLARS => Token{ .id = .dollars, .span = span },
-        clib.OFFSIDE => Token{ .id = .offside, .span = span },
-        clib.ELSEQ => Token{ .id = .elseq, .span = span },
-        clib.ABSTYPE => Token{ .id = .kw_abstype, .span = span },
-        clib.WITH => Token{ .id = .kw_with, .span = span },
-        clib.EQEQ => Token{ .id = .eq_eq, .span = span },
-        clib.FREE => Token{ .id = .kw_free, .span = span },
-        clib.INCLUDE => Token{ .id = .kw_include, .span = span },
-        clib.EXPORT => Token{ .id = .kw_export, .span = span },
-        clib.TYPE => Token{ .id = .kw_type, .span = span },
-        clib.OTHERWISE => Token{ .id = .kw_otherwise, .span = span },
-        clib.SHOWSYM => Token{ .id = .kw_show, .span = span },
-        clib.PATHNAME => Token{
+        word.DOLLARS => Token{ .id = .dollars, .span = span },
+        word.OFFSIDE => Token{ .id = .offside, .span = span },
+        word.ELSEQ => Token{ .id = .elseq, .span = span },
+        word.ABSTYPE => Token{ .id = .kw_abstype, .span = span },
+        word.WITH => Token{ .id = .kw_with, .span = span },
+        word.EQEQ => Token{ .id = .eq_eq, .span = span },
+        word.FREE => Token{ .id = .kw_free, .span = span },
+        word.INCLUDE => Token{ .id = .kw_include, .span = span },
+        word.EXPORT => Token{ .id = .kw_export, .span = span },
+        word.TYPE => Token{ .id = .kw_type, .span = span },
+        word.OTHERWISE => Token{ .id = .kw_otherwise, .span = span },
+        word.SHOWSYM => Token{ .id = .kw_show, .span = span },
+        word.PATHNAME => Token{
             .id = .pathname,
             .span = span,
             .text = try gpa.dupe(u8, std.mem.span(@as([*:0]u8, @ptrCast(ls.dicp)))),
         },
-        clib.BNF => Token{ .id = .kw_bnf, .span = span },
-        clib.LEX => Token{ .id = .kw_lex, .span = span },
-        clib.READVALSY => Token{ .id = .kw_readvals, .span = span },
-        clib.ARROW => Token{ .id = .arrow, .span = span },
-        clib.PLUSPLUS => Token{ .id = .plus_plus, .span = span },
-        clib.MINUSMINUS => Token{ .id = .minus_minus, .span = span },
-        clib.DOTDOT => Token{ .id = .dot_dot, .span = span },
-        clib.VEL => Token{ .id = .vel, .span = span },
-        clib.GE => Token{ .id = .ge, .span = span },
-        clib.NE => Token{ .id = .ne, .span = span },
-        clib.LE => Token{ .id = .le, .span = span },
-        clib.REM => Token{ .id = .kw_mod, .span = span },
-        clib.DIV => Token{ .id = .kw_div, .span = span },
-        clib.INFIXNAME => Token{
+        word.BNF => Token{ .id = .kw_bnf, .span = span },
+        word.LEX => Token{ .id = .kw_lex, .span = span },
+        word.READVALSY => Token{ .id = .kw_readvals, .span = span },
+        word.ARROW => Token{ .id = .arrow, .span = span },
+        word.PLUSPLUS => Token{ .id = .plus_plus, .span = span },
+        word.MINUSMINUS => Token{ .id = .minus_minus, .span = span },
+        word.DOTDOT => Token{ .id = .dot_dot, .span = span },
+        word.VEL => Token{ .id = .vel, .span = span },
+        word.GE => Token{ .id = .ge, .span = span },
+        word.NE => Token{ .id = .ne, .span = span },
+        word.LE => Token{ .id = .le, .span = span },
+        word.REM => Token{ .id = .kw_mod, .span = span },
+        word.DIV => Token{ .id = .kw_div, .span = span },
+        word.INFIXNAME => Token{
             .id = .infixname,
             .span = span,
             .text = try gpa.dupe(u8, getIdText(w)),
         },
-        clib.INFIXCNAME => Token{
+        word.INFIXCNAME => Token{
             .id = .infixcname,
             .span = span,
             .text = try gpa.dupe(u8, getIdText(w)),

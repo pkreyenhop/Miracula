@@ -68,7 +68,7 @@ fn namescom(l: Word) void {
     }
     word.print("\n", .{});
     while (n != NIL) {
-        if (main.id_type(main.heap.h(n)) == clib.wrong_t or main.id_val(main.heap.h(n)) != clib.UNDEF) {
+        if (main.id_type(main.heap.h(n)) == word.wrong_t or main.id_val(main.heap.h(n)) != word.UNDEF) {
             const w = @as(Word, @intCast(word.strlen(main.get_id(main.heap.h(n)))));
             if (col_local + w < @as(Word, @intCast(scrwd))) {
                 col_local += if (col_local != 0) 1 else 0;
@@ -323,7 +323,7 @@ pub fn command() void {
                         const n = main.get_id(x);
                         var y = main.rs.primenv;
                         while (y != NIL) : (y = main.heap.t(y)) {
-                            if (tag[@intCast(main.heap.h(y))] == clib.ID) {
+                            if (tag[@intCast(main.heap.h(y))] == word.ID) {
                                 if (main.heap.h(y) == x or word.strcmp(clib.getaka(main.heap.h(y)), n) == 0) {
                                     finger(main.get_id(main.heap.h(y)));
                                 }
@@ -333,7 +333,7 @@ pub fn command() void {
                         while (ff != NIL) : (ff = main.heap.t(ff)) {
                             var y_def = main.fil_defs(main.heap.h(ff));
                             while (y_def != NIL) : (y_def = main.heap.t(y_def)) {
-                                if (tag[@intCast(main.heap.h(y_def))] == clib.ID) {
+                                if (tag[@intCast(main.heap.h(y_def))] == word.ID) {
                                     if (main.heap.h(y_def) == x or word.strcmp(clib.getaka(main.heap.h(y_def)), n) == 0) {
                                         finger(main.get_id(main.heap.h(y_def)));
                                     }
@@ -588,7 +588,7 @@ pub fn finger(n: [*:0]const u8) void {
     const x = clib.findid(@constCast(n));
     var line: Word = 0;
     var s: ?[*:0]u8 = null;
-    if (x != NIL and main.id_type(x) != clib.undef_t) {
+    if (x != NIL and main.id_type(x) != word.undef_t) {
         if (main.id_who(x) != NIL) {
             const here_val = main.get_here(x);
             s = @ptrFromInt(@as(usize, @intCast(main.heap.h(here_val))));
@@ -603,14 +603,14 @@ pub fn finger(n: [*:0]const u8) void {
         } else {
             const aka = clib.getaka(x);
             const aka_opt: ?[*:0]const u8 = if (word.strcmp(aka, main.get_id(x)) == 0) null else aka;
-            if (main.id_val(x) == clib.UNDEF and main.id_type(x) != clib.wrong_t) {
+            if (main.id_val(x) == word.UNDEF and main.id_type(x) != word.wrong_t) {
                 word.print(" ||(UNDEFINED) specified in ", .{});
-            } else if (main.id_val(x) == clib.FREE) {
+            } else if (main.id_val(x) == word.FREE) {
                 word.print(" ||(FREE) specified in ", .{});
-            } else if (main.id_type(x) == clib.type_t and main.t_class(x) == clib.free_t) {
+            } else if (main.id_type(x) == word.type_t and main.t_class(x) == word.free_t) {
                 word.print(" ||(free type) specified in ", .{});
             } else {
-                const class_str: [*:0]const u8 = if (main.id_type(x) == clib.type_t and main.t_class(x) == clib.abstract_t) "(abstract type) " else if (main.id_type(x) == clib.type_t and main.t_class(x) == clib.algebraic_t) "(algebraic type) " else if (main.id_type(x) == clib.type_t and main.t_class(x) == clib.placeholder_t) "(placeholder type) " else if (main.id_type(x) == clib.type_t and main.t_class(x) == clib.synonym_t) "(synonym type) " else "";
+                const class_str: [*:0]const u8 = if (main.id_type(x) == word.type_t and main.t_class(x) == word.abstract_t) "(abstract type) " else if (main.id_type(x) == word.type_t and main.t_class(x) == word.algebraic_t) "(algebraic type) " else if (main.id_type(x) == word.type_t and main.t_class(x) == word.placeholder_t) "(placeholder type) " else if (main.id_type(x) == word.type_t and main.t_class(x) == word.synonym_t) "(synonym type) " else "";
                 word.print(" ||{s}defined in ", .{class_str});
             }
             filequote(std.mem.span(s.?));
@@ -672,16 +672,16 @@ pub fn allnamescom() void {
     namescom(main.heap.h(main.files));
     main.rs.sorted = 1;
 
-    while (x != NIL and main.id_type(main.heap.h(x)) == clib.undef_t) {
+    while (x != NIL and main.id_type(main.heap.h(x)) == word.undef_t) {
         x = main.heap.t(x);
     }
-    while (y != NIL and main.id_type(main.heap.h(y)) != clib.undef_t) {
+    while (y != NIL and main.id_type(main.heap.h(y)) != word.undef_t) {
         y = main.heap.t(y);
     }
     if (x != NIL) {
         word.print("WARNING, SCRIPT CONTAINS TYPE ERRORS: ", .{});
         while (x != NIL) : (x = main.heap.t(x)) {
-            if (main.id_type(main.heap.h(x)) != clib.undef_t) {
+            if (main.id_type(main.heap.h(x)) != word.undef_t) {
                 if (z == 0) {
                     z = 1;
                 } else {
@@ -696,7 +696,7 @@ pub fn allnamescom() void {
         word.print("{s} UNDEFINED NAMES: ", .{@as([*:0]const u8, if (z != 0) "AND" else "WARNING, SCRIPT CONTAINS")});
         z = 0;
         while (y != NIL) : (y = main.heap.t(y)) {
-            if (main.id_type(main.heap.h(y)) == clib.undef_t) {
+            if (main.id_type(main.heap.h(y)) == word.undef_t) {
                 if (z == 0) {
                     z = 1;
                 } else {
