@@ -284,7 +284,7 @@ pub fn undump(t_val: [*:0]const u8) void {
         return;
     }
 
-    f = clib.fopen(&obf, "r");
+    f = word.fopen(&obf, "r");
     if (f == null) {
         word.print("cannot open {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
         main.loadfile(t_val);
@@ -302,7 +302,7 @@ pub fn undump(t_val: [*:0]const u8) void {
     }
 
     main.files = clib.load_script(f.?, @constCast(t_val), NIL, NIL, if (!main.rs.making and main.rs.initialising == 0) 1 else 0);
-    _ = clib.fclose(f.?);
+    _ = word.fclose(f.?);
 
     if (main.cs.BAD_DUMP != 0) {
         _ = clib.unlink(@as([*:0]const u8, @ptrCast(&obf)));
@@ -375,7 +375,7 @@ pub fn makedump() void {
     _ = word.strcpy(obf, main.rs.current_script.?);
     const len = word.strlen(obf);
     _ = word.strcpy(obf[len - 1 ..].ptr, main.obsuffix);
-    f = clib.fopen(obf, "w");
+    f = word.fopen(obf, "w");
     if (f == null) {
         word.print("WARNING: CANNOT WRITE TO {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(obf)))});
         if (word.strcmp(main.rs.current_script.?, &main.rs.PRELUDE) == 0 or word.strcmp(main.rs.current_script.?, &main.rs.STDENV) == 0) {
@@ -390,7 +390,7 @@ pub fn makedump() void {
     clib.setprefix(main.rs.current_script.?);
     clib.dump_script(main.files, f.?);
     main.rs.unlinkme = null;
-    _ = clib.fclose(f.?);
+    _ = word.fclose(f.?);
 }
 
 test "dump NIL sentinel is consistent" {

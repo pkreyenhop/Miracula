@@ -426,7 +426,7 @@ pub export fn parseline(t_val: Word, f: ?*word.FILE, fil: Word) Word {
         if (main.rs.lastexp != word.UNDEF) {
             return main.codegen(main.rs.lastexp);
         }
-        if (clib.isatty(clib.fileno(f)) != 0) {
+        if (clib.isatty(word.fileno(f)) != 0) {
             word.print("please re-enter data:\n", .{});
         } else {
             if (fil != 0) {

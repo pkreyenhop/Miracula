@@ -42,7 +42,7 @@ pub fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
     } else {
         ctx.hold = reduce.cons(reduce.tl_get(reduce.hd_get(ctx.e)), lastarg_val);
         const fil = reduce.getstring(lastarg_val, "readvals");
-        const f = clib.fopen(fil, "r");
+        const f = word.fopen(fil, "r");
         if (f == null) {
             word.printErr("\nreadvals, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
             clib.outstats();

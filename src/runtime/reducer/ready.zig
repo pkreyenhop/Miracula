@@ -210,8 +210,8 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 if (pid != -1) {
                     _ = clib.close(fd[1]);
                     _ = clib.close(fd_a[1]);
-                    fp = clib.fdopen(fd[0], "r");
-                    fp_a = clib.fdopen(fd_a[0], "r");
+                    fp = word.fdopen(fd[0], "r");
+                    fp_a = word.fdopen(fd_a[0], "r");
                 }
                 if (pid == -1 or fp == null or fp_a == null) {
                     reduce.rewrite_to_cons(ctx.e, word.NIL, reduce.cons(clib.piperrmess(pid), clib.sto_int(-1)));
@@ -226,7 +226,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                 _ = clib.close(fd[0]);
                 _ = clib.close(fd_a[1]);
                 _ = clib.close(fd_a[0]);
-                _ = clib.fclose(reduce.getStdin().?);
+                _ = word.fclose(reduce.getStdin().?);
                 _ = clib.execl(shell, .{ shell, "-c", cp });
             }
             ctx.action = word.ACT_DONE;
@@ -307,7 +307,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
         word.STARTREAD => {
             reduce.upLeft(ctx);
             const fil = reduce.getstring(lastarg(ctx), "read");
-            const f = clib.fopen(fil, "r");
+            const f = word.fopen(fil, "r");
             if (f == null) {
                 word.printErr("\nread, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
                 clib.outstats();
@@ -322,7 +322,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
         word.STARTREADBIN => {
             reduce.upLeft(ctx);
             const fil = reduce.getstring(lastarg(ctx), "readb");
-            const f = clib.fopen(fil, "r");
+            const f = word.fopen(fil, "r");
             if (f == null) {
                 word.printErr("\nreadb, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
                 clib.outstats();

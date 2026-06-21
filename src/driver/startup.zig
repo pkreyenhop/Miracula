@@ -31,7 +31,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
     main.rs.cstack = @ptrCast(&manonly);
     unlimitStack();
     main.rs.verbosity = if (clib.isatty(0) != 0) 1 else 0;
-    clib.setbuf(main.getStdout(), null);
+    word.setbuf(main.getStdout(), null);
 
     const home = clib.getenv("HOME");
     var okhome_rc: Word = 0;
@@ -134,9 +134,9 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             };
             const logfilname = slice.ptr;
             _ = clib.sprintf(logfilname, "miralog/%s", .{p.?});
-            const fil = clib.fopen(logfilname, "a");
+            const fil = word.fopen(logfilname, "a");
             if (fil != null) {
-                _ = clib.dup2(clib.fileno(fil), 2);
+                _ = clib.dup2(word.fileno(fil), 2);
             } else {
                 word.printErr("could not open {s}\n", .{logfilname});
             }
@@ -444,11 +444,11 @@ pub fn rc_read(rcfile: [*:0]const u8) Word {
     var f: ?*word.FILE = null;
     var x: Word = undefined;
     var res: Word = 0;
-    f = clib.fopen(rcfile, "r");
+    f = word.fopen(rcfile, "r");
     if (f == null) return 0;
     main.loading = 1;
     res = clib.load_script(f.?, @constCast(rcfile), NIL, NIL, 0);
-    _ = clib.fclose(f.?);
+    _ = word.fclose(f.?);
     if (main.cs.BAD_DUMP != 0) {
         main.unload();
         main.cs.CLASHES = NIL;
@@ -481,11 +481,11 @@ pub fn rc_write() void {
     const home = clib.getenv("HOME");
     var f: ?*word.FILE = null;
     if (home == null or main.rs.home_rc[0] == 0) return;
-    f = clib.fopen(&main.rs.home_rc, "w");
+    f = word.fopen(&main.rs.home_rc, "w");
     if (f == null) return;
     clib.setprefix(@ptrCast(&main.rs.home_rc));
     clib.dump_script(main.files, f.?);
-    _ = clib.fclose(f.?);
+    _ = word.fclose(f.?);
 }
 
 pub fn missparam(s: [:0]const u8) noreturn {
@@ -495,7 +495,7 @@ pub fn missparam(s: [:0]const u8) noreturn {
 pub fn checkversion(m: [*:0]const u8) c_int {
     var path_buf: [1024]u8 = undefined;
     const path = std.fmt.bufPrintZ(&path_buf, "{s}/.version", .{m}) catch return 0;
-    const f = clib.fopen(path.ptr, "r");
+    const f = word.fopen(path.ptr, "r");
     var v1: c_uint = 0;
     var read_ok: bool = false;
     var r: c_int = 0;
@@ -504,7 +504,7 @@ pub fn checkversion(m: [*:0]const u8) c_int {
             r = if (v1 == main.version) 1 else 0;
             read_ok = true;
         }
-        _ = clib.fclose(f);
+        _ = word.fclose(f);
     }
     if (read_ok and r == 0) {
         if (mvp < 4) {

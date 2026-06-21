@@ -217,142 +217,27 @@ pub const undef_t = word_mod.undef_t;
 pub const void_t = word_mod.void_t;
 pub const wrong_t = word_mod.wrong_t;
 
-// Std streams setup
-pub var std_in = FILE{ .file = .{ .handle = std.posix.STDIN_FILENO, .flags = .{ .nonblocking = false } } };
-pub var std_out = FILE{ .file = .{ .handle = std.posix.STDOUT_FILENO, .flags = .{ .nonblocking = false } } };
-pub var std_err = FILE{ .file = .{ .handle = std.posix.STDERR_FILENO, .flags = .{ .nonblocking = false } } };
+// Std streams + stdio now live in word.zig (R1.5/R1.6 consolidation); re-export
+// them so existing `clib.*` callers resolve to the single shared source.
+pub const std_in = &word_mod.std_in;
+pub const std_out = &word_mod.std_out;
+pub const std_err = &word_mod.std_err;
 
-pub fn stdin() ?*FILE {
-    return &std_in;
-}
-pub fn stdout() ?*FILE {
-    return &std_out;
-}
-pub fn stderr() ?*FILE {
-    return &std_err;
-}
+pub const stdin = word_mod.stdin;
+pub const stdout = word_mod.stdout;
+pub const stderr = word_mod.stderr;
 
-// Fixed file pool
-var file_pool: [16]FILE = undefined;
-var file_in_use = [_]bool{false} ** 16;
-
-fn allocFile() ?*FILE {
-    for (&file_in_use, 0..) |*in_use, idx| {
-        if (!in_use.*) {
-            in_use.* = true;
-            file_pool[idx] = FILE{ .file = .{ .handle = -1, .flags = .{ .nonblocking = false } } };
-            return &file_pool[idx];
-        }
-    }
-    return null;
-}
-
-fn freeFile(f: *FILE) void {
-    const ptr_val = @intFromPtr(f);
-    const pool_start = @intFromPtr(&file_pool[0]);
-    const pool_end = @as(usize, @intCast(pool_start + @sizeOf(FILE) * 16));
-    if (ptr_val >= pool_start and ptr_val < pool_end) {
-        const idx = (ptr_val - pool_start) / @sizeOf(FILE);
-        file_in_use[idx] = false;
-    }
-}
-
-// IO implementations
-pub fn fopen(path: ?*const anyopaque, mode: [*:0]const u8) ?*FILE {
-    if (path == null) return null;
-    const path_str = @as([*:0]const u8, @ptrCast(path.?));
-    const mode_slice = std.mem.span(mode);
-
-    var for_read = false;
-    var for_write = false;
-    var for_append = false;
-    for (mode_slice) |mc| {
-        if (mc == 'r') for_read = true;
-        if (mc == 'w') for_write = true;
-        if (mc == 'a') for_append = true;
-    }
-
-    const io = std.Options.debug_io;
-    const dir = std.Io.Dir.cwd();
-
-    const file = if (for_read)
-        dir.openFile(io, std.mem.span(path_str), .{}) catch return null
-    else if (for_write)
-        dir.createFile(io, std.mem.span(path_str), .{}) catch return null
-    else if (for_append) d: {
-        const f = dir.createFile(io, std.mem.span(path_str), .{ .truncate = false }) catch return null;
-        _ = std.posix.system.lseek(f.handle, 0, 2);
-        break :d f;
-    } else
-        return null;
-
-    const f_ptr = allocFile() orelse {
-        file.close(io);
-        return null;
-    };
-    f_ptr.file = file;
-    f_ptr.pushback = null;
-    f_ptr.buf_start = 0;
-    f_ptr.buf_end = 0;
-    return f_ptr;
-}
-
-pub fn fclose(file: ?*FILE) c_int {
-    if (file) |f| {
-        if (f == &std_in or f == &std_out or f == &std_err) {
-            return 0;
-        }
-        if (f.file.handle >= 0) {
-            const io = std.Options.debug_io;
-            f.file.close(io);
-            f.file.handle = -1;
-        }
-        freeFile(f);
-        return 0;
-    }
-    return -1;
-}
-
-pub fn fileno(file: ?*FILE) c_int {
-    if (file) |f| return f.file.handle;
-    return -1;
-}
-
-pub fn setbuf(file: ?*FILE, buf: ?[*]u8) void {
-    _ = file;
-    _ = buf;
-}
-
-pub fn getc(file: ?*FILE) c_int {
-    const f = file orelse return -1;
-    const byte = f.readByte() catch return -1;
-    return @as(c_int, byte);
-}
-
-pub fn getchar() c_int {
-    return getc(&std_in);
-}
-
-pub fn putc(ch: c_int, file: ?*FILE) c_int {
-    const f = file orelse return -1;
-    f.writeByte(@intCast(@as(u8, @intCast(ch)))) catch return -1;
-    return ch;
-}
-
-pub fn fputc(ch: c_int, file: ?*FILE) c_int {
-    return putc(ch, file);
-}
-
-pub fn putchar(ch: c_int) c_int {
-    return putc(ch, &std_out);
-}
-
-pub fn ungetc(ch: c_int, file: ?*FILE) c_int {
-    const f = file orelse return -1;
-    if (ch == -1) return -1;
-    f.ungetc(@intCast(@as(u8, @intCast(ch))));
-    return ch;
-}
+// File pool + IO implementations now live in word.zig; re-export them.
+pub const fopen = word_mod.fopen;
+pub const fclose = word_mod.fclose;
+pub const fileno = word_mod.fileno;
+pub const setbuf = word_mod.setbuf;
+pub const getc = word_mod.getc;
+pub const getchar = word_mod.getchar;
+pub const putc = word_mod.putc;
+pub const fputc = word_mod.fputc;
+pub const putchar = word_mod.putchar;
+pub const ungetc = word_mod.ungetc;
 
 export fn fromUTF8(fil: ?*FILE) c_ulong {
     const c0 = getc(fil);
@@ -400,26 +285,7 @@ export fn outUTF8(u: c_ulong, fil: ?*FILE) void {
     }
 }
 
-pub fn fgets(buf: [*]u8, size: c_int, file: ?*FILE) ?[*]u8 {
-    const f = file orelse return null;
-    if (size <= 1) return null;
-    var i: usize = 0;
-    const limit = @as(usize, @intCast(size - 1));
-    while (i < limit) {
-        const c_val = getc(f);
-        if (c_val == -1) {
-            if (i == 0) return null;
-            break;
-        }
-        buf[i] = @intCast(@as(u8, @intCast(c_val)));
-        i += 1;
-        if (c_val == '\n') {
-            break;
-        }
-    }
-    buf[i] = 0;
-    return buf;
-}
+pub const fgets = word_mod.fgets;
 
 // Formatting helpers
 fn formatArg(
@@ -641,9 +507,7 @@ pub fn fprintf(file: ?*FILE, format: [*:0]const u8, args: anytype) c_int {
     return @intCast(cw.written);
 }
 
-pub fn printf(format: [*:0]const u8, args: anytype) c_int {
-    return fprintf(&std_out, format, args);
-}
+pub const printf = word_mod.printf;
 
 const BufferWriter = struct {
     buf: [*]u8,
@@ -1532,41 +1396,10 @@ pub fn fputs(s: [*:0]const u8, file: ?*FILE) c_int {
     return 0;
 }
 
-pub fn fmemopen(buf: ?*anyopaque, size: usize, mode: [*:0]const u8) ?*FILE {
-    _ = mode;
-    if (buf == null) return null;
-    const f_ptr = allocFile() orelse return null;
-    f_ptr.file = .{ .handle = -1, .flags = .{ .nonblocking = false } };
-    f_ptr.pushback = null;
-    f_ptr.mem_buf = @as([*]const u8, @ptrCast(buf.?))[0..size];
-    f_ptr.mem_pos = 0;
-    return f_ptr;
-}
+pub const fmemopen = word_mod.fmemopen;
 
-pub fn fread(ptr: ?*anyopaque, size: usize, nmemb: usize, file: ?*FILE) usize {
-    const f = file orelse return 0;
-    if (ptr == null or size == 0 or nmemb == 0) return 0;
-    const buf = @as([*]u8, @ptrCast(ptr.?));
-    const total_bytes = size * nmemb;
-    var i: usize = 0;
-    while (i < total_bytes) : (i += 1) {
-        const byte = f.readByte() catch break;
-        buf[i] = byte;
-    }
-    return i / size;
-}
-
-pub fn fwrite(ptr: ?*const anyopaque, size: usize, nmemb: usize, file: ?*FILE) usize {
-    const f = file orelse return 0;
-    if (ptr == null or size == 0 or nmemb == 0) return 0;
-    const buf = @as([*]const u8, @ptrCast(ptr.?));
-    const total_bytes = size * nmemb;
-    var i: usize = 0;
-    while (i < total_bytes) : (i += 1) {
-        f.writeByte(buf[i]) catch break;
-    }
-    return i / size;
-}
+pub const fread = word_mod.fread;
+pub const fwrite = word_mod.fwrite;
 
 pub fn calloc(nmemb: usize, size: usize) ?*anyopaque {
     const total = nmemb * size;
@@ -1630,15 +1463,7 @@ pub fn localtime(timer: *const time_t) ?*struct_tm {
     return null;
 }
 
-pub fn fdopen(fd: c_int, mode: [*:0]const u8) ?*FILE {
-    _ = mode;
-    const f_ptr = allocFile() orelse return null;
-    f_ptr.file = .{ .handle = fd, .flags = .{ .nonblocking = false } };
-    f_ptr.pushback = null;
-    f_ptr.mem_buf = null;
-    f_ptr.mem_pos = 0;
-    return f_ptr;
-}
+pub const fdopen = word_mod.fdopen;
 
 pub const clock_t = c_long;
 

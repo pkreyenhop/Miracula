@@ -699,8 +699,8 @@ export fn okdump(t_ptr: [*:0]const u8) c_int {
     @memcpy(obf[t_len - 1 .. t_len - 1 + suffix_len], suffix_str.ptr);
     obf[t_len - 1 + suffix_len] = 0;
 
-    const f = c.fopen(&obf, "r") orelse return 0;
-    defer _ = c.fclose(f);
+    const f = word.fopen(&obf, "r") orelse return 0;
+    defer _ = word.fclose(f);
 
     const ch1 = c.getc(f);
     const ch2 = c.getc(f);
@@ -727,8 +727,8 @@ export fn geterrlin(t_ptr: [*:0]const u8) Word {
     @memcpy(obf[t_len - 1 .. t_len - 1 + suffix_len], suffix_str.ptr);
     obf[t_len - 1 + suffix_len] = 0;
 
-    const f = c.fopen(&obf, "r") orelse return 0;
-    defer _ = c.fclose(f);
+    const f = word.fopen(&obf, "r") orelse return 0;
+    defer _ = word.fclose(f);
 
     const ch1 = c.getc(f);
     if (ch1 != word.XVERSION) {
@@ -1119,23 +1119,23 @@ fn ap(x: Word, y: Word) Word {
 }
 
 pub fn putint(n: i32, file: ?*word.FILE) void {
-    _ = c.fwrite(&n, @sizeOf(i32), 1, file);
+    _ = word.fwrite(&n, @sizeOf(i32), 1, file);
 }
 
 pub fn getint(file: ?*word.FILE) i32 {
     var r: i32 = 0;
-    _ = c.fread(&r, @sizeOf(i32), 1, file);
+    _ = word.fread(&r, @sizeOf(i32), 1, file);
     return r;
 }
 
 pub fn putdbl(x: Word, file: ?*word.FILE) void {
     var d = get_dbl(x);
-    _ = c.fwrite(&d, @sizeOf(f64), 1, file);
+    _ = word.fwrite(&d, @sizeOf(f64), 1, file);
 }
 
 pub fn getdbl(file: ?*word.FILE) Word {
     var d: f64 = 0;
-    _ = c.fread(&d, @sizeOf(f64), 1, file);
+    _ = word.fread(&d, @sizeOf(f64), 1, file);
     return sto_dbl(d);
 }
 
@@ -2128,21 +2128,21 @@ test "heap dump roundtrip" {
     
     // 3. Open a temp file for writing
     const filename = "test_roundtrip.dump";
-    const f_write = c.fopen(filename, "w");
+    const f_write = word.fopen(filename, "w");
     try std.testing.expect(f_write != null);
     
     // 4. Dump the object structure
     dump_ob(list, f_write);
-    _ = c.fclose(f_write.?);
+    _ = word.fclose(f_write.?);
     
     // 5. Open the temp file for reading
-    const f_read = c.fopen(filename, "r");
+    const f_read = word.fopen(filename, "r");
     try std.testing.expect(f_read != null);
     
     // 6. Load it back using load_defs (which pushes it onto stackp)
     const old_stackp = stackp;
     _ = load_defs(f_read);
-    _ = c.fclose(f_read.?);
+    _ = word.fclose(f_read.?);
     
     // Clean up temp file
     _ = c.unlink(filename);

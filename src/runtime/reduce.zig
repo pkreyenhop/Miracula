@@ -253,7 +253,7 @@ export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
             }
             const hold_char = clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
             if (hold_char == clib.EOF) {
-                _ = clib.fclose(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
+                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
                 rewrite_to_nil(&ctx.e);
                 return .REDUCE_DONE;
             }
@@ -280,7 +280,7 @@ export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
             }
             const hold_char = if (main.rs.UTF8 != 0) sto_char(fromUTF8(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))))) else clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
             if (hold_char == clib.EOF) {
-                _ = clib.fclose(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
+                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
                 rewrite_to_nil(&ctx.e);
                 return .REDUCE_DONE;
             }
@@ -305,7 +305,7 @@ export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
 
             const val = parseline(h(ctx.arg1), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.arg1));
             if (val == clib.EOF) {
-                _ = clib.fclose(@ptrFromInt(@as(usize, @intCast(lastarg))));
+                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(lastarg))));
                 rewrite_to_nil(&ctx.e);
                 return .REDUCE_DONE;
             }
@@ -613,7 +613,7 @@ pub fn apfile(f: Word) void {
         p = t(p);
     }
     if (p == NIL) {
-        const s = clib.fopen(fil, "a");
+        const s = word.fopen(fil, "a");
         if (s == null) {
             word.printErr("\nAppendfile: cannot write to \"{s}\"\n", .{std.mem.span(fil.?)});
         } else {
@@ -629,7 +629,7 @@ pub fn closefile(f: Word) void {
         p = tp(p.*);
     }
     if (p.* != NIL) {
-        _ = clib.fclose(@ptrFromInt(@as(usize, @intCast(t(h(p.*))))));
+        _ = word.fclose(@ptrFromInt(@as(usize, @intCast(t(h(p.*))))));
         p.* = t(p.*);
     }
 }
@@ -641,14 +641,14 @@ pub fn outf(e: Word) void {
         p = t(p);
     }
     if (p == NIL) {
-        s_out = clib.fopen(f, "w");
+        s_out = word.fopen(f, "w");
         if (s_out == null) {
             word.printErr("\nTofile: cannot write to \"{s}\"\n", .{std.mem.span(f.?)});
             s_out = getStdout();
             return;
         }
-        if (clib.isatty(clib.fileno(s_out.?)) != 0) {
-            clib.setbuf(s_out.?, null);
+        if (clib.isatty(word.fileno(s_out.?)) != 0) {
+            word.setbuf(s_out.?, null);
         }
         outfilq = cons(datapair(@intCast(@intFromPtr(clib.keep(f.?))), @intCast(@intFromPtr(s_out.?))), outfilq);
     } else {

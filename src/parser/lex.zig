@@ -70,7 +70,7 @@ const is_char = heap.is_char;
 
 export fn mira_lex_setup_string(source: [*:0]const u8) void {
     const len = std.mem.len(source);
-    const f = clib.fmemopen(@ptrCast(@constCast(source)), len, "r") orelse return;
+    const f = word.fmemopen(@ptrCast(@constCast(source)), len, "r") orelse return;
     ls.fileq = cons(make(STRCONS, @intCast(@intFromPtr(f)), NIL), ls.fileq);
     ls.insertdepth += 1;
     main.rs.s_in = f;
@@ -80,7 +80,7 @@ export fn mira_lex_cleanup() void {
     if (main.rs.s_in) |f| {
         const is_stdio = (f == getStdin()) or (f == getStdout()) or (f == getStderr());
         if (!is_stdio) {
-            _ = clib.fclose(f);
+            _ = word.fclose(f);
             main.rs.s_in = null;
         }
     }
@@ -362,7 +362,7 @@ fn getch() c_int {
             while (ch != clib.EOF and ch != '>') {
                 _ = clib.ungetc(ch, main.rs.s_in);
                 ls.line_no += 1;
-                _ = clib.fgets(ls.dicp, 250, main.rs.s_in);
+                _ = word.fgets(ls.dicp, 250, main.rs.s_in);
                 if (i == 0 and ls.line_no > 1) {
                     chblank(ls.dicp);
                 }
@@ -741,7 +741,7 @@ export fn yylex() c_int {
             return word.OFFSIDE;
         }
         const file_ptr: ?*word.FILE = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
-        _ = clib.fclose(file_ptr);
+        _ = word.fclose(file_ptr);
         ls.fileq = t(ls.fileq);
         ls.insertdepth -= 1;
         if (ls.fileq != NIL and h(ls.echostack) != 0) {
@@ -1154,7 +1154,7 @@ pub fn peekch() c_int {
 }
 
 export fn openfile(n: [*:0]const u8) c_int {
-    const f = clib.fopen(n, "r") orelse return 0;
+    const f = word.fopen(n, "r") orelse return 0;
     ls.fileq = cons(make(STRCONS, @intCast(@intFromPtr(f)), NIL), ls.fileq);
     ls.insertdepth += 1;
     return 1;
@@ -1819,7 +1819,7 @@ export fn reset_state() void {
     }
     while (ls.fileq != NIL) {
         const file_ptr: ?*word.FILE = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
-        _ = clib.fclose(file_ptr);
+        _ = word.fclose(file_ptr);
         ls.fileq = t(ls.fileq);
     }
     ls.insertdepth = -1;

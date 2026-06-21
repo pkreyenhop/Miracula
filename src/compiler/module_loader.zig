@@ -426,10 +426,10 @@ pub fn mkincludes(includees_val: Word) Word {
             oldsig = signals(clib.SIGINT, @intFromPtr(&main.sigdefer));
         }
 
-        f = clib.fopen(ls.dicp, "r");
+        f = word.fopen(ls.dicp, "r");
         if (f != null) {
             x = clib.load_script(f.?, @constCast(fn_str), main.heap.h(main.heap.t(main.heap.h(includees_list))), main.heap.t(main.heap.t(main.heap.h(includees_list))), 0);
-            _ = clib.fclose(f.?);
+            _ = word.fclose(f.?);
         }
 
         main.rs.ld_stuff = main.cons(x, main.rs.ld_stuff);
