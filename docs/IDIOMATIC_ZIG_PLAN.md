@@ -438,7 +438,7 @@ These are known, bounded issues not yet addressed. Clusters H, I, J, and K targe
 | G | G3 | Migrate `lex.zig` state to `LexState` struct | ✅ Complete |
 | G | G4 | Convert heap accessor `extern fn` calls to direct imports | ✅ Complete |
 | H | H1 | Encapsulate Compiler State (`CompilerState`) | ✅ Complete |
-| H | H2 | Convert Compiler/Types Chains | ⬜ Planned |
+| H | H2 | Convert Compiler/Types Chains | ✅ Complete |
 | H | H3 | Unlink FFI-private Heap Accessors | ⬜ Planned |
 | I | I1 | Slices instead of Raw Pointers | ⬜ Planned |
 | I | I2 | Native Integers | ⬜ Planned |

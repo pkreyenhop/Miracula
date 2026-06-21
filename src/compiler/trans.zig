@@ -1472,7 +1472,7 @@ fn sui_generis(k: Word) bool {
     return member(cs.SGC, k) != 0;
 }
 
-export fn codegen(x: Word) Word {
+pub export fn codegen(x: Word) Word {
     switch (main.tag[@intCast(x)]) {
         AP => {
             if (main.commandmode != 0 // beware of corrupting lastexp

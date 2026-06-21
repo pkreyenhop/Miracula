@@ -2529,7 +2529,7 @@ export fn checktype(x: Word) Word {
     return if (cs.TYPERRS == 0) 1 else 0;
 }
 
-export fn type_of(x: Word) Word {
+pub export fn type_of(x: Word) Word {
     cs.TYPERRS = 0;
     var t_val = redtvars(subst(etype(x, NIL, NIL) catch return wrong_t));
     fixshows();
@@ -2605,7 +2605,7 @@ export fn tsetup() void {
     cs.tstepuntil = tf(num_t, cs.tstep);
 }
 
-export fn checktypes() void {
+pub export fn checktypes() void {
     cs.ATNAMES = 0;
     cs.TYPERRS = 0;
     cs.NT = NIL;

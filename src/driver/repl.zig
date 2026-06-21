@@ -257,8 +257,8 @@ export fn fpe_error(sig: c_int) void {
 // Relocated REPL and interactive driver functions
 pub export fn obey(x_in: Word) void {
     var x = x_in;
-    const typ = clib.type_of(x);
-    x = clib.codegen(x);
+    const typ = main.type_of(x);
+    x = main.codegen(x);
     if (main.cs.polyshowerror != 0) return;
     main.compiling = 0;
     const list_t: Word = 4;
@@ -278,10 +278,10 @@ pub export fn obey(x_in: Word) void {
 
 pub export fn evaluate_repl(x_in: Word) void {
     var x = x_in;
-    const typ = clib.type_of(x);
+    const typ = main.type_of(x);
     if (typ == clib.wrong_t) return;
     main.rs.lastexp = x;
-    x = clib.codegen(x);
+    x = main.codegen(x);
     if (main.cs.polyshowerror != 0) return;
     const list_t: Word = 4;
     const char_t: Word = 3;
@@ -412,7 +412,7 @@ pub export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
             main.SYNERR = 0;
             main.rs.lastexp = clib.UNDEF;
         } else {
-            t1 = clib.type_of(main.rs.lastexp);
+            t1 = main.type_of(main.rs.lastexp);
             if (t1 == clib.wrong_t) {
                 main.rs.lastexp = clib.UNDEF;
             } else if (clib.subsumes(clib.instantiate(t1), t_val) == 0) {
@@ -425,7 +425,7 @@ pub export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
             }
         }
         if (main.rs.lastexp != clib.UNDEF) {
-            return clib.codegen(main.rs.lastexp);
+            return main.codegen(main.rs.lastexp);
         }
         if (clib.isatty(clib.fileno(f)) != 0) {
             _ = clib.printf("please re-enter data:\n", .{.{}});

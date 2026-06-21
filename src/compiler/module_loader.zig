@@ -149,7 +149,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         if (main.rs.verbosity != 0 or (main.rs.making and !main.rs.mkexports and !main.rs.mksources)) {
             _ = clib.printf("checking types in %s\n", .{.{t_val}});
         }
-        clib.checktypes();
+        main.checktypes();
     }
 
     if (main.SYNERR == 0 and main.rs.exports != NIL) {
@@ -326,7 +326,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             if (main.id_type(main.heap.h(x)) != clib.type_t) {
                 main.cs.current_id = main.heap.h(x);
                 main.cs.polyshowerror = 0;
-                main.heap.tp(main.heap.h(x)).* = clib.codegen(main.id_val(main.heap.h(x)));
+                main.heap.tp(main.heap.h(x)).* = main.codegen(main.id_val(main.heap.h(x)));
                 if (main.cs.polyshowerror != 0) {
                     main.heap.tp(main.heap.h(x)).* = clib.UNDEF;
                 }

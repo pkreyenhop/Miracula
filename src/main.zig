@@ -6,6 +6,8 @@ const clib = @import("runtime/main_clib.zig");
 const rt = @import("runtime/runtime_state.zig");
 const setup = @import("compiler/setup.zig");
 const module_loader = @import("compiler/module_loader.zig");
+const types_mod = @import("compiler/types.zig");
+const trans_mod = @import("compiler/trans.zig");
 const commands = @import("driver/commands.zig");
 pub const dump = @import("compiler/dump.zig");
 pub const files_mod = @import("io/files.zig");
@@ -111,6 +113,11 @@ pub const mira_setup = setup.mira_setup;
 // Source/Module Loader
 pub const loadfile = module_loader.loadfile;
 pub const mkincludes = module_loader.mkincludes;
+
+// Compiler entry points — direct imports eliminate clib.* linker coupling (H2)
+pub const type_of = types_mod.type_of;
+pub const checktypes = types_mod.checktypes;
+pub const codegen = trans_mod.codegen;
 
 // State Dumping
 pub const undump = dump.undump;
