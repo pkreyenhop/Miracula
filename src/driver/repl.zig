@@ -10,9 +10,10 @@ const AP = main.AP;
 const h = main.heap.h;
 const t = main.heap.t;
 
+const lex_state = @import("../parser/lex_state.zig");
+const ls = &lex_state.ls;
+
 // State owned by reduce.zig / heap.zig — not yet accessible via @import.
-extern var c: Word;
-extern var cook_stdin: Word;
 extern var tag: [*]u8;
 extern var polyshowerror: c_int;
 
@@ -88,19 +89,19 @@ export fn commandloop(initscript: [*:0]u8) void {
                         main.ed_warn();
                         continue;
                     }
-                    if (main.dicp[0] != 0) {
-                        x = clib.findid(main.dicp);
+                    if (ls.dicp[0] != 0) {
+                        x = clib.findid(ls.dicp);
                     } else {
                         _ = clib.printf("??%s\n", .{.{main.get_id(main.rs.lastid)}});
                         x = main.rs.lastid;
                     }
                     if (x == NIL or main.id_type(x) == clib.undef_t) {
-                        main.diagnose(if (main.dicp[0] != 0) main.dicp else main.get_id(main.rs.lastid));
+                        main.diagnose(if (ls.dicp[0] != 0) ls.dicp else main.get_id(main.rs.lastid));
                         main.rs.lastid = 0;
                         continue;
                     }
                     if (main.id_who(x) == NIL) {
-                        _ = clib.printf("%s -- primitive to Miranda\n", .{.{if (main.dicp[0] != 0) main.dicp else main.get_id(main.rs.lastid)}});
+                        _ = clib.printf("%s -- primitive to Miranda\n", .{.{if (ls.dicp[0] != 0) ls.dicp else main.get_id(main.rs.lastid)}});
                         main.rs.lastid = 0;
                         continue;
                     }
@@ -118,15 +119,15 @@ export fn commandloop(initscript: [*:0]u8) void {
                     _ = clib.ungetc(ch, main.getStdin().?);
                     _ = token();
                     main.rs.lastid = 0;
-                    if (main.dicp[0] == 0) {
+                    if (ls.dicp[0] == 0) {
                         if (clib.getchar() != '\n') {
                             main.xschars();
                         } else {
                             main.allnamescom();
                         }
                     } else {
-                        while (main.dicp[0] != 0) {
-                            main.finger(main.dicp);
+                        while (ls.dicp[0] != 0) {
+                            main.finger(ls.dicp);
                             _ = token();
                         }
                         ch = clib.getchar();
@@ -187,19 +188,19 @@ export fn commandloop(initscript: [*:0]u8) void {
             else => {
                 _ = clib.ungetc(ch, main.getStdin().?);
                 main.rs.lastid = 0;
-                main.heap.tp(main.heap.h(cook_stdin)).* = 0;
+                main.heap.tp(main.heap.h(ls.cook_stdin)).* = 0;
                 main.rs.rv_expr = 0;
-                c = clib.EVAL;
+                ls.c = clib.EVAL;
                 main.rs.echoing = 0;
                 polyshowerror = 0;
                 main.commandmode = 1;
                 _ = parser_api.parseCurrent() catch {};
                 if (main.SYNERR != 0) {
                     main.SYNERR = 0;
-                } else if (c != '\n') {
+                } else if (ls.c != '\n') {
                     _ = clib.printf("syntax error\n", .{.{}});
-                    while (c != '\n' and c != clib.EOF) {
-                        c = clib.getchar();
+                    while (ls.c != '\n' and ls.c != clib.EOF) {
+                        ls.c = clib.getchar();
                     }
                 }
                 main.commandmode = 0;
@@ -401,7 +402,7 @@ pub export fn parseline(t_val: Word, f: ?*clib.FILE, fil: Word) Word {
             return clib.EOF;
         }
         _ = clib.ungetc(ch, f);
-        c = clib.VALUE;
+        ls.c = clib.VALUE;
         main.rs.echoing = 0;
         main.commandmode = 1;
         main.rs.s_in = f;

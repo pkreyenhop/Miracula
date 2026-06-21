@@ -10,6 +10,9 @@ const c = struct {
     pub const exit = shim.exit;
 };
 
+const lex_state = @import("../parser/lex_state.zig");
+const ls = &lex_state.ls;
+
 fn getStdout() ?*c.FILE {
     return shim.stdout();
 }
@@ -98,7 +101,6 @@ const CONST: Word = 268;
 const ATOMLIMIT: Word = CMBASE + 141;
 
 export var SGC: Word = CMBASE + 138; // NIL
-extern var idsused: Word;
 export var lfrule: c_int = 0;
 export var newtyps: Word = CMBASE + 138; // NIL
 export var polyshowerror: c_int = 0;
@@ -106,9 +108,6 @@ export var speclocs: Word = CMBASE + 138; // NIL
 export var was_poly: Word = 0;
 export var algshfns: Word = CMBASE + 138; // NIL
 export var rv_script: Word = 0;
-extern var cook_stdin: Word;
-extern var common_stdin: Word;
-extern var common_stdinb: Word;
 
 extern fn make(t: u8, x: Word, y: Word) Word;
 extern fn append1(x: Word, y: Word) Word;
@@ -791,11 +790,11 @@ export fn genlhs(x: Word) Word {
             return make(main.tag[@intCast(x)], hold, genlhs(t(x)));
         },
         ID => {
-            if (member(idsused, x) != 0) {
+            if (member(ls.idsused, x) != 0) {
                 return cons(CONST, x);
             }
             if (!isConstructor(x)) {
-                idsused = cons(x, idsused);
+                ls.idsused = cons(x, ls.idsused);
             }
             return x;
         },
@@ -1474,7 +1473,7 @@ export fn codegen(x: Word) Word {
     switch (main.tag[@intCast(x)]) {
         AP => {
             if (main.commandmode != 0 // beware of corrupting lastexp
-            and x != cook_stdin and x != common_stdin and x != common_stdinb) { // but share $+ $-
+            and x != ls.cook_stdin and x != ls.common_stdin and x != ls.common_stdinb) { // but share $+ $-
                 return make(AP, codegen(h(x)), codegen(t(x)));
             }
             if (main.tag[@intCast(h(x))] == AP and h(h(x)) == APPEND and t(h(x)) == NIL) {
@@ -1544,7 +1543,7 @@ export fn codegen(x: Word) Word {
         },
         STARTREADVALS => {
             if (ispoly(t(x)) != 0) {
-                const name_str: [*:0]const u8 = if (cook_stdin != 0 and x == h(cook_stdin)) "$+" else "readvals or $+";
+                const name_str: [*:0]const u8 = if (ls.cook_stdin != 0 and x == h(ls.cook_stdin)) "$+" else "readvals or $+";
                 _ = c.printf("type error - %s used at polymorphic type :: [", .{name_str});
                 out_type(redtvars(t(x)));
                 _ = c.printf("]\n", .{});

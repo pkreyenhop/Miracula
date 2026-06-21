@@ -5,10 +5,10 @@ const clib = @import("../runtime/main_clib.zig");
 const Word = main.Word;
 const NIL = main.NIL;
 
+const lex_state = @import("../parser/lex_state.zig");
+const ls = &lex_state.ls;
+
 // Global variables defined/exported in parser/lex.zig
-extern var common_stdin: Word;
-extern var common_stdinb: Word;
-extern var cook_stdin: Word;
 
 // Exported initialization functions from other modules
 extern fn setupheap() void;
@@ -197,9 +197,9 @@ pub fn mira_setup() void {
     tsetup();
     reset_pns();
     bigsetup();
-    common_stdin = clib.ap(clib.READ, 0);
-    common_stdinb = clib.ap(clib.READBIN, 0);
-    cook_stdin = clib.ap(clib.readvals(0, 0), clib.OFFSIDE);
+    ls.common_stdin = clib.ap(clib.READ, 0);
+    ls.common_stdinb = clib.ap(clib.READBIN, 0);
+    ls.cook_stdin = clib.ap(clib.readvals(0, 0), clib.OFFSIDE);
     main.nill = main.cons(clib.CONST, NIL);
     main.rs.Void = clib.make_id(@constCast("()"));
     main.heap.tp(main.heap.h(main.rs.Void)).* = clib.void_t;

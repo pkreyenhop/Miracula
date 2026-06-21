@@ -9,6 +9,8 @@ const ast = @import("ast.zig");
 
 const clib = @import("../runtime/c_abi.zig");
 const main = @import("../main.zig");
+const lex_state = @import("lex_state.zig");
+const ls = &lex_state.ls;
 
 const Word = clib.word;
 
@@ -99,7 +101,6 @@ fn bigscanZ(alloc: Allocator, text: []const u8) Word {
 extern var big_one: Word;
 extern var current_file: Word;
 extern var nill: Word;
-extern var idsused: Word;
 
 // ---------------------------------------------------------------------------
 // Type constants (from data.h — replicated so we don't need the macros)
@@ -532,9 +533,9 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
                         // generator's genlhs() call (rules.y:927,932,934).
                         // Mirror that here so each generator's LHS variables
                         // are treated as fresh bindings, not references.
-                        idsused = clib.NIL;
+                        ls.idsused = clib.NIL;
                         const lhs_w = genlhs(codegenExpr(alloc, g.pat));
-                        idsused = clib.NIL;
+                        ls.idsused = clib.NIL;
                         break :gen mkcons(
                             clib.GENERATOR,
                             mkcons(lhs_w, codegenExpr(alloc, g.source.*)),
@@ -543,9 +544,9 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
                     // Sequence generator: `pat <- src, step ..`
                     // Mirrors rules.y: cons(GENERATOR, cons(p, ap2(ITERATE/ITERATE1, lambda(p,step), src)))
                     .sequence_generator => |sg| sgen: {
-                        idsused = clib.NIL;
+                        ls.idsused = clib.NIL;
                         const lhs_w = genlhs(codegenExpr(alloc, sg.pat));
-                        idsused = clib.NIL;
+                        ls.idsused = clib.NIL;
                         const src_w = codegenExpr(alloc, sg.source.*);
                         const step_w = codegenExpr(alloc, sg.step.*);
                         const comb: Word = if (irrefutable(lhs_w) != 0) clib.ITERATE else clib.ITERATE1;

@@ -3,6 +3,9 @@ const main = @import("../main.zig");
 const clib = @import("../runtime/main_clib.zig");
 const platform = @import("platform.zig");
 
+const lex_state = @import("../parser/lex_state.zig");
+const ls = &lex_state.ls;
+
 const Word = main.Word;
 const NIL = main.NIL;
 const t = main.heap.t;
@@ -109,15 +112,15 @@ pub fn mkabsolute(m: [*:0]u8) [*:0]u8 {
     if (m[0] == '/') {
         return m;
     }
-    if (clib.getcwd(main.dicp, clib.pnlim) == null) {
+    if (clib.getcwd(ls.dicp, clib.pnlim) == null) {
         _ = clib.fprintf(main.getStderr(), "panic: cwd too long\n", .{.{}});
         clib.exit(1);
     }
-    _ = clib.strcat(main.dicp, "/");
-    _ = clib.strcat(main.dicp, m);
-    const m_new = main.dicp;
-    main.dicq += clib.strlen(main.dicp) + 1;
-    main.dicp = main.dicq;
+    _ = clib.strcat(ls.dicp, "/");
+    _ = clib.strcat(ls.dicp, m);
+    const m_new = ls.dicp;
+    ls.dicq += clib.strlen(ls.dicp) + 1;
+    ls.dicp = ls.dicq;
     main.dic_check();
     return m_new;
 }

@@ -184,7 +184,7 @@ circular import and the reducer subsystem's handler dispatch through the C-ABI l
 
 ---
 
-#### G1 — Break the `heap.zig ↔ main.zig` circular dependency
+#### G1 — Break the `heap.zig ↔ main.zig` circular dependency ✅
 
 **Why it exists.** `heap.zig` imports `main.zig` to access `RuntimeState` (`rs.*`) and
 miscellaneous state aliases (`main.files`, `main.SGC`, `main.get_id`, …). But `main.zig`
@@ -275,7 +275,7 @@ All reducer handler calls in `reduce.zig` are direct Zig calls. Build clean.
 
 ---
 
-#### G3 — Migrate `lex.zig` state to a `LexState` struct
+#### G3 — Migrate `lex.zig` state to a `LexState` struct ✅
 
 **Why it matters.** `lex.zig` owns ~40 `export var` globals (`fileq`, `margstack`, `col`,
 `gvars`, `lexvar`, `namebucket`, `dicp`, `dicq`, `common_stdin`, …). These are reached by

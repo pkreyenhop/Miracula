@@ -5,10 +5,9 @@ const testing = std.testing;
 extern fn setupheap() void;
 extern fn setupdic() void;
 extern fn yylex() c_int;
-extern var dicp: [*:0]u8;
-extern var yylval: clib.word;
-
 const clib = @import("../runtime/c_abi.zig");
+const lex_state = @import("lex_state.zig");
+const ls = &lex_state.ls;
 
 extern fn make_id(n: [*:0]const u8) clib.word;
 extern var current_file: clib.word;
@@ -24,9 +23,7 @@ fn make_fil_record(name: [*:0]const u8) clib.word {
 }
 
 extern fn reset_state() void;
-extern var col: clib.word;
-extern var line_no: clib.word;
-extern var c: clib.word;
+
 extern var SYNERR: clib.word;
 
 fn resetLexerState() void {
@@ -36,9 +33,9 @@ fn resetLexerState() void {
     reset_pns();
     current_file = make_fil_record("test.m");
     files = clib.make(clib.CONS, current_file, clib.NIL);
-    col = 0;
-    line_no = 0;
-    c = ' ';
+    ls.col = 0;
+    ls.line_no = 0;
+    ls.c = ' ';
     SYNERR = 0;
 }
 
@@ -150,7 +147,7 @@ fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]con
         if (tok == 0 or tok == clib.END) break;
 
         const name = tokenName(tok);
-        const lexeme = std.mem.span(dicp);
+        const lexeme = std.mem.span(ls.dicp);
 
         try list.print("{s}", .{name});
         if (lexeme.len > 0) {

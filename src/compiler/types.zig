@@ -1901,13 +1901,41 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
             return rt;
         },
         CONS => {
-            const ht = try etype(h(x), env, ngt);
-            const rt = try etype(t(x), env, ngt);
-            if (unify1(lt(ht), rt) == 0) {
-                type_error("cons", "to", ht, rt);
+            const elem_type = NTV();
+            const list_type = lt(elem_type);
+
+            // 1. Find the tail of the CONS chain
+            var cur = x;
+            while (main.tag[@intCast(cur)] == CONS) {
+                cur = t(cur);
+            }
+            const tail_expr = cur;
+
+            // 2. Type check the tail
+            const tail_type = try etype(tail_expr, env, ngt);
+            if (unify1(list_type, tail_type) == 0) {
+                // Find the last CONS node to report the error on
+                var last_cons = x;
+                while (t(last_cons) != tail_expr) {
+                    last_cons = t(last_cons);
+                }
+                const ht = try etype(h(last_cons), env, ngt);
+                type_error("cons", "to", ht, tail_type);
                 return NTV();
             }
-            return rt;
+
+            // 3. Type check each head in the chain
+            cur = x;
+            while (main.tag[@intCast(cur)] == CONS) {
+                const ht = try etype(h(cur), env, ngt);
+                if (unify1(ht, elem_type) == 0) {
+                    const rt = try etype(t(cur), env, ngt);
+                    type_error("cons", "to", ht, rt);
+                    return NTV();
+                }
+                cur = t(cur);
+            }
+            return list_type;
         },
         LEXER => {
             const hold = lineptr;

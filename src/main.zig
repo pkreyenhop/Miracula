@@ -36,17 +36,13 @@ pub extern var s_out: ?*clib.FILE;
 pub extern var dstack: ?[*]Word;
 pub extern var stackp: ?[*]Word;
 
-pub extern var dicp: [*:0]u8;
-pub extern var dicq: [*:0]u8;
-pub extern var dic: ?[*]u8;
+
 
 pub extern var version: c_int;
 pub extern var vdate: [*:0]const u8;
 pub extern var host: [*:0]const u8;
 
-extern var blankerr: c_int;
-pub extern var ARGC: c_int;
-pub extern var ARGV: [*]?[*:0]u8;
+
 
 pub extern var current_id: Word;
 extern var ATNAMES: Word;
@@ -67,7 +63,7 @@ pub extern var commandmode: Word;
 
 pub extern var BAD_DUMP: Word;
 pub extern var CLASHES: Word;
-extern var col: Word;
+
 extern var DETROP: Word;
 extern var MISSING: Word;
 extern var ALIASES: Word;
@@ -75,29 +71,20 @@ extern var TSUPPRESSED: Word;
 
 pub const EDITOR: [*:0]const u8 = "vi +!";
 
-pub extern var namebucket: [128]Word;
-pub extern var pnvec: ?[*]Word;
 pub extern var TYPERRS: Word;
 pub extern var FBS: Word;
-extern var common_stdin: Word;
-extern var common_stdinb: Word;
-extern var cook_stdin: Word;
-extern var c: Word;
 
 pub extern var files: Word;
 pub extern var current_file: Word;
 extern var collecting: Word;
-pub extern var exportfiles: Word;
 pub extern var newtyps: Word;
 pub extern var SGC: Word;
 pub extern var speclocs: Word;
 pub extern var rv_script: Word;
 pub extern var algshfns: Word;
-pub extern var nextpn: Word;
 pub extern var TABSTRS: Word;
 pub extern var ND: Word;
 pub extern var polyshowerror: c_int;
-extern var fileq: Word;
 
 // External / runtime function declarations
 pub extern fn signals(signum: c_int, handler: usize) usize;

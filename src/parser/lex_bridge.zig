@@ -12,6 +12,8 @@ const Token = tf.Token;
 const Span = tf.Span;
 
 const clib = @import("../runtime/c_abi.zig");
+const lex_state = @import("lex_state.zig");
+const ls = &lex_state.ls;
 
 extern fn mira_lex_setup_string(source: [*:0]const u8) void;
 extern fn mira_lex_cleanup() void;
@@ -25,11 +27,6 @@ const NILS_ATOM: clib.word = CMBASE + 139;
 const ATOMLIMIT: clib.word = CMBASE + 141;
 
 // Lexer globals exported by lex.zig.
-extern var yylval: clib.word;
-extern var line_no: clib.word;
-extern var col: clib.word;
-extern var tok_start_col: clib.word;
-extern var dicp: [*:0]u8;
 // Heap arrays (data.h: hd and tl are offset so hd[x*2] / tl[x*2] index cell x).
 extern var hd: [*]clib.word;
 extern var tl: [*]clib.word;
@@ -86,7 +83,7 @@ fn stringFromCons(gpa: Allocator, cell: clib.word) ![]u8 {
 /// Map one yylex() return value to a Token.
 /// Returns null for internal tokens that the Zig parser should skip.
 fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
-    const w: clib.word = yylval;
+    const w: clib.word = ls.yylval;
 
     return switch (raw) {
         // EOF / END (both == 0 from data.h)
@@ -180,7 +177,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
                 // Keep the original text so arbitrary precision values are not
                 // truncated to a machine integer before codegen calls bigscan().
                 if (t_tag == clib.INT) {
-                    const text_slice = std.mem.span(dicp);
+                    const text_slice = std.mem.span(ls.dicp);
                     break :blk Token{ .id = .const_int, .span = span, .text = try gpa.dupe(u8, text_slice) };
                 }
             }
@@ -202,7 +199,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
         clib.PATHNAME => Token{
             .id = .pathname,
             .span = span,
-            .text = try gpa.dupe(u8, std.mem.span(dicp)),
+            .text = try gpa.dupe(u8, std.mem.span(ls.dicp)),
         },
         clib.BNF => Token{ .id = .kw_bnf, .span = span },
         clib.LEX => Token{ .id = .kw_lex, .span = span },
@@ -285,8 +282,8 @@ fn tokenizeLoop(gpa: Allocator) ![]Token {
         // any characters are read. Using col (post-read) would give different
         // columns for same-indented identifiers of different lengths.
         const span = Span{
-            .line = @intCast(line_no),
-            .col = @intCast(tok_start_col),
+            .line = @intCast(ls.line_no),
+            .col = @intCast(ls.tok_start_col),
         };
         if (try mapToken(gpa, raw, span)) |tok| {
             try toks.append(gpa, tok);

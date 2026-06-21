@@ -1,6 +1,8 @@
 const std = @import("std");
 const main = @import("../main.zig");
 const clib = @import("../runtime/main_clib.zig");
+const lex_state = @import("../parser/lex_state.zig");
+const ls = &lex_state.ls;
 
 const Word = main.Word;
 const NIL = main.NIL;
@@ -27,7 +29,7 @@ pub fn fixexports() void {
         paint(h(e));
     }
     internals = NIL;
-    if (main.rs.exports == NIL and main.exportfiles == NIL and main.rs.embargoes == NIL) {
+    if (main.rs.exports == NIL and ls.exportfiles == NIL and main.rs.embargoes == NIL) {
         e = main.rs.freeids;
         while (e != NIL) : (e = t(e)) {
             internals = main.cons(privatise(h(h(e))), internals);
@@ -95,13 +97,13 @@ fn privatise(x: Word) Word {
         tp(x).* = clib.ap(clib.datapair(@as(Word, @intCast(@intFromPtr(clib.getaka(x)))), 0), main.get_here(x));
     }
 
-    main.pnvec.?[@as(usize, @intCast(i))] = x;
+    ls.pnvec.?[@as(usize, @intCast(i))] = x;
     tag[@intCast(n)] = clib.ID;
     hp(n).* = h(x);
     tag[@intCast(x)] = clib.STRCONS;
     hp(x).* = i;
 
-    const current_bucket = main.namebucket[hash_idx];
+    const current_bucket = ls.namebucket[hash_idx];
     if (h(current_bucket) == x) {
         hp(current_bucket).* = n;
     } else {
@@ -135,7 +137,7 @@ fn publicise(x: Word) Word {
         tp(i).* = clib.UNDEF;
     }
 
-    const current_bucket = main.namebucket[hash_idx];
+    const current_bucket = ls.namebucket[hash_idx];
     if (h(current_bucket) == x) {
         hp(current_bucket).* = i;
     } else {

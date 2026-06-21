@@ -7,10 +7,10 @@ const setup = @import("setup.zig");
 const Word = main.Word;
 const NIL = main.NIL;
 
+const lex_state = @import("../parser/lex_state.zig");
+const ls = &lex_state.ls;
+
 // Global variables defined/exported in parser/lex.zig
-extern var fileq: Word;
-extern var c: Word;
-extern var col: Word;
 extern var ALIASES: Word;
 extern var TSUPPRESSED: Word;
 extern var DETROP: Word;
@@ -74,7 +74,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
 
     main.files = main.cons(main.make_fil(t_val, main.fm_time(t_val), 1, NIL), NIL);
     main.current_file = main.heap.h(main.files);
-    main.heap.tp(main.heap.h(fileq)).* = main.current_file;
+    main.heap.tp(main.heap.h(ls.fileq)).* = main.current_file;
 
     if (main.rs.initialising != 0 and clib.strcmp(t_val, @as([*:0]const u8, @ptrCast(&main.rs.PRELUDE))) == 0) {
         setup.privlib();
@@ -84,23 +84,23 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         }
     }
 
-    c = ' ';
-    col = 0;
-    main.rs.s_in = @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(fileq)))));
+    ls.c = ' ';
+    ls.col = 0;
+    main.rs.s_in = @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(ls.fileq)))));
     clib.adjust_prefix(@constCast(t_val));
 
     main.commandmode = 0;
     if (main.rs.verbosity != 0 or main.rs.making) {
         _ = clib.printf("compiling %s\n", .{.{t_val}});
     }
-    main.nextpn = 0;
+    ls.nextpn = 0;
     main.rs.embargoes = NIL;
     main.rs.detrop = NIL;
     main.rs.fnts = NIL;
     main.rs.rfl = NIL;
     main.rs.bereaved = NIL;
     main.rs.ld_stuff = NIL;
-    main.exportfiles = NIL;
+    ls.exportfiles = NIL;
     main.rs.freeids = NIL;
     main.rs.exports = NIL;
     main.rs.includees = NIL;
@@ -108,8 +108,8 @@ pub fn loadfile(t_val: [*:0]const u8) void {
 
     _ = parser_api.parseCurrent() catch {};
 
-    if (main.SYNERR == 0 and main.exportfiles != NIL) {
-        var s = main.exportfiles;
+    if (main.SYNERR == 0 and ls.exportfiles != NIL) {
+        var s = ls.exportfiles;
         while (s != NIL) : (s = main.heap.t(s)) {
             if (main.heap.h(s) == clib.PLUS) {
                 var i = main.fil_defs(main.heap.h(main.files));
@@ -427,14 +427,14 @@ pub fn mkincludes(includees_val: Word) Word {
         var f: ?*clib.FILE = null;
         const fn_str = @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(main.heap.h(includees_list)))))));
 
-        _ = clib.strcpy(main.dicp, fn_str);
-        _ = clib.strcpy(main.dicp + clib.strlen(main.dicp) - 1, main.obsuffix);
+        _ = clib.strcpy(ls.dicp, fn_str);
+        _ = clib.strcpy(ls.dicp + clib.strlen(ls.dicp) - 1, main.obsuffix);
 
         if (!main.rs.making) {
             oldsig = signals(clib.SIGINT, @intFromPtr(&main.sigdefer));
         }
 
-        f = clib.fopen(main.dicp, "r");
+        f = clib.fopen(ls.dicp, "r");
         if (f != null) {
             x = clib.load_script(f.?, @constCast(fn_str), main.heap.h(main.heap.t(main.heap.h(includees_list))), main.heap.t(main.heap.t(main.heap.h(includees_list))), 0);
             _ = clib.fclose(f.?);
@@ -506,7 +506,7 @@ pub fn mkincludes(includees_val: Word) Word {
                 }
             }
 
-            if (clib.member(main.exportfiles, @intCast(@intFromPtr(fn_str))) != 0) {
+            if (clib.member(ls.exportfiles, @intCast(@intFromPtr(fn_str))) != 0) {
                 y = x;
                 while (y != NIL) : (y = main.heap.t(y)) {
                     var z = main.fil_defs(main.heap.h(y));

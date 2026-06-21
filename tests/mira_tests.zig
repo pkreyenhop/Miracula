@@ -137,7 +137,7 @@ fn assertSuccessStatus(name: []const u8, result: *const RunResult) !void {
             }
         },
         else => {
-            std.debug.print("{s} did not exit normally: {any}\n", .{ name, result.term });
+            std.debug.print("{s} did not exit normally: {any}\nstdout:\n{s}\nstderr:\n{s}\n", .{ name, result.term, result.stdout, result.stderr });
             return error.TestExpectedSuccess;
         },
     }

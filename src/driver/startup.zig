@@ -8,6 +8,9 @@ const CONS = main.CONS;
 const h = main.heap.h;
 const t = main.heap.t;
 
+const lex_state = @import("../parser/lex_state.zig");
+const ls = &lex_state.ls;
+
 extern var tag: [*]u8;
 
 fn badval(x: Word) bool {
@@ -108,8 +111,8 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             _ = clib.fprintf(main.getStderr(), "mira: obsolete flag \"%s\"\nuse \"-exec\" or \"-exec2\", see manual\n", .{.{arg}});
             clib.exit(1);
         } else if (clib.strcmp(arg, "-exec") == 0) {
-            main.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
-            main.ARGV = @ptrCast(argv + arg_idx + 1);
+            ls.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
+            ls.ARGV = @ptrCast(argv + arg_idx + 1);
             main.rs.magic = true;
             main.rs.verbosity = 0;
             arg_idx = argc_u;
@@ -137,8 +140,8 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             } else {
                 _ = clib.fprintf(main.getStderr(), "could not open %s\n", .{.{logfilname.?}});
             }
-            main.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
-            main.ARGV = @ptrCast(argv + arg_idx + 1);
+            ls.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
+            ls.ARGV = @ptrCast(argv + arg_idx + 1);
             main.rs.magic = true;
             main.rs.verbosity = 0;
             arg_idx = argc_u;
@@ -288,8 +291,8 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
             var x: Word = NIL;
             s = clib.addextn(1, argv[cur_argv_idx]);
-            if (s == main.dicp) {
-                _ = clib.keep(main.dicp);
+            if (s == ls.dicp) {
+                _ = clib.keep(ls.dicp);
             }
             main.undump(s);
             if (main.files == NIL or main.ND != NIL) {
@@ -344,8 +347,8 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
             s = clib.addextn(1, argv[cur_argv_idx]);
             if (main.fileExists(s)) {
-                if (s == main.dicp) {
-                    _ = clib.keep(main.dicp);
+                if (s == ls.dicp) {
+                    _ = clib.keep(ls.dicp);
                 }
                 main.undump(s);
                 var f = if (main.files == NIL) main.rs.oldfiles else main.files;
@@ -367,8 +370,8 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         var cur_argv_idx = arg_idx;
         while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
             s = clib.addextn(1, argv[cur_argv_idx]);
-            if (s == main.dicp) {
-                _ = clib.keep(main.dicp);
+            if (s == ls.dicp) {
+                _ = clib.keep(ls.dicp);
             }
             main.undump(s);
             if (main.ND != NIL or (main.files == NIL and main.rs.oldfiles != NIL)) {
@@ -415,8 +418,8 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         initscript = clib.addextn(1, argv[arg_idx]);
     }
 
-    if (initscript == main.dicp) {
-        _ = clib.keep(main.dicp);
+    if (initscript == ls.dicp) {
+        _ = clib.keep(ls.dicp);
     }
 
     _ = main.signals(clib.SIGFPE, @intFromPtr(&main.fpe_error));

@@ -1,6 +1,8 @@
 const std = @import("std");
 const rt = @import("runtime_state.zig");
 const core = @import("core_state.zig");
+const lex_state = @import("../parser/lex_state.zig");
+const ls = &lex_state.ls;
 
 const c = @import("c_abi.zig");
 
@@ -252,28 +254,10 @@ var heap: ?[*]Word = null;
 var dlim: ?[*]Word = null;
 
 extern var rv_script: Word;
-extern var fileq: Word;
-extern var idsused: Word;
-extern var gvars: Word;
-extern var lexvar: Word;
-extern var common_stdin: Word;
-extern var common_stdinb: Word;
-extern var cook_stdin: Word;
-extern var margstack: Word;
-extern var vergstack: Word;
-extern var litstack: Word;
-extern var linostack: Word;
-extern var prefixstack: Word;
-extern var exportfiles: Word;
 extern var internals: Word;
 extern var FBS: Word;
-extern var namebucket: [128]Word;
-extern var nextpn: Word;
-extern var pnvec: ?[*]Word;
 extern var big_one: Word;
 extern var b_rem: Word;
-extern var yylval: Word;
-extern var echostack: Word;
 extern var R: Word;
 extern var TABSTRS: Word;
 extern var SGC: Word;
@@ -515,23 +499,23 @@ export fn bases() void {
     if (core.compiling != 0 or rt.rs.rv_expr != 0 or rv_script != 0) {
         mark(rt.rs.make_status);
         mark(rt.rs.primenv);
-        mark(fileq);
-        mark(idsused);
+        mark(ls.fileq);
+        mark(ls.idsused);
         mark(rt.rs.eprodnts);
         mark(rt.rs.nonterminals);
         mark(rt.rs.ntmap);
         mark(rt.rs.ihlist);
         mark(rt.rs.ntspecmap);
-        mark(gvars);
-        mark(lexvar);
-        mark(common_stdin);
-        mark(common_stdinb);
-        mark(cook_stdin);
-        mark(margstack);
-        mark(vergstack);
-        mark(litstack);
-        mark(linostack);
-        mark(prefixstack);
+        mark(ls.gvars);
+        mark(ls.lexvar);
+        mark(ls.common_stdin);
+        mark(ls.common_stdinb);
+        mark(ls.cook_stdin);
+        mark(ls.margstack);
+        mark(ls.vergstack);
+        mark(ls.litstack);
+        mark(ls.linostack);
+        mark(ls.prefixstack);
         mark(files);
         mark(rt.rs.oldfiles);
         mark(rt.rs.includees);
@@ -549,8 +533,8 @@ export fn bases() void {
         mark(rt.rs.lexdefs);
         var i: usize = 0;
         while (i < 128) : (i += 1) {
-            if (namebucket[i] != 0) {
-                mark(namebucket[i]);
+            if (ls.namebucket[i] != 0) {
+                mark(ls.namebucket[i]);
             }
         }
         const p_dstack = dstack;
@@ -565,7 +549,7 @@ export fn bases() void {
         if (core.loading != 0) {
             mark(algshfns);
             mark(speclocs);
-            mark(exportfiles);
+            mark(ls.exportfiles);
             mark(rt.rs.embargoes);
             mark(rt.rs.rfl);
             mark(rt.rs.detrop);
@@ -573,9 +557,9 @@ export fn bases() void {
             mark(rt.rs.ld_stuff);
             mark(tlost);
             i = 0;
-            const nextpn_val = @as(usize, @intCast(nextpn));
+            const nextpn_val = @as(usize, @intCast(ls.nextpn));
             while (i < nextpn_val) : (i += 1) {
-                mark(pnvec.?[i]);
+                mark(ls.pnvec.?[i]);
             }
         }
         mark(rt.rs.lastname);
@@ -585,8 +569,8 @@ export fn bases() void {
         mark(rt.rs.standardout);
         mark(big_one);
         mark(b_rem);
-        mark(yylval);
-        mark(echostack);
+        mark(ls.yylval);
+        mark(ls.echostack);
         mark(R);
         mark(TABSTRS);
         mark(SGC);
@@ -663,8 +647,7 @@ fn getStderr() ?*c.FILE {
 export var prefix: [c.pnlim]u8 = undefined;
 export var preflen: Word = 0;
 
-extern var dicp: [*:0]u8;
-extern var dicq: [*:0]u8;
+
 extern fn fm_time(path: [*:0]const u8) Word;
 extern fn unlinkx(path: [*:0]const u8) void;
 
@@ -799,29 +782,29 @@ export fn geterrlin(t_ptr: [*:0]const u8) Word {
     // now check this is right dump
     setprefix(t_ptr);
     var ch = c.getc(f);
-    dicq = dicp;
+    ls.dicq = ls.dicp;
     if (ch != '/') {
         const prefix_len = @as(usize, @intCast(preflen));
-        @memcpy(dicp[0..prefix_len], prefix[0..prefix_len]);
-        dicp[prefix_len] = 0;
-        dicq = dicp + prefix_len;
+        @memcpy(ls.dicp[0..prefix_len], prefix[0..prefix_len]);
+        ls.dicp[prefix_len] = 0;
+        ls.dicq = ls.dicp + prefix_len;
     }
 
     // locate wrt current posn
-    dicq[0] = @intCast(ch);
-    dicq += 1;
+    ls.dicq[0] = @intCast(ch);
+    ls.dicq += 1;
 
     while (true) {
         ch = c.getc(f);
-        dicq[0] = @intCast(ch);
-        dicq += 1;
+        ls.dicq[0] = @intCast(ch);
+        ls.dicq += 1;
         if (ch == 0 or ch == c.EOF) {
             break;
         }
     }
 
     const mtime = getword(f);
-    if (c.strcmp(dicp, t_ptr) != 0 or mtime != fm_time(t_ptr)) {
+    if (c.strcmp(ls.dicp, t_ptr) != 0 or mtime != fm_time(t_ptr)) {
         return 0; // wrong dump
     }
 
@@ -1425,7 +1408,7 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
             }
         }
     }
-    PNBASE = nextpn;
+    PNBASE = ls.nextpn;
     SUPPRESSED = c.NIL;
     TSUPPRESSED = c.NIL;
 
@@ -1434,7 +1417,7 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
     while (ch != 0 and ch != c.EOF and BAD_DUMP == 0) {
         var s: Word = 0;
         var holde: Word = 0;
-        dicq = dicp;
+        ls.dicq = ls.dicp;
         if (files_list == c.NIL and ch == 1) {
             holde = getword(file);
             ch = c.getc(file);
@@ -1443,26 +1426,26 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
             }
         }
         if (ch != '/') {
-            _ = c.strcpy(dicp, &prefix);
-            dicq = dicp + @as(usize, @intCast(preflen));
+            _ = c.strcpy(ls.dicp, &prefix);
+            ls.dicq = ls.dicp + @as(usize, @intCast(preflen));
         }
-        dicq[0] = @intCast(ch);
-        dicq += 1;
+        ls.dicq[0] = @intCast(ch);
+        ls.dicq += 1;
         while (true) {
             ch = c.getc(file);
-            dicq[0] = @intCast(ch);
-            dicq += 1;
+            ls.dicq[0] = @intCast(ch);
+            ls.dicq += 1;
             if (ch == 0 or ch == c.EOF) {
                 break;
             }
         }
-        if (@intFromPtr(dicq) - @intFromPtr(dicp) > rt.rs.DICSPACE) {
+        if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
             c.dicovflo();
         }
         ch = getword(file);
         s = c.getc(file);
         if (files_list == c.NIL) {
-            if (c.strcmp(dicp, src) != 0) {
+            if (c.strcmp(ls.dicp, src) != 0) {
                 BAD_DUMP = 1;
                 if (aliases != c.NIL) {
                     unscramble(aliases);
@@ -1493,27 +1476,27 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
             if (ch == c.EOF) {
                 break;
             }
-            dicq = dicp;
+            ls.dicq = ls.dicp;
             if (ch != '/') {
-                _ = c.strcpy(dicp, &prefix);
-                dicq = dicp + @as(usize, @intCast(preflen));
+                _ = c.strcpy(ls.dicp, &prefix);
+                ls.dicq = ls.dicp + @as(usize, @intCast(preflen));
             }
-            dicq[0] = @intCast(ch);
-            dicq += 1;
+            ls.dicq[0] = @intCast(ch);
+            ls.dicq += 1;
             while (true) {
                 ch = c.getc(file);
-                dicq[0] = @intCast(ch);
-                dicq += 1;
+                ls.dicq[0] = @intCast(ch);
+                ls.dicq += 1;
                 if (ch == 0 or ch == c.EOF) {
                     break;
                 }
             }
-            if (@intFromPtr(dicq) - @intFromPtr(dicp) > rt.rs.DICSPACE) {
+            if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
                 c.dicovflo();
             }
             ch = getword(file);
             if (rt.rs.oldfiles == c.NIL) {
-                if (c.strcmp(dicp, src) != 0) {
+                if (c.strcmp(ls.dicp, src) != 0) {
                     BAD_DUMP = 1;
                     if (aliases != c.NIL) {
                         unscramble(aliases);
@@ -1694,11 +1677,11 @@ export fn load_defs(file: ?*c.FILE) Word {
                 var val = c.getc(file);
                 val = val | (c.getc(file) << 8);
                 const idx = PNBASE + val;
-                stackp_push(if (idx < nextpn) pnvec.?[@intCast(idx)] else c.sto_pn(idx));
+                stackp_push(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else c.sto_pn(idx));
             },
             c.PN1_X => {
                 const idx = PNBASE + getint(file);
-                stackp_push(if (idx < nextpn) pnvec.?[@intCast(idx)] else c.sto_pn(idx));
+                stackp_push(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else c.sto_pn(idx));
             },
             c.CONSTRUCT_X => {
                 var val = c.getc(file);
@@ -1710,16 +1693,16 @@ export fn load_defs(file: ?*c.FILE) Word {
                 rv_script = 1;
             },
             c.ID_X => {
-                dicq = dicp;
+                ls.dicq = ls.dicp;
                 while (true) {
                     const next = c.getc(file);
-                    dicq[0] = @intCast(next);
-                    dicq += 1;
+                    ls.dicq[0] = @intCast(next);
+                    ls.dicq += 1;
                     if (next == 0 or next == c.EOF) {
                         break;
                     }
                 }
-                if (@intFromPtr(dicq) - @intFromPtr(dicp) > rt.rs.DICSPACE) {
+                if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
                     c.dicovflo();
                 }
                 stackp_push(name());
@@ -1732,22 +1715,22 @@ export fn load_defs(file: ?*c.FILE) Word {
                 }
             },
             c.AKA_X => {
-                dicq = dicp;
+                ls.dicq = ls.dicp;
                 while (true) {
                     const next = c.getc(file);
-                    dicq[0] = @intCast(next);
-                    dicq += 1;
+                    ls.dicq[0] = @intCast(next);
+                    ls.dicq += 1;
                     if (next == 0 or next == c.EOF) {
                         break;
                     }
                 }
-                if (@intFromPtr(dicq) - @intFromPtr(dicp) > rt.rs.DICSPACE) {
+                if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
                     c.dicovflo();
                 }
                 stackp_push(datapair(@intCast(@intFromPtr(get_id(name()))), 0));
             },
             c.HERE_X => {
-                dicq = dicp;
+                ls.dicq = ls.dicp;
                 var next = c.getc(file);
                 if (next == 0) {
                     next = c.getc(file);
@@ -1755,20 +1738,20 @@ export fn load_defs(file: ?*c.FILE) Word {
                     stackp_push(fileinfo(@intCast(@intFromPtr(CFN.?)), next));
                 } else {
                     if (next != '/') {
-                        _ = c.strcpy(dicp, &prefix);
-                        dicq = dicp + @as(usize, @intCast(preflen));
+                        _ = c.strcpy(ls.dicp, &prefix);
+                        ls.dicq = ls.dicp + @as(usize, @intCast(preflen));
                     }
-                    dicq[0] = @intCast(next);
-                    dicq += 1;
+                    ls.dicq[0] = @intCast(next);
+                    ls.dicq += 1;
                     while (true) {
                         const val = c.getc(file);
-                        dicq[0] = @intCast(val);
-                        dicq += 1;
+                        ls.dicq[0] = @intCast(val);
+                        ls.dicq += 1;
                         if (val == 0 or val == c.EOF) {
                             break;
                         }
                     }
-                    if (@intFromPtr(dicq) - @intFromPtr(dicp) > rt.rs.DICSPACE) {
+                    if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
                         c.dicovflo();
                     }
                     var line = c.getc(file);
@@ -1865,9 +1848,9 @@ export fn load_defs(file: ?*c.FILE) Word {
                 const ch_val = stackp_pop();
                 const top = stackp_top();
                 if (top == c.READ and ch_val == 0) {
-                    stackp_set_top(common_stdin);
+                    stackp_set_top(ls.common_stdin);
                 } else if (top == c.READBIN and ch_val == 0) {
-                    stackp_set_top(common_stdinb);
+                    stackp_set_top(ls.common_stdinb);
                 } else {
                     stackp_set_top(ap(top, ch_val));
                 }
@@ -2021,7 +2004,7 @@ pub export fn unsetids(d_val: Word) void {
 pub export fn unload() void {
     rt.rs.sorted = 0;
     speclocs = NIL;
-    nextpn = 0;
+    ls.nextpn = 0;
     rv_script = 0;
     algshfns = NIL;
     unsetids(newtyps);

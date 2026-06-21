@@ -9,6 +9,9 @@ const NIL = main.NIL;
 extern var tag: [*]u8;
 extern var CLASHES: Word;
 
+const lex_state = @import("../parser/lex_state.zig");
+const ls = &lex_state.ls;
+
 
 extern fn token() ?[*:0]u8;
 
@@ -31,7 +34,7 @@ fn spaces(s: Word) void {
 }
 
 fn is(s: [:0]const u8) bool {
-    return std.mem.eql(u8, std.mem.span(main.dicp), s);
+    return std.mem.eql(u8, std.mem.span(ls.dicp), s);
 }
 
 fn filequote(p: [:0]const u8) void {
@@ -136,7 +139,7 @@ pub export fn command() void {
     var t_val: ?[*:0]u8 = undefined;
     var ch: c_int = undefined;
     var ch1: c_int = undefined;
-    switch (main.dicp[0]) {
+    switch (ls.dicp[0]) {
         'a' => {
             if (is("a") or is("aux")) {
                 if (clib.getchar() != '\n') return;
@@ -176,12 +179,12 @@ pub export fn command() void {
                     if (main.rs.DICSPACE != 100000) {
                         _ = clib.printf(" (default=%ld)", .{.{@as(c_long, 100000)}});
                     }
-                    _ = clib.printf(" %ld in use\n", .{.{@as(c_long, @intCast(@intFromPtr(main.dicq) - @intFromPtr(main.dic.?)))}});
+                    _ = clib.printf(" %ld in use\n", .{.{@as(c_long, @intCast(@intFromPtr(ls.dicq) - @intFromPtr(ls.dic.?)))}});
                     return;
                 }
                 if (clib.getchar() != '\n') return;
                 _ = clib.printf("sorry, cannot change size of dictionary while in use\n", .{.{}});
-                _ = clib.printf("(/q and reinvoke with flag: mira -dic %s ... )\n", .{.{main.dicp}});
+                _ = clib.printf("(/q and reinvoke with flag: mira -dic %s ... )\n", .{.{ls.dicp}});
                 return;
             }
         },
@@ -196,24 +199,24 @@ pub export fn command() void {
                 if (clib.getchar() != '\n') return;
                 if (!main.fileExists(t_val.?)) {
                     if (lmirahdr == null) {
-                        main.dicp = main.dicq;
-                        _ = clib.strcpy(main.dicp, clib.getenv("HOME"));
-                        if (clib.strcmp(main.dicp, "/") == 0) {
-                            main.dicp[0] = 0;
+                        ls.dicp = ls.dicq;
+                        _ = clib.strcpy(ls.dicp, clib.getenv("HOME"));
+                        if (clib.strcmp(ls.dicp, "/") == 0) {
+                            ls.dicp[0] = 0;
                         }
-                        _ = clib.strcat(main.dicp, "/.mirahdr");
-                        lmirahdr = main.dicp;
-                        main.dicq = main.dicp + clib.strlen(main.dicp) + 1;
+                        _ = clib.strcat(ls.dicp, "/.mirahdr");
+                        lmirahdr = ls.dicp;
+                        ls.dicq = ls.dicp + clib.strlen(ls.dicp) + 1;
                     }
                     if (main.fileExists(lmirahdr.?)) {
                         mf = lmirahdr;
                     }
                     if (mf == null and mirahdr == null) {
-                        main.dicp = main.dicq;
-                        _ = clib.strcpy(main.dicp, main.rs.miralib.?);
-                        _ = clib.strcat(main.dicp, "/.mirahdr");
-                        mirahdr = main.dicp;
-                        main.dicq = main.dicp + clib.strlen(main.dicp) + 1;
+                        ls.dicp = ls.dicq;
+                        _ = clib.strcpy(ls.dicp, main.rs.miralib.?);
+                        _ = clib.strcat(ls.dicp, "/.mirahdr");
+                        mirahdr = ls.dicp;
+                        ls.dicq = ls.dicp + clib.strlen(ls.dicp) + 1;
                     }
                     if (mf == null and main.fileExists(mirahdr.?)) {
                         mf = mirahdr;
@@ -315,7 +318,7 @@ pub export fn command() void {
             if (is("find")) {
                 var i: Word = 0;
                 while (token() != null) {
-                    const x = clib.findid(main.dicp);
+                    const x = clib.findid(ls.dicp);
                     i += 1;
                     if (x != NIL) {
                         const n = main.get_id(x);
@@ -374,7 +377,7 @@ pub export fn command() void {
                     return;
                 }
                 if (clib.getchar() != '\n') return;
-                if (clib.sscanf(main.dicp, "%ld", .{&x}) != 1 or main.badval(x)) {
+                if (clib.sscanf(ls.dicp, "%ld", .{&x}) != 1 or main.badval(x)) {
                     _ = clib.printf("illegal value (heap unchanged)\n", .{.{}});
                     return;
                 }
