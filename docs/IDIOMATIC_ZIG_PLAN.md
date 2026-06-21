@@ -421,8 +421,8 @@ Baseline captured 2026-06-21 (script output at L0):
 | 1 | internal `c_int`/`c_long`/`c_uint` (incl. `@as(c_int,…)` printf casts) | 107 | printf-cast residual only | L1–L3 |
 | 2 | `[*:0]` on Zig-only signatures | 161 | enumerated (inherent C-string flow) | M (analysed: no-op) |
 | 3 | `[*]Word` / `?[*]Word` non-FFI | 9 | enumerated (raw heap/stack storage) | M (analysed: no-op) |
-| 4 | sentinel `== NIL` / `!= NIL` | 347 | reduced at converted fns | N1–N2 |
-| 5 | `return NIL` as an error signal | 12 | 0 | O1 |
+| 4 | sentinel `== NIL` / `!= NIL` | 347 | n/a — NIL is a heap value, not absence | N (analysed: no-op) |
+| 5 | `return NIL` as an error signal | 12 | n/a — all return NIL-the-value | O1 (analysed: no-op) |
 | 6 | bare `clib.exit(1)` (use `fatal()`) | 46 → 30 | evaluator-abort residual | O2 |
 | 7 | file-private `fn` with `snake_case` | 50 → 36 | domain-vocabulary exemptions only | P1 (✅ for P1a–d) |
 | 8 | `= undefined` initialisers (non-FFI) | 92 | audited + documented | Q1 |
@@ -494,19 +494,35 @@ accepted non-FFI pointers are:
   via `realloc` and addressed by pointer arithmetic behind the `h()`/`t()` accessor API.
 - **Stack-walking:** the `bases()` GC root scanner walks raw machine-stack addresses.
 
-### Cluster N — Optional Types (was I3; closes metric 4 at converted sites)
+### Cluster N — Optional Types (was I3)
 
-* **N1 — `get_id` → `?[*:0]const u8`** ⬜
-  Mirror the existing `get_fil` (already optional). Update callers to `if (… ) |id|`. *Risk: med.*
-* **N2 — Lookup functions returning `NIL`-for-absent → `?Word`** ⬜
-  Convert one function per commit (`findid` and peers). Each commit replaces that function's
-  `== NIL` call-site checks with optional unwrapping. *Risk: medium (all callers per fn).*
+**Finding (2026-06-21): `NIL` is a first-class heap value, not an absent/null sentinel — so
+optionals do not apply.** `NIL` is the nil atom (`CMBASE+138`), the Miranda empty list and the
+graph terminator that the reducer evaluates directly. The 347 `== NIL`/`!= NIL` checks are
+structural *value* comparisons ("is this list empty / this graph a leaf"), not "lookup
+returned not-found". Wrapping them in `?Word` would be semantically wrong and would force
+constant `orelse NIL` round-trips back into the Word domain. N1–N2 are analysed-no-ops.
+
+* **N1 — `get_id` → `?[*:0]const u8`** ✅ *(analysed — no-op, 2026-06-21)*
+  `get_fil` is already optional (its share-field can be 0). `get_id` returns an identifier's
+  name pointer, which is **never** absent for a valid id — an optional would never be null.
+* **N2 — Lookup fns `NIL`-for-absent → `?Word`** ✅ *(analysed — no-op, 2026-06-21)*
+  The "not-found → NIL" lookups (`findid` and peers) are `export fn` declared `extern fn` in
+  4 places — C-ABI symbols whose `Word` return cannot become `?Word`. The rest return NIL as a
+  legitimate empty-list value.
 
 ### Cluster O — Error Unions & Panics (was J1/J2; closes metrics 5–6)
 
-* **O1 — `return NIL`-as-error → `MiraError`** ⬜
-  Enumerate the 12 sites; convert the parser/loader ones to `error.SyntaxError`/`LoadError`
-  with `try` propagation. *Risk: medium.*
+* **O1 — `return NIL`-as-error → `MiraError`** ✅ *(analysed — no-op, 2026-06-21)*
+  All 12 `return NIL` sites return NIL as a legitimate **empty-list value**, not an error
+  signal: 11 are in `export fn` translator/heap functions (`alfasort`, `codegen`, `get_ids`,
+  `mktuple`, `abstract`, `scanpattern`, `block`, `conv_args`) where NIL is the correct result
+  and the C-ABI return cannot be an error union anyway. The one non-`export` site, `mkincludes`,
+  already signals errors through the `SYNERR` global and returns NIL as its (empty) include
+  list; its single caller appends that list to `main.files`, so an error union would just
+  become `catch NIL` — pure churn. The real error channels here are `SYNERR`/`errs` (sentinel
+  globals consumed widely) and, for type-checking, the `MiraError.TypeCheckAbort` union already
+  wired in E2.
 * **O2 — Centralise fatal exits behind `fatal()`** ✅ *(2026-06-21)*
   Added `errors.fatal(fmt, args) noreturn` (re-exported as `main.fatal`) — one place that does
   `fprintf(stderr, …)` then `exit(1)`, so the diagnostic and exit status can never drift apart.
@@ -632,9 +648,9 @@ together they move four of the eight scorecard metrics.
 | M | M2 | `loadfile` string param (net-negative — keep `[*:0]`) | 2 | low-med | ✅ Analysed (no-op) |
 | M | M3 | `[*]Word` (all raw storage / stack-walk — keep `[*]`) | 3 | medium | ✅ Analysed (no-op) |
 | M | M4 | Document enumerated raw-pointer exception | 3 | none | ✅ Complete |
-| N | N1 | `get_id` → `?[*:0]const u8` | 4 | medium | ⬜ Planned |
-| N | N2 | Lookup fns `NIL`-absent → `?Word` (per fn) | 4 | medium | ⬜ Planned |
-| O | O1 | `return NIL`-as-error → `MiraError` (12 sites) | 5 | medium | ⬜ Planned |
+| N | N1 | `get_id` optional (never absent — keep) | 4 | medium | ✅ Analysed (no-op) |
+| N | N2 | Lookup fns `NIL`-absent (all `export fn` — keep) | 4 | medium | ✅ Analysed (no-op) |
+| O | O1 | `return NIL` (all return NIL-the-value — keep) | 5 | medium | ✅ Analysed (no-op) |
 | O | O2 | Centralise fatal exits behind `fatal()` | 6 | low | ✅ Complete |
 | O | O3 | `unreachable` audit (18 sites) | — | low | ✅ Complete |
 | P | P1a | Private `fn` in `runtime/` → camelCase (6 renamed, 14→8) | 7 | low | ✅ Complete |
