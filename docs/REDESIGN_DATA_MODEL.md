@@ -257,7 +257,7 @@ trampoline*, not literally none.
 | R1 | R1.1 De-alias constants | ✅ Complete *(all subsystems)* |
 | R1 | R1.2 Allocator for memory | ✅ Complete |
 | R1 | R1.3 `std.mem` for strings | ✅ Complete |
-| R1 | R1.4 `std.Io.Writer` for output | ◐ Partial *(residual `printf`/`putc` sites)* |
+| R1 | R1.4 output off `clib` (`printf`/`fprintf`/`putc`/`putchar`) | ✅ Complete *(format-machinery moved to `word.zig`; C→Zig-native format polish optional)* |
 | R1 | R1.5 `std.Io.Reader` for input | ✅ Complete |
 | R1 | R1.6 `std.fs.File` for files | ✅ Complete |
 | R1 | R1.7 process/env (`std.process`/`std.posix`) | ◐ Partial *(`getenv`/`system` done; `fork`/`exec`/`wait` remain)* |
@@ -270,11 +270,16 @@ trampoline*, not literally none.
 |--------|-------------|-----|--------|
 | `extern fn` declarations | 322 | 322 | 0 |
 | `extern var` declarations | 94 | 94 | 0 |
-| `clib.`/`c.` call sites | 2821 | **1167** | 0 |
+| `clib.`/`c.` call sites | 2821 | **862** | 0 |
 | `callconv(.c)` | 12 | 12 | 1 (signal trampoline) |
 | raw `hd[`/`tl[`/`tag[` outside `heap.zig` | 290 | 290 | 0 |
 | `[*:0]`-as-Word pointer casts | 129 | 130 | 0 |
 
 *The `clib.`/`c.` reduction so far is R1.1–R1.7 (constants fully de-aliased to `word.*`, plus
-memory/string/IO/file migration). The `extern fn`/`extern var` and raw-cell metrics move in
+memory/string/output/file migration). The `extern fn`/`extern var` and raw-cell metrics move in
 R2+ (heap encapsulation), which is where the actual representation changes begin.*
+
+The residual ~862 `clib.`/`c.` sites are now dominated by **input** (`getc`/`getchar`/`EOF` —
+R1.5 residual), **files** (`fopen`/`fclose`), **process** (`fork`/`exec`/`wait`/`getenv` —
+R1.7), and the **data-model functions** (`make`/`make_id`/`get_dbl`/`setdbl` — these move in
+R2–R4 when the heap is encapsulated and the representation changes).
