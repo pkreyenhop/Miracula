@@ -574,13 +574,22 @@ Rename only genuine Zig-internal verb-helpers and their (same-file) callers.
   `get_fil` in `lex.zig`) are accessor-mirror exemptions. 4 → 3.
 * **P1d — Private `fn` in `driver/` + `io/` → camelCase** ✅ *(2026-06-21)*
   `unlimit_stack`→`unlimitStack`. io/ had none. driver/+io → 0.
-* **P2 — Non-FFI `pub fn` → camelCase** ⬜
-  `pub fn` that are neither `export` nor extern-referenced, updating cross-module callers
-  (mostly via the `main.*` re-export aliases). One module per commit. *Risk: medium.*
-  *DoD: metric 7 = the documented domain-vocabulary exemption set only.*
+* **P2 — Non-FFI `pub fn` → camelCase** ✅ *(2026-06-21)*
+  After Q2 surfaced ~135 snake_case `pub fn`, audit showed most are deliberate
+  **domain vocabulary** — the combinator names (`handleS`, `handleB_p` for B′, `handleITERATE`),
+  the grammar handlers mirroring `clib.G_*` constants (`handle_G_ALT`, …), the heap accessor
+  mirrors (`t_class`, `id_who`, `fil_time`), and the `type_error1..8` family — all of which a
+  reader cross-references against the Miranda C source and the SK-combinator set; renaming them
+  would *obscure* that correspondence. The one genuine wart was the **`zig_` prefix** on the 47
+  combinator handlers (added during the G2 hybrid period to avoid clashing with the then-extant
+  C `handleS`). Stripped it across defs + callers in `reducer/combinators.zig`, `reduce.zig`,
+  `ready.zig` (`zig_handleS` → `handleS`, …), restoring the Miranda-source names. pub-fn
+  snake_case **135 → 96**; the 96 residual are exactly the documented domain-vocabulary set.
+  Build clean; tests green.
 
-*P1 outcome:* file-private `snake_case` fns **50 → 36**; the 36 residual are exactly the
-documented accessor-mirror / `_t`-type-vocabulary exemptions, not arbitrary snake_case.
+*P outcome:* file-private `snake_case` fns **50 → 36** (P1); pub `snake_case` **135 → 96** (P2).
+Both residuals are exactly the documented accessor-mirror / `_t`-type / combinator /
+grammar-constant vocabulary that mirrors the original source — not arbitrary snake_case.
 
 ### Cluster Q — Polish (closes metric 8)
 
@@ -682,6 +691,6 @@ together they move four of the eight scorecard metrics.
 | P | P1b | Private `fn` in `compiler/` → camelCase (6 renamed, 31→25) | 7 | low | ✅ Complete |
 | P | P1c | Private `fn` in `parser/` → camelCase (1 renamed, 4→3) | 7 | low | ✅ Complete |
 | P | P1d | Private `fn` in `driver/`+`io/` → camelCase (1 renamed) | 7 | low | ✅ Complete |
-| P | P2 | Non-FFI `pub fn` → camelCase (per module) | 7 | medium | ⬜ Planned |
+| P | P2 | Non-FFI `pub fn`: strip `zig_` wart (135→96) | 7 | medium | ✅ Complete |
 | Q | Q1 | `= undefined` audit (92→86; 6 fields zero-init) | 8 | low-med | ✅ Complete |
 | Q | Q2 | `export fn` → `pub fn` (110 converted; 284→174) | — | medium | ✅ Complete |

@@ -352,10 +352,10 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             reduce.upLeft(ctx);
             if (lastarg(ctx) == clib.True) {
                 reduce.rewrite_to_value(&ctx.e, clib.K);
-                combinators.zig_handleK(ctx);
+                combinators.handleK(ctx);
             } else {
                 reduce.rewrite_to_value(&ctx.e, clib.KI);
-                combinators.zig_handleKI(ctx);
+                combinators.handleKI(ctx);
             }
             return;
         },
@@ -378,11 +378,11 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             reduce.upLeft(ctx);
             if (lastarg(ctx) == clib.True) {
                 ctx.e = clib.I;
-                combinators.zig_handle_strict_monadic(ctx);
+                combinators.handle_strict_monadic(ctx);
             } else {
                 reduce.hd_set(ctx.e, clib.K);
                 reduce.downLeft(ctx);
-                combinators.zig_handleK(ctx);
+                combinators.handleK(ctx);
             }
             return;
         },
@@ -391,10 +391,10 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             if (lastarg(ctx) == clib.True) {
                 reduce.hd_set(ctx.e, clib.K);
                 reduce.downLeft(ctx);
-                combinators.zig_handleK(ctx);
+                combinators.handleK(ctx);
             } else {
                 ctx.e = clib.I;
-                combinators.zig_handle_strict_monadic(ctx);
+                combinators.handle_strict_monadic(ctx);
             }
             return;
         },
