@@ -410,27 +410,40 @@ legacy test harness call these by name and ABI), and `src/tools/*` standalone ut
 
 ### Definition of Done — measurable scorecard
 
-Counts captured 2026-06-21. A grep-based `scripts/idiomatic-check.sh` (to be added in L0)
-codifies these so progress is objective.
+The metrics are codified in **`scripts/idiomatic-check.sh`** (step L0). Run it for the live
+count; run `-v` to list the matching source lines. FFI shims (`main_clib.zig`, `c_abi.zig`),
+`src/tools/*`, and genuine `extern`/`export fn`/`callconv(.c)` signature lines are excluded.
 
-| # | Metric (non-FFI scope) | Verification command | Now | Target |
-|---|------------------------|----------------------|-----|--------|
-| 1 | `c_int`/`c_long`/`c_uint` in internal vars/locals | `grep -rn 'c_int\|c_long\|c_uint' src` minus FFI sigs | ~25 internal | 0 |
-| 2 | `[*:0]` params on Zig-only functions | `grep -rn '\[\*:0\]' src` minus FFI sigs | ~40 internal | enumerated exceptions only |
-| 3 | `[*]Word` / `?[*]Word` outside heap storage + FFI | `grep -rn '\[\*\]Word' src` | 38 | enumerated exceptions only |
-| 4 | sentinel `== NIL` / `!= NIL` at lookup boundaries | `grep -rn '!= NIL\|== NIL' src` | 359 | reduced at converted fns |
-| 5 | `return NIL` used as an error signal | `grep -rn 'return NIL' src` | 12 | 0 |
-| 6 | bare `clib.exit(1)` outside a `fatal()` helper | `grep -rn 'clib.exit(1)' src` | 61 | 0 |
-| 7 | file-private `fn` in `snake_case`/run-on | see P-step greps | 174 | 0 |
-| 8 | `= undefined` initialisers (non-FFI) | `grep -rn '= undefined' src` | 108 | audited + documented |
+Baseline captured 2026-06-21 (script output at L0):
+
+| # | Metric (non-FFI scope) | Now | Target | Driven by |
+|---|------------------------|-----|--------|-----------|
+| 1 | internal `c_int`/`c_long`/`c_uint` (incl. `@as(c_int,…)` printf casts) | 107 | printf-cast residual only | L1–L3 |
+| 2 | `[*:0]` on Zig-only signatures | 161 | enumerated exceptions only | M1–M2 |
+| 3 | `[*]Word` / `?[*]Word` non-FFI | 9 | enumerated exceptions only | M3–M4 |
+| 4 | sentinel `== NIL` / `!= NIL` | 347 | reduced at converted fns | N1–N2 |
+| 5 | `return NIL` as an error signal | 12 | 0 | O1 |
+| 6 | bare `clib.exit(1)` (use `fatal()`) | 46 | 0 | O2 |
+| 7 | file-private `fn` with `snake_case` | 50 | domain-vocabulary exemptions only | P1 |
+| 8 | `= undefined` initialisers (non-FFI) | 92 | audited + documented | Q1 |
+
+**Domain-vocabulary exemption (metric 7).** Like the FFI exemption, a fixed set of
+file-private names deliberately mirrors the public `heap.zig` accessor API and the Miranda
+type-node vocabulary, so they stay `snake_case` for cross-reference with the original source
+and with their `pub` counterparts: the accessor mirrors (`get_id`, `get_fil`, `get_pn`,
+`pn_val`, `id_who`, `the_val`, `*_ptr`, `make_fil*`), the type predicates/constructors
+(`isarrow_t`, `iscomma_t`, `islist_t`, `isvar_t`, `iscompound_t`, `t_class`, `t_info`,
+`t_arity`, `t_showfn`, `bound_t`, `pair_t`), and the latin idiom `sui_generis`. P1 renames
+only the genuine verb-helpers outside this set.
 
 ---
 
 ### Cluster L — Finish Native Integers (closes metric 1)
 
-* **L0 — Add `scripts/idiomatic-check.sh`** ⬜
-  A shell script emitting the scorecard above. Establishes the measurable baseline and makes
-  every later micro-step self-verifying. *Risk: none (tooling only).*
+* **L0 — Add `scripts/idiomatic-check.sh`** ✅ *(2026-06-21)*
+  Shell script emitting the 8-metric scorecard (with the FFI exemption baked in) and a `-v`
+  mode listing matching lines. Establishes the measurable baseline (107/161/9/347/12/46/50/92)
+  and makes every later micro-step self-verifying. *Risk: none (tooling only).*
 * **L1 — `lex.zig` internal `c_int` → `i32`** ⬜
   Module vars `rawch`, `errch`, `inprelude`; locals `anti`, `h_val`. Exempt: `export fn`
   signatures, `extern var compiling`. *~5 sites. Risk: low (i32 ≡ c_int ABI).*
@@ -560,7 +573,7 @@ together they move four of the eight scorecard metrics.
 
 | Cluster | Step | Title | Metric | Risk | Status |
 |---------|------|-------|--------|------|--------|
-| L | L0 | Add `scripts/idiomatic-check.sh` scorecard | tooling | none | ⬜ Planned |
+| L | L0 | Add `scripts/idiomatic-check.sh` scorecard | tooling | none | ✅ Complete |
 | L | L1 | `lex.zig` internal `c_int` → `i32` | 1 | low | ⬜ Planned |
 | L | L2 | `heap.zig` internal `c_int` → `i32`/`usize` | 1 | low | ⬜ Planned |
 | L | L3 | Driver/runtime internal `c_int` → `i32` (per file) | 1 | low | ⬜ Planned |
