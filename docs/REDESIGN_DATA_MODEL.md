@@ -244,4 +244,37 @@ The OS delivers signals through the C ABI, so **one** `callconv(.c)` trampoline 
 [IDIOMATIC_ZIG_PLAN.md](IDIOMATIC_ZIG_PLAN.md) (E3). Everything else — memory, I/O, strings,
 the entire cell model — becomes pure, idiomatic Zig. "Zero C-ABI" is therefore *one documented
 trampoline*, not literally none.
-```
+
+---
+
+## Progress
+
+| Phase | Step | Status |
+|-------|------|--------|
+| R0 | R0.1 Golden-output corpus (44 cases, `zig build test-golden`) | ✅ Complete |
+| R0 | R0.2 Data-model scorecard (metrics 10–15) | ✅ Complete |
+| R0 | R0.3 Dump round-trip test | ✅ Complete |
+| R1 | R1.1 De-alias constants | ✅ Complete *(all subsystems)* |
+| R1 | R1.2 Allocator for memory | ✅ Complete |
+| R1 | R1.3 `std.mem` for strings | ✅ Complete |
+| R1 | R1.4 `std.Io.Writer` for output | ◐ Partial *(residual `printf`/`putc` sites)* |
+| R1 | R1.5 `std.Io.Reader` for input | ✅ Complete |
+| R1 | R1.6 `std.fs.File` for files | ✅ Complete |
+| R1 | R1.7 process/env (`std.process`/`std.posix`) | ◐ Partial *(`getenv`/`system` done; `fork`/`exec`/`wait` remain)* |
+| R1 | R1.8 Remaining libc | ⬜ Planned |
+| R2–R8 | Heap encapsulation → demolition | ⬜ Planned |
+
+### Scorecard (data-model metrics, this redesign)
+
+| Metric | R0 baseline | Now | Target |
+|--------|-------------|-----|--------|
+| `extern fn` declarations | 322 | 322 | 0 |
+| `extern var` declarations | 94 | 94 | 0 |
+| `clib.`/`c.` call sites | 2821 | **1167** | 0 |
+| `callconv(.c)` | 12 | 12 | 1 (signal trampoline) |
+| raw `hd[`/`tl[`/`tag[` outside `heap.zig` | 290 | 290 | 0 |
+| `[*:0]`-as-Word pointer casts | 129 | 130 | 0 |
+
+*The `clib.`/`c.` reduction so far is R1.1–R1.7 (constants fully de-aliased to `word.*`, plus
+memory/string/IO/file migration). The `extern fn`/`extern var` and raw-cell metrics move in
+R2+ (heap encapsulation), which is where the actual representation changes begin.*
