@@ -38,9 +38,9 @@ const ID = word.ID;
 const UNICODE = word.UNICODE;
 const CONS = word.CONS;
 
-export var hd: ?[*]Word = null;
-export var tl: ?[*]Word = null;
-export var tag: ?[*]u8 = null;
+pub export var hd: ?[*]Word = null;
+pub export var tl: ?[*]Word = null;
+pub export var tag: ?[*]u8 = null;
 
 extern fn strcmp(a: [*:0]const u8, b: [*:0]const u8) c_int;
 extern fn fpe_error(sig: c_int) void;
@@ -63,34 +63,379 @@ else
 
 var charname_buffer: [8]u8 = undefined;
 
-/// Typed read boundary for the tag array. Returns NodeTag for the heap cell at x.
-/// Do not use during GC — tag bytes may hold negated GC-marking values.
-pub fn getTag(x: Word) abi.NodeTag {
-    return @enumFromInt(tag.?[@intCast(x)]);
-}
+pub const Heap = struct {
+    hd: ?[*]Word = null,
+    tl: ?[*]Word = null,
+    tag: ?[*]u8 = null,
+    SPACE: Word = 1250000,
+    listp: Word = ATOMLIMIT - 1,
+    allocated_heap_size: usize = 0,
+    allocated_tag_size: usize = 0,
+    allocated_dstack_size: usize = 0,
+    heap_mem: ?[*]Word = null,
+
+    pub fn sync(self: Heap) void {
+        hd = self.hd;
+        tl = self.tl;
+        tag = self.tag;
+        SPACE = self.SPACE;
+        listp = self.listp;
+    }
+
+    pub fn h(self: Heap, x: Word) Word {
+        if (x < ATOMLIMIT) return 0;
+        return self.hd.?[@as(usize, @intCast(x)) * 2];
+    }
+
+    pub fn hp(self: Heap, x: Word) *Word {
+        std.debug.assert(x >= ATOMLIMIT);
+        return &self.hd.?[@as(usize, @intCast(x)) * 2];
+    }
+
+    pub fn t(self: Heap, x: Word) Word {
+        if (x < ATOMLIMIT) return 0;
+        return self.tl.?[@as(usize, @intCast(x)) * 2];
+    }
+
+    pub fn tp(self: Heap, x: Word) *Word {
+        std.debug.assert(x >= ATOMLIMIT);
+        return &self.tl.?[@as(usize, @intCast(x)) * 2];
+    }
+
+    pub fn getTag(self: Heap, x: Word) u8 {
+        return self.tag.?[@intCast(x)];
+    }
+
+    pub fn setTag(self: *Heap, x: Word, val: u8) void {
+        self.tag.?[@intCast(x)] = val;
+    }
+
+    pub fn cons(self: *Heap, x: Word, y: Word) Word {
+        return self.make(CONS, x, y);
+    }
+
+    pub fn TOP(self: Heap) Word {
+        return self.SPACE + ATOMLIMIT;
+    }
+
+    pub fn BIGTOP(self: Heap) Word {
+        _ = self;
+        return rt.rs.SPACELIMIT + ATOMLIMIT;
+    }
+
+    pub fn trueheapsize(self: Heap) Word {
+        return if (nogcs == 0) self.listp - ATOMLIMIT + 1 else self.SPACE;
+    }
+
+    pub fn setupheap(self: *Heap) void {
+        const heap_alloc_size = @as(usize, @intCast(rt.rs.SPACELIMIT));
+        if (self.heap_mem == null) {
+            const heap_slice = rt.allocator.alloc(Word, heap_alloc_size * 2) catch mallocPanic("heap");
+            self.heap_mem = heap_slice.ptr;
+            self.allocated_heap_size = heap_alloc_size * 2;
+
+            const bigtop_val = @as(usize, @intCast(self.BIGTOP()));
+            const tag_slice = rt.allocator.alloc(u8, bigtop_val + 1) catch mallocPanic("heap");
+            @memset(tag_slice, 0);
+            self.tag = tag_slice.ptr;
+            self.allocated_tag_size = bigtop_val + 1;
+        }
+
+        self.hd = self.heap_mem.? - @as(usize, @intCast(ATOMLIMIT * 2));
+        self.tl = self.hd.? + 1;
+        if (self.SPACE > rt.rs.SPACELIMIT) {
+            self.SPACE = rt.rs.SPACELIMIT;
+        }
+        self.listp = ATOMLIMIT - 1;
+        @memset(self.tag.?[@intCast(ATOMLIMIT)..@intCast(self.BIGTOP())], 0);
+        self.sync();
+    }
+
+    pub fn resetheap(self: *Heap) void {
+        if (rt.rs.SPACELIMIT < self.trueheapsize()) {
+            _ = word.printErr("impossible event in resetheap\n", .{});
+            abi.exit(1);
+        }
+        const heap_alloc_size = @as(usize, @intCast(rt.rs.SPACELIMIT));
+        const old_heap_slice = self.heap_mem.?[0..self.allocated_heap_size];
+        const heap_slice = rt.allocator.realloc(old_heap_slice, heap_alloc_size * 2) catch mallocPanic("heap");
+        self.heap_mem = heap_slice.ptr;
+        self.allocated_heap_size = heap_alloc_size * 2;
+
+        const bigtop_val = @as(usize, @intCast(self.BIGTOP()));
+        const old_tag_slice = self.tag.?[0..self.allocated_tag_size];
+        const tag_slice = rt.allocator.realloc(old_tag_slice, bigtop_val + 1) catch mallocPanic("heap");
+        self.tag = tag_slice.ptr;
+        self.allocated_tag_size = bigtop_val + 1;
+
+        self.hd = self.heap_mem.? - @as(usize, @intCast(ATOMLIMIT * 2));
+        self.tl = self.hd.? + 1;
+        self.tag.?[@intCast(bigtop_val)] = 0;
+        if (self.SPACE > rt.rs.SPACELIMIT) {
+            self.SPACE = rt.rs.SPACELIMIT;
+        }
+        if (self.SPACE < 1250000 and 1250000 <= rt.rs.SPACELIMIT) {
+            self.SPACE = 1250000;
+            self.tag.?[@intCast(self.TOP())] = 0;
+        }
+        self.sync();
+    }
+
+    pub fn make(self: *Heap, t_val: u8, x: Word, y: Word) Word {
+        while (true) {
+            self.listp += 1;
+            if (!poschar(self.tag.?[@intCast(self.listp)])) {
+                break;
+            }
+        }
+        if (self.listp == self.TOP()) {
+            if (self.SPACE != rt.rs.SPACELIMIT) {
+                if (core.compiling == 0) {
+                    self.SPACE = rt.rs.SPACELIMIT;
+                } else if (claims <= @divTrunc(self.SPACE, 4) and nogcs > 1) {
+                    var wait: Word = 0;
+                    const sp = self.SPACE;
+                    if (wait != 0) {
+                        wait -= 1;
+                    } else {
+                        self.SPACE += @divTrunc(self.SPACE, 2);
+                        wait = 2;
+                        self.SPACE = 5000 * (1 + @divTrunc(self.SPACE - 1, 5000));
+                    }
+                    if (self.SPACE > rt.rs.SPACELIMIT) {
+                        self.SPACE = rt.rs.SPACELIMIT;
+                    }
+                    if (rt.rs.atgc != 0 and self.SPACE > sp) {
+                        _ = word.printErr("\n<<increase heap from {d} to {d}>>\n", .{ sp, self.SPACE });
+                    }
+                }
+            }
+            if (self.listp == self.TOP()) {
+                self.gc();
+                if (t_val > word.STRCONS) {
+                    self.mark(x);
+                }
+                if (t_val >= word.INT) {
+                    self.mark(y);
+                }
+                return self.make(t_val, x, y);
+            }
+        }
+        claims += 1;
+        self.tag.?[@intCast(self.listp)] = t_val;
+        self.hp(self.listp).* = x;
+        self.tp(self.listp).* = y;
+        self.sync();
+        return self.listp;
+    }
+
+    pub fn gc(self: *Heap) void {
+        collecting = 1;
+        var idx = @as(usize, @intCast(ATOMLIMIT));
+        if (rt.rs.atgc != 0) {
+            _ = word.printErr("\n<<gc after {d} claims>>\n", .{claims});
+        }
+        if (claims <= @divTrunc(self.SPACE, 10) and nogcs > 1 and self.SPACE == rt.rs.SPACELIMIT) {
+            var hnogcs: Word = 0;
+            if (nogcs == hnogcs) {
+                _ = word.printErr("<<not enough heap space -- task abandoned>>\n", .{});
+                if (core.compiling == 0) {
+                    outstats();
+                }
+                if (core.compiling != 0 and rt.rs.ideep == 0) {
+                    _ = word.printErr("not enough heap to compile current script\n", .{});
+                    _ = word.printErr("script = \"{s}\", heap = {d}\n", .{ rt.rs.current_script orelse @as([*:0]const u8, "(null)"), self.SPACE });
+                }
+                abi.exit(1);
+            } else {
+                hnogcs = nogcs + 1;
+            }
+        }
+        nogcs += 1;
+
+        while (self.tag.?[idx] != 0) {
+            const signed_val = @as(i8, @bitCast(self.tag.?[idx]));
+            self.tag.?[idx] = @bitCast(-signed_val);
+            idx += 1;
+        }
+
+        self.bases();
+        self.listp = ATOMLIMIT - 1;
+        cellcount += claims;
+        claims = 0;
+        collecting = 0;
+        self.sync();
+    }
+
+    pub fn gcpatch(self: *Heap) void {
+        var idx = @as(usize, @intCast(ATOMLIMIT));
+        while (self.tag.?[idx] != 0) : (idx += 1) {
+            const val = self.tag.?[idx];
+            const signed_val = @as(i8, @bitCast(val));
+            if (signed_val < 0) {
+                self.tag.?[idx] = @bitCast(-signed_val);
+            }
+        }
+    }
+
+    pub fn bases(self: *Heap) void {
+        var p: [*]Word = undefined;
+        p = @ptrCast(@alignCast(&p));
+        const cstack_ptr = rt.rs.cstack.?;
+        if (@intFromPtr(p) < @intFromPtr(cstack_ptr)) {
+            p += 1;
+            while (@intFromPtr(p) < @intFromPtr(cstack_ptr)) : (p += 1) {
+                self.mark(p[0]);
+            }
+        } else {
+            p -= 1;
+            while (@intFromPtr(p) > @intFromPtr(cstack_ptr)) : (p -= 1) {
+                self.mark(p[0]);
+            }
+        }
+        self.mark(cstack_ptr[0]);
+
+        self.mark(outfilq);
+        self.mark(waiting);
+        if (core.compiling != 0 or rt.rs.rv_expr != 0 or cs.rv_script != 0) {
+            self.mark(rt.rs.make_status);
+            self.mark(rt.rs.primenv);
+            self.mark(ls.fileq);
+            self.mark(ls.idsused);
+            self.mark(rt.rs.eprodnts);
+            self.mark(rt.rs.nonterminals);
+            self.mark(rt.rs.ntmap);
+            self.mark(rt.rs.ihlist);
+            self.mark(rt.rs.ntspecmap);
+            self.mark(ls.gvars);
+            self.mark(ls.lexvar);
+            self.mark(ls.common_stdin);
+            self.mark(ls.common_stdinb);
+            self.mark(ls.cook_stdin);
+            self.mark(ls.margstack);
+            self.mark(ls.vergstack);
+            self.mark(ls.litstack);
+            self.mark(ls.linostack);
+            self.mark(ls.prefixstack);
+            self.mark(files);
+            self.mark(rt.rs.oldfiles);
+            self.mark(rt.rs.includees);
+            self.mark(rt.rs.freeids);
+            self.mark(rt.rs.exports);
+            self.mark(internals);
+            self.mark(rt.rs.lexstates);
+            self.mark(rt.rs.lexdefs);
+            var i: usize = 0;
+            while (i < 128) : (i += 1) {
+                if (ls.namebucket[i] != 0) {
+                    self.mark(ls.namebucket[i]);
+                }
+            }
+            const p_dstack = dstack;
+            const p_stackp = stackp;
+            if (p_dstack != null and p_stackp != null) {
+                var curr = p_dstack.?;
+                const end = p_stackp.?;
+                while (@intFromPtr(curr) < @intFromPtr(end)) : (curr += 1) {
+                    self.mark(curr[0]);
+                }
+            }
+            if (core.loading != 0) {
+                self.mark(ls.exportfiles);
+                self.mark(rt.rs.embargoes);
+                self.mark(rt.rs.rfl);
+                self.mark(rt.rs.detrop);
+                self.mark(rt.rs.bereaved);
+                self.mark(rt.rs.ld_stuff);
+                self.mark(tlost);
+                i = 0;
+                const nextpn_val = @as(usize, @intCast(ls.nextpn));
+                while (i < nextpn_val) : (i += 1) {
+                    self.mark(ls.pnvec.?[i]);
+                }
+            }
+            self.mark(rt.rs.lastname);
+            self.mark(rt.rs.suppressids);
+            self.mark(rt.rs.lastexp);
+            self.mark(core.nill);
+            self.mark(rt.rs.standardout);
+            self.mark(big_one);
+            self.mark(b_rem);
+            self.mark(ls.yylval);
+            self.mark(ls.echostack);
+            self.mark(core.errs);
+
+            // Automatically trace all active roots in CompilerState cs singleton using compile-time reflection.
+            inline for (std.meta.fields(compiler_state.CompilerState)) |field| {
+                const T = field.type;
+                switch (@typeInfo(T)) {
+                    .int => {
+                        if (T == Word) {
+                            self.mark(@field(cs, field.name));
+                        }
+                    },
+                    .array => |info| {
+                        if (info.child == Word) {
+                            for (@field(cs, field.name)) |elem| {
+                                self.mark(elem);
+                            }
+                        }
+                    },
+                    else => {},
+                }
+            }
+        }
+    }
+
+    pub fn isptr(self: Heap, x: Word) bool {
+        return x >= ATOMLIMIT and x < self.TOP();
+    }
+
+    pub fn mark(self: *Heap, x_val: Word) void {
+        var x = x_val & ~abi.tlptrbits;
+        while (self.isptr(x) and negchar(self.tag.?[@intCast(x)])) {
+            const p1 = &self.tag.?[@intCast(x)];
+            const signed_tag = @as(i8, @bitCast(p1.*));
+            const new_signed_tag = -signed_tag;
+            p1.* = @bitCast(new_signed_tag);
+
+            const new_tag = p1.*;
+            if (new_tag > word.STRCONS) {
+                self.mark(self.h(x));
+            }
+            if (new_tag >= word.INT) {
+                x = self.t(x) & ~abi.tlptrbits;
+            } else {
+                break;
+            }
+        }
+    }
+};
+
+pub var heap: Heap = .{};
 
 pub fn h(x: Word) Word {
-    if (x < ATOMLIMIT) return 0;
-    return hd.?[@as(usize, @intCast(x)) * 2];
+    return heap.h(x);
 }
 
 pub fn hp(x: Word) *Word {
-    std.debug.assert(x >= ATOMLIMIT);
-    return &hd.?[@as(usize, @intCast(x)) * 2];
+    return heap.hp(x);
 }
 
 pub fn t(x: Word) Word {
-    if (x < ATOMLIMIT) return 0;
-    return tl.?[@as(usize, @intCast(x)) * 2];
+    return heap.t(x);
 }
 
 pub fn tp(x: Word) *Word {
-    std.debug.assert(x >= ATOMLIMIT);
-    return &tl.?[@as(usize, @intCast(x)) * 2];
+    return heap.tp(x);
+}
+
+pub fn getTag(x: Word) abi.NodeTag {
+    return @enumFromInt(heap.getTag(x));
 }
 
 pub fn cons(x: Word, y: Word) Word {
-    return make(CONS, x, y);
+    return heap.cons(x, y);
 }
 
 fn idWho(x: Word) Word {
@@ -179,7 +524,6 @@ pub export fn charname(ch: Word) [*:0]const u8 {
         '"' => "\\\"",
         else => blk: {
             if (ch < 32 or ch > 126) {
-                // "\NNN" is at most 4 bytes + NUL; charname_buffer is sized for it.
                 const text = std.fmt.bufPrintZ(&charname_buffer, "\\{d}", .{ch}) catch unreachable;
                 break :blk text.ptr;
             }
@@ -243,18 +587,17 @@ fn nil() Word {
     return 306 + 138;
 }
 
-export var SPACE: Word = 1250000;
-export var listp: Word = ATOMLIMIT - 1;
-export var files: Word = word.NIL;
-export var current_file: Word = word.NIL;
-export var cellcount: i64 = 0;
-export var claims: c_long = 0;
-export var nogcs: c_long = 0;
-export var dstack: ?[*]Word = null;
-export var stackp: ?[*]Word = null;
-export var collecting: c_int = 0;
+pub export var SPACE: Word = 1250000;
+pub export var listp: Word = ATOMLIMIT - 1;
+pub export var files: Word = word.NIL;
+pub export var current_file: Word = word.NIL;
+pub export var cellcount: i64 = 0;
+pub export var claims: c_long = 0;
+pub export var nogcs: c_long = 0;
+pub export var dstack: ?[*]Word = null;
+pub export var stackp: ?[*]Word = null;
+pub export var collecting: c_int = 0;
 
-var heap: ?[*]Word = null;
 var dlim: ?[*]Word = null;
 
 extern var internals: Word;
@@ -270,71 +613,23 @@ extern fn initclock() void;
 const hashsize = abi.hashsize;
 
 fn TOP() Word {
-    return SPACE + ATOMLIMIT;
+    return heap.TOP();
 }
 
 fn BIGTOP() Word {
-    return rt.rs.SPACELIMIT + ATOMLIMIT;
+    return heap.BIGTOP();
 }
 
-export fn trueheapsize() Word {
-    return if (nogcs == 0) listp - ATOMLIMIT + 1 else SPACE;
+pub export fn trueheapsize() Word {
+    return heap.trueheapsize();
 }
-
-var allocated_heap_size: usize = 0;
-var allocated_tag_size: usize = 0;
-var allocated_dstack_size: usize = 0;
 
 pub export fn setupheap() void {
-    const heap_alloc_size = @as(usize, @intCast(rt.rs.SPACELIMIT));
-    if (heap == null) {
-        const heap_slice = rt.allocator.alloc(Word, heap_alloc_size * 2) catch mallocPanic("heap");
-        heap = heap_slice.ptr;
-        allocated_heap_size = heap_alloc_size * 2;
-
-        const bigtop_val = @as(usize, @intCast(BIGTOP()));
-        const tag_slice = rt.allocator.alloc(u8, bigtop_val + 1) catch mallocPanic("heap");
-        @memset(tag_slice, 0);
-        tag = tag_slice.ptr;
-        allocated_tag_size = bigtop_val + 1;
-    }
-
-    hd = heap.? - @as(usize, @intCast(ATOMLIMIT * 2));
-    tl = hd.? + 1;
-    if (SPACE > rt.rs.SPACELIMIT) {
-        SPACE = rt.rs.SPACELIMIT;
-    }
-    listp = ATOMLIMIT - 1;
-    @memset(tag.?[@intCast(ATOMLIMIT)..@intCast(BIGTOP())], 0);
+    heap.setupheap();
 }
 
-export fn resetheap() void {
-    if (rt.rs.SPACELIMIT < trueheapsize()) {
-        _ = word.printErr("impossible event in resetheap\n", .{.{}});
-        abi.exit(1);
-    }
-    const heap_alloc_size = @as(usize, @intCast(rt.rs.SPACELIMIT));
-    const old_heap_slice = heap.?[0..allocated_heap_size];
-    const heap_slice = rt.allocator.realloc(old_heap_slice, heap_alloc_size * 2) catch mallocPanic("heap");
-    heap = heap_slice.ptr;
-    allocated_heap_size = heap_alloc_size * 2;
-
-    const bigtop_val = @as(usize, @intCast(BIGTOP()));
-    const old_tag_slice = tag.?[0..allocated_tag_size];
-    const tag_slice = rt.allocator.realloc(old_tag_slice, bigtop_val + 1) catch mallocPanic("heap");
-    tag = tag_slice.ptr;
-    allocated_tag_size = bigtop_val + 1;
-
-    hd = heap.? - @as(usize, @intCast(ATOMLIMIT * 2));
-    tl = hd.? + 1;
-    tag.?[@intCast(bigtop_val)] = 0;
-    if (SPACE > rt.rs.SPACELIMIT) {
-        SPACE = rt.rs.SPACELIMIT;
-    }
-    if (SPACE < 1250000 and 1250000 <= rt.rs.SPACELIMIT) {
-        SPACE = 1250000;
-        tag.?[@intCast(TOP())] = 0;
-    }
+pub export fn resetheap() void {
+    heap.resetheap();
 }
 
 pub export fn mallocfail(x: [*:0]const u8) void {
@@ -342,13 +637,9 @@ pub export fn mallocfail(x: [*:0]const u8) void {
     abi.exit(1);
 }
 
-/// `noreturn` wrapper around the C-ABI `mallocfail`, for use as
-/// `alloc(...) orelse mallocPanic("what")`. Concentrates the one `unreachable`
-/// the allocation-failure path needs (the compiler cannot see that the C-ABI
-/// `mallocfail`, typed `void`, never returns) into a single justified place.
 pub fn mallocPanic(what: [*:0]const u8) noreturn {
     mallocfail(what);
-    unreachable; // mallocfail prints a diagnostic and calls exit(1)
+    unreachable;
 }
 
 pub export fn resetgcstats() void {
@@ -363,237 +654,18 @@ fn poschar(val: u8) bool {
 }
 
 pub export fn make(t_val: u8, x: Word, y: Word) Word {
-    while (true) {
-        listp += 1;
-        if (!poschar(tag.?[@intCast(listp)])) {
-            break;
-        }
-    }
-    if (listp == TOP()) {
-        if (SPACE != rt.rs.SPACELIMIT) {
-            if (core.compiling == 0) {
-                SPACE = rt.rs.SPACELIMIT;
-            } else if (claims <= @divTrunc(SPACE, 4) and nogcs > 1) {
-                var wait: Word = 0;
-                const sp = SPACE;
-                if (wait != 0) {
-                    wait -= 1;
-                } else {
-                    SPACE += @divTrunc(SPACE, 2);
-                    wait = 2;
-                    SPACE = 5000 * (1 + @divTrunc(SPACE - 1, 5000));
-                }
-                if (SPACE > rt.rs.SPACELIMIT) {
-                    SPACE = rt.rs.SPACELIMIT;
-                }
-                if (rt.rs.atgc != 0 and SPACE > sp) {
-                    _ = word.printErr("\n<<increase heap from {d} to {d}>>\n", .{ sp, SPACE });
-                }
-            }
-        }
-        if (listp == TOP()) {
-            gc();
-            if (t_val > word.STRCONS) {
-                mark(x);
-            }
-            if (t_val >= word.INT) {
-                mark(y);
-            }
-            return make(t_val, x, y);
-        }
-    }
-    claims += 1;
-    tag.?[@intCast(listp)] = t_val;
-    hp(listp).* = x;
-    tp(listp).* = y;
-    return listp;
+    return heap.make(t_val, x, y);
 }
 
 export fn gc() void {
-    collecting = 1;
-    var idx = @as(usize, @intCast(ATOMLIMIT));
-    if (rt.rs.atgc != 0) {
-        _ = word.printErr("\n<<gc after {d} claims>>\n", .{claims});
-    }
-    if (claims <= @divTrunc(SPACE, 10) and nogcs > 1 and SPACE == rt.rs.SPACELIMIT) {
-        var hnogcs: Word = 0;
-        if (nogcs == hnogcs) {
-            _ = word.printErr("<<not enough heap space -- task abandoned>>\n", .{.{}});
-            if (core.compiling == 0) {
-                outstats();
-            }
-            if (core.compiling != 0 and rt.rs.ideep == 0) {
-                _ = word.printErr("not enough heap to compile current script\n", .{.{}});
-                _ = word.printErr("script = \"{s}\", heap = {d}\n", .{ rt.rs.current_script orelse @as([*:0]const u8, "(null)"), SPACE });
-            }
-            abi.exit(1);
-        } else {
-            hnogcs = nogcs + 1;
-        }
-    }
-    nogcs += 1;
-
-    while (tag.?[idx] != 0) {
-        const signed_val = @as(i8, @bitCast(tag.?[idx]));
-        tag.?[idx] = @bitCast(-signed_val);
-        idx += 1;
-    }
-
-    bases();
-    listp = ATOMLIMIT - 1;
-    cellcount += claims;
-    claims = 0;
-    collecting = 0;
+    heap.gc();
 }
 
-export fn gcpatch() void {
-    var idx = @as(usize, @intCast(ATOMLIMIT));
-    while (tag.?[idx] != 0) : (idx += 1) {
-        const val = tag.?[idx];
-        const signed_val = @as(i8, @bitCast(val));
-        if (signed_val < 0) {
-            tag.?[idx] = @bitCast(-signed_val);
-        }
-    }
+pub export fn gcpatch() void {
+    heap.gcpatch();
 }
 
-pub fn bases() void {
-    var p: [*]Word = undefined;
-    p = @ptrCast(@alignCast(&p));
-    const cstack_ptr = rt.rs.cstack.?;
-    if (@intFromPtr(p) < @intFromPtr(cstack_ptr)) {
-        p += 1;
-        while (@intFromPtr(p) < @intFromPtr(cstack_ptr)) : (p += 1) {
-            mark(p[0]);
-        }
-    } else {
-        p -= 1;
-        while (@intFromPtr(p) > @intFromPtr(cstack_ptr)) : (p -= 1) {
-            mark(p[0]);
-        }
-    }
-    mark(cstack_ptr[0]);
 
-    mark(outfilq);
-    mark(waiting);
-    if (core.compiling != 0 or rt.rs.rv_expr != 0 or cs.rv_script != 0) {
-        mark(rt.rs.make_status);
-        mark(rt.rs.primenv);
-        mark(ls.fileq);
-        mark(ls.idsused);
-        mark(rt.rs.eprodnts);
-        mark(rt.rs.nonterminals);
-        mark(rt.rs.ntmap);
-        mark(rt.rs.ihlist);
-        mark(rt.rs.ntspecmap);
-        mark(ls.gvars);
-        mark(ls.lexvar);
-        mark(ls.common_stdin);
-        mark(ls.common_stdinb);
-        mark(ls.cook_stdin);
-        mark(ls.margstack);
-        mark(ls.vergstack);
-        mark(ls.litstack);
-        mark(ls.linostack);
-        mark(ls.prefixstack);
-        mark(files);
-        mark(rt.rs.oldfiles);
-        mark(rt.rs.includees);
-        mark(rt.rs.freeids);
-        mark(rt.rs.exports);
-        mark(internals);
-        mark(rt.rs.lexstates);
-        mark(rt.rs.lexdefs);
-        var i: usize = 0;
-        while (i < 128) : (i += 1) {
-            if (ls.namebucket[i] != 0) {
-                mark(ls.namebucket[i]);
-            }
-        }
-        const p_dstack = dstack;
-        const p_stackp = stackp;
-        if (p_dstack != null and p_stackp != null) {
-            var curr = p_dstack.?;
-            const end = p_stackp.?;
-            while (@intFromPtr(curr) < @intFromPtr(end)) : (curr += 1) {
-                mark(curr[0]);
-            }
-        }
-        if (core.loading != 0) {
-            mark(ls.exportfiles);
-            mark(rt.rs.embargoes);
-            mark(rt.rs.rfl);
-            mark(rt.rs.detrop);
-            mark(rt.rs.bereaved);
-            mark(rt.rs.ld_stuff);
-            mark(tlost);
-            i = 0;
-            const nextpn_val = @as(usize, @intCast(ls.nextpn));
-            while (i < nextpn_val) : (i += 1) {
-                mark(ls.pnvec.?[i]);
-            }
-        }
-        mark(rt.rs.lastname);
-        mark(rt.rs.suppressids);
-        mark(rt.rs.lastexp);
-        mark(core.nill);
-        mark(rt.rs.standardout);
-        mark(big_one);
-        mark(b_rem);
-        mark(ls.yylval);
-        mark(ls.echostack);
-        mark(core.errs);
-
-        // Automatically trace all active roots in CompilerState cs singleton using compile-time reflection.
-        inline for (std.meta.fields(compiler_state.CompilerState)) |field| {
-            const T = field.type;
-            switch (@typeInfo(T)) {
-                .int => {
-                    if (T == Word) {
-                        mark(@field(cs, field.name));
-                    }
-                },
-                .array => |info| {
-                    if (info.child == Word) {
-                        for (@field(cs, field.name)) |elem| {
-                            mark(elem);
-                        }
-                    }
-                },
-                else => {},
-            }
-        }
-    }
-}
-
-fn isptr(x: Word) bool {
-    return x >= ATOMLIMIT and x < TOP();
-}
-
-fn negchar(val: u8) bool {
-    const signed_val = @as(i8, @bitCast(val));
-    return signed_val < 0;
-}
-
-pub fn mark(x_val: Word) void {
-    var x = x_val & ~abi.tlptrbits;
-    while (isptr(x) and negchar(tag.?[@intCast(x)])) {
-        const p1 = &tag.?[@intCast(x)];
-        const signed_tag = @as(i8, @bitCast(p1.*));
-        const new_signed_tag = -signed_tag;
-        p1.* = @bitCast(new_signed_tag);
-
-        const new_tag = p1.*;
-        if (new_tag > word.STRCONS) {
-            mark(h(x));
-        }
-        if (new_tag >= word.INT) {
-            x = t(x) & ~abi.tlptrbits;
-        } else {
-            break;
-        }
-    }
-}
 
 fn getStderr() ?*word.FILE {
     const T = @TypeOf(abi.stderr);
@@ -1568,7 +1640,7 @@ pub fn dsetup() void {
         const slice = rt.allocator.alloc(Word, 1000) catch mallocPanic("dstack");
         dstack = slice.ptr;
         dlim = dstack.? + 1000;
-        allocated_dstack_size = 1000;
+        heap.allocated_dstack_size = 1000;
     }
     stackp = dstack;
 }
@@ -1576,13 +1648,13 @@ pub fn dsetup() void {
 pub fn dgrow() void {
     const hold = dstack.?;
     const num_elements = dlim.? - hold;
-    const old_slice = hold[0..allocated_dstack_size];
+    const old_slice = hold[0..heap.allocated_dstack_size];
     const new_size = num_elements * 2;
     const slice = rt.allocator.realloc(old_slice, new_size) catch mallocPanic("dstack");
     dstack = slice.ptr;
     dlim = dstack.? + new_size;
     stackp = dstack.? + (stackp.? - hold);
-    allocated_dstack_size = new_size;
+    heap.allocated_dstack_size = new_size;
 }
 
 pub fn load_defs(file: ?*word.FILE) Word {
@@ -2156,5 +2228,10 @@ test "heap dump roundtrip" {
     try std.testing.expectEqual(@as(Word, 42), getsmallint(loaded_h));
     try std.testing.expectEqual(word.INT, tag.?[@intCast(loaded_t)]);
     try std.testing.expectEqual(@as(Word, 100), getsmallint(loaded_t));
+}
+
+fn negchar(val: u8) bool {
+    const signed_val = @as(i8, @bitCast(val));
+    return signed_val < 0;
 }
 
