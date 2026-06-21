@@ -1,4 +1,5 @@
 const std = @import("std");
+const word = @import("word.zig");
 const rt = @import("runtime_state.zig");
 const core = @import("core_state.zig");
 const lex_state = @import("../parser/lex_state.zig");
@@ -25,17 +26,17 @@ inline fn t_arity(x: Word) Word {
 }
 
 inline fn mktvar(i: Word) Word {
-    return make(c.TVAR, 0, i);
+    return make(word.TVAR, 0, i);
 }
-const ATOMLIMIT = c.ATOMLIMIT;
-const NIL = c.NIL;
-const NILS = c.NILS;
-const STRCONS = c.STRCONS;
-const INT = c.INT;
-const DOUBLE = c.DOUBLE;
-const ID = c.ID;
-const UNICODE = c.UNICODE;
-const CONS = c.CONS;
+const ATOMLIMIT = word.ATOMLIMIT;
+const NIL = word.NIL;
+const NILS = word.NILS;
+const STRCONS = word.STRCONS;
+const INT = word.INT;
+const DOUBLE = word.DOUBLE;
+const ID = word.ID;
+const UNICODE = word.UNICODE;
+const CONS = word.CONS;
 
 export var hd: ?[*]Word = null;
 export var tl: ?[*]Word = null;
@@ -244,8 +245,8 @@ fn nil() Word {
 
 export var SPACE: Word = 1250000;
 export var listp: Word = ATOMLIMIT - 1;
-export var files: Word = c.NIL;
-export var current_file: Word = c.NIL;
+export var files: Word = word.NIL;
+export var current_file: Word = word.NIL;
 export var cellcount: i64 = 0;
 export var claims: c_long = 0;
 export var nogcs: c_long = 0;
@@ -383,10 +384,10 @@ pub export fn make(t_val: u8, x: Word, y: Word) Word {
         }
         if (listp == TOP()) {
             gc();
-            if (t_val > c.STRCONS) {
+            if (t_val > word.STRCONS) {
                 mark(x);
             }
-            if (t_val >= c.INT) {
+            if (t_val >= word.INT) {
                 mark(y);
             }
             return make(t_val, x, y);
@@ -574,10 +575,10 @@ pub fn mark(x_val: Word) void {
         p1.* = @bitCast(new_signed_tag);
 
         const new_tag = p1.*;
-        if (new_tag > c.STRCONS) {
+        if (new_tag > word.STRCONS) {
             mark(h(x));
         }
-        if (new_tag >= c.INT) {
+        if (new_tag >= word.INT) {
             x = t(x) & ~c.tlptrbits;
         } else {
             break;
@@ -603,7 +604,7 @@ extern fn fm_time(path: [*:0]const u8) Word;
 extern fn unlinkx(path: [*:0]const u8) void;
 
 pub export fn sto_id(p1: [*:0]const u8) Word {
-    return make(c.ID, cons(make(c.STRCONS, @intCast(@intFromPtr(p1)), c.NIL), c.undef_t), c.UNDEF);
+    return make(word.ID, cons(make(word.STRCONS, @intCast(@intFromPtr(p1)), word.NIL), word.undef_t), word.UNDEF);
 }
 
 pub fn getword(file: ?*c.FILE) Word {
@@ -692,7 +693,7 @@ export fn okdump(t_ptr: [*:0]const u8) c_int {
 
     const ch1 = c.getc(f);
     const ch2 = c.getc(f);
-    if (ch1 == c.XVERSION and ch2 != 0) {
+    if (ch1 == word.XVERSION and ch2 != 0) {
         return 1;
     }
     return 0;
@@ -719,7 +720,7 @@ export fn geterrlin(t_ptr: [*:0]const u8) Word {
     defer _ = c.fclose(f);
 
     const ch1 = c.getc(f);
-    if (ch1 != c.XVERSION) {
+    if (ch1 != word.XVERSION) {
         return 0;
     }
 
@@ -785,7 +786,7 @@ fn getsmallint(x: Word) Word {
 
 fn stosmallint(x: Word) Word {
     const val = if (x < 0) SIGNBIT | @as(Word, @intCast(-x)) else x;
-    return make(c.INT, val, 0);
+    return make(word.INT, val, 0);
 }
 
 pub inline fn dlhs(d: Word) Word {
@@ -810,13 +811,13 @@ export fn out(file: ?*c.FILE, x_val: Word) void {
         _ = c.fprintf(file, "<%ld>", .{x});
         return;
     }
-    if (tag.?[@intCast(x)] == c.LAMBDA) {
+    if (tag.?[@intCast(x)] == word.LAMBDA) {
         _ = c.fprintf(file, "$(", .{.{}});
         out(file, h(x));
         _ = c.putc(')', file);
         out(file, t(x));
     } else {
-        while (tag.?[@intCast(x)] == c.CONS) {
+        while (tag.?[@intCast(x)] == word.CONS) {
             out1(file, h(x));
             _ = c.putc(':', file);
             x = t(x);
@@ -830,7 +831,7 @@ pub fn out1(file: ?*c.FILE, x: Word) void {
         _ = c.fprintf(file, "<%ld>", .{x});
         return;
     }
-    if (tag.?[@intCast(x)] == c.AP) {
+    if (tag.?[@intCast(x)] == word.AP) {
         out1(file, h(x));
         _ = c.putc(' ', file);
         out2(file, t(x));
@@ -846,7 +847,7 @@ pub fn out2(file: ?*c.FILE, x_val: Word) void {
         return;
     }
     const tag_val = tag.?[@intCast(x)];
-    if (tag_val == c.INT) {
+    if (tag_val == word.INT) {
         if (rest(x) != 0) {
             x = bigtostr(x);
             while (x != 0) {
@@ -858,11 +859,11 @@ pub fn out2(file: ?*c.FILE, x_val: Word) void {
         }
         return;
     }
-    if (tag_val == c.DOUBLE) {
+    if (tag_val == word.DOUBLE) {
         outr(file, get_dbl(x));
         return;
     }
-    if (tag_val == c.ID) {
+    if (tag_val == word.ID) {
         _ = c.fprintf(file, "%s", .{get_id(x)});
         return;
     }
@@ -870,29 +871,29 @@ pub fn out2(file: ?*c.FILE, x_val: Word) void {
         _ = c.fprintf(file, "'%s'", .{charname(x)});
         return;
     }
-    if (tag_val == c.UNICODE) {
+    if (tag_val == word.UNICODE) {
         _ = c.fprintf(file, "'%lx'", .{h(x)});
         return;
     }
-    if (tag_val == c.ATOM) {
+    if (tag_val == word.ATOM) {
         const str: [*:0]const u8 = if (x < c.CMBASE)
             @ptrCast(c.yysterm[@intCast(x - 256)])
-        else if (x == c.True)
+        else if (x == word.True)
             "True"
-        else if (x == c.False)
+        else if (x == word.False)
             "False"
-        else if (x == c.NIL)
+        else if (x == word.NIL)
             "[]"
-        else if (x == c.NILS)
+        else if (x == word.NILS)
             "\"\""
         else
             @ptrCast(c.cmbnms[@intCast(x - c.CMBASE)]);
         _ = c.fprintf(file, "%s", .{str});
         return;
     }
-    if (tag_val == c.TCONS or tag_val == c.PAIR) {
+    if (tag_val == word.TCONS or tag_val == word.PAIR) {
         _ = c.fprintf(file, "(", .{.{}});
-        while (tag.?[@intCast(x)] == c.TCONS) {
+        while (tag.?[@intCast(x)] == word.TCONS) {
             out(file, h(x));
             _ = c.putc(',', file);
             x = t(x);
@@ -903,7 +904,7 @@ pub fn out2(file: ?*c.FILE, x_val: Word) void {
         _ = c.putc(')', file);
         return;
     }
-    if (tag_val == c.TRIES) {
+    if (tag_val == word.TRIES) {
         _ = c.fprintf(file, "TRIES(", .{.{}});
         out(file, h(x));
         _ = c.putc(',', file);
@@ -911,7 +912,7 @@ pub fn out2(file: ?*c.FILE, x_val: Word) void {
         _ = c.putc(')', file);
         return;
     }
-    if (tag_val == c.LABEL) {
+    if (tag_val == word.LABEL) {
         _ = c.fprintf(file, "LABEL(", .{.{}});
         out(file, h(x));
         _ = c.putc(',', file);
@@ -919,7 +920,7 @@ pub fn out2(file: ?*c.FILE, x_val: Word) void {
         _ = c.putc(')', file);
         return;
     }
-    if (tag_val == c.SHOW) {
+    if (tag_val == word.SHOW) {
         _ = c.fprintf(file, "SHOW(", .{.{}});
         out(file, h(x));
         _ = c.putc(',', file);
@@ -927,7 +928,7 @@ pub fn out2(file: ?*c.FILE, x_val: Word) void {
         _ = c.putc(')', file);
         return;
     }
-    if (tag_val == c.STARTREADVALS) {
+    if (tag_val == word.STARTREADVALS) {
         _ = c.fprintf(file, "READVALS(", .{.{}});
         out(file, h(x));
         _ = c.putc(',', file);
@@ -935,7 +936,7 @@ pub fn out2(file: ?*c.FILE, x_val: Word) void {
         _ = c.putc(')', file);
         return;
     }
-    if (tag_val == c.LET) {
+    if (tag_val == word.LET) {
         _ = c.fprintf(file, "(LET ", .{.{}});
         out(file, dlhs(h(x)));
         _ = c.fprintf(file, "=", .{.{}});
@@ -945,11 +946,11 @@ pub fn out2(file: ?*c.FILE, x_val: Word) void {
         _ = c.fprintf(file, ")", .{.{}});
         return;
     }
-    if (tag_val == c.LETREC) {
+    if (tag_val == word.LETREC) {
         const body = t(x);
         _ = c.fprintf(file, "(LETREC ", .{.{}});
         x = h(x);
-        while (x != c.NIL) {
+        while (x != word.NIL) {
             out(file, dlhs(h(x)));
             _ = c.fprintf(file, "=", .{.{}});
             out(file, dval(h(x)));
@@ -961,29 +962,29 @@ pub fn out2(file: ?*c.FILE, x_val: Word) void {
         _ = c.fprintf(file, ")", .{.{}});
         return;
     }
-    if (tag_val == c.DATAPAIR) {
+    if (tag_val == word.DATAPAIR) {
         _ = c.fprintf(file, "DATAPAIR(%s,%ld)", .{ castPtr(h(x)), t(x) });
         return;
     }
-    if (tag_val == c.FILEINFO) {
+    if (tag_val == word.FILEINFO) {
         _ = c.fprintf(file, "FILEINFO(%s,%ld)", .{ castPtr(h(x)), t(x) });
         return;
     }
-    if (tag_val == c.CONSTRUCTOR) {
+    if (tag_val == word.CONSTRUCTOR) {
         _ = c.fprintf(file, "CONSTRUCTOR(%ld)", .{h(x)});
         return;
     }
-    if (tag_val == c.STRCONS) {
+    if (tag_val == word.STRCONS) {
         _ = c.fprintf(file, "<$%ld>", .{h(x)});
         return;
     }
-    if (tag_val == c.SHARE) {
+    if (tag_val == word.SHARE) {
         _ = c.fprintf(file, "(SHARE:", .{.{}});
         out(file, h(x));
         _ = c.fprintf(file, ")", .{.{}});
         return;
     }
-    if (tag_val != c.CONS and tag_val != c.AP and tag_val != c.LAMBDA) {
+    if (tag_val != word.CONS and tag_val != word.AP and tag_val != word.LAMBDA) {
         _ = c.fprintf(file, "<%ld|tag=%d>", .{ x, tag_val });
         return;
     }
@@ -1015,7 +1016,7 @@ pub fn fil_defs(fil: Word) Word {
 
 pub fn make_fil(fil_name: ?[*:0]const u8, time_val: Word, share: Word, defs: Word) Word {
     const name_word = if (fil_name) |n| @as(Word, @intCast(@intFromPtr(n))) else 0;
-    return cons(cons(make(c.FILEINFO, name_word, time_val), cons(share, c.NIL)), defs);
+    return cons(cons(make(word.FILEINFO, name_word, time_val), cons(share, word.NIL)), defs);
 }
 
 fn get_pn(x: Word) Word {
@@ -1081,11 +1082,11 @@ fn stackpSetTop(val: Word) void {
 }
 
 fn datapair(x: Word, y: Word) Word {
-    return make(c.DATAPAIR, x, y);
+    return make(word.DATAPAIR, x, y);
 }
 
 fn fileinfo(x: Word, y: Word) Word {
-    return make(c.FILEINFO, x, y);
+    return make(word.FILEINFO, x, y);
 }
 
 pub fn constructor(n: Word, x: anytype) Word {
@@ -1095,15 +1096,15 @@ pub fn constructor(n: Word, x: anytype) Word {
         [*:0]const u8, [*:0]u8 => @intCast(@intFromPtr(x)),
         else => @compileError("Unsupported type for constructor"),
     };
-    return make(c.CONSTRUCTOR, n, x_val);
+    return make(word.CONSTRUCTOR, n, x_val);
 }
 
 fn readvals(x: Word, y: Word) Word {
-    return make(c.STARTREADVALS, x, y);
+    return make(word.STARTREADVALS, x, y);
 }
 
 fn ap(x: Word, y: Word) Word {
-    return make(c.AP, x, y);
+    return make(word.AP, x, y);
 }
 
 pub fn putint(n: i32, file: ?*c.FILE) void {
@@ -1129,13 +1130,13 @@ pub fn getdbl(file: ?*c.FILE) Word {
 
 export fn dump_script(files_val: Word, file: ?*c.FILE) void {
     _ = c.putc(@intCast(wordsize), file);
-    _ = c.putc(c.XVERSION, file);
+    _ = c.putc(word.XVERSION, file);
 
-    if (files_val == c.NIL) {
+    if (files_val == word.NIL) {
         _ = c.putc(0, file);
         putword(core.errline, file);
         var x = rt.rs.oldfiles;
-        while (x != c.NIL) : (x = t(x)) {
+        while (x != word.NIL) : (x = t(x)) {
             _ = c.fprintf(file, "%s", .{mkrel(get_fil(h(x)))});
             _ = c.putc(0, file);
             putword(fil_time(h(x)), file);
@@ -1143,13 +1144,13 @@ export fn dump_script(files_val: Word, file: ?*c.FILE) void {
         return;
     }
 
-    if (cs.ND != c.NIL) {
+    if (cs.ND != word.NIL) {
         _ = c.putc(1, file);
         putword(core.errline, file);
     }
 
     var f_list = files_val;
-    while (f_list != c.NIL) : (f_list = t(f_list)) {
+    while (f_list != word.NIL) : (f_list = t(f_list)) {
         CFN = get_fil(h(f_list));
         _ = c.fprintf(file, "%s", .{mkrel(CFN.?)});
         _ = c.putc(0, file);
@@ -1159,68 +1160,68 @@ export fn dump_script(files_val: Word, file: ?*c.FILE) void {
     }
     _ = c.putc(0, file);
     dump_defs(cs.algshfns, file);
-    if (cs.ND == c.NIL and rt.rs.bereaved != c.NIL) {
-        dump_ob(c.True, file);
+    if (cs.ND == word.NIL and rt.rs.bereaved != word.NIL) {
+        dump_ob(word.True, file);
     } else {
         dump_ob(cs.ND, file);
     }
-    _ = c.putc(c.DEF_X, file);
+    _ = c.putc(word.DEF_X, file);
     dump_ob(cs.SGC, file);
-    _ = c.putc(c.DEF_X, file);
+    _ = c.putc(word.DEF_X, file);
     dump_ob(rt.rs.freeids, file);
-    _ = c.putc(c.DEF_X, file);
+    _ = c.putc(word.DEF_X, file);
     dump_defs(internals, file);
 }
 
 pub fn dump_defs(defs_val: Word, file: ?*c.FILE) void {
     var defs = defs_val;
-    while (defs != c.NIL) : (defs = t(defs)) {
+    while (defs != word.NIL) : (defs = t(defs)) {
         const item = h(defs);
-        if (tag.?[@intCast(item)] == c.STRCONS) {
+        if (tag.?[@intCast(item)] == word.STRCONS) {
             const v = get_pn(item);
             dump_ob(pn_val(item), file);
             if (v > bits_15) {
-                _ = c.putc(c.PN1_X, file);
+                _ = c.putc(word.PN1_X, file);
                 putint(@intCast(v), file);
             } else {
-                _ = c.putc(c.PN_X, file);
+                _ = c.putc(word.PN_X, file);
                 _ = c.putc(@intCast(v & 255), file);
                 _ = c.putc(@intCast(v >> 8), file);
             }
-            _ = c.putc(c.DEF_X, file);
+            _ = c.putc(word.DEF_X, file);
         } else {
             dump_ob(id_val(item), file);
             dump_ob(id_type(item), file);
             dump_ob(id_who(item), file);
-            _ = c.putc(c.ID_X, file);
+            _ = c.putc(word.ID_X, file);
             _ = c.fprintf(file, "%s", .{get_id(item)});
             _ = c.putc(0, file);
-            _ = c.putc(c.DEF_X, file);
+            _ = c.putc(word.DEF_X, file);
         }
     }
-    _ = c.putc(c.DEF_X, file);
+    _ = c.putc(word.DEF_X, file);
 }
 
 pub fn dump_ob(x: Word, file: ?*c.FILE) void {
     switch (tag.?[@intCast(x)]) {
-        c.ATOM => {
+        word.ATOM => {
             if (x < 128) {
                 _ = c.putc(@intCast(x), file);
             } else if (x >= 384) {
                 _ = c.putc(@intCast(x - 256), file);
             } else {
-                _ = c.putc(c.CHAR_X, file);
+                _ = c.putc(word.CHAR_X, file);
                 _ = c.putc(@intCast(x - 128), file);
             }
         },
-        c.TVAR => {
-            _ = c.putc(c.TVAR_X, file);
+        word.TVAR => {
+            _ = c.putc(word.TVAR_X, file);
             _ = c.putc(@intCast(gettvar(x)), file);
             if (gettvar(x) > 255) {
                 std.debug.print("panic, tvar too large\n", .{});
             }
         },
-        c.INT => {
+        word.INT => {
             var curr = x;
             const d = digit(curr);
             if (rest(curr) == 0 and (d & MAXDIGIT) <= 127) {
@@ -1228,11 +1229,11 @@ pub fn dump_ob(x: Word, file: ?*c.FILE) void {
                 if ((d & SIGNBIT) != 0) {
                     signed_d = -@as(Word, @intCast(d & MAXDIGIT));
                 }
-                _ = c.putc(c.SHORT_X, file);
+                _ = c.putc(word.SHORT_X, file);
                 _ = c.putc(@intCast(signed_d), file);
                 return;
             }
-            _ = c.putc(c.INT_X, file);
+            _ = c.putc(word.INT_X, file);
             putint(@intCast(d), file);
             curr = rest(curr);
             while (curr != 0) {
@@ -1241,25 +1242,25 @@ pub fn dump_ob(x: Word, file: ?*c.FILE) void {
             }
             putint(-1, file);
         },
-        c.DOUBLE => {
-            _ = c.putc(c.DBL_X, file);
+        word.DOUBLE => {
+            _ = c.putc(word.DBL_X, file);
             putdbl(x, file);
         },
-        c.UNICODE => {
-            _ = c.putc(c.UNICODE_X, file);
+        word.UNICODE => {
+            _ = c.putc(word.UNICODE_X, file);
             putint(@intCast(h(x)), file);
         },
-        c.DATAPAIR => {
-            _ = c.fprintf(file, "%c%s", .{ c.AKA_X, castPtr(h(x)) });
+        word.DATAPAIR => {
+            _ = c.fprintf(file, "%c%s", .{ word.AKA_X, castPtr(h(x)) });
             _ = c.putc(0, file);
         },
-        c.FILEINFO => {
+        word.FILEINFO => {
             var line = t(x);
             const path = castPtr(h(x));
             if (c.strcmp(path, CFN.?) == 0) {
-                _ = c.putc(c.HERE_X, file);
+                _ = c.putc(word.HERE_X, file);
             } else {
-                _ = c.fprintf(file, "%c%s", .{ c.HERE_X, mkrel(path) });
+                _ = c.fprintf(file, "%c%s", .{ word.HERE_X, mkrel(path) });
             }
             _ = c.putc(0, file);
             _ = c.putc(@intCast(line & 255), file);
@@ -1269,40 +1270,40 @@ pub fn dump_ob(x: Word, file: ?*c.FILE) void {
                 std.debug.print("impossible line number {d} in dump_ob\n", .{t(x)});
             }
         },
-        c.CONSTRUCTOR => {
+        word.CONSTRUCTOR => {
             dump_ob(t(x), file);
-            _ = c.putc(c.CONSTRUCT_X, file);
+            _ = c.putc(word.CONSTRUCT_X, file);
             _ = c.putc(@intCast(h(x) & 255), file);
             _ = c.putc(@intCast(h(x) >> 8), file);
         },
-        c.STARTREADVALS => {
+        word.STARTREADVALS => {
             dump_ob(t(x), file);
-            _ = c.putc(c.RV_X, file);
+            _ = c.putc(word.RV_X, file);
         },
-        c.ID => {
-            _ = c.fprintf(file, "%c%s", .{ c.ID_X, get_id(x) });
+        word.ID => {
+            _ = c.fprintf(file, "%c%s", .{ word.ID_X, get_id(x) });
             _ = c.putc(0, file);
         },
-        c.STRCONS => {
+        word.STRCONS => {
             const v = get_pn(x);
             if (v > bits_15) {
-                _ = c.putc(c.PN1_X, file);
+                _ = c.putc(word.PN1_X, file);
                 putint(@intCast(v), file);
             } else {
-                _ = c.putc(c.PN_X, file);
+                _ = c.putc(word.PN_X, file);
                 _ = c.putc(@intCast(v & 255), file);
                 _ = c.putc(@intCast(v >> 8), file);
             }
         },
-        c.AP => {
+        word.AP => {
             dump_ob(h(x), file);
             dump_ob(t(x), file);
-            _ = c.putc(c.AP_X, file);
+            _ = c.putc(word.AP_X, file);
         },
-        c.CONS => {
+        word.CONS => {
             dump_ob(t(x), file);
             dump_ob(h(x), file);
-            _ = c.putc(c.CONS_X, file);
+            _ = c.putc(word.CONS_X, file);
         },
         else => {
             std.debug.print("impossible tag {d} in dump_ob\n", .{tag.?[@intCast(x)]});
@@ -1313,55 +1314,55 @@ pub fn dump_ob(x: Word, file: ?*c.FILE) void {
 export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
     cs.TORPHANS = 0;
     cs.BAD_DUMP = 0;
-    cs.CLASHES = c.NIL;
+    cs.CLASHES = word.NIL;
     dsetup();
     setprefix(src);
-    if (c.getc(file) != wordsize or c.getc(file) != c.XVERSION) {
+    if (c.getc(file) != wordsize or c.getc(file) != word.XVERSION) {
         cs.BAD_DUMP = -1;
-        return c.NIL;
+        return word.NIL;
     }
-    if (aliases != c.NIL) {
+    if (aliases != word.NIL) {
         var a = aliases;
         cs.ALIASES = aliases;
-        while (a != c.NIL) : (a = t(a)) {
+        while (a != word.NIL) : (a = t(a)) {
             const old = t(h(a));
             const new_id = h(h(a));
             const hold = cons(id_who(old), cons(id_type(old), id_val(old)));
-            id_type_ptr(old).* = c.alias_t;
+            id_type_ptr(old).* = word.alias_t;
             id_val_ptr(old).* = new_id;
-            if (tag.?[@intCast(new_id)] == c.ID) {
-                if ((id_type(new_id) != c.undef_t or id_val(new_id) != c.UNDEF) and id_type(new_id) != c.alias_t) {
+            if (tag.?[@intCast(new_id)] == word.ID) {
+                if ((id_type(new_id) != word.undef_t or id_val(new_id) != word.UNDEF) and id_type(new_id) != word.alias_t) {
                     cs.CLASHES = add1(new_id, cs.CLASHES);
                 }
             }
             hp(h(a)).* = hold;
         }
-        if (cs.CLASHES != c.NIL) {
+        if (cs.CLASHES != word.NIL) {
             cs.BAD_DUMP = -2;
             unscramble(aliases);
-            return c.NIL;
+            return word.NIL;
         }
         a = aliases;
-        while (a != c.NIL) : (a = t(a)) {
+        while (a != word.NIL) : (a = t(a)) {
             const ch = id_val(t(h(a)));
-            if (tag.?[@intCast(ch)] == c.ID) {
-                if (id_type(ch) != c.alias_t) {
-                    id_type_ptr(ch).* = c.new_t;
+            if (tag.?[@intCast(ch)] == word.ID) {
+                if (id_type(ch) != word.alias_t) {
+                    id_type_ptr(ch).* = word.new_t;
                 }
             }
         }
     }
     PNBASE = ls.nextpn;
-    cs.SUPPRESSED = c.NIL;
-    cs.TSUPPRESSED = c.NIL;
+    cs.SUPPRESSED = word.NIL;
+    cs.TSUPPRESSED = word.NIL;
 
-    var files_list: Word = c.NIL;
+    var files_list: Word = word.NIL;
     var ch: Word = c.getc(file);
     while (ch != 0 and ch != c.EOF and cs.BAD_DUMP == 0) {
         var s: Word = 0;
         var holde: Word = 0;
         ls.dicq = ls.dicp;
-        if (files_list == c.NIL and ch == 1) {
+        if (files_list == word.NIL and ch == 1) {
             holde = getword(file);
             ch = c.getc(file);
             if (main_flag != 0) {
@@ -1387,13 +1388,13 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
         }
         ch = getword(file);
         s = c.getc(file);
-        if (files_list == c.NIL) {
+        if (files_list == word.NIL) {
             if (c.strcmp(ls.dicp, src) != 0) {
                 cs.BAD_DUMP = 1;
-                if (aliases != c.NIL) {
+                if (aliases != word.NIL) {
                     unscramble(aliases);
                 }
-                return c.NIL;
+                return word.NIL;
             }
         }
         CFN = get_id(name());
@@ -1404,12 +1405,12 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
         if (cs.BAD_DUMP == 0) {
             cs.BAD_DUMP = 2;
         }
-        if (aliases != c.NIL) {
+        if (aliases != word.NIL) {
             unscramble(aliases);
         }
         return files_list;
     }
-    if (files_list == c.NIL) {
+    if (files_list == word.NIL) {
         ch = getword(file);
         if (main_flag != 0) {
             core.errline = ch;
@@ -1438,35 +1439,35 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
                 c.dicovflo();
             }
             ch = getword(file);
-            if (rt.rs.oldfiles == c.NIL) {
+            if (rt.rs.oldfiles == word.NIL) {
                 if (c.strcmp(ls.dicp, src) != 0) {
                     cs.BAD_DUMP = 1;
-                    if (aliases != c.NIL) {
+                    if (aliases != word.NIL) {
                         unscramble(aliases);
                     }
-                    return c.NIL;
+                    return word.NIL;
                 }
             }
-            rt.rs.oldfiles = cons(make_fil(get_id(name()), ch, 0, c.NIL), rt.rs.oldfiles);
+            rt.rs.oldfiles = cons(make_fil(get_id(name()), ch, 0, word.NIL), rt.rs.oldfiles);
         }
-        if (aliases != c.NIL) {
+        if (aliases != word.NIL) {
             unscramble(aliases);
         }
-        return c.NIL;
+        return word.NIL;
     }
     cs.algshfns = append1(cs.algshfns, load_defs(file));
     cs.ND = load_defs(file);
-    if (cs.ND == c.True) {
-        cs.ND = c.NIL;
+    if (cs.ND == word.True) {
+        cs.ND = word.NIL;
         cs.TORPHANS = 1;
     }
     cs.SGC = append1(cs.SGC, load_defs(file));
-    if (main_flag != 0 or rt.rs.includees == c.NIL) {
+    if (main_flag != 0 or rt.rs.includees == word.NIL) {
         rt.rs.freeids = load_defs(file);
     } else {
         bindparams(load_defs(file), hdsort(params));
     }
-    if (aliases != c.NIL) {
+    if (aliases != word.NIL) {
         unscramble(aliases);
     }
     if (main_flag != 0) {
@@ -1478,15 +1479,15 @@ export fn load_script(file: ?*c.FILE, src: [*:0]const u8, aliases: Word, params:
 pub fn bindparams(formal_val: Word, actual_val: Word) void {
     var formal = formal_val;
     var actual = actual_val;
-    var badkind: Word = c.NIL;
-    cs.DETROP = c.NIL;
-    cs.MISSING = c.NIL;
+    var badkind: Word = word.NIL;
+    cs.DETROP = word.NIL;
+    cs.MISSING = word.NIL;
     cs.FBS = cons(formal, cs.FBS);
 
     while (true) {
         var a: Word = 0;
         var f: [*:0]const u8 = undefined;
-        while (formal != c.NIL and (actual == c.NIL or blk: {
+        while (formal != word.NIL and (actual == word.NIL or blk: {
             f = castPtr(h(h(t(h(formal)))));
             a = h(h(actual));
             break :blk c.strcmp(f, get_id(a)) < 0;
@@ -1494,14 +1495,14 @@ pub fn bindparams(formal_val: Word, actual_val: Word) void {
             cs.MISSING = cons(h(t(h(formal))), cs.MISSING);
             formal = t(formal);
         }
-        if (actual == c.NIL) {
+        if (actual == word.NIL) {
             break;
         }
-        if (formal == c.NIL or c.strcmp(f, get_id(a)) != 0) {
+        if (formal == word.NIL or c.strcmp(f, get_id(a)) != 0) {
             cs.DETROP = cons(a, cs.DETROP);
         } else {
-            const fa = if (t(t(h(formal))) == c.type_t) t_arity(h(h(formal))) else -1;
-            const ta = if (tag.?[@intCast(h(actual))] == c.AP) t_arity(h(actual)) else -1;
+            const fa = if (t(t(h(formal))) == word.type_t) t_arity(h(h(formal))) else -1;
+            const ta = if (tag.?[@intCast(h(actual))] == word.AP) t_arity(h(actual)) else -1;
             if (fa != ta) {
                 badkind = cons(cons(h(h(actual)), datapair(fa, ta)), badkind);
             }
@@ -1512,14 +1513,14 @@ pub fn bindparams(formal_val: Word, actual_val: Word) void {
     }
 
     var bk = badkind;
-    while (bk != c.NIL) : (bk = t(bk)) {
+    while (bk != word.NIL) : (bk = t(bk)) {
         cs.DETROP = cons(h(bk), cs.DETROP);
     }
 }
 
 pub fn unscramble(aliases: Word) void {
     var a = aliases;
-    while (a != c.NIL) : (a = t(a)) {
+    while (a != word.NIL) : (a = t(a)) {
         const old = t(h(a));
         var hold = h(h(a));
         const new_id = id_val(old);
@@ -1530,23 +1531,23 @@ pub fn unscramble(aliases: Word) void {
         id_val_ptr(old).* = t(hold);
     }
     var al = cs.ALIASES;
-    a = c.NIL;
-    while (al != c.NIL) : (al = t(al)) {
+    a = word.NIL;
+    while (al != word.NIL) : (al = t(al)) {
         const new_id = h(h(al));
         const old = t(h(al));
-        if (tag.?[@intCast(new_id)] != c.ID) {
+        if (tag.?[@intCast(new_id)] != word.ID) {
             if (member(cs.SUPPRESSED, new_id) == 0) {
                 a = cons(old, a);
             }
             continue;
         }
-        if (id_type(new_id) == c.new_t) {
-            id_type_ptr(new_id).* = c.undef_t;
+        if (id_type(new_id) == word.new_t) {
+            id_type_ptr(new_id).* = word.undef_t;
         }
-        if (id_type(new_id) == c.undef_t) {
+        if (id_type(new_id) == word.undef_t) {
             a = cons(old, a);
         } else if (member(cs.CLASHES, new_id) == 0) {
-            if (tag.?[@intCast(id_who(new_id))] != c.CONS) {
+            if (tag.?[@intCast(id_who(new_id))] != word.CONS) {
                 id_who_ptr(new_id).* = cons(datapair(@intCast(@intFromPtr(get_id(old))), 0), id_who(new_id));
             }
         }
@@ -1574,62 +1575,62 @@ pub fn dgrow() void {
 
 pub fn load_defs(file: ?*c.FILE) Word {
     var ch = c.getc(file);
-    var defs: Word = c.NIL;
+    var defs: Word = word.NIL;
     while (ch != c.EOF) {
         if (stackp == dlim) {
             dgrow();
         }
         switch (ch) {
-            c.CHAR_X => {
+            word.CHAR_X => {
                 stackpPush(c.getc(file) + 128);
             },
-            c.TVAR_X => {
+            word.TVAR_X => {
                 stackpPush(mktvar(c.getc(file)));
             },
-            c.SHORT_X => {
+            word.SHORT_X => {
                 var val = c.getc(file);
                 if ((val & 128) != 0) {
                     val = val | (~@as(c_int, 127));
                 }
                 stackpPush(stosmallint(val));
             },
-            c.INT_X => {
+            word.INT_X => {
                 const val = getint(file);
-                stackpPush(make(c.INT, val, 0));
+                stackpPush(make(word.INT, val, 0));
                 var x = &tp(stackpTop()).*;
                 var next = getint(file);
                 while (next != -1) {
-                    x.* = make(c.INT, next, 0);
+                    x.* = make(word.INT, next, 0);
                     x = &tp(x.*).*;
                     next = getint(file);
                 }
             },
-            c.DBL_X => {
+            word.DBL_X => {
                 stackpPush(getdbl(file));
             },
-            c.UNICODE_X => {
-                stackpPush(make(c.UNICODE, getint(file), 0));
+            word.UNICODE_X => {
+                stackpPush(make(word.UNICODE, getint(file), 0));
             },
-            c.PN_X => {
+            word.PN_X => {
                 var val = c.getc(file);
                 val = val | (c.getc(file) << 8);
                 const idx = PNBASE + val;
                 stackpPush(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else c.sto_pn(idx));
             },
-            c.PN1_X => {
+            word.PN1_X => {
                 const idx = PNBASE + getint(file);
                 stackpPush(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else c.sto_pn(idx));
             },
-            c.CONSTRUCT_X => {
+            word.CONSTRUCT_X => {
                 var val = c.getc(file);
                 val = val | (c.getc(file) << 8);
                 stackpSetTop(constructor(val, stackpTop()));
             },
-            c.RV_X => {
+            word.RV_X => {
                 stackpSetTop(readvals(0, stackpTop()));
                 cs.rv_script = 1;
             },
-            c.ID_X => {
+            word.ID_X => {
                 ls.dicq = ls.dicp;
                 while (true) {
                     const next = c.getc(file);
@@ -1644,14 +1645,14 @@ pub fn load_defs(file: ?*c.FILE) Word {
                 }
                 stackpPush(name());
                 const top = stackpTop();
-                if (id_type(top) == c.new_t) {
+                if (id_type(top) == word.new_t) {
                     cs.CLASHES = add1(top, cs.CLASHES);
-                    stackpSetTop(c.NIL);
-                } else if (id_type(top) == c.alias_t) {
+                    stackpSetTop(word.NIL);
+                } else if (id_type(top) == word.alias_t) {
                     stackpSetTop(id_val(top));
                 }
             },
-            c.AKA_X => {
+            word.AKA_X => {
                 ls.dicq = ls.dicp;
                 while (true) {
                     const next = c.getc(file);
@@ -1666,7 +1667,7 @@ pub fn load_defs(file: ?*c.FILE) Word {
                 }
                 stackpPush(datapair(@intCast(@intFromPtr(get_id(name()))), 0));
             },
-            c.HERE_X => {
+            word.HERE_X => {
                 ls.dicq = ls.dicp;
                 var next = c.getc(file);
                 if (next == 0) {
@@ -1696,7 +1697,7 @@ pub fn load_defs(file: ?*c.FILE) Word {
                     stackpPush(fileinfo(@intCast(@intFromPtr(get_id(name()))), line));
                 }
             },
-            c.DEF_X => {
+            word.DEF_X => {
                 const diff = stackp.? - dstack.?;
                 switch (diff) {
                     0 => {
@@ -1712,8 +1713,8 @@ pub fn load_defs(file: ?*c.FILE) Word {
                     },
                     4 => {
                         const top = stackpTop();
-                        if (tag.?[@intCast(top)] != c.ID) {
-                            if (top == c.NIL) {
+                        if (tag.?[@intCast(top)] != word.ID) {
+                            if (top == word.NIL) {
                                 stackp = stackp.? - 4;
                                 ch = c.getc(file);
                                 continue;
@@ -1722,21 +1723,21 @@ pub fn load_defs(file: ?*c.FILE) Word {
                             cs.SUPPRESSED = cons(ch_val, cs.SUPPRESSED);
                             _ = stackpPop(); // who
                             const who_val = stackpTop();
-                            const akap = if (tag.?[@intCast(who_val)] == c.CONS) h(who_val) else c.NIL;
+                            const akap = if (tag.?[@intCast(who_val)] == word.CONS) h(who_val) else word.NIL;
                             const type_val = stackpPop(); // type
                             pn_val_ptr(ch_val).* = stackpPop();
 
-                            if (type_val == c.type_t and t_class(ch_val) != c.synonym_t) {
+                            if (type_val == word.type_t and t_class(ch_val) != word.synonym_t) {
                                 var a = cs.ALIASES;
-                                while (a != c.NIL and id_val(t(h(a))) != ch_val) : (a = t(a)) {}
-                                if (a != c.NIL) {
+                                while (a != word.NIL and id_val(t(h(a))) != ch_val) : (a = t(a)) {}
+                                if (a != word.NIL) {
                                     cs.TSUPPRESSED = cons(t(h(a)), cs.TSUPPRESSED);
                                 }
-                            } else if (pn_val(ch_val) == c.UNDEF) {
+                            } else if (pn_val(ch_val) == word.UNDEF) {
                                 var akap_val = akap;
-                                if (akap_val == c.NIL) {
+                                if (akap_val == word.NIL) {
                                     var a = cs.ALIASES;
-                                    while (a != c.NIL) : (a = t(a)) {
+                                    while (a != word.NIL) : (a = t(a)) {
                                         if (id_val(t(h(a))) == ch_val) {
                                             akap_val = datapair(@intCast(@intFromPtr(get_id(t(h(a))))), 0);
                                             break;
@@ -1750,11 +1751,11 @@ pub fn load_defs(file: ?*c.FILE) Word {
                             continue;
                         }
                         const top_val = stackpTop();
-                        if (id_type(top_val) != c.new_t and (id_type(top_val) != c.undef_t or id_val(top_val) != c.UNDEF)) {
-                            if (id_type(top_val) == c.alias_t) {
+                        if (id_type(top_val) != word.new_t and (id_type(top_val) != word.undef_t or id_val(top_val) != word.UNDEF)) {
+                            if (id_type(top_val) == word.alias_t) {
                                 var a = cs.ALIASES;
-                                while (a != c.NIL and t(h(a)) != top_val) : (a = t(a)) {}
-                                if (a == c.NIL) {
+                                while (a != word.NIL and t(h(a)) != top_val) : (a = t(a)) {}
+                                if (a == word.NIL) {
                                     std.debug.print("impossible event in cyclic alias ({s})\n", .{get_id(top_val)});
                                     stackp = stackp.? - 4;
                                     ch = c.getc(file);
@@ -1781,7 +1782,7 @@ pub fn load_defs(file: ?*c.FILE) Word {
                     },
                 }
             },
-            c.AP_X => {
+            word.AP_X => {
                 const ch_val = stackpPop();
                 const top = stackpTop();
                 if (top == c.READ and ch_val == 0) {
@@ -1792,7 +1793,7 @@ pub fn load_defs(file: ?*c.FILE) Word {
                     stackpSetTop(ap(top, ch_val));
                 }
             },
-            c.CONS_X => {
+            word.CONS_X => {
                 const ch_val = stackpPop();
                 stackpSetTop(cons(ch_val, stackpTop()));
             },
@@ -1822,17 +1823,17 @@ pub fn badval(x: Word) bool {
 }
 
 pub fn isfreeid(x: Word) bool {
-    return id_type(x) == c.undef_t and id_val(x) == c.UNDEF;
+    return id_type(x) == word.undef_t and id_val(x) == word.UNDEF;
 }
 
 extern fn isconstrname(input: [*:0]const u8) c_int;
 
 pub fn isconstructor(x: Word) bool {
-    return tag.?[@intCast(x)] == c.ID and isconstrname(getId(x)) != 0;
+    return tag.?[@intCast(x)] == word.ID and isconstrname(getId(x)) != 0;
 }
 
 pub fn isvariable(x: Word) bool {
-    return tag.?[@intCast(x)] == c.ID and isconstrname(getId(x)) == 0;
+    return tag.?[@intCast(x)] == word.ID and isconstrname(getId(x)) == 0;
 }
 
 pub fn addtoenv(x: Word) void {
@@ -1862,7 +1863,7 @@ pub export fn shunt(input_x: Word, input_y: Word) Word {
 pub export fn size(input: Word) Word {
     var x = input;
     var s: Word = 0;
-    while (tag.?[@intCast(x)] == CONS or tag.?[@intCast(x)] == c.AP) {
+    while (tag.?[@intCast(x)] == CONS or tag.?[@intCast(x)] == word.AP) {
         s += 1 + size(h(x));
         x = t(x);
     }
@@ -1878,10 +1879,10 @@ pub export fn alfasort(x_val: Word) Word {
         return NIL;
     }
     if (t(x) == NIL) {
-        return if (tag.?[@intCast(h(x))] != c.ID) NIL else x;
+        return if (tag.?[@intCast(h(x))] != word.ID) NIL else x;
     }
     while (x != NIL) {
-        if (tag.?[@intCast(h(x))] == c.ID) {
+        if (tag.?[@intCast(h(x))] == word.ID) {
             hold = a;
             a = cons(h(x), b);
             b = hold;
@@ -1931,8 +1932,8 @@ pub fn unsetids(d_val: Word) void {
     var d = d_val;
     while (d != NIL and d != 0) : (d = t(d)) {
         const item = h(d);
-        if (tag.?[@intCast(item)] == c.ID) {
-            tp(item).* = c.UNDEF;
+        if (tag.?[@intCast(item)] == word.ID) {
+            tp(item).* = word.UNDEF;
             tp(h(h(item))).* = NIL;
         }
     }
@@ -2135,13 +2136,13 @@ test "heap dump roundtrip" {
     try std.testing.expect(@intFromPtr(stackp.?) > @intFromPtr(old_stackp.?));
     const loaded = stackpTop();
     
-    try std.testing.expectEqual(c.CONS, tag.?[@intCast(loaded)]);
+    try std.testing.expectEqual(word.CONS, tag.?[@intCast(loaded)]);
     const loaded_h = h(loaded);
     const loaded_t = t(loaded);
     
-    try std.testing.expectEqual(c.INT, tag.?[@intCast(loaded_h)]);
+    try std.testing.expectEqual(word.INT, tag.?[@intCast(loaded_h)]);
     try std.testing.expectEqual(@as(Word, 42), getsmallint(loaded_h));
-    try std.testing.expectEqual(c.INT, tag.?[@intCast(loaded_t)]);
+    try std.testing.expectEqual(word.INT, tag.?[@intCast(loaded_t)]);
     try std.testing.expectEqual(@as(Word, 100), getsmallint(loaded_t));
 }
 

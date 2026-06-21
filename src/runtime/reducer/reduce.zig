@@ -1,4 +1,5 @@
 const std = @import("std");
+const word = @import("../word.zig");
 pub const clib = @import("../c_abi.zig");
 const core = @import("reduce_core.zig");
 const combinators = @import("combinators.zig");
@@ -25,7 +26,7 @@ pub export fn reduce(e_val: Word) Word {
     ctx.args[1] = 0;
     ctx.args[2] = 0;
     ctx.args[3] = 0;
-    ctx.action = clib.ACT_NONE;
+    ctx.action = word.ACT_NONE;
 
     main_loop: while (true) {
         while (is_ap(ctx.e)) {
@@ -33,7 +34,7 @@ pub export fn reduce(e_val: Word) Word {
         }
 
         cycles += 1;
-        ctx.action = clib.ACT_NONE;
+        ctx.action = word.ACT_NONE;
 
         switch (ctx.e) {
             clib.S => combinators.handleS(&ctx),
@@ -139,42 +140,42 @@ pub export fn reduce(e_val: Word) Word {
                 }
 
                 switch (tag[@as(usize, @intCast(ctx.e))]) {
-                    clib.STRCONS => {
+                    word.STRCONS => {
                         ctx.e = pn_val(ctx.e);
-                        if (ctx.e == clib.UNDEF or ctx.e == clib.FREE) {
+                        if (ctx.e == word.UNDEF or ctx.e == clib.FREE) {
                             _ = clib.fprintf(getStderr().?, "\nimpossible event in reduce - undefined pname\n", .{.{}});
                             clib.exit(1);
                         }
-                        ctx.action = clib.ACT_NEXTREDEX;
+                        ctx.action = word.ACT_NEXTREDEX;
                     },
-                    clib.DATAPAIR => {
+                    word.DATAPAIR => {
                         upLeft(&ctx);
                         _ = clib.fprintf(getStderr().?, "\nUNDEFINED NAME (specified as \"%s\" in %s)\n", .{.{ @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(hd_get(hd_get(ctx.e)))))))), @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(tl_get(ctx.e))))))) }});
                         clib.outstats();
                         clib.exit(1);
                     },
-                    clib.ID => {
-                        if (id_val(ctx.e) == clib.UNDEF or id_val(ctx.e) == clib.FREE) {
+                    word.ID => {
+                        if (id_val(ctx.e) == word.UNDEF or id_val(ctx.e) == clib.FREE) {
                             _ = clib.fprintf(getStderr().?, "\nUNDEFINED NAME - %s\n", .{.{get_id(ctx.e)}});
                             clib.outstats();
                             clib.exit(1);
                         }
                         ctx.e = id_val(ctx.e);
-                        ctx.action = clib.ACT_NEXTREDEX;
+                        ctx.action = word.ACT_NEXTREDEX;
                     },
-                    clib.CONSTRUCTOR => {
+                    word.CONSTRUCTOR => {
                         while (true) {
                             if (upleft(&ctx)) {
-                                ctx.action = clib.ACT_DONE;
+                                ctx.action = word.ACT_DONE;
                                 break;
                             }
                         }
                     },
-                    clib.STARTREADVALS => {
+                    word.STARTREADVALS => {
                         io_handlers.handle_STARTREADVALS(&ctx);
                     },
-                    clib.ATOM, clib.INT, clib.UNICODE, clib.DOUBLE, clib.CONS => {
-                        ctx.action = clib.ACT_DONE;
+                    word.ATOM, word.INT, word.UNICODE, word.DOUBLE, word.CONS => {
+                        ctx.action = word.ACT_DONE;
                     },
                     else => {
                         _ = clib.fprintf(getStderr().?, "\nimpossible tag (%d) in reduce\n", .{.{tag[@as(usize, @intCast(ctx.e))]}});
@@ -184,7 +185,7 @@ pub export fn reduce(e_val: Word) Word {
             },
         }
 
-        if (ctx.action == clib.ACT_NEXTREDEX) {
+        if (ctx.action == word.ACT_NEXTREDEX) {
             continue :main_loop;
         }
 
@@ -202,7 +203,7 @@ pub export fn reduce(e_val: Word) Word {
             }
 
             ready.handle_ready_state(&ctx);
-            if (ctx.action == clib.ACT_NEXTREDEX) {
+            if (ctx.action == word.ACT_NEXTREDEX) {
                 continue :main_loop;
             }
         }
@@ -310,45 +311,45 @@ pub inline fn abnormal(x: Word) bool {
     return x < 0;
 }
 pub inline fn is_ap(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.AP;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.AP;
 }
 pub inline fn is_num(x: Word) bool {
     if (abnormal(x)) return false;
     const t = tag[@as(usize, @intCast(x))];
-    return t == clib.INT or t == clib.DOUBLE;
+    return t == word.INT or t == word.DOUBLE;
 }
 pub inline fn is_constructor(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.CONSTRUCTOR;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.CONSTRUCTOR;
 }
 pub inline fn is_int(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.INT;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.INT;
 }
 pub inline fn is_double(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.DOUBLE;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.DOUBLE;
 }
 pub inline fn is_atom(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.ATOM;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.ATOM;
 }
 pub inline fn is_strcons(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.STRCONS;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.STRCONS;
 }
 pub inline fn is_id(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.ID;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.ID;
 }
 pub inline fn id_val(x: Word) Word {
     return tl_get(x);
 }
 pub inline fn is_datapair(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.DATAPAIR;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.DATAPAIR;
 }
 pub inline fn is_startreadvals(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.STARTREADVALS;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.STARTREADVALS;
 }
 pub inline fn is_cons(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.CONS;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.CONS;
 }
 pub inline fn is_unicode(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.UNICODE;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.UNICODE;
 }
 
 pub inline fn rewrite_to_value(expr: *Word, value: Word) void {
@@ -358,7 +359,7 @@ pub inline fn rewrite_to_value(expr: *Word, value: Word) void {
 }
 
 pub inline fn rewrite_to_nil(expr: *Word) void {
-    rewrite_to_value(expr, clib.NIL);
+    rewrite_to_value(expr, word.NIL);
 }
 
 pub inline fn rewrite_to_fail(expr: *Word) void {
@@ -366,16 +367,16 @@ pub inline fn rewrite_to_fail(expr: *Word) void {
 }
 
 pub inline fn rewrite_to_failure(expr: *Word) void {
-    rewrite_to_value(expr, clib.NIL);
+    rewrite_to_value(expr, word.NIL);
 }
 
 pub inline fn rewrite_to_cons_head(expr: Word, head_value: Word) void {
-    tag[@as(usize, @intCast(expr))] = clib.CONS;
+    tag[@as(usize, @intCast(expr))] = word.CONS;
     hd_set(expr, head_value);
 }
 
 pub inline fn rewrite_to_cons(expr: Word, head_value: Word, tail_value: Word) void {
-    tag[@as(usize, @intCast(expr))] = clib.CONS;
+    tag[@as(usize, @intCast(expr))] = word.CONS;
     hd_set(expr, head_value);
     tl_set(expr, tail_value);
 }
@@ -386,7 +387,7 @@ pub inline fn rewrite_to_existing_tail(expr: Word) Word {
 }
 
 pub inline fn ap(x: Word, y: Word) Word {
-    return clib.make(clib.AP, x, y);
+    return clib.make(word.AP, x, y);
 }
 
 pub inline fn rewrite_to_match_result(expr: *Word, left: Word, right: Word, success_value: Word) void {
@@ -411,7 +412,7 @@ pub inline fn rewrite_to_string(expr: *Word, value: [*:0]const u8) void {
 }
 
 pub inline fn cons(x: Word, y: Word) Word {
-    return clib.make(clib.CONS, x, y);
+    return clib.make(word.CONS, x, y);
 }
 
 pub inline fn ap2(f: Word, x: Word, y: Word) Word {
@@ -419,7 +420,7 @@ pub inline fn ap2(f: Word, x: Word, y: Word) Word {
 }
 
 pub inline fn neg(x: Word) bool {
-    return (hd_get(x) & clib.SIGNBIT) != 0;
+    return (hd_get(x) & word.SIGNBIT) != 0;
 }
 pub inline fn poz(x: Word) bool {
     return !neg(x);
@@ -489,28 +490,28 @@ pub inline fn coerce_dbl(x: Word) Word {
 
 pub inline fn rewrite_to_compare_eq(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, clib.I);
-    const val = if (clib.compare(left, right) == 0) clib.True else clib.False;
+    const val = if (clib.compare(left, right) == 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_neq(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, clib.I);
-    const val = if (clib.compare(left, right) != 0) clib.True else clib.False;
+    const val = if (clib.compare(left, right) != 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_gt(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, clib.I);
-    const val = if (clib.compare(left, right) > 0) clib.True else clib.False;
+    const val = if (clib.compare(left, right) > 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_ge(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, clib.I);
-    const val = if (clib.compare(left, right) >= 0) clib.True else clib.False;
+    const val = if (clib.compare(left, right) >= 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
@@ -521,5 +522,5 @@ pub inline fn bigzero(x: Word) bool {
 
 pub inline fn getsmallint(x: Word) Word {
     const h_val = hd_get(x);
-    return if ((h_val & clib.SIGNBIT) != 0) -(h_val & clib.MAXDIGIT) else h_val;
+    return if ((h_val & word.SIGNBIT) != 0) -(h_val & word.MAXDIGIT) else h_val;
 }

@@ -4,6 +4,7 @@
 //! pure parser-tests binary (src/parser/parser.zig).  Import it from parser_api.zig or main.zig.
 
 const std = @import("std");
+const word = @import("../runtime/word.zig");
 const Allocator = std.mem.Allocator;
 const ast = @import("ast.zig");
 
@@ -43,7 +44,7 @@ inline fn tg(x: Word) u8 {
 // ---------------------------------------------------------------------------
 
 inline fn ap(x: Word, y: Word) Word {
-    return clib.make(clib.AP, x, y);
+    return clib.make(word.AP, x, y);
 }
 inline fn ap2(x: Word, y: Word, z: Word) Word {
     return ap(ap(x, y), z);
@@ -52,19 +53,19 @@ inline fn ap3(w: Word, x: Word, y: Word, z: Word) Word {
     return ap(ap2(w, x, y), z);
 }
 inline fn mkcons(x: Word, y: Word) Word {
-    return clib.make(clib.CONS, x, y);
+    return clib.make(word.CONS, x, y);
 }
 inline fn mklabel(x: Word, y: Word) Word {
-    return clib.make(clib.LABEL, x, y);
+    return clib.make(word.LABEL, x, y);
 }
 inline fn mklambda(x: Word, y: Word) Word {
-    return clib.make(clib.LAMBDA, x, y);
+    return clib.make(word.LAMBDA, x, y);
 }
 inline fn mkpair(x: Word, y: Word) Word {
-    return clib.make(clib.PAIR, x, y);
+    return clib.make(word.PAIR, x, y);
 }
 inline fn mktcons(x: Word, y: Word) Word {
-    return clib.make(clib.TCONS, x, y);
+    return clib.make(word.TCONS, x, y);
 }
 
 // ---------------------------------------------------------------------------
@@ -91,7 +92,7 @@ extern fn head(x: Word) Word;
 extern fn isconstrname(s: [*:0]const u8) c_int;
 
 fn bigscanZ(alloc: Allocator, text: []const u8) Word {
-    const z = alloc.dupeZ(u8, text) catch return clib.NIL;
+    const z = alloc.dupeZ(u8, text) catch return word.NIL;
     return bigscan(z.ptr);
 }
 
@@ -120,7 +121,7 @@ const void_t: Word = 7; // #define void_t  7
 fn makeHere(line: u32) Word {
     // get_fil(current_file) = (char*)hd(hd(hd(current_file)))
     const fil_name = h(h(h(current_file)));
-    return clib.make(clib.FILEINFO, fil_name, @intCast(line));
+    return clib.make(word.FILEINFO, fil_name, @intCast(line));
 }
 
 // ---------------------------------------------------------------------------
@@ -128,7 +129,7 @@ fn makeHere(line: u32) Word {
 // ---------------------------------------------------------------------------
 
 fn isConstructorWord(x: Word) bool {
-    if (tg(x) != clib.ID) return false;
+    if (tg(x) != word.ID) return false;
     // get_id(x) = (char*)hd(hd(hd(x)))
     const name_ptr: [*:0]const u8 = @ptrFromInt(@as(usize, @intCast(h(h(h(x))))));
     return isconstrname(name_ptr) != 0;
@@ -148,7 +149,7 @@ fn nameWord(name: []const u8) Word {
     // always maps to the same heap atom, which is required for multi-equation
     // definitions: decl1() checks `main.rs.lastname == x` using pointer equality.
     const existing = findid(&buf);
-    if (existing != clib.NIL) return existing;
+    if (existing != word.NIL) return existing;
     // Not yet in the name table (e.g., synthesised names). Intern it now.
     const perm = keep(@as([*:0]u8, @ptrCast(&buf)));
     return make_id(perm);
@@ -169,7 +170,7 @@ fn codegenTypeVar(name: []const u8) Word {
     }
     if (star_count == @as(Word, @intCast(name.len))) {
         // Pure-star type variable: *, **, ***, …
-        return clib.make(clib.TVAR, 0, star_count);
+        return clib.make(word.TVAR, 0, star_count);
     }
     // Named type variable like *a, *b — treat as identifier for now
     return nameWord(name);
@@ -235,8 +236,8 @@ fn opWord(op: []const u8) Word {
     if (std.mem.eql(u8, op, "hash")) return clib.LENGTH;
     // Miranda keyword built-ins emitted as keyword tokens by the C lexer.
     // SHOWSYM → make(SHOW, 0, 0); READVALSY → make(STARTREADVALS, 0, 0).
-    if (std.mem.eql(u8, op, "kw_show")) return clib.make(clib.SHOW, 0, 0);
-    if (std.mem.eql(u8, op, "kw_readvals")) return clib.make(clib.STARTREADVALS, 0, 0);
+    if (std.mem.eql(u8, op, "kw_show")) return clib.make(word.SHOW, 0, 0);
+    if (std.mem.eql(u8, op, "kw_readvals")) return clib.make(word.STARTREADVALS, 0, 0);
     if (std.mem.eql(u8, op, "dollars")) return main.rs.lastexp;
     // Fall back: user-defined infix operator stored as an identifier
     return nameWord(op);
@@ -312,7 +313,7 @@ fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
 
 fn codegenString(s: []const u8) Word {
     // Walk the UTF-8 string right-to-left; decode codepoints for sto_char.
-    var result: Word = clib.NIL;
+    var result: Word = word.NIL;
     var i: usize = s.len;
     while (i > 0) {
         // Simple byte-by-byte (ASCII) walk.  For multi-byte UTF-8 we'd need
@@ -442,9 +443,9 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         .length => |ep| ap(clib.LENGTH, codegenExpr(alloc, ep.*)),
 
         // --- List literals ---
-        .list_nil => clib.NIL,
+        .list_nil => word.NIL,
         .list => |items| blk: {
-            var result: Word = clib.NIL;
+            var result: Word = word.NIL;
             var i: usize = items.len;
             while (i > 0) {
                 i -= 1;
@@ -526,7 +527,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         // --- List comprehension: compzf(body, qualifiers, 0) ---
         // Qualifiers must be passed in REVERSED order (newest first).
         .listcomp => |lc| blk: {
-            var qq: Word = clib.NIL;
+            var qq: Word = word.NIL;
             for (lc.qualifiers) |q| {
                 const qw: Word = switch (q) {
                     .generator => |g| gen: {
@@ -534,9 +535,9 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
                         // generator's genlhs() call (rules.y:927,932,934).
                         // Mirror that here so each generator's LHS variables
                         // are treated as fresh bindings, not references.
-                        ls.idsused = clib.NIL;
+                        ls.idsused = word.NIL;
                         const lhs_w = genlhs(codegenExpr(alloc, g.pat));
-                        ls.idsused = clib.NIL;
+                        ls.idsused = word.NIL;
                         break :gen mkcons(
                             clib.GENERATOR,
                             mkcons(lhs_w, codegenExpr(alloc, g.source.*)),
@@ -545,9 +546,9 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
                     // Sequence generator: `pat <- src, step ..`
                     // Mirrors rules.y: cons(GENERATOR, cons(p, ap2(ITERATE/ITERATE1, lambda(p,step), src)))
                     .sequence_generator => |sg| sgen: {
-                        ls.idsused = clib.NIL;
+                        ls.idsused = word.NIL;
                         const lhs_w = genlhs(codegenExpr(alloc, sg.pat));
-                        ls.idsused = clib.NIL;
+                        ls.idsused = word.NIL;
                         const src_w = codegenExpr(alloc, sg.source.*);
                         const step_w = codegenExpr(alloc, sg.step.*);
                         const comb: Word = if (irrefutable(lhs_w) != 0) clib.ITERATE else clib.ITERATE1;
@@ -607,8 +608,8 @@ fn codegenLocalDef(alloc: Allocator, def: ast.Def) Word {
 
     // Lambda-desugar: f x y = body → lhs becomes f, rhs gets lambda wrappers
     const f = head(lhs);
-    if (tg(f) == clib.ID and !isConstructorWord(f)) {
-        while (tg(lhs) == clib.AP) {
+    if (tg(f) == word.ID and !isConstructorWord(f)) {
+        while (tg(lhs) == word.AP) {
             rhs = mklambda(t(lhs), rhs);
             lhs = h(lhs);
         }
@@ -627,19 +628,19 @@ fn codegenLocalDef(alloc: Allocator, def: ast.Def) Word {
 //     tl(dval(hd($1)))=cons(dval($2),tl(dval(hd($1))));   // merge
 //   else { $$=cons($2,$1); dval($2)=tries(...); }          // new entry
 fn buildLdefs(alloc: Allocator, where_defs: []const ast.Def) Word {
-    var ldefs: Word = clib.NIL;
+    var ldefs: Word = word.NIL;
     for (where_defs) |wd| {
         const cell = codegenLocalDef(alloc, wd); // defn(lhs, undef_t, labeled)
         const lhs_word = h(cell);
         const labeled = t(t(cell)); // dval(cell) = the labeled rhs
-        if (ldefs != clib.NIL and h(h(ldefs)) == lhs_word) {
+        if (ldefs != word.NIL and h(h(ldefs)) == lhs_word) {
             // Same function as head of ldefs: prepend labeled to its tries list.
             // tries_cell = dval(hd(ldefs)) = tl(tl(hd(ldefs)))
             const tries_cell = t(t(h(ldefs)));
             tl[@as(usize, @intCast(tries_cell)) * 2] = mkcons(labeled, t(tries_cell));
         } else {
             // New function: wrap dval in tries(lhs, [labeled]) and prepend to ldefs.
-            const new_tries = clib.tries(lhs_word, mkcons(labeled, clib.NIL));
+            const new_tries = clib.tries(lhs_word, mkcons(labeled, word.NIL));
             tl[@as(usize, @intCast(t(cell))) * 2] = new_tries;
             ldefs = mkcons(cell, ldefs);
         }
@@ -666,8 +667,8 @@ fn codegenDef(alloc: Allocator, def: ast.Def) void {
 
     // Lambda-desugar
     const f = head(lhs);
-    if (tg(f) == clib.ID and !isConstructorWord(f)) {
-        while (tg(lhs) == clib.AP) {
+    if (tg(f) == word.ID and !isConstructorWord(f)) {
+        while (tg(lhs) == word.AP) {
             rhs = mklambda(t(lhs), rhs);
             lhs = h(lhs);
         }
@@ -707,7 +708,7 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
             // redtvars(ap(typeform, body)) normalises type vars
             const body_w = codegenType(s.body);
             const x = redtvars(ap(tf, body_w));
-            decl_type(h(x), clib.synonym_t, t(x), here);
+            decl_type(h(x), word.synonym_t, t(x), here);
         },
 
         // --- algebraic type: name params ::= C1 fields | C2 fields | … ---
@@ -717,7 +718,7 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
             for (a.params) |p| tf = ap(tf, codegenTypeVar(p));
 
             // Build construction list in REVERSED order (mirrors rules.y `constructs`)
-            var construction: Word = clib.NIL;
+            var construction: Word = word.NIL;
             for (a.constructors) |ctor| {
                 var cw = nameWord(ctor.name);
                 for (ctor.fields) |field| cw = ap(cw, codegenType(field));
@@ -726,12 +727,12 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
 
             // Iterate through reversed construction; peel AP fields to build ctor type
             var n: Word = @intCast(a.constructors.len);
-            var r_ids: Word = clib.NIL;
+            var r_ids: Word = word.NIL;
             var rhs = construction;
-            while (rhs != clib.NIL) {
+            while (rhs != word.NIL) {
                 var hv = h(rhs);
                 var ct = tf;
-                while (tg(hv) == clib.AP) {
+                while (tg(hv) == word.AP) {
                     ct = ap2(arrow_t, t(hv), ct);
                     hv = h(hv);
                 }
@@ -740,7 +741,7 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
                 r_ids = mkcons(hv, r_ids);
                 rhs = t(rhs);
             }
-            decl_type(tf, clib.algebraic_t, r_ids, here);
+            decl_type(tf, word.algebraic_t, r_ids, here);
         },
 
         // --- abstype: abstype name params with specs ---
@@ -757,7 +758,7 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
             // Declare the abstract type itself
             var tf = nameWord(a.name);
             for (a.params) |p| tf = ap(tf, codegenTypeVar(p));
-            decl_type(tf, clib.abstract_t, clib.undef_t, here);
+            decl_type(tf, word.abstract_t, word.undef_t, here);
         },
     }
 }

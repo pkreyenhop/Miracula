@@ -2367,14 +2367,14 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
                 c.MINUS, c.PLUS, c.TIMES, c.INTDIV, c.FDIV, c.MOD, c.POWER => {
                     return cs.tfnum2;
                 },
-                c.True, c.False => {
+                word.True, word.False => {
                     return bool_t;
                 },
                 NIL => {
                     const a = lt(NTV());
                     return a;
                 },
-                c.NILS => {
+                word.NILS => {
                     return cs.ltchar;
                 },
                 c.MKSTRICT => {

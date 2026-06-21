@@ -5,6 +5,7 @@
 //! which compiles parser.zig without C linkage.
 
 const std = @import("std");
+const word = @import("../runtime/word.zig");
 const Allocator = std.mem.Allocator;
 const tf = @import("token_filter.zig");
 const TokenId = tf.TokenId;
@@ -62,7 +63,7 @@ fn stringFromCons(gpa: Allocator, cell: clib.word) ![]u8 {
     var buf: std.ArrayList(u8) = .empty;
     errdefer buf.deinit(gpa);
     var cur = cell;
-    while (cur >= ATOMLIMIT and tag[@as(usize, @intCast(cur))] == clib.CONS) {
+    while (cur >= ATOMLIMIT and tag[@as(usize, @intCast(cur))] == word.CONS) {
         const ch_val: clib.word = hd_of(cur);
         cur = tl_of(cur);
         const codepoint: u21 = if (ch_val < ATOMLIMIT)
@@ -158,7 +159,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
             if (w >= ATOMLIMIT) {
                 const t_tag = tag[@as(usize, @intCast(w))];
                 // 3. Non-empty string literal: CONS chain of char values
-                if (t_tag == clib.CONS) {
+                if (t_tag == word.CONS) {
                     break :blk Token{
                         .id = .const_str,
                         .span = span,
@@ -166,7 +167,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
                     };
                 }
                 // 4. Float literal: DOUBLE-tagged heap cell; text in dicp
-                if (t_tag == clib.DOUBLE) {
+                if (t_tag == word.DOUBLE) {
                     break :blk Token{
                         .id = .const_float,
                         .span = span,
@@ -176,7 +177,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
                 // 5. Integer literal: INT-tagged heap cell; decimal text in dicp.
                 // Keep the original text so arbitrary precision values are not
                 // truncated to a machine integer before codegen calls bigscan().
-                if (t_tag == clib.INT) {
+                if (t_tag == word.INT) {
                     const text_slice = std.mem.span(ls.dicp);
                     break :blk Token{ .id = .const_int, .span = span, .text = try gpa.dupe(u8, text_slice) };
                 }

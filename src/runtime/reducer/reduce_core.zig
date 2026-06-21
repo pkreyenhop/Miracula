@@ -1,4 +1,5 @@
 const std = @import("std");
+const word = @import("../word.zig");
 pub const clib = @import("../c_abi.zig");
 
 pub const Word = c_long;
@@ -118,45 +119,45 @@ pub inline fn abnormal(x: Word) bool {
     return x < 0;
 }
 pub inline fn is_ap(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.AP;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.AP;
 }
 pub inline fn is_num(x: Word) bool {
     if (abnormal(x)) return false;
     const t = tag[@as(usize, @intCast(x))];
-    return t == clib.INT or t == clib.DOUBLE;
+    return t == word.INT or t == word.DOUBLE;
 }
 pub inline fn is_constructor(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.CONSTRUCTOR;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.CONSTRUCTOR;
 }
 pub inline fn is_int(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.INT;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.INT;
 }
 pub inline fn is_double(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.DOUBLE;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.DOUBLE;
 }
 pub inline fn is_atom(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.ATOM;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.ATOM;
 }
 pub inline fn is_strcons(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.STRCONS;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.STRCONS;
 }
 pub inline fn is_id(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.ID;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.ID;
 }
 pub inline fn id_val(x: Word) Word {
     return tl_get(x);
 }
 pub inline fn is_datapair(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.DATAPAIR;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.DATAPAIR;
 }
 pub inline fn is_startreadvals(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.STARTREADVALS;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.STARTREADVALS;
 }
 pub inline fn is_cons(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.CONS;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.CONS;
 }
 pub inline fn is_unicode(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == clib.UNICODE;
+    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.UNICODE;
 }
 
 pub inline fn rewrite_to_value(expr: *Word, value: Word) void {
@@ -166,7 +167,7 @@ pub inline fn rewrite_to_value(expr: *Word, value: Word) void {
 }
 
 pub inline fn rewrite_to_nil(expr: *Word) void {
-    rewrite_to_value(expr, clib.NIL);
+    rewrite_to_value(expr, word.NIL);
 }
 
 pub inline fn rewrite_to_fail(expr: *Word) void {
@@ -174,16 +175,16 @@ pub inline fn rewrite_to_fail(expr: *Word) void {
 }
 
 pub inline fn rewrite_to_failure(expr: *Word) void {
-    rewrite_to_value(expr, clib.NIL);
+    rewrite_to_value(expr, word.NIL);
 }
 
 pub inline fn rewrite_to_cons_head(expr: Word, head_value: Word) void {
-    tag[@as(usize, @intCast(expr))] = clib.CONS;
+    tag[@as(usize, @intCast(expr))] = word.CONS;
     hd_set(expr, head_value);
 }
 
 pub inline fn rewrite_to_cons(expr: Word, head_value: Word, tail_value: Word) void {
-    tag[@as(usize, @intCast(expr))] = clib.CONS;
+    tag[@as(usize, @intCast(expr))] = word.CONS;
     hd_set(expr, head_value);
     tl_set(expr, tail_value);
 }
@@ -194,7 +195,7 @@ pub inline fn rewrite_to_existing_tail(expr: Word) Word {
 }
 
 pub inline fn ap(x: Word, y: Word) Word {
-    return clib.make(clib.AP, x, y);
+    return clib.make(word.AP, x, y);
 }
 
 pub inline fn rewrite_to_match_result(expr: *Word, left: Word, right: Word, success_value: Word) void {
@@ -219,7 +220,7 @@ pub inline fn rewrite_to_string(expr: *Word, value: [*:0]const u8) void {
 }
 
 pub inline fn cons(x: Word, y: Word) Word {
-    return clib.make(clib.CONS, x, y);
+    return clib.make(word.CONS, x, y);
 }
 
 pub inline fn ap2(f: Word, x: Word, y: Word) Word {
@@ -227,7 +228,7 @@ pub inline fn ap2(f: Word, x: Word, y: Word) Word {
 }
 
 pub inline fn neg(x: Word) bool {
-    return (hd_get(x) & clib.SIGNBIT) != 0;
+    return (hd_get(x) & word.SIGNBIT) != 0;
 }
 pub inline fn poz(x: Word) bool {
     return !neg(x);
@@ -297,28 +298,28 @@ pub inline fn coerce_dbl(x: Word) Word {
 
 pub inline fn rewrite_to_compare_eq(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, clib.I);
-    const val = if (clib.compare(left, right) == 0) clib.True else clib.False;
+    const val = if (clib.compare(left, right) == 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_neq(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, clib.I);
-    const val = if (clib.compare(left, right) != 0) clib.True else clib.False;
+    const val = if (clib.compare(left, right) != 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_gt(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, clib.I);
-    const val = if (clib.compare(left, right) > 0) clib.True else clib.False;
+    const val = if (clib.compare(left, right) > 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_ge(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, clib.I);
-    const val = if (clib.compare(left, right) >= 0) clib.True else clib.False;
+    const val = if (clib.compare(left, right) >= 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
@@ -329,5 +330,5 @@ pub inline fn bigzero(x: Word) bool {
 
 pub inline fn getsmallint(x: Word) Word {
     const h_val = hd_get(x);
-    return if ((h_val & clib.SIGNBIT) != 0) -(h_val & clib.MAXDIGIT) else h_val;
+    return if ((h_val & word.SIGNBIT) != 0) -(h_val & word.MAXDIGIT) else h_val;
 }

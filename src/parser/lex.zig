@@ -1,4 +1,5 @@
 const std = @import("std");
+const word = @import("../runtime/word.zig");
 const clib = @import("../runtime/c_abi.zig");
 const lex_state = @import("lex_state.zig");
 const ls = &lex_state.ls;

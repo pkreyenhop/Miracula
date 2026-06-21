@@ -248,6 +248,35 @@ pub const abstract_t: Word = 3;
 pub const free_t: Word = 4;
 pub const placeholder_t: Word = 5;
 
+// Compiler and Reducer Action constants
+pub const ACT_NONE: Word = 0;
+pub const ACT_NEXTREDEX: Word = 1;
+pub const ACT_DONE: Word = 2;
+
+pub const SIGNBIT: Word = 0x10000000;
+pub const MAXDIGIT: Word = 0x7fff;
+pub const UMAX: Word = 0x10ffff;
+pub const XVERSION: Word = 83;
+
+pub const XBASE: Word = ATOMLIMIT - 256;
+pub const CHAR_X: Word = XBASE;
+pub const SHORT_X: Word = XBASE + 1;
+pub const INT_X: Word = XBASE + 2;
+pub const DBL_X: Word = XBASE + 3;
+pub const ID_X: Word = XBASE + 4;
+pub const AKA_X: Word = XBASE + 5;
+pub const HERE_X: Word = XBASE + 6;
+pub const CONSTRUCT_X: Word = XBASE + 7;
+pub const RV_X: Word = XBASE + 8;
+pub const PN_X: Word = XBASE + 9;
+pub const PN1_X: Word = XBASE + 10;
+pub const DEF_X: Word = XBASE + 11;
+pub const AP_X: Word = XBASE + 12;
+pub const CONS_X: Word = XBASE + 13;
+pub const TVAR_X: Word = XBASE + 14;
+pub const UNICODE_X: Word = XBASE + 15;
+
+
 pub const FILE = struct {
     fd: c_int = -1,
     pushback: ?u8 = null,

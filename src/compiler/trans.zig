@@ -1,4 +1,5 @@
 const std = @import("std");
+const word = @import("../runtime/word.zig");
 
 const shim = @import("../runtime/c_abi.zig");
 const main = @import("../main.zig");
