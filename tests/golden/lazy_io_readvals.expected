@@ -1,0 +1,5 @@
+10
+20
+30
+type error in expression
+cannot unify [char]->[*] with [**]

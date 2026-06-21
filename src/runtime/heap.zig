@@ -2098,3 +2098,50 @@ test "sto_char returns atoms for Latin-1 values" {
     try std.testing.expectEqual(@as(Word, 65), sto_char(65));
     try std.testing.expectEqual(@as(c_int, 1), is_char(65));
 }
+
+test "heap dump roundtrip" {
+    // 1. Initialize heap and stack
+    rt.rs.SPACELIMIT = 10000;
+    setupheap();
+    dsetup();
+    
+    // 2. Build a representative structure: a cons pair of two small integers
+    const item1 = stosmallint(42);
+    const item2 = stosmallint(100);
+    const list = cons(item1, item2);
+    
+    // 3. Open a temp file for writing
+    const filename = "test_roundtrip.dump";
+    const f_write = c.fopen(filename, "w");
+    try std.testing.expect(f_write != null);
+    
+    // 4. Dump the object structure
+    dump_ob(list, f_write);
+    _ = c.fclose(f_write.?);
+    
+    // 5. Open the temp file for reading
+    const f_read = c.fopen(filename, "r");
+    try std.testing.expect(f_read != null);
+    
+    // 6. Load it back using load_defs (which pushes it onto stackp)
+    const old_stackp = stackp;
+    _ = load_defs(f_read);
+    _ = c.fclose(f_read.?);
+    
+    // Clean up temp file
+    _ = c.unlink(filename);
+    
+    // 7. Verify structural equality
+    try std.testing.expect(@intFromPtr(stackp.?) > @intFromPtr(old_stackp.?));
+    const loaded = stackpTop();
+    
+    try std.testing.expectEqual(c.CONS, tag.?[@intCast(loaded)]);
+    const loaded_h = h(loaded);
+    const loaded_t = t(loaded);
+    
+    try std.testing.expectEqual(c.INT, tag.?[@intCast(loaded_h)]);
+    try std.testing.expectEqual(@as(Word, 42), getsmallint(loaded_h));
+    try std.testing.expectEqual(c.INT, tag.?[@intCast(loaded_t)]);
+    try std.testing.expectEqual(@as(Word, 100), getsmallint(loaded_t));
+}
+

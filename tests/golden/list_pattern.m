@@ -1,0 +1,1 @@
+firstel (x:xs) = x

@@ -178,6 +178,12 @@ pub fn build(b: *std.Build) void {
     const test_mira = b.step("test-mira", "Run Zig integration tests against mira");
     test_mira.dependOn(&run_mira_tests.step);
 
+    const run_golden_tests = b.addSystemCommand(&.{ "python3", "tests/golden_runner.py" });
+    run_golden_tests.step.dependOn(&install_mira.step);
+
+    const test_golden = b.step("test-golden", "Run the golden output snapshot tests");
+    test_golden.dependOn(&run_golden_tests.step);
+
     const test_steer = b.step("test-steer", "Run only steer tests");
     test_steer.dependOn(&run_main_tests.step);
 

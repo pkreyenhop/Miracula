@@ -85,5 +85,33 @@ IDX=9
 m9=$(grep -rnE --include='*.zig' 'export fn ' "$SRC" | grep -vE "$EXEMPT")
 metric "export fn (C-ABI linker symbols)" "$(printf '%s' "$m9" | grep -c . || true)" "FFI-only" "$m9"
 
+IDX=10
+m10=$(grep -rnE --include='*.zig' 'extern fn ' "$SRC" || true)
+metric "extern fn declarations" "$(printf '%s' "$m10" | grep -c . || true)" "0" "$m10"
+
+IDX=11
+m11=$(grep -rnE --include='*.zig' 'extern var ' "$SRC" || true)
+metric "extern var declarations" "$(printf '%s' "$m11" | grep -c . || true)" "0" "$m11"
+
+IDX=12
+# clib. or c. call sites outside of the exempt C-shims.
+m12=$(grep -rnE --include='*.zig' '\b(clib|c)\.[a-zA-Z0-9_]+' "$SRC" | grep -vE "$EXEMPT" || true)
+metric "clib./c. call sites" "$(printf '%s' "$m12" | grep -c . || true)" "0" "$m12"
+
+IDX=13
+# callconv(.c) occurrences in the codebase.
+m13=$(grep -rnE --include='*.zig' 'callconv\(\.c\)' "$SRC" || true)
+metric "callconv(.c) usage" "$(printf '%s' "$m13" | grep -c . || true)" "1 (signal trampoline)" "$m13"
+
+IDX=14
+# raw hd[, tl[, tag[ accesses outside of src/runtime/heap.zig
+m14=$(grep -rnE --include='*.zig' '\b(hd|tl|tag)\b.*\[|\[\b(hd|tl|tag)\b' "$SRC" | grep -vE 'src/runtime/heap.zig|'"$EXEMPT" || true)
+metric "raw cell accesses (hd/tl/tag[...]) outside heap.zig" "$(printf '%s' "$m14" | grep -c . || true)" "0" "$m14"
+
+IDX=15
+# casts between pointer and Word (c_long) representing string/pointer interning in Word
+m15=$(grep -rnE --include='*.zig' '@intFromPtr|@ptrFromInt' "$SRC" | grep -vE "$EXEMPT" || true)
+metric "[*:0]-as-Word pointer casts" "$(printf '%s' "$m15" | grep -c . || true)" "0" "$m15"
+
 echo "------------------------------------------------------------------------------"
 echo "Run with -v to list the matching source lines for each metric."

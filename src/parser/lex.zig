@@ -302,7 +302,7 @@ export fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
         s = ls.dicp;
         n = n - 2;
     }
-    if (b == 0 or clib.strcmp(s + @as(usize, @intCast(n - 2)), ".m") == 0) {
+    if (b == 0 or (n >= 2 and clib.strcmp(s + @as(usize, @intCast(n - 2)), ".m") == 0)) {
         return s;
     }
     if (s == ls.dicp) {
