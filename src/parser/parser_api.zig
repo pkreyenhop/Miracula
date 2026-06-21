@@ -2,13 +2,11 @@ const std = @import("std");
 
 const clib = @import("../runtime/c_abi.zig");
 const main = @import("../main.zig");
+const core = @import("../runtime/core_state.zig");
 
 const lex_bridge = @import("lex_bridge.zig");
 const parser_mod = @import("parser.zig");
 const codegen = @import("codegen.zig");
-
-extern var SYNERR: clib.word;
-extern var commandmode: clib.word;
 extern fn mira_lex_setup_string(source: [*:0]const u8) void;
 extern fn mira_lex_cleanup() void;
 extern fn mira_lex_setup_file(filename: [*:0]const u8) c_int;
@@ -43,9 +41,9 @@ fn parseCurrentNew() ParseError!ParseResult {
     // Command mode: the user typed an expression at the REPL prompt.
     // In the old YACC grammar this was handled by `EVAL exp { evaluate($2); }`.
     // We parse one expression, codegen it, then fork via evaluate_repl().
-    if (commandmode != 0) {
+    if (core.commandmode != 0) {
         const expr = parser_mod.parseExpr(&p) catch |err| {
-            SYNERR = 1;
+            core.SYNERR = 1;
             if (err == error.UnexpectedEof) {
                 _ = clib.printf("syntax error - unexpected newline\n", .{.{}});
             } else {
@@ -55,7 +53,7 @@ fn parseCurrentNew() ParseError!ParseResult {
         };
         if (!p.ts.check(.eof) and !p.ts.check(.offside)) {
             // Trailing tokens after the expression — treat as syntax error.
-            SYNERR = 1;
+            core.SYNERR = 1;
             _ = clib.printf("syntax error - unexpected token\n", .{.{}});
             return ParseError.SyntaxError;
         }
@@ -72,7 +70,7 @@ fn parseCurrentNew() ParseError!ParseResult {
         std.debug.print("{d}:{d}: {s}\n", .{ d.span.line, d.span.col, d.message });
     }
     if (p.diagnostics.items.len > 0) {
-        SYNERR = 1;
+        core.SYNERR = 1;
         return ParseError.SyntaxError;
     }
 
@@ -128,7 +126,7 @@ pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!Ne
         std.debug.print("{d}:{d}: {s}\n", .{ d.span.line, d.span.col, d.message });
     }
     if (p.diagnostics.items.len > 0) {
-        SYNERR = 1;
+        core.SYNERR = 1;
         return ParseError.ParseFailed;
     }
 

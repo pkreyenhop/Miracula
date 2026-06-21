@@ -25,7 +25,7 @@ pub const ATOMLIMIT: Word = CMBASE + 141;
 
 // RuntimeState: all mutable interpreter state not constrained by extern var circularity
 pub const RuntimeState = rt.RuntimeState;
-pub var rs: RuntimeState = .{};
+pub const rs: *RuntimeState = &rt.rs;
 
 // Global state variables (TYPE B: defined in other modules, re-exported here)
 pub extern var hd: [*]Word;
@@ -54,16 +54,16 @@ extern var lineptr: Word;
 
 pub extern var lfrule: c_int;
 
-// Stuck export vars: must remain here because heap.zig / parser_api.zig access
-// them via extern var and cannot @import main.zig (would create a circular import).
-pub export var nill: Word = 0;
-pub export var loading: c_int = 0;
-pub export var compiling: c_int = 1;
-pub export var errs: Word = 0;
-pub export var errline: Word = 0;
-pub export var obsuffix: [*:0]const u8 = "x";
-pub export var SYNERR: Word = 0;
-pub export var commandmode: Word = 0;
+// Stuck vars now live in core_state.zig; re-declared here as extern var so
+// callers using main.X still compile without modification.
+pub extern var nill: Word;
+pub extern var loading: c_int;
+pub extern var compiling: c_int;
+pub extern var errs: Word;
+pub extern var errline: Word;
+pub extern var obsuffix: [*:0]const u8;
+pub extern var SYNERR: Word;
+pub extern var commandmode: Word;
 
 pub extern var BAD_DUMP: Word;
 pub extern var CLASHES: Word;
@@ -244,6 +244,7 @@ pub fn main(ctx: std.process.Init) !void {
 }
 
 comptime {
+    _ = @import("runtime/core_state.zig");
     _ = @import("driver/startup.zig");
     _ = @import("driver/repl.zig");
     _ = @import("driver/commands.zig");

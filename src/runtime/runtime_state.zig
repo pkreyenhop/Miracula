@@ -145,29 +145,31 @@ pub const RuntimeState = struct {
     lexdefs: Word = NIL,
 };
 
+pub var rs: RuntimeState = .{};
+
 test "RuntimeState default values are self-consistent" {
-    const rs: RuntimeState = .{};
-    try std.testing.expectEqual(@as(Word, NIL), rs.detrop);
-    try std.testing.expectEqual(@as(Word, NIL), rs.primenv);
-    try std.testing.expectEqual(true, rs.strictif);
-    try std.testing.expectEqual(@as(Word, 1), rs.initialising);
-    try std.testing.expectEqual(@as(Word, 2500000), rs.SPACELIMIT);
+    const state: RuntimeState = .{};
+    try std.testing.expectEqual(@as(Word, NIL), state.detrop);
+    try std.testing.expectEqual(@as(Word, NIL), state.primenv);
+    try std.testing.expectEqual(true, state.strictif);
+    try std.testing.expectEqual(@as(Word, 1), state.initialising);
+    try std.testing.expectEqual(@as(Word, 2500000), state.SPACELIMIT);
 }
 
 test "RuntimeState bool fields default to false" {
-    const rs: RuntimeState = .{};
-    try std.testing.expect(!rs.magic);
-    try std.testing.expect(!rs.making);
-    try std.testing.expect(!rs.mkexports);
-    try std.testing.expect(!rs.mksources);
-    try std.testing.expect(!rs.okprel);
-    try std.testing.expect(!rs.nostdenv);
+    const state: RuntimeState = .{};
+    try std.testing.expect(!state.magic);
+    try std.testing.expect(!state.making);
+    try std.testing.expect(!state.mkexports);
+    try std.testing.expect(!state.mksources);
+    try std.testing.expect(!state.okprel);
+    try std.testing.expect(!state.nostdenv);
 }
 
 test "RuntimeState null-initialised optional fields" {
-    const rs: RuntimeState = .{};
-    try std.testing.expectEqual(@as(?[*:0]u8, null), rs.editor);
-    try std.testing.expectEqual(@as(?[*:0]u8, null), rs.current_script);
-    try std.testing.expectEqual(@as(?[*:0]const u8, null), rs.rc_error);
-    try std.testing.expectEqual(@as(?[*:0]const u8, null), rs.unlinkme);
+    const state: RuntimeState = .{};
+    try std.testing.expectEqual(@as(?[*:0]u8, null), state.editor);
+    try std.testing.expectEqual(@as(?[*:0]u8, null), state.current_script);
+    try std.testing.expectEqual(@as(?[*:0]const u8, null), state.rc_error);
+    try std.testing.expectEqual(@as(?[*:0]const u8, null), state.unlinkme);
 }
