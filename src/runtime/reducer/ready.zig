@@ -10,9 +10,7 @@ const combinators = @import("combinators.zig");
 const io_handlers = @import("io.zig");
 const rt = @import("../runtime_state.zig");
 
-extern var tag: [*]u8;
-extern var hd: [*]Word;
-extern var tl: [*]Word;
+
 
 inline fn lastarg(ctx: *ReductionCtx) Word {
     return reduce.tl_get(ctx.e);
@@ -62,7 +60,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
         word.HD => {
             reduce.upLeft(ctx);
             if (lastarg(ctx) == word.NIL) {
-                word.printErr("\nATTEMPT TO TAKE hd OF []\n", .{});
+                word.printErr("\nATTEMPT TO TAKE hd OF nil\n", .{});
                 abi.outstats();
                 abi.exit(1);
             }
@@ -73,7 +71,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
         word.TL => {
             reduce.upLeft(ctx);
             if (lastarg(ctx) == word.NIL) {
-                word.printErr("\nATTEMPT TO TAKE tl OF []\n", .{});
+                word.printErr("\nATTEMPT TO TAKE tl OF nil\n", .{});
                 abi.outstats();
                 abi.exit(1);
             }
@@ -783,7 +781,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             reduce.upLeft(ctx);
             reduce.hd_set(ctx.e, reduce.ap(word.GENSEQ, reduce.cons(ctx.args[0], ctx.args[1])));
             if (if (reduce.is_int(ctx.args[0])) reduce.poz(ctx.args[0]) else reduce.force_dbl(ctx.args[0]) >= 0.0) {
-                tag[reduce.clean_ptr(reduce.tl_get(reduce.hd_get(ctx.e)))] = word.AP;
+                reduce.setTag(reduce.tl_get(reduce.hd_get(ctx.e)), word.AP);
             }
             ctx.action = word.ACT_NEXTREDEX;
             return;
@@ -828,7 +826,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
             return;
         },
         else => {
-            const tag_val = tag[reduce.clean_ptr(e_val)];
+            const tag_val = reduce.getTag(e_val);
             word.printErr("\nimpossible event in reduce (val: {}, tag: {})\n", .{e_val, tag_val});
             std.process.exit(1);
         },

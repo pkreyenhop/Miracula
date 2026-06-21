@@ -262,19 +262,21 @@ trampoline*, not literally none.
 | R1 | R1.6 `std.fs.File` for files | ✅ Complete |
 | R1 | R1.7 process/env (`std.process`/`std.posix`) | ✅ Complete |
 | R1 | R1.8 Remaining libc | ✅ Complete |
-| R2–R8 | Heap encapsulation → demolition | ⬜ Planned |
+| R2 | R2.1 Heap struct | ✅ Complete |
+| R2 | R2.2 Route all access through Heap | ✅ Complete |
+| R3–R8 | MultiArrayList → demolition | ⬜ Planned |
 
 ### Scorecard (data-model metrics, this redesign)
 
 | Metric | R0 baseline | Now | Target |
 |--------|-------------|-----|--------|
 | `extern fn` declarations | 322 | 322 | 0 |
-| `extern var` declarations | 94 | 94 | 0 |
+| `extern var` declarations | 94 | **60** | 0 |
 | `clib.`/`c.` call sites | 2821 | **0** | 0 |
 | `callconv(.c)` | 12 | 12 | 1 (signal trampoline) |
-| raw `hd[`/`tl[`/`tag[` outside `heap.zig` | 290 | 290 | 0 |
+| raw `hd[`/`tl[`/`tag[` outside `heap.zig` | 290 | **0** | 0 |
 | `[*:0]`-as-Word pointer casts | 129 | 132 | 0 |
 
 *The `clib.`/`c.` reduction is fully complete for Phase R1, dropping the `clib.`/`c.` call sites metric to **0** by replacing C standard library functions with Zig native equivalents, and renaming the internal compiler ABI/FFI namespace alias to `abi`.*
 
-All legacy C standard library shims (excluding signals and stat syscalls) are replaced or cleaned up. The `extern fn`/`extern var` and raw-cell metrics will move in Phase R2+ (heap encapsulation), which is where the actual representation changes begin.
+All legacy C standard library shims (excluding signals and stat syscalls) are replaced or cleaned up. Phase R2 (heap encapsulation) is now complete, confining raw cell accesses to `heap.zig` and dropping the raw cell accesses metric to **0** and extern var declarations from 94 to 60. The actual representation changes begin in Phase R3.

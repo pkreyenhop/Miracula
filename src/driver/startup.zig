@@ -12,7 +12,9 @@ const t = main.heap.t;
 const lex_state = @import("../parser/lex_state.zig");
 const ls = &lex_state.ls;
 
-extern var tag: [*]u8;
+inline fn getTag(x: Word) u8 {
+    return main.heap.heap.getTag(x);
+}
 
 fn badval(x: Word) bool {
     return x < 100 or x > 50000000;
@@ -379,7 +381,7 @@ export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 main.rs.make_status = abi.strcons(@as(Word, @intCast(@intFromPtr(s))), main.rs.make_status);
             }
         }
-        if (tag[@intCast(main.rs.make_status)] == word.STRCONS) {
+        if (getTag(main.rs.make_status) == word.STRCONS) {
             var h_val: Word = 0;
             var maxw: Word = 0;
             word.print("errors or undefined names found in:-\n", .{});

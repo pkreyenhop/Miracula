@@ -7,7 +7,9 @@ const Word = main.Word;
 const NIL = main.NIL;
 
 // State owned by heap.zig / reduce.zig — not yet accessible via @import.
-extern var tag: [*]u8;
+inline fn getTag(x: Word) u8 {
+    return main.heap.heap.getTag(x);
+}
 
 const lex_state = @import("../parser/lex_state.zig");
 const ls = &lex_state.ls;
@@ -323,7 +325,7 @@ pub fn command() void {
                         const n = main.get_id(x);
                         var y = main.rs.primenv;
                         while (y != NIL) : (y = main.heap.t(y)) {
-                            if (tag[@intCast(main.heap.h(y))] == word.ID) {
+                            if (getTag(main.heap.h(y)) == word.ID) {
                                 if (main.heap.h(y) == x or word.strcmp(abi.getaka(main.heap.h(y)), n) == 0) {
                                     finger(main.get_id(main.heap.h(y)));
                                 }
@@ -333,7 +335,7 @@ pub fn command() void {
                         while (ff != NIL) : (ff = main.heap.t(ff)) {
                             var y_def = main.fil_defs(main.heap.h(ff));
                             while (y_def != NIL) : (y_def = main.heap.t(y_def)) {
-                                if (tag[@intCast(main.heap.h(y_def))] == word.ID) {
+                                if (getTag(main.heap.h(y_def)) == word.ID) {
                                     if (main.heap.h(y_def) == x or word.strcmp(abi.getaka(main.heap.h(y_def)), n) == 0) {
                                         finger(main.get_id(main.heap.h(y_def)));
                                     }

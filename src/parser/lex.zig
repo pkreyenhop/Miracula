@@ -22,9 +22,7 @@ const ID: u8 = 8;
 const False: Word = CMBASE + 136;
 const True: Word = CMBASE + 137;
 
-extern var hd: [*]Word;
-extern var tl: [*]Word;
-extern var tag: [*]u8;
+
 
 var lverge: Word = 0;
 var prefixbase: ?[*]u8 = null;
@@ -145,24 +143,24 @@ fn getStderr() ?*word.FILE {
     }
 }
 
+inline fn getTag(x: Word) u8 {
+    return main.heap.heap.getTag(x);
+}
+
 fn h(x: Word) Word {
-    if (x < ATOMLIMIT) return 0;
-    return hd[@as(usize, @intCast(x)) * 2];
+    return main.heap.heap.h(x);
 }
 
 fn hp(x: Word) *Word {
-    std.debug.assert(x >= ATOMLIMIT);
-    return &hd[@as(usize, @intCast(x)) * 2];
+    return main.heap.heap.hp(x);
 }
 
 fn t(x: Word) Word {
-    if (x < ATOMLIMIT) return 0;
-    return tl[@as(usize, @intCast(x)) * 2];
+    return main.heap.heap.t(x);
 }
 
 fn tp(x: Word) *Word {
-    std.debug.assert(x >= ATOMLIMIT);
-    return &tl[@as(usize, @intCast(x)) * 2];
+    return main.heap.heap.tp(x);
 }
 
 fn cons(x: Word, y: Word) Word {
@@ -170,7 +168,7 @@ fn cons(x: Word, y: Word) Word {
 }
 
 fn isconstructor(x: Word) bool {
-    return tag[@intCast(x)] == ID and isconstrname(get_id(x)) != 0;
+    return getTag(x) == ID and isconstrname(get_id(x)) != 0;
 }
 
 fn get_id(x: Word) [*:0]u8 {

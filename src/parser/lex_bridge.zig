@@ -28,10 +28,8 @@ const NILS_ATOM: abi.word = CMBASE + 139;
 const ATOMLIMIT: abi.word = CMBASE + 141;
 
 // Lexer globals exported by lex.zig.
-// Heap arrays (data.h: hd and tl are offset so hd[x*2] / tl[x*2] index cell x).
-extern var hd: [*]abi.word;
-extern var tl: [*]abi.word;
-extern var tag: [*]u8;
+// Heap arrays (data.h: hd and tl are offset so hd(x*2) / tl(x*2) index cell x).
+
 
 extern fn yylex() c_int;
 extern fn is_char(x: abi.word) c_int;
@@ -40,12 +38,17 @@ extern fn layout() void;
 extern fn setlmargin() void;
 extern fn unsetlmargin() void;
 
-// C macro equivalents: hd(x) == hd[(x)*2], tl(x) == tl[(x)*2]
+// C macro equivalents: hd(x) == hd_array((x)*2), tl(x) == tl_array((x)*2)
+const heap = @import("../runtime/heap.zig");
+
 inline fn hd_of(x: abi.word) abi.word {
-    return hd[@as(usize, @intCast(x)) * 2];
+    return heap.heap.h(x);
 }
 inline fn tl_of(x: abi.word) abi.word {
-    return tl[@as(usize, @intCast(x)) * 2];
+    return heap.heap.t(x);
+}
+inline fn getTag(x: abi.word) u8 {
+    return heap.heap.getTag(x);
 }
 
 // C macro: get_id(x) == (char*)hd(hd(hd(x)))
@@ -63,7 +66,7 @@ fn stringFromCons(gpa: Allocator, cell: abi.word) ![]u8 {
     var buf: std.ArrayList(u8) = .empty;
     errdefer buf.deinit(gpa);
     var cur = cell;
-    while (cur >= ATOMLIMIT and tag[@as(usize, @intCast(cur))] == word.CONS) {
+    while (cur >= ATOMLIMIT and getTag(cur) == word.CONS) {
         const ch_val: abi.word = hd_of(cur);
         cur = tl_of(cur);
         const codepoint: u21 = if (ch_val < ATOMLIMIT)
@@ -157,7 +160,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
                 break :blk Token{ .id = .const_str, .span = span, .text = try gpa.dupe(u8, "") };
             }
             if (w >= ATOMLIMIT) {
-                const t_tag = tag[@as(usize, @intCast(w))];
+                const t_tag = getTag(w);
                 // 3. Non-empty string literal: CONS chain of char values
                 if (t_tag == word.CONS) {
                     break :blk Token{

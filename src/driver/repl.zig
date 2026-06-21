@@ -15,7 +15,9 @@ const lex_state = @import("../parser/lex_state.zig");
 const ls = &lex_state.ls;
 
 // State owned by reduce.zig / heap.zig — not yet accessible via @import.
-extern var tag: [*]u8;
+inline fn getTag(x: Word) u8 {
+    return main.heap.heap.getTag(x);
+}
 
 extern fn signals(signum: c_int, handler: usize) usize;
 extern fn resetgcstats() void;
@@ -106,7 +108,7 @@ export fn commandloop(initscript: [*:0]u8) void {
                     }
                     main.rs.lastid = x;
                     x = main.id_who(x);
-                    if (tag[@intCast(x)] == CONS) {
+                    if (getTag(x) == CONS) {
                         aka = @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(x)))));
                         x = main.heap.t(x);
                     }
@@ -262,7 +264,7 @@ pub export fn obey(x_in: Word) void {
     main.compiling = 0;
     const list_t: Word = 4;
     const char_t: Word = 3;
-    const islist = typ >= main.ATOMLIMIT and tag[@intCast(typ)] == AP and h(typ) == list_t;
+    const islist = typ >= main.ATOMLIMIT and getTag(typ) == AP and h(typ) == list_t;
     const out_val: Word = if (islist and t(typ) == main.rs.message)
         x
     else blk: {
@@ -284,7 +286,7 @@ pub export fn evaluate_repl(x_in: Word) void {
     if (main.cs.polyshowerror != 0) return;
     const list_t: Word = 4;
     const char_t: Word = 3;
-    const islist = typ >= main.ATOMLIMIT and tag[@intCast(typ)] == AP and h(typ) == list_t;
+    const islist = typ >= main.ATOMLIMIT and getTag(typ) == AP and h(typ) == list_t;
     const out_val: Word = if (islist and t(typ) == main.rs.message)
         x
     else blk: {

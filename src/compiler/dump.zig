@@ -11,7 +11,12 @@ const t = main.heap.t;
 const h = main.heap.h;
 const tp = main.heap.tp;
 const hp = main.heap.hp;
-extern var tag: [*]u8;
+inline fn getTag(x: Word) u8 {
+    return main.heap.heap.getTag(x);
+}
+inline fn setTag(x: Word, val: u8) void {
+    main.heap.heap.setTag(x, val);
+}
 
 /// Heap list of identifiers hidden from the exported interface (privatised).
 /// Populated by fixexports(); cleared by unfixexports().
@@ -39,7 +44,7 @@ pub fn fixexports() void {
         while (f != NIL) : (f = t(f)) {
             var e_def = main.fil_defs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
-                if (tag[@intCast(h(e_def))] == word.ID) {
+                if (getTag(h(e_def)) == word.ID) {
                     internals = main.cons(privatise(h(e_def)), internals);
                 }
             }
@@ -49,7 +54,7 @@ pub fn fixexports() void {
         while (f != NIL) : (f = t(f)) {
             var e_def = main.fil_defs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
-                if (tag[@intCast(h(e_def))] == word.ID and unpainted(h(e_def))) {
+                if (getTag(h(e_def)) == word.ID and unpainted(h(e_def))) {
                     internals = main.cons(privatise(h(e_def)), internals);
                 }
             }
@@ -67,7 +72,7 @@ fn paint(x: Word) void {
 
 fn unpainted(x: Word) bool {
     const v = main.id_val(x);
-    return tag[@intCast(v)] != word.AP or h(v) != word.EXPORT;
+    return getTag(v) != word.AP or h(v) != word.EXPORT;
 }
 
 fn unpaint(x: Word) void {
@@ -99,9 +104,9 @@ fn privatise(x: Word) Word {
     }
 
     ls.pnvec.?[@as(usize, @intCast(i))] = x;
-    tag[@intCast(n)] = word.ID;
+    setTag(n, word.ID);
     hp(n).* = h(x);
-    tag[@intCast(x)] = word.STRCONS;
+    setTag(x, word.STRCONS);
     hp(x).* = i;
 
     const current_bucket = ls.namebucket[hash_idx];
@@ -130,11 +135,11 @@ fn publicise(x: Word) Word {
     const i = main.id_val(x);
     const hash_idx = hash(main.get_id(x));
 
-    tag[@intCast(i)] = word.ID;
+    setTag(i, word.ID);
     hp(i).* = h(x);
 
     const val = t(i);
-    if (tag[@intCast(val)] == word.AP and tag[@intCast(h(val))] == word.DATAPAIR) {
+    if (getTag(val) == word.AP and getTag(h(val)) == word.DATAPAIR) {
         tp(i).* = word.UNDEF;
     }
 
@@ -176,7 +181,7 @@ pub export fn readoption() void {
         while (f != NIL) : (f = t(f)) {
             t_val = t(h(f));
             while (t_val != NIL) : (t_val = t(t_val)) {
-                if (tag[@intCast(h(h(t_val)))] == word.STRCONS and t(t(h(h(t_val)))) == word.type_t) {
+                if (getTag(h(h(t_val))) == word.STRCONS and t(t(h(h(t_val)))) == word.type_t) {
                     pfrts = main.cons(h(h(t_val)), pfrts);
                 }
             }
@@ -187,7 +192,7 @@ pub export fn readoption() void {
     while (rfl_ptr != NIL) : (rfl_ptr = t(rfl_ptr)) {
         f = main.fil_defs(h(rfl_ptr));
         while (f != NIL) : (f = t(f)) {
-            if (tag[@intCast(h(f))] == word.ID) {
+            if (getTag(h(f)) == word.ID) {
                 t_val = main.id_type(h(f));
                 if (t_val == word.type_t) {
                     if (main.t_class(h(f)) == word.synonym_t) {
@@ -214,7 +219,7 @@ pub export fn readoption() void {
 /// Resolves STRCONS type nodes to their canonical ID form when loading a dump.
 /// Adds unresolvable types to `tlost` for deferred error reporting.
 pub fn fixtype(t_val: Word, x: Word) Word {
-    switch (tag[@intCast(t_val)]) {
+    switch (getTag(t_val)) {
         word.AP, word.CONS => {
             tp(t_val).* = fixtype(t(t_val), x);
             hp(t_val).* = fixtype(h(t_val), x);
@@ -225,10 +230,10 @@ pub fn fixtype(t_val: Word, x: Word) Word {
                 return t_val;
             }
             var cur_t = t_val;
-            while (tag[@intCast(pn_val(cur_t))] != word.CONS) {
+            while (getTag(pn_val(cur_t)) != word.CONS) {
                 cur_t = pn_val(cur_t);
             }
-            if (tag[@intCast(cur_t)] != word.ID) {
+            if (getTag(cur_t) != word.ID) {
                 var w = tlost;
                 while (w != NIL and h(h(w)) != cur_t) {
                     w = t(w);

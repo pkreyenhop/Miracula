@@ -13,9 +13,7 @@ pub const ReductionCtx = extern struct {
 };
 
 // Extern globals referenced by reducer helpers
-extern var hd: [*]Word;
-extern var tl: [*]Word;
-extern var tag: [*]u8;
+
 pub extern var stdinuse: Word;
 pub extern var waiting: Word;
 pub extern var errtrap: Word;
@@ -34,20 +32,34 @@ pub inline fn clean_ptr(x: Word) usize {
     return @as(usize, @intCast(x & ~abi.tlptrbits));
 }
 
+const heap = @import("../heap.zig");
+
 pub inline fn hd_get(x: Word) Word {
-    return hd[clean_ptr(x) * 2];
+    return heap.heap.h(x & ~abi.tlptrbits);
 }
 
 pub inline fn hd_set(x: Word, val: Word) void {
-    hd[clean_ptr(x) * 2] = val;
+    heap.heap.hp(x & ~abi.tlptrbits).* = val;
 }
 
 pub inline fn tl_get(x: Word) Word {
-    return tl[clean_ptr(x) * 2];
+    return heap.heap.t(x & ~abi.tlptrbits);
 }
 
 pub inline fn tl_set(x: Word, val: Word) void {
-    tl[clean_ptr(x) * 2] = val;
+    heap.heap.tp(x & ~abi.tlptrbits).* = val;
+}
+
+pub inline fn getTag(x: Word) u8 {
+    return heap.heap.getTag(x & ~abi.tlptrbits);
+}
+
+pub inline fn setTag(x: Word, val: u8) void {
+    heap.heap.setTag(x & ~abi.tlptrbits, val);
+}
+
+pub inline fn tl_ptr(x: Word) *Word {
+    return heap.heap.tp(x & ~abi.tlptrbits);
 }
 
 pub inline fn downLeft(ctx: *ReductionCtx) void {
@@ -119,45 +131,45 @@ pub inline fn abnormal(x: Word) bool {
     return x < 0;
 }
 pub inline fn is_ap(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.AP;
+    return !abnormal(x) and getTag(x) == word.AP;
 }
 pub inline fn is_num(x: Word) bool {
     if (abnormal(x)) return false;
-    const t = tag[@as(usize, @intCast(x))];
+    const t = getTag(x);
     return t == word.INT or t == word.DOUBLE;
 }
 pub inline fn is_constructor(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.CONSTRUCTOR;
+    return !abnormal(x) and getTag(x) == word.CONSTRUCTOR;
 }
 pub inline fn is_int(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.INT;
+    return !abnormal(x) and getTag(x) == word.INT;
 }
 pub inline fn is_double(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.DOUBLE;
+    return !abnormal(x) and getTag(x) == word.DOUBLE;
 }
 pub inline fn is_atom(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.ATOM;
+    return !abnormal(x) and getTag(x) == word.ATOM;
 }
 pub inline fn is_strcons(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.STRCONS;
+    return !abnormal(x) and getTag(x) == word.STRCONS;
 }
 pub inline fn is_id(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.ID;
+    return !abnormal(x) and getTag(x) == word.ID;
 }
 pub inline fn id_val(x: Word) Word {
     return tl_get(x);
 }
 pub inline fn is_datapair(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.DATAPAIR;
+    return !abnormal(x) and getTag(x) == word.DATAPAIR;
 }
 pub inline fn is_startreadvals(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.STARTREADVALS;
+    return !abnormal(x) and getTag(x) == word.STARTREADVALS;
 }
 pub inline fn is_cons(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.CONS;
+    return !abnormal(x) and getTag(x) == word.CONS;
 }
 pub inline fn is_unicode(x: Word) bool {
-    return !abnormal(x) and tag[@as(usize, @intCast(x))] == word.UNICODE;
+    return !abnormal(x) and getTag(x) == word.UNICODE;
 }
 
 pub inline fn rewrite_to_value(expr: *Word, value: Word) void {
@@ -179,12 +191,12 @@ pub inline fn rewrite_to_failure(expr: *Word) void {
 }
 
 pub inline fn rewrite_to_cons_head(expr: Word, head_value: Word) void {
-    tag[@as(usize, @intCast(expr))] = word.CONS;
+    setTag(expr, word.CONS);
     hd_set(expr, head_value);
 }
 
 pub inline fn rewrite_to_cons(expr: Word, head_value: Word, tail_value: Word) void {
-    tag[@as(usize, @intCast(expr))] = word.CONS;
+    setTag(expr, word.CONS);
     hd_set(expr, head_value);
     tl_set(expr, tail_value);
 }

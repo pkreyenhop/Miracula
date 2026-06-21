@@ -5,7 +5,7 @@ const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
 const abi = reduce.abi;
 
-extern var tl: [*]Word;
+
 
 pub fn handleI(ctx: *ReductionCtx) void {
     if (reduce.downright(ctx)) {
@@ -841,7 +841,7 @@ pub fn handleWAIT(ctx: *ReductionCtx) void {
     var hold: Word = 0;
     var w: *Word = &reduce.waiting;
     while (w.* != word.NIL and reduce.hd_get(w.*) != lastarg) {
-        w = &tl[reduce.clean_ptr(reduce.tl_get(w.*)) * 2];
+        w = reduce.tl_ptr(reduce.tl_get(w.*));
     }
     if (w.* != word.NIL) {
         hold = reduce.hd_get(reduce.tl_get(w.*));

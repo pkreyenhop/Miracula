@@ -13,9 +13,7 @@ const FST = word.HD;
 const MAXDIGIT = 0x7fff;
 const SIGNBIT = 0x10000000;
 
-extern var hd: [*]Word;
-extern var tl: [*]Word;
-extern var tag: [*]u8;
+
 
 extern var compiling: c_int;
 extern var errs: Word;
@@ -37,22 +35,28 @@ extern fn parseline(x: Word, f: ?*word.FILE, y: Word) Word;
 extern fn reduce(e: Word) Word;
 const charname = heap.charname;
 
+inline fn getTag(x: Word) u8 {
+    return heap.heap.getTag(x);
+}
+
+inline fn setTag(x: Word, val: u8) void {
+    heap.heap.setTag(x, val);
+}
+
 inline fn h(x: Word) Word {
-    if (x < ATOMLIMIT) return 0;
-    return hd[@as(usize, @intCast(x)) * 2];
+    return heap.heap.h(x);
 }
 
 inline fn t(x: Word) Word {
-    if (x < ATOMLIMIT) return 0;
-    return tl[@as(usize, @intCast(x)) * 2];
+    return heap.heap.t(x);
 }
 
 inline fn hp(x: Word) *Word {
-    return &hd[@as(usize, @intCast(x)) * 2];
+    return heap.heap.hp(x);
 }
 
 inline fn tp(x: Word) *Word {
-    return &tl[@as(usize, @intCast(x)) * 2];
+    return heap.heap.tp(x);
 }
 
 inline fn abnormal(x: Word) bool {
@@ -64,7 +68,7 @@ inline fn isptr(x: Word) bool {
 }
 
 inline fn lh(x: Word) Word {
-    if (tag[@as(usize, @intCast(h(x)))] == word.STRCONS) {
+    if (getTag(h(x)) == word.STRCONS) {
         return t(h(x));
     } else {
         return h(x);
@@ -72,7 +76,7 @@ inline fn lh(x: Word) Word {
 }
 
 inline fn force_dbl(x: Word) f64 {
-    if (tag[@as(usize, @intCast(x))] == word.INT) {
+    if (getTag(x) == word.INT) {
         return abi.bigtodbl(x);
     } else {
         return abi.get_dbl(x);
@@ -166,9 +170,9 @@ fn getStdout() ?*word.FILE {
 }
 
 inline fn rewrite_to_value(expr: *Word, value: Word) void {
-    hd[@as(usize, @intCast(expr.*)) * 2] = word.I;
+    hp(expr.*).* = word.I;
     expr.* = value;
-    tl[@as(usize, @intCast(expr.*)) * 2] = value;
+    tp(expr.*).* = value;
 }
 
 inline fn rewrite_to_nil(expr: *Word) void {
@@ -176,9 +180,9 @@ inline fn rewrite_to_nil(expr: *Word) void {
 }
 
 inline fn setcell(e: Word, t_val: u8, a: Word, b: Word) void {
-    tag[@as(usize, @intCast(e))] = t_val;
-    hd[@as(usize, @intCast(e)) * 2] = a;
-    tl[@as(usize, @intCast(e)) * 2] = b;
+    setTag(e, t_val);
+    hp(e).* = a;
+    tp(e).* = b;
 }
 
 inline fn rewrite_to_cons(e: Word, hd_value: Word, tl_value: Word) void {
@@ -322,7 +326,7 @@ export fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     const x1 = x;
     var n: usize = 0;
     const buf_size = 1024;
-    while (tag[@as(usize, @intCast(curr_x))] == word.CONS and n < buf_size) {
+    while (getTag(curr_x) == word.CONS and n < buf_size) {
         n += 1;
         hp(curr_x).* = reduce(h(curr_x));
         tp(curr_x).* = reduce(t(curr_x));
@@ -330,7 +334,7 @@ export fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     }
     curr_x = x1;
     var p_idx: usize = 0;
-    while (tag[@as(usize, @intCast(curr_x))] == word.CONS and n > 0) {
+    while (getTag(curr_x) == word.CONS and n > 0) {
         n -= 1;
         main.rs.linebuf[p_idx] = @intCast(h(curr_x));
         p_idx += 1;
@@ -365,7 +369,7 @@ export fn outstats() void {
 }
 
 export fn out_here(f: ?*word.FILE, h_val: Word, nl: c_int) void {
-    if (tag[@as(usize, @intCast(h_val))] != word.FILEINFO) {
+    if (getTag(h_val) != word.FILEINFO) {
         word.printErr("(impossible event in outhere)\n", .{});
         return;
     }
@@ -429,10 +433,10 @@ export fn int_error(s: [*:0]const u8) void {
 }
 
 export fn numplus(x: Word, y: Word) Word {
-    if (tag[@as(usize, @intCast(x))] == word.DOUBLE) {
+    if (getTag(x) == word.DOUBLE) {
         return abi.sto_dbl(abi.get_dbl(x) + force_dbl(y));
     }
-    if (tag[@as(usize, @intCast(y))] == word.DOUBLE) {
+    if (getTag(y) == word.DOUBLE) {
         return abi.sto_dbl(abi.bigtodbl(x) + abi.get_dbl(y));
     }
     return abi.bigplus(x, y);
@@ -441,17 +445,17 @@ export fn numplus(x: Word, y: Word) Word {
 export fn g_residue(toks2: Word) Word {
     var curr_toks2 = toks2;
     var toks1 = NIL;
-    if (tag[@as(usize, @intCast(curr_toks2))] != word.CONS) {
-        if (tag[@as(usize, @intCast(curr_toks2))] == word.AP and h(curr_toks2) == word.I and t(curr_toks2) == NIL) {
+    if (getTag(curr_toks2) != word.CONS) {
+        if (getTag(curr_toks2) == word.AP and h(curr_toks2) == word.I and t(curr_toks2) == NIL) {
             return cons(NIL, NIL);
         }
         return cons(NIL, curr_toks2);
     }
-    while (tag[@as(usize, @intCast(t(curr_toks2)))] == word.CONS) {
+    while (getTag(t(curr_toks2)) == word.CONS) {
         toks1 = cons(h(curr_toks2), toks1);
         curr_toks2 = t(curr_toks2);
     }
-    if (t(curr_toks2) == NIL or (tag[@as(usize, @intCast(t(curr_toks2)))] == word.AP and h(t(curr_toks2)) == word.I and t(t(curr_toks2)) == NIL)) {
+    if (t(curr_toks2) == NIL or (getTag(t(curr_toks2)) == word.AP and h(t(curr_toks2)) == word.I and t(t(curr_toks2)) == NIL)) {
         toks1 = cons(h(curr_toks2), toks1);
         return cons(ap(word.DESTREV, toks1), NIL);
     }
@@ -502,8 +506,8 @@ export fn compare(arg_a: Word, arg_b: Word) c_int {
     var a = arg_a;
     var b = arg_b;
     while (true) {
-        const tag_a = tag[@as(usize, @intCast(a))];
-        const tag_b = tag[@as(usize, @intCast(b))];
+        const tag_a = getTag(a);
+        const tag_b = getTag(b);
         switch (tag_a) {
             word.DOUBLE => {
                 if (tag_b == word.DOUBLE) {
@@ -570,16 +574,16 @@ export fn compare(arg_a: Word, arg_b: Word) c_int {
 
 export fn force(x_val: Word) void {
     var x = x_val;
-    switch (tag[@as(usize, @intCast(x))]) {
+    switch (getTag(x)) {
         word.AP => {
             var curr_h = h(x);
-            while (tag[@as(usize, @intCast(curr_h))] == word.AP) {
+            while (getTag(curr_h) == word.AP) {
                 curr_h = h(curr_h);
             }
             if (word.S <= curr_h and curr_h <= word.ERROR) {
                 return;
             }
-            while (tag[@as(usize, @intCast(x))] == word.AP) {
+            while (getTag(x) == word.AP) {
                 tp(x).* = reduce(t(x));
                 force(t(x));
                 x = h(x);
@@ -587,7 +591,7 @@ export fn force(x_val: Word) void {
             return;
         },
         word.CONS => {
-            while (tag[@as(usize, @intCast(x))] == word.CONS) {
+            while (getTag(x) == word.CONS) {
                 hp(x).* = reduce(h(x));
                 force(h(x));
                 tp(x).* = reduce(t(x));
@@ -600,7 +604,7 @@ export fn force(x_val: Word) void {
 
 export fn head(x_val: Word) Word {
     var x = x_val;
-    while (tag[@as(usize, @intCast(x))] == word.AP) {
+    while (getTag(x) == word.AP) {
         x = h(x);
     }
     return x;
@@ -658,7 +662,7 @@ pub fn outf(e: Word) void {
 
 export fn print(arg_e: Word) void {
     var e = reduce(arg_e);
-    while (tag[@as(usize, @intCast(e))] == word.CONS) {
+    while (getTag(e) == word.CONS) {
         hp(e).* = reduce(h(e));
         if (abi.is_char(h(e)) == 0) {
             break;
@@ -702,7 +706,7 @@ export fn output(arg_e: Word) void {
     defer main.rs.cstack = old_cstack;
 
     e = reduce(e);
-    while (tag[@as(usize, @intCast(e))] == word.CONS) {
+    while (getTag(e) == word.CONS) {
         hp(e).* = reduce(h(e));
         switch (h(head(h(e)))) {
             Stdout => {
@@ -747,7 +751,7 @@ export fn output(arg_e: Word) void {
             },
             Exit => {
                 var n = reduce(t(h(e)));
-                if (tag[@as(usize, @intCast(n))] == word.INT) {
+                if (getTag(n) == word.INT) {
                     n = digit0(n);
                 } else {
                     int_error("Exit");

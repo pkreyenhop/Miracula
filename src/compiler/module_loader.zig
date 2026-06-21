@@ -1,6 +1,7 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const main = @import("../main.zig");
+inline fn getTag(x: main.Word) u8 { return main.heap.heap.getTag(x); }
 const abi = @import("../runtime/main_clib.zig");
 const parser_api = @import("../parser/parser_api.zig");
 const setup = @import("setup.zig");
@@ -277,7 +278,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
 
     if (main.SYNERR == 0 and main.rs.detrop != NIL) {
         const gd = main.rs.detrop;
-        while (main.rs.detrop != NIL and main.tag[@intCast(main.dval(main.heap.h(main.rs.detrop)))] == word.LABEL) {
+        while (main.rs.detrop != NIL and getTag(main.dval(main.heap.h(main.rs.detrop))) == word.LABEL) {
             main.rs.detrop = main.heap.t(main.rs.detrop);
         }
         if (main.rs.detrop != NIL) {
@@ -289,13 +290,13 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             abi.out_pattern(main.getStdout(), main.dlhs(main.heap.h(main.rs.detrop)));
             _ = word.putchar('\n');
             main.rs.detrop = main.heap.t(main.rs.detrop);
-            while (main.rs.detrop != NIL and main.tag[@intCast(main.dval(main.heap.h(main.rs.detrop)))] == word.LABEL) {
+            while (main.rs.detrop != NIL and getTag(main.dval(main.heap.h(main.rs.detrop))) == word.LABEL) {
                 main.rs.detrop = main.heap.t(main.rs.detrop);
             }
         }
 
         var gd_mut = gd;
-        while (gd_mut != NIL and main.tag[@intCast(main.dval(main.heap.h(gd_mut)))] != word.LABEL) {
+        while (gd_mut != NIL and getTag(main.dval(main.heap.h(gd_mut))) != word.LABEL) {
             gd_mut = main.heap.t(gd_mut);
         }
         if (gd_mut != NIL) {
@@ -307,7 +308,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             abi.out_pattern(main.getStdout(), main.dlhs(main.heap.h(gd_mut)));
             _ = word.putchar('\n');
             gd_mut = main.heap.t(gd_mut);
-            while (gd_mut != NIL and main.tag[@intCast(main.dval(main.heap.h(gd_mut)))] != word.LABEL) {
+            while (gd_mut != NIL and getTag(main.dval(main.heap.h(gd_mut))) != word.LABEL) {
                 gd_mut = main.heap.t(gd_mut);
             }
         }
@@ -464,10 +465,10 @@ pub fn mkincludes(includees_val: Word) Word {
                             var p = main.fil_defs(main.heap.h(y));
                             var q = main.fil_defs(main.heap.h(z));
                             while (p != NIL and q != NIL) {
-                                if (main.tag[@intCast(main.heap.h(p))] == word.ID) {
-                                    if (main.id_type(main.heap.h(p)) == word.type_t and (main.tag[@intCast(main.heap.h(q))] == word.ID or main.tag[@intCast(pn_val(main.heap.h(q)))] == word.ID)) {
+                                if (getTag(main.heap.h(p)) == word.ID) {
+                                    if (main.id_type(main.heap.h(p)) == word.type_t and (getTag(main.heap.h(q)) == word.ID or getTag(pn_val(main.heap.h(q))) == word.ID)) {
                                         var w = tclashes;
-                                        const orig = if (main.tag[@intCast(main.heap.h(q))] == word.ID) main.heap.h(q) else pn_val(main.heap.h(q));
+                                        const orig = if (getTag(main.heap.h(q)) == word.ID) main.heap.h(q) else pn_val(main.heap.h(q));
                                         if (main.t_class(main.heap.h(p)) == word.synonym_t) {
                                             p = main.heap.t(p);
                                             q = main.heap.t(q);
@@ -568,7 +569,7 @@ pub fn mkincludes(includees_val: Word) Word {
             abi.printlist(@constCast("causes nameclashes: "), main.cs.CLASHES);
         }
 
-        while (main.cs.DETROP != NIL and main.tag[@intCast(main.heap.h(main.cs.DETROP))] == word.CONS) {
+        while (main.cs.DETROP != NIL and getTag(main.heap.h(main.cs.DETROP)) == word.CONS) {
             const fa = main.heap.h(main.heap.t(main.heap.h(main.cs.DETROP)));
             const ta = main.heap.t(main.heap.t(main.heap.h(main.cs.DETROP)));
             const pn = main.get_id(main.heap.h(main.heap.h(main.cs.DETROP)));

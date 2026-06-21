@@ -25,18 +25,17 @@ const TRUE_ATOM: Word = CMBASE + 137;
 // Heap cell accessors
 // ---------------------------------------------------------------------------
 
-extern var hd: [*]Word;
-extern var tl: [*]Word;
-extern var tag: [*]u8;
-
 inline fn h(x: Word) Word {
-    return hd[@as(usize, @intCast(x)) * 2];
+    return main.heap.heap.h(x);
 }
 inline fn t(x: Word) Word {
-    return tl[@as(usize, @intCast(x)) * 2];
+    return main.heap.heap.t(x);
+}
+inline fn tp(x: Word) *Word {
+    return main.heap.heap.tp(x);
 }
 inline fn tg(x: Word) u8 {
-    return tag[@as(usize, @intCast(x))];
+    return main.heap.heap.getTag(x);
 }
 
 // ---------------------------------------------------------------------------
@@ -637,11 +636,11 @@ fn buildLdefs(alloc: Allocator, where_defs: []const ast.Def) Word {
             // Same function as head of ldefs: prepend labeled to its tries list.
             // tries_cell = dval(hd(ldefs)) = tl(tl(hd(ldefs)))
             const tries_cell = t(t(h(ldefs)));
-            tl[@as(usize, @intCast(tries_cell)) * 2] = mkcons(labeled, t(tries_cell));
+            tp(tries_cell).* = mkcons(labeled, t(tries_cell));
         } else {
             // New function: wrap dval in tries(lhs, [labeled]) and prepend to ldefs.
             const new_tries = abi.tries(lhs_word, mkcons(labeled, word.NIL));
-            tl[@as(usize, @intCast(t(cell))) * 2] = new_tries;
+            tp(t(cell)).* = new_tries;
             ldefs = mkcons(cell, ldefs);
         }
     }

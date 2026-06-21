@@ -19,9 +19,7 @@ const CMBASE: Word = 306;
 const NIL: Word = CMBASE + 138;
 const ATOMLIMIT: Word = CMBASE + 141;
 
-extern var hd: [*]Word;
-extern var tl: [*]Word;
-extern var tag: [*]u8;
+
 
 const make = heap.make;
 extern fn math_error(s: [*:0]const u8) void;
@@ -31,24 +29,24 @@ var log10IBASE: f64 = 0;
 export var b_rem: Word = 0;
 export var big_one: Word = 0;
 
+inline fn getTag(x: Word) u8 {
+    return heap.heap.getTag(x);
+}
+
 fn h(x: Word) Word {
-    if (x < ATOMLIMIT) return 0;
-    return hd[@as(usize, @intCast(x)) * 2];
+    return heap.heap.h(x);
 }
 
 fn hp(x: Word) *Word {
-    std.debug.assert(x >= ATOMLIMIT);
-    return &hd[@as(usize, @intCast(x)) * 2];
+    return heap.heap.hp(x);
 }
 
 fn t(x: Word) Word {
-    if (x < ATOMLIMIT) return 0;
-    return tl[@as(usize, @intCast(x)) * 2];
+    return heap.heap.t(x);
 }
 
 fn tp(x: Word) *Word {
-    std.debug.assert(x >= ATOMLIMIT);
-    return &tl[@as(usize, @intCast(x)) * 2];
+    return heap.heap.tp(x);
 }
 
 fn digit0(x: Word) Word {
@@ -98,7 +96,7 @@ export fn bigsetup() void {
 }
 
 export fn isnat(x: Word) c_int {
-    return if (tag[@intCast(x)] == INT and poz(x)) 1 else 0;
+    return if (getTag(x) == INT and poz(x)) 1 else 0;
 }
 
 export fn sto_int(input: c_longlong) Word {

@@ -32,9 +32,7 @@ pub const RuntimeState = rt.RuntimeState;
 pub const rs: *RuntimeState = &rt.rs;
 
 // Global state variables (TYPE B: defined in other modules, re-exported here)
-pub extern var hd: [*]Word;
-pub extern var tl: [*]Word;
-pub extern var tag: [*]u8;
+
 
 pub extern var s_out: ?*abi.FILE;
 pub extern var dstack: ?[*]Word;

@@ -5,7 +5,7 @@ const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
 const abi = reduce.abi;
 
-extern var tag: [*]u8;
+
 
 inline fn lastarg(ctx: *ReductionCtx) Word {
     return reduce.tl_get(ctx.e);
@@ -87,7 +87,7 @@ pub fn handle_G_STAR(ctx: *ReductionCtx) void {
         return;
     }
     ctx.args[1] = reduce.ap(reduce.hd_get(ctx.e), reduce.tl_get(ctx.hold));
-    tag[reduce.clean_ptr(ctx.e)] = word.CONS;
+    reduce.setTag(ctx.e, word.CONS);
     reduce.hd_set(ctx.e, reduce.cons(reduce.hd_get(ctx.hold), reduce.ap(word.HD, ctx.args[1])));
     reduce.tl_set(ctx.e, reduce.ap(word.TL, ctx.args[1]));
     ctx.action = word.ACT_DONE;

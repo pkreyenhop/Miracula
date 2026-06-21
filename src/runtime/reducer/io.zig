@@ -5,7 +5,7 @@ const Word = reduce.Word;
 const abi = reduce.abi;
 const word = @import("../word.zig");
 
-extern var tag: [*]u8;
+
 extern fn reduce_stream_read(ctx: ?*anyopaque, op: Word) c_int;
 
 pub fn handle_READ(ctx: *ReductionCtx) void {
@@ -31,7 +31,7 @@ pub fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
 
     if (lastarg_val == word.OFFSIDE) {
         if (reduce.stdinuse != 0 and reduce.stdinuse != '+') {
-            tag[reduce.clean_ptr(ctx.e)] = word.AP;
+            reduce.setTag(ctx.e, word.AP);
             reduce.rewrite_to_nil(&ctx.e);
             ctx.action = word.ACT_DONE;
             return;

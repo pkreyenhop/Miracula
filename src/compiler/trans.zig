@@ -136,29 +136,29 @@ extern fn acterror() void;
 extern fn msc(r: Word) Word;
 extern fn tsort(g: Word) Word;
 
+inline fn getTag(x: Word) u8 {
+    return main.heap.heap.getTag(x);
+}
+
 fn h(x: Word) Word {
-    if (x < ATOMLIMIT) return 0;
-    return main.hd[@as(usize, @intCast(x)) * 2];
+    return main.heap.heap.h(x);
 }
 
 fn hp(x: Word) *Word {
-    std.debug.assert(x >= ATOMLIMIT);
-    return &main.hd[@as(usize, @intCast(x)) * 2];
+    return main.heap.heap.hp(x);
 }
 
 fn t(x: Word) Word {
-    if (x < ATOMLIMIT) return 0;
-    return main.tl[@as(usize, @intCast(x)) * 2];
+    return main.heap.heap.t(x);
 }
 
 fn tp(x: Word) *Word {
-    std.debug.assert(x >= ATOMLIMIT);
-    return &main.tl[@as(usize, @intCast(x)) * 2];
+    return main.heap.heap.tp(x);
 }
 
 fn appHead(input_x: Word) Word {
     var x = input_x;
-    while (main.tag[@intCast(x)] == AP) {
+    while (getTag(x) == AP) {
         x = h(x);
     }
     return x;
@@ -247,37 +247,37 @@ fn makeTyp(arity: Word, showfn: Word, class: Word, info: Word) Word {
 fn addToEnv(x: Word) void {
     const current_file_defs = h(main.files);
     if (current_file_defs >= ATOMLIMIT) {
-        const idx = @as(usize, @intCast(current_file_defs)) * 2;
-        main.tl[idx] = cons(x, main.tl[idx]);
+        
+        tp(current_file_defs).* = cons(x, tp(current_file_defs).*);
     }
 }
 
 fn isConstructor(x: Word) bool {
-    return main.tag[@intCast(x)] == ID and isconstrname(getId(x)) != 0;
+    return getTag(x) == ID and isconstrname(getId(x)) != 0;
 }
 
 fn isVariable(x: Word) bool {
-    return main.tag[@intCast(x)] == ID and isconstrname(getId(x)) == 0;
+    return getTag(x) == ID and isconstrname(getId(x)) == 0;
 }
 
 fn isNPlusKPattern(x: Word) bool {
-    return main.tag[@intCast(x)] == AP and main.tag[@intCast(h(x))] == AP and h(h(x)) == PLUS;
+    return getTag(x) == AP and getTag(h(x)) == AP and h(h(x)) == PLUS;
 }
 
 fn isArrowType(x: Word) bool {
-    return main.tag[@intCast(x)] == AP and main.tag[@intCast(h(x))] == AP and h(h(x)) == arrow_t;
+    return getTag(x) == AP and getTag(h(x)) == AP and h(h(x)) == arrow_t;
 }
 
 fn isListType(x: Word) bool {
-    return main.tag[@intCast(x)] == AP and h(x) == list_t;
+    return getTag(x) == AP and h(x) == list_t;
 }
 
 fn isTypeVariable(x: Word) bool {
-    return main.tag[@intCast(x)] == TVAR;
+    return getTag(x) == TVAR;
 }
 
 fn isCompoundType(x: Word) bool {
-    return main.tag[@intCast(x)] == AP;
+    return getTag(x) == AP;
 }
 
 fn isChar(x: Word) bool {
@@ -334,7 +334,7 @@ fn setDval(d: Word, value: Word) void {
 
 pub fn primconstr(input_x: Word) Word {
     var x = t(input_x); // idVal(x) = CONSTRUCTOR cell (or MKSTRICT wrapper for strict ctors)
-    while (main.tag[@intCast(x)] != CONSTRUCTOR) {
+    while (getTag(x) != CONSTRUCTOR) {
         x = t(x);
     }
     return x;
@@ -342,7 +342,7 @@ pub fn primconstr(input_x: Word) Word {
 
 pub fn memb(input_l: Word, x: Word) Word {
     var l = input_l;
-    if (main.tag[@intCast(x)] == TVAR) {
+    if (getTag(x) == TVAR) {
         while (l != NIL and t(h(l)) != t(x)) {
             l = t(l);
         }
@@ -358,8 +358,8 @@ export fn same(x: Word, y: Word) Word {
     if (x == y) {
         return 1;
     }
-    const x_tag = main.tag[@intCast(x)];
-    const y_tag = main.tag[@intCast(y)];
+    const x_tag = getTag(x);
+    const y_tag = getTag(y);
     if (x_tag == ATOM or y_tag == ATOM or x_tag != y_tag) {
         return 0;
     }
@@ -379,7 +379,7 @@ pub fn get_ids(x: Word) Word {
     if (h(x) == CONST or isConstructor(x)) {
         return NIL;
     }
-    if (main.tag[@intCast(x)] == ID) {
+    if (getTag(x) == ID) {
         return cons(x, NIL);
     }
     if (isNPlusKPattern(x)) {
@@ -396,7 +396,7 @@ export fn mktuple(input_x: Word) Word {
     if (h(x) == CONST or isConstructor(x)) {
         return NIL;
     }
-    if (main.tag[@intCast(x)] == ID) {
+    if (getTag(x) == ID) {
         return x;
     }
     if (isNPlusKPattern(x)) {
@@ -411,13 +411,13 @@ export fn irrefutable(x: Word) Word {
     if (x < ATOMLIMIT) {
         return 0;
     }
-    if (main.tag[@intCast(x)] == CONS) {
+    if (getTag(x) == CONS) {
         return 0;
     }
     if (isConstructor(x)) {
         return member(cs.SGC, x);
     }
-    if (main.tag[@intCast(x)] == ID) {
+    if (getTag(x) == ID) {
         return 1;
     }
     if (isNPlusKPattern(x)) {
@@ -429,7 +429,7 @@ export fn irrefutable(x: Word) Word {
 pub fn fallible(input_e: Word) Word {
     var e = input_e;
     while (true) {
-        const e_tag = main.tag[@intCast(e)];
+        const e_tag = getTag(e);
         if (e_tag == LABEL) {
             e = t(e);
             continue;
@@ -442,7 +442,7 @@ pub fn fallible(input_e: Word) Word {
             } else {
                 return 1;
             }
-        } else if (e_tag == AP and main.tag[@intCast(h(e))] == AP and main.tag[@intCast(h(h(e)))] == AP and h(h(h(e))) == COND) {
+        } else if (e_tag == AP and getTag(h(e)) == AP and getTag(h(h(e))) == AP and h(h(h(e))) == COND) {
             e = t(e);
         } else {
             return if (e == FAIL) 1 else 0;
@@ -508,28 +508,28 @@ pub fn abshfnck(t_type: Word, f_input: Word) Word {
 }
 
 pub fn combine(x: Word, y: Word) Word {
-    const a = main.tag[@intCast(x)] == AP and h(x) == K;
-    const b = main.tag[@intCast(y)] == AP and h(y) == K;
+    const a = getTag(x) == AP and h(x) == K;
+    const b = getTag(y) == AP and h(y) == K;
     if (a and b) {
         return ap(K, ap(t(x), t(y)));
     }
     if (a and y == I) {
         return t(x);
     }
-    const b1 = main.tag[@intCast(y)] == AP and main.tag[@intCast(h(y))] == AP and h(h(y)) == B;
+    const b1 = getTag(y) == AP and getTag(h(y)) == AP and h(h(y)) == B;
     if (a) {
         if (b1) {
             return ap3(B1, t(x), t(h(y)), t(y));
         }
-        if (main.tag[@intCast(t(x))] == AP and main.tag[@intCast(h(t(x)))] == AP and h(h(t(x))) == COND) {
+        if (getTag(t(x)) == AP and getTag(h(t(x))) == AP and h(h(t(x))) == COND) {
             return ap3(COND, t(h(t(x))), ap(K, t(t(x))), y);
         }
         return ap2(B, t(x), y);
     }
-    const a1 = main.tag[@intCast(x)] == AP and main.tag[@intCast(h(x))] == AP and h(h(x)) == B;
+    const a1 = getTag(x) == AP and getTag(h(x)) == AP and h(h(x)) == B;
     if (b) {
         if (a1) {
-            if (main.tag[@intCast(t(h(x)))] == AP and h(t(h(x))) == COND) {
+            if (getTag(t(h(x))) == AP and h(t(h(x))) == COND) {
                 return ap3(COND, t(t(h(x))), t(x), y);
             }
             return ap3(C1, t(h(x)), t(x), t(y));
@@ -537,7 +537,7 @@ pub fn combine(x: Word, y: Word) Word {
         return ap2(C, x, t(y));
     }
     if (a1) {
-        if (main.tag[@intCast(t(h(x)))] == AP and h(t(h(x))) == COND) {
+        if (getTag(t(h(x))) == AP and h(t(h(x))) == COND) {
             return ap3(COND, t(t(h(x))), t(x), y);
         }
         return ap3(S1, t(h(x)), t(x), y);
@@ -546,8 +546,8 @@ pub fn combine(x: Word, y: Word) Word {
 }
 
 pub fn liscomb(x: Word, y: Word) Word {
-    const a = main.tag[@intCast(x)] == AP and h(x) == K;
-    const b = main.tag[@intCast(y)] == AP and h(y) == K;
+    const a = getTag(x) == AP and h(x) == K;
+    const b = getTag(y) == AP and h(y) == K;
     if (a and b) {
         return ap(K, cons(t(x), t(y)));
     }
@@ -566,7 +566,7 @@ pub fn liscomb(x: Word, y: Word) Word {
 pub fn abstract(input_x: Word, input_e: Word) Word {
     var x = input_x;
     var e = input_e;
-    switch (main.tag[@intCast(x)]) {
+    switch (getTag(x)) {
         ID => {
             if (isConstructor(x)) {
                 return if (member(cs.SGC, x) != 0) ap(K, e) else ap2(Ug, primconstr(x), e);
@@ -575,7 +575,7 @@ pub fn abstract(input_x: Word, input_e: Word) Word {
         },
         CONS => {
             if (h(x) == CONST) {
-                if (main.tag[@intCast(t(x))] == INT) {
+                if (getTag(t(x)) == INT) {
                     return ap2(MATCHINT, t(x), e);
                 }
                 return ap2(MATCH, if (t(x) == NILS) NIL else t(x), e);
@@ -587,10 +587,10 @@ pub fn abstract(input_x: Word, input_e: Word) Word {
             if (member(cs.SGC, appHead(x)) != 0) {
                 return ap(Uf, abstract(h(x), abstract(t(x), e)));
             }
-            if (main.tag[@intCast(h(x))] == AP and h(h(x)) == PLUS) {
+            if (getTag(h(x)) == AP and h(h(x)) == PLUS) {
                 return ap2(ATLEAST, t(h(x)), abstract(t(x), e));
             }
-            while (main.tag[@intCast(x)] == AP) {
+            while (getTag(x) == AP) {
                 e = abstract(t(x), e);
                 x = h(x);
             }
@@ -608,7 +608,7 @@ pub fn abstract(input_x: Word, input_e: Word) Word {
 }
 
 pub fn abstr(x: Word, e: Word) Word {
-    switch (main.tag[@intCast(e)]) {
+    switch (getTag(e)) {
         TCONS, PAIR, CONS => return liscomb(abstr(x, h(e)), abstr(x, t(e))),
         AP => {
             if (h(e) == BADCASE or h(e) == CONFERROR) {
@@ -617,7 +617,7 @@ pub fn abstr(x: Word, e: Word) Word {
             return combine(abstr(x, h(e)), abstr(x, t(e)));
         },
         LAMBDA, LET, LETREC, TRIES, LABEL, SHOW, LEXER, SHARE => {
-            std.debug.print("impossible event in abstr (main.tag={d})\n", .{main.tag[@intCast(e)]});
+            std.debug.print("impossible event in abstr (main.tag={d})\n", .{getTag(e)});
             abi.exit(1);
         },
         else => {
@@ -630,7 +630,7 @@ pub fn abstr(x: Word, e: Word) Word {
 }
 
 pub fn abstrlist(x_input: Word, e: Word) Word {
-    switch (main.tag[@intCast(e)]) {
+    switch (getTag(e)) {
         TCONS, PAIR, CONS => return liscomb(abstrlist(x_input, h(e)), abstrlist(x_input, t(e))),
         AP => {
             if (h(e) == BADCASE or h(e) == CONFERROR) {
@@ -639,7 +639,7 @@ pub fn abstrlist(x_input: Word, e: Word) Word {
             return combine(abstrlist(x_input, h(e)), abstrlist(x_input, t(e)));
         },
         LAMBDA, LET, LETREC, TRIES, LABEL, SHOW, LEXER, SHARE => {
-            std.debug.print("impossible event in abstrlist (main.tag={d})\n", .{main.tag[@intCast(e)]});
+            std.debug.print("impossible event in abstrlist (main.tag={d})\n", .{getTag(e)});
             abi.exit(1);
         },
         else => {
@@ -661,7 +661,7 @@ pub fn scanpattern(p: Word, x: Word, e: Word, fail: Word) Word {
     if (h(x) == CONST or isConstructor(x)) {
         return NIL;
     }
-    if (main.tag[@intCast(x)] == ID) {
+    if (getTag(x) == ID) {
         const binding = cons(x, ap2(TRY, ap(lambda(p, x), e), fail));
         return cons(binding, NIL);
     }
@@ -780,9 +780,9 @@ pub fn transtypeid(x: Word) Word {
 }
 
 export fn genlhs(x: Word) Word {
-    switch (main.tag[@intCast(x)]) {
+    switch (getTag(x)) {
         AP => {
-            if (main.tag[@intCast(h(x))] == AP and h(h(x)) == PLUS and isnat(t(x)) != 0) {
+            if (getTag(h(x)) == AP and h(h(x)) == PLUS and isnat(t(x)) != 0) {
                 return ap2(PLUS, t(x), genlhs(t(h(x))));
             }
             const hold = genlhs(h(x));
@@ -790,7 +790,7 @@ export fn genlhs(x: Word) Word {
         },
         CONS, TCONS, PAIR => {
             const hold = genlhs(h(x));
-            return make(main.tag[@intCast(x)], hold, genlhs(t(x)));
+            return make(getTag(x), hold, genlhs(t(x)));
         },
         ID => {
             if (member(ls.idsused, x) != 0) {
@@ -822,7 +822,7 @@ pub fn leftfactor(x: Word) Word {
     var b: Word = undefined;
     var rhs = t(h(x));
     var d: Word = undefined;
-    if (main.tag[@intCast(rhs)] == AP and main.tag[@intCast(h(rhs))] == AP and h(h(rhs)) == G_SEQ) {
+    if (getTag(rhs) == AP and getTag(h(rhs)) == AP and h(h(rhs)) == G_SEQ) {
         a = t(h(rhs));
         b = t(rhs);
     } else {
@@ -835,7 +835,7 @@ pub fn leftfactor(x: Word) Word {
         cs.lfrule += 1;
         return x;
     }
-    if (main.tag[@intCast(d)] == AP and main.tag[@intCast(h(d))] == AP) {
+    if (getTag(d) == AP and getTag(h(d)) == AP) {
         rhs = h(h(d));
     } else {
         return x;
@@ -858,7 +858,7 @@ pub fn leftfactor(x: Word) Word {
         cs.lfrule += 1;
         return leftfactor(x);
     }
-    if (main.tag[@intCast(rhs)] == AP and main.tag[@intCast(h(rhs))] == AP and h(h(rhs)) == G_SEQ and same(a, t(h(rhs))) != 0) {
+    if (getTag(rhs) == AP and getTag(h(rhs)) == AP and h(h(rhs)) == G_SEQ and same(a, t(h(rhs))) != 0) {
         rhs = t(rhs);
         d = t(d);
         hp(x).* = ap(G_ALT, ap2(G_SEQ, a, leftfactor(ap2(G_ALT, b, rhs))));
@@ -881,7 +881,7 @@ pub fn transletrec(input_dd: Word, e: Word) Word {
     var pn: Word = 1;
     while (dd != NIL) : (dd = t(dd)) {
         var x = h(dd);
-        if (main.tag[@intCast(dlhs(x))] == ID) {
+        if (getTag(dlhs(x)) == ID) {
             lhs = cons(dlhs(x), lhs);
             rhs = cons(codegen(dval(x)), rhs);
         } else {
@@ -912,7 +912,7 @@ pub fn transtries(id: Word, input_x: Word) Word {
     var earliest: Word = 0;
     var r: Word = undefined;
     if (fallible(h(x)) != 0) {
-        const oldn = if (main.tag[@intCast(id)] == ID) datapair(@as(Word, @intCast(@intFromPtr(getId(id)))), 0) else 0;
+        const oldn = if (getTag(id) == ID) datapair(@as(Word, @intCast(@intFromPtr(getId(id)))), 0) else 0;
         info = cons(oldn, 0);
         r = ap(BADCASE, info);
         if (x == NIL) {
@@ -955,7 +955,7 @@ pub fn makeshow(here: Word, type_node: Word) Word {
 export fn mkshow(s: Word, p: Word, input_t: Word) Word {
     var args: Word = NIL;
     var type_node = input_t;
-    while (main.tag[@intCast(type_node)] == AP) {
+    while (getTag(type_node) == AP) {
         args = cons(t(type_node), args);
         type_node = h(type_node);
     }
@@ -973,7 +973,7 @@ export fn mkshow(s: Word, p: Word, input_t: Word) Word {
         void_t => return main.rs.showvoid,
         arrow_t => return main.rs.showfunction,
         else => {
-            if (main.tag[@intCast(type_node)] == ID) {
+            if (getTag(type_node) == ID) {
                 var r = typeShowFn(type_node);
                 if (r == 0) {
                     return main.rs.showabstract;
@@ -997,7 +997,7 @@ export fn mkshow(s: Word, p: Word, input_t: Word) Word {
                 cs.was_poly = 1;
                 return main.rs.showwhat;
             }
-            if (main.tag[@intCast(type_node)] == STRCONS) {
+            if (getTag(type_node) == STRCONS) {
                 _ = word.print("warning - mkshow applied to suppressed type\n", .{});
                 return main.rs.showwhat;
             }
@@ -1020,7 +1020,7 @@ fn nclchk(n: Word, p: Word, hr: Word) c_int {
     if (h(p) == CONST) {
         return 0;
     }
-    if (main.tag[@intCast(p)] == ID) {
+    if (getTag(p) == ID) {
         if (n != p) {
             return 0;
         }
@@ -1032,7 +1032,7 @@ fn nclchk(n: Word, p: Word, hr: Word) c_int {
         acterror();
         return 1;
     }
-    if (main.tag[@intCast(p)] == AP and h(p) == PLUS) {
+    if (getTag(p) == AP and h(p) == PLUS) {
         return 0;
     }
     if (nclchk(n, h(p), hr) != 0) {
@@ -1083,14 +1083,14 @@ export fn declconstr(x: Word, n: Word, constr_type: Word) void {
 
 export fn specify(input_x: Word, spec_type: Word, here: Word) void {
     var x = input_x;
-    if (main.tag[@intCast(x)] != ID and spec_type != type_t) {
+    if (getTag(x) != ID and spec_type != type_t) {
         main.errs = here;
         syntax("incorrect use of ::\n");
         return;
     }
     if (spec_type == type_t) {
         var arity: Word = 0;
-        while (main.tag[@intCast(x)] == AP) {
+        while (getTag(x) == AP) {
             arity += 1;
             x = h(x);
         }
@@ -1140,7 +1140,7 @@ fn arityCheck(type_name: Word, arity: Word, here: Word) void {
 export fn decl_type(input_tf: Word, type_class: Word, info: Word, here: Word) void {
     var tf = input_tf;
     var arity: Word = 0;
-    while (main.tag[@intCast(tf)] == AP) {
+    while (getTag(tf) == AP) {
         arity += 1;
         tf = h(tf);
     }
@@ -1200,7 +1200,7 @@ fn decl1(x: Word, e: Word) void {
 }
 
 export fn declare(x: Word, e: Word) void {
-    if (main.tag[@intCast(x)] == ID and !isConstructor(x)) {
+    if (getTag(x) == ID and !isConstructor(x)) {
         decl1(x, e);
         return;
     }
@@ -1433,19 +1433,19 @@ extern fn mklexvar(i: Word) Word;
 extern fn ispoly(t_val: Word) c_int;
 
 fn isarrow_t(type_node: Word) bool {
-    return main.tag[@intCast(type_node)] == AP and main.tag[@intCast(h(type_node))] == AP and h(h(type_node)) == arrow_t;
+    return getTag(type_node) == AP and getTag(h(type_node)) == AP and h(h(type_node)) == arrow_t;
 }
 fn iscomma_t(type_node: Word) bool {
-    return main.tag[@intCast(type_node)] == AP and main.tag[@intCast(h(type_node))] == AP and h(h(type_node)) == comma_t;
+    return getTag(type_node) == AP and getTag(h(type_node)) == AP and h(h(type_node)) == comma_t;
 }
 fn islist_t(type_node: Word) bool {
-    return main.tag[@intCast(type_node)] == AP and h(type_node) == list_t;
+    return getTag(type_node) == AP and h(type_node) == list_t;
 }
 fn isvar_t(type_node: Word) bool {
-    return main.tag[@intCast(type_node)] == TVAR;
+    return getTag(type_node) == TVAR;
 }
 fn iscompound_t(type_node: Word) bool {
-    return main.tag[@intCast(type_node)] == AP;
+    return getTag(type_node) == AP;
 }
 
 fn t_showfn(x: Word) Word {
@@ -1459,10 +1459,10 @@ fn t_info(x: Word) Word {
 }
 
 fn isconstructor(x: Word) bool {
-    return main.tag[@intCast(x)] == ID and isconstrname(getId(x)) != 0;
+    return getTag(x) == ID and isconstrname(getId(x)) != 0;
 }
 fn isvariable(x: Word) bool {
-    return main.tag[@intCast(x)] == ID and isconstrname(getId(x)) == 0;
+    return getTag(x) == ID and isconstrname(getId(x)) == 0;
 }
 
 fn get_pn(x: Word) Word {
@@ -1477,19 +1477,19 @@ fn sui_generis(k: Word) bool {
 }
 
 pub export fn codegen(x: Word) Word {
-    switch (main.tag[@intCast(x)]) {
+    switch (getTag(x)) {
         AP => {
             if (main.commandmode != 0 // beware of corrupting lastexp
             and x != ls.cook_stdin and x != ls.common_stdin and x != ls.common_stdinb) { // but share $+ $-
                 return make(AP, codegen(h(x)), codegen(t(x)));
             }
-            if (main.tag[@intCast(h(x))] == AP and h(h(x)) == APPEND and t(h(x)) == NIL) {
+            if (getTag(h(x)) == AP and h(h(x)) == APPEND and t(h(x)) == NIL) {
                 return codegen(t(x)); // post typecheck reversal of HR bug fix
             }
             hp(x).* = codegen(h(x));
             tp(x).* = codegen(t(x));
             // otherwise do in situ
-            return if (main.tag[@intCast(h(x))] == AP and h(h(x)) == G_ALT) leftfactor(x) else x;
+            return if (getTag(h(x)) == AP and h(h(x)) == G_ALT) leftfactor(x) else x;
         },
         TCONS, PAIR => {
             return make(CONS, codegen(h(x)), codegen(t(x)));
@@ -1528,7 +1528,7 @@ pub export fn codegen(x: Word) Word {
             while (cur_x != NIL) {
                 var rule = abstr(mklexvar(0), codegen(t(t(h(cur_x)))));
                 rule = abstr(mklexvar(1), rule);
-                if (!(main.tag[@intCast(rule)] == AP and h(rule) == K)) {
+                if (!(getTag(rule) == AP and h(rule) == K)) {
                     uses_state = 1;
                 }
                 r = cons(cons(h(h(cur_x)), // start condition stuff
@@ -1597,7 +1597,7 @@ export fn genshfns() void {
             while (r != NIL) {
                 var type_var = idType(h(r));
                 var k = idVal(h(r));
-                while (main.tag[@intCast(k)] != CONSTRUCTOR) {
+                while (getTag(k) != CONSTRUCTOR) {
                     k = t(k); // lawful and !'d constructors
                 }
                 // k now holds constructor(i,main.hd(r))
