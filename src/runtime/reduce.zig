@@ -189,7 +189,7 @@ inline fn rewrite_to_cons(e: Word, hd_value: Word, tl_value: Word) void {
     setcell(e, word.CONS, hd_value, tl_value);
 }
 
-export fn reduce_badcase_error(arg_info: Word) void {
+pub export fn reduce_badcase_error(arg_info: Word) void {
     const subject = h(arg_info);
     word.printErr("\nprogram error: missing case in definition", .{});
     if (subject != 0) {
@@ -201,7 +201,7 @@ export fn reduce_badcase_error(arg_info: Word) void {
     abi.exit(1);
 }
 
-export fn reduce_conf_error(arg_info: Word) void {
+pub export fn reduce_conf_error(arg_info: Word) void {
     word.printErr("\nprogram error: lhs of definition doesn't match rhs\n", .{});
     out_here(getStderr().?, t(arg_info), 1);
     outstats();
@@ -321,7 +321,7 @@ export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
     }
 }
 
-export fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
+pub export fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     var curr_x = x;
     const x1 = x;
     var n: usize = 0;
@@ -572,7 +572,7 @@ export fn compare(arg_a: Word, arg_b: Word) c_int {
     }
 }
 
-export fn force(x_val: Word) void {
+pub export fn force(x_val: Word) void {
     var x = x_val;
     switch (getTag(x)) {
         word.AP => {
@@ -660,7 +660,7 @@ pub fn outf(e: Word) void {
     }
 }
 
-export fn print(arg_e: Word) void {
+pub export fn print(arg_e: Word) void {
     var e = reduce(arg_e);
     while (getTag(e) == word.CONS) {
         hp(e).* = reduce(h(e));

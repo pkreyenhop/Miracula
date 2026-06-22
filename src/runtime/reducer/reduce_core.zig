@@ -19,20 +19,24 @@ pub extern var waiting: Word;
 pub extern var errtrap: Word;
 pub extern var s_out: ?*word.FILE;
 
-pub extern fn print(e_val: Word) void;
-pub extern fn reduce_badcase_error(arg_info: Word) void;
-pub extern fn reduce_conf_error(arg_info: Word) void;
-pub extern fn conv_args() Word;
-pub extern fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8;
-pub extern fn head(x_val: Word) Word;
-pub extern fn force(x_val: Word) void;
-pub extern fn reduce(e_val: Word) Word;
+pub const print = reduce_mod.print;
+pub const reduce_badcase_error = reduce_mod.reduce_badcase_error;
+pub const reduce_conf_error = reduce_mod.reduce_conf_error;
+pub const conv_args = lex_mod.conv_args;
+pub const getstring = reduce_mod.getstring;
+pub const head = reduce_mod.head;
+pub const force = reduce_mod.force;
+pub const reduce = reducer_reduce.reduce;
 
 pub inline fn clean_ptr(x: Word) usize {
     return @as(usize, @intCast(x & ~abi.tlptrbits));
 }
 
 const heap = @import("../heap.zig");
+// Cross-module functions via direct (circular) @import — R7.3.
+const reduce_mod = @import("../reduce.zig");
+const reducer_reduce = @import("reduce.zig");
+const lex_mod = @import("../../parser/lex.zig");
 
 pub inline fn hd_get(x: Word) Word {
     return heap.heap.h(x & ~abi.tlptrbits);

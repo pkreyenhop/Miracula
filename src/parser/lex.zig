@@ -1033,7 +1033,7 @@ pub export fn mklexvar(i: Word) Word {
     return if (i != 0) t(ls.lexvar) else h(ls.lexvar);
 }
 
-export fn conv_args() Word {
+pub export fn conv_args() Word {
     var i = ls.ARGC;
     var x = NIL;
     if (i == 0) {
