@@ -362,7 +362,7 @@ pub fn memb(input_l: Word, x: Word) Word {
     return if (l != NIL) 1 else 0;
 }
 
-export fn same(x: Word, y: Word) Word {
+pub export fn same(x: Word, y: Word) Word {
     if (x == y) {
         return 1;
     }
@@ -396,7 +396,7 @@ pub fn get_ids(x: Word) Word {
     return UNION(get_ids(h(x)), get_ids(t(x)));
 }
 
-export fn mktuple(input_x: Word) Word {
+pub export fn mktuple(input_x: Word) Word {
     var x = input_x;
     if (word.isAtom(x)) {
         return NIL;
@@ -466,7 +466,7 @@ pub fn here_inf(rhs: Word) Word {
     return h(h(x));
 }
 
-export fn lastlink(input_x: Word) Word {
+pub export fn lastlink(input_x: Word) Word {
     var x = input_x;
     while (t(x) != NIL) {
         x = t(x);
@@ -771,7 +771,7 @@ pub fn transzf(e_input: Word, qq_input: Word, conc: Word) Word {
     return ap(conc, transzf(transzf(e, t(qq), conc), cons(q, NIL), conc));
 }
 
-export fn getspecloc(x: Word) Word {
+pub export fn getspecloc(x: Word) Word {
     var s = cs.speclocs;
     while (s != NIL and h(h(s)) != x) {
         s = t(s);
@@ -1296,7 +1296,7 @@ pub export fn block(input_defs: Word, input_e: Word, keep: Word) Word {
     return e;
 }
 
-export fn tclos(r: Word) Word {
+pub export fn tclos(r: Word) Word {
     var r1 = r;
     while (r1 != NIL) : (r1 = t(r1)) {
         var x = less1(t(h(r1)), h(h(r1)));
@@ -1400,7 +1400,7 @@ pub fn sort(input_x: Word) Word {
     return reverse(x);
 }
 
-export fn sortrel(input_x: Word) Word {
+pub export fn sortrel(input_x: Word) Word {
     var x = input_x;
     var a: Word = NIL;
     var b: Word = NIL;
@@ -1595,7 +1595,7 @@ pub export fn codegen(x: Word) Word {
     }
 }
 
-export fn genshfns() void {
+pub export fn genshfns() void {
     var s = cs.newtyps;
     while (s != NIL) {
         if (t_class(h(s)) == algebraic_t) {
