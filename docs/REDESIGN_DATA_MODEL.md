@@ -266,7 +266,12 @@ trampoline*, not literally none.
 | R2 | R2.2 Route all access through Heap | ✅ Complete |
 | R3 | R3.1 `Cell` + `std.MultiArrayList` storage | ✅ Complete |
 | R3 | R3.2 Typed `NodeTag` tag + enum dispatch | ✅ Complete |
-| R4–R8 | Typed refs → demolition | ⬜ Planned |
+| R4 | R4.1 `Ref` handle type + `isAtom` predicate | ✅ Complete |
+| R4 | R4.2 `fitsInByte`/`isLatin1Char` (retire `<256`) | ✅ Complete |
+| R4 | R4.3 Reducer classification via typed predicates | ◐ Partial *(full Ref/Value migration pending)* |
+| R4 | R4.4 Compiler/parser Ref/Value migration | ⬜ Planned |
+| R4 | R4.5 Retire `Word = c_long` → native `i64` | ✅ Complete |
+| R5–R8 | Tracing GC → demolition | ⬜ Planned |
 
 ### Scorecard (data-model metrics, this redesign)
 
@@ -278,6 +283,8 @@ trampoline*, not literally none.
 | `callconv(.c)` | 12 | 12 | 1 (signal trampoline) |
 | raw `hd[`/`tl[`/`tag[` outside `heap.zig` | 290 | **0** | 0 |
 | `[*:0]`-as-Word pointer casts | 129 | 132 | 0 |
+| `Word = c_long` (value type is a C type) | yes | **no — `i64`** | `i64` |
+| bare `< ATOMLIMIT` / `< 256` magic thresholds | ~23 | **0** *(via `word.isAtom`/`fitsInByte`)* | 0 |
 
 *The `clib.`/`c.` reduction is fully complete for Phase R1, dropping the `clib.`/`c.` call sites metric to **0** by replacing C standard library functions with Zig native equivalents, and renaming the internal compiler ABI/FFI namespace alias to `abi`.*
 
@@ -290,4 +297,22 @@ the dead global `hd`/`tl`/`tag` mirror (with its `sync()`) are all gone. The sto
 typed `NodeTag` enum (non-exhaustive, so the GC sign-bit mark is still expressible until R5);
 `dump_ob` dispatches by `switch` on `NodeTag`. Verified behaviour-identical throughout via the
 golden corpus (44/44 byte-identical), the dump round-trip unit test, GC-heavy evaluation, and a
-real dump+undump cycle. The deeper `Word`-handle untangling begins in Phase R4.
+real dump+undump cycle.
+
+**Phase R4 is partially complete (R4.1, R4.2, R4.5).** The handle/immediate distinction is now
+explicit and typed, and the value type is native:
+- **R4.1/R4.2** introduced `word.Ref` (a `enum(Word)` heap-reference newtype) and the named
+  classifiers `word.isAtom` (was `x < ATOMLIMIT`), `word.fitsInByte`/`word.isLatin1Char` (was
+  `x < 256`). Every magic-threshold comparison in the codebase — heap accessors, the reducer's
+  `isptr`, the translator, the lexer bridge, char/int boxing, type inference — now goes through
+  these predicates (metric → 0).
+- **R4.5** retired `Word = c_long` in favour of native `i64`; the universal value type is no
+  longer a platform C type. Verified byte-identical (bignums, GC-heavy eval, dump cycle).
+
+**R4.3/R4.4 (the hard core) remain.** Fully migrating the reducer and compiler to operate on
+`Ref`/`Value` instead of raw `Word` requires a `Value` *union* representation — chars and small
+ints both occupy bare `Word` values `0..255`, so only a tagged union can tell them apart. That
+is a fat-cell representation change in the hottest code (the reduction loop), with real
+performance and correctness stakes; it warrants dedicated design rather than a rushed partial
+migration, and is deliberately deferred. The typed `Ref` type and classifiers from R4.1/R4.2 are
+the foundation it will build on.
