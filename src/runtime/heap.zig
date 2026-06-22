@@ -9,7 +9,7 @@ const abi = @import("c_abi.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
 const cs = &compiler_state.cs;
 
-const Word = c_long;
+const Word = i64;
 const wordsize = @sizeOf(Word) * 8;
 const bits_15 = 0xffff;
 

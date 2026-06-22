@@ -3,7 +3,7 @@ const std = @import("std");
 const platform = @import("../io/platform.zig");
 const heap = @import("heap.zig");
 
-const Word = c_long;
+const Word = i64;
 
 const SIGNBIT: Word = 0x10000000;
 const IBASE: Word = 0x8000;

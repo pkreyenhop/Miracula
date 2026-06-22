@@ -6,7 +6,7 @@ pub var allocator: std.mem.Allocator = std.heap.page_allocator;
 pub var io: std.Io = std.Options.debug_io;
 pub var environ: std.process.Environ = .empty;
 
-const Word = c_long;
+const Word = i64;
 const CMBASE: Word = 306;
 const NIL: Word = CMBASE + 138;
 const UNDEF: Word = CMBASE + 140;

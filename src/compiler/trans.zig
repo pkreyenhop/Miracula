@@ -21,7 +21,7 @@ fn getStdout() ?*word.FILE {
     return shim.stdout();
 }
 
-const Word = c_long;
+const Word = i64;
 const GENERATOR: Word = 0;
 const GUARD: Word = 1;
 const REPEAT: Word = 2;

@@ -6,7 +6,7 @@
 /// Leaf module — no imports from the Miracula source tree (G1 invariant).
 /// `main.zig` re-declares each as `pub extern var` so callers using `main.X`
 /// continue to compile unchanged.
-const Word = c_long;
+const Word = i64;
 
 /// Heap address of the `nil` combinator (set during mira_setup).
 pub export var nill: Word = 0;

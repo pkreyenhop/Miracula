@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub const Word = c_long;
+pub const Word = i64;
 const CMBASE: Word = 306;
 pub const NIL: Word = CMBASE + 138;
 

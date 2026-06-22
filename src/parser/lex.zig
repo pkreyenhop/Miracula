@@ -7,7 +7,7 @@ const main = @import("../main.zig");
 const heap = @import("../runtime/heap.zig");
 const rt = @import("../runtime/runtime_state.zig");
 
-const Word = c_long;
+const Word = i64;
 const CMBASE: Word = 306;
 const NIL: Word = CMBASE + 138;
 const NILS: Word = CMBASE + 139;

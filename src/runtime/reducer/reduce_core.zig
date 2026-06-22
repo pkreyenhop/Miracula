@@ -2,7 +2,7 @@ const std = @import("std");
 const word = @import("../word.zig");
 pub const abi = @import("../c_abi.zig");
 
-pub const Word = c_long;
+pub const Word = i64;
 
 pub const ReductionCtx = extern struct {
     e: Word,

@@ -20,7 +20,7 @@ pub const MiraError = errors_mod.MiraError;
 pub const fatal = errors_mod.fatal;
 
 // Type and core constants
-pub const Word = c_long;
+pub const Word = i64;
 pub const CONS: u8 = 11;
 pub const AP: u8 = 9;
 pub const CMBASE: Word = 306;

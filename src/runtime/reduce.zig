@@ -5,7 +5,7 @@ const abi = @import("c_abi.zig");
 const main = @import("../main.zig");
 const heap = @import("heap.zig");
 
-const Word = c_long;
+const Word = i64;
 const NIL: Word = word.CMBASE + 138;
 const NILS: Word = word.CMBASE + 139;
 const ATOMLIMIT: Word = word.CMBASE + 141;
