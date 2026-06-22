@@ -1,5 +1,6 @@
 const std = @import("std");
 const word = @import("word.zig");
+const combinator = @import("combinator.zig");
 const rt = @import("runtime_state.zig");
 const core = @import("core_state.zig");
 const lex_state = @import("../parser/lex_state.zig");
@@ -15,6 +16,7 @@ const r7_reduce = @import("reduce.zig");
 const r7_word = @import("word.zig");
 const main_clib = @import("main_clib.zig");
 const setup = @import("../compiler/setup.zig");
+const dump = @import("../compiler/dump.zig");
 const cs = &compiler_state.cs;
 
 const Word = i64;
@@ -294,8 +296,8 @@ pub const Heap = struct {
         }
         self.mark(cstack_ptr[0]);
 
-        self.mark(outfilq);
-        self.mark(waiting);
+        self.mark(r7_reduce.outfilq);
+        self.mark(r7_reduce.waiting);
         if (core.compiling != 0 or rt.rs.rv_expr != 0 or cs.rv_script != 0) {
             self.mark(rt.rs.make_status);
             self.mark(rt.rs.primenv);
@@ -321,7 +323,7 @@ pub const Heap = struct {
             self.mark(rt.rs.includees);
             self.mark(rt.rs.freeids);
             self.mark(rt.rs.exports);
-            self.mark(internals);
+            self.mark(dump.internals);
             self.mark(rt.rs.lexstates);
             self.mark(rt.rs.lexdefs);
             var i: usize = 0;
@@ -346,7 +348,7 @@ pub const Heap = struct {
                 self.mark(rt.rs.detrop);
                 self.mark(rt.rs.bereaved);
                 self.mark(rt.rs.ld_stuff);
-                self.mark(tlost);
+                self.mark(dump.tlost);
                 i = 0;
                 const nextpn_val = @as(usize, @intCast(ls.nextpn));
                 while (i < nextpn_val) : (i += 1) {
@@ -358,8 +360,8 @@ pub const Heap = struct {
             self.mark(rt.rs.lastexp);
             self.mark(core.nill);
             self.mark(rt.rs.standardout);
-            self.mark(big_one);
-            self.mark(b_rem);
+            self.mark(r7_big.big_one);
+            self.mark(r7_big.b_rem);
             self.mark(ls.yylval);
             self.mark(ls.echostack);
             self.mark(core.errs);
@@ -602,13 +604,6 @@ pub export var stackp: ?[*]Word = null;
 pub export var collecting: c_int = 0;
 
 var dlim: ?[*]Word = null;
-
-extern var internals: Word;
-extern var big_one: Word;
-extern var b_rem: Word;
-extern var outfilq: Word;
-extern var waiting: Word;
-extern var tlost: Word;
 
 const outstats = r7_reduce.outstats;
 const initclock = r7_reduce.initclock;
@@ -967,7 +962,7 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         else if (x == word.NILS)
             "\"\""
         else
-            @ptrCast(main_clib.cmbnms[@intCast(x - word.CMBASE)]);
+            @ptrCast(combinator.cmbnms[@intCast(x - word.CMBASE)]);
         _ = word.fprint(file, "{s}", .{str});
         return;
     }
@@ -1249,7 +1244,7 @@ pub export fn dump_script(files_val: Word, file: ?*word.FILE) void {
     _ = word.putc(word.DEF_X, file);
     dump_ob(rt.rs.freeids, file);
     _ = word.putc(word.DEF_X, file);
-    dump_defs(internals, file);
+    dump_defs(dump.internals, file);
 }
 
 pub fn dump_defs(defs_val: Word, file: ?*word.FILE) void {
@@ -1550,7 +1545,7 @@ pub export fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, 
         unscramble(aliases);
     }
     if (main_flag != 0) {
-        internals = load_defs(file);
+        dump.internals = load_defs(file);
     }
     return reverse(files_list);
 }
@@ -2035,8 +2030,8 @@ pub fn unload() void {
     cs.SGC = NIL;
     cs.TABSTRS = NIL;
     cs.ND = NIL;
-    unsetids(internals);
-    internals = NIL;
+    unsetids(dump.internals);
+    dump.internals = NIL;
     while (files != NIL and files != 0) : (files = t(files)) {
         const fil = h(files);
         unsetids(t(fil));

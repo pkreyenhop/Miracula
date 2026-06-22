@@ -17,9 +17,6 @@ pub const ReductionCtx = core.ReductionCtx;
 
 // Extern globals referenced by reducer helpers
 
-extern var cycles: i64;
-pub extern var stdinuse: Word;
-
 pub export fn reduce(e_val: Word) Word {
     var ctx: ReductionCtx = undefined;
     ctx.e = e_val;
@@ -36,7 +33,7 @@ pub export fn reduce(e_val: Word) Word {
             downLeft(&ctx);
         }
 
-        cycles += 1;
+        r7_reduce.cycles += 1;
         ctx.action = word.ACT_NONE;
 
         switch (ctx.e) {
@@ -135,7 +132,7 @@ pub export fn reduce(e_val: Word) Word {
             word.READVALS => io_handlers.handle_READVALS(&ctx),
 
             else => {
-                cycles -= 1;
+                r7_reduce.cycles -= 1;
                 if (abnormal(ctx.e)) {
                     word.printErr("\nBLACK HOLE\n", .{});
                     r7_reduce.outstats();
@@ -213,9 +210,6 @@ pub export fn reduce(e_val: Word) Word {
     }
 }
 pub const print = r7_reduce.print;
-pub extern var waiting: Word;
-pub extern var errtrap: Word;
-pub extern var s_out: ?*word.FILE;
 pub const reduce_badcase_error = r7_reduce.reduce_badcase_error;
 pub const reduce_conf_error = r7_reduce.reduce_conf_error;
 pub const conv_args = r7_lex.conv_args;

@@ -4,6 +4,8 @@ const main_clib = @import("../runtime/main_clib.zig");
 const main = @import("../main.zig");
 
 const compiler_state = @import("compiler_state.zig");
+const core_state = @import("../runtime/core_state.zig");
+const heap = @import("../runtime/heap.zig");
 const cs = &compiler_state.cs;
 const abi = struct {
     pub const printf = main_clib.printf;
@@ -846,12 +848,12 @@ pub export fn sayhere(h_val: Word, nl: Word) void {
         _ = word.print(" ", .{});
     }
     if (eq) {
-        if (main.errline == 0) {
-            main.errline = t(h_node);
+        if (core_state.errline == 0) {
+            core_state.errline = t(h_node);
         }
     } else {
-        if (main.errs == 0) {
-            main.errs = h_node;
+        if (core_state.errs == 0) {
+            core_state.errs = h_node;
         }
     }
 }
@@ -895,7 +897,7 @@ pub fn type_error1(x: Word) void {
 }
 
 pub fn type_error2(x: Word) void {
-    if (main.compiling != 0) {
+    if (core_state.compiling != 0) {
         return;
     }
     cs.TYPERRS += 1;
@@ -1120,10 +1122,10 @@ pub fn out_formal1(f: *word.FILE, x_in: Word) void {
             _ = (f).print("\"", .{});
         } else {
             _ = (f).print("[", .{});
-            while (x != main.nill and x != NIL) {
+            while (x != core_state.nill and x != NIL) {
                 out_pattern(f, h(x));
                 x = t(x);
-                if (x != main.nill and x != NIL) {
+                if (x != core_state.nill and x != NIL) {
                     _ = (f).print(",", .{});
                 }
             }
@@ -1594,7 +1596,7 @@ fn mcheckfbs() main.MiraError!void {
     if (cs.TYPERRS != 0) {
         return;
     }
-    ff = t(main.files);
+    ff = t(heap.files);
     while (ff != NIL) {
         formals = t(h(ff));
         while (formals != NIL) {
@@ -1650,7 +1652,7 @@ pub fn checkfbs() void {
         cs.NT = NIL;
         cs.R = NIL;
         _ = word.printErr("compilation abandoned\n", .{});
-        main.SYNERR = 1;
+        core_state.SYNERR = 1;
     }
     resetSubst();
 }
@@ -1956,7 +1958,7 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
                 type_error1(x);
             }
             if (a == undef_t) {
-                if (main.commandmode != 0) {
+                if (core_state.commandmode != 0) {
                     type_error2(x);
                 } else if (member(cs.ND, x) == 0) {
                     if (cs.lineptr != 0) {
@@ -2585,7 +2587,7 @@ pub export fn checktypes() void {
         if (main.rs.rfl != NIL) {
             readoption();
         }
-        var s = reverse(t(h(main.files)));
+        var s = reverse(t(h(heap.files)));
         while (s != NIL) {
             compDeps(h(s)) catch break :outer;
             s = t(s);
@@ -2601,7 +2603,7 @@ pub export fn checktypes() void {
         cs.NT = NIL;
         cs.R = NIL;
         _ = word.printErr("typecheck cannot proceed - compilation abandoned\n", .{});
-        main.SYNERR = 1;
+        core_state.SYNERR = 1;
         return;
     }
     if (main.rs.freeids != NIL) {

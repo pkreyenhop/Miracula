@@ -11,6 +11,8 @@ const r7_repl = @import("../driver/repl.zig");
 const r7_files = @import("../io/files.zig");
 const r7_big = @import("../runtime/big.zig");
 const main_clib = @import("../runtime/main_clib.zig");
+const core_state = @import("../runtime/core_state.zig");
+const reduce = @import("../runtime/reduce.zig");
 
 const Word = i64;
 const CMBASE: Word = 306;
@@ -44,16 +46,6 @@ var inprelude: bool = true;
 var sl: Word = 100;
 var pn_lim: Word = 200;
 var atnl: Word = 1;
-
-extern var files: Word;
-extern var SYNERR: Word;
-extern var compiling: c_int;
-extern var s_out: ?*word.FILE;
-extern var current_file: Word;
-extern var errs: Word;
-extern var errline: Word;
-
-extern var commandmode: Word;
 
 const make = heap.make;
 const mallocPanic = heap.mallocPanic;
@@ -355,8 +347,8 @@ fn getch() c_int {
         return '\n';
     }
     if (atnl != 0) {
-        if ((ls.line_no == 0 and commandmode == 0) or (main.rs.magic and ls.line_no == 1 and ls.litstack == NIL)) {
-            const is_lit = (ch == '>') or litname(get_fil(current_file));
+        if ((ls.line_no == 0 and core_state.commandmode == 0) or (main.rs.magic and ls.line_no == 1 and ls.litstack == NIL)) {
+            const is_lit = (ch == '>') or litname(get_fil(heap.current_file));
             literate = if (is_lit) 1 else 0;
             litmain = literate;
         }
@@ -389,7 +381,7 @@ fn getch() c_int {
         }
         atnl = 0;
         ls.col = lverge + literate;
-        if (commandmode == 0 and ch != main_clib.EOF) {
+        if (core_state.commandmode == 0 and ch != main_clib.EOF) {
             ls.line_no += 1;
         }
     }
@@ -635,7 +627,7 @@ inline fn tryCh(x: Word, y: c_int) ?c_int {
 }
 
 pub export fn yylex() c_int {
-    if (SYNERR != 0) {
+    if (core_state.SYNERR != 0) {
         return word.END;
     }
     layout();
@@ -685,7 +677,7 @@ pub export fn yylex() c_int {
         }
         return word.CONST;
     }
-    if (ls.c == '%' and commandmode == 0) {
+    if (ls.c == '%' and core_state.commandmode == 0) {
         return @intCast(directive());
     }
     if (ls.c == '\'') {
@@ -769,7 +761,7 @@ pub export fn yylex() c_int {
             litmain = 0;
             return word.END;
         }
-        current_file = t(h(ls.fileq));
+        heap.current_file = t(h(ls.fileq));
         prefix = h(ls.prefixstack);
         ls.prefixstack = t(ls.prefixstack);
         main.rs.echoing = h(ls.echostack);
@@ -796,7 +788,7 @@ pub export fn yylex() c_int {
                     ls.c = getch();
                     return word.GE;
                 }
-                if (ls.c == '%' and commandmode == 0) {
+                if (ls.c == '%' and core_state.commandmode == 0) {
                     return @intCast(directive());
                 }
                 if (word.isalpha(ls.c)) {
@@ -908,7 +900,7 @@ pub export fn yylex() c_int {
                 }
             }
             if (ls.c == '-') {
-                if (compiling == 0) {
+                if (core_state.compiling == 0) {
                     syntax("unexpected symbol $-\n");
                 } else {
                     ls.c = getch();
@@ -921,7 +913,7 @@ pub export fn yylex() c_int {
                 if (ls.c != '-') {
                     syntax("unexpected symbol $:\n");
                 } else {
-                    if (compiling == 0) {
+                    if (core_state.compiling == 0) {
                         syntax("unexpected symbol $:-\n");
                     } else {
                         ls.c = getch();
@@ -931,11 +923,11 @@ pub export fn yylex() c_int {
                 }
             }
             if (ls.c == '+') {
-                if (compiling == 0) {
+                if (core_state.compiling == 0) {
                     syntax("unexpected symbol $+\n");
                 } else {
                     ls.c = getch();
-                    if (commandmode != 0) {
+                    if (core_state.commandmode != 0) {
                         ls.yylval = ls.cook_stdin;
                     } else {
                         ls.yylval = make(CONS, readvals(0, 0), word.OFFSIDE);
@@ -944,7 +936,7 @@ pub export fn yylex() c_int {
                 }
             }
             if (ls.c == '$') {
-                if (ls.inlex != 2 and (commandmode == 0 or compiling == 0)) {
+                if (ls.inlex != 2 and (core_state.commandmode == 0 or core_state.compiling == 0)) {
                     syntax("unexpected symbol $$\n");
                 } else {
                     ls.c = getch();
@@ -980,11 +972,11 @@ pub export fn yylex() c_int {
 
 pub export fn layout() void {
     while (true) {
-        if (ls.c == ' ' or (ls.c == '\n' and commandmode == 0) or ls.c == '\t') {
+        if (ls.c == ' ' or (ls.c == '\n' and core_state.commandmode == 0) or ls.c == '\t') {
             ls.c = getch();
             continue;
         }
-        if (ls.c == main_clib.EOF and commandmode != 0) {
+        if (ls.c == main_clib.EOF and core_state.commandmode != 0) {
             ls.c = '\n';
             return;
         }
@@ -993,7 +985,7 @@ pub export fn layout() void {
             while (ls.c != '\n' and ls.c != main_clib.EOF) {
                 ls.c = getch();
             }
-            if (ls.c == main_clib.EOF and commandmode == 0) {
+            if (ls.c == main_clib.EOF and core_state.commandmode == 0) {
                 return;
             }
             ls.c = '\n';
@@ -1247,7 +1239,7 @@ fn identifier(s: c_int) c_int {
         return '_';
     }
     ls.yylval = name();
-    if (commandmode != 0 and main.rs.lastid == 0 and h(ls.yylval) != 0) {
+    if (core_state.commandmode != 0 and main.rs.lastid == 0 and h(ls.yylval) != 0) {
         if (t(h(ls.yylval)) != 0) {
             main.rs.lastid = ls.yylval;
         }
@@ -1296,14 +1288,14 @@ pub fn directive() Word {
         },
         'i' => {
             if (is("include") or is("_ i_ n_ c_ l_ u_ d_ e")) {
-                if (SYNERR == 0) {
+                if (core_state.SYNERR == 0) {
                     layout();
                     setlmargin();
                 }
                 if (pathname() == null) {
                     syntax("bad pathname after %include\n");
                 } else {
-                    ls.yylval = make(STRCONS, @intCast(@intFromPtr(addextn(1, ls.dicp))), fileinfo(@intCast(@intFromPtr(get_fil(current_file))), holdlin));
+                    ls.yylval = make(STRCONS, @intCast(@intFromPtr(addextn(1, ls.dicp))), fileinfo(@intCast(@intFromPtr(get_fil(heap.current_file))), holdlin));
                     _ = keep(ls.dicp);
                 }
                 return word.INCLUDE;
@@ -1321,9 +1313,9 @@ pub fn directive() Word {
                     ls.line_no = 0;
                     atnl = 1;
                     _ = keep(ls.dicp);
-                    current_file = make_fil(f.?, fm_time(f.?), 0, NIL);
-                    files = append1(files, cons(current_file, NIL));
-                    tp(h(ls.fileq)).* = current_file;
+                    heap.current_file = make_fil(f.?, fm_time(f.?), 0, NIL);
+                    heap.files = append1(heap.files, cons(heap.current_file, NIL));
+                    tp(h(ls.fileq)).* = heap.current_file;
                     main.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
                     const is_lit = (peekch() == '>') or litname(f.?);
                     literate = if (is_lit) 1 else 0;
@@ -1349,7 +1341,7 @@ pub fn directive() Word {
                     if (toomany) {
                         word.print("too many nested %insert directives (limit={})\n", .{ls.insertdepth});
                     } else {
-                        files = append1(files, cons(make_fil(f.?, 0, 0, NIL), NIL));
+                        heap.files = append1(heap.files, cons(make_fil(f.?, 0, 0, NIL), NIL));
                     }
                     acterror();
                 }
@@ -1777,33 +1769,33 @@ pub fn charclass() c_int {
 }
 
 pub export fn reset_lex() void {
-    if (commandmode == 0) {
-        if (errs == 0) {
-            errs = fileinfo(@intCast(@intFromPtr(get_fil(current_file))), ls.line_no);
+    if (core_state.commandmode == 0) {
+        if (core_state.errs == 0) {
+            core_state.errs = fileinfo(@intCast(@intFromPtr(get_fil(heap.current_file))), ls.line_no);
         }
-        const err_script_raw = @as(?[*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(errs)))))));
+        const err_script_raw = @as(?[*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(core_state.errs)))))));
         const err_script = err_script_raw orelse "test.m";
         const is_current = if (err_script_raw) |es|
             (if (main.rs.current_script) |cs| es == @as([*:0]const u8, @ptrCast(cs)) else false)
         else
             true;
-        if (t(errs) == 0 and is_current) {
+        if (t(core_state.errs) == 0 and is_current) {
             word.printErr("error occurs at end of ", .{});
         } else {
-            word.printErr("error found near line {} of ", .{t(errs)});
+            word.printErr("error found near line {} of ", .{t(core_state.errs)});
         }
         word.printErr("{s}file \"{s}\"\ncompilation abandoned\n", .{if (is_current) @as([*:0]const u8, "") else "%insert ", err_script});
         if (is_current) {
-            errline = if (t(errs) == 0) lastline else t(errs);
-            errs = 0;
+            core_state.errline = if (t(core_state.errs) == 0) lastline else t(core_state.errs);
+            core_state.errs = 0;
         } else {
             if (ls.linostack != NIL) {
                 while (t(ls.linostack) != NIL) {
                     ls.linostack = t(ls.linostack);
                 }
-                errline = h(ls.linostack);
+                core_state.errline = h(ls.linostack);
             } else {
-                errline = lastline;
+                core_state.errline = lastline;
             }
         }
     }
@@ -1811,7 +1803,7 @@ pub export fn reset_lex() void {
 }
 
 pub export fn reset_state() void {
-    if (commandmode != 0) {
+    if (core_state.commandmode != 0) {
         while (ls.c != '\n' and ls.c != main_clib.EOF) {
             if (main.rs.s_in) |sin| {
                 ls.c = main_clib.getc(sin);
@@ -1842,7 +1834,7 @@ pub export fn reset_state() void {
     ls.sreds = 0;
     ls.inlex = 0;
     ls.inexplist = 0;
-    commandmode = 0;
+    core_state.commandmode = 0;
     lverge = 0;
     ls.col = 0;
     ls.lmargin = 0;
@@ -1857,8 +1849,8 @@ pub export fn reset_state() void {
     ls.line_no = 0;
     litmain = 0;
     literate = 0;
-    errs = 0;
-    errline = 0;
+    core_state.errs = 0;
+    core_state.errline = 0;
 }
 
 export fn hash(input: [*:0]const u8) callconv(.c) c_int {

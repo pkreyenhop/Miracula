@@ -26,8 +26,8 @@ const make = heap.make;
 const math_error = r7_reduce.math_error;
 var logIBASE: f64 = 0;
 var log10IBASE: f64 = 0;
-export var b_rem: Word = 0;
-export var big_one: Word = 0;
+pub export var b_rem: Word = 0;
+pub export var big_one: Word = 0;
 
 inline fn getTag(x: Word) u8 {
     return heap.heap.getTag(x);

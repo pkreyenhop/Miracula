@@ -17,6 +17,8 @@ const r7_signals = @import("../io/signals.zig");
 const r7_lex = @import("../parser/lex.zig");
 const r7_heap = @import("../runtime/heap.zig");
 const r7_reduce = @import("../runtime/reduce.zig");
+const core_state = @import("../runtime/core_state.zig");
+const version = @import("../runtime/version.zig");
 const ls = &lex_state.ls;
 
 // State owned by reduce.zig / heap.zig — not yet accessible via @import.
@@ -46,8 +48,8 @@ pub export fn commandloop(initscript: [*:0]u8) void {
     if (abi.sigsetjmp(&main.rs.env, 1) == 0) {
         if (main.rs.magic) {
             main.undump(initscript);
-            if (main.files == NIL or main.cs.ND != NIL or main.id_val(main.rs.main_id) == word.UNDEF) {
-                if (main.files != NIL and main.cs.ND == NIL and main.id_val(main.rs.main_id) == word.UNDEF) {
+            if (r7_heap.files == NIL or main.cs.ND != NIL or main.id_val(main.rs.main_id) == word.UNDEF) {
+                if (r7_heap.files != NIL and main.cs.ND == NIL and main.id_val(main.rs.main_id) == word.UNDEF) {
                     word.printErr("{s}: main not defined\n", .{initscript});
                 }
                 main.fatal("mira: incorrect use of \"-exec\" flag\n", .{.{}});
@@ -198,17 +200,17 @@ pub export fn commandloop(initscript: [*:0]u8) void {
                 ls.c = word.EVAL;
                 main.rs.echoing = 0;
                 main.cs.polyshowerror = 0;
-                main.commandmode = 1;
+                core_state.commandmode = 1;
                 _ = parser_api.parseCurrent() catch {};
-                if (main.SYNERR != 0) {
-                    main.SYNERR = 0;
+                if (core_state.SYNERR != 0) {
+                    core_state.SYNERR = 0;
                 } else if (ls.c != '\n') {
                     word.print("syntax error\n", .{});
                     while (ls.c != '\n' and ls.c != abi.EOF) {
                         ls.c = abi.getchar();
                     }
                 }
-                main.commandmode = 0;
+                core_state.commandmode = 0;
                 main.rs.echoing = main.rs.verbosity & main.rs.listing;
             },
         }
@@ -248,10 +250,10 @@ pub export fn dieclean() void {
 }
 
 pub export fn fpe_error(sig: c_int) void {
-    if (main.compiling != 0) {
+    if (core_state.compiling != 0) {
         _ = signals(sig, @intFromPtr(&fpe_error));
         syntax("floating point number out of range\n");
-        main.SYNERR = 0;
+        core_state.SYNERR = 0;
         abi.siglongjmp(&main.rs.env, 1);
     } else {
         word.print("\nFLOATING POINT OVERFLOW\n", .{});
@@ -265,7 +267,7 @@ pub export fn obey(x_in: Word) void {
     const typ = main.type_of(x);
     x = main.codegen(x);
     if (main.cs.polyshowerror != 0) return;
-    main.compiling = 0;
+    core_state.compiling = 0;
     const list_t: Word = 4;
     const char_t: Word = 3;
     const islist = typ >= main.ATOMLIMIT and getTag(typ) == AP and h(typ) == list_t;
@@ -303,7 +305,7 @@ pub export fn evaluate_repl(x_in: Word) void {
     if (process() != 0) {
         // Child: evaluate and print, then exit (compiling=0 only here, parent unaffected).
         _ = signals(abi.SIGINT, @intFromPtr(&dieclean));
-        main.compiling = 0;
+        core_state.compiling = 0;
         resetgcstats();
         abi.output(out_val);
         _ = word.putchar('\n');
@@ -320,9 +322,9 @@ pub export fn reset() void {
     main.rs.s_in = main.getStdin();
     main.rs.echoing = 0;
     main.rs.listing = 0;
-    main.compiling = 0;
-    main.commandmode = 0;
-    main.SYNERR = 0;
+    core_state.compiling = 0;
+    core_state.commandmode = 0;
+    core_state.SYNERR = 0;
     main.rs.sigflag = 0;
     if (main.rs.unlinkme) |u| {
         _ = abi.unlink(u);
@@ -336,7 +338,7 @@ pub fn ed_warn() void {
 }
 
 pub fn announce() void {
-    word.print("Miranda release {s}", .{main.strvers(main.version)});
+    word.print("Miranda release {s}", .{main.strvers(version.version)});
     if (main.utf8test() != 0) {
         word.print(" (UTF-8)", .{});
     }
@@ -409,12 +411,12 @@ pub export fn parseline(t_val: Word, f: ?*word.FILE, fil: Word) Word {
         _ = abi.ungetc(ch, f);
         ls.c = word.VALUE;
         main.rs.echoing = 0;
-        main.commandmode = 1;
+        core_state.commandmode = 1;
         main.rs.s_in = f;
         _ = parser_api.parseCurrent() catch {};
         main.rs.s_in = main.getStdin();
-        if (main.SYNERR != 0) {
-            main.SYNERR = 0;
+        if (core_state.SYNERR != 0) {
+            core_state.SYNERR = 0;
             main.rs.lastexp = word.UNDEF;
         } else {
             t1 = main.type_of(main.rs.lastexp);

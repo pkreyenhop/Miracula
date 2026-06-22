@@ -11,6 +11,7 @@ const lex_state = @import("../parser/lex_state.zig");
 const r7_types = @import("types.zig");
 const r7_lex = @import("../parser/lex.zig");
 const r7_big = @import("../runtime/big.zig");
+const core_state = @import("../runtime/core_state.zig");
 const ls = &lex_state.ls;
 
 // Global variables defined/exported in parser/lex.zig
@@ -77,18 +78,18 @@ const yysterm_data = [_]?[*:0]const u8{
 pub export var yysterm = yysterm_data;
 
 pub export fn syntax(s: [*:0]const u8) void {
-    if (main.SYNERR != 0) return;
+    if (core_state.SYNERR != 0) return;
     if (main.rs.echoing != 0) {
         _ = word.printErr("\n", .{.{}});
     }
     _ = word.printErr("syntax error: {s}", .{.{s}});
-    main.SYNERR = 1;
+    core_state.SYNERR = 1;
     reset_lex();
 }
 
 pub export fn acterror() void {
-    if (main.SYNERR != 0) return;
-    main.SYNERR = 1;
+    if (core_state.SYNERR != 0) return;
+    core_state.SYNERR = 1;
     reset_lex();
 }
 
@@ -204,7 +205,7 @@ pub fn mira_setup() void {
     ls.common_stdin = abi.ap(word.READ, 0);
     ls.common_stdinb = abi.ap(word.READBIN, 0);
     ls.cook_stdin = abi.ap(abi.readvals(0, 0), word.OFFSIDE);
-    main.nill = main.cons(word.CONST, NIL);
+    core_state.nill = main.cons(word.CONST, NIL);
     main.rs.Void = abi.make_id(@constCast("()"));
     main.heap.tp(main.heap.h(main.rs.Void)).* = word.void_t;
     main.heap.tp(main.rs.Void).* = main.constructor(0, main.rs.Void);

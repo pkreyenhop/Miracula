@@ -8,6 +8,7 @@ const r7_reduce = @import("reducer/reduce.zig");
 const big = @import("big.zig");
 const lex = @import("../parser/lex.zig");
 const main_clib = @import("main_clib.zig");
+const core_state = @import("core_state.zig");
 
 const Word = i64;
 const NIL: Word = word.CMBASE + 138;
@@ -17,21 +18,12 @@ const FST = word.HD;
 const MAXDIGIT = 0x7fff;
 const SIGNBIT = 0x10000000;
 
-
-
-extern var compiling: c_int;
-extern var errs: Word;
-
-extern var nogcs: c_long;
-extern var claims: c_long;
-extern var cellcount: i64;
-
-export var stdinuse: Word = 0;
-export var outfilq: Word = NIL;
-export var waiting: Word = NIL;
-export var s_out: ?*word.FILE = null;
-export var errtrap: Word = 0;
-export var cycles: i64 = 0;
+pub export var stdinuse: Word = 0;
+pub export var outfilq: Word = NIL;
+pub export var waiting: Word = NIL;
+pub export var s_out: ?*word.FILE = null;
+pub export var errtrap: Word = 0;
+pub export var cycles: i64 = 0;
 
 const sto_char = heap.sto_char;
 extern fn fromUTF8(f: ?*word.FILE) Word;
@@ -367,9 +359,9 @@ pub export fn outstats() void {
     var buffer: main_clib.struct_tms = undefined;
     _ = main_clib.times(&buffer);
     word.printErr("||", .{});
-    word.printErr("reductions = {}, cells claimed = {}, ", .{cycles, cellcount + claims});
+    word.printErr("reductions = {}, cells claimed = {}, ", .{cycles, heap.cellcount + heap.claims});
     const clk_tck = @as(f64, @floatFromInt(main_clib.sysconf(word._SC_CLK_TCK)));
-    word.printErr("no of gc's = {}, cpu = {d:.2}\n", .{nogcs, @as(f64, @floatFromInt(buffer.tms_utime)) / clk_tck});
+    word.printErr("no of gc's = {}, cpu = {d:.2}\n", .{heap.nogcs, @as(f64, @floatFromInt(buffer.tms_utime)) / clk_tck});
 }
 
 pub export fn out_here(f: ?*word.FILE, h_val: Word, nl: c_int) void {
@@ -383,8 +375,8 @@ pub export fn out_here(f: ?*word.FILE, h_val: Word, nl: c_int) void {
     } else {
         _ = word.putc(' ', f.?);
     }
-    if (compiling != 0 and errs == 0) {
-        errs = h_val;
+    if (core_state.compiling != 0 and core_state.errs == 0) {
+        core_state.errs = h_val;
     }
 }
 

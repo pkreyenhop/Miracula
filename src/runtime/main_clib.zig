@@ -8,6 +8,7 @@ const reduce_mod = @import("reduce.zig");
 const repl_mod = @import("../driver/repl.zig");
 const trans_mod = @import("../compiler/trans.zig");
 const types_mod = @import("../compiler/types.zig");
+const combinator = @import("combinator.zig");
 
 pub var env_slice: [:null]const ?[*:0]const u8 = &[_:null]?[*:0]const u8{};
 
@@ -165,7 +166,6 @@ pub const make_id = lex_mod.make_id;
 pub const mallocfail = heap_mod.mallocfail;
 pub const setdiff = types_mod.setdiff;
 pub const make_pn = lex_mod.make_pn;
-pub extern var cmbnms: [*][*:0]u8;
 pub fn make_typ(a: Word, shf: Word, class: Word, info: Word) Word {
     return cons(cons(a, shf), cons(class, info));
 }

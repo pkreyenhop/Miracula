@@ -18,6 +18,7 @@ const big = @import("../runtime/big.zig");
 const lex = @import("lex.zig");
 const reduce_mod = @import("../runtime/reduce.zig");
 const heap = @import("../runtime/heap.zig");
+const core_state = @import("../runtime/core_state.zig");
 
 const Word = word.Word;
 
@@ -104,10 +105,6 @@ fn bigscanZ(alloc: Allocator, text: []const u8) Word {
 // Runtime globals
 // ---------------------------------------------------------------------------
 
-extern var big_one: Word;
-extern var current_file: Word;
-extern var nill: Word;
-
 // ---------------------------------------------------------------------------
 // Type constants (from data.h — replicated so we don't need the macros)
 // ---------------------------------------------------------------------------
@@ -124,7 +121,7 @@ const void_t: Word = 7; // #define void_t  7
 
 fn makeHere(line: u32) Word {
     // get_fil(current_file) = (char*)hd(hd(hd(current_file)))
-    const fil_name = h(h(h(current_file)));
+    const fil_name = h(h(h(heap.current_file)));
     return heap.make(word.FILEINFO, fil_name, @intCast(line));
 }
 
@@ -339,7 +336,7 @@ fn codegenString(s: []const u8) Word {
 fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
     return switch (e) {
         // `[]` in a pattern → nill (the empty list pattern atom).
-        .list_nil => nill,
+        .list_nil => core_state.nill,
 
         // Literal constants in patterns must be tagged with `cons(CONST, value)`
         // so the Miranda runtime distinguishes them from binding positions.
@@ -359,7 +356,7 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
 
         // Non-empty list literal patterns: cons-chain terminated with nill.
         .list => |items| blk: {
-            var result: Word = nill;
+            var result: Word = core_state.nill;
             var i: usize = items.len;
             while (i > 0) {
                 i -= 1;
@@ -521,9 +518,9 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
                 }
             } else {
                 if (r.to) |to_ptr| {
-                    break :blk ap3(word.STEPUNTIL, big_one, codegenExpr(alloc, to_ptr.*), from_w);
+                    break :blk ap3(word.STEPUNTIL, big.big_one, codegenExpr(alloc, to_ptr.*), from_w);
                 } else {
-                    break :blk ap2(word.STEP, big_one, from_w);
+                    break :blk ap2(word.STEP, big.big_one, from_w);
                 }
             }
         },

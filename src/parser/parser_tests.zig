@@ -10,11 +10,10 @@ const lex_state = @import("lex_state.zig");
 const r7_lex = @import("lex.zig");
 const main_clib = @import("../runtime/main_clib.zig");
 const word = @import("../runtime/word.zig");
+const core_state = @import("../runtime/core_state.zig");
 const ls = &lex_state.ls;
 
 const make_id = r7_lex.make_id;
-extern var current_file: word.Word;
-extern var files: word.Word;
 const reset_pns = r7_lex.reset_pns;
 fn makeFilRecord(name: [*:0]const u8) word.Word {
     const name_word = @as(word.Word, @intCast(@intFromPtr(name)));
@@ -25,19 +24,18 @@ fn makeFilRecord(name: [*:0]const u8) word.Word {
 }
 
 const reset_state = r7_lex.reset_state;
-extern var SYNERR: word.Word;
 
 fn resetLexerState() void {
     reset_state();
     setupheap();
     setupdic();
     reset_pns();
-    current_file = makeFilRecord("test.m");
-    files = heap.make(word.CONS, current_file, word.NIL);
+    heap.current_file = makeFilRecord("test.m");
+    heap.files = heap.make(word.CONS, heap.current_file, word.NIL);
     ls.col = 0;
     ls.line_no = 0;
     ls.c = ' ';
-    SYNERR = 0;
+    core_state.SYNERR = 0;
 }
 
 var initialized = false;
@@ -46,8 +44,8 @@ fn ensureInitialized() void {
         setupheap();
         setupdic();
         reset_pns();
-        current_file = makeFilRecord("test.m");
-        files = heap.make(word.CONS, current_file, word.NIL);
+        heap.current_file = makeFilRecord("test.m");
+        heap.files = heap.make(word.CONS, heap.current_file, word.NIL);
         initialized = true;
     }
 }

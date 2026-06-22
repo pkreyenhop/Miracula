@@ -10,6 +10,10 @@ const h = main.heap.h;
 const t = main.heap.t;
 
 const lex_state = @import("../parser/lex_state.zig");
+const version = @import("../runtime/version.zig");
+const reduce = @import("../runtime/reduce.zig");
+const heap = @import("../runtime/heap.zig");
+const core_state = @import("../runtime/core_state.zig");
 const ls = &lex_state.ls;
 
 inline fn getTag(x: Word) u8 {
@@ -198,7 +202,7 @@ pub export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
     }
 
     if (badlib) {
-        word.printErr("fatal error: miralib version {s} not found\n", .{main.strvers(@intCast(main.version))});
+        word.printErr("fatal error: miralib version {s} not found\n", .{main.strvers(@intCast(version.version))});
         main.libfails();
         abi.exit(1);
     }
@@ -239,7 +243,7 @@ pub export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
 
     abi.setupdic();
     main.rs.s_in = main.getStdin();
-    main.s_out = main.getStdout();
+    reduce.s_out = main.getStdout();
     main.rs.miralib = main.mkabsolute(main.rs.miralib.?);
 
     if (manonly != 0) {
@@ -259,21 +263,21 @@ pub export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
         main.announce();
     }
 
-    main.files = NIL;
+    heap.files = NIL;
     main.undump(@as([*:0]const u8, @ptrCast(&main.rs.PRELUDE)));
     main.rs.okprel = true;
-    abi.mkprivate(main.fil_defs(main.heap.h(main.files)));
-    main.files = NIL;
+    abi.mkprivate(main.fil_defs(main.heap.h(heap.files)));
+    heap.files = NIL;
 
     if (!main.rs.nostdenv) {
         main.undump(@as([*:0]const u8, @ptrCast(&main.rs.STDENV)));
-        while (main.files != NIL) {
-            main.rs.primenv = main.alfasort(abi.append1(main.rs.primenv, main.fil_defs(main.heap.h(main.files))));
-            main.files = main.heap.t(main.files);
+        while (heap.files != NIL) {
+            main.rs.primenv = main.alfasort(abi.append1(main.rs.primenv, main.fil_defs(main.heap.h(heap.files))));
+            heap.files = main.heap.t(heap.files);
         }
         main.rs.primenv = main.alfasort(main.rs.primenv);
         main.cs.newtyps = NIL;
-        main.files = NIL;
+        heap.files = NIL;
     }
 
     if (!main.rs.magic) {
@@ -295,7 +299,7 @@ pub export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 _ = abi.keep(ls.dicp);
             }
             main.undump(s);
-            if (main.files == NIL or main.cs.ND != NIL) {
+            if (heap.files == NIL or main.cs.ND != NIL) {
                 continue;
             }
             if (arg_count != 1) {
@@ -304,7 +308,7 @@ pub export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
             if (main.rs.exports != NIL) {
                 x = main.rs.exports;
             } else {
-                var f = main.files;
+                var f = heap.files;
                 while (f != NIL) : (f = main.heap.t(f)) {
                     x = abi.append1(main.fil_defs(main.heap.h(f)), x);
                 }
@@ -351,7 +355,7 @@ pub export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                     _ = abi.keep(ls.dicp);
                 }
                 main.undump(s);
-                var f = if (main.files == NIL) main.rs.oldfiles else main.files;
+                var f = if (heap.files == NIL) main.rs.oldfiles else heap.files;
                 while (f != NIL) : (f = main.heap.t(f)) {
                     const filename_str = main.get_fil(main.heap.h(f)).?;
                     if (abi.member(x, @intCast(@intFromPtr(filename_str))) == 0) {
@@ -374,7 +378,7 @@ pub export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
                 _ = abi.keep(ls.dicp);
             }
             main.undump(s);
-            if (main.cs.ND != NIL or (main.files == NIL and main.rs.oldfiles != NIL)) {
+            if (main.cs.ND != NIL or (heap.files == NIL and main.rs.oldfiles != NIL)) {
                 if (main.rs.make_status == 1) {
                     main.rs.make_status = 0;
                 }
@@ -448,27 +452,27 @@ pub fn rc_read(rcfile: [*:0]const u8) Word {
     var res: Word = 0;
     f = word.fopen(rcfile, "r");
     if (f == null) return 0;
-    main.loading = 1;
+    core_state.loading = 1;
     res = abi.load_script(f.?, @constCast(rcfile), NIL, NIL, 0);
     _ = word.fclose(f.?);
     if (main.cs.BAD_DUMP != 0) {
         main.unload();
         main.cs.CLASHES = NIL;
-        main.stackp = main.dstack;
-        main.loading = 0;
+        heap.stackp = heap.dstack;
+        core_state.loading = 0;
         return 0;
     }
     if (main.cs.CLASHES != NIL) {
         main.unload();
-        main.loading = 0;
+        core_state.loading = 0;
         return 0;
     }
     if (main.src_update() != 0) {
         main.loadfile(rcfile);
     }
-    main.loading = 0;
-    if (main.cs.ND != NIL or main.files == NIL) return 0;
-    x = main.fil_defs(h(main.files));
+    core_state.loading = 0;
+    if (main.cs.ND != NIL or heap.files == NIL) return 0;
+    x = main.fil_defs(h(heap.files));
     while (x != NIL) : (x = t(x)) {
         if (main.id_type(h(x)) == word.synonym_t) {
             main.heap.tp(main.t_info(h(x))).* = main.dump.fixtype(main.t_info(h(x)), h(x));
@@ -486,7 +490,7 @@ pub fn rc_write() void {
     f = word.fopen(&main.rs.home_rc, "w");
     if (f == null) return;
     abi.setprefix(@ptrCast(&main.rs.home_rc));
-    abi.dump_script(main.files, f.?);
+    abi.dump_script(heap.files, f.?);
     _ = word.fclose(f.?);
 }
 
@@ -503,7 +507,7 @@ pub fn checkversion(m: [*:0]const u8) c_int {
     var r: c_int = 0;
     if (f != null) {
         if (abi.fscanf(f, "%u", .{&v1}) == 1) {
-            r = if (v1 == main.version) 1 else 0;
+            r = if (v1 == version.version) 1 else 0;
             read_ok = true;
         }
         _ = word.fclose(f);
@@ -535,8 +539,8 @@ pub fn strvers(v: c_int) [*:0]const u8 {
 }
 
 pub fn v_info(full: c_int) void {
-    word.print("{s} last revised {s}\n", .{strvers(main.version), main.vdate});
+    word.print("{s} last revised {s}\n", .{strvers(version.version), version.vdate});
     if (full == 0) return;
-    word.print("{s}", .{main.host});
+    word.print("{s}", .{version.host});
     word.print("XVERSION {}\n", .{@as(c_uint, @intCast(word.XVERSION))});
 }

@@ -1,6 +1,6 @@
 // Combinator names generated from the historical gencdecs output.
 
-export var cmbnms: [142]?[*:0]const u8 = .{
+pub export var cmbnms: [142]?[*:0]const u8 = .{
     "S",
     "K",
     "Y",

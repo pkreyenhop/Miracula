@@ -3,6 +3,8 @@ const word = @import("../runtime/word.zig");
 const main = @import("../main.zig");
 const abi = @import("../runtime/main_clib.zig");
 const lex_state = @import("../parser/lex_state.zig");
+const heap = @import("../runtime/heap.zig");
+const core_state = @import("../runtime/core_state.zig");
 const ls = &lex_state.ls;
 
 const Word = main.Word;
@@ -40,7 +42,7 @@ pub fn fixexports() void {
         while (e != NIL) : (e = t(e)) {
             internals = main.cons(privatise(h(h(e))), internals);
         }
-        f = t(main.files);
+        f = t(heap.files);
         while (f != NIL) : (f = t(f)) {
             var e_def = main.fil_defs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
@@ -50,7 +52,7 @@ pub fn fixexports() void {
             }
         }
     } else {
-        f = main.files;
+        f = heap.files;
         while (f != NIL) : (f = t(f)) {
             var e_def = main.fil_defs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
@@ -278,7 +280,7 @@ pub fn undump(t_val: [*:0]const u8) void {
     }
 
     _ = word.strcpy(&obf, t_val);
-    _ = word.strcpy(obf[@intCast(flen - 1)..].ptr, main.obsuffix);
+    _ = word.strcpy(obf[@intCast(flen - 1)..].ptr, core_state.obsuffix);
     t2 = main.fm_time(@as([*:0]const u8, @ptrCast(&obf)));
     if (t2 != 0 and t1 == 0) {
         t2 = 0;
@@ -297,7 +299,7 @@ pub fn undump(t_val: [*:0]const u8) void {
     }
 
     main.rs.current_script = @constCast(t_val);
-    main.loading = 1;
+    core_state.loading = 1;
     main.rs.oldfiles = NIL;
     main.unload();
 
@@ -306,14 +308,14 @@ pub fn undump(t_val: [*:0]const u8) void {
         oldsig = main.signals(abi.SIGINT, @intFromPtr(&sigdefer));
     }
 
-    main.files = abi.load_script(f.?, @constCast(t_val), NIL, NIL, if (!main.rs.making and main.rs.initialising == 0) 1 else 0);
+    heap.files = abi.load_script(f.?, @constCast(t_val), NIL, NIL, if (!main.rs.making and main.rs.initialising == 0) 1 else 0);
     _ = word.fclose(f.?);
 
     if (main.cs.BAD_DUMP != 0) {
         _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
         main.unload();
         main.cs.CLASHES = NIL;
-        main.stackp = main.dstack;
+        heap.stackp = heap.dstack;
         word.print("warning: {s} contains incorrect data (file removed)\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
         if (main.cs.BAD_DUMP == -1) {
             word.print("(unrecognised dump format)\n", .{});
@@ -341,19 +343,19 @@ pub fn undump(t_val: [*:0]const u8) void {
             abi.printlist(@constCast("due to name clashes: "), main.alfasort(main.cs.CLASHES));
         }
         main.unload();
-        main.loading = 0;
+        core_state.loading = 0;
         return;
     }
 
     if (main.cs.BAD_DUMP != 0 or main.src_update() != 0) {
         main.loadfile(t_val);
     } else if (main.rs.initialising != 0) {
-        if (main.cs.ND != NIL or main.files == NIL) {
+        if (main.cs.ND != NIL or heap.files == NIL) {
             main.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
         }
     } else {
         if (main.rs.verbosity != 0 or main.rs.magic or main.rs.mkexports) {
-            if (main.files == NIL) {
+            if (heap.files == NIL) {
                 word.print("{s} contains syntax error\n", .{std.mem.span(t_val)});
             } else {
                 if (main.cs.ND != NIL) {
@@ -365,10 +367,10 @@ pub fn undump(t_val: [*:0]const u8) void {
         }
     }
 
-    if (main.files != NIL and !main.rs.making and main.rs.initialising == 0) {
+    if (heap.files != NIL and !main.rs.making and main.rs.initialising == 0) {
         unfixexports();
     }
-    main.loading = 0;
+    core_state.loading = 0;
 }
 
 /// Writes a binary dump of the current heap state to the .mx file corresponding to
@@ -379,7 +381,7 @@ pub fn makedump() void {
     var f: ?*word.FILE = null;
     _ = word.strcpy(obf, main.rs.current_script.?);
     const len = word.strlen(obf);
-    _ = word.strcpy(obf[len - 1 ..].ptr, main.obsuffix);
+    _ = word.strcpy(obf[len - 1 ..].ptr, core_state.obsuffix);
     f = word.fopen(obf, "w");
     if (f == null) {
         word.print("WARNING: CANNOT WRITE TO {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(obf)))});
@@ -393,7 +395,7 @@ pub fn makedump() void {
     }
     main.rs.unlinkme = @ptrCast(obf);
     abi.setprefix(main.rs.current_script.?);
-    abi.dump_script(main.files, f.?);
+    abi.dump_script(heap.files, f.?);
     main.rs.unlinkme = null;
     _ = word.fclose(f.?);
 }

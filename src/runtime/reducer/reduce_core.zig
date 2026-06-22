@@ -13,11 +13,6 @@ pub const ReductionCtx = extern struct {
 
 // Extern globals referenced by reducer helpers
 
-pub extern var stdinuse: Word;
-pub extern var waiting: Word;
-pub extern var errtrap: Word;
-pub extern var s_out: ?*word.FILE;
-
 pub const print = reduce_mod.print;
 pub const reduce_badcase_error = reduce_mod.reduce_badcase_error;
 pub const reduce_conf_error = reduce_mod.reduce_conf_error;

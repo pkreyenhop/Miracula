@@ -22,6 +22,9 @@ const r7_signals = @import("io/signals.zig");
 const r7_lex = @import("parser/lex.zig");
 const r7_big = @import("runtime/big.zig");
 const r7_heap = @import("runtime/heap.zig");
+const reduce = @import("runtime/reduce.zig");
+const version = @import("runtime/version.zig");
+const core_state = @import("runtime/core_state.zig");
 pub const MiraError = errors_mod.MiraError;
 /// Print a diagnostic to stderr and exit(1). See `errors.fatal`.
 pub const fatal = errors_mod.fatal;
@@ -40,31 +43,10 @@ pub const rs: *RuntimeState = &rt.rs;
 
 // Global state variables (TYPE B: defined in other modules, re-exported here)
 
-
-pub extern var s_out: ?*abi.FILE;
-pub extern var dstack: ?[*]Word;
-pub extern var stackp: ?[*]Word;
-
-pub extern var version: c_int;
-pub extern var vdate: [*:0]const u8;
-pub extern var host: [*:0]const u8;
-
 // Stuck vars now live in core_state.zig; re-declared here as extern var so
 // callers using main.X still compile without modification.
-pub extern var nill: Word;
-pub extern var loading: c_int;
-pub extern var compiling: c_int;
-pub extern var errs: Word;
-pub extern var errline: Word;
-pub extern var obsuffix: [*:0]const u8;
-pub extern var SYNERR: Word;
-pub extern var commandmode: Word;
 
 pub const EDITOR: [*:0]const u8 = "vi +!";
-
-pub extern var files: Word;
-pub extern var current_file: Word;
-extern var collecting: Word;
 
 // Re-export compiler_state and cs pointer to singleton
 pub const compiler_state = @import("compiler/compiler_state.zig");

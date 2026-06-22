@@ -13,6 +13,8 @@ inline fn getTag(x: Word) u8 {
 
 const lex_state = @import("../parser/lex_state.zig");
 const r7_lex = @import("../parser/lex.zig");
+const core_state = @import("../runtime/core_state.zig");
+const heap = @import("../runtime/heap.zig");
 const ls = &lex_state.ls;
 
 const token = r7_lex.token;
@@ -237,7 +239,7 @@ pub fn command() void {
                         main.filecp(mf.?, t_val.?);
                     }
                 }
-                const err_line_num: c_int = if (word.strcmp(t_val.?, main.rs.current_script.?) == 0) @intCast(main.errline) else if (main.errs != 0 and word.strcmp(t_val.?, @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(main.errs)))))) == 0) @intCast(main.heap.t(main.errs)) else @intCast(abi.geterrlin(t_val.?));
+                const err_line_num: c_int = if (word.strcmp(t_val.?, main.rs.current_script.?) == 0) @intCast(core_state.errline) else if (core_state.errs != 0 and word.strcmp(t_val.?, @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(core_state.errs)))))) == 0) @intCast(main.heap.t(core_state.errs)) else @intCast(abi.geterrlin(t_val.?));
                 editfile(t_val.?, err_line_num);
                 return;
             }
@@ -289,11 +291,11 @@ pub fn command() void {
                     t_val = null;
                 }
                 if (t_val != null) {
-                    main.errline = 0;
-                    main.errs = 0;
+                    core_state.errline = 0;
+                    core_state.errs = 0;
                 }
                 if (t_val != null) {
-                    if (word.strcmp(t_val.?, main.rs.current_script.?) != 0 or (main.files == NIL and abi.okdump(t_val.?) != 0)) {
+                    if (word.strcmp(t_val.?, main.rs.current_script.?) != 0 or (heap.files == NIL and abi.okdump(t_val.?) != 0)) {
                         main.cs.CLASHES = NIL;
                         main.undump(t_val.?);
                         if (main.cs.CLASHES != NIL) {
@@ -303,13 +305,13 @@ pub fn command() void {
                         main.loadfile(t_val.?);
                     }
                 } else {
-                    word.print("{s}{s}\n", .{main.rs.current_script.?, @as([*:0]const u8, if (main.files == NIL) " (not loaded)" else "")});
+                    word.print("{s}{s}\n", .{main.rs.current_script.?, @as([*:0]const u8, if (heap.files == NIL) " (not loaded)" else "")});
                 }
                 return;
             }
             if (is("files")) {
                 if (abi.getchar() != '\n') return;
-                var f = main.files;
+                var f = heap.files;
                 while (f != NIL) : (f = main.heap.t(f)) {
                     word.print("({s},{},{})", .{main.get_fil(main.heap.h(f)).?, main.fil_time(main.heap.h(f)), main.fil_share(main.heap.h(f))});
                     abi.printlist(@constCast(""), main.fil_defs(main.heap.h(f)));
@@ -331,7 +333,7 @@ pub fn command() void {
                                 }
                             }
                         }
-                        var ff = main.files;
+                        var ff = heap.files;
                         while (ff != NIL) : (ff = main.heap.t(ff)) {
                             var y_def = main.fil_defs(main.heap.h(ff));
                             while (y_def != NIL) : (y_def = main.heap.t(y_def)) {
@@ -666,12 +668,12 @@ pub fn allnamescom() void {
     var z: Word = 0;
     leftist = false;
     namescom(main.make_fil(if (main.rs.nostdenv) null else @as([*:0]const u8, @ptrCast(&main.rs.STDENV)), 0, 0, main.rs.primenv));
-    if (main.files == NIL) return;
-    s = main.heap.t(main.files);
+    if (heap.files == NIL) return;
+    s = main.heap.t(heap.files);
     while (s != NIL) : (s = main.heap.t(s)) {
         namescom(main.heap.h(s));
     }
-    namescom(main.heap.h(main.files));
+    namescom(main.heap.h(heap.files));
     main.rs.sorted = 1;
 
     while (x != NIL and main.id_type(main.heap.h(x)) == word.undef_t) {

@@ -5,6 +5,7 @@ const abi = @import("../runtime/main_clib.zig");
 const platform = @import("platform.zig");
 
 const lex_state = @import("../parser/lex_state.zig");
+const core_state = @import("../runtime/core_state.zig");
 const ls = &lex_state.ls;
 
 const Word = main.Word;
@@ -96,7 +97,7 @@ pub export fn unlinkx(t_path: [*:0]const u8) void {
 
     @memcpy(obf_buf[0 .. len - 1], t_slice[0 .. len - 1]);
 
-    const obsuffix_slice = std.mem.span(main.obsuffix);
+    const obsuffix_slice = std.mem.span(core_state.obsuffix);
     @memcpy(obf_buf[len - 1 .. len - 1 + obsuffix_slice.len], obsuffix_slice);
     obf_buf[len - 1 + obsuffix_slice.len] = 0;
 
