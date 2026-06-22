@@ -569,7 +569,7 @@ fn setErrnoDom() void {
     platform.setErrno(@intCast(@intFromEnum(std.posix.E.DOM)));
 }
 
-export fn bigscan(p: [*:0]const u8) Word {
+pub export fn bigscan(p: [*:0]const u8) Word {
     var cursor: usize = 0;
     var s = false;
     const r = make(INT, 0, 0);

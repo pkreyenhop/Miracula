@@ -602,7 +602,7 @@ export fn force(x_val: Word) void {
     }
 }
 
-export fn head(x_val: Word) Word {
+pub export fn head(x_val: Word) Word {
     var x = x_val;
     while (getTag(x) == word.AP) {
         x = h(x);

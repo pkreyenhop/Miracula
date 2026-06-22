@@ -12,6 +12,12 @@ const abi = @import("../runtime/c_abi.zig");
 const main = @import("../main.zig");
 const lex_state = @import("lex_state.zig");
 const ls = &lex_state.ls;
+// Cross-module functions via direct @import (R7.3 — eliminate extern-fn linker decls).
+const trans = @import("../compiler/trans.zig");
+const types_mod = @import("../compiler/types.zig");
+const big = @import("../runtime/big.zig");
+const lex = @import("lex.zig");
+const reduce_mod = @import("../runtime/reduce.zig");
 const heap = @import("../runtime/heap.zig");
 
 const Word = abi.word;
@@ -71,24 +77,24 @@ inline fn mktcons(x: Word, y: Word) Word {
 // C function externs
 // ---------------------------------------------------------------------------
 
-extern fn genlhs(x: Word) Word;
-extern fn irrefutable(x: Word) c_int;
-extern fn compzf(e: Word, qq: Word, diag: Word) Word;
-extern fn block(defs: Word, e: Word, keep: Word) Word;
-extern fn declare(x: Word, e: Word) void;
-extern fn specify(x: Word, t_word: Word, h_word: Word) void;
-extern fn decl_type(tf: Word, type_class: Word, info: Word, here: Word) void;
-extern fn declconstr(x: Word, n: Word, t_word: Word) Word;
-extern fn redtvars(t_word: Word) Word;
-extern fn bigscan(p: [*:0]const u8) Word;
+const genlhs = trans.genlhs;
+const irrefutable = trans.irrefutable;
+const compzf = trans.compzf;
+const block = trans.block;
+const declare = trans.declare;
+const specify = trans.specify;
+const decl_type = trans.decl_type;
+const declconstr = trans.declconstr;
+const redtvars = types_mod.redtvars;
+const bigscan = big.bigscan;
 const sto_dbl = heap.sto_dbl;
 const sto_id = heap.sto_id;
-extern fn keep(p: [*:0]u8) [*:0]u8;
-extern fn findid(p: [*:0]const u8) Word;
-extern fn make_id(p: [*:0]const u8) Word;
+const keep = lex.keep;
+const findid = lex.findid;
+const make_id = lex.make_id;
 const sto_char = heap.sto_char;
-extern fn head(x: Word) Word;
-extern fn isconstrname(s: [*:0]const u8) c_int;
+const head = reduce_mod.head;
+const isconstrname = lex.isconstrname;
 
 fn bigscanZ(alloc: Allocator, text: []const u8) Word {
     const z = alloc.dupeZ(u8, text) catch return word.NIL;

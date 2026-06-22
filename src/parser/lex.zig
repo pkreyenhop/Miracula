@@ -1391,7 +1391,7 @@ fn kollect(f: fn (c_int) callconv(.c) c_int) void {
     ovflocheck();
 }
 
-export fn keep(p: [*:0]u8) [*:0]u8 {
+pub export fn keep(p: [*:0]u8) [*:0]u8 {
     if (p == ls.dicp) {
         ls.dicp = ls.dicq;
     } else {
@@ -1600,14 +1600,14 @@ export fn name() Word {
     return q;
 }
 
-export fn make_id(n: [*:0]const u8) Word {
+pub export fn make_id(n: [*:0]const u8) Word {
     const h_idx = @as(usize, @intCast(hash(n)));
     const x = sto_id(if (inprelude) keep(@constCast(n)) else n);
     ls.namebucket[h_idx] = cons(x, ls.namebucket[h_idx]);
     return x;
 }
 
-export fn findid(n: [*:0]const u8) Word {
+pub export fn findid(n: [*:0]const u8) Word {
     const h_idx = @as(usize, @intCast(hash(n)));
     var q = ls.namebucket[h_idx];
     while (q != 0 and !std.mem.eql(u8, std.mem.span(n), std.mem.span(get_id(h(q))))) {

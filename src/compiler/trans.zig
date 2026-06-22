@@ -415,7 +415,7 @@ export fn mktuple(input_x: Word) Word {
     return if (x == NIL) y else if (y == NIL) x else pair(x, y);
 }
 
-export fn irrefutable(x: Word) Word {
+pub export fn irrefutable(x: Word) Word {
     if (word.isAtom(x)) {
         return 0;
     }
@@ -704,7 +704,7 @@ pub fn new_mklazy(d: Word) Word {
     return d;
 }
 
-export fn compzf(input_e: Word, input_qq: Word, diag: Word) Word {
+pub export fn compzf(input_e: Word, input_qq: Word, diag: Word) Word {
     var e = input_e;
     var qq = input_qq;
     var hold: Word = NIL;
@@ -787,7 +787,7 @@ pub fn transtypeid(x: Word) Word {
     return x;
 }
 
-export fn genlhs(x: Word) Word {
+pub export fn genlhs(x: Word) Word {
     switch (getTag(x)) {
         AP => {
             if (getTag(h(x)) == AP and h(h(x)) == PLUS and isnat(t(x)) != 0) {
@@ -1074,7 +1074,7 @@ pub fn nameclash(x: Word) void {
     acterror();
 }
 
-export fn declconstr(x: Word, n: Word, constr_type: Word) void {
+pub export fn declconstr(x: Word, n: Word, constr_type: Word) void {
     setIdVal(x, constructor(n, x));
     if ((n >> 16) != 0) {
         syntax("algebraic type has too many constructors\n");
@@ -1089,7 +1089,7 @@ export fn declconstr(x: Word, n: Word, constr_type: Word) void {
     setIdType(x, constr_type);
 }
 
-export fn specify(input_x: Word, spec_type: Word, here: Word) void {
+pub export fn specify(input_x: Word, spec_type: Word, here: Word) void {
     var x = input_x;
     if (getTag(x) != ID and spec_type != type_t) {
         main.errs = here;
@@ -1145,7 +1145,7 @@ fn arityCheck(type_name: Word, arity: Word, here: Word) void {
     }
 }
 
-export fn decl_type(input_tf: Word, type_class: Word, info: Word, here: Word) void {
+pub export fn decl_type(input_tf: Word, type_class: Word, info: Word, here: Word) void {
     var tf = input_tf;
     var arity: Word = 0;
     while (getTag(tf) == AP) {
@@ -1207,7 +1207,7 @@ fn decl1(x: Word, e: Word) void {
     }
 }
 
-export fn declare(x: Word, e: Word) void {
+pub export fn declare(x: Word, e: Word) void {
     if (getTag(x) == ID and !isConstructor(x)) {
         decl1(x, e);
         return;
@@ -1239,7 +1239,7 @@ export fn declare(x: Word, e: Word) void {
     }
 }
 
-export fn block(input_defs: Word, input_e: Word, keep: Word) Word {
+pub export fn block(input_defs: Word, input_e: Word, keep: Word) Word {
     var defs = input_defs;
     var e = input_e;
     var ids: Word = NIL;
