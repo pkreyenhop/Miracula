@@ -277,7 +277,7 @@ trampoline*, not literally none.
 
 | Metric | R0 baseline | Now | Target |
 |--------|-------------|-----|--------|
-| `extern fn` declarations | 322 | 322 | 0 |
+| `extern fn` declarations | 322 | **272** *(R7.3 in progress)* | 0 (minus genuine cycle-breakers) |
 | `extern var` declarations | 94 | **60** | 0 |
 | `clib.`/`c.` call sites | 2821 | **0** | 0 |
 | `callconv(.c)` | 12 | 12 | 1 (signal trampoline) |
