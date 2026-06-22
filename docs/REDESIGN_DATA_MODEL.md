@@ -2,361 +2,305 @@
 
 > File name note: created as `docs/REDESIGN_DATA_MODEL.md` to match the existing
 > `IDIOMATIC_ZIG_PLAN.md` / `ARCHITECTURE.md` / `ZIG_MIGRATION.md` convention.
+>
+> **Rewritten 2026-06-23** after the R7.3 / R8.1 work surfaced findings that materially
+> change the remaining plan (see *Findings that revise the original plan*). The original
+> linear R0→R8 plan is preserved in condensed form under *Completed phases* and *Progress log*.
 
 ## Objective
 
 Replace the inherited **C-heap data model** with an idiomatic Zig one, and in doing so
-eliminate the five C-isms that the [IDIOMATIC_ZIG_PLAN](IDIOMATIC_ZIG_PLAN.md) found to be
-*inherent to the current model* (and therefore un-removable without this redesign):
+eliminate the C-isms that the [IDIOMATIC_ZIG_PLAN](IDIOMATIC_ZIG_PLAN.md) found to be *inherent
+to the current model*:
 
 1. the **C-heap data model** — `Word = c_long` conflated as cell-handle / atom / int / char,
    stored in parallel arrays `hd[x*2]`, `tl[x*2]`, `tag[x]`;
-2. **`extern fn` / `extern var`** declarations (322 / 94);
-3. **`clib.` / `c.`** call sites (~3247);
-4. **`callconv(.c)`** (12);
-5. **C-callbacks** (signal handlers, `main_entry`).
+2. the **linker-as-module-system** pattern — `extern fn` / `extern var` / `export fn` used to
+   call between *internal* Zig modules, a habit carried over from the C port;
+3. **`clib.` / `c.`** call sites;
+4. **`callconv(.c)`** and C-callbacks (signal handlers, `main_entry`).
 
-**Definition of Done.** A reviewer sees a typed node store (`std.MultiArrayList` / typed
-handles), `std.mem.Allocator`-managed memory, `std.Io` / `std.fs` I/O, interned `[]const u8`
-strings, and Zig error unions — with **zero** `extern fn`/`extern var`/`clib.`/`export fn`, and
-**at most one** tiny, documented `callconv(.c)` signal trampoline (the OS delivers signals via
-the C ABI; that boundary is irreducible — see R7).
+### Definition of Done *(revised)*
+
+A reviewer sees a typed node store (`std.MultiArrayList` / typed handles), allocator-managed
+memory, `std.Io` / `std.fs` I/O, interned `[]const u8` strings, and Zig error unions.
+
+This is a **standalone pure-Zig binary**: nothing external (no C, no yacc/lex, no shared
+library) links against it, so the *honest* C-ABI target is:
+
+* `extern fn` / `extern var` declaring **internal** symbols → **0** (use `@import`);
+* `export fn` → **0** (no external linker consumers exist);
+* `clib.` / `c.` → **0**;
+* `callconv(.c)` → **1** — a single documented signal trampoline (the OS delivers signals via
+  the C ABI; that boundary alone is irreducible — see Track A4);
+* the **only** remaining FFI is the OS syscall surface (`open`/`read`/`write`/`fork`/`sigaction`/
+  `stat`/…), expressed through **`std.posix` / `std.c`**, not bespoke `extern fn`.
+
+> The earlier DoD assumed `main_clib.zig` was an irreducible boundary that could never shrink.
+> That was wrong: 52 of its 63 `extern fn` are the internal anti-pattern, and the genuine libc
+> calls have `std.posix` equivalents. "Zero C-ABI" is therefore *one documented trampoline plus a
+> thin `std.posix` syscall layer*, not a large irreducible `main_clib`.
+
+---
+
+## Where things stand (2026-06-23)
+
+| Layer | State |
+|-------|-------|
+| Safety net (R0) | ✅ Golden corpus (44 cases, byte-identical), scorecard, dump round-trip |
+| C-stdlib shim → `std` (R1) | ✅ Complete — `clib.`/`c.` call sites = **0** |
+| Heap encapsulation (R2) | ✅ `Heap` object; raw cell access confined to `heap.zig` (metric = 0) |
+| Storage = `MultiArrayList` (R3) | ✅ `Cell{ tag: NodeTag, hd, tl }`; `*2`/dual-pointer arithmetic gone |
+| Typed handles (R4.1/4.2/4.5) | ✅ `word.Ref`, `isAtom`/`fitsInByte` classifiers; `Word = i64` (not `c_long`) |
+| Linker-as-module-system (R7.3) | ◐ `extern fn` 322 → **71**; `c_abi.zig` **deleted** (R8.1) |
+| `Value` union (R4.3/4.4) | ⬜ Deferred — the deep core |
+| Tracing GC (R5) | ⬜ Planned |
+| String interning (R6) | ⬜ Planned — 132 `[*:0]`-as-`Word` casts remain |
+| Signals / `callconv` (R7.1/7.2) | ⬜ Planned — `callconv(.c)` still 11 (mostly gratuitous) |
+
+---
+
+## Findings that revise the original plan
+
+These emerged while executing R7.3 / R8.1 and change *what* remains and *in what order*.
+
+1. **Circular `@import` works for functions — so `extern fn`/`extern var` between internal
+   modules were never required.** Zig imports are lazy/comptime; only a by-value *type-size*
+   cycle fails. The pervasive `extern fn`/`export fn` linker-symbol pattern (incl. the
+   `trans↔types` and `reduce_core↔reduce` "cycles") was a C-port habit. Converting
+   `extern fn foo` → `const foo = module.foo` is mechanical and golden-safe. This is the lever
+   for the entire remaining FFI cleanup.
+
+2. **This is a pure-Zig project — there is no C / yacc / lex compilation unit.** `build.zig`
+   links no `.c`/`.y`/`.l` sources. Consequences:
+   * `yyparse` (and `yylval` as a global) are **dead** — the parser is fully Zig (`lex.zig`).
+   * **`export fn` is almost entirely gratuitous** — nothing external links against these
+     symbols. 174 `export fn` exist; only genuine *entry points / OS callbacks* need it.
+   * **`callconv(.c)` is mostly gratuitous** — most of the 11 are pure-Zig function pointers
+     (char-class predicates `okid`/`okulid`/`okpath`/`hash`, `walktype`'s callback,
+     `main_entry`). Only the `sigaction` signal handler genuinely needs it.
+
+3. **`main_clib.zig` is *not* the irreducible boundary.** Of its 63 `extern fn`, **52 are the
+   internal anti-pattern** (`make`, `codegen`, `UNION`, `findid`, `gc`, `instantiate`, … all
+   defined in Zig elsewhere) and only **11 are genuine libc** — of which `fork`/`isatty`/
+   `getcwd`/`chdir`/`times`/`sysconf` have `std.posix`/`std.c` equivalents, leaving just the
+   `setjmp`/`longjmp`/`sigsetjmp`/`siglongjmp` recovery family as special (and Track A4 removes
+   even that). So `main_clib` can be **slimmed to a small `std.posix` wrapper**, not preserved
+   whole.
+
+4. **The deep, deferred work is purely *representational* and independent of the FFI cleanup.**
+   `R4.3/R4.4` (the `Value` union distinguishing char vs small-int immediates), `R5` (tracing
+   GC), and `R6` (string interning) change *how data is stored*, not how modules call each
+   other. They are gated on design, not on the linker cleanup — and vice-versa. This lets the
+   two tracks proceed independently.
+
+5. **Deleting shims surfaces latent bugs the linker hid.** `c_abi.zig` carried three stale type
+   constants (`algebraic_t`/`abstract_t`/`placeholder_t`) that *disagreed* with `word.zig`, and
+   a loose `getenv_error` signature that masked a real type mismatch. Loose `extern` decls hide
+   drift; converting to typed `@import` aliases forces it into the open. Expect more of this as
+   `main_clib`'s externs are converted.
+
+---
 
 ## Current model (baseline facts, captured 2026-06-21)
 
 | Aspect | Today | File |
 |--------|-------|------|
-| Value type | `Word = c_long`, conflated handle/atom/int/char | `runtime/word.zig` |
-| Cell store | one `[*]Word` block; cell `x` = `hd[x*2]`,`tl[x*2]`; `tag[x]:u8` separate | `runtime/heap.zig:283` |
-| Allocation | `make(tag,h,t)` free-list scan + sign-bit mark-sweep `gc()` | `runtime/heap.zig:355` |
+| Value type | `Word = i64` (was `c_long`), still conflated handle/atom/int/char | `runtime/word.zig` |
+| Cell store | `std.MultiArrayList(Cell)`, `Cell{ tag: NodeTag, hd: Word, tl: Word }` | `runtime/heap.zig` |
+| Allocation | `make(tag,h,t)` free-list scan + sign-bit mark-sweep `gc()` | `runtime/heap.zig` |
 | Atoms | `NIL=CMBASE+138`, combinators `< CMBASE`, chars `0..255` | `runtime/word.zig` |
-| Numbers | bignums = chains of `INT` cells (15-bit digits); doubles = 2 Words reinterpreted | `runtime/big.zig`, `heap.zig:201` |
-| Strings | `[*:0]` C pointer cast into a `Word`, stored in `id`/`fil` nodes | `heap.zig:99` |
-| I/O | bespoke `FILE{fd,buf}` + `printf`/`getc`/… shim (1669 LOC) | `runtime/main_clib.zig` |
-| Recovery | `sigsetjmp`/`siglongjmp` on `rs.env` for SIGINT/SIGFPE | `driver/repl.zig:39` |
+| Numbers | bignums = chains of `INT` cells (15-bit digits); doubles = 2 Words reinterpreted | `runtime/big.zig` |
+| Strings | `[*:0]` C pointer cast into a `Word`, stored in `id`/`fil` nodes | `runtime/heap.zig` |
+| I/O | `std.fs` / `std`-based; bespoke `FILE` machinery now in `word.zig` | `runtime/word.zig` |
+| Recovery | `sigsetjmp`/`siglongjmp` on `rs.env` for SIGINT/SIGFPE | `driver/repl.zig` |
 
 ## Strategy
 
-**Strangler-fig, peripheral-first.** Build new behind an API, migrate consumers, delete the
-old. Do the low-risk 80 % (the `clib` C-stdlib shim → Zig `std`) *before* the high-risk 20 %
-(the cell representation and GC), because the shim is largely independent of the heap model and
-its removal deletes most of the FFI surface without touching the delicate `Word` conflation.
+**Strangler-fig, peripheral-first**, every step keeping `zig build` green and the **full test
+suite + golden corpus** byte-identical, each one PR-sized with a concrete DoD. Two now-independent
+tracks remain:
 
-**Every step** keeps `zig build` green and the **full test suite + R0 golden corpus** passing,
-is one PR-sized change, and has a concrete DoD. Behaviour-preserving steps are verified by the
-golden corpus + dump round-trip; the scorecard (R0.2) makes progress measurable.
+* **Track A (mechanical, bounded):** finish removing the linker-as-module-system pattern and the
+  gratuitous C-ABI annotations. Enabled *now* by the circular-`@import` finding; low risk,
+  golden-gated, high metric-yield. Largely independent of the heap representation.
+* **Track B (deep, design-bearing):** the representational changes — string interning, the
+  `Value` union, the tracing GC. Higher risk; each wants a short design note first.
 
----
-
-## Phase R0 — Behavioural safety net *(must land first)*
-
-*A data-model rewrite is only safe with a strong behavioural oracle. Build it before changing
-anything.*
-
-* **R0.1 — Golden-output corpus.** Curate ~30–50 `.m` programs exercising lists, higher-order
-  functions, bignums, doubles, strings, `show`, pattern matching, lazy I/O, BNF/lex, and
-  `//`-commands. Add a runner that executes each under `mira` and diffs stdout against a
-  committed `*.expected`. *Pattern: golden/snapshot testing.*
-  *DoD: `zig build test-golden` green on `main`; a deliberately broken cell access fails it.*
-* **R0.2 — Data-model scorecard.** Extend `scripts/idiomatic-check.sh` with metrics:
-  `extern fn`, `extern var`, `clib.`/`c.` call sites, `callconv(.c)`, raw `hd[`/`tl[`/`tag[`
-  accesses outside `heap.zig`, and `[*:0]`-as-Word casts. *DoD: prints a baseline table.*
-* **R0.3 — Dump round-trip test.** Unit test: build a representative heap, `makedump` to a temp
-  file, `undump`, assert structural equality. Guards every representation change (R3–R6).
-  *DoD: round-trip test green; reading a corrupted dump errors cleanly.*
+Do **Track A first** (it is mostly mechanical and finishes the C-ism story), then Track B, then
+close out (Track C). The tracks may interleave where it helps, but Track A's low-risk wins should
+not wait behind Track B's design work.
 
 ---
 
-## Phase R1 — Replace the `clib` C-stdlib shim with Zig `std`
+## Completed phases (condensed)
 
-*Removes the bulk of `extern fn` and `clib.` without touching the cell representation. Each
-sub-step is one library category, independently testable against R0.1.*
-
-* **R1.1 — De-alias constants.** `clib.NIL`, `clib.CONS`, `clib.ACT_*`, tag/combinator ids are
-  re-exports of `word.zig` through `c_abi.zig`, not FFI. Move them to a plain
-  `runtime/constants.zig` (or `word.zig`) and rewrite `clib.X`/`c.X` → `word.X`. *Pure rename;
-  deletes ~700 pseudo-`clib.` references. DoD: scorecard `clib.` drops; golden green.*
-* **R1.2 — Allocator for memory.** Introduce a process-wide `std.mem.Allocator` (a
-  `GeneralPurposeAllocator` or arena in `main`). Replace `c.malloc/calloc/realloc/free` with
-  allocator calls (slices, not raw pointers). *Pattern: `Allocator` injection.
-  DoD: no `malloc` outside the shim; leak check clean under GPA.*
-* **R1.3 — `std.mem` for strings.** Replace `strcmp/strcpy/strcat/strlen/memcpy` with
-  `std.mem.eql/order/copyForwards/span`. Operate on `[]const u8` / `[:0]const u8`.
-  *DoD: no `strcmp`/`strcpy`/`strlen` calls; string unit tests added.*
-* **R1.4 — `std.Io.Writer` for output.** Replace `printf/fprintf/putc/putchar` (~415 sites)
-  with a buffered stdout/stderr `Writer` and `std.fmt`. Sub-split per module (driver,
-  compiler, reducer, heap-dump) so each is a small PR. *DoD per module: that module has no
-  `printf`/`fprintf`; golden output byte-identical.*
-* **R1.5 — `std.Io.Reader` for input.** Replace `getc/getchar/fgets/ungetc` with a buffered
-  reader over stdin/files; model the one-char lookahead explicitly. *DoD: lexer reads via the
-  reader; golden green incl. interactive `//`-command tests.*
-* **R1.6 — `std.fs.File` for files.** Replace the bespoke `FILE{fd,buf}` and
-  `fopen/fclose/fread/fwrite` with `std.fs.File` + buffered streams. Migrate dump/undump and
-  source loading. *DoD: no `FILE`/`fopen`; dump round-trip (R0.3) green.*
-* **R1.7 — `std.process`/`std.posix` for process & env.** Replace `fork/exec/wait/system`
-  (the `!cmd` shell escape, editor launch) with `std.process.Child`, and `getenv` with
-  `std.process.getEnvVarOwned`. *DoD: no `fork`/`getenv`; `!`/editor golden tests green.*
-* **R1.8 — Remaining libc.** `qsort`→`std.sort`, `time`/`stat`→`std.time`/`std.fs.Dir.stat`
-  (or keep in `io/platform.zig`), `isspace`/`isdigit`→`std.ascii`. *DoD: scorecard `clib.`
-  call sites = 0 except the soon-to-be-isolated signal/`stat` syscalls.*
-
-*End of R1: `main_clib.zig` is nearly empty; most `extern fn` are gone; the heap still uses
-`Word`/parallel arrays — untouched and safe.*
+* **R0** — golden corpus (44 cases), data-model scorecard, dump round-trip test. ✅
+* **R1** — entire `clib` C-stdlib shim replaced with Zig `std` (memory, strings, output, input,
+  files, process/env, misc). `clib.`/`c.` call sites **2821 → 0**. ✅
+* **R2** — `Heap` struct owns the store; raw `hd[`/`tl[`/`tag[` access confined to `heap.zig`
+  (metric **290 → 0**). ✅
+* **R3** — storage swapped to `std.MultiArrayList(Cell)` with a typed `NodeTag` enum; the
+  interleaved `*2` layout and the dead `hd`/`tl`/`tag` mirror are gone. ✅
+* **R4.1/4.2** — `word.Ref` handle newtype + named classifiers (`isAtom`, `fitsInByte`,
+  `isLatin1Char`); magic-threshold comparisons (`< ATOMLIMIT`, `< 256`) metric **→ 0**. ✅
+* **R4.5** — `Word = c_long` retired for native `i64`. ✅
+* **R7.3** — linker-as-module-system removal (partial): `extern fn` **322 → 71** via
+  circular-`@import` aliasing; dissolved the `trans↔types` and `reduce_core↔reduce` "cycles". ✅
+* **R8.1** — **`c_abi.zig` deleted** (−557 lines); 516 `abi.X`/`shim.X` refs across 15 files
+  redirected to real modules; c_abi-only symbols relocated to honest owners. ✅
 
 ---
 
-## Phase R2 — Encapsulate the heap behind a typed `Heap` object
+## Remaining roadmap (new sequence)
 
-*Enabler for the representation swap. No behaviour change.*
+### Track A — Finish the C-ABI / linker cleanup *(mechanical, bounded, do first)*
 
-* **R2.1 — `Heap` struct.** Move `hd/tl/tag/listp/SPACE/heap` globals into a `Heap` struct that
-  owns an `Allocator`; expose methods `h/t/hp/tp/make/cons/getTag/gc`. A single
-  `pub var heap: Heap` replaces the globals. *Pattern: encapsulated resource (like
-  `RuntimeState`/`LexState`). DoD: golden green; `hd`/`tl` no longer top-level vars.*
-* **R2.2 — Route all access through `Heap`.** Eliminate every direct `hd.?[…]`/`tag.?[…]`
-  outside `heap.zig` (scorecard metric → 0 elsewhere). The reducer's local `h`/`t` inlines call
-  `heap.h`/`heap.t`. *DoD: raw cell access confined to `heap.zig`; golden green.*
+* **A1 (R7.3b) — Dissolve `main_clib.zig`'s `extern fn` anti-pattern.** Convert the **52**
+  internal-Zig `extern fn` (`make`, `codegen`, `UNION`, `findid`, `gc`, `instantiate`, …) to
+  `@import` aliases, exactly as for `c_abi.zig`. Move the genuine libc calls
+  (`fork`/`isatty`/`getcwd`/`chdir`/`times`/`sysconf`) to `std.posix`/`std.c`, leaving only the
+  `setjmp`/`longjmp` recovery family (removed in A4). *DoD: `main_clib.zig` is a thin
+  `std.posix` wrapper (or merged into `io/platform.zig`); `extern fn` drops to the syscall floor;
+  golden byte-identical.* **Watch for** latent drift in loose extern signatures (finding #5).
 
----
+* **A2 (R7.4) — Eliminate `extern var` (54 → 0).** Same anti-pattern for mutable globals. Define
+  each global **once** in a leaf module (`core_state.zig` for the C-ABI-constrained ones,
+  `word.zig`/owning module otherwise) and have consumers read/write `module.X` directly instead
+  of re-declaring `extern var X`. *(In flight — `core_state.zig` already hosts `nill`/`loading`/
+  `compiling`.)* *DoD: scorecard `extern var` = 0; golden green.*
 
-## Phase R3 — Swap storage to `std.MultiArrayList`
+* **A3 (R7.5) — Strip gratuitous `export fn` (174 → ~0).** With `c_abi` gone, no internal caller
+  needs a linker symbol, and no external C links against Miranda, so `export fn` → `pub fn`
+  everywhere except genuine entry points / OS callbacks. *DoD: `export fn` = 0 except the
+  documented trampoline/entry; golden green.*
 
-*The interleaved `hd[x*2]/tl[x*2]` + separate `tag[x]` layout IS a struct-of-arrays — map it to
-the idiomatic container. Behaviour identical.*
+* **A4 (R7.1 + R7.2) — Signals & `callconv`.** Two parts:
+  * *Strip the gratuitous `callconv(.c)`* on pure-Zig function pointers (char-class predicates
+    `okid`/`okulid`/`okpath`/`hash`, `walktype`'s callback, `kollect`'s param, `main_entry`) —
+    these are not FFI. *(mechanical)*
+  * *Recovery redesign:* replace the `sigsetjmp`/`siglongjmp`-on-`rs.env` SIGINT/eval-abort path
+    with a checked atomic flag polled by the reducer/REPL loop +
+    `MiraError.EvaluationInterrupted` propagation; reduce signal handling to **one** minimal
+    `callconv(.c)` trampoline registered via `std.posix.sigaction`; replace
+    `main_entry(callconv(.c))` with Zig `pub fn main`. *DoD: `callconv(.c)` = 1 (documented);
+    Ctrl-C during eval returns to the prompt via the flag path; golden + an interrupt test green.*
 
-* **R3.1 — `Cell` + `MultiArrayList`.** Define `const Cell = struct { tag: Tag, hd: Word,
-  tl: Word };` and back `Heap` with `std.MultiArrayList(Cell)`. Index `x` (offset by
-  `ATOMLIMIT`) maps to a row; `h(x)`=`cells.items(.hd)[i]`, etc. Drop the `*2` arithmetic and
-  the dual base pointers. *Pattern: `MultiArrayList` SoA. DoD: golden + dump round-trip green.*
-* **R3.2 — `Tag` enum.** Replace the `u8` tag with a proper `enum(u8)` (non-exhaustive `_` for
-  the GC sign-bit until R5). Switch on `Tag` in dispatch. *DoD: tag switches are exhaustive
-  where possible; golden green.*
+> **End of Track A:** the C-ism elimination DoD is essentially met — `extern fn` = syscall floor
+> (via `std.posix`), `extern var` = 0, `export fn` = 0, `callconv(.c)` = 1. Only the
+> representation (Track B) separates the project from the full redesign DoD.
 
----
+### Track B — Representation *(deep, design-bearing; after Track A)*
 
-## Phase R4 — Typed references: separate handles from immediates
+* **B1 (R6) — String interning.** Intern identifiers/dictionary strings into a `StringTable`
+  (`std.StringHashMapUnmanaged` over an arena) returning a `StrId`; `id`/`fil` nodes hold a
+  `StrId`, not a pointer-as-int. *DoD: scorecard `[*:0]`-as-`Word` casts **132 → 0**; table unit
+  tests + golden green.* Most bounded of the three; do it first.
 
-*The deepest change: untangle `Word`'s four roles. Split per subsystem behind the `Heap` seam
-so each PR is bounded and golden-verified.*
+* **B2 (R4.3/4.4) — `Value` union (the hard core).** Introduce a tagged representation that
+  distinguishes the four roles of `Word` — chars and small ints both occupy bare values `0..255`,
+  so only a union/tagged-handle can tell them apart. Migrate the reducer (R4.3) then the
+  compiler/parser (R4.4) to `Ref`/`Value`. **Gate on a short design note** (union layout vs
+  NaN-box/tagged-handle; performance budget for the reduction loop). *DoD: `reducer/*` and the
+  compiler free of raw `Word` arithmetic; golden green on evaluation-heavy programs.*
 
-* **R4.1 — `Ref` handle type.** `const Ref = enum(u32) { nil, undef, nils, _ };` for cell
-  handles. `Heap` methods take/return `Ref`. *DoD: `Heap` API is `Ref`-typed; conversions
-  isolated at the boundary; golden green.*
-* **R4.2 — `Value` union for immediates.** `const Value = union(enum) { ref: Ref, int: i64,
-  char: u21, comb: Combinator };` (or a NaN-box/tagged-handle if profiling demands). Replace
-  the `x < ATOMLIMIT` / `x < 256` numeric tests with union tags. *DoD: no magic-threshold
-  comparisons in new code; golden green.*
-* **R4.3 — Migrate the reducer** to `Ref`/`Value`. *DoD: `reducer/*` free of raw `Word`
-  arithmetic; golden green (esp. evaluation-heavy programs).*
-* **R4.4 — Migrate the compiler & parser** (`trans.zig`, `types.zig`, `parser/*`) to
-  `Ref`/`Value`. *DoD: those modules free of raw `Word`; golden green.*
-* **R4.5 — Retire `Word`.** Delete `Word = c_long`; remaining integers are `i64`/`u32`.
-  *DoD: scorecard `c_long` = 0; golden green.*
+* **B3 (R5) — Tracing GC.** Replace the sign-bit free-list mark-sweep with a precise tracing
+  collector over the `Ref` graph: explicit typed root set, mark/sweep rebuilding the free list
+  from a side `std.DynamicBitSet` (drops the tag sign-bit trick, making `NodeTag` fully
+  exhaustive). Best after B2 (a clean `Ref` graph to trace). *DoD: precise-root unit tests + GC
+  stress test stable; golden green.*
 
----
+### Track C — Close-out
 
-## Phase R5 — Idiomatic tracing GC over the typed store
-
-*Replace the sign-bit free-list mark-sweep with a precise collector over `MultiArrayList`.*
-
-* **R5.1 — Precise root set.** Enumerate roots explicitly (eval stack, `dstack`, global
-  registers, `RuntimeState`/`CompilerState` cell fields) as a typed list. *DoD: a unit test
-  asserts a known-reachable cell survives and an unreachable one is freed.*
-* **R5.2 — Mark/sweep on `Ref`.** Tracing mark over the `Ref` graph; sweep rebuilds the free
-  list from a side `std.DynamicBitSet` (drop the tag sign-bit trick, making `Tag` fully
-  exhaustive). *DoD: GC stress test (allocate-heavy program) stable; golden green.*
-* **R5.3 — *(optional)* Region/arena for evaluation.** Evaluate each top-level expression in a
-  resettable arena where lifetime allows, cutting GC pressure. *DoD: benchmark shows no
-  regression; golden green.* *(Eval-gated; skip if mark-sweep suffices.)*
-
----
-
-## Phase R6 — String interning (remove `[*:0]`-in-`Word`)
-
-* **R6.1 — `StringTable`.** Intern identifiers/dictionary strings into a `StringTable`
-  (`std.StringHashMapUnmanaged` over an arena) returning a `StrId`. *Pattern: string interning.
-  DoD: table unit tests (intern idempotent, lookup) green.*
-* **R6.2 — Nodes store `StrId`.** `id`/`fil` nodes hold a `StrId`, not a pointer-as-int. Remove
-  every `@ptrFromInt`/`@intFromPtr` string cast. *DoD: scorecard `[*:0]`-as-Word casts = 0;
-  golden green.*
-
----
-
-## Phase R7 — Eliminate `callconv(.c)` and C-callbacks
-
-* **R7.1 — Recovery without `siglongjmp` where possible.** Replace the SIGINT/eval-abort
-  `sigsetjmp`/`siglongjmp` on `rs.env` with a checked atomic flag polled by the reducer/REPL
-  loop and `MiraError.EvaluationInterrupted` propagation. *DoD: Ctrl-C during evaluation returns
-  to the prompt via the flag path; golden + an interrupt test green.*
-* **R7.2 — One isolated signal trampoline.** Reduce signal handling to a single minimal
-  `callconv(.c)` function that only sets the atomic flag (or writes a self-pipe) — the
-  *irreducible* C-ABI boundary, documented like the existing E3 note. Register via
-  `std.posix.sigaction`. Replace `main_entry(callconv(.c))` with Zig `pub fn main`. *DoD:
-  `callconv(.c)` count = 1 (the trampoline), documented.*
-* **R7.3 — Drop residual `export`/`extern`.** With no linker-symbol consumers left, convert the
-  last `export fn`/`extern fn` to `pub fn`/`@import`. *DoD: scorecard `export fn` =
-  `extern fn` = `extern var` = 0.*
-
----
-
-## Phase R8 — Demolition & documentation
-
-* **R8.1 — Delete the shims.** ~~Remove `runtime/main_clib.zig`~~ and **`runtime/c_abi.zig`**.
-  *Status:* `c_abi.zig` **deleted** ✓ (build green without it). `main_clib.zig` is **not**
-  removable — it is the irreducible OS/C-ABI boundary (syscalls/signals/`std.posix`); the original
-  "remove main_clib" goal is retracted. See the R8.1 note below.
-* **R8.2 — Final scorecard.** `extern fn` = `extern var` = `clib.` = `export fn` = 0;
-  `callconv(.c)` = 1 (signal trampoline). *DoD: `scripts/idiomatic-check.sh` shows the target
-  row.*
-* **R8.3 — Rewrite the data-model docs.** Update `ARCHITECTURE.md` (cell store, GC, strings,
+* **C1 (R8.2) — Final scorecard.** Against the *revised* DoD: `extern fn` = syscall floor,
+  `extern var` = `export fn` = `clib.` = 0, `callconv(.c)` = 1. *DoD: `scripts/idiomatic-check.sh`
+  shows the target row; document the syscall floor.*
+* **C2 (R8.3) — Rewrite the data-model docs.** Update `ARCHITECTURE.md` (cell store, GC, strings,
   I/O) and `ZIG_MIGRATION.md` to describe the new model. *DoD: docs match code.*
 
 ---
 
-## Dependency order
+## Dependency order / recommended sequence
 
 ```
-R0  (safety net) ─────────────────────────────────────────────► gates everything
-R1  (clib → std, independent of heap) ──┐
-                                         ├─► R2 (encapsulate Heap)
-R1.1 constants ─► (helps R2)             │      └─► R3 (MultiArrayList)
-                                         │             └─► R4 (Ref/Value) ─► R4.5 retire Word
-                                         │                    └─► R5 (tracing GC)
-                                         │                    └─► R6 (string interning)
-R7 (signals/callconv) — after R1.5–R1.7 (I/O paths settled) ──► R8 (demolish)
+Track A (mechanical, do first; mostly independent of each other):
+  A1 main_clib extern fn ─┐
+  A2 extern var          ├─► A3 strip export fn ─► A4 signals/callconv ─► (C-ism DoD met)
+                          ┘
+Track B (representation; after A, each gated on a design note):
+  B1 string interning ──► B2 Value union ──► B3 tracing GC
+Track C:
+  C1 final scorecard ──► C2 doc rewrite
 ```
 
-Recommended sequence: **R0 → R1.1 → R1.2…R1.8 → R2 → R3 → R4 → R5 → R6 → R7 → R8**, committing
-each numbered step. R5 and R6 are independent after R4 and may interleave.
+**Recommended order:** A1 → A2 → A3 → A4 → B1 → B2 → B3 → C1 → C2, committing each step.
+A1–A3 are mechanical and may interleave/parallelise; A4 and all of Track B each warrant their own
+focused session. B1 (string interning) is the lowest-risk representational change and is a good
+re-entry point after Track A.
 
 ## Risk register
 
 | Step | Risk | Mitigation |
 |------|------|------------|
-| R1.4 output | high churn (415 sites) | per-module sub-PRs; golden byte-diff |
-| R3 representation | silent corruption | dump round-trip (R0.3) + golden |
-| R4 Ref/Value | pervasive; the hard core | per-subsystem; `Heap` seam; retire `Word` last |
-| R5 GC | use-after-free / leaks | precise-root unit tests + GC stress test |
-| R7 signals | async-safety | single trampoline + flag; matches E3 constraint |
+| A1 main_clib | latent signature drift hidden by loose externs | typed `@import` aliases force mismatches to compile errors; golden byte-diff |
+| A2 extern var | mutable-alias semantics (can't `const`-alias a `var`) | access `module.X` directly; coordinate with in-flight `core_state.zig` |
+| A4 signals | async-signal safety | single trampoline + atomic flag; matches IDIOMATIC_ZIG_PLAN E3 |
+| B1 strings | representation change to id/fil nodes | dump round-trip (R0.3) + golden; `StringTable` unit tests |
+| B2 Value union | pervasive; the hard core; hot reduction loop | design note first; per-subsystem; `Heap` seam; performance budget |
+| B3 GC | use-after-free / leaks | precise-root unit tests + GC stress test |
 
 ## Notes on the irreducible boundary
 
-The OS delivers signals through the C ABI, so **one** `callconv(.c)` trampoline must remain
-(R7.2) — this is the same async-signal constraint documented in
-[IDIOMATIC_ZIG_PLAN.md](IDIOMATIC_ZIG_PLAN.md) (E3). Everything else — memory, I/O, strings,
-the entire cell model — becomes pure, idiomatic Zig. "Zero C-ABI" is therefore *one documented
-trampoline*, not literally none.
+The OS delivers signals through the C ABI, so **one** `callconv(.c)` trampoline must remain (A4) —
+the async-signal constraint documented as E3 in
+[IDIOMATIC_ZIG_PLAN.md](IDIOMATIC_ZIG_PLAN.md). Beyond that, the only C-ABI is the OS syscall
+surface, which Zig exposes idiomatically through `std.posix`/`std.c` — not a bespoke `extern fn`
+shim. Everything else — memory, I/O, strings, the entire cell model, all inter-module calls —
+becomes pure, idiomatic Zig.
 
 ---
 
-## Progress
+## Scorecard (data-model metrics)
 
-| Phase | Step | Status |
-|-------|------|--------|
-| R0 | R0.1 Golden-output corpus (44 cases, `zig build test-golden`) | ✅ Complete |
-| R0 | R0.2 Data-model scorecard (metrics 10–15) | ✅ Complete |
-| R0 | R0.3 Dump round-trip test | ✅ Complete |
-| R1 | R1.1 De-alias constants | ✅ Complete *(all subsystems)* |
-| R1 | R1.2 Allocator for memory | ✅ Complete |
-| R1 | R1.3 `std.mem` for strings | ✅ Complete |
-| R1 | R1.4 output off `clib` (`printf`/`fprintf`/`putc`/`putchar`) | ✅ Complete *(format-machinery moved to `word.zig`; C→Zig-native format polish optional)* |
-| R1 | R1.5 `std.Io.Reader` for input | ✅ Complete |
-| R1 | R1.6 `std.fs.File` for files | ✅ Complete |
-| R1 | R1.7 process/env (`std.process`/`std.posix`) | ✅ Complete |
-| R1 | R1.8 Remaining libc | ✅ Complete |
-| R2 | R2.1 Heap struct | ✅ Complete |
-| R2 | R2.2 Route all access through Heap | ✅ Complete |
-| R3 | R3.1 `Cell` + `std.MultiArrayList` storage | ✅ Complete |
-| R3 | R3.2 Typed `NodeTag` tag + enum dispatch | ✅ Complete |
-| R4 | R4.1 `Ref` handle type + `isAtom` predicate | ✅ Complete |
-| R4 | R4.2 `fitsInByte`/`isLatin1Char` (retire `<256`) | ✅ Complete |
-| R4 | R4.3 Reducer classification via typed predicates | ◐ Partial *(full Ref/Value migration pending)* |
-| R4 | R4.4 Compiler/parser Ref/Value migration | ⬜ Planned |
-| R4 | R4.5 Retire `Word = c_long` → native `i64` | ✅ Complete |
-| R5–R8 | Tracing GC → demolition | ⬜ Planned |
-
-### Scorecard (data-model metrics, this redesign)
-
-| Metric | R0 baseline | Now | Target |
-|--------|-------------|-----|--------|
-| `extern fn` declarations | 322 | **71** *(R7.3: 8 non-shim + 63 main_clib FFI)* | 0 (FFI floor residual) |
-| `extern var` declarations | 94 | **60** | 0 |
-| `clib.`/`c.` call sites | 2821 | **0** | 0 |
-| `callconv(.c)` | 12 | 12 | 1 (signal trampoline) |
+| Metric | R0 baseline | Now (2026-06-23) | Target |
+|--------|-------------|------------------|--------|
+| `extern fn` declarations | 322 | **71** | syscall floor (`std.posix`) |
+| &nbsp;&nbsp;↳ internal anti-pattern (convertible) | — | ~52 (in `main_clib`) + a few | 0 |
+| &nbsp;&nbsp;↳ genuine libc/syscall | — | ~15 | small `std.posix` set |
+| `extern var` declarations | 94 | **54** | 0 |
+| `export fn` (linker symbols) | — | **174** | 0 (no external linkers) |
+| `clib.` / `c.` call sites | 2821 | **0** | 0 |
+| `callconv(.c)` | 12 | **11** (mostly gratuitous) | 1 (signal trampoline) |
 | raw `hd[`/`tl[`/`tag[` outside `heap.zig` | 290 | **0** | 0 |
-| `[*:0]`-as-Word pointer casts | 129 | 132 | 0 |
+| `[*:0]`-as-`Word` pointer casts | 129 | **132** | 0 (string interning, B1) |
 | `Word = c_long` (value type is a C type) | yes | **no — `i64`** | `i64` |
-| bare `< ATOMLIMIT` / `< 256` magic thresholds | ~23 | **0** *(via `word.isAtom`/`fitsInByte`)* | 0 |
+| bare `< ATOMLIMIT` / `< 256` magic thresholds | ~23 | **0** | 0 |
 
-*The `clib.`/`c.` reduction is fully complete for Phase R1, dropping the `clib.`/`c.` call sites metric to **0** by replacing C standard library functions with Zig native equivalents, and renaming the internal compiler ABI/FFI namespace alias to `abi`.*
+---
 
-All legacy C standard library shims (excluding signals and stat syscalls) are replaced or cleaned up. Phase R2 (heap encapsulation) is now complete, confining raw cell accesses to `heap.zig` and dropping the raw cell accesses metric to **0** and extern var declarations from 94 to 60.
+## Progress log
 
-**Phase R3 is complete.** The core cell store is now an idiomatic
-`std.MultiArrayList(Cell)` where `Cell = { tag: NodeTag, hd: Word, tl: Word }`, indexed by cell
-id directly — the interleaved `hd[x*2]`/`tl[x*2]` arithmetic, the separate `tag[x]` block, and
-the dead global `hd`/`tl`/`tag` mirror (with its `sync()`) are all gone. The stored tag is the
-typed `NodeTag` enum (non-exhaustive, so the GC sign-bit mark is still expressible until R5);
-`dump_ob` dispatches by `switch` on `NodeTag`. Verified behaviour-identical throughout via the
-golden corpus (44/44 byte-identical), the dump round-trip unit test, GC-heavy evaluation, and a
-real dump+undump cycle.
+**R1–R3 (foundation).** `clib`→`std` complete (`clib.`/`c.` = 0); heap encapsulated behind a
+`Heap` object (raw cell access = 0); storage is now `std.MultiArrayList(Cell)` with a typed
+`NodeTag` enum, the `*2`/dual-pointer arithmetic and dead mirror gone. Verified byte-identical
+(golden 44/44, dump round-trip, GC-heavy eval, real dump+undump).
 
-**Phase R4 is partially complete (R4.1, R4.2, R4.5).** The handle/immediate distinction is now
-explicit and typed, and the value type is native:
-- **R4.1/R4.2** introduced `word.Ref` (a `enum(Word)` heap-reference newtype) and the named
-  classifiers `word.isAtom` (was `x < ATOMLIMIT`), `word.fitsInByte`/`word.isLatin1Char` (was
-  `x < 256`). Every magic-threshold comparison in the codebase — heap accessors, the reducer's
-  `isptr`, the translator, the lexer bridge, char/int boxing, type inference — now goes through
-  these predicates (metric → 0).
-- **R4.5** retired `Word = c_long` in favour of native `i64`; the universal value type is no
-  longer a platform C type. Verified byte-identical (bignums, GC-heavy eval, dump cycle).
+**R4 (partial: R4.1/4.2/4.5).** `word.Ref` handle newtype + named classifiers replace every magic
+threshold (metric → 0); `Word = c_long` retired for native `i64`. **R4.3/4.4 deferred** — the
+`Value` union (char vs small-int immediates) is a fat-cell change in the hottest code and is
+Track B2.
 
-**R4.3/R4.4 (the hard core) remain.** Fully migrating the reducer and compiler to operate on
-`Ref`/`Value` instead of raw `Word` requires a `Value` *union* representation — chars and small
-ints both occupy bare `Word` values `0..255`, so only a tagged union can tell them apart. That
-is a fat-cell representation change in the hottest code (the reduction loop), with real
-performance and correctness stakes; it warrants dedicated design rather than a rushed partial
-migration, and is deliberately deferred. The typed `Ref` type and classifiers from R4.1/R4.2 are
-the foundation it will build on.
+**R7.3 (linker-as-module-system removal).** Key finding: circular `@import` makes cross-module
+`extern fn` unnecessary. Converted `extern fn foo` → `const foo = module.foo` across
+`trans`/`types`/`codegen`/`reduce_core` and every consumer file, dissolving the `trans↔types` and
+`reduce_core↔reduce` "cycles". Non-shim `extern fn` 81 → 8; codebase 322 → 75 → **71**
+(byte-identical). The 8 non-shim survivors are genuine syscalls + one ABI bridge + dead
+`utf8.zig`.
 
-### R7.3 — eliminate the linker-as-module-system (`extern fn`) — in progress
+**R8.1 (`c_abi.zig` deleted).** The 557-line "compiler ABI" hub is gone; 516 `abi.X`/`shim.X`
+references redirected to real modules; relocations: `NodeTag`/tag-bit constants → `word.zig`,
+`tries`/`stosmallint` → `heap.zig`, `cmbnms`/`outUTF8`/`fromUTF8` → `main_clib.zig`, `yysterm` →
+`setup.zig`. Removed three stale dead constants that disagreed with `word.zig`. Byte-identical.
 
-**Key finding: the cross-module `extern fn` declarations were never required.** Zig allows
-circular `@import` for *function* references (imports are lazy/comptime — only a by-value
-type-size cycle fails). The pervasive `extern fn`/`export fn` linker-symbol pattern was a habit
-carried over from the C port, used even where no real cycle existed, and even where one did
-(`trans↔types`, `reduce_core↔reduce`) the mutual `@import` compiles cleanly.
-
-Converted `extern fn foo(...)` declarations to `const foo = module.foo` aliases (pub-ifying the
-callees, keeping their `export` linker symbol for any not-yet-converted caller). Done:
-`trans.zig` (25→0), `types.zig` (10→0, dissolving the `trans↔types` "cycle"), `codegen.zig`
-(15→0), `reduce_core.zig` (8→0, dissolving `reduce_core↔reduce`), **`c_abi.zig` (110→4)**, and a
-sweep of every remaining consumer file (`main`, `heap`, `lex`, `lex_bridge`, `repl`, `reduce`,
-`big`, `setup`, `parser_api`/`_tests`, `reducer/reduce`, …) taking **non-shim `extern fn` 81 → 8**.
-**Codebase `extern fn` 322 → 75**, byte-identical throughout.
-
-The remaining 71 `extern fn` are now an irreducible floor, not an anti-pattern:
-- **8 non-shim**: genuine syscall FFI (`__errno_location`/`__error`/`stat`/`sigaction`), the
-  UTF-8 decode shim (`fromUTF8`), the `reduce_stream_read` ABI bridge (loose `?*anyopaque`/`c_int`
-  decl, deliberately compatible with `reduce_ctx`), and dead `utf8.zig`'s `getc`/`putc`.
-- **~63 in main_clib** — the OS C-ABI boundary (`malloc`/signals/syscalls); irreducible by design.
-
-### R8.1 — `c_abi.zig` deleted ✓
-
-The "compiler ABI" shim is **gone** (−557 lines). It had been a 482-symbol
-linker-as-module-system hub; after R7.3 it was a thin aggregator, so all 516 `abi.X`/`shim.X`
-references across 15 files were redirected to their true homes — `word.zig` (constants/types),
-the real `heap`/`big`/`lex`/`reduce`/`types`/`trans` modules, and `main_clib.zig` (genuine libc
-FFI). c_abi-only symbols were relocated to honest owners (`NodeTag`/tag-bit constants → `word.zig`;
-`tries`/`stosmallint` → `heap.zig`; `cmbnms`/`outUTF8`/`fromUTF8` → `main_clib.zig`;
-`yysterm` → `setup.zig`). Deleting it also surfaced and removed three stale dead constants
-(`algebraic_t`/`abstract_t`/`placeholder_t`) that disagreed with `word.zig`. Byte-identical.
-
-**R8 status — full demolition still *blocked* by earlier phases.** R8 as written (both shims gone;
-`extern fn = extern var = export fn = clib. = 0`, `callconv(.c) = 1`) presumes R5/R6/R7 complete:
-- `extern var` = 54 (cross-module global decls; being migrated into the leaf `core_state.zig`).
-- `callconv(.c)` = 12 (signal handlers + `main_entry`) — needs **R7.1/R7.2** (signal redesign).
-- `[*:0]`-as-`Word` casts = 132 — needs **R6** (string interning), a deferred phase.
-- **`main_clib.zig` cannot be deleted** — it *is* the irreducible OS/C-ABI boundary (~101
-  syscall/signal/`std.posix` refs). R8.1's "delete main_clib" is superseded by this finding; the
-  achievable half of R8.1 (delete `c_abi.zig`) is **done**.
+**Next:** Track A1 — dissolve `main_clib.zig`'s 52 internal `extern fn` the same way, slimming it
+toward a `std.posix` wrapper.
