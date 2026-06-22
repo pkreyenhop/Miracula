@@ -313,7 +313,7 @@ fn getTypeVariable(x: Word) Word {
 }
 
 fn mkindex(i: Word) Word {
-    return if (i < 256) i else make(INT, i, 0);
+    return if (word.fitsInByte(i)) i else make(INT, i, 0);
 }
 
 fn dlhs(d: Word) Word {

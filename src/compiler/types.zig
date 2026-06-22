@@ -2114,7 +2114,7 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
             return char_t;
         },
         ATOM => {
-            if (x < 256) {
+            if (word.fitsInByte(x)) {
                 return char_t;
             }
             switch (x) {

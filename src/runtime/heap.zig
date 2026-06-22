@@ -439,18 +439,18 @@ fn getId(x: Word) [*:0]const u8 {
 }
 
 pub export fn sto_char(ch: Word) Word {
-    return if (ch < 256) ch else make(UNICODE, ch, 0);
+    return if (word.fitsInByte(ch)) ch else make(UNICODE, ch, 0);
 }
 
 pub export fn get_char(x: Word) Word {
-    if (x < 256) return x;
+    if (word.fitsInByte(x)) return x;
     if (heap.getTag(x) == UNICODE) return h(x);
     std.debug.print("impossible event in get_char(x), tag[x]=={d}\n", .{heap.getTag(x)});
     abi.exit(1);
 }
 
 pub export fn is_char(x: Word) c_int {
-    if (0 <= x and x < 256) return 1;
+    if (word.isLatin1Char(x)) return 1;
     if (x >= 0 and heap.getTag(x) == UNICODE) return 1;
     return 0;
 }
@@ -939,7 +939,7 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         _ = word.fprint(file, "{s}", .{get_id(x)});
         return;
     }
-    if (x < 256) {
+    if (word.fitsInByte(x)) {
         _ = word.fprint(file, "'{s}'", .{charname(x)});
         return;
     }

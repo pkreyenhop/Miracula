@@ -36,6 +36,19 @@ pub inline fn isAtom(x: Word) bool {
     return x < ATOMLIMIT;
 }
 
+/// True when `x` is small enough to be stored bare in a single byte rather than
+/// boxed in a heap cell — chars below this are bare Latin-1 atoms (else a
+/// UNICODE cell), small ints below this are bare (else an INT cell). Replaces
+/// the bare `x < 256` magic-threshold checks (R4).
+pub inline fn fitsInByte(x: Word) bool {
+    return x < 256;
+}
+
+/// True when `x` is a valid char value in the bare Latin-1 range [0, 256).
+pub inline fn isLatin1Char(x: Word) bool {
+    return 0 <= x and x < 256;
+}
+
 pub const VALUE: Word = 257;
 pub const EVAL: Word = 258;
 pub const WHERE: Word = 259;

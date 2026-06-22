@@ -670,7 +670,7 @@ export fn print(arg_e: Word) void {
         const c = @as(u32, @intCast(abi.get_char(h(e))));
         if (main.rs.UTF8 != 0) {
             abi.outUTF8(c, s_out);
-        } else if (c < 256) {
+        } else if (word.fitsInByte(c)) {
             _ = word.putc(@intCast(c), s_out.?);
         } else {
             word.printErr("\n warning: non Latin1 char {x} in print, ignored\n", .{c});
