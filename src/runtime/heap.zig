@@ -64,7 +64,7 @@ var charname_buffer: [8]u8 = undefined;
 /// `std.MultiArrayList`, replacing the old interleaved `hd[x*2]`/`tl[x*2]` +
 /// separate `tag[x]` parallel arrays (R3).
 pub const Cell = struct {
-    tag: u8 = 0,
+    tag: abi.NodeTag = .ATOM,
     hd: Word = 0,
     tl: Word = 0,
 };
@@ -76,7 +76,7 @@ pub const Heap = struct {
     // by refreshPointers() whenever `cells` is (re)allocated.
     hd: ?[*]Word = null,
     tl: ?[*]Word = null,
-    tag: ?[*]u8 = null,
+    tag: ?[*]abi.NodeTag = null,
     SPACE: Word = 1250000,
     listp: Word = ATOMLIMIT - 1,
     allocated_dstack_size: usize = 0,
@@ -108,12 +108,20 @@ pub const Heap = struct {
         return &self.tl.?[@as(usize, @intCast(x))];
     }
 
+    /// The raw tag byte. The stored tag is a typed `abi.NodeTag` (R3.2); this
+    /// returns its integer value so the many `getTag(x) == word.XXX` int
+    /// comparisons keep working. During GC the byte may be a negated mark.
     pub fn getTag(self: Heap, x: Word) u8 {
+        return @intFromEnum(self.tag.?[@intCast(x)]);
+    }
+
+    /// Typed tag (for `switch` on `NodeTag` in dispatch, e.g. dump_ob).
+    pub fn getTagEnum(self: Heap, x: Word) abi.NodeTag {
         return self.tag.?[@intCast(x)];
     }
 
     pub fn setTag(self: *Heap, x: Word, val: u8) void {
-        self.tag.?[@intCast(x)] = val;
+        self.tag.?[@intCast(x)] = @enumFromInt(val);
     }
 
     pub fn cons(self: *Heap, x: Word, y: Word) Word {
@@ -139,14 +147,14 @@ pub const Heap = struct {
             // First-time allocation: rows [0, BIGTOP]; zero the whole tag column.
             self.cells.resize(rt.allocator, bigtop_val + 1) catch mallocPanic("heap");
             self.refreshPointers();
-            @memset(self.tag.?[0 .. bigtop_val + 1], 0);
+            @memset(self.tag.?[0 .. bigtop_val + 1], .ATOM);
         }
         self.refreshPointers();
         if (self.SPACE > rt.rs.SPACELIMIT) {
             self.SPACE = rt.rs.SPACELIMIT;
         }
         self.listp = ATOMLIMIT - 1;
-        @memset(self.tag.?[@intCast(ATOMLIMIT)..bigtop_val], 0);
+        @memset(self.tag.?[@intCast(ATOMLIMIT)..bigtop_val], .ATOM);
     }
 
     pub fn resetheap(self: *Heap) void {
@@ -158,20 +166,20 @@ pub const Heap = struct {
         self.cells.resize(rt.allocator, bigtop_val + 1) catch mallocPanic("heap");
         self.refreshPointers();
 
-        self.tag.?[@intCast(bigtop_val)] = 0;
+        self.tag.?[@intCast(bigtop_val)] = .ATOM;
         if (self.SPACE > rt.rs.SPACELIMIT) {
             self.SPACE = rt.rs.SPACELIMIT;
         }
         if (self.SPACE < 1250000 and 1250000 <= rt.rs.SPACELIMIT) {
             self.SPACE = 1250000;
-            self.tag.?[@intCast(self.TOP())] = 0;
+            self.tag.?[@intCast(self.TOP())] = .ATOM;
         }
     }
 
     pub fn make(self: *Heap, t_val: u8, x: Word, y: Word) Word {
         while (true) {
             self.listp += 1;
-            if (!poschar(self.tag.?[@intCast(self.listp)])) {
+            if (!poschar(@intFromEnum(self.tag.?[@intCast(self.listp)]))) {
                 break;
             }
         }
@@ -209,7 +217,7 @@ pub const Heap = struct {
             }
         }
         claims += 1;
-        self.tag.?[@intCast(self.listp)] = t_val;
+        self.tag.?[@intCast(self.listp)] = @enumFromInt(t_val);
         self.hp(self.listp).* = x;
         self.tp(self.listp).* = y;
         return self.listp;
@@ -239,9 +247,9 @@ pub const Heap = struct {
         }
         nogcs += 1;
 
-        while (self.tag.?[idx] != 0) {
-            const signed_val = @as(i8, @bitCast(self.tag.?[idx]));
-            self.tag.?[idx] = @bitCast(-signed_val);
+        while (self.tag.?[idx] != .ATOM) {
+            const signed_val = @as(i8, @bitCast(@intFromEnum(self.tag.?[idx])));
+            self.tag.?[idx] = @enumFromInt(@as(u8, @bitCast(-signed_val)));
             idx += 1;
         }
 
@@ -254,11 +262,10 @@ pub const Heap = struct {
 
     pub fn gcpatch(self: *Heap) void {
         var idx = @as(usize, @intCast(ATOMLIMIT));
-        while (self.tag.?[idx] != 0) : (idx += 1) {
-            const val = self.tag.?[idx];
-            const signed_val = @as(i8, @bitCast(val));
+        while (self.tag.?[idx] != .ATOM) : (idx += 1) {
+            const signed_val = @as(i8, @bitCast(@intFromEnum(self.tag.?[idx])));
             if (signed_val < 0) {
-                self.tag.?[idx] = @bitCast(-signed_val);
+                self.tag.?[idx] = @enumFromInt(@as(u8, @bitCast(-signed_val)));
             }
         }
     }
@@ -378,13 +385,13 @@ pub const Heap = struct {
 
     pub fn mark(self: *Heap, x_val: Word) void {
         var x = x_val & ~abi.tlptrbits;
-        while (self.isptr(x) and negchar(self.tag.?[@intCast(x)])) {
+        while (self.isptr(x) and negchar(@intFromEnum(self.tag.?[@intCast(x)]))) {
             const p1 = &self.tag.?[@intCast(x)];
-            const signed_tag = @as(i8, @bitCast(p1.*));
+            const signed_tag = @as(i8, @bitCast(@intFromEnum(p1.*)));
             const new_signed_tag = -signed_tag;
-            p1.* = @bitCast(new_signed_tag);
+            p1.* = @enumFromInt(@as(u8, @bitCast(new_signed_tag)));
 
-            const new_tag = p1.*;
+            const new_tag = @intFromEnum(p1.*);
             if (new_tag > word.STRCONS) {
                 self.mark(self.h(x));
             }
@@ -1268,8 +1275,8 @@ pub fn dump_defs(defs_val: Word, file: ?*word.FILE) void {
 }
 
 pub fn dump_ob(x: Word, file: ?*word.FILE) void {
-    switch (heap.getTag(x)) {
-        word.ATOM => {
+    switch (heap.getTagEnum(x)) {
+        .ATOM => {
             if (x < 128) {
                 _ = word.putc(@intCast(x), file);
             } else if (x >= 384) {
@@ -1279,14 +1286,14 @@ pub fn dump_ob(x: Word, file: ?*word.FILE) void {
                 _ = word.putc(@intCast(x - 128), file);
             }
         },
-        word.TVAR => {
+        .TVAR => {
             _ = word.putc(word.TVAR_X, file);
             _ = word.putc(@intCast(gettvar(x)), file);
             if (gettvar(x) > 255) {
                 std.debug.print("panic, tvar too large\n", .{});
             }
         },
-        word.INT => {
+        .INT => {
             var curr = x;
             const d = digit(curr);
             if (rest(curr) == 0 and (d & MAXDIGIT) <= 127) {
@@ -1307,19 +1314,19 @@ pub fn dump_ob(x: Word, file: ?*word.FILE) void {
             }
             putint(-1, file);
         },
-        word.DOUBLE => {
+        .DOUBLE => {
             _ = word.putc(word.DBL_X, file);
             putdbl(x, file);
         },
-        word.UNICODE => {
+        .UNICODE => {
             _ = word.putc(word.UNICODE_X, file);
             putint(@intCast(h(x)), file);
         },
-        word.DATAPAIR => {
+        .DATAPAIR => {
             _ = word.fprint(file, "{c}{s}", .{ @as(u8, @intCast(word.AKA_X)), castPtr(h(x)) });
             _ = word.putc(0, file);
         },
-        word.FILEINFO => {
+        .FILEINFO => {
             var line = t(x);
             const path = castPtr(h(x));
             if (abi.strcmp(path, CFN.?) == 0) {
@@ -1335,21 +1342,21 @@ pub fn dump_ob(x: Word, file: ?*word.FILE) void {
                 std.debug.print("impossible line number {d} in dump_ob\n", .{t(x)});
             }
         },
-        word.CONSTRUCTOR => {
+        .CONSTRUCTOR => {
             dump_ob(t(x), file);
             _ = word.putc(word.CONSTRUCT_X, file);
             _ = word.putc(@intCast(h(x) & 255), file);
             _ = word.putc(@intCast(h(x) >> 8), file);
         },
-        word.STARTREADVALS => {
+        .STARTREADVALS => {
             dump_ob(t(x), file);
             _ = word.putc(word.RV_X, file);
         },
-        word.ID => {
+        .ID => {
             _ = word.fprint(file, "{c}{s}", .{ @as(u8, @intCast(word.ID_X)), get_id(x) });
             _ = word.putc(0, file);
         },
-        word.STRCONS => {
+        .STRCONS => {
             const v = get_pn(x);
             if (v > bits_15) {
                 _ = word.putc(word.PN1_X, file);
@@ -1360,12 +1367,12 @@ pub fn dump_ob(x: Word, file: ?*word.FILE) void {
                 _ = word.putc(@intCast(v >> 8), file);
             }
         },
-        word.AP => {
+        .AP => {
             dump_ob(h(x), file);
             dump_ob(t(x), file);
             _ = word.putc(word.AP_X, file);
         },
-        word.CONS => {
+        .CONS => {
             dump_ob(t(x), file);
             dump_ob(h(x), file);
             _ = word.putc(word.CONS_X, file);
