@@ -69,7 +69,7 @@ fn stringFromCons(gpa: Allocator, cell: abi.word) ![]u8 {
     while (cur >= ATOMLIMIT and getTag(cur) == word.CONS) {
         const ch_val: abi.word = hd_of(cur);
         cur = tl_of(cur);
-        const codepoint: u21 = if (ch_val < ATOMLIMIT)
+        const codepoint: u21 = if (word.isAtom(ch_val))
             @intCast(ch_val) // ASCII/Latin-1 atom: value IS the code point
         else
             @intCast(tl_of(ch_val)); // UNICODE cell: code point is in tl
@@ -149,7 +149,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
             if (w == FALSE_ATOM) break :blk Token{ .id = .cname, .span = span, .text = try gpa.dupe(u8, "False") };
             // 1. Char literal: is_char() handles atoms 0-255 and UNICODE heap cells.
             if (is_char(w) != 0) {
-                const cp: u21 = if (w < ATOMLIMIT)
+                const cp: u21 = if (word.isAtom(w))
                     @intCast(w) // Latin-1 atom: value is the code point
                 else
                     @intCast(tl_of(w)); // UNICODE cell: code point in tl

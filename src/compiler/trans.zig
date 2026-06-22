@@ -373,7 +373,7 @@ export fn same(x: Word, y: Word) Word {
 }
 
 pub fn get_ids(x: Word) Word {
-    if (x < ATOMLIMIT) {
+    if (word.isAtom(x)) {
         return NIL;
     }
     if (h(x) == CONST or isConstructor(x)) {
@@ -390,7 +390,7 @@ pub fn get_ids(x: Word) Word {
 
 export fn mktuple(input_x: Word) Word {
     var x = input_x;
-    if (x < ATOMLIMIT) {
+    if (word.isAtom(x)) {
         return NIL;
     }
     if (h(x) == CONST or isConstructor(x)) {
@@ -408,7 +408,7 @@ export fn mktuple(input_x: Word) Word {
 }
 
 export fn irrefutable(x: Word) Word {
-    if (x < ATOMLIMIT) {
+    if (word.isAtom(x)) {
         return 0;
     }
     if (getTag(x) == CONS) {

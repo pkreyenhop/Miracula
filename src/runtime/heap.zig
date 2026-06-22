@@ -89,7 +89,7 @@ pub const Heap = struct {
     }
 
     pub fn h(self: Heap, x: Word) Word {
-        if (x < ATOMLIMIT) return 0;
+        if (word.isAtom(x)) return 0;
         return self.hd.?[@as(usize, @intCast(x))];
     }
 
@@ -99,7 +99,7 @@ pub const Heap = struct {
     }
 
     pub fn t(self: Heap, x: Word) Word {
-        if (x < ATOMLIMIT) return 0;
+        if (word.isAtom(x)) return 0;
         return self.tl.?[@as(usize, @intCast(x))];
     }
 

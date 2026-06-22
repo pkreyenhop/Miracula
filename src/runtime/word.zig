@@ -12,6 +12,30 @@ pub const UNDEF: Word = CMBASE + 140;
 pub const ATOMLIMIT: Word = CMBASE + 141;
 pub const OFFSIDE: Word = 270;
 
+/// A heap-graph reference: a `Word` that denotes a node — a named atom
+/// (`nil`/`undef`/`nils`) or a heap cell (`_`) — as opposed to an immediate
+/// char/int value. Introduced in R4 to make the handle/immediate distinction
+/// explicit at boundaries; convert with `.w()` / `Ref.of()`.
+pub const Ref = enum(Word) {
+    nil = NIL,
+    undef = UNDEF,
+    nils = NILS,
+    _,
+    pub inline fn w(self: Ref) Word {
+        return @intFromEnum(self);
+    }
+    pub inline fn of(x: Word) Ref {
+        return @enumFromInt(x);
+    }
+};
+
+/// True when `x` is an atom (combinator, char, token, or named atom) — i.e. it
+/// is below `ATOMLIMIT` and therefore has no hd/tl, rather than being a heap
+/// cell. Replaces the bare `x < ATOMLIMIT` magic-threshold checks (R4).
+pub inline fn isAtom(x: Word) bool {
+    return x < ATOMLIMIT;
+}
+
 pub const VALUE: Word = 257;
 pub const EVAL: Word = 258;
 pub const WHERE: Word = 259;
