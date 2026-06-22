@@ -1655,7 +1655,7 @@ pub fn checkfbs() void {
     resetSubst();
 }
 
-export fn genlstat_t() Word {
+pub export fn genlstat_t() Word {
     if (cs.filestat_t == 0) {
         cs.filestat_t = tf(cs.ltchar, pair_t(pair_t(num_t, num_t), num_t));
     }
@@ -2562,7 +2562,7 @@ fn inferType(x: Word) void {
     cs.current_id = 0;
 }
 
-export fn tsetup() void {
+pub export fn tsetup() void {
     cs.tfnum = tf(num_t, num_t);
     cs.tfbool = tf(bool_t, bool_t);
     cs.tfnum2 = tf(num_t, cs.tfnum);

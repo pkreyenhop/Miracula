@@ -4,17 +4,17 @@ const testing = std.testing;
 const heap = @import("../runtime/heap.zig");
 
 const setupheap = heap.setupheap;
-extern fn setupdic() void;
-extern fn yylex() c_int;
+const setupdic = r7_lex.setupdic;
+const yylex = r7_lex.yylex;
 const abi = @import("../runtime/c_abi.zig");
 const lex_state = @import("lex_state.zig");
+const r7_lex = @import("lex.zig");
 const ls = &lex_state.ls;
 
-extern fn make_id(n: [*:0]const u8) abi.word;
+const make_id = r7_lex.make_id;
 extern var current_file: abi.word;
 extern var files: abi.word;
-extern fn reset_pns() void;
-
+const reset_pns = r7_lex.reset_pns;
 fn makeFilRecord(name: [*:0]const u8) abi.word {
     const name_word = @as(abi.word, @intCast(@intFromPtr(name)));
     const file_info = abi.make(abi.FILEINFO, name_word, 0);
@@ -23,8 +23,7 @@ fn makeFilRecord(name: [*:0]const u8) abi.word {
     return abi.make(abi.CONS, info_cell, abi.NIL);
 }
 
-extern fn reset_state() void;
-
+const reset_state = r7_lex.reset_state;
 extern var SYNERR: abi.word;
 
 fn resetLexerState() void {

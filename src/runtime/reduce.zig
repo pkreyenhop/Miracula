@@ -4,6 +4,8 @@ const platform = @import("../io/platform.zig");
 const abi = @import("c_abi.zig");
 const main = @import("../main.zig");
 const heap = @import("heap.zig");
+const r7_repl = @import("../driver/repl.zig");
+const r7_reduce = @import("reducer/reduce.zig");
 
 const Word = i64;
 const NIL: Word = word.CMBASE + 138;
@@ -31,8 +33,8 @@ export var cycles: i64 = 0;
 
 const sto_char = heap.sto_char;
 extern fn fromUTF8(f: ?*word.FILE) Word;
-extern fn parseline(x: Word, f: ?*word.FILE, y: Word) Word;
-extern fn reduce(e: Word) Word;
+const parseline = r7_repl.parseline;
+const reduce = r7_reduce.reduce;
 const charname = heap.charname;
 
 inline fn getTag(x: Word) u8 {
@@ -234,7 +236,7 @@ pub export fn reduce_parse_close_error(arg1: Word, arg3: Word) void {
     abi.exit(1);
 }
 
-export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
+pub export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
     const lastarg = t(ctx.e);
     switch (op) {
         word.READBIN => {
@@ -354,7 +356,7 @@ pub export fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     return @ptrCast(&main.rs.linebuf);
 }
 
-export fn initclock() void {}
+pub export fn initclock() void {}
 
 pub export fn outstats() void {
     if (main.rs.atcount == 0) {

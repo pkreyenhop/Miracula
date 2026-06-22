@@ -2,6 +2,7 @@ const std = @import("std");
 
 const platform = @import("../io/platform.zig");
 const heap = @import("heap.zig");
+const r7_reduce = @import("reduce.zig");
 
 const Word = i64;
 
@@ -22,8 +23,7 @@ const ATOMLIMIT: Word = CMBASE + 141;
 
 
 const make = heap.make;
-extern fn math_error(s: [*:0]const u8) void;
-
+const math_error = r7_reduce.math_error;
 var logIBASE: f64 = 0;
 var log10IBASE: f64 = 0;
 export var b_rem: Word = 0;
@@ -89,7 +89,7 @@ fn cons(x: Word, y: Word) Word {
     return make(CONS, x, y);
 }
 
-export fn bigsetup() void {
+pub export fn bigsetup() void {
     logIBASE = std.math.log(f64, std.math.e, @as(f64, @floatFromInt(IBASE)));
     log10IBASE = std.math.log10(@as(f64, @floatFromInt(IBASE)));
     big_one = make(INT, 1, 0);

@@ -15,6 +15,13 @@ pub const heap = @import("runtime/heap.zig");
 pub const repl = @import("driver/repl.zig");
 pub const startup = @import("driver/startup.zig");
 const errors_mod = @import("runtime/errors.zig");
+const r7_types = @import("compiler/types.zig");
+const r7_repl = @import("driver/repl.zig");
+const r7_startup = @import("driver/startup.zig");
+const r7_signals = @import("io/signals.zig");
+const r7_lex = @import("parser/lex.zig");
+const r7_big = @import("runtime/big.zig");
+const r7_heap = @import("runtime/heap.zig");
 pub const MiraError = errors_mod.MiraError;
 /// Print a diagnostic to stderr and exit(1). See `errors.fatal`.
 pub const fatal = errors_mod.fatal;
@@ -64,22 +71,21 @@ pub const compiler_state = @import("compiler/compiler_state.zig");
 pub const cs = &compiler_state.cs;
 
 // External / runtime function declarations
-pub extern fn signals(signum: c_int, handler: usize) usize;
-pub extern fn dieclean() void;
-pub extern fn fpe_error(sig: c_int) void;
-pub extern fn commandloop(initscript: [*:0]u8) void;
-pub extern fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int;
+pub const signals = r7_signals.signals;
+pub const dieclean = r7_repl.dieclean;
+pub const fpe_error = r7_repl.fpe_error;
+pub const commandloop = r7_repl.commandloop;
+pub const main_entry = r7_startup.main_entry;
 
-extern fn setupheap() void;
-extern fn tsetup() void;
-extern fn reset_pns() void;
-extern fn bigsetup() void;
-extern fn resetgcstats() void;
-extern fn reset_state() void;
-extern fn reset_lex() void;
-pub extern fn dic_check() void;
-extern fn isconstrname(input: [*:0]const u8) c_int;
-
+const setupheap = r7_heap.setupheap;
+const tsetup = r7_types.tsetup;
+const reset_pns = r7_lex.reset_pns;
+const bigsetup = r7_big.bigsetup;
+const resetgcstats = r7_heap.resetgcstats;
+const reset_state = r7_lex.reset_state;
+const reset_lex = r7_lex.reset_lex;
+pub const dic_check = r7_lex.dic_check;
+const isconstrname = r7_lex.isconstrname;
 // Inline helpers (use heap module directly — B2: no h/t aliases here)
 pub inline fn get_id(x: Word) [*:0]const u8 {
     return @ptrFromInt(@as(usize, @intCast(heap.h(heap.h(heap.h(x))))));

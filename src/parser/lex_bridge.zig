@@ -16,9 +16,8 @@ const abi = @import("../runtime/c_abi.zig");
 const lex_state = @import("lex_state.zig");
 const ls = &lex_state.ls;
 
-extern fn mira_lex_setup_string(source: [*:0]const u8) void;
-extern fn mira_lex_cleanup() void;
-
+const mira_lex_setup_string = r7_lex.mira_lex_setup_string;
+const mira_lex_cleanup = r7_lex.mira_lex_cleanup;
 // Miranda atom-range constants (from lex.zig — keep in sync with CMBASE = 306).
 const CMBASE: abi.word = 306;
 const FALSE_ATOM: abi.word = CMBASE + 136; // Miranda boolean False
@@ -31,15 +30,16 @@ const ATOMLIMIT: abi.word = CMBASE + 141;
 // Heap arrays (data.h: hd and tl are offset so hd(x*2) / tl(x*2) index cell x).
 
 
-extern fn yylex() c_int;
-extern fn is_char(x: abi.word) c_int;
-extern fn get_dbl(x: abi.word) f64;
-extern fn layout() void;
-extern fn setlmargin() void;
-extern fn unsetlmargin() void;
-
+const yylex = r7_lex.yylex;
+const is_char = r7_heap.is_char;
+const get_dbl = r7_heap.get_dbl;
+const layout = r7_lex.layout;
+const setlmargin = r7_lex.setlmargin;
+const unsetlmargin = r7_lex.unsetlmargin;
 // C macro equivalents: hd(x) == hd_array((x)*2), tl(x) == tl_array((x)*2)
 const heap = @import("../runtime/heap.zig");
+const r7_lex = @import("lex.zig");
+const r7_heap = @import("../runtime/heap.zig");
 
 inline fn hd_of(x: abi.word) abi.word {
     return heap.heap.h(x);

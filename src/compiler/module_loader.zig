@@ -10,13 +10,13 @@ const Word = main.Word;
 const NIL = main.NIL;
 
 const lex_state = @import("../parser/lex_state.zig");
+const r7_signals = @import("../io/signals.zig");
 const ls = &lex_state.ls;
 
 // Global variables defined/exported in parser/lex.zig
 
 // C ABI / linked symbols
-extern fn signals(signum: c_int, handler: usize) usize;
-
+const signals = r7_signals.signals;
 fn WEXITSTATUS(status: c_int) c_int {
     return (status >> 8) & 0xff;
 }

@@ -12,10 +12,10 @@ inline fn getTag(x: Word) u8 {
 }
 
 const lex_state = @import("../parser/lex_state.zig");
+const r7_lex = @import("../parser/lex.zig");
 const ls = &lex_state.ls;
 
-extern fn token() ?[*:0]u8;
-
+const token = r7_lex.token;
 // File-private state for the /edit command.
 var mirahdr: ?[*:0]u8 = null;
 var lmirahdr: ?[*:0]u8 = null;

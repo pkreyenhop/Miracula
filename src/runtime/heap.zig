@@ -7,6 +7,13 @@ const ls = &lex_state.ls;
 
 const abi = @import("c_abi.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
+const r7_types = @import("../compiler/types.zig");
+const r7_repl = @import("../driver/repl.zig");
+const r7_files = @import("../io/files.zig");
+const r7_lex = @import("../parser/lex.zig");
+const r7_big = @import("big.zig");
+const r7_reduce = @import("reduce.zig");
+const r7_word = @import("word.zig");
 const cs = &compiler_state.cs;
 
 const Word = i64;
@@ -38,9 +45,8 @@ const ID = word.ID;
 const UNICODE = word.UNICODE;
 const CONS = word.CONS;
 
-extern fn strcmp(a: [*:0]const u8, b: [*:0]const u8) c_int;
-extern fn fpe_error(sig: c_int) void;
-
+const strcmp = r7_word.strcmp;
+const fpe_error = r7_repl.fpe_error;
 const fpdatum = if (@sizeOf(Word) == 4)
     extern union {
         real: f64,
@@ -599,9 +605,8 @@ extern var outfilq: Word;
 extern var waiting: Word;
 extern var tlost: Word;
 
-extern fn outstats() void;
-extern fn initclock() void;
-
+const outstats = r7_reduce.outstats;
+const initclock = r7_reduce.initclock;
 const hashsize = abi.hashsize;
 
 fn TOP() Word {
@@ -673,9 +678,8 @@ fn getStderr() ?*word.FILE {
 export var prefix: [abi.pnlim]u8 = undefined;
 export var preflen: Word = 0;
 
-extern fn fm_time(path: [*:0]const u8) Word;
-extern fn unlinkx(path: [*:0]const u8) void;
-
+const fm_time = r7_files.fm_time;
+const unlinkx = r7_files.unlinkx;
 pub export fn sto_id(p1: [*:0]const u8) Word {
     return make(word.ID, cons(make(word.STRCONS, @intCast(@intFromPtr(p1)), word.NIL), word.undef_t), word.UNDEF);
 }
@@ -835,8 +839,7 @@ export fn geterrlin(t_ptr: [*:0]const u8) Word {
     return el;
 }
 
-extern fn bigtostr(input_x: Word) Word;
-
+const bigtostr = r7_big.bigtostr;
 const SIGNBIT = 0x10000000;
 const MAXDIGIT = 0x7fff;
 
@@ -1066,10 +1069,9 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
 var PNBASE: Word = 0;
 var CFN: ?[*:0]const u8 = null;
 
-extern fn member(s: Word, x: Word) Word;
-extern fn add1(e: Word, s: Word) Word;
-extern fn name() Word;
-
+const member = r7_types.member;
+const add1 = r7_types.add1;
+const name = r7_lex.name;
 fn get_fil(fil: Word) [*:0]const u8 {
     return castPtr(h(h(h(fil))));
 }
@@ -1902,8 +1904,7 @@ pub fn isfreeid(x: Word) bool {
     return id_type(x) == word.undef_t and id_val(x) == word.UNDEF;
 }
 
-extern fn isconstrname(input: [*:0]const u8) c_int;
-
+const isconstrname = r7_lex.isconstrname;
 pub fn isconstructor(x: Word) bool {
     return heap.getTag(x) == word.ID and isconstrname(getId(x)) != 0;
 }

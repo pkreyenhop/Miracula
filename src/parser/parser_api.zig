@@ -8,12 +8,13 @@ const core = @import("../runtime/core_state.zig");
 const lex_bridge = @import("lex_bridge.zig");
 const parser_mod = @import("parser.zig");
 const codegen = @import("codegen.zig");
-extern fn mira_lex_setup_string(source: [*:0]const u8) void;
-extern fn mira_lex_cleanup() void;
-extern fn mira_lex_setup_file(filename: [*:0]const u8) c_int;
+const r7_repl = @import("../driver/repl.zig");
+const r7_lex = @import("lex.zig");
+const mira_lex_setup_string = r7_lex.mira_lex_setup_string;
+const mira_lex_cleanup = r7_lex.mira_lex_cleanup;
+const mira_lex_setup_file = r7_lex.mira_lex_setup_file;
 // Forks like the original C evaluate(): compiling=0 only in child; parent's heap is safe.
-extern fn evaluate_repl(x: abi.word) void;
-
+const evaluate_repl = r7_repl.evaluate_repl;
 pub const ParseError = error{
     SyntaxError,
     ParseFailed,

@@ -8,17 +8,19 @@ const Word = main.Word;
 const NIL = main.NIL;
 
 const lex_state = @import("../parser/lex_state.zig");
+const r7_types = @import("types.zig");
+const r7_lex = @import("../parser/lex.zig");
+const r7_big = @import("../runtime/big.zig");
 const ls = &lex_state.ls;
 
 // Global variables defined/exported in parser/lex.zig
 
 // Exported initialization functions from other modules
 const setupheap = heap.setupheap;
-extern fn tsetup() void;
-extern fn reset_pns() void;
-extern fn bigsetup() void;
-extern fn reset_lex() void;
-
+const tsetup = r7_types.tsetup;
+const reset_pns = r7_lex.reset_pns;
+const bigsetup = r7_big.bigsetup;
+const reset_lex = r7_lex.reset_lex;
 // Token names for out2() — replaces y.tab.c's yysterm[].
 const yysterm_data = [_]?[*:0]const u8{
     null, // 0: placeholder

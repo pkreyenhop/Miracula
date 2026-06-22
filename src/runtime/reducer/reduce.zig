@@ -8,6 +8,8 @@ const combinators = @import("combinators.zig");
 const ready = @import("ready.zig");
 const lex_handlers = @import("lex.zig");
 const io_handlers = @import("io.zig");
+const r7_lex = @import("../../parser/lex.zig");
+const r7_reduce = @import("../reduce.zig");
 
 pub const Word = core.Word;
 pub const ReductionCtx = core.ReductionCtx;
@@ -209,16 +211,16 @@ pub export fn reduce(e_val: Word) Word {
         }
     }
 }
-pub extern fn print(e_val: Word) void;
+pub const print = r7_reduce.print;
 pub extern var waiting: Word;
 pub extern var errtrap: Word;
 pub extern var s_out: ?*word.FILE;
-pub extern fn reduce_badcase_error(arg_info: Word) void;
-pub extern fn reduce_conf_error(arg_info: Word) void;
-pub extern fn conv_args() Word;
-pub extern fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8;
-pub extern fn head(x_val: Word) Word;
-pub extern fn force(x_val: Word) void;
+pub const reduce_badcase_error = r7_reduce.reduce_badcase_error;
+pub const reduce_conf_error = r7_reduce.reduce_conf_error;
+pub const conv_args = r7_lex.conv_args;
+pub const getstring = r7_reduce.getstring;
+pub const head = r7_reduce.head;
+pub const force = r7_reduce.force;
 
 pub inline fn clean_ptr(x: Word) usize {
     return @as(usize, @intCast(x & ~abi.tlptrbits));

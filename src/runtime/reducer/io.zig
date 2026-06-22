@@ -7,7 +7,6 @@ const word = @import("../word.zig");
 
 
 extern fn reduce_stream_read(ctx: ?*anyopaque, op: Word) c_int;
-
 pub fn handle_READ(ctx: *ReductionCtx) void {
     ctx.action = reduce_stream_read(ctx, word.READ);
 }

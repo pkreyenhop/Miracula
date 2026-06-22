@@ -28,7 +28,7 @@ fn unlimitStack() void {
     }
 }
 
-export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
+pub export fn main_entry(argc: c_int, argv: [*][*:0]u8) callconv(.c) c_int {
     var manonly: Word = 0;
     main.rs.cstack = @ptrCast(&manonly);
     unlimitStack();

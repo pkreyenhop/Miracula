@@ -6,6 +6,11 @@ const ls = &lex_state.ls;
 const main = @import("../main.zig");
 const heap = @import("../runtime/heap.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const r7_setup = @import("../compiler/setup.zig");
+const r7_types = @import("../compiler/types.zig");
+const r7_repl = @import("../driver/repl.zig");
+const r7_files = @import("../io/files.zig");
+const r7_big = @import("../runtime/big.zig");
 
 const Word = i64;
 const CMBASE: Word = 306;
@@ -52,21 +57,21 @@ extern var commandmode: Word;
 
 const make = heap.make;
 const mallocPanic = heap.mallocPanic;
-extern fn bigscan(s: [*:0]const u8) Word;
-extern fn bigxscan(s: [*:0]const u8, limit: [*:0]const u8) Word;
-extern fn bigoscan(s: [*:0]const u8, limit: [*:0]const u8) Word;
+const bigscan = r7_big.bigscan;
+const bigxscan = r7_big.bigxscan;
+const bigoscan = r7_big.bigoscan;
 const sto_dbl = heap.sto_dbl;
 const sto_id = heap.sto_id;
 const sto_char = heap.sto_char;
-extern fn fm_time(path: [*:0]const u8) Word;
+const fm_time = r7_files.fm_time;
 const append1 = heap.append1;
-extern fn genlstat_t() Word;
-extern fn acterror() void;
-extern fn syntax(s: [*:0]const u8) void;
-extern fn reset() void;
+const genlstat_t = r7_types.genlstat_t;
+const acterror = r7_setup.acterror;
+const syntax = r7_setup.syntax;
+const reset = r7_repl.reset;
 const is_char = heap.is_char;
 
-export fn mira_lex_setup_string(source: [*:0]const u8) void {
+pub export fn mira_lex_setup_string(source: [*:0]const u8) void {
     const len = std.mem.len(source);
     const f = word.fmemopen(@ptrCast(@constCast(source)), len, "r") orelse return;
     ls.fileq = cons(make(STRCONS, @intCast(@intFromPtr(f)), NIL), ls.fileq);
@@ -74,7 +79,7 @@ export fn mira_lex_setup_string(source: [*:0]const u8) void {
     main.rs.s_in = f;
 }
 
-export fn mira_lex_cleanup() void {
+pub export fn mira_lex_cleanup() void {
     if (main.rs.s_in) |f| {
         const is_stdio = (f == getStdin()) or (f == getStdout()) or (f == getStderr());
         if (!is_stdio) {
@@ -84,7 +89,7 @@ export fn mira_lex_cleanup() void {
     }
 }
 
-export fn mira_lex_setup_file(filename: [*:0]const u8) c_int {
+pub export fn mira_lex_setup_file(filename: [*:0]const u8) c_int {
     if (openfile(filename) == 0) return 0;
     main.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
     return 1;
@@ -1405,7 +1410,7 @@ pub export fn keep(p: [*:0]u8) [*:0]u8 {
     return p;
 }
 
-export fn dic_check() void {
+pub export fn dic_check() void {
     ovflocheck();
 }
 
@@ -1584,7 +1589,7 @@ pub fn getfname(x: Word) Word {
     return name();
 }
 
-export fn name() Word {
+pub export fn name() Word {
     const h_idx = @as(usize, @intCast(hash(ls.dicp)));
     var q = ls.namebucket[h_idx];
     while (q != 0 and !is(get_id(h(q)))) {
@@ -1616,7 +1621,7 @@ pub export fn findid(n: [*:0]const u8) Word {
     return if (q != 0) h(q) else NIL;
 }
 
-export fn reset_pns() void {
+pub export fn reset_pns() void {
     ls.nextpn = 0;
     if (ls.pnvec == null) {
         const slice = rt.allocator.alloc(Word, @intCast(pn_lim)) catch mallocPanic("ls.pnvec");
@@ -1771,7 +1776,7 @@ pub fn charclass() c_int {
     return anti;
 }
 
-export fn reset_lex() void {
+pub export fn reset_lex() void {
     if (commandmode == 0) {
         if (errs == 0) {
             errs = fileinfo(@intCast(@intFromPtr(get_fil(current_file))), ls.line_no);
@@ -1805,7 +1810,7 @@ export fn reset_lex() void {
     reset_state();
 }
 
-export fn reset_state() void {
+pub export fn reset_state() void {
     if (commandmode != 0) {
         while (ls.c != '\n' and ls.c != abi.EOF) {
             if (main.rs.s_in) |sin| {

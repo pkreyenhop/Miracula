@@ -12,6 +12,11 @@ const h = main.heap.h;
 const t = main.heap.t;
 
 const lex_state = @import("../parser/lex_state.zig");
+const r7_setup = @import("../compiler/setup.zig");
+const r7_signals = @import("../io/signals.zig");
+const r7_lex = @import("../parser/lex.zig");
+const r7_heap = @import("../runtime/heap.zig");
+const r7_reduce = @import("../runtime/reduce.zig");
 const ls = &lex_state.ls;
 
 // State owned by reduce.zig / heap.zig — not yet accessible via @import.
@@ -19,14 +24,13 @@ inline fn getTag(x: Word) u8 {
     return main.heap.heap.getTag(x);
 }
 
-extern fn signals(signum: c_int, handler: usize) usize;
-extern fn resetgcstats() void;
-extern fn outstats() void;
-extern fn syntax(s: [*:0]const u8) void;
-extern fn token() ?[*:0]u8;
-extern fn rdline() ?[*:0]u8;
-extern fn reset_lex() void;
-
+const signals = r7_signals.signals;
+const resetgcstats = r7_heap.resetgcstats;
+const outstats = r7_reduce.outstats;
+const syntax = r7_setup.syntax;
+const token = r7_lex.token;
+const rdline = r7_lex.rdline;
+const reset_lex = r7_lex.reset_lex;
 fn WIFSIGNALED(status: c_int) bool {
     return (status & 0x7f) != 0 and (status & 0x7f) != 0x7f;
 }
@@ -35,7 +39,7 @@ fn WTERMSIG(status: c_int) c_int {
     return status & 0x7f;
 }
 
-export fn commandloop(initscript: [*:0]u8) void {
+pub export fn commandloop(initscript: [*:0]u8) void {
     var ch: c_int = undefined;
     var lb: ?[*:0]u8 = undefined;
 
@@ -237,13 +241,13 @@ pub export fn process() Word {
     return 1; // child
 }
 
-export fn dieclean() void {
+pub export fn dieclean() void {
     word.printErr("<<...interrupt>>\n", .{});
     outstats();
     abi.exit(0);
 }
 
-export fn fpe_error(sig: c_int) void {
+pub export fn fpe_error(sig: c_int) void {
     if (main.compiling != 0) {
         _ = signals(sig, @intFromPtr(&fpe_error));
         syntax("floating point number out of range\n");
