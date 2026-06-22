@@ -99,7 +99,7 @@ pub export fn isnat(x: Word) c_int {
     return if (getTag(x) == INT and poz(x)) 1 else 0;
 }
 
-export fn sto_int(input: c_longlong) Word {
+pub export fn sto_int(input: c_longlong) Word {
     var i = input;
     var s: Word = 0;
     if (i < 0) {
@@ -122,7 +122,7 @@ export fn sto_int(input: c_longlong) Word {
     return x;
 }
 
-export fn get_int(input: Word) c_longlong {
+pub export fn get_int(input: Word) c_longlong {
     var x = input;
     var n: c_longlong = @intCast(digit0(x));
     const sign = neg(x) != 0;
@@ -140,13 +140,13 @@ export fn get_int(input: Word) c_longlong {
     return if (sign) -n else n;
 }
 
-export fn bignegate(x: Word) Word {
+pub export fn bignegate(x: Word) Word {
     if (bigzero(x)) return x;
     const d = if ((h(x) & SIGNBIT) != 0) h(x) & MAXDIGIT else SIGNBIT | h(x);
     return make(INT, d, rest(x));
 }
 
-export fn bigplus(x: Word, y: Word) Word {
+pub export fn bigplus(x: Word, y: Word) Word {
     if (poz(x)) {
         if (poz(y)) return bigPlus(x, y, 0);
         return bigSub(x, y);
@@ -184,7 +184,7 @@ fn bigPlus(input_x: Word, input_y: Word, signbit: Word) Word {
     return r;
 }
 
-export fn bigsub(x: Word, y: Word) Word {
+pub export fn bigsub(x: Word, y: Word) Word {
     if (poz(x)) {
         if (poz(y)) return bigSub(x, y);
         return bigPlus(x, y, 0);
@@ -250,7 +250,7 @@ fn bigSub(input_x: Word, input_y: Word) Word {
     return r;
 }
 
-export fn bigcmp(input_x: Word, input_y: Word) c_int {
+pub export fn bigcmp(input_x: Word, input_y: Word) c_int {
     var x = input_x;
     var y = input_y;
     const s = neg(x) != 0;
@@ -269,7 +269,7 @@ export fn bigcmp(input_x: Word, input_y: Word) c_int {
     }
 }
 
-export fn bigtimes(input_x: Word, input_y: Word) Word {
+pub export fn bigtimes(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
     if (len(x) < len(y)) {
@@ -315,7 +315,7 @@ fn stimes(input_x: Word, n: Word) Word {
     return r;
 }
 
-export fn bigdiv(input_x: Word, input_y: Word) Word {
+pub export fn bigdiv(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
     const s1 = neg(y) != 0;
@@ -344,7 +344,7 @@ export fn bigdiv(input_x: Word, input_y: Word) Word {
     return q;
 }
 
-export fn bigmod(input_x: Word, input_y: Word) Word {
+pub export fn bigmod(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
     const s1 = neg(y) != 0;
@@ -477,7 +477,7 @@ fn ms2d(input_x: Word) Word {
     return (digit(x) * IBASE) + d;
 }
 
-export fn bigpow(input_x: Word, input_y: Word) Word {
+pub export fn bigpow(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
     var r = make(INT, 1, 0);
@@ -501,7 +501,7 @@ export fn bigpow(input_x: Word, input_y: Word) Word {
     return r;
 }
 
-export fn bigtodbl(input_x: Word) f64 {
+pub export fn bigtodbl(input_x: Word) f64 {
     var x = input_x;
     const s = neg(x) != 0;
     var b: f64 = 1.0;
@@ -515,7 +515,7 @@ export fn bigtodbl(input_x: Word) f64 {
     return if (s) -r else r;
 }
 
-export fn dbltobig(input: f64) Word {
+pub export fn dbltobig(input: f64) Word {
     const s = input < 0;
     const r = make(INT, 0, 0);
     var ptr = r;
@@ -533,7 +533,7 @@ export fn dbltobig(input: f64) Word {
     return r;
 }
 
-export fn biglog(input_x: Word) f64 {
+pub export fn biglog(input_x: Word) f64 {
     var x = input_x;
     var n: Word = 0;
     var r: f64 = @floatFromInt(digit(x));
@@ -549,7 +549,7 @@ export fn biglog(input_x: Word) f64 {
     return std.math.log(f64, std.math.e, r) + (@as(f64, @floatFromInt(n)) * logIBASE);
 }
 
-export fn biglog10(input_x: Word) f64 {
+pub export fn biglog10(input_x: Word) f64 {
     var x = input_x;
     var n: Word = 0;
     var r: f64 = @floatFromInt(digit(x));
@@ -592,7 +592,7 @@ pub export fn bigscan(p: [*:0]const u8) Word {
     return r;
 }
 
-export fn bigxscan(p: [*]const u8, q: [*]const u8) Word {
+pub export fn bigxscan(p: [*]const u8, q: [*]const u8) Word {
     const start_addr = @intFromPtr(p);
     var end_addr = @intFromPtr(q);
     if (end_addr == start_addr + 1 and p[0] == '0') return make(INT, 0, 0);
@@ -616,7 +616,7 @@ export fn bigxscan(p: [*]const u8, q: [*]const u8) Word {
     return r;
 }
 
-export fn bigoscan(p: [*]const u8, q: [*]const u8) Word {
+pub export fn bigoscan(p: [*]const u8, q: [*]const u8) Word {
     const start_addr = @intFromPtr(p);
     var end_addr = @intFromPtr(q);
     var r: Word = undefined;
@@ -648,7 +648,7 @@ fn hexVal(ch: u8) Word {
     return 10 + ch - 'a';
 }
 
-export fn strtobig(input_z: Word, base: c_int) Word {
+pub export fn strtobig(input_z: Word, base: c_int) Word {
     var z = input_z;
     var s = false;
     const r = make(INT, 0, 0);
@@ -688,7 +688,7 @@ fn multiplyAddInPlace(r: Word, f: Word, add: Word) void {
     if (carry != 0) x.* = make(INT, carry, 0);
 }
 
-export fn bigtostr(input_x: Word) Word {
+pub export fn bigtostr(input_x: Word) Word {
     var x = input_x;
     if (rest(x) == 0) return wordToDecimalList(getsmallint(x));
     const sign = neg(x) != 0;
@@ -741,7 +741,7 @@ fn wordToDecimalList(value: Word) Word {
     return result;
 }
 
-export fn bigtostrx(input_x: Word) Word {
+pub export fn bigtostrx(input_x: Word) Word {
     var x = input_x;
     var r: Word = NIL;
     const s = neg(x) != 0;
@@ -769,7 +769,7 @@ export fn bigtostrx(input_x: Word) Word {
     return r;
 }
 
-export fn bigtostr8(input_x: Word) Word {
+pub export fn bigtostr8(input_x: Word) Word {
     var x = input_x;
     var r: Word = NIL;
     const s = neg(x) != 0;

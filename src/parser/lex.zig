@@ -191,11 +191,11 @@ fn ovflocheck() void {
     }
 }
 
-export fn dicovflo() void {
+pub export fn dicovflo() void {
     main.fatal("\npanic: dictionary overflow\n", .{.{}});
 }
 
-export fn setupdic() void {
+pub export fn setupdic() void {
     const space = main.rs.DICSPACE;
     if (ls.dic == null) {
         const dict_slice = rt.allocator.alloc(u8, @intCast(space)) catch mallocPanic("dictionary");
@@ -221,7 +221,7 @@ fn gethome(n: [*:0]const u8) ?[*:0]const u8 {
     return null;
 }
 
-export fn token() ?[*:0]u8 {
+pub export fn token() ?[*:0]u8 {
     var ch = abi.getchar();
     ls.dicq = ls.dicp; // uses top of dictionary as temporary work space
     while (ch == ' ' or ch == '\t') {
@@ -273,7 +273,7 @@ export fn token() ?[*:0]u8 {
     return ls.dicp;
 }
 
-export fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
+pub export fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
     var s = s_input;
     var n: Word = @intCast(word.strlen(s));
     if (s[0] == '<' and s[@intCast(n - 1)] == '>') {
@@ -524,7 +524,7 @@ fn getlitch() Word {
 
 var rdline_linebuf: [1024]u8 = std.mem.zeroes([1024]u8);
 
-export fn rdline() ?[*:0]u8 {
+pub export fn rdline() ?[*:0]u8 {
     var p: [*]u8 = &rdline_linebuf;
     var ch = abi.getchar();
     var expansion: Word = 0;
@@ -586,14 +586,14 @@ export fn rdline() ?[*:0]u8 {
     return @ptrCast(&rdline_linebuf);
 }
 
-export fn setlmargin() void {
+pub export fn setlmargin() void {
     ls.margstack = cons(ls.lmargin, ls.margstack);
     if (ls.lmargin < ls.col) {
         ls.lmargin = ls.col;
     }
 }
 
-export fn unsetlmargin() void {
+pub export fn unsetlmargin() void {
     if (ls.margstack == NIL) {
         return;
     }
@@ -629,7 +629,7 @@ inline fn tryCh(x: Word, y: c_int) ?c_int {
     return null;
 }
 
-export fn yylex() c_int {
+pub export fn yylex() c_int {
     if (SYNERR != 0) {
         return abi.END;
     }
@@ -973,7 +973,7 @@ export fn yylex() c_int {
     }
 }
 
-export fn layout() void {
+pub export fn layout() void {
     while (true) {
         if (ls.c == ' ' or (ls.c == '\n' and commandmode == 0) or ls.c == '\t') {
             ls.c = getch();
@@ -1048,7 +1048,7 @@ pub export fn conv_args() Word {
     return x;
 }
 
-export fn str_conv(s: [*:0]const u8) Word {
+pub export fn str_conv(s: [*:0]const u8) Word {
     var x = NIL;
     var i = word.strlen(s);
     while (i > 0) {
@@ -1118,7 +1118,7 @@ pub fn pathname() ?[*:0]u8 {
     return ls.dicp;
 }
 
-export fn adjust_prefix(f: [*:0]const u8) void {
+pub export fn adjust_prefix(f: [*:0]const u8) void {
     ls.prefixstack = cons(prefix, ls.prefixstack);
     prefix += @as(Word, @intCast(word.strlen(prefixbase.? + @as(usize, @intCast(prefix))))) + 1;
     while (@as(usize, @intCast(prefix)) + word.strlen(f) >= @as(usize, @intCast(prefixlimit))) {
@@ -1151,7 +1151,7 @@ pub fn peekch() c_int {
     return ch;
 }
 
-export fn openfile(n: [*:0]const u8) c_int {
+pub export fn openfile(n: [*:0]const u8) c_int {
     const f = word.fopen(n, "r") orelse return 0;
     ls.fileq = cons(make(STRCONS, @intCast(@intFromPtr(f)), NIL), ls.fileq);
     ls.insertdepth += 1;
@@ -1638,7 +1638,7 @@ pub export fn make_pn(val: Word) Word {
     return ret;
 }
 
-export fn sto_pn(n: Word) Word {
+pub export fn sto_pn(n: Word) Word {
     if (n >= pn_lim) {
         const old_lim = pn_lim;
         while (pn_lim <= n) {
@@ -1655,7 +1655,7 @@ export fn sto_pn(n: Word) Word {
     return ls.pnvec.?[@intCast(n)];
 }
 
-export fn mkprivate(x_input: Word) void {
+pub export fn mkprivate(x_input: Word) void {
     var x = x_input;
     while (x != NIL) {
         get_id(h(x))[0] += 128;
@@ -1874,7 +1874,7 @@ pub export fn isconstrname(input: [*:0]const u8) callconv(.c) c_int {
     return if (std.ascii.isUpper(s[0])) 1 else 0;
 }
 
-export fn okid(ch: c_int) callconv(.c) c_int {
+pub export fn okid(ch: c_int) callconv(.c) c_int {
     return if ((ch >= 'a' and ch <= 'z') or
         (ch >= 'A' and ch <= 'Z') or
         (ch >= '0' and ch <= '9') or

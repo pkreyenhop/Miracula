@@ -960,7 +960,7 @@ pub fn makeshow(here: Word, type_node: Word) Word {
     return f;
 }
 
-export fn mkshow(s: Word, p: Word, input_t: Word) Word {
+pub export fn mkshow(s: Word, p: Word, input_t: Word) Word {
     var args: Word = NIL;
     var type_node = input_t;
     while (getTag(type_node) == AP) {

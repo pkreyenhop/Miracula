@@ -74,7 +74,7 @@ pub export fn outUTF8(u: c_ulong, fil: ?*FILE) void {
     }
 }
 
-fn out(byte: c_ulong, fil: ?*FILE) void {
+pub fn out(byte: c_ulong, fil: ?*FILE) void {
     _ = putc(@intCast(byte), fil);
 }
 

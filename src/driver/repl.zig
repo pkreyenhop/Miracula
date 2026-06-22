@@ -211,7 +211,7 @@ export fn commandloop(initscript: [*:0]u8) void {
     }
 }
 
-export fn process() Word {
+pub export fn process() Word {
     var oldsig: usize = undefined;
     oldsig = signals(abi.SIGINT, 1);
     const pid = abi.fork();

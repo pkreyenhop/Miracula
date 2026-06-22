@@ -649,7 +649,7 @@ pub export fn make(t_val: u8, x: Word, y: Word) Word {
     return heap.make(t_val, x, y);
 }
 
-export fn gc() void {
+pub export fn gc() void {
     heap.gc();
 }
 
@@ -704,7 +704,7 @@ pub fn putword(x_val: Word, file: ?*word.FILE) void {
     }
 }
 
-export fn setprefix(p: [*:0]const u8) void {
+pub export fn setprefix(p: [*:0]const u8) void {
     const p_len = std.mem.len(p);
     if (p_len >= prefix.len) {
         mallocfail("prefix buffer overflow");
@@ -743,7 +743,7 @@ pub fn mkrel(p: [*:0]const u8) [*:0]const u8 {
     return p;
 }
 
-export fn okdump(t_ptr: [*:0]const u8) c_int {
+pub export fn okdump(t_ptr: [*:0]const u8) c_int {
     var obf: [120]u8 = undefined;
     const t_len = std.mem.len(t_ptr);
     if (t_len >= obf.len) {
@@ -1200,7 +1200,7 @@ pub fn getdbl(file: ?*word.FILE) Word {
     return sto_dbl(d);
 }
 
-export fn dump_script(files_val: Word, file: ?*word.FILE) void {
+pub export fn dump_script(files_val: Word, file: ?*word.FILE) void {
     _ = word.putc(@intCast(wordsize), file);
     _ = word.putc(word.XVERSION, file);
 
@@ -1383,7 +1383,7 @@ pub fn dump_ob(x: Word, file: ?*word.FILE) void {
     }
 }
 
-export fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
+pub export fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
     cs.TORPHANS = 0;
     cs.BAD_DUMP = 0;
     cs.CLASHES = word.NIL;

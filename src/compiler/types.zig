@@ -322,7 +322,7 @@ fn idType(x: Word) Word {
     return t(h(x));
 }
 
-export fn typesfirst(input_x: Word) Word {
+pub export fn typesfirst(input_x: Word) Word {
     var x = input_x;
     var y = &x;
     var z: Word = NIL;
@@ -719,7 +719,7 @@ export fn mapup(tv_in: Word) Word {
     return h(m.*);
 }
 
-export fn instantiate(term: Word) Word {
+pub export fn instantiate(term: Word) Word {
     cs.tvmap = NIL;
     return walktype(term, mapup);
 }
@@ -856,7 +856,7 @@ pub export fn sayhere(h_val: Word, nl: Word) void {
     }
 }
 
-export fn report_type(x: Word) void {
+pub export fn report_type(x: Word) void {
     _ = word.print("{s}", .{getId(x)});
     if (idType(x) == type_t) {
         const arity = t_arity(x);
@@ -1153,7 +1153,7 @@ pub fn out_formal1(f: *word.FILE, x_in: Word) void {
     }
 }
 
-export fn out_pattern(f: *word.FILE, x: Word) void {
+pub export fn out_pattern(f: *word.FILE, x: Word) void {
     if (getTag(x) == CONS) {
         if (h(x) == CONST and (getTag(t(x)) == INT or getTag(t(x)) == DOUBLE)) {
             out(f, t(x));
@@ -1370,7 +1370,7 @@ pub fn printelement(x: Word) void {
     _ = word.print(")", .{});
 }
 
-export fn printlist(title: [*:0]const u8, l_in: Word) void {
+pub export fn printlist(title: [*:0]const u8, l_in: Word) void {
     var l = l_in;
     _ = word.print("{s}", .{title});
     while (l != NIL) {
@@ -1723,7 +1723,7 @@ pub fn subsu1(t1_in: Word, t2: Word, T2: Word) Word {
     return 0;
 }
 
-export fn subsumes(t1: Word, t2: Word) Word {
+pub export fn subsumes(t1: Word, t2: Word) Word {
     if (t2 == wrong_t) {
         return 1;
     }

@@ -158,7 +158,7 @@ pub fn handle_ready_state(ctx: *ReductionCtx) void {
                                 q += 1;
                                 r += 2;
                             } else {
-                                abi.getenv_error(a);
+                                abi.getenv_error(a.?);
                                 q[0] = r[0];
                                 q += 1;
                                 r += 1;

@@ -208,7 +208,7 @@ pub export fn reduce_conf_error(arg_info: Word) void {
     abi.exit(1);
 }
 
-export fn reduce_parse_close_error(arg1: Word, arg3: Word) void {
+pub export fn reduce_parse_close_error(arg1: Word, arg3: Word) void {
     word.printErr("\nPARSE OF {s}FAILS WITH UNEXPECTED ", .{std.mem.span(getstring(arg1, null).?)});
     const arg3_reduced = reduce(t(g_residue(arg3)));
     if (arg3_reduced == NIL) {
@@ -356,7 +356,7 @@ pub export fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
 
 export fn initclock() void {}
 
-export fn outstats() void {
+pub export fn outstats() void {
     if (main.rs.atcount == 0) {
         return;
     }
@@ -368,7 +368,7 @@ export fn outstats() void {
     word.printErr("no of gc's = {}, cpu = {d:.2}\n", .{nogcs, @as(f64, @floatFromInt(buffer.tms_utime)) / clk_tck});
 }
 
-export fn out_here(f: ?*word.FILE, h_val: Word, nl: c_int) void {
+pub export fn out_here(f: ?*word.FILE, h_val: Word, nl: c_int) void {
     if (getTag(h_val) != word.FILEINFO) {
         word.printErr("(impossible event in outhere)\n", .{});
         return;
@@ -398,27 +398,27 @@ pub fn stdin_error(c_val: c_int) void {
     abi.exit(1);
 }
 
-export fn fn_error(s: [*:0]const u8) void {
+pub export fn fn_error(s: [*:0]const u8) void {
     word.printErr("\nprogram error: {s}\n", .{s});
     outstats();
     abi.exit(1);
 }
 
-export fn getenv_error(a: [*:0]const u8) void {
+pub export fn getenv_error(a: [*:0]const u8) void {
     word.printErr("program error: getenv({s}): illegal characters in result string\n", .{a});
     outstats();
     abi.exit(1);
 }
 
-export fn subs_error() void {
+pub export fn subs_error() void {
     fn_error("subscript out of range");
 }
 
-export fn div_error() void {
+pub export fn div_error() void {
     fn_error("attempt to divide by zero");
 }
 
-export fn math_error(s: [*:0]const u8) void {
+pub export fn math_error(s: [*:0]const u8) void {
     const err_val = platform.getErrno();
     const err_type: [*:0]const u8 = if (err_val == abi.EDOM) "domain " else if (err_val == abi.ERANGE) "range " else "";
     word.printErr("\nmath function {s}error ({s})\n", .{err_type, s});
@@ -426,13 +426,13 @@ export fn math_error(s: [*:0]const u8) void {
     abi.exit(1);
 }
 
-export fn int_error(s: [*:0]const u8) void {
+pub export fn int_error(s: [*:0]const u8) void {
     word.printErr("\nprogram error: fractional number where integer expected ({s})\n", .{s});
     outstats();
     abi.exit(1);
 }
 
-export fn numplus(x: Word, y: Word) Word {
+pub export fn numplus(x: Word, y: Word) Word {
     if (getTag(x) == word.DOUBLE) {
         return abi.sto_dbl(abi.get_dbl(x) + force_dbl(y));
     }
@@ -442,7 +442,7 @@ export fn numplus(x: Word, y: Word) Word {
     return abi.bigplus(x, y);
 }
 
-export fn g_residue(toks2: Word) Word {
+pub export fn g_residue(toks2: Word) Word {
     var curr_toks2 = toks2;
     var toks1 = NIL;
     if (getTag(curr_toks2) != word.CONS) {
@@ -462,7 +462,7 @@ export fn g_residue(toks2: Word) Word {
     return cons(ap(word.DESTREV, toks1), t(curr_toks2));
 }
 
-export fn memclass(c_val: c_int, x_val: Word) c_int {
+pub export fn memclass(c_val: c_int, x_val: Word) c_int {
     var x = x_val;
     while (x != NIL) {
         if (h(x) == word.DOTDOT) {
@@ -479,7 +479,7 @@ export fn memclass(c_val: c_int, x_val: Word) c_int {
     return 0;
 }
 
-export fn lexfail(x_val: Word) void {
+pub export fn lexfail(x_val: Word) void {
     var x = x_val;
     var i: i32 = 24;
     word.printErr("\nLEX FAILS WITH UNRECOGNISED INPUT: \"", .{});
@@ -493,16 +493,16 @@ export fn lexfail(x_val: Word) void {
     abi.exit(1);
 }
 
-export fn lexstate(x: Word) Word {
+pub export fn lexstate(x: Word) Word {
     const val = h(h(x));
     return cons(abi.sto_int(val >> 8), stosmallint(val & 255));
 }
 
-export fn piperrmess(pid: Word) Word {
+pub export fn piperrmess(pid: Word) Word {
     return abi.str_conv(if (pid == -1) "cannot create process\n" else "cannot open pipe\n");
 }
 
-export fn compare(arg_a: Word, arg_b: Word) c_int {
+pub export fn compare(arg_a: Word, arg_b: Word) c_int {
     var a = arg_a;
     var b = arg_b;
     while (true) {
@@ -699,7 +699,7 @@ const Stdoutb = 7;
 const Tofileb = 8;
 const Appendfileb = 9;
 
-export fn output(arg_e: Word) void {
+pub export fn output(arg_e: Word) void {
     var e = arg_e;
     const old_cstack = main.rs.cstack;
     main.rs.cstack = @ptrCast(&e);
