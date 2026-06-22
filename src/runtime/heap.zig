@@ -471,7 +471,7 @@ pub export fn get_here(x: Word) Word {
     return if (heap.getTag(y) == CONS) t(y) else y;
 }
 
-export fn getaka(x: Word) [*:0]const u8 {
+pub export fn getaka(x: Word) [*:0]const u8 {
     const y = idWho(x);
     return if (heap.getTag(y) != CONS) getId(x) else @ptrFromInt(@as(usize, @intCast(h(h(y)))));
 }
@@ -780,7 +780,7 @@ pub export fn okdump(t_ptr: [*:0]const u8) c_int {
     return 0;
 }
 
-export fn geterrlin(t_ptr: [*:0]const u8) Word {
+pub export fn geterrlin(t_ptr: [*:0]const u8) Word {
     var obf: [120]u8 = undefined;
     const t_len = std.mem.len(t_ptr);
     if (t_len >= obf.len) {

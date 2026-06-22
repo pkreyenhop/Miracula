@@ -287,7 +287,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         while (main.rs.detrop != NIL) {
             abi.out_here(main.getStdout(), main.heap.h(main.heap.h(main.heap.t(main.dval(main.heap.h(main.rs.detrop))))), 0);
             _ = word.putchar('\t');
-            abi.out_pattern(main.getStdout(), main.dlhs(main.heap.h(main.rs.detrop)));
+            abi.out_pattern(main.getStdout().?, main.dlhs(main.heap.h(main.rs.detrop)));
             _ = word.putchar('\n');
             main.rs.detrop = main.heap.t(main.rs.detrop);
             while (main.rs.detrop != NIL and getTag(main.dval(main.heap.h(main.rs.detrop))) == word.LABEL) {
@@ -305,7 +305,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         while (gd_mut != NIL) {
             abi.out_here(main.getStdout(), main.heap.h(main.dval(main.heap.h(gd_mut))), 0);
             _ = word.putchar('\t');
-            abi.out_pattern(main.getStdout(), main.dlhs(main.heap.h(gd_mut)));
+            abi.out_pattern(main.getStdout().?, main.dlhs(main.heap.h(gd_mut)));
             _ = word.putchar('\n');
             gd_mut = main.heap.t(gd_mut);
             while (gd_mut != NIL and getTag(main.dval(main.heap.h(gd_mut))) != word.LABEL) {

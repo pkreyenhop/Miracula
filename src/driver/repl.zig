@@ -436,7 +436,7 @@ pub export fn parseline(t_val: Word, f: ?*word.FILE, fil: Word) Word {
             word.print("please re-enter data:\n", .{});
         } else {
             if (fil != 0) {
-                word.printErr("readvals: bad data in file \"{s}\"\n", .{abi.getstring(fil, @constCast(""))});
+                word.printErr("readvals: bad data in file \"{s}\"\n", .{abi.getstring(fil, @constCast("")) orelse "?"});
             } else {
                 word.printErr("bad data in $+ input\n", .{});
             }

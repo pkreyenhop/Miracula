@@ -2,6 +2,12 @@ const word_mod = @import("word.zig");
 const std = @import("std");
 const builtin = @import("builtin");
 const rt = @import("runtime_state.zig");
+const heap_mod = @import("heap.zig");
+const lex_mod = @import("../parser/lex.zig");
+const reduce_mod = @import("reduce.zig");
+const repl_mod = @import("../driver/repl.zig");
+const trans_mod = @import("../compiler/trans.zig");
+const types_mod = @import("../compiler/types.zig");
 
 pub var env_slice: [:null]const ?[*:0]const u8 = &[_:null]?[*:0]const u8{};
 
@@ -114,15 +120,15 @@ pub const TAKE = word_mod.TAKE;
 pub const TIOCGWINSZ: c_ulong = if (builtin.os.tag == .macos) 0x40087468 else 0x5413;
 pub const TL = word_mod.TL;
 pub const UNDEF = word_mod.UNDEF;
-pub extern fn UNION(s1: word, s2: word) word;
+pub const UNION = types_mod.UNION;
 pub const VALUE = word_mod.VALUE;
 pub const XVERSION = 83;
 pub const ZIP = word_mod.ZIP;
 pub const abstract_t = word_mod.abstract_t;
 pub const placeholder_t = word_mod.placeholder_t;
-pub extern fn add1(e: word, s: word) word;
-pub extern fn addextn(b: word, s: [*:0]u8) [*:0]u8;
-pub extern fn adjust_prefix(f: [*:0]u8) void;
+pub const add1 = types_mod.add1;
+pub const addextn = lex_mod.addextn;
+pub const adjust_prefix = lex_mod.adjust_prefix;
 pub const algebraic_t = word_mod.algebraic_t;
 pub fn ap(x: Word, y: Word) Word {
     return make(AP, x, y);
@@ -130,69 +136,69 @@ pub fn ap(x: Word, y: Word) Word {
 pub fn ap2(x: Word, y: Word, z: Word) Word {
     return ap(ap(x, y), z);
 }
-pub extern fn append1(x: word, y: word) word;
+pub const append1 = heap_mod.append1;
 pub const bool_t = word_mod.bool_t;
 pub const char_t = word_mod.char_t;
-pub extern fn checktypes() void;
-pub extern fn codegen(x: word) word;
+pub const checktypes = types_mod.checktypes;
+pub const codegen = trans_mod.codegen;
 pub fn cons(x: Word, y: Word) Word {
     return make(word_mod.CONS, x, y);
 }
 pub fn datapair(x: Word, y: Word) Word {
     return make(DATAPAIR, x, y);
 }
-pub extern fn deps(x: word) word;
-pub extern fn dump_script(files: word, f: ?*FILE) void;
-pub extern fn findid(p: [*:0]const u8) word;
-pub extern fn gc() void;
-pub extern fn gcpatch() void;
-pub extern fn get_here(x: Word) Word;
-pub extern fn getaka(x: Word) [*:0]const u8;
-pub extern fn geterrlin(t_ptr: [*:0]const u8) Word;
-pub extern fn getstring(x: word, cmd: ?[*:0]const u8) [*:0]const u8;
-pub extern fn instantiate(t: word) word;
-pub extern fn intersection(s1: word, s2: word) word;
-pub extern fn make(t: u8, x: word, y: word) word;
-pub extern fn keep(p: [*:0]u8) [*:0]u8;
-pub extern fn load_script(f: ?*FILE, src: [*:0]u8, aliases: word, params: word, main: word) word;
-pub extern fn make_id(p: [*:0]const u8) word;
-pub extern fn mallocfail(s: [*:0]const u8) void;
-pub extern fn setdiff(s1: word, s2: word) word;
-pub extern fn make_pn(val: word) word;
+pub const deps = types_mod.deps;
+pub const dump_script = heap_mod.dump_script;
+pub const findid = lex_mod.findid;
+pub const gc = heap_mod.gc;
+pub const gcpatch = heap_mod.gcpatch;
+pub const get_here = heap_mod.get_here;
+pub const getaka = heap_mod.getaka;
+pub const geterrlin = heap_mod.geterrlin;
+pub const getstring = reduce_mod.getstring;
+pub const instantiate = types_mod.instantiate;
+pub const intersection = types_mod.intersection;
+pub const make = heap_mod.make;
+pub const keep = lex_mod.keep;
+pub const load_script = heap_mod.load_script;
+pub const make_id = lex_mod.make_id;
+pub const mallocfail = heap_mod.mallocfail;
+pub const setdiff = types_mod.setdiff;
+pub const make_pn = lex_mod.make_pn;
 pub extern var cmbnms: [*][*:0]u8;
 pub fn make_typ(a: Word, shf: Word, class: Word, info: Word) Word {
     return cons(cons(a, shf), cons(class, info));
 }
-pub extern fn member(s: word, x: word) word;
-pub extern fn mkprivate(x: word) void;
-pub extern fn mkshow(s: word, p: word, t: word) word;
+pub const member = types_mod.member;
+pub const mkprivate = lex_mod.mkprivate;
+pub const mkshow = trans_mod.mkshow;
 pub const num_t = word_mod.num_t;
-pub extern fn obey(x: Word) void;
-pub extern fn okdump(t: [*:0]u8) c_int;
-pub extern fn okid(ch: c_int) c_int;
-pub extern fn openfile(n: [*:0]const u8) c_int;
-pub extern fn out(f: ?*FILE, x: word) void;
-pub extern fn out_here(f: ?*FILE, h: word, nl: word) void;
-pub extern fn out_pattern(f: ?*FILE, x: word) void;
-pub extern fn out_type(t: word) void;
-pub extern fn output(e: word) void;
-pub extern fn outstats() void;
-pub extern fn printlist(title: [*:0]const u8, l: word) void;
-pub extern fn process() word;
-pub extern fn rdline() [*:0]u8;
+pub const obey = repl_mod.obey;
+pub const okdump = heap_mod.okdump;
+pub const okid = lex_mod.okid;
+pub const openfile = lex_mod.openfile;
+pub const out = heap_mod.out;
+pub const out_here = reduce_mod.out_here;
+pub const out_pattern = types_mod.out_pattern;
+pub const out_type = types_mod.out_type;
+pub const output = reduce_mod.output;
+pub const outstats = reduce_mod.outstats;
+pub const printlist = types_mod.printlist;
+pub const process = repl_mod.process;
+pub const rdline = lex_mod.rdline;
 pub fn readvals(x: Word, y: Word) Word {
     return make(word_mod.STARTREADVALS, x, y);
 }
-pub extern fn report_type(x: word) void;
-pub extern fn resetheap() void;
-pub extern fn sayhere(h_val: Word, nl: Word) void;
-pub extern fn setprefix(p: [*:0]u8) void;
-pub extern fn setupdic() void;
+pub const report_type = types_mod.report_type;
+pub const resetheap = heap_mod.resetheap;
+pub const sayhere = types_mod.sayhere;
+pub const setprefix = heap_mod.setprefix;
+pub const setupdic = lex_mod.setupdic;
 // sigjmp_buf, sigsetjmp, siglongjmp are declared above with the jmp_buf family.
 pub const EDOM = 33;
 pub const ERANGE = 34;
 
-pub extern fn sto_dbl(x: f64) word;
+pub const sto_dbl = heap_mod.sto_dbl;
 pub fn strcons(x: Word, y: Word) Word {
     return make(STRCONS, x, y);
 }
@@ -206,14 +212,14 @@ pub const struct_rlimit = extern struct {
     rlim_cur: u64,
     rlim_max: u64,
 };
-pub extern fn subsumes(t1: word, t2: word) word;
+pub const subsumes = types_mod.subsumes;
 pub const synonym_t = word_mod.synonym_t;
 pub const time_t = c_long;
-pub extern fn token() [*:0]u8;
-pub extern fn trueheapsize() word;
-pub extern fn type_of(x: word) word;
+pub const token = lex_mod.token;
+pub const trueheapsize = heap_mod.trueheapsize;
+pub const type_of = types_mod.type_of;
 pub const type_t = word_mod.type_t;
-pub extern fn typesfirst(x: word) word;
+pub const typesfirst = types_mod.typesfirst;
 pub const undef_t = word_mod.undef_t;
 pub const void_t = word_mod.void_t;
 pub const wrong_t = word_mod.wrong_t;
