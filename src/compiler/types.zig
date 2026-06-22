@@ -481,7 +481,7 @@ fn idWho(x: Word) Word {
 }
 
 fn getId(x: Word) [*:0]const u8 {
-    return @ptrFromInt(@as(usize, @intCast(h(h(h(x))))));
+    return word.strOf(h(h(h(x))));
 }
 
 pub fn sterilise(t_val: Word) void {
@@ -507,7 +507,7 @@ fn metaTcheck(t_val: Word) main.MiraError!Word {
                     locate_inc();
                     _ = word.print("badly formed type \"", .{});
                     out_type(t_val);
-                    _ = word.print("\" in binding for \"{s}\"\n", .{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(cs.current_id)))))});
+                    _ = word.print("\" in binding for \"{s}\"\n", .{word.strOf(h(cs.current_id))});
                     _ = word.print("(", .{});
                     out_type(tn);
                     _ = word.print(" has zero arity)\n", .{});
@@ -532,7 +532,7 @@ fn metaTcheck(t_val: Word) main.MiraError!Word {
                 }
                 _ = word.print("undeclared typename \"{s}\" ", .{getId(tn)});
                 if (getTag(cs.current_id) == DATAPAIR) {
-                    _ = word.print("in binding for {s}\n", .{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(cs.current_id)))))});
+                    _ = word.print("in binding for {s}\n", .{word.strOf(h(cs.current_id))});
                 } else {
                     sayhere(getspecloc(cs.current_id), 1);
                 }
@@ -545,7 +545,7 @@ fn metaTcheck(t_val: Word) main.MiraError!Word {
                 locate_inc();
                 _ = word.print("badly formed type \"", .{});
                 out_type(t_val);
-                _ = word.print("\" in binding for \"{s}\"\n", .{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(cs.current_id)))))});
+                _ = word.print("\" in binding for \"{s}\"\n", .{word.strOf(h(cs.current_id))});
             } else {
                 _ = word.print("badly formed type \"", .{});
                 out_type(t_val);
@@ -790,7 +790,7 @@ pub fn locate(s: [*:0]const u8) void {
         if (cs.current_id != 0) {
             if (getTag(cs.current_id) == DATAPAIR) {
                 locate_inc();
-                _ = word.print("{s} in binding for {s}\n", .{ s, @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(cs.current_id))))) });
+                _ = word.print("{s} in binding for {s}\n", .{ s, word.strOf(h(cs.current_id)) });
                 return;
             }
             var x = cs.current_id;
@@ -838,7 +838,7 @@ pub fn sayhere(h_val: Word, nl: Word) void {
             return;
         }
     }
-    const h_str = @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h_node)))));
+    const h_str = word.strOf(h(h_node));
     const eq = std.mem.eql(u8, std.mem.span(h_str), std.mem.span(main.rs.current_script.?));
     const prefix: [*:0]const u8 = if (eq) "" else "%insert file ";
     word.print("(line {d:>3} of {s}\"{s}\")", .{ t(h_node), prefix, h_str });
@@ -1052,10 +1052,10 @@ pub fn out_type2(t_val: Word) void {
                     const pn_val_node = pn_val(t_val);
                     if (getTag(pn_val_node) == ID) {
                         _ = word.print("{s}", .{getId(pn_val_node)});
-                    } else if (std.mem.eql(u8, std.mem.span(@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(t_info(t_val)))))))), std.mem.span(main.rs.current_script.?))) {
-                        _ = word.print("{s}", .{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(t_info(t_val)))))))});
+                    } else if (std.mem.eql(u8, std.mem.span(word.strOf(h(t(t_info(t_val))))), std.mem.span(main.rs.current_script.?))) {
+                        _ = word.print("{s}", .{word.strOf(h(h(t_info(t_val))))});
                     } else {
-                        _ = word.print("`{s}@{s}'", .{ @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(t_info(t_val))))))), @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(t(t_info(t_val))))))) });
+                        _ = word.print("`{s}@{s}'", .{ word.strOf(h(h(t_info(t_val)))), word.strOf(h(t(t_info(t_val)))) });
                     }
                 } else {
                     _ = word.print("<BADLY FORMED TYPE:{d},{d},{d}>", .{ getTag(t_val), h(t_val), t(t_val) });
@@ -1635,7 +1635,7 @@ pub fn checkfbs() void {
             if (subsumes(t_val, instantiate(t1)) == 0) {
                 cs.TYPERRS += 1;
                 locate_inc();
-                _ = word.print("binding for parameter `{s}' has wrong type\n", .{@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(cs.current_id)))))});
+                _ = word.print("binding for parameter `{s}' has wrong type\n", .{word.strOf(h(cs.current_id))});
                 _ = word.print("required :: ", .{});
                 out_type(t(t(h(formals))));
                 _ = word.print("\n  actual :: ", .{});

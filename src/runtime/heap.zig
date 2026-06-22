@@ -448,7 +448,7 @@ fn idWho(x: Word) Word {
 }
 
 fn getId(x: Word) [*:0]const u8 {
-    return @ptrFromInt(@as(usize, @intCast(h(h(h(x))))));
+    return word.strOf(h(h(h(x))));
 }
 
 pub fn sto_char(ch: Word) Word {
@@ -475,7 +475,7 @@ pub fn get_here(x: Word) Word {
 
 pub fn getaka(x: Word) [*:0]const u8 {
     const y = idWho(x);
-    return if (heap.getTag(y) != CONS) getId(x) else @ptrFromInt(@as(usize, @intCast(h(h(y)))));
+    return if (heap.getTag(y) != CONS) getId(x) else word.strOf(h(h(y)));
 }
 
 pub fn append1(x: Word, y: Word) Word {
@@ -681,7 +681,7 @@ export var preflen: Word = 0;
 const fm_time = r7_files.fm_time;
 const unlinkx = r7_files.unlinkx;
 pub fn sto_id(p1: [*:0]const u8) Word {
-    return make(word.ID, cons(make(word.STRCONS, @intCast(@intFromPtr(p1)), word.NIL), word.undef_t), word.UNDEF);
+    return make(word.ID, cons(make(word.STRCONS, word.strBits(p1), word.NIL), word.undef_t), word.UNDEF);
 }
 
 pub fn getword(file: ?*word.FILE) Word {
@@ -877,7 +877,7 @@ fn get_id(x: Word) [*:0]const u8 {
 }
 
 fn castPtr(val: Word) [*:0]const u8 {
-    return @ptrFromInt(@as(usize, @intCast(val)));
+    return word.strOf(val);
 }
 
 pub fn out(file: ?*word.FILE, x_val: Word) void {
@@ -1089,7 +1089,7 @@ pub fn fil_defs(fil: Word) Word {
 }
 
 pub fn make_fil(fil_name: ?[*:0]const u8, time_val: Word, share: Word, defs: Word) Word {
-    const name_word = if (fil_name) |n| @as(Word, @intCast(@intFromPtr(n))) else 0;
+    const name_word = if (fil_name) |n| @as(Word, word.strBits(n)) else 0;
     return cons(cons(make(word.FILEINFO, name_word, time_val), cons(share, word.NIL)), defs);
 }
 
@@ -1167,7 +1167,7 @@ pub fn constructor(n: Word, x: anytype) Word {
     const x_val: Word = switch (@TypeOf(x)) {
         Word => x,
         c_int, c_uint => @intCast(x),
-        [*:0]const u8, [*:0]u8 => @intCast(@intFromPtr(x)),
+        [*:0]const u8, [*:0]u8 => word.strBits(x),
         else => @compileError("Unsupported type for constructor"),
     };
     return make(word.CONSTRUCTOR, n, x_val);
@@ -1622,7 +1622,7 @@ pub fn unscramble(aliases: Word) void {
             a = cons(old, a);
         } else if (member(cs.CLASHES, new_id) == 0) {
             if (heap.getTag(id_who(new_id)) != word.CONS) {
-                id_who_ptr(new_id).* = cons(datapair(@intCast(@intFromPtr(get_id(old))), 0), id_who(new_id));
+                id_who_ptr(new_id).* = cons(datapair(word.strBits(get_id(old)), 0), id_who(new_id));
             }
         }
     }
@@ -1743,7 +1743,7 @@ pub fn load_defs(file: ?*word.FILE) Word {
                 if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
                     r7_lex.dicovflo();
                 }
-                stackpPush(datapair(@intCast(@intFromPtr(get_id(name()))), 0));
+                stackpPush(datapair(word.strBits(get_id(name())), 0));
             },
             word.HERE_X => {
                 ls.dicq = ls.dicp;
@@ -1751,7 +1751,7 @@ pub fn load_defs(file: ?*word.FILE) Word {
                 if (next == 0) {
                     next = main_clib.getc(file);
                     next = next | (main_clib.getc(file) << 8);
-                    stackpPush(fileinfo(@intCast(@intFromPtr(CFN.?)), next));
+                    stackpPush(fileinfo(word.strBits(CFN.?), next));
                 } else {
                     if (next != '/') {
                         _ = main_clib.strcpy(ls.dicp, &prefix);
@@ -1772,7 +1772,7 @@ pub fn load_defs(file: ?*word.FILE) Word {
                     }
                     var line = main_clib.getc(file);
                     line = line | (main_clib.getc(file) << 8);
-                    stackpPush(fileinfo(@intCast(@intFromPtr(get_id(name()))), line));
+                    stackpPush(fileinfo(word.strBits(get_id(name())), line));
                 }
             },
             word.DEF_X => {
@@ -1817,12 +1817,12 @@ pub fn load_defs(file: ?*word.FILE) Word {
                                     var a = cs.ALIASES;
                                     while (a != word.NIL) : (a = t(a)) {
                                         if (id_val(t(h(a))) == ch_val) {
-                                            akap_val = datapair(@intCast(@intFromPtr(get_id(t(h(a))))), 0);
+                                            akap_val = datapair(word.strBits(get_id(t(h(a)))), 0);
                                             break;
                                         }
                                     }
                                 }
-                                pn_val_ptr(ch_val).* = ap(akap_val, fileinfo(@intCast(@intFromPtr(CFN.?)), 0));
+                                pn_val_ptr(ch_val).* = ap(akap_val, fileinfo(word.strBits(CFN.?), 0));
                             }
                             defs = cons(ch_val, defs);
                             ch = main_clib.getc(file);
@@ -2051,7 +2051,7 @@ pub fn src_update() c_int {
     var ft: Word = undefined;
     var f = if (files == NIL) rt.rs.oldfiles else files;
     while (f != NIL) {
-        const _fil_path: [*:0]const u8 = @ptrFromInt(@as(usize, @intCast(h(h(h(h(f)))))));
+        const _fil_path: [*:0]const u8 = word.strOf(h(h(h(h(f)))));
         if ((fm_time(_fil_path)) != fil_time(h(f))) {
             ft = fm_time(_fil_path);
             if (ft == 0) {

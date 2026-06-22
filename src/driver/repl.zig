@@ -115,13 +115,13 @@ pub fn commandloop(initscript: [*:0]u8) void {
                     main.rs.lastid = x;
                     x = main.id_who(x);
                     if (getTag(x) == CONS) {
-                        aka = @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(x)))));
+                        aka = word.strOfMut(main.heap.h(main.heap.h(x)));
                         x = main.heap.t(x);
                     }
                     if (aka != null) {
                         word.print("originally defined as \"{s}\"\n", .{aka.?});
                     }
-                    main.editfile(@ptrFromInt(@as(usize, @intCast(main.heap.h(x)))), @intCast(main.heap.t(x)));
+                    main.editfile(word.strOfMut(main.heap.h(x)), @intCast(main.heap.t(x)));
                 } else {
                     _ = abi.ungetc(ch, main.getStdin().?);
                     _ = token();

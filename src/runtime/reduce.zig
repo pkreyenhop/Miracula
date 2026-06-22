@@ -249,7 +249,7 @@ pub export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
                     return .REDUCE_DONE;
                 }
                 stdinuse = ':';
-                tp(ctx.e).* = @intCast(@intFromPtr(getStdin().?));
+                tp(ctx.e).* = @as(Word, @intCast(@intFromPtr(getStdin().?)));
             }
             const hold_char = main_clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
             if (hold_char == main_clib.EOF) {
@@ -276,7 +276,7 @@ pub export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
                     return .REDUCE_DONE;
                 }
                 stdinuse = '-';
-                tp(ctx.e).* = @intCast(@intFromPtr(getStdin().?));
+                tp(ctx.e).* = @as(Word, @intCast(@intFromPtr(getStdin().?)));
             }
             const hold_char = if (main.rs.UTF8 != 0) sto_char(fromUTF8(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))))) else main_clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
             if (hold_char == main_clib.EOF) {
@@ -369,7 +369,7 @@ pub fn out_here(f: ?*word.FILE, h_val: Word, nl: c_int) void {
         word.printErr("(impossible event in outhere)\n", .{});
         return;
     }
-    f.?.print("(line {d:>3} of \"{s}\")", .{.{ t(h_val), @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(h_val))))))) }});
+    f.?.print("(line {d:>3} of \"{s}\")", .{.{ t(h_val), word.strOf(h(h_val)) }});
     if (nl != 0) {
         _ = word.putc('\n', f.?);
     } else {
@@ -609,7 +609,7 @@ pub fn head(x_val: Word) Word {
 pub fn apfile(f: Word) void {
     var p = outfilq;
     const fil = getstring(f, "Appendfile");
-    while (p != NIL and word.strcmp(@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(p)))))), fil) != 0) {
+    while (p != NIL and word.strcmp(word.strOf(h(h(p))), fil) != 0) {
         p = t(p);
     }
     if (p == NIL) {
@@ -617,7 +617,7 @@ pub fn apfile(f: Word) void {
         if (s == null) {
             word.printErr("\nAppendfile: cannot write to \"{s}\"\n", .{std.mem.span(fil.?)});
         } else {
-            outfilq = cons(datapair(@intCast(@intFromPtr(lex.keep(fil.?))), @intCast(@intFromPtr(s.?))), outfilq);
+            outfilq = cons(datapair(word.strBits(lex.keep(fil.?)), word.strBits(s.?)), outfilq);
         }
     }
 }
@@ -625,7 +625,7 @@ pub fn apfile(f: Word) void {
 pub fn closefile(f: Word) void {
     var p = &outfilq;
     const fil = getstring(f, "Closefile");
-    while (p.* != NIL and word.strcmp(@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(p.*)))))), fil) != 0) {
+    while (p.* != NIL and word.strcmp(word.strOf(h(h(p.*))), fil) != 0) {
         p = tp(p.*);
     }
     if (p.* != NIL) {
@@ -637,7 +637,7 @@ pub fn closefile(f: Word) void {
 pub fn outf(e: Word) void {
     var p = outfilq;
     const f = getstring(t(h(e)), "Tofile");
-    while (p != NIL and word.strcmp(@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(h(h(p)))))), f) != 0) {
+    while (p != NIL and word.strcmp(word.strOf(h(h(p))), f) != 0) {
         p = t(p);
     }
     if (p == NIL) {
@@ -650,7 +650,7 @@ pub fn outf(e: Word) void {
         if (main_clib.isatty(word.fileno(s_out.?)) != 0) {
             word.setbuf(s_out.?, null);
         }
-        outfilq = cons(datapair(@intCast(@intFromPtr(lex.keep(f.?))), @intCast(@intFromPtr(s_out.?))), outfilq);
+        outfilq = cons(datapair(word.strBits(lex.keep(f.?)), word.strBits(s_out.?)), outfilq);
     } else {
         s_out = @ptrFromInt(@as(usize, @intCast(t(h(p)))));
     }

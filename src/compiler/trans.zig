@@ -222,7 +222,7 @@ fn ap3(w: Word, x: Word, y: Word, z: Word) Word {
 }
 
 fn getId(x: Word) [*:0]const u8 {
-    return @ptrFromInt(@as(usize, @intCast(h(h(h(x))))));
+    return word.strOf(h(h(h(x))));
 }
 
 fn idWho(x: Word) Word {
@@ -921,7 +921,7 @@ pub fn transtries(id: Word, input_x: Word) Word {
     var earliest: Word = 0;
     var r: Word = undefined;
     if (fallible(h(x)) != 0) {
-        const oldn = if (getTag(id) == ID) datapair(@as(Word, @intCast(@intFromPtr(getId(id)))), 0) else 0;
+        const oldn = if (getTag(id) == ID) datapair(@as(Word, word.strBits(getId(id))), 0) else 0;
         info = cons(oldn, 0);
         r = ap(BADCASE, info);
         if (x == NIL) {

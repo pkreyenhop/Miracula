@@ -249,7 +249,7 @@ pub inline fn pn_val(x: Word) Word {
     return tl_get(x);
 }
 pub inline fn get_id(x: Word) [*:0]const u8 {
-    return @as([*:0]const u8, @ptrCast(@alignCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(hd_get(hd_get(hd_get(x))))))))));
+    return word.strOf(hd_get(hd_get(hd_get(x))));
 }
 pub inline fn constr_name(x: Word) [*:0]const u8 {
     const tlx = tl_get(x);

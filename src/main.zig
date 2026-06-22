@@ -70,13 +70,13 @@ pub const dic_check = r7_lex.dic_check;
 const isconstrname = r7_lex.isconstrname;
 // Inline helpers (use heap module directly — B2: no h/t aliases here)
 pub inline fn get_id(x: Word) [*:0]const u8 {
-    return @ptrFromInt(@as(usize, @intCast(heap.h(heap.h(heap.h(x))))));
+    return word_mod.strOf(heap.h(heap.h(heap.h(x))));
 }
 
 pub inline fn get_fil(fil: Word) ?[*:0]const u8 {
     const val = heap.h(heap.h(heap.h(fil)));
     if (val == 0) return null;
-    return @ptrFromInt(@as(usize, @intCast(val)));
+    return word_mod.strOf(val);
 }
 
 pub inline fn getStdin() ?*abi.FILE {

@@ -239,7 +239,7 @@ pub fn command() void {
                         main.filecp(mf.?, t_val.?);
                     }
                 }
-                const err_line_num: c_int = if (word.strcmp(t_val.?, main.rs.current_script.?) == 0) @intCast(core_state.errline) else if (core_state.errs != 0 and word.strcmp(t_val.?, @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(core_state.errs)))))) == 0) @intCast(main.heap.t(core_state.errs)) else @intCast(abi.geterrlin(t_val.?));
+                const err_line_num: c_int = if (word.strcmp(t_val.?, main.rs.current_script.?) == 0) @intCast(core_state.errline) else if (core_state.errs != 0 and word.strcmp(t_val.?, word.strOf(main.heap.h(core_state.errs))) == 0) @intCast(main.heap.t(core_state.errs)) else @intCast(abi.geterrlin(t_val.?));
                 editfile(t_val.?, err_line_num);
                 return;
             }
@@ -595,7 +595,7 @@ pub fn finger(n: [*:0]const u8) void {
     if (x != NIL and main.id_type(x) != word.undef_t) {
         if (main.id_who(x) != NIL) {
             const here_val = main.get_here(x);
-            s = @ptrFromInt(@as(usize, @intCast(main.heap.h(here_val))));
+            s = word.strOfMut(main.heap.h(here_val));
             line = main.heap.t(here_val);
         }
         if (main.rs.lastid == 0) {

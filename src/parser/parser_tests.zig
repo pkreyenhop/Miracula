@@ -16,7 +16,7 @@ const ls = &lex_state.ls;
 const make_id = r7_lex.make_id;
 const reset_pns = r7_lex.reset_pns;
 fn makeFilRecord(name: [*:0]const u8) word.Word {
-    const name_word = @as(word.Word, @intCast(@intFromPtr(name)));
+    const name_word = @as(word.Word, word.strBits(name));
     const file_info = heap.make(word.FILEINFO, name_word, 0);
     const share_cell = heap.make(word.CONS, 1, word.NIL);
     const info_cell = heap.make(word.CONS, file_info, share_cell);

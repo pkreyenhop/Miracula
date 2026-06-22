@@ -66,7 +66,7 @@ const is_char = heap.is_char;
 pub fn mira_lex_setup_string(source: [*:0]const u8) void {
     const len = std.mem.len(source);
     const f = word.fmemopen(@ptrCast(@constCast(source)), len, "r") orelse return;
-    ls.fileq = cons(make(STRCONS, @intCast(@intFromPtr(f)), NIL), ls.fileq);
+    ls.fileq = cons(make(STRCONS, word.strBits(f), NIL), ls.fileq);
     ls.insertdepth += 1;
     main.rs.s_in = f;
 }
@@ -96,7 +96,7 @@ fn fileinfo(file: Word, line: Word) Word {
 }
 
 fn make_fil(path: [*:0]const u8, time: Word, share: Word, defs: Word) Word {
-    return cons(cons(fileinfo(@intCast(@intFromPtr(path)), time), cons(share, NIL)), defs);
+    return cons(cons(fileinfo(word.strBits(path), time), cons(share, NIL)), defs);
 }
 
 fn readvals(x: Word, y: Word) Word {
@@ -169,11 +169,11 @@ fn isconstructor(x: Word) bool {
 }
 
 fn get_id(x: Word) [*:0]u8 {
-    return @ptrCast(@as([*]u8, @ptrFromInt(@as(usize, @intCast(h(h(h(x))))))));
+    return word.strOfMut(h(h(h(x))));
 }
 
 fn get_fil(x: Word) [*:0]const u8 {
-    return @ptrCast(@as([*]u8, @ptrFromInt(@as(usize, @intCast(h(h(h(x))))))));
+    return word.strOfMut(h(h(h(x))));
 }
 
 fn is(s: [*:0]const u8) bool {
@@ -703,7 +703,7 @@ pub fn yylex() c_int {
         if (pathname() == null) {
             syntax("badly formed pathname in %export list\n");
         } else {
-            ls.exportfiles = cons(@intCast(@intFromPtr(addextn(1, ls.dicp))), ls.exportfiles);
+            ls.exportfiles = cons(word.strBits(addextn(1, ls.dicp)), ls.exportfiles);
             _ = keep(ls.dicp);
         }
         return word.PATHNAME;
@@ -1150,7 +1150,7 @@ pub fn peekch() c_int {
 
 pub fn openfile(n: [*:0]const u8) c_int {
     const f = word.fopen(n, "r") orelse return 0;
-    ls.fileq = cons(make(STRCONS, @intCast(@intFromPtr(f)), NIL), ls.fileq);
+    ls.fileq = cons(make(STRCONS, word.strBits(f), NIL), ls.fileq);
     ls.insertdepth += 1;
     return 1;
 }
@@ -1295,7 +1295,7 @@ pub fn directive() Word {
                 if (pathname() == null) {
                     syntax("bad pathname after %include\n");
                 } else {
-                    ls.yylval = make(STRCONS, @intCast(@intFromPtr(addextn(1, ls.dicp))), fileinfo(@intCast(@intFromPtr(get_fil(heap.current_file))), holdlin));
+                    ls.yylval = make(STRCONS, word.strBits(addextn(1, ls.dicp)), fileinfo(word.strBits(get_fil(heap.current_file)), holdlin));
                     _ = keep(ls.dicp);
                 }
                 return word.INCLUDE;
@@ -1771,9 +1771,9 @@ pub fn charclass() c_int {
 pub fn reset_lex() void {
     if (core_state.commandmode == 0) {
         if (core_state.errs == 0) {
-            core_state.errs = fileinfo(@intCast(@intFromPtr(get_fil(heap.current_file))), ls.line_no);
+            core_state.errs = fileinfo(word.strBits(get_fil(heap.current_file)), ls.line_no);
         }
-        const err_script_raw = @as(?[*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(h(core_state.errs)))))));
+        const err_script_raw = @as(?[*:0]const u8, word.strOf(h(core_state.errs)));
         const err_script = err_script_raw orelse "test.m";
         const is_current = if (err_script_raw) |es|
             (if (main.rs.current_script) |cs| es == @as([*:0]const u8, @ptrCast(cs)) else false)

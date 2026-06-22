@@ -358,8 +358,8 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
                 var f = if (heap.files == NIL) main.rs.oldfiles else heap.files;
                 while (f != NIL) : (f = main.heap.t(f)) {
                     const filename_str = main.get_fil(main.heap.h(f)).?;
-                    if (abi.member(x, @intCast(@intFromPtr(filename_str))) == 0) {
-                        x = main.cons(@intCast(@intFromPtr(filename_str)), x);
+                    if (abi.member(x, word.strBits(filename_str)) == 0) {
+                        x = main.cons(word.strBits(filename_str), x);
                         word.print("{s}\n", .{filename_str});
                     }
                 }
@@ -382,7 +382,7 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
                 if (main.rs.make_status == 1) {
                     main.rs.make_status = 0;
                 }
-                main.rs.make_status = abi.strcons(@as(Word, @intCast(@intFromPtr(s))), main.rs.make_status);
+                main.rs.make_status = abi.strcons(@as(Word, word.strBits(s)), main.rs.make_status);
             }
         }
         if (getTag(main.rs.make_status) == word.STRCONS) {
@@ -391,7 +391,7 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
             word.print("errors or undefined names found in:-\n", .{});
             while (main.rs.make_status != 0) {
                 h_val = abi.strcons(main.heap.h(main.rs.make_status), h_val);
-                const w = @as(Word, @intCast(word.strlen(@as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(h_val))))))));
+                const w = @as(Word, @intCast(word.strlen(word.strOf(main.heap.h(h_val)))));
                 if (w > maxw) {
                     maxw = w;
                 }
@@ -402,7 +402,7 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
             var w: Word = 0;
             while (h_val != 0) {
                 w += 1;
-                const str = @as([*:0]const u8, @ptrFromInt(@as(usize, @intCast(main.heap.h(h_val)))));
+                const str = word.strOf(main.heap.h(h_val));
                 const len = word.strlen(str);
                 const spaces_needed = if (@as(usize, @intCast(maxw)) > len) @as(usize, @intCast(maxw)) - len else 0;
                 var pad_idx: usize = 0;
