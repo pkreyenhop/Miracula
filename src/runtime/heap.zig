@@ -452,25 +452,25 @@ pub export fn sto_char(ch: Word) Word {
 
 pub export fn get_char(x: Word) Word {
     if (x < 256) return x;
-    if (tag.?[@intCast(x)] == UNICODE) return h(x);
-    std.debug.print("impossible event in get_char(x), tag[x]=={d}\n", .{tag.?[@intCast(x)]});
+    if (heap.getTag(x) == UNICODE) return h(x);
+    std.debug.print("impossible event in get_char(x), tag[x]=={d}\n", .{heap.getTag(x)});
     abi.exit(1);
 }
 
 pub export fn is_char(x: Word) c_int {
     if (0 <= x and x < 256) return 1;
-    if (x >= 0 and tag.?[@intCast(x)] == UNICODE) return 1;
+    if (x >= 0 and heap.getTag(x) == UNICODE) return 1;
     return 0;
 }
 
 pub export fn get_here(x: Word) Word {
     const y = idWho(x);
-    return if (tag.?[@intCast(y)] == CONS) t(y) else y;
+    return if (heap.getTag(y) == CONS) t(y) else y;
 }
 
 export fn getaka(x: Word) [*:0]const u8 {
     const y = idWho(x);
-    return if (tag.?[@intCast(y)] != CONS) getId(x) else @ptrFromInt(@as(usize, @intCast(h(h(y)))));
+    return if (heap.getTag(y) != CONS) getId(x) else @ptrFromInt(@as(usize, @intCast(h(h(y)))));
 }
 
 pub export fn append1(x: Word, y: Word) Word {
@@ -573,7 +573,7 @@ pub export fn setdbl(x: Word, R_val: f64) void {
     }
     var r: fpdatum = undefined;
     r.real = R_val;
-    tag.?[@intCast(x)] = DOUBLE;
+    heap.setTag(x, @intCast(DOUBLE));
     if (comptime @sizeOf(Word) == 4) {
         hp(x).* = r.bits.left;
         tp(x).* = r.bits.right;
@@ -891,13 +891,13 @@ export fn out(file: ?*word.FILE, x_val: Word) void {
         _ = word.fprint(file, "<{d}>", .{x});
         return;
     }
-    if (tag.?[@intCast(x)] == word.LAMBDA) {
+    if (heap.getTag(x) == word.LAMBDA) {
         _ = word.fprint(file, "$(", .{.{}});
         out(file, h(x));
         _ = word.putc(')', file);
         out(file, t(x));
     } else {
-        while (tag.?[@intCast(x)] == word.CONS) {
+        while (heap.getTag(x) == word.CONS) {
             out1(file, h(x));
             _ = word.putc(':', file);
             x = t(x);
@@ -911,7 +911,7 @@ pub fn out1(file: ?*word.FILE, x: Word) void {
         _ = word.fprint(file, "<{d}>", .{x});
         return;
     }
-    if (tag.?[@intCast(x)] == word.AP) {
+    if (heap.getTag(x) == word.AP) {
         out1(file, h(x));
         _ = word.putc(' ', file);
         out2(file, t(x));
@@ -926,7 +926,7 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         _ = word.fprint(file, "<{d}>", .{x});
         return;
     }
-    const tag_val = tag.?[@intCast(x)];
+    const tag_val = heap.getTag(x);
     if (tag_val == word.INT) {
         if (rest(x) != 0) {
             x = bigtostr(x);
@@ -973,7 +973,7 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
     }
     if (tag_val == word.TCONS or tag_val == word.PAIR) {
         _ = word.fprint(file, "(", .{.{}});
-        while (tag.?[@intCast(x)] == word.TCONS) {
+        while (heap.getTag(x) == word.TCONS) {
             out(file, h(x));
             _ = word.putc(',', file);
             x = t(x);
@@ -1257,7 +1257,7 @@ pub fn dump_defs(defs_val: Word, file: ?*word.FILE) void {
     var defs = defs_val;
     while (defs != word.NIL) : (defs = t(defs)) {
         const item = h(defs);
-        if (tag.?[@intCast(item)] == word.STRCONS) {
+        if (heap.getTag(item) == word.STRCONS) {
             const v = get_pn(item);
             dump_ob(pn_val(item), file);
             if (v > bits_15) {
@@ -1283,7 +1283,7 @@ pub fn dump_defs(defs_val: Word, file: ?*word.FILE) void {
 }
 
 pub fn dump_ob(x: Word, file: ?*word.FILE) void {
-    switch (tag.?[@intCast(x)]) {
+    switch (heap.getTag(x)) {
         word.ATOM => {
             if (x < 128) {
                 _ = word.putc(@intCast(x), file);
@@ -1386,7 +1386,7 @@ pub fn dump_ob(x: Word, file: ?*word.FILE) void {
             _ = word.putc(word.CONS_X, file);
         },
         else => {
-            std.debug.print("impossible tag {d} in dump_ob\n", .{tag.?[@intCast(x)]});
+            std.debug.print("impossible tag {d} in dump_ob\n", .{heap.getTag(x)});
         },
     }
 }
@@ -1410,7 +1410,7 @@ export fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, para
             const hold = cons(id_who(old), cons(id_type(old), id_val(old)));
             id_type_ptr(old).* = word.alias_t;
             id_val_ptr(old).* = new_id;
-            if (tag.?[@intCast(new_id)] == word.ID) {
+            if (heap.getTag(new_id) == word.ID) {
                 if ((id_type(new_id) != word.undef_t or id_val(new_id) != word.UNDEF) and id_type(new_id) != word.alias_t) {
                     cs.CLASHES = add1(new_id, cs.CLASHES);
                 }
@@ -1425,7 +1425,7 @@ export fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, para
         a = aliases;
         while (a != word.NIL) : (a = t(a)) {
             const ch = id_val(t(h(a)));
-            if (tag.?[@intCast(ch)] == word.ID) {
+            if (heap.getTag(ch) == word.ID) {
                 if (id_type(ch) != word.alias_t) {
                     id_type_ptr(ch).* = word.new_t;
                 }
@@ -1582,7 +1582,7 @@ pub fn bindparams(formal_val: Word, actual_val: Word) void {
             cs.DETROP = cons(a, cs.DETROP);
         } else {
             const fa = if (t(t(h(formal))) == word.type_t) t_arity(h(h(formal))) else -1;
-            const ta = if (tag.?[@intCast(h(actual))] == word.AP) t_arity(h(actual)) else -1;
+            const ta = if (heap.getTag(h(actual)) == word.AP) t_arity(h(actual)) else -1;
             if (fa != ta) {
                 badkind = cons(cons(h(h(actual)), datapair(fa, ta)), badkind);
             }
@@ -1615,7 +1615,7 @@ pub fn unscramble(aliases: Word) void {
     while (al != word.NIL) : (al = t(al)) {
         const new_id = h(h(al));
         const old = t(h(al));
-        if (tag.?[@intCast(new_id)] != word.ID) {
+        if (heap.getTag(new_id) != word.ID) {
             if (member(cs.SUPPRESSED, new_id) == 0) {
                 a = cons(old, a);
             }
@@ -1627,7 +1627,7 @@ pub fn unscramble(aliases: Word) void {
         if (id_type(new_id) == word.undef_t) {
             a = cons(old, a);
         } else if (member(cs.CLASHES, new_id) == 0) {
-            if (tag.?[@intCast(id_who(new_id))] != word.CONS) {
+            if (heap.getTag(id_who(new_id)) != word.CONS) {
                 id_who_ptr(new_id).* = cons(datapair(@intCast(@intFromPtr(get_id(old))), 0), id_who(new_id));
             }
         }
@@ -1797,7 +1797,7 @@ pub fn load_defs(file: ?*word.FILE) Word {
                     },
                     4 => {
                         const top = stackpTop();
-                        if (tag.?[@intCast(top)] != word.ID) {
+                        if (heap.getTag(top) != word.ID) {
                             if (top == word.NIL) {
                                 stackp = stackp.? - 4;
                                 ch = abi.getc(file);
@@ -1807,7 +1807,7 @@ pub fn load_defs(file: ?*word.FILE) Word {
                             cs.SUPPRESSED = cons(ch_val, cs.SUPPRESSED);
                             _ = stackpPop(); // who
                             const who_val = stackpTop();
-                            const akap = if (tag.?[@intCast(who_val)] == word.CONS) h(who_val) else word.NIL;
+                            const akap = if (heap.getTag(who_val) == word.CONS) h(who_val) else word.NIL;
                             const type_val = stackpPop(); // type
                             pn_val_ptr(ch_val).* = stackpPop();
 
@@ -1913,11 +1913,11 @@ pub fn isfreeid(x: Word) bool {
 extern fn isconstrname(input: [*:0]const u8) c_int;
 
 pub fn isconstructor(x: Word) bool {
-    return tag.?[@intCast(x)] == word.ID and isconstrname(getId(x)) != 0;
+    return heap.getTag(x) == word.ID and isconstrname(getId(x)) != 0;
 }
 
 pub fn isvariable(x: Word) bool {
-    return tag.?[@intCast(x)] == word.ID and isconstrname(getId(x)) == 0;
+    return heap.getTag(x) == word.ID and isconstrname(getId(x)) == 0;
 }
 
 pub fn addtoenv(x: Word) void {
@@ -1947,7 +1947,7 @@ pub export fn shunt(input_x: Word, input_y: Word) Word {
 pub export fn size(input: Word) Word {
     var x = input;
     var s: Word = 0;
-    while (tag.?[@intCast(x)] == CONS or tag.?[@intCast(x)] == word.AP) {
+    while (heap.getTag(x) == CONS or heap.getTag(x) == word.AP) {
         s += 1 + size(h(x));
         x = t(x);
     }
@@ -1963,10 +1963,10 @@ pub export fn alfasort(x_val: Word) Word {
         return NIL;
     }
     if (t(x) == NIL) {
-        return if (tag.?[@intCast(h(x))] != word.ID) NIL else x;
+        return if (heap.getTag(h(x)) != word.ID) NIL else x;
     }
     while (x != NIL) {
-        if (tag.?[@intCast(h(x))] == word.ID) {
+        if (heap.getTag(h(x)) == word.ID) {
             hold = a;
             a = cons(h(x), b);
             b = hold;
@@ -2016,7 +2016,7 @@ pub fn unsetids(d_val: Word) void {
     var d = d_val;
     while (d != NIL and d != 0) : (d = t(d)) {
         const item = h(d);
-        if (tag.?[@intCast(item)] == word.ID) {
+        if (heap.getTag(item) == word.ID) {
             tp(item).* = word.UNDEF;
             tp(h(h(item))).* = NIL;
         }
@@ -2220,13 +2220,13 @@ test "heap dump roundtrip" {
     try std.testing.expect(@intFromPtr(stackp.?) > @intFromPtr(old_stackp.?));
     const loaded = stackpTop();
     
-    try std.testing.expectEqual(word.CONS, tag.?[@intCast(loaded)]);
+    try std.testing.expectEqual(word.CONS, heap.getTag(loaded));
     const loaded_h = h(loaded);
     const loaded_t = t(loaded);
     
-    try std.testing.expectEqual(word.INT, tag.?[@intCast(loaded_h)]);
+    try std.testing.expectEqual(word.INT, heap.getTag(loaded_h));
     try std.testing.expectEqual(@as(Word, 42), getsmallint(loaded_h));
-    try std.testing.expectEqual(word.INT, tag.?[@intCast(loaded_t)]);
+    try std.testing.expectEqual(word.INT, heap.getTag(loaded_t));
     try std.testing.expectEqual(@as(Word, 100), getsmallint(loaded_t));
 }
 
