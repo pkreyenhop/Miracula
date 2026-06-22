@@ -147,8 +147,8 @@ const ATOMLIMIT = word.ATOMLIMIT;
 
 // CMBASE + 138 is NIL
 
-extern fn make(t: u8, x: Word, y: Word) Word;
-extern fn reverse(x: Word) Word;
+const make = main.heap.make;
+const reverse = main.heap.reverse;
 extern fn getspecloc(x_node: Word) Word;
 extern fn codegen(x: Word) Word;
 extern fn findid(s: [*:0]const u8) Word;
@@ -156,16 +156,17 @@ extern fn mktuple(x: Word) Word;
 extern fn tclos(r: Word) Word;
 extern fn sortrel(x: Word) Word;
 extern fn genshfns() void;
-extern fn alfasort(x: Word) Word;
-extern fn readoption() void;
+const alfasort = main.heap.alfasort;
+const readoption = main.readoption;
 extern fn out(f: *word.FILE, x: Word) void;
-extern fn is_char(x: Word) c_int;
-extern fn charname(ch: Word) [*:0]const u8;
-extern fn size(x: Word) Word;
+const is_char = main.heap.is_char;
+const charname = main.heap.charname;
+const size = main.heap.size;
 extern fn same(x: Word, y: Word) Word;
-extern fn get_dbl(x: Word) f64;
+const get_dbl = main.heap.get_dbl;
 extern fn lastlink(x: Word) Word;
-extern fn isconstrname(s: [*:0]const u8) c_int;
+const lex_mod = @import("../parser/lex.zig");
+const isconstrname = lex_mod.isconstrname;
 
 inline fn getTag(x: Word) u8 {
     return main.heap.heap.getTag(x);
@@ -314,7 +315,7 @@ pub export fn member(s_input: Word, x: Word) Word {
 }
 
 const type_t: Word = 10;
-extern fn shunt(x: Word, y: Word) Word;
+const shunt = main.heap.shunt;
 
 fn idType(x: Word) Word {
     return t(h(x));
