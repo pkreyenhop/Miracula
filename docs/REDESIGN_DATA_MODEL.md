@@ -277,7 +277,7 @@ trampoline*, not literally none.
 
 | Metric | R0 baseline | Now | Target |
 |--------|-------------|-----|--------|
-| `extern fn` declarations | 322 | **272** *(R7.3 in progress)* | 0 (minus genuine cycle-breakers) |
+| `extern fn` declarations | 322 | **148** *(R7.3 in progress)* | 0 (FFI/dead-symbol residual) |
 | `extern var` declarations | 94 | **60** | 0 |
 | `clib.`/`c.` call sites | 2821 | **0** | 0 |
 | `callconv(.c)` | 12 | 12 | 1 (signal trampoline) |
@@ -316,3 +316,21 @@ is a fat-cell representation change in the hottest code (the reduction loop), wi
 performance and correctness stakes; it warrants dedicated design rather than a rushed partial
 migration, and is deliberately deferred. The typed `Ref` type and classifiers from R4.1/R4.2 are
 the foundation it will build on.
+
+### R7.3 — eliminate the linker-as-module-system (`extern fn`) — in progress
+
+**Key finding: the cross-module `extern fn` declarations were never required.** Zig allows
+circular `@import` for *function* references (imports are lazy/comptime — only a by-value
+type-size cycle fails). The pervasive `extern fn`/`export fn` linker-symbol pattern was a habit
+carried over from the C port, used even where no real cycle existed, and even where one did
+(`trans↔types`, `reduce_core↔reduce`) the mutual `@import` compiles cleanly.
+
+Converted `extern fn foo(...)` declarations to `const foo = module.foo` aliases (pub-ifying the
+callees, keeping their `export` linker symbol for any not-yet-converted caller). Done so far:
+`trans.zig` (25→0), `types.zig` (10→0, dissolving the `trans↔types` "cycle"), `codegen.zig`
+(15→0), `reduce_core.zig` (8→0, dissolving `reduce_core↔reduce`), and **`c_abi.zig` (110→4)** —
+the big one, now mostly direct re-exports of the real heap/big/lex/reduce/types/trans functions.
+**Codebase `extern fn` 322 → 148**, byte-identical throughout. The residual 4 in c_abi are
+genuine FFI/dead-symbol clashes (`outUTF8`/`fromUTF8` collide with main_clib; `yyparse`/`make_typ`
+unresolved). Remaining: the smaller consumer files (`lex_bridge`, `lex`, `repl`, `heap`, …) and
+then `c_abi.zig`/`main_clib.zig` can collapse toward the R8 demolition.
