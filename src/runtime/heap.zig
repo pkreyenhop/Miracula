@@ -451,34 +451,34 @@ fn getId(x: Word) [*:0]const u8 {
     return @ptrFromInt(@as(usize, @intCast(h(h(h(x))))));
 }
 
-pub export fn sto_char(ch: Word) Word {
+pub fn sto_char(ch: Word) Word {
     return if (word.fitsInByte(ch)) ch else make(UNICODE, ch, 0);
 }
 
-pub export fn get_char(x: Word) Word {
+pub fn get_char(x: Word) Word {
     if (word.fitsInByte(x)) return x;
     if (heap.getTag(x) == UNICODE) return h(x);
     std.debug.print("impossible event in get_char(x), tag[x]=={d}\n", .{heap.getTag(x)});
     main_clib.exit(1);
 }
 
-pub export fn is_char(x: Word) c_int {
+pub fn is_char(x: Word) c_int {
     if (word.isLatin1Char(x)) return 1;
     if (x >= 0 and heap.getTag(x) == UNICODE) return 1;
     return 0;
 }
 
-pub export fn get_here(x: Word) Word {
+pub fn get_here(x: Word) Word {
     const y = idWho(x);
     return if (heap.getTag(y) == CONS) t(y) else y;
 }
 
-pub export fn getaka(x: Word) [*:0]const u8 {
+pub fn getaka(x: Word) [*:0]const u8 {
     const y = idWho(x);
     return if (heap.getTag(y) != CONS) getId(x) else @ptrFromInt(@as(usize, @intCast(h(h(y)))));
 }
 
-pub export fn append1(x: Word, y: Word) Word {
+pub fn append1(x: Word, y: Word) Word {
     var x1 = x;
     if (x1 == nil()) return y;
     while (t(x1) != nil()) x1 = t(x1);
@@ -517,7 +517,7 @@ pub fn hdsort(input: Word) Word {
     return reverse(x);
 }
 
-pub export fn charname(ch: Word) [*:0]const u8 {
+pub fn charname(ch: Word) [*:0]const u8 {
     return switch (ch) {
         '\n' => "\\n",
         '\t' => "\\t",
@@ -548,7 +548,7 @@ pub fn outr(file: ?*word.FILE, value: f64) void {
     }
 }
 
-pub export fn get_dbl(x: Word) f64 {
+pub fn get_dbl(x: Word) f64 {
     var r: fpdatum = undefined;
     if (comptime @sizeOf(Word) == 4) {
         r.bits.left = h(x);
@@ -559,7 +559,7 @@ pub export fn get_dbl(x: Word) f64 {
     return r.real;
 }
 
-pub export fn sto_dbl(R_val: f64) Word {
+pub fn sto_dbl(R_val: f64) Word {
     if (!std.math.isFinite(R_val)) {
         fpe_error(main_clib.SIGFPE);
     }
@@ -572,7 +572,7 @@ pub export fn sto_dbl(R_val: f64) Word {
     }
 }
 
-pub export fn setdbl(x: Word, R_val: f64) void {
+pub fn setdbl(x: Word, R_val: f64) void {
     if (!std.math.isFinite(R_val)) {
         fpe_error(main_clib.SIGFPE);
     }
@@ -617,19 +617,19 @@ fn BIGTOP() Word {
     return heap.BIGTOP();
 }
 
-pub export fn trueheapsize() Word {
+pub fn trueheapsize() Word {
     return heap.trueheapsize();
 }
 
-pub export fn setupheap() void {
+pub fn setupheap() void {
     heap.setupheap();
 }
 
-pub export fn resetheap() void {
+pub fn resetheap() void {
     heap.resetheap();
 }
 
-pub export fn mallocfail(x: [*:0]const u8) void {
+pub fn mallocfail(x: [*:0]const u8) void {
     _ = word.printErr("panic: cannot find enough free space for {s}\n", .{x});
     main_clib.exit(1);
 }
@@ -639,7 +639,7 @@ pub fn mallocPanic(what: [*:0]const u8) noreturn {
     unreachable;
 }
 
-pub export fn resetgcstats() void {
+pub fn resetgcstats() void {
     cellcount = -claims;
     nogcs = 0;
     initclock();
@@ -650,15 +650,15 @@ fn poschar(val: u8) bool {
     return signed_val > 0;
 }
 
-pub export fn make(t_val: u8, x: Word, y: Word) Word {
+pub fn make(t_val: u8, x: Word, y: Word) Word {
     return heap.make(t_val, x, y);
 }
 
-pub export fn gc() void {
+pub fn gc() void {
     heap.gc();
 }
 
-pub export fn gcpatch() void {
+pub fn gcpatch() void {
     heap.gcpatch();
 }
 
@@ -680,7 +680,7 @@ export var preflen: Word = 0;
 
 const fm_time = r7_files.fm_time;
 const unlinkx = r7_files.unlinkx;
-pub export fn sto_id(p1: [*:0]const u8) Word {
+pub fn sto_id(p1: [*:0]const u8) Word {
     return make(word.ID, cons(make(word.STRCONS, @intCast(@intFromPtr(p1)), word.NIL), word.undef_t), word.UNDEF);
 }
 
@@ -708,7 +708,7 @@ pub fn putword(x_val: Word, file: ?*word.FILE) void {
     }
 }
 
-pub export fn setprefix(p: [*:0]const u8) void {
+pub fn setprefix(p: [*:0]const u8) void {
     const p_len = std.mem.len(p);
     if (p_len >= prefix.len) {
         mallocfail("prefix buffer overflow");
@@ -747,7 +747,7 @@ pub fn mkrel(p: [*:0]const u8) [*:0]const u8 {
     return p;
 }
 
-pub export fn okdump(t_ptr: [*:0]const u8) c_int {
+pub fn okdump(t_ptr: [*:0]const u8) c_int {
     var obf: [120]u8 = undefined;
     const t_len = std.mem.len(t_ptr);
     if (t_len >= obf.len) {
@@ -775,7 +775,7 @@ pub export fn okdump(t_ptr: [*:0]const u8) c_int {
     return 0;
 }
 
-pub export fn geterrlin(t_ptr: [*:0]const u8) Word {
+pub fn geterrlin(t_ptr: [*:0]const u8) Word {
     var obf: [120]u8 = undefined;
     const t_len = std.mem.len(t_ptr);
     if (t_len >= obf.len) {
@@ -880,7 +880,7 @@ fn castPtr(val: Word) [*:0]const u8 {
     return @ptrFromInt(@as(usize, @intCast(val)));
 }
 
-pub export fn out(file: ?*word.FILE, x_val: Word) void {
+pub fn out(file: ?*word.FILE, x_val: Word) void {
     var x = x_val;
     if (x < 0 or x > TOP()) {
         _ = word.fprint(file, "<{d}>", .{x});
@@ -1202,7 +1202,7 @@ pub fn getdbl(file: ?*word.FILE) Word {
     return sto_dbl(d);
 }
 
-pub export fn dump_script(files_val: Word, file: ?*word.FILE) void {
+pub fn dump_script(files_val: Word, file: ?*word.FILE) void {
     _ = word.putc(@intCast(wordsize), file);
     _ = word.putc(word.XVERSION, file);
 
@@ -1385,7 +1385,7 @@ pub fn dump_ob(x: Word, file: ?*word.FILE) void {
     }
 }
 
-pub export fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
+pub fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
     cs.TORPHANS = 0;
     cs.BAD_DUMP = 0;
     cs.CLASHES = word.NIL;
@@ -1917,7 +1917,7 @@ pub fn addtoenv(x: Word) void {
     tp(h(files)).* = cons(x, t(h(files)));
 }
 
-pub export fn reverse(input: Word) Word {
+pub fn reverse(input: Word) Word {
     var x = input;
     var y: Word = NIL;
     while (x != NIL) {
@@ -1927,7 +1927,7 @@ pub export fn reverse(input: Word) Word {
     return y;
 }
 
-pub export fn shunt(input_x: Word, input_y: Word) Word {
+pub fn shunt(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
     while (x != NIL) {
@@ -1937,7 +1937,7 @@ pub export fn shunt(input_x: Word, input_y: Word) Word {
     return y;
 }
 
-pub export fn size(input: Word) Word {
+pub fn size(input: Word) Word {
     var x = input;
     var s: Word = 0;
     while (heap.getTag(x) == CONS or heap.getTag(x) == word.AP) {
@@ -1947,7 +1947,7 @@ pub export fn size(input: Word) Word {
     return s;
 }
 
-pub export fn alfasort(x_val: Word) Word {
+pub fn alfasort(x_val: Word) Word {
     var x = x_val;
     var a = NIL;
     var b = NIL;

@@ -63,7 +63,7 @@ const syntax = r7_setup.syntax;
 const reset = r7_repl.reset;
 const is_char = heap.is_char;
 
-pub export fn mira_lex_setup_string(source: [*:0]const u8) void {
+pub fn mira_lex_setup_string(source: [*:0]const u8) void {
     const len = std.mem.len(source);
     const f = word.fmemopen(@ptrCast(@constCast(source)), len, "r") orelse return;
     ls.fileq = cons(make(STRCONS, @intCast(@intFromPtr(f)), NIL), ls.fileq);
@@ -71,7 +71,7 @@ pub export fn mira_lex_setup_string(source: [*:0]const u8) void {
     main.rs.s_in = f;
 }
 
-pub export fn mira_lex_cleanup() void {
+pub fn mira_lex_cleanup() void {
     if (main.rs.s_in) |f| {
         const is_stdio = (f == getStdin()) or (f == getStdout()) or (f == getStderr());
         if (!is_stdio) {
@@ -81,7 +81,7 @@ pub export fn mira_lex_cleanup() void {
     }
 }
 
-pub export fn mira_lex_setup_file(filename: [*:0]const u8) c_int {
+pub fn mira_lex_setup_file(filename: [*:0]const u8) c_int {
     if (openfile(filename) == 0) return 0;
     main.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
     return 1;
@@ -188,11 +188,11 @@ fn ovflocheck() void {
     }
 }
 
-pub export fn dicovflo() void {
+pub fn dicovflo() void {
     main.fatal("\npanic: dictionary overflow\n", .{.{}});
 }
 
-pub export fn setupdic() void {
+pub fn setupdic() void {
     const space = main.rs.DICSPACE;
     if (ls.dic == null) {
         const dict_slice = rt.allocator.alloc(u8, @intCast(space)) catch mallocPanic("dictionary");
@@ -218,7 +218,7 @@ fn gethome(n: [*:0]const u8) ?[*:0]const u8 {
     return null;
 }
 
-pub export fn token() ?[*:0]u8 {
+pub fn token() ?[*:0]u8 {
     var ch = main_clib.getchar();
     ls.dicq = ls.dicp; // uses top of dictionary as temporary work space
     while (ch == ' ' or ch == '\t') {
@@ -270,7 +270,7 @@ pub export fn token() ?[*:0]u8 {
     return ls.dicp;
 }
 
-pub export fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
+pub fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
     var s = s_input;
     var n: Word = @intCast(word.strlen(s));
     if (s[0] == '<' and s[@intCast(n - 1)] == '>') {
@@ -521,7 +521,7 @@ fn getlitch() Word {
 
 var rdline_linebuf: [1024]u8 = std.mem.zeroes([1024]u8);
 
-pub export fn rdline() ?[*:0]u8 {
+pub fn rdline() ?[*:0]u8 {
     var p: [*]u8 = &rdline_linebuf;
     var ch = main_clib.getchar();
     var expansion: Word = 0;
@@ -583,14 +583,14 @@ pub export fn rdline() ?[*:0]u8 {
     return @ptrCast(&rdline_linebuf);
 }
 
-pub export fn setlmargin() void {
+pub fn setlmargin() void {
     ls.margstack = cons(ls.lmargin, ls.margstack);
     if (ls.lmargin < ls.col) {
         ls.lmargin = ls.col;
     }
 }
 
-pub export fn unsetlmargin() void {
+pub fn unsetlmargin() void {
     if (ls.margstack == NIL) {
         return;
     }
@@ -626,7 +626,7 @@ inline fn tryCh(x: Word, y: c_int) ?c_int {
     return null;
 }
 
-pub export fn yylex() c_int {
+pub fn yylex() c_int {
     if (core_state.SYNERR != 0) {
         return word.END;
     }
@@ -970,7 +970,7 @@ pub export fn yylex() c_int {
     }
 }
 
-pub export fn layout() void {
+pub fn layout() void {
     while (true) {
         if (ls.c == ' ' or (ls.c == '\n' and core_state.commandmode == 0) or ls.c == '\t') {
             ls.c = getch();
@@ -1005,7 +1005,7 @@ fn collectstars() Word {
     return word.TYPEVAR;
 }
 
-pub export fn mkgvar(i_input: Word) Word {
+pub fn mkgvar(i_input: Word) Word {
     var i = i_input;
     var p = &ls.gvars;
     while (i > 1) {
@@ -1021,7 +1021,7 @@ pub export fn mkgvar(i_input: Word) Word {
     return h(p.*);
 }
 
-pub export fn mklexvar(i: Word) Word {
+pub fn mklexvar(i: Word) Word {
     if (ls.lexvar == 0) {
         ls.lexvar = cons(sto_id("ls.lexvar"), sto_id("ls.lexvar"));
         tp(h(ls.lexvar)).* = main.cs.ltchar;
@@ -1030,7 +1030,7 @@ pub export fn mklexvar(i: Word) Word {
     return if (i != 0) t(ls.lexvar) else h(ls.lexvar);
 }
 
-pub export fn conv_args() Word {
+pub fn conv_args() Word {
     var i = ls.ARGC;
     var x = NIL;
     if (i == 0) {
@@ -1045,7 +1045,7 @@ pub export fn conv_args() Word {
     return x;
 }
 
-pub export fn str_conv(s: [*:0]const u8) Word {
+pub fn str_conv(s: [*:0]const u8) Word {
     var x = NIL;
     var i = word.strlen(s);
     while (i > 0) {
@@ -1115,7 +1115,7 @@ pub fn pathname() ?[*:0]u8 {
     return ls.dicp;
 }
 
-pub export fn adjust_prefix(f: [*:0]const u8) void {
+pub fn adjust_prefix(f: [*:0]const u8) void {
     ls.prefixstack = cons(prefix, ls.prefixstack);
     prefix += @as(Word, @intCast(word.strlen(prefixbase.? + @as(usize, @intCast(prefix))))) + 1;
     while (@as(usize, @intCast(prefix)) + word.strlen(f) >= @as(usize, @intCast(prefixlimit))) {
@@ -1148,7 +1148,7 @@ pub fn peekch() c_int {
     return ch;
 }
 
-pub export fn openfile(n: [*:0]const u8) c_int {
+pub fn openfile(n: [*:0]const u8) c_int {
     const f = word.fopen(n, "r") orelse return 0;
     ls.fileq = cons(make(STRCONS, @intCast(@intFromPtr(f)), NIL), ls.fileq);
     ls.insertdepth += 1;
@@ -1388,7 +1388,7 @@ fn kollect(f: fn (c_int) callconv(.c) c_int) void {
     ovflocheck();
 }
 
-pub export fn keep(p: [*:0]u8) [*:0]u8 {
+pub fn keep(p: [*:0]u8) [*:0]u8 {
     if (p == ls.dicp) {
         ls.dicp = ls.dicq;
     } else {
@@ -1402,7 +1402,7 @@ pub export fn keep(p: [*:0]u8) [*:0]u8 {
     return p;
 }
 
-pub export fn dic_check() void {
+pub fn dic_check() void {
     ovflocheck();
 }
 
@@ -1581,7 +1581,7 @@ pub fn getfname(x: Word) Word {
     return name();
 }
 
-pub export fn name() Word {
+pub fn name() Word {
     const h_idx = @as(usize, @intCast(hash(ls.dicp)));
     var q = ls.namebucket[h_idx];
     while (q != 0 and !is(get_id(h(q)))) {
@@ -1597,14 +1597,14 @@ pub export fn name() Word {
     return q;
 }
 
-pub export fn make_id(n: [*:0]const u8) Word {
+pub fn make_id(n: [*:0]const u8) Word {
     const h_idx = @as(usize, @intCast(hash(n)));
     const x = sto_id(if (inprelude) keep(@constCast(n)) else n);
     ls.namebucket[h_idx] = cons(x, ls.namebucket[h_idx]);
     return x;
 }
 
-pub export fn findid(n: [*:0]const u8) Word {
+pub fn findid(n: [*:0]const u8) Word {
     const h_idx = @as(usize, @intCast(hash(n)));
     var q = ls.namebucket[h_idx];
     while (q != 0 and !std.mem.eql(u8, std.mem.span(n), std.mem.span(get_id(h(q))))) {
@@ -1613,7 +1613,7 @@ pub export fn findid(n: [*:0]const u8) Word {
     return if (q != 0) h(q) else NIL;
 }
 
-pub export fn reset_pns() void {
+pub fn reset_pns() void {
     ls.nextpn = 0;
     if (ls.pnvec == null) {
         const slice = rt.allocator.alloc(Word, @intCast(pn_lim)) catch mallocPanic("ls.pnvec");
@@ -1621,7 +1621,7 @@ pub export fn reset_pns() void {
     }
 }
 
-pub export fn make_pn(val: Word) Word {
+pub fn make_pn(val: Word) Word {
     if (ls.nextpn == pn_lim) {
         const old_lim = pn_lim;
         pn_lim += 400;
@@ -1635,7 +1635,7 @@ pub export fn make_pn(val: Word) Word {
     return ret;
 }
 
-pub export fn sto_pn(n: Word) Word {
+pub fn sto_pn(n: Word) Word {
     if (n >= pn_lim) {
         const old_lim = pn_lim;
         while (pn_lim <= n) {
@@ -1652,7 +1652,7 @@ pub export fn sto_pn(n: Word) Word {
     return ls.pnvec.?[@intCast(n)];
 }
 
-pub export fn mkprivate(x_input: Word) void {
+pub fn mkprivate(x_input: Word) void {
     var x = x_input;
     while (x != NIL) {
         get_id(h(x))[0] += 128;
@@ -1768,7 +1768,7 @@ pub fn charclass() c_int {
     return anti;
 }
 
-pub export fn reset_lex() void {
+pub fn reset_lex() void {
     if (core_state.commandmode == 0) {
         if (core_state.errs == 0) {
             core_state.errs = fileinfo(@intCast(@intFromPtr(get_fil(heap.current_file))), ls.line_no);
@@ -1802,7 +1802,7 @@ pub export fn reset_lex() void {
     reset_state();
 }
 
-pub export fn reset_state() void {
+pub fn reset_state() void {
     if (core_state.commandmode != 0) {
         while (ls.c != '\n' and ls.c != main_clib.EOF) {
             if (main.rs.s_in) |sin| {
@@ -1853,7 +1853,7 @@ pub export fn reset_state() void {
     core_state.errline = 0;
 }
 
-export fn hash(input: [*:0]const u8) callconv(.c) c_int {
+fn hash(input: [*:0]const u8) callconv(.c) c_int {
     var s = input;
     var h_val: c_int = s[0];
     if (h_val != 0) {
@@ -1865,13 +1865,13 @@ export fn hash(input: [*:0]const u8) callconv(.c) c_int {
     return h_val & 127;
 }
 
-pub export fn isconstrname(input: [*:0]const u8) callconv(.c) c_int {
+pub fn isconstrname(input: [*:0]const u8) callconv(.c) c_int {
     var s = input;
     if (s[0] == '$') s += 1;
     return if (std.ascii.isUpper(s[0])) 1 else 0;
 }
 
-pub export fn okid(ch: c_int) callconv(.c) c_int {
+pub fn okid(ch: c_int) callconv(.c) c_int {
     return if ((ch >= 'a' and ch <= 'z') or
         (ch >= 'A' and ch <= 'Z') or
         (ch >= '0' and ch <= '9') or
@@ -1879,7 +1879,7 @@ pub export fn okid(ch: c_int) callconv(.c) c_int {
         ch == '\'') 1 else 0;
 }
 
-export fn okulid(ch: c_int) callconv(.c) c_int {
+fn okulid(ch: c_int) callconv(.c) c_int {
     return if ((ch >= 'a' and ch <= 'z') or
         (ch >= 'A' and ch <= 'Z') or
         (ch >= '0' and ch <= '9') or
@@ -1888,7 +1888,7 @@ export fn okulid(ch: c_int) callconv(.c) c_int {
         ch == '\'') 1 else 0;
 }
 
-export fn okpath(ch: c_int) callconv(.c) c_int {
+fn okpath(ch: c_int) callconv(.c) c_int {
     return if (ch != '"' and ch != '\n' and ch != '>') 1 else 0;
 }
 

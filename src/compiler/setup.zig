@@ -77,7 +77,7 @@ const yysterm_data = [_]?[*:0]const u8{
 };
 pub export var yysterm = yysterm_data;
 
-pub export fn syntax(s: [*:0]const u8) void {
+pub fn syntax(s: [*:0]const u8) void {
     if (core_state.SYNERR != 0) return;
     if (main.rs.echoing != 0) {
         _ = word.printErr("\n", .{.{}});
@@ -87,7 +87,7 @@ pub export fn syntax(s: [*:0]const u8) void {
     reset_lex();
 }
 
-pub export fn acterror() void {
+pub fn acterror() void {
     if (core_state.SYNERR != 0) return;
     core_state.SYNERR = 1;
     reset_lex();

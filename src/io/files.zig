@@ -15,7 +15,7 @@ const h = main.heap.h;
 
 /// Returns the mtime of `path` as a Word, or 0 if the file does not exist.
 /// Called from C ABI — parameter must remain a C string pointer.
-pub export fn fm_time(path: [*:0]const u8) Word {
+pub fn fm_time(path: [*:0]const u8) Word {
     if (platform.getFileInfo(path)) |info| {
         return @intCast(info.mtime);
     } else {
@@ -89,7 +89,7 @@ pub fn filecp(from: [*:0]const u8, to: [*:0]const u8) void {
 
 /// Deletes the object-file counterpart of `t_path` (replaces the final char with `obsuffix`).
 /// No-op if the object file does not exist.
-pub export fn unlinkx(t_path: [*:0]const u8) void {
+pub fn unlinkx(t_path: [*:0]const u8) void {
     var obf_buf: [1024]u8 = undefined;
     const t_slice = std.mem.span(t_path);
     if (t_slice.len == 0) return;

@@ -171,7 +171,7 @@ pub fn sigdefer(_: c_int) callconv(.c) void {
 
 /// Repairs type references after loading a dump: re-resolves STRCONS nodes and
 /// reports types that are in the dump but missing from the current scope (`tlost`).
-pub export fn readoption() void {
+pub fn readoption() void {
     var f: Word = undefined;
     var t_val: Word = undefined;
 

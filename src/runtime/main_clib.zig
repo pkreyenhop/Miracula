@@ -274,7 +274,7 @@ pub export fn fromUTF8(fil: ?*FILE) c_ulong {
     return std.math.maxInt(c_ulong);
 }
 
-pub export fn outUTF8(u: c_ulong, fil: ?*FILE) void {
+pub fn outUTF8(u: c_ulong, fil: ?*FILE) void {
     if (u <= 0x7f) {
         _ = putc(@intCast(u), fil);
     } else if (u <= 0x7ff) {

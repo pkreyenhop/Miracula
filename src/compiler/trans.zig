@@ -363,7 +363,7 @@ pub fn memb(input_l: Word, x: Word) Word {
     return if (l != NIL) 1 else 0;
 }
 
-pub export fn same(x: Word, y: Word) Word {
+pub fn same(x: Word, y: Word) Word {
     if (x == y) {
         return 1;
     }
@@ -397,7 +397,7 @@ pub fn get_ids(x: Word) Word {
     return UNION(get_ids(h(x)), get_ids(t(x)));
 }
 
-pub export fn mktuple(input_x: Word) Word {
+pub fn mktuple(input_x: Word) Word {
     var x = input_x;
     if (word.isAtom(x)) {
         return NIL;
@@ -416,7 +416,7 @@ pub export fn mktuple(input_x: Word) Word {
     return if (x == NIL) y else if (y == NIL) x else pair(x, y);
 }
 
-pub export fn irrefutable(x: Word) Word {
+pub fn irrefutable(x: Word) Word {
     if (word.isAtom(x)) {
         return 0;
     }
@@ -467,7 +467,7 @@ pub fn here_inf(rhs: Word) Word {
     return h(h(x));
 }
 
-pub export fn lastlink(input_x: Word) Word {
+pub fn lastlink(input_x: Word) Word {
     var x = input_x;
     while (t(x) != NIL) {
         x = t(x);
@@ -705,7 +705,7 @@ pub fn new_mklazy(d: Word) Word {
     return d;
 }
 
-pub export fn compzf(input_e: Word, input_qq: Word, diag: Word) Word {
+pub fn compzf(input_e: Word, input_qq: Word, diag: Word) Word {
     var e = input_e;
     var qq = input_qq;
     var hold: Word = NIL;
@@ -772,7 +772,7 @@ pub fn transzf(e_input: Word, qq_input: Word, conc: Word) Word {
     return ap(conc, transzf(transzf(e, t(qq), conc), cons(q, NIL), conc));
 }
 
-pub export fn getspecloc(x: Word) Word {
+pub fn getspecloc(x: Word) Word {
     var s = cs.speclocs;
     while (s != NIL and h(h(s)) != x) {
         s = t(s);
@@ -788,7 +788,7 @@ pub fn transtypeid(x: Word) Word {
     return x;
 }
 
-pub export fn genlhs(x: Word) Word {
+pub fn genlhs(x: Word) Word {
     switch (getTag(x)) {
         AP => {
             if (getTag(h(x)) == AP and h(h(x)) == PLUS and isnat(t(x)) != 0) {
@@ -961,7 +961,7 @@ pub fn makeshow(here: Word, type_node: Word) Word {
     return f;
 }
 
-pub export fn mkshow(s: Word, p: Word, input_t: Word) Word {
+pub fn mkshow(s: Word, p: Word, input_t: Word) Word {
     var args: Word = NIL;
     var type_node = input_t;
     while (getTag(type_node) == AP) {
@@ -1075,7 +1075,7 @@ pub fn nameclash(x: Word) void {
     acterror();
 }
 
-pub export fn declconstr(x: Word, n: Word, constr_type: Word) void {
+pub fn declconstr(x: Word, n: Word, constr_type: Word) void {
     setIdVal(x, constructor(n, x));
     if ((n >> 16) != 0) {
         syntax("algebraic type has too many constructors\n");
@@ -1090,7 +1090,7 @@ pub export fn declconstr(x: Word, n: Word, constr_type: Word) void {
     setIdType(x, constr_type);
 }
 
-pub export fn specify(input_x: Word, spec_type: Word, here: Word) void {
+pub fn specify(input_x: Word, spec_type: Word, here: Word) void {
     var x = input_x;
     if (getTag(x) != ID and spec_type != type_t) {
         core_state.errs = here;
@@ -1146,7 +1146,7 @@ fn arityCheck(type_name: Word, arity: Word, here: Word) void {
     }
 }
 
-pub export fn decl_type(input_tf: Word, type_class: Word, info: Word, here: Word) void {
+pub fn decl_type(input_tf: Word, type_class: Word, info: Word, here: Word) void {
     var tf = input_tf;
     var arity: Word = 0;
     while (getTag(tf) == AP) {
@@ -1208,7 +1208,7 @@ fn decl1(x: Word, e: Word) void {
     }
 }
 
-pub export fn declare(x: Word, e: Word) void {
+pub fn declare(x: Word, e: Word) void {
     if (getTag(x) == ID and !isConstructor(x)) {
         decl1(x, e);
         return;
@@ -1240,7 +1240,7 @@ pub export fn declare(x: Word, e: Word) void {
     }
 }
 
-pub export fn block(input_defs: Word, input_e: Word, keep: Word) Word {
+pub fn block(input_defs: Word, input_e: Word, keep: Word) Word {
     var defs = input_defs;
     var e = input_e;
     var ids: Word = NIL;
@@ -1297,7 +1297,7 @@ pub export fn block(input_defs: Word, input_e: Word, keep: Word) Word {
     return e;
 }
 
-pub export fn tclos(r: Word) Word {
+pub fn tclos(r: Word) Word {
     var r1 = r;
     while (r1 != NIL) : (r1 = t(r1)) {
         var x = less1(t(h(r1)), h(h(r1)));
@@ -1401,7 +1401,7 @@ pub fn sort(input_x: Word) Word {
     return reverse(x);
 }
 
-pub export fn sortrel(input_x: Word) Word {
+pub fn sortrel(input_x: Word) Word {
     var x = input_x;
     var a: Word = NIL;
     var b: Word = NIL;
@@ -1485,7 +1485,7 @@ fn sui_generis(k: Word) bool {
     return member(cs.SGC, k) != 0;
 }
 
-pub export fn codegen(x: Word) Word {
+pub fn codegen(x: Word) Word {
     switch (getTag(x)) {
         AP => {
             if (core_state.commandmode != 0 // beware of corrupting lastexp
@@ -1596,7 +1596,7 @@ pub export fn codegen(x: Word) Word {
     }
 }
 
-pub export fn genshfns() void {
+pub fn genshfns() void {
     var s = cs.newtyps;
     while (s != NIL) {
         if (t_class(h(s)) == algebraic_t) {

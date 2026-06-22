@@ -185,7 +185,7 @@ inline fn rewrite_to_cons(e: Word, hd_value: Word, tl_value: Word) void {
     setcell(e, word.CONS, hd_value, tl_value);
 }
 
-pub export fn reduce_badcase_error(arg_info: Word) void {
+pub fn reduce_badcase_error(arg_info: Word) void {
     const subject = h(arg_info);
     word.printErr("\nprogram error: missing case in definition", .{});
     if (subject != 0) {
@@ -197,14 +197,14 @@ pub export fn reduce_badcase_error(arg_info: Word) void {
     main_clib.exit(1);
 }
 
-pub export fn reduce_conf_error(arg_info: Word) void {
+pub fn reduce_conf_error(arg_info: Word) void {
     word.printErr("\nprogram error: lhs of definition doesn't match rhs\n", .{});
     out_here(getStderr().?, t(arg_info), 1);
     outstats();
     main_clib.exit(1);
 }
 
-pub export fn reduce_parse_close_error(arg1: Word, arg3: Word) void {
+pub fn reduce_parse_close_error(arg1: Word, arg3: Word) void {
     word.printErr("\nPARSE OF {s}FAILS WITH UNEXPECTED ", .{std.mem.span(getstring(arg1, null).?)});
     const arg3_reduced = reduce(t(g_residue(arg3)));
     if (arg3_reduced == NIL) {
@@ -317,7 +317,7 @@ pub export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
     }
 }
 
-pub export fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
+pub fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     var curr_x = x;
     const x1 = x;
     var n: usize = 0;
@@ -350,9 +350,9 @@ pub export fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     return @ptrCast(&main.rs.linebuf);
 }
 
-pub export fn initclock() void {}
+pub fn initclock() void {}
 
-pub export fn outstats() void {
+pub fn outstats() void {
     if (main.rs.atcount == 0) {
         return;
     }
@@ -364,7 +364,7 @@ pub export fn outstats() void {
     word.printErr("no of gc's = {}, cpu = {d:.2}\n", .{heap.nogcs, @as(f64, @floatFromInt(buffer.tms_utime)) / clk_tck});
 }
 
-pub export fn out_here(f: ?*word.FILE, h_val: Word, nl: c_int) void {
+pub fn out_here(f: ?*word.FILE, h_val: Word, nl: c_int) void {
     if (getTag(h_val) != word.FILEINFO) {
         word.printErr("(impossible event in outhere)\n", .{});
         return;
@@ -394,27 +394,27 @@ pub fn stdin_error(c_val: c_int) void {
     main_clib.exit(1);
 }
 
-pub export fn fn_error(s: [*:0]const u8) void {
+pub fn fn_error(s: [*:0]const u8) void {
     word.printErr("\nprogram error: {s}\n", .{s});
     outstats();
     main_clib.exit(1);
 }
 
-pub export fn getenv_error(a: [*:0]const u8) void {
+pub fn getenv_error(a: [*:0]const u8) void {
     word.printErr("program error: getenv({s}): illegal characters in result string\n", .{a});
     outstats();
     main_clib.exit(1);
 }
 
-pub export fn subs_error() void {
+pub fn subs_error() void {
     fn_error("subscript out of range");
 }
 
-pub export fn div_error() void {
+pub fn div_error() void {
     fn_error("attempt to divide by zero");
 }
 
-pub export fn math_error(s: [*:0]const u8) void {
+pub fn math_error(s: [*:0]const u8) void {
     const err_val = platform.getErrno();
     const err_type: [*:0]const u8 = if (err_val == main_clib.EDOM) "domain " else if (err_val == main_clib.ERANGE) "range " else "";
     word.printErr("\nmath function {s}error ({s})\n", .{err_type, s});
@@ -422,13 +422,13 @@ pub export fn math_error(s: [*:0]const u8) void {
     main_clib.exit(1);
 }
 
-pub export fn int_error(s: [*:0]const u8) void {
+pub fn int_error(s: [*:0]const u8) void {
     word.printErr("\nprogram error: fractional number where integer expected ({s})\n", .{s});
     outstats();
     main_clib.exit(1);
 }
 
-pub export fn numplus(x: Word, y: Word) Word {
+pub fn numplus(x: Word, y: Word) Word {
     if (getTag(x) == word.DOUBLE) {
         return heap.sto_dbl(heap.get_dbl(x) + force_dbl(y));
     }
@@ -438,7 +438,7 @@ pub export fn numplus(x: Word, y: Word) Word {
     return big.bigplus(x, y);
 }
 
-pub export fn g_residue(toks2: Word) Word {
+pub fn g_residue(toks2: Word) Word {
     var curr_toks2 = toks2;
     var toks1 = NIL;
     if (getTag(curr_toks2) != word.CONS) {
@@ -458,7 +458,7 @@ pub export fn g_residue(toks2: Word) Word {
     return cons(ap(word.DESTREV, toks1), t(curr_toks2));
 }
 
-pub export fn memclass(c_val: c_int, x_val: Word) c_int {
+pub fn memclass(c_val: c_int, x_val: Word) c_int {
     var x = x_val;
     while (x != NIL) {
         if (h(x) == word.DOTDOT) {
@@ -475,7 +475,7 @@ pub export fn memclass(c_val: c_int, x_val: Word) c_int {
     return 0;
 }
 
-pub export fn lexfail(x_val: Word) void {
+pub fn lexfail(x_val: Word) void {
     var x = x_val;
     var i: i32 = 24;
     word.printErr("\nLEX FAILS WITH UNRECOGNISED INPUT: \"", .{});
@@ -489,16 +489,16 @@ pub export fn lexfail(x_val: Word) void {
     main_clib.exit(1);
 }
 
-pub export fn lexstate(x: Word) Word {
+pub fn lexstate(x: Word) Word {
     const val = h(h(x));
     return cons(big.sto_int(val >> 8), stosmallint(val & 255));
 }
 
-pub export fn piperrmess(pid: Word) Word {
+pub fn piperrmess(pid: Word) Word {
     return lex.str_conv(if (pid == -1) "cannot create process\n" else "cannot open pipe\n");
 }
 
-pub export fn compare(arg_a: Word, arg_b: Word) c_int {
+pub fn compare(arg_a: Word, arg_b: Word) c_int {
     var a = arg_a;
     var b = arg_b;
     while (true) {
@@ -568,7 +568,7 @@ pub export fn compare(arg_a: Word, arg_b: Word) c_int {
     }
 }
 
-pub export fn force(x_val: Word) void {
+pub fn force(x_val: Word) void {
     var x = x_val;
     switch (getTag(x)) {
         word.AP => {
@@ -598,7 +598,7 @@ pub export fn force(x_val: Word) void {
     }
 }
 
-pub export fn head(x_val: Word) Word {
+pub fn head(x_val: Word) Word {
     var x = x_val;
     while (getTag(x) == word.AP) {
         x = h(x);
@@ -656,7 +656,7 @@ pub fn outf(e: Word) void {
     }
 }
 
-pub export fn print(arg_e: Word) void {
+pub fn print(arg_e: Word) void {
     var e = reduce(arg_e);
     while (getTag(e) == word.CONS) {
         hp(e).* = reduce(h(e));
@@ -695,7 +695,7 @@ const Stdoutb = 7;
 const Tofileb = 8;
 const Appendfileb = 9;
 
-pub export fn output(arg_e: Word) void {
+pub fn output(arg_e: Word) void {
     var e = arg_e;
     const old_cstack = main.rs.cstack;
     main.rs.cstack = @ptrCast(&e);

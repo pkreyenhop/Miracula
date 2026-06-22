@@ -53,7 +53,7 @@ pub export fn fromUTF8(fil: ?*FILE) c_ulong {
     reportError(&.{c0});
 }
 
-pub export fn outUTF8(u: c_ulong, fil: ?*FILE) void {
+pub fn outUTF8(u: c_ulong, fil: ?*FILE) void {
     if (u <= 0x7f) {
         out(u, fil);
     } else if (u <= 0x7ff) {

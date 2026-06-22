@@ -17,7 +17,7 @@ pub const ReductionCtx = core.ReductionCtx;
 
 // Extern globals referenced by reducer helpers
 
-pub export fn reduce(e_val: Word) Word {
+pub fn reduce(e_val: Word) Word {
     var ctx: ReductionCtx = undefined;
     ctx.e = e_val;
     ctx.s = word.BACKSTOP;

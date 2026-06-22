@@ -41,7 +41,7 @@ fn WTERMSIG(status: c_int) c_int {
     return status & 0x7f;
 }
 
-pub export fn commandloop(initscript: [*:0]u8) void {
+pub fn commandloop(initscript: [*:0]u8) void {
     var ch: c_int = undefined;
     var lb: ?[*:0]u8 = undefined;
 
@@ -217,7 +217,7 @@ pub export fn commandloop(initscript: [*:0]u8) void {
     }
 }
 
-pub export fn process() Word {
+pub fn process() Word {
     var oldsig: usize = undefined;
     oldsig = signals(abi.SIGINT, 1);
     const pid = abi.fork();
@@ -243,13 +243,13 @@ pub export fn process() Word {
     return 1; // child
 }
 
-pub export fn dieclean() void {
+pub fn dieclean() callconv(.c) void {
     word.printErr("<<...interrupt>>\n", .{});
     outstats();
     abi.exit(0);
 }
 
-pub export fn fpe_error(sig: c_int) void {
+pub fn fpe_error(sig: c_int) callconv(.c) void {
     if (core_state.compiling != 0) {
         _ = signals(sig, @intFromPtr(&fpe_error));
         syntax("floating point number out of range\n");
@@ -262,7 +262,7 @@ pub export fn fpe_error(sig: c_int) void {
 }
 
 // Relocated REPL and interactive driver functions
-pub export fn obey(x_in: Word) void {
+pub fn obey(x_in: Word) void {
     var x = x_in;
     const typ = main.type_of(x);
     x = main.codegen(x);
@@ -283,7 +283,7 @@ pub export fn obey(x_in: Word) void {
     abi.output(out_val);
 }
 
-pub export fn evaluate_repl(x_in: Word) void {
+pub fn evaluate_repl(x_in: Word) void {
     var x = x_in;
     const typ = main.type_of(x);
     if (typ == word.wrong_t) return;
@@ -315,7 +315,7 @@ pub export fn evaluate_repl(x_in: Word) void {
     // Parent returns here; heap and compiling flag are unchanged.
 }
 
-pub export fn reset() void {
+pub fn reset() callconv(.c) void {
     if (main.rs.echoing != 0) {
         _ = word.putchar('\n');
     }
@@ -382,7 +382,7 @@ pub fn fixeditor() void {
     }
 }
 
-pub export fn parseline(t_val: Word, f: ?*word.FILE, fil: Word) Word {
+pub fn parseline(t_val: Word, f: ?*word.FILE, fil: Word) Word {
     var t1: Word = undefined;
     var ch: c_int = undefined;
     main.rs.lastexp = word.UNDEF;
