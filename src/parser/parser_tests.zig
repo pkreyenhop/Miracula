@@ -6,25 +6,26 @@ const heap = @import("../runtime/heap.zig");
 const setupheap = heap.setupheap;
 const setupdic = r7_lex.setupdic;
 const yylex = r7_lex.yylex;
-const abi = @import("../runtime/c_abi.zig");
 const lex_state = @import("lex_state.zig");
 const r7_lex = @import("lex.zig");
+const main_clib = @import("../runtime/main_clib.zig");
+const word = @import("../runtime/word.zig");
 const ls = &lex_state.ls;
 
 const make_id = r7_lex.make_id;
-extern var current_file: abi.word;
-extern var files: abi.word;
+extern var current_file: word.Word;
+extern var files: word.Word;
 const reset_pns = r7_lex.reset_pns;
-fn makeFilRecord(name: [*:0]const u8) abi.word {
-    const name_word = @as(abi.word, @intCast(@intFromPtr(name)));
-    const file_info = abi.make(abi.FILEINFO, name_word, 0);
-    const share_cell = abi.make(abi.CONS, 1, abi.NIL);
-    const info_cell = abi.make(abi.CONS, file_info, share_cell);
-    return abi.make(abi.CONS, info_cell, abi.NIL);
+fn makeFilRecord(name: [*:0]const u8) word.Word {
+    const name_word = @as(word.Word, @intCast(@intFromPtr(name)));
+    const file_info = heap.make(word.FILEINFO, name_word, 0);
+    const share_cell = heap.make(word.CONS, 1, word.NIL);
+    const info_cell = heap.make(word.CONS, file_info, share_cell);
+    return heap.make(word.CONS, info_cell, word.NIL);
 }
 
 const reset_state = r7_lex.reset_state;
-extern var SYNERR: abi.word;
+extern var SYNERR: word.Word;
 
 fn resetLexerState() void {
     reset_state();
@@ -32,7 +33,7 @@ fn resetLexerState() void {
     setupdic();
     reset_pns();
     current_file = makeFilRecord("test.m");
-    files = abi.make(abi.CONS, current_file, abi.NIL);
+    files = heap.make(word.CONS, current_file, word.NIL);
     ls.col = 0;
     ls.line_no = 0;
     ls.c = ' ';
@@ -46,7 +47,7 @@ fn ensureInitialized() void {
         setupdic();
         reset_pns();
         current_file = makeFilRecord("test.m");
-        files = abi.make(abi.CONS, current_file, abi.NIL);
+        files = heap.make(word.CONS, current_file, word.NIL);
         initialized = true;
     }
 }
@@ -144,7 +145,7 @@ fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]con
 
     while (true) {
         const tok = yylex();
-        if (tok == 0 or tok == abi.END) break;
+        if (tok == 0 or tok == word.END) break;
 
         const name = tokenName(tok);
         const lexeme = std.mem.span(@as([*:0]u8, @ptrCast(ls.dicp)));
@@ -193,7 +194,7 @@ fn runSnapshotTest(allocator: std.mem.Allocator, name: []const u8, source: [:0]c
     const path = try std.fmt.allocPrint(allocator, "{s}/{s}.snapshot", .{ snapshot_dir, name });
     defer allocator.free(path);
 
-    const update = (abi.getenv("UPDATE_SNAPSHOTS") != null);
+    const update = (main_clib.getenv("UPDATE_SNAPSHOTS") != null);
 
     if (update) {
         std.debug.print("[{s}] writing snapshot...\n", .{name});

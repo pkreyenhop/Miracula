@@ -159,6 +159,7 @@ pub extern fn make_id(p: [*:0]const u8) word;
 pub extern fn mallocfail(s: [*:0]const u8) void;
 pub extern fn setdiff(s1: word, s2: word) word;
 pub extern fn make_pn(val: word) word;
+pub extern var cmbnms: [*][*:0]u8;
 pub fn make_typ(a: Word, shf: Word, class: Word, info: Word) Word {
     return cons(cons(a, shf), cons(class, info));
 }
@@ -239,7 +240,7 @@ pub const fputc = word_mod.fputc;
 pub const putchar = word_mod.putchar;
 pub const ungetc = word_mod.ungetc;
 
-export fn fromUTF8(fil: ?*FILE) c_ulong {
+pub export fn fromUTF8(fil: ?*FILE) c_ulong {
     const c0 = getc(fil);
     if (c0 == EOF) return std.math.maxInt(c_ulong);
     if (c0 <= 0x7f) return @intCast(c0);
@@ -267,7 +268,7 @@ export fn fromUTF8(fil: ?*FILE) c_ulong {
     return std.math.maxInt(c_ulong);
 }
 
-export fn outUTF8(u: c_ulong, fil: ?*FILE) void {
+pub export fn outUTF8(u: c_ulong, fil: ?*FILE) void {
     if (u <= 0x7f) {
         _ = putc(@intCast(u), fil);
     } else if (u <= 0x7ff) {

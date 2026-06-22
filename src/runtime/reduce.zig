@@ -1,11 +1,13 @@
 const std = @import("std");
 const word = @import("word.zig");
 const platform = @import("../io/platform.zig");
-const abi = @import("c_abi.zig");
 const main = @import("../main.zig");
 const heap = @import("heap.zig");
 const r7_repl = @import("../driver/repl.zig");
 const r7_reduce = @import("reducer/reduce.zig");
+const big = @import("big.zig");
+const lex = @import("../parser/lex.zig");
+const main_clib = @import("main_clib.zig");
 
 const Word = i64;
 const NIL: Word = word.CMBASE + 138;
@@ -79,9 +81,9 @@ inline fn lh(x: Word) Word {
 
 inline fn force_dbl(x: Word) f64 {
     if (getTag(x) == word.INT) {
-        return abi.bigtodbl(x);
+        return big.bigtodbl(x);
     } else {
-        return abi.get_dbl(x);
+        return heap.get_dbl(x);
     }
 }
 
@@ -98,11 +100,11 @@ inline fn sign(x: c_long) c_int {
 }
 
 inline fn cons(x: Word, y: Word) Word {
-    return abi.make(word.CONS, x, y);
+    return heap.make(word.CONS, x, y);
 }
 
 inline fn ap(x: Word, y: Word) Word {
-    return abi.make(word.AP, x, y);
+    return heap.make(word.AP, x, y);
 }
 
 inline fn ap2(f: Word, x: Word, y: Word) Word {
@@ -110,7 +112,7 @@ inline fn ap2(f: Word, x: Word, y: Word) Word {
 }
 
 inline fn datapair(x: Word, y: Word) Word {
-    return abi.make(word.DATAPAIR, x, y);
+    return heap.make(word.DATAPAIR, x, y);
 }
 
 inline fn digit0(x: Word) Word {
@@ -119,7 +121,7 @@ inline fn digit0(x: Word) Word {
 
 inline fn stosmallint(x: Word) Word {
     const val = if (x < 0) SIGNBIT | (-x) else x;
-    return abi.make(word.INT, val, 0);
+    return heap.make(word.INT, val, 0);
 }
 
 const reduce_ctx = extern struct {
@@ -139,35 +141,35 @@ const reduce_action = enum(c_int) {
 };
 
 fn getStdin() ?*word.FILE {
-    const T = @TypeOf(abi.stdin);
+    const T = @TypeOf(main_clib.stdin);
     if (comptime @typeInfo(T) == .@"fn") {
-        return abi.stdin();
+        return main_clib.stdin();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return abi.stdin();
+        return main_clib.stdin();
     } else {
-        return abi.stdin;
+        return main_clib.stdin;
     }
 }
 
 fn getStderr() ?*word.FILE {
-    const T = @TypeOf(abi.stderr);
+    const T = @TypeOf(main_clib.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
-        return abi.stderr();
+        return main_clib.stderr();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return abi.stderr();
+        return main_clib.stderr();
     } else {
-        return abi.stderr;
+        return main_clib.stderr;
     }
 }
 
 fn getStdout() ?*word.FILE {
-    const T = @TypeOf(abi.stdout);
+    const T = @TypeOf(main_clib.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
-        return abi.stdout();
+        return main_clib.stdout();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return abi.stdout();
+        return main_clib.stdout();
     } else {
-        return abi.stdout;
+        return main_clib.stdout;
     }
 }
 
@@ -200,14 +202,14 @@ pub export fn reduce_badcase_error(arg_info: Word) void {
     _ = word.putc('\n', getStderr().?);
     out_here(getStderr().?, t(arg_info), 1);
     outstats();
-    abi.exit(1);
+    main_clib.exit(1);
 }
 
 pub export fn reduce_conf_error(arg_info: Word) void {
     word.printErr("\nprogram error: lhs of definition doesn't match rhs\n", .{});
     out_here(getStderr().?, t(arg_info), 1);
     outstats();
-    abi.exit(1);
+    main_clib.exit(1);
 }
 
 pub export fn reduce_parse_close_error(arg1: Word, arg3: Word) void {
@@ -216,9 +218,9 @@ pub export fn reduce_parse_close_error(arg1: Word, arg3: Word) void {
     if (arg3_reduced == NIL) {
         word.printErr("END OF INPUT\n", .{});
         outstats();
-        abi.exit(1);
+        main_clib.exit(1);
     }
-    var hold_val = abi.make(word.AP, FST, h(arg3_reduced));
+    var hold_val = heap.make(word.AP, FST, h(arg3_reduced));
     hold_val = reduce(hold_val);
     word.printErr("TOKEN \"", .{});
     if (hold_val == word.OFFSIDE) {
@@ -233,7 +235,7 @@ pub export fn reduce_parse_close_error(arg1: Word, arg3: Word) void {
     }
     word.printErr("\"\n", .{});
     outstats();
-    abi.exit(1);
+    main_clib.exit(1);
 }
 
 pub export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
@@ -257,13 +259,13 @@ pub export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
                 stdinuse = ':';
                 tp(ctx.e).* = @intCast(@intFromPtr(getStdin().?));
             }
-            const hold_char = abi.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
-            if (hold_char == abi.EOF) {
+            const hold_char = main_clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
+            if (hold_char == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
                 rewrite_to_nil(&ctx.e);
                 return .REDUCE_DONE;
             }
-            rewrite_to_cons(ctx.e, hold_char, abi.make(word.AP, word.READBIN, t(ctx.e)));
+            rewrite_to_cons(ctx.e, hold_char, heap.make(word.AP, word.READBIN, t(ctx.e)));
             return .REDUCE_DONE;
         },
         word.READ => {
@@ -284,13 +286,13 @@ pub export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
                 stdinuse = '-';
                 tp(ctx.e).* = @intCast(@intFromPtr(getStdin().?));
             }
-            const hold_char = if (main.rs.UTF8 != 0) sto_char(fromUTF8(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))))) else abi.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
-            if (hold_char == abi.EOF) {
+            const hold_char = if (main.rs.UTF8 != 0) sto_char(fromUTF8(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))))) else main_clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
+            if (hold_char == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
                 rewrite_to_nil(&ctx.e);
                 return .REDUCE_DONE;
             }
-            rewrite_to_cons(ctx.e, hold_char, abi.make(word.AP, word.READ, t(ctx.e)));
+            rewrite_to_cons(ctx.e, hold_char, heap.make(word.AP, word.READ, t(ctx.e)));
             return .REDUCE_DONE;
         },
         word.READVALS => {
@@ -310,12 +312,12 @@ pub export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
             ctx.e = ctx.hold;
 
             const val = parseline(h(ctx.arg1), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.arg1));
-            if (val == abi.EOF) {
+            if (val == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(lastarg))));
                 rewrite_to_nil(&ctx.e);
                 return .REDUCE_DONE;
             }
-            ctx.arg2 = abi.make(word.AP, h(ctx.e), lastarg);
+            ctx.arg2 = heap.make(word.AP, h(ctx.e), lastarg);
             rewrite_to_cons(ctx.e, val, ctx.arg2);
             return .REDUCE_DONE;
         },
@@ -348,7 +350,7 @@ pub export fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
         if (cmd) |cmd_str| {
             word.printErr("\n{s}, argument string too long (limit={} chars): {s}...\n", .{cmd_str, @as(c_int, buf_size), &main.rs.linebuf});
             outstats();
-            abi.exit(1);
+            main_clib.exit(1);
         } else {
             return @ptrCast(&main.rs.linebuf);
         }
@@ -362,11 +364,11 @@ pub export fn outstats() void {
     if (main.rs.atcount == 0) {
         return;
     }
-    var buffer: abi.struct_tms = undefined;
-    _ = abi.times(&buffer);
+    var buffer: main_clib.struct_tms = undefined;
+    _ = main_clib.times(&buffer);
     word.printErr("||", .{});
     word.printErr("reductions = {}, cells claimed = {}, ", .{cycles, cellcount + claims});
-    const clk_tck = @as(f64, @floatFromInt(abi.sysconf(abi._SC_CLK_TCK)));
+    const clk_tck = @as(f64, @floatFromInt(main_clib.sysconf(word._SC_CLK_TCK)));
     word.printErr("no of gc's = {}, cpu = {d:.2}\n", .{nogcs, @as(f64, @floatFromInt(buffer.tms_utime)) / clk_tck});
 }
 
@@ -397,19 +399,19 @@ pub fn stdin_error(c_val: c_int) void {
         word.printErr("program error: simultaneous use of {s} and {s}\n", .{stdname(c_val), stdname(@intCast(stdinuse))});
     }
     outstats();
-    abi.exit(1);
+    main_clib.exit(1);
 }
 
 pub export fn fn_error(s: [*:0]const u8) void {
     word.printErr("\nprogram error: {s}\n", .{s});
     outstats();
-    abi.exit(1);
+    main_clib.exit(1);
 }
 
 pub export fn getenv_error(a: [*:0]const u8) void {
     word.printErr("program error: getenv({s}): illegal characters in result string\n", .{a});
     outstats();
-    abi.exit(1);
+    main_clib.exit(1);
 }
 
 pub export fn subs_error() void {
@@ -422,26 +424,26 @@ pub export fn div_error() void {
 
 pub export fn math_error(s: [*:0]const u8) void {
     const err_val = platform.getErrno();
-    const err_type: [*:0]const u8 = if (err_val == abi.EDOM) "domain " else if (err_val == abi.ERANGE) "range " else "";
+    const err_type: [*:0]const u8 = if (err_val == main_clib.EDOM) "domain " else if (err_val == main_clib.ERANGE) "range " else "";
     word.printErr("\nmath function {s}error ({s})\n", .{err_type, s});
     outstats();
-    abi.exit(1);
+    main_clib.exit(1);
 }
 
 pub export fn int_error(s: [*:0]const u8) void {
     word.printErr("\nprogram error: fractional number where integer expected ({s})\n", .{s});
     outstats();
-    abi.exit(1);
+    main_clib.exit(1);
 }
 
 pub export fn numplus(x: Word, y: Word) Word {
     if (getTag(x) == word.DOUBLE) {
-        return abi.sto_dbl(abi.get_dbl(x) + force_dbl(y));
+        return heap.sto_dbl(heap.get_dbl(x) + force_dbl(y));
     }
     if (getTag(y) == word.DOUBLE) {
-        return abi.sto_dbl(abi.bigtodbl(x) + abi.get_dbl(y));
+        return heap.sto_dbl(big.bigtodbl(x) + heap.get_dbl(y));
     }
-    return abi.bigplus(x, y);
+    return big.bigplus(x, y);
 }
 
 pub export fn g_residue(toks2: Word) Word {
@@ -492,16 +494,16 @@ pub export fn lexfail(x_val: Word) void {
     }
     word.printErr("{s}\"\n", .{if (x == NIL) @as([*:0]const u8, "") else "..."});
     outstats();
-    abi.exit(1);
+    main_clib.exit(1);
 }
 
 pub export fn lexstate(x: Word) Word {
     const val = h(h(x));
-    return cons(abi.sto_int(val >> 8), stosmallint(val & 255));
+    return cons(big.sto_int(val >> 8), stosmallint(val & 255));
 }
 
 pub export fn piperrmess(pid: Word) Word {
-    return abi.str_conv(if (pid == -1) "cannot create process\n" else "cannot open pipe\n");
+    return lex.str_conv(if (pid == -1) "cannot create process\n" else "cannot open pipe\n");
 }
 
 pub export fn compare(arg_a: Word, arg_b: Word) c_int {
@@ -513,24 +515,24 @@ pub export fn compare(arg_a: Word, arg_b: Word) c_int {
         switch (tag_a) {
             word.DOUBLE => {
                 if (tag_b == word.DOUBLE) {
-                    return fsign(abi.get_dbl(a) - abi.get_dbl(b));
+                    return fsign(heap.get_dbl(a) - heap.get_dbl(b));
                 } else {
-                    return fsign(abi.get_dbl(a) - abi.bigtodbl(b));
+                    return fsign(heap.get_dbl(a) - big.bigtodbl(b));
                 }
             },
             word.INT => {
                 if (tag_b == word.INT) {
-                    return abi.bigcmp(a, b);
+                    return big.bigcmp(a, b);
                 } else {
-                    return fsign(abi.bigtodbl(a) - abi.get_dbl(b));
+                    return fsign(big.bigtodbl(a) - heap.get_dbl(b));
                 }
             },
             word.UNICODE => {
-                return sign(abi.get_char(a) - abi.get_char(b));
+                return sign(heap.get_char(a) - heap.get_char(b));
             },
             word.ATOM => {
                 if (tag_b == word.UNICODE) {
-                    return sign(abi.get_char(a) - abi.get_char(b));
+                    return sign(heap.get_char(a) - heap.get_char(b));
                 }
                 if ((word.S <= a and a <= word.ERROR) or (word.S <= b and b <= word.ERROR)) {
                     fn_error("attempt to compare functions");
@@ -623,7 +625,7 @@ pub fn apfile(f: Word) void {
         if (s == null) {
             word.printErr("\nAppendfile: cannot write to \"{s}\"\n", .{std.mem.span(fil.?)});
         } else {
-            outfilq = cons(datapair(@intCast(@intFromPtr(abi.keep(fil.?))), @intCast(@intFromPtr(s.?))), outfilq);
+            outfilq = cons(datapair(@intCast(@intFromPtr(lex.keep(fil.?))), @intCast(@intFromPtr(s.?))), outfilq);
         }
     }
 }
@@ -653,10 +655,10 @@ pub fn outf(e: Word) void {
             s_out = getStdout();
             return;
         }
-        if (abi.isatty(word.fileno(s_out.?)) != 0) {
+        if (main_clib.isatty(word.fileno(s_out.?)) != 0) {
             word.setbuf(s_out.?, null);
         }
-        outfilq = cons(datapair(@intCast(@intFromPtr(abi.keep(f.?))), @intCast(@intFromPtr(s_out.?))), outfilq);
+        outfilq = cons(datapair(@intCast(@intFromPtr(lex.keep(f.?))), @intCast(@intFromPtr(s_out.?))), outfilq);
     } else {
         s_out = @ptrFromInt(@as(usize, @intCast(t(h(p)))));
     }
@@ -666,12 +668,12 @@ pub export fn print(arg_e: Word) void {
     var e = reduce(arg_e);
     while (getTag(e) == word.CONS) {
         hp(e).* = reduce(h(e));
-        if (abi.is_char(h(e)) == 0) {
+        if (heap.is_char(h(e)) == 0) {
             break;
         }
-        const c = @as(u32, @intCast(abi.get_char(h(e))));
+        const c = @as(u32, @intCast(heap.get_char(h(e))));
         if (main.rs.UTF8 != 0) {
-            abi.outUTF8(c, s_out);
+            main_clib.outUTF8(c, s_out);
         } else if (word.fitsInByte(c)) {
             _ = word.putc(@intCast(c), s_out.?);
         } else {
@@ -685,9 +687,9 @@ pub export fn print(arg_e: Word) void {
     }
     word.printErr("\nimpossible event in print\n", .{});
     _ = word.putc('<', getStderr().?);
-    abi.out(getStderr().?, e);
+    heap.out(getStderr().?, e);
     word.printErr(">\n", .{});
-    abi.exit(1);
+    main_clib.exit(1);
 }
 
 const Stdout = 0;
@@ -749,7 +751,7 @@ pub export fn output(arg_e: Word) void {
             System => {
                 tp(h(e)).* = reduce(t(h(e)));
                 const cmd = getstring(t(h(e)), "System");
-                _ = abi.system(cmd);
+                _ = main_clib.system(cmd);
             },
             Exit => {
                 var n = reduce(t(h(e)));
@@ -759,11 +761,11 @@ pub export fn output(arg_e: Word) void {
                     int_error("Exit");
                 }
                 outstats();
-                abi.exit(@intCast(n));
+                main_clib.exit(@intCast(n));
             },
             else => {
                 word.printErr("\n<impossible event in output list: ", .{});
-                abi.out(getStderr().?, h(e));
+                heap.out(getStderr().?, h(e));
                 word.printErr(">\n", .{});
             },
         }
@@ -775,9 +777,9 @@ pub export fn output(arg_e: Word) void {
     }
     word.printErr("\nimpossible event in output\n", .{});
     _ = word.putc('<', getStderr().?);
-    abi.out(getStderr().?, e);
+    heap.out(getStderr().?, e);
     word.printErr(">\n", .{});
-    abi.exit(1);
+    main_clib.exit(1);
 }
 
 comptime {

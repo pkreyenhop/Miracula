@@ -12,19 +12,18 @@ const TokenId = tf.TokenId;
 const Token = tf.Token;
 const Span = tf.Span;
 
-const abi = @import("../runtime/c_abi.zig");
 const lex_state = @import("lex_state.zig");
 const ls = &lex_state.ls;
 
 const mira_lex_setup_string = r7_lex.mira_lex_setup_string;
 const mira_lex_cleanup = r7_lex.mira_lex_cleanup;
 // Miranda atom-range constants (from lex.zig — keep in sync with CMBASE = 306).
-const CMBASE: abi.word = 306;
-const FALSE_ATOM: abi.word = CMBASE + 136; // Miranda boolean False
-const TRUE_ATOM: abi.word = CMBASE + 137; // Miranda boolean True
-const NIL_ATOM: abi.word = CMBASE + 138;
-const NILS_ATOM: abi.word = CMBASE + 139;
-const ATOMLIMIT: abi.word = CMBASE + 141;
+const CMBASE: word.Word = 306;
+const FALSE_ATOM: word.Word = CMBASE + 136; // Miranda boolean False
+const TRUE_ATOM: word.Word = CMBASE + 137; // Miranda boolean True
+const NIL_ATOM: word.Word = CMBASE + 138;
+const NILS_ATOM: word.Word = CMBASE + 139;
+const ATOMLIMIT: word.Word = CMBASE + 141;
 
 // Lexer globals exported by lex.zig.
 // Heap arrays (data.h: hd and tl are offset so hd(x*2) / tl(x*2) index cell x).
@@ -41,18 +40,18 @@ const heap = @import("../runtime/heap.zig");
 const r7_lex = @import("lex.zig");
 const r7_heap = @import("../runtime/heap.zig");
 
-inline fn hd_of(x: abi.word) abi.word {
+inline fn hd_of(x: word.Word) word.Word {
     return heap.heap.h(x);
 }
-inline fn tl_of(x: abi.word) abi.word {
+inline fn tl_of(x: word.Word) word.Word {
     return heap.heap.t(x);
 }
-inline fn getTag(x: abi.word) u8 {
+inline fn getTag(x: word.Word) u8 {
     return heap.heap.getTag(x);
 }
 
 // C macro: get_id(x) == (char*)hd(hd(hd(x)))
-fn getIdText(x: abi.word) []const u8 {
+fn getIdText(x: word.Word) []const u8 {
     const ptr: usize = @intCast(hd_of(hd_of(hd_of(x))));
     const p: [*:0]const u8 = @ptrFromInt(ptr);
     return std.mem.span(p);
@@ -62,12 +61,12 @@ fn getIdText(x: abi.word) []const u8 {
 /// String literals in Miranda are represented as CONS (tag=11) chains, NOT STRCONS.
 /// Each cell hd is either an atom 0-127 (direct ASCII code point) or a UNICODE
 /// heap cell (tag=21) whose tl holds the code point.
-fn stringFromCons(gpa: Allocator, cell: abi.word) ![]u8 {
+fn stringFromCons(gpa: Allocator, cell: word.Word) ![]u8 {
     var buf: std.ArrayList(u8) = .empty;
     errdefer buf.deinit(gpa);
     var cur = cell;
     while (cur >= ATOMLIMIT and getTag(cur) == word.CONS) {
-        const ch_val: abi.word = hd_of(cur);
+        const ch_val: word.Word = hd_of(cur);
         cur = tl_of(cur);
         const codepoint: u21 = if (word.isAtom(ch_val))
             @intCast(ch_val) // ASCII/Latin-1 atom: value IS the code point
@@ -87,7 +86,7 @@ fn stringFromCons(gpa: Allocator, cell: abi.word) ![]u8 {
 /// Map one yylex() return value to a Token.
 /// Returns null for internal tokens that the Zig parser should skip.
 fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
-    const w: abi.word = ls.yylval;
+    const w: word.Word = ls.yylval;
 
     return switch (raw) {
         // EOF / END (both == 0 from data.h)

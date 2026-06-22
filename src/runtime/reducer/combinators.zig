@@ -1,9 +1,13 @@
 const std = @import("std");
 const word = @import("../word.zig");
 const reduce = @import("reduce_core.zig");
+const big = @import("../big.zig");
+const heap = @import("../heap.zig");
+const lex = @import("../../parser/lex.zig");
+const main_clib = @import("../main_clib.zig");
+const reduce_rt = @import("../reduce.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
-const abi = reduce.abi;
 
 
 
@@ -399,7 +403,7 @@ pub fn handleATLEAST(ctx: *ReductionCtx) void {
     var lastarg = reduce.tl_get(ctx.e);
     lastarg = reduce.reduce(lastarg);
     if (reduce.is_int(lastarg)) {
-        const hold = abi.bigsub(lastarg, arg1);
+        const hold = big.bigsub(lastarg, arg1);
         if (reduce.poz(hold)) {
             reduce.hd_set(ctx.e, arg2);
             reduce.tl_set(ctx.e, hold);
@@ -521,11 +525,11 @@ pub fn handleGENSEQ(ctx: *ReductionCtx) void {
     }
     const lastarg = reduce.tl_get(ctx.e);
     if (reduce.tl_get(arg1) != word.NIL and
-        (if (reduce.is_ap(arg1)) abi.compare(lastarg, reduce.tl_get(arg1)) else abi.compare(reduce.tl_get(arg1), lastarg)) > 0)
+        (if (reduce.is_ap(arg1)) reduce_rt.compare(lastarg, reduce.tl_get(arg1)) else reduce_rt.compare(reduce.tl_get(arg1), lastarg)) > 0)
     {
         reduce.rewrite_to_nil(&ctx.e);
     } else {
-        const hold = reduce.ap(reduce.hd_get(ctx.e), abi.numplus(lastarg, reduce.hd_get(arg1)));
+        const hold = reduce.ap(reduce.hd_get(ctx.e), reduce_rt.numplus(lastarg, reduce.hd_get(arg1)));
         reduce.rewrite_to_cons(ctx.e, lastarg, hold);
     }
     ctx.action = word.ACT_DONE;
@@ -611,7 +615,7 @@ pub fn handleLIST_LAST(ctx: *ReductionCtx) void {
     }
     var lastarg = reduce.reduce(reduce.tl_get(ctx.e));
     if (lastarg == word.NIL) {
-        abi.fn_error("last []");
+        reduce_rt.fn_error("last []");
     }
     while (true) {
         const next_tl = reduce.reduce(reduce.tl_get(lastarg));
@@ -636,7 +640,7 @@ pub fn handleLENGTH(ctx: *ReductionCtx) void {
         lastarg = reduce.tl_get(lastarg);
         n += 1;
     }
-    reduce.simpl(ctx, abi.sto_int(n));
+    reduce.simpl(ctx, big.sto_int(n));
     ctx.action = word.ACT_DONE;
 }
 
@@ -653,9 +657,9 @@ pub fn handleDROP(ctx: *ReductionCtx) void {
     arg1 = reduce.reduce(reduce.tl_get(reduce.hd_get(ctx.e)));
     reduce.tl_set(reduce.hd_get(ctx.e), arg1);
     if (!reduce.is_int(arg1)) {
-        abi.int_error("drop");
+        reduce_rt.int_error("drop");
     }
-    var n = abi.get_int(arg1);
+    var n = big.get_int(arg1);
     var lastarg = reduce.tl_get(ctx.e);
     while (n > 0) : (n -= 1) {
         lastarg = reduce.reduce(lastarg);
@@ -684,25 +688,25 @@ pub fn handleSUBSCRIPT(ctx: *ReductionCtx) void {
     reduce.tl_set(reduce.hd_get(ctx.e), arg1);
     var lastarg = reduce.reduce(reduce.tl_get(ctx.e));
     if (lastarg == word.NIL) {
-        abi.subs_error();
+        reduce_rt.subs_error();
     }
     var indx: i64 = 0;
     if (reduce.is_atom(arg1)) {
         indx = arg1;
     } else if (reduce.is_int(arg1)) {
-        indx = abi.get_int(arg1);
+        indx = big.get_int(arg1);
     } else {
-        abi.int_error("!");
+        reduce_rt.int_error("!");
     }
     if (indx < 0) {
-        abi.subs_error();
+        reduce_rt.subs_error();
     }
     while (indx > 0) {
         const next_tl = reduce.reduce(reduce.tl_get(lastarg));
         reduce.tl_set(lastarg, next_tl);
         lastarg = next_tl;
         if (lastarg == word.NIL) {
-            abi.subs_error();
+            reduce_rt.subs_error();
         }
         indx -= 1;
     }
@@ -726,7 +730,7 @@ pub fn handleFOLDL1(ctx: *ReductionCtx) void {
         reduce.tl_set(ctx.e, reduce.tl_get(lastarg));
         ctx.action = word.ACT_NEXTREDEX;
     } else {
-        abi.fn_error("foldl1 applied to []");
+        reduce_rt.fn_error("foldl1 applied to []");
     }
 }
 
@@ -824,8 +828,8 @@ pub fn handleERROR(ctx: *ReductionCtx) void {
         reduce.print(lastarg);
         _ = word.putc('\n', reduce.getStderr().?);
     }
-    abi.outstats();
-    abi.exit(1);
+    reduce_rt.outstats();
+    main_clib.exit(1);
 }
 
 fn WEXITSTATUS(status: c_int) c_int {
@@ -849,7 +853,7 @@ pub fn handleWAIT(ctx: *ReductionCtx) void {
     } else {
         var status: c_int = 0;
         while (true) {
-            const res = abi.wait(&status);
+            const res = main_clib.wait(&status);
             if (res == lastarg or res == -1) {
                 hold = res;
                 break;
@@ -860,7 +864,7 @@ pub fn handleWAIT(ctx: *ReductionCtx) void {
             hold = WEXITSTATUS(status);
         }
     }
-    reduce.simpl(ctx, abi.stosmallint(hold));
+    reduce.simpl(ctx, heap.stosmallint(hold));
     ctx.action = word.ACT_DONE;
 }
 
@@ -891,7 +895,7 @@ pub fn handleTRY(ctx: *ReductionCtx) void {
     const old_hd_e = ctx.e;
     ctx.e = reduce.tl_get(old_hd_e);
     reduce.tl_set(old_hd_e, old_e);
-    ctx.s = old_hd_e | abi.tlptrbit;
+    ctx.s = old_hd_e | word.tlptrbit;
     ctx.action = word.ACT_NEXTREDEX;
 }
 
@@ -943,7 +947,7 @@ pub fn handleUsh1(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    hold = reduce.ap2(word.APPEND, abi.str_conv(reduce.constr_name(arg1)), hold);
+    hold = reduce.ap2(word.APPEND, lex.str_conv(reduce.constr_name(arg1)), hold);
     if (arg2 != 0) {
         reduce.rewrite_to_cons(ctx.e, '(', hold);
         ctx.action = word.ACT_DONE;

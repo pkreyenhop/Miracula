@@ -123,6 +123,45 @@ pub const PAIR: Word = 20;
 pub const UNICODE: Word = 21;
 pub const TCONS: Word = 22;
 
+// Typed view of the heap cell tag byte (R3.2); relocated from c_abi.zig.
+pub const NodeTag = enum(u8) {
+    ATOM = 0,
+    DOUBLE = 1,
+    DATAPAIR = 2,
+    FILEINFO = 3,
+    TVAR = 4,
+    INT = 5,
+    CONSTRUCTOR = 6,
+    STRCONS = 7,
+    ID = 8,
+    AP = 9,
+    LAMBDA = 10,
+    CONS = 11,
+    TRIES = 12,
+    LABEL = 13,
+    SHOW = 14,
+    STARTREADVALS = 15,
+    LET = 16,
+    LETREC = 17,
+    SHARE = 18,
+    LEXER = 19,
+    PAIR = 20,
+    UNICODE = 21,
+    TCONS = 22,
+    _,
+};
+
+// Tag-pointer bits and misc parser/config constants, relocated from c_abi.zig.
+pub const BACKSTOP: Word = @as(Word, 1) << (@bitSizeOf(Word) - 1);
+pub const tlptrbit = BACKSTOP;
+pub const tlptrbits: Word = @as(Word, 3) << (@bitSizeOf(Word) - 2);
+pub const END = 0;
+pub const GENERATOR = 0;
+pub const GUARD = 1;
+pub const hashsize = 512;
+pub const pnlim = 1024;
+pub const _SC_CLK_TCK = 3;
+
 // Combinator codes
 pub const S: Word = CMBASE + 0;
 pub const K: Word = CMBASE + 1;

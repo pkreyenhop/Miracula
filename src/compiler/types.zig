@@ -1,17 +1,17 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
-const shim = @import("../runtime/c_abi.zig");
+const main_clib = @import("../runtime/main_clib.zig");
 const main = @import("../main.zig");
 
 const compiler_state = @import("compiler_state.zig");
 const cs = &compiler_state.cs;
 const abi = struct {
-    pub const printf = shim.printf;
-    pub const fprintf = shim.fprintf;
-    pub const putchar = shim.putchar;
-    pub const FILE = shim.FILE;
-    pub const stderr = shim.stderr;
-    pub const stdout = shim.stdout;
+    pub const printf = main_clib.printf;
+    pub const fprintf = main_clib.fprintf;
+    pub const putchar = main_clib.putchar;
+    pub const FILE = main_clib.FILE;
+    pub const stderr = main_clib.stderr;
+    pub const stdout = main_clib.stdout;
     pub const Y = word.Y;
 
     pub const G_ERROR = word.G_ERROR;

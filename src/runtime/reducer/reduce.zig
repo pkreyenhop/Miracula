@@ -1,6 +1,5 @@
 const std = @import("std");
 const word = @import("../word.zig");
-pub const abi = @import("../c_abi.zig");
 const core = @import("reduce_core.zig");
 inline fn getTag(x: Word) u8 { return core.getTag(x); }
 inline fn setTag(x: Word, val: u8) void { core.setTag(x, val); }
@@ -10,6 +9,8 @@ const lex_handlers = @import("lex.zig");
 const io_handlers = @import("io.zig");
 const r7_lex = @import("../../parser/lex.zig");
 const r7_reduce = @import("../reduce.zig");
+const big = @import("../big.zig");
+const main_clib = @import("../main_clib.zig");
 
 pub const Word = core.Word;
 pub const ReductionCtx = core.ReductionCtx;
@@ -22,7 +23,7 @@ pub extern var stdinuse: Word;
 pub export fn reduce(e_val: Word) Word {
     var ctx: ReductionCtx = undefined;
     ctx.e = e_val;
-    ctx.s = abi.BACKSTOP;
+    ctx.s = word.BACKSTOP;
     ctx.hold = 0;
     ctx.args[0] = 0;
     ctx.args[1] = 0;
@@ -137,8 +138,8 @@ pub export fn reduce(e_val: Word) Word {
                 cycles -= 1;
                 if (abnormal(ctx.e)) {
                     word.printErr("\nBLACK HOLE\n", .{});
-                    abi.outstats();
-                    abi.exit(1);
+                    r7_reduce.outstats();
+                    main_clib.exit(1);
                 }
 
                 switch (getTag(ctx.e)) {
@@ -146,21 +147,21 @@ pub export fn reduce(e_val: Word) Word {
                         ctx.e = pn_val(ctx.e);
                         if (ctx.e == word.UNDEF or ctx.e == word.FREE) {
                             word.printErr("\nimpossible event in reduce - undefined pname\n", .{});
-                            abi.exit(1);
+                            main_clib.exit(1);
                         }
                         ctx.action = word.ACT_NEXTREDEX;
                     },
                     word.DATAPAIR => {
                         upLeft(&ctx);
                         word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{@as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(hd_get(hd_get(ctx.e)))))))), @as([*:0]const u8, @ptrCast(@as(*anyopaque, @ptrFromInt(@as(usize, @intCast(tl_get(ctx.e)))))))});
-                        abi.outstats();
-                        abi.exit(1);
+                        r7_reduce.outstats();
+                        main_clib.exit(1);
                     },
                     word.ID => {
                         if (id_val(ctx.e) == word.UNDEF or id_val(ctx.e) == word.FREE) {
                             word.printErr("\nUNDEFINED NAME - {s}\n", .{get_id(ctx.e)});
-                            abi.outstats();
-                            abi.exit(1);
+                            r7_reduce.outstats();
+                            main_clib.exit(1);
                         }
                         ctx.e = id_val(ctx.e);
                         ctx.action = word.ACT_NEXTREDEX;
@@ -181,7 +182,7 @@ pub export fn reduce(e_val: Word) Word {
                     },
                     else => {
                         word.printErr("\nimpossible tag ({}) in reduce\n", .{getTag(ctx.e)});
-                        abi.exit(1);
+                        main_clib.exit(1);
                     },
                 }
             },
@@ -192,7 +193,7 @@ pub export fn reduce(e_val: Word) Word {
         }
 
         while (true) {
-            if (ctx.s == abi.BACKSTOP) {
+            if (ctx.s == word.BACKSTOP) {
                 return ctx.e;
             }
 
@@ -223,25 +224,25 @@ pub const head = r7_reduce.head;
 pub const force = r7_reduce.force;
 
 pub inline fn clean_ptr(x: Word) usize {
-    return @as(usize, @intCast(x & ~abi.tlptrbits));
+    return @as(usize, @intCast(x & ~word.tlptrbits));
 }
 
 const heap = @import("../heap.zig");
 
 pub inline fn hd_get(x: Word) Word {
-    return heap.heap.h(x & ~abi.tlptrbits);
+    return heap.heap.h(x & ~word.tlptrbits);
 }
 
 pub inline fn hd_set(x: Word, val: Word) void {
-    heap.heap.hp(x & ~abi.tlptrbits).* = val;
+    heap.heap.hp(x & ~word.tlptrbits).* = val;
 }
 
 pub inline fn tl_get(x: Word) Word {
-    return heap.heap.t(x & ~abi.tlptrbits);
+    return heap.heap.t(x & ~word.tlptrbits);
 }
 
 pub inline fn tl_set(x: Word, val: Word) void {
-    heap.heap.tp(x & ~abi.tlptrbits).* = val;
+    heap.heap.tp(x & ~word.tlptrbits).* = val;
 }
 
 // Traversal Helpers matching C exactly
@@ -258,7 +259,7 @@ pub inline fn downRight(ctx: *ReductionCtx) void {
     hd_set(ctx.s, ctx.e);
     ctx.e = tl_get(ctx.s);
     tl_set(ctx.s, ctx.hold);
-    ctx.s |= abi.tlptrbit;
+    ctx.s |= word.tlptrbit;
 }
 
 pub inline fn downright(ctx: *ReductionCtx) bool {
@@ -285,7 +286,7 @@ pub inline fn upleft(ctx: *ReductionCtx) bool {
 }
 
 pub inline fn upRight(ctx: *ReductionCtx) void {
-    ctx.s &= ~abi.tlptrbits;
+    ctx.s &= ~word.tlptrbits;
     ctx.hold = tl_get(ctx.s);
     tl_set(ctx.s, ctx.e);
     ctx.e = hd_get(ctx.s);
@@ -391,32 +392,32 @@ pub inline fn rewrite_to_existing_tail(expr: Word) Word {
 }
 
 pub inline fn ap(x: Word, y: Word) Word {
-    return abi.make(word.AP, x, y);
+    return heap.make(word.AP, x, y);
 }
 
 pub inline fn rewrite_to_match_result(expr: *Word, left: Word, right: Word, success_value: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (abi.compare(left, right) == 0) success_value else word.FAIL;
+    const val = if (r7_reduce.compare(left, right) == 0) success_value else word.FAIL;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_int_match_result(expr: *Word, literal: Word, value: Word, success_value: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (!is_int(value) or abi.bigcmp(literal, value) != 0) word.FAIL else success_value;
+    const val = if (!is_int(value) or big.bigcmp(literal, value) != 0) word.FAIL else success_value;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_string(expr: *Word, value: [*:0]const u8) void {
     hd_set(expr.*, word.I);
-    const val = abi.str_conv(value);
+    const val = r7_lex.str_conv(value);
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn cons(x: Word, y: Word) Word {
-    return abi.make(word.CONS, x, y);
+    return heap.make(word.CONS, x, y);
 }
 
 pub inline fn ap2(f: Word, x: Word, y: Word) Word {
@@ -449,73 +450,73 @@ pub inline fn suppressed(x: Word) bool {
 }
 
 pub fn getStderr() ?*word.FILE {
-    const T = @TypeOf(abi.stderr);
+    const T = @TypeOf(main_clib.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
-        return abi.stderr();
+        return main_clib.stderr();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return abi.stderr();
+        return main_clib.stderr();
     } else {
-        return abi.stderr;
+        return main_clib.stderr;
     }
 }
 pub fn getStdout() ?*word.FILE {
-    const T = @TypeOf(abi.stdout);
+    const T = @TypeOf(main_clib.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
-        return abi.stdout();
+        return main_clib.stdout();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return abi.stdout();
+        return main_clib.stdout();
     } else {
-        return abi.stdout;
+        return main_clib.stdout;
     }
 }
 pub fn getStdin() ?*word.FILE {
-    const T = @TypeOf(abi.stdin);
+    const T = @TypeOf(main_clib.stdin);
     if (comptime @typeInfo(T) == .@"fn") {
-        return abi.stdin();
+        return main_clib.stdin();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return abi.stdin();
+        return main_clib.stdin();
     } else {
-        return abi.stdin;
+        return main_clib.stdin;
     }
 }
 
 pub inline fn force_dbl(x: Word) f64 {
     if (is_int(x)) {
-        return abi.bigtodbl(x);
+        return big.bigtodbl(x);
     } else {
-        return abi.get_dbl(x);
+        return heap.get_dbl(x);
     }
 }
 
 pub inline fn coerce_dbl(x: Word) Word {
     if (is_double(x)) return x;
-    return abi.sto_dbl(abi.bigtodbl(x));
+    return heap.sto_dbl(big.bigtodbl(x));
 }
 
 pub inline fn rewrite_to_compare_eq(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (abi.compare(left, right) == 0) word.True else word.False;
+    const val = if (r7_reduce.compare(left, right) == 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_neq(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (abi.compare(left, right) != 0) word.True else word.False;
+    const val = if (r7_reduce.compare(left, right) != 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_gt(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (abi.compare(left, right) > 0) word.True else word.False;
+    const val = if (r7_reduce.compare(left, right) > 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
 
 pub inline fn rewrite_to_compare_ge(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (abi.compare(left, right) >= 0) word.True else word.False;
+    const val = if (r7_reduce.compare(left, right) >= 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }

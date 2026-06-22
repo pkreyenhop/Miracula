@@ -1,24 +1,24 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 
-const shim = @import("../runtime/c_abi.zig");
+const main_clib = @import("../runtime/main_clib.zig");
 const main = @import("../main.zig");
 
 const compiler_state = @import("compiler_state.zig");
 const cs = &compiler_state.cs;
 const abi = struct {
-    pub const printf = shim.printf;
-    pub const putchar = shim.putchar;
-    pub const FILE = shim.FILE;
-    pub const stdout = shim.stdout;
-    pub const exit = shim.exit;
+    pub const printf = main_clib.printf;
+    pub const putchar = main_clib.putchar;
+    pub const FILE = main_clib.FILE;
+    pub const stdout = main_clib.stdout;
+    pub const exit = main_clib.exit;
 };
 
 const lex_state = @import("../parser/lex_state.zig");
 const ls = &lex_state.ls;
 
 fn getStdout() ?*word.FILE {
-    return shim.stdout();
+    return main_clib.stdout();
 }
 
 const Word = i64;

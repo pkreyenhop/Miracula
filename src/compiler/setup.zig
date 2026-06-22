@@ -74,7 +74,7 @@ const yysterm_data = [_]?[*:0]const u8{
     "$NAME", // 48: INFIXNAME=304
     "$CONSTRUCTOR", // 49: INFIXCNAME=305
 };
-export var yysterm = yysterm_data;
+pub export var yysterm = yysterm_data;
 
 pub export fn syntax(s: [*:0]const u8) void {
     if (main.SYNERR != 0) return;

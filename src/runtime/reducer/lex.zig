@@ -1,9 +1,11 @@
 const std = @import("std");
 const word = @import("../word.zig");
 const reduce = @import("reduce_core.zig");
+const main_clib = @import("../main_clib.zig");
+const reduce_rt = @import("../reduce.zig");
+const types = @import("../../compiler/types.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
-const abi = reduce.abi;
 
 
 
@@ -33,7 +35,7 @@ pub fn handle_G_ERROR(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    ctx.hold = abi.g_residue(lastarg(ctx));
+    ctx.hold = reduce_rt.g_residue(lastarg(ctx));
     reduce.rewrite_to_cons(ctx.e, reduce.ap(ctx.args[1], ctx.hold), word.NIL);
     ctx.action = word.ACT_DONE;
 }
@@ -126,7 +128,7 @@ pub fn handle_G_SYMB(ctx: *ReductionCtx) void {
     }
     reduce.hd_set(lastarg_reduced, reduce.reduce(reduce.hd_get(lastarg_reduced)));
     ctx.hold = reduce.ap(word.HD, reduce.hd_get(lastarg_reduced));
-    if (abi.compare(ctx.args[0], reduce.reduce(ctx.hold)) != 0) {
+    if (reduce_rt.compare(ctx.args[0], reduce.reduce(ctx.hold)) != 0) {
         reduce.rewrite_to_value(&ctx.e, word.NIL); // rewrite_to_failure in C is NIL
     } else {
         reduce.rewrite_to_cons(ctx.e, ctx.args[0], reduce.tl_get(lastarg_reduced));
@@ -256,7 +258,7 @@ pub fn handle_G_CLOSE(ctx: *ReductionCtx) void {
     ctx.hold = reduce.ap(ctx.args[1], ctx.args[2]);
     ctx.hold = reduce.reduce(ctx.hold);
     if (ctx.hold == word.NIL) {
-        abi.reduce_parse_close_error(ctx.args[0], ctx.args[2]);
+        reduce_rt.reduce_parse_close_error(ctx.args[0], ctx.args[2]);
     }
     reduce.rewrite_to_value(&ctx.e, reduce.hd_get(ctx.hold));
     ctx.action = word.ACT_NEXTREDEX;
@@ -330,10 +332,10 @@ pub fn handle_LEX_TRY_(ctx: *ReductionCtx) void {
     }
     while (true) {
         if (ctx.args[0] == word.NIL) {
-            abi.lexfail(lastarg(ctx));
+            reduce_rt.lexfail(lastarg(ctx));
         }
         const hd_hd_hd_arg1 = reduce.hd_get(reduce.hd_get(reduce.hd_get(ctx.args[0])));
-        if (hd_hd_hd_arg1 != 0 and abi.member(hd_hd_hd_arg1, ctx.args[1]) == 0) {
+        if (hd_hd_hd_arg1 != 0 and types.member(hd_hd_hd_arg1, ctx.args[1]) == 0) {
             ctx.args[0] = reduce.tl_get(ctx.args[0]);
             continue;
         }
@@ -371,10 +373,10 @@ pub fn handle_LEX_TRY1_(ctx: *ReductionCtx) void {
     }
     while (true) {
         if (ctx.args[0] == word.NIL) {
-            abi.lexfail(lastarg(ctx));
+            reduce_rt.lexfail(lastarg(ctx));
         }
         const hd_hd_hd_arg1 = reduce.hd_get(reduce.hd_get(reduce.hd_get(ctx.args[0])));
-        if (hd_hd_hd_arg1 != 0 and abi.member(hd_hd_hd_arg1, ctx.args[1]) == 0) {
+        if (hd_hd_hd_arg1 != 0 and types.member(hd_hd_hd_arg1, ctx.args[1]) == 0) {
             ctx.args[0] = reduce.tl_get(ctx.args[0]);
             continue;
         }
@@ -385,7 +387,7 @@ pub fn handle_LEX_TRY1_(ctx: *ReductionCtx) void {
             continue;
         }
         const tl_hd_hd_arg1 = reduce.tl_get(reduce.hd_get(reduce.hd_get(ctx.args[0])));
-        reduce.rewrite_to_cons(ctx.e, reduce.ap2(reduce.tl_get(reduce.tl_get(reduce.hd_get(ctx.args[0]))), abi.lexstate(lastarg(ctx)), reduce.ap(word.DESTREV, reduce.hd_get(ctx.hold))), reduce.cons(if (tl_hd_hd_arg1 != 0) tl_hd_hd_arg1 - 1 else ctx.args[1], reduce.tl_get(ctx.hold)));
+        reduce.rewrite_to_cons(ctx.e, reduce.ap2(reduce.tl_get(reduce.tl_get(reduce.hd_get(ctx.args[0]))), reduce_rt.lexstate(lastarg(ctx)), reduce.ap(word.DESTREV, reduce.hd_get(ctx.hold))), reduce.cons(if (tl_hd_hd_arg1 != 0) tl_hd_hd_arg1 - 1 else ctx.args[1], reduce.tl_get(ctx.hold)));
         ctx.action = word.ACT_DONE;
         return;
     }
@@ -413,7 +415,7 @@ pub fn handle_LEX_COUNT0(ctx: *ReductionCtx) void {
         return;
     }
     reduce.hd_set(ctx.e, word.LEX_COUNT);
-    reduce.tl_set(ctx.e, abi.strcons(0, reduce.tl_get(ctx.e)));
+    reduce.tl_set(ctx.e, main_clib.strcons(0, reduce.tl_get(ctx.e)));
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
 }
@@ -428,7 +430,7 @@ pub fn handle_LEX_COUNT(ctx: *ReductionCtx) void {
         return;
     }
     ctx.hold = reduce.hd_get(next_tl);
-    reduce.rewrite_to_cons(ctx.e, abi.strcons(reduce.hd_get(ctx.args[0]), ctx.hold), reduce.ap(word.LEX_COUNT, ctx.args[0]));
+    reduce.rewrite_to_cons(ctx.e, main_clib.strcons(reduce.hd_get(ctx.args[0]), ctx.hold), reduce.ap(word.LEX_COUNT, ctx.args[0]));
     if (ctx.hold == '\n') {
         reduce.hd_set(ctx.args[0], ((reduce.hd_get(ctx.args[0]) >> 8) + 1) << 8);
     } else {
@@ -474,9 +476,9 @@ pub fn handle_LEX_CLASS(ctx: *ReductionCtx) void {
     set_lastarg(ctx, lastarg_reduced);
     if (lastarg_reduced == word.NIL or
         (if (reduce.hd_get(ctx.args[0]) == word.ANTICHARCLASS)
-            abi.memclass(@intCast(lh(lastarg_reduced)), reduce.tl_get(ctx.args[0])) != 0
+            reduce_rt.memclass(@intCast(lh(lastarg_reduced)), reduce.tl_get(ctx.args[0])) != 0
         else
-            abi.memclass(@intCast(lh(lastarg_reduced)), ctx.args[0]) == 0))
+            reduce_rt.memclass(@intCast(lh(lastarg_reduced)), ctx.args[0]) == 0))
     {
         reduce.rewrite_to_nil(&ctx.e);
         ctx.action = word.ACT_DONE;

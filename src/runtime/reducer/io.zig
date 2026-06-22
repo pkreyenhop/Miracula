@@ -2,8 +2,9 @@ const std = @import("std");
 const reduce = @import("reduce_core.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
-const abi = reduce.abi;
 const word = @import("../word.zig");
+const main_clib = @import("../main_clib.zig");
+const reduce_rt = @import("../reduce.zig");
 
 
 extern fn reduce_stream_read(ctx: ?*anyopaque, op: Word) c_int;
@@ -44,8 +45,8 @@ pub fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
         const f = word.fopen(fil, "r");
         if (f == null) {
             word.printErr("\nreadvals, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
-            abi.outstats();
-            abi.exit(1);
+            reduce_rt.outstats();
+            main_clib.exit(1);
         }
         reduce.tl_set(ctx.e, @intCast(@intFromPtr(f.?)));
     }
