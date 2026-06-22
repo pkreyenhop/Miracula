@@ -95,7 +95,7 @@ export fn bigsetup() void {
     big_one = make(INT, 1, 0);
 }
 
-export fn isnat(x: Word) c_int {
+pub export fn isnat(x: Word) c_int {
     return if (getTag(x) == INT and poz(x)) 1 else 0;
 }
 

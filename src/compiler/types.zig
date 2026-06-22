@@ -203,7 +203,7 @@ pub fn remove1(e: Word, ss: *Word) Word {
     return 1;
 }
 
-export fn setdiff(s1_input: Word, s2_input: Word) Word {
+pub export fn setdiff(s1_input: Word, s2_input: Word) Word {
     var s1 = s1_input;
     var s2 = s2_input;
     var ss1 = &s1;
@@ -219,7 +219,7 @@ export fn setdiff(s1_input: Word, s2_input: Word) Word {
     return s1;
 }
 
-export fn add1(e: Word, s_input: Word) Word {
+pub export fn add1(e: Word, s_input: Word) Word {
     var s = s_input;
     if (s == NIL or e < h(s)) {
         return cons(e, s);
@@ -261,7 +261,7 @@ pub fn newadd1(e: Word, s_input: Word) Word {
     return s_input;
 }
 
-export fn UNION(s1_input: Word, s2_input: Word) Word {
+pub export fn UNION(s1_input: Word, s2_input: Word) Word {
     var s1 = s1_input;
     var s2 = s2_input;
     var ss = &s1;
@@ -287,7 +287,7 @@ export fn UNION(s1_input: Word, s2_input: Word) Word {
     return s1;
 }
 
-export fn intersection(s1_input: Word, s2_input: Word) Word {
+pub export fn intersection(s1_input: Word, s2_input: Word) Word {
     var s1 = s1_input;
     var s2 = s2_input;
     var r: Word = NIL;
@@ -305,7 +305,7 @@ export fn intersection(s1_input: Word, s2_input: Word) Word {
     return reverse(r);
 }
 
-export fn member(s_input: Word, x: Word) Word {
+pub export fn member(s_input: Word, x: Word) Word {
     var s = s_input;
     while (s != NIL and x != h(s)) {
         s = t(s);
@@ -346,7 +346,7 @@ fn getStderr() ?*word.FILE {
     }
 }
 
-export fn tsort(g_input: Word) Word {
+pub export fn tsort(g_input: Word) Word {
     var NP = NIL; // NP is set of elements with no predecessor
     var g1 = g_input;
     var r = NIL; // r is result
@@ -389,7 +389,7 @@ export fn tsort(g_input: Word) Word {
     return reverse(r);
 }
 
-export fn msc(R_input: Word) Word {
+pub export fn msc(R_input: Word) Word {
     var R1 = R_input;
     while (R1 != NIL) {
         var r = tp(h(R1)); // word *r = &tl(hd(R1))
@@ -742,7 +742,7 @@ export fn mapdown(tv: Word) Word {
     return mktvar(i);
 }
 
-export fn redtvars(term: Word) Word {
+pub export fn redtvars(term: Word) Word {
     cs.tvmap = NIL;
     return walktype(term, mapdown);
 }
@@ -758,7 +758,7 @@ pub fn occurs(tv: Word, t_val: Word) c_int {
     return if (tv == term) 1 else 0;
 }
 
-export fn ispoly(t_val: Word) c_int {
+pub export fn ispoly(t_val: Word) c_int {
     var term = t_val;
     while (iscompound_t(term)) {
         if (ispoly(t(term)) != 0) {
@@ -825,7 +825,7 @@ pub fn rhs_here(r: Word) Word {
     return 0;
 }
 
-export fn sayhere(h_val: Word, nl: Word) void {
+pub export fn sayhere(h_val: Word, nl: Word) void {
     var h_node = h_val;
     if (getTag(h_node) != FILEINFO) {
         h_node = rhs_here(h_node);
@@ -977,7 +977,7 @@ fn islist_t(t_val: Word) bool {
     return getTag(t_val) == AP and h(t_val) == list_t;
 }
 
-export fn out_type(t_val: Word) void {
+pub export fn out_type(t_val: Word) void {
     var type_node = t_val;
     while (isarrow_t(type_node)) {
         out_type1(t(h(type_node)));
@@ -1223,7 +1223,7 @@ pub fn rembvars(x_in: Word, p_in: Word) Word {
     }
 }
 
-export fn deps(x_in: Word) Word {
+pub export fn deps(x_in: Word) Word {
     var x = x_in;
     var d = NIL;
     while (true) {

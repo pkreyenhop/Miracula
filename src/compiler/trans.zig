@@ -112,29 +112,37 @@ const ATOMLIMIT: Word = CMBASE + 141;
 
 // NIL
 
-extern fn make(t: u8, x: Word, y: Word) Word;
-extern fn append1(x: Word, y: Word) Word;
-extern fn reverse(x: Word) Word;
-extern fn shunt(x: Word, y: Word) Word;
-extern fn member(s: Word, x: Word) Word;
-extern fn UNION(s1: Word, s2: Word) Word;
-extern fn add1(e: Word, s: Word) Word;
-extern fn deps(x: Word) Word;
-extern fn intersection(s1: Word, s2: Word) Word;
-extern fn isnat(x: Word) c_int;
-extern fn isconstrname(a: [*:0]const u8) c_int;
-extern fn make_pn(val: Word) Word;
-extern fn mkgvar(i: Word) Word;
-extern fn out(file: ?*word.FILE, x: Word) void;
-extern fn out_type(t: Word) void;
-extern fn redtvars(t: Word) Word;
-extern fn sayhere(here: Word, nl: Word) void;
-extern fn setdiff(s1: Word, s2: Word) Word;
-extern fn strcmp(a: [*:0]const u8, b: [*:0]const u8) c_int;
-extern fn syntax(s: [*:0]const u8) void;
-extern fn acterror() void;
-extern fn msc(r: Word) Word;
-extern fn tsort(g: Word) Word;
+// Cross-module functions: direct @import aliases replace extern-fn linker
+// declarations (R7.3 — eliminate the linker-as-module-system pattern).
+const heap = @import("../runtime/heap.zig");
+const types_mod = @import("types.zig");
+const big = @import("../runtime/big.zig");
+const lex = @import("../parser/lex.zig");
+const setup = @import("setup.zig");
+
+const make = heap.make;
+const append1 = heap.append1;
+const reverse = heap.reverse;
+const shunt = heap.shunt;
+const out = heap.out;
+const member = types_mod.member;
+const UNION = types_mod.UNION;
+const add1 = types_mod.add1;
+const deps = types_mod.deps;
+const intersection = types_mod.intersection;
+const out_type = types_mod.out_type;
+const redtvars = types_mod.redtvars;
+const sayhere = types_mod.sayhere;
+const setdiff = types_mod.setdiff;
+const msc = types_mod.msc;
+const tsort = types_mod.tsort;
+const isnat = big.isnat;
+const isconstrname = lex.isconstrname;
+const make_pn = lex.make_pn;
+const mkgvar = lex.mkgvar;
+const strcmp = word.strcmp;
+const syntax = setup.syntax;
+const acterror = setup.acterror;
 
 inline fn getTag(x: Word) u8 {
     return main.heap.heap.getTag(x);
@@ -1429,8 +1437,8 @@ const LEX_RPT1: Word = CMBASE + 113;
 const LEX_TRY: Word = CMBASE + 114;
 const LEX_TRY1: Word = CMBASE + 116;
 
-extern fn mklexvar(i: Word) Word;
-extern fn ispoly(t_val: Word) c_int;
+const mklexvar = lex.mklexvar;
+const ispoly = types_mod.ispoly;
 
 fn isarrow_t(type_node: Word) bool {
     return getTag(type_node) == AP and getTag(h(type_node)) == AP and h(h(type_node)) == arrow_t;

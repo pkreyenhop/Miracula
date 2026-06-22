@@ -1008,7 +1008,7 @@ fn collectstars() Word {
     return word.TYPEVAR;
 }
 
-export fn mkgvar(i_input: Word) Word {
+pub export fn mkgvar(i_input: Word) Word {
     var i = i_input;
     var p = &ls.gvars;
     while (i > 1) {
@@ -1024,7 +1024,7 @@ export fn mkgvar(i_input: Word) Word {
     return h(p.*);
 }
 
-export fn mklexvar(i: Word) Word {
+pub export fn mklexvar(i: Word) Word {
     if (ls.lexvar == 0) {
         ls.lexvar = cons(sto_id("ls.lexvar"), sto_id("ls.lexvar"));
         tp(h(ls.lexvar)).* = main.cs.ltchar;
@@ -1624,7 +1624,7 @@ export fn reset_pns() void {
     }
 }
 
-export fn make_pn(val: Word) Word {
+pub export fn make_pn(val: Word) Word {
     if (ls.nextpn == pn_lim) {
         const old_lim = pn_lim;
         pn_lim += 400;
@@ -1868,7 +1868,7 @@ export fn hash(input: [*:0]const u8) callconv(.c) c_int {
     return h_val & 127;
 }
 
-export fn isconstrname(input: [*:0]const u8) callconv(.c) c_int {
+pub export fn isconstrname(input: [*:0]const u8) callconv(.c) c_int {
     var s = input;
     if (s[0] == '$') s += 1;
     return if (std.ascii.isUpper(s[0])) 1 else 0;

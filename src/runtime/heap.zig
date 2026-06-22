@@ -877,7 +877,7 @@ fn castPtr(val: Word) [*:0]const u8 {
     return @ptrFromInt(@as(usize, @intCast(val)));
 }
 
-export fn out(file: ?*word.FILE, x_val: Word) void {
+pub export fn out(file: ?*word.FILE, x_val: Word) void {
     var x = x_val;
     if (x < 0 or x > TOP()) {
         _ = word.fprint(file, "<{d}>", .{x});
