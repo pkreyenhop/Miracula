@@ -38,10 +38,6 @@ const ID = word.ID;
 const UNICODE = word.UNICODE;
 const CONS = word.CONS;
 
-pub export var hd: ?[*]Word = null;
-pub export var tl: ?[*]Word = null;
-pub export var tag: ?[*]u8 = null;
-
 extern fn strcmp(a: [*:0]const u8, b: [*:0]const u8) c_int;
 extern fn fpe_error(sig: c_int) void;
 
@@ -63,43 +59,53 @@ else
 
 var charname_buffer: [8]u8 = undefined;
 
+/// One heap cell: a tag byte plus two `Word` fields. Atoms (index < ATOMLIMIT)
+/// occupy rows too but use only `.tag`. Stored struct-of-arrays via
+/// `std.MultiArrayList`, replacing the old interleaved `hd[x*2]`/`tl[x*2]` +
+/// separate `tag[x]` parallel arrays (R3).
+pub const Cell = struct {
+    tag: u8 = 0,
+    hd: Word = 0,
+    tl: Word = 0,
+};
+
 pub const Heap = struct {
+    /// Owning storage. Indexed by cell id `x` directly (row x); length BIGTOP+1.
+    cells: std.MultiArrayList(Cell) = .{},
+    // Cached column pointers into `cells` for fast x-indexed access. Refreshed
+    // by refreshPointers() whenever `cells` is (re)allocated.
     hd: ?[*]Word = null,
     tl: ?[*]Word = null,
     tag: ?[*]u8 = null,
     SPACE: Word = 1250000,
     listp: Word = ATOMLIMIT - 1,
-    allocated_heap_size: usize = 0,
-    allocated_tag_size: usize = 0,
     allocated_dstack_size: usize = 0,
-    heap_mem: ?[*]Word = null,
 
-    pub fn sync(self: Heap) void {
-        hd = self.hd;
-        tl = self.tl;
-        tag = self.tag;
-        SPACE = self.SPACE;
-        listp = self.listp;
+    /// Refresh the cached column pointers after `cells` is (re)allocated.
+    fn refreshPointers(self: *Heap) void {
+        self.hd = self.cells.items(.hd).ptr;
+        self.tl = self.cells.items(.tl).ptr;
+        self.tag = self.cells.items(.tag).ptr;
     }
 
     pub fn h(self: Heap, x: Word) Word {
         if (x < ATOMLIMIT) return 0;
-        return self.hd.?[@as(usize, @intCast(x)) * 2];
+        return self.hd.?[@as(usize, @intCast(x))];
     }
 
     pub fn hp(self: Heap, x: Word) *Word {
         std.debug.assert(x >= ATOMLIMIT);
-        return &self.hd.?[@as(usize, @intCast(x)) * 2];
+        return &self.hd.?[@as(usize, @intCast(x))];
     }
 
     pub fn t(self: Heap, x: Word) Word {
         if (x < ATOMLIMIT) return 0;
-        return self.tl.?[@as(usize, @intCast(x)) * 2];
+        return self.tl.?[@as(usize, @intCast(x))];
     }
 
     pub fn tp(self: Heap, x: Word) *Word {
         std.debug.assert(x >= ATOMLIMIT);
-        return &self.tl.?[@as(usize, @intCast(x)) * 2];
+        return &self.tl.?[@as(usize, @intCast(x))];
     }
 
     pub fn getTag(self: Heap, x: Word) u8 {
@@ -128,27 +134,19 @@ pub const Heap = struct {
     }
 
     pub fn setupheap(self: *Heap) void {
-        const heap_alloc_size = @as(usize, @intCast(rt.rs.SPACELIMIT));
-        if (self.heap_mem == null) {
-            const heap_slice = rt.allocator.alloc(Word, heap_alloc_size * 2) catch mallocPanic("heap");
-            self.heap_mem = heap_slice.ptr;
-            self.allocated_heap_size = heap_alloc_size * 2;
-
-            const bigtop_val = @as(usize, @intCast(self.BIGTOP()));
-            const tag_slice = rt.allocator.alloc(u8, bigtop_val + 1) catch mallocPanic("heap");
-            @memset(tag_slice, 0);
-            self.tag = tag_slice.ptr;
-            self.allocated_tag_size = bigtop_val + 1;
+        const bigtop_val = @as(usize, @intCast(self.BIGTOP()));
+        if (self.cells.len == 0) {
+            // First-time allocation: rows [0, BIGTOP]; zero the whole tag column.
+            self.cells.resize(rt.allocator, bigtop_val + 1) catch mallocPanic("heap");
+            self.refreshPointers();
+            @memset(self.tag.?[0 .. bigtop_val + 1], 0);
         }
-
-        self.hd = self.heap_mem.? - @as(usize, @intCast(ATOMLIMIT * 2));
-        self.tl = self.hd.? + 1;
+        self.refreshPointers();
         if (self.SPACE > rt.rs.SPACELIMIT) {
             self.SPACE = rt.rs.SPACELIMIT;
         }
         self.listp = ATOMLIMIT - 1;
-        @memset(self.tag.?[@intCast(ATOMLIMIT)..@intCast(self.BIGTOP())], 0);
-        self.sync();
+        @memset(self.tag.?[@intCast(ATOMLIMIT)..bigtop_val], 0);
     }
 
     pub fn resetheap(self: *Heap) void {
@@ -156,20 +154,10 @@ pub const Heap = struct {
             _ = word.printErr("impossible event in resetheap\n", .{});
             abi.exit(1);
         }
-        const heap_alloc_size = @as(usize, @intCast(rt.rs.SPACELIMIT));
-        const old_heap_slice = self.heap_mem.?[0..self.allocated_heap_size];
-        const heap_slice = rt.allocator.realloc(old_heap_slice, heap_alloc_size * 2) catch mallocPanic("heap");
-        self.heap_mem = heap_slice.ptr;
-        self.allocated_heap_size = heap_alloc_size * 2;
-
         const bigtop_val = @as(usize, @intCast(self.BIGTOP()));
-        const old_tag_slice = self.tag.?[0..self.allocated_tag_size];
-        const tag_slice = rt.allocator.realloc(old_tag_slice, bigtop_val + 1) catch mallocPanic("heap");
-        self.tag = tag_slice.ptr;
-        self.allocated_tag_size = bigtop_val + 1;
+        self.cells.resize(rt.allocator, bigtop_val + 1) catch mallocPanic("heap");
+        self.refreshPointers();
 
-        self.hd = self.heap_mem.? - @as(usize, @intCast(ATOMLIMIT * 2));
-        self.tl = self.hd.? + 1;
         self.tag.?[@intCast(bigtop_val)] = 0;
         if (self.SPACE > rt.rs.SPACELIMIT) {
             self.SPACE = rt.rs.SPACELIMIT;
@@ -178,7 +166,6 @@ pub const Heap = struct {
             self.SPACE = 1250000;
             self.tag.?[@intCast(self.TOP())] = 0;
         }
-        self.sync();
     }
 
     pub fn make(self: *Heap, t_val: u8, x: Word, y: Word) Word {
@@ -225,7 +212,6 @@ pub const Heap = struct {
         self.tag.?[@intCast(self.listp)] = t_val;
         self.hp(self.listp).* = x;
         self.tp(self.listp).* = y;
-        self.sync();
         return self.listp;
     }
 
@@ -264,7 +250,6 @@ pub const Heap = struct {
         cellcount += claims;
         claims = 0;
         collecting = 0;
-        self.sync();
     }
 
     pub fn gcpatch(self: *Heap) void {
