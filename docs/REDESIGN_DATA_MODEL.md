@@ -56,7 +56,8 @@ library) links against it, so the *honest* C-ABI target is:
 | Track A1 — main_clib externs | ✅ 52 internal `extern fn` → `@import`; main_clib at 11 libc externs |
 | Track A2 — `extern var` | ✅ **0** — all 30 globals accessed via owner module |
 | Track A3 — `export fn` | ✅ 174 → **3** (only the still-extern-referenced bridges remain) |
-| Track A4 — signals / `callconv` | ⬜ Next — `callconv(.c)` = 13 (mostly gratuitous), target 1 |
+| Track A4a — strip gratuitous `callconv` | ✅ `callconv(.c)` 13 → **6** (genuine signal boundary) |
+| Track A4b — recovery redesign | ⬜ Re-scoped — design-bearing (SIGFPE synchronous; reducer unwind; unverifiable by golden) |
 | `Value` union (R4.3/4.4) | ⬜ Deferred — the deep core (Track B2) |
 | Tracing GC (R5) | ⬜ Planned (Track B3) |
 | String interning (R6) | ⬜ Planned — 132 `[*:0]`-as-`Word` casts remain (Track B1) |
@@ -180,20 +181,35 @@ not wait behind Track B's design work.
   gratuitous callback `callconv(.c)` was dropped. `main_entry` keeps `callconv(.c)` but loses
   `export` (called via `@import`; the real entry is `main.zig`'s `pub fn main`).
 
-* **A4 (R7.1 + R7.2) — Signals & `callconv`.** Two parts:
-  * *Strip the gratuitous `callconv(.c)`* on pure-Zig function pointers (char-class predicates
-    `okid`/`okulid`/`okpath`/`hash`, `walktype`'s callback, `kollect`'s param, `main_entry`) —
-    these are not FFI. *(mechanical)*
-  * *Recovery redesign:* replace the `sigsetjmp`/`siglongjmp`-on-`rs.env` SIGINT/eval-abort path
-    with a checked atomic flag polled by the reducer/REPL loop +
-    `MiraError.EvaluationInterrupted` propagation; reduce signal handling to **one** minimal
-    `callconv(.c)` trampoline registered via `std.posix.sigaction`; replace
-    `main_entry(callconv(.c))` with Zig `pub fn main`. *DoD: `callconv(.c)` = 1 (documented);
-    Ctrl-C during eval returns to the prompt via the flag path; golden + an interrupt test green.*
+* **A4a — Strip gratuitous `callconv(.c)`.** ✅ **Done.** Dropped the C calling convention on the
+  pure-Zig char-class predicates (`okid`/`okulid`/`okpath`/`hash`/`isconstrname`), `kollect`'s
+  param type, `walktype`'s callback (in A3), and `main_entry` (called from `main.zig`'s `pub fn
+  main`, not by C). `callconv(.c)` 13 → **6**.
 
-> **End of Track A:** the C-ism elimination DoD is essentially met — `extern fn` = syscall floor
-> (via `std.posix`), `extern var` = 0, `export fn` = 0, `callconv(.c)` = 1. Only the
-> representation (Track B) separates the project from the full redesign DoD.
+* **A4b — Recovery redesign (re-scoped; *not* a mechanical sweep).** The remaining 6 `callconv(.c)`
+  are the genuine OS-signal boundary: handlers `reset`/`fpe_error`/`dieclean`/`sigdefer` and the
+  two saved-old-handler pointer-cast types. Reaching the original "`callconv(.c)` = 1" target was
+  going to replace `sigsetjmp`/`siglongjmp`-on-`rs.env` with an atomic flag. Examining the code
+  shows this is **design-bearing and partly infeasible as written**, so it is re-scoped:
+  * **SIGFPE is a *synchronous* CPU fault** (FP overflow mid-instruction). It cannot be
+    cooperatively polled; recovery is either `siglongjmp` from the handler (current) or wrapping
+    every float/bignum op in `feclearexcept`/`fetestexcept` checks — a large arithmetic rewrite.
+  * **SIGINT unwinds the reducer.** `reset`'s `siglongjmp` aborts a running evaluation; replacing
+    it with a flag means the hot `reduce()` loop (returns `Word`, not `!Word`) must poll and
+    propagate `error.Interrupted` through the whole reduction call graph — an R4.3-sized change to
+    the hottest code.
+  * **The golden corpus cannot verify signal behaviour** (it never raises SIGINT/SIGFPE), so any
+    recovery rewrite is unverifiable by the automated suite and needs dedicated manual testing.
+
+  *Therefore:* `callconv(.c)` = **6** is the realistic floor under the current architecture; the
+  flag-based redesign is deferred to a focused, manually-tested effort (design note first), and is
+  better treated as **Track B-class** work (risky, representation-adjacent) than a mechanical
+  Track-A sweep. The `setjmp`/`longjmp` libc externs in `main_clib` stay until then.
+
+> **End of Track A (A1–A4a):** the *mechanical* C-ism elimination is essentially complete —
+> `extern fn` = syscall floor, `extern var` = 0, `export fn` = 3 (extern-referenced bridges),
+> `callconv(.c)` = 6 (genuine signal boundary). Driving `callconv` to 1 and `export fn`/the libc
+> externs to their final floor depends on the A4b recovery redesign, which is design-bearing.
 
 ### Track B — Representation *(deep, design-bearing; after Track A)*
 
@@ -275,7 +291,7 @@ becomes pure, idiomatic Zig.
 | `extern var` declarations | 94 | **0** ✓ *(A2)* | 0 |
 | `export fn` (linker symbols) | 174 | **3** *(A3; still-extern-referenced bridges)* | 0 (no external linkers) |
 | `clib.` / `c.` call sites | 2821 | **0** | 0 |
-| `callconv(.c)` | 12 | **13** *(A3 made 3 signal handlers explicit; A4 reduces to 1)* | 1 (signal trampoline) |
+| `callconv(.c)` | 12 | **6** *(A4a stripped gratuitous; floor is the genuine signal boundary)* | 1 (needs A4b recovery redesign) |
 | raw `hd[`/`tl[`/`tag[` outside `heap.zig` | 290 | **0** | 0 |
 | `[*:0]`-as-`Word` pointer casts | 129 | **132** | 0 (string interning, B1) |
 | `Word = c_long` (value type is a C type) | yes | **no — `i64`** | `i64` |
