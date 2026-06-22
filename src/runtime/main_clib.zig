@@ -1093,14 +1093,7 @@ pub fn free(ptr: ?*anyopaque) void {
 
 // POSIX wrappers
 pub fn fork() c_int {
-    if (builtin.os.tag == .linux) {
-        return @intCast(std.os.linux.fork());
-    } else {
-        const S = struct {
-            extern fn fork() c_int;
-        };
-        return S.fork();
-    }
+    return @intCast(std.c.fork());
 }
 
 pub fn wait(status: ?*c_int) c_int {
@@ -1156,24 +1149,15 @@ pub fn perror(s: [*:0]const u8) void {
 }
 
 pub fn isatty(fd: c_int) c_int {
-    const C = struct {
-        extern fn isatty(fd: c_int) c_int;
-    };
-    return C.isatty(fd);
+    return std.c.isatty(fd);
 }
 
 pub fn getcwd(buf: [*]u8, size: usize) ?[*]u8 {
-    const C = struct {
-        extern fn getcwd(buf: [*]u8, size: usize) ?[*]u8;
-    };
-    return C.getcwd(buf, size);
+    return std.c.getcwd(buf, size);
 }
 
 pub fn chdir(path: [*:0]const u8) c_int {
-    const C = struct {
-        extern fn chdir(path: [*:0]const u8) c_int;
-    };
-    return C.chdir(path);
+    return std.c.chdir(path);
 }
 
 pub fn getenv(name: ?*const anyopaque) ?[*:0]u8 {
@@ -1482,10 +1466,7 @@ pub fn times(buf: *struct_tms) clock_t {
 }
 
 pub fn sysconf(name: c_int) c_long {
-    const C = struct {
-        extern fn sysconf(name: c_int) c_long;
-    };
-    return C.sysconf(name);
+    return std.c.sysconf(name);
 }
 
 pub const _SC_CLK_TCK = if (builtin.os.tag == .macos) @as(c_int, 3) else @as(c_int, 2);
