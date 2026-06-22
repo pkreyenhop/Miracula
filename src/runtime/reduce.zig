@@ -64,7 +64,7 @@ inline fn abnormal(x: Word) bool {
 }
 
 inline fn isptr(x: Word) bool {
-    return x >= ATOMLIMIT;
+    return !word.isAtom(x);
 }
 
 inline fn lh(x: Word) Word {
