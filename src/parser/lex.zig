@@ -1376,7 +1376,7 @@ pub fn directive() Word {
     return word.END;
 }
 
-fn kollect(f: fn (c_int) callconv(.c) c_int) void {
+fn kollect(f: fn (c_int) c_int) void {
     ls.dicq = ls.dicp;
     while (f(@intCast(ls.c)) != 0) {
         ls.dicq[0] = @intCast(ls.c);
@@ -1853,7 +1853,7 @@ pub fn reset_state() void {
     core_state.errline = 0;
 }
 
-fn hash(input: [*:0]const u8) callconv(.c) c_int {
+fn hash(input: [*:0]const u8) c_int {
     var s = input;
     var h_val: c_int = s[0];
     if (h_val != 0) {
@@ -1865,13 +1865,13 @@ fn hash(input: [*:0]const u8) callconv(.c) c_int {
     return h_val & 127;
 }
 
-pub fn isconstrname(input: [*:0]const u8) callconv(.c) c_int {
+pub fn isconstrname(input: [*:0]const u8) c_int {
     var s = input;
     if (s[0] == '$') s += 1;
     return if (std.ascii.isUpper(s[0])) 1 else 0;
 }
 
-pub fn okid(ch: c_int) callconv(.c) c_int {
+pub fn okid(ch: c_int) c_int {
     return if ((ch >= 'a' and ch <= 'z') or
         (ch >= 'A' and ch <= 'Z') or
         (ch >= '0' and ch <= '9') or
@@ -1879,7 +1879,7 @@ pub fn okid(ch: c_int) callconv(.c) c_int {
         ch == '\'') 1 else 0;
 }
 
-fn okulid(ch: c_int) callconv(.c) c_int {
+fn okulid(ch: c_int) c_int {
     return if ((ch >= 'a' and ch <= 'z') or
         (ch >= 'A' and ch <= 'Z') or
         (ch >= '0' and ch <= '9') or
@@ -1888,7 +1888,7 @@ fn okulid(ch: c_int) callconv(.c) c_int {
         ch == '\'') 1 else 0;
 }
 
-fn okpath(ch: c_int) callconv(.c) c_int {
+fn okpath(ch: c_int) c_int {
     return if (ch != '"' and ch != '\n' and ch != '>') 1 else 0;
 }
 
