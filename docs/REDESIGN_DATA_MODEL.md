@@ -264,7 +264,9 @@ trampoline*, not literally none.
 | R1 | R1.8 Remaining libc | ✅ Complete |
 | R2 | R2.1 Heap struct | ✅ Complete |
 | R2 | R2.2 Route all access through Heap | ✅ Complete |
-| R3–R8 | MultiArrayList → demolition | ⬜ Planned |
+| R3 | R3.1 `Cell` + `std.MultiArrayList` storage | ✅ Complete |
+| R3 | R3.2 Typed `NodeTag` tag + enum dispatch | ✅ Complete |
+| R4–R8 | Typed refs → demolition | ⬜ Planned |
 
 ### Scorecard (data-model metrics, this redesign)
 
@@ -279,4 +281,13 @@ trampoline*, not literally none.
 
 *The `clib.`/`c.` reduction is fully complete for Phase R1, dropping the `clib.`/`c.` call sites metric to **0** by replacing C standard library functions with Zig native equivalents, and renaming the internal compiler ABI/FFI namespace alias to `abi`.*
 
-All legacy C standard library shims (excluding signals and stat syscalls) are replaced or cleaned up. Phase R2 (heap encapsulation) is now complete, confining raw cell accesses to `heap.zig` and dropping the raw cell accesses metric to **0** and extern var declarations from 94 to 60. The actual representation changes begin in Phase R3.
+All legacy C standard library shims (excluding signals and stat syscalls) are replaced or cleaned up. Phase R2 (heap encapsulation) is now complete, confining raw cell accesses to `heap.zig` and dropping the raw cell accesses metric to **0** and extern var declarations from 94 to 60.
+
+**Phase R3 is complete.** The core cell store is now an idiomatic
+`std.MultiArrayList(Cell)` where `Cell = { tag: NodeTag, hd: Word, tl: Word }`, indexed by cell
+id directly — the interleaved `hd[x*2]`/`tl[x*2]` arithmetic, the separate `tag[x]` block, and
+the dead global `hd`/`tl`/`tag` mirror (with its `sync()`) are all gone. The stored tag is the
+typed `NodeTag` enum (non-exhaustive, so the GC sign-bit mark is still expressible until R5);
+`dump_ob` dispatches by `switch` on `NodeTag`. Verified behaviour-identical throughout via the
+golden corpus (44/44 byte-identical), the dump round-trip unit test, GC-heavy evaluation, and a
+real dump+undump cycle. The deeper `Word`-handle untangling begins in Phase R4.
