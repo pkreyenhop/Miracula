@@ -52,11 +52,14 @@ library) links against it, so the *honest* C-ABI target is:
 | Heap encapsulation (R2) | ✅ `Heap` object; raw cell access confined to `heap.zig` (metric = 0) |
 | Storage = `MultiArrayList` (R3) | ✅ `Cell{ tag: NodeTag, hd, tl }`; `*2`/dual-pointer arithmetic gone |
 | Typed handles (R4.1/4.2/4.5) | ✅ `word.Ref`, `isAtom`/`fitsInByte` classifiers; `Word = i64` (not `c_long`) |
-| Linker-as-module-system (R7.3) | ◐ `extern fn` 322 → **71**; `c_abi.zig` **deleted** (R8.1) |
-| `Value` union (R4.3/4.4) | ⬜ Deferred — the deep core |
-| Tracing GC (R5) | ⬜ Planned |
-| String interning (R6) | ⬜ Planned — 132 `[*:0]`-as-`Word` casts remain |
-| Signals / `callconv` (R7.1/7.2) | ⬜ Planned — `callconv(.c)` still 11 (mostly gratuitous) |
+| Linker-as-module-system (R7.3) | ✅ `extern fn` 322 → **19** (syscall floor); `c_abi.zig` **deleted** (R8.1) |
+| Track A1 — main_clib externs | ✅ 52 internal `extern fn` → `@import`; main_clib at 11 libc externs |
+| Track A2 — `extern var` | ✅ **0** — all 30 globals accessed via owner module |
+| Track A3 — `export fn` | ✅ 174 → **3** (only the still-extern-referenced bridges remain) |
+| Track A4 — signals / `callconv` | ⬜ Next — `callconv(.c)` = 13 (mostly gratuitous), target 1 |
+| `Value` union (R4.3/4.4) | ⬜ Deferred — the deep core (Track B2) |
+| Tracing GC (R5) | ⬜ Planned (Track B3) |
+| String interning (R6) | ⬜ Planned — 132 `[*:0]`-as-`Word` casts remain (Track B1) |
 
 ---
 
@@ -156,24 +159,26 @@ not wait behind Track B's design work.
 
 ### Track A — Finish the C-ABI / linker cleanup *(mechanical, bounded, do first)*
 
-* **A1 (R7.3b) — Dissolve `main_clib.zig`'s `extern fn` anti-pattern.** Convert the **52**
-  internal-Zig `extern fn` (`make`, `codegen`, `UNION`, `findid`, `gc`, `instantiate`, …) to
-  `@import` aliases, exactly as for `c_abi.zig`. Move the genuine libc calls
-  (`fork`/`isatty`/`getcwd`/`chdir`/`times`/`sysconf`) to `std.posix`/`std.c`, leaving only the
-  `setjmp`/`longjmp` recovery family (removed in A4). *DoD: `main_clib.zig` is a thin
-  `std.posix` wrapper (or merged into `io/platform.zig`); `extern fn` drops to the syscall floor;
-  golden byte-identical.* **Watch for** latent drift in loose extern signatures (finding #5).
+* **A1 (R7.3b) — Dissolve `main_clib.zig`'s `extern fn` anti-pattern.** ✅ **Done.** Converted the
+  52 internal-Zig `extern fn` (`make`, `codegen`, `UNION`, `findid`, `gc`, `instantiate`, …) to
+  `@import` re-exports; main_clib `extern fn` 63 → 11, codebase 71 → 19. Latent drift surfaced and
+  fixed (finding #5): `out_pattern` wants `*FILE` not `?*FILE`, `getstring` returns `?[*:0]u8`.
+  *Remaining:* the 11 genuine libc externs (`setjmp`/`longjmp` family + `fork`/`isatty`/`getcwd`/
+  `chdir`/`times`/`sysconf`) still sit in `main_clib`; moving the 6 syscalls to `std.posix` and
+  retiring the `setjmp` family (A4) would finish the "thin wrapper" goal — deferred follow-up.
 
-* **A2 (R7.4) — Eliminate `extern var` (54 → 0).** Same anti-pattern for mutable globals. Define
-  each global **once** in a leaf module (`core_state.zig` for the C-ABI-constrained ones,
-  `word.zig`/owning module otherwise) and have consumers read/write `module.X` directly instead
-  of re-declaring `extern var X`. *(In flight — `core_state.zig` already hosts `nill`/`loading`/
-  `compiling`.)* *DoD: scorecard `extern var` = 0; golden green.*
+* **A2 (R7.4) — Eliminate `extern var` (54 → 0).** ✅ **Done.** All 30 globals now accessed via
+  their owner module (`core_state` for the C-ABI-constrained 8, plus `heap`/`reduce`/`version`/
+  `big`/`dump`/`combinator`); removed every `extern var` incl. main's 16 `pub extern var`
+  re-exports. A Zig-token-aware replacer (skipping strings/comments) handled the bare-identifier
+  rewrites; `main.X` (152 refs) redirected to `OWNER.X`. `extern var` = **0**.
 
-* **A3 (R7.5) — Strip gratuitous `export fn` (174 → ~0).** With `c_abi` gone, no internal caller
-  needs a linker symbol, and no external C links against Miranda, so `export fn` → `pub fn`
-  everywhere except genuine entry points / OS callbacks. *DoD: `export fn` = 0 except the
-  documented trampoline/entry; golden green.*
+* **A3 (R7.5) — Strip gratuitous `export fn` (174 → 3).** ✅ **Done.** `export fn` → `pub fn`
+  everywhere except the 3 still referenced by an extern decl (`fromUTF8` ×2, `reduce_stream_read`)
+  — those clear when their bridges convert. Signal handlers `reset`/`fpe_error`/`dieclean` had
+  their (export-implicit) `callconv(.c)` made explicit so the OS-callback ABI survives; `walktype`'s
+  gratuitous callback `callconv(.c)` was dropped. `main_entry` keeps `callconv(.c)` but loses
+  `export` (called via `@import`; the real entry is `main.zig`'s `pub fn main`).
 
 * **A4 (R7.1 + R7.2) — Signals & `callconv`.** Two parts:
   * *Strip the gratuitous `callconv(.c)`* on pure-Zig function pointers (char-class predicates
@@ -264,13 +269,13 @@ becomes pure, idiomatic Zig.
 
 | Metric | R0 baseline | Now (2026-06-23) | Target |
 |--------|-------------|------------------|--------|
-| `extern fn` declarations | 322 | **71** | syscall floor (`std.posix`) |
-| &nbsp;&nbsp;↳ internal anti-pattern (convertible) | — | ~52 (in `main_clib`) + a few | 0 |
-| &nbsp;&nbsp;↳ genuine libc/syscall | — | ~15 | small `std.posix` set |
-| `extern var` declarations | 94 | **54** | 0 |
-| `export fn` (linker symbols) | — | **174** | 0 (no external linkers) |
+| `extern fn` declarations | 322 | **19** | syscall floor (`std.posix`) |
+| &nbsp;&nbsp;↳ internal anti-pattern (convertible) | — | 0 | 0 |
+| &nbsp;&nbsp;↳ genuine libc/syscall | — | ~17 (11 in `main_clib`) | small `std.posix` set |
+| `extern var` declarations | 94 | **0** ✓ *(A2)* | 0 |
+| `export fn` (linker symbols) | 174 | **3** *(A3; still-extern-referenced bridges)* | 0 (no external linkers) |
 | `clib.` / `c.` call sites | 2821 | **0** | 0 |
-| `callconv(.c)` | 12 | **11** (mostly gratuitous) | 1 (signal trampoline) |
+| `callconv(.c)` | 12 | **13** *(A3 made 3 signal handlers explicit; A4 reduces to 1)* | 1 (signal trampoline) |
 | raw `hd[`/`tl[`/`tag[` outside `heap.zig` | 290 | **0** | 0 |
 | `[*:0]`-as-`Word` pointer casts | 129 | **132** | 0 (string interning, B1) |
 | `Word = c_long` (value type is a C type) | yes | **no — `i64`** | `i64` |
