@@ -277,7 +277,7 @@ trampoline*, not literally none.
 
 | Metric | R0 baseline | Now | Target |
 |--------|-------------|-----|--------|
-| `extern fn` declarations | 322 | **148** *(R7.3 in progress)* | 0 (FFI/dead-symbol residual) |
+| `extern fn` declarations | 322 | **75** *(R7.3: 8 non-shim + ~67 FFI shim)* | 0 (FFI floor residual) |
 | `extern var` declarations | 94 | **60** | 0 |
 | `clib.`/`c.` call sites | 2821 | **0** | 0 |
 | `callconv(.c)` | 12 | 12 | 1 (signal trampoline) |
@@ -326,11 +326,30 @@ carried over from the C port, used even where no real cycle existed, and even wh
 (`trans↔types`, `reduce_core↔reduce`) the mutual `@import` compiles cleanly.
 
 Converted `extern fn foo(...)` declarations to `const foo = module.foo` aliases (pub-ifying the
-callees, keeping their `export` linker symbol for any not-yet-converted caller). Done so far:
+callees, keeping their `export` linker symbol for any not-yet-converted caller). Done:
 `trans.zig` (25→0), `types.zig` (10→0, dissolving the `trans↔types` "cycle"), `codegen.zig`
-(15→0), `reduce_core.zig` (8→0, dissolving `reduce_core↔reduce`), and **`c_abi.zig` (110→4)** —
-the big one, now mostly direct re-exports of the real heap/big/lex/reduce/types/trans functions.
-**Codebase `extern fn` 322 → 148**, byte-identical throughout. The residual 4 in c_abi are
-genuine FFI/dead-symbol clashes (`outUTF8`/`fromUTF8` collide with main_clib; `yyparse`/`make_typ`
-unresolved). Remaining: the smaller consumer files (`lex_bridge`, `lex`, `repl`, `heap`, …) and
-then `c_abi.zig`/`main_clib.zig` can collapse toward the R8 demolition.
+(15→0), `reduce_core.zig` (8→0, dissolving `reduce_core↔reduce`), **`c_abi.zig` (110→4)**, and a
+sweep of every remaining consumer file (`main`, `heap`, `lex`, `lex_bridge`, `repl`, `reduce`,
+`big`, `setup`, `parser_api`/`_tests`, `reducer/reduce`, …) taking **non-shim `extern fn` 81 → 8**.
+**Codebase `extern fn` 322 → 75**, byte-identical throughout.
+
+The remaining `extern fn` are now an irreducible floor, not an anti-pattern:
+- **8 non-shim**: genuine syscall FFI (`__errno_location`/`__error`/`stat`/`sigaction`), the
+  UTF-8 decode shim (`fromUTF8`), the `reduce_stream_read` ABI bridge (loose `?*anyopaque`/`c_int`
+  decl, deliberately compatible with `reduce_ctx`), and dead `utf8.zig`'s `getc`/`putc`.
+- **~4 in c_abi** (`outUTF8`/`fromUTF8` collide with main_clib; `yyparse`/`make_typ` unresolved).
+- **~63 in main_clib** — the OS C-ABI boundary (`malloc`/signals/syscalls); irreducible by design.
+
+**R8 status — the full demolition is *blocked*, not ready.** R8 as written (delete both shims;
+`extern fn = extern var = export fn = clib. = 0`, `callconv(.c) = 1`) presumes the earlier phases
+are complete. They are not:
+- `extern var` = 57 (cross-module global decls; being migrated into the leaf `core_state.zig`).
+- `callconv(.c)` = 12 (signal handlers + `main_entry`) — needs **R7.1/R7.2** (signal redesign).
+- `[*:0]`-as-`Word` casts = 132 — needs **R6** (string interning), a deferred phase.
+- **`main_clib.zig` cannot be deleted** — it *is* the irreducible OS/C-ABI boundary (101
+  syscall/signal/`std.posix` refs). R8.1's "delete main_clib" is superseded by this finding.
+
+What *is* now demolishable is **`c_abi.zig`**: after the conversions above it is a thin
+re-export-plus-constants hub (4 extern fn, ~106 `pub const` re-exports, plus duplicated tag/type
+constants). Deleting it is a mechanical ~889-site `abi.X → {word,real-module}.X` rename — best done
+as its own focused pass, and ideally after the in-flight `core_state.zig` global migration settles.
