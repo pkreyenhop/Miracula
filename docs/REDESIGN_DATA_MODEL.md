@@ -52,7 +52,7 @@ library) links against it, so the *honest* C-ABI target is:
 | Heap encapsulation (R2) | ✅ `Heap` object; raw cell access confined to `heap.zig` (metric = 0) |
 | Storage = `MultiArrayList` (R3) | ✅ `Cell{ tag: NodeTag, hd, tl }`; `*2`/dual-pointer arithmetic gone |
 | Typed handles (R4.1/4.2/4.5) | ✅ `word.Ref`, `isAtom`/`fitsInByte` classifiers; `Word = i64` (not `c_long`) |
-| Linker-as-module-system (R7.3) | ✅ `extern fn` 322 → **19** (syscall floor); `c_abi.zig` **deleted** (R8.1) |
+| Linker-as-module-system (R7.3) | ✅ `extern fn` 322 → **14** (syscall floor); `c_abi.zig` **deleted** (R8.1) |
 | Track A1 — main_clib externs | ✅ 52 internal `extern fn` → `@import`; main_clib at 11 libc externs |
 | Track A2 — `extern var` | ✅ **0** — all 30 globals accessed via owner module |
 | Track A3 — `export fn` | ✅ 174 → **3** (only the still-extern-referenced bridges remain) |
@@ -164,9 +164,10 @@ not wait behind Track B's design work.
   52 internal-Zig `extern fn` (`make`, `codegen`, `UNION`, `findid`, `gc`, `instantiate`, …) to
   `@import` re-exports; main_clib `extern fn` 63 → 11, codebase 71 → 19. Latent drift surfaced and
   fixed (finding #5): `out_pattern` wants `*FILE` not `?*FILE`, `getstring` returns `?[*:0]u8`.
-  *Remaining:* the 11 genuine libc externs (`setjmp`/`longjmp` family + `fork`/`isatty`/`getcwd`/
-  `chdir`/`times`/`sysconf`) still sit in `main_clib`; moving the 6 syscalls to `std.posix` and
-  retiring the `setjmp` family (A4) would finish the "thin wrapper" goal — deferred follow-up.
+  *Follow-up done:* `fork`/`isatty`/`getcwd`/`chdir`/`sysconf` moved to `std.c` bindings
+  (extern fn 19 → 14). The 6 left in `main_clib` are the genuine no-std-equivalent floor — the
+  `setjmp`/`longjmp` recovery family (×5, clears with A4b) and `times` (no `std.c.times`/`tms` in
+  0.16).
 
 * **A2 (R7.4) — Eliminate `extern var` (54 → 0).** ✅ **Done.** All 30 globals now accessed via
   their owner module (`core_state` for the C-ABI-constrained 8, plus `heap`/`reduce`/`version`/
@@ -285,9 +286,9 @@ becomes pure, idiomatic Zig.
 
 | Metric | R0 baseline | Now (2026-06-23) | Target |
 |--------|-------------|------------------|--------|
-| `extern fn` declarations | 322 | **19** | syscall floor (`std.posix`) |
+| `extern fn` declarations | 322 | **14** | syscall floor |
 | &nbsp;&nbsp;↳ internal anti-pattern (convertible) | — | 0 | 0 |
-| &nbsp;&nbsp;↳ genuine libc/syscall | — | ~17 (11 in `main_clib`) | small `std.posix` set |
+| &nbsp;&nbsp;↳ genuine libc/syscall | — | 14 (6 in `main_clib`: `setjmp`×5 + `times`) | `setjmp` family clears with A4b |
 | `extern var` declarations | 94 | **0** ✓ *(A2)* | 0 |
 | `export fn` (linker symbols) | 174 | **3** *(A3; still-extern-referenced bridges)* | 0 (no external linkers) |
 | `clib.` / `c.` call sites | 2821 | **0** | 0 |
