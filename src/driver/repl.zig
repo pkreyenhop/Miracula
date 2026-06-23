@@ -201,17 +201,17 @@ pub fn commandloop(initscript: [*:0]u8) void {
                 ls.c = word.EVAL;
                 main.rs.echoing = 0;
                 main.cs.polyshowerror = 0;
-                core_state.commandmode = 1;
+                core_state.s.commandmode = 1;
                 _ = parser_api.parseCurrent() catch {};
-                if (core_state.SYNERR != 0) {
-                    core_state.SYNERR = 0;
+                if (core_state.s.SYNERR != 0) {
+                    core_state.s.SYNERR = 0;
                 } else if (ls.c != '\n') {
                     word.print("syntax error\n", .{});
                     while (ls.c != '\n' and ls.c != abi.EOF) {
                         ls.c = abi.getchar();
                     }
                 }
-                core_state.commandmode = 0;
+                core_state.s.commandmode = 0;
                 main.rs.echoing = main.rs.verbosity & main.rs.listing;
             },
         }
@@ -251,10 +251,10 @@ pub fn dieclean() callconv(.c) void {
 }
 
 pub fn fpe_error(sig: c_int) callconv(.c) void {
-    if (core_state.compiling != 0) {
+    if (core_state.s.compiling != 0) {
         _ = signals(sig, @intFromPtr(&fpe_error));
         syntax("floating point number out of range\n");
-        core_state.SYNERR = 0;
+        core_state.s.SYNERR = 0;
         abi.siglongjmp(&main.rs.env, 1);
     } else {
         word.print("\nFLOATING POINT OVERFLOW\n", .{});
@@ -268,7 +268,7 @@ pub fn obey(x_in: Word) void {
     const typ = main.type_of(x);
     x = main.codegen(x);
     if (main.cs.polyshowerror != 0) return;
-    core_state.compiling = 0;
+    core_state.s.compiling = 0;
     const list_t: Word = 4;
     const char_t: Word = 3;
     const islist = typ >= main.ATOMLIMIT and getTag(typ) == AP and h(typ) == list_t;
@@ -306,7 +306,7 @@ pub fn evaluate_repl(x_in: Word) void {
     if (process() != 0) {
         // Child: evaluate and print, then exit (compiling=0 only here, parent unaffected).
         _ = signals(abi.SIGINT, @intFromPtr(&dieclean));
-        core_state.compiling = 0;
+        core_state.s.compiling = 0;
         resetgcstats();
         abi.output(out_val);
         _ = word.putchar('\n');
@@ -323,9 +323,9 @@ pub fn reset() callconv(.c) void {
     main.rs.s_in = main.getStdin();
     main.rs.echoing = 0;
     main.rs.listing = 0;
-    core_state.compiling = 0;
-    core_state.commandmode = 0;
-    core_state.SYNERR = 0;
+    core_state.s.compiling = 0;
+    core_state.s.commandmode = 0;
+    core_state.s.SYNERR = 0;
     main.rs.sigflag = 0;
     if (main.rs.unlinkme) |u| {
         _ = abi.unlink(u);
@@ -412,12 +412,12 @@ pub fn parseline(t_val: Word, f: ?*word.FILE, fil: Word) Word {
         _ = abi.ungetc(ch, f);
         ls.c = word.VALUE;
         main.rs.echoing = 0;
-        core_state.commandmode = 1;
+        core_state.s.commandmode = 1;
         main.rs.s_in = f;
         _ = parser_api.parseCurrent() catch {};
         main.rs.s_in = main.getStdin();
-        if (core_state.SYNERR != 0) {
-            core_state.SYNERR = 0;
+        if (core_state.s.SYNERR != 0) {
+            core_state.s.SYNERR = 0;
             main.rs.lastexp = word.UNDEF;
         } else {
             t1 = main.type_of(main.rs.lastexp);

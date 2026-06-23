@@ -453,25 +453,25 @@ pub fn rc_read(rcfile: [*:0]const u8) Word {
     var res: Word = 0;
     f = word.fopen(rcfile, "r");
     if (f == null) return 0;
-    core_state.loading = 1;
+    core_state.s.loading = 1;
     res = abi.load_script(f.?, @constCast(rcfile), NIL, NIL, 0);
     _ = word.fclose(f.?);
     if (main.cs.BAD_DUMP != 0) {
         main.unload();
         main.cs.CLASHES = NIL;
         heap.stackp = heap.dstack;
-        core_state.loading = 0;
+        core_state.s.loading = 0;
         return 0;
     }
     if (main.cs.CLASHES != NIL) {
         main.unload();
-        core_state.loading = 0;
+        core_state.s.loading = 0;
         return 0;
     }
     if (main.src_update() != 0) {
         main.loadfile(rcfile);
     }
-    core_state.loading = 0;
+    core_state.s.loading = 0;
     if (main.cs.ND != NIL or heap.files == NIL) return 0;
     x = main.fil_defs(h(heap.files));
     while (x != NIL) : (x = t(x)) {

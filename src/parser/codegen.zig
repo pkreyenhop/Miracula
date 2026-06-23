@@ -337,7 +337,7 @@ fn codegenString(s: []const u8) Word {
 fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
     return switch (e) {
         // `[]` in a pattern → nill (the empty list pattern atom).
-        .list_nil => core_state.nill,
+        .list_nil => core_state.s.nill,
 
         // Literal constants in patterns must be tagged with `cons(CONST, value)`
         // so the Miranda runtime distinguishes them from binding positions.
@@ -357,7 +357,7 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
 
         // Non-empty list literal patterns: cons-chain terminated with nill.
         .list => |items| blk: {
-            var result: Word = core_state.nill;
+            var result: Word = core_state.s.nill;
             var i: usize = items.len;
             while (i > 0) {
                 i -= 1;

@@ -814,7 +814,7 @@ pub fn genlhs(x: Word) Word {
         INT => return cons(CONST, x),
         DOUBLE => {
             syntax("floating point literal in pattern\n");
-            return core_state.nill;
+            return core_state.s.nill;
         },
         ATOM => {
             if (x == True or x == False or x == NILS or x == NIL or isChar(x)) {
@@ -824,7 +824,7 @@ pub fn genlhs(x: Word) Word {
         else => {},
     }
     syntax("illegal form on left of <-\n");
-    return core_state.nill;
+    return core_state.s.nill;
 }
 
 pub fn leftfactor(x: Word) Word {
@@ -1037,7 +1037,7 @@ fn nclchk(n: Word, p: Word, hr: Word) c_int {
         if (main.rs.echoing != 0) {
             _ = word.putchar('\n');
         }
-        core_state.errs = hr;
+        core_state.s.errs = hr;
         _ = word.print("syntax error: conflicting definitions of \"{s}\" in where clause\n", .{getId(n)});
         acterror();
         return 1;
@@ -1083,7 +1083,7 @@ pub fn declconstr(x: Word, n: Word, constr_type: Word) void {
         return;
     }
     if (idType(x) != undef_t) {
-        core_state.errs = idWho(x);
+        core_state.s.errs = idWho(x);
         respec_error(x);
         return;
     }
@@ -1094,7 +1094,7 @@ pub fn declconstr(x: Word, n: Word, constr_type: Word) void {
 pub fn specify(input_x: Word, spec_type: Word, here: Word) void {
     var x = input_x;
     if (getTag(x) != ID and spec_type != type_t) {
-        core_state.errs = here;
+        core_state.s.errs = here;
         syntax("incorrect use of ::\n");
         return;
     }
@@ -1105,7 +1105,7 @@ pub fn specify(input_x: Word, spec_type: Word, here: Word) void {
             x = h(x);
         }
         if (!(idVal(x) == UNDEF and idType(x) == undef_t)) {
-            core_state.errs = here;
+            core_state.s.errs = here;
             nameclash(x);
             return;
         }
@@ -1119,7 +1119,7 @@ pub fn specify(input_x: Word, spec_type: Word, here: Word) void {
         return;
     }
     if (idType(x) != undef_t) {
-        core_state.errs = here;
+        core_state.s.errs = here;
         respec_error(x);
         return;
     }
@@ -1142,7 +1142,7 @@ fn arityCheck(type_name: Word, arity: Word, here: Word) void {
             getId(type_name),
             typeArity(type_name),
         });
-        core_state.errs = here;
+        core_state.s.errs = here;
         acterror();
     }
 }
@@ -1166,7 +1166,7 @@ pub fn decl_type(input_tf: Word, type_class: Word, info: Word, here: Word) void 
         return;
     }
     if (idVal(tf) != UNDEF) {
-        core_state.errs = here;
+        core_state.s.errs = here;
         nameclash(tf);
         return;
     }
@@ -1175,7 +1175,7 @@ pub fn decl_type(input_tf: Word, type_class: Word, info: Word, here: Word) void 
     }
     setIdVal(tf, makeTyp(arity, if (type_class == algebraic_t) make_pn(UNDEF) else 0, type_class, info));
     if (idType(tf) != undef_t) {
-        core_state.errs = here;
+        core_state.s.errs = here;
         respec_error(tf);
         return;
     }
@@ -1186,7 +1186,7 @@ pub fn decl_type(input_tf: Word, type_class: Word, info: Word, here: Word) void 
 
 fn decl1(x: Word, e: Word) void {
     if (idVal(x) != UNDEF and main.rs.lastname != x) {
-        core_state.errs = h(e);
+        core_state.s.errs = h(e);
         nameclash(x);
         return;
     }
@@ -1201,7 +1201,7 @@ fn decl1(x: Word, e: Word) void {
         }
     } else if (fallible(h(t(idVal(x)))) == 0) {
         const prefix: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
-        core_state.errs = h(e);
+        core_state.s.errs = h(e);
         _ = word.print("{s}syntax error: unreachable case in defn of \"{s}\"\n", .{ prefix, getId(x) });
         acterror();
     } else {
@@ -1216,7 +1216,7 @@ pub fn declare(x: Word, e: Word) void {
     }
     var bindings = scanpattern(x, x, share(tries(x, cons(e, NIL)), undef_t), ap(CONFERROR, cons(x, h(e))));
     if (bindings == NIL) {
-        core_state.errs = h(e);
+        core_state.s.errs = h(e);
         syntax("illegal lhs for definition\n");
         return;
     }
@@ -1225,7 +1225,7 @@ pub fn declare(x: Word, e: Word) void {
         const binding = h(bindings);
         const name = h(binding);
         if (idVal(name) != UNDEF) {
-            core_state.errs = h(e);
+            core_state.s.errs = h(e);
             nameclash(name);
             return;
         }
@@ -1247,7 +1247,7 @@ pub fn block(input_defs: Word, input_e: Word, keep: Word) Word {
     var ids: Word = NIL;
     var deftoids: Word = NIL;
     var g: Word = NIL;
-    if (core_state.SYNERR != 0) {
+    if (core_state.s.SYNERR != 0) {
         return NIL;
     }
     var d = defs;
@@ -1489,7 +1489,7 @@ fn sui_generis(k: Word) bool {
 pub fn codegen(x: Word) Word {
     switch (getTag(x)) {
         AP => {
-            if (core_state.commandmode != 0 // beware of corrupting lastexp
+            if (core_state.s.commandmode != 0 // beware of corrupting lastexp
             and x != ls.cook_stdin and x != ls.common_stdin and x != ls.common_stdinb) { // but share $+ $-
                 return make(AP, codegen(h(x)), codegen(t(x)));
             }
@@ -1505,7 +1505,7 @@ pub fn codegen(x: Word) Word {
             return make(CONS, codegen(h(x)), codegen(t(x)));
         },
         CONS => {
-            if (core_state.commandmode != 0) {
+            if (core_state.s.commandmode != 0) {
                 return make(CONS, codegen(h(x)), codegen(t(x)));
             }
             // otherwise do in situ (see declare)
@@ -1574,7 +1574,7 @@ pub fn codegen(x: Word) Word {
                     sayhere(h(x), 1);
                 }
             }
-            if (core_state.commandmode != 0) {
+            if (core_state.s.commandmode != 0) {
                 main.rs.rv_expr = 1;
             } else {
                 cs.rv_script = 1;

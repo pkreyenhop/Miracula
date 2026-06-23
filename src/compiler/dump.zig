@@ -281,7 +281,7 @@ pub fn undump(t_val: [*:0]const u8) void {
     }
 
     _ = word.strcpy(&obf, t_val);
-    _ = word.strcpy(obf[@intCast(flen - 1)..].ptr, core_state.obsuffix);
+    _ = word.strcpy(obf[@intCast(flen - 1)..].ptr, core_state.s.obsuffix);
     t2 = main.fm_time(@as([*:0]const u8, @ptrCast(&obf)));
     if (t2 != 0 and t1 == 0) {
         t2 = 0;
@@ -300,7 +300,7 @@ pub fn undump(t_val: [*:0]const u8) void {
     }
 
     main.rs.current_script = @constCast(t_val);
-    core_state.loading = 1;
+    core_state.s.loading = 1;
     main.rs.oldfiles = NIL;
     main.unload();
 
@@ -344,7 +344,7 @@ pub fn undump(t_val: [*:0]const u8) void {
             abi.printlist(@constCast("due to name clashes: "), main.alfasort(main.cs.CLASHES));
         }
         main.unload();
-        core_state.loading = 0;
+        core_state.s.loading = 0;
         return;
     }
 
@@ -371,7 +371,7 @@ pub fn undump(t_val: [*:0]const u8) void {
     if (heap.files != NIL and !main.rs.making and main.rs.initialising == 0) {
         unfixexports();
     }
-    core_state.loading = 0;
+    core_state.s.loading = 0;
 }
 
 /// Writes a binary dump of the current heap state to the .mx file corresponding to
@@ -382,7 +382,7 @@ pub fn makedump() void {
     var f: ?*word.FILE = null;
     _ = word.strcpy(obf, main.rs.current_script.?);
     const len = word.strlen(obf);
-    _ = word.strcpy(obf[len - 1 ..].ptr, core_state.obsuffix);
+    _ = word.strcpy(obf[len - 1 ..].ptr, core_state.s.obsuffix);
     f = word.fopen(obf, "w");
     if (f == null) {
         word.print("WARNING: CANNOT WRITE TO {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(obf)))});

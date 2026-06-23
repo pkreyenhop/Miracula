@@ -42,9 +42,9 @@ fn parseCurrentNew() ParseError!ParseResult {
     // Command mode: the user typed an expression at the REPL prompt.
     // In the old YACC grammar this was handled by `EVAL exp { evaluate($2); }`.
     // We parse one expression, codegen it, then fork via evaluate_repl().
-    if (core.commandmode != 0) {
+    if (core.s.commandmode != 0) {
         const expr = parser_mod.parseExpr(&p) catch |err| {
-            core.SYNERR = 1;
+            core.s.SYNERR = 1;
             if (err == error.UnexpectedEof) {
                 _ = word.print("syntax error - unexpected newline\n", .{.{}});
             } else {
@@ -54,7 +54,7 @@ fn parseCurrentNew() ParseError!ParseResult {
         };
         if (!p.ts.check(.eof) and !p.ts.check(.offside)) {
             // Trailing tokens after the expression — treat as syntax error.
-            core.SYNERR = 1;
+            core.s.SYNERR = 1;
             _ = word.print("syntax error - unexpected token\n", .{.{}});
             return ParseError.SyntaxError;
         }
@@ -71,7 +71,7 @@ fn parseCurrentNew() ParseError!ParseResult {
         std.debug.print("{d}:{d}: {s}\n", .{ d.span.line, d.span.col, d.message });
     }
     if (p.diagnostics.items.len > 0) {
-        core.SYNERR = 1;
+        core.s.SYNERR = 1;
         return ParseError.SyntaxError;
     }
 
@@ -127,7 +127,7 @@ pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!Ne
         std.debug.print("{d}:{d}: {s}\n", .{ d.span.line, d.span.col, d.message });
     }
     if (p.diagnostics.items.len > 0) {
-        core.SYNERR = 1;
+        core.s.SYNERR = 1;
         return ParseError.ParseFailed;
     }
 

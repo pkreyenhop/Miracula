@@ -78,18 +78,18 @@ const yysterm_data = [_]?[*:0]const u8{
 pub var yysterm = yysterm_data;
 
 pub fn syntax(s: [*:0]const u8) void {
-    if (core_state.SYNERR != 0) return;
+    if (core_state.s.SYNERR != 0) return;
     if (main.rs.echoing != 0) {
         _ = word.printErr("\n", .{.{}});
     }
     _ = word.printErr("syntax error: {s}", .{.{s}});
-    core_state.SYNERR = 1;
+    core_state.s.SYNERR = 1;
     reset_lex();
 }
 
 pub fn acterror() void {
-    if (core_state.SYNERR != 0) return;
-    core_state.SYNERR = 1;
+    if (core_state.s.SYNERR != 0) return;
+    core_state.s.SYNERR = 1;
     reset_lex();
 }
 
@@ -205,7 +205,7 @@ pub fn mira_setup() void {
     ls.common_stdin = abi.ap(word.READ, 0);
     ls.common_stdinb = abi.ap(word.READBIN, 0);
     ls.cook_stdin = abi.ap(abi.readvals(0, 0), word.OFFSIDE);
-    core_state.nill = main.cons(word.CONST, NIL);
+    core_state.s.nill = main.cons(word.CONST, NIL);
     main.rs.Void = abi.make_id(@constCast("()"));
     main.heap.tp(main.heap.h(main.rs.Void)).* = word.void_t;
     main.heap.tp(main.rs.Void).* = main.constructor(0, main.rs.Void);

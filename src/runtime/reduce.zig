@@ -378,8 +378,8 @@ pub fn out_here(f: ?*word.FILE, h_val: Word, nl: c_int) void {
     } else {
         _ = word.putc(' ', f.?);
     }
-    if (core_state.compiling != 0 and core_state.errs == 0) {
-        core_state.errs = h_val;
+    if (core_state.s.compiling != 0 and core_state.s.errs == 0) {
+        core_state.s.errs = h_val;
     }
 }
 

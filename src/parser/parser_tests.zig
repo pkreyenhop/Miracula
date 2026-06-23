@@ -36,7 +36,7 @@ fn resetLexerState() void {
     ls.col = 0;
     ls.line_no = 0;
     ls.c = ' ';
-    core_state.SYNERR = 0;
+    core_state.s.SYNERR = 0;
 }
 
 var initialized = false;

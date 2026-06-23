@@ -97,7 +97,7 @@ pub fn unlinkx(t_path: [*:0]const u8) void {
 
     @memcpy(obf_buf[0 .. len - 1], t_slice[0 .. len - 1]);
 
-    const obsuffix_slice = std.mem.span(core_state.obsuffix);
+    const obsuffix_slice = std.mem.span(core_state.s.obsuffix);
     @memcpy(obf_buf[len - 1 .. len - 1 + obsuffix_slice.len], obsuffix_slice);
     obf_buf[len - 1 + obsuffix_slice.len] = 0;
 

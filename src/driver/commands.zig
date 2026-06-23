@@ -240,7 +240,7 @@ pub fn command() void {
                         main.filecp(mf.?, t_val.?);
                     }
                 }
-                const err_line_num: c_int = if (word.strcmp(t_val.?, main.rs.current_script.?) == 0) @intCast(core_state.errline) else if (core_state.errs != 0 and word.strcmp(t_val.?, strtab.strOf(main.heap.h(core_state.errs))) == 0) @intCast(main.heap.t(core_state.errs)) else @intCast(abi.geterrlin(t_val.?));
+                const err_line_num: c_int = if (word.strcmp(t_val.?, main.rs.current_script.?) == 0) @intCast(core_state.s.errline) else if (core_state.s.errs != 0 and word.strcmp(t_val.?, strtab.strOf(main.heap.h(core_state.s.errs))) == 0) @intCast(main.heap.t(core_state.s.errs)) else @intCast(abi.geterrlin(t_val.?));
                 editfile(t_val.?, err_line_num);
                 return;
             }
@@ -292,8 +292,8 @@ pub fn command() void {
                     t_val = null;
                 }
                 if (t_val != null) {
-                    core_state.errline = 0;
-                    core_state.errs = 0;
+                    core_state.s.errline = 0;
+                    core_state.s.errs = 0;
                 }
                 if (t_val != null) {
                     if (word.strcmp(t_val.?, main.rs.current_script.?) != 0 or (heap.files == NIL and abi.okdump(t_val.?) != 0)) {

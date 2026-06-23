@@ -849,12 +849,12 @@ pub fn sayhere(h_val: Word, nl: Word) void {
         _ = word.print(" ", .{});
     }
     if (eq) {
-        if (core_state.errline == 0) {
-            core_state.errline = t(h_node);
+        if (core_state.s.errline == 0) {
+            core_state.s.errline = t(h_node);
         }
     } else {
-        if (core_state.errs == 0) {
-            core_state.errs = h_node;
+        if (core_state.s.errs == 0) {
+            core_state.s.errs = h_node;
         }
     }
 }
@@ -898,7 +898,7 @@ pub fn type_error1(x: Word) void {
 }
 
 pub fn type_error2(x: Word) void {
-    if (core_state.compiling != 0) {
+    if (core_state.s.compiling != 0) {
         return;
     }
     cs.TYPERRS += 1;
@@ -1123,10 +1123,10 @@ pub fn out_formal1(f: *word.FILE, x_in: Word) void {
             _ = (f).print("\"", .{});
         } else {
             _ = (f).print("[", .{});
-            while (x != core_state.nill and x != NIL) {
+            while (x != core_state.s.nill and x != NIL) {
                 out_pattern(f, h(x));
                 x = t(x);
-                if (x != core_state.nill and x != NIL) {
+                if (x != core_state.s.nill and x != NIL) {
                     _ = (f).print(",", .{});
                 }
             }
@@ -1653,7 +1653,7 @@ pub fn checkfbs() void {
         cs.NT = NIL;
         cs.R = NIL;
         _ = word.printErr("compilation abandoned\n", .{});
-        core_state.SYNERR = 1;
+        core_state.s.SYNERR = 1;
     }
     resetSubst();
 }
@@ -1959,7 +1959,7 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
                 type_error1(x);
             }
             if (a == undef_t) {
-                if (core_state.commandmode != 0) {
+                if (core_state.s.commandmode != 0) {
                     type_error2(x);
                 } else if (member(cs.ND, x) == 0) {
                     if (cs.lineptr != 0) {
@@ -2604,7 +2604,7 @@ pub fn checktypes() void {
         cs.NT = NIL;
         cs.R = NIL;
         _ = word.printErr("typecheck cannot proceed - compilation abandoned\n", .{});
-        core_state.SYNERR = 1;
+        core_state.s.SYNERR = 1;
         return;
     }
     if (main.rs.freeids != NIL) {

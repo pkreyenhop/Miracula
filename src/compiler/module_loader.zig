@@ -34,9 +34,9 @@ inline fn pn_val(x: Word) Word {
 /// Callers that want dump-or-load semantics should call `undump()` instead.
 pub fn loadfile(t_val: [*:0]const u8) void {
     var h_val: Word = NIL;
-    core_state.loading = 1;
-    core_state.errs = 0;
-    core_state.errline = 0;
+    core_state.s.loading = 1;
+    core_state.s.errs = 0;
+    core_state.s.errline = 0;
     main.rs.current_script = @constCast(t_val);
     main.rs.oldfiles = NIL;
     main.unload();
@@ -56,7 +56,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         } else {
             main.rs.oldfiles = main.cons(main.make_fil(t_val, 0, 0, NIL), NIL);
         }
-        core_state.loading = 0;
+        core_state.s.loading = 0;
         return;
     }
 
@@ -66,7 +66,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         }
         word.print("cannot open {s}\n", .{t_val});
         main.rs.oldfiles = main.cons(main.make_fil(t_val, 0, 0, NIL), NIL);
-        core_state.loading = 0;
+        core_state.s.loading = 0;
         return;
     }
 
@@ -87,7 +87,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     main.rs.s_in = @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(ls.fileq)))));
     abi.adjust_prefix(@constCast(t_val));
 
-    core_state.commandmode = 0;
+    core_state.s.commandmode = 0;
     if (main.rs.verbosity != 0 or main.rs.making) {
         word.print("compiling {s}\n", .{t_val});
     }
@@ -106,7 +106,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
 
     _ = parser_api.parseCurrent() catch {};
 
-    if (core_state.SYNERR == 0 and ls.exportfiles != NIL) {
+    if (core_state.s.SYNERR == 0 and ls.exportfiles != NIL) {
         var s = ls.exportfiles;
         while (s != NIL) : (s = main.heap.t(s)) {
             if (main.heap.h(s) == word.PLUS) {
@@ -126,31 +126,31 @@ pub fn loadfile(t_val: [*:0]const u8) void {
                     }
                 }
                 if (count != 1) {
-                    core_state.SYNERR = 1;
+                    core_state.s.SYNERR = 1;
                     word.print("illegal fileid \"{s}\" in export list ({s})\n", .{strtab.strOf(main.heap.h(s)), @as([*:0]const u8, if (count != 0) "ambiguous" else "not %included in script")});
                 }
             }
         }
-        if (core_state.SYNERR != 0) {
+        if (core_state.s.SYNERR != 0) {
             abi.sayhere(main.heap.h(main.rs.exports), 1);
             word.printErr("compilation abandoned\n", .{});
         }
     }
 
-    if (core_state.SYNERR == 0 and main.rs.includees != NIL) {
+    if (core_state.s.SYNERR == 0 and main.rs.includees != NIL) {
         heap.files = abi.append1(heap.files, mkincludes(main.rs.includees));
         main.rs.includees = NIL;
     }
     main.rs.ld_stuff = NIL;
 
-    if (core_state.SYNERR == 0) {
+    if (core_state.s.SYNERR == 0) {
         if (main.rs.verbosity != 0 or (main.rs.making and !main.rs.mkexports and !main.rs.mksources)) {
             word.print("checking types in {s}\n", .{t_val});
         }
         main.checktypes();
     }
 
-    if (core_state.SYNERR == 0 and main.rs.exports != NIL) {
+    if (core_state.s.SYNERR == 0 and main.rs.exports != NIL) {
         if (main.cs.ND != NIL) {
             main.rs.exports = NIL;
         } else {
@@ -214,7 +214,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         }
     }
 
-    if (core_state.SYNERR == 0 and main.cs.ND == NIL and (main.rs.exports != NIL or main.heap.t(heap.files) != NIL)) {
+    if (core_state.s.SYNERR == 0 and main.cs.ND == NIL and (main.rs.exports != NIL or main.heap.t(heap.files) != NIL)) {
         var e1 = main.rs.exports;
         var r: Word = NIL;
         var e: Word = NIL;
@@ -279,7 +279,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         }
     }
 
-    if (core_state.SYNERR == 0 and main.rs.detrop != NIL) {
+    if (core_state.s.SYNERR == 0 and main.rs.detrop != NIL) {
         const gd = main.rs.detrop;
         while (main.rs.detrop != NIL and getTag(main.dval(main.heap.h(main.rs.detrop))) == word.LABEL) {
             main.rs.detrop = main.heap.t(main.rs.detrop);
@@ -317,7 +317,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         }
     }
 
-    if (core_state.SYNERR == 0) {
+    if (core_state.s.SYNERR == 0) {
         var x = main.fil_defs(main.heap.h(heap.files));
         main.cs.lfrule = 0;
         while (x != NIL) : (x = main.heap.t(x)) {
@@ -344,11 +344,11 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             main.makedump();
             main.unfixexports();
         }
-        if (core_state.errline == 0 and core_state.errs != 0 and word.strcmp(strtab.strOf(main.heap.h(core_state.errs)), main.rs.current_script.?) == 0) {
-            core_state.errline = main.heap.t(core_state.errs);
+        if (core_state.s.errline == 0 and core_state.s.errs != 0 and word.strcmp(strtab.strOf(main.heap.h(core_state.s.errs)), main.rs.current_script.?) == 0) {
+            core_state.s.errline = main.heap.t(core_state.s.errs);
         }
         main.cs.ND = main.alfasort(main.cs.ND);
-        core_state.loading = 0;
+        core_state.s.loading = 0;
         return;
     }
 
@@ -357,11 +357,11 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     }
     main.rs.oldfiles = heap.files;
     main.unload();
-    if (main.normal(t_val) != 0 and core_state.SYNERR != 2) {
+    if (main.normal(t_val) != 0 and core_state.s.SYNERR != 2) {
         main.makedump();
     }
-    core_state.SYNERR = 0;
-    core_state.loading = 0;
+    core_state.s.SYNERR = 0;
+    core_state.s.loading = 0;
 }
 
 /// Resolves a list of `%include` file nodes (`includees_val`) into a heap list
@@ -382,7 +382,7 @@ pub fn mkincludes(includees_val: Word) Word {
             if (main.rs.ideep != 0) {
                 abi.exit(2);
             }
-            core_state.SYNERR = 2;
+            core_state.s.SYNERR = 2;
             word.print("compilation of \"{s}\" abandoned\n", .{main.rs.current_script.?});
             return NIL;
         }
@@ -391,7 +391,7 @@ pub fn mkincludes(includees_val: Word) Word {
             if (main.rs.ideep != 0) {
                 abi.exit(2);
             } else {
-                core_state.SYNERR = 2;
+                core_state.s.SYNERR = 2;
                 word.print("compilation of \"{s}\" abandoned\n", .{main.rs.current_script.?});
                 return NIL;
             }
@@ -424,7 +424,7 @@ pub fn mkincludes(includees_val: Word) Word {
         const fn_str = strtab.strOf(main.heap.h(main.heap.h(main.heap.h(includees_list))));
 
         _ = word.strcpy(ls.dicp, fn_str);
-        _ = word.strcpy(ls.dicp + word.strlen(ls.dicp) - 1, core_state.obsuffix);
+        _ = word.strcpy(ls.dicp + word.strlen(ls.dicp) - 1, core_state.s.obsuffix);
 
         if (!main.rs.making) {
             oldsig = signals(abi.SIGINT, @intFromPtr(&main.sigdefer));
@@ -533,7 +533,7 @@ pub fn mkincludes(includees_val: Word) Word {
             result = abi.append1(result, x);
         }
 
-        core_state.SYNERR = 1;
+        core_state.s.SYNERR = 1;
         word.print("unsuccessful %include directive ", .{});
         abi.sayhere(main.heap.t(main.heap.h(main.heap.h(includees_list))), 1);
 
@@ -615,7 +615,7 @@ pub fn mkincludes(includees_val: Word) Word {
             tclashes = main.heap.t(tclashes);
         }
         word.printErr("typecheck cannot proceed - compilation abandoned\n", .{});
-        core_state.SYNERR = 1;
+        core_state.s.SYNERR = 1;
         return result;
     }
 

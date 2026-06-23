@@ -195,7 +195,7 @@ pub const Heap = struct {
         }
         if (self.listp == self.TOP()) {
             if (self.SPACE != rt.rs.SPACELIMIT) {
-                if (core.compiling == 0) {
+                if (core.s.compiling == 0) {
                     self.SPACE = rt.rs.SPACELIMIT;
                 } else if (claims <= @divTrunc(self.SPACE, 4) and nogcs > 1) {
                     var wait: Word = 0;
@@ -243,10 +243,10 @@ pub const Heap = struct {
             var hnogcs: Word = 0;
             if (nogcs == hnogcs) {
                 _ = word.printErr("<<not enough heap space -- task abandoned>>\n", .{});
-                if (core.compiling == 0) {
+                if (core.s.compiling == 0) {
                     outstats();
                 }
-                if (core.compiling != 0 and rt.rs.ideep == 0) {
+                if (core.s.compiling != 0 and rt.rs.ideep == 0) {
                     _ = word.printErr("not enough heap to compile current script\n", .{});
                     _ = word.printErr("script = \"{s}\", heap = {d}\n", .{ rt.rs.current_script orelse @as([*:0]const u8, "(null)"), self.SPACE });
                 }
@@ -299,7 +299,7 @@ pub const Heap = struct {
 
         self.mark(r7_reduce.outfilq);
         self.mark(r7_reduce.waiting);
-        if (core.compiling != 0 or rt.rs.rv_expr != 0 or cs.rv_script != 0) {
+        if (core.s.compiling != 0 or rt.rs.rv_expr != 0 or cs.rv_script != 0) {
             self.mark(rt.rs.make_status);
             self.mark(rt.rs.primenv);
             self.mark(ls.fileq);
@@ -342,7 +342,7 @@ pub const Heap = struct {
                     self.mark(curr[0]);
                 }
             }
-            if (core.loading != 0) {
+            if (core.s.loading != 0) {
                 self.mark(ls.exportfiles);
                 self.mark(rt.rs.embargoes);
                 self.mark(rt.rs.rfl);
@@ -359,13 +359,13 @@ pub const Heap = struct {
             self.mark(rt.rs.lastname);
             self.mark(rt.rs.suppressids);
             self.mark(rt.rs.lastexp);
-            self.mark(core.nill);
+            self.mark(core.s.nill);
             self.mark(rt.rs.standardout);
             self.mark(r7_big.big_one);
             self.mark(r7_big.b_rem);
             self.mark(ls.yylval);
             self.mark(ls.echostack);
-            self.mark(core.errs);
+            self.mark(core.s.errs);
 
             // Automatically trace all active roots in CompilerState cs singleton using compile-time reflection.
             inline for (std.meta.fields(compiler_state.CompilerState)) |field| {
@@ -762,7 +762,7 @@ pub fn okdump(t_ptr: [*:0]const u8) c_int {
     @memcpy(obf[0..t_len], t_ptr[0..t_len]);
     obf[t_len] = 0;
 
-    const suffix_str = std.mem.span(core.obsuffix);
+    const suffix_str = std.mem.span(core.s.obsuffix);
     const suffix_len = suffix_str.len;
     if (t_len + suffix_len - 1 >= obf.len) {
         return 0;
@@ -790,7 +790,7 @@ pub fn geterrlin(t_ptr: [*:0]const u8) Word {
     @memcpy(obf[0..t_len], t_ptr[0..t_len]);
     obf[t_len] = 0;
 
-    const suffix_str = std.mem.span(core.obsuffix);
+    const suffix_str = std.mem.span(core.s.obsuffix);
     const suffix_len = suffix_str.len;
     if (t_len + suffix_len - 1 >= obf.len) {
         return 0;
@@ -1214,7 +1214,7 @@ pub fn dump_script(files_val: Word, file: ?*word.FILE) void {
 
     if (files_val == word.NIL) {
         _ = word.putc(0, file);
-        putword(core.errline, file);
+        putword(core.s.errline, file);
         var x = rt.rs.oldfiles;
         while (x != word.NIL) : (x = t(x)) {
             _ = word.fprint(file, "{s}", .{mkrel(get_fil(h(x)))});
@@ -1226,7 +1226,7 @@ pub fn dump_script(files_val: Word, file: ?*word.FILE) void {
 
     if (cs.ND != word.NIL) {
         _ = word.putc(1, file);
-        putword(core.errline, file);
+        putword(core.s.errline, file);
     }
 
     var f_list = files_val;
@@ -1446,7 +1446,7 @@ pub fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params:
             holde = getword(file);
             ch = main_clib.getc(file);
             if (main_flag != 0) {
-                core.errline = holde;
+                core.s.errline = holde;
             }
         }
         if (ch != '/') {
@@ -1493,7 +1493,7 @@ pub fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params:
     if (files_list == word.NIL) {
         ch = getword(file);
         if (main_flag != 0) {
-            core.errline = ch;
+            core.s.errline = ch;
         }
         while (true) {
             ch = main_clib.getc(file);
