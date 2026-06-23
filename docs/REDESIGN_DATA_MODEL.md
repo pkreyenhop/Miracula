@@ -255,12 +255,65 @@ not wait behind Track B's design work.
     `main-tests` **35/35** (incl. new `strtab` intern/dedup/resolve + 0-sentinel tests and the dump
     round-trip). Test inclusion wired via `main.zig`'s `comptime` import aggregator.
 
-* **B2 (R4.3/4.4) — `Value` union (the hard core).** Introduce a tagged representation that
-  distinguishes the four roles of `Word` — chars and small ints both occupy bare values `0..255`,
-  so only a union/tagged-handle can tell them apart. Migrate the reducer (R4.3) then the
-  compiler/parser (R4.4) to `Ref`/`Value`. **Gate on a short design note** (union layout vs
-  NaN-box/tagged-handle; performance budget for the reduction loop). *DoD: `reducer/*` and the
-  compiler free of raw `Word` arithmetic; golden green on evaluation-heavy programs.*
+* **B2 (R4.3/4.4) — `Value` union (the hard core).** ◐ **Design note (scoped; awaiting a
+  representation decision before any code).**
+
+  **The problem, precisely (from the code).** A `Word` (`i64`) is overloaded with four roles, told
+  apart today by *numeric range* + *cell tag*, not by the value itself:
+  | role | representation today | discriminator |
+  |------|----------------------|---------------|
+  | heap-cell handle | `>= ATOMLIMIT` (447) | `isAtom(x)` range test |
+  | atom (combinator / token / named) | `256 .. ATOMLIMIT` | range tests vs `CMBASE`/`ATOMLIMIT` |
+  | char | bare `0..255` (Latin-1) or a `UNICODE` cell | `is_char` = "is it in char range?" |
+  | number | boxed: `INT`-cell bignum chain / `DOUBLE` cell | cell `tag` |
+
+  The sharp edge: a bare `0..255` value is **structurally identical** whether it is the char `'A'`
+  or a small-int immediate, and `getTag` is undefined on a bare value (no cell). The runtime gets
+  away with this because Miranda is statically typed — the *compiler* knows each value's role and
+  emits the right combinator (`CODE`/`DECODE` to cross char↔int, `cmp` dispatching on tag). So the
+  ambiguity is *erased at runtime* and reconstructed from operator context. B2 re-introduces an
+  explicit runtime discriminator so values are self-describing.
+
+  **Why it is the hard core.** The reducer is a **pointer-reversal graph-reduction machine**
+  (`reduce.zig` + `reducer/*.zig`, ≈4 200 lines) that encodes spine direction in the *top two bits*
+  of the spine word (`tlptrbits`/`tlptrbit`) and masks them off (`x & ~tlptrbits`) on every `hd`/`tl`
+  access, and uses `ctx.s < 0` (sign bit) for the reversed-pointer test. Any tagged `Value` competes
+  for those same high bits and sits in the hottest loop in the program — hence the plan's
+  "performance budget" caveat. Cells are `MultiArrayList(Cell{ tag: NodeTag(u8), hd: i64, tl: i64 })`,
+  so widening a slot to a fat `Value` is a cross-cutting storage change.
+
+  **The representation fork (decision needed — see options below).**
+  1. **Tagged-handle / low-bit tagging** — keep `Word = i64`, steal a bit-pattern to mark
+     "immediate char" vs "immediate int" vs "handle/atom". *Pros:* no cell-size change; reducer stays
+     word-based. *Cons:* the value space is already dense (`0..255` chars, `257..305` tokens,
+     `306..447` atoms, `>=447` cells) and the top bits are taken by `tlptrbits`; finding free bits
+     ripples through `ATOMLIMIT`/`CMBASE` and the GC's `isptr` range test. Lowest memory/perf cost,
+     highest "subtle bit-budget" risk.
+  2. **Tagged `Value` union (fat cell)** — `union(enum){ ref, atom, char: u21, int }` stored in cells.
+     *Pros:* type-safe, self-describing, the cleanest end state; matches the DoD's spirit. *Cons:*
+     fattens every cell, and the pointer-reversal machine must be reworked to carry the spine mark
+     beside (not inside) the value — a deep rewrite of the hot loop with a real perf/memory hit.
+  3. **NaN-boxing** — pack a tag into the unused bits of an `f64`. *Pros:* one 64-bit slot, fast on
+     float-heavy code. *Cons:* fights the existing integer bit-tricks (sign-bit spine, `tlptrbits`)
+     and the `INT`-cell bignum design; poor fit for an integer-pointer-reversal machine. Likely
+     *rejected* but listed for completeness.
+
+  **Recommended staging (independent of which option wins).** This is not a one-shot change; the
+  plan already says *per-subsystem*. Proposed order, each step golden-gated and PR-sized:
+  0. **Immediate-role audit** — enumerate every site where a bare `0..255` is produced/consumed as a
+     char vs as a small-int vs as an atom (this audit *is* the load-bearing design work; the DoD
+     "free of raw `Word` arithmetic" can't be scoped without it).
+  1. Introduce `Value` (+ `Heap` seam: typed `hd`/`tl` getters/setters) behind the existing `Word`
+     API, no behaviour change.
+  2. Migrate the reducer (R4.3) operation-class by operation-class (arithmetic → char ops → list ops),
+     golden after each.
+  3. Migrate the compiler/parser (R4.4).
+  4. Drop the raw-`Word` accessors.
+
+  **Gate.** Pick the representation (option 1/2/3) and confirm the staging before any code — the
+  choice is hard to reverse once the reducer migration starts, and it sets the perf budget. *DoD
+  (unchanged): `reducer/*` and the compiler free of raw `Word` arithmetic; golden green on
+  evaluation-heavy programs; a reduction-loop micro-benchmark within the agreed budget.*
 
 * **B3 (R5) — Tracing GC.** Replace the sign-bit free-list mark-sweep with a precise tracing
   collector over the `Ref` graph: explicit typed root set, mark/sweep rebuilding the free list
