@@ -60,7 +60,7 @@ library) links against it, so the *honest* C-ABI target is:
 | Track A4b — recovery redesign | ⬜ Re-scoped — design-bearing (SIGFPE synchronous; reducer unwind; unverifiable by golden) |
 | `Value` union (R4.3/4.4) | ⬜ Deferred — the deep core (Track B2) |
 | Tracing GC (R5) | ⬜ Planned (Track B3) |
-| String interning (R6) | ◐ B1 step 1 done (encapsulation); node-string casts **132 → 69** (Track B1) |
+| String interning (R6) | ✅ Done — nodes hold an interned `StrId` (`strtab.zig`); node-string casts → **0** (Track B1) |
 
 ---
 
@@ -115,7 +115,7 @@ These emerged while executing R7.3 / R8.1 and change *what* remains and *in what
 | Allocation | `make(tag,h,t)` free-list scan + sign-bit mark-sweep `gc()` | `runtime/heap.zig` |
 | Atoms | `NIL=CMBASE+138`, combinators `< CMBASE`, chars `0..255` | `runtime/word.zig` |
 | Numbers | bignums = chains of `INT` cells (15-bit digits); doubles = 2 Words reinterpreted | `runtime/big.zig` |
-| Strings | `[*:0]` C pointer cast into a `Word`, stored in `id`/`fil` nodes | `runtime/heap.zig` |
+| Strings | interned `StrId` (negated index into a `StringTable`) stored in `id`/`fil` nodes | `runtime/strtab.zig` |
 | I/O | `std.fs` / `std`-based; bespoke `FILE` machinery now in `word.zig` | `runtime/word.zig` |
 | Recovery | `sigsetjmp`/`siglongjmp` on `rs.env` for SIGINT/SIGFPE | `driver/repl.zig` |
 
@@ -214,54 +214,46 @@ not wait behind Track B's design work.
 
 ### Track B — Representation *(deep, design-bearing; after Track A)*
 
-* **B1 (R6) — String interning.** ◐ **Step 1 done; step 2 design settled (ready to code).**
-  * *Step 1 (encapsulation) ✅* — funnelled the ~63 scattered raw
-    `@ptrFromInt(@as(usize,@intCast(...)))` / `@intCast(@intFromPtr(...))` casts that read/write
-    node-stored identifier strings through three audited accessors in the leaf `word.zig`:
-    `strOf`/`strOfMut` (read) and `strBits` (write). Pure refactor, golden byte-identical. The
-    `@intFromPtr`/`@ptrFromInt` metric dropped **132 → 69**; the remaining ~38 are FILE-handle-in-
-    cell casts (out of B1 scope) plus pointer arithmetic. This single boundary is what makes step 2
-    a localized change.
-  * *Step 2 (the actual interning) — design note (next, not yet coded).* Swap the internals of the
-    step-1 accessors from raw pointer casts to an interned `StringTable`: `strBits(bytes)` interns
-    and returns a `StrId`; `strOf(strid)` resolves it to a `[*:0]const u8`. The `StrId` is a
-    non-negative integer **packed into the existing `Word`** (it replaces the pointer-as-int), so
-    `Cell`/node layout is unchanged — only the *meaning* of those bits changes. Table:
-    `std.ArrayListUnmanaged(u8)` byte arena + `StringHashMapUnmanaged(StrId)` for dedup, offsets
-    recorded per id. Strings come from three places today (the `dic` bump buffer, `keep` storage,
-    string literals); all three funnel through `strBits`, so interning happens in one place.
+* **B1 (R6) — String interning.** ✅ **Done (steps 1 & 2).**
+  * *Step 1 (encapsulation) ✅* — funnelled the ~63 scattered raw casts that read/write node-stored
+    identifier strings through three audited accessors in the leaf `word.zig` (`strOf`/`strOfMut`
+    read, `strBits` write). Pure refactor, golden byte-identical.
+  * *Step 2 (the actual interning) ✅* — a new module-global owner **`strtab.zig`** holds a
+    `StringTable` (an `ArenaAllocator` of bytes + `StringHashMapUnmanaged(StrId)` dedup +
+    `ArrayList([:0]const u8)` index). `strBits(bytes)` interns (de-dup by content) and returns a
+    `StrId`; `strOf(strid)` resolves it. A node now stores a `StrId`, not a pointer. The accessors
+    moved out of leaf `word.zig` (it stays allocator-free); the ~68 call sites became a mechanical
+    `word.strOf` → `strtab.strOf` rename (decision **A** from the design note — module-global owner,
+    no allocator threaded through signatures). `strOfMut` removed. De-dup is what keeps the
+    re-intern-then-compare pattern (`member(list, strBits(get_id(x)))`) working now that `get_id`
+    no longer returns a stable pointer.
 
-    **Two findings from scoping the code that refine the original plan:**
-    1. *The namebucket dedups by **content**, not pointer/StrId identity.* `is()`
-       ([`lex.zig`](../src/parser/lex.zig) `is`) and `findid()` both compare with `std.mem.eql`, and
-       `name()` already collapses duplicate names to one `ID` node *before* calling `sto_id`. So
-       table-level dedup is a **memory optimization, not a correctness requirement** — the earlier
-       "preserving identity the namebucket relies on" overstated it. (Dedup is still worth doing: a
-       canonical `StrId` per name lets a *future* cleanup replace those `std.mem.eql` walks with
-       integer compares.)
-    2. *`strOfMut` is incidental — nothing mutates a node-stored string.* All five mutable sites
-       (repl `aka`/`editfile`, commands `s`, lex `get_id`/`get_fil`) only read (print / open file);
-       the `[*:0]u8` typing is a C-port leftover. So interned strings can live in an **immutable
-       shared arena**, and `strOfMut` collapses into `strOf` (returns `const`) — step 2 *removes*
-       an accessor rather than porting it.
+    **Encoding — the one design-note correction.** The note assumed a *non-negative* index packed
+    into the `Word`. That is unsafe: heap cell handles live in `[ATOMLIMIT, TOP())` and the GC's
+    `mark` follows `hd`/`tl` of traced nodes; raw string Words sit in some *traced* slots (a
+    `CONS.hd` in `exportfiles`, a `CONSTRUCTOR.tl`) and were only GC-safe because the old pointers
+    were *above* `TOP()`. A small positive index would fall *inside* the cell range and be
+    mis-followed. So a `StrId` is stored **negated** (`-index`): below `ATOMLIMIT`, and even after
+    `mark`'s `& ~tlptrbits` it lands far above `TOP()` — `isptr()` is false either way, preserving
+    GC behaviour at every slot without auditing each one. `Word` 0 stays the "no string" sentinel.
 
-    **Decision — accessor/table reachability (A over B).** The step-1 accessors are pure leaf
-    functions in `word.zig` with no allocator. To intern they need the table. Chosen **(A): a
-    module-global `StringTable` owner** (new `strtab.zig`), matching the global-owner-state pattern
-    that A2 standardized on; `strOf`/`strBits` move out of leaf `word.zig` into it, and the ~68 call
-    sites become a mechanical `word.strOf` → `strtab.strOf` rename — no allocator threaded through
-    signatures. Rejected **(B)** threading a `*StringTable`/allocator through every accessor and all
-    68 sites: much larger churn, no benefit here since session string storage is process-lifetime
-    global anyway.
+    **Findings corrected during implementation (the step-1 funnel was incomplete):**
+    - *`mkprivate` mutates a node string in place* (`get_id(..)[0] += 128` to hide prelude names) —
+      so design-note finding #2 ("nothing mutates a node string") was wrong. Interned bytes are
+      immutable/shared, so it now re-interns the privatised form (`strtab.privatize`) and stores the
+      new id back. (Finding #1 held: the namebucket dedups by *content*, so dedup is a memory win,
+      not a correctness requirement.)
+    - *FILE\* handles were stored in cells via `strBits` too* (`fileq`, `outfilq`) — these are
+      FILE-handle-in-cell casts (out of B1 scope; read back via `@ptrFromInt`), wrongly funnelled by
+      step 1. Restored to explicit raw casts at the 4 write sites.
+    - *`getIdText` (`lex_bridge.zig`) read a node string via a raw `@intCast`/`@ptrFromInt`* that
+      bypassed the accessors entirely; routed through `strtab.strOf`.
 
-    **Lifetime / GC.** Interned bytes live for the session (like today's never-freed `dic`/`keep`
-    storage); GC of `ID`/`STRCONS` nodes does not free table bytes, so a swept-then-reallocated node
-    never resurrects a stale pointer. Dump is representation-independent (it serialises `get_id`
-    *text*), so the round-trip stays compatible.
-
-    *DoD:* nodes hold a `StrId`; node-string pointer casts among the 69 → 0 (the FILE-handle-in-cell
-    casts remain, out of B1 scope); `strOfMut` removed; `StringTable` unit tests (intern/dedup/
-    resolve) + golden + dump round-trip green.
+    *Result:* node-string pointer casts **→ 0** (every read/write goes through the table; the
+    remaining ~68 `@intFromPtr`/`@ptrFromInt` are FILE-handle, pointer-arithmetic, and signal-handler
+    casts — none are strings). Verified: `zig build` green; **golden 44/44 byte-identical**;
+    `main-tests` **35/35** (incl. new `strtab` intern/dedup/resolve + 0-sentinel tests and the dump
+    round-trip). Test inclusion wired via `main.zig`'s `comptime` import aggregator.
 
 * **B2 (R4.3/4.4) — `Value` union (the hard core).** Introduce a tagged representation that
   distinguishes the four roles of `Word` — chars and small ints both occupy bare values `0..255`,
@@ -338,7 +330,8 @@ becomes pure, idiomatic Zig.
 | `clib.` / `c.` call sites | 2821 | **0** | 0 |
 | `callconv(.c)` | 12 | **6** *(A4a stripped gratuitous; floor is the genuine signal boundary)* | 1 (needs A4b recovery redesign) |
 | raw `hd[`/`tl[`/`tag[` outside `heap.zig` | 290 | **0** | 0 |
-| `[*:0]`-as-`Word` pointer casts | 129 | **69** *(B1 step 1: node-string casts funnelled through `word.strOf`/`strBits`)* | 0 (string interning, B1) |
+| node-string `[*:0]`-as-`Word` casts | 129 | **0** ✓ *(B1: interned `StrId` via `strtab.zig`)* | 0 |
+| &nbsp;&nbsp;↳ non-string `@intFromPtr`/`@ptrFromInt` (FILE-handle / ptr-arith / signal) | — | 68 | enumerated (not B1) |
 | `Word = c_long` (value type is a C type) | yes | **no — `i64`** | `i64` |
 | bare `< ATOMLIMIT` / `< 256` magic thresholds | ~23 | **0** | 0 |
 
