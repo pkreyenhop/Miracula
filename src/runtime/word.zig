@@ -630,18 +630,30 @@ pub fn rindex(s_any: anytype, char: c_int) ?[*:0]u8 {
     return strrchr(s_any, char);
 }
 
-pub var stdout_buf: [8192]u8 = undefined;
-pub var stderr_buf: [8192]u8 = undefined;
-pub var stdout_writer: std.Io.File.Writer = undefined;
-pub var stderr_writer: std.Io.File.Writer = undefined;
-pub var writers_initialized: bool = false;
+/// I/O subsystem state (shared-state plan Phase 2c): the stderr/stdout writer
+/// caches, the three standard `FILE` streams, and the `FILE` allocation pool.
+/// Accessed as `word.fio.X`; folds into `Interp.io` in Phase 3.
+pub const IoState = struct {
+    stdout_buf: [8192]u8 = undefined,
+    stderr_buf: [8192]u8 = undefined,
+    stdout_writer: std.Io.File.Writer = undefined,
+    stderr_writer: std.Io.File.Writer = undefined,
+    writers_initialized: bool = false,
+    std_in: FILE = .{ .file = .{ .handle = std.posix.STDIN_FILENO, .flags = .{ .nonblocking = false } } },
+    std_out: FILE = .{ .file = .{ .handle = std.posix.STDOUT_FILENO, .flags = .{ .nonblocking = false } } },
+    std_err: FILE = .{ .file = .{ .handle = std.posix.STDERR_FILENO, .flags = .{ .nonblocking = false } } },
+    file_pool: [16]FILE = undefined,
+    file_in_use: [16]bool = [_]bool{false} ** 16,
+};
+
+pub var fio: IoState = .{};
 
 pub fn initWriters() void {
-    if (writers_initialized) return;
+    if (fio.writers_initialized) return;
     const io = std.Options.debug_io;
-    stdout_writer = std.Io.File.stdout().writer(io, &stdout_buf);
-    stderr_writer = std.Io.File.stderr().writer(io, &stderr_buf);
-    writers_initialized = true;
+    fio.stdout_writer = std.Io.File.stdout().writer(io, &fio.stdout_buf);
+    fio.stderr_writer = std.Io.File.stderr().writer(io, &fio.stderr_buf);
+    fio.writers_initialized = true;
 }
 
 // The Zig-native printers below tolerate a double-wrapped arg tuple
@@ -654,22 +666,22 @@ pub fn print(comptime fmt: []const u8, args: anytype) void {
     initWriters();
     const fs = std.meta.fields(@TypeOf(args));
     if (comptime (fs.len == 1 and @typeInfo(fs[0].type) == .@"struct")) {
-        stdout_writer.interface.print(fmt, @field(args, fs[0].name)) catch {};
+        fio.stdout_writer.interface.print(fmt, @field(args, fs[0].name)) catch {};
     } else {
-        stdout_writer.interface.print(fmt, args) catch {};
+        fio.stdout_writer.interface.print(fmt, args) catch {};
     }
-    stdout_writer.interface.flush() catch {};
+    fio.stdout_writer.interface.flush() catch {};
 }
 
 pub fn printErr(comptime fmt: []const u8, args: anytype) void {
     initWriters();
     const fs = std.meta.fields(@TypeOf(args));
     if (comptime (fs.len == 1 and @typeInfo(fs[0].type) == .@"struct")) {
-        stderr_writer.interface.print(fmt, @field(args, fs[0].name)) catch {};
+        fio.stderr_writer.interface.print(fmt, @field(args, fs[0].name)) catch {};
     } else {
-        stderr_writer.interface.print(fmt, args) catch {};
+        fio.stderr_writer.interface.print(fmt, args) catch {};
     }
-    stderr_writer.interface.flush() catch {};
+    fio.stderr_writer.interface.flush() catch {};
 }
 
 /// Zig-native formatted write to an optional file (the `fprintf` analogue):
@@ -680,9 +692,9 @@ pub fn fprint(file: ?*FILE, comptime fmt: []const u8, args: anytype) void {
 }
 
 pub fn flush() void {
-    if (writers_initialized) {
-        stdout_writer.interface.flush() catch {};
-        stderr_writer.interface.flush() catch {};
+    if (fio.writers_initialized) {
+        fio.stdout_writer.interface.flush() catch {};
+        fio.stderr_writer.interface.flush() catch {};
     }
 }
 
@@ -695,29 +707,26 @@ pub fn flush() void {
 // stdio: std streams, FILE pool, and C-style file ops (R1.5/R1.6 consolidation).
 // The whole stdio subsystem lives next to the FILE struct; main_clib.zig
 // re-exports these. fread/fwrite preserve the dump (.x) byte format.
-pub var std_in = FILE{ .file = .{ .handle = std.posix.STDIN_FILENO, .flags = .{ .nonblocking = false } } };
-pub var std_out = FILE{ .file = .{ .handle = std.posix.STDOUT_FILENO, .flags = .{ .nonblocking = false } } };
-pub var std_err = FILE{ .file = .{ .handle = std.posix.STDERR_FILENO, .flags = .{ .nonblocking = false } } };
+// (fio.std_in/fio.std_out/fio.std_err and the FILE pool now live in `IoState` above.)
 
 pub fn stdin() ?*FILE {
-    return &std_in;
+    return &fio.std_in;
 }
 pub fn stdout() ?*FILE {
-    return &std_out;
+    return &fio.std_out;
 }
 pub fn stderr() ?*FILE {
-    return &std_err;
+    return &fio.std_err;
 }
 
-var file_pool: [16]FILE = undefined;
-var file_in_use = [_]bool{false} ** 16;
+// (fio.file_pool / fio.file_in_use now live in `IoState` above.)
 
 fn allocFile() ?*FILE {
-    for (&file_in_use, 0..) |*in_use, idx| {
+    for (&fio.file_in_use, 0..) |*in_use, idx| {
         if (!in_use.*) {
             in_use.* = true;
-            file_pool[idx] = FILE{ .file = .{ .handle = -1, .flags = .{ .nonblocking = false } } };
-            return &file_pool[idx];
+            fio.file_pool[idx] = FILE{ .file = .{ .handle = -1, .flags = .{ .nonblocking = false } } };
+            return &fio.file_pool[idx];
         }
     }
     return null;
@@ -725,11 +734,11 @@ fn allocFile() ?*FILE {
 
 fn freeFile(f: *FILE) void {
     const ptr_val = @intFromPtr(f);
-    const pool_start = @intFromPtr(&file_pool[0]);
+    const pool_start = @intFromPtr(&fio.file_pool[0]);
     const pool_end = @as(usize, @intCast(pool_start + @sizeOf(FILE) * 16));
     if (ptr_val >= pool_start and ptr_val < pool_end) {
         const idx = (ptr_val - pool_start) / @sizeOf(FILE);
-        file_in_use[idx] = false;
+        fio.file_in_use[idx] = false;
     }
 }
 
@@ -776,7 +785,7 @@ pub fn fopen(path: ?*const anyopaque, mode: [*:0]const u8) ?*FILE {
 
 pub fn fclose(file: ?*FILE) c_int {
     if (file) |f| {
-        if (f == &std_in or f == &std_out or f == &std_err) {
+        if (f == &fio.std_in or f == &fio.std_out or f == &fio.std_err) {
             return 0;
         }
         if (f.file.handle >= 0) {
@@ -807,7 +816,7 @@ pub fn getc(file: ?*FILE) c_int {
 }
 
 pub fn getchar() c_int {
-    return getc(&std_in);
+    return getc(&fio.std_in);
 }
 
 pub fn ungetc(ch: c_int, file: ?*FILE) c_int {
@@ -1103,7 +1112,7 @@ pub fn fprintf(file: ?*FILE, format: [*:0]const u8, args: anytype) c_int {
 }
 
 pub fn printf(format: [*:0]const u8, args: anytype) c_int {
-    return fprintf(&std_out, format, args);
+    return fprintf(&fio.std_out, format, args);
 }
 
 pub fn putc(ch: c_int, file: ?*FILE) c_int {
@@ -1117,7 +1126,7 @@ pub fn fputc(ch: c_int, file: ?*FILE) c_int {
 }
 
 pub fn putchar(ch: c_int) c_int {
-    return putc(ch, &std_out);
+    return putc(ch, &fio.std_out);
 }
 
 pub inline fn isspace(ch: anytype) bool {

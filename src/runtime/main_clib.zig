@@ -226,9 +226,9 @@ pub const wrong_t = word_mod.wrong_t;
 
 // Std streams + stdio now live in word.zig (R1.5/R1.6 consolidation); re-export
 // them so existing `clib.*` callers resolve to the single shared source.
-pub const std_in = &word_mod.std_in;
-pub const std_out = &word_mod.std_out;
-pub const std_err = &word_mod.std_err;
+pub const std_in = &word_mod.fio.std_in;
+pub const std_out = &word_mod.fio.std_out;
+pub const std_err = &word_mod.fio.std_err;
 
 pub const stdin = word_mod.stdin;
 pub const stdout = word_mod.stdout;
