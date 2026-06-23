@@ -31,28 +31,36 @@ const Word = word.Word;
 /// stored in a node is the *negation* of this — see the file header.
 const StrId = u32;
 
-const Table = struct {
+/// Interned string table — folded into `interp.strtab` (shared-state plan) so
+/// `interp.reset()` clears it. The arena can't default-construct (it needs an
+/// allocator), so the table is *lazily* initialised on first use, gated by
+/// `initialized`. A reset zeroes the struct (`initialized = false`), and the next
+/// access re-inits — which is how a reset wipes all interned strings.
+pub const StringTable = struct {
     /// Owns the interned bytes; pointers into it are stable for the session.
-    arena: std.heap.ArenaAllocator,
+    arena: std.heap.ArenaAllocator = undefined,
     /// index -> interned NUL-terminated slice. Slot 0 is "" (the sentinel).
     slices: std.ArrayList([:0]const u8) = .empty,
     /// content -> index, for de-dup. Keys are the arena-owned slices.
     dedup: std.StringHashMapUnmanaged(StrId) = .empty,
+    initialized: bool = false,
 };
-
-var table: ?Table = null;
 
 fn oom() noreturn {
     @panic("strtab: out of memory");
 }
 
-fn get() *Table {
-    if (table == null) {
-        table = .{ .arena = std.heap.ArenaAllocator.init(rt.allocator) };
+fn get() *StringTable {
+    const t = &@import("interp.zig").interp.strtab;
+    if (!t.initialized) {
+        t.arena = std.heap.ArenaAllocator.init(rt.allocator);
+        t.slices = .empty;
+        t.dedup = .empty;
         // Reserve index 0 as the empty/null sentinel so real ids are >= 1.
-        table.?.slices.append(rt.allocator, "") catch oom();
+        t.slices.append(rt.allocator, "") catch oom();
+        t.initialized = true;
     }
-    return &table.?;
+    return t;
 }
 
 /// Intern `p` (a NUL-terminated C string) and return its id as a `Word` for
@@ -98,11 +106,12 @@ pub fn privatize(handle: Word) Word {
 /// Release all interned storage. For test teardown / a clean shutdown; the
 /// session normally keeps the table for its whole lifetime.
 pub fn deinit() void {
-    if (table) |*t| {
+    const t = &@import("interp.zig").interp.strtab;
+    if (t.initialized) {
         t.dedup.deinit(rt.allocator);
         t.slices.deinit(rt.allocator);
         t.arena.deinit();
-        table = null;
+        t.initialized = false;
     }
 }
 

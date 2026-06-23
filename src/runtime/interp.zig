@@ -23,10 +23,12 @@ const CoreState = @import("core_state.zig").CoreState;
 const IoState = @import("word.zig").IoState;
 const EvalState = @import("reduce.zig").EvalState;
 const Bignum = @import("big.zig").Bignum;
+const StringTable = @import("strtab.zig").StringTable;
 
-/// All interpreter state, owned in one place. (Bootstrap infrastructure —
-/// `allocator`/`gpa`/`io`/`environ` in `runtime_state.zig` — and the interned
-/// `strtab` table remain separate globals for now; folded in a follow-up.)
+/// All interpreter state, owned in one place — including heap's GC/dictionary
+/// scratch (folded into `heap` by Phase 2b) and the interned `strtab` table.
+/// (Only bootstrap infrastructure — `allocator`/`gpa`/`io`/`environ` in
+/// `runtime_state.zig` — stays a separate global, set once at startup.)
 pub const Interp = struct {
     rs: RuntimeState = .{},
     heap: Heap = .{},
@@ -36,6 +38,7 @@ pub const Interp = struct {
     io: IoState = .{},
     eval: EvalState = .{},
     big: Bignum = .{},
+    strtab: StringTable = .{},
 };
 
 /// The process-wide singleton (transitional; becomes an injectable value in
@@ -48,12 +51,12 @@ pub var interp: Interp = .{};
 /// ad-hoc re-init. The owner-module pointers (`lex_state.ls = &interp.lex`, …)
 /// stay valid because `interp` keeps its address; only its value is replaced.
 ///
-/// Resets the eight aggregated state structs. Bootstrap infra
-/// (`allocator`/`io`/`gpa`/`environ`) and the process-wide `strtab` cache are
-/// intentionally *not* reset (the latter is content-addressed, so sharing it is
-/// harmless); heap's still-loose scratch (2b) is re-established by callers'
-/// `setupheap`. Old heap/arena allocations are dropped (fine under the test
-/// allocator); a freeing `deinit` arrives with explicit construction in Phase 5.
+/// Resets all aggregated state — the nine structs including `heap` (with its 2b
+/// scratch) and `strtab` (whose `initialized = false` makes the next access
+/// re-intern from empty). Only the startup bootstrap infra
+/// (`allocator`/`io`/`gpa`/`environ`) is left alone. Old heap/arena allocations
+/// are dropped (fine under the test allocator); a freeing `deinit` arrives with
+/// explicit construction in Phase 5.
 pub fn reset() void {
     interp = .{};
 }
