@@ -58,7 +58,7 @@ library) links against it, so the *honest* C-ABI target is:
 | Track A3 — `export fn` | ✅ 174 → **3** (only the still-extern-referenced bridges remain) |
 | Track A4a — strip gratuitous `callconv` | ✅ `callconv(.c)` 13 → **6** (genuine signal boundary) |
 | Track A4b — recovery redesign | ⬜ Re-scoped — design-bearing (SIGFPE synchronous; reducer unwind; unverifiable by golden) |
-| `Value` union (R4.3/4.4) | ⬜ Deferred — the deep core (Track B2) |
+| `Value` union (R4.3/4.4) | ◐ B2(a) seam started — `word.Value`/`classify`; char boundary migrated (Track B2) |
 | Tracing GC (R5) | ⬜ Planned (Track B3) |
 | String interning (R6) | ✅ Done — nodes hold an interned `StrId` (`strtab.zig`); node-string casts → **0** (Track B1) |
 
@@ -343,6 +343,15 @@ not wait behind Track B's design work.
   * **(a) Re-scope B2** to a typed `Value` only at the `Heap` immediate boundary (char / index / atom
     / ref), eliminating range-based classification at value reads/writes; accept that spine encoding
     stays and reword the DoD accordingly. Medium effort, type-safety win, modest correctness gain.
+    **◐ Chosen and started.** `word.Value` (`imm` / `atom` / `ref`) + `word.classify()` land the seam
+    (with a unit test); the canonical char-immediate boundary is migrated — `heap.get_char`/`is_char`
+    and `lex_bridge`'s string-CONS decode now `switch (classify(x))` instead of chaining
+    `isAtom`/`fitsInByte`/`isLatin1Char`. Behaviour-preserving (golden 44/44 byte-identical).
+    *Follow-up migration (incremental, golden-gated):* the remaining range-test sites — `trans.zig`
+    (`mkindex`/`getarg`-style `isAtom` ×3), `types.zig`, `reduce.zig`'s printer/`out` paths — and a
+    typed `Heap.hd`/`tl` value accessor on top of `classify`. *Reworded DoD: value reads/writes go
+    through `classify`/`Value` (range tests → 0 at migrated sites); spine encoding stays raw (that is
+    option **b**'s job).*
   * **(b) Repivot the "hard core"** to pointer-reversal → an explicit typed spine stack — this is what
     actually dominates raw-`Word` arithmetic and unblocks B3 + A4b. Higher value, comparable risk.
   * **(c) Defer B2**: since boxing already disambiguates char/number, do B3 (tracing GC) or the
