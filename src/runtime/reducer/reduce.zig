@@ -50,6 +50,7 @@ const combinators = @import("combinators.zig");
 const ready = @import("ready.zig");
 const lex_handlers = @import("lex.zig");
 const io_handlers = @import("io.zig");
+const trace = @import("trace.zig");
 const r7_lex = @import("../../parser/lex.zig");
 const r7_reduce = @import("../reduce.zig");
 const big = @import("../big.zig");
@@ -83,6 +84,7 @@ pub fn reduce(e_val: Word) Word {
         }
 
         r7_reduce.cycles += 1; // one reduction step (the perf counter)
+        trace.step(ctx.e); // per-combinator histogram (compiled out when off)
         ctx.action = word.ACT_NONE;
 
         // (2) Dispatch on the head. A bare combinator/operator atom selects a

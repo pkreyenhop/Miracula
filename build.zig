@@ -18,10 +18,16 @@ pub fn build(b: *std.Build) void {
     const vdate = readTrimmed(b, ".vdate");
     const host = readTrimmed(b, ".host");
 
+    // Zero-overhead reduction tracing: off by default, so trace calls compile
+    // away entirely. `zig build -Dreduce-trace` turns on per-combinator firing
+    // counts (emitted to stderr by the reducer's stats dump).
+    const reduce_trace = b.option(bool, "reduce-trace", "Enable reduction tracing (per-combinator counts to stderr)") orelse false;
+
     const version_options = b.addOptions();
     version_options.addOption(i32, "version", parseVersion(version_text));
     version_options.addOption([]const u8, "vdate", vdate);
     version_options.addOption([]const u8, "host", b.fmt("compiled by zig build\n{s}\n", .{host}));
+    version_options.addOption(bool, "reduce_trace", reduce_trace);
 
     // On macOS, libSystem is implicitly linked by the OS linker — no explicit link_libc needed.
     // On Linux (including musl targets), link musl/glibc so setjmp, strcmp, getcwd etc. resolve.

@@ -6,6 +6,7 @@ const main = @import("../main.zig");
 const heap = @import("heap.zig");
 const r7_repl = @import("../driver/repl.zig");
 const r7_reduce = @import("reducer/reduce.zig");
+const reducer_trace = @import("reducer/trace.zig");
 const big = @import("big.zig");
 const lex = @import("../parser/lex.zig");
 const main_clib = @import("main_clib.zig");
@@ -354,6 +355,7 @@ pub fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
 pub fn initclock() void {}
 
 pub fn outstats() void {
+    reducer_trace.dump(); // per-combinator trace (no-op unless -Dreduce-trace)
     if (main.rs.atcount == 0) {
         return;
     }
