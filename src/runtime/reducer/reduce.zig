@@ -497,7 +497,7 @@ pub inline fn rewrite_to_match_result(expr: *Word, left: Word, right: Word, succ
 
 pub inline fn rewrite_to_int_match_result(expr: *Word, literal: Word, value: Word, success_value: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (!is_int(value) or big.bigcmp(literal, value) != 0) word.FAIL else success_value;
+    const val = if (!is_int(value) or big.cmp(literal, value) != 0) word.FAIL else success_value;
     tl_set(expr.*, val);
     expr.* = val;
 }
@@ -580,7 +580,7 @@ pub fn getStdin() ?*word.FILE {
 
 pub inline fn force_dbl(x: Word) f64 {
     if (is_int(x)) {
-        return big.bigtodbl(x);
+        return big.toFloat(x);
     } else {
         return heap.get_dbl(x);
     }
@@ -588,7 +588,7 @@ pub inline fn force_dbl(x: Word) f64 {
 
 pub inline fn coerce_dbl(x: Word) Word {
     if (is_double(x)) return x;
-    return heap.sto_dbl(big.bigtodbl(x));
+    return heap.sto_dbl(big.toFloat(x));
 }
 
 pub inline fn rewrite_to_compare_eq(expr: *Word, left: Word, right: Word) void {

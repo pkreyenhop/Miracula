@@ -87,7 +87,7 @@ inline fn lh(x: Word) Word {
 
 inline fn force_dbl(x: Word) f64 {
     if (getTag(x) == word.INT) {
-        return big.bigtodbl(x);
+        return big.toFloat(x);
     } else {
         return heap.get_dbl(x);
     }
@@ -448,9 +448,9 @@ pub fn numplus(x: Word, y: Word) Word {
         return heap.sto_dbl(heap.get_dbl(x) + force_dbl(y));
     }
     if (getTag(y) == word.DOUBLE) {
-        return heap.sto_dbl(big.bigtodbl(x) + heap.get_dbl(y));
+        return heap.sto_dbl(big.toFloat(x) + heap.get_dbl(y));
     }
-    return big.bigplus(x, y);
+    return big.add(x, y);
 }
 
 pub fn g_residue(toks2: Word) Word {
@@ -506,7 +506,7 @@ pub fn lexfail(x_val: Word) void {
 
 pub fn lexstate(x: Word) Word {
     const val = h(h(x));
-    return cons(big.sto_int(val >> 8), stosmallint(val & 255));
+    return cons(big.fromInt(val >> 8), stosmallint(val & 255));
 }
 
 pub fn piperrmess(pid: Word) Word {
@@ -524,14 +524,14 @@ pub fn compare(arg_a: Word, arg_b: Word) c_int {
                 if (tag_b == word.DOUBLE) {
                     return fsign(heap.get_dbl(a) - heap.get_dbl(b));
                 } else {
-                    return fsign(heap.get_dbl(a) - big.bigtodbl(b));
+                    return fsign(heap.get_dbl(a) - big.toFloat(b));
                 }
             },
             word.INT => {
                 if (tag_b == word.INT) {
-                    return big.bigcmp(a, b);
+                    return big.cmp(a, b);
                 } else {
-                    return fsign(big.bigtodbl(a) - heap.get_dbl(b));
+                    return fsign(big.toFloat(a) - heap.get_dbl(b));
                 }
             },
             word.UNICODE => {

@@ -20,7 +20,7 @@ const ls = lex_state.ls;
 const setupheap = heap.setupheap;
 const tsetup = r7_types.tsetup;
 const reset_pns = r7_lex.reset_pns;
-const bigsetup = r7_big.bigsetup;
+const bigsetup = r7_big.setup;
 const reset_lex = r7_lex.reset_lex;
 // Token names for out2() — replaces y.tab.c's yysterm[].
 const yysterm_data = [_]?[*:0]const u8{

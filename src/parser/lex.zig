@@ -35,9 +35,9 @@ const True: Word = CMBASE + 137;
 
 const make = heap.make;
 const mallocPanic = heap.mallocPanic;
-const bigscan = r7_big.bigscan;
-const bigxscan = r7_big.bigxscan;
-const bigoscan = r7_big.bigoscan;
+const bigscan = r7_big.scanDecimal;
+const bigxscan = r7_big.scanHex;
+const bigoscan = r7_big.scanOctal;
 const sto_dbl = heap.sto_dbl;
 const sto_id = heap.sto_id;
 const sto_char = heap.sto_char;

@@ -851,7 +851,7 @@ pub fn geterrlin(t_ptr: [*:0]const u8) Word {
     return el;
 }
 
-const bigtostr = r7_big.bigtostr;
+const bigtostr = r7_big.toDecimalList;
 const SIGNBIT = 0x10000000;
 const MAXDIGIT = 0x7fff;
 

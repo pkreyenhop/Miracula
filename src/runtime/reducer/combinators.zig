@@ -403,7 +403,7 @@ pub fn handleATLEAST(ctx: *ReductionCtx) void {
     var lastarg = reduce.tl_get(ctx.e);
     lastarg = reduce.reduce(lastarg);
     if (reduce.is_int(lastarg)) {
-        const hold = big.bigsub(lastarg, arg1);
+        const hold = big.sub(lastarg, arg1);
         if (reduce.poz(hold)) {
             reduce.hd_set(ctx.e, arg2);
             reduce.tl_set(ctx.e, hold);
@@ -640,7 +640,7 @@ pub fn handleLENGTH(ctx: *ReductionCtx) void {
         lastarg = reduce.tl_get(lastarg);
         n += 1;
     }
-    reduce.simpl(ctx, big.sto_int(n));
+    reduce.simpl(ctx, big.fromInt(n));
     ctx.action = word.ACT_DONE;
 }
 
@@ -659,7 +659,7 @@ pub fn handleDROP(ctx: *ReductionCtx) void {
     if (!reduce.is_int(arg1)) {
         reduce_rt.int_error("drop");
     }
-    var n = big.get_int(arg1);
+    var n = big.toInt(arg1);
     var lastarg = reduce.tl_get(ctx.e);
     while (n > 0) : (n -= 1) {
         lastarg = reduce.reduce(lastarg);
@@ -694,7 +694,7 @@ pub fn handleSUBSCRIPT(ctx: *ReductionCtx) void {
     if (reduce.is_atom(arg1)) {
         indx = arg1;
     } else if (reduce.is_int(arg1)) {
-        indx = big.get_int(arg1);
+        indx = big.toInt(arg1);
     } else {
         reduce_rt.int_error("!");
     }
