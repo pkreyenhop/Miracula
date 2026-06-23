@@ -212,6 +212,7 @@ comptime {
     _ = @import("driver/commands.zig");
     _ = @import("runtime/heap.zig");
     _ = @import("runtime/strtab.zig");
+    _ = @import("runtime/reducer/reduce_test.zig");
     _ = @import("runtime/errors.zig");
     _ = @import("runtime/reduce.zig");
     _ = @import("runtime/combinator.zig");
