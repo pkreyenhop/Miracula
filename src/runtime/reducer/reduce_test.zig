@@ -22,10 +22,11 @@ const ap2 = reduce.ap2;
 
 // Phase 4 (shared-state plan): start from a pristine `Interp` via `interp.reset()`,
 // then a minimal heap + bignum init — enough to build cells and do arithmetic.
-// (`reset()` isolates the *aggregated* state structs; the full `mira_setup()`
-// path still bleeds through the not-yet-aggregated residuals — heap's loose 2b
-// scratch and the `strtab` cache — so we keep the lightweight setup here. See
-// the "reset clears the aggregated state" test below for the isolation proof.)
+// `reset()` now covers nearly all interpreter state (the 9 structs incl. heap's
+// 2b scratch + strtab + the lexer's session globals), but driving the full
+// `mira_setup()` through here + resetting the parser snapshot tests still trips a
+// residual ordering issue in the lexer's identifier path (a focused follow-up).
+// The lightweight setup keeps this file isolated regardless.
 var initialized = false;
 fn ensureSetup() void {
     if (initialized) return;

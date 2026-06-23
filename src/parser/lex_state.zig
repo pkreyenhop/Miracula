@@ -39,6 +39,26 @@ pub const LexState = struct {
     ARGC: c_int = 0,
     ARGV: [*]?[*:0]u8 = undefined,
     yylval: Word = NIL,
+
+    // Lexer session state absorbed from `lex.zig`'s module globals (shared-state
+    // plan) so it lives in `interp.lex` and `interp.reset()` covers it — needed
+    // for clean test isolation (e.g. the `prefix`/`inprelude` machinery).
+    lverge: Word = 0,
+    prefixbase: ?[*]u8 = null,
+    prefixlimit: Word = 1024,
+    prefix: Word = 0,
+    lastline: Word = 0,
+    lastc: Word = 0,
+    litmain: Word = 0,
+    literate: Word = 0,
+    brct: Word = 0,
+    rawch: i32 = 0,
+    errch: i32 = 0,
+    inprelude: bool = true,
+    sl: Word = 100,
+    pn_lim: Word = 200,
+    atnl: Word = 1,
+    rdline_linebuf: [1024]u8 = std.mem.zeroes([1024]u8),
 };
 
 pub const ls = &@import("../runtime/interp.zig").interp.lex;

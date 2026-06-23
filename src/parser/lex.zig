@@ -32,21 +32,6 @@ const True: Word = CMBASE + 137;
 
 
 
-var lverge: Word = 0;
-var prefixbase: ?[*]u8 = null;
-var prefixlimit: Word = 1024;
-var prefix: Word = 0;
-var lastline: Word = 0;
-var lastc: Word = 0;
-var litmain: Word = 0;
-var literate: Word = 0;
-var brct: Word = 0;
-var rawch: i32 = 0;
-var errch: i32 = 0;
-var inprelude: bool = true;
-var sl: Word = 100;
-var pn_lim: Word = 200;
-var atnl: Word = 1;
 
 const make = heap.make;
 const mallocPanic = heap.mallocPanic;
@@ -201,13 +186,13 @@ pub fn setupdic() void {
         const dict_slice = rt.allocator.alloc(u8, @intCast(space)) catch mallocPanic("dictionary");
         ls.dic = dict_slice.ptr;
 
-        const base_slice = rt.allocator.alloc(u8, @intCast(prefixlimit)) catch mallocPanic("prefixbase");
-        prefixbase = base_slice.ptr;
+        const base_slice = rt.allocator.alloc(u8, @intCast(ls.prefixlimit)) catch mallocPanic("ls.prefixbase");
+        ls.prefixbase = base_slice.ptr;
     }
     ls.dicp = @ptrCast(ls.dic.?);
     ls.dicq = @ptrCast(ls.dic.?);
-    prefixbase.?[0] = 0;
-    prefix = 0;
+    ls.prefixbase.?[0] = 0;
+    ls.prefix = 0;
     @memset(&ls.namebucket, 0);
 }
 
@@ -345,17 +330,17 @@ fn getch() c_int {
         return main_clib.EOF;
     }
     var ch = main_clib.getc(main.rs.s_in);
-    if (ch == main_clib.EOF and atnl == 0 and t(ls.fileq) == NIL) {
-        atnl = 1;
+    if (ch == main_clib.EOF and ls.atnl == 0 and t(ls.fileq) == NIL) {
+        ls.atnl = 1;
         return '\n';
     }
-    if (atnl != 0) {
+    if (ls.atnl != 0) {
         if ((ls.line_no == 0 and core_state.s.commandmode == 0) or (main.rs.magic and ls.line_no == 1 and ls.litstack == NIL)) {
             const is_lit = (ch == '>') or litname(get_fil(heap.heap.current_file));
-            literate = if (is_lit) 1 else 0;
-            litmain = literate;
+            ls.literate = if (is_lit) 1 else 0;
+            ls.litmain = ls.literate;
         }
-        if (literate != 0) {
+        if (ls.literate != 0) {
             var i: Word = 0;
             while (ch != main_clib.EOF and ch != '>') {
                 _ = main_clib.ungetc(ch, main.rs.s_in);
@@ -366,7 +351,7 @@ fn getch() c_int {
                 }
                 i += 1;
                 if (main.rs.echoing != 0) {
-                    spaces(lverge);
+                    spaces(ls.lverge);
                     _ = main_clib.fputs(ls.dicp, getStdout());
                 }
                 ch = main_clib.getc(main.rs.s_in);
@@ -377,35 +362,35 @@ fn getch() c_int {
             if (ch == '>') {
                 if (main.rs.echoing != 0) {
                     _ = word.putchar(ch);
-                    spaces(lverge);
+                    spaces(ls.lverge);
                 }
                 ch = main_clib.getc(main.rs.s_in);
             }
         }
-        atnl = 0;
-        ls.col = lverge + literate;
+        ls.atnl = 0;
+        ls.col = ls.lverge + ls.literate;
         if (core_state.s.commandmode == 0 and ch != main_clib.EOF) {
             ls.line_no += 1;
         }
     }
     if (main.rs.echoing != 0 and ch != main_clib.EOF) {
         _ = word.putchar(ch);
-        if (ch == '\n' and literate == 0) {
-            if (litmain != 0) {
+        if (ch == '\n' and ls.literate == 0) {
+            if (ls.litmain != 0) {
                 _ = word.putchar('>');
-                spaces(lverge);
+                spaces(ls.lverge);
             } else {
-                spaces(lverge);
+                spaces(ls.lverge);
             }
         }
     }
     if (ch == '\t') {
-        ls.col = (@divTrunc(ls.col - lverge, 8) + 1) * 8 + lverge;
+        ls.col = (@divTrunc(ls.col - ls.lverge, 8) + 1) * 8 + ls.lverge;
     } else {
         ls.col += 1;
     }
     if (ch == '\n') {
-        atnl = 1;
+        ls.atnl = 1;
     }
     return ch;
 }
@@ -427,7 +412,7 @@ const UMAX: Word = 0x10ffff;
 
 fn getlitch() Word {
     const ch: Word = ls.c;
-    rawch = @intCast(ch);
+    ls.rawch = @intCast(ch);
     if (ch == '\n') {
         return ch; // always an error
     }
@@ -516,33 +501,32 @@ fn getlitch() Word {
             if (escaped_ch == '&') {
                 return -7;
             }
-            errch = if (escaped_ch <= 255) @intCast(escaped_ch) else '?';
+            ls.errch = if (escaped_ch <= 255) @intCast(escaped_ch) else '?';
             return -6;
         },
     }
 }
 
-var rdline_linebuf: [1024]u8 = std.mem.zeroes([1024]u8);
 
 pub fn rdline() ?[*:0]u8 {
-    var p: [*]u8 = &rdline_linebuf;
+    var p: [*]u8 = &ls.rdline_linebuf;
     var ch = main_clib.getchar();
     var expansion: Word = 0;
     while (ch == ' ' or ch == '\t') {
         ch = main_clib.getchar();
     }
-    if (ch == '\n' or (ch == '!' and rdline_linebuf[0] == 0)) {
-        if (rdline_linebuf[0] != 0) {
-            word.print("!{s}", .{@as([*:0]const u8, @ptrCast(&rdline_linebuf))});
+    if (ch == '\n' or (ch == '!' and ls.rdline_linebuf[0] == 0)) {
+        if (ls.rdline_linebuf[0] != 0) {
+            word.print("!{s}", .{@as([*:0]const u8, @ptrCast(&ls.rdline_linebuf))});
         }
         while (ch != '\n' and ch != main_clib.EOF) {
             ch = main_clib.getchar();
         }
-        return @ptrCast(&rdline_linebuf);
+        return @ptrCast(&ls.rdline_linebuf);
     }
     if (ch == '!') {
         expansion = 1;
-        p = @ptrCast(&rdline_linebuf[word.strlen(&rdline_linebuf) - 1]); // p now points at old '\n'
+        p = @ptrCast(&ls.rdline_linebuf[word.strlen(&ls.rdline_linebuf) - 1]); // p now points at old '\n'
     } else {
         if (getStdin()) |stdin_file| {
             _ = main_clib.ungetc(ch, stdin_file);
@@ -555,10 +539,10 @@ pub fn rdline() ?[*:0]u8 {
         if (ch == '\n' or ch == main_clib.EOF) {
             break;
         }
-        const offset = @as(usize, @intFromPtr(p)) - @as(usize, @intFromPtr(&rdline_linebuf));
+        const offset = @as(usize, @intFromPtr(p)) - @as(usize, @intFromPtr(&ls.rdline_linebuf));
         if (offset >= 1024) {
             p[0] = 0;
-            word.printErr("sorry, !command too long (limit={} chars): {s}...\n", .{@as(c_int, 1024), @as([*:0]const u8, @ptrCast(&rdline_linebuf))});
+            word.printErr("sorry, !command too long (limit={} chars): {s}...\n", .{@as(c_int, 1024), @as([*:0]const u8, @ptrCast(&ls.rdline_linebuf))});
             while (true) {
                 ch = main_clib.getchar();
                 if (ch == '\n' or ch == main_clib.EOF) {
@@ -568,22 +552,22 @@ pub fn rdline() ?[*:0]u8 {
             return null;
         }
         if ((p - 1)[0] == '%') {
-            if (@intFromPtr(p) > @intFromPtr(&rdline_linebuf[1]) and (p - 2)[0] == '\\') {
+            if (@intFromPtr(p) > @intFromPtr(&ls.rdline_linebuf[1]) and (p - 2)[0] == '\\') {
                 (p - 2)[0] = '%';
                 p -= 1;
             } else {
-                const remaining = 1024 - (@as(usize, @intFromPtr(p - 1)) - @as(usize, @intFromPtr(&rdline_linebuf)));
+                const remaining = 1024 - (@as(usize, @intFromPtr(p - 1)) - @as(usize, @intFromPtr(&ls.rdline_linebuf)));
                 _ = word.strncpy(p - 1, main.rs.current_script.?, remaining);
-                p = @ptrCast(&rdline_linebuf[word.strlen(&rdline_linebuf)]);
+                p = @ptrCast(&ls.rdline_linebuf[word.strlen(&ls.rdline_linebuf)]);
                 expansion = 1;
             }
         }
     }
     p[0] = 0;
     if (expansion != 0) {
-        word.print("!{s}", .{@as([*:0]const u8, @ptrCast(&rdline_linebuf))});
+        word.print("!{s}", .{@as([*:0]const u8, @ptrCast(&ls.rdline_linebuf))});
     }
-    return @ptrCast(&rdline_linebuf);
+    return @ptrCast(&ls.rdline_linebuf);
 }
 
 pub fn setlmargin() void {
@@ -612,7 +596,7 @@ fn errclass(val: Word, string_flag: Word) void {
     } else if (val == -5) {
         word.print("unrecognised character in {s}(main.rs.UTF8 error)\n", .{s});
     } else if (val == -6) {
-        word.print("unrecognised escape \\{c} in {s}\n", .{@as(u8, @intCast(errch)), s});
+        word.print("unrecognised escape \\{c} in {s}\n", .{@as(u8, @intCast(ls.errch)), s});
     } else if (val == -7) {
         word.print("illegal use of \\& in char const\n", .{});
     } else {
@@ -695,7 +679,7 @@ pub fn yylex() c_int {
             word.printErr("{s}impossible event while reading char const ('\\{}')\n", .{prefix_str, ls.yylval});
             acterror();
         }
-        if (rawch == '\n' or ls.c != '\'') {
+        if (ls.rawch == '\n' or ls.c != '\'') {
             syntax("improperly terminated char const\n");
         } else {
             ls.c = getch();
@@ -723,10 +707,10 @@ pub fn yylex() c_int {
     }
     if (ls.inbnf == 2) {
         if (ls.c == '[') {
-            brct += 1;
+            ls.brct += 1;
         } else if (ls.c == ']') {
-            brct -= 1;
-        } else if (ls.c == '|' and brct == 0) {
+            ls.brct -= 1;
+        } else if (ls.c == '|' and ls.brct == 0) {
             return word.OFFSIDE;
         }
     }
@@ -743,9 +727,9 @@ pub fn yylex() c_int {
         ls.fileq = t(ls.fileq);
         ls.insertdepth -= 1;
         if (ls.fileq != NIL and h(ls.echostack) != 0) {
-            if (literate != 0) {
+            if (ls.literate != 0) {
                 _ = word.putchar('>');
-                spaces(lverge);
+                spaces(ls.lverge);
             }
             word.print("<end of insert>", .{});
         }
@@ -755,31 +739,31 @@ pub fn yylex() c_int {
             ls.c = 0;
             ls.col = 0;
             ls.lmargin = 0;
-            lverge = 0;
-            atnl = 1;
+            ls.lverge = 0;
+            ls.atnl = 1;
             main.rs.echoing = main.rs.verbosity & main.rs.listing;
-            lastline = ls.line_no;
+            ls.lastline = ls.line_no;
             ls.line_no = 0;
-            literate = 0;
-            litmain = 0;
+            ls.literate = 0;
+            ls.litmain = 0;
             return word.END;
         }
         heap.heap.current_file = t(h(ls.fileq));
-        prefix = h(ls.prefixstack);
+        ls.prefix = h(ls.prefixstack);
         ls.prefixstack = t(ls.prefixstack);
         main.rs.echoing = h(ls.echostack);
         ls.echostack = t(ls.echostack);
-        lverge = h(ls.vergstack);
+        ls.lverge = h(ls.vergstack);
         ls.vergstack = t(ls.vergstack);
-        literate = h(ls.litstack);
+        ls.literate = h(ls.litstack);
         ls.litstack = t(ls.litstack);
         ls.line_no = h(ls.linostack);
         ls.linostack = t(ls.linostack);
         return yylex();
     }
-    lastc = ls.c;
+    ls.lastc = ls.c;
     ls.c = getch();
-    switch (lastc) {
+    switch (ls.lastc) {
         '_' => {
             if (ls.c == ' ') {
                 ls.c = getch();
@@ -803,17 +787,17 @@ pub fn yylex() c_int {
                 syntax("illegal use of underlining\n");
                 return '_';
             }
-            return @intCast(lastc);
+            return @intCast(ls.lastc);
         },
         '-' => {
             if (tryCh('>', word.ARROW)) |ret| return ret;
             if (tryCh('-', word.MINUSMINUS)) |ret| return ret;
-            return @intCast(lastc);
+            return @intCast(ls.lastc);
         },
         '<' => {
             if (tryCh('-', word.LEFTARROW)) |ret| return ret;
             if (tryCh('=', word.LE)) |ret| return ret;
-            return @intCast(lastc);
+            return @intCast(ls.lastc);
         },
         '=' => {
             if (ls.c == '>') {
@@ -821,30 +805,30 @@ pub fn yylex() c_int {
                 return '=';
             }
             if (tryCh('=', word.EQEQ)) |ret| return ret;
-            return @intCast(lastc);
+            return @intCast(ls.lastc);
         },
         '+' => {
             if (tryCh('+', word.PLUSPLUS)) |ret| return ret;
-            return @intCast(lastc);
+            return @intCast(ls.lastc);
         },
         '.' => {
             if (ls.c == '.') {
                 ls.c = getch();
                 return word.DOTDOT;
             }
-            return @intCast(lastc);
+            return @intCast(ls.lastc);
         },
         '\\' => {
             if (tryCh('/', word.VEL)) |ret| return ret;
-            return @intCast(lastc);
+            return @intCast(ls.lastc);
         },
         '>' => {
             if (tryCh('=', word.GE)) |ret| return ret;
-            return @intCast(lastc);
+            return @intCast(ls.lastc);
         },
         '~' => {
             if (tryCh('=', word.NE)) |ret| return ret;
-            return @intCast(lastc);
+            return @intCast(ls.lastc);
         },
         '&' => {
             if (ls.c == '>') {
@@ -858,18 +842,18 @@ pub fn yylex() c_int {
                 ls.c = ' ';
                 return word.TO;
             }
-            return @intCast(lastc);
+            return @intCast(ls.lastc);
         },
         '/' => {
             if (tryCh('/', word.DIAG)) |ret| return ret;
-            return @intCast(lastc);
+            return @intCast(ls.lastc);
         },
         '*' => {
             if (ls.c == '*') {
                 ls.c = getch();
                 return @intCast(collectstars());
             }
-            return @intCast(lastc);
+            return @intCast(ls.lastc);
         },
         ':' => {
             if (ls.c == ':') {
@@ -880,7 +864,7 @@ pub fn yylex() c_int {
                 }
                 return word.COLONCOLON;
             }
-            return @intCast(lastc);
+            return @intCast(ls.lastc);
         },
         '$' => {
             if (word.isalpha(ls.c)) {
@@ -967,9 +951,9 @@ pub fn yylex() c_int {
             if (ls.c == '0') {
                 syntax("illegal symbol $0\n");
             }
-            return @intCast(lastc);
+            return @intCast(ls.lastc);
         },
-        else => return @intCast(lastc),
+        else => return @intCast(ls.lastc),
     }
 }
 
@@ -1095,8 +1079,8 @@ pub fn pathname() ?[*:0]u8 {
             ls.dicp = hold + word.strlen(hold);
         } else {
             _ = word.strcpy(&main.rs.linebuf[0], hold);
-            _ = word.strcpy(hold, prefixbase.? + @as(usize, @intCast(prefix)));
-            ls.dicp = hold + word.strlen(prefixbase.? + @as(usize, @intCast(prefix)));
+            _ = word.strcpy(hold, ls.prefixbase.? + @as(usize, @intCast(ls.prefix)));
+            ls.dicp = hold + word.strlen(ls.prefixbase.? + @as(usize, @intCast(ls.prefix)));
             _ = word.strcpy(ls.dicp, &main.rs.linebuf[0]);
             ls.dicp += word.strlen(ls.dicp);
         }
@@ -1106,8 +1090,8 @@ pub fn pathname() ?[*:0]u8 {
         kollect(okpath);
     } else {
         const hold = ls.dicp;
-        _ = word.strcpy(ls.dicp, prefixbase.? + @as(usize, @intCast(prefix)));
-        ls.dicp += word.strlen(prefixbase.? + @as(usize, @intCast(prefix)));
+        _ = word.strcpy(ls.dicp, ls.prefixbase.? + @as(usize, @intCast(ls.prefix)));
+        ls.dicp += word.strlen(ls.prefixbase.? + @as(usize, @intCast(ls.prefix)));
         kollect(okpath);
         ls.dicp = hold;
     }
@@ -1119,21 +1103,21 @@ pub fn pathname() ?[*:0]u8 {
 }
 
 pub fn adjust_prefix(f: [*:0]const u8) void {
-    ls.prefixstack = cons(prefix, ls.prefixstack);
-    prefix += @as(Word, @intCast(word.strlen(prefixbase.? + @as(usize, @intCast(prefix))))) + 1;
-    while (@as(usize, @intCast(prefix)) + word.strlen(f) >= @as(usize, @intCast(prefixlimit))) {
-        const old_limit = prefixlimit;
-        prefixlimit += 1024;
-        const old_slice = prefixbase.?[0..@intCast(old_limit)];
-        const new_slice = rt.allocator.realloc(old_slice, @intCast(prefixlimit)) catch mallocPanic("prefixbase");
-        prefixbase = new_slice.ptr;
+    ls.prefixstack = cons(ls.prefix, ls.prefixstack);
+    ls.prefix += @as(Word, @intCast(word.strlen(ls.prefixbase.? + @as(usize, @intCast(ls.prefix))))) + 1;
+    while (@as(usize, @intCast(ls.prefix)) + word.strlen(f) >= @as(usize, @intCast(ls.prefixlimit))) {
+        const old_limit = ls.prefixlimit;
+        ls.prefixlimit += 1024;
+        const old_slice = ls.prefixbase.?[0..@intCast(old_limit)];
+        const new_slice = rt.allocator.realloc(old_slice, @intCast(ls.prefixlimit)) catch mallocPanic("ls.prefixbase");
+        ls.prefixbase = new_slice.ptr;
     }
-    _ = word.strcpy(prefixbase.? + @as(usize, @intCast(prefix)), f);
-    const g = word.rindex(prefixbase.? + @as(usize, @intCast(prefix)), '/');
+    _ = word.strcpy(ls.prefixbase.? + @as(usize, @intCast(ls.prefix)), f);
+    const g = word.rindex(ls.prefixbase.? + @as(usize, @intCast(ls.prefix)), '/');
     if (g) |gp| {
         gp[1] = 0;
     } else {
-        (prefixbase.? + @as(usize, @intCast(prefix)))[0] = 0;
+        (ls.prefixbase.? + @as(usize, @intCast(ls.prefix)))[0] = 0;
     }
 }
 
@@ -1311,25 +1295,25 @@ pub fn directive() Word {
                     syntax("bad pathname after %insert\n");
                 } else if (ls.insertdepth < 12 and openfile(f.?) != 0) {
                     adjust_prefix(f.?);
-                    ls.vergstack = cons(lverge, ls.vergstack);
+                    ls.vergstack = cons(ls.lverge, ls.vergstack);
                     ls.echostack = cons(main.rs.echoing, ls.echostack);
-                    ls.litstack = cons(literate, ls.litstack);
+                    ls.litstack = cons(ls.literate, ls.litstack);
                     ls.linostack = make(STRCONS, ls.line_no, ls.linostack);
                     ls.line_no = 0;
-                    atnl = 1;
+                    ls.atnl = 1;
                     _ = keep(ls.dicp);
                     heap.heap.current_file = make_fil(f.?, fm_time(f.?), 0, NIL);
                     heap.heap.files = append1(heap.heap.files, cons(heap.heap.current_file, NIL));
                     tp(h(ls.fileq)).* = heap.heap.current_file;
                     main.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
                     const is_lit = (peekch() == '>') or litname(f.?);
-                    literate = if (is_lit) 1 else 0;
+                    ls.literate = if (is_lit) 1 else 0;
                     ls.col = holdcol;
-                    lverge = holdcol;
+                    ls.lverge = holdcol;
                     if (main.rs.echoing != 0) {
                         _ = word.putchar('\n');
-                        if (literate == 0) {
-                            if (litmain != 0) {
+                        if (ls.literate == 0) {
+                            if (ls.litmain != 0) {
                                 _ = word.putchar('>');
                                 spaces(holdcol);
                             } else {
@@ -1604,7 +1588,7 @@ pub fn name() Word {
 
 pub fn make_id(n: [*:0]const u8) Word {
     const h_idx = @as(usize, @intCast(hash(n)));
-    const x = sto_id(if (inprelude) keep(@constCast(n)) else n);
+    const x = sto_id(if (ls.inprelude) keep(@constCast(n)) else n);
     ls.namebucket[h_idx] = cons(x, ls.namebucket[h_idx]);
     return x;
 }
@@ -1621,17 +1605,17 @@ pub fn findid(n: [*:0]const u8) Word {
 pub fn reset_pns() void {
     ls.nextpn = 0;
     if (ls.pnvec == null) {
-        const slice = rt.allocator.alloc(Word, @intCast(pn_lim)) catch mallocPanic("ls.pnvec");
+        const slice = rt.allocator.alloc(Word, @intCast(ls.pn_lim)) catch mallocPanic("ls.pnvec");
         ls.pnvec = slice.ptr;
     }
 }
 
 pub fn make_pn(val: Word) Word {
-    if (ls.nextpn == pn_lim) {
-        const old_lim = pn_lim;
-        pn_lim += 400;
+    if (ls.nextpn == ls.pn_lim) {
+        const old_lim = ls.pn_lim;
+        ls.pn_lim += 400;
         const old_slice = ls.pnvec.?[0..@intCast(old_lim)];
-        const slice = rt.allocator.realloc(old_slice, @intCast(pn_lim)) catch mallocPanic("ls.pnvec");
+        const slice = rt.allocator.realloc(old_slice, @intCast(ls.pn_lim)) catch mallocPanic("ls.pnvec");
         ls.pnvec = slice.ptr;
     }
     ls.pnvec.?[@intCast(ls.nextpn)] = make(STRCONS, ls.nextpn, val);
@@ -1641,13 +1625,13 @@ pub fn make_pn(val: Word) Word {
 }
 
 pub fn sto_pn(n: Word) Word {
-    if (n >= pn_lim) {
-        const old_lim = pn_lim;
-        while (pn_lim <= n) {
-            pn_lim += 400;
+    if (n >= ls.pn_lim) {
+        const old_lim = ls.pn_lim;
+        while (ls.pn_lim <= n) {
+            ls.pn_lim += 400;
         }
         const old_slice = ls.pnvec.?[0..@intCast(old_lim)];
-        const slice = rt.allocator.realloc(old_slice, @intCast(pn_lim)) catch mallocPanic("ls.pnvec");
+        const slice = rt.allocator.realloc(old_slice, @intCast(ls.pn_lim)) catch mallocPanic("ls.pnvec");
         ls.pnvec = slice.ptr;
     }
     while (ls.nextpn <= n) {
@@ -1667,7 +1651,7 @@ pub fn mkprivate(x_input: Word) void {
         hp(strcons).* = strtab.privatize(h(strcons));
         x = t(x);
     }
-    inprelude = false;
+    ls.inprelude = false;
 }
 
 pub fn string() void {
@@ -1678,7 +1662,7 @@ pub fn string() void {
     ch = getlitch();
     ls.yylval = cons(NIL, NIL);
     p = ls.yylval;
-    while (ch != main_clib.EOF and rawch != '"' and rawch != '\n') {
+    while (ch != main_clib.EOF and ls.rawch != '"' and ls.rawch != '\n') {
         if (ch == -7) {
             ch = getlitch();
         } else if (ch < 0) {
@@ -1694,7 +1678,7 @@ pub fn string() void {
     if (badch != 0) {
         errclass(badch, 1);
     }
-    if (rawch == '\n') {
+    if (ls.rawch == '\n') {
         syntax("non-escaped newline encountered inside string quotes\n");
     } else if (ch == main_clib.EOF) {
         if (main.rs.echoing != 0) {
@@ -1702,10 +1686,10 @@ pub fn string() void {
         }
         word.print("syntax error: script ends inside unclosed string quotes - \n", .{});
         word.print("    \"", .{});
-        while (ls.yylval != NIL and sl > 0) {
+        while (ls.yylval != NIL and ls.sl > 0) {
             _ = word.putchar(@intCast(h(ls.yylval)));
             ls.yylval = t(ls.yylval);
-            sl -= 1;
+            ls.sl -= 1;
         }
         word.print("...\"\n", .{});
         acterror();
@@ -1725,14 +1709,14 @@ pub fn charclass() c_int {
     ch = getlitch();
     ls.yylval = cons(NIL, NIL);
     p = ls.yylval;
-    while (ch != main_clib.EOF and rawch != '`' and rawch != '\n') {
+    while (ch != main_clib.EOF and ls.rawch != '`' and ls.rawch != '\n') {
         if (ch == -7) {
             ch = getlitch();
         } else if (ch < 0) {
             badch = ch;
             break;
         } else {
-            if (rawch == '-' and h(p) != NIL and h(p) != word.DOTDOT) {
+            if (ls.rawch == '-' and h(p) != NIL and h(p) != word.DOTDOT) {
                 ch = word.DOTDOT;
             }
             tp(p).* = cons(ch, NIL);
@@ -1758,7 +1742,7 @@ pub fn charclass() c_int {
     if (badch != 0) {
         errclass(badch, 2);
     }
-    if (rawch == '\n') {
+    if (ls.rawch == '\n') {
         syntax("non-escaped newline encountered in char class\n");
     } else if (ch == main_clib.EOF) {
         if (main.rs.echoing != 0) {
@@ -1766,10 +1750,10 @@ pub fn charclass() c_int {
         }
         word.print("syntax error: script ends inside unclosed char class brackets - \n", .{});
         word.print("    [", .{});
-        while (ls.yylval != NIL and sl > 0) {
+        while (ls.yylval != NIL and ls.sl > 0) {
             _ = word.putchar(@intCast(h(ls.yylval)));
             ls.yylval = t(ls.yylval);
-            sl -= 1;
+            ls.sl -= 1;
         }
         word.print("...]\n", .{});
         acterror();
@@ -1795,7 +1779,7 @@ pub fn reset_lex() void {
         }
         word.printErr("{s}file \"{s}\"\ncompilation abandoned\n", .{if (is_current) @as([*:0]const u8, "") else "%insert ", err_script});
         if (is_current) {
-            core_state.s.errline = if (t(core_state.s.errs) == 0) lastline else t(core_state.s.errs);
+            core_state.s.errline = if (t(core_state.s.errs) == 0) ls.lastline else t(core_state.s.errs);
             core_state.s.errs = 0;
         } else {
             if (ls.linostack != NIL) {
@@ -1804,7 +1788,7 @@ pub fn reset_lex() void {
                 }
                 core_state.s.errline = h(ls.linostack);
             } else {
-                core_state.s.errline = lastline;
+                core_state.s.errline = ls.lastline;
             }
         }
     }
@@ -1835,19 +1819,19 @@ pub fn reset_state() void {
     ls.linostack = NIL;
     ls.vergstack = NIL;
     ls.margstack = NIL;
-    prefix = 0;
-    prefixbase.?[0] = 0;
+    ls.prefix = 0;
+    ls.prefixbase.?[0] = 0;
     main.rs.echoing = main.rs.verbosity & main.rs.listing;
-    brct = 0;
+    ls.brct = 0;
     ls.inbnf = 0;
     ls.sreds = 0;
     ls.inlex = 0;
     ls.inexplist = 0;
     core_state.s.commandmode = 0;
-    lverge = 0;
+    ls.lverge = 0;
     ls.col = 0;
     ls.lmargin = 0;
-    atnl = 1;
+    ls.atnl = 1;
     main.cs.rv_script = 0;
     main.cs.algshfns = NIL;
     main.cs.newtyps = NIL;
@@ -1856,8 +1840,8 @@ pub fn reset_state() void {
     main.cs.TABSTRS = NIL;
     ls.c = ' ';
     ls.line_no = 0;
-    litmain = 0;
-    literate = 0;
+    ls.litmain = 0;
+    ls.literate = 0;
     core_state.s.errs = 0;
     core_state.s.errline = 0;
 }
