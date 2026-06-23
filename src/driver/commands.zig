@@ -1,5 +1,6 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
+const strtab = @import("../runtime/strtab.zig");
 const main = @import("../main.zig");
 const abi = @import("../runtime/main_clib.zig");
 
@@ -239,7 +240,7 @@ pub fn command() void {
                         main.filecp(mf.?, t_val.?);
                     }
                 }
-                const err_line_num: c_int = if (word.strcmp(t_val.?, main.rs.current_script.?) == 0) @intCast(core_state.errline) else if (core_state.errs != 0 and word.strcmp(t_val.?, word.strOf(main.heap.h(core_state.errs))) == 0) @intCast(main.heap.t(core_state.errs)) else @intCast(abi.geterrlin(t_val.?));
+                const err_line_num: c_int = if (word.strcmp(t_val.?, main.rs.current_script.?) == 0) @intCast(core_state.errline) else if (core_state.errs != 0 and word.strcmp(t_val.?, strtab.strOf(main.heap.h(core_state.errs))) == 0) @intCast(main.heap.t(core_state.errs)) else @intCast(abi.geterrlin(t_val.?));
                 editfile(t_val.?, err_line_num);
                 return;
             }
@@ -591,11 +592,11 @@ pub fn xschars() void {
 pub fn finger(n: [*:0]const u8) void {
     const x = abi.findid(@constCast(n));
     var line: Word = 0;
-    var s: ?[*:0]u8 = null;
+    var s: ?[*:0]const u8 = null;
     if (x != NIL and main.id_type(x) != word.undef_t) {
         if (main.id_who(x) != NIL) {
             const here_val = main.get_here(x);
-            s = word.strOfMut(main.heap.h(here_val));
+            s = strtab.strOf(main.heap.h(here_val));
             line = main.heap.t(here_val);
         }
         if (main.rs.lastid == 0) {

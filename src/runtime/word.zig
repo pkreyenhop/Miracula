@@ -477,23 +477,11 @@ pub fn strcat(dst_any: anytype, src_any: anytype) ?[*:0]u8 {
     return dst;
 }
 
-// String-handle accessors (B1 / R6). Identifier and pathname strings are stored
-// in `id`/`fil`/`STRCONS` nodes as a string handle packed into a `Word`. These
-// three functions are the single audited boundary for that representation —
-// every read/write of a node-stored string goes through them, so the underlying
-// representation (currently a `[*:0]` pointer; a future interned `StrId`) can be
-// changed in one place. Replaces ~80 scattered `@ptrFromInt`/`@intFromPtr` casts.
-pub fn strOf(handle: Word) [*:0]const u8 {
-    return @ptrFromInt(@as(usize, @intCast(handle)));
-}
-
-pub fn strOfMut(handle: Word) [*:0]u8 {
-    return @ptrFromInt(@as(usize, @intCast(handle)));
-}
-
-pub fn strBits(p: anytype) Word {
-    return @intCast(@intFromPtr(p));
-}
+// String-handle accessors moved to `strtab.zig` (B1 / R6, step 2): node-stored
+// identifier/pathname strings are now interned `StrId`s, not pointers, so the
+// accessors need the string table's allocator and live in that owner module.
+// Call sites use `strtab.strOf` (read) and `strtab.strBits` (intern + store).
+// `word.zig` stays a pure leaf with no allocator dependency.
 
 pub fn strlen(s_any: anytype) usize {
     const s = castToCStr(s_any);

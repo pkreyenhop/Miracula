@@ -1,5 +1,6 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
+const strtab = @import("../runtime/strtab.zig");
 const lex_state = @import("lex_state.zig");
 const ls = &lex_state.ls;
 const main = @import("../main.zig");
@@ -66,7 +67,9 @@ const is_char = heap.is_char;
 pub fn mira_lex_setup_string(source: [*:0]const u8) void {
     const len = std.mem.len(source);
     const f = word.fmemopen(@ptrCast(@constCast(source)), len, "r") orelse return;
-    ls.fileq = cons(make(STRCONS, word.strBits(f), NIL), ls.fileq);
+    // FILE* handle stored in the cell (read back via @ptrFromInt below);
+    // this is a FILE-handle-in-cell cast, not a node string — out of B1 scope.
+    ls.fileq = cons(make(STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls.fileq);
     ls.insertdepth += 1;
     main.rs.s_in = f;
 }
@@ -96,7 +99,7 @@ fn fileinfo(file: Word, line: Word) Word {
 }
 
 fn make_fil(path: [*:0]const u8, time: Word, share: Word, defs: Word) Word {
-    return cons(cons(fileinfo(word.strBits(path), time), cons(share, NIL)), defs);
+    return cons(cons(fileinfo(strtab.strBits(path), time), cons(share, NIL)), defs);
 }
 
 fn readvals(x: Word, y: Word) Word {
@@ -168,12 +171,12 @@ fn isconstructor(x: Word) bool {
     return getTag(x) == ID and isconstrname(get_id(x)) != 0;
 }
 
-fn get_id(x: Word) [*:0]u8 {
-    return word.strOfMut(h(h(h(x))));
+fn get_id(x: Word) [*:0]const u8 {
+    return strtab.strOf(h(h(h(x))));
 }
 
 fn get_fil(x: Word) [*:0]const u8 {
-    return word.strOfMut(h(h(h(x))));
+    return strtab.strOf(h(h(h(x))));
 }
 
 fn is(s: [*:0]const u8) bool {
@@ -703,7 +706,7 @@ pub fn yylex() c_int {
         if (pathname() == null) {
             syntax("badly formed pathname in %export list\n");
         } else {
-            ls.exportfiles = cons(word.strBits(addextn(1, ls.dicp)), ls.exportfiles);
+            ls.exportfiles = cons(strtab.strBits(addextn(1, ls.dicp)), ls.exportfiles);
             _ = keep(ls.dicp);
         }
         return word.PATHNAME;
@@ -1150,7 +1153,9 @@ pub fn peekch() c_int {
 
 pub fn openfile(n: [*:0]const u8) c_int {
     const f = word.fopen(n, "r") orelse return 0;
-    ls.fileq = cons(make(STRCONS, word.strBits(f), NIL), ls.fileq);
+    // FILE* handle stored in the cell (read back via @ptrFromInt below);
+    // this is a FILE-handle-in-cell cast, not a node string — out of B1 scope.
+    ls.fileq = cons(make(STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls.fileq);
     ls.insertdepth += 1;
     return 1;
 }
@@ -1295,7 +1300,7 @@ pub fn directive() Word {
                 if (pathname() == null) {
                     syntax("bad pathname after %include\n");
                 } else {
-                    ls.yylval = make(STRCONS, word.strBits(addextn(1, ls.dicp)), fileinfo(word.strBits(get_fil(heap.current_file)), holdlin));
+                    ls.yylval = make(STRCONS, strtab.strBits(addextn(1, ls.dicp)), fileinfo(strtab.strBits(get_fil(heap.current_file)), holdlin));
                     _ = keep(ls.dicp);
                 }
                 return word.INCLUDE;
@@ -1655,7 +1660,11 @@ pub fn sto_pn(n: Word) Word {
 pub fn mkprivate(x_input: Word) void {
     var x = x_input;
     while (x != NIL) {
-        get_id(h(x))[0] += 128;
+        // h(x) is an ID node; its name's StrId lives in the STRCONS node's hd.
+        // Interned bytes are immutable, so re-intern the privatised form and
+        // store the new id back, rather than mutating the bytes in place.
+        const strcons = h(h(h(x)));
+        hp(strcons).* = strtab.privatize(h(strcons));
         x = t(x);
     }
     inprelude = false;
@@ -1771,9 +1780,9 @@ pub fn charclass() c_int {
 pub fn reset_lex() void {
     if (core_state.commandmode == 0) {
         if (core_state.errs == 0) {
-            core_state.errs = fileinfo(word.strBits(get_fil(heap.current_file)), ls.line_no);
+            core_state.errs = fileinfo(strtab.strBits(get_fil(heap.current_file)), ls.line_no);
         }
-        const err_script_raw = @as(?[*:0]const u8, word.strOf(h(core_state.errs)));
+        const err_script_raw = @as(?[*:0]const u8, strtab.strOf(h(core_state.errs)));
         const err_script = err_script_raw orelse "test.m";
         const is_current = if (err_script_raw) |es|
             (if (main.rs.current_script) |cs| es == @as([*:0]const u8, @ptrCast(cs)) else false)

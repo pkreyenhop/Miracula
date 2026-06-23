@@ -2,6 +2,7 @@ const std = @import("std");
 const platform = @import("io/platform.zig");
 const parser_api = @import("parser/parser_api.zig");
 const word_mod = @import("runtime/word.zig");
+const strtab = @import("runtime/strtab.zig");
 const abi = @import("runtime/main_clib.zig");
 const rt = @import("runtime/runtime_state.zig");
 const setup = @import("compiler/setup.zig");
@@ -70,13 +71,13 @@ pub const dic_check = r7_lex.dic_check;
 const isconstrname = r7_lex.isconstrname;
 // Inline helpers (use heap module directly — B2: no h/t aliases here)
 pub inline fn get_id(x: Word) [*:0]const u8 {
-    return word_mod.strOf(heap.h(heap.h(heap.h(x))));
+    return strtab.strOf(heap.h(heap.h(heap.h(x))));
 }
 
 pub inline fn get_fil(fil: Word) ?[*:0]const u8 {
     const val = heap.h(heap.h(heap.h(fil)));
     if (val == 0) return null;
-    return word_mod.strOf(val);
+    return strtab.strOf(val);
 }
 
 pub inline fn getStdin() ?*abi.FILE {
@@ -210,6 +211,7 @@ comptime {
     _ = @import("driver/repl.zig");
     _ = @import("driver/commands.zig");
     _ = @import("runtime/heap.zig");
+    _ = @import("runtime/strtab.zig");
     _ = @import("runtime/errors.zig");
     _ = @import("runtime/reduce.zig");
     _ = @import("runtime/combinator.zig");

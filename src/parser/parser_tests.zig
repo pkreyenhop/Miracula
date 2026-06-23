@@ -10,13 +10,14 @@ const lex_state = @import("lex_state.zig");
 const r7_lex = @import("lex.zig");
 const main_clib = @import("../runtime/main_clib.zig");
 const word = @import("../runtime/word.zig");
+const strtab = @import("../runtime/strtab.zig");
 const core_state = @import("../runtime/core_state.zig");
 const ls = &lex_state.ls;
 
 const make_id = r7_lex.make_id;
 const reset_pns = r7_lex.reset_pns;
 fn makeFilRecord(name: [*:0]const u8) word.Word {
-    const name_word = @as(word.Word, word.strBits(name));
+    const name_word = @as(word.Word, strtab.strBits(name));
     const file_info = heap.make(word.FILEINFO, name_word, 0);
     const share_cell = heap.make(word.CONS, 1, word.NIL);
     const info_cell = heap.make(word.CONS, file_info, share_cell);

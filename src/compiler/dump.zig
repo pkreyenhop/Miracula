@@ -1,5 +1,6 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
+const strtab = @import("../runtime/strtab.zig");
 const main = @import("../main.zig");
 const abi = @import("../runtime/main_clib.zig");
 const lex_state = @import("../parser/lex_state.zig");
@@ -98,11 +99,11 @@ fn privatise(x: Word) Word {
     const i = h(n);
 
     if (main.id_type(x) == word.type_t) {
-        tp(main.t_info(x)).* = main.cons(abi.datapair(@as(Word, word.strBits(abi.getaka(x))), 0), main.get_here(x));
+        tp(main.t_info(x)).* = main.cons(abi.datapair(@as(Word, strtab.strBits(abi.getaka(x))), 0), main.get_here(x));
     }
 
     if (main.id_val(x) == word.UNDEF) {
-        tp(x).* = abi.ap(abi.datapair(@as(Word, word.strBits(abi.getaka(x))), 0), main.get_here(x));
+        tp(x).* = abi.ap(abi.datapair(@as(Word, strtab.strBits(abi.getaka(x))), 0), main.get_here(x));
     }
 
     ls.pnvec.?[@as(usize, @intCast(i))] = x;
@@ -212,7 +213,7 @@ pub fn readoption() void {
     word.print("main.cs.MISSING TYPENAME{s}\n", .{if (t(tlost) == NIL) "" else "S"});
     word.print("the following type{s} no name in this scope:\n", .{if (t(tlost) == NIL) " is needed but has" else "s are needed but have"});
     while (tlost != NIL) {
-        word.print("\'{s}\' of file \"{s}\", needed by: ", .{ word.strOf(h(h(main.t_info(h(h(tlost)))))), word.strOf(h(t(main.t_info(h(h(tlost)))))) });
+        word.print("\'{s}\' of file \"{s}\", needed by: ", .{ strtab.strOf(h(h(main.t_info(h(h(tlost)))))), strtab.strOf(h(t(main.t_info(h(h(tlost)))))) });
         abi.printlist(@constCast(""), main.alfasort(t(h(tlost))));
         tlost = t(tlost);
     }

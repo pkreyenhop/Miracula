@@ -1,5 +1,6 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
+const strtab = @import("../runtime/strtab.zig");
 
 const main_clib = @import("../runtime/main_clib.zig");
 const main = @import("../main.zig");
@@ -222,7 +223,7 @@ fn ap3(w: Word, x: Word, y: Word, z: Word) Word {
 }
 
 fn getId(x: Word) [*:0]const u8 {
-    return word.strOf(h(h(h(x))));
+    return strtab.strOf(h(h(h(x))));
 }
 
 fn idWho(x: Word) Word {
@@ -921,7 +922,7 @@ pub fn transtries(id: Word, input_x: Word) Word {
     var earliest: Word = 0;
     var r: Word = undefined;
     if (fallible(h(x)) != 0) {
-        const oldn = if (getTag(id) == ID) datapair(@as(Word, word.strBits(getId(id))), 0) else 0;
+        const oldn = if (getTag(id) == ID) datapair(@as(Word, strtab.strBits(getId(id))), 0) else 0;
         info = cons(oldn, 0);
         r = ap(BADCASE, info);
         if (x == NIL) {

@@ -1,5 +1,6 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
+const strtab = @import("../runtime/strtab.zig");
 const main = @import("../main.zig");
 inline fn getTag(x: main.Word) u8 { return main.heap.heap.getTag(x); }
 const abi = @import("../runtime/main_clib.zig");
@@ -119,14 +120,14 @@ pub fn loadfile(t_val: [*:0]const u8) void {
                 var count: Word = 0;
                 var i = main.rs.includees;
                 while (i != NIL) : (i = main.heap.t(i)) {
-                    if (word.strcmp(word.strOf(main.heap.h(main.heap.h(main.heap.h(i)))), word.strOf(main.heap.h(s))) == 0) {
+                    if (word.strcmp(strtab.strOf(main.heap.h(main.heap.h(main.heap.h(i)))), strtab.strOf(main.heap.h(s))) == 0) {
                         main.heap.hp(s).* = main.heap.h(main.heap.h(main.heap.h(i)));
                         count += 1;
                     }
                 }
                 if (count != 1) {
                     core_state.SYNERR = 1;
-                    word.print("illegal fileid \"{s}\" in export list ({s})\n", .{word.strOf(main.heap.h(s)), @as([*:0]const u8, if (count != 0) "ambiguous" else "not %included in script")});
+                    word.print("illegal fileid \"{s}\" in export list ({s})\n", .{strtab.strOf(main.heap.h(s)), @as([*:0]const u8, if (count != 0) "ambiguous" else "not %included in script")});
                 }
             }
         }
@@ -343,7 +344,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             main.makedump();
             main.unfixexports();
         }
-        if (core_state.errline == 0 and core_state.errs != 0 and word.strcmp(word.strOf(main.heap.h(core_state.errs)), main.rs.current_script.?) == 0) {
+        if (core_state.errline == 0 and core_state.errs != 0 and word.strcmp(strtab.strOf(main.heap.h(core_state.errs)), main.rs.current_script.?) == 0) {
             core_state.errline = main.heap.t(core_state.errs);
         }
         main.cs.ND = main.alfasort(main.cs.ND);
@@ -406,7 +407,7 @@ pub fn mkincludes(includees_val: Word) Word {
         main.rs.magic = false;
         _ = abi.sigsetjmp(&main.rs.env, 1);
         while (includees_list != NIL and main.rs.make_status == 0) {
-            main.undump(word.strOf(main.heap.h(main.heap.h(main.heap.h(includees_list)))));
+            main.undump(strtab.strOf(main.heap.h(main.heap.h(main.heap.h(includees_list)))));
             if (main.cs.ND != NIL or (heap.files == NIL and main.rs.oldfiles != NIL)) {
                 main.rs.make_status = 1;
             }
@@ -420,7 +421,7 @@ pub fn mkincludes(includees_val: Word) Word {
         var x: Word = NIL;
         var oldsig: usize = 0;
         var f: ?*word.FILE = null;
-        const fn_str = word.strOf(main.heap.h(main.heap.h(main.heap.h(includees_list))));
+        const fn_str = strtab.strOf(main.heap.h(main.heap.h(main.heap.h(includees_list))));
 
         _ = word.strcpy(ls.dicp, fn_str);
         _ = word.strcpy(ls.dicp + word.strlen(ls.dicp) - 1, core_state.obsuffix);
@@ -480,7 +481,7 @@ pub fn mkincludes(includees_val: Word) Word {
                                             w = main.heap.t(w);
                                         }
                                         if (w == NIL) {
-                                            tclashes = main.cons(abi.strcons(@as(Word, word.strBits(main.get_fil(main.heap.h(z)).?)), main.cons(orig, NIL)), tclashes);
+                                            tclashes = main.cons(abi.strcons(@as(Word, strtab.strBits(main.get_fil(main.heap.h(z)).?)), main.cons(orig, NIL)), tclashes);
                                             w = tclashes;
                                         }
                                         main.heap.tp(main.heap.t(main.heap.t(main.heap.h(w)))).* = main.cons(main.heap.h(p), main.heap.t(main.heap.t(main.heap.h(w))));
@@ -501,7 +502,7 @@ pub fn mkincludes(includees_val: Word) Word {
                 }
             }
 
-            if (abi.member(ls.exportfiles, word.strBits(fn_str)) != 0) {
+            if (abi.member(ls.exportfiles, strtab.strBits(fn_str)) != 0) {
                 y = x;
                 while (y != NIL) : (y = main.heap.t(y)) {
                     var z = main.fil_defs(main.heap.h(y));
@@ -596,7 +597,7 @@ pub fn mkincludes(includees_val: Word) Word {
         }
 
         while (main.cs.MISSING != NIL) {
-            word.printErr("{s}{s}", .{word.strOf(main.heap.h(main.heap.h(main.cs.MISSING))), @as([*:0]const u8, if (main.heap.t(main.cs.MISSING) == NIL) ";\n" else ",")});
+            word.printErr("{s}{s}", .{strtab.strOf(main.heap.h(main.heap.h(main.cs.MISSING))), @as([*:0]const u8, if (main.heap.t(main.cs.MISSING) == NIL) ";\n" else ",")});
             main.cs.MISSING = main.heap.t(main.cs.MISSING);
         }
 
@@ -609,7 +610,7 @@ pub fn mkincludes(includees_val: Word) Word {
     if (tclashes != NIL) {
         word.printErr("TYPECLASH - the following type{s} multiply named:\n", .{@as([*:0]const u8, if (main.heap.t(tclashes) == NIL) " is" else "s are")});
         while (tclashes != NIL) {
-            word.printErr("\'{s}\' of file \"{s}\", as: ", .{abi.getaka(main.heap.h(main.heap.t(main.heap.h(tclashes)))), word.strOf(main.heap.h(main.heap.h(tclashes)))});
+            word.printErr("\'{s}\' of file \"{s}\", as: ", .{abi.getaka(main.heap.h(main.heap.t(main.heap.h(tclashes)))), strtab.strOf(main.heap.h(main.heap.h(tclashes)))});
             abi.printlist(@constCast(""), main.alfasort(main.heap.t(main.heap.t(main.heap.h(tclashes)))));
             tclashes = main.heap.t(tclashes);
         }

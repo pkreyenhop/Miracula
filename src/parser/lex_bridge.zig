@@ -39,6 +39,7 @@ const unsetlmargin = r7_lex.unsetlmargin;
 const heap = @import("../runtime/heap.zig");
 const r7_lex = @import("lex.zig");
 const r7_heap = @import("../runtime/heap.zig");
+const strtab = @import("../runtime/strtab.zig");
 
 inline fn hd_of(x: word.Word) word.Word {
     return heap.heap.h(x);
@@ -50,11 +51,9 @@ inline fn getTag(x: word.Word) u8 {
     return heap.heap.getTag(x);
 }
 
-// C macro: get_id(x) == (char*)hd(hd(hd(x)))
+// C macro: get_id(x) == (char*)hd(hd(hd(x))); the id string is an interned StrId.
 fn getIdText(x: word.Word) []const u8 {
-    const ptr: usize = @intCast(hd_of(hd_of(hd_of(x))));
-    const p: [*:0]const u8 = @ptrFromInt(ptr);
-    return std.mem.span(p);
+    return std.mem.span(strtab.strOf(hd_of(hd_of(hd_of(x)))));
 }
 
 /// Traverse a Miranda string CONS chain and produce a UTF-8 owned slice.

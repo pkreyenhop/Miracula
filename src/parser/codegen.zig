@@ -5,6 +5,7 @@
 
 const std = @import("std");
 const word = @import("../runtime/word.zig");
+const strtab = @import("../runtime/strtab.zig");
 const Allocator = std.mem.Allocator;
 const ast = @import("ast.zig");
 
@@ -132,7 +133,7 @@ fn makeHere(line: u32) Word {
 fn isConstructorWord(x: Word) bool {
     if (tg(x) != word.ID) return false;
     // get_id(x) = (char*)hd(hd(hd(x)))
-    const name_ptr: [*:0]const u8 = word.strOf(h(h(h(x))));
+    const name_ptr: [*:0]const u8 = strtab.strOf(h(h(h(x))));
     return isconstrname(name_ptr) != 0;
 }
 

@@ -1,5 +1,6 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
+const strtab = @import("../runtime/strtab.zig");
 const main = @import("../main.zig");
 const abi = @import("../runtime/main_clib.zig");
 const parser_api = @import("../parser/parser_api.zig");
@@ -82,7 +83,7 @@ pub fn commandloop(initscript: [*:0]u8) void {
                 ch = abi.getchar();
                 if (ch == '?') {
                     var x: Word = undefined;
-                    var aka: ?[*:0]u8 = null;
+                    var aka: ?[*:0]const u8 = null;
                     if (token() == null and main.rs.lastid == 0) {
                         word.print("\x07identifier needed after `??'\n", .{});
                         ch = abi.getchar();
@@ -115,13 +116,13 @@ pub fn commandloop(initscript: [*:0]u8) void {
                     main.rs.lastid = x;
                     x = main.id_who(x);
                     if (getTag(x) == CONS) {
-                        aka = word.strOfMut(main.heap.h(main.heap.h(x)));
+                        aka = strtab.strOf(main.heap.h(main.heap.h(x)));
                         x = main.heap.t(x);
                     }
                     if (aka != null) {
                         word.print("originally defined as \"{s}\"\n", .{aka.?});
                     }
-                    main.editfile(word.strOfMut(main.heap.h(x)), @intCast(main.heap.t(x)));
+                    main.editfile(strtab.strOf(main.heap.h(x)), @intCast(main.heap.t(x)));
                 } else {
                     _ = abi.ungetc(ch, main.getStdin().?);
                     _ = token();

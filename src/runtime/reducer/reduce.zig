@@ -1,5 +1,6 @@
 const std = @import("std");
 const word = @import("../word.zig");
+const strtab = @import("../strtab.zig");
 const core = @import("reduce_core.zig");
 inline fn getTag(x: Word) u8 { return core.getTag(x); }
 inline fn setTag(x: Word, val: u8) void { core.setTag(x, val); }
@@ -150,7 +151,7 @@ pub fn reduce(e_val: Word) Word {
                     },
                     word.DATAPAIR => {
                         upLeft(&ctx);
-                        word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{word.strOf(hd_get(hd_get(ctx.e))), word.strOf(tl_get(ctx.e))});
+                        word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{strtab.strOf(hd_get(hd_get(ctx.e))), strtab.strOf(tl_get(ctx.e))});
                         r7_reduce.outstats();
                         main_clib.exit(1);
                     },
@@ -428,7 +429,7 @@ pub inline fn pn_val(x: Word) Word {
     return tl_get(x);
 }
 pub inline fn get_id(x: Word) [*:0]const u8 {
-    return word.strOf(hd_get(hd_get(hd_get(x))));
+    return strtab.strOf(hd_get(hd_get(hd_get(x))));
 }
 pub inline fn constr_name(x: Word) [*:0]const u8 {
     const tlx = tl_get(x);
