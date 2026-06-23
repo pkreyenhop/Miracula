@@ -59,7 +59,8 @@ Measured over `src` (excluding `src/tools/` and the FFI shims):
 | bignum constants | ⬜ `big_one`, `logIBASE`, `log10IBASE`, … | `big.zig` | — |
 | interned strings | ✅ struct-ish, module-global `table` | `strtab.zig` | — |
 
-**Totals:** ~93 column-0 mutable globals; ~5 already-grouped singleton structs;
+**Totals (`scripts/shared-state-check.sh`, 2026-06-23):** **92** column-0 mutable
+globals (35 gratuitous `export var`); 4 already-grouped singleton structs;
 **~2,100 singleton access sites** (`ls`/`rs`/`heap`/`core_state`). The
 consolidation half (group → struct) is *partly* done (B1/B2 of the idiomatic
 plan); the **de-globalization** half is entirely open and is where the value is.
@@ -92,13 +93,17 @@ Two independent halves:
 
 ## Phases
 
-### Phase 0 — Inventory, metric, safety net *(no code change)*
+### Phase 0 — Inventory, metric, safety net *(no code change)* ✅
 * The inventory table above is the baseline.
-* **Metric:** *non-FFI module-scope mutable globals* (column-0 `var`/`pub var`/
-  `export var`). Baseline **~93**; target **1** (the signal pointer).
-* **Safety net:** golden 44/44 + the unit suite already exist. Add an
-  `Interp`-isolation test in Phase 4 as the proof object.
-* *DoD: this document; metric script counts the baseline.*
+* **Metric:** `scripts/shared-state-check.sh` counts *non-FFI module-scope mutable
+  globals* (column-0 `var`/`pub var`/`export var`). **Baseline = 92** (of which
+  **35** are gratuitous `export var` — Phase 1's target); end target **1** (the
+  signal pointer). Run with `-v` to list every site.
+* **Safety net:** verified green at baseline — `zig build` + golden **44/44** +
+  unit suite **42/42**. An `Interp`-isolation test is added in Phase 4 as the
+  proof object.
+* *DoD: ✅ this document + `scripts/shared-state-check.sh` reporting the baseline,
+  with the corpus green.*
 
 ### Phase 1 — Strip gratuitous `export var` → `var` *(mechanical, low-risk)*
 The loose globals are mostly `pub export var` — C-port leftovers. This is a
@@ -215,12 +220,14 @@ already delivers test isolation without it.
 
 ## Scorecard
 
-| Metric | Baseline | Target |
-|--------|----------|--------|
-| non-FFI module-scope mutable globals | ~93 | 1 (signal pointer) |
+Tracked by `scripts/shared-state-check.sh`.
+
+| Metric | Baseline (Phase 0) | Target |
+|--------|--------------------|--------|
+| non-FFI module-scope mutable globals | **92** | 1 (signal pointer) |
+| &nbsp;&nbsp;↳ gratuitous `export var` | **35** | 0 (Phase 1) |
 | grouped state structs | 4 (`rs`/`ls`/`heap`/`cs`) | unified under one `Interp` |
-| global state aggregates | ~5 + ~93 loose | 0 (constructed in `main`) |
-| `export var` (non-FFI) | most loose globals | 0 |
+| global state aggregates | 4 structs + loose globals | 0 (constructed in `main`) |
 | interpreter instances constructible | 1 (implicit) | N (explicit) |
 | golden corpus | 44/44 | 44/44 at every step |
 
