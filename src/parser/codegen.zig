@@ -122,7 +122,7 @@ const void_t: Word = 7; // #define void_t  7
 
 fn makeHere(line: u32) Word {
     // get_fil(current_file) = (char*)hd(hd(hd(current_file)))
-    const fil_name = h(h(h(heap.current_file)));
+    const fil_name = h(h(h(heap.heap.current_file)));
     return heap.make(word.FILEINFO, fil_name, @intCast(line));
 }
 

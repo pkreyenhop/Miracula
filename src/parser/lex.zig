@@ -351,7 +351,7 @@ fn getch() c_int {
     }
     if (atnl != 0) {
         if ((ls.line_no == 0 and core_state.s.commandmode == 0) or (main.rs.magic and ls.line_no == 1 and ls.litstack == NIL)) {
-            const is_lit = (ch == '>') or litname(get_fil(heap.current_file));
+            const is_lit = (ch == '>') or litname(get_fil(heap.heap.current_file));
             literate = if (is_lit) 1 else 0;
             litmain = literate;
         }
@@ -764,7 +764,7 @@ pub fn yylex() c_int {
             litmain = 0;
             return word.END;
         }
-        heap.current_file = t(h(ls.fileq));
+        heap.heap.current_file = t(h(ls.fileq));
         prefix = h(ls.prefixstack);
         ls.prefixstack = t(ls.prefixstack);
         main.rs.echoing = h(ls.echostack);
@@ -1300,7 +1300,7 @@ pub fn directive() Word {
                 if (pathname() == null) {
                     syntax("bad pathname after %include\n");
                 } else {
-                    ls.yylval = make(STRCONS, strtab.strBits(addextn(1, ls.dicp)), fileinfo(strtab.strBits(get_fil(heap.current_file)), holdlin));
+                    ls.yylval = make(STRCONS, strtab.strBits(addextn(1, ls.dicp)), fileinfo(strtab.strBits(get_fil(heap.heap.current_file)), holdlin));
                     _ = keep(ls.dicp);
                 }
                 return word.INCLUDE;
@@ -1318,9 +1318,9 @@ pub fn directive() Word {
                     ls.line_no = 0;
                     atnl = 1;
                     _ = keep(ls.dicp);
-                    heap.current_file = make_fil(f.?, fm_time(f.?), 0, NIL);
-                    heap.files = append1(heap.files, cons(heap.current_file, NIL));
-                    tp(h(ls.fileq)).* = heap.current_file;
+                    heap.heap.current_file = make_fil(f.?, fm_time(f.?), 0, NIL);
+                    heap.heap.files = append1(heap.heap.files, cons(heap.heap.current_file, NIL));
+                    tp(h(ls.fileq)).* = heap.heap.current_file;
                     main.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
                     const is_lit = (peekch() == '>') or litname(f.?);
                     literate = if (is_lit) 1 else 0;
@@ -1346,7 +1346,7 @@ pub fn directive() Word {
                     if (toomany) {
                         word.print("too many nested %insert directives (limit={})\n", .{ls.insertdepth});
                     } else {
-                        heap.files = append1(heap.files, cons(make_fil(f.?, 0, 0, NIL), NIL));
+                        heap.heap.files = append1(heap.heap.files, cons(make_fil(f.?, 0, 0, NIL), NIL));
                     }
                     acterror();
                 }
@@ -1780,7 +1780,7 @@ pub fn charclass() c_int {
 pub fn reset_lex() void {
     if (core_state.s.commandmode == 0) {
         if (core_state.s.errs == 0) {
-            core_state.s.errs = fileinfo(strtab.strBits(get_fil(heap.current_file)), ls.line_no);
+            core_state.s.errs = fileinfo(strtab.strBits(get_fil(heap.heap.current_file)), ls.line_no);
         }
         const err_script_raw = @as(?[*:0]const u8, strtab.strOf(h(core_state.s.errs)));
         const err_script = err_script_raw orelse "test.m";

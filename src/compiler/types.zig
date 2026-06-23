@@ -1597,7 +1597,7 @@ fn mcheckfbs() main.MiraError!void {
     if (cs.TYPERRS != 0) {
         return;
     }
-    ff = t(heap.files);
+    ff = t(heap.heap.files);
     while (ff != NIL) {
         formals = t(h(ff));
         while (formals != NIL) {
@@ -2588,7 +2588,7 @@ pub fn checktypes() void {
         if (main.rs.rfl != NIL) {
             readoption();
         }
-        var s = reverse(t(h(heap.files)));
+        var s = reverse(t(h(heap.heap.files)));
         while (s != NIL) {
             compDeps(h(s)) catch break :outer;
             s = t(s);

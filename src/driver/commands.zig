@@ -296,7 +296,7 @@ pub fn command() void {
                     core_state.s.errs = 0;
                 }
                 if (t_val != null) {
-                    if (word.strcmp(t_val.?, main.rs.current_script.?) != 0 or (heap.files == NIL and abi.okdump(t_val.?) != 0)) {
+                    if (word.strcmp(t_val.?, main.rs.current_script.?) != 0 or (heap.heap.files == NIL and abi.okdump(t_val.?) != 0)) {
                         main.cs.CLASHES = NIL;
                         main.undump(t_val.?);
                         if (main.cs.CLASHES != NIL) {
@@ -306,13 +306,13 @@ pub fn command() void {
                         main.loadfile(t_val.?);
                     }
                 } else {
-                    word.print("{s}{s}\n", .{main.rs.current_script.?, @as([*:0]const u8, if (heap.files == NIL) " (not loaded)" else "")});
+                    word.print("{s}{s}\n", .{main.rs.current_script.?, @as([*:0]const u8, if (heap.heap.files == NIL) " (not loaded)" else "")});
                 }
                 return;
             }
             if (is("files")) {
                 if (abi.getchar() != '\n') return;
-                var f = heap.files;
+                var f = heap.heap.files;
                 while (f != NIL) : (f = main.heap.t(f)) {
                     word.print("({s},{},{})", .{main.get_fil(main.heap.h(f)).?, main.fil_time(main.heap.h(f)), main.fil_share(main.heap.h(f))});
                     abi.printlist(@constCast(""), main.fil_defs(main.heap.h(f)));
@@ -334,7 +334,7 @@ pub fn command() void {
                                 }
                             }
                         }
-                        var ff = heap.files;
+                        var ff = heap.heap.files;
                         while (ff != NIL) : (ff = main.heap.t(ff)) {
                             var y_def = main.fil_defs(main.heap.h(ff));
                             while (y_def != NIL) : (y_def = main.heap.t(y_def)) {
@@ -669,12 +669,12 @@ pub fn allnamescom() void {
     var z: Word = 0;
     leftist = false;
     namescom(main.make_fil(if (main.rs.nostdenv) null else @as([*:0]const u8, @ptrCast(&main.rs.STDENV)), 0, 0, main.rs.primenv));
-    if (heap.files == NIL) return;
-    s = main.heap.t(heap.files);
+    if (heap.heap.files == NIL) return;
+    s = main.heap.t(heap.heap.files);
     while (s != NIL) : (s = main.heap.t(s)) {
         namescom(main.heap.h(s));
     }
-    namescom(main.heap.h(heap.files));
+    namescom(main.heap.h(heap.heap.files));
     main.rs.sorted = 1;
 
     while (x != NIL and main.id_type(main.heap.h(x)) == word.undef_t) {

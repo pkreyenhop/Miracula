@@ -43,7 +43,7 @@ pub fn fixexports() void {
         while (e != NIL) : (e = t(e)) {
             internals = main.cons(privatise(h(h(e))), internals);
         }
-        f = t(heap.files);
+        f = t(heap.heap.files);
         while (f != NIL) : (f = t(f)) {
             var e_def = main.fil_defs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
@@ -53,7 +53,7 @@ pub fn fixexports() void {
             }
         }
     } else {
-        f = heap.files;
+        f = heap.heap.files;
         while (f != NIL) : (f = t(f)) {
             var e_def = main.fil_defs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
@@ -309,14 +309,14 @@ pub fn undump(t_val: [*:0]const u8) void {
         oldsig = main.signals(abi.SIGINT, @intFromPtr(&sigdefer));
     }
 
-    heap.files = abi.load_script(f.?, @constCast(t_val), NIL, NIL, if (!main.rs.making and main.rs.initialising == 0) 1 else 0);
+    heap.heap.files = abi.load_script(f.?, @constCast(t_val), NIL, NIL, if (!main.rs.making and main.rs.initialising == 0) 1 else 0);
     _ = word.fclose(f.?);
 
     if (main.cs.BAD_DUMP != 0) {
         _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
         main.unload();
         main.cs.CLASHES = NIL;
-        heap.stackp = heap.dstack;
+        heap.heap.stackp = heap.heap.dstack;
         word.print("warning: {s} contains incorrect data (file removed)\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
         if (main.cs.BAD_DUMP == -1) {
             word.print("(unrecognised dump format)\n", .{});
@@ -351,12 +351,12 @@ pub fn undump(t_val: [*:0]const u8) void {
     if (main.cs.BAD_DUMP != 0 or main.src_update() != 0) {
         main.loadfile(t_val);
     } else if (main.rs.initialising != 0) {
-        if (main.cs.ND != NIL or heap.files == NIL) {
+        if (main.cs.ND != NIL or heap.heap.files == NIL) {
             main.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
         }
     } else {
         if (main.rs.verbosity != 0 or main.rs.magic or main.rs.mkexports) {
-            if (heap.files == NIL) {
+            if (heap.heap.files == NIL) {
                 word.print("{s} contains syntax error\n", .{std.mem.span(t_val)});
             } else {
                 if (main.cs.ND != NIL) {
@@ -368,7 +368,7 @@ pub fn undump(t_val: [*:0]const u8) void {
         }
     }
 
-    if (heap.files != NIL and !main.rs.making and main.rs.initialising == 0) {
+    if (heap.heap.files != NIL and !main.rs.making and main.rs.initialising == 0) {
         unfixexports();
     }
     core_state.s.loading = 0;
@@ -396,7 +396,7 @@ pub fn makedump() void {
     }
     main.rs.unlinkme = @ptrCast(obf);
     abi.setprefix(main.rs.current_script.?);
-    abi.dump_script(heap.files, f.?);
+    abi.dump_script(heap.heap.files, f.?);
     main.rs.unlinkme = null;
     _ = word.fclose(f.?);
 }

@@ -374,9 +374,9 @@ pub fn outstats() void {
     var buffer: main_clib.struct_tms = undefined;
     _ = main_clib.times(&buffer);
     word.printErr("||", .{});
-    word.printErr("reductions = {}, cells claimed = {}, ", .{ev.cycles, heap.cellcount + heap.claims});
+    word.printErr("reductions = {}, cells claimed = {}, ", .{ev.cycles, heap.heap.cellcount + heap.heap.claims});
     const clk_tck = @as(f64, @floatFromInt(main_clib.sysconf(word._SC_CLK_TCK)));
-    word.printErr("no of gc's = {}, cpu = {d:.2}\n", .{heap.nogcs, @as(f64, @floatFromInt(buffer.tms_utime)) / clk_tck});
+    word.printErr("no of gc's = {}, cpu = {d:.2}\n", .{heap.heap.nogcs, @as(f64, @floatFromInt(buffer.tms_utime)) / clk_tck});
 }
 
 pub fn out_here(f: ?*word.FILE, h_val: Word, nl: c_int) void {

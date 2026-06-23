@@ -49,8 +49,8 @@ pub fn commandloop(initscript: [*:0]u8) void {
     if (abi.sigsetjmp(&main.rs.env, 1) == 0) {
         if (main.rs.magic) {
             main.undump(initscript);
-            if (r7_heap.files == NIL or main.cs.ND != NIL or main.id_val(main.rs.main_id) == word.UNDEF) {
-                if (r7_heap.files != NIL and main.cs.ND == NIL and main.id_val(main.rs.main_id) == word.UNDEF) {
+            if (r7_heap.heap.files == NIL or main.cs.ND != NIL or main.id_val(main.rs.main_id) == word.UNDEF) {
+                if (r7_heap.heap.files != NIL and main.cs.ND == NIL and main.id_val(main.rs.main_id) == word.UNDEF) {
                     word.printErr("{s}: main not defined\n", .{initscript});
                 }
                 main.fatal("mira: incorrect use of \"-exec\" flag\n", .{.{}});

@@ -264,21 +264,21 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
         main.announce();
     }
 
-    heap.files = NIL;
+    heap.heap.files = NIL;
     main.undump(@as([*:0]const u8, @ptrCast(&main.rs.PRELUDE)));
     main.rs.okprel = true;
-    abi.mkprivate(main.fil_defs(main.heap.h(heap.files)));
-    heap.files = NIL;
+    abi.mkprivate(main.fil_defs(main.heap.h(heap.heap.files)));
+    heap.heap.files = NIL;
 
     if (!main.rs.nostdenv) {
         main.undump(@as([*:0]const u8, @ptrCast(&main.rs.STDENV)));
-        while (heap.files != NIL) {
-            main.rs.primenv = main.alfasort(abi.append1(main.rs.primenv, main.fil_defs(main.heap.h(heap.files))));
-            heap.files = main.heap.t(heap.files);
+        while (heap.heap.files != NIL) {
+            main.rs.primenv = main.alfasort(abi.append1(main.rs.primenv, main.fil_defs(main.heap.h(heap.heap.files))));
+            heap.heap.files = main.heap.t(heap.heap.files);
         }
         main.rs.primenv = main.alfasort(main.rs.primenv);
         main.cs.newtyps = NIL;
-        heap.files = NIL;
+        heap.heap.files = NIL;
     }
 
     if (!main.rs.magic) {
@@ -300,7 +300,7 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
                 _ = abi.keep(ls.dicp);
             }
             main.undump(s);
-            if (heap.files == NIL or main.cs.ND != NIL) {
+            if (heap.heap.files == NIL or main.cs.ND != NIL) {
                 continue;
             }
             if (arg_count != 1) {
@@ -309,7 +309,7 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
             if (main.rs.exports != NIL) {
                 x = main.rs.exports;
             } else {
-                var f = heap.files;
+                var f = heap.heap.files;
                 while (f != NIL) : (f = main.heap.t(f)) {
                     x = abi.append1(main.fil_defs(main.heap.h(f)), x);
                 }
@@ -356,7 +356,7 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
                     _ = abi.keep(ls.dicp);
                 }
                 main.undump(s);
-                var f = if (heap.files == NIL) main.rs.oldfiles else heap.files;
+                var f = if (heap.heap.files == NIL) main.rs.oldfiles else heap.heap.files;
                 while (f != NIL) : (f = main.heap.t(f)) {
                     const filename_str = main.get_fil(main.heap.h(f)).?;
                     if (abi.member(x, strtab.strBits(filename_str)) == 0) {
@@ -379,7 +379,7 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
                 _ = abi.keep(ls.dicp);
             }
             main.undump(s);
-            if (main.cs.ND != NIL or (heap.files == NIL and main.rs.oldfiles != NIL)) {
+            if (main.cs.ND != NIL or (heap.heap.files == NIL and main.rs.oldfiles != NIL)) {
                 if (main.rs.make_status == 1) {
                     main.rs.make_status = 0;
                 }
@@ -459,7 +459,7 @@ pub fn rc_read(rcfile: [*:0]const u8) Word {
     if (main.cs.BAD_DUMP != 0) {
         main.unload();
         main.cs.CLASHES = NIL;
-        heap.stackp = heap.dstack;
+        heap.heap.stackp = heap.heap.dstack;
         core_state.s.loading = 0;
         return 0;
     }
@@ -472,8 +472,8 @@ pub fn rc_read(rcfile: [*:0]const u8) Word {
         main.loadfile(rcfile);
     }
     core_state.s.loading = 0;
-    if (main.cs.ND != NIL or heap.files == NIL) return 0;
-    x = main.fil_defs(h(heap.files));
+    if (main.cs.ND != NIL or heap.heap.files == NIL) return 0;
+    x = main.fil_defs(h(heap.heap.files));
     while (x != NIL) : (x = t(x)) {
         if (main.id_type(h(x)) == word.synonym_t) {
             main.heap.tp(main.t_info(h(x))).* = main.dump.fixtype(main.t_info(h(x)), h(x));
@@ -491,7 +491,7 @@ pub fn rc_write() void {
     f = word.fopen(&main.rs.home_rc, "w");
     if (f == null) return;
     abi.setprefix(@ptrCast(&main.rs.home_rc));
-    abi.dump_script(heap.files, f.?);
+    abi.dump_script(heap.heap.files, f.?);
     _ = word.fclose(f.?);
 }
 

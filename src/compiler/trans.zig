@@ -255,7 +255,7 @@ fn makeTyp(arity: Word, showfn: Word, class: Word, info: Word) Word {
 }
 
 fn addToEnv(x: Word) void {
-    const current_file_defs = h(heap.files);
+    const current_file_defs = h(heap.heap.files);
     if (current_file_defs >= ATOMLIMIT) {
         
         tp(current_file_defs).* = cons(x, tp(current_file_defs).*);

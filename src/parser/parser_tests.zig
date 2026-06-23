@@ -31,8 +31,8 @@ fn resetLexerState() void {
     setupheap();
     setupdic();
     reset_pns();
-    heap.current_file = makeFilRecord("test.m");
-    heap.files = heap.make(word.CONS, heap.current_file, word.NIL);
+    heap.heap.current_file = makeFilRecord("test.m");
+    heap.heap.files = heap.make(word.CONS, heap.heap.current_file, word.NIL);
     ls.col = 0;
     ls.line_no = 0;
     ls.c = ' ';
@@ -45,8 +45,8 @@ fn ensureInitialized() void {
         setupheap();
         setupdic();
         reset_pns();
-        heap.current_file = makeFilRecord("test.m");
-        heap.files = heap.make(word.CONS, heap.current_file, word.NIL);
+        heap.heap.current_file = makeFilRecord("test.m");
+        heap.heap.files = heap.make(word.CONS, heap.heap.current_file, word.NIL);
         initialized = true;
     }
 }

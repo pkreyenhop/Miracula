@@ -70,9 +70,9 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         return;
     }
 
-    heap.files = main.cons(main.make_fil(t_val, main.fm_time(t_val), 1, NIL), NIL);
-    heap.current_file = main.heap.h(heap.files);
-    main.heap.tp(main.heap.h(ls.fileq)).* = heap.current_file;
+    heap.heap.files = main.cons(main.make_fil(t_val, main.fm_time(t_val), 1, NIL), NIL);
+    heap.heap.current_file = main.heap.h(heap.heap.files);
+    main.heap.tp(main.heap.h(ls.fileq)).* = heap.heap.current_file;
 
     if (main.rs.initialising != 0 and word.strcmp(t_val, @as([*:0]const u8, @ptrCast(&main.rs.PRELUDE))) == 0) {
         setup.privlib();
@@ -110,7 +110,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         var s = ls.exportfiles;
         while (s != NIL) : (s = main.heap.t(s)) {
             if (main.heap.h(s) == word.PLUS) {
-                var i = main.fil_defs(main.heap.h(heap.files));
+                var i = main.fil_defs(main.heap.h(heap.heap.files));
                 while (i != NIL) : (i = main.heap.t(i)) {
                     if (main.isvariable(main.heap.h(i)) and !main.isfreeid(main.heap.h(i))) {
                         main.heap.tp(main.rs.exports).* = abi.add1(main.heap.h(i), main.heap.t(main.rs.exports));
@@ -138,7 +138,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     }
 
     if (core_state.s.SYNERR == 0 and main.rs.includees != NIL) {
-        heap.files = abi.append1(heap.files, mkincludes(main.rs.includees));
+        heap.heap.files = abi.append1(heap.heap.files, mkincludes(main.rs.includees));
         main.rs.includees = NIL;
     }
     main.rs.ld_stuff = NIL;
@@ -214,7 +214,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         }
     }
 
-    if (core_state.s.SYNERR == 0 and main.cs.ND == NIL and (main.rs.exports != NIL or main.heap.t(heap.files) != NIL)) {
+    if (core_state.s.SYNERR == 0 and main.cs.ND == NIL and (main.rs.exports != NIL or main.heap.t(heap.heap.files) != NIL)) {
         var e1 = main.rs.exports;
         var r: Word = NIL;
         var e: Word = NIL;
@@ -232,7 +232,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
                 }
             }
         } else {
-            e1 = main.fil_defs(main.heap.h(heap.files));
+            e1 = main.fil_defs(main.heap.h(heap.heap.files));
             while (e1 != NIL) : (e1 = main.heap.t(e1)) {
                 const ty = main.id_type(main.heap.h(e1));
                 if (ty == word.type_t) {
@@ -318,7 +318,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     }
 
     if (core_state.s.SYNERR == 0) {
-        var x = main.fil_defs(main.heap.h(heap.files));
+        var x = main.fil_defs(main.heap.h(heap.heap.files));
         main.cs.lfrule = 0;
         while (x != NIL) : (x = main.heap.t(x)) {
             if (main.id_type(main.heap.h(x)) != word.type_t) {
@@ -355,7 +355,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     if (main.rs.initialising != 0) {
         main.fatal("panic: cannot compile %s\n", .{.{@as([*:0]const u8, if (main.rs.okprel) "stdenv" else "prelude")}});
     }
-    main.rs.oldfiles = heap.files;
+    main.rs.oldfiles = heap.heap.files;
     main.unload();
     if (main.normal(t_val) != 0 and core_state.s.SYNERR != 2) {
         main.makedump();
@@ -408,7 +408,7 @@ pub fn mkincludes(includees_val: Word) Word {
         _ = abi.sigsetjmp(&main.rs.env, 1);
         while (includees_list != NIL and main.rs.make_status == 0) {
             main.undump(strtab.strOf(main.heap.h(main.heap.h(main.heap.h(includees_list)))));
-            if (main.cs.ND != NIL or (heap.files == NIL and main.rs.oldfiles != NIL)) {
+            if (main.cs.ND != NIL or (heap.heap.files == NIL and main.rs.oldfiles != NIL)) {
                 main.rs.make_status = 1;
             }
             includees_list = main.heap.t(includees_list);
@@ -602,7 +602,7 @@ pub fn mkincludes(includees_val: Word) Word {
         }
 
         word.printErr("compilation abandoned\n", .{});
-        heap.stackp = heap.dstack;
+        heap.heap.stackp = heap.heap.dstack;
         includees_list = main.heap.t(includees_list);
         return result;
     }

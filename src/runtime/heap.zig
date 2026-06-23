@@ -67,7 +67,6 @@ else if (@sizeOf(Word) == 8)
 else
     @compileError("platform has unknown word size");
 
-var charname_buffer: [8]u8 = undefined;
 
 /// One heap cell: a tag byte plus two `Word` fields. Atoms (index < ATOMLIMIT)
 /// occupy rows too but use only `.tag`. Stored struct-of-arrays via
@@ -90,6 +89,24 @@ pub const Heap = struct {
     SPACE: Word = 1250000,
     listp: Word = ATOMLIMIT - 1,
     allocated_dstack_size: usize = 0,
+
+    // Heap/GC/dictionary scratch absorbed from module-level globals
+    // (shared-state plan Phase 2b) so the full heap state lives in one struct
+    // and `interp.reset()` covers it. Accessed as `heap.<field>` (the singleton).
+    files: Word = word.NIL,
+    current_file: Word = word.NIL,
+    cellcount: i64 = 0,
+    claims: c_long = 0,
+    nogcs: c_long = 0,
+    dstack: ?[*]Word = null,
+    stackp: ?[*]Word = null,
+    collecting: c_int = 0,
+    dlim: ?[*]Word = null,
+    prefix: [r7_word.pnlim]u8 = undefined,
+    preflen: Word = 0,
+    PNBASE: Word = 0,
+    CFN: ?[*:0]const u8 = null,
+    charname_buffer: [8]u8 = undefined,
 
     /// Refresh the cached column pointers after `cells` is (re)allocated.
     fn refreshPointers(self: *Heap) void {
@@ -148,7 +165,7 @@ pub const Heap = struct {
     }
 
     pub fn trueheapsize(self: Heap) Word {
-        return if (nogcs == 0) self.listp - ATOMLIMIT + 1 else self.SPACE;
+        return if (heap.nogcs == 0) self.listp - ATOMLIMIT + 1 else self.SPACE;
     }
 
     pub fn setupheap(self: *Heap) void {
@@ -197,7 +214,7 @@ pub const Heap = struct {
             if (self.SPACE != rt.rs.SPACELIMIT) {
                 if (core.s.compiling == 0) {
                     self.SPACE = rt.rs.SPACELIMIT;
-                } else if (claims <= @divTrunc(self.SPACE, 4) and nogcs > 1) {
+                } else if (heap.claims <= @divTrunc(self.SPACE, 4) and heap.nogcs > 1) {
                     var wait: Word = 0;
                     const sp = self.SPACE;
                     if (wait != 0) {
@@ -226,7 +243,7 @@ pub const Heap = struct {
                 return self.make(t_val, x, y);
             }
         }
-        claims += 1;
+        heap.claims += 1;
         self.tag.?[@intCast(self.listp)] = @enumFromInt(t_val);
         self.hp(self.listp).* = x;
         self.tp(self.listp).* = y;
@@ -234,14 +251,14 @@ pub const Heap = struct {
     }
 
     pub fn gc(self: *Heap) void {
-        collecting = 1;
+        heap.collecting = 1;
         var idx = @as(usize, @intCast(ATOMLIMIT));
         if (rt.rs.atgc != 0) {
-            _ = word.printErr("\n<<gc after {d} claims>>\n", .{claims});
+            _ = word.printErr("\n<<gc after {d} claims>>\n", .{heap.claims});
         }
-        if (claims <= @divTrunc(self.SPACE, 10) and nogcs > 1 and self.SPACE == rt.rs.SPACELIMIT) {
+        if (heap.claims <= @divTrunc(self.SPACE, 10) and heap.nogcs > 1 and self.SPACE == rt.rs.SPACELIMIT) {
             var hnogcs: Word = 0;
-            if (nogcs == hnogcs) {
+            if (heap.nogcs == hnogcs) {
                 _ = word.printErr("<<not enough heap space -- task abandoned>>\n", .{});
                 if (core.s.compiling == 0) {
                     outstats();
@@ -252,10 +269,10 @@ pub const Heap = struct {
                 }
                 main_clib.exit(1);
             } else {
-                hnogcs = nogcs + 1;
+                hnogcs = heap.nogcs + 1;
             }
         }
-        nogcs += 1;
+        heap.nogcs += 1;
 
         while (self.tag.?[idx] != .ATOM) {
             const signed_val = @as(i8, @bitCast(@intFromEnum(self.tag.?[idx])));
@@ -265,9 +282,9 @@ pub const Heap = struct {
 
         self.bases();
         self.listp = ATOMLIMIT - 1;
-        cellcount += claims;
-        claims = 0;
-        collecting = 0;
+        heap.cellcount += heap.claims;
+        heap.claims = 0;
+        heap.collecting = 0;
     }
 
     pub fn gcpatch(self: *Heap) void {
@@ -319,7 +336,7 @@ pub const Heap = struct {
             self.mark(ls.litstack);
             self.mark(ls.linostack);
             self.mark(ls.prefixstack);
-            self.mark(files);
+            self.mark(heap.files);
             self.mark(rt.rs.oldfiles);
             self.mark(rt.rs.includees);
             self.mark(rt.rs.freeids);
@@ -333,8 +350,8 @@ pub const Heap = struct {
                     self.mark(ls.namebucket[i]);
                 }
             }
-            const p_dstack = dstack;
-            const p_stackp = stackp;
+            const p_dstack = heap.dstack;
+            const p_stackp = heap.stackp;
             if (p_dstack != null and p_stackp != null) {
                 var curr = p_dstack.?;
                 const end = p_stackp.?;
@@ -535,12 +552,12 @@ pub fn charname(ch: Word) [*:0]const u8 {
         '"' => "\\\"",
         else => blk: {
             if (ch < 32 or ch > 126) {
-                const text = std.fmt.bufPrintZ(&charname_buffer, "\\{d}", .{ch}) catch unreachable;
+                const text = std.fmt.bufPrintZ(&heap.charname_buffer, "\\{d}", .{ch}) catch unreachable;
                 break :blk text.ptr;
             }
-            charname_buffer[0] = @intCast(ch);
-            charname_buffer[1] = 0;
-            break :blk @as([*:0]const u8, @ptrCast(charname_buffer[0..].ptr));
+            heap.charname_buffer[0] = @intCast(ch);
+            heap.charname_buffer[1] = 0;
+            break :blk @as([*:0]const u8, @ptrCast(heap.charname_buffer[0..].ptr));
         },
     };
 }
@@ -600,16 +617,7 @@ fn nil() Word {
 
 // (Dead module duplicates of `Heap.SPACE`/`Heap.listp` removed — the live
 // copies are the struct fields, accessed via `self.SPACE`/`self.listp`.)
-pub var files: Word = word.NIL;
-pub var current_file: Word = word.NIL;
-pub var cellcount: i64 = 0;
-pub var claims: c_long = 0;
-pub var nogcs: c_long = 0;
-pub var dstack: ?[*]Word = null;
-pub var stackp: ?[*]Word = null;
-pub var collecting: c_int = 0;
 
-var dlim: ?[*]Word = null;
 
 const outstats = r7_reduce.outstats;
 const initclock = r7_reduce.initclock;
@@ -646,8 +654,8 @@ pub fn mallocPanic(what: [*:0]const u8) noreturn {
 }
 
 pub fn resetgcstats() void {
-    cellcount = -claims;
-    nogcs = 0;
+    heap.cellcount = -heap.claims;
+    heap.nogcs = 0;
     initclock();
 }
 
@@ -681,8 +689,6 @@ fn getStderr() ?*word.FILE {
     }
 }
 
-var prefix: [r7_word.pnlim]u8 = undefined;
-var preflen: Word = 0;
 
 const fm_time = r7_files.fm_time;
 const unlinkx = r7_files.unlinkx;
@@ -716,34 +722,34 @@ pub fn putword(x_val: Word, file: ?*word.FILE) void {
 
 pub fn setprefix(p: [*:0]const u8) void {
     const p_len = std.mem.len(p);
-    if (p_len >= prefix.len) {
+    if (p_len >= heap.prefix.len) {
         mallocfail("prefix buffer overflow");
     }
-    @memcpy(prefix[0..p_len], p[0..p_len]);
-    prefix[p_len] = 0;
+    @memcpy(heap.prefix[0..p_len], p[0..p_len]);
+    heap.prefix[p_len] = 0;
 
     var last_slash: ?usize = null;
     var i: usize = p_len;
     while (i > 0) {
         i -= 1;
-        if (prefix[i] == '/') {
+        if (heap.prefix[i] == '/') {
             last_slash = i;
             break;
         }
     }
     if (last_slash) |idx| {
-        prefix[idx + 1] = 0;
-        preflen = @intCast(idx + 1);
+        heap.prefix[idx + 1] = 0;
+        heap.preflen = @intCast(idx + 1);
     } else {
-        prefix[0] = 0;
-        preflen = 0;
+        heap.prefix[0] = 0;
+        heap.preflen = 0;
     }
 }
 
 pub fn mkrel(p: [*:0]const u8) [*:0]const u8 {
     const p_len = std.mem.len(p);
-    const prefix_len = @as(usize, @intCast(preflen));
-    if (prefix_len <= p_len and std.mem.eql(u8, prefix[0..prefix_len], p[0..prefix_len])) {
+    const prefix_len = @as(usize, @intCast(heap.preflen));
+    if (prefix_len <= p_len and std.mem.eql(u8, heap.prefix[0..prefix_len], p[0..prefix_len])) {
         return @ptrCast(p + prefix_len);
     }
     if (p[0] == '/') {
@@ -818,8 +824,8 @@ pub fn geterrlin(t_ptr: [*:0]const u8) Word {
     var ch = main_clib.getc(f);
     ls.dicq = ls.dicp;
     if (ch != '/') {
-        const prefix_len = @as(usize, @intCast(preflen));
-        @memcpy(ls.dicp[0..prefix_len], prefix[0..prefix_len]);
+        const prefix_len = @as(usize, @intCast(heap.preflen));
+        @memcpy(ls.dicp[0..prefix_len], heap.prefix[0..prefix_len]);
         ls.dicp[prefix_len] = 0;
         ls.dicq = ls.dicp + prefix_len;
     }
@@ -1072,8 +1078,6 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
     _ = word.putc(')', file);
 }
 
-var PNBASE: Word = 0;
-var CFN: ?[*:0]const u8 = null;
 
 const member = r7_types.member;
 const add1 = r7_types.add1;
@@ -1144,21 +1148,21 @@ pub fn t_info(x: Word) Word {
 }
 
 fn stackpPush(val: Word) void {
-    stackp.?[0] = val;
-    stackp = stackp.? + 1;
+    heap.stackp.?[0] = val;
+    heap.stackp = heap.stackp.? + 1;
 }
 
 fn stackpPop() Word {
-    stackp = stackp.? - 1;
-    return stackp.?[0];
+    heap.stackp = heap.stackp.? - 1;
+    return heap.stackp.?[0];
 }
 
 fn stackpTop() Word {
-    return (stackp.? - 1)[0];
+    return (heap.stackp.? - 1)[0];
 }
 
 fn stackpSetTop(val: Word) void {
-    (stackp.? - 1)[0] = val;
+    (heap.stackp.? - 1)[0] = val;
 }
 
 fn datapair(x: Word, y: Word) Word {
@@ -1231,8 +1235,8 @@ pub fn dump_script(files_val: Word, file: ?*word.FILE) void {
 
     var f_list = files_val;
     while (f_list != word.NIL) : (f_list = t(f_list)) {
-        CFN = get_fil(h(f_list));
-        _ = word.fprint(file, "{s}", .{mkrel(CFN.?)});
+        heap.CFN = get_fil(h(f_list));
+        _ = word.fprint(file, "{s}", .{mkrel(heap.CFN.?)});
         _ = word.putc(0, file);
         putword(fil_time(h(f_list)), file);
         _ = word.putc(@intCast(fil_share(h(f_list))), file);
@@ -1337,7 +1341,7 @@ pub fn dump_ob(x: Word, file: ?*word.FILE) void {
         .FILEINFO => {
             var line = t(x);
             const path = castPtr(h(x));
-            if (main_clib.strcmp(path, CFN.?) == 0) {
+            if (main_clib.strcmp(path, heap.CFN.?) == 0) {
                 _ = word.putc(word.HERE_X, file);
             } else {
                 _ = word.fprint(file, "{c}{s}", .{ @as(u8, @intCast(word.HERE_X)), mkrel(path) });
@@ -1432,7 +1436,7 @@ pub fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params:
             }
         }
     }
-    PNBASE = ls.nextpn;
+    heap.PNBASE = ls.nextpn;
     cs.SUPPRESSED = word.NIL;
     cs.TSUPPRESSED = word.NIL;
 
@@ -1450,8 +1454,8 @@ pub fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params:
             }
         }
         if (ch != '/') {
-            _ = main_clib.strcpy(ls.dicp, &prefix);
-            ls.dicq = ls.dicp + @as(usize, @intCast(preflen));
+            _ = main_clib.strcpy(ls.dicp, &heap.prefix);
+            ls.dicq = ls.dicp + @as(usize, @intCast(heap.preflen));
         }
         ls.dicq[0] = @intCast(ch);
         ls.dicq += 1;
@@ -1477,8 +1481,8 @@ pub fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params:
                 return word.NIL;
             }
         }
-        CFN = get_id(name());
-        files_list = cons(make_fil(CFN, ch, s, load_defs(file)), files_list);
+        heap.CFN = get_id(name());
+        files_list = cons(make_fil(heap.CFN, ch, s, load_defs(file)), files_list);
         ch = main_clib.getc(file);
     }
     if (ch == main_clib.EOF or cs.BAD_DUMP != 0) {
@@ -1502,8 +1506,8 @@ pub fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params:
             }
             ls.dicq = ls.dicp;
             if (ch != '/') {
-                _ = main_clib.strcpy(ls.dicp, &prefix);
-                ls.dicq = ls.dicp + @as(usize, @intCast(preflen));
+                _ = main_clib.strcpy(ls.dicp, &heap.prefix);
+                ls.dicq = ls.dicp + @as(usize, @intCast(heap.preflen));
             }
             ls.dicq[0] = @intCast(ch);
             ls.dicq += 1;
@@ -1636,24 +1640,24 @@ pub fn unscramble(aliases: Word) void {
 }
 
 pub fn dsetup() void {
-    if (dstack == null) {
+    if (heap.dstack == null) {
         const slice = rt.allocator.alloc(Word, 1000) catch mallocPanic("dstack");
-        dstack = slice.ptr;
-        dlim = dstack.? + 1000;
+        heap.dstack = slice.ptr;
+        heap.dlim = heap.dstack.? + 1000;
         heap.allocated_dstack_size = 1000;
     }
-    stackp = dstack;
+    heap.stackp = heap.dstack;
 }
 
 pub fn dgrow() void {
-    const hold = dstack.?;
-    const num_elements = dlim.? - hold;
+    const hold = heap.dstack.?;
+    const num_elements = heap.dlim.? - hold;
     const old_slice = hold[0..heap.allocated_dstack_size];
     const new_size = num_elements * 2;
     const slice = rt.allocator.realloc(old_slice, new_size) catch mallocPanic("dstack");
-    dstack = slice.ptr;
-    dlim = dstack.? + new_size;
-    stackp = dstack.? + (stackp.? - hold);
+    heap.dstack = slice.ptr;
+    heap.dlim = heap.dstack.? + new_size;
+    heap.stackp = heap.dstack.? + (heap.stackp.? - hold);
     heap.allocated_dstack_size = new_size;
 }
 
@@ -1661,7 +1665,7 @@ pub fn load_defs(file: ?*word.FILE) Word {
     var ch = main_clib.getc(file);
     var defs: Word = word.NIL;
     while (ch != main_clib.EOF) {
-        if (stackp == dlim) {
+        if (heap.stackp == heap.dlim) {
             dgrow();
         }
         switch (ch) {
@@ -1698,11 +1702,11 @@ pub fn load_defs(file: ?*word.FILE) Word {
             word.PN_X => {
                 var val = main_clib.getc(file);
                 val = val | (main_clib.getc(file) << 8);
-                const idx = PNBASE + val;
+                const idx = heap.PNBASE + val;
                 stackpPush(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else r7_lex.sto_pn(idx));
             },
             word.PN1_X => {
-                const idx = PNBASE + getint(file);
+                const idx = heap.PNBASE + getint(file);
                 stackpPush(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else r7_lex.sto_pn(idx));
             },
             word.CONSTRUCT_X => {
@@ -1757,11 +1761,11 @@ pub fn load_defs(file: ?*word.FILE) Word {
                 if (next == 0) {
                     next = main_clib.getc(file);
                     next = next | (main_clib.getc(file) << 8);
-                    stackpPush(fileinfo(strtab.strBits(CFN.?), next));
+                    stackpPush(fileinfo(strtab.strBits(heap.CFN.?), next));
                 } else {
                     if (next != '/') {
-                        _ = main_clib.strcpy(ls.dicp, &prefix);
-                        ls.dicq = ls.dicp + @as(usize, @intCast(preflen));
+                        _ = main_clib.strcpy(ls.dicp, &heap.prefix);
+                        ls.dicq = ls.dicp + @as(usize, @intCast(heap.preflen));
                     }
                     ls.dicq[0] = @intCast(next);
                     ls.dicq += 1;
@@ -1782,7 +1786,7 @@ pub fn load_defs(file: ?*word.FILE) Word {
                 }
             },
             word.DEF_X => {
-                const diff = stackp.? - dstack.?;
+                const diff = heap.stackp.? - heap.dstack.?;
                 switch (diff) {
                     0 => {
                         return reverse(defs);
@@ -1799,7 +1803,7 @@ pub fn load_defs(file: ?*word.FILE) Word {
                         const top = stackpTop();
                         if (heap.getTag(top) != word.ID) {
                             if (top == word.NIL) {
-                                stackp = stackp.? - 4;
+                                heap.stackp = heap.stackp.? - 4;
                                 ch = main_clib.getc(file);
                                 continue;
                             }
@@ -1828,7 +1832,7 @@ pub fn load_defs(file: ?*word.FILE) Word {
                                         }
                                     }
                                 }
-                                pn_val_ptr(ch_val).* = ap(akap_val, fileinfo(strtab.strBits(CFN.?), 0));
+                                pn_val_ptr(ch_val).* = ap(akap_val, fileinfo(strtab.strBits(heap.CFN.?), 0));
                             }
                             defs = cons(ch_val, defs);
                             ch = main_clib.getc(file);
@@ -1841,7 +1845,7 @@ pub fn load_defs(file: ?*word.FILE) Word {
                                 while (a != word.NIL and t(h(a)) != top_val) : (a = t(a)) {}
                                 if (a == word.NIL) {
                                     std.debug.print("impossible event in cyclic alias ({s})\n", .{get_id(top_val)});
-                                    stackp = stackp.? - 4;
+                                    heap.stackp = heap.stackp.? - 4;
                                     ch = main_clib.getc(file);
                                     continue;
                                 }
@@ -1853,7 +1857,7 @@ pub fn load_defs(file: ?*word.FILE) Word {
                                 continue;
                             }
                             cs.CLASHES = add1(top_val, cs.CLASHES);
-                            stackp = stackp.? - 4;
+                            heap.stackp = heap.stackp.? - 4;
                         } else {
                             defs = cons(stackpPop(), defs);
                             id_who_ptr(h(defs)).* = stackpPop();
@@ -1920,7 +1924,7 @@ pub fn isvariable(x: Word) bool {
 }
 
 pub fn addtoenv(x: Word) void {
-    tp(h(files)).* = cons(x, t(h(files)));
+    tp(h(heap.files)).* = cons(x, t(h(heap.files)));
 }
 
 pub fn reverse(input: Word) Word {
@@ -2038,8 +2042,8 @@ pub fn unload() void {
     cs.ND = NIL;
     unsetids(dump.internals);
     dump.internals = NIL;
-    while (files != NIL and files != 0) : (files = t(files)) {
-        const fil = h(files);
+    while (heap.files != NIL and heap.files != 0) : (heap.files = t(heap.files)) {
+        const fil = h(heap.files);
         unsetids(t(fil));
         tp(fil).* = NIL;
     }
@@ -2055,7 +2059,7 @@ pub fn unload() void {
 
 pub fn src_update() c_int {
     var ft: Word = undefined;
-    var f = if (files == NIL) rt.rs.oldfiles else files;
+    var f = if (heap.files == NIL) rt.rs.oldfiles else heap.files;
     while (f != NIL) {
         const _fil_path: [*:0]const u8 = strtab.strOf(h(h(h(h(f)))));
         if ((fm_time(_fil_path)) != fil_time(h(f))) {
@@ -2208,7 +2212,7 @@ test "heap dump roundtrip" {
     try std.testing.expect(f_read != null);
     
     // 6. Load it back using load_defs (which pushes it onto stackp)
-    const old_stackp = stackp;
+    const old_stackp = heap.stackp;
     _ = load_defs(f_read);
     _ = word.fclose(f_read.?);
     
@@ -2216,7 +2220,7 @@ test "heap dump roundtrip" {
     _ = main_clib.unlink(filename);
     
     // 7. Verify structural equality
-    try std.testing.expect(@intFromPtr(stackp.?) > @intFromPtr(old_stackp.?));
+    try std.testing.expect(@intFromPtr(heap.stackp.?) > @intFromPtr(old_stackp.?));
     const loaded = stackpTop();
     
     try std.testing.expectEqual(word.CONS, heap.getTag(loaded));
