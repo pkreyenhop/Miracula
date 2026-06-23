@@ -115,24 +115,31 @@ across 8 files (`heap`/`reduce`/`core_state`/`big`/`dump`/`version`/`combinator`
 `extern var`/`export var` bridge comments in `main.zig`/`core_state.zig`.
 * *DoD: ✅ non-FFI `export var` **35 → 0**; golden 44/44 byte-identical; tests 42/42.*
 
-### Phase 2 — Group the remaining loose globals into owner structs *(encapsulation; per-module, each its own PR)*
+### Phase 2 — Group the remaining loose globals into owner structs *(encapsulation; per-module, each its own PR)* — ◐ **4 of 5 done**
 Mirror the existing `RuntimeState`/`CompilerState` pattern. No threading yet —
 each becomes a field of a single module-owned struct singleton.
-* **2a `CoreState`** — wrap `core_state.zig`'s 8 vars (`nill`, `loading`,
-  `compiling`, `errs`, `errline`, `obsuffix`, `SYNERR`, `commandmode`); ~148
-  `core_state.X` sites become `core.X`.
-* **2b `Heap` absorbs its scratch** — move `SPACE`/`listp`/`files`/
-  `current_file`/`cellcount`/`claims`/`nogcs`/`dstack`/`stackp`/`collecting`/
-  `dlim`/`prefix`/`preflen`/`PNBASE`/`CFN`/`charname_buffer` into the `Heap`
-  struct (they are heap/GC/dictionary state); accessors stay `heap.X`.
-* **2c `IoState`** — group `word.zig`'s `std_in/out/err`, the writers + buffers,
-  and the `FILE` pool.
-* **2d `EvalState`** — group `reduce.zig`'s `stdinuse`/`outfilq`/`waiting`/
-  `s_out`/`errtrap`/`cycles`.
-* **2e `Bignum`** — group `big.zig`'s `big_one`/`logIBASE`/`log10IBASE` (those
-  that are genuinely runtime; promote any true constants to `const`).
-* *DoD per sub-step: that module's loose mutable globals → 0; golden green. End
-  of phase: ~93 → ~0 loose globals; state lives in ~8 named structs.*
+* **2a `CoreState`** ✅ — wrapped `core_state.zig`'s 8 vars into `CoreState` +
+  singleton `core_state.s`; 148 sites (`core_state.X` + the `core.X` alias) → `.s.X`.
+* **2c `IoState`** ✅ — consolidated `word.zig`'s scattered I/O globals (writer
+  caches + buffers, the 3 std `FILE` streams, the `FILE` pool) into `IoState` +
+  `word.fio`.
+* **2d `EvalState`** ✅ — grouped `reduce.zig`'s `stdinuse`/`outfilq`/`waiting`/
+  `s_out`/`errtrap`/`cycles` into `EvalState` + `reduce.ev`.
+* **2e `Bignum`** ✅ — grouped `big.zig`'s `logIBASE`/`log10IBASE`/`big_one`/`b_rem`
+  into `Bignum` + `big.bn` (`@log` isn't comptime, so the caches stay runtime); also
+  deleted the **dead** module-level `SPACE`/`listp` duplicates in `heap.zig`.
+* **2b `Heap` absorbs its scratch** ⬜ **— deferred (the hard one).** Move
+  `files`/`current_file`/`cellcount`/`claims`/`nogcs`/`dstack`/`stackp`/
+  `collecting`/`dlim`/`prefix`/`preflen`/`PNBASE`/`CFN`/`charname_buffer` into the
+  `Heap` struct. Unlike 2a/2c/2d/2e (free-function-only modules where a uniform
+  bare→`singleton.X` rename is safe), `heap.zig` mixes **`Heap` methods (`self.X`)
+  with free functions (bare `X`)**, so the move is context-dependent, and external
+  access becomes the awkward `heap.heap.X`. Best handled as its own careful pass —
+  or folded directly into Phase 3, since these are `Heap` fields whose natural
+  end-state access is `self.X` once threading (Phase 5) lands.
+* *DoD per sub-step: that module's loose mutable globals → 0; golden green.
+  Progress: **92 → 66** globals; remaining loose are heap's ~14 (2b) + assorted
+  small ones (`commands`/`startup`/`dump`/`version`/`lex`).*
 
 ### Phase 3 — Aggregate the singletons into one `Interp` *(still global; transitional)*
 Define the umbrella:
@@ -224,10 +231,10 @@ already delivers test isolation without it.
 
 Tracked by `scripts/shared-state-check.sh`.
 
-| Metric | Baseline (Phase 0) | Target |
-|--------|--------------------|--------|
-| non-FFI module-scope mutable globals | **92** | 1 (signal pointer) |
-| &nbsp;&nbsp;↳ gratuitous `export var` | **35** | 0 (Phase 1) |
+| Metric | Baseline (Phase 0) | Now | Target |
+|--------|--------------------|-----|--------|
+| non-FFI module-scope mutable globals | 92 | **66** (Phase 2: 2a/2c/2d/2e done) | 1 (signal pointer) |
+| &nbsp;&nbsp;↳ gratuitous `export var` | 35 | **0** ✓ (Phase 1) | 0 |
 | grouped state structs | 4 (`rs`/`ls`/`heap`/`cs`) | unified under one `Interp` |
 | global state aggregates | 4 structs + loose globals | 0 (constructed in `main`) |
 | interpreter instances constructible | 1 (implicit) | N (explicit) |
