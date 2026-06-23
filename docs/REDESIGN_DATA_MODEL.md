@@ -315,6 +315,39 @@ not wait behind Track B's design work.
   (unchanged): `reducer/*` and the compiler free of raw `Word` arithmetic; golden green on
   evaluation-heavy programs; a reduction-loop micro-benchmark within the agreed budget.*
 
+  **Audit (step 0) — findings that reframe B2.** Read-only enumeration of every bare-`0..255`
+  immediate and its discriminator (surface: ~31 char sites, ~50 int sites — heaviest in
+  `reducer/ready.zig` arithmetic — and ~14 range classifiers). Three findings change the picture:
+  1. *User numbers are **always boxed** (`INT`/`DOUBLE` cells).* `stosmallint`/`big.sto_int` always
+     `make(INT,…)`; arithmetic combinators return `stosmallint(…)`; `get_int` assumes a cell. So at
+     runtime **char-vs-number is already disambiguated by cell tag** — there is no live char/number
+     ambiguity in the reducer. The plan's "chars and small ints both occupy bare `0..255`" is true
+     only of *structural* small-ints, not user numbers.
+  2. *Every bare `0..255` small-int is structural and tag/context-identified:* char codes; **indices**
+     (`trans.mkindex` keeps an index bare iff `< 256`, else boxes — used for subscripts / constructor
+     arities); constructor tags (`CONSTRUCTOR.hd`); a packed `(line,col)` in `reducer/lex.zig`; node
+     counters. The genuine char/immediate overlap is **narrow and lives in the compiler (R4.4)**, not
+     the reducer — `mkindex`/`types.zig` are where a bare value's role is least self-evident.
+  3. *The dominant "raw `Word` arithmetic" in the reducer is the **pointer-reversal spine encoding**,
+     not value classification.* `& ~word.tlptrbits` masks every `hd`/`tl` access and `ctx.s < 0`
+     tests the reversed-pointer mark. A `Value` union does **not** remove this — the DoD "free of raw
+     `Word` arithmetic" is unreachable without *also* replacing pointer-reversal with an explicit
+     spine stack, a separate and larger change (which would, however, also unblock B3's precise GC
+     roots and A4b's interrupt flag).
+
+  **Audit's bottom line.** As originally framed (a `Value` union to tell char from int), B2 buys
+  *less* than the plan implies — boxing already separates char from number — while carrying the
+  highest hot-loop risk, and it cannot meet its own DoD without the bigger pointer-reversal rework.
+  Three honest directions for the decision (was "pick option 1/2/3"; the audit adds a fourth axis —
+  *whether the Value union is even the right hard-core target*):
+  * **(a) Re-scope B2** to a typed `Value` only at the `Heap` immediate boundary (char / index / atom
+    / ref), eliminating range-based classification at value reads/writes; accept that spine encoding
+    stays and reword the DoD accordingly. Medium effort, type-safety win, modest correctness gain.
+  * **(b) Repivot the "hard core"** to pointer-reversal → an explicit typed spine stack — this is what
+    actually dominates raw-`Word` arithmetic and unblocks B3 + A4b. Higher value, comparable risk.
+  * **(c) Defer B2**: since boxing already disambiguates char/number, do B3 (tracing GC) or the
+    close-out (C1/C2) first and revisit the value representation later.
+
 * **B3 (R5) — Tracing GC.** Replace the sign-bit free-list mark-sweep with a precise tracing
   collector over the `Ref` graph: explicit typed root set, mark/sweep rebuilding the free list
   from a side `std.DynamicBitSet` (drops the tag sign-bit trick, making `NodeTag` fully
