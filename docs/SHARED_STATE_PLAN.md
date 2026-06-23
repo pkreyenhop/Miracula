@@ -184,13 +184,15 @@ and re-point each owner module at its field (`pub const rs = &interp.rs`,
 the owners (A2), call sites are untouched.
 * *DoD: exactly one global state aggregate; golden green.*
 
-### Phase 4 — Make `Interp` injectable *(the test-isolation payoff)* — ◐ **primitive landed; full isolation gated on the residuals**
+### Phase 4 — Make `Interp` injectable *(the test-isolation payoff)* ✅ **done**
 `interp.reset()` is the injection primitive the pre-threading architecture allows:
 it returns the global to a pristine `Interp` (the owner pointers keep their
 addresses, only the value is replaced), so a test can start from a clean slate.
 A focused test (`reduce_test`'s *"interp.reset clears the aggregated state
-structs"*) proves it across `RuntimeState`/`CoreState`/`EvalState`/`Bignum` in one
-call; `reduce_test` now begins with `reset()`. Suite **43/43**, golden 44/44.
+structs"*) proves it. **The payoff is delivered:** `reduce_test` now runs the full
+`mira_setup()` (the heavyweight init that used to pollute the order-sensitive
+parser snapshot tests) — the minimal-setup workaround is gone — and the suite
+stays green. Suite **43/43**, golden 44/44.
 
 **Finding (the isolation chase, and where it stands).** Truly independent
 instances need *threading* (`*Interp`, Phase 5) — every access still reads the
@@ -205,28 +207,27 @@ residual at a time:
      one also needed `setupheap`/`setupdic` to precede `reset_state` in the test,
      since `reset()` nulls `prefixbase`)*;
   4. *recursion* snapshot drops the first identifier's text after a second
-     `reset()` → **root-caused (debug session):** *not an interpreter bug.* The
-     parser snapshot tests capture each token's "lexeme" by reading `ls.dicp`
-     (the dictionary buffer) *after* `yylex` — but `dicp` lags, and for the first
-     token of a freshly-set-up dictionary it points at **uninitialised dic
-     memory** (instrumented: `dic="fact\0"`, `dicp=dic+5`, lexeme = 99 KB of
-     garbage that the test's ASCII filter silently drops). The recorded snapshots
-     only hold while the dictionary **persists across tests** (no `reset()`); they
-     encode incidental, non-deterministic dic state. `reset()` correctly gives
-     each test a fresh dic, exposing the fragility. (`EQUALS("0")`, `NAME("e")`
-     etc. in the snapshots are lagging artifacts, not real token text.)
-So `reset()`/isolation is **correct**; the blocker is a **pre-existing
-test-infrastructure fragility** — the `ls.dicp`-based lexeme capture is unreliable
-for *every* token type. Unblocking heavyweight isolation needs the snapshot tests
-reworked to capture real token text (e.g. the interned id for `NAME`/`CNAME`) and
-their snapshots regenerated — a self-contained test-quality task, *not* more
-state aggregation. Left reverted to green for now; `reduce_test` keeps its
-lightweight `reset()` + minimal setup, and the *"reset clears the aggregated
-state"* test stands as the primitive's proof. The *architectural* payoff (one
-resettable `interp`, 92→28 globals) is fully landed.
-* *DoD (revised): `reset()` primitive + isolation test; golden green;
-  `reset()` covers all aggregated state. Full heavyweight-path isolation → rework
-  the parser snapshot lexeme capture + regenerate snapshots (follow-up).*
+     `reset()` → **root-caused, then fixed:** *not an interpreter bug.* The parser
+     snapshot tests captured each token's "lexeme" by reading `ls.dicp` (the
+     dictionary buffer) *after* `yylex` — but `dicp` lags, and for the first token
+     of a freshly-set-up dictionary it points at **uninitialised dic memory**
+     (instrumented: `dic="fact\0"`, `dicp=dic+5`, lexeme = 99 KB of garbage that
+     the test's ASCII filter silently drops). The recorded snapshots only held
+     while the dictionary **persisted across tests**; `reset()` correctly gives a
+     fresh dic, exposing the fragility (`EQUALS("0")`, `NAME("e")` were lagging
+     artifacts, not real token text). **Fix:** capture the identifier text from the
+     interned id node (`ls.yylval`), not `dicp`, and regenerate the 15 snapshots
+     (now `NAME("square")`/`NAME("fact")`/…). The capture is now
+     isolation-independent, so `reduce_test` runs full `mira_setup` and the
+     snapshot tests stay green with **no parser-test `reset()` needed at all**.
+The lesson: `reset()`/isolation was **correct** all along; the blocker was a
+**pre-existing test fragility** (the `ls.dicp`-based capture encoded incidental
+dic state). Fixing the capture both hardened the tests and delivered the payoff —
+no further state work was needed. The *architectural* payoff (one resettable
+`interp`, 92→28 globals) and the *practical* payoff (heavyweight test isolation)
+are both landed.
+* *DoD: `reset()` primitive + isolation test; `reset()` covers all aggregated
+  state; `reduce_test` runs full `mira_setup` with the suite green; golden 44/44.*
 
 ### Phase 5 — Thread `*Interp` through the call graph *(design-bearing; the large one)* — ⬜ **deferred**
 **Deferred by decision (2026-06-24).** Scoped against the code: even bignum (the
