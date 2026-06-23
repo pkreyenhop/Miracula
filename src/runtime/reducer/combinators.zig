@@ -819,12 +819,12 @@ pub fn handleERROR(ctx: *ReductionCtx) void {
         return;
     }
     const lastarg = reduce.tl_get(ctx.e);
-    if (reduce_rt.errtrap != 0) {
+    if (reduce_rt.ev.errtrap != 0) {
         word.printErr("\n(repeated error)\n", .{});
     } else {
-        reduce_rt.errtrap = 1;
+        reduce_rt.ev.errtrap = 1;
         word.printErr("\nprogram error: ", .{});
-        reduce_rt.s_out = reduce.getStderr();
+        reduce_rt.ev.s_out = reduce.getStderr();
         reduce.print(lastarg);
         _ = word.putc('\n', reduce.getStderr().?);
     }
@@ -843,7 +843,7 @@ pub fn handleWAIT(ctx: *ReductionCtx) void {
     }
     const lastarg = reduce.tl_get(ctx.e);
     var hold: Word = 0;
-    var w: *Word = &reduce_rt.waiting;
+    var w: *Word = &reduce_rt.ev.waiting;
     while (w.* != word.NIL and reduce.hd_get(w.*) != lastarg) {
         w = reduce.tl_ptr(reduce.tl_get(w.*));
     }
@@ -858,7 +858,7 @@ pub fn handleWAIT(ctx: *ReductionCtx) void {
                 hold = res;
                 break;
             }
-            reduce_rt.waiting = reduce.cons(res, reduce.cons(@intCast(WEXITSTATUS(status)), reduce_rt.waiting));
+            reduce_rt.ev.waiting = reduce.cons(res, reduce.cons(@intCast(WEXITSTATUS(status)), reduce_rt.ev.waiting));
         }
         if (hold != -1) {
             hold = WEXITSTATUS(status);

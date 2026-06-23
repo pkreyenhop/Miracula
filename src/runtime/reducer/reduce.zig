@@ -83,7 +83,7 @@ pub fn reduce(e_val: Word) Word {
             downLeft(&ctx);
         }
 
-        r7_reduce.cycles += 1; // one reduction step (the perf counter)
+        r7_reduce.ev.cycles += 1; // one reduction step (the perf counter)
         trace.step(ctx.e); // per-combinator histogram (compiled out when off)
         ctx.action = word.ACT_NONE;
 
@@ -188,7 +188,7 @@ pub fn reduce(e_val: Word) Word {
             //      Dispatch on its cell tag. (Undo the step count — these are
             //      not combinator reductions; a negative `e` is a corrupt graph.)
             else => {
-                r7_reduce.cycles -= 1;
+                r7_reduce.ev.cycles -= 1;
                 if (abnormal(ctx.e)) {
                     word.printErr("\nBLACK HOLE\n", .{});
                     r7_reduce.outstats();

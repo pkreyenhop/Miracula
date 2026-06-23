@@ -297,8 +297,8 @@ pub const Heap = struct {
         }
         self.mark(cstack_ptr[0]);
 
-        self.mark(r7_reduce.outfilq);
-        self.mark(r7_reduce.waiting);
+        self.mark(r7_reduce.ev.outfilq);
+        self.mark(r7_reduce.ev.waiting);
         if (core.s.compiling != 0 or rt.rs.rv_expr != 0 or cs.rv_script != 0) {
             self.mark(rt.rs.make_status);
             self.mark(rt.rs.primenv);

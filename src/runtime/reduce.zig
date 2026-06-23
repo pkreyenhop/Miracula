@@ -20,12 +20,24 @@ const FST = word.HD;
 const MAXDIGIT = 0x7fff;
 const SIGNBIT = 0x10000000;
 
-pub var stdinuse: Word = 0;
-pub var outfilq: Word = NIL;
-pub var waiting: Word = NIL;
-pub var s_out: ?*word.FILE = null;
-pub var errtrap: Word = 0;
-pub var cycles: i64 = 0;
+/// Evaluation / reducer-I/O state (shared-state plan Phase 2d). Accessed as
+/// `reduce.ev.X`; folds into `Interp.eval` in Phase 3.
+pub const EvalState = struct {
+    /// How stdin is currently bound (0 = free, ':' = text read, '-' = binary).
+    stdinuse: Word = 0,
+    /// Queue of open output files (`Tofile`/`Appendfile`).
+    outfilq: Word = NIL,
+    /// List of child processes awaiting `wait`.
+    waiting: Word = NIL,
+    /// Current `Tofile` output stream.
+    s_out: ?*word.FILE = null,
+    /// Evaluation-error recovery trap.
+    errtrap: Word = 0,
+    /// Reduction-step counter (the perf metric reported by `outstats`).
+    cycles: i64 = 0,
+};
+
+pub var ev: EvalState = .{};
 
 const sto_char = heap.sto_char;
 extern fn fromUTF8(f: ?*word.FILE) Word;
@@ -243,14 +255,14 @@ pub export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
             ctx.e = ctx.hold;
 
             if (lastarg == 0) {
-                if (stdinuse == '-') {
+                if (ev.stdinuse == '-') {
                     stdin_error(':');
                 }
-                if (stdinuse != 0) {
+                if (ev.stdinuse != 0) {
                     rewrite_to_nil(&ctx.e);
                     return .REDUCE_DONE;
                 }
-                stdinuse = ':';
+                ev.stdinuse = ':';
                 tp(ctx.e).* = @as(Word, @intCast(@intFromPtr(getStdin().?)));
             }
             const hold_char = main_clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
@@ -270,14 +282,14 @@ pub export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
             ctx.e = ctx.hold;
 
             if (lastarg == 0) {
-                if (stdinuse == ':') {
+                if (ev.stdinuse == ':') {
                     stdin_error('-');
                 }
-                if (stdinuse != 0) {
+                if (ev.stdinuse != 0) {
                     rewrite_to_nil(&ctx.e);
                     return .REDUCE_DONE;
                 }
-                stdinuse = '-';
+                ev.stdinuse = '-';
                 tp(ctx.e).* = @as(Word, @intCast(@intFromPtr(getStdin().?)));
             }
             const hold_char = if (main.rs.UTF8 != 0) sto_char(fromUTF8(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))))) else main_clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
@@ -362,7 +374,7 @@ pub fn outstats() void {
     var buffer: main_clib.struct_tms = undefined;
     _ = main_clib.times(&buffer);
     word.printErr("||", .{});
-    word.printErr("reductions = {}, cells claimed = {}, ", .{cycles, heap.cellcount + heap.claims});
+    word.printErr("reductions = {}, cells claimed = {}, ", .{ev.cycles, heap.cellcount + heap.claims});
     const clk_tck = @as(f64, @floatFromInt(main_clib.sysconf(word._SC_CLK_TCK)));
     word.printErr("no of gc's = {}, cpu = {d:.2}\n", .{heap.nogcs, @as(f64, @floatFromInt(buffer.tms_utime)) / clk_tck});
 }
@@ -388,10 +400,10 @@ fn stdname(c_val: c_int) [*:0]const u8 {
 }
 
 pub fn stdin_error(c_val: c_int) void {
-    if (stdinuse == c_val) {
+    if (ev.stdinuse == c_val) {
         word.printErr("program error: duplicate use of {s}\n", .{stdname(c_val)});
     } else {
-        word.printErr("program error: simultaneous use of {s} and {s}\n", .{stdname(c_val), stdname(@intCast(stdinuse))});
+        word.printErr("program error: simultaneous use of {s} and {s}\n", .{stdname(c_val), stdname(@intCast(ev.stdinuse))});
     }
     outstats();
     main_clib.exit(1);
@@ -610,7 +622,7 @@ pub fn head(x_val: Word) Word {
 }
 
 pub fn apfile(f: Word) void {
-    var p = outfilq;
+    var p = ev.outfilq;
     const fil = getstring(f, "Appendfile");
     while (p != NIL and word.strcmp(strtab.strOf(h(h(p))), fil) != 0) {
         p = t(p);
@@ -622,13 +634,13 @@ pub fn apfile(f: Word) void {
         } else {
             // datapair = (filename string, FILE* handle); the FILE* is a
             // raw cell cast (read back via @ptrFromInt), not a node string.
-            outfilq = cons(datapair(strtab.strBits(lex.keep(fil.?)), @as(Word, @intCast(@intFromPtr(s.?)))), outfilq);
+            ev.outfilq = cons(datapair(strtab.strBits(lex.keep(fil.?)), @as(Word, @intCast(@intFromPtr(s.?)))), ev.outfilq);
         }
     }
 }
 
 pub fn closefile(f: Word) void {
-    var p = &outfilq;
+    var p = &ev.outfilq;
     const fil = getstring(f, "Closefile");
     while (p.* != NIL and word.strcmp(strtab.strOf(h(h(p.*))), fil) != 0) {
         p = tp(p.*);
@@ -640,25 +652,25 @@ pub fn closefile(f: Word) void {
 }
 
 pub fn outf(e: Word) void {
-    var p = outfilq;
+    var p = ev.outfilq;
     const f = getstring(t(h(e)), "Tofile");
     while (p != NIL and word.strcmp(strtab.strOf(h(h(p))), f) != 0) {
         p = t(p);
     }
     if (p == NIL) {
-        s_out = word.fopen(f, "w");
-        if (s_out == null) {
+        ev.s_out = word.fopen(f, "w");
+        if (ev.s_out == null) {
             word.printErr("\nTofile: cannot write to \"{s}\"\n", .{std.mem.span(f.?)});
-            s_out = getStdout();
+            ev.s_out = getStdout();
             return;
         }
-        if (main_clib.isatty(word.fileno(s_out.?)) != 0) {
-            word.setbuf(s_out.?, null);
+        if (main_clib.isatty(word.fileno(ev.s_out.?)) != 0) {
+            word.setbuf(ev.s_out.?, null);
         }
         // datapair = (filename string, FILE* handle); FILE* is a raw cell cast.
-        outfilq = cons(datapair(strtab.strBits(lex.keep(f.?)), @as(Word, @intCast(@intFromPtr(s_out.?)))), outfilq);
+        ev.outfilq = cons(datapair(strtab.strBits(lex.keep(f.?)), @as(Word, @intCast(@intFromPtr(ev.s_out.?)))), ev.outfilq);
     } else {
-        s_out = @ptrFromInt(@as(usize, @intCast(t(h(p)))));
+        ev.s_out = @ptrFromInt(@as(usize, @intCast(t(h(p)))));
     }
 }
 
@@ -671,9 +683,9 @@ pub fn print(arg_e: Word) void {
         }
         const c = @as(u32, @intCast(heap.get_char(h(e))));
         if (main.rs.UTF8 != 0) {
-            main_clib.outUTF8(c, s_out);
+            main_clib.outUTF8(c, ev.s_out);
         } else if (word.fitsInByte(c)) {
-            _ = word.putc(@intCast(c), s_out.?);
+            _ = word.putc(@intCast(c), ev.s_out.?);
         } else {
             word.printErr("\n warning: non Latin1 char {x} in print, ignored\n", .{c});
         }
@@ -720,9 +732,9 @@ pub fn output(arg_e: Word) void {
                 main.rs.UTF8OUT = main.rs.UTF8;
             },
             Stderr => {
-                s_out = getStderr();
+                ev.s_out = getStderr();
                 print(t(h(e)));
-                s_out = getStdout();
+                ev.s_out = getStdout();
             },
             Tofile => {
                 outf(h(e));

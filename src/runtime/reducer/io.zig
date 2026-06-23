@@ -30,13 +30,13 @@ pub fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
     reduce.tl_set(ctx.e, lastarg_val);
 
     if (lastarg_val == word.OFFSIDE) {
-        if (reduce_rt.stdinuse != 0 and reduce_rt.stdinuse != '+') {
+        if (reduce_rt.ev.stdinuse != 0 and reduce_rt.ev.stdinuse != '+') {
             reduce.setTag(ctx.e, word.AP);
             reduce.rewrite_to_nil(&ctx.e);
             ctx.action = word.ACT_DONE;
             return;
         }
-        reduce_rt.stdinuse = '+';
+        reduce_rt.ev.stdinuse = '+';
         ctx.hold = reduce.cons(reduce.tl_get(reduce.hd_get(ctx.e)), 0);
         reduce.tl_set(ctx.e, @intCast(@intFromPtr(reduce.getStdin().?)));
     } else {
