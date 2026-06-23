@@ -60,7 +60,7 @@ library) links against it, so the *honest* C-ABI target is:
 | Track A4b — recovery redesign | ⬜ Re-scoped — design-bearing (SIGFPE synchronous; reducer unwind; unverifiable by golden) |
 | `Value` union (R4.3/4.4) | ⬜ Deferred — the deep core (Track B2) |
 | Tracing GC (R5) | ⬜ Planned (Track B3) |
-| String interning (R6) | ⬜ Planned — 132 `[*:0]`-as-`Word` casts remain (Track B1) |
+| String interning (R6) | ◐ B1 step 1 done (encapsulation); node-string casts **132 → 69** (Track B1) |
 
 ---
 
@@ -214,10 +214,23 @@ not wait behind Track B's design work.
 
 ### Track B — Representation *(deep, design-bearing; after Track A)*
 
-* **B1 (R6) — String interning.** Intern identifiers/dictionary strings into a `StringTable`
-  (`std.StringHashMapUnmanaged` over an arena) returning a `StrId`; `id`/`fil` nodes hold a
-  `StrId`, not a pointer-as-int. *DoD: scorecard `[*:0]`-as-`Word` casts **132 → 0**; table unit
-  tests + golden green.* Most bounded of the three; do it first.
+* **B1 (R6) — String interning.** ◐ **Step 1 done.**
+  * *Step 1 (encapsulation) ✅* — funnelled the ~63 scattered raw
+    `@ptrFromInt(@as(usize,@intCast(...)))` / `@intCast(@intFromPtr(...))` casts that read/write
+    node-stored identifier strings through three audited accessors in the leaf `word.zig`:
+    `strOf`/`strOfMut` (read) and `strBits` (write). Pure refactor, golden byte-identical. The
+    `@intFromPtr`/`@ptrFromInt` metric dropped **132 → 69**; the remaining ~38 are FILE-handle-in-
+    cell casts (out of B1 scope) plus pointer arithmetic. This single boundary is what makes step 2
+    a localized change.
+  * *Step 2 (the actual interning) — next.* Swap `strOf`/`strBits` internals from raw pointer casts
+    to a `StringTable` (`std.ArrayListUnmanaged(u8)` arena + `StringHashMap` dedup) returning a
+    `StrId`; nodes then hold a `StrId`, not a pointer. **Considerations:** id strings currently come
+    from three places (the `dic` bump buffer, `keep` storage, string literals) — `strBits` must
+    intern-with-dedup so identical names share a `StrId` (preserving identity that the namebucket
+    relies on); and the accessors must move out of the leaf `word.zig` (the table needs an
+    allocator), a mechanical `word.strOf` → `<table>.strOf` rename across the ~63 sites. Dump stays
+    compatible (it serialises `get_id` *text*). *DoD: nodes hold `StrId`; table unit tests + golden
+    + dump round-trip green.*
 
 * **B2 (R4.3/4.4) — `Value` union (the hard core).** Introduce a tagged representation that
   distinguishes the four roles of `Word` — chars and small ints both occupy bare values `0..255`,
@@ -294,7 +307,7 @@ becomes pure, idiomatic Zig.
 | `clib.` / `c.` call sites | 2821 | **0** | 0 |
 | `callconv(.c)` | 12 | **6** *(A4a stripped gratuitous; floor is the genuine signal boundary)* | 1 (needs A4b recovery redesign) |
 | raw `hd[`/`tl[`/`tag[` outside `heap.zig` | 290 | **0** | 0 |
-| `[*:0]`-as-`Word` pointer casts | 129 | **132** | 0 (string interning, B1) |
+| `[*:0]`-as-`Word` pointer casts | 129 | **69** *(B1 step 1: node-string casts funnelled through `word.strOf`/`strBits`)* | 0 (string interning, B1) |
 | `Word = c_long` (value type is a C type) | yes | **no — `i64`** | `i64` |
 | bare `< ATOMLIMIT` / `< 256` magic thresholds | ~23 | **0** | 0 |
 
