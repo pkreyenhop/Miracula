@@ -183,14 +183,26 @@ and re-point each owner module at its field (`pub const rs = &interp.rs`,
 the owners (A2), call sites are untouched.
 * *DoD: exactly one global state aggregate; golden green.*
 
-### Phase 4 — Make `Interp` injectable *(the test-isolation payoff)*
-Add `Interp.init(allocator) → Interp`, `deinit`, and `reset`. Keep the global
-`interp` as the *default* instance, but let callers run against a fresh one.
-**Rewrite `reducer/reduce_test.zig` and the parser snapshot tests to each build
-a private `Interp`** — eliminating the cross-test pollution that forced the
-current minimal-setup workaround, and proving isolation end-to-end.
-* *DoD: tests run against independent instances with no shared-state bleed;
-  golden green. **Most of the practical benefit is realized here.***
+### Phase 4 — Make `Interp` injectable *(the test-isolation payoff)* — ◐ **primitive landed; full isolation gated on the residuals**
+`interp.reset()` is the injection primitive the pre-threading architecture allows:
+it returns the global to a pristine `Interp` (the owner pointers keep their
+addresses, only the value is replaced), so a test can start from a clean slate.
+A focused test (`reduce_test`'s *"interp.reset clears the aggregated state
+structs"*) proves it across `RuntimeState`/`CoreState`/`EvalState`/`Bignum` in one
+call; `reduce_test` now begins with `reset()`. Suite **43/43**, golden 44/44.
+
+**Finding (why "init/deinit/inject a separate instance" isn't done yet).** Truly
+independent instances need *threading* (`*Interp`, Phase 5) — every access still
+reads the global. And even `reset()` is only **partial** until Phase 2b/`strtab`
+land: it resets the 8 aggregated structs but **not** heap's loose 2b scratch (the
+dic-prefix machinery) nor the `strtab` cache. Driving the heavyweight
+`mira_setup()` through `reduce_test` (the original pollution case) therefore still
+bleeds — empirically, a second `reset()` mid-parse drops the first identifier's
+text — so that test keeps its lightweight setup for now. *The clean
+`mira_setup`-level isolation is unblocked once 2b + `strtab` are folded into the
+aggregate and `reset()` (or a real `deinit`) covers them.*
+* *DoD (revised): `reset()` injection primitive + isolation test; golden green.
+  Full cross-test isolation of the heavyweight path → after 2b/`strtab`.*
 
 ### Phase 5 — Thread `*Interp` through the call graph *(design-bearing; the large one)*
 Convert subsystems from reaching the global `interp` to taking/holding

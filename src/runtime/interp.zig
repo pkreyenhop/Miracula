@@ -41,3 +41,19 @@ pub const Interp = struct {
 /// The process-wide singleton (transitional; becomes an injectable value in
 /// Phase 4 and loses its global home in Phase 6).
 pub var interp: Interp = .{};
+
+/// Reset the interpreter to a pristine state — the injectability the
+/// pre-threading architecture allows: a test calls this to start from a clean
+/// slate, independent of whatever ran before, instead of relying on partial
+/// ad-hoc re-init. The owner-module pointers (`lex_state.ls = &interp.lex`, …)
+/// stay valid because `interp` keeps its address; only its value is replaced.
+///
+/// Resets the eight aggregated state structs. Bootstrap infra
+/// (`allocator`/`io`/`gpa`/`environ`) and the process-wide `strtab` cache are
+/// intentionally *not* reset (the latter is content-addressed, so sharing it is
+/// harmless); heap's still-loose scratch (2b) is re-established by callers'
+/// `setupheap`. Old heap/arena allocations are dropped (fine under the test
+/// allocator); a freeing `deinit` arrives with explicit construction in Phase 5.
+pub fn reset() void {
+    interp = .{};
+}

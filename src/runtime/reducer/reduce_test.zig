@@ -11,19 +11,25 @@ const word = @import("../word.zig");
 const heap = @import("../heap.zig");
 const big = @import("../big.zig");
 const reduce = @import("reduce.zig");
+const reduce_rt = @import("../reduce.zig");
+const interp = @import("../interp.zig");
+const rt = @import("../runtime_state.zig");
+const core_state = @import("../core_state.zig");
 
 const Word = word.Word;
 const ap = reduce.ap;
 const ap2 = reduce.ap2;
 
-// Minimal runtime init: just the heap and the bignum globals — enough to build
-// cells and do arithmetic. We deliberately avoid the full `mira_setup()` (which
-// seeds `rs.*`/primenv and populates the dictionary) so these tests don't leave
-// global state that later order-sensitive tests (e.g. the parser snapshots)
-// would observe — this is the same pollution level as the heap unit test.
+// Phase 4 (shared-state plan): start from a pristine `Interp` via `interp.reset()`,
+// then a minimal heap + bignum init — enough to build cells and do arithmetic.
+// (`reset()` isolates the *aggregated* state structs; the full `mira_setup()`
+// path still bleeds through the not-yet-aggregated residuals — heap's loose 2b
+// scratch and the `strtab` cache — so we keep the lightweight setup here. See
+// the "reset clears the aggregated state" test below for the isolation proof.)
 var initialized = false;
 fn ensureSetup() void {
     if (initialized) return;
+    interp.reset();
     heap.setupheap();
     big.bigsetup();
     initialized = true;
@@ -62,4 +68,29 @@ test "strict arithmetic: reduce (TIMES 6 7) yields INT 42" {
     const r = reduce.reduce(ap2(word.TIMES, big.sto_int(6), big.sto_int(7)));
     try std.testing.expect(heap.getTag(r) == .INT);
     try std.testing.expectEqual(@as(i64, 42), @as(i64, @intCast(big.get_int(r))));
+}
+
+// Phase 4 proof: `interp.reset()` restores every aggregated state struct to its
+// default in one call — the injectability primitive that lets a test start from
+// a clean slate (here across RuntimeState / CoreState / EvalState / Bignum).
+test "interp.reset clears the aggregated state structs" {
+    ensureSetup();
+
+    // Dirty fields in four different aggregated structs.
+    rt.rs.SPACELIMIT = 42;
+    core_state.s.SYNERR = 7;
+    reduce_rt.ev.cycles = 999;
+    big.bn.b_rem = 123;
+
+    interp.reset();
+
+    // One reset returns them all to their struct defaults.
+    try std.testing.expectEqual(@as(Word, 2500000), rt.rs.SPACELIMIT);
+    try std.testing.expectEqual(@as(Word, 0), core_state.s.SYNERR);
+    try std.testing.expectEqual(@as(i64, 0), reduce_rt.ev.cycles);
+    try std.testing.expectEqual(@as(Word, 0), big.bn.b_rem);
+
+    // Re-establish a working interpreter for subsequent tests (reset wiped it).
+    initialized = false;
+    ensureSetup();
 }
