@@ -1,3 +1,45 @@
+//! reducer/reduce.zig — the graph-reduction engine (the `reduce()` loop).
+//!
+//! Miranda programs are compiled to a **combinator graph**: a DAG of binary
+//! `AP` (application) cells whose leaves are atoms — the SK-family combinators
+//! (`S`/`K`/`I`/`B`/`C`/`Y`/…), built-in operators (`PLUS`, `HD`, `COND`, …),
+//! and data cells (`INT`/`DOUBLE`/`CONS`/`CONSTRUCTOR`/…). `reduce(e)` evaluates
+//! `e` to **weak head normal form** (WHNF — the outermost constructor/atom is
+//! known, arguments may stay unevaluated) by normal-order (lazy) graph
+//! reduction, rewriting the graph *in place* so shared sub-expressions are
+//! evaluated at most once.
+//!
+//! **The spine.** The "spine" is the left-ancestor chain of `AP` nodes from the
+//! root down to the head atom. Each step the engine unwinds the spine to its
+//! head combinator, then applies that combinator's rewrite rule using the
+//! argument sub-graphs hanging off the spine's `AP` nodes.
+//!
+//! **Pointer reversal (no separate stack).** Instead of an explicit spine
+//! stack, the engine *reverses the graph pointers* as it descends: each node it
+//! enters has its `hd` (or `tl`) rewritten to point back at the parent, so the
+//! path back up is recorded in the graph itself and restored on the way up.
+//! This is why every `hd`/`tl` access masks `& ~tlptrbits` and why the loop is
+//! pure raw-`Word` bit-twiddling — the high bits of the spine word carry control
+//! state, not data. The `ReductionCtx` registers:
+//!   * `e`     — the node currently in focus (the candidate redex / result).
+//!   * `s`     — the reversed-spine pointer (the "stack top"), with a direction
+//!               mark in its top bits; `BACKSTOP` (sign bit) marks the bottom.
+//!   * `hold`  — scratch used by the three-way pointer swaps.
+//!   * `args`  — scratch slots for a combinator's pulled-out arguments.
+//!   * `action`— post-dispatch protocol (see below).
+//!
+//! **The `action` protocol** tells the loop what to do after a handler runs:
+//!   * `ACT_NONE`      — fall through to walk back *up* the spine forcing args.
+//!   * `ACT_NEXTREDEX` — the redex was rewritten in place; re-examine from `e`.
+//!   * `ACT_DONE`      — `e` is in WHNF; pop up the spine seeking the next arg.
+//!
+//! **Where the rules live.** This file owns the dispatch loop and the traversal
+//! primitives; the per-combinator rewrite rules live in `combinators.zig`,
+//! `ready.zig`, `lex.zig`, and `io.zig`, which share the machine primitives via
+//! `reduce_core.zig`. NB: the `hd_get`/`downLeft`/classifier/`rewrite_to_*`
+//! helpers below are duplicated in `reduce_core.zig` (the copy the handlers
+//! import); see that file for the canonical set. Keep the two in lock-step.
+
 const std = @import("std");
 const word = @import("../word.zig");
 const strtab = @import("../strtab.zig");
@@ -18,7 +60,11 @@ pub const ReductionCtx = core.ReductionCtx;
 
 // Extern globals referenced by reducer helpers
 
+/// Reduce `e_val` to weak head normal form and return the resulting node.
+/// Drives the graph in place; the returned `Word` is the rewritten root.
 pub fn reduce(e_val: Word) Word {
+    // Fresh machine state. `s = BACKSTOP` is the empty-spine sentinel (its sign
+    // bit makes `ctx.s < 0` true, terminating the upward walk).
     var ctx: ReductionCtx = undefined;
     ctx.e = e_val;
     ctx.s = word.BACKSTOP;
@@ -30,13 +76,17 @@ pub fn reduce(e_val: Word) Word {
     ctx.action = word.ACT_NONE;
 
     main_loop: while (true) {
+        // (1) Unwind the left spine: descend through `AP` nodes (reversing
+        //     pointers) until `e` is the head atom/combinator/data node.
         while (is_ap(ctx.e)) {
             downLeft(&ctx);
         }
 
-        r7_reduce.cycles += 1;
+        r7_reduce.cycles += 1; // one reduction step (the perf counter)
         ctx.action = word.ACT_NONE;
 
+        // (2) Dispatch on the head. A bare combinator/operator atom selects a
+        //     rewrite handler; anything else falls to the tag switch below.
         switch (ctx.e) {
             word.S => combinators.handleS(&ctx),
             word.B => combinators.handleB(&ctx),
@@ -132,6 +182,9 @@ pub fn reduce(e_val: Word) Word {
             word.READBIN => io_handlers.handle_READBIN(&ctx),
             word.READVALS => io_handlers.handle_READVALS(&ctx),
 
+            // (2b) Head is not a known combinator atom: it is a data/name node.
+            //      Dispatch on its cell tag. (Undo the step count — these are
+            //      not combinator reductions; a negative `e` is a corrupt graph.)
             else => {
                 r7_reduce.cycles -= 1;
                 if (abnormal(ctx.e)) {
@@ -141,6 +194,7 @@ pub fn reduce(e_val: Word) Word {
                 }
 
                 switch (getTag(ctx.e)) {
+                    // A private-name placeholder: chase to its bound value.
                     word.STRCONS => {
                         ctx.e = pn_val(ctx.e);
                         if (ctx.e == word.UNDEF or ctx.e == word.FREE) {
@@ -155,6 +209,7 @@ pub fn reduce(e_val: Word) Word {
                         r7_reduce.outstats();
                         main_clib.exit(1);
                     },
+                    // A defined name: substitute its value and re-examine.
                     word.ID => {
                         if (id_val(ctx.e) == word.UNDEF or id_val(ctx.e) == word.FREE) {
                             word.printErr("\nUNDEFINED NAME - {s}\n", .{get_id(ctx.e)});
@@ -164,6 +219,8 @@ pub fn reduce(e_val: Word) Word {
                         ctx.e = id_val(ctx.e);
                         ctx.action = word.ACT_NEXTREDEX;
                     },
+                    // A saturated constructor application is already WHNF: pop
+                    // the whole spine back to the root, then we are done.
                     word.CONSTRUCTOR => {
                         while (true) {
                             if (upleft(&ctx)) {
@@ -175,6 +232,7 @@ pub fn reduce(e_val: Word) Word {
                     word.STARTREADVALS => {
                         io_handlers.handle_STARTREADVALS(&ctx);
                     },
+                    // Already a head-normal value (data leaf): nothing to rewrite.
                     word.ATOM, word.INT, word.UNICODE, word.DOUBLE, word.CONS => {
                         ctx.action = word.ACT_DONE;
                     },
@@ -186,10 +244,16 @@ pub fn reduce(e_val: Word) Word {
             },
         }
 
+        // A handler rewrote the redex in place and wants it re-examined.
         if (ctx.action == word.ACT_NEXTREDEX) {
             continue :main_loop;
         }
 
+        // (3) `e` is in WHNF. Walk back *up* the spine, restoring reversed
+        //     pointers. At each `AP` we ascended through, force its right
+        //     argument (descend into it) so strict operators find their
+        //     operands ready; `ready.handle_ready_state` applies the pending
+        //     rule once an argument has been reduced. Stop at `BACKSTOP`.
         while (true) {
             if (ctx.s == word.BACKSTOP) {
                 return ctx.e;
@@ -224,6 +288,11 @@ pub inline fn clean_ptr(x: Word) usize {
 
 const heap = @import("../heap.zig");
 
+// --- Cell access through the spine word --------------------------------------
+// A spine word may carry direction bits in its top two bits (`tlptrbits`), so
+// every access masks them off before indexing the heap. These mirror
+// `reduce_core.zig`; keep both in sync.
+
 pub inline fn hd_get(x: Word) Word {
     return heap.heap.h(x & ~word.tlptrbits);
 }
@@ -240,8 +309,14 @@ pub inline fn tl_set(x: Word, val: Word) void {
     heap.heap.tp(x & ~word.tlptrbits).* = val;
 }
 
-// Traversal Helpers matching C exactly
+// --- Pointer-reversal traversal (matches the C reducer exactly) ---------------
+// Each `downX` step makes `e` the child and `s` the (reversed) parent, storing
+// the old `s` back into the node so the matching `upX` can restore it. The
+// lowercase wrappers (`downright`/`upleft`) first test `s < 0` (the BACKSTOP /
+// bottom-of-spine sentinel) and report it rather than walking off the bottom.
 
+/// Descend into the head: push `e` onto the spine and follow its `hd`, leaving a
+/// back-link (old `s`) in the node's `hd`.
 pub inline fn downLeft(ctx: *ReductionCtx) void {
     ctx.hold = ctx.s;
     ctx.s = ctx.e;
@@ -249,6 +324,8 @@ pub inline fn downLeft(ctx: *ReductionCtx) void {
     hd_set(ctx.s, ctx.hold);
 }
 
+/// Descend into the tail of the current spine node, marking it (`tlptrbit`) so
+/// `upRight` knows this node was entered via its `tl`.
 pub inline fn downRight(ctx: *ReductionCtx) void {
     ctx.hold = hd_get(ctx.s);
     hd_set(ctx.s, ctx.e);
@@ -265,6 +342,8 @@ pub inline fn downright(ctx: *ReductionCtx) bool {
     return false;
 }
 
+/// Ascend one `hd` link: restore the parent and make the just-visited node the
+/// new focus. Inverse of `downLeft`.
 pub inline fn upLeft(ctx: *ReductionCtx) void {
     ctx.hold = ctx.s;
     ctx.s = hd_get(ctx.s);
@@ -280,6 +359,8 @@ pub inline fn upleft(ctx: *ReductionCtx) bool {
     return false;
 }
 
+/// Ascend one `tl` link (clearing the direction mark), restoring the node's
+/// `hd`/`tl` and bringing the parent back into focus. Inverse of `downRight`.
 pub inline fn upRight(ctx: *ReductionCtx) void {
     ctx.s &= ~word.tlptrbits;
     ctx.hold = tl_get(ctx.s);
@@ -288,6 +369,8 @@ pub inline fn upRight(ctx: *ReductionCtx) void {
     hd_set(ctx.s, ctx.hold);
 }
 
+/// Pull the next argument off the spine into `a` (ascend one `AP`, read its
+/// `tl`). `getarg` reports hitting the bottom of the spine instead.
 pub inline fn GETARG(ctx: *ReductionCtx, a: *Word) void {
     upLeft(ctx);
     a.* = tl_get(ctx.e);
@@ -301,11 +384,18 @@ pub inline fn getarg(ctx: *ReductionCtx, a: *Word) bool {
     return false;
 }
 
+/// Overwrite the redex `e` with an indirection (`I r`) to the result `r` and
+/// make `r` the new focus — the in-place rewrite that gives lazy sharing.
 pub inline fn simpl(ctx: *ReductionCtx, r: Word) void {
     hd_set(ctx.e, word.I);
     tl_set(ctx.e, r);
     ctx.e = r;
 }
+
+// --- Node classifiers --------------------------------------------------------
+// A negative `Word` is never a valid cell handle (it is a marked spine word or
+// the BACKSTOP sentinel), so every predicate guards with `!abnormal(x)` before
+// reading the tag.
 
 pub inline fn abnormal(x: Word) bool {
     return x < 0;
@@ -351,6 +441,12 @@ pub inline fn is_cons(x: Word) bool {
 pub inline fn is_unicode(x: Word) bool {
     return !abnormal(x) and getTag(x) == word.UNICODE;
 }
+
+// --- In-place rewrites -------------------------------------------------------
+// Handlers finish by overwriting the redex with their result. `rewrite_to_value`
+// installs an `I value` indirection (shared); the `rewrite_to_cons*` variants
+// re-tag the redex cell directly; the `rewrite_to_compare_*` ones fold a
+// comparison to a boolean. All leave the redex pointing at the new value.
 
 pub inline fn rewrite_to_value(expr: *Word, value: Word) void {
     hd_set(expr.*, word.I);
@@ -418,6 +514,11 @@ pub inline fn cons(x: Word, y: Word) Word {
 pub inline fn ap2(f: Word, x: Word, y: Word) Word {
     return ap(ap(f, x), y);
 }
+
+// --- Number / name field accessors -------------------------------------------
+// A bignum is a chain of `INT` cells; the sign lives in `SIGNBIT` of the leading
+// digit. `neg`/`poz` test it; `getsmallint`/`force_dbl`/`coerce_dbl` decode a
+// value; `pn_val`/`get_id`/`constr_name` read name-node fields.
 
 pub inline fn neg(x: Word) bool {
     return (hd_get(x) & word.SIGNBIT) != 0;

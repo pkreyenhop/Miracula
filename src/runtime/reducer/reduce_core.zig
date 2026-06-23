@@ -1,9 +1,26 @@
+//! reduce_core.zig — the reduction machine's primitives, shared by the rewrite
+//! handlers (`combinators.zig`, `ready.zig`, `lex.zig`, `io.zig`, which all
+//! import this file as `reduce`). It owns the `ReductionCtx` register file and
+//! the pointer-reversal traversal/accessor/classifier/rewrite helpers.
+//!
+//! These primitives are duplicated, definition-for-definition, in the engine
+//! file `reducer/reduce.zig` (which uses its own copies inside `reduce()`); that
+//! file carries the full explanation of the graph-reduction machine and the
+//! pointer-reversal spine. **Keep the two copies in lock-step** — a change here
+//! must be mirrored there. This is also the seam where the B-track typed-value
+//! work (`Heap`/`Value`) will replace the raw-`Word` `hd_get`/`tl_get` reads.
+
 const std = @import("std");
 const word = @import("../word.zig");
 const strtab = @import("../strtab.zig");
 
 pub const Word = i64;
 
+/// The reduction machine's register file (kept `extern` for a stable layout
+/// matching the original C struct). See `reducer/reduce.zig` for the protocol:
+///   `e` focus node · `s` reversed-spine pointer (top bits = direction mark,
+///   `BACKSTOP` = bottom) · `hold` swap scratch · `args` pulled arguments ·
+///   `action` post-dispatch signal (`ACT_NONE`/`ACT_NEXTREDEX`/`ACT_DONE`).
 pub const ReductionCtx = extern struct {
     e: Word,
     s: Word,
@@ -23,6 +40,9 @@ pub const head = reduce_mod.head;
 pub const force = reduce_mod.force;
 pub const reduce = reducer_reduce.reduce;
 
+/// Strip the spine direction bits and yield a plain heap index. Every accessor
+/// below masks `& ~tlptrbits` for the same reason — a spine word may carry a
+/// direction mark in its top two bits.
 pub inline fn clean_ptr(x: Word) usize {
     return @as(usize, @intCast(x & ~word.tlptrbits));
 }
@@ -34,6 +54,10 @@ const reducer_reduce = @import("reduce.zig");
 const lex_mod = @import("../../parser/lex.zig");
 const big = @import("../big.zig");
 const main_clib = @import("../main_clib.zig");
+
+// Cell access through a spine word (mask off direction bits, then index the
+// heap). This is the raw-`Word` value boundary the B2 `Heap`/`Value` seam will
+// type. Mirrors `reducer/reduce.zig`.
 
 pub inline fn hd_get(x: Word) Word {
     return heap.heap.h(x & ~word.tlptrbits);
@@ -62,6 +86,10 @@ pub inline fn setTag(x: Word, val: u8) void {
 pub inline fn tl_ptr(x: Word) *Word {
     return heap.heap.tp(x & ~word.tlptrbits);
 }
+
+// Pointer-reversal traversal — see `reducer/reduce.zig` for the mechanics.
+// `downX`/`upX` push/pop the reversed spine; the lowercase wrappers
+// (`downright`/`upleft`) stop at the `s < 0` bottom-of-spine sentinel.
 
 pub inline fn downLeft(ctx: *ReductionCtx) void {
     ctx.hold = ctx.s;
