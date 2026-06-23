@@ -16,7 +16,7 @@ const lex_state = @import("../parser/lex_state.zig");
 const r7_lex = @import("../parser/lex.zig");
 const core_state = @import("../runtime/core_state.zig");
 const heap = @import("../runtime/heap.zig");
-const ls = &lex_state.ls;
+const ls = lex_state.ls;
 
 const token = r7_lex.token;
 // File-private state for the /edit command.

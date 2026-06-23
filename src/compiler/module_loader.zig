@@ -14,7 +14,7 @@ const lex_state = @import("../parser/lex_state.zig");
 const r7_signals = @import("../io/signals.zig");
 const core_state = @import("../runtime/core_state.zig");
 const heap = @import("../runtime/heap.zig");
-const ls = &lex_state.ls;
+const ls = lex_state.ls;
 
 // Global variables defined/exported in parser/lex.zig
 

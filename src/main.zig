@@ -40,7 +40,7 @@ pub const ATOMLIMIT: Word = CMBASE + 141;
 
 // RuntimeState: all mutable interpreter state not constrained by extern var circularity
 pub const RuntimeState = rt.RuntimeState;
-pub const rs: *RuntimeState = &rt.rs;
+pub const rs: *RuntimeState = rt.rs;
 
 // Core/error state lives in core_state.zig; callers reach it via `core_state.X`
 // directly (no `main.X` re-export — the old extern/export var bridge is gone).
@@ -49,7 +49,7 @@ pub const EDITOR: [*:0]const u8 = "vi +!";
 
 // Re-export compiler_state and cs pointer to singleton
 pub const compiler_state = @import("compiler/compiler_state.zig");
-pub const cs = &compiler_state.cs;
+pub const cs = compiler_state.cs;
 
 // External / runtime function declarations
 pub const signals = r7_signals.signals;

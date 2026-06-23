@@ -12,7 +12,7 @@ const main_clib = @import("../runtime/main_clib.zig");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
 const core_state = @import("../runtime/core_state.zig");
-const ls = &lex_state.ls;
+const ls = lex_state.ls;
 
 const make_id = r7_lex.make_id;
 const reset_pns = r7_lex.reset_pns;

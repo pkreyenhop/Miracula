@@ -13,7 +13,7 @@ const Token = tf.Token;
 const Span = tf.Span;
 
 const lex_state = @import("lex_state.zig");
-const ls = &lex_state.ls;
+const ls = lex_state.ls;
 
 const mira_lex_setup_string = r7_lex.mira_lex_setup_string;
 const mira_lex_cleanup = r7_lex.mira_lex_cleanup;

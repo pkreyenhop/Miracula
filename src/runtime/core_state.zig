@@ -30,4 +30,4 @@ pub const CoreState = struct {
 };
 
 /// The process-wide singleton (transitional; becomes `Interp.core` in Phase 3).
-pub var s: CoreState = .{};
+pub const s = &@import("interp.zig").interp.core;

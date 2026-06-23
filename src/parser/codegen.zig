@@ -11,7 +11,7 @@ const ast = @import("ast.zig");
 
 const main = @import("../main.zig");
 const lex_state = @import("lex_state.zig");
-const ls = &lex_state.ls;
+const ls = lex_state.ls;
 // Cross-module functions via direct @import (R7.3 — eliminate extern-fn linker decls).
 const trans = @import("../compiler/trans.zig");
 const types_mod = @import("../compiler/types.zig");

@@ -6,7 +6,7 @@ const main_clib = @import("../runtime/main_clib.zig");
 const main = @import("../main.zig");
 
 const compiler_state = @import("compiler_state.zig");
-const cs = &compiler_state.cs;
+const cs = compiler_state.cs;
 const abi = struct {
     pub const printf = main_clib.printf;
     pub const putchar = main_clib.putchar;
@@ -17,7 +17,7 @@ const abi = struct {
 
 const lex_state = @import("../parser/lex_state.zig");
 const core_state = @import("../runtime/core_state.zig");
-const ls = &lex_state.ls;
+const ls = lex_state.ls;
 
 fn getStdout() ?*word.FILE {
     return main_clib.stdout();

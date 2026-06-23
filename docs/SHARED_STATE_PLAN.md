@@ -141,8 +141,25 @@ each becomes a field of a single module-owned struct singleton.
   Progress: **92 → 66** globals; remaining loose are heap's ~14 (2b) + assorted
   small ones (`commands`/`startup`/`dump`/`version`/`lex`).*
 
-### Phase 3 — Aggregate the singletons into one `Interp` *(still global; transitional)*
-Define the umbrella:
+### Phase 3 — Aggregate the singletons into one `Interp` *(still global; transitional)* ✅
+**Done.** `src/runtime/interp.zig` defines `Interp` holding the 8 interpreter-state
+structs by value (`rs`/`heap`/`lex`/`comp`/`core`/`io`/`eval`/`big`) and the single
+global `interp`. Each owner module's `pub var <singleton>` became
+`pub const <singleton> = &@import("interp.zig").interp.<field>`, so the ~2,100
+`owner.singleton.field` access sites are unchanged (they now read/write through
+`interp`); the only edits were the 8 redirects + dropping `&` from the 19
+`&lex_state.ls`/`&compiler_state.cs`/`&rt.rs` alias sites. The owner↔interp circular
+imports compiled cleanly (no comptime size cycle, as predicted). golden 44/44
+byte-identical, tests 42/42. Metric **66 → 59** (8 `var` singletons → 1 `interp`
+var + 8 `const` aliases).
+
+*Residual (deliberately out of this phase):* the bootstrap infra
+(`gpa`/`allocator`/`io`/`environ` in `runtime_state.zig`), the interned `strtab`
+table, and heap's still-loose scratch (2b) remain separate globals — they fold in
+with 2b / a follow-up. The *interpreter state* is now one aggregate, which is what
+Phase 4 (injectable) needs.
+
+Original sketch:
 ```zig
 pub const Interp = struct {
     gpa: std.heap.DebugAllocator(.{}) = .{},
@@ -233,7 +250,7 @@ Tracked by `scripts/shared-state-check.sh`.
 
 | Metric | Baseline (Phase 0) | Now | Target |
 |--------|--------------------|-----|--------|
-| non-FFI module-scope mutable globals | 92 | **66** (Phase 2: 2a/2c/2d/2e done) | 1 (signal pointer) |
+| non-FFI module-scope mutable globals | 92 | **59** (Phase 3: state unified under one `interp`) | 1 (signal pointer) |
 | &nbsp;&nbsp;↳ gratuitous `export var` | 35 | **0** ✓ (Phase 1) | 0 |
 | grouped state structs | 4 (`rs`/`ls`/`heap`/`cs`) | unified under one `Interp` |
 | global state aggregates | 4 structs + loose globals | 0 (constructed in `main`) |

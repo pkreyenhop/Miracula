@@ -6,7 +6,7 @@ const platform = @import("platform.zig");
 
 const lex_state = @import("../parser/lex_state.zig");
 const core_state = @import("../runtime/core_state.zig");
-const ls = &lex_state.ls;
+const ls = lex_state.ls;
 
 const Word = main.Word;
 const NIL = main.NIL;

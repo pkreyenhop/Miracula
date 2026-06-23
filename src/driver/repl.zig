@@ -20,7 +20,7 @@ const r7_heap = @import("../runtime/heap.zig");
 const r7_reduce = @import("../runtime/reduce.zig");
 const core_state = @import("../runtime/core_state.zig");
 const version = @import("../runtime/version.zig");
-const ls = &lex_state.ls;
+const ls = lex_state.ls;
 
 // State owned by reduce.zig / heap.zig — not yet accessible via @import.
 inline fn getTag(x: Word) u8 {

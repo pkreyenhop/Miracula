@@ -152,7 +152,7 @@ pub const RuntimeState = struct {
     lexdefs: Word = NIL,
 };
 
-pub var rs: RuntimeState = .{};
+pub const rs = &@import("interp.zig").interp.rs;
 
 test "RuntimeState default values are self-consistent" {
     const state: RuntimeState = .{};

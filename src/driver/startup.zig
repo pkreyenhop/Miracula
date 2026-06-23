@@ -15,7 +15,7 @@ const version = @import("../runtime/version.zig");
 const reduce = @import("../runtime/reduce.zig");
 const heap = @import("../runtime/heap.zig");
 const core_state = @import("../runtime/core_state.zig");
-const ls = &lex_state.ls;
+const ls = lex_state.ls;
 
 inline fn getTag(x: Word) u8 {
     return main.heap.heap.getTag(x);

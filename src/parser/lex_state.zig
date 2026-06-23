@@ -41,4 +41,4 @@ pub const LexState = struct {
     yylval: Word = NIL,
 };
 
-pub var ls: LexState = .{};
+pub const ls = &@import("../runtime/interp.zig").interp.lex;

@@ -6,7 +6,7 @@ const NIL = word.NIL;
 /// linker symbol.  Extracted in H1 from the scattered `export var` globals in
 /// `types.zig`, `trans.zig`, and `heap.zig`.
 ///
-/// Accessed via `pub const cs = &compiler_state.cs` in `main.zig`.
+/// Accessed via `pub const cs = compiler_state.cs` in `main.zig`.
 pub const CompilerState = struct {
     // ── Typechecker (types.zig) ──────────────────────────────────────────────
     /// Fresh type-variable counter; reset at start of each type-check pass.
@@ -95,4 +95,4 @@ pub const CompilerState = struct {
 
 /// Singleton compiler-state instance.  Access via `main.cs` (a `*CompilerState`
 /// pointer alias) so all mutations are reflected everywhere.
-pub var cs: CompilerState = .{};
+pub const cs = &@import("../runtime/interp.zig").interp.comp;

@@ -36,7 +36,7 @@ pub const Bignum = struct {
     big_one: Word = 0,
 };
 
-pub var bn: Bignum = .{};
+pub const bn = &@import("interp.zig").interp.big;
 
 inline fn getTag(x: Word) u8 {
     return heap.heap.getTag(x);

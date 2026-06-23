@@ -37,7 +37,7 @@ pub const EvalState = struct {
     cycles: i64 = 0,
 };
 
-pub var ev: EvalState = .{};
+pub const ev = &@import("interp.zig").interp.eval;
 
 const sto_char = heap.sto_char;
 extern fn fromUTF8(f: ?*word.FILE) Word;

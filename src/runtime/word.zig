@@ -646,7 +646,7 @@ pub const IoState = struct {
     file_in_use: [16]bool = [_]bool{false} ** 16,
 };
 
-pub var fio: IoState = .{};
+pub const fio = &@import("interp.zig").interp.io;
 
 pub fn initWriters() void {
     if (fio.writers_initialized) return;

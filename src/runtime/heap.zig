@@ -5,7 +5,7 @@ const combinator = @import("combinator.zig");
 const rt = @import("runtime_state.zig");
 const core = @import("core_state.zig");
 const lex_state = @import("../parser/lex_state.zig");
-const ls = &lex_state.ls;
+const ls = lex_state.ls;
 
 const compiler_state = @import("../compiler/compiler_state.zig");
 const r7_types = @import("../compiler/types.zig");
@@ -18,7 +18,7 @@ const r7_word = @import("word.zig");
 const main_clib = @import("main_clib.zig");
 const setup = @import("../compiler/setup.zig");
 const dump = @import("../compiler/dump.zig");
-const cs = &compiler_state.cs;
+const cs = compiler_state.cs;
 
 const Word = i64;
 const wordsize = @sizeOf(Word) * 8;
@@ -414,7 +414,7 @@ pub const Heap = struct {
     }
 };
 
-pub var heap: Heap = .{};
+pub const heap = &@import("interp.zig").interp.heap;
 
 pub fn h(x: Word) Word {
     return heap.h(x);

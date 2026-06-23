@@ -12,7 +12,7 @@ const r7_types = @import("types.zig");
 const r7_lex = @import("../parser/lex.zig");
 const r7_big = @import("../runtime/big.zig");
 const core_state = @import("../runtime/core_state.zig");
-const ls = &lex_state.ls;
+const ls = lex_state.ls;
 
 // Global variables defined/exported in parser/lex.zig
 
