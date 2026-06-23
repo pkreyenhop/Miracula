@@ -214,7 +214,7 @@ not wait behind Track B's design work.
 
 ### Track B — Representation *(deep, design-bearing; after Track A)*
 
-* **B1 (R6) — String interning.** ◐ **Step 1 done.**
+* **B1 (R6) — String interning.** ◐ **Step 1 done; step 2 design settled (ready to code).**
   * *Step 1 (encapsulation) ✅* — funnelled the ~63 scattered raw
     `@ptrFromInt(@as(usize,@intCast(...)))` / `@intCast(@intFromPtr(...))` casts that read/write
     node-stored identifier strings through three audited accessors in the leaf `word.zig`:
@@ -222,15 +222,46 @@ not wait behind Track B's design work.
     `@intFromPtr`/`@ptrFromInt` metric dropped **132 → 69**; the remaining ~38 are FILE-handle-in-
     cell casts (out of B1 scope) plus pointer arithmetic. This single boundary is what makes step 2
     a localized change.
-  * *Step 2 (the actual interning) — next.* Swap `strOf`/`strBits` internals from raw pointer casts
-    to a `StringTable` (`std.ArrayListUnmanaged(u8)` arena + `StringHashMap` dedup) returning a
-    `StrId`; nodes then hold a `StrId`, not a pointer. **Considerations:** id strings currently come
-    from three places (the `dic` bump buffer, `keep` storage, string literals) — `strBits` must
-    intern-with-dedup so identical names share a `StrId` (preserving identity that the namebucket
-    relies on); and the accessors must move out of the leaf `word.zig` (the table needs an
-    allocator), a mechanical `word.strOf` → `<table>.strOf` rename across the ~63 sites. Dump stays
-    compatible (it serialises `get_id` *text*). *DoD: nodes hold `StrId`; table unit tests + golden
-    + dump round-trip green.*
+  * *Step 2 (the actual interning) — design note (next, not yet coded).* Swap the internals of the
+    step-1 accessors from raw pointer casts to an interned `StringTable`: `strBits(bytes)` interns
+    and returns a `StrId`; `strOf(strid)` resolves it to a `[*:0]const u8`. The `StrId` is a
+    non-negative integer **packed into the existing `Word`** (it replaces the pointer-as-int), so
+    `Cell`/node layout is unchanged — only the *meaning* of those bits changes. Table:
+    `std.ArrayListUnmanaged(u8)` byte arena + `StringHashMapUnmanaged(StrId)` for dedup, offsets
+    recorded per id. Strings come from three places today (the `dic` bump buffer, `keep` storage,
+    string literals); all three funnel through `strBits`, so interning happens in one place.
+
+    **Two findings from scoping the code that refine the original plan:**
+    1. *The namebucket dedups by **content**, not pointer/StrId identity.* `is()`
+       ([`lex.zig`](../src/parser/lex.zig) `is`) and `findid()` both compare with `std.mem.eql`, and
+       `name()` already collapses duplicate names to one `ID` node *before* calling `sto_id`. So
+       table-level dedup is a **memory optimization, not a correctness requirement** — the earlier
+       "preserving identity the namebucket relies on" overstated it. (Dedup is still worth doing: a
+       canonical `StrId` per name lets a *future* cleanup replace those `std.mem.eql` walks with
+       integer compares.)
+    2. *`strOfMut` is incidental — nothing mutates a node-stored string.* All five mutable sites
+       (repl `aka`/`editfile`, commands `s`, lex `get_id`/`get_fil`) only read (print / open file);
+       the `[*:0]u8` typing is a C-port leftover. So interned strings can live in an **immutable
+       shared arena**, and `strOfMut` collapses into `strOf` (returns `const`) — step 2 *removes*
+       an accessor rather than porting it.
+
+    **Decision — accessor/table reachability (A over B).** The step-1 accessors are pure leaf
+    functions in `word.zig` with no allocator. To intern they need the table. Chosen **(A): a
+    module-global `StringTable` owner** (new `strtab.zig`), matching the global-owner-state pattern
+    that A2 standardized on; `strOf`/`strBits` move out of leaf `word.zig` into it, and the ~68 call
+    sites become a mechanical `word.strOf` → `strtab.strOf` rename — no allocator threaded through
+    signatures. Rejected **(B)** threading a `*StringTable`/allocator through every accessor and all
+    68 sites: much larger churn, no benefit here since session string storage is process-lifetime
+    global anyway.
+
+    **Lifetime / GC.** Interned bytes live for the session (like today's never-freed `dic`/`keep`
+    storage); GC of `ID`/`STRCONS` nodes does not free table bytes, so a swept-then-reallocated node
+    never resurrects a stale pointer. Dump is representation-independent (it serialises `get_id`
+    *text*), so the round-trip stays compatible.
+
+    *DoD:* nodes hold a `StrId`; node-string pointer casts among the 69 → 0 (the FILE-handle-in-cell
+    casts remain, out of B1 scope); `strOfMut` removed; `StringTable` unit tests (intern/dedup/
+    resolve) + golden + dump round-trip green.
 
 * **B2 (R4.3/4.4) — `Value` union (the hard core).** Introduce a tagged representation that
   distinguishes the four roles of `Word` — chars and small ints both occupy bare values `0..255`,
