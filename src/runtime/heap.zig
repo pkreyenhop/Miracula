@@ -361,8 +361,8 @@ pub const Heap = struct {
             self.mark(rt.rs.lastexp);
             self.mark(core.s.nill);
             self.mark(rt.rs.standardout);
-            self.mark(r7_big.big_one);
-            self.mark(r7_big.b_rem);
+            self.mark(r7_big.bn.big_one);
+            self.mark(r7_big.bn.b_rem);
             self.mark(ls.yylval);
             self.mark(ls.echostack);
             self.mark(core.s.errs);
@@ -598,8 +598,8 @@ fn nil() Word {
     return 306 + 138;
 }
 
-pub var SPACE: Word = 1250000;
-pub var listp: Word = ATOMLIMIT - 1;
+// (Dead module duplicates of `Heap.SPACE`/`Heap.listp` removed — the live
+// copies are the struct fields, accessed via `self.SPACE`/`self.listp`.)
 pub var files: Word = word.NIL;
 pub var current_file: Word = word.NIL;
 pub var cellcount: i64 = 0;

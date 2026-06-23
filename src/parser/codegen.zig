@@ -519,9 +519,9 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
                 }
             } else {
                 if (r.to) |to_ptr| {
-                    break :blk ap3(word.STEPUNTIL, big.big_one, codegenExpr(alloc, to_ptr.*), from_w);
+                    break :blk ap3(word.STEPUNTIL, big.bn.big_one, codegenExpr(alloc, to_ptr.*), from_w);
                 } else {
-                    break :blk ap2(word.STEP, big.big_one, from_w);
+                    break :blk ap2(word.STEP, big.bn.big_one, from_w);
                 }
             }
         },

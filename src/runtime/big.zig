@@ -24,10 +24,19 @@ const ATOMLIMIT: Word = CMBASE + 141;
 
 const make = heap.make;
 const math_error = r7_reduce.math_error;
-var logIBASE: f64 = 0;
-var log10IBASE: f64 = 0;
-pub var b_rem: Word = 0;
-pub var big_one: Word = 0;
+/// Bignum subsystem state (shared-state plan Phase 2e). Accessed as `big.bn.X`;
+/// folds into `Interp.big` in Phase 3. `bn.logIBASE`/`bn.log10IBASE` are caches set by
+/// `bigsetup` (runtime `@log`, not comptime); `bn.big_one`/`bn.b_rem` are heap nodes.
+pub const Bignum = struct {
+    logIBASE: f64 = 0,
+    log10IBASE: f64 = 0,
+    /// Remainder from the last division (a GC root).
+    b_rem: Word = 0,
+    /// Cached `INT` cell holding 1 (a GC root).
+    big_one: Word = 0,
+};
+
+pub var bn: Bignum = .{};
 
 inline fn getTag(x: Word) u8 {
     return heap.heap.getTag(x);
@@ -90,9 +99,9 @@ fn cons(x: Word, y: Word) Word {
 }
 
 pub fn bigsetup() void {
-    logIBASE = std.math.log(f64, std.math.e, @as(f64, @floatFromInt(IBASE)));
-    log10IBASE = std.math.log10(@as(f64, @floatFromInt(IBASE)));
-    big_one = make(INT, 1, 0);
+    bn.logIBASE = std.math.log(f64, std.math.e, @as(f64, @floatFromInt(IBASE)));
+    bn.log10IBASE = std.math.log10(@as(f64, @floatFromInt(IBASE)));
+    bn.big_one = make(INT, 1, 0);
 }
 
 pub fn isnat(x: Word) c_int {
@@ -326,7 +335,7 @@ pub fn bigdiv(input_x: Word, input_y: Word) Word {
     } else s1;
     const q = if (rest(y) != 0) longdiv(x, y) else shortdiv(x, digit(y));
     if (s2) {
-        if (!bigzero(b_rem)) {
+        if (!bigzero(bn.b_rem)) {
             var qx = q;
             while (true) {
                 digitp(qx).* += 1;
@@ -354,8 +363,8 @@ pub fn bigmod(input_x: Word, input_y: Word) Word {
         break :blk !s1;
     } else s1;
     _ = if (rest(y) != 0) longdiv(x, y) else shortdiv(x, digit(y));
-    if (s2 and !bigzero(b_rem)) b_rem = bigsub(y, b_rem);
-    return if (s1) bignegate(b_rem) else b_rem;
+    if (s2 and !bigzero(bn.b_rem)) bn.b_rem = bigsub(y, bn.b_rem);
+    return if (s1) bignegate(bn.b_rem) else bn.b_rem;
 }
 
 fn shortdiv(input_x: Word, n: Word) Word {
@@ -381,7 +390,7 @@ fn shortdiv(input_x: Word, n: Word) Word {
         restp(tmp).* = q;
         q = tmp;
     }
-    b_rem = make(INT, s_rem, 0);
+    bn.b_rem = make(INT, s_rem, 0);
     return q;
 }
 
@@ -389,7 +398,7 @@ fn longdiv(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
     if (bigcmp(x, y) < 0) {
-        b_rem = x;
+        bn.b_rem = x;
         return make(INT, 0, 0);
     }
     var y1 = msd(y);
@@ -441,7 +450,7 @@ fn longdiv(input_x: Word, input_y: Word) Word {
         }
         q = make(INT, d, q);
         if (n == 0) {
-            b_rem = if (scale == 1) x else shortdiv(x, scale);
+            bn.b_rem = if (scale == 1) x else shortdiv(x, scale);
             return q;
         }
         n -= 1;
@@ -546,7 +555,7 @@ pub fn biglog(input_x: Word) f64 {
         n += 1;
         r = @as(f64, @floatFromInt(digit(x))) + (r / @as(f64, @floatFromInt(IBASE)));
     }
-    return std.math.log(f64, std.math.e, r) + (@as(f64, @floatFromInt(n)) * logIBASE);
+    return std.math.log(f64, std.math.e, r) + (@as(f64, @floatFromInt(n)) * bn.logIBASE);
 }
 
 pub fn biglog10(input_x: Word) f64 {
@@ -562,7 +571,7 @@ pub fn biglog10(input_x: Word) f64 {
         n += 1;
         r = @as(f64, @floatFromInt(digit(x))) + (r / @as(f64, @floatFromInt(IBASE)));
     }
-    return std.math.log10(r) + (@as(f64, @floatFromInt(n)) * log10IBASE);
+    return std.math.log10(r) + (@as(f64, @floatFromInt(n)) * bn.log10IBASE);
 }
 
 fn setErrnoDom() void {
