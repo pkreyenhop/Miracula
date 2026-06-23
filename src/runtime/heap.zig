@@ -598,16 +598,16 @@ fn nil() Word {
     return 306 + 138;
 }
 
-pub export var SPACE: Word = 1250000;
-pub export var listp: Word = ATOMLIMIT - 1;
-pub export var files: Word = word.NIL;
-pub export var current_file: Word = word.NIL;
-pub export var cellcount: i64 = 0;
-pub export var claims: c_long = 0;
-pub export var nogcs: c_long = 0;
-pub export var dstack: ?[*]Word = null;
-pub export var stackp: ?[*]Word = null;
-pub export var collecting: c_int = 0;
+pub var SPACE: Word = 1250000;
+pub var listp: Word = ATOMLIMIT - 1;
+pub var files: Word = word.NIL;
+pub var current_file: Word = word.NIL;
+pub var cellcount: i64 = 0;
+pub var claims: c_long = 0;
+pub var nogcs: c_long = 0;
+pub var dstack: ?[*]Word = null;
+pub var stackp: ?[*]Word = null;
+pub var collecting: c_int = 0;
 
 var dlim: ?[*]Word = null;
 
@@ -681,8 +681,8 @@ fn getStderr() ?*word.FILE {
     }
 }
 
-export var prefix: [r7_word.pnlim]u8 = undefined;
-export var preflen: Word = 0;
+var prefix: [r7_word.pnlim]u8 = undefined;
+var preflen: Word = 0;
 
 const fm_time = r7_files.fm_time;
 const unlinkx = r7_files.unlinkx;

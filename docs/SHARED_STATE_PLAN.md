@@ -105,13 +105,15 @@ Two independent halves:
 * *DoD: ✅ this document + `scripts/shared-state-check.sh` reporting the baseline,
   with the corpus green.*
 
-### Phase 1 — Strip gratuitous `export var` → `var` *(mechanical, low-risk)*
-The loose globals are mostly `pub export var` — C-port leftovers. This is a
+### Phase 1 — Strip gratuitous `export var` → `var` *(mechanical, low-risk)* ✅
+The loose globals were mostly `pub export var` — C-port leftovers. This is a
 pure-Zig binary with no external linker consumers (established by Track A2/A3,
-which drove `extern var` → 0 and `export fn` → 3), so `export` is gratuitous and
-also *blocks* moving these into struct fields. Convert `export var` → `var`
-(keeping the owner-module access pattern).
-* *DoD: non-FFI `export var` → 0; golden byte-identical.*
+which drove `extern var` → 0 and `export fn` → 3), so `export` was gratuitous and
+also *blocked* moving these into struct fields. Converted `export var` → `var`
+across 8 files (`heap`/`reduce`/`core_state`/`big`/`dump`/`version`/`combinator`/
+`setup`), keeping the owner-module access pattern; removed the stale
+`extern var`/`export var` bridge comments in `main.zig`/`core_state.zig`.
+* *DoD: ✅ non-FFI `export var` **35 → 0**; golden 44/44 byte-identical; tests 42/42.*
 
 ### Phase 2 — Group the remaining loose globals into owner structs *(encapsulation; per-module, each its own PR)*
 Mirror the existing `RuntimeState`/`CompilerState` pattern. No threading yet —

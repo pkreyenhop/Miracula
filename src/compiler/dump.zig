@@ -23,10 +23,10 @@ inline fn setTag(x: Word, val: u8) void {
 
 /// Heap list of identifiers hidden from the exported interface (privatised).
 /// Populated by fixexports(); cleared by unfixexports().
-pub export var internals: Word = NIL;
+pub var internals: Word = NIL;
 /// Heap list of types that are needed by the current script but have no name in scope.
 /// Non-NIL after readoption() means the dump cannot be used and type errors will be reported.
-pub export var tlost: Word = NIL;
+pub var tlost: Word = NIL;
 var pfrts: Word = NIL;
 
 /// Marks all exported identifiers and privatises the rest.

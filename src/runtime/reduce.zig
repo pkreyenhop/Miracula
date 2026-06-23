@@ -20,12 +20,12 @@ const FST = word.HD;
 const MAXDIGIT = 0x7fff;
 const SIGNBIT = 0x10000000;
 
-pub export var stdinuse: Word = 0;
-pub export var outfilq: Word = NIL;
-pub export var waiting: Word = NIL;
-pub export var s_out: ?*word.FILE = null;
-pub export var errtrap: Word = 0;
-pub export var cycles: i64 = 0;
+pub var stdinuse: Word = 0;
+pub var outfilq: Word = NIL;
+pub var waiting: Word = NIL;
+pub var s_out: ?*word.FILE = null;
+pub var errtrap: Word = 0;
+pub var cycles: i64 = 0;
 
 const sto_char = heap.sto_char;
 extern fn fromUTF8(f: ?*word.FILE) Word;

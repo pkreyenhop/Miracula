@@ -42,10 +42,8 @@ pub const ATOMLIMIT: Word = CMBASE + 141;
 pub const RuntimeState = rt.RuntimeState;
 pub const rs: *RuntimeState = &rt.rs;
 
-// Global state variables (TYPE B: defined in other modules, re-exported here)
-
-// Stuck vars now live in core_state.zig; re-declared here as extern var so
-// callers using main.X still compile without modification.
+// Core/error state lives in core_state.zig; callers reach it via `core_state.X`
+// directly (no `main.X` re-export — the old extern/export var bridge is gone).
 
 pub const EDITOR: [*:0]const u8 = "vi +!";
 
