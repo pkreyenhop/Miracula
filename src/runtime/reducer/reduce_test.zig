@@ -15,24 +15,25 @@ const reduce_rt = @import("../reduce.zig");
 const interp = @import("../interp.zig");
 const rt = @import("../runtime_state.zig");
 const core_state = @import("../core_state.zig");
+const setup = @import("../../compiler/setup.zig");
+const lex = @import("../../parser/lex.zig");
 
 const Word = word.Word;
 const ap = reduce.ap;
 const ap2 = reduce.ap2;
 
 // Phase 4 (shared-state plan): start from a pristine `Interp` via `interp.reset()`,
-// then a minimal heap + bignum init — enough to build cells and do arithmetic.
-// `reset()` now covers nearly all interpreter state (the 9 structs incl. heap's
-// 2b scratch + strtab + the lexer's session globals), but driving the full
-// `mira_setup()` through here + resetting the parser snapshot tests still trips a
-// residual ordering issue in the lexer's identifier path (a focused follow-up).
-// The lightweight setup keeps this file isolated regardless.
+// then run the *full* `mira_setup()` — the heavyweight init (rs.*/primenv, the
+// dictionary, interned strings) that used to pollute the order-sensitive parser
+// snapshot tests. With `reset()` covering all aggregated state and the snapshot
+// tests now capturing token text reliably (interned id, not the lagging dic
+// buffer), that pollution is gone and full setup here is safe.
 var initialized = false;
 fn ensureSetup() void {
     if (initialized) return;
     interp.reset();
-    heap.setupheap();
-    big.bigsetup();
+    lex.setupdic();
+    setup.mira_setup();
     initialized = true;
 }
 

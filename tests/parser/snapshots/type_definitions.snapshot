@@ -1,11 +1,11 @@
 PARSE_RESULT: SUCCESS
 
 TOKENS:
-NAME
+NAME("tree")
 COLON2EQ
-CNAME("s")
-NAME
+CNAME("Leaf")
+NAME("num")
 BAR
-CNAME
+CNAME("Node")
 NAME("tree")
 NAME("tree")

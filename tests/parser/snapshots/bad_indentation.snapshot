@@ -1,12 +1,12 @@
 PARSE_RESULT: SYNTAX_ERROR
 
 TOKENS:
-NAME("2")
-NAME("g")
-EQUALS("g")
+NAME("f")
 NAME("x")
-WHERE("where")
-NAME("ere")
-NAME("e")
-EQUALS("e")
+EQUALS
+NAME("x")
+WHERE
+NAME("g")
+NAME("y")
+EQUALS
 NAME("y")

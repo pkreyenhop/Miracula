@@ -1,16 +1,16 @@
 PARSE_RESULT: SUCCESS
 
 TOKENS:
+NAME("f")
 NAME("x")
+EQUALS
+NAME("x")
+WHERE
 NAME("g")
-EQUALS("g")
-NAME("x")
-WHERE("where")
-NAME("ere")
-NAME("e")
-EQUALS("e")
 NAME("y")
-NAME("e")
-NAME("m")
-EQUALS("m")
+EQUALS
+NAME("y")
+NAME("h")
+NAME("z")
+EQUALS
 NAME("z")

@@ -1,8 +1,8 @@
 PARSE_RESULT: SYNTAX_ERROR
 
 TOKENS:
-NAME
+NAME("tree")
 COLON2EQ
-CNAME("z")
-NAME("Node")
-BAR("Node")
+CNAME("Leaf")
+NAME("num")
+BAR

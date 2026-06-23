@@ -133,6 +133,13 @@ fn tokenName(tok: c_int) []const u8 {
     };
 }
 
+fn isCleanAscii(s: []const u8) bool {
+    for (s) |ch| {
+        if (ch < 32 or ch > 126) return false;
+    }
+    return true;
+}
+
 fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]const u8 {
     ensureInitialized();
     resetLexerState();
@@ -146,21 +153,16 @@ fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]con
         const tok = yylex();
         if (tok == 0 or tok == word.END) break;
 
-        const name = tokenName(tok);
-        const lexeme = std.mem.span(@as([*:0]u8, @ptrCast(ls.dicp)));
-
-        try list.print("{s}", .{name});
-        if (lexeme.len > 0) {
-            // For safety, only print clean ASCII lexemes
-            var all_ascii = true;
-            for (lexeme) |ch| {
-                if (ch < 32 or ch > 126) {
-                    all_ascii = false;
-                    break;
-                }
-            }
-            if (all_ascii) {
-                try list.print("(\"{s}\")", .{lexeme});
+        try list.print("{s}", .{tokenName(tok)});
+        // Capture the identifier's text reliably from the interned id node
+        // (`ls.yylval`), not the lagging `ls.dicp` buffer — the latter points at
+        // stale or uninitialised dictionary memory and made the snapshots depend
+        // on cross-test dic state (see the shared-state plan's Phase-4 finding).
+        if (tok == word.NAME or tok == word.CNAME) {
+            const h = heap.h;
+            const id_text = std.mem.span(strtab.strOf(h(h(h(ls.yylval)))));
+            if (id_text.len > 0 and isCleanAscii(id_text)) {
+                try list.print("(\"{s}\")", .{id_text});
             }
         }
         try list.print("\n", .{});

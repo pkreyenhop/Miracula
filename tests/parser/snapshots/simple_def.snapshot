@@ -1,9 +1,9 @@
 PARSE_RESULT: SUCCESS
 
 TOKENS:
-NAME
-NAME
+NAME("square")
+NAME("x")
 EQUALS
 NAME("x")
-TIMES("x")
+TIMES
 NAME("x")

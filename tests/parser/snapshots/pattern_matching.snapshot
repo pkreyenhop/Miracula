@@ -1,19 +1,19 @@
 PARSE_RESULT: SUCCESS
 
 TOKENS:
-NAME
+NAME("sum")
 LBRACKET
 RBRACKET
 EQUALS
-CONST("0")
+CONST
 NAME("sum")
-LPAREN("sum")
-NAME("m")
-COLON("m")
-NAME("ct")
-RPAREN("ct")
-EQUALS("ct")
+LPAREN
 NAME("x")
-PLUS("x")
+COLON
+NAME("xs")
+RPAREN
+EQUALS
+NAME("x")
+PLUS
 NAME("sum")
 NAME("xs")

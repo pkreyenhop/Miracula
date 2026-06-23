@@ -1,18 +1,18 @@
 PARSE_RESULT: SUCCESS
 
 TOKENS:
-NAME("e")
-CONST("0")
-EQUALS("0")
-CONST("1")
 NAME("fact")
-NAME("ct")
-EQUALS("ct")
-NAME("n")
-TIMES("n")
+CONST
+EQUALS
+CONST
 NAME("fact")
-LPAREN("fact")
 NAME("n")
-MINUS("n")
-CONST("1")
-RPAREN("1")
+EQUALS
+NAME("n")
+TIMES
+NAME("fact")
+LPAREN
+NAME("n")
+MINUS
+CONST
+RPAREN
