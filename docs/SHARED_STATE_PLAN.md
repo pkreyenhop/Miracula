@@ -204,19 +204,41 @@ residual at a time:
   3. lexer `prefix`/`inprelude` unreset → *(fixed by the `LexState` fold; this
      one also needed `setupheap`/`setupdic` to precede `reset_state` in the test,
      since `reset()` nulls `prefixbase`)*;
-  4. **still failing:** the *recursion* snapshot sub-test drops the first
-     identifier's text after a second mid-suite `reset()` — a deeper ordering
-     interaction in the lexer identifier path that wants a focused debug session,
-     not another blind aggregation.
-So the heavyweight-isolation proof is **left reverted to green**; `reduce_test`
-keeps its lightweight `reset()` + minimal setup, and the focused
-*"reset clears the aggregated state"* test stands as the primitive's proof. The
-*architectural* payoff (one resettable `interp`, 92→28 globals) is fully landed.
+  4. *recursion* snapshot drops the first identifier's text after a second
+     `reset()` → **root-caused (debug session):** *not an interpreter bug.* The
+     parser snapshot tests capture each token's "lexeme" by reading `ls.dicp`
+     (the dictionary buffer) *after* `yylex` — but `dicp` lags, and for the first
+     token of a freshly-set-up dictionary it points at **uninitialised dic
+     memory** (instrumented: `dic="fact\0"`, `dicp=dic+5`, lexeme = 99 KB of
+     garbage that the test's ASCII filter silently drops). The recorded snapshots
+     only hold while the dictionary **persists across tests** (no `reset()`); they
+     encode incidental, non-deterministic dic state. `reset()` correctly gives
+     each test a fresh dic, exposing the fragility. (`EQUALS("0")`, `NAME("e")`
+     etc. in the snapshots are lagging artifacts, not real token text.)
+So `reset()`/isolation is **correct**; the blocker is a **pre-existing
+test-infrastructure fragility** — the `ls.dicp`-based lexeme capture is unreliable
+for *every* token type. Unblocking heavyweight isolation needs the snapshot tests
+reworked to capture real token text (e.g. the interned id for `NAME`/`CNAME`) and
+their snapshots regenerated — a self-contained test-quality task, *not* more
+state aggregation. Left reverted to green for now; `reduce_test` keeps its
+lightweight `reset()` + minimal setup, and the *"reset clears the aggregated
+state"* test stands as the primitive's proof. The *architectural* payoff (one
+resettable `interp`, 92→28 globals) is fully landed.
 * *DoD (revised): `reset()` primitive + isolation test; golden green;
-  `reset()` covers all aggregated state. Full heavyweight-path test isolation →
-  one focused lexer-ordering debug pass (tracked as a follow-up).*
+  `reset()` covers all aggregated state. Full heavyweight-path isolation → rework
+  the parser snapshot lexeme capture + regenerate snapshots (follow-up).*
 
-### Phase 5 — Thread `*Interp` through the call graph *(design-bearing; the large one)*
+### Phase 5 — Thread `*Interp` through the call graph *(design-bearing; the large one)* — ⬜ **deferred**
+**Deferred by decision (2026-06-24).** Scoped against the code: even bignum (the
+smallest, leaf subsystem) is 23 fns + **59 call sites** + pervasive internal
+rewiring (`heap.make` → `it.heap.make`); the full job is the ~2,100-site,
+6-subsystem refactor including the hot reducer, with a real per-access perf cost
+there. Since the practical payoff (encapsulation + a resettable `interp` for test
+isolation) is already captured, full threading — whose remaining benefit is
+*multiple independent interpreter instances / re-entrancy* — is parked until that
+capability is actually needed. Resume per-subsystem (`bignum → reducer → …`) with
+a reducer-loop benchmark when it is.
+
 Convert subsystems from reaching the global `interp` to taking/holding
 `*Interp` (methods `self: *Interp`, or a threaded first parameter). Do it
 **per-subsystem, golden-gated**, reusing the A2 token-aware replacer for the
