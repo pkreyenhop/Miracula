@@ -1,0 +1,123 @@
+# Miracula — Readability Plan (idiomatic names + documentation)
+
+> A module-by-module pass to make the C-ported codebase read like idiomatic Zig:
+> rename C-style symbols to Zig conventions and document every module, function,
+> type, field, and notable constant — **behaviour-preserving** (golden corpus
+> byte-identical at every step). Tracked by `scripts/readability-check.sh`.
+
+## Objective
+
+The interpreter was ported from C Miranda, so it carries C-isms in its names:
+`snake_case` functions (`sto_int`, `bigtodbl`, `fm_time`), terse abbreviations
+(`poz`, `msd`, `dicp`), and sparse documentation. This pass makes each module
+idiomatic and self-explaining without changing behaviour.
+
+## Conventions (idiomatic Zig)
+
+* **Functions** → `camelCase`, dropping the redundant module prefix
+  (`big.bigplus` → `big.add`, `big.sto_int` → `big.fromInt`). Constructors read
+  `fromX` / build, converters `toX`.
+* **Variables / parameters / fields** → `snake_case`.
+* **Types** → `TitleCase`; **error sets / enums** → `TitleCase` members.
+* **Documentation** → `///` doc comments on the module (`//!` header), every
+  `pub` function, every type and its fields, and non-obvious private helpers;
+  `//` line comments on magic constants and tricky steps.
+* **FFI exemption** — `runtime/main_clib.zig` (the libc/syscall shim) and
+  `src/tools/` keep their C names deliberately; excluded from the metric.
+
+## Approach (per module, golden-gated)
+
+Two phases, each ending green, so a rename bug can't hide behind a doc change:
+
+1. **Rename** — mechanical, word-boundary `perl` substitutions that preserve the
+   algorithms (no transcription), applied to the module *and* every external call
+   site in lock-step. Then `zig build` + **golden byte-diff** + tests.
+2. **Document** — module header, per-function/type/field doc comments, constant
+   comments. (Comments can't change behaviour; a quick build confirms syntax.)
+
+This is exactly the workflow proven on `big.zig` (the first module): 23 public +
+~14 private renames, 59 external call sites updated, full docs, golden 44/44.
+
+## Metric
+
+`scripts/readability-check.sh` reports two numbers (FFI shim & tools excluded):
+
+| Metric | Baseline (2026-06-24) | Target |
+|--------|-----------------------|--------|
+| C-style (`snake_case`) fn definitions | **175** | 0 |
+| documented fn definitions | **146 / 879 (16%)** | ~100% |
+| modules complete (renamed **and** documented) | **1 / 44** (`big.zig`) | 44 / 44 |
+
+A module is *complete* when its `snake_case` fn count is 0 **and** its functions
+carry doc comments. The script's per-file rows (`snake  doc/fns  file`) show where
+the work is; a `0`-snake module may still need a documentation pass.
+
+## Module inventory & status
+
+Status: ✅ done · ◐ partial · ⬜ todo. "snake" = C-style fn defs remaining
+(rename size); "doc" = documented-fn ratio (doc size).
+
+### runtime/ (the core)
+| Module | snake | doc | status |
+|--------|------:|----:|:------:|
+| `big.zig` | 0 | 47/51 | ✅ |
+| `heap.zig` | 32 | 17/140 | ⬜ (the big one) |
+| `reduce.zig` | 13 | 0/33 | ⬜ |
+| `word.zig` | 0 | — | ◐ (names ok; doc review) |
+| `strtab.zig` · `interp.zig` · `trace.zig` | 0 | high | ◐ (recently written; light review) |
+| `combinator.zig` · `core_state.zig` · `errors.zig` · `runtime_state.zig` · `version.zig` | 0 | mixed | ⬜ (doc review) |
+
+### runtime/reducer/
+| Module | snake | doc | status |
+|--------|------:|----:|:------:|
+| `reduce.zig` · `reduce_core.zig` | 0 | commented | ◐ (commented this session; name review) |
+| `reducer/lex.zig` | 33 | 0/33 | ⬜ |
+| `combinators.zig` | 8 | 0/48 | ⬜ |
+| `io.zig` | 4 | 0/4 | ⬜ |
+| `ready.zig` | 1 | 0/41 | ⬜ |
+| `trace.zig` · `reduce_test.zig` | 0 | high | ◐ |
+
+### parser/
+| Module | snake | doc | status |
+|--------|------:|----:|:------:|
+| `lex.zig` | 16 | low | ⬜ |
+| `parser.zig` · `pratt.zig` · `ast.zig` · `diagnostics.zig` · `token_filter.zig` · `codegen.zig` · `parser_api.zig` · `lex_bridge.zig` · `lex_state.zig` | 0 | mixed | ◐/⬜ (newer Zig; doc review) |
+
+### compiler/
+| Module | snake | doc | status |
+|--------|------:|----:|:------:|
+| `types.zig` | 42 | 0/123 | ⬜ (the biggest) |
+| `trans.zig` | 16 | 0/112 | ⬜ |
+| `setup.zig` | 1 | 6/9 | ⬜ |
+| `module_loader.zig` · `dump.zig` · `compiler_state.zig` | 0 | mixed | ⬜ (doc review) |
+
+### driver/ · io/ · root
+| Module | snake | doc | status |
+|--------|------:|----:|:------:|
+| `driver/startup.zig` | 4 | 0/10 | ⬜ |
+| `driver/repl.zig` | 3 | 0/15 | ⬜ |
+| `driver/commands.zig` | 0 | low | ⬜ |
+| `io/files.zig` | 2 | 10/10 | ⬜ (rename only) |
+| `io/platform.zig` · `io/signals.zig` · `io/utf8.zig` | 0 | mixed | ◐ |
+| `main.zig` | 0 | low | ⬜ (doc review) |
+
+## Suggested order
+
+Small / self-contained first (low risk, build the habit), then the heavy
+domain modules:
+
+```
+big.zig ✅ → io/files, driver/repl, driver/startup, reducer/io, reducer/ready,
+reducer/combinators, reduce.zig → parser/lex, reducer/lex
+→ heap.zig → compiler/trans → compiler/types   (the three biggest, last)
+→ doc-review sweep over the 0-snake modules
+```
+
+## Risk
+
+| Risk | Mitigation |
+|------|------------|
+| a rename corrupts a subtle algorithm | renames are mechanical (no transcription); golden byte-diff + tests after every module |
+| a rename hits a string/comment | post-rename grep for the new token inside `"`…`"` / `//` (caught two such on `big.zig`'s neighbours during 2b/2c) |
+| public-API rename misses a call site | rename module + callers in one pass; build fails loudly on any miss |
+| name choice churn | conventions above fixed up front; module prefix supplies context, so names stay short |
