@@ -457,16 +457,21 @@ pub fn sto_char(ch: Word) Word {
 }
 
 pub fn get_char(x: Word) Word {
-    if (word.fitsInByte(x)) return x;
-    if (heap.getTag(x) == UNICODE) return h(x);
+    switch (word.classify(x)) {
+        .imm => |c| return c, // bare Latin-1 code point
+        .ref => if (heap.getTag(x) == UNICODE) return h(x), // UNICODE cell: code point in hd
+        .atom => {},
+    }
     std.debug.print("impossible event in get_char(x), tag[x]=={d}\n", .{heap.getTag(x)});
     main_clib.exit(1);
 }
 
 pub fn is_char(x: Word) c_int {
-    if (word.isLatin1Char(x)) return 1;
-    if (x >= 0 and heap.getTag(x) == UNICODE) return 1;
-    return 0;
+    return switch (word.classify(x)) {
+        .imm => 1, // bare Latin-1 char
+        .ref => if (heap.getTag(x) == UNICODE) @as(c_int, 1) else 0, // wide char cell
+        .atom => 0, // a combinator/named atom is not a char
+    };
 }
 
 pub fn get_here(x: Word) Word {

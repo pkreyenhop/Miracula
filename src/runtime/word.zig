@@ -49,6 +49,34 @@ pub inline fn isLatin1Char(x: Word) bool {
     return 0 <= x and x < 256;
 }
 
+/// The role of a `Word`, recovered from its numeric range — the typed value
+/// seam for Track B2 (re-scoped: option *a*). This is the explicit replacement
+/// for the scattered `isAtom` / `fitsInByte` / `isLatin1Char` range tests:
+/// `classify` once and `switch` on the result, instead of chaining threshold
+/// comparisons at each read site.
+///
+/// Note the representation deliberately cannot tell a Latin-1 *char* from a
+/// small-int / index immediate — both are bare `0..255` and which one a value
+/// is is fixed by Miranda's type system at compile time, not at runtime — so
+/// both classify as `.imm`. Numbers proper are boxed (`INT`/`DOUBLE` cells) and
+/// therefore appear as `.ref`; inspect the cell tag for the concrete kind.
+pub const Value = union(enum) {
+    /// A bare immediate in `0..255`: a Latin-1 char or a small-int / index.
+    imm: u8,
+    /// A combinator / token / named atom (`256 <= x < ATOMLIMIT`).
+    atom: Word,
+    /// A heap-cell handle (`x >= ATOMLIMIT`); read its tag for the cell kind.
+    ref: Ref,
+};
+
+/// Classify a clean, non-negative `Word` by its immediate role. Marked spine
+/// words and sentinels (negative) are not values — mask them off first.
+pub inline fn classify(x: Word) Value {
+    if (x >= ATOMLIMIT) return .{ .ref = Ref.of(x) };
+    if (isLatin1Char(x)) return .{ .imm = @intCast(x) };
+    return .{ .atom = x };
+}
+
 pub const VALUE: Word = 257;
 pub const EVAL: Word = 258;
 pub const WHERE: Word = 259;
@@ -1128,3 +1156,20 @@ test "string helpers strcpy and strcat" {
 }
 
 
+
+test "classify maps Words to their value role" {
+    // Bare immediates (0..255): chars / small-ints / indices.
+    try std.testing.expectEqual(Value{ .imm = 0 }, classify(0));
+    try std.testing.expectEqual(Value{ .imm = 65 }, classify(65)); // 'A' or int 65
+    try std.testing.expectEqual(Value{ .imm = 255 }, classify(255));
+
+    // Atoms: tokens / combinators / named atoms (256 .. ATOMLIMIT).
+    try std.testing.expectEqual(Value{ .atom = 256 }, classify(256));
+    try std.testing.expectEqual(Value{ .atom = S }, classify(S));
+    try std.testing.expectEqual(Value{ .atom = NIL }, classify(NIL));
+    try std.testing.expectEqual(Value{ .atom = ATOMLIMIT - 1 }, classify(ATOMLIMIT - 1));
+
+    // Refs: heap-cell handles (>= ATOMLIMIT).
+    try std.testing.expectEqual(Value{ .ref = Ref.of(ATOMLIMIT) }, classify(ATOMLIMIT));
+    try std.testing.expectEqual(Value{ .ref = Ref.of(ATOMLIMIT + 1000) }, classify(ATOMLIMIT + 1000));
+}

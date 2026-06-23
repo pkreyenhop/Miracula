@@ -67,10 +67,11 @@ fn stringFromCons(gpa: Allocator, cell: word.Word) ![]u8 {
     while (cur >= ATOMLIMIT and getTag(cur) == word.CONS) {
         const ch_val: word.Word = hd_of(cur);
         cur = tl_of(cur);
-        const codepoint: u21 = if (word.isAtom(ch_val))
-            @intCast(ch_val) // ASCII/Latin-1 atom: value IS the code point
-        else
-            @intCast(tl_of(ch_val)); // UNICODE cell: code point is in tl
+        const codepoint: u21 = switch (word.classify(ch_val)) {
+            .imm => |c| c, // Latin-1: the immediate is the code point
+            .atom => |a| @intCast(a), // (a >255 atom is not expected in a string)
+            .ref => @intCast(tl_of(ch_val)), // UNICODE cell: code point is in tl
+        };
         var encoded: [4]u8 = undefined;
         const n = std.unicode.utf8Encode(codepoint, &encoded) catch {
             // Replacement character U+FFFD
