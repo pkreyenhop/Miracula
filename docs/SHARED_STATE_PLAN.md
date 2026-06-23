@@ -128,18 +128,19 @@ each becomes a field of a single module-owned struct singleton.
 * **2e `Bignum`** ✅ — grouped `big.zig`'s `logIBASE`/`log10IBASE`/`big_one`/`b_rem`
   into `Bignum` + `big.bn` (`@log` isn't comptime, so the caches stay runtime); also
   deleted the **dead** module-level `SPACE`/`listp` duplicates in `heap.zig`.
-* **2b `Heap` absorbs its scratch** ⬜ **— deferred (the hard one).** Move
-  `files`/`current_file`/`cellcount`/`claims`/`nogcs`/`dstack`/`stackp`/
-  `collecting`/`dlim`/`prefix`/`preflen`/`PNBASE`/`CFN`/`charname_buffer` into the
-  `Heap` struct. Unlike 2a/2c/2d/2e (free-function-only modules where a uniform
-  bare→`singleton.X` rename is safe), `heap.zig` mixes **`Heap` methods (`self.X`)
-  with free functions (bare `X`)**, so the move is context-dependent, and external
-  access becomes the awkward `heap.heap.X`. Best handled as its own careful pass —
-  or folded directly into Phase 3, since these are `Heap` fields whose natural
-  end-state access is `self.X` once threading (Phase 5) lands.
-* *DoD per sub-step: that module's loose mutable globals → 0; golden green.
-  Progress: **92 → 66** globals; remaining loose are heap's ~14 (2b) + assorted
-  small ones (`commands`/`startup`/`dump`/`version`/`lex`).*
+* **2b `Heap` absorbs its scratch** ✅ — moved the 14 heap/GC/dictionary scratch
+  globals (`files`/`current_file`/`cellcount`/`claims`/`nogcs`/`dstack`/`stackp`/
+  `collecting`/`dlim`/`prefix`/`preflen`/`PNBASE`/`CFN`/`charname_buffer`) into the
+  `Heap` struct. Post-Phase-3 this became a *uniform* rename after all: `heap` is
+  now `&interp.heap` (one instance), so bare `X → heap.X` is correct in both
+  methods (`heap.X == self.X`) and free functions; external `heap.X → heap.heap.X`.
+* *Plus (beyond the original Phase-2 list, to complete `reset()` coverage):*
+  **`strtab` folded into `interp`** (lazily-initialised `StringTable` field) and
+  **`lex.zig`'s 16 session globals folded into `LexState`** (`prefix`/`prefixbase`/
+  `inprelude`/…). So `interp.reset()` now wipes essentially all interpreter state.
+* *DoD: all module loose globals → 0; golden green. Progress: **92 → 28** globals
+  (the rest are bootstrap infra in `runtime_state` + small file-private state in
+  `commands`/`startup`/`dump`/`version`).*
 
 ### Phase 3 — Aggregate the singletons into one `Interp` *(still global; transitional)* ✅
 **Done.** `src/runtime/interp.zig` defines `Interp` holding the 8 interpreter-state
@@ -191,18 +192,29 @@ A focused test (`reduce_test`'s *"interp.reset clears the aggregated state
 structs"*) proves it across `RuntimeState`/`CoreState`/`EvalState`/`Bignum` in one
 call; `reduce_test` now begins with `reset()`. Suite **43/43**, golden 44/44.
 
-**Finding (why "init/deinit/inject a separate instance" isn't done yet).** Truly
-independent instances need *threading* (`*Interp`, Phase 5) — every access still
-reads the global. And even `reset()` is only **partial** until Phase 2b/`strtab`
-land: it resets the 8 aggregated structs but **not** heap's loose 2b scratch (the
-dic-prefix machinery) nor the `strtab` cache. Driving the heavyweight
-`mira_setup()` through `reduce_test` (the original pollution case) therefore still
-bleeds — empirically, a second `reset()` mid-parse drops the first identifier's
-text — so that test keeps its lightweight setup for now. *The clean
-`mira_setup`-level isolation is unblocked once 2b + `strtab` are folded into the
-aggregate and `reset()` (or a real `deinit`) covers them.*
-* *DoD (revised): `reset()` injection primitive + isolation test; golden green.
-  Full cross-test isolation of the heavyweight path → after 2b/`strtab`.*
+**Finding (the isolation chase, and where it stands).** Truly independent
+instances need *threading* (`*Interp`, Phase 5) — every access still reads the
+global. `reset()`'s *coverage* has since been completed: 2b (heap scratch),
+`strtab`, and `lex.zig`'s session globals are all folded into `interp`, so a
+`reset()` now wipes essentially all interpreter state. **Yet the full
+`mira_setup`-through-`reduce_test` isolation still failed**, peeling back one
+residual at a time:
+  1. heap scratch unreset → *(fixed by 2b)*;
+  2. `strtab` unreset → *(fixed by the fold)*;
+  3. lexer `prefix`/`inprelude` unreset → *(fixed by the `LexState` fold; this
+     one also needed `setupheap`/`setupdic` to precede `reset_state` in the test,
+     since `reset()` nulls `prefixbase`)*;
+  4. **still failing:** the *recursion* snapshot sub-test drops the first
+     identifier's text after a second mid-suite `reset()` — a deeper ordering
+     interaction in the lexer identifier path that wants a focused debug session,
+     not another blind aggregation.
+So the heavyweight-isolation proof is **left reverted to green**; `reduce_test`
+keeps its lightweight `reset()` + minimal setup, and the focused
+*"reset clears the aggregated state"* test stands as the primitive's proof. The
+*architectural* payoff (one resettable `interp`, 92→28 globals) is fully landed.
+* *DoD (revised): `reset()` primitive + isolation test; golden green;
+  `reset()` covers all aggregated state. Full heavyweight-path test isolation →
+  one focused lexer-ordering debug pass (tracked as a follow-up).*
 
 ### Phase 5 — Thread `*Interp` through the call graph *(design-bearing; the large one)*
 Convert subsystems from reaching the global `interp` to taking/holding
@@ -262,7 +274,7 @@ Tracked by `scripts/shared-state-check.sh`.
 
 | Metric | Baseline (Phase 0) | Now | Target |
 |--------|--------------------|-----|--------|
-| non-FFI module-scope mutable globals | 92 | **59** (Phase 3: state unified under one `interp`) | 1 (signal pointer) |
+| non-FFI module-scope mutable globals | 92 | **28** (Phases 2–4: all state under one `interp`; `reset()` covers it) | 1 (signal pointer) |
 | &nbsp;&nbsp;↳ gratuitous `export var` | 35 | **0** ✓ (Phase 1) | 0 |
 | grouped state structs | 4 (`rs`/`ls`/`heap`/`cs`) | unified under one `Interp` |
 | global state aggregates | 4 structs + loose globals | 0 (constructed in `main`) |
