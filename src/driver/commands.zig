@@ -246,7 +246,7 @@ pub fn command() void {
             }
             if (is("editor")) {
                 const hold = @as([*]u8, @ptrCast(&main.rs.linebuf[0]));
-                if (main.getln(main.getStdin(), abi.pnlim - 1, hold) == 0) {
+                if (main.getLine(main.getStdin(), abi.pnlim - 1, hold) == 0) {
                     return;
                 }
                 if (hold[0] == 0) {
@@ -274,7 +274,7 @@ pub fn command() void {
                 }
                 _ = word.strcpy(&main.rs.ebuf, hold);
                 main.rs.editor = @as([*:0]u8, @ptrCast(&main.rs.ebuf));
-                main.fixeditor();
+                main.fixEditor();
                 main.rs.echoing = main.rs.verbosity & main.rs.listing;
                 main.rc_write();
                 word.print("editor = {s}\n", .{main.rs.editor orelse @constCast("")});

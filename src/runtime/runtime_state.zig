@@ -85,7 +85,7 @@ pub const RuntimeState = struct {
     mksources: bool = false,
     make_status: Word = 0,
     ideep: i32 = 0,
-    /// Non-zero during the one-time startup before `commandloop` begins.
+    /// Non-zero during the one-time startup before `commandLoop` begins.
     /// Guards paths that must not repeat (e.g. panic on missing prelude).
     initialising: Word = 1,
     /// Heap list of primitive environment bindings, built by primlib().

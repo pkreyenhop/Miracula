@@ -53,9 +53,9 @@ pub const cs = compiler_state.cs;
 
 // External / runtime function declarations
 pub const signals = r7_signals.signals;
-pub const dieclean = r7_repl.dieclean;
-pub const fpe_error = r7_repl.fpe_error;
-pub const commandloop = r7_repl.commandloop;
+pub const dieClean = r7_repl.dieClean;
+pub const fpeError = r7_repl.fpeError;
+pub const commandLoop = r7_repl.commandLoop;
 pub const main_entry = r7_startup.main_entry;
 
 const setupheap = r7_heap.setupheap;
@@ -163,14 +163,14 @@ pub const src_update = heap.src_update;
 
 // Interactive REPL/driver helpers
 pub const obey = repl.obey;
-pub const evaluate_repl = repl.evaluate_repl;
+pub const evaluateRepl = repl.evaluateRepl;
 pub const reset = repl.reset;
-pub const ed_warn = repl.ed_warn;
+pub const edWarn = repl.edWarn;
 pub const announce = repl.announce;
-pub const getln = repl.getln;
-pub const badeditor = repl.badeditor;
-pub const fixeditor = repl.fixeditor;
-pub const parseline = repl.parseline;
+pub const getLine = repl.getLine;
+pub const badEditor = repl.badEditor;
+pub const fixEditor = repl.fixEditor;
+pub const parseLine = repl.parseLine;
 
 // Commands driver helpers
 pub const command = commands.command;

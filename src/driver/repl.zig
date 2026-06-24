@@ -1,3 +1,12 @@
+//! repl.zig — the interactive driver (read-eval-print loop).
+//!
+//! `commandLoop` is the top-level prompt: it reads a line, dispatches `/`/`:`
+//! commands, `?`/`??` queries, `!` shell escapes, and bare expressions. Each
+//! expression is type-checked, compiled, and evaluated in a forked child
+//! (`process`/`evaluateRepl`) so an interrupt or fault can't take down the
+//! session. Also houses the signal handlers (`reset`, `dieClean`, `fpeError`),
+//! the editor-command checks, and `parseLine` (the `readvals` reader).
+
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
@@ -34,15 +43,18 @@ const syntax = r7_setup.syntax;
 const token = r7_lex.token;
 const rdline = r7_lex.rdline;
 const reset_lex = r7_lex.reset_lex;
+/// POSIX `WIFSIGNALED`: true if `status` reports a child killed by a signal.
 fn WIFSIGNALED(status: c_int) bool {
     return (status & 0x7f) != 0 and (status & 0x7f) != 0x7f;
 }
 
+/// POSIX `WTERMSIG`: the signal number that terminated the child.
 fn WTERMSIG(status: c_int) c_int {
     return status & 0x7f;
 }
 
-pub fn commandloop(initscript: [*:0]u8) void {
+/// The top-level REPL. Loads `initscript`, then reads and dispatches user input until EOF: `?`/`??` (info), `:`/`/` (commands), `!` (shell escape), `||` (comment), or an expression to evaluate.
+pub fn commandLoop(initscript: [*:0]u8) void {
     var ch: c_int = undefined;
     var lb: ?[*:0]u8 = undefined;
 
@@ -94,7 +106,7 @@ pub fn commandloop(initscript: [*:0]u8) void {
                         continue;
                     }
                     if (main.rs.baded != 0) {
-                        main.ed_warn();
+                        main.edWarn();
                         continue;
                     }
                     if (ls.dicp[0] != 0) {
@@ -218,6 +230,7 @@ pub fn commandloop(initscript: [*:0]u8) void {
     }
 }
 
+/// Fork a child for evaluation. In the parent, wait and report any fatal signal; returns 0 in the parent and 1 in the child.
 pub fn process() Word {
     var oldsig: usize = undefined;
     oldsig = signals(abi.SIGINT, 1);
@@ -244,15 +257,17 @@ pub fn process() Word {
     return 1; // child
 }
 
-pub fn dieclean() callconv(.c) void {
+/// SIGINT handler during evaluation: print the interrupt notice, dump stats, and exit.
+pub fn dieClean() callconv(.c) void {
     word.printErr("<<...interrupt>>\n", .{});
     outstats();
     abi.exit(0);
 }
 
-pub fn fpe_error(sig: c_int) callconv(.c) void {
+/// SIGFPE handler: treat as a syntax error while compiling, otherwise a fatal floating-point overflow.
+pub fn fpeError(sig: c_int) callconv(.c) void {
     if (core_state.s.compiling != 0) {
-        _ = signals(sig, @intFromPtr(&fpe_error));
+        _ = signals(sig, @intFromPtr(&fpeError));
         syntax("floating point number out of range\n");
         core_state.s.SYNERR = 0;
         abi.siglongjmp(&main.rs.env, 1);
@@ -263,6 +278,7 @@ pub fn fpe_error(sig: c_int) callconv(.c) void {
 }
 
 // Relocated REPL and interactive driver functions
+/// Compile `x` and send its value to standard output — used to run a script's `main`.
 pub fn obey(x_in: Word) void {
     var x = x_in;
     const typ = main.type_of(x);
@@ -284,7 +300,8 @@ pub fn obey(x_in: Word) void {
     abi.output(out_val);
 }
 
-pub fn evaluate_repl(x_in: Word) void {
+/// Evaluate a typed REPL expression: compile it and fork via `process`; the child prints the result and exits, leaving the parent's heap untouched.
+pub fn evaluateRepl(x_in: Word) void {
     var x = x_in;
     const typ = main.type_of(x);
     if (typ == word.wrong_t) return;
@@ -305,7 +322,7 @@ pub fn evaluate_repl(x_in: Word) void {
     };
     if (process() != 0) {
         // Child: evaluate and print, then exit (compiling=0 only here, parent unaffected).
-        _ = signals(abi.SIGINT, @intFromPtr(&dieclean));
+        _ = signals(abi.SIGINT, @intFromPtr(&dieClean));
         core_state.s.compiling = 0;
         resetgcstats();
         abi.output(out_val);
@@ -316,6 +333,7 @@ pub fn evaluate_repl(x_in: Word) void {
     // Parent returns here; heap and compiling flag are unchanged.
 }
 
+/// SIGINT handler at the prompt: restore input/echo/compile state and `longjmp` back into the command loop.
 pub fn reset() callconv(.c) void {
     if (main.rs.echoing != 0) {
         _ = word.putchar('\n');
@@ -334,10 +352,12 @@ pub fn reset() callconv(.c) void {
     abi.siglongjmp(&main.rs.env, 1);
 }
 
-pub fn ed_warn() void {
+/// Warn that the configured editor lacks open-at-line support, disabling `??` and related features.
+pub fn edWarn() void {
     word.print("The currently installed editor command, \"{s}\", does not\ninclude a facility for opening a file at a specified line number.  As a\nresult the `??' command and certain other features of the Miranda system\nare disabled.  See manual section 31/5 on changing the editor for more\ninformation.\n", .{main.rs.editor orelse @constCast("")});
 }
 
+/// Print the Miranda release banner (version, plus `(UTF-8)` when applicable).
 pub fn announce() void {
     word.print("Miranda release {s}", .{main.strvers(version.version)});
     if (main.utf8test() != 0) {
@@ -346,7 +366,8 @@ pub fn announce() void {
     word.print("\n", .{});
 }
 
-pub fn getln(in: ?*word.FILE, n_val: Word, s_ptr: [*]u8) c_int {
+/// Read up to `n_val-1` bytes (or through a newline) from `in` into `s_ptr`. Returns 0 on immediate EOF, else 1.
+pub fn getLine(in: ?*word.FILE, n_val: Word, s_ptr: [*]u8) c_int {
     var s = s_ptr;
     var n = n_val;
     var ch: c_int = undefined;
@@ -361,7 +382,8 @@ pub fn getln(in: ?*word.FILE, n_val: Word, s_ptr: [*]u8) c_int {
     return if (ch == abi.EOF) 0 else 1;
 }
 
-pub fn badeditor() c_int {
+/// 1 if the editor command lacks an open-at-line placeholder (`+!`, `%d`, or `%l`).
+pub fn badEditor() c_int {
     const e = main.rs.editor orelse return 0;
     if (word.strstr(e, "+!") != null or word.strstr(e, "%d") != null or word.strstr(e, "%l") != null) {
         return 0;
@@ -369,7 +391,8 @@ pub fn badeditor() c_int {
     return 1;
 }
 
-pub fn fixeditor() void {
+/// Strip a trailing `+!` open-at-line marker from the editor command, in place.
+pub fn fixEditor() void {
     const e = main.rs.editor orelse return;
     const len = word.strlen(e);
     var p = e + len - 1;
@@ -383,7 +406,8 @@ pub fn fixeditor() void {
     }
 }
 
-pub fn parseline(t_val: Word, f: ?*word.FILE, fil: Word) Word {
+/// Read and type-check one expression of type `t_val` from file `f` (the `readvals` path). Returns its codegen, or `EOF`; re-prompts interactively and aborts on bad file data.
+pub fn parseLine(t_val: Word, f: ?*word.FILE, fil: Word) Word {
     var t1: Word = undefined;
     var ch: c_int = undefined;
     main.rs.lastexp = word.UNDEF;

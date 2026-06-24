@@ -13,7 +13,7 @@ const mira_lex_setup_string = r7_lex.mira_lex_setup_string;
 const mira_lex_cleanup = r7_lex.mira_lex_cleanup;
 const mira_lex_setup_file = r7_lex.mira_lex_setup_file;
 // Forks like the original C evaluate(): compiling=0 only in child; parent's heap is safe.
-const evaluate_repl = r7_repl.evaluate_repl;
+const evaluateRepl = r7_repl.evaluateRepl;
 pub const ParseError = error{
     SyntaxError,
     ParseFailed,
@@ -41,7 +41,7 @@ fn parseCurrentNew() ParseError!ParseResult {
 
     // Command mode: the user typed an expression at the REPL prompt.
     // In the old YACC grammar this was handled by `EVAL exp { evaluate($2); }`.
-    // We parse one expression, codegen it, then fork via evaluate_repl().
+    // We parse one expression, codegen it, then fork via evaluateRepl().
     if (core.s.commandmode != 0) {
         const expr = parser_mod.parseExpr(&p) catch |err| {
             core.s.SYNERR = 1;
@@ -59,8 +59,8 @@ fn parseCurrentNew() ParseError!ParseResult {
             return ParseError.SyntaxError;
         }
         const expr_word = codegen.codegenExpr(alloc, expr);
-        main.rs.lastexp = expr_word; // anchor as GC root before type_of() inside evaluate_repl() can trigger GC
-        evaluate_repl(expr_word);
+        main.rs.lastexp = expr_word; // anchor as GC root before type_of() inside evaluateRepl() can trigger GC
+        evaluateRepl(expr_word);
         // Child prints newline before exit(0); parent returns here.
         return .success;
     }

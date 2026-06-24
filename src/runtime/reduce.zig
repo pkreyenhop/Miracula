@@ -41,7 +41,7 @@ pub const ev = &@import("interp.zig").interp.eval;
 
 const sto_char = heap.sto_char;
 extern fn fromUTF8(f: ?*word.FILE) Word;
-const parseline = r7_repl.parseline;
+const parseLine = r7_repl.parseLine;
 const reduce = r7_reduce.reduce;
 const charname = heap.charname;
 
@@ -317,7 +317,7 @@ pub export fn reduce_stream_read(ctx: *reduce_ctx, op: Word) reduce_action {
             hp(ctx.hold).* = ctx.e;
             ctx.e = ctx.hold;
 
-            const val = parseline(h(ctx.arg1), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.arg1));
+            const val = parseLine(h(ctx.arg1), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.arg1));
             if (val == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(lastarg))));
                 rewrite_to_nil(&ctx.e);

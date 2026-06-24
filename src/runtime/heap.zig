@@ -50,7 +50,7 @@ const UNICODE = word.UNICODE;
 const CONS = word.CONS;
 
 const strcmp = r7_word.strcmp;
-const fpe_error = r7_repl.fpe_error;
+const fpeError = r7_repl.fpeError;
 const fpdatum = if (@sizeOf(Word) == 4)
     extern union {
         real: f64,
@@ -584,7 +584,7 @@ pub fn get_dbl(x: Word) f64 {
 
 pub fn sto_dbl(R_val: f64) Word {
     if (!std.math.isFinite(R_val)) {
-        fpe_error(main_clib.SIGFPE);
+        fpeError(main_clib.SIGFPE);
     }
     var r: fpdatum = undefined;
     r.real = R_val;
@@ -597,7 +597,7 @@ pub fn sto_dbl(R_val: f64) Word {
 
 pub fn setdbl(x: Word, R_val: f64) void {
     if (!std.math.isFinite(R_val)) {
-        fpe_error(main_clib.SIGFPE);
+        fpeError(main_clib.SIGFPE);
     }
     var r: fpdatum = undefined;
     r.real = R_val;

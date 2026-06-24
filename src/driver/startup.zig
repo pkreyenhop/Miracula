@@ -107,7 +107,7 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
                 main.missparam("editor");
             } else {
                 main.rs.editor = argv[arg_idx];
-                main.fixeditor();
+                main.fixEditor();
             }
         } else if (word.strcmp(arg, "-hush") == 0) {
             main.rs.verbosity = 0;
@@ -226,7 +226,7 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
         if (main.rs.editor != null) {
             _ = word.strcpy(&main.rs.ebuf, main.rs.editor.?);
             main.rs.editor = @as([*:0]u8, @ptrCast(&main.rs.ebuf));
-            main.fixeditor();
+            main.fixEditor();
         }
     }
 
@@ -435,9 +435,9 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
         _ = abi.keep(ls.dicp);
     }
 
-    _ = main.signals(abi.SIGFPE, @intFromPtr(&main.fpe_error));
+    _ = main.signals(abi.SIGFPE, @intFromPtr(&main.fpeError));
     _ = main.signals(abi.SIGTERM, @intFromPtr(&abi.exit));
-    main.commandloop(@constCast(initscript));
+    main.commandLoop(@constCast(initscript));
     return 0;
 }
 
