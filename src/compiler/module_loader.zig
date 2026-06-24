@@ -24,7 +24,7 @@ fn WEXITSTATUS(status: c_int) c_int {
     return (status >> 8) & 0xff;
 }
 
-inline fn pn_val(x: Word) Word {
+inline fn pnVal(x: Word) Word {
     return main.heap.t(x);
 }
 
@@ -290,7 +290,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         while (main.rs.detrop != NIL) {
             abi.outHere(main.getStdout(), main.heap.h(main.heap.h(main.heap.t(main.dval(main.heap.h(main.rs.detrop))))), 0);
             _ = word.putchar('\t');
-            abi.out_pattern(main.getStdout().?, main.dlhs(main.heap.h(main.rs.detrop)));
+            abi.outPattern(main.getStdout().?, main.dlhs(main.heap.h(main.rs.detrop)));
             _ = word.putchar('\n');
             main.rs.detrop = main.heap.t(main.rs.detrop);
             while (main.rs.detrop != NIL and getTag(main.dval(main.heap.h(main.rs.detrop))) == word.LABEL) {
@@ -308,7 +308,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         while (gd_mut != NIL) {
             abi.outHere(main.getStdout(), main.heap.h(main.dval(main.heap.h(gd_mut))), 0);
             _ = word.putchar('\t');
-            abi.out_pattern(main.getStdout().?, main.dlhs(main.heap.h(gd_mut)));
+            abi.outPattern(main.getStdout().?, main.dlhs(main.heap.h(gd_mut)));
             _ = word.putchar('\n');
             gd_mut = main.heap.t(gd_mut);
             while (gd_mut != NIL and getTag(main.dval(main.heap.h(gd_mut))) != word.LABEL) {
@@ -469,9 +469,9 @@ pub fn mkincludes(includees_val: Word) Word {
                             var q = main.filDefs(main.heap.h(z));
                             while (p != NIL and q != NIL) {
                                 if (getTag(main.heap.h(p)) == word.ID) {
-                                    if (main.idType(main.heap.h(p)) == word.type_t and (getTag(main.heap.h(q)) == word.ID or getTag(pn_val(main.heap.h(q))) == word.ID)) {
+                                    if (main.idType(main.heap.h(p)) == word.type_t and (getTag(main.heap.h(q)) == word.ID or getTag(pnVal(main.heap.h(q))) == word.ID)) {
                                         var w = tclashes;
-                                        const orig = if (getTag(main.heap.h(q)) == word.ID) main.heap.h(q) else pn_val(main.heap.h(q));
+                                        const orig = if (getTag(main.heap.h(q)) == word.ID) main.heap.h(q) else pnVal(main.heap.h(q));
                                         if (main.tClass(main.heap.h(p)) == word.synonym_t) {
                                             p = main.heap.t(p);
                                             q = main.heap.t(q);

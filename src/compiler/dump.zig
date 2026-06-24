@@ -233,8 +233,8 @@ pub fn fixtype(t_val: Word, x: Word) Word {
                 return t_val;
             }
             var cur_t = t_val;
-            while (getTag(pn_val(cur_t)) != word.CONS) {
-                cur_t = pn_val(cur_t);
+            while (getTag(pnVal(cur_t)) != word.CONS) {
+                cur_t = pnVal(cur_t);
             }
             if (getTag(cur_t) != word.ID) {
                 var w = tlost;
@@ -253,7 +253,7 @@ pub fn fixtype(t_val: Word, x: Word) Word {
     }
 }
 
-inline fn pn_val(x: Word) Word {
+inline fn pnVal(x: Word) Word {
     return t(x);
 }
 

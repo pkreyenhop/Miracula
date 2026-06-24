@@ -179,8 +179,8 @@ pub const okid = lex_mod.okid;
 pub const openfile = lex_mod.openfile;
 pub const out = heap_mod.out;
 pub const outHere = reduce_mod.outHere;
-pub const out_pattern = types_mod.out_pattern;
-pub const out_type = types_mod.out_type;
+pub const outPattern = types_mod.outPattern;
+pub const outType = types_mod.outType;
 pub const output = reduce_mod.output;
 pub const outstats = reduce_mod.outstats;
 pub const printlist = types_mod.printlist;
@@ -189,7 +189,7 @@ pub const rdline = lex_mod.rdline;
 pub fn readvals(x: Word, y: Word) Word {
     return make(word_mod.STARTREADVALS, x, y);
 }
-pub const report_type = types_mod.report_type;
+pub const reportType = types_mod.reportType;
 pub const resetheap = heap_mod.resetheap;
 pub const sayhere = types_mod.sayhere;
 pub const setprefix = heap_mod.setprefix;
@@ -217,7 +217,7 @@ pub const synonym_t = word_mod.synonym_t;
 pub const time_t = c_long;
 pub const token = lex_mod.token;
 pub const trueheapsize = heap_mod.trueheapsize;
-pub const type_of = types_mod.type_of;
+pub const typeOf = types_mod.typeOf;
 pub const type_t = word_mod.type_t;
 pub const typesfirst = types_mod.typesfirst;
 pub const undef_t = word_mod.undef_t;

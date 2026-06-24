@@ -10,7 +10,7 @@ const Word = i64;
 /// Phase 2a). Accessed as `core_state.s.<field>`; folds into `Interp.core` in
 /// Phase 3.
 pub const CoreState = struct {
-    /// Heap address of the `nil` combinator (set during mira_setup).
+    /// Heap address of the `nil` combinator (set during miraSetup).
     nill: Word = 0,
     /// Non-zero while a source file is being loaded (`loadfile` guard).
     loading: c_int = 0,

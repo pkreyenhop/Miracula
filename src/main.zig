@@ -91,14 +91,14 @@ pub inline fn getStderr() ?*abi.FILE {
 // Relocated aliases — Compiler Setup
 pub const privlib = setup.privlib;
 pub const stdlib = setup.stdlib;
-pub const mira_setup = setup.mira_setup;
+pub const miraSetup = setup.miraSetup;
 
 // Source/Module Loader
 pub const loadfile = module_loader.loadfile;
 pub const mkincludes = module_loader.mkincludes;
 
 // Compiler entry points — direct imports eliminate abi.* linker coupling (H2)
-pub const type_of = types_mod.type_of;
+pub const typeOf = types_mod.typeOf;
 pub const checktypes = types_mod.checktypes;
 pub const codegen = trans_mod.codegen;
 
@@ -139,7 +139,7 @@ pub const filDefs = heap.filDefs;
 pub const dval = heap.dval;
 pub const dlhs = heap.dlhs;
 pub const getHere = heap.getHere;
-pub const the_val = heap.the_val;
+pub const theVal = heap.theVal;
 pub const tClass = heap.tClass;
 pub const tInfo = heap.tInfo;
 pub const idVal = heap.idVal;

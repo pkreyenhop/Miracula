@@ -281,7 +281,7 @@ pub fn fpeError(sig: c_int) callconv(.c) void {
 /// Compile `x` and send its value to standard output — used to run a script's `main`.
 pub fn obey(x_in: Word) void {
     var x = x_in;
-    const typ = main.type_of(x);
+    const typ = main.typeOf(x);
     x = main.codegen(x);
     if (main.cs.polyshowerror != 0) return;
     core_state.s.compiling = 0;
@@ -303,7 +303,7 @@ pub fn obey(x_in: Word) void {
 /// Evaluate a typed REPL expression: compile it and fork via `process`; the child prints the result and exits, leaving the parent's heap untouched.
 pub fn evaluateRepl(x_in: Word) void {
     var x = x_in;
-    const typ = main.type_of(x);
+    const typ = main.typeOf(x);
     if (typ == word.wrong_t) return;
     main.rs.lastexp = x;
     x = main.codegen(x);
@@ -444,14 +444,14 @@ pub fn parseLine(t_val: Word, f: ?*word.FILE, fil: Word) Word {
             core_state.s.SYNERR = 0;
             main.rs.lastexp = word.UNDEF;
         } else {
-            t1 = main.type_of(main.rs.lastexp);
+            t1 = main.typeOf(main.rs.lastexp);
             if (t1 == word.wrong_t) {
                 main.rs.lastexp = word.UNDEF;
             } else if (abi.subsumes(abi.instantiate(t1), t_val) == 0) {
                 word.print("data has wrong type :: ", .{});
-                abi.out_type(t1);
+                abi.outType(t1);
                 word.print("\nshould be :: ", .{});
-                abi.out_type(t_val);
+                abi.outType(t_val);
                 _ = word.putc('\n', main.getStdout());
                 main.rs.lastexp = word.UNDEF;
             }

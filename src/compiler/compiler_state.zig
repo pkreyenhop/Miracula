@@ -45,7 +45,7 @@ pub const CompilerState = struct {
     lastloc: Word = 0,
     hereinc: Word = 0,
     lasthereinc: Word = 0,
-    // Built-in type functions (set during mira_setup):
+    // Built-in type functions (set during miraSetup):
     tfnum: Word = 0,
     tfbool: Word = 0,
     tfbool2: Word = 0,

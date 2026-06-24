@@ -43,7 +43,7 @@ const stoId = heap.stoId;
 const stoChar = heap.stoChar;
 const fileMtime = r7_files.fileMtime;
 const append1 = heap.append1;
-const genlstat_t = r7_types.genlstat_t;
+const genlstatType = r7_types.genlstatType;
 const acterror = r7_setup.acterror;
 const syntax = r7_setup.syntax;
 const reset = r7_repl.reset;
@@ -1012,7 +1012,7 @@ pub fn mklexvar(i: Word) Word {
     if (ls.lexvar == 0) {
         ls.lexvar = cons(stoId("ls.lexvar"), stoId("ls.lexvar"));
         tp(h(ls.lexvar)).* = main.cs.ltchar;
-        tp(t(ls.lexvar)).* = genlstat_t();
+        tp(t(ls.lexvar)).* = genlstatType();
     }
     return if (i != 0) t(ls.lexvar) else h(ls.lexvar);
 }

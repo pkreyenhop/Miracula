@@ -132,7 +132,7 @@ const UNION = types_mod.UNION;
 const add1 = types_mod.add1;
 const deps = types_mod.deps;
 const intersection = types_mod.intersection;
-const out_type = types_mod.out_type;
+const outType = types_mod.outType;
 const redtvars = types_mod.redtvars;
 const sayhere = types_mod.sayhere;
 const setdiff = types_mod.setdiff;
@@ -382,7 +382,7 @@ pub fn same(x: Word, y: Word) Word {
     return if (h(x) == h(y) and same(t(x), t(y)) != 0) 1 else 0;
 }
 
-pub fn get_ids(x: Word) Word {
+pub fn getIds(x: Word) Word {
     if (word.isAtom(x)) {
         return NIL;
     }
@@ -393,9 +393,9 @@ pub fn get_ids(x: Word) Word {
         return cons(x, NIL);
     }
     if (isNPlusKPattern(x)) {
-        return get_ids(t(x));
+        return getIds(t(x));
     }
-    return UNION(get_ids(h(x)), get_ids(t(x)));
+    return UNION(getIds(h(x)), getIds(t(x)));
 }
 
 pub fn mktuple(input_x: Word) Word {
@@ -460,7 +460,7 @@ pub fn fallible(input_e: Word) Word {
     }
 }
 
-pub fn here_inf(rhs: Word) Word {
+pub fn hereInfo(rhs: Word) Word {
     var x = t(rhs);
     while (t(x) != NIL) {
         x = t(x);
@@ -690,18 +690,18 @@ pub fn mklazy(d: Word) Word {
         std.debug.print("impossible event in mklazy\n", .{});
         return d;
     }
-    setDval(d, ap2(TRY, ap(lambda(dlhs(d), ids), dval(d)), ap(CONFERROR, cons(dlhs(d), here_inf(dval(d))))));
+    setDval(d, ap2(TRY, ap(lambda(dlhs(d), ids), dval(d)), ap(CONFERROR, cons(dlhs(d), hereInfo(dval(d))))));
     setDlhs(d, ids);
     return d;
 }
 
-pub fn new_mklazy(d: Word) Word {
-    const ids = get_ids(dlhs(d));
+pub fn newMkLazy(d: Word) Word {
+    const ids = getIds(dlhs(d));
     if (ids == NIL) {
-        std.debug.print("impossible event in new_mklazy\n", .{});
+        std.debug.print("impossible event in newMkLazy\n", .{});
         return d;
     }
-    setDval(d, ap2(TRY, ap(lambda(dlhs(d), ids), dval(d)), ap(CONFERROR, cons(dlhs(d), here_inf(dval(d))))));
+    setDval(d, ap2(TRY, ap(lambda(dlhs(d), ids), dval(d)), ap(CONFERROR, cons(dlhs(d), hereInfo(dval(d))))));
     setDlhs(d, ids);
     return d;
 }
@@ -898,7 +898,7 @@ pub fn transletrec(input_dd: Word, e: Word) Word {
             var i: Word = 0;
             const p = mkgvar(pn);
             pn += 1;
-            x = new_mklazy(x);
+            x = newMkLazy(x);
             var ids = dlhs(x);
             lhs = cons(p, lhs);
             rhs = cons(codegen(dval(x)), rhs);
@@ -951,7 +951,7 @@ pub fn makeshow(here: Word, type_node: Word) Word {
         _ = word.print("type error in definition of {s}\n", .{getId(cs.current_id)});
         sayhere(here, 0);
         _ = word.print(" use of \"show\" at polymorphic type ", .{});
-        out_type(redtvars(type_node));
+        outType(redtvars(type_node));
         _ = word.putchar('\n');
         setIdType(cs.current_id, wrong_t);
         setIdVal(cs.current_id, UNDEF);
@@ -1012,7 +1012,7 @@ pub fn mkshow(s: Word, p: Word, input_t: Word) Word {
                 return main.rs.showwhat;
             }
             _ = word.print("impossible event in mkshow (", .{});
-            out_type(type_node);
+            outType(type_node);
             _ = word.print(")\n", .{});
             return main.rs.showwhat;
         },
@@ -1058,7 +1058,7 @@ pub fn nclashcheck(n: Word, input_dd: Word, hr: Word) void {
     }
 }
 
-pub fn respec_error(x: Word) void {
+pub fn respecError(x: Word) void {
     if (main.rs.echoing != 0) {
         _ = word.putchar('\n');
     }
@@ -1084,7 +1084,7 @@ pub fn declconstr(x: Word, n: Word, constr_type: Word) void {
     }
     if (idType(x) != undef_t) {
         core_state.s.errs = idWho(x);
-        respec_error(x);
+        respecError(x);
         return;
     }
     addToEnv(x);
@@ -1120,7 +1120,7 @@ pub fn specify(input_x: Word, spec_type: Word, here: Word) void {
     }
     if (idType(x) != undef_t) {
         core_state.s.errs = here;
-        respec_error(x);
+        respecError(x);
         return;
     }
     setIdType(x, spec_type);
@@ -1147,7 +1147,7 @@ fn arityCheck(type_name: Word, arity: Word, here: Word) void {
     }
 }
 
-pub fn decl_type(input_tf: Word, type_class: Word, info: Word, here: Word) void {
+pub fn declType(input_tf: Word, type_class: Word, info: Word, here: Word) void {
     var tf = input_tf;
     var arity: Word = 0;
     while (getTag(tf) == AP) {
@@ -1176,7 +1176,7 @@ pub fn decl_type(input_tf: Word, type_class: Word, info: Word, here: Word) void 
     setIdVal(tf, makeTyp(arity, if (type_class == algebraic_t) makePn(UNDEF) else 0, type_class, info));
     if (idType(tf) != undef_t) {
         core_state.s.errs = here;
-        respec_error(tf);
+        respecError(tf);
         return;
     }
     addToEnv(tf);
@@ -1252,7 +1252,7 @@ pub fn block(input_defs: Word, input_e: Word, keep: Word) Word {
     }
     var d = defs;
     while (d != NIL) : (d = t(d)) {
-        const x = get_ids(dlhs(h(d)));
+        const x = getIds(dlhs(h(d)));
         ids = UNION(ids, x);
         deftoids = cons(cons(h(d), x), deftoids);
     }
@@ -1289,7 +1289,7 @@ pub fn block(input_defs: Word, input_e: Word, keep: Word) Word {
     g = tsort(g);
     g = reverse(g);
     while (g != NIL) : (g = t(g)) {
-        if (t(h(g)) == NIL and intersection(get_ids(dlhs(h(h(g)))), deps(dval(h(h(g))))) == NIL) {
+        if (t(h(g)) == NIL and intersection(getIds(dlhs(h(h(g)))), deps(dval(h(h(g))))) == NIL) {
             e = let(h(h(g)), e);
         } else {
             e = letrec(h(g), e);
@@ -1442,23 +1442,14 @@ const LEX_TRY1: Word = CMBASE + 116;
 const mklexvar = lex.mklexvar;
 const ispoly = types_mod.ispoly;
 
-fn isarrow_t(type_node: Word) bool {
-    return getTag(type_node) == AP and getTag(h(type_node)) == AP and h(h(type_node)) == arrow_t;
-}
-fn iscomma_t(type_node: Word) bool {
+fn isCommaType(type_node: Word) bool {
     return getTag(type_node) == AP and getTag(h(type_node)) == AP and h(h(type_node)) == comma_t;
 }
-fn islist_t(type_node: Word) bool {
-    return getTag(type_node) == AP and h(type_node) == list_t;
-}
-fn isvar_t(type_node: Word) bool {
+fn isVarType(type_node: Word) bool {
     return getTag(type_node) == TVAR;
 }
-fn iscompound_t(type_node: Word) bool {
-    return getTag(type_node) == AP;
-}
 
-fn t_showfn(x: Word) Word {
+fn tShowfn(x: Word) Word {
     return t(h(t(x)));
 }
 fn tClass(x: Word) Word {
@@ -1475,14 +1466,14 @@ fn isvariable(x: Word) bool {
     return getTag(x) == ID and isconstrname(getId(x)) == 0;
 }
 
-fn get_pn(x: Word) Word {
+fn getPn(x: Word) Word {
     return h(x);
 }
-fn pn_val(x: Word) Word {
+fn pnVal(x: Word) Word {
     return t(x);
 }
 
-fn sui_generis(k: Word) bool {
+fn suiGeneris(k: Word) bool {
     return member(cs.SGC, k) != 0;
 }
 
@@ -1562,7 +1553,7 @@ pub fn codegen(x: Word) Word {
             if (ispoly(t(x)) != 0) {
                 const name_str: [*:0]const u8 = if (ls.cook_stdin != 0 and x == h(ls.cook_stdin)) "$+" else "readvals or $+";
                 _ = word.print("type error - {s} used at polymorphic type :: [", .{name_str});
-                out_type(redtvars(t(x)));
+                outType(redtvars(t(x)));
                 _ = word.print("]\n", .{});
                 cs.polyshowerror = 1;
                 if (cs.current_id != 0) {
@@ -1611,12 +1602,12 @@ pub fn genshfns() void {
                     k = t(k); // lawful and !'d constructors
                 }
                 // k now holds constructor(i,main.hd(r))
-                while (isarrow_t(type_var)) {
+                while (isArrowType(type_var)) {
                     k = ap(k, mkshow(1, 1, t(h(type_var))));
                     type_var = t(type_var);
                 }
                 k = ap(ush, k);
-                while (iscompound_t(type_var)) {
+                while (isCompoundType(type_var)) {
                     k = abstr(t(type_var), k);
                     type_var = h(type_var);
                 }
@@ -1629,13 +1620,13 @@ pub fn genshfns() void {
                 r = t(r);
             }
             // f ~= 0, placeholder types dealt with in specify()
-            tp(t_showfn(h(s))).* = f;
-            cs.algshfns = cons(t_showfn(h(s)), cs.algshfns);
+            tp(tShowfn(h(s))).* = f;
+            cs.algshfns = cons(tShowfn(h(s)), cs.algshfns);
         } else if (tClass(h(s)) == abstract_t) {
-            if (t_showfn(h(s)) != 0) {
-                if (abshfnck(h(s), idType(t_showfn(h(s)))) == 0) {
-                    _ = word.print("warning - \"{s}\" has type inappropriate for a show-function\n", .{getId(t_showfn(h(s)))});
-                    tp(t_showfn(h(s))).* = 0;
+            if (tShowfn(h(s)) != 0) {
+                if (abshfnck(h(s), idType(tShowfn(h(s)))) == 0) {
+                    _ = word.print("warning - \"{s}\" has type inappropriate for a show-function\n", .{getId(tShowfn(h(s)))});
+                    tp(tShowfn(h(s))).* = 0;
                 }
             }
         }

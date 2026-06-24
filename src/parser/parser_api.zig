@@ -59,7 +59,7 @@ fn parseCurrentNew() ParseError!ParseResult {
             return ParseError.SyntaxError;
         }
         const expr_word = codegen.codegenExpr(alloc, expr);
-        main.rs.lastexp = expr_word; // anchor as GC root before type_of() inside evaluateRepl() can trigger GC
+        main.rs.lastexp = expr_word; // anchor as GC root before typeOf() inside evaluateRepl() can trigger GC
         evaluateRepl(expr_word);
         // Child prints newline before exit(0); parent returns here.
         return .success;

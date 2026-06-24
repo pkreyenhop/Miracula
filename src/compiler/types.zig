@@ -454,14 +454,14 @@ const synonym_t: Word = 1;
 const abstract_t: Word = 2;
 const UNDEF: Word = CMBASE + 140;
 
-fn iscompound_t(type_node: Word) bool {
+fn isCompoundType(type_node: Word) bool {
     return getTag(type_node) == AP;
 }
-fn isvar_t(type_node: Word) bool {
+fn isVarType(type_node: Word) bool {
     return getTag(type_node) == TVAR;
 }
 
-fn t_arity(x: Word) Word {
+fn tArity(x: Word) Word {
     return h(h(t(x)));
 }
 fn tClass(x: Word) Word {
@@ -470,7 +470,7 @@ fn tClass(x: Word) Word {
 fn tInfo(x: Word) Word {
     return t(t(t(x)));
 }
-fn t_showfn(x: Word) Word {
+fn tShowfn(x: Word) Word {
     return t(h(t(x)));
 }
 
@@ -495,30 +495,30 @@ pub fn sterilise(t_val: Word) void {
 fn metaTcheck(t_val: Word) main.MiraError!Word {
     var tn = t_val;
     var i: Word = 0;
-    while (iscompound_t(tn)) {
+    while (isCompoundType(tn)) {
         tp(tn).* = try metaTcheck(t(tn));
         i += 1;
         tn = h(tn);
     }
     if (getTag(tn) != STRCONS) {
         if (getTag(tn) != ID) {
-            if (i > 0 and (isvar_t(tn) or tn == bool_t or tn == num_t or tn == char_t)) {
+            if (i > 0 and (isVarType(tn) or tn == bool_t or tn == num_t or tn == char_t)) {
                 cs.TYPERRS += 1;
                 if (getTag(cs.current_id) == DATAPAIR) {
-                    locate_inc();
+                    locateInc();
                     _ = word.print("badly formed type \"", .{});
-                    out_type(t_val);
+                    outType(t_val);
                     _ = word.print("\" in binding for \"{s}\"\n", .{strtab.strOf(h(cs.current_id))});
                     _ = word.print("(", .{});
-                    out_type(tn);
+                    outType(tn);
                     _ = word.print(" has zero arity)\n", .{});
                 } else {
                     _ = word.print("badly formed type \"", .{});
-                    out_type(t_val);
+                    outType(t_val);
                     const msg: [*:0]const u8 = if (idType(cs.current_id) == type_t) "== binding" else "specification";
                     _ = word.print("\" in {s} for \"{s}\"\n", .{ msg, getId(cs.current_id) });
                     _ = word.print("(", .{});
-                    out_type(tn);
+                    outType(tn);
                     _ = word.print(" has zero arity)\n", .{});
                     sayhere(getspecloc(cs.current_id), 1);
                 }
@@ -529,7 +529,7 @@ fn metaTcheck(t_val: Word) main.MiraError!Word {
             cs.TYPERRS += 1;
             if (member(cs.NT, tn) == 0) {
                 if (getTag(cs.current_id) == DATAPAIR) {
-                    locate_inc();
+                    locateInc();
                 }
                 _ = word.print("undeclared typename \"{s}\" ", .{getId(tn)});
                 if (getTag(cs.current_id) == DATAPAIR) {
@@ -540,23 +540,23 @@ fn metaTcheck(t_val: Word) main.MiraError!Word {
                 cs.NT = add1(tn, cs.NT);
             }
             return t_val;
-        } else if (idType(tn) != type_t or t_arity(tn) != i) {
+        } else if (idType(tn) != type_t or tArity(tn) != i) {
             cs.TYPERRS += 1;
             if (getTag(cs.current_id) == DATAPAIR) {
-                locate_inc();
+                locateInc();
                 _ = word.print("badly formed type \"", .{});
-                out_type(t_val);
+                outType(t_val);
                 _ = word.print("\" in binding for \"{s}\"\n", .{strtab.strOf(h(cs.current_id))});
             } else {
                 _ = word.print("badly formed type \"", .{});
-                out_type(t_val);
+                outType(t_val);
                 const msg: [*:0]const u8 = if (idType(cs.current_id) == type_t) "== binding" else "specification";
                 _ = word.print("\" in {s} for \"{s}\"\n", .{ msg, getId(cs.current_id) });
             }
             if (idType(tn) != type_t) {
                 _ = word.print("({s} not defined as typename)\n", .{getId(tn)});
             } else {
-                _ = word.print("(typename {s} has arity {d})\n", .{ getId(tn), t_arity(tn) });
+                _ = word.print("(typename {s} has arity {d})\n", .{ getId(tn), tArity(tn) });
             }
             if (getTag(cs.current_id) != DATAPAIR) {
                 sayhere(getspecloc(cs.current_id), 1);
@@ -572,7 +572,7 @@ fn metaTcheck(t_val: Word) main.MiraError!Word {
     if (member(cs.meta_pending, tn) != 0) {
         cs.TYPERRS += 1; // report cycle
         if (getTag(cs.current_id) == DATAPAIR) {
-            locate_inc();
+            locateInc();
         }
         const suffix: [*:0]const u8 = if (cs.meta_pending == NIL) "" else "s";
         _ = word.print("error: cycle in type \"==\" definition{s} ", .{suffix});
@@ -586,11 +586,11 @@ fn metaTcheck(t_val: Word) main.MiraError!Word {
     cs.meta_pending = cons(tn, cs.meta_pending);
     tn = NIL;
     var cur_t = t_val;
-    while (iscompound_t(cur_t)) {
+    while (isCompoundType(cur_t)) {
         tn = cons(t(cur_t), tn);
         cur_t = h(cur_t);
     }
-    const res = try metaTcheck(ap_subst(tInfo(cur_t), tn));
+    const res = try metaTcheck(apSubst(tInfo(cur_t), tn));
     cs.meta_pending = t(cs.meta_pending);
     return res;
 }
@@ -619,7 +619,7 @@ fn NTV() Word {
     return res;
 }
 
-pub fn clear_SUBST() Word {
+pub fn clearSubst() Word {
     fixshows();
     @memset(&cs.SUBST, 0);
     cs.tvcount = 1;
@@ -659,10 +659,10 @@ fn ap(x: Word, y: Word) Word {
 }
 
 fn walktype(term: Word, f: *const fn (Word) Word) Word {
-    if (isvar_t(term)) {
+    if (isVarType(term)) {
         return f(term);
     }
-    if (iscompound_t(term)) {
+    if (isCompoundType(term)) {
         const h1 = walktype(h(term), f);
         const t1 = walktype(t(term), f);
         return if (h1 == h(term) and t1 == t(term)) term else ap(h1, t1);
@@ -677,7 +677,7 @@ pub fn subst(term: Word) Word {
 var NGT: Word = 0;
 
 fn lmap(tv: Word) Word {
-    if (non_generic(tv) != 0) {
+    if (nonGeneric(tv) != 0) {
         return tv;
     }
     var l = cs.localtvmap;
@@ -698,7 +698,7 @@ pub fn linst(term: Word, ngt: Word) Word {
     return walktype(term, lmap);
 }
 
-pub fn non_generic(tv: Word) c_int {
+pub fn nonGeneric(tv: Word) c_int {
     var x = NGT;
     while (x != NIL) {
         if (occurs(tv, subst(h(x))) != 0) {
@@ -727,7 +727,7 @@ pub fn instantiate(term: Word) Word {
     return walktype(term, mapup);
 }
 
-pub fn ap_subst(term: Word, args: Word) Word {
+pub fn apSubst(term: Word, args: Word) Word {
     cs.tvmap = args;
     const r = walktype(term, mapup);
     cs.tvmap = NIL;
@@ -754,7 +754,7 @@ pub fn redtvars(term: Word) Word {
 
 pub fn occurs(tv: Word, t_val: Word) c_int {
     var term = t_val;
-    while (iscompound_t(term)) {
+    while (isCompoundType(term)) {
         if (occurs(tv, t(term)) != 0) {
             return 1;
         }
@@ -765,13 +765,13 @@ pub fn occurs(tv: Word, t_val: Word) c_int {
 
 pub fn ispoly(t_val: Word) c_int {
     var term = t_val;
-    while (iscompound_t(term)) {
+    while (isCompoundType(term)) {
         if (ispoly(t(term)) != 0) {
             return 1;
         }
         term = h(term);
     }
-    return if (isvar_t(term)) 1 else 0;
+    return if (isVarType(term)) 1 else 0;
 }
 
 fn getStdout() ?*word.FILE {
@@ -790,7 +790,7 @@ pub fn locate(s: [*:0]const u8) void {
     if (cs.TYPERRS == 1 or cs.lastloc != cs.current_id) {
         if (cs.current_id != 0) {
             if (getTag(cs.current_id) == DATAPAIR) {
-                locate_inc();
+                locateInc();
                 _ = word.print("{s} in binding for {s}\n", .{ s, strtab.strOf(h(cs.current_id)) });
                 return;
             }
@@ -801,7 +801,7 @@ pub fn locate(s: [*:0]const u8) void {
                     _ = word.print("nonterminal ", .{});
                     x = h(x);
                 } else {
-                    out_formal1(getStdout().?, h(x));
+                    outFormal1(getStdout().?, h(x));
                     _ = word.print(", subdef of ", .{});
                     x = t(x);
                 }
@@ -820,7 +820,7 @@ pub fn locate(s: [*:0]const u8) void {
     cs.lastloc = cs.current_id;
 }
 
-pub fn rhs_here(r: Word) Word {
+pub fn rhsHere(r: Word) Word {
     if (getTag(r) == LABEL) {
         return h(r);
     }
@@ -833,7 +833,7 @@ pub fn rhs_here(r: Word) Word {
 pub fn sayhere(h_val: Word, nl: Word) void {
     var h_node = h_val;
     if (getTag(h_node) != FILEINFO) {
-        h_node = rhs_here(h_node);
+        h_node = rhsHere(h_node);
         if (getTag(h_node) != FILEINFO) {
             _ = word.printErr("(impossible event in sayhere)\n", .{});
             return;
@@ -859,10 +859,10 @@ pub fn sayhere(h_val: Word, nl: Word) void {
     }
 }
 
-pub fn report_type(x: Word) void {
+pub fn reportType(x: Word) void {
     _ = word.print("{s}", .{getId(x)});
     if (idType(x) == type_t) {
-        const arity = t_arity(x);
+        const arity = tArity(x);
         if (arity > 5) {
             _ = word.print("(arity {d})", .{arity});
         } else {
@@ -877,27 +877,27 @@ pub fn report_type(x: Word) void {
         }
     }
     _ = word.print(" :: ", .{});
-    out_type(idType(x));
+    outType(idType(x));
 }
 
-pub fn type_error(a: [*:0]const u8, b: [*:0]const u8, t1_val: Word, t2_val: Word) void {
+pub fn typeError(a: [*:0]const u8, b: [*:0]const u8, t1_val: Word, t2_val: Word) void {
     var t1 = redtvars(ap(subst(t1_val), subst(t2_val)));
     const t2 = t(t1);
     t1 = h(t1);
     locate("type error");
     _ = word.print("cannot {s} ", .{a});
-    out_type(t1);
+    outType(t1);
     _ = word.print(" {s} ", .{b});
-    out_type(t2);
+    outType(t2);
     _ = word.print("\n", .{});
 }
 
-pub fn type_error1(x: Word) void {
+pub fn typeError1(x: Word) void {
     locate("type error");
     _ = word.print("typename used as identifier ({s})\n", .{getId(x)});
 }
 
-pub fn type_error2(x: Word) void {
+pub fn typeError2(x: Word) void {
     if (core_state.s.compiling != 0) {
         return;
     }
@@ -905,48 +905,48 @@ pub fn type_error2(x: Word) void {
     _ = word.print("undefined name - {s}\n", .{getId(x)});
 }
 
-pub fn type_error3(x: Word) void {
+pub fn typeError3(x: Word) void {
     locate("error");
     _ = word.print("constructor \"{s}\" used at wrong arity in formal\n", .{getId(x)});
 }
 
-pub fn type_error4(x: Word) void {
+pub fn typeError4(x: Word) void {
     locate("error");
     _ = word.print("illegal object \"", .{});
-    out_pattern(getStdout().?, x);
+    outPattern(getStdout().?, x);
     _ = word.print("\" as head of formal\n", .{});
 }
 
-pub fn type_error5(x: Word) void {
+pub fn typeError5(x: Word) void {
     locate("error");
     _ = word.print("undeclared constructor \"", .{});
-    out_pattern(getStdout().?, x);
+    outPattern(getStdout().?, x);
     _ = word.print("\" in formal\n", .{});
     cs.ND = add1(x, cs.ND);
 }
 
-pub fn type_error6(x: Word, f: Word, a: Word) void {
+pub fn typeError6(x: Word, f: Word, a: Word) void {
     cs.TYPERRS += 1;
     _ = word.print("incorrect declaration ", .{});
     sayhere(cs.lineptr, 1);
     _ = word.print("specified, {s} :: ", .{getId(x)});
-    out_type(f);
+    outType(f);
     _ = word.print("\n", .{});
     _ = word.print("inferred,  {s} :: ", .{getId(x)});
-    out_type(redtvars(subst(a)));
+    outType(redtvars(subst(a)));
     _ = word.print("\n", .{});
 }
 
-pub fn type_error7(a: Word, b: Word) void {
+pub fn typeError7(a: Word, b: Word) void {
     locate("type error");
     _ = word.print("\nrhs of lex rule :: ", .{});
-    out_type(redtvars(subst(b)));
+    outType(redtvars(subst(b)));
     _ = word.print("\n type expected  :: ", .{});
-    out_type(redtvars(subst(a)));
+    outType(redtvars(subst(a)));
     _ = word.print("\n", .{});
 }
 
-pub fn type_error8(t1_val: Word, t2_val: Word) void {
+pub fn typeError8(t1_val: Word, t2_val: Word) void {
     var t1 = subst(t1_val);
     var t2 = subst(t2_val);
     if (same(h(t1), h(t2)) != 0) {
@@ -960,10 +960,10 @@ pub fn type_error8(t1_val: Word, t2_val: Word) void {
     locate("type error");
     const prefix: [*:0]const u8 = if (big) "\n " else " ";
     _ = word.print("cannot unify{s} ", .{prefix});
-    out_type(t1);
+    outType(t1);
     const infix: [*:0]const u8 = if (big) "\nwith\n  " else " with ";
     _ = word.print("{s}", .{infix});
-    out_type(t2);
+    outType(t2);
     _ = word.print("\n", .{});
 }
 
@@ -972,45 +972,45 @@ const arrow_t: Word = 6;
 const void_t: Word = 7;
 const wrong_t: Word = 8;
 
-fn isarrow_t(t_val: Word) bool {
+fn isArrowType(t_val: Word) bool {
     return getTag(t_val) == AP and getTag(h(t_val)) == AP and h(h(t_val)) == arrow_t;
 }
-fn iscomma_t(t_val: Word) bool {
+fn isCommaType(t_val: Word) bool {
     return getTag(t_val) == AP and getTag(h(t_val)) == AP and h(h(t_val)) == comma_t;
 }
-fn islist_t(t_val: Word) bool {
+fn isListType(t_val: Word) bool {
     return getTag(t_val) == AP and h(t_val) == list_t;
 }
 
-pub fn out_type(t_val: Word) void {
+pub fn outType(t_val: Word) void {
     var type_node = t_val;
-    while (isarrow_t(type_node)) {
-        out_type1(t(h(type_node)));
+    while (isArrowType(type_node)) {
+        outType1(t(h(type_node)));
         _ = word.print("->", .{});
         type_node = t(type_node);
     }
-    out_type1(type_node);
+    outType1(type_node);
 }
 
-pub fn out_type1(t_val: Word) void {
+pub fn outType1(t_val: Word) void {
     var type_node = t_val;
-    if (iscompound_t(type_node) and !iscomma_t(type_node) and !islist_t(type_node) and !isarrow_t(type_node)) {
-        out_type1(h(type_node));
+    if (isCompoundType(type_node) and !isCommaType(type_node) and !isListType(type_node) and !isArrowType(type_node)) {
+        outType1(h(type_node));
         _ = word.print(" ", .{});
         type_node = t(type_node);
     }
-    out_type2(type_node);
+    outType2(type_node);
 }
 
-pub fn out_type2(t_val: Word) void {
-    if (islist_t(t_val)) {
+pub fn outType2(t_val: Word) void {
+    if (isListType(t_val)) {
         _ = word.print("[", .{});
-        out_type(t(t_val));
+        outType(t(t_val));
         _ = word.print("]", .{});
-    } else if (iscompound_t(t_val)) {
+    } else if (isCompoundType(t_val)) {
         _ = word.print("(", .{});
-        out_typel(t_val);
-        if (iscomma_t(t_val) and t(t_val) == void_t) {
+        outTypeList(t_val);
+        if (isCommaType(t_val) and t(t_val) == void_t) {
             _ = word.print(",", .{});
         }
         _ = word.print(")", .{});
@@ -1040,7 +1040,7 @@ pub fn out_type2(t_val: Word) void {
             else => {
                 if (getTag(t_val) == ID) {
                     _ = word.print("{s}", .{getId(t_val)});
-                } else if (isvar_t(t_val)) {
+                } else if (isVarType(t_val)) {
                     var n = gettvar(t_val);
                     if (n > 0 and n < 7) {
                         while (n > 0) : (n -= 1) {
@@ -1050,7 +1050,7 @@ pub fn out_type2(t_val: Word) void {
                         _ = word.print("{d}", .{n});
                     }
                 } else if (getTag(t_val) == STRCONS) {
-                    const pn_val_node = pn_val(t_val);
+                    const pn_val_node = pnVal(t_val);
                     if (getTag(pn_val_node) == ID) {
                         _ = word.print("{s}", .{getId(pn_val_node)});
                     } else if (std.mem.eql(u8, std.mem.span(strtab.strOf(h(t(tInfo(t_val))))), std.mem.span(main.rs.current_script.?))) {
@@ -1066,12 +1066,12 @@ pub fn out_type2(t_val: Word) void {
     }
 }
 
-pub fn out_typel(t_val: Word) void {
+pub fn outTypeList(t_val: Word) void {
     var type_node = t_val;
-    while (iscomma_t(type_node)) {
-        out_type(t(h(type_node)));
+    while (isCommaType(type_node)) {
+        outType(t(h(type_node)));
         type_node = t(type_node);
-        if (iscomma_t(type_node)) {
+        if (isCommaType(type_node)) {
             _ = word.print(",", .{});
         } else if (type_node != void_t) {
             _ = word.print("<>", .{});
@@ -1080,10 +1080,10 @@ pub fn out_typel(t_val: Word) void {
     if (type_node == void_t) {
         return;
     }
-    out_type(type_node);
+    outType(type_node);
 }
 
-fn pn_val(x: Word) Word {
+fn pnVal(x: Word) Word {
     return t(x);
 }
 
@@ -1106,7 +1106,7 @@ pub fn tail(x_in: Word) Word {
     return x;
 }
 
-pub fn out_formal1(f: *word.FILE, x_in: Word) void {
+pub fn outFormal1(f: *word.FILE, x_in: Word) void {
     var x = x_in;
     if (h(x) == CONST) {
         x = t(x);
@@ -1124,7 +1124,7 @@ pub fn out_formal1(f: *word.FILE, x_in: Word) void {
         } else {
             _ = (f).print("[", .{});
             while (x != core_state.s.nill and x != NIL) {
-                out_pattern(f, h(x));
+                outPattern(f, h(x));
                 x = t(x);
                 if (x != core_state.s.nill and x != NIL) {
                     _ = (f).print(",", .{});
@@ -1134,18 +1134,18 @@ pub fn out_formal1(f: *word.FILE, x_in: Word) void {
         }
     } else if (getTag(x) == AP or getTag(x) == CONS) {
         _ = (f).print("(", .{});
-        out_pattern(f, x);
+        outPattern(f, x);
         _ = (f).print(")", .{});
     } else if (getTag(x) == TCONS or getTag(x) == PAIR) {
         _ = (f).print("(", .{});
         while (getTag(x) == TCONS) {
-            out_pattern(f, h(x));
+            outPattern(f, h(x));
             x = t(x);
             _ = (f).print(",", .{});
         }
-        out_pattern(f, h(x));
+        outPattern(f, h(x));
         _ = (f).print(",", .{});
-        out_pattern(f, t(x));
+        outPattern(f, t(x));
         _ = (f).print(")", .{});
     } else if ((getTag(x) == INT and neg(x) != 0) or (getTag(x) == DOUBLE and getDbl(x) < 0)) {
         _ = (f).print("(", .{});
@@ -1156,33 +1156,33 @@ pub fn out_formal1(f: *word.FILE, x_in: Word) void {
     }
 }
 
-pub fn out_pattern(f: *word.FILE, x: Word) void {
+pub fn outPattern(f: *word.FILE, x: Word) void {
     if (getTag(x) == CONS) {
         if (h(x) == CONST and (getTag(t(x)) == INT or getTag(t(x)) == DOUBLE)) {
             out(f, t(x));
         } else if (h(x) != CONST and tail(x) != NIL) {
-            out_formal(f, h(x));
+            outFormal(f, h(x));
             _ = (f).print(":", .{});
-            out_pattern(f, t(x));
+            outPattern(f, t(x));
         } else {
-            out_formal(f, x);
+            outFormal(f, x);
         }
     } else {
-        out_formal(f, x);
+        outFormal(f, x);
     }
 }
 
-pub fn out_formal(f: *word.FILE, x: Word) void {
+pub fn outFormal(f: *word.FILE, x: Word) void {
     if (getTag(x) != AP) {
-        out_formal1(f, x);
+        outFormal1(f, x);
     } else if (getTag(h(x)) == AP and h(h(x)) == PLUS) {
-        out_formal(f, t(x));
+        outFormal(f, t(x));
         _ = (f).print("+", .{});
         out(f, t(h(x)));
     } else {
-        out_formal(f, h(x));
+        outFormal(f, h(x));
         _ = (f).print(" ", .{});
-        out_formal1(f, t(x));
+        outFormal1(f, t(x));
     }
 }
 
@@ -1386,15 +1386,15 @@ pub fn printlist(title: [*:0]const u8, l_in: Word) void {
     _ = word.print(";\n", .{});
 }
 
-fn the_val(x: Word) Word {
+fn theVal(x: Word) Word {
     return t(x);
 }
 
 fn resetSubst() void {
-    cs.current_id = if (cs.tvcount >= @as(Word, @intCast(hashsize))) clear_SUBST() else 0;
+    cs.current_id = if (cs.tvcount >= @as(Word, @intCast(hashsize))) clearSubst() else 0;
 }
 
-pub fn locate_inc() void {
+pub fn locateInc() void {
     if (cs.lasthereinc == cs.hereinc) {
         return;
     }
@@ -1403,7 +1403,7 @@ pub fn locate_inc() void {
     sayhere(cs.hereinc, 1);
 }
 
-pub fn cyclic_abstr(atnames: Word) Word {
+pub fn cyclicAbstr(atnames: Word) Word {
     var x = atnames;
     var y = NIL;
     while (x != NIL) {
@@ -1437,12 +1437,12 @@ pub fn txchange(ids_in: Word, x_in: Word) void {
     }
 }
 
-pub fn rep_t1(T: Word, L: Word) Word {
+pub fn repT1(T: Word, L: Word) Word {
     var args = NIL;
     var t1 = T;
     var changed = false;
-    while (iscompound_t(t1)) {
-        const a = rep_t1(t(t1), L);
+    while (isCompoundType(t1)) {
+        const a = repT1(t(t1), L);
         if (a != t(t1)) {
             changed = true;
         }
@@ -1450,7 +1450,7 @@ pub fn rep_t1(T: Word, L: Word) Word {
         t1 = h(t1);
     }
     if (member(L, t1) != 0) {
-        return ap_subst(tInfo(t1), args);
+        return apSubst(tInfo(t1), args);
     }
     if (!changed) {
         return T;
@@ -1462,22 +1462,22 @@ pub fn rep_t1(T: Word, L: Word) Word {
     return t1;
 }
 
-pub fn rep_t(T: Word, L: Word) Word {
-    const t_val = rep_t1(T, L);
+pub fn repT(T: Word, L: Word) Word {
+    const t_val = repT1(T, L);
     return if (t_val == T) t_val else redtvars(t_val);
 }
 
-pub fn fix_type(t_val: Word) Word {
+pub fn fixType(t_val: Word) Word {
     var t_node = t_val;
     switch (getTag(t_node)) {
         AP, CONS => {
-            tp(t_node).* = fix_type(t(t_node));
-            hp(t_node).* = fix_type(h(t_node));
+            tp(t_node).* = fixType(t(t_node));
+            hp(t_node).* = fixType(h(t_node));
             return t_node;
         },
         STRCONS => {
-            while (getTag(pn_val(t_node)) != CONS) {
-                t_node = pn_val(t_node);
+            while (getTag(pnVal(t_node)) != CONS) {
+                t_node = pnVal(t_node);
             }
             return t_node;
         },
@@ -1502,9 +1502,9 @@ fn abstrCheck(x_in: Word) main.MiraError!void {
             cs.TYPERRS += 1;
             _ = word.print("abstype implementation error\n", .{});
             _ = word.print("\"{s}\" is bound to value of type: ", .{getId(h(x))});
-            out_type(redtvars(t_val));
+            outType(redtvars(t_val));
             _ = word.print("\ntype expected: ", .{});
-            out_type(idType(h(x)));
+            outType(idType(h(x)));
             _ = word.putchar('\n');
             sayhere(idWho(h(x)), 1);
         }
@@ -1535,7 +1535,7 @@ fn abstrMcheck(tabstrs_in: Word) main.MiraError!void {
         const atnames = h(h(tabstrs));
         var sigids = t(h(tabstrs));
         var rtypes = NIL;
-        if (cyclic_abstr(atnames) != 0) {
+        if (cyclicAbstr(atnames) != 0) {
             return;
         }
         while (sigids != NIL) {
@@ -1622,24 +1622,24 @@ pub fn checkfbs() void {
         formals = t(h(cs.FBS));
         while (formals != NIL) {
             var t_val: Word = undefined;
-            const t1 = fix_type(t(t(h(formals))));
+            const t1 = fixType(t(t(h(formals))));
             if (t1 == type_t) {
                 formals = t(formals);
                 continue;
             }
             cs.current_id = h(t(h(formals))); // nb datapair(orig,0) not id
-            t_val = subst(etype(the_val(h(h(formals))), NIL, NIL) catch return);
+            t_val = subst(etype(theVal(h(h(formals))), NIL, NIL) catch return);
             if (subsumes(t_val, instantiate(t1)) == 0) {
                 cs.TYPERRS += 1;
-                locate_inc();
+                locateInc();
                 _ = word.print("binding for parameter `{s}' has wrong type\n", .{strtab.strOf(h(cs.current_id))});
                 _ = word.print("required :: ", .{});
-                out_type(t(t(h(formals))));
+                outType(t(t(h(formals))));
                 _ = word.print("\n  actual :: ", .{});
-                out_type(redtvars(t_val));
+                outType(redtvars(t_val));
                 _ = word.putchar('\n');
             }
-            tp(t(h(h(formals)))).* = codegen(the_val(h(h(formals))));
+            tp(t(h(h(formals)))).* = codegen(theVal(h(h(formals))));
             formals = t(formals);
         }
         cs.FBS = t(cs.FBS);
@@ -1654,17 +1654,17 @@ pub fn checkfbs() void {
     resetSubst();
 }
 
-pub fn genlstat_t() Word {
+pub fn genlstatType() Word {
     if (cs.filestat_t == 0) {
-        cs.filestat_t = tf(cs.ltchar, pair_t(pair_t(num_t, num_t), num_t));
+        cs.filestat_t = tf(cs.ltchar, pairType(pairType(num_t, num_t), num_t));
     }
     return cs.filestat_t;
 }
 
 const bind_t: Word = 9;
 
-fn bound_t(type_node: Word) bool {
-    return iscompound_t(type_node) and h(type_node) == bind_t;
+fn isBoundType(type_node: Word) bool {
+    return isCompoundType(type_node) and h(type_node) == bind_t;
 }
 
 fn ap2(x: Word, y: Word, z: Word) Word {
@@ -1691,7 +1691,7 @@ fn lt(a: Word) Word {
     return ap(list_t, a);
 }
 
-fn pair_t(x: Word, y: Word) Word {
+fn pairType(x: Word, y: Word) Word {
     return ap2(comma_t, x, ap2(comma_t, y, void_t));
 }
 
@@ -1712,11 +1712,11 @@ pub fn subsu1(t1_in: Word, t2: Word, T2: Word) Word {
     if (t1 == t2) {
         return 1;
     }
-    if (isvar_t(t1) and occurs(t1, T2) == 0) {
+    if (isVarType(t1) and occurs(t1, T2) == 0) {
         addsubst(t1, t2);
         return 1;
     }
-    if (iscompound_t(t1) and iscompound_t(t2)) {
+    if (isCompoundType(t1) and isCompoundType(t2)) {
         return if (subsu1(h(t1), h(t2), T2) != 0 and subsu1(t(t1), t(t2), T2) != 0) 1 else 0;
     }
     return 0;
@@ -1735,15 +1735,15 @@ fn unify1(t1_val: Word, t2_val: Word) c_int {
     if (t1 == t2) {
         return 1;
     }
-    if (isvar_t(t1) and occurs(t1, t2) == 0) {
+    if (isVarType(t1) and occurs(t1, t2) == 0) {
         addsubst(t1, t2);
         return 1;
     }
-    if (isvar_t(t2) and occurs(t2, t1) == 0) {
+    if (isVarType(t2) and occurs(t2, t1) == 0) {
         addsubst(t2, t1);
         return 1;
     }
-    if (iscompound_t(t1) and iscompound_t(t2)) {
+    if (isCompoundType(t1) and isCompoundType(t2)) {
         return if (unify1(h(t1), h(t2)) != 0 and unify1(t(t1), t(t2)) != 0) 1 else 0;
     }
     return 0;
@@ -1755,18 +1755,18 @@ fn unify(t1_val: Word, t2_val: Word) c_int {
     if (t1 == t2) {
         return 1;
     }
-    if (isvar_t(t1) and occurs(t1, t2) == 0) {
+    if (isVarType(t1) and occurs(t1, t2) == 0) {
         addsubst(t1, t2);
         return 1;
     }
-    if (isvar_t(t2) and occurs(t2, t1) == 0) {
+    if (isVarType(t2) and occurs(t2, t1) == 0) {
         addsubst(t2, t1);
         return 1;
     }
-    if (iscompound_t(t1) and iscompound_t(t2) and unify1(h(t1), h(t2)) != 0 and unify1(t(t1), t(t2)) != 0) {
+    if (isCompoundType(t1) and isCompoundType(t2) and unify1(h(t1), h(t2)) != 0 and unify1(t(t1), t(t2)) != 0) {
         return 1;
     }
-    type_error("unify", "with", t1, t2);
+    typeError("unify", "with", t1, t2);
     return 0;
 }
 
@@ -1820,15 +1820,15 @@ fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) main.MiraError!Word {
             cur_p = h(cur_p);
         }
         if (!isConstructor(cur_p)) {
-            type_error4(cur_p);
+            typeError4(cur_p);
             return -1;
         }
         if (idType(cur_p) == undef_t) {
-            type_error5(cur_p);
+            typeError5(cur_p);
             return -1;
         }
-        pt = instantiate(if (cs.ATNAMES != 0) rep_t(idType(cur_p), cs.ATNAMES) else idType(cur_p));
-        while (p_args != NIL and isarrow_t(pt)) {
+        pt = instantiate(if (cs.ATNAMES != 0) repT(idType(cur_p), cs.ATNAMES) else idType(cur_p));
+        while (p_args != NIL and isArrowType(pt)) {
             e = try conforms(h(p_args), t(h(pt)), e, ngt);
             pt = t(pt);
             p_args = t(p_args);
@@ -1836,8 +1836,8 @@ fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) main.MiraError!Word {
                 return -1;
             }
         }
-        if (p_args != NIL or isarrow_t(pt)) {
-            type_error3(cur_p);
+        if (p_args != NIL or isArrowType(pt)) {
+            typeError3(cur_p);
             return -1;
         }
         if (unify(pt, t_val) == 0) {
@@ -1858,14 +1858,14 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
             const rt = NTV();
             if (unify1(ft_val, ap2(arrow_t, at, rt)) == 0) {
                 const ft = subst(ft_val);
-                if (isarrow_t(ft)) {
+                if (isArrowType(ft)) {
                     if (getTag(h(x)) == AP and h(h(x)) == word.G_ERROR) {
-                        type_error8(at, t(h(ft)));
+                        typeError8(at, t(h(ft)));
                     } else {
-                        type_error("unify", "with", at, t(h(ft)));
+                        typeError("unify", "with", at, t(h(ft)));
                     }
                 } else {
-                    type_error("apply", "to", ft, at);
+                    typeError("apply", "to", ft, at);
                 }
                 return NTV();
             }
@@ -1891,7 +1891,7 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
                     last_cons = t(last_cons);
                 }
                 const ht = try etype(h(last_cons), env, ngt);
-                type_error("cons", "to", ht, tail_type);
+                typeError("cons", "to", ht, tail_type);
                 return NTV();
             }
 
@@ -1901,7 +1901,7 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
                 const ht = try etype(h(cur), env, ngt);
                 if (unify1(ht, elem_type) == 0) {
                     const rt = try etype(t(cur), env, ngt);
-                    type_error("cons", "to", ht, rt);
+                    typeError("cons", "to", ht, rt);
                     return NTV();
                 }
                 cur = t(cur);
@@ -1921,7 +1921,7 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
                 tp(t(h(cur_x))).* = t(t(t(h(cur_x))));
                 const b = try etype(t(t(h(cur_x))), env, ngt);
                 if (unify1(a, b) == 0) {
-                    type_error7(a, b);
+                    typeError7(a, b);
                     cs.lineptr = hold;
                     return NTV();
                 }
@@ -1948,20 +1948,20 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
                 cur_env = t(cur_env);
             }
             const a = idType(x);
-            if (bound_t(a)) {
+            if (isBoundType(a)) {
                 return t(a);
             }
             if (a == type_t) {
-                type_error1(x);
+                typeError1(x);
             }
             if (a == undef_t) {
                 if (core_state.s.commandmode != 0) {
-                    type_error2(x);
+                    typeError2(x);
                 } else if (member(cs.ND, x) == 0) {
                     if (cs.lineptr != 0) {
                         sayhere(cs.lineptr, 0);
                     } else if (getTag(cs.current_id) == DATAPAIR) {
-                        locate_inc();
+                        locateInc();
                     }
                     _ = word.print("undefined name \"{s}\"\n", .{getId(x)});
                     cs.ND = add1(x, cs.ND);
@@ -1971,7 +1971,7 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
             if (a == wrong_t) {
                 return NTV();
             }
-            return instantiate(if (cs.ATNAMES != 0) rep_t(a, cs.ATNAMES) else a);
+            return instantiate(if (cs.ATNAMES != 0) repT(a, cs.ATNAMES) else a);
         },
         LAMBDA => {
             const a = NTV();
@@ -2043,7 +2043,7 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
                 const ety = try etype(dval(h(cur_s)), e, ngt);
                 if (subsumes(ety, linst(dtyp(h(cur_s)), ngt)) == 0) {
                     success = false;
-                    type_error6(dlhs(h(cur_s)), dtyp(h(cur_s)), ety);
+                    typeError6(dlhs(h(cur_s)), dtyp(h(cur_s)), ety);
                 }
                 cs.lineptr = hold;
                 cs.current_id = t(cs.current_id);
@@ -2109,7 +2109,7 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
         },
         CONSTRUCTOR => {
             const a = idType(t(x));
-            return instantiate(if (cs.ATNAMES != 0) rep_t(a, cs.ATNAMES) else a);
+            return instantiate(if (cs.ATNAMES != 0) repT(a, cs.ATNAMES) else a);
         },
         UNICODE => {
             return char_t;
@@ -2235,7 +2235,7 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
                 word.ZIP => {
                     const a = NTV();
                     const b = NTV();
-                    return tf2(lt(a), lt(b), lt(pair_t(a, b)));
+                    return tf2(lt(a), lt(b), lt(pairType(a, b)));
                 },
                 word.FOLDL => {
                     const a = NTV();
@@ -2333,7 +2333,7 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
                     return cs.read_t;
                 },
                 word.FILESTAT => {
-                    return genlstat_t();
+                    return genlstatType();
                 },
                 word.FILEMODE, word.GETENV, word.NB_STARTREAD, word.STARTREADBIN, word.STARTREAD => {
                     return cs.tfstrstr;
@@ -2465,10 +2465,10 @@ pub fn checkcolfn() void {
     }
     _ = word.print("`bnftokenindentation' has wrong type for use in offside rule\n", .{});
     _ = word.print("type required :: ", .{});
-    out_type(f);
+    outType(f);
     _ = word.putchar('\n');
     _ = word.print("  actual type :: ", .{});
-    out_type(t_val);
+    outType(t_val);
     _ = word.putchar('\n');
     sayhere(getspecloc(main.rs.col_fn), 1);
     cs.TYPERRS += 1;
@@ -2478,7 +2478,7 @@ pub fn checkcolfn() void {
 pub fn genbnft() void {
     const bnftokenstate = findid("bnftokenstate");
     if (bnftokenstate != NIL and idType(bnftokenstate) == type_t) {
-        if (t_arity(bnftokenstate) == 0) {
+        if (tArity(bnftokenstate) == 0) {
             cs.bnf_t = if (tClass(bnftokenstate) == synonym_t) tInfo(bnftokenstate) else bnftokenstate;
         } else {
             _ = word.print("warning - bnftokenstate has arity>0 (ignored by parser)\n", .{});
@@ -2497,7 +2497,7 @@ pub fn checktype(x: Word) Word {
     return if (cs.TYPERRS == 0) 1 else 0;
 }
 
-pub fn type_of(x: Word) Word {
+pub fn typeOf(x: Word) Word {
     cs.TYPERRS = 0;
     var t_val = redtvars(subst(etype(x, NIL, NIL) catch return wrong_t));
     fixshows();
@@ -2515,7 +2515,7 @@ fn inferType(x: Word) void {
         if (idType(x) != undef_t) {
             t_val = subst(etype(idVal(x), NIL, NIL) catch return);
             if (subsumes(t_val, instantiate(idType(x))) == 0) {
-                type_error8(idType(x), t_val);
+                typeError8(idType(x), t_val);
             }
         } else {
             t_val = subst(etype(idVal(x), NIL, NIL) catch return);

@@ -23,7 +23,7 @@ const ap = reduce.ap;
 const ap2 = reduce.ap2;
 
 // Phase 4 (shared-state plan): start from a pristine `Interp` via `interp.reset()`,
-// then run the *full* `mira_setup()` — the heavyweight init (rs.*/primenv, the
+// then run the *full* `miraSetup()` — the heavyweight init (rs.*/primenv, the
 // dictionary, interned strings) that used to pollute the order-sensitive parser
 // snapshot tests. With `reset()` covering all aggregated state and the snapshot
 // tests now capturing token text reliably (interned id, not the lagging dic
@@ -33,7 +33,7 @@ fn ensureSetup() void {
     if (initialized) return;
     interp.reset();
     lex.setupdic();
-    setup.mira_setup();
+    setup.miraSetup();
     initialized = true;
 }
 

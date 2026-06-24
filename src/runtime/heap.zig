@@ -24,7 +24,7 @@ const Word = i64;
 const wordsize = @sizeOf(Word) * 8;
 const bits_15 = 0xffff;
 
-pub inline fn the_val(x: Word) Word {
+pub inline fn theVal(x: Word) Word {
     return t(x);
 }
 
@@ -32,7 +32,7 @@ inline fn gettvar(x: Word) Word {
     return t(x);
 }
 
-inline fn t_arity(x: Word) Word {
+inline fn tArity(x: Word) Word {
     return h(h(t(x)));
 }
 
@@ -1132,7 +1132,7 @@ fn pnValPtr(x: Word) *Word {
 }
 
 pub fn tClass(x: Word) Word {
-    return h(t(the_val(x)));
+    return h(t(theVal(x)));
 }
 
 pub fn tInfo(x: Word) Word {
@@ -1577,8 +1577,8 @@ pub fn bindparams(formal_val: Word, actual_val: Word) void {
         if (formal == word.NIL or main_clib.strcmp(f, getId(a)) != 0) {
             cs.DETROP = cons(a, cs.DETROP);
         } else {
-            const fa = if (t(t(h(formal))) == word.type_t) t_arity(h(h(formal))) else -1;
-            const ta = if (heap.getTag(h(actual)) == word.AP) t_arity(h(actual)) else -1;
+            const fa = if (t(t(h(formal))) == word.type_t) tArity(h(h(formal))) else -1;
+            const ta = if (heap.getTag(h(actual)) == word.AP) tArity(h(actual)) else -1;
             if (fa != ta) {
                 badkind = cons(cons(h(h(actual)), datapair(fa, ta)), badkind);
             }

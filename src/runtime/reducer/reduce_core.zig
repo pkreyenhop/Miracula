@@ -274,7 +274,7 @@ pub inline fn neg(x: Word) bool {
 pub inline fn poz(x: Word) bool {
     return !neg(x);
 }
-pub inline fn pn_val(x: Word) Word {
+pub inline fn pnVal(x: Word) Word {
     return tl_get(x);
 }
 pub inline fn get_id(x: Word) [*:0]const u8 {
@@ -285,12 +285,12 @@ pub inline fn constr_name(x: Word) [*:0]const u8 {
     if (is_id(tlx)) {
         return get_id(tlx);
     } else {
-        return get_id(pn_val(tlx));
+        return get_id(pnVal(tlx));
     }
 }
 pub inline fn suppressed(x: Word) bool {
     const tlx = tl_get(x);
-    return is_strcons(tlx) and !is_id(pn_val(tlx));
+    return is_strcons(tlx) and !is_id(pnVal(tlx));
 }
 
 pub fn getStderr() ?*word.FILE {

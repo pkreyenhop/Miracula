@@ -84,7 +84,7 @@ const compzf = trans.compzf;
 const block = trans.block;
 const declare = trans.declare;
 const specify = trans.specify;
-const decl_type = trans.decl_type;
+const declType = trans.declType;
 const declconstr = trans.declconstr;
 const redtvars = types_mod.redtvars;
 const bigscan = big.scanDecimal;
@@ -710,7 +710,7 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
             // redtvars(ap(typeform, body)) normalises type vars
             const body_w = codegenType(s.body);
             const x = redtvars(ap(tf, body_w));
-            decl_type(h(x), word.synonym_t, t(x), here);
+            declType(h(x), word.synonym_t, t(x), here);
         },
 
         // --- algebraic type: name params ::= C1 fields | C2 fields | … ---
@@ -743,7 +743,7 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
                 r_ids = mkcons(hv, r_ids);
                 rhs = t(rhs);
             }
-            decl_type(tf, word.algebraic_t, r_ids, here);
+            declType(tf, word.algebraic_t, r_ids, here);
         },
 
         // --- abstype: abstype name params with specs ---
@@ -760,7 +760,7 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
             // Declare the abstract type itself
             var tf = nameWord(a.name);
             for (a.params) |p| tf = ap(tf, codegenTypeVar(p));
-            decl_type(tf, word.abstract_t, word.undef_t, here);
+            declType(tf, word.abstract_t, word.undef_t, here);
         },
     }
 }

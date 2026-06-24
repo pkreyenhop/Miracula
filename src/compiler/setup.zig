@@ -113,7 +113,7 @@ pub fn predef(n: [*:0]const u8, v: Word, t_val: Word) void {
 }
 
 /// Seeds the primitive type aliases (num, char, bool) and built-in constructors
-/// (True, False) into the private primitive environment. Called by mira_setup().
+/// (True, False) into the private primitive environment. Called by miraSetup().
 pub fn primlib() void {
     primdef("num", abi.make_typ(0, 0, word.synonym_t, word.num_t), word.type_t);
     primdef("char", abi.make_typ(0, 0, word.synonym_t, word.char_t), word.type_t);
@@ -197,7 +197,7 @@ fn mktiny() Word {
 /// Performs one-time interpreter initialisation: sets up the heap, type system,
 /// dictionary, and parser state, then seeds the primitive environment.
 /// Must be called exactly once before any source file is loaded.
-pub fn mira_setup() void {
+pub fn miraSetup() void {
     setupheap();
     tsetup();
     resetPns();
@@ -231,9 +231,9 @@ pub fn mira_setup() void {
     primlib();
 }
 
-test "mira_setup initialisation and primitive seeding" {
+test "miraSetup initialisation and primitive seeding" {
     abi.setupdic();
-    mira_setup();
+    miraSetup();
 
     // Verify primitives from primlib are seeded correctly
     try std.testing.expect(main.rs.primenv != NIL);

@@ -16,7 +16,7 @@ const UNDEF: Word = CMBASE + 140;
 /// parser_api.zig circular-import constraints: loading, compiling, nill, errs,
 /// errline, obsuffix, SYNERR, commandmode).
 pub const RuntimeState = struct {
-    // Identity atoms — heap node IDs set by mira_setup(); valid after setup, zero before.
+    // Identity atoms — heap node IDs set by miraSetup(); valid after setup, zero before.
     Void: Word = 0,
     main_id: Word = 0,
     message: Word = 0,
@@ -57,7 +57,7 @@ pub const RuntimeState = struct {
     UTF8: i32 = 0,
     UTF8OUT: i32 = 0,
 
-    // Configuration — set from CLI flags or .mirarc before mira_setup().
+    // Configuration — set from CLI flags or .mirarc before miraSetup().
     editor: ?[*:0]u8 = null,
     /// True when the prelude has been accepted without error.
     okprel: bool = false,

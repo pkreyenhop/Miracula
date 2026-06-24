@@ -269,7 +269,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     _ = word.strcpy(&main.rs.STDENV, main.rs.miralib.?);
     _ = word.strcat(&main.rs.STDENV, "/stdenv.m");
 
-    main.mira_setup();
+    main.miraSetup();
 
     if (main.rs.verbosity != 0) {
         main.announce();
@@ -331,7 +331,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 while (f != NIL) : (f = main.heap.t(f)) {
                     const n = abi.findid(@constCast(main.get_id(main.heap.h(f))));
                     main.heap.tp(n).* = main.heap.t(main.heap.t(main.heap.h(f)));
-                    main.heap.tp(main.heap.h(main.heap.h(n))).* = main.the_val(main.heap.h(f));
+                    main.heap.tp(main.heap.h(main.heap.h(n))).* = main.theVal(main.heap.h(f));
                     main.heap.hp(f).* = n;
                 }
                 main.rs.freeids = abi.typesfirst(main.rs.freeids);
@@ -339,7 +339,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 word.print("\t%free {{\n", .{});
                 while (f != NIL) : (f = main.heap.t(f)) {
                     _ = word.putchar('\t');
-                    abi.report_type(main.heap.h(f));
+                    abi.reportType(main.heap.h(f));
                     _ = word.putchar('\n');
                 }
                 word.print("\t}}\n", .{});
@@ -348,7 +348,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
             var item = abi.typesfirst(main.alfasort(x));
             while (item != NIL) : (item = main.heap.t(item)) {
                 _ = word.putchar('\t');
-                abi.report_type(main.heap.h(item));
+                abi.reportType(main.heap.h(item));
                 _ = word.putchar('\n');
             }
         }

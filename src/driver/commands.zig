@@ -602,7 +602,7 @@ pub fn finger(n: [*:0]const u8) void {
         if (main.rs.lastid == 0) {
             main.rs.lastid = x;
         }
-        abi.report_type(x);
+        abi.reportType(x);
         if (main.idWho(x) == NIL) {
             word.print(" ||primitive to Miranda\n", .{});
         } else {
