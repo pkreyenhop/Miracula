@@ -16,6 +16,7 @@ const ls = lex_state.ls;
 
 const makeId = r7_lex.makeId;
 const resetPns = r7_lex.resetPns;
+/// Build a dummy file record for the snapshot tests.
 fn makeFilRecord(name: [*:0]const u8) word.Word {
     const name_word = @as(word.Word, strtab.strBits(name));
     const file_info = heap.make(word.FILEINFO, name_word, 0);
@@ -26,6 +27,7 @@ fn makeFilRecord(name: [*:0]const u8) word.Word {
 
 const resetState = r7_lex.resetState;
 
+/// Reset the legacy lexer's global state between tests.
 fn resetLexerState() void {
     resetState();
     setupheap();
@@ -40,6 +42,7 @@ fn resetLexerState() void {
 }
 
 var initialized = false;
+/// Perform one-time interpreter setup for the parser tests.
 fn ensureInitialized() void {
     if (!initialized) {
         setupheap();
@@ -51,6 +54,7 @@ fn ensureInitialized() void {
     }
 }
 
+/// Human-readable name for a legacy-lexer token code `tok`.
 fn tokenName(tok: c_int) []const u8 {
     return switch (tok) {
         0 => "EOF",
@@ -133,6 +137,7 @@ fn tokenName(tok: c_int) []const u8 {
     };
 }
 
+/// Whether `s` is printable ASCII (safe to embed in a snapshot).
 fn isCleanAscii(s: []const u8) bool {
     for (s) |ch| {
         if (ch < 32 or ch > 126) return false;
@@ -140,6 +145,7 @@ fn isCleanAscii(s: []const u8) bool {
     return true;
 }
 
+/// Run the legacy lexer over `source` and capture its token stream as text.
 fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]const u8 {
     ensureInitialized();
     resetLexerState();
@@ -170,6 +176,7 @@ fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]con
     return try list.toOwnedSlice();
 }
 
+/// Lex+parse `source` and compare the token stream against the stored snapshot.
 fn runSnapshotTest(allocator: std.mem.Allocator, name: []const u8, source: [:0]const u8, is_error: bool) !void {
     std.debug.print("--- SNAPSHOT TEST START: {s} ---\n", .{name});
     std.debug.print("[{s}] captureTokenStream starting...\n", .{name});
@@ -300,6 +307,7 @@ test "prelude parsing test" {
     _ = try parser_api.parseFile("miralib/prelude");
 }
 
+/// Parse `source` with the new parser and compare its AST against the snapshot.
 fn runASTSnapshotTest(allocator: std.mem.Allocator, name: []const u8, source: [:0]const u8) !void {
     _ = name;
     ensureInitialized();

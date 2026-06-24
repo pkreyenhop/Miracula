@@ -47,30 +47,37 @@ pub const Parser = struct {
         };
     }
 
+    /// The current token, without consuming it.
     fn peek(self: *Parser) Token {
         return self.ts.peek();
     }
+    /// Consume and return the current token.
     fn advance(self: *Parser) Token {
         return self.ts.advance();
     }
 
+    /// Whether the current token has id `id`.
     fn check(self: *Parser, id: TokenId) bool {
         return self.ts.check(id);
     }
 
+    /// Consume the current token if it has id `id`; returns whether it did.
     fn eat(self: *Parser, id: TokenId) bool {
         return self.ts.eat(id);
     }
 
+    /// Consume a token of id `id`, or return a parse error.
     fn expect(self: *Parser, id: TokenId) ParseError!Token {
         return self.ts.expect(id);
     }
 
+    /// The source span at the current position.
     fn span(self: *Parser) Span {
         return self.peek().span;
     }
 
     /// Record a structured diagnostic.  OOM propagates to the caller.
+    /// Append an error diagnostic at `line:column`.
     pub fn addError(self: *Parser, sp: Span, comptime fmt: []const u8, args: anytype) !void {
         const msg = try std.fmt.allocPrint(self.gpa, fmt, args);
         try self.diagnostics.append(self.gpa, .{ .span = sp, .message = msg });
@@ -216,6 +223,7 @@ fn parseArgtype(p: *Parser) ParseError!ast.TypeExpr {
 // Type specification parser:  `namelist :: type`
 // ---------------------------------------------------------------------------
 
+/// Parse a type specification / declaration as a top-level item.
 pub fn parseTypeSpec(p: *Parser) ParseError!ast.TopLevel {
     const sp = p.span();
     var names: std.ArrayList([]const u8) = .empty;
@@ -255,6 +263,7 @@ pub fn parsePat(p: *Parser) ParseError!ast.Pat {
     return parsePatV(p);
 }
 
+/// Parse a pattern at the cons (`:`) precedence level.
 fn parsePatV(p: *Parser) ParseError!ast.Pat {
     var head = try parsePatV1(p);
 
@@ -273,6 +282,7 @@ fn parsePatV(p: *Parser) ParseError!ast.Pat {
     return head;
 }
 
+/// Parse a pattern at the next-tighter precedence level.
 fn parsePatV1(p: *Parser) ParseError!ast.Pat {
     const tok = p.peek();
 
@@ -315,6 +325,7 @@ fn applyPatName(gpa: Allocator, tok: Token) Allocator.Error!*ast.Pat {
     return p;
 }
 
+/// Parse a pattern at application precedence.
 fn parsePatV2(p: *Parser) ParseError!ast.Pat {
     var pat = try parsePatV3(p);
     // Constructor application: `C arg1 arg2 …`
@@ -329,6 +340,7 @@ fn parsePatV2(p: *Parser) ParseError!ast.Pat {
     return pat;
 }
 
+/// Whether token id `id` can begin a primary pattern.
 fn isPatV3Start(id: TokenId) bool {
     return switch (id) {
         .name,
@@ -344,6 +356,7 @@ fn isPatV3Start(id: TokenId) bool {
     };
 }
 
+/// Parse a primary (atomic) pattern.
 fn parsePatV3(p: *Parser) ParseError!ast.Pat {
     const tok = p.advance();
     return switch (tok.id) {
@@ -404,6 +417,7 @@ fn parsePatV3(p: *Parser) ParseError!ast.Pat {
 // Expression parsing (delegates to Pratt)
 // ---------------------------------------------------------------------------
 
+/// Parse an expression (Pratt precedence climbing).
 pub fn parseExpr(p: *Parser) ParseError!ast.Expr {
     return pratt.parseExpr(p.gpa, &p.ts, 0);
 }
@@ -580,6 +594,7 @@ pub fn parseDef(p: *Parser) ParseError!ast.Def {
 // Script (top-level item list)
 // ---------------------------------------------------------------------------
 
+/// Parse a whole script — the parser entry point.
 pub fn parseScript(p: *Parser) ParseError!ast.Script {
     var items: std.ArrayList(ast.TopLevel) = .empty;
     errdefer items.deinit(p.gpa);
@@ -609,6 +624,7 @@ pub fn parseScript(p: *Parser) ParseError!ast.Script {
     return ast.Script{ .items = try items.toOwnedSlice(p.gpa) };
 }
 
+/// Parse one top-level item (definition, type declaration, or directive).
 fn parseTopLevel(p: *Parser) ParseError!ast.TopLevel {
     const tok = p.peek();
 

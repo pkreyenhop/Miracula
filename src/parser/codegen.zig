@@ -97,6 +97,7 @@ const stoChar = heap.stoChar;
 const head = reduce_mod.head;
 const isconstrname = lex.isconstrname;
 
+/// Parse decimal `text` into a bignum (via a temporary NUL-terminated copy).
 fn bigscanZ(alloc: Allocator, text: []const u8) Word {
     const z = alloc.dupeZ(u8, text) catch return word.NIL;
     return bigscan(z.ptr);
@@ -120,6 +121,7 @@ const void_t: Word = 7; // #define void_t  7
 // 'here' generation: fileinfo(get_fil(current_file), line_no)
 // ---------------------------------------------------------------------------
 
+/// Build a source-location (`HERE`) marker node for `line`.
 fn makeHere(line: u32) Word {
     // get_fil(current_file) = (char*)hd(hd(hd(current_file)))
     const fil_name = h(h(h(heap.heap.current_file)));
@@ -130,6 +132,7 @@ fn makeHere(line: u32) Word {
 // Helper: is this ID word a constructor name?
 // ---------------------------------------------------------------------------
 
+/// Whether heap word `x` is a constructor identifier.
 fn isConstructorWord(x: Word) bool {
     if (tg(x) != word.ID) return false;
     // get_id(x) = (char*)hd(hd(hd(x)))
@@ -141,6 +144,7 @@ fn isConstructorWord(x: Word) bool {
 // nameWord: convert a []const u8 to a Miranda ID Word via stoId
 // ---------------------------------------------------------------------------
 
+/// Resolve identifier `name` to its dictionary `ID` node.
 fn nameWord(name: []const u8) Word {
     var buf: [512:0]u8 = undefined;
     const n = @min(name.len, buf.len - 1);
@@ -165,6 +169,7 @@ fn nameWord(name: []const u8) Word {
 //   "*a"  → stoId("*a")  (named typevar — fall back to ident)
 // ---------------------------------------------------------------------------
 
+/// Code a type variable named `name`.
 fn codegenTypeVar(name: []const u8) Word {
     var star_count: Word = 0;
     for (name) |c| {
@@ -182,6 +187,7 @@ fn codegenTypeVar(name: []const u8) Word {
 // Type expression codegen
 // ---------------------------------------------------------------------------
 
+/// Code a type expression `te` into its runtime type node.
 fn codegenType(te: ast.TypeExpr) Word {
     return switch (te) {
         .type_var => |v| codegenTypeVar(v.name),
@@ -212,6 +218,7 @@ fn codegenType(te: ast.TypeExpr) Word {
 // Operator → Word mapping (diop/relop table from rules.y)
 // ---------------------------------------------------------------------------
 
+/// Map an operator symbol `op` to its combinator/atom word.
 fn opWord(op: []const u8) Word {
     if (std.mem.eql(u8, op, "vel")) return word.OR;
     if (std.mem.eql(u8, op, "amp")) return word.AND;
@@ -261,6 +268,7 @@ fn opWord(op: []const u8) Word {
 //   guards[N-1]   = last   (otherwise → bare body; conditional → LABEL(COND x y FAIL))
 // ---------------------------------------------------------------------------
 
+/// Code a guarded right-hand side (`= e, if g`) into a conditional chain.
 fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
     const N = guards.len;
     if (N == 0) return word.FAIL;
@@ -313,6 +321,7 @@ fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
 // String literal → CONS chain of character words
 // ---------------------------------------------------------------------------
 
+/// Code a string literal into a cons-list of characters.
 fn codegenString(s: []const u8) Word {
     // Walk the UTF-8 string right-to-left; decode codepoints for stoChar.
     var result: Word = word.NIL;
@@ -334,6 +343,7 @@ fn codegenString(s: []const u8) Word {
 // `nill` directly; we must replicate that here.
 // ---------------------------------------------------------------------------
 
+/// Code pattern expression `e` into match-combinator form.
 fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
     return switch (e) {
         // `[]` in a pattern → nill (the empty list pattern atom).
@@ -409,6 +419,7 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
 // Expression codegen (the heart of Phase 10)
 // ---------------------------------------------------------------------------
 
+/// Code an expression AST node `e` into a combinator graph.
 pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
     return switch (e) {
         // --- Identifiers ---
@@ -575,6 +586,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
 // Each arg is a PATTERN, so use codegenPattern instead of codegenExpr.
 // ---------------------------------------------------------------------------
 
+/// Code the left-hand side of a definition (the name/pattern being defined).
 fn codegenLhsExpr(alloc: Allocator, e: ast.Expr) Word {
     return switch (e) {
         .application => |app| ap(codegenLhsExpr(alloc, app.func.*), codegenPattern(alloc, app.arg.*)),
@@ -586,6 +598,7 @@ fn codegenLhsExpr(alloc: Allocator, e: ast.Expr) Word {
 // RHS codegen
 // ---------------------------------------------------------------------------
 
+/// Code a right-hand side, guarded or plain, including any `where`.
 fn codegenRhs(alloc: Allocator, rhs: ast.Rhs) Word {
     return switch (rhs) {
         .expr => |e| codegenExpr(alloc, e),
@@ -600,6 +613,7 @@ fn codegenRhs(alloc: Allocator, rhs: ast.Rhs) Word {
 // Mirrors the YACC `ldef` production: returns defn(lhs, undef_t, label(here, rhs)).
 // The tries() wrapping is NOT done here — buildLdefs handles it so consecutive
 // equations for the same function can be merged into a single TRIES list.
+/// Code a single local (`where`) definition.
 fn codegenLocalDef(alloc: Allocator, def: ast.Def) Word {
     const here = makeHere(@intCast(def.span.line));
     var lhs = codegenLhsExpr(alloc, def.lhs);
@@ -629,6 +643,7 @@ fn codegenLocalDef(alloc: Allocator, def: ast.Def) Word {
 //   if(dlhs($2)==dlhs(hd($1)))
 //     tl(dval(hd($1)))=cons(dval($2),tl(dval(hd($1))));   // merge
 //   else { $$=cons($2,$1); dval($2)=tries(...); }          // new entry
+/// Build the binding list for a `letrec` of local definitions.
 fn buildLdefs(alloc: Allocator, where_defs: []const ast.Def) Word {
     var ldefs: Word = word.NIL;
     for (where_defs) |wd| {
@@ -650,6 +665,7 @@ fn buildLdefs(alloc: Allocator, where_defs: []const ast.Def) Word {
     return ldefs;
 }
 
+/// Wrap expression `e` in its `where` definitions (as a `letrec`).
 fn applyWhereDefs(alloc: Allocator, e: Word, where_defs: []const ast.Def) Word {
     if (where_defs.len == 0) return e;
     return block(buildLdefs(alloc, where_defs), e, 0);
@@ -659,6 +675,7 @@ fn applyWhereDefs(alloc: Allocator, e: Word, where_defs: []const ast.Def) Word {
 // Top-level definition codegen: declares lhs in the environment
 // ---------------------------------------------------------------------------
 
+/// Code a top-level definition and install it in the environment.
 fn codegenDef(alloc: Allocator, def: ast.Def) void {
     const here = makeHere(@intCast(def.span.line));
     var lhs = codegenLhsExpr(alloc, def.lhs);
@@ -687,6 +704,7 @@ fn codegenDef(alloc: Allocator, def: ast.Def) void {
 // Type specification codegen
 // ---------------------------------------------------------------------------
 
+/// Code a type signature (`::`) declaration.
 fn codegenTypeSpec(ts: ast.TypeSpec) void {
     const here = makeHere(@intCast(ts.span.line));
     const type_w = codegenType(ts.typ);
@@ -699,6 +717,7 @@ fn codegenTypeSpec(ts: ast.TypeSpec) void {
 // Type declaration codegen
 // ---------------------------------------------------------------------------
 
+/// Code a type/data declaration (`==` / `::=`).
 fn codegenTypeDecl(td: ast.TypeDecl) void {
     switch (td) {
         // --- type synonym: type name params == body ---
@@ -769,6 +788,7 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
 // Script entry point
 // ---------------------------------------------------------------------------
 
+/// Code an entire parsed `script` — the codegen entry point.
 pub fn codegenScript(alloc: Allocator, script: ast.Script) void {
     for (script.items) |item| {
         switch (item) {

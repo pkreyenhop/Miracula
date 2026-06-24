@@ -32,6 +32,7 @@ pub const Diagnostics = struct {
         self.list.deinit();
     }
 
+    /// Append a diagnostic of `severity` at `line:column` with message `msg`.
     pub fn add(self: *Diagnostics, severity: Severity, line: usize, column: usize, msg: []const u8) !void {
         const owned_msg = try self.allocator.dupe(u8, msg);
         try self.list.append(.{
@@ -45,14 +46,17 @@ pub const Diagnostics = struct {
         }
     }
 
+    /// Append an error diagnostic at `line:column`.
     pub fn addError(self: *Diagnostics, line: usize, column: usize, msg: []const u8) !void {
         try self.add(.@"error", line, column, msg);
     }
 
+    /// Append a warning diagnostic at `line:column`.
     pub fn addWarning(self: *Diagnostics, line: usize, column: usize, msg: []const u8) !void {
         try self.add(.warning, line, column, msg);
     }
 
+    /// Append a note diagnostic at `line:column`.
     pub fn addNote(self: *Diagnostics, line: usize, column: usize, msg: []const u8) !void {
         try self.add(.note, line, column, msg);
     }

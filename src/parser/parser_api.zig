@@ -95,10 +95,12 @@ pub fn parseString(source: [*:0]const u8) ParseError!ParseResult {
     return .success;
 }
 
+/// Point the legacy lexer at the in-memory `source` string (wraps `lex.setupString`).
 pub fn lexSetupString(source: [*:0]const u8) void {
     setupString(source);
 }
 
+/// Tear down the lexer's string setup (wraps `lex.cleanup`).
 pub fn lexCleanup() void {
     cleanup();
 }
