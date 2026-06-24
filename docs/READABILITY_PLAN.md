@@ -49,15 +49,15 @@ This is exactly the workflow proven on `big.zig` (the first module): 23 public +
 
 | Metric | Baseline (2026-06-24) | Now | Target |
 |--------|----------------------:|----:|-------:|
-| C-style (`snake_case`) fn definitions | 175 | **54** | 0 |
-| documented fn definitions | 146/879 (16%) | **257/876 (29%)** | ~100% |
+| C-style (`snake_case`) fn definitions | 175 | **0 ✅** | 0 |
+| documented fn definitions | 146/879 (16%) | **257/873 (29%)** | ~100% |
 | modules complete (renamed **and** documented) | 1/44 | **8/44** | 44/44 |
 
-After the lex+heap cluster pass, the **remaining 54 snake fns live entirely in
-the compiler trio**: `compiler/types.zig` (39), `compiler/trans.zig` (14),
-`compiler/setup.zig` (1). `heap.zig` and `parser/lex.zig` are fully renamed (0
-snake) but still need their documentation passes (138 and 71 functions) — marked
-◐ below.
+**The rename half is done: every renameable fn across the codebase is now
+idiomatic camelCase (snake metric 0).** What remains is the documentation pass.
+Several large modules are renamed but not yet fully documented (marked ◐):
+`heap.zig` (138 fns), `parser/lex.zig` (71), `compiler/types.zig` (122),
+`compiler/trans.zig` (112) — these hold most of the undocumented surface.
 
 (The "Now" snake figure also reflects the reducer-handler exemption added to the
 metric, which removed ~37 dispatch handlers from the count.)
@@ -104,9 +104,9 @@ Status: ✅ done · ◐ partial · ⬜ todo. "snake" = C-style fn defs remaining
 ### compiler/
 | Module | snake | doc | status |
 |--------|------:|----:|:------:|
-| `types.zig` | 39 | 0/122 | ⬜ (the biggest; holds most remaining snake) |
-| `trans.zig` | 14 | 0/112 | ⬜ |
-| `setup.zig` | 1 | 6/9 | ⬜ |
+| `types.zig` | 0 | 0/122 | ◐ (renamed; doc pass pending) |
+| `trans.zig` | 0 | 0/112 | ◐ (renamed; doc pass pending) |
+| `setup.zig` | 0 | 6/9 | ◐ (renamed) |
 | `module_loader.zig` · `dump.zig` · `compiler_state.zig` | 0 | mixed | ⬜ (doc review) |
 
 ### driver/ · io/ · root
