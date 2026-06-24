@@ -359,7 +359,7 @@ pub fn edWarn() void {
 
 /// Print the Miranda release banner (version, plus `(UTF-8)` when applicable).
 pub fn announce() void {
-    word.print("Miranda release {s}", .{main.strvers(version.version)});
+    word.print("Miranda release {s}", .{main.versionString(version.version)});
     if (main.utf8test() != 0) {
         word.print(" (UTF-8)", .{});
     }

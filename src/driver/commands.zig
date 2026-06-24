@@ -276,7 +276,7 @@ pub fn command() void {
                 main.rs.editor = @as([*:0]u8, @ptrCast(&main.rs.ebuf));
                 main.fixEditor();
                 main.rs.echoing = main.rs.verbosity & main.rs.listing;
-                main.rc_write();
+                main.writeRc();
                 word.print("editor = {s}\n", .{main.rs.editor orelse @constCast("")});
                 return;
             }
@@ -393,7 +393,7 @@ pub fn command() void {
                         abi.resetheap();
                     }
                     word.print("heaplimit = {} cells\n", .{main.rs.SPACELIMIT});
-                    main.rc_write();
+                    main.writeRc();
                 }
                 return;
             }
@@ -409,7 +409,7 @@ pub fn command() void {
                 if (abi.getchar() != '\n') return;
                 main.rs.listing = 1;
                 main.rs.echoing = main.rs.verbosity & main.rs.listing;
-                main.rc_write();
+                main.writeRc();
                 return;
             }
         },
@@ -446,13 +446,13 @@ pub fn command() void {
                 if (abi.getchar() != '\n') return;
                 main.rs.listing = 0;
                 main.rs.echoing = 0;
-                main.rc_write();
+                main.writeRc();
                 return;
             }
             if (is("norecheck")) {
                 if (abi.getchar() != '\n') return;
                 main.rs.rechecking = 0;
-                main.rc_write();
+                main.writeRc();
                 return;
             }
         },
@@ -469,7 +469,7 @@ pub fn command() void {
             if (is("recheck")) {
                 if (abi.getchar() != '\n') return;
                 main.rs.rechecking = 2;
-                main.rc_write();
+                main.writeRc();
                 return;
             }
         },
@@ -506,14 +506,14 @@ pub fn command() void {
         'v' => {
             if (is("v") or is("version")) {
                 if (abi.getchar() != '\n') return;
-                main.v_info(0);
+                main.versionInfo(0);
                 return;
             }
         },
         'V' => {
             if (is("V")) {
                 if (abi.getchar() != '\n') return;
-                main.v_info(1);
+                main.versionInfo(1);
                 return;
             }
         },

@@ -56,7 +56,7 @@ pub const signals = r7_signals.signals;
 pub const dieClean = r7_repl.dieClean;
 pub const fpeError = r7_repl.fpeError;
 pub const commandLoop = r7_repl.commandLoop;
-pub const main_entry = r7_startup.main_entry;
+pub const mainEntry = r7_startup.mainEntry;
 
 const setupheap = r7_heap.setupheap;
 const tsetup = r7_types.tsetup;
@@ -182,13 +182,13 @@ pub const finger = commands.finger;
 pub const xschars = commands.xschars;
 
 // Startup environment configuration
-pub const rc_read = startup.rc_read;
-pub const rc_write = startup.rc_write;
-pub const checkversion = startup.checkversion;
-pub const libfails = startup.libfails;
-pub const strvers = startup.strvers;
-pub const missparam = startup.missparam;
-pub const v_info = startup.v_info;
+pub const readRc = startup.readRc;
+pub const writeRc = startup.writeRc;
+pub const checkVersion = startup.checkVersion;
+pub const libFails = startup.libFails;
+pub const versionString = startup.versionString;
+pub const missingParam = startup.missingParam;
+pub const versionInfo = startup.versionInfo;
 
 pub fn main(ctx: std.process.Init) !void {
     rt.io = ctx.io;
@@ -198,7 +198,7 @@ pub fn main(ctx: std.process.Init) !void {
     const raw_args = ctx.minimal.args.vector;
     const argv: [*][*:0]u8 = @ptrCast(@constCast(raw_args.ptr));
     const argc: c_int = @intCast(raw_args.len);
-    const exit_code = main_entry(argc, argv);
+    const exit_code = mainEntry(argc, argv);
     _ = rt.gpa.deinit();
     std.process.exit(@intCast(exit_code));
 }

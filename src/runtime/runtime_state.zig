@@ -110,7 +110,7 @@ pub const RuntimeState = struct {
     ebuf: [abi.pnlim]u8 = std.mem.zeroes([abi.pnlim]u8),
     home_rc: [abi.pnlim + 8]u8 = std.mem.zeroes([abi.pnlim + 8]u8),
     lib_rc: [abi.pnlim + 8]u8 = std.mem.zeroes([abi.pnlim + 8]u8),
-    /// Non-null when rc_read fails; points into home_rc or lib_rc (not heap-allocated).
+    /// Non-null when readRc fails; points into home_rc or lib_rc (not heap-allocated).
     rc_error: ?[*:0]const u8 = null,
 
     // Signal / longjmp recovery

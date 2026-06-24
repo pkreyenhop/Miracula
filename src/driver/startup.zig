@@ -1,3 +1,11 @@
+//! startup.zig — process entry and one-time bootstrap.
+//!
+//! `mainEntry` is the program's real `main`: it parses the command line, installs
+//! signal handlers, sizes and builds the heap, locates the Miranda library
+//! (checking each candidate's `.version`), reads the user's `.mirarc`, and hands
+//! off to `commandLoop`. Also holds the version-string formatting and the
+//! library-mismatch reporting used during that search.
+
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
@@ -21,10 +29,12 @@ inline fn getTag(x: Word) u8 {
     return main.heap.heap.getTag(x);
 }
 
-fn badval(x: Word) bool {
+/// True if a numeric command-line flag value is outside the accepted range (100 .. 50,000,000).
+fn flagOutOfRange(x: Word) bool {
     return x < 100 or x > 50000000;
 }
 
+/// Raise the process stack limit to its hard maximum (deep reductions need the headroom).
 fn unlimitStack() void {
     var rlimit: abi.struct_rlimit = undefined;
     if (abi.getrlimit(abi.RLIMIT_STACK, &rlimit) == 0) {
@@ -33,7 +43,8 @@ fn unlimitStack() void {
     }
 }
 
-pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
+/// Process entry point: parse flags and arguments, install signal handlers, set up the heap, locate the library, then enter `commandLoop`. Returns the exit code.
+pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     var manonly: Word = 0;
     main.rs.cstack = @ptrCast(&manonly);
     unlimitStack();
@@ -48,7 +59,7 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
             main.rs.home_rc[0] = 0;
         }
         _ = word.strcat(&main.rs.home_rc, "/.mirarc");
-        okhome_rc = main.rc_read(@as([*:0]const u8, @ptrCast(&main.rs.home_rc)));
+        okhome_rc = main.readRc(@as([*:0]const u8, @ptrCast(&main.rs.home_rc)));
     }
 
     main.rs.UTF8 = main.utf8test();
@@ -75,17 +86,17 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
         } else if (word.strcmp(arg, "-lib") == 0) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
-                main.missparam("lib");
+                main.missingParam("lib");
             } else {
                 main.rs.miralib = argv[arg_idx];
             }
         } else if (word.strcmp(arg, "-dic") == 0) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
-                main.missparam("dic");
+                main.missingParam("dic");
             } else {
                 var val: c_long = 0;
-                if (abi.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or badval(val)) {
+                if (abi.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or flagOutOfRange(val)) {
                     main.fatal("mira: bad value after flag \"-dic\"\n", .{.{}});
                 }
                 main.rs.DICSPACE = val;
@@ -93,10 +104,10 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
         } else if (word.strcmp(arg, "-heap") == 0) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
-                main.missparam("heap");
+                main.missingParam("heap");
             } else {
                 var val: c_long = 0;
-                if (abi.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or badval(val)) {
+                if (abi.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or flagOutOfRange(val)) {
                     main.fatal("mira: bad value after flag \"-heap\"\n", .{.{}});
                 }
                 main.rs.SPACELIMIT = val;
@@ -104,7 +115,7 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
         } else if (word.strcmp(arg, "-editor") == 0) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
-                main.missparam("editor");
+                main.missingParam("editor");
             } else {
                 main.rs.editor = argv[arg_idx];
                 main.fixEditor();
@@ -156,10 +167,10 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
         } else if (word.strcmp(arg, "-man") == 0) {
             manonly = 1;
         } else if (word.strcmp(arg, "-version") == 0) {
-            main.v_info(0);
+            main.versionInfo(0);
             abi.exit(0);
         } else if (word.strcmp(arg, "-V") == 0) {
-            main.v_info(1);
+            main.versionInfo(1);
             abi.exit(0);
         } else if (word.strcmp(arg, "-make") == 0) {
             main.rs.making = true;
@@ -191,11 +202,11 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
     if (main.rs.miralib == null) {
         if (abi.getenv("MIRALIB")) |m| {
             main.rs.miralib = @constCast(m);
-        } else if (main.checkversion("/usr/lib/miralib") != 0) {
+        } else if (main.checkVersion("/usr/lib/miralib") != 0) {
             main.rs.miralib = @constCast("/usr/lib/miralib");
-        } else if (main.checkversion("/usr/local/lib/miralib") != 0) {
+        } else if (main.checkVersion("/usr/local/lib/miralib") != 0) {
             main.rs.miralib = @constCast("/usr/local/lib/miralib");
-        } else if (main.checkversion("miralib") != 0) {
+        } else if (main.checkVersion("miralib") != 0) {
             main.rs.miralib = @constCast("miralib");
         } else {
             badlib = true;
@@ -203,8 +214,8 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
     }
 
     if (badlib) {
-        word.printErr("fatal error: miralib version {s} not found\n", .{main.strvers(@intCast(version.version))});
-        main.libfails();
+        word.printErr("fatal error: miralib version {s} not found\n", .{main.versionString(@intCast(version.version))});
+        main.libFails();
         abi.exit(1);
     }
 
@@ -214,7 +225,7 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
         }
         _ = word.strcpy(&main.rs.lib_rc, main.rs.miralib.?);
         _ = word.strcat(&main.rs.lib_rc, "/.mirarc");
-        _ = main.rc_read(@as([*:0]const u8, @ptrCast(&main.rs.lib_rc)));
+        _ = main.readRc(@as([*:0]const u8, @ptrCast(&main.rs.lib_rc)));
     }
 
     if (main.rs.editor == null) {
@@ -282,7 +293,7 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
     }
 
     if (!main.rs.magic) {
-        main.rc_write();
+        main.writeRc();
     }
 
     main.rs.echoing = main.rs.verbosity & main.rs.listing;
@@ -441,13 +452,14 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
     return 0;
 }
 
-// Relocated startup configuration and version verification
-var vstack: [4]c_int = undefined;
-var mstack: [4][*:0]const u8 = undefined;
-var mvp: usize = 0;
-var vbuf: [12]u8 = undefined;
+// Version-mismatch scratch, filled by checkVersion and drained by libFails.
+var vstack: [4]c_int = undefined; // versions found at mismatched library dirs
+var mstack: [4][*:0]const u8 = undefined; // the corresponding directory paths
+var mvp: usize = 0; // count of recorded mismatches (<= 4)
+var vbuf: [12]u8 = undefined; // formatting buffer for versionString
 
-pub fn rc_read(rcfile: [*:0]const u8) Word {
+/// Load the saved `.mirarc` dump `rcfile`, fixing up types. Returns 1 on success, 0 if missing/stale/clashing.
+pub fn readRc(rcfile: [*:0]const u8) Word {
     var f: ?*word.FILE = null;
     var x: Word = undefined;
     var res: Word = 0;
@@ -484,7 +496,8 @@ pub fn rc_read(rcfile: [*:0]const u8) Word {
     return 1;
 }
 
-pub fn rc_write() void {
+/// Write the current environment to the user's `~/.mirarc` dump.
+pub fn writeRc() void {
     const home = abi.getenv("HOME");
     var f: ?*word.FILE = null;
     if (home == null or main.rs.home_rc[0] == 0) return;
@@ -495,11 +508,13 @@ pub fn rc_write() void {
     _ = word.fclose(f.?);
 }
 
-pub fn missparam(s: [:0]const u8) noreturn {
+/// Abort: command-line flag `s` was given without its required parameter.
+pub fn missingParam(s: [:0]const u8) noreturn {
     main.fatal("mira: missing param after flag \"-%s\"\n", .{.{s.ptr}});
 }
 
-pub fn checkversion(m: [*:0]const u8) c_int {
+/// Check the `.version` file under directory `m`; returns 1 if it matches this build, else records the mismatch for `libFails`.
+pub fn checkVersion(m: [*:0]const u8) c_int {
     var path_buf: [1024]u8 = undefined;
     const path = std.fmt.bufPrintZ(&path_buf, "{s}/.version", .{m}) catch return 0;
     const f = word.fopen(path.ptr, "r");
@@ -523,15 +538,17 @@ pub fn checkversion(m: [*:0]const u8) c_int {
     return r;
 }
 
-pub fn libfails() void {
+/// Report the library version mismatches collected by `checkVersion`.
+pub fn libFails() void {
     word.printErr("found", .{});
     var i: usize = 0;
     while (i < mvp) : (i += 1) {
-        word.printErr("\tversion {s} at: {s}\n", .{strvers(vstack[i]), mstack[i]});
+        word.printErr("\tversion {s} at: {s}\n", .{versionString(vstack[i]), mstack[i]});
     }
 }
 
-pub fn strvers(v: c_int) [*:0]const u8 {
+/// Format integer version `v` as an `M.mmm` string (`???` if out of range).
+pub fn versionString(v: c_int) [*:0]const u8 {
     if (v < 0 or v > 999999) {
         return "???";
     }
@@ -539,8 +556,9 @@ pub fn strvers(v: c_int) [*:0]const u8 {
     return @ptrCast(&vbuf);
 }
 
-pub fn v_info(full: c_int) void {
-    word.print("{s} last revised {s}\n", .{strvers(version.version), version.vdate});
+/// Print the release/date line; with `full` set, also the host string and XVERSION.
+pub fn versionInfo(full: c_int) void {
+    word.print("{s} last revised {s}\n", .{versionString(version.version), version.vdate});
     if (full == 0) return;
     word.print("{s}", .{version.host});
     word.print("XVERSION {}\n", .{@as(c_uint, @intCast(word.XVERSION))});
