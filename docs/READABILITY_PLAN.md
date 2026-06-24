@@ -49,19 +49,20 @@ This is exactly the workflow proven on `big.zig` (the first module): 23 public +
 
 | Metric | Baseline (2026-06-24) | Now | Target |
 |--------|----------------------:|----:|-------:|
-| C-style (`snake_case`) fn definitions | 175 | **128** | 0 |
-| documented fn definitions | 146/879 (16%) | **175/879 (19%)** | ~100% |
-| modules complete (renamed **and** documented) | 1/44 | **5/44** | 44/44 |
+| C-style (`snake_case`) fn definitions | 175 | **106** | 0 |
+| documented fn definitions | 146/879 (16%) | **257/879 (29%)** | ~100% |
+| modules complete (renamed **and** documented) | 1/44 | **8/44** | 44/44 |
 
-(The "Now" snake figure also reflects the `handle_<COMBINATOR>` exemption added
-to the metric, which removed 37 dispatch handlers from the count.)
+(The "Now" snake figure also reflects the reducer-handler exemption added to the
+metric, which removed ~37 dispatch handlers from the count.)
 
 A module is *complete* when its `snake_case` fn count is 0 **and** its functions
 carry doc comments. The script's per-file rows (`snake  doc/fns  file`) show where
 the work is; a `0`-snake module may still need a documentation pass.
 
 Done so far: `big.zig`, `io/files.zig`, `driver/repl.zig`, `driver/startup.zig`,
-`runtime/reducer/io.zig`.
+`runtime/reducer/io.zig`, `runtime/reducer/ready.zig`,
+`runtime/reducer/combinators.zig`, `runtime/reduce.zig`.
 
 ## Module inventory & status
 
@@ -73,7 +74,7 @@ Status: ✅ done · ◐ partial · ⬜ todo. "snake" = C-style fn defs remaining
 |--------|------:|----:|:------:|
 | `big.zig` | 0 | 47/51 | ✅ |
 | `heap.zig` | 32 | 17/140 | ⬜ (the big one) |
-| `reduce.zig` | 13 | 0/33 | ⬜ |
+| `reduce.zig` | 0 | 33/33 | ✅ |
 | `word.zig` | 0 | — | ◐ (names ok; doc review) |
 | `strtab.zig` · `interp.zig` · `trace.zig` | 0 | high | ◐ (recently written; light review) |
 | `combinator.zig` · `core_state.zig` · `errors.zig` · `runtime_state.zig` · `version.zig` | 0 | mixed | ⬜ (doc review) |
@@ -83,9 +84,9 @@ Status: ✅ done · ◐ partial · ⬜ todo. "snake" = C-style fn defs remaining
 |--------|------:|----:|:------:|
 | `reduce.zig` · `reduce_core.zig` | 0 | commented | ◐ (commented this session; name review) |
 | `reducer/lex.zig` | 33† | 0/33 | ⬜ (†mostly exempt handlers) |
-| `combinators.zig` | 8 | 0/48 | ⬜ |
+| `combinators.zig` | 0 | 48/48 | ✅ |
 | `io.zig` | 0 | 4/4 | ✅ |
-| `ready.zig` | 1 | 0/41 | ⬜ |
+| `ready.zig` | 0 | 1/1 | ✅ |
 | `trace.zig` · `reduce_test.zig` | 0 | high | ◐ |
 
 ### parser/
