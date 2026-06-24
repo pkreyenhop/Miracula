@@ -1,3 +1,10 @@
+//! word.zig — the leaf vocabulary of the interpreter: the `Word` value model,
+//! every numeric constant (cell tags, combinator/token codes, type codes,
+//! `XBASE` dump markers), and a self-contained libc-style runtime (C-string
+//! helpers, a pooled `FILE` with `printf`/`fopen`/`getc`/… and the ctype
+//! predicates). It has no allocator dependency, so everything else can import it
+//! freely. String-*handle* accessors live in `strtab.zig`, not here.
+
 const std = @import("std");
 
 pub const Word = i64;
@@ -381,6 +388,9 @@ pub const TVAR_X: Word = XBASE + 14;
 pub const UNICODE_X: Word = XBASE + 15;
 
 
+/// A minimal stdio `FILE`: a posix fd (or an in-memory buffer for reading
+/// dumps) with one-byte pushback and an 8 KiB read buffer. Allocated from a
+/// fixed pool (`allocFile`/`freeFile`); the std streams are static instances.
 pub const FILE = struct {
     file: std.Io.File = .{ .handle = -1, .flags = .{ .nonblocking = false } },
     pushback: ?u8 = null,
@@ -390,6 +400,7 @@ pub const FILE = struct {
     buf_start: usize = 0,
     buf_end: usize = 0,
 
+    /// Read one byte, honouring pushback, a memory-backed buffer, or the read buffer; errors at EOF.
     pub fn readByte(self: *FILE) !u8 {
         if (self.pushback) |pb| {
             self.pushback = null;
@@ -414,16 +425,19 @@ pub const FILE = struct {
         return b;
     }
 
+    /// Push a byte back so the next read returns it (libc `ungetc`).
     pub fn ungetc(self: *FILE, c: u8) void {
         self.pushback = c;
     }
 
+    /// Write a single byte directly (unbuffered).
     pub fn writeByte(self: *FILE, c: u8) !void {
         const buf = [1]u8{c};
         const rc = std.posix.system.write(self.file.handle, &buf, 1);
         if (rc < 0) return error.WriteFailed;
     }
 
+    /// Write the whole slice, looping over short writes.
     pub fn writeAll(self: *FILE, slice: []const u8) !void {
         var written: usize = 0;
         while (written < slice.len) {
@@ -433,6 +447,7 @@ pub const FILE = struct {
         }
     }
 
+    /// Write byte `c` `count` times (a padding helper).
     pub fn writeByteNTimes(self: *FILE, c: u8, count: usize) !void {
         var i: usize = 0;
         while (i < count) : (i += 1) {
@@ -454,6 +469,7 @@ pub const FILE = struct {
     }
 };
 
+/// Coerce any pointer/optional/null to an optional const C-string.
 pub fn castToCStr(val: anytype) ?[*:0]const u8 {
     const T = @TypeOf(val);
     if (T == @TypeOf(null)) return null;
@@ -467,6 +483,7 @@ pub fn castToCStr(val: anytype) ?[*:0]const u8 {
     return @ptrCast(val);
 }
 
+/// Coerce any pointer/optional/null to an optional mutable C-string.
 pub fn castToCStrMut(val: anytype) ?[*:0]u8 {
     const T = @TypeOf(val);
     if (T == @TypeOf(null)) return null;
@@ -480,6 +497,7 @@ pub fn castToCStrMut(val: anytype) ?[*:0]u8 {
     return @ptrCast(val);
 }
 
+/// libc `strcpy` over the polymorphic C-string casts.
 pub fn strcpy(dst_any: anytype, src_any: anytype) ?[*:0]u8 {
     const dst = castToCStrMut(dst_any);
     const src = castToCStr(src_any);
@@ -492,6 +510,7 @@ pub fn strcpy(dst_any: anytype, src_any: anytype) ?[*:0]u8 {
     return dst;
 }
 
+/// libc `strcat`.
 pub fn strcat(dst_any: anytype, src_any: anytype) ?[*:0]u8 {
     const dst = castToCStrMut(dst_any);
     const src = castToCStr(src_any);
@@ -511,12 +530,14 @@ pub fn strcat(dst_any: anytype, src_any: anytype) ?[*:0]u8 {
 // Call sites use `strtab.strOf` (read) and `strtab.strBits` (intern + store).
 // `word.zig` stays a pure leaf with no allocator dependency.
 
+/// libc `strlen` (0 for null).
 pub fn strlen(s_any: anytype) usize {
     const s = castToCStr(s_any);
     if (s == null) return 0;
     return std.mem.span(s.?).len;
 }
 
+/// libc `strcmp` (-1 / 0 / 1).
 pub fn strcmp(s1_any: anytype, s2_any: anytype) c_int {
     const s1 = castToCStr(s1_any);
     const s2 = castToCStr(s2_any);
@@ -531,6 +552,7 @@ pub fn strcmp(s1_any: anytype, s2_any: anytype) c_int {
     };
 }
 
+/// libc `strncmp` over the first `n` bytes.
 pub fn strncmp(s1_any: anytype, s2_any: anytype, n: usize) c_int {
     const s1 = castToCStr(s1_any);
     const s2 = castToCStr(s2_any);
@@ -547,6 +569,7 @@ pub fn strncmp(s1_any: anytype, s2_any: anytype, n: usize) c_int {
     };
 }
 
+/// libc `strncpy` (NUL-pads out to `n`).
 pub fn strncpy(dst_any: anytype, src_any: anytype, n: usize) ?[*:0]u8 {
     const dst = castToCStrMut(dst_any);
     const src = castToCStr(src_any);
@@ -562,6 +585,7 @@ pub fn strncpy(dst_any: anytype, src_any: anytype, n: usize) ?[*:0]u8 {
     return dst;
 }
 
+/// libc `strncat` (append up to `n` bytes).
 pub fn strncat(dst_any: anytype, src_any: anytype, n: usize) ?[*:0]u8 {
     const dst = castToCStrMut(dst_any);
     const src = castToCStr(src_any);
@@ -576,6 +600,7 @@ pub fn strncat(dst_any: anytype, src_any: anytype, n: usize) ?[*:0]u8 {
     return dst;
 }
 
+/// libc `strchr`: first occurrence of `char`, or null.
 pub fn strchr(s_any: anytype, char: c_int) ?[*:0]const u8 {
     const s = castToCStr(s_any);
     if (s == null) return null;
@@ -590,6 +615,7 @@ pub fn strchr(s_any: anytype, char: c_int) ?[*:0]const u8 {
     return null;
 }
 
+/// libc `strrchr`: last occurrence of `char`, or null.
 pub fn strrchr(s_any: anytype, char: c_int) ?[*:0]u8 {
     const s = castToCStr(s_any);
     if (s == null) return null;
@@ -606,6 +632,7 @@ pub fn strrchr(s_any: anytype, char: c_int) ?[*:0]u8 {
     return null;
 }
 
+/// libc `strstr`: first occurrence of the `needle` substring.
 pub fn strstr(haystack_any: anytype, needle_any: anytype) ?[*:0]const u8 {
     const haystack = castToCStr(haystack_any);
     const needle = castToCStr(needle_any);
@@ -626,6 +653,7 @@ pub fn strstr(haystack_any: anytype, needle_any: anytype) ?[*:0]const u8 {
     return null;
 }
 
+/// BSD `rindex` — an alias for `strrchr`.
 pub fn rindex(s_any: anytype, char: c_int) ?[*:0]u8 {
     return strrchr(s_any, char);
 }
@@ -648,6 +676,7 @@ pub const IoState = struct {
 
 pub const fio = &@import("interp.zig").interp.io;
 
+/// Lazily initialise the buffered stdout/stderr writers (once).
 pub fn initWriters() void {
     if (fio.writers_initialized) return;
     const io = std.Options.debug_io;
@@ -662,6 +691,8 @@ pub fn initWriters() void {
 // through untouched, so existing single-brace call sites are unaffected. This
 // lets call sites be converted from `printf`/`fprintf` by translating only the
 // format string, leaving the arg tuple as-is (R1.4 polish).
+/// Formatted write to stdout using Zig format strings (the buffered analogue of
+/// libc `printf`); flushes after each call.
 pub fn print(comptime fmt: []const u8, args: anytype) void {
     initWriters();
     const fs = std.meta.fields(@TypeOf(args));
@@ -673,6 +704,7 @@ pub fn print(comptime fmt: []const u8, args: anytype) void {
     fio.stdout_writer.interface.flush() catch {};
 }
 
+/// Formatted write to stderr (the `print` analogue).
 pub fn printErr(comptime fmt: []const u8, args: anytype) void {
     initWriters();
     const fs = std.meta.fields(@TypeOf(args));
@@ -691,6 +723,7 @@ pub fn fprint(file: ?*FILE, comptime fmt: []const u8, args: anytype) void {
     if (file) |f| f.print(fmt, args);
 }
 
+/// Flush the stdout/stderr writers if initialised.
 pub fn flush() void {
     if (fio.writers_initialized) {
         fio.stdout_writer.interface.flush() catch {};
@@ -709,18 +742,22 @@ pub fn flush() void {
 // re-exports these. fread/fwrite preserve the dump (.x) byte format.
 // (fio.std_in/fio.std_out/fio.std_err and the FILE pool now live in `IoState` above.)
 
+/// The standard-input `FILE`.
 pub fn stdin() ?*FILE {
     return &fio.std_in;
 }
+/// The standard-output `FILE`.
 pub fn stdout() ?*FILE {
     return &fio.std_out;
 }
+/// The standard-error `FILE`.
 pub fn stderr() ?*FILE {
     return &fio.std_err;
 }
 
 // (fio.file_pool / fio.file_in_use now live in `IoState` above.)
 
+/// Claim a free slot from the fixed `FILE` pool, or null if exhausted.
 fn allocFile() ?*FILE {
     for (&fio.file_in_use, 0..) |*in_use, idx| {
         if (!in_use.*) {
@@ -732,6 +769,7 @@ fn allocFile() ?*FILE {
     return null;
 }
 
+/// Return a pooled `FILE` to the free list.
 fn freeFile(f: *FILE) void {
     const ptr_val = @intFromPtr(f);
     const pool_start = @intFromPtr(&fio.file_pool[0]);
@@ -742,6 +780,7 @@ fn freeFile(f: *FILE) void {
     }
 }
 
+/// libc `fopen` (modes r/w/a) over the `FILE` pool.
 pub fn fopen(path: ?*const anyopaque, mode: [*:0]const u8) ?*FILE {
     if (path == null) return null;
     const path_str = @as([*:0]const u8, @ptrCast(path.?));
@@ -783,6 +822,7 @@ pub fn fopen(path: ?*const anyopaque, mode: [*:0]const u8) ?*FILE {
     return f_ptr;
 }
 
+/// libc `fclose` (a no-op for the std streams).
 pub fn fclose(file: ?*FILE) c_int {
     if (file) |f| {
         if (f == &fio.std_in or f == &fio.std_out or f == &fio.std_err) {
@@ -799,26 +839,31 @@ pub fn fclose(file: ?*FILE) c_int {
     return -1;
 }
 
+/// The underlying file descriptor, or -1.
 pub fn fileno(file: ?*FILE) c_int {
     if (file) |f| return f.file.handle;
     return -1;
 }
 
+/// libc `setbuf` — a no-op here (I/O is already unbuffered).
 pub fn setbuf(file: ?*FILE, buf: ?[*]u8) void {
     _ = file;
     _ = buf;
 }
 
+/// libc `getc`: next byte, or -1 at EOF.
 pub fn getc(file: ?*FILE) c_int {
     const f = file orelse return -1;
     const byte = f.readByte() catch return -1;
     return @as(c_int, byte);
 }
 
+/// libc `getchar` (reads stdin).
 pub fn getchar() c_int {
     return getc(&fio.std_in);
 }
 
+/// Push a byte back so the next read returns it (libc `ungetc`).
 pub fn ungetc(ch: c_int, file: ?*FILE) c_int {
     const f = file orelse return -1;
     if (ch == -1) return -1;
@@ -826,6 +871,7 @@ pub fn ungetc(ch: c_int, file: ?*FILE) c_int {
     return ch;
 }
 
+/// libc `fgets`: read a line (up to `size-1` bytes or a newline) into `buf`.
 pub fn fgets(buf: [*]u8, size: c_int, file: ?*FILE) ?[*]u8 {
     const f = file orelse return null;
     if (size <= 1) return null;
@@ -847,6 +893,7 @@ pub fn fgets(buf: [*]u8, size: c_int, file: ?*FILE) ?[*]u8 {
     return buf;
 }
 
+/// libc `fread`: read `nmemb` items of `size` bytes; returns items read.
 pub fn fread(ptr: ?*anyopaque, size: usize, nmemb: usize, file: ?*FILE) usize {
     const f = file orelse return 0;
     if (ptr == null or size == 0 or nmemb == 0) return 0;
@@ -860,6 +907,7 @@ pub fn fread(ptr: ?*anyopaque, size: usize, nmemb: usize, file: ?*FILE) usize {
     return i / size;
 }
 
+/// libc `fwrite`: write `nmemb` items of `size` bytes; returns items written.
 pub fn fwrite(ptr: ?*const anyopaque, size: usize, nmemb: usize, file: ?*FILE) usize {
     const f = file orelse return 0;
     if (ptr == null or size == 0 or nmemb == 0) return 0;
@@ -872,6 +920,7 @@ pub fn fwrite(ptr: ?*const anyopaque, size: usize, nmemb: usize, file: ?*FILE) u
     return i / size;
 }
 
+/// libc `fdopen`: wrap an existing fd in a pooled `FILE`.
 pub fn fdopen(fd: c_int, mode: [*:0]const u8) ?*FILE {
     _ = mode;
     const f_ptr = allocFile() orelse return null;
@@ -882,6 +931,7 @@ pub fn fdopen(fd: c_int, mode: [*:0]const u8) ?*FILE {
     return f_ptr;
 }
 
+/// libc `fmemopen`: a read-only `FILE` backed by an in-memory buffer (used to read dumps).
 pub fn fmemopen(buf: ?*anyopaque, size: usize, mode: [*:0]const u8) ?*FILE {
     _ = mode;
     if (buf == null) return null;
@@ -893,6 +943,7 @@ pub fn fmemopen(buf: ?*anyopaque, size: usize, mode: [*:0]const u8) ?*FILE {
     return f_ptr;
 }
 
+/// Render one `printf` argument per its conversion spec, applying width/flags.
 fn formatArg(
     writer: anytype,
     val: anytype,
@@ -1002,6 +1053,7 @@ fn formatArg(
     }
 }
 
+/// Core `printf`-style formatter: walk `format`, dispatching each `%` spec to `formatArg`.
 pub fn formatC(writer: anytype, format: [*:0]const u8, args: anytype) !void {
     const fmt = std.mem.span(format);
     // Transparently unwrap double-wrapped tuples: .{.{a,b}} → .{a,b}
@@ -1088,19 +1140,23 @@ pub fn formatC(writer: anytype, format: [*:0]const u8, args: anytype) !void {
     }
 }
 
+/// libc `fprintf` (C format string) to `file`; returns the byte count.
 pub fn fprintf(file: ?*FILE, format: [*:0]const u8, args: anytype) c_int {
     const f = file orelse return -1;
     const CountingWriter = struct {
         file: *FILE,
         written: usize = 0,
+        /// Write a single byte directly (unbuffered).
         pub fn writeByte(self: *@This(), b: u8) !void {
             try self.file.writeByte(b);
             self.written += 1;
         }
+        /// Write the whole slice, looping over short writes.
         pub fn writeAll(self: *@This(), bytes: []const u8) !void {
             try self.file.writeAll(bytes);
             self.written += bytes.len;
         }
+        /// Write byte `c` `count` times (a padding helper).
         pub fn writeByteNTimes(self: *@This(), b: u8, count: usize) !void {
             try self.file.writeByteNTimes(b, count);
             self.written += count;
@@ -1111,20 +1167,24 @@ pub fn fprintf(file: ?*FILE, format: [*:0]const u8, args: anytype) c_int {
     return @intCast(cw.written);
 }
 
+/// libc `printf` to stdout.
 pub fn printf(format: [*:0]const u8, args: anytype) c_int {
     return fprintf(&fio.std_out, format, args);
 }
 
+/// libc `putc`: write one char to `file`.
 pub fn putc(ch: c_int, file: ?*FILE) c_int {
     const f = file orelse return -1;
     f.writeByte(@intCast(@as(u8, @intCast(ch)))) catch return -1;
     return ch;
 }
 
+/// libc `fputc` (an alias for `putc`).
 pub fn fputc(ch: c_int, file: ?*FILE) c_int {
     return putc(ch, file);
 }
 
+/// libc `putchar` (to stdout).
 pub fn putchar(ch: c_int) c_int {
     return putc(ch, &fio.std_out);
 }
