@@ -254,7 +254,7 @@ pub fn reduce(e_val: Word) Word {
         // (3) `e` is in WHNF. Walk back *up* the spine, restoring reversed
         //     pointers. At each `AP` we ascended through, force its right
         //     argument (descend into it) so strict operators find their
-        //     operands ready; `ready.handle_ready_state` applies the pending
+        //     operands ready; `ready.handleReadyState` applies the pending
         //     rule once an argument has been reduced. Stop at `BACKSTOP`.
         while (true) {
             if (ctx.s == word.BACKSTOP) {
@@ -269,7 +269,7 @@ pub fn reduce(e_val: Word) Word {
                 continue :main_loop;
             }
 
-            ready.handle_ready_state(&ctx);
+            ready.handleReadyState(&ctx);
             if (ctx.action == word.ACT_NEXTREDEX) {
                 continue :main_loop;
             }
