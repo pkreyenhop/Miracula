@@ -394,7 +394,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             reduce.upLeft(ctx);
             if (lastArg(ctx) == word.True) {
                 ctx.e = word.I;
-                combinators.handle_strict_monadic(ctx);
+                combinators.handleStrictMonadic(ctx);
             } else {
                 reduce.hd_set(ctx.e, word.K);
                 reduce.downLeft(ctx);
@@ -410,7 +410,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                 combinators.handleK(ctx);
             } else {
                 ctx.e = word.I;
-                combinators.handle_strict_monadic(ctx);
+                combinators.handleStrictMonadic(ctx);
             }
             return;
         },

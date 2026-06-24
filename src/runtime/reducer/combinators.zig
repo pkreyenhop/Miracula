@@ -1,3 +1,13 @@
+//! reducer/combinators.zig — rewrite rules for the core combinators.
+//!
+//! One `handle<COMBINATOR>` per combinator, dispatched from `reducer/reduce.zig`
+//! by tag (the handler name mirrors the `word.<COMBINATOR>` constant). They span
+//! the SK basis (`I`/`K`/`S`/`B`/`C`/`Y`/`KI`) and Turner's optimised variants
+//! (`S1`/`B1`/`C1`, `S_p`/`B_p`/`C_p`), the list primitives (`MAP`/`FILTER`/
+//! `FOLDL`/`DROP`/`SUBSCRIPT`/…), pattern-match support (`MATCH`/`TRY`/`FAIL`/
+//! `Ug`), and the strict-primitive forcers (`handleStrict{Monadic,Diadic,Triadic}`).
+//! Each rewrites the focus node in place and sets `ctx.action` for the driver.
+
 const std = @import("std");
 const word = @import("../word.zig");
 const reduce = @import("reduce_core.zig");
@@ -11,6 +21,7 @@ const Word = reduce.Word;
 
 
 
+/// `I x -> x` — identity.
 pub fn handleI(ctx: *ReductionCtx) void {
     if (reduce.downright(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -19,6 +30,7 @@ pub fn handleI(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `K x y -> x` — first projection.
 pub fn handleK(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -33,6 +45,7 @@ pub fn handleK(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `S f g x -> (f x) (g x)` — applicative S.
 pub fn handleS(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -56,6 +69,7 @@ pub fn handleS(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `B f g x -> f (g x)` — composition.
 pub fn handleB(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -78,6 +92,7 @@ pub fn handleB(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `CB f g x -> g (f x)` — reverse composition.
 pub fn handleCB(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -100,6 +115,7 @@ pub fn handleCB(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `C f g x -> f x g` — flip the last two arguments.
 pub fn handleC(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -123,6 +139,7 @@ pub fn handleC(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `Y f -> f (Y f)` — fixpoint, built as a self-referential (cyclic) node.
 pub fn handleY(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -134,6 +151,7 @@ pub fn handleY(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `KI x y -> y` — second projection (`K I`).
 pub fn handleKI(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -147,6 +165,7 @@ pub fn handleKI(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `S1 c f g x -> c (f x) (g x)` — Turner's S' with a context `c`.
 pub fn handleS1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -176,6 +195,7 @@ pub fn handleS1(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `B1 c f g x -> c (f (g x))` — Turner's B' with a context `c`.
 pub fn handleB1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -204,6 +224,7 @@ pub fn handleB1(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `C1 c f g x -> c (f x) g` — Turner's C' with a context `c`.
 pub fn handleC1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -232,6 +253,7 @@ pub fn handleC1(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `S_p f g x -> (f x) : (g x)` — paired S' (builds a cons).
 pub fn handleS_p(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -252,6 +274,7 @@ pub fn handleS_p(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `B_p f g x -> f : (g x)` — paired B' (builds a cons).
 pub fn handleB_p(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -272,6 +295,7 @@ pub fn handleB_p(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `C_p f g x -> (f x) : g` — paired C' (builds a cons).
 pub fn handleC_p(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -292,6 +316,7 @@ pub fn handleC_p(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `iterate f x -> x : iterate f (f x)` — lazy infinite repeated application.
 pub fn handleITERATE(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -308,6 +333,7 @@ pub fn handleITERATE(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// Like `ITERATE`, but stops when the next value reduces to `FAIL`.
 pub fn handleITERATE1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -329,6 +355,7 @@ pub fn handleITERATE1(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `P x xs -> x : xs` — the cons (pair) constructor.
 pub fn handleP(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -344,6 +371,7 @@ pub fn handleP(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `U f p -> f (hd p) (tl p)` — uncurry a pair.
 pub fn handleU(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -362,6 +390,7 @@ pub fn handleU(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// Uncurry handling partial constructors: split via hd/tl for a cons, else via `BODY`/`LAST`, and apply `f`.
 pub fn handleUf(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -385,6 +414,7 @@ pub fn handleUf(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `ATLEAST n f k -> f (k - n)` when `k` is an int `>= n`, else `FAIL` (a repetition guard).
 pub fn handleATLEAST(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -416,6 +446,7 @@ pub fn handleATLEAST(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `U_ f xs -> f (hd xs) (tl xs)`, or `FAIL` on `[]` — strict uncurry of a non-empty list.
 pub fn handleU_(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -438,6 +469,7 @@ pub fn handleU_(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// Guarded uncurry: match the value's constructor against `arg1`; on mismatch `FAIL`, else deconstruct and apply (the pattern-match destructor).
 pub fn handleUg(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -475,6 +507,7 @@ pub fn handleUg(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `MATCH p v k` — match value `v` against pattern `p`, giving `k` on success or `FAIL`.
 pub fn handleMATCH(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -496,6 +529,7 @@ pub fn handleMATCH(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// As `MATCH`, specialised to an integer-literal pattern.
 pub fn handleMATCHINT(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -516,6 +550,7 @@ pub fn handleMATCHINT(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// Arithmetic-sequence step (`[a..b]`): emit the next term and recurse, stopping past the bound.
 pub fn handleGENSEQ(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     reduce.GETARG(ctx, &arg1);
@@ -535,6 +570,7 @@ pub fn handleGENSEQ(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `map f (x:xs) -> f x : map f xs`; `map f [] -> []`.
 pub fn handleMAP(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -555,6 +591,7 @@ pub fn handleMAP(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// Concat-map: apply `f` to each element and append the non-`FAIL`/non-`[]` results.
 pub fn handleFLATMAP(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -585,6 +622,7 @@ pub fn handleFLATMAP(ctx: *ReductionCtx) void {
     }
 }
 
+/// `filter p xs` — skip leading elements failing predicate `p`, then emit the next survivor lazily.
 pub fn handleFILTER(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -608,6 +646,7 @@ pub fn handleFILTER(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `last xs` — the final element of a non-empty list (errors on `[]`); shortens the spine as it walks.
 pub fn handleLIST_LAST(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -627,6 +666,7 @@ pub fn handleLIST_LAST(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `#xs` — the length of a list, as an `INT`.
 pub fn handleLENGTH(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -644,6 +684,7 @@ pub fn handleLENGTH(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `drop n xs` — discard the first `n` elements (clamping at `[]`).
 pub fn handleDROP(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -675,6 +716,7 @@ pub fn handleDROP(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `xs ! n` — the n-th element (0-based); raises a subscript error if out of range.
 pub fn handleSUBSCRIPT(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -714,6 +756,7 @@ pub fn handleSUBSCRIPT(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `foldl1 f (x:xs) -> foldl f x xs` (errors on `[]`).
 pub fn handleFOLDL1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -734,6 +777,7 @@ pub fn handleFOLDL1(ctx: *ReductionCtx) void {
     }
 }
 
+/// `foldl f a xs` — strict left fold.
 pub fn handleFOLDL(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -760,6 +804,7 @@ pub fn handleFOLDL(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `foldr f a (x:xs) -> f x (foldr f a xs)`; `foldr f a [] -> a`.
 pub fn handleFOLDR(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -786,6 +831,7 @@ pub fn handleFOLDR(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// Raise the "no matching case" runtime error for the offending value.
 pub fn handleBADCASE(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -795,6 +841,7 @@ pub fn handleBADCASE(ctx: *ReductionCtx) void {
     reduce.reduce_badcase_error(lastarg);
 }
 
+/// Yield the program's command-line arguments as a Miranda list (`conv_args`).
 pub fn handleGETARGS(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -804,6 +851,7 @@ pub fn handleGETARGS(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// Raise the conformality (pattern-conflict) runtime error.
 pub fn handleCONFERROR(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -813,6 +861,7 @@ pub fn handleCONFERROR(ctx: *ReductionCtx) void {
     reduce.reduce_conf_error(lastarg);
 }
 
+/// `error s` — print the message and abort the program (guarding against repeated errors).
 pub fn handleERROR(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -832,10 +881,12 @@ pub fn handleERROR(ctx: *ReductionCtx) void {
     main_clib.exit(1);
 }
 
+/// POSIX `WEXITSTATUS`: the low-byte exit code from a child's wait status.
 fn WEXITSTATUS(status: c_int) c_int {
     return (status >> 8) & 0xff;
 }
 
+/// `wait pid` — reap child `pid` (consulting the pending-children list) and yield its exit status.
 pub fn handleWAIT(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -868,6 +919,7 @@ pub fn handleWAIT(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// Alternation: evaluate the first alternative, falling back to the second on `FAIL` — backtracking across multi-equation definitions.
 pub fn handleTRY(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -899,6 +951,7 @@ pub fn handleTRY(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// Propagate `FAIL` up the spine, collapsing pending alternatives until a `TRY` catches it.
 pub fn handleFAIL(ctx: *ReductionCtx) void {
     while (!reduce.abnormal(ctx.s)) {
         ctx.hold = ctx.s;
@@ -909,6 +962,7 @@ pub fn handleFAIL(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// Render a constructor application as text for `show`: the constructor name plus space-separated, parenthesised arguments.
 pub fn handleUsh1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -957,6 +1011,7 @@ pub fn handleUsh1(ctx: *ReductionCtx) void {
     }
 }
 
+/// `mkstrict n f` — force the first `n` arguments before applying `f` (a strictness annotation).
 pub fn handleMKSTRICT(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -986,7 +1041,8 @@ pub fn handleMKSTRICT(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
-pub fn handle_strict_monadic(ctx: *ReductionCtx) void {
+/// Strict 1-arg primitive: force the single argument, then re-dispatch (`NEG`, `HD`, the maths functions, ...).
+pub fn handleStrictMonadic(ctx: *ReductionCtx) void {
     if (reduce.downright(ctx)) {
         ctx.action = word.ACT_DONE;
         return;
@@ -994,7 +1050,8 @@ pub fn handle_strict_monadic(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
-pub fn handle_strict_diadic(ctx: *ReductionCtx) void {
+/// Strict 2-arg primitive: force both arguments, then re-dispatch (`PLUS`, `EQ`, `MOD`, ...).
+pub fn handleStrictDiadic(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
         return;
@@ -1006,7 +1063,8 @@ pub fn handle_strict_diadic(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
-pub fn handle_strict_triadic(ctx: *ReductionCtx) void {
+/// Strict 3-arg primitive: force all three arguments, then re-dispatch (`Ush`, `STEPUNTIL`).
+pub fn handleStrictTriadic(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
         return;
