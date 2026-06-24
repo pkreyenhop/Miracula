@@ -1,7 +1,16 @@
+//! platform.zig — OS abstraction for the few syscalls the interpreter needs.
+//!
+//! Wraps `errno`, file `stat`, and effective uid/gid behind a small API, with a
+//! Linux (`statx`) branch and a BSD/macOS (`stat`) branch selected at comptime.
+//! Used by the loader (file freshness/identity) and the `filemode`/`filestat`
+//! built-ins.
+
 const std = @import("std");
 const builtin = @import("builtin");
 const is_linux = builtin.os.tag == .linux;
 
+/// The subset of `stat` fields the interpreter uses: identity (`ino`/`dev`),
+/// modification time, and the permission/ownership bits for `filemode`.
 pub const FileInfo = struct {
     ino: u64,
     dev: u64,
@@ -13,13 +22,16 @@ pub const FileInfo = struct {
 
 const platform_impl = if (is_linux) struct {
     extern fn __errno_location() *c_int;
+    /// 
     pub fn getErrno() c_int {
         return __errno_location().*;
     }
+    /// 
     pub fn setErrno(val: c_int) void {
         __errno_location().* = val;
     }
 
+    /// 
     pub fn getFileInfo(path: ?[*:0]const u8) ?FileInfo {
         const p = path orelse return null;
         var statx = std.mem.zeroes(std.os.linux.Statx);
@@ -40,10 +52,12 @@ const platform_impl = if (is_linux) struct {
         return null;
     }
 
+    /// 
     pub fn geteuid() u32 {
         return std.os.linux.geteuid();
     }
 
+    /// 
     pub fn getegid() u32 {
         return std.os.linux.getegid();
     }
@@ -51,13 +65,16 @@ const platform_impl = if (is_linux) struct {
     extern fn __error() *c_int;
     extern fn stat(path: [*:0]const u8, buf: *std.posix.system.Stat) c_int;
 
+    /// 
     pub fn getErrno() c_int {
         return __error().*;
     }
+    /// 
     pub fn setErrno(val: c_int) void {
         __error().* = val;
     }
 
+    /// 
     pub fn getFileInfo(path: ?[*:0]const u8) ?FileInfo {
         const p = path orelse return null;
         var stat_buf: std.posix.system.Stat = undefined;
@@ -85,10 +102,12 @@ const platform_impl = if (is_linux) struct {
         return null;
     }
 
+    /// 
     pub fn geteuid() u32 {
         return std.posix.system.geteuid();
     }
 
+    /// 
     pub fn getegid() u32 {
         return std.posix.system.getegid();
     }

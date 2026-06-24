@@ -1,3 +1,9 @@
+//! utf8.zig — UTF-8 encode/decode against C `FILE` streams.
+//!
+//! `fromUTF8` reads one code point (used by `READ` when the session is in UTF-8
+//! mode) and `outUTF8` writes one (used by `print`). Malformed input aborts with
+//! a protocol-error diagnostic. These talk to libc `getc`/`putc` directly.
+
 const std = @import("std");
 
 pub const FILE = opaque {};
@@ -5,6 +11,7 @@ extern fn getc(fil: ?*FILE) c_int;
 extern fn putc(ch: c_int, fil: ?*FILE) c_int;
 const EOF: c_int = -1;
 
+/// 
 pub export fn fromUTF8(fil: ?*FILE) c_ulong {
     const c0 = getc(fil);
     if (c0 == EOF) {
@@ -53,6 +60,7 @@ pub export fn fromUTF8(fil: ?*FILE) c_ulong {
     reportError(&.{c0});
 }
 
+/// 
 pub fn outUTF8(u: c_ulong, fil: ?*FILE) void {
     if (u <= 0x7f) {
         out(u, fil);
@@ -74,10 +82,12 @@ pub fn outUTF8(u: c_ulong, fil: ?*FILE) void {
     }
 }
 
+/// 
 pub fn out(byte: c_ulong, fil: ?*FILE) void {
     _ = putc(@intCast(byte), fil);
 }
 
+/// 
 fn reportError(bytes: []const c_int) noreturn {
     var incomplete = false;
     for (bytes) |byte| {
