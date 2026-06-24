@@ -1,3 +1,10 @@
+//! commands.zig — the REPL's `/` and `:` command dispatcher.
+//!
+//! `command` is the big switch behind directives like `/h` (help), `/e` (edit),
+//! `/f` (files), `/l` (list), and `/man`. The rest are its helpers and the
+//! name-query machinery shared with the prompt: `finger` (`?name`), `diagnose`
+//! (why a name is unusable), `allnamescom` (bare `?`), and `editfile`.
+
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
@@ -30,6 +37,7 @@ var words: [400]Word = undefined;
 // File-private state for filequote.
 var filequote_mlen: usize = 0;
 
+/// Print `s` space characters (column padding for listings).
 fn spaces(s: Word) void {
     var j = s;
     while (j > 0) : (j -= 1) {
@@ -37,10 +45,12 @@ fn spaces(s: Word) void {
     }
 }
 
+/// True if the just-read dictionary token equals the command keyword `s`.
 fn is(s: [:0]const u8) bool {
     return std.mem.eql(u8, std.mem.span(@as([*:0]u8, @ptrCast(ls.dicp))), s);
 }
 
+/// Print path `p` for messages: `<name>` when it lives under the library dir, else `"path"`.
 fn filequote(p: [:0]const u8) void {
     if (filequote_mlen == 0) {
         const last_slash = word.strrchr(&main.rs.PRELUDE, '/');
@@ -55,6 +65,7 @@ fn filequote(p: [:0]const u8) void {
     }
 }
 
+/// List the identifiers defined in `l` in aligned columns.
 fn namescom(l: Word) void {
     var n = main.filDefs(l);
     var col_local: Word = 0;
@@ -139,6 +150,7 @@ fn namescom(l: Word) void {
     abi.printlist(@constCast("SPECIFIED BUT NOT DEFINED: "), undefs);
 }
 
+/// Dispatch a `/` or `:` REPL command — the main command switch (`/h`, `/e`, `/f`, `/l`, `/man`, ...).
 pub fn command() void {
     var t_val: ?[*:0]u8 = undefined;
     var ch: c_int = undefined;
@@ -522,11 +534,13 @@ pub fn command() void {
     xschars();
 }
 
+/// Run the `/man` command: launch the manual via the library's `menudriver`.
 pub fn manaction() void {
     _ = abi.sprintf(&main.rs.linebuf, "\"%s/menudriver\" \"%s/manual\"", .{ main.rs.miralib.?, main.rs.miralib.? });
     _ = abi.system(&main.rs.linebuf);
 }
 
+/// Open `t_val` at `line` in the user's editor, substituting into the editor-command template.
 pub fn editfile(t_val: [*:0]const u8, line: c_int) void {
     var line_val = line;
     const ebuf_local = @as([*]u8, @ptrCast(&main.rs.linebuf[0]));
@@ -580,6 +594,7 @@ pub fn editfile(t_val: [*:0]const u8, line: c_int) void {
     }
 }
 
+/// Warn about and consume extra characters after a command, through end of line.
 pub fn xschars() void {
     var ch: c_int = undefined;
     word.print("\x07extra characters at end of command\n", .{});
@@ -589,6 +604,7 @@ pub fn xschars() void {
     }
 }
 
+/// Print the type and definition location of name `n` (the `?name` query).
 pub fn finger(n: [*:0]const u8) void {
     const x = abi.findid(@constCast(n));
     var line: Word = 0;
@@ -638,6 +654,7 @@ pub fn finger(n: [*:0]const u8) void {
     diagnose(n);
 }
 
+/// Explain why name `n` is unusable: not an identifier, a reserved keyword, or simply not in scope.
 pub fn diagnose(n: [*:0]const u8) void {
     var i: usize = 0;
     if (word.isalpha(n[0])) {
@@ -662,6 +679,7 @@ pub fn diagnose(n: [*:0]const u8) void {
     word.print("identifier \"{s}\" not in scope\n", .{n});
 }
 
+/// List every name currently in scope (the bare `?` command).
 pub fn allnamescom() void {
     var s: Word = undefined;
     var x = main.cs.ND;
