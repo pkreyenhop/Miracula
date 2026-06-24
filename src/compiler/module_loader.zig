@@ -85,7 +85,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     ls.c = ' ';
     ls.col = 0;
     main.rs.s_in = @ptrFromInt(@as(usize, @intCast(main.heap.h(main.heap.h(ls.fileq)))));
-    abi.adjust_prefix(@constCast(t_val));
+    abi.adjustPrefix(@constCast(t_val));
 
     core_state.s.commandmode = 0;
     if (main.rs.verbosity != 0 or main.rs.making) {

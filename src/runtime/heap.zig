@@ -1695,11 +1695,11 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                 var val = main_clib.getc(file);
                 val = val | (main_clib.getc(file) << 8);
                 const idx = heap.PNBASE + val;
-                stackpPush(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else r7_lex.sto_pn(idx));
+                stackpPush(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else r7_lex.stoPn(idx));
             },
             word.PN1_X => {
                 const idx = heap.PNBASE + getint(file);
-                stackpPush(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else r7_lex.sto_pn(idx));
+                stackpPush(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else r7_lex.stoPn(idx));
             },
             word.CONSTRUCT_X => {
                 var val = main_clib.getc(file);
@@ -2099,7 +2099,7 @@ pub const FileNode = struct {
 };
 
 /// A heap node that represents a Miranda identifier (name/binding).
-/// Created by `make_id()`; has tag ID and carries type, value, and provenance.
+/// Created by `makeId()`; has tag ID and carries type, value, and provenance.
 pub const Identifier = struct {
     word: Word,
 

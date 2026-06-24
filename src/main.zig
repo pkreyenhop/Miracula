@@ -60,12 +60,12 @@ pub const mainEntry = r7_startup.mainEntry;
 
 const setupheap = r7_heap.setupheap;
 const tsetup = r7_types.tsetup;
-const reset_pns = r7_lex.reset_pns;
+const resetPns = r7_lex.resetPns;
 const bigsetup = r7_big.setup;
 const resetgcstats = r7_heap.resetgcstats;
-const reset_state = r7_lex.reset_state;
-const reset_lex = r7_lex.reset_lex;
-pub const dic_check = r7_lex.dic_check;
+const resetState = r7_lex.resetState;
+const resetLex = r7_lex.resetLex;
+pub const dicCheck = r7_lex.dicCheck;
 const isconstrname = r7_lex.isconstrname;
 // Inline helpers (use heap module directly — B2: no h/t aliases here)
 pub inline fn get_id(x: Word) [*:0]const u8 {

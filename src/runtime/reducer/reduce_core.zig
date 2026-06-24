@@ -34,7 +34,7 @@ pub const ReductionCtx = extern struct {
 pub const print = reduce_mod.print;
 pub const badcaseError = reduce_mod.badcaseError;
 pub const confError = reduce_mod.confError;
-pub const conv_args = lex_mod.conv_args;
+pub const convArgs = lex_mod.convArgs;
 pub const getstring = reduce_mod.getstring;
 pub const head = reduce_mod.head;
 pub const force = reduce_mod.force;
@@ -255,7 +255,7 @@ pub inline fn rewrite_to_int_match_result(expr: *Word, literal: Word, value: Wor
 
 pub inline fn rewrite_to_string(expr: *Word, value: [*:0]const u8) void {
     hd_set(expr.*, word.I);
-    const val = lex_mod.str_conv(value);
+    const val = lex_mod.strConv(value);
     tl_set(expr.*, val);
     expr.* = val;
 }

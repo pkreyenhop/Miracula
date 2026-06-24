@@ -140,7 +140,7 @@ const msc = types_mod.msc;
 const tsort = types_mod.tsort;
 const isnat = big.isNat;
 const isconstrname = lex.isconstrname;
-const make_pn = lex.make_pn;
+const makePn = lex.makePn;
 const mkgvar = lex.mkgvar;
 const strcmp = word.strcmp;
 const syntax = setup.syntax;
@@ -1173,7 +1173,7 @@ pub fn decl_type(input_tf: Word, type_class: Word, info: Word, here: Word) void 
     if (type_class != synonym_t) {
         cs.newtyps = add1(tf, cs.newtyps);
     }
-    setIdVal(tf, makeTyp(arity, if (type_class == algebraic_t) make_pn(UNDEF) else 0, type_class, info));
+    setIdVal(tf, makeTyp(arity, if (type_class == algebraic_t) makePn(UNDEF) else 0, type_class, info));
     if (idType(tf) != undef_t) {
         core_state.s.errs = here;
         respec_error(tf);

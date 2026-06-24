@@ -15,8 +15,8 @@ const Span = tf.Span;
 const lex_state = @import("lex_state.zig");
 const ls = lex_state.ls;
 
-const mira_lex_setup_string = r7_lex.mira_lex_setup_string;
-const mira_lex_cleanup = r7_lex.mira_lex_cleanup;
+const setupString = r7_lex.setupString;
+const cleanup = r7_lex.cleanup;
 // Miranda atom-range constants (from lex.zig — keep in sync with CMBASE = 306).
 const CMBASE: word.Word = 306;
 const FALSE_ATOM: word.Word = CMBASE + 136; // Miranda boolean False
@@ -237,13 +237,13 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
 /// drives it to EOF, and maps each C token to our TokenId vocabulary.
 /// Caller owns the result; call deinit() to free.
 pub fn tokenize(gpa: Allocator, source: [:0]const u8) ![]Token {
-    mira_lex_setup_string(source.ptr);
-    defer mira_lex_cleanup();
+    setupString(source.ptr);
+    defer cleanup();
     return try tokenizeLoop(gpa);
 }
 
 /// Tokenize the currently active Miranda lex stream (s_in already opened).
-/// Does NOT call mira_lex_setup_string or mira_lex_cleanup; the caller is
+/// Does NOT call setupString or cleanup; the caller is
 /// responsible for the stream lifetime.  Used in Phase 13 to drive yylex()
 /// from whatever file openfile() opened.
 pub fn tokenizeCurrent(gpa: Allocator) ![]Token {

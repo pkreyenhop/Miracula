@@ -49,7 +49,7 @@ const syntax = r7_setup.syntax;
 const reset = r7_repl.reset;
 const isChar = heap.isChar;
 
-pub fn mira_lex_setup_string(source: [*:0]const u8) void {
+pub fn setupString(source: [*:0]const u8) void {
     const len = std.mem.len(source);
     const f = word.fmemopen(@ptrCast(@constCast(source)), len, "r") orelse return;
     // FILE* handle stored in the cell (read back via @ptrFromInt below);
@@ -59,7 +59,7 @@ pub fn mira_lex_setup_string(source: [*:0]const u8) void {
     main.rs.s_in = f;
 }
 
-pub fn mira_lex_cleanup() void {
+pub fn cleanup() void {
     if (main.rs.s_in) |f| {
         const is_stdio = (f == getStdin()) or (f == getStdout()) or (f == getStderr());
         if (!is_stdio) {
@@ -69,7 +69,7 @@ pub fn mira_lex_cleanup() void {
     }
 }
 
-pub fn mira_lex_setup_file(filename: [*:0]const u8) c_int {
+pub fn setupFile(filename: [*:0]const u8) c_int {
     if (openfile(filename) == 0) return 0;
     main.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
     return 1;
@@ -153,14 +153,14 @@ fn cons(x: Word, y: Word) Word {
 }
 
 fn isconstructor(x: Word) bool {
-    return getTag(x) == ID and isconstrname(get_id(x)) != 0;
+    return getTag(x) == ID and isconstrname(getId(x)) != 0;
 }
 
-fn get_id(x: Word) [*:0]const u8 {
+fn getId(x: Word) [*:0]const u8 {
     return strtab.strOf(h(h(h(x))));
 }
 
-fn get_fil(x: Word) [*:0]const u8 {
+fn getFil(x: Word) [*:0]const u8 {
     return strtab.strOf(h(h(h(x))));
 }
 
@@ -336,7 +336,7 @@ fn getch() c_int {
     }
     if (ls.atnl != 0) {
         if ((ls.line_no == 0 and core_state.s.commandmode == 0) or (main.rs.magic and ls.line_no == 1 and ls.litstack == NIL)) {
-            const is_lit = (ch == '>') or litname(get_fil(heap.heap.current_file));
+            const is_lit = (ch == '>') or litname(getFil(heap.heap.current_file));
             ls.literate = if (is_lit) 1 else 0;
             ls.litmain = ls.literate;
         }
@@ -1017,7 +1017,7 @@ pub fn mklexvar(i: Word) Word {
     return if (i != 0) t(ls.lexvar) else h(ls.lexvar);
 }
 
-pub fn conv_args() Word {
+pub fn convArgs() Word {
     var i = ls.ARGC;
     var x = NIL;
     if (i == 0) {
@@ -1025,14 +1025,14 @@ pub fn conv_args() Word {
     }
     i -= 1;
     while (i > 0) {
-        x = cons(str_conv(ls.ARGV[@intCast(i)].?), x);
+        x = cons(strConv(ls.ARGV[@intCast(i)].?), x);
         i -= 1;
     }
-    x = cons(str_conv(ls.ARGV[0].?), x);
+    x = cons(strConv(ls.ARGV[0].?), x);
     return x;
 }
 
-pub fn str_conv(s: [*:0]const u8) Word {
+pub fn strConv(s: [*:0]const u8) Word {
     var x = NIL;
     var i = word.strlen(s);
     while (i > 0) {
@@ -1102,7 +1102,7 @@ pub fn pathname() ?[*:0]u8 {
     return ls.dicp;
 }
 
-pub fn adjust_prefix(f: [*:0]const u8) void {
+pub fn adjustPrefix(f: [*:0]const u8) void {
     ls.prefixstack = cons(ls.prefix, ls.prefixstack);
     ls.prefix += @as(Word, @intCast(word.strlen(ls.prefixbase.? + @as(usize, @intCast(ls.prefix))))) + 1;
     while (@as(usize, @intCast(ls.prefix)) + word.strlen(f) >= @as(usize, @intCast(ls.prefixlimit))) {
@@ -1284,7 +1284,7 @@ pub fn directive() Word {
                 if (pathname() == null) {
                     syntax("bad pathname after %include\n");
                 } else {
-                    ls.yylval = make(STRCONS, strtab.strBits(addextn(1, ls.dicp)), fileinfo(strtab.strBits(get_fil(heap.heap.current_file)), holdlin));
+                    ls.yylval = make(STRCONS, strtab.strBits(addextn(1, ls.dicp)), fileinfo(strtab.strBits(getFil(heap.heap.current_file)), holdlin));
                     _ = keep(ls.dicp);
                 }
                 return word.INCLUDE;
@@ -1294,7 +1294,7 @@ pub fn directive() Word {
                 if (f == null) {
                     syntax("bad pathname after %insert\n");
                 } else if (ls.insertdepth < 12 and openfile(f.?) != 0) {
-                    adjust_prefix(f.?);
+                    adjustPrefix(f.?);
                     ls.vergstack = cons(ls.lverge, ls.vergstack);
                     ls.echostack = cons(main.rs.echoing, ls.echostack);
                     ls.litstack = cons(ls.literate, ls.litstack);
@@ -1385,13 +1385,13 @@ pub fn keep(p: [*:0]u8) [*:0]u8 {
         const ret = ls.dicp;
         ls.dicp = ls.dicp + word.strlen(ls.dicp) + 1;
         ls.dicq = ls.dicp;
-        dic_check();
+        dicCheck();
         return ret;
     }
     return p;
 }
 
-pub fn dic_check() void {
+pub fn dicCheck() void {
     ovflocheck();
 }
 
@@ -1550,7 +1550,7 @@ pub fn octnumeral() void {
 }
 
 pub fn getfname(x: Word) Word {
-    const p = get_id(x);
+    const p = getId(x);
     ls.dicq = ls.dicp;
     var i: usize = 0;
     while (true) {
@@ -1573,7 +1573,7 @@ pub fn getfname(x: Word) Word {
 pub fn name() Word {
     const h_idx = @as(usize, @intCast(hash(ls.dicp)));
     var q = ls.namebucket[h_idx];
-    while (q != 0 and !is(get_id(h(q)))) {
+    while (q != 0 and !is(getId(h(q)))) {
         q = t(q);
     }
     if (q == 0) {
@@ -1586,7 +1586,7 @@ pub fn name() Word {
     return q;
 }
 
-pub fn make_id(n: [*:0]const u8) Word {
+pub fn makeId(n: [*:0]const u8) Word {
     const h_idx = @as(usize, @intCast(hash(n)));
     const x = stoId(if (ls.inprelude) keep(@constCast(n)) else n);
     ls.namebucket[h_idx] = cons(x, ls.namebucket[h_idx]);
@@ -1596,13 +1596,13 @@ pub fn make_id(n: [*:0]const u8) Word {
 pub fn findid(n: [*:0]const u8) Word {
     const h_idx = @as(usize, @intCast(hash(n)));
     var q = ls.namebucket[h_idx];
-    while (q != 0 and !std.mem.eql(u8, std.mem.span(n), std.mem.span(get_id(h(q))))) {
+    while (q != 0 and !std.mem.eql(u8, std.mem.span(n), std.mem.span(getId(h(q))))) {
         q = t(q);
     }
     return if (q != 0) h(q) else NIL;
 }
 
-pub fn reset_pns() void {
+pub fn resetPns() void {
     ls.nextpn = 0;
     if (ls.pnvec == null) {
         const slice = rt.allocator.alloc(Word, @intCast(ls.pn_lim)) catch mallocPanic("ls.pnvec");
@@ -1610,7 +1610,7 @@ pub fn reset_pns() void {
     }
 }
 
-pub fn make_pn(val: Word) Word {
+pub fn makePn(val: Word) Word {
     if (ls.nextpn == ls.pn_lim) {
         const old_lim = ls.pn_lim;
         ls.pn_lim += 400;
@@ -1624,7 +1624,7 @@ pub fn make_pn(val: Word) Word {
     return ret;
 }
 
-pub fn sto_pn(n: Word) Word {
+pub fn stoPn(n: Word) Word {
     if (n >= ls.pn_lim) {
         const old_lim = ls.pn_lim;
         while (ls.pn_lim <= n) {
@@ -1761,10 +1761,10 @@ pub fn charclass() c_int {
     return anti;
 }
 
-pub fn reset_lex() void {
+pub fn resetLex() void {
     if (core_state.s.commandmode == 0) {
         if (core_state.s.errs == 0) {
-            core_state.s.errs = fileinfo(strtab.strBits(get_fil(heap.heap.current_file)), ls.line_no);
+            core_state.s.errs = fileinfo(strtab.strBits(getFil(heap.heap.current_file)), ls.line_no);
         }
         const err_script_raw = @as(?[*:0]const u8, strtab.strOf(h(core_state.s.errs)));
         const err_script = err_script_raw orelse "test.m";
@@ -1792,10 +1792,10 @@ pub fn reset_lex() void {
             }
         }
     }
-    reset_state();
+    resetState();
 }
 
-pub fn reset_state() void {
+pub fn resetState() void {
     if (core_state.s.commandmode != 0) {
         while (ls.c != '\n' and ls.c != main_clib.EOF) {
             if (main.rs.s_in) |sin| {

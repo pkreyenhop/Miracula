@@ -129,7 +129,7 @@ pub const abstract_t = word_mod.abstract_t;
 pub const placeholder_t = word_mod.placeholder_t;
 pub const add1 = types_mod.add1;
 pub const addextn = lex_mod.addextn;
-pub const adjust_prefix = lex_mod.adjust_prefix;
+pub const adjustPrefix = lex_mod.adjustPrefix;
 pub const algebraic_t = word_mod.algebraic_t;
 pub fn ap(x: Word, y: Word) Word {
     return make(AP, x, y);
@@ -162,10 +162,10 @@ pub const intersection = types_mod.intersection;
 pub const make = heap_mod.make;
 pub const keep = lex_mod.keep;
 pub const loadScript = heap_mod.loadScript;
-pub const make_id = lex_mod.make_id;
+pub const makeId = lex_mod.makeId;
 pub const mallocfail = heap_mod.mallocfail;
 pub const setdiff = types_mod.setdiff;
-pub const make_pn = lex_mod.make_pn;
+pub const makePn = lex_mod.makePn;
 pub fn make_typ(a: Word, shf: Word, class: Word, info: Word) Word {
     return cons(cons(a, shf), cons(class, info));
 }

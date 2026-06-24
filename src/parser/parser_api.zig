@@ -9,9 +9,9 @@ const parser_mod = @import("parser.zig");
 const codegen = @import("codegen.zig");
 const r7_repl = @import("../driver/repl.zig");
 const r7_lex = @import("lex.zig");
-const mira_lex_setup_string = r7_lex.mira_lex_setup_string;
-const mira_lex_cleanup = r7_lex.mira_lex_cleanup;
-const mira_lex_setup_file = r7_lex.mira_lex_setup_file;
+const setupString = r7_lex.setupString;
+const cleanup = r7_lex.cleanup;
+const setupFile = r7_lex.setupFile;
 // Forks like the original C evaluate(): compiling=0 only in child; parent's heap is safe.
 const evaluateRepl = r7_repl.evaluateRepl;
 pub const ParseError = error{
@@ -81,7 +81,7 @@ fn parseCurrentNew() ParseError!ParseResult {
 
 /// Parses a script file by filename.
 pub fn parseFile(filename: [*:0]const u8) ParseError!ParseResult {
-    if (mira_lex_setup_file(filename) == 0) {
+    if (setupFile(filename) == 0) {
         return ParseError.ParseFailed;
     }
     return parseCurrentNew();
@@ -96,11 +96,11 @@ pub fn parseString(source: [*:0]const u8) ParseError!ParseResult {
 }
 
 pub fn lexSetupString(source: [*:0]const u8) void {
-    mira_lex_setup_string(source);
+    setupString(source);
 }
 
 pub fn lexCleanup() void {
-    mira_lex_cleanup();
+    cleanup();
 }
 
 /// Result of parsing with the new Zig pipeline.

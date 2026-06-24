@@ -94,7 +94,7 @@ pub fn unfixexports() void {
 }
 
 fn privatise(x: Word) Word {
-    const n = abi.make_pn(x);
+    const n = abi.makePn(x);
     const hash_idx = hash(main.get_id(x));
     const i = h(n);
 

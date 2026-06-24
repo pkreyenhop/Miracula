@@ -129,7 +129,7 @@ pub fn makeAbsolute(m: [*:0]u8) [*:0]u8 {
     const m_new = ls.dicp;
     ls.dicq += word.strlen(ls.dicp) + 1;
     ls.dicp = ls.dicq;
-    main.dic_check();
+    main.dicCheck();
     return m_new;
 }
 

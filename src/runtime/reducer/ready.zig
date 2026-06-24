@@ -830,7 +830,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                 ctx.action = word.ACT_DONE;
                 return;
             }
-            ctx.hold = reduce.ap2(word.APPEND, lex.str_conv(reduce.constr_name(ctx.args[0])), ctx.hold);
+            ctx.hold = reduce.ap2(word.APPEND, lex.strConv(reduce.constr_name(ctx.args[0])), ctx.hold);
             if (ctx.args[1] != 0) {
                 reduce.rewrite_to_cons(ctx.e, '(', ctx.hold);
                 ctx.action = word.ACT_DONE;

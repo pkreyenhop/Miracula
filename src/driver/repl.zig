@@ -42,7 +42,7 @@ const outstats = r7_reduce.outstats;
 const syntax = r7_setup.syntax;
 const token = r7_lex.token;
 const rdline = r7_lex.rdline;
-const reset_lex = r7_lex.reset_lex;
+const resetLex = r7_lex.resetLex;
 /// POSIX `WIFSIGNALED`: true if `status` reports a child killed by a signal.
 fn WIFSIGNALED(status: c_int) bool {
     return (status & 0x7f) != 0 and (status & 0x7f) != 0x7f;

@@ -14,8 +14,8 @@ const strtab = @import("../runtime/strtab.zig");
 const core_state = @import("../runtime/core_state.zig");
 const ls = lex_state.ls;
 
-const make_id = r7_lex.make_id;
-const reset_pns = r7_lex.reset_pns;
+const makeId = r7_lex.makeId;
+const resetPns = r7_lex.resetPns;
 fn makeFilRecord(name: [*:0]const u8) word.Word {
     const name_word = @as(word.Word, strtab.strBits(name));
     const file_info = heap.make(word.FILEINFO, name_word, 0);
@@ -24,13 +24,13 @@ fn makeFilRecord(name: [*:0]const u8) word.Word {
     return heap.make(word.CONS, info_cell, word.NIL);
 }
 
-const reset_state = r7_lex.reset_state;
+const resetState = r7_lex.resetState;
 
 fn resetLexerState() void {
-    reset_state();
+    resetState();
     setupheap();
     setupdic();
-    reset_pns();
+    resetPns();
     heap.heap.current_file = makeFilRecord("test.m");
     heap.heap.files = heap.make(word.CONS, heap.heap.current_file, word.NIL);
     ls.col = 0;
@@ -44,7 +44,7 @@ fn ensureInitialized() void {
     if (!initialized) {
         setupheap();
         setupdic();
-        reset_pns();
+        resetPns();
         heap.heap.current_file = makeFilRecord("test.m");
         heap.heap.files = heap.make(word.CONS, heap.heap.current_file, word.NIL);
         initialized = true;

@@ -841,13 +841,13 @@ pub fn handleBADCASE(ctx: *ReductionCtx) void {
     reduce.badcaseError(lastarg);
 }
 
-/// Yield the program's command-line arguments as a Miranda list (`conv_args`).
+/// Yield the program's command-line arguments as a Miranda list (`convArgs`).
 pub fn handleGETARGS(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
         return;
     }
-    reduce.simpl(ctx, reduce.conv_args());
+    reduce.simpl(ctx, reduce.convArgs());
     ctx.action = word.ACT_DONE;
 }
 
@@ -1001,7 +1001,7 @@ pub fn handleUsh1(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    hold = reduce.ap2(word.APPEND, lex.str_conv(reduce.constr_name(arg1)), hold);
+    hold = reduce.ap2(word.APPEND, lex.strConv(reduce.constr_name(arg1)), hold);
     if (arg2 != 0) {
         reduce.rewrite_to_cons(ctx.e, '(', hold);
         ctx.action = word.ACT_DONE;

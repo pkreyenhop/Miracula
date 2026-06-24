@@ -545,7 +545,7 @@ pub fn lexstate(x: Word) Word {
 
 /// The error message for a failed `fork`/pipe (used by `system`).
 pub fn piperrmess(pid: Word) Word {
-    return lex.str_conv(if (pid == -1) "cannot create process\n" else "cannot open pipe\n");
+    return lex.strConv(if (pid == -1) "cannot create process\n" else "cannot open pipe\n");
 }
 
 /// Structurally compare two values (`<0`/`0`/`>0`); errors on comparing functions.

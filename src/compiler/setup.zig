@@ -19,9 +19,9 @@ const ls = lex_state.ls;
 // Exported initialization functions from other modules
 const setupheap = heap.setupheap;
 const tsetup = r7_types.tsetup;
-const reset_pns = r7_lex.reset_pns;
+const resetPns = r7_lex.resetPns;
 const bigsetup = r7_big.setup;
-const reset_lex = r7_lex.reset_lex;
+const resetLex = r7_lex.resetLex;
 // Token names for out2() — replaces y.tab.c's yysterm[].
 const yysterm_data = [_]?[*:0]const u8{
     null, // 0: placeholder
@@ -84,19 +84,19 @@ pub fn syntax(s: [*:0]const u8) void {
     }
     _ = word.printErr("syntax error: {s}", .{.{s}});
     core_state.s.SYNERR = 1;
-    reset_lex();
+    resetLex();
 }
 
 pub fn acterror() void {
     if (core_state.s.SYNERR != 0) return;
     core_state.s.SYNERR = 1;
-    reset_lex();
+    resetLex();
 }
 
 /// Registers a primitive identifier `n` in the private primitive environment (`rs.primenv`).
 /// `v` is the combinator value; `t_val` is the type node. Called only from primlib().
 pub fn primdef(n: [*:0]const u8, v: Word, t_val: Word) void {
-    const x = abi.make_id(@constCast(n));
+    const x = abi.makeId(@constCast(n));
     main.rs.primenv = main.cons(x, main.rs.primenv);
     main.heap.tp(x).* = v;
     main.heap.tp(main.heap.h(x)).* = t_val;
@@ -106,7 +106,7 @@ pub fn primdef(n: [*:0]const u8, v: Word, t_val: Word) void {
 /// `v` is the combinator value (wrapped in `constructor()` if `n` is a constructor);
 /// `t_val` is the type node. Called from privlib() and stdlib().
 pub fn predef(n: [*:0]const u8, v: Word, t_val: Word) void {
-    const x = abi.make_id(@constCast(n));
+    const x = abi.makeId(@constCast(n));
     main.addtoenv(x);
     main.heap.tp(x).* = if (main.isconstructor(x)) main.constructor(v, x) else v;
     main.heap.tp(main.heap.h(x)).* = t_val;
@@ -200,34 +200,34 @@ fn mktiny() Word {
 pub fn mira_setup() void {
     setupheap();
     tsetup();
-    reset_pns();
+    resetPns();
     bigsetup();
     ls.common_stdin = abi.ap(word.READ, 0);
     ls.common_stdinb = abi.ap(word.READBIN, 0);
     ls.cook_stdin = abi.ap(abi.readvals(0, 0), word.OFFSIDE);
     core_state.s.nill = main.cons(word.CONST, NIL);
-    main.rs.Void = abi.make_id(@constCast("()"));
+    main.rs.Void = abi.makeId(@constCast("()"));
     main.heap.tp(main.heap.h(main.rs.Void)).* = word.void_t;
     main.heap.tp(main.rs.Void).* = main.constructor(0, main.rs.Void);
-    main.rs.message = abi.make_id(@constCast("sys_message"));
-    main.rs.main_id = abi.make_id(@constCast("main"));
-    main.rs.concat = abi.make_id(@constCast("concat"));
-    main.rs.diagonalise = abi.make_id(@constCast("diagonalise"));
+    main.rs.message = abi.makeId(@constCast("sys_message"));
+    main.rs.main_id = abi.makeId(@constCast("main"));
+    main.rs.concat = abi.makeId(@constCast("concat"));
+    main.rs.diagonalise = abi.makeId(@constCast("diagonalise"));
     main.rs.standardout = main.constructor(0, @as([*:0]const u8, "Stdout"));
-    main.rs.indent_fn = abi.make_id(@constCast("indent"));
-    main.rs.outdent_fn = abi.make_id(@constCast("outdent"));
-    main.rs.listdiff_fn = abi.make_id(@constCast("listdiff"));
-    main.rs.shownum1 = abi.make_id(@constCast("shownum1"));
-    main.rs.showbool = abi.make_id(@constCast("showbool"));
-    main.rs.showchar = abi.make_id(@constCast("showchar"));
-    main.rs.showlist = abi.make_id(@constCast("showlist"));
-    main.rs.showstring = abi.make_id(@constCast("showstring"));
-    main.rs.showparen = abi.make_id(@constCast("showparen"));
-    main.rs.showpair = abi.make_id(@constCast("showpair"));
-    main.rs.showvoid = abi.make_id(@constCast("showvoid"));
-    main.rs.showfunction = abi.make_id(@constCast("showfunction"));
-    main.rs.showabstract = abi.make_id(@constCast("showabstract"));
-    main.rs.showwhat = abi.make_id(@constCast("showwhat"));
+    main.rs.indent_fn = abi.makeId(@constCast("indent"));
+    main.rs.outdent_fn = abi.makeId(@constCast("outdent"));
+    main.rs.listdiff_fn = abi.makeId(@constCast("listdiff"));
+    main.rs.shownum1 = abi.makeId(@constCast("shownum1"));
+    main.rs.showbool = abi.makeId(@constCast("showbool"));
+    main.rs.showchar = abi.makeId(@constCast("showchar"));
+    main.rs.showlist = abi.makeId(@constCast("showlist"));
+    main.rs.showstring = abi.makeId(@constCast("showstring"));
+    main.rs.showparen = abi.makeId(@constCast("showparen"));
+    main.rs.showpair = abi.makeId(@constCast("showpair"));
+    main.rs.showvoid = abi.makeId(@constCast("showvoid"));
+    main.rs.showfunction = abi.makeId(@constCast("showfunction"));
+    main.rs.showabstract = abi.makeId(@constCast("showabstract"));
+    main.rs.showwhat = abi.makeId(@constCast("showwhat"));
     primlib();
 }
 

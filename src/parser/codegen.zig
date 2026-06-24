@@ -92,7 +92,7 @@ const stoDbl = heap.stoDbl;
 const stoId = heap.stoId;
 const keep = lex.keep;
 const findid = lex.findid;
-const make_id = lex.make_id;
+const makeId = lex.makeId;
 const stoChar = heap.stoChar;
 const head = reduce_mod.head;
 const isconstrname = lex.isconstrname;
@@ -154,7 +154,7 @@ fn nameWord(name: []const u8) Word {
     if (existing != word.NIL) return existing;
     // Not yet in the name table (e.g., synthesised names). Intern it now.
     const perm = keep(@as([*:0]u8, @ptrCast(&buf)));
-    return make_id(perm);
+    return makeId(perm);
 }
 
 // ---------------------------------------------------------------------------

@@ -279,7 +279,7 @@ pub fn reduce(e_val: Word) Word {
 pub const print = r7_reduce.print;
 pub const badcaseError = r7_reduce.badcaseError;
 pub const confError = r7_reduce.confError;
-pub const conv_args = r7_lex.conv_args;
+pub const convArgs = r7_lex.convArgs;
 pub const getstring = r7_reduce.getstring;
 pub const head = r7_reduce.head;
 pub const force = r7_reduce.force;
@@ -504,7 +504,7 @@ pub inline fn rewrite_to_int_match_result(expr: *Word, literal: Word, value: Wor
 
 pub inline fn rewrite_to_string(expr: *Word, value: [*:0]const u8) void {
     hd_set(expr.*, word.I);
-    const val = r7_lex.str_conv(value);
+    const val = r7_lex.strConv(value);
     tl_set(expr.*, val);
     expr.* = val;
 }
