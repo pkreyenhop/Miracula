@@ -38,7 +38,7 @@ const NIL: Word = CMBASE + 138;
 const ATOMLIMIT: Word = CMBASE + 141;
 
 const make = heap.make;
-const math_error = r7_reduce.math_error;
+const mathError = r7_reduce.mathError;
 /// Bignum subsystem state (shared-state plan Phase 2e). Accessed as `big.bn.X`;
 /// folds into `Interp.big` in Phase 3. `bn.logIBASE`/`bn.log10IBASE` are caches set by
 /// `setup` (runtime `@log`, not comptime); `bn.big_one`/`bn.b_rem` are heap nodes.
@@ -590,7 +590,7 @@ pub fn ln(input_x: Word) f64 {
     var r: f64 = @floatFromInt(digit(x));
     if (signBit(x) != 0 or isZero(x)) {
         setErrnoDomain();
-        math_error("log");
+        mathError("log");
     }
     while (rest(x) != 0) {
         x = rest(x);
@@ -607,7 +607,7 @@ pub fn log10(input_x: Word) f64 {
     var r: f64 = @floatFromInt(digit(x));
     if (signBit(x) != 0 or isZero(x)) {
         setErrnoDomain();
-        math_error("log10");
+        mathError("log10");
     }
     while (rest(x) != 0) {
         x = rest(x);

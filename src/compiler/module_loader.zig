@@ -208,7 +208,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
                 abi.sayhere(h_val, 1);
                 h_val = NIL;
             } else if (main.rs.exports == NIL or n != NIL) {
-                abi.out_here(main.getStderr(), h_val, 1);
+                abi.outHere(main.getStderr(), h_val, 1);
                 h_val = NIL;
             }
         }
@@ -275,7 +275,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             abi.printlist(@constCast(""), b);
         }
         if (b != NIL and h_val != NIL) {
-            abi.out_here(main.getStdout(), h_val, 1);
+            abi.outHere(main.getStdout(), h_val, 1);
         }
     }
 
@@ -288,7 +288,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             word.print("warning, script contains unused local definitions:-\n", .{});
         }
         while (main.rs.detrop != NIL) {
-            abi.out_here(main.getStdout(), main.heap.h(main.heap.h(main.heap.t(main.dval(main.heap.h(main.rs.detrop))))), 0);
+            abi.outHere(main.getStdout(), main.heap.h(main.heap.h(main.heap.t(main.dval(main.heap.h(main.rs.detrop))))), 0);
             _ = word.putchar('\t');
             abi.out_pattern(main.getStdout().?, main.dlhs(main.heap.h(main.rs.detrop)));
             _ = word.putchar('\n');
@@ -306,7 +306,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             word.print("warning, grammar contains unused nonterminals:-\n", .{});
         }
         while (gd_mut != NIL) {
-            abi.out_here(main.getStdout(), main.heap.h(main.dval(main.heap.h(gd_mut))), 0);
+            abi.outHere(main.getStdout(), main.heap.h(main.dval(main.heap.h(gd_mut))), 0);
             _ = word.putchar('\t');
             abi.out_pattern(main.getStdout().?, main.dlhs(main.heap.h(gd_mut)));
             _ = word.putchar('\n');

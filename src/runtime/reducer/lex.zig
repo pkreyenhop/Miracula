@@ -35,7 +35,7 @@ pub fn handle_G_ERROR(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    ctx.hold = reduce_rt.g_residue(lastarg(ctx));
+    ctx.hold = reduce_rt.gResidue(lastarg(ctx));
     reduce.rewrite_to_cons(ctx.e, reduce.ap(ctx.args[1], ctx.hold), word.NIL);
     ctx.action = word.ACT_DONE;
 }
@@ -258,7 +258,7 @@ pub fn handle_G_CLOSE(ctx: *ReductionCtx) void {
     ctx.hold = reduce.ap(ctx.args[1], ctx.args[2]);
     ctx.hold = reduce.reduce(ctx.hold);
     if (ctx.hold == word.NIL) {
-        reduce_rt.reduce_parse_close_error(ctx.args[0], ctx.args[2]);
+        reduce_rt.parseCloseError(ctx.args[0], ctx.args[2]);
     }
     reduce.rewrite_to_value(&ctx.e, reduce.hd_get(ctx.hold));
     ctx.action = word.ACT_NEXTREDEX;

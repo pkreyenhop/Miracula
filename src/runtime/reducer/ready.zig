@@ -113,7 +113,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                 return;
             }
             if (!reduce.is_int(ctx.args[0])) {
-                reduce_rt.int_error("take");
+                reduce_rt.intError("take");
             }
             const n = big.toInt(ctx.args[0]);
             const lastarg_reduced = reduce.reduce(lastArg(ctx));
@@ -173,7 +173,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                                 q += 1;
                                 r += 2;
                             } else {
-                                reduce_rt.getenv_error(a.?);
+                                reduce_rt.getenvError(a.?);
                                 q[0] = r[0];
                                 q += 1;
                                 r += 1;
@@ -439,7 +439,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
         word.DECODE => {
             reduce.upLeft(ctx);
             if (reduce.is_double(lastArg(ctx))) {
-                reduce_rt.int_error("decode");
+                reduce_rt.intError("decode");
             }
             const val = big.toInt(lastArg(ctx));
             if (val < 0 or val > word.UMAX) {
@@ -495,7 +495,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
         word.SHOWOCT => {
             reduce.upLeft(ctx);
             if (reduce.is_double(lastArg(ctx))) {
-                reduce_rt.int_error("showoct");
+                reduce_rt.intError("showoct");
             } else {
                 reduce.simpl(ctx, big.toOctalList(lastArg(ctx)));
             }
@@ -507,7 +507,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             platform.setErrno(0);
             heap.setdbl(ctx.e, std.math.atan(reduce.force_dbl(lastArg(ctx))));
             if (platform.getErrno() != 0) {
-                reduce_rt.math_error(@constCast("atan"));
+                reduce_rt.mathError(@constCast("atan"));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -517,7 +517,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             platform.setErrno(0);
             heap.setdbl(ctx.e, std.math.exp(reduce.force_dbl(lastArg(ctx))));
             if (platform.getErrno() != 0) {
-                reduce_rt.math_error(@constCast("exp"));
+                reduce_rt.mathError(@constCast("exp"));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -540,7 +540,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                 platform.setErrno(0);
                 heap.setdbl(ctx.e, @log(reduce.force_dbl(lastArg(ctx))));
                 if (platform.getErrno() != 0) {
-                    reduce_rt.math_error(@constCast("log"));
+                    reduce_rt.mathError(@constCast("log"));
                 }
             }
             ctx.action = word.ACT_DONE;
@@ -554,7 +554,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                 platform.setErrno(0);
                 heap.setdbl(ctx.e, @log10(reduce.force_dbl(lastArg(ctx))));
                 if (platform.getErrno() != 0) {
-                    reduce_rt.math_error(@constCast("log10"));
+                    reduce_rt.mathError(@constCast("log10"));
                 }
             }
             ctx.action = word.ACT_DONE;
@@ -565,7 +565,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             platform.setErrno(0);
             heap.setdbl(ctx.e, std.math.sin(reduce.force_dbl(lastArg(ctx))));
             if (platform.getErrno() != 0) {
-                reduce_rt.math_error(@constCast("sin"));
+                reduce_rt.mathError(@constCast("sin"));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -575,7 +575,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             platform.setErrno(0);
             heap.setdbl(ctx.e, std.math.cos(reduce.force_dbl(lastArg(ctx))));
             if (platform.getErrno() != 0) {
-                reduce_rt.math_error(@constCast("cos"));
+                reduce_rt.mathError(@constCast("cos"));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -585,7 +585,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             platform.setErrno(0);
             heap.setdbl(ctx.e, std.math.sqrt(reduce.force_dbl(lastArg(ctx))));
             if (platform.getErrno() != 0) {
-                reduce_rt.math_error(@constCast("sqrt"));
+                reduce_rt.mathError(@constCast("sqrt"));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -666,10 +666,10 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0]) or reduce.is_double(lastArg(ctx))) {
-                reduce_rt.int_error("div");
+                reduce_rt.intError("div");
             }
             if (reduce.bigzero(lastArg(ctx))) {
-                reduce_rt.div_error();
+                reduce_rt.divError();
             }
             reduce.simpl(ctx, big.div(ctx.args[0], lastArg(ctx)));
             ctx.action = word.ACT_DONE;
@@ -681,7 +681,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             const fa = reduce.force_dbl(ctx.args[0]);
             const fb = reduce.force_dbl(lastArg(ctx));
             if (fb == 0.0) {
-                reduce_rt.div_error();
+                reduce_rt.divError();
             }
             heap.setdbl(ctx.e, fa / fb);
             ctx.action = word.ACT_DONE;
@@ -691,10 +691,10 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0]) or reduce.is_double(lastArg(ctx))) {
-                reduce_rt.int_error("mod");
+                reduce_rt.intError("mod");
             }
             if (reduce.bigzero(lastArg(ctx))) {
-                reduce_rt.div_error();
+                reduce_rt.divError();
             }
             reduce.simpl(ctx, big.mod(ctx.args[0], lastArg(ctx)));
             ctx.action = word.ACT_DONE;
@@ -723,7 +723,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                 fa = reduce.force_dbl(ctx.args[0]);
                 if (fa < 0.0) {
                     platform.setErrno(main_clib.EDOM);
-                    reduce_rt.math_error(@constCast("^"));
+                    reduce_rt.mathError(@constCast("^"));
                 }
                 fb = heap.get_dbl(lastArg(ctx));
             } else if (reduce.is_double(ctx.args[0])) {
@@ -740,7 +740,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             platform.setErrno(0);
             heap.setdbl(ctx.e, std.math.pow(f64, fa, fb));
             if (platform.getErrno() != 0) {
-                reduce_rt.math_error(@constCast("power"));
+                reduce_rt.mathError(@constCast("power"));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -749,7 +749,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0])) {
-                reduce_rt.int_error("showscaled");
+                reduce_rt.intError("showscaled");
             }
             const arg1_int = reduce.getsmallint(ctx.args[0]);
             _ = main_clib.sprintf(&main.rs.linebuf, "%.*e", .{ @as(c_int, @intCast(arg1_int)), reduce.force_dbl(lastArg(ctx)) });
@@ -761,7 +761,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0])) {
-                reduce_rt.int_error("showfloat");
+                reduce_rt.intError("showfloat");
             }
             const arg1_int = reduce.getsmallint(ctx.args[0]);
             _ = main_clib.sprintf(&main.rs.linebuf, "%.*f", .{ @as(c_int, @intCast(arg1_int)), reduce.force_dbl(lastArg(ctx)) });

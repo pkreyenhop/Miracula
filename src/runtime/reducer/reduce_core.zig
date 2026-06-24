@@ -32,8 +32,8 @@ pub const ReductionCtx = extern struct {
 // Extern globals referenced by reducer helpers
 
 pub const print = reduce_mod.print;
-pub const reduce_badcase_error = reduce_mod.reduce_badcase_error;
-pub const reduce_conf_error = reduce_mod.reduce_conf_error;
+pub const badcaseError = reduce_mod.badcaseError;
+pub const confError = reduce_mod.confError;
 pub const conv_args = lex_mod.conv_args;
 pub const getstring = reduce_mod.getstring;
 pub const head = reduce_mod.head;

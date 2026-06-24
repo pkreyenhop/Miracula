@@ -277,8 +277,8 @@ pub fn reduce(e_val: Word) Word {
     }
 }
 pub const print = r7_reduce.print;
-pub const reduce_badcase_error = r7_reduce.reduce_badcase_error;
-pub const reduce_conf_error = r7_reduce.reduce_conf_error;
+pub const badcaseError = r7_reduce.badcaseError;
+pub const confError = r7_reduce.confError;
 pub const conv_args = r7_lex.conv_args;
 pub const getstring = r7_reduce.getstring;
 pub const head = r7_reduce.head;

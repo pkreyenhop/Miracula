@@ -654,7 +654,7 @@ pub fn handleLIST_LAST(ctx: *ReductionCtx) void {
     }
     var lastarg = reduce.reduce(reduce.tl_get(ctx.e));
     if (lastarg == word.NIL) {
-        reduce_rt.fn_error("last []");
+        reduce_rt.fnError("last []");
     }
     while (true) {
         const next_tl = reduce.reduce(reduce.tl_get(lastarg));
@@ -698,7 +698,7 @@ pub fn handleDROP(ctx: *ReductionCtx) void {
     arg1 = reduce.reduce(reduce.tl_get(reduce.hd_get(ctx.e)));
     reduce.tl_set(reduce.hd_get(ctx.e), arg1);
     if (!reduce.is_int(arg1)) {
-        reduce_rt.int_error("drop");
+        reduce_rt.intError("drop");
     }
     var n = big.toInt(arg1);
     var lastarg = reduce.tl_get(ctx.e);
@@ -730,7 +730,7 @@ pub fn handleSUBSCRIPT(ctx: *ReductionCtx) void {
     reduce.tl_set(reduce.hd_get(ctx.e), arg1);
     var lastarg = reduce.reduce(reduce.tl_get(ctx.e));
     if (lastarg == word.NIL) {
-        reduce_rt.subs_error();
+        reduce_rt.subsError();
     }
     var indx: i64 = 0;
     if (reduce.is_atom(arg1)) {
@@ -738,17 +738,17 @@ pub fn handleSUBSCRIPT(ctx: *ReductionCtx) void {
     } else if (reduce.is_int(arg1)) {
         indx = big.toInt(arg1);
     } else {
-        reduce_rt.int_error("!");
+        reduce_rt.intError("!");
     }
     if (indx < 0) {
-        reduce_rt.subs_error();
+        reduce_rt.subsError();
     }
     while (indx > 0) {
         const next_tl = reduce.reduce(reduce.tl_get(lastarg));
         reduce.tl_set(lastarg, next_tl);
         lastarg = next_tl;
         if (lastarg == word.NIL) {
-            reduce_rt.subs_error();
+            reduce_rt.subsError();
         }
         indx -= 1;
     }
@@ -773,7 +773,7 @@ pub fn handleFOLDL1(ctx: *ReductionCtx) void {
         reduce.tl_set(ctx.e, reduce.tl_get(lastarg));
         ctx.action = word.ACT_NEXTREDEX;
     } else {
-        reduce_rt.fn_error("foldl1 applied to []");
+        reduce_rt.fnError("foldl1 applied to []");
     }
 }
 
@@ -838,7 +838,7 @@ pub fn handleBADCASE(ctx: *ReductionCtx) void {
         return;
     }
     const lastarg = reduce.tl_get(ctx.e);
-    reduce.reduce_badcase_error(lastarg);
+    reduce.badcaseError(lastarg);
 }
 
 /// Yield the program's command-line arguments as a Miranda list (`conv_args`).
@@ -858,7 +858,7 @@ pub fn handleCONFERROR(ctx: *ReductionCtx) void {
         return;
     }
     const lastarg = reduce.tl_get(ctx.e);
-    reduce.reduce_conf_error(lastarg);
+    reduce.confError(lastarg);
 }
 
 /// `error s` — print the message and abort the program (guarding against repeated errors).

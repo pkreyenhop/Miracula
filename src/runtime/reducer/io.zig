@@ -15,21 +15,21 @@ const reduce_rt = @import("../reduce.zig");
 
 /// C runtime helper: pull the next item from the stream `ctx` is reading under
 /// combinator `op`, returning the post-step action code.
-extern fn reduce_stream_read(ctx: ?*anyopaque, op: Word) c_int;
+extern fn streamRead(ctx: ?*anyopaque, op: Word) c_int;
 
 /// Reduce the `READ` combinator: lazily stream characters from an input file.
 pub fn handle_READ(ctx: *ReductionCtx) void {
-    ctx.action = reduce_stream_read(ctx, word.READ);
+    ctx.action = streamRead(ctx, word.READ);
 }
 
 /// Reduce the `READBIN` combinator: like `READ`, but reads raw bytes (binary mode).
 pub fn handle_READBIN(ctx: *ReductionCtx) void {
-    ctx.action = reduce_stream_read(ctx, word.READBIN);
+    ctx.action = streamRead(ctx, word.READBIN);
 }
 
 /// Reduce the `READVALS` combinator: stream typed values parsed from a file.
 pub fn handle_READVALS(ctx: *ReductionCtx) void {
-    ctx.action = reduce_stream_read(ctx, word.READVALS);
+    ctx.action = streamRead(ctx, word.READVALS);
 }
 
 /// Reduce `STARTREADVALS`: open the source (a file path, or stdin on `OFFSIDE`),
