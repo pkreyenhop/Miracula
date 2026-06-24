@@ -142,7 +142,7 @@ pub const Heap = struct {
         return @intFromEnum(self.tag.?[@intCast(x)]);
     }
 
-    /// Typed tag (for `switch` on `NodeTag` in dispatch, e.g. dump_ob).
+    /// Typed tag (for `switch` on `NodeTag` in dispatch, e.g. dumpOb).
     pub fn getTagEnum(self: Heap, x: Word) r7_word.NodeTag {
         return self.tag.?[@intCast(x)];
     }
@@ -461,7 +461,7 @@ pub fn tries(x: Word, y: Word) Word {
     return make(@intCast(word.TRIES), x, y);
 }
 
-fn idWho(x: Word) Word {
+pub fn idWho(x: Word) Word {
     return t(h(h(x)));
 }
 
@@ -469,21 +469,21 @@ fn getId(x: Word) [*:0]const u8 {
     return strtab.strOf(h(h(h(x))));
 }
 
-pub fn sto_char(ch: Word) Word {
+pub fn stoChar(ch: Word) Word {
     return if (word.fitsInByte(ch)) ch else make(UNICODE, ch, 0);
 }
 
-pub fn get_char(x: Word) Word {
+pub fn getChar(x: Word) Word {
     switch (word.classify(x)) {
         .imm => |c| return c, // bare Latin-1 code point
         .ref => if (heap.getTag(x) == UNICODE) return h(x), // UNICODE cell: code point in hd
         .atom => {},
     }
-    std.debug.print("impossible event in get_char(x), tag[x]=={d}\n", .{heap.getTag(x)});
+    std.debug.print("impossible event in getChar(x), tag[x]=={d}\n", .{heap.getTag(x)});
     main_clib.exit(1);
 }
 
-pub fn is_char(x: Word) c_int {
+pub fn isChar(x: Word) c_int {
     return switch (word.classify(x)) {
         .imm => 1, // bare Latin-1 char
         .ref => if (heap.getTag(x) == UNICODE) @as(c_int, 1) else 0, // wide char cell
@@ -491,7 +491,7 @@ pub fn is_char(x: Word) c_int {
     };
 }
 
-pub fn get_here(x: Word) Word {
+pub fn getHere(x: Word) Word {
     const y = idWho(x);
     return if (heap.getTag(y) == CONS) t(y) else y;
 }
@@ -571,7 +571,7 @@ pub fn outr(file: ?*word.FILE, value: f64) void {
     }
 }
 
-pub fn get_dbl(x: Word) f64 {
+pub fn getDbl(x: Word) f64 {
     var r: fpdatum = undefined;
     if (comptime @sizeOf(Word) == 4) {
         r.bits.left = h(x);
@@ -582,7 +582,7 @@ pub fn get_dbl(x: Word) f64 {
     return r.real;
 }
 
-pub fn sto_dbl(R_val: f64) Word {
+pub fn stoDbl(R_val: f64) Word {
     if (!std.math.isFinite(R_val)) {
         fpeError(main_clib.SIGFPE);
     }
@@ -692,7 +692,7 @@ fn getStderr() ?*word.FILE {
 
 const fileMtime = r7_files.fileMtime;
 const unlinkObject = r7_files.unlinkObject;
-pub fn sto_id(p1: [*:0]const u8) Word {
+pub fn stoId(p1: [*:0]const u8) Word {
     return make(word.ID, cons(make(word.STRCONS, strtab.strBits(p1), word.NIL), word.undef_t), word.UNDEF);
 }
 
@@ -884,10 +884,6 @@ pub inline fn dval(d: Word) Word {
     return t(t(d));
 }
 
-fn get_id(x: Word) [*:0]const u8 {
-    return getId(x);
-}
-
 fn castPtr(val: Word) [*:0]const u8 {
     return strtab.strOf(val);
 }
@@ -947,11 +943,11 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         return;
     }
     if (tag_val == word.DOUBLE) {
-        outr(file, get_dbl(x));
+        outr(file, getDbl(x));
         return;
     }
     if (tag_val == word.ID) {
-        _ = word.fprint(file, "{s}", .{get_id(x)});
+        _ = word.fprint(file, "{s}", .{getId(x)});
         return;
     }
     if (word.fitsInByte(x)) {
@@ -1082,68 +1078,64 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
 const member = r7_types.member;
 const add1 = r7_types.add1;
 const name = r7_lex.name;
-fn get_fil(fil: Word) [*:0]const u8 {
+fn getFil(fil: Word) [*:0]const u8 {
     return castPtr(h(h(h(fil))));
 }
 
-pub fn fil_time(fil: Word) Word {
+pub fn filTime(fil: Word) Word {
     return t(h(h(fil)));
 }
 
-pub fn fil_share(fil: Word) Word {
+pub fn filShare(fil: Word) Word {
     return h(t(h(fil)));
 }
 
-pub fn fil_defs(fil: Word) Word {
+pub fn filDefs(fil: Word) Word {
     return t(fil);
 }
 
-pub fn make_fil(fil_name: ?[*:0]const u8, time_val: Word, share: Word, defs: Word) Word {
+pub fn makeFil(fil_name: ?[*:0]const u8, time_val: Word, share: Word, defs: Word) Word {
     const name_word = if (fil_name) |n| @as(Word, strtab.strBits(n)) else 0;
     return cons(cons(make(word.FILEINFO, name_word, time_val), cons(share, word.NIL)), defs);
 }
 
-fn get_pn(x: Word) Word {
+fn getPn(x: Word) Word {
     return h(x);
 }
 
-fn pn_val(x: Word) Word {
+fn pnVal(x: Word) Word {
     return t(x);
 }
 
-pub fn id_who(x: Word) Word {
-    return t(h(h(x)));
-}
-
-pub fn id_type(x: Word) Word {
+pub fn idType(x: Word) Word {
     return t(h(x));
 }
 
-pub fn id_val(x: Word) Word {
+pub fn idVal(x: Word) Word {
     return t(x);
 }
 
-fn id_who_ptr(x: Word) *Word {
+fn idWhoPtr(x: Word) *Word {
     return tp(h(h(x)));
 }
 
-fn id_type_ptr(x: Word) *Word {
+fn idTypePtr(x: Word) *Word {
     return tp(h(x));
 }
 
-fn id_val_ptr(x: Word) *Word {
+fn idValPtr(x: Word) *Word {
     return tp(x);
 }
 
-fn pn_val_ptr(x: Word) *Word {
+fn pnValPtr(x: Word) *Word {
     return tp(x);
 }
 
-pub fn t_class(x: Word) Word {
+pub fn tClass(x: Word) Word {
     return h(t(the_val(x)));
 }
 
-pub fn t_info(x: Word) Word {
+pub fn tInfo(x: Word) Word {
     return t(t(x));
 }
 
@@ -1202,17 +1194,17 @@ pub fn getint(file: ?*word.FILE) i32 {
 }
 
 pub fn putdbl(x: Word, file: ?*word.FILE) void {
-    var d = get_dbl(x);
+    var d = getDbl(x);
     _ = word.fwrite(&d, @sizeOf(f64), 1, file);
 }
 
 pub fn getdbl(file: ?*word.FILE) Word {
     var d: f64 = 0;
     _ = word.fread(&d, @sizeOf(f64), 1, file);
-    return sto_dbl(d);
+    return stoDbl(d);
 }
 
-pub fn dump_script(files_val: Word, file: ?*word.FILE) void {
+pub fn dumpScript(files_val: Word, file: ?*word.FILE) void {
     _ = word.putc(@intCast(wordsize), file);
     _ = word.putc(word.XVERSION, file);
 
@@ -1221,9 +1213,9 @@ pub fn dump_script(files_val: Word, file: ?*word.FILE) void {
         putword(core.s.errline, file);
         var x = rt.rs.oldfiles;
         while (x != word.NIL) : (x = t(x)) {
-            _ = word.fprint(file, "{s}", .{mkrel(get_fil(h(x)))});
+            _ = word.fprint(file, "{s}", .{mkrel(getFil(h(x)))});
             _ = word.putc(0, file);
-            putword(fil_time(h(x)), file);
+            putword(filTime(h(x)), file);
         }
         return;
     }
@@ -1235,35 +1227,35 @@ pub fn dump_script(files_val: Word, file: ?*word.FILE) void {
 
     var f_list = files_val;
     while (f_list != word.NIL) : (f_list = t(f_list)) {
-        heap.CFN = get_fil(h(f_list));
+        heap.CFN = getFil(h(f_list));
         _ = word.fprint(file, "{s}", .{mkrel(heap.CFN.?)});
         _ = word.putc(0, file);
-        putword(fil_time(h(f_list)), file);
-        _ = word.putc(@intCast(fil_share(h(f_list))), file);
-        dump_defs(fil_defs(h(f_list)), file);
+        putword(filTime(h(f_list)), file);
+        _ = word.putc(@intCast(filShare(h(f_list))), file);
+        dumpDefs(filDefs(h(f_list)), file);
     }
     _ = word.putc(0, file);
-    dump_defs(cs.algshfns, file);
+    dumpDefs(cs.algshfns, file);
     if (cs.ND == word.NIL and rt.rs.bereaved != word.NIL) {
-        dump_ob(word.True, file);
+        dumpOb(word.True, file);
     } else {
-        dump_ob(cs.ND, file);
+        dumpOb(cs.ND, file);
     }
     _ = word.putc(word.DEF_X, file);
-    dump_ob(cs.SGC, file);
+    dumpOb(cs.SGC, file);
     _ = word.putc(word.DEF_X, file);
-    dump_ob(rt.rs.freeids, file);
+    dumpOb(rt.rs.freeids, file);
     _ = word.putc(word.DEF_X, file);
-    dump_defs(dump.internals, file);
+    dumpDefs(dump.internals, file);
 }
 
-pub fn dump_defs(defs_val: Word, file: ?*word.FILE) void {
+pub fn dumpDefs(defs_val: Word, file: ?*word.FILE) void {
     var defs = defs_val;
     while (defs != word.NIL) : (defs = t(defs)) {
         const item = h(defs);
         if (heap.getTag(item) == word.STRCONS) {
-            const v = get_pn(item);
-            dump_ob(pn_val(item), file);
+            const v = getPn(item);
+            dumpOb(pnVal(item), file);
             if (v > bits_15) {
                 _ = word.putc(word.PN1_X, file);
                 putint(@intCast(v), file);
@@ -1274,11 +1266,11 @@ pub fn dump_defs(defs_val: Word, file: ?*word.FILE) void {
             }
             _ = word.putc(word.DEF_X, file);
         } else {
-            dump_ob(id_val(item), file);
-            dump_ob(id_type(item), file);
-            dump_ob(id_who(item), file);
+            dumpOb(idVal(item), file);
+            dumpOb(idType(item), file);
+            dumpOb(idWho(item), file);
             _ = word.putc(word.ID_X, file);
-            _ = word.fprint(file, "{s}", .{get_id(item)});
+            _ = word.fprint(file, "{s}", .{getId(item)});
             _ = word.putc(0, file);
             _ = word.putc(word.DEF_X, file);
         }
@@ -1286,7 +1278,7 @@ pub fn dump_defs(defs_val: Word, file: ?*word.FILE) void {
     _ = word.putc(word.DEF_X, file);
 }
 
-pub fn dump_ob(x: Word, file: ?*word.FILE) void {
+pub fn dumpOb(x: Word, file: ?*word.FILE) void {
     switch (heap.getTagEnum(x)) {
         .ATOM => {
             if (x < 128) {
@@ -1351,25 +1343,25 @@ pub fn dump_ob(x: Word, file: ?*word.FILE) void {
             line >>= 8;
             _ = word.putc(@intCast(line & 255), file);
             if (line > 255) {
-                std.debug.print("impossible line number {d} in dump_ob\n", .{t(x)});
+                std.debug.print("impossible line number {d} in dumpOb\n", .{t(x)});
             }
         },
         .CONSTRUCTOR => {
-            dump_ob(t(x), file);
+            dumpOb(t(x), file);
             _ = word.putc(word.CONSTRUCT_X, file);
             _ = word.putc(@intCast(h(x) & 255), file);
             _ = word.putc(@intCast(h(x) >> 8), file);
         },
         .STARTREADVALS => {
-            dump_ob(t(x), file);
+            dumpOb(t(x), file);
             _ = word.putc(word.RV_X, file);
         },
         .ID => {
-            _ = word.fprint(file, "{c}{s}", .{ @as(u8, @intCast(word.ID_X)), get_id(x) });
+            _ = word.fprint(file, "{c}{s}", .{ @as(u8, @intCast(word.ID_X)), getId(x) });
             _ = word.putc(0, file);
         },
         .STRCONS => {
-            const v = get_pn(x);
+            const v = getPn(x);
             if (v > bits_15) {
                 _ = word.putc(word.PN1_X, file);
                 putint(@intCast(v), file);
@@ -1380,22 +1372,22 @@ pub fn dump_ob(x: Word, file: ?*word.FILE) void {
             }
         },
         .AP => {
-            dump_ob(h(x), file);
-            dump_ob(t(x), file);
+            dumpOb(h(x), file);
+            dumpOb(t(x), file);
             _ = word.putc(word.AP_X, file);
         },
         .CONS => {
-            dump_ob(t(x), file);
-            dump_ob(h(x), file);
+            dumpOb(t(x), file);
+            dumpOb(h(x), file);
             _ = word.putc(word.CONS_X, file);
         },
         else => {
-            std.debug.print("impossible tag {d} in dump_ob\n", .{heap.getTag(x)});
+            std.debug.print("impossible tag {d} in dumpOb\n", .{heap.getTag(x)});
         },
     }
 }
 
-pub fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
+pub fn loadScript(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
     cs.TORPHANS = 0;
     cs.BAD_DUMP = 0;
     cs.CLASHES = word.NIL;
@@ -1411,11 +1403,11 @@ pub fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params:
         while (a != word.NIL) : (a = t(a)) {
             const old = t(h(a));
             const new_id = h(h(a));
-            const hold = cons(id_who(old), cons(id_type(old), id_val(old)));
-            id_type_ptr(old).* = word.alias_t;
-            id_val_ptr(old).* = new_id;
+            const hold = cons(idWho(old), cons(idType(old), idVal(old)));
+            idTypePtr(old).* = word.alias_t;
+            idValPtr(old).* = new_id;
             if (heap.getTag(new_id) == word.ID) {
-                if ((id_type(new_id) != word.undef_t or id_val(new_id) != word.UNDEF) and id_type(new_id) != word.alias_t) {
+                if ((idType(new_id) != word.undef_t or idVal(new_id) != word.UNDEF) and idType(new_id) != word.alias_t) {
                     cs.CLASHES = add1(new_id, cs.CLASHES);
                 }
             }
@@ -1428,10 +1420,10 @@ pub fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params:
         }
         a = aliases;
         while (a != word.NIL) : (a = t(a)) {
-            const ch = id_val(t(h(a)));
+            const ch = idVal(t(h(a)));
             if (heap.getTag(ch) == word.ID) {
-                if (id_type(ch) != word.alias_t) {
-                    id_type_ptr(ch).* = word.new_t;
+                if (idType(ch) != word.alias_t) {
+                    idTypePtr(ch).* = word.new_t;
                 }
             }
         }
@@ -1481,8 +1473,8 @@ pub fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params:
                 return word.NIL;
             }
         }
-        heap.CFN = get_id(name());
-        files_list = cons(make_fil(heap.CFN, ch, s, load_defs(file)), files_list);
+        heap.CFN = getId(name());
+        files_list = cons(makeFil(heap.CFN, ch, s, loadDefs(file)), files_list);
         ch = main_clib.getc(file);
     }
     if (ch == main_clib.EOF or cs.BAD_DUMP != 0) {
@@ -1532,30 +1524,30 @@ pub fn load_script(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params:
                     return word.NIL;
                 }
             }
-            rt.rs.oldfiles = cons(make_fil(get_id(name()), ch, 0, word.NIL), rt.rs.oldfiles);
+            rt.rs.oldfiles = cons(makeFil(getId(name()), ch, 0, word.NIL), rt.rs.oldfiles);
         }
         if (aliases != word.NIL) {
             unscramble(aliases);
         }
         return word.NIL;
     }
-    cs.algshfns = append1(cs.algshfns, load_defs(file));
-    cs.ND = load_defs(file);
+    cs.algshfns = append1(cs.algshfns, loadDefs(file));
+    cs.ND = loadDefs(file);
     if (cs.ND == word.True) {
         cs.ND = word.NIL;
         cs.TORPHANS = 1;
     }
-    cs.SGC = append1(cs.SGC, load_defs(file));
+    cs.SGC = append1(cs.SGC, loadDefs(file));
     if (main_flag != 0 or rt.rs.includees == word.NIL) {
-        rt.rs.freeids = load_defs(file);
+        rt.rs.freeids = loadDefs(file);
     } else {
-        bindparams(load_defs(file), hdsort(params));
+        bindparams(loadDefs(file), hdsort(params));
     }
     if (aliases != word.NIL) {
         unscramble(aliases);
     }
     if (main_flag != 0) {
-        dump.internals = load_defs(file);
+        dump.internals = loadDefs(file);
     }
     return reverse(files_list);
 }
@@ -1574,7 +1566,7 @@ pub fn bindparams(formal_val: Word, actual_val: Word) void {
         while (formal != word.NIL and (actual == word.NIL or blk: {
             f = castPtr(h(h(t(h(formal)))));
             a = h(h(actual));
-            break :blk main_clib.strcmp(f, get_id(a)) < 0;
+            break :blk main_clib.strcmp(f, getId(a)) < 0;
         })) {
             cs.MISSING = cons(h(t(h(formal))), cs.MISSING);
             formal = t(formal);
@@ -1582,7 +1574,7 @@ pub fn bindparams(formal_val: Word, actual_val: Word) void {
         if (actual == word.NIL) {
             break;
         }
-        if (formal == word.NIL or main_clib.strcmp(f, get_id(a)) != 0) {
+        if (formal == word.NIL or main_clib.strcmp(f, getId(a)) != 0) {
             cs.DETROP = cons(a, cs.DETROP);
         } else {
             const fa = if (t(t(h(formal))) == word.type_t) t_arity(h(h(formal))) else -1;
@@ -1590,7 +1582,7 @@ pub fn bindparams(formal_val: Word, actual_val: Word) void {
             if (fa != ta) {
                 badkind = cons(cons(h(h(actual)), datapair(fa, ta)), badkind);
             }
-            id_val_ptr(h(h(formal))).* = t(h(actual));
+            idValPtr(h(h(formal))).* = t(h(actual));
             formal = t(formal);
         }
         actual = t(actual);
@@ -1607,12 +1599,12 @@ pub fn unscramble(aliases: Word) void {
     while (a != word.NIL) : (a = t(a)) {
         const old = t(h(a));
         var hold = h(h(a));
-        const new_id = id_val(old);
+        const new_id = idVal(old);
         hp(h(a)).* = new_id;
-        id_who_ptr(old).* = h(hold);
+        idWhoPtr(old).* = h(hold);
         hold = t(hold);
-        id_type_ptr(old).* = h(hold);
-        id_val_ptr(old).* = t(hold);
+        idTypePtr(old).* = h(hold);
+        idValPtr(old).* = t(hold);
     }
     var al = cs.ALIASES;
     a = word.NIL;
@@ -1625,14 +1617,14 @@ pub fn unscramble(aliases: Word) void {
             }
             continue;
         }
-        if (id_type(new_id) == word.new_t) {
-            id_type_ptr(new_id).* = word.undef_t;
+        if (idType(new_id) == word.new_t) {
+            idTypePtr(new_id).* = word.undef_t;
         }
-        if (id_type(new_id) == word.undef_t) {
+        if (idType(new_id) == word.undef_t) {
             a = cons(old, a);
         } else if (member(cs.CLASHES, new_id) == 0) {
-            if (heap.getTag(id_who(new_id)) != word.CONS) {
-                id_who_ptr(new_id).* = cons(datapair(strtab.strBits(get_id(old)), 0), id_who(new_id));
+            if (heap.getTag(idWho(new_id)) != word.CONS) {
+                idWhoPtr(new_id).* = cons(datapair(strtab.strBits(getId(old)), 0), idWho(new_id));
             }
         }
     }
@@ -1661,7 +1653,7 @@ pub fn dgrow() void {
     heap.allocated_dstack_size = new_size;
 }
 
-pub fn load_defs(file: ?*word.FILE) Word {
+pub fn loadDefs(file: ?*word.FILE) Word {
     var ch = main_clib.getc(file);
     var defs: Word = word.NIL;
     while (ch != main_clib.EOF) {
@@ -1733,11 +1725,11 @@ pub fn load_defs(file: ?*word.FILE) Word {
                 }
                 stackpPush(name());
                 const top = stackpTop();
-                if (id_type(top) == word.new_t) {
+                if (idType(top) == word.new_t) {
                     cs.CLASHES = add1(top, cs.CLASHES);
                     stackpSetTop(word.NIL);
-                } else if (id_type(top) == word.alias_t) {
-                    stackpSetTop(id_val(top));
+                } else if (idType(top) == word.alias_t) {
+                    stackpSetTop(idVal(top));
                 }
             },
             word.AKA_X => {
@@ -1753,7 +1745,7 @@ pub fn load_defs(file: ?*word.FILE) Word {
                 if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
                     r7_lex.dicovflo();
                 }
-                stackpPush(datapair(strtab.strBits(get_id(name())), 0));
+                stackpPush(datapair(strtab.strBits(getId(name())), 0));
             },
             word.HERE_X => {
                 ls.dicq = ls.dicp;
@@ -1782,7 +1774,7 @@ pub fn load_defs(file: ?*word.FILE) Word {
                     }
                     var line = main_clib.getc(file);
                     line = line | (main_clib.getc(file) << 8);
-                    stackpPush(fileinfo(strtab.strBits(get_id(name())), line));
+                    stackpPush(fileinfo(strtab.strBits(getId(name())), line));
                 }
             },
             word.DEF_X => {
@@ -1796,7 +1788,7 @@ pub fn load_defs(file: ?*word.FILE) Word {
                     },
                     2 => {
                         const ch_val = stackpPop();
-                        pn_val_ptr(ch_val).* = stackpPop();
+                        pnValPtr(ch_val).* = stackpPop();
                         defs = cons(ch_val, defs);
                     },
                     4 => {
@@ -1813,38 +1805,38 @@ pub fn load_defs(file: ?*word.FILE) Word {
                             const who_val = stackpTop();
                             const akap = if (heap.getTag(who_val) == word.CONS) h(who_val) else word.NIL;
                             const type_val = stackpPop(); // type
-                            pn_val_ptr(ch_val).* = stackpPop();
+                            pnValPtr(ch_val).* = stackpPop();
 
-                            if (type_val == word.type_t and t_class(ch_val) != word.synonym_t) {
+                            if (type_val == word.type_t and tClass(ch_val) != word.synonym_t) {
                                 var a = cs.ALIASES;
-                                while (a != word.NIL and id_val(t(h(a))) != ch_val) : (a = t(a)) {}
+                                while (a != word.NIL and idVal(t(h(a))) != ch_val) : (a = t(a)) {}
                                 if (a != word.NIL) {
                                     cs.TSUPPRESSED = cons(t(h(a)), cs.TSUPPRESSED);
                                 }
-                            } else if (pn_val(ch_val) == word.UNDEF) {
+                            } else if (pnVal(ch_val) == word.UNDEF) {
                                 var akap_val = akap;
                                 if (akap_val == word.NIL) {
                                     var a = cs.ALIASES;
                                     while (a != word.NIL) : (a = t(a)) {
-                                        if (id_val(t(h(a))) == ch_val) {
-                                            akap_val = datapair(strtab.strBits(get_id(t(h(a)))), 0);
+                                        if (idVal(t(h(a))) == ch_val) {
+                                            akap_val = datapair(strtab.strBits(getId(t(h(a)))), 0);
                                             break;
                                         }
                                     }
                                 }
-                                pn_val_ptr(ch_val).* = ap(akap_val, fileinfo(strtab.strBits(heap.CFN.?), 0));
+                                pnValPtr(ch_val).* = ap(akap_val, fileinfo(strtab.strBits(heap.CFN.?), 0));
                             }
                             defs = cons(ch_val, defs);
                             ch = main_clib.getc(file);
                             continue;
                         }
                         const top_val = stackpTop();
-                        if (id_type(top_val) != word.new_t and (id_type(top_val) != word.undef_t or id_val(top_val) != word.UNDEF)) {
-                            if (id_type(top_val) == word.alias_t) {
+                        if (idType(top_val) != word.new_t and (idType(top_val) != word.undef_t or idVal(top_val) != word.UNDEF)) {
+                            if (idType(top_val) == word.alias_t) {
                                 var a = cs.ALIASES;
                                 while (a != word.NIL and t(h(a)) != top_val) : (a = t(a)) {}
                                 if (a == word.NIL) {
-                                    std.debug.print("impossible event in cyclic alias ({s})\n", .{get_id(top_val)});
+                                    std.debug.print("impossible event in cyclic alias ({s})\n", .{getId(top_val)});
                                     heap.stackp = heap.stackp.? - 4;
                                     ch = main_clib.getc(file);
                                     continue;
@@ -1860,13 +1852,13 @@ pub fn load_defs(file: ?*word.FILE) Word {
                             heap.stackp = heap.stackp.? - 4;
                         } else {
                             defs = cons(stackpPop(), defs);
-                            id_who_ptr(h(defs)).* = stackpPop();
-                            id_type_ptr(h(defs)).* = stackpPop();
-                            id_val_ptr(h(defs)).* = stackpPop();
+                            idWhoPtr(h(defs)).* = stackpPop();
+                            idTypePtr(h(defs)).* = stackpPop();
+                            idValPtr(h(defs)).* = stackpPop();
                         }
                     },
                     else => {
-                        std.debug.print("unexpected stack diff in load_defs\n", .{});
+                        std.debug.print("unexpected stack diff in loadDefs\n", .{});
                     },
                 }
             },
@@ -1896,13 +1888,13 @@ pub fn load_defs(file: ?*word.FILE) Word {
 }
 
 // Relocated heap/node domain metadata accessors and lifecycle utilities
-pub fn fil_inodev(fil: Word) Word {
+pub fn filInodev(fil: Word) Word {
     return t(t(h(fil)));
 }
 
 pub fn sameFile(x: Word, y: Word) bool {
-    const ix = fil_inodev(x);
-    const iy = fil_inodev(y);
+    const ix = filInodev(x);
+    const iy = filInodev(y);
     return h(ix) == h(iy) and t(ix) == t(iy);
 }
 
@@ -1911,7 +1903,7 @@ pub fn badval(x: Word) bool {
 }
 
 pub fn isfreeid(x: Word) bool {
-    return id_type(x) == word.undef_t and id_val(x) == word.UNDEF;
+    return idType(x) == word.undef_t and idVal(x) == word.UNDEF;
 }
 
 const isconstrname = r7_lex.isconstrname;
@@ -2057,12 +2049,12 @@ pub fn unload() void {
     rt.rs.ld_stuff = NIL;
 }
 
-pub fn src_update() c_int {
+pub fn srcUpdate() c_int {
     var ft: Word = undefined;
     var f = if (heap.files == NIL) rt.rs.oldfiles else heap.files;
     while (f != NIL) {
         const _fil_path: [*:0]const u8 = strtab.strOf(h(h(h(h(f)))));
-        if ((fileMtime(_fil_path)) != fil_time(h(f))) {
+        if ((fileMtime(_fil_path)) != filTime(h(f))) {
             ft = fileMtime(_fil_path);
             if (ft == 0) {
                 unlinkObject(_fil_path);
@@ -2080,25 +2072,25 @@ pub fn src_update() c_int {
 // call the procedural accessors. New code should prefer the method style.
 
 /// A heap node that represents a loaded Miranda source file.
-/// Created by `make_fil()`; its structure is `(FILEINFO name mtime) . defs`.
+/// Created by `makeFil()`; its structure is `(FILEINFO name mtime) . defs`.
 pub const FileNode = struct {
     word: Word,
 
     /// The modification time recorded in the heap for this file (seconds since epoch).
     pub fn time(self: FileNode) Word {
-        return fil_time(self.word);
+        return filTime(self.word);
     }
     /// Share flag: 1 for system/shared files (prelude, stdlib), 0 for user scripts.
     pub fn share(self: FileNode) Word {
-        return fil_share(self.word);
+        return filShare(self.word);
     }
     /// The definitions list (environment entries compiled from this file).
     pub fn defs(self: FileNode) Word {
-        return fil_defs(self.word);
+        return filDefs(self.word);
     }
     /// A `(dev . ino)` cons cell identifying this file's filesystem inode.
     pub fn inodeId(self: FileNode) Word {
-        return fil_inodev(self.word);
+        return filInodev(self.word);
     }
     /// True if this file and `other` refer to the same filesystem inode.
     pub fn sameAs(self: FileNode, other: FileNode) bool {
@@ -2113,15 +2105,15 @@ pub const Identifier = struct {
 
     /// The declared type of this identifier (a type node Word).
     pub fn typ(self: Identifier) Word {
-        return id_type(self.word);
+        return idType(self.word);
     }
     /// The current reduction value of this identifier (combinator or UNDEF).
     pub fn val(self: Identifier) Word {
-        return id_val(self.word);
+        return idVal(self.word);
     }
     /// Provenance: a cons list of datapairs recording where this name was defined.
     pub fn who(self: Identifier) Word {
-        return id_who(self.word);
+        return idWho(self.word);
     }
     /// True if this identifier names a constructor (starts with upper-case or is an operator).
     pub fn isConstructor(self: Identifier) bool {
@@ -2148,11 +2140,11 @@ pub const TypeRef = struct {
 
     /// The type class tag (e.g. `c_abi.synonym_t`, `algebraic_t`, `abstract_t`).
     pub fn class(self: TypeRef) Word {
-        return t_class(self.word);
+        return tClass(self.word);
     }
     /// Auxiliary info: parameter list for synonyms, constructor list for algebraics.
     pub fn info(self: TypeRef) Word {
-        return t_info(self.word);
+        return tInfo(self.word);
     }
 };
 
@@ -2182,9 +2174,9 @@ test "domain type methods are callable at comptime (signature check)" {
     try std.testing.expect(TypeRefClassFn == fn (TypeRef) Word);
 }
 
-test "sto_char returns atoms for Latin-1 values" {
-    try std.testing.expectEqual(@as(Word, 65), sto_char(65));
-    try std.testing.expectEqual(@as(c_int, 1), is_char(65));
+test "stoChar returns atoms for Latin-1 values" {
+    try std.testing.expectEqual(@as(Word, 65), stoChar(65));
+    try std.testing.expectEqual(@as(c_int, 1), isChar(65));
 }
 
 test "heap dump roundtrip" {
@@ -2204,16 +2196,16 @@ test "heap dump roundtrip" {
     try std.testing.expect(f_write != null);
     
     // 4. Dump the object structure
-    dump_ob(list, f_write);
+    dumpOb(list, f_write);
     _ = word.fclose(f_write.?);
     
     // 5. Open the temp file for reading
     const f_read = word.fopen(filename, "r");
     try std.testing.expect(f_read != null);
     
-    // 6. Load it back using load_defs (which pushes it onto stackp)
+    // 6. Load it back using loadDefs (which pushes it onto stackp)
     const old_stackp = heap.stackp;
-    _ = load_defs(f_read);
+    _ = loadDefs(f_read);
     _ = word.fclose(f_read.?);
     
     // Clean up temp file

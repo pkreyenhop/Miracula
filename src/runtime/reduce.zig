@@ -49,7 +49,7 @@ pub const EvalState = struct {
 
 pub const ev = &@import("interp.zig").interp.eval;
 
-const sto_char = heap.sto_char;
+const stoChar = heap.stoChar;
 extern fn fromUTF8(f: ?*word.FILE) Word;
 const parseLine = r7_repl.parseLine;
 const reduce = r7_reduce.reduce;
@@ -99,7 +99,7 @@ inline fn force_dbl(x: Word) f64 {
     if (getTag(x) == word.INT) {
         return big.toFloat(x);
     } else {
-        return heap.get_dbl(x);
+        return heap.getDbl(x);
     }
 }
 
@@ -309,7 +309,7 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
                 ev.stdinuse = '-';
                 tp(ctx.e).* = @as(Word, @intCast(@intFromPtr(getStdin().?)));
             }
-            const hold_char = if (main.rs.UTF8 != 0) sto_char(fromUTF8(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))))) else main_clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
+            const hold_char = if (main.rs.UTF8 != 0) stoChar(fromUTF8(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))))) else main_clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
             if (hold_char == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
                 rewrite_to_nil(&ctx.e);
@@ -475,10 +475,10 @@ pub fn intError(s: [*:0]const u8) void {
 /// Add `x + y`, promoting to `f64` if either is a `DOUBLE`, else bignum add.
 pub fn numplus(x: Word, y: Word) Word {
     if (getTag(x) == word.DOUBLE) {
-        return heap.sto_dbl(heap.get_dbl(x) + force_dbl(y));
+        return heap.stoDbl(heap.getDbl(x) + force_dbl(y));
     }
     if (getTag(y) == word.DOUBLE) {
-        return heap.sto_dbl(big.toFloat(x) + heap.get_dbl(y));
+        return heap.stoDbl(big.toFloat(x) + heap.getDbl(y));
     }
     return big.add(x, y);
 }
@@ -558,24 +558,24 @@ pub fn compare(arg_a: Word, arg_b: Word) c_int {
         switch (tag_a) {
             word.DOUBLE => {
                 if (tag_b == word.DOUBLE) {
-                    return fsign(heap.get_dbl(a) - heap.get_dbl(b));
+                    return fsign(heap.getDbl(a) - heap.getDbl(b));
                 } else {
-                    return fsign(heap.get_dbl(a) - big.toFloat(b));
+                    return fsign(heap.getDbl(a) - big.toFloat(b));
                 }
             },
             word.INT => {
                 if (tag_b == word.INT) {
                     return big.cmp(a, b);
                 } else {
-                    return fsign(big.toFloat(a) - heap.get_dbl(b));
+                    return fsign(big.toFloat(a) - heap.getDbl(b));
                 }
             },
             word.UNICODE => {
-                return sign(heap.get_char(a) - heap.get_char(b));
+                return sign(heap.getChar(a) - heap.getChar(b));
             },
             word.ATOM => {
                 if (tag_b == word.UNICODE) {
-                    return sign(heap.get_char(a) - heap.get_char(b));
+                    return sign(heap.getChar(a) - heap.getChar(b));
                 }
                 if ((word.S <= a and a <= word.ERROR) or (word.S <= b and b <= word.ERROR)) {
                     fnError("attempt to compare functions");
@@ -720,10 +720,10 @@ pub fn print(arg_e: Word) void {
     var e = reduce(arg_e);
     while (getTag(e) == word.CONS) {
         hp(e).* = reduce(h(e));
-        if (heap.is_char(h(e)) == 0) {
+        if (heap.isChar(h(e)) == 0) {
             break;
         }
-        const c = @as(u32, @intCast(heap.get_char(h(e))));
+        const c = @as(u32, @intCast(heap.getChar(h(e))));
         if (main.rs.UTF8 != 0) {
             main_clib.outUTF8(c, ev.s_out);
         } else if (word.fitsInByte(c)) {

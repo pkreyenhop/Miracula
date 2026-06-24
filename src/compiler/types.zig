@@ -162,11 +162,11 @@ const genshfns = trans_mod.genshfns;
 const alfasort = main.heap.alfasort;
 const readoption = main.readoption;
 const out = main.heap.out;
-const is_char = main.heap.is_char;
+const isChar = main.heap.isChar;
 const charname = main.heap.charname;
 const size = main.heap.size;
 const same = trans_mod.same;
-const get_dbl = main.heap.get_dbl;
+const getDbl = main.heap.getDbl;
 const lastlink = trans_mod.lastlink;
 const trans_mod = @import("trans.zig");
 const lex_mod = @import("../parser/lex.zig");
@@ -464,10 +464,10 @@ fn isvar_t(type_node: Word) bool {
 fn t_arity(x: Word) Word {
     return h(h(t(x)));
 }
-fn t_class(x: Word) Word {
+fn tClass(x: Word) Word {
     return h(t(t(x)));
 }
-fn t_info(x: Word) Word {
+fn tInfo(x: Word) Word {
     return t(t(t(x)));
 }
 fn t_showfn(x: Word) Word {
@@ -566,7 +566,7 @@ fn metaTcheck(t_val: Word) main.MiraError!Word {
         }
     }
 
-    if (t_class(tn) != synonym_t) {
+    if (tClass(tn) != synonym_t) {
         return t_val;
     }
     if (member(cs.meta_pending, tn) != 0) {
@@ -590,7 +590,7 @@ fn metaTcheck(t_val: Word) main.MiraError!Word {
         tn = cons(t(cur_t), tn);
         cur_t = h(cur_t);
     }
-    const res = try metaTcheck(ap_subst(t_info(cur_t), tn));
+    const res = try metaTcheck(ap_subst(tInfo(cur_t), tn));
     cs.meta_pending = t(cs.meta_pending);
     return res;
 }
@@ -1053,10 +1053,10 @@ pub fn out_type2(t_val: Word) void {
                     const pn_val_node = pn_val(t_val);
                     if (getTag(pn_val_node) == ID) {
                         _ = word.print("{s}", .{getId(pn_val_node)});
-                    } else if (std.mem.eql(u8, std.mem.span(strtab.strOf(h(t(t_info(t_val))))), std.mem.span(main.rs.current_script.?))) {
-                        _ = word.print("{s}", .{strtab.strOf(h(h(t_info(t_val))))});
+                    } else if (std.mem.eql(u8, std.mem.span(strtab.strOf(h(t(tInfo(t_val))))), std.mem.span(main.rs.current_script.?))) {
+                        _ = word.print("{s}", .{strtab.strOf(h(h(tInfo(t_val))))});
                     } else {
-                        _ = word.print("`{s}@{s}'", .{ strtab.strOf(h(h(t_info(t_val)))), strtab.strOf(h(t(t_info(t_val)))) });
+                        _ = word.print("`{s}@{s}'", .{ strtab.strOf(h(h(tInfo(t_val)))), strtab.strOf(h(t(tInfo(t_val)))) });
                     }
                 } else {
                     _ = word.print("<BADLY FORMED TYPE:{d},{d},{d}>", .{ getTag(t_val), h(t_val), t(t_val) });
@@ -1099,7 +1099,7 @@ pub fn tail(x_in: Word) Word {
     var x = x_in;
     allchars = 1;
     while (getTag(x) == CONS) {
-        const char_res = is_char(h(x));
+        const char_res = isChar(h(x));
         allchars = if (char_res != 0) allchars & 1 else 0;
         x = t(x);
     }
@@ -1147,7 +1147,7 @@ pub fn out_formal1(f: *word.FILE, x_in: Word) void {
         _ = (f).print(",", .{});
         out_pattern(f, t(x));
         _ = (f).print(")", .{});
-    } else if ((getTag(x) == INT and neg(x) != 0) or (getTag(x) == DOUBLE and get_dbl(x) < 0)) {
+    } else if ((getTag(x) == INT and neg(x) != 0) or (getTag(x) == DOUBLE and getDbl(x) < 0)) {
         _ = (f).print("(", .{});
         out(f, x);
         _ = (f).print(")", .{});
@@ -1284,9 +1284,9 @@ fn compDeps(n: Word) main.MiraError!void {
     var rhs = NIL;
     var r: Word = 0;
     if (idType(n) == type_t) {
-        switch (t_class(n)) {
+        switch (tClass(n)) {
             algebraic_t => {
-                r = t_info(n);
+                r = tInfo(n);
                 while (r != NIL) {
                     cs.current_id = h(r);
                     tp(h(h(r))).* = redtvars(try metaTcheck(idType(h(r))));
@@ -1295,16 +1295,16 @@ fn compDeps(n: Word) main.MiraError!void {
             },
             synonym_t => {
                 cs.current_id = n;
-                tp(t(t(n))).* = try metaTcheck(t_info(n));
+                tp(t(t(n))).* = try metaTcheck(tInfo(n));
             },
             abstract_t => {
-                if (t_info(n) == undef_t) {
+                if (tInfo(n) == undef_t) {
                     _ = word.print("error: script contains no binding for abstract typename \"{s}\"\n", .{getId(n)});
                     sayhere(idWho(n), 1);
                     cs.TYPERRS += 1;
                 } else {
                     cs.current_id = n;
-                    tp(t(t(n))).* = try metaTcheck(t_info(n));
+                    tp(t(t(n))).* = try metaTcheck(tInfo(n));
                 }
             },
             else => {},
@@ -1386,10 +1386,6 @@ pub fn printlist(title: [*:0]const u8, l_in: Word) void {
     _ = word.print(";\n", .{});
 }
 
-fn id_who(x: Word) Word {
-    return t(h(h(x)));
-}
-
 fn the_val(x: Word) Word {
     return t(x);
 }
@@ -1411,7 +1407,7 @@ pub fn cyclic_abstr(atnames: Word) Word {
     var x = atnames;
     var y = NIL;
     while (x != NIL) {
-        y = ap(y, t_info(h(x)));
+        y = ap(y, tInfo(h(x)));
         x = t(x);
     }
     x = atnames;
@@ -1420,7 +1416,7 @@ pub fn cyclic_abstr(atnames: Word) Word {
             _ = word.print("illegal type abstraction: cycle in \"==\" binding{s} ", .{if (t(atnames) == NIL) @as([*:0]const u8, "") else @as([*:0]const u8, "s")});
             printelement(atnames);
             _ = word.putchar('\n');
-            sayhere(id_who(h(x)), 1);
+            sayhere(idWho(h(x)), 1);
             cs.TYPERRS += 1;
             return 1;
         }
@@ -1454,7 +1450,7 @@ pub fn rep_t1(T: Word, L: Word) Word {
         t1 = h(t1);
     }
     if (member(L, t1) != 0) {
-        return ap_subst(t_info(t1), args);
+        return ap_subst(tInfo(t1), args);
     }
     if (!changed) {
         return T;
@@ -1510,7 +1506,7 @@ fn abstrCheck(x_in: Word) main.MiraError!void {
             _ = word.print("\ntype expected: ", .{});
             out_type(idType(h(x)));
             _ = word.putchar('\n');
-            sayhere(id_who(h(x)), 1);
+            sayhere(idWho(h(x)), 1);
         }
         if (cs.TYPERRS > oldte) {
             tp(h(h(x))).* = wrong_t;
@@ -1573,7 +1569,7 @@ fn mcheckfbs() main.MiraError!void {
                 continue;
             }
             cs.current_id = h(t(h(formals))); // nb datapair(orig,0) not id
-            tp(t(t(h(h(formals))))).* = try metaTcheck(t_info(h(h(formals))));
+            tp(t(t(h(h(formals))))).* = try metaTcheck(tInfo(h(h(formals))));
             cs.current_id = 0;
             formals = t(formals);
         }
@@ -1604,8 +1600,8 @@ fn mcheckfbs() main.MiraError!void {
             n = h(formals);
             if (getTag(n) == ID) {
                 if (idType(n) == type_t) {
-                    if (t_class(n) == synonym_t) {
-                        tp(t(t(n))).* = try metaTcheck(t_info(n));
+                    if (tClass(n) == synonym_t) {
+                        tp(t(t(n))).* = try metaTcheck(tInfo(n));
                     }
                 } else {
                     tp(h(n)).* = redtvars(try metaTcheck(idType(n)));
@@ -2483,7 +2479,7 @@ pub fn genbnft() void {
     const bnftokenstate = findid("bnftokenstate");
     if (bnftokenstate != NIL and idType(bnftokenstate) == type_t) {
         if (t_arity(bnftokenstate) == 0) {
-            cs.bnf_t = if (t_class(bnftokenstate) == synonym_t) t_info(bnftokenstate) else bnftokenstate;
+            cs.bnf_t = if (tClass(bnftokenstate) == synonym_t) tInfo(bnftokenstate) else bnftokenstate;
         } else {
             _ = word.print("warning - bnftokenstate has arity>0 (ignored by parser)\n", .{});
             cs.bnf_t = void_t;

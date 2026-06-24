@@ -278,13 +278,13 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     heap.heap.files = NIL;
     main.undump(@as([*:0]const u8, @ptrCast(&main.rs.PRELUDE)));
     main.rs.okprel = true;
-    abi.mkprivate(main.fil_defs(main.heap.h(heap.heap.files)));
+    abi.mkprivate(main.filDefs(main.heap.h(heap.heap.files)));
     heap.heap.files = NIL;
 
     if (!main.rs.nostdenv) {
         main.undump(@as([*:0]const u8, @ptrCast(&main.rs.STDENV)));
         while (heap.heap.files != NIL) {
-            main.rs.primenv = main.alfasort(abi.append1(main.rs.primenv, main.fil_defs(main.heap.h(heap.heap.files))));
+            main.rs.primenv = main.alfasort(abi.append1(main.rs.primenv, main.filDefs(main.heap.h(heap.heap.files))));
             heap.heap.files = main.heap.t(heap.heap.files);
         }
         main.rs.primenv = main.alfasort(main.rs.primenv);
@@ -322,7 +322,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
             } else {
                 var f = heap.heap.files;
                 while (f != NIL) : (f = main.heap.t(f)) {
-                    x = abi.append1(main.fil_defs(main.heap.h(f)), x);
+                    x = abi.append1(main.filDefs(main.heap.h(f)), x);
                 }
             }
 
@@ -466,7 +466,7 @@ pub fn readRc(rcfile: [*:0]const u8) Word {
     f = word.fopen(rcfile, "r");
     if (f == null) return 0;
     core_state.s.loading = 1;
-    res = abi.load_script(f.?, @constCast(rcfile), NIL, NIL, 0);
+    res = abi.loadScript(f.?, @constCast(rcfile), NIL, NIL, 0);
     _ = word.fclose(f.?);
     if (main.cs.BAD_DUMP != 0) {
         main.unload();
@@ -480,17 +480,17 @@ pub fn readRc(rcfile: [*:0]const u8) Word {
         core_state.s.loading = 0;
         return 0;
     }
-    if (main.src_update() != 0) {
+    if (main.srcUpdate() != 0) {
         main.loadfile(rcfile);
     }
     core_state.s.loading = 0;
     if (main.cs.ND != NIL or heap.heap.files == NIL) return 0;
-    x = main.fil_defs(h(heap.heap.files));
+    x = main.filDefs(h(heap.heap.files));
     while (x != NIL) : (x = t(x)) {
-        if (main.id_type(h(x)) == word.synonym_t) {
-            main.heap.tp(main.t_info(h(x))).* = main.dump.fixtype(main.t_info(h(x)), h(x));
+        if (main.idType(h(x)) == word.synonym_t) {
+            main.heap.tp(main.tInfo(h(x))).* = main.dump.fixtype(main.tInfo(h(x)), h(x));
         } else {
-            main.heap.tp(h(h(x))).* = main.dump.fixtype(main.id_type(h(x)), h(x));
+            main.heap.tp(h(h(x))).* = main.dump.fixtype(main.idType(h(x)), h(x));
         }
     }
     return 1;
@@ -504,7 +504,7 @@ pub fn writeRc() void {
     f = word.fopen(&main.rs.home_rc, "w");
     if (f == null) return;
     abi.setprefix(@ptrCast(&main.rs.home_rc));
-    abi.dump_script(heap.heap.files, f.?);
+    abi.dumpScript(heap.heap.files, f.?);
     _ = word.fclose(f.?);
 }
 

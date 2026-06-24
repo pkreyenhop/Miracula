@@ -185,7 +185,7 @@ pub inline fn is_strcons(x: Word) bool {
 pub inline fn is_id(x: Word) bool {
     return !abnormal(x) and getTag(x) == word.ID;
 }
-pub inline fn id_val(x: Word) Word {
+pub inline fn idVal(x: Word) Word {
     return tl_get(x);
 }
 pub inline fn is_datapair(x: Word) bool {
@@ -328,13 +328,13 @@ pub inline fn force_dbl(x: Word) f64 {
     if (is_int(x)) {
         return big.toFloat(x);
     } else {
-        return heap.get_dbl(x);
+        return heap.getDbl(x);
     }
 }
 
 pub inline fn coerce_dbl(x: Word) Word {
     if (is_double(x)) return x;
-    return heap.sto_dbl(big.toFloat(x));
+    return heap.stoDbl(big.toFloat(x));
 }
 
 pub inline fn rewrite_to_compare_eq(expr: *Word, left: Word, right: Word) void {

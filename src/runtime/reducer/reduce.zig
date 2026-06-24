@@ -213,12 +213,12 @@ pub fn reduce(e_val: Word) Word {
                     },
                     // A defined name: substitute its value and re-examine.
                     word.ID => {
-                        if (id_val(ctx.e) == word.UNDEF or id_val(ctx.e) == word.FREE) {
+                        if (idVal(ctx.e) == word.UNDEF or idVal(ctx.e) == word.FREE) {
                             word.printErr("\nUNDEFINED NAME - {s}\n", .{get_id(ctx.e)});
                             r7_reduce.outstats();
                             main_clib.exit(1);
                         }
-                        ctx.e = id_val(ctx.e);
+                        ctx.e = idVal(ctx.e);
                         ctx.action = word.ACT_NEXTREDEX;
                     },
                     // A saturated constructor application is already WHNF: pop
@@ -428,7 +428,7 @@ pub inline fn is_strcons(x: Word) bool {
 pub inline fn is_id(x: Word) bool {
     return !abnormal(x) and getTag(x) == word.ID;
 }
-pub inline fn id_val(x: Word) Word {
+pub inline fn idVal(x: Word) Word {
     return tl_get(x);
 }
 pub inline fn is_datapair(x: Word) bool {
@@ -582,13 +582,13 @@ pub inline fn force_dbl(x: Word) f64 {
     if (is_int(x)) {
         return big.toFloat(x);
     } else {
-        return heap.get_dbl(x);
+        return heap.getDbl(x);
     }
 }
 
 pub inline fn coerce_dbl(x: Word) Word {
     if (is_double(x)) return x;
-    return heap.sto_dbl(big.toFloat(x));
+    return heap.stoDbl(big.toFloat(x));
 }
 
 pub inline fn rewrite_to_compare_eq(expr: *Word, left: Word, right: Word) void {

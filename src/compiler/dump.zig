@@ -45,7 +45,7 @@ pub fn fixexports() void {
         }
         f = t(heap.heap.files);
         while (f != NIL) : (f = t(f)) {
-            var e_def = main.fil_defs(h(f));
+            var e_def = main.filDefs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
                 if (getTag(h(e_def)) == word.ID) {
                     internals = main.cons(privatise(h(e_def)), internals);
@@ -55,7 +55,7 @@ pub fn fixexports() void {
     } else {
         f = heap.heap.files;
         while (f != NIL) : (f = t(f)) {
-            var e_def = main.fil_defs(h(f));
+            var e_def = main.filDefs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
                 if (getTag(h(e_def)) == word.ID and unpainted(h(e_def))) {
                     internals = main.cons(privatise(h(e_def)), internals);
@@ -70,16 +70,16 @@ pub fn fixexports() void {
 }
 
 fn paint(x: Word) void {
-    tp(x).* = abi.ap(word.EXPORT, main.id_val(x));
+    tp(x).* = abi.ap(word.EXPORT, main.idVal(x));
 }
 
 fn unpainted(x: Word) bool {
-    const v = main.id_val(x);
+    const v = main.idVal(x);
     return getTag(v) != word.AP or h(v) != word.EXPORT;
 }
 
 fn unpaint(x: Word) void {
-    tp(x).* = t(main.id_val(x));
+    tp(x).* = t(main.idVal(x));
 }
 
 /// Reverses the privatisation done by fixexports(), restoring all `internals` to public.
@@ -98,12 +98,12 @@ fn privatise(x: Word) Word {
     const hash_idx = hash(main.get_id(x));
     const i = h(n);
 
-    if (main.id_type(x) == word.type_t) {
-        tp(main.t_info(x)).* = main.cons(abi.datapair(@as(Word, strtab.strBits(abi.getaka(x))), 0), main.get_here(x));
+    if (main.idType(x) == word.type_t) {
+        tp(main.tInfo(x)).* = main.cons(abi.datapair(@as(Word, strtab.strBits(abi.getaka(x))), 0), main.getHere(x));
     }
 
-    if (main.id_val(x) == word.UNDEF) {
-        tp(x).* = abi.ap(abi.datapair(@as(Word, strtab.strBits(abi.getaka(x))), 0), main.get_here(x));
+    if (main.idVal(x) == word.UNDEF) {
+        tp(x).* = abi.ap(abi.datapair(@as(Word, strtab.strBits(abi.getaka(x))), 0), main.getHere(x));
     }
 
     ls.pnvec.?[@as(usize, @intCast(i))] = x;
@@ -135,7 +135,7 @@ fn hash(s: [*:0]const u8) usize {
 }
 
 fn publicise(x: Word) Word {
-    const i = main.id_val(x);
+    const i = main.idVal(x);
     const hash_idx = hash(main.get_id(x));
 
     setTag(i, word.ID);
@@ -193,13 +193,13 @@ pub fn readoption() void {
 
     var rfl_ptr = main.rs.rfl;
     while (rfl_ptr != NIL) : (rfl_ptr = t(rfl_ptr)) {
-        f = main.fil_defs(h(rfl_ptr));
+        f = main.filDefs(h(rfl_ptr));
         while (f != NIL) : (f = t(f)) {
             if (getTag(h(f)) == word.ID) {
-                t_val = main.id_type(h(f));
+                t_val = main.idType(h(f));
                 if (t_val == word.type_t) {
-                    if (main.t_class(h(f)) == word.synonym_t) {
-                        tp(main.t_info(h(f))).* = fixtype(main.t_info(h(f)), h(f));
+                    if (main.tClass(h(f)) == word.synonym_t) {
+                        tp(main.tInfo(h(f))).* = fixtype(main.tInfo(h(f)), h(f));
                     }
                 } else {
                     tp(h(h(f))).* = fixtype(t_val, h(f));
@@ -213,7 +213,7 @@ pub fn readoption() void {
     word.print("main.cs.MISSING TYPENAME{s}\n", .{if (t(tlost) == NIL) "" else "S"});
     word.print("the following type{s} no name in this scope:\n", .{if (t(tlost) == NIL) " is needed but has" else "s are needed but have"});
     while (tlost != NIL) {
-        word.print("\'{s}\' of file \"{s}\", needed by: ", .{ strtab.strOf(h(h(main.t_info(h(h(tlost)))))), strtab.strOf(h(t(main.t_info(h(h(tlost)))))) });
+        word.print("\'{s}\' of file \"{s}\", needed by: ", .{ strtab.strOf(h(h(main.tInfo(h(h(tlost)))))), strtab.strOf(h(t(main.tInfo(h(h(tlost)))))) });
         abi.printlist(@constCast(""), main.alfasort(t(h(tlost))));
         tlost = t(tlost);
     }
@@ -309,7 +309,7 @@ pub fn undump(t_val: [*:0]const u8) void {
         oldsig = main.signals(abi.SIGINT, @intFromPtr(&sigdefer));
     }
 
-    heap.heap.files = abi.load_script(f.?, @constCast(t_val), NIL, NIL, if (!main.rs.making and main.rs.initialising == 0) 1 else 0);
+    heap.heap.files = abi.loadScript(f.?, @constCast(t_val), NIL, NIL, if (!main.rs.making and main.rs.initialising == 0) 1 else 0);
     _ = word.fclose(f.?);
 
     if (main.cs.BAD_DUMP != 0) {
@@ -348,7 +348,7 @@ pub fn undump(t_val: [*:0]const u8) void {
         return;
     }
 
-    if (main.cs.BAD_DUMP != 0 or main.src_update() != 0) {
+    if (main.cs.BAD_DUMP != 0 or main.srcUpdate() != 0) {
         main.loadfile(t_val);
     } else if (main.rs.initialising != 0) {
         if (main.cs.ND != NIL or heap.heap.files == NIL) {
@@ -396,7 +396,7 @@ pub fn makedump() void {
     }
     main.rs.unlinkme = @ptrCast(obf);
     abi.setprefix(main.rs.current_script.?);
-    abi.dump_script(heap.heap.files, f.?);
+    abi.dumpScript(heap.heap.files, f.?);
     main.rs.unlinkme = null;
     _ = word.fclose(f.?);
 }

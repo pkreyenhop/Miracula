@@ -38,16 +38,16 @@ const mallocPanic = heap.mallocPanic;
 const bigscan = r7_big.scanDecimal;
 const bigxscan = r7_big.scanHex;
 const bigoscan = r7_big.scanOctal;
-const sto_dbl = heap.sto_dbl;
-const sto_id = heap.sto_id;
-const sto_char = heap.sto_char;
+const stoDbl = heap.stoDbl;
+const stoId = heap.stoId;
+const stoChar = heap.stoChar;
 const fileMtime = r7_files.fileMtime;
 const append1 = heap.append1;
 const genlstat_t = r7_types.genlstat_t;
 const acterror = r7_setup.acterror;
 const syntax = r7_setup.syntax;
 const reset = r7_repl.reset;
-const is_char = heap.is_char;
+const isChar = heap.isChar;
 
 pub fn mira_lex_setup_string(source: [*:0]const u8) void {
     const len = std.mem.len(source);
@@ -83,7 +83,7 @@ fn fileinfo(file: Word, line: Word) Word {
     return make(FILEINFO, file, line);
 }
 
-fn make_fil(path: [*:0]const u8, time: Word, share: Word, defs: Word) Word {
+fn makeFil(path: [*:0]const u8, time: Word, share: Word, defs: Word) Word {
     return cons(cons(fileinfo(strtab.strBits(path), time), cons(share, NIL)), defs);
 }
 
@@ -424,7 +424,7 @@ fn getlitch() Word {
                 return -5; // not valid main.rs.UTF8
             }
             ls.c = getch();
-            return sto_char(((ch & 0x1f) << 6) | (ch1 & 0x3f));
+            return stoChar(((ch & 0x1f) << 6) | (ch1 & 0x3f));
         }
         const ch2 = getch();
         ls.c = ch2;
@@ -433,7 +433,7 @@ fn getlitch() Word {
                 return -5; // not valid main.rs.UTF8
             }
             ls.c = getch();
-            return sto_char(((ch & 0xf) << 12) | ((ch1 & 0x3f) << 6) | (ch2 & 0x3f));
+            return stoChar(((ch & 0xf) << 12) | ((ch1 & 0x3f) << 6) | (ch2 & 0x3f));
         }
         const ch3 = getch();
         ls.c = ch3;
@@ -476,7 +476,7 @@ fn getlitch() Word {
                 hold[count] = 0;
                 _ = main_clib.sscanf(&hold[0], "%x", .{&value});
                 ls.c = xch;
-                return if (value > UMAX) -3 else sto_char(@intCast(value));
+                return if (value > UMAX) -3 else stoChar(@intCast(value));
             } else {
                 return -2;
             }
@@ -493,7 +493,7 @@ fn getlitch() Word {
                     xch = getch();
                 }
                 ls.c = xch;
-                return sto_char(n);
+                return stoChar(n);
             }
             if (escaped_ch == '\'' or escaped_ch == '"' or escaped_ch == '\\' or escaped_ch == '`') {
                 return escaped_ch;
@@ -674,7 +674,7 @@ pub fn yylex() c_int {
             errclass(ls.yylval, 0);
             return word.CONST;
         }
-        if (is_char(ls.yylval) == 0) {
+        if (isChar(ls.yylval) == 0) {
             const prefix_str: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
             word.printErr("{s}impossible event while reading char const ('\\{}')\n", .{prefix_str, ls.yylval});
             acterror();
@@ -997,20 +997,20 @@ pub fn mkgvar(i_input: Word) Word {
     var p = &ls.gvars;
     while (i > 1) {
         if (p.* == NIL) {
-            p.* = cons(sto_id("gvar"), NIL);
+            p.* = cons(stoId("gvar"), NIL);
         }
         p = tp(p.*);
         i -= 1;
     }
     if (p.* == NIL) {
-        p.* = cons(sto_id("gvar"), NIL);
+        p.* = cons(stoId("gvar"), NIL);
     }
     return h(p.*);
 }
 
 pub fn mklexvar(i: Word) Word {
     if (ls.lexvar == 0) {
-        ls.lexvar = cons(sto_id("ls.lexvar"), sto_id("ls.lexvar"));
+        ls.lexvar = cons(stoId("ls.lexvar"), stoId("ls.lexvar"));
         tp(h(ls.lexvar)).* = main.cs.ltchar;
         tp(t(ls.lexvar)).* = genlstat_t();
     }
@@ -1302,7 +1302,7 @@ pub fn directive() Word {
                     ls.line_no = 0;
                     ls.atnl = 1;
                     _ = keep(ls.dicp);
-                    heap.heap.current_file = make_fil(f.?, fileMtime(f.?), 0, NIL);
+                    heap.heap.current_file = makeFil(f.?, fileMtime(f.?), 0, NIL);
                     heap.heap.files = append1(heap.heap.files, cons(heap.heap.current_file, NIL));
                     tp(h(ls.fileq)).* = heap.heap.current_file;
                     main.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
@@ -1330,7 +1330,7 @@ pub fn directive() Word {
                     if (toomany) {
                         word.print("too many nested %insert directives (limit={})\n", .{ls.insertdepth});
                     } else {
-                        heap.heap.files = append1(heap.heap.files, cons(make_fil(f.?, 0, 0, NIL), NIL));
+                        heap.heap.files = append1(heap.heap.files, cons(makeFil(f.?, 0, 0, NIL), NIL));
                     }
                     acterror();
                 }
@@ -1460,7 +1460,7 @@ pub fn numeral() void {
         ls.dicq[0] = '\n';
         ls.dicq[1] = 0;
         _ = main_clib.sscanf(ls.dicp, "%lf", .{&r});
-        ls.yylval = sto_dbl(r);
+        ls.yylval = stoDbl(r);
     }
 }
 
@@ -1520,7 +1520,7 @@ pub fn hexnumeral() void {
         if (len > 60 or main_clib.sscanf(ls.dicp, "%lf", .{&d}) != 1) {
             syntax("malformed hex float\n");
         } else {
-            ls.yylval = sto_dbl(d);
+            ls.yylval = stoDbl(d);
         }
         return;
     }
@@ -1577,7 +1577,7 @@ pub fn name() Word {
         q = t(q);
     }
     if (q == 0) {
-        q = sto_id(ls.dicp);
+        q = stoId(ls.dicp);
         ls.namebucket[h_idx] = cons(q, ls.namebucket[h_idx]);
         _ = keep(ls.dicp);
     } else {
@@ -1588,7 +1588,7 @@ pub fn name() Word {
 
 pub fn make_id(n: [*:0]const u8) Word {
     const h_idx = @as(usize, @intCast(hash(n)));
-    const x = sto_id(if (ls.inprelude) keep(@constCast(n)) else n);
+    const x = stoId(if (ls.inprelude) keep(@constCast(n)) else n);
     ls.namebucket[h_idx] = cons(x, ls.namebucket[h_idx]);
     return x;
 }

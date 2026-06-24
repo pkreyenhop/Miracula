@@ -309,7 +309,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                     main_clib.exit(1);
                 } else {
                     reduce.hd_set(ctx.e, word.I);
-                    const val = heap.sto_dbl(d);
+                    const val = heap.stoDbl(d);
                     reduce.tl_set(ctx.e, val);
                     ctx.e = val;
                 }
@@ -425,14 +425,14 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             if (reduce.is_int(lastArg(ctx))) {
                 reduce.simpl(ctx, big.negate(lastArg(ctx)));
             } else {
-                heap.setdbl(ctx.e, -heap.get_dbl(lastArg(ctx)));
+                heap.setdbl(ctx.e, -heap.getDbl(lastArg(ctx)));
             }
             ctx.action = word.ACT_DONE;
             return;
         },
         word.CODE => {
             reduce.upLeft(ctx);
-            reduce.simpl(ctx, heap.make(word.INT, heap.get_char(lastArg(ctx)), 0));
+            reduce.simpl(ctx, heap.make(word.INT, heap.getChar(lastArg(ctx)), 0));
             ctx.action = word.ACT_DONE;
             return;
         },
@@ -448,7 +448,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                 main_clib.exit(1);
             }
             reduce.hd_set(ctx.e, word.I);
-            const val_char = heap.sto_char(@intCast(val));
+            const val_char = heap.stoChar(@intCast(val));
             reduce.tl_set(ctx.e, val_char);
             ctx.e = val_char;
             ctx.action = word.ACT_DONE;
@@ -463,7 +463,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
         word.SHOWNUM => {
             reduce.upLeft(ctx);
             if (reduce.is_double(lastArg(ctx))) {
-                const x = heap.get_dbl(lastArg(ctx));
+                const x = heap.getDbl(lastArg(ctx));
                 _ = main_clib.sprintf(&main.rs.linebuf, "%.16g", .{x});
                 var p_idx: usize = 0;
                 while (word.isdigit(main.rs.linebuf[p_idx])) {
@@ -484,7 +484,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
         word.SHOWHEX => {
             reduce.upLeft(ctx);
             if (reduce.is_double(lastArg(ctx))) {
-                _ = main_clib.sprintf(&main.rs.linebuf, "%a", .{heap.get_dbl(lastArg(ctx))});
+                _ = main_clib.sprintf(&main.rs.linebuf, "%a", .{heap.getDbl(lastArg(ctx))});
                 reduce.rewrite_to_string(&ctx.e, @ptrCast(&main.rs.linebuf));
             } else {
                 reduce.simpl(ctx, big.toHexList(lastArg(ctx)));
@@ -527,7 +527,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             if (reduce.is_int(lastArg(ctx))) {
                 reduce.rewrite_to_value(&ctx.e, lastArg(ctx));
             } else {
-                reduce.simpl(ctx, big.fromFloat(heap.get_dbl(lastArg(ctx))));
+                reduce.simpl(ctx, big.fromFloat(heap.getDbl(lastArg(ctx))));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -627,9 +627,9 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0])) {
-                heap.setdbl(ctx.e, heap.get_dbl(ctx.args[0]) + reduce.force_dbl(lastArg(ctx)));
+                heap.setdbl(ctx.e, heap.getDbl(ctx.args[0]) + reduce.force_dbl(lastArg(ctx)));
             } else if (reduce.is_double(lastArg(ctx))) {
-                heap.setdbl(ctx.e, big.toFloat(ctx.args[0]) + heap.get_dbl(lastArg(ctx)));
+                heap.setdbl(ctx.e, big.toFloat(ctx.args[0]) + heap.getDbl(lastArg(ctx)));
             } else {
                 reduce.simpl(ctx, big.add(ctx.args[0], lastArg(ctx)));
             }
@@ -640,9 +640,9 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0])) {
-                heap.setdbl(ctx.e, heap.get_dbl(ctx.args[0]) - reduce.force_dbl(lastArg(ctx)));
+                heap.setdbl(ctx.e, heap.getDbl(ctx.args[0]) - reduce.force_dbl(lastArg(ctx)));
             } else if (reduce.is_double(lastArg(ctx))) {
-                heap.setdbl(ctx.e, big.toFloat(ctx.args[0]) - heap.get_dbl(lastArg(ctx)));
+                heap.setdbl(ctx.e, big.toFloat(ctx.args[0]) - heap.getDbl(lastArg(ctx)));
             } else {
                 reduce.simpl(ctx, big.sub(ctx.args[0], lastArg(ctx)));
             }
@@ -653,9 +653,9 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.is_double(ctx.args[0])) {
-                heap.setdbl(ctx.e, heap.get_dbl(ctx.args[0]) * reduce.force_dbl(lastArg(ctx)));
+                heap.setdbl(ctx.e, heap.getDbl(ctx.args[0]) * reduce.force_dbl(lastArg(ctx)));
             } else if (reduce.is_double(lastArg(ctx))) {
-                heap.setdbl(ctx.e, big.toFloat(ctx.args[0]) * heap.get_dbl(lastArg(ctx)));
+                heap.setdbl(ctx.e, big.toFloat(ctx.args[0]) * heap.getDbl(lastArg(ctx)));
             } else {
                 reduce.simpl(ctx, big.mul(ctx.args[0], lastArg(ctx)));
             }
@@ -725,9 +725,9 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                     platform.setErrno(main_clib.EDOM);
                     reduce_rt.mathError(@constCast("^"));
                 }
-                fb = heap.get_dbl(lastArg(ctx));
+                fb = heap.getDbl(lastArg(ctx));
             } else if (reduce.is_double(ctx.args[0])) {
-                fa = heap.get_dbl(ctx.args[0]);
+                fa = heap.getDbl(ctx.args[0]);
                 fb = big.toFloat(lastArg(ctx));
             } else if (reduce.neg(lastArg(ctx))) {
                 fa = big.toFloat(ctx.args[0]);

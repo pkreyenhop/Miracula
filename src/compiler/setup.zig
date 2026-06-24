@@ -158,7 +158,7 @@ pub fn stdlib() void {
     predef("filestat", word.FILESTAT, word.undef_t);
     predef("foldl", word.FOLDL, word.undef_t);
     predef("foldl1", word.FOLDL1, word.undef_t);
-    predef("hugenum", abi.sto_dbl(abi.DBL_MAX), word.undef_t);
+    predef("hugenum", abi.stoDbl(abi.DBL_MAX), word.undef_t);
     predef("last", word.LIST_LAST, word.undef_t);
     predef("foldr", word.FOLDR, word.undef_t);
     predef("force", word.FORCE, word.undef_t);
@@ -191,7 +191,7 @@ fn mktiny() Word {
         x = x1;
         x1 = x1 / 2.0;
     }
-    return abi.sto_dbl(x);
+    return abi.stoDbl(x);
 }
 
 /// Performs one-time interpreter initialisation: sets up the heap, type system,

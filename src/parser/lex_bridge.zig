@@ -30,8 +30,8 @@ const ATOMLIMIT: word.Word = CMBASE + 141;
 
 
 const yylex = r7_lex.yylex;
-const is_char = r7_heap.is_char;
-const get_dbl = r7_heap.get_dbl;
+const isChar = r7_heap.isChar;
+const getDbl = r7_heap.getDbl;
 const layout = r7_lex.layout;
 const setlmargin = r7_lex.setlmargin;
 const unsetlmargin = r7_lex.unsetlmargin;
@@ -146,8 +146,8 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
             //    The codegen emits the atom word directly for "True"/"False".
             if (w == TRUE_ATOM) break :blk Token{ .id = .cname, .span = span, .text = try gpa.dupe(u8, "True") };
             if (w == FALSE_ATOM) break :blk Token{ .id = .cname, .span = span, .text = try gpa.dupe(u8, "False") };
-            // 1. Char literal: is_char() handles atoms 0-255 and UNICODE heap cells.
-            if (is_char(w) != 0) {
+            // 1. Char literal: isChar() handles atoms 0-255 and UNICODE heap cells.
+            if (isChar(w) != 0) {
                 const cp: u21 = if (word.isAtom(w))
                     @intCast(w) // Latin-1 atom: value is the code point
                 else
@@ -173,7 +173,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
                     break :blk Token{
                         .id = .const_float,
                         .span = span,
-                        .float_val = get_dbl(w),
+                        .float_val = getDbl(w),
                     };
                 }
                 // 5. Integer literal: INT-tagged heap cell; decimal text in dicp.

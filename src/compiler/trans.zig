@@ -1461,10 +1461,10 @@ fn iscompound_t(type_node: Word) bool {
 fn t_showfn(x: Word) Word {
     return t(h(t(x)));
 }
-fn t_class(x: Word) Word {
+fn tClass(x: Word) Word {
     return h(t(t(x)));
 }
-fn t_info(x: Word) Word {
+fn tInfo(x: Word) Word {
     return t(t(t(x)));
 }
 
@@ -1600,9 +1600,9 @@ pub fn codegen(x: Word) Word {
 pub fn genshfns() void {
     var s = cs.newtyps;
     while (s != NIL) {
-        if (t_class(h(s)) == algebraic_t) {
+        if (tClass(h(s)) == algebraic_t) {
             var f: Word = 0;
-            var r = t_info(h(s)); // r is list of constructors
+            var r = tInfo(h(s)); // r is list of constructors
             const ush = if (t(r) == NIL and member(cs.SGC, h(r)) != 0) Ush1 else Ush;
             while (r != NIL) {
                 var type_var = idType(h(r));
@@ -1631,7 +1631,7 @@ pub fn genshfns() void {
             // f ~= 0, placeholder types dealt with in specify()
             tp(t_showfn(h(s))).* = f;
             cs.algshfns = cons(t_showfn(h(s)), cs.algshfns);
-        } else if (t_class(h(s)) == abstract_t) {
+        } else if (tClass(h(s)) == abstract_t) {
             if (t_showfn(h(s)) != 0) {
                 if (abshfnck(h(s), idType(t_showfn(h(s)))) == 0) {
                     _ = word.print("warning - \"{s}\" has type inappropriate for a show-function\n", .{getId(t_showfn(h(s)))});

@@ -132,24 +132,24 @@ pub const NodeRef = heap.NodeRef;
 // Heap accessors — B2: h/t/hp/tp removed; callers use main.heap.h/t/hp/tp directly.
 // Other heap aliases kept to avoid churn in call sites not covered by B2.
 pub const cons = heap.cons;
-pub const fil_time = heap.fil_time;
-pub const fil_share = heap.fil_share;
-pub const fil_inodev = heap.fil_inodev;
-pub const fil_defs = heap.fil_defs;
+pub const filTime = heap.filTime;
+pub const filShare = heap.filShare;
+pub const filInodev = heap.filInodev;
+pub const filDefs = heap.filDefs;
 pub const dval = heap.dval;
 pub const dlhs = heap.dlhs;
-pub const get_here = heap.get_here;
+pub const getHere = heap.getHere;
 pub const the_val = heap.the_val;
-pub const t_class = heap.t_class;
-pub const t_info = heap.t_info;
-pub const id_val = heap.id_val;
-pub const id_type = heap.id_type;
-pub const id_who = heap.id_who;
+pub const tClass = heap.tClass;
+pub const tInfo = heap.tInfo;
+pub const idVal = heap.idVal;
+pub const idType = heap.idType;
+pub const idWho = heap.idWho;
 pub const badval = heap.badval;
 pub const isfreeid = heap.isfreeid;
 pub const isconstructor = heap.isconstructor;
 pub const isvariable = heap.isvariable;
-pub const make_fil = heap.make_fil;
+pub const makeFil = heap.makeFil;
 pub const constructor = heap.constructor;
 pub const addtoenv = heap.addtoenv;
 pub const reverse = heap.reverse;
@@ -159,7 +159,7 @@ pub const alfasort = heap.alfasort;
 pub const utf8test = heap.utf8test;
 pub const unsetids = heap.unsetids;
 pub const unload = heap.unload;
-pub const src_update = heap.src_update;
+pub const srcUpdate = heap.srcUpdate;
 
 // Interactive REPL/driver helpers
 pub const obey = repl.obey;

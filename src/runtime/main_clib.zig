@@ -149,11 +149,11 @@ pub fn datapair(x: Word, y: Word) Word {
     return make(DATAPAIR, x, y);
 }
 pub const deps = types_mod.deps;
-pub const dump_script = heap_mod.dump_script;
+pub const dumpScript = heap_mod.dumpScript;
 pub const findid = lex_mod.findid;
 pub const gc = heap_mod.gc;
 pub const gcpatch = heap_mod.gcpatch;
-pub const get_here = heap_mod.get_here;
+pub const getHere = heap_mod.getHere;
 pub const getaka = heap_mod.getaka;
 pub const geterrlin = heap_mod.geterrlin;
 pub const getstring = reduce_mod.getstring;
@@ -161,7 +161,7 @@ pub const instantiate = types_mod.instantiate;
 pub const intersection = types_mod.intersection;
 pub const make = heap_mod.make;
 pub const keep = lex_mod.keep;
-pub const load_script = heap_mod.load_script;
+pub const loadScript = heap_mod.loadScript;
 pub const make_id = lex_mod.make_id;
 pub const mallocfail = heap_mod.mallocfail;
 pub const setdiff = types_mod.setdiff;
@@ -198,7 +198,7 @@ pub const setupdic = lex_mod.setupdic;
 pub const EDOM = 33;
 pub const ERANGE = 34;
 
-pub const sto_dbl = heap_mod.sto_dbl;
+pub const stoDbl = heap_mod.stoDbl;
 pub fn strcons(x: Word, y: Word) Word {
     return make(STRCONS, x, y);
 }

@@ -88,12 +88,12 @@ const decl_type = trans.decl_type;
 const declconstr = trans.declconstr;
 const redtvars = types_mod.redtvars;
 const bigscan = big.scanDecimal;
-const sto_dbl = heap.sto_dbl;
-const sto_id = heap.sto_id;
+const stoDbl = heap.stoDbl;
+const stoId = heap.stoId;
 const keep = lex.keep;
 const findid = lex.findid;
 const make_id = lex.make_id;
-const sto_char = heap.sto_char;
+const stoChar = heap.stoChar;
 const head = reduce_mod.head;
 const isconstrname = lex.isconstrname;
 
@@ -138,7 +138,7 @@ fn isConstructorWord(x: Word) bool {
 }
 
 // ---------------------------------------------------------------------------
-// nameWord: convert a []const u8 to a Miranda ID Word via sto_id
+// nameWord: convert a []const u8 to a Miranda ID Word via stoId
 // ---------------------------------------------------------------------------
 
 fn nameWord(name: []const u8) Word {
@@ -162,7 +162,7 @@ fn nameWord(name: []const u8) Word {
 //   "*"   → make(TVAR, 0, 1)
 //   "**"  → make(TVAR, 0, 2)
 //   "***" → make(TVAR, 0, 3)
-//   "*a"  → sto_id("*a")  (named typevar — fall back to ident)
+//   "*a"  → stoId("*a")  (named typevar — fall back to ident)
 // ---------------------------------------------------------------------------
 
 fn codegenTypeVar(name: []const u8) Word {
@@ -314,14 +314,14 @@ fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
 // ---------------------------------------------------------------------------
 
 fn codegenString(s: []const u8) Word {
-    // Walk the UTF-8 string right-to-left; decode codepoints for sto_char.
+    // Walk the UTF-8 string right-to-left; decode codepoints for stoChar.
     var result: Word = word.NIL;
     var i: usize = s.len;
     while (i > 0) {
         // Simple byte-by-byte (ASCII) walk.  For multi-byte UTF-8 we'd need
         // to decode fully, but Miranda source is usually Latin-1 / ASCII.
         i -= 1;
-        result = mkcons(sto_char(@intCast(s[i])), result);
+        result = mkcons(stoChar(@intCast(s[i])), result);
     }
     return result;
 }
@@ -348,9 +348,9 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
         .literal => |lit| blk: {
             const val: Word = switch (lit.value) {
                 .int => |v| bigscanZ(alloc, v),
-                .char => |c| sto_char(@intCast(c)),
+                .char => |c| stoChar(@intCast(c)),
                 .string => |s| codegenString(s),
-                .float => |v| sto_dbl(v), // type checker will reject this later
+                .float => |v| stoDbl(v), // type checker will reject this later
             };
             break :blk mkcons(word.CONST, val);
         },
@@ -419,8 +419,8 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         // --- Literals ---
         .literal => |lit| switch (lit.value) {
             .int => |v| bigscanZ(alloc, v),
-            .float => |v| sto_dbl(v),
-            .char => |c| sto_char(@intCast(c)),
+            .float => |v| stoDbl(v),
+            .char => |c| stoChar(@intCast(c)),
             .string => |s| codegenString(s),
         },
 

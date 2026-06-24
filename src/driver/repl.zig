@@ -61,8 +61,8 @@ pub fn commandLoop(initscript: [*:0]u8) void {
     if (abi.sigsetjmp(&main.rs.env, 1) == 0) {
         if (main.rs.magic) {
             main.undump(initscript);
-            if (r7_heap.heap.files == NIL or main.cs.ND != NIL or main.id_val(main.rs.main_id) == word.UNDEF) {
-                if (r7_heap.heap.files != NIL and main.cs.ND == NIL and main.id_val(main.rs.main_id) == word.UNDEF) {
+            if (r7_heap.heap.files == NIL or main.cs.ND != NIL or main.idVal(main.rs.main_id) == word.UNDEF) {
+                if (r7_heap.heap.files != NIL and main.cs.ND == NIL and main.idVal(main.rs.main_id) == word.UNDEF) {
                     word.printErr("{s}: main not defined\n", .{initscript});
                 }
                 main.fatal("mira: incorrect use of \"-exec\" flag\n", .{.{}});
@@ -84,7 +84,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
             word.print("{s}", .{main.rs.promptstr});
         }
         ch = abi.getchar();
-        if (main.rs.rechecking != 0 and main.src_update() != 0) {
+        if (main.rs.rechecking != 0 and main.srcUpdate() != 0) {
             main.loadfile(main.rs.current_script.?);
         }
         while (ch == ' ' or ch == '\t') {
@@ -115,18 +115,18 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                         word.print("??{s}\n", .{main.get_id(main.rs.lastid)});
                         x = main.rs.lastid;
                     }
-                    if (x == NIL or main.id_type(x) == word.undef_t) {
+                    if (x == NIL or main.idType(x) == word.undef_t) {
                         main.diagnose(if (ls.dicp[0] != 0) ls.dicp else main.get_id(main.rs.lastid));
                         main.rs.lastid = 0;
                         continue;
                     }
-                    if (main.id_who(x) == NIL) {
+                    if (main.idWho(x) == NIL) {
                         word.print("{s} -- primitive to Miranda\n", .{@as([*:0]const u8, @ptrCast(if (ls.dicp[0] != 0) ls.dicp else main.get_id(main.rs.lastid)))});
                         main.rs.lastid = 0;
                         continue;
                     }
                     main.rs.lastid = x;
-                    x = main.id_who(x);
+                    x = main.idWho(x);
                     if (getTag(x) == CONS) {
                         aka = strtab.strOf(main.heap.h(main.heap.h(x)));
                         x = main.heap.t(x);
@@ -182,7 +182,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                     } else { // child
                         _ = abi.execl(shell.?, .{ shell.?, "-c", lb.? });
                     }
-                    if (main.src_update() != 0) {
+                    if (main.srcUpdate() != 0) {
                         main.loadfile(main.rs.current_script.?);
                     }
                 } else {
