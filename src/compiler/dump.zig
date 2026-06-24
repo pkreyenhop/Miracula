@@ -268,13 +268,13 @@ pub fn undump(t_val: [*:0]const u8) void {
     var t2: Word = undefined;
     var oldsig: usize = 0;
 
-    if (main.normal(t_val) == 0 and main.rs.initialising == 0) {
+    if (main.isMirandaSource(t_val) == 0 and main.rs.initialising == 0) {
         main.loadfile(t_val);
         return;
     }
 
     flen = @intCast(word.strlen(t_val));
-    t1 = main.fm_time(t_val);
+    t1 = main.fileMtime(t_val);
     if (flen > abi.pnlim) {
         word.print("sorry, pathname too long (limit={}): {s}\n", .{ abi.pnlim, std.mem.span(t_val) });
         return;
@@ -282,7 +282,7 @@ pub fn undump(t_val: [*:0]const u8) void {
 
     _ = word.strcpy(&obf, t_val);
     _ = word.strcpy(obf[@intCast(flen - 1)..].ptr, core_state.s.obsuffix);
-    t2 = main.fm_time(@as([*:0]const u8, @ptrCast(&obf)));
+    t2 = main.fileMtime(@as([*:0]const u8, @ptrCast(&obf)));
     if (t2 != 0 and t1 == 0) {
         t2 = 0;
         _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));

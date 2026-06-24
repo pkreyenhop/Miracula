@@ -690,8 +690,8 @@ fn getStderr() ?*word.FILE {
 }
 
 
-const fm_time = r7_files.fm_time;
-const unlinkx = r7_files.unlinkx;
+const fileMtime = r7_files.fileMtime;
+const unlinkObject = r7_files.unlinkObject;
 pub fn sto_id(p1: [*:0]const u8) Word {
     return make(word.ID, cons(make(word.STRCONS, strtab.strBits(p1), word.NIL), word.undef_t), word.UNDEF);
 }
@@ -844,7 +844,7 @@ pub fn geterrlin(t_ptr: [*:0]const u8) Word {
     }
 
     const mtime = getword(f);
-    if (main_clib.strcmp(ls.dicp, t_ptr) != 0 or mtime != fm_time(t_ptr)) {
+    if (main_clib.strcmp(ls.dicp, t_ptr) != 0 or mtime != fileMtime(t_ptr)) {
         return 0; // wrong dump
     }
 
@@ -1900,7 +1900,7 @@ pub fn fil_inodev(fil: Word) Word {
     return t(t(h(fil)));
 }
 
-pub fn same_file(x: Word, y: Word) bool {
+pub fn sameFile(x: Word, y: Word) bool {
     const ix = fil_inodev(x);
     const iy = fil_inodev(y);
     return h(ix) == h(iy) and t(ix) == t(iy);
@@ -2062,10 +2062,10 @@ pub fn src_update() c_int {
     var f = if (heap.files == NIL) rt.rs.oldfiles else heap.files;
     while (f != NIL) {
         const _fil_path: [*:0]const u8 = strtab.strOf(h(h(h(h(f)))));
-        if ((fm_time(_fil_path)) != fil_time(h(f))) {
-            ft = fm_time(_fil_path);
+        if ((fileMtime(_fil_path)) != fil_time(h(f))) {
+            ft = fileMtime(_fil_path);
             if (ft == 0) {
-                unlinkx(_fil_path);
+                unlinkObject(_fil_path);
             }
             return 1;
         }
@@ -2097,12 +2097,12 @@ pub const FileNode = struct {
         return fil_defs(self.word);
     }
     /// A `(dev . ino)` cons cell identifying this file's filesystem inode.
-    pub fn inodev(self: FileNode) Word {
+    pub fn inodeId(self: FileNode) Word {
         return fil_inodev(self.word);
     }
     /// True if this file and `other` refer to the same filesystem inode.
     pub fn sameAs(self: FileNode, other: FileNode) bool {
-        return same_file(self.word, other.word);
+        return sameFile(self.word, other.word);
     }
 };
 

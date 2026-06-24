@@ -111,16 +111,16 @@ pub const readoption = dump.readoption;
 pub const sigdefer = dump.sigdefer;
 
 // Filesystem and platform operations
-pub const fm_time = files_mod.fm_time;
-pub const normal = files_mod.normal;
-pub const same_file = files_mod.same_file;
-pub const inodev = files_mod.inodev;
+pub const fileMtime = files_mod.fileMtime;
+pub const isMirandaSource = files_mod.isMirandaSource;
+pub const sameFile = files_mod.sameFile;
+pub const inodeId = files_mod.inodeId;
 pub const fileExists = files_mod.fileExists;
-pub const filecopy = files_mod.filecopy;
-pub const filecp = files_mod.filecp;
-pub const unlinkx = files_mod.unlinkx;
-pub const mkabsolute = files_mod.mkabsolute;
-pub const twidth = files_mod.twidth;
+pub const fileCopy = files_mod.fileCopy;
+pub const copyFile = files_mod.copyFile;
+pub const unlinkObject = files_mod.unlinkObject;
+pub const makeAbsolute = files_mod.makeAbsolute;
+pub const termWidth = files_mod.termWidth;
 
 // Domain types (C2) — typed wrappers for heap node Words.
 // Use these at API boundaries; `.word` unwraps to raw Word for legacy accessors.

@@ -245,7 +245,7 @@ pub fn main_entry(argc: c_int, argv: [*][*:0]u8) c_int {
     abi.setupdic();
     main.rs.s_in = main.getStdin();
     reduce.ev.s_out = main.getStdout();
-    main.rs.miralib = main.mkabsolute(main.rs.miralib.?);
+    main.rs.miralib = main.makeAbsolute(main.rs.miralib.?);
 
     if (manonly != 0) {
         main.manaction();

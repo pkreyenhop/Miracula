@@ -41,7 +41,7 @@ const bigoscan = r7_big.scanOctal;
 const sto_dbl = heap.sto_dbl;
 const sto_id = heap.sto_id;
 const sto_char = heap.sto_char;
-const fm_time = r7_files.fm_time;
+const fileMtime = r7_files.fileMtime;
 const append1 = heap.append1;
 const genlstat_t = r7_types.genlstat_t;
 const acterror = r7_setup.acterror;
@@ -1302,7 +1302,7 @@ pub fn directive() Word {
                     ls.line_no = 0;
                     ls.atnl = 1;
                     _ = keep(ls.dicp);
-                    heap.heap.current_file = make_fil(f.?, fm_time(f.?), 0, NIL);
+                    heap.heap.current_file = make_fil(f.?, fileMtime(f.?), 0, NIL);
                     heap.heap.files = append1(heap.heap.files, cons(heap.heap.current_file, NIL));
                     tp(h(ls.fileq)).* = heap.heap.current_file;
                     main.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));

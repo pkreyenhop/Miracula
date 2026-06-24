@@ -70,7 +70,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         return;
     }
 
-    heap.heap.files = main.cons(main.make_fil(t_val, main.fm_time(t_val), 1, NIL), NIL);
+    heap.heap.files = main.cons(main.make_fil(t_val, main.fileMtime(t_val), 1, NIL), NIL);
     heap.heap.current_file = main.heap.h(heap.heap.files);
     main.heap.tp(main.heap.h(ls.fileq)).* = heap.heap.current_file;
 
@@ -339,7 +339,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         }
         if (main.rs.initialising != 0) {
             main.makedump();
-        } else if (main.normal(t_val) != 0) {
+        } else if (main.isMirandaSource(t_val) != 0) {
             main.fixexports();
             main.makedump();
             main.unfixexports();
@@ -357,7 +357,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     }
     main.rs.oldfiles = heap.heap.files;
     main.unload();
-    if (main.normal(t_val) != 0 and core_state.s.SYNERR != 2) {
+    if (main.isMirandaSource(t_val) != 0 and core_state.s.SYNERR != 2) {
         main.makedump();
     }
     core_state.s.SYNERR = 0;
@@ -455,7 +455,7 @@ pub fn mkincludes(includees_val: Word) Word {
             }
             var y = x;
             while (y != NIL) : (y = main.heap.t(y)) {
-                const nodev = main.inodev(main.get_fil(main.heap.h(y)).?);
+                const nodev = main.inodeId(main.get_fil(main.heap.h(y)).?);
                 main.heap.tp(main.fil_inodev(main.heap.h(y))).* = nodev;
             }
 
@@ -464,7 +464,7 @@ pub fn mkincludes(includees_val: Word) Word {
                 if (main.fil_share(main.heap.h(y)) != 0) {
                     var z = result;
                     while (z != NIL) : (z = main.heap.t(z)) {
-                        if (main.fil_share(main.heap.h(z)) != 0 and main.same_file(main.heap.h(y), main.heap.h(z)) and main.fil_time(main.heap.h(y)) == main.fil_time(main.heap.h(z))) {
+                        if (main.fil_share(main.heap.h(z)) != 0 and main.sameFile(main.heap.h(y), main.heap.h(z)) and main.fil_time(main.heap.h(y)) == main.fil_time(main.heap.h(z))) {
                             var p = main.fil_defs(main.heap.h(y));
                             var q = main.fil_defs(main.heap.h(z));
                             while (p != NIL and q != NIL) {
@@ -525,7 +525,7 @@ pub fn mkincludes(includees_val: Word) Word {
         }
 
         if (f == null) {
-            result = main.cons(main.make_fil(fn_str, main.fm_time(fn_str), 0, NIL), result);
+            result = main.cons(main.make_fil(fn_str, main.fileMtime(fn_str), 0, NIL), result);
         } else if (x == NIL and main.cs.BAD_DUMP != -2) {
             result = abi.append1(result, main.rs.oldfiles);
             main.rs.oldfiles = NIL;

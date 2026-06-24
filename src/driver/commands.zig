@@ -60,7 +60,7 @@ fn namescom(l: Word) void {
     var col_local: Word = 0;
     var undefs: Word = NIL;
     var wp: usize = 0;
-    const scrwd = main.twidth();
+    const scrwd = main.termWidth();
     if (main.rs.sorted == 0 and n != main.rs.primenv) {
         n = main.alfasort(n);
         main.heap.tp(l).* = n;
@@ -149,7 +149,7 @@ pub fn command() void {
                 if (abi.getchar() != '\n') return;
                 _ = word.strcpy(&main.rs.linebuf, main.rs.miralib.?);
                 _ = word.strcat(&main.rs.linebuf, "/auxfile");
-                main.filecopy(@as([*:0]const u8, @ptrCast(&main.rs.linebuf)));
+                main.fileCopy(@as([*:0]const u8, @ptrCast(&main.rs.linebuf)));
                 return;
             }
         },
@@ -237,7 +237,7 @@ pub fn command() void {
                         }
                     }
                     if (mf != null) {
-                        main.filecp(mf.?, t_val.?);
+                        main.copyFile(mf.?, t_val.?);
                     }
                 }
                 const err_line_num: c_int = if (word.strcmp(t_val.?, main.rs.current_script.?) == 0) @intCast(core_state.s.errline) else if (core_state.s.errs != 0 and word.strcmp(t_val.?, strtab.strOf(main.heap.h(core_state.s.errs))) == 0) @intCast(main.heap.t(core_state.s.errs)) else @intCast(abi.geterrlin(t_val.?));
@@ -366,7 +366,7 @@ pub fn command() void {
                 if (abi.getchar() != '\n') return;
                 _ = word.strcpy(&main.rs.linebuf, main.rs.miralib.?);
                 _ = word.strcat(&main.rs.linebuf, "/helpfile");
-                main.filecopy(@as([*:0]const u8, @ptrCast(&main.rs.linebuf)));
+                main.fileCopy(@as([*:0]const u8, @ptrCast(&main.rs.linebuf)));
                 return;
             }
             if (is("heap")) {
