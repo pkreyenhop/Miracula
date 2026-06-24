@@ -49,9 +49,15 @@ This is exactly the workflow proven on `big.zig` (the first module): 23 public +
 
 | Metric | Baseline (2026-06-24) | Now | Target |
 |--------|----------------------:|----:|-------:|
-| C-style (`snake_case`) fn definitions | 175 | **106** | 0 |
-| documented fn definitions | 146/879 (16%) | **257/879 (29%)** | ~100% |
+| C-style (`snake_case`) fn definitions | 175 | **54** | 0 |
+| documented fn definitions | 146/879 (16%) | **257/876 (29%)** | ~100% |
 | modules complete (renamed **and** documented) | 1/44 | **8/44** | 44/44 |
+
+After the lex+heap cluster pass, the **remaining 54 snake fns live entirely in
+the compiler trio**: `compiler/types.zig` (39), `compiler/trans.zig` (14),
+`compiler/setup.zig` (1). `heap.zig` and `parser/lex.zig` are fully renamed (0
+snake) but still need their documentation passes (138 and 71 functions) — marked
+◐ below.
 
 (The "Now" snake figure also reflects the reducer-handler exemption added to the
 metric, which removed ~37 dispatch handlers from the count.)
@@ -73,7 +79,7 @@ Status: ✅ done · ◐ partial · ⬜ todo. "snake" = C-style fn defs remaining
 | Module | snake | doc | status |
 |--------|------:|----:|:------:|
 | `big.zig` | 0 | 47/51 | ✅ |
-| `heap.zig` | 32 | 17/140 | ⬜ (the big one) |
+| `heap.zig` | 0 | 17/138 | ◐ (renamed; doc pass pending) |
 | `reduce.zig` | 0 | 33/33 | ✅ |
 | `word.zig` | 0 | — | ◐ (names ok; doc review) |
 | `strtab.zig` · `interp.zig` · `trace.zig` | 0 | high | ◐ (recently written; light review) |
@@ -92,14 +98,14 @@ Status: ✅ done · ◐ partial · ⬜ todo. "snake" = C-style fn defs remaining
 ### parser/
 | Module | snake | doc | status |
 |--------|------:|----:|:------:|
-| `lex.zig` | 16 | low | ⬜ |
+| `lex.zig` | 0 | 0/71 | ◐ (renamed; doc pass pending) |
 | `parser.zig` · `pratt.zig` · `ast.zig` · `diagnostics.zig` · `token_filter.zig` · `codegen.zig` · `parser_api.zig` · `lex_bridge.zig` · `lex_state.zig` | 0 | mixed | ◐/⬜ (newer Zig; doc review) |
 
 ### compiler/
 | Module | snake | doc | status |
 |--------|------:|----:|:------:|
-| `types.zig` | 42 | 0/123 | ⬜ (the biggest) |
-| `trans.zig` | 16 | 0/112 | ⬜ |
+| `types.zig` | 39 | 0/122 | ⬜ (the biggest; holds most remaining snake) |
+| `trans.zig` | 14 | 0/112 | ⬜ |
 | `setup.zig` | 1 | 6/9 | ⬜ |
 | `module_loader.zig` · `dump.zig` · `compiler_state.zig` | 0 | mixed | ⬜ (doc review) |
 
