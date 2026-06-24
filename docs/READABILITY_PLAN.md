@@ -24,6 +24,11 @@ idiomatic and self-explaining without changing behaviour.
   `//` line comments on magic constants and tricky steps.
 * **FFI exemption** — `runtime/main_clib.zig` (the libc/syscall shim) and
   `src/tools/` keep their C names deliberately; excluded from the metric.
+* **Convention exemptions** — names that mirror an external/constant identifier
+  stay as-is (still documented): the POSIX-macro helpers (`WIFSIGNALED`,
+  `WTERMSIG`) and the reducer dispatch handlers `handle_<COMBINATOR>`, whose
+  snake suffix matches the uppercase `word.<COMBINATOR>` constant (e.g.
+  `word.G_ALT` → `handle_G_ALT`) and keeps the dispatch table grep-aligned.
 
 ## Approach (per module, golden-gated)
 
@@ -42,15 +47,21 @@ This is exactly the workflow proven on `big.zig` (the first module): 23 public +
 
 `scripts/readability-check.sh` reports two numbers (FFI shim & tools excluded):
 
-| Metric | Baseline (2026-06-24) | Target |
-|--------|-----------------------|--------|
-| C-style (`snake_case`) fn definitions | **175** | 0 |
-| documented fn definitions | **146 / 879 (16%)** | ~100% |
-| modules complete (renamed **and** documented) | **1 / 44** (`big.zig`) | 44 / 44 |
+| Metric | Baseline (2026-06-24) | Now | Target |
+|--------|----------------------:|----:|-------:|
+| C-style (`snake_case`) fn definitions | 175 | **128** | 0 |
+| documented fn definitions | 146/879 (16%) | **175/879 (19%)** | ~100% |
+| modules complete (renamed **and** documented) | 1/44 | **5/44** | 44/44 |
+
+(The "Now" snake figure also reflects the `handle_<COMBINATOR>` exemption added
+to the metric, which removed 37 dispatch handlers from the count.)
 
 A module is *complete* when its `snake_case` fn count is 0 **and** its functions
 carry doc comments. The script's per-file rows (`snake  doc/fns  file`) show where
 the work is; a `0`-snake module may still need a documentation pass.
+
+Done so far: `big.zig`, `io/files.zig`, `driver/repl.zig`, `driver/startup.zig`,
+`runtime/reducer/io.zig`.
 
 ## Module inventory & status
 
@@ -71,9 +82,9 @@ Status: ✅ done · ◐ partial · ⬜ todo. "snake" = C-style fn defs remaining
 | Module | snake | doc | status |
 |--------|------:|----:|:------:|
 | `reduce.zig` · `reduce_core.zig` | 0 | commented | ◐ (commented this session; name review) |
-| `reducer/lex.zig` | 33 | 0/33 | ⬜ |
+| `reducer/lex.zig` | 33† | 0/33 | ⬜ (†mostly exempt handlers) |
 | `combinators.zig` | 8 | 0/48 | ⬜ |
-| `io.zig` | 4 | 0/4 | ⬜ |
+| `io.zig` | 0 | 4/4 | ✅ |
 | `ready.zig` | 1 | 0/41 | ⬜ |
 | `trace.zig` · `reduce_test.zig` | 0 | high | ◐ |
 
@@ -94,10 +105,10 @@ Status: ✅ done · ◐ partial · ⬜ todo. "snake" = C-style fn defs remaining
 ### driver/ · io/ · root
 | Module | snake | doc | status |
 |--------|------:|----:|:------:|
-| `driver/startup.zig` | 4 | 0/10 | ⬜ |
-| `driver/repl.zig` | 3 | 0/15 | ⬜ |
+| `driver/startup.zig` | 0 | 10/10 | ✅ |
+| `driver/repl.zig` | 0 | 15/15 | ✅ |
 | `driver/commands.zig` | 0 | low | ⬜ |
-| `io/files.zig` | 2 | 10/10 | ⬜ (rename only) |
+| `io/files.zig` | 0 | 10/10 | ✅ |
 | `io/platform.zig` · `io/signals.zig` · `io/utf8.zig` | 0 | mixed | ◐ |
 | `main.zig` | 0 | low | ⬜ (doc review) |
 

@@ -20,8 +20,10 @@ EXEMPT='src/tools/|src/runtime/main_clib.zig'
 
 files() { find "$SRC" -name '*.zig' | grep -vE "$EXEMPT" | sort; }
 
-# snake_case fn definitions in one file.
-snake() { grep -cE '^[[:space:]]*(pub )?(export )?fn [a-z][a-zA-Z0-9]*_' "$1" 2>/dev/null || true; }
+# snake_case fn definitions in one file. `handle_<COMBINATOR>` reducer dispatch
+# handlers are exempt: the snake suffix mirrors the uppercase combinator constant
+# (word.G_ALT -> handle_G_ALT) and keeps the dispatch table grep-aligned.
+snake() { grep -E '^[[:space:]]*(pub )?(export )?fn [a-z][a-zA-Z0-9]*_' "$1" 2>/dev/null | grep -cvE 'fn handle_[A-Z]' || true; }
 
 # doc-commented fn defs: a `fn NAME(` whose immediately-preceding line is `///`.
 doced() { awk '
