@@ -73,7 +73,7 @@ pub fn strBits(p: anytype) Word {
     if (span.len == 0) return 0;
     const t = get();
     if (t.dedup.get(span)) |id| return -@as(Word, id);
-    const copy = t.arena.allocator().dupeZ(u8, span) catch oom();
+    const copy = t.arena.allocator().dupeSentinel(u8, span, 0) catch oom();
     const id: StrId = @intCast(t.slices.items.len);
     t.slices.append(rt.allocator, copy) catch oom();
     t.dedup.put(rt.allocator, copy, id) catch oom();
@@ -100,7 +100,7 @@ pub fn privatize(handle: Word) Word {
     const cur = std.mem.span(strOf(handle));
     if (cur.len == 0) return handle;
     const t = get();
-    const scratch = t.arena.allocator().dupeZ(u8, cur) catch oom();
+    const scratch = t.arena.allocator().dupeSentinel(u8, cur, 0) catch oom();
     scratch[0] +%= 128;
     return strBits(@as([*:0]const u8, scratch.ptr));
 }

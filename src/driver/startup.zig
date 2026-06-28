@@ -524,7 +524,7 @@ pub fn missingParam(s: [:0]const u8) noreturn {
 /// Check the `.version` file under directory `m`; returns 1 if it matches this build, else records the mismatch for `libFails`.
 pub fn checkVersion(m: [*:0]const u8) c_int {
     var path_buf: [1024]u8 = undefined;
-    const path = std.fmt.bufPrintZ(&path_buf, "{s}/.version", .{m}) catch return 0;
+    const path = std.fmt.bufPrintSentinel(&path_buf, "{s}/.version", .{m}, 0) catch return 0;
     const f = word.fopen(path.ptr, "r");
     var v1: c_uint = 0;
     var read_ok: bool = false;

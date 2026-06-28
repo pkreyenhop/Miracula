@@ -601,7 +601,7 @@ pub fn charname(ch: Word) [*:0]const u8 {
         '"' => "\\\"",
         else => blk: {
             if (ch < 32 or ch > 126) {
-                const text = std.fmt.bufPrintZ(&heap.charname_buffer, "\\{d}", .{ch}) catch unreachable;
+                const text = std.fmt.bufPrintSentinel(&heap.charname_buffer, "\\{d}", .{ch}, 0) catch unreachable;
                 break :blk text.ptr;
             }
             heap.charname_buffer[0] = @intCast(ch);

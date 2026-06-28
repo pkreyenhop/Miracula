@@ -57,7 +57,7 @@ pub fn main(ctx: std.process.Init) !void {
     var r = stdin.reader(ctx.io, &input);
     const bytes_read = try r.interface.readSliceShort(&input);
     const text = std.mem.trim(u8, input[0..bytes_read], " \t\r\n");
-    const token_end = std.mem.indexOfAny(u8, text, " \t\r\n") orelse text.len;
+    const token_end = std.mem.findAny(u8, text, " \t\r\n") orelse text.len;
     const path = text[0..token_end];
 
     if (path.len == 0) {

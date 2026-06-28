@@ -1005,7 +1005,7 @@ fn formatArg(
         },
         'u' => {
             if (comptime is_int and @typeInfo(T).int.signedness == .signed) {
-                const UInt = std.meta.Int(.unsigned, @typeInfo(T).int.bits);
+                const UInt = @Int(.unsigned, @typeInfo(T).int.bits);
                 str = try std.fmt.bufPrint(&buf, "{d}", .{@as(UInt, @bitCast(val))});
             } else if (comptime is_int) {
                 str = try std.fmt.bufPrint(&buf, "{d}", .{val});

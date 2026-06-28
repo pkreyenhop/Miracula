@@ -334,7 +334,7 @@ fn caseCompileGcStress() !void {
     var result = try runMira(&env, script, "stress_len\n/q\n", &.{ "-heap", "25000", "-gc" });
     defer result.deinit();
     try assertSuccessOutput("compile-gc-stress", &result, "601");
-    try testing.expect(std.mem.indexOf(u8, result.stderr, "<<gc after") != null);
+    try testing.expect(std.mem.find(u8, result.stderr, "<<gc after") != null);
 }
 
 fn caseRuntimeGcStress() !void {
@@ -343,5 +343,5 @@ fn caseRuntimeGcStress() !void {
     var result = try runMira(&env, "", "sum [1..4000]\n/q\n", &.{ "-heap", "12000", "-gc" });
     defer result.deinit();
     try assertSuccessOutput("runtime-gc-stress", &result, "8002000");
-    try testing.expect(std.mem.indexOf(u8, result.stderr, "<<gc after") != null);
+    try testing.expect(std.mem.find(u8, result.stderr, "<<gc after") != null);
 }

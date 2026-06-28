@@ -99,7 +99,7 @@ const isconstrname = lex.isconstrname;
 
 /// Parse decimal `text` into a bignum (via a temporary NUL-terminated copy).
 fn bigscanZ(alloc: Allocator, text: []const u8) Word {
-    const z = alloc.dupeZ(u8, text) catch return word.NIL;
+    const z = alloc.dupeSentinel(u8, text, 0) catch return word.NIL;
     return bigscan(z.ptr);
 }
 

@@ -20,14 +20,14 @@ pub const Diagnostic = struct {
 
 pub const Diagnostics = struct {
     allocator: std.mem.Allocator,
-    list: std.array_list.Managed(Diagnostic),
+    list: std.ArrayList(Diagnostic),
     has_errors: bool = false,
 
     /// Create an empty diagnostics collector backed by `allocator`.
     pub fn init(allocator: std.mem.Allocator) Diagnostics {
         return .{
             .allocator = allocator,
-            .list = std.array_list.Managed(Diagnostic).init(allocator),
+            .list = .empty,
         };
     }
 
@@ -36,13 +36,13 @@ pub const Diagnostics = struct {
         for (self.list.items) |diag| {
             self.allocator.free(diag.message);
         }
-        self.list.deinit();
+        self.list.deinit(self.allocator);
     }
 
     /// Append a diagnostic of `severity` at `line:column` with message `msg`.
     pub fn add(self: *Diagnostics, severity: Severity, line: usize, column: usize, msg: []const u8) !void {
         const owned_msg = try self.allocator.dupe(u8, msg);
-        try self.list.append(.{
+        try self.list.append(self.allocator, .{
             .severity = severity,
             .line = line,
             .column = column,

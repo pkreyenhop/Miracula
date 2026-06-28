@@ -345,7 +345,7 @@ fn formatArg(
         },
         'u' => {
             if (comptime is_int and @typeInfo(T).int.signedness == .signed) {
-                const U = std.meta.Int(.unsigned, @typeInfo(T).int.bits);
+                const U = @Int(.unsigned, @typeInfo(T).int.bits);
                 str = try std.fmt.bufPrint(&buf, "{d}", .{@as(U, @bitCast(val))});
             } else if (comptime is_int) {
                 str = try std.fmt.bufPrint(&buf, "{d}", .{val});
@@ -1340,7 +1340,7 @@ pub fn strstr(haystack: ?*const anyopaque, needle: ?*const anyopaque) ?[*:0]u8 {
     const n_str = std.mem.span(@as([*:0]const u8, @ptrCast(needle.?)));
     if (n_str.len == 0) return @ptrCast(@constCast(@as([*:0]const u8, @ptrCast(haystack.?))));
 
-    const idx = std.mem.indexOf(u8, h_str, n_str) orelse return null;
+    const idx = std.mem.find(u8, h_str, n_str) orelse return null;
     const ptr = @as([*:0]u8, @ptrCast(@constCast(@as([*:0]const u8, @ptrCast(haystack.?)))));
     return @ptrCast(ptr + idx);
 }

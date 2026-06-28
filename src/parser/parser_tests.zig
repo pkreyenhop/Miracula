@@ -169,14 +169,14 @@ fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]con
     parser_api.lexSetupString(source);
     defer parser_api.lexCleanup();
 
-    var list = std.array_list.Managed(u8).init(allocator);
-    errdefer list.deinit();
+    var list: std.ArrayList(u8) = .empty;
+    errdefer list.deinit(allocator);
 
     while (true) {
         const tok = yylex();
         if (tok == 0 or tok == word.END) break;
 
-        try list.print("{s}", .{tokenName(tok)});
+        try list.print(allocator, "{s}", .{tokenName(tok)});
         // Capture the identifier's text reliably from the interned id node
         // (`ls.yylval`), not the lagging `ls.dicp` buffer — the latter points at
         // stale or uninitialised dictionary memory and made the snapshots depend
@@ -185,12 +185,12 @@ fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]con
             const h = heap.h;
             const id_text = std.mem.span(strtab.strOf(h(h(h(ls.yylval)))));
             if (id_text.len > 0 and isCleanAscii(id_text)) {
-                try list.print("(\"{s}\")", .{id_text});
+                try list.print(allocator, "(\"{s}\")", .{id_text});
             }
         }
-        try list.print("\n", .{});
+        try list.print(allocator, "\n", .{});
     }
-    return try list.toOwnedSlice();
+    return try list.toOwnedSlice(allocator);
 }
 
 /// Lex+parse `source` and compare the token stream against the stored snapshot.
@@ -210,9 +210,9 @@ fn runSnapshotTest(allocator: std.mem.Allocator, name: []const u8, source: [:0]c
     };
     std.debug.print("[{s}] parseString (1) done: {s}.\n", .{ name, parse_res });
 
-    var diag = std.array_list.Managed(u8).init(allocator);
-    defer diag.deinit();
-    try diag.print("PARSE_RESULT: {s}\n\nTOKENS:\n{s}", .{ parse_res, tokens });
+    var diag: std.ArrayList(u8) = .empty;
+    defer diag.deinit(allocator);
+    try diag.print(allocator, "PARSE_RESULT: {s}\n\nTOKENS:\n{s}", .{ parse_res, tokens });
 
     // Snapshot path
     const snapshot_dir = "tests/parser/snapshots";

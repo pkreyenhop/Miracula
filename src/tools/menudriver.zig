@@ -4,10 +4,10 @@ const max_selection = 4096;
 
 const Driver = struct {
     ctx: std.process.Init,
-    next: std.ArrayListUnmanaged(u8) = .empty,
-    last: std.ArrayListUnmanaged(u8) = .empty,
-    last_stack: std.ArrayListUnmanaged([]u8) = .empty,
-    shell_command: std.ArrayListUnmanaged(u8) = .empty,
+    next: std.ArrayList(u8) = .empty,
+    last: std.ArrayList(u8) = .empty,
+    last_stack: std.ArrayList([]u8) = .empty,
+    shell_command: std.ArrayList(u8) = .empty,
     viewer: []const u8,
     menuviewer: []const u8,
     fastback: bool,
@@ -89,7 +89,7 @@ const Driver = struct {
 
             if (std.mem.eql(u8, self.next.items, ".") or
                 std.mem.eql(u8, self.next.items, "..") or
-                std.mem.indexOfScalar(u8, self.next.items, '/') != null)
+                std.mem.findScalar(u8, self.next.items, '/') != null)
             {
                 bad = true;
                 continue;
@@ -97,7 +97,7 @@ const Driver = struct {
 
             switch (stat.kind) {
                 .directory => {
-                    var cwd_buffer: [std.fs.max_path_bytes]u8 = undefined;
+                    var cwd_buffer: [std.Io.Dir.max_path_bytes]u8 = undefined;
                     const hold_len = std.process.currentPath(self.ctx.io, &cwd_buffer) catch {
                         std.debug.print("menudriver: cwd path too long\n", .{});
                         std.process.exit(1);
@@ -383,7 +383,7 @@ fn runChild(ctx: std.process.Init, argv: []const []const u8, stdin_mode: std.pro
 }
 
 fn shellQuote(allocator: std.mem.Allocator, text: []const u8) ![]u8 {
-    var out: std.ArrayListUnmanaged(u8) = .empty;
+    var out: std.ArrayList(u8) = .empty;
     errdefer out.deinit(allocator);
     try out.append(allocator, '\'');
     for (text) |ch| {
