@@ -1,3 +1,13 @@
+//! heap.zig — the graph heap: cells, allocation, garbage collection, and the
+//! object-file (`.x`) dump/load format.
+//!
+//! Every Miranda value is a tagged cell with a head and tail (`hd`/`tl`); this
+//! module owns the cell arena, the `make`/`cons`/… constructors, the mark-sweep
+//! `gc`, and the typed accessors layered over the raw cells (id/type/file-record/
+//! double/bignum fields). It also implements `dumpScript`/`loadScript` — the
+//! serialisation that lets a compiled script be saved and reloaded. The `Heap`
+//! struct holds the state; module-level free functions wrap the singleton.
+
 const std = @import("std");
 const word = @import("word.zig");
 const strtab = @import("strtab.zig");
@@ -24,18 +34,22 @@ const Word = i64;
 const wordsize = @sizeOf(Word) * 8;
 const bits_15 = 0xffff;
 
+/// The value field of a type/definition cell.
 pub inline fn theVal(x: Word) Word {
     return t(x);
 }
 
+/// The index of type variable `x`.
 inline fn gettvar(x: Word) Word {
     return t(x);
 }
 
+/// The arity recorded in a type node.
 inline fn tArity(x: Word) Word {
     return h(h(t(x)));
 }
 
+/// Make a type-variable node with index `i`.
 inline fn mktvar(i: Word) Word {
     return make(word.TVAR, 0, i);
 }
@@ -115,21 +129,25 @@ pub const Heap = struct {
         self.tag = self.cells.items(.tag).ptr;
     }
 
+    /// Head (`hd`) of cell `x`.
     pub fn h(self: Heap, x: Word) Word {
         if (word.isAtom(x)) return 0;
         return self.hd.?[@as(usize, @intCast(x))];
     }
 
+    /// Pointer to the head field of cell `x` (for in-place mutation).
     pub fn hp(self: Heap, x: Word) *Word {
         std.debug.assert(x >= ATOMLIMIT);
         return &self.hd.?[@as(usize, @intCast(x))];
     }
 
+    /// Tail (`tl`) of cell `x`.
     pub fn t(self: Heap, x: Word) Word {
         if (word.isAtom(x)) return 0;
         return self.tl.?[@as(usize, @intCast(x))];
     }
 
+    /// Pointer to the tail field of cell `x` (for in-place mutation).
     pub fn tp(self: Heap, x: Word) *Word {
         std.debug.assert(x >= ATOMLIMIT);
         return &self.tl.?[@as(usize, @intCast(x))];
@@ -138,6 +156,7 @@ pub const Heap = struct {
     /// The raw tag byte. The stored tag is a typed `r7_word.NodeTag` (R3.2); this
     /// returns its integer value so the many `getTag(x) == word.XXX` int
     /// comparisons keep working. During GC the byte may be a negated mark.
+    /// The node tag of cell `x`.
     pub fn getTag(self: Heap, x: Word) u8 {
         return @intFromEnum(self.tag.?[@intCast(x)]);
     }
@@ -147,27 +166,33 @@ pub const Heap = struct {
         return self.tag.?[@intCast(x)];
     }
 
+    /// Set the node tag of cell `x`.
     pub fn setTag(self: *Heap, x: Word, val: u8) void {
         self.tag.?[@intCast(x)] = @enumFromInt(val);
     }
 
+    /// Allocate a `CONS` cell `(x . y)`.
     pub fn cons(self: *Heap, x: Word, y: Word) Word {
         return self.make(CONS, x, y);
     }
 
+    /// The current heap top — the next free cell index.
     pub fn TOP(self: Heap) Word {
         return self.SPACE + ATOMLIMIT;
     }
 
+    /// The high-water heap limit.
     pub fn BIGTOP(self: Heap) Word {
         _ = self;
         return rt.rs.SPACELIMIT + ATOMLIMIT;
     }
 
+    /// The usable heap size, in cells.
     pub fn trueheapsize(self: Heap) Word {
         return if (heap.nogcs == 0) self.listp - ATOMLIMIT + 1 else self.SPACE;
     }
 
+    /// Allocate and initialise the heap arena.
     pub fn setupheap(self: *Heap) void {
         const bigtop_val = @as(usize, @intCast(self.BIGTOP()));
         if (self.cells.len == 0) {
@@ -184,6 +209,7 @@ pub const Heap = struct {
         @memset(self.tag.?[@intCast(ATOMLIMIT)..bigtop_val], .ATOM);
     }
 
+    /// Reset the heap to empty (between sessions).
     pub fn resetheap(self: *Heap) void {
         if (rt.rs.SPACELIMIT < self.trueheapsize()) {
             _ = word.printErr("impossible event in resetheap\n", .{});
@@ -203,6 +229,7 @@ pub const Heap = struct {
         }
     }
 
+    /// Allocate a cell with tag `t_val` and fields `(x, y)` — the core allocator.
     pub fn make(self: *Heap, t_val: u8, x: Word, y: Word) Word {
         while (true) {
             self.listp += 1;
@@ -250,6 +277,7 @@ pub const Heap = struct {
         return self.listp;
     }
 
+    /// Run a mark-sweep garbage collection.
     pub fn gc(self: *Heap) void {
         heap.collecting = 1;
         var idx = @as(usize, @intCast(ATOMLIMIT));
@@ -287,6 +315,7 @@ pub const Heap = struct {
         heap.collecting = 0;
     }
 
+    /// Walk the heap after collection, fixing up the relocated cell tags/links.
     pub fn gcpatch(self: *Heap) void {
         var idx = @as(usize, @intCast(ATOMLIMIT));
         while (self.tag.?[idx] != .ATOM) : (idx += 1) {
@@ -297,6 +326,7 @@ pub const Heap = struct {
         }
     }
 
+    /// Mark the GC roots: the live Words on the C stack and in registers.
     pub fn bases(self: *Heap) void {
         var p: [*]Word = undefined;
         p = @ptrCast(@alignCast(&p));
@@ -406,10 +436,12 @@ pub const Heap = struct {
         }
     }
 
+    /// Whether `x` is a heap-cell pointer (rather than an atom/immediate).
     pub fn isptr(self: Heap, x: Word) bool {
         return x >= ATOMLIMIT and x < self.TOP();
     }
 
+    /// Recursively mark cell `x` and its descendants as reachable (GC).
     pub fn mark(self: *Heap, x_val: Word) void {
         var x = x_val & ~r7_word.tlptrbits;
         while (self.isptr(x) and negchar(@intFromEnum(self.tag.?[@intCast(x)]))) {
@@ -433,46 +465,57 @@ pub const Heap = struct {
 
 pub const heap = &@import("interp.zig").interp.heap;
 
+/// Head (`hd`) of cell `x`.
 pub fn h(x: Word) Word {
     return heap.h(x);
 }
 
+/// Pointer to the head field of cell `x` (for in-place mutation).
 pub fn hp(x: Word) *Word {
     return heap.hp(x);
 }
 
+/// Tail (`tl`) of cell `x`.
 pub fn t(x: Word) Word {
     return heap.t(x);
 }
 
+/// Pointer to the tail field of cell `x` (for in-place mutation).
 pub fn tp(x: Word) *Word {
     return heap.tp(x);
 }
 
+/// The node tag of cell `x`.
 pub fn getTag(x: Word) r7_word.NodeTag {
     return @enumFromInt(heap.getTag(x));
 }
 
+/// Allocate a `CONS` cell `(x . y)`.
 pub fn cons(x: Word, y: Word) Word {
     return heap.cons(x, y);
 }
 
+/// Allocate a `TRIES` cell `(x . y)` (a pattern-match alternative chain).
 pub fn tries(x: Word, y: Word) Word {
     return make(@intCast(word.TRIES), x, y);
 }
 
+/// The 'who' (definition-site) field of id `x`.
 pub fn idWho(x: Word) Word {
     return t(h(h(x)));
 }
 
+/// The interned name text of id `x`.
 fn getId(x: Word) [*:0]const u8 {
     return strtab.strOf(h(h(h(x))));
 }
 
+/// Box char `ch`: bare Latin-1, or a `UNICODE` cell for wider code points.
 pub fn stoChar(ch: Word) Word {
     return if (word.fitsInByte(ch)) ch else make(UNICODE, ch, 0);
 }
 
+/// The code point of char value `x`.
 pub fn getChar(x: Word) Word {
     switch (word.classify(x)) {
         .imm => |c| return c, // bare Latin-1 code point
@@ -483,6 +526,7 @@ pub fn getChar(x: Word) Word {
     main_clib.exit(1);
 }
 
+/// Whether `x` is a char value (1/0).
 pub fn isChar(x: Word) c_int {
     return switch (word.classify(x)) {
         .imm => 1, // bare Latin-1 char
@@ -491,16 +535,19 @@ pub fn isChar(x: Word) c_int {
     };
 }
 
+/// The source location (`HERE`) recorded for id `x`.
 pub fn getHere(x: Word) Word {
     const y = idWho(x);
     return if (heap.getTag(y) == CONS) t(y) else y;
 }
 
+/// The original ('also known as') name of id `x` (before any alias).
 pub fn getaka(x: Word) [*:0]const u8 {
     const y = idWho(x);
     return if (heap.getTag(y) != CONS) getId(x) else strtab.strOf(h(h(y)));
 }
 
+/// Append a single element to the end of list `x`.
 pub fn append1(x: Word, y: Word) Word {
     var x1 = x;
     if (x1 == nil()) return y;
@@ -509,6 +556,7 @@ pub fn append1(x: Word, y: Word) Word {
     return x;
 }
 
+/// Sort list `input` by cell head (merge sort).
 pub fn hdsort(input: Word) Word {
     var x = input;
     var a: Word = nil();
@@ -540,6 +588,7 @@ pub fn hdsort(input: Word) Word {
     return reverse(x);
 }
 
+/// A printable name/escape for char `ch`.
 pub fn charname(ch: Word) [*:0]const u8 {
     return switch (ch) {
         '\n' => "\\n",
@@ -562,6 +611,7 @@ pub fn charname(ch: Word) [*:0]const u8 {
     };
 }
 
+/// Print double `value` to `file`.
 pub fn outr(file: ?*word.FILE, value: f64) void {
     const magnitude = if (value < 0) -value else value;
     if (magnitude >= 1000.0 or magnitude <= 0.001) {
@@ -571,6 +621,7 @@ pub fn outr(file: ?*word.FILE, value: f64) void {
     }
 }
 
+/// The `f64` stored in `DOUBLE` cell `x`.
 pub fn getDbl(x: Word) f64 {
     var r: fpdatum = undefined;
     if (comptime @sizeOf(Word) == 4) {
@@ -582,6 +633,7 @@ pub fn getDbl(x: Word) f64 {
     return r.real;
 }
 
+/// Box `f64` `R_val` in a `DOUBLE` cell.
 pub fn stoDbl(R_val: f64) Word {
     if (!std.math.isFinite(R_val)) {
         fpeError(main_clib.SIGFPE);
@@ -595,6 +647,7 @@ pub fn stoDbl(R_val: f64) Word {
     }
 }
 
+/// Overwrite the `f64` in `DOUBLE` cell `x`.
 pub fn setdbl(x: Word, R_val: f64) void {
     if (!std.math.isFinite(R_val)) {
         fpeError(main_clib.SIGFPE);
@@ -611,6 +664,7 @@ pub fn setdbl(x: Word, R_val: f64) void {
     }
 }
 
+/// The `NIL` sentinel.
 fn nil() Word {
     return 306 + 138;
 }
@@ -623,61 +677,74 @@ const outstats = r7_reduce.outstats;
 const initclock = r7_reduce.initclock;
 const hashsize = r7_word.hashsize;
 
+/// The current heap top — the next free cell index.
 fn TOP() Word {
     return heap.TOP();
 }
 
+/// The high-water heap limit.
 fn BIGTOP() Word {
     return heap.BIGTOP();
 }
 
+/// The usable heap size, in cells.
 pub fn trueheapsize() Word {
     return heap.trueheapsize();
 }
 
+/// Allocate and initialise the heap arena.
 pub fn setupheap() void {
     heap.setupheap();
 }
 
+/// Reset the heap to empty (between sessions).
 pub fn resetheap() void {
     heap.resetheap();
 }
 
+/// Report (non-fatally) a failed allocation for `x`.
 pub fn mallocfail(x: [*:0]const u8) void {
     _ = word.printErr("panic: cannot find enough free space for {s}\n", .{x});
     main_clib.exit(1);
 }
 
+/// Panic and abort: out of memory allocating `what`.
 pub fn mallocPanic(what: [*:0]const u8) noreturn {
     mallocfail(what);
     unreachable;
 }
 
+/// Reset the per-evaluation GC counters.
 pub fn resetgcstats() void {
     heap.cellcount = -heap.claims;
     heap.nogcs = 0;
     initclock();
 }
 
+/// Whether byte `val` is positive read as signed (high bit clear).
 fn poschar(val: u8) bool {
     const signed_val = @as(i8, @bitCast(val));
     return signed_val > 0;
 }
 
+/// Allocate a cell with tag `t_val` and fields `(x, y)` — the core allocator.
 pub fn make(t_val: u8, x: Word, y: Word) Word {
     return heap.make(t_val, x, y);
 }
 
+/// Run a mark-sweep garbage collection.
 pub fn gc() void {
     heap.gc();
 }
 
+/// Walk the heap after collection, fixing up the relocated cell tags/links.
 pub fn gcpatch() void {
     heap.gcpatch();
 }
 
 
 
+/// The standard-error `FILE` handle (tolerating either a fn or value form).
 fn getStderr() ?*word.FILE {
     const T = @TypeOf(main_clib.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
@@ -692,10 +759,12 @@ fn getStderr() ?*word.FILE {
 
 const fileMtime = r7_files.fileMtime;
 const unlinkObject = r7_files.unlinkObject;
+/// Intern name `p1`, returning its dictionary `ID` node (inserting if new).
 pub fn stoId(p1: [*:0]const u8) Word {
     return make(word.ID, cons(make(word.STRCONS, strtab.strBits(p1), word.NIL), word.undef_t), word.UNDEF);
 }
 
+/// Read a size-prefixed tagged `Word` from dump `file`.
 pub fn getword(file: ?*word.FILE) Word {
     var s: i32 = 0;
     var i: usize = @sizeOf(Word);
@@ -709,6 +778,7 @@ pub fn getword(file: ?*word.FILE) Word {
     return x;
 }
 
+/// Write a size-prefixed tagged `Word` to dump `file`.
 pub fn putword(x_val: Word, file: ?*word.FILE) void {
     var x = x_val;
     var i: usize = @sizeOf(Word);
@@ -720,6 +790,7 @@ pub fn putword(x_val: Word, file: ?*word.FILE) void {
     }
 }
 
+/// Set the path prefix used to relativise dumped file names.
 pub fn setprefix(p: [*:0]const u8) void {
     const p_len = std.mem.len(p);
     if (p_len >= heap.prefix.len) {
@@ -746,6 +817,7 @@ pub fn setprefix(p: [*:0]const u8) void {
     }
 }
 
+/// Rewrite path `p` relative to the dump prefix.
 pub fn mkrel(p: [*:0]const u8) [*:0]const u8 {
     const p_len = std.mem.len(p);
     const prefix_len = @as(usize, @intCast(heap.preflen));
@@ -759,6 +831,7 @@ pub fn mkrel(p: [*:0]const u8) [*:0]const u8 {
     return p;
 }
 
+/// Whether the object file for `t_ptr` exists and is up to date.
 pub fn okdump(t_ptr: [*:0]const u8) c_int {
     var obf: [120]u8 = undefined;
     const t_len = std.mem.len(t_ptr);
@@ -787,6 +860,7 @@ pub fn okdump(t_ptr: [*:0]const u8) c_int {
     return 0;
 }
 
+/// The error line number recorded in a bad object file for `t_ptr`.
 pub fn geterrlin(t_ptr: [*:0]const u8) Word {
     var obf: [120]u8 = undefined;
     const t_len = std.mem.len(t_ptr);
@@ -855,39 +929,48 @@ const bigtostr = r7_big.toDecimalList;
 const SIGNBIT = 0x10000000;
 const MAXDIGIT = 0x7fff;
 
+/// The next digit cell of a bignum chain.
 fn rest(x: Word) Word {
     return t(x);
 }
 
+/// The raw head digit of a bignum cell.
 fn digit(x: Word) Word {
     return h(x);
 }
 
+/// The head digit of a bignum cell with the sign bit masked off.
 fn digit0(x: Word) Word {
     return h(x) & MAXDIGIT;
 }
 
+/// Decode a single-cell bignum to a signed `Word`.
 fn getsmallint(x: Word) Word {
     return if ((h(x) & SIGNBIT) != 0) -digit0(x) else digit(x);
 }
 
+/// Box small int `x`: bare, or as an `INT` cell if it doesn't fit.
 pub fn stosmallint(x: Word) Word {
     const val = if (x < 0) SIGNBIT | @as(Word, @intCast(-x)) else x;
     return make(word.INT, val, 0);
 }
 
+/// The left-hand side (head) of a definition cell `d`.
 pub inline fn dlhs(d: Word) Word {
     return h(d);
 }
 
+/// The value of a definition cell `d` (`t(t(d))`).
 pub inline fn dval(d: Word) Word {
     return t(t(d));
 }
 
+/// Reinterpret Word `val` as a C-string pointer.
 fn castPtr(val: Word) [*:0]const u8 {
     return strtab.strOf(val);
 }
 
+/// Print cell `x` to `file` in readable form (debug/diagnostic dump).
 pub fn out(file: ?*word.FILE, x_val: Word) void {
     var x = x_val;
     if (x < 0 or x > TOP()) {
@@ -909,6 +992,7 @@ pub fn out(file: ?*word.FILE, x_val: Word) void {
     }
 }
 
+/// Helper for `out`: print one sub-term.
 pub fn out1(file: ?*word.FILE, x: Word) void {
     if (x < 0 or x > TOP()) {
         _ = word.fprint(file, "<{d}>", .{x});
@@ -923,6 +1007,7 @@ pub fn out1(file: ?*word.FILE, x: Word) void {
     }
 }
 
+/// Helper for `out`: print one sub-term.
 pub fn out2(file: ?*word.FILE, x_val: Word) void {
     var x = x_val;
     if (x < 0 or x > TOP()) {
@@ -1078,93 +1163,115 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
 const member = r7_types.member;
 const add1 = r7_types.add1;
 const name = r7_lex.name;
+/// The path string of file record `fil`.
 fn getFil(fil: Word) [*:0]const u8 {
     return castPtr(h(h(h(fil))));
 }
 
+/// The mtime stored in file record `fil`.
 pub fn filTime(fil: Word) Word {
     return t(h(h(fil)));
 }
 
+/// The share/include flag of file record `fil`.
 pub fn filShare(fil: Word) Word {
     return h(t(h(fil)));
 }
 
+/// The definitions list of file record `fil`.
 pub fn filDefs(fil: Word) Word {
     return t(fil);
 }
 
+/// Build a file record `(name, mtime, share, defs)`.
 pub fn makeFil(fil_name: ?[*:0]const u8, time_val: Word, share: Word, defs: Word) Word {
     const name_word = if (fil_name) |n| @as(Word, strtab.strBits(n)) else 0;
     return cons(cons(make(word.FILEINFO, name_word, time_val), cons(share, word.NIL)), defs);
 }
 
+/// The head of private-name node `x`.
 fn getPn(x: Word) Word {
     return h(x);
 }
 
+/// The value (tail) of private-name node `x`.
 fn pnVal(x: Word) Word {
     return t(x);
 }
 
+/// The type field of id `x`.
 pub fn idType(x: Word) Word {
     return t(h(x));
 }
 
+/// The value field of id `x`.
 pub fn idVal(x: Word) Word {
     return t(x);
 }
 
+/// Pointer to the 'who' field of id `x`.
 fn idWhoPtr(x: Word) *Word {
     return tp(h(h(x)));
 }
 
+/// Pointer to the type field of id `x`.
 fn idTypePtr(x: Word) *Word {
     return tp(h(x));
 }
 
+/// Pointer to the value field of id `x`.
 fn idValPtr(x: Word) *Word {
     return tp(x);
 }
 
+/// Pointer to the value field of private-name node `x`.
 fn pnValPtr(x: Word) *Word {
     return tp(x);
 }
 
+/// The type class (algebraic/synonym/abstract/…) of type node `x`.
 pub fn tClass(x: Word) Word {
     return h(t(theVal(x)));
 }
 
+/// The info field of type node `x`.
 pub fn tInfo(x: Word) Word {
     return t(t(x));
 }
 
+/// Push `val` onto the GC-protected scratch stack.
 fn stackpPush(val: Word) void {
     heap.stackp.?[0] = val;
     heap.stackp = heap.stackp.? + 1;
 }
 
+/// Pop the top of the GC-protected scratch stack.
 fn stackpPop() Word {
     heap.stackp = heap.stackp.? - 1;
     return heap.stackp.?[0];
 }
 
+/// Peek the top of the GC-protected scratch stack.
 fn stackpTop() Word {
     return (heap.stackp.? - 1)[0];
 }
 
+/// Overwrite the top of the GC-protected scratch stack.
 fn stackpSetTop(val: Word) void {
     (heap.stackp.? - 1)[0] = val;
 }
 
+/// Allocate a `DATAPAIR` cell `(x . y)`.
 fn datapair(x: Word, y: Word) Word {
     return make(word.DATAPAIR, x, y);
 }
 
+/// Allocate a `FILEINFO` cell `(x . y)`.
 fn fileinfo(x: Word, y: Word) Word {
     return make(word.FILEINFO, x, y);
 }
 
+/// Allocate a `CONSTRUCTOR` cell (tag `n`, fields `x`).
 pub fn constructor(n: Word, x: anytype) Word {
     const x_val: Word = switch (@TypeOf(x)) {
         Word => x,
@@ -1175,35 +1282,42 @@ pub fn constructor(n: Word, x: anytype) Word {
     return make(word.CONSTRUCTOR, n, x_val);
 }
 
+/// Allocate a `STARTREADVALS` node for the `readvals` reader.
 fn readvals(x: Word, y: Word) Word {
     return make(word.STARTREADVALS, x, y);
 }
 
+/// Allocate an application cell `(x y)`.
 fn ap(x: Word, y: Word) Word {
     return make(word.AP, x, y);
 }
 
+/// Write a 32-bit int to dump `file`.
 pub fn putint(n: i32, file: ?*word.FILE) void {
     _ = word.fwrite(&n, @sizeOf(i32), 1, file);
 }
 
+/// Read a 32-bit int from dump `file`.
 pub fn getint(file: ?*word.FILE) i32 {
     var r: i32 = 0;
     _ = word.fread(&r, @sizeOf(i32), 1, file);
     return r;
 }
 
+/// Write the double in cell `x` to dump `file`.
 pub fn putdbl(x: Word, file: ?*word.FILE) void {
     var d = getDbl(x);
     _ = word.fwrite(&d, @sizeOf(f64), 1, file);
 }
 
+/// Read a double from dump `file` (as a `DOUBLE` node).
 pub fn getdbl(file: ?*word.FILE) Word {
     var d: f64 = 0;
     _ = word.fread(&d, @sizeOf(f64), 1, file);
     return stoDbl(d);
 }
 
+/// Write the loaded files/definitions graph to dump `file`.
 pub fn dumpScript(files_val: Word, file: ?*word.FILE) void {
     _ = word.putc(@intCast(wordsize), file);
     _ = word.putc(word.XVERSION, file);
@@ -1249,6 +1363,7 @@ pub fn dumpScript(files_val: Word, file: ?*word.FILE) void {
     dumpDefs(dump.internals, file);
 }
 
+/// Write a definition list to dump `file`.
 pub fn dumpDefs(defs_val: Word, file: ?*word.FILE) void {
     var defs = defs_val;
     while (defs != word.NIL) : (defs = t(defs)) {
@@ -1278,6 +1393,7 @@ pub fn dumpDefs(defs_val: Word, file: ?*word.FILE) void {
     _ = word.putc(word.DEF_X, file);
 }
 
+/// Write one object (graph node) to dump `file`.
 pub fn dumpOb(x: Word, file: ?*word.FILE) void {
     switch (heap.getTagEnum(x)) {
         .ATOM => {
@@ -1387,6 +1503,7 @@ pub fn dumpOb(x: Word, file: ?*word.FILE) void {
     }
 }
 
+/// Load a script graph from a dump `file`, binding params and aliases.
 pub fn loadScript(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
     cs.TORPHANS = 0;
     cs.BAD_DUMP = 0;
@@ -1552,6 +1669,7 @@ pub fn loadScript(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: 
     return reverse(files_list);
 }
 
+/// Bind a `%include`'s formal parameters to the actual arguments.
 pub fn bindparams(formal_val: Word, actual_val: Word) void {
     var formal = formal_val;
     var actual = actual_val;
@@ -1594,6 +1712,7 @@ pub fn bindparams(formal_val: Word, actual_val: Word) void {
     }
 }
 
+/// Resolve `%include` aliases in the freshly-loaded graph.
 pub fn unscramble(aliases: Word) void {
     var a = aliases;
     while (a != word.NIL) : (a = t(a)) {
@@ -1631,6 +1750,7 @@ pub fn unscramble(aliases: Word) void {
     cs.ALIASES = a;
 }
 
+/// Allocate the dump scratch stack (`dstack`).
 pub fn dsetup() void {
     if (heap.dstack == null) {
         const slice = rt.allocator.alloc(Word, 1000) catch mallocPanic("dstack");
@@ -1641,6 +1761,7 @@ pub fn dsetup() void {
     heap.stackp = heap.dstack;
 }
 
+/// Grow the dump scratch stack when it overflows.
 pub fn dgrow() void {
     const hold = heap.dstack.?;
     const num_elements = heap.dlim.? - hold;
@@ -1653,6 +1774,7 @@ pub fn dgrow() void {
     heap.allocated_dstack_size = new_size;
 }
 
+/// Load a definition list from a dump `file`.
 pub fn loadDefs(file: ?*word.FILE) Word {
     var ch = main_clib.getc(file);
     var defs: Word = word.NIL;
@@ -1888,37 +2010,45 @@ pub fn loadDefs(file: ?*word.FILE) Word {
 }
 
 // Relocated heap/node domain metadata accessors and lifecycle utilities
+/// The `(dev . ino)` filesystem identity of file record `fil`.
 pub fn filInodev(fil: Word) Word {
     return t(t(h(fil)));
 }
 
+/// Whether two file records name the same inode.
 pub fn sameFile(x: Word, y: Word) bool {
     const ix = filInodev(x);
     const iy = filInodev(y);
     return h(ix) == h(iy) and t(ix) == t(iy);
 }
 
+/// Whether `x` is a bad/error sentinel value.
 pub fn badval(x: Word) bool {
     return x < 100 or x > 50000000;
 }
 
+/// Whether id `x` is a `%free` identifier.
 pub fn isfreeid(x: Word) bool {
     return idType(x) == word.undef_t and idVal(x) == word.UNDEF;
 }
 
 const isconstrname = r7_lex.isconstrname;
+/// Whether `x` names a data constructor.
 pub fn isconstructor(x: Word) bool {
     return heap.getTag(x) == word.ID and isconstrname(getId(x)) != 0;
 }
 
+/// Whether `x` names an ordinary variable.
 pub fn isvariable(x: Word) bool {
     return heap.getTag(x) == word.ID and isconstrname(getId(x)) == 0;
 }
 
+/// Add id `x` to the current file's definition environment.
 pub fn addtoenv(x: Word) void {
     tp(h(heap.files)).* = cons(x, t(h(heap.files)));
 }
 
+/// Reverse list `input`.
 pub fn reverse(input: Word) Word {
     var x = input;
     var y: Word = NIL;
@@ -1929,6 +2059,7 @@ pub fn reverse(input: Word) Word {
     return y;
 }
 
+/// Reverse `x` onto the front of `y` (shunt / reverse-append).
 pub fn shunt(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
@@ -1939,6 +2070,7 @@ pub fn shunt(input_x: Word, input_y: Word) Word {
     return y;
 }
 
+/// The length of list `input`.
 pub fn size(input: Word) Word {
     var x = input;
     var s: Word = 0;
@@ -1949,6 +2081,7 @@ pub fn size(input: Word) Word {
     return s;
 }
 
+/// Sort a list of identifiers alphabetically by name.
 pub fn alfasort(x_val: Word) Word {
     var x = x_val;
     var a = NIL;
@@ -1990,6 +2123,7 @@ pub fn alfasort(x_val: Word) Word {
     return reverse(x);
 }
 
+/// Detect whether the current locale is UTF-8 (1/0).
 pub fn utf8test() c_int {
     var lang = main_clib.getenv("LC_CTYPE");
     if (lang == null) {
@@ -2007,6 +2141,7 @@ pub fn utf8test() c_int {
     return 0;
 }
 
+/// Clear the values of all ids defined in `d_val` (on unload).
 pub fn unsetids(d_val: Word) void {
     var d = d_val;
     while (d != NIL and d != 0) : (d = t(d)) {
@@ -2018,6 +2153,7 @@ pub fn unsetids(d_val: Word) void {
     }
 }
 
+/// Unload the current script: clear its definitions from the environment.
 pub fn unload() void {
     rt.rs.sorted = 0;
     cs.speclocs = NIL;
@@ -2049,6 +2185,7 @@ pub fn unload() void {
     rt.rs.ld_stuff = NIL;
 }
 
+/// Whether any loaded source file has changed on disk since load (1/0).
 pub fn srcUpdate() c_int {
     var ft: Word = undefined;
     var f = if (heap.files == NIL) rt.rs.oldfiles else heap.files;
@@ -2225,6 +2362,7 @@ test "heap dump roundtrip" {
     try std.testing.expectEqual(@as(Word, 100), getsmallint(loaded_t));
 }
 
+/// Whether byte `val` is negative read as signed (high bit set).
 fn negchar(val: u8) bool {
     const signed_val = @as(i8, @bitCast(val));
     return signed_val < 0;
