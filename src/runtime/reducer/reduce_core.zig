@@ -293,6 +293,7 @@ pub inline fn suppressed(x: Word) bool {
     return is_strcons(tlx) and !is_id(pnVal(tlx));
 }
 
+/// The standard-error `FILE` handle.
 pub fn getStderr() ?*word.FILE {
     const T = @TypeOf(main_clib.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
@@ -303,6 +304,7 @@ pub fn getStderr() ?*word.FILE {
         return main_clib.stderr;
     }
 }
+/// The standard-output `FILE` handle.
 pub fn getStdout() ?*word.FILE {
     const T = @TypeOf(main_clib.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
@@ -313,6 +315,7 @@ pub fn getStdout() ?*word.FILE {
         return main_clib.stdout;
     }
 }
+/// The standard-input `FILE` handle.
 pub fn getStdin() ?*word.FILE {
     const T = @TypeOf(main_clib.stdin);
     if (comptime @typeInfo(T) == .@"fn") {

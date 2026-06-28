@@ -77,6 +77,7 @@ const yysterm_data = [_]?[*:0]const u8{
 };
 pub var yysterm = yysterm_data;
 
+/// Report a syntax error `s`: print the location and set `SYNERR`.
 pub fn syntax(s: [*:0]const u8) void {
     if (core_state.s.SYNERR != 0) return;
     if (main.rs.echoing != 0) {
@@ -87,6 +88,7 @@ pub fn syntax(s: [*:0]const u8) void {
     resetLex();
 }
 
+/// Flag a grammar-action error (set `SYNERR` and reset the lexer).
 pub fn acterror() void {
     if (core_state.s.SYNERR != 0) return;
     core_state.s.SYNERR = 1;
@@ -184,6 +186,7 @@ pub fn stdlib() void {
     predef("zip2", word.ZIP, word.undef_t);
 }
 
+/// The smallest positive double the host represents, as a `DOUBLE` node (for `tiny`).
 fn mktiny() Word {
     var x: f64 = 1.0;
     var x1: f64 = x / 2.0;

@@ -46,10 +46,12 @@ pub const StringTable = struct {
     initialized: bool = false,
 };
 
+/// Abort: the string table ran out of memory.
 fn oom() noreturn {
     @panic("strtab: out of memory");
 }
 
+/// Lazily initialise (on first use) and return the interned string table.
 fn get() *StringTable {
     const t = &@import("interp.zig").interp.strtab;
     if (!t.initialized) {

@@ -29,6 +29,7 @@ const ap2 = reduce.ap2;
 // tests now capturing token text reliably (interned id, not the lagging dic
 // buffer), that pollution is gone and full setup here is safe.
 var initialized = false;
+/// Run the one-time interpreter setup (`interp.reset` + dictionary + `miraSetup`) for the tests.
 fn ensureSetup() void {
     if (initialized) return;
     interp.reset();

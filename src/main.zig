@@ -190,6 +190,7 @@ pub const versionString = startup.versionString;
 pub const missingParam = startup.missingParam;
 pub const versionInfo = startup.versionInfo;
 
+/// Process entry point: wire up the runtime context (io/allocator/argv) and forward to `mainEntry`.
 pub fn main(ctx: std.process.Init) !void {
     rt.io = ctx.io;
     rt.environ = ctx.minimal.environ;

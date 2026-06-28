@@ -69,15 +69,18 @@ pub fn fixexports() void {
     }
 }
 
+/// Mark id `x` as exported by wrapping its value in an `EXPORT` node (dump graph-walk).
 fn paint(x: Word) void {
     tp(x).* = abi.ap(word.EXPORT, main.idVal(x));
 }
 
+/// Whether id `x` is not marked as exported.
 fn unpainted(x: Word) bool {
     const v = main.idVal(x);
     return getTag(v) != word.AP or h(v) != word.EXPORT;
 }
 
+/// Remove the `EXPORT` mark from id `x`.
 fn unpaint(x: Word) void {
     tp(x).* = t(main.idVal(x));
 }
@@ -93,6 +96,7 @@ pub fn unfixexports() void {
     internals = NIL;
 }
 
+/// Move id `x` out of the public name bucket into a private name (for `%export` filtering).
 fn privatise(x: Word) Word {
     const n = abi.makePn(x);
     const hash_idx = hash(main.get_id(x));
@@ -130,10 +134,12 @@ fn privatise(x: Word) Word {
     return n;
 }
 
+/// Hash a C-string into a 0..127 name-bucket index (first + last byte).
 fn hash(s: [*:0]const u8) usize {
     return (@as(usize, s[0]) + @as(usize, s[word.strlen(s) - 1])) & 127;
 }
 
+/// Restore a privatised id `x` to the public name bucket.
 fn publicise(x: Word) Word {
     const i = main.idVal(x);
     const hash_idx = hash(main.get_id(x));

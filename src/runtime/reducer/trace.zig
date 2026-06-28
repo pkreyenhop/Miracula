@@ -62,6 +62,7 @@ pub fn dump() void {
         }
     }
     std.sort.pdq(usize, order[0..n], {}, struct {
+        /// Order comparator: sort combinator slots by descending step count.
         fn lt(_: void, a: usize, b: usize) bool {
             return heads[a] > heads[b];
         }

@@ -20,6 +20,7 @@ const ls = lex_state.ls;
 
 // C ABI / linked symbols
 const signals = r7_signals.signals;
+/// POSIX `WEXITSTATUS`: the exit code from a child's wait status.
 fn WEXITSTATUS(status: c_int) c_int {
     return (status >> 8) & 0xff;
 }
