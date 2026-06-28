@@ -13,6 +13,7 @@ const strtab = @import("../runtime/strtab.zig");
 const main = @import("../main.zig");
 const abi = @import("../runtime/main_clib.zig");
 const parser_api = @import("../parser/parser_api.zig");
+const lineedit = @import("lineedit.zig");
 
 const Word = main.Word;
 const NIL = main.NIL;
@@ -80,7 +81,11 @@ pub fn commandLoop(initscript: [*:0]u8) void {
 
     while (true) {
         resetgcstats();
-        if (main.rs.verbosity != 0) {
+        if (lineedit.active) {
+            // The line editor owns the prompt (it must, to redraw correctly while
+            // editing); hand it the prompt instead of printing it ourselves.
+            lineedit.setPrompt(if (main.rs.verbosity != 0) std.mem.span(main.rs.promptstr) else "");
+        } else if (main.rs.verbosity != 0) {
             word.print("{s}", .{main.rs.promptstr});
         }
         ch = abi.getchar();
@@ -203,6 +208,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                 if (main.rs.verbosity != 0) {
                     word.print("\nmiranda logout\n", .{});
                 }
+                lineedit.deinit(); // persist history (no-op if not interactive)
                 abi.exit(0);
             },
             else => {

@@ -388,6 +388,13 @@ pub const TVAR_X: Word = XBASE + 14;
 pub const UNICODE_X: Word = XBASE + 15;
 
 
+/// Hook for interactive line input, installed by the REPL's line editor
+/// (zigline). When non-null and a `FILE` is reading from stdin, `readByte` fills
+/// its buffer by calling this — an edited line (with history) plus a trailing
+/// newline, or null at end of input. Left null for non-interactive input (pipes,
+/// files), which keeps using plain `read`, so piped tests are unaffected.
+pub var readInteractiveLine: ?*const fn (dst: []u8) ?usize = null;
+
 /// A minimal stdio `FILE`: a posix fd (or an in-memory buffer for reading
 /// dumps) with one-byte pushback and an 8 KiB read buffer. Allocated from a
 /// fixed pool (`allocFile`/`freeFile`); the std streams are static instances.
@@ -415,7 +422,10 @@ pub const FILE = struct {
             return error.EndOfStream;
         }
         if (self.buf_start >= self.buf_end) {
-            const n = try std.posix.read(self.file.handle, &self.buf);
+            const n = if (readInteractiveLine != null and self.file.handle == std.posix.STDIN_FILENO)
+                (readInteractiveLine.?(&self.buf) orelse return error.EndOfStream)
+            else
+                try std.posix.read(self.file.handle, &self.buf);
             if (n == 0) return error.EndOfStream;
             self.buf_start = 0;
             self.buf_end = n;

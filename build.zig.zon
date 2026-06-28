@@ -6,6 +6,10 @@
             .url = "git+https://github.com/kurtwagner/zlinter?ref=0.16.x#8b10b45d33c684be4f869baf95a37c282e9db750",
             .hash = "zlinter-0.0.1-OjQ08doQDADkvkcRq2ONICvDheGl2onZzS5upWDxFNnA",
         },
+        .zigline = .{
+            .url = "git+https://github.com/alimpfard/zigline#82fc2fd5a0352926bfaed58d2af475a6bc91d0a9",
+            .hash = "zigline-0.1.0-6llsB4OJAgDoJ_BH3waiJjyEzNrwGqY4azcnNn6tQP0n",
+        },
     },
     .fingerprint = 0x5a0e163111a41824,
     .minimum_zig_version = "0.16.0",

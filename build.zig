@@ -44,6 +44,12 @@ pub fn build(b: *std.Build) void {
     });
     mira_module.addOptions("version_options", version_options);
 
+    // zigline gives the interactive REPL line editing + history. It is wired into
+    // mira_module only (shared by the `mira` exe and main-tests); the standalone
+    // parser/tool test modules don't import the REPL, so they don't pull it in.
+    const zigline_dep = b.dependency("zigline", .{ .target = target, .optimize = optimize });
+    mira_module.addImport("zigline", zigline_dep.module("zigline"));
+
     const just_module = b.createModule(.{
         .root_source_file = b.path("src/tools/just.zig"),
         .target = target,

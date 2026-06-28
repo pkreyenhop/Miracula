@@ -23,6 +23,7 @@ const version = @import("../runtime/version.zig");
 const reduce = @import("../runtime/reduce.zig");
 const heap = @import("../runtime/heap.zig");
 const core_state = @import("../runtime/core_state.zig");
+const lineedit = @import("lineedit.zig");
 const ls = lex_state.ls;
 
 inline fn getTag(x: Word) u8 {
@@ -448,6 +449,13 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
 
     _ = main.signals(abi.SIGFPE, @intFromPtr(&main.fpeError));
     _ = main.signals(abi.SIGTERM, @intFromPtr(&abi.exit));
+    // Interactive stdin gets zigline line editing + history; piped/file stdin
+    // keeps the plain read path (so the golden corpus and integration suite run
+    // unchanged).
+    if (abi.isatty(0) != 0) {
+        const rt = @import("../runtime/runtime_state.zig");
+        lineedit.init(rt.allocator, rt.io);
+    }
     main.commandLoop(@constCast(initscript));
     return 0;
 }
