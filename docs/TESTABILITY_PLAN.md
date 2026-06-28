@@ -58,11 +58,12 @@ Same cadence as the rename/doc passes: one module at a time, golden-gated,
 committed per module. Ordered by **testability** (cheapest, highest-confidence
 first), so momentum builds before the stateful modules:
 
-* **Tier A — pure leaves (no interp state):** `word.zig` (classify, the C-string
-  + ctype helpers), `big.zig` (arithmetic — deterministic given the heap),
-  `strtab.zig`, `combinator.zig`, `errors.zig`, `version.zig`,
-  `parser/token_filter.zig`, `parser/ast.zig`, `parser/pratt.zig` (has 7 — finish
-  it).
+* **Tier A — pure leaves (no interp state):** `word.zig` ✅ *(classify + type
+  model, the C-string helpers, ctype, FILE read core, `formatC` — 21 tests; the
+  untested remainder is the stdio I/O wrappers, covered end-to-end)*; `big.zig`
+  (arithmetic — deterministic given the heap), `strtab.zig`, `combinator.zig`,
+  `errors.zig`, `version.zig`, `parser/token_filter.zig`, `parser/ast.zig`,
+  `parser/pratt.zig` (has 7 — finish it).
 * **Tier B — heap/graph, deterministic with a fresh heap:** `heap.zig`
   (cells/accessors/GC/dump round-trip), `reduce.zig` (`numplus`/`compare`/`force`/
   `getstring`), `reducer/combinators.zig` + `reducer/lex.zig` + `reducer/ready.zig`

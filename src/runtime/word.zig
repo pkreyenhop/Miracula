@@ -1252,3 +1252,174 @@ test "classify maps Words to their value role" {
     try std.testing.expectEqual(Value{ .ref = Ref.of(ATOMLIMIT) }, classify(ATOMLIMIT));
     try std.testing.expectEqual(Value{ .ref = Ref.of(ATOMLIMIT + 1000) }, classify(ATOMLIMIT + 1000));
 }
+
+// ── Type-model classifiers (pure; no interpreter needed) ────────────────────
+
+test "isAtom: true below ATOMLIMIT (atoms/chars), false for heap cells" {
+    try std.testing.expect(isAtom(0)); // a bare immediate
+    try std.testing.expect(isAtom(S)); // a combinator atom
+    try std.testing.expect(isAtom(ATOMLIMIT - 1));
+    try std.testing.expect(!isAtom(ATOMLIMIT)); // first heap-cell handle
+    try std.testing.expect(!isAtom(ATOMLIMIT + 1000));
+}
+
+test "fitsInByte: true iff the value is storable bare in [0,256)" {
+    try std.testing.expect(fitsInByte(0));
+    try std.testing.expect(fitsInByte(255));
+    try std.testing.expect(!fitsInByte(256));
+}
+
+test "isLatin1Char: only the bare Latin-1 range [0,256)" {
+    try std.testing.expect(isLatin1Char(0));
+    try std.testing.expect(isLatin1Char(255));
+    try std.testing.expect(!isLatin1Char(256));
+    try std.testing.expect(!isLatin1Char(-1));
+}
+
+test "Ref.w / Ref.of: round-trip a Word through the handle enum" {
+    try std.testing.expectEqual(@as(Word, NIL), Ref.nil.w());
+    try std.testing.expectEqual(Ref.nil, Ref.of(NIL));
+    const r = Ref.of(ATOMLIMIT + 5);
+    try std.testing.expectEqual(@as(Word, ATOMLIMIT + 5), r.w());
+}
+
+// ── C-string helpers (pure) ─────────────────────────────────────────────────
+
+test "castToCStr: yields null for null, unwraps optionals" {
+    try std.testing.expect(castToCStr(null) == null);
+    const some: ?[*:0]const u8 = "hi";
+    try std.testing.expectEqualStrings("hi", std.mem.span(castToCStr(some).?));
+    const none: ?[*:0]const u8 = null;
+    try std.testing.expect(castToCStr(none) == null);
+}
+
+test "strlen: counts bytes up to NUL, 0 for null" {
+    try std.testing.expectEqual(@as(usize, 5), strlen("hello"));
+    try std.testing.expectEqual(@as(usize, 0), strlen(""));
+    try std.testing.expectEqual(@as(usize, 0), strlen(null));
+}
+
+test "strcmp: lexicographic ordering as -1 / 0 / 1" {
+    try std.testing.expectEqual(@as(c_int, 0), strcmp("abc", "abc"));
+    try std.testing.expectEqual(@as(c_int, -1), strcmp("abc", "abd"));
+    try std.testing.expectEqual(@as(c_int, 1), strcmp("abd", "abc"));
+}
+
+test "strncmp: compares only the first n bytes" {
+    try std.testing.expectEqual(@as(c_int, 0), strncmp("abXX", "abYY", 2));
+    try std.testing.expectEqual(@as(c_int, -1), strncmp("abX", "abY", 3));
+}
+
+test "strncpy: copies up to n bytes and NUL-pads the rest" {
+    var buf: [8:0]u8 = undefined;
+    @memset(buf[0..], 'Z');
+    _ = strncpy(&buf, "ab", 5);
+    try std.testing.expectEqualSlices(u8, &[_]u8{ 'a', 'b', 0, 0, 0 }, buf[0..5]);
+}
+
+test "strncat: appends at most n bytes, then a NUL" {
+    var buf: [16:0]u8 = undefined;
+    _ = strcpy(&buf, "foo");
+    _ = strncat(&buf, "barbaz", 3);
+    try std.testing.expectEqualStrings("foobar", std.mem.span(@as([*:0]u8, &buf)));
+}
+
+test "strchr: first occurrence (or null)" {
+    try std.testing.expectEqualStrings(".b.c", std.mem.span(strchr("a.b.c", '.').?));
+    try std.testing.expect(strchr("a.b.c", 'z') == null);
+}
+
+test "strrchr: last occurrence (or null)" {
+    try std.testing.expectEqualStrings(".c", std.mem.span(@as([*:0]const u8, strrchr("a.b.c", '.').?)));
+    try std.testing.expect(strrchr("abc", 'z') == null);
+}
+
+test "strstr: substring search; empty needle matches at the start" {
+    try std.testing.expectEqualStrings("world", std.mem.span(strstr("hello world", "wor").?));
+    try std.testing.expect(strstr("abc", "xyz") == null);
+    try std.testing.expectEqualStrings("abc", std.mem.span(strstr("abc", "").?));
+}
+
+test "rindex: last occurrence of a char (libc strrchr alias)" {
+    try std.testing.expectEqualStrings("/c", std.mem.span(@as([*:0]const u8, rindex("/a/b/c", '/').?)));
+    try std.testing.expect(rindex("abc", '/') == null);
+}
+
+// ── ctype predicates (pure) ──────────────────────────────────────────────────
+
+test "ctype predicates classify ASCII bytes and reject out-of-range" {
+    try std.testing.expect(isspace(' ') and isspace('\t') and !isspace('x'));
+    try std.testing.expect(isdigit('7') and !isdigit('a'));
+    try std.testing.expect(isxdigit('f') and isxdigit('9') and !isxdigit('g'));
+    try std.testing.expect(isalpha('Q') and !isalpha('1'));
+    try std.testing.expect(isalnum('Q') and isalnum('1') and !isalnum('-'));
+    try std.testing.expect(!isdigit(@as(i64, 999))); // out-of-range is safely false
+}
+
+test "tolower: lowercases ASCII letters, 0 for out-of-range" {
+    try std.testing.expectEqual(@as(u8, 'a'), tolower('A'));
+    try std.testing.expectEqual(@as(u8, 'a'), tolower('a'));
+    try std.testing.expectEqual(@as(u8, '7'), tolower('7'));
+    try std.testing.expectEqual(@as(u8, 0), tolower(@as(i64, -5)));
+}
+
+// ── FILE read core (in-memory; no syscalls) ─────────────────────────────────
+
+test "FILE.readByte: streams a memory buffer, then EndOfStream" {
+    var f: FILE = .{ .mem_buf = "ab" };
+    try std.testing.expectEqual(@as(u8, 'a'), try f.readByte());
+    try std.testing.expectEqual(@as(u8, 'b'), try f.readByte());
+    try std.testing.expectError(error.EndOfStream, f.readByte());
+}
+
+test "FILE.ungetc: the pushed byte is returned before the buffer resumes" {
+    var f: FILE = .{ .mem_buf = "x" };
+    f.ungetc('Z');
+    try std.testing.expectEqual(@as(u8, 'Z'), try f.readByte());
+    try std.testing.expectEqual(@as(u8, 'x'), try f.readByte());
+}
+
+// ── printf formatter ─────────────────────────────────────────────────────────
+
+test "formatC: %d/%s/%c/%%/%x specifiers plus width and padding" {
+    // A tiny in-memory writer with the three methods formatC drives.
+    const Buf = struct {
+        data: [64]u8 = undefined,
+        len: usize = 0,
+        fn writeByte(self: *@This(), b: u8) !void {
+            self.data[self.len] = b;
+            self.len += 1;
+        }
+        fn writeAll(self: *@This(), bytes: []const u8) !void {
+            @memcpy(self.data[self.len..][0..bytes.len], bytes);
+            self.len += bytes.len;
+        }
+        fn writeByteNTimes(self: *@This(), b: u8, n: usize) !void {
+            @memset(self.data[self.len..][0..n], b);
+            self.len += n;
+        }
+        fn out(self: *const @This()) []const u8 {
+            return self.data[0..self.len];
+        }
+    };
+    {
+        var b: Buf = .{};
+        try formatC(&b, "n=%d s=%s c=%c %%", .{ @as(c_int, 42), @as([*:0]const u8, "hi"), @as(c_int, 'A') });
+        try std.testing.expectEqualStrings("n=42 s=hi c=A %", b.out());
+    }
+    {
+        var b: Buf = .{};
+        try formatC(&b, "%x", .{@as(c_int, 255)});
+        try std.testing.expectEqualStrings("ff", b.out());
+    }
+    {
+        var b: Buf = .{};
+        try formatC(&b, "[%05d]", .{@as(c_int, 42)}); // zero-pad to width
+        try std.testing.expectEqualStrings("[00042]", b.out());
+    }
+    {
+        var b: Buf = .{};
+        try formatC(&b, "[%-4d]", .{@as(c_int, 7)}); // left-align in width
+        try std.testing.expectEqualStrings("[7   ]", b.out());
+    }
+}
