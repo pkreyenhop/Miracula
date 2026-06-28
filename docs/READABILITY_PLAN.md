@@ -50,14 +50,15 @@ This is exactly the workflow proven on `big.zig` (the first module): 23 public +
 | Metric | Baseline (2026-06-24) | Now | Target |
 |--------|----------------------:|----:|-------:|
 | C-style (`snake_case`) fn definitions | 175 | **0 ✅** | 0 |
-| documented fn definitions | 146/879 (16%) | **257/873 (29%)** | ~100% |
-| modules complete (renamed **and** documented) | 1/44 | **8/44** | 44/44 |
+| documented fn definitions | 146/879 (16%) | **873/873 (100%) ✅** | ~100% |
+| modules complete (renamed **and** documented) | 1/44 | **44/44 ✅** | 44/44 |
 
-**The rename half is done: every renameable fn across the codebase is now
-idiomatic camelCase (snake metric 0).** What remains is the documentation pass.
-Several large modules are renamed but not yet fully documented (marked ◐):
-`heap.zig` (138 fns), `parser/lex.zig` (71), `compiler/types.zig` (122),
-`compiler/trans.zig` (112) — these hold most of the undocumented surface.
+**The readability pass is complete.** Every function across the codebase (outside
+the FFI shim and the intentional `handle<COMBINATOR>` dispatch convention) is now
+idiomatically named *and* carries a doc comment, with a `//!` header on every
+module — all of it behaviour-preserving (golden 44/44 byte-identical at every
+step). Run `scripts/readability-check.sh` to confirm `0` snake fns and `100%`
+documented.
 
 (The "Now" snake figure also reflects the reducer-handler exemption added to the
 metric, which removed ~37 dispatch handlers from the count.)
