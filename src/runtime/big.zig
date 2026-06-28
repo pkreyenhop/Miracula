@@ -53,21 +53,26 @@ pub const Bignum = struct {
 
 pub const bn = &@import("interp.zig").interp.big;
 
+/// The node tag of cell `x`.
 inline fn getTag(x: Word) u8 {
     return heap.heap.getTag(x);
 }
 
 // Raw heap cell accessors (head / tail, by value and by pointer). A bignum
 // digit cell stores its digit in the head and the next cell in the tail.
+/// Head (`hd`) of cell `x`.
 fn h(x: Word) Word {
     return heap.heap.h(x);
 }
+/// Pointer to the head field of cell `x`.
 fn hp(x: Word) *Word {
     return heap.heap.hp(x);
 }
+/// Tail (`tl`) of cell `x`.
 fn t(x: Word) Word {
     return heap.heap.t(x);
 }
+/// Pointer to the tail field of cell `x`.
 fn tp(x: Word) *Word {
     return heap.heap.tp(x);
 }

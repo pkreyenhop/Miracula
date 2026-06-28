@@ -26,6 +26,7 @@ fn isRelopId(id: TokenId) bool {
     };
 }
 
+/// Whether operator `op` is a relational operator (for chained-comparison parsing).
 fn isRelopName(op: []const u8) bool {
     const relops = [_][]const u8{ "eq", "ne", "lt", "gt", "le", "ge" };
     for (relops) |r| if (std.mem.eql(u8, op, r)) return true;
@@ -111,28 +112,33 @@ pub const TokenStream = struct {
     tokens: []const Token,
     pos: usize = 0,
 
+    /// The current token, without consuming it.
     pub fn peek(self: *const TokenStream) Token {
         if (self.pos >= self.tokens.len)
             return .{ .id = .eof, .span = .{ .line = 0, .col = 0 } };
         return self.tokens[self.pos];
     }
 
+    /// Consume and return the current token.
     pub fn advance(self: *TokenStream) Token {
         const tok = self.peek();
         if (self.pos < self.tokens.len) self.pos += 1;
         return tok;
     }
 
+    /// Consume a token of id `id`, or return a parse error.
     pub fn expect(self: *TokenStream, id: TokenId) ParseError!Token {
         const tok = self.peek();
         if (tok.id != id) return error.UnexpectedToken;
         return self.advance();
     }
 
+    /// Whether the current token has id `id`.
     pub fn check(self: *const TokenStream, id: TokenId) bool {
         return self.peek().id == id;
     }
 
+    /// Consume the current token if it has id `id`; returns whether it did.
     pub fn eat(self: *TokenStream, id: TokenId) bool {
         if (self.check(id)) {
             _ = self.advance();
