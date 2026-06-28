@@ -1,3 +1,9 @@
+//! parser_tests.zig — snapshot tests for the lexer and parsers.
+//!
+//! `runSnapshotTest` checks the legacy lexer's token stream against stored
+//! `.snapshot` files; `runASTSnapshotTest` does the same for the new parser's
+//! AST. The helpers reset and re-initialise the shared lexer state between runs.
+
 const std = @import("std");
 const parser_api = @import("parser_api.zig");
 const testing = std.testing;

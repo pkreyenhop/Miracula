@@ -1,3 +1,8 @@
+//! diagnostics.zig — a collector for parser/compiler messages.
+//!
+//! `Diagnostics` accumulates `error`/`warning`/`note` entries with source
+//! positions for the new Zig parser pipeline to report.
+
 const std = @import("std");
 
 pub const Severity = enum {
@@ -18,6 +23,7 @@ pub const Diagnostics = struct {
     list: std.array_list.Managed(Diagnostic),
     has_errors: bool = false,
 
+    /// Create an empty diagnostics collector backed by `allocator`.
     pub fn init(allocator: std.mem.Allocator) Diagnostics {
         return .{
             .allocator = allocator,
@@ -25,6 +31,7 @@ pub const Diagnostics = struct {
         };
     }
 
+    /// Free the collected diagnostics and their messages.
     pub fn deinit(self: *Diagnostics) void {
         for (self.list.items) |diag| {
             self.allocator.free(diag.message);

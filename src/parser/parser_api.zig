@@ -1,3 +1,10 @@
+//! parser_api.zig — the entry points that drive parsing.
+//!
+//! Bridges the REPL/loader to both pipelines: `parseCurrent`/`parseString` run
+//! the legacy lexer + grammar (the production path that feeds `evaluateRepl`),
+//! while `parseWithNew` runs the new Zig lexer→parser→codegen pipeline. Also
+//! re-exports the lexer string setup (`lexSetupString`/`lexCleanup`).
+
 const std = @import("std");
 
 const word = @import("../runtime/word.zig");
@@ -107,6 +114,7 @@ pub fn lexCleanup() void {
 
 /// Result of parsing with the new Zig pipeline.
 pub const NewParseResult = struct {
+    /// No-op cleanup — the result owns no heap memory of its own.
     pub fn deinit(_: *NewParseResult) void {}
 };
 

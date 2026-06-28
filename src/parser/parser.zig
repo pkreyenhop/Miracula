@@ -39,6 +39,7 @@ pub const Parser = struct {
     /// Errors accumulated during error-recovery parsing.
     diagnostics: std.ArrayList(Diagnostic),
 
+    /// Create a parser positioned at the start of `tokens`.
     pub fn init(gpa: Allocator, tokens: []const Token) Parser {
         return .{
             .gpa = gpa,
