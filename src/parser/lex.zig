@@ -1672,6 +1672,28 @@ pub fn findid(n: [*:0]const u8) Word {
     return if (q != 0) h(q) else NIL;
 }
 
+/// Fill `out` with interned identifiers that are in scope (have a type) and whose
+/// name starts with `prefix`. Returns the number written (capped at `out.len`).
+/// Backs the REPL's tab completion; the returned pointers are into the permanent
+/// dictionary storage, so they stay valid.
+pub fn completeIds(prefix: []const u8, out: [][*:0]const u8) usize {
+    var n: usize = 0;
+    for (ls.namebucket) |bucket| {
+        var q = bucket;
+        while (q != 0) : (q = t(q)) {
+            if (n >= out.len) return n;
+            const idnode = h(q);
+            if (heap.idType(idnode) == word.undef_t) continue; // not (yet) in scope
+            const id_name = getId(idnode);
+            if (std.mem.startsWith(u8, std.mem.span(id_name), prefix)) {
+                out[n] = id_name;
+                n += 1;
+            }
+        }
+    }
+    return n;
+}
+
 /// Reset the private-name table.
 pub fn resetPns() void {
     ls.nextpn = 0;
