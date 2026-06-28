@@ -4,7 +4,6 @@
 //! in `TokenId` — NOT `.colon` — to distinguish it unambiguously from
 //! `::` (coloncolon) and `::=` (colon2eq).
 
-const std = @import("std");
 
 pub const TokenId = enum {
     // --- identifiers and literals ---

@@ -1,6 +1,5 @@
 //! Miranda AST node types produced by the Zig recursive-descent / Pratt parser.
 
-const std = @import("std");
 pub const Span = @import("token_filter.zig").Span;
 
 // ---------------------------------------------------------------------------

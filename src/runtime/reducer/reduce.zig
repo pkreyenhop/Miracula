@@ -40,7 +40,6 @@
 //! helpers below are duplicated in `reduce_core.zig` (the copy the handlers
 //! import); see that file for the canonical set. Keep the two in lock-step.
 
-const std = @import("std");
 const word = @import("../word.zig");
 const strtab = @import("../strtab.zig");
 const core = @import("reduce_core.zig");

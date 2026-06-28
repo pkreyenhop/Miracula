@@ -365,16 +365,6 @@ pub fn typesfirst(input_x: Word) Word {
 }
 
 /// The standard-error `FILE` handle.
-fn getStderr() ?*word.FILE {
-    const T = @TypeOf(abi.stderr);
-    if (comptime @typeInfo(T) == .@"fn") {
-        return abi.stderr();
-    } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return abi.stderr();
-    } else {
-        return abi.stderr;
-    }
-}
 
 /// Topologically sort dependency graph `g` (for definition ordering).
 pub fn tsort(g_input: Word) Word {
@@ -503,9 +493,6 @@ fn tInfo(x: Word) Word {
     return t(t(t(x)));
 }
 /// The `show` function recorded for a type node.
-fn tShowfn(x: Word) Word {
-    return t(h(t(x)));
-}
 
 /// The value field of id `x`.
 fn idVal(x: Word) Word {

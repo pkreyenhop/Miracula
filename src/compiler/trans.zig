@@ -1552,13 +1552,7 @@ const mklexvar = lex.mklexvar;
 const ispoly = types_mod.ispoly;
 
 /// Whether a type node is a tuple (comma) type.
-fn isCommaType(type_node: Word) bool {
-    return getTag(type_node) == AP and getTag(h(type_node)) == AP and h(h(type_node)) == comma_t;
-}
 /// Whether a type node is a type variable.
-fn isVarType(type_node: Word) bool {
-    return getTag(type_node) == TVAR;
-}
 
 /// The `show` function of a type node.
 fn tShowfn(x: Word) Word {
@@ -1574,27 +1568,12 @@ fn tInfo(x: Word) Word {
 }
 
 /// Whether id `x` names a data constructor.
-fn isconstructor(x: Word) bool {
-    return getTag(x) == ID and isconstrname(getId(x)) != 0;
-}
 /// Whether id `x` names an ordinary variable.
-fn isvariable(x: Word) bool {
-    return getTag(x) == ID and isconstrname(getId(x)) == 0;
-}
 
 /// The head of private-name node `x`.
-fn getPn(x: Word) Word {
-    return h(x);
-}
 /// The value (tail) of private-name node `x`.
-fn pnVal(x: Word) Word {
-    return t(x);
-}
 
 /// Whether constructor `k` is the sole constructor of its type.
-fn suiGeneris(k: Word) bool {
-    return member(cs.SGC, k) != 0;
-}
 
 /// Compile expression `x` to its final combinator graph — the codegen entry point.
 pub fn codegen(x: Word) Word {

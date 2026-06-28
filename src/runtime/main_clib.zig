@@ -8,7 +8,6 @@ const reduce_mod = @import("reduce.zig");
 const repl_mod = @import("../driver/repl.zig");
 const trans_mod = @import("../compiler/trans.zig");
 const types_mod = @import("../compiler/types.zig");
-const combinator = @import("combinator.zig");
 
 pub var env_slice: [:null]const ?[*:0]const u8 = &[_:null]?[*:0]const u8{};
 

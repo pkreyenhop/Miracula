@@ -10,7 +10,6 @@
 //! must be mirrored there. This is also the seam where the B-track typed-value
 //! work (`Heap`/`Value`) will replace the raw-`Word` `hd_get`/`tl_get` reads.
 
-const std = @import("std");
 const word = @import("../word.zig");
 const strtab = @import("../strtab.zig");
 

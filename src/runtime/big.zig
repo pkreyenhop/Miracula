@@ -35,7 +35,6 @@ const CONS: u8 = 11; // NodeTag.CONS (char-list cells for the *toList helpers)
 const INT: u8 = 5; // NodeTag.INT (a bignum digit cell)
 const CMBASE: Word = 306;
 const NIL: Word = CMBASE + 138;
-const ATOMLIMIT: Word = CMBASE + 141;
 
 const make = heap.make;
 const mathError = r7_reduce.mathError;

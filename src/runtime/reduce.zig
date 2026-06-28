@@ -24,8 +24,6 @@ const core_state = @import("core_state.zig");
 
 const Word = i64;
 const NIL: Word = word.CMBASE + 138;
-const NILS: Word = word.CMBASE + 139;
-const ATOMLIMIT: Word = word.CMBASE + 141;
 const FST = word.HD;
 const MAXDIGIT = 0x7fff;
 const SIGNBIT = 0x10000000;
@@ -83,9 +81,6 @@ inline fn abnormal(x: Word) bool {
     return x < 0;
 }
 
-inline fn isptr(x: Word) bool {
-    return !word.isAtom(x);
-}
 
 inline fn lh(x: Word) Word {
     if (getTag(h(x)) == word.STRCONS) {
@@ -123,9 +118,6 @@ inline fn ap(x: Word, y: Word) Word {
     return heap.make(word.AP, x, y);
 }
 
-inline fn ap2(f: Word, x: Word, y: Word) Word {
-    return ap(ap(f, x), y);
-}
 
 inline fn datapair(x: Word, y: Word) Word {
     return heap.make(word.DATAPAIR, x, y);

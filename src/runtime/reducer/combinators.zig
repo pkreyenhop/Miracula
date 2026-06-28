@@ -8,7 +8,6 @@
 //! `Ug`), and the strict-primitive forcers (`handleStrict{Monadic,Diadic,Triadic}`).
 //! Each rewrites the focus node in place and sets `ctx.action` for the driver.
 
-const std = @import("std");
 const word = @import("../word.zig");
 const reduce = @import("reduce_core.zig");
 const big = @import("../big.zig");

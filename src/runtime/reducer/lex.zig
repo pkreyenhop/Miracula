@@ -8,7 +8,6 @@
 //! the `word.<NAME>` combinator constant. A grammar yields `(result . rest)` on
 //! success or `NIL` on failure.
 
-const std = @import("std");
 const word = @import("../word.zig");
 const reduce = @import("reduce_core.zig");
 const main_clib = @import("../main_clib.zig");

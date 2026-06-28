@@ -23,17 +23,14 @@ const r7_files = @import("../io/files.zig");
 const r7_big = @import("../runtime/big.zig");
 const main_clib = @import("../runtime/main_clib.zig");
 const core_state = @import("../runtime/core_state.zig");
-const reduce = @import("../runtime/reduce.zig");
 
 const Word = i64;
 const CMBASE: Word = 306;
 const NIL: Word = CMBASE + 138;
 const NILS: Word = CMBASE + 139;
 const UNDEF: Word = CMBASE + 140;
-const ATOMLIMIT: Word = CMBASE + 141;
 
 const AP: u8 = 9;
-const LAMBDA: u8 = 10;
 const CONS: u8 = 11;
 const STRCONS: u8 = 7;
 const ID: u8 = 8;

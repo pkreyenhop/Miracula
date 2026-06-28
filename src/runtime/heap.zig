@@ -683,9 +683,6 @@ fn TOP() Word {
 }
 
 /// The high-water heap limit.
-fn BIGTOP() Word {
-    return heap.BIGTOP();
-}
 
 /// The usable heap size, in cells.
 pub fn trueheapsize() Word {
@@ -745,16 +742,6 @@ pub fn gcpatch() void {
 
 
 /// The standard-error `FILE` handle (tolerating either a fn or value form).
-fn getStderr() ?*word.FILE {
-    const T = @TypeOf(main_clib.stderr);
-    if (comptime @typeInfo(T) == .@"fn") {
-        return main_clib.stderr();
-    } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return main_clib.stderr();
-    } else {
-        return main_clib.stderr;
-    }
-}
 
 
 const fileMtime = r7_files.fileMtime;

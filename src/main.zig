@@ -1,7 +1,4 @@
 const std = @import("std");
-const platform = @import("io/platform.zig");
-const parser_api = @import("parser/parser_api.zig");
-const word_mod = @import("runtime/word.zig");
 const strtab = @import("runtime/strtab.zig");
 const abi = @import("runtime/main_clib.zig");
 const rt = @import("runtime/runtime_state.zig");
@@ -21,11 +18,7 @@ const r7_repl = @import("driver/repl.zig");
 const r7_startup = @import("driver/startup.zig");
 const r7_signals = @import("io/signals.zig");
 const r7_lex = @import("parser/lex.zig");
-const r7_big = @import("runtime/big.zig");
 const r7_heap = @import("runtime/heap.zig");
-const reduce = @import("runtime/reduce.zig");
-const version = @import("runtime/version.zig");
-const core_state = @import("runtime/core_state.zig");
 pub const MiraError = errors_mod.MiraError;
 /// Print a diagnostic to stderr and exit(1). See `errors.fatal`.
 pub const fatal = errors_mod.fatal;
@@ -61,7 +54,6 @@ pub const mainEntry = r7_startup.mainEntry;
 const setupheap = r7_heap.setupheap;
 const tsetup = r7_types.tsetup;
 const resetPns = r7_lex.resetPns;
-const bigsetup = r7_big.setup;
 const resetgcstats = r7_heap.resetgcstats;
 const resetState = r7_lex.resetState;
 const resetLex = r7_lex.resetLex;
