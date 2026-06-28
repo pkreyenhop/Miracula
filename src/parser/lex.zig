@@ -1,3 +1,13 @@
+//! lex.zig — the legacy hand-written lexer and identifier dictionary.
+//!
+//! `yylex` is the production token scanner that feeds the Yacc-style grammar:
+//! it recognises names, numerals (decimal/hex/octal), strings, char classes,
+//! and operators, applies the offside `layout` rule, and processes `%`
+//! `directive`s. Owns the identifier dictionary (`setupdic`/`makeId`/`findid`/
+//! `keep`), the private-name machinery (`makePn`/`mkprivate`), and the literate-
+//! script margin handling. `convArgs`/`strConv` build Miranda values for the
+//! runtime.
+
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
@@ -49,6 +59,7 @@ const syntax = r7_setup.syntax;
 const reset = r7_repl.reset;
 const isChar = heap.isChar;
 
+/// Point the lexer at the in-memory `source` string.
 pub fn setupString(source: [*:0]const u8) void {
     const len = std.mem.len(source);
     const f = word.fmemopen(@ptrCast(@constCast(source)), len, "r") orelse return;
@@ -59,6 +70,7 @@ pub fn setupString(source: [*:0]const u8) void {
     main.rs.s_in = f;
 }
 
+/// Tear down the lexer's string/file setup.
 pub fn cleanup() void {
     if (main.rs.s_in) |f| {
         const is_stdio = (f == getStdin()) or (f == getStdout()) or (f == getStderr());
@@ -69,6 +81,7 @@ pub fn cleanup() void {
     }
 }
 
+/// Open `filename` and point the lexer at it; returns 0 on failure.
 pub fn setupFile(filename: [*:0]const u8) c_int {
     if (openfile(filename) == 0) return 0;
     main.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
@@ -79,22 +92,27 @@ const FILEINFO: u8 = 3;
 const TVAR: u8 = 4;
 const STARTREADVALS: u8 = 15;
 
+/// Allocate a `FILEINFO` cell `(file . line)`.
 fn fileinfo(file: Word, line: Word) Word {
     return make(FILEINFO, file, line);
 }
 
+/// Build a file record `(path, time, share, defs)`.
 fn makeFil(path: [*:0]const u8, time: Word, share: Word, defs: Word) Word {
     return cons(cons(fileinfo(strtab.strBits(path), time), cons(share, NIL)), defs);
 }
 
+/// Allocate a `STARTREADVALS` node.
 fn readvals(x: Word, y: Word) Word {
     return make(STARTREADVALS, x, y);
 }
 
+/// Make a type-variable node with index `n`.
 fn mktvar(n: Word) Word {
     return make(TVAR, 0, n);
 }
 
+/// The standard-output `FILE` handle.
 fn getStdout() ?*word.FILE {
     const T = @TypeOf(main_clib.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
@@ -106,6 +124,7 @@ fn getStdout() ?*word.FILE {
     }
 }
 
+/// The standard-input `FILE` handle.
 fn getStdin() ?*word.FILE {
     const T = @TypeOf(main_clib.stdin);
     if (comptime @typeInfo(T) == .@"fn") {
@@ -117,6 +136,7 @@ fn getStdin() ?*word.FILE {
     }
 }
 
+/// The standard-error `FILE` handle.
 fn getStderr() ?*word.FILE {
     const T = @TypeOf(main_clib.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
@@ -128,46 +148,57 @@ fn getStderr() ?*word.FILE {
     }
 }
 
+/// The node tag of cell `x`.
 inline fn getTag(x: Word) u8 {
     return main.heap.heap.getTag(x);
 }
 
+/// Head (`hd`) of cell `x`.
 fn h(x: Word) Word {
     return main.heap.heap.h(x);
 }
 
+/// Pointer to the head field of cell `x`.
 fn hp(x: Word) *Word {
     return main.heap.heap.hp(x);
 }
 
+/// Tail (`tl`) of cell `x`.
 fn t(x: Word) Word {
     return main.heap.heap.t(x);
 }
 
+/// Pointer to the tail field of cell `x`.
 fn tp(x: Word) *Word {
     return main.heap.heap.tp(x);
 }
 
+/// Allocate a `CONS` cell `(x . y)`.
 fn cons(x: Word, y: Word) Word {
     return make(CONS, x, y);
 }
 
+/// Whether `x` names a data constructor.
 fn isconstructor(x: Word) bool {
     return getTag(x) == ID and isconstrname(getId(x)) != 0;
 }
 
+/// The interned name text of id `x`.
 fn getId(x: Word) [*:0]const u8 {
     return strtab.strOf(h(h(h(x))));
 }
 
+/// The path string of file record `x`.
 fn getFil(x: Word) [*:0]const u8 {
     return strtab.strOf(h(h(h(x))));
 }
 
+/// Whether the current token text equals `s`.
 fn is(s: [*:0]const u8) bool {
     return std.mem.eql(u8, std.mem.span(@as([*:0]u8, @ptrCast(ls.dicp))), std.mem.span(s));
 }
 
+/// Abort if the dictionary buffer has overflowed.
 fn ovflocheck() void {
     const d_ptr = @as(usize, @intFromPtr(ls.dicq));
     const start_ptr = @as(usize, @intFromPtr(ls.dic));
@@ -176,10 +207,12 @@ fn ovflocheck() void {
     }
 }
 
+/// Handle dictionary overflow (report and abort).
 pub fn dicovflo() void {
     main.fatal("\npanic: dictionary overflow\n", .{.{}});
 }
 
+/// Allocate and initialise the identifier dictionary.
 pub fn setupdic() void {
     const space = main.rs.DICSPACE;
     if (ls.dic == null) {
@@ -196,6 +229,7 @@ pub fn setupdic() void {
     @memset(&ls.namebucket, 0);
 }
 
+/// Resolve a `~`-relative path `n` against ``.
 fn gethome(n: [*:0]const u8) ?[*:0]const u8 {
     if (n[0] == 0) {
         if (main_clib.getenv("HOME")) |h_dir| {
@@ -206,6 +240,7 @@ fn gethome(n: [*:0]const u8) ?[*:0]const u8 {
     return null;
 }
 
+/// Read the next whitespace-delimited token into the dictionary buffer.
 pub fn token() ?[*:0]u8 {
     var ch = main_clib.getchar();
     ls.dicq = ls.dicp; // uses top of dictionary as temporary work space
@@ -258,6 +293,7 @@ pub fn token() ?[*:0]u8 {
     return ls.dicp;
 }
 
+/// Append the Miranda source extension to name `s` (flag `b` selects the variant).
 pub fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
     var s = s_input;
     var n: Word = @intCast(word.strlen(s));
@@ -313,6 +349,7 @@ pub fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
     return ls.dicp;
 }
 
+/// Emit `n` spaces (for listings).
 fn spaces(n_input: Word) void {
     var n = n_input;
     while (n > 0) : (n -= 1) {
@@ -320,11 +357,13 @@ fn spaces(n_input: Word) void {
     }
 }
 
+/// Whether `s` names a literate script.
 fn litname(s: [*:0]const u8) bool {
     const n = word.strlen(s);
     return n >= 6 and std.mem.eql(u8, std.mem.span(s + @as(usize, @intCast(n - 6))), ".lit.m");
 }
 
+/// Read the next raw input character.
 fn getch() c_int {
     if (main.rs.s_in == null) {
         return main_clib.EOF;
@@ -395,6 +434,7 @@ fn getch() c_int {
     return ch;
 }
 
+/// Blank out the characters of `s` (comment them) for listing.
 pub fn chblank(s_input: [*:0]u8) void {
     var s = s_input;
     while (s[0] == ' ' or s[0] == '\t') {
@@ -410,6 +450,7 @@ pub fn chblank(s_input: [*:0]u8) void {
 
 const UMAX: Word = 0x10ffff;
 
+/// Read the next character, honouring literate-script `>` margins.
 fn getlitch() Word {
     const ch: Word = ls.c;
     ls.rawch = @intCast(ch);
@@ -508,6 +549,7 @@ fn getlitch() Word {
 }
 
 
+/// Read a whole input line into a buffer.
 pub fn rdline() ?[*:0]u8 {
     var p: [*]u8 = &ls.rdline_linebuf;
     var ch = main_clib.getchar();
@@ -570,6 +612,7 @@ pub fn rdline() ?[*:0]u8 {
     return @ptrCast(&ls.rdline_linebuf);
 }
 
+/// Begin enforcing the literate-script left margin.
 pub fn setlmargin() void {
     ls.margstack = cons(ls.lmargin, ls.margstack);
     if (ls.lmargin < ls.col) {
@@ -577,6 +620,7 @@ pub fn setlmargin() void {
     }
 }
 
+/// Stop enforcing the literate-script left margin.
 pub fn unsetlmargin() void {
     if (ls.margstack == NIL) {
         return;
@@ -585,6 +629,7 @@ pub fn unsetlmargin() void {
     ls.margstack = t(ls.margstack);
 }
 
+/// Report a bad character class in a string / char-class literal.
 fn errclass(val: Word, string_flag: Word) void {
     const s: [*:0]const u8 = if (string_flag == 2) "char class" else if (string_flag != 0) "string" else "char const";
     if (val == -2) {
@@ -605,6 +650,7 @@ fn errclass(val: Word, string_flag: Word) void {
     acterror();
 }
 
+/// Lookahead: if the next char is `y`, consume it and yield `x`, else null.
 inline fn tryCh(x: Word, y: c_int) ?c_int {
     if (ls.c == x) {
         ls.c = getch();
@@ -613,6 +659,7 @@ inline fn tryCh(x: Word, y: c_int) ?c_int {
     return null;
 }
 
+/// The main lexer: scan and return the next token id (yacc-style).
 pub fn yylex() c_int {
     if (core_state.s.SYNERR != 0) {
         return word.END;
@@ -957,6 +1004,7 @@ pub fn yylex() c_int {
     }
 }
 
+/// Apply the offside (layout) rule, inserting virtual block tokens.
 pub fn layout() void {
     while (true) {
         if (ls.c == ' ' or (ls.c == '\n' and core_state.s.commandmode == 0) or ls.c == '\t') {
@@ -982,6 +1030,7 @@ pub fn layout() void {
     }
 }
 
+/// Collect a run of `*`s naming a type variable.
 fn collectstars() Word {
     var n: Word = 2;
     while (ls.c == '*') {
@@ -992,6 +1041,7 @@ fn collectstars() Word {
     return word.TYPEVAR;
 }
 
+/// Make a grammar-variable node with index `i`.
 pub fn mkgvar(i_input: Word) Word {
     var i = i_input;
     var p = &ls.gvars;
@@ -1008,6 +1058,7 @@ pub fn mkgvar(i_input: Word) Word {
     return h(p.*);
 }
 
+/// Make a lexer-variable node with index `i`.
 pub fn mklexvar(i: Word) Word {
     if (ls.lexvar == 0) {
         ls.lexvar = cons(stoId("ls.lexvar"), stoId("ls.lexvar"));
@@ -1017,6 +1068,7 @@ pub fn mklexvar(i: Word) Word {
     return if (i != 0) t(ls.lexvar) else h(ls.lexvar);
 }
 
+/// Build the command-line argument list as a Miranda list value.
 pub fn convArgs() Word {
     var i = ls.ARGC;
     var x = NIL;
@@ -1032,6 +1084,7 @@ pub fn convArgs() Word {
     return x;
 }
 
+/// Convert C-string `s` to a Miranda char list.
 pub fn strConv(s: [*:0]const u8) Word {
     var x = NIL;
     var i = word.strlen(s);
@@ -1042,6 +1095,7 @@ pub fn strConv(s: [*:0]const u8) Word {
     return x;
 }
 
+/// Scan a `<...>` or quoted pathname token.
 pub fn pathname() ?[*:0]u8 {
     layout();
     if (ls.c == '<') {
@@ -1102,6 +1156,7 @@ pub fn pathname() ?[*:0]u8 {
     return ls.dicp;
 }
 
+/// Adjust the stored library path prefix for `f`.
 pub fn adjustPrefix(f: [*:0]const u8) void {
     ls.prefixstack = cons(ls.prefix, ls.prefixstack);
     ls.prefix += @as(Word, @intCast(word.strlen(ls.prefixbase.? + @as(usize, @intCast(ls.prefix))))) + 1;
@@ -1121,6 +1176,7 @@ pub fn adjustPrefix(f: [*:0]const u8) void {
     }
 }
 
+/// Whether the next input char is a digit (without consuming).
 pub fn peekdig() c_int {
     if (main.rs.s_in == null) return 0;
     const ch = main_clib.getc(main.rs.s_in);
@@ -1128,6 +1184,7 @@ pub fn peekdig() c_int {
     return if (ch >= '0' and ch <= '9') 1 else 0;
 }
 
+/// Peek the next input char without consuming it.
 pub fn peekch() c_int {
     if (main.rs.s_in == null) return main_clib.EOF;
     const ch = main_clib.getc(main.rs.s_in);
@@ -1135,6 +1192,7 @@ pub fn peekch() c_int {
     return ch;
 }
 
+/// Open source file `n` for reading; returns 0 on failure.
 pub fn openfile(n: [*:0]const u8) c_int {
     const f = word.fopen(n, "r") orelse return 0;
     // FILE* handle stored in the cell (read back via @ptrFromInt below);
@@ -1144,6 +1202,7 @@ pub fn openfile(n: [*:0]const u8) c_int {
     return 1;
 }
 
+/// Scan an identifier beginning with char `s`; returns its token id.
 fn identifier(s: c_int) c_int {
     if (ls.inbnf == 1) {
         if (is("empty ") or is("e_ m_ p_ t_ y")) {
@@ -1236,6 +1295,7 @@ fn identifier(s: c_int) c_int {
     return if (isconstructor(ls.yylval)) word.CNAME else word.NAME;
 }
 
+/// Handle a `%`-directive (`%include`/`%export`/`%free`/`%list`/...).
 pub fn directive() Word {
     const holdcol = ls.col - 1;
     const holdlin = ls.line_no;
@@ -1365,6 +1425,7 @@ pub fn directive() Word {
     return word.END;
 }
 
+/// Collect input characters while predicate `f` holds, into the dictionary.
 fn kollect(f: fn (c_int) c_int) void {
     ls.dicq = ls.dicp;
     while (f(@intCast(ls.c)) != 0) {
@@ -1377,6 +1438,7 @@ fn kollect(f: fn (c_int) c_int) void {
     ovflocheck();
 }
 
+/// Intern token text `p` into permanent dictionary storage.
 pub fn keep(p: [*:0]u8) [*:0]u8 {
     if (p == ls.dicp) {
         ls.dicp = ls.dicq;
@@ -1391,10 +1453,12 @@ pub fn keep(p: [*:0]u8) [*:0]u8 {
     return p;
 }
 
+/// Extend the dictionary buffer when it nears full.
 pub fn dicCheck() void {
     ovflocheck();
 }
 
+/// Scan a decimal numeral literal.
 pub fn numeral() void {
     var nflag: Word = 1;
     ls.dicq = ls.dicp;
@@ -1464,6 +1528,7 @@ pub fn numeral() void {
     }
 }
 
+/// Scan a hexadecimal numeral literal.
 pub fn hexnumeral() void {
     ls.dicq = ls.dicp;
     ls.dicq[0] = @intCast(ls.c); // 0
@@ -1528,6 +1593,7 @@ pub fn hexnumeral() void {
     ls.yylval = bigxscan(ls.dicp + 2, ls.dicq);
 }
 
+/// Scan an octal numeral literal.
 pub fn octnumeral() void {
     ls.dicq = ls.dicp;
     if (ls.c < '0' or ls.c > '9') {
@@ -1549,6 +1615,7 @@ pub fn octnumeral() void {
     ls.yylval = bigoscan(ls.dicp, ls.dicq);
 }
 
+/// The filename associated with node `x`.
 pub fn getfname(x: Word) Word {
     const p = getId(x);
     ls.dicq = ls.dicp;
@@ -1570,6 +1637,7 @@ pub fn getfname(x: Word) Word {
     return name();
 }
 
+/// Scan a name token, returning its dictionary `ID` node.
 pub fn name() Word {
     const h_idx = @as(usize, @intCast(hash(ls.dicp)));
     var q = ls.namebucket[h_idx];
@@ -1586,6 +1654,7 @@ pub fn name() Word {
     return q;
 }
 
+/// Intern name `n` as an `ID` node (inserting if new).
 pub fn makeId(n: [*:0]const u8) Word {
     const h_idx = @as(usize, @intCast(hash(n)));
     const x = stoId(if (ls.inprelude) keep(@constCast(n)) else n);
@@ -1593,6 +1662,7 @@ pub fn makeId(n: [*:0]const u8) Word {
     return x;
 }
 
+/// Look up name `n` in the dictionary (NIL if absent).
 pub fn findid(n: [*:0]const u8) Word {
     const h_idx = @as(usize, @intCast(hash(n)));
     var q = ls.namebucket[h_idx];
@@ -1602,6 +1672,7 @@ pub fn findid(n: [*:0]const u8) Word {
     return if (q != 0) h(q) else NIL;
 }
 
+/// Reset the private-name table.
 pub fn resetPns() void {
     ls.nextpn = 0;
     if (ls.pnvec == null) {
@@ -1610,6 +1681,7 @@ pub fn resetPns() void {
     }
 }
 
+/// Make a private-name node for value `val`.
 pub fn makePn(val: Word) Word {
     if (ls.nextpn == ls.pn_lim) {
         const old_lim = ls.pn_lim;
@@ -1624,6 +1696,7 @@ pub fn makePn(val: Word) Word {
     return ret;
 }
 
+/// Allocate/store a private name `n`.
 pub fn stoPn(n: Word) Word {
     if (n >= ls.pn_lim) {
         const old_lim = ls.pn_lim;
@@ -1641,6 +1714,7 @@ pub fn stoPn(n: Word) Word {
     return ls.pnvec.?[@intCast(n)];
 }
 
+/// Re-intern id `x` under a private name (for `%export` hiding).
 pub fn mkprivate(x_input: Word) void {
     var x = x_input;
     while (x != NIL) {
@@ -1654,6 +1728,7 @@ pub fn mkprivate(x_input: Word) void {
     ls.inprelude = false;
 }
 
+/// Scan a string literal.
 pub fn string() void {
     var p: Word = undefined;
     var ch: Word = undefined;
@@ -1696,6 +1771,7 @@ pub fn string() void {
     }
 }
 
+/// Scan a character class `[...]`; returns its token id.
 pub fn charclass() c_int {
     var p: Word = undefined;
     var ch: Word = undefined;
@@ -1761,6 +1837,7 @@ pub fn charclass() c_int {
     return anti;
 }
 
+/// Reset the lexer's per-line scanning state.
 pub fn resetLex() void {
     if (core_state.s.commandmode == 0) {
         if (core_state.s.errs == 0) {
@@ -1795,6 +1872,7 @@ pub fn resetLex() void {
     resetState();
 }
 
+/// Reset the full lexer state (between sessions).
 pub fn resetState() void {
     if (core_state.s.commandmode != 0) {
         while (ls.c != '\n' and ls.c != main_clib.EOF) {
@@ -1846,6 +1924,7 @@ pub fn resetState() void {
     core_state.s.errline = 0;
 }
 
+/// Hash identifier text into a dictionary bucket index.
 fn hash(input: [*:0]const u8) c_int {
     var s = input;
     var h_val: c_int = s[0];
@@ -1858,12 +1937,14 @@ fn hash(input: [*:0]const u8) c_int {
     return h_val & 127;
 }
 
+/// Whether name `input` is a constructor name — begins uppercase (1/0).
 pub fn isconstrname(input: [*:0]const u8) c_int {
     var s = input;
     if (s[0] == '$') s += 1;
     return if (std.ascii.isUpper(s[0])) 1 else 0;
 }
 
+/// Whether char `ch` is valid within an identifier (1/0).
 pub fn okid(ch: c_int) c_int {
     return if ((ch >= 'a' and ch <= 'z') or
         (ch >= 'A' and ch <= 'Z') or
@@ -1872,6 +1953,7 @@ pub fn okid(ch: c_int) c_int {
         ch == '\'') 1 else 0;
 }
 
+/// Whether char `ch` can appear in an (upper/lower) identifier.
 fn okulid(ch: c_int) c_int {
     return if ((ch >= 'a' and ch <= 'z') or
         (ch >= 'A' and ch <= 'Z') or
@@ -1881,6 +1963,7 @@ fn okulid(ch: c_int) c_int {
         ch == '\'') 1 else 0;
 }
 
+/// Whether char `ch` is valid within a pathname.
 fn okpath(ch: c_int) c_int {
     return if (ch != '"' and ch != '\n' and ch != '>') 1 else 0;
 }
