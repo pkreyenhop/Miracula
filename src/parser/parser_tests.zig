@@ -14,6 +14,8 @@ const setupdic = r7_lex.setupdic;
 const yylex = r7_lex.yylex;
 const lex_state = @import("lex_state.zig");
 const r7_lex = @import("lex.zig");
+const main = @import("../main.zig");
+const setup = @import("../compiler/setup.zig");
 const main_clib = @import("../runtime/main_clib.zig");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
@@ -33,12 +35,21 @@ fn makeFilRecord(name: [*:0]const u8) word.Word {
 
 const resetState = r7_lex.resetState;
 
-/// Reset the legacy lexer's global state between tests.
+/// Reset the interpreter to a clean slate between tests.
+///
+/// `parseString` runs the full pipeline including `codegenScript`, which calls
+/// `declare`/type-checking and therefore needs a properly seeded environment
+/// (`nill`, the primitive env, the type system). Partial setup leaves `nill`
+/// unset and the primitive env stale, so codegen builds a malformed graph that
+/// sends `irrefutable` into an infinite loop on cons patterns. We therefore run
+/// the same `miraSetup` the production loader uses. `miraSetup` reuses the heap
+/// allocation after the first call (it only `@memset`s the tag column), so this
+/// is cheap to repeat; `primenv` is reset first because `primlib` conses onto it.
 fn resetLexerState() void {
     resetState();
-    setupheap();
     setupdic();
-    resetPns();
+    main.rs.primenv = word.NIL;
+    setup.miraSetup();
     heap.heap.current_file = makeFilRecord("test.m");
     heap.heap.files = heap.make(word.CONS, heap.heap.current_file, word.NIL);
     ls.col = 0;
