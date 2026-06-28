@@ -1615,12 +1615,34 @@ pub fn codegen(x: Word) Word {
             return make(CONS, codegen(h(x)), codegen(t(x)));
         },
         CONS => {
+            // Walk the cons spine iteratively rather than recursing on the tail:
+            // a long string/list literal (e.g. a 4096-char string) would otherwise
+            // recurse once per element and overflow the stack (codegen's frame is
+            // large). Recursion is kept only for each head and the final tail.
             if (core_state.s.commandmode != 0) {
-                return make(CONS, codegen(h(x)), codegen(t(x)));
+                const result = make(CONS, codegen(h(x)), NIL);
+                var dst = tp(result);
+                var cur = t(x);
+                while (getTag(cur) == CONS) {
+                    dst.* = make(CONS, codegen(h(cur)), NIL);
+                    dst = tp(dst.*);
+                    cur = t(cur);
+                }
+                dst.* = codegen(cur); // final non-cons tail (e.g. NIL)
+                return result;
             }
             // otherwise do in situ (see declare)
-            hp(x).* = codegen(h(x));
-            tp(x).* = codegen(t(x));
+            var cur = x;
+            while (true) {
+                hp(cur).* = codegen(h(cur));
+                const nxt = t(cur);
+                if (getTag(nxt) == CONS) {
+                    cur = nxt; // tail is unchanged by in-situ codegen; keep walking
+                } else {
+                    tp(cur).* = codegen(nxt);
+                    break;
+                }
+            }
             return x;
         },
         LAMBDA => {
