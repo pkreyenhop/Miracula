@@ -1,3 +1,12 @@
+//! types.zig — the Hindley-Milner type inference engine.
+//!
+//! Infers and checks the type of every definition: `etype` walks expressions,
+//! `unify` solves type equations over a mutable substitution (`lookup`/`addsubst`/
+//! `subst`, with the `occurs` check), and `instantiate`/`linst`/`redtvars` handle
+//! generalisation and the freshening of polymorphic variables. Also drives
+//! dependency ordering (`tsort`/`deps`), abstract-type/synonym checking, and all
+//! the type/pattern pretty-printing and `type_error*` reporting.
+
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
@@ -172,30 +181,37 @@ const trans_mod = @import("trans.zig");
 const lex_mod = @import("../parser/lex.zig");
 const isconstrname = lex_mod.isconstrname;
 
+/// The node tag of cell `x`.
 inline fn getTag(x: Word) u8 {
     return main.heap.heap.getTag(x);
 }
 
+/// Head (`hd`) of cell `x`.
 fn h(x: Word) Word {
     return main.heap.heap.h(x);
 }
 
+/// Pointer to the head field of cell `x`.
 fn hp(x: Word) *Word {
     return main.heap.heap.hp(x);
 }
 
+/// Tail (`tl`) of cell `x`.
 fn t(x: Word) Word {
     return main.heap.heap.t(x);
 }
 
+/// Pointer to the tail field of cell `x`.
 fn tp(x: Word) *Word {
     return main.heap.heap.tp(x);
 }
 
+/// Allocate a `CONS` cell `(x . y)`.
 fn cons(x: Word, y: Word) Word {
     return make(CONS, x, y);
 }
 
+/// Remove element `e` from set `ss` (in place via the pointer).
 pub fn remove1(e: Word, ss: *Word) Word {
     var p = ss;
     while (p.* != NIL and h(p.*) < e) {
@@ -208,6 +224,7 @@ pub fn remove1(e: Word, ss: *Word) Word {
     return 1;
 }
 
+/// Set difference `s1 \ s2`.
 pub fn setdiff(s1_input: Word, s2_input: Word) Word {
     var s1 = s1_input;
     var s2 = s2_input;
@@ -224,6 +241,7 @@ pub fn setdiff(s1_input: Word, s2_input: Word) Word {
     return s1;
 }
 
+/// Add element `e` to set `s` (if not already present).
 pub fn add1(e: Word, s_input: Word) Word {
     var s = s_input;
     if (s == NIL or e < h(s)) {
@@ -243,6 +261,7 @@ pub fn add1(e: Word, s_input: Word) Word {
     return s_input;
 }
 
+/// Prepend element `e` to set `s` (no membership check).
 pub fn newadd1(e: Word, s_input: Word) Word {
     var s = s_input;
     cs.NEW = 1;
@@ -266,6 +285,7 @@ pub fn newadd1(e: Word, s_input: Word) Word {
     return s_input;
 }
 
+/// Set union of `s1` and `s2`.
 pub fn UNION(s1_input: Word, s2_input: Word) Word {
     var s1 = s1_input;
     var s2 = s2_input;
@@ -292,6 +312,7 @@ pub fn UNION(s1_input: Word, s2_input: Word) Word {
     return s1;
 }
 
+/// Set intersection of `s1` and `s2`.
 pub fn intersection(s1_input: Word, s2_input: Word) Word {
     var s1 = s1_input;
     var s2 = s2_input;
@@ -310,6 +331,7 @@ pub fn intersection(s1_input: Word, s2_input: Word) Word {
     return reverse(r);
 }
 
+/// Whether `x` is a member of set `s`.
 pub fn member(s_input: Word, x: Word) Word {
     var s = s_input;
     while (s != NIL and x != h(s)) {
@@ -321,10 +343,12 @@ pub fn member(s_input: Word, x: Word) Word {
 const type_t: Word = 10;
 const shunt = main.heap.shunt;
 
+/// The type field of id `x`.
 fn idType(x: Word) Word {
     return t(h(x));
 }
 
+/// Reorder a definition list so type declarations come first.
 pub fn typesfirst(input_x: Word) Word {
     var x = input_x;
     var y = &x;
@@ -340,6 +364,7 @@ pub fn typesfirst(input_x: Word) Word {
     return shunt(z, x);
 }
 
+/// The standard-error `FILE` handle.
 fn getStderr() ?*word.FILE {
     const T = @TypeOf(abi.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
@@ -351,6 +376,7 @@ fn getStderr() ?*word.FILE {
     }
 }
 
+/// Topologically sort dependency graph `g` (for definition ordering).
 pub fn tsort(g_input: Word) Word {
     var NP = NIL; // NP is set of elements with no predecessor
     var g1 = g_input;
@@ -394,6 +420,7 @@ pub fn tsort(g_input: Word) Word {
     return reverse(r);
 }
 
+/// Collapse mutually-recursive groups in relation `R` (companion to `tsort`).
 pub fn msc(R_input: Word) Word {
     var R1 = R_input;
     while (R1 != NIL) {
@@ -454,37 +481,47 @@ const synonym_t: Word = 1;
 const abstract_t: Word = 2;
 const UNDEF: Word = CMBASE + 140;
 
+/// Whether a type node is a compound (application) type.
 fn isCompoundType(type_node: Word) bool {
     return getTag(type_node) == AP;
 }
+/// Whether a type node is a type variable.
 fn isVarType(type_node: Word) bool {
     return getTag(type_node) == TVAR;
 }
 
+/// The arity stored in a type node.
 fn tArity(x: Word) Word {
     return h(h(t(x)));
 }
+/// The type class of a type node.
 fn tClass(x: Word) Word {
     return h(t(t(x)));
 }
+/// The info field of a type node.
 fn tInfo(x: Word) Word {
     return t(t(t(x)));
 }
+/// The `show` function recorded for a type node.
 fn tShowfn(x: Word) Word {
     return t(h(t(x)));
 }
 
+/// The value field of id `x`.
 fn idVal(x: Word) Word {
     return t(x);
 }
+/// The definition-site field of id `x`.
 fn idWho(x: Word) Word {
     return t(h(h(x)));
 }
 
+/// The interned name text of id `x`.
 fn getId(x: Word) [*:0]const u8 {
     return strtab.strOf(h(h(h(x))));
 }
 
+/// Rewrite a type's outer constructor to `list_t` in place (for structural compare).
 pub fn sterilise(t_val: Word) void {
     if (getTag(t_val) == AP) {
         hp(t_val).* = list_t;
@@ -492,6 +529,7 @@ pub fn sterilise(t_val: Word) void {
     }
 }
 
+/// Validate the well-formedness (arity) of type expression `t_val`.
 fn metaTcheck(t_val: Word) main.MiraError!Word {
     var tn = t_val;
     var i: Word = 0;
@@ -595,30 +633,36 @@ fn metaTcheck(t_val: Word) main.MiraError!Word {
     return res;
 }
 
+/// Make a type-variable node with index `i`.
 fn mktvar(i: Word) Word {
     return make(TVAR, 0, i);
 }
 
+/// The index of type variable `x`.
 fn gettvar(x: Word) Word {
     return t(x);
 }
 
+/// Whether `x` and `y` are the same type variable.
 fn eqtvar(x: Word, y: Word) bool {
     return t(x) == t(y);
 }
 
 const hashsize: usize = 512;
 
+/// Hash a type variable to a substitution-table bucket index.
 fn hashval(x: Word) usize {
     return @intCast(@mod(gettvar(x), @as(Word, @intCast(hashsize))));
 }
 
+/// Allocate a fresh type variable.
 fn NTV() Word {
     const res = mktvar(cs.tvcount);
     cs.tvcount += 1;
     return res;
 }
 
+/// Reset the substitution and return the empty substitution.
 pub fn clearSubst() Word {
     fixshows();
     @memset(&cs.SUBST, 0);
@@ -626,6 +670,7 @@ pub fn clearSubst() Word {
     return 0;
 }
 
+/// Fix up the `show` functions after inference.
 pub fn fixshows() void {
     while (cs.showchain != NIL) {
         tp(h(cs.showchain)).* = subst(t(h(cs.showchain)));
@@ -633,6 +678,7 @@ pub fn fixshows() void {
     }
 }
 
+/// The substitution binding for type variable `tv` (or `tv` itself if unbound).
 pub fn lookup(tv: Word) Word {
     var h_val = cs.SUBST[hashval(tv)];
     while (h_val != 0) {
@@ -644,20 +690,24 @@ pub fn lookup(tv: Word) Word {
     return tv;
 }
 
+/// Bind type variable `tv` to `term` in the substitution.
 pub fn addsubst(tv: Word, term: Word) void {
     const hv = hashval(tv);
     cs.SUBST[hv] = cons(cons(tv, term), cs.SUBST[hv]);
 }
 
+/// Resolve `tv` to its ultimate substituted form (union-find walk).
 fn ult(tv: Word) Word {
     const s = lookup(tv);
     return if (s == tv) tv else subst(s);
 }
 
+/// Allocate an application cell `(x y)`.
 fn ap(x: Word, y: Word) Word {
     return make(AP, x, y);
 }
 
+/// Apply `f` to every type variable in `term`, rebuilding it.
 fn walktype(term: Word, f: *const fn (Word) Word) Word {
     if (isVarType(term)) {
         return f(term);
@@ -670,12 +720,14 @@ fn walktype(term: Word, f: *const fn (Word) Word) Word {
     return term;
 }
 
+/// Apply the current substitution throughout `term`.
 pub fn subst(term: Word) Word {
     return walktype(term, ult);
 }
 
 var NGT: Word = 0;
 
+/// Per-variable map for `linst`: copy generic vars, keep non-generic ones.
 fn lmap(tv: Word) Word {
     if (nonGeneric(tv) != 0) {
         return tv;
@@ -692,12 +744,14 @@ fn lmap(tv: Word) Word {
     return new_var;
 }
 
+/// Instantiate `term`, freshening its generic type variables (`ngt` = the non-generic set).
 pub fn linst(term: Word, ngt: Word) Word {
     cs.localtvmap = NIL;
     NGT = ngt;
     return walktype(term, lmap);
 }
 
+/// Whether type variable `tv` is non-generic / monomorphic (1/0).
 pub fn nonGeneric(tv: Word) c_int {
     var x = NGT;
     while (x != NIL) {
@@ -709,6 +763,7 @@ pub fn nonGeneric(tv: Word) c_int {
     return 0;
 }
 
+/// Map a type variable up through `tvmap` (instantiation direction).
 fn mapup(tv_in: Word) Word {
     var m: *Word = &cs.tvmap;
     var tv = gettvar(tv_in);
@@ -722,11 +777,13 @@ fn mapup(tv_in: Word) Word {
     return h(m.*);
 }
 
+/// Instantiate a polymorphic type with fresh variables.
 pub fn instantiate(term: Word) Word {
     cs.tvmap = NIL;
     return walktype(term, mapup);
 }
 
+/// Apply the substitution `args` to `term`.
 pub fn apSubst(term: Word, args: Word) Word {
     cs.tvmap = args;
     const r = walktype(term, mapup);
@@ -734,6 +791,7 @@ pub fn apSubst(term: Word, args: Word) Word {
     return r;
 }
 
+/// Map a type variable down to a compact index through `tvmap`.
 fn mapdown(tv: Word) Word {
     var m: *Word = &cs.tvmap;
     var i: Word = 1;
@@ -747,11 +805,13 @@ fn mapdown(tv: Word) Word {
     return mktvar(i);
 }
 
+/// Renumber a term's type variables to a compact 1..n.
 pub fn redtvars(term: Word) Word {
     cs.tvmap = NIL;
     return walktype(term, mapdown);
 }
 
+/// The occurs check: whether `tv` appears in `t_val` (1/0).
 pub fn occurs(tv: Word, t_val: Word) c_int {
     var term = t_val;
     while (isCompoundType(term)) {
@@ -763,6 +823,7 @@ pub fn occurs(tv: Word, t_val: Word) c_int {
     return if (tv == term) 1 else 0;
 }
 
+/// Whether type `t_val` is polymorphic — contains type variables (1/0).
 pub fn ispoly(t_val: Word) c_int {
     var term = t_val;
     while (isCompoundType(term)) {
@@ -774,6 +835,7 @@ pub fn ispoly(t_val: Word) c_int {
     return if (isVarType(term)) 1 else 0;
 }
 
+/// The standard-output `FILE` handle.
 fn getStdout() ?*word.FILE {
     const T = @TypeOf(abi.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
@@ -785,6 +847,7 @@ fn getStdout() ?*word.FILE {
     }
 }
 
+/// Record the current definition name `s` for error messages.
 pub fn locate(s: [*:0]const u8) void {
     cs.TYPERRS += 1;
     if (cs.TYPERRS == 1 or cs.lastloc != cs.current_id) {
@@ -820,6 +883,7 @@ pub fn locate(s: [*:0]const u8) void {
     cs.lastloc = cs.current_id;
 }
 
+/// The source location of right-hand side `r`.
 pub fn rhsHere(r: Word) Word {
     if (getTag(r) == LABEL) {
         return h(r);
@@ -830,6 +894,7 @@ pub fn rhsHere(r: Word) Word {
     return 0;
 }
 
+/// Print a source-location marker `h_val` (with optional newline).
 pub fn sayhere(h_val: Word, nl: Word) void {
     var h_node = h_val;
     if (getTag(h_node) != FILEINFO) {
@@ -859,6 +924,7 @@ pub fn sayhere(h_val: Word, nl: Word) void {
     }
 }
 
+/// Print the inferred type of `x` (the `::` response).
 pub fn reportType(x: Word) void {
     _ = word.print("{s}", .{getId(x)});
     if (idType(x) == type_t) {
@@ -880,6 +946,7 @@ pub fn reportType(x: Word) void {
     outType(idType(x));
 }
 
+/// Report a type mismatch between `t1_val` and `t2_val` (`a`/`b` name the sides).
 pub fn typeError(a: [*:0]const u8, b: [*:0]const u8, t1_val: Word, t2_val: Word) void {
     var t1 = redtvars(ap(subst(t1_val), subst(t2_val)));
     const t2 = t(t1);
@@ -892,11 +959,13 @@ pub fn typeError(a: [*:0]const u8, b: [*:0]const u8, t1_val: Word, t2_val: Word)
     _ = word.print("\n", .{});
 }
 
+/// Report type error variant 1 for `x`.
 pub fn typeError1(x: Word) void {
     locate("type error");
     _ = word.print("typename used as identifier ({s})\n", .{getId(x)});
 }
 
+/// Report type error variant 2 for `x`.
 pub fn typeError2(x: Word) void {
     if (core_state.s.compiling != 0) {
         return;
@@ -905,11 +974,13 @@ pub fn typeError2(x: Word) void {
     _ = word.print("undefined name - {s}\n", .{getId(x)});
 }
 
+/// Report type error variant 3 for `x`.
 pub fn typeError3(x: Word) void {
     locate("error");
     _ = word.print("constructor \"{s}\" used at wrong arity in formal\n", .{getId(x)});
 }
 
+/// Report type error variant 4 for `x`.
 pub fn typeError4(x: Word) void {
     locate("error");
     _ = word.print("illegal object \"", .{});
@@ -917,6 +988,7 @@ pub fn typeError4(x: Word) void {
     _ = word.print("\" as head of formal\n", .{});
 }
 
+/// Report type error variant 5 for `x`.
 pub fn typeError5(x: Word) void {
     locate("error");
     _ = word.print("undeclared constructor \"", .{});
@@ -925,6 +997,7 @@ pub fn typeError5(x: Word) void {
     cs.ND = add1(x, cs.ND);
 }
 
+/// Report type error variant 6 (`x` applied to `f`/`a`).
 pub fn typeError6(x: Word, f: Word, a: Word) void {
     cs.TYPERRS += 1;
     _ = word.print("incorrect declaration ", .{});
@@ -937,6 +1010,7 @@ pub fn typeError6(x: Word, f: Word, a: Word) void {
     _ = word.print("\n", .{});
 }
 
+/// Report type error variant 7 between `a` and `b`.
 pub fn typeError7(a: Word, b: Word) void {
     locate("type error");
     _ = word.print("\nrhs of lex rule :: ", .{});
@@ -946,6 +1020,7 @@ pub fn typeError7(a: Word, b: Word) void {
     _ = word.print("\n", .{});
 }
 
+/// Report type error variant 8 between `t1_val` and `t2_val`.
 pub fn typeError8(t1_val: Word, t2_val: Word) void {
     var t1 = subst(t1_val);
     var t2 = subst(t2_val);
@@ -972,16 +1047,20 @@ const arrow_t: Word = 6;
 const void_t: Word = 7;
 const wrong_t: Word = 8;
 
+/// Whether a type node is a function (`->`) type.
 fn isArrowType(t_val: Word) bool {
     return getTag(t_val) == AP and getTag(h(t_val)) == AP and h(h(t_val)) == arrow_t;
 }
+/// Whether a type node is a tuple (comma) type.
 fn isCommaType(t_val: Word) bool {
     return getTag(t_val) == AP and getTag(h(t_val)) == AP and h(h(t_val)) == comma_t;
 }
+/// Whether a type node is a list type.
 fn isListType(t_val: Word) bool {
     return getTag(t_val) == AP and h(t_val) == list_t;
 }
 
+/// Print a type expression `t_val`.
 pub fn outType(t_val: Word) void {
     var type_node = t_val;
     while (isArrowType(type_node)) {
@@ -992,6 +1071,7 @@ pub fn outType(t_val: Word) void {
     outType1(type_node);
 }
 
+/// Print a type at the next precedence level.
 pub fn outType1(t_val: Word) void {
     var type_node = t_val;
     if (isCompoundType(type_node) and !isCommaType(type_node) and !isListType(type_node) and !isArrowType(type_node)) {
@@ -1002,6 +1082,7 @@ pub fn outType1(t_val: Word) void {
     outType2(type_node);
 }
 
+/// Print a primary (atomic) type.
 pub fn outType2(t_val: Word) void {
     if (isListType(t_val)) {
         _ = word.print("[", .{});
@@ -1066,6 +1147,7 @@ pub fn outType2(t_val: Word) void {
     }
 }
 
+/// Print a comma-separated list of types.
 pub fn outTypeList(t_val: Word) void {
     var type_node = t_val;
     while (isCommaType(type_node)) {
@@ -1083,18 +1165,21 @@ pub fn outTypeList(t_val: Word) void {
     outType(type_node);
 }
 
+/// The value (tail) of a private-name node.
 fn pnVal(x: Word) Word {
     return t(x);
 }
 
 const PLUS: Word = CMBASE + 54;
 
+/// The sign bit of `x` (bignum negativity test).
 fn neg(x: Word) Word {
     return h(x) & 0x10000000;
 }
 
 var allchars: Word = 0;
 
+/// The argument of the outermost type application of `x`.
 pub fn tail(x_in: Word) Word {
     var x = x_in;
     allchars = 1;
@@ -1106,6 +1191,7 @@ pub fn tail(x_in: Word) Word {
     return x;
 }
 
+/// Print a formal parameter at the next precedence level.
 pub fn outFormal1(f: *word.FILE, x_in: Word) void {
     var x = x_in;
     if (h(x) == CONST) {
@@ -1156,6 +1242,7 @@ pub fn outFormal1(f: *word.FILE, x_in: Word) void {
     }
 }
 
+/// Print a pattern `x`.
 pub fn outPattern(f: *word.FILE, x: Word) void {
     if (getTag(x) == CONS) {
         if (h(x) == CONST and (getTag(t(x)) == INT or getTag(t(x)) == DOUBLE)) {
@@ -1172,6 +1259,7 @@ pub fn outPattern(f: *word.FILE, x: Word) void {
     }
 }
 
+/// Print a formal parameter `x`.
 pub fn outFormal(f: *word.FILE, x: Word) void {
     if (getTag(x) != AP) {
         outFormal1(f, x);
@@ -1188,10 +1276,12 @@ pub fn outFormal(f: *word.FILE, x: Word) void {
 
 const CONST: Word = 268;
 
+/// Whether `x` names a data constructor.
 fn isConstructor(x: Word) bool {
     return getTag(x) == ID and isconstrname(getId(x)) != 0;
 }
 
+/// Remove the variables bound by pattern `p` from set `x`.
 pub fn rembvars(x_in: Word, p_in: Word) Word {
     var x = x_in;
     var p = p_in;
@@ -1228,6 +1318,7 @@ pub fn rembvars(x_in: Word, p_in: Word) Word {
     }
 }
 
+/// The dependency set of definition `x`.
 pub fn deps(x_in: Word) Word {
     var x = x_in;
     var d = NIL;
@@ -1280,6 +1371,7 @@ pub fn deps(x_in: Word) Word {
     }
 }
 
+/// Compute and record the dependencies of `n`.
 fn compDeps(n: Word) main.MiraError!void {
     var rhs = NIL;
     var r: Word = 0;
@@ -1348,6 +1440,7 @@ fn compDeps(n: Word) main.MiraError!void {
 const algebraic_t: Word = 0;
 const FREE: Word = 276;
 
+/// Renumber type variables across a list of definitions.
 pub fn redtfr(x_in: Word) void {
     var x = x_in;
     while (x != NIL) {
@@ -1356,6 +1449,7 @@ pub fn redtfr(x_in: Word) void {
     }
 }
 
+/// Print one debug element.
 pub fn printelement(x: Word) void {
     if (getTag(x) != CONS) {
         out(getStdout().?, x);
@@ -1373,6 +1467,7 @@ pub fn printelement(x: Word) void {
     _ = word.print(")", .{});
 }
 
+/// Print a titled list (debug).
 pub fn printlist(title: [*:0]const u8, l_in: Word) void {
     var l = l_in;
     _ = word.print("{s}", .{title});
@@ -1386,14 +1481,17 @@ pub fn printlist(title: [*:0]const u8, l_in: Word) void {
     _ = word.print(";\n", .{});
 }
 
+/// The value field of a type/definition cell.
 fn theVal(x: Word) Word {
     return t(x);
 }
 
+/// Clear the substitution table.
 fn resetSubst() void {
     cs.current_id = if (cs.tvcount >= @as(Word, @intCast(hashsize))) clearSubst() else 0;
 }
 
+/// Mark the current location as inside an `%include`.
 pub fn locateInc() void {
     if (cs.lasthereinc == cs.hereinc) {
         return;
@@ -1403,6 +1501,7 @@ pub fn locateInc() void {
     sayhere(cs.hereinc, 1);
 }
 
+/// Detect cyclic abstract-type definitions among `atnames`.
 pub fn cyclicAbstr(atnames: Word) Word {
     var x = atnames;
     var y = NIL;
@@ -1425,6 +1524,7 @@ pub fn cyclicAbstr(atnames: Word) Word {
     return 0;
 }
 
+/// Expand type synonyms: replace ids `ids` throughout `x`.
 pub fn txchange(ids_in: Word, x_in: Word) void {
     var ids = ids_in;
     var x = x_in;
@@ -1437,6 +1537,7 @@ pub fn txchange(ids_in: Word, x_in: Word) void {
     }
 }
 
+/// Substitute type arguments `L` for the formals of type `T`.
 pub fn repT1(T: Word, L: Word) Word {
     var args = NIL;
     var t1 = T;
@@ -1462,11 +1563,13 @@ pub fn repT1(T: Word, L: Word) Word {
     return t1;
 }
 
+/// Replace type `T`'s formal parameters with arguments `L`, then renumber.
 pub fn repT(T: Word, L: Word) Word {
     const t_val = repT1(T, L);
     return if (t_val == T) t_val else redtvars(t_val);
 }
 
+/// Normalise a type node after loading a dump (fix up indices).
 pub fn fixType(t_val: Word) Word {
     var t_node = t_val;
     switch (getTag(t_node)) {
@@ -1487,6 +1590,7 @@ pub fn fixType(t_val: Word) Word {
     }
 }
 
+/// Check an abstract-type declaration `x`.
 fn abstrCheck(x_in: Word) main.MiraError!void {
     var x = x_in;
     const rtypes = t(h(x));
@@ -1529,6 +1633,7 @@ fn abstrCheck(x_in: Word) main.MiraError!void {
     cs.ATNAMES = 0;
 }
 
+/// Check a group of mutually-recursive abstract types.
 fn abstrMcheck(tabstrs_in: Word) main.MiraError!void {
     var tabstrs = tabstrs_in;
     while (tabstrs != NIL) {
@@ -1553,6 +1658,7 @@ fn abstrMcheck(tabstrs_in: Word) main.MiraError!void {
     }
 }
 
+/// Check the grammar's free/bound symbols (error-returning form).
 fn mcheckfbs() main.MiraError!void {
     var ff: Word = undefined;
     var formals: Word = undefined;
@@ -1613,6 +1719,7 @@ fn mcheckfbs() main.MiraError!void {
     }
 }
 
+/// Type-check the grammar's free/bound symbols.
 pub fn checkfbs() void {
     const oldte = cs.TYPERRS;
     var formals: Word = undefined;
@@ -1654,6 +1761,7 @@ pub fn checkfbs() void {
     resetSubst();
 }
 
+/// Build and cache the `filestat` result type.
 pub fn genlstatType() Word {
     if (cs.filestat_t == 0) {
         cs.filestat_t = tf(cs.ltchar, pairType(pairType(num_t, num_t), num_t));
@@ -1663,50 +1771,62 @@ pub fn genlstatType() Word {
 
 const bind_t: Word = 9;
 
+/// Whether a type node is a bound type variable.
 fn isBoundType(type_node: Word) bool {
     return isCompoundType(type_node) and h(type_node) == bind_t;
 }
 
+/// Allocate `((x y) z)`.
 fn ap2(x: Word, y: Word, z: Word) Word {
     return ap(ap(x, y), z);
 }
 
+/// Build a function type `a -> b`.
 fn tf(a: Word, b: Word) Word {
     return ap2(arrow_t, a, b);
 }
 
+/// Build the function type `a -> b -> c`.
 fn tf2(a: Word, b: Word, c_param: Word) Word {
     return tf(a, tf(b, c_param));
 }
 
+/// Build the function type `a -> b -> c -> d`.
 fn tf3(a: Word, b: Word, c_param: Word, d: Word) Word {
     return tf(a, tf2(b, c_param, d));
 }
 
+/// Build the function type `a -> b -> c -> d -> e`.
 fn tf4(a: Word, b: Word, c_param: Word, d: Word, e: Word) Word {
     return tf(a, tf3(b, c_param, d, e));
 }
 
+/// Build the list type `[a]`.
 fn lt(a: Word) Word {
     return ap(list_t, a);
 }
 
+/// Build a pair (tuple) type `(x, y)`.
 fn pairType(x: Word, y: Word) Word {
     return ap2(comma_t, x, ap2(comma_t, y, void_t));
 }
 
+/// The left-hand side (head) of a definition cell `d`.
 fn dlhs(d: Word) Word {
     return h(d);
 }
 
+/// The type field of a definition cell `d`.
 fn dtyp(d: Word) Word {
     return h(t(d));
 }
 
+/// The value field of a definition cell `d`.
 fn dval(d: Word) Word {
     return t(t(d));
 }
 
+/// One-sided subsumption helper for `subsumes`.
 pub fn subsu1(t1_in: Word, t2: Word, T2: Word) Word {
     const t1 = subst(t1_in);
     if (t1 == t2) {
@@ -1722,6 +1842,7 @@ pub fn subsu1(t1_in: Word, t2: Word, T2: Word) Word {
     return 0;
 }
 
+/// Whether type `t1` is at least as general as `t2`.
 pub fn subsumes(t1: Word, t2: Word) Word {
     if (t2 == wrong_t) {
         return 1;
@@ -1729,6 +1850,7 @@ pub fn subsumes(t1: Word, t2: Word) Word {
     return subsu1(t1, t2, t2);
 }
 
+/// Core recursive step of `unify`.
 fn unify1(t1_val: Word, t2_val: Word) c_int {
     const t1 = subst(t1_val);
     const t2 = subst(t2_val);
@@ -1749,6 +1871,7 @@ fn unify1(t1_val: Word, t2_val: Word) c_int {
     return 0;
 }
 
+/// Unify types `t1` and `t2`, extending the substitution (1 on success).
 fn unify(t1_val: Word, t2_val: Word) c_int {
     const t1 = subst(t1_val);
     const t2 = subst(t2_val);
@@ -1770,6 +1893,7 @@ fn unify(t1_val: Word, t2_val: Word) c_int {
     return 0;
 }
 
+/// Type-check that pattern `p` conforms to type `t_val` in environment `e`.
 fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) main.MiraError!Word {
     var e = e_in;
     if (e == -1) {
@@ -1847,6 +1971,7 @@ fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) main.MiraError!Word {
     }
 }
 
+/// Infer the type of expression `x` in environment `env` — the core of inference.
 fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
     switch (getTag(x)) {
         AP => {
@@ -2456,6 +2581,7 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
     }
 }
 
+/// Type-check the grammar's collector function (`col_fn`).
 pub fn checkcolfn() void {
     const t_val = idType(main.rs.col_fn);
     const f = tf(t(h(t(cs.bnf_t))), num_t);
@@ -2475,6 +2601,7 @@ pub fn checkcolfn() void {
     main.rs.col_fn = -1;
 }
 
+/// Derive the BNF token type from the grammar's `bnftokenstate`.
 pub fn genbnft() void {
     const bnftokenstate = findid("bnftokenstate");
     if (bnftokenstate != NIL and idType(bnftokenstate) == type_t) {
@@ -2490,6 +2617,7 @@ pub fn genbnft() void {
     cs.bnf_t = ap2(comma_t, cs.ltchar, ap2(comma_t, cs.bnf_t, void_t));
 }
 
+/// Type-check `x`, returning its inferred type.
 pub fn checktype(x: Word) Word {
     cs.TYPERRS = 0;
     _ = etype(x, NIL, NIL) catch return 0;
@@ -2497,6 +2625,7 @@ pub fn checktype(x: Word) Word {
     return if (cs.TYPERRS == 0) 1 else 0;
 }
 
+/// The inferred type of expression `x`.
 pub fn typeOf(x: Word) Word {
     cs.TYPERRS = 0;
     var t_val = redtvars(subst(etype(x, NIL, NIL) catch return wrong_t));
@@ -2507,6 +2636,7 @@ pub fn typeOf(x: Word) Word {
     return t_val;
 }
 
+/// Run type inference over definition `x`.
 fn inferType(x: Word) void {
     if (getTag(x) == ID) {
         var t_val: Word = undefined;
@@ -2561,6 +2691,7 @@ fn inferType(x: Word) void {
     cs.current_id = 0;
 }
 
+/// Initialise the type-system state (base types and counters).
 pub fn tsetup() void {
     cs.tfnum = tf(num_t, num_t);
     cs.tfbool = tf(bool_t, bool_t);
@@ -2573,6 +2704,7 @@ pub fn tsetup() void {
     cs.tstepuntil = tf(num_t, cs.tstep);
 }
 
+/// Type-check every definition in the current script.
 pub fn checktypes() void {
     cs.ATNAMES = 0;
     cs.TYPERRS = 0;
