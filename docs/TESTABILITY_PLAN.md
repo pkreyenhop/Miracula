@@ -40,18 +40,17 @@ written, and a few stateful functions are still awkward to exercise in isolation
 
 ## Prioritised backlog
 
-### P0 — Testability harness *(do first; unblocks everything below)*
+### P0 — Testability harness ✅ *(done 2026-06-29)*
 
-1. **`testutil` helper** (e.g. `src/testutil.zig`, test-only): a `freshInterp()`
-   that does `interp.reset(); lex.setupdic(); setup.miraSetup();` (the proven
-   `reduce_test` recipe), small **graph builders** (`intNode`, `cons`, `ap`,
-   `str`), and **assert helpers** (`expectInt`, `expectList`, `expectReducesTo`).
-   This makes a per-function test two or three lines instead of twenty.
-2. **Conventions** (write into this doc / CONTRIBUTING): tests live in an inline
-   `test "<fn>: <behaviour>"` block beside the function; each test is a *minimal,
-   readable example* (it doubles as documentation); reset/`freshInterp` between
-   tests that touch global state; pure functions need no setup.
-3. **Metric**: `scripts/test-coverage-check.sh` (added) — drives the 4% → ~100%.
+1. **`testutil` helper** — `src/testutil.zig` (test-only): `freshInterp()` (the
+   proven `reduce_test` recipe: `interp.reset(); lex.setupdic(); setup.miraSetup();`,
+   idempotent/one-time), graph builders (`int`, `ap`, `ap2`, `cons`, `list`, `str`),
+   and reduction-aware assertions (`expectInt`, `expectList`, `expectReducesTo`,
+   `expectTag`). Five self-tests double as usage examples. Wired into `main.zig`'s
+   comptime block so it runs under `main-tests` (and is type-checked, but not
+   emitted, in the `mira` exe). A per-function test is now ~3 lines.
+2. **Conventions** — see [Test conventions](#test-conventions) below.
+3. **Metric** — `scripts/test-coverage-check.sh` (added) — drives the 4% → ~100%.
 
 ### P1 — Per-function tests, module-by-module *(the goal)*
 
@@ -106,6 +105,32 @@ them, but the spirit is *meaningful* coverage.
 * Refresh `ARCHITECTURE.md` "Remaining Modernization Opportunities" (K2/naming is
   done; I1/I3/N were analysed as no-ops).
 
+## Test conventions
+
+* **Co-locate.** A function's test(s) live in an inline `test` block in the same
+  file, near the function — not in a separate test file. (`reduce_test.zig` and
+  `parser_tests.zig` predate this and stay where they are.)
+* **Name `"<fn>: <behaviour>"`.** e.g. `test "numplus: adds two ints"`. The name
+  reads as a sentence about the function and shows up verbatim in test output.
+* **A test is documentation.** Prefer one *minimal, readable* example that makes
+  the function's contract obvious over an exhaustive matrix. Add edge cases as
+  separate, equally small tests when they clarify behaviour (empty input,
+  boundary, the bug a regression guards).
+* **Pure functions need no setup.** Tier-A leaves (`word`/`big`/`strtab`
+  classifiers, etc.) take literal inputs and assert directly — do **not** import
+  the harness into a pure leaf.
+* **Stateful functions use the harness.** Call `t.freshInterp()` first, build
+  inputs with the `testutil` builders, assert with its `expect*` helpers. Name any
+  identifiers/fixtures uniquely — `freshInterp()` gives a *working* interp, not
+  per-test isolation, so declarations persist across tests in a binary.
+* **New `main-tests` files** must be added to `main.zig`'s comptime `_ = @import`
+  block (that is how the `main-tests` target discovers them); verify by running
+  the binary directly (see [the build quirk](../README.md) — `zig build test`
+  prints a spurious "failed command").
+
+Harness import path is relative to the test file, e.g. from `src/runtime/heap.zig`:
+`const t = @import("../testutil.zig");`.
+
 ## Metric
 
 `scripts/test-coverage-check.sh` reports test blocks, function definitions, and
@@ -117,8 +142,7 @@ the per-module ratio (FFI shim + tools excluded):
 | function definitions | 1091 | — |
 | tests-per-fn ratio | **4%** | ~100% |
 
-## Suggested first step
+## Next step
 
-Land **P0** (the `testutil` harness + conventions), then take **`word.zig`** as
-the first P1 module — it's pure, foundational, and every other test will lean on
-the values it defines.
+P0 is landed. Start **P1** with **`word.zig`** — it's pure, foundational, and
+every other test leans on the values it defines.

@@ -219,4 +219,5 @@ comptime {
     _ = @import("io/signals.zig");
     _ = @import("runtime/version.zig");
     _ = @import("runtime/runtime_state.zig");
+    _ = @import("testutil.zig");
 }
