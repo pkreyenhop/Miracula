@@ -1,3 +1,13 @@
+//! trans.zig — translation from parse trees to combinator graphs.
+//!
+//! Turns definitions and expressions into the `S`/`K`/`I`… combinator graph the
+//! reducer runs: bracket abstraction (`abstract`/`abstr`/`combine`), pattern-match
+//! compilation (`scanpattern`/`transtries`/`genlhs`), `let`/`letrec` and ZF
+//! list-comprehension translation (`translet`/`transzf`), `show`-function
+//! generation, and the top-level `codegen`. Also handles declaration bookkeeping
+//! (`declare`/`declType`/`declconstr`, name-clash and arity checks) and the
+//! relation/topological-sort helpers used to order mutually-recursive groups.
+
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
@@ -19,6 +29,7 @@ const lex_state = @import("../parser/lex_state.zig");
 const core_state = @import("../runtime/core_state.zig");
 const ls = lex_state.ls;
 
+/// The standard-output `FILE` handle.
 fn getStdout() ?*word.FILE {
     return main_clib.stdout();
 }
@@ -146,26 +157,32 @@ const strcmp = word.strcmp;
 const syntax = setup.syntax;
 const acterror = setup.acterror;
 
+/// The node tag of cell `x`.
 inline fn getTag(x: Word) u8 {
     return main.heap.heap.getTag(x);
 }
 
+/// Head (`hd`) of cell `x`.
 fn h(x: Word) Word {
     return main.heap.heap.h(x);
 }
 
+/// Pointer to the head field of cell `x`.
 fn hp(x: Word) *Word {
     return main.heap.heap.hp(x);
 }
 
+/// Tail (`tl`) of cell `x`.
 fn t(x: Word) Word {
     return main.heap.heap.t(x);
 }
 
+/// Pointer to the tail field of cell `x`.
 fn tp(x: Word) *Word {
     return main.heap.heap.tp(x);
 }
 
+/// The head of an application spine (walk `hd` while it is an `AP`).
 fn appHead(input_x: Word) Word {
     var x = input_x;
     while (getTag(x) == AP) {
@@ -174,86 +191,107 @@ fn appHead(input_x: Word) Word {
     return x;
 }
 
+/// Allocate a `CONS` cell `(x . y)`.
 fn cons(x: Word, y: Word) Word {
     return make(CONS, x, y);
 }
 
+/// Allocate a `PAIR` cell `(x . y)`.
 fn pair(x: Word, y: Word) Word {
     return make(PAIR, x, y);
 }
 
+/// Allocate a `DATAPAIR` cell.
 fn datapair(x: Word, y: Word) Word {
     return make(DATAPAIR, x, y);
 }
 
+/// Allocate a `CONSTRUCTOR` cell (tag `n`, fields `x`).
 fn constructor(n: Word, x: Word) Word {
     return make(CONSTRUCTOR, n, x);
 }
 
+/// Allocate a `LAMBDA` cell `(x . y)`.
 fn lambda(x: Word, y: Word) Word {
     return make(LAMBDA, x, y);
 }
 
+/// Allocate a `SHARE` cell (a shared / lazily-evaluated binding).
 fn share(x: Word, y: Word) Word {
     return make(SHARE, x, y);
 }
 
+/// Allocate a `TRIES` cell (a chain of pattern-match alternatives).
 fn tries(x: Word, y: Word) Word {
     return make(TRIES, x, y);
 }
 
+/// Allocate a `LET` cell.
 fn let(x: Word, y: Word) Word {
     return make(LET, x, y);
 }
 
+/// Allocate a `LETREC` cell.
 fn letrec(x: Word, y: Word) Word {
     return make(LETREC, x, y);
 }
 
+/// Allocate an application `(x y)`.
 fn ap(x: Word, y: Word) Word {
     return make(AP, x, y);
 }
 
+/// Allocate `((x y) z)`.
 fn ap2(x: Word, y: Word, z: Word) Word {
     return ap(ap(x, y), z);
 }
 
+/// Allocate `(((w x) y) z)`.
 fn ap3(w: Word, x: Word, y: Word, z: Word) Word {
     return ap(ap2(w, x, y), z);
 }
 
+/// The interned name text of id `x`.
 fn getId(x: Word) [*:0]const u8 {
     return strtab.strOf(h(h(h(x))));
 }
 
+/// The definition-site field of id `x`.
 fn idWho(x: Word) Word {
     return t(h(h(x)));
 }
 
+/// Set the definition-site field of id `x`.
 fn setIdWho(x: Word, value: Word) void {
     tp(h(h(x))).* = value;
 }
 
+/// The type field of id `x`.
 fn idType(x: Word) Word {
     return t(h(x));
 }
 
+/// The value field of id `x`.
 fn idVal(x: Word) Word {
     return t(x);
 }
 
+/// Set the type field of id `x`.
 fn setIdType(x: Word, value: Word) void {
     tp(h(x)).* = value;
 }
 
+/// Set the value field of id `x`.
 fn setIdVal(x: Word, value: Word) void {
     tp(x).* = value;
 }
 
+/// Build a type descriptor cell `((arity . showfn) . (class . info))`.
 fn makeTyp(arity: Word, showfn: Word, class: Word, info: Word) Word {
     return cons(cons(arity, showfn), cons(class, info));
 }
 
+/// Add id `x` to the current file's definition environment.
 fn addToEnv(x: Word) void {
     const current_file_defs = h(heap.heap.files);
     if (current_file_defs >= ATOMLIMIT) {
@@ -262,86 +300,107 @@ fn addToEnv(x: Word) void {
     }
 }
 
+/// Whether `x` names a data constructor.
 fn isConstructor(x: Word) bool {
     return getTag(x) == ID and isconstrname(getId(x)) != 0;
 }
 
+/// Whether `x` names an ordinary variable.
 fn isVariable(x: Word) bool {
     return getTag(x) == ID and isconstrname(getId(x)) == 0;
 }
 
+/// Whether `x` is an `n+k` pattern.
 fn isNPlusKPattern(x: Word) bool {
     return getTag(x) == AP and getTag(h(x)) == AP and h(h(x)) == PLUS;
 }
 
+/// Whether a type node is a function (`->`) type.
 fn isArrowType(x: Word) bool {
     return getTag(x) == AP and getTag(h(x)) == AP and h(h(x)) == arrow_t;
 }
 
+/// Whether a type node is a list type.
 fn isListType(x: Word) bool {
     return getTag(x) == AP and h(x) == list_t;
 }
 
+/// Whether a type node is a type variable.
 fn isTypeVariable(x: Word) bool {
     return getTag(x) == TVAR;
 }
 
+/// Whether a type node is a compound (application) type.
 fn isCompoundType(x: Word) bool {
     return getTag(x) == AP;
 }
 
+/// Whether `x` is a char value.
 fn isChar(x: Word) bool {
     return 0 <= x and x <= 255;
 }
 
+/// The arity recorded in a type descriptor.
 fn typeArity(x: Word) Word {
     return h(h(t(x)));
 }
 
+/// The `show` function recorded in a type descriptor.
 fn typeShowFn(x: Word) Word {
     return t(h(t(x)));
 }
 
+/// The class (algebraic/synonym/abstract) of a type descriptor.
 fn typeClass(x: Word) Word {
     return h(t(t(x)));
 }
 
+/// Set the class field of a type descriptor.
 fn setTypeClass(x: Word, value: Word) void {
     hp(t(t(x))).* = value;
 }
 
+/// The info field of a type descriptor.
 fn typeInfo(x: Word) Word {
     return t(t(t(x)));
 }
 
+/// Set the info field of a type descriptor.
 fn setTypeInfo(x: Word, value: Word) void {
     tp(t(t(x))).* = value;
 }
 
+/// The index of type variable `x`.
 fn getTypeVariable(x: Word) Word {
     return t(x);
 }
 
+/// Box index `i` (bare if small, else an `INT` cell).
 fn mkindex(i: Word) Word {
     return if (word.fitsInByte(i)) i else make(INT, i, 0);
 }
 
+/// The left-hand side of a definition cell `d`.
 fn dlhs(d: Word) Word {
     return h(d);
 }
 
+/// Set the left-hand side of a definition cell `d`.
 fn setDlhs(d: Word, value: Word) void {
     hp(d).* = value;
 }
 
+/// The value of a definition cell `d`.
 fn dval(d: Word) Word {
     return t(t(d));
 }
 
+/// Set the value of a definition cell `d`.
 fn setDval(d: Word, value: Word) void {
     tp(t(d)).* = value;
 }
 
+/// The underlying `CONSTRUCTOR` cell of id `x` (through any `MKSTRICT` wrapper).
 pub fn primconstr(input_x: Word) Word {
     var x = t(input_x); // idVal(x) = CONSTRUCTOR cell (or MKSTRICT wrapper for strict ctors)
     while (getTag(x) != CONSTRUCTOR) {
@@ -350,6 +409,7 @@ pub fn primconstr(input_x: Word) Word {
     return x;
 }
 
+/// Whether `x` is a member of list `l`.
 pub fn memb(input_l: Word, x: Word) Word {
     var l = input_l;
     if (getTag(x) == TVAR) {
@@ -364,6 +424,7 @@ pub fn memb(input_l: Word, x: Word) Word {
     return if (l != NIL) 1 else 0;
 }
 
+/// Whether `x` and `y` are structurally equal.
 pub fn same(x: Word, y: Word) Word {
     if (x == y) {
         return 1;
@@ -382,6 +443,7 @@ pub fn same(x: Word, y: Word) Word {
     return if (h(x) == h(y) and same(t(x), t(y)) != 0) 1 else 0;
 }
 
+/// Collect the identifiers bound by pattern/definition `x`.
 pub fn getIds(x: Word) Word {
     if (word.isAtom(x)) {
         return NIL;
@@ -398,6 +460,7 @@ pub fn getIds(x: Word) Word {
     return UNION(getIds(h(x)), getIds(t(x)));
 }
 
+/// Build a tuple from element list `x`.
 pub fn mktuple(input_x: Word) Word {
     var x = input_x;
     if (word.isAtom(x)) {
@@ -417,6 +480,7 @@ pub fn mktuple(input_x: Word) Word {
     return if (x == NIL) y else if (y == NIL) x else pair(x, y);
 }
 
+/// Whether pattern `x` is irrefutable (always matches).
 pub fn irrefutable(x: Word) Word {
     if (word.isAtom(x)) {
         return 0;
@@ -436,6 +500,7 @@ pub fn irrefutable(x: Word) Word {
     return if (irrefutable(h(x)) != 0 and irrefutable(t(x)) != 0) 1 else 0;
 }
 
+/// Whether expression `e` may fail to match.
 pub fn fallible(input_e: Word) Word {
     var e = input_e;
     while (true) {
@@ -460,6 +525,7 @@ pub fn fallible(input_e: Word) Word {
     }
 }
 
+/// The source-location info attached to right-hand side `rhs`.
 pub fn hereInfo(rhs: Word) Word {
     var x = t(rhs);
     while (t(x) != NIL) {
@@ -468,6 +534,7 @@ pub fn hereInfo(rhs: Word) Word {
     return h(h(x));
 }
 
+/// The last cell of list `x`.
 pub fn lastlink(input_x: Word) Word {
     var x = input_x;
     while (t(x) != NIL) {
@@ -476,6 +543,7 @@ pub fn lastlink(input_x: Word) Word {
     return x;
 }
 
+/// Rewrite repeated variables in comprehension qualifiers `qq` into equality guards.
 pub fn fixrepeats(input_qq: Word) Word {
     var q = h(input_qq);
     var rhs = q;
@@ -491,6 +559,7 @@ pub fn fixrepeats(input_qq: Word) Word {
     return cons(q, qq);
 }
 
+/// Abstract a show function `f` over a type's arity parameters.
 pub fn abshfnck(t_type: Word, f_input: Word) Word {
     var f = f_input;
     var n = typeArity(t_type);
@@ -517,6 +586,7 @@ pub fn abshfnck(t_type: Word, f_input: Word) Word {
     return if (f == t_type) 1 else 0;
 }
 
+/// Combine two bracket-abstraction results, optimising redundant `K`s.
 pub fn combine(x: Word, y: Word) Word {
     const a = getTag(x) == AP and h(x) == K;
     const b = getTag(y) == AP and h(y) == K;
@@ -555,6 +625,7 @@ pub fn combine(x: Word, y: Word) Word {
     return ap2(S, x, y);
 }
 
+/// Combine two abstraction results building a cons, optimising the `K` cases.
 pub fn liscomb(x: Word, y: Word) Word {
     const a = getTag(x) == AP and h(x) == K;
     const b = getTag(y) == AP and h(y) == K;
@@ -573,6 +644,7 @@ pub fn liscomb(x: Word, y: Word) Word {
     return ap2(S_p, x, y);
 }
 
+/// Bracket-abstract variable `x` out of expression `e` (Turner's algorithm).
 pub fn abstract(input_x: Word, input_e: Word) Word {
     var x = input_x;
     var e = input_e;
@@ -617,6 +689,7 @@ pub fn abstract(input_x: Word, input_e: Word) Word {
     return NIL;
 }
 
+/// Bracket-abstract `x` from `e` (the recursive inner step).
 pub fn abstr(x: Word, e: Word) Word {
     switch (getTag(e)) {
         TCONS, PAIR, CONS => return liscomb(abstr(x, h(e)), abstr(x, t(e))),
@@ -639,6 +712,7 @@ pub fn abstr(x: Word, e: Word) Word {
     }
 }
 
+/// Bracket-abstract a list of variables `x` from `e`.
 pub fn abstrlist(x_input: Word, e: Word) Word {
     switch (getTag(e)) {
         TCONS, PAIR, CONS => return liscomb(abstrlist(x_input, h(e)), abstrlist(x_input, t(e))),
@@ -667,6 +741,7 @@ pub fn abstrlist(x_input: Word, e: Word) Word {
     }
 }
 
+/// Compile pattern `p` against scrutinee `x` into `e`, with `fail` as the no-match continuation.
 pub fn scanpattern(p: Word, x: Word, e: Word, fail: Word) Word {
     if (h(x) == CONST or isConstructor(x)) {
         return NIL;
@@ -681,6 +756,7 @@ pub fn scanpattern(p: Word, x: Word, e: Word, fail: Word) Word {
     return shunt(scanpattern(p, h(x), e, fail), scanpattern(p, t(x), e, fail));
 }
 
+/// Build a lazy (shared) binding for definition `d`.
 pub fn mklazy(d: Word) Word {
     if (irrefutable(dlhs(d)) != 0) {
         return d;
@@ -695,6 +771,7 @@ pub fn mklazy(d: Word) Word {
     return d;
 }
 
+/// Build a lazy binding for `d` (the new-parser variant).
 pub fn newMkLazy(d: Word) Word {
     const ids = getIds(dlhs(d));
     if (ids == NIL) {
@@ -706,6 +783,7 @@ pub fn newMkLazy(d: Word) Word {
     return d;
 }
 
+/// Compile a ZF (list comprehension) expression.
 pub fn compzf(input_e: Word, input_qq: Word, diag: Word) Word {
     var e = input_e;
     var qq = input_qq;
@@ -740,6 +818,7 @@ pub fn compzf(input_e: Word, input_qq: Word, diag: Word) Word {
     return if (e == g1) ap2(APPEND, NIL, e) else e;
 }
 
+/// Translate a ZF comprehension body `e` over qualifiers `qq`.
 pub fn transzf(e_input: Word, qq_input: Word, conc: Word) Word {
     var e = e_input;
     const qq = qq_input;
@@ -773,6 +852,7 @@ pub fn transzf(e_input: Word, qq_input: Word, conc: Word) Word {
     return ap(conc, transzf(transzf(e, t(qq), conc), cons(q, NIL), conc));
 }
 
+/// The recorded source location of the type spec for `x`.
 pub fn getspecloc(x: Word) Word {
     var s = cs.speclocs;
     while (s != NIL and h(h(s)) != x) {
@@ -781,6 +861,7 @@ pub fn getspecloc(x: Word) Word {
     return if (s == NIL) idWho(x) else t(h(s));
 }
 
+/// Translate a type identifier `x`.
 pub fn transtypeid(x: Word) Word {
     const n = getId(x);
     if (strcmp(n, "bool") == 0) return bool_t;
@@ -789,6 +870,7 @@ pub fn transtypeid(x: Word) Word {
     return x;
 }
 
+/// Generate the canonical left-hand-side pattern from definition head `x`.
 pub fn genlhs(x: Word) Word {
     switch (getTag(x)) {
         AP => {
@@ -827,6 +909,7 @@ pub fn genlhs(x: Word) Word {
     return core_state.s.nill;
 }
 
+/// Left-factor the common prefixes among grammar alternatives `x`.
 pub fn leftfactor(x: Word) Word {
     var a: Word = undefined;
     var b: Word = undefined;
@@ -879,11 +962,13 @@ pub fn leftfactor(x: Word) Word {
     return x;
 }
 
+/// Translate a `let` of definition `d` in body `e`.
 pub fn translet(d: Word, e: Word) Word {
     const x = mklazy(d);
     return ap(abstract(dlhs(x), codegen(e)), codegen(dval(x)));
 }
 
+/// Translate a `letrec` of definitions `dd` in body `e`.
 pub fn transletrec(input_dd: Word, e: Word) Word {
     var dd = input_dd;
     var lhs: Word = NIL;
@@ -916,6 +1001,7 @@ pub fn transletrec(input_dd: Word, e: Word) Word {
     return ap(abstrlist(lhs, codegen(e)), ap(Y, abstrlist(lhs, rhs)));
 }
 
+/// Translate the pattern-match alternatives `x` of an id into a `TRIES` chain.
 pub fn transtries(id: Word, input_x: Word) Word {
     var x = input_x;
     var info: Word = 0;
@@ -944,6 +1030,7 @@ pub fn transtries(id: Word, input_x: Word) Word {
     return r;
 }
 
+/// Build the `show` function for a type at source location `here`.
 pub fn makeshow(here: Word, type_node: Word) Word {
     cs.was_poly = 0;
     const f = mkshow(0, 0, type_node);
@@ -962,6 +1049,7 @@ pub fn makeshow(here: Word, type_node: Word) Word {
     return f;
 }
 
+/// Build a `show` application for type `t`.
 pub fn mkshow(s: Word, p: Word, input_t: Word) Word {
     var args: Word = NIL;
     var type_node = input_t;
@@ -1019,6 +1107,7 @@ pub fn mkshow(s: Word, p: Word, input_t: Word) Word {
     }
 }
 
+/// Build a `show` for a tuple type.
 pub fn mkshowt(s: Word, type_tuple: Word) Word {
     if (t(type_tuple) == void_t) {
         return mkshow(s, 0, t(h(type_tuple)));
@@ -1026,6 +1115,7 @@ pub fn mkshowt(s: Word, type_tuple: Word) Word {
     return ap2(main.rs.showpair, mkshow(s, 0, t(h(type_tuple))), mkshowt(s, t(type_tuple)));
 }
 
+/// Name-clash check helper (returns a count).
 fn nclchk(n: Word, p: Word, hr: Word) c_int {
     if (h(p) == CONST) {
         return 0;
@@ -1051,6 +1141,7 @@ fn nclchk(n: Word, p: Word, hr: Word) c_int {
     return nclchk(n, t(p), hr);
 }
 
+/// Check definitions `dd` for name clashes with `n`.
 pub fn nclashcheck(n: Word, input_dd: Word, hr: Word) void {
     var dd = input_dd;
     while (dd != NIL and nclchk(n, dlhs(h(dd)), hr) == 0) {
@@ -1058,6 +1149,7 @@ pub fn nclashcheck(n: Word, input_dd: Word, hr: Word) void {
     }
 }
 
+/// Report a re-specification (duplicate `::`) error for `x`.
 pub fn respecError(x: Word) void {
     if (main.rs.echoing != 0) {
         _ = word.putchar('\n');
@@ -1067,6 +1159,7 @@ pub fn respecError(x: Word) void {
     acterror();
 }
 
+/// Report a name clash for `x`.
 pub fn nameclash(x: Word) void {
     if (main.rs.echoing != 0) {
         _ = word.putchar('\n');
@@ -1076,6 +1169,7 @@ pub fn nameclash(x: Word) void {
     acterror();
 }
 
+/// Declare data constructor `x` of type `constr_type`.
 pub fn declconstr(x: Word, n: Word, constr_type: Word) void {
     setIdVal(x, constructor(n, x));
     if ((n >> 16) != 0) {
@@ -1091,6 +1185,7 @@ pub fn declconstr(x: Word, n: Word, constr_type: Word) void {
     setIdType(x, constr_type);
 }
 
+/// Attach type specification `spec_type` to `x` (a `::` declaration).
 pub fn specify(input_x: Word, spec_type: Word, here: Word) void {
     var x = input_x;
     if (getTag(x) != ID and spec_type != type_t) {
@@ -1134,6 +1229,7 @@ pub fn specify(input_x: Word, spec_type: Word, here: Word) void {
     }
 }
 
+/// Check that `type_name` is applied at its declared arity.
 fn arityCheck(type_name: Word, arity: Word, here: Word) void {
     if (typeArity(type_name) != arity) {
         const prefix: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
@@ -1147,6 +1243,7 @@ fn arityCheck(type_name: Word, arity: Word, here: Word) void {
     }
 }
 
+/// Declare a type (`tf`) with its class and info.
 pub fn declType(input_tf: Word, type_class: Word, info: Word, here: Word) void {
     var tf = input_tf;
     var arity: Word = 0;
@@ -1184,6 +1281,7 @@ pub fn declType(input_tf: Word, type_class: Word, info: Word, here: Word) void {
     setIdType(tf, type_t);
 }
 
+/// Declare a single binding `x` = `e` (the inner step).
 fn decl1(x: Word, e: Word) void {
     if (idVal(x) != UNDEF and main.rs.lastname != x) {
         core_state.s.errs = h(e);
@@ -1209,6 +1307,7 @@ fn decl1(x: Word, e: Word) void {
     }
 }
 
+/// Declare definition `x` = `e` in the environment.
 pub fn declare(x: Word, e: Word) void {
     if (getTag(x) == ID and !isConstructor(x)) {
         decl1(x, e);
@@ -1241,6 +1340,7 @@ pub fn declare(x: Word, e: Word) void {
     }
 }
 
+/// Translate a block of definitions over expression `e`.
 pub fn block(input_defs: Word, input_e: Word, keep: Word) Word {
     var defs = input_defs;
     var e = input_e;
@@ -1298,6 +1398,7 @@ pub fn block(input_defs: Word, input_e: Word, keep: Word) Word {
     return e;
 }
 
+/// Transitive closure of relation `r`.
 pub fn tclos(r: Word) Word {
     var r1 = r;
     while (r1 != NIL) : (r1 = t(r1)) {
@@ -1310,12 +1411,14 @@ pub fn tclos(r: Word) Word {
     return r;
 }
 
+/// The image (successors) of `x` under relation `r`.
 pub fn getrel(input_r: Word, x: Word) Word {
     var r = input_r;
     while (r != NIL and h(h(r)) != x) r = t(r);
     return if (r == NIL) NIL else t(h(r));
 }
 
+/// The inverse image (predecessors) of `x` under relation `r`.
 pub fn invgetrel(input_r: Word, x: Word) Word {
     var r = input_r;
     while (r != NIL and member(t(h(r)), x) == 0) r = t(r);
@@ -1326,6 +1429,7 @@ pub fn invgetrel(input_r: Word, x: Word) Word {
     return h(h(r));
 }
 
+/// The image of `y` under `r`, excluding `z`.
 pub fn imageless(input_r: Word, input_y: Word, z: Word) Word {
     var r = input_r;
     var y = input_y;
@@ -1344,6 +1448,7 @@ pub fn imageless(input_r: Word, input_y: Word, z: Word) Word {
     return i;
 }
 
+/// Whether `x` should sort before `y`.
 pub fn less(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
@@ -1362,6 +1467,7 @@ pub fn less(input_x: Word, input_y: Word) Word {
     return shunt(r, x);
 }
 
+/// The elements of `x` that sort before `a`.
 pub fn less1(input_x: Word, a: Word) Word {
     var x = input_x;
     var r: Word = NIL;
@@ -1372,6 +1478,7 @@ pub fn less1(input_x: Word, a: Word) Word {
     return shunt(r, if (x == NIL) NIL else t(x));
 }
 
+/// Sort list `x`.
 pub fn sort(input_x: Word) Word {
     var x = input_x;
     var a: Word = NIL;
@@ -1402,6 +1509,7 @@ pub fn sort(input_x: Word) Word {
     return reverse(x);
 }
 
+/// Topologically sort relation `x`.
 pub fn sortrel(input_x: Word) Word {
     var x = input_x;
     var a: Word = NIL;
@@ -1442,41 +1550,52 @@ const LEX_TRY1: Word = CMBASE + 116;
 const mklexvar = lex.mklexvar;
 const ispoly = types_mod.ispoly;
 
+/// Whether a type node is a tuple (comma) type.
 fn isCommaType(type_node: Word) bool {
     return getTag(type_node) == AP and getTag(h(type_node)) == AP and h(h(type_node)) == comma_t;
 }
+/// Whether a type node is a type variable.
 fn isVarType(type_node: Word) bool {
     return getTag(type_node) == TVAR;
 }
 
+/// The `show` function of a type node.
 fn tShowfn(x: Word) Word {
     return t(h(t(x)));
 }
+/// The class of a type node.
 fn tClass(x: Word) Word {
     return h(t(t(x)));
 }
+/// The info field of a type node.
 fn tInfo(x: Word) Word {
     return t(t(t(x)));
 }
 
+/// Whether id `x` names a data constructor.
 fn isconstructor(x: Word) bool {
     return getTag(x) == ID and isconstrname(getId(x)) != 0;
 }
+/// Whether id `x` names an ordinary variable.
 fn isvariable(x: Word) bool {
     return getTag(x) == ID and isconstrname(getId(x)) == 0;
 }
 
+/// The head of private-name node `x`.
 fn getPn(x: Word) Word {
     return h(x);
 }
+/// The value (tail) of private-name node `x`.
 fn pnVal(x: Word) Word {
     return t(x);
 }
 
+/// Whether constructor `k` is the sole constructor of its type.
 fn suiGeneris(k: Word) bool {
     return member(cs.SGC, k) != 0;
 }
 
+/// Compile expression `x` to its final combinator graph — the codegen entry point.
 pub fn codegen(x: Word) Word {
     switch (getTag(x)) {
         AP => {
@@ -1588,6 +1707,7 @@ pub fn codegen(x: Word) Word {
     }
 }
 
+/// Generate the `show` functions for all declared types.
 pub fn genshfns() void {
     var s = cs.newtyps;
     while (s != NIL) {
