@@ -132,6 +132,7 @@ const types_mod = @import("types.zig");
 const big = @import("../runtime/big.zig");
 const lex = @import("../parser/lex.zig");
 const setup = @import("setup.zig");
+const rt = @import("../runtime/runtime_state.zig");
 
 const make = heap.make;
 const append1 = heap.append1;
@@ -1599,20 +1600,53 @@ fn suiGeneris(k: Word) bool {
 pub fn codegen(x: Word) Word {
     switch (getTag(x)) {
         AP => {
-            if (core_state.s.commandmode != 0 // beware of corrupting lastexp
-            and x != ls.cook_stdin and x != ls.common_stdin and x != ls.common_stdinb) { // but share $+ $-
-                return make(AP, codegen(h(x)), codegen(t(x)));
+            // Walk the application spine (the deep recursion is codegen(h(x)))
+            // iteratively so a long chain can't overflow the stack. Each node's
+            // per-node logic mirrors the recursive form exactly; only the special
+            // forms (the $±/stdin shares and the APPEND-NIL reversal) terminate
+            // the spine and fall back to a single recursive codegen() call — they
+            // are never deep.
+            var spine: std.ArrayList(Word) = .empty;
+            defer spine.deinit(rt.allocator);
+            var cur = x;
+            var acc = while (true) {
+                if (getTag(cur) != AP) break codegen(cur);
+                const shares = cur == ls.cook_stdin or cur == ls.common_stdin or cur == ls.common_stdinb;
+                const cmd = core_state.s.commandmode != 0 and !shares;
+                if (!cmd and getTag(h(cur)) == AP and h(h(cur)) == APPEND and t(h(cur)) == NIL) {
+                    break codegen(t(cur)); // post typecheck reversal of HR bug fix
+                }
+                spine.append(rt.allocator, cur) catch heap.mallocPanic("codegen ap spine");
+                cur = h(cur);
+            };
+            var i = spine.items.len;
+            while (i > 0) {
+                i -= 1;
+                const n = spine.items[i];
+                const shares = n == ls.cook_stdin or n == ls.common_stdin or n == ls.common_stdinb;
+                if (core_state.s.commandmode != 0 and !shares) { // beware of corrupting lastexp; share $+ $-
+                    acc = make(AP, acc, codegen(t(n)));
+                } else {
+                    hp(n).* = acc; // = codegen(h(n)), already computed down-spine
+                    tp(n).* = codegen(t(n));
+                    acc = if (getTag(h(n)) == AP and h(h(n)) == G_ALT) leftfactor(n) else n;
+                }
             }
-            if (getTag(h(x)) == AP and h(h(x)) == APPEND and t(h(x)) == NIL) {
-                return codegen(t(x)); // post typecheck reversal of HR bug fix
-            }
-            hp(x).* = codegen(h(x));
-            tp(x).* = codegen(t(x));
-            // otherwise do in situ
-            return if (getTag(h(x)) == AP and h(h(x)) == G_ALT) leftfactor(x) else x;
+            return acc;
         },
         TCONS, PAIR => {
-            return make(CONS, codegen(h(x)), codegen(t(x)));
+            // Iterate the tuple spine (recursed via t(x)) so a large tuple can't
+            // overflow the stack; mirrors the cons-list fix.
+            const result = make(CONS, codegen(h(x)), NIL);
+            var dst = tp(result);
+            var cur = t(x);
+            while (getTag(cur) == TCONS or getTag(cur) == PAIR) {
+                dst.* = make(CONS, codegen(h(cur)), NIL);
+                dst = tp(dst.*);
+                cur = t(cur);
+            }
+            dst.* = codegen(cur); // final element
+            return result;
         },
         CONS => {
             // Walk the cons spine iteratively rather than recursing on the tail:

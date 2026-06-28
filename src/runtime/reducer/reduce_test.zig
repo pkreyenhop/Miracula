@@ -17,6 +17,7 @@ const rt = @import("../runtime_state.zig");
 const core_state = @import("../core_state.zig");
 const setup = @import("../../compiler/setup.zig");
 const lex = @import("../../parser/lex.zig");
+const trans = @import("../../compiler/trans.zig");
 
 const Word = word.Word;
 const ap = reduce.ap;
@@ -96,4 +97,28 @@ test "interp.reset clears the aggregated state structs" {
     // Re-establish a working interpreter for subsequent tests (reset wiped it).
     initialized = false;
     ensureSetup();
+}
+
+// Regression guards for codegen stack-overflow on long spines (see the cons-list
+// fix). `codegen`'s frame is large, so a deeply nested graph that recurses once
+// per node overflows the stack at a few thousand levels. These build the graph
+// iteratively (no recursion) and check `codegen` walks it without blowing up.
+const spine_depth = 60000;
+
+test "codegen handles a deep application spine without overflow" {
+    ensureSetup();
+    // ap(ap(...ap(I, NIL)...), NIL) — a left-nested spine recursed via h(x).
+    var g: Word = word.I;
+    var i: usize = 0;
+    while (i < spine_depth) : (i += 1) g = heap.make(word.AP, g, word.NIL);
+    try std.testing.expect(trans.codegen(g) != 0);
+}
+
+test "codegen handles a deep tuple spine without overflow" {
+    ensureSetup();
+    // tcons(NIL, tcons(NIL, ... pair(NIL, NIL))) — a right-nested spine recursed via t(x).
+    var g: Word = heap.make(word.PAIR, word.NIL, word.NIL);
+    var i: usize = 0;
+    while (i < spine_depth) : (i += 1) g = heap.make(word.TCONS, word.NIL, g);
+    try std.testing.expect(trans.codegen(g) != 0);
 }
