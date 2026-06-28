@@ -41,3 +41,4 @@ build_errors.log
 # Editor and metadata
 .DS_Store
 .claude/
+zig-pkg/

@@ -1,4 +1,5 @@
 const std = @import("std");
+const zlinter = @import("zlinter");
 
 const c_flags = [_][]const u8{
     "-std=c11",
@@ -230,6 +231,18 @@ pub fn build(b: *std.Build) void {
     });
     const clean_step = b.step("clean", "Remove Zig and legacy build outputs");
     clean_step.dependOn(&clean.step);
+
+    // `zig build lint` — lint the project's own Zig sources with zlinter.
+    // Scoped to src/ and tests/ so the dependency cache (zig-pkg/) is not linted.
+    const lint_step = b.step("lint", "Lint Zig source with zlinter");
+    lint_step.dependOn(step: {
+        var lint = zlinter.builder(b, .{});
+        lint.addRule(.{ .builtin = .no_unused }, .{});
+        lint.addRule(.{ .builtin = .no_deprecated }, .{});
+        lint.addRule(.{ .builtin = .no_orelse_unreachable }, .{});
+        lint.addPaths(.{ .include = &.{ b.path("src"), b.path("tests") } });
+        break :step lint.build();
+    });
 }
 
 
