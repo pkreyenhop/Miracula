@@ -1,3 +1,13 @@
+//! reducer/lex.zig — reduction handlers for the grammar/lexer combinators.
+//!
+//! Implements Miranda's `%bnf` parser combinators (`G_*`, over a token stream)
+//! and `%lex` lexer combinators (`LEX_*`, over a character stream): alternation,
+//! sequence, option, repetition, guards, char classes, right-context lookahead,
+//! and the position-tracking machinery (`G_COUNT`/`G_CLOSE`) used for parse-error
+//! reporting. Dispatched from `reducer/reduce.zig`; each `handle_<NAME>` mirrors
+//! the `word.<NAME>` combinator constant. A grammar yields `(result . rest)` on
+//! success or `NIL` on failure.
+
 const std = @import("std");
 const word = @import("../word.zig");
 const reduce = @import("reduce_core.zig");
@@ -9,18 +19,22 @@ const Word = reduce.Word;
 
 
 
+/// The combinator's last argument — the remaining input/token stream (focus node's tail).
 inline fn lastarg(ctx: *ReductionCtx) Word {
     return reduce.tl_get(ctx.e);
 }
+/// Replace the focus node's last argument (the remaining input).
 inline fn set_lastarg(ctx: *ReductionCtx, val: Word) void {
     reduce.tl_set(ctx.e, val);
 }
 
+/// The "logical head" of `x`: its char value, unwrapping a `STRCONS` cell.
 inline fn lh(x: Word) Word {
     const h_x = reduce.hd_get(x);
     return if (reduce.is_strcons(h_x)) reduce.tl_get(h_x) else h_x;
 }
 
+/// `G_ERROR`: try grammar `arg0`; on failure, build an error report via `arg1` over the residual tokens.
 pub fn handle_G_ERROR(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
@@ -40,6 +54,7 @@ pub fn handle_G_ERROR(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `G_ALT`: ordered alternation — try `arg0`, falling back to `arg1` on failure.
 pub fn handle_G_ALT(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
@@ -59,6 +74,7 @@ pub fn handle_G_ALT(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `G_OPT`: optional — match `arg0` once, or succeed consuming nothing.
 pub fn handle_G_OPT(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     if (reduce.upleft(ctx)) {
@@ -75,6 +91,7 @@ pub fn handle_G_OPT(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `G_STAR`: zero-or-more repetition of `arg0`, collecting results into a list.
 pub fn handle_G_STAR(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     if (reduce.upleft(ctx)) {
@@ -95,6 +112,7 @@ pub fn handle_G_STAR(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `G_FBSTAR`: fail-back star — greedy repetition composed into a continuation.
 pub fn handle_G_FBSTAR(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     if (reduce.upleft(ctx)) {
@@ -113,6 +131,7 @@ pub fn handle_G_FBSTAR(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `G_SYMB`: match a specific terminal symbol at the head of the input.
 pub fn handle_G_SYMB(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     if (reduce.upleft(ctx)) {
@@ -136,6 +155,7 @@ pub fn handle_G_SYMB(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `G_ANY`: match any single terminal, yielding it.
 pub fn handle_G_ANY(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -151,6 +171,7 @@ pub fn handle_G_ANY(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `G_SUCHTHAT`: match the next terminal only if it satisfies predicate `arg0` (a guard).
 pub fn handle_G_SUCHTHAT(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     if (reduce.upleft(ctx)) {
@@ -174,6 +195,7 @@ pub fn handle_G_SUCHTHAT(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `G_END`: succeed only at end of input.
 pub fn handle_G_END(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -189,6 +211,7 @@ pub fn handle_G_END(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `G_STATE`: yield the current lexer state without consuming input.
 pub fn handle_G_STATE(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -204,6 +227,7 @@ pub fn handle_G_STATE(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `G_SEQ`: sequence — match `arg0` then `arg1`, applying the first result to the second.
 pub fn handle_G_SEQ(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
@@ -229,6 +253,7 @@ pub fn handle_G_SEQ(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `G_UNIT`: the epsilon grammar — succeed consuming nothing, yielding the identity result.
 pub fn handle_G_UNIT(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -238,6 +263,7 @@ pub fn handle_G_UNIT(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `G_ZERO`: the grammar that always fails.
 pub fn handle_G_ZERO(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -247,6 +273,7 @@ pub fn handle_G_ZERO(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `G_CLOSE`: run grammar `arg1` over the position-tagged input, raising a parse error (`arg0`) on failure.
 pub fn handle_G_CLOSE(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
@@ -264,6 +291,7 @@ pub fn handle_G_CLOSE(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `G_COUNT`: tag each remaining token with its position (for parse-error reporting).
 pub fn handle_G_COUNT(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -280,6 +308,7 @@ pub fn handle_G_COUNT(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `LEX_RPT1`: one-or-more repetition of a lexer rule.
 pub fn handle_LEX_RPT1(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.upLeft(ctx);
@@ -290,6 +319,7 @@ pub fn handle_LEX_RPT1(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `LEX_RPT`: zero-or-more repetition of a lexer rule.
 pub fn handle_LEX_RPT(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
@@ -311,6 +341,7 @@ pub fn handle_LEX_RPT(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `LEX_TRY`: attempt a lexer rule, set up to backtrack on failure.
 pub fn handle_LEX_TRY(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -323,6 +354,7 @@ pub fn handle_LEX_TRY(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `LEX_TRY` continuation: resume the backtracking attempt with the matched prefix.
 pub fn handle_LEX_TRY_(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
@@ -352,6 +384,7 @@ pub fn handle_LEX_TRY_(ctx: *ReductionCtx) void {
     }
 }
 
+/// `LEX_TRY1`: single-result backtracking attempt of a lexer rule.
 pub fn handle_LEX_TRY1(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -364,6 +397,7 @@ pub fn handle_LEX_TRY1(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `LEX_TRY1` continuation: resume the single-result attempt.
 pub fn handle_LEX_TRY1_(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
@@ -393,6 +427,7 @@ pub fn handle_LEX_TRY1_(ctx: *ReductionCtx) void {
     }
 }
 
+/// `DESTREV`: destructively reverse the accumulated result list.
 pub fn handle_DESTREV(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     ctx.args[1] = word.NIL;
@@ -409,6 +444,7 @@ pub fn handle_DESTREV(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `LEX_COUNT0`: begin counting matched input (from position 0).
 pub fn handle_LEX_COUNT0(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -420,6 +456,7 @@ pub fn handle_LEX_COUNT0(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `LEX_COUNT`: advance the match counter as input is consumed.
 pub fn handle_LEX_COUNT(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     const next_tl = reduce.reduce(reduce.tl_get(ctx.args[0]));
@@ -442,6 +479,7 @@ pub fn handle_LEX_COUNT(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `LEX_STRING`: match a literal string at the head of the input.
 pub fn handle_LEX_STRING(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
@@ -465,6 +503,7 @@ pub fn handle_LEX_STRING(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `LEX_CLASS`: match a character belonging to a character class.
 pub fn handle_LEX_CLASS(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
@@ -488,6 +527,7 @@ pub fn handle_LEX_CLASS(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `LEX_DOT`: match any single character.
 pub fn handle_LEX_DOT(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     if (reduce.upleft(ctx)) {
@@ -505,6 +545,7 @@ pub fn handle_LEX_DOT(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `LEX_CHAR`: match a specific character.
 pub fn handle_LEX_CHAR(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
@@ -523,6 +564,7 @@ pub fn handle_LEX_CHAR(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `LEX_SEQ`: sequence two lexer rules.
 pub fn handle_LEX_SEQ(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
@@ -546,6 +588,7 @@ pub fn handle_LEX_SEQ(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+/// `LEX_OR`: ordered alternation of two lexer rules.
 pub fn handle_LEX_OR(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
@@ -567,6 +610,7 @@ pub fn handle_LEX_OR(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `LEX_RCONTEXT`: right-context lookahead — match only if followed by the context pattern.
 pub fn handle_LEX_RCONTEXT(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
@@ -595,6 +639,7 @@ pub fn handle_LEX_RCONTEXT(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `LEX_STAR`: greedy zero-or-more of a lexer rule.
 pub fn handle_LEX_STAR(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
@@ -614,6 +659,7 @@ pub fn handle_LEX_STAR(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+/// `LEX_OPT`: optional lexer rule (match once, or skip).
 pub fn handle_LEX_OPT(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
