@@ -5,6 +5,7 @@
 
 const std = @import("std");
 const word = @import("../runtime/word.zig");
+const errors = @import("../runtime/errors.zig");
 const strtab = @import("../runtime/strtab.zig");
 const main = @import("../main.zig");
 const rt = @import("../runtime/runtime_state.zig");
@@ -15,8 +16,8 @@ const heap = @import("../runtime/heap.zig");
 const core_state = @import("../runtime/core_state.zig");
 const ls = lex_state.ls;
 
-const Word = main.Word;
-const NIL = main.NIL;
+const Word = word.Word;
+const NIL = word.NIL;
 const t = heap.t;
 const h = heap.h;
 const tp = heap.tp;
@@ -365,7 +366,7 @@ pub fn undump(t_val: [*:0]const u8) void {
         main.loadfile(t_val);
     } else if (rt.rs.initialising != 0) {
         if (cs.ND != NIL or heap.heap.files == NIL) {
-            main.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
+            errors.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
         }
     } else {
         if (rt.rs.verbosity != 0 or rt.rs.magic or rt.rs.mkexports) {
@@ -415,5 +416,5 @@ pub fn makedump() void {
 }
 
 test "dump NIL sentinel is consistent" {
-    try std.testing.expectEqual(main.NIL, NIL);
+    try std.testing.expectEqual(word.NIL, NIL);
 }

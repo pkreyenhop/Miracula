@@ -4,15 +4,14 @@
 //! definitions (via `primdef`/`predef`).
 
 const std = @import("std");
-const main = @import("../main.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const cs = @import("compiler_state.zig").cs;
 const word = @import("../runtime/word.zig");
 const abi = @import("../runtime/main_clib.zig");
 const heap = @import("../runtime/heap.zig");
 
-const Word = main.Word;
-const NIL = main.NIL;
+const Word = word.Word;
+const NIL = word.NIL;
 
 const lex_state = @import("../parser/lex_state.zig");
 const r7_types = @import("types.zig");

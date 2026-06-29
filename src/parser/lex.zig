@@ -10,10 +10,10 @@
 
 const std = @import("std");
 const word = @import("../runtime/word.zig");
+const errors = @import("../runtime/errors.zig");
 const strtab = @import("../runtime/strtab.zig");
 const lex_state = @import("lex_state.zig");
 const ls = lex_state.ls;
-const main = @import("../main.zig");
 const cs = @import("../compiler/compiler_state.zig").cs;
 const heap = @import("../runtime/heap.zig");
 const rt = @import("../runtime/runtime_state.zig");
@@ -208,7 +208,7 @@ fn ovflocheck() void {
 
 /// Handle dictionary overflow (report and abort).
 pub fn dicovflo() void {
-    main.fatal("\npanic: dictionary overflow\n", .{.{}});
+    errors.fatal("\npanic: dictionary overflow\n", .{.{}});
 }
 
 /// Allocate and initialise the identifier dictionary.
@@ -1637,7 +1637,7 @@ pub fn getfname(x: Word) Word {
     ls.dicq += i + 1;
     const len = @as(usize, @intFromPtr(ls.dicq)) - @as(usize, @intFromPtr(ls.dicp));
     if (len < 3) {
-        main.fatal("impossible event in getfname\n", .{.{}});
+        errors.fatal("impossible event in getfname\n", .{.{}});
     }
     (ls.dicq - 2)[0] = 0;
     ovflocheck();

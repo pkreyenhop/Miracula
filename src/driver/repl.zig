@@ -9,6 +9,7 @@
 
 const std = @import("std");
 const word = @import("../runtime/word.zig");
+const errors = @import("../runtime/errors.zig");
 const strtab = @import("../runtime/strtab.zig");
 const main = @import("../main.zig");
 const rt = @import("../runtime/runtime_state.zig");
@@ -17,10 +18,10 @@ const abi = @import("../runtime/main_clib.zig");
 const parser_api = @import("../parser/parser_api.zig");
 const lineedit = @import("lineedit.zig");
 
-const Word = main.Word;
-const NIL = main.NIL;
-const CONS = main.CONS;
-const AP = main.AP;
+const Word = word.Word;
+const NIL = word.NIL;
+const CONS = word.CONS;
+const AP = word.AP;
 const h = heap.h;
 const t = heap.t;
 
@@ -68,7 +69,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                 if (heap.heap.files != NIL and cs.ND == NIL and heap.idVal(rt.rs.main_id) == word.UNDEF) {
                     word.printErr("{s}: main not defined\n", .{initscript});
                 }
-                main.fatal("mira: incorrect use of \"-exec\" flag\n", .{.{}});
+                errors.fatal("mira: incorrect use of \"-exec\" flag\n", .{.{}});
             }
             rt.rs.magic = false;
             abi.obey(rt.rs.main_id);
@@ -295,7 +296,7 @@ pub fn obey(x_in: Word) void {
     core_state.s.compiling = 0;
     const list_t: Word = 4;
     const char_t: Word = 3;
-    const islist = typ >= main.ATOMLIMIT and getTag(typ) == AP and h(typ) == list_t;
+    const islist = typ >= word.ATOMLIMIT and getTag(typ) == AP and h(typ) == list_t;
     const out_val: Word = if (islist and t(typ) == rt.rs.message)
         x
     else blk: {
@@ -318,7 +319,7 @@ pub fn evaluateRepl(x_in: Word) void {
     if (cs.polyshowerror != 0) return;
     const list_t: Word = 4;
     const char_t: Word = 3;
-    const islist = typ >= main.ATOMLIMIT and getTag(typ) == AP and h(typ) == list_t;
+    const islist = typ >= word.ATOMLIMIT and getTag(typ) == AP and h(typ) == list_t;
     const out_val: Word = if (islist and t(typ) == rt.rs.message)
         x
     else blk: {

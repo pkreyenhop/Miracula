@@ -13,8 +13,8 @@ const rt = @import("../runtime/runtime_state.zig");
 const cs = @import("../compiler/compiler_state.zig").cs;
 const abi = @import("../runtime/main_clib.zig");
 
-const Word = main.Word;
-const NIL = main.NIL;
+const Word = word.Word;
+const NIL = word.NIL;
 
 // State owned by heap.zig / reduce.zig — not yet accessible via @import.
 inline fn getTag(x: Word) u8 {

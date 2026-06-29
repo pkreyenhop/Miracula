@@ -9,6 +9,7 @@
 
 const std = @import("std");
 const word = @import("../runtime/word.zig");
+const errors = @import("../runtime/errors.zig");
 const strtab = @import("../runtime/strtab.zig");
 const main_clib = @import("../runtime/main_clib.zig");
 const main = @import("../main.zig");
@@ -572,7 +573,7 @@ pub fn sterilise(t_val: Word) void {
 }
 
 /// Validate the well-formedness (arity) of type expression `t_val`.
-fn metaTcheck(t_val: Word) main.MiraError!Word {
+fn metaTcheck(t_val: Word) errors.MiraError!Word {
     var tn = t_val;
     var i: Word = 0;
     while (isCompoundType(tn)) {
@@ -1414,7 +1415,7 @@ pub fn deps(x_in: Word) Word {
 }
 
 /// Compute and record the dependencies of `n`.
-fn compDeps(n: Word) main.MiraError!void {
+fn compDeps(n: Word) errors.MiraError!void {
     var rhs = NIL;
     var r: Word = 0;
     if (idType(n) == type_t) {
@@ -1633,7 +1634,7 @@ pub fn fixType(t_val: Word) Word {
 }
 
 /// Check an abstract-type declaration `x`.
-fn abstrCheck(x_in: Word) main.MiraError!void {
+fn abstrCheck(x_in: Word) errors.MiraError!void {
     var x = x_in;
     const rtypes = t(h(x));
     const sigids = t(x);
@@ -1676,7 +1677,7 @@ fn abstrCheck(x_in: Word) main.MiraError!void {
 }
 
 /// Check a group of mutually-recursive abstract types.
-fn abstrMcheck(tabstrs_in: Word) main.MiraError!void {
+fn abstrMcheck(tabstrs_in: Word) errors.MiraError!void {
     var tabstrs = tabstrs_in;
     while (tabstrs != NIL) {
         const atnames = h(h(tabstrs));
@@ -1701,7 +1702,7 @@ fn abstrMcheck(tabstrs_in: Word) main.MiraError!void {
 }
 
 /// Check the grammar's free/bound symbols (error-returning form).
-fn mcheckfbs() main.MiraError!void {
+fn mcheckfbs() errors.MiraError!void {
     var ff: Word = undefined;
     var formals: Word = undefined;
     var n: Word = undefined;
@@ -1936,7 +1937,7 @@ fn unify(t1_val: Word, t2_val: Word) c_int {
 }
 
 /// Type-check that pattern `p` conforms to type `t_val` in environment `e`.
-fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) main.MiraError!Word {
+fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) errors.MiraError!Word {
     var e = e_in;
     if (e == -1) {
         return -1;
@@ -2014,7 +2015,7 @@ fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) main.MiraError!Word {
 }
 
 /// Infer the type of expression `x` in environment `env` — the core of inference.
-fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
+fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
     switch (getTag(x)) {
         AP => {
             if (h(x) == word.BADCASE or h(x) == word.CONFERROR) {

@@ -7,6 +7,7 @@
 
 const std = @import("std");
 const word = @import("../runtime/word.zig");
+const errors = @import("../runtime/errors.zig");
 const main = @import("../main.zig");
 const abi = @import("../runtime/main_clib.zig");
 const platform = @import("platform.zig");
@@ -16,8 +17,8 @@ const lex_state = @import("../parser/lex_state.zig");
 const core_state = @import("../runtime/core_state.zig");
 const ls = lex_state.ls;
 
-const Word = main.Word;
-const NIL = main.NIL;
+const Word = word.Word;
+const NIL = word.NIL;
 const t = heap.t;
 const h = heap.h;
 
@@ -48,9 +49,9 @@ pub fn sameFile(x: Word, y: Word) bool {
 /// Returns `(0 . 0)` if the file does not exist.
 pub fn inodeId(path: [*:0]const u8) Word {
     if (platform.getFileInfo(path)) |info| {
-        return heap.cons(heap.cons(@intCast(info.dev), @intCast(info.ino)), main.NIL);
+        return heap.cons(heap.cons(@intCast(info.dev), @intCast(info.ino)), word.NIL);
     } else {
-        return heap.cons(heap.cons(0, 0), main.NIL);
+        return heap.cons(heap.cons(0, 0), word.NIL);
     }
 }
 
@@ -123,7 +124,7 @@ pub fn makeAbsolute(m: [*:0]u8) [*:0]u8 {
         return m;
     }
     if (abi.getcwd(ls.dicp, abi.pnlim) == null) {
-        main.fatal("panic: cwd too long\n", .{.{}});
+        errors.fatal("panic: cwd too long\n", .{.{}});
     }
     _ = word.strcat(ls.dicp, "/");
     _ = word.strcat(ls.dicp, m);

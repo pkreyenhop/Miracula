@@ -5,17 +5,18 @@
 
 const std = @import("std");
 const word = @import("../runtime/word.zig");
+const errors = @import("../runtime/errors.zig");
 const strtab = @import("../runtime/strtab.zig");
 const main = @import("../main.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const cs = @import("compiler_state.zig").cs;
-inline fn getTag(x: main.Word) u8 { return heap.heap.getTag(x); }
+inline fn getTag(x: word.Word) u8 { return heap.heap.getTag(x); }
 const abi = @import("../runtime/main_clib.zig");
 const parser_api = @import("../parser/parser_api.zig");
 const setup = @import("setup.zig");
 
-const Word = main.Word;
-const NIL = main.NIL;
+const Word = word.Word;
+const NIL = word.NIL;
 
 const lex_state = @import("../parser/lex_state.zig");
 const r7_signals = @import("../io/signals.zig");
@@ -51,13 +52,13 @@ pub fn loadfile(t_val: [*:0]const u8) void {
 
     if (!main.fileExists(t_val)) {
         if (rt.rs.initialising != 0) {
-            main.fatal("panic: %s not found\n", .{.{t_val}});
+            errors.fatal("panic: %s not found\n", .{.{t_val}});
         }
         if (rt.rs.verbosity != 0) {
             word.print("new file {s}\n", .{t_val});
         }
         if (rt.rs.magic) {
-            main.fatal("mira -exec %s: no such file\n", .{.{t_val}});
+            errors.fatal("mira -exec %s: no such file\n", .{.{t_val}});
         }
         if (rt.rs.making and rt.rs.ideep == 0) {
             word.print("mira -make {s}: no such file\n", .{t_val});
@@ -70,7 +71,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
 
     if (abi.openfile(@constCast(t_val)) == 0) {
         if (rt.rs.initialising != 0) {
-            main.fatal("panic: cannot open %s\n", .{.{t_val}});
+            errors.fatal("panic: cannot open %s\n", .{.{t_val}});
         }
         word.print("cannot open {s}\n", .{t_val});
         rt.rs.oldfiles = heap.cons(heap.makeFil(t_val, 0, 0, NIL), NIL);
@@ -343,7 +344,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             word.print("grammar optimisation: {} common left factors found\n", .{cs.lfrule});
         }
         if (rt.rs.initialising != 0 and cs.ND != NIL) {
-            main.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, if (rt.rs.okprel) "stdenv" else "prelude")}});
+            errors.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, if (rt.rs.okprel) "stdenv" else "prelude")}});
         }
         if (rt.rs.initialising != 0) {
             main.makedump();
@@ -361,7 +362,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     }
 
     if (rt.rs.initialising != 0) {
-        main.fatal("panic: cannot compile %s\n", .{.{@as([*:0]const u8, if (rt.rs.okprel) "stdenv" else "prelude")}});
+        errors.fatal("panic: cannot compile %s\n", .{.{@as([*:0]const u8, if (rt.rs.okprel) "stdenv" else "prelude")}});
     }
     rt.rs.oldfiles = heap.heap.files;
     heap.unload();
@@ -631,6 +632,6 @@ pub fn mkincludes(includees_val: Word) Word {
 }
 
 test "module_loader constants are consistent" {
-    try std.testing.expectEqual(main.NIL, NIL);
+    try std.testing.expectEqual(word.NIL, NIL);
     try std.testing.expect(NIL > 0);
 }

@@ -8,15 +8,16 @@
 
 const std = @import("std");
 const word = @import("../runtime/word.zig");
+const errors = @import("../runtime/errors.zig");
 const strtab = @import("../runtime/strtab.zig");
 const main = @import("../main.zig");
 const cs = @import("../compiler/compiler_state.zig").cs;
 const rt = @import("../runtime/runtime_state.zig");
 const abi = @import("../runtime/main_clib.zig");
 
-const Word = main.Word;
-const NIL = main.NIL;
-const CONS = main.CONS;
+const Word = word.Word;
+const NIL = word.NIL;
+const CONS = word.CONS;
 const h = heap.h;
 const t = heap.t;
 
@@ -100,7 +101,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
             } else {
                 var val: c_long = 0;
                 if (abi.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or flagOutOfRange(val)) {
-                    main.fatal("mira: bad value after flag \"-dic\"\n", .{.{}});
+                    errors.fatal("mira: bad value after flag \"-dic\"\n", .{.{}});
                 }
                 rt.rs.DICSPACE = val;
             }
@@ -111,7 +112,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
             } else {
                 var val: c_long = 0;
                 if (abi.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or flagOutOfRange(val)) {
-                    main.fatal("mira: bad value after flag \"-heap\"\n", .{.{}});
+                    errors.fatal("mira: bad value after flag \"-heap\"\n", .{.{}});
                 }
                 rt.rs.SPACELIMIT = val;
             }
@@ -128,7 +129,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
         } else if (word.strcmp(arg, "-nohush") == 0) {
             rt.rs.verbosity = 1;
         } else if (word.strcmp(arg, "-exp") == 0 or word.strcmp(arg, "-log") == 0) {
-            main.fatal("mira: obsolete flag \"%s\"\nuse \"-exec\" or \"-exec2\", see manual\n", .{.{arg}});
+            errors.fatal("mira: obsolete flag \"%s\"\nuse \"-exec\" or \"-exec2\", see manual\n", .{.{arg}});
         } else if (word.strcmp(arg, "-exec") == 0) {
             ls.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
             ls.ARGV = @ptrCast(argv + arg_idx + 1);
@@ -138,7 +139,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
             break;
         } else if (word.strcmp(arg, "-exec2") == 0) {
             if (arg_idx + 1 >= argc_u) {
-                main.fatal("incorrect use of -exec2 flag, missing filename\n", .{.{}});
+                errors.fatal("incorrect use of -exec2 flag, missing filename\n", .{.{}});
             }
             const filename = argv[arg_idx + 1];
             var p = word.strrchr(filename, '/');
@@ -190,14 +191,14 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
         } else if (word.strcmp(arg, "-noUTF-8") == 0) {
             rt.rs.UTF8 = 0;
         } else {
-            main.fatal("mira: unknown flag \"%s\"\n", .{.{arg}});
+            errors.fatal("mira: unknown flag \"%s\"\n", .{.{arg}});
         }
         arg_idx += 1;
     }
 
     const remaining_argc = argc_u - arg_idx;
     if (remaining_argc > 1 and !rt.rs.magic and !rt.rs.making) {
-        main.fatal("mira: too many args\n", .{.{}});
+        errors.fatal("mira: too many args\n", .{.{}});
     }
 
     var badlib: bool = false;
@@ -518,7 +519,7 @@ pub fn writeRc() void {
 
 /// Abort: command-line flag `s` was given without its required parameter.
 pub fn missingParam(s: [:0]const u8) noreturn {
-    main.fatal("mira: missing param after flag \"-%s\"\n", .{.{s.ptr}});
+    errors.fatal("mira: missing param after flag \"-%s\"\n", .{.{s.ptr}});
 }
 
 /// Check the `.version` file under directory `m`; returns 1 if it matches this build, else records the mismatch for `libFails`.
