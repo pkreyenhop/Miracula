@@ -108,11 +108,22 @@ them, but the spirit is *meaningful* coverage.
 
 ## Test conventions
 
-* **Co-locate.** A function's test(s) live in an inline `test` block in the same
-  file, near the function — not in a separate test file. (`reduce_test.zig` and
-  `parser_tests.zig` predate this and stay where they are.)
+* **Tests go *immediately after* the function** they cover — the idiomatic Zig
+  layout — not grouped at the bottom of the file. (`reduce_test.zig` and
+  `parser_tests.zig` predate this and stay where they are.) Method tests go right
+  after the `struct` that defines them; any test-only helper `fn`s go below the
+  tests.
 * **Name `"<fn>: <behaviour>"`.** e.g. `test "numplus: adds two ints"`. The name
-  reads as a sentence about the function and shows up verbatim in test output.
+  starts with the function name so `grep 'numplus:'` finds every test for it, and
+  it reads as a sentence in test output.
+* **Reference tests from the doc comment** so they show on hover (ZLS renders doc
+  comments). End the function's `///` block with a `Tests:` line:
+  ```zig
+  /// libc `strlen` (0 for null).
+  ///
+  /// Tests: strlen: counts bytes up to NUL, 0 for null
+  pub fn strlen(...) usize { ... }
+  ```
 * **A test is documentation.** Prefer one *minimal, readable* example that makes
   the function's contract obvious over an exhaustive matrix. Add edge cases as
   separate, equally small tests when they clarify behaviour (empty input,
