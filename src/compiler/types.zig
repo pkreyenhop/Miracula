@@ -16,6 +16,7 @@ const main = @import("../main.zig");
 const compiler_state = @import("compiler_state.zig");
 const core_state = @import("../runtime/core_state.zig");
 const heap = @import("../runtime/heap.zig");
+const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 const cs = compiler_state.cs;
 const abi = struct {
     pub const printf = main_clib.printf;
@@ -212,6 +213,8 @@ fn cons(x: Word, y: Word) Word {
 }
 
 /// Remove element `e` from set `ss` (in place via the pointer).
+///
+/// Tests: remove1: removes an element in place, reports hit/miss
 pub fn remove1(e: Word, ss: *Word) Word {
     var p = ss;
     while (p.* != NIL and h(p.*) < e) {
@@ -224,7 +227,17 @@ pub fn remove1(e: Word, ss: *Word) Word {
     return 1;
 }
 
+test "remove1: removes an element in place, reports hit/miss" {
+    tu.freshInterp();
+    var s = tu.list(&[_]Word{ 1000, 2000, 3000 });
+    try std.testing.expectEqual(@as(Word, 1), remove1(2000, &s));
+    try tu.expectWords(&[_]Word{ 1000, 3000 }, s);
+    try std.testing.expectEqual(@as(Word, 0), remove1(5000, &s)); // miss
+}
+
 /// Set difference `s1 \ s2`.
+///
+/// Tests: setdiff: s1 minus s2
 pub fn setdiff(s1_input: Word, s2_input: Word) Word {
     var s1 = s1_input;
     var s2 = s2_input;
@@ -241,7 +254,14 @@ pub fn setdiff(s1_input: Word, s2_input: Word) Word {
     return s1;
 }
 
+test "setdiff: s1 minus s2" {
+    tu.freshInterp();
+    try tu.expectWords(&[_]Word{ 1000, 3000 }, setdiff(tu.list(&[_]Word{ 1000, 2000, 3000 }), tu.list(&[_]Word{2000})));
+}
+
 /// Add element `e` to set `s` (if not already present).
+///
+/// Tests: add1: inserts in sorted order without duplicates
 pub fn add1(e: Word, s_input: Word) Word {
     var s = s_input;
     if (s == NIL or e < h(s)) {
@@ -259,6 +279,13 @@ pub fn add1(e: Word, s_input: Word) Word {
         tp(s).* = cons(e, t(s));
     }
     return s_input;
+}
+
+test "add1: inserts in sorted order without duplicates" {
+    tu.freshInterp();
+    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, add1(2000, tu.list(&[_]Word{ 1000, 3000 })));
+    // already present → unchanged
+    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, add1(2000, tu.list(&[_]Word{ 1000, 2000, 3000 })));
 }
 
 /// Prepend element `e` to set `s` (no membership check).
@@ -286,6 +313,8 @@ pub fn newadd1(e: Word, s_input: Word) Word {
 }
 
 /// Set union of `s1` and `s2`.
+///
+/// Tests: UNION: sorted set union
 pub fn UNION(s1_input: Word, s2_input: Word) Word {
     var s1 = s1_input;
     var s2 = s2_input;
@@ -312,7 +341,14 @@ pub fn UNION(s1_input: Word, s2_input: Word) Word {
     return s1;
 }
 
+test "UNION: sorted set union" {
+    tu.freshInterp();
+    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, UNION(tu.list(&[_]Word{ 1000, 3000 }), tu.list(&[_]Word{ 2000, 3000 })));
+}
+
 /// Set intersection of `s1` and `s2`.
+///
+/// Tests: intersection: common elements
 pub fn intersection(s1_input: Word, s2_input: Word) Word {
     var s1 = s1_input;
     var s2 = s2_input;
@@ -331,13 +367,27 @@ pub fn intersection(s1_input: Word, s2_input: Word) Word {
     return reverse(r);
 }
 
+test "intersection: common elements" {
+    tu.freshInterp();
+    try tu.expectWords(&[_]Word{ 2000, 3000 }, intersection(tu.list(&[_]Word{ 1000, 2000, 3000 }), tu.list(&[_]Word{ 2000, 3000, 4000 })));
+}
+
 /// Whether `x` is a member of set `s`.
+///
+/// Tests: member: set membership (1/0)
 pub fn member(s_input: Word, x: Word) Word {
     var s = s_input;
     while (s != NIL and x != h(s)) {
         s = t(s);
     }
     return if (s != NIL) 1 else 0;
+}
+
+test "member: set membership (1/0)" {
+    tu.freshInterp();
+    const s = tu.list(&[_]Word{ 1000, 2000, 3000 });
+    try std.testing.expectEqual(@as(Word, 1), member(s, 2000));
+    try std.testing.expectEqual(@as(Word, 0), member(s, 5000));
 }
 
 const type_t: Word = 10;

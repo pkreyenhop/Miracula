@@ -128,6 +128,19 @@ pub fn expectList(expected: []const i64, node: Word) !void {
     try std.testing.expectEqual(@as(Word, word.NIL), cur);
 }
 
+/// Assert that `node` is a cons-list whose *raw* heads (no reduction) equal
+/// `expected`, ending in `NIL` — for the type checker's `Word`-set lists, whose
+/// elements are bare comparable `Word`s rather than reducible thunks.
+pub fn expectWords(expected: []const Word, node: Word) !void {
+    var cur = node;
+    for (expected) |e| {
+        try std.testing.expect(heap.getTag(cur) == .CONS);
+        try std.testing.expectEqual(e, heap.h(cur));
+        cur = heap.t(cur);
+    }
+    try std.testing.expectEqual(@as(Word, word.NIL), cur);
+}
+
 /// Assert that `node` reduces to a Miranda string (a char cons-list) whose bytes
 /// equal `expected`. Each element is reduced and taken as a byte.
 pub fn expectStr(expected: []const u8, node: Word) !void {
