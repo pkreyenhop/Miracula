@@ -120,16 +120,16 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                     if (ls.dicp[0] != 0) {
                         x = abi.findid(ls.dicp);
                     } else {
-                        word.print("??{s}\n", .{main.get_id(rt.rs.lastid)});
+                        word.print("??{s}\n", .{heap.getId(rt.rs.lastid)});
                         x = rt.rs.lastid;
                     }
                     if (x == NIL or heap.idType(x) == word.undef_t) {
-                        main.diagnose(if (ls.dicp[0] != 0) ls.dicp else main.get_id(rt.rs.lastid));
+                        main.diagnose(if (ls.dicp[0] != 0) ls.dicp else heap.getId(rt.rs.lastid));
                         rt.rs.lastid = 0;
                         continue;
                     }
                     if (heap.idWho(x) == NIL) {
-                        word.print("{s} -- primitive to Miranda\n", .{@as([*:0]const u8, @ptrCast(if (ls.dicp[0] != 0) ls.dicp else main.get_id(rt.rs.lastid)))});
+                        word.print("{s} -- primitive to Miranda\n", .{@as([*:0]const u8, @ptrCast(if (ls.dicp[0] != 0) ls.dicp else heap.getId(rt.rs.lastid)))});
                         rt.rs.lastid = 0;
                         continue;
                     }
@@ -144,7 +144,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                     }
                     main.editfile(strtab.strOf(heap.h(x)), @intCast(heap.t(x)));
                 } else {
-                    _ = abi.ungetc(ch, main.getStdin().?);
+                    _ = abi.ungetc(ch, abi.stdin().?);
                     _ = token();
                     rt.rs.lastid = 0;
                     if (ls.dicp[0] == 0) {
@@ -215,7 +215,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                 abi.exit(0);
             },
             else => {
-                _ = abi.ungetc(ch, main.getStdin().?);
+                _ = abi.ungetc(ch, abi.stdin().?);
                 rt.rs.lastid = 0;
                 heap.tp(heap.h(ls.cook_stdin)).* = 0;
                 rt.rs.rv_expr = 0;
@@ -347,7 +347,7 @@ pub fn reset() callconv(.c) void {
     if (rt.rs.echoing != 0) {
         _ = word.putchar('\n');
     }
-    rt.rs.s_in = main.getStdin();
+    rt.rs.s_in = abi.stdin();
     rt.rs.echoing = 0;
     rt.rs.listing = 0;
     core_state.s.compiling = 0;
@@ -448,7 +448,7 @@ pub fn parseLine(t_val: Word, f: ?*word.FILE, fil: Word) Word {
         core_state.s.commandmode = 1;
         rt.rs.s_in = f;
         _ = parser_api.parseCurrent() catch {};
-        rt.rs.s_in = main.getStdin();
+        rt.rs.s_in = abi.stdin();
         if (core_state.s.SYNERR != 0) {
             core_state.s.SYNERR = 0;
             rt.rs.lastexp = word.UNDEF;
@@ -461,7 +461,7 @@ pub fn parseLine(t_val: Word, f: ?*word.FILE, fil: Word) Word {
                 abi.outType(t1);
                 word.print("\nshould be :: ", .{});
                 abi.outType(t_val);
-                _ = word.putc('\n', main.getStdout());
+                _ = word.putc('\n', abi.stdout());
                 rt.rs.lastexp = word.UNDEF;
             }
         }

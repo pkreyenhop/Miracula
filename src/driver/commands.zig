@@ -79,7 +79,7 @@ fn namescom(l: Word) void {
         heap.tp(l).* = n;
     }
     if (n == NIL) return;
-    if (main.get_fil(l)) |gf| {
+    if (heap.get_fil(l)) |gf| {
         filequote(std.mem.span(gf));
     } else {
         word.print("primitive:", .{});
@@ -87,7 +87,7 @@ fn namescom(l: Word) void {
     word.print("\n", .{});
     while (n != NIL) {
         if (heap.idType(heap.h(n)) == word.wrong_t or heap.idVal(heap.h(n)) != word.UNDEF) {
-            const w = @as(Word, @intCast(word.strlen(main.get_id(heap.h(n)))));
+            const w = @as(Word, @intCast(word.strlen(heap.getId(heap.h(n)))));
             if (col_local + w < @as(Word, @intCast(scrwd))) {
                 col_local += if (col_local != 0) 1 else 0;
             } else if (wp > 0 and col_local + w >= @as(Word, @intCast(scrwd))) {
@@ -107,7 +107,7 @@ fn namescom(l: Word) void {
                 if (leftist) {
                     col_local = 0;
                     while (col_local < wp) {
-                        word.print("{s}", .{main.get_id(words[@as(usize, @intCast(col_local))])});
+                        word.print("{s}", .{heap.getId(words[@as(usize, @intCast(col_local))])});
                         col_local += 1;
                         if (col_local < wp) {
                             spaces(1 + i + if (r > 0) @as(Word, 1) else @as(Word, 0));
@@ -118,7 +118,7 @@ fn namescom(l: Word) void {
                     r = @as(Word, @intCast(wp)) - 1 - r;
                     col_local = 0;
                     while (col_local < wp) {
-                        word.print("{s}", .{main.get_id(words[@as(usize, @intCast(col_local))])});
+                        word.print("{s}", .{heap.getId(words[@as(usize, @intCast(col_local))])});
                         col_local += 1;
                         if (col_local < wp) {
                             spaces(1 + i + if (r <= 0) @as(Word, 1) else @as(Word, 0));
@@ -142,9 +142,9 @@ fn namescom(l: Word) void {
     if (wp > 0) {
         col_local = 0;
         while (col_local < wp) {
-            word.print("{s}", .{main.get_id(words[@as(usize, @intCast(col_local))])});
+            word.print("{s}", .{heap.getId(words[@as(usize, @intCast(col_local))])});
             col_local += 1;
-            _ = word.putc(if (col_local == wp) '\n' else ' ', main.getStdout());
+            _ = word.putc(if (col_local == wp) '\n' else ' ', abi.stdout());
         }
     }
     if (undefs == NIL) return;
@@ -260,7 +260,7 @@ pub fn command() void {
             }
             if (is("editor")) {
                 const hold = @as([*]u8, @ptrCast(&rt.rs.linebuf[0]));
-                if (main.getLine(main.getStdin(), abi.pnlim - 1, hold) == 0) {
+                if (main.getLine(abi.stdin(), abi.pnlim - 1, hold) == 0) {
                     return;
                 }
                 if (hold[0] == 0) {
@@ -328,7 +328,7 @@ pub fn command() void {
                 if (abi.getchar() != '\n') return;
                 var f = heap.heap.files;
                 while (f != NIL) : (f = heap.t(f)) {
-                    word.print("({s},{},{})", .{main.get_fil(heap.h(f)).?, heap.filTime(heap.h(f)), heap.filShare(heap.h(f))});
+                    word.print("({s},{},{})", .{heap.get_fil(heap.h(f)).?, heap.filTime(heap.h(f)), heap.filShare(heap.h(f))});
                     abi.printlist(@constCast(""), heap.filDefs(heap.h(f)));
                 }
                 return;
@@ -339,12 +339,12 @@ pub fn command() void {
                     const x = abi.findid(ls.dicp);
                     i += 1;
                     if (x != NIL) {
-                        const n = main.get_id(x);
+                        const n = heap.getId(x);
                         var y = rt.rs.primenv;
                         while (y != NIL) : (y = heap.t(y)) {
                             if (getTag(heap.h(y)) == word.ID) {
                                 if (heap.h(y) == x or word.strcmp(abi.getaka(heap.h(y)), n) == 0) {
-                                    finger(main.get_id(heap.h(y)));
+                                    finger(heap.getId(heap.h(y)));
                                 }
                             }
                         }
@@ -354,7 +354,7 @@ pub fn command() void {
                             while (y_def != NIL) : (y_def = heap.t(y_def)) {
                                 if (getTag(heap.h(y_def)) == word.ID) {
                                     if (heap.h(y_def) == x or word.strcmp(abi.getaka(heap.h(y_def)), n) == 0) {
-                                        finger(main.get_id(heap.h(y_def)));
+                                        finger(heap.getId(heap.h(y_def)));
                                     }
                                 }
                             }
@@ -625,7 +625,7 @@ pub fn finger(n: [*:0]const u8) void {
             word.print(" ||primitive to Miranda\n", .{});
         } else {
             const aka = abi.getaka(x);
-            const aka_opt: ?[*:0]const u8 = if (word.strcmp(aka, main.get_id(x)) == 0) null else aka;
+            const aka_opt: ?[*:0]const u8 = if (word.strcmp(aka, heap.getId(x)) == 0) null else aka;
             if (heap.idVal(x) == word.UNDEF and heap.idType(x) != word.wrong_t) {
                 word.print(" ||(UNDEFINED) specified in ", .{});
             } else if (heap.idVal(x) == word.FREE) {
@@ -647,8 +647,8 @@ pub fn finger(n: [*:0]const u8) void {
             }
         }
         if (rt.rs.atobject != 0) {
-            word.print("{s} = ", .{main.get_id(x)});
-            abi.out(main.getStdout(), heap.idVal(x));
+            word.print("{s} = ", .{heap.getId(x)});
+            abi.out(abi.stdout(), heap.idVal(x));
             _ = word.putchar('\n');
         }
         return;
@@ -712,7 +712,7 @@ pub fn allnamescom() void {
                 } else {
                     _ = word.putchar(',');
                 }
-                abi.out(main.getStdout(), heap.h(x));
+                abi.out(abi.stdout(), heap.h(x));
             }
         }
         word.print(";\n", .{});
@@ -727,7 +727,7 @@ pub fn allnamescom() void {
                 } else {
                     _ = word.putchar(',');
                 }
-                abi.out(main.getStdout(), heap.h(y));
+                abi.out(abi.stdout(), heap.h(y));
             }
         }
         word.print(";\n", .{});

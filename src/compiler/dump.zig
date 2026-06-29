@@ -107,7 +107,7 @@ pub fn unfixexports() void {
 /// Move id `x` out of the public name bucket into a private name (for `%export` filtering).
 fn privatise(x: Word) Word {
     const n = abi.makePn(x);
-    const hash_idx = hash(main.get_id(x));
+    const hash_idx = hash(heap.getId(x));
     const i = h(n);
 
     if (heap.idType(x) == word.type_t) {
@@ -150,7 +150,7 @@ fn hash(s: [*:0]const u8) usize {
 /// Restore a privatised id `x` to the public name bucket.
 fn publicise(x: Word) Word {
     const i = heap.idVal(x);
-    const hash_idx = hash(main.get_id(x));
+    const hash_idx = hash(heap.getId(x));
 
     setTag(i, word.ID);
     hp(i).* = h(x);

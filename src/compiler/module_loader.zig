@@ -203,7 +203,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             if (n != NIL) {
                 word.print("redundant entry in export list:", .{});
                 while (n != NIL) : (n = heap.t(n)) {
-                    word.print(" -{s}", .{main.get_id(heap.h(n))});
+                    word.print(" -{s}", .{heap.getId(heap.h(n))});
                 }
                 _ = word.putchar('\n');
             }
@@ -217,7 +217,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
                 abi.sayhere(h_val, 1);
                 h_val = NIL;
             } else if (rt.rs.exports == NIL or n != NIL) {
-                abi.outHere(main.getStderr(), h_val, 1);
+                abi.outHere(abi.stderr(), h_val, 1);
                 h_val = NIL;
             }
         }
@@ -284,7 +284,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             abi.printlist(@constCast(""), b);
         }
         if (b != NIL and h_val != NIL) {
-            abi.outHere(main.getStdout(), h_val, 1);
+            abi.outHere(abi.stdout(), h_val, 1);
         }
     }
 
@@ -297,9 +297,9 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             word.print("warning, script contains unused local definitions:-\n", .{});
         }
         while (rt.rs.detrop != NIL) {
-            abi.outHere(main.getStdout(), heap.h(heap.h(heap.t(heap.dval(heap.h(rt.rs.detrop))))), 0);
+            abi.outHere(abi.stdout(), heap.h(heap.h(heap.t(heap.dval(heap.h(rt.rs.detrop))))), 0);
             _ = word.putchar('\t');
-            abi.outPattern(main.getStdout().?, heap.dlhs(heap.h(rt.rs.detrop)));
+            abi.outPattern(abi.stdout().?, heap.dlhs(heap.h(rt.rs.detrop)));
             _ = word.putchar('\n');
             rt.rs.detrop = heap.t(rt.rs.detrop);
             while (rt.rs.detrop != NIL and getTag(heap.dval(heap.h(rt.rs.detrop))) == word.LABEL) {
@@ -315,9 +315,9 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             word.print("warning, grammar contains unused nonterminals:-\n", .{});
         }
         while (gd_mut != NIL) {
-            abi.outHere(main.getStdout(), heap.h(heap.dval(heap.h(gd_mut))), 0);
+            abi.outHere(abi.stdout(), heap.h(heap.dval(heap.h(gd_mut))), 0);
             _ = word.putchar('\t');
-            abi.outPattern(main.getStdout().?, heap.dlhs(heap.h(gd_mut)));
+            abi.outPattern(abi.stdout().?, heap.dlhs(heap.h(gd_mut)));
             _ = word.putchar('\n');
             gd_mut = heap.t(gd_mut);
             while (gd_mut != NIL and getTag(heap.dval(heap.h(gd_mut))) != word.LABEL) {
@@ -464,7 +464,7 @@ pub fn mkincludes(includees_val: Word) Word {
             }
             var y = x;
             while (y != NIL) : (y = heap.t(y)) {
-                const nodev = main.inodeId(main.get_fil(heap.h(y)).?);
+                const nodev = main.inodeId(heap.get_fil(heap.h(y)).?);
                 heap.tp(heap.filInodev(heap.h(y))).* = nodev;
             }
 
@@ -486,11 +486,11 @@ pub fn mkincludes(includees_val: Word) Word {
                                             q = heap.t(q);
                                             continue;
                                         }
-                                        while (w != NIL and (word.strcmp(main.get_fil(heap.h(w)).?, main.get_fil(heap.h(z)).?) != 0 or heap.h(heap.t(heap.h(w))) != orig)) {
+                                        while (w != NIL and (word.strcmp(heap.get_fil(heap.h(w)).?, heap.get_fil(heap.h(z)).?) != 0 or heap.h(heap.t(heap.h(w))) != orig)) {
                                             w = heap.t(w);
                                         }
                                         if (w == NIL) {
-                                            tclashes = heap.cons(abi.strcons(@as(Word, strtab.strBits(main.get_fil(heap.h(z)).?)), heap.cons(orig, NIL)), tclashes);
+                                            tclashes = heap.cons(abi.strcons(@as(Word, strtab.strBits(heap.get_fil(heap.h(z)).?)), heap.cons(orig, NIL)), tclashes);
                                             w = tclashes;
                                         }
                                         heap.tp(heap.t(heap.t(heap.h(w)))).* = heap.cons(heap.h(p), heap.t(heap.t(heap.h(w))));
@@ -564,7 +564,7 @@ pub fn mkincludes(includees_val: Word) Word {
                 word.print("illegal alias (cannot suppress typename{s}):", .{@as([*:0]const u8, if (heap.t(cs.TSUPPRESSED) == NIL) "" else "s")});
                 var ts = cs.TSUPPRESSED;
                 while (ts != NIL) : (ts = heap.t(ts)) {
-                    word.print(" -{s}", .{main.get_id(heap.h(ts))});
+                    word.print(" -{s}", .{heap.getId(heap.h(ts))});
                 }
                 _ = word.putchar('\n');
             }
@@ -584,7 +584,7 @@ pub fn mkincludes(includees_val: Word) Word {
         while (cs.DETROP != NIL and getTag(heap.h(cs.DETROP)) == word.CONS) {
             const fa = heap.h(heap.t(heap.h(cs.DETROP)));
             const ta = heap.t(heap.t(heap.h(cs.DETROP)));
-            const pn = main.get_id(heap.h(heap.h(cs.DETROP)));
+            const pn = heap.getId(heap.h(heap.h(cs.DETROP)));
             if (fa == -1 or ta == -1) {
                 word.print("`{s}' has binding of wrong kind ", .{pn});
                 word.print("(should be \"= value\" not \"== type\")\n", .{});

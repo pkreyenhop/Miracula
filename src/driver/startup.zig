@@ -53,7 +53,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     rt.rs.cstack = @ptrCast(&manonly);
     unlimitStack();
     rt.rs.verbosity = if (abi.isatty(0) != 0) 1 else 0;
-    word.setbuf(main.getStdout(), null);
+    word.setbuf(abi.stdout(), null);
 
     const home = abi.getenv("HOME");
     var okhome_rc: Word = 0;
@@ -257,8 +257,8 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     }
 
     abi.setupdic();
-    rt.rs.s_in = main.getStdin();
-    reduce.ev.s_out = main.getStdout();
+    rt.rs.s_in = abi.stdin();
+    reduce.ev.s_out = abi.stdout();
     rt.rs.miralib = main.makeAbsolute(rt.rs.miralib.?);
 
     if (manonly != 0) {
@@ -332,7 +332,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
             if (rt.rs.freeids != NIL) {
                 var f = rt.rs.freeids;
                 while (f != NIL) : (f = heap.t(f)) {
-                    const n = abi.findid(@constCast(main.get_id(heap.h(f))));
+                    const n = abi.findid(@constCast(heap.getId(heap.h(f))));
                     heap.tp(n).* = heap.t(heap.t(heap.h(f)));
                     heap.tp(heap.h(heap.h(n))).* = heap.theVal(heap.h(f));
                     heap.hp(f).* = n;
@@ -372,7 +372,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 main.undump(s);
                 var f = if (heap.heap.files == NIL) rt.rs.oldfiles else heap.heap.files;
                 while (f != NIL) : (f = heap.t(f)) {
-                    const filename_str = main.get_fil(heap.h(f)).?;
+                    const filename_str = heap.get_fil(heap.h(f)).?;
                     if (abi.member(x, strtab.strBits(filename_str)) == 0) {
                         x = heap.cons(strtab.strBits(filename_str), x);
                         word.print("{s}\n", .{filename_str});

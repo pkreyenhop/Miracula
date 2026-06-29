@@ -546,8 +546,15 @@ pub fn idWho(x: Word) Word {
 }
 
 /// The interned name text of id `x`.
-fn getId(x: Word) [*:0]const u8 {
+pub fn getId(x: Word) [*:0]const u8 {
     return strtab.strOf(h(h(h(x))));
+}
+
+/// The filename of file-record `fil`, or null when absent.
+pub fn get_fil(fil: Word) ?[*:0]const u8 {
+    const val = h(h(h(fil)));
+    if (val == 0) return null;
+    return strtab.strOf(val);
 }
 
 /// Box char `ch`: bare Latin-1, or a `UNICODE` cell for wider code points.
