@@ -9,6 +9,7 @@ const std = @import("std");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
 const main = @import("../main.zig");
+const cs = @import("../compiler/compiler_state.zig").cs;
 const abi = @import("../runtime/main_clib.zig");
 
 const Word = main.Word;
@@ -309,9 +310,9 @@ pub fn command() void {
                 }
                 if (t_val != null) {
                     if (word.strcmp(t_val.?, main.rs.current_script.?) != 0 or (heap.heap.files == NIL and abi.okdump(t_val.?) != 0)) {
-                        main.cs.CLASHES = NIL;
+                        cs.CLASHES = NIL;
                         main.undump(t_val.?);
-                        if (main.cs.CLASHES != NIL) {
+                        if (cs.CLASHES != NIL) {
                             main.loadfile(t_val.?);
                         }
                     } else {
@@ -682,8 +683,8 @@ pub fn diagnose(n: [*:0]const u8) void {
 /// List every name currently in scope (the bare `?` command).
 pub fn allnamescom() void {
     var s: Word = undefined;
-    var x = main.cs.ND;
-    var y = main.cs.ND;
+    var x = cs.ND;
+    var y = cs.ND;
     var z: Word = 0;
     leftist = false;
     namescom(main.makeFil(if (main.rs.nostdenv) null else @as([*:0]const u8, @ptrCast(&main.rs.STDENV)), 0, 0, main.rs.primenv));

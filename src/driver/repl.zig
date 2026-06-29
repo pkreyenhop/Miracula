@@ -11,6 +11,7 @@ const std = @import("std");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
 const main = @import("../main.zig");
+const cs = @import("../compiler/compiler_state.zig").cs;
 const abi = @import("../runtime/main_clib.zig");
 const parser_api = @import("../parser/parser_api.zig");
 const lineedit = @import("lineedit.zig");
@@ -62,8 +63,8 @@ pub fn commandLoop(initscript: [*:0]u8) void {
     if (abi.sigsetjmp(&main.rs.env, 1) == 0) {
         if (main.rs.magic) {
             main.undump(initscript);
-            if (heap.heap.files == NIL or main.cs.ND != NIL or main.idVal(main.rs.main_id) == word.UNDEF) {
-                if (heap.heap.files != NIL and main.cs.ND == NIL and main.idVal(main.rs.main_id) == word.UNDEF) {
+            if (heap.heap.files == NIL or cs.ND != NIL or main.idVal(main.rs.main_id) == word.UNDEF) {
+                if (heap.heap.files != NIL and cs.ND == NIL and main.idVal(main.rs.main_id) == word.UNDEF) {
                     word.printErr("{s}: main not defined\n", .{initscript});
                 }
                 main.fatal("mira: incorrect use of \"-exec\" flag\n", .{.{}});
@@ -218,7 +219,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                 main.rs.rv_expr = 0;
                 ls.c = word.EVAL;
                 main.rs.echoing = 0;
-                main.cs.polyshowerror = 0;
+                cs.polyshowerror = 0;
                 core_state.s.commandmode = 1;
                 _ = parser_api.parseCurrent() catch {};
                 if (core_state.s.SYNERR != 0) {
@@ -289,7 +290,7 @@ pub fn obey(x_in: Word) void {
     var x = x_in;
     const typ = main.typeOf(x);
     x = main.codegen(x);
-    if (main.cs.polyshowerror != 0) return;
+    if (cs.polyshowerror != 0) return;
     core_state.s.compiling = 0;
     const list_t: Word = 4;
     const char_t: Word = 3;
@@ -313,7 +314,7 @@ pub fn evaluateRepl(x_in: Word) void {
     if (typ == word.wrong_t) return;
     main.rs.lastexp = x;
     x = main.codegen(x);
-    if (main.cs.polyshowerror != 0) return;
+    if (cs.polyshowerror != 0) return;
     const list_t: Word = 4;
     const char_t: Word = 3;
     const islist = typ >= main.ATOMLIMIT and getTag(typ) == AP and h(typ) == list_t;

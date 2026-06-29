@@ -5,6 +5,7 @@
 
 const std = @import("std");
 const main = @import("../main.zig");
+const cs = @import("compiler_state.zig").cs;
 const word = @import("../runtime/word.zig");
 const abi = @import("../runtime/main_clib.zig");
 const heap = @import("../runtime/heap.zig");
@@ -133,7 +134,7 @@ pub fn primlib() void {
 /// Seeds the private-prelude identifiers (offside, changetype, hd/tl, etc.) that are
 /// always in scope but not user-visible. Called during prelude loading.
 pub fn privlib() void {
-    predef("offside", word.OFFSIDE, main.cs.ltchar);
+    predef("offside", word.OFFSIDE, cs.ltchar);
     predef("changetype", word.I, word.wrong_t);
     predef("first", word.HD, word.wrong_t);
     predef("rest", word.TL, word.wrong_t);

@@ -7,6 +7,7 @@ const std = @import("std");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
 const main = @import("../main.zig");
+const cs = @import("compiler_state.zig").cs;
 const abi = @import("../runtime/main_clib.zig");
 const lex_state = @import("../parser/lex_state.zig");
 const heap = @import("../runtime/heap.zig");
@@ -190,8 +191,8 @@ pub fn readoption() void {
     pfrts = NIL;
     tlost = NIL;
 
-    if (main.cs.FBS != NIL) {
-        f = main.cs.FBS;
+    if (cs.FBS != NIL) {
+        f = cs.FBS;
         while (f != NIL) : (f = t(f)) {
             t_val = t(h(f));
             while (t_val != NIL) : (t_val = t(t_val)) {
@@ -220,8 +221,8 @@ pub fn readoption() void {
     }
 
     if (tlost == NIL) return;
-    main.cs.TYPERRS += 1;
-    word.print("main.cs.MISSING TYPENAME{s}\n", .{if (t(tlost) == NIL) "" else "S"});
+    cs.TYPERRS += 1;
+    word.print("cs.MISSING TYPENAME{s}\n", .{if (t(tlost) == NIL) "" else "S"});
     word.print("the following type{s} no name in this scope:\n", .{if (t(tlost) == NIL) " is needed but has" else "s are needed but have"});
     while (tlost != NIL) {
         word.print("\'{s}\' of file \"{s}\", needed by: ", .{ strtab.strOf(h(h(main.tInfo(h(h(tlost)))))), strtab.strOf(h(t(main.tInfo(h(h(tlost)))))) });
@@ -323,18 +324,18 @@ pub fn undump(t_val: [*:0]const u8) void {
     heap.heap.files = abi.loadScript(f.?, @constCast(t_val), NIL, NIL, if (!main.rs.making and main.rs.initialising == 0) 1 else 0);
     _ = word.fclose(f.?);
 
-    if (main.cs.BAD_DUMP != 0) {
+    if (cs.BAD_DUMP != 0) {
         _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
         main.unload();
-        main.cs.CLASHES = NIL;
+        cs.CLASHES = NIL;
         heap.heap.stackp = heap.heap.dstack;
         word.print("warning: {s} contains incorrect data (file removed)\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
-        if (main.cs.BAD_DUMP == -1) {
+        if (cs.BAD_DUMP == -1) {
             word.print("(unrecognised dump format)\n", .{});
-        } else if (main.cs.BAD_DUMP == 1) {
+        } else if (cs.BAD_DUMP == 1) {
             word.print("(wrong source file)\n", .{});
         } else {
-            word.print("(error {})\n", .{main.cs.BAD_DUMP});
+            word.print("(error {})\n", .{cs.BAD_DUMP});
         }
     }
 
@@ -349,20 +350,20 @@ pub fn undump(t_val: [*:0]const u8) void {
         }
     }
 
-    if (main.cs.CLASHES != NIL) {
+    if (cs.CLASHES != NIL) {
         if (main.rs.ideep == 0) {
             word.print("cannot load {s} ", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
-            abi.printlist(@constCast("due to name clashes: "), main.alfasort(main.cs.CLASHES));
+            abi.printlist(@constCast("due to name clashes: "), main.alfasort(cs.CLASHES));
         }
         main.unload();
         core_state.s.loading = 0;
         return;
     }
 
-    if (main.cs.BAD_DUMP != 0 or main.srcUpdate() != 0) {
+    if (cs.BAD_DUMP != 0 or main.srcUpdate() != 0) {
         main.loadfile(t_val);
     } else if (main.rs.initialising != 0) {
-        if (main.cs.ND != NIL or heap.heap.files == NIL) {
+        if (cs.ND != NIL or heap.heap.files == NIL) {
             main.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
         }
     } else {
@@ -370,7 +371,7 @@ pub fn undump(t_val: [*:0]const u8) void {
             if (heap.heap.files == NIL) {
                 word.print("{s} contains syntax error\n", .{std.mem.span(t_val)});
             } else {
-                if (main.cs.ND != NIL) {
+                if (cs.ND != NIL) {
                     word.print("{s} contains undefined names or type errors\n", .{std.mem.span(t_val)});
                 } else if (!main.rs.making and !main.rs.magic) {
                     word.print("{s}\n", .{std.mem.span(t_val)});

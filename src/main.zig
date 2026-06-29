@@ -60,11 +60,10 @@ pub const rs: *RuntimeState = rt.rs;
 /// Default external editor command (overridable via `EDITOR`/the `.mirarc`).
 pub const EDITOR: [*:0]const u8 = "vi +!";
 
-// Re-export compiler_state and cs pointer to singleton
-/// The type-checker/compiler state module.
-pub const compiler_state = @import("compiler/compiler_state.zig");
-/// Pointer to the singleton compiler state.
-pub const cs = compiler_state.cs;
+// The compiler/type-checker state (private; callers import
+// `compiler/compiler_state.zig` directly and use its `cs` pointer).
+const compiler_state = @import("compiler/compiler_state.zig");
+const cs = compiler_state.cs;
 
 // External / runtime function declarations
 /// Re-export of `signals.signals` (the installed signal-handler table).

@@ -21,7 +21,7 @@ pub const MiraError = error{
     SyntaxError,
 
     /// A fatal cycle in type synonym "==" definitions was detected by the
-    /// type checker.  main.cs.TYPERRS has been incremented and the error printed
+    /// type checker.  `cs.TYPERRS` has been incremented and the error printed
     /// before this error is raised.  The caller should abandon the current
     /// compilation unit.
     TypeCheckAbort,

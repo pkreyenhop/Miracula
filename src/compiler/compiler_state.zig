@@ -98,6 +98,6 @@ pub const CompilerState = struct {
     MISSING: Word = 0,
 };
 
-/// Singleton compiler-state instance.  Access via `main.cs` (a `*CompilerState`
-/// pointer alias) so all mutations are reflected everywhere.
+/// Singleton compiler-state instance (a `*CompilerState` into `interp`). Import
+/// this module and use `cs` so all mutations are reflected everywhere.
 pub const cs = &@import("../runtime/interp.zig").interp.comp;

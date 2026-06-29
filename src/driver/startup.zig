@@ -10,6 +10,7 @@ const std = @import("std");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
 const main = @import("../main.zig");
+const cs = @import("../compiler/compiler_state.zig").cs;
 const abi = @import("../runtime/main_clib.zig");
 
 const Word = main.Word;
@@ -289,7 +290,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
             heap.heap.files = heap.t(heap.heap.files);
         }
         main.rs.primenv = main.alfasort(main.rs.primenv);
-        main.cs.newtyps = NIL;
+        cs.newtyps = NIL;
         heap.heap.files = NIL;
     }
 
@@ -312,7 +313,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 _ = abi.keep(ls.dicp);
             }
             main.undump(s);
-            if (heap.heap.files == NIL or main.cs.ND != NIL) {
+            if (heap.heap.files == NIL or cs.ND != NIL) {
                 continue;
             }
             if (arg_count != 1) {
@@ -391,7 +392,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 _ = abi.keep(ls.dicp);
             }
             main.undump(s);
-            if (main.cs.ND != NIL or (heap.heap.files == NIL and main.rs.oldfiles != NIL)) {
+            if (cs.ND != NIL or (heap.heap.files == NIL and main.rs.oldfiles != NIL)) {
                 if (main.rs.make_status == 1) {
                     main.rs.make_status = 0;
                 }
@@ -476,14 +477,14 @@ pub fn readRc(rcfile: [*:0]const u8) Word {
     core_state.s.loading = 1;
     res = abi.loadScript(f.?, @constCast(rcfile), NIL, NIL, 0);
     _ = word.fclose(f.?);
-    if (main.cs.BAD_DUMP != 0) {
+    if (cs.BAD_DUMP != 0) {
         main.unload();
-        main.cs.CLASHES = NIL;
+        cs.CLASHES = NIL;
         heap.heap.stackp = heap.heap.dstack;
         core_state.s.loading = 0;
         return 0;
     }
-    if (main.cs.CLASHES != NIL) {
+    if (cs.CLASHES != NIL) {
         main.unload();
         core_state.s.loading = 0;
         return 0;
@@ -492,7 +493,7 @@ pub fn readRc(rcfile: [*:0]const u8) Word {
         main.loadfile(rcfile);
     }
     core_state.s.loading = 0;
-    if (main.cs.ND != NIL or heap.heap.files == NIL) return 0;
+    if (cs.ND != NIL or heap.heap.files == NIL) return 0;
     x = main.filDefs(h(heap.heap.files));
     while (x != NIL) : (x = t(x)) {
         if (main.idType(h(x)) == word.synonym_t) {

@@ -14,6 +14,7 @@ const strtab = @import("../runtime/strtab.zig");
 const lex_state = @import("lex_state.zig");
 const ls = lex_state.ls;
 const main = @import("../main.zig");
+const cs = @import("../compiler/compiler_state.zig").cs;
 const heap = @import("../runtime/heap.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const r7_setup = @import("../compiler/setup.zig");
@@ -1060,7 +1061,7 @@ pub fn mkgvar(i_input: Word) Word {
 pub fn mklexvar(i: Word) Word {
     if (ls.lexvar == 0) {
         ls.lexvar = cons(stoId("ls.lexvar"), stoId("ls.lexvar"));
-        tp(h(ls.lexvar)).* = main.cs.ltchar;
+        tp(h(ls.lexvar)).* = cs.ltchar;
         tp(t(ls.lexvar)).* = genlstatType();
     }
     return if (i != 0) t(ls.lexvar) else h(ls.lexvar);
@@ -1885,7 +1886,7 @@ pub fn resetLex() void {
         const err_script_raw = @as(?[*:0]const u8, strtab.strOf(h(core_state.s.errs)));
         const err_script = err_script_raw orelse "test.m";
         const is_current = if (err_script_raw) |es|
-            (if (main.rs.current_script) |cs| es == @as([*:0]const u8, @ptrCast(cs)) else false)
+            (if (main.rs.current_script) |script| es == @as([*:0]const u8, @ptrCast(script)) else false)
         else
             true;
         if (t(core_state.s.errs) == 0 and is_current) {
@@ -1949,12 +1950,12 @@ pub fn resetState() void {
     ls.col = 0;
     ls.lmargin = 0;
     ls.atnl = 1;
-    main.cs.rv_script = 0;
-    main.cs.algshfns = NIL;
-    main.cs.newtyps = NIL;
-    main.cs.showchain = NIL;
-    main.cs.SGC = NIL;
-    main.cs.TABSTRS = NIL;
+    cs.rv_script = 0;
+    cs.algshfns = NIL;
+    cs.newtyps = NIL;
+    cs.showchain = NIL;
+    cs.SGC = NIL;
+    cs.TABSTRS = NIL;
     ls.c = ' ';
     ls.line_no = 0;
     ls.litmain = 0;
