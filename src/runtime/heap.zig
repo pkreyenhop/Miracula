@@ -29,6 +29,7 @@ const main_clib = @import("main_clib.zig");
 const setup = @import("../compiler/setup.zig");
 const dump = @import("../compiler/dump.zig");
 const cs = compiler_state.cs;
+const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 const Word = i64;
 const wordsize = @sizeOf(Word) * 8;
@@ -92,6 +93,11 @@ pub const Cell = struct {
     tl: Word = 0,
 };
 
+/// The graph heap: the cell arena plus all GC/dictionary scratch (the latter
+/// folded in by shared-state Phase 2b). Cells are stored in a `MultiArrayList`
+/// indexed by the raw cell id; module-level free functions wrap the singleton
+/// [heap]. Accessed as `heap.X`; folded into `interp.heap` so `interp.reset()`
+/// clears it.
 pub const Heap = struct {
     /// Owning storage. Indexed by cell id `x` directly (row x); length BIGTOP+1.
     cells: std.MultiArrayList(Cell) = .{},
@@ -463,9 +469,13 @@ pub const Heap = struct {
     }
 };
 
+/// Pointer to the singleton [Heap] inside `interp` (so `interp.reset()` clears
+/// it). The free functions below operate on it; call sites use `heap.X`.
 pub const heap = &@import("interp.zig").interp.heap;
 
 /// Head (`hd`) of cell `x`.
+///
+/// Tests: heap accessors: cons/make build cells that h/t/getTag read back
 pub fn h(x: Word) Word {
     return heap.h(x);
 }
@@ -491,13 +501,43 @@ pub fn getTag(x: Word) r7_word.NodeTag {
 }
 
 /// Allocate a `CONS` cell `(x . y)`.
+///
+/// Tests: heap accessors: cons/make build cells that h/t/getTag read back
 pub fn cons(x: Word, y: Word) Word {
     return heap.cons(x, y);
 }
 
+test "heap accessors: cons/make build cells that h/t/getTag read back" {
+    tu.freshInterp();
+    const c = cons(word.True, word.NIL);
+    try std.testing.expectEqual(word.NodeTag.CONS, getTag(c));
+    try std.testing.expectEqual(@as(Word, word.True), h(c));
+    try std.testing.expectEqual(@as(Word, word.NIL), t(c));
+    // hp/tp expose the fields for in-place mutation.
+    hp(c).* = word.False;
+    tp(c).* = word.True;
+    try std.testing.expectEqual(@as(Word, word.False), h(c));
+    try std.testing.expectEqual(@as(Word, word.True), t(c));
+    // make builds a cell with an arbitrary tag; setTag (on the singleton) rewrites it.
+    const apnode = make(@intCast(word.AP), word.I, word.NIL);
+    try std.testing.expectEqual(word.NodeTag.AP, getTag(apnode));
+    heap.setTag(apnode, @intCast(word.CONS));
+    try std.testing.expectEqual(word.NodeTag.CONS, getTag(apnode));
+}
+
 /// Allocate a `TRIES` cell `(x . y)` (a pattern-match alternative chain).
+///
+/// Tests: tries: builds a TRIES alternative-chain cell
 pub fn tries(x: Word, y: Word) Word {
     return make(@intCast(word.TRIES), x, y);
+}
+
+test "tries: builds a TRIES alternative-chain cell" {
+    tu.freshInterp();
+    const tr = tries(word.True, word.NIL);
+    try std.testing.expectEqual(word.NodeTag.TRIES, getTag(tr));
+    try std.testing.expectEqual(@as(Word, word.True), h(tr));
+    try std.testing.expectEqual(@as(Word, word.NIL), t(tr));
 }
 
 /// The 'who' (definition-site) field of id `x`.
@@ -511,11 +551,15 @@ fn getId(x: Word) [*:0]const u8 {
 }
 
 /// Box char `ch`: bare Latin-1, or a `UNICODE` cell for wider code points.
+///
+/// Tests: stoChar / getChar / isChar: bare Latin-1 and wide UNICODE chars
 pub fn stoChar(ch: Word) Word {
     return if (word.fitsInByte(ch)) ch else make(UNICODE, ch, 0);
 }
 
 /// The code point of char value `x`.
+///
+/// Tests: stoChar / getChar / isChar: bare Latin-1 and wide UNICODE chars
 pub fn getChar(x: Word) Word {
     switch (word.classify(x)) {
         .imm => |c| return c, // bare Latin-1 code point
@@ -527,12 +571,29 @@ pub fn getChar(x: Word) Word {
 }
 
 /// Whether `x` is a char value (1/0).
+///
+/// Tests: stoChar / getChar / isChar: bare Latin-1 and wide UNICODE chars
 pub fn isChar(x: Word) c_int {
     return switch (word.classify(x)) {
         .imm => 1, // bare Latin-1 char
         .ref => if (heap.getTag(x) == UNICODE) @as(c_int, 1) else 0, // wide char cell
         .atom => 0, // a combinator/named atom is not a char
     };
+}
+
+test "stoChar / getChar / isChar: bare Latin-1 and wide UNICODE chars" {
+    tu.freshInterp();
+    // Latin-1: stored bare as the code point itself.
+    try std.testing.expectEqual(@as(Word, 65), stoChar(65));
+    try std.testing.expectEqual(@as(c_int, 1), isChar(65));
+    try std.testing.expectEqual(@as(Word, 65), getChar(65));
+    // Wide: boxed in a UNICODE cell, but still a char that decodes back.
+    const emoji = stoChar(0x1F600);
+    try std.testing.expectEqual(word.NodeTag.UNICODE, getTag(emoji));
+    try std.testing.expectEqual(@as(c_int, 1), isChar(emoji));
+    try std.testing.expectEqual(@as(Word, 0x1F600), getChar(emoji));
+    // A combinator atom is not a char.
+    try std.testing.expectEqual(@as(c_int, 0), isChar(word.S));
 }
 
 /// The source location (`HERE`) recorded for id `x`.
@@ -548,12 +609,28 @@ pub fn getaka(x: Word) [*:0]const u8 {
 }
 
 /// Append a single element to the end of list `x`.
+///
+/// Tests: append1: links y onto the tail of list x
 pub fn append1(x: Word, y: Word) Word {
     var x1 = x;
     if (x1 == nil()) return y;
     while (t(x1) != nil()) x1 = t(x1);
     tp(x1).* = y;
     return x;
+}
+
+test "append1: links y onto the tail of list x" {
+    tu.freshInterp();
+    // [True] with [False] linked on → True : False : NIL
+    const x = cons(word.True, word.NIL);
+    const y = cons(word.False, word.NIL);
+    const r = append1(x, y);
+    try std.testing.expectEqual(x, r); // mutates and returns x
+    try std.testing.expectEqual(@as(Word, word.True), h(r));
+    try std.testing.expectEqual(@as(Word, word.False), h(t(r)));
+    try std.testing.expectEqual(@as(Word, word.NIL), t(t(r)));
+    // appending onto nil just yields y
+    try std.testing.expectEqual(y, append1(word.NIL, y));
 }
 
 /// Sort list `input` by cell head (merge sort).
@@ -589,6 +666,8 @@ pub fn hdsort(input: Word) Word {
 }
 
 /// A printable name/escape for char `ch`.
+///
+/// Tests: charname: escapes control chars, passes printables through
 pub fn charname(ch: Word) [*:0]const u8 {
     return switch (ch) {
         '\n' => "\\n",
@@ -611,6 +690,15 @@ pub fn charname(ch: Word) [*:0]const u8 {
     };
 }
 
+test "charname: escapes control chars, passes printables through" {
+    tu.freshInterp();
+    try std.testing.expectEqualStrings("\\n", std.mem.span(charname('\n')));
+    try std.testing.expectEqualStrings("\\t", std.mem.span(charname('\t')));
+    try std.testing.expectEqualStrings("\\\\", std.mem.span(charname('\\')));
+    try std.testing.expectEqualStrings("A", std.mem.span(charname('A')));
+    try std.testing.expectEqualStrings("\\7", std.mem.span(charname(7))); // bell → \7
+}
+
 /// Print double `value` to `file`.
 pub fn outr(file: ?*word.FILE, value: f64) void {
     const magnitude = if (value < 0) -value else value;
@@ -622,6 +710,8 @@ pub fn outr(file: ?*word.FILE, value: f64) void {
 }
 
 /// The `f64` stored in `DOUBLE` cell `x`.
+///
+/// Tests: stoDbl / getDbl / setdbl: round-trip an f64 in a DOUBLE cell
 pub fn getDbl(x: Word) f64 {
     var r: fpdatum = undefined;
     if (comptime @sizeOf(Word) == 4) {
@@ -634,6 +724,8 @@ pub fn getDbl(x: Word) f64 {
 }
 
 /// Box `f64` `R_val` in a `DOUBLE` cell.
+///
+/// Tests: stoDbl / getDbl / setdbl: round-trip an f64 in a DOUBLE cell
 pub fn stoDbl(R_val: f64) Word {
     if (!std.math.isFinite(R_val)) {
         fpeError(main_clib.SIGFPE);
@@ -648,6 +740,8 @@ pub fn stoDbl(R_val: f64) Word {
 }
 
 /// Overwrite the `f64` in `DOUBLE` cell `x`.
+///
+/// Tests: stoDbl / getDbl / setdbl: round-trip an f64 in a DOUBLE cell
 pub fn setdbl(x: Word, R_val: f64) void {
     if (!std.math.isFinite(R_val)) {
         fpeError(main_clib.SIGFPE);
@@ -662,6 +756,15 @@ pub fn setdbl(x: Word, R_val: f64) void {
         hp(x).* = r.bits;
         tp(x).* = 0;
     }
+}
+
+test "stoDbl / getDbl / setdbl: round-trip an f64 in a DOUBLE cell" {
+    tu.freshInterp();
+    const d = stoDbl(3.14);
+    try std.testing.expectEqual(word.NodeTag.DOUBLE, getTag(d));
+    try std.testing.expectEqual(@as(f64, 3.14), getDbl(d));
+    setdbl(d, -2.5);
+    try std.testing.expectEqual(@as(f64, -2.5), getDbl(d));
 }
 
 /// The `NIL` sentinel.
@@ -937,19 +1040,41 @@ fn getsmallint(x: Word) Word {
 }
 
 /// Box small int `x`: bare, or as an `INT` cell if it doesn't fit.
+///
+/// Tests: stosmallint: boxes a signed small int as an INT cell
 pub fn stosmallint(x: Word) Word {
     const val = if (x < 0) SIGNBIT | @as(Word, @intCast(-x)) else x;
     return make(word.INT, val, 0);
 }
 
+test "stosmallint: boxes a signed small int as an INT cell" {
+    tu.freshInterp();
+    const a = stosmallint(42);
+    try std.testing.expectEqual(word.NodeTag.INT, getTag(a));
+    try std.testing.expectEqual(@as(Word, 42), getsmallint(a));
+    try std.testing.expectEqual(@as(Word, -5), getsmallint(stosmallint(-5)));
+}
+
 /// The left-hand side (head) of a definition cell `d`.
+///
+/// Tests: dlhs / dval: definition-cell head and value accessors
 pub inline fn dlhs(d: Word) Word {
     return h(d);
 }
 
 /// The value of a definition cell `d` (`t(t(d))`).
+///
+/// Tests: dlhs / dval: definition-cell head and value accessors
 pub inline fn dval(d: Word) Word {
     return t(t(d));
+}
+
+test "dlhs / dval: definition-cell head and value accessors" {
+    tu.freshInterp();
+    // a def cell d = (lhs : (mid : val))
+    const d = cons(word.True, cons(word.NIL, word.False));
+    try std.testing.expectEqual(@as(Word, word.True), dlhs(d));
+    try std.testing.expectEqual(@as(Word, word.False), dval(d));
 }
 
 /// Reinterpret Word `val` as a C-string pointer.
@@ -1381,6 +1506,8 @@ pub fn dumpDefs(defs_val: Word, file: ?*word.FILE) void {
 }
 
 /// Write one object (graph node) to dump `file`.
+///
+/// Tests: dumpOb / loadDefs: roundtrip a cons of two ints through the .x format
 pub fn dumpOb(x: Word, file: ?*word.FILE) void {
     switch (heap.getTagEnum(x)) {
         .ATOM => {
@@ -1762,6 +1889,8 @@ pub fn dgrow() void {
 }
 
 /// Load a definition list from a dump `file`.
+///
+/// Tests: dumpOb / loadDefs: roundtrip a cons of two ints through the .x format
 pub fn loadDefs(file: ?*word.FILE) Word {
     var ch = main_clib.getc(file);
     var defs: Word = word.NIL;
@@ -2010,8 +2139,16 @@ pub fn sameFile(x: Word, y: Word) bool {
 }
 
 /// Whether `x` is a bad/error sentinel value.
+///
+/// Tests: badval: flags values outside the plausible heap range
 pub fn badval(x: Word) bool {
     return x < 100 or x > 50000000;
+}
+
+test "badval: flags values outside the plausible heap range" {
+    try std.testing.expect(badval(50)); // below the floor
+    try std.testing.expect(badval(60_000_000)); // above the ceiling
+    try std.testing.expect(!badval(1000)); // a plausible cell id
 }
 
 /// Whether id `x` is a `%free` identifier.
@@ -2036,6 +2173,8 @@ pub fn addtoenv(x: Word) void {
 }
 
 /// Reverse list `input`.
+///
+/// Tests: reverse: reverses a list
 pub fn reverse(input: Word) Word {
     var x = input;
     var y: Word = NIL;
@@ -2046,7 +2185,20 @@ pub fn reverse(input: Word) Word {
     return y;
 }
 
+test "reverse: reverses a list" {
+    tu.freshInterp();
+    const l = cons(word.I, cons(word.K, cons(word.S, word.NIL)));
+    const r = reverse(l);
+    try std.testing.expectEqual(@as(Word, word.S), h(r));
+    try std.testing.expectEqual(@as(Word, word.K), h(t(r)));
+    try std.testing.expectEqual(@as(Word, word.I), h(t(t(r))));
+    try std.testing.expectEqual(@as(Word, word.NIL), t(t(t(r))));
+    try std.testing.expectEqual(@as(Word, word.NIL), reverse(word.NIL));
+}
+
 /// Reverse `x` onto the front of `y` (shunt / reverse-append).
+///
+/// Tests: shunt: reverses x onto the front of y
 pub fn shunt(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
@@ -2057,7 +2209,20 @@ pub fn shunt(input_x: Word, input_y: Word) Word {
     return y;
 }
 
+test "shunt: reverses x onto the front of y" {
+    tu.freshInterp();
+    const x = cons(word.I, cons(word.K, word.NIL));
+    const y = cons(word.S, word.NIL);
+    const r = shunt(x, y); // reverse [I,K] onto [S] → [K,I,S]
+    try std.testing.expectEqual(@as(Word, word.K), h(r));
+    try std.testing.expectEqual(@as(Word, word.I), h(t(r)));
+    try std.testing.expectEqual(@as(Word, word.S), h(t(t(r))));
+    try std.testing.expectEqual(@as(Word, word.NIL), t(t(t(r))));
+}
+
 /// The length of list `input`.
+///
+/// Tests: size: counts the cells of a flat list
 pub fn size(input: Word) Word {
     var x = input;
     var s: Word = 0;
@@ -2066,6 +2231,13 @@ pub fn size(input: Word) Word {
         x = t(x);
     }
     return s;
+}
+
+test "size: counts the cells of a flat list" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(Word, 0), size(word.NIL));
+    const l = cons(stosmallint(1), cons(stosmallint(2), cons(stosmallint(3), word.NIL)));
+    try std.testing.expectEqual(@as(Word, 3), size(l));
 }
 
 /// Sort a list of identifiers alphabetically by name.
@@ -2298,12 +2470,7 @@ test "domain type methods are callable at comptime (signature check)" {
     try std.testing.expect(TypeRefClassFn == fn (TypeRef) Word);
 }
 
-test "stoChar returns atoms for Latin-1 values" {
-    try std.testing.expectEqual(@as(Word, 65), stoChar(65));
-    try std.testing.expectEqual(@as(c_int, 1), isChar(65));
-}
-
-test "heap dump roundtrip" {
+test "dumpOb / loadDefs: roundtrip a cons of two ints through the .x format" {
     // 1. Initialize heap and stack
     rt.rs.SPACELIMIT = 10000;
     setupheap();

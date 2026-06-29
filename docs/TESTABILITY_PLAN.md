@@ -72,10 +72,14 @@ first), so momentum builds before the stateful modules:
   instead of tests (per the constant-doc convention): `combinator.zig` ✅ *(doc +
   an alignment invariant test against word.zig's codes)*, `version.zig` ✅,
   `parser/token_filter.zig` ✅, `parser/ast.zig` ✅ *(all type decls documented)*.
-* **Tier B — heap/graph, deterministic with a fresh heap:** `heap.zig`
-  (cells/accessors/GC/dump round-trip), `reduce.zig` (`numplus`/`compare`/`force`/
-  `getstring`), `reducer/combinators.zig` + `reducer/lex.zig` + `reducer/ready.zig`
-  (rewrite rules — exercise via tiny graphs, as `reduce_test` already does).
+* **Tier B — heap/graph, deterministic with a fresh heap:** `heap.zig` ◐
+  *(accessors, cons/make/tries, char + double boxing, stosmallint, list utils
+  reverse/shunt/size/append1, badval, dlhs/dval, dumpOb/loadDefs roundtrip — 15
+  tests; GC internals + dump/load internals stay covered by golden + the
+  roundtrip; all `pub const` documented)*; `reduce.zig`
+  (`numplus`/`compare`/`force`/`getstring`), `reducer/combinators.zig` +
+  `reducer/lex.zig` + `reducer/ready.zig` (rewrite rules — exercise via tiny
+  graphs, as `reduce_test` already does).
 * **Tier C — stateful (need `freshInterp`):** `parser/lex.zig`, `compiler/types.zig`
   (inference), `compiler/trans.zig` (codegen), `parser/codegen.zig`,
   `parser/parser_api.zig`, `compiler/{setup,module_loader,dump}.zig`,
