@@ -10,9 +10,9 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const errors = @import("../runtime/errors.zig");
+const dump = @import("dump.zig");
 const strtab = @import("../runtime/strtab.zig");
 const main_clib = @import("../runtime/main_clib.zig");
-const main = @import("../main.zig");
 const rt = @import("../runtime/runtime_state.zig");
 
 const compiler_state = @import("compiler_state.zig");
@@ -176,7 +176,7 @@ const tclos = trans_mod.tclos;
 const sortrel = trans_mod.sortrel;
 const genshfns = trans_mod.genshfns;
 const alfasort = heap.alfasort;
-const readoption = main.readoption;
+const readoption = dump.readoption;
 const out = heap.out;
 const isChar = heap.isChar;
 const charname = heap.charname;

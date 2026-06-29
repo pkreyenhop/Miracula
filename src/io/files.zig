@@ -8,10 +8,10 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const errors = @import("../runtime/errors.zig");
-const main = @import("../main.zig");
 const abi = @import("../runtime/main_clib.zig");
 const platform = @import("platform.zig");
 const heap = @import("../runtime/heap.zig");
+const lex = @import("../parser/lex.zig");
 
 const lex_state = @import("../parser/lex_state.zig");
 const core_state = @import("../runtime/core_state.zig");
@@ -131,7 +131,7 @@ pub fn makeAbsolute(m: [*:0]u8) [*:0]u8 {
     const m_new = ls.dicp;
     ls.dicq += word.strlen(ls.dicp) + 1;
     ls.dicp = ls.dicq;
-    main.dicCheck();
+    lex.dicCheck();
     return m_new;
 }
 

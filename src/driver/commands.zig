@@ -8,7 +8,6 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
-const main = @import("../main.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const cs = @import("../compiler/compiler_state.zig").cs;
 const abi = @import("../runtime/main_clib.zig");
@@ -25,6 +24,11 @@ const lex_state = @import("../parser/lex_state.zig");
 const r7_lex = @import("../parser/lex.zig");
 const core_state = @import("../runtime/core_state.zig");
 const heap = @import("../runtime/heap.zig");
+const files = @import("../io/files.zig");
+const repl = @import("repl.zig");
+const dump = @import("../compiler/dump.zig");
+const startup = @import("startup.zig");
+const module_loader = @import("../compiler/module_loader.zig");
 const ls = lex_state.ls;
 
 const token = r7_lex.token;
@@ -73,7 +77,7 @@ fn namescom(l: Word) void {
     var col_local: Word = 0;
     var undefs: Word = NIL;
     var wp: usize = 0;
-    const scrwd = main.termWidth();
+    const scrwd = files.termWidth();
     if (rt.rs.sorted == 0 and n != rt.rs.primenv) {
         n = heap.alfasort(n);
         heap.tp(l).* = n;
@@ -163,7 +167,7 @@ pub fn command() void {
                 if (abi.getchar() != '\n') return;
                 _ = word.strcpy(&rt.rs.linebuf, rt.rs.miralib.?);
                 _ = word.strcat(&rt.rs.linebuf, "/auxfile");
-                main.fileCopy(@as([*:0]const u8, @ptrCast(&rt.rs.linebuf)));
+                files.fileCopy(@as([*:0]const u8, @ptrCast(&rt.rs.linebuf)));
                 return;
             }
         },
@@ -184,7 +188,7 @@ pub fn command() void {
                 if (abi.chdir(d.?) == -1) {
                     word.print("cannot cd to {s}\n", .{d.?});
                 } else if (heap.srcUpdate() != 0) {
-                    main.undump(rt.rs.current_script.?);
+                    dump.undump(rt.rs.current_script.?);
                 }
                 return;
             }
@@ -215,7 +219,7 @@ pub fn command() void {
                     t_val = rt.rs.current_script;
                 }
                 if (abi.getchar() != '\n') return;
-                if (!main.fileExists(t_val.?)) {
+                if (!files.fileExists(t_val.?)) {
                     if (lmirahdr == null) {
                         ls.dicp = ls.dicq;
                         _ = word.strcpy(ls.dicp, abi.getenv("HOME"));
@@ -226,7 +230,7 @@ pub fn command() void {
                         lmirahdr = ls.dicp;
                         ls.dicq = ls.dicp + word.strlen(ls.dicp) + 1;
                     }
-                    if (main.fileExists(lmirahdr.?)) {
+                    if (files.fileExists(lmirahdr.?)) {
                         mf = lmirahdr;
                     }
                     if (mf == null and mirahdr == null) {
@@ -236,7 +240,7 @@ pub fn command() void {
                         mirahdr = ls.dicp;
                         ls.dicq = ls.dicp + word.strlen(ls.dicp) + 1;
                     }
-                    if (mf == null and main.fileExists(mirahdr.?)) {
+                    if (mf == null and files.fileExists(mirahdr.?)) {
                         mf = mirahdr;
                     }
                     if (mf != null and t_val != rt.rs.current_script) {
@@ -251,7 +255,7 @@ pub fn command() void {
                         }
                     }
                     if (mf != null) {
-                        main.copyFile(mf.?, t_val.?);
+                        files.copyFile(mf.?, t_val.?);
                     }
                 }
                 const err_line_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core_state.s.errline) else if (core_state.s.errs != 0 and word.strcmp(t_val.?, strtab.strOf(heap.h(core_state.s.errs))) == 0) @intCast(heap.t(core_state.s.errs)) else @intCast(abi.geterrlin(t_val.?));
@@ -260,7 +264,7 @@ pub fn command() void {
             }
             if (is("editor")) {
                 const hold = @as([*]u8, @ptrCast(&rt.rs.linebuf[0]));
-                if (main.getLine(abi.stdin(), abi.pnlim - 1, hold) == 0) {
+                if (repl.getLine(abi.stdin(), abi.pnlim - 1, hold) == 0) {
                     return;
                 }
                 if (hold[0] == 0) {
@@ -288,9 +292,9 @@ pub fn command() void {
                 }
                 _ = word.strcpy(&rt.rs.ebuf, hold);
                 rt.rs.editor = @as([*:0]u8, @ptrCast(&rt.rs.ebuf));
-                main.fixEditor();
+                repl.fixEditor();
                 rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
-                main.writeRc();
+                startup.writeRc();
                 word.print("editor = {s}\n", .{rt.rs.editor orelse @constCast("")});
                 return;
             }
@@ -312,12 +316,12 @@ pub fn command() void {
                 if (t_val != null) {
                     if (word.strcmp(t_val.?, rt.rs.current_script.?) != 0 or (heap.heap.files == NIL and abi.okdump(t_val.?) != 0)) {
                         cs.CLASHES = NIL;
-                        main.undump(t_val.?);
+                        dump.undump(t_val.?);
                         if (cs.CLASHES != NIL) {
-                            main.loadfile(t_val.?);
+                            module_loader.loadfile(t_val.?);
                         }
                     } else {
-                        main.loadfile(t_val.?);
+                        module_loader.loadfile(t_val.?);
                     }
                 } else {
                     word.print("{s}{s}\n", .{rt.rs.current_script.?, @as([*:0]const u8, if (heap.heap.files == NIL) " (not loaded)" else "")});
@@ -380,7 +384,7 @@ pub fn command() void {
                 if (abi.getchar() != '\n') return;
                 _ = word.strcpy(&rt.rs.linebuf, rt.rs.miralib.?);
                 _ = word.strcat(&rt.rs.linebuf, "/helpfile");
-                main.fileCopy(@as([*:0]const u8, @ptrCast(&rt.rs.linebuf)));
+                files.fileCopy(@as([*:0]const u8, @ptrCast(&rt.rs.linebuf)));
                 return;
             }
             if (is("heap")) {
@@ -407,7 +411,7 @@ pub fn command() void {
                         abi.resetheap();
                     }
                     word.print("heaplimit = {} cells\n", .{rt.rs.SPACELIMIT});
-                    main.writeRc();
+                    startup.writeRc();
                 }
                 return;
             }
@@ -423,7 +427,7 @@ pub fn command() void {
                 if (abi.getchar() != '\n') return;
                 rt.rs.listing = 1;
                 rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
-                main.writeRc();
+                startup.writeRc();
                 return;
             }
         },
@@ -460,13 +464,13 @@ pub fn command() void {
                 if (abi.getchar() != '\n') return;
                 rt.rs.listing = 0;
                 rt.rs.echoing = 0;
-                main.writeRc();
+                startup.writeRc();
                 return;
             }
             if (is("norecheck")) {
                 if (abi.getchar() != '\n') return;
                 rt.rs.rechecking = 0;
-                main.writeRc();
+                startup.writeRc();
                 return;
             }
         },
@@ -483,7 +487,7 @@ pub fn command() void {
             if (is("recheck")) {
                 if (abi.getchar() != '\n') return;
                 rt.rs.rechecking = 2;
-                main.writeRc();
+                startup.writeRc();
                 return;
             }
         },
@@ -520,14 +524,14 @@ pub fn command() void {
         'v' => {
             if (is("v") or is("version")) {
                 if (abi.getchar() != '\n') return;
-                main.versionInfo(0);
+                startup.versionInfo(0);
                 return;
             }
         },
         'V' => {
             if (is("V")) {
                 if (abi.getchar() != '\n') return;
-                main.versionInfo(1);
+                startup.versionInfo(1);
                 return;
             }
         },
@@ -592,7 +596,7 @@ pub fn editfile(t_val: [*:0]const u8, line: c_int) void {
     }
     _ = abi.system(ebuf_local);
     if (heap.srcUpdate() != 0) {
-        main.loadfile(rt.rs.current_script.?);
+        module_loader.loadfile(rt.rs.current_script.?);
     }
 }
 

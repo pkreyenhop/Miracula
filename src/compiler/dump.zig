@@ -7,12 +7,14 @@ const std = @import("std");
 const word = @import("../runtime/word.zig");
 const errors = @import("../runtime/errors.zig");
 const strtab = @import("../runtime/strtab.zig");
-const main = @import("../main.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const cs = @import("compiler_state.zig").cs;
 const abi = @import("../runtime/main_clib.zig");
 const lex_state = @import("../parser/lex_state.zig");
 const heap = @import("../runtime/heap.zig");
+const files = @import("../io/files.zig");
+const module_loader = @import("module_loader.zig");
+const signals_mod = @import("../io/signals.zig");
 const core_state = @import("../runtime/core_state.zig");
 const ls = lex_state.ls;
 
@@ -282,13 +284,13 @@ pub fn undump(t_val: [*:0]const u8) void {
     var t2: Word = undefined;
     var oldsig: usize = 0;
 
-    if (main.isMirandaSource(t_val) == 0 and rt.rs.initialising == 0) {
-        main.loadfile(t_val);
+    if (files.isMirandaSource(t_val) == 0 and rt.rs.initialising == 0) {
+        module_loader.loadfile(t_val);
         return;
     }
 
     flen = @intCast(word.strlen(t_val));
-    t1 = main.fileMtime(t_val);
+    t1 = files.fileMtime(t_val);
     if (flen > abi.pnlim) {
         word.print("sorry, pathname too long (limit={}): {s}\n", .{ abi.pnlim, std.mem.span(t_val) });
         return;
@@ -296,20 +298,20 @@ pub fn undump(t_val: [*:0]const u8) void {
 
     _ = word.strcpy(&obf, t_val);
     _ = word.strcpy(obf[@intCast(flen - 1)..].ptr, core_state.s.obsuffix);
-    t2 = main.fileMtime(@as([*:0]const u8, @ptrCast(&obf)));
+    t2 = files.fileMtime(@as([*:0]const u8, @ptrCast(&obf)));
     if (t2 != 0 and t1 == 0) {
         t2 = 0;
         _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
     }
     if (t2 == 0 or t2 < t1) {
-        main.loadfile(t_val);
+        module_loader.loadfile(t_val);
         return;
     }
 
     f = word.fopen(&obf, "r");
     if (f == null) {
         word.print("cannot open {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
-        main.loadfile(t_val);
+        module_loader.loadfile(t_val);
         return;
     }
 
@@ -320,7 +322,7 @@ pub fn undump(t_val: [*:0]const u8) void {
 
     if (rt.rs.initialising == 0 and !rt.rs.making) {
         rt.rs.sigflag = 0;
-        oldsig = main.signals(abi.SIGINT, @intFromPtr(&sigdefer));
+        oldsig = signals_mod.signals(abi.SIGINT, @intFromPtr(&sigdefer));
     }
 
     heap.heap.files = abi.loadScript(f.?, @constCast(t_val), NIL, NIL, if (!rt.rs.making and rt.rs.initialising == 0) 1 else 0);
@@ -342,7 +344,7 @@ pub fn undump(t_val: [*:0]const u8) void {
     }
 
     if (rt.rs.initialising == 0 and !rt.rs.making) {
-        _ = main.signals(abi.SIGINT, oldsig);
+        _ = signals_mod.signals(abi.SIGINT, oldsig);
     }
     if (rt.rs.sigflag != 0) {
         rt.rs.sigflag = 0;
@@ -363,7 +365,7 @@ pub fn undump(t_val: [*:0]const u8) void {
     }
 
     if (cs.BAD_DUMP != 0 or heap.srcUpdate() != 0) {
-        main.loadfile(t_val);
+        module_loader.loadfile(t_val);
     } else if (rt.rs.initialising != 0) {
         if (cs.ND != NIL or heap.heap.files == NIL) {
             errors.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});

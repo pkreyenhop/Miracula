@@ -11,7 +11,6 @@ const std = @import("std");
 const word = @import("../runtime/word.zig");
 const errors = @import("../runtime/errors.zig");
 const strtab = @import("../runtime/strtab.zig");
-const main = @import("../main.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const cs = @import("../compiler/compiler_state.zig").cs;
 const abi = @import("../runtime/main_clib.zig");
@@ -30,6 +29,12 @@ const r7_setup = @import("../compiler/setup.zig");
 const r7_signals = @import("../io/signals.zig");
 const r7_lex = @import("../parser/lex.zig");
 const heap = @import("../runtime/heap.zig");
+const commands = @import("commands.zig");
+const trans_mod = @import("../compiler/trans.zig");
+const module_loader = @import("../compiler/module_loader.zig");
+const types_mod = @import("../compiler/types.zig");
+const startup = @import("startup.zig");
+const dump = @import("../compiler/dump.zig");
 const r7_reduce = @import("../runtime/reduce.zig");
 const core_state = @import("../runtime/core_state.zig");
 const version = @import("../runtime/version.zig");
@@ -64,7 +69,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
 
     if (abi.sigsetjmp(&rt.rs.env, 1) == 0) {
         if (rt.rs.magic) {
-            main.undump(initscript);
+            dump.undump(initscript);
             if (heap.heap.files == NIL or cs.ND != NIL or heap.idVal(rt.rs.main_id) == word.UNDEF) {
                 if (heap.heap.files != NIL and cs.ND == NIL and heap.idVal(rt.rs.main_id) == word.UNDEF) {
                     word.printErr("{s}: main not defined\n", .{initscript});
@@ -75,8 +80,8 @@ pub fn commandLoop(initscript: [*:0]u8) void {
             abi.obey(rt.rs.main_id);
             abi.exit(0);
         }
-        _ = signals(abi.SIGINT, @intFromPtr(&main.reset));
-        main.undump(initscript);
+        _ = signals(abi.SIGINT, @intFromPtr(&reset));
+        dump.undump(initscript);
         if (rt.rs.verbosity != 0) {
             word.print("for help type /h\n", .{});
         }
@@ -93,7 +98,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
         }
         ch = abi.getchar();
         if (rt.rs.rechecking != 0 and heap.srcUpdate() != 0) {
-            main.loadfile(rt.rs.current_script.?);
+            module_loader.loadfile(rt.rs.current_script.?);
         }
         while (ch == ' ' or ch == '\t') {
             ch = abi.getchar();
@@ -110,11 +115,11 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                         continue;
                     }
                     if (abi.getchar() != '\n') {
-                        main.xschars();
+                        commands.xschars();
                         continue;
                     }
                     if (rt.rs.baded != 0) {
-                        main.edWarn();
+                        edWarn();
                         continue;
                     }
                     if (ls.dicp[0] != 0) {
@@ -124,7 +129,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                         x = rt.rs.lastid;
                     }
                     if (x == NIL or heap.idType(x) == word.undef_t) {
-                        main.diagnose(if (ls.dicp[0] != 0) ls.dicp else heap.getId(rt.rs.lastid));
+                        commands.diagnose(if (ls.dicp[0] != 0) ls.dicp else heap.getId(rt.rs.lastid));
                         rt.rs.lastid = 0;
                         continue;
                     }
@@ -142,20 +147,20 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                     if (aka != null) {
                         word.print("originally defined as \"{s}\"\n", .{aka.?});
                     }
-                    main.editfile(strtab.strOf(heap.h(x)), @intCast(heap.t(x)));
+                    commands.editfile(strtab.strOf(heap.h(x)), @intCast(heap.t(x)));
                 } else {
                     _ = abi.ungetc(ch, abi.stdin().?);
                     _ = token();
                     rt.rs.lastid = 0;
                     if (ls.dicp[0] == 0) {
                         if (abi.getchar() != '\n') {
-                            main.xschars();
+                            commands.xschars();
                         } else {
-                            main.allnamescom();
+                            commands.allnamescom();
                         }
                     } else {
                         while (ls.dicp[0] != 0) {
-                            main.finger(ls.dicp);
+                            commands.finger(ls.dicp);
                             _ = token();
                         }
                         ch = abi.getchar();
@@ -165,7 +170,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
             ':', '/' => {
                 _ = token();
                 rt.rs.lastid = 0;
-                main.command();
+                commands.command();
             },
             '!' => {
                 lb = rdline();
@@ -191,7 +196,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                         _ = abi.execl(shell.?, .{ shell.?, "-c", lb.? });
                     }
                     if (heap.srcUpdate() != 0) {
-                        main.loadfile(rt.rs.current_script.?);
+                        module_loader.loadfile(rt.rs.current_script.?);
                     }
                 } else {
                     word.print("No previous shell command to substitute for \"!\"\n", .{});
@@ -290,8 +295,8 @@ pub fn fpeError(sig: c_int) callconv(.c) void {
 /// Compile `x` and send its value to standard output — used to run a script's `main`.
 pub fn obey(x_in: Word) void {
     var x = x_in;
-    const typ = main.typeOf(x);
-    x = main.codegen(x);
+    const typ = types_mod.typeOf(x);
+    x = trans_mod.codegen(x);
     if (cs.polyshowerror != 0) return;
     core_state.s.compiling = 0;
     const list_t: Word = 4;
@@ -312,10 +317,10 @@ pub fn obey(x_in: Word) void {
 /// Evaluate a typed REPL expression: compile it and fork via `process`; the child prints the result and exits, leaving the parent's heap untouched.
 pub fn evaluateRepl(x_in: Word) void {
     var x = x_in;
-    const typ = main.typeOf(x);
+    const typ = types_mod.typeOf(x);
     if (typ == word.wrong_t) return;
     rt.rs.lastexp = x;
-    x = main.codegen(x);
+    x = trans_mod.codegen(x);
     if (cs.polyshowerror != 0) return;
     const list_t: Word = 4;
     const char_t: Word = 3;
@@ -368,7 +373,7 @@ pub fn edWarn() void {
 
 /// Print the Miranda release banner (version, plus `(UTF-8)` when applicable).
 pub fn announce() void {
-    word.print("Miranda release {s}", .{main.versionString(version.version)});
+    word.print("Miranda release {s}", .{startup.versionString(version.version)});
     if (heap.utf8test() != 0) {
         word.print(" (UTF-8)", .{});
     }
@@ -453,7 +458,7 @@ pub fn parseLine(t_val: Word, f: ?*word.FILE, fil: Word) Word {
             core_state.s.SYNERR = 0;
             rt.rs.lastexp = word.UNDEF;
         } else {
-            t1 = main.typeOf(rt.rs.lastexp);
+            t1 = types_mod.typeOf(rt.rs.lastexp);
             if (t1 == word.wrong_t) {
                 rt.rs.lastexp = word.UNDEF;
             } else if (abi.subsumes(abi.instantiate(t1), t_val) == 0) {
@@ -466,7 +471,7 @@ pub fn parseLine(t_val: Word, f: ?*word.FILE, fil: Word) Word {
             }
         }
         if (rt.rs.lastexp != word.UNDEF) {
-            return main.codegen(rt.rs.lastexp);
+            return trans_mod.codegen(rt.rs.lastexp);
         }
         if (abi.isatty(word.fileno(f)) != 0) {
             word.print("please re-enter data:\n", .{});

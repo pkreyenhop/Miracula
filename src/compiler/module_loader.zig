@@ -7,7 +7,6 @@ const std = @import("std");
 const word = @import("../runtime/word.zig");
 const errors = @import("../runtime/errors.zig");
 const strtab = @import("../runtime/strtab.zig");
-const main = @import("../main.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const cs = @import("compiler_state.zig").cs;
 inline fn getTag(x: word.Word) u8 { return heap.heap.getTag(x); }
@@ -22,6 +21,10 @@ const lex_state = @import("../parser/lex_state.zig");
 const r7_signals = @import("../io/signals.zig");
 const core_state = @import("../runtime/core_state.zig");
 const heap = @import("../runtime/heap.zig");
+const types_mod = @import("types.zig");
+const trans_mod = @import("trans.zig");
+const files = @import("../io/files.zig");
+const dump = @import("dump.zig");
 const ls = lex_state.ls;
 
 // Global variables defined/exported in parser/lex.zig
@@ -50,7 +53,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     rt.rs.oldfiles = NIL;
     heap.unload();
 
-    if (!main.fileExists(t_val)) {
+    if (!files.fileExists(t_val)) {
         if (rt.rs.initialising != 0) {
             errors.fatal("panic: %s not found\n", .{.{t_val}});
         }
@@ -79,7 +82,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         return;
     }
 
-    heap.heap.files = heap.cons(heap.makeFil(t_val, main.fileMtime(t_val), 1, NIL), NIL);
+    heap.heap.files = heap.cons(heap.makeFil(t_val, files.fileMtime(t_val), 1, NIL), NIL);
     heap.heap.current_file = heap.h(heap.heap.files);
     heap.tp(heap.h(ls.fileq)).* = heap.heap.current_file;
 
@@ -156,7 +159,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         if (rt.rs.verbosity != 0 or (rt.rs.making and !rt.rs.mkexports and !rt.rs.mksources)) {
             word.print("checking types in {s}\n", .{t_val});
         }
-        main.checktypes();
+        types_mod.checktypes();
     }
 
     if (core_state.s.SYNERR == 0 and rt.rs.exports != NIL) {
@@ -333,7 +336,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             if (heap.idType(heap.h(x)) != word.type_t) {
                 cs.current_id = heap.h(x);
                 cs.polyshowerror = 0;
-                heap.tp(heap.h(x)).* = main.codegen(heap.idVal(heap.h(x)));
+                heap.tp(heap.h(x)).* = trans_mod.codegen(heap.idVal(heap.h(x)));
                 if (cs.polyshowerror != 0) {
                     heap.tp(heap.h(x)).* = word.UNDEF;
                 }
@@ -347,11 +350,11 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             errors.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, if (rt.rs.okprel) "stdenv" else "prelude")}});
         }
         if (rt.rs.initialising != 0) {
-            main.makedump();
-        } else if (main.isMirandaSource(t_val) != 0) {
-            main.fixexports();
-            main.makedump();
-            main.unfixexports();
+            dump.makedump();
+        } else if (files.isMirandaSource(t_val) != 0) {
+            dump.fixexports();
+            dump.makedump();
+            dump.unfixexports();
         }
         if (core_state.s.errline == 0 and core_state.s.errs != 0 and word.strcmp(strtab.strOf(heap.h(core_state.s.errs)), rt.rs.current_script.?) == 0) {
             core_state.s.errline = heap.t(core_state.s.errs);
@@ -366,8 +369,8 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     }
     rt.rs.oldfiles = heap.heap.files;
     heap.unload();
-    if (main.isMirandaSource(t_val) != 0 and core_state.s.SYNERR != 2) {
-        main.makedump();
+    if (files.isMirandaSource(t_val) != 0 and core_state.s.SYNERR != 2) {
+        dump.makedump();
     }
     core_state.s.SYNERR = 0;
     core_state.s.loading = 0;
@@ -416,7 +419,7 @@ pub fn mkincludes(includees_val: Word) Word {
         rt.rs.magic = false;
         _ = abi.sigsetjmp(&rt.rs.env, 1);
         while (includees_list != NIL and rt.rs.make_status == 0) {
-            main.undump(strtab.strOf(heap.h(heap.h(heap.h(includees_list)))));
+            dump.undump(strtab.strOf(heap.h(heap.h(heap.h(includees_list)))));
             if (cs.ND != NIL or (heap.heap.files == NIL and rt.rs.oldfiles != NIL)) {
                 rt.rs.make_status = 1;
             }
@@ -436,7 +439,7 @@ pub fn mkincludes(includees_val: Word) Word {
         _ = word.strcpy(ls.dicp + word.strlen(ls.dicp) - 1, core_state.s.obsuffix);
 
         if (!rt.rs.making) {
-            oldsig = signals(abi.SIGINT, @intFromPtr(&main.sigdefer));
+            oldsig = signals(abi.SIGINT, @intFromPtr(&dump.sigdefer));
         }
 
         f = word.fopen(ls.dicp, "r");
@@ -464,7 +467,7 @@ pub fn mkincludes(includees_val: Word) Word {
             }
             var y = x;
             while (y != NIL) : (y = heap.t(y)) {
-                const nodev = main.inodeId(heap.get_fil(heap.h(y)).?);
+                const nodev = files.inodeId(heap.get_fil(heap.h(y)).?);
                 heap.tp(heap.filInodev(heap.h(y))).* = nodev;
             }
 
@@ -473,7 +476,7 @@ pub fn mkincludes(includees_val: Word) Word {
                 if (heap.filShare(heap.h(y)) != 0) {
                     var z = result;
                     while (z != NIL) : (z = heap.t(z)) {
-                        if (heap.filShare(heap.h(z)) != 0 and main.sameFile(heap.h(y), heap.h(z)) and heap.filTime(heap.h(y)) == heap.filTime(heap.h(z))) {
+                        if (heap.filShare(heap.h(z)) != 0 and files.sameFile(heap.h(y), heap.h(z)) and heap.filTime(heap.h(y)) == heap.filTime(heap.h(z))) {
                             var p = heap.filDefs(heap.h(y));
                             var q = heap.filDefs(heap.h(z));
                             while (p != NIL and q != NIL) {
@@ -534,7 +537,7 @@ pub fn mkincludes(includees_val: Word) Word {
         }
 
         if (f == null) {
-            result = heap.cons(heap.makeFil(fn_str, main.fileMtime(fn_str), 0, NIL), result);
+            result = heap.cons(heap.makeFil(fn_str, files.fileMtime(fn_str), 0, NIL), result);
         } else if (x == NIL and cs.BAD_DUMP != -2) {
             result = abi.append1(result, rt.rs.oldfiles);
             rt.rs.oldfiles = NIL;
