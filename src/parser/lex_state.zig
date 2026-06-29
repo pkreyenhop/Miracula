@@ -1,9 +1,14 @@
 const std = @import("std");
 
+/// The interpreter machine word (see `word.Word`).
 pub const Word = i64;
 const CMBASE: Word = 306;
+/// The empty-list sentinel (mirrors `word.NIL`).
 pub const NIL: Word = CMBASE + 138;
 
+/// The lexer's session state — the dictionary, the file/margin/layout stacks,
+/// the name buckets, and the scan cursors. Folded into `interp.lex` so
+/// `interp.reset()` clears it; accessed as `ls.X`.
 pub const LexState = struct {
     fileq: Word = NIL,
     margstack: Word = NIL,
@@ -61,4 +66,6 @@ pub const LexState = struct {
     rdline_linebuf: [1024]u8 = std.mem.zeroes([1024]u8),
 };
 
+/// Pointer to the singleton [LexState] held in `interp` (so `interp.reset()`
+/// clears it). Accessed as `ls.X`.
 pub const ls = &@import("../runtime/interp.zig").interp.lex;

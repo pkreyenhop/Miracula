@@ -1,9 +1,13 @@
 const std = @import("std");
 const abi = @import("main_clib.zig");
 
+/// The process-wide debug allocator that backs `allocator`.
 pub var gpa = std.heap.DebugAllocator(.{}){};
+/// The general-purpose allocator used throughout the interpreter (set in `main`).
 pub var allocator: std.mem.Allocator = std.heap.page_allocator;
+/// The process's std I/O interface (set in `main`).
 pub var io: std.Io = std.Options.debug_io;
+/// The process environment block (set in `main`).
 pub var environ: std.process.Environ = .empty;
 
 const Word = i64;
@@ -152,6 +156,8 @@ pub const RuntimeState = struct {
     lexdefs: Word = NIL,
 };
 
+/// Pointer to the singleton runtime state held in `interp` (so `interp.reset()`
+/// clears it). Accessed as `rs.X`.
 pub const rs = &@import("interp.zig").interp.rs;
 
 test "RuntimeState default values are self-consistent" {

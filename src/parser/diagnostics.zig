@@ -5,12 +5,14 @@
 
 const std = @import("std");
 
+/// The severity level of a parser/compiler diagnostic.
 pub const Severity = enum {
     @"error",
     warning,
     note,
 };
 
+/// One recorded diagnostic: its severity, `line:column` source position, and message.
 pub const Diagnostic = struct {
     severity: Severity,
     line: usize,
@@ -18,6 +20,8 @@ pub const Diagnostic = struct {
     message: []const u8,
 };
 
+/// A collector that accumulates `Diagnostic` entries during a parse and tracks
+/// whether any were errors.
 pub const Diagnostics = struct {
     allocator: std.mem.Allocator,
     list: std.ArrayList(Diagnostic),

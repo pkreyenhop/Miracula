@@ -40,9 +40,11 @@ pub const Ref = enum(Word) {
     undef = UNDEF,
     nils = NILS,
     _,
+    /// The raw `Word` value of this reference (`@intFromEnum`).
     pub inline fn w(self: Ref) Word {
         return @intFromEnum(self);
     }
+    /// Wrap a raw `Word` `x` as a `Ref` (`@enumFromInt`).
     pub inline fn of(x: Word) Ref {
         return @enumFromInt(x);
     }
@@ -1703,22 +1705,27 @@ pub fn putchar(ch: c_int) c_int {
     return putc(ch, &fio.std_out);
 }
 
+/// libc `isspace`: true for an ASCII whitespace byte (false out of range).
 pub inline fn isspace(ch: anytype) bool {
     const val: i64 = @intCast(ch);
     return val >= 0 and val <= 255 and std.ascii.isWhitespace(@intCast(val));
 }
+/// libc `isdigit`: true for an ASCII decimal digit.
 pub inline fn isdigit(ch: anytype) bool {
     const val: i64 = @intCast(ch);
     return val >= 0 and val <= 255 and std.ascii.isDigit(@intCast(val));
 }
+/// libc `isxdigit`: true for an ASCII hexadecimal digit.
 pub inline fn isxdigit(ch: anytype) bool {
     const val: i64 = @intCast(ch);
     return val >= 0 and val <= 255 and std.ascii.isHex(@intCast(val));
 }
+/// libc `isalpha`: true for an ASCII letter.
 pub inline fn isalpha(ch: anytype) bool {
     const val: i64 = @intCast(ch);
     return val >= 0 and val <= 255 and std.ascii.isAlphabetic(@intCast(val));
 }
+/// libc `isalnum`: true for an ASCII letter or digit.
 pub inline fn isalnum(ch: anytype) bool {
     const val: i64 = @intCast(ch);
     return val >= 0 and val <= 255 and std.ascii.isAlphanumeric(@intCast(val));

@@ -21,11 +21,13 @@ const cleanup = r7_lex.cleanup;
 const setupFile = r7_lex.setupFile;
 // Forks like the original C evaluate(): compiling=0 only in child; parent's heap is safe.
 const evaluateRepl = r7_repl.evaluateRepl;
+/// Errors the parse entry points can return.
 pub const ParseError = error{
     SyntaxError,
     ParseFailed,
 };
 
+/// The outcome of a successful parse.
 pub const ParseResult = enum {
     success,
 };

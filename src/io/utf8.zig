@@ -6,6 +6,7 @@
 
 const std = @import("std");
 
+/// Opaque C `FILE` handle — this module talks to libc `getc`/`putc` directly.
 pub const FILE = opaque {};
 extern fn getc(fil: ?*FILE) c_int;
 extern fn putc(ch: c_int, fil: ?*FILE) c_int;

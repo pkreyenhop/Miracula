@@ -113,8 +113,13 @@ const platform_impl = if (is_linux) struct {
     }
 };
 
+/// `stat` a file, returning its size/mtime/inode info (platform-specific impl).
 pub const getFileInfo = platform_impl.getFileInfo;
+/// Read the current `errno` value.
 pub const getErrno = platform_impl.getErrno;
+/// Set the current `errno` value.
 pub const setErrno = platform_impl.setErrno;
+/// The process's effective user id.
 pub const geteuid = platform_impl.geteuid;
+/// The process's effective group id.
 pub const getegid = platform_impl.getegid;

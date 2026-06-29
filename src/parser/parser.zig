@@ -8,8 +8,11 @@
 //! Miranda list-cons operator `:` is `.cons`, NOT `.colon`.
 
 const std = @import("std");
+/// The AST node-type definitions.
 pub const ast = @import("ast.zig");
+/// The token-filter (offside-layout) pass.
 pub const tf = @import("token_filter.zig");
+/// The Pratt expression sub-parser.
 pub const pratt = @import("pratt.zig");
 
 const Allocator = std.mem.Allocator;
@@ -33,6 +36,8 @@ pub const Diagnostic = struct {
 // Parser state
 // ---------------------------------------------------------------------------
 
+/// The recursive-descent script parser: consumes the filtered token stream and
+/// builds an `ast.Script`, recording any errors in its `Diagnostics`.
 pub const Parser = struct {
     gpa: Allocator,
     ts: TokenStream,

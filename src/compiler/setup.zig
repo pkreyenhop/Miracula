@@ -75,6 +75,7 @@ const yysterm_data = [_]?[*:0]const u8{
     "$NAME", // 48: INFIXNAME=304
     "$CONSTRUCTOR", // 49: INFIXCNAME=305
 };
+/// The terminal-symbol name table (token code → display name), used in syntax-error messages.
 pub var yysterm = yysterm_data;
 
 /// Report a syntax error `s`: print the location and set `SYNERR`.

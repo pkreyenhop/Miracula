@@ -35,6 +35,7 @@ var prefix_buf: [256]u8 = undefined;
 /// zigline calls this handler's `tab_complete` on Tab. It must declare *only*
 /// the handler methods it implements (setHandler reflects over its decls).
 const CompletionHandler = struct {
+    /// zigline's reflected Tab handler: returns completions for the word at the cursor.
     pub fn tab_complete(_: *CompletionHandler) ![]const CompletionSuggestion {
         return completeWord();
     }
