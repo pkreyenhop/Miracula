@@ -64,8 +64,8 @@ pub fn commandLoop(initscript: [*:0]u8) void {
     if (abi.sigsetjmp(&rt.rs.env, 1) == 0) {
         if (rt.rs.magic) {
             main.undump(initscript);
-            if (heap.heap.files == NIL or cs.ND != NIL or main.idVal(rt.rs.main_id) == word.UNDEF) {
-                if (heap.heap.files != NIL and cs.ND == NIL and main.idVal(rt.rs.main_id) == word.UNDEF) {
+            if (heap.heap.files == NIL or cs.ND != NIL or heap.idVal(rt.rs.main_id) == word.UNDEF) {
+                if (heap.heap.files != NIL and cs.ND == NIL and heap.idVal(rt.rs.main_id) == word.UNDEF) {
                     word.printErr("{s}: main not defined\n", .{initscript});
                 }
                 main.fatal("mira: incorrect use of \"-exec\" flag\n", .{.{}});
@@ -91,7 +91,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
             word.print("{s}", .{rt.rs.promptstr});
         }
         ch = abi.getchar();
-        if (rt.rs.rechecking != 0 and main.srcUpdate() != 0) {
+        if (rt.rs.rechecking != 0 and heap.srcUpdate() != 0) {
             main.loadfile(rt.rs.current_script.?);
         }
         while (ch == ' ' or ch == '\t') {
@@ -122,18 +122,18 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                         word.print("??{s}\n", .{main.get_id(rt.rs.lastid)});
                         x = rt.rs.lastid;
                     }
-                    if (x == NIL or main.idType(x) == word.undef_t) {
+                    if (x == NIL or heap.idType(x) == word.undef_t) {
                         main.diagnose(if (ls.dicp[0] != 0) ls.dicp else main.get_id(rt.rs.lastid));
                         rt.rs.lastid = 0;
                         continue;
                     }
-                    if (main.idWho(x) == NIL) {
+                    if (heap.idWho(x) == NIL) {
                         word.print("{s} -- primitive to Miranda\n", .{@as([*:0]const u8, @ptrCast(if (ls.dicp[0] != 0) ls.dicp else main.get_id(rt.rs.lastid)))});
                         rt.rs.lastid = 0;
                         continue;
                     }
                     rt.rs.lastid = x;
-                    x = main.idWho(x);
+                    x = heap.idWho(x);
                     if (getTag(x) == CONS) {
                         aka = strtab.strOf(heap.h(heap.h(x)));
                         x = heap.t(x);
@@ -189,7 +189,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                     } else { // child
                         _ = abi.execl(shell.?, .{ shell.?, "-c", lb.? });
                     }
-                    if (main.srcUpdate() != 0) {
+                    if (heap.srcUpdate() != 0) {
                         main.loadfile(rt.rs.current_script.?);
                     }
                 } else {
@@ -368,7 +368,7 @@ pub fn edWarn() void {
 /// Print the Miranda release banner (version, plus `(UTF-8)` when applicable).
 pub fn announce() void {
     word.print("Miranda release {s}", .{main.versionString(version.version)});
-    if (main.utf8test() != 0) {
+    if (heap.utf8test() != 0) {
         word.print(" (UTF-8)", .{});
     }
     word.print("\n", .{});

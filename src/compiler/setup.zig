@@ -107,7 +107,7 @@ pub fn acterror() void {
 /// `v` is the combinator value; `t_val` is the type node. Called only from primlib().
 pub fn primdef(n: [*:0]const u8, v: Word, t_val: Word) void {
     const x = abi.makeId(@constCast(n));
-    rt.rs.primenv = main.cons(x, rt.rs.primenv);
+    rt.rs.primenv = heap.cons(x, rt.rs.primenv);
     heap.tp(x).* = v;
     heap.tp(heap.h(x)).* = t_val;
 }
@@ -117,8 +117,8 @@ pub fn primdef(n: [*:0]const u8, v: Word, t_val: Word) void {
 /// `t_val` is the type node. Called from privlib() and stdlib().
 pub fn predef(n: [*:0]const u8, v: Word, t_val: Word) void {
     const x = abi.makeId(@constCast(n));
-    main.addtoenv(x);
-    heap.tp(x).* = if (main.isconstructor(x)) main.constructor(v, x) else v;
+    heap.addtoenv(x);
+    heap.tp(x).* = if (heap.isconstructor(x)) heap.constructor(v, x) else v;
     heap.tp(heap.h(x)).* = t_val;
 }
 
@@ -216,15 +216,15 @@ pub fn miraSetup() void {
     ls.common_stdin = abi.ap(word.READ, 0);
     ls.common_stdinb = abi.ap(word.READBIN, 0);
     ls.cook_stdin = abi.ap(abi.readvals(0, 0), word.OFFSIDE);
-    core_state.s.nill = main.cons(word.CONST, NIL);
+    core_state.s.nill = heap.cons(word.CONST, NIL);
     rt.rs.Void = abi.makeId(@constCast("()"));
     heap.tp(heap.h(rt.rs.Void)).* = word.void_t;
-    heap.tp(rt.rs.Void).* = main.constructor(0, rt.rs.Void);
+    heap.tp(rt.rs.Void).* = heap.constructor(0, rt.rs.Void);
     rt.rs.message = abi.makeId(@constCast("sys_message"));
     rt.rs.main_id = abi.makeId(@constCast("main"));
     rt.rs.concat = abi.makeId(@constCast("concat"));
     rt.rs.diagonalise = abi.makeId(@constCast("diagonalise"));
-    rt.rs.standardout = main.constructor(0, @as([*:0]const u8, "Stdout"));
+    rt.rs.standardout = heap.constructor(0, @as([*:0]const u8, "Stdout"));
     rt.rs.indent_fn = abi.makeId(@constCast("indent"));
     rt.rs.outdent_fn = abi.makeId(@constCast("outdent"));
     rt.rs.listdiff_fn = abi.makeId(@constCast("listdiff"));

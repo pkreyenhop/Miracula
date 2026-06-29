@@ -65,7 +65,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
         okhome_rc = main.readRc(@as([*:0]const u8, @ptrCast(&rt.rs.home_rc)));
     }
 
-    rt.rs.UTF8 = main.utf8test();
+    rt.rs.UTF8 = heap.utf8test();
     rt.rs.UTF8OUT = rt.rs.UTF8;
 
     var arg_idx: usize = 1;
@@ -280,16 +280,16 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     heap.heap.files = NIL;
     main.undump(@as([*:0]const u8, @ptrCast(&rt.rs.PRELUDE)));
     rt.rs.okprel = true;
-    abi.mkprivate(main.filDefs(heap.h(heap.heap.files)));
+    abi.mkprivate(heap.filDefs(heap.h(heap.heap.files)));
     heap.heap.files = NIL;
 
     if (!rt.rs.nostdenv) {
         main.undump(@as([*:0]const u8, @ptrCast(&rt.rs.STDENV)));
         while (heap.heap.files != NIL) {
-            rt.rs.primenv = main.alfasort(abi.append1(rt.rs.primenv, main.filDefs(heap.h(heap.heap.files))));
+            rt.rs.primenv = heap.alfasort(abi.append1(rt.rs.primenv, heap.filDefs(heap.h(heap.heap.files))));
             heap.heap.files = heap.t(heap.heap.files);
         }
-        rt.rs.primenv = main.alfasort(rt.rs.primenv);
+        rt.rs.primenv = heap.alfasort(rt.rs.primenv);
         cs.newtyps = NIL;
         heap.heap.files = NIL;
     }
@@ -324,7 +324,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
             } else {
                 var f = heap.heap.files;
                 while (f != NIL) : (f = heap.t(f)) {
-                    x = abi.append1(main.filDefs(heap.h(f)), x);
+                    x = abi.append1(heap.filDefs(heap.h(f)), x);
                 }
             }
 
@@ -333,7 +333,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 while (f != NIL) : (f = heap.t(f)) {
                     const n = abi.findid(@constCast(main.get_id(heap.h(f))));
                     heap.tp(n).* = heap.t(heap.t(heap.h(f)));
-                    heap.tp(heap.h(heap.h(n))).* = main.theVal(heap.h(f));
+                    heap.tp(heap.h(heap.h(n))).* = heap.theVal(heap.h(f));
                     heap.hp(f).* = n;
                 }
                 rt.rs.freeids = abi.typesfirst(rt.rs.freeids);
@@ -347,7 +347,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 word.print("\t}}\n", .{});
             }
 
-            var item = abi.typesfirst(main.alfasort(x));
+            var item = abi.typesfirst(heap.alfasort(x));
             while (item != NIL) : (item = heap.t(item)) {
                 _ = word.putchar('\t');
                 abi.reportType(heap.h(item));
@@ -373,7 +373,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 while (f != NIL) : (f = heap.t(f)) {
                     const filename_str = main.get_fil(heap.h(f)).?;
                     if (abi.member(x, strtab.strBits(filename_str)) == 0) {
-                        x = main.cons(strtab.strBits(filename_str), x);
+                        x = heap.cons(strtab.strBits(filename_str), x);
                         word.print("{s}\n", .{filename_str});
                     }
                 }
@@ -477,28 +477,28 @@ pub fn readRc(rcfile: [*:0]const u8) Word {
     res = abi.loadScript(f.?, @constCast(rcfile), NIL, NIL, 0);
     _ = word.fclose(f.?);
     if (cs.BAD_DUMP != 0) {
-        main.unload();
+        heap.unload();
         cs.CLASHES = NIL;
         heap.heap.stackp = heap.heap.dstack;
         core_state.s.loading = 0;
         return 0;
     }
     if (cs.CLASHES != NIL) {
-        main.unload();
+        heap.unload();
         core_state.s.loading = 0;
         return 0;
     }
-    if (main.srcUpdate() != 0) {
+    if (heap.srcUpdate() != 0) {
         main.loadfile(rcfile);
     }
     core_state.s.loading = 0;
     if (cs.ND != NIL or heap.heap.files == NIL) return 0;
-    x = main.filDefs(h(heap.heap.files));
+    x = heap.filDefs(h(heap.heap.files));
     while (x != NIL) : (x = t(x)) {
-        if (main.idType(h(x)) == word.synonym_t) {
-            heap.tp(main.tInfo(h(x))).* = main.dump.fixtype(main.tInfo(h(x)), h(x));
+        if (heap.idType(h(x)) == word.synonym_t) {
+            heap.tp(heap.tInfo(h(x))).* = main.dump.fixtype(heap.tInfo(h(x)), h(x));
         } else {
-            heap.tp(h(h(x))).* = main.dump.fixtype(main.idType(h(x)), h(x));
+            heap.tp(h(h(x))).* = main.dump.fixtype(heap.idType(h(x)), h(x));
         }
     }
     return 1;

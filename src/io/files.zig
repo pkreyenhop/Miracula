@@ -39,8 +39,8 @@ pub fn isMirandaSource(path: [*:0]const u8) c_int {
 
 /// Returns true if heap nodes `x` and `y` refer to the same filesystem inode.
 pub fn sameFile(x: Word, y: Word) bool {
-    const ix = main.filInodev(x);
-    const iy = main.filInodev(y);
+    const ix = heap.filInodev(x);
+    const iy = heap.filInodev(y);
     return h(ix) == h(iy) and t(ix) == t(iy);
 }
 
@@ -48,9 +48,9 @@ pub fn sameFile(x: Word, y: Word) bool {
 /// Returns `(0 . 0)` if the file does not exist.
 pub fn inodeId(path: [*:0]const u8) Word {
     if (platform.getFileInfo(path)) |info| {
-        return main.cons(main.cons(@intCast(info.dev), @intCast(info.ino)), main.NIL);
+        return heap.cons(heap.cons(@intCast(info.dev), @intCast(info.ino)), main.NIL);
     } else {
-        return main.cons(main.cons(0, 0), main.NIL);
+        return heap.cons(heap.cons(0, 0), main.NIL);
     }
 }
 
