@@ -16,8 +16,8 @@ const commands = @import("driver/commands.zig");
 pub const dump = @import("compiler/dump.zig");
 /// The filesystem/platform helpers module.
 pub const files_mod = @import("io/files.zig");
-/// The graph-heap module.
-pub const heap = @import("runtime/heap.zig");
+// The graph-heap module (private; callers import `runtime/heap.zig` directly).
+const heap = @import("runtime/heap.zig");
 /// The REPL driver module.
 pub const repl = @import("driver/repl.zig");
 /// The CLI-startup module.

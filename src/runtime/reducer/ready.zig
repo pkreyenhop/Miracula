@@ -161,7 +161,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             if (p) |ptr| {
                 var i = word.strlen(ptr);
                 if (main.rs.UTF8 != 0) {
-                    const qbuf_slice = rt.allocator.alloc(u8, i + 1) catch main.heap.mallocPanic("utf8 conversion buffer");
+                    const qbuf_slice = rt.allocator.alloc(u8, i + 1) catch heap.mallocPanic("utf8 conversion buffer");
                     const qbuf = qbuf_slice.ptr;
                     _ = word.strcpy(@as([*:0]u8, @ptrCast(qbuf)), ptr);
                     var q = qbuf;

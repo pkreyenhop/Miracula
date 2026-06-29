@@ -106,8 +106,8 @@ pub fn acterror() void {
 pub fn primdef(n: [*:0]const u8, v: Word, t_val: Word) void {
     const x = abi.makeId(@constCast(n));
     main.rs.primenv = main.cons(x, main.rs.primenv);
-    main.heap.tp(x).* = v;
-    main.heap.tp(main.heap.h(x)).* = t_val;
+    heap.tp(x).* = v;
+    heap.tp(heap.h(x)).* = t_val;
 }
 
 /// Registers a predefined identifier `n` in the global environment.
@@ -116,8 +116,8 @@ pub fn primdef(n: [*:0]const u8, v: Word, t_val: Word) void {
 pub fn predef(n: [*:0]const u8, v: Word, t_val: Word) void {
     const x = abi.makeId(@constCast(n));
     main.addtoenv(x);
-    main.heap.tp(x).* = if (main.isconstructor(x)) main.constructor(v, x) else v;
-    main.heap.tp(main.heap.h(x)).* = t_val;
+    heap.tp(x).* = if (main.isconstructor(x)) main.constructor(v, x) else v;
+    heap.tp(heap.h(x)).* = t_val;
 }
 
 /// Seeds the primitive type aliases (num, char, bool) and built-in constructors
@@ -216,8 +216,8 @@ pub fn miraSetup() void {
     ls.cook_stdin = abi.ap(abi.readvals(0, 0), word.OFFSIDE);
     core_state.s.nill = main.cons(word.CONST, NIL);
     main.rs.Void = abi.makeId(@constCast("()"));
-    main.heap.tp(main.heap.h(main.rs.Void)).* = word.void_t;
-    main.heap.tp(main.rs.Void).* = main.constructor(0, main.rs.Void);
+    heap.tp(heap.h(main.rs.Void)).* = word.void_t;
+    heap.tp(main.rs.Void).* = main.constructor(0, main.rs.Void);
     main.rs.message = abi.makeId(@constCast("sys_message"));
     main.rs.main_id = abi.makeId(@constCast("main"));
     main.rs.concat = abi.makeId(@constCast("concat"));

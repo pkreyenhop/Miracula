@@ -10,6 +10,7 @@ const word = @import("../runtime/word.zig");
 const main = @import("../main.zig");
 const abi = @import("../runtime/main_clib.zig");
 const platform = @import("platform.zig");
+const heap = @import("../runtime/heap.zig");
 
 const lex_state = @import("../parser/lex_state.zig");
 const core_state = @import("../runtime/core_state.zig");
@@ -17,8 +18,8 @@ const ls = lex_state.ls;
 
 const Word = main.Word;
 const NIL = main.NIL;
-const t = main.heap.t;
-const h = main.heap.h;
+const t = heap.t;
+const h = heap.h;
 
 /// Returns the mtime of `path` as a Word, or 0 if the file does not exist.
 /// Called from C ABI — parameter must remain a C string pointer.

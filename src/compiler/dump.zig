@@ -15,15 +15,15 @@ const ls = lex_state.ls;
 
 const Word = main.Word;
 const NIL = main.NIL;
-const t = main.heap.t;
-const h = main.heap.h;
-const tp = main.heap.tp;
-const hp = main.heap.hp;
+const t = heap.t;
+const h = heap.h;
+const tp = heap.tp;
+const hp = heap.hp;
 inline fn getTag(x: Word) u8 {
-    return main.heap.heap.getTag(x);
+    return heap.heap.getTag(x);
 }
 inline fn setTag(x: Word, val: u8) void {
-    main.heap.heap.setTag(x, val);
+    heap.heap.setTag(x, val);
 }
 
 /// Heap list of identifiers hidden from the exported interface (privatised).

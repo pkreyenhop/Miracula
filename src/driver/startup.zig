@@ -15,8 +15,8 @@ const abi = @import("../runtime/main_clib.zig");
 const Word = main.Word;
 const NIL = main.NIL;
 const CONS = main.CONS;
-const h = main.heap.h;
-const t = main.heap.t;
+const h = heap.h;
+const t = heap.t;
 
 const lex_state = @import("../parser/lex_state.zig");
 const version = @import("../runtime/version.zig");
@@ -27,7 +27,7 @@ const lineedit = @import("lineedit.zig");
 const ls = lex_state.ls;
 
 inline fn getTag(x: Word) u8 {
-    return main.heap.heap.getTag(x);
+    return heap.heap.getTag(x);
 }
 
 /// True if a numeric command-line flag value is outside the accepted range (100 .. 50,000,000).
@@ -279,14 +279,14 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     heap.heap.files = NIL;
     main.undump(@as([*:0]const u8, @ptrCast(&main.rs.PRELUDE)));
     main.rs.okprel = true;
-    abi.mkprivate(main.filDefs(main.heap.h(heap.heap.files)));
+    abi.mkprivate(main.filDefs(heap.h(heap.heap.files)));
     heap.heap.files = NIL;
 
     if (!main.rs.nostdenv) {
         main.undump(@as([*:0]const u8, @ptrCast(&main.rs.STDENV)));
         while (heap.heap.files != NIL) {
-            main.rs.primenv = main.alfasort(abi.append1(main.rs.primenv, main.filDefs(main.heap.h(heap.heap.files))));
-            heap.heap.files = main.heap.t(heap.heap.files);
+            main.rs.primenv = main.alfasort(abi.append1(main.rs.primenv, main.filDefs(heap.h(heap.heap.files))));
+            heap.heap.files = heap.t(heap.heap.files);
         }
         main.rs.primenv = main.alfasort(main.rs.primenv);
         main.cs.newtyps = NIL;
@@ -322,34 +322,34 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 x = main.rs.exports;
             } else {
                 var f = heap.heap.files;
-                while (f != NIL) : (f = main.heap.t(f)) {
-                    x = abi.append1(main.filDefs(main.heap.h(f)), x);
+                while (f != NIL) : (f = heap.t(f)) {
+                    x = abi.append1(main.filDefs(heap.h(f)), x);
                 }
             }
 
             if (main.rs.freeids != NIL) {
                 var f = main.rs.freeids;
-                while (f != NIL) : (f = main.heap.t(f)) {
-                    const n = abi.findid(@constCast(main.get_id(main.heap.h(f))));
-                    main.heap.tp(n).* = main.heap.t(main.heap.t(main.heap.h(f)));
-                    main.heap.tp(main.heap.h(main.heap.h(n))).* = main.theVal(main.heap.h(f));
-                    main.heap.hp(f).* = n;
+                while (f != NIL) : (f = heap.t(f)) {
+                    const n = abi.findid(@constCast(main.get_id(heap.h(f))));
+                    heap.tp(n).* = heap.t(heap.t(heap.h(f)));
+                    heap.tp(heap.h(heap.h(n))).* = main.theVal(heap.h(f));
+                    heap.hp(f).* = n;
                 }
                 main.rs.freeids = abi.typesfirst(main.rs.freeids);
                 f = main.rs.freeids;
                 word.print("\t%free {{\n", .{});
-                while (f != NIL) : (f = main.heap.t(f)) {
+                while (f != NIL) : (f = heap.t(f)) {
                     _ = word.putchar('\t');
-                    abi.reportType(main.heap.h(f));
+                    abi.reportType(heap.h(f));
                     _ = word.putchar('\n');
                 }
                 word.print("\t}}\n", .{});
             }
 
             var item = abi.typesfirst(main.alfasort(x));
-            while (item != NIL) : (item = main.heap.t(item)) {
+            while (item != NIL) : (item = heap.t(item)) {
                 _ = word.putchar('\t');
-                abi.reportType(main.heap.h(item));
+                abi.reportType(heap.h(item));
                 _ = word.putchar('\n');
             }
         }
@@ -369,8 +369,8 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 }
                 main.undump(s);
                 var f = if (heap.heap.files == NIL) main.rs.oldfiles else heap.heap.files;
-                while (f != NIL) : (f = main.heap.t(f)) {
-                    const filename_str = main.get_fil(main.heap.h(f)).?;
+                while (f != NIL) : (f = heap.t(f)) {
+                    const filename_str = main.get_fil(heap.h(f)).?;
                     if (abi.member(x, strtab.strBits(filename_str)) == 0) {
                         x = main.cons(strtab.strBits(filename_str), x);
                         word.print("{s}\n", .{filename_str});
@@ -403,19 +403,19 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
             var maxw: Word = 0;
             word.print("errors or undefined names found in:-\n", .{});
             while (main.rs.make_status != 0) {
-                h_val = abi.strcons(main.heap.h(main.rs.make_status), h_val);
-                const w = @as(Word, @intCast(word.strlen(strtab.strOf(main.heap.h(h_val)))));
+                h_val = abi.strcons(heap.h(main.rs.make_status), h_val);
+                const w = @as(Word, @intCast(word.strlen(strtab.strOf(heap.h(h_val)))));
                 if (w > maxw) {
                     maxw = w;
                 }
-                main.rs.make_status = main.heap.t(main.rs.make_status);
+                main.rs.make_status = heap.t(main.rs.make_status);
             }
             maxw += 1;
             const n = @divTrunc(@as(Word, 78), maxw);
             var w: Word = 0;
             while (h_val != 0) {
                 w += 1;
-                const str = strtab.strOf(main.heap.h(h_val));
+                const str = strtab.strOf(heap.h(h_val));
                 const len = word.strlen(str);
                 const spaces_needed = if (@as(usize, @intCast(maxw)) > len) @as(usize, @intCast(maxw)) - len else 0;
                 var pad_idx: usize = 0;
@@ -424,7 +424,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 }
                 const next_newline = if ((@rem(w, n)) != 0) "" else "\n";
                 word.print("{s}{s}", .{ str, next_newline });
-                h_val = main.heap.t(h_val);
+                h_val = heap.t(h_val);
             }
             if ((@rem(w, n)) != 0) {
                 word.print("\n", .{});
@@ -496,9 +496,9 @@ pub fn readRc(rcfile: [*:0]const u8) Word {
     x = main.filDefs(h(heap.heap.files));
     while (x != NIL) : (x = t(x)) {
         if (main.idType(h(x)) == word.synonym_t) {
-            main.heap.tp(main.tInfo(h(x))).* = main.dump.fixtype(main.tInfo(h(x)), h(x));
+            heap.tp(main.tInfo(h(x))).* = main.dump.fixtype(main.tInfo(h(x)), h(x));
         } else {
-            main.heap.tp(h(h(x))).* = main.dump.fixtype(main.idType(h(x)), h(x));
+            heap.tp(h(h(x))).* = main.dump.fixtype(main.idType(h(x)), h(x));
         }
     }
     return 1;

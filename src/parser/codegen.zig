@@ -33,16 +33,16 @@ const TRUE_ATOM: Word = CMBASE + 137;
 // ---------------------------------------------------------------------------
 
 inline fn h(x: Word) Word {
-    return main.heap.heap.h(x);
+    return heap.heap.h(x);
 }
 inline fn t(x: Word) Word {
-    return main.heap.heap.t(x);
+    return heap.heap.t(x);
 }
 inline fn tp(x: Word) *Word {
-    return main.heap.heap.tp(x);
+    return heap.heap.tp(x);
 }
 inline fn tg(x: Word) u8 {
-    return main.heap.heap.getTag(x);
+    return heap.heap.getTag(x);
 }
 
 // ---------------------------------------------------------------------------

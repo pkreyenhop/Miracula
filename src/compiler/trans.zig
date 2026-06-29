@@ -164,27 +164,27 @@ const acterror = setup.acterror;
 
 /// The node tag of cell `x`.
 inline fn getTag(x: Word) u8 {
-    return main.heap.heap.getTag(x);
+    return heap.heap.getTag(x);
 }
 
 /// Head (`hd`) of cell `x`.
 fn h(x: Word) Word {
-    return main.heap.heap.h(x);
+    return heap.heap.h(x);
 }
 
 /// Pointer to the head field of cell `x`.
 fn hp(x: Word) *Word {
-    return main.heap.heap.hp(x);
+    return heap.heap.hp(x);
 }
 
 /// Tail (`tl`) of cell `x`.
 fn t(x: Word) Word {
-    return main.heap.heap.t(x);
+    return heap.heap.t(x);
 }
 
 /// Pointer to the tail field of cell `x`.
 fn tp(x: Word) *Word {
-    return main.heap.heap.tp(x);
+    return heap.heap.tp(x);
 }
 
 /// The head of an application spine (walk `hd` while it is an `AP`).

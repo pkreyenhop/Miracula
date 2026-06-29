@@ -164,8 +164,8 @@ const ATOMLIMIT = word.ATOMLIMIT;
 
 // CMBASE + 138 is NIL
 
-const make = main.heap.make;
-const reverse = main.heap.reverse;
+const make = heap.make;
+const reverse = heap.reverse;
 const getspecloc = trans_mod.getspecloc;
 const codegen = trans_mod.codegen;
 const findid = lex_mod.findid;
@@ -173,14 +173,14 @@ const mktuple = trans_mod.mktuple;
 const tclos = trans_mod.tclos;
 const sortrel = trans_mod.sortrel;
 const genshfns = trans_mod.genshfns;
-const alfasort = main.heap.alfasort;
+const alfasort = heap.alfasort;
 const readoption = main.readoption;
-const out = main.heap.out;
-const isChar = main.heap.isChar;
-const charname = main.heap.charname;
-const size = main.heap.size;
+const out = heap.out;
+const isChar = heap.isChar;
+const charname = heap.charname;
+const size = heap.size;
 const same = trans_mod.same;
-const getDbl = main.heap.getDbl;
+const getDbl = heap.getDbl;
 const lastlink = trans_mod.lastlink;
 const trans_mod = @import("trans.zig");
 const lex_mod = @import("../parser/lex.zig");
@@ -188,27 +188,27 @@ const isconstrname = lex_mod.isconstrname;
 
 /// The node tag of cell `x`.
 inline fn getTag(x: Word) u8 {
-    return main.heap.heap.getTag(x);
+    return heap.heap.getTag(x);
 }
 
 /// Head (`hd`) of cell `x`.
 fn h(x: Word) Word {
-    return main.heap.heap.h(x);
+    return heap.heap.h(x);
 }
 
 /// Pointer to the head field of cell `x`.
 fn hp(x: Word) *Word {
-    return main.heap.heap.hp(x);
+    return heap.heap.hp(x);
 }
 
 /// Tail (`tl`) of cell `x`.
 fn t(x: Word) Word {
-    return main.heap.heap.t(x);
+    return heap.heap.t(x);
 }
 
 /// Pointer to the tail field of cell `x`.
 fn tp(x: Word) *Word {
-    return main.heap.heap.tp(x);
+    return heap.heap.tp(x);
 }
 
 /// Allocate a `CONS` cell `(x . y)`.
@@ -395,7 +395,7 @@ test "member: set membership (1/0)" {
 }
 
 const type_t: Word = 10;
-const shunt = main.heap.shunt;
+const shunt = heap.shunt;
 
 /// The type field of id `x`.
 fn idType(x: Word) Word {

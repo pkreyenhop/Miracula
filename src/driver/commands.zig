@@ -16,7 +16,7 @@ const NIL = main.NIL;
 
 // State owned by heap.zig / reduce.zig — not yet accessible via @import.
 inline fn getTag(x: Word) u8 {
-    return main.heap.heap.getTag(x);
+    return heap.heap.getTag(x);
 }
 
 const lex_state = @import("../parser/lex_state.zig");
@@ -74,7 +74,7 @@ fn namescom(l: Word) void {
     const scrwd = main.termWidth();
     if (main.rs.sorted == 0 and n != main.rs.primenv) {
         n = main.alfasort(n);
-        main.heap.tp(l).* = n;
+        heap.tp(l).* = n;
     }
     if (n == NIL) return;
     if (main.get_fil(l)) |gf| {
@@ -84,8 +84,8 @@ fn namescom(l: Word) void {
     }
     word.print("\n", .{});
     while (n != NIL) {
-        if (main.idType(main.heap.h(n)) == word.wrong_t or main.idVal(main.heap.h(n)) != word.UNDEF) {
-            const w = @as(Word, @intCast(word.strlen(main.get_id(main.heap.h(n)))));
+        if (main.idType(heap.h(n)) == word.wrong_t or main.idVal(heap.h(n)) != word.UNDEF) {
+            const w = @as(Word, @intCast(word.strlen(main.get_id(heap.h(n)))));
             if (col_local + w < @as(Word, @intCast(scrwd))) {
                 col_local += if (col_local != 0) 1 else 0;
             } else if (wp > 0 and col_local + w >= @as(Word, @intCast(scrwd))) {
@@ -130,12 +130,12 @@ fn namescom(l: Word) void {
                 _ = word.putchar('\n');
             }
             col_local += w;
-            words[wp] = main.heap.h(n);
+            words[wp] = heap.h(n);
             wp += 1;
         } else {
-            undefs = main.cons(main.heap.h(n), undefs);
+            undefs = main.cons(heap.h(n), undefs);
         }
-        n = main.heap.t(n);
+        n = heap.t(n);
     }
     if (wp > 0) {
         col_local = 0;
@@ -252,7 +252,7 @@ pub fn command() void {
                         main.copyFile(mf.?, t_val.?);
                     }
                 }
-                const err_line_num: c_int = if (word.strcmp(t_val.?, main.rs.current_script.?) == 0) @intCast(core_state.s.errline) else if (core_state.s.errs != 0 and word.strcmp(t_val.?, strtab.strOf(main.heap.h(core_state.s.errs))) == 0) @intCast(main.heap.t(core_state.s.errs)) else @intCast(abi.geterrlin(t_val.?));
+                const err_line_num: c_int = if (word.strcmp(t_val.?, main.rs.current_script.?) == 0) @intCast(core_state.s.errline) else if (core_state.s.errs != 0 and word.strcmp(t_val.?, strtab.strOf(heap.h(core_state.s.errs))) == 0) @intCast(heap.t(core_state.s.errs)) else @intCast(abi.geterrlin(t_val.?));
                 editfile(t_val.?, err_line_num);
                 return;
             }
@@ -325,9 +325,9 @@ pub fn command() void {
             if (is("files")) {
                 if (abi.getchar() != '\n') return;
                 var f = heap.heap.files;
-                while (f != NIL) : (f = main.heap.t(f)) {
-                    word.print("({s},{},{})", .{main.get_fil(main.heap.h(f)).?, main.filTime(main.heap.h(f)), main.filShare(main.heap.h(f))});
-                    abi.printlist(@constCast(""), main.filDefs(main.heap.h(f)));
+                while (f != NIL) : (f = heap.t(f)) {
+                    word.print("({s},{},{})", .{main.get_fil(heap.h(f)).?, main.filTime(heap.h(f)), main.filShare(heap.h(f))});
+                    abi.printlist(@constCast(""), main.filDefs(heap.h(f)));
                 }
                 return;
             }
@@ -339,20 +339,20 @@ pub fn command() void {
                     if (x != NIL) {
                         const n = main.get_id(x);
                         var y = main.rs.primenv;
-                        while (y != NIL) : (y = main.heap.t(y)) {
-                            if (getTag(main.heap.h(y)) == word.ID) {
-                                if (main.heap.h(y) == x or word.strcmp(abi.getaka(main.heap.h(y)), n) == 0) {
-                                    finger(main.get_id(main.heap.h(y)));
+                        while (y != NIL) : (y = heap.t(y)) {
+                            if (getTag(heap.h(y)) == word.ID) {
+                                if (heap.h(y) == x or word.strcmp(abi.getaka(heap.h(y)), n) == 0) {
+                                    finger(main.get_id(heap.h(y)));
                                 }
                             }
                         }
                         var ff = heap.heap.files;
-                        while (ff != NIL) : (ff = main.heap.t(ff)) {
-                            var y_def = main.filDefs(main.heap.h(ff));
-                            while (y_def != NIL) : (y_def = main.heap.t(y_def)) {
-                                if (getTag(main.heap.h(y_def)) == word.ID) {
-                                    if (main.heap.h(y_def) == x or word.strcmp(abi.getaka(main.heap.h(y_def)), n) == 0) {
-                                        finger(main.get_id(main.heap.h(y_def)));
+                        while (ff != NIL) : (ff = heap.t(ff)) {
+                            var y_def = main.filDefs(heap.h(ff));
+                            while (y_def != NIL) : (y_def = heap.t(y_def)) {
+                                if (getTag(heap.h(y_def)) == word.ID) {
+                                    if (heap.h(y_def) == x or word.strcmp(abi.getaka(heap.h(y_def)), n) == 0) {
+                                        finger(main.get_id(heap.h(y_def)));
                                     }
                                 }
                             }
@@ -612,8 +612,8 @@ pub fn finger(n: [*:0]const u8) void {
     if (x != NIL and main.idType(x) != word.undef_t) {
         if (main.idWho(x) != NIL) {
             const here_val = main.getHere(x);
-            s = strtab.strOf(main.heap.h(here_val));
-            line = main.heap.t(here_val);
+            s = strtab.strOf(heap.h(here_val));
+            line = heap.t(here_val);
         }
         if (main.rs.lastid == 0) {
             main.rs.lastid = x;
@@ -688,29 +688,29 @@ pub fn allnamescom() void {
     leftist = false;
     namescom(main.makeFil(if (main.rs.nostdenv) null else @as([*:0]const u8, @ptrCast(&main.rs.STDENV)), 0, 0, main.rs.primenv));
     if (heap.heap.files == NIL) return;
-    s = main.heap.t(heap.heap.files);
-    while (s != NIL) : (s = main.heap.t(s)) {
-        namescom(main.heap.h(s));
+    s = heap.t(heap.heap.files);
+    while (s != NIL) : (s = heap.t(s)) {
+        namescom(heap.h(s));
     }
-    namescom(main.heap.h(heap.heap.files));
+    namescom(heap.h(heap.heap.files));
     main.rs.sorted = 1;
 
-    while (x != NIL and main.idType(main.heap.h(x)) == word.undef_t) {
-        x = main.heap.t(x);
+    while (x != NIL and main.idType(heap.h(x)) == word.undef_t) {
+        x = heap.t(x);
     }
-    while (y != NIL and main.idType(main.heap.h(y)) != word.undef_t) {
-        y = main.heap.t(y);
+    while (y != NIL and main.idType(heap.h(y)) != word.undef_t) {
+        y = heap.t(y);
     }
     if (x != NIL) {
         word.print("WARNING, SCRIPT CONTAINS TYPE ERRORS: ", .{});
-        while (x != NIL) : (x = main.heap.t(x)) {
-            if (main.idType(main.heap.h(x)) != word.undef_t) {
+        while (x != NIL) : (x = heap.t(x)) {
+            if (main.idType(heap.h(x)) != word.undef_t) {
                 if (z == 0) {
                     z = 1;
                 } else {
                     _ = word.putchar(',');
                 }
-                abi.out(main.getStdout(), main.heap.h(x));
+                abi.out(main.getStdout(), heap.h(x));
             }
         }
         word.print(";\n", .{});
@@ -718,14 +718,14 @@ pub fn allnamescom() void {
     if (y != NIL) {
         word.print("{s} UNDEFINED NAMES: ", .{@as([*:0]const u8, if (z != 0) "AND" else "WARNING, SCRIPT CONTAINS")});
         z = 0;
-        while (y != NIL) : (y = main.heap.t(y)) {
-            if (main.idType(main.heap.h(y)) == word.undef_t) {
+        while (y != NIL) : (y = heap.t(y)) {
+            if (main.idType(heap.h(y)) == word.undef_t) {
                 if (z == 0) {
                     z = 1;
                 } else {
                     _ = word.putchar(',');
                 }
-                abi.out(main.getStdout(), main.heap.h(y));
+                abi.out(main.getStdout(), heap.h(y));
             }
         }
         word.print(";\n", .{});

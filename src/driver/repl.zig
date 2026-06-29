@@ -19,14 +19,14 @@ const Word = main.Word;
 const NIL = main.NIL;
 const CONS = main.CONS;
 const AP = main.AP;
-const h = main.heap.h;
-const t = main.heap.t;
+const h = heap.h;
+const t = heap.t;
 
 const lex_state = @import("../parser/lex_state.zig");
 const r7_setup = @import("../compiler/setup.zig");
 const r7_signals = @import("../io/signals.zig");
 const r7_lex = @import("../parser/lex.zig");
-const r7_heap = @import("../runtime/heap.zig");
+const heap = @import("../runtime/heap.zig");
 const r7_reduce = @import("../runtime/reduce.zig");
 const core_state = @import("../runtime/core_state.zig");
 const version = @import("../runtime/version.zig");
@@ -34,11 +34,11 @@ const ls = lex_state.ls;
 
 // State owned by reduce.zig / heap.zig — not yet accessible via @import.
 inline fn getTag(x: Word) u8 {
-    return main.heap.heap.getTag(x);
+    return heap.heap.getTag(x);
 }
 
 const signals = r7_signals.signals;
-const resetgcstats = r7_heap.resetgcstats;
+const resetgcstats = heap.resetgcstats;
 const outstats = r7_reduce.outstats;
 const syntax = r7_setup.syntax;
 const token = r7_lex.token;
@@ -62,8 +62,8 @@ pub fn commandLoop(initscript: [*:0]u8) void {
     if (abi.sigsetjmp(&main.rs.env, 1) == 0) {
         if (main.rs.magic) {
             main.undump(initscript);
-            if (r7_heap.heap.files == NIL or main.cs.ND != NIL or main.idVal(main.rs.main_id) == word.UNDEF) {
-                if (r7_heap.heap.files != NIL and main.cs.ND == NIL and main.idVal(main.rs.main_id) == word.UNDEF) {
+            if (heap.heap.files == NIL or main.cs.ND != NIL or main.idVal(main.rs.main_id) == word.UNDEF) {
+                if (heap.heap.files != NIL and main.cs.ND == NIL and main.idVal(main.rs.main_id) == word.UNDEF) {
                     word.printErr("{s}: main not defined\n", .{initscript});
                 }
                 main.fatal("mira: incorrect use of \"-exec\" flag\n", .{.{}});
@@ -133,13 +133,13 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                     main.rs.lastid = x;
                     x = main.idWho(x);
                     if (getTag(x) == CONS) {
-                        aka = strtab.strOf(main.heap.h(main.heap.h(x)));
-                        x = main.heap.t(x);
+                        aka = strtab.strOf(heap.h(heap.h(x)));
+                        x = heap.t(x);
                     }
                     if (aka != null) {
                         word.print("originally defined as \"{s}\"\n", .{aka.?});
                     }
-                    main.editfile(strtab.strOf(main.heap.h(x)), @intCast(main.heap.t(x)));
+                    main.editfile(strtab.strOf(heap.h(x)), @intCast(heap.t(x)));
                 } else {
                     _ = abi.ungetc(ch, main.getStdin().?);
                     _ = token();
@@ -214,7 +214,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
             else => {
                 _ = abi.ungetc(ch, main.getStdin().?);
                 main.rs.lastid = 0;
-                main.heap.tp(main.heap.h(ls.cook_stdin)).* = 0;
+                heap.tp(heap.h(ls.cook_stdin)).* = 0;
                 main.rs.rv_expr = 0;
                 ls.c = word.EVAL;
                 main.rs.echoing = 0;
