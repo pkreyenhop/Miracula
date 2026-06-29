@@ -164,6 +164,8 @@ test "handleC: C f g x reduces to f x g" {
 }
 
 /// `Y f -> f (Y f)` — fixpoint, built as a self-referential (cyclic) node.
+///
+/// Tests: handleY: Y f reduces to f (Y f)
 pub fn handleY(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -173,6 +175,12 @@ pub fn handleY(ctx: *ReductionCtx) void {
     reduce.tl_set(ctx.e, ctx.e);
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
+}
+
+test "handleY: Y f reduces to f (Y f)" {
+    tu.freshInterp();
+    // Y (K 5) → (K 5) (Y (K 5)) → 5 (K discards the recursive argument)
+    try tu.expectInt(5, tu.ap(word.Y, tu.ap(word.K, tu.int(5))));
 }
 
 /// `KI x y -> y` — second projection (`K I`).
@@ -309,6 +317,8 @@ test "handleC1: C1 c f g x reduces to c (f x) g" {
 }
 
 /// `S_p f g x -> (f x) : (g x)` — paired S' (builds a cons).
+///
+/// Tests: handleS_p: S_p f g x builds (f x) : (g x)
 pub fn handleS_p(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -329,7 +339,15 @@ pub fn handleS_p(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+test "handleS_p: S_p f g x builds (f x) : (g x)" {
+    tu.freshInterp();
+    // S_p (K 1) (K []) I → (K 1 I) : (K [] I) → 1 : [] → [1]
+    try tu.expectList(&.{1}, tu.ap(tu.ap2(word.S_p, tu.ap(word.K, tu.int(1)), tu.ap(word.K, word.NIL)), word.I));
+}
+
 /// `B_p f g x -> f : (g x)` — paired B' (builds a cons).
+///
+/// Tests: handleB_p: B_p f g x builds f : (g x)
 pub fn handleB_p(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -350,7 +368,15 @@ pub fn handleB_p(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+test "handleB_p: B_p f g x builds f : (g x)" {
+    tu.freshInterp();
+    // B_p 1 (K []) I → 1 : (K [] I) → 1 : [] → [1]
+    try tu.expectList(&.{1}, tu.ap(tu.ap2(word.B_p, tu.int(1), tu.ap(word.K, word.NIL)), word.I));
+}
+
 /// `C_p f g x -> (f x) : g` — paired C' (builds a cons).
+///
+/// Tests: handleC_p: C_p f g x builds (f x) : g
 pub fn handleC_p(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -371,7 +397,15 @@ pub fn handleC_p(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+test "handleC_p: C_p f g x builds (f x) : g" {
+    tu.freshInterp();
+    // C_p (K 1) [] I → (K 1 I) : [] → 1 : [] → [1]
+    try tu.expectList(&.{1}, tu.ap(tu.ap2(word.C_p, tu.ap(word.K, tu.int(1)), word.NIL), word.I));
+}
+
 /// `iterate f x -> x : iterate f (f x)` — lazy infinite repeated application.
+///
+/// Tests: handleITERATE: iterate f x heads x then repeats
 pub fn handleITERATE(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -386,6 +420,14 @@ pub fn handleITERATE(ctx: *ReductionCtx) void {
     const hold = reduce.ap(reduce.hd_get(ctx.e), reduce.ap(arg1, lastarg));
     reduce.rewrite_to_cons(ctx.e, lastarg, hold);
     ctx.action = word.ACT_DONE;
+}
+
+test "handleITERATE: iterate f x heads x then repeats" {
+    tu.freshInterp();
+    const lst = reduce.reduce(tu.ap2(word.ITERATE, word.I, tu.int(5)));
+    try tu.expectInt(5, reduce.hd_get(lst)); // head is x
+    const rest = reduce.reduce(reduce.tl_get(lst));
+    try tu.expectInt(5, reduce.hd_get(rest)); // next element is I 5 = 5
 }
 
 /// Like `ITERATE`, but stops when the next value reduces to `FAIL`.
@@ -528,6 +570,8 @@ test "handleATLEAST: passes f (k - n) when k >= n, else FAIL" {
 }
 
 /// `U_ f xs -> f (hd xs) (tl xs)`, or `FAIL` on `[]` — strict uncurry of a non-empty list.
+///
+/// Tests: handleU_: strict uncurry, FAIL on the empty list
 pub fn handleU_(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -548,6 +592,14 @@ pub fn handleU_(ctx: *ReductionCtx) void {
     reduce.hd_set(ctx.e, reduce.ap(arg1, reduce.hd_get(lastarg)));
     reduce.tl_set(ctx.e, reduce.tl_get(lastarg));
     ctx.action = word.ACT_NEXTREDEX;
+}
+
+test "handleU_: strict uncurry, FAIL on the empty list" {
+    tu.freshInterp();
+    // U_ K [1,2] → K 1 [2] → 1
+    try tu.expectInt(1, tu.ap2(word.U_, word.K, tu.list(&.{ tu.int(1), tu.int(2) })));
+    // U_ K [] → FAIL
+    try tu.expectReducesTo(word.FAIL, tu.ap2(word.U_, word.K, word.NIL));
 }
 
 /// Guarded uncurry: match the value's constructor against `arg1`; on mismatch `FAIL`, else deconstruct and apply (the pattern-match destructor).
@@ -680,6 +732,8 @@ test "handleMAP: map applies a function over a list" {
 }
 
 /// Concat-map: apply `f` to each element and append the non-`FAIL`/non-`[]` results.
+///
+/// Tests: handleFLATMAP: concat-maps f over the list
 pub fn handleFLATMAP(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -708,6 +762,12 @@ pub fn handleFLATMAP(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_NEXTREDEX;
         return;
     }
+}
+
+test "handleFLATMAP: concat-maps f over the list" {
+    tu.freshInterp();
+    const f = tu.ap(word.K, tu.list(&.{tu.int(9)})); // \\_ -> [9]
+    try tu.expectList(&.{ 9, 9 }, tu.ap2(word.FLATMAP, f, tu.list(&.{ tu.int(1), tu.int(2) })));
 }
 
 /// `filter p xs` — skip leading elements failing predicate `p`, then emit the next survivor lazily.
