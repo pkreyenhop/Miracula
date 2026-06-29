@@ -17,6 +17,9 @@ const main = @import("../main.zig");
 
 const compiler_state = @import("compiler_state.zig");
 const cs = compiler_state.cs;
+// `abi` — a private namespace of libc re-export aliases so this file can write
+// `abi.printf(...)`, etc. Internal only (the container is not `pub`, so these
+// never appear in autodoc); each member re-exports a `main_clib` symbol.
 const abi = struct {
     pub const printf = main_clib.printf;
     pub const putchar = main_clib.putchar;

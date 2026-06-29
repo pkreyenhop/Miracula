@@ -18,6 +18,10 @@ const core_state = @import("../runtime/core_state.zig");
 const heap = @import("../runtime/heap.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 const cs = compiler_state.cs;
+// `abi` — a private namespace of libc / `word`-combinator re-export aliases so
+// this file can write `abi.printf(...)`, `abi.PLUS`, etc. Internal only (the
+// container is not `pub`, so these never appear in autodoc); each member just
+// re-exports an already-documented symbol from `main_clib`/`word`.
 const abi = struct {
     pub const printf = main_clib.printf;
     pub const fprintf = main_clib.fprintf;
