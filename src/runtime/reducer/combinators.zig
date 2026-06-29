@@ -15,6 +15,7 @@ const heap = @import("../heap.zig");
 const lex = @import("../../parser/lex.zig");
 const main_clib = @import("../main_clib.zig");
 const reduce_rt = @import("../reduce.zig");
+const tu = @import("../../testutil.zig"); // unit-test harness (test builds only)
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
 
@@ -69,6 +70,8 @@ pub fn handleS(ctx: *ReductionCtx) void {
 }
 
 /// `B f g x -> f (g x)` — composition.
+///
+/// Tests: handleB: B f g x reduces to f (g x)
 pub fn handleB(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -89,6 +92,12 @@ pub fn handleB(ctx: *ReductionCtx) void {
     reduce.tl_set(ctx.e, reduce.ap(arg2, lastarg));
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
+}
+
+test "handleB: B f g x reduces to f (g x)" {
+    tu.freshInterp();
+    // B I I True → I (I True) → True
+    try tu.expectReducesTo(word.True, tu.ap(tu.ap2(word.B, word.I, word.I), word.True));
 }
 
 /// `CB f g x -> g (f x)` — reverse composition.
@@ -115,6 +124,8 @@ pub fn handleCB(ctx: *ReductionCtx) void {
 }
 
 /// `C f g x -> f x g` — flip the last two arguments.
+///
+/// Tests: handleC: C f g x reduces to f x g
 pub fn handleC(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -138,6 +149,12 @@ pub fn handleC(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+test "handleC: C f g x reduces to f x g" {
+    tu.freshInterp();
+    // C K True False → K False True → False
+    try tu.expectReducesTo(word.False, tu.ap(tu.ap2(word.C, word.K, word.True), word.False));
+}
+
 /// `Y f -> f (Y f)` — fixpoint, built as a self-referential (cyclic) node.
 pub fn handleY(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
@@ -151,6 +168,8 @@ pub fn handleY(ctx: *ReductionCtx) void {
 }
 
 /// `KI x y -> y` — second projection (`K I`).
+///
+/// Tests: handleKI: KI x y reduces to y
 pub fn handleKI(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -162,6 +181,11 @@ pub fn handleKI(ctx: *ReductionCtx) void {
     }
     ctx.e = reduce.rewrite_to_existing_tail(ctx.e);
     ctx.action = word.ACT_NEXTREDEX;
+}
+
+test "handleKI: KI x y reduces to y" {
+    tu.freshInterp();
+    try tu.expectReducesTo(word.False, tu.ap2(word.KI, word.True, word.False));
 }
 
 /// `S1 c f g x -> c (f x) (g x)` — Turner's S' with a context `c`.
@@ -355,6 +379,8 @@ pub fn handleITERATE1(ctx: *ReductionCtx) void {
 }
 
 /// `P x xs -> x : xs` — the cons (pair) constructor.
+///
+/// Tests: handleP: P x xs builds the cons (x : xs)
 pub fn handleP(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -368,6 +394,12 @@ pub fn handleP(ctx: *ReductionCtx) void {
     const lastarg = reduce.tl_get(ctx.e);
     reduce.rewrite_to_cons(ctx.e, arg1, lastarg);
     ctx.action = word.ACT_DONE;
+}
+
+test "handleP: P x xs builds the cons (x : xs)" {
+    tu.freshInterp();
+    try tu.expectList(&.{1}, tu.ap2(word.P, tu.int(1), word.NIL));
+    try tu.expectList(&.{ 1, 2 }, tu.ap2(word.P, tu.int(1), tu.list(&.{tu.int(2)})));
 }
 
 /// `U f p -> f (hd p) (tl p)` — uncurry a pair.
@@ -570,6 +602,8 @@ pub fn handleGENSEQ(ctx: *ReductionCtx) void {
 }
 
 /// `map f (x:xs) -> f x : map f xs`; `map f [] -> []`.
+///
+/// Tests: handleMAP: map applies a function over a list
 pub fn handleMAP(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -588,6 +622,11 @@ pub fn handleMAP(ctx: *ReductionCtx) void {
         reduce.rewrite_to_cons(ctx.e, reduce.ap(arg1, reduce.hd_get(lastarg)), hold);
     }
     ctx.action = word.ACT_DONE;
+}
+
+test "handleMAP: map applies a function over a list" {
+    tu.freshInterp();
+    try tu.expectList(&.{ 1, 2, 3 }, tu.ap2(word.MAP, word.I, tu.list(&.{ tu.int(1), tu.int(2), tu.int(3) })));
 }
 
 /// Concat-map: apply `f` to each element and append the non-`FAIL`/non-`[]` results.
@@ -666,6 +705,8 @@ pub fn handleLIST_LAST(ctx: *ReductionCtx) void {
 }
 
 /// `#xs` — the length of a list, as an `INT`.
+///
+/// Tests: handleLENGTH: # is the length of a list
 pub fn handleLENGTH(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -683,7 +724,15 @@ pub fn handleLENGTH(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+test "handleLENGTH: # is the length of a list" {
+    tu.freshInterp();
+    try tu.expectInt(3, tu.ap(word.LENGTH, tu.list(&.{ tu.int(1), tu.int(2), tu.int(3) })));
+    try tu.expectInt(0, tu.ap(word.LENGTH, word.NIL));
+}
+
 /// `drop n xs` — discard the first `n` elements (clamping at `[]`).
+///
+/// Tests: handleDROP: drop n discards the first n elements
 pub fn handleDROP(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -713,6 +762,11 @@ pub fn handleDROP(ctx: *ReductionCtx) void {
     }
     reduce.rewrite_to_value(&ctx.e, lastarg);
     ctx.action = word.ACT_NEXTREDEX;
+}
+
+test "handleDROP: drop n discards the first n elements" {
+    tu.freshInterp();
+    try tu.expectList(&.{ 2, 3 }, tu.ap2(word.DROP, tu.int(1), tu.list(&.{ tu.int(1), tu.int(2), tu.int(3) })));
 }
 
 /// `xs ! n` — the n-th element (0-based); raises a subscript error if out of range.
