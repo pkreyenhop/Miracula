@@ -40,6 +40,25 @@ const core_state = @import("../runtime/core_state.zig");
 const version = @import("../runtime/version.zig");
 const ls = lex_state.ls;
 
+var last_elapsed_ns: ?i128 = null;
+
+fn formatExecutionTime(ns: i128, buf: []u8) []const u8 {
+    const ms = @as(f64, @floatFromInt(ns)) / 1_000_000.0;
+    if (ms < 1.0) {
+        return std.fmt.bufPrint(buf, "{d:.3}ms", .{ms}) catch "0ms";
+    } else if (ms < 1000.0) {
+        return std.fmt.bufPrint(buf, "{d:.2}ms", .{ms}) catch "0ms";
+    } else {
+        return std.fmt.bufPrint(buf, "{d:.3}s", .{ms / 1000.0}) catch "0s";
+    }
+}
+
+fn getMonotonicNs() i128 {
+    var ts: std.posix.timespec = undefined;
+    _ = std.posix.system.clock_gettime(std.posix.CLOCK.MONOTONIC, &ts);
+    return @as(i128, ts.sec) * std.time.ns_per_s + ts.nsec;
+}
+
 // State owned by reduce.zig / heap.zig — not yet accessible via @import.
 inline fn getTag(x: Word) u8 {
     return heap.heap.getTag(x);
@@ -89,13 +108,23 @@ pub fn commandLoop(initscript: [*:0]u8) void {
 
     while (true) {
         resetgcstats();
-        if (lineedit.active) {
-            // The line editor owns the prompt (it must, to redraw correctly while
-            // editing); hand it the prompt instead of printing it ourselves.
-            lineedit.setPrompt(if (rt.rs.verbosity != 0) std.mem.span(rt.rs.promptstr) else "");
-        } else if (rt.rs.verbosity != 0) {
-            word.print("{s}", .{rt.rs.promptstr});
+        if (rt.rs.verbosity != 0) {
+            var prompt_buf: [256]u8 = undefined;
+            const prompt = if (last_elapsed_ns) |ns| blk: {
+                var time_buf: [64]u8 = undefined;
+                const time_str = formatExecutionTime(ns, &time_buf);
+                break :blk std.fmt.bufPrint(&prompt_buf, "[{s}] {s}", .{ time_str, std.mem.span(rt.rs.promptstr) }) catch std.mem.span(rt.rs.promptstr);
+            } else std.mem.span(rt.rs.promptstr);
+
+            if (lineedit.active) {
+                lineedit.setPrompt(prompt);
+            } else {
+                word.print("{s}", .{prompt});
+            }
+        } else if (lineedit.active) {
+            lineedit.setPrompt("");
         }
+        last_elapsed_ns = null;
         ch = abi.getchar();
         if (rt.rs.rechecking != 0 and heap.srcUpdate() != 0) {
             module_loader.loadfile(rt.rs.current_script.?);
@@ -220,6 +249,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                 abi.exit(0);
             },
             else => {
+                const start = getMonotonicNs();
                 _ = abi.ungetc(ch, abi.stdin().?);
                 rt.rs.lastid = 0;
                 heap.tp(heap.h(ls.cook_stdin)).* = 0;
@@ -239,6 +269,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                 }
                 core_state.s.commandmode = 0;
                 rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
+                last_elapsed_ns = getMonotonicNs() - start;
             },
         }
     }
@@ -363,6 +394,7 @@ pub fn reset() callconv(.c) void {
         _ = abi.unlink(u);
         rt.rs.unlinkme = null;
     }
+    last_elapsed_ns = null;
     abi.siglongjmp(&rt.rs.env, 1);
 }
 
