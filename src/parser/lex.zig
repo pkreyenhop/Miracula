@@ -23,6 +23,7 @@ const r7_files = @import("../io/files.zig");
 const r7_big = @import("../runtime/big.zig");
 const main_clib = @import("../runtime/main_clib.zig");
 const core_state = @import("../runtime/core_state.zig");
+const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 const Word = i64;
 const CMBASE: Word = 306;
@@ -1082,6 +1083,8 @@ pub fn convArgs() Word {
 }
 
 /// Convert C-string `s` to a Miranda char list.
+///
+/// Tests: strConv: a C string becomes a Miranda char list
 pub fn strConv(s: [*:0]const u8) Word {
     var x = NIL;
     var i = word.strlen(s);
@@ -1090,6 +1093,12 @@ pub fn strConv(s: [*:0]const u8) Word {
         x = cons(s[i], x);
     }
     return x;
+}
+
+test "strConv: a C string becomes a Miranda char list" {
+    tu.freshInterp();
+    try tu.expectStr("hello", strConv("hello"));
+    try tu.expectStr("", strConv(""));
 }
 
 /// Scan a `<...>` or quoted pathname token.
@@ -1652,6 +1661,8 @@ pub fn name() Word {
 }
 
 /// Intern name `n` as an `ID` node (inserting if new).
+///
+/// Tests: makeId / findid: intern then look up a dictionary name
 pub fn makeId(n: [*:0]const u8) Word {
     const h_idx = @as(usize, @intCast(hash(n)));
     const x = stoId(if (ls.inprelude) keep(@constCast(n)) else n);
@@ -1660,6 +1671,8 @@ pub fn makeId(n: [*:0]const u8) Word {
 }
 
 /// Look up name `n` in the dictionary (NIL if absent).
+///
+/// Tests: makeId / findid: intern then look up a dictionary name
 pub fn findid(n: [*:0]const u8) Word {
     const h_idx = @as(usize, @intCast(hash(n)));
     var q = ls.namebucket[h_idx];
@@ -1667,6 +1680,13 @@ pub fn findid(n: [*:0]const u8) Word {
         q = t(q);
     }
     return if (q != 0) h(q) else NIL;
+}
+
+test "makeId / findid: intern then look up a dictionary name" {
+    tu.freshInterp();
+    const id = makeId("zzqunique");
+    try std.testing.expectEqual(id, findid("zzqunique"));
+    try std.testing.expectEqual(@as(Word, NIL), findid("zznotthere"));
 }
 
 /// Fill `out` with interned identifiers that are in scope (have a type) and whose
@@ -1957,6 +1977,8 @@ fn hash(input: [*:0]const u8) c_int {
 }
 
 /// Whether name `input` is a constructor name — begins uppercase (1/0).
+///
+/// Tests: identifier classification matches Miranda lexer rules
 pub fn isconstrname(input: [*:0]const u8) c_int {
     var s = input;
     if (s[0] == '$') s += 1;
@@ -1964,6 +1986,8 @@ pub fn isconstrname(input: [*:0]const u8) c_int {
 }
 
 /// Whether char `ch` is valid within an identifier (1/0).
+///
+/// Tests: identifier classification matches Miranda lexer rules
 pub fn okid(ch: c_int) c_int {
     return if ((ch >= 'a' and ch <= 'z') or
         (ch >= 'A' and ch <= 'Z') or
