@@ -1,3 +1,8 @@
+//! runtime_state.zig — the interpreter's bootstrap globals (`gpa`/`allocator`/
+//! `io`/`environ`, set up in `main`) and the aggregate `RuntimeState`: all
+//! mutable interpreter state that is not tied to a C-ABI linker symbol. The
+//! singleton lives in `interp`; callers reach it as `rs.X`.
+
 const std = @import("std");
 const abi = @import("main_clib.zig");
 

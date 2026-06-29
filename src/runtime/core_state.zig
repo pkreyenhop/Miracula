@@ -1,9 +1,11 @@
-/// Core interpreter / error state, kept in this leaf module (no imports from the
-/// Miracula source tree — G1 invariant) so that `heap.zig` and `parser_api.zig`
-/// can reach it without `@import`-ing `main.zig` and forming a cycle. Callers
-/// use `core_state.X` directly. (Historically these were `pub export var` linker
-/// symbols with `extern var` re-declarations in `main.zig`; both are gone —
-/// plain `pub var` suffices for cross-module Zig access.)
+//! core_state.zig — core interpreter / error state (`nill`, `loading`,
+//! `compiling`, `errs`, `errline`, `SYNERR`, `commandmode`, …), kept in this leaf
+//! module (no imports from the Miracula source tree — the G1 acyclic invariant)
+//! so that `heap.zig` and `parser_api.zig` can reach it without `@import`-ing
+//! `main.zig` and forming a cycle. Callers use `core_state.X` directly.
+//! (Historically these were `pub export var` linker symbols with `extern var`
+//! re-declarations in `main.zig`; both are gone — plain `pub var` suffices.)
+
 const Word = i64;
 
 /// Core interpreter / error state, grouped into one struct (shared-state plan

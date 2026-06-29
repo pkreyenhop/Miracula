@@ -1,3 +1,9 @@
+//! main_clib.zig — the Zig-native C-standard-library shim. Implements the
+//! `printf`/`fopen`/`getc`/`fork`/`wait`/`errno`/… surface the C-ported
+//! interpreter calls, layered over `std` and the raw OS syscalls, so the binary
+//! links no external libc. This is the project's irreducible FFI boundary (the
+//! few remaining `extern fn`s are the OS syscall floor).
+
 const word_mod = @import("word.zig");
 const std = @import("std");
 const builtin = @import("builtin");

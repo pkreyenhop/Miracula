@@ -1,3 +1,8 @@
+//! lex_state.zig — the lexer's session state (`LexState`): the dictionary, the
+//! file / margin / layout stacks, the identifier name buckets, and the scan
+//! cursors. Folded into `interp.lex` so `interp.reset()` clears it; accessed as
+//! `ls.X`.
+
 const std = @import("std");
 
 /// The interpreter machine word (see `word.Word`).

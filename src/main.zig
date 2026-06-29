@@ -1,3 +1,8 @@
+//! main.zig — the composition root. Holds the process entry point (`main`), the
+//! `comptime` block that aggregates every module's unit tests into the
+//! `main-tests` binary, and the `main.*` re-export namespace through which the
+//! C-ported call sites reach the runtime / compiler / driver modules.
+
 const std = @import("std");
 const strtab = @import("runtime/strtab.zig");
 const abi = @import("runtime/main_clib.zig");

@@ -1,3 +1,8 @@
+//! compiler_state.zig — all mutable compiler / type-checker state that does not
+//! need a C-ABI linker symbol (`CompilerState`): the new-type/show-function
+//! lists, substitution scratch, spec locations, the `current_id`, error counts,
+//! and so on. The singleton lives in `interp`; accessed as `cs.X`.
+
 const word = @import("../runtime/word.zig");
 const Word = word.Word;
 const NIL = word.NIL;

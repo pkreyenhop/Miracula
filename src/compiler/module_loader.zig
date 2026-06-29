@@ -1,3 +1,8 @@
+//! module_loader.zig — source-file loading. `loadfile` drives a `.m` file
+//! through the pipeline (lex → parse → type-check), reusing or refreshing its
+//! `.x` dump cache, and `mkincludes` resolves the `%include` directives that
+//! pull one script's definitions into another.
+
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");

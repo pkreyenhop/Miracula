@@ -1,3 +1,8 @@
+//! menudriver.zig — the standalone `menudriver` utility: drives the Miranda
+//! online-manual menu system (reading a menu file, navigating selections,
+//! viewing entries, and shelling out to the pager/editor). A companion program
+//! built as its own executable.
+
 const std = @import("std");
 
 const max_selection = 4096;

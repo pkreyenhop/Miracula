@@ -1,3 +1,8 @@
+//! setup.zig — interpreter initialisation. `miraSetup` brings up the heap, the
+//! dictionary, and the primitive environment from a cold start; `primlib`,
+//! `privlib`, and `stdlib` seed the built-in primitives and the standard-library
+//! definitions (via `primdef`/`predef`).
+
 const std = @import("std");
 const main = @import("../main.zig");
 const word = @import("../runtime/word.zig");

@@ -1,3 +1,7 @@
+//! errors.zig — the interpreter's domain-error set (`MiraError`, the Zig
+//! error-union replacement for the C `setjmp`/`longjmp` exits) and `fatal()`,
+//! the print-then-exit helper for unrecoverable command-line/startup/load errors.
+
 const std = @import("std");
 const abi = @import("main_clib.zig");
 const word = @import("word.zig");

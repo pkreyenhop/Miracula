@@ -1,3 +1,8 @@
+//! dump.zig — the object-file (`.x`) state serialiser. `makedump` writes a
+//! compiled script's definitions, types, and export tables to disk and `undump`
+//! reloads them, so an unchanged source need not be recompiled. Also handles the
+//! export-table fix-up (`fixexports`) and dump-file options (`readoption`).
+
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");

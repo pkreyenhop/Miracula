@@ -1,3 +1,7 @@
+//! fdate.zig — the standalone `fdate` utility: print a file's (or the current)
+//! date/time in Miranda's long human-readable format. A small companion program
+//! shipped alongside the interpreter, built as its own executable.
+
 const std = @import("std");
 
 const months = [_][*:0]const u8{

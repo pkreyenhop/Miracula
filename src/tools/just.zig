@@ -1,3 +1,7 @@
+//! just.zig — the standalone `just` text-justification filter: reflow stdin to a
+//! target column width (default 72), the paragraph formatter used by the Miranda
+//! online manual. A small companion program built as its own executable.
+
 const std = @import("std");
 
 const default_width = 72;
