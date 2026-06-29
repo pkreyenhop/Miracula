@@ -42,7 +42,7 @@ domain codes, and duplicated definitions.
 
 # Part A — Make `main.zig` idiomatic Zig
 
-> **Status (done): Priorities 1, 2, 6, 7, 10 ✅.** The ~108-symbol re-export layer
+> **Status (done): Priorities 1, 2, 3, 6, 7, 10 ✅.** The ~108-symbol re-export layer
 > was dissolved over 8 golden-gated commits — all **1457** `main.X` references
 > migrated to the owning modules (`heap`/`cs`/`rs`/constants/`errors`/the helper
 > relocations/the cross-module functions). **No file imports `main` any more.**
@@ -51,9 +51,11 @@ domain codes, and duplicated definitions.
 > `getStd*` callers go to `abi` directly. A `miranda.zig` public namespace was
 > *not* added — the interpreter is an executable with no external public API, so
 > the dissolved re-exports needed no replacement.
-> **Remaining:** Priority 3 (drop the ~180 residual `r7_*` import aliases) and
-> Priority 4 (migrate raw tag codes onto the `NodeTag` enum) — both whole-tree and
-> shared with Part B (R5, R3/R4).
+> Priority 3 (the `r7_*` import prefixes) is now also done — all ~127 uses across 13
+> files dropped to clean module names, with the duplicate-import merges and the
+> ambiguous `r7_reduce` cases (`engine` / `reduce_rt`) handled explicitly.
+> **Remaining:** Priority 4 (migrate raw tag codes onto the `NodeTag` enum) —
+> whole-tree, design-bearing, shared with Part B (R3/R4).
 
 ## Problem
 
@@ -82,10 +84,13 @@ Today: `pub const foo = module.foo;` × hundreds. Prefer callers using the names
 directly — `startup.readRc(...)` / `runtime.heap.cons(...)` instead of
 `main.readRc(...)`. Keep only re-exports that are genuinely the intended public API.
 
-### Priority 3 — Remove transitional duplicate imports
+### Priority 3 — Remove transitional duplicate imports ✅ done
 `const repl = …;` next to `const r7_repl = …;` (and `r7_types`, `r7_lex`, …). After
 migration: one import, no duplicates, **drop the `r7_` prefixes** (measured: **~190
 `r7_*` uses**). *(= Readability rec R5.)*
+**Done:** all `r7_*` aliases removed; duplicate imports (`r7_word`/`r7_heap`) merged
+into the existing import; ambiguous `r7_reduce` split into `engine` (the reducer
+engine) and `reduce_rt` (the runtime reduce support) where the plain name was taken.
 
 ### Priority 4 — Introduce stronger domain types
 Replace raw-integer codes with enums:
