@@ -21,6 +21,7 @@ const big = @import("big.zig");
 const lex = @import("../parser/lex.zig");
 const main_clib = @import("main_clib.zig");
 const core_state = @import("core_state.zig");
+const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 const Word = i64;
 const NIL: Word = word.CMBASE + 138;
@@ -45,6 +46,8 @@ pub const EvalState = struct {
     cycles: i64 = 0,
 };
 
+/// Pointer to the evaluator state held in `interp` (so `interp.reset()` clears
+/// it). Accessed as `ev.X`.
 pub const ev = &@import("interp.zig").interp.eval;
 
 const stoChar = heap.stoChar;
@@ -341,6 +344,8 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
 }
 
 /// Flatten a Miranda char-list `x` into a NUL-terminated C string in `linebuf`; aborts via `cmd` if it exceeds 1024 chars.
+///
+/// Tests: getstring: copies a char list into a C-string
 pub fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     var curr_x = x;
     const x1 = x;
@@ -372,6 +377,13 @@ pub fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
         }
     }
     return @ptrCast(&main.rs.linebuf);
+}
+
+test "getstring: copies a char list into a C-string" {
+    tu.freshInterp();
+    const s = getstring(tu.str("hello"), null);
+    try std.testing.expect(s != null);
+    try std.testing.expectEqualStrings("hello", std.mem.span(@as([*:0]const u8, s.?)));
 }
 
 /// Reset the reduction clock (currently a no-op stub).
@@ -465,6 +477,8 @@ pub fn intError(s: [*:0]const u8) void {
 }
 
 /// Add `x + y`, promoting to `f64` if either is a `DOUBLE`, else bignum add.
+///
+/// Tests: numplus: integer add and float promotion
 pub fn numplus(x: Word, y: Word) Word {
     if (getTag(x) == word.DOUBLE) {
         return heap.stoDbl(heap.getDbl(x) + force_dbl(y));
@@ -473,6 +487,15 @@ pub fn numplus(x: Word, y: Word) Word {
         return heap.stoDbl(big.toFloat(x) + heap.getDbl(y));
     }
     return big.add(x, y);
+}
+
+test "numplus: integer add and float promotion" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(numplus(big.fromInt(2), big.fromInt(3))));
+    try std.testing.expectEqual(@as(c_longlong, -1), big.toInt(numplus(big.fromInt(2), big.fromInt(-3))));
+    const r = numplus(heap.stoDbl(1.5), big.fromInt(2)); // DOUBLE + INT → DOUBLE
+    try std.testing.expectEqual(word.NodeTag.DOUBLE, heap.getTag(r));
+    try std.testing.expectEqual(@as(f64, 3.5), heap.getDbl(r));
 }
 
 /// The residual (unconsumed) token list after a grammar parse, reversed via `DESTREV`.
@@ -497,6 +520,8 @@ pub fn gResidue(toks2: Word) Word {
 }
 
 /// 1 if character `c_val` is in the lexer character-class list `x_val` (handles `..` ranges).
+///
+/// Tests: memclass: character-class membership with ranges
 pub fn memclass(c_val: c_int, x_val: Word) c_int {
     var x = x_val;
     while (x != NIL) {
@@ -512,6 +537,18 @@ pub fn memclass(c_val: c_int, x_val: Word) c_int {
         x = t(x);
     }
     return 0;
+}
+
+test "memclass: character-class membership with ranges" {
+    tu.freshInterp();
+    // a range is encoded as [DOTDOT, low, high]
+    const range = cons(word.DOTDOT, cons('a', cons('z', NIL)));
+    try std.testing.expectEqual(@as(c_int, 1), memclass('m', range));
+    try std.testing.expectEqual(@as(c_int, 0), memclass('A', range));
+    // a bare class member
+    const single = cons('x', NIL);
+    try std.testing.expectEqual(@as(c_int, 1), memclass('x', single));
+    try std.testing.expectEqual(@as(c_int, 0), memclass('y', single));
 }
 
 /// Abort: the lexer hit unrecognised input; prints up to 24 chars of context.
@@ -541,6 +578,8 @@ pub fn piperrmess(pid: Word) Word {
 }
 
 /// Structurally compare two values (`<0`/`0`/`>0`); errors on comparing functions.
+///
+/// Tests: compare: orders ints, chars, and strings; 0 on equal
 pub fn compare(arg_a: Word, arg_b: Word) c_int {
     var a = arg_a;
     var b = arg_b;
@@ -611,7 +650,19 @@ pub fn compare(arg_a: Word, arg_b: Word) c_int {
     }
 }
 
+test "compare: orders ints, chars, and strings; 0 on equal" {
+    tu.freshInterp();
+    try std.testing.expect(compare(big.fromInt(2), big.fromInt(3)) < 0);
+    try std.testing.expect(compare(big.fromInt(3), big.fromInt(2)) > 0);
+    try std.testing.expectEqual(@as(c_int, 0), compare(big.fromInt(7), big.fromInt(7)));
+    // strings (char lists) compare lexicographically, element by element
+    try std.testing.expect(compare(tu.str("abc"), tu.str("abd")) < 0);
+    try std.testing.expectEqual(@as(c_int, 0), compare(tu.str("hi"), tu.str("hi")));
+}
+
 /// Fully evaluate `x` to normal form (deep `reduce`), descending applications and conses.
+///
+/// Tests: force: deep-evaluates a list of thunks to normal form
 pub fn force(x_val: Word) void {
     var x = x_val;
     switch (getTag(x)) {
@@ -642,13 +693,33 @@ pub fn force(x_val: Word) void {
     }
 }
 
+test "force: deep-evaluates a list of thunks to normal form" {
+    tu.freshInterp();
+    const thunk = ap(ap(word.PLUS, big.fromInt(2)), big.fromInt(3));
+    const lst = cons(thunk, NIL);
+    force(lst);
+    // the head thunk is now reduced to the INT 5 in place
+    try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(h(lst)));
+}
+
 /// The head atom/combinator at the end of a left spine of applications.
+///
+/// Tests: head: the leftmost atom of an application spine
 pub fn head(x_val: Word) Word {
     var x = x_val;
     while (getTag(x) == word.AP) {
         x = h(x);
     }
     return x;
+}
+
+test "head: the leftmost atom of an application spine" {
+    tu.freshInterp();
+    // ((K True) False) → head is K
+    const g = ap(ap(word.K, word.True), word.False);
+    try std.testing.expectEqual(@as(Word, word.K), head(g));
+    // a bare atom is its own head
+    try std.testing.expectEqual(@as(Word, word.I), head(word.I));
 }
 
 /// Open `f` for appending (the `Appendfile` directive), recording it in the open-file list.
