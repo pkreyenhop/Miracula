@@ -14,8 +14,8 @@ const strtab = @import("strtab.zig");
 const platform = @import("../io/platform.zig");
 const rt = @import("runtime_state.zig");
 const heap = @import("heap.zig");
-const r7_repl = @import("../driver/repl.zig");
-const r7_reduce = @import("reducer/reduce.zig");
+const repl = @import("../driver/repl.zig");
+const engine = @import("reducer/reduce.zig");
 const reducer_trace = @import("reducer/trace.zig");
 const big = @import("big.zig");
 const lex = @import("../parser/lex.zig");
@@ -52,8 +52,8 @@ pub const ev = &@import("interp.zig").interp.eval;
 
 const stoChar = heap.stoChar;
 extern fn fromUTF8(f: ?*word.FILE) Word;
-const parseLine = r7_repl.parseLine;
-const reduce = r7_reduce.reduce;
+const parseLine = repl.parseLine;
+const reduce = engine.reduce;
 const charname = heap.charname;
 
 inline fn getTag(x: Word) u8 {

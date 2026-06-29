@@ -10,10 +10,10 @@ const testing = std.testing;
 const heap = @import("../runtime/heap.zig");
 
 const setupheap = heap.setupheap;
-const setupdic = r7_lex.setupdic;
-const yylex = r7_lex.yylex;
+const setupdic = lex.setupdic;
+const yylex = lex.yylex;
 const lex_state = @import("lex_state.zig");
-const r7_lex = @import("lex.zig");
+const lex = @import("lex.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const setup = @import("../compiler/setup.zig");
 const main_clib = @import("../runtime/main_clib.zig");
@@ -22,8 +22,8 @@ const strtab = @import("../runtime/strtab.zig");
 const core_state = @import("../runtime/core_state.zig");
 const ls = lex_state.ls;
 
-const makeId = r7_lex.makeId;
-const resetPns = r7_lex.resetPns;
+const makeId = lex.makeId;
+const resetPns = lex.resetPns;
 /// Build a dummy file record for the snapshot tests.
 fn makeFilRecord(name: [*:0]const u8) word.Word {
     const name_word = @as(word.Word, strtab.strBits(name));
@@ -33,7 +33,7 @@ fn makeFilRecord(name: [*:0]const u8) word.Word {
     return heap.make(word.CONS, info_cell, word.NIL);
 }
 
-const resetState = r7_lex.resetState;
+const resetState = lex.resetState;
 
 /// Reset the interpreter to a clean slate between tests.
 ///

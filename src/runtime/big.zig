@@ -19,7 +19,7 @@ const std = @import("std");
 
 const platform = @import("../io/platform.zig");
 const heap = @import("heap.zig");
-const r7_reduce = @import("reduce.zig");
+const reduce = @import("reduce.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 const Word = i64;
@@ -38,7 +38,7 @@ const CMBASE: Word = 306;
 const NIL: Word = CMBASE + 138;
 
 const make = heap.make;
-const mathError = r7_reduce.mathError;
+const mathError = reduce.mathError;
 /// Bignum subsystem state (shared-state plan Phase 2e). Accessed as `big.bn.X`;
 /// folds into `Interp.big` in Phase 3. `bn.logIBASE`/`bn.log10IBASE` are caches set by
 /// `setup` (runtime `@log`, not comptime); `bn.big_one`/`bn.b_rem` are heap nodes.

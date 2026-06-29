@@ -21,7 +21,7 @@ inline fn getTag(x: Word) u8 {
 }
 
 const lex_state = @import("../parser/lex_state.zig");
-const r7_lex = @import("../parser/lex.zig");
+const lex = @import("../parser/lex.zig");
 const core_state = @import("../runtime/core_state.zig");
 const heap = @import("../runtime/heap.zig");
 const files = @import("../io/files.zig");
@@ -31,7 +31,7 @@ const startup = @import("startup.zig");
 const module_loader = @import("../compiler/module_loader.zig");
 const ls = lex_state.ls;
 
-const token = r7_lex.token;
+const token = lex.token;
 // File-private state for the /edit command.
 var mirahdr: ?[*:0]u8 = null;
 var lmirahdr: ?[*:0]u8 = null;

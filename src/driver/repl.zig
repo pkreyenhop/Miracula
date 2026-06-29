@@ -25,9 +25,9 @@ const h = heap.h;
 const t = heap.t;
 
 const lex_state = @import("../parser/lex_state.zig");
-const r7_setup = @import("../compiler/setup.zig");
-const r7_signals = @import("../io/signals.zig");
-const r7_lex = @import("../parser/lex.zig");
+const setup = @import("../compiler/setup.zig");
+const signals_mod = @import("../io/signals.zig");
+const lex = @import("../parser/lex.zig");
 const heap = @import("../runtime/heap.zig");
 const commands = @import("commands.zig");
 const trans_mod = @import("../compiler/trans.zig");
@@ -35,7 +35,7 @@ const module_loader = @import("../compiler/module_loader.zig");
 const types_mod = @import("../compiler/types.zig");
 const startup = @import("startup.zig");
 const dump = @import("../compiler/dump.zig");
-const r7_reduce = @import("../runtime/reduce.zig");
+const reduce = @import("../runtime/reduce.zig");
 const core_state = @import("../runtime/core_state.zig");
 const version = @import("../runtime/version.zig");
 const ls = lex_state.ls;
@@ -45,13 +45,13 @@ inline fn getTag(x: Word) u8 {
     return heap.heap.getTag(x);
 }
 
-const signals = r7_signals.signals;
+const signals = signals_mod.signals;
 const resetgcstats = heap.resetgcstats;
-const outstats = r7_reduce.outstats;
-const syntax = r7_setup.syntax;
-const token = r7_lex.token;
-const rdline = r7_lex.rdline;
-const resetLex = r7_lex.resetLex;
+const outstats = reduce.outstats;
+const syntax = setup.syntax;
+const token = lex.token;
+const rdline = lex.rdline;
+const resetLex = lex.resetLex;
 /// POSIX `WIFSIGNALED`: true if `status` reports a child killed by a signal.
 fn WIFSIGNALED(status: c_int) bool {
     return (status & 0x7f) != 0 and (status & 0x7f) != 0x7f;

@@ -15,8 +15,8 @@ const Span = tf.Span;
 const lex_state = @import("lex_state.zig");
 const ls = lex_state.ls;
 
-const setupString = r7_lex.setupString;
-const cleanup = r7_lex.cleanup;
+const setupString = lex.setupString;
+const cleanup = lex.cleanup;
 // Miranda atom-range constants (from lex.zig — keep in sync with CMBASE = 306).
 const CMBASE: word.Word = 306;
 const FALSE_ATOM: word.Word = CMBASE + 136; // Miranda boolean False
@@ -29,16 +29,15 @@ const ATOMLIMIT: word.Word = CMBASE + 141;
 // Heap arrays (data.h: hd and tl are offset so hd(x*2) / tl(x*2) index cell x).
 
 
-const yylex = r7_lex.yylex;
-const isChar = r7_heap.isChar;
-const getDbl = r7_heap.getDbl;
-const layout = r7_lex.layout;
-const setlmargin = r7_lex.setlmargin;
-const unsetlmargin = r7_lex.unsetlmargin;
+const yylex = lex.yylex;
+const isChar = heap.isChar;
+const getDbl = heap.getDbl;
+const layout = lex.layout;
+const setlmargin = lex.setlmargin;
+const unsetlmargin = lex.unsetlmargin;
 // C macro equivalents: hd(x) == hd_array((x)*2), tl(x) == tl_array((x)*2)
 const heap = @import("../runtime/heap.zig");
-const r7_lex = @import("lex.zig");
-const r7_heap = @import("../runtime/heap.zig");
+const lex = @import("lex.zig");
 const strtab = @import("../runtime/strtab.zig");
 
 inline fn hd_of(x: word.Word) word.Word {

@@ -14,13 +14,13 @@ const core = @import("../runtime/core_state.zig");
 const lex_bridge = @import("lex_bridge.zig");
 const parser_mod = @import("parser.zig");
 const codegen = @import("codegen.zig");
-const r7_repl = @import("../driver/repl.zig");
-const r7_lex = @import("lex.zig");
-const setupString = r7_lex.setupString;
-const cleanup = r7_lex.cleanup;
-const setupFile = r7_lex.setupFile;
+const repl = @import("../driver/repl.zig");
+const lex = @import("lex.zig");
+const setupString = lex.setupString;
+const cleanup = lex.cleanup;
+const setupFile = lex.setupFile;
 // Forks like the original C evaluate(): compiling=0 only in child; parent's heap is safe.
-const evaluateRepl = r7_repl.evaluateRepl;
+const evaluateRepl = repl.evaluateRepl;
 /// Errors the parse entry points can return.
 pub const ParseError = error{
     SyntaxError,

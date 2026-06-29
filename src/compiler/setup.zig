@@ -14,9 +14,9 @@ const Word = word.Word;
 const NIL = word.NIL;
 
 const lex_state = @import("../parser/lex_state.zig");
-const r7_types = @import("types.zig");
-const r7_lex = @import("../parser/lex.zig");
-const r7_big = @import("../runtime/big.zig");
+const types = @import("types.zig");
+const lex = @import("../parser/lex.zig");
+const big = @import("../runtime/big.zig");
 const core_state = @import("../runtime/core_state.zig");
 const ls = lex_state.ls;
 
@@ -24,10 +24,10 @@ const ls = lex_state.ls;
 
 // Exported initialization functions from other modules
 const setupheap = heap.setupheap;
-const tsetup = r7_types.tsetup;
-const resetPns = r7_lex.resetPns;
-const bigsetup = r7_big.setup;
-const resetLex = r7_lex.resetLex;
+const tsetup = types.tsetup;
+const resetPns = lex.resetPns;
+const bigsetup = big.setup;
+const resetLex = lex.resetLex;
 // Token names for out2() — replaces y.tab.c's yysterm[].
 const yysterm_data = [_]?[*:0]const u8{
     null, // 0: placeholder

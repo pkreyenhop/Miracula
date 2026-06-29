@@ -50,8 +50,8 @@ const ready = @import("ready.zig");
 const lex_handlers = @import("lex.zig");
 const io_handlers = @import("io.zig");
 const trace = @import("trace.zig");
-const r7_lex = @import("../../parser/lex.zig");
-const r7_reduce = @import("../reduce.zig");
+const lex = @import("../../parser/lex.zig");
+const reduce_rt = @import("../reduce.zig");
 const big = @import("../big.zig");
 const main_clib = @import("../main_clib.zig");
 
@@ -82,7 +82,7 @@ pub fn reduce(e_val: Word) Word {
             downLeft(&ctx);
         }
 
-        r7_reduce.ev.cycles += 1; // one reduction step (the perf counter)
+        reduce_rt.ev.cycles += 1; // one reduction step (the perf counter)
         trace.step(ctx.e); // per-combinator histogram (compiled out when off)
         ctx.action = word.ACT_NONE;
 
@@ -187,10 +187,10 @@ pub fn reduce(e_val: Word) Word {
             //      Dispatch on its cell tag. (Undo the step count — these are
             //      not combinator reductions; a negative `e` is a corrupt graph.)
             else => {
-                r7_reduce.ev.cycles -= 1;
+                reduce_rt.ev.cycles -= 1;
                 if (abnormal(ctx.e)) {
                     word.printErr("\nBLACK HOLE\n", .{});
-                    r7_reduce.outstats();
+                    reduce_rt.outstats();
                     main_clib.exit(1);
                 }
 
@@ -207,14 +207,14 @@ pub fn reduce(e_val: Word) Word {
                     word.DATAPAIR => {
                         upLeft(&ctx);
                         word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{strtab.strOf(hd_get(hd_get(ctx.e))), strtab.strOf(tl_get(ctx.e))});
-                        r7_reduce.outstats();
+                        reduce_rt.outstats();
                         main_clib.exit(1);
                     },
                     // A defined name: substitute its value and re-examine.
                     word.ID => {
                         if (idVal(ctx.e) == word.UNDEF or idVal(ctx.e) == word.FREE) {
                             word.printErr("\nUNDEFINED NAME - {s}\n", .{get_id(ctx.e)});
-                            r7_reduce.outstats();
+                            reduce_rt.outstats();
                             main_clib.exit(1);
                         }
                         ctx.e = idVal(ctx.e);
@@ -275,20 +275,20 @@ pub fn reduce(e_val: Word) Word {
         }
     }
 }
-/// Re-export of [r7_reduce.print] (the graph-value printer).
-pub const print = r7_reduce.print;
-/// Re-export of [r7_reduce.badcaseError] (the no-matching-case abort).
-pub const badcaseError = r7_reduce.badcaseError;
-/// Re-export of [r7_reduce.confError] (the conformality-error abort).
-pub const confError = r7_reduce.confError;
-/// Re-export of [r7_lex.convArgs] (command-line args as a Miranda list).
-pub const convArgs = r7_lex.convArgs;
-/// Re-export of [r7_reduce.getstring] (a char list flattened to a C string).
-pub const getstring = r7_reduce.getstring;
-/// Re-export of [r7_reduce.head] (the head atom of an application spine).
-pub const head = r7_reduce.head;
-/// Re-export of [r7_reduce.force] (deep evaluation to normal form).
-pub const force = r7_reduce.force;
+/// Re-export of [reduce_rt.print] (the graph-value printer).
+pub const print = reduce_rt.print;
+/// Re-export of [reduce_rt.badcaseError] (the no-matching-case abort).
+pub const badcaseError = reduce_rt.badcaseError;
+/// Re-export of [reduce_rt.confError] (the conformality-error abort).
+pub const confError = reduce_rt.confError;
+/// Re-export of [lex.convArgs] (command-line args as a Miranda list).
+pub const convArgs = lex.convArgs;
+/// Re-export of [reduce_rt.getstring] (a char list flattened to a C string).
+pub const getstring = reduce_rt.getstring;
+/// Re-export of [reduce_rt.head] (the head atom of an application spine).
+pub const head = reduce_rt.head;
+/// Re-export of [reduce_rt.force] (deep evaluation to normal form).
+pub const force = reduce_rt.force;
 
 /// Strip the spine direction bits and yield a plain heap index.
 pub inline fn clean_ptr(x: Word) usize {
@@ -528,7 +528,7 @@ pub inline fn ap(x: Word, y: Word) Word {
 /// else to `FAIL` — the pattern-match equality test.
 pub inline fn rewrite_to_match_result(expr: *Word, left: Word, right: Word, success_value: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (r7_reduce.compare(left, right) == 0) success_value else word.FAIL;
+    const val = if (reduce_rt.compare(left, right) == 0) success_value else word.FAIL;
     tl_set(expr.*, val);
     expr.* = val;
 }
@@ -544,7 +544,7 @@ pub inline fn rewrite_to_int_match_result(expr: *Word, literal: Word, value: Wor
 /// Rewrite `*expr` to the Miranda char-list form of C string `value`.
 pub inline fn rewrite_to_string(expr: *Word, value: [*:0]const u8) void {
     hd_set(expr.*, word.I);
-    const val = r7_lex.strConv(value);
+    const val = lex.strConv(value);
     tl_set(expr.*, val);
     expr.* = val;
 }
@@ -647,7 +647,7 @@ pub inline fn coerce_dbl(x: Word) Word {
 /// Rewrite `*expr` to `True`/`False` for `left == right` (structural compare).
 pub inline fn rewrite_to_compare_eq(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (r7_reduce.compare(left, right) == 0) word.True else word.False;
+    const val = if (reduce_rt.compare(left, right) == 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
@@ -655,7 +655,7 @@ pub inline fn rewrite_to_compare_eq(expr: *Word, left: Word, right: Word) void {
 /// Rewrite `*expr` to `True`/`False` for `left != right`.
 pub inline fn rewrite_to_compare_neq(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (r7_reduce.compare(left, right) != 0) word.True else word.False;
+    const val = if (reduce_rt.compare(left, right) != 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
@@ -663,7 +663,7 @@ pub inline fn rewrite_to_compare_neq(expr: *Word, left: Word, right: Word) void 
 /// Rewrite `*expr` to `True`/`False` for `left > right`.
 pub inline fn rewrite_to_compare_gt(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (r7_reduce.compare(left, right) > 0) word.True else word.False;
+    const val = if (reduce_rt.compare(left, right) > 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }
@@ -671,7 +671,7 @@ pub inline fn rewrite_to_compare_gt(expr: *Word, left: Word, right: Word) void {
 /// Rewrite `*expr` to `True`/`False` for `left >= right`.
 pub inline fn rewrite_to_compare_ge(expr: *Word, left: Word, right: Word) void {
     hd_set(expr.*, word.I);
-    const val = if (r7_reduce.compare(left, right) >= 0) word.True else word.False;
+    const val = if (reduce_rt.compare(left, right) >= 0) word.True else word.False;
     tl_set(expr.*, val);
     expr.* = val;
 }

@@ -18,7 +18,7 @@ const Word = word.Word;
 const NIL = word.NIL;
 
 const lex_state = @import("../parser/lex_state.zig");
-const r7_signals = @import("../io/signals.zig");
+const signals_mod = @import("../io/signals.zig");
 const core_state = @import("../runtime/core_state.zig");
 const heap = @import("../runtime/heap.zig");
 const types_mod = @import("types.zig");
@@ -30,7 +30,7 @@ const ls = lex_state.ls;
 // Global variables defined/exported in parser/lex.zig
 
 // C ABI / linked symbols
-const signals = r7_signals.signals;
+const signals = signals_mod.signals;
 /// POSIX `WEXITSTATUS`: the exit code from a child's wait status.
 fn WEXITSTATUS(status: c_int) c_int {
     return (status >> 8) & 0xff;

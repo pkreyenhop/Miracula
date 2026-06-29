@@ -18,13 +18,12 @@ const lex_state = @import("../parser/lex_state.zig");
 const ls = lex_state.ls;
 
 const compiler_state = @import("../compiler/compiler_state.zig");
-const r7_types = @import("../compiler/types.zig");
-const r7_repl = @import("../driver/repl.zig");
-const r7_files = @import("../io/files.zig");
-const r7_lex = @import("../parser/lex.zig");
-const r7_big = @import("big.zig");
-const r7_reduce = @import("reduce.zig");
-const r7_word = @import("word.zig");
+const types = @import("../compiler/types.zig");
+const repl = @import("../driver/repl.zig");
+const files = @import("../io/files.zig");
+const lex = @import("../parser/lex.zig");
+const big = @import("big.zig");
+const reduce = @import("reduce.zig");
 const main_clib = @import("main_clib.zig");
 const setup = @import("../compiler/setup.zig");
 const dump = @import("../compiler/dump.zig");
@@ -64,8 +63,8 @@ const ID = word.ID;
 const UNICODE = word.UNICODE;
 const CONS = word.CONS;
 
-const strcmp = r7_word.strcmp;
-const fpeError = r7_repl.fpeError;
+const strcmp = word.strcmp;
+const fpeError = repl.fpeError;
 const fpdatum = if (@sizeOf(Word) == 4)
     extern union {
         real: f64,
@@ -88,7 +87,7 @@ else
 /// `std.MultiArrayList`, replacing the old interleaved `hd[x*2]`/`tl[x*2]` +
 /// separate `tag[x]` parallel arrays (R3).
 pub const Cell = struct {
-    tag: r7_word.NodeTag = .ATOM,
+    tag: word.NodeTag = .ATOM,
     hd: Word = 0,
     tl: Word = 0,
 };
@@ -105,7 +104,7 @@ pub const Heap = struct {
     // by refreshPointers() whenever `cells` is (re)allocated.
     hd: ?[*]Word = null,
     tl: ?[*]Word = null,
-    tag: ?[*]r7_word.NodeTag = null,
+    tag: ?[*]word.NodeTag = null,
     SPACE: Word = 1250000,
     listp: Word = ATOMLIMIT - 1,
     allocated_dstack_size: usize = 0,
@@ -122,7 +121,7 @@ pub const Heap = struct {
     stackp: ?[*]Word = null,
     collecting: c_int = 0,
     dlim: ?[*]Word = null,
-    prefix: [r7_word.pnlim]u8 = undefined,
+    prefix: [word.pnlim]u8 = undefined,
     preflen: Word = 0,
     PNBASE: Word = 0,
     CFN: ?[*:0]const u8 = null,
@@ -159,7 +158,7 @@ pub const Heap = struct {
         return &self.tl.?[@as(usize, @intCast(x))];
     }
 
-    /// The raw tag byte. The stored tag is a typed `r7_word.NodeTag` (R3.2); this
+    /// The raw tag byte. The stored tag is a typed `word.NodeTag` (R3.2); this
     /// returns its integer value so the many `getTag(x) == word.XXX` int
     /// comparisons keep working. During GC the byte may be a negated mark.
     /// The node tag of cell `x`.
@@ -168,7 +167,7 @@ pub const Heap = struct {
     }
 
     /// Typed tag (for `switch` on `NodeTag` in dispatch, e.g. dumpOb).
-    pub fn getTagEnum(self: Heap, x: Word) r7_word.NodeTag {
+    pub fn getTagEnum(self: Heap, x: Word) word.NodeTag {
         return self.tag.?[@intCast(x)];
     }
 
@@ -350,8 +349,8 @@ pub const Heap = struct {
         }
         self.mark(cstack_ptr[0]);
 
-        self.mark(r7_reduce.ev.outfilq);
-        self.mark(r7_reduce.ev.waiting);
+        self.mark(reduce.ev.outfilq);
+        self.mark(reduce.ev.waiting);
         if (core.s.compiling != 0 or rt.rs.rv_expr != 0 or cs.rv_script != 0) {
             self.mark(rt.rs.make_status);
             self.mark(rt.rs.primenv);
@@ -414,8 +413,8 @@ pub const Heap = struct {
             self.mark(rt.rs.lastexp);
             self.mark(core.s.nill);
             self.mark(rt.rs.standardout);
-            self.mark(r7_big.bn.big_one);
-            self.mark(r7_big.bn.b_rem);
+            self.mark(big.bn.big_one);
+            self.mark(big.bn.b_rem);
             self.mark(ls.yylval);
             self.mark(ls.echostack);
             self.mark(core.s.errs);
@@ -449,7 +448,7 @@ pub const Heap = struct {
 
     /// Recursively mark cell `x` and its descendants as reachable (GC).
     pub fn mark(self: *Heap, x_val: Word) void {
-        var x = x_val & ~r7_word.tlptrbits;
+        var x = x_val & ~word.tlptrbits;
         while (self.isptr(x) and negchar(@intFromEnum(self.tag.?[@intCast(x)]))) {
             const p1 = &self.tag.?[@intCast(x)];
             const signed_tag = @as(i8, @bitCast(@intFromEnum(p1.*)));
@@ -461,7 +460,7 @@ pub const Heap = struct {
                 self.mark(self.h(x));
             }
             if (new_tag >= word.INT) {
-                x = self.t(x) & ~r7_word.tlptrbits;
+                x = self.t(x) & ~word.tlptrbits;
             } else {
                 break;
             }
@@ -496,7 +495,7 @@ pub fn tp(x: Word) *Word {
 }
 
 /// The node tag of cell `x`.
-pub fn getTag(x: Word) r7_word.NodeTag {
+pub fn getTag(x: Word) word.NodeTag {
     return @enumFromInt(heap.getTag(x));
 }
 
@@ -783,9 +782,9 @@ fn nil() Word {
 // copies are the struct fields, accessed via `self.SPACE`/`self.listp`.)
 
 
-const outstats = r7_reduce.outstats;
-const initclock = r7_reduce.initclock;
-const hashsize = r7_word.hashsize;
+const outstats = reduce.outstats;
+const initclock = reduce.initclock;
+const hashsize = word.hashsize;
 
 /// The current heap top — the next free cell index.
 fn TOP() Word {
@@ -854,8 +853,8 @@ pub fn gcpatch() void {
 /// The standard-error `FILE` handle (tolerating either a fn or value form).
 
 
-const fileMtime = r7_files.fileMtime;
-const unlinkObject = r7_files.unlinkObject;
+const fileMtime = files.fileMtime;
+const unlinkObject = files.unlinkObject;
 /// Intern name `p1`, returning its dictionary `ID` node (inserting if new).
 pub fn stoId(p1: [*:0]const u8) Word {
     return make(word.ID, cons(make(word.STRCONS, strtab.strBits(p1), word.NIL), word.undef_t), word.UNDEF);
@@ -1022,7 +1021,7 @@ pub fn geterrlin(t_ptr: [*:0]const u8) Word {
     return el;
 }
 
-const bigtostr = r7_big.toDecimalList;
+const bigtostr = big.toDecimalList;
 const SIGNBIT = 0x10000000;
 const MAXDIGIT = 0x7fff;
 
@@ -1279,9 +1278,9 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
 }
 
 
-const member = r7_types.member;
-const add1 = r7_types.add1;
-const name = r7_lex.name;
+const member = types.member;
+const add1 = types.add1;
+const name = lex.name;
 /// The path string of file record `fil`.
 fn getFil(fil: Word) [*:0]const u8 {
     return castPtr(h(h(h(fil))));
@@ -1698,7 +1697,7 @@ pub fn loadScript(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: 
             }
         }
         if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
-            r7_lex.dicovflo();
+            lex.dicovflo();
         }
         ch = getword(file);
         s = main_clib.getc(file);
@@ -1750,7 +1749,7 @@ pub fn loadScript(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: 
                 }
             }
             if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
-                r7_lex.dicovflo();
+                lex.dicovflo();
             }
             ch = getword(file);
             if (rt.rs.oldfiles == word.NIL) {
@@ -1940,11 +1939,11 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                 var val = main_clib.getc(file);
                 val = val | (main_clib.getc(file) << 8);
                 const idx = heap.PNBASE + val;
-                stackpPush(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else r7_lex.stoPn(idx));
+                stackpPush(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else lex.stoPn(idx));
             },
             word.PN1_X => {
                 const idx = heap.PNBASE + getint(file);
-                stackpPush(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else r7_lex.stoPn(idx));
+                stackpPush(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else lex.stoPn(idx));
             },
             word.CONSTRUCT_X => {
                 var val = main_clib.getc(file);
@@ -1966,7 +1965,7 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                     }
                 }
                 if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
-                    r7_lex.dicovflo();
+                    lex.dicovflo();
                 }
                 stackpPush(name());
                 const top = stackpTop();
@@ -1988,7 +1987,7 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                     }
                 }
                 if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
-                    r7_lex.dicovflo();
+                    lex.dicovflo();
                 }
                 stackpPush(datapair(strtab.strBits(getId(name())), 0));
             },
@@ -2015,7 +2014,7 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                         }
                     }
                     if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
-                        r7_lex.dicovflo();
+                        lex.dicovflo();
                     }
                     var line = main_clib.getc(file);
                     line = line | (main_clib.getc(file) << 8);
@@ -2163,7 +2162,7 @@ pub fn isfreeid(x: Word) bool {
     return idType(x) == word.undef_t and idVal(x) == word.UNDEF;
 }
 
-const isconstrname = r7_lex.isconstrname;
+const isconstrname = lex.isconstrname;
 /// Whether `x` names a data constructor.
 pub fn isconstructor(x: Word) bool {
     return heap.getTag(x) == word.ID and isconstrname(getId(x)) != 0;
