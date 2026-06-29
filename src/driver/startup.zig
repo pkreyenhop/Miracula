@@ -11,6 +11,7 @@ const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
 const main = @import("../main.zig");
 const cs = @import("../compiler/compiler_state.zig").cs;
+const rt = @import("../runtime/runtime_state.zig");
 const abi = @import("../runtime/main_clib.zig");
 
 const Word = main.Word;
@@ -48,49 +49,49 @@ fn unlimitStack() void {
 /// Process entry point: parse flags and arguments, install signal handlers, set up the heap, locate the library, then enter `commandLoop`. Returns the exit code.
 pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     var manonly: Word = 0;
-    main.rs.cstack = @ptrCast(&manonly);
+    rt.rs.cstack = @ptrCast(&manonly);
     unlimitStack();
-    main.rs.verbosity = if (abi.isatty(0) != 0) 1 else 0;
+    rt.rs.verbosity = if (abi.isatty(0) != 0) 1 else 0;
     word.setbuf(main.getStdout(), null);
 
     const home = abi.getenv("HOME");
     var okhome_rc: Word = 0;
     if (home != null) {
-        _ = word.strcpy(&main.rs.home_rc, home);
-        if (word.strcmp(&main.rs.home_rc, "/") == 0) {
-            main.rs.home_rc[0] = 0;
+        _ = word.strcpy(&rt.rs.home_rc, home);
+        if (word.strcmp(&rt.rs.home_rc, "/") == 0) {
+            rt.rs.home_rc[0] = 0;
         }
-        _ = word.strcat(&main.rs.home_rc, "/.mirarc");
-        okhome_rc = main.readRc(@as([*:0]const u8, @ptrCast(&main.rs.home_rc)));
+        _ = word.strcat(&rt.rs.home_rc, "/.mirarc");
+        okhome_rc = main.readRc(@as([*:0]const u8, @ptrCast(&rt.rs.home_rc)));
     }
 
-    main.rs.UTF8 = main.utf8test();
-    main.rs.UTF8OUT = main.rs.UTF8;
+    rt.rs.UTF8 = main.utf8test();
+    rt.rs.UTF8OUT = rt.rs.UTF8;
 
     var arg_idx: usize = 1;
     const argc_u = @as(usize, @intCast(argc));
     while (arg_idx < argc_u and argv[arg_idx][0] == '-') {
         const arg = argv[arg_idx];
         if (word.strcmp(arg, "-stdenv") == 0) {
-            main.rs.nostdenv = true;
+            rt.rs.nostdenv = true;
         } else if (word.strcmp(arg, "-count") == 0) {
-            main.rs.atcount = 1;
+            rt.rs.atcount = 1;
         } else if (word.strcmp(arg, "-list") == 0) {
-            main.rs.listing = 1;
+            rt.rs.listing = 1;
         } else if (word.strcmp(arg, "-nolist") == 0) {
-            main.rs.listing = 0;
+            rt.rs.listing = 0;
         } else if (word.strcmp(arg, "-nostrictif") == 0) {
-            main.rs.strictif = false;
+            rt.rs.strictif = false;
         } else if (word.strcmp(arg, "-gc") == 0) {
-            main.rs.atgc = 1;
+            rt.rs.atgc = 1;
         } else if (word.strcmp(arg, "-object") == 0) {
-            main.rs.atobject = 1;
+            rt.rs.atobject = 1;
         } else if (word.strcmp(arg, "-lib") == 0) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
                 main.missingParam("lib");
             } else {
-                main.rs.miralib = argv[arg_idx];
+                rt.rs.miralib = argv[arg_idx];
             }
         } else if (word.strcmp(arg, "-dic") == 0) {
             arg_idx += 1;
@@ -101,7 +102,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 if (abi.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or flagOutOfRange(val)) {
                     main.fatal("mira: bad value after flag \"-dic\"\n", .{.{}});
                 }
-                main.rs.DICSPACE = val;
+                rt.rs.DICSPACE = val;
             }
         } else if (word.strcmp(arg, "-heap") == 0) {
             arg_idx += 1;
@@ -112,27 +113,27 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 if (abi.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or flagOutOfRange(val)) {
                     main.fatal("mira: bad value after flag \"-heap\"\n", .{.{}});
                 }
-                main.rs.SPACELIMIT = val;
+                rt.rs.SPACELIMIT = val;
             }
         } else if (word.strcmp(arg, "-editor") == 0) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
                 main.missingParam("editor");
             } else {
-                main.rs.editor = argv[arg_idx];
+                rt.rs.editor = argv[arg_idx];
                 main.fixEditor();
             }
         } else if (word.strcmp(arg, "-hush") == 0) {
-            main.rs.verbosity = 0;
+            rt.rs.verbosity = 0;
         } else if (word.strcmp(arg, "-nohush") == 0) {
-            main.rs.verbosity = 1;
+            rt.rs.verbosity = 1;
         } else if (word.strcmp(arg, "-exp") == 0 or word.strcmp(arg, "-log") == 0) {
             main.fatal("mira: obsolete flag \"%s\"\nuse \"-exec\" or \"-exec2\", see manual\n", .{.{arg}});
         } else if (word.strcmp(arg, "-exec") == 0) {
             ls.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
             ls.ARGV = @ptrCast(argv + arg_idx + 1);
-            main.rs.magic = true;
-            main.rs.verbosity = 0;
+            rt.rs.magic = true;
+            rt.rs.verbosity = 0;
             arg_idx = argc_u;
             break;
         } else if (word.strcmp(arg, "-exec2") == 0) {
@@ -146,7 +147,6 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
             } else {
                 p = p.? + 1;
             }
-            const rt = @import("../runtime/runtime_state.zig");
             const len = word.strlen(p.?) + 9;
             const slice = rt.allocator.allocSentinel(u8, len, 0) catch {
                 abi.mallocfail(@constCast("logfile name"));
@@ -162,8 +162,8 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
             }
             ls.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
             ls.ARGV = @ptrCast(argv + arg_idx + 1);
-            main.rs.magic = true;
-            main.rs.verbosity = 0;
+            rt.rs.magic = true;
+            rt.rs.verbosity = 0;
             arg_idx = argc_u;
             break;
         } else if (word.strcmp(arg, "-man") == 0) {
@@ -175,20 +175,20 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
             main.versionInfo(1);
             abi.exit(0);
         } else if (word.strcmp(arg, "-make") == 0) {
-            main.rs.making = true;
-            main.rs.verbosity = 0;
+            rt.rs.making = true;
+            rt.rs.verbosity = 0;
         } else if (word.strcmp(arg, "-exports") == 0) {
-            main.rs.making = true;
-            main.rs.mkexports = true;
-            main.rs.verbosity = 0;
+            rt.rs.making = true;
+            rt.rs.mkexports = true;
+            rt.rs.verbosity = 0;
         } else if (word.strcmp(arg, "-sources") == 0) {
-            main.rs.making = true;
-            main.rs.mksources = true;
-            main.rs.verbosity = 0;
+            rt.rs.making = true;
+            rt.rs.mksources = true;
+            rt.rs.verbosity = 0;
         } else if (word.strcmp(arg, "-UTF-8") == 0) {
-            main.rs.UTF8 = 1;
+            rt.rs.UTF8 = 1;
         } else if (word.strcmp(arg, "-noUTF-8") == 0) {
-            main.rs.UTF8 = 0;
+            rt.rs.UTF8 = 0;
         } else {
             main.fatal("mira: unknown flag \"%s\"\n", .{.{arg}});
         }
@@ -196,20 +196,20 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     }
 
     const remaining_argc = argc_u - arg_idx;
-    if (remaining_argc > 1 and !main.rs.magic and !main.rs.making) {
+    if (remaining_argc > 1 and !rt.rs.magic and !rt.rs.making) {
         main.fatal("mira: too many args\n", .{.{}});
     }
 
     var badlib: bool = false;
-    if (main.rs.miralib == null) {
+    if (rt.rs.miralib == null) {
         if (abi.getenv("MIRALIB")) |m| {
-            main.rs.miralib = @constCast(m);
+            rt.rs.miralib = @constCast(m);
         } else if (main.checkVersion("/usr/lib/miralib") != 0) {
-            main.rs.miralib = @constCast("/usr/lib/miralib");
+            rt.rs.miralib = @constCast("/usr/lib/miralib");
         } else if (main.checkVersion("/usr/local/lib/miralib") != 0) {
-            main.rs.miralib = @constCast("/usr/local/lib/miralib");
+            rt.rs.miralib = @constCast("/usr/local/lib/miralib");
         } else if (main.checkVersion("miralib") != 0) {
-            main.rs.miralib = @constCast("miralib");
+            rt.rs.miralib = @constCast("miralib");
         } else {
             badlib = true;
         }
@@ -222,89 +222,89 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     }
 
     if (okhome_rc == 0) {
-        if (main.rs.rc_error == @as(?[*:0]const u8, @ptrCast(&main.rs.lib_rc))) {
-            main.rs.rc_error = null;
+        if (rt.rs.rc_error == @as(?[*:0]const u8, @ptrCast(&rt.rs.lib_rc))) {
+            rt.rs.rc_error = null;
         }
-        _ = word.strcpy(&main.rs.lib_rc, main.rs.miralib.?);
-        _ = word.strcat(&main.rs.lib_rc, "/.mirarc");
-        _ = main.readRc(@as([*:0]const u8, @ptrCast(&main.rs.lib_rc)));
+        _ = word.strcpy(&rt.rs.lib_rc, rt.rs.miralib.?);
+        _ = word.strcat(&rt.rs.lib_rc, "/.mirarc");
+        _ = main.readRc(@as([*:0]const u8, @ptrCast(&rt.rs.lib_rc)));
     }
 
-    if (main.rs.editor == null) {
+    if (rt.rs.editor == null) {
         if (abi.getenv("EDITOR")) |ed| {
-            main.rs.editor = @constCast(ed);
+            rt.rs.editor = @constCast(ed);
         } else {
-            main.rs.editor = @constCast(main.EDITOR);
+            rt.rs.editor = @constCast(main.EDITOR);
         }
-        if (main.rs.editor != null) {
-            _ = word.strcpy(&main.rs.ebuf, main.rs.editor.?);
-            main.rs.editor = @as([*:0]u8, @ptrCast(&main.rs.ebuf));
+        if (rt.rs.editor != null) {
+            _ = word.strcpy(&rt.rs.ebuf, rt.rs.editor.?);
+            rt.rs.editor = @as([*:0]u8, @ptrCast(&rt.rs.ebuf));
             main.fixEditor();
         }
     }
 
     if (abi.getenv("MIRAPROMPT")) |prs| {
-        main.rs.promptstr = prs;
+        rt.rs.promptstr = prs;
     }
 
-    if (abi.getenv("RECHECKMIRA") != null and main.rs.rechecking == 0) {
-        main.rs.rechecking = 1;
+    if (abi.getenv("RECHECKMIRA") != null and rt.rs.rechecking == 0) {
+        rt.rs.rechecking = 1;
     }
 
     if (abi.getenv("NOSTRICTIF") != null) {
-        main.rs.strictif = false;
+        rt.rs.strictif = false;
     }
 
     abi.setupdic();
-    main.rs.s_in = main.getStdin();
+    rt.rs.s_in = main.getStdin();
     reduce.ev.s_out = main.getStdout();
-    main.rs.miralib = main.makeAbsolute(main.rs.miralib.?);
+    rt.rs.miralib = main.makeAbsolute(rt.rs.miralib.?);
 
     if (manonly != 0) {
         main.manaction();
         abi.exit(0);
     }
 
-    _ = word.strcpy(&main.rs.PRELUDE, main.rs.miralib.?);
-    _ = word.strcat(&main.rs.PRELUDE, "/prelude");
+    _ = word.strcpy(&rt.rs.PRELUDE, rt.rs.miralib.?);
+    _ = word.strcat(&rt.rs.PRELUDE, "/prelude");
 
-    _ = word.strcpy(&main.rs.STDENV, main.rs.miralib.?);
-    _ = word.strcat(&main.rs.STDENV, "/stdenv.m");
+    _ = word.strcpy(&rt.rs.STDENV, rt.rs.miralib.?);
+    _ = word.strcat(&rt.rs.STDENV, "/stdenv.m");
 
     main.miraSetup();
 
-    if (main.rs.verbosity != 0) {
+    if (rt.rs.verbosity != 0) {
         main.announce();
     }
 
     heap.heap.files = NIL;
-    main.undump(@as([*:0]const u8, @ptrCast(&main.rs.PRELUDE)));
-    main.rs.okprel = true;
+    main.undump(@as([*:0]const u8, @ptrCast(&rt.rs.PRELUDE)));
+    rt.rs.okprel = true;
     abi.mkprivate(main.filDefs(heap.h(heap.heap.files)));
     heap.heap.files = NIL;
 
-    if (!main.rs.nostdenv) {
-        main.undump(@as([*:0]const u8, @ptrCast(&main.rs.STDENV)));
+    if (!rt.rs.nostdenv) {
+        main.undump(@as([*:0]const u8, @ptrCast(&rt.rs.STDENV)));
         while (heap.heap.files != NIL) {
-            main.rs.primenv = main.alfasort(abi.append1(main.rs.primenv, main.filDefs(heap.h(heap.heap.files))));
+            rt.rs.primenv = main.alfasort(abi.append1(rt.rs.primenv, main.filDefs(heap.h(heap.heap.files))));
             heap.heap.files = heap.t(heap.heap.files);
         }
-        main.rs.primenv = main.alfasort(main.rs.primenv);
+        rt.rs.primenv = main.alfasort(rt.rs.primenv);
         cs.newtyps = NIL;
         heap.heap.files = NIL;
     }
 
-    if (!main.rs.magic) {
+    if (!rt.rs.magic) {
         main.writeRc();
     }
 
-    main.rs.echoing = main.rs.verbosity & main.rs.listing;
-    main.rs.initialising = 0;
+    rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
+    rt.rs.initialising = 0;
 
-    if (main.rs.mkexports) {
+    if (rt.rs.mkexports) {
         const arg_count: usize = remaining_argc;
         var s: [*:0]u8 = undefined;
-        _ = abi.sigsetjmp(&main.rs.env, 1);
+        _ = abi.sigsetjmp(&rt.rs.env, 1);
         var cur_argv_idx = arg_idx;
         while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
             var x: Word = NIL;
@@ -319,8 +319,8 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
             if (arg_count != 1) {
                 word.print("{s}\n", .{s});
             }
-            if (main.rs.exports != NIL) {
-                x = main.rs.exports;
+            if (rt.rs.exports != NIL) {
+                x = rt.rs.exports;
             } else {
                 var f = heap.heap.files;
                 while (f != NIL) : (f = heap.t(f)) {
@@ -328,16 +328,16 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 }
             }
 
-            if (main.rs.freeids != NIL) {
-                var f = main.rs.freeids;
+            if (rt.rs.freeids != NIL) {
+                var f = rt.rs.freeids;
                 while (f != NIL) : (f = heap.t(f)) {
                     const n = abi.findid(@constCast(main.get_id(heap.h(f))));
                     heap.tp(n).* = heap.t(heap.t(heap.h(f)));
                     heap.tp(heap.h(heap.h(n))).* = main.theVal(heap.h(f));
                     heap.hp(f).* = n;
                 }
-                main.rs.freeids = abi.typesfirst(main.rs.freeids);
-                f = main.rs.freeids;
+                rt.rs.freeids = abi.typesfirst(rt.rs.freeids);
+                f = rt.rs.freeids;
                 word.print("\t%free {{\n", .{});
                 while (f != NIL) : (f = heap.t(f)) {
                     _ = word.putchar('\t');
@@ -357,10 +357,10 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
         abi.exit(0);
     }
 
-    if (main.rs.mksources) {
+    if (rt.rs.mksources) {
         var s: [*:0]u8 = undefined;
         var x: Word = NIL;
-        _ = abi.sigsetjmp(&main.rs.env, 1);
+        _ = abi.sigsetjmp(&rt.rs.env, 1);
         var cur_argv_idx = arg_idx;
         while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
             s = abi.addextn(1, argv[cur_argv_idx]);
@@ -369,7 +369,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                     _ = abi.keep(ls.dicp);
                 }
                 main.undump(s);
-                var f = if (heap.heap.files == NIL) main.rs.oldfiles else heap.heap.files;
+                var f = if (heap.heap.files == NIL) rt.rs.oldfiles else heap.heap.files;
                 while (f != NIL) : (f = heap.t(f)) {
                     const filename_str = main.get_fil(heap.h(f)).?;
                     if (abi.member(x, strtab.strBits(filename_str)) == 0) {
@@ -382,9 +382,9 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
         abi.exit(0);
     }
 
-    if (main.rs.making) {
+    if (rt.rs.making) {
         var s: [*:0]u8 = undefined;
-        _ = abi.sigsetjmp(&main.rs.env, 1);
+        _ = abi.sigsetjmp(&rt.rs.env, 1);
         var cur_argv_idx = arg_idx;
         while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
             s = abi.addextn(1, argv[cur_argv_idx]);
@@ -392,24 +392,24 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 _ = abi.keep(ls.dicp);
             }
             main.undump(s);
-            if (cs.ND != NIL or (heap.heap.files == NIL and main.rs.oldfiles != NIL)) {
-                if (main.rs.make_status == 1) {
-                    main.rs.make_status = 0;
+            if (cs.ND != NIL or (heap.heap.files == NIL and rt.rs.oldfiles != NIL)) {
+                if (rt.rs.make_status == 1) {
+                    rt.rs.make_status = 0;
                 }
-                main.rs.make_status = abi.strcons(@as(Word, strtab.strBits(s)), main.rs.make_status);
+                rt.rs.make_status = abi.strcons(@as(Word, strtab.strBits(s)), rt.rs.make_status);
             }
         }
-        if (getTag(main.rs.make_status) == word.STRCONS) {
+        if (getTag(rt.rs.make_status) == word.STRCONS) {
             var h_val: Word = 0;
             var maxw: Word = 0;
             word.print("errors or undefined names found in:-\n", .{});
-            while (main.rs.make_status != 0) {
-                h_val = abi.strcons(heap.h(main.rs.make_status), h_val);
+            while (rt.rs.make_status != 0) {
+                h_val = abi.strcons(heap.h(rt.rs.make_status), h_val);
                 const w = @as(Word, @intCast(word.strlen(strtab.strOf(heap.h(h_val)))));
                 if (w > maxw) {
                     maxw = w;
                 }
-                main.rs.make_status = heap.t(main.rs.make_status);
+                rt.rs.make_status = heap.t(rt.rs.make_status);
             }
             maxw += 1;
             const n = @divTrunc(@as(Word, 78), maxw);
@@ -430,15 +430,15 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
             if ((@rem(w, n)) != 0) {
                 word.print("\n", .{});
             }
-            main.rs.make_status = 1;
+            rt.rs.make_status = 1;
         }
-        abi.exit(@intCast(main.rs.make_status));
+        abi.exit(@intCast(rt.rs.make_status));
     }
 
     var initscript: [*:0]const u8 = undefined;
     if (remaining_argc == 0) {
         initscript = "script.m";
-    } else if (main.rs.magic) {
+    } else if (rt.rs.magic) {
         initscript = argv[arg_idx];
     } else {
         initscript = abi.addextn(1, argv[arg_idx]);
@@ -454,7 +454,6 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     // keeps the plain read path (so the golden corpus and integration suite run
     // unchanged).
     if (abi.isatty(0) != 0) {
-        const rt = @import("../runtime/runtime_state.zig");
         lineedit.init(rt.allocator, rt.io);
     }
     main.commandLoop(@constCast(initscript));
@@ -509,10 +508,10 @@ pub fn readRc(rcfile: [*:0]const u8) Word {
 pub fn writeRc() void {
     const home = abi.getenv("HOME");
     var f: ?*word.FILE = null;
-    if (home == null or main.rs.home_rc[0] == 0) return;
-    f = word.fopen(&main.rs.home_rc, "w");
+    if (home == null or rt.rs.home_rc[0] == 0) return;
+    f = word.fopen(&rt.rs.home_rc, "w");
     if (f == null) return;
-    abi.setprefix(@ptrCast(&main.rs.home_rc));
+    abi.setprefix(@ptrCast(&rt.rs.home_rc));
     abi.dumpScript(heap.heap.files, f.?);
     _ = word.fclose(f.?);
 }

@@ -66,16 +66,16 @@ pub fn setupString(source: [*:0]const u8) void {
     // this is a FILE-handle-in-cell cast, not a node string — out of B1 scope.
     ls.fileq = cons(make(STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls.fileq);
     ls.insertdepth += 1;
-    main.rs.s_in = f;
+    rt.rs.s_in = f;
 }
 
 /// Tear down the lexer's string/file setup.
 pub fn cleanup() void {
-    if (main.rs.s_in) |f| {
+    if (rt.rs.s_in) |f| {
         const is_stdio = (f == getStdin()) or (f == getStdout()) or (f == getStderr());
         if (!is_stdio) {
             _ = word.fclose(f);
-            main.rs.s_in = null;
+            rt.rs.s_in = null;
         }
     }
 }
@@ -83,7 +83,7 @@ pub fn cleanup() void {
 /// Open `filename` and point the lexer at it; returns 0 on failure.
 pub fn setupFile(filename: [*:0]const u8) c_int {
     if (openfile(filename) == 0) return 0;
-    main.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
+    rt.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
     return 1;
 }
 
@@ -201,7 +201,7 @@ fn is(s: [*:0]const u8) bool {
 fn ovflocheck() void {
     const d_ptr = @as(usize, @intFromPtr(ls.dicq));
     const start_ptr = @as(usize, @intFromPtr(ls.dic));
-    if (d_ptr - start_ptr > @as(usize, @intCast(main.rs.DICSPACE))) {
+    if (d_ptr - start_ptr > @as(usize, @intCast(rt.rs.DICSPACE))) {
         dicovflo();
     }
 }
@@ -213,7 +213,7 @@ pub fn dicovflo() void {
 
 /// Allocate and initialise the identifier dictionary.
 pub fn setupdic() void {
-    const space = main.rs.DICSPACE;
+    const space = rt.rs.DICSPACE;
     if (ls.dic == null) {
         const dict_slice = rt.allocator.alloc(u8, @intCast(space)) catch mallocPanic("dictionary");
         ls.dic = dict_slice.ptr;
@@ -271,8 +271,8 @@ pub fn token() ?[*:0]u8 {
                 ls.dicq -= 1;
             } else {
                 ls.dicq -= 1;
-                _ = word.strcpy(ls.dicq, main.rs.current_script.?);
-                ls.dicq += word.strlen(main.rs.current_script.?);
+                _ = word.strcpy(ls.dicq, rt.rs.current_script.?);
+                ls.dicq += word.strlen(rt.rs.current_script.?);
             }
         }
         ch = main_clib.getchar();
@@ -299,12 +299,12 @@ pub fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
     if (s[0] == '<' and s[@intCast(n - 1)] == '>') {
         var miralen: usize = 0;
         if (miralen == 0) {
-            miralen = word.strlen(main.rs.miralib.?);
+            miralen = word.strlen(rt.rs.miralib.?);
         }
-        _ = word.strcpy(&main.rs.linebuf[0], main.rs.miralib.?);
-        main.rs.linebuf[miralen] = '/';
-        _ = word.strcpy(&main.rs.linebuf[miralen + 1], s + 1);
-        _ = word.strcpy(ls.dicp, &main.rs.linebuf[0]);
+        _ = word.strcpy(&rt.rs.linebuf[0], rt.rs.miralib.?);
+        rt.rs.linebuf[miralen] = '/';
+        _ = word.strcpy(&rt.rs.linebuf[miralen + 1], s + 1);
+        _ = word.strcpy(ls.dicp, &rt.rs.linebuf[0]);
         s = ls.dicp;
         n = n + @as(Word, @intCast(miralen)) - 1;
         ls.dicq = ls.dicp + @as(usize, @intCast(n + 1));
@@ -364,16 +364,16 @@ fn litname(s: [*:0]const u8) bool {
 
 /// Read the next raw input character.
 fn getch() c_int {
-    if (main.rs.s_in == null) {
+    if (rt.rs.s_in == null) {
         return main_clib.EOF;
     }
-    var ch = main_clib.getc(main.rs.s_in);
+    var ch = main_clib.getc(rt.rs.s_in);
     if (ch == main_clib.EOF and ls.atnl == 0 and t(ls.fileq) == NIL) {
         ls.atnl = 1;
         return '\n';
     }
     if (ls.atnl != 0) {
-        if ((ls.line_no == 0 and core_state.s.commandmode == 0) or (main.rs.magic and ls.line_no == 1 and ls.litstack == NIL)) {
+        if ((ls.line_no == 0 and core_state.s.commandmode == 0) or (rt.rs.magic and ls.line_no == 1 and ls.litstack == NIL)) {
             const is_lit = (ch == '>') or litname(getFil(heap.heap.current_file));
             ls.literate = if (is_lit) 1 else 0;
             ls.litmain = ls.literate;
@@ -381,28 +381,28 @@ fn getch() c_int {
         if (ls.literate != 0) {
             var i: Word = 0;
             while (ch != main_clib.EOF and ch != '>') {
-                _ = main_clib.ungetc(ch, main.rs.s_in);
+                _ = main_clib.ungetc(ch, rt.rs.s_in);
                 ls.line_no += 1;
-                _ = word.fgets(ls.dicp, 250, main.rs.s_in);
+                _ = word.fgets(ls.dicp, 250, rt.rs.s_in);
                 if (i == 0 and ls.line_no > 1) {
                     chblank(ls.dicp);
                 }
                 i += 1;
-                if (main.rs.echoing != 0) {
+                if (rt.rs.echoing != 0) {
                     spaces(ls.lverge);
                     _ = main_clib.fputs(ls.dicp, getStdout());
                 }
-                ch = main_clib.getc(main.rs.s_in);
+                ch = main_clib.getc(rt.rs.s_in);
             }
             if ((i > 1 or (ls.line_no == 1 and i == 1)) and ch != main_clib.EOF) {
                 chblank(ls.dicp);
             }
             if (ch == '>') {
-                if (main.rs.echoing != 0) {
+                if (rt.rs.echoing != 0) {
                     _ = word.putchar(ch);
                     spaces(ls.lverge);
                 }
-                ch = main_clib.getc(main.rs.s_in);
+                ch = main_clib.getc(rt.rs.s_in);
             }
         }
         ls.atnl = 0;
@@ -411,7 +411,7 @@ fn getch() c_int {
             ls.line_no += 1;
         }
     }
-    if (main.rs.echoing != 0 and ch != main_clib.EOF) {
+    if (rt.rs.echoing != 0 and ch != main_clib.EOF) {
         _ = word.putchar(ch);
         if (ch == '\n' and ls.literate == 0) {
             if (ls.litmain != 0) {
@@ -456,12 +456,12 @@ fn getlitch() Word {
     if (ch == '\n') {
         return ch; // always an error
     }
-    if (main.rs.UTF8 != 0 and ch > 127) {
+    if (rt.rs.UTF8 != 0 and ch > 127) {
         const ch1 = getch();
         ls.c = ch1;
         if ((ch & 0xe0) == 0xc0) { // 2 bytes
             if ((ch1 & 0xc0) != 0x80) {
-                return -5; // not valid main.rs.UTF8
+                return -5; // not valid rt.rs.UTF8
             }
             ls.c = getch();
             return stoChar(((ch & 0x1f) << 6) | (ch1 & 0x3f));
@@ -470,7 +470,7 @@ fn getlitch() Word {
         ls.c = ch2;
         if ((ch & 0xf0) == 0xe0) { // 3 bytes
             if ((ch1 & 0xc0) != 0x80 or (ch2 & 0xc0) != 0x80) {
-                return -5; // not valid main.rs.UTF8
+                return -5; // not valid rt.rs.UTF8
             }
             ls.c = getch();
             return stoChar(((ch & 0xf) << 12) | ((ch1 & 0x3f) << 6) | (ch2 & 0x3f));
@@ -479,7 +479,7 @@ fn getlitch() Word {
         ls.c = ch3;
         if ((ch & 0xf8) == 0xf0) { // 4 bytes
             if ((ch1 & 0xc0) != 0x80 or (ch2 & 0xc0) != 0x80 or (ch3 & 0xc0) != 0x80) {
-                return -5; // not valid main.rs.UTF8
+                return -5; // not valid rt.rs.UTF8
             }
             ls.c = getch();
             return ((ch & 7) << 18) | ((ch1 & 0x3f) << 12) | ((ch2 & 0x3f) << 6) | (ch3 & 0x3f);
@@ -598,7 +598,7 @@ pub fn rdline() ?[*:0]u8 {
                 p -= 1;
             } else {
                 const remaining = 1024 - (@as(usize, @intFromPtr(p - 1)) - @as(usize, @intFromPtr(&ls.rdline_linebuf)));
-                _ = word.strncpy(p - 1, main.rs.current_script.?, remaining);
+                _ = word.strncpy(p - 1, rt.rs.current_script.?, remaining);
                 p = @ptrCast(&ls.rdline_linebuf[word.strlen(&ls.rdline_linebuf)]);
                 expansion = 1;
             }
@@ -638,7 +638,7 @@ fn errclass(val: Word, string_flag: Word) void {
     } else if (val == -4) {
         word.print("\\decimal escape out of range in {s}\n", .{s});
     } else if (val == -5) {
-        word.print("unrecognised character in {s}(main.rs.UTF8 error)\n", .{s});
+        word.print("unrecognised character in {s}(rt.rs.UTF8 error)\n", .{s});
     } else if (val == -6) {
         word.print("unrecognised escape \\{c} in {s}\n", .{@as(u8, @intCast(ls.errch)), s});
     } else if (val == -7) {
@@ -721,7 +721,7 @@ pub fn yylex() c_int {
             return word.CONST;
         }
         if (isChar(ls.yylval) == 0) {
-            const prefix_str: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
+            const prefix_str: [*:0]const u8 = if (rt.rs.echoing != 0) "\n" else "";
             word.printErr("{s}impossible event while reading char const ('\\{}')\n", .{prefix_str, ls.yylval});
             acterror();
         }
@@ -779,7 +779,7 @@ pub fn yylex() c_int {
             }
             word.print("<end of insert>", .{});
         }
-        main.rs.s_in = if (ls.fileq == NIL) getStdin() else @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
+        rt.rs.s_in = if (ls.fileq == NIL) getStdin() else @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
         ls.c = ' ';
         if (ls.fileq == NIL) {
             ls.c = 0;
@@ -787,7 +787,7 @@ pub fn yylex() c_int {
             ls.lmargin = 0;
             ls.lverge = 0;
             ls.atnl = 1;
-            main.rs.echoing = main.rs.verbosity & main.rs.listing;
+            rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
             ls.lastline = ls.line_no;
             ls.line_no = 0;
             ls.literate = 0;
@@ -797,7 +797,7 @@ pub fn yylex() c_int {
         heap.heap.current_file = t(h(ls.fileq));
         ls.prefix = h(ls.prefixstack);
         ls.prefixstack = t(ls.prefixstack);
-        main.rs.echoing = h(ls.echostack);
+        rt.rs.echoing = h(ls.echostack);
         ls.echostack = t(ls.echostack);
         ls.lverge = h(ls.vergstack);
         ls.vergstack = t(ls.vergstack);
@@ -883,7 +883,7 @@ pub fn yylex() c_int {
                     ls.yylval = 1;
                 } else {
                     ls.yylval = 0;
-                    _ = main_clib.ungetc(@intCast(ls.c), main.rs.s_in);
+                    _ = main_clib.ungetc(@intCast(ls.c), rt.rs.s_in);
                 }
                 ls.c = ' ';
                 return word.TO;
@@ -925,7 +925,7 @@ pub fn yylex() c_int {
                     ls.c = getch();
                 }
                 if (n > ls.sreds) {
-                    word.print("{s}syntax error: illegal symbol ${}{s}\n", .{if (main.rs.echoing != 0) @as([*:0]const u8, "\n") else "", n, if (n >= 1000000) @as([*:0]const u8, "...") else ""});
+                    word.print("{s}syntax error: illegal symbol ${}{s}\n", .{if (rt.rs.echoing != 0) @as([*:0]const u8, "\n") else "", n, if (n >= 1000000) @as([*:0]const u8, "...") else ""});
                     acterror();
                 } else {
                     ls.yylval = mkgvar(n);
@@ -1108,8 +1108,8 @@ pub fn pathname() ?[*:0]u8 {
     if (ls.c == '<') {
         const hold = ls.dicp;
         ls.c = getch();
-        _ = word.strcpy(ls.dicp, main.rs.miralib.?);
-        ls.dicp += word.strlen(main.rs.miralib.?);
+        _ = word.strcpy(ls.dicp, rt.rs.miralib.?);
+        ls.dicp += word.strlen(rt.rs.miralib.?);
         ls.dicp[0] = '/';
         ls.dicp += 1;
         kollect(okpath);
@@ -1139,10 +1139,10 @@ pub fn pathname() ?[*:0]u8 {
             _ = word.strcpy(hold, h_dir);
             ls.dicp = hold + word.strlen(hold);
         } else {
-            _ = word.strcpy(&main.rs.linebuf[0], hold);
+            _ = word.strcpy(&rt.rs.linebuf[0], hold);
             _ = word.strcpy(hold, ls.prefixbase.? + @as(usize, @intCast(ls.prefix)));
             ls.dicp = hold + word.strlen(ls.prefixbase.? + @as(usize, @intCast(ls.prefix)));
-            _ = word.strcpy(ls.dicp, &main.rs.linebuf[0]);
+            _ = word.strcpy(ls.dicp, &rt.rs.linebuf[0]);
             ls.dicp += word.strlen(ls.dicp);
         }
         kollect(okpath);
@@ -1185,17 +1185,17 @@ pub fn adjustPrefix(f: [*:0]const u8) void {
 
 /// Whether the next input char is a digit (without consuming).
 pub fn peekdig() c_int {
-    if (main.rs.s_in == null) return 0;
-    const ch = main_clib.getc(main.rs.s_in);
-    _ = main_clib.ungetc(ch, main.rs.s_in);
+    if (rt.rs.s_in == null) return 0;
+    const ch = main_clib.getc(rt.rs.s_in);
+    _ = main_clib.ungetc(ch, rt.rs.s_in);
     return if (ch >= '0' and ch <= '9') 1 else 0;
 }
 
 /// Peek the next input char without consuming it.
 pub fn peekch() c_int {
-    if (main.rs.s_in == null) return main_clib.EOF;
-    const ch = main_clib.getc(main.rs.s_in);
-    _ = main_clib.ungetc(ch, main.rs.s_in);
+    if (rt.rs.s_in == null) return main_clib.EOF;
+    const ch = main_clib.getc(rt.rs.s_in);
+    _ = main_clib.ungetc(ch, rt.rs.s_in);
     return ch;
 }
 
@@ -1294,9 +1294,9 @@ fn identifier(s: c_int) c_int {
         return '_';
     }
     ls.yylval = name();
-    if (core_state.s.commandmode != 0 and main.rs.lastid == 0 and h(ls.yylval) != 0) {
+    if (core_state.s.commandmode != 0 and rt.rs.lastid == 0 and h(ls.yylval) != 0) {
         if (t(h(ls.yylval)) != 0) {
-            main.rs.lastid = ls.yylval;
+            rt.rs.lastid = ls.yylval;
         }
     }
     return if (isconstructor(ls.yylval)) word.CNAME else word.NAME;
@@ -1328,7 +1328,7 @@ pub fn directive() Word {
         },
         'e' => {
             if (is("export") or is("_ e_ x_ p_ o_ r_ t")) {
-                if (main.rs.magic) {
+                if (rt.rs.magic) {
                     syntax("%export directive not permitted in \"-exp\" script\n");
                 }
                 return word.EXPORT;
@@ -1336,7 +1336,7 @@ pub fn directive() Word {
         },
         'f' => {
             if (is("free") or is("_ f_ r_ e_ e")) {
-                if (main.rs.magic) {
+                if (rt.rs.magic) {
                     syntax("%free directive not permitted in \"-exp\" script\n");
                 }
                 return word.FREE;
@@ -1363,7 +1363,7 @@ pub fn directive() Word {
                 } else if (ls.insertdepth < 12 and openfile(f.?) != 0) {
                     adjustPrefix(f.?);
                     ls.vergstack = cons(ls.lverge, ls.vergstack);
-                    ls.echostack = cons(main.rs.echoing, ls.echostack);
+                    ls.echostack = cons(rt.rs.echoing, ls.echostack);
                     ls.litstack = cons(ls.literate, ls.litstack);
                     ls.linostack = make(STRCONS, ls.line_no, ls.linostack);
                     ls.line_no = 0;
@@ -1372,12 +1372,12 @@ pub fn directive() Word {
                     heap.heap.current_file = makeFil(f.?, fileMtime(f.?), 0, NIL);
                     heap.heap.files = append1(heap.heap.files, cons(heap.heap.current_file, NIL));
                     tp(h(ls.fileq)).* = heap.heap.current_file;
-                    main.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
+                    rt.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
                     const is_lit = (peekch() == '>') or litname(f.?);
                     ls.literate = if (is_lit) 1 else 0;
                     ls.col = holdcol;
                     ls.lverge = holdcol;
-                    if (main.rs.echoing != 0) {
+                    if (rt.rs.echoing != 0) {
                         _ = word.putchar('\n');
                         if (ls.literate == 0) {
                             if (ls.litmain != 0) {
@@ -1391,7 +1391,7 @@ pub fn directive() Word {
                     ls.c = getch();
                 } else {
                     const toomany = (ls.insertdepth >= 12);
-                    const prefix_str: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
+                    const prefix_str: [*:0]const u8 = if (rt.rs.echoing != 0) "\n" else "";
                     word.print("{s}%insert error - cannot open \"{s}\"\n", .{prefix_str, f.?});
                     _ = keep(ls.dicp);
                     if (toomany) {
@@ -1412,19 +1412,19 @@ pub fn directive() Word {
                 return word.LEX;
             }
             if (is("list") or is("_ l_ i_ s_ t")) {
-                main.rs.echoing = main.rs.verbosity;
+                rt.rs.echoing = rt.rs.verbosity;
                 return yylex();
             }
         },
         'n' => {
             if (is("nolist") or is("_ n_ o_ l_ i_ s_ t")) {
-                main.rs.echoing = 0;
+                rt.rs.echoing = 0;
                 return yylex();
             }
         },
         else => {},
     }
-    if (main.rs.echoing != 0) {
+    if (rt.rs.echoing != 0) {
         _ = word.putchar('\n');
     }
     word.print("syntax error: unknown directive \"%{s}\"\n", .{ls.dicp});
@@ -1796,7 +1796,7 @@ pub fn string() void {
     if (ls.rawch == '\n') {
         syntax("non-escaped newline encountered inside string quotes\n");
     } else if (ch == main_clib.EOF) {
-        if (main.rs.echoing != 0) {
+        if (rt.rs.echoing != 0) {
             _ = word.putchar('\n');
         }
         word.print("syntax error: script ends inside unclosed string quotes - \n", .{});
@@ -1861,7 +1861,7 @@ pub fn charclass() c_int {
     if (ls.rawch == '\n') {
         syntax("non-escaped newline encountered in char class\n");
     } else if (ch == main_clib.EOF) {
-        if (main.rs.echoing != 0) {
+        if (rt.rs.echoing != 0) {
             _ = word.putchar('\n');
         }
         word.print("syntax error: script ends inside unclosed char class brackets - \n", .{});
@@ -1886,7 +1886,7 @@ pub fn resetLex() void {
         const err_script_raw = @as(?[*:0]const u8, strtab.strOf(h(core_state.s.errs)));
         const err_script = err_script_raw orelse "test.m";
         const is_current = if (err_script_raw) |es|
-            (if (main.rs.current_script) |script| es == @as([*:0]const u8, @ptrCast(script)) else false)
+            (if (rt.rs.current_script) |script| es == @as([*:0]const u8, @ptrCast(script)) else false)
         else
             true;
         if (t(core_state.s.errs) == 0 and is_current) {
@@ -1916,7 +1916,7 @@ pub fn resetLex() void {
 pub fn resetState() void {
     if (core_state.s.commandmode != 0) {
         while (ls.c != '\n' and ls.c != main_clib.EOF) {
-            if (main.rs.s_in) |sin| {
+            if (rt.rs.s_in) |sin| {
                 ls.c = main_clib.getc(sin);
             } else {
                 ls.c = main_clib.EOF;
@@ -1929,7 +1929,7 @@ pub fn resetState() void {
         ls.fileq = t(ls.fileq);
     }
     ls.insertdepth = -1;
-    main.rs.s_in = getStdin();
+    rt.rs.s_in = getStdin();
     ls.echostack = NIL;
     ls.idsused = NIL;
     ls.prefixstack = NIL;
@@ -1939,7 +1939,7 @@ pub fn resetState() void {
     ls.margstack = NIL;
     ls.prefix = 0;
     ls.prefixbase.?[0] = 0;
-    main.rs.echoing = main.rs.verbosity & main.rs.listing;
+    rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
     ls.brct = 0;
     ls.inbnf = 0;
     ls.sreds = 0;

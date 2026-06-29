@@ -48,11 +48,10 @@ pub const NIL: Word = CMBASE + 138;
 /// First heap-cell handle; values below are atoms (mirrors `word.ATOMLIMIT`).
 pub const ATOMLIMIT: Word = CMBASE + 141;
 
-// RuntimeState: all mutable interpreter state not constrained by extern var circularity
-/// The aggregate runtime-state struct type (see `runtime_state.RuntimeState`).
-pub const RuntimeState = rt.RuntimeState;
-/// Pointer to the singleton runtime state.
-pub const rs: *RuntimeState = rt.rs;
+// Runtime state (private; callers import `runtime/runtime_state.zig` directly
+// and use its `rs` pointer).
+const RuntimeState = rt.RuntimeState;
+const rs: *RuntimeState = rt.rs;
 
 // Core/error state lives in core_state.zig; callers reach it via `core_state.X`
 // directly (no `main.X` re-export — the old extern/export var bridge is gone).

@@ -7,6 +7,7 @@ const std = @import("std");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
 const main = @import("../main.zig");
+const rt = @import("../runtime/runtime_state.zig");
 const cs = @import("compiler_state.zig").cs;
 const abi = @import("../runtime/main_clib.zig");
 const lex_state = @import("../parser/lex_state.zig");
@@ -38,14 +39,14 @@ var pfrts: Word = NIL;
 /// Marks all exported identifiers and privatises the rest.
 /// Must be paired with a call to unfixexports() once the dump is written.
 pub fn fixexports() void {
-    var e = main.rs.exports;
+    var e = rt.rs.exports;
     var f: Word = undefined;
     while (e != NIL) : (e = t(e)) {
         paint(h(e));
     }
     internals = NIL;
-    if (main.rs.exports == NIL and ls.exportfiles == NIL and main.rs.embargoes == NIL) {
-        e = main.rs.freeids;
+    if (rt.rs.exports == NIL and ls.exportfiles == NIL and rt.rs.embargoes == NIL) {
+        e = rt.rs.freeids;
         while (e != NIL) : (e = t(e)) {
             internals = main.cons(privatise(h(h(e))), internals);
         }
@@ -69,7 +70,7 @@ pub fn fixexports() void {
             }
         }
     }
-    e = main.rs.exports;
+    e = rt.rs.exports;
     while (e != NIL) : (e = t(e)) {
         unpaint(h(e));
     }
@@ -95,7 +96,7 @@ fn unpaint(x: Word) void {
 /// No-op when `rs.mkexports != 0` (the dump is being kept for distribution).
 pub fn unfixexports() void {
     var i = internals;
-    if (main.rs.mkexports) return;
+    if (rt.rs.mkexports) return;
     while (i != NIL) : (i = t(i)) {
         _ = publicise(h(i));
     }
@@ -179,7 +180,7 @@ fn publicise(x: Word) Word {
 /// Signal handler that defers delivery by setting `rs.sigflag`.
 /// Installed during dump I/O so that SIGINT cannot corrupt the dump file mid-write.
 pub fn sigdefer(_: c_int) callconv(.c) void {
-    main.rs.sigflag = 1;
+    rt.rs.sigflag = 1;
 }
 
 /// Repairs type references after loading a dump: re-resolves STRCONS nodes and
@@ -203,7 +204,7 @@ pub fn readoption() void {
         }
     }
 
-    var rfl_ptr = main.rs.rfl;
+    var rfl_ptr = rt.rs.rfl;
     while (rfl_ptr != NIL) : (rfl_ptr = t(rfl_ptr)) {
         f = main.filDefs(h(rfl_ptr));
         while (f != NIL) : (f = t(f)) {
@@ -280,7 +281,7 @@ pub fn undump(t_val: [*:0]const u8) void {
     var t2: Word = undefined;
     var oldsig: usize = 0;
 
-    if (main.isMirandaSource(t_val) == 0 and main.rs.initialising == 0) {
+    if (main.isMirandaSource(t_val) == 0 and rt.rs.initialising == 0) {
         main.loadfile(t_val);
         return;
     }
@@ -311,17 +312,17 @@ pub fn undump(t_val: [*:0]const u8) void {
         return;
     }
 
-    main.rs.current_script = @constCast(t_val);
+    rt.rs.current_script = @constCast(t_val);
     core_state.s.loading = 1;
-    main.rs.oldfiles = NIL;
+    rt.rs.oldfiles = NIL;
     main.unload();
 
-    if (main.rs.initialising == 0 and !main.rs.making) {
-        main.rs.sigflag = 0;
+    if (rt.rs.initialising == 0 and !rt.rs.making) {
+        rt.rs.sigflag = 0;
         oldsig = main.signals(abi.SIGINT, @intFromPtr(&sigdefer));
     }
 
-    heap.heap.files = abi.loadScript(f.?, @constCast(t_val), NIL, NIL, if (!main.rs.making and main.rs.initialising == 0) 1 else 0);
+    heap.heap.files = abi.loadScript(f.?, @constCast(t_val), NIL, NIL, if (!rt.rs.making and rt.rs.initialising == 0) 1 else 0);
     _ = word.fclose(f.?);
 
     if (cs.BAD_DUMP != 0) {
@@ -339,11 +340,11 @@ pub fn undump(t_val: [*:0]const u8) void {
         }
     }
 
-    if (main.rs.initialising == 0 and !main.rs.making) {
+    if (rt.rs.initialising == 0 and !rt.rs.making) {
         _ = main.signals(abi.SIGINT, oldsig);
     }
-    if (main.rs.sigflag != 0) {
-        main.rs.sigflag = 0;
+    if (rt.rs.sigflag != 0) {
+        rt.rs.sigflag = 0;
         if (oldsig > 1) {
             const handler: *const fn (c_int) callconv(.c) void = @ptrFromInt(oldsig);
             handler(abi.SIGINT);
@@ -351,7 +352,7 @@ pub fn undump(t_val: [*:0]const u8) void {
     }
 
     if (cs.CLASHES != NIL) {
-        if (main.rs.ideep == 0) {
+        if (rt.rs.ideep == 0) {
             word.print("cannot load {s} ", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
             abi.printlist(@constCast("due to name clashes: "), main.alfasort(cs.CLASHES));
         }
@@ -362,25 +363,25 @@ pub fn undump(t_val: [*:0]const u8) void {
 
     if (cs.BAD_DUMP != 0 or main.srcUpdate() != 0) {
         main.loadfile(t_val);
-    } else if (main.rs.initialising != 0) {
+    } else if (rt.rs.initialising != 0) {
         if (cs.ND != NIL or heap.heap.files == NIL) {
             main.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
         }
     } else {
-        if (main.rs.verbosity != 0 or main.rs.magic or main.rs.mkexports) {
+        if (rt.rs.verbosity != 0 or rt.rs.magic or rt.rs.mkexports) {
             if (heap.heap.files == NIL) {
                 word.print("{s} contains syntax error\n", .{std.mem.span(t_val)});
             } else {
                 if (cs.ND != NIL) {
                     word.print("{s} contains undefined names or type errors\n", .{std.mem.span(t_val)});
-                } else if (!main.rs.making and !main.rs.magic) {
+                } else if (!rt.rs.making and !rt.rs.magic) {
                     word.print("{s}\n", .{std.mem.span(t_val)});
                 }
             }
         }
     }
 
-    if (heap.heap.files != NIL and !main.rs.making and main.rs.initialising == 0) {
+    if (heap.heap.files != NIL and !rt.rs.making and rt.rs.initialising == 0) {
         unfixexports();
     }
     core_state.s.loading = 0;
@@ -390,26 +391,26 @@ pub fn undump(t_val: [*:0]const u8) void {
 /// `rs.current_script`. Installs `sigdefer` during the write so a SIGINT cannot
 /// leave a partial dump; re-raises any deferred signal afterward.
 pub fn makedump() void {
-    const obf = &main.rs.linebuf;
+    const obf = &rt.rs.linebuf;
     var f: ?*word.FILE = null;
-    _ = word.strcpy(obf, main.rs.current_script.?);
+    _ = word.strcpy(obf, rt.rs.current_script.?);
     const len = word.strlen(obf);
     _ = word.strcpy(obf[len - 1 ..].ptr, core_state.s.obsuffix);
     f = word.fopen(obf, "w");
     if (f == null) {
         word.print("WARNING: CANNOT WRITE TO {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(obf)))});
-        if (word.strcmp(main.rs.current_script.?, &main.rs.PRELUDE) == 0 or word.strcmp(main.rs.current_script.?, &main.rs.STDENV) == 0) {
+        if (word.strcmp(rt.rs.current_script.?, &rt.rs.PRELUDE) == 0 or word.strcmp(rt.rs.current_script.?, &rt.rs.STDENV) == 0) {
             word.print("TO FIX THIS PROBLEM PLEASE GET SUPER-USER TO EXECUTE `mira'\n", .{});
         }
-        if (main.rs.making and main.rs.make_status == 0) {
-            main.rs.make_status = 1;
+        if (rt.rs.making and rt.rs.make_status == 0) {
+            rt.rs.make_status = 1;
         }
         return;
     }
-    main.rs.unlinkme = @ptrCast(obf);
-    abi.setprefix(main.rs.current_script.?);
+    rt.rs.unlinkme = @ptrCast(obf);
+    abi.setprefix(rt.rs.current_script.?);
     abi.dumpScript(heap.heap.files, f.?);
-    main.rs.unlinkme = null;
+    rt.rs.unlinkme = null;
     _ = word.fclose(f.?);
 }
 

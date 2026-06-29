@@ -13,7 +13,6 @@ const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
 
 const main_clib = @import("../runtime/main_clib.zig");
-const main = @import("../main.zig");
 
 const compiler_state = @import("compiler_state.zig");
 const cs = compiler_state.cs;
@@ -843,11 +842,11 @@ pub fn compzf(input_e: Word, input_qq: Word, diag: Word) Word {
     if (h(h(hold)) == GENERATOR) {
         g1 = t(t(h(hold)));
     }
-    e = transzf(e, hold, if (diag != 0) main.rs.diagonalise else main.rs.concat);
+    e = transzf(e, hold, if (diag != 0) rt.rs.diagonalise else rt.rs.concat);
     if (diag != 0) {
         while (r != 0) {
             r -= 1;
-            e = ap(main.rs.concat, e);
+            e = ap(rt.rs.concat, e);
         }
     }
     return if (e == g1) ap2(APPEND, NIL, e) else e;
@@ -875,7 +874,7 @@ pub fn transzf(e_input: Word, qq_input: Word, conc: Word) Word {
     }
     const q2 = h(t(qq));
     if (h(q2) == GUARD) {
-        if (conc == main.rs.concat) {
+        if (conc == rt.rs.concat) {
             tp(t(q)).* = ap2(FILTER, lambda(h(t(q)), t(q2)), t(t(q)));
             tp(qq).* = t(t(qq));
             return transzf(e, qq, conc);
@@ -1093,25 +1092,25 @@ pub fn mkshow(s: Word, p: Word, input_t: Word) Word {
         type_node = h(type_node);
     }
     switch (type_node) {
-        num_t => return if (p != 0) main.rs.shownum1 else SHOWNUM,
-        bool_t => return main.rs.showbool,
-        char_t => return main.rs.showchar,
+        num_t => return if (p != 0) rt.rs.shownum1 else SHOWNUM,
+        bool_t => return rt.rs.showbool,
+        char_t => return rt.rs.showchar,
         list_t => {
             if (h(args) == char_t) {
-                return main.rs.showstring;
+                return rt.rs.showstring;
             }
-            return ap(main.rs.showlist, mkshow(s, 0, h(args)));
+            return ap(rt.rs.showlist, mkshow(s, 0, h(args)));
         },
-        comma_t => return ap(main.rs.showparen, ap2(main.rs.showpair, mkshow(s, 0, h(args)), mkshowt(s, h(t(args))))),
-        void_t => return main.rs.showvoid,
-        arrow_t => return main.rs.showfunction,
+        comma_t => return ap(rt.rs.showparen, ap2(rt.rs.showpair, mkshow(s, 0, h(args)), mkshowt(s, h(t(args))))),
+        void_t => return rt.rs.showvoid,
+        arrow_t => return rt.rs.showfunction,
         else => {
             if (getTag(type_node) == ID) {
                 var r = typeShowFn(type_node);
                 if (r == 0) {
-                    return main.rs.showabstract;
+                    return rt.rs.showabstract;
                 }
-                if (r == main.rs.showwhat) {
+                if (r == rt.rs.showwhat) {
                     return r;
                 }
                 while (args != NIL) {
@@ -1128,16 +1127,16 @@ pub fn mkshow(s: Word, p: Word, input_t: Word) Word {
                     return type_node;
                 }
                 cs.was_poly = 1;
-                return main.rs.showwhat;
+                return rt.rs.showwhat;
             }
             if (getTag(type_node) == STRCONS) {
                 _ = word.print("warning - mkshow applied to suppressed type\n", .{});
-                return main.rs.showwhat;
+                return rt.rs.showwhat;
             }
             _ = word.print("impossible event in mkshow (", .{});
             outType(type_node);
             _ = word.print(")\n", .{});
-            return main.rs.showwhat;
+            return rt.rs.showwhat;
         },
     }
 }
@@ -1147,7 +1146,7 @@ pub fn mkshowt(s: Word, type_tuple: Word) Word {
     if (t(type_tuple) == void_t) {
         return mkshow(s, 0, t(h(type_tuple)));
     }
-    return ap2(main.rs.showpair, mkshow(s, 0, t(h(type_tuple))), mkshowt(s, t(type_tuple)));
+    return ap2(rt.rs.showpair, mkshow(s, 0, t(h(type_tuple))), mkshowt(s, t(type_tuple)));
 }
 
 /// Name-clash check helper (returns a count).
@@ -1159,7 +1158,7 @@ fn nclchk(n: Word, p: Word, hr: Word) c_int {
         if (n != p) {
             return 0;
         }
-        if (main.rs.echoing != 0) {
+        if (rt.rs.echoing != 0) {
             _ = word.putchar('\n');
         }
         core_state.s.errs = hr;
@@ -1186,20 +1185,20 @@ pub fn nclashcheck(n: Word, input_dd: Word, hr: Word) void {
 
 /// Report a re-specification (duplicate `::`) error for `x`.
 pub fn respecError(x: Word) void {
-    if (main.rs.echoing != 0) {
+    if (rt.rs.echoing != 0) {
         _ = word.putchar('\n');
     }
-    const suffix: [*:0]const u8 = if (member(main.rs.primenv, x) != 0) " (in standard environment)" else "";
+    const suffix: [*:0]const u8 = if (member(rt.rs.primenv, x) != 0) " (in standard environment)" else "";
     _ = word.print("syntax error: type of \"{s}\" already declared{s}\n", .{ getId(x), suffix });
     acterror();
 }
 
 /// Report a name clash for `x`.
 pub fn nameclash(x: Word) void {
-    if (main.rs.echoing != 0) {
+    if (rt.rs.echoing != 0) {
         _ = word.putchar('\n');
     }
-    const suffix: [*:0]const u8 = if (member(main.rs.primenv, x) != 0) " (in standard environment)" else "";
+    const suffix: [*:0]const u8 = if (member(rt.rs.primenv, x) != 0) " (in standard environment)" else "";
     _ = word.print("syntax error: nameclash, \"{s}\" already defined{s}\n", .{ getId(x), suffix });
     acterror();
 }
@@ -1243,7 +1242,7 @@ pub fn specify(input_x: Word, spec_type: Word, here: Word) void {
         if (idWho(x) == NIL) {
             setIdWho(x, here);
         }
-        setIdVal(x, makeTyp(arity, main.rs.showwhat, placeholder_t, NIL));
+        setIdVal(x, makeTyp(arity, rt.rs.showwhat, placeholder_t, NIL));
         addToEnv(x);
         cs.newtyps = add1(x, cs.newtyps);
         return;
@@ -1267,7 +1266,7 @@ pub fn specify(input_x: Word, spec_type: Word, here: Word) void {
 /// Check that `type_name` is applied at its declared arity.
 fn arityCheck(type_name: Word, arity: Word, here: Word) void {
     if (typeArity(type_name) != arity) {
-        const prefix: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
+        const prefix: [*:0]const u8 = if (rt.rs.echoing != 0) "\n" else "";
         _ = word.print("{s}syntax error: wrong number of parameters for typename \"{s}\" ({d} expected)\n", .{
             prefix,
             getId(type_name),
@@ -1318,7 +1317,7 @@ pub fn declType(input_tf: Word, type_class: Word, info: Word, here: Word) void {
 
 /// Declare a single binding `x` = `e` (the inner step).
 fn decl1(x: Word, e: Word) void {
-    if (idVal(x) != UNDEF and main.rs.lastname != x) {
+    if (idVal(x) != UNDEF and rt.rs.lastname != x) {
         core_state.s.errs = h(e);
         nameclash(x);
         return;
@@ -1333,7 +1332,7 @@ fn decl1(x: Word, e: Word) void {
             addToEnv(x);
         }
     } else if (fallible(h(t(idVal(x)))) == 0) {
-        const prefix: [*:0]const u8 = if (main.rs.echoing != 0) "\n" else "";
+        const prefix: [*:0]const u8 = if (rt.rs.echoing != 0) "\n" else "";
         core_state.s.errs = h(e);
         _ = word.print("{s}syntax error: unreachable case in defn of \"{s}\"\n", .{ prefix, getId(x) });
         acterror();
@@ -1354,7 +1353,7 @@ pub fn declare(x: Word, e: Word) void {
         syntax("illegal lhs for definition\n");
         return;
     }
-    main.rs.lastname = 0;
+    rt.rs.lastname = 0;
     while (bindings != NIL) {
         const binding = h(bindings);
         const name = h(binding);
@@ -1414,7 +1413,7 @@ pub fn block(input_defs: Word, input_e: Word, keep: Word) Word {
         }
         defs = setdiff(defs, y);
         if (defs != NIL) {
-            main.rs.detrop = append1(main.rs.detrop, defs);
+            rt.rs.detrop = append1(rt.rs.detrop, defs);
         }
         if (keep != 0) {
             return letrec(y, e);
@@ -1762,7 +1761,7 @@ pub fn codegen(x: Word) Word {
                 }
             }
             if (core_state.s.commandmode != 0) {
-                main.rs.rv_expr = 1;
+                rt.rs.rv_expr = 1;
             } else {
                 cs.rv_script = 1;
             }

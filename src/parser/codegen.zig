@@ -9,7 +9,7 @@ const strtab = @import("../runtime/strtab.zig");
 const Allocator = std.mem.Allocator;
 const ast = @import("ast.zig");
 
-const main = @import("../main.zig");
+const rt = @import("../runtime/runtime_state.zig");
 const lex_state = @import("lex_state.zig");
 const ls = lex_state.ls;
 // Cross-module functions via direct @import (R7.3 — eliminate extern-fn linker decls).
@@ -153,7 +153,7 @@ fn nameWord(name: []const u8) Word {
     // Look up the interned atom from the name table (populated by yylex's
     // name() calls during tokenization). This ensures the same source name
     // always maps to the same heap atom, which is required for multi-equation
-    // definitions: decl1() checks `main.rs.lastname == x` using pointer equality.
+    // definitions: decl1() checks `rt.rs.lastname == x` using pointer equality.
     const existing = findid(&buf);
     if (existing != word.NIL) return existing;
     // Not yet in the name table (e.g., synthesised names). Intern it now.
@@ -231,7 +231,7 @@ fn opWord(op: []const u8) Word {
     if (std.mem.eql(u8, op, "le")) return ap(word.C, word.GRE); // relop LE
     if (std.mem.eql(u8, op, "cons")) return word.P; // ':' as section
     if (std.mem.eql(u8, op, "plus_plus")) return word.APPEND;
-    if (std.mem.eql(u8, op, "minus_minus")) return main.rs.listdiff_fn;
+    if (std.mem.eql(u8, op, "minus_minus")) return rt.rs.listdiff_fn;
     if (std.mem.eql(u8, op, "plus")) return word.PLUS;
     if (std.mem.eql(u8, op, "minus")) return word.MINUS;
     if (std.mem.eql(u8, op, "star")) return word.TIMES;
@@ -247,7 +247,7 @@ fn opWord(op: []const u8) Word {
     // SHOWSYM → make(SHOW, 0, 0); READVALSY → make(STARTREADVALS, 0, 0).
     if (std.mem.eql(u8, op, "kw_show")) return heap.make(word.SHOW, 0, 0);
     if (std.mem.eql(u8, op, "kw_readvals")) return heap.make(word.STARTREADVALS, 0, 0);
-    if (std.mem.eql(u8, op, "dollars")) return main.rs.lastexp;
+    if (std.mem.eql(u8, op, "dollars")) return rt.rs.lastexp;
     // Fall back: user-defined infix operator stored as an identifier
     return nameWord(op);
 }
@@ -388,7 +388,7 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
 
         // Tuple patterns: pair / tcons chain.
         .tuple => |items| blk: {
-            if (items.len == 0) break :blk main.rs.Void;
+            if (items.len == 0) break :blk rt.rs.Void;
             if (items.len == 1) break :blk codegenPattern(alloc, items[0]);
             var result = mkpair(
                 codegenPattern(alloc, items[items.len - 2]),
@@ -471,9 +471,9 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         // (a, b)       → pair(a, b)
         // (a, b, c)    → tcons(a, pair(b, c))
         // (a, b, c, d) → tcons(a, tcons(b, pair(c, d)))
-        // ()           → main.rs.Void
+        // ()           → rt.rs.Void
         .tuple => |items| blk: {
-            if (items.len == 0) break :blk main.rs.Void;
+            if (items.len == 0) break :blk rt.rs.Void;
             if (items.len == 1) break :blk codegenExpr(alloc, items[0]); // degenerate
             var result = mkpair(
                 codegenExpr(alloc, items[items.len - 2]),
@@ -694,10 +694,10 @@ fn codegenDef(alloc: Allocator, def: ast.Def) void {
     }
     rhs = mklabel(here, rhs);
     declare(lhs, rhs);
-    // Mirror the YACC grammar: `declare(l,r), main.rs.lastname=l` — allows
+    // Mirror the YACC grammar: `declare(l,r), rt.rs.lastname=l` — allows
     // consecutive equations for the same function to be accumulated
     // by decl1 rather than triggering a nameclash error.
-    main.rs.lastname = lhs;
+    rt.rs.lastname = lhs;
 }
 
 // ---------------------------------------------------------------------------

@@ -12,6 +12,7 @@ const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
 const main_clib = @import("../runtime/main_clib.zig");
 const main = @import("../main.zig");
+const rt = @import("../runtime/runtime_state.zig");
 
 const compiler_state = @import("compiler_state.zig");
 const core_state = @import("../runtime/core_state.zig");
@@ -901,7 +902,7 @@ pub fn locate(s: [*:0]const u8) void {
             var x = cs.current_id;
             _ = word.print("{s} in definition of ", .{s});
             while (getTag(x) == CONS) {
-                if (getTag(t(x)) == ID and member(main.rs.fnts, t(x)) != 0) {
+                if (getTag(t(x)) == ID and member(rt.rs.fnts, t(x)) != 0) {
                     _ = word.print("nonterminal ", .{});
                     x = h(x);
                 } else {
@@ -946,7 +947,7 @@ pub fn sayhere(h_val: Word, nl: Word) void {
         }
     }
     const h_str = strtab.strOf(h(h_node));
-    const eq = std.mem.eql(u8, std.mem.span(h_str), std.mem.span(main.rs.current_script.?));
+    const eq = std.mem.eql(u8, std.mem.span(h_str), std.mem.span(rt.rs.current_script.?));
     const prefix: [*:0]const u8 = if (eq) "" else "%insert file ";
     word.print("(line {d:>3} of {s}\"{s}\")", .{ t(h_node), prefix, h_str });
     if (nl != 0) {
@@ -1175,7 +1176,7 @@ pub fn outType2(t_val: Word) void {
                     const pn_val_node = pnVal(t_val);
                     if (getTag(pn_val_node) == ID) {
                         _ = word.print("{s}", .{getId(pn_val_node)});
-                    } else if (std.mem.eql(u8, std.mem.span(strtab.strOf(h(t(tInfo(t_val))))), std.mem.span(main.rs.current_script.?))) {
+                    } else if (std.mem.eql(u8, std.mem.span(strtab.strOf(h(t(tInfo(t_val))))), std.mem.span(rt.rs.current_script.?))) {
                         _ = word.print("{s}", .{strtab.strOf(h(h(tInfo(t_val))))});
                     } else {
                         _ = word.print("`{s}@{s}'", .{ strtab.strOf(h(h(tInfo(t_val)))), strtab.strOf(h(t(tInfo(t_val)))) });
@@ -1663,13 +1664,13 @@ fn abstrCheck(x_in: Word) main.MiraError!void {
     }
     // restore the abstract types - for "finger"
     x = sigids;
-    var rt = rtypes;
+    var rty = rtypes;
     while (x != NIL) {
         if (idType(h(x)) != wrong_t) {
-            tp(h(h(x))).* = h(rt);
+            tp(h(h(x))).* = h(rty);
         }
         x = t(x);
-        rt = t(rt);
+        rty = t(rty);
     }
     cs.ATNAMES = 0;
 }
@@ -2021,8 +2022,8 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
             }
             const ft_val = try etype(h(x), env, ngt);
             const at = try etype(t(x), env, ngt);
-            const rt = NTV();
-            if (unify1(ft_val, ap2(arrow_t, at, rt)) == 0) {
+            const rt_ty = NTV();
+            if (unify1(ft_val, ap2(arrow_t, at, rt_ty)) == 0) {
                 const ft = subst(ft_val);
                 if (isArrowType(ft)) {
                     if (getTag(h(x)) == AP and h(h(x)) == word.G_ERROR) {
@@ -2035,7 +2036,7 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
                 }
                 return NTV();
             }
-            return rt;
+            return rt_ty;
         },
         CONS => {
             const elem_type = NTV();
@@ -2066,8 +2067,8 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
             while (getTag(cur) == CONS) {
                 const ht = try etype(h(cur), env, ngt);
                 if (unify1(ht, elem_type) == 0) {
-                    const rt = try etype(t(cur), env, ngt);
-                    typeError("cons", "to", ht, rt);
+                    const rt_ty = try etype(t(cur), env, ngt);
+                    typeError("cons", "to", ht, rt_ty);
                     return NTV();
                 }
                 cur = t(cur);
@@ -2587,8 +2588,8 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
                 },
                 word.G_CLOSE => {
                     const a = NTV();
-                    if (main.rs.col_fn != 0) {
-                        if (main.rs.col_fn == -1) {
+                    if (rt.rs.col_fn != 0) {
+                        if (rt.rs.col_fn == -1) {
                             cs.TYPERRS += 1;
                         } else {
                             checkcolfn();
@@ -2624,10 +2625,10 @@ fn etype(x: Word, env: Word, ngt: Word) main.MiraError!Word {
 
 /// Type-check the grammar's collector function (`col_fn`).
 pub fn checkcolfn() void {
-    const t_val = idType(main.rs.col_fn);
+    const t_val = idType(rt.rs.col_fn);
     const f = tf(t(h(t(cs.bnf_t))), num_t);
     if (t_val == undef_t or t_val == wrong_t or subsumes(instantiate(t_val), f) != 0) {
-        main.rs.col_fn = 0;
+        rt.rs.col_fn = 0;
         return;
     }
     _ = word.print("`bnftokenindentation' has wrong type for use in offside rule\n", .{});
@@ -2637,9 +2638,9 @@ pub fn checkcolfn() void {
     _ = word.print("  actual type :: ", .{});
     outType(t_val);
     _ = word.putchar('\n');
-    sayhere(getspecloc(main.rs.col_fn), 1);
+    sayhere(getspecloc(rt.rs.col_fn), 1);
     cs.TYPERRS += 1;
-    main.rs.col_fn = -1;
+    rt.rs.col_fn = -1;
 }
 
 /// Derive the BNF token type from the grammar's `bnftokenstate`.
@@ -2754,7 +2755,7 @@ pub fn checktypes() void {
     cs.SBND = NIL;
     cs.ND = NIL;
     outer: {
-        if (main.rs.rfl != NIL) {
+        if (rt.rs.rfl != NIL) {
             readoption();
         }
         var s = reverse(t(h(heap.heap.files)));
@@ -2776,11 +2777,11 @@ pub fn checktypes() void {
         core_state.s.SYNERR = 1;
         return;
     }
-    if (main.rs.freeids != NIL) {
-        redtfr(main.rs.freeids);
+    if (rt.rs.freeids != NIL) {
+        redtfr(rt.rs.freeids);
     }
     genshfns();
-    if (main.rs.fnts != NIL) {
+    if (rt.rs.fnts != NIL) {
         genbnft();
     }
     cs.R = msc(cs.R);

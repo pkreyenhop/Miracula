@@ -14,7 +14,7 @@ const setupdic = r7_lex.setupdic;
 const yylex = r7_lex.yylex;
 const lex_state = @import("lex_state.zig");
 const r7_lex = @import("lex.zig");
-const main = @import("../main.zig");
+const rt = @import("../runtime/runtime_state.zig");
 const setup = @import("../compiler/setup.zig");
 const main_clib = @import("../runtime/main_clib.zig");
 const word = @import("../runtime/word.zig");
@@ -48,7 +48,7 @@ const resetState = r7_lex.resetState;
 fn resetLexerState() void {
     resetState();
     setupdic();
-    main.rs.primenv = word.NIL;
+    rt.rs.primenv = word.NIL;
     setup.miraSetup();
     heap.heap.current_file = makeFilRecord("test.m");
     heap.heap.files = heap.make(word.CONS, heap.heap.current_file, word.NIL);

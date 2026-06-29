@@ -8,7 +8,7 @@
 const std = @import("std");
 
 const word = @import("../runtime/word.zig");
-const main = @import("../main.zig");
+const rt = @import("../runtime/runtime_state.zig");
 const core = @import("../runtime/core_state.zig");
 
 const lex_bridge = @import("lex_bridge.zig");
@@ -68,7 +68,7 @@ fn parseCurrentNew() ParseError!ParseResult {
             return ParseError.SyntaxError;
         }
         const expr_word = codegen.codegenExpr(alloc, expr);
-        main.rs.lastexp = expr_word; // anchor as GC root before typeOf() inside evaluateRepl() can trigger GC
+        rt.rs.lastexp = expr_word; // anchor as GC root before typeOf() inside evaluateRepl() can trigger GC
         evaluateRepl(expr_word);
         // Child prints newline before exit(0); parent returns here.
         return .success;

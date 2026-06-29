@@ -13,7 +13,6 @@ const reduce = @import("reduce_core.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
 const platform = @import("../../io/platform.zig");
-const main = @import("../../main.zig");
 const combinators = @import("combinators.zig");
 const io_handlers = @import("io.zig");
 const rt = @import("../runtime_state.zig");
@@ -160,7 +159,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             ctx.hold = word.NIL;
             if (p) |ptr| {
                 var i = word.strlen(ptr);
-                if (main.rs.UTF8 != 0) {
+                if (rt.rs.UTF8 != 0) {
                     const qbuf_slice = rt.allocator.alloc(u8, i + 1) catch heap.mallocPanic("utf8 conversion buffer");
                     const qbuf = qbuf_slice.ptr;
                     _ = word.strcpy(@as([*:0]u8, @ptrCast(qbuf)), ptr);
@@ -291,7 +290,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                 reduce.tl_set(ctx.e, val);
                 ctx.e = val;
             } else {
-                var p = &main.rs.linebuf;
+                var p = &rt.rs.linebuf;
                 var d: f64 = 0.0;
                 var junk: u8 = 0;
                 x = lastArg(ctx);
@@ -464,17 +463,17 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             reduce.upLeft(ctx);
             if (reduce.is_double(lastArg(ctx))) {
                 const x = heap.getDbl(lastArg(ctx));
-                _ = main_clib.sprintf(&main.rs.linebuf, "%.16g", .{x});
+                _ = main_clib.sprintf(&rt.rs.linebuf, "%.16g", .{x});
                 var p_idx: usize = 0;
-                while (word.isdigit(main.rs.linebuf[p_idx])) {
+                while (word.isdigit(rt.rs.linebuf[p_idx])) {
                     p_idx += 1;
                 }
-                if (main.rs.linebuf[p_idx] == 0) {
-                    main.rs.linebuf[p_idx] = '.';
-                    main.rs.linebuf[p_idx + 1] = '0';
-                    main.rs.linebuf[p_idx + 2] = 0;
+                if (rt.rs.linebuf[p_idx] == 0) {
+                    rt.rs.linebuf[p_idx] = '.';
+                    rt.rs.linebuf[p_idx + 1] = '0';
+                    rt.rs.linebuf[p_idx + 2] = 0;
                 }
-                reduce.rewrite_to_string(&ctx.e, @ptrCast(&main.rs.linebuf));
+                reduce.rewrite_to_string(&ctx.e, @ptrCast(&rt.rs.linebuf));
             } else {
                 reduce.simpl(ctx, big.toDecimalList(lastArg(ctx)));
             }
@@ -484,8 +483,8 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
         word.SHOWHEX => {
             reduce.upLeft(ctx);
             if (reduce.is_double(lastArg(ctx))) {
-                _ = main_clib.sprintf(&main.rs.linebuf, "%a", .{heap.getDbl(lastArg(ctx))});
-                reduce.rewrite_to_string(&ctx.e, @ptrCast(&main.rs.linebuf));
+                _ = main_clib.sprintf(&rt.rs.linebuf, "%a", .{heap.getDbl(lastArg(ctx))});
+                reduce.rewrite_to_string(&ctx.e, @ptrCast(&rt.rs.linebuf));
             } else {
                 reduce.simpl(ctx, big.toHexList(lastArg(ctx)));
             }
@@ -752,8 +751,8 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                 reduce_rt.intError("showscaled");
             }
             const arg1_int = reduce.getsmallint(ctx.args[0]);
-            _ = main_clib.sprintf(&main.rs.linebuf, "%.*e", .{ @as(c_int, @intCast(arg1_int)), reduce.force_dbl(lastArg(ctx)) });
-            reduce.rewrite_to_string(&ctx.e, @ptrCast(&main.rs.linebuf));
+            _ = main_clib.sprintf(&rt.rs.linebuf, "%.*e", .{ @as(c_int, @intCast(arg1_int)), reduce.force_dbl(lastArg(ctx)) });
+            reduce.rewrite_to_string(&ctx.e, @ptrCast(&rt.rs.linebuf));
             ctx.action = word.ACT_DONE;
             return;
         },
@@ -764,8 +763,8 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                 reduce_rt.intError("showfloat");
             }
             const arg1_int = reduce.getsmallint(ctx.args[0]);
-            _ = main_clib.sprintf(&main.rs.linebuf, "%.*f", .{ @as(c_int, @intCast(arg1_int)), reduce.force_dbl(lastArg(ctx)) });
-            reduce.rewrite_to_string(&ctx.e, @ptrCast(&main.rs.linebuf));
+            _ = main_clib.sprintf(&rt.rs.linebuf, "%.*f", .{ @as(c_int, @intCast(arg1_int)), reduce.force_dbl(lastArg(ctx)) });
+            reduce.rewrite_to_string(&ctx.e, @ptrCast(&rt.rs.linebuf));
             ctx.action = word.ACT_DONE;
             return;
         },
