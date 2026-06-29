@@ -64,9 +64,10 @@ first), so momentum builds before the stateful modules:
   *(all 23 bignum ops: arithmetic, div/mod floor semantics, float conv, the
   decimal/hex/octal scanners and list renderers — uses `freshInterp` since bignums
   live on the heap; corrected the `div` doc from "toward zero" to floor)*;
-  `strtab.zig`, `combinator.zig`, `errors.zig`, `version.zig`,
-  `parser/token_filter.zig`, `parser/ast.zig`, `parser/pratt.zig` (has 7 — finish
-  it).
+  `strtab.zig` ✅ *(intern/dedup/resolve, privatize, deinit — 4 tests)*;
+  `errors.zig` (1 fn, retrofit), `parser/pratt.zig` (has 7 — finish it).
+  *Skip* (no functions — just constants/types, nothing to unit-test):
+  `combinator.zig`, `version.zig`, `parser/token_filter.zig`, `parser/ast.zig`.
 * **Tier B — heap/graph, deterministic with a fresh heap:** `heap.zig`
   (cells/accessors/GC/dump round-trip), `reduce.zig` (`numplus`/`compare`/`force`/
   `getstring`), `reducer/combinators.zig` + `reducer/lex.zig` + `reducer/ready.zig`

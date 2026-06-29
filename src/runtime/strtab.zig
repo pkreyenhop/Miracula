@@ -68,6 +68,8 @@ fn get() *StringTable {
 /// Intern `p` (a NUL-terminated C string) and return its id as a `Word` for
 /// storage in a node. Equal content yields the same id; empty input yields the
 /// 0 sentinel.
+///
+/// Tests: intern de-dups by content and resolves
 pub fn strBits(p: anytype) Word {
     const span = std.mem.span(p);
     if (span.len == 0) return 0;
@@ -78,43 +80,6 @@ pub fn strBits(p: anytype) Word {
     t.slices.append(rt.allocator, copy) catch oom();
     t.dedup.put(rt.allocator, copy, id) catch oom();
     return -@as(Word, id);
-}
-
-/// Resolve an id `Word` (as stored in a node) back to its NUL-terminated bytes.
-/// The 0 sentinel and any non-id Word resolve to "".
-pub fn strOf(handle: Word) [*:0]const u8 {
-    if (handle >= 0) return "";
-    const t = get();
-    const id: usize = @intCast(-handle);
-    if (id >= t.slices.items.len) return "";
-    return t.slices.items[id].ptr;
-}
-
-/// Re-intern the string identified by `handle` with its first byte privatised
-/// (high bit set), returning the new id `Word`. The lexer uses this to hide
-/// prelude identifiers: under the old pointer representation it mutated the
-/// stored bytes in place (`get_id(..)[0] += 128`); interned bytes are immutable
-/// and shared, so a privatised name must be a fresh entry instead. Empty input
-/// is returned unchanged.
-pub fn privatize(handle: Word) Word {
-    const cur = std.mem.span(strOf(handle));
-    if (cur.len == 0) return handle;
-    const t = get();
-    const scratch = t.arena.allocator().dupeSentinel(u8, cur, 0) catch oom();
-    scratch[0] +%= 128;
-    return strBits(@as([*:0]const u8, scratch.ptr));
-}
-
-/// Release all interned storage. For test teardown / a clean shutdown; the
-/// session normally keeps the table for its whole lifetime.
-pub fn deinit() void {
-    const t = &@import("interp.zig").interp.strtab;
-    if (t.initialized) {
-        t.dedup.deinit(rt.allocator);
-        t.slices.deinit(rt.allocator);
-        t.arena.deinit();
-        t.initialized = false;
-    }
 }
 
 test "intern de-dups by content and resolves" {
@@ -133,6 +98,18 @@ test "intern de-dups by content and resolves" {
     try std.testing.expectEqualStrings("bar", std.mem.span(strOf(bar)));
 }
 
+/// Resolve an id `Word` (as stored in a node) back to its NUL-terminated bytes.
+/// The 0 sentinel and any non-id Word resolve to "".
+///
+/// Tests: empty interns to the 0 sentinel and 0 resolves to empty
+pub fn strOf(handle: Word) [*:0]const u8 {
+    if (handle >= 0) return "";
+    const t = get();
+    const id: usize = @intCast(-handle);
+    if (id >= t.slices.items.len) return "";
+    return t.slices.items[id].ptr;
+}
+
 test "empty interns to the 0 sentinel and 0 resolves to empty" {
     deinit();
     defer deinit();
@@ -141,4 +118,61 @@ test "empty interns to the 0 sentinel and 0 resolves to empty" {
     try std.testing.expectEqualStrings("", std.mem.span(strOf(0)));
     // A real string never collides with the sentinel.
     try std.testing.expect(strBits(@as([*:0]const u8, "x")) != 0);
+}
+
+/// Re-intern the string identified by `handle` with its first byte privatised
+/// (high bit set), returning the new id `Word`. The lexer uses this to hide
+/// prelude identifiers: under the old pointer representation it mutated the
+/// stored bytes in place (`get_id(..)[0] += 128`); interned bytes are immutable
+/// and shared, so a privatised name must be a fresh entry instead. Empty input
+/// is returned unchanged.
+///
+/// Tests: privatize re-interns with the first byte high-bit set
+pub fn privatize(handle: Word) Word {
+    const cur = std.mem.span(strOf(handle));
+    if (cur.len == 0) return handle;
+    const t = get();
+    const scratch = t.arena.allocator().dupeSentinel(u8, cur, 0) catch oom();
+    scratch[0] +%= 128;
+    return strBits(@as([*:0]const u8, scratch.ptr));
+}
+
+test "privatize re-interns with the first byte high-bit set" {
+    deinit();
+    defer deinit();
+
+    const foo = strBits(@as([*:0]const u8, "foo"));
+    const priv = privatize(foo);
+    try std.testing.expect(priv != foo); // a fresh entry, not an in-place mutation
+    const bytes = std.mem.span(strOf(priv));
+    try std.testing.expectEqual(@as(u8, 'f' + 128), bytes[0]);
+    try std.testing.expectEqualStrings("oo", bytes[1..]);
+    try std.testing.expectEqual(@as(Word, 0), privatize(0)); // empty unchanged
+}
+
+/// Release all interned storage. For test teardown / a clean shutdown; the
+/// session normally keeps the table for its whole lifetime.
+///
+/// Tests: deinit clears the table so the next use re-inits fresh
+pub fn deinit() void {
+    const t = &@import("interp.zig").interp.strtab;
+    if (t.initialized) {
+        t.dedup.deinit(rt.allocator);
+        t.slices.deinit(rt.allocator);
+        t.arena.deinit();
+        t.initialized = false;
+    }
+}
+
+test "deinit clears the table so the next use re-inits fresh" {
+    deinit();
+    const a = strBits(@as([*:0]const u8, "alpha"));
+    try std.testing.expectEqualStrings("alpha", std.mem.span(strOf(a)));
+    deinit();
+    // After deinit the table is empty, so the old handle no longer resolves.
+    try std.testing.expectEqualStrings("", std.mem.span(strOf(a)));
+    // A fresh intern restarts ids, so "beta" reclaims the first id that "alpha" had.
+    const b = strBits(@as([*:0]const u8, "beta"));
+    try std.testing.expectEqual(a, b);
+    deinit();
 }
