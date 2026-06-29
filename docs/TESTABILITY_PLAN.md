@@ -78,10 +78,11 @@ first), so momentum builds before the stateful modules:
   tests; GC internals + dump/load internals stay covered by golden + the
   roundtrip; all `pub const` documented)*; `reduce.zig` ✅ *(numplus, compare,
   force, getstring, head, memclass — 6 tests)*; `reducer/combinators.zig` ✅
-  *(co-located rewrite-rule tests for B/C/KI/P/MAP/DROP/LENGTH via the harness's
-  `reduce()`, joining `reduce_test`'s I/K/S/PLUS/TIMES/CONS — the remaining
-  handlers + `reducer/lex.zig`/`ready.zig` lexer/IO-state machinery stay covered
-  end-to-end by `reduce_test` + golden).
+  *(19 co-located rewrite-rule tests via the harness's `reduce()`:
+  B/CB/C/KI/S1/B1/C1, P/U, MAP/FILTER/DROP/LENGTH/LIST_LAST/SUBSCRIPT,
+  FOLDL/FOLDL1/FOLDR, ATLEAST — joining `reduce_test`'s I/K/S/PLUS/TIMES/CONS. The
+  remaining handlers (show/pattern-match/IO machinery) + `reducer/lex.zig`'s LEX_*
+  combinators + `ready.zig` stay covered end-to-end by `reduce_test` + golden).
   **Tier B substantially complete** — the heap, the numeric/compare core, and a
   representative span of the reducer rewrite rules are unit-tested via
   `freshInterp`.

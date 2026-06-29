@@ -101,6 +101,8 @@ test "handleB: B f g x reduces to f (g x)" {
 }
 
 /// `CB f g x -> g (f x)` — reverse composition.
+///
+/// Tests: handleCB: CB f g x reduces to g (f x)
 pub fn handleCB(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -121,6 +123,12 @@ pub fn handleCB(ctx: *ReductionCtx) void {
     reduce.tl_set(ctx.e, reduce.ap(arg1, lastarg));
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
+}
+
+test "handleCB: CB f g x reduces to g (f x)" {
+    tu.freshInterp();
+    // CB I (K True) False → (K True) (I False) → K True False → True
+    try tu.expectReducesTo(word.True, tu.ap(tu.ap2(word.CB, word.I, tu.ap(word.K, word.True)), word.False));
 }
 
 /// `C f g x -> f x g` — flip the last two arguments.
@@ -189,6 +197,8 @@ test "handleKI: KI x y reduces to y" {
 }
 
 /// `S1 c f g x -> c (f x) (g x)` — Turner's S' with a context `c`.
+///
+/// Tests: handleS1: S1 c f g x reduces to c (f x) (g x)
 pub fn handleS1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -218,7 +228,15 @@ pub fn handleS1(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+test "handleS1: S1 c f g x reduces to c (f x) (g x)" {
+    tu.freshInterp();
+    // S1 K I I True → K (I True) (I True) → K True True → True
+    try tu.expectReducesTo(word.True, tu.ap(tu.ap(tu.ap2(word.S1, word.K, word.I), word.I), word.True));
+}
+
 /// `B1 c f g x -> c (f (g x))` — Turner's B' with a context `c`.
+///
+/// Tests: handleB1: B1 c f g x reduces to c (f (g x))
 pub fn handleB1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -247,7 +265,15 @@ pub fn handleB1(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+test "handleB1: B1 c f g x reduces to c (f (g x))" {
+    tu.freshInterp();
+    // B1 I I I True → I (I (I True)) → True
+    try tu.expectReducesTo(word.True, tu.ap(tu.ap(tu.ap2(word.B1, word.I, word.I), word.I), word.True));
+}
+
 /// `C1 c f g x -> c (f x) g` — Turner's C' with a context `c`.
+///
+/// Tests: handleC1: C1 c f g x reduces to c (f x) g
 pub fn handleC1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -274,6 +300,12 @@ pub fn handleC1(ctx: *ReductionCtx) void {
     reduce.tl_set(ctx.e, arg3);
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
+}
+
+test "handleC1: C1 c f g x reduces to c (f x) g" {
+    tu.freshInterp();
+    // C1 K I False True → K (I True) False → K True False → True
+    try tu.expectReducesTo(word.True, tu.ap(tu.ap(tu.ap2(word.C1, word.K, word.I), word.False), word.True));
 }
 
 /// `S_p f g x -> (f x) : (g x)` — paired S' (builds a cons).
@@ -403,6 +435,8 @@ test "handleP: P x xs builds the cons (x : xs)" {
 }
 
 /// `U f p -> f (hd p) (tl p)` — uncurry a pair.
+///
+/// Tests: handleU: U f p applies f to hd p and tl p
 pub fn handleU(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -419,6 +453,12 @@ pub fn handleU(ctx: *ReductionCtx) void {
     reduce.downLeft(ctx);
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
+}
+
+test "handleU: U f p applies f to hd p and tl p" {
+    tu.freshInterp();
+    // U K [1, 2] → K (hd [1,2]) (tl [1,2]) → K 1 [2] → 1
+    try tu.expectInt(1, tu.ap2(word.U, word.K, tu.list(&.{ tu.int(1), tu.int(2) })));
 }
 
 /// Uncurry handling partial constructors: split via hd/tl for a cons, else via `BODY`/`LAST`, and apply `f`.
@@ -446,6 +486,8 @@ pub fn handleUf(ctx: *ReductionCtx) void {
 }
 
 /// `ATLEAST n f k -> f (k - n)` when `k` is an int `>= n`, else `FAIL` (a repetition guard).
+///
+/// Tests: handleATLEAST: passes f (k - n) when k >= n, else FAIL
 pub fn handleATLEAST(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -475,6 +517,14 @@ pub fn handleATLEAST(ctx: *ReductionCtx) void {
         reduce.rewrite_to_fail(&ctx.e);
     }
     ctx.action = word.ACT_NEXTREDEX;
+}
+
+test "handleATLEAST: passes f (k - n) when k >= n, else FAIL" {
+    tu.freshInterp();
+    // ATLEAST 1 I 3 → I (3 - 1) → 2
+    try tu.expectInt(2, tu.ap(tu.ap2(word.ATLEAST, tu.int(1), word.I), tu.int(3)));
+    // ATLEAST 5 I 3 → 3 - 5 < 0 → FAIL
+    try tu.expectReducesTo(word.FAIL, tu.ap(tu.ap2(word.ATLEAST, tu.int(5), word.I), tu.int(3)));
 }
 
 /// `U_ f xs -> f (hd xs) (tl xs)`, or `FAIL` on `[]` — strict uncurry of a non-empty list.
@@ -661,6 +711,8 @@ pub fn handleFLATMAP(ctx: *ReductionCtx) void {
 }
 
 /// `filter p xs` — skip leading elements failing predicate `p`, then emit the next survivor lazily.
+///
+/// Tests: handleFILTER: keeps elements satisfying the predicate
 pub fn handleFILTER(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -684,7 +736,17 @@ pub fn handleFILTER(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_DONE;
 }
 
+test "handleFILTER: keeps elements satisfying the predicate" {
+    tu.freshInterp();
+    // K True is the always-true predicate → keeps everything
+    try tu.expectList(&.{ 1, 2, 3 }, tu.ap2(word.FILTER, tu.ap(word.K, word.True), tu.list(&.{ tu.int(1), tu.int(2), tu.int(3) })));
+    // K False is always-false → keeps nothing
+    try tu.expectList(&.{}, tu.ap2(word.FILTER, tu.ap(word.K, word.False), tu.list(&.{ tu.int(1), tu.int(2) })));
+}
+
 /// `last xs` — the final element of a non-empty list (errors on `[]`); shortens the spine as it walks.
+///
+/// Tests: handleLIST_LAST: the final element of a list
 pub fn handleLIST_LAST(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -702,6 +764,11 @@ pub fn handleLIST_LAST(ctx: *ReductionCtx) void {
     }
     reduce.rewrite_to_value(&ctx.e, reduce.hd_get(lastarg));
     ctx.action = word.ACT_NEXTREDEX;
+}
+
+test "handleLIST_LAST: the final element of a list" {
+    tu.freshInterp();
+    try tu.expectInt(3, tu.ap(word.LIST_LAST, tu.list(&.{ tu.int(1), tu.int(2), tu.int(3) })));
 }
 
 /// `#xs` — the length of a list, as an `INT`.
@@ -770,6 +837,8 @@ test "handleDROP: drop n discards the first n elements" {
 }
 
 /// `xs ! n` — the n-th element (0-based); raises a subscript error if out of range.
+///
+/// Tests: handleSUBSCRIPT: xs ! n indexes the list
 pub fn handleSUBSCRIPT(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
@@ -809,7 +878,15 @@ pub fn handleSUBSCRIPT(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+test "handleSUBSCRIPT: xs ! n indexes the list" {
+    tu.freshInterp();
+    // [10, 20, 30] ! 1 → 20
+    try tu.expectInt(20, tu.ap2(word.SUBSCRIPT, tu.int(1), tu.list(&.{ tu.int(10), tu.int(20), tu.int(30) })));
+}
+
 /// `foldl1 f (x:xs) -> foldl f x xs` (errors on `[]`).
+///
+/// Tests: handleFOLDL1: left fold seeded by the first element
 pub fn handleFOLDL1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -830,7 +907,15 @@ pub fn handleFOLDL1(ctx: *ReductionCtx) void {
     }
 }
 
+test "handleFOLDL1: left fold seeded by the first element" {
+    tu.freshInterp();
+    // foldl1 (+) [1,2,3] → ((1+2)+3) → 6
+    try tu.expectInt(6, tu.ap2(word.FOLDL1, word.PLUS, tu.list(&.{ tu.int(1), tu.int(2), tu.int(3) })));
+}
+
 /// `foldl f a xs` — strict left fold.
+///
+/// Tests: handleFOLDL: strict left fold
 pub fn handleFOLDL(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -857,7 +942,15 @@ pub fn handleFOLDL(ctx: *ReductionCtx) void {
     ctx.action = word.ACT_NEXTREDEX;
 }
 
+test "handleFOLDL: strict left fold" {
+    tu.freshInterp();
+    // foldl (+) 0 [1,2,3] → 6
+    try tu.expectInt(6, tu.ap(tu.ap2(word.FOLDL, word.PLUS, tu.int(0)), tu.list(&.{ tu.int(1), tu.int(2), tu.int(3) })));
+}
+
 /// `foldr f a (x:xs) -> f x (foldr f a xs)`; `foldr f a [] -> a`.
+///
+/// Tests: handleFOLDR: right fold
 pub fn handleFOLDR(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
@@ -882,6 +975,12 @@ pub fn handleFOLDR(ctx: *ReductionCtx) void {
         reduce.tl_set(ctx.e, hold);
     }
     ctx.action = word.ACT_NEXTREDEX;
+}
+
+test "handleFOLDR: right fold" {
+    tu.freshInterp();
+    // foldr (+) 0 [1,2,3] → 1+(2+(3+0)) → 6
+    try tu.expectInt(6, tu.ap(tu.ap2(word.FOLDR, word.PLUS, tu.int(0)), tu.list(&.{ tu.int(1), tu.int(2), tu.int(3) })));
 }
 
 /// Raise the "no matching case" runtime error for the offending value.
