@@ -128,6 +128,20 @@ pub fn expectList(expected: []const i64, node: Word) !void {
     try std.testing.expectEqual(@as(Word, word.NIL), cur);
 }
 
+/// Assert that `node` reduces to a Miranda string (a char cons-list) whose bytes
+/// equal `expected`. Each element is reduced and taken as a byte.
+pub fn expectStr(expected: []const u8, node: Word) !void {
+    var buf: [256]u8 = undefined;
+    var len: usize = 0;
+    var cur = reduce.reduce(node);
+    while (heap.getTag(cur) == .CONS) {
+        buf[len] = @intCast(reduce.reduce(heap.h(cur)));
+        len += 1;
+        cur = reduce.reduce(heap.t(cur));
+    }
+    try std.testing.expectEqualStrings(expected, buf[0..len]);
+}
+
 // ── Self-tests (also the canonical usage examples) ──────────────────────────
 
 test "freshInterp: provides a working reducer" {
@@ -158,4 +172,10 @@ test "str: builds a Miranda string as a char list" {
     try std.testing.expectEqual(@as(Word, 'h'), heap.h(s));
     try std.testing.expectEqual(@as(Word, 'i'), heap.h(heap.t(s)));
     try std.testing.expectEqual(@as(Word, word.NIL), heap.t(heap.t(s)));
+}
+
+test "expectStr: matches a char list against bytes" {
+    freshInterp();
+    try expectStr("hello", str("hello"));
+    try expectStr("", str(""));
 }

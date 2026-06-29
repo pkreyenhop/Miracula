@@ -20,6 +20,7 @@ const std = @import("std");
 const platform = @import("../io/platform.zig");
 const heap = @import("heap.zig");
 const r7_reduce = @import("reduce.zig");
+const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 const Word = i64;
 
@@ -121,18 +122,37 @@ fn cons(x: Word, y: Word) Word {
 }
 
 /// Initialise the bignum caches (`logIBASE`/`log10IBASE`) and `big_one`. Once, at startup.
+/// Initialise the bignum constants (`logIBASE`/`log10IBASE` caches and `big_one`).
+///
+/// Tests: setup: initialises the bignum constants
 pub fn setup() void {
     bn.logIBASE = std.math.log(f64, std.math.e, @as(f64, @floatFromInt(IBASE)));
     bn.log10IBASE = std.math.log10(@as(f64, @floatFromInt(IBASE)));
     bn.big_one = make(INT, 1, 0);
 }
 
+test "setup: initialises the bignum constants" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(c_longlong, 1), toInt(bn.big_one));
+}
+
 /// 1 if `x` is a non-negative integer (`INT`-tagged and positive), else 0.
+///
+/// Tests: isNat: 1 for non-negative INTs, 0 for negatives
 pub fn isNat(x: Word) c_int {
     return if (getTag(x) == INT and isPositive(x)) 1 else 0;
 }
 
+test "isNat: 1 for non-negative INTs, 0 for negatives" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(c_int, 1), isNat(fromInt(5)));
+    try std.testing.expectEqual(@as(c_int, 1), isNat(fromInt(0)));
+    try std.testing.expectEqual(@as(c_int, 0), isNat(fromInt(-5)));
+}
+
 /// Build a bignum from a signed 64-bit integer.
+///
+/// Tests: fromInt: round-trips through toInt across the digit boundary
 pub fn fromInt(input: c_longlong) Word {
     var i = input;
     var s: Word = 0;
@@ -156,7 +176,16 @@ pub fn fromInt(input: c_longlong) Word {
     return x;
 }
 
+test "fromInt: round-trips through toInt across the digit boundary" {
+    tu.freshInterp();
+    for ([_]c_longlong{ 0, 1, -1, 42, -42, 32768, 1 << 20, 1 << 40 }) |n| {
+        try std.testing.expectEqual(n, toInt(fromInt(n)));
+    }
+}
+
 /// Convert a bignum to a signed 64-bit integer (saturates above ~2^60).
+///
+/// Tests: toInt: saturates above 2^60
 pub fn toInt(input: Word) c_longlong {
     var x = input;
     var n: c_longlong = @intCast(digit0(x));
@@ -175,14 +204,32 @@ pub fn toInt(input: Word) c_longlong {
     return if (sign) -n else n;
 }
 
+test "toInt: saturates above 2^60" {
+    tu.freshInterp();
+    // 2^61 exceeds the 60-bit window, so toInt clamps to 2^60.
+    const big61 = mul(fromInt(1 << 40), fromInt(1 << 21));
+    try std.testing.expectEqual(@as(c_longlong, 1) << 60, toInt(big61));
+}
+
 /// Return `-x`.
+///
+/// Tests: negate: flips the sign, fixed point at zero
 pub fn negate(x: Word) Word {
     if (isZero(x)) return x;
     const d = if ((h(x) & SIGNBIT) != 0) h(x) & MAXDIGIT else SIGNBIT | h(x);
     return make(INT, d, rest(x));
 }
 
+test "negate: flips the sign, fixed point at zero" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(c_longlong, -7), toInt(negate(fromInt(7))));
+    try std.testing.expectEqual(@as(c_longlong, 7), toInt(negate(fromInt(-7))));
+    try std.testing.expectEqual(@as(c_longlong, 0), toInt(negate(fromInt(0))));
+}
+
 /// Return `x + y`.
+///
+/// Tests: add: sums across signs and the digit boundary
 pub fn add(x: Word, y: Word) Word {
     if (isPositive(x)) {
         if (isPositive(y)) return addMagnitude(x, y, 0);
@@ -190,6 +237,13 @@ pub fn add(x: Word, y: Word) Word {
     }
     if (isPositive(y)) return subMagnitude(y, x);
     return addMagnitude(x, y, SIGNBIT);
+}
+
+test "add: sums across signs and the digit boundary" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(c_longlong, 5), toInt(add(fromInt(2), fromInt(3))));
+    try std.testing.expectEqual(@as(c_longlong, -1), toInt(add(fromInt(2), fromInt(-3))));
+    try std.testing.expectEqual(@as(c_longlong, 65536), toInt(add(fromInt(32768), fromInt(32768))));
 }
 
 /// Add the unsigned magnitudes of `x` and `y`, tagging the result with `signbit`.
@@ -223,6 +277,8 @@ fn addMagnitude(input_x: Word, input_y: Word, signbit: Word) Word {
 }
 
 /// Return `x - y`.
+///
+/// Tests: sub: differences across signs
 pub fn sub(x: Word, y: Word) Word {
     if (isPositive(x)) {
         if (isPositive(y)) return subMagnitude(x, y);
@@ -230,6 +286,13 @@ pub fn sub(x: Word, y: Word) Word {
     }
     if (isPositive(y)) return addMagnitude(x, y, SIGNBIT);
     return subMagnitude(y, x);
+}
+
+test "sub: differences across signs" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(c_longlong, -1), toInt(sub(fromInt(2), fromInt(3))));
+    try std.testing.expectEqual(@as(c_longlong, 5), toInt(sub(fromInt(2), fromInt(-3))));
+    try std.testing.expectEqual(@as(c_longlong, 0), toInt(sub(fromInt(40), fromInt(40))));
 }
 
 /// Subtract unsigned magnitudes (|x| - |y|, |x| >= |y|), normalising the result.
@@ -291,6 +354,8 @@ fn subMagnitude(input_x: Word, input_y: Word) Word {
 }
 
 /// Three-way compare: -1 / 0 / 1 for `x < y` / `x == y` / `x > y`.
+///
+/// Tests: cmp: three-way -1 / 0 / 1
 pub fn cmp(input_x: Word, input_y: Word) c_int {
     var x = input_x;
     var y = input_y;
@@ -310,7 +375,17 @@ pub fn cmp(input_x: Word, input_y: Word) c_int {
     }
 }
 
+test "cmp: three-way -1 / 0 / 1" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(c_int, -1), cmp(fromInt(1), fromInt(2)));
+    try std.testing.expectEqual(@as(c_int, 0), cmp(fromInt(2), fromInt(2)));
+    try std.testing.expectEqual(@as(c_int, 1), cmp(fromInt(2), fromInt(1)));
+    try std.testing.expectEqual(@as(c_int, -1), cmp(fromInt(-2), fromInt(1)));
+}
+
 /// Return `x * y`.
+///
+/// Tests: mul: products including large operands
 pub fn mul(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
@@ -331,6 +406,13 @@ pub fn mul(input_x: Word, input_y: Word) Word {
         if (y == 0) return if (s != (signBit(x) != 0)) negate(r) else r;
         d = digit(y);
     }
+}
+
+test "mul: products including large operands" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(c_longlong, 42), toInt(mul(fromInt(6), fromInt(7))));
+    try std.testing.expectEqual(@as(c_longlong, -42), toInt(mul(fromInt(-6), fromInt(7))));
+    try std.testing.expectEqual(@as(c_longlong, 1 << 40), toInt(mul(fromInt(1 << 20), fromInt(1 << 20))));
 }
 
 /// Prepend `n` zero digits — i.e. multiply `x` by `IBASE^n`.
@@ -359,7 +441,11 @@ fn scaleBy(input_x: Word, n: Word) Word {
     return r;
 }
 
-/// Return `x / y` truncated toward zero; leaves the remainder in `bn.b_rem`.
+/// Return `x / y` floored toward negative infinity (Miranda `div`); leaves the
+/// remainder in `bn.b_rem`. Negative results with a non-zero remainder round away
+/// from zero so that `div`/`mod` satisfy `x = y*(x div y) + (x mod y)`.
+///
+/// Tests: div: floored division (toward negative infinity)
 pub fn div(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
@@ -389,7 +475,17 @@ pub fn div(input_x: Word, input_y: Word) Word {
     return q;
 }
 
+test "div: floored division (toward negative infinity)" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(c_longlong, 6), toInt(div(fromInt(20), fromInt(3))));
+    try std.testing.expectEqual(@as(c_longlong, 5), toInt(div(fromInt(20), fromInt(4))));
+    try std.testing.expectEqual(@as(c_longlong, -7), toInt(div(fromInt(-20), fromInt(3))));
+    try std.testing.expectEqual(@as(c_longlong, 6), toInt(div(fromInt(-20), fromInt(-3))));
+}
+
 /// Return `x mod y` (the result's sign follows the divisor `y`).
+///
+/// Tests: mod: remainder whose sign follows the divisor
 pub fn mod(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
@@ -402,6 +498,14 @@ pub fn mod(input_x: Word, input_y: Word) Word {
     _ = if (rest(y) != 0) longDiv(x, y) else shortDiv(x, digit(y));
     if (s2 and !isZero(bn.b_rem)) bn.b_rem = sub(y, bn.b_rem);
     return if (s1) negate(bn.b_rem) else bn.b_rem;
+}
+
+test "mod: remainder whose sign follows the divisor" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(c_longlong, 2), toInt(mod(fromInt(20), fromInt(3))));
+    try std.testing.expectEqual(@as(c_longlong, 0), toInt(mod(fromInt(20), fromInt(4))));
+    try std.testing.expectEqual(@as(c_longlong, 1), toInt(mod(fromInt(-20), fromInt(3))));
+    try std.testing.expectEqual(@as(c_longlong, -1), toInt(mod(fromInt(20), fromInt(-3))));
 }
 
 /// Divide a bignum by a single digit `n`; remainder left in `bn.b_rem`.
@@ -529,6 +633,8 @@ fn topTwoDigits(input_x: Word) Word {
 }
 
 /// Return `x ** y` via repeated squaring (`y >= 0`).
+///
+/// Tests: pow: repeated-squaring exponentiation
 pub fn pow(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
@@ -553,7 +659,16 @@ pub fn pow(input_x: Word, input_y: Word) Word {
     return r;
 }
 
+test "pow: repeated-squaring exponentiation" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(c_longlong, 1024), toInt(pow(fromInt(2), fromInt(10))));
+    try std.testing.expectEqual(@as(c_longlong, 1), toInt(pow(fromInt(7), fromInt(0))));
+    try std.testing.expectEqual(@as(c_longlong, 59049), toInt(pow(fromInt(3), fromInt(10))));
+}
+
 /// Convert a bignum to an `f64`.
+///
+/// Tests: toFloat: exact for small integers
 pub fn toFloat(input_x: Word) f64 {
     var x = input_x;
     const s = signBit(x) != 0;
@@ -568,7 +683,15 @@ pub fn toFloat(input_x: Word) f64 {
     return if (s) -r else r;
 }
 
-/// Build a bignum from the integer part of an `f64`.
+test "toFloat: exact for small integers" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(f64, 3.0), toFloat(fromInt(3)));
+    try std.testing.expectEqual(@as(f64, -3.0), toFloat(fromInt(-3)));
+}
+
+/// Build a bignum from the floor of an `f64` (toward negative infinity).
+///
+/// Tests: fromFloat: floors the input toward negative infinity
 pub fn fromFloat(input: f64) Word {
     const s = input < 0;
     const r = make(INT, 0, 0);
@@ -587,7 +710,16 @@ pub fn fromFloat(input: f64) Word {
     return r;
 }
 
+test "fromFloat: floors the input toward negative infinity" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(c_longlong, 3), toInt(fromFloat(3.9)));
+    try std.testing.expectEqual(@as(c_longlong, 3), toInt(fromFloat(3.0)));
+    try std.testing.expectEqual(@as(c_longlong, -4), toInt(fromFloat(-3.9)));
+}
+
 /// Natural logarithm of a positive bignum (domain-errors on `<= 0`).
+///
+/// Tests: ln: natural logarithm; ln 1 == 0
 pub fn ln(input_x: Word) f64 {
     var x = input_x;
     var n: Word = 0;
@@ -604,7 +736,15 @@ pub fn ln(input_x: Word) f64 {
     return std.math.log(f64, std.math.e, r) + (@as(f64, @floatFromInt(n)) * bn.logIBASE);
 }
 
+test "ln: natural logarithm; ln 1 == 0" {
+    tu.freshInterp();
+    try std.testing.expectApproxEqAbs(@as(f64, 0.0), ln(fromInt(1)), 1e-9);
+    try std.testing.expectApproxEqAbs(@as(f64, 6.907755), ln(fromInt(1000)), 1e-5);
+}
+
 /// Base-10 logarithm of a positive bignum (domain-errors on `<= 0`).
+///
+/// Tests: log10: base-10 logarithm; log10 1000 == 3
 pub fn log10(input_x: Word) f64 {
     var x = input_x;
     var n: Word = 0;
@@ -621,12 +761,20 @@ pub fn log10(input_x: Word) f64 {
     return std.math.log10(r) + (@as(f64, @floatFromInt(n)) * bn.log10IBASE);
 }
 
+test "log10: base-10 logarithm; log10 1000 == 3" {
+    tu.freshInterp();
+    try std.testing.expectApproxEqAbs(@as(f64, 0.0), log10(fromInt(1)), 1e-9);
+    try std.testing.expectApproxEqAbs(@as(f64, 3.0), log10(fromInt(1000)), 1e-9);
+}
+
 /// Set errno to `EDOM` (a maths domain error).
 fn setErrnoDomain() void {
     platform.setErrno(@intCast(@intFromEnum(std.posix.E.DOM)));
 }
 
 /// Parse a NUL-terminated decimal string into a bignum.
+///
+/// Tests: scanDecimal: parses a NUL-terminated decimal string
 pub fn scanDecimal(p: [*:0]const u8) Word {
     var cursor: usize = 0;
     var s = false;
@@ -650,7 +798,15 @@ pub fn scanDecimal(p: [*:0]const u8) Word {
     return r;
 }
 
+test "scanDecimal: parses a NUL-terminated decimal string" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(c_longlong, 12345), toInt(scanDecimal("12345")));
+    try std.testing.expectEqual(@as(c_longlong, -42), toInt(scanDecimal("-42")));
+}
+
 /// Parse the hex digits in the byte range `[p, q)` into a bignum.
+///
+/// Tests: scanHex: parses a hex byte range into a bignum
 pub fn scanHex(p: [*]const u8, q: [*]const u8) Word {
     const start_addr = @intFromPtr(p);
     var end_addr = @intFromPtr(q);
@@ -675,7 +831,17 @@ pub fn scanHex(p: [*]const u8, q: [*]const u8) Word {
     return r;
 }
 
+test "scanHex: parses a hex byte range into a bignum" {
+    tu.freshInterp();
+    const p: [*]const u8 = "ff";
+    try std.testing.expectEqual(@as(c_longlong, 255), toInt(scanHex(p, p + 2)));
+    const q: [*]const u8 = "1000";
+    try std.testing.expectEqual(@as(c_longlong, 0x1000), toInt(scanHex(q, q + 4)));
+}
+
 /// Parse the octal digits in the byte range `[p, q)` into a bignum.
+///
+/// Tests: scanOctal: parses an octal byte range into a bignum
 pub fn scanOctal(p: [*]const u8, q: [*]const u8) Word {
     const start_addr = @intFromPtr(p);
     var end_addr = @intFromPtr(q);
@@ -695,6 +861,12 @@ pub fn scanOctal(p: [*]const u8, q: [*]const u8) Word {
     return r;
 }
 
+test "scanOctal: parses an octal byte range into a bignum" {
+    tu.freshInterp();
+    const p: [*]const u8 = "17";
+    try std.testing.expectEqual(@as(c_longlong, 15), toInt(scanOctal(p, p + 2)));
+}
+
 /// Numeric value of a decimal/hex digit character (`0`-`9`, `A`-`F`/`a`-`f`).
 fn digitValue(ch: Word) Word {
     const cch: u8 = @intCast(ch);
@@ -711,6 +883,8 @@ fn hexValue(ch: u8) Word {
 }
 
 /// Parse a Miranda char-list `z` of digits in `base` (10/16/8) into a bignum.
+///
+/// Tests: parseString: parses a char-list of digits in a given base
 pub fn parseString(input_z: Word, base: c_int) Word {
     var z = input_z;
     var s = false;
@@ -737,6 +911,14 @@ pub fn parseString(input_z: Word, base: c_int) Word {
     return r;
 }
 
+test "parseString: parses a char-list of digits in a given base" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(c_longlong, 123), toInt(parseString(tu.str("123"), 10)));
+    try std.testing.expectEqual(@as(c_longlong, -7), toInt(parseString(tu.str("-7"), 10)));
+    // base != 10 skips the two-char prefix (e.g. "0xff")
+    try std.testing.expectEqual(@as(c_longlong, 255), toInt(parseString(tu.str("0xff"), 16)));
+}
+
 /// In place: `r = r*f + addend` — the Horner step shared by the scanners.
 fn multiplyAddInPlace(r: Word, f: Word, addend: Word) void {
     var d = (f * digit(r)) + addend;
@@ -753,6 +935,8 @@ fn multiplyAddInPlace(r: Word, f: Word, addend: Word) void {
 }
 
 /// Render a bignum as a Miranda char list of decimal digits.
+///
+/// Tests: toDecimalList: renders a bignum as decimal digits
 pub fn toDecimalList(input_x: Word) Word {
     var x = input_x;
     if (rest(x) == 0) return wordToDecimalList(toSmallInt(x));
@@ -793,6 +977,13 @@ pub fn toDecimalList(input_x: Word) Word {
     }
 }
 
+test "toDecimalList: renders a bignum as decimal digits" {
+    tu.freshInterp();
+    try tu.expectStr("12345", toDecimalList(fromInt(12345)));
+    try tu.expectStr("-42", toDecimalList(fromInt(-42)));
+    try tu.expectStr("0", toDecimalList(fromInt(0)));
+}
+
 /// Render a small `Word` as a decimal char list.
 fn wordToDecimalList(value: Word) Word {
     var buffer: [64]u8 = undefined;
@@ -808,6 +999,8 @@ fn wordToDecimalList(value: Word) Word {
 }
 
 /// Render a bignum as a `0x`-prefixed hex char list (leading zeros trimmed).
+///
+/// Tests: toHexList: renders a 0x-prefixed hex char list
 pub fn toHexList(input_x: Word) Word {
     var x = input_x;
     var r: Word = NIL;
@@ -836,7 +1029,15 @@ pub fn toHexList(input_x: Word) Word {
     return r;
 }
 
+test "toHexList: renders a 0x-prefixed hex char list" {
+    tu.freshInterp();
+    try tu.expectStr("0xff", toHexList(fromInt(255)));
+    try tu.expectStr("0x0", toHexList(fromInt(0)));
+}
+
 /// Render a bignum as a `0o`-prefixed octal char list (leading zeros trimmed).
+///
+/// Tests: toOctalList: renders a 0o-prefixed octal char list
 pub fn toOctalList(input_x: Word) Word {
     var x = input_x;
     var r: Word = NIL;
@@ -856,4 +1057,10 @@ pub fn toOctalList(input_x: Word) Word {
     r = cons('0', cons('o', r));
     if (s) r = cons('-', r);
     return r;
+}
+
+test "toOctalList: renders a 0o-prefixed octal char list" {
+    tu.freshInterp();
+    try tu.expectStr("0o17", toOctalList(fromInt(15)));
+    try tu.expectStr("0o0", toOctalList(fromInt(0)));
 }
