@@ -6,6 +6,8 @@ pub const Span = @import("token_filter.zig").Span;
 // Type expressions
 // ---------------------------------------------------------------------------
 
+/// A type expression — the parsed form of a `::` annotation or the body of a
+/// `type`/`abstype` declaration. Compound forms hold `*TypeExpr` children.
 pub const TypeExpr = union(enum) {
     /// Type variable, e.g. `*a`
     type_var: struct { name: []const u8, span: Span },
@@ -27,6 +29,8 @@ pub const TypeExpr = union(enum) {
 // Literals
 // ---------------------------------------------------------------------------
 
+/// A literal constant. `int` keeps the source digits (the bignum is built later);
+/// `float`/`char` are decoded, `string` is the raw text.
 pub const Literal = union(enum) {
     int: []const u8,
     float: f64,
@@ -46,6 +50,9 @@ pub const Qualifier = union(enum) {
     guard: *Expr,
 };
 
+/// An expression node. Compound forms hold `*Expr` children; the variants cover
+/// application, the infix/prefix operators, list/tuple/range/comprehension
+/// syntax, operator sections, type annotations, and `where`.
 pub const Expr = union(enum) {
     name: struct { text: []const u8, span: Span },
     cname: struct { text: []const u8, span: Span },
@@ -86,6 +93,8 @@ pub const Expr = union(enum) {
 // Patterns
 // ---------------------------------------------------------------------------
 
+/// A pattern: the LHS of a definition or a formal argument. Compound forms hold
+/// `*Pat` children (cons/application) or slices (list/tuple).
 pub const Pat = union(enum) {
     wildcard,
     name: struct { text: []const u8, span: Span },
@@ -111,11 +120,15 @@ pub const Guard = struct {
     span: Span,
 };
 
+/// The right-hand side of a definition: a single `expr`, or a list of `guarded`
+/// alternatives (`= body, if cond`).
 pub const Rhs = union(enum) {
     expr: Expr,
     guarded: []Guard,
 };
 
+/// A definition `lhs = rhs`, with any local `where_defs`. `lhs` is an `Expr`
+/// (a name, or an application encoding a function's formal parameters).
 pub const Def = struct {
     lhs: Expr,
     rhs: Rhs,
@@ -134,12 +147,16 @@ pub const TypeSpec = struct {
     span: Span,
 };
 
+/// One data constructor of an algebraic type: its `name` and `fields` (the
+/// argument types).
 pub const Constructor = struct {
     name: []const u8,
     fields: []TypeExpr,
     span: Span,
 };
 
+/// A type declaration: a `synonym` (`==`), an `algebraic` type (`::=`), or an
+/// `abstype` (abstract type with its exported specs).
 pub const TypeDecl = union(enum) {
     synonym: struct {
         name: []const u8,
@@ -165,6 +182,8 @@ pub const TypeDecl = union(enum) {
 // Top-level items and script root
 // ---------------------------------------------------------------------------
 
+/// A top-level script item: a definition, a type spec/declaration, an evaluation
+/// request, or an `%include`/`%export`/`%free` directive.
 pub const TopLevel = union(enum) {
     definition: Def,
     type_spec: TypeSpec,
@@ -175,6 +194,7 @@ pub const TopLevel = union(enum) {
     free_directive: struct { specs: []TypeSpec, span: Span },
 };
 
+/// A parsed script: its sequence of top-level `items`.
 pub const Script = struct {
     items: []TopLevel,
 };

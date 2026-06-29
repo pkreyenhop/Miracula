@@ -1,5 +1,17 @@
-// Combinator names generated from the historical gencdecs output.
+//! combinator.zig — the combinator/named-atom code → printed-name table.
 
+const std = @import("std");
+const word = @import("word.zig");
+
+/// Combinator (and named-atom) code → printed name, indexed by `code - CMBASE`;
+/// the reducer's graph printer uses it to name a combinator atom. Generated from
+/// the historical `gencdecs` output. Order is significant — it must stay in
+/// lock-step with the code numbering in `word.zig` (`S` = CMBASE+0,
+/// `PLUS` = CMBASE+54, …, `NIL` = CMBASE+138). The trailing `null` (slot 141) is
+/// the end sentinel; a new combinator is appended before it with a matching
+/// `word.zig` constant at the same offset.
+///
+/// Tests: cmbnms aligns with the combinator codes in word.zig
 pub var cmbnms: [142]?[*:0]const u8 = .{
     "S",
     "K",
@@ -144,3 +156,17 @@ pub var cmbnms: [142]?[*:0]const u8 = .{
     "UNDEF",
     null,
 };
+
+test "cmbnms aligns with the combinator codes in word.zig" {
+    // Spot-check the table's order against the code numbering it mirrors.
+    const cases = .{
+        .{ word.S, "S" },
+        .{ word.PLUS, "PLUS" },
+        .{ word.True, "True" },
+        .{ word.NIL, "NIL" },
+    };
+    inline for (cases) |c| {
+        const idx: usize = @intCast(c[0] - word.CMBASE);
+        try std.testing.expectEqualStrings(c[1], std.mem.span(cmbnms[idx].?));
+    }
+}

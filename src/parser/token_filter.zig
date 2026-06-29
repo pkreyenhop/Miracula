@@ -5,6 +5,9 @@
 //! `::` (coloncolon) and `::=` (colon2eq).
 
 
+/// The lexical token kinds the Pratt parser consumes: identifiers/literals,
+/// keywords, the single- and multi-character operators, the layout tokens the
+/// offside filter injects, and the `eof`/`error_tok` specials.
 pub const TokenId = enum {
     // --- identifiers and literals ---
     name, // lowercase identifier
@@ -88,11 +91,15 @@ pub const TokenId = enum {
     error_tok,
 };
 
+/// A source position: 1-based `line` and `col`.
 pub const Span = struct {
     line: u32,
     col: u32,
 };
 
+/// A lexed token: its `id` (kind), source `span`, and any literal payload. Only
+/// the field matching `id` is meaningful — `text` for name/cname/string/integer
+/// tokens, `int_val`/`float_val`/`char_val` for the corresponding literals.
 pub const Token = struct {
     id: TokenId,
     span: Span,

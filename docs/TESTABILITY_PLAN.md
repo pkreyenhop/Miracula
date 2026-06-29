@@ -65,9 +65,13 @@ first), so momentum builds before the stateful modules:
   decimal/hex/octal scanners and list renderers — uses `freshInterp` since bignums
   live on the heap; corrected the `div` doc from "toward zero" to floor)*;
   `strtab.zig` ✅ *(intern/dedup/resolve, privatize, deinit — 4 tests)*;
-  `errors.zig` (1 fn, retrofit), `parser/pratt.zig` (has 7 — finish it).
-  *Skip* (no functions — just constants/types, nothing to unit-test):
-  `combinator.zig`, `version.zig`, `parser/token_filter.zig`, `parser/ast.zig`.
+  `errors.zig` ✅ *(MiraError tests inline; `fatal` is `noreturn`, untestable)*;
+  `parser/pratt.zig` ✅ *(11 tests: infixBp/prefixBp, the TokenStream cursor,
+  parseExpr atoms/cons, boxExpr/cloneExpr)*.
+  **Tier A complete.** The constant/type-only modules got a *documentation* pass
+  instead of tests (per the constant-doc convention): `combinator.zig` ✅ *(doc +
+  an alignment invariant test against word.zig's codes)*, `version.zig` ✅,
+  `parser/token_filter.zig` ✅, `parser/ast.zig` ✅ *(all type decls documented)*.
 * **Tier B — heap/graph, deterministic with a fresh heap:** `heap.zig`
   (cells/accessors/GC/dump round-trip), `reduce.zig` (`numplus`/`compare`/`force`/
   `getstring`), `reducer/combinators.zig` + `reducer/lex.zig` + `reducer/ready.zig`

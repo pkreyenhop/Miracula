@@ -86,6 +86,9 @@ const infix_bp = [_]InfixBp{
 };
 
 /// Returns the infix binding powers for `id`, or `null` if it is not infix.
+///
+/// Tests: infixBp: cons is right-associative, infixBp: plus is left-associative,
+/// infixBp: unknown token returns null
 pub fn infixBp(id: TokenId) ?struct { left: u8, right: u8 } {
     for (infix_bp) |entry| {
         if (entry.id == id) return .{ .left = entry.left, .right = entry.right };
@@ -93,7 +96,24 @@ pub fn infixBp(id: TokenId) ?struct { left: u8, right: u8 } {
     return null;
 }
 
+test "infixBp: cons is right-associative" {
+    const bp = infixBp(.cons).?;
+    try std.testing.expect(bp.left > bp.right); // right-assoc: left > right
+}
+
+test "infixBp: plus is left-associative" {
+    const bp = infixBp(.plus).?;
+    try std.testing.expect(bp.right > bp.left); // left-assoc: right > left
+}
+
+test "infixBp: unknown token returns null" {
+    try std.testing.expect(infixBp(.name) == null);
+    try std.testing.expect(infixBp(.lparen) == null);
+}
+
 /// Prefix binding power for unary prefix operators.
+///
+/// Tests: prefixBp: tilde/hash/minus bind, others don't
 pub fn prefixBp(id: TokenId) ?u8 {
     return switch (id) {
         .tilde => 35, // ~expr  logical negation
@@ -103,11 +123,20 @@ pub fn prefixBp(id: TokenId) ?u8 {
     };
 }
 
+test "prefixBp: tilde/hash/minus bind, others don't" {
+    try std.testing.expectEqual(@as(?u8, 35), prefixBp(.tilde));
+    try std.testing.expectEqual(@as(?u8, 85), prefixBp(.hash));
+    try std.testing.expectEqual(@as(?u8, 65), prefixBp(.minus));
+    try std.testing.expect(prefixBp(.plus) == null);
+}
+
 // ---------------------------------------------------------------------------
 // Token stream
 // ---------------------------------------------------------------------------
 
 /// Thin read cursor over a pre-tokenised slice.
+///
+/// Tests: TokenStream: peek/advance/check/eat/expect/peekAt cursor behaviour
 pub const TokenStream = struct {
     tokens: []const Token,
     pos: usize = 0,
@@ -155,6 +184,23 @@ pub const TokenStream = struct {
         return self.tokens[idx];
     }
 };
+
+test "TokenStream: peek/advance/check/eat/expect/peekAt cursor behaviour" {
+    const toks = [_]Token{
+        .{ .id = .name, .span = .{ .line = 1, .col = 1 }, .text = "a" },
+        .{ .id = .plus, .span = .{ .line = 1, .col = 2 } },
+        .{ .id = .eof, .span = .{ .line = 1, .col = 3 } },
+    };
+    var ts = TokenStream{ .tokens = &toks };
+    try std.testing.expect(ts.check(.name));
+    try std.testing.expectEqual(@as(TokenId, .plus), ts.peekAt(1).id);
+    try std.testing.expectEqual(@as(TokenId, .name), ts.advance().id);
+    try std.testing.expect(!ts.eat(.name)); // current is plus, not name
+    try std.testing.expect(ts.eat(.plus));
+    _ = try ts.expect(.eof);
+    try std.testing.expectEqual(@as(TokenId, .eof), ts.peek().id); // past end → eof
+    try std.testing.expectError(error.UnexpectedToken, ts.expect(.name));
+}
 
 // ---------------------------------------------------------------------------
 // Pratt expression parser
@@ -217,6 +263,9 @@ fn isArgStart(id: TokenId) bool {
 ///   1. Parse a prefix atom (name, literal, prefix op, parenthesised expr, …).
 ///   2. Repeatedly fold infix / postfix / application operators whose left
 ///      binding power exceeds `min_bp`.
+///
+/// Tests: parseExpr: name atom, parseExpr: integer literal, parseExpr: empty
+/// list, parseExpr: cons infix
 pub fn parseExpr(
     gpa: Allocator,
     ts: *TokenStream,
@@ -460,6 +509,60 @@ pub fn parseExpr(
     return lhs;
 }
 
+test "parseExpr: name atom" {
+    const gpa = std.testing.allocator;
+    const tokens = [_]Token{
+        .{ .id = .name, .span = .{ .line = 1, .col = 1 }, .text = "foo" },
+        .{ .id = .eof, .span = .{ .line = 1, .col = 4 } },
+    };
+    var ts = TokenStream{ .tokens = &tokens };
+    const expr = try parseExpr(gpa, &ts, 0);
+    try std.testing.expectEqual(std.meta.Tag(Expr).name, std.meta.activeTag(expr));
+    try std.testing.expectEqualStrings("foo", expr.name.text);
+}
+
+test "parseExpr: integer literal" {
+    const gpa = std.testing.allocator;
+    const tokens = [_]Token{
+        .{ .id = .const_int, .span = .{ .line = 1, .col = 1 }, .text = "42", .int_val = 42 },
+        .{ .id = .eof, .span = .{ .line = 1, .col = 3 } },
+    };
+    var ts = TokenStream{ .tokens = &tokens };
+    const expr = try parseExpr(gpa, &ts, 0);
+    try std.testing.expectEqual(std.meta.Tag(Expr).literal, std.meta.activeTag(expr));
+    try std.testing.expectEqualStrings("42", expr.literal.value.int);
+}
+
+test "parseExpr: empty list" {
+    const gpa = std.testing.allocator;
+    const tokens = [_]Token{
+        .{ .id = .lbracket, .span = .{ .line = 1, .col = 1 } },
+        .{ .id = .rbracket, .span = .{ .line = 1, .col = 2 } },
+        .{ .id = .eof, .span = .{ .line = 1, .col = 3 } },
+    };
+    var ts = TokenStream{ .tokens = &tokens };
+    const expr = try parseExpr(gpa, &ts, 0);
+    try std.testing.expectEqual(std.meta.Tag(Expr).list_nil, std.meta.activeTag(expr));
+}
+
+test "parseExpr: cons infix" {
+    // 1 : []
+    const gpa = std.testing.allocator;
+    const tokens = [_]Token{
+        .{ .id = .const_int, .span = .{ .line = 1, .col = 1 }, .text = "1", .int_val = 1 },
+        .{ .id = .cons, .span = .{ .line = 1, .col = 3 } },
+        .{ .id = .lbracket, .span = .{ .line = 1, .col = 5 } },
+        .{ .id = .rbracket, .span = .{ .line = 1, .col = 6 } },
+        .{ .id = .eof, .span = .{ .line = 1, .col = 7 } },
+    };
+    var ts = TokenStream{ .tokens = &tokens };
+    const expr = try parseExpr(gpa, &ts, 0);
+    try std.testing.expectEqual(std.meta.Tag(Expr).infix, std.meta.activeTag(expr));
+    try std.testing.expectEqualStrings("cons", expr.infix.op);
+    gpa.destroy(expr.infix.lhs);
+    gpa.destroy(expr.infix.rhs);
+}
+
 /// Parse one list-comprehension qualifier and append it to `qs`.
 ///
 /// Handles three forms:
@@ -535,16 +638,27 @@ fn parseQualifier(
 // ---------------------------------------------------------------------------
 
 /// Allocate an Expr node on the heap.
+///
+/// Tests: boxExpr: heap-allocates a copy of the expr
 pub fn boxExpr(gpa: Allocator, e: Expr) Allocator.Error!*Expr {
     const p = try gpa.create(Expr);
     p.* = e;
     return p;
 }
 
+test "boxExpr: heap-allocates a copy of the expr" {
+    const gpa = std.testing.allocator;
+    const p = try boxExpr(gpa, Expr{ .list_nil = {} });
+    defer gpa.destroy(p);
+    try std.testing.expectEqual(std.meta.Tag(Expr).list_nil, std.meta.activeTag(p.*));
+}
+
 /// Deep-clone an expression tree into fresh heap allocations.
 ///
 /// Useful when the same sub-expression is referenced from two AST positions
 /// (e.g. when desugaring `f x y` into nested applications).
+///
+/// Tests: cloneExpr: deep-copies a nested expression
 pub fn cloneExpr(gpa: Allocator, src: *const Expr) ParseError!Expr {
     return switch (src.*) {
         .name => |n| Expr{ .name = n },
@@ -651,75 +765,14 @@ pub fn cloneExpr(gpa: Allocator, src: *const Expr) ParseError!Expr {
     };
 }
 
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
-
-test "infixBp: cons is right-associative" {
-    const bp = infixBp(.cons).?;
-    try std.testing.expect(bp.left > bp.right); // right-assoc: left > right
-}
-
-test "infixBp: plus is left-associative" {
-    const bp = infixBp(.plus).?;
-    try std.testing.expect(bp.right > bp.left); // left-assoc: right > left
-}
-
-test "infixBp: unknown token returns null" {
-    try std.testing.expect(infixBp(.name) == null);
-    try std.testing.expect(infixBp(.lparen) == null);
-}
-
-test "parse name atom" {
+test "cloneExpr: deep-copies a nested expression" {
     const gpa = std.testing.allocator;
-    const tokens = [_]Token{
-        .{ .id = .name, .span = .{ .line = 1, .col = 1 }, .text = "foo" },
-        .{ .id = .eof, .span = .{ .line = 1, .col = 4 } },
-    };
-    var ts = TokenStream{ .tokens = &tokens };
-    const expr = try parseExpr(gpa, &ts, 0);
-    try std.testing.expectEqual(std.meta.Tag(Expr).name, std.meta.activeTag(expr));
-    try std.testing.expectEqualStrings("foo", expr.name.text);
-}
-
-test "parse integer literal" {
-    const gpa = std.testing.allocator;
-    const tokens = [_]Token{
-        .{ .id = .const_int, .span = .{ .line = 1, .col = 1 }, .text = "42", .int_val = 42 },
-        .{ .id = .eof, .span = .{ .line = 1, .col = 3 } },
-    };
-    var ts = TokenStream{ .tokens = &tokens };
-    const expr = try parseExpr(gpa, &ts, 0);
-    try std.testing.expectEqual(std.meta.Tag(Expr).literal, std.meta.activeTag(expr));
-    try std.testing.expectEqualStrings("42", expr.literal.value.int);
-}
-
-test "parse empty list" {
-    const gpa = std.testing.allocator;
-    const tokens = [_]Token{
-        .{ .id = .lbracket, .span = .{ .line = 1, .col = 1 } },
-        .{ .id = .rbracket, .span = .{ .line = 1, .col = 2 } },
-        .{ .id = .eof, .span = .{ .line = 1, .col = 3 } },
-    };
-    var ts = TokenStream{ .tokens = &tokens };
-    const expr = try parseExpr(gpa, &ts, 0);
-    try std.testing.expectEqual(std.meta.Tag(Expr).list_nil, std.meta.activeTag(expr));
-}
-
-test "parse cons infix" {
-    // 1 : []
-    const gpa = std.testing.allocator;
-    const tokens = [_]Token{
-        .{ .id = .const_int, .span = .{ .line = 1, .col = 1 }, .text = "1", .int_val = 1 },
-        .{ .id = .cons, .span = .{ .line = 1, .col = 3 } },
-        .{ .id = .lbracket, .span = .{ .line = 1, .col = 5 } },
-        .{ .id = .rbracket, .span = .{ .line = 1, .col = 6 } },
-        .{ .id = .eof, .span = .{ .line = 1, .col = 7 } },
-    };
-    var ts = TokenStream{ .tokens = &tokens };
-    const expr = try parseExpr(gpa, &ts, 0);
-    try std.testing.expectEqual(std.meta.Tag(Expr).infix, std.meta.activeTag(expr));
-    try std.testing.expectEqualStrings("cons", expr.infix.op);
-    gpa.destroy(expr.infix.lhs);
-    gpa.destroy(expr.infix.rhs);
+    const inner = try boxExpr(gpa, Expr{ .name = .{ .text = "x", .span = .{ .line = 1, .col = 1 } } });
+    defer gpa.destroy(inner);
+    const src = Expr{ .neg = inner };
+    const dst = try cloneExpr(gpa, &src);
+    defer gpa.destroy(dst.neg);
+    try std.testing.expectEqual(std.meta.Tag(Expr).neg, std.meta.activeTag(dst));
+    try std.testing.expect(dst.neg != inner); // a fresh allocation, not the original
+    try std.testing.expectEqualStrings("x", dst.neg.name.text);
 }
