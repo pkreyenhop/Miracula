@@ -42,6 +42,19 @@ domain codes, and duplicated definitions.
 
 # Part A — Make `main.zig` idiomatic Zig
 
+> **Status (done): Priorities 1, 2, 6, 7, 10 ✅.** The ~108-symbol re-export layer
+> was dissolved over 8 golden-gated commits — all **1457** `main.X` references
+> migrated to the owning modules (`heap`/`cs`/`rs`/constants/`errors`/the helper
+> relocations/the cross-module functions). **No file imports `main` any more.**
+> `main.zig` shrank **336 → 56 lines** (header + 4 imports + `main()` + the
+> comptime test block). The inline helpers `get_id`/`get_fil` moved to `heap.zig`;
+> `getStd*` callers go to `abi` directly. A `miranda.zig` public namespace was
+> *not* added — the interpreter is an executable with no external public API, so
+> the dissolved re-exports needed no replacement.
+> **Remaining:** Priority 3 (drop the ~180 residual `r7_*` import aliases) and
+> Priority 4 (migrate raw tag codes onto the `NodeTag` enum) — both whole-tree and
+> shared with Part B (R5, R3/R4).
+
 ## Problem
 
 `main.zig` currently acts as executable entry point **and** compatibility layer
