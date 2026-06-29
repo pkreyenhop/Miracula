@@ -556,12 +556,20 @@ pub fn libFails() void {
 }
 
 /// Format integer version `v` as an `M.mmm` string (`???` if out of range).
+///
+/// Tests: versionString: formats an integer version as M.mmm
 pub fn versionString(v: c_int) [*:0]const u8 {
     if (v < 0 or v > 999999) {
         return "???";
     }
     _ = abi.snprintf(&vbuf, vbuf.len, "%.3f", .{@as(f64, @floatFromInt(v)) / 1000.0});
     return @ptrCast(&vbuf);
+}
+
+test "versionString: formats an integer version as M.mmm" {
+    try std.testing.expectEqualStrings("2.046", std.mem.span(versionString(2046)));
+    try std.testing.expectEqualStrings("0.001", std.mem.span(versionString(1)));
+    try std.testing.expectEqualStrings("???", std.mem.span(versionString(-1)));
 }
 
 /// Print the release/date line; with `full` set, also the host string and XVERSION.

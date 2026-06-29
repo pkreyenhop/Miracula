@@ -89,10 +89,23 @@ first), so momentum builds before the stateful modules:
   **Tier B substantially complete** — the heap, the numeric/compare core, and a
   representative span of the reducer rewrite rules are unit-tested via
   `freshInterp`.
-* **Tier C — stateful (need `freshInterp`):** `parser/lex.zig`, `compiler/types.zig`
-  (inference), `compiler/trans.zig` (codegen), `parser/codegen.zig`,
-  `parser/parser_api.zig`, `compiler/{setup,module_loader,dump}.zig`,
-  `driver/{commands,repl,startup}.zig`.
+* **Tier C — stateful (need `freshInterp`):** **substantially complete** — the
+  unit-testable surface of the compiler/driver layer is covered, the rest is
+  pipeline/IO covered end-to-end.
+  * `parser/lex.zig` ✅ *(strConv, makeId/findid round-trip, + the existing
+    classifier tests; the `yylex` state machine stays in `parser_tests` + golden)*.
+  * `compiler/types.zig` ✅ *(the pure set operations member/add1/UNION/
+    intersection/setdiff/remove1 — 6 tests; the inference engine subst/instantiate/
+    subsumes/typeOf is golden + integration covered)*.
+  * `compiler/trans.zig` ✅ *(the pure graph/list helpers memb/same/lastlink/sort;
+    the codegen pipeline is covered by `reduce_test`'s deep-spine guards + golden)*.
+  * `driver/startup.zig` ✅ *(versionString)*.
+  * **Pipeline/IO — covered end-to-end, no isolated unit test:**
+    `parser/codegen.zig` + `parser/parser_api.zig` (the AST→graph pipeline —
+    `parser_tests` snapshot suite), `compiler/setup.zig` (miraSetup test),
+    `compiler/{module_loader,dump}.zig` (load/dump tests + golden), and
+    `driver/{commands,repl}.zig` (the REPL loop / commands — `mira_tests`
+    integration suite).
 
 Trivial one-line accessors (`h`/`t`/`hp`/`tp`) can be covered by a single
 "accessors round-trip" test rather than one each — the metric denominator counts
