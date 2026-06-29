@@ -1,5 +1,6 @@
 //! Miranda AST node types produced by the Zig recursive-descent / Pratt parser.
 
+/// Source position (re-exported from `token_filter`) carried by AST nodes.
 pub const Span = @import("token_filter.zig").Span;
 
 // ---------------------------------------------------------------------------
@@ -111,6 +112,8 @@ pub const Pat = union(enum) {
 // Definitions and right-hand sides
 // ---------------------------------------------------------------------------
 
+/// One guarded alternative of a right-hand side: `body, if cond`. When
+/// `is_otherwise` is set the branch is unconditional and `cond` is a placeholder.
 pub const Guard = struct {
     cond: Expr,
     body: Expr,

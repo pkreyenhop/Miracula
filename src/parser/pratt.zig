@@ -16,6 +16,8 @@ const Token = tf.Token;
 const Expr = ast.Expr;
 const Span = ast.Span;
 
+/// Errors the Pratt parser can return: an unexpected token, an unexpected `eof`,
+/// or `OutOfMemory` from the AST allocator.
 pub const ParseError = error{ UnexpectedToken, UnexpectedEof, OutOfMemory };
 
 /// True for the six Miranda relational operators.

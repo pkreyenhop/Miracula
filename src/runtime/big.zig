@@ -51,6 +51,8 @@ pub const Bignum = struct {
     big_one: Word = 0,
 };
 
+/// Pointer to the bignum subsystem state held in `interp` (so `interp.reset()`
+/// clears it). Accessed as `big.bn.X`.
 pub const bn = &@import("interp.zig").interp.big;
 
 /// The node tag of cell `x`.
