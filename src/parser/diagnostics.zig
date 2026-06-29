@@ -68,3 +68,21 @@ pub const Diagnostics = struct {
         try self.add(.note, line, column, msg);
     }
 };
+
+test "Diagnostics: collects entries and only errors set has_errors" {
+    var d = Diagnostics.init(std.testing.allocator);
+    defer d.deinit();
+    try std.testing.expect(!d.has_errors);
+
+    try d.addWarning(1, 2, "watch out");
+    try std.testing.expect(!d.has_errors); // a warning does not flag errors
+
+    try d.addError(3, 4, "boom");
+    try std.testing.expect(d.has_errors);
+
+    try d.addNote(5, 6, "fyi");
+    try std.testing.expectEqual(@as(usize, 3), d.list.items.len);
+    try std.testing.expectEqual(Severity.@"error", d.list.items[1].severity);
+    try std.testing.expectEqual(@as(usize, 3), d.list.items[1].line);
+    try std.testing.expectEqualStrings("boom", d.list.items[1].message);
+}
