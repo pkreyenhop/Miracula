@@ -27,6 +27,7 @@ const abi = struct {
 
 const lex_state = @import("../parser/lex_state.zig");
 const core_state = @import("../runtime/core_state.zig");
+const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 const ls = lex_state.ls;
 
 /// The standard-output `FILE` handle.
@@ -411,6 +412,8 @@ pub fn primconstr(input_x: Word) Word {
 }
 
 /// Whether `x` is a member of list `l`.
+///
+/// Tests: memb: membership in a list
 pub fn memb(input_l: Word, x: Word) Word {
     var l = input_l;
     if (getTag(x) == TVAR) {
@@ -425,7 +428,16 @@ pub fn memb(input_l: Word, x: Word) Word {
     return if (l != NIL) 1 else 0;
 }
 
+test "memb: membership in a list" {
+    tu.freshInterp();
+    const l = cons(word.True, cons(word.False, NIL));
+    try std.testing.expectEqual(@as(Word, 1), memb(l, word.False));
+    try std.testing.expectEqual(@as(Word, 0), memb(l, word.S));
+}
+
 /// Whether `x` and `y` are structurally equal.
+///
+/// Tests: same: structural equality of graphs
 pub fn same(x: Word, y: Word) Word {
     if (x == y) {
         return 1;
@@ -442,6 +454,15 @@ pub fn same(x: Word, y: Word) Word {
         return if (same(h(x), h(y)) != 0 and same(t(x), t(y)) != 0) 1 else 0;
     }
     return if (h(x) == h(y) and same(t(x), t(y)) != 0) 1 else 0;
+}
+
+test "same: structural equality of graphs" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(Word, 1), same(word.True, word.True));
+    const a = cons(word.True, NIL);
+    const b = cons(word.True, NIL);
+    try std.testing.expectEqual(@as(Word, 1), same(a, b)); // distinct cells, equal structure
+    try std.testing.expectEqual(@as(Word, 0), same(a, cons(word.False, NIL)));
 }
 
 /// Collect the identifiers bound by pattern/definition `x`.
@@ -536,12 +557,22 @@ pub fn hereInfo(rhs: Word) Word {
 }
 
 /// The last cell of list `x`.
+///
+/// Tests: lastlink: the last cell of a list
 pub fn lastlink(input_x: Word) Word {
     var x = input_x;
     while (t(x) != NIL) {
         x = t(x);
     }
     return x;
+}
+
+test "lastlink: the last cell of a list" {
+    tu.freshInterp();
+    const l = cons(word.True, cons(word.False, cons(word.S, NIL)));
+    const last = lastlink(l);
+    try std.testing.expectEqual(@as(Word, word.S), h(last));
+    try std.testing.expectEqual(@as(Word, NIL), t(last));
 }
 
 /// Rewrite repeated variables in comprehension qualifiers `qq` into equality guards.
@@ -1480,6 +1511,8 @@ pub fn less1(input_x: Word, a: Word) Word {
 }
 
 /// Sort list `x`.
+///
+/// Tests: sort: orders a Word list ascending
 pub fn sort(input_x: Word) Word {
     var x = input_x;
     var a: Word = NIL;
@@ -1508,6 +1541,12 @@ pub fn sort(input_x: Word) Word {
         a = t(a);
     }
     return reverse(x);
+}
+
+test "sort: orders a Word list ascending" {
+    tu.freshInterp();
+    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, sort(tu.list(&[_]Word{ 3000, 1000, 2000 })));
+    try tu.expectWords(&[_]Word{}, sort(NIL));
 }
 
 /// Topologically sort relation `x`.
