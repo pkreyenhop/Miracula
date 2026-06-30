@@ -433,7 +433,7 @@ pub fn edWarn() void {
 /// Print the Miranda release banner (version, plus `(UTF-8)` when applicable).
 pub fn announce() void {
     word.print("Miranda release {s}", .{startup.versionString(version.version)});
-    if (heap.utf8test() != 0) {
+    if (heap.utf8test()) {
         word.print(" (UTF-8)", .{});
     }
     word.print("\n", .{});
@@ -456,12 +456,12 @@ pub fn getLine(in: ?*word.FILE, n_val: Word, s_ptr: [*]u8) c_int {
 }
 
 /// 1 if the editor command lacks an open-at-line placeholder (`+!`, `%d`, or `%l`).
-pub fn badEditor() c_int {
-    const e = rt.rs.editor orelse return 0;
+pub fn badEditor() bool {
+    const e = rt.rs.editor orelse return false;
     if (word.strstr(e, "+!") != null or word.strstr(e, "%d") != null or word.strstr(e, "%l") != null) {
-        return 0;
+        return false;
     }
-    return 1;
+    return true;
 }
 
 

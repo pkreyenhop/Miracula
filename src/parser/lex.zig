@@ -691,7 +691,7 @@ pub fn yylex() c_int {
         }
         return @intCast(identifier(0));
     }
-    if ((ls.c >= '0' and ls.c <= '9') or (ls.c == '.' and peekdig() != 0)) {
+    if ((ls.c >= '0' and ls.c <= '9') or (ls.c == '.' and peekdig())) {
         if (ls.c == '0' and word.tolower(peekch()) == 'x') {
             hexnumeral();
         } else if (ls.c == '0' and word.tolower(peekch()) == 'o') {
@@ -1177,11 +1177,11 @@ pub fn adjustPrefix(f: [*:0]const u8) void {
 }
 
 /// Whether the next input char is a digit (without consuming).
-pub fn peekdig() c_int {
-    if (rt.rs.s_in == null) return 0;
+pub fn peekdig() bool {
+    if (rt.rs.s_in == null) return false;
     const ch = main_clib.getc(rt.rs.s_in);
     _ = main_clib.ungetc(ch, rt.rs.s_in);
-    return if (ch >= '0' and ch <= '9') 1 else 0;
+    return ch >= '0' and ch <= '9';
 }
 
 /// Peek the next input char without consuming it.
@@ -1467,7 +1467,7 @@ pub fn numeral() void {
         ls.dicq += 1;
         ls.c = getch();
     }
-    if (ls.c == '.' and peekdig() != 0) {
+    if (ls.c == '.' and peekdig()) {
         ls.dicq[0] = @intCast(ls.c);
         ls.dicq += 1;
         ls.c = getch();

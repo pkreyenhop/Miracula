@@ -1125,13 +1125,13 @@ pub fn mkshowt(s: Word, type_tuple: Word) Word {
 }
 
 /// Name-clash check helper (returns a count).
-fn nclchk(n: Word, p: Word, hr: Word) c_int {
+fn nclchk(n: Word, p: Word, hr: Word) bool {
     if (h(p) == CONST) {
-        return 0;
+        return false;
     }
     if (getTag(p) == .ID) {
         if (n != p) {
-            return 0;
+            return false;
         }
         if (rt.rs.echoing != 0) {
             _ = word.putchar('\n');
@@ -1139,13 +1139,13 @@ fn nclchk(n: Word, p: Word, hr: Word) c_int {
         core_state.s.errs = hr;
         _ = word.print("syntax error: conflicting definitions of \"{s}\" in where clause\n", .{getId(n)});
         acterror();
-        return 1;
+        return true;
     }
     if (getTag(p) == .AP and h(p) == PLUS) {
-        return 0;
+        return false;
     }
-    if (nclchk(n, h(p), hr) != 0) {
-        return 1;
+    if (nclchk(n, h(p), hr)) {
+        return true;
     }
     return nclchk(n, t(p), hr);
 }
@@ -1153,7 +1153,7 @@ fn nclchk(n: Word, p: Word, hr: Word) c_int {
 /// Check definitions `dd` for name clashes with `n`.
 pub fn nclashcheck(n: Word, input_dd: Word, hr: Word) void {
     var dd = input_dd;
-    while (dd != NIL and nclchk(n, dlhs(h(dd)), hr) == 0) {
+    while (dd != NIL and !nclchk(n, dlhs(h(dd)), hr)) {
         dd = t(dd);
     }
 }
@@ -1720,7 +1720,7 @@ pub fn codegen(x: Word) Word {
             return ap(r, 0); // 0 startcond
         },
         .STARTREADVALS => {
-            if (ispoly(t(x)) != 0) {
+            if (ispoly(t(x))) {
                 const name_str: [*:0]const u8 = if (ls.cook_stdin != 0 and x == h(ls.cook_stdin)) "$+" else "readvals or $+";
                 _ = word.print("type error - {s} used at polymorphic type :: [", .{name_str});
                 outType(redtvars(t(x)));

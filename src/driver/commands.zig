@@ -292,7 +292,7 @@ pub fn command() void {
                 }
                 _ = word.strcpy(&rt.rs.ebuf, hold);
                 rt.rs.editor = @as([*:0]u8, @ptrCast(&rt.rs.ebuf));
-                rt.rs.baded = repl.badEditor();
+                rt.rs.baded = @intFromBool(repl.badEditor());
                 rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
                 startup.writeRc();
                 word.print("editor = {s}\n", .{rt.rs.editor orelse @constCast("")});
@@ -314,7 +314,7 @@ pub fn command() void {
                     core_state.s.errs = 0;
                 }
                 if (t_val != null) {
-                    if (word.strcmp(t_val.?, rt.rs.current_script.?) != 0 or (heap.heap.files == NIL and abi.okdump(t_val.?) != 0)) {
+                    if (word.strcmp(t_val.?, rt.rs.current_script.?) != 0 or (heap.heap.files == NIL and abi.okdump(t_val.?))) {
                         cs.CLASHES = NIL;
                         dump.undump(t_val.?);
                         if (cs.CLASHES != NIL) {

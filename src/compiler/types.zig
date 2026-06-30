@@ -622,7 +622,7 @@ var NGT: Word = 0;
 
 /// Per-variable map for `linst`: copy generic vars, keep non-generic ones.
 fn lmap(tv: Word) Word {
-    if (nonGeneric(tv) != 0) {
+    if (nonGeneric(tv)) {
         return tv;
     }
     var l = cs.localtvmap;
@@ -645,15 +645,15 @@ pub fn linst(term: Word, ngt: Word) Word {
 }
 
 /// Whether type variable `tv` is non-generic / monomorphic (1/0).
-pub fn nonGeneric(tv: Word) c_int {
+pub fn nonGeneric(tv: Word) bool {
     var x = NGT;
     while (x != NIL) {
-        if (occurs(tv, subst(h(x))) != 0) {
-            return 1;
+        if (occurs(tv, subst(h(x)))) {
+            return true;
         }
         x = t(x);
     }
-    return 0;
+    return false;
 }
 
 /// Map a type variable up through `tvmap` (instantiation direction).
@@ -705,27 +705,27 @@ pub fn redtvars(term: Word) Word {
 }
 
 /// The occurs check: whether `tv` appears in `t_val` (1/0).
-pub fn occurs(tv: Word, t_val: Word) c_int {
+pub fn occurs(tv: Word, t_val: Word) bool {
     var term = t_val;
     while (isCompoundType(term)) {
-        if (occurs(tv, t(term)) != 0) {
-            return 1;
+        if (occurs(tv, t(term))) {
+            return true;
         }
         term = h(term);
     }
-    return if (tv == term) 1 else 0;
+    return tv == term;
 }
 
 /// Whether type `t_val` is polymorphic — contains type variables (1/0).
-pub fn ispoly(t_val: Word) c_int {
+pub fn ispoly(t_val: Word) bool {
     var term = t_val;
     while (isCompoundType(term)) {
-        if (ispoly(t(term)) != 0) {
-            return 1;
+        if (ispoly(t(term))) {
+            return true;
         }
         term = h(term);
     }
-    return if (isVarType(term)) 1 else 0;
+    return isVarType(term);
 }
 
 /// The standard-output `FILE` handle.
@@ -1404,7 +1404,7 @@ pub fn cyclicAbstr(atnames: Word) Word {
     }
     x = atnames;
     while (x != NIL) {
-        if (occurs(h(x), y) != 0) {
+        if (occurs(h(x), y)) {
             _ = word.print("illegal type abstraction: cycle in \"==\" binding{s} ", .{if (t(atnames) == NIL) @as([*:0]const u8, "") else @as([*:0]const u8, "s")});
             printelement(atnames);
             _ = word.putchar('\n');
@@ -1725,7 +1725,7 @@ pub fn subsu1(t1_in: Word, t2: Word, T2: Word) Word {
     if (t1 == t2) {
         return 1;
     }
-    if (isVarType(t1) and occurs(t1, T2) == 0) {
+    if (isVarType(t1) and !occurs(t1, T2)) {
         addsubst(t1, t2);
         return 1;
     }
@@ -1750,11 +1750,11 @@ fn unify1(t1_val: Word, t2_val: Word) c_int {
     if (t1 == t2) {
         return 1;
     }
-    if (isVarType(t1) and occurs(t1, t2) == 0) {
+    if (isVarType(t1) and !occurs(t1, t2)) {
         addsubst(t1, t2);
         return 1;
     }
-    if (isVarType(t2) and occurs(t2, t1) == 0) {
+    if (isVarType(t2) and !occurs(t2, t1)) {
         addsubst(t2, t1);
         return 1;
     }
@@ -1771,11 +1771,11 @@ fn unify(t1_val: Word, t2_val: Word) c_int {
     if (t1 == t2) {
         return 1;
     }
-    if (isVarType(t1) and occurs(t1, t2) == 0) {
+    if (isVarType(t1) and !occurs(t1, t2)) {
         addsubst(t1, t2);
         return 1;
     }
-    if (isVarType(t2) and occurs(t2, t1) == 0) {
+    if (isVarType(t2) and !occurs(t2, t1)) {
         addsubst(t2, t1);
         return 1;
     }

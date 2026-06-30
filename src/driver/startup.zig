@@ -73,7 +73,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
         okhome_rc = readRc(@as([*:0]const u8, @ptrCast(&rt.rs.home_rc)));
     }
 
-    rt.rs.UTF8 = heap.utf8test();
+    rt.rs.UTF8 = @intFromBool(heap.utf8test());
     rt.rs.UTF8OUT = rt.rs.UTF8;
 
     var arg_idx: usize = 1;
@@ -129,7 +129,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 missingParam("editor");
             } else {
                 rt.rs.editor = argv[arg_idx];
-                rt.rs.baded = repl.badEditor();
+                rt.rs.baded = @intFromBool(repl.badEditor());
             }
         } else if (word.strcmp(arg, "-hush") == 0) {
             rt.rs.verbosity = 0;
@@ -247,7 +247,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
         if (rt.rs.editor != null) {
             _ = word.strcpy(&rt.rs.ebuf, rt.rs.editor.?);
             rt.rs.editor = @as([*:0]u8, @ptrCast(&rt.rs.ebuf));
-            rt.rs.baded = repl.badEditor();
+            rt.rs.baded = @intFromBool(repl.badEditor());
         }
     }
 

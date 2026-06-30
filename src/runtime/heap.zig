@@ -928,11 +928,11 @@ pub fn mkrel(p: [*:0]const u8) [*:0]const u8 {
 }
 
 /// Whether the object file for `t_ptr` exists and is up to date.
-pub fn okdump(t_ptr: [*:0]const u8) c_int {
+pub fn okdump(t_ptr: [*:0]const u8) bool {
     var obf: [120]u8 = undefined;
     const t_len = std.mem.len(t_ptr);
     if (t_len >= obf.len) {
-        return 0;
+        return false;
     }
     @memcpy(obf[0..t_len], t_ptr[0..t_len]);
     obf[t_len] = 0;
@@ -940,20 +940,20 @@ pub fn okdump(t_ptr: [*:0]const u8) c_int {
     const suffix_str = std.mem.span(core.s.obsuffix);
     const suffix_len = suffix_str.len;
     if (t_len + suffix_len - 1 >= obf.len) {
-        return 0;
+        return false;
     }
     @memcpy(obf[t_len - 1 .. t_len - 1 + suffix_len], suffix_str.ptr);
     obf[t_len - 1 + suffix_len] = 0;
 
-    const f = word.fopen(&obf, "r") orelse return 0;
+    const f = word.fopen(&obf, "r") orelse return false;
     defer _ = word.fclose(f);
 
     const ch1 = main_clib.getc(f);
     const ch2 = main_clib.getc(f);
     if (ch1 == word.XVERSION and ch2 != 0) {
-        return 1;
+        return true;
     }
-    return 0;
+    return false;
 }
 
 /// The error line number recorded in a bad object file for `t_ptr`.
@@ -2289,7 +2289,7 @@ pub fn alfasort(x_val: Word) Word {
 }
 
 /// Detect whether the current locale is UTF-8 (1/0).
-pub fn utf8test() c_int {
+pub fn utf8test() bool {
     var lang = main_clib.getenv("LC_CTYPE");
     if (lang == null) {
         lang = main_clib.getenv("LANG");
@@ -2300,10 +2300,10 @@ pub fn utf8test() c_int {
             main_clib.strstr(l, "utf-8") != null or
             main_clib.strstr(l, "utf8") != null)
         {
-            return 1;
+            return true;
         }
     }
-    return 0;
+    return false;
 }
 
 /// Clear the values of all ids defined in `d_val` (on unload).
