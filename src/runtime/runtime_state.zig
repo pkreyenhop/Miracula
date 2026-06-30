@@ -159,6 +159,23 @@ pub const RuntimeState = struct {
     ntspecmap: Word = NIL,
     lexstates: Word = NIL,
     lexdefs: Word = NIL,
+
+    /// Validate all runtime state global variables holding heap references.
+    pub fn validate(self: *const RuntimeState) void {
+        const options = @import("version_options");
+        if (@import("builtin").mode != .Debug and !options.is_strict) return;
+
+        const heap = &@import("interp.zig").interp.heap;
+        const top_limit = heap.TOP();
+
+        inline for (.{ self.Void, self.main_id, self.message, self.standardout, self.diagonalise, self.concat, self.indent_fn, self.outdent_fn, self.listdiff_fn, self.shownum1, self.showbool, self.showchar, self.showlist, self.showstring, self.showparen, self.showpair, self.showvoid, self.showfunction, self.showabstract, self.showwhat, self.lastid, self.rv_expr, self.fnts, self.primenv, self.oldfiles, self.includees, self.freeids, self.exports, self.embargoes, self.lastname, self.suppressids, self.col_fn, self.eprodnts, self.nonterminals, self.ntmap, self.ntspecmap, self.lexstates, self.lexdefs, self.detrop, self.rfl, self.ld_stuff }) |field| {
+            if (field >= @import("word.zig").ATOMLIMIT) {
+                if (field >= top_limit) {
+                    std.debug.panic("runtime.validate: runtime state field has out-of-bounds heap reference {d} (TOP is {d})", .{ field, top_limit });
+                }
+            }
+        }
+    }
 };
 
 /// Pointer to the singleton runtime state held in `interp` (so `interp.reset()`

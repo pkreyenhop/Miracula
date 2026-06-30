@@ -16,8 +16,6 @@ const types = @import("../../compiler/types.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
 
-
-
 /// The combinator's last argument — the remaining input/token stream (focus node's tail).
 inline fn lastarg(ctx: *ReductionCtx) Word {
     return reduce.tlGet(ctx.e);

@@ -8,6 +8,7 @@
 //! the editor-command checks, and `parseLine` (the `readvals` reader).
 
 const std = @import("std");
+const options = @import("version_options");
 const word = @import("../runtime/word.zig");
 const errors = @import("../runtime/errors.zig");
 const strtab = @import("../runtime/strtab.zig");
@@ -352,7 +353,17 @@ pub fn fpeError(sig: c_int) callconv(.c) void {
 pub fn obey(x_in: Word) void {
     var x = x_in;
     const typ = types_mod.typeOf(x);
+    if (options.is_strict or @import("builtin").mode == .Debug) {
+        heap.heap.validate();
+        trans_mod.validate();
+        rt.rs.validate();
+    }
     x = trans_mod.codegen(x);
+    if (options.is_strict or @import("builtin").mode == .Debug) {
+        heap.heap.validate();
+        trans_mod.validate();
+        rt.rs.validate();
+    }
     if (cs.polyshowerror != 0) return;
     core_state.s.compiling = 0;
     const list_t: Word = 4;
@@ -374,9 +385,19 @@ pub fn obey(x_in: Word) void {
 pub fn evaluateRepl(x_in: Word) void {
     var x = x_in;
     const typ = types_mod.typeOf(x);
+    if (options.is_strict or @import("builtin").mode == .Debug) {
+        heap.heap.validate();
+        trans_mod.validate();
+        rt.rs.validate();
+    }
     if (typ == word.wrong_t) return;
     rt.rs.lastexp = x;
     x = trans_mod.codegen(x);
+    if (options.is_strict or @import("builtin").mode == .Debug) {
+        heap.heap.validate();
+        trans_mod.validate();
+        rt.rs.validate();
+    }
     if (cs.polyshowerror != 0) return;
     const list_t: Word = 4;
     const char_t: Word = 3;
@@ -463,7 +484,6 @@ pub fn badEditor() bool {
     }
     return true;
 }
-
 
 /// Read and type-check one expression of type `t_val` from file `f` (the `readvals` path). Returns its codegen, or `EOF`; re-prompts interactively and aborts on bad file data.
 pub fn parseLine(t_val: Word, f: ?*word.FILE, fil: Word) Word {

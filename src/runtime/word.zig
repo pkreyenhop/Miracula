@@ -741,7 +741,6 @@ pub const TVAR_X: Word = XBASE + 14;
 /// Dump marker: a Unicode character.
 pub const UNICODE_X: Word = XBASE + 15;
 
-
 /// Hook for interactive line input, installed by the REPL's line editor
 /// (zigline). When non-null and a `FILE` is reading from stdin, `readByte` fills
 /// its buffer by calling this — an edited line (with history) plus a trailing
@@ -1279,8 +1278,7 @@ pub fn fopen(path: ?*const anyopaque, mode: [*:0]const u8) ?*FILE {
         const f = dir.createFile(io, std.mem.span(path_str), .{ .truncate = false }) catch return null;
         _ = std.posix.system.lseek(f.handle, 0, 2);
         break :d f;
-    } else
-        return null;
+    } else return null;
 
     const f_ptr = allocFile() orelse {
         file.close(io);

@@ -9,7 +9,9 @@ const errors = @import("../runtime/errors.zig");
 const strtab = @import("../runtime/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const cs = @import("compiler_state.zig").cs;
-inline fn getTag(x: word.Word) word.NodeTag { return @enumFromInt(heap.heap.getTag(x)); }
+inline fn getTag(x: word.Word) word.NodeTag {
+    return @enumFromInt(heap.heap.getTag(x));
+}
 const abi = @import("../runtime/main_clib.zig");
 const parser_api = @import("../parser/parser_api.zig");
 const setup = @import("setup.zig");
@@ -139,7 +141,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
                 }
                 if (count != 1) {
                     core_state.s.SYNERR = 1;
-                    word.print("illegal fileid \"{s}\" in export list ({s})\n", .{strtab.strOf(heap.h(s)), @as([*:0]const u8, if (count != 0) "ambiguous" else "not %included in script")});
+                    word.print("illegal fileid \"{s}\" in export list ({s})\n", .{ strtab.strOf(heap.h(s)), @as([*:0]const u8, if (count != 0) "ambiguous" else "not %included in script") });
                 }
             }
         }
@@ -593,7 +595,7 @@ pub fn mkincludes(includees_val: Word) Word {
                 word.print("(should be \"= value\" not \"== type\")\n", .{});
             } else {
                 word.print("`{s}' has == binding of wrong arity ", .{pn});
-                word.print("(formal has arity {}, actual has arity {})\n", .{fa, ta});
+                word.print("(formal has arity {}, actual has arity {})\n", .{ fa, ta });
             }
             cs.DETROP = heap.t(cs.DETROP);
         }
@@ -609,7 +611,7 @@ pub fn mkincludes(includees_val: Word) Word {
         }
 
         while (cs.MISSING != NIL) {
-            word.printErr("{s}{s}", .{strtab.strOf(heap.h(heap.h(cs.MISSING))), @as([*:0]const u8, if (heap.t(cs.MISSING) == NIL) ";\n" else ",")});
+            word.printErr("{s}{s}", .{ strtab.strOf(heap.h(heap.h(cs.MISSING))), @as([*:0]const u8, if (heap.t(cs.MISSING) == NIL) ";\n" else ",") });
             cs.MISSING = heap.t(cs.MISSING);
         }
 
@@ -622,7 +624,7 @@ pub fn mkincludes(includees_val: Word) Word {
     if (tclashes != NIL) {
         word.printErr("TYPECLASH - the following type{s} multiply named:\n", .{@as([*:0]const u8, if (heap.t(tclashes) == NIL) " is" else "s are")});
         while (tclashes != NIL) {
-            word.printErr("\'{s}\' of file \"{s}\", as: ", .{abi.getaka(heap.h(heap.t(heap.h(tclashes)))), strtab.strOf(heap.h(heap.h(tclashes)))});
+            word.printErr("\'{s}\' of file \"{s}\", as: ", .{ abi.getaka(heap.h(heap.t(heap.h(tclashes)))), strtab.strOf(heap.h(heap.h(tclashes))) });
             abi.printlist(@constCast(""), heap.alfasort(heap.t(heap.t(heap.h(tclashes)))));
             tclashes = heap.t(tclashes);
         }

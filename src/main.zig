@@ -21,8 +21,15 @@ pub fn main(ctx: std.process.Init) !void {
     const argv: [*][*:0]u8 = @ptrCast(@constCast(raw_args.ptr));
     const argc: c_int = @intCast(raw_args.len);
     const exit_code = startup.mainEntry(argc, argv);
-    _ = rt.gpa.deinit();
-    std.process.exit(@intCast(exit_code));
+    if (@import("version_options").is_strict or @import("builtin").mode == .Debug) {
+        const heap = @import("runtime/heap.zig");
+        heap.heap.validate();
+        @import("compiler/trans.zig").validate();
+        rt.rs.validate();
+    }
+    const check = rt.gpa.deinit();
+    const final_exit_code = if (check == .leak and @import("version_options").is_strict) 1 else exit_code;
+    std.process.exit(@intCast(final_exit_code));
 }
 
 // Pull every module's inline tests into the `main-tests` binary. (Files with no
@@ -53,4 +60,21 @@ comptime {
     _ = @import("runtime/version.zig");
     _ = @import("runtime/runtime_state.zig");
     _ = @import("testutil.zig");
+
+    // Static compile-time validations
+    const word = @import("runtime/word.zig");
+    // Word and pointer size checks
+    std.debug.assert(@bitSizeOf(word.Word) == 64);
+    std.debug.assert(@sizeOf(*anyopaque) == 8);
+
+    // Structure sizes and alignments
+    std.debug.assert(@sizeOf(abi.jmp_buf) == 512);
+    std.debug.assert(@sizeOf(abi.sigjmp_buf) == 528);
+    std.debug.assert(@alignOf(abi.jmp_buf) == 16);
+    std.debug.assert(@alignOf(abi.sigjmp_buf) == 16);
+
+    // Enum layout checks
+    std.debug.assert(@sizeOf(word.NodeTag) == 1);
+    std.debug.assert(@intFromEnum(word.NodeTag.ATOM) == 0);
+    std.debug.assert(@intFromEnum(word.NodeTag.TCONS) == 22);
 }

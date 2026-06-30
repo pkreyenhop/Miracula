@@ -559,7 +559,7 @@ pub fn libFails() void {
     word.printErr("found", .{});
     var i: usize = 0;
     while (i < mvp) : (i += 1) {
-        word.printErr("\tversion {s} at: {s}\n", .{versionString(vstack[i]), mstack[i]});
+        word.printErr("\tversion {s} at: {s}\n", .{ versionString(vstack[i]), mstack[i] });
     }
 }
 
@@ -582,7 +582,7 @@ test "versionString: formats an integer version as M.mmm" {
 
 /// Print the release/date line; with `full` set, also the host string and XVERSION.
 pub fn versionInfo(full: c_int) void {
-    word.print("{s} last revised {s}\n", .{versionString(version.version), version.vdate});
+    word.print("{s} last revised {s}\n", .{ versionString(version.version), version.vdate });
     if (full == 0) return;
     word.print("{s}", .{version.host});
     word.print("XVERSION {}\n", .{@as(c_uint, @intCast(word.XVERSION))});

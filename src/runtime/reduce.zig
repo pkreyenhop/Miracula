@@ -9,6 +9,7 @@
 //! The graph-reduction machine itself lives in `reducer/reduce.zig`.
 
 const std = @import("std");
+const options = @import("version_options");
 const word = @import("word.zig");
 const strtab = @import("strtab.zig");
 const platform = @import("../io/platform.zig");
@@ -84,7 +85,6 @@ inline fn abnormal(x: Word) bool {
     return x < 0;
 }
 
-
 inline fn lh(x: Word) Word {
     if (getTag(h(x)) == .STRCONS) {
         return t(h(x));
@@ -120,7 +120,6 @@ inline fn cons(x: Word, y: Word) Word {
 inline fn ap(x: Word, y: Word) Word {
     return heap.make(word.AP, x, y);
 }
-
 
 inline fn datapair(x: Word, y: Word) Word {
     return heap.make(word.DATAPAIR, x, y);
@@ -369,7 +368,7 @@ pub fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     p_idx += 1;
     if (p_idx > buf_size) {
         if (cmd) |cmd_str| {
-            word.printErr("\n{s}, argument string too long (limit={} chars): {s}...\n", .{cmd_str, @as(c_int, buf_size), &rt.rs.linebuf});
+            word.printErr("\n{s}, argument string too long (limit={} chars): {s}...\n", .{ cmd_str, @as(c_int, buf_size), &rt.rs.linebuf });
             outstats();
             main_clib.exit(1);
         } else {
@@ -398,9 +397,9 @@ pub fn outstats() void {
     var buffer: main_clib.struct_tms = undefined;
     _ = main_clib.times(&buffer);
     word.printErr("||", .{});
-    word.printErr("reductions = {}, cells claimed = {}, ", .{ev.cycles, heap.heap.cellcount + heap.heap.claims});
+    word.printErr("reductions = {}, cells claimed = {}, ", .{ ev.cycles, heap.heap.cellcount + heap.heap.claims });
     const clk_tck = @as(f64, @floatFromInt(main_clib.sysconf(word._SC_CLK_TCK)));
-    word.printErr("no of gc's = {}, cpu = {d:.2}\n", .{heap.heap.nogcs, @as(f64, @floatFromInt(buffer.tms_utime)) / clk_tck});
+    word.printErr("no of gc's = {}, cpu = {d:.2}\n", .{ heap.heap.nogcs, @as(f64, @floatFromInt(buffer.tms_utime)) / clk_tck });
 }
 
 /// Write value `h_val` to file `f` for diagnostics, optionally followed by a newline.
@@ -430,7 +429,7 @@ pub fn stdinError(c_val: c_int) void {
     if (ev.stdinuse == c_val) {
         word.printErr("program error: duplicate use of {s}\n", .{stdname(c_val)});
     } else {
-        word.printErr("program error: simultaneous use of {s} and {s}\n", .{stdname(c_val), stdname(@intCast(ev.stdinuse))});
+        word.printErr("program error: simultaneous use of {s} and {s}\n", .{ stdname(c_val), stdname(@intCast(ev.stdinuse)) });
     }
     outstats();
     main_clib.exit(1);
@@ -464,7 +463,7 @@ pub fn divError() void {
 pub fn mathError(s: [*:0]const u8) void {
     const err_val = platform.getErrno();
     const err_type: [*:0]const u8 = if (err_val == main_clib.EDOM) "domain " else if (err_val == main_clib.ERANGE) "range " else "";
-    word.printErr("\nmath function {s}error ({s})\n", .{err_type, s});
+    word.printErr("\nmath function {s}error ({s})\n", .{ err_type, s });
     outstats();
     main_clib.exit(1);
 }
@@ -887,6 +886,9 @@ pub fn output(arg_e: Word) void {
         }
         tp(e).* = reduce(t(e));
         e = t(e);
+    }
+    if (options.is_strict or @import("builtin").mode == .Debug) {
+        heap.heap.validate();
     }
     if (e == NIL) {
         return;

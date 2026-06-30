@@ -89,6 +89,13 @@ pub const Parser = struct {
         try self.diagnostics.append(self.gpa, .{ .span = sp, .message = msg });
     }
 
+    /// Validate parser token stream state in Debug/Strict mode.
+    pub fn validate(self: *const Parser) void {
+        const options = @import("version_options");
+        if (@import("builtin").mode != .Debug and !options.is_strict) return;
+        std.debug.assert(self.ts.pos <= self.ts.tokens.len);
+    }
+
     /// Skip tokens until the next top-level sync point.
     ///
     /// Advances past nested blocks (elseq increases depth, offside decreases

@@ -8,7 +8,7 @@ const std = @import("std");
 
 extern fn sigaction(signum: c_int, act: ?*const std.posix.Sigaction, oldact: ?*std.posix.Sigaction) c_int;
 
-/// 
+///
 pub fn signals(signum: c_int, handler: usize) usize {
     var act: std.posix.Sigaction = undefined;
     var oldact: std.posix.Sigaction = undefined;

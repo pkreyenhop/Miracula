@@ -81,7 +81,6 @@ else if (@sizeOf(Word) == 8)
 else
     @compileError("platform has unknown word size");
 
-
 /// One heap cell: a tag byte plus two `Word` fields. Atoms (index < ATOMLIMIT)
 /// occupy rows too but use only `.tag`. Stored struct-of-arrays via
 /// `std.MultiArrayList`, replacing the old interleaved `hd[x*2]`/`tl[x*2]` +
@@ -318,6 +317,10 @@ pub const Heap = struct {
         heap.cellcount += heap.claims;
         heap.claims = 0;
         heap.collecting = 0;
+        const options = @import("version_options");
+        if (options.is_strict or @import("builtin").mode == .Debug) {
+            self.validate();
+        }
     }
 
     /// Walk the heap after collection, fixing up the relocated cell tags/links.
@@ -463,6 +466,54 @@ pub const Heap = struct {
                 x = self.t(x) & ~word.tlptrbits;
             } else {
                 break;
+            }
+        }
+    }
+
+    /// Validate heap structure and invariants in Debug/Strict mode.
+    pub fn validate(self: *Heap) void {
+        const options = @import("version_options");
+        if (@import("builtin").mode != .Debug and !options.is_strict) return;
+
+        var x: Word = ATOMLIMIT;
+        const top_limit = self.TOP();
+        while (x < top_limit) : (x += 1) {
+            const tag_byte = @intFromEnum(self.tag.?[@intCast(x)]);
+            const signed_tag = @as(i8, @bitCast(tag_byte));
+            if (signed_tag <= 0) continue; // Dead/free cell or non-marked cell during GC.
+
+            const tag = @as(word.NodeTag, @enumFromInt(tag_byte));
+            switch (tag) {
+                .ATOM, .DOUBLE, .DATAPAIR, .FILEINFO, .TVAR, .INT, .CONSTRUCTOR, .STRCONS, .ID, .AP, .LAMBDA, .CONS, .TRIES, .LABEL, .SHOW, .STARTREADVALS, .LET, .LETREC, .SHARE, .LEXER, .PAIR, .UNICODE, .TCONS => {},
+                _ => std.debug.panic("heap.validate: cell {d} has invalid live tag {d}", .{ x, tag_byte }),
+            }
+
+            const tag_val = @intFromEnum(tag);
+
+            if (tag_val > @intFromEnum(word.NodeTag.STRCONS)) {
+                const hd_val = self.hd.?[@intCast(x)];
+                if (hd_val >= ATOMLIMIT) {
+                    if (hd_val >= top_limit) {
+                        std.debug.panic("heap.validate: cell {d} (tag {s}) has out-of-bounds hd reference {d} (TOP is {d})", .{ x, @tagName(tag), hd_val, top_limit });
+                    }
+                }
+            }
+            if (tag_val >= @intFromEnum(word.NodeTag.INT)) {
+                const tl_val = self.tl.?[@intCast(x)];
+                if (tl_val >= ATOMLIMIT) {
+                    if (tl_val >= top_limit) {
+                        std.debug.panic("heap.validate: cell {d} (tag {s}) has out-of-bounds tl reference {d} (TOP is {d})", .{ x, @tagName(tag), tl_val, top_limit });
+                    }
+                }
+            }
+
+            // Utilize domain-specific wrappers where appropriate
+            if (tag == .ID) {
+                const ident = Identifier{ .word = x };
+                const t_val = ident.typ();
+                if (t_val >= ATOMLIMIT and t_val >= top_limit) {
+                    std.debug.panic("heap.validate: Identifier {d} has invalid type reference {d}", .{ x, t_val });
+                }
             }
         }
     }
@@ -781,7 +832,6 @@ fn nil() Word {
 // (Dead module duplicates of `Heap.SPACE`/`Heap.listp` removed — the live
 // copies are the struct fields, accessed via `self.SPACE`/`self.listp`.)
 
-
 const outstats = reduce.outstats;
 const initclock = reduce.initclock;
 const hashsize = word.hashsize;
@@ -792,7 +842,6 @@ fn TOP() Word {
 }
 
 /// The high-water heap limit.
-
 /// The usable heap size, in cells.
 pub fn trueheapsize() Word {
     return heap.trueheapsize();
@@ -848,11 +897,7 @@ pub fn gcpatch() void {
     heap.gcpatch();
 }
 
-
-
 /// The standard-error `FILE` handle (tolerating either a fn or value form).
-
-
 const fileMtime = files.fileMtime;
 const unlinkObject = files.unlinkObject;
 /// Intern name `p1`, returning its dictionary `ID` node (inserting if new).
@@ -1276,7 +1321,6 @@ pub fn outAtom(file: ?*word.FILE, x_val: Word) void {
     }
     _ = word.putc(')', file);
 }
-
 
 const member = types.member;
 const add1 = types.add1;
@@ -2481,41 +2525,41 @@ test "dumpOb / loadDefs: roundtrip a cons of two ints through the .x format" {
     rt.rs.SPACELIMIT = 10000;
     setupheap();
     dsetup();
-    
+
     // 2. Build a representative structure: a cons pair of two small integers
     const item1 = stosmallint(42);
     const item2 = stosmallint(100);
     const list = cons(item1, item2);
-    
+
     // 3. Open a temp file for writing
     const filename = "test_roundtrip.dump";
     const f_write = word.fopen(filename, "w");
     try std.testing.expect(f_write != null);
-    
+
     // 4. Dump the object structure
     dumpOb(list, f_write);
     _ = word.fclose(f_write.?);
-    
+
     // 5. Open the temp file for reading
     const f_read = word.fopen(filename, "r");
     try std.testing.expect(f_read != null);
-    
+
     // 6. Load it back using loadDefs (which pushes it onto stackp)
     const old_stackp = heap.stackp;
     _ = loadDefs(f_read);
     _ = word.fclose(f_read.?);
-    
+
     // Clean up temp file
     _ = main_clib.unlink(filename);
-    
+
     // 7. Verify structural equality
     try std.testing.expect(@intFromPtr(heap.stackp.?) > @intFromPtr(old_stackp.?));
     const loaded = stackpTop();
-    
+
     try std.testing.expectEqual(word.CONS, heap.getTag(loaded));
     const loaded_h = h(loaded);
     const loaded_t = t(loaded);
-    
+
     try std.testing.expectEqual(word.INT, heap.getTag(loaded_h));
     try std.testing.expectEqual(@as(Word, 42), getsmallint(loaded_h));
     try std.testing.expectEqual(word.INT, heap.getTag(loaded_t));
@@ -2527,4 +2571,3 @@ fn negchar(val: u8) bool {
     const signed_val = @as(i8, @bitCast(val));
     return signed_val < 0;
 }
-

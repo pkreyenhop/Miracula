@@ -35,9 +35,6 @@ const UNDEF = word.UNDEF;
 const False = word.False;
 const True = word.True;
 
-
-
-
 const make = heap.make;
 const mallocPanic = heap.mallocPanic;
 const bigscan = big.scanDecimal;
@@ -82,7 +79,6 @@ pub fn setupFile(filename: [*:0]const u8) c_int {
     rt.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
     return 1;
 }
-
 
 /// Allocate a `FILEINFO` cell `(file . line)`.
 fn fileinfo(file: Word, line: Word) Word {
@@ -540,7 +536,6 @@ fn getlitch() Word {
     }
 }
 
-
 /// Read a whole input line into a buffer.
 pub fn rdline() ?[*:0]u8 {
     var p: [*]u8 = &ls.rdline_linebuf;
@@ -576,7 +571,7 @@ pub fn rdline() ?[*:0]u8 {
         const offset = @as(usize, @intFromPtr(p)) - @as(usize, @intFromPtr(&ls.rdline_linebuf));
         if (offset >= 1024) {
             p[0] = 0;
-            word.printErr("sorry, !command too long (limit={} chars): {s}...\n", .{@as(c_int, 1024), @as([*:0]const u8, @ptrCast(&ls.rdline_linebuf))});
+            word.printErr("sorry, !command too long (limit={} chars): {s}...\n", .{ @as(c_int, 1024), @as([*:0]const u8, @ptrCast(&ls.rdline_linebuf)) });
             while (true) {
                 ch = main_clib.getchar();
                 if (ch == '\n' or ch == main_clib.EOF) {
@@ -633,7 +628,7 @@ fn errclass(val: Word, string_flag: Word) void {
     } else if (val == -5) {
         word.print("unrecognised character in {s}(rt.rs.UTF8 error)\n", .{s});
     } else if (val == -6) {
-        word.print("unrecognised escape \\{c} in {s}\n", .{@as(u8, @intCast(ls.errch)), s});
+        word.print("unrecognised escape \\{c} in {s}\n", .{ @as(u8, @intCast(ls.errch)), s });
     } else if (val == -7) {
         word.print("illegal use of \\& in char const\n", .{});
     } else {
@@ -715,7 +710,7 @@ pub fn yylex() c_int {
         }
         if (!isChar(ls.yylval)) {
             const prefix_str: [*:0]const u8 = if (rt.rs.echoing != 0) "\n" else "";
-            word.printErr("{s}impossible event while reading char const ('\\{}')\n", .{prefix_str, ls.yylval});
+            word.printErr("{s}impossible event while reading char const ('\\{}')\n", .{ prefix_str, ls.yylval });
             acterror();
         }
         if (ls.rawch == '\n' or ls.c != '\'') {
@@ -918,7 +913,7 @@ pub fn yylex() c_int {
                     ls.c = getch();
                 }
                 if (n > ls.sreds) {
-                    word.print("{s}syntax error: illegal symbol ${}{s}\n", .{if (rt.rs.echoing != 0) @as([*:0]const u8, "\n") else "", n, if (n >= 1000000) @as([*:0]const u8, "...") else ""});
+                    word.print("{s}syntax error: illegal symbol ${}{s}\n", .{ if (rt.rs.echoing != 0) @as([*:0]const u8, "\n") else "", n, if (n >= 1000000) @as([*:0]const u8, "...") else "" });
                     acterror();
                 } else {
                     ls.yylval = mkgvar(n);
@@ -1385,7 +1380,7 @@ pub fn directive() Word {
                 } else {
                     const toomany = (ls.insertdepth >= 12);
                     const prefix_str: [*:0]const u8 = if (rt.rs.echoing != 0) "\n" else "";
-                    word.print("{s}%insert error - cannot open \"{s}\"\n", .{prefix_str, f.?});
+                    word.print("{s}%insert error - cannot open \"{s}\"\n", .{ prefix_str, f.? });
                     _ = keep(ls.dicp);
                     if (toomany) {
                         word.print("too many nested %insert directives (limit={})\n", .{ls.insertdepth});
@@ -1882,12 +1877,14 @@ pub fn resetLex() void {
             (if (rt.rs.current_script) |script| es == @as([*:0]const u8, @ptrCast(script)) else false)
         else
             true;
-        if (t(core_state.s.errs) == 0 and is_current) {
-            word.printErr("error occurs at end of ", .{});
-        } else {
-            word.printErr("error found near line {} of ", .{t(core_state.s.errs)});
+        if (!@import("builtin").is_test) {
+            if (t(core_state.s.errs) == 0 and is_current) {
+                word.printErr("error occurs at end of ", .{});
+            } else {
+                word.printErr("error found near line {} of ", .{t(core_state.s.errs)});
+            }
+            word.printErr("{s}file \"{s}\"\ncompilation abandoned\n", .{ if (is_current) @as([*:0]const u8, "") else "%insert ", err_script });
         }
-        word.printErr("{s}file \"{s}\"\ncompilation abandoned\n", .{if (is_current) @as([*:0]const u8, "") else "%insert ", err_script});
         if (is_current) {
             core_state.s.errline = if (t(core_state.s.errs) == 0) ls.lastline else t(core_state.s.errs);
             core_state.s.errs = 0;

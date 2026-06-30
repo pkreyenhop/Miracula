@@ -6,6 +6,8 @@
 //! re-exports the lexer string setup (`lexSetupString`/`lexCleanup`).
 
 const std = @import("std");
+const heap = @import("../runtime/heap.zig");
+const options = @import("version_options");
 
 const word = @import("../runtime/word.zig");
 const rt = @import("../runtime/runtime_state.zig");
@@ -40,6 +42,14 @@ pub fn parseCurrent() ParseError!ParseResult {
 /// Run the Zig pipeline on the currently active Miranda lex stream.
 /// s_in must already be opened (e.g. by openfile() in lex.zig).
 fn parseCurrentNew() ParseError!ParseResult {
+    if (options.is_strict) {
+        if (rt.rs.current_script) |script_name| {
+            validateUtf8File(script_name) catch |err| {
+                core.s.SYNERR = 1;
+                return err;
+            };
+        }
+    }
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const alloc = arena.allocator();
@@ -61,6 +71,11 @@ fn parseCurrentNew() ParseError!ParseResult {
             }
             return ParseError.SyntaxError;
         };
+        if (options.is_strict or @import("builtin").mode == .Debug) {
+            heap.heap.validate();
+            p.validate();
+            rt.rs.validate();
+        }
         if (!p.ts.check(.eof) and !p.ts.check(.offside)) {
             // Trailing tokens after the expression — treat as syntax error.
             core.s.SYNERR = 1;
@@ -68,6 +83,11 @@ fn parseCurrentNew() ParseError!ParseResult {
             return ParseError.SyntaxError;
         }
         const expr_word = codegen.codegenExpr(alloc, expr);
+        if (options.is_strict or @import("builtin").mode == .Debug) {
+            heap.heap.validate();
+            p.validate();
+            rt.rs.validate();
+        }
         rt.rs.lastexp = expr_word; // anchor as GC root before typeOf() inside evaluateRepl() can trigger GC
         evaluateRepl(expr_word);
         // Child prints newline before exit(0); parent returns here.
@@ -75,9 +95,16 @@ fn parseCurrentNew() ParseError!ParseResult {
     }
 
     const script = parser_mod.parseScript(&p) catch return ParseError.ParseFailed;
+    if (options.is_strict or @import("builtin").mode == .Debug) {
+        heap.heap.validate();
+        p.validate();
+        rt.rs.validate();
+    }
 
-    for (p.diagnostics.items) |d| {
-        std.debug.print("{d}:{d}: {s}\n", .{ d.span.line, d.span.col, d.message });
+    if (!@import("builtin").is_test) {
+        for (p.diagnostics.items) |d| {
+            std.debug.print("{d}:{d}: {s}\n", .{ d.span.line, d.span.col, d.message });
+        }
     }
     if (p.diagnostics.items.len > 0) {
         core.s.SYNERR = 1;
@@ -85,11 +112,39 @@ fn parseCurrentNew() ParseError!ParseResult {
     }
 
     codegen.codegenScript(alloc, script);
+    if (options.is_strict or @import("builtin").mode == .Debug) {
+        heap.heap.validate();
+        p.validate();
+        rt.rs.validate();
+    }
     return .success;
+}
+fn validateUtf8File(filename: [*:0]const u8) ParseError!void {
+    const io = std.Options.debug_io;
+    const dir = std.Io.Dir.cwd();
+    const file = dir.openFile(io, std.mem.span(filename), .{}) catch return ParseError.ParseFailed;
+    defer file.close(io);
+
+    const file_len = file.length(io) catch return ParseError.ParseFailed;
+    if (file_len > 10 * 1024 * 1024) return ParseError.ParseFailed;
+
+    const alloc = std.heap.page_allocator;
+    const file_bytes = alloc.alloc(u8, @intCast(file_len)) catch return ParseError.ParseFailed;
+    defer alloc.free(file_bytes);
+
+    _ = file.readPositionalAll(io, file_bytes, 0) catch return ParseError.ParseFailed;
+
+    if (!std.unicode.utf8ValidateSlice(file_bytes)) {
+        std.debug.print("UTF-8 validation failed for file: {s}\n", .{filename});
+        return ParseError.ParseFailed;
+    }
 }
 
 /// Parses a script file by filename.
 pub fn parseFile(filename: [*:0]const u8) ParseError!ParseResult {
+    if (options.is_strict) {
+        try validateUtf8File(filename);
+    }
     if (setupFile(filename) == 0) {
         return ParseError.ParseFailed;
     }
@@ -98,6 +153,14 @@ pub fn parseFile(filename: [*:0]const u8) ParseError!ParseResult {
 
 /// Parses a source string.
 pub fn parseString(source: [*:0]const u8) ParseError!ParseResult {
+    if (options.is_strict) {
+        const source_slice = std.mem.span(source);
+        if (!std.unicode.utf8ValidateSlice(source_slice)) {
+            std.debug.print("UTF-8 validation failed for source string\n", .{});
+            core.s.SYNERR = 1;
+            return ParseError.ParseFailed;
+        }
+    }
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     _ = try parseWithNew(arena.allocator(), source);
@@ -124,6 +187,14 @@ pub const NewParseResult = struct {
 /// Uses an arena so all intermediate allocations are freed on return.
 /// On parse errors, diagnostics are printed to stderr and SYNERR is set.
 pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!NewParseResult {
+    if (options.is_strict) {
+        const source_slice = std.mem.span(source);
+        if (!std.unicode.utf8ValidateSlice(source_slice)) {
+            std.debug.print("UTF-8 validation failed for source string\n", .{});
+            core.s.SYNERR = 1;
+            return ParseError.ParseFailed;
+        }
+    }
     var arena = std.heap.ArenaAllocator.init(gpa);
     defer arena.deinit();
     const alloc = arena.allocator();
@@ -133,10 +204,17 @@ pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!Ne
 
     var p = parser_mod.Parser.init(alloc, tokens);
     const script = parser_mod.parseScript(&p) catch return ParseError.ParseFailed;
+    if (options.is_strict or @import("builtin").mode == .Debug) {
+        heap.heap.validate();
+        p.validate();
+        rt.rs.validate();
+    }
 
     // Report accumulated diagnostics before the arena is freed.
-    for (p.diagnostics.items) |d| {
-        std.debug.print("{d}:{d}: {s}\n", .{ d.span.line, d.span.col, d.message });
+    if (!@import("builtin").is_test) {
+        for (p.diagnostics.items) |d| {
+            std.debug.print("{d}:{d}: {s}\n", .{ d.span.line, d.span.col, d.message });
+        }
     }
     if (p.diagnostics.items.len > 0) {
         core.s.SYNERR = 1;
@@ -144,6 +222,11 @@ pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!Ne
     }
 
     codegen.codegenScript(alloc, script);
+    if (options.is_strict or @import("builtin").mode == .Debug) {
+        heap.heap.validate();
+        p.validate();
+        rt.rs.validate();
+    }
 
     return NewParseResult{};
 }

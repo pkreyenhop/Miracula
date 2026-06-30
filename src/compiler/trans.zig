@@ -274,7 +274,6 @@ fn makeTyp(arity: Word, showfn: Word, class: Word, info: Word) Word {
 fn addToEnv(x: Word) void {
     const current_file_defs = h(heap.heap.files);
     if (current_file_defs >= ATOMLIMIT) {
-        
         tp(current_file_defs).* = cons(x, tp(current_file_defs).*);
     }
 }
@@ -1569,7 +1568,6 @@ const ispoly = types_mod.ispoly;
 
 /// Whether a type node is a tuple (comma) type.
 /// Whether a type node is a type variable.
-
 /// The `show` function of a type node.
 fn tShowfn(x: Word) Word {
     return t(h(t(x)));
@@ -1585,12 +1583,9 @@ fn tInfo(x: Word) Word {
 
 /// Whether id `x` names a data constructor.
 /// Whether id `x` names an ordinary variable.
-
 /// The head of private-name node `x`.
 /// The value (tail) of private-name node `x`.
-
 /// Whether constructor `k` is the sole constructor of its type.
-
 /// Compile expression `x` to its final combinator graph — the codegen entry point.
 pub fn codegen(x: Word) Word {
     switch (getTag(x)) {
@@ -1802,5 +1797,23 @@ pub fn genshfns() void {
             }
         }
         s = t(s);
+    }
+}
+
+/// Validate compiler state in Debug/Strict mode.
+pub fn validate() void {
+    const options = @import("version_options");
+    if (@import("builtin").mode != .Debug and !options.is_strict) return;
+
+    std.debug.assert(cs.TYPERRS >= 0);
+
+    const top_limit = heap.heap.TOP();
+
+    inline for (.{ cs.ND, cs.NT, cs.ALIASES, cs.TSUPPRESSED, cs.TORPHANS, cs.DETROP, cs.MISSING }) |field| {
+        if (field >= ATOMLIMIT) {
+            if (field >= top_limit) {
+                std.debug.panic("compiler.validate: compiler state field has out-of-bounds heap reference {d} (TOP is {d})", .{ field, top_limit });
+            }
+        }
     }
 }

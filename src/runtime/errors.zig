@@ -77,5 +77,10 @@ test "MiraError is a subset of anyerror" {
 /// terminate the test runner; covered by the integration suite's error paths.
 pub fn fatal(fmt: [*:0]const u8, args: anytype) noreturn {
     _ = word.fprintf(abi.stderr(), fmt, args);
-    abi.exit(1);
+    const options = @import("version_options");
+    if (options.is_strict) {
+        std.debug.panic("fatal error in strict mode", .{});
+    } else {
+        abi.exit(1);
+    }
 }

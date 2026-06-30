@@ -4,7 +4,6 @@
 //! in `TokenId` — NOT `.colon` — to distinguish it unambiguously from
 //! `::` (coloncolon) and `::=` (colon2eq).
 
-
 /// The lexical token kinds the Pratt parser consumes: identifiers/literals,
 /// keywords, the single- and multi-character operators, the layout tokens the
 /// offside filter injects, and the `eof`/`error_tok` specials.

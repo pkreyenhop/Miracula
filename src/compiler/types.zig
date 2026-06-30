@@ -8,6 +8,7 @@
 //! the type/pattern pretty-printing and `type_error*` reporting.
 
 const std = @import("std");
+const options = @import("version_options");
 const word = @import("../runtime/word.zig");
 const errors = @import("../runtime/errors.zig");
 const dump = @import("dump.zig");
@@ -294,7 +295,6 @@ pub fn typesfirst(input_x: Word) Word {
 }
 
 /// The standard-error `FILE` handle.
-
 /// Topologically sort dependency graph `g` (for definition ordering).
 pub fn tsort(g_input: Word) Word {
     var NP = NIL; // NP is set of elements with no predecessor
@@ -367,7 +367,6 @@ pub fn msc(R_input: Word) Word {
     return R_input;
 }
 
-
 const undef_t: Word = 0;
 const bool_t: Word = 1;
 const num_t: Word = 2;
@@ -399,7 +398,6 @@ fn tInfo(x: Word) Word {
     return t(t(t(x)));
 }
 /// The `show` function recorded for a type node.
-
 /// The value field of id `x`.
 fn idVal(x: Word) Word {
     return t(x);
@@ -2654,4 +2652,9 @@ pub fn checktypes() void {
     }
     fixshows();
     cs.lastloc = 0;
+    if (options.is_strict or @import("builtin").mode == .Debug) {
+        heap.heap.validate();
+        @import("trans.zig").validate();
+        rt.rs.validate();
+    }
 }

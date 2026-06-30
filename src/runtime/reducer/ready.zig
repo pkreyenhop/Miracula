@@ -8,6 +8,7 @@
 //! hence the raised eval-branch quota.
 
 const std = @import("std");
+const options = @import("version_options");
 const word = @import("../word.zig");
 const reduce = @import("reduce_core.zig");
 const ReductionCtx = reduce.ReductionCtx;
@@ -841,8 +842,12 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
         },
         else => {
             const tag_val = @intFromEnum(reduce.getTag(e_val));
-            word.printErr("\nimpossible event in reduce (val: {}, tag: {})\n", .{e_val, tag_val});
-            std.process.exit(1);
+            word.printErr("\nimpossible event in reduce (val: {}, tag: {})\n", .{ e_val, tag_val });
+            if (options.is_strict) {
+                std.debug.panic("impossible event in reduce (val: {}, tag: {})", .{ e_val, tag_val });
+            } else {
+                std.process.exit(1);
+            }
         },
     }
 }

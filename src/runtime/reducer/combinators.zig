@@ -19,8 +19,6 @@ const tu = @import("../../testutil.zig"); // unit-test harness (test builds only
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
 
-
-
 /// `I x -> x` — identity.
 pub fn handleI(ctx: *ReductionCtx) void {
     if (reduce.downright(ctx)) {

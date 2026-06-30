@@ -87,10 +87,12 @@ pub var yysterm = yysterm_data;
 /// Report a syntax error `s`: print the location and set `SYNERR`.
 pub fn syntax(s: [*:0]const u8) void {
     if (core_state.s.SYNERR != 0) return;
-    if (rt.rs.echoing != 0) {
-        _ = word.printErr("\n", .{.{}});
+    if (!@import("builtin").is_test) {
+        if (rt.rs.echoing != 0) {
+            _ = word.printErr("\n", .{.{}});
+        }
+        _ = word.printErr("syntax error: {s}", .{.{s}});
     }
-    _ = word.printErr("syntax error: {s}", .{.{s}});
     core_state.s.SYNERR = 1;
     resetLex();
 }

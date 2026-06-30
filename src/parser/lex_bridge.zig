@@ -28,7 +28,6 @@ const ATOMLIMIT: word.Word = CMBASE + 141;
 // Lexer globals exported by lex.zig.
 // Heap arrays (data.h: hd and tl are offset so hd(x*2) / tl(x*2) index cell x).
 
-
 const yylex = lex.yylex;
 const isChar = heap.isChar;
 const getDbl = heap.getDbl;

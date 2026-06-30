@@ -35,9 +35,9 @@ test "fromUTF8 - successful decoding" {
     };
     const cases = [_]Case{
         .{ .bytes = &.{0x41}, .expected = 0x41 }, // ascii
-        .{ .bytes = &.{0xc2, 0xa3}, .expected = 0x00a3 }, // two-byte
-        .{ .bytes = &.{0xe2, 0x82, 0xac}, .expected = 0x20ac }, // three-byte
-        .{ .bytes = &.{0xf0, 0x9f, 0x98, 0x80}, .expected = 0x1f600 }, // four-byte
+        .{ .bytes = &.{ 0xc2, 0xa3 }, .expected = 0x00a3 }, // two-byte
+        .{ .bytes = &.{ 0xe2, 0x82, 0xac }, .expected = 0x20ac }, // three-byte
+        .{ .bytes = &.{ 0xf0, 0x9f, 0x98, 0x80 }, .expected = 0x1f600 }, // four-byte
     };
 
     for (cases) |c| {
@@ -55,9 +55,9 @@ test "outUTF8 - successful encoding" {
     };
     const cases = [_]Case{
         .{ .val = 0x41, .expected = &.{0x41} },
-        .{ .val = 0x00a3, .expected = &.{0xc2, 0xa3} },
-        .{ .val = 0x20ac, .expected = &.{0xe2, 0x82, 0xac} },
-        .{ .val = 0x1f600, .expected = &.{0xf0, 0x9f, 0x98, 0x80} },
+        .{ .val = 0x00a3, .expected = &.{ 0xc2, 0xa3 } },
+        .{ .val = 0x20ac, .expected = &.{ 0xe2, 0x82, 0xac } },
+        .{ .val = 0x1f600, .expected = &.{ 0xf0, 0x9f, 0x98, 0x80 } },
     };
 
     for (cases) |c| {
@@ -114,7 +114,6 @@ fn runExpectFatal(action: anytype, arg: anytype, expected_stderr: []const u8) !v
         try testing.expectEqualStrings(expected_stderr, buf[0..total_read]);
     }
 }
-
 
 test "fromUTF8/outUTF8 - fatal cases" {
     // invalid lead byte

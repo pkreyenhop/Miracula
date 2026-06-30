@@ -41,6 +41,8 @@
 //! import); see that file for the canonical set. Keep the two in lock-step.
 
 const word = @import("../word.zig");
+const options = @import("version_options");
+const std = @import("std");
 const strtab = @import("../strtab.zig");
 const core = @import("reduce_core.zig");
 const getTag = core.getTag;
@@ -199,13 +201,17 @@ pub fn reduce(e_val: Word) Word {
                         ctx.e = pnVal(ctx.e);
                         if (ctx.e == word.UNDEF or ctx.e == word.FREE) {
                             word.printErr("\nimpossible event in reduce - undefined pname\n", .{});
-                            main_clib.exit(1);
+                            if (options.is_strict) {
+                                std.debug.panic("impossible event in reduce - undefined pname", .{});
+                            } else {
+                                main_clib.exit(1);
+                            }
                         }
                         ctx.action = word.ACT_NEXTREDEX;
                     },
                     .DATAPAIR => {
                         upLeft(&ctx);
-                        word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{strtab.strOf(hdGet(hdGet(ctx.e))), strtab.strOf(tlGet(ctx.e))});
+                        word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{ strtab.strOf(hdGet(hdGet(ctx.e))), strtab.strOf(tlGet(ctx.e)) });
                         reduce_rt.outstats();
                         main_clib.exit(1);
                     },
@@ -238,7 +244,11 @@ pub fn reduce(e_val: Word) Word {
                     },
                     else => {
                         word.printErr("\nimpossible tag ({}) in reduce\n", .{@intFromEnum(getTag(ctx.e))});
-                        main_clib.exit(1);
+                        if (options.is_strict) {
+                            std.debug.panic("impossible tag ({}) in reduce", .{@intFromEnum(getTag(ctx.e))});
+                        } else {
+                            main_clib.exit(1);
+                        }
                     },
                 }
             },
@@ -290,7 +300,6 @@ pub const head = reduce_rt.head;
 pub const force = reduce_rt.force;
 
 pub const cleanPtr = core.cleanPtr;
-
 
 // --- Cell access through the spine word --------------------------------------
 // A spine word may carry direction bits in its top two bits (`tlptrbits`), so

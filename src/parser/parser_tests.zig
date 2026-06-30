@@ -195,20 +195,15 @@ fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]con
 
 /// Lex+parse `source` and compare the token stream against the stored snapshot.
 fn runSnapshotTest(allocator: std.mem.Allocator, name: []const u8, source: [:0]const u8, is_error: bool) !void {
-    std.debug.print("--- SNAPSHOT TEST START: {s} ---\n", .{name});
-    std.debug.print("[{s}] captureTokenStream starting...\n", .{name});
     const tokens = try captureTokenStream(allocator, source);
     defer allocator.free(tokens);
-    std.debug.print("[{s}] captureTokenStream done.\n", .{name});
 
     // Parse result
     var parse_res: []const u8 = "SUCCESS";
     resetLexerState();
-    std.debug.print("[{s}] parseString (1) starting...\n", .{name});
     _ = parser_api.parseString(source) catch {
         parse_res = "SYNTAX_ERROR";
     };
-    std.debug.print("[{s}] parseString (1) done: {s}.\n", .{ name, parse_res });
 
     var diag: std.ArrayList(u8) = .empty;
     defer diag.deinit(allocator);
@@ -222,13 +217,11 @@ fn runSnapshotTest(allocator: std.mem.Allocator, name: []const u8, source: [:0]c
     const update = (main_clib.getenv("UPDATE_SNAPSHOTS") != null);
 
     if (update) {
-        std.debug.print("[{s}] writing snapshot...\n", .{name});
         try std.Io.Dir.cwd().createDirPath(testing.io, snapshot_dir);
         const file = try std.Io.Dir.cwd().createFile(testing.io, path, .{});
         defer file.close(testing.io);
         try file.writeStreamingAll(testing.io, diag.items);
     } else {
-        std.debug.print("[{s}] comparing snapshot...\n", .{name});
         const file = std.Io.Dir.cwd().openFile(testing.io, path, .{}) catch |err| {
             std.debug.print("\nSnapshot file not found: {s}. Run with UPDATE_SNAPSHOTS=1 to create.\n", .{path});
             return err;
@@ -242,20 +235,15 @@ fn runSnapshotTest(allocator: std.mem.Allocator, name: []const u8, source: [:0]c
 
     resetLexerState();
     if (is_error) {
-        std.debug.print("[{s}] expectError starting...\n", .{name});
         // Assert it fails parsing (accept any error — legacy returns SyntaxError, new returns ParseFailed)
         if (parser_api.parseString(source)) |_| {
             std.debug.print("[{s}] expected parse to fail, but it succeeded\n", .{name});
             return error.TestExpectedError;
         } else |_| {}
-        std.debug.print("[{s}] expectError done.\n", .{name});
     } else {
-        std.debug.print("[{s}] parseString (2) starting...\n", .{name});
         // Assert it succeeds parsing
         _ = try parser_api.parseString(source);
-        std.debug.print("[{s}] parseString (2) done.\n", .{name});
     }
-    std.debug.print("--- SNAPSHOT TEST END: {s} ---\n", .{name});
 }
 
 test "golden snapshot tests" {
@@ -359,3 +347,4 @@ test "new parser AST snapshot tests" {
     // Miranda type synonym names are lowercase identifiers
     try runASTSnapshotTest(allocator, "type_synonym", "type pair * ** == (*, **)\n");
 }
+// Cache invalidation comment for strict-main-tests

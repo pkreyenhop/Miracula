@@ -22,16 +22,16 @@ pub const FileInfo = struct {
 
 const platform_impl = if (is_linux) struct {
     extern fn __errno_location() *c_int;
-    /// 
+    ///
     pub fn getErrno() c_int {
         return __errno_location().*;
     }
-    /// 
+    ///
     pub fn setErrno(val: c_int) void {
         __errno_location().* = val;
     }
 
-    /// 
+    ///
     pub fn getFileInfo(path: ?[*:0]const u8) ?FileInfo {
         const p = path orelse return null;
         var statx = std.mem.zeroes(std.os.linux.Statx);
@@ -52,12 +52,12 @@ const platform_impl = if (is_linux) struct {
         return null;
     }
 
-    /// 
+    ///
     pub fn geteuid() u32 {
         return std.os.linux.geteuid();
     }
 
-    /// 
+    ///
     pub fn getegid() u32 {
         return std.os.linux.getegid();
     }
@@ -65,16 +65,16 @@ const platform_impl = if (is_linux) struct {
     extern fn __error() *c_int;
     extern fn stat(path: [*:0]const u8, buf: *std.posix.system.Stat) c_int;
 
-    /// 
+    ///
     pub fn getErrno() c_int {
         return __error().*;
     }
-    /// 
+    ///
     pub fn setErrno(val: c_int) void {
         __error().* = val;
     }
 
-    /// 
+    ///
     pub fn getFileInfo(path: ?[*:0]const u8) ?FileInfo {
         const p = path orelse return null;
         var stat_buf: std.posix.system.Stat = undefined;
@@ -102,12 +102,12 @@ const platform_impl = if (is_linux) struct {
         return null;
     }
 
-    /// 
+    ///
     pub fn geteuid() u32 {
         return std.posix.system.geteuid();
     }
 
-    /// 
+    ///
     pub fn getegid() u32 {
         return std.posix.system.getegid();
     }
