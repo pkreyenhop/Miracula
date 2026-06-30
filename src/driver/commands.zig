@@ -292,7 +292,7 @@ pub fn command() void {
                 }
                 _ = word.strcpy(&rt.rs.ebuf, hold);
                 rt.rs.editor = @as([*:0]u8, @ptrCast(&rt.rs.ebuf));
-                repl.fixEditor();
+                rt.rs.baded = repl.badEditor();
                 rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
                 startup.writeRc();
                 word.print("editor = {s}\n", .{rt.rs.editor orelse @constCast("")});
@@ -553,7 +553,22 @@ pub fn editfile(t_val: [*:0]const u8, line: c_int) void {
     var p = ebuf_local;
     var q = rt.rs.editor.?;
     var tdone: bool = false;
+    var temp_editor: [512]u8 = undefined;
     if (line_val == 0) {
+        _ = abi.snprintf(&temp_editor, temp_editor.len, "%s", .{q});
+        const len = word.strlen(&temp_editor);
+        if (len > 0) {
+            var tp_ptr = @as([*]u8, @ptrCast(&temp_editor)) + len - 1;
+            while (tp_ptr != &temp_editor and tp_ptr[0] == ' ') : (tp_ptr -= 1) {}
+            if (tp_ptr[0] == '!') {
+                tp_ptr -= 1;
+                while (tp_ptr != &temp_editor and tp_ptr[0] == ' ') : (tp_ptr -= 1) {}
+                if (tp_ptr[0] == '+') {
+                    tp_ptr[0] = 0;
+                }
+            }
+        }
+        q = @ptrCast(&temp_editor);
         line_val = 1;
     }
     while (q[0] != 0) {

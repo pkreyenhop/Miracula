@@ -41,6 +41,8 @@ const version = @import("../runtime/version.zig");
 const ls = lex_state.ls;
 
 var last_elapsed_ns: ?i128 = null;
+var last_gc_count: ?c_long = null;
+var child_exit_status: ?u8 = null;
 
 fn formatExecutionTime(ns: i128, buf: []u8) []const u8 {
     const ms = @as(f64, @floatFromInt(ns)) / 1_000_000.0;
@@ -113,6 +115,12 @@ pub fn commandLoop(initscript: [*:0]u8) void {
             const prompt = if (last_elapsed_ns) |ns| blk: {
                 var time_buf: [64]u8 = undefined;
                 const time_str = formatExecutionTime(ns, &time_buf);
+                if (last_gc_count) |gc_val| {
+                    if (gc_val > 0) {
+                        const suffix = if (gc_val == 1) "GC" else "GCs";
+                        break :blk std.fmt.bufPrint(&prompt_buf, "[{s}, {} {s}] {s}", .{ time_str, gc_val, suffix, std.mem.span(rt.rs.promptstr) }) catch std.mem.span(rt.rs.promptstr);
+                    }
+                }
                 break :blk std.fmt.bufPrint(&prompt_buf, "[{s}] {s}", .{ time_str, std.mem.span(rt.rs.promptstr) }) catch std.mem.span(rt.rs.promptstr);
             } else std.mem.span(rt.rs.promptstr);
 
@@ -125,6 +133,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
             lineedit.setPrompt("");
         }
         last_elapsed_ns = null;
+        last_gc_count = null;
         ch = abi.getchar();
         if (rt.rs.rechecking != 0 and heap.srcUpdate() != 0) {
             module_loader.loadfile(rt.rs.current_script.?);
@@ -270,6 +279,17 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                 core_state.s.commandmode = 0;
                 rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
                 last_elapsed_ns = getMonotonicNs() - start;
+                if (child_exit_status) |exit_code| {
+                    if (exit_code == 0) {
+                        last_gc_count = 0;
+                    } else if (exit_code >= 2) {
+                        last_gc_count = exit_code - 1;
+                    } else {
+                        last_gc_count = null;
+                    }
+                } else {
+                    last_gc_count = null;
+                }
             },
         }
     }
@@ -297,6 +317,11 @@ pub fn process() Word {
             }
         }
         _ = signals(abi.SIGINT, oldsig);
+        if (std.posix.W.IFEXITED(@bitCast(status))) {
+            child_exit_status = std.posix.W.EXITSTATUS(@bitCast(status));
+        } else {
+            child_exit_status = null;
+        }
         return 0;
     }
     return 1; // child
@@ -373,7 +398,8 @@ pub fn evaluateRepl(x_in: Word) void {
         abi.output(out_val);
         _ = word.putchar('\n');
         outstats();
-        abi.exit(0);
+        const exit_code: c_int = if (heap.heap.nogcs == 0) 0 else @as(c_int, @intCast(@min(heap.heap.nogcs, 253))) + 1;
+        abi.exit(exit_code);
     }
     // Parent returns here; heap and compiling flag are unchanged.
 }
@@ -395,6 +421,7 @@ pub fn reset() callconv(.c) void {
         rt.rs.unlinkme = null;
     }
     last_elapsed_ns = null;
+    last_gc_count = null;
     abi.siglongjmp(&rt.rs.env, 1);
 }
 
@@ -437,20 +464,6 @@ pub fn badEditor() c_int {
     return 1;
 }
 
-/// Strip a trailing `+!` open-at-line marker from the editor command, in place.
-pub fn fixEditor() void {
-    const e = rt.rs.editor orelse return;
-    const len = word.strlen(e);
-    var p = e + len - 1;
-    while (p != e and p[0] == ' ') : (p -= 1) {}
-    if (p[0] == '!') {
-        p -= 1;
-        while (p != e and p[0] == ' ') : (p -= 1) {}
-        if (p[0] == '+') {
-            p[0] = 0;
-        }
-    }
-}
 
 /// Read and type-check one expression of type `t_val` from file `f` (the `readvals` path). Returns its codegen, or `EOF`; re-prompts interactively and aborts on bad file data.
 pub fn parseLine(t_val: Word, f: ?*word.FILE, fil: Word) Word {

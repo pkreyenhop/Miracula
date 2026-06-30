@@ -129,7 +129,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 missingParam("editor");
             } else {
                 rt.rs.editor = argv[arg_idx];
-                repl.fixEditor();
+                rt.rs.baded = repl.badEditor();
             }
         } else if (word.strcmp(arg, "-hush") == 0) {
             rt.rs.verbosity = 0;
@@ -247,7 +247,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
         if (rt.rs.editor != null) {
             _ = word.strcpy(&rt.rs.ebuf, rt.rs.editor.?);
             rt.rs.editor = @as([*:0]u8, @ptrCast(&rt.rs.ebuf));
-            repl.fixEditor();
+            rt.rs.baded = repl.badEditor();
         }
     }
 
