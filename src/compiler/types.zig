@@ -215,7 +215,7 @@ fn tp(x: Word) *Word {
 
 /// Allocate a `CONS` cell `(x . y)`.
 fn cons(x: Word, y: Word) Word {
-    return make(CONS, x, y);
+    return make(word.CONS, x, y);
 }
 
 /// Remove element `e` from set `ss` (in place via the pointer).
@@ -494,29 +494,6 @@ pub fn msc(R_input: Word) Word {
     return R_input;
 }
 
-const ATOM: u8 = 0;
-const DOUBLE: u8 = 1;
-const DATAPAIR: u8 = 2;
-const FILEINFO: u8 = 3;
-const TVAR: u8 = 4;
-const INT: u8 = 5;
-const CONSTRUCTOR: u8 = 6;
-const STRCONS: u8 = 7;
-const ID: u8 = 8;
-const AP: u8 = 9;
-const LAMBDA: u8 = 10;
-const CONS: u8 = 11;
-const TRIES: u8 = 12;
-const LABEL: u8 = 13;
-const SHOW: u8 = 14;
-const STARTREADVALS: u8 = 15;
-const LET: u8 = 16;
-const LETREC: u8 = 17;
-const SHARE: u8 = 18;
-const LEXER: u8 = 19;
-const PAIR: u8 = 20;
-const UNICODE: u8 = 21;
-const TCONS: u8 = 22;
 
 const undef_t: Word = 0;
 const bool_t: Word = 1;
@@ -678,7 +655,7 @@ fn metaTcheck(t_val: Word) errors.MiraError!Word {
 
 /// Make a type-variable node with index `i`.
 fn mktvar(i: Word) Word {
-    return make(TVAR, 0, i);
+    return make(word.TVAR, 0, i);
 }
 
 /// The index of type variable `x`.
@@ -747,7 +724,7 @@ fn ult(tv: Word) Word {
 
 /// Allocate an application cell `(x y)`.
 fn ap(x: Word, y: Word) Word {
-    return make(AP, x, y);
+    return make(word.AP, x, y);
 }
 
 /// Apply `f` to every type variable in `term`, rebuilding it.

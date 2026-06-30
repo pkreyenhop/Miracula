@@ -32,10 +32,6 @@ const NIL: Word = CMBASE + 138;
 const NILS: Word = CMBASE + 139;
 const UNDEF: Word = CMBASE + 140;
 
-const AP: u8 = 9;
-const CONS: u8 = 11;
-const STRCONS: u8 = 7;
-const ID: u8 = 8;
 const False: Word = CMBASE + 136;
 const True: Word = CMBASE + 137;
 
@@ -64,7 +60,7 @@ pub fn setupString(source: [*:0]const u8) void {
     const f = word.fmemopen(@ptrCast(@constCast(source)), len, "r") orelse return;
     // FILE* handle stored in the cell (read back via @ptrFromInt below);
     // this is a FILE-handle-in-cell cast, not a node string — out of B1 scope.
-    ls.fileq = cons(make(STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls.fileq);
+    ls.fileq = cons(make(word.STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls.fileq);
     ls.insertdepth += 1;
     rt.rs.s_in = f;
 }
@@ -87,13 +83,10 @@ pub fn setupFile(filename: [*:0]const u8) c_int {
     return 1;
 }
 
-const FILEINFO: u8 = 3;
-const TVAR: u8 = 4;
-const STARTREADVALS: u8 = 15;
 
 /// Allocate a `FILEINFO` cell `(file . line)`.
 fn fileinfo(file: Word, line: Word) Word {
-    return make(FILEINFO, file, line);
+    return make(word.FILEINFO, file, line);
 }
 
 /// Build a file record `(path, time, share, defs)`.
@@ -103,12 +96,12 @@ fn makeFil(path: [*:0]const u8, time: Word, share: Word, defs: Word) Word {
 
 /// Allocate a `STARTREADVALS` node.
 fn readvals(x: Word, y: Word) Word {
-    return make(STARTREADVALS, x, y);
+    return make(word.STARTREADVALS, x, y);
 }
 
 /// Make a type-variable node with index `n`.
 fn mktvar(n: Word) Word {
-    return make(TVAR, 0, n);
+    return make(word.TVAR, 0, n);
 }
 
 /// The standard-output `FILE` handle.
@@ -174,7 +167,7 @@ fn tp(x: Word) *Word {
 
 /// Allocate a `CONS` cell `(x . y)`.
 fn cons(x: Word, y: Word) Word {
-    return make(CONS, x, y);
+    return make(word.CONS, x, y);
 }
 
 /// Whether `x` names a data constructor.
@@ -963,7 +956,7 @@ pub fn yylex() c_int {
                     if (core_state.s.commandmode != 0) {
                         ls.yylval = ls.cook_stdin;
                     } else {
-                        ls.yylval = make(CONS, readvals(0, 0), word.OFFSIDE);
+                        ls.yylval = make(word.CONS, readvals(0, 0), word.OFFSIDE);
                     }
                     return word.CONST;
                 }
@@ -991,7 +984,7 @@ pub fn yylex() c_int {
             }
             if (ls.c == '*') {
                 ls.c = getch();
-                ls.yylval = make(AP, word.GETARGS, 0);
+                ls.yylval = make(word.AP, word.GETARGS, 0);
                 return word.CONST;
             }
             if (ls.c == '0') {
@@ -1204,7 +1197,7 @@ pub fn openfile(n: [*:0]const u8) c_int {
     const f = word.fopen(n, "r") orelse return 0;
     // FILE* handle stored in the cell (read back via @ptrFromInt below);
     // this is a FILE-handle-in-cell cast, not a node string — out of B1 scope.
-    ls.fileq = cons(make(STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls.fileq);
+    ls.fileq = cons(make(word.STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls.fileq);
     ls.insertdepth += 1;
     return 1;
 }
@@ -1351,7 +1344,7 @@ pub fn directive() Word {
                 if (pathname() == null) {
                     syntax("bad pathname after %include\n");
                 } else {
-                    ls.yylval = make(STRCONS, strtab.strBits(addextn(1, ls.dicp)), fileinfo(strtab.strBits(getFil(heap.heap.current_file)), holdlin));
+                    ls.yylval = make(word.STRCONS, strtab.strBits(addextn(1, ls.dicp)), fileinfo(strtab.strBits(getFil(heap.heap.current_file)), holdlin));
                     _ = keep(ls.dicp);
                 }
                 return word.INCLUDE;
@@ -1365,7 +1358,7 @@ pub fn directive() Word {
                     ls.vergstack = cons(ls.lverge, ls.vergstack);
                     ls.echostack = cons(rt.rs.echoing, ls.echostack);
                     ls.litstack = cons(ls.literate, ls.litstack);
-                    ls.linostack = make(STRCONS, ls.line_no, ls.linostack);
+                    ls.linostack = make(word.STRCONS, ls.line_no, ls.linostack);
                     ls.line_no = 0;
                     ls.atnl = 1;
                     _ = keep(ls.dicp);
@@ -1730,7 +1723,7 @@ pub fn makePn(val: Word) Word {
         const slice = rt.allocator.realloc(old_slice, @intCast(ls.pn_lim)) catch mallocPanic("ls.pnvec");
         ls.pnvec = slice.ptr;
     }
-    ls.pnvec.?[@intCast(ls.nextpn)] = make(STRCONS, ls.nextpn, val);
+    ls.pnvec.?[@intCast(ls.nextpn)] = make(word.STRCONS, ls.nextpn, val);
     const ret = ls.pnvec.?[@intCast(ls.nextpn)];
     ls.nextpn += 1;
     return ret;
@@ -1748,7 +1741,7 @@ pub fn stoPn(n: Word) Word {
         ls.pnvec = slice.ptr;
     }
     while (ls.nextpn <= n) {
-        ls.pnvec.?[@intCast(ls.nextpn)] = make(STRCONS, ls.nextpn, UNDEF);
+        ls.pnvec.?[@intCast(ls.nextpn)] = make(word.STRCONS, ls.nextpn, UNDEF);
         ls.nextpn += 1;
     }
     return ls.pnvec.?[@intCast(n)];
