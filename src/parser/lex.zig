@@ -148,8 +148,8 @@ fn getStderr() ?*word.FILE {
 }
 
 /// The node tag of cell `x`.
-inline fn getTag(x: Word) u8 {
-    return heap.heap.getTag(x);
+inline fn getTag(x: Word) word.NodeTag {
+    return @enumFromInt(heap.heap.getTag(x));
 }
 
 /// Head (`hd`) of cell `x`.
@@ -179,7 +179,7 @@ fn cons(x: Word, y: Word) Word {
 
 /// Whether `x` names a data constructor.
 fn isconstructor(x: Word) bool {
-    return getTag(x) == ID and isconstrname(getId(x)) != 0;
+    return getTag(x) == .ID and isconstrname(getId(x)) != 0;
 }
 
 /// The interned name text of id `x`.

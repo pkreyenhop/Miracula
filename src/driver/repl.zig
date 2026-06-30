@@ -62,8 +62,8 @@ fn getMonotonicNs() i128 {
 }
 
 // State owned by reduce.zig / heap.zig — not yet accessible via @import.
-inline fn getTag(x: Word) u8 {
-    return heap.heap.getTag(x);
+inline fn getTag(x: Word) word.NodeTag {
+    return @enumFromInt(heap.heap.getTag(x));
 }
 
 const signals = signals_mod.signals;
@@ -178,7 +178,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                     }
                     rt.rs.lastid = x;
                     x = heap.idWho(x);
-                    if (getTag(x) == CONS) {
+                    if (getTag(x) == .CONS) {
                         aka = strtab.strOf(heap.h(heap.h(x)));
                         x = heap.t(x);
                     }
@@ -357,7 +357,7 @@ pub fn obey(x_in: Word) void {
     core_state.s.compiling = 0;
     const list_t: Word = 4;
     const char_t: Word = 3;
-    const islist = typ >= word.ATOMLIMIT and getTag(typ) == AP and h(typ) == list_t;
+    const islist = typ >= word.ATOMLIMIT and getTag(typ) == .AP and h(typ) == list_t;
     const out_val: Word = if (islist and t(typ) == rt.rs.message)
         x
     else blk: {
@@ -380,7 +380,7 @@ pub fn evaluateRepl(x_in: Word) void {
     if (cs.polyshowerror != 0) return;
     const list_t: Word = 4;
     const char_t: Word = 3;
-    const islist = typ >= word.ATOMLIMIT and getTag(typ) == AP and h(typ) == list_t;
+    const islist = typ >= word.ATOMLIMIT and getTag(typ) == .AP and h(typ) == list_t;
     const out_val: Word = if (islist and t(typ) == rt.rs.message)
         x
     else blk: {

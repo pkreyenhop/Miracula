@@ -189,8 +189,8 @@ const lex_mod = @import("../parser/lex.zig");
 const isconstrname = lex_mod.isconstrname;
 
 /// The node tag of cell `x`.
-inline fn getTag(x: Word) u8 {
-    return heap.heap.getTag(x);
+inline fn getTag(x: Word) word.NodeTag {
+    return @enumFromInt(heap.heap.getTag(x));
 }
 
 /// Head (`hd`) of cell `x`.
@@ -440,7 +440,7 @@ pub fn tsort(g_input: Word) Word {
         var D = NIL; // ids to be removed from range of g
         while (NP != NIL) {
             r = cons(h(NP), r);
-            if (getTag(h(NP)) == ID) {
+            if (getTag(h(NP)) == .ID) {
                 D = add1(h(NP), D);
             } else {
                 D = UNION(D, h(NP));
@@ -529,11 +529,11 @@ const UNDEF: Word = CMBASE + 140;
 
 /// Whether a type node is a compound (application) type.
 fn isCompoundType(type_node: Word) bool {
-    return getTag(type_node) == AP;
+    return getTag(type_node) == .AP;
 }
 /// Whether a type node is a type variable.
 fn isVarType(type_node: Word) bool {
-    return getTag(type_node) == TVAR;
+    return getTag(type_node) == .TVAR;
 }
 
 /// The arity stored in a type node.
@@ -566,7 +566,7 @@ fn getId(x: Word) [*:0]const u8 {
 
 /// Rewrite a type's outer constructor to `list_t` in place (for structural compare).
 pub fn sterilise(t_val: Word) void {
-    if (getTag(t_val) == AP) {
+    if (getTag(t_val) == .AP) {
         hp(t_val).* = list_t;
         tp(t_val).* = num_t;
     }
@@ -581,11 +581,11 @@ fn metaTcheck(t_val: Word) errors.MiraError!Word {
         i += 1;
         tn = h(tn);
     }
-    if (getTag(tn) != STRCONS) {
-        if (getTag(tn) != ID) {
+    if (getTag(tn) != .STRCONS) {
+        if (getTag(tn) != .ID) {
             if (i > 0 and (isVarType(tn) or tn == bool_t or tn == num_t or tn == char_t)) {
                 cs.TYPERRS += 1;
-                if (getTag(cs.current_id) == DATAPAIR) {
+                if (getTag(cs.current_id) == .DATAPAIR) {
                     locateInc();
                     _ = word.print("badly formed type \"", .{});
                     outType(t_val);
@@ -609,11 +609,11 @@ fn metaTcheck(t_val: Word) errors.MiraError!Word {
         } else if (idType(tn) == undef_t and idVal(tn) == UNDEF) {
             cs.TYPERRS += 1;
             if (member(cs.NT, tn) == 0) {
-                if (getTag(cs.current_id) == DATAPAIR) {
+                if (getTag(cs.current_id) == .DATAPAIR) {
                     locateInc();
                 }
                 _ = word.print("undeclared typename \"{s}\" ", .{getId(tn)});
-                if (getTag(cs.current_id) == DATAPAIR) {
+                if (getTag(cs.current_id) == .DATAPAIR) {
                     _ = word.print("in binding for {s}\n", .{strtab.strOf(h(cs.current_id))});
                 } else {
                     sayhere(getspecloc(cs.current_id), 1);
@@ -623,7 +623,7 @@ fn metaTcheck(t_val: Word) errors.MiraError!Word {
             return t_val;
         } else if (idType(tn) != type_t or tArity(tn) != i) {
             cs.TYPERRS += 1;
-            if (getTag(cs.current_id) == DATAPAIR) {
+            if (getTag(cs.current_id) == .DATAPAIR) {
                 locateInc();
                 _ = word.print("badly formed type \"", .{});
                 outType(t_val);
@@ -639,7 +639,7 @@ fn metaTcheck(t_val: Word) errors.MiraError!Word {
             } else {
                 _ = word.print("(typename {s} has arity {d})\n", .{ getId(tn), tArity(tn) });
             }
-            if (getTag(cs.current_id) != DATAPAIR) {
+            if (getTag(cs.current_id) != .DATAPAIR) {
                 sayhere(getspecloc(cs.current_id), 1);
             }
             sterilise(t_val);
@@ -652,14 +652,14 @@ fn metaTcheck(t_val: Word) errors.MiraError!Word {
     }
     if (member(cs.meta_pending, tn) != 0) {
         cs.TYPERRS += 1; // report cycle
-        if (getTag(cs.current_id) == DATAPAIR) {
+        if (getTag(cs.current_id) == .DATAPAIR) {
             locateInc();
         }
         const suffix: [*:0]const u8 = if (cs.meta_pending == NIL) "" else "s";
         _ = word.print("error: cycle in type \"==\" definition{s} ", .{suffix});
         printelement(cs.meta_pending);
         _ = word.print("\n", .{});
-        if (getTag(cs.current_id) != DATAPAIR) {
+        if (getTag(cs.current_id) != .DATAPAIR) {
             sayhere(idWho(tn), 1);
         }
         return error.TypeCheckAbort;
@@ -895,15 +895,15 @@ pub fn locate(s: [*:0]const u8) void {
     cs.TYPERRS += 1;
     if (cs.TYPERRS == 1 or cs.lastloc != cs.current_id) {
         if (cs.current_id != 0) {
-            if (getTag(cs.current_id) == DATAPAIR) {
+            if (getTag(cs.current_id) == .DATAPAIR) {
                 locateInc();
                 _ = word.print("{s} in binding for {s}\n", .{ s, strtab.strOf(h(cs.current_id)) });
                 return;
             }
             var x = cs.current_id;
             _ = word.print("{s} in definition of ", .{s});
-            while (getTag(x) == CONS) {
-                if (getTag(t(x)) == ID and member(rt.rs.fnts, t(x)) != 0) {
+            while (getTag(x) == .CONS) {
+                if (getTag(t(x)) == .ID and member(rt.rs.fnts, t(x)) != 0) {
                     _ = word.print("nonterminal ", .{});
                     x = h(x);
                 } else {
@@ -928,10 +928,10 @@ pub fn locate(s: [*:0]const u8) void {
 
 /// The source location of right-hand side `r`.
 pub fn rhsHere(r: Word) Word {
-    if (getTag(r) == LABEL) {
+    if (getTag(r) == .LABEL) {
         return h(r);
     }
-    if (getTag(r) == TRIES) {
+    if (getTag(r) == .TRIES) {
         return h(h(lastlink(t(r))));
     }
     return 0;
@@ -940,9 +940,9 @@ pub fn rhsHere(r: Word) Word {
 /// Print a source-location marker `h_val` (with optional newline).
 pub fn sayhere(h_val: Word, nl: Word) void {
     var h_node = h_val;
-    if (getTag(h_node) != FILEINFO) {
+    if (getTag(h_node) != .FILEINFO) {
         h_node = rhsHere(h_node);
-        if (getTag(h_node) != FILEINFO) {
+        if (getTag(h_node) != .FILEINFO) {
             _ = word.printErr("(impossible event in sayhere)\n", .{});
             return;
         }
@@ -1092,15 +1092,15 @@ const wrong_t: Word = 8;
 
 /// Whether a type node is a function (`->`) type.
 fn isArrowType(t_val: Word) bool {
-    return getTag(t_val) == AP and getTag(h(t_val)) == AP and h(h(t_val)) == arrow_t;
+    return getTag(t_val) == .AP and getTag(h(t_val)) == .AP and h(h(t_val)) == arrow_t;
 }
 /// Whether a type node is a tuple (comma) type.
 fn isCommaType(t_val: Word) bool {
-    return getTag(t_val) == AP and getTag(h(t_val)) == AP and h(h(t_val)) == comma_t;
+    return getTag(t_val) == .AP and getTag(h(t_val)) == .AP and h(h(t_val)) == comma_t;
 }
 /// Whether a type node is a list type.
 fn isListType(t_val: Word) bool {
-    return getTag(t_val) == AP and h(t_val) == list_t;
+    return getTag(t_val) == .AP and h(t_val) == list_t;
 }
 
 /// Print a type expression `t_val`.
@@ -1162,7 +1162,7 @@ pub fn outType2(t_val: Word) void {
                 _ = word.print("type", .{});
             },
             else => {
-                if (getTag(t_val) == ID) {
+                if (getTag(t_val) == .ID) {
                     _ = word.print("{s}", .{getId(t_val)});
                 } else if (isVarType(t_val)) {
                     var n = gettvar(t_val);
@@ -1173,9 +1173,9 @@ pub fn outType2(t_val: Word) void {
                     } else {
                         _ = word.print("{d}", .{n});
                     }
-                } else if (getTag(t_val) == STRCONS) {
+                } else if (getTag(t_val) == .STRCONS) {
                     const pn_val_node = pnVal(t_val);
-                    if (getTag(pn_val_node) == ID) {
+                    if (getTag(pn_val_node) == .ID) {
                         _ = word.print("{s}", .{getId(pn_val_node)});
                     } else if (std.mem.eql(u8, std.mem.span(strtab.strOf(h(t(tInfo(t_val))))), std.mem.span(rt.rs.current_script.?))) {
                         _ = word.print("{s}", .{strtab.strOf(h(h(tInfo(t_val))))});
@@ -1226,7 +1226,7 @@ var allchars: Word = 0;
 pub fn tail(x_in: Word) Word {
     var x = x_in;
     allchars = 1;
-    while (getTag(x) == CONS) {
+    while (getTag(x) == .CONS) {
         const char_res = isChar(h(x));
         allchars = if (char_res != 0) allchars & 1 else 0;
         x = t(x);
@@ -1242,7 +1242,7 @@ pub fn outFormal1(f: *word.FILE, x_in: Word) void {
     }
     if (x == NIL) {
         _ = (f).print("[]", .{});
-    } else if (getTag(x) == CONS and tail(x) == NIL) {
+    } else if (getTag(x) == .CONS and tail(x) == NIL) {
         if (allchars != 0) {
             _ = (f).print("\"", .{});
             while (x != NIL) {
@@ -1261,13 +1261,13 @@ pub fn outFormal1(f: *word.FILE, x_in: Word) void {
             }
             _ = (f).print("]", .{});
         }
-    } else if (getTag(x) == AP or getTag(x) == CONS) {
+    } else if (getTag(x) == .AP or getTag(x) == .CONS) {
         _ = (f).print("(", .{});
         outPattern(f, x);
         _ = (f).print(")", .{});
-    } else if (getTag(x) == TCONS or getTag(x) == PAIR) {
+    } else if (getTag(x) == .TCONS or getTag(x) == .PAIR) {
         _ = (f).print("(", .{});
-        while (getTag(x) == TCONS) {
+        while (getTag(x) == .TCONS) {
             outPattern(f, h(x));
             x = t(x);
             _ = (f).print(",", .{});
@@ -1276,7 +1276,7 @@ pub fn outFormal1(f: *word.FILE, x_in: Word) void {
         _ = (f).print(",", .{});
         outPattern(f, t(x));
         _ = (f).print(")", .{});
-    } else if ((getTag(x) == INT and neg(x) != 0) or (getTag(x) == DOUBLE and getDbl(x) < 0)) {
+    } else if ((getTag(x) == .INT and neg(x) != 0) or (getTag(x) == .DOUBLE and getDbl(x) < 0)) {
         _ = (f).print("(", .{});
         out(f, x);
         _ = (f).print(")", .{});
@@ -1287,8 +1287,8 @@ pub fn outFormal1(f: *word.FILE, x_in: Word) void {
 
 /// Print a pattern `x`.
 pub fn outPattern(f: *word.FILE, x: Word) void {
-    if (getTag(x) == CONS) {
-        if (h(x) == CONST and (getTag(t(x)) == INT or getTag(t(x)) == DOUBLE)) {
+    if (getTag(x) == .CONS) {
+        if (h(x) == CONST and (getTag(t(x)) == .INT or getTag(t(x)) == .DOUBLE)) {
             out(f, t(x));
         } else if (h(x) != CONST and tail(x) != NIL) {
             outFormal(f, h(x));
@@ -1304,9 +1304,9 @@ pub fn outPattern(f: *word.FILE, x: Word) void {
 
 /// Print a formal parameter `x`.
 pub fn outFormal(f: *word.FILE, x: Word) void {
-    if (getTag(x) != AP) {
+    if (getTag(x) != .AP) {
         outFormal1(f, x);
-    } else if (getTag(h(x)) == AP and h(h(x)) == PLUS) {
+    } else if (getTag(h(x)) == .AP and h(h(x)) == PLUS) {
         outFormal(f, t(x));
         _ = (f).print("+", .{});
         out(f, t(h(x)));
@@ -1321,7 +1321,7 @@ const CONST: Word = 268;
 
 /// Whether `x` names a data constructor.
 fn isConstructor(x: Word) bool {
-    return getTag(x) == ID and isconstrname(getId(x)) != 0;
+    return getTag(x) == .ID and isconstrname(getId(x)) != 0;
 }
 
 /// Remove the variables bound by pattern `p` from set `x`.
@@ -1330,26 +1330,26 @@ pub fn rembvars(x_in: Word, p_in: Word) Word {
     var p = p_in;
     while (true) {
         switch (getTag(p)) {
-            ID => {
+            .ID => {
                 _ = remove1(p, &x);
                 return x;
             },
-            CONS => {
+            .CONS => {
                 if (h(p) == CONST) {
                     return x;
                 }
                 x = rembvars(x, h(p));
                 p = t(p);
             },
-            AP => {
-                if (getTag(h(p)) == AP and h(h(p)) == PLUS) {
+            .AP => {
+                if (getTag(h(p)) == .AP and h(h(p)) == PLUS) {
                     p = t(p);
                 } else {
                     x = rembvars(x, h(p));
                     p = t(p);
                 }
             },
-            PAIR, TCONS => {
+            .PAIR, .TCONS => {
                 x = rembvars(x, h(p));
                 p = t(p);
             },
@@ -1367,21 +1367,21 @@ pub fn deps(x_in: Word) Word {
     var d = NIL;
     while (true) {
         switch (getTag(x)) {
-            AP, TCONS, PAIR, CONS => {
+            .AP, .TCONS, .PAIR, .CONS => {
                 d = UNION(d, deps(h(x)));
                 x = t(x);
             },
-            ID => {
+            .ID => {
                 return if (isConstructor(x)) d else add1(x, d);
             },
-            LAMBDA => {
+            .LAMBDA => {
                 return rembvars(UNION(d, deps(t(x))), h(x));
             },
-            LET => {
+            .LET => {
                 d = rembvars(UNION(d, deps(t(x))), h(h(x)));
                 return UNION(d, deps(t(t(h(x)))));
             },
-            LETREC => {
+            .LETREC => {
                 d = UNION(d, deps(t(x)));
                 var y = h(x);
                 while (y != NIL) {
@@ -1395,7 +1395,7 @@ pub fn deps(x_in: Word) Word {
                 }
                 return d;
             },
-            LEXER => {
+            .LEXER => {
                 var lex_x = x;
                 while (lex_x != NIL) {
                     d = UNION(d, deps(t(t(h(lex_x)))));
@@ -1403,10 +1403,10 @@ pub fn deps(x_in: Word) Word {
                 }
                 return d;
             },
-            TRIES, LABEL => {
+            .TRIES, .LABEL => {
                 x = t(x);
             },
-            SHARE => {
+            .SHARE => {
                 x = h(x);
             },
             else => return d,
@@ -1447,12 +1447,12 @@ fn compDeps(n: Word) errors.MiraError!void {
         cs.current_id = 0;
         return;
     }
-    if (getTag(t(n)) == CONSTRUCTOR) {
+    if (getTag(t(n)) == .CONSTRUCTOR) {
         return;
     }
     if (idType(n) != undef_t) {
         cs.current_id = n;
-        if (getTag(idType(n)) == CONS) {
+        if (getTag(idType(n)) == .CONS) {
             if (t(n) == UNDEF) {
                 cs.SBND = add1(n, cs.SBND);
             }
@@ -1494,7 +1494,7 @@ pub fn redtfr(x_in: Word) void {
 
 /// Print one debug element.
 pub fn printelement(x: Word) void {
-    if (getTag(x) != CONS) {
+    if (getTag(x) != .CONS) {
         out(getStdout().?, x);
         return;
     }
@@ -1616,13 +1616,13 @@ pub fn repT(T: Word, L: Word) Word {
 pub fn fixType(t_val: Word) Word {
     var t_node = t_val;
     switch (getTag(t_node)) {
-        AP, CONS => {
+        .AP, .CONS => {
             tp(t_node).* = fixType(t(t_node));
             hp(t_node).* = fixType(h(t_node));
             return t_node;
         },
-        STRCONS => {
-            while (getTag(pnVal(t_node)) != CONS) {
+        .STRCONS => {
+            while (getTag(pnVal(t_node)) != .CONS) {
                 t_node = pnVal(t_node);
             }
             return t_node;
@@ -1747,7 +1747,7 @@ fn mcheckfbs() errors.MiraError!void {
         formals = t(h(ff));
         while (formals != NIL) {
             n = h(formals);
-            if (getTag(n) == ID) {
+            if (getTag(n) == .ID) {
                 if (idType(n) == type_t) {
                     if (tClass(n) == synonym_t) {
                         tp(t(t(n))).* = try metaTcheck(tInfo(n));
@@ -1942,21 +1942,21 @@ fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) errors.MiraError!Word {
     if (e == -1) {
         return -1;
     }
-    if (getTag(p) == ID and !isConstructor(p)) {
+    if (getTag(p) == .ID and !isConstructor(p)) {
         return cons(cons(p, t_val), e);
     }
     if (h(p) == CONST) {
         _ = unify(try etype(t(p), e, ngt), t_val);
         return e;
     }
-    if (getTag(p) == CONS) {
+    if (getTag(p) == .CONS) {
         const at = NTV();
         if (unify(lt(at), t_val) == 0) {
             return -1;
         }
         return try conforms(t(p), t_val, try conforms(h(p), at, e, ngt), ngt);
     }
-    if (getTag(p) == TCONS) {
+    if (getTag(p) == .TCONS) {
         const at = NTV();
         const bt = NTV();
         if (unify(ap2(comma_t, at, bt), t_val) == 0) {
@@ -1964,7 +1964,7 @@ fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) errors.MiraError!Word {
         }
         return try conforms(t(p), bt, try conforms(h(p), at, e, ngt), ngt);
     }
-    if (getTag(p) == PAIR) {
+    if (getTag(p) == .PAIR) {
         const at = NTV();
         const bt = NTV();
         if (unify(ap2(comma_t, at, ap2(comma_t, bt, void_t)), t_val) == 0) {
@@ -1972,7 +1972,7 @@ fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) errors.MiraError!Word {
         }
         return try conforms(t(p), bt, try conforms(h(p), at, e, ngt), ngt);
     }
-    if (getTag(p) == AP and getTag(h(p)) == AP and h(h(p)) == word.PLUS) { // n+k pattern
+    if (getTag(p) == .AP and getTag(h(p)) == .AP and h(h(p)) == word.PLUS) { // n+k pattern
         if (unify(num_t, t_val) == 0) {
             return 1;
         }
@@ -1982,7 +1982,7 @@ fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) errors.MiraError!Word {
         var p_args = NIL;
         var pt: Word = undefined;
         var cur_p = p;
-        while (getTag(cur_p) == AP) {
+        while (getTag(cur_p) == .AP) {
             p_args = cons(t(cur_p), p_args);
             cur_p = h(cur_p);
         }
@@ -2017,7 +2017,7 @@ fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) errors.MiraError!Word {
 /// Infer the type of expression `x` in environment `env` — the core of inference.
 fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
     switch (getTag(x)) {
-        AP => {
+        .AP => {
             if (h(x) == word.BADCASE or h(x) == word.CONFERROR) {
                 return NTV();
             }
@@ -2027,7 +2027,7 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
             if (unify1(ft_val, ap2(arrow_t, at, rt_ty)) == 0) {
                 const ft = subst(ft_val);
                 if (isArrowType(ft)) {
-                    if (getTag(h(x)) == AP and h(h(x)) == word.G_ERROR) {
+                    if (getTag(h(x)) == .AP and h(h(x)) == word.G_ERROR) {
                         typeError8(at, t(h(ft)));
                     } else {
                         typeError("unify", "with", at, t(h(ft)));
@@ -2039,13 +2039,13 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
             }
             return rt_ty;
         },
-        CONS => {
+        .CONS => {
             const elem_type = NTV();
             const list_type = lt(elem_type);
 
             // 1. Find the tail of the CONS chain
             var cur = x;
-            while (getTag(cur) == CONS) {
+            while (getTag(cur) == .CONS) {
                 cur = t(cur);
             }
             const tail_expr = cur;
@@ -2065,7 +2065,7 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
 
             // 3. Type check each head in the chain
             cur = x;
-            while (getTag(cur) == CONS) {
+            while (getTag(cur) == .CONS) {
                 const ht = try etype(h(cur), env, ngt);
                 if (unify1(ht, elem_type) == 0) {
                     const rt_ty = try etype(t(cur), env, ngt);
@@ -2076,7 +2076,7 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
             }
             return list_type;
         },
-        LEXER => {
+        .LEXER => {
             const hold = cs.lineptr;
             cs.lineptr = h(t(t(h(x))));
             tp(t(h(x))).* = t(t(t(h(x))));
@@ -2097,16 +2097,16 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
             cs.lineptr = hold;
             return tf(cs.ltchar, lt(a));
         },
-        TCONS => {
+        .TCONS => {
             return ap2(comma_t, try etype(h(x), env, ngt), try etype(t(x), env, ngt));
         },
-        PAIR => {
+        .PAIR => {
             return ap2(comma_t, try etype(h(x), env, ngt), ap2(comma_t, try etype(t(x), env, ngt), void_t));
         },
-        DOUBLE, INT => {
+        .DOUBLE, .INT => {
             return num_t;
         },
-        ID => {
+        .ID => {
             var cur_env = env;
             while (cur_env != NIL) {
                 if (h(h(cur_env)) == x) {
@@ -2128,7 +2128,7 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
                 } else if (member(cs.ND, x) == 0) {
                     if (cs.lineptr != 0) {
                         sayhere(cs.lineptr, 0);
-                    } else if (getTag(cs.current_id) == DATAPAIR) {
+                    } else if (getTag(cs.current_id) == .DATAPAIR) {
                         locateInc();
                     }
                     _ = word.print("undefined name \"{s}\"\n", .{getId(x)});
@@ -2141,7 +2141,7 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
             }
             return instantiate(if (cs.ATNAMES != 0) repT(a, cs.ATNAMES) else a);
         },
-        LAMBDA => {
+        .LAMBDA => {
             const a = NTV();
             const b = NTV();
             const d = cons(a, ngt);
@@ -2151,7 +2151,7 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
             }
             return tf(a, b);
         },
-        LET => {
+        .LET => {
             var e: Word = undefined;
             const def = h(x);
             const a = NTV();
@@ -2167,7 +2167,7 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
             }
             return try etype(t(x), e, ngt);
         },
-        LETREC => {
+        .LETREC => {
             var e = env;
             var s = NIL;
             var a = NIL;
@@ -2222,7 +2222,7 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
             }
             return try etype(t(x), e, ngt);
         },
-        TRIES => {
+        .TRIES => {
             const hold = cs.lineptr;
             const a = NTV();
             var cur_x = t(x);
@@ -2239,14 +2239,14 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
             }
             return a;
         },
-        LABEL => {
+        .LABEL => {
             const hold = cs.lineptr;
             cs.lineptr = h(x);
             const ty = try etype(t(x), env, ngt);
             cs.lineptr = hold;
             return ty;
         },
-        STARTREADVALS => {
+        .STARTREADVALS => {
             if (t(x) == 0) {
                 hp(x).* = cs.lineptr;
                 tp(x).* = NTV();
@@ -2254,13 +2254,13 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
             }
             return tf(cs.ltchar, lt(t(x)));
         },
-        SHOW => {
+        .SHOW => {
             hp(x).* = cs.lineptr;
             cs.showchain = cons(x, cs.showchain);
             tp(x).* = NTV();
             return tf(t(x), cs.ltchar);
         },
-        SHARE => {
+        .SHARE => {
             if (t(x) == undef_t) {
                 const hold = cs.TYPERRS;
                 tp(x).* = subst(try etype(h(x), env, ngt));
@@ -2275,14 +2275,14 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
             }
             return t(x);
         },
-        CONSTRUCTOR => {
+        .CONSTRUCTOR => {
             const a = idType(t(x));
             return instantiate(if (cs.ATNAMES != 0) repT(a, cs.ATNAMES) else a);
         },
-        UNICODE => {
+        .UNICODE => {
             return char_t;
         },
-        ATOM => {
+        .ATOM => {
             if (word.fitsInByte(x)) {
                 return char_t;
             }
@@ -2617,7 +2617,7 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
         },
         else => {
             _ = word.print("unexpected tag in etype ", .{});
-            out(getStdout().?, getTag(x));
+            out(getStdout().?, @intFromEnum(getTag(x)));
             _ = word.putchar('\n');
             return wrong_t;
         },
@@ -2681,7 +2681,7 @@ pub fn typeOf(x: Word) Word {
 
 /// Run type inference over definition `x`.
 fn inferType(x: Word) void {
-    if (getTag(x) == ID) {
+    if (getTag(x) == .ID) {
         var t_val: Word = undefined;
         const oldte = cs.TYPERRS;
         cs.current_id = x;
