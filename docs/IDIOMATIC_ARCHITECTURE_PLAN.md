@@ -157,11 +157,11 @@ Each is behaviour-preserving and golden-gated.
 | # | Recommendation | Evidence | Maps to |
 |---|----------------|----------|---------|
 | **R1** | **Collapse the `reduce.zig` ↔ `reduce_core.zig` duplication** — have the engine import the primitives instead of copying them. | **57 primitives** duplicated "in lock-step" | — (new) |
-| **R2** | **Finish snake_case → camelCase in the reducer** (`hd_get`→`hdGet`, `tl_set`, `rewrite_to_*`, `is_*`, `get_id`, `force_dbl`). | ~40 names, in both reducer files | end state: "no migration-era naming" |
-| **R3** | **One source of truth for core constants** — import `NIL`/`CMBASE`/tag codes from `word.zig`; delete the local copies. | **21 files** re-declare them | P4 |
+| **R2** ✅ | **Finish snake_case → camelCase in the reducer** (`hd_get`→`hdGet`, `tl_set`, `rewrite_to_*`, `is_*`, `get_id`, `force_dbl`). **Done:** 37 helpers renamed tree-wide (~900 call sites). | ~40 names, in both reducer files | end state: "no migration-era naming" |
+| **R3** ◑ | **One source of truth for core constants** — import `NIL`/`CMBASE`/tag codes from `word.zig`; delete the local copies. **Done (partial):** tag codes (via P4) + value-verified CMBASE/CONST/atom-constants/type-codes in big/lex/codegen/trans aliased to `word.*`. **Left:** broader atom-constant copies in other files; the two intentionally-decoupled state modules; the `algebraic_t`/`abstract_t`/`placeholder_t` numbering discrepancy (flagged as a separate bug — do NOT blind-merge). | **21 files** re-declare them | P4 |
 | **R4** | **Return `bool` from predicates** instead of `c_int` (1/0): `isChar`, `isconstrname`, `isNat`, `member`, `same`, `okid`, … | **65 `c_int`-returning fns** | P4, P8 |
-| **R5** | **Drop the `r7_` import prefixes.** | ~190 uses | **P3** |
-| **R6** | **Trim the `main.*` god-namespace**; migrate call sites to the owning module. | ~108 re-exports | **P1/P2/P7** |
+| **R5** ✅ | **Drop the `r7_` import prefixes.** *(done in Part A / Priority 3)* | ~190 uses | **P3** |
+| **R6** ✅ | **Trim the `main.*` god-namespace**; migrate call sites to the owning module. *(done in Part A)* | ~108 re-exports | **P1/P2/P7** |
 | **R7** | **Rename cryptic numbered/register helpers** — `out`/`out1`/`out2`/`outr`/`outf` → `outTerm`/`outSubterm`/…; `ReductionCtx` fields `e`/`s`/`hold` → `focus`/`spine`/`scratch`. (Keep the Miranda-idiom `h`/`t`/`hp`/`tp`; document the convention once.) | — | P6-adjacent |
 | **R8** | **Replace the per-file `abi` shim structs** (`const abi = struct { pub const printf = … }`) with one shared C-surface module or direct imports. | `types.zig` (124), `trans.zig`, … | P3-adjacent |
 | **R9** | **Break up the longest functions** — `reduce()` (~220 lines), `codegen`, `yylex`, `block`, `mkshow`, `loadDefs`, `mainEntry` — into named steps (each then unit-testable). | — | "smaller modules", P12 |
