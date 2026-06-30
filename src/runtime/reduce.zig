@@ -783,7 +783,7 @@ pub fn print(arg_e: Word) void {
     var e = reduce(arg_e);
     while (getTag(e) == .CONS) {
         hp(e).* = reduce(h(e));
-        if (heap.isChar(h(e)) == 0) {
+        if (!heap.isChar(h(e))) {
             break;
         }
         const c = @as(u32, @intCast(heap.getChar(h(e))));

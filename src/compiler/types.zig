@@ -1078,7 +1078,7 @@ pub fn tail(x_in: Word) Word {
     allchars = 1;
     while (getTag(x) == .CONS) {
         const char_res = isChar(h(x));
-        allchars = if (char_res != 0) allchars & 1 else 0;
+        allchars = if (char_res) allchars & 1 else 0;
         x = t(x);
     }
     return x;
@@ -1171,7 +1171,7 @@ const CONST: Word = 268;
 
 /// Whether `x` names a data constructor.
 fn isConstructor(x: Word) bool {
-    return getTag(x) == .ID and isconstrname(getId(x)) != 0;
+    return getTag(x) == .ID and isconstrname(getId(x));
 }
 
 /// Remove the variables bound by pattern `p` from set `x`.

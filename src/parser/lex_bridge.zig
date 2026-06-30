@@ -147,7 +147,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
             if (w == TRUE_ATOM) break :blk Token{ .id = .cname, .span = span, .text = try gpa.dupe(u8, "True") };
             if (w == FALSE_ATOM) break :blk Token{ .id = .cname, .span = span, .text = try gpa.dupe(u8, "False") };
             // 1. Char literal: isChar() handles atoms 0-255 and UNICODE heap cells.
-            if (isChar(w) != 0) {
+            if (isChar(w)) {
                 const cp: u21 = if (word.isAtom(w))
                     @intCast(w) // Latin-1 atom: value is the code point
                 else

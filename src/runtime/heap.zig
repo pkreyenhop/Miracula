@@ -579,11 +579,11 @@ pub fn getChar(x: Word) Word {
 /// Whether `x` is a char value (1/0).
 ///
 /// Tests: stoChar / getChar / isChar: bare Latin-1 and wide UNICODE chars
-pub fn isChar(x: Word) c_int {
+pub fn isChar(x: Word) bool {
     return switch (word.classify(x)) {
-        .imm => 1, // bare Latin-1 char
-        .ref => if (getTag(x) == .UNICODE) @as(c_int, 1) else 0, // wide char cell
-        .atom => 0, // a combinator/named atom is not a char
+        .imm => true, // bare Latin-1 char
+        .ref => getTag(x) == .UNICODE, // wide char cell
+        .atom => false, // a combinator/named atom is not a char
     };
 }
 
@@ -591,15 +591,15 @@ test "stoChar / getChar / isChar: bare Latin-1 and wide UNICODE chars" {
     tu.freshInterp();
     // Latin-1: stored bare as the code point itself.
     try std.testing.expectEqual(@as(Word, 65), stoChar(65));
-    try std.testing.expectEqual(@as(c_int, 1), isChar(65));
+    try std.testing.expect(isChar(65));
     try std.testing.expectEqual(@as(Word, 65), getChar(65));
     // Wide: boxed in a UNICODE cell, but still a char that decodes back.
     const emoji = stoChar(0x1F600);
     try std.testing.expectEqual(word.NodeTag.UNICODE, getTag(emoji));
-    try std.testing.expectEqual(@as(c_int, 1), isChar(emoji));
+    try std.testing.expect(isChar(emoji));
     try std.testing.expectEqual(@as(Word, 0x1F600), getChar(emoji));
     // A combinator atom is not a char.
-    try std.testing.expectEqual(@as(c_int, 0), isChar(word.S));
+    try std.testing.expect(!isChar(word.S));
 }
 
 /// The source location (`HERE`) recorded for id `x`.
@@ -2165,12 +2165,12 @@ pub fn isfreeid(x: Word) bool {
 const isconstrname = lex.isconstrname;
 /// Whether `x` names a data constructor.
 pub fn isconstructor(x: Word) bool {
-    return getTag(x) == .ID and isconstrname(getId(x)) != 0;
+    return getTag(x) == .ID and isconstrname(getId(x));
 }
 
 /// Whether `x` names an ordinary variable.
 pub fn isvariable(x: Word) bool {
-    return getTag(x) == .ID and isconstrname(getId(x)) == 0;
+    return getTag(x) == .ID and !isconstrname(getId(x));
 }
 
 /// Add id `x` to the current file's definition environment.

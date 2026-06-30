@@ -679,7 +679,7 @@ pub fn finger(n: [*:0]const u8) void {
 pub fn diagnose(n: [*:0]const u8) void {
     var i: usize = 0;
     if (word.isalpha(n[0])) {
-        while (n[i] != 0 and abi.okid(n[i]) != 0) {
+        while (n[i] != 0 and abi.okid(n[i])) {
             i += 1;
         }
     }

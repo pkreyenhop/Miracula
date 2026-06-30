@@ -140,15 +140,15 @@ test "setup: initialises the bignum constants" {
 /// 1 if `x` is a non-negative integer (`INT`-tagged and positive), else 0.
 ///
 /// Tests: isNat: 1 for non-negative INTs, 0 for negatives
-pub fn isNat(x: Word) c_int {
-    return if (getTag(x) == .INT and isPositive(x)) 1 else 0;
+pub fn isNat(x: Word) bool {
+    return getTag(x) == .INT and isPositive(x);
 }
 
 test "isNat: 1 for non-negative INTs, 0 for negatives" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_int, 1), isNat(fromInt(5)));
-    try std.testing.expectEqual(@as(c_int, 1), isNat(fromInt(0)));
-    try std.testing.expectEqual(@as(c_int, 0), isNat(fromInt(-5)));
+    try std.testing.expect(isNat(fromInt(5)));
+    try std.testing.expect(isNat(fromInt(0)));
+    try std.testing.expect(!isNat(fromInt(-5)));
 }
 
 /// Build a bignum from a signed 64-bit integer.

@@ -281,12 +281,12 @@ fn addToEnv(x: Word) void {
 
 /// Whether `x` names a data constructor.
 fn isConstructor(x: Word) bool {
-    return getTag(x) == .ID and isconstrname(getId(x)) != 0;
+    return getTag(x) == .ID and isconstrname(getId(x));
 }
 
 /// Whether `x` names an ordinary variable.
 fn isVariable(x: Word) bool {
-    return getTag(x) == .ID and isconstrname(getId(x)) == 0;
+    return getTag(x) == .ID and !isconstrname(getId(x));
 }
 
 /// Whether `x` is an `n+k` pattern.
@@ -883,7 +883,7 @@ pub fn transtypeid(x: Word) Word {
 pub fn genlhs(x: Word) Word {
     switch (getTag(x)) {
         .AP => {
-            if (getTag(h(x)) == .AP and h(h(x)) == PLUS and isnat(t(x)) != 0) {
+            if (getTag(h(x)) == .AP and h(h(x)) == PLUS and isnat(t(x))) {
                 return ap2(PLUS, t(x), genlhs(t(h(x))));
             }
             const hold = genlhs(h(x));

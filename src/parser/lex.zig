@@ -172,7 +172,7 @@ fn cons(x: Word, y: Word) Word {
 
 /// Whether `x` names a data constructor.
 fn isconstructor(x: Word) bool {
-    return getTag(x) == .ID and isconstrname(getId(x)) != 0;
+    return getTag(x) == .ID and isconstrname(getId(x));
 }
 
 /// The interned name text of id `x`.
@@ -713,7 +713,7 @@ pub fn yylex() c_int {
             errclass(ls.yylval, 0);
             return word.CONST;
         }
-        if (isChar(ls.yylval) == 0) {
+        if (!isChar(ls.yylval)) {
             const prefix_str: [*:0]const u8 = if (rt.rs.echoing != 0) "\n" else "";
             word.printErr("{s}impossible event while reading char const ('\\{}')\n", .{prefix_str, ls.yylval});
             acterror();
@@ -1426,9 +1426,9 @@ pub fn directive() Word {
 }
 
 /// Collect input characters while predicate `f` holds, into the dictionary.
-fn kollect(f: fn (c_int) c_int) void {
+fn kollect(f: fn (c_int) bool) void {
     ls.dicq = ls.dicp;
-    while (f(@intCast(ls.c)) != 0) {
+    while (f(@intCast(ls.c))) {
         ls.dicq[0] = @intCast(ls.c);
         ls.dicq += 1;
         ls.c = getch();
@@ -1973,36 +1973,36 @@ fn hash(input: [*:0]const u8) c_int {
 /// Whether name `input` is a constructor name — begins uppercase (1/0).
 ///
 /// Tests: identifier classification matches Miranda lexer rules
-pub fn isconstrname(input: [*:0]const u8) c_int {
+pub fn isconstrname(input: [*:0]const u8) bool {
     var s = input;
     if (s[0] == '$') s += 1;
-    return if (std.ascii.isUpper(s[0])) 1 else 0;
+    return std.ascii.isUpper(s[0]);
 }
 
 /// Whether char `ch` is valid within an identifier (1/0).
 ///
 /// Tests: identifier classification matches Miranda lexer rules
-pub fn okid(ch: c_int) c_int {
-    return if ((ch >= 'a' and ch <= 'z') or
+pub fn okid(ch: c_int) bool {
+    return ((ch >= 'a' and ch <= 'z') or
         (ch >= 'A' and ch <= 'Z') or
         (ch >= '0' and ch <= '9') or
         ch == '_' or
-        ch == '\'') 1 else 0;
+        ch == '\'');
 }
 
 /// Whether char `ch` can appear in an (upper/lower) identifier.
-fn okulid(ch: c_int) c_int {
-    return if ((ch >= 'a' and ch <= 'z') or
+fn okulid(ch: c_int) bool {
+    return ((ch >= 'a' and ch <= 'z') or
         (ch >= 'A' and ch <= 'Z') or
         (ch >= '0' and ch <= '9') or
         ch == '_' or
         ch == 0x08 or
-        ch == '\'') 1 else 0;
+        ch == '\'');
 }
 
 /// Whether char `ch` is valid within a pathname.
-fn okpath(ch: c_int) c_int {
-    return if (ch != '"' and ch != '\n' and ch != '>') 1 else 0;
+fn okpath(ch: c_int) bool {
+    return ch != '"' and ch != '\n' and ch != '>';
 }
 
 test "hash matches xor into seven-bit bucket" {
@@ -2012,16 +2012,16 @@ test "hash matches xor into seven-bit bucket" {
 }
 
 test "identifier classification matches Miranda lexer rules" {
-    try std.testing.expect(isconstrname("Name") == 1);
-    try std.testing.expect(isconstrname("$Name") == 1);
-    try std.testing.expect(isconstrname("name") == 0);
-    try std.testing.expect(okid('a') == 1);
-    try std.testing.expect(okid('\'') == 1);
-    try std.testing.expect(okid('-') == 0);
-    try std.testing.expect(okulid(0x08) == 1);
-    try std.testing.expect(okulid('-') == 0);
-    try std.testing.expect(okpath('a') == 1);
-    try std.testing.expect(okpath('"') == 0);
-    try std.testing.expect(okpath('\n') == 0);
-    try std.testing.expect(okpath('>') == 0);
+    try std.testing.expect(isconstrname("Name"));
+    try std.testing.expect(isconstrname("$Name"));
+    try std.testing.expect(!(isconstrname("name")));
+    try std.testing.expect(okid('a'));
+    try std.testing.expect(okid('\''));
+    try std.testing.expect(!(okid('-')));
+    try std.testing.expect(okulid(0x08));
+    try std.testing.expect(!(okulid('-')));
+    try std.testing.expect(okpath('a'));
+    try std.testing.expect(!(okpath('"')));
+    try std.testing.expect(!(okpath('\n')));
+    try std.testing.expect(!(okpath('>')));
 }
