@@ -21,136 +21,9 @@ const heap = @import("../runtime/heap.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 const cs = compiler_state.cs;
 // `abi` — a private namespace of libc / `word`-combinator re-export aliases so
-// this file can write `abi.printf(...)`, `abi.PLUS`, etc. Internal only (the
+// this file can write `main_clib.printf(...)`, `word.PLUS`, etc. Internal only (the
 // container is not `pub`, so these never appear in autodoc); each member just
 // re-exports an already-documented symbol from `main_clib`/`word`.
-const abi = struct {
-    pub const printf = main_clib.printf;
-    pub const fprintf = main_clib.fprintf;
-    pub const putchar = main_clib.putchar;
-    pub const FILE = main_clib.FILE;
-    pub const stderr = main_clib.stderr;
-    pub const stdout = main_clib.stdout;
-    pub const Y = word.Y;
-
-    pub const G_ERROR = word.G_ERROR;
-    pub const G_UNIT = word.G_UNIT;
-    pub const G_RULE = word.G_RULE;
-    pub const G_ZERO = word.G_ZERO;
-    pub const G_ALT = word.G_ALT;
-    pub const G_OPT = word.G_OPT;
-    pub const G_STAR = word.G_STAR;
-    pub const G_FBSTAR = word.G_FBSTAR;
-    pub const G_SYMB = word.G_SYMB;
-    pub const G_ANY = word.G_ANY;
-    pub const G_SUCHTHAT = word.G_SUCHTHAT;
-    pub const G_END = word.G_END;
-    pub const G_STATE = word.G_STATE;
-    pub const G_SEQ = word.G_SEQ;
-    pub const G_CLOSE = word.G_CLOSE;
-    pub const PLUS = word.PLUS;
-    pub const MINUS = word.MINUS;
-    pub const TIMES = word.TIMES;
-    pub const INTDIV = word.INTDIV;
-    pub const FDIV = word.FDIV;
-    pub const MOD = word.MOD;
-    pub const POWER = word.POWER;
-    pub const S = word.S;
-    pub const K = word.K;
-    pub const I = word.I;
-    pub const C = word.C;
-    pub const B = word.B;
-    pub const HD = word.HD;
-    pub const TL = word.TL;
-    pub const BODY = word.BODY;
-    pub const LAST = word.LAST;
-    pub const S_p = word.S_p;
-    pub const Ug = word.Ug;
-    pub const COND = word.COND;
-    pub const NEG = word.NEG;
-    pub const NOT = word.NOT;
-    pub const STEP = word.STEP;
-    pub const STEPUNTIL = word.STEPUNTIL;
-    pub const SUBSCRIPT = word.SUBSCRIPT;
-    pub const S1 = word.S1;
-    pub const SEQ = word.SEQ;
-    pub const FILEMODE = word.FILEMODE;
-    pub const GETENV = word.GETENV;
-    pub const NB_STARTREAD = word.NB_STARTREAD;
-    pub const STARTREADBIN = word.STARTREADBIN;
-    pub const STARTREAD = word.STARTREAD;
-    pub const GETARGS = word.GETARGS;
-    pub const SHOWHEX = word.SHOWHEX;
-    pub const SHOWOCT = word.SHOWOCT;
-    pub const SHOWNUM = word.SHOWNUM;
-    pub const SHOWFLOAT = word.SHOWFLOAT;
-    pub const SHOWSCALED = word.SHOWSCALED;
-    pub const ENTIER_FN = word.ENTIER_FN;
-    pub const ARCTAN_FN = word.ARCTAN_FN;
-    pub const EXP_FN = word.EXP_FN;
-    pub const SIN_FN = word.SIN_FN;
-    pub const COS_FN = word.COS_FN;
-    pub const SQRT_FN = word.SQRT_FN;
-    pub const LOG_FN = word.LOG_FN;
-    pub const LOG10_FN = word.LOG10_FN;
-    pub const FORCE = word.FORCE;
-    pub const EQ = word.EQ;
-    pub const GR = word.GR;
-    pub const GRE = word.GRE;
-    pub const NEQ = word.NEQ;
-    pub const P = word.P;
-    pub const U = word.U;
-    pub const U_ = word.U_;
-    pub const Uf = word.Uf;
-    pub const MERGE = word.MERGE;
-    pub const APPEND = word.APPEND;
-    pub const MAP = word.MAP;
-    pub const FLATMAP = word.FLATMAP;
-    pub const BADCASE = word.BADCASE;
-    pub const CONFERROR = word.CONFERROR;
-    pub const CB = word.CB;
-    pub const AND = word.AND;
-    pub const OR = word.OR;
-    pub const GENSEQ = word.GENSEQ;
-    pub const ZIP = word.ZIP;
-    pub const TAKE = word.TAKE;
-    pub const DROP = word.DROP;
-    pub const FILTER = word.FILTER;
-    pub const FOLDL = word.FOLDL;
-    pub const FOLDL1 = word.FOLDL1;
-    pub const LIST_LAST = word.LIST_LAST;
-    pub const FOLDR = word.FOLDR;
-    pub const MATCH = word.MATCH;
-    pub const MATCHINT = word.MATCHINT;
-    pub const TRY = word.TRY;
-    pub const ATLEAST = word.ATLEAST;
-    pub const B_p = word.B_p;
-    pub const C_p = word.C_p;
-    pub const B1 = word.B1;
-    pub const C1 = word.C1;
-    pub const ITERATE = word.ITERATE;
-    pub const ITERATE1 = word.ITERATE1;
-    pub const CODE = word.CODE;
-    pub const DECODE = word.DECODE;
-    pub const LENGTH = word.LENGTH;
-    pub const FILESTAT = word.FILESTAT;
-    pub const WAIT = word.WAIT;
-    pub const INTEGER = word.INTEGER;
-    pub const NUMVAL = word.NUMVAL;
-    pub const READBIN = word.READBIN;
-    pub const Ush = word.Ush;
-    pub const Ush1 = word.Ush1;
-    pub const KI = word.KI;
-    pub const False = word.False;
-    pub const True = word.True;
-    pub const EXEC = word.EXEC;
-    pub const NILS = word.NILS;
-    pub const MKSTRICT = word.MKSTRICT;
-    pub const OFFSIDE = word.OFFSIDE;
-    pub const ERROR = word.ERROR;
-    pub const FAIL = word.FAIL;
-    pub const READ = word.READ;
-};
 
 const Word = word.Word;
 const CMBASE = word.CMBASE;
@@ -857,13 +730,13 @@ pub fn ispoly(t_val: Word) c_int {
 
 /// The standard-output `FILE` handle.
 fn getStdout() ?*word.FILE {
-    const T = @TypeOf(abi.stdout);
+    const T = @TypeOf(main_clib.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
-        return abi.stdout();
+        return main_clib.stdout();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return abi.stdout();
+        return main_clib.stdout();
     } else {
-        return abi.stdout;
+        return main_clib.stdout;
     }
 }
 

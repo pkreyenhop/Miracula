@@ -17,15 +17,8 @@ const main_clib = @import("../runtime/main_clib.zig");
 const compiler_state = @import("compiler_state.zig");
 const cs = compiler_state.cs;
 // `abi` — a private namespace of libc re-export aliases so this file can write
-// `abi.printf(...)`, etc. Internal only (the container is not `pub`, so these
+// `main_clib.printf(...)`, etc. Internal only (the container is not `pub`, so these
 // never appear in autodoc); each member re-exports a `main_clib` symbol.
-const abi = struct {
-    pub const printf = main_clib.printf;
-    pub const putchar = main_clib.putchar;
-    pub const FILE = main_clib.FILE;
-    pub const stdout = main_clib.stdout;
-    pub const exit = main_clib.exit;
-};
 
 const lex_state = @import("../parser/lex_state.zig");
 const core_state = @import("../runtime/core_state.zig");
@@ -717,7 +710,7 @@ pub fn abstr(x: Word, e: Word) Word {
         },
         .LAMBDA, .LET, .LETREC, .TRIES, .LABEL, .SHOW, .LEXER, .SHARE => {
             std.debug.print("impossible event in abstr (main.tag={d})\n", .{getTag(e)});
-            abi.exit(1);
+            main_clib.exit(1);
         },
         else => {
             if (x == e or (isTypeVariable(x) and isTypeVariable(e) and getTypeVariable(x) == getTypeVariable(e))) {
@@ -740,7 +733,7 @@ pub fn abstrlist(x_input: Word, e: Word) Word {
         },
         .LAMBDA, .LET, .LETREC, .TRIES, .LABEL, .SHOW, .LEXER, .SHARE => {
             std.debug.print("impossible event in abstrlist (main.tag={d})\n", .{getTag(e)});
-            abi.exit(1);
+            main_clib.exit(1);
         },
         else => {
             var i: Word = 0;
@@ -1440,7 +1433,7 @@ pub fn invgetrel(input_r: Word, x: Word) Word {
     while (r != NIL and member(t(h(r)), x) == 0) r = t(r);
     if (r == NIL) {
         std.debug.print("impossible event in invgetrel\n", .{});
-        abi.exit(1);
+        main_clib.exit(1);
     }
     return h(h(r));
 }
