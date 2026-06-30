@@ -77,7 +77,7 @@ fn benchInterning() !void {
     var i: usize = 0;
     var buf: [64]u8 = undefined;
     while (i < count) : (i += 1) {
-        const name = try std.fmt.bufPrintZ(&buf, "sym_bench_{d}", .{i});
+        const name = try std.fmt.bufPrintSentinel(&buf, "sym_bench_{d}", .{i}, 0);
         _ = lex.makeId(name.ptr);
     }
     const elapsed = started.untilNow(rt.io);
