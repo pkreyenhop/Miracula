@@ -1197,7 +1197,7 @@ pub fn outFormal(f: *word.FILE, x: Word) void {
     }
 }
 
-const CONST: Word = 268;
+const CONST = word.CONST;
 
 /// Whether `x` names a data constructor.
 fn isConstructor(x: Word) bool {
@@ -1361,7 +1361,7 @@ fn compDeps(n: Word) errors.MiraError!void {
 }
 
 const algebraic_t = word.algebraic_t;
-const FREE: Word = 276;
+const FREE = word.FREE;
 
 /// Renumber type variables across a list of definitions.
 pub fn redtfr(x_in: Word) void {
