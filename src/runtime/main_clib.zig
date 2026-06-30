@@ -54,15 +54,15 @@ pub const pnlim: c_int = 1024;
 pub const BUFSIZE: c_int = 1024;
 pub const Word = word_mod.Word;
 
-pub const AP = word_mod.AP;
+pub const AP = @intFromEnum(word_mod.NodeTag.AP);
 pub const APPEND = word_mod.APPEND;
 pub const ARCTAN_FN = word_mod.ARCTAN_FN;
 pub const CODE = word_mod.CODE;
-pub const CONS = word_mod.CONS;
+pub const CONS = @intFromEnum(word_mod.NodeTag.CONS);
 pub const CONST = word_mod.CONST;
-pub const CONSTRUCTOR = word_mod.CONSTRUCTOR;
+pub const CONSTRUCTOR = @intFromEnum(word_mod.NodeTag.CONSTRUCTOR);
 pub const COS_FN = word_mod.COS_FN;
-pub const DATAPAIR = word_mod.DATAPAIR;
+pub const DATAPAIR = @intFromEnum(word_mod.NodeTag.DATAPAIR);
 pub const DBL_MAX = std.math.floatMax(f64);
 pub const DECODE = word_mod.DECODE;
 pub const DROP = word_mod.DROP;
@@ -74,7 +74,7 @@ pub const EXEC = word_mod.EXEC;
 pub const EXPORT = word_mod.EXPORT;
 pub const EXP_FN = word_mod.EXP_FN;
 pub const FILE = word_mod.FILE;
-pub const FILEINFO = word_mod.FILEINFO;
+pub const FILEINFO = @intFromEnum(word_mod.NodeTag.FILEINFO);
 pub const FILEMODE = word_mod.FILEMODE;
 pub const FILESTAT = word_mod.FILESTAT;
 pub const FILTER = word_mod.FILTER;
@@ -87,9 +87,9 @@ pub const free_t = word_mod.free_t;
 pub const GETENV = word_mod.GETENV;
 pub const HD = word_mod.HD;
 pub const I = word_mod.I;
-pub const ID = word_mod.ID;
+pub const ID = @intFromEnum(word_mod.NodeTag.ID);
 pub const INTEGER = word_mod.INTEGER;
-pub const LABEL = word_mod.LABEL;
+pub const LABEL = @intFromEnum(word_mod.NodeTag.LABEL);
 pub const LIST_LAST = word_mod.LIST_LAST;
 pub const LOG10_FN = word_mod.LOG10_FN;
 pub const LOG_FN = word_mod.LOG_FN;
@@ -121,7 +121,7 @@ pub const SQRT_FN = word_mod.SQRT_FN;
 pub const STARTREAD = word_mod.STARTREAD;
 pub const STARTREADBIN = word_mod.STARTREADBIN;
 pub const STDOUT_FILENO: c_int = std.posix.STDOUT_FILENO;
-pub const STRCONS = word_mod.STRCONS;
+pub const STRCONS = @intFromEnum(word_mod.NodeTag.STRCONS);
 pub const TAKE = word_mod.TAKE;
 pub const TIOCGWINSZ: c_ulong = if (builtin.os.tag == .macos) 0x40087468 else 0x5413;
 pub const TL = word_mod.TL;
@@ -137,7 +137,7 @@ pub const addextn = lex_mod.addextn;
 pub const adjustPrefix = lex_mod.adjustPrefix;
 pub const algebraic_t = word_mod.algebraic_t;
 pub fn ap(x: Word, y: Word) Word {
-    return make(AP, x, y);
+    return make(.AP, x, y);
 }
 pub fn ap2(x: Word, y: Word, z: Word) Word {
     return ap(ap(x, y), z);
@@ -148,10 +148,10 @@ pub const char_t = word_mod.char_t;
 pub const checktypes = types_mod.checktypes;
 pub const codegen = trans_mod.codegen;
 pub fn cons(x: Word, y: Word) Word {
-    return make(word_mod.CONS, x, y);
+    return make(.CONS, x, y);
 }
 pub fn datapair(x: Word, y: Word) Word {
-    return make(DATAPAIR, x, y);
+    return make(.DATAPAIR, x, y);
 }
 pub const deps = types_mod.deps;
 pub const dumpScript = heap_mod.dumpScript;
@@ -192,7 +192,7 @@ pub const printlist = types_mod.printlist;
 pub const process = repl_mod.process;
 pub const rdline = lex_mod.rdline;
 pub fn readvals(x: Word, y: Word) Word {
-    return make(word_mod.STARTREADVALS, x, y);
+    return make(.STARTREADVALS, x, y);
 }
 pub const reportType = types_mod.reportType;
 pub const resetheap = heap_mod.resetheap;
@@ -205,7 +205,7 @@ pub const ERANGE = 34;
 
 pub const stoDbl = heap_mod.stoDbl;
 pub fn strcons(x: Word, y: Word) Word {
-    return make(STRCONS, x, y);
+    return make(.STRCONS, x, y);
 }
 pub const struct_winsize = extern struct {
     ws_row: c_ushort,

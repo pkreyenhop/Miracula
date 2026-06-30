@@ -37,7 +37,7 @@ const lineedit = @import("lineedit.zig");
 const ls = lex_state.ls;
 
 inline fn getTag(x: Word) word.NodeTag {
-    return @enumFromInt(heap.heap.getTag(x));
+    return heap.heap.getTag(x);
 }
 
 /// True if a numeric command-line flag value is outside the accepted range (100 .. 50,000,000).

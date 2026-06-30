@@ -103,7 +103,7 @@ pub fn handle_G_STAR(ctx: *ReductionCtx) void {
         return;
     }
     ctx.args[1] = reduce.ap(reduce.hdGet(ctx.e), reduce.tlGet(ctx.hold));
-    reduce.setTag(ctx.e, word.CONS);
+    reduce.setTag(ctx.e, .CONS);
     reduce.hdSet(ctx.e, reduce.cons(reduce.hdGet(ctx.hold), reduce.ap(word.HD, ctx.args[1])));
     reduce.tlSet(ctx.e, reduce.ap(word.TL, ctx.args[1]));
     ctx.action = word.ACT_DONE;

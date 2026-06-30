@@ -17,7 +17,7 @@ const NIL = word.NIL;
 
 // State owned by heap.zig / reduce.zig — not yet accessible via @import.
 inline fn getTag(x: Word) word.NodeTag {
-    return @enumFromInt(heap.heap.getTag(x));
+    return heap.heap.getTag(x);
 }
 
 const lex_state = @import("../parser/lex_state.zig");

@@ -64,7 +64,7 @@ const isconstrname = lex_mod.isconstrname;
 
 /// The node tag of cell `x`.
 inline fn getTag(x: Word) word.NodeTag {
-    return @enumFromInt(heap.heap.getTag(x));
+    return heap.heap.getTag(x);
 }
 
 /// Head (`hd`) of cell `x`.
@@ -89,7 +89,7 @@ fn tp(x: Word) *Word {
 
 /// Allocate a `CONS` cell `(x . y)`.
 fn cons(x: Word, y: Word) Word {
-    return make(word.CONS, x, y);
+    return make(.CONS, x, y);
 }
 
 /// Remove element `e` from set `ss` (in place via the pointer).
@@ -526,7 +526,7 @@ fn metaTcheck(t_val: Word) errors.MiraError!Word {
 
 /// Make a type-variable node with index `i`.
 fn mktvar(i: Word) Word {
-    return make(word.TVAR, 0, i);
+    return make(.TVAR, 0, i);
 }
 
 /// The index of type variable `x`.
@@ -595,7 +595,7 @@ fn ult(tv: Word) Word {
 
 /// Allocate an application cell `(x y)`.
 fn ap(x: Word, y: Word) Word {
-    return make(word.AP, x, y);
+    return make(.AP, x, y);
 }
 
 /// Apply `f` to every type variable in `term`, rebuilding it.

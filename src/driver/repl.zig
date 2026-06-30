@@ -20,8 +20,6 @@ const lineedit = @import("lineedit.zig");
 
 const Word = word.Word;
 const NIL = word.NIL;
-const CONS = word.CONS;
-const AP = word.AP;
 const h = heap.h;
 const t = heap.t;
 
@@ -64,7 +62,7 @@ fn getMonotonicNs() i128 {
 
 // State owned by reduce.zig / heap.zig — not yet accessible via @import.
 inline fn getTag(x: Word) word.NodeTag {
-    return @enumFromInt(heap.heap.getTag(x));
+    return heap.heap.getTag(x);
 }
 
 const signals = signals_mod.signals;
@@ -375,8 +373,8 @@ pub fn obey(x_in: Word) void {
         const inner: Word = if (islist and t(typ) == char_t)
             x
         else
-            abi.make(AP, abi.mkshow(0, 0, typ), x);
-        break :blk abi.make(CONS, abi.make(AP, rt.rs.standardout, inner), NIL);
+            abi.make(.AP, abi.mkshow(0, 0, typ), x);
+        break :blk abi.make(.CONS, abi.make(.AP, rt.rs.standardout, inner), NIL);
     };
     abi.output(out_val);
 }
@@ -408,8 +406,8 @@ pub fn evaluateRepl(x_in: Word) void {
         const inner: Word = if (islist and t(typ) == char_t)
             x
         else
-            abi.make(AP, abi.mkshow(0, 0, typ), x);
-        break :blk abi.make(CONS, abi.make(AP, rt.rs.standardout, inner), NIL);
+            abi.make(.AP, abi.mkshow(0, 0, typ), x);
+        break :blk abi.make(.CONS, abi.make(.AP, rt.rs.standardout, inner), NIL);
     };
     if (process() != 0) {
         // Child: evaluate and print, then exit (compiling=0 only here, parent unaffected).

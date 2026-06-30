@@ -25,9 +25,9 @@ const h = heap.h;
 const tp = heap.tp;
 const hp = heap.hp;
 inline fn getTag(x: Word) word.NodeTag {
-    return @enumFromInt(heap.heap.getTag(x));
+    return heap.heap.getTag(x);
 }
-inline fn setTag(x: Word, val: u8) void {
+inline fn setTag(x: Word, val: word.NodeTag) void {
     heap.heap.setTag(x, val);
 }
 
@@ -121,9 +121,9 @@ fn privatise(x: Word) Word {
     }
 
     ls.pnvec.?[@as(usize, @intCast(i))] = x;
-    setTag(n, word.ID);
+    setTag(n, .ID);
     hp(n).* = h(x);
-    setTag(x, word.STRCONS);
+    setTag(x, .STRCONS);
     hp(x).* = i;
 
     const current_bucket = ls.namebucket[hash_idx];
@@ -154,7 +154,7 @@ fn publicise(x: Word) Word {
     const i = heap.idVal(x);
     const hash_idx = hash(heap.getId(x));
 
-    setTag(i, word.ID);
+    setTag(i, .ID);
     hp(i).* = h(x);
 
     const val = t(i);

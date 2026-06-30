@@ -138,7 +138,7 @@ const acterror = setup.acterror;
 
 /// The node tag of cell `x`.
 inline fn getTag(x: Word) word.NodeTag {
-    return @enumFromInt(heap.heap.getTag(x));
+    return heap.heap.getTag(x);
 }
 
 /// Head (`hd`) of cell `x`.
@@ -172,52 +172,52 @@ fn appHead(input_x: Word) Word {
 
 /// Allocate a `CONS` cell `(x . y)`.
 fn cons(x: Word, y: Word) Word {
-    return make(word.CONS, x, y);
+    return make(.CONS, x, y);
 }
 
 /// Allocate a `PAIR` cell `(x . y)`.
 fn pair(x: Word, y: Word) Word {
-    return make(word.PAIR, x, y);
+    return make(.PAIR, x, y);
 }
 
 /// Allocate a `DATAPAIR` cell.
 fn datapair(x: Word, y: Word) Word {
-    return make(word.DATAPAIR, x, y);
+    return make(.DATAPAIR, x, y);
 }
 
 /// Allocate a `CONSTRUCTOR` cell (tag `n`, fields `x`).
 fn constructor(n: Word, x: Word) Word {
-    return make(word.CONSTRUCTOR, n, x);
+    return make(.CONSTRUCTOR, n, x);
 }
 
 /// Allocate a `LAMBDA` cell `(x . y)`.
 fn lambda(x: Word, y: Word) Word {
-    return make(word.LAMBDA, x, y);
+    return make(.LAMBDA, x, y);
 }
 
 /// Allocate a `SHARE` cell (a shared / lazily-evaluated binding).
 fn share(x: Word, y: Word) Word {
-    return make(word.SHARE, x, y);
+    return make(.SHARE, x, y);
 }
 
 /// Allocate a `TRIES` cell (a chain of pattern-match alternatives).
 fn tries(x: Word, y: Word) Word {
-    return make(word.TRIES, x, y);
+    return make(.TRIES, x, y);
 }
 
 /// Allocate a `LET` cell.
 fn let(x: Word, y: Word) Word {
-    return make(word.LET, x, y);
+    return make(.LET, x, y);
 }
 
 /// Allocate a `LETREC` cell.
 fn letrec(x: Word, y: Word) Word {
-    return make(word.LETREC, x, y);
+    return make(.LETREC, x, y);
 }
 
 /// Allocate an application `(x y)`.
 fn ap(x: Word, y: Word) Word {
-    return make(word.AP, x, y);
+    return make(.AP, x, y);
 }
 
 /// Allocate `((x y) z)`.
@@ -355,7 +355,7 @@ fn getTypeVariable(x: Word) Word {
 
 /// Box index `i` (bare if small, else an `INT` cell).
 fn mkindex(i: Word) Word {
-    return if (word.fitsInByte(i)) i else make(word.INT, i, 0);
+    return if (word.fitsInByte(i)) i else make(.INT, i, 0);
 }
 
 /// The left-hand side of a definition cell `d`.
@@ -886,11 +886,11 @@ pub fn genlhs(x: Word) Word {
                 return ap2(PLUS, t(x), genlhs(t(h(x))));
             }
             const hold = genlhs(h(x));
-            return make(word.AP, hold, genlhs(t(x)));
+            return make(.AP, hold, genlhs(t(x)));
         },
         .CONS, .TCONS, .PAIR => {
             const hold = genlhs(h(x));
-            return make(@intFromEnum(getTag(x)), hold, genlhs(t(x)));
+            return make(getTag(x), hold, genlhs(t(x)));
         },
         .ID => {
             if (member(ls.idsused, x) != 0) {
@@ -1615,7 +1615,7 @@ pub fn codegen(x: Word) Word {
                 const n = spine.items[i];
                 const shares = n == ls.cook_stdin or n == ls.common_stdin or n == ls.common_stdinb;
                 if (core_state.s.commandmode != 0 and !shares) { // beware of corrupting lastexp; share $+ $-
-                    acc = make(word.AP, acc, codegen(t(n)));
+                    acc = make(.AP, acc, codegen(t(n)));
                 } else {
                     hp(n).* = acc; // = codegen(h(n)), already computed down-spine
                     tp(n).* = codegen(t(n));
@@ -1627,11 +1627,11 @@ pub fn codegen(x: Word) Word {
         .TCONS, .PAIR => {
             // Iterate the tuple spine (recursed via t(x)) so a large tuple can't
             // overflow the stack; mirrors the cons-list fix.
-            const result = make(word.CONS, codegen(h(x)), NIL);
+            const result = make(.CONS, codegen(h(x)), NIL);
             var dst = tp(result);
             var cur = t(x);
             while (getTag(cur) == .TCONS or getTag(cur) == .PAIR) {
-                dst.* = make(word.CONS, codegen(h(cur)), NIL);
+                dst.* = make(.CONS, codegen(h(cur)), NIL);
                 dst = tp(dst.*);
                 cur = t(cur);
             }
@@ -1644,11 +1644,11 @@ pub fn codegen(x: Word) Word {
             // recurse once per element and overflow the stack (codegen's frame is
             // large). Recursion is kept only for each head and the final tail.
             if (core_state.s.commandmode != 0) {
-                const result = make(word.CONS, codegen(h(x)), NIL);
+                const result = make(.CONS, codegen(h(x)), NIL);
                 var dst = tp(result);
                 var cur = t(x);
                 while (getTag(cur) == .CONS) {
-                    dst.* = make(word.CONS, codegen(h(cur)), NIL);
+                    dst.* = make(.CONS, codegen(h(cur)), NIL);
                     dst = tp(dst.*);
                     cur = t(cur);
                 }

@@ -58,10 +58,10 @@ const reduce = engine.reduce;
 const charname = heap.charname;
 
 inline fn getTag(x: Word) word.NodeTag {
-    return @enumFromInt(heap.heap.getTag(x));
+    return heap.heap.getTag(x);
 }
 
-inline fn setTag(x: Word, val: u8) void {
+inline fn setTag(x: Word, val: word.NodeTag) void {
     heap.heap.setTag(x, val);
 }
 
@@ -114,15 +114,15 @@ inline fn sign(x: c_long) c_int {
 }
 
 inline fn cons(x: Word, y: Word) Word {
-    return heap.make(word.CONS, x, y);
+    return heap.make(.CONS, x, y);
 }
 
 inline fn ap(x: Word, y: Word) Word {
-    return heap.make(word.AP, x, y);
+    return heap.make(.AP, x, y);
 }
 
 inline fn datapair(x: Word, y: Word) Word {
-    return heap.make(word.DATAPAIR, x, y);
+    return heap.make(.DATAPAIR, x, y);
 }
 
 inline fn digit0(x: Word) Word {
@@ -131,7 +131,7 @@ inline fn digit0(x: Word) Word {
 
 inline fn stosmallint(x: Word) Word {
     const val = if (x < 0) SIGNBIT | (-x) else x;
-    return heap.make(word.INT, val, 0);
+    return heap.make(.INT, val, 0);
 }
 
 const reduce_ctx = extern struct {
@@ -196,14 +196,14 @@ inline fn rewriteToNil(expr: *Word) void {
     rewriteToValue(expr, NIL);
 }
 
-inline fn setcell(e: Word, t_val: u8, a: Word, b: Word) void {
+inline fn setcell(e: Word, t_val: word.NodeTag, a: Word, b: Word) void {
     setTag(e, t_val);
     hp(e).* = a;
     tp(e).* = b;
 }
 
 inline fn rewriteToCons(e: Word, hd_value: Word, tl_value: Word) void {
-    setcell(e, word.CONS, hd_value, tl_value);
+    setcell(e, .CONS, hd_value, tl_value);
 }
 
 /// Abort with "missing case in definition" — the `BADCASE` combinator's reporter.
@@ -236,7 +236,7 @@ pub fn parseCloseError(arg1: Word, arg3: Word) void {
         outstats();
         main_clib.exit(1);
     }
-    var hold_val = heap.make(word.AP, FST, h(arg3_reduced));
+    var hold_val = heap.make(.AP, FST, h(arg3_reduced));
     hold_val = reduce(hold_val);
     word.printErr("TOKEN \"", .{});
     if (hold_val == word.OFFSIDE) {
@@ -282,7 +282,7 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
                 rewriteToNil(&ctx.e);
                 return .REDUCE_DONE;
             }
-            rewriteToCons(ctx.e, hold_char, heap.make(word.AP, word.READBIN, t(ctx.e)));
+            rewriteToCons(ctx.e, hold_char, heap.make(.AP, word.READBIN, t(ctx.e)));
             return .REDUCE_DONE;
         },
         word.READ => {
@@ -309,7 +309,7 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
                 rewriteToNil(&ctx.e);
                 return .REDUCE_DONE;
             }
-            rewriteToCons(ctx.e, hold_char, heap.make(word.AP, word.READ, t(ctx.e)));
+            rewriteToCons(ctx.e, hold_char, heap.make(.AP, word.READ, t(ctx.e)));
             return .REDUCE_DONE;
         },
         word.READVALS => {
@@ -334,7 +334,7 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
                 rewriteToNil(&ctx.e);
                 return .REDUCE_DONE;
             }
-            ctx.arg2 = heap.make(word.AP, h(ctx.e), lastarg);
+            ctx.arg2 = heap.make(.AP, h(ctx.e), lastarg);
             rewriteToCons(ctx.e, val, ctx.arg2);
             return .REDUCE_DONE;
         },

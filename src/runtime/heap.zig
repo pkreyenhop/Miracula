@@ -51,17 +51,11 @@ inline fn tArity(x: Word) Word {
 
 /// Make a type-variable node with index `i`.
 inline fn mktvar(i: Word) Word {
-    return make(word.TVAR, 0, i);
+    return make(.TVAR, 0, i);
 }
 const ATOMLIMIT = word.ATOMLIMIT;
 const NIL = word.NIL;
 const NILS = word.NILS;
-const STRCONS = word.STRCONS;
-const INT = word.INT;
-const DOUBLE = word.DOUBLE;
-const ID = word.ID;
-const UNICODE = word.UNICODE;
-const CONS = word.CONS;
 
 const strcmp = word.strcmp;
 const fpeError = repl.fpeError;
@@ -157,27 +151,19 @@ pub const Heap = struct {
         return &self.tl.?[@as(usize, @intCast(x))];
     }
 
-    /// The raw tag byte. The stored tag is a typed `word.NodeTag` (R3.2); this
-    /// returns its integer value so the many `getTag(x) == word.XXX` int
-    /// comparisons keep working. During GC the byte may be a negated mark.
     /// The node tag of cell `x`.
-    pub fn getTag(self: Heap, x: Word) u8 {
-        return @intFromEnum(self.tag.?[@intCast(x)]);
-    }
-
-    /// Typed tag (for `switch` on `NodeTag` in dispatch, e.g. dumpOb).
-    pub fn getTagEnum(self: Heap, x: Word) word.NodeTag {
+    pub fn getTag(self: Heap, x: Word) word.NodeTag {
         return self.tag.?[@intCast(x)];
     }
 
     /// Set the node tag of cell `x`.
-    pub fn setTag(self: *Heap, x: Word, val: u8) void {
-        self.tag.?[@intCast(x)] = @enumFromInt(val);
+    pub fn setTag(self: *Heap, x: Word, val: word.NodeTag) void {
+        self.tag.?[@intCast(x)] = val;
     }
 
     /// Allocate a `CONS` cell `(x . y)`.
     pub fn cons(self: *Heap, x: Word, y: Word) Word {
-        return self.make(CONS, x, y);
+        return self.make(.CONS, x, y);
     }
 
     /// The current heap top — the next free cell index.
@@ -234,7 +220,7 @@ pub const Heap = struct {
     }
 
     /// Allocate a cell with tag `t_val` and fields `(x, y)` — the core allocator.
-    pub fn make(self: *Heap, t_val: u8, x: Word, y: Word) Word {
+    pub fn make(self: *Heap, t_val: word.NodeTag, x: Word, y: Word) Word {
         while (true) {
             self.listp += 1;
             if (!poschar(@intFromEnum(self.tag.?[@intCast(self.listp)]))) {
@@ -265,17 +251,17 @@ pub const Heap = struct {
             }
             if (self.listp == self.TOP()) {
                 self.gc();
-                if (t_val > word.STRCONS) {
+                if (@intFromEnum(t_val) > @intFromEnum(word.NodeTag.STRCONS)) {
                     self.mark(x);
                 }
-                if (t_val >= word.INT) {
+                if (@intFromEnum(t_val) >= @intFromEnum(word.NodeTag.INT)) {
                     self.mark(y);
                 }
                 return self.make(t_val, x, y);
             }
         }
         heap.claims += 1;
-        self.tag.?[@intCast(self.listp)] = @enumFromInt(t_val);
+        self.tag.?[@intCast(self.listp)] = t_val;
         self.hp(self.listp).* = x;
         self.tp(self.listp).* = y;
         return self.listp;
@@ -459,10 +445,10 @@ pub const Heap = struct {
             p1.* = @enumFromInt(@as(u8, @bitCast(new_signed_tag)));
 
             const new_tag = @intFromEnum(p1.*);
-            if (new_tag > word.STRCONS) {
+            if (new_tag > @intFromEnum(word.NodeTag.STRCONS)) {
                 self.mark(self.h(x));
             }
-            if (new_tag >= word.INT) {
+            if (new_tag >= @intFromEnum(word.NodeTag.INT)) {
                 x = self.t(x) & ~word.tlptrbits;
             } else {
                 break;
@@ -547,7 +533,7 @@ pub fn tp(x: Word) *Word {
 
 /// The node tag of cell `x`.
 pub fn getTag(x: Word) word.NodeTag {
-    return @enumFromInt(heap.getTag(x));
+    return heap.getTag(x);
 }
 
 /// Allocate a `CONS` cell `(x . y)`.
@@ -569,17 +555,19 @@ test "heap accessors: cons/make build cells that h/t/getTag read back" {
     try std.testing.expectEqual(@as(Word, word.False), h(c));
     try std.testing.expectEqual(@as(Word, word.True), t(c));
     // make builds a cell with an arbitrary tag; setTag (on the singleton) rewrites it.
-    const apnode = make(@intCast(word.AP), word.I, word.NIL);
+    const apnode = make(.AP, word.I, word.NIL);
     try std.testing.expectEqual(word.NodeTag.AP, getTag(apnode));
-    heap.setTag(apnode, @intCast(word.CONS));
+    heap.setTag(apnode, .CONS);
     try std.testing.expectEqual(word.NodeTag.CONS, getTag(apnode));
 }
 
 /// Allocate a `TRIES` cell `(x . y)` (a pattern-match alternative chain).
 ///
 /// Tests: tries: builds a TRIES alternative-chain cell
+///
+/// Tests: tries: builds a TRIES alternative-chain cell
 pub fn tries(x: Word, y: Word) Word {
-    return make(@intCast(word.TRIES), x, y);
+    return make(.TRIES, x, y);
 }
 
 test "tries: builds a TRIES alternative-chain cell" {
@@ -611,7 +599,7 @@ pub fn get_fil(fil: Word) ?[*:0]const u8 {
 ///
 /// Tests: stoChar / getChar / isChar: bare Latin-1 and wide UNICODE chars
 pub fn stoChar(ch: Word) Word {
-    return if (word.fitsInByte(ch)) ch else make(UNICODE, ch, 0);
+    return if (word.fitsInByte(ch)) ch else make(.UNICODE, ch, 0);
 }
 
 /// The code point of char value `x`.
@@ -790,9 +778,9 @@ pub fn stoDbl(R_val: f64) Word {
     var r: fpdatum = undefined;
     r.real = R_val;
     if (comptime @sizeOf(Word) == 4) {
-        return make(DOUBLE, r.bits.left, r.bits.right);
+        return make(.DOUBLE, r.bits.left, r.bits.right);
     } else {
-        return make(DOUBLE, r.bits, 0);
+        return make(.DOUBLE, r.bits, 0);
     }
 }
 
@@ -805,7 +793,7 @@ pub fn setdbl(x: Word, R_val: f64) void {
     }
     var r: fpdatum = undefined;
     r.real = R_val;
-    heap.setTag(x, @intCast(DOUBLE));
+    heap.setTag(x, .DOUBLE);
     if (comptime @sizeOf(Word) == 4) {
         hp(x).* = r.bits.left;
         tp(x).* = r.bits.right;
@@ -883,7 +871,7 @@ fn poschar(val: u8) bool {
 }
 
 /// Allocate a cell with tag `t_val` and fields `(x, y)` — the core allocator.
-pub fn make(t_val: u8, x: Word, y: Word) Word {
+pub fn make(t_val: word.NodeTag, x: Word, y: Word) Word {
     return heap.make(t_val, x, y);
 }
 
@@ -902,7 +890,7 @@ const fileMtime = files.fileMtime;
 const unlinkObject = files.unlinkObject;
 /// Intern name `p1`, returning its dictionary `ID` node (inserting if new).
 pub fn stoId(p1: [*:0]const u8) Word {
-    return make(word.ID, cons(make(word.STRCONS, strtab.strBits(p1), word.NIL), word.undef_t), word.UNDEF);
+    return make(.ID, cons(make(.STRCONS, strtab.strBits(p1), word.NIL), word.undef_t), word.UNDEF);
 }
 
 /// Read a size-prefixed tagged `Word` from dump `file`.
@@ -1095,7 +1083,7 @@ fn getsmallint(x: Word) Word {
 /// Tests: stosmallint: boxes a signed small int as an INT cell
 pub fn stosmallint(x: Word) Word {
     const val = if (x < 0) SIGNBIT | @as(Word, @intCast(-x)) else x;
-    return make(word.INT, val, 0);
+    return make(.INT, val, 0);
 }
 
 test "stosmallint: boxes a signed small int as an INT cell" {
@@ -1348,7 +1336,7 @@ pub fn filDefs(fil: Word) Word {
 /// Build a file record `(name, mtime, share, defs)`.
 pub fn makeFil(fil_name: ?[*:0]const u8, time_val: Word, share: Word, defs: Word) Word {
     const name_word = if (fil_name) |n| @as(Word, strtab.strBits(n)) else 0;
-    return cons(cons(make(word.FILEINFO, name_word, time_val), cons(share, word.NIL)), defs);
+    return cons(cons(make(.FILEINFO, name_word, time_val), cons(share, word.NIL)), defs);
 }
 
 /// The head of private-name node `x`.
@@ -1425,12 +1413,12 @@ fn stackpSetTop(val: Word) void {
 
 /// Allocate a `DATAPAIR` cell `(x . y)`.
 fn datapair(x: Word, y: Word) Word {
-    return make(word.DATAPAIR, x, y);
+    return make(.DATAPAIR, x, y);
 }
 
 /// Allocate a `FILEINFO` cell `(x . y)`.
 fn fileinfo(x: Word, y: Word) Word {
-    return make(word.FILEINFO, x, y);
+    return make(.FILEINFO, x, y);
 }
 
 /// Allocate a `CONSTRUCTOR` cell (tag `n`, fields `x`).
@@ -1441,17 +1429,17 @@ pub fn constructor(n: Word, x: anytype) Word {
         [*:0]const u8, [*:0]u8 => strtab.strBits(x),
         else => @compileError("Unsupported type for constructor"),
     };
-    return make(word.CONSTRUCTOR, n, x_val);
+    return make(.CONSTRUCTOR, n, x_val);
 }
 
 /// Allocate a `STARTREADVALS` node for the `readvals` reader.
 fn readvals(x: Word, y: Word) Word {
-    return make(word.STARTREADVALS, x, y);
+    return make(.STARTREADVALS, x, y);
 }
 
 /// Allocate an application cell `(x y)`.
 fn ap(x: Word, y: Word) Word {
-    return make(word.AP, x, y);
+    return make(.AP, x, y);
 }
 
 /// Write a 32-bit int to dump `file`.
@@ -1559,7 +1547,7 @@ pub fn dumpDefs(defs_val: Word, file: ?*word.FILE) void {
 ///
 /// Tests: dumpOb / loadDefs: roundtrip a cons of two ints through the .x format
 pub fn dumpOb(x: Word, file: ?*word.FILE) void {
-    switch (heap.getTagEnum(x)) {
+    switch (heap.getTag(x)) {
         .ATOM => {
             if (x < 128) {
                 _ = word.putc(@intCast(x), file);
@@ -1964,11 +1952,11 @@ pub fn loadDefs(file: ?*word.FILE) Word {
             },
             word.INT_X => {
                 const val = getint(file);
-                stackpPush(make(word.INT, val, 0));
+                stackpPush(make(.INT, val, 0));
                 var x = &tp(stackpTop()).*;
                 var next = getint(file);
                 while (next != -1) {
-                    x.* = make(word.INT, next, 0);
+                    x.* = make(.INT, next, 0);
                     x = &tp(x.*).*;
                     next = getint(file);
                 }
@@ -1977,7 +1965,7 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                 stackpPush(getdbl(file));
             },
             word.UNICODE_X => {
-                stackpPush(make(word.UNICODE, getint(file), 0));
+                stackpPush(make(.UNICODE, getint(file), 0));
             },
             word.PN_X => {
                 var val = main_clib.getc(file);
@@ -2556,13 +2544,13 @@ test "dumpOb / loadDefs: roundtrip a cons of two ints through the .x format" {
     try std.testing.expect(@intFromPtr(heap.stackp.?) > @intFromPtr(old_stackp.?));
     const loaded = stackpTop();
 
-    try std.testing.expectEqual(word.CONS, heap.getTag(loaded));
+    try std.testing.expectEqual(word.NodeTag.CONS, heap.getTag(loaded));
     const loaded_h = h(loaded);
     const loaded_t = t(loaded);
 
-    try std.testing.expectEqual(word.INT, heap.getTag(loaded_h));
+    try std.testing.expectEqual(word.NodeTag.INT, heap.getTag(loaded_h));
     try std.testing.expectEqual(@as(Word, 42), getsmallint(loaded_h));
-    try std.testing.expectEqual(word.INT, heap.getTag(loaded_t));
+    try std.testing.expectEqual(word.NodeTag.INT, heap.getTag(loaded_t));
     try std.testing.expectEqual(@as(Word, 100), getsmallint(loaded_t));
 }
 

@@ -256,52 +256,7 @@ pub const INFIXCNAME: Word = 305;
 // `Word` form is used only where a raw tag byte is written (e.g. `make(AP, …)`);
 // reads `switch` on [getTag], which returns the typed `NodeTag`.
 
-/// Cell tag: a bare atom (no hd/tl payload).
-pub const ATOM: Word = @intFromEnum(NodeTag.ATOM);
-/// Cell tag: a boxed `f64` (double-precision float).
-pub const DOUBLE: Word = @intFromEnum(NodeTag.DOUBLE);
-/// Cell tag: a data pair (constructor argument pairing).
-pub const DATAPAIR: Word = @intFromEnum(NodeTag.DATAPAIR);
-/// Cell tag: file information for an open stream.
-pub const FILEINFO: Word = @intFromEnum(NodeTag.FILEINFO);
-/// Cell tag: a type variable (during type inference).
-pub const TVAR: Word = @intFromEnum(NodeTag.TVAR);
-/// Cell tag: a bignum digit cell (15-bit digit chain — see `big.zig`).
-pub const INT: Word = @intFromEnum(NodeTag.INT);
-/// Cell tag: an algebraic-type constructor.
-pub const CONSTRUCTOR: Word = @intFromEnum(NodeTag.CONSTRUCTOR);
-/// Cell tag: a string-cons cell (carries an interned string id).
-pub const STRCONS: Word = @intFromEnum(NodeTag.STRCONS);
-/// Cell tag: an identifier node.
-pub const ID: Word = @intFromEnum(NodeTag.ID);
-/// Cell tag: a function application `(f x)`.
-pub const AP: Word = @intFromEnum(NodeTag.AP);
-/// Cell tag: a lambda abstraction.
-pub const LAMBDA: Word = @intFromEnum(NodeTag.LAMBDA);
-/// Cell tag: a list cons cell `(head : tail)`.
-pub const CONS: Word = @intFromEnum(NodeTag.CONS);
-/// Cell tag: a bundle of pattern-match alternatives (`tries`).
-pub const TRIES: Word = @intFromEnum(NodeTag.TRIES);
-/// Cell tag: a labelled node.
-pub const LABEL: Word = @intFromEnum(NodeTag.LABEL);
-/// Cell tag: a `show`/format node.
-pub const SHOW: Word = @intFromEnum(NodeTag.SHOW);
-/// Cell tag: the head of a `readvals` stream.
-pub const STARTREADVALS: Word = @intFromEnum(NodeTag.STARTREADVALS);
-/// Cell tag: a `let` binding group.
-pub const LET: Word = @intFromEnum(NodeTag.LET);
-/// Cell tag: a `letrec` (recursive) binding group.
-pub const LETREC: Word = @intFromEnum(NodeTag.LETREC);
-/// Cell tag: a shared (memoised) node.
-pub const SHARE: Word = @intFromEnum(NodeTag.SHARE);
-/// Cell tag: a lexer node.
-pub const LEXER: Word = @intFromEnum(NodeTag.LEXER);
-/// Cell tag: a tuple pair.
-pub const PAIR: Word = @intFromEnum(NodeTag.PAIR);
-/// Cell tag: a boxed Unicode code point (char `>= 256`).
-pub const UNICODE: Word = @intFromEnum(NodeTag.UNICODE);
-/// Cell tag: a strict cons cell.
-pub const TCONS: Word = @intFromEnum(NodeTag.TCONS);
+
 
 /// Typed view of the heap-cell tag byte (R3.2) — the canonical definition of the
 /// tag codes (the raw `ATOM`…`TCONS` `Word` consts above are derived from it).

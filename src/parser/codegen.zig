@@ -42,7 +42,7 @@ inline fn tp(x: Word) *Word {
     return heap.heap.tp(x);
 }
 inline fn tg(x: Word) word.NodeTag {
-    return @enumFromInt(heap.heap.getTag(x));
+    return heap.heap.getTag(x);
 }
 
 // ---------------------------------------------------------------------------
@@ -50,7 +50,7 @@ inline fn tg(x: Word) word.NodeTag {
 // ---------------------------------------------------------------------------
 
 inline fn ap(x: Word, y: Word) Word {
-    return heap.make(word.AP, x, y);
+    return heap.make(.AP, x, y);
 }
 inline fn ap2(x: Word, y: Word, z: Word) Word {
     return ap(ap(x, y), z);
@@ -59,19 +59,19 @@ inline fn ap3(w: Word, x: Word, y: Word, z: Word) Word {
     return ap(ap2(w, x, y), z);
 }
 inline fn mkcons(x: Word, y: Word) Word {
-    return heap.make(word.CONS, x, y);
+    return heap.make(.CONS, x, y);
 }
 inline fn mklabel(x: Word, y: Word) Word {
-    return heap.make(word.LABEL, x, y);
+    return heap.make(.LABEL, x, y);
 }
 inline fn mklambda(x: Word, y: Word) Word {
-    return heap.make(word.LAMBDA, x, y);
+    return heap.make(.LAMBDA, x, y);
 }
 inline fn mkpair(x: Word, y: Word) Word {
-    return heap.make(word.PAIR, x, y);
+    return heap.make(.PAIR, x, y);
 }
 inline fn mktcons(x: Word, y: Word) Word {
-    return heap.make(word.TCONS, x, y);
+    return heap.make(.TCONS, x, y);
 }
 
 // ---------------------------------------------------------------------------
@@ -125,7 +125,7 @@ const void_t = word.void_t;
 fn makeHere(line: u32) Word {
     // get_fil(current_file) = (char*)hd(hd(hd(current_file)))
     const fil_name = h(h(h(heap.heap.current_file)));
-    return heap.make(word.FILEINFO, fil_name, @intCast(line));
+    return heap.make(.FILEINFO, fil_name, @intCast(line));
 }
 
 // ---------------------------------------------------------------------------
@@ -177,7 +177,7 @@ fn codegenTypeVar(name: []const u8) Word {
     }
     if (star_count == @as(Word, @intCast(name.len))) {
         // Pure-star type variable: *, **, ***, …
-        return heap.make(word.TVAR, 0, star_count);
+        return heap.make(.TVAR, 0, star_count);
     }
     // Named type variable like *a, *b — treat as identifier for now
     return nameWord(name);
@@ -245,8 +245,8 @@ fn opWord(op: []const u8) Word {
     if (std.mem.eql(u8, op, "hash")) return word.LENGTH;
     // Miranda keyword built-ins emitted as keyword tokens by the C lexer.
     // SHOWSYM → make(SHOW, 0, 0); READVALSY → make(STARTREADVALS, 0, 0).
-    if (std.mem.eql(u8, op, "kw_show")) return heap.make(word.SHOW, 0, 0);
-    if (std.mem.eql(u8, op, "kw_readvals")) return heap.make(word.STARTREADVALS, 0, 0);
+    if (std.mem.eql(u8, op, "kw_show")) return heap.make(.SHOW, 0, 0);
+    if (std.mem.eql(u8, op, "kw_readvals")) return heap.make(.STARTREADVALS, 0, 0);
     if (std.mem.eql(u8, op, "dollars")) return rt.rs.lastexp;
     // Fall back: user-defined infix operator stored as an identifier
     return nameWord(op);

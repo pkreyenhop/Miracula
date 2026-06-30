@@ -46,7 +46,7 @@ inline fn tl_of(x: word.Word) word.Word {
     return heap.heap.t(x);
 }
 inline fn getTag(x: word.Word) word.NodeTag {
-    return @enumFromInt(heap.heap.getTag(x));
+    return heap.heap.getTag(x);
 }
 
 // C macro: getId(x) == (char*)hd(hd(hd(x))); the id string is an interned StrId.

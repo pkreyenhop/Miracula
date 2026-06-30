@@ -45,7 +45,7 @@ pub fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
 
     if (lastarg_val == word.OFFSIDE) {
         if (reduce_rt.ev.stdinuse != 0 and reduce_rt.ev.stdinuse != '+') {
-            reduce.setTag(ctx.e, word.AP);
+            reduce.setTag(ctx.e, .AP);
             reduce.rewriteToNil(&ctx.e);
             ctx.action = word.ACT_DONE;
             return;

@@ -432,7 +432,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
         },
         word.CODE => {
             reduce.upLeft(ctx);
-            reduce.simpl(ctx, heap.make(word.INT, heap.getChar(lastArg(ctx)), 0));
+            reduce.simpl(ctx, heap.make(.INT, heap.getChar(lastArg(ctx)), 0));
             ctx.action = word.ACT_DONE;
             return;
         },
@@ -796,7 +796,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             reduce.upLeft(ctx);
             reduce.hdSet(ctx.e, reduce.ap(word.GENSEQ, reduce.cons(ctx.args[0], ctx.args[1])));
             if (if (reduce.isInt(ctx.args[0])) reduce.poz(ctx.args[0]) else reduce.forceDbl(ctx.args[0]) >= 0.0) {
-                reduce.setTag(reduce.tlGet(reduce.hdGet(ctx.e)), word.AP);
+                reduce.setTag(reduce.tlGet(reduce.hdGet(ctx.e)), .AP);
             }
             ctx.action = word.ACT_NEXTREDEX;
             return;

@@ -95,11 +95,11 @@ pub inline fn tlSet(x: Word, val: Word) void {
 
 /// Read the cell tag through spine word `x`.
 pub inline fn getTag(x: Word) word.NodeTag {
-    return @enumFromInt(heap.heap.getTag(x & ~word.tlptrbits));
+    return heap.heap.getTag(x & ~word.tlptrbits);
 }
 
 /// Write the cell tag through spine word `x`.
-pub inline fn setTag(x: Word, val: u8) void {
+pub inline fn setTag(x: Word, val: word.NodeTag) void {
     heap.heap.setTag(x & ~word.tlptrbits, val);
 }
 
@@ -270,13 +270,13 @@ pub inline fn rewriteToFailure(expr: *Word) void {
 
 /// Turn `expr` into a `CONS` cell with the given head (tail left unchanged).
 pub inline fn rewriteToConsHead(expr: Word, head_value: Word) void {
-    setTag(expr, word.CONS);
+    setTag(expr, .CONS);
     hdSet(expr, head_value);
 }
 
 /// Turn `expr` into a `CONS` cell `(head_value : tail_value)`.
 pub inline fn rewriteToCons(expr: Word, head_value: Word, tail_value: Word) void {
-    setTag(expr, word.CONS);
+    setTag(expr, .CONS);
     hdSet(expr, head_value);
     tlSet(expr, tail_value);
 }
@@ -289,7 +289,7 @@ pub inline fn rewriteToExistingTail(expr: Word) Word {
 
 /// Allocate an application cell `(x y)`.
 pub inline fn ap(x: Word, y: Word) Word {
-    return heap.make(word.AP, x, y);
+    return heap.make(.AP, x, y);
 }
 
 /// Rewrite `*expr` to `success_value` if `left` equals `right` (structurally),
@@ -319,7 +319,7 @@ pub inline fn rewriteToString(expr: *Word, value: [*:0]const u8) void {
 
 /// Allocate a cons cell `(x : y)`.
 pub inline fn cons(x: Word, y: Word) Word {
-    return heap.make(word.CONS, x, y);
+    return heap.make(.CONS, x, y);
 }
 
 /// Build the application `((f x) y)`.

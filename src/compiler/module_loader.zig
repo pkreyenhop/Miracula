@@ -10,7 +10,7 @@ const strtab = @import("../runtime/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const cs = @import("compiler_state.zig").cs;
 inline fn getTag(x: word.Word) word.NodeTag {
-    return @enumFromInt(heap.heap.getTag(x));
+    return heap.heap.getTag(x);
 }
 const abi = @import("../runtime/main_clib.zig");
 const parser_api = @import("../parser/parser_api.zig");
