@@ -88,8 +88,8 @@ pub inline fn tl_set(x: Word, val: Word) void {
 }
 
 /// Read the cell tag through spine word `x`.
-pub inline fn getTag(x: Word) u8 {
-    return heap.heap.getTag(x & ~word.tlptrbits);
+pub inline fn getTag(x: Word) word.NodeTag {
+    return @enumFromInt(heap.heap.getTag(x & ~word.tlptrbits));
 }
 
 /// Write the cell tag through spine word `x`.
@@ -187,37 +187,37 @@ pub inline fn abnormal(x: Word) bool {
 }
 /// True when `x` is a (normal) `AP` application cell.
 pub inline fn is_ap(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.AP;
+    return !abnormal(x) and getTag(x) == .AP;
 }
 /// True when `x` is a number (`INT` or `DOUBLE`) cell.
 pub inline fn is_num(x: Word) bool {
     if (abnormal(x)) return false;
     const t = getTag(x);
-    return t == word.INT or t == word.DOUBLE;
+    return t == .INT or t == .DOUBLE;
 }
 /// True when `x` is a `CONSTRUCTOR` cell.
 pub inline fn is_constructor(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.CONSTRUCTOR;
+    return !abnormal(x) and getTag(x) == .CONSTRUCTOR;
 }
 /// True when `x` is an `INT` (bignum) cell.
 pub inline fn is_int(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.INT;
+    return !abnormal(x) and getTag(x) == .INT;
 }
 /// True when `x` is a `DOUBLE` cell.
 pub inline fn is_double(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.DOUBLE;
+    return !abnormal(x) and getTag(x) == .DOUBLE;
 }
 /// True when `x` is a bare `ATOM` cell.
 pub inline fn is_atom(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.ATOM;
+    return !abnormal(x) and getTag(x) == .ATOM;
 }
 /// True when `x` is a `STRCONS` (interned-string) cell.
 pub inline fn is_strcons(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.STRCONS;
+    return !abnormal(x) and getTag(x) == .STRCONS;
 }
 /// True when `x` is an `ID` (identifier) cell.
 pub inline fn is_id(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.ID;
+    return !abnormal(x) and getTag(x) == .ID;
 }
 /// The value field of id `x` (its tail).
 pub inline fn idVal(x: Word) Word {
@@ -225,19 +225,19 @@ pub inline fn idVal(x: Word) Word {
 }
 /// True when `x` is a `DATAPAIR` cell.
 pub inline fn is_datapair(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.DATAPAIR;
+    return !abnormal(x) and getTag(x) == .DATAPAIR;
 }
 /// True when `x` is a `STARTREADVALS` cell.
 pub inline fn is_startreadvals(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.STARTREADVALS;
+    return !abnormal(x) and getTag(x) == .STARTREADVALS;
 }
 /// True when `x` is a `CONS` cell.
 pub inline fn is_cons(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.CONS;
+    return !abnormal(x) and getTag(x) == .CONS;
 }
 /// True when `x` is a `UNICODE` (wide-char) cell.
 pub inline fn is_unicode(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.UNICODE;
+    return !abnormal(x) and getTag(x) == .UNICODE;
 }
 
 /// Rewrite `*expr` in place to an `I`-indirection to `value`, then refocus on it.

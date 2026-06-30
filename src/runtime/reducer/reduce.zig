@@ -43,7 +43,7 @@
 const word = @import("../word.zig");
 const strtab = @import("../strtab.zig");
 const core = @import("reduce_core.zig");
-inline fn getTag(x: Word) u8 { return core.getTag(x); }
+inline fn getTag(x: Word) word.NodeTag { return core.getTag(x); }
 inline fn setTag(x: Word, val: u8) void { core.setTag(x, val); }
 const combinators = @import("combinators.zig");
 const ready = @import("ready.zig");
@@ -196,7 +196,7 @@ pub fn reduce(e_val: Word) Word {
 
                 switch (getTag(ctx.e)) {
                     // A private-name placeholder: chase to its bound value.
-                    word.STRCONS => {
+                    .STRCONS => {
                         ctx.e = pnVal(ctx.e);
                         if (ctx.e == word.UNDEF or ctx.e == word.FREE) {
                             word.printErr("\nimpossible event in reduce - undefined pname\n", .{});
@@ -204,14 +204,14 @@ pub fn reduce(e_val: Word) Word {
                         }
                         ctx.action = word.ACT_NEXTREDEX;
                     },
-                    word.DATAPAIR => {
+                    .DATAPAIR => {
                         upLeft(&ctx);
                         word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{strtab.strOf(hd_get(hd_get(ctx.e))), strtab.strOf(tl_get(ctx.e))});
                         reduce_rt.outstats();
                         main_clib.exit(1);
                     },
                     // A defined name: substitute its value and re-examine.
-                    word.ID => {
+                    .ID => {
                         if (idVal(ctx.e) == word.UNDEF or idVal(ctx.e) == word.FREE) {
                             word.printErr("\nUNDEFINED NAME - {s}\n", .{get_id(ctx.e)});
                             reduce_rt.outstats();
@@ -222,7 +222,7 @@ pub fn reduce(e_val: Word) Word {
                     },
                     // A saturated constructor application is already WHNF: pop
                     // the whole spine back to the root, then we are done.
-                    word.CONSTRUCTOR => {
+                    .CONSTRUCTOR => {
                         while (true) {
                             if (upleft(&ctx)) {
                                 ctx.action = word.ACT_DONE;
@@ -230,15 +230,15 @@ pub fn reduce(e_val: Word) Word {
                             }
                         }
                     },
-                    word.STARTREADVALS => {
+                    .STARTREADVALS => {
                         io_handlers.handle_STARTREADVALS(&ctx);
                     },
                     // Already a head-normal value (data leaf): nothing to rewrite.
-                    word.ATOM, word.INT, word.UNICODE, word.DOUBLE, word.CONS => {
+                    .ATOM, .INT, .UNICODE, .DOUBLE, .CONS => {
                         ctx.action = word.ACT_DONE;
                     },
                     else => {
-                        word.printErr("\nimpossible tag ({}) in reduce\n", .{getTag(ctx.e)});
+                        word.printErr("\nimpossible tag ({}) in reduce\n", .{@intFromEnum(getTag(ctx.e))});
                         main_clib.exit(1);
                     },
                 }
@@ -419,37 +419,37 @@ pub inline fn abnormal(x: Word) bool {
 }
 /// True when `x` is a (normal) `AP` application cell.
 pub inline fn is_ap(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.AP;
+    return !abnormal(x) and getTag(x) == .AP;
 }
 /// True when `x` is a number (`INT` or `DOUBLE`) cell.
 pub inline fn is_num(x: Word) bool {
     if (abnormal(x)) return false;
     const t = getTag(x);
-    return t == word.INT or t == word.DOUBLE;
+    return t == .INT or t == .DOUBLE;
 }
 /// True when `x` is a `CONSTRUCTOR` cell.
 pub inline fn is_constructor(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.CONSTRUCTOR;
+    return !abnormal(x) and getTag(x) == .CONSTRUCTOR;
 }
 /// True when `x` is an `INT` (bignum) cell.
 pub inline fn is_int(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.INT;
+    return !abnormal(x) and getTag(x) == .INT;
 }
 /// True when `x` is a `DOUBLE` cell.
 pub inline fn is_double(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.DOUBLE;
+    return !abnormal(x) and getTag(x) == .DOUBLE;
 }
 /// True when `x` is a bare `ATOM` cell.
 pub inline fn is_atom(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.ATOM;
+    return !abnormal(x) and getTag(x) == .ATOM;
 }
 /// True when `x` is a `STRCONS` (interned-string) cell.
 pub inline fn is_strcons(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.STRCONS;
+    return !abnormal(x) and getTag(x) == .STRCONS;
 }
 /// True when `x` is an `ID` (identifier) cell.
 pub inline fn is_id(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.ID;
+    return !abnormal(x) and getTag(x) == .ID;
 }
 /// The value field of id `x` (its tail).
 pub inline fn idVal(x: Word) Word {
@@ -457,19 +457,19 @@ pub inline fn idVal(x: Word) Word {
 }
 /// True when `x` is a `DATAPAIR` cell.
 pub inline fn is_datapair(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.DATAPAIR;
+    return !abnormal(x) and getTag(x) == .DATAPAIR;
 }
 /// True when `x` is a `STARTREADVALS` cell.
 pub inline fn is_startreadvals(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.STARTREADVALS;
+    return !abnormal(x) and getTag(x) == .STARTREADVALS;
 }
 /// True when `x` is a `CONS` cell.
 pub inline fn is_cons(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.CONS;
+    return !abnormal(x) and getTag(x) == .CONS;
 }
 /// True when `x` is a `UNICODE` (wide-char) cell.
 pub inline fn is_unicode(x: Word) bool {
-    return !abnormal(x) and getTag(x) == word.UNICODE;
+    return !abnormal(x) and getTag(x) == .UNICODE;
 }
 
 // --- In-place rewrites -------------------------------------------------------

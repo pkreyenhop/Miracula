@@ -840,7 +840,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             return;
         },
         else => {
-            const tag_val = reduce.getTag(e_val);
+            const tag_val = @intFromEnum(reduce.getTag(e_val));
             word.printErr("\nimpossible event in reduce (val: {}, tag: {})\n", .{e_val, tag_val});
             std.process.exit(1);
         },
