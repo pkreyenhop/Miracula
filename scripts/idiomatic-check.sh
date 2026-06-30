@@ -104,8 +104,13 @@ m13=$(grep -rnE --include='*.zig' 'callconv\(\.c\)' "$SRC" || true)
 metric "callconv(.c) usage" "$(printf '%s' "$m13" | grep -c . || true)" "1 (signal trampoline)" "$m13"
 
 IDX=14
-# raw hd[, tl[, tag[ accesses outside of src/runtime/heap.zig
-m14=$(grep -rnE --include='*.zig' '\b(hd|tl|tag)\b.*\[|\[\b(hd|tl|tag)\b' "$SRC" | grep -vE 'src/runtime/heap.zig|'"$EXEMPT" || true)
+# raw hd[, tl[, tag[ accesses outside of src/runtime/heap.zig.
+# Strip `//`-comments first so prose mentioning hd/tl/tag (e.g. reduction-rule
+# comments) is not miscounted as real cell access.
+m14=$(grep -rnE --include='*.zig' '\b(hd|tl|tag)\b.*\[|\[\b(hd|tl|tag)\b' "$SRC" \
+  | grep -vE 'src/runtime/heap.zig|'"$EXEMPT" \
+  | awk -F: '{ code=$0; sub(/^[^:]*:[0-9]+:/, "", code); sub(/\/\/.*/, "", code);
+              if (code ~ /(\<(hd|tl|tag)\>.*\[|\[\<(hd|tl|tag)\>)/) print }' || true)
 metric "raw cell accesses (hd/tl/tag[...]) outside heap.zig" "$(printf '%s' "$m14" | grep -c . || true)" "0" "$m14"
 
 IDX=15

@@ -25,7 +25,10 @@ files() { find "$SRC" -name '*.zig' | grep -vE "$EXEMPT" | sort; }
 # handle_G_ALT, word.S_p -> handleS_p, word.LIST_LAST -> handleLIST_LAST), which
 # keeps the dispatch table grep-aligned. Pattern: `handle` then an optional `_`
 # then an uppercase letter (so handle_strict_monadic is NOT exempt).
-snake() { grep -E '^[[:space:]]*(pub )?(export )?fn [a-z][a-zA-Z0-9]*_' "$1" 2>/dev/null | grep -cvE 'fn handle_?[A-Z]' || true; }
+# Also exempt `tab_complete`: zigline reflects over the completion handler's decls
+# and calls a method *named* tab_complete, so the name is externally dictated.
+EXEMPT_FN='fn handle_?[A-Z]|fn tab_complete'
+snake() { grep -E '^[[:space:]]*(pub )?(export )?fn [a-z][a-zA-Z0-9]*_' "$1" 2>/dev/null | grep -cvE "$EXEMPT_FN" || true; }
 
 # doc-commented fn defs: a `fn NAME(` whose immediately-preceding line is `///`.
 doced() { awk '
@@ -54,6 +57,6 @@ printf '%s\n' "snake  doc/fns  file"
 printf '%s\n' "${rows[@]}" | sort -rn
 
 if [ "${1:-}" = "-v" ]; then
-  echo; echo "snake_case fn definitions:"
-  grep -rnE '^[[:space:]]*(pub )?(export )?fn [a-z][a-zA-Z0-9]*_' $(files) | sed 's/^/  /'
+  echo; echo "snake_case fn definitions (excluding exempt dispatch/interface names):"
+  grep -rnE '^[[:space:]]*(pub )?(export )?fn [a-z][a-zA-Z0-9]*_' $(files) | grep -vE "$EXEMPT_FN" | sed 's/^/  /'
 fi
