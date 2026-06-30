@@ -40,7 +40,7 @@ partial),
 | J1 | Error unions for `SyntaxError`/`LoadError` (**overlaps R10**) | TESTABILITY | ⬜ |
 | J2 | Standardise "dump stats then die" panics | TESTABILITY | ⬜ |
 | A4b | Recovery redesign — SIGFPE synchronous, reducer unwind (**overlaps R10 step 3**) | REDESIGN | ⬜ |
-| B2 | `Value` union — char boundary done (option a started); remaining range-test sites in `trans`/`types`/`reduce`; typed `Heap.hd/tl` | REDESIGN | ◐ |
+| B2 | Option (a): char boundary done, range-test sites in `trans`/`types`/`reduce` remain. Option (b): Step 1 done (`reducer/spine.zig`, additive/inert) — blast radius found larger than documented (TRY/FAIL backtracking, `streamRead`'s C-ABI copy); cutover needs a differential-test harness first, not yet built | REDESIGN | ◐ |
 | B3 | Tracing GC (after B2) | REDESIGN | ⬜ |
 | C1 | Final data-model scorecard | REDESIGN | ⬜ |
 | C2 | Rewrite `ARCHITECTURE.md` / `ZIG_MIGRATION.md` to the new model | REDESIGN | ⬜ |
@@ -131,13 +131,80 @@ where **(b)** would reshape Phases 4–5.
   retired the `get_fil` snake name. With `tab_complete` exempted (zigline reflection
   name, `7e7bf07`), the readability snake-fn count is now a true **0**.
 
-### Phase 2 — Finish B2 option (a) *(incremental, golden-gated)*
+### Phase 2 — Finish B2 option (a) *(incremental, golden-gated; not started)*
 * Migrate the remaining range-test sites — `trans.zig` (`mkindex`/`getarg`-style
   `isAtom` ×3), `types.zig`, `reduce.zig` printer/`out` paths — onto
   `classify()`/`Value`.
 * Add a typed `Heap.hd`/`tl` value accessor on top of `classify`.
 * Closes B2 to its re-scoped DoD (range tests → 0 at value sites) and gives the
   TESTABILITY tiers precise typed reads.
+
+### Phase 2 (option b) — Repivot the hard core: explicit spine stack ◐ *(Step 1 done 2026-07-01; cutover not started)*
+
+**Step 1 — `reducer/spine.zig`, additive and inert.** ✅ Done (`71c47ae`). Built and
+unit-tested an explicit, growable `Spine`/`Frame` stack as a candidate drop-in
+replacement for `reduce_core.zig`'s in-graph pointer reversal
+(`downLeft`/`downRight`/`upLeft`/`upRight`). Derived by tracing every read/write the
+four existing primitives perform against the live `heap`: exactly one write per call
+is a real graph mutation (a write-back so sharing still works); everything else is
+pure bookkeeping for "what's below this frame", which the new module moves into an
+explicit `Frame{node, via_tl}` instead of borrowing a cell's own `hd`/`tl` field.
+Confirmed property: `downRight` does not push a new frame — it re-tags the existing
+top frame (both halves of visiting one `AP` cell share it); `upRight` mirrors this by
+flipping back without popping; only `upLeft` pops. Backed by a growable
+`std.ArrayList`, not a fixed array — pointer reversal has *no* depth bound (the stack
+is the heap), so a fixed capacity would silently turn long lazy spines (e.g.
+`length [1..1000000]`) into crashes; a stress test confirms 200k-deep with no
+overflow. 6 new unit tests, 163/163 total, golden/lint unaffected (the module is not
+wired into `reduce()`).
+
+**The investigation also revised the scope of the eventual cutover, upward.** The
+plan's framing — "two files kept in lock-step" (`reducer/reduce.zig`,
+`reducer/reduce_core.zig`) — undercounts the real blast radius. Direct, raw
+manipulation of the spine encoding (`ctx.s`/`hdGet`/`tlptrbit`) was also found in:
+* `combinators.zig`'s `handleTRY`/`handleFAIL` — Miranda's multi-equation
+  pattern-match backtracking walks the *existing* spine in bulk directly, not just
+  through the four primitives.
+* `runtime/reduce.zig`'s `streamRead` — a `pub export fn` (part of the C-ABI surface)
+  that inlines its own "UPLEFT" using *unmasked* `h`/`hp` accessors, relying silently
+  on that particular frame having been pushed by a pure `downLeft` chain (never
+  `downRight`) — an invariant that is correct but undocumented and easy to violate in
+  a hand-port.
+
+**Why the cutover is not attempted here.** A live cutover means swapping the
+"primitive" in ~4,200 lines of the hottest, least-tested code path in the
+interpreter (the golden corpus has no deep-recursion/long-spine evaluation case, and
+no automated way to catch a subtle WHNF-walk regression short of wrong output on some
+untested program shape). Hand-deriving every caller's exact sequence with full
+confidence, by static reading alone, was not achievable to the bar this change needs
+— the mechanism is more subtle than "two copies to keep in sync" (bookkeeping
+migrates between a cell's `hd` and `tl` over its lifetime on the stack, depending on
+call history) and the extra raw-manipulation sites above add real surface the plan
+hadn't accounted for. Shipping a hand-ported cutover without a stronger validation
+method than manual derivation risks a silent correctness bug in the reduction engine.
+
+**Recommended path to the cutover (not yet executed):**
+1. Build a trace-differential test harness: run real (golden-corpus-scale and
+   stress) Miranda programs through the *live* `reduce_core.zig` primitives,
+   capturing the call sequence + every heap write; replay the same logical operation
+   sequence through `Spine` on an equivalent starting graph; assert the final
+   *observable* graph state and program output match. This is the validation method
+   the cutover actually needs — not more hand-derivation.
+2. Migrate `combinators.zig`'s `handleTRY`/`handleFAIL` and `runtime/reduce.zig`'s
+   `streamRead` to use `Spine` explicitly (they can't stay on the old encoding once
+   cells stop carrying bookkeeping).
+3. Swap `reduce()`'s main loop and `ReductionCtx.s`/`.hold` for a per-call `Spine`
+   (threading `rt.allocator`, already used elsewhere for growable scratch, e.g.
+   `dstack`).
+4. Measure: there is no agreed perf budget yet, and the DoD requires "a
+   reduction-loop micro-benchmark within the agreed budget" — `src/micro_benchmarks.zig`
+   currently covers allocation/GC/interning, not the reducer loop, so that benchmark
+   needs writing first to get real numbers before/after.
+5. Re-run golden + the new differential harness + the benchmark; only then swap the
+   live path.
+
+This is multiple dedicated sessions of work, not a single increment — treat it as
+its own initiative once Step 1's groundwork (done) is built on.
 
 ### Phase 3 — R9 function-splitting *(per-function, independent of Phase 2 — may interleave)*
 Extract named steps one function at a time, easiest → hardest, golden after each:

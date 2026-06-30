@@ -354,6 +354,23 @@ not wait behind Track B's design work.
     option **b**'s job).*
   * **(b) Repivot the "hard core"** to pointer-reversal → an explicit typed spine stack — this is what
     actually dominates raw-`Word` arithmetic and unblocks B3 + A4b. Higher value, comparable risk.
+    **◐ Step 1 started (2026-07-01, `71c47ae`).** `reducer/spine.zig` — an explicit,
+    growable `Spine`/`Frame` stack — is built and unit-tested as a candidate
+    replacement for `reduce_core.zig`'s `downLeft`/`downRight`/`upLeft`/`upRight`,
+    derived by tracing every read/write the existing primitives perform (exactly one
+    write per call is a real graph mutation; the rest is bookkeeping the new module
+    moves out of the cell into an explicit `Frame`). **Additive and inert — not wired
+    into `reduce()`.** The investigation revised the blast-radius estimate upward:
+    beyond the two files the plan already flags as lock-step duplicates
+    (`reducer/reduce.zig`/`reducer/reduce_core.zig`), the raw spine encoding is also
+    manipulated directly by `combinators.zig`'s `handleTRY`/`handleFAIL` (bulk
+    backtracking walk) and `runtime/reduce.zig`'s `streamRead` (a `pub export fn` on
+    the C-ABI surface, with its own unmasked inline copy). The live cutover is
+    deliberately **not attempted** without a trace-differential validation harness
+    (run real programs through old vs. new, compare observable graph state) — manual
+    derivation alone isn't a strong enough proof for the hottest, least-tested path in
+    the interpreter. See [REMAINING_WORK_PLAN.md](REMAINING_WORK_PLAN.md) Phase 2
+    (option b) for the staged path to the cutover.
   * **(c) Defer B2**: since boxing already disambiguates char/number, do B3 (tracing GC) or the
     close-out (C1/C2) first and revisit the value representation later.
 
