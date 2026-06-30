@@ -33,7 +33,7 @@ partial),
 
 | ID | Item | Owner plan | State |
 |----|------|-----------|:-----:|
-| R3 | Single source for core constants; **+ the `algebraic_t`/`abstract_t`/`placeholder_t` numbering discrepancy (a separate *bug*)**; + re-confine 3 raw cell accesses; + `get_fil` dedup | ARCH Part B | ◐ |
+| R3 | Single source for core constants. **✅ The `*_t` numbering discrepancy was a real bug — fixed (`c2d98fc`).** Remaining: atom-constant copies → `word.*`; `get_fil` dedup. (The "3 raw cell accesses" were false positives — comments.) | ARCH Part B | ◐ |
 | R7 | Cryptic helpers — out-printers + `ctx.e/s/hold` decision done; **numbered helpers remain** (`typeError1-8`, `outType1/2`, `parseType1/2`, `parsePatV1-3`, `add1`/`remove1`/`newadd1`/`less1`/`decl1`) | ARCH Part B | ◐ |
 | R9 | Break up longest fns: `reduce`(213), `loadfile`(331), `yylex`(343), `mainEntry`(412), `etype`(608), `handleReadyState`(813) | ARCH Part B | ◐ |
 | R10 | Unify error channel (`MiraError` / `SYNERR` sentinels / `return NIL`) | ARCH Part B | ⏳ |
@@ -104,12 +104,25 @@ where **(b)** would reshape Phases 4–5.
   the concrete target list for a future R7 pass; R7 stays ◐.
 
 ### Phase 1 — Finish R3 + small encapsulation cleanups *(bounded, mechanical)*
-* **First** triage the `algebraic_t`/`abstract_t`/`placeholder_t` numbering
-  discrepancy as a real bug — separate investigation, **do not blind-merge**.
+* ✅ **The `algebraic_t`/`abstract_t`/`placeholder_t` numbering discrepancy was a
+  real, live bug — fixed** (commit `c2d98fc`). It was **not** cosmetic: `word.zig`
+  numbered the kind codes 2/3/5 while the C-ported checker (`trans.zig`/`types.zig`)
+  switches on 0/2/3, and `codegen` writes the `word.*` value that the checker reads
+  back — so `word.algebraic_t=2` collided with the checker's `abstract_t=2` and
+  **every user `::=` type was processed as an `abstype`** (`Green` → `<abstract ob>`;
+  `tree ::= Leaf num | …` → bogus `cannot unify num with num`). Built-in `bool`
+  escaped (special-cased) and the golden corpus never evaluated a user `::=` type, so
+  it was invisible. Fix: renumber `word.zig` to the authoritative checker values
+  (algebraic=0, synonym=1, abstract=2, placeholder=3, free=4); alias the redundant
+  local consts to `word.*` (R3 closure for these codes); add regression goldens
+  `algebraic_nullary` + `algebraic_param`.
 * Then migrate the remaining atom-constant copies to `word.*` aliases. Leave the
   two intentionally-decoupled state modules as-is.
-* **Re-confine the 3 raw cell accesses** (`hd`/`tl`/`tag[...]`) that leaked outside
-  `heap.zig` (idiomatic-check metric 14: 0 → 3) back behind the `Heap` API.
+* **No raw-cell-access regression after all** — the "0 → 3" in idiomatic-check
+  metric 14 is **false positives**: all three matches are *comments* mentioning
+  `hd`/`tl`/`tag` (`combinators.zig:500/570` reduction rules, `word.zig:254` header),
+  not real cell access. Fix is to tighten the metric-14 regex to skip comments — a
+  `scripts/idiomatic-check.sh` refinement, not a code change.
 * **Dedup the file-name accessor** (from Phase 0): unify `heap.get_fil` (interned
   `strtab.strOf`) with the two private `getFil` helpers (`heap.zig:1329`,
   `lex.zig:180`) that still use the pre-interning `castPtr` path — confirm they read
