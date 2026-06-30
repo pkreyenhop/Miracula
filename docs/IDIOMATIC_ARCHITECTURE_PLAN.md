@@ -156,25 +156,56 @@ Each is behaviour-preserving and golden-gated.
 
 | # | Recommendation | Evidence | Maps to |
 |---|----------------|----------|---------|
-| **R1** | **Collapse the `reduce.zig` ↔ `reduce_core.zig` duplication** — have the engine import the primitives instead of copying them. | **57 primitives** duplicated "in lock-step" | — (new) |
+| **R1** ✅ | **Collapse the `reduce.zig` ↔ `reduce_core.zig` duplication** — have the engine import the primitives instead of copying them. **Done:** 60 duplicated primitives in reduce.zig replaced with `pub const X = core.X;` re-exports (bodies verified identical / alias-name-only diffs); reduce.zig ~900 → 414 lines. | **57 primitives** duplicated "in lock-step" | — (new) |
 | **R2** ✅ | **Finish snake_case → camelCase in the reducer** (`hd_get`→`hdGet`, `tl_set`, `rewrite_to_*`, `is_*`, `get_id`, `force_dbl`). **Done:** 37 helpers renamed tree-wide (~900 call sites). | ~40 names, in both reducer files | end state: "no migration-era naming" |
 | **R3** ◑ | **One source of truth for core constants** — import `NIL`/`CMBASE`/tag codes from `word.zig`; delete the local copies. **Done (partial):** tag codes (via P4) + value-verified CMBASE/CONST/atom-constants/type-codes in big/lex/codegen/trans aliased to `word.*`. **Left:** broader atom-constant copies in other files; the two intentionally-decoupled state modules; the `algebraic_t`/`abstract_t`/`placeholder_t` numbering discrepancy (flagged as a separate bug — do NOT blind-merge). | **21 files** re-declare them | P4 |
-| **R4** | **Return `bool` from predicates** instead of `c_int` (1/0): `isChar`, `isconstrname`, `isNat`, `member`, `same`, `okid`, … | **65 `c_int`-returning fns** | P4, P8 |
+| **R4** ✅ | **Return `bool` from predicates** instead of `c_int` (1/0). **Done:** the boolean predicates converted — isChar, isNat, isconstrname, okid/okulid/okpath (+ retyped the `kollect` higher-order helper), ispoly, nonGeneric, occurs, utf8test, okdump, badEditor, peekdig, nclchk. Three-valued functions (cmp/compare/sign/memclass) and the C-ABI `c_int` fns (strcmp/system/…) are correctly left `c_int`. | **65 `c_int`-returning fns** | P4, P8 |
 | **R5** ✅ | **Drop the `r7_` import prefixes.** *(done in Part A / Priority 3)* | ~190 uses | **P3** |
 | **R6** ✅ | **Trim the `main.*` god-namespace**; migrate call sites to the owning module. *(done in Part A)* | ~108 re-exports | **P1/P2/P7** |
-| **R7** | **Rename cryptic numbered/register helpers** — `out`/`out1`/`out2`/`outr`/`outf` → `outTerm`/`outSubterm`/…; `ReductionCtx` fields `e`/`s`/`hold` → `focus`/`spine`/`scratch`. (Keep the Miranda-idiom `h`/`t`/`hp`/`tp`; document the convention once.) | — | P6-adjacent |
-| **R8** | **Replace the per-file `abi` shim structs** (`const abi = struct { pub const printf = … }`) with one shared C-surface module or direct imports. | `types.zig` (124), `trans.zig`, … | P3-adjacent |
-| **R9** | **Break up the longest functions** — `reduce()` (~220 lines), `codegen`, `yylex`, `block`, `mkshow`, `loadDefs`, `mainEntry` — into named steps (each then unit-testable). | — | "smaller modules", P12 |
-| **R10** | **Standardize the error channel** — unify the `MiraError` union, the `SYNERR`/`errs` sentinels, and `return NIL`-as-failure onto error unions (plan item J1). | 3 coexisting styles | — (design-bearing) |
+| **R7** ◑ | **Rename cryptic numbered/register helpers.** **Done:** the out-printers renamed (out→outTerm, out1→outSubterm, out2→outAtom, outr→outReal). **Decided against:** renaming `ReductionCtx` fields `e`/`s`/`hold` (351 `ctx.e` uses, `.e` a hazardous sed target, and they're graph-reduction idiom) — instead added per-field doc comments (the "document the convention" path the plan endorses for `h`/`t`/`hp`/`tp`). | — | P6-adjacent |
+| **R8** ✅ | **Replace the per-file `abi` shim structs.** **Done:** types.zig's 126-member shim (3 used) and trans.zig's 5-member shim (2 used) deleted; call sites point at `main_clib.*`/`word.*` directly (~130 dead lines removed). | `types.zig` (124), `trans.zig`, … | P3-adjacent |
+| **R9** ◑ | **Break up the longest functions** into named steps. **Done (demonstrated):** `command()` 382 → 219 lines (extracted `cmdEdit`/`cmdFiles`). **Left:** `handleReadyState` (813), `etype` (608), `mainEntry` (412), `yylex` (343), `loadfile` (331), `reduce` (213) — each shares heavy local/register state, so each needs an individual, carefully-validated extraction. | — | "smaller modules", P12 |
+| **R10** ⏳ | **Standardize the error channel** — unify the `MiraError` union, the `SYNERR`/`errs` sentinels, and `return NIL`-as-failure onto error unions. **Deliberately deferred** (see plan below): error *recovery* runs through **13 `setjmp`/`siglongjmp` sites** (`siglongjmp(&rs.env, 1)` for SIGINT/SIGFPE/syntax-error recovery), which do not map onto Zig error unions without dismantling the non-local recovery model. The 44-case golden corpus exercises error/recovery paths only sparsely, so this change cannot be safely validated the way the rest of Part B was. It warrants its own designed, reviewed change. | 3 coexisting styles | — (design-bearing) |
 
 ## Sequencing
 
-* **Quick wins (mechanical, byte-identical):** R5 (`r7_` prefixes), R3 (constant
-  de-dup), R2 (reducer rename).
-* **Structural (incremental, per-module):** R1 (reducer de-dup), R6/Part A P1–P2–P7
-  (dissolve `main.*`), R8 (shared C surface), R4 (`bool` predicates).
-* **Judgment / design-bearing (do thoughtfully, last):** R7 (renames), R9 (function
-  splitting), R10 / J1 (error model), P4 (`Tag` enum migration).
+* **Quick wins (mechanical, byte-identical):** R5 ✅, R3 ◑, R2 ✅.
+* **Structural (incremental, per-module):** R1 ✅, R6/Part A ✅, R8 ✅, R4 ✅.
+* **Judgment / design-bearing (do thoughtfully, last):** R7 ◑, R9 ◑, R10 ⏳, P4 ✅.
+
+**Status:** Part A complete; Part B R1/R2/R4/R5/R6/R8 done, R3/R7/R9 partial, R10
+deferred (below). Every landed step kept the unit suite (157 tests), the golden
+corpus (44 byte-identical), and `zig build lint` green.
+
+## R10 — concrete plan (the deferred error-model unification)
+
+The interpreter currently mixes three error styles:
+1. **Zig error unions** (`MiraError!T`) — already used in ~7 type-checker functions.
+2. **Sentinel globals** — `SYNERR` token + `core_state.s.errs` (the offending
+   node) + `acterror()`, used by the parser/compiler for syntax errors.
+3. **`return NIL`-as-failure** — scattered through the graph code.
+…and recovery is **non-local** via `siglongjmp(&rs.env, 1)` (13 sites: SIGINT,
+SIGFPE, and the syntax-error `acterror` path all jump back to the REPL `setjmp`).
+
+A safe migration, in order:
+* **Step 1 (no behaviour change):** wrap the sentinel reads/writes behind named
+  helpers (`raiseSyntaxError(node)`, `currentErrorNode()`) so the channel has one
+  API before changing its mechanism. Unit-test those.
+* **Step 2:** convert the `return NIL`-as-failure leaf functions (no recovery
+  involved) to `MiraError!Word`, propagating `try` up to the nearest existing
+  sentinel/longjmp boundary. These are individually golden-checkable.
+* **Step 3 (design decision, needs review):** decide the recovery model. Either
+  (a) **keep `setjmp`/`longjmp`** for signal + top-level REPL recovery (it is the
+  C-port's deliberate model and is hard to beat for "abort this evaluation, return
+  to prompt"), and only unify the *non-recovery* error reporting onto error unions;
+  or (b) replace longjmp with error propagation end-to-end (large; must re-prove
+  signal-safety and that partial heap mutations are unwound correctly).
+* **Validation:** add golden/integration cases that actually exercise the error
+  paths (syntax error mid-script, SIGINT during reduction, divide-by-zero) before
+  touching the mechanism — today's corpus does not cover them.
+
+Recommended: do Steps 1–2 (safe, incremental) in a dedicated PR; treat Step 3 as a
+separate design proposal. Until then R10 stays open.
 
 ---
 
