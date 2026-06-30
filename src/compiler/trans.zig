@@ -85,13 +85,15 @@ const NIL = word.NIL;
 const NILS = word.NILS;
 const UNDEF = word.UNDEF;
 const wrong_t = word.wrong_t;
-// NB: these type-declaration *kind* codes use a local 0/1/2/3 numbering that does
-// NOT match word.zig (synonym_t=1, algebraic_t=2, abstract_t=3) — kept local and
-// self-consistent on purpose (a flagged discrepancy); do not alias to word.*.
-const placeholder_t: Word = 3;
-const algebraic_t: Word = 0;
-const synonym_t: Word = 1;
-const abstract_t: Word = 2;
+// Type-declaration kind codes — single source of truth in `word.zig`. These used to
+// carry a local 0/1/2/3 numbering that disagreed with word.zig's (then 2/3/5); that
+// mismatch was a real bug (codegen wrote word.* values that this checker misread, so
+// every user `::=` type was processed as an `abstype`). word.zig has since been
+// renumbered to these values and the goldens `algebraic_*` lock the behaviour.
+const algebraic_t = word.algebraic_t;
+const synonym_t = word.synonym_t;
+const abstract_t = word.abstract_t;
+const placeholder_t = word.placeholder_t;
 const CONST = word.CONST;
 const ATOMLIMIT = word.ATOMLIMIT;
 

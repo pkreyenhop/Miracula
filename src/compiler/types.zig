@@ -372,8 +372,8 @@ const bool_t: Word = 1;
 const num_t: Word = 2;
 const char_t: Word = 3;
 const list_t: Word = 4;
-const synonym_t: Word = 1;
-const abstract_t: Word = 2;
+const synonym_t = word.synonym_t;
+const abstract_t = word.abstract_t;
 const UNDEF: Word = CMBASE + 140;
 
 /// Whether a type node is a compound (application) type.
@@ -1360,7 +1360,7 @@ fn compDeps(n: Word) errors.MiraError!void {
     cs.R = cons(cons(n, rhs), cs.R);
 }
 
-const algebraic_t: Word = 0;
+const algebraic_t = word.algebraic_t;
 const FREE: Word = 276;
 
 /// Renumber type variables across a list of definitions.

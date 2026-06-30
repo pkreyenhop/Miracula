@@ -629,16 +629,22 @@ pub const alias_t: Word = 12;
 /// Type code: a freshly introduced type.
 pub const new_t: Word = 13;
 
+// NB: these kind codes MUST match the values the type-checker switches on in
+// `compiler/trans.zig` and `compiler/types.zig` (the C-ported core): a type node's
+// class field is written here (via `codegen`→`declType`) and read there. They were
+// previously mis-numbered (algebraic=2 / abstract=3 / placeholder=5), which collided
+// `algebraic_t` with the checker's local `abstract_t=2` and made every user `::=`
+// type be processed as an `abstype`. See the regression goldens `algebraic_*`.
+/// Type-declaration kind: a `::=` algebraic type.
+pub const algebraic_t: Word = 0;
 /// Type-declaration kind: a `==` synonym.
 pub const synonym_t: Word = 1;
-/// Type-declaration kind: a `::=` algebraic type.
-pub const algebraic_t: Word = 2;
 /// Type-declaration kind: an `abstype`.
-pub const abstract_t: Word = 3;
+pub const abstract_t: Word = 2;
+/// Type-declaration kind: a forward-reference placeholder.
+pub const placeholder_t: Word = 3;
 /// Type-declaration kind: a `%free` parameter.
 pub const free_t: Word = 4;
-/// Type-declaration kind: a forward-reference placeholder.
-pub const placeholder_t: Word = 5;
 
 // Compiler and reducer action constants — the reducer's step status.
 
