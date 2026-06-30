@@ -42,7 +42,7 @@ domain codes, and duplicated definitions.
 
 # Part A — Make `main.zig` idiomatic Zig
 
-> **Status (done): Priorities 1, 2, 3, 6, 7, 10 ✅.** The ~108-symbol re-export layer
+> **Status (done): Priorities 1, 2, 3, 4, 6, 7, 10 ✅.** The ~108-symbol re-export layer
 > was dissolved over 8 golden-gated commits — all **1457** `main.X` references
 > migrated to the owning modules (`heap`/`cs`/`rs`/constants/`errors`/the helper
 > relocations/the cross-module functions). **No file imports `main` any more.**
@@ -54,8 +54,16 @@ domain codes, and duplicated definitions.
 > Priority 3 (the `r7_*` import prefixes) is now also done — all ~127 uses across 13
 > files dropped to clean module names, with the duplicate-import merges and the
 > ambiguous `r7_reduce` cases (`engine` / `reduce_rt`) handled explicitly.
-> **Remaining:** Priority 4 (migrate raw tag codes onto the `NodeTag` enum) —
-> whole-tree, design-bearing, shared with Part B (R3/R4).
+> Priority 4 (raw tag codes → `NodeTag`) is done too: `NodeTag` is now the single
+> source of truth (the `ATOM`…`TCONS` `Word` consts derive from it via
+> `@intFromEnum`), and every domain tag read across the tree (~126 comparisons + the
+> reducer dispatch + 12 switches) is typed `.TAG`, including the hot reducer paths.
+> The local `const TAG: u8` redeclarations in types/lex/trans/big are deleted; the
+> only `u8`-returning reader left is the low-level `Heap.getTag` storage accessor.
+> `make(TAG, …)` writes use the canonical `word.TAG`; numeric tag diagnostics keep
+> `@intFromEnum`.
+> **Part A is now complete.** Remaining idiomatic work lives in Part B (R1 reducer
+> de-dup, R2 reducer camelCase, R4 `bool` predicates, R7–R10).
 
 ## Problem
 
@@ -92,7 +100,7 @@ migration: one import, no duplicates, **drop the `r7_` prefixes** (measured: **~
 into the existing import; ambiguous `r7_reduce` split into `engine` (the reducer
 engine) and `reduce_rt` (the runtime reduce support) where the plain name was taken.
 
-### Priority 4 — Introduce stronger domain types
+### Priority 4 — Introduce stronger domain types ✅ done
 Replace raw-integer codes with enums:
 ```zig
 pub const Tag = enum(u8) { ap = 9, cons = 11, ... };
