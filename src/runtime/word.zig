@@ -251,60 +251,62 @@ pub const INFIXNAME: Word = 304;
 /// Token: a back-quoted infix constructor, `` `C` ``.
 pub const INFIXCNAME: Word = 305;
 
-// Raw heap-cell tag values (0..22). The typed [NodeTag] enum below mirrors these
-// names; the bare `Word` form is used where a raw tag byte is needed.
+// Raw heap-cell tag values (0..22), derived from the canonical [NodeTag] enum
+// below so there is a single source of truth for the numeric codes. The bare
+// `Word` form is used only where a raw tag byte is written (e.g. `make(AP, …)`);
+// reads `switch` on [getTag], which returns the typed `NodeTag`.
 
 /// Cell tag: a bare atom (no hd/tl payload).
-pub const ATOM: Word = 0;
+pub const ATOM: Word = @intFromEnum(NodeTag.ATOM);
 /// Cell tag: a boxed `f64` (double-precision float).
-pub const DOUBLE: Word = 1;
+pub const DOUBLE: Word = @intFromEnum(NodeTag.DOUBLE);
 /// Cell tag: a data pair (constructor argument pairing).
-pub const DATAPAIR: Word = 2;
+pub const DATAPAIR: Word = @intFromEnum(NodeTag.DATAPAIR);
 /// Cell tag: file information for an open stream.
-pub const FILEINFO: Word = 3;
+pub const FILEINFO: Word = @intFromEnum(NodeTag.FILEINFO);
 /// Cell tag: a type variable (during type inference).
-pub const TVAR: Word = 4;
+pub const TVAR: Word = @intFromEnum(NodeTag.TVAR);
 /// Cell tag: a bignum digit cell (15-bit digit chain — see `big.zig`).
-pub const INT: Word = 5;
+pub const INT: Word = @intFromEnum(NodeTag.INT);
 /// Cell tag: an algebraic-type constructor.
-pub const CONSTRUCTOR: Word = 6;
+pub const CONSTRUCTOR: Word = @intFromEnum(NodeTag.CONSTRUCTOR);
 /// Cell tag: a string-cons cell (carries an interned string id).
-pub const STRCONS: Word = 7;
+pub const STRCONS: Word = @intFromEnum(NodeTag.STRCONS);
 /// Cell tag: an identifier node.
-pub const ID: Word = 8;
+pub const ID: Word = @intFromEnum(NodeTag.ID);
 /// Cell tag: a function application `(f x)`.
-pub const AP: Word = 9;
+pub const AP: Word = @intFromEnum(NodeTag.AP);
 /// Cell tag: a lambda abstraction.
-pub const LAMBDA: Word = 10;
+pub const LAMBDA: Word = @intFromEnum(NodeTag.LAMBDA);
 /// Cell tag: a list cons cell `(head : tail)`.
-pub const CONS: Word = 11;
+pub const CONS: Word = @intFromEnum(NodeTag.CONS);
 /// Cell tag: a bundle of pattern-match alternatives (`tries`).
-pub const TRIES: Word = 12;
+pub const TRIES: Word = @intFromEnum(NodeTag.TRIES);
 /// Cell tag: a labelled node.
-pub const LABEL: Word = 13;
+pub const LABEL: Word = @intFromEnum(NodeTag.LABEL);
 /// Cell tag: a `show`/format node.
-pub const SHOW: Word = 14;
+pub const SHOW: Word = @intFromEnum(NodeTag.SHOW);
 /// Cell tag: the head of a `readvals` stream.
-pub const STARTREADVALS: Word = 15;
+pub const STARTREADVALS: Word = @intFromEnum(NodeTag.STARTREADVALS);
 /// Cell tag: a `let` binding group.
-pub const LET: Word = 16;
+pub const LET: Word = @intFromEnum(NodeTag.LET);
 /// Cell tag: a `letrec` (recursive) binding group.
-pub const LETREC: Word = 17;
+pub const LETREC: Word = @intFromEnum(NodeTag.LETREC);
 /// Cell tag: a shared (memoised) node.
-pub const SHARE: Word = 18;
+pub const SHARE: Word = @intFromEnum(NodeTag.SHARE);
 /// Cell tag: a lexer node.
-pub const LEXER: Word = 19;
+pub const LEXER: Word = @intFromEnum(NodeTag.LEXER);
 /// Cell tag: a tuple pair.
-pub const PAIR: Word = 20;
+pub const PAIR: Word = @intFromEnum(NodeTag.PAIR);
 /// Cell tag: a boxed Unicode code point (char `>= 256`).
-pub const UNICODE: Word = 21;
+pub const UNICODE: Word = @intFromEnum(NodeTag.UNICODE);
 /// Cell tag: a strict cons cell.
-pub const TCONS: Word = 22;
+pub const TCONS: Word = @intFromEnum(NodeTag.TCONS);
 
-/// Typed view of the heap-cell tag byte (R3.2): the same kinds as the raw
-/// `ATOM`…`TCONS` codes above, but as an `enum(u8)` so reads can `switch`
-/// exhaustively. [getTag] returns this; the open `_` tag admits raw byte values
-/// outside the named set.
+/// Typed view of the heap-cell tag byte (R3.2) — the canonical definition of the
+/// tag codes (the raw `ATOM`…`TCONS` `Word` consts above are derived from it).
+/// As an `enum(u8)` so reads can `switch` exhaustively. [getTag] returns this; the
+/// open `_` tag admits raw byte values outside the named set.
 pub const NodeTag = enum(u8) {
     ATOM = 0,
     DOUBLE = 1,
