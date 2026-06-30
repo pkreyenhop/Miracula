@@ -503,22 +503,31 @@ pub fn fallible(input_e: Word) Word {
     var e = input_e;
     while (true) {
         const e_tag = getTag(e);
-        if (e_tag == .LABEL) {
-            e = t(e);
-            continue;
-        }
-        if (e_tag == .LETREC or e_tag == .LET) {
-            e = t(e);
-        } else if (e_tag == .LAMBDA) {
-            if (irrefutable(h(e)) != 0) {
+        switch (e_tag) {
+            .LABEL => {
                 e = t(e);
-            } else {
-                return 1;
-            }
-        } else if (e_tag == .AP and getTag(h(e)) == .AP and getTag(h(h(e))) == .AP and h(h(h(e))) == COND) {
-            e = t(e);
-        } else {
-            return if (e == FAIL) 1 else 0;
+                continue;
+            },
+            .LETREC, .LET => {
+                e = t(e);
+            },
+            .LAMBDA => {
+                if (irrefutable(h(e)) != 0) {
+                    e = t(e);
+                } else {
+                    return 1;
+                }
+            },
+            .AP => {
+                if (getTag(h(e)) == .AP and getTag(h(h(e))) == .AP and h(h(h(e))) == COND) {
+                    e = t(e);
+                } else {
+                    return if (e == FAIL) 1 else 0;
+                }
+            },
+            else => {
+                return if (e == FAIL) 1 else 0;
+            },
         }
     }
 }
