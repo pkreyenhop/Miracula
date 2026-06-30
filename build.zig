@@ -400,6 +400,55 @@ pub fn build(b: *std.Build) void {
     strict_step.dependOn(&run_strict_golden_tests.step);
     strict_step.dependOn(&fmt_check.step);
     strict_step.dependOn(lint_step);
+
+    // Benchmark targets (optimized for ReleaseFast)
+    const bench_version_options = b.addOptions();
+    bench_version_options.addOption(i32, "version", parseVersion(version_text));
+    bench_version_options.addOption([]const u8, "vdate", vdate);
+    bench_version_options.addOption([]const u8, "host", b.fmt("compiled by zig build\n{s}\n", .{host}));
+    bench_version_options.addOption(bool, "reduce_trace", false);
+    bench_version_options.addOption(bool, "is_strict", false);
+
+    const bench_mira_module = b.createModule(.{
+        .root_source_file = b.path("src/main.zig"),
+        .target = target,
+        .optimize = .ReleaseFast,
+        .link_libc = need_libc,
+    });
+    bench_mira_module.addOptions("version_options", bench_version_options);
+    bench_mira_module.addImport("zigline", zigline_dep.module("zigline"));
+
+    const bench_mira = b.addExecutable(.{
+        .name = "bench-mira",
+        .root_module = bench_mira_module,
+    });
+    const install_bench_mira = b.addInstallArtifact(bench_mira, .{});
+
+    const bench_micro_module = b.createModule(.{
+        .root_source_file = b.path("src/micro_benchmarks.zig"),
+        .target = target,
+        .optimize = .ReleaseFast,
+        .link_libc = need_libc,
+    });
+    bench_micro_module.addOptions("version_options", bench_version_options);
+
+    const bench_micro = b.addExecutable(.{
+        .name = "bench-micro",
+        .root_module = bench_micro_module,
+    });
+    const install_bench_micro = b.addInstallArtifact(bench_micro, .{});
+
+    const run_bench_micro = b.addRunArtifact(bench_micro);
+
+    const run_bench_macro = b.addSystemCommand(&.{ "python3", "tests/benchmark_runner.py" });
+    run_bench_macro.addFileArg(bench_mira.getEmittedBin());
+    run_bench_macro.step.dependOn(&install_bench_mira.step);
+
+    const bench_step = b.step("bench", "Run micro-benchmarks and macro-benchmarks");
+    bench_step.dependOn(&install_bench_mira.step);
+    bench_step.dependOn(&install_bench_micro.step);
+    bench_step.dependOn(&run_bench_micro.step);
+    bench_step.dependOn(&run_bench_macro.step);
 }
 
 fn readTrimmed(b: *std.Build, path: []const u8) []const u8 {
