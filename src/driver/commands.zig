@@ -16,8 +16,8 @@ const Word = word.Word;
 const NIL = word.NIL;
 
 // State owned by heap.zig / reduce.zig — not yet accessible via @import.
-inline fn getTag(x: Word) u8 {
-    return heap.heap.getTag(x);
+inline fn getTag(x: Word) word.NodeTag {
+    return @enumFromInt(heap.heap.getTag(x));
 }
 
 const lex_state = @import("../parser/lex_state.zig");
@@ -346,7 +346,7 @@ pub fn command() void {
                         const n = heap.getId(x);
                         var y = rt.rs.primenv;
                         while (y != NIL) : (y = heap.t(y)) {
-                            if (getTag(heap.h(y)) == word.ID) {
+                            if (getTag(heap.h(y)) == .ID) {
                                 if (heap.h(y) == x or word.strcmp(abi.getaka(heap.h(y)), n) == 0) {
                                     finger(heap.getId(heap.h(y)));
                                 }
@@ -356,7 +356,7 @@ pub fn command() void {
                         while (ff != NIL) : (ff = heap.t(ff)) {
                             var y_def = heap.filDefs(heap.h(ff));
                             while (y_def != NIL) : (y_def = heap.t(y_def)) {
-                                if (getTag(heap.h(y_def)) == word.ID) {
+                                if (getTag(heap.h(y_def)) == .ID) {
                                     if (heap.h(y_def) == x or word.strcmp(abi.getaka(heap.h(y_def)), n) == 0) {
                                         finger(heap.getId(heap.h(y_def)));
                                     }

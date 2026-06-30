@@ -36,8 +36,8 @@ const core_state = @import("../runtime/core_state.zig");
 const lineedit = @import("lineedit.zig");
 const ls = lex_state.ls;
 
-inline fn getTag(x: Word) u8 {
-    return heap.heap.getTag(x);
+inline fn getTag(x: Word) word.NodeTag {
+    return @enumFromInt(heap.heap.getTag(x));
 }
 
 /// True if a numeric command-line flag value is outside the accepted range (100 .. 50,000,000).
@@ -407,7 +407,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 rt.rs.make_status = abi.strcons(@as(Word, strtab.strBits(s)), rt.rs.make_status);
             }
         }
-        if (getTag(rt.rs.make_status) == word.STRCONS) {
+        if (getTag(rt.rs.make_status) == .STRCONS) {
             var h_val: Word = 0;
             var maxw: Word = 0;
             word.print("errors or undefined names found in:-\n", .{});

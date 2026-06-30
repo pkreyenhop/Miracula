@@ -46,8 +46,8 @@ inline fn hd_of(x: word.Word) word.Word {
 inline fn tl_of(x: word.Word) word.Word {
     return heap.heap.t(x);
 }
-inline fn getTag(x: word.Word) u8 {
-    return heap.heap.getTag(x);
+inline fn getTag(x: word.Word) word.NodeTag {
+    return @enumFromInt(heap.heap.getTag(x));
 }
 
 // C macro: get_id(x) == (char*)hd(hd(hd(x))); the id string is an interned StrId.
@@ -64,7 +64,7 @@ fn stringFromCons(gpa: Allocator, cell: word.Word) ![]u8 {
     var buf: std.ArrayList(u8) = .empty;
     errdefer buf.deinit(gpa);
     var cur = cell;
-    while (cur >= ATOMLIMIT and getTag(cur) == word.CONS) {
+    while (cur >= ATOMLIMIT and getTag(cur) == .CONS) {
         const ch_val: word.Word = hd_of(cur);
         cur = tl_of(cur);
         const codepoint: u21 = switch (word.classify(ch_val)) {
@@ -161,7 +161,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
             if (w >= ATOMLIMIT) {
                 const t_tag = getTag(w);
                 // 3. Non-empty string literal: CONS chain of char values
-                if (t_tag == word.CONS) {
+                if (t_tag == .CONS) {
                     break :blk Token{
                         .id = .const_str,
                         .span = span,
@@ -169,7 +169,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
                     };
                 }
                 // 4. Float literal: DOUBLE-tagged heap cell; text in dicp
-                if (t_tag == word.DOUBLE) {
+                if (t_tag == .DOUBLE) {
                     break :blk Token{
                         .id = .const_float,
                         .span = span,
@@ -179,7 +179,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
                 // 5. Integer literal: INT-tagged heap cell; decimal text in dicp.
                 // Keep the original text so arbitrary precision values are not
                 // truncated to a machine integer before codegen calls bigscan().
-                if (t_tag == word.INT) {
+                if (t_tag == .INT) {
                     const text_slice = std.mem.span(@as([*:0]u8, @ptrCast(ls.dicp)));
                     break :blk Token{ .id = .const_int, .span = span, .text = try gpa.dupe(u8, text_slice) };
                 }

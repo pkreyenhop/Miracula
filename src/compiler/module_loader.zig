@@ -9,7 +9,7 @@ const errors = @import("../runtime/errors.zig");
 const strtab = @import("../runtime/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const cs = @import("compiler_state.zig").cs;
-inline fn getTag(x: word.Word) u8 { return heap.heap.getTag(x); }
+inline fn getTag(x: word.Word) word.NodeTag { return @enumFromInt(heap.heap.getTag(x)); }
 const abi = @import("../runtime/main_clib.zig");
 const parser_api = @import("../parser/parser_api.zig");
 const setup = @import("setup.zig");
@@ -293,7 +293,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
 
     if (core_state.s.SYNERR == 0 and rt.rs.detrop != NIL) {
         const gd = rt.rs.detrop;
-        while (rt.rs.detrop != NIL and getTag(heap.dval(heap.h(rt.rs.detrop))) == word.LABEL) {
+        while (rt.rs.detrop != NIL and getTag(heap.dval(heap.h(rt.rs.detrop))) == .LABEL) {
             rt.rs.detrop = heap.t(rt.rs.detrop);
         }
         if (rt.rs.detrop != NIL) {
@@ -305,13 +305,13 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             abi.outPattern(abi.stdout().?, heap.dlhs(heap.h(rt.rs.detrop)));
             _ = word.putchar('\n');
             rt.rs.detrop = heap.t(rt.rs.detrop);
-            while (rt.rs.detrop != NIL and getTag(heap.dval(heap.h(rt.rs.detrop))) == word.LABEL) {
+            while (rt.rs.detrop != NIL and getTag(heap.dval(heap.h(rt.rs.detrop))) == .LABEL) {
                 rt.rs.detrop = heap.t(rt.rs.detrop);
             }
         }
 
         var gd_mut = gd;
-        while (gd_mut != NIL and getTag(heap.dval(heap.h(gd_mut))) != word.LABEL) {
+        while (gd_mut != NIL and getTag(heap.dval(heap.h(gd_mut))) != .LABEL) {
             gd_mut = heap.t(gd_mut);
         }
         if (gd_mut != NIL) {
@@ -323,7 +323,7 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             abi.outPattern(abi.stdout().?, heap.dlhs(heap.h(gd_mut)));
             _ = word.putchar('\n');
             gd_mut = heap.t(gd_mut);
-            while (gd_mut != NIL and getTag(heap.dval(heap.h(gd_mut))) != word.LABEL) {
+            while (gd_mut != NIL and getTag(heap.dval(heap.h(gd_mut))) != .LABEL) {
                 gd_mut = heap.t(gd_mut);
             }
         }
@@ -480,10 +480,10 @@ pub fn mkincludes(includees_val: Word) Word {
                             var p = heap.filDefs(heap.h(y));
                             var q = heap.filDefs(heap.h(z));
                             while (p != NIL and q != NIL) {
-                                if (getTag(heap.h(p)) == word.ID) {
-                                    if (heap.idType(heap.h(p)) == word.type_t and (getTag(heap.h(q)) == word.ID or getTag(pnVal(heap.h(q))) == word.ID)) {
+                                if (getTag(heap.h(p)) == .ID) {
+                                    if (heap.idType(heap.h(p)) == word.type_t and (getTag(heap.h(q)) == .ID or getTag(pnVal(heap.h(q))) == .ID)) {
                                         var w = tclashes;
-                                        const orig = if (getTag(heap.h(q)) == word.ID) heap.h(q) else pnVal(heap.h(q));
+                                        const orig = if (getTag(heap.h(q)) == .ID) heap.h(q) else pnVal(heap.h(q));
                                         if (heap.tClass(heap.h(p)) == word.synonym_t) {
                                             p = heap.t(p);
                                             q = heap.t(q);
@@ -584,7 +584,7 @@ pub fn mkincludes(includees_val: Word) Word {
             abi.printlist(@constCast("causes nameclashes: "), cs.CLASHES);
         }
 
-        while (cs.DETROP != NIL and getTag(heap.h(cs.DETROP)) == word.CONS) {
+        while (cs.DETROP != NIL and getTag(heap.h(cs.DETROP)) == .CONS) {
             const fa = heap.h(heap.t(heap.h(cs.DETROP)));
             const ta = heap.t(heap.t(heap.h(cs.DETROP)));
             const pn = heap.getId(heap.h(heap.h(cs.DETROP)));

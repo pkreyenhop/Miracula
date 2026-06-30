@@ -41,8 +41,8 @@ inline fn t(x: Word) Word {
 inline fn tp(x: Word) *Word {
     return heap.heap.tp(x);
 }
-inline fn tg(x: Word) u8 {
-    return heap.heap.getTag(x);
+inline fn tg(x: Word) word.NodeTag {
+    return @enumFromInt(heap.heap.getTag(x));
 }
 
 // ---------------------------------------------------------------------------
@@ -134,7 +134,7 @@ fn makeHere(line: u32) Word {
 
 /// Whether heap word `x` is a constructor identifier.
 fn isConstructorWord(x: Word) bool {
-    if (tg(x) != word.ID) return false;
+    if (tg(x) != .ID) return false;
     // get_id(x) = (char*)hd(hd(hd(x)))
     const name_ptr: [*:0]const u8 = strtab.strOf(h(h(h(x))));
     return isconstrname(name_ptr) != 0;
@@ -624,8 +624,8 @@ fn codegenLocalDef(alloc: Allocator, def: ast.Def) Word {
 
     // Lambda-desugar: f x y = body → lhs becomes f, rhs gets lambda wrappers
     const f = head(lhs);
-    if (tg(f) == word.ID and !isConstructorWord(f)) {
-        while (tg(lhs) == word.AP) {
+    if (tg(f) == .ID and !isConstructorWord(f)) {
+        while (tg(lhs) == .AP) {
             rhs = mklambda(t(lhs), rhs);
             lhs = h(lhs);
         }
@@ -686,8 +686,8 @@ fn codegenDef(alloc: Allocator, def: ast.Def) void {
 
     // Lambda-desugar
     const f = head(lhs);
-    if (tg(f) == word.ID and !isConstructorWord(f)) {
-        while (tg(lhs) == word.AP) {
+    if (tg(f) == .ID and !isConstructorWord(f)) {
+        while (tg(lhs) == .AP) {
             rhs = mklambda(t(lhs), rhs);
             lhs = h(lhs);
         }
@@ -753,7 +753,7 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
             while (rhs != word.NIL) {
                 var hv = h(rhs);
                 var ct = tf;
-                while (tg(hv) == word.AP) {
+                while (tg(hv) == .AP) {
                     ct = ap2(arrow_t, t(hv), ct);
                     hv = h(hv);
                 }
