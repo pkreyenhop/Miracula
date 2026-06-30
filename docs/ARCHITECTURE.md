@@ -163,17 +163,24 @@ wired to Zig error union propagation.  The remaining variants (`SyntaxError`, `H
 
 ## Remaining Modernization Opportunities
 
-The items below are captured in `IDIOMATIC_ZIG_PLAN.md` (Clusters I1, I3, J, K2) but not
-yet started.  They are higher-risk or higher-effort than the completed clusters.
+Of the items originally captured in `IDIOMATIC_ZIG_PLAN.md` (Clusters I1, I3, J, K2),
+the analysis/rename work is now done; the error-model items remain. See
+[REMAINING_WORK_PLAN.md](REMAINING_WORK_PLAN.md) for the consolidated, sequenced plan.
 
-- **I1 — Slices.** Replace `[*]Word` / `?[*]Word` / `[*:0]u8` at internal boundaries with
-  native Zig slices (`[]Word`, `?[]Word`, `[:0]u8`).  Primary targets: the `hd`/`tl` heap
-  arrays and the parser's token buffer.  High-effort: requires updating all pointer arithmetic.
-- **I3 — Optional types.** Replace `NIL`-sentinel checks at high-level boundaries with
-  `?Word`.  Incremental; can be done per-function.
+**Resolved**
+
+- **I1 — Slices** (Cluster M) ✅ *analysed, no-op.* The surviving `[*]Word` / `[*:0]u8`
+  signatures are raw storage / stack-walk / `export` boundaries where a slice is
+  net-negative; documented as enumerated exceptions rather than converted.
+- **I3 — Optional types** (Cluster N) ✅ *analysed, no-op.* The `NIL`-sentinel lookups
+  return `NIL`-the-value or are `export fn`; `?Word` would not improve them.
+- **K2 — Naming conventions** (Cluster P) ✅ *done.* Internal functions are camelCase and
+  the `zig_` wart is stripped; file-private `snake_case` fn count is `0`.
+
+**Open** (see [REMAINING_WORK_PLAN.md](REMAINING_WORK_PLAN.md) Phase 4)
+
 - **J1 — Error union propagation.** Extend `MiraError` to cover `SyntaxError` and
-  `LoadError`, replacing `NIL`-return patterns in the parser and module loader.
-- **J2 — Standardize panics.** Replace remaining `c.exit(1)` calls with structured Zig
-  `@panic` / `std.process.exit` with diagnostic messages.
-- **K2 — Naming conventions.** Rename internal functions from C-style `snake_CASE` to Zig
-  `camelCase`.  Large surface area; best done in a single automated pass.
+  `LoadError`, replacing `NIL`-return patterns in the parser and module loader. Overlaps
+  the R10 error-channel unification.
+- **J2 — Standardize panics.** Replace the remaining bare `clib.exit(1)` calls with the
+  structured `fatal()` path (`O2` centralised many; ~33 bare exits remain).

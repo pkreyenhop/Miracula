@@ -47,18 +47,33 @@ This is exactly the workflow proven on `big.zig` (the first module): 23 public +
 
 `scripts/readability-check.sh` reports two numbers (FFI shim & tools excluded):
 
-| Metric | Baseline (2026-06-24) | Now | Target |
-|--------|----------------------:|----:|-------:|
-| C-style (`snake_case`) fn definitions | 175 | **0 ✅** | 0 |
-| documented fn definitions | 146/879 (16%) | **873/873 (100%) ✅** | ~100% |
-| modules complete (renamed **and** documented) | 1/44 | **44/44 ✅** | 44/44 |
+| Metric | Baseline (2026-06-24) | Now (2026-06-30) | Target |
+|--------|----------------------:|-----------------:|-------:|
+| C-style (`snake_case`) fn definitions | 175 | **2** (both exempt/flagged — see below) | 0 |
+| documented fn definitions | 146/879 (16%) | **882/894 (98%)** | ~100% |
+| modules complete (renamed **and** documented) | 1/44 | ~44/45 | all |
 
-**The readability pass is complete.** Every function across the codebase (outside
-the FFI shim and the intentional `handle<COMBINATOR>` dispatch convention) is now
-idiomatically named *and* carries a doc comment, with a `//!` header on every
-module — all of it behaviour-preserving (golden 44/44 byte-identical at every
-step). Run `scripts/readability-check.sh` to confirm `0` snake fns and `100%`
-documented.
+**The readability pass is essentially complete** — every function outside the FFI
+shim and the intentional `handle_<COMBINATOR>` dispatch convention is idiomatically
+named and documented, behaviour-preserving (golden byte-identical at every step).
+The check script reports **2 residual `snake_case` fn defs** and **12 undocumented**
+fns, accounted for as follows (no further rename pass is scheduled here):
+
+* **`driver/lineedit.zig` `tab_complete`** — a **convention exemption** (like the
+  `handle_<COMBINATOR>` handlers): the name is dictated by `zigline`, which reflects
+  over the handler struct's decls and calls a method *named* `tab_complete`. Keep as
+  is; it should be added to the metric's exemption list.
+* **`runtime/heap.zig` `get_fil`** — a snake holdover whose camelCase target name
+  (`getFil`) is **already taken by two private helpers** (`heap.zig:1329`,
+  `parser/lex.zig:180`) that read the same file-name field via the *pre-interning*
+  `castPtr` path rather than `strtab.strOf`. Renaming it blindly collides and masks a
+  representation split — so it is flagged for the dedup/investigation pass tracked in
+  [REMAINING_WORK_PLAN.md](REMAINING_WORK_PLAN.md) (Phase 1, with R3/B1), **not** a
+  mechanical rename here.
+* The 12 undocumented fns are minor residue (e.g. `word.zig` 51/55, `repl.zig` 14/16)
+  — a light doc top-up, not blocking.
+
+Run `scripts/readability-check.sh` for the live numbers.
 
 (The "Now" snake figure also reflects the reducer-handler exemption added to the
 metric, which removed ~37 dispatch handlers from the count.)
@@ -73,52 +88,13 @@ Done so far: `big.zig`, `io/files.zig`, `driver/repl.zig`, `driver/startup.zig`,
 
 ## Module inventory & status
 
-Status: ✅ done · ◐ partial · ⬜ todo. "snake" = C-style fn defs remaining
-(rename size); "doc" = documented-fn ratio (doc size).
-
-### runtime/ (the core)
-| Module | snake | doc | status |
-|--------|------:|----:|:------:|
-| `big.zig` | 0 | 47/51 | ✅ |
-| `heap.zig` | 0 | 17/138 | ◐ (renamed; doc pass pending) |
-| `reduce.zig` | 0 | 33/33 | ✅ |
-| `word.zig` | 0 | — | ◐ (names ok; doc review) |
-| `strtab.zig` · `interp.zig` · `trace.zig` | 0 | high | ◐ (recently written; light review) |
-| `combinator.zig` · `core_state.zig` · `errors.zig` · `runtime_state.zig` · `version.zig` | 0 | mixed | ⬜ (doc review) |
-
-### runtime/reducer/
-| Module | snake | doc | status |
-|--------|------:|----:|:------:|
-| `reduce.zig` · `reduce_core.zig` | 0 | commented | ◐ (commented this session; name review) |
-| `reducer/lex.zig` | 33† | 0/33 | ⬜ (†mostly exempt handlers) |
-| `combinators.zig` | 0 | 48/48 | ✅ |
-| `io.zig` | 0 | 4/4 | ✅ |
-| `ready.zig` | 0 | 1/1 | ✅ |
-| `trace.zig` · `reduce_test.zig` | 0 | high | ◐ |
-
-### parser/
-| Module | snake | doc | status |
-|--------|------:|----:|:------:|
-| `lex.zig` | 0 | 0/71 | ◐ (renamed; doc pass pending) |
-| `parser.zig` · `pratt.zig` · `ast.zig` · `diagnostics.zig` · `token_filter.zig` · `codegen.zig` · `parser_api.zig` · `lex_bridge.zig` · `lex_state.zig` | 0 | mixed | ◐/⬜ (newer Zig; doc review) |
-
-### compiler/
-| Module | snake | doc | status |
-|--------|------:|----:|:------:|
-| `types.zig` | 0 | 0/122 | ◐ (renamed; doc pass pending) |
-| `trans.zig` | 0 | 0/112 | ◐ (renamed; doc pass pending) |
-| `setup.zig` | 0 | 6/9 | ◐ (renamed) |
-| `module_loader.zig` · `dump.zig` · `compiler_state.zig` | 0 | mixed | ⬜ (doc review) |
-
-### driver/ · io/ · root
-| Module | snake | doc | status |
-|--------|------:|----:|:------:|
-| `driver/startup.zig` | 0 | 10/10 | ✅ |
-| `driver/repl.zig` | 0 | 15/15 | ✅ |
-| `driver/commands.zig` | 0 | low | ⬜ |
-| `io/files.zig` | 0 | 10/10 | ✅ |
-| `io/platform.zig` · `io/signals.zig` · `io/utf8.zig` | 0 | mixed | ◐ |
-| `main.zig` | 0 | low | ⬜ (doc review) |
+> **The per-module inventory below was retired (2026-06-30).** It tracked the
+> rename/doc pass module-by-module while it was in flight and had gone stale (it
+> showed several modules as `◐ doc pass pending` that had since reached 100%, and
+> predated `driver/lineedit.zig`). The pass is now driven by the two aggregate
+> numbers in the **Metric** table above plus the live `scripts/readability-check.sh`
+> per-file rows; the only remaining items are the two named there (`tab_complete`
+> exemption, `get_fil` dedup). There is no per-module work left to track separately.
 
 ## Suggested order
 

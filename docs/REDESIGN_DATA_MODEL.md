@@ -430,6 +430,26 @@ becomes pure, idiomatic Zig.
 | `Word = c_long` (value type is a C type) | yes | **no — `i64`** | `i64` |
 | bare `< ATOMLIMIT` / `< 256` magic thresholds | ~23 | **0** | 0 |
 
+### C1 snapshot — `scripts/idiomatic-check.sh` (2026-06-30)
+
+Recorded as the Track-C scorecard checkpoint. The C-ABI DoD row is **met except for
+`callconv(.c)`**, which is the documented signal-trampoline floor and only drops to 1
+when **A4b** (recovery redesign) lands — so **C1 stays open, blocked on A4b**.
+
+| # | metric (non-FFI scope) | count | target |
+|---|------------------------|------:|--------|
+| 9 | `export fn` (C-ABI linker symbols) | **2** | FFI-only |
+| 10 | `extern fn` declarations | **14** | syscall floor |
+| 11 | `extern var` declarations | **0** ✓ | 0 |
+| 12 | `clib.` / `c.` call sites | **0** ✓ | 0 |
+| 13 | `callconv(.c)` usage | **6** | 1 (signal trampoline) — **needs A4b** |
+| 14 | raw cell access (`hd`/`tl`/`tag[...]`) outside `heap.zig` | **3** | 0 |
+| 15 | `[*:0]`-as-`Word` pointer casts | **70** | 0 (enumerated: FILE-handle / ptr-arith / signal) |
+
+Two deltas vs. the 2026-06-23 column to note: `export fn` improved **3 → 2**; raw
+cell access outside `heap.zig` regressed **0 → 3** — a small encapsulation leak to
+re-confine (Phase 1 / R3-adjacent cleanup).
+
 ---
 
 ## Progress log
