@@ -7,8 +7,8 @@
 //! representation: a node now stores a `StrId` (a table index) instead of a raw
 //! pointer, and the bytes live once in a process-lifetime arena. Interning
 //! de-dups by content, so equal names share one `StrId` — which is what keeps
-//! the re-intern-then-compare pattern (`member(list, strBits(get_id(x)))`)
-//! working now that `get_id` no longer returns a stable pointer.
+//! the re-intern-then-compare pattern (`member(list, strBits(getId(x)))`)
+//! working now that `getId` no longer returns a stable pointer.
 //!
 //! Encoding. A `StrId` is stored *negated* in the `Word` (`-index`, index >= 1).
 //! Heap cell handles live in `[ATOMLIMIT, TOP())` and `heap.isptr` tests that
@@ -123,7 +123,7 @@ test "empty interns to the 0 sentinel and 0 resolves to empty" {
 /// Re-intern the string identified by `handle` with its first byte privatised
 /// (high bit set), returning the new id `Word`. The lexer uses this to hide
 /// prelude identifiers: under the old pointer representation it mutated the
-/// stored bytes in place (`get_id(..)[0] += 128`); interned bytes are immutable
+/// stored bytes in place (`getId(..)[0] += 128`); interned bytes are immutable
 /// and shared, so a privatised name must be a fresh entry instead. Empty input
 /// is returned unchanged.
 ///

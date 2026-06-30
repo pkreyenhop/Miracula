@@ -41,7 +41,7 @@ pub fn handleK(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    reduce.rewrite_to_value(&ctx.e, arg1);
+    reduce.rewriteToValue(&ctx.e, arg1);
     ctx.action = word.ACT_NEXTREDEX;
 }
 
@@ -61,9 +61,9 @@ pub fn handleS(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
-    reduce.hd_set(ctx.e, reduce.ap(arg1, lastarg));
-    reduce.tl_set(ctx.e, reduce.ap(arg2, lastarg));
+    const lastarg = reduce.tlGet(ctx.e);
+    reduce.hdSet(ctx.e, reduce.ap(arg1, lastarg));
+    reduce.tlSet(ctx.e, reduce.ap(arg2, lastarg));
     reduce.downLeft(ctx);
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
@@ -87,9 +87,9 @@ pub fn handleB(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
-    reduce.hd_set(ctx.e, arg1);
-    reduce.tl_set(ctx.e, reduce.ap(arg2, lastarg));
+    const lastarg = reduce.tlGet(ctx.e);
+    reduce.hdSet(ctx.e, arg1);
+    reduce.tlSet(ctx.e, reduce.ap(arg2, lastarg));
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
 }
@@ -118,9 +118,9 @@ pub fn handleCB(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
-    reduce.hd_set(ctx.e, arg2);
-    reduce.tl_set(ctx.e, reduce.ap(arg1, lastarg));
+    const lastarg = reduce.tlGet(ctx.e);
+    reduce.hdSet(ctx.e, arg2);
+    reduce.tlSet(ctx.e, reduce.ap(arg1, lastarg));
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
 }
@@ -149,9 +149,9 @@ pub fn handleC(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
-    reduce.hd_set(ctx.e, reduce.ap(arg1, lastarg));
-    reduce.tl_set(ctx.e, arg2);
+    const lastarg = reduce.tlGet(ctx.e);
+    reduce.hdSet(ctx.e, reduce.ap(arg1, lastarg));
+    reduce.tlSet(ctx.e, arg2);
     reduce.downLeft(ctx);
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
@@ -171,8 +171,8 @@ pub fn handleY(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    reduce.hd_set(ctx.e, reduce.tl_get(ctx.e));
-    reduce.tl_set(ctx.e, ctx.e);
+    reduce.hdSet(ctx.e, reduce.tlGet(ctx.e));
+    reduce.tlSet(ctx.e, ctx.e);
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
 }
@@ -195,7 +195,7 @@ pub fn handleKI(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    ctx.e = reduce.rewrite_to_existing_tail(ctx.e);
+    ctx.e = reduce.rewriteToExistingTail(ctx.e);
     ctx.action = word.ACT_NEXTREDEX;
 }
 
@@ -227,10 +227,10 @@ pub fn handleS1(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
-    reduce.hd_set(ctx.e, reduce.ap(arg2, lastarg));
-    reduce.hd_set(ctx.e, reduce.ap(arg1, reduce.hd_get(ctx.e)));
-    reduce.tl_set(ctx.e, reduce.ap(arg3, lastarg));
+    const lastarg = reduce.tlGet(ctx.e);
+    reduce.hdSet(ctx.e, reduce.ap(arg2, lastarg));
+    reduce.hdSet(ctx.e, reduce.ap(arg1, reduce.hdGet(ctx.e)));
+    reduce.tlSet(ctx.e, reduce.ap(arg3, lastarg));
     reduce.downLeft(ctx);
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
@@ -265,10 +265,10 @@ pub fn handleB1(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
-    reduce.hd_set(ctx.e, arg1);
-    reduce.tl_set(ctx.e, reduce.ap(arg3, lastarg));
-    reduce.tl_set(ctx.e, reduce.ap(arg2, reduce.tl_get(ctx.e)));
+    const lastarg = reduce.tlGet(ctx.e);
+    reduce.hdSet(ctx.e, arg1);
+    reduce.tlSet(ctx.e, reduce.ap(arg3, lastarg));
+    reduce.tlSet(ctx.e, reduce.ap(arg2, reduce.tlGet(ctx.e)));
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
 }
@@ -302,10 +302,10 @@ pub fn handleC1(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
-    reduce.hd_set(ctx.e, reduce.ap(arg2, lastarg));
-    reduce.hd_set(ctx.e, reduce.ap(arg1, reduce.hd_get(ctx.e)));
-    reduce.tl_set(ctx.e, arg3);
+    const lastarg = reduce.tlGet(ctx.e);
+    reduce.hdSet(ctx.e, reduce.ap(arg2, lastarg));
+    reduce.hdSet(ctx.e, reduce.ap(arg1, reduce.hdGet(ctx.e)));
+    reduce.tlSet(ctx.e, arg3);
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
 }
@@ -334,8 +334,8 @@ pub fn handleS_p(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
-    reduce.rewrite_to_cons(ctx.e, reduce.ap(arg1, lastarg), reduce.ap(arg2, lastarg));
+    const lastarg = reduce.tlGet(ctx.e);
+    reduce.rewriteToCons(ctx.e, reduce.ap(arg1, lastarg), reduce.ap(arg2, lastarg));
     ctx.action = word.ACT_DONE;
 }
 
@@ -363,8 +363,8 @@ pub fn handleB_p(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
-    reduce.rewrite_to_cons(ctx.e, arg1, reduce.ap(arg2, lastarg));
+    const lastarg = reduce.tlGet(ctx.e);
+    reduce.rewriteToCons(ctx.e, arg1, reduce.ap(arg2, lastarg));
     ctx.action = word.ACT_DONE;
 }
 
@@ -392,8 +392,8 @@ pub fn handleC_p(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
-    reduce.rewrite_to_cons(ctx.e, reduce.ap(arg1, lastarg), arg2);
+    const lastarg = reduce.tlGet(ctx.e);
+    reduce.rewriteToCons(ctx.e, reduce.ap(arg1, lastarg), arg2);
     ctx.action = word.ACT_DONE;
 }
 
@@ -416,18 +416,18 @@ pub fn handleITERATE(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
-    const hold = reduce.ap(reduce.hd_get(ctx.e), reduce.ap(arg1, lastarg));
-    reduce.rewrite_to_cons(ctx.e, lastarg, hold);
+    const lastarg = reduce.tlGet(ctx.e);
+    const hold = reduce.ap(reduce.hdGet(ctx.e), reduce.ap(arg1, lastarg));
+    reduce.rewriteToCons(ctx.e, lastarg, hold);
     ctx.action = word.ACT_DONE;
 }
 
 test "handleITERATE: iterate f x heads x then repeats" {
     tu.freshInterp();
     const lst = reduce.reduce(tu.ap2(word.ITERATE, word.I, tu.int(5)));
-    try tu.expectInt(5, reduce.hd_get(lst)); // head is x
-    const rest = reduce.reduce(reduce.tl_get(lst));
-    try tu.expectInt(5, reduce.hd_get(rest)); // next element is I 5 = 5
+    try tu.expectInt(5, reduce.hdGet(lst)); // head is x
+    const rest = reduce.reduce(reduce.tlGet(lst));
+    try tu.expectInt(5, reduce.hdGet(rest)); // next element is I 5 = 5
 }
 
 /// Like `ITERATE`, but stops when the next value reduces to `FAIL`.
@@ -441,13 +441,13 @@ pub fn handleITERATE1(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    var lastarg = reduce.tl_get(ctx.e);
+    var lastarg = reduce.tlGet(ctx.e);
     lastarg = reduce.reduce(lastarg);
     if (lastarg == word.FAIL) {
-        reduce.rewrite_to_nil(&ctx.e);
+        reduce.rewriteToNil(&ctx.e);
     } else {
-        const hold = reduce.ap(reduce.hd_get(ctx.e), reduce.ap(arg1, lastarg));
-        reduce.rewrite_to_cons(ctx.e, lastarg, hold);
+        const hold = reduce.ap(reduce.hdGet(ctx.e), reduce.ap(arg1, lastarg));
+        reduce.rewriteToCons(ctx.e, lastarg, hold);
     }
     ctx.action = word.ACT_DONE;
 }
@@ -465,8 +465,8 @@ pub fn handleP(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
-    reduce.rewrite_to_cons(ctx.e, arg1, lastarg);
+    const lastarg = reduce.tlGet(ctx.e);
+    reduce.rewriteToCons(ctx.e, arg1, lastarg);
     ctx.action = word.ACT_DONE;
 }
 
@@ -489,9 +489,9 @@ pub fn handleU(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
-    reduce.hd_set(ctx.e, reduce.ap(arg1, reduce.ap(word.HD, lastarg)));
-    reduce.tl_set(ctx.e, reduce.ap(word.TL, lastarg));
+    const lastarg = reduce.tlGet(ctx.e);
+    reduce.hdSet(ctx.e, reduce.ap(arg1, reduce.ap(word.HD, lastarg)));
+    reduce.tlSet(ctx.e, reduce.ap(word.TL, lastarg));
     reduce.downLeft(ctx);
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
@@ -514,13 +514,13 @@ pub fn handleUf(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
-    if (reduce.is_constructor(reduce.head(lastarg))) {
-        reduce.hd_set(ctx.e, reduce.ap(arg1, reduce.hd_get(lastarg)));
-        reduce.tl_set(ctx.e, reduce.tl_get(lastarg));
+    const lastarg = reduce.tlGet(ctx.e);
+    if (reduce.isConstructor(reduce.head(lastarg))) {
+        reduce.hdSet(ctx.e, reduce.ap(arg1, reduce.hdGet(lastarg)));
+        reduce.tlSet(ctx.e, reduce.tlGet(lastarg));
     } else {
-        reduce.hd_set(ctx.e, reduce.ap(arg1, reduce.ap(word.BODY, lastarg)));
-        reduce.tl_set(ctx.e, reduce.ap(word.LAST, lastarg));
+        reduce.hdSet(ctx.e, reduce.ap(arg1, reduce.ap(word.BODY, lastarg)));
+        reduce.tlSet(ctx.e, reduce.ap(word.LAST, lastarg));
     }
     reduce.downLeft(ctx);
     reduce.downLeft(ctx);
@@ -545,18 +545,18 @@ pub fn handleATLEAST(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    var lastarg = reduce.tl_get(ctx.e);
+    var lastarg = reduce.tlGet(ctx.e);
     lastarg = reduce.reduce(lastarg);
-    if (reduce.is_int(lastarg)) {
+    if (reduce.isInt(lastarg)) {
         const hold = big.sub(lastarg, arg1);
         if (reduce.poz(hold)) {
-            reduce.hd_set(ctx.e, arg2);
-            reduce.tl_set(ctx.e, hold);
+            reduce.hdSet(ctx.e, arg2);
+            reduce.tlSet(ctx.e, hold);
         } else {
-            reduce.rewrite_to_fail(&ctx.e);
+            reduce.rewriteToFail(&ctx.e);
         }
     } else {
-        reduce.rewrite_to_fail(&ctx.e);
+        reduce.rewriteToFail(&ctx.e);
     }
     ctx.action = word.ACT_NEXTREDEX;
 }
@@ -582,15 +582,15 @@ pub fn handleU_(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    var lastarg = reduce.tl_get(ctx.e);
+    var lastarg = reduce.tlGet(ctx.e);
     lastarg = reduce.reduce(lastarg);
     if (lastarg == word.NIL) {
-        reduce.rewrite_to_fail(&ctx.e);
+        reduce.rewriteToFail(&ctx.e);
         ctx.action = word.ACT_NEXTREDEX;
         return;
     }
-    reduce.hd_set(ctx.e, reduce.ap(arg1, reduce.hd_get(lastarg)));
-    reduce.tl_set(ctx.e, reduce.tl_get(lastarg));
+    reduce.hdSet(ctx.e, reduce.ap(arg1, reduce.hdGet(lastarg)));
+    reduce.tlSet(ctx.e, reduce.tlGet(lastarg));
     ctx.action = word.ACT_NEXTREDEX;
 }
 
@@ -618,25 +618,25 @@ pub fn handleUg(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    var lastarg = reduce.tl_get(ctx.e);
+    var lastarg = reduce.tlGet(ctx.e);
     lastarg = reduce.reduce(lastarg);
-    if (reduce.hd_get(arg1) != reduce.hd_get(reduce.head(lastarg))) {
-        reduce.rewrite_to_fail(&ctx.e);
+    if (reduce.hdGet(arg1) != reduce.hdGet(reduce.head(lastarg))) {
+        reduce.rewriteToFail(&ctx.e);
         ctx.action = word.ACT_NEXTREDEX;
         return;
     }
-    if (reduce.is_constructor(lastarg)) {
-        reduce.rewrite_to_value(&ctx.e, arg2);
+    if (reduce.isConstructor(lastarg)) {
+        reduce.rewriteToValue(&ctx.e, arg2);
         ctx.action = word.ACT_NEXTREDEX;
         return;
     }
-    reduce.hd_set(ctx.e, reduce.hd_get(lastarg));
-    reduce.tl_set(ctx.e, reduce.tl_get(lastarg));
-    while (!reduce.is_constructor(reduce.hd_get(ctx.e))) {
-        reduce.hd_set(ctx.e, reduce.ap(reduce.hd_get(reduce.hd_get(ctx.e)), reduce.tl_get(reduce.hd_get(ctx.e))));
+    reduce.hdSet(ctx.e, reduce.hdGet(lastarg));
+    reduce.tlSet(ctx.e, reduce.tlGet(lastarg));
+    while (!reduce.isConstructor(reduce.hdGet(ctx.e))) {
+        reduce.hdSet(ctx.e, reduce.ap(reduce.hdGet(reduce.hdGet(ctx.e)), reduce.tlGet(reduce.hdGet(ctx.e))));
         reduce.downLeft(ctx);
     }
-    reduce.hd_set(ctx.e, arg2);
+    reduce.hdSet(ctx.e, arg2);
     ctx.action = word.ACT_NEXTREDEX;
 }
 
@@ -646,7 +646,7 @@ pub fn handleMATCH(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    ctx.args[0] = reduce.reduce(reduce.tl_get(ctx.e));
+    ctx.args[0] = reduce.reduce(reduce.tlGet(ctx.e));
     const arg1 = ctx.args[0];
     if (reduce.getarg(ctx, &ctx.args[1])) {
         ctx.action = word.ACT_DONE;
@@ -657,8 +657,8 @@ pub fn handleMATCH(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.reduce(reduce.tl_get(ctx.e));
-    reduce.rewrite_to_match_result(&ctx.e, arg1, lastarg, arg2);
+    const lastarg = reduce.reduce(reduce.tlGet(ctx.e));
+    reduce.rewriteToMatchResult(&ctx.e, arg1, lastarg, arg2);
     ctx.action = word.ACT_NEXTREDEX;
 }
 
@@ -678,8 +678,8 @@ pub fn handleMATCHINT(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.reduce(reduce.tl_get(ctx.e));
-    reduce.rewrite_to_int_match_result(&ctx.e, arg1, lastarg, arg2);
+    const lastarg = reduce.reduce(reduce.tlGet(ctx.e));
+    reduce.rewriteToIntMatchResult(&ctx.e, arg1, lastarg, arg2);
     ctx.action = word.ACT_NEXTREDEX;
 }
 
@@ -691,14 +691,14 @@ pub fn handleGENSEQ(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
-    if (reduce.tl_get(arg1) != word.NIL and
-        (if (reduce.is_ap(arg1)) reduce_rt.compare(lastarg, reduce.tl_get(arg1)) else reduce_rt.compare(reduce.tl_get(arg1), lastarg)) > 0)
+    const lastarg = reduce.tlGet(ctx.e);
+    if (reduce.tlGet(arg1) != word.NIL and
+        (if (reduce.isAp(arg1)) reduce_rt.compare(lastarg, reduce.tlGet(arg1)) else reduce_rt.compare(reduce.tlGet(arg1), lastarg)) > 0)
     {
-        reduce.rewrite_to_nil(&ctx.e);
+        reduce.rewriteToNil(&ctx.e);
     } else {
-        const hold = reduce.ap(reduce.hd_get(ctx.e), reduce_rt.numplus(lastarg, reduce.hd_get(arg1)));
-        reduce.rewrite_to_cons(ctx.e, lastarg, hold);
+        const hold = reduce.ap(reduce.hdGet(ctx.e), reduce_rt.numplus(lastarg, reduce.hdGet(arg1)));
+        reduce.rewriteToCons(ctx.e, lastarg, hold);
     }
     ctx.action = word.ACT_DONE;
 }
@@ -716,12 +716,12 @@ pub fn handleMAP(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.reduce(reduce.tl_get(ctx.e));
+    const lastarg = reduce.reduce(reduce.tlGet(ctx.e));
     if (lastarg == word.NIL) {
-        reduce.rewrite_to_nil(&ctx.e);
+        reduce.rewriteToNil(&ctx.e);
     } else {
-        const hold = reduce.ap(reduce.hd_get(ctx.e), reduce.tl_get(lastarg));
-        reduce.rewrite_to_cons(ctx.e, reduce.ap(arg1, reduce.hd_get(lastarg)), hold);
+        const hold = reduce.ap(reduce.hdGet(ctx.e), reduce.tlGet(lastarg));
+        reduce.rewriteToCons(ctx.e, reduce.ap(arg1, reduce.hdGet(lastarg)), hold);
     }
     ctx.action = word.ACT_DONE;
 }
@@ -748,17 +748,17 @@ pub fn handleFLATMAP(ctx: *ReductionCtx) void {
     while (true) {
         arg2 = reduce.reduce(arg2);
         if (arg2 == word.NIL) {
-            reduce.rewrite_to_nil(&ctx.e);
+            reduce.rewriteToNil(&ctx.e);
             ctx.action = word.ACT_DONE;
             return;
         }
-        const hold = reduce.reduce(reduce.ap(arg1, reduce.hd_get(arg2)));
+        const hold = reduce.reduce(reduce.ap(arg1, reduce.hdGet(arg2)));
         if (hold == word.FAIL or hold == word.NIL) {
-            arg2 = reduce.tl_get(arg2);
+            arg2 = reduce.tlGet(arg2);
             continue;
         }
-        reduce.tl_set(ctx.e, reduce.ap(reduce.hd_get(ctx.e), reduce.tl_get(arg2)));
-        reduce.hd_set(ctx.e, reduce.ap(word.APPEND, hold));
+        reduce.tlSet(ctx.e, reduce.ap(reduce.hdGet(ctx.e), reduce.tlGet(arg2)));
+        reduce.hdSet(ctx.e, reduce.ap(word.APPEND, hold));
         ctx.action = word.ACT_NEXTREDEX;
         return;
     }
@@ -783,15 +783,15 @@ pub fn handleFILTER(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    var lastarg = reduce.reduce(reduce.tl_get(ctx.e));
-    while (lastarg != word.NIL and reduce.reduce(reduce.ap(arg1, reduce.hd_get(lastarg))) == word.False) {
-        lastarg = reduce.reduce(reduce.tl_get(lastarg));
+    var lastarg = reduce.reduce(reduce.tlGet(ctx.e));
+    while (lastarg != word.NIL and reduce.reduce(reduce.ap(arg1, reduce.hdGet(lastarg))) == word.False) {
+        lastarg = reduce.reduce(reduce.tlGet(lastarg));
     }
     if (lastarg == word.NIL) {
-        reduce.rewrite_to_nil(&ctx.e);
+        reduce.rewriteToNil(&ctx.e);
     } else {
-        const hold = reduce.ap(reduce.hd_get(ctx.e), reduce.tl_get(lastarg));
-        reduce.rewrite_to_cons(ctx.e, reduce.hd_get(lastarg), hold);
+        const hold = reduce.ap(reduce.hdGet(ctx.e), reduce.tlGet(lastarg));
+        reduce.rewriteToCons(ctx.e, reduce.hdGet(lastarg), hold);
     }
     ctx.action = word.ACT_DONE;
 }
@@ -812,17 +812,17 @@ pub fn handleLIST_LAST(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    var lastarg = reduce.reduce(reduce.tl_get(ctx.e));
+    var lastarg = reduce.reduce(reduce.tlGet(ctx.e));
     if (lastarg == word.NIL) {
         reduce_rt.fnError("last []");
     }
     while (true) {
-        const next_tl = reduce.reduce(reduce.tl_get(lastarg));
-        reduce.tl_set(lastarg, next_tl);
+        const next_tl = reduce.reduce(reduce.tlGet(lastarg));
+        reduce.tlSet(lastarg, next_tl);
         if (next_tl == word.NIL) break;
         lastarg = next_tl;
     }
-    reduce.rewrite_to_value(&ctx.e, reduce.hd_get(lastarg));
+    reduce.rewriteToValue(&ctx.e, reduce.hdGet(lastarg));
     ctx.action = word.ACT_NEXTREDEX;
 }
 
@@ -840,11 +840,11 @@ pub fn handleLENGTH(ctx: *ReductionCtx) void {
         return;
     }
     var n: i64 = 0;
-    var lastarg = reduce.tl_get(ctx.e);
+    var lastarg = reduce.tlGet(ctx.e);
     while (true) {
         lastarg = reduce.reduce(lastarg);
         if (lastarg == word.NIL) break;
-        lastarg = reduce.tl_get(lastarg);
+        lastarg = reduce.tlGet(lastarg);
         n += 1;
     }
     reduce.simpl(ctx, big.fromInt(n));
@@ -870,24 +870,24 @@ pub fn handleDROP(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    arg1 = reduce.reduce(reduce.tl_get(reduce.hd_get(ctx.e)));
-    reduce.tl_set(reduce.hd_get(ctx.e), arg1);
-    if (!reduce.is_int(arg1)) {
+    arg1 = reduce.reduce(reduce.tlGet(reduce.hdGet(ctx.e)));
+    reduce.tlSet(reduce.hdGet(ctx.e), arg1);
+    if (!reduce.isInt(arg1)) {
         reduce_rt.intError("drop");
     }
     var n = big.toInt(arg1);
-    var lastarg = reduce.tl_get(ctx.e);
+    var lastarg = reduce.tlGet(ctx.e);
     while (n > 0) : (n -= 1) {
         lastarg = reduce.reduce(lastarg);
         if (lastarg == word.NIL) {
-            reduce.rewrite_to_nil(&ctx.e);
+            reduce.rewriteToNil(&ctx.e);
             ctx.action = word.ACT_DONE;
             return;
         } else {
-            lastarg = reduce.tl_get(lastarg);
+            lastarg = reduce.tlGet(lastarg);
         }
     }
-    reduce.rewrite_to_value(&ctx.e, lastarg);
+    reduce.rewriteToValue(&ctx.e, lastarg);
     ctx.action = word.ACT_NEXTREDEX;
 }
 
@@ -908,16 +908,16 @@ pub fn handleSUBSCRIPT(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const arg1 = reduce.reduce(reduce.tl_get(reduce.hd_get(ctx.e)));
-    reduce.tl_set(reduce.hd_get(ctx.e), arg1);
-    var lastarg = reduce.reduce(reduce.tl_get(ctx.e));
+    const arg1 = reduce.reduce(reduce.tlGet(reduce.hdGet(ctx.e)));
+    reduce.tlSet(reduce.hdGet(ctx.e), arg1);
+    var lastarg = reduce.reduce(reduce.tlGet(ctx.e));
     if (lastarg == word.NIL) {
         reduce_rt.subsError();
     }
     var indx: i64 = 0;
-    if (reduce.is_atom(arg1)) {
+    if (reduce.isAtom(arg1)) {
         indx = arg1;
-    } else if (reduce.is_int(arg1)) {
+    } else if (reduce.isInt(arg1)) {
         indx = big.toInt(arg1);
     } else {
         reduce_rt.intError("!");
@@ -926,15 +926,15 @@ pub fn handleSUBSCRIPT(ctx: *ReductionCtx) void {
         reduce_rt.subsError();
     }
     while (indx > 0) {
-        const next_tl = reduce.reduce(reduce.tl_get(lastarg));
-        reduce.tl_set(lastarg, next_tl);
+        const next_tl = reduce.reduce(reduce.tlGet(lastarg));
+        reduce.tlSet(lastarg, next_tl);
         lastarg = next_tl;
         if (lastarg == word.NIL) {
             reduce_rt.subsError();
         }
         indx -= 1;
     }
-    reduce.rewrite_to_value(&ctx.e, reduce.hd_get(lastarg));
+    reduce.rewriteToValue(&ctx.e, reduce.hdGet(lastarg));
     ctx.action = word.ACT_NEXTREDEX;
 }
 
@@ -957,10 +957,10 @@ pub fn handleFOLDL1(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.reduce(reduce.tl_get(ctx.e));
+    const lastarg = reduce.reduce(reduce.tlGet(ctx.e));
     if (lastarg != word.NIL) {
-        reduce.hd_set(ctx.e, reduce.ap2(word.FOLDL, arg1, reduce.hd_get(lastarg)));
-        reduce.tl_set(ctx.e, reduce.tl_get(lastarg));
+        reduce.hdSet(ctx.e, reduce.ap2(word.FOLDL, arg1, reduce.hdGet(lastarg)));
+        reduce.tlSet(ctx.e, reduce.tlGet(lastarg));
         ctx.action = word.ACT_NEXTREDEX;
     } else {
         reduce_rt.fnError("foldl1 applied to []");
@@ -991,14 +991,14 @@ pub fn handleFOLDL(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    var lastarg = reduce.tl_get(ctx.e);
+    var lastarg = reduce.tlGet(ctx.e);
     while (true) {
         lastarg = reduce.reduce(lastarg);
         if (lastarg == word.NIL) break;
-        arg2 = reduce.reduce(reduce.ap2(arg1, arg2, reduce.hd_get(lastarg)));
-        lastarg = reduce.tl_get(lastarg);
+        arg2 = reduce.reduce(reduce.ap2(arg1, arg2, reduce.hdGet(lastarg)));
+        lastarg = reduce.tlGet(lastarg);
     }
-    reduce.rewrite_to_value(&ctx.e, arg2);
+    reduce.rewriteToValue(&ctx.e, arg2);
     ctx.action = word.ACT_NEXTREDEX;
 }
 
@@ -1026,13 +1026,13 @@ pub fn handleFOLDR(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.reduce(reduce.tl_get(ctx.e));
+    const lastarg = reduce.reduce(reduce.tlGet(ctx.e));
     if (lastarg == word.NIL) {
-        reduce.rewrite_to_value(&ctx.e, arg2);
+        reduce.rewriteToValue(&ctx.e, arg2);
     } else {
-        const hold = reduce.ap(reduce.hd_get(ctx.e), reduce.tl_get(lastarg));
-        reduce.hd_set(ctx.e, reduce.ap(arg1, reduce.hd_get(lastarg)));
-        reduce.tl_set(ctx.e, hold);
+        const hold = reduce.ap(reduce.hdGet(ctx.e), reduce.tlGet(lastarg));
+        reduce.hdSet(ctx.e, reduce.ap(arg1, reduce.hdGet(lastarg)));
+        reduce.tlSet(ctx.e, hold);
     }
     ctx.action = word.ACT_NEXTREDEX;
 }
@@ -1049,7 +1049,7 @@ pub fn handleBADCASE(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
+    const lastarg = reduce.tlGet(ctx.e);
     reduce.badcaseError(lastarg);
 }
 
@@ -1069,7 +1069,7 @@ pub fn handleCONFERROR(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
+    const lastarg = reduce.tlGet(ctx.e);
     reduce.confError(lastarg);
 }
 
@@ -1079,7 +1079,7 @@ pub fn handleERROR(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
+    const lastarg = reduce.tlGet(ctx.e);
     if (reduce_rt.ev.errtrap != 0) {
         word.printErr("\n(repeated error)\n", .{});
     } else {
@@ -1104,15 +1104,15 @@ pub fn handleWAIT(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = reduce.tl_get(ctx.e);
+    const lastarg = reduce.tlGet(ctx.e);
     var hold: Word = 0;
     var w: *Word = &reduce_rt.ev.waiting;
-    while (w.* != word.NIL and reduce.hd_get(w.*) != lastarg) {
-        w = reduce.tl_ptr(reduce.tl_get(w.*));
+    while (w.* != word.NIL and reduce.hdGet(w.*) != lastarg) {
+        w = reduce.tlPtr(reduce.tlGet(w.*));
     }
     if (w.* != word.NIL) {
-        hold = reduce.hd_get(reduce.tl_get(w.*));
-        w.* = reduce.tl_get(reduce.tl_get(w.*));
+        hold = reduce.hdGet(reduce.tlGet(w.*));
+        w.* = reduce.tlGet(reduce.tlGet(w.*));
     } else {
         var status: c_int = 0;
         while (true) {
@@ -1148,17 +1148,17 @@ pub fn handleTRY(ctx: *ReductionCtx) void {
             ctx.action = word.ACT_DONE;
             return;
         }
-        const lastarg = reduce.tl_get(ctx.e);
+        const lastarg = reduce.tlGet(ctx.e);
         arg1 = reduce.ap(arg1, lastarg);
-        reduce.hd_set(ctx.e, reduce.ap(word.TRY, arg1));
+        reduce.hdSet(ctx.e, reduce.ap(word.TRY, arg1));
         arg2 = reduce.ap(arg2, lastarg);
-        reduce.tl_set(ctx.e, arg2);
+        reduce.tlSet(ctx.e, arg2);
     }
     reduce.downLeft(ctx);
     const old_e = ctx.s;
     const old_hd_e = ctx.e;
-    ctx.e = reduce.tl_get(old_hd_e);
-    reduce.tl_set(old_hd_e, old_e);
+    ctx.e = reduce.tlGet(old_hd_e);
+    reduce.tlSet(old_hd_e, old_e);
     ctx.s = old_hd_e | word.tlptrbit;
     ctx.action = word.ACT_NEXTREDEX;
 }
@@ -1167,9 +1167,9 @@ pub fn handleTRY(ctx: *ReductionCtx) void {
 pub fn handleFAIL(ctx: *ReductionCtx) void {
     while (!reduce.abnormal(ctx.s)) {
         ctx.hold = ctx.s;
-        ctx.s = reduce.hd_get(ctx.s);
-        reduce.hd_set(ctx.hold, word.FAIL);
-        reduce.tl_set(ctx.hold, 0);
+        ctx.s = reduce.hdGet(ctx.s);
+        reduce.hdSet(ctx.hold, word.FAIL);
+        reduce.tlSet(ctx.hold, 0);
     }
     ctx.action = word.ACT_DONE;
 }
@@ -1193,32 +1193,32 @@ pub fn handleUsh1(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    if (reduce.is_constructor(arg1)) {
+    if (reduce.isConstructor(arg1)) {
         if (reduce.suppressed(arg1)) {
-            reduce.rewrite_to_string(&ctx.e, "<unprintable>");
+            reduce.rewriteToString(&ctx.e, "<unprintable>");
         } else {
-            reduce.rewrite_to_string(&ctx.e, reduce.constr_name(arg1));
+            reduce.rewriteToString(&ctx.e, reduce.constrName(arg1));
         }
         ctx.action = word.ACT_DONE;
         return;
     }
     var hold = if (arg2 != 0) reduce.cons(')', word.NIL) else word.NIL;
-    while (!reduce.is_constructor(arg1)) {
-        hold = reduce.cons(' ', reduce.ap2(word.APPEND, reduce.ap(reduce.tl_get(arg1), reduce.ap(word.LAST, arg3)), hold));
-        arg1 = reduce.hd_get(arg1);
+    while (!reduce.isConstructor(arg1)) {
+        hold = reduce.cons(' ', reduce.ap2(word.APPEND, reduce.ap(reduce.tlGet(arg1), reduce.ap(word.LAST, arg3)), hold));
+        arg1 = reduce.hdGet(arg1);
         arg3 = reduce.ap(word.BODY, arg3);
     }
     if (reduce.suppressed(arg1)) {
-        reduce.rewrite_to_string(&ctx.e, "<unprintable>");
+        reduce.rewriteToString(&ctx.e, "<unprintable>");
         ctx.action = word.ACT_DONE;
         return;
     }
-    hold = reduce.ap2(word.APPEND, lex.strConv(reduce.constr_name(arg1)), hold);
+    hold = reduce.ap2(word.APPEND, lex.strConv(reduce.constrName(arg1)), hold);
     if (arg2 != 0) {
-        reduce.rewrite_to_cons(ctx.e, '(', hold);
+        reduce.rewriteToCons(ctx.e, '(', hold);
         ctx.action = word.ACT_DONE;
     } else {
-        reduce.rewrite_to_value(&ctx.e, hold);
+        reduce.rewriteToValue(&ctx.e, hold);
         ctx.action = word.ACT_NEXTREDEX;
     }
 }
@@ -1242,14 +1242,14 @@ pub fn handleMKSTRICT(ctx: *ReductionCtx) void {
             i -= 1;
         }
     }
-    var lastarg = reduce.tl_get(ctx.e);
+    var lastarg = reduce.tlGet(ctx.e);
     lastarg = reduce.reduce(lastarg);
     while (arg1 > 1) {
-        reduce.hd_set(ctx.e, reduce.ap(reduce.hd_get(reduce.hd_get(ctx.e)), reduce.tl_get(reduce.hd_get(ctx.e))));
+        reduce.hdSet(ctx.e, reduce.ap(reduce.hdGet(reduce.hdGet(ctx.e)), reduce.tlGet(reduce.hdGet(ctx.e))));
         reduce.downLeft(ctx);
         arg1 -= 1;
     }
-    reduce.hd_set(ctx.e, arg2);
+    reduce.hdSet(ctx.e, arg2);
     ctx.action = word.ACT_NEXTREDEX;
 }
 

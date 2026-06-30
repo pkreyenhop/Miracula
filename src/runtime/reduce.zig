@@ -93,7 +93,7 @@ inline fn lh(x: Word) Word {
     }
 }
 
-inline fn force_dbl(x: Word) f64 {
+inline fn forceDbl(x: Word) f64 {
     if (getTag(x) == .INT) {
         return big.toFloat(x);
     } else {
@@ -187,14 +187,14 @@ fn getStdout() ?*word.FILE {
     }
 }
 
-inline fn rewrite_to_value(expr: *Word, value: Word) void {
+inline fn rewriteToValue(expr: *Word, value: Word) void {
     hp(expr.*).* = word.I;
     expr.* = value;
     tp(expr.*).* = value;
 }
 
-inline fn rewrite_to_nil(expr: *Word) void {
-    rewrite_to_value(expr, NIL);
+inline fn rewriteToNil(expr: *Word) void {
+    rewriteToValue(expr, NIL);
 }
 
 inline fn setcell(e: Word, t_val: u8, a: Word, b: Word) void {
@@ -203,7 +203,7 @@ inline fn setcell(e: Word, t_val: u8, a: Word, b: Word) void {
     tp(e).* = b;
 }
 
-inline fn rewrite_to_cons(e: Word, hd_value: Word, tl_value: Word) void {
+inline fn rewriteToCons(e: Word, hd_value: Word, tl_value: Word) void {
     setcell(e, word.CONS, hd_value, tl_value);
 }
 
@@ -271,7 +271,7 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
                     stdinError(':');
                 }
                 if (ev.stdinuse != 0) {
-                    rewrite_to_nil(&ctx.e);
+                    rewriteToNil(&ctx.e);
                     return .REDUCE_DONE;
                 }
                 ev.stdinuse = ':';
@@ -280,10 +280,10 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
             const hold_char = main_clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
             if (hold_char == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
-                rewrite_to_nil(&ctx.e);
+                rewriteToNil(&ctx.e);
                 return .REDUCE_DONE;
             }
-            rewrite_to_cons(ctx.e, hold_char, heap.make(word.AP, word.READBIN, t(ctx.e)));
+            rewriteToCons(ctx.e, hold_char, heap.make(word.AP, word.READBIN, t(ctx.e)));
             return .REDUCE_DONE;
         },
         word.READ => {
@@ -298,7 +298,7 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
                     stdinError('-');
                 }
                 if (ev.stdinuse != 0) {
-                    rewrite_to_nil(&ctx.e);
+                    rewriteToNil(&ctx.e);
                     return .REDUCE_DONE;
                 }
                 ev.stdinuse = '-';
@@ -307,10 +307,10 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
             const hold_char = if (rt.rs.UTF8 != 0) stoChar(fromUTF8(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))))) else main_clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
             if (hold_char == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
-                rewrite_to_nil(&ctx.e);
+                rewriteToNil(&ctx.e);
                 return .REDUCE_DONE;
             }
-            rewrite_to_cons(ctx.e, hold_char, heap.make(word.AP, word.READ, t(ctx.e)));
+            rewriteToCons(ctx.e, hold_char, heap.make(word.AP, word.READ, t(ctx.e)));
             return .REDUCE_DONE;
         },
         word.READVALS => {
@@ -332,11 +332,11 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
             const val = parseLine(h(ctx.arg1), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.arg1));
             if (val == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(lastarg))));
-                rewrite_to_nil(&ctx.e);
+                rewriteToNil(&ctx.e);
                 return .REDUCE_DONE;
             }
             ctx.arg2 = heap.make(word.AP, h(ctx.e), lastarg);
-            rewrite_to_cons(ctx.e, val, ctx.arg2);
+            rewriteToCons(ctx.e, val, ctx.arg2);
             return .REDUCE_DONE;
         },
         else => return .REDUCE_NOT_HANDLED,
@@ -481,7 +481,7 @@ pub fn intError(s: [*:0]const u8) void {
 /// Tests: numplus: integer add and float promotion
 pub fn numplus(x: Word, y: Word) Word {
     if (getTag(x) == .DOUBLE) {
-        return heap.stoDbl(heap.getDbl(x) + force_dbl(y));
+        return heap.stoDbl(heap.getDbl(x) + forceDbl(y));
     }
     if (getTag(y) == .DOUBLE) {
         return heap.stoDbl(big.toFloat(x) + heap.getDbl(y));

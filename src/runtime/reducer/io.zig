@@ -40,21 +40,21 @@ pub fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
         return;
     }
 
-    const lastarg_val = reduce.reduce(reduce.tl_get(ctx.e));
-    reduce.tl_set(ctx.e, lastarg_val);
+    const lastarg_val = reduce.reduce(reduce.tlGet(ctx.e));
+    reduce.tlSet(ctx.e, lastarg_val);
 
     if (lastarg_val == word.OFFSIDE) {
         if (reduce_rt.ev.stdinuse != 0 and reduce_rt.ev.stdinuse != '+') {
             reduce.setTag(ctx.e, word.AP);
-            reduce.rewrite_to_nil(&ctx.e);
+            reduce.rewriteToNil(&ctx.e);
             ctx.action = word.ACT_DONE;
             return;
         }
         reduce_rt.ev.stdinuse = '+';
-        ctx.hold = reduce.cons(reduce.tl_get(reduce.hd_get(ctx.e)), 0);
-        reduce.tl_set(ctx.e, @intCast(@intFromPtr(reduce.getStdin().?)));
+        ctx.hold = reduce.cons(reduce.tlGet(reduce.hdGet(ctx.e)), 0);
+        reduce.tlSet(ctx.e, @intCast(@intFromPtr(reduce.getStdin().?)));
     } else {
-        ctx.hold = reduce.cons(reduce.tl_get(reduce.hd_get(ctx.e)), lastarg_val);
+        ctx.hold = reduce.cons(reduce.tlGet(reduce.hdGet(ctx.e)), lastarg_val);
         const fil = reduce.getstring(lastarg_val, "readvals");
         const f = word.fopen(fil, "r");
         if (f == null) {
@@ -62,10 +62,10 @@ pub fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
             reduce_rt.outstats();
             main_clib.exit(1);
         }
-        reduce.tl_set(ctx.e, @intCast(@intFromPtr(f.?)));
+        reduce.tlSet(ctx.e, @intCast(@intFromPtr(f.?)));
     }
 
-    reduce.hd_set(ctx.e, reduce.ap(word.READVALS, ctx.hold));
+    reduce.hdSet(ctx.e, reduce.ap(word.READVALS, ctx.hold));
     reduce.downLeft(ctx);
     reduce.downLeft(ctx);
     handle_READVALS(ctx);

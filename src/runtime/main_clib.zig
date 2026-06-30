@@ -311,7 +311,7 @@ fn formatArg(
 ) !void {
     _ = precision;
     const T = @TypeOf(val);
-    const is_int = comptime @typeInfo(T) == .int or @typeInfo(T) == .comptime_int;
+    const isInt = comptime @typeInfo(T) == .int or @typeInfo(T) == .comptime_int;
     const is_float = comptime @typeInfo(T) == .float or @typeInfo(T) == .comptime_float;
     var buf: [128]u8 = undefined;
     var str: []const u8 = "";
@@ -333,7 +333,7 @@ fn formatArg(
             }
         },
         'c' => {
-            if (comptime is_int) {
+            if (comptime isInt) {
                 buf[0] = @intCast(val);
             } else {
                 buf[0] = '?';
@@ -341,7 +341,7 @@ fn formatArg(
             str = buf[0..1];
         },
         'd', 'i' => {
-            if (comptime is_int) {
+            if (comptime isInt) {
                 str = try std.fmt.bufPrint(&buf, "{d}", .{val});
             } else if (comptime is_float) {
                 str = try std.fmt.bufPrint(&buf, "{d}", .{@as(i64, @intFromFloat(val))});
@@ -350,24 +350,24 @@ fn formatArg(
             }
         },
         'u' => {
-            if (comptime is_int and @typeInfo(T).int.signedness == .signed) {
+            if (comptime isInt and @typeInfo(T).int.signedness == .signed) {
                 const U = @Int(.unsigned, @typeInfo(T).int.bits);
                 str = try std.fmt.bufPrint(&buf, "{d}", .{@as(U, @bitCast(val))});
-            } else if (comptime is_int) {
+            } else if (comptime isInt) {
                 str = try std.fmt.bufPrint(&buf, "{d}", .{val});
             } else {
                 str = "0";
             }
         },
         'x' => {
-            if (comptime is_int) {
+            if (comptime isInt) {
                 str = try std.fmt.bufPrint(&buf, "{x}", .{val});
             } else {
                 str = "0";
             }
         },
         'o' => {
-            if (comptime is_int) {
+            if (comptime isInt) {
                 str = try std.fmt.bufPrint(&buf, "{o}", .{val});
             } else {
                 str = "0";
@@ -376,7 +376,7 @@ fn formatArg(
         'f', 'g', 'e', 'a' => {
             if (comptime is_float) {
                 str = try std.fmt.bufPrint(&buf, "{d}", .{val});
-            } else if (comptime is_int) {
+            } else if (comptime isInt) {
                 str = try std.fmt.bufPrint(&buf, "{d}", .{@as(f64, @floatFromInt(val))});
             } else {
                 str = "0.0";

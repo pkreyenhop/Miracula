@@ -135,7 +135,7 @@ fn makeHere(line: u32) Word {
 /// Whether heap word `x` is a constructor identifier.
 fn isConstructorWord(x: Word) bool {
     if (tg(x) != .ID) return false;
-    // get_id(x) = (char*)hd(hd(hd(x)))
+    // getId(x) = (char*)hd(hd(hd(x)))
     const name_ptr: [*:0]const u8 = strtab.strOf(h(h(h(x))));
     return isconstrname(name_ptr) != 0;
 }
