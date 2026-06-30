@@ -379,7 +379,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
                 dump.undump(s);
                 var f = if (heap.heap.files == NIL) rt.rs.oldfiles else heap.heap.files;
                 while (f != NIL) : (f = heap.t(f)) {
-                    const filename_str = heap.get_fil(heap.h(f)).?;
+                    const filename_str = heap.getFil(heap.h(f)).?;
                     if (abi.member(x, strtab.strBits(filename_str)) == 0) {
                         x = heap.cons(strtab.strBits(filename_str), x);
                         word.print("{s}\n", .{filename_str});

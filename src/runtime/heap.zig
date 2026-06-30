@@ -589,7 +589,10 @@ pub fn getId(x: Word) [*:0]const u8 {
 }
 
 /// The filename of file-record `fil`, or null when absent.
-pub fn get_fil(fil: Word) ?[*:0]const u8 {
+///
+/// The single file-name accessor: callers that want the empty string for an absent
+/// name use `getFil(fil) orelse ""` (matches `strtab.strOf(0)`).
+pub fn getFil(fil: Word) ?[*:0]const u8 {
     const val = h(h(h(fil)));
     if (val == 0) return null;
     return strtab.strOf(val);
@@ -1313,10 +1316,6 @@ pub fn outAtom(file: ?*word.FILE, x_val: Word) void {
 const member = types.member;
 const add1 = types.add1;
 const name = lex.name;
-/// The path string of file record `fil`.
-fn getFil(fil: Word) [*:0]const u8 {
-    return castPtr(h(h(h(fil))));
-}
 
 /// The mtime stored in file record `fil`.
 pub fn filTime(fil: Word) Word {
@@ -1477,7 +1476,7 @@ pub fn dumpScript(files_val: Word, file: ?*word.FILE) void {
         putword(core.s.errline, file);
         var x = rt.rs.oldfiles;
         while (x != word.NIL) : (x = t(x)) {
-            _ = word.fprint(file, "{s}", .{mkrel(getFil(h(x)))});
+            _ = word.fprint(file, "{s}", .{mkrel(getFil(h(x)) orelse "")});
             _ = word.putc(0, file);
             putword(filTime(h(x)), file);
         }
@@ -1491,7 +1490,7 @@ pub fn dumpScript(files_val: Word, file: ?*word.FILE) void {
 
     var f_list = files_val;
     while (f_list != word.NIL) : (f_list = t(f_list)) {
-        heap.CFN = getFil(h(f_list));
+        heap.CFN = getFil(h(f_list)) orelse "";
         _ = word.fprint(file, "{s}", .{mkrel(heap.CFN.?)});
         _ = word.putc(0, file);
         putword(filTime(h(f_list)), file);

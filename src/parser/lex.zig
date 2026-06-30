@@ -176,10 +176,6 @@ fn getId(x: Word) [*:0]const u8 {
     return strtab.strOf(h(h(h(x))));
 }
 
-/// The path string of file record `x`.
-fn getFil(x: Word) [*:0]const u8 {
-    return strtab.strOf(h(h(h(x))));
-}
 
 /// Whether the current token text equals `s`.
 fn is(s: [*:0]const u8) bool {
@@ -363,7 +359,7 @@ fn getch() c_int {
     }
     if (ls.atnl != 0) {
         if ((ls.line_no == 0 and core_state.s.commandmode == 0) or (rt.rs.magic and ls.line_no == 1 and ls.litstack == NIL)) {
-            const is_lit = (ch == '>') or litname(getFil(heap.heap.current_file));
+            const is_lit = (ch == '>') or litname(heap.getFil(heap.heap.current_file) orelse "");
             ls.literate = if (is_lit) 1 else 0;
             ls.litmain = ls.literate;
         }
@@ -1339,7 +1335,7 @@ pub fn directive() Word {
                 if (pathname() == null) {
                     syntax("bad pathname after %include\n");
                 } else {
-                    ls.yylval = make(.STRCONS, strtab.strBits(addextn(1, ls.dicp)), fileinfo(strtab.strBits(getFil(heap.heap.current_file)), holdlin));
+                    ls.yylval = make(.STRCONS, strtab.strBits(addextn(1, ls.dicp)), fileinfo(strtab.strBits(heap.getFil(heap.heap.current_file) orelse ""), holdlin));
                     _ = keep(ls.dicp);
                 }
                 return word.INCLUDE;
@@ -1869,7 +1865,7 @@ pub fn charclass() c_int {
 pub fn resetLex() void {
     if (core_state.s.commandmode == 0) {
         if (core_state.s.errs == 0) {
-            core_state.s.errs = fileinfo(strtab.strBits(getFil(heap.heap.current_file)), ls.line_no);
+            core_state.s.errs = fileinfo(strtab.strBits(heap.getFil(heap.heap.current_file) orelse ""), ls.line_no);
         }
         const err_script_raw = @as(?[*:0]const u8, strtab.strOf(h(core_state.s.errs)));
         const err_script = err_script_raw orelse "test.m";

@@ -118,12 +118,12 @@ const comma_t = word.comma_t;
 const void_t = word.void_t;
 
 // ---------------------------------------------------------------------------
-// 'here' generation: fileinfo(get_fil(current_file), line_no)
+// 'here' generation: fileinfo(getFil(current_file), line_no)
 // ---------------------------------------------------------------------------
 
 /// Build a source-location (`HERE`) marker node for `line`.
 fn makeHere(line: u32) Word {
-    // get_fil(current_file) = (char*)hd(hd(hd(current_file)))
+    // getFil(current_file) = (char*)hd(hd(hd(current_file)))
     const fil_name = h(h(h(heap.heap.current_file)));
     return heap.make(.FILEINFO, fil_name, @intCast(line));
 }

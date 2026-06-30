@@ -469,7 +469,7 @@ pub fn mkincludes(includees_val: Word) Word {
             }
             var y = x;
             while (y != NIL) : (y = heap.t(y)) {
-                const nodev = files.inodeId(heap.get_fil(heap.h(y)).?);
+                const nodev = files.inodeId(heap.getFil(heap.h(y)).?);
                 heap.tp(heap.filInodev(heap.h(y))).* = nodev;
             }
 
@@ -491,11 +491,11 @@ pub fn mkincludes(includees_val: Word) Word {
                                             q = heap.t(q);
                                             continue;
                                         }
-                                        while (w != NIL and (word.strcmp(heap.get_fil(heap.h(w)).?, heap.get_fil(heap.h(z)).?) != 0 or heap.h(heap.t(heap.h(w))) != orig)) {
+                                        while (w != NIL and (word.strcmp(heap.getFil(heap.h(w)).?, heap.getFil(heap.h(z)).?) != 0 or heap.h(heap.t(heap.h(w))) != orig)) {
                                             w = heap.t(w);
                                         }
                                         if (w == NIL) {
-                                            tclashes = heap.cons(abi.strcons(@as(Word, strtab.strBits(heap.get_fil(heap.h(z)).?)), heap.cons(orig, NIL)), tclashes);
+                                            tclashes = heap.cons(abi.strcons(@as(Word, strtab.strBits(heap.getFil(heap.h(z)).?)), heap.cons(orig, NIL)), tclashes);
                                             w = tclashes;
                                         }
                                         heap.tp(heap.t(heap.t(heap.h(w)))).* = heap.cons(heap.h(p), heap.t(heap.t(heap.h(w))));

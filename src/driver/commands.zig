@@ -83,7 +83,7 @@ fn namescom(l: Word) void {
         heap.tp(l).* = n;
     }
     if (n == NIL) return;
-    if (heap.get_fil(l)) |gf| {
+    if (heap.getFil(l)) |gf| {
         filequote(std.mem.span(gf));
     } else {
         word.print("primitive:", .{});
@@ -193,7 +193,7 @@ fn cmdFiles() void {
         if (abi.getchar() != '\n') return;
         var f = heap.heap.files;
         while (f != NIL) : (f = heap.t(f)) {
-            word.print("({s},{},{})", .{ heap.get_fil(heap.h(f)).?, heap.filTime(heap.h(f)), heap.filShare(heap.h(f)) });
+            word.print("({s},{},{})", .{ heap.getFil(heap.h(f)).?, heap.filTime(heap.h(f)), heap.filShare(heap.h(f)) });
             abi.printlist(@constCast(""), heap.filDefs(heap.h(f)));
         }
         return;
