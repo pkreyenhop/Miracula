@@ -150,6 +150,20 @@ TEST_CASES = [
         "input": "take 5 ones\n"
     },
     {
+        "name": "type_class_labels",
+        "script": (
+            "|| Pins the type-declaration \"kind\" behaviour that depends on the tClass field:\n"
+            "||  - the class label shown by ?name (finger) for each kind, and\n"
+            "||  - derived-show of an algebraic value (regressed if tClass numbering drifts).\n"
+            "colour ::= Red | Green | Blue\n"
+            "type day == num\n"
+            "abstype widget with same :: widget -> widget\n"
+            "type widget == num\n"
+            "same x = x\n"
+        ),
+        "input": "?colour\n?day\n?widget\nGreen\n[Red,Green,Blue]\n"
+    },
+    {
         "name": "show_int",
         "input": "show 123\n"
     },

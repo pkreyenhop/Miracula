@@ -1,0 +1,5 @@
+colour :: type ||(algebraic type) defined in "./tests/golden/type_class_labels.m"
+day :: type ||(synonym type) defined in "./tests/golden/type_class_labels.m"
+widget :: type ||(abstract type) defined in "./tests/golden/type_class_labels.m"
+Green
+[Red,Green,Blue]

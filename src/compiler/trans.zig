@@ -85,13 +85,14 @@ const NIL = word.NIL;
 const NILS = word.NILS;
 const UNDEF = word.UNDEF;
 const wrong_t = word.wrong_t;
-// NB: these type-declaration *kind* codes use a local 0/1/2/3 numbering that does
-// NOT match word.zig (synonym_t=1, algebraic_t=2, abstract_t=3) — kept local and
-// self-consistent on purpose (a flagged discrepancy); do not alias to word.*.
-const placeholder_t: Word = 3;
-const algebraic_t: Word = 0;
-const synonym_t: Word = 1;
-const abstract_t: Word = 2;
+// Type-declaration *kind* codes. Single source of truth is word.zig: these are
+// the values codegen.zig writes (via declType) into a type id's tClass field and
+// that heap.zig/commands.zig read back. Aliased here so the writes, the branch
+// logic below, and genshfns() all agree with the readers.
+const synonym_t = word.synonym_t;
+const algebraic_t = word.algebraic_t;
+const abstract_t = word.abstract_t;
+const placeholder_t = word.placeholder_t;
 const CONST = word.CONST;
 const ATOMLIMIT = word.ATOMLIMIT;
 
@@ -1092,7 +1093,7 @@ pub fn mkshow(s: Word, p: Word, input_t: Word) Word {
                     r = ap(r, mkshow(s, 1, h(args)));
                     args = t(args);
                 }
-                if (typeClass(type_node) == 0) {
+                if (typeClass(type_node) == algebraic_t) {
                     r = ap(r, p);
                 }
                 return r;
