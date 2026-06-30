@@ -33,7 +33,7 @@ partial),
 
 | ID | Item | Owner plan | State |
 |----|------|-----------|:-----:|
-| R3 | Single source for core constants. **✅ The `*_t` numbering discrepancy was a real bug — fixed (`c2d98fc`).** Remaining: atom-constant copies → `word.*`; `get_fil` dedup. (The "3 raw cell accesses" were false positives — comments.) | ARCH Part B | ◐ |
+| R3 | Single source for core constants. **✅ Done** — `*_t` numbering bug fixed (`c2d98fc`); last atom-constant copies `CONST`/`FREE` aliased (`34480dc`); only the decoupled state-module `CMBASE` remains by design. | ARCH Part B | ✅ |
 | R7 | Cryptic helpers — out-printers + `ctx.e/s/hold` decision done; **numbered helpers remain** (`typeError1-8`, `outType1/2`, `parseType1/2`, `parsePatV1-3`, `add1`/`remove1`/`newadd1`/`less1`/`decl1`) | ARCH Part B | ◐ |
 | R9 | Break up longest fns: `reduce`(213), `loadfile`(331), `yylex`(343), `mainEntry`(412), `etype`(608), `handleReadyState`(813) | ARCH Part B | ◐ |
 | R10 | Unify error channel (`MiraError` / `SYNERR` sentinels / `return NIL`) | ARCH Part B | ⏳ |
@@ -103,7 +103,7 @@ where **(b)** would reshape Phases 4–5.
   (`ap2`/`ap3`/`digit0` are legitimate arity/domain suffixes — leave them.) This is
   the concrete target list for a future R7 pass; R7 stays ◐.
 
-### Phase 1 — Finish R3 + small encapsulation cleanups *(bounded, mechanical)*
+### Phase 1 — Finish R3 + small encapsulation cleanups ✅ *(done 2026-07-01)*
 * ✅ **The `algebraic_t`/`abstract_t`/`placeholder_t` numbering discrepancy was a
   real, live bug — fixed** (commit `c2d98fc`). It was **not** cosmetic: `word.zig`
   numbered the kind codes 2/3/5 while the C-ported checker (`trans.zig`/`types.zig`)
@@ -116,17 +116,20 @@ where **(b)** would reshape Phases 4–5.
   (algebraic=0, synonym=1, abstract=2, placeholder=3, free=4); alias the redundant
   local consts to `word.*` (R3 closure for these codes); add regression goldens
   `algebraic_nullary` + `algebraic_param`.
-* Then migrate the remaining atom-constant copies to `word.*` aliases. Leave the
-  two intentionally-decoupled state modules as-is.
-* **No raw-cell-access regression after all** — the "0 → 3" in idiomatic-check
-  metric 14 is **false positives**: all three matches are *comments* mentioning
-  `hd`/`tl`/`tag` (`combinators.zig:500/570` reduction rules, `word.zig:254` header),
-  not real cell access. Fix is to tighten the metric-14 regex to skip comments — a
-  `scripts/idiomatic-check.sh` refinement, not a code change.
-* **Dedup the file-name accessor** (from Phase 0): unify `heap.get_fil` (interned
-  `strtab.strOf`) with the two private `getFil` helpers (`heap.zig:1329`,
-  `lex.zig:180`) that still use the pre-interning `castPtr` path — confirm they read
-  the same representation, then collapse to one `getFil` and retire the snake name.
+* ✅ **Atom-constant copies migrated** (`34480dc`). A tree-wide sweep found only
+  `CONST`/`FREE` (types.zig) still value-duplicating a `word.zig` constant; both
+  aliased to `word.*`. The only remaining copy is `CMBASE` in the two deliberately
+  import-decoupled state modules (`lex_state.zig`/`runtime_state.zig`) — left as-is
+  by design.
+* ✅ **No raw-cell-access regression after all** — the "0 → 3" in idiomatic-check
+  metric 14 was **false positives** (comments mentioning `hd`/`tl`/`tag`). Fixed by
+  stripping `//`-comments in the metric-14 regex (`7e7bf07`); real count is `0`.
+* ✅ **File-name accessor deduped** (`093a767`). The "representation split" feared in
+  Phase 0 was illusory: `castPtr` is just a thin alias for `strtab.strOf`, so all
+  three readers already decode identically. Collapsed to one
+  `pub fn heap.getFil(fil) ?[*:0]const u8` (non-optional sites use `orelse ""`);
+  retired the `get_fil` snake name. With `tab_complete` exempted (zigline reflection
+  name, `7e7bf07`), the readability snake-fn count is now a true **0**.
 
 ### Phase 2 — Finish B2 option (a) *(incremental, golden-gated)*
 * Migrate the remaining range-test sites — `trans.zig` (`mkindex`/`getarg`-style

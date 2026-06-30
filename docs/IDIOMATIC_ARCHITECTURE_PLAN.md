@@ -158,7 +158,7 @@ Each is behaviour-preserving and golden-gated.
 |---|----------------|----------|---------|
 | **R1** ✅ | **Collapse the `reduce.zig` ↔ `reduce_core.zig` duplication** — have the engine import the primitives instead of copying them. **Done:** 60 duplicated primitives in reduce.zig replaced with `pub const X = core.X;` re-exports (bodies verified identical / alias-name-only diffs); reduce.zig ~900 → 414 lines. | **57 primitives** duplicated "in lock-step" | — (new) |
 | **R2** ✅ | **Finish snake_case → camelCase in the reducer** (`hd_get`→`hdGet`, `tl_set`, `rewrite_to_*`, `is_*`, `get_id`, `force_dbl`). **Done:** 37 helpers renamed tree-wide (~900 call sites). | ~40 names, in both reducer files | end state: "no migration-era naming" |
-| **R3** ◑ | **One source of truth for core constants** — import `NIL`/`CMBASE`/tag codes from `word.zig`; delete the local copies. **Done (partial):** tag codes (via P4) + value-verified CMBASE/CONST/atom-constants/type-codes in big/lex/codegen/trans aliased to `word.*`. **Left:** broader atom-constant copies in other files; the two intentionally-decoupled state modules. **The `algebraic_t`/`abstract_t`/`placeholder_t` numbering discrepancy turned out to be a real bug — investigated and fixed in `c2d98fc`** (word.zig was mis-numbered; every user `::=` type was processed as an `abstype`); the kind codes now have a single source of truth in `word.zig` and the local copies in `trans`/`types` are aliases. | **21 files** re-declare them | P4 |
+| **R3** ✅ | **One source of truth for core constants** — import `NIL`/`CMBASE`/tag codes from `word.zig`; delete the local copies. **Done:** tag codes (via P4) + value-verified CMBASE/CONST/FREE/atom-constants/type-codes aliased to `word.*`; a tree-wide sweep (`34480dc`) confirms no remaining value-duplicate of a `word.zig` constant outside the FFI shim. **Left (by design):** the `CMBASE` copy in the two intentionally-decoupled state modules. **The `algebraic_t`/`abstract_t`/`placeholder_t` numbering discrepancy turned out to be a real bug — investigated and fixed in `c2d98fc`** (word.zig was mis-numbered; every user `::=` type was processed as an `abstype`); the kind codes now have a single source of truth in `word.zig` and the local copies in `trans`/`types` are aliases. | **21 files** re-declare them | P4 |
 | **R4** ✅ | **Return `bool` from predicates** instead of `c_int` (1/0). **Done:** the boolean predicates converted — isChar, isNat, isconstrname, okid/okulid/okpath (+ retyped the `kollect` higher-order helper), ispoly, nonGeneric, occurs, utf8test, okdump, badEditor, peekdig, nclchk. Three-valued functions (cmp/compare/sign/memclass) and the C-ABI `c_int` fns (strcmp/system/…) are correctly left `c_int`. | **65 `c_int`-returning fns** | P4, P8 |
 | **R5** ✅ | **Drop the `r7_` import prefixes.** *(done in Part A / Priority 3)* | ~190 uses | **P3** |
 | **R6** ✅ | **Trim the `main.*` god-namespace**; migrate call sites to the owning module. *(done in Part A)* | ~108 re-exports | **P1/P2/P7** |
@@ -169,11 +169,11 @@ Each is behaviour-preserving and golden-gated.
 
 ## Sequencing
 
-* **Quick wins (mechanical, byte-identical):** R5 ✅, R3 ◑, R2 ✅.
+* **Quick wins (mechanical, byte-identical):** R5 ✅, R3 ✅, R2 ✅.
 * **Structural (incremental, per-module):** R1 ✅, R6/Part A ✅, R8 ✅, R4 ✅.
 * **Judgment / design-bearing (do thoughtfully, last):** R7 ◑, R9 ◑, R10 ⏳, P4 ✅.
 
-**Status:** Part A complete; Part B R1/R2/R4/R5/R6/R8 done, R3/R7/R9 partial, R10
+**Status:** Part A complete; Part B R1/R2/R3/R4/R5/R6/R8 done, R7/R9 partial, R10
 deferred (below). Every landed step kept the unit suite (157 tests), the golden
 corpus (44 byte-identical), and `zig build lint` green.
 
