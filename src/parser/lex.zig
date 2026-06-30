@@ -27,13 +27,13 @@ const core_state = @import("../runtime/core_state.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 const Word = i64;
-const CMBASE: Word = 306;
-const NIL: Word = CMBASE + 138;
-const NILS: Word = CMBASE + 139;
-const UNDEF: Word = CMBASE + 140;
+const CMBASE = word.CMBASE;
+const NIL = word.NIL;
+const NILS = word.NILS;
+const UNDEF = word.UNDEF;
 
-const False: Word = CMBASE + 136;
-const True: Word = CMBASE + 137;
+const False = word.False;
+const True = word.True;
 
 
 

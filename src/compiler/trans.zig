@@ -41,16 +41,16 @@ const Word = i64;
 const GENERATOR: Word = 0;
 const GUARD: Word = 1;
 const REPEAT: Word = 2;
-const undef_t: Word = 0;
-const bool_t: Word = 1;
-const num_t: Word = 2;
-const char_t: Word = 3;
-const list_t: Word = 4;
-const comma_t: Word = 5;
-const arrow_t: Word = 6;
-const void_t: Word = 7;
-const type_t: Word = 10;
-const CMBASE: Word = 306;
+const undef_t = word.undef_t;
+const bool_t = word.bool_t;
+const num_t = word.num_t;
+const char_t = word.char_t;
+const list_t = word.list_t;
+const comma_t = word.comma_t;
+const arrow_t = word.arrow_t;
+const void_t = word.void_t;
+const type_t = word.type_t;
+const CMBASE = word.CMBASE;
 const S: Word = CMBASE + 0;
 const K: Word = CMBASE + 1;
 const Y: Word = CMBASE + 2;
@@ -86,18 +86,21 @@ const G_UNIT: Word = CMBASE + 108;
 const BADCASE: Word = CMBASE + 132;
 const CONFERROR: Word = CMBASE + 133;
 const FAIL: Word = CMBASE + 135;
-const False: Word = CMBASE + 136;
-const True: Word = CMBASE + 137;
-const NIL: Word = CMBASE + 138;
-const NILS: Word = CMBASE + 139;
-const UNDEF: Word = CMBASE + 140;
-const wrong_t: Word = 8;
+const False = word.False;
+const True = word.True;
+const NIL = word.NIL;
+const NILS = word.NILS;
+const UNDEF = word.UNDEF;
+const wrong_t = word.wrong_t;
+// NB: these type-declaration *kind* codes use a local 0/1/2/3 numbering that does
+// NOT match word.zig (synonym_t=1, algebraic_t=2, abstract_t=3) — kept local and
+// self-consistent on purpose (a flagged discrepancy); do not alias to word.*.
 const placeholder_t: Word = 3;
 const algebraic_t: Word = 0;
 const synonym_t: Word = 1;
 const abstract_t: Word = 2;
-const CONST: Word = 268;
-const ATOMLIMIT: Word = CMBASE + 141;
+const CONST = word.CONST;
+const ATOMLIMIT = word.ATOMLIMIT;
 
 // NIL
 

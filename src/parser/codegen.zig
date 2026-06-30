@@ -24,7 +24,7 @@ const core_state = @import("../runtime/core_state.zig");
 const Word = word.Word;
 
 // Miranda predefined atom words (from lex.zig — keep in sync with CMBASE = 306).
-const CMBASE: Word = 306;
+const CMBASE = word.CMBASE;
 const FALSE_ATOM: Word = CMBASE + 136;
 const TRUE_ATOM: Word = CMBASE + 137;
 
@@ -111,11 +111,11 @@ fn bigscanZ(alloc: Allocator, text: []const u8) Word {
 // Type constants (from data.h — replicated so we don't need the macros)
 // ---------------------------------------------------------------------------
 
-const undef_t: Word = 0; // #define undef_t 0
-const arrow_t: Word = 6; // #define arrow_t 6
-const list_t: Word = 4; // #define list_t  4
-const comma_t: Word = 5; // #define comma_t 5
-const void_t: Word = 7; // #define void_t  7
+const undef_t = word.undef_t;
+const arrow_t = word.arrow_t;
+const list_t = word.list_t;
+const comma_t = word.comma_t;
+const void_t = word.void_t;
 
 // ---------------------------------------------------------------------------
 // 'here' generation: fileinfo(get_fil(current_file), line_no)

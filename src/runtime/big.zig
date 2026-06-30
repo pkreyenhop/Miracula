@@ -33,8 +33,8 @@ const PTEN: Word = 10000; // 10^4 — chunk size for decimal scan/print
 const PSIXTEEN: Word = 4096; // 16^3 — chunk size for hex scan
 const PEIGHT: Word = 0x8000; // 8^5 — chunk size for octal scan
 const TENW: Word = 4; // decimal digits per PTEN chunk
-const CMBASE: Word = 306;
-const NIL: Word = CMBASE + 138;
+const CMBASE = word.CMBASE;
+const NIL = word.NIL;
 
 const make = heap.make;
 const mathError = reduce.mathError;
