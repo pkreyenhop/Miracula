@@ -56,8 +56,8 @@ const parseLine = repl.parseLine;
 const reduce = engine.reduce;
 const charname = heap.charname;
 
-inline fn getTag(x: Word) u8 {
-    return heap.heap.getTag(x);
+inline fn getTag(x: Word) word.NodeTag {
+    return @enumFromInt(heap.heap.getTag(x));
 }
 
 inline fn setTag(x: Word, val: u8) void {
@@ -86,7 +86,7 @@ inline fn abnormal(x: Word) bool {
 
 
 inline fn lh(x: Word) Word {
-    if (getTag(h(x)) == word.STRCONS) {
+    if (getTag(h(x)) == .STRCONS) {
         return t(h(x));
     } else {
         return h(x);
@@ -94,7 +94,7 @@ inline fn lh(x: Word) Word {
 }
 
 inline fn force_dbl(x: Word) f64 {
-    if (getTag(x) == word.INT) {
+    if (getTag(x) == .INT) {
         return big.toFloat(x);
     } else {
         return heap.getDbl(x);
@@ -351,7 +351,7 @@ pub fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     const x1 = x;
     var n: usize = 0;
     const buf_size = 1024;
-    while (getTag(curr_x) == word.CONS and n < buf_size) {
+    while (getTag(curr_x) == .CONS and n < buf_size) {
         n += 1;
         hp(curr_x).* = reduce(h(curr_x));
         tp(curr_x).* = reduce(t(curr_x));
@@ -359,7 +359,7 @@ pub fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     }
     curr_x = x1;
     var p_idx: usize = 0;
-    while (getTag(curr_x) == word.CONS and n > 0) {
+    while (getTag(curr_x) == .CONS and n > 0) {
         n -= 1;
         rt.rs.linebuf[p_idx] = @intCast(h(curr_x));
         p_idx += 1;
@@ -405,7 +405,7 @@ pub fn outstats() void {
 
 /// Write value `h_val` to file `f` for diagnostics, optionally followed by a newline.
 pub fn outHere(f: ?*word.FILE, h_val: Word, nl: c_int) void {
-    if (getTag(h_val) != word.FILEINFO) {
+    if (getTag(h_val) != .FILEINFO) {
         word.printErr("(impossible event in outhere)\n", .{});
         return;
     }
@@ -480,10 +480,10 @@ pub fn intError(s: [*:0]const u8) void {
 ///
 /// Tests: numplus: integer add and float promotion
 pub fn numplus(x: Word, y: Word) Word {
-    if (getTag(x) == word.DOUBLE) {
+    if (getTag(x) == .DOUBLE) {
         return heap.stoDbl(heap.getDbl(x) + force_dbl(y));
     }
-    if (getTag(y) == word.DOUBLE) {
+    if (getTag(y) == .DOUBLE) {
         return heap.stoDbl(big.toFloat(x) + heap.getDbl(y));
     }
     return big.add(x, y);
@@ -502,17 +502,17 @@ test "numplus: integer add and float promotion" {
 pub fn gResidue(toks2: Word) Word {
     var curr_toks2 = toks2;
     var toks1 = NIL;
-    if (getTag(curr_toks2) != word.CONS) {
-        if (getTag(curr_toks2) == word.AP and h(curr_toks2) == word.I and t(curr_toks2) == NIL) {
+    if (getTag(curr_toks2) != .CONS) {
+        if (getTag(curr_toks2) == .AP and h(curr_toks2) == word.I and t(curr_toks2) == NIL) {
             return cons(NIL, NIL);
         }
         return cons(NIL, curr_toks2);
     }
-    while (getTag(t(curr_toks2)) == word.CONS) {
+    while (getTag(t(curr_toks2)) == .CONS) {
         toks1 = cons(h(curr_toks2), toks1);
         curr_toks2 = t(curr_toks2);
     }
-    if (t(curr_toks2) == NIL or (getTag(t(curr_toks2)) == word.AP and h(t(curr_toks2)) == word.I and t(t(curr_toks2)) == NIL)) {
+    if (t(curr_toks2) == NIL or (getTag(t(curr_toks2)) == .AP and h(t(curr_toks2)) == word.I and t(t(curr_toks2)) == NIL)) {
         toks1 = cons(h(curr_toks2), toks1);
         return cons(ap(word.DESTREV, toks1), NIL);
     }
@@ -587,43 +587,43 @@ pub fn compare(arg_a: Word, arg_b: Word) c_int {
         const tag_a = getTag(a);
         const tag_b = getTag(b);
         switch (tag_a) {
-            word.DOUBLE => {
-                if (tag_b == word.DOUBLE) {
+            .DOUBLE => {
+                if (tag_b == .DOUBLE) {
                     return fsign(heap.getDbl(a) - heap.getDbl(b));
                 } else {
                     return fsign(heap.getDbl(a) - big.toFloat(b));
                 }
             },
-            word.INT => {
-                if (tag_b == word.INT) {
+            .INT => {
+                if (tag_b == .INT) {
                     return big.cmp(a, b);
                 } else {
                     return fsign(big.toFloat(a) - heap.getDbl(b));
                 }
             },
-            word.UNICODE => {
+            .UNICODE => {
                 return sign(heap.getChar(a) - heap.getChar(b));
             },
-            word.ATOM => {
-                if (tag_b == word.UNICODE) {
+            .ATOM => {
+                if (tag_b == .UNICODE) {
                     return sign(heap.getChar(a) - heap.getChar(b));
                 }
                 if ((word.S <= a and a <= word.ERROR) or (word.S <= b and b <= word.ERROR)) {
                     fnError("attempt to compare functions");
                 }
-                if (tag_b == word.ATOM) {
+                if (tag_b == .ATOM) {
                     return sign(a - b);
                 }
                 return -1;
             },
-            word.CONSTRUCTOR => {
-                if (tag_b == word.CONSTRUCTOR) {
+            .CONSTRUCTOR => {
+                if (tag_b == .CONSTRUCTOR) {
                     return sign(h(a) - h(b));
                 } else {
                     return -1;
                 }
             },
-            word.CONS, word.AP => {
+            .CONS, .AP => {
                 if (tag_a == tag_b) {
                     hp(a).* = reduce(h(a));
                     hp(b).* = reduce(h(b));
@@ -666,23 +666,23 @@ test "compare: orders ints, chars, and strings; 0 on equal" {
 pub fn force(x_val: Word) void {
     var x = x_val;
     switch (getTag(x)) {
-        word.AP => {
+        .AP => {
             var curr_h = h(x);
-            while (getTag(curr_h) == word.AP) {
+            while (getTag(curr_h) == .AP) {
                 curr_h = h(curr_h);
             }
             if (word.S <= curr_h and curr_h <= word.ERROR) {
                 return;
             }
-            while (getTag(x) == word.AP) {
+            while (getTag(x) == .AP) {
                 tp(x).* = reduce(t(x));
                 force(t(x));
                 x = h(x);
             }
             return;
         },
-        word.CONS => {
-            while (getTag(x) == word.CONS) {
+        .CONS => {
+            while (getTag(x) == .CONS) {
                 hp(x).* = reduce(h(x));
                 force(h(x));
                 tp(x).* = reduce(t(x));
@@ -707,7 +707,7 @@ test "force: deep-evaluates a list of thunks to normal form" {
 /// Tests: head: the leftmost atom of an application spine
 pub fn head(x_val: Word) Word {
     var x = x_val;
-    while (getTag(x) == word.AP) {
+    while (getTag(x) == .AP) {
         x = h(x);
     }
     return x;
@@ -781,7 +781,7 @@ pub fn outf(e: Word) void {
 /// Print a Miranda char-list to the current output stream (`ev.s_out`), honouring UTF-8.
 pub fn print(arg_e: Word) void {
     var e = reduce(arg_e);
-    while (getTag(e) == word.CONS) {
+    while (getTag(e) == .CONS) {
         hp(e).* = reduce(h(e));
         if (heap.isChar(h(e)) == 0) {
             break;
@@ -826,7 +826,7 @@ pub fn output(arg_e: Word) void {
     defer rt.rs.cstack = old_cstack;
 
     e = reduce(e);
-    while (getTag(e) == word.CONS) {
+    while (getTag(e) == .CONS) {
         hp(e).* = reduce(h(e));
         switch (h(head(h(e)))) {
             Stdout => {
@@ -871,7 +871,7 @@ pub fn output(arg_e: Word) void {
             },
             Exit => {
                 var n = reduce(t(h(e)));
-                if (getTag(n) == word.INT) {
+                if (getTag(n) == .INT) {
                     n = digit0(n);
                 } else {
                     intError("Exit");

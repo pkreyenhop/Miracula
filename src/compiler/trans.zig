@@ -50,27 +50,6 @@ const comma_t: Word = 5;
 const arrow_t: Word = 6;
 const void_t: Word = 7;
 const type_t: Word = 10;
-const ATOM: u8 = 0;
-const DOUBLE: u8 = 1;
-const DATAPAIR: u8 = 2;
-const TVAR: u8 = 4;
-const INT: u8 = 5;
-const CONSTRUCTOR: u8 = 6;
-const STRCONS: u8 = 7;
-const ID: u8 = 8;
-const AP: u8 = 9;
-const LAMBDA: u8 = 10;
-const CONS: u8 = 11;
-const TRIES: u8 = 12;
-const LABEL: u8 = 13;
-const SHOW: u8 = 14;
-const STARTREADVALS: u8 = 15;
-const LET: u8 = 16;
-const LETREC: u8 = 17;
-const SHARE: u8 = 18;
-const LEXER: u8 = 19;
-const PAIR: u8 = 20;
-const TCONS: u8 = 22;
 const CMBASE: Word = 306;
 const S: Word = CMBASE + 0;
 const K: Word = CMBASE + 1;
@@ -162,8 +141,8 @@ const syntax = setup.syntax;
 const acterror = setup.acterror;
 
 /// The node tag of cell `x`.
-inline fn getTag(x: Word) u8 {
-    return heap.heap.getTag(x);
+inline fn getTag(x: Word) word.NodeTag {
+    return @enumFromInt(heap.heap.getTag(x));
 }
 
 /// Head (`hd`) of cell `x`.
@@ -189,7 +168,7 @@ fn tp(x: Word) *Word {
 /// The head of an application spine (walk `hd` while it is an `AP`).
 fn appHead(input_x: Word) Word {
     var x = input_x;
-    while (getTag(x) == AP) {
+    while (getTag(x) == .AP) {
         x = h(x);
     }
     return x;
@@ -197,52 +176,52 @@ fn appHead(input_x: Word) Word {
 
 /// Allocate a `CONS` cell `(x . y)`.
 fn cons(x: Word, y: Word) Word {
-    return make(CONS, x, y);
+    return make(word.CONS, x, y);
 }
 
 /// Allocate a `PAIR` cell `(x . y)`.
 fn pair(x: Word, y: Word) Word {
-    return make(PAIR, x, y);
+    return make(word.PAIR, x, y);
 }
 
 /// Allocate a `DATAPAIR` cell.
 fn datapair(x: Word, y: Word) Word {
-    return make(DATAPAIR, x, y);
+    return make(word.DATAPAIR, x, y);
 }
 
 /// Allocate a `CONSTRUCTOR` cell (tag `n`, fields `x`).
 fn constructor(n: Word, x: Word) Word {
-    return make(CONSTRUCTOR, n, x);
+    return make(word.CONSTRUCTOR, n, x);
 }
 
 /// Allocate a `LAMBDA` cell `(x . y)`.
 fn lambda(x: Word, y: Word) Word {
-    return make(LAMBDA, x, y);
+    return make(word.LAMBDA, x, y);
 }
 
 /// Allocate a `SHARE` cell (a shared / lazily-evaluated binding).
 fn share(x: Word, y: Word) Word {
-    return make(SHARE, x, y);
+    return make(word.SHARE, x, y);
 }
 
 /// Allocate a `TRIES` cell (a chain of pattern-match alternatives).
 fn tries(x: Word, y: Word) Word {
-    return make(TRIES, x, y);
+    return make(word.TRIES, x, y);
 }
 
 /// Allocate a `LET` cell.
 fn let(x: Word, y: Word) Word {
-    return make(LET, x, y);
+    return make(word.LET, x, y);
 }
 
 /// Allocate a `LETREC` cell.
 fn letrec(x: Word, y: Word) Word {
-    return make(LETREC, x, y);
+    return make(word.LETREC, x, y);
 }
 
 /// Allocate an application `(x y)`.
 fn ap(x: Word, y: Word) Word {
-    return make(AP, x, y);
+    return make(word.AP, x, y);
 }
 
 /// Allocate `((x y) z)`.
@@ -306,37 +285,37 @@ fn addToEnv(x: Word) void {
 
 /// Whether `x` names a data constructor.
 fn isConstructor(x: Word) bool {
-    return getTag(x) == ID and isconstrname(getId(x)) != 0;
+    return getTag(x) == .ID and isconstrname(getId(x)) != 0;
 }
 
 /// Whether `x` names an ordinary variable.
 fn isVariable(x: Word) bool {
-    return getTag(x) == ID and isconstrname(getId(x)) == 0;
+    return getTag(x) == .ID and isconstrname(getId(x)) == 0;
 }
 
 /// Whether `x` is an `n+k` pattern.
 fn isNPlusKPattern(x: Word) bool {
-    return getTag(x) == AP and getTag(h(x)) == AP and h(h(x)) == PLUS;
+    return getTag(x) == .AP and getTag(h(x)) == .AP and h(h(x)) == PLUS;
 }
 
 /// Whether a type node is a function (`->`) type.
 fn isArrowType(x: Word) bool {
-    return getTag(x) == AP and getTag(h(x)) == AP and h(h(x)) == arrow_t;
+    return getTag(x) == .AP and getTag(h(x)) == .AP and h(h(x)) == arrow_t;
 }
 
 /// Whether a type node is a list type.
 fn isListType(x: Word) bool {
-    return getTag(x) == AP and h(x) == list_t;
+    return getTag(x) == .AP and h(x) == list_t;
 }
 
 /// Whether a type node is a type variable.
 fn isTypeVariable(x: Word) bool {
-    return getTag(x) == TVAR;
+    return getTag(x) == .TVAR;
 }
 
 /// Whether a type node is a compound (application) type.
 fn isCompoundType(x: Word) bool {
-    return getTag(x) == AP;
+    return getTag(x) == .AP;
 }
 
 /// Whether `x` is a char value.
@@ -381,7 +360,7 @@ fn getTypeVariable(x: Word) Word {
 
 /// Box index `i` (bare if small, else an `INT` cell).
 fn mkindex(i: Word) Word {
-    return if (word.fitsInByte(i)) i else make(INT, i, 0);
+    return if (word.fitsInByte(i)) i else make(word.INT, i, 0);
 }
 
 /// The left-hand side of a definition cell `d`.
@@ -407,7 +386,7 @@ fn setDval(d: Word, value: Word) void {
 /// The underlying `CONSTRUCTOR` cell of id `x` (through any `MKSTRICT` wrapper).
 pub fn primconstr(input_x: Word) Word {
     var x = t(input_x); // idVal(x) = CONSTRUCTOR cell (or MKSTRICT wrapper for strict ctors)
-    while (getTag(x) != CONSTRUCTOR) {
+    while (getTag(x) != .CONSTRUCTOR) {
         x = t(x);
     }
     return x;
@@ -418,7 +397,7 @@ pub fn primconstr(input_x: Word) Word {
 /// Tests: memb: membership in a list
 pub fn memb(input_l: Word, x: Word) Word {
     var l = input_l;
-    if (getTag(x) == TVAR) {
+    if (getTag(x) == .TVAR) {
         while (l != NIL and t(h(l)) != t(x)) {
             l = t(l);
         }
@@ -446,13 +425,13 @@ pub fn same(x: Word, y: Word) Word {
     }
     const x_tag = getTag(x);
     const y_tag = getTag(y);
-    if (x_tag == ATOM or y_tag == ATOM or x_tag != y_tag) {
+    if (x_tag == .ATOM or y_tag == .ATOM or x_tag != y_tag) {
         return 0;
     }
-    if (x_tag < INT) {
+    if (@intFromEnum(x_tag) < @intFromEnum(word.NodeTag.INT)) {
         return if (h(x) == h(y) and t(x) == t(y)) 1 else 0;
     }
-    if (x_tag > STRCONS) {
+    if (@intFromEnum(x_tag) > @intFromEnum(word.NodeTag.STRCONS)) {
         return if (same(h(x), h(y)) != 0 and same(t(x), t(y)) != 0) 1 else 0;
     }
     return if (h(x) == h(y) and same(t(x), t(y)) != 0) 1 else 0;
@@ -475,7 +454,7 @@ pub fn getIds(x: Word) Word {
     if (h(x) == CONST or isConstructor(x)) {
         return NIL;
     }
-    if (getTag(x) == ID) {
+    if (getTag(x) == .ID) {
         return cons(x, NIL);
     }
     if (isNPlusKPattern(x)) {
@@ -493,7 +472,7 @@ pub fn mktuple(input_x: Word) Word {
     if (h(x) == CONST or isConstructor(x)) {
         return NIL;
     }
-    if (getTag(x) == ID) {
+    if (getTag(x) == .ID) {
         return x;
     }
     if (isNPlusKPattern(x)) {
@@ -509,13 +488,13 @@ pub fn irrefutable(x: Word) Word {
     if (word.isAtom(x)) {
         return 0;
     }
-    if (getTag(x) == CONS) {
+    if (getTag(x) == .CONS) {
         return 0;
     }
     if (isConstructor(x)) {
         return member(cs.SGC, x);
     }
-    if (getTag(x) == ID) {
+    if (getTag(x) == .ID) {
         return 1;
     }
     if (isNPlusKPattern(x)) {
@@ -529,19 +508,19 @@ pub fn fallible(input_e: Word) Word {
     var e = input_e;
     while (true) {
         const e_tag = getTag(e);
-        if (e_tag == LABEL) {
+        if (e_tag == .LABEL) {
             e = t(e);
             continue;
         }
-        if (e_tag == LETREC or e_tag == LET) {
+        if (e_tag == .LETREC or e_tag == .LET) {
             e = t(e);
-        } else if (e_tag == LAMBDA) {
+        } else if (e_tag == .LAMBDA) {
             if (irrefutable(h(e)) != 0) {
                 e = t(e);
             } else {
                 return 1;
             }
-        } else if (e_tag == AP and getTag(h(e)) == AP and getTag(h(h(e))) == AP and h(h(h(e))) == COND) {
+        } else if (e_tag == .AP and getTag(h(e)) == .AP and getTag(h(h(e))) == .AP and h(h(h(e))) == COND) {
             e = t(e);
         } else {
             return if (e == FAIL) 1 else 0;
@@ -622,28 +601,28 @@ pub fn abshfnck(t_type: Word, f_input: Word) Word {
 
 /// Combine two bracket-abstraction results, optimising redundant `K`s.
 pub fn combine(x: Word, y: Word) Word {
-    const a = getTag(x) == AP and h(x) == K;
-    const b = getTag(y) == AP and h(y) == K;
+    const a = getTag(x) == .AP and h(x) == K;
+    const b = getTag(y) == .AP and h(y) == K;
     if (a and b) {
         return ap(K, ap(t(x), t(y)));
     }
     if (a and y == I) {
         return t(x);
     }
-    const b1 = getTag(y) == AP and getTag(h(y)) == AP and h(h(y)) == B;
+    const b1 = getTag(y) == .AP and getTag(h(y)) == .AP and h(h(y)) == B;
     if (a) {
         if (b1) {
             return ap3(B1, t(x), t(h(y)), t(y));
         }
-        if (getTag(t(x)) == AP and getTag(h(t(x))) == AP and h(h(t(x))) == COND) {
+        if (getTag(t(x)) == .AP and getTag(h(t(x))) == .AP and h(h(t(x))) == COND) {
             return ap3(COND, t(h(t(x))), ap(K, t(t(x))), y);
         }
         return ap2(B, t(x), y);
     }
-    const a1 = getTag(x) == AP and getTag(h(x)) == AP and h(h(x)) == B;
+    const a1 = getTag(x) == .AP and getTag(h(x)) == .AP and h(h(x)) == B;
     if (b) {
         if (a1) {
-            if (getTag(t(h(x))) == AP and h(t(h(x))) == COND) {
+            if (getTag(t(h(x))) == .AP and h(t(h(x))) == COND) {
                 return ap3(COND, t(t(h(x))), t(x), y);
             }
             return ap3(C1, t(h(x)), t(x), t(y));
@@ -651,7 +630,7 @@ pub fn combine(x: Word, y: Word) Word {
         return ap2(C, x, t(y));
     }
     if (a1) {
-        if (getTag(t(h(x))) == AP and h(t(h(x))) == COND) {
+        if (getTag(t(h(x))) == .AP and h(t(h(x))) == COND) {
             return ap3(COND, t(t(h(x))), t(x), y);
         }
         return ap3(S1, t(h(x)), t(x), y);
@@ -661,8 +640,8 @@ pub fn combine(x: Word, y: Word) Word {
 
 /// Combine two abstraction results building a cons, optimising the `K` cases.
 pub fn liscomb(x: Word, y: Word) Word {
-    const a = getTag(x) == AP and h(x) == K;
-    const b = getTag(y) == AP and h(y) == K;
+    const a = getTag(x) == .AP and h(x) == K;
+    const b = getTag(y) == .AP and h(y) == K;
     if (a and b) {
         return ap(K, cons(t(x), t(y)));
     }
@@ -683,30 +662,30 @@ pub fn abstract(input_x: Word, input_e: Word) Word {
     var x = input_x;
     var e = input_e;
     switch (getTag(x)) {
-        ID => {
+        .ID => {
             if (isConstructor(x)) {
                 return if (member(cs.SGC, x) != 0) ap(K, e) else ap2(Ug, primconstr(x), e);
             }
             return abstr(x, e);
         },
-        CONS => {
+        .CONS => {
             if (h(x) == CONST) {
-                if (getTag(t(x)) == INT) {
+                if (getTag(t(x)) == .INT) {
                     return ap2(MATCHINT, t(x), e);
                 }
                 return ap2(MATCH, if (t(x) == NILS) NIL else t(x), e);
             }
             return ap(U_, abstract(h(x), abstract(t(x), e)));
         },
-        TCONS, PAIR => return ap(U, abstract(h(x), abstract(t(x), e))),
-        AP => {
+        .TCONS, .PAIR => return ap(U, abstract(h(x), abstract(t(x), e))),
+        .AP => {
             if (member(cs.SGC, appHead(x)) != 0) {
                 return ap(Uf, abstract(h(x), abstract(t(x), e)));
             }
-            if (getTag(h(x)) == AP and h(h(x)) == PLUS) {
+            if (getTag(h(x)) == .AP and h(h(x)) == PLUS) {
                 return ap2(ATLEAST, t(h(x)), abstract(t(x), e));
             }
-            while (getTag(x) == AP) {
+            while (getTag(x) == .AP) {
                 e = abstract(t(x), e);
                 x = h(x);
             }
@@ -726,14 +705,14 @@ pub fn abstract(input_x: Word, input_e: Word) Word {
 /// Bracket-abstract `x` from `e` (the recursive inner step).
 pub fn abstr(x: Word, e: Word) Word {
     switch (getTag(e)) {
-        TCONS, PAIR, CONS => return liscomb(abstr(x, h(e)), abstr(x, t(e))),
-        AP => {
+        .TCONS, .PAIR, .CONS => return liscomb(abstr(x, h(e)), abstr(x, t(e))),
+        .AP => {
             if (h(e) == BADCASE or h(e) == CONFERROR) {
                 return ap(K, e);
             }
             return combine(abstr(x, h(e)), abstr(x, t(e)));
         },
-        LAMBDA, LET, LETREC, TRIES, LABEL, SHOW, LEXER, SHARE => {
+        .LAMBDA, .LET, .LETREC, .TRIES, .LABEL, .SHOW, .LEXER, .SHARE => {
             std.debug.print("impossible event in abstr (main.tag={d})\n", .{getTag(e)});
             abi.exit(1);
         },
@@ -749,14 +728,14 @@ pub fn abstr(x: Word, e: Word) Word {
 /// Bracket-abstract a list of variables `x` from `e`.
 pub fn abstrlist(x_input: Word, e: Word) Word {
     switch (getTag(e)) {
-        TCONS, PAIR, CONS => return liscomb(abstrlist(x_input, h(e)), abstrlist(x_input, t(e))),
-        AP => {
+        .TCONS, .PAIR, .CONS => return liscomb(abstrlist(x_input, h(e)), abstrlist(x_input, t(e))),
+        .AP => {
             if (h(e) == BADCASE or h(e) == CONFERROR) {
                 return ap(K, e);
             }
             return combine(abstrlist(x_input, h(e)), abstrlist(x_input, t(e)));
         },
-        LAMBDA, LET, LETREC, TRIES, LABEL, SHOW, LEXER, SHARE => {
+        .LAMBDA, .LET, .LETREC, .TRIES, .LABEL, .SHOW, .LEXER, .SHARE => {
             std.debug.print("impossible event in abstrlist (main.tag={d})\n", .{getTag(e)});
             abi.exit(1);
         },
@@ -780,7 +759,7 @@ pub fn scanpattern(p: Word, x: Word, e: Word, fail: Word) Word {
     if (h(x) == CONST or isConstructor(x)) {
         return NIL;
     }
-    if (getTag(x) == ID) {
+    if (getTag(x) == .ID) {
         const binding = cons(x, ap2(TRY, ap(lambda(p, x), e), fail));
         return cons(binding, NIL);
     }
@@ -907,18 +886,18 @@ pub fn transtypeid(x: Word) Word {
 /// Generate the canonical left-hand-side pattern from definition head `x`.
 pub fn genlhs(x: Word) Word {
     switch (getTag(x)) {
-        AP => {
-            if (getTag(h(x)) == AP and h(h(x)) == PLUS and isnat(t(x)) != 0) {
+        .AP => {
+            if (getTag(h(x)) == .AP and h(h(x)) == PLUS and isnat(t(x)) != 0) {
                 return ap2(PLUS, t(x), genlhs(t(h(x))));
             }
             const hold = genlhs(h(x));
-            return make(AP, hold, genlhs(t(x)));
+            return make(word.AP, hold, genlhs(t(x)));
         },
-        CONS, TCONS, PAIR => {
+        .CONS, .TCONS, .PAIR => {
             const hold = genlhs(h(x));
-            return make(getTag(x), hold, genlhs(t(x)));
+            return make(@intFromEnum(getTag(x)), hold, genlhs(t(x)));
         },
-        ID => {
+        .ID => {
             if (member(ls.idsused, x) != 0) {
                 return cons(CONST, x);
             }
@@ -927,12 +906,12 @@ pub fn genlhs(x: Word) Word {
             }
             return x;
         },
-        INT => return cons(CONST, x),
-        DOUBLE => {
+        .INT => return cons(CONST, x),
+        .DOUBLE => {
             syntax("floating point literal in pattern\n");
             return core_state.s.nill;
         },
-        ATOM => {
+        .ATOM => {
             if (x == True or x == False or x == NILS or x == NIL or isChar(x)) {
                 return cons(CONST, x);
             }
@@ -949,7 +928,7 @@ pub fn leftfactor(x: Word) Word {
     var b: Word = undefined;
     var rhs = t(h(x));
     var d: Word = undefined;
-    if (getTag(rhs) == AP and getTag(h(rhs)) == AP and h(h(rhs)) == G_SEQ) {
+    if (getTag(rhs) == .AP and getTag(h(rhs)) == .AP and h(h(rhs)) == G_SEQ) {
         a = t(h(rhs));
         b = t(rhs);
     } else {
@@ -962,7 +941,7 @@ pub fn leftfactor(x: Word) Word {
         cs.lfrule += 1;
         return x;
     }
-    if (getTag(d) == AP and getTag(h(d)) == AP) {
+    if (getTag(d) == .AP and getTag(h(d)) == .AP) {
         rhs = h(h(d));
     } else {
         return x;
@@ -985,7 +964,7 @@ pub fn leftfactor(x: Word) Word {
         cs.lfrule += 1;
         return leftfactor(x);
     }
-    if (getTag(rhs) == AP and getTag(h(rhs)) == AP and h(h(rhs)) == G_SEQ and same(a, t(h(rhs))) != 0) {
+    if (getTag(rhs) == .AP and getTag(h(rhs)) == .AP and h(h(rhs)) == G_SEQ and same(a, t(h(rhs))) != 0) {
         rhs = t(rhs);
         d = t(d);
         hp(x).* = ap(G_ALT, ap2(G_SEQ, a, leftfactor(ap2(G_ALT, b, rhs))));
@@ -1010,7 +989,7 @@ pub fn transletrec(input_dd: Word, e: Word) Word {
     var pn: Word = 1;
     while (dd != NIL) : (dd = t(dd)) {
         var x = h(dd);
-        if (getTag(dlhs(x)) == ID) {
+        if (getTag(dlhs(x)) == .ID) {
             lhs = cons(dlhs(x), lhs);
             rhs = cons(codegen(dval(x)), rhs);
         } else {
@@ -1042,7 +1021,7 @@ pub fn transtries(id: Word, input_x: Word) Word {
     var earliest: Word = 0;
     var r: Word = undefined;
     if (fallible(h(x)) != 0) {
-        const oldn = if (getTag(id) == ID) datapair(@as(Word, strtab.strBits(getId(id))), 0) else 0;
+        const oldn = if (getTag(id) == .ID) datapair(@as(Word, strtab.strBits(getId(id))), 0) else 0;
         info = cons(oldn, 0);
         r = ap(BADCASE, info);
         if (x == NIL) {
@@ -1087,7 +1066,7 @@ pub fn makeshow(here: Word, type_node: Word) Word {
 pub fn mkshow(s: Word, p: Word, input_t: Word) Word {
     var args: Word = NIL;
     var type_node = input_t;
-    while (getTag(type_node) == AP) {
+    while (getTag(type_node) == .AP) {
         args = cons(t(type_node), args);
         type_node = h(type_node);
     }
@@ -1105,7 +1084,7 @@ pub fn mkshow(s: Word, p: Word, input_t: Word) Word {
         void_t => return rt.rs.showvoid,
         arrow_t => return rt.rs.showfunction,
         else => {
-            if (getTag(type_node) == ID) {
+            if (getTag(type_node) == .ID) {
                 var r = typeShowFn(type_node);
                 if (r == 0) {
                     return rt.rs.showabstract;
@@ -1129,7 +1108,7 @@ pub fn mkshow(s: Word, p: Word, input_t: Word) Word {
                 cs.was_poly = 1;
                 return rt.rs.showwhat;
             }
-            if (getTag(type_node) == STRCONS) {
+            if (getTag(type_node) == .STRCONS) {
                 _ = word.print("warning - mkshow applied to suppressed type\n", .{});
                 return rt.rs.showwhat;
             }
@@ -1154,7 +1133,7 @@ fn nclchk(n: Word, p: Word, hr: Word) c_int {
     if (h(p) == CONST) {
         return 0;
     }
-    if (getTag(p) == ID) {
+    if (getTag(p) == .ID) {
         if (n != p) {
             return 0;
         }
@@ -1166,7 +1145,7 @@ fn nclchk(n: Word, p: Word, hr: Word) c_int {
         acterror();
         return 1;
     }
-    if (getTag(p) == AP and h(p) == PLUS) {
+    if (getTag(p) == .AP and h(p) == PLUS) {
         return 0;
     }
     if (nclchk(n, h(p), hr) != 0) {
@@ -1222,14 +1201,14 @@ pub fn declconstr(x: Word, n: Word, constr_type: Word) void {
 /// Attach type specification `spec_type` to `x` (a `::` declaration).
 pub fn specify(input_x: Word, spec_type: Word, here: Word) void {
     var x = input_x;
-    if (getTag(x) != ID and spec_type != type_t) {
+    if (getTag(x) != .ID and spec_type != type_t) {
         core_state.s.errs = here;
         syntax("incorrect use of ::\n");
         return;
     }
     if (spec_type == type_t) {
         var arity: Word = 0;
-        while (getTag(x) == AP) {
+        while (getTag(x) == .AP) {
             arity += 1;
             x = h(x);
         }
@@ -1281,7 +1260,7 @@ fn arityCheck(type_name: Word, arity: Word, here: Word) void {
 pub fn declType(input_tf: Word, type_class: Word, info: Word, here: Word) void {
     var tf = input_tf;
     var arity: Word = 0;
-    while (getTag(tf) == AP) {
+    while (getTag(tf) == .AP) {
         arity += 1;
         tf = h(tf);
     }
@@ -1343,7 +1322,7 @@ fn decl1(x: Word, e: Word) void {
 
 /// Declare definition `x` = `e` in the environment.
 pub fn declare(x: Word, e: Word) void {
-    if (getTag(x) == ID and !isConstructor(x)) {
+    if (getTag(x) == .ID and !isConstructor(x)) {
         decl1(x, e);
         return;
     }
@@ -1619,7 +1598,7 @@ fn tInfo(x: Word) Word {
 /// Compile expression `x` to its final combinator graph — the codegen entry point.
 pub fn codegen(x: Word) Word {
     switch (getTag(x)) {
-        AP => {
+        .AP => {
             // Walk the application spine (the deep recursion is codegen(h(x)))
             // iteratively so a long chain can't overflow the stack. Each node's
             // per-node logic mirrors the recursive form exactly; only the special
@@ -1630,10 +1609,10 @@ pub fn codegen(x: Word) Word {
             defer spine.deinit(rt.allocator);
             var cur = x;
             var acc = while (true) {
-                if (getTag(cur) != AP) break codegen(cur);
+                if (getTag(cur) != .AP) break codegen(cur);
                 const shares = cur == ls.cook_stdin or cur == ls.common_stdin or cur == ls.common_stdinb;
                 const cmd = core_state.s.commandmode != 0 and !shares;
-                if (!cmd and getTag(h(cur)) == AP and h(h(cur)) == APPEND and t(h(cur)) == NIL) {
+                if (!cmd and getTag(h(cur)) == .AP and h(h(cur)) == APPEND and t(h(cur)) == NIL) {
                     break codegen(t(cur)); // post typecheck reversal of HR bug fix
                 }
                 spine.append(rt.allocator, cur) catch heap.mallocPanic("codegen ap spine");
@@ -1645,40 +1624,40 @@ pub fn codegen(x: Word) Word {
                 const n = spine.items[i];
                 const shares = n == ls.cook_stdin or n == ls.common_stdin or n == ls.common_stdinb;
                 if (core_state.s.commandmode != 0 and !shares) { // beware of corrupting lastexp; share $+ $-
-                    acc = make(AP, acc, codegen(t(n)));
+                    acc = make(word.AP, acc, codegen(t(n)));
                 } else {
                     hp(n).* = acc; // = codegen(h(n)), already computed down-spine
                     tp(n).* = codegen(t(n));
-                    acc = if (getTag(h(n)) == AP and h(h(n)) == G_ALT) leftfactor(n) else n;
+                    acc = if (getTag(h(n)) == .AP and h(h(n)) == G_ALT) leftfactor(n) else n;
                 }
             }
             return acc;
         },
-        TCONS, PAIR => {
+        .TCONS, .PAIR => {
             // Iterate the tuple spine (recursed via t(x)) so a large tuple can't
             // overflow the stack; mirrors the cons-list fix.
-            const result = make(CONS, codegen(h(x)), NIL);
+            const result = make(word.CONS, codegen(h(x)), NIL);
             var dst = tp(result);
             var cur = t(x);
-            while (getTag(cur) == TCONS or getTag(cur) == PAIR) {
-                dst.* = make(CONS, codegen(h(cur)), NIL);
+            while (getTag(cur) == .TCONS or getTag(cur) == .PAIR) {
+                dst.* = make(word.CONS, codegen(h(cur)), NIL);
                 dst = tp(dst.*);
                 cur = t(cur);
             }
             dst.* = codegen(cur); // final element
             return result;
         },
-        CONS => {
+        .CONS => {
             // Walk the cons spine iteratively rather than recursing on the tail:
             // a long string/list literal (e.g. a 4096-char string) would otherwise
             // recurse once per element and overflow the stack (codegen's frame is
             // large). Recursion is kept only for each head and the final tail.
             if (core_state.s.commandmode != 0) {
-                const result = make(CONS, codegen(h(x)), NIL);
+                const result = make(word.CONS, codegen(h(x)), NIL);
                 var dst = tp(result);
                 var cur = t(x);
-                while (getTag(cur) == CONS) {
-                    dst.* = make(CONS, codegen(h(cur)), NIL);
+                while (getTag(cur) == .CONS) {
+                    dst.* = make(word.CONS, codegen(h(cur)), NIL);
                     dst = tp(dst.*);
                     cur = t(cur);
                 }
@@ -1690,7 +1669,7 @@ pub fn codegen(x: Word) Word {
             while (true) {
                 hp(cur).* = codegen(h(cur));
                 const nxt = t(cur);
-                if (getTag(nxt) == CONS) {
+                if (getTag(nxt) == .CONS) {
                     cur = nxt; // tail is unchanged by in-situ codegen; keep walking
                 } else {
                     tp(cur).* = codegen(nxt);
@@ -1699,32 +1678,32 @@ pub fn codegen(x: Word) Word {
             }
             return x;
         },
-        LAMBDA => {
+        .LAMBDA => {
             return abstract(h(x), codegen(t(x)));
         },
-        LET => {
+        .LET => {
             return translet(h(x), t(x));
         },
-        LETREC => {
+        .LETREC => {
             return transletrec(h(x), t(x));
         },
-        TRIES => {
+        .TRIES => {
             return transtries(h(x), t(x));
         },
-        LABEL => {
+        .LABEL => {
             return codegen(t(x));
         },
-        SHOW => {
+        .SHOW => {
             return makeshow(h(x), t(x));
         },
-        LEXER => {
+        .LEXER => {
             var r: Word = NIL;
             var uses_state: Word = 0;
             var cur_x = x;
             while (cur_x != NIL) {
                 var rule = abstr(mklexvar(0), codegen(t(t(h(cur_x)))));
                 rule = abstr(mklexvar(1), rule);
-                if (!(getTag(rule) == AP and h(rule) == K)) {
+                if (!(getTag(rule) == .AP and h(rule) == K)) {
                     uses_state = 1;
                 }
                 r = cons(cons(h(h(cur_x)), // start condition stuff
@@ -1744,7 +1723,7 @@ pub fn codegen(x: Word) Word {
             }
             return ap(r, 0); // 0 startcond
         },
-        STARTREADVALS => {
+        .STARTREADVALS => {
             if (ispoly(t(x)) != 0) {
                 const name_str: [*:0]const u8 = if (ls.cook_stdin != 0 and x == h(ls.cook_stdin)) "$+" else "readvals or $+";
                 _ = word.print("type error - {s} used at polymorphic type :: [", .{name_str});
@@ -1767,7 +1746,7 @@ pub fn codegen(x: Word) Word {
             }
             return x;
         },
-        SHARE => {
+        .SHARE => {
             if (t(x) != -1) { // arbitrary flag for already visited
                 hp(x).* = codegen(h(x));
                 tp(x).* = -1;
@@ -1794,7 +1773,7 @@ pub fn genshfns() void {
             while (r != NIL) {
                 var type_var = idType(h(r));
                 var k = idVal(h(r));
-                while (getTag(k) != CONSTRUCTOR) {
+                while (getTag(k) != .CONSTRUCTOR) {
                     k = t(k); // lawful and !'d constructors
                 }
                 // k now holds constructor(i,main.hd(r))

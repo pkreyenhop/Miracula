@@ -19,6 +19,7 @@ const std = @import("std");
 
 const platform = @import("../io/platform.zig");
 const heap = @import("heap.zig");
+const word = @import("word.zig");
 const reduce = @import("reduce.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
@@ -32,8 +33,6 @@ const PTEN: Word = 10000; // 10^4 — chunk size for decimal scan/print
 const PSIXTEEN: Word = 4096; // 16^3 — chunk size for hex scan
 const PEIGHT: Word = 0x8000; // 8^5 — chunk size for octal scan
 const TENW: Word = 4; // decimal digits per PTEN chunk
-const CONS: u8 = 11; // NodeTag.CONS (char-list cells for the *toList helpers)
-const INT: u8 = 5; // NodeTag.INT (a bignum digit cell)
 const CMBASE: Word = 306;
 const NIL: Word = CMBASE + 138;
 
@@ -56,8 +55,8 @@ pub const Bignum = struct {
 pub const bn = &@import("interp.zig").interp.big;
 
 /// The node tag of cell `x`.
-inline fn getTag(x: Word) u8 {
-    return heap.heap.getTag(x);
+inline fn getTag(x: Word) word.NodeTag {
+    return @enumFromInt(heap.heap.getTag(x));
 }
 
 // Raw heap cell accessors (head / tail, by value and by pointer). A bignum
@@ -120,7 +119,7 @@ fn toSmallInt(x: Word) Word {
 
 /// Build a `CONS` cell — used by the `to*List` routines to emit char lists.
 fn cons(x: Word, y: Word) Word {
-    return make(CONS, x, y);
+    return make(word.CONS, x, y);
 }
 
 /// Initialise the bignum caches (`logIBASE`/`log10IBASE`) and `big_one`. Once, at startup.
@@ -130,7 +129,7 @@ fn cons(x: Word, y: Word) Word {
 pub fn setup() void {
     bn.logIBASE = std.math.log(f64, std.math.e, @as(f64, @floatFromInt(IBASE)));
     bn.log10IBASE = std.math.log10(@as(f64, @floatFromInt(IBASE)));
-    bn.big_one = make(INT, 1, 0);
+    bn.big_one = make(word.INT, 1, 0);
 }
 
 test "setup: initialises the bignum constants" {
@@ -142,7 +141,7 @@ test "setup: initialises the bignum constants" {
 ///
 /// Tests: isNat: 1 for non-negative INTs, 0 for negatives
 pub fn isNat(x: Word) c_int {
-    return if (getTag(x) == INT and isPositive(x)) 1 else 0;
+    return if (getTag(x) == .INT and isPositive(x)) 1 else 0;
 }
 
 test "isNat: 1 for non-negative INTs, 0 for negatives" {
@@ -163,15 +162,15 @@ pub fn fromInt(input: c_longlong) Word {
         i = -i;
     }
     var unsigned_i: c_ulonglong = @intCast(i);
-    const x = make(INT, s | @as(Word, @intCast(unsigned_i & MAXDIGIT)), 0);
+    const x = make(word.INT, s | @as(Word, @intCast(unsigned_i & MAXDIGIT)), 0);
     unsigned_i >>= DIGITWIDTH;
     if (unsigned_i != 0) {
         var p = restPtr(x);
-        p.* = make(INT, @intCast(unsigned_i & MAXDIGIT), 0);
+        p.* = make(word.INT, @intCast(unsigned_i & MAXDIGIT), 0);
         p = restPtr(p.*);
         unsigned_i >>= DIGITWIDTH;
         while (unsigned_i != 0) : (unsigned_i >>= DIGITWIDTH) {
-            p.* = make(INT, @intCast(unsigned_i & MAXDIGIT), 0);
+            p.* = make(word.INT, @intCast(unsigned_i & MAXDIGIT), 0);
             p = restPtr(p.*);
         }
     }
@@ -219,7 +218,7 @@ test "toInt: saturates above 2^60" {
 pub fn negate(x: Word) Word {
     if (isZero(x)) return x;
     const d = if ((h(x) & SIGNBIT) != 0) h(x) & MAXDIGIT else SIGNBIT | h(x);
-    return make(INT, d, rest(x));
+    return make(word.INT, d, rest(x));
 }
 
 test "negate: flips the sign, fixed point at zero" {
@@ -254,14 +253,14 @@ fn addMagnitude(input_x: Word, input_y: Word, signbit: Word) Word {
     var y = input_y;
     var d = digit0(x) + digit0(y);
     var carry: Word = if ((d & IBASE) != 0) 1 else 0;
-    const r = make(INT, signbit | (d & MAXDIGIT), 0);
+    const r = make(word.INT, signbit | (d & MAXDIGIT), 0);
     var z = restPtr(r);
     x = rest(x);
     y = rest(y);
     while (x != 0 and y != 0) {
         d = carry + digit(x) + digit(y);
         carry = if ((d & IBASE) != 0) 1 else 0;
-        z.* = make(INT, d & MAXDIGIT, 0);
+        z.* = make(word.INT, d & MAXDIGIT, 0);
         x = rest(x);
         y = rest(y);
         z = restPtr(z.*);
@@ -270,11 +269,11 @@ fn addMagnitude(input_x: Word, input_y: Word, signbit: Word) Word {
     while (x != 0) {
         d = carry + digit(x);
         carry = if ((d & IBASE) != 0) 1 else 0;
-        z.* = make(INT, d & MAXDIGIT, 0);
+        z.* = make(word.INT, d & MAXDIGIT, 0);
         x = rest(x);
         z = restPtr(z.*);
     }
-    if (carry != 0) z.* = make(INT, 1, 0);
+    if (carry != 0) z.* = make(word.INT, 1, 0);
     return r;
 }
 
@@ -303,7 +302,7 @@ fn subMagnitude(input_x: Word, input_y: Word) Word {
     var y = input_y;
     var d = digit0(x) - digit0(y);
     var borrow: Word = if ((d & IBASE) != 0) 1 else 0;
-    const r = make(INT, d & MAXDIGIT, 0);
+    const r = make(word.INT, d & MAXDIGIT, 0);
     var z = restPtr(r);
     var p: ?*Word = null;
     x = rest(x);
@@ -312,7 +311,7 @@ fn subMagnitude(input_x: Word, input_y: Word) Word {
         d = digit(x) - digit(y) - borrow;
         borrow = if ((d & IBASE) != 0) 1 else 0;
         d &= MAXDIGIT;
-        z.* = make(INT, d, 0);
+        z.* = make(word.INT, d, 0);
         if (d != 0) p = null else if (p == null) p = z;
         x = rest(x);
         y = rest(y);
@@ -322,7 +321,7 @@ fn subMagnitude(input_x: Word, input_y: Word) Word {
         d = -digit(y) - borrow;
         borrow = if ((d & IBASE) != 0) 1 else 0;
         d &= MAXDIGIT;
-        z.* = make(INT, d, 0);
+        z.* = make(word.INT, d, 0);
         if (d != 0) p = null else if (p == null) p = z;
         y = rest(y);
         z = restPtr(z.*);
@@ -331,7 +330,7 @@ fn subMagnitude(input_x: Word, input_y: Word) Word {
         d = digit(x) - borrow;
         borrow = if ((d & IBASE) != 0) 1 else 0;
         d &= MAXDIGIT;
-        z.* = make(INT, d, 0);
+        z.* = make(word.INT, d, 0);
         if (d != 0) p = null else if (p == null) p = z;
         x = rest(x);
         z = restPtr(z.*);
@@ -396,7 +395,7 @@ pub fn mul(input_x: Word, input_y: Word) Word {
         x = y;
         y = hold;
     }
-    var r = make(INT, 0, 0);
+    var r = make(word.INT, 0, 0);
     var d = digit0(y);
     const s = signBit(y) != 0;
     if (isZero(x)) return r;
@@ -421,7 +420,7 @@ test "mul: products including large operands" {
 fn shiftLeftDigits(n_input: Word, x_input: Word) Word {
     var n = n_input;
     var x = x_input;
-    while (n != 0) : (n -= 1) x = make(INT, 0, x);
+    while (n != 0) : (n -= 1) x = make(word.INT, 0, x);
     return x;
 }
 
@@ -430,16 +429,16 @@ fn scaleBy(input_x: Word, n: Word) Word {
     var x = input_x;
     var d: u32 = @intCast(n * digit0(x));
     var carry: Word = @intCast(d >> DIGITWIDTH);
-    const r = make(INT, @intCast(d & MAXDIGIT), 0);
+    const r = make(word.INT, @intCast(d & MAXDIGIT), 0);
     var y = restPtr(r);
     x = rest(x);
     while (x != 0) : (x = rest(x)) {
         d = @intCast((n * digit(x)) + carry);
-        y.* = make(INT, @intCast(d & MAXDIGIT), 0);
+        y.* = make(word.INT, @intCast(d & MAXDIGIT), 0);
         y = restPtr(y.*);
         carry = @intCast(d >> DIGITWIDTH);
     }
-    if (carry != 0) y.* = make(INT, carry, 0);
+    if (carry != 0) y.* = make(word.INT, carry, 0);
     return r;
 }
 
@@ -452,9 +451,9 @@ pub fn div(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
     const s1 = signBit(y) != 0;
-    if (s1) y = make(INT, digit0(y), rest(y));
+    if (s1) y = make(word.INT, digit0(y), rest(y));
     const s2 = if (signBit(x) != 0) blk: {
-        x = make(INT, digit0(x), rest(x));
+        x = make(word.INT, digit0(x), rest(x));
         break :blk !s1;
     } else s1;
     const q = if (rest(y) != 0) longDiv(x, y) else shortDiv(x, digit(y));
@@ -466,7 +465,7 @@ pub fn div(input_x: Word, input_y: Word) Word {
                 if (digit(qx) != IBASE) break;
                 digitPtr(qx).* = 0;
                 if (rest(qx) == 0) {
-                    restPtr(qx).* = make(INT, 1, 0);
+                    restPtr(qx).* = make(word.INT, 1, 0);
                     break;
                 }
                 qx = rest(qx);
@@ -492,9 +491,9 @@ pub fn mod(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
     const s1 = signBit(y) != 0;
-    if (s1) y = make(INT, digit0(y), rest(y));
+    if (s1) y = make(word.INT, digit0(y), rest(y));
     const s2 = if (signBit(x) != 0) blk: {
-        x = make(INT, digit0(x), rest(x));
+        x = make(word.INT, digit0(x), rest(x));
         break :blk !s1;
     } else s1;
     _ = if (rest(y) != 0) longDiv(x, y) else shortDiv(x, digit(y));
@@ -517,14 +516,14 @@ fn shortDiv(input_x: Word, n: Word) Word {
     var q: Word = 0;
     while (rest(x) != 0) {
         x = rest(x);
-        q = make(INT, d, q);
+        q = make(word.INT, d, q);
         d = digit(x);
     }
     var tmp: Word = undefined;
     x = q;
     var s_rem = @rem(d, n);
     d = @divTrunc(d, n);
-    if (d != 0 or q == 0) q = make(INT, d, 0) else q = 0;
+    if (d != 0 or q == 0) q = make(word.INT, d, 0) else q = 0;
     while (x != 0) {
         d = (s_rem * IBASE) + digit(x);
         digitPtr(x).* = @divTrunc(d, n);
@@ -534,7 +533,7 @@ fn shortDiv(input_x: Word, n: Word) Word {
         restPtr(tmp).* = q;
         q = tmp;
     }
-    bn.b_rem = make(INT, s_rem, 0);
+    bn.b_rem = make(word.INT, s_rem, 0);
     return q;
 }
 
@@ -544,7 +543,7 @@ fn longDiv(input_x: Word, input_y: Word) Word {
     var y = input_y;
     if (cmp(x, y) < 0) {
         bn.b_rem = x;
-        return make(INT, 0, 0);
+        return make(word.INT, 0, 0);
     }
     var y1 = mostSignificantDigit(y);
     const scale = @divTrunc(IBASE, y1 + 1);
@@ -557,7 +556,7 @@ fn longDiv(input_x: Word, input_y: Word) Word {
     var q: Word = 0;
     var ly = digitCount(y);
     while (true) {
-        y = make(INT, 0, y);
+        y = make(word.INT, 0, y);
         if (cmp(x, y) < 0) break;
         n += 1;
     }
@@ -593,7 +592,7 @@ fn longDiv(input_x: Word, input_y: Word) Word {
                 }
             }
         }
-        q = make(INT, d, q);
+        q = make(word.INT, d, q);
         if (n == 0) {
             bn.b_rem = if (scale == 1) x else shortDiv(x, scale);
             return q;
@@ -640,7 +639,7 @@ fn topTwoDigits(input_x: Word) Word {
 pub fn pow(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
-    var r = make(INT, 1, 0);
+    var r = make(word.INT, 1, 0);
     while (rest(y) != 0) {
         var i: Word = DIGITWIDTH;
         var d = digit(y);
@@ -696,7 +695,7 @@ test "toFloat: exact for small integers" {
 /// Tests: fromFloat: floors the input toward negative infinity
 pub fn fromFloat(input: f64) Word {
     const s = input < 0;
-    const r = make(INT, 0, 0);
+    const r = make(word.INT, 0, 0);
     var ptr = r;
     var y = @abs(std.math.floor(input));
     while (true) {
@@ -704,7 +703,7 @@ pub fn fromFloat(input: f64) Word {
         digitPtr(ptr).* = @intFromFloat(n);
         y = (y - n) / @as(f64, @floatFromInt(IBASE));
         if (y > 0.0) {
-            restPtr(ptr).* = make(INT, 0, 0);
+            restPtr(ptr).* = make(word.INT, 0, 0);
             ptr = rest(ptr);
         } else break;
     }
@@ -780,7 +779,7 @@ fn setErrnoDomain() void {
 pub fn scanDecimal(p: [*:0]const u8) Word {
     var cursor: usize = 0;
     var s = false;
-    const r = make(INT, 0, 0);
+    const r = make(word.INT, 0, 0);
     if (p[0] == '-') {
         s = true;
         cursor += 1;
@@ -812,7 +811,7 @@ test "scanDecimal: parses a NUL-terminated decimal string" {
 pub fn scanHex(p: [*]const u8, q: [*]const u8) Word {
     const start_addr = @intFromPtr(p);
     var end_addr = @intFromPtr(q);
-    if (end_addr == start_addr + 1 and p[0] == '0') return make(INT, 0, 0);
+    if (end_addr == start_addr + 1 and p[0] == '0') return make(word.INT, 0, 0);
     var r: Word = undefined;
     var x = &r;
     while (end_addr > start_addr) {
@@ -824,7 +823,7 @@ pub fn scanHex(p: [*]const u8, q: [*]const u8) Word {
         for (0..seg_len) |i| hold = (hold << 4) + @as(u64, @intCast(hexValue(seg[i])));
         var count: Word = 4;
         while (count != 0 and !(hold == 0 and seg_addr == start_addr)) : (count -= 1) {
-            x.* = make(INT, @intCast(hold & MAXDIGIT), 0);
+            x.* = make(word.INT, @intCast(hold & MAXDIGIT), 0);
             hold >>= DIGITWIDTH;
             x = restPtr(x.*);
         }
@@ -856,7 +855,7 @@ pub fn scanOctal(p: [*]const u8, q: [*]const u8) Word {
         const seg: [*]const u8 = @ptrFromInt(seg_addr);
         var hold: u32 = 0;
         for (0..seg_len) |i| hold = (hold << 3) + @as(u32, @intCast(seg[i] - '0'));
-        x.* = make(INT, @intCast(hold), 0);
+        x.* = make(word.INT, @intCast(hold), 0);
         x = restPtr(x.*);
         end_addr = seg_addr;
     }
@@ -890,7 +889,7 @@ fn hexValue(ch: u8) Word {
 pub fn parseString(input_z: Word, base: c_int) Word {
     var z = input_z;
     var s = false;
-    const r = make(INT, 0, 0);
+    const r = make(word.INT, 0, 0);
     var pbase: Word = PTEN;
     if (base == 16) pbase = PSIXTEEN else if (base == 8) pbase = PEIGHT;
     if (z != NIL and h(z) == '-') {
@@ -933,7 +932,7 @@ fn multiplyAddInPlace(r: Word, f: Word, addend: Word) void {
         carry = d >> DIGITWIDTH;
         x = restPtr(x.*);
     }
-    if (carry != 0) x.* = make(INT, carry, 0);
+    if (carry != 0) x.* = make(word.INT, carry, 0);
 }
 
 /// Render a bignum as a Miranda char list of decimal digits.
@@ -943,10 +942,10 @@ pub fn toDecimalList(input_x: Word) Word {
     var x = input_x;
     if (rest(x) == 0) return wordToDecimalList(toSmallInt(x));
     const sign = signBit(x) != 0;
-    var x1 = make(INT, digit0(x), 0);
+    var x1 = make(word.INT, digit0(x), 0);
     x = rest(x);
     while (x != 0) {
-        x1 = make(INT, digit(x), x1);
+        x1 = make(word.INT, digit(x), x1);
         x = rest(x);
     }
     x = x1;

@@ -569,7 +569,7 @@ pub fn stoChar(ch: Word) Word {
 pub fn getChar(x: Word) Word {
     switch (word.classify(x)) {
         .imm => |c| return c, // bare Latin-1 code point
-        .ref => if (heap.getTag(x) == UNICODE) return h(x), // UNICODE cell: code point in hd
+        .ref => if (getTag(x) == .UNICODE) return h(x), // UNICODE cell: code point in hd
         .atom => {},
     }
     std.debug.print("impossible event in getChar(x), tag[x]=={d}\n", .{heap.getTag(x)});
@@ -582,7 +582,7 @@ pub fn getChar(x: Word) Word {
 pub fn isChar(x: Word) c_int {
     return switch (word.classify(x)) {
         .imm => 1, // bare Latin-1 char
-        .ref => if (heap.getTag(x) == UNICODE) @as(c_int, 1) else 0, // wide char cell
+        .ref => if (getTag(x) == .UNICODE) @as(c_int, 1) else 0, // wide char cell
         .atom => 0, // a combinator/named atom is not a char
     };
 }
@@ -605,13 +605,13 @@ test "stoChar / getChar / isChar: bare Latin-1 and wide UNICODE chars" {
 /// The source location (`HERE`) recorded for id `x`.
 pub fn getHere(x: Word) Word {
     const y = idWho(x);
-    return if (heap.getTag(y) == CONS) t(y) else y;
+    return if (getTag(y) == .CONS) t(y) else y;
 }
 
 /// The original ('also known as') name of id `x` (before any alias).
 pub fn getaka(x: Word) [*:0]const u8 {
     const y = idWho(x);
-    return if (heap.getTag(y) != CONS) getId(x) else strtab.strOf(h(h(y)));
+    return if (getTag(y) != .CONS) getId(x) else strtab.strOf(h(h(y)));
 }
 
 /// Append a single element to the end of list `x`.
@@ -1095,13 +1095,13 @@ pub fn out(file: ?*word.FILE, x_val: Word) void {
         _ = word.fprint(file, "<{d}>", .{x});
         return;
     }
-    if (heap.getTag(x) == word.LAMBDA) {
+    if (getTag(x) == .LAMBDA) {
         _ = word.fprint(file, "$(", .{.{}});
         out(file, h(x));
         _ = word.putc(')', file);
         out(file, t(x));
     } else {
-        while (heap.getTag(x) == word.CONS) {
+        while (getTag(x) == .CONS) {
             out1(file, h(x));
             _ = word.putc(':', file);
             x = t(x);
@@ -1116,7 +1116,7 @@ pub fn out1(file: ?*word.FILE, x: Word) void {
         _ = word.fprint(file, "<{d}>", .{x});
         return;
     }
-    if (heap.getTag(x) == word.AP) {
+    if (getTag(x) == .AP) {
         out1(file, h(x));
         _ = word.putc(' ', file);
         out2(file, t(x));
@@ -1132,8 +1132,8 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         _ = word.fprint(file, "<{d}>", .{x});
         return;
     }
-    const tag_val = heap.getTag(x);
-    if (tag_val == word.INT) {
+    const tag_val = getTag(x);
+    if (tag_val == .INT) {
         if (rest(x) != 0) {
             x = bigtostr(x);
             while (x != 0) {
@@ -1145,11 +1145,11 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         }
         return;
     }
-    if (tag_val == word.DOUBLE) {
+    if (tag_val == .DOUBLE) {
         outr(file, getDbl(x));
         return;
     }
-    if (tag_val == word.ID) {
+    if (tag_val == .ID) {
         _ = word.fprint(file, "{s}", .{getId(x)});
         return;
     }
@@ -1157,11 +1157,11 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         _ = word.fprint(file, "'{s}'", .{charname(x)});
         return;
     }
-    if (tag_val == word.UNICODE) {
+    if (tag_val == .UNICODE) {
         _ = word.fprint(file, "'{x}'", .{h(x)});
         return;
     }
-    if (tag_val == word.ATOM) {
+    if (tag_val == .ATOM) {
         const str: [*:0]const u8 = if (x < word.CMBASE)
             @ptrCast(setup.yysterm[@intCast(x - 256)])
         else if (x == word.True)
@@ -1177,9 +1177,9 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         _ = word.fprint(file, "{s}", .{str});
         return;
     }
-    if (tag_val == word.TCONS or tag_val == word.PAIR) {
+    if (tag_val == .TCONS or tag_val == .PAIR) {
         _ = word.fprint(file, "(", .{.{}});
-        while (heap.getTag(x) == word.TCONS) {
+        while (getTag(x) == .TCONS) {
             out(file, h(x));
             _ = word.putc(',', file);
             x = t(x);
@@ -1190,7 +1190,7 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         _ = word.putc(')', file);
         return;
     }
-    if (tag_val == word.TRIES) {
+    if (tag_val == .TRIES) {
         _ = word.fprint(file, "TRIES(", .{.{}});
         out(file, h(x));
         _ = word.putc(',', file);
@@ -1198,7 +1198,7 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         _ = word.putc(')', file);
         return;
     }
-    if (tag_val == word.LABEL) {
+    if (tag_val == .LABEL) {
         _ = word.fprint(file, "LABEL(", .{.{}});
         out(file, h(x));
         _ = word.putc(',', file);
@@ -1206,7 +1206,7 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         _ = word.putc(')', file);
         return;
     }
-    if (tag_val == word.SHOW) {
+    if (tag_val == .SHOW) {
         _ = word.fprint(file, "SHOW(", .{.{}});
         out(file, h(x));
         _ = word.putc(',', file);
@@ -1214,7 +1214,7 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         _ = word.putc(')', file);
         return;
     }
-    if (tag_val == word.STARTREADVALS) {
+    if (tag_val == .STARTREADVALS) {
         _ = word.fprint(file, "READVALS(", .{.{}});
         out(file, h(x));
         _ = word.putc(',', file);
@@ -1222,7 +1222,7 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         _ = word.putc(')', file);
         return;
     }
-    if (tag_val == word.LET) {
+    if (tag_val == .LET) {
         _ = word.fprint(file, "(LET ", .{.{}});
         out(file, dlhs(h(x)));
         _ = word.fprint(file, "=", .{.{}});
@@ -1232,7 +1232,7 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         _ = word.fprint(file, ")", .{.{}});
         return;
     }
-    if (tag_val == word.LETREC) {
+    if (tag_val == .LETREC) {
         const body = t(x);
         _ = word.fprint(file, "(LETREC ", .{.{}});
         x = h(x);
@@ -1248,30 +1248,30 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         _ = word.fprint(file, ")", .{.{}});
         return;
     }
-    if (tag_val == word.DATAPAIR) {
+    if (tag_val == .DATAPAIR) {
         _ = word.fprint(file, "DATAPAIR({s},{d})", .{ castPtr(h(x)), t(x) });
         return;
     }
-    if (tag_val == word.FILEINFO) {
+    if (tag_val == .FILEINFO) {
         _ = word.fprint(file, "FILEINFO({s},{d})", .{ castPtr(h(x)), t(x) });
         return;
     }
-    if (tag_val == word.CONSTRUCTOR) {
+    if (tag_val == .CONSTRUCTOR) {
         _ = word.fprint(file, "CONSTRUCTOR({d})", .{h(x)});
         return;
     }
-    if (tag_val == word.STRCONS) {
+    if (tag_val == .STRCONS) {
         _ = word.fprint(file, "<${d}>", .{h(x)});
         return;
     }
-    if (tag_val == word.SHARE) {
+    if (tag_val == .SHARE) {
         _ = word.fprint(file, "(SHARE:", .{.{}});
         out(file, h(x));
         _ = word.fprint(file, ")", .{.{}});
         return;
     }
-    if (tag_val != word.CONS and tag_val != word.AP and tag_val != word.LAMBDA) {
-        _ = word.fprint(file, "<{d}|tag={d}>", .{ x, tag_val });
+    if (tag_val != .CONS and tag_val != .AP and tag_val != .LAMBDA) {
+        _ = word.fprint(file, "<{d}|tag={d}>", .{ x, @intFromEnum(tag_val) });
         return;
     }
     _ = word.putc(')', file);
@@ -1486,7 +1486,7 @@ pub fn dumpDefs(defs_val: Word, file: ?*word.FILE) void {
     var defs = defs_val;
     while (defs != word.NIL) : (defs = t(defs)) {
         const item = h(defs);
-        if (heap.getTag(item) == word.STRCONS) {
+        if (getTag(item) == .STRCONS) {
             const v = getPn(item);
             dumpOb(pnVal(item), file);
             if (v > bits_15) {
@@ -1643,7 +1643,7 @@ pub fn loadScript(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: 
             const hold = cons(idWho(old), cons(idType(old), idVal(old)));
             idTypePtr(old).* = word.alias_t;
             idValPtr(old).* = new_id;
-            if (heap.getTag(new_id) == word.ID) {
+            if (getTag(new_id) == .ID) {
                 if ((idType(new_id) != word.undef_t or idVal(new_id) != word.UNDEF) and idType(new_id) != word.alias_t) {
                     cs.CLASHES = add1(new_id, cs.CLASHES);
                 }
@@ -1658,7 +1658,7 @@ pub fn loadScript(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: 
         a = aliases;
         while (a != word.NIL) : (a = t(a)) {
             const ch = idVal(t(h(a)));
-            if (heap.getTag(ch) == word.ID) {
+            if (getTag(ch) == .ID) {
                 if (idType(ch) != word.alias_t) {
                     idTypePtr(ch).* = word.new_t;
                 }
@@ -1816,7 +1816,7 @@ pub fn bindparams(formal_val: Word, actual_val: Word) void {
             cs.DETROP = cons(a, cs.DETROP);
         } else {
             const fa = if (t(t(h(formal))) == word.type_t) tArity(h(h(formal))) else -1;
-            const ta = if (heap.getTag(h(actual)) == word.AP) tArity(h(actual)) else -1;
+            const ta = if (getTag(h(actual)) == .AP) tArity(h(actual)) else -1;
             if (fa != ta) {
                 badkind = cons(cons(h(h(actual)), datapair(fa, ta)), badkind);
             }
@@ -1850,7 +1850,7 @@ pub fn unscramble(aliases: Word) void {
     while (al != word.NIL) : (al = t(al)) {
         const new_id = h(h(al));
         const old = t(h(al));
-        if (heap.getTag(new_id) != word.ID) {
+        if (getTag(new_id) != .ID) {
             if (member(cs.SUPPRESSED, new_id) == 0) {
                 a = cons(old, a);
             }
@@ -1862,7 +1862,7 @@ pub fn unscramble(aliases: Word) void {
         if (idType(new_id) == word.undef_t) {
             a = cons(old, a);
         } else if (member(cs.CLASHES, new_id) == 0) {
-            if (heap.getTag(idWho(new_id)) != word.CONS) {
+            if (getTag(idWho(new_id)) != .CONS) {
                 idWhoPtr(new_id).* = cons(datapair(strtab.strBits(getId(old)), 0), idWho(new_id));
             }
         }
@@ -2037,7 +2037,7 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                     },
                     4 => {
                         const top = stackpTop();
-                        if (heap.getTag(top) != word.ID) {
+                        if (getTag(top) != .ID) {
                             if (top == word.NIL) {
                                 heap.stackp = heap.stackp.? - 4;
                                 ch = main_clib.getc(file);
@@ -2047,7 +2047,7 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                             cs.SUPPRESSED = cons(ch_val, cs.SUPPRESSED);
                             _ = stackpPop(); // who
                             const who_val = stackpTop();
-                            const akap = if (heap.getTag(who_val) == word.CONS) h(who_val) else word.NIL;
+                            const akap = if (getTag(who_val) == .CONS) h(who_val) else word.NIL;
                             const type_val = stackpPop(); // type
                             pnValPtr(ch_val).* = stackpPop();
 
@@ -2165,12 +2165,12 @@ pub fn isfreeid(x: Word) bool {
 const isconstrname = lex.isconstrname;
 /// Whether `x` names a data constructor.
 pub fn isconstructor(x: Word) bool {
-    return heap.getTag(x) == word.ID and isconstrname(getId(x)) != 0;
+    return getTag(x) == .ID and isconstrname(getId(x)) != 0;
 }
 
 /// Whether `x` names an ordinary variable.
 pub fn isvariable(x: Word) bool {
-    return heap.getTag(x) == word.ID and isconstrname(getId(x)) == 0;
+    return getTag(x) == .ID and isconstrname(getId(x)) == 0;
 }
 
 /// Add id `x` to the current file's definition environment.
@@ -2232,7 +2232,7 @@ test "shunt: reverses x onto the front of y" {
 pub fn size(input: Word) Word {
     var x = input;
     var s: Word = 0;
-    while (heap.getTag(x) == CONS or heap.getTag(x) == word.AP) {
+    while (getTag(x) == .CONS or getTag(x) == .AP) {
         s += 1 + size(h(x));
         x = t(x);
     }
@@ -2256,10 +2256,10 @@ pub fn alfasort(x_val: Word) Word {
         return NIL;
     }
     if (t(x) == NIL) {
-        return if (heap.getTag(h(x)) != word.ID) NIL else x;
+        return if (getTag(h(x)) != .ID) NIL else x;
     }
     while (x != NIL) {
-        if (heap.getTag(h(x)) == word.ID) {
+        if (getTag(h(x)) == .ID) {
             hold = a;
             a = cons(h(x), b);
             b = hold;
@@ -2311,7 +2311,7 @@ pub fn unsetids(d_val: Word) void {
     var d = d_val;
     while (d != NIL and d != 0) : (d = t(d)) {
         const item = h(d);
-        if (heap.getTag(item) == word.ID) {
+        if (getTag(item) == .ID) {
             tp(item).* = word.UNDEF;
             tp(h(h(item))).* = NIL;
         }

@@ -24,8 +24,8 @@ const t = heap.t;
 const h = heap.h;
 const tp = heap.tp;
 const hp = heap.hp;
-inline fn getTag(x: Word) u8 {
-    return heap.heap.getTag(x);
+inline fn getTag(x: Word) word.NodeTag {
+    return @enumFromInt(heap.heap.getTag(x));
 }
 inline fn setTag(x: Word, val: u8) void {
     heap.heap.setTag(x, val);
@@ -57,7 +57,7 @@ pub fn fixexports() void {
         while (f != NIL) : (f = t(f)) {
             var e_def = heap.filDefs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
-                if (getTag(h(e_def)) == word.ID) {
+                if (getTag(h(e_def)) == .ID) {
                     internals = heap.cons(privatise(h(e_def)), internals);
                 }
             }
@@ -67,7 +67,7 @@ pub fn fixexports() void {
         while (f != NIL) : (f = t(f)) {
             var e_def = heap.filDefs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
-                if (getTag(h(e_def)) == word.ID and unpainted(h(e_def))) {
+                if (getTag(h(e_def)) == .ID and unpainted(h(e_def))) {
                     internals = heap.cons(privatise(h(e_def)), internals);
                 }
             }
@@ -87,7 +87,7 @@ fn paint(x: Word) void {
 /// Whether id `x` is not marked as exported.
 fn unpainted(x: Word) bool {
     const v = heap.idVal(x);
-    return getTag(v) != word.AP or h(v) != word.EXPORT;
+    return getTag(v) != .AP or h(v) != word.EXPORT;
 }
 
 /// Remove the `EXPORT` mark from id `x`.
@@ -158,7 +158,7 @@ fn publicise(x: Word) Word {
     hp(i).* = h(x);
 
     const val = t(i);
-    if (getTag(val) == word.AP and getTag(h(val)) == word.DATAPAIR) {
+    if (getTag(val) == .AP and getTag(h(val)) == .DATAPAIR) {
         tp(i).* = word.UNDEF;
     }
 
@@ -200,7 +200,7 @@ pub fn readoption() void {
         while (f != NIL) : (f = t(f)) {
             t_val = t(h(f));
             while (t_val != NIL) : (t_val = t(t_val)) {
-                if (getTag(h(h(t_val))) == word.STRCONS and t(t(h(h(t_val)))) == word.type_t) {
+                if (getTag(h(h(t_val))) == .STRCONS and t(t(h(h(t_val)))) == word.type_t) {
                     pfrts = heap.cons(h(h(t_val)), pfrts);
                 }
             }
@@ -211,7 +211,7 @@ pub fn readoption() void {
     while (rfl_ptr != NIL) : (rfl_ptr = t(rfl_ptr)) {
         f = heap.filDefs(h(rfl_ptr));
         while (f != NIL) : (f = t(f)) {
-            if (getTag(h(f)) == word.ID) {
+            if (getTag(h(f)) == .ID) {
                 t_val = heap.idType(h(f));
                 if (t_val == word.type_t) {
                     if (heap.tClass(h(f)) == word.synonym_t) {
@@ -239,20 +239,20 @@ pub fn readoption() void {
 /// Adds unresolvable types to `tlost` for deferred error reporting.
 pub fn fixtype(t_val: Word, x: Word) Word {
     switch (getTag(t_val)) {
-        word.AP, word.CONS => {
+        .AP, .CONS => {
             tp(t_val).* = fixtype(t(t_val), x);
             hp(t_val).* = fixtype(h(t_val), x);
             return t_val;
         },
-        word.STRCONS => {
+        .STRCONS => {
             if (abi.member(pfrts, t_val) != 0) {
                 return t_val;
             }
             var cur_t = t_val;
-            while (getTag(pnVal(cur_t)) != word.CONS) {
+            while (getTag(pnVal(cur_t)) != .CONS) {
                 cur_t = pnVal(cur_t);
             }
-            if (getTag(cur_t) != word.ID) {
+            if (getTag(cur_t) != .ID) {
                 var w = tlost;
                 while (w != NIL and h(h(w)) != cur_t) {
                     w = t(w);
