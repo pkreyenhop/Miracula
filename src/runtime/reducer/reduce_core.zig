@@ -22,10 +22,16 @@ pub const Word = i64;
 ///   `BACKSTOP` = bottom) · `hold` swap scratch · `args` pulled arguments ·
 ///   `action` post-dispatch signal (`ACT_NONE`/`ACT_NEXTREDEX`/`ACT_DONE`).
 pub const ReductionCtx = extern struct {
+    /// Focus node: the redex currently under examination (the "expression" register).
     e: Word,
+    /// Reversed-spine pointer during the pointer-reversal walk (top bits mark the
+    /// direction; `BACKSTOP` marks the spine bottom). The "stack" register.
     s: Word,
+    /// Swap scratch used while relinking nodes during `downLeft`/`upLeft`.
     hold: Word,
+    /// Arguments pulled off the spine for the current combinator rewrite.
     args: [4]Word,
+    /// Post-dispatch signal: `ACT_NONE` / `ACT_NEXTREDEX` / `ACT_DONE`.
     action: c_int,
 };
 

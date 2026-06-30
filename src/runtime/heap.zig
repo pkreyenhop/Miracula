@@ -706,7 +706,7 @@ test "charname: escapes control chars, passes printables through" {
 }
 
 /// Print double `value` to `file`.
-pub fn outr(file: ?*word.FILE, value: f64) void {
+pub fn outReal(file: ?*word.FILE, value: f64) void {
     const magnitude = if (value < 0) -value else value;
     if (magnitude >= 1000.0 or magnitude <= 0.001) {
         _ = word.fprint(file, "{d}", .{value});
@@ -814,7 +814,7 @@ pub fn mallocfail(x: [*:0]const u8) void {
     main_clib.exit(1);
 }
 
-/// Panic and abort: out of memory allocating `what`.
+/// Panic and abort: outTerm of memory allocating `what`.
 pub fn mallocPanic(what: [*:0]const u8) noreturn {
     mallocfail(what);
     unreachable;
@@ -1089,7 +1089,7 @@ fn castPtr(val: Word) [*:0]const u8 {
 }
 
 /// Print cell `x` to `file` in readable form (debug/diagnostic dump).
-pub fn out(file: ?*word.FILE, x_val: Word) void {
+pub fn outTerm(file: ?*word.FILE, x_val: Word) void {
     var x = x_val;
     if (x < 0 or x > TOP()) {
         _ = word.fprint(file, "<{d}>", .{x});
@@ -1097,36 +1097,36 @@ pub fn out(file: ?*word.FILE, x_val: Word) void {
     }
     if (getTag(x) == .LAMBDA) {
         _ = word.fprint(file, "$(", .{.{}});
-        out(file, h(x));
+        outTerm(file, h(x));
         _ = word.putc(')', file);
-        out(file, t(x));
+        outTerm(file, t(x));
     } else {
         while (getTag(x) == .CONS) {
-            out1(file, h(x));
+            outSubterm(file, h(x));
             _ = word.putc(':', file);
             x = t(x);
         }
-        out1(file, x);
+        outSubterm(file, x);
     }
 }
 
-/// Helper for `out`: print one sub-term.
-pub fn out1(file: ?*word.FILE, x: Word) void {
+/// Helper for `outTerm`: print one sub-term.
+pub fn outSubterm(file: ?*word.FILE, x: Word) void {
     if (x < 0 or x > TOP()) {
         _ = word.fprint(file, "<{d}>", .{x});
         return;
     }
     if (getTag(x) == .AP) {
-        out1(file, h(x));
+        outSubterm(file, h(x));
         _ = word.putc(' ', file);
-        out2(file, t(x));
+        outAtom(file, t(x));
     } else {
-        out2(file, x);
+        outAtom(file, x);
     }
 }
 
-/// Helper for `out`: print one sub-term.
-pub fn out2(file: ?*word.FILE, x_val: Word) void {
+/// Helper for `outTerm`: print one sub-term.
+pub fn outAtom(file: ?*word.FILE, x_val: Word) void {
     var x = x_val;
     if (x < 0 or x > TOP()) {
         _ = word.fprint(file, "<{d}>", .{x});
@@ -1146,7 +1146,7 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         return;
     }
     if (tag_val == .DOUBLE) {
-        outr(file, getDbl(x));
+        outReal(file, getDbl(x));
         return;
     }
     if (tag_val == .ID) {
@@ -1180,55 +1180,55 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
     if (tag_val == .TCONS or tag_val == .PAIR) {
         _ = word.fprint(file, "(", .{.{}});
         while (getTag(x) == .TCONS) {
-            out(file, h(x));
+            outTerm(file, h(x));
             _ = word.putc(',', file);
             x = t(x);
         }
-        out(file, h(x));
+        outTerm(file, h(x));
         _ = word.putc(',', file);
-        out(file, t(x));
+        outTerm(file, t(x));
         _ = word.putc(')', file);
         return;
     }
     if (tag_val == .TRIES) {
         _ = word.fprint(file, "TRIES(", .{.{}});
-        out(file, h(x));
+        outTerm(file, h(x));
         _ = word.putc(',', file);
-        out(file, t(x));
+        outTerm(file, t(x));
         _ = word.putc(')', file);
         return;
     }
     if (tag_val == .LABEL) {
         _ = word.fprint(file, "LABEL(", .{.{}});
-        out(file, h(x));
+        outTerm(file, h(x));
         _ = word.putc(',', file);
-        out(file, t(x));
+        outTerm(file, t(x));
         _ = word.putc(')', file);
         return;
     }
     if (tag_val == .SHOW) {
         _ = word.fprint(file, "SHOW(", .{.{}});
-        out(file, h(x));
+        outTerm(file, h(x));
         _ = word.putc(',', file);
-        out(file, t(x));
+        outTerm(file, t(x));
         _ = word.putc(')', file);
         return;
     }
     if (tag_val == .STARTREADVALS) {
         _ = word.fprint(file, "READVALS(", .{.{}});
-        out(file, h(x));
+        outTerm(file, h(x));
         _ = word.putc(',', file);
-        out(file, t(x));
+        outTerm(file, t(x));
         _ = word.putc(')', file);
         return;
     }
     if (tag_val == .LET) {
         _ = word.fprint(file, "(LET ", .{.{}});
-        out(file, dlhs(h(x)));
+        outTerm(file, dlhs(h(x)));
         _ = word.fprint(file, "=", .{.{}});
-        out(file, dval(h(x)));
+        outTerm(file, dval(h(x)));
         _ = word.fprint(file, ";IN ", .{.{}});
-        out(file, t(x));
+        outTerm(file, t(x));
         _ = word.fprint(file, ")", .{.{}});
         return;
     }
@@ -1237,14 +1237,14 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
         _ = word.fprint(file, "(LETREC ", .{.{}});
         x = h(x);
         while (x != word.NIL) {
-            out(file, dlhs(h(x)));
+            outTerm(file, dlhs(h(x)));
             _ = word.fprint(file, "=", .{.{}});
-            out(file, dval(h(x)));
+            outTerm(file, dval(h(x)));
             _ = word.fprint(file, ";", .{.{}});
             x = t(x);
         }
         _ = word.fprint(file, "IN ", .{.{}});
-        out(file, body);
+        outTerm(file, body);
         _ = word.fprint(file, ")", .{.{}});
         return;
     }
@@ -1266,7 +1266,7 @@ pub fn out2(file: ?*word.FILE, x_val: Word) void {
     }
     if (tag_val == .SHARE) {
         _ = word.fprint(file, "(SHARE:", .{.{}});
-        out(file, h(x));
+        outTerm(file, h(x));
         _ = word.fprint(file, ")", .{.{}});
         return;
     }

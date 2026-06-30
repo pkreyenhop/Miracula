@@ -802,7 +802,7 @@ pub fn print(arg_e: Word) void {
     }
     word.printErr("\nimpossible event in print\n", .{});
     _ = word.putc('<', getStderr().?);
-    heap.out(getStderr().?, e);
+    heap.outTerm(getStderr().?, e);
     word.printErr(">\n", .{});
     main_clib.exit(1);
 }
@@ -881,7 +881,7 @@ pub fn output(arg_e: Word) void {
             },
             else => {
                 word.printErr("\n<impossible event in output list: ", .{});
-                heap.out(getStderr().?, h(e));
+                heap.outTerm(getStderr().?, h(e));
                 word.printErr(">\n", .{});
             },
         }
@@ -893,7 +893,7 @@ pub fn output(arg_e: Word) void {
     }
     word.printErr("\nimpossible event in output\n", .{});
     _ = word.putc('<', getStderr().?);
-    heap.out(getStderr().?, e);
+    heap.outTerm(getStderr().?, e);
     word.printErr(">\n", .{});
     main_clib.exit(1);
 }
