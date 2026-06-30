@@ -157,10 +157,178 @@ fn namescom(l: Word) void {
 }
 
 /// Dispatch a `/` or `:` REPL command — the main command switch (`/h`, `/e`, `/f`, `/l`, `/man`, ...).
-pub fn command() void {
+/// Handle the `'f'` REPL command (extracted from `command`).
+fn cmdFiles() void {
+    var t_val: ?[*:0]u8 = undefined;
+    var ch: c_int = undefined;
+    if (is("f") or is("file")) {
+        const t_tok = token();
+        if (abi.getchar() != '\n') return;
+        if (t_tok) |tok| {
+            t_val = abi.addextn(1, tok);
+            _ = abi.keep(t_val.?);
+        } else {
+            t_val = null;
+        }
+        if (t_val != null) {
+            core_state.s.errline = 0;
+            core_state.s.errs = 0;
+        }
+        if (t_val != null) {
+            if (word.strcmp(t_val.?, rt.rs.current_script.?) != 0 or (heap.heap.files == NIL and abi.okdump(t_val.?))) {
+                cs.CLASHES = NIL;
+                dump.undump(t_val.?);
+                if (cs.CLASHES != NIL) {
+                    module_loader.loadfile(t_val.?);
+                }
+            } else {
+                module_loader.loadfile(t_val.?);
+            }
+        } else {
+            word.print("{s}{s}\n", .{ rt.rs.current_script.?, @as([*:0]const u8, if (heap.heap.files == NIL) " (not loaded)" else "") });
+        }
+        return;
+    }
+    if (is("files")) {
+        if (abi.getchar() != '\n') return;
+        var f = heap.heap.files;
+        while (f != NIL) : (f = heap.t(f)) {
+            word.print("({s},{},{})", .{ heap.get_fil(heap.h(f)).?, heap.filTime(heap.h(f)), heap.filShare(heap.h(f)) });
+            abi.printlist(@constCast(""), heap.filDefs(heap.h(f)));
+        }
+        return;
+    }
+    if (is("find")) {
+        var i: Word = 0;
+        while (token() != null) {
+            const x = abi.findid(ls.dicp);
+            i += 1;
+            if (x != NIL) {
+                const n = heap.getId(x);
+                var y = rt.rs.primenv;
+                while (y != NIL) : (y = heap.t(y)) {
+                    if (getTag(heap.h(y)) == .ID) {
+                        if (heap.h(y) == x or word.strcmp(abi.getaka(heap.h(y)), n) == 0) {
+                            finger(heap.getId(heap.h(y)));
+                        }
+                    }
+                }
+                var ff = heap.heap.files;
+                while (ff != NIL) : (ff = heap.t(ff)) {
+                    var y_def = heap.filDefs(heap.h(ff));
+                    while (y_def != NIL) : (y_def = heap.t(y_def)) {
+                        if (getTag(heap.h(y_def)) == .ID) {
+                            if (heap.h(y_def) == x or word.strcmp(abi.getaka(heap.h(y_def)), n) == 0) {
+                                finger(heap.getId(heap.h(y_def)));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ch = abi.getchar();
+        if (i == 0) {
+            word.print("\x07extra characters at end of command\n", .{});
+        }
+        return;
+    }
+}
+
+/// Handle the `'e'` REPL command (extracted from `command`).
+fn cmdEdit() void {
     var t_val: ?[*:0]u8 = undefined;
     var ch: c_int = undefined;
     var ch1: c_int = undefined;
+    if (is("e") or is("edit")) {
+        var mf: ?[*:0]u8 = null;
+        if (token()) |tok| {
+            t_val = abi.addextn(1, tok);
+        } else {
+            t_val = rt.rs.current_script;
+        }
+        if (abi.getchar() != '\n') return;
+        if (!files.fileExists(t_val.?)) {
+            if (lmirahdr == null) {
+                ls.dicp = ls.dicq;
+                _ = word.strcpy(ls.dicp, abi.getenv("HOME"));
+                if (word.strcmp(ls.dicp, "/") == 0) {
+                    ls.dicp[0] = 0;
+                }
+                _ = word.strcat(ls.dicp, "/.mirahdr");
+                lmirahdr = ls.dicp;
+                ls.dicq = ls.dicp + word.strlen(ls.dicp) + 1;
+            }
+            if (files.fileExists(lmirahdr.?)) {
+                mf = lmirahdr;
+            }
+            if (mf == null and mirahdr == null) {
+                ls.dicp = ls.dicq;
+                _ = word.strcpy(ls.dicp, rt.rs.miralib.?);
+                _ = word.strcat(ls.dicp, "/.mirahdr");
+                mirahdr = ls.dicp;
+                ls.dicq = ls.dicp + word.strlen(ls.dicp) + 1;
+            }
+            if (mf == null and files.fileExists(mirahdr.?)) {
+                mf = mirahdr;
+            }
+            if (mf != null and t_val != rt.rs.current_script) {
+                word.print("open new script \"{s}\"? [ny]", .{t_val.?});
+                ch1 = abi.getchar();
+                ch = ch1;
+                while (ch != '\n' and ch != abi.EOF) {
+                    ch = abi.getchar();
+                }
+                if (ch1 != 'y' and ch1 != 'Y') {
+                    return;
+                }
+            }
+            if (mf != null) {
+                files.copyFile(mf.?, t_val.?);
+            }
+        }
+        const err_line_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core_state.s.errline) else if (core_state.s.errs != 0 and word.strcmp(t_val.?, strtab.strOf(heap.h(core_state.s.errs))) == 0) @intCast(heap.t(core_state.s.errs)) else @intCast(abi.geterrlin(t_val.?));
+        editfile(t_val.?, err_line_num);
+        return;
+    }
+    if (is("editor")) {
+        const hold = @as([*]u8, @ptrCast(&rt.rs.linebuf[0]));
+        if (repl.getLine(abi.stdin(), abi.pnlim - 1, hold) == 0) {
+            return;
+        }
+        if (hold[0] == 0) {
+            word.print("{s}\n", .{rt.rs.editor orelse @constCast("")});
+            return;
+        }
+        var h_ptr = hold + word.strlen(hold);
+        while ((h_ptr - 1)[0] == ' ' or (h_ptr - 1)[0] == '\t') {
+            h_ptr -= 1;
+            h_ptr[0] = 0;
+        }
+        if (hold[0] == '"' or hold[0] == '\'') {
+            word.print("please type name of editor without quotation marks\n", .{});
+            return;
+        }
+        word.print("change editor to: \"{s}\"? [ny]", .{@as([*:0]const u8, @ptrCast(hold))});
+        ch1 = abi.getchar();
+        ch = ch1;
+        while (ch != '\n' and ch != abi.EOF) {
+            ch = abi.getchar();
+        }
+        if (ch1 != 'y' and ch1 != 'Y') {
+            word.print("editor not changed\n", .{});
+            return;
+        }
+        _ = word.strcpy(&rt.rs.ebuf, hold);
+        rt.rs.editor = @as([*:0]u8, @ptrCast(&rt.rs.ebuf));
+        rt.rs.baded = @intFromBool(repl.badEditor());
+        rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
+        startup.writeRc();
+        word.print("editor = {s}\n", .{rt.rs.editor orelse @constCast("")});
+        return;
+    }
+}
+
+pub fn command() void {
     switch (ls.dicp[0]) {
         'a' => {
             if (is("a") or is("aux")) {
@@ -210,168 +378,8 @@ pub fn command() void {
                 return;
             }
         },
-        'e' => {
-            if (is("e") or is("edit")) {
-                var mf: ?[*:0]u8 = null;
-                if (token()) |tok| {
-                    t_val = abi.addextn(1, tok);
-                } else {
-                    t_val = rt.rs.current_script;
-                }
-                if (abi.getchar() != '\n') return;
-                if (!files.fileExists(t_val.?)) {
-                    if (lmirahdr == null) {
-                        ls.dicp = ls.dicq;
-                        _ = word.strcpy(ls.dicp, abi.getenv("HOME"));
-                        if (word.strcmp(ls.dicp, "/") == 0) {
-                            ls.dicp[0] = 0;
-                        }
-                        _ = word.strcat(ls.dicp, "/.mirahdr");
-                        lmirahdr = ls.dicp;
-                        ls.dicq = ls.dicp + word.strlen(ls.dicp) + 1;
-                    }
-                    if (files.fileExists(lmirahdr.?)) {
-                        mf = lmirahdr;
-                    }
-                    if (mf == null and mirahdr == null) {
-                        ls.dicp = ls.dicq;
-                        _ = word.strcpy(ls.dicp, rt.rs.miralib.?);
-                        _ = word.strcat(ls.dicp, "/.mirahdr");
-                        mirahdr = ls.dicp;
-                        ls.dicq = ls.dicp + word.strlen(ls.dicp) + 1;
-                    }
-                    if (mf == null and files.fileExists(mirahdr.?)) {
-                        mf = mirahdr;
-                    }
-                    if (mf != null and t_val != rt.rs.current_script) {
-                        word.print("open new script \"{s}\"? [ny]", .{t_val.?});
-                        ch1 = abi.getchar();
-                        ch = ch1;
-                        while (ch != '\n' and ch != abi.EOF) {
-                            ch = abi.getchar();
-                        }
-                        if (ch1 != 'y' and ch1 != 'Y') {
-                            return;
-                        }
-                    }
-                    if (mf != null) {
-                        files.copyFile(mf.?, t_val.?);
-                    }
-                }
-                const err_line_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core_state.s.errline) else if (core_state.s.errs != 0 and word.strcmp(t_val.?, strtab.strOf(heap.h(core_state.s.errs))) == 0) @intCast(heap.t(core_state.s.errs)) else @intCast(abi.geterrlin(t_val.?));
-                editfile(t_val.?, err_line_num);
-                return;
-            }
-            if (is("editor")) {
-                const hold = @as([*]u8, @ptrCast(&rt.rs.linebuf[0]));
-                if (repl.getLine(abi.stdin(), abi.pnlim - 1, hold) == 0) {
-                    return;
-                }
-                if (hold[0] == 0) {
-                    word.print("{s}\n", .{rt.rs.editor orelse @constCast("")});
-                    return;
-                }
-                var h_ptr = hold + word.strlen(hold);
-                while ((h_ptr - 1)[0] == ' ' or (h_ptr - 1)[0] == '\t') {
-                    h_ptr -= 1;
-                    h_ptr[0] = 0;
-                }
-                if (hold[0] == '"' or hold[0] == '\'') {
-                    word.print("please type name of editor without quotation marks\n", .{});
-                    return;
-                }
-                word.print("change editor to: \"{s}\"? [ny]", .{@as([*:0]const u8, @ptrCast(hold))});
-                ch1 = abi.getchar();
-                ch = ch1;
-                while (ch != '\n' and ch != abi.EOF) {
-                    ch = abi.getchar();
-                }
-                if (ch1 != 'y' and ch1 != 'Y') {
-                    word.print("editor not changed\n", .{});
-                    return;
-                }
-                _ = word.strcpy(&rt.rs.ebuf, hold);
-                rt.rs.editor = @as([*:0]u8, @ptrCast(&rt.rs.ebuf));
-                rt.rs.baded = @intFromBool(repl.badEditor());
-                rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
-                startup.writeRc();
-                word.print("editor = {s}\n", .{rt.rs.editor orelse @constCast("")});
-                return;
-            }
-        },
-        'f' => {
-            if (is("f") or is("file")) {
-                const t_tok = token();
-                if (abi.getchar() != '\n') return;
-                if (t_tok) |tok| {
-                    t_val = abi.addextn(1, tok);
-                    _ = abi.keep(t_val.?);
-                } else {
-                    t_val = null;
-                }
-                if (t_val != null) {
-                    core_state.s.errline = 0;
-                    core_state.s.errs = 0;
-                }
-                if (t_val != null) {
-                    if (word.strcmp(t_val.?, rt.rs.current_script.?) != 0 or (heap.heap.files == NIL and abi.okdump(t_val.?))) {
-                        cs.CLASHES = NIL;
-                        dump.undump(t_val.?);
-                        if (cs.CLASHES != NIL) {
-                            module_loader.loadfile(t_val.?);
-                        }
-                    } else {
-                        module_loader.loadfile(t_val.?);
-                    }
-                } else {
-                    word.print("{s}{s}\n", .{rt.rs.current_script.?, @as([*:0]const u8, if (heap.heap.files == NIL) " (not loaded)" else "")});
-                }
-                return;
-            }
-            if (is("files")) {
-                if (abi.getchar() != '\n') return;
-                var f = heap.heap.files;
-                while (f != NIL) : (f = heap.t(f)) {
-                    word.print("({s},{},{})", .{heap.get_fil(heap.h(f)).?, heap.filTime(heap.h(f)), heap.filShare(heap.h(f))});
-                    abi.printlist(@constCast(""), heap.filDefs(heap.h(f)));
-                }
-                return;
-            }
-            if (is("find")) {
-                var i: Word = 0;
-                while (token() != null) {
-                    const x = abi.findid(ls.dicp);
-                    i += 1;
-                    if (x != NIL) {
-                        const n = heap.getId(x);
-                        var y = rt.rs.primenv;
-                        while (y != NIL) : (y = heap.t(y)) {
-                            if (getTag(heap.h(y)) == .ID) {
-                                if (heap.h(y) == x or word.strcmp(abi.getaka(heap.h(y)), n) == 0) {
-                                    finger(heap.getId(heap.h(y)));
-                                }
-                            }
-                        }
-                        var ff = heap.heap.files;
-                        while (ff != NIL) : (ff = heap.t(ff)) {
-                            var y_def = heap.filDefs(heap.h(ff));
-                            while (y_def != NIL) : (y_def = heap.t(y_def)) {
-                                if (getTag(heap.h(y_def)) == .ID) {
-                                    if (heap.h(y_def) == x or word.strcmp(abi.getaka(heap.h(y_def)), n) == 0) {
-                                        finger(heap.getId(heap.h(y_def)));
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                ch = abi.getchar();
-                if (i == 0) {
-                    word.print("\x07extra characters at end of command\n", .{});
-                }
-                return;
-            }
-        },
+        'e' => cmdEdit(),
+        'f' => cmdFiles(),
         'g' => {
             if (is("gc")) {
                 if (abi.getchar() != '\n') return;
@@ -693,7 +701,7 @@ pub fn diagnose(n: [*:0]const u8) void {
     const presym_n = [_]i32{ 21, 8, 15, 8, 15, 31, 23, 22, 15, 21 };
     inline for (presym, presym_n) |sym, sym_n| {
         if (word.strcmp(n, sym) == 0) {
-            word.print("{s} -- keyword (see manual, section {})\n", .{n, sym_n});
+            word.print("{s} -- keyword (see manual, section {})\n", .{ n, sym_n });
             return;
         }
     }
