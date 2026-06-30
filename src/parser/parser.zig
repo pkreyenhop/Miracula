@@ -676,6 +676,16 @@ fn parseTopLevel(p: *Parser) ParseError!ast.TopLevel {
 // Type declaration parsers (algebraic, synonym, abstype)
 // ---------------------------------------------------------------------------
 
+/// The source name of a type-parameter token. A `.star` token (the single `*`)
+/// carries no text, so normalise it to "*" — matching how parseType names a
+/// `*` field (see line ~197). Keeping these consistent is essential: codegen
+/// turns the name into a TVAR index by star count, so a typeform param `*` and
+/// a constructor field `*` must yield the same index or derived-show leaks the
+/// unsubstituted type variable into the reducer.
+fn typeParamName(tok: Token) []const u8 {
+    return if (tok.id == .star) "*" else tok.text;
+}
+
 /// Parse a constructor: `CNAME argtype*`
 fn parseConstructor(p: *Parser) ParseError!ast.Constructor {
     const sp = p.span();
@@ -701,7 +711,7 @@ fn parseAlgebraicType(p: *Parser) ParseError!ast.TopLevel {
     errdefer params.deinit(p.gpa);
     while (p.check(.typevar) or p.check(.star)) {
         const pv = p.advance();
-        try params.append(p.gpa, pv.text);
+        try params.append(p.gpa, typeParamName(pv));
     }
 
     _ = try p.expect(.colon2eq);
@@ -731,7 +741,7 @@ fn parseTypeSynonym(p: *Parser) ParseError!ast.TopLevel {
     errdefer params.deinit(p.gpa);
     while (p.check(.typevar) or p.check(.star)) {
         const pv = p.advance();
-        try params.append(p.gpa, pv.text);
+        try params.append(p.gpa, typeParamName(pv));
     }
 
     _ = try p.expect(.eq_eq);
@@ -775,7 +785,7 @@ fn parseAbstype(p: *Parser) ParseError!ast.TopLevel {
     errdefer params.deinit(p.gpa);
     while (p.check(.typevar) or p.check(.star)) {
         const pv = p.advance();
-        try params.append(p.gpa, pv.text);
+        try params.append(p.gpa, typeParamName(pv));
     }
 
     // Skip layout / additional typeforms until `with`

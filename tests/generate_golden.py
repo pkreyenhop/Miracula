@@ -164,6 +164,15 @@ TEST_CASES = [
         "input": "?colour\n?day\n?widget\nGreen\n[Red,Green,Blue]\n"
     },
     {
+        "name": "show_param_type",
+        # Derived-show for a *parametric* algebraic type: the show fn for the
+        # polymorphic `*` field must be substituted in, or the type variable
+        # leaks into the reducer ("impossible tag (4)"). Covers num, nesting,
+        # and a list-typed field.
+        "script": "tree * ::= Leaf | Node (tree *) * (tree *)\n",
+        "input": "Node (Node Leaf 1 Leaf) 2 Leaf\nLeaf\nNode Leaf [1,2,3] Leaf\n"
+    },
+    {
         "name": "show_int",
         "input": "show 123\n"
     },
