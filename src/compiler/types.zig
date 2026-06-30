@@ -1010,28 +1010,33 @@ pub fn outType2(t_val: Word) void {
                 _ = word.print("type", .{});
             },
             else => {
-                if (getTag(t_val) == .ID) {
-                    _ = word.print("{s}", .{getId(t_val)});
-                } else if (isVarType(t_val)) {
-                    var n = gettvar(t_val);
-                    if (n > 0 and n < 7) {
-                        while (n > 0) : (n -= 1) {
-                            _ = word.print("*", .{});
+                switch (getTag(t_val)) {
+                    .ID => {
+                        _ = word.print("{s}", .{getId(t_val)});
+                    },
+                    .TVAR => {
+                        var n = gettvar(t_val);
+                        if (n > 0 and n < 7) {
+                            while (n > 0) : (n -= 1) {
+                                _ = word.print("*", .{});
+                            }
+                        } else {
+                            _ = word.print("{d}", .{n});
                         }
-                    } else {
-                        _ = word.print("{d}", .{n});
-                    }
-                } else if (getTag(t_val) == .STRCONS) {
-                    const pn_val_node = pnVal(t_val);
-                    if (getTag(pn_val_node) == .ID) {
-                        _ = word.print("{s}", .{getId(pn_val_node)});
-                    } else if (std.mem.eql(u8, std.mem.span(strtab.strOf(h(t(tInfo(t_val))))), std.mem.span(rt.rs.current_script.?))) {
-                        _ = word.print("{s}", .{strtab.strOf(h(h(tInfo(t_val))))});
-                    } else {
-                        _ = word.print("`{s}@{s}'", .{ strtab.strOf(h(h(tInfo(t_val)))), strtab.strOf(h(t(tInfo(t_val)))) });
-                    }
-                } else {
-                    _ = word.print("<BADLY FORMED TYPE:{d},{d},{d}>", .{ getTag(t_val), h(t_val), t(t_val) });
+                    },
+                    .STRCONS => {
+                        const pn_val_node = pnVal(t_val);
+                        if (getTag(pn_val_node) == .ID) {
+                            _ = word.print("{s}", .{getId(pn_val_node)});
+                        } else if (std.mem.eql(u8, std.mem.span(strtab.strOf(h(t(tInfo(t_val))))), std.mem.span(rt.rs.current_script.?))) {
+                            _ = word.print("{s}", .{strtab.strOf(h(h(tInfo(t_val))))});
+                        } else {
+                            _ = word.print("`{s}@{s}'", .{ strtab.strOf(h(h(tInfo(t_val)))), strtab.strOf(h(t(tInfo(t_val)))) });
+                        }
+                    },
+                    else => {
+                        _ = word.print("<BADLY FORMED TYPE:{d},{d},{d}>", .{ @intFromEnum(getTag(t_val)), h(t_val), t(t_val) });
+                    },
                 }
             },
         }
@@ -1090,46 +1095,73 @@ pub fn outFormal1(f: *word.FILE, x_in: Word) void {
     }
     if (x == NIL) {
         _ = (f).print("[]", .{});
-    } else if (getTag(x) == .CONS and tail(x) == NIL) {
-        if (allchars != 0) {
-            _ = (f).print("\"", .{});
-            while (x != NIL) {
-                _ = (f).print("{s}", .{charname(h(x))});
-                x = t(x);
+        return;
+    }
+    switch (getTag(x)) {
+        .CONS => {
+            if (tail(x) == NIL) {
+                if (allchars != 0) {
+                    _ = (f).print("\"", .{});
+                    while (x != NIL) {
+                        _ = (f).print("{s}", .{charname(h(x))});
+                        x = t(x);
+                    }
+                    _ = (f).print("\"", .{});
+                } else {
+                    _ = (f).print("[", .{});
+                    while (x != core_state.s.nill and x != NIL) {
+                        outPattern(f, h(x));
+                        x = t(x);
+                        if (x != core_state.s.nill and x != NIL) {
+                            _ = (f).print(",", .{});
+                        }
+                    }
+                    _ = (f).print("]", .{});
+                }
+            } else {
+                _ = (f).print("(", .{});
+                outPattern(f, x);
+                _ = (f).print(")", .{});
             }
-            _ = (f).print("\"", .{});
-        } else {
-            _ = (f).print("[", .{});
-            while (x != core_state.s.nill and x != NIL) {
+        },
+        .AP => {
+            _ = (f).print("(", .{});
+            outPattern(f, x);
+            _ = (f).print(")", .{});
+        },
+        .TCONS, .PAIR => {
+            _ = (f).print("(", .{});
+            while (getTag(x) == .TCONS) {
                 outPattern(f, h(x));
                 x = t(x);
-                if (x != core_state.s.nill and x != NIL) {
-                    _ = (f).print(",", .{});
-                }
+                _ = (f).print(",", .{});
             }
-            _ = (f).print("]", .{});
-        }
-    } else if (getTag(x) == .AP or getTag(x) == .CONS) {
-        _ = (f).print("(", .{});
-        outPattern(f, x);
-        _ = (f).print(")", .{});
-    } else if (getTag(x) == .TCONS or getTag(x) == .PAIR) {
-        _ = (f).print("(", .{});
-        while (getTag(x) == .TCONS) {
             outPattern(f, h(x));
-            x = t(x);
             _ = (f).print(",", .{});
-        }
-        outPattern(f, h(x));
-        _ = (f).print(",", .{});
-        outPattern(f, t(x));
-        _ = (f).print(")", .{});
-    } else if ((getTag(x) == .INT and neg(x) != 0) or (getTag(x) == .DOUBLE and getDbl(x) < 0)) {
-        _ = (f).print("(", .{});
-        out(f, x);
-        _ = (f).print(")", .{});
-    } else {
-        out(f, x);
+            outPattern(f, t(x));
+            _ = (f).print(")", .{});
+        },
+        .INT => {
+            if (neg(x) != 0) {
+                _ = (f).print("(", .{});
+                out(f, x);
+                _ = (f).print(")", .{});
+            } else {
+                out(f, x);
+            }
+        },
+        .DOUBLE => {
+            if (getDbl(x) < 0) {
+                _ = (f).print("(", .{});
+                out(f, x);
+                _ = (f).print(")", .{});
+            } else {
+                out(f, x);
+            }
+        },
+        else => {
+            out(f, x);
+        },
     }
 }
 
