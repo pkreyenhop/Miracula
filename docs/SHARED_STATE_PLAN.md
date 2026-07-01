@@ -288,14 +288,24 @@ several simultaneously (entangled — narrow threading degenerates into passing
 
 **Revised strategy — three tiers, with a checkpoint before the hard tier:**
 
-1. **Tier 1 — clean leaves.** `big.zig`: convert its module constants to an
-   explicit `Bignum` self-parameter (already a field of `Interp`), and pass
-   `*Heap` explicitly at its ~7 cell-accessor call sites. `strtab.zig`: likely
-   needs no external parameter at all, just `self: *StringTable`. Each is its own
-   PR; **the ~59 call sites elsewhere that call bignum functions** (per the
-   original scoping) are the actual size of this tier, not the 23 functions
-   themselves — reuse the A2 token-aware replacer for the mechanical part.
-   *DoD: zero ambient-singleton reads in `big.zig`/`strtab.zig`; golden green.*
+1. **Tier 1 — clean leaves. ✅ Done (2026-07-01).** `big.zig`: every function now
+   takes an explicit `*Heap` (turned out to be nearly all of them, not just ~7
+   sites — a bignum is a chain of heap cells, so even the leaf digit accessors
+   needed it) plus `*Bignum` for the 7 functions touching the division-remainder/
+   log-cache scratch. `strtab.zig`: took just `self: *StringTable` as predicted —
+   `strBits`/`strOf`/`privatize`/`deinit` all threaded, with a private
+   `ensureInit(self)` replacing the old ambient lazy-init check. Actual call-site
+   count: big.zig 53 (close to the ~59 estimate), strtab.zig **67** — wider than
+   bignum despite having *zero* external struct dependencies (every identifier/
+   pathname intern or resolve in the parser/compiler/runtime goes through it).
+   Both `bn`/`heap.heap`/`strtab.table` stay as package-level convenience
+   constants so callers have something to pass in — Tier 3 (making those
+   singletons themselves non-global) is separately scoped and deferred.
+   *DoD met: zero ambient-singleton reads in `big.zig`/`strtab.zig`; 48/48 golden,
+   166/166 unit tests, 7/7 spine-corpus, lint clean.* While smoke-testing,
+   surfaced one pre-existing, unrelated bug (hex/octal literals like `0xff`/
+   `0o777` parse to the wrong value — confirmed via `git stash` to predate this
+   work) — flagged as a separate follow-up, not fixed here.
 2. **Tier 2 — tidy the existing `ReductionCtx` precedent.** Fold `ready.zig`'s two
    remaining `rt.rs.UTF8`/`rt.rs.linebuf` reads into `ReductionCtx` if they're
    reducer-specific enough to belong there, or leave them as a documented,
@@ -319,12 +329,12 @@ several simultaneously (entangled — narrow threading degenerates into passing
    it into the same PR-sized mechanical pattern as Tier 1 would understate its
    risk.
 
-**Sequencing:** `big.zig` → `strtab.zig` → `ready.zig` tidy-up → **checkpoint**
-(re-evaluate before any Tier 3 work). Each subsystem is its own PR, golden-gated
-(the full 48-case corpus + unit suite + spine-corpus stress checks + lint), with
-a reducer-loop timing check (reuse the ad hoc `fib(N)` comparison method used for
-the B2(b) `Spine` cutover and the B3 GC rewrite) for anything touching the hot
-path.
+**Sequencing:** `big.zig` ✅ → `strtab.zig` ✅ → `ready.zig` tidy-up (Tier 2, next)
+→ **checkpoint** (re-evaluate before any Tier 3 work). Each subsystem is its own
+PR, golden-gated (the full 48-case corpus + unit suite + spine-corpus stress
+checks + lint), with a reducer-loop timing check (reuse the ad hoc `fib(N)`
+comparison method used for the B2(b) `Spine` cutover and the B3 GC rewrite) for
+anything touching the hot path.
 * **Irreducible exception (unchanged):** OS signal handlers run on the C ABI and
   cannot take any explicit parameter; they read a single `current_interp: *Interp`
   set on entry — the one documented global, analogous to `errno` and the A4
@@ -379,7 +389,7 @@ checkpoint concludes the signature clarity was worth pursuing further.
 | 2 | a moved field changes init order / `undefined` reads | structs default via `std.mem.zeroes`/`.{}`; per-module golden |
 | 3 | re-pointing an owner singleton aliases a stale copy | one `interp` instance during transition; pointer-alias, not value-copy |
 | 4 | a test's private `Interp` shares a hidden global (e.g. a `FILE` pool) | Phase 2c folds I/O in first; assert no residual global read |
-| 5 (Tier 1) | ~59 bignum call sites need updating alongside the 51 fns themselves | per-subsystem + golden; reuse the A2 token-aware replacer |
+| 5 (Tier 1) | ✅ materialized as expected: 53 bignum + 67 strtab call sites needed updating alongside the functions themselves | mitigated: per-subsystem + golden, mechanical sed-based replacement per call pattern, both landed clean |
 | 5 (Tier 3, if pursued) | bundle-struct design for entangled subsystems is a real design question, not mechanical threading; risk of ending up as wide as `Interp` anyway | explicit checkpoint before starting; treat as its own design proposal, not a PR-sized mechanical step |
 | 5 | signal handler needs interp state | single documented `current_interp` pointer (the irreducible C-ABI boundary) |
 
