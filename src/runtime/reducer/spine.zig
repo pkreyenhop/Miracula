@@ -43,6 +43,7 @@
 //! read-only before ever running it against anything live).
 
 const std = @import("std");
+const builtin = @import("builtin");
 const heap = @import("../heap.zig");
 const tu = @import("../../testutil.zig"); // unit-test harness (test builds only)
 
@@ -56,6 +57,28 @@ pub const Frame = struct {
     node: Word,
     via_tl: bool,
 };
+
+/// One pooled, previously-`deinit`ed frame buffer, tagged with the allocator
+/// it was allocated from. The tag matters: unit tests call `Spine.init` with
+/// `std.testing.allocator` (a leak/mismatch-detecting allocator, distinct
+/// from `rt.allocator` the live interpreter uses) — pooling buffers without
+/// tracking their origin would let a buffer allocated by one get freed by the
+/// other, which is undefined behaviour and exactly what `testing.allocator`
+/// exists to catch.
+const PooledBuffer = struct {
+    allocator: std.mem.Allocator,
+    frames: std.ArrayList(Frame),
+};
+
+/// A small free-list of previously-used frame buffers, reused by `Spine.init`
+/// instead of allocating fresh every time (see `init`'s doc for why this
+/// matters). Grows only up to the maximum number of `reduce()` calls ever
+/// concurrently nested (each `deinit` returns one buffer; each `init` takes
+/// one back) — not the number of calls made, which is unbounded. Pool
+/// bookkeeping itself always allocates via `std.heap.page_allocator`,
+/// independent of whichever allocator a given `Spine` uses for its frames.
+var buffer_pool: std.ArrayList(PooledBuffer) = .empty;
+const pool_allocator = std.heap.page_allocator;
 
 /// An explicit, growable spine stack. One per `reduce()` invocation — and
 /// `reduce()` is recursive (see `force()` and the strict-operator handlers),
@@ -79,14 +102,58 @@ pub const Spine = struct {
     /// An empty spine backed by `allocator`. Callers that keep it alive
     /// across a possible GC point (any `reduce()` call does) must also
     /// `register` it — seed `ReductionCtx.spine` does this, see `reduce()`.
+    ///
+    /// Reuses a previously-`deinit`ed frame buffer from `buffer_pool` when one
+    /// is available, instead of always starting from `std.ArrayList`'s empty
+    /// (zero-capacity) state. `reduce()` is called *extremely* frequently —
+    /// once per forced argument/nested strict evaluation, not just once per
+    /// top-level expression — and most of those calls need only a handful of
+    /// frames. Without reuse, every single one of those calls pays a fresh
+    /// allocator round-trip for its first `append`, something pointer
+    /// reversal never had to do (it borrowed graph cells, not the allocator).
+    /// Measured: without this, a workload dominated by many short-lived
+    /// `reduce()` calls (`#(take 3000 primes)`) was ~15x slower than the
+    /// pre-cutover pointer-reversal build; with it, back in the same range
+    /// (small workloads were already *faster* than pointer reversal even
+    /// before this — fewer total memory writes per traversal step, see the
+    /// module doc — this specifically closes the gap for the
+    /// many-small-calls shape that regressed).
     pub fn init(allocator: std.mem.Allocator) Spine {
+        // Pooling is skipped under `zig build test`: `std.testing.allocator`
+        // does not offer the same "one stable, process-wide instance" lifetime
+        // guarantee `rt.allocator` does in the real interpreter (reusing a
+        // buffer across two *separate test functions'* allocator instances
+        // corrupted the allocator's own bookkeeping -- caught by the leak/
+        // bucket-mismatch assertions `std.testing.allocator` exists to catch).
+        // Unit tests don't need the perf win; correctness there matters more.
+        if (!builtin.is_test) {
+            for (buffer_pool.items, 0..) |pooled, i| {
+                if (std.meta.eql(pooled.allocator, allocator)) {
+                    const frames = pooled.frames;
+                    _ = buffer_pool.swapRemove(i);
+                    return .{ .frames = frames, .allocator = allocator };
+                }
+            }
+        }
         return .{ .frames = .empty, .allocator = allocator };
     }
 
-    /// Release the frame storage. Callers that `register`ed this `Spine` must
-    /// `unregister` it first.
+    /// Return the frame storage to `buffer_pool` for reuse by a later `init`
+    /// with the *same* allocator, instead of freeing it (skipped under test --
+    /// see `init`). Callers that `register`ed this `Spine` must `unregister`
+    /// it first.
     pub fn deinit(self: *Spine) void {
-        self.frames.deinit(self.allocator);
+        self.frames.clearRetainingCapacity();
+        if (builtin.is_test) {
+            self.frames.deinit(self.allocator);
+            return;
+        }
+        buffer_pool.append(pool_allocator, .{ .allocator = self.allocator, .frames = self.frames }) catch {
+            // Pool itself is out of memory (rare -- it only grows to the
+            // maximum concurrent reduce() nesting depth ever seen): just
+            // free this buffer for real rather than leaking it.
+            self.frames.deinit(self.allocator);
+        };
     }
 
     /// Register this spine as a GC-root source: every `Frame.node` it holds
