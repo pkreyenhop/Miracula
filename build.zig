@@ -183,6 +183,47 @@ pub fn build(b: *std.Build) void {
         run_mira_tests.step.dependOn(&install_mira.step);
     }
 
+    const golden_runner = b.addExecutable(.{
+        .name = "golden_runner",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/golden_runner.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+
+    const run_sigint_check = b.addRunArtifact(b.addExecutable(.{
+        .name = "sigint_check",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/sigint_check.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    }));
+    run_sigint_check.addArg(mira_path);
+    run_sigint_check.step.dependOn(&install_mira.step);
+
+    const run_spine_check = b.addRunArtifact(b.addExecutable(.{
+        .name = "spine_check",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/spine_differential_check.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    }));
+    run_spine_check.addArg(mira_path);
+    run_spine_check.step.dependOn(&install_mira.step);
+
+    const run_regression = b.addRunArtifact(b.addExecutable(.{
+        .name = "regression_runner",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/regression.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    }));
+    run_regression.step.dependOn(&install_mira.step);
+
     const test_step = b.step("test", "Run all tests");
     test_step.dependOn(&run_utf8_tests.step);
     test_step.dependOn(&run_just_tests.step);
@@ -190,15 +231,27 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_main_tests.step);
     test_step.dependOn(&run_mira_tests.step);
     test_step.dependOn(&run_parser_tests.step);
+    test_step.dependOn(&run_sigint_check.step);
+    test_step.dependOn(&run_spine_check.step);
 
     const test_mira = b.step("test-mira", "Run Zig integration tests against mira");
     test_mira.dependOn(&run_mira_tests.step);
 
-    const run_golden_tests = b.addSystemCommand(&.{ "python3", "tests/golden_runner.py" });
+    const run_golden_tests = b.addRunArtifact(golden_runner);
+    run_golden_tests.addArg(mira_path);
     run_golden_tests.step.dependOn(&install_mira.step);
 
     const test_golden = b.step("test-golden", "Run the golden output snapshot tests");
     test_golden.dependOn(&run_golden_tests.step);
+
+    const test_sigint = b.step("test-sigint", "Run the SIGINT integration check");
+    test_sigint.dependOn(&run_sigint_check.step);
+
+    const test_spine = b.step("test-spine", "Run the spine differential stress checks");
+    test_spine.dependOn(&run_spine_check.step);
+
+    const test_regression = b.step("test-regression", "Run the C compatibility differential regression tests");
+    test_regression.dependOn(&run_regression.step);
 
     const test_steer = b.step("test-steer", "Run only steer tests");
     test_steer.dependOn(&run_main_tests.step);
@@ -219,6 +272,8 @@ pub fn build(b: *std.Build) void {
     check_step.dependOn(&run_main_tests.step);
     check_step.dependOn(&run_mira_tests.step);
     check_step.dependOn(&run_parser_tests.step);
+    check_step.dependOn(&run_sigint_check.step);
+    check_step.dependOn(&run_spine_check.step);
 
     const migration_check = b.step("check-migration", "Alias for the full Zig build verification gate");
     migration_check.dependOn(check_step);
@@ -376,7 +431,8 @@ pub fn build(b: *std.Build) void {
     run_strict_mira_tests.step.dependOn(&install_strict_mira.step);
     run_strict_mira_tests.step.dependOn(&copy_strict_menudriver.step);
 
-    const run_strict_golden_tests = b.addSystemCommand(&.{ "python3", "tests/golden_runner.py", "./zig-out/bin/strict-mira" });
+    const run_strict_golden_tests = b.addRunArtifact(golden_runner);
+    run_strict_golden_tests.addArg("./zig-out/bin/strict-mira");
     run_strict_golden_tests.step.dependOn(&install_strict_mira.step);
     run_strict_golden_tests.step.dependOn(&copy_strict_menudriver.step);
 
@@ -440,7 +496,16 @@ pub fn build(b: *std.Build) void {
 
     const run_bench_micro = b.addRunArtifact(bench_micro);
 
-    const run_bench_macro = b.addSystemCommand(&.{ "python3", "tests/benchmark_runner.py" });
+    const benchmark_runner = b.addExecutable(.{
+        .name = "benchmark_runner",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/benchmark_runner.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+
+    const run_bench_macro = b.addRunArtifact(benchmark_runner);
     run_bench_macro.addFileArg(bench_mira.getEmittedBin());
     run_bench_macro.step.dependOn(&install_bench_mira.step);
 
