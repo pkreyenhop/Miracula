@@ -653,87 +653,31 @@ pub fn yylex() c_int {
         return word.END;
     }
     if (ls.col < ls.lmargin) {
-        if (ls.c == '=' and (ls.margstack == NIL or ls.col >= h(ls.margstack))) {
-            ls.c = getch();
-            return word.ELSEQ;
-        }
-        return word.OFFSIDE;
+        return lexAtOffsideOrElseq();
     }
     if (ls.c == ';') {
-        ls.c = getch();
-        layout();
-        if (ls.c == '=' and (ls.margstack == NIL or ls.col >= h(ls.margstack))) {
-            ls.c = getch();
-            return word.ELSEQ;
-        }
-        return ';';
+        return lexSemicolonOrElseq();
     }
     if (word.isalpha(ls.c)) {
-        kollect(okid);
-        if (ls.inlex == 1) {
-            layout();
-            ls.yylval = name();
-            return if (ls.c == '=') word.LEXDEF else if (isconstructor(ls.yylval)) word.CNAME else word.NAME;
-        }
-        if (ls.inbnf == 1) {
-            (ls.dicq - 1)[0] = ' ';
-            ls.dicq[0] = 0;
-            ls.dicq += 1;
-        }
-        return @intCast(identifier(0));
+        return lexIdentifier();
     }
     if ((ls.c >= '0' and ls.c <= '9') or (ls.c == '.' and peekdig())) {
-        if (ls.c == '0' and word.tolower(peekch()) == 'x') {
-            hexnumeral();
-        } else if (ls.c == '0' and word.tolower(peekch()) == 'o') {
-            _ = getch();
-            ls.c = getch();
-            octnumeral();
-        } else {
-            numeral();
-        }
-        return word.CONST;
+        return lexNumeral();
     }
     if (ls.c == '%' and core_state.s.commandmode == 0) {
         return @intCast(directive());
     }
     if (ls.c == '\'') {
-        ls.c = getch();
-        ls.yylval = getlitch();
-        if (ls.yylval < 0) {
-            errclass(ls.yylval, 0);
-            return word.CONST;
-        }
-        if (!isChar(ls.yylval)) {
-            const prefix_str: [*:0]const u8 = if (rt.rs.echoing != 0) "\n" else "";
-            word.printErr("{s}impossible event while reading char const ('\\{}')\n", .{ prefix_str, ls.yylval });
-            acterror();
-        }
-        if (ls.rawch == '\n' or ls.c != '\'') {
-            syntax("improperly terminated char const\n");
-        } else {
-            ls.c = getch();
-        }
-        return word.CONST;
+        return lexCharConst();
     }
     if (ls.inexplist != 0 and (ls.c == '"' or ls.c == '<')) {
-        if (pathname() == null) {
-            syntax("badly formed pathname in %export list\n");
-        } else {
-            ls.exportfiles = cons(strtab.strBits(addextn(1, ls.dicp)), ls.exportfiles);
-            _ = keep(ls.dicp);
-        }
-        return word.PATHNAME;
+        return lexPathname();
     }
     if (ls.inlex == 1 and ls.c == '`') {
         return if (charclass() != 0) word.ANTICHARCLASS else word.CHARCLASS;
     }
     if (ls.c == '"') {
-        string();
-        if (ls.yylval == NIL) {
-            ls.yylval = NILS;
-        }
-        return word.CONST;
+        return lexStringConst();
     }
     if (ls.inbnf == 2) {
         if (ls.c == '[') {
@@ -745,52 +689,164 @@ pub fn yylex() c_int {
         }
     }
     if (ls.c == main_clib.EOF) {
-        if (ls.fileq == NIL) {
-            ls.c = 0;
-            return word.END;
-        }
-        if (t(ls.fileq) == NIL and ls.margstack != NIL) {
-            return word.OFFSIDE;
-        }
-        const file_ptr: ?*word.FILE = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
-        _ = word.fclose(file_ptr);
-        ls.fileq = t(ls.fileq);
-        ls.insertdepth -= 1;
-        if (ls.fileq != NIL and h(ls.echostack) != 0) {
-            if (ls.literate != 0) {
-                _ = word.putchar('>');
-                spaces(ls.lverge);
-            }
-            word.print("<end of insert>", .{});
-        }
-        rt.rs.s_in = if (ls.fileq == NIL) getStdin() else @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
-        ls.c = ' ';
-        if (ls.fileq == NIL) {
-            ls.c = 0;
-            ls.col = 0;
-            ls.lmargin = 0;
-            ls.lverge = 0;
-            ls.atnl = 1;
-            rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
-            ls.lastline = ls.line_no;
-            ls.line_no = 0;
-            ls.literate = 0;
-            ls.litmain = 0;
-            return word.END;
-        }
-        heap.heap.current_file = t(h(ls.fileq));
-        ls.prefix = h(ls.prefixstack);
-        ls.prefixstack = t(ls.prefixstack);
-        rt.rs.echoing = h(ls.echostack);
-        ls.echostack = t(ls.echostack);
-        ls.lverge = h(ls.vergstack);
-        ls.vergstack = t(ls.vergstack);
-        ls.literate = h(ls.litstack);
-        ls.litstack = t(ls.litstack);
-        ls.line_no = h(ls.linostack);
-        ls.linostack = t(ls.linostack);
-        return yylex();
+        return lexEndOfFile();
     }
+    return lexSymbolOrOperator();
+}
+
+/// Below the left margin: `=` at or past the current layout column resumes
+/// the same declaration (`ELSEQ`); otherwise the layout rule inserts `OFFSIDE`.
+fn lexAtOffsideOrElseq() c_int {
+    if (ls.c == '=' and (ls.margstack == NIL or ls.col >= h(ls.margstack))) {
+        ls.c = getch();
+        return word.ELSEQ;
+    }
+    return word.OFFSIDE;
+}
+
+/// `;` as a declaration separator, or (followed by `=` at/past the layout
+/// column) as an `ELSEQ`.
+fn lexSemicolonOrElseq() c_int {
+    ls.c = getch();
+    layout();
+    if (ls.c == '=' and (ls.margstack == NIL or ls.col >= h(ls.margstack))) {
+        ls.c = getch();
+        return word.ELSEQ;
+    }
+    return ';';
+}
+
+/// Scans an identifier (`kollect`/`identifier`), with the lexer-source and
+/// grammar-source special cases (`inlex`/`inbnf`) that change how the raw
+/// characters just collected are interpreted.
+fn lexIdentifier() c_int {
+    kollect(okid);
+    if (ls.inlex == 1) {
+        layout();
+        ls.yylval = name();
+        return if (ls.c == '=') word.LEXDEF else if (isconstructor(ls.yylval)) word.CNAME else word.NAME;
+    }
+    if (ls.inbnf == 1) {
+        (ls.dicq - 1)[0] = ' ';
+        ls.dicq[0] = 0;
+        ls.dicq += 1;
+    }
+    return @intCast(identifier(0));
+}
+
+/// Scans a numeral: hex (`0x`), octal (`0o`), or decimal/float via `numeral()`.
+fn lexNumeral() c_int {
+    if (ls.c == '0' and word.tolower(peekch()) == 'x') {
+        hexnumeral();
+    } else if (ls.c == '0' and word.tolower(peekch()) == 'o') {
+        _ = getch();
+        ls.c = getch();
+        octnumeral();
+    } else {
+        numeral();
+    }
+    return word.CONST;
+}
+
+/// Scans a `'c'` character constant, reporting malformed escapes/termination.
+fn lexCharConst() c_int {
+    ls.c = getch();
+    ls.yylval = getlitch();
+    if (ls.yylval < 0) {
+        errclass(ls.yylval, 0);
+        return word.CONST;
+    }
+    if (!isChar(ls.yylval)) {
+        const prefix_str: [*:0]const u8 = if (rt.rs.echoing != 0) "\n" else "";
+        word.printErr("{s}impossible event while reading char const ('\\{}')\n", .{ prefix_str, ls.yylval });
+        acterror();
+    }
+    if (ls.rawch == '\n' or ls.c != '\'') {
+        syntax("improperly terminated char const\n");
+    } else {
+        ls.c = getch();
+    }
+    return word.CONST;
+}
+
+/// Scans a `%export`-list pathname (`"..."` or `<...>`), recording it in
+/// `ls.exportfiles`.
+fn lexPathname() c_int {
+    if (pathname() == null) {
+        syntax("badly formed pathname in %export list\n");
+    } else {
+        ls.exportfiles = cons(strtab.strBits(addextn(1, ls.dicp)), ls.exportfiles);
+        _ = keep(ls.dicp);
+    }
+    return word.PATHNAME;
+}
+
+/// Scans a `"..."` string constant.
+fn lexStringConst() c_int {
+    string();
+    if (ls.yylval == NIL) {
+        ls.yylval = NILS;
+    }
+    return word.CONST;
+}
+
+/// Handles end-of-file on the current input: closes it, pops the `%include`
+/// file/echo/verge/literate/line-number stacks, and either signals `END` (top
+/// level exhausted) or resumes lexing the enclosing file.
+fn lexEndOfFile() c_int {
+    if (ls.fileq == NIL) {
+        ls.c = 0;
+        return word.END;
+    }
+    if (t(ls.fileq) == NIL and ls.margstack != NIL) {
+        return word.OFFSIDE;
+    }
+    const file_ptr: ?*word.FILE = @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
+    _ = word.fclose(file_ptr);
+    ls.fileq = t(ls.fileq);
+    ls.insertdepth -= 1;
+    if (ls.fileq != NIL and h(ls.echostack) != 0) {
+        if (ls.literate != 0) {
+            _ = word.putchar('>');
+            spaces(ls.lverge);
+        }
+        word.print("<end of insert>", .{});
+    }
+    rt.rs.s_in = if (ls.fileq == NIL) getStdin() else @ptrFromInt(@as(usize, @intCast(h(h(ls.fileq)))));
+    ls.c = ' ';
+    if (ls.fileq == NIL) {
+        ls.c = 0;
+        ls.col = 0;
+        ls.lmargin = 0;
+        ls.lverge = 0;
+        ls.atnl = 1;
+        rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
+        ls.lastline = ls.line_no;
+        ls.line_no = 0;
+        ls.literate = 0;
+        ls.litmain = 0;
+        return word.END;
+    }
+    heap.heap.current_file = t(h(ls.fileq));
+    ls.prefix = h(ls.prefixstack);
+    ls.prefixstack = t(ls.prefixstack);
+    rt.rs.echoing = h(ls.echostack);
+    ls.echostack = t(ls.echostack);
+    ls.lverge = h(ls.vergstack);
+    ls.vergstack = t(ls.vergstack);
+    ls.literate = h(ls.litstack);
+    ls.litstack = t(ls.litstack);
+    ls.line_no = h(ls.linostack);
+    ls.linostack = t(ls.linostack);
+    return yylex();
+}
+
+/// Scans a punctuation/operator token: reads the next raw character and
+/// switches on the one just consumed (`ls.lastc`) to recognize the two-char
+/// operators (`->`, `<-`, `==`, `++`, `..`, `\/`, `>=`, `~=`, `&>`, `//`,
+/// `**`, `::`(`=`), the `$`-family of special forms, and underline-prefixed
+/// identifiers), falling back to the single character itself.
+fn lexSymbolOrOperator() c_int {
     ls.lastc = ls.c;
     ls.c = getch();
     switch (ls.lastc) {
