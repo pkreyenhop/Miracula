@@ -304,7 +304,7 @@ pub inline fn rewriteToMatchResult(expr: *Word, left: Word, right: Word, success
 /// Rewrite `*expr` to `success_value` if `value` is the int `literal`, else `FAIL`.
 pub inline fn rewriteToIntMatchResult(expr: *Word, literal: Word, value: Word, success_value: Word) void {
     hdSet(expr.*, word.I);
-    const val = if (!isInt(value) or big.cmp(literal, value) != 0) word.FAIL else success_value;
+    const val = if (!isInt(value) or big.cmp(heap.heap, literal, value) != 0) word.FAIL else success_value;
     tlSet(expr.*, val);
     expr.* = val;
 }
@@ -395,7 +395,7 @@ pub fn getStdin() ?*word.FILE {
 /// `x` as an `f64`, converting from a bignum (`INT`) or reading a `DOUBLE` cell.
 pub inline fn forceDbl(x: Word) f64 {
     if (isInt(x)) {
-        return big.toFloat(x);
+        return big.toFloat(heap.heap, x);
     } else {
         return heap.getDbl(x);
     }
@@ -404,7 +404,7 @@ pub inline fn forceDbl(x: Word) f64 {
 /// Coerce `x` to a `DOUBLE` cell (no-op if already double; else promote the int).
 pub inline fn coerceDbl(x: Word) Word {
     if (isDouble(x)) return x;
-    return heap.stoDbl(big.toFloat(x));
+    return heap.stoDbl(big.toFloat(heap.heap, x));
 }
 
 /// Rewrite `*expr` to `True`/`False` for `left == right` (structural compare).

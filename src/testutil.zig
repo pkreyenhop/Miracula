@@ -63,7 +63,7 @@ pub fn freshInterp() void {
 
 /// A boxed integer node (bignum), the value `n`.
 pub fn int(n: i64) Word {
-    return big.fromInt(@intCast(n));
+    return big.fromInt(heap.heap, @intCast(n));
 }
 
 /// Apply `f` to `x`: the heap node `(f x)`.
@@ -113,7 +113,7 @@ pub fn expectTag(tag: word.NodeTag, node: Word) !void {
 pub fn expectInt(expected: i64, node: Word) !void {
     const r = reduce.reduce(node);
     try std.testing.expect(heap.getTag(r) == .INT);
-    try std.testing.expectEqual(expected, @as(i64, @intCast(big.toInt(r))));
+    try std.testing.expectEqual(expected, @as(i64, @intCast(big.toInt(heap.heap, r))));
 }
 
 /// Assert that `node` reduces to a proper list whose elements reduce, in order,

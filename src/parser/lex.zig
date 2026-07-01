@@ -1560,7 +1560,7 @@ pub fn numeral() void {
     ovflocheck();
     if (nflag != 0) {
         ls.dicq[0] = 0;
-        ls.yylval = bigscan(ls.dicp);
+        ls.yylval = bigscan(heap.heap, ls.dicp);
     } else {
         var r: f64 = 0.0;
         const len = @as(usize, @intFromPtr(ls.dicq)) - @as(usize, @intFromPtr(ls.dicp));
@@ -1637,7 +1637,7 @@ pub fn hexnumeral() void {
         return;
     }
     ls.dicq[0] = 0;
-    ls.yylval = bigxscan(ls.dicp + 2, ls.dicq);
+    ls.yylval = bigxscan(heap.heap, ls.dicp + 2, ls.dicq);
 }
 
 /// Scan an octal numeral literal.
@@ -1659,7 +1659,7 @@ pub fn octnumeral() void {
     }
     ovflocheck();
     ls.dicq[0] = 0;
-    ls.yylval = bigoscan(ls.dicp, ls.dicq);
+    ls.yylval = bigoscan(heap.heap, ls.dicp, ls.dicq);
 }
 
 /// The filename associated with node `x`.

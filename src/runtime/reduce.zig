@@ -92,7 +92,7 @@ inline fn lh(x: Word) Word {
 
 inline fn forceDbl(x: Word) f64 {
     if (getTag(x) == .INT) {
-        return big.toFloat(x);
+        return big.toFloat(heap.heap, x);
     } else {
         return heap.getDbl(x);
     }
@@ -458,16 +458,16 @@ pub fn numplus(x: Word, y: Word) Word {
         return heap.stoDbl(heap.getDbl(x) + forceDbl(y));
     }
     if (getTag(y) == .DOUBLE) {
-        return heap.stoDbl(big.toFloat(x) + heap.getDbl(y));
+        return heap.stoDbl(big.toFloat(heap.heap, x) + heap.getDbl(y));
     }
-    return big.add(x, y);
+    return big.add(heap.heap, x, y);
 }
 
 test "numplus: integer add and float promotion" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(numplus(big.fromInt(2), big.fromInt(3))));
-    try std.testing.expectEqual(@as(c_longlong, -1), big.toInt(numplus(big.fromInt(2), big.fromInt(-3))));
-    const r = numplus(heap.stoDbl(1.5), big.fromInt(2)); // DOUBLE + INT → DOUBLE
+    try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(heap.heap, numplus(big.fromInt(heap.heap, 2), big.fromInt(heap.heap, 3))));
+    try std.testing.expectEqual(@as(c_longlong, -1), big.toInt(heap.heap, numplus(big.fromInt(heap.heap, 2), big.fromInt(heap.heap, -3))));
+    const r = numplus(heap.stoDbl(1.5), big.fromInt(heap.heap, 2)); // DOUBLE + INT → DOUBLE
     try std.testing.expectEqual(word.NodeTag.DOUBLE, heap.getTag(r));
     try std.testing.expectEqual(@as(f64, 3.5), heap.getDbl(r));
 }
@@ -543,7 +543,7 @@ pub fn lexfail(x_val: Word) void {
 /// Split a packed lexer-state value into a `(hi . lo)` cons.
 pub fn lexstate(x: Word) Word {
     const val = h(h(x));
-    return cons(big.fromInt(val >> 8), stosmallint(val & 255));
+    return cons(big.fromInt(heap.heap, val >> 8), stosmallint(val & 255));
 }
 
 /// The error message for a failed `fork`/pipe (used by `system`).
@@ -565,14 +565,14 @@ pub fn compare(arg_a: Word, arg_b: Word) c_int {
                 if (tag_b == .DOUBLE) {
                     return fsign(heap.getDbl(a) - heap.getDbl(b));
                 } else {
-                    return fsign(heap.getDbl(a) - big.toFloat(b));
+                    return fsign(heap.getDbl(a) - big.toFloat(heap.heap, b));
                 }
             },
             .INT => {
                 if (tag_b == .INT) {
-                    return big.cmp(a, b);
+                    return big.cmp(heap.heap, a, b);
                 } else {
-                    return fsign(big.toFloat(a) - heap.getDbl(b));
+                    return fsign(big.toFloat(heap.heap, a) - heap.getDbl(b));
                 }
             },
             .UNICODE => {
@@ -626,9 +626,9 @@ pub fn compare(arg_a: Word, arg_b: Word) c_int {
 
 test "compare: orders ints, chars, and strings; 0 on equal" {
     tu.freshInterp();
-    try std.testing.expect(compare(big.fromInt(2), big.fromInt(3)) < 0);
-    try std.testing.expect(compare(big.fromInt(3), big.fromInt(2)) > 0);
-    try std.testing.expectEqual(@as(c_int, 0), compare(big.fromInt(7), big.fromInt(7)));
+    try std.testing.expect(compare(big.fromInt(heap.heap, 2), big.fromInt(heap.heap, 3)) < 0);
+    try std.testing.expect(compare(big.fromInt(heap.heap, 3), big.fromInt(heap.heap, 2)) > 0);
+    try std.testing.expectEqual(@as(c_int, 0), compare(big.fromInt(heap.heap, 7), big.fromInt(heap.heap, 7)));
     // strings (char lists) compare lexicographically, element by element
     try std.testing.expect(compare(tu.str("abc"), tu.str("abd")) < 0);
     try std.testing.expectEqual(@as(c_int, 0), compare(tu.str("hi"), tu.str("hi")));
@@ -669,11 +669,11 @@ pub fn force(x_val: Word) void {
 
 test "force: deep-evaluates a list of thunks to normal form" {
     tu.freshInterp();
-    const thunk = ap(ap(word.PLUS, big.fromInt(2)), big.fromInt(3));
+    const thunk = ap(ap(word.PLUS, big.fromInt(heap.heap, 2)), big.fromInt(heap.heap, 3));
     const lst = cons(thunk, NIL);
     force(lst);
     // the head thunk is now reduced to the INT 5 in place
-    try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(h(lst)));
+    try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(heap.heap, h(lst)));
 }
 
 /// The head atom/combinator at the end of a left spine of applications.

@@ -546,7 +546,7 @@ pub fn handleATLEAST(ctx: *ReductionCtx) void {
     var lastarg = reduce.tlGet(ctx.e);
     lastarg = reduce.reduce(lastarg);
     if (reduce.isInt(lastarg)) {
-        const hold = big.sub(lastarg, arg1);
+        const hold = big.sub(heap.heap, lastarg, arg1);
         if (reduce.poz(hold)) {
             reduce.hdSet(ctx.e, arg2);
             reduce.tlSet(ctx.e, hold);
@@ -845,7 +845,7 @@ pub fn handleLENGTH(ctx: *ReductionCtx) void {
         lastarg = reduce.tlGet(lastarg);
         n += 1;
     }
-    reduce.simpl(ctx, big.fromInt(n));
+    reduce.simpl(ctx, big.fromInt(heap.heap, n));
     ctx.action = word.ACT_DONE;
 }
 
@@ -873,7 +873,7 @@ pub fn handleDROP(ctx: *ReductionCtx) void {
     if (!reduce.isInt(arg1)) {
         reduce_rt.intError("drop");
     }
-    var n = big.toInt(arg1);
+    var n = big.toInt(heap.heap, arg1);
     var lastarg = reduce.tlGet(ctx.e);
     while (n > 0) : (n -= 1) {
         lastarg = reduce.reduce(lastarg);
@@ -916,7 +916,7 @@ pub fn handleSUBSCRIPT(ctx: *ReductionCtx) void {
     if (reduce.isAtom(arg1)) {
         indx = arg1;
     } else if (reduce.isInt(arg1)) {
-        indx = big.toInt(arg1);
+        indx = big.toInt(heap.heap, arg1);
     } else {
         reduce_rt.intError("!");
     }

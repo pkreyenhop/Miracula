@@ -1283,7 +1283,7 @@ pub fn outAtom(file: ?*word.FILE, x_val: Word) void {
     const tag_val = getTag(x);
     if (tag_val == .INT) {
         if (rest(x) != 0) {
-            x = bigtostr(x);
+            x = bigtostr(heap, x);
             while (x != 0) {
                 _ = word.putc(@intCast(h(x)), file);
                 x = t(x);

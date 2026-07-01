@@ -893,7 +893,7 @@ pub fn transtypeid(x: Word) Word {
 pub fn genlhs(x: Word) Word {
     switch (getTag(x)) {
         .AP => {
-            if (getTag(h(x)) == .AP and h(h(x)) == PLUS and isnat(t(x))) {
+            if (getTag(h(x)) == .AP and h(h(x)) == PLUS and isnat(heap.heap, t(x))) {
                 return ap2(PLUS, t(x), genlhs(t(h(x))));
             }
             const hold = genlhs(h(x));

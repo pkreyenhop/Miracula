@@ -14,11 +14,20 @@
 //! `toDecimalList`/`toHexList`/`toOctalList`), arithmetic (`add`/`sub`/`mul`/
 //! `div`/`mod`/`pow`/`negate`/`cmp`), maths (`ln`/`log10`), predicates
 //! (`isNat`), and one-time `setup`.
+//!
+//! **Narrow substructure threading (Track SHARED_STATE, Phase 5 Tier 1,
+//! 2026-07-01).** Every function here takes the `*Heap`/`*Bignum` it needs as
+//! an explicit parameter instead of reaching the global `interp` singleton
+//! ambiently — the file itself never reads `bn.X`/`heap.heap.X` internally.
+//! Callers still source these pointers from the (still-global, Tier-3-deferred)
+//! singletons via the `bn`/`heap.heap` convenience constants below; only this
+//! module's own internals stopped assuming where they come from.
 
 const std = @import("std");
 
 const platform = @import("../io/platform.zig");
-const heap = @import("heap.zig");
+const heap_mod = @import("heap.zig");
+const Heap = heap_mod.Heap;
 const word = @import("word.zig");
 const reduce = @import("reduce.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
@@ -36,11 +45,12 @@ const TENW: Word = 4; // decimal digits per PTEN chunk
 const CMBASE = word.CMBASE;
 const NIL = word.NIL;
 
-const make = heap.make;
 const mathError = reduce.mathError;
-/// Bignum subsystem state (shared-state plan Phase 2e). Accessed as `big.bn.X`;
-/// folds into `Interp.big` in Phase 3. `bn.logIBASE`/`bn.log10IBASE` are caches set by
-/// `setup` (runtime `@log`, not comptime); `bn.big_one`/`bn.b_rem` are heap nodes.
+
+/// Bignum subsystem state (shared-state plan Phase 2e). `logIBASE`/`log10IBASE`
+/// are caches set by `setup` (runtime `@log`, not comptime); `big_one`/`b_rem`
+/// are heap nodes. Threaded explicitly as a `*Bignum` parameter by every
+/// function that needs it (Phase 5 Tier 1) rather than read ambiently.
 pub const Bignum = struct {
     logIBASE: f64 = 0,
     log10IBASE: f64 = 0,
@@ -51,110 +61,83 @@ pub const Bignum = struct {
 };
 
 /// Pointer to the bignum subsystem state held in `interp` (so `interp.reset()`
-/// clears it). Accessed as `big.bn.X`.
+/// clears it). A convenience for *callers* to obtain a `*Bignum` to pass in —
+/// this module's own functions no longer read `bn.X` themselves.
 pub const bn = &@import("interp.zig").interp.big;
-
-/// The node tag of cell `x`.
-inline fn getTag(x: Word) word.NodeTag {
-    return heap.heap.getTag(x);
-}
-
-// Raw heap cell accessors (head / tail, by value and by pointer). A bignum
-// digit cell stores its digit in the head and the next cell in the tail.
-/// Head (`hd`) of cell `x`.
-fn h(x: Word) Word {
-    return heap.heap.h(x);
-}
-/// Pointer to the head field of cell `x`.
-fn hp(x: Word) *Word {
-    return heap.heap.hp(x);
-}
-/// Tail (`tl`) of cell `x`.
-fn t(x: Word) Word {
-    return heap.heap.t(x);
-}
-/// Pointer to the tail field of cell `x`.
-fn tp(x: Word) *Word {
-    return heap.heap.tp(x);
-}
 
 /// The head cell's digit with the sign/overflow bits masked off (its plain
 /// 0..MAXDIGIT value).
-fn digit0(x: Word) Word {
-    return h(x) & MAXDIGIT;
+fn digit0(heap: *Heap, x: Word) Word {
+    return heap.h(x) & MAXDIGIT;
 }
 /// The head cell's digit field, raw (may carry `SIGNBIT` on the head cell).
-fn digit(x: Word) Word {
-    return h(x);
+fn digit(heap: *Heap, x: Word) Word {
+    return heap.h(x);
 }
 /// Pointer to the head cell's digit field (for in-place mutation).
-fn digitPtr(x: Word) *Word {
-    return hp(x);
+fn digitPtr(heap: *Heap, x: Word) *Word {
+    return heap.hp(x);
 }
 /// The rest of the chain — the next (more-significant) digit cell.
-fn rest(x: Word) Word {
-    return t(x);
+fn rest(heap: *Heap, x: Word) Word {
+    return heap.t(x);
 }
 /// Pointer to the chain link, for in-place mutation / appending digits.
-fn restPtr(x: Word) *Word {
-    return tp(x);
+fn restPtr(heap: *Heap, x: Word) *Word {
+    return heap.tp(x);
 }
 
 /// Whether `x` is non-negative (no `SIGNBIT` on the head digit).
-fn isPositive(x: Word) bool {
-    return (h(x) & SIGNBIT) == 0;
+fn isPositive(heap: *Heap, x: Word) bool {
+    return (heap.h(x) & SIGNBIT) == 0;
 }
 /// The sign bit of `x` (`SIGNBIT` if negative, else 0).
-fn signBit(x: Word) Word {
-    return h(x) & SIGNBIT;
+fn signBit(heap: *Heap, x: Word) Word {
+    return heap.h(x) & SIGNBIT;
 }
 /// Whether `x` is the single-cell zero.
-fn isZero(x: Word) bool {
-    return digit(x) == 0 and rest(x) == 0;
+fn isZero(heap: *Heap, x: Word) bool {
+    return digit(heap, x) == 0 and rest(heap, x) == 0;
 }
 /// Decode a single-cell bignum to a signed `Word` (caller guarantees one cell).
-fn toSmallInt(x: Word) Word {
-    return if ((h(x) & SIGNBIT) != 0) -digit0(x) else digit(x);
-}
-
-/// Build a `CONS` cell — used by the `to*List` routines to emit char lists.
-fn cons(x: Word, y: Word) Word {
-    return make(.CONS, x, y);
+fn toSmallInt(heap: *Heap, x: Word) Word {
+    return if ((heap.h(x) & SIGNBIT) != 0) -digit0(heap, x) else digit(heap, x);
 }
 
 /// Initialise the bignum caches (`logIBASE`/`log10IBASE`) and `big_one`. Once, at startup.
-/// Initialise the bignum constants (`logIBASE`/`log10IBASE` caches and `big_one`).
 ///
 /// Tests: setup: initialises the bignum constants
-pub fn setup() void {
-    bn.logIBASE = std.math.log(f64, std.math.e, @as(f64, @floatFromInt(IBASE)));
-    bn.log10IBASE = std.math.log10(@as(f64, @floatFromInt(IBASE)));
-    bn.big_one = make(.INT, 1, 0);
+pub fn setup(heap: *Heap, self: *Bignum) void {
+    self.logIBASE = std.math.log(f64, std.math.e, @as(f64, @floatFromInt(IBASE)));
+    self.log10IBASE = std.math.log10(@as(f64, @floatFromInt(IBASE)));
+    self.big_one = heap.make(.INT, 1, 0);
 }
 
 test "setup: initialises the bignum constants" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_longlong, 1), toInt(bn.big_one));
+    setup(&heap_mod.heap.*, bn);
+    try std.testing.expectEqual(@as(c_longlong, 1), toInt(&heap_mod.heap.*, bn.big_one));
 }
 
 /// 1 if `x` is a non-negative integer (`INT`-tagged and positive), else 0.
 ///
 /// Tests: isNat: 1 for non-negative INTs, 0 for negatives
-pub fn isNat(x: Word) bool {
-    return getTag(x) == .INT and isPositive(x);
+pub fn isNat(heap: *Heap, x: Word) bool {
+    return heap.getTag(x) == .INT and isPositive(heap, x);
 }
 
 test "isNat: 1 for non-negative INTs, 0 for negatives" {
     tu.freshInterp();
-    try std.testing.expect(isNat(fromInt(5)));
-    try std.testing.expect(isNat(fromInt(0)));
-    try std.testing.expect(!isNat(fromInt(-5)));
+    const heap = &heap_mod.heap.*;
+    try std.testing.expect(isNat(heap, fromInt(heap, 5)));
+    try std.testing.expect(isNat(heap, fromInt(heap, 0)));
+    try std.testing.expect(!isNat(heap, fromInt(heap, -5)));
 }
 
 /// Build a bignum from a signed 64-bit integer.
 ///
 /// Tests: fromInt: round-trips through toInt across the digit boundary
-pub fn fromInt(input: c_longlong) Word {
+pub fn fromInt(heap: *Heap, input: c_longlong) Word {
     var i = input;
     var s: Word = 0;
     if (i < 0) {
@@ -162,16 +145,16 @@ pub fn fromInt(input: c_longlong) Word {
         i = -i;
     }
     var unsigned_i: c_ulonglong = @intCast(i);
-    const x = make(.INT, s | @as(Word, @intCast(unsigned_i & MAXDIGIT)), 0);
+    const x = heap.make(.INT, s | @as(Word, @intCast(unsigned_i & MAXDIGIT)), 0);
     unsigned_i >>= DIGITWIDTH;
     if (unsigned_i != 0) {
-        var p = restPtr(x);
-        p.* = make(.INT, @intCast(unsigned_i & MAXDIGIT), 0);
-        p = restPtr(p.*);
+        var p = restPtr(heap, x);
+        p.* = heap.make(.INT, @intCast(unsigned_i & MAXDIGIT), 0);
+        p = restPtr(heap, p.*);
         unsigned_i >>= DIGITWIDTH;
         while (unsigned_i != 0) : (unsigned_i >>= DIGITWIDTH) {
-            p.* = make(.INT, @intCast(unsigned_i & MAXDIGIT), 0);
-            p = restPtr(p.*);
+            p.* = heap.make(.INT, @intCast(unsigned_i & MAXDIGIT), 0);
+            p = restPtr(heap, p.*);
         }
     }
     return x;
@@ -179,27 +162,28 @@ pub fn fromInt(input: c_longlong) Word {
 
 test "fromInt: round-trips through toInt across the digit boundary" {
     tu.freshInterp();
+    const heap = &heap_mod.heap.*;
     for ([_]c_longlong{ 0, 1, -1, 42, -42, 32768, 1 << 20, 1 << 40 }) |n| {
-        try std.testing.expectEqual(n, toInt(fromInt(n)));
+        try std.testing.expectEqual(n, toInt(heap, fromInt(heap, n)));
     }
 }
 
 /// Convert a bignum to a signed 64-bit integer (saturates above ~2^60).
 ///
 /// Tests: toInt: saturates above 2^60
-pub fn toInt(input: Word) c_longlong {
+pub fn toInt(heap: *Heap, input: Word) c_longlong {
     var x = input;
-    var n: c_longlong = @intCast(digit0(x));
-    const sign = signBit(x) != 0;
-    x = rest(x);
+    var n: c_longlong = @intCast(digit0(heap, x));
+    const sign = signBit(heap, x) != 0;
+    x = rest(heap, x);
     if (x == 0) return if (sign) -n else n;
 
     var w: Word = DIGITWIDTH;
     while (x != 0 and w < 60) : ({
         w += DIGITWIDTH;
-        x = rest(x);
+        x = rest(heap, x);
     }) {
-        n += @as(c_longlong, @intCast(digit(x))) << @intCast(w);
+        n += @as(c_longlong, @intCast(digit(heap, x))) << @intCast(w);
     }
     if (x != 0) n = @as(c_longlong, 1) << 60;
     return if (sign) -n else n;
@@ -207,147 +191,151 @@ pub fn toInt(input: Word) c_longlong {
 
 test "toInt: saturates above 2^60" {
     tu.freshInterp();
+    const heap = &heap_mod.heap.*;
     // 2^61 exceeds the 60-bit window, so toInt clamps to 2^60.
-    const big61 = mul(fromInt(1 << 40), fromInt(1 << 21));
-    try std.testing.expectEqual(@as(c_longlong, 1) << 60, toInt(big61));
+    const big61 = mul(heap, fromInt(heap, 1 << 40), fromInt(heap, 1 << 21));
+    try std.testing.expectEqual(@as(c_longlong, 1) << 60, toInt(heap, big61));
 }
 
 /// Return `-x`.
 ///
 /// Tests: negate: flips the sign, fixed point at zero
-pub fn negate(x: Word) Word {
-    if (isZero(x)) return x;
-    const d = if ((h(x) & SIGNBIT) != 0) h(x) & MAXDIGIT else SIGNBIT | h(x);
-    return make(.INT, d, rest(x));
+pub fn negate(heap: *Heap, x: Word) Word {
+    if (isZero(heap, x)) return x;
+    const d = if ((heap.h(x) & SIGNBIT) != 0) heap.h(x) & MAXDIGIT else SIGNBIT | heap.h(x);
+    return heap.make(.INT, d, rest(heap, x));
 }
 
 test "negate: flips the sign, fixed point at zero" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_longlong, -7), toInt(negate(fromInt(7))));
-    try std.testing.expectEqual(@as(c_longlong, 7), toInt(negate(fromInt(-7))));
-    try std.testing.expectEqual(@as(c_longlong, 0), toInt(negate(fromInt(0))));
+    const heap = &heap_mod.heap.*;
+    try std.testing.expectEqual(@as(c_longlong, -7), toInt(heap, negate(heap, fromInt(heap, 7))));
+    try std.testing.expectEqual(@as(c_longlong, 7), toInt(heap, negate(heap, fromInt(heap, -7))));
+    try std.testing.expectEqual(@as(c_longlong, 0), toInt(heap, negate(heap, fromInt(heap, 0))));
 }
 
 /// Return `x + y`.
 ///
 /// Tests: add: sums across signs and the digit boundary
-pub fn add(x: Word, y: Word) Word {
-    if (isPositive(x)) {
-        if (isPositive(y)) return addMagnitude(x, y, 0);
-        return subMagnitude(x, y);
+pub fn add(heap: *Heap, x: Word, y: Word) Word {
+    if (isPositive(heap, x)) {
+        if (isPositive(heap, y)) return addMagnitude(heap, x, y, 0);
+        return subMagnitude(heap, x, y);
     }
-    if (isPositive(y)) return subMagnitude(y, x);
-    return addMagnitude(x, y, SIGNBIT);
+    if (isPositive(heap, y)) return subMagnitude(heap, y, x);
+    return addMagnitude(heap, x, y, SIGNBIT);
 }
 
 test "add: sums across signs and the digit boundary" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_longlong, 5), toInt(add(fromInt(2), fromInt(3))));
-    try std.testing.expectEqual(@as(c_longlong, -1), toInt(add(fromInt(2), fromInt(-3))));
-    try std.testing.expectEqual(@as(c_longlong, 65536), toInt(add(fromInt(32768), fromInt(32768))));
+    const heap = &heap_mod.heap.*;
+    try std.testing.expectEqual(@as(c_longlong, 5), toInt(heap, add(heap, fromInt(heap, 2), fromInt(heap, 3))));
+    try std.testing.expectEqual(@as(c_longlong, -1), toInt(heap, add(heap, fromInt(heap, 2), fromInt(heap, -3))));
+    try std.testing.expectEqual(@as(c_longlong, 65536), toInt(heap, add(heap, fromInt(heap, 32768), fromInt(heap, 32768))));
 }
 
 /// Add the unsigned magnitudes of `x` and `y`, tagging the result with `signbit`.
-fn addMagnitude(input_x: Word, input_y: Word, signbit: Word) Word {
+fn addMagnitude(heap: *Heap, input_x: Word, input_y: Word, signbit: Word) Word {
     var x = input_x;
     var y = input_y;
-    var d = digit0(x) + digit0(y);
+    var d = digit0(heap, x) + digit0(heap, y);
     var carry: Word = if ((d & IBASE) != 0) 1 else 0;
-    const r = make(.INT, signbit | (d & MAXDIGIT), 0);
-    var z = restPtr(r);
-    x = rest(x);
-    y = rest(y);
+    const r = heap.make(.INT, signbit | (d & MAXDIGIT), 0);
+    var z = restPtr(heap, r);
+    x = rest(heap, x);
+    y = rest(heap, y);
     while (x != 0 and y != 0) {
-        d = carry + digit(x) + digit(y);
+        d = carry + digit(heap, x) + digit(heap, y);
         carry = if ((d & IBASE) != 0) 1 else 0;
-        z.* = make(.INT, d & MAXDIGIT, 0);
-        x = rest(x);
-        y = rest(y);
-        z = restPtr(z.*);
+        z.* = heap.make(.INT, d & MAXDIGIT, 0);
+        x = rest(heap, x);
+        y = rest(heap, y);
+        z = restPtr(heap, z.*);
     }
     if (y != 0) x = y;
     while (x != 0) {
-        d = carry + digit(x);
+        d = carry + digit(heap, x);
         carry = if ((d & IBASE) != 0) 1 else 0;
-        z.* = make(.INT, d & MAXDIGIT, 0);
-        x = rest(x);
-        z = restPtr(z.*);
+        z.* = heap.make(.INT, d & MAXDIGIT, 0);
+        x = rest(heap, x);
+        z = restPtr(heap, z.*);
     }
-    if (carry != 0) z.* = make(.INT, 1, 0);
+    if (carry != 0) z.* = heap.make(.INT, 1, 0);
     return r;
 }
 
 /// Return `x - y`.
 ///
 /// Tests: sub: differences across signs
-pub fn sub(x: Word, y: Word) Word {
-    if (isPositive(x)) {
-        if (isPositive(y)) return subMagnitude(x, y);
-        return addMagnitude(x, y, 0);
+pub fn sub(heap: *Heap, x: Word, y: Word) Word {
+    if (isPositive(heap, x)) {
+        if (isPositive(heap, y)) return subMagnitude(heap, x, y);
+        return addMagnitude(heap, x, y, 0);
     }
-    if (isPositive(y)) return addMagnitude(x, y, SIGNBIT);
-    return subMagnitude(y, x);
+    if (isPositive(heap, y)) return addMagnitude(heap, x, y, SIGNBIT);
+    return subMagnitude(heap, y, x);
 }
 
 test "sub: differences across signs" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_longlong, -1), toInt(sub(fromInt(2), fromInt(3))));
-    try std.testing.expectEqual(@as(c_longlong, 5), toInt(sub(fromInt(2), fromInt(-3))));
-    try std.testing.expectEqual(@as(c_longlong, 0), toInt(sub(fromInt(40), fromInt(40))));
+    const heap = &heap_mod.heap.*;
+    try std.testing.expectEqual(@as(c_longlong, -1), toInt(heap, sub(heap, fromInt(heap, 2), fromInt(heap, 3))));
+    try std.testing.expectEqual(@as(c_longlong, 5), toInt(heap, sub(heap, fromInt(heap, 2), fromInt(heap, -3))));
+    try std.testing.expectEqual(@as(c_longlong, 0), toInt(heap, sub(heap, fromInt(heap, 40), fromInt(heap, 40))));
 }
 
 /// Subtract unsigned magnitudes (|x| - |y|, |x| >= |y|), normalising the result.
-fn subMagnitude(input_x: Word, input_y: Word) Word {
+fn subMagnitude(heap: *Heap, input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
-    var d = digit0(x) - digit0(y);
+    var d = digit0(heap, x) - digit0(heap, y);
     var borrow: Word = if ((d & IBASE) != 0) 1 else 0;
-    const r = make(.INT, d & MAXDIGIT, 0);
-    var z = restPtr(r);
+    const r = heap.make(.INT, d & MAXDIGIT, 0);
+    var z = restPtr(heap, r);
     var p: ?*Word = null;
-    x = rest(x);
-    y = rest(y);
+    x = rest(heap, x);
+    y = rest(heap, y);
     while (x != 0 and y != 0) {
-        d = digit(x) - digit(y) - borrow;
+        d = digit(heap, x) - digit(heap, y) - borrow;
         borrow = if ((d & IBASE) != 0) 1 else 0;
         d &= MAXDIGIT;
-        z.* = make(.INT, d, 0);
+        z.* = heap.make(.INT, d, 0);
         if (d != 0) p = null else if (p == null) p = z;
-        x = rest(x);
-        y = rest(y);
-        z = restPtr(z.*);
+        x = rest(heap, x);
+        y = rest(heap, y);
+        z = restPtr(heap, z.*);
     }
     while (y != 0) {
-        d = -digit(y) - borrow;
+        d = -digit(heap, y) - borrow;
         borrow = if ((d & IBASE) != 0) 1 else 0;
         d &= MAXDIGIT;
-        z.* = make(.INT, d, 0);
+        z.* = heap.make(.INT, d, 0);
         if (d != 0) p = null else if (p == null) p = z;
-        y = rest(y);
-        z = restPtr(z.*);
+        y = rest(heap, y);
+        z = restPtr(heap, z.*);
     }
     while (x != 0) {
-        d = digit(x) - borrow;
+        d = digit(heap, x) - borrow;
         borrow = if ((d & IBASE) != 0) 1 else 0;
         d &= MAXDIGIT;
-        z.* = make(.INT, d, 0);
+        z.* = heap.make(.INT, d, 0);
         if (d != 0) p = null else if (p == null) p = z;
-        x = rest(x);
-        z = restPtr(z.*);
+        x = rest(heap, x);
+        z = restPtr(heap, z.*);
     }
     if (borrow != 0) {
         p = null;
-        d = (digit(r) ^ MAXDIGIT) + 1;
+        d = (digit(heap, r) ^ MAXDIGIT) + 1;
         borrow = if ((d & IBASE) != 0) 1 else 0;
-        digitPtr(r).* = SIGNBIT | d;
-        z = restPtr(r);
+        digitPtr(heap, r).* = SIGNBIT | d;
+        z = restPtr(heap, r);
         while (z.* != 0) {
-            d = (digit(z.*) ^ MAXDIGIT) + borrow;
+            d = (digit(heap, z.*) ^ MAXDIGIT) + borrow;
             borrow = if ((d & IBASE) != 0) 1 else 0;
             d &= MAXDIGIT;
-            digitPtr(z.*).* = d;
+            digitPtr(heap, z.*).* = d;
             if (d != 0) p = null else if (p == null) p = z;
-            z = restPtr(z.*);
+            z = restPtr(heap, z.*);
         }
     }
     if (p) |ptr| ptr.* = 0;
@@ -357,415 +345,426 @@ fn subMagnitude(input_x: Word, input_y: Word) Word {
 /// Three-way compare: -1 / 0 / 1 for `x < y` / `x == y` / `x > y`.
 ///
 /// Tests: cmp: three-way -1 / 0 / 1
-pub fn cmp(input_x: Word, input_y: Word) c_int {
+pub fn cmp(heap: *Heap, input_x: Word, input_y: Word) c_int {
     var x = input_x;
     var y = input_y;
-    const s = signBit(x) != 0;
-    if ((signBit(y) != 0) != s) return if (s) -1 else 1;
-    var r = digit0(x) - digit0(y);
+    const s = signBit(heap, x) != 0;
+    if ((signBit(heap, y) != 0) != s) return if (s) -1 else 1;
+    var r = digit0(heap, x) - digit0(heap, y);
     while (true) {
-        x = rest(x);
-        y = rest(y);
+        x = rest(heap, x);
+        y = rest(heap, y);
         if (x == 0) {
             if (y != 0) return if (s) 1 else -1;
             return @intCast(if (s) -r else r);
         }
         if (y == 0) return if (s) -1 else 1;
-        const d = digit(x) - digit(y);
+        const d = digit(heap, x) - digit(heap, y);
         if (d != 0) r = d;
     }
 }
 
 test "cmp: three-way -1 / 0 / 1" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_int, -1), cmp(fromInt(1), fromInt(2)));
-    try std.testing.expectEqual(@as(c_int, 0), cmp(fromInt(2), fromInt(2)));
-    try std.testing.expectEqual(@as(c_int, 1), cmp(fromInt(2), fromInt(1)));
-    try std.testing.expectEqual(@as(c_int, -1), cmp(fromInt(-2), fromInt(1)));
+    const heap = &heap_mod.heap.*;
+    try std.testing.expectEqual(@as(c_int, -1), cmp(heap, fromInt(heap, 1), fromInt(heap, 2)));
+    try std.testing.expectEqual(@as(c_int, 0), cmp(heap, fromInt(heap, 2), fromInt(heap, 2)));
+    try std.testing.expectEqual(@as(c_int, 1), cmp(heap, fromInt(heap, 2), fromInt(heap, 1)));
+    try std.testing.expectEqual(@as(c_int, -1), cmp(heap, fromInt(heap, -2), fromInt(heap, 1)));
 }
 
 /// Return `x * y`.
 ///
 /// Tests: mul: products including large operands
-pub fn mul(input_x: Word, input_y: Word) Word {
+pub fn mul(heap: *Heap, input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
-    if (digitCount(x) < digitCount(y)) {
+    if (digitCount(heap, x) < digitCount(heap, y)) {
         const hold = x;
         x = y;
         y = hold;
     }
-    var r = make(.INT, 0, 0);
-    var d = digit0(y);
-    const s = signBit(y) != 0;
-    if (isZero(x)) return r;
+    var r = heap.make(.INT, 0, 0);
+    var d = digit0(heap, y);
+    const s = signBit(heap, y) != 0;
+    if (isZero(heap, x)) return r;
     var n: Word = 0;
     while (true) {
-        if (d != 0) r = add(r, shiftLeftDigits(n, scaleBy(x, d)));
+        if (d != 0) r = add(heap, r, shiftLeftDigits(heap, n, scaleBy(heap, x, d)));
         n += 1;
-        y = rest(y);
-        if (y == 0) return if (s != (signBit(x) != 0)) negate(r) else r;
-        d = digit(y);
+        y = rest(heap, y);
+        if (y == 0) return if (s != (signBit(heap, x) != 0)) negate(heap, r) else r;
+        d = digit(heap, y);
     }
 }
 
 test "mul: products including large operands" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_longlong, 42), toInt(mul(fromInt(6), fromInt(7))));
-    try std.testing.expectEqual(@as(c_longlong, -42), toInt(mul(fromInt(-6), fromInt(7))));
-    try std.testing.expectEqual(@as(c_longlong, 1 << 40), toInt(mul(fromInt(1 << 20), fromInt(1 << 20))));
+    const heap = &heap_mod.heap.*;
+    try std.testing.expectEqual(@as(c_longlong, 42), toInt(heap, mul(heap, fromInt(heap, 6), fromInt(heap, 7))));
+    try std.testing.expectEqual(@as(c_longlong, -42), toInt(heap, mul(heap, fromInt(heap, -6), fromInt(heap, 7))));
+    try std.testing.expectEqual(@as(c_longlong, 1 << 40), toInt(heap, mul(heap, fromInt(heap, 1 << 20), fromInt(heap, 1 << 20))));
 }
 
 /// Prepend `n` zero digits — i.e. multiply `x` by `IBASE^n`.
-fn shiftLeftDigits(n_input: Word, x_input: Word) Word {
+fn shiftLeftDigits(heap: *Heap, n_input: Word, x_input: Word) Word {
     var n = n_input;
     var x = x_input;
-    while (n != 0) : (n -= 1) x = make(.INT, 0, x);
+    while (n != 0) : (n -= 1) x = heap.make(.INT, 0, x);
     return x;
 }
 
 /// Multiply the magnitude of `x` by the small (single-digit) integer `n`.
-fn scaleBy(input_x: Word, n: Word) Word {
+fn scaleBy(heap: *Heap, input_x: Word, n: Word) Word {
     var x = input_x;
-    var d: u32 = @intCast(n * digit0(x));
+    var d: u32 = @intCast(n * digit0(heap, x));
     var carry: Word = @intCast(d >> DIGITWIDTH);
-    const r = make(.INT, @intCast(d & MAXDIGIT), 0);
-    var y = restPtr(r);
-    x = rest(x);
-    while (x != 0) : (x = rest(x)) {
-        d = @intCast((n * digit(x)) + carry);
-        y.* = make(.INT, @intCast(d & MAXDIGIT), 0);
-        y = restPtr(y.*);
+    const r = heap.make(.INT, @intCast(d & MAXDIGIT), 0);
+    var y = restPtr(heap, r);
+    x = rest(heap, x);
+    while (x != 0) : (x = rest(heap, x)) {
+        d = @intCast((n * digit(heap, x)) + carry);
+        y.* = heap.make(.INT, @intCast(d & MAXDIGIT), 0);
+        y = restPtr(heap, y.*);
         carry = @intCast(d >> DIGITWIDTH);
     }
-    if (carry != 0) y.* = make(.INT, carry, 0);
+    if (carry != 0) y.* = heap.make(.INT, carry, 0);
     return r;
 }
 
 /// Return `x / y` floored toward negative infinity (Miranda `div`); leaves the
-/// remainder in `bn.b_rem`. Negative results with a non-zero remainder round away
-/// from zero so that `div`/`mod` satisfy `x = y*(x div y) + (x mod y)`.
+/// remainder in `self.b_rem`. Negative results with a non-zero remainder round
+/// away from zero so that `div`/`mod` satisfy `x = y*(x div y) + (x mod y)`.
 ///
 /// Tests: div: floored division (toward negative infinity)
-pub fn div(input_x: Word, input_y: Word) Word {
+pub fn div(heap: *Heap, self: *Bignum, input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
-    const s1 = signBit(y) != 0;
-    if (s1) y = make(.INT, digit0(y), rest(y));
-    const s2 = if (signBit(x) != 0) blk: {
-        x = make(.INT, digit0(x), rest(x));
+    const s1 = signBit(heap, y) != 0;
+    if (s1) y = heap.make(.INT, digit0(heap, y), rest(heap, y));
+    const s2 = if (signBit(heap, x) != 0) blk: {
+        x = heap.make(.INT, digit0(heap, x), rest(heap, x));
         break :blk !s1;
     } else s1;
-    const q = if (rest(y) != 0) longDiv(x, y) else shortDiv(x, digit(y));
+    const q = if (rest(heap, y) != 0) longDiv(heap, self, x, y) else shortDiv(heap, self, x, digit(heap, y));
     if (s2) {
-        if (!isZero(bn.b_rem)) {
+        if (!isZero(heap, self.b_rem)) {
             var qx = q;
             while (true) {
-                digitPtr(qx).* += 1;
-                if (digit(qx) != IBASE) break;
-                digitPtr(qx).* = 0;
-                if (rest(qx) == 0) {
-                    restPtr(qx).* = make(.INT, 1, 0);
+                digitPtr(heap, qx).* += 1;
+                if (digit(heap, qx) != IBASE) break;
+                digitPtr(heap, qx).* = 0;
+                if (rest(heap, qx) == 0) {
+                    restPtr(heap, qx).* = heap.make(.INT, 1, 0);
                     break;
                 }
-                qx = rest(qx);
+                qx = rest(heap, qx);
             }
         }
-        if (!isZero(q)) digitPtr(q).* = SIGNBIT | digit(q);
+        if (!isZero(heap, q)) digitPtr(heap, q).* = SIGNBIT | digit(heap, q);
     }
     return q;
 }
 
 test "div: floored division (toward negative infinity)" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_longlong, 6), toInt(div(fromInt(20), fromInt(3))));
-    try std.testing.expectEqual(@as(c_longlong, 5), toInt(div(fromInt(20), fromInt(4))));
-    try std.testing.expectEqual(@as(c_longlong, -7), toInt(div(fromInt(-20), fromInt(3))));
-    try std.testing.expectEqual(@as(c_longlong, 6), toInt(div(fromInt(-20), fromInt(-3))));
+    const heap = &heap_mod.heap.*;
+    try std.testing.expectEqual(@as(c_longlong, 6), toInt(heap, div(heap, bn, fromInt(heap, 20), fromInt(heap, 3))));
+    try std.testing.expectEqual(@as(c_longlong, 5), toInt(heap, div(heap, bn, fromInt(heap, 20), fromInt(heap, 4))));
+    try std.testing.expectEqual(@as(c_longlong, -7), toInt(heap, div(heap, bn, fromInt(heap, -20), fromInt(heap, 3))));
+    try std.testing.expectEqual(@as(c_longlong, 6), toInt(heap, div(heap, bn, fromInt(heap, -20), fromInt(heap, -3))));
 }
 
 /// Return `x mod y` (the result's sign follows the divisor `y`).
 ///
 /// Tests: mod: remainder whose sign follows the divisor
-pub fn mod(input_x: Word, input_y: Word) Word {
+pub fn mod(heap: *Heap, self: *Bignum, input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
-    const s1 = signBit(y) != 0;
-    if (s1) y = make(.INT, digit0(y), rest(y));
-    const s2 = if (signBit(x) != 0) blk: {
-        x = make(.INT, digit0(x), rest(x));
+    const s1 = signBit(heap, y) != 0;
+    if (s1) y = heap.make(.INT, digit0(heap, y), rest(heap, y));
+    const s2 = if (signBit(heap, x) != 0) blk: {
+        x = heap.make(.INT, digit0(heap, x), rest(heap, x));
         break :blk !s1;
     } else s1;
-    _ = if (rest(y) != 0) longDiv(x, y) else shortDiv(x, digit(y));
-    if (s2 and !isZero(bn.b_rem)) bn.b_rem = sub(y, bn.b_rem);
-    return if (s1) negate(bn.b_rem) else bn.b_rem;
+    _ = if (rest(heap, y) != 0) longDiv(heap, self, x, y) else shortDiv(heap, self, x, digit(heap, y));
+    if (s2 and !isZero(heap, self.b_rem)) self.b_rem = sub(heap, y, self.b_rem);
+    return if (s1) negate(heap, self.b_rem) else self.b_rem;
 }
 
 test "mod: remainder whose sign follows the divisor" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_longlong, 2), toInt(mod(fromInt(20), fromInt(3))));
-    try std.testing.expectEqual(@as(c_longlong, 0), toInt(mod(fromInt(20), fromInt(4))));
-    try std.testing.expectEqual(@as(c_longlong, 1), toInt(mod(fromInt(-20), fromInt(3))));
-    try std.testing.expectEqual(@as(c_longlong, -1), toInt(mod(fromInt(20), fromInt(-3))));
+    const heap = &heap_mod.heap.*;
+    try std.testing.expectEqual(@as(c_longlong, 2), toInt(heap, mod(heap, bn, fromInt(heap, 20), fromInt(heap, 3))));
+    try std.testing.expectEqual(@as(c_longlong, 0), toInt(heap, mod(heap, bn, fromInt(heap, 20), fromInt(heap, 4))));
+    try std.testing.expectEqual(@as(c_longlong, 1), toInt(heap, mod(heap, bn, fromInt(heap, -20), fromInt(heap, 3))));
+    try std.testing.expectEqual(@as(c_longlong, -1), toInt(heap, mod(heap, bn, fromInt(heap, 20), fromInt(heap, -3))));
 }
 
-/// Divide a bignum by a single digit `n`; remainder left in `bn.b_rem`.
-fn shortDiv(input_x: Word, n: Word) Word {
+/// Divide a bignum by a single digit `n`; remainder left in `self.b_rem`.
+fn shortDiv(heap: *Heap, self: *Bignum, input_x: Word, n: Word) Word {
     var x = input_x;
-    var d = digit(x);
+    var d = digit(heap, x);
     var q: Word = 0;
-    while (rest(x) != 0) {
-        x = rest(x);
-        q = make(.INT, d, q);
-        d = digit(x);
+    while (rest(heap, x) != 0) {
+        x = rest(heap, x);
+        q = heap.make(.INT, d, q);
+        d = digit(heap, x);
     }
     var tmp: Word = undefined;
     x = q;
     var s_rem = @rem(d, n);
     d = @divTrunc(d, n);
-    if (d != 0 or q == 0) q = make(.INT, d, 0) else q = 0;
+    if (d != 0 or q == 0) q = heap.make(.INT, d, 0) else q = 0;
     while (x != 0) {
-        d = (s_rem * IBASE) + digit(x);
-        digitPtr(x).* = @divTrunc(d, n);
+        d = (s_rem * IBASE) + digit(heap, x);
+        digitPtr(heap, x).* = @divTrunc(d, n);
         s_rem = @rem(d, n);
         tmp = x;
-        x = rest(x);
-        restPtr(tmp).* = q;
+        x = rest(heap, x);
+        restPtr(heap, tmp).* = q;
         q = tmp;
     }
-    bn.b_rem = make(.INT, s_rem, 0);
+    self.b_rem = heap.make(.INT, s_rem, 0);
     return q;
 }
 
-/// Long division of `x` by a multi-digit `y`; remainder left in `bn.b_rem`.
-fn longDiv(input_x: Word, input_y: Word) Word {
+/// Long division of `x` by a multi-digit `y`; remainder left in `self.b_rem`.
+fn longDiv(heap: *Heap, self: *Bignum, input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
-    if (cmp(x, y) < 0) {
-        bn.b_rem = x;
-        return make(.INT, 0, 0);
+    if (cmp(heap, x, y) < 0) {
+        self.b_rem = x;
+        return heap.make(.INT, 0, 0);
     }
-    var y1 = mostSignificantDigit(y);
+    var y1 = mostSignificantDigit(heap, y);
     const scale = @divTrunc(IBASE, y1 + 1);
     if (scale > 1) {
-        x = scaleBy(x, scale);
-        y = scaleBy(y, scale);
-        y1 = mostSignificantDigit(y);
+        x = scaleBy(heap, x, scale);
+        y = scaleBy(heap, y, scale);
+        y1 = mostSignificantDigit(heap, y);
     }
     var n: Word = 0;
     var q: Word = 0;
-    var ly = digitCount(y);
+    var ly = digitCount(heap, y);
     while (true) {
-        y = make(.INT, 0, y);
-        if (cmp(x, y) < 0) break;
+        y = heap.make(.INT, 0, y);
+        if (cmp(heap, x, y) < 0) break;
         n += 1;
     }
-    y = rest(y);
+    y = rest(heap, y);
     ly += n;
     while (true) {
         var d: Word = undefined;
-        const lx = digitCount(x);
+        const lx = digitCount(heap, x);
         if (lx < ly) {
             d = 0;
         } else if (lx == ly) {
-            if (cmp(x, y) >= 0) {
-                x = sub(x, y);
+            if (cmp(heap, x, y) >= 0) {
+                x = sub(heap, x, y);
                 d = 1;
             } else {
                 d = 0;
             }
         } else {
-            d = @divTrunc(topTwoDigits(x), y1);
+            d = @divTrunc(topTwoDigits(heap, x), y1);
             if (d > MAXDIGIT) d = MAXDIGIT;
             d -= 2;
             if (d > 0) {
-                x = sub(x, scaleBy(y, d));
+                x = sub(heap, x, scaleBy(heap, y, d));
             } else {
                 d = 0;
             }
-            if (cmp(x, y) >= 0) {
-                x = sub(x, y);
+            if (cmp(heap, x, y) >= 0) {
+                x = sub(heap, x, y);
                 d += 1;
-                if (cmp(x, y) >= 0) {
-                    x = sub(x, y);
+                if (cmp(heap, x, y) >= 0) {
+                    x = sub(heap, x, y);
                     d += 1;
                 }
             }
         }
-        q = make(.INT, d, q);
+        q = heap.make(.INT, d, q);
         if (n == 0) {
-            bn.b_rem = if (scale == 1) x else shortDiv(x, scale);
+            self.b_rem = if (scale == 1) x else shortDiv(heap, self, x, scale);
             return q;
         }
         n -= 1;
         ly -= 1;
-        y = rest(y);
+        y = rest(heap, y);
     }
 }
 
 /// Number of digit cells in the chain.
-fn digitCount(input_x: Word) Word {
+fn digitCount(heap: *Heap, input_x: Word) Word {
     var x = input_x;
     var n: Word = 1;
-    while (rest(x) != 0) {
-        x = rest(x);
+    while (rest(heap, x) != 0) {
+        x = rest(heap, x);
         n += 1;
     }
     return n;
 }
 
 /// The leading (most-significant) digit.
-fn mostSignificantDigit(input_x: Word) Word {
+fn mostSignificantDigit(heap: *Heap, input_x: Word) Word {
     var x = input_x;
-    while (rest(x) != 0) x = rest(x);
-    return digit(x);
+    while (rest(heap, x) != 0) x = rest(heap, x);
+    return digit(heap, x);
 }
 
 /// The top two digits combined as `msd * IBASE + next`.
-fn topTwoDigits(input_x: Word) Word {
+fn topTwoDigits(heap: *Heap, input_x: Word) Word {
     var x = input_x;
-    var d = digit(x);
-    x = rest(x);
-    while (rest(x) != 0) {
-        d = digit(x);
-        x = rest(x);
+    var d = digit(heap, x);
+    x = rest(heap, x);
+    while (rest(heap, x) != 0) {
+        d = digit(heap, x);
+        x = rest(heap, x);
     }
-    return (digit(x) * IBASE) + d;
+    return (digit(heap, x) * IBASE) + d;
 }
 
 /// Return `x ** y` via repeated squaring (`y >= 0`).
 ///
 /// Tests: pow: repeated-squaring exponentiation
-pub fn pow(input_x: Word, input_y: Word) Word {
+pub fn pow(heap: *Heap, input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
-    var r = make(.INT, 1, 0);
-    while (rest(y) != 0) {
+    var r = heap.make(.INT, 1, 0);
+    while (rest(heap, y) != 0) {
         var i: Word = DIGITWIDTH;
-        var d = digit(y);
+        var d = digit(heap, y);
         while (i != 0) : (i -= 1) {
-            if ((d & 1) != 0) r = mul(r, x);
-            x = mul(x, x);
+            if ((d & 1) != 0) r = mul(heap, r, x);
+            x = mul(heap, x, x);
             d >>= 1;
         }
-        y = rest(y);
+        y = rest(heap, y);
     }
-    var d = digit(y);
-    if ((d & 1) != 0) r = mul(r, x);
+    var d = digit(heap, y);
+    if ((d & 1) != 0) r = mul(heap, r, x);
     d >>= 1;
     while (d != 0) : (d >>= 1) {
-        x = mul(x, x);
-        if ((d & 1) != 0) r = mul(r, x);
+        x = mul(heap, x, x);
+        if ((d & 1) != 0) r = mul(heap, r, x);
     }
     return r;
 }
 
 test "pow: repeated-squaring exponentiation" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_longlong, 1024), toInt(pow(fromInt(2), fromInt(10))));
-    try std.testing.expectEqual(@as(c_longlong, 1), toInt(pow(fromInt(7), fromInt(0))));
-    try std.testing.expectEqual(@as(c_longlong, 59049), toInt(pow(fromInt(3), fromInt(10))));
+    const heap = &heap_mod.heap.*;
+    try std.testing.expectEqual(@as(c_longlong, 1024), toInt(heap, pow(heap, fromInt(heap, 2), fromInt(heap, 10))));
+    try std.testing.expectEqual(@as(c_longlong, 1), toInt(heap, pow(heap, fromInt(heap, 7), fromInt(heap, 0))));
+    try std.testing.expectEqual(@as(c_longlong, 59049), toInt(heap, pow(heap, fromInt(heap, 3), fromInt(heap, 10))));
 }
 
 /// Convert a bignum to an `f64`.
 ///
 /// Tests: toFloat: exact for small integers
-pub fn toFloat(input_x: Word) f64 {
+pub fn toFloat(heap: *Heap, input_x: Word) f64 {
     var x = input_x;
-    const s = signBit(x) != 0;
+    const s = signBit(heap, x) != 0;
     var b: f64 = 1.0;
-    var r: f64 = @floatFromInt(digit0(x));
-    x = rest(x);
+    var r: f64 = @floatFromInt(digit0(heap, x));
+    x = rest(heap, x);
     while (x != 0) {
         b *= @floatFromInt(IBASE);
-        r += b * @as(f64, @floatFromInt(digit(x)));
-        x = rest(x);
+        r += b * @as(f64, @floatFromInt(digit(heap, x)));
+        x = rest(heap, x);
     }
     return if (s) -r else r;
 }
 
 test "toFloat: exact for small integers" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(f64, 3.0), toFloat(fromInt(3)));
-    try std.testing.expectEqual(@as(f64, -3.0), toFloat(fromInt(-3)));
+    const heap = &heap_mod.heap.*;
+    try std.testing.expectEqual(@as(f64, 3.0), toFloat(heap, fromInt(heap, 3)));
+    try std.testing.expectEqual(@as(f64, -3.0), toFloat(heap, fromInt(heap, -3)));
 }
 
 /// Build a bignum from the floor of an `f64` (toward negative infinity).
 ///
 /// Tests: fromFloat: floors the input toward negative infinity
-pub fn fromFloat(input: f64) Word {
+pub fn fromFloat(heap: *Heap, input: f64) Word {
     const s = input < 0;
-    const r = make(.INT, 0, 0);
+    const r = heap.make(.INT, 0, 0);
     var ptr = r;
     var y = @abs(std.math.floor(input));
     while (true) {
         const n = @rem(y, @as(f64, @floatFromInt(IBASE)));
-        digitPtr(ptr).* = @intFromFloat(n);
+        digitPtr(heap, ptr).* = @intFromFloat(n);
         y = (y - n) / @as(f64, @floatFromInt(IBASE));
         if (y > 0.0) {
-            restPtr(ptr).* = make(.INT, 0, 0);
-            ptr = rest(ptr);
+            restPtr(heap, ptr).* = heap.make(.INT, 0, 0);
+            ptr = rest(heap, ptr);
         } else break;
     }
-    if (s) digitPtr(r).* = SIGNBIT | digit(r);
+    if (s) digitPtr(heap, r).* = SIGNBIT | digit(heap, r);
     return r;
 }
 
 test "fromFloat: floors the input toward negative infinity" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_longlong, 3), toInt(fromFloat(3.9)));
-    try std.testing.expectEqual(@as(c_longlong, 3), toInt(fromFloat(3.0)));
-    try std.testing.expectEqual(@as(c_longlong, -4), toInt(fromFloat(-3.9)));
+    const heap = &heap_mod.heap.*;
+    try std.testing.expectEqual(@as(c_longlong, 3), toInt(heap, fromFloat(heap, 3.9)));
+    try std.testing.expectEqual(@as(c_longlong, 3), toInt(heap, fromFloat(heap, 3.0)));
+    try std.testing.expectEqual(@as(c_longlong, -4), toInt(heap, fromFloat(heap, -3.9)));
 }
 
 /// Natural logarithm of a positive bignum (domain-errors on `<= 0`).
 ///
 /// Tests: ln: natural logarithm; ln 1 == 0
-pub fn ln(input_x: Word) f64 {
+pub fn ln(heap: *Heap, self: *Bignum, input_x: Word) f64 {
     var x = input_x;
     var n: Word = 0;
-    var r: f64 = @floatFromInt(digit(x));
-    if (signBit(x) != 0 or isZero(x)) {
+    var r: f64 = @floatFromInt(digit(heap, x));
+    if (signBit(heap, x) != 0 or isZero(heap, x)) {
         setErrnoDomain();
         mathError("log");
     }
-    while (rest(x) != 0) {
-        x = rest(x);
+    while (rest(heap, x) != 0) {
+        x = rest(heap, x);
         n += 1;
-        r = @as(f64, @floatFromInt(digit(x))) + (r / @as(f64, @floatFromInt(IBASE)));
+        r = @as(f64, @floatFromInt(digit(heap, x))) + (r / @as(f64, @floatFromInt(IBASE)));
     }
-    return std.math.log(f64, std.math.e, r) + (@as(f64, @floatFromInt(n)) * bn.logIBASE);
+    return std.math.log(f64, std.math.e, r) + (@as(f64, @floatFromInt(n)) * self.logIBASE);
 }
 
 test "ln: natural logarithm; ln 1 == 0" {
     tu.freshInterp();
-    try std.testing.expectApproxEqAbs(@as(f64, 0.0), ln(fromInt(1)), 1e-9);
-    try std.testing.expectApproxEqAbs(@as(f64, 6.907755), ln(fromInt(1000)), 1e-5);
+    const heap = &heap_mod.heap.*;
+    setup(heap, bn);
+    try std.testing.expectApproxEqAbs(@as(f64, 0.0), ln(heap, bn, fromInt(heap, 1)), 1e-9);
+    try std.testing.expectApproxEqAbs(@as(f64, 6.907755), ln(heap, bn, fromInt(heap, 1000)), 1e-5);
 }
 
 /// Base-10 logarithm of a positive bignum (domain-errors on `<= 0`).
 ///
 /// Tests: log10: base-10 logarithm; log10 1000 == 3
-pub fn log10(input_x: Word) f64 {
+pub fn log10(heap: *Heap, self: *Bignum, input_x: Word) f64 {
     var x = input_x;
     var n: Word = 0;
-    var r: f64 = @floatFromInt(digit(x));
-    if (signBit(x) != 0 or isZero(x)) {
+    var r: f64 = @floatFromInt(digit(heap, x));
+    if (signBit(heap, x) != 0 or isZero(heap, x)) {
         setErrnoDomain();
         mathError("log10");
     }
-    while (rest(x) != 0) {
-        x = rest(x);
+    while (rest(heap, x) != 0) {
+        x = rest(heap, x);
         n += 1;
-        r = @as(f64, @floatFromInt(digit(x))) + (r / @as(f64, @floatFromInt(IBASE)));
+        r = @as(f64, @floatFromInt(digit(heap, x))) + (r / @as(f64, @floatFromInt(IBASE)));
     }
-    return std.math.log10(r) + (@as(f64, @floatFromInt(n)) * bn.log10IBASE);
+    return std.math.log10(r) + (@as(f64, @floatFromInt(n)) * self.log10IBASE);
 }
 
 test "log10: base-10 logarithm; log10 1000 == 3" {
     tu.freshInterp();
-    try std.testing.expectApproxEqAbs(@as(f64, 0.0), log10(fromInt(1)), 1e-9);
-    try std.testing.expectApproxEqAbs(@as(f64, 3.0), log10(fromInt(1000)), 1e-9);
+    const heap = &heap_mod.heap.*;
+    setup(heap, bn);
+    try std.testing.expectApproxEqAbs(@as(f64, 0.0), log10(heap, bn, fromInt(heap, 1)), 1e-9);
+    try std.testing.expectApproxEqAbs(@as(f64, 3.0), log10(heap, bn, fromInt(heap, 1000)), 1e-9);
 }
 
 /// Set errno to `EDOM` (a maths domain error).
@@ -776,10 +775,10 @@ fn setErrnoDomain() void {
 /// Parse a NUL-terminated decimal string into a bignum.
 ///
 /// Tests: scanDecimal: parses a NUL-terminated decimal string
-pub fn scanDecimal(p: [*:0]const u8) Word {
+pub fn scanDecimal(heap: *Heap, p: [*:0]const u8) Word {
     var cursor: usize = 0;
     var s = false;
-    const r = make(.INT, 0, 0);
+    const r = heap.make(.INT, 0, 0);
     if (p[0] == '-') {
         s = true;
         cursor += 1;
@@ -793,25 +792,26 @@ pub fn scanDecimal(p: [*:0]const u8) Word {
             f *= 10;
             cursor += 1;
         }
-        multiplyAddInPlace(r, f, d);
+        multiplyAddInPlace(heap, r, f, d);
     }
-    if (s and !isZero(r)) digitPtr(r).* |= SIGNBIT;
+    if (s and !isZero(heap, r)) digitPtr(heap, r).* |= SIGNBIT;
     return r;
 }
 
 test "scanDecimal: parses a NUL-terminated decimal string" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_longlong, 12345), toInt(scanDecimal("12345")));
-    try std.testing.expectEqual(@as(c_longlong, -42), toInt(scanDecimal("-42")));
+    const heap = &heap_mod.heap.*;
+    try std.testing.expectEqual(@as(c_longlong, 12345), toInt(heap, scanDecimal(heap, "12345")));
+    try std.testing.expectEqual(@as(c_longlong, -42), toInt(heap, scanDecimal(heap, "-42")));
 }
 
 /// Parse the hex digits in the byte range `[p, q)` into a bignum.
 ///
 /// Tests: scanHex: parses a hex byte range into a bignum
-pub fn scanHex(p: [*]const u8, q: [*]const u8) Word {
+pub fn scanHex(heap: *Heap, p: [*]const u8, q: [*]const u8) Word {
     const start_addr = @intFromPtr(p);
     var end_addr = @intFromPtr(q);
-    if (end_addr == start_addr + 1 and p[0] == '0') return make(.INT, 0, 0);
+    if (end_addr == start_addr + 1 and p[0] == '0') return heap.make(.INT, 0, 0);
     var r: Word = undefined;
     var x = &r;
     while (end_addr > start_addr) {
@@ -823,9 +823,9 @@ pub fn scanHex(p: [*]const u8, q: [*]const u8) Word {
         for (0..seg_len) |i| hold = (hold << 4) + @as(u64, @intCast(hexValue(seg[i])));
         var count: Word = 4;
         while (count != 0 and !(hold == 0 and seg_addr == start_addr)) : (count -= 1) {
-            x.* = make(.INT, @intCast(hold & MAXDIGIT), 0);
+            x.* = heap.make(.INT, @intCast(hold & MAXDIGIT), 0);
             hold >>= DIGITWIDTH;
-            x = restPtr(x.*);
+            x = restPtr(heap, x.*);
         }
         end_addr = seg_addr;
     }
@@ -834,16 +834,17 @@ pub fn scanHex(p: [*]const u8, q: [*]const u8) Word {
 
 test "scanHex: parses a hex byte range into a bignum" {
     tu.freshInterp();
+    const heap = &heap_mod.heap.*;
     const p: [*]const u8 = "ff";
-    try std.testing.expectEqual(@as(c_longlong, 255), toInt(scanHex(p, p + 2)));
+    try std.testing.expectEqual(@as(c_longlong, 255), toInt(heap, scanHex(heap, p, p + 2)));
     const q: [*]const u8 = "1000";
-    try std.testing.expectEqual(@as(c_longlong, 0x1000), toInt(scanHex(q, q + 4)));
+    try std.testing.expectEqual(@as(c_longlong, 0x1000), toInt(heap, scanHex(heap, q, q + 4)));
 }
 
 /// Parse the octal digits in the byte range `[p, q)` into a bignum.
 ///
 /// Tests: scanOctal: parses an octal byte range into a bignum
-pub fn scanOctal(p: [*]const u8, q: [*]const u8) Word {
+pub fn scanOctal(heap: *Heap, p: [*]const u8, q: [*]const u8) Word {
     const start_addr = @intFromPtr(p);
     var end_addr = @intFromPtr(q);
     var r: Word = undefined;
@@ -855,8 +856,8 @@ pub fn scanOctal(p: [*]const u8, q: [*]const u8) Word {
         const seg: [*]const u8 = @ptrFromInt(seg_addr);
         var hold: u32 = 0;
         for (0..seg_len) |i| hold = (hold << 3) + @as(u32, @intCast(seg[i] - '0'));
-        x.* = make(.INT, @intCast(hold), 0);
-        x = restPtr(x.*);
+        x.* = heap.make(.INT, @intCast(hold), 0);
+        x = restPtr(heap, x.*);
         end_addr = seg_addr;
     }
     return r;
@@ -864,8 +865,9 @@ pub fn scanOctal(p: [*]const u8, q: [*]const u8) Word {
 
 test "scanOctal: parses an octal byte range into a bignum" {
     tu.freshInterp();
+    const heap = &heap_mod.heap.*;
     const p: [*]const u8 = "17";
-    try std.testing.expectEqual(@as(c_longlong, 15), toInt(scanOctal(p, p + 2)));
+    try std.testing.expectEqual(@as(c_longlong, 15), toInt(heap, scanOctal(heap, p, p + 2)));
 }
 
 /// Numeric value of a decimal/hex digit character (`0`-`9`, `A`-`F`/`a`-`f`).
@@ -886,107 +888,109 @@ fn hexValue(ch: u8) Word {
 /// Parse a Miranda char-list `z` of digits in `base` (10/16/8) into a bignum.
 ///
 /// Tests: parseString: parses a char-list of digits in a given base
-pub fn parseString(input_z: Word, base: c_int) Word {
+pub fn parseString(heap: *Heap, input_z: Word, base: c_int) Word {
     var z = input_z;
     var s = false;
-    const r = make(.INT, 0, 0);
+    const r = heap.make(.INT, 0, 0);
     var pbase: Word = PTEN;
     if (base == 16) pbase = PSIXTEEN else if (base == 8) pbase = PEIGHT;
-    if (z != NIL and h(z) == '-') {
+    if (z != NIL and heap.h(z) == '-') {
         s = true;
-        z = t(z);
+        z = heap.t(z);
     }
-    if (base != 10) z = t(t(z));
+    if (base != 10) z = heap.t(heap.t(z));
     while (z != NIL) {
-        var d = digitValue(h(z));
+        var d = digitValue(heap.h(z));
         var f: Word = base;
-        z = t(z);
+        z = heap.t(z);
         while (z != NIL and f < pbase) {
-            d = (@as(Word, base) * d) + digitValue(h(z));
+            d = (@as(Word, base) * d) + digitValue(heap.h(z));
             f *= base;
-            z = t(z);
+            z = heap.t(z);
         }
-        multiplyAddInPlace(r, f, d);
+        multiplyAddInPlace(heap, r, f, d);
     }
-    if (s and !isZero(r)) digitPtr(r).* |= SIGNBIT;
+    if (s and !isZero(heap, r)) digitPtr(heap, r).* |= SIGNBIT;
     return r;
 }
 
 test "parseString: parses a char-list of digits in a given base" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_longlong, 123), toInt(parseString(tu.str("123"), 10)));
-    try std.testing.expectEqual(@as(c_longlong, -7), toInt(parseString(tu.str("-7"), 10)));
+    const heap = &heap_mod.heap.*;
+    try std.testing.expectEqual(@as(c_longlong, 123), toInt(heap, parseString(heap, tu.str("123"), 10)));
+    try std.testing.expectEqual(@as(c_longlong, -7), toInt(heap, parseString(heap, tu.str("-7"), 10)));
     // base != 10 skips the two-char prefix (e.g. "0xff")
-    try std.testing.expectEqual(@as(c_longlong, 255), toInt(parseString(tu.str("0xff"), 16)));
+    try std.testing.expectEqual(@as(c_longlong, 255), toInt(heap, parseString(heap, tu.str("0xff"), 16)));
 }
 
 /// In place: `r = r*f + addend` — the Horner step shared by the scanners.
-fn multiplyAddInPlace(r: Word, f: Word, addend: Word) void {
-    var d = (f * digit(r)) + addend;
+fn multiplyAddInPlace(heap: *Heap, r: Word, f: Word, addend: Word) void {
+    var d = (f * digit(heap, r)) + addend;
     var carry = d >> DIGITWIDTH;
-    var x = restPtr(r);
-    digitPtr(r).* = d & MAXDIGIT;
+    var x = restPtr(heap, r);
+    digitPtr(heap, r).* = d & MAXDIGIT;
     while (x.* != 0) {
-        d = (f * digit(x.*)) + carry;
-        digitPtr(x.*).* = d & MAXDIGIT;
+        d = (f * digit(heap, x.*)) + carry;
+        digitPtr(heap, x.*).* = d & MAXDIGIT;
         carry = d >> DIGITWIDTH;
-        x = restPtr(x.*);
+        x = restPtr(heap, x.*);
     }
-    if (carry != 0) x.* = make(.INT, carry, 0);
+    if (carry != 0) x.* = heap.make(.INT, carry, 0);
 }
 
 /// Render a bignum as a Miranda char list of decimal digits.
 ///
 /// Tests: toDecimalList: renders a bignum as decimal digits
-pub fn toDecimalList(input_x: Word) Word {
+pub fn toDecimalList(heap: *Heap, input_x: Word) Word {
     var x = input_x;
-    if (rest(x) == 0) return wordToDecimalList(toSmallInt(x));
-    const sign = signBit(x) != 0;
-    var x1 = make(.INT, digit0(x), 0);
-    x = rest(x);
+    if (rest(heap, x) == 0) return wordToDecimalList(heap, toSmallInt(heap, x));
+    const sign = signBit(heap, x) != 0;
+    var x1 = heap.make(.INT, digit0(heap, x), 0);
+    x = rest(heap, x);
     while (x != 0) {
-        x1 = make(.INT, digit(x), x1);
-        x = rest(x);
+        x1 = heap.make(.INT, digit(heap, x), x1);
+        x = rest(heap, x);
     }
     x = x1;
     var s: Word = NIL;
     while (true) {
-        var d = digit(x);
+        var d = digit(heap, x);
         var rem = @rem(d, PTEN);
         d = @divTrunc(d, PTEN);
-        x1 = rest(x);
-        if (d != 0) digitPtr(x).* = d else x = x1;
+        x1 = rest(heap, x);
+        if (d != 0) digitPtr(heap, x).* = d else x = x1;
         while (x1 != 0) {
-            d = (rem * IBASE) + digit(x1);
-            digitPtr(x1).* = @divTrunc(d, PTEN);
+            d = (rem * IBASE) + digit(heap, x1);
+            digitPtr(heap, x1).* = @divTrunc(d, PTEN);
             rem = @rem(d, PTEN);
-            x1 = rest(x1);
+            x1 = rest(heap, x1);
         }
         if (x != 0) {
             var i: Word = TENW;
             while (i != 0) : (i -= 1) {
-                s = cons('0' + @rem(rem, 10), s);
+                s = heap.cons('0' + @rem(rem, 10), s);
                 rem = @divTrunc(rem, 10);
             }
         } else {
             while (rem != 0) {
-                s = cons('0' + @rem(rem, 10), s);
+                s = heap.cons('0' + @rem(rem, 10), s);
                 rem = @divTrunc(rem, 10);
             }
-            return if (sign) cons('-', s) else s;
+            return if (sign) heap.cons('-', s) else s;
         }
     }
 }
 
 test "toDecimalList: renders a bignum as decimal digits" {
     tu.freshInterp();
-    try tu.expectStr("12345", toDecimalList(fromInt(12345)));
-    try tu.expectStr("-42", toDecimalList(fromInt(-42)));
-    try tu.expectStr("0", toDecimalList(fromInt(0)));
+    const heap = &heap_mod.heap.*;
+    try tu.expectStr("12345", toDecimalList(heap, fromInt(heap, 12345)));
+    try tu.expectStr("-42", toDecimalList(heap, fromInt(heap, -42)));
+    try tu.expectStr("0", toDecimalList(heap, fromInt(heap, 0)));
 }
 
 /// Render a small `Word` as a decimal char list.
-fn wordToDecimalList(value: Word) Word {
+fn wordToDecimalList(heap: *Heap, value: Word) Word {
     var buffer: [64]u8 = undefined;
     // 64 bytes holds any decimal Word (<= 20 digits); bufPrint cannot overflow.
     const text = std.fmt.bufPrint(&buffer, "{d}", .{value}) catch unreachable;
@@ -994,7 +998,7 @@ fn wordToDecimalList(value: Word) Word {
     var i = text.len;
     while (i != 0) {
         i -= 1;
-        result = cons(text[i], result);
+        result = heap.cons(text[i], result);
     }
     return result;
 }
@@ -1002,18 +1006,18 @@ fn wordToDecimalList(value: Word) Word {
 /// Render a bignum as a `0x`-prefixed hex char list (leading zeros trimmed).
 ///
 /// Tests: toHexList: renders a 0x-prefixed hex char list
-pub fn toHexList(input_x: Word) Word {
+pub fn toHexList(heap: *Heap, input_x: Word) Word {
     var x = input_x;
     var r: Word = NIL;
-    const s = signBit(x) != 0;
+    const s = signBit(heap, x) != 0;
     while (x != 0) {
         var count: Word = 4;
         var factor: u64 = 1;
         var hold: u64 = 0;
         while (count != 0 and x != 0) : (count -= 1) {
-            hold += factor * @as(u64, @intCast(digit0(x)));
+            hold += factor * @as(u64, @intCast(digit0(heap, x)));
             factor <<= 15;
-            x = rest(x);
+            x = rest(heap, x);
         }
         var buffer: [16]u8 = undefined;
         // exactly 15 hex digits formatted into a 16-byte buffer; cannot overflow.
@@ -1021,47 +1025,49 @@ pub fn toHexList(input_x: Word) Word {
         var i = text.len;
         while (i != 0) {
             i -= 1;
-            r = cons(text[i], r);
+            r = heap.cons(text[i], r);
         }
     }
-    while (digit(r) == '0' and rest(r) != NIL) r = rest(r);
-    r = cons('0', cons('x', r));
-    if (s) r = cons('-', r);
+    while (digit(heap, r) == '0' and rest(heap, r) != NIL) r = rest(heap, r);
+    r = heap.cons('0', heap.cons('x', r));
+    if (s) r = heap.cons('-', r);
     return r;
 }
 
 test "toHexList: renders a 0x-prefixed hex char list" {
     tu.freshInterp();
-    try tu.expectStr("0xff", toHexList(fromInt(255)));
-    try tu.expectStr("0x0", toHexList(fromInt(0)));
+    const heap = &heap_mod.heap.*;
+    try tu.expectStr("0xff", toHexList(heap, fromInt(heap, 255)));
+    try tu.expectStr("0x0", toHexList(heap, fromInt(heap, 0)));
 }
 
 /// Render a bignum as a `0o`-prefixed octal char list (leading zeros trimmed).
 ///
 /// Tests: toOctalList: renders a 0o-prefixed octal char list
-pub fn toOctalList(input_x: Word) Word {
+pub fn toOctalList(heap: *Heap, input_x: Word) Word {
     var x = input_x;
     var r: Word = NIL;
-    const s = signBit(x) != 0;
+    const s = signBit(heap, x) != 0;
     while (x != 0) {
         var buffer: [6]u8 = undefined;
         // exactly 5 octal digits formatted into a 6-byte buffer; cannot overflow.
-        const text = std.fmt.bufPrint(&buffer, "{o:0>5}", .{@as(u64, @intCast(digit0(x)))}) catch unreachable;
+        const text = std.fmt.bufPrint(&buffer, "{o:0>5}", .{@as(u64, @intCast(digit0(heap, x)))}) catch unreachable;
         var i = text.len;
         while (i != 0) {
             i -= 1;
-            r = cons(text[i], r);
+            r = heap.cons(text[i], r);
         }
-        x = rest(x);
+        x = rest(heap, x);
     }
-    while (digit(r) == '0' and rest(r) != NIL) r = rest(r);
-    r = cons('0', cons('o', r));
-    if (s) r = cons('-', r);
+    while (digit(heap, r) == '0' and rest(heap, r) != NIL) r = rest(heap, r);
+    r = heap.cons('0', heap.cons('o', r));
+    if (s) r = heap.cons('-', r);
     return r;
 }
 
 test "toOctalList: renders a 0o-prefixed octal char list" {
     tu.freshInterp();
-    try tu.expectStr("0o17", toOctalList(fromInt(15)));
-    try tu.expectStr("0o0", toOctalList(fromInt(0)));
+    const heap = &heap_mod.heap.*;
+    try tu.expectStr("0o17", toOctalList(heap, fromInt(heap, 15)));
+    try tu.expectStr("0o0", toOctalList(heap, fromInt(heap, 0)));
 }

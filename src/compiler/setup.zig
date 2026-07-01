@@ -213,7 +213,7 @@ pub fn miraSetup() void {
     setupheap();
     tsetup();
     resetPns();
-    bigsetup();
+    bigsetup(heap.heap, big.bn);
     ls.common_stdin = abi.ap(word.READ, 0);
     ls.common_stdinb = abi.ap(word.READBIN, 0);
     ls.cook_stdin = abi.ap(abi.readvals(0, 0), word.OFFSIDE);
