@@ -57,7 +57,7 @@ library) links against it, so the *honest* C-ABI target is:
 | Track A2 — `extern var` | ✅ **0** — all 30 globals accessed via owner module |
 | Track A3 — `export fn` | ✅ 174 → **3** (only the still-extern-referenced bridges remain) |
 | Track A4a — strip gratuitous `callconv` | ✅ `callconv(.c)` 13 → **6** (genuine signal boundary) |
-| Track A4b — recovery redesign | ⬜ Re-scoped — design-bearing (SIGFPE synchronous; reducer unwind; unverifiable by golden) |
+| Track A4b — recovery redesign | ✅ Resolved (not pursued) — audited every `setjmp`/`longjmp` call site (REMAINING_WORK_PLAN.md Phase 4): both `siglongjmp`s are signal-handler-triggered only, confirming `callconv(.c)` = 6 is the permanent signal-trampoline floor, not a temporary gap |
 | `Value` union (R4.3/4.4) | ◐ B2(a) seam started — `word.Value`/`classify`; char boundary migrated. B2(b) ✅ done — pointer reversal → explicit `Spine` (Track B2) |
 | Tracing GC (R5) | ✅ Done — `Heap.live` bitmap + explicit free list (Track B3) |
 | String interning (R6) | ✅ Done — nodes hold an interned `StrId` (`strtab.zig`); node-string casts → **0** (Track B1) |
@@ -192,6 +192,11 @@ not wait behind Track B's design work.
   two saved-old-handler pointer-cast types. Reaching the original "`callconv(.c)` = 1" target was
   going to replace `sigsetjmp`/`siglongjmp`-on-`rs.env` with an atomic flag. Examining the code
   shows this is **design-bearing and partly infeasible as written**, so it is re-scoped:
+  *(Update, Phase 4 of REMAINING_WORK_PLAN.md: confirmed via a full call-site audit that both
+  `siglongjmp` calls are exclusively signal-handler-triggered — there is no ordinary-control-flow
+  `longjmp` usage to replace with error unions. This is not a temporary gap awaiting a rewrite; it
+  is the permanent, correct shape for recovering from an asynchronous interrupt. Not pursued
+  further.)*
   * **SIGFPE is a *synchronous* CPU fault** (FP overflow mid-instruction). It cannot be
     cooperatively polled; recovery is either `siglongjmp` from the handler (current) or wrapping
     every float/bignum op in `feclearexcept`/`fetestexcept` checks — a large arithmetic rewrite.
@@ -207,10 +212,11 @@ not wait behind Track B's design work.
   better treated as **Track B-class** work (risky, representation-adjacent) than a mechanical
   Track-A sweep. The `setjmp`/`longjmp` libc externs in `main_clib` stay until then.
 
-> **End of Track A (A1–A4a):** the *mechanical* C-ism elimination is essentially complete —
-> `extern fn` = syscall floor, `extern var` = 0, `export fn` = 3 (extern-referenced bridges),
-> `callconv(.c)` = 6 (genuine signal boundary). Driving `callconv` to 1 and `export fn`/the libc
-> externs to their final floor depends on the A4b recovery redesign, which is design-bearing.
+> **End of Track A (A1–A4b):** the C-ism elimination is complete — `extern fn` = syscall floor,
+> `extern var` = 0, `export fn` = 3 (extern-referenced bridges), `callconv(.c)` = 6 (genuine,
+> now-confirmed-permanent signal boundary — A4b's original "drive to 1" goal was based on the
+> premise that `siglongjmp` could be replaced with a cooperatively-polled flag; auditing every call
+> site found no non-signal-triggered `longjmp` usage anywhere to replace, so 6 is the floor).
 
 ### Track B — Representation *(deep, design-bearing; after Track A)*
 
@@ -480,11 +486,11 @@ becomes pure, idiomatic Zig.
 |--------|-------------|------------------|--------|
 | `extern fn` declarations | 322 | **14** | syscall floor |
 | &nbsp;&nbsp;↳ internal anti-pattern (convertible) | — | 0 | 0 |
-| &nbsp;&nbsp;↳ genuine libc/syscall | — | 14 (6 in `main_clib`: `setjmp`×5 + `times`) | `setjmp` family clears with A4b |
+| &nbsp;&nbsp;↳ genuine libc/syscall | — | 14 (6 in `main_clib`: `setjmp`×5 + `times`) | `setjmp` family is permanent (A4b resolved: signal-trampoline floor, not a gap) |
 | `extern var` declarations | 94 | **0** ✓ *(A2)* | 0 |
 | `export fn` (linker symbols) | 174 | **3** *(A3; still-extern-referenced bridges)* | 0 (no external linkers) |
 | `clib.` / `c.` call sites | 2821 | **0** | 0 |
-| `callconv(.c)` | 12 | **6** *(A4a stripped gratuitous; floor is the genuine signal boundary)* | 1 (needs A4b recovery redesign) |
+| `callconv(.c)` | 12 | **6** *(A4a stripped gratuitous; floor is the genuine signal boundary)* | **6 — confirmed permanent** (A4b resolved: no non-signal `longjmp` usage exists to replace) |
 | raw `hd[`/`tl[`/`tag[` outside `heap.zig` | 290 | **0** | 0 |
 | node-string `[*:0]`-as-`Word` casts | 129 | **0** ✓ *(B1: interned `StrId` via `strtab.zig`)* | 0 |
 | &nbsp;&nbsp;↳ non-string `@intFromPtr`/`@ptrFromInt` (FILE-handle / ptr-arith / signal) | — | 68 | enumerated (not B1) |
@@ -493,9 +499,11 @@ becomes pure, idiomatic Zig.
 
 ### C1 snapshot — `scripts/idiomatic-check.sh` (2026-06-30)
 
-Recorded as the Track-C scorecard checkpoint. The C-ABI DoD row is **met except for
-`callconv(.c)`**, which is the documented signal-trampoline floor and only drops to 1
-when **A4b** (recovery redesign) lands — so **C1 stays open, blocked on A4b**.
+Recorded as the Track-C scorecard checkpoint. The C-ABI DoD row is **met**: `callconv(.c)`
+= 6 is the documented signal-trampoline floor, now confirmed **permanent** — Phase 4 of
+REMAINING_WORK_PLAN.md audited every `setjmp`/`longjmp` call site and found no
+non-signal-triggered usage to replace, so **A4b is resolved (not pursued) and C1 is no
+longer blocked on it**.
 
 | # | metric (non-FFI scope) | count | target |
 |---|------------------------|------:|--------|
@@ -503,7 +511,7 @@ when **A4b** (recovery redesign) lands — so **C1 stays open, blocked on A4b**.
 | 10 | `extern fn` declarations | **14** | syscall floor |
 | 11 | `extern var` declarations | **0** ✓ | 0 |
 | 12 | `clib.` / `c.` call sites | **0** ✓ | 0 |
-| 13 | `callconv(.c)` usage | **6** | 1 (signal trampoline) — **needs A4b** |
+| 13 | `callconv(.c)` usage | **6** | **6 — confirmed permanent** signal-trampoline floor (A4b resolved) |
 | 14 | raw cell access (`hd`/`tl`/`tag[...]`) outside `heap.zig` | **3** | 0 |
 | 15 | `[*:0]`-as-`Word` pointer casts | **70** | 0 (enumerated: FILE-handle / ptr-arith / signal) |
 

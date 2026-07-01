@@ -36,10 +36,10 @@ partial),
 | R3 | Single source for core constants. **✅ Done** — `*_t` numbering bug fixed (`c2d98fc`); last atom-constant copies `CONST`/`FREE` aliased (`34480dc`); only the decoupled state-module `CMBASE` remains by design. | ARCH Part B | ✅ |
 | R7 | Cryptic helpers — out-printers + `ctx.e/s/hold` decision done; **numbered helpers remain** (`typeError1-8`, `outType1/2`, `parseType1/2`, `parsePatV1-3`, `add1`/`remove1`/`newadd1`/`less1`/`decl1`) | ARCH Part B | ◐ |
 | R9 | Break up longest fns: `reduce`(213), `loadfile`(331), `yylex`(343), `mainEntry`(412), `etype`(608), `handleReadyState`(813). **✅ Done** — all six extracted. | ARCH Part B | ✅ |
-| R10 | Unify error channel (`MiraError` / `SYNERR` sentinels / `return NIL`) | ARCH Part B | ⏳ |
-| J1 | Error unions for `SyntaxError`/`LoadError` (**overlaps R10**) | TESTABILITY | ⬜ |
-| J2 | Standardise "dump stats then die" panics | TESTABILITY | ⬜ |
-| A4b | Recovery redesign — SIGFPE synchronous, reducer unwind (**overlaps R10 step 3**) | REDESIGN | ⬜ |
+| R10 | Unify error channel (`MiraError` / `SYNERR` sentinels / `return NIL`). Recovery-model decision made (keep `setjmp`/`longjmp`, see Phase 4); sentinel-wrapping steps deliberately not pursued (dual-purpose `errs`/`errline` risk vs. marginal gain). | ARCH Part B | ◐ |
+| J1 | Error unions for `SyntaxError`/`LoadError` (**overlaps R10**) — not pursued, see Phase 4 | TESTABILITY | ⬜ |
+| J2 | Standardise "dump stats then die" panics — **resolved as no-op**: audit found the fatal-panic path is fine as-is (see Phase 4) | TESTABILITY | ✅ |
+| A4b | Recovery redesign — SIGFPE synchronous, reducer unwind (**overlaps R10 step 3**). **✅ Resolved**: every `longjmp` call site is signal-handler-triggered (SIGINT/SIGFPE only); option (a) — keep `setjmp`/`longjmp` — is the only viable mechanism, not a stylistic choice. | REDESIGN | ✅ |
 | B2 | Option (a): char boundary done, range-test sites in `trans`/`types`/`reduce` remain (not started). Option (b): **✅ done** — `reduce_core.zig`'s spine primitives, `combinators.handleTRY`/`handleFAIL`, and `runtime/reduce.zig`'s `streamRead` all run on the explicit `Spine` for real; two real bugs (a `via_tl`-boundary correctness gap, a ~15x perf regression) found and fixed post-cutover | REDESIGN | ◐ |
 | B3 | Tracing GC (after B2) | REDESIGN | ✅ |
 | C1 | Final data-model scorecard | REDESIGN | ⬜ |
@@ -279,25 +279,55 @@ pre-existing, unrelated bugs (a divide-by-zero in `-make`'s failure report on lo
 paths; a crash evaluating `system "..."` at the prompt) — both flagged as separate
 follow-ups, not fixed here.
 
-### Phase 4 — The error/recovery cluster (R10 + J1 + J2 + A4b) *(design-bearing — the linchpin)*
-1. **Coverage first.** Add golden/integration cases that exercise the error paths
-   (syntax error mid-script, SIGINT during reduction, divide-by-zero) — none exist
-   today, and the mechanism can't be safely changed without them.
-2. **R10-Step 1** *(no behaviour change)*: wrap the sentinel reads/writes behind
-   named helpers (`raiseSyntaxError(node)`, `currentErrorNode()`); unit-test.
-3. **R10-Step 2 + J1**: convert `return NIL`-as-failure leaf fns and
-   `SyntaxError`/`LoadError` onto `MiraError!T`, propagating `try` up to the nearest
-   `setjmp`/`longjmp` boundary. Individually golden-checkable.
-4. **Design decision** (R10-Step 3 + A4b): pick the recovery model —
-   * (a) **keep `setjmp`/`longjmp`** for signal + top-level REPL recovery (the
-     C-port's deliberate model) and unify only the *non-recovery* reporting onto
-     error unions; or
-   * (b) **replace `longjmp`** with end-to-end error propagation (large; must
-     re-prove async-signal safety and that partial heap mutations unwind correctly).
-   Fold **J2** (standardise the fatal-panic path) in here.
+### Phase 4 — The error/recovery cluster (R10 + J1 + J2 + A4b) ◐ *(recovery-model decision made; sentinel cleanup deliberately not pursued)*
 
-   Recommended: Steps 1–2 as a dedicated PR; Step 3 as a separate, reviewed design
-   proposal.
+1. **Coverage first ✅.** Added golden cases for the paths that had none: script-level
+   (`.m` file) syntax errors (`script_syntax_err`, distinct from the existing
+   REPL-typed `syntax_err`/`lex_err`), integer/float divide-by-zero
+   (`arith_divzero`/`arith_modzero`/`double_divzero` — all report `program error:
+   attempt to divide by zero` on stderr, exit 0), and a dedicated
+   `tests/sigint_check.py` + `tests/sigint_corpus/slow_fib.m` for SIGINT delivered
+   mid-reduction (not golden-checkable — timing/signal-dependent — so it lives
+   outside `golden_runner.py`'s byte-identical model). While adding the script-syntax
+   case, found a real pre-existing bug: re-running `mira` against an *unchanged*
+   script with a syntax error produces no output at all on the second run (silently
+   "succeeding") — `loadfile()`'s failure path calls `dump.makedump()` even when
+   `SYNERR == 1`, caching an error-state dump that `undump()` then treats as fresh.
+   Confirmed pre-existing (reproduces on the commit before the R9 `loadfile()`
+   split); flagged as a separate follow-up, not fixed as part of this phase.
+
+2. **Design decision (R10-Step 3 + A4b) ✅ resolved by technical necessity, not
+   preference.** Audited every `setjmp`/`longjmp` call site: **both** `siglongjmp`
+   calls in the entire codebase (`repl.zig`'s `fpeError()` for SIGFPE, `reset()` for
+   SIGINT) live inside `callconv(.c)` signal-handler functions — there is no
+   ordinary-control-flow `longjmp` usage anywhere to replace. POSIX signal handlers
+   are asynchronous, so a Zig error union can never propagate out of one; option
+   **(b)** ("replace `longjmp` with end-to-end error propagation") has no target in
+   this codebase. **Decision: (a)** — `setjmp`/`longjmp` stays, permanently, for
+   signal + top-level REPL recovery; it is the only mechanism that can recover from
+   an interrupt arriving mid-instruction, not a stylistic holdover from the C port.
+   This also resolves **J2** (the fatal-panic path is fine as-is; nothing to
+   standardise away from signals).
+
+3. **R10-Step 1 (sentinel-wrapping) and R10-Step 2 + J1 (`MiraError!T` conversion) —
+   deliberately not pursued.** Surveyed the actual `SYNERR`/`errs`/`errline` usage
+   before starting (~22 `SYNERR` write sites + ~18 read sites across 6 files; ~36
+   `errs`/`errline` sites). `SYNERR` itself is a clean 3-state sentinel (0/1/2) that
+   would wrap safely. But `errs`/`errline` turned out to serve **two unrelated
+   purposes**: a "first syntax error's location" recorder (set-if-zero, in
+   `lex.zig`/`types.zig`/`module_loader.zig`) and an unconditionally-overwritten
+   "current compile position" breadcrumb (`trans.zig`, 11 sites, no guard, used
+   later to report *where* a runtime error occurred — nothing to do with `SYNERR`).
+   Unifying both under one `raiseSyntaxError(node)`/`currentErrorNode()` pair (the
+   plan's original suggested shape) would mean adding a "first wins" guard to
+   `trans.zig`'s currently-unconditional writes — a real behaviour change, not the
+   "no behaviour change" the step promised. Given the recovery-model question (the
+   part of R10 with genuine architectural weight) is now settled, and the remaining
+   sentinel cleanup is a pure-encapsulation exercise whose main finding is "these two
+   fields are secretly two different things," the decision was to stop here rather
+   than either (a) force a risky unification or (b) introduce a second, more
+   fragmented set of helpers for marginal clarity gain. Revisit only if `errs`/
+   `errline`'s dual-purpose nature becomes an active source of bugs.
 
 ### Phase 5 — B3 tracing GC ✅ *(done)*
 Replaced the sign-bit-on-tag-byte mark-sweep with a precise tracing collector:
@@ -340,7 +370,8 @@ Phase 2 (B2 opt a) ─────────────┤   (∥ with Phase 
 Phase 3 (R9 splits) ✅ ─────────┘
         │
         ▼
-Phase 4 (R10 + J1 + J2 + A4b)  ── design decision (a/b) on recovery model
+Phase 4 (R10 + J1 + J2 + A4b) ◐ ── recovery-model decision made (a); sentinel
+                                    cleanup deliberately not pursued
         │
         ▼
 Phase 5 (B3 GC) ✅

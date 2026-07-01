@@ -12,6 +12,11 @@ const word = @import("word.zig");
 /// Signal-handler recovery (SIGINT, SIGFPE via siglongjmp on rs.env) is NOT
 /// represented here — POSIX signal handlers are asynchronous and cannot
 /// propagate Zig errors up the call stack; those paths retain sigjmp_buf.
+/// This is permanent, not a stopgap: an audit of every setjmp/longjmp call
+/// site (docs/REMAINING_WORK_PLAN.md, Phase 4) found both siglongjmp calls
+/// live inside callconv(.c) signal handlers with no ordinary-control-flow
+/// longjmp usage anywhere else to replace, so there is no viable end-to-end
+/// error-propagation alternative for this part of the recovery mechanism.
 ///
 /// Tests: MiraError variants are all distinct, MiraError is a subset of anyerror
 pub const MiraError = error{
