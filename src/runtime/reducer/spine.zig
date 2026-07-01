@@ -150,6 +150,33 @@ pub const Spine = struct {
         return heap.h(f.node);
     }
 
+    /// Read-only counterpart of `downRight`, for shadow validation: predicts
+    /// the focus `downRight` is about to produce by *reading* the still-
+    /// pristine `tl` (safe to call before the real write happens), without
+    /// itself writing anything. See the "Shadow-validation hooks" section
+    /// below for why this distinction matters.
+    pub fn peekDownRight(self: *Spine) Word {
+        const f = self.top();
+        f.via_tl = true;
+        return heap.t(f.node);
+    }
+
+    /// Read-only counterpart of `upLeft`: pops the frame and returns its node,
+    /// without writing anything to the heap.
+    pub fn peekUpLeft(self: *Spine) Word {
+        const f = self.frames.pop().?;
+        return f.node;
+    }
+
+    /// Read-only counterpart of `upRight`: predicts the focus by reading the
+    /// already-real head (written back for real during the matching
+    /// `downRight`), without writing anything itself.
+    pub fn peekUpRight(self: *Spine) Word {
+        const f = self.top();
+        f.via_tl = false;
+        return heap.h(f.node);
+    }
+
     /// Push a frame directly, bypassing the read `downLeft` normally does.
     /// For the one call site (`combinators.handleTRY`'s tail) that fabricates
     /// a spine frame out of a cell it already holds, rather than descending
@@ -184,36 +211,55 @@ pub const Spine = struct {
 // validation is off.
 pub var active: ?*Spine = null;
 
+// Safety property, load-bearing: every `shadow*` function below is read-only
+// with respect to the heap -- it never calls `heap.hp`/`heap.tp` (the
+// asserting, write-capable accessors), only `heap.h`/`heap.t` (which degrade
+// to `0` on an out-of-range index instead of asserting/crashing). This is
+// deliberate. TRY/FAIL backtracking is pervasive (every guarded multi-equation
+// function uses it), so the shadow *will* desync in ways this file's own
+// mirroring (`shadowPushRaw`/`shadowDrainAll`) does not perfectly track. If a
+// desynced shadow performed real writes (as `Spine.downRight`/`upLeft`/
+// `upRight` do for the eventual live-cutover use case), it could write a
+// *real* value to the *wrong* cell -- silently corrupting the live program,
+// not just failing a validation check. Reading instead of writing means the
+// worst case of a desync is a wrong (or `0`) predicted value, caught cleanly
+// by the `std.debug.assert` at the call site -- never heap corruption.
+
 /// Call at the *start* of `reduce_core.downLeft`, before any real mutation:
 /// drives the shadow and returns the value the live call is expected to
 /// produce, for the caller to assert against once it has computed its own.
+/// `downLeft` itself is already read-only (it only ever reads `hd(e)`), so
+/// this drives the real `Spine.downLeft` directly.
 pub fn shadowDownLeft(e: Word) ?Word {
     const sh = active orelse return null;
     return sh.downLeft(e);
 }
 
 /// Call at the start of `reduce_core.downRight`, before any real mutation.
-/// `reduced_head` is `ctx.e` at entry (the value about to be written back).
+/// `reduced_head` is `ctx.e` at entry (the value about to be written back) --
+/// unused here (see the safety note above: shadow predicts by reading, it
+/// does not perform the write itself).
 pub fn shadowDownRight(reduced_head: Word) ?Word {
+    _ = reduced_head;
     const sh = active orelse return null;
-    if (sh.isEmpty()) return null; // desynced upstream (see shadowDesync) -- stop checking
-    return sh.downRight(reduced_head);
+    if (sh.isEmpty()) return null; // desynced -- stop checking until the next successful downLeft
+    return sh.peekDownRight();
 }
 
 /// Call at the start of `reduce_core.upLeft`, before any real mutation.
-/// `reduced` is `ctx.e` at entry.
 pub fn shadowUpLeft(reduced: Word) ?Word {
+    _ = reduced;
     const sh = active orelse return null;
     if (sh.isEmpty()) return null;
-    return sh.upLeft(reduced);
+    return sh.peekUpLeft();
 }
 
 /// Call at the start of `reduce_core.upRight`, before any real mutation.
-/// `reduced` is `ctx.e` at entry.
 pub fn shadowUpRight(reduced: Word) ?Word {
+    _ = reduced;
     const sh = active orelse return null;
     if (sh.isEmpty()) return null;
-    return sh.upRight(reduced);
+    return sh.peekUpRight();
 }
 
 /// Mirror `combinators.handleTRY`'s raw fabricated frame (the one spot it

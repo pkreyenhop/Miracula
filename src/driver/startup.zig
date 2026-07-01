@@ -31,6 +31,7 @@ const module_loader = @import("../compiler/module_loader.zig");
 const setup = @import("../compiler/setup.zig");
 const signals_mod = @import("../io/signals.zig");
 const dump = @import("../compiler/dump.zig");
+const spine = @import("../runtime/reducer/spine.zig");
 const EDITOR: [*:0]const u8 = "vi +!";
 const core_state = @import("../runtime/core_state.zig");
 const lineedit = @import("lineedit.zig");
@@ -61,6 +62,19 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     unlimitStack();
     rt.rs.verbosity = if (abi.isatty(0) != 0) 1 else 0;
     word.setbuf(abi.stdout(), null);
+
+    // Reducer B2-option-(b) differential validation (see spine.zig / Phase 2 of
+    // REMAINING_WORK_PLAN.md): when set, drive a shadow Spine in lockstep with
+    // the live pointer-reversal primitives for the whole run, aborting via
+    // std.debug.assert on the first mismatch. `shadow_spine` lives on this
+    // stack frame for the process's entire lifetime (mainEntry doesn't return
+    // until the run is over), so the pointer stays valid for as long as
+    // `spine.active` is set. No effect unless MIRA_VALIDATE_SPINE is set.
+    var shadow_spine: spine.Spine = undefined;
+    if (abi.getenv("MIRA_VALIDATE_SPINE") != null) {
+        shadow_spine = spine.Spine.init(rt.allocator);
+        spine.active = &shadow_spine;
+    }
 
     const home = abi.getenv("HOME");
     var okhome_rc: Word = 0;
