@@ -35,7 +35,7 @@ partial),
 |----|------|-----------|:-----:|
 | R3 | Single source for core constants. **✅ Done** — `*_t` numbering bug fixed (`c2d98fc`); last atom-constant copies `CONST`/`FREE` aliased (`34480dc`); only the decoupled state-module `CMBASE` remains by design. | ARCH Part B | ✅ |
 | R7 | Cryptic helpers — out-printers + `ctx.e/s/hold` decision done; **numbered helpers remain** (`typeError1-8`, `outType1/2`, `parseType1/2`, `parsePatV1-3`, `add1`/`remove1`/`newadd1`/`less1`/`decl1`) | ARCH Part B | ◐ |
-| R9 | Break up longest fns: `reduce`(213), `loadfile`(331), `yylex`(343), `mainEntry`(412), `etype`(608), `handleReadyState`(813) | ARCH Part B | ◐ |
+| R9 | Break up longest fns: `reduce`(213), `loadfile`(331), `yylex`(343), `mainEntry`(412), `etype`(608), `handleReadyState`(813). **✅ Done** — all six extracted. | ARCH Part B | ✅ |
 | R10 | Unify error channel (`MiraError` / `SYNERR` sentinels / `return NIL`) | ARCH Part B | ⏳ |
 | J1 | Error unions for `SyntaxError`/`LoadError` (**overlaps R10**) | TESTABILITY | ⬜ |
 | J2 | Standardise "dump stats then die" panics | TESTABILITY | ⬜ |
@@ -267,11 +267,17 @@ build), sufficient to catch and fix the regression but not wired in as a
 regression-guarding CI artifact. Worth adding in a follow-up if reducer performance
 becomes a recurring concern.
 
-### Phase 3 — R9 function-splitting *(per-function, independent of Phase 2 — may interleave)*
-Extract named steps one function at a time, easiest → hardest, golden after each:
-`reduce`(213) → `loadfile`(331) → `yylex`(343) → `mainEntry`(412) → `etype`(608) →
-`handleReadyState`(813). Each shares heavy local/register state, so each is an
-individual, carefully-validated extraction.
+### Phase 3 — R9 function-splitting ✅ *(done)*
+Extracted named steps one function at a time, easiest → hardest, golden after each:
+`reduce`(213→~90) → `loadfile`(331→142) → `yylex`(343→50) → `mainEntry`(412→110) →
+`etype`(608→80) → `handleReadyState`(813→588, extracting only the five arms over
+30 lines — the rest were already short and self-documenting via their combinator
+constant). Each shared heavy local/register state, so each was an individual,
+carefully-validated extraction (44/44 golden + full unit-test suite + spine-corpus
+stress checks + lint after every one). Along the way, smoke-testing surfaced two
+pre-existing, unrelated bugs (a divide-by-zero in `-make`'s failure report on long
+paths; a crash evaluating `system "..."` at the prompt) — both flagged as separate
+follow-ups, not fixed here.
 
 ### Phase 4 — The error/recovery cluster (R10 + J1 + J2 + A4b) *(design-bearing — the linchpin)*
 1. **Coverage first.** Add golden/integration cases that exercise the error paths
@@ -331,7 +337,7 @@ Phase 0 (hygiene + C1) ────────┐
 Phase 1 (R3) ✅                │
 Phase 2 (B2 opt b, cutover) ✅  ├─ independent, do first
 Phase 2 (B2 opt a) ─────────────┤   (∥ with Phase 3)
-Phase 3 (R9 splits) ────────────┘
+Phase 3 (R9 splits) ✅ ─────────┘
         │
         ▼
 Phase 4 (R10 + J1 + J2 + A4b)  ── design decision (a/b) on recovery model
