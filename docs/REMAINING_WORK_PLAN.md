@@ -40,7 +40,7 @@ partial),
 | J1 | Error unions for `SyntaxError`/`LoadError` (**overlaps R10**) | TESTABILITY | ⬜ |
 | J2 | Standardise "dump stats then die" panics | TESTABILITY | ⬜ |
 | A4b | Recovery redesign — SIGFPE synchronous, reducer unwind (**overlaps R10 step 3**) | REDESIGN | ⬜ |
-| B2 | Option (a): char boundary done, range-test sites in `trans`/`types`/`reduce` remain. Option (b): Step 1 done (`reducer/spine.zig`, additive/inert) — blast radius found larger than documented (TRY/FAIL backtracking, `streamRead`'s C-ABI copy); cutover needs a differential-test harness first, not yet built | REDESIGN | ◐ |
+| B2 | Option (a): char boundary done, range-test sites in `trans`/`types`/`reduce` remain. Option (b): `reducer/spine.zig` built + shadow-validated live against 51 real-program checks (0 mismatches) — blast radius found larger than documented (TRY/FAIL backtracking, `streamRead`'s C-ABI copy), both now shadow-covered; the actual dispatch cutover itself is not started | REDESIGN | ◐ |
 | B3 | Tracing GC (after B2) | REDESIGN | ⬜ |
 | C1 | Final data-model scorecard | REDESIGN | ⬜ |
 | C2 | Rewrite `ARCHITECTURE.md` / `ZIG_MIGRATION.md` to the new model | REDESIGN | ⬜ |
@@ -139,7 +139,7 @@ where **(b)** would reshape Phases 4–5.
 * Closes B2 to its re-scoped DoD (range tests → 0 at value sites) and gives the
   TESTABILITY tiers precise typed reads.
 
-### Phase 2 (option b) — Repivot the hard core: explicit spine stack ◐ *(Step 1 done 2026-07-01; cutover not started)*
+### Phase 2 (option b) — Repivot the hard core: explicit spine stack ◐ *(Steps 1–2 done 2026-07-01; cutover not started)*
 
 **Step 1 — `reducer/spine.zig`, additive and inert.** ✅ Done (`71c47ae`). Built and
 unit-tested an explicit, growable `Spine`/`Frame` stack as a candidate drop-in
@@ -171,37 +171,59 @@ manipulation of the spine encoding (`ctx.s`/`hdGet`/`tlptrbit`) was also found i
   `downRight`) — an invariant that is correct but undocumented and easy to violate in
   a hand-port.
 
-**Why the cutover is not attempted here.** A live cutover means swapping the
-"primitive" in ~4,200 lines of the hottest, least-tested code path in the
-interpreter (the golden corpus has no deep-recursion/long-spine evaluation case, and
-no automated way to catch a subtle WHNF-walk regression short of wrong output on some
-untested program shape). Hand-deriving every caller's exact sequence with full
-confidence, by static reading alone, was not achievable to the bar this change needs
-— the mechanism is more subtle than "two copies to keep in sync" (bookkeeping
-migrates between a cell's `hd` and `tl` over its lifetime on the stack, depending on
-call history) and the extra raw-manipulation sites above add real surface the plan
-hadn't accounted for. Shipping a hand-ported cutover without a stronger validation
-method than manual derivation risks a silent correctness bug in the reduction engine.
+**Step 2 — shadow-validation harness, done (`d3af11d`, `c617ae2`).** Rather than a
+post-hoc trace-replay (drifts the moment anything mutates the graph between recorded
+calls — rewrites, allocations, recursive `reduce()` calls all happen *between* the
+four primitive calls, so replaying against a stale snapshot doesn't work), built an
+**inline shadow**: `spine.active`, when set, makes `reduce_core.zig`'s four
+primitives (and `combinators.zig`'s `handleTRY`/`handleFAIL`, and `runtime/reduce.zig`'s
+`streamRead`) drive a real `Spine` in lockstep with the live pointer-reversal
+mechanism *as the program actually runs*, asserting agreement at every call. Default
+`null` — zero effect on the live interpreter or any existing test.
 
-**Recommended path to the cutover (not yet executed):**
-1. Build a trace-differential test harness: run real (golden-corpus-scale and
-   stress) Miranda programs through the *live* `reduce_core.zig` primitives,
-   capturing the call sequence + every heap write; replay the same logical operation
-   sequence through `Spine` on an equivalent starting graph; assert the final
-   *observable* graph state and program output match. This is the validation method
-   the cutover actually needs — not more hand-derivation.
-2. Migrate `combinators.zig`'s `handleTRY`/`handleFAIL` and `runtime/reduce.zig`'s
-   `streamRead` to use `Spine` explicitly (they can't stay on the old encoding once
-   cells stop carrying bookkeeping).
-3. Swap `reduce()`'s main loop and `ReductionCtx.s`/`.hold` for a per-call `Spine`
+A real safety bug turned up immediately: the shadow's first version called `Spine`'s
+*write-performing* methods (`downRight`/`upLeft`/`upRight`), which are only safe when
+perfectly in sync. TRY/FAIL backtracking is pervasive (every guarded multi-equation
+function uses it) and the shadow *will* diverge in ways the mirroring doesn't
+perfectly track — a diverged shadow performing real writes can write a real value to
+the *wrong* cell, silently corrupting the live program. This reproduced immediately:
+even `3+4` crashed with a heap assertion once the full prelude was loaded. Fixed by
+making the shadow **read-only** (`peekDownRight`/`peekUpLeft`/`peekUpRight`, using
+`heap.h`/`heap.t` — which degrade to `0` on an out-of-range index rather than
+asserting — never `heap.hp`/`heap.tp`). A divergence now fails a clean, local
+assertion; it can no longer corrupt the program.
+
+`tests/spine_differential_check.py` runs the interpreter with validation on over the
+full golden corpus (44 cases) plus 7 curated `miralib/ex/` programs (deep recursion,
+guarded multi-equation functions, algebraic types, lazy infinite streams — shapes
+golden doesn't stress): **51/51 pass, zero mismatches.** This is real evidence for
+the four primitives' correctness beyond `spine_test.zig`'s hand-built cases.
+
+*Side finding, out of scope, not fixed:* `miralib/ex/ack.m`/`queens.m`/`hanoi.m` use
+n+k patterns (`ack (m+1) 0 = ...`) that this interpreter's parser/compiler currently
+rejects outright ("illegal object \"1\" as head of formal") — reproduces identically
+with or without spine validation, so a separate, genuine, pre-existing bug. The
+differential corpus uses `tests/spine_corpus/ack_nk_free.m` (golden's `custom_ack.m`
+style) in place of `ack.m`; `queens.m`/`hanoi.m` are skipped. Also,
+`miralib/ex/primes.m` crashes on `take 500` (also reproduces without validation) —
+the corpus stays at `take 150`.
+
+**Remaining before a cutover could be considered:**
+1. Migrate `combinators.zig`'s `handleTRY`/`handleFAIL` and `runtime/reduce.zig`'s
+   `streamRead` to actually *run on* `Spine` (today they still run pointer reversal
+   for real; only the shadow observes them) — they can't stay on the old encoding
+   once cells stop carrying bookkeeping.
+2. Swap `reduce()`'s main loop and `ReductionCtx.s`/`.hold` for a per-call `Spine`
    (threading `rt.allocator`, already used elsewhere for growable scratch, e.g.
    `dstack`).
-4. Measure: there is no agreed perf budget yet, and the DoD requires "a
+3. Measure: there is no agreed perf budget yet, and the DoD requires "a
    reduction-loop micro-benchmark within the agreed budget" — `src/micro_benchmarks.zig`
    currently covers allocation/GC/interning, not the reducer loop, so that benchmark
    needs writing first to get real numbers before/after.
-5. Re-run golden + the new differential harness + the benchmark; only then swap the
-   live path.
+4. Re-run golden + the differential harness + the benchmark; only then swap the live
+   path. (The differential harness stops being useful as a *safety net* the moment
+   `Spine` becomes the thing being tested rather than the shadow — at that point
+   correctness rests on golden + the unit suite, same as everywhere else.)
 
 This is multiple dedicated sessions of work, not a single increment — treat it as
 its own initiative once Step 1's groundwork (done) is built on.

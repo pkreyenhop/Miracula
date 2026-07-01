@@ -354,23 +354,34 @@ not wait behind Track B's design work.
     option **b**'s job).*
   * **(b) Repivot the "hard core"** to pointer-reversal → an explicit typed spine stack — this is what
     actually dominates raw-`Word` arithmetic and unblocks B3 + A4b. Higher value, comparable risk.
-    **◐ Step 1 started (2026-07-01, `71c47ae`).** `reducer/spine.zig` — an explicit,
-    growable `Spine`/`Frame` stack — is built and unit-tested as a candidate
-    replacement for `reduce_core.zig`'s `downLeft`/`downRight`/`upLeft`/`upRight`,
-    derived by tracing every read/write the existing primitives perform (exactly one
-    write per call is a real graph mutation; the rest is bookkeeping the new module
-    moves out of the cell into an explicit `Frame`). **Additive and inert — not wired
-    into `reduce()`.** The investigation revised the blast-radius estimate upward:
-    beyond the two files the plan already flags as lock-step duplicates
-    (`reducer/reduce.zig`/`reducer/reduce_core.zig`), the raw spine encoding is also
-    manipulated directly by `combinators.zig`'s `handleTRY`/`handleFAIL` (bulk
-    backtracking walk) and `runtime/reduce.zig`'s `streamRead` (a `pub export fn` on
-    the C-ABI surface, with its own unmasked inline copy). The live cutover is
-    deliberately **not attempted** without a trace-differential validation harness
-    (run real programs through old vs. new, compare observable graph state) — manual
-    derivation alone isn't a strong enough proof for the hottest, least-tested path in
-    the interpreter. See [REMAINING_WORK_PLAN.md](REMAINING_WORK_PLAN.md) Phase 2
-    (option b) for the staged path to the cutover.
+    **◐ Built and shadow-validated (2026-07-01, `71c47ae`..`84c60a3`).**
+    `reducer/spine.zig` — an explicit, growable `Spine`/`Frame` stack — is a
+    candidate replacement for `reduce_core.zig`'s `downLeft`/`downRight`/`upLeft`/
+    `upRight`, derived by tracing every read/write the existing primitives perform
+    (exactly one write per call is a real graph mutation; the rest is bookkeeping the
+    new module moves out of the cell into an explicit `Frame`). The blast-radius
+    estimate was revised upward during the investigation: beyond the two files the
+    plan already flags as lock-step duplicates (`reducer/reduce.zig`/
+    `reducer/reduce_core.zig`), the raw spine encoding is also manipulated directly
+    by `combinators.zig`'s `handleTRY`/`handleFAIL` (bulk backtracking walk) and
+    `runtime/reduce.zig`'s `streamRead` (a `pub export fn` on the C-ABI surface, with
+    its own unmasked inline copy). Rather than a trace-replay (drifts against any
+    graph mutation between recorded calls), built an **inline shadow**: an opt-in
+    (`MIRA_VALIDATE_SPINE`) mode drives a real `Spine` in lockstep with the live
+    mechanism *as the program runs*, asserting agreement at every call, covering all
+    of the above (`handleTRY`/`handleFAIL` mirrored via new `pushRaw`/`drainAll` ops,
+    `streamRead` via the same hook as the primitive). A real safety bug surfaced
+    immediately — the shadow's first version performed real heap writes, and once
+    diverged (TRY/FAIL makes that likely) could write a real value to the *wrong*
+    cell, silently corrupting the program; fixed by making the shadow read-only
+    (predicts via `heap.h`/`heap.t`, which degrade gracefully, never
+    `heap.hp`/`heap.tp`, which assert). `tests/spine_differential_check.py` runs this
+    over the full golden corpus + 7 curated `miralib/ex/` programs: **51/51 pass,
+    zero mismatches** — real evidence beyond the hand-built unit tests. The live
+    *cutover* (making `Spine` the actual dispatch mechanism) is still not
+    attempted — see [REMAINING_WORK_PLAN.md](REMAINING_WORK_PLAN.md) Phase 2
+    (option b) for what that still needs (migrating `handleTRY`/`handleFAIL`/
+    `streamRead` onto `Spine` for real, a reduction-loop benchmark, then the swap).
   * **(c) Defer B2**: since boxing already disambiguates char/number, do B3 (tracing GC) or the
     close-out (C1/C2) first and revisit the value representation later.
 
