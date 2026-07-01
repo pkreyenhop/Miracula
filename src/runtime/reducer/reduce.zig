@@ -193,71 +193,7 @@ pub fn reduce(e_val: Word) Word {
             // (2b) Head is not a known combinator atom: it is a data/name node.
             //      Dispatch on its cell tag. (Undo the step count — these are
             //      not combinator reductions; a negative `e` is a corrupt graph.)
-            else => {
-                reduce_rt.ev.cycles -= 1;
-                if (abnormal(ctx.e)) {
-                    word.printErr("\nBLACK HOLE\n", .{});
-                    reduce_rt.outstats();
-                    main_clib.exit(1);
-                }
-
-                switch (getTag(ctx.e)) {
-                    // A private-name placeholder: chase to its bound value.
-                    .STRCONS => {
-                        ctx.e = pnVal(ctx.e);
-                        if (ctx.e == word.UNDEF or ctx.e == word.FREE) {
-                            word.printErr("\nimpossible event in reduce - undefined pname\n", .{});
-                            if (options.is_strict) {
-                                std.debug.panic("impossible event in reduce - undefined pname", .{});
-                            } else {
-                                main_clib.exit(1);
-                            }
-                        }
-                        ctx.action = word.ACT_NEXTREDEX;
-                    },
-                    .DATAPAIR => {
-                        upLeft(&ctx);
-                        word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{ strtab.strOf(hdGet(hdGet(ctx.e))), strtab.strOf(tlGet(ctx.e)) });
-                        reduce_rt.outstats();
-                        main_clib.exit(1);
-                    },
-                    // A defined name: substitute its value and re-examine.
-                    .ID => {
-                        if (idVal(ctx.e) == word.UNDEF or idVal(ctx.e) == word.FREE) {
-                            word.printErr("\nUNDEFINED NAME - {s}\n", .{getId(ctx.e)});
-                            reduce_rt.outstats();
-                            main_clib.exit(1);
-                        }
-                        ctx.e = idVal(ctx.e);
-                        ctx.action = word.ACT_NEXTREDEX;
-                    },
-                    // A saturated constructor application is already WHNF: pop
-                    // the whole spine back to the root, then we are done.
-                    .CONSTRUCTOR => {
-                        while (true) {
-                            if (upleft(&ctx)) {
-                                ctx.action = word.ACT_DONE;
-                                break;
-                            }
-                        }
-                    },
-                    .STARTREADVALS => {
-                        io_handlers.handle_STARTREADVALS(&ctx);
-                    },
-                    // Already a head-normal value (data leaf): nothing to rewrite.
-                    .ATOM, .INT, .UNICODE, .DOUBLE, .CONS => {
-                        ctx.action = word.ACT_DONE;
-                    },
-                    else => {
-                        word.printErr("\nimpossible tag ({}) in reduce\n", .{@intFromEnum(getTag(ctx.e))});
-                        if (options.is_strict) {
-                            std.debug.panic("impossible tag ({}) in reduce", .{@intFromEnum(getTag(ctx.e))});
-                        } else {
-                            main_clib.exit(1);
-                        }
-                    },
-                }
-            },
+            else => dispatchNonCombinatorHead(&ctx),
         }
 
         // A handler rewrote the redex in place and wants it re-examined.
@@ -265,28 +201,110 @@ pub fn reduce(e_val: Word) Word {
             continue :main_loop;
         }
 
-        // (3) `e` is in WHNF. Walk back *up* the spine. At each `AP` we
-        //     ascended through, force its right argument (descend into it) so
-        //     strict operators find their operands ready;
-        //     `ready.handleReadyState` applies the pending rule once an
-        //     argument has been reduced. Stop when the spine is exhausted.
-        while (true) {
-            if (ctx.spine.isEmpty()) {
-                return ctx.e;
-            }
+        // (3) `e` is in WHNF. Walk back up the spine, forcing each ancestor
+        //     `AP`'s right argument in turn, until the spine is exhausted or a
+        //     rule rewrote the graph and wants the redex re-examined.
+        if (forceSpineArguments(&ctx)) |result| {
+            return result;
+        }
+    }
+}
 
-            upRight(&ctx);
+/// Step (2b) of the main dispatch: the head of the spine is not a bare
+/// combinator/operator atom, so dispatch on its cell tag instead. Chases
+/// private names and defined names to their bound value, recognizes an
+/// already-saturated constructor application as WHNF, and reports the
+/// handful of "impossible" states (undefined name, black hole, corrupt tag)
+/// that indicate a bug rather than a normal reduction step.
+fn dispatchNonCombinatorHead(ctx: *ReductionCtx) void {
+    reduce_rt.ev.cycles -= 1; // undo the step count -- not a combinator reduction
+    if (abnormal(ctx.e)) {
+        word.printErr("\nBLACK HOLE\n", .{});
+        reduce_rt.outstats();
+        main_clib.exit(1);
+    }
 
-            if (isAp(ctx.e)) {
-                downLeft(&ctx);
-                downRight(&ctx);
-                continue :main_loop;
+    switch (getTag(ctx.e)) {
+        // A private-name placeholder: chase to its bound value.
+        .STRCONS => {
+            ctx.e = pnVal(ctx.e);
+            if (ctx.e == word.UNDEF or ctx.e == word.FREE) {
+                word.printErr("\nimpossible event in reduce - undefined pname\n", .{});
+                if (options.is_strict) {
+                    std.debug.panic("impossible event in reduce - undefined pname", .{});
+                } else {
+                    main_clib.exit(1);
+                }
             }
+            ctx.action = word.ACT_NEXTREDEX;
+        },
+        .DATAPAIR => {
+            upLeft(ctx);
+            word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{ strtab.strOf(hdGet(hdGet(ctx.e))), strtab.strOf(tlGet(ctx.e)) });
+            reduce_rt.outstats();
+            main_clib.exit(1);
+        },
+        // A defined name: substitute its value and re-examine.
+        .ID => {
+            if (idVal(ctx.e) == word.UNDEF or idVal(ctx.e) == word.FREE) {
+                word.printErr("\nUNDEFINED NAME - {s}\n", .{getId(ctx.e)});
+                reduce_rt.outstats();
+                main_clib.exit(1);
+            }
+            ctx.e = idVal(ctx.e);
+            ctx.action = word.ACT_NEXTREDEX;
+        },
+        // A saturated constructor application is already WHNF: pop
+        // the whole spine back to the root, then we are done.
+        .CONSTRUCTOR => {
+            while (true) {
+                if (upleft(ctx)) {
+                    ctx.action = word.ACT_DONE;
+                    break;
+                }
+            }
+        },
+        .STARTREADVALS => {
+            io_handlers.handle_STARTREADVALS(ctx);
+        },
+        // Already a head-normal value (data leaf): nothing to rewrite.
+        .ATOM, .INT, .UNICODE, .DOUBLE, .CONS => {
+            ctx.action = word.ACT_DONE;
+        },
+        else => {
+            word.printErr("\nimpossible tag ({}) in reduce\n", .{@intFromEnum(getTag(ctx.e))});
+            if (options.is_strict) {
+                std.debug.panic("impossible tag ({}) in reduce", .{@intFromEnum(getTag(ctx.e))});
+            } else {
+                main_clib.exit(1);
+            }
+        },
+    }
+}
 
-            ready.handleReadyState(&ctx);
-            if (ctx.action == word.ACT_NEXTREDEX) {
-                continue :main_loop;
-            }
+/// Step (3) of the main loop: once a handler leaves `ctx.e` in WHNF, walk
+/// back up the spine, forcing each ancestor `AP`'s right argument (so strict
+/// operators find their operands ready) and applying `ready.handleReadyState`
+/// once an argument has been reduced. Returns the final WHNF value once the
+/// whole spine is unwound; returns `null` if the graph was rewritten and
+/// `reduce()`'s main loop should re-examine `ctx.e` from the top.
+fn forceSpineArguments(ctx: *ReductionCtx) ?Word {
+    while (true) {
+        if (ctx.spine.isEmpty()) {
+            return ctx.e;
+        }
+
+        upRight(ctx);
+
+        if (isAp(ctx.e)) {
+            downLeft(ctx);
+            downRight(ctx);
+            return null;
+        }
+
+        ready.handleReadyState(ctx);
+        if (ctx.action == word.ACT_NEXTREDEX) {
+            return null;
         }
     }
 }
