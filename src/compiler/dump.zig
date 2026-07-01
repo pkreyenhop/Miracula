@@ -364,12 +364,11 @@ pub fn undump(t_val: [*:0]const u8) void {
         return;
     }
 
-    if (cs.BAD_DUMP != 0 or heap.srcUpdate() != 0) {
-        module_loader.loadfile(t_val);
-    } else if (rt.rs.initialising != 0) {
-        if (cs.ND != NIL or heap.heap.files == NIL) {
+    if (cs.BAD_DUMP != 0 or heap.srcUpdate() != 0 or heap.heap.files == NIL or cs.ND != NIL) {
+        if (rt.rs.initialising != 0) {
             errors.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
         }
+        module_loader.loadfile(t_val);
     } else {
         if (rt.rs.verbosity != 0 or rt.rs.magic or rt.rs.mkexports) {
             if (heap.heap.files == NIL) {

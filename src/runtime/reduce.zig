@@ -169,8 +169,8 @@ fn getStdout() ?*word.FILE {
 
 inline fn rewriteToValue(expr: *Word, value: Word) void {
     hp(expr.*).* = word.I;
-    expr.* = value;
     tp(expr.*).* = value;
+    expr.* = value;
 }
 
 inline fn rewriteToNil(expr: *Word) void {
@@ -247,10 +247,10 @@ pub fn parseCloseError(arg1: Word, arg3: Word) void {
 /// itself (dropping the third copy of that primitive the Phase-2
 /// investigation found).
 pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
-    const lastarg = t(ctx.e);
     switch (op) {
         word.READBIN => {
             reduce_core.upLeft(ctx);
+            const lastarg = t(ctx.e);
 
             if (lastarg == 0) {
                 if (ev.stdinuse == '-') {
@@ -274,6 +274,7 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
         },
         word.READ => {
             reduce_core.upLeft(ctx);
+            const lastarg = t(ctx.e);
 
             if (lastarg == 0) {
                 if (ev.stdinuse == ':') {
@@ -302,6 +303,7 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
             if (ctx.spine.isEmpty()) return word.ACT_DONE;
 
             reduce_core.upLeft(ctx);
+            const lastarg = t(ctx.e);
 
             const val = parseLine(h(ctx.args[0]), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.args[0]));
             if (val == main_clib.EOF) {

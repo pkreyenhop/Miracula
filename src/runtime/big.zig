@@ -809,25 +809,19 @@ test "scanDecimal: parses a NUL-terminated decimal string" {
 ///
 /// Tests: scanHex: parses a hex byte range into a bignum
 pub fn scanHex(heap: *Heap, p: [*]const u8, q: [*]const u8) Word {
-    const start_addr = @intFromPtr(p);
-    var end_addr = @intFromPtr(q);
-    if (end_addr == start_addr + 1 and p[0] == '0') return heap.make(.INT, 0, 0);
-    var r: Word = undefined;
-    var x = &r;
-    while (end_addr > start_addr) {
-        const remaining = end_addr - start_addr;
-        const seg_len = @min(remaining, 15);
-        const seg_addr = end_addr - seg_len;
-        const seg: [*]const u8 = @ptrFromInt(seg_addr);
-        var hold: u64 = 0;
-        for (0..seg_len) |i| hold = (hold << 4) + @as(u64, @intCast(hexValue(seg[i])));
-        var count: Word = 4;
-        while (count != 0 and !(hold == 0 and seg_addr == start_addr)) : (count -= 1) {
-            x.* = heap.make(.INT, @intCast(hold & MAXDIGIT), 0);
-            hold >>= DIGITWIDTH;
-            x = restPtr(heap, x.*);
+    const r = heap.make(.INT, 0, 0);
+    var cursor: usize = 0;
+    const len = @intFromPtr(q) - @intFromPtr(p);
+    while (cursor < len) {
+        var d: Word = hexValue(p[cursor]);
+        var f: Word = 16;
+        cursor += 1;
+        while (cursor < len and f < PSIXTEEN) {
+            d = (16 * d) + hexValue(p[cursor]);
+            f *= 16;
+            cursor += 1;
         }
-        end_addr = seg_addr;
+        multiplyAddInPlace(heap, r, f, d);
     }
     return r;
 }
@@ -839,26 +833,29 @@ test "scanHex: parses a hex byte range into a bignum" {
     try std.testing.expectEqual(@as(c_longlong, 255), toInt(heap, scanHex(heap, p, p + 2)));
     const q: [*]const u8 = "1000";
     try std.testing.expectEqual(@as(c_longlong, 0x1000), toInt(heap, scanHex(heap, q, q + 4)));
+    const z: [*]const u8 = "00";
+    try std.testing.expectEqual(@as(c_longlong, 0), toInt(heap, scanHex(heap, z, z + 2)));
+    const val: [*]const u8 = "1A2B3C";
+    try std.testing.expectEqual(@as(c_longlong, 1715004), toInt(heap, scanHex(heap, val, val + 6)));
 }
 
 /// Parse the octal digits in the byte range `[p, q)` into a bignum.
 ///
 /// Tests: scanOctal: parses an octal byte range into a bignum
 pub fn scanOctal(heap: *Heap, p: [*]const u8, q: [*]const u8) Word {
-    const start_addr = @intFromPtr(p);
-    var end_addr = @intFromPtr(q);
-    var r: Word = undefined;
-    var x = &r;
-    while (end_addr > start_addr) {
-        const remaining = end_addr - start_addr;
-        const seg_len = @min(remaining, 5);
-        const seg_addr = end_addr - seg_len;
-        const seg: [*]const u8 = @ptrFromInt(seg_addr);
-        var hold: u32 = 0;
-        for (0..seg_len) |i| hold = (hold << 3) + @as(u32, @intCast(seg[i] - '0'));
-        x.* = heap.make(.INT, @intCast(hold), 0);
-        x = restPtr(heap, x.*);
-        end_addr = seg_addr;
+    const r = heap.make(.INT, 0, 0);
+    var cursor: usize = 0;
+    const len = @intFromPtr(q) - @intFromPtr(p);
+    while (cursor < len) {
+        var d: Word = p[cursor] - '0';
+        var f: Word = 8;
+        cursor += 1;
+        while (cursor < len and f < PEIGHT) {
+            d = (8 * d) + p[cursor] - '0';
+            f *= 8;
+            cursor += 1;
+        }
+        multiplyAddInPlace(heap, r, f, d);
     }
     return r;
 }
@@ -868,6 +865,10 @@ test "scanOctal: parses an octal byte range into a bignum" {
     const heap = &heap_mod.heap.*;
     const p: [*]const u8 = "17";
     try std.testing.expectEqual(@as(c_longlong, 15), toInt(heap, scanOctal(heap, p, p + 2)));
+    const q: [*]const u8 = "777";
+    try std.testing.expectEqual(@as(c_longlong, 511), toInt(heap, scanOctal(heap, q, q + 3)));
+    const z: [*]const u8 = "0000";
+    try std.testing.expectEqual(@as(c_longlong, 0), toInt(heap, scanOctal(heap, z, z + 4)));
 }
 
 /// Numeric value of a decimal/hex digit character (`0`-`9`, `A`-`F`/`a`-`f`).

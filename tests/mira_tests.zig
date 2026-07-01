@@ -183,6 +183,7 @@ test "mira integration suite" {
     try caseCompileGcStress();
     try caseRuntimeGcStress();
     try caseMakeFailureLongPath();
+    try caseSyntaxErrorRepeat();
 }
 
 fn caseStandardArithmeticAndLists() !void {
@@ -365,4 +366,22 @@ fn caseMakeFailureLongPath() !void {
             return error.TestExpectedNormalExit;
         },
     }
+}
+
+fn caseSyntaxErrorRepeat() !void {
+    var env = try TestEnv.init();
+    defer env.deinit();
+    const script = try std.fmt.allocPrint(allocator, "{s}/bad_syntax.m", .{env.work});
+    defer allocator.free(script);
+    try writeFile(script, "x = 1 +\n");
+
+    // First run - compile from source, should report syntax error
+    var result1 = try runMira(&env, script, "", &.{});
+    defer result1.deinit();
+    try testing.expect(std.mem.find(u8, result1.stderr, "syntax error") != null);
+
+    // Second run - should still report syntax error, not load silently from dump cache
+    var result2 = try runMira(&env, script, "", &.{});
+    defer result2.deinit();
+    try testing.expect(std.mem.find(u8, result2.stderr, "syntax error") != null);
 }

@@ -739,8 +739,6 @@ fn lexNumeral() c_int {
     if (ls.c == '0' and word.tolower(peekch()) == 'x') {
         hexnumeral();
     } else if (ls.c == '0' and word.tolower(peekch()) == 'o') {
-        _ = getch();
-        ls.c = getch();
         octnumeral();
     } else {
         numeral();
@@ -1640,14 +1638,19 @@ pub fn hexnumeral() void {
     ls.yylval = bigxscan(heap.heap, ls.dicp + 2, ls.dicq);
 }
 
-/// Scan an octal numeral literal.
 pub fn octnumeral() void {
     ls.dicq = ls.dicp;
-    if (ls.c < '0' or ls.c > '9') {
+    ls.dicq[0] = @intCast(ls.c); // 0
+    ls.dicq += 1;
+    ls.c = getch();
+    ls.dicq[0] = @intCast(ls.c); // o
+    ls.dicq += 1;
+    ls.c = getch();
+    if (ls.c < '0' or ls.c > '7') {
         syntax("malformed octal number\n");
     }
-    while (ls.c == '0' and peekch() >= '0' and peekch() <= '9') {
-        ls.c = getch();
+    while (ls.c == '0' and peekch() >= '0' and peekch() <= '7') {
+        ls.c = getch(); // skip zeros before first nonzero digit
     }
     while (ls.c >= '0' and ls.c <= '7') {
         ls.dicq[0] = @intCast(ls.c);
@@ -1659,7 +1662,7 @@ pub fn octnumeral() void {
     }
     ovflocheck();
     ls.dicq[0] = 0;
-    ls.yylval = bigoscan(heap.heap, ls.dicp, ls.dicq);
+    ls.yylval = bigoscan(heap.heap, ls.dicp + 2, ls.dicq);
 }
 
 /// The filename associated with node `x`.

@@ -165,9 +165,17 @@ pub fn loadfile(t_val: [*:0]const u8) void {
         if (rt.rs.initialising != 0) {
             dump.makedump();
         } else if (files.isMirandaSource(t_val) != 0) {
-            dump.fixexports();
-            dump.makedump();
-            dump.unfixexports();
+            if (cs.ND == NIL) {
+                dump.fixexports();
+                dump.makedump();
+                dump.unfixexports();
+            } else {
+                var obf: [abi.pnlim]u8 = undefined;
+                _ = word.strcpy(&obf, t_val);
+                const len = word.strlen(&obf);
+                _ = word.strcpy(obf[len - 1 ..].ptr, core_state.s.obsuffix);
+                _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
+            }
         }
         if (core_state.s.errline == 0 and core_state.s.errs != 0 and word.strcmp(strtab.strOf(strtab.table, heap.h(core_state.s.errs)), rt.rs.current_script.?) == 0) {
             core_state.s.errline = heap.t(core_state.s.errs);
@@ -182,8 +190,12 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     }
     rt.rs.oldfiles = heap.heap.files;
     heap.unload();
-    if (files.isMirandaSource(t_val) != 0 and core_state.s.SYNERR != 2) {
-        dump.makedump();
+    if (files.isMirandaSource(t_val) != 0) {
+        var obf: [abi.pnlim]u8 = undefined;
+        _ = word.strcpy(&obf, t_val);
+        const len = word.strlen(&obf);
+        _ = word.strcpy(obf[len - 1 ..].ptr, core_state.s.obsuffix);
+        _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
     }
     core_state.s.SYNERR = 0;
     core_state.s.loading = 0;

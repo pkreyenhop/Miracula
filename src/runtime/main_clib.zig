@@ -1219,7 +1219,7 @@ pub fn execl(path: [*:0]const u8, args: anytype) c_int {
     const ArgsType = @TypeOf(args);
     const fields = std.meta.fields(ArgsType);
 
-    var argv: [fields.len:null]?[*:0]const u8 = undefined;
+    var argv: [fields.len:null]?[*:0]const u8 = [_:null]?[*:0]const u8{null} ** fields.len;
     inline for (fields, 0..) |field, idx| {
         const val = @field(args, field.name);
         const T = @TypeOf(val);

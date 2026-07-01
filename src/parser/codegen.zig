@@ -100,7 +100,13 @@ const isconstrname = lex.isconstrname;
 /// Parse decimal `text` into a bignum (via a temporary NUL-terminated copy).
 fn bigscanZ(alloc: Allocator, text: []const u8) Word {
     const z = alloc.dupeSentinel(u8, text, 0) catch return word.NIL;
-    return bigscan(heap.heap, z.ptr);
+    if (std.mem.startsWith(u8, z, "0x") or std.mem.startsWith(u8, z, "0X")) {
+        return big.scanHex(heap.heap, z.ptr + 2, z.ptr + z.len);
+    } else if (std.mem.startsWith(u8, z, "0o") or std.mem.startsWith(u8, z, "0O")) {
+        return big.scanOctal(heap.heap, z.ptr + 2, z.ptr + z.len);
+    } else {
+        return bigscan(heap.heap, z.ptr);
+    }
 }
 
 // ---------------------------------------------------------------------------
