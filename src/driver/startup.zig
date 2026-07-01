@@ -62,6 +62,114 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     rt.rs.verbosity = if (abi.isatty(0) != 0) 1 else 0;
     word.setbuf(abi.stdout(), null);
 
+    const okhome_rc = readHomeRc();
+
+    rt.rs.UTF8 = @intFromBool(heap.utf8test());
+    rt.rs.UTF8OUT = rt.rs.UTF8;
+
+    const parsed = parseFlags(argc, argv);
+    const arg_idx = parsed.arg_idx;
+    manonly = parsed.manonly;
+    const argc_u = @as(usize, @intCast(argc));
+
+    const remaining_argc = argc_u - arg_idx;
+    if (remaining_argc > 1 and !rt.rs.magic and !rt.rs.making) {
+        errors.fatal("mira: too many args\n", .{.{}});
+    }
+
+    resolveMiralib();
+
+    readLibRcIfNeeded(okhome_rc);
+
+    resolveEnvironmentSettings();
+
+    abi.setupdic();
+    rt.rs.s_in = abi.stdin();
+    reduce.ev.s_out = abi.stdout();
+    rt.rs.miralib = files.makeAbsolute(rt.rs.miralib.?);
+
+    if (manonly != 0) {
+        commands.manaction();
+        abi.exit(0);
+    }
+
+    _ = word.strcpy(&rt.rs.PRELUDE, rt.rs.miralib.?);
+    _ = word.strcat(&rt.rs.PRELUDE, "/prelude");
+
+    _ = word.strcpy(&rt.rs.STDENV, rt.rs.miralib.?);
+    _ = word.strcat(&rt.rs.STDENV, "/stdenv.m");
+
+    setup.miraSetup();
+
+    if (rt.rs.verbosity != 0) {
+        repl.announce();
+    }
+
+    heap.heap.files = NIL;
+    dump.undump(@as([*:0]const u8, @ptrCast(&rt.rs.PRELUDE)));
+    rt.rs.okprel = true;
+    abi.mkprivate(heap.filDefs(heap.h(heap.heap.files)));
+    heap.heap.files = NIL;
+
+    if (!rt.rs.nostdenv) {
+        dump.undump(@as([*:0]const u8, @ptrCast(&rt.rs.STDENV)));
+        while (heap.heap.files != NIL) {
+            rt.rs.primenv = heap.alfasort(abi.append1(rt.rs.primenv, heap.filDefs(heap.h(heap.heap.files))));
+            heap.heap.files = heap.t(heap.heap.files);
+        }
+        rt.rs.primenv = heap.alfasort(rt.rs.primenv);
+        cs.newtyps = NIL;
+        heap.heap.files = NIL;
+    }
+
+    if (!rt.rs.magic) {
+        writeRc();
+    }
+
+    rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
+    rt.rs.initialising = 0;
+
+    if (rt.rs.mkexports) {
+        runExportsMode(argc_u, argv, arg_idx);
+    }
+
+    if (rt.rs.mksources) {
+        runSourcesMode(argc_u, argv, arg_idx);
+    }
+
+    if (rt.rs.making) {
+        runMakeMode(argc_u, argv, arg_idx);
+    }
+
+    var initscript: [*:0]const u8 = undefined;
+    if (remaining_argc == 0) {
+        initscript = "script.m";
+    } else if (rt.rs.magic) {
+        initscript = argv[arg_idx];
+    } else {
+        initscript = abi.addextn(1, argv[arg_idx]);
+    }
+
+    if (initscript == ls.dicp) {
+        _ = abi.keep(ls.dicp);
+    }
+
+    _ = signals_mod.signals(abi.SIGFPE, @intFromPtr(&repl.fpeError));
+    _ = signals_mod.signals(abi.SIGTERM, @intFromPtr(&abi.exit));
+    // Interactive stdin gets zigline line editing + history; piped/file stdin
+    // keeps the plain read path (so the golden corpus and integration suite run
+    // unchanged).
+    if (abi.isatty(0) != 0) {
+        lineedit.init(rt.allocator, rt.io);
+    }
+    repl.commandLoop(@constCast(initscript));
+    return 0;
+}
+
+/// Reads the user's `$HOME/.mirarc`, if `$HOME` is set. Returns nonzero if it
+/// was found and read (in which case the library-directory `.mirarc` is
+/// skipped later; see [readLibRcIfNeeded]).
+fn readHomeRc() Word {
     const home = abi.getenv("HOME");
     var okhome_rc: Word = 0;
     if (home != null) {
@@ -72,10 +180,19 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
         _ = word.strcat(&rt.rs.home_rc, "/.mirarc");
         okhome_rc = readRc(@as([*:0]const u8, @ptrCast(&rt.rs.home_rc)));
     }
+    return okhome_rc;
+}
 
-    rt.rs.UTF8 = @intFromBool(heap.utf8test());
-    rt.rs.UTF8OUT = rt.rs.UTF8;
+/// The parsed result of the leading `-flag` run of `argv`: the index of the
+/// first non-flag argument, and whether `-man` was given.
+const ParsedFlags = struct { arg_idx: usize, manonly: Word };
 
+/// Parses every leading `-flag` (and its parameter, where one is expected) in
+/// `argv`, applying each directly to the relevant `rt.rs`/`ls` global. Stops at
+/// the first argument that doesn't start with `-` (or at `-exec`/`-exec2`,
+/// which consume the remainder of the command line for the script itself).
+fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
+    var manonly: Word = 0;
     var arg_idx: usize = 1;
     const argc_u = @as(usize, @intCast(argc));
     while (arg_idx < argc_u and argv[arg_idx][0] == '-') {
@@ -202,12 +319,13 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
         }
         arg_idx += 1;
     }
+    return .{ .arg_idx = arg_idx, .manonly = manonly };
+}
 
-    const remaining_argc = argc_u - arg_idx;
-    if (remaining_argc > 1 and !rt.rs.magic and !rt.rs.making) {
-        errors.fatal("mira: too many args\n", .{.{}});
-    }
-
+/// Locates the Miranda library directory: `-lib`/`$MIRALIB` if given, else the
+/// first of the standard install locations whose `.version` file matches this
+/// binary. Exits fatally if none match.
+fn resolveMiralib() void {
     var badlib: bool = false;
     if (rt.rs.miralib == null) {
         if (abi.getenv("MIRALIB")) |m| {
@@ -228,7 +346,11 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
         libFails();
         abi.exit(1);
     }
+}
 
+/// Reads the library directory's `.mirarc`, but only if the user's own
+/// `$HOME/.mirarc` (see [readHomeRc]) wasn't found.
+fn readLibRcIfNeeded(okhome_rc: Word) void {
     if (okhome_rc == 0) {
         if (rt.rs.rc_error == @as(?[*:0]const u8, @ptrCast(&rt.rs.lib_rc))) {
             rt.rs.rc_error = null;
@@ -237,7 +359,12 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
         _ = word.strcat(&rt.rs.lib_rc, "/.mirarc");
         _ = readRc(@as([*:0]const u8, @ptrCast(&rt.rs.lib_rc)));
     }
+}
 
+/// Resolves the editor (`-editor`/`$EDITOR`/built-in default) and applies the
+/// remaining one-shot environment-variable overrides (`$MIRAPROMPT`,
+/// `$RECHECKMIRA`, `$NOSTRICTIF`).
+fn resolveEnvironmentSettings() void {
     if (rt.rs.editor == null) {
         if (abi.getenv("EDITOR")) |ed| {
             rt.rs.editor = @constCast(ed);
@@ -262,210 +389,154 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     if (abi.getenv("NOSTRICTIF") != null) {
         rt.rs.strictif = false;
     }
+}
 
-    abi.setupdic();
-    rt.rs.s_in = abi.stdin();
-    reduce.ev.s_out = abi.stdout();
-    rt.rs.miralib = files.makeAbsolute(rt.rs.miralib.?);
-
-    if (manonly != 0) {
-        commands.manaction();
-        abi.exit(0);
-    }
-
-    _ = word.strcpy(&rt.rs.PRELUDE, rt.rs.miralib.?);
-    _ = word.strcat(&rt.rs.PRELUDE, "/prelude");
-
-    _ = word.strcpy(&rt.rs.STDENV, rt.rs.miralib.?);
-    _ = word.strcat(&rt.rs.STDENV, "/stdenv.m");
-
-    setup.miraSetup();
-
-    if (rt.rs.verbosity != 0) {
-        repl.announce();
-    }
-
-    heap.heap.files = NIL;
-    dump.undump(@as([*:0]const u8, @ptrCast(&rt.rs.PRELUDE)));
-    rt.rs.okprel = true;
-    abi.mkprivate(heap.filDefs(heap.h(heap.heap.files)));
-    heap.heap.files = NIL;
-
-    if (!rt.rs.nostdenv) {
-        dump.undump(@as([*:0]const u8, @ptrCast(&rt.rs.STDENV)));
-        while (heap.heap.files != NIL) {
-            rt.rs.primenv = heap.alfasort(abi.append1(rt.rs.primenv, heap.filDefs(heap.h(heap.heap.files))));
-            heap.heap.files = heap.t(heap.heap.files);
+/// `-exports` mode: undumps each remaining argument and reports its export
+/// list (or all top-level definitions, if it has none), plus any `%free`
+/// declarations. Exits the process when done.
+fn runExportsMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
+    const arg_count: usize = argc_u - arg_idx;
+    var s: [*:0]u8 = undefined;
+    _ = abi.sigsetjmp(&rt.rs.env, 1);
+    var cur_argv_idx = arg_idx;
+    while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
+        var x: Word = NIL;
+        s = abi.addextn(1, argv[cur_argv_idx]);
+        if (s == ls.dicp) {
+            _ = abi.keep(ls.dicp);
         }
-        rt.rs.primenv = heap.alfasort(rt.rs.primenv);
-        cs.newtyps = NIL;
-        heap.heap.files = NIL;
-    }
-
-    if (!rt.rs.magic) {
-        writeRc();
-    }
-
-    rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
-    rt.rs.initialising = 0;
-
-    if (rt.rs.mkexports) {
-        const arg_count: usize = remaining_argc;
-        var s: [*:0]u8 = undefined;
-        _ = abi.sigsetjmp(&rt.rs.env, 1);
-        var cur_argv_idx = arg_idx;
-        while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
-            var x: Word = NIL;
-            s = abi.addextn(1, argv[cur_argv_idx]);
-            if (s == ls.dicp) {
-                _ = abi.keep(ls.dicp);
+        dump.undump(s);
+        if (heap.heap.files == NIL or cs.ND != NIL) {
+            continue;
+        }
+        if (arg_count != 1) {
+            word.print("{s}\n", .{s});
+        }
+        if (rt.rs.exports != NIL) {
+            x = rt.rs.exports;
+        } else {
+            var f = heap.heap.files;
+            while (f != NIL) : (f = heap.t(f)) {
+                x = abi.append1(heap.filDefs(heap.h(f)), x);
             }
-            dump.undump(s);
-            if (heap.heap.files == NIL or cs.ND != NIL) {
-                continue;
-            }
-            if (arg_count != 1) {
-                word.print("{s}\n", .{s});
-            }
-            if (rt.rs.exports != NIL) {
-                x = rt.rs.exports;
-            } else {
-                var f = heap.heap.files;
-                while (f != NIL) : (f = heap.t(f)) {
-                    x = abi.append1(heap.filDefs(heap.h(f)), x);
-                }
-            }
+        }
 
-            if (rt.rs.freeids != NIL) {
-                var f = rt.rs.freeids;
-                while (f != NIL) : (f = heap.t(f)) {
-                    const n = abi.findid(@constCast(heap.getId(heap.h(f))));
-                    heap.tp(n).* = heap.t(heap.t(heap.h(f)));
-                    heap.tp(heap.h(heap.h(n))).* = heap.theVal(heap.h(f));
-                    heap.hp(f).* = n;
-                }
-                rt.rs.freeids = abi.typesfirst(rt.rs.freeids);
-                f = rt.rs.freeids;
-                word.print("\t%free {{\n", .{});
-                while (f != NIL) : (f = heap.t(f)) {
-                    _ = word.putchar('\t');
-                    abi.reportType(heap.h(f));
-                    _ = word.putchar('\n');
-                }
-                word.print("\t}}\n", .{});
+        if (rt.rs.freeids != NIL) {
+            var f = rt.rs.freeids;
+            while (f != NIL) : (f = heap.t(f)) {
+                const n = abi.findid(@constCast(heap.getId(heap.h(f))));
+                heap.tp(n).* = heap.t(heap.t(heap.h(f)));
+                heap.tp(heap.h(heap.h(n))).* = heap.theVal(heap.h(f));
+                heap.hp(f).* = n;
             }
-
-            var item = abi.typesfirst(heap.alfasort(x));
-            while (item != NIL) : (item = heap.t(item)) {
+            rt.rs.freeids = abi.typesfirst(rt.rs.freeids);
+            f = rt.rs.freeids;
+            word.print("\t%free {{\n", .{});
+            while (f != NIL) : (f = heap.t(f)) {
                 _ = word.putchar('\t');
-                abi.reportType(heap.h(item));
+                abi.reportType(heap.h(f));
                 _ = word.putchar('\n');
             }
+            word.print("\t}}\n", .{});
         }
-        abi.exit(0);
-    }
 
-    if (rt.rs.mksources) {
-        var s: [*:0]u8 = undefined;
-        var x: Word = NIL;
-        _ = abi.sigsetjmp(&rt.rs.env, 1);
-        var cur_argv_idx = arg_idx;
-        while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
-            s = abi.addextn(1, argv[cur_argv_idx]);
-            if (files.fileExists(s)) {
-                if (s == ls.dicp) {
-                    _ = abi.keep(ls.dicp);
-                }
-                dump.undump(s);
-                var f = if (heap.heap.files == NIL) rt.rs.oldfiles else heap.heap.files;
-                while (f != NIL) : (f = heap.t(f)) {
-                    const filename_str = heap.getFil(heap.h(f)).?;
-                    if (abi.member(x, strtab.strBits(filename_str)) == 0) {
-                        x = heap.cons(strtab.strBits(filename_str), x);
-                        word.print("{s}\n", .{filename_str});
-                    }
-                }
-            }
+        var item = abi.typesfirst(heap.alfasort(x));
+        while (item != NIL) : (item = heap.t(item)) {
+            _ = word.putchar('\t');
+            abi.reportType(heap.h(item));
+            _ = word.putchar('\n');
         }
-        abi.exit(0);
     }
+    abi.exit(0);
+}
 
-    if (rt.rs.making) {
-        var s: [*:0]u8 = undefined;
-        _ = abi.sigsetjmp(&rt.rs.env, 1);
-        var cur_argv_idx = arg_idx;
-        while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
-            s = abi.addextn(1, argv[cur_argv_idx]);
+/// `-sources` mode: undumps each remaining argument and lists the distinct
+/// source filenames it depends on. Exits the process when done.
+fn runSourcesMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
+    var s: [*:0]u8 = undefined;
+    var x: Word = NIL;
+    _ = abi.sigsetjmp(&rt.rs.env, 1);
+    var cur_argv_idx = arg_idx;
+    while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
+        s = abi.addextn(1, argv[cur_argv_idx]);
+        if (files.fileExists(s)) {
             if (s == ls.dicp) {
                 _ = abi.keep(ls.dicp);
             }
             dump.undump(s);
-            if (cs.ND != NIL or (heap.heap.files == NIL and rt.rs.oldfiles != NIL)) {
-                if (rt.rs.make_status == 1) {
-                    rt.rs.make_status = 0;
+            var f = if (heap.heap.files == NIL) rt.rs.oldfiles else heap.heap.files;
+            while (f != NIL) : (f = heap.t(f)) {
+                const filename_str = heap.getFil(heap.h(f)).?;
+                if (abi.member(x, strtab.strBits(filename_str)) == 0) {
+                    x = heap.cons(strtab.strBits(filename_str), x);
+                    word.print("{s}\n", .{filename_str});
                 }
-                rt.rs.make_status = abi.strcons(@as(Word, strtab.strBits(s)), rt.rs.make_status);
             }
         }
-        if (getTag(rt.rs.make_status) == .STRCONS) {
-            var h_val: Word = 0;
-            var maxw: Word = 0;
-            word.print("errors or undefined names found in:-\n", .{});
-            while (rt.rs.make_status != 0) {
-                h_val = abi.strcons(heap.h(rt.rs.make_status), h_val);
-                const w = @as(Word, @intCast(word.strlen(strtab.strOf(heap.h(h_val)))));
-                if (w > maxw) {
-                    maxw = w;
-                }
-                rt.rs.make_status = heap.t(rt.rs.make_status);
-            }
-            maxw += 1;
-            const n = @divTrunc(@as(Word, 78), maxw);
-            var w: Word = 0;
-            while (h_val != 0) {
-                w += 1;
-                const str = strtab.strOf(heap.h(h_val));
-                const len = word.strlen(str);
-                const spaces_needed = if (@as(usize, @intCast(maxw)) > len) @as(usize, @intCast(maxw)) - len else 0;
-                var pad_idx: usize = 0;
-                while (pad_idx < spaces_needed) : (pad_idx += 1) {
-                    word.print(" ", .{});
-                }
-                const next_newline = if ((@rem(w, n)) != 0) "" else "\n";
-                word.print("{s}{s}", .{ str, next_newline });
-                h_val = heap.t(h_val);
-            }
-            if ((@rem(w, n)) != 0) {
-                word.print("\n", .{});
-            }
-            rt.rs.make_status = 1;
+    }
+    abi.exit(0);
+}
+
+/// `-make` mode: undumps each remaining argument, collecting any that have
+/// errors or undefined names into `rt.rs.make_status`; reports them (see
+/// [reportMakeFailures]) and exits the process with the resulting status.
+fn runMakeMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
+    var s: [*:0]u8 = undefined;
+    _ = abi.sigsetjmp(&rt.rs.env, 1);
+    var cur_argv_idx = arg_idx;
+    while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
+        s = abi.addextn(1, argv[cur_argv_idx]);
+        if (s == ls.dicp) {
+            _ = abi.keep(ls.dicp);
         }
-        abi.exit(@intCast(rt.rs.make_status));
+        dump.undump(s);
+        if (cs.ND != NIL or (heap.heap.files == NIL and rt.rs.oldfiles != NIL)) {
+            if (rt.rs.make_status == 1) {
+                rt.rs.make_status = 0;
+            }
+            rt.rs.make_status = abi.strcons(@as(Word, strtab.strBits(s)), rt.rs.make_status);
+        }
     }
+    if (getTag(rt.rs.make_status) == .STRCONS) {
+        reportMakeFailures();
+    }
+    abi.exit(@intCast(rt.rs.make_status));
+}
 
-    var initscript: [*:0]const u8 = undefined;
-    if (remaining_argc == 0) {
-        initscript = "script.m";
-    } else if (rt.rs.magic) {
-        initscript = argv[arg_idx];
-    } else {
-        initscript = abi.addextn(1, argv[arg_idx]);
+/// Prints the `-make` failure list (`rt.rs.make_status`) as a padded,
+/// multi-column table, then resets it to the generic nonzero status `1`.
+fn reportMakeFailures() void {
+    var h_val: Word = 0;
+    var maxw: Word = 0;
+    word.print("errors or undefined names found in:-\n", .{});
+    while (rt.rs.make_status != 0) {
+        h_val = abi.strcons(heap.h(rt.rs.make_status), h_val);
+        const w = @as(Word, @intCast(word.strlen(strtab.strOf(heap.h(h_val)))));
+        if (w > maxw) {
+            maxw = w;
+        }
+        rt.rs.make_status = heap.t(rt.rs.make_status);
     }
-
-    if (initscript == ls.dicp) {
-        _ = abi.keep(ls.dicp);
+    maxw += 1;
+    const n = @divTrunc(@as(Word, 78), maxw);
+    var w: Word = 0;
+    while (h_val != 0) {
+        w += 1;
+        const str = strtab.strOf(heap.h(h_val));
+        const len = word.strlen(str);
+        const spaces_needed = if (@as(usize, @intCast(maxw)) > len) @as(usize, @intCast(maxw)) - len else 0;
+        var pad_idx: usize = 0;
+        while (pad_idx < spaces_needed) : (pad_idx += 1) {
+            word.print(" ", .{});
+        }
+        const next_newline = if ((@rem(w, n)) != 0) "" else "\n";
+        word.print("{s}{s}", .{ str, next_newline });
+        h_val = heap.t(h_val);
     }
-
-    _ = signals_mod.signals(abi.SIGFPE, @intFromPtr(&repl.fpeError));
-    _ = signals_mod.signals(abi.SIGTERM, @intFromPtr(&abi.exit));
-    // Interactive stdin gets zigline line editing + history; piped/file stdin
-    // keeps the plain read path (so the golden corpus and integration suite run
-    // unchanged).
-    if (abi.isatty(0) != 0) {
-        lineedit.init(rt.allocator, rt.io);
+    if ((@rem(w, n)) != 0) {
+        word.print("\n", .{});
     }
-    repl.commandLoop(@constCast(initscript));
-    return 0;
+    rt.rs.make_status = 1;
 }
 
 // Version-mismatch scratch, filled by checkVersion and drained by libFails.
