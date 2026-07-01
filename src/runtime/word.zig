@@ -260,8 +260,14 @@ pub const INFIXCNAME: Word = 305;
 
 /// Typed view of the heap-cell tag byte (R3.2) — the canonical definition of the
 /// tag codes (the raw `ATOM`…`TCONS` `Word` consts above are derived from it).
-/// As an `enum(u8)` so reads can `switch` exhaustively. [getTag] returns this; the
-/// open `_` tag admits raw byte values outside the named set.
+/// As an `enum(u8)` so reads can `switch` exhaustively. [getTag] returns this.
+/// Fully exhaustive (no open `_` catch-all) since B3 (2026-07-01): the old
+/// mark-sweep GC stored a cell's "already marked this cycle" state by
+/// negating its tag byte's sign bit, so a live cell's stored byte could
+/// briefly be any of the 23 values' two's-complement negation -- values with
+/// no named member, needing the catch-all. `Heap`'s tracing GC (`live: a
+/// `std.DynamicBitSetUnmanaged`) tracks that separately now, so a cell's tag
+/// byte is always exactly one of the 23 members below, and Zig can enforce it.
 pub const NodeTag = enum(u8) {
     ATOM = 0,
     DOUBLE = 1,
@@ -286,7 +292,6 @@ pub const NodeTag = enum(u8) {
     PAIR = 20,
     UNICODE = 21,
     TCONS = 22,
-    _,
 };
 
 // Tag-pointer bits and misc parser/config constants, relocated from c_abi.zig.

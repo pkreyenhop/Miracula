@@ -99,7 +99,17 @@ pub const Heap = struct {
     tl: ?[*]Word = null,
     tag: ?[*]word.NodeTag = null,
     SPACE: Word = 1250000,
-    listp: Word = ATOMLIMIT - 1,
+    /// Whether cell `x - ATOMLIMIT` is currently allocated (B3: the tracing
+    /// GC's precise liveness bitmap, replacing the old sign-bit-on-the-tag-
+    /// byte trick). Sized to cover the full `[ATOMLIMIT, BIGTOP)` range once,
+    /// in `setupheap` — `self.SPACE` only ever changes which prefix of that
+    /// range `make`/`gc` currently treat as in play.
+    live: std.DynamicBitSetUnmanaged = .{},
+    /// Head of the free list, threaded through free cells' own `tl` field
+    /// (`0` — never a valid cell index, since cells start at `ATOMLIMIT` —
+    /// is the "no free cells" sentinel). `make` pops from it in O(1); `gc`
+    /// rebuilds it from `live` after marking.
+    free_head: Word = 0,
     allocated_dstack_size: usize = 0,
 
     // Heap/GC/dictionary scratch absorbed from module-level globals
@@ -179,7 +189,21 @@ pub const Heap = struct {
 
     /// The usable heap size, in cells.
     pub fn trueheapsize(self: Heap) Word {
-        return if (heap.nogcs == 0) self.listp - ATOMLIMIT + 1 else self.SPACE;
+        // Before the first-ever gc, nothing has been freed, so every claim is
+        // still live -- matches what the old bump-pointer `listp` tracked.
+        return if (heap.nogcs == 0) heap.claims else self.SPACE;
+    }
+
+    /// Thread cells `[from, to)` onto the front of the free list. Does not
+    /// touch `live` — callers own that (freshly `resize`d bits already read
+    /// `false`; `gc`'s sweep clears them explicitly before re-threading).
+    fn threadFree(self: *Heap, from: Word, to: Word) void {
+        var i = to;
+        while (i > from) {
+            i -= 1;
+            self.tp(i).* = self.free_head;
+            self.free_head = i;
+        }
     }
 
     /// Allocate and initialise the heap arena.
@@ -190,13 +214,16 @@ pub const Heap = struct {
             self.cells.resize(rt.allocator, bigtop_val + 1) catch mallocPanic("heap");
             self.refreshPointers();
             @memset(self.tag.?[0 .. bigtop_val + 1], .ATOM);
+            // Sized once, to the full [ATOMLIMIT, BIGTOP) range -- SPACE only
+            // ever changes which prefix of it `make`/`gc` currently use.
+            self.live.resize(rt.allocator, bigtop_val + 1 - @as(usize, @intCast(ATOMLIMIT)), false) catch mallocPanic("heap");
         }
         self.refreshPointers();
         if (self.SPACE > rt.rs.SPACELIMIT) {
             self.SPACE = rt.rs.SPACELIMIT;
         }
-        self.listp = ATOMLIMIT - 1;
-        @memset(self.tag.?[@intCast(ATOMLIMIT)..bigtop_val], .ATOM);
+        self.free_head = 0;
+        self.threadFree(ATOMLIMIT, self.TOP());
     }
 
     /// Reset the heap to empty (between sessions).
@@ -217,18 +244,17 @@ pub const Heap = struct {
             self.SPACE = 1250000;
             self.tag.?[@intCast(self.TOP())] = .ATOM;
         }
+        self.live.resize(rt.allocator, bigtop_val + 1 - @as(usize, @intCast(ATOMLIMIT)), false) catch mallocPanic("heap");
+        self.live.setRangeValue(.{ .start = 0, .end = @intCast(self.SPACE) }, false);
+        self.free_head = 0;
+        self.threadFree(ATOMLIMIT, self.TOP());
     }
 
     /// Allocate a cell with tag `t_val` and fields `(x, y)` — the core allocator.
     pub fn make(self: *Heap, t_val: word.NodeTag, x: Word, y: Word) Word {
-        while (true) {
-            self.listp += 1;
-            if (!poschar(@intFromEnum(self.tag.?[@intCast(self.listp)]))) {
-                break;
-            }
-        }
-        if (self.listp == self.TOP()) {
+        if (self.free_head == 0) {
             if (self.SPACE != rt.rs.SPACELIMIT) {
+                const old_top = self.TOP();
                 if (core.s.compiling == 0) {
                     self.SPACE = rt.rs.SPACELIMIT;
                 } else if (heap.claims <= @divTrunc(self.SPACE, 4) and heap.nogcs > 1) {
@@ -248,8 +274,12 @@ pub const Heap = struct {
                         _ = word.printErr("\n<<increase heap from {d} to {d}>>\n", .{ sp, self.SPACE });
                     }
                 }
+                const new_top = self.TOP();
+                if (new_top > old_top) {
+                    self.threadFree(old_top, new_top);
+                }
             }
-            if (self.listp == self.TOP()) {
+            if (self.free_head == 0) {
                 self.gc();
                 if (@intFromEnum(t_val) > @intFromEnum(word.NodeTag.STRCONS)) {
                     self.mark(x);
@@ -261,16 +291,20 @@ pub const Heap = struct {
             }
         }
         heap.claims += 1;
-        self.tag.?[@intCast(self.listp)] = t_val;
-        self.hp(self.listp).* = x;
-        self.tp(self.listp).* = y;
-        return self.listp;
+        const cell = self.free_head;
+        self.free_head = self.tp(cell).*;
+        self.live.set(@intCast(cell - ATOMLIMIT));
+        self.tag.?[@intCast(cell)] = t_val;
+        self.hp(cell).* = x;
+        self.tp(cell).* = y;
+        return cell;
     }
 
-    /// Run a mark-sweep garbage collection.
+    /// Run a precise mark-sweep garbage collection: clear `live`, mark every
+    /// cell reachable from a root (see `bases`/`mark`), then rebuild the free
+    /// list from whatever's left unmarked (garbage, or already free).
     pub fn gc(self: *Heap) void {
         heap.collecting = 1;
-        var idx = @as(usize, @intCast(ATOMLIMIT));
         if (rt.rs.atgc != 0) {
             _ = word.printErr("\n<<gc after {d} claims>>\n", .{heap.claims});
         }
@@ -292,31 +326,25 @@ pub const Heap = struct {
         }
         heap.nogcs += 1;
 
-        while (self.tag.?[idx] != .ATOM) {
-            const signed_val = @as(i8, @bitCast(@intFromEnum(self.tag.?[idx])));
-            self.tag.?[idx] = @enumFromInt(@as(u8, @bitCast(-signed_val)));
-            idx += 1;
+        self.live.setRangeValue(.{ .start = 0, .end = @intCast(self.SPACE) }, false);
+        self.bases();
+
+        self.free_head = 0;
+        var i = self.TOP();
+        while (i > ATOMLIMIT) {
+            i -= 1;
+            if (!self.live.isSet(@intCast(i - ATOMLIMIT))) {
+                self.tp(i).* = self.free_head;
+                self.free_head = i;
+            }
         }
 
-        self.bases();
-        self.listp = ATOMLIMIT - 1;
         heap.cellcount += heap.claims;
         heap.claims = 0;
         heap.collecting = 0;
         const options = @import("version_options");
         if (options.is_strict or @import("builtin").mode == .Debug) {
             self.validate();
-        }
-    }
-
-    /// Walk the heap after collection, fixing up the relocated cell tags/links.
-    pub fn gcpatch(self: *Heap) void {
-        var idx = @as(usize, @intCast(ATOMLIMIT));
-        while (self.tag.?[idx] != .ATOM) : (idx += 1) {
-            const signed_val = @as(i8, @bitCast(@intFromEnum(self.tag.?[idx])));
-            if (signed_val < 0) {
-                self.tag.?[idx] = @enumFromInt(@as(u8, @bitCast(-signed_val)));
-            }
         }
     }
 
@@ -442,21 +470,22 @@ pub const Heap = struct {
         return x >= ATOMLIMIT and x < self.TOP();
     }
 
-    /// Recursively mark cell `x` and its descendants as reachable (GC).
+    /// Recursively mark cell `x` and its descendants as reachable (GC), by
+    /// setting their bit in `live`. Iterates down `tl` chains rather than
+    /// recursing (recursing on both `hd` and `tl` would stack-overflow
+    /// marking a long lazy list spine); still recurses into `hd`, assumed
+    /// shallower. `live.isSet` doubles as the "already visited" cycle guard
+    /// pointer-reversal used to get from the tag's sign bit.
     pub fn mark(self: *Heap, x_val: Word) void {
-        var x = x_val & ~word.tlptrbits;
-        while (self.isptr(x) and negchar(@intFromEnum(self.tag.?[@intCast(x)]))) {
-            const p1 = &self.tag.?[@intCast(x)];
-            const signed_tag = @as(i8, @bitCast(@intFromEnum(p1.*)));
-            const new_signed_tag = -signed_tag;
-            p1.* = @enumFromInt(@as(u8, @bitCast(new_signed_tag)));
-
-            const new_tag = @intFromEnum(p1.*);
-            if (new_tag > @intFromEnum(word.NodeTag.STRCONS)) {
+        var x = x_val;
+        while (self.isptr(x) and !self.live.isSet(@intCast(x - ATOMLIMIT))) {
+            self.live.set(@intCast(x - ATOMLIMIT));
+            const tag_val = @intFromEnum(self.tag.?[@intCast(x)]);
+            if (tag_val > @intFromEnum(word.NodeTag.STRCONS)) {
                 self.mark(self.h(x));
             }
-            if (new_tag >= @intFromEnum(word.NodeTag.INT)) {
-                x = self.t(x) & ~word.tlptrbits;
+            if (tag_val >= @intFromEnum(word.NodeTag.INT)) {
+                x = self.t(x);
             } else {
                 break;
             }
@@ -471,16 +500,11 @@ pub const Heap = struct {
         var x: Word = ATOMLIMIT;
         const top_limit = self.TOP();
         while (x < top_limit) : (x += 1) {
-            const tag_byte = @intFromEnum(self.tag.?[@intCast(x)]);
-            const signed_tag = @as(i8, @bitCast(tag_byte));
-            if (signed_tag <= 0) continue; // Dead/free cell or non-marked cell during GC.
+            if (!self.live.isSet(@intCast(x - ATOMLIMIT))) continue; // Free cell.
 
-            const tag = @as(word.NodeTag, @enumFromInt(tag_byte));
-            switch (tag) {
-                .ATOM, .DOUBLE, .DATAPAIR, .FILEINFO, .TVAR, .INT, .CONSTRUCTOR, .STRCONS, .ID, .AP, .LAMBDA, .CONS, .TRIES, .LABEL, .SHOW, .STARTREADVALS, .LET, .LETREC, .SHARE, .LEXER, .PAIR, .UNICODE, .TCONS => {},
-                _ => std.debug.panic("heap.validate: cell {d} has invalid live tag {d}", .{ x, tag_byte }),
-            }
-
+            // No "is this a valid tag" check needed anymore: NodeTag is fully
+            // exhaustive (B3), so `self.tag.?[x]` can never hold anything else.
+            const tag = self.tag.?[@intCast(x)];
             const tag_val = @intFromEnum(tag);
 
             if (tag_val > @intFromEnum(word.NodeTag.STRCONS)) {
@@ -574,6 +598,90 @@ test "heap accessors: cons/make build cells that h/t/getTag read back" {
     try std.testing.expectEqual(word.NodeTag.AP, getTag(apnode));
     heap.setTag(apnode, .CONS);
     try std.testing.expectEqual(word.NodeTag.CONS, getTag(apnode));
+}
+
+test "gc: a long-lived list survives many forced collections; garbage is reclaimed" {
+    tu.freshInterp();
+
+    // `bases()`'s conservative stack scan needs `rt.rs.cstack` as its "bottom
+    // of the interesting range" boundary -- normally set once by
+    // `startup.mainEntry` (real runs only). Unit tests never go through
+    // that, so it's `null` here; take the address of a local, matching what
+    // `mainEntry` does with its own `manonly`, so a real `gc()` cycle
+    // (this test's whole point) doesn't crash finding it unset.
+    var stack_anchor: Word = 0;
+    const saved_cstack = rt.rs.cstack;
+    rt.rs.cstack = @ptrCast(&stack_anchor);
+
+    // Shrink the heap so allocating the workload below forces `gc()` to run
+    // many times (B3's own DoD: "GC stress test stable"), then restore it --
+    // `tu.freshInterp()` only sets up once per test binary, so a later test
+    // must see the original size, not this one's.
+    const saved_spacelimit = rt.rs.SPACELIMIT;
+    const saved_space = heap.SPACE;
+    defer {
+        rt.rs.SPACELIMIT = saved_spacelimit;
+        heap.SPACE = saved_space;
+        heap.resetheap();
+        rt.rs.cstack = saved_cstack;
+    }
+    // Set the small heap size once, *before* any allocation in this test.
+    // `resetheap()` unconditionally rebuilds the free list over the entire
+    // range -- calling it again mid-test, after the chain below is alive,
+    // would discard the chain along with everything else (it has no way to
+    // tell "still reachable" from "free"; that is `gc()`'s job, not
+    // `resetheap()`'s). One resetheap, sized to comfortably hold the chain
+    // (4x) while still being small enough that the churn phase below forces
+    // many real collections.
+    const chain_len = 500;
+    rt.rs.SPACELIMIT = chain_len * 4;
+    heap.resetheap();
+
+    // A long-lived chain, kept alive only by this local `Word` (matching how
+    // real roots are found: the conservative stack scan in `bases()`, not any
+    // special-cased "test root" mechanism) -- if `mark`/`gc` ever lose track
+    // of part of it, or if the `Spine`/GC-root registry from the B2(b) cutover
+    // somehow interfered, this is exactly the kind of workload that would
+    // show it: every collection below must re-discover the *entire* chain as
+    // reachable, every time.
+    // Store `i % 100` rather than `i` itself: `i` alone climbs past
+    // `ATOMLIMIT` (447) well before `chain_len` (500), and a raw integer
+    // that large stored as `hd` reads -- to `validate()`'s heuristic, which
+    // cannot distinguish "a plain integer that happens to be large" from "a
+    // cell reference" any other way -- exactly like an out-of-bounds pointer
+    // once the heap is this small. Not a GC bug; a property of this
+    // representation (the same ambiguity B2/B3's audits already flagged).
+    var chain: Word = word.NIL;
+    var i: Word = 0;
+    while (i < chain_len) : (i += 1) {
+        chain = heap.cons(@mod(i, 100), chain);
+    }
+
+    // Churn short-lived garbage through the (now mostly-full) heap: this
+    // forces many `gc()` cycles, each of which must re-mark the whole chain
+    // (constant O(chain_len) cost per cycle, not growing as the churn count
+    // grows) while reclaiming the garbage around it. `0`/`0`, not `churn`,
+    // for the same reason as above -- the churn count climbs into the
+    // thousands.
+    const nogcs_before = heap.nogcs;
+    var churn: Word = 0;
+    while (churn < chain_len * 30) : (churn += 1) {
+        _ = heap.cons(0, 0);
+    }
+
+    try std.testing.expect(heap.nogcs > nogcs_before);
+
+    // Walk the whole chain back: every value must still be exactly what was
+    // stored, in the same order (built as (chain_len-1)%100, ..., 1%100, 0%100).
+    var w = chain;
+    var expected: Word = chain_len - 1;
+    while (w != word.NIL) {
+        try std.testing.expectEqual(word.NodeTag.CONS, getTag(w));
+        try std.testing.expectEqual(@mod(expected, 100), h(w));
+        w = t(w);
+        expected -= 1;
+    }
+    try std.testing.expectEqual(@as(Word, -1), expected);
 }
 
 /// Allocate a `TRIES` cell `(x . y)` (a pattern-match alternative chain).
@@ -882,12 +990,6 @@ pub fn resetgcstats() void {
     initclock();
 }
 
-/// Whether byte `val` is positive read as signed (high bit clear).
-fn poschar(val: u8) bool {
-    const signed_val = @as(i8, @bitCast(val));
-    return signed_val > 0;
-}
-
 /// Allocate a cell with tag `t_val` and fields `(x, y)` — the core allocator.
 pub fn make(t_val: word.NodeTag, x: Word, y: Word) Word {
     return heap.make(t_val, x, y);
@@ -896,11 +998,6 @@ pub fn make(t_val: word.NodeTag, x: Word, y: Word) Word {
 /// Run a mark-sweep garbage collection.
 pub fn gc() void {
     heap.gc();
-}
-
-/// Walk the heap after collection, fixing up the relocated cell tags/links.
-pub fn gcpatch() void {
-    heap.gcpatch();
 }
 
 /// The standard-error `FILE` handle (tolerating either a fn or value form).
@@ -2568,8 +2665,3 @@ test "dumpOb / loadDefs: roundtrip a cons of two ints through the .x format" {
     try std.testing.expectEqual(@as(Word, 100), getsmallint(loaded_t));
 }
 
-/// Whether byte `val` is negative read as signed (high bit set).
-fn negchar(val: u8) bool {
-    const signed_val = @as(i8, @bitCast(val));
-    return signed_val < 0;
-}
