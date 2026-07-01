@@ -224,6 +224,37 @@ pub fn build(b: *std.Build) void {
     }));
     run_regression.step.dependOn(&install_mira.step);
 
+    const run_generate_golden = b.addRunArtifact(b.addExecutable(.{
+        .name = "generate_golden",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/generate_golden.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    }));
+    run_generate_golden.addArg(mira_path);
+    run_generate_golden.step.dependOn(&install_mira.step);
+
+    const run_golden_capture = b.addRunArtifact(b.addExecutable(.{
+        .name = "golden_capture",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/reducer/golden_capture.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    }));
+    run_golden_capture.step.dependOn(&install_mira.step);
+
+    const run_reducer_verify = b.addRunArtifact(b.addExecutable(.{
+        .name = "reducer_verify",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/reducer/verify_golden.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    }));
+    run_reducer_verify.step.dependOn(&install_mira.step);
+
     const test_step = b.step("test", "Run all tests");
     test_step.dependOn(&run_utf8_tests.step);
     test_step.dependOn(&run_just_tests.step);
@@ -252,6 +283,15 @@ pub fn build(b: *std.Build) void {
 
     const test_regression = b.step("test-regression", "Run the C compatibility differential regression tests");
     test_regression.dependOn(&run_regression.step);
+
+    const test_generate_golden = b.step("generate-golden", "Regenerate golden snapshots");
+    test_generate_golden.dependOn(&run_generate_golden.step);
+
+    const test_golden_capture = b.step("capture-reducer-golden", "Capture baseline metrics for reducer");
+    test_golden_capture.dependOn(&run_golden_capture.step);
+
+    const test_reducer_verify = b.step("verify-reducer-golden", "Verify reducer metrics against golden baseline");
+    test_reducer_verify.dependOn(&run_reducer_verify.step);
 
     const test_steer = b.step("test-steer", "Run only steer tests");
     test_steer.dependOn(&run_main_tests.step);
