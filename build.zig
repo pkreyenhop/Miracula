@@ -224,6 +224,17 @@ pub fn build(b: *std.Build) void {
     }));
     run_regression.step.dependOn(&install_mira.step);
 
+    const run_smoke = b.addRunArtifact(b.addExecutable(.{
+        .name = "smoke_runner",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tests/smoke.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    }));
+    run_smoke.addArg(mira_path);
+    run_smoke.step.dependOn(&install_mira.step);
+
     const run_generate_golden = b.addRunArtifact(b.addExecutable(.{
         .name = "generate_golden",
         .root_module = b.createModule(.{
@@ -264,6 +275,7 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_parser_tests.step);
     test_step.dependOn(&run_sigint_check.step);
     test_step.dependOn(&run_spine_check.step);
+    test_step.dependOn(&run_smoke.step);
 
     const test_mira = b.step("test-mira", "Run Zig integration tests against mira");
     test_mira.dependOn(&run_mira_tests.step);
@@ -283,6 +295,9 @@ pub fn build(b: *std.Build) void {
 
     const test_regression = b.step("test-regression", "Run the C compatibility differential regression tests");
     test_regression.dependOn(&run_regression.step);
+
+    const test_smoke = b.step("test-smoke", "Run the REPL integration smoke tests");
+    test_smoke.dependOn(&run_smoke.step);
 
     const test_generate_golden = b.step("generate-golden", "Regenerate golden snapshots");
     test_generate_golden.dependOn(&run_generate_golden.step);
@@ -314,6 +329,7 @@ pub fn build(b: *std.Build) void {
     check_step.dependOn(&run_parser_tests.step);
     check_step.dependOn(&run_sigint_check.step);
     check_step.dependOn(&run_spine_check.step);
+    check_step.dependOn(&run_smoke.step);
 
     const migration_check = b.step("check-migration", "Alias for the full Zig build verification gate");
     migration_check.dependOn(check_step);
