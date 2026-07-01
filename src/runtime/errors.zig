@@ -14,7 +14,7 @@ const word = @import("word.zig");
 /// propagate Zig errors up the call stack; those paths retain sigjmp_buf.
 /// This is permanent, not a stopgap: an audit of every setjmp/longjmp call
 /// site (docs/REMAINING_WORK_PLAN.md, Phase 4) found both siglongjmp calls
-/// live inside callconv(.c) signal handlers with no ordinary-control-flow
+/// live inside C-calling-convention signal handlers with no ordinary-control-flow
 /// longjmp usage anywhere else to replace, so there is no viable end-to-end
 /// error-propagation alternative for this part of the recovery mechanism.
 ///

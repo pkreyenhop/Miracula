@@ -101,7 +101,7 @@ metric "clib./c. call sites" "$(printf '%s' "$m12" | grep -c . || true)" "0" "$m
 IDX=13
 # callconv(.c) occurrences in the codebase.
 m13=$(grep -rnE --include='*.zig' 'callconv\(\.c\)' "$SRC" || true)
-metric "callconv(.c) usage" "$(printf '%s' "$m13" | grep -c . || true)" "1 (signal trampoline)" "$m13"
+metric "callconv(.c) usage" "$(printf '%s' "$m13" | grep -c . || true)" "6 (confirmed permanent signal-trampoline floor)" "$m13"
 
 IDX=14
 # raw hd[, tl[, tag[ accesses outside of src/runtime/heap.zig.

@@ -430,13 +430,20 @@ not wait behind Track B's design work.
   tests + 44/44 golden + 51/51 spine-corpus stress checks + lint all green; fib(27) timing shows
   no regression vs. the pre-B3 baseline.
 
-### Track C — Close-out
+### Track C — Close-out ✅ *(done, 2026-07-01)*
 
-* **C1 (R8.2) — Final scorecard.** Against the *revised* DoD: `extern fn` = syscall floor,
-  `extern var` = `export fn` = `clib.` = 0, `callconv(.c)` = 1. *DoD: `scripts/idiomatic-check.sh`
-  shows the target row; document the syscall floor.*
-* **C2 (R8.3) — Rewrite the data-model docs.** Update `ARCHITECTURE.md` (cell store, GC, strings,
-  I/O) and `ZIG_MIGRATION.md` to describe the new model. *DoD: docs match code.*
+* **C1 (R8.2) — Final scorecard. ✅ Done.** Revised DoD (`callconv(.c)` = 1) turned out to be
+  unreachable — Phase 4's audit found every `callconv(.c)`/`longjmp` usage is a genuine,
+  permanent signal-trampoline boundary, not a convertible anti-pattern. Against the
+  *confirmed-permanent* DoD (`extern fn` = syscall floor, `extern var` = `export fn` =
+  `clib.` = 0, `callconv(.c)` = 6): all met. See the "C1 snapshot" below for the full
+  `scripts/idiomatic-check.sh` re-run.
+* **C2 (R8.3) — Rewrite the data-model docs. ✅ Done.** `ARCHITECTURE.md` rewritten to
+  describe the current model: the aggregated `Interp` singleton, string interning, the
+  explicit `Spine` (replacing pointer reversal), the precise tracing GC (replacing the
+  sign-bit trick), and the confirmed-permanent signal-recovery boundary. `ZIG_MIGRATION.md`
+  gained a closing "Phase 9" milestone entry summarizing the post-migration redesign work
+  (state aggregation, B1/B2/B3, R9 splits, the recovery-model decision).
 
 ---
 
@@ -449,7 +456,7 @@ Track A (mechanical, do first; mostly independent of each other):
                           ┘
 Track B (representation; after A, each gated on a design note):
   B1 string interning ──► B2 Value union ──► B3 tracing GC
-Track C:
+Track C: ✅ done
   C1 final scorecard ──► C2 doc rewrite
 ```
 
@@ -482,42 +489,48 @@ becomes pure, idiomatic Zig.
 
 ## Scorecard (data-model metrics)
 
-| Metric | R0 baseline | Now (2026-06-23) | Target |
+| Metric | R0 baseline | Now (2026-07-01) | Target |
 |--------|-------------|------------------|--------|
-| `extern fn` declarations | 322 | **14** | syscall floor |
+| `extern fn` declarations | 322 | **13** | syscall floor |
 | &nbsp;&nbsp;↳ internal anti-pattern (convertible) | — | 0 | 0 |
-| &nbsp;&nbsp;↳ genuine libc/syscall | — | 14 (6 in `main_clib`: `setjmp`×5 + `times`) | `setjmp` family is permanent (A4b resolved: signal-trampoline floor, not a gap) |
+| &nbsp;&nbsp;↳ genuine libc/syscall | — | 13 (`main_clib`: `setjmp` family + `times`) | `setjmp` family is permanent (A4b resolved: signal-trampoline floor, not a gap) |
 | `extern var` declarations | 94 | **0** ✓ *(A2)* | 0 |
-| `export fn` (linker symbols) | 174 | **3** *(A3; still-extern-referenced bridges)* | 0 (no external linkers) |
+| `export fn` (linker symbols) | 174 | **1** *(A3; the one still-`extern`-referenced FFI bridge, `utf8.zig`'s `fromUTF8`)* | 0 (no external linkers) |
 | `clib.` / `c.` call sites | 2821 | **0** | 0 |
 | `callconv(.c)` | 12 | **6** *(A4a stripped gratuitous; floor is the genuine signal boundary)* | **6 — confirmed permanent** (A4b resolved: no non-signal `longjmp` usage exists to replace) |
 | raw `hd[`/`tl[`/`tag[` outside `heap.zig` | 290 | **0** | 0 |
 | node-string `[*:0]`-as-`Word` casts | 129 | **0** ✓ *(B1: interned `StrId` via `strtab.zig`)* | 0 |
-| &nbsp;&nbsp;↳ non-string `@intFromPtr`/`@ptrFromInt` (FILE-handle / ptr-arith / signal) | — | 68 | enumerated (not B1) |
+| &nbsp;&nbsp;↳ non-string `@intFromPtr`/`@ptrFromInt` (FILE-handle / ptr-arith / signal) | — | 70 | enumerated (not B1) |
 | `Word = c_long` (value type is a C type) | yes | **no — `i64`** | `i64` |
 | bare `< ATOMLIMIT` / `< 256` magic thresholds | ~23 | **0** | 0 |
 
-### C1 snapshot — `scripts/idiomatic-check.sh` (2026-06-30)
+### C1 snapshot — `scripts/idiomatic-check.sh` (2026-07-01, re-run for Phase 7/C2)
 
 Recorded as the Track-C scorecard checkpoint. The C-ABI DoD row is **met**: `callconv(.c)`
-= 6 is the documented signal-trampoline floor, now confirmed **permanent** — Phase 4 of
+= 6 is the documented signal-trampoline floor, confirmed **permanent** — Phase 4 of
 REMAINING_WORK_PLAN.md audited every `setjmp`/`longjmp` call site and found no
 non-signal-triggered usage to replace, so **A4b is resolved (not pursued) and C1 is no
-longer blocked on it**.
+longer blocked on it**. The script's own metric-13 target label was updated to match (it
+previously read the stale "1 (signal trampoline)").
+
+Deltas vs. the 2026-06-30 snapshot: `export fn` improved **2 → 1**; `extern fn` improved
+**14 → 13**; raw cell access outside `heap.zig` improved **3 → 0** (the small encapsulation
+leak flagged in that snapshot is gone — fixed incidentally by the R9 function-splitting and
+B3 GC work, not a dedicated pass).
 
 | # | metric (non-FFI scope) | count | target |
 |---|------------------------|------:|--------|
-| 9 | `export fn` (C-ABI linker symbols) | **2** | FFI-only |
-| 10 | `extern fn` declarations | **14** | syscall floor |
+| 9 | `export fn` (C-ABI linker symbols) | **1** | FFI-only |
+| 10 | `extern fn` declarations | **13** | syscall floor |
 | 11 | `extern var` declarations | **0** ✓ | 0 |
 | 12 | `clib.` / `c.` call sites | **0** ✓ | 0 |
 | 13 | `callconv(.c)` usage | **6** | **6 — confirmed permanent** signal-trampoline floor (A4b resolved) |
-| 14 | raw cell access (`hd`/`tl`/`tag[...]`) outside `heap.zig` | **3** | 0 |
+| 14 | raw cell access (`hd`/`tl`/`tag[...]`) outside `heap.zig` | **0** ✓ | 0 |
 | 15 | `[*:0]`-as-`Word` pointer casts | **70** | 0 (enumerated: FILE-handle / ptr-arith / signal) |
 
-Two deltas vs. the 2026-06-23 column to note: `export fn` improved **3 → 2**; raw
-cell access outside `heap.zig` regressed **0 → 3** — a small encapsulation leak to
-re-confine (Phase 1 / R3-adjacent cleanup).
+All non-FFI DoD rows are now met or at their confirmed-permanent floor (9–14); row 15 is
+fully enumerated (not a B1-string-interning target — see the scorecard table above). This
+closes out **C1** (Phase 7 of REMAINING_WORK_PLAN.md).
 
 ---
 

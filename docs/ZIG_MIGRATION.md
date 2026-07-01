@@ -57,6 +57,50 @@ This document outlines the history, completed milestones, target platform suppor
   - **Cluster I (partial)** — `c_int` fields in `RuntimeState` and `CompilerState` converted to native `i32` where no C-ABI boundary is crossed.
   - **Cluster K (partial)** — `zig fmt` applied to entire codebase (K1). `///` doc comments added to `CompilerState` and `core_state.zig` exports (K3).
 
+### ✔ Phase 9: Post-migration redesign — state, representation, GC, structure *(2026-06-23 – 2026-07-01)*
+* **Goal**: With the C-to-Zig port itself complete (Phases 1–8), address the deeper
+  representation and architecture questions the port had deliberately deferred: one
+  aggregated state singleton instead of nine, string interning, the reduction engine's
+  pointer-reversal encoding, the GC's sign-bit trick, the longest functions, and the
+  error/recovery model. Tracked in [REMAINING_WORK_PLAN.md](REMAINING_WORK_PLAN.md), which
+  consolidates and sequences the open items originally spread across
+  [REDESIGN_DATA_MODEL.md](REDESIGN_DATA_MODEL.md),
+  [IDIOMATIC_ARCHITECTURE_PLAN.md](IDIOMATIC_ARCHITECTURE_PLAN.md), and
+  [SHARED_STATE_PLAN.md](SHARED_STATE_PLAN.md).
+* **Outcome**:
+  - **State aggregation (SHARED_STATE Phases 1–4)** — every mutable interpreter state struct
+    (`RuntimeState`, `Heap`, `LexState`, `CompilerState`, `CoreState`, `IoState`, `EvalState`,
+    `Bignum`, `StringTable`) folded into one `Interp` singleton (`src/runtime/interp.zig`);
+    `main.zig` dissolved to a ~80-line process entry point, its `main.<name>` re-export hub
+    removed entirely (`IDIOMATIC_ARCHITECTURE_PLAN` Part A). Threading `*Interp` explicitly
+    through the ~2,100 call sites (Phases 5–6) is deferred — large, and only needed for
+    multi-instance use, which the current serial test model doesn't require.
+  - **String interning (B1/R6)** — node-stored identifier/pathname strings moved from raw
+    `[*:0]` pointers cast to `Word` to an interned `StrId` table (`strtab.zig`), deduplicating
+    by content.
+  - **The reduction spine (B2 option (b))** — replaced in-graph pointer reversal (which
+    borrowed a cell's own `hd`/`tl` field to encode the return path, masking `& ~tlptrbits` on
+    every hot-loop access) with an explicit `Spine` stack (`reducer/spine.zig`), registered as
+    a precise GC root set. Found and fixed two real bugs during the cutover: a boundary-check
+    semantic gap and a ~15x performance regression (fixed with a buffer pool).
+  - **Tracing GC (B3/R5)** — replaced the sign-bit-on-tag-byte mark-sweep with a
+    `std.DynamicBitSetUnmanaged` liveness bitmap and an explicit free list, making cell
+    allocation O(1) instead of an O(n)-worst-case bump-scan, and making `NodeTag` a fully
+    exhaustive enum.
+  - **R9 function-splitting** — the six longest functions in the codebase (`reduce`,
+    `loadfile`, `yylex`, `mainEntry`, `etype`, `handleReadyState`; up to 813 lines each)
+    extracted into named steps, each independently golden-verified.
+  - **Error/recovery-model decision (R10-Step 3 / A4b / J2)** — audited every
+    `setjmp`/`longjmp` call site and confirmed all of them are signal-handler-triggered only;
+    resolved the recovery-model question by technical necessity (`setjmp`/`longjmp` is
+    permanent for SIGINT/SIGFPE recovery, not a stopgap awaiting a rewrite) rather than
+    proceeding with a risky sentinel-unification refactor. See
+    [ARCHITECTURE.md](ARCHITECTURE.md)'s "Key Invariants" section for the technical detail.
+  - Along the way, found and flagged (not fixed, to keep each change independently
+    reviewable) three pre-existing, unrelated bugs: a divide-by-zero in `-make`'s failure
+    report on long file paths, a crash evaluating `system "..."` at the REPL prompt, and a
+    dump-cache bug that silently masks a script's syntax error on a second, unchanged run.
+
 ---
 
 ## 💻 Target Platform Build Status

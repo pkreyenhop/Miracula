@@ -11,7 +11,7 @@ const NIL = word.NIL;
 /// linker symbol.  Extracted in H1 from the scattered `export var` globals in
 /// `types.zig`, `trans.zig`, and `heap.zig`.
 ///
-/// Accessed via `pub const cs = compiler_state.cs` in `main.zig`.
+/// Accessed via `compiler_state.cs`, which points into `interp.comp`.
 pub const CompilerState = struct {
     // ── Typechecker (types.zig) ──────────────────────────────────────────────
     /// Fresh type-variable counter; reset at start of each type-check pass.
