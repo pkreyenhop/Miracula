@@ -47,7 +47,6 @@ inline fn pnVal(x: Word) Word {
 /// If the file does not exist during `initialising`, panics; otherwise prints a notice.
 /// Callers that want dump-or-load semantics should call `undump()` instead.
 pub fn loadfile(t_val: [*:0]const u8) void {
-    var h_val: Word = NIL;
     core_state.s.loading = 1;
     core_state.s.errs = 0;
     core_state.s.errline = 0;
@@ -120,6 +119,80 @@ pub fn loadfile(t_val: [*:0]const u8) void {
 
     _ = parser_api.parseCurrent() catch {};
 
+    resolveExportFileList();
+
+    if (core_state.s.SYNERR == 0 and rt.rs.includees != NIL) {
+        heap.heap.files = abi.append1(heap.heap.files, mkincludes(rt.rs.includees));
+        rt.rs.includees = NIL;
+    }
+    rt.rs.ld_stuff = NIL;
+
+    if (core_state.s.SYNERR == 0) {
+        if (rt.rs.verbosity != 0 or (rt.rs.making and !rt.rs.mkexports and !rt.rs.mksources)) {
+            word.print("checking types in {s}\n", .{t_val});
+        }
+        types_mod.checktypes();
+    }
+
+    const h_val = resolveExports();
+
+    computeBereavedNames();
+
+    reportBereavedExports(h_val);
+
+    reportUnusedDefinitions();
+
+    if (core_state.s.SYNERR == 0) {
+        var x = heap.filDefs(heap.h(heap.heap.files));
+        cs.lfrule = 0;
+        while (x != NIL) : (x = heap.t(x)) {
+            if (heap.idType(heap.h(x)) != word.type_t) {
+                cs.current_id = heap.h(x);
+                cs.polyshowerror = 0;
+                heap.tp(heap.h(x)).* = trans_mod.codegen(heap.idVal(heap.h(x)));
+                if (cs.polyshowerror != 0) {
+                    heap.tp(heap.h(x)).* = word.UNDEF;
+                }
+            }
+        }
+        cs.current_id = 0;
+        if (cs.lfrule != 0 and (rt.rs.verbosity != 0 or rt.rs.making)) {
+            word.print("grammar optimisation: {} common left factors found\n", .{cs.lfrule});
+        }
+        if (rt.rs.initialising != 0 and cs.ND != NIL) {
+            errors.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, if (rt.rs.okprel) "stdenv" else "prelude")}});
+        }
+        if (rt.rs.initialising != 0) {
+            dump.makedump();
+        } else if (files.isMirandaSource(t_val) != 0) {
+            dump.fixexports();
+            dump.makedump();
+            dump.unfixexports();
+        }
+        if (core_state.s.errline == 0 and core_state.s.errs != 0 and word.strcmp(strtab.strOf(heap.h(core_state.s.errs)), rt.rs.current_script.?) == 0) {
+            core_state.s.errline = heap.t(core_state.s.errs);
+        }
+        cs.ND = heap.alfasort(cs.ND);
+        core_state.s.loading = 0;
+        return;
+    }
+
+    if (rt.rs.initialising != 0) {
+        errors.fatal("panic: cannot compile %s\n", .{.{@as([*:0]const u8, if (rt.rs.okprel) "stdenv" else "prelude")}});
+    }
+    rt.rs.oldfiles = heap.heap.files;
+    heap.unload();
+    if (files.isMirandaSource(t_val) != 0 and core_state.s.SYNERR != 2) {
+        dump.makedump();
+    }
+    core_state.s.SYNERR = 0;
+    core_state.s.loading = 0;
+}
+
+/// Resolves each name in `ls.exportfiles` against `rt.rs.includees`: `+` pulls in
+/// every variable defined in the current file, anything else must match exactly
+/// one included fileid (ambiguous or missing matches abandon compilation).
+fn resolveExportFileList() void {
     if (core_state.s.SYNERR == 0 and ls.exportfiles != NIL) {
         var s = ls.exportfiles;
         while (s != NIL) : (s = heap.t(s)) {
@@ -150,20 +223,14 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             word.printErr("compilation abandoned\n", .{});
         }
     }
+}
 
-    if (core_state.s.SYNERR == 0 and rt.rs.includees != NIL) {
-        heap.heap.files = abi.append1(heap.heap.files, mkincludes(rt.rs.includees));
-        rt.rs.includees = NIL;
-    }
-    rt.rs.ld_stuff = NIL;
-
-    if (core_state.s.SYNERR == 0) {
-        if (rt.rs.verbosity != 0 or (rt.rs.making and !rt.rs.mkexports and !rt.rs.mksources)) {
-            word.print("checking types in {s}\n", .{t_val});
-        }
-        types_mod.checktypes();
-    }
-
+/// Finalises `rt.rs.exports`: sorts constructors ahead of the rest, embargoes
+/// (previously-exported-but-now-hidden names) removed, undefined/redundant
+/// names reported and folded back into `cs.ND`/dropped. Returns the export-list
+/// declaration node (for error-location reporting by the caller), or `NIL`.
+fn resolveExports() Word {
+    var h_val: Word = NIL;
     if (core_state.s.SYNERR == 0 and rt.rs.exports != NIL) {
         if (cs.ND != NIL) {
             rt.rs.exports = NIL;
@@ -227,7 +294,14 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             }
         }
     }
+    return h_val;
+}
 
+/// Computes `rt.rs.bereaved`: type names reachable from the export list (or,
+/// with no explicit export list, from the whole file) plus from free ids, that
+/// aren't themselves exported — candidates for the "incomplete export list"
+/// warning.
+fn computeBereavedNames() void {
     if (core_state.s.SYNERR == 0 and cs.ND == NIL and (rt.rs.exports != NIL or heap.t(heap.heap.files) != NIL)) {
         var e1 = rt.rs.exports;
         var r: Word = NIL;
@@ -281,7 +355,11 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             }
         }
     }
+}
 
+/// If the export list is missing a bereaved typename, warns and (if `h_val`,
+/// the export-list declaration node, is known) reports its source location.
+fn reportBereavedExports(h_val: Word) void {
     if (rt.rs.exports != NIL and rt.rs.bereaved != NIL) {
         const b = abi.intersection(rt.rs.bereaved, cs.newtyps);
         if (b != NIL) {
@@ -292,7 +370,11 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             abi.outHere(abi.stdout(), h_val, 1);
         }
     }
+}
 
+/// Warns about unused local definitions (`rt.rs.detrop`) and unused grammar
+/// nonterminals, both skipping past leading `LABEL`-tagged entries.
+fn reportUnusedDefinitions() void {
     if (core_state.s.SYNERR == 0 and rt.rs.detrop != NIL) {
         const gd = rt.rs.detrop;
         while (rt.rs.detrop != NIL and getTag(heap.dval(heap.h(rt.rs.detrop))) == .LABEL) {
@@ -330,52 +412,6 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             }
         }
     }
-
-    if (core_state.s.SYNERR == 0) {
-        var x = heap.filDefs(heap.h(heap.heap.files));
-        cs.lfrule = 0;
-        while (x != NIL) : (x = heap.t(x)) {
-            if (heap.idType(heap.h(x)) != word.type_t) {
-                cs.current_id = heap.h(x);
-                cs.polyshowerror = 0;
-                heap.tp(heap.h(x)).* = trans_mod.codegen(heap.idVal(heap.h(x)));
-                if (cs.polyshowerror != 0) {
-                    heap.tp(heap.h(x)).* = word.UNDEF;
-                }
-            }
-        }
-        cs.current_id = 0;
-        if (cs.lfrule != 0 and (rt.rs.verbosity != 0 or rt.rs.making)) {
-            word.print("grammar optimisation: {} common left factors found\n", .{cs.lfrule});
-        }
-        if (rt.rs.initialising != 0 and cs.ND != NIL) {
-            errors.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, if (rt.rs.okprel) "stdenv" else "prelude")}});
-        }
-        if (rt.rs.initialising != 0) {
-            dump.makedump();
-        } else if (files.isMirandaSource(t_val) != 0) {
-            dump.fixexports();
-            dump.makedump();
-            dump.unfixexports();
-        }
-        if (core_state.s.errline == 0 and core_state.s.errs != 0 and word.strcmp(strtab.strOf(heap.h(core_state.s.errs)), rt.rs.current_script.?) == 0) {
-            core_state.s.errline = heap.t(core_state.s.errs);
-        }
-        cs.ND = heap.alfasort(cs.ND);
-        core_state.s.loading = 0;
-        return;
-    }
-
-    if (rt.rs.initialising != 0) {
-        errors.fatal("panic: cannot compile %s\n", .{.{@as([*:0]const u8, if (rt.rs.okprel) "stdenv" else "prelude")}});
-    }
-    rt.rs.oldfiles = heap.heap.files;
-    heap.unload();
-    if (files.isMirandaSource(t_val) != 0 and core_state.s.SYNERR != 2) {
-        dump.makedump();
-    }
-    core_state.s.SYNERR = 0;
-    core_state.s.loading = 0;
 }
 
 /// Resolves a list of `%include` file nodes (`includees_val`) into a heap list
