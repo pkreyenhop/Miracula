@@ -40,7 +40,7 @@ partial),
 | J1 | Error unions for `SyntaxError`/`LoadError` (**overlaps R10**) | TESTABILITY | ⬜ |
 | J2 | Standardise "dump stats then die" panics | TESTABILITY | ⬜ |
 | A4b | Recovery redesign — SIGFPE synchronous, reducer unwind (**overlaps R10 step 3**) | REDESIGN | ⬜ |
-| B2 | Option (a): char boundary done, range-test sites in `trans`/`types`/`reduce` remain. Option (b): `reducer/spine.zig` built + shadow-validated live against 51 real-program checks (0 mismatches) — blast radius found larger than documented (TRY/FAIL backtracking, `streamRead`'s C-ABI copy), both now shadow-covered; the actual dispatch cutover itself is not started | REDESIGN | ◐ |
+| B2 | Option (a): char boundary done, range-test sites in `trans`/`types`/`reduce` remain (not started). Option (b): **✅ done** — `reduce_core.zig`'s spine primitives, `combinators.handleTRY`/`handleFAIL`, and `runtime/reduce.zig`'s `streamRead` all run on the explicit `Spine` for real; two real bugs (a `via_tl`-boundary correctness gap, a ~15x perf regression) found and fixed post-cutover | REDESIGN | ◐ |
 | B3 | Tracing GC (after B2) | REDESIGN | ⬜ |
 | C1 | Final data-model scorecard | REDESIGN | ⬜ |
 | C2 | Rewrite `ARCHITECTURE.md` / `ZIG_MIGRATION.md` to the new model | REDESIGN | ⬜ |
@@ -61,18 +61,22 @@ partial),
    per-function testing (`reset()` suffices). Defer unless multi-instance becomes a
    requirement.
 
-## The open decision (blocks Phases 4–5)
+## The B2 decision — resolved: both (a) and (b), (b) done first
 
-**B2's direction must be chosen explicitly:**
-* **(a)** finish the incremental typed-`Value` boundary (already started) — range
-  tests → 0 at value reads/writes; spine encoding stays raw. Medium effort,
-  type-safety win.
+**B2's direction was originally framed as pick-one:**
+* **(a)** finish the incremental typed-`Value` boundary (started) — range tests → 0
+  at value reads/writes; spine encoding stays raw. Medium effort, type-safety win.
 * **(b)** repivot the "hard core" to an explicit typed spine stack — higher value
   (also unblocks B3 + A4b), comparable risk.
 * **(c)** defer B2; do B3 / close-out first.
 
-This plan assumes **(a)** for Phase 2 (it is in flight and low-risk) and notes
-where **(b)** would reshape Phases 4–5.
+In practice these are independent axes (a) is about value *representation* at the
+`Heap` boundary; (b) is about the *traversal mechanism* — so both are worth doing.
+**(b) is now done** (Phase 2 below: `Spine` replaced pointer reversal for real,
+2026-07-01). **(a) remains open** (the range-test sites in `trans`/`types`/`reduce`
+are unmigrated) and is no longer blocked on anything — pick it up whenever.
+`Spine` having landed also means B3 (tracing GC) is now unblocked on real, precise
+roots rather than needing its own design work first.
 
 ---
 
@@ -139,7 +143,7 @@ where **(b)** would reshape Phases 4–5.
 * Closes B2 to its re-scoped DoD (range tests → 0 at value sites) and gives the
   TESTABILITY tiers precise typed reads.
 
-### Phase 2 (option b) — Repivot the hard core: explicit spine stack ◐ *(Steps 1–2 done 2026-07-01; cutover not started)*
+### Phase 2 (option b) — Repivot the hard core: explicit spine stack ✅ *(done 2026-07-01)*
 
 **Step 1 — `reducer/spine.zig`, additive and inert.** ✅ Done (`71c47ae`). Built and
 unit-tested an explicit, growable `Spine`/`Frame` stack as a candidate drop-in
@@ -206,27 +210,62 @@ with or without spine validation, so a separate, genuine, pre-existing bug. The
 differential corpus uses `tests/spine_corpus/ack_nk_free.m` (golden's `custom_ack.m`
 style) in place of `ack.m`; `queens.m`/`hanoi.m` are skipped. Also,
 `miralib/ex/primes.m` crashes on `take 500` (also reproduces without validation) —
-the corpus stays at `take 150`.
+the corpus stays at `take 150`. (Both spawned as separate background tasks; not
+tracked further in this plan.)
 
-**Remaining before a cutover could be considered:**
-1. Migrate `combinators.zig`'s `handleTRY`/`handleFAIL` and `runtime/reduce.zig`'s
-   `streamRead` to actually *run on* `Spine` (today they still run pointer reversal
-   for real; only the shadow observes them) — they can't stay on the old encoding
-   once cells stop carrying bookkeeping.
-2. Swap `reduce()`'s main loop and `ReductionCtx.s`/`.hold` for a per-call `Spine`
-   (threading `rt.allocator`, already used elsewhere for growable scratch, e.g.
-   `dstack`).
-3. Measure: there is no agreed perf budget yet, and the DoD requires "a
-   reduction-loop micro-benchmark within the agreed budget" — `src/micro_benchmarks.zig`
-   currently covers allocation/GC/interning, not the reducer loop, so that benchmark
-   needs writing first to get real numbers before/after.
-4. Re-run golden + the differential harness + the benchmark; only then swap the live
-   path. (The differential harness stops being useful as a *safety net* the moment
-   `Spine` becomes the thing being tested rather than the shadow — at that point
-   correctness rests on golden + the unit suite, same as everywhere else.)
+**Step 3 — the cutover itself, done (`e25f241`, `f614e37`).** `ReductionCtx.s`/`.hold`'s
+spine-bookkeeping role is gone; `ReductionCtx` now embeds a `spine: Spine`, and
+`downLeft`/`downRight`/`upLeft`/`upRight`/`downright`/`upleft` are thin wrappers over
+its methods. `combinators.handleTRY`/`handleFAIL` and `runtime/reduce.zig`'s
+`streamRead` (the two extra manipulation sites Step 1 found) now run on `Spine` for
+real via `pushRaw`/`popNodeOnly`, not raw `ctx.s` bit-twiddling.
 
-This is multiple dedicated sessions of work, not a single increment — treat it as
-its own initiative once Step 1's groundwork (done) is built on.
+**A correctness gap the cutover surfaces that pointer reversal never had to answer:**
+`Heap.bases`'s conservative C-stack scan finds `ReductionCtx.e`/`.s` as Word-sized
+stack slots and `mark()`'s own `hd`/`tl` walk threads through the rest of an
+old-style reversed chain "for free" — but `Spine.frames` is a *separate* heap
+allocation the scanner can't see into, so a cell reachable only via a `Frame.node`
+could be collected mid-reduction. Fixed with an explicit root-registry
+(`Spine.register`/`unregister`, LIFO-matching nested `reduce()` calls;
+`Heap.bases` calls `spine.markAllRoots` alongside its existing root marking) —
+this is exactly the "unblocks B3's precise GC roots" upside the original B2 audit
+flagged for option (b), now realised as a requirement rather than a future nicety.
+
+**Two real, distinct correctness bugs surfaced empirically** once this ran for real
+(not just in shadow) — the shadow's narrower coverage (primitive-level agreement
+only) had not caught either. Root-caused by building a throwaway git-worktree copy
+of the pre-cutover commit, instrumenting both builds' primitives identically, and
+diffing the per-primitive call sequence on the same failing input:
+* `abnormal(ctx.s)` (`ctx.s < 0`) is true both when the spine is genuinely empty
+  *and* when the top frame is a real, non-empty one tagged `via_tl=true` (same sign
+  bit as `BACKSTOP`). The guarded wrappers (`downright`/`upleft`, transitively
+  `getarg`) and `handleTRY`/`handleFAIL`'s own loops all relied on that coincidence
+  to stop at the boundary of an outer, already-`downRight`'d ancestor — a real
+  semantic distinction. `Spine.isEmpty()` alone missed it; added
+  `Spine.atArgumentChainBoundary()` (empty OR top `via_tl`). Without this,
+  `firstel (x:xs) = x` looped forever and `colour ::= Red | Green | Blue` printed
+  garbage.
+* A genuine ~15x perf regression on many-short-lived-`reduce()`-calls workloads
+  (`#(take 3000 primes)`: 0.93s → 14.3s) from `Spine.init`'s frame buffer starting at
+  zero capacity every call — overhead pointer reversal never paid (it borrowed graph
+  cells, never the allocator). Fixed with a small buffer pool (bounded by max
+  concurrent `reduce()` nesting, not call count); back to ~0.85–1.3s. Gated off under
+  `builtin.is_test` — pooling across separate test functions' `std.testing.allocator`
+  instances corrupted the allocator's own bookkeeping.
+
+**Verified:** 165/165 unit tests, 44/44 golden byte-identical, 51/51
+spine-stress-corpus checks (`tests/spine_differential_check.py`, now exercising the
+live path — the shadow machinery is gone since there is nothing left to shadow),
+lint clean. `fib 28` ~0.17s before and after the perf fix (Spine was already
+*faster* than pointer reversal there — fewer total memory writes per traversal
+step); `#(take 3000 primes)` 14.3s → ~1s.
+
+Not done, and not blocking: a *formal*, permanent reduction-loop micro-benchmark
+(`src/micro_benchmarks.zig` still covers only allocation/GC/interning) — the timing
+numbers above were ad hoc (`/usr/bin/time` on a throwaway ReleaseFast worktree
+build), sufficient to catch and fix the regression but not wired in as a
+regression-guarding CI artifact. Worth adding in a follow-up if reducer performance
+becomes a recurring concern.
 
 ### Phase 3 — R9 function-splitting *(per-function, independent of Phase 2 — may interleave)*
 Extract named steps one function at a time, easiest → hardest, golden after each:
@@ -254,13 +293,16 @@ individual, carefully-validated extraction.
    Recommended: Steps 1–2 as a dedicated PR; Step 3 as a separate, reviewed design
    proposal.
 
-### Phase 5 — B3 tracing GC *(after B2)*
+### Phase 5 — B3 tracing GC *(unblocked — B2 option (b) landed)*
 Replace the sign-bit free-list mark-sweep with a precise tracing collector over the
 `Ref` graph: explicit typed root set, mark/sweep rebuilding the free list from a
 side `std.DynamicBitSet` (drops the tag sign-bit trick, making `NodeTag` fully
 exhaustive). *DoD: precise-root unit tests + GC stress test stable; golden green.*
-If B2 option **(b)** was taken, the spine-stack rework lands before this and supplies
-the precise roots.
+The `Spine` cutover already supplies part of this — every frame is an explicit,
+typed root (`Spine.markAllRoots`, added because the conservative stack scan can't
+see into `Spine`'s own heap-allocated buffer) — so the reduction-loop's roots are
+already precise; this phase is about the *cell-storage* side (the sign-bit
+mark/sweep itself).
 
 ### Phase 6 — SHARED_STATE Ph5 → Ph6 *(largest; only if multi-instance is needed)*
 Thread `*Interp` through the call graph (~2,100 sites), then delete the global
@@ -276,16 +318,17 @@ the C1 scorecard. *DoD: docs match code.*
 ## Dependency order (summary)
 
 ```
-Phase 0 (hygiene + C1) ─┐
-Phase 1 (R3)            ├─ independent, do first
-Phase 2 (B2 opt a) ─────┤   (Phase 2 ∥ Phase 3)
-Phase 3 (R9 splits) ────┘
+Phase 0 (hygiene + C1) ────────┐
+Phase 1 (R3) ✅                │
+Phase 2 (B2 opt b, cutover) ✅  ├─ independent, do first
+Phase 2 (B2 opt a) ─────────────┤   (∥ with Phase 3)
+Phase 3 (R9 splits) ────────────┘
         │
         ▼
 Phase 4 (R10 + J1 + J2 + A4b)  ── design decision (a/b) on recovery model
         │
         ▼
-Phase 5 (B3 GC)  ── needs B2; unblocked further by B2 option (b)
+Phase 5 (B3 GC)  ── unblocked (B2 option (b) landed; Spine roots already precise)
         │
         ▼
 Phase 6 (Ph5 → Ph6)  ── largest; defer unless multi-instance required

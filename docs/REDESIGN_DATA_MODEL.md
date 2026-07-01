@@ -58,8 +58,8 @@ library) links against it, so the *honest* C-ABI target is:
 | Track A3 — `export fn` | ✅ 174 → **3** (only the still-extern-referenced bridges remain) |
 | Track A4a — strip gratuitous `callconv` | ✅ `callconv(.c)` 13 → **6** (genuine signal boundary) |
 | Track A4b — recovery redesign | ⬜ Re-scoped — design-bearing (SIGFPE synchronous; reducer unwind; unverifiable by golden) |
-| `Value` union (R4.3/4.4) | ◐ B2(a) seam started — `word.Value`/`classify`; char boundary migrated (Track B2) |
-| Tracing GC (R5) | ⬜ Planned (Track B3) |
+| `Value` union (R4.3/4.4) | ◐ B2(a) seam started — `word.Value`/`classify`; char boundary migrated. B2(b) ✅ done — pointer reversal → explicit `Spine` (Track B2) |
+| Tracing GC (R5) | ⬜ Planned, unblocked — `Spine` already supplies precise roots (Track B3) |
 | String interning (R6) | ✅ Done — nodes hold an interned `StrId` (`strtab.zig`); node-string casts → **0** (Track B1) |
 
 ---
@@ -354,34 +354,58 @@ not wait behind Track B's design work.
     option **b**'s job).*
   * **(b) Repivot the "hard core"** to pointer-reversal → an explicit typed spine stack — this is what
     actually dominates raw-`Word` arithmetic and unblocks B3 + A4b. Higher value, comparable risk.
-    **◐ Built and shadow-validated (2026-07-01, `71c47ae`..`84c60a3`).**
-    `reducer/spine.zig` — an explicit, growable `Spine`/`Frame` stack — is a
-    candidate replacement for `reduce_core.zig`'s `downLeft`/`downRight`/`upLeft`/
-    `upRight`, derived by tracing every read/write the existing primitives perform
-    (exactly one write per call is a real graph mutation; the rest is bookkeeping the
-    new module moves out of the cell into an explicit `Frame`). The blast-radius
-    estimate was revised upward during the investigation: beyond the two files the
-    plan already flags as lock-step duplicates (`reducer/reduce.zig`/
-    `reducer/reduce_core.zig`), the raw spine encoding is also manipulated directly
-    by `combinators.zig`'s `handleTRY`/`handleFAIL` (bulk backtracking walk) and
-    `runtime/reduce.zig`'s `streamRead` (a `pub export fn` on the C-ABI surface, with
-    its own unmasked inline copy). Rather than a trace-replay (drifts against any
-    graph mutation between recorded calls), built an **inline shadow**: an opt-in
-    (`MIRA_VALIDATE_SPINE`) mode drives a real `Spine` in lockstep with the live
-    mechanism *as the program runs*, asserting agreement at every call, covering all
-    of the above (`handleTRY`/`handleFAIL` mirrored via new `pushRaw`/`drainAll` ops,
-    `streamRead` via the same hook as the primitive). A real safety bug surfaced
-    immediately — the shadow's first version performed real heap writes, and once
-    diverged (TRY/FAIL makes that likely) could write a real value to the *wrong*
-    cell, silently corrupting the program; fixed by making the shadow read-only
-    (predicts via `heap.h`/`heap.t`, which degrade gracefully, never
-    `heap.hp`/`heap.tp`, which assert). `tests/spine_differential_check.py` runs this
-    over the full golden corpus + 7 curated `miralib/ex/` programs: **51/51 pass,
-    zero mismatches** — real evidence beyond the hand-built unit tests. The live
-    *cutover* (making `Spine` the actual dispatch mechanism) is still not
-    attempted — see [REMAINING_WORK_PLAN.md](REMAINING_WORK_PLAN.md) Phase 2
-    (option b) for what that still needs (migrating `handleTRY`/`handleFAIL`/
-    `streamRead` onto `Spine` for real, a reduction-loop benchmark, then the swap).
+    **✅ Done (2026-07-01, `71c47ae`..`f614e37`).** `reducer/spine.zig`'s explicit,
+    growable `Spine`/`Frame` stack replaced `reduce_core.zig`'s
+    `downLeft`/`downRight`/`upLeft`/`upRight` for real, derived by tracing every
+    read/write the old primitives performed (exactly one write per call was a real
+    graph mutation; the rest was bookkeeping the new module moves out of the cell
+    into an explicit `Frame`). The blast-radius estimate was revised upward during
+    the investigation: beyond the two files the plan already flags as lock-step
+    duplicates (`reducer/reduce.zig`/`reducer/reduce_core.zig`), the raw spine
+    encoding was also manipulated directly by `combinators.zig`'s
+    `handleTRY`/`handleFAIL` (bulk backtracking walk) and `runtime/reduce.zig`'s
+    `streamRead` (a `pub export fn` on the C-ABI surface, with its own unmasked
+    inline copy) — both now run on `Spine` for real too (`pushRaw`/`popNodeOnly`;
+    `streamRead`'s linker-based coupling was dissolved first, `11ef1fe`).
+
+    Before cutting over, built an **inline shadow-validation pass** (since removed —
+    nothing left to shadow once `Spine` is live): an opt-in mode drove a real
+    `Spine` in lockstep with the still-live pointer-reversal mechanism *as the
+    program ran*, asserting agreement at every call — 51 real-program checks, zero
+    mismatches. A real safety bug surfaced during that work: the shadow's first
+    version performed real heap writes, and once diverged (TRY/FAIL makes that
+    likely) could write a real value to the *wrong* cell, silently corrupting the
+    program; fixed by making the shadow read-only before it ever ran against
+    anything live.
+
+    The shadow's narrower coverage (primitive-level agreement only) did **not**
+    catch two further, real bugs the actual cutover surfaced:
+    1. `abnormal(ctx.s)` (`ctx.s < 0`) was true both for genuine emptiness and for a
+       real, non-empty top frame tagged `via_tl=true` — the guarded wrappers
+       (`downright`/`upleft`, transitively `getarg`) and `handleTRY`/`handleFAIL`'s
+       own loops relied on that coincidence to stop at an outer ancestor's boundary.
+       `Spine.isEmpty()` alone missed it (`Spine.atArgumentChainBoundary()` added).
+       Found by diffing a per-primitive call trace against a throwaway pre-cutover
+       worktree build on the same failing input (`firstel (x:xs) = x` looped
+       forever; `colour ::= Red | Green | Blue` printed garbage).
+    2. A ~15x perf regression on many-short-lived-`reduce()`-calls workloads
+       (`Spine.init` starting its frame buffer at zero capacity every call — a cost
+       pointer reversal never paid). Fixed with a small buffer pool.
+
+    Also fixed along the way: `Heap.bases`'s conservative C-stack scan can't see into
+    `Spine.frames`' own heap allocation the way it could walk an old-style reversed
+    chain "for free" through real cell fields — a cell reachable only via a
+    `Frame.node` could have been collected mid-reduction. `Spine.register`/
+    `unregister` (LIFO, matching nested `reduce()` calls) plus
+    `Heap.bases`→`spine.markAllRoots` close that gap — and, as a side effect, this
+    *is* the "unblocks B3's precise GC roots" upside the original audit flagged for
+    option (b): B3 no longer needs its own root-precision design work.
+
+    Verified: 165/165 unit tests, 44/44 golden byte-identical, 51/51
+    spine-stress-corpus checks, lint clean. Not done: a *formal*, CI-wired
+    reduction-loop micro-benchmark (the perf numbers above came from ad hoc
+    `/usr/bin/time` comparisons against a throwaway ReleaseFast worktree build,
+    sufficient to catch and fix the regression but not a permanent artifact).
   * **(c) Defer B2**: since boxing already disambiguates char/number, do B3 (tracing GC) or the
     close-out (C1/C2) first and revisit the value representation later.
 
