@@ -518,7 +518,7 @@ fn reportMakeFailures() void {
         rt.rs.make_status = heap.t(rt.rs.make_status);
     }
     maxw += 1;
-    const n = @divTrunc(@as(Word, 78), maxw);
+    const n = @max(@as(Word, 1), @divTrunc(@as(Word, 78), maxw));
     var w: Word = 0;
     while (h_val != 0) {
         w += 1;

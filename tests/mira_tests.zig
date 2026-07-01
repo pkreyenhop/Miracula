@@ -182,6 +182,7 @@ test "mira integration suite" {
     try caseStandardLibLoadSpeedGuard();
     try caseCompileGcStress();
     try caseRuntimeGcStress();
+    try caseMakeFailureLongPath();
 }
 
 fn caseStandardArithmeticAndLists() !void {
@@ -344,4 +345,24 @@ fn caseRuntimeGcStress() !void {
     defer result.deinit();
     try assertSuccessOutput("runtime-gc-stress", &result, "8002000");
     try testing.expect(std.mem.find(u8, result.stderr, "<<gc after") != null);
+}
+
+fn caseMakeFailureLongPath() !void {
+    var env = try TestEnv.init();
+    defer env.deinit();
+    const base_name = "a_file_with_an_undefined_name_and_a_very_long_path_to_reproduce_the_divide_by_zero_panic";
+    const script = try std.fmt.allocPrint(allocator, "{s}/{s}.m", .{env.work, base_name});
+    defer allocator.free(script);
+    try writeFile(script, "foo = bar\n");
+    var result = try runMira(&env, script, "", &.{"-make"});
+    defer result.deinit();
+    switch (result.term) {
+        .exited => |code| {
+            try testing.expectEqual(@as(u32, 1), @as(u32, code));
+        },
+        else => {
+            std.debug.print("Expected normal exit code 1, but got: {any}\nstdout:\n{s}\nstderr:\n{s}\n", .{ result.term, result.stdout, result.stderr });
+            return error.TestExpectedNormalExit;
+        },
+    }
 }
