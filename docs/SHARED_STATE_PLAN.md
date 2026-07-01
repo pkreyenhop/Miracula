@@ -34,9 +34,14 @@ exactly the irreducible boundary noted for the A4 trampoline).
 ### Definition of Done *(end state)*
 
 A reviewer sees `var interp = Interp.init(gpa); defer interp.deinit();` in
-`main()`, every subsystem reaching its state through `self: *Interp` (or a
-threaded `*Interp`), **zero** module-scope mutable `var`/`export var` in non-FFI
-code save one `current_interp: *Interp` used only by signal handlers (documented).
+`main()`, every subsystem reaching its state through the narrowest struct(s) it
+actually needs — `*Heap`, `*Bignum`, `*ReductionCtx`, a purpose-built bundle, or
+(for the orchestration/driver layer, where it's genuinely appropriate)
+`*Interp` — **zero** module-scope mutable `var`/`export var` in non-FFI code save
+one `current_interp: *Interp` used only by signal handlers (documented). See
+Phase 5 below for why "narrowest struct" rather than "thread `*Interp`
+everywhere" is the resolved design, and for the tiered, checkpointed plan to get
+there (partially — Tier 3 may remain permanently out of scope by design).
 `zig build` green and the **golden corpus byte-identical** at every step.
 
 ---
@@ -229,33 +234,116 @@ are both landed.
 * *DoD: `reset()` primitive + isolation test; `reset()` covers all aggregated
   state; `reduce_test` runs full `mira_setup` with the suite green; golden 44/44.*
 
-### Phase 5 — Thread `*Interp` through the call graph *(design-bearing; the large one)* — ⬜ **deferred**
-**Deferred by decision (2026-06-24).** Scoped against the code: even bignum (the
-smallest, leaf subsystem) is 23 fns + **59 call sites** + pervasive internal
-rewiring (`heap.make` → `it.heap.make`); the full job is the ~2,100-site,
-6-subsystem refactor including the hot reducer, with a real per-access perf cost
-there. Since the practical payoff (encapsulation + a resettable `interp` for test
-isolation) is already captured, full threading — whose remaining benefit is
-*multiple independent interpreter instances / re-entrancy* — is parked until that
-capability is actually needed. Resume per-subsystem (`bignum → reducer → …`) with
-a reducer-loop benchmark when it is.
+### Phase 5 — Thread narrow substructures, not the whole `*Interp` *(revised 2026-07-01)* — ⬜ **deferred, re-scoped**
 
-Convert subsystems from reaching the global `interp` to taking/holding
-`*Interp` (methods `self: *Interp`, or a threaded first parameter). Do it
-**per-subsystem, golden-gated**, reusing the A2 token-aware replacer for the
-mechanical renames. Suggested order (most-self-contained first):
-`bignum → reducer → heap/GC → lexer/parser → compiler/typecheck → driver`.
-This is the ~2,100-site change and spans many PRs.
-* **Irreducible exception:** OS signal handlers run on the C ABI and cannot take
-  `*Interp`; they read a single `current_interp: *Interp` set on entry — the one
-  documented global, analogous to `errno` and the A4 signal trampoline.
-* *DoD per subsystem: no global-singleton access in that subsystem; golden green.*
+**Still deferred by the 2026-06-24 decision** (the practical payoff — encapsulation
++ a resettable `interp` for test isolation — is already captured at Phase 4; the
+remaining benefit of any further threading is multiple independent interpreter
+instances / re-entrancy, not needed today). This section **resolves an ambiguity**
+in the original Phase 5 wording ("taking/holding `*Interp` … *or* a threaded first
+parameter") in favour of the narrower option, and records the entanglement survey
+that grounds *why*, so a future resumption doesn't have to re-derive it.
 
-### Phase 6 — De-globalize & document *(close-out)*
+**Why narrow, not the monolith.** Threading the full `*Interp` through every
+subsystem gives back exactly the readability problem de-globalization is meant to
+fix: since almost every function in an interpreter touches *some* state, most call
+sites would gain an `interp: *Interp` parameter that is only ever forwarded, not
+read — boilerplate, not a narrower signature. The real win — a function signature
+that shows *exactly* which state it touches — only materializes if each subsystem
+takes the smallest struct(s) it actually needs (`*Heap`, `*Bignum`, a
+purpose-built context, …), not the nine-struct aggregate.
+
+**This is not hypothetical — it's already the pattern in one subsystem.** The
+reducer's rewrite-handler layer (`combinators.zig`, `ready.zig`, `reducer/lex.zig`,
+`io.zig`) already takes `ctx: *ReductionCtx` — a purpose-built bundle, not
+`*Interp` — for nearly everything. An audit of what these files *still* touch via
+ambient global access, beyond `ctx`, found:
+
+| File | fns | external-singleton fields touched beyond `ctx` |
+|------|----:|--------------------------------------------------|
+| `combinators.zig` | 48 | **0** |
+| `reducer/lex.zig` | 33 | **0** |
+| `reducer/io.zig` | 4 | **0** |
+| `ready.zig` | 6 | **2** (`rt.rs.UTF8`, `rt.rs.linebuf` — scratch buffers) |
+
+i.e. this subsystem is already ~98% narrowly-threaded by accident of the B2(b)
+`Spine` cutover, which only had to design `ReductionCtx` for the reducer's own
+needs (`e`/`spine`/`hold`/`args`/`action`) and happened to leave almost nothing
+else ambient.
+
+**Entanglement survey (2026-07-01), to calibrate expectations for everything
+else.** For each remaining subsystem: does it depend on at most one *other*
+struct (clean — narrow threading is a clean win), or does it routinely need
+several simultaneously (entangled — narrow threading degenerates into passing
+3–5 pointers, or a bundle nearly as wide as `Interp`)?
+
+| Subsystem | Home struct | External deps | Verdict |
+|-----------|------------|----------------|---------|
+| `big.zig` (Bignum) | none (module constants) | `Heap` only (7 cell-accessor call sites) | **Clean** |
+| `strtab.zig` (StringTable) | `StringTable` | none | **Clean** |
+| reducer rewrite handlers | `ReductionCtx` | `RuntimeState` (2 scratch fields) | **Already ~done** (see above) |
+| `heap.zig` | `Heap` | `LexState` (58 sites, dict buffer), `RuntimeState`, `CompilerState`, `CoreState` — 133 fns total, only 11 already self-threaded | **Entangled** |
+| `types.zig` / `trans.zig` / `lex.zig` / `module_loader.zig` (compiler+parser core) | `CompilerState`/`LexState` | type info, source location, heap cells, and lexer state simultaneously, pervasively | **Entangled** |
+| `repl.zig` / `commands.zig` / `startup.zig` (driver) | — | legitimately needs most of the interpreter to dispatch commands | **Not a narrowing candidate** — this layer *should* look Interp-shaped |
+
+**Revised strategy — three tiers, with a checkpoint before the hard tier:**
+
+1. **Tier 1 — clean leaves.** `big.zig`: convert its module constants to an
+   explicit `Bignum` self-parameter (already a field of `Interp`), and pass
+   `*Heap` explicitly at its ~7 cell-accessor call sites. `strtab.zig`: likely
+   needs no external parameter at all, just `self: *StringTable`. Each is its own
+   PR; **the ~59 call sites elsewhere that call bignum functions** (per the
+   original scoping) are the actual size of this tier, not the 23 functions
+   themselves — reuse the A2 token-aware replacer for the mechanical part.
+   *DoD: zero ambient-singleton reads in `big.zig`/`strtab.zig`; golden green.*
+2. **Tier 2 — tidy the existing `ReductionCtx` precedent.** Fold `ready.zig`'s two
+   remaining `rt.rs.UTF8`/`rt.rs.linebuf` reads into `ReductionCtx` if they're
+   reducer-specific enough to belong there, or leave them as a documented,
+   deliberate exception if they're better understood as shared scratch. Small;
+   mostly a documentation/judgment call, not a mechanical sweep.
+   *DoD: `ready.zig`'s remaining ambient touches are either threaded or explicitly
+   justified; golden green.*
+3. **Tier 3 — the entangled subsystems: stop and re-evaluate, don't proceed by
+   default.** `heap.zig`, `types.zig`, `trans.zig`, `lex.zig`, `module_loader.zig`
+   each touch 3+ external structs pervasively. A single narrow struct doesn't fit
+   here; the realistic options are (a) a purpose-built bundle per subsystem (e.g.
+   a `CompileCtx` grouping the 3–4 structs the compiler pipeline actually uses
+   together — narrower than all nine, but wide enough that the "exactly what this
+   touches" clarity mostly evaporates), or (b) leave these on ambient global
+   access permanently and treat Tier 1–2 as the actual, complete scope of narrow
+   threading in this codebase. **Recommendation: do not commit to Tier 3 up
+   front.** Land Tier 1–2, observe whether the signature clarity was worth the
+   ~59-call-site churn in practice, and only then decide whether a `CompileCtx`
+   bundle for Tier 3 is worth designing — it is a genuinely different, harder
+   question than Tier 1–2 (bundle design, not mechanical threading), and forcing
+   it into the same PR-sized mechanical pattern as Tier 1 would understate its
+   risk.
+
+**Sequencing:** `big.zig` → `strtab.zig` → `ready.zig` tidy-up → **checkpoint**
+(re-evaluate before any Tier 3 work). Each subsystem is its own PR, golden-gated
+(the full 48-case corpus + unit suite + spine-corpus stress checks + lint), with
+a reducer-loop timing check (reuse the ad hoc `fib(N)` comparison method used for
+the B2(b) `Spine` cutover and the B3 GC rewrite) for anything touching the hot
+path.
+* **Irreducible exception (unchanged):** OS signal handlers run on the C ABI and
+  cannot take any explicit parameter; they read a single `current_interp: *Interp`
+  set on entry — the one documented global, analogous to `errno` and the A4
+  signal trampoline.
+* *DoD per subsystem: no ambient-global-singleton access outside the subsystem's
+  own threaded struct(s) (or an explicitly documented exception); golden green.*
+
+### Phase 6 — De-globalize & document *(close-out; conditional on Tier 3)*
 Delete the global `var interp`; `main()` constructs it explicitly
 (`var interp = Interp.init(gpa); defer interp.deinit(); return interp.run(args);`).
 Update [ARCHITECTURE.md](ARCHITECTURE.md) to drop the "singleton" language and
 describe the `Interp` ownership model + the lone signal-delivery exception.
+
+This is only reachable if Tier 3 of the revised Phase 5 happens — deleting the
+global requires *every* subsystem (including the entangled compiler/heap tier)
+to have stopped reaching it ambiently. If Tier 3 is judged not worth its bundle-
+design cost after the Tier 1–2 checkpoint, Phase 6 stays permanently deferred
+alongside it; Tier 1–2 alone do not remove enough ambient access to make deleting
+`interp` sound.
 * *DoD: non-FFI module-scope mutable globals = **1** (documented); a second
   `Interp` can be constructed and run independently; golden green.*
 
@@ -273,12 +361,15 @@ Phase 1 (export→var) ─► Phase 2 (group loose globals, per-module: 2a..2e)
                         Phase 4 (injectable; fix the tests)  ◄── value lands here
                                          │
                                          ▼
-        Phase 5 (thread *Interp, per-subsystem) ─► Phase 6 (delete global; docs)
+        Phase 5 (Tier 1–2: narrow threading) ─► checkpoint ─┬─► Tier 3 + Phase 6
+                                                             └─► stop here (default)
 ```
 
-Phases 1–4 are bounded and independently shippable. Phase 5 is the only
-open-ended one; it can proceed subsystem-by-subsystem over time, and Phase 4
-already delivers test isolation without it.
+Phases 1–4 are bounded and independently shippable. Phase 5's Tier 1–2 (bignum,
+strtab, tidying the reducer's existing `ReductionCtx` threading) are small and
+independently shippable too. Tier 3 (the entangled compiler/heap subsystems) and
+Phase 6 are explicitly **not** committed to — they follow only if the Tier 1–2
+checkpoint concludes the signature clarity was worth pursuing further.
 
 ## Risk register
 
@@ -288,7 +379,8 @@ already delivers test isolation without it.
 | 2 | a moved field changes init order / `undefined` reads | structs default via `std.mem.zeroes`/`.{}`; per-module golden |
 | 3 | re-pointing an owner singleton aliases a stale copy | one `interp` instance during transition; pointer-alias, not value-copy |
 | 4 | a test's private `Interp` shares a hidden global (e.g. a `FILE` pool) | Phase 2c folds I/O in first; assert no residual global read |
-| 5 | 2,100-site churn; perf regression in the hot reducer loop from an extra indirection | per-subsystem + golden; benchmark the reduce loop (reuse `-Dreduce-trace`); `self` is a single pointer in a register |
+| 5 (Tier 1) | ~59 bignum call sites need updating alongside the 51 fns themselves | per-subsystem + golden; reuse the A2 token-aware replacer |
+| 5 (Tier 3, if pursued) | bundle-struct design for entangled subsystems is a real design question, not mechanical threading; risk of ending up as wide as `Interp` anyway | explicit checkpoint before starting; treat as its own design proposal, not a PR-sized mechanical step |
 | 5 | signal handler needs interp state | single documented `current_interp` pointer (the irreducible C-ABI boundary) |
 
 ## Scorecard
