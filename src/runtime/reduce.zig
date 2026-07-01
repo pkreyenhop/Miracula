@@ -22,7 +22,7 @@ const big = @import("big.zig");
 const lex = @import("../parser/lex.zig");
 const main_clib = @import("main_clib.zig");
 const core_state = @import("core_state.zig");
-const spine = @import("reducer/spine.zig");
+const reduce_core = @import("reducer/reduce_core.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 const Word = i64;
@@ -135,22 +135,6 @@ inline fn stosmallint(x: Word) Word {
     return heap.make(.INT, val, 0);
 }
 
-const reduce_ctx = extern struct {
-    e: Word,
-    s: Word,
-    hold: Word,
-    arg1: Word,
-    arg2: Word,
-    arg3: Word,
-};
-
-const reduce_action = enum(c_int) {
-    REDUCE_NOT_HANDLED = 0,
-    REDUCE_NEXT = 1,
-    REDUCE_DONE = 2,
-    REDUCE_RETURN = 3,
-};
-
 /// The standard-input `FILE*` handle.
 fn getStdin() ?*word.FILE {
     const T = @TypeOf(main_clib.stdin);
@@ -255,18 +239,22 @@ pub fn parseCloseError(arg1: Word, arg3: Word) void {
     main_clib.exit(1);
 }
 
-/// C-callable backend for `READ`/`READBIN`/`READVALS`: pull the next char/value from the stream in `ctx`, rewriting the node to a cons (or `[]` at EOF).
-pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
+/// Backend for `READ`/`READBIN`/`READVALS`: pull the next char/value from the
+/// stream in `ctx`, rewriting the node to a cons (or `[]` at EOF).
+///
+/// Was reached via an `extern fn`/`pub export fn` pair with `io.zig` (a
+/// linker-as-module-system link, like the ones R7.3 already dissolved
+/// elsewhere) through a separately-declared `reduce_ctx` struct whose layout
+/// only *happened* to match `ReductionCtx` for the fields actually read here.
+/// Takes the real `ReductionCtx` directly now, and the four inline "UPLEFT"
+/// reimplementations are gone in favour of calling `reduce_core.upLeft`
+/// itself (dropping the third copy of that primitive the Phase-2
+/// investigation found).
+pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
     const lastarg = t(ctx.e);
     switch (op) {
         word.READBIN => {
-            // UPLEFT
-            const shadow_expect = spine.shadowUpLeft(ctx.e);
-            ctx.hold = ctx.s;
-            ctx.s = h(ctx.s);
-            hp(ctx.hold).* = ctx.e;
-            ctx.e = ctx.hold;
-            if (shadow_expect) |exp| std.debug.assert(exp == ctx.e);
+            reduce_core.upLeft(ctx);
 
             if (lastarg == 0) {
                 if (ev.stdinuse == '-') {
@@ -274,7 +262,7 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
                 }
                 if (ev.stdinuse != 0) {
                     rewriteToNil(&ctx.e);
-                    return .REDUCE_DONE;
+                    return word.ACT_DONE;
                 }
                 ev.stdinuse = ':';
                 tp(ctx.e).* = @as(Word, @intCast(@intFromPtr(getStdin().?)));
@@ -283,19 +271,13 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
             if (hold_char == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
                 rewriteToNil(&ctx.e);
-                return .REDUCE_DONE;
+                return word.ACT_DONE;
             }
             rewriteToCons(ctx.e, hold_char, heap.make(.AP, word.READBIN, t(ctx.e)));
-            return .REDUCE_DONE;
+            return word.ACT_DONE;
         },
         word.READ => {
-            // UPLEFT
-            const shadow_expect = spine.shadowUpLeft(ctx.e);
-            ctx.hold = ctx.s;
-            ctx.s = h(ctx.s);
-            hp(ctx.hold).* = ctx.e;
-            ctx.e = ctx.hold;
-            if (shadow_expect) |exp| std.debug.assert(exp == ctx.e);
+            reduce_core.upLeft(ctx);
 
             if (lastarg == 0) {
                 if (ev.stdinuse == ':') {
@@ -303,7 +285,7 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
                 }
                 if (ev.stdinuse != 0) {
                     rewriteToNil(&ctx.e);
-                    return .REDUCE_DONE;
+                    return word.ACT_DONE;
                 }
                 ev.stdinuse = '-';
                 tp(ctx.e).* = @as(Word, @intCast(@intFromPtr(getStdin().?)));
@@ -312,42 +294,30 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
             if (hold_char == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
                 rewriteToNil(&ctx.e);
-                return .REDUCE_DONE;
+                return word.ACT_DONE;
             }
             rewriteToCons(ctx.e, hold_char, heap.make(.AP, word.READ, t(ctx.e)));
-            return .REDUCE_DONE;
+            return word.ACT_DONE;
         },
         word.READVALS => {
-            // GETARG(arg1)
-            const shadow_expect1 = spine.shadowUpLeft(ctx.e);
-            ctx.hold = ctx.s;
-            ctx.s = h(ctx.s);
-            hp(ctx.hold).* = ctx.e;
-            ctx.e = ctx.hold;
-            if (shadow_expect1) |exp| std.debug.assert(exp == ctx.e);
-            ctx.arg1 = t(ctx.e);
+            reduce_core.upLeft(ctx); // GETARG(arg1)
+            ctx.args[0] = t(ctx.e);
 
-            if (abnormal(ctx.s)) return .REDUCE_DONE;
+            if (abnormal(ctx.s)) return word.ACT_DONE;
 
-            // UPLEFT
-            const shadow_expect2 = spine.shadowUpLeft(ctx.e);
-            ctx.hold = ctx.s;
-            ctx.s = h(ctx.s);
-            hp(ctx.hold).* = ctx.e;
-            ctx.e = ctx.hold;
-            if (shadow_expect2) |exp| std.debug.assert(exp == ctx.e);
+            reduce_core.upLeft(ctx);
 
-            const val = parseLine(h(ctx.arg1), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.arg1));
+            const val = parseLine(h(ctx.args[0]), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.args[0]));
             if (val == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(lastarg))));
                 rewriteToNil(&ctx.e);
-                return .REDUCE_DONE;
+                return word.ACT_DONE;
             }
-            ctx.arg2 = heap.make(.AP, h(ctx.e), lastarg);
-            rewriteToCons(ctx.e, val, ctx.arg2);
-            return .REDUCE_DONE;
+            ctx.args[1] = heap.make(.AP, h(ctx.e), lastarg);
+            rewriteToCons(ctx.e, val, ctx.args[1]);
+            return word.ACT_DONE;
         },
-        else => return .REDUCE_NOT_HANDLED,
+        else => return word.ACT_NONE,
     }
 }
 
