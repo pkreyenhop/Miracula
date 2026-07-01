@@ -1897,86 +1897,9 @@ fn conforms(p: Word, t_val: Word, e_in: Word, ngt: Word) errors.MiraError!Word {
 /// Infer the type of expression `x` in environment `env` — the core of inference.
 fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
     switch (getTag(x)) {
-        .AP => {
-            if (h(x) == word.BADCASE or h(x) == word.CONFERROR) {
-                return NTV();
-            }
-            const ft_val = try etype(h(x), env, ngt);
-            const at = try etype(t(x), env, ngt);
-            const rt_ty = NTV();
-            if (unify1(ft_val, ap2(arrow_t, at, rt_ty)) == 0) {
-                const ft = subst(ft_val);
-                if (isArrowType(ft)) {
-                    if (getTag(h(x)) == .AP and h(h(x)) == word.G_ERROR) {
-                        typeError8(at, t(h(ft)));
-                    } else {
-                        typeError("unify", "with", at, t(h(ft)));
-                    }
-                } else {
-                    typeError("apply", "to", ft, at);
-                }
-                return NTV();
-            }
-            return rt_ty;
-        },
-        .CONS => {
-            const elem_type = NTV();
-            const list_type = lt(elem_type);
-
-            // 1. Find the tail of the CONS chain
-            var cur = x;
-            while (getTag(cur) == .CONS) {
-                cur = t(cur);
-            }
-            const tail_expr = cur;
-
-            // 2. Type check the tail
-            const tail_type = try etype(tail_expr, env, ngt);
-            if (unify1(list_type, tail_type) == 0) {
-                // Find the last CONS node to report the error on
-                var last_cons = x;
-                while (t(last_cons) != tail_expr) {
-                    last_cons = t(last_cons);
-                }
-                const ht = try etype(h(last_cons), env, ngt);
-                typeError("cons", "to", ht, tail_type);
-                return NTV();
-            }
-
-            // 3. Type check each head in the chain
-            cur = x;
-            while (getTag(cur) == .CONS) {
-                const ht = try etype(h(cur), env, ngt);
-                if (unify1(ht, elem_type) == 0) {
-                    const rt_ty = try etype(t(cur), env, ngt);
-                    typeError("cons", "to", ht, rt_ty);
-                    return NTV();
-                }
-                cur = t(cur);
-            }
-            return list_type;
-        },
-        .LEXER => {
-            const hold = cs.lineptr;
-            cs.lineptr = h(t(t(h(x))));
-            tp(t(h(x))).* = t(t(t(h(x))));
-            const a = try etype(t(t(h(x))), env, ngt);
-            var cur_x = x;
-            while (true) {
-                cur_x = t(cur_x);
-                if (cur_x == NIL) break;
-                cs.lineptr = h(t(t(h(cur_x))));
-                tp(t(h(cur_x))).* = t(t(t(h(cur_x))));
-                const b = try etype(t(t(h(cur_x))), env, ngt);
-                if (unify1(a, b) == 0) {
-                    typeError7(a, b);
-                    cs.lineptr = hold;
-                    return NTV();
-                }
-            }
-            cs.lineptr = hold;
-            return tf(cs.ltchar, lt(a));
-        },
+        .AP => return etypeAp(x, env, ngt),
+        .CONS => return etypeCons(x, env, ngt),
+        .LEXER => return etypeLexer(x, env, ngt),
         .TCONS => {
             return ap2(comma_t, try etype(h(x), env, ngt), try etype(t(x), env, ngt));
         },
@@ -1986,41 +1909,7 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
         .DOUBLE, .INT => {
             return num_t;
         },
-        .ID => {
-            var cur_env = env;
-            while (cur_env != NIL) {
-                if (h(h(cur_env)) == x) {
-                    tp(h(cur_env)).* = subst(t(h(cur_env)));
-                    return linst(t(h(cur_env)), ngt);
-                }
-                cur_env = t(cur_env);
-            }
-            const a = idType(x);
-            if (isBoundType(a)) {
-                return t(a);
-            }
-            if (a == type_t) {
-                typeError1(x);
-            }
-            if (a == undef_t) {
-                if (core_state.s.commandmode != 0) {
-                    typeError2(x);
-                } else if (member(cs.ND, x) == 0) {
-                    if (cs.lineptr != 0) {
-                        sayhere(cs.lineptr, 0);
-                    } else if (getTag(cs.current_id) == .DATAPAIR) {
-                        locateInc();
-                    }
-                    _ = word.print("undefined name \"{s}\"\n", .{getId(x)});
-                    cs.ND = add1(x, cs.ND);
-                }
-                return NTV();
-            }
-            if (a == wrong_t) {
-                return NTV();
-            }
-            return instantiate(if (cs.ATNAMES != 0) repT(a, cs.ATNAMES) else a);
-        },
+        .ID => return etypeId(x, env, ngt),
         .LAMBDA => {
             const a = NTV();
             const b = NTV();
@@ -2031,94 +1920,9 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
             }
             return tf(a, b);
         },
-        .LET => {
-            var e: Word = undefined;
-            const def = h(x);
-            const a = NTV();
-            e = try conforms(dlhs(def), a, env, cons(a, ngt));
-            cs.current_id = cons(dlhs(def), cs.current_id);
-            const c_local = cs.lineptr;
-            cs.lineptr = dval(def);
-            const unified = unify(a, try etype(dval(def), env, ngt));
-            cs.lineptr = c_local;
-            cs.current_id = t(cs.current_id);
-            if (e == -1 or unified == 0) {
-                return NTV();
-            }
-            return try etype(t(x), e, ngt);
-        },
-        .LETREC => {
-            var e = env;
-            var s = NIL;
-            var a = NIL;
-            var c_local = ngt;
-            var cur_d = h(x);
-            while (cur_d != NIL) {
-                if (dtyp(h(cur_d)) == undef_t) {
-                    a = cons(h(cur_d), a);
-                    const b = NTV();
-                    hp(t(h(cur_d))).* = b;
-                    c_local = cons(b, c_local);
-                    e = try conforms(dlhs(h(cur_d)), b, e, c_local);
-                } else {
-                    hp(t(h(cur_d))).* = try metaTcheck(dtyp(h(cur_d)));
-                    s = cons(h(cur_d), s);
-                    e = cons(cons(dlhs(h(cur_d)), dtyp(h(cur_d))), e);
-                }
-                cur_d = t(cur_d);
-            }
-            if (e == -1) {
-                return NTV();
-            }
-            var success = true;
-            var cur_a = a;
-            while (cur_a != NIL) {
-                cs.current_id = cons(dlhs(h(cur_a)), cs.current_id);
-                const hold = cs.lineptr;
-                cs.lineptr = dval(h(cur_a));
-                if (unify(dtyp(h(cur_a)), try etype(dval(h(cur_a)), e, c_local)) == 0) {
-                    success = false;
-                }
-                cs.lineptr = hold;
-                cs.current_id = t(cs.current_id);
-                cur_a = t(cur_a);
-            }
-            var cur_s = s;
-            while (cur_s != NIL) {
-                cs.current_id = cons(dlhs(h(cur_s)), cs.current_id);
-                const hold = cs.lineptr;
-                cs.lineptr = dval(h(cur_s));
-                const ety = try etype(dval(h(cur_s)), e, ngt);
-                if (subsumes(ety, linst(dtyp(h(cur_s)), ngt)) == 0) {
-                    success = false;
-                    typeError6(dlhs(h(cur_s)), dtyp(h(cur_s)), ety);
-                }
-                cs.lineptr = hold;
-                cs.current_id = t(cs.current_id);
-                cur_s = t(cur_s);
-            }
-            if (!success) {
-                return NTV();
-            }
-            return try etype(t(x), e, ngt);
-        },
-        .TRIES => {
-            const hold = cs.lineptr;
-            const a = NTV();
-            var cur_x = t(x);
-            while (cur_x != NIL) {
-                cs.lineptr = h(h(cur_x));
-                if (unify(a, try etype(t(h(cur_x)), env, ngt)) == 0) {
-                    break;
-                }
-                cur_x = t(cur_x);
-            }
-            cs.lineptr = hold;
-            if (cur_x != NIL) {
-                return NTV();
-            }
-            return a;
-        },
+        .LET => return etypeLet(x, env, ngt),
+        .LETREC => return etypeLetrec(x, env, ngt),
+        .TRIES => return etypeTries(x, env, ngt),
         .LABEL => {
             const hold = cs.lineptr;
             cs.lineptr = h(x);
@@ -2162,342 +1966,582 @@ fn etype(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
         .UNICODE => {
             return char_t;
         },
-        .ATOM => {
-            if (word.fitsInByte(x)) {
-                return char_t;
-            }
-            switch (x) {
-                word.S => {
-                    const a = NTV();
-                    const b = NTV();
-                    const c_local = NTV();
-                    const d = tf3(tf2(a, b, c_local), tf(a, b), a, c_local);
-                    return d;
-                },
-                word.K => {
-                    const a = NTV();
-                    const b = NTV();
-                    return tf2(a, b, a);
-                },
-                word.Y => {
-                    const a = NTV();
-                    return tf(tf(a, a), a);
-                },
-                word.C => {
-                    const a = NTV();
-                    const b = NTV();
-                    const c_local = NTV();
-                    return tf3(tf2(a, b, c_local), b, a, c_local);
-                },
-                word.B => {
-                    const a = NTV();
-                    const b = NTV();
-                    const c_local = NTV();
-                    return tf3(tf(a, b), tf(c_local, a), c_local, b);
-                },
-                word.FORCE, word.G_UNIT, word.G_RULE, word.I => {
-                    const a = NTV();
-                    return tf(a, a);
-                },
-                word.G_ZERO => {
-                    return NTV();
-                },
-                word.HD => {
-                    const a = NTV();
-                    return tf(lt(a), a);
-                },
-                word.TL => {
-                    const a = lt(NTV());
-                    return tf(a, a);
-                },
-                word.BODY => {
-                    const a = NTV();
-                    const b = NTV();
-                    return tf(ap(a, b), a);
-                },
-                word.LAST => {
-                    const a = NTV();
-                    const b = NTV();
-                    return tf(ap(a, b), b);
-                },
-                word.S_p => {
-                    const a = NTV();
-                    const b = NTV();
-                    const c_local = lt(b);
-                    return tf3(tf(a, b), tf(a, c_local), a, c_local);
-                },
-                word.U, word.U_ => {
-                    const a = NTV();
-                    const b = NTV();
-                    const c_local = lt(a);
-                    return tf2(tf2(a, c_local, b), c_local, b);
-                },
-                word.Uf => {
-                    const a = NTV();
-                    const b = NTV();
-                    const c_local = NTV();
-                    return tf2(tf2(tf(a, b), a, c_local), b, c_local);
-                },
-                word.COND => {
-                    const a = NTV();
-                    return tf3(bool_t, a, a, a);
-                },
-                word.EQ, word.GR, word.GRE, word.NEQ => {
-                    const a = NTV();
-                    return tf2(a, a, bool_t);
-                },
-                word.NEG => {
-                    return cs.tfnum;
-                },
-                word.AND, word.OR => {
-                    return cs.tfbool2;
-                },
-                word.NOT => {
-                    return cs.tfbool;
-                },
-                word.MERGE, word.APPEND => {
-                    const a = lt(NTV());
-                    return tf2(a, a, a);
-                },
-                word.STEP => {
-                    return cs.tstep;
-                },
-                word.STEPUNTIL => {
-                    return cs.tstepuntil;
-                },
-                word.MAP => {
-                    const a = NTV();
-                    const b = NTV();
-                    return tf2(tf(a, b), lt(a), lt(b));
-                },
-                word.FLATMAP => {
-                    const a = NTV();
-                    const b = lt(NTV());
-                    return tf2(tf(a, b), lt(a), b);
-                },
-                word.FILTER => {
-                    const a = NTV();
-                    const b = lt(a);
-                    return tf2(tf(a, bool_t), b, b);
-                },
-                word.ZIP => {
-                    const a = NTV();
-                    const b = NTV();
-                    return tf2(lt(a), lt(b), lt(pairType(a, b)));
-                },
-                word.FOLDL => {
-                    const a = NTV();
-                    const b = NTV();
-                    return tf3(tf2(a, b, a), a, lt(b), a);
-                },
-                word.FOLDL1 => {
-                    const a = NTV();
-                    return tf2(tf2(a, a, a), lt(a), a);
-                },
-                word.LIST_LAST => {
-                    const a = NTV();
-                    return tf(lt(a), a);
-                },
-                word.FOLDR => {
-                    const a = NTV();
-                    const b = NTV();
-                    return tf3(tf2(a, b, b), b, lt(a), b);
-                },
-                word.MATCHINT, word.MATCH => {
-                    const a = NTV();
-                    const b = NTV();
-                    return tf3(a, b, a, b);
-                },
-                word.TRY => {
-                    const a = NTV();
-                    return tf2(a, a, a);
-                },
-                word.DROP, word.TAKE => {
-                    const a = lt(NTV());
-                    return tf2(num_t, a, a);
-                },
-                word.SUBSCRIPT => {
-                    const a = NTV();
-                    return tf2(num_t, lt(a), a);
-                },
-                word.P => {
-                    const a = NTV();
-                    const b = lt(a);
-                    return tf2(a, b, b);
-                },
-                word.B_p => {
-                    const a = NTV();
-                    const b = NTV();
-                    const c_local = lt(a);
-                    return tf3(a, tf(b, c_local), b, c_local);
-                },
-                word.C_p => {
-                    const a = NTV();
-                    const b = NTV();
-                    const c_local = lt(b);
-                    return tf3(tf(a, b), c_local, a, c_local);
-                },
-                word.S1 => {
-                    const a = NTV();
-                    const b = NTV();
-                    const c_local = NTV();
-                    const d = NTV();
-                    return tf4(tf2(a, b, c_local), tf(d, a), tf(d, b), d, c_local);
-                },
-                word.B1 => {
-                    const a = NTV();
-                    const b = NTV();
-                    const c_local = NTV();
-                    const d = NTV();
-                    return tf4(tf(a, b), tf(c_local, a), tf(d, c_local), d, b);
-                },
-                word.C1 => {
-                    const a = NTV();
-                    const b = NTV();
-                    const c_local = NTV();
-                    const d = NTV();
-                    return tf4(tf2(a, b, c_local), tf(d, a), b, d, c_local);
-                },
-                word.SEQ => {
-                    const a = NTV();
-                    const b = NTV();
-                    return tf2(a, b, b);
-                },
-                word.ITERATE1, word.ITERATE => {
-                    const a = NTV();
-                    return tf2(tf(a, a), a, lt(a));
-                },
-                word.EXEC => {
-                    if (cs.exec_t == 0) {
-                        const a = ap2(comma_t, cs.ltchar, ap2(comma_t, num_t, void_t));
-                        cs.exec_t = tf(cs.ltchar, ap2(comma_t, cs.ltchar, a));
-                    }
-                    return cs.exec_t;
-                },
-                word.READBIN, word.READ => {
-                    if (cs.read_t == 0) {
-                        cs.read_t = tf(char_t, cs.ltchar);
-                    }
-                    return cs.read_t;
-                },
-                word.FILESTAT => {
-                    return genlstatType();
-                },
-                word.FILEMODE, word.GETENV, word.NB_STARTREAD, word.STARTREADBIN, word.STARTREAD => {
-                    return cs.tfstrstr;
-                },
-                word.GETARGS => {
-                    return tf(char_t, lt(cs.ltchar));
-                },
-                word.SHOWHEX, word.SHOWOCT, word.SHOWNUM => {
-                    return tf(num_t, cs.ltchar);
-                },
-                word.SHOWFLOAT, word.SHOWSCALED => {
-                    return tf2(num_t, num_t, cs.ltchar);
-                },
-                word.NUMVAL => {
-                    return tf(cs.ltchar, num_t);
-                },
-                word.INTEGER => {
-                    return tf(num_t, bool_t);
-                },
-                word.CODE => {
-                    return tf(char_t, num_t);
-                },
-                word.DECODE => {
-                    return tf(num_t, char_t);
-                },
-                word.LENGTH => {
-                    return tf(lt(NTV()), num_t);
-                },
-                word.ENTIER_FN, word.ARCTAN_FN, word.EXP_FN, word.SIN_FN, word.COS_FN, word.SQRT_FN, word.LOG_FN, word.LOG10_FN => {
-                    return cs.tfnumnum;
-                },
-                word.MINUS, word.PLUS, word.TIMES, word.INTDIV, word.FDIV, word.MOD, word.POWER => {
-                    return cs.tfnum2;
-                },
-                word.True, word.False => {
-                    return bool_t;
-                },
-                NIL => {
-                    const a = lt(NTV());
-                    return a;
-                },
-                word.NILS => {
-                    return cs.ltchar;
-                },
-                word.MKSTRICT => {
-                    const a = NTV();
-                    return tf(char_t, tf(a, a));
-                },
-                word.G_ALT => {
-                    const a = NTV();
-                    return tf2(a, a, a);
-                },
-                word.G_ERROR => {
-                    const a = NTV();
-                    return tf2(a, tf(lt(cs.bnf_t), a), a);
-                },
-                word.G_OPT, word.G_STAR => {
-                    const a = NTV();
-                    return tf(a, lt(a));
-                },
-                word.G_FBSTAR => {
-                    const a = NTV();
-                    const b = tf(a, a);
-                    return tf(b, b);
-                },
-                word.G_SYMB => {
-                    return cs.tfstrstr;
-                },
-                word.G_ANY => {
-                    return cs.ltchar;
-                },
-                word.G_SUCHTHAT => {
-                    return tf(tf(cs.ltchar, bool_t), cs.ltchar);
-                },
-                word.G_END => {
-                    return lt(cs.bnf_t);
-                },
-                word.G_STATE => {
-                    return t(h(t(cs.bnf_t)));
-                },
-                word.G_SEQ => {
-                    const a = NTV();
-                    const b = NTV();
-                    return tf2(a, tf(a, b), b);
-                },
-                word.G_CLOSE => {
-                    const a = NTV();
-                    if (rt.rs.col_fn != 0) {
-                        if (rt.rs.col_fn == -1) {
-                            cs.TYPERRS += 1;
-                        } else {
-                            checkcolfn();
-                        }
-                    }
-                    return tf3(cs.ltchar, a, lt(cs.bnf_t), a);
-                },
-                word.OFFSIDE => {
-                    return cs.ltchar;
-                },
-                word.FAIL, word.CONFERROR, word.BADCASE, UNDEF => {
-                    return NTV();
-                },
-                word.ERROR => {
-                    return tf(cs.ltchar, NTV());
-                },
-                else => {
-                    _ = word.print("do not know type of ", .{});
-                    out(getStdout().?, x);
-                    _ = word.putchar('\n');
-                    return wrong_t;
-                },
-            }
-        },
+        .ATOM => return etypeAtom(x),
         else => {
             _ = word.print("unexpected tag in etype ", .{});
             out(getStdout().?, @intFromEnum(getTag(x)));
+            _ = word.putchar('\n');
+            return wrong_t;
+        },
+    }
+}
+
+/// [etype] for an `.AP` node: infers the function and argument types, unifies
+/// the function's type with `arg -> fresh result`, and reports a mismatch
+/// (with a special-cased message for grammar `%include` application errors).
+fn etypeAp(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
+    if (h(x) == word.BADCASE or h(x) == word.CONFERROR) {
+        return NTV();
+    }
+    const ft_val = try etype(h(x), env, ngt);
+    const at = try etype(t(x), env, ngt);
+    const rt_ty = NTV();
+    if (unify1(ft_val, ap2(arrow_t, at, rt_ty)) == 0) {
+        const ft = subst(ft_val);
+        if (isArrowType(ft)) {
+            if (getTag(h(x)) == .AP and h(h(x)) == word.G_ERROR) {
+                typeError8(at, t(h(ft)));
+            } else {
+                typeError("unify", "with", at, t(h(ft)));
+            }
+        } else {
+            typeError("apply", "to", ft, at);
+        }
+        return NTV();
+    }
+    return rt_ty;
+}
+
+/// [etype] for a `.CONS` node: finds the chain's tail, unifies its type with
+/// the list type, then unifies every head's type with the list's element
+/// type, reporting the first mismatch found (checked tail-first, matching the
+/// original C reducer's error-reporting order).
+fn etypeCons(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
+    const elem_type = NTV();
+    const list_type = lt(elem_type);
+
+    // 1. Find the tail of the CONS chain
+    var cur = x;
+    while (getTag(cur) == .CONS) {
+        cur = t(cur);
+    }
+    const tail_expr = cur;
+
+    // 2. Type check the tail
+    const tail_type = try etype(tail_expr, env, ngt);
+    if (unify1(list_type, tail_type) == 0) {
+        // Find the last CONS node to report the error on
+        var last_cons = x;
+        while (t(last_cons) != tail_expr) {
+            last_cons = t(last_cons);
+        }
+        const ht = try etype(h(last_cons), env, ngt);
+        typeError("cons", "to", ht, tail_type);
+        return NTV();
+    }
+
+    // 3. Type check each head in the chain
+    cur = x;
+    while (getTag(cur) == .CONS) {
+        const ht = try etype(h(cur), env, ngt);
+        if (unify1(ht, elem_type) == 0) {
+            const rt_ty = try etype(t(cur), env, ngt);
+            typeError("cons", "to", ht, rt_ty);
+            return NTV();
+        }
+        cur = t(cur);
+    }
+    return list_type;
+}
+
+/// [etype] for a `.LEXER` node: type-checks each alternative's grammar body
+/// against the first alternative's type, restoring `cs.lineptr` (used for
+/// error-location reporting) around each check.
+fn etypeLexer(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
+    const hold = cs.lineptr;
+    cs.lineptr = h(t(t(h(x))));
+    tp(t(h(x))).* = t(t(t(h(x))));
+    const a = try etype(t(t(h(x))), env, ngt);
+    var cur_x = x;
+    while (true) {
+        cur_x = t(cur_x);
+        if (cur_x == NIL) break;
+        cs.lineptr = h(t(t(h(cur_x))));
+        tp(t(h(cur_x))).* = t(t(t(h(cur_x))));
+        const b = try etype(t(t(h(cur_x))), env, ngt);
+        if (unify1(a, b) == 0) {
+            typeError7(a, b);
+            cs.lineptr = hold;
+            return NTV();
+        }
+    }
+    cs.lineptr = hold;
+    return tf(cs.ltchar, lt(a));
+}
+
+/// [etype] for a `.ID` node: looks it up in the local type environment first
+/// (`env`, generalizing on hit), then the global identifier table, reporting
+/// undefined/wrongly-typed names.
+fn etypeId(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
+    var cur_env = env;
+    while (cur_env != NIL) {
+        if (h(h(cur_env)) == x) {
+            tp(h(cur_env)).* = subst(t(h(cur_env)));
+            return linst(t(h(cur_env)), ngt);
+        }
+        cur_env = t(cur_env);
+    }
+    const a = idType(x);
+    if (isBoundType(a)) {
+        return t(a);
+    }
+    if (a == type_t) {
+        typeError1(x);
+    }
+    if (a == undef_t) {
+        if (core_state.s.commandmode != 0) {
+            typeError2(x);
+        } else if (member(cs.ND, x) == 0) {
+            if (cs.lineptr != 0) {
+                sayhere(cs.lineptr, 0);
+            } else if (getTag(cs.current_id) == .DATAPAIR) {
+                locateInc();
+            }
+            _ = word.print("undefined name \"{s}\"\n", .{getId(x)});
+            cs.ND = add1(x, cs.ND);
+        }
+        return NTV();
+    }
+    if (a == wrong_t) {
+        return NTV();
+    }
+    return instantiate(if (cs.ATNAMES != 0) repT(a, cs.ATNAMES) else a);
+}
+
+/// [etype] for a `.LET` node: infers the bound expression's type against the
+/// pattern, then the body's type in the extended environment.
+fn etypeLet(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
+    var e: Word = undefined;
+    const def = h(x);
+    const a = NTV();
+    e = try conforms(dlhs(def), a, env, cons(a, ngt));
+    cs.current_id = cons(dlhs(def), cs.current_id);
+    const c_local = cs.lineptr;
+    cs.lineptr = dval(def);
+    const unified = unify(a, try etype(dval(def), env, ngt));
+    cs.lineptr = c_local;
+    cs.current_id = t(cs.current_id);
+    if (e == -1 or unified == 0) {
+        return NTV();
+    }
+    return try etype(t(x), e, ngt);
+}
+
+/// [etype] for a `.LETREC` node: assigns each definition a fresh type
+/// variable (or its declared type, if any), extends the environment with all
+/// of them (so mutual recursion type-checks), then checks each definition's
+/// body against its assigned type -- explicitly-typed definitions are
+/// checked for subsumption rather than plain unification.
+fn etypeLetrec(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
+    var e = env;
+    var s = NIL;
+    var a = NIL;
+    var c_local = ngt;
+    var cur_d = h(x);
+    while (cur_d != NIL) {
+        if (dtyp(h(cur_d)) == undef_t) {
+            a = cons(h(cur_d), a);
+            const b = NTV();
+            hp(t(h(cur_d))).* = b;
+            c_local = cons(b, c_local);
+            e = try conforms(dlhs(h(cur_d)), b, e, c_local);
+        } else {
+            hp(t(h(cur_d))).* = try metaTcheck(dtyp(h(cur_d)));
+            s = cons(h(cur_d), s);
+            e = cons(cons(dlhs(h(cur_d)), dtyp(h(cur_d))), e);
+        }
+        cur_d = t(cur_d);
+    }
+    if (e == -1) {
+        return NTV();
+    }
+    var success = true;
+    var cur_a = a;
+    while (cur_a != NIL) {
+        cs.current_id = cons(dlhs(h(cur_a)), cs.current_id);
+        const hold = cs.lineptr;
+        cs.lineptr = dval(h(cur_a));
+        if (unify(dtyp(h(cur_a)), try etype(dval(h(cur_a)), e, c_local)) == 0) {
+            success = false;
+        }
+        cs.lineptr = hold;
+        cs.current_id = t(cs.current_id);
+        cur_a = t(cur_a);
+    }
+    var cur_s = s;
+    while (cur_s != NIL) {
+        cs.current_id = cons(dlhs(h(cur_s)), cs.current_id);
+        const hold = cs.lineptr;
+        cs.lineptr = dval(h(cur_s));
+        const ety = try etype(dval(h(cur_s)), e, ngt);
+        if (subsumes(ety, linst(dtyp(h(cur_s)), ngt)) == 0) {
+            success = false;
+            typeError6(dlhs(h(cur_s)), dtyp(h(cur_s)), ety);
+        }
+        cs.lineptr = hold;
+        cs.current_id = t(cs.current_id);
+        cur_s = t(cur_s);
+    }
+    if (!success) {
+        return NTV();
+    }
+    return try etype(t(x), e, ngt);
+}
+
+/// [etype] for a `.TRIES` node (a `%include`/grammar alternative chain):
+/// unifies every alternative's type with the first, reporting a mismatch at
+/// the first alternative that disagrees.
+fn etypeTries(x: Word, env: Word, ngt: Word) errors.MiraError!Word {
+    const hold = cs.lineptr;
+    const a = NTV();
+    var cur_x = t(x);
+    while (cur_x != NIL) {
+        cs.lineptr = h(h(cur_x));
+        if (unify(a, try etype(t(h(cur_x)), env, ngt)) == 0) {
+            break;
+        }
+        cur_x = t(cur_x);
+    }
+    cs.lineptr = hold;
+    if (cur_x != NIL) {
+        return NTV();
+    }
+    return a;
+}
+
+/// [etype] for an `.ATOM` node: single-byte atoms are characters; otherwise
+/// this is one of the built-in SK-family combinators or primitive operators,
+/// each with a fixed (possibly polymorphic, via fresh `NTV()` type
+/// variables) type -- effectively a static type table for the whole
+/// combinator/operator vocabulary.
+fn etypeAtom(x: Word) Word {
+    if (word.fitsInByte(x)) {
+        return char_t;
+    }
+    switch (x) {
+        word.S => {
+            const a = NTV();
+            const b = NTV();
+            const c_local = NTV();
+            const d = tf3(tf2(a, b, c_local), tf(a, b), a, c_local);
+            return d;
+        },
+        word.K => {
+            const a = NTV();
+            const b = NTV();
+            return tf2(a, b, a);
+        },
+        word.Y => {
+            const a = NTV();
+            return tf(tf(a, a), a);
+        },
+        word.C => {
+            const a = NTV();
+            const b = NTV();
+            const c_local = NTV();
+            return tf3(tf2(a, b, c_local), b, a, c_local);
+        },
+        word.B => {
+            const a = NTV();
+            const b = NTV();
+            const c_local = NTV();
+            return tf3(tf(a, b), tf(c_local, a), c_local, b);
+        },
+        word.FORCE, word.G_UNIT, word.G_RULE, word.I => {
+            const a = NTV();
+            return tf(a, a);
+        },
+        word.G_ZERO => {
+            return NTV();
+        },
+        word.HD => {
+            const a = NTV();
+            return tf(lt(a), a);
+        },
+        word.TL => {
+            const a = lt(NTV());
+            return tf(a, a);
+        },
+        word.BODY => {
+            const a = NTV();
+            const b = NTV();
+            return tf(ap(a, b), a);
+        },
+        word.LAST => {
+            const a = NTV();
+            const b = NTV();
+            return tf(ap(a, b), b);
+        },
+        word.S_p => {
+            const a = NTV();
+            const b = NTV();
+            const c_local = lt(b);
+            return tf3(tf(a, b), tf(a, c_local), a, c_local);
+        },
+        word.U, word.U_ => {
+            const a = NTV();
+            const b = NTV();
+            const c_local = lt(a);
+            return tf2(tf2(a, c_local, b), c_local, b);
+        },
+        word.Uf => {
+            const a = NTV();
+            const b = NTV();
+            const c_local = NTV();
+            return tf2(tf2(tf(a, b), a, c_local), b, c_local);
+        },
+        word.COND => {
+            const a = NTV();
+            return tf3(bool_t, a, a, a);
+        },
+        word.EQ, word.GR, word.GRE, word.NEQ => {
+            const a = NTV();
+            return tf2(a, a, bool_t);
+        },
+        word.NEG => {
+            return cs.tfnum;
+        },
+        word.AND, word.OR => {
+            return cs.tfbool2;
+        },
+        word.NOT => {
+            return cs.tfbool;
+        },
+        word.MERGE, word.APPEND => {
+            const a = lt(NTV());
+            return tf2(a, a, a);
+        },
+        word.STEP => {
+            return cs.tstep;
+        },
+        word.STEPUNTIL => {
+            return cs.tstepuntil;
+        },
+        word.MAP => {
+            const a = NTV();
+            const b = NTV();
+            return tf2(tf(a, b), lt(a), lt(b));
+        },
+        word.FLATMAP => {
+            const a = NTV();
+            const b = lt(NTV());
+            return tf2(tf(a, b), lt(a), b);
+        },
+        word.FILTER => {
+            const a = NTV();
+            const b = lt(a);
+            return tf2(tf(a, bool_t), b, b);
+        },
+        word.ZIP => {
+            const a = NTV();
+            const b = NTV();
+            return tf2(lt(a), lt(b), lt(pairType(a, b)));
+        },
+        word.FOLDL => {
+            const a = NTV();
+            const b = NTV();
+            return tf3(tf2(a, b, a), a, lt(b), a);
+        },
+        word.FOLDL1 => {
+            const a = NTV();
+            return tf2(tf2(a, a, a), lt(a), a);
+        },
+        word.LIST_LAST => {
+            const a = NTV();
+            return tf(lt(a), a);
+        },
+        word.FOLDR => {
+            const a = NTV();
+            const b = NTV();
+            return tf3(tf2(a, b, b), b, lt(a), b);
+        },
+        word.MATCHINT, word.MATCH => {
+            const a = NTV();
+            const b = NTV();
+            return tf3(a, b, a, b);
+        },
+        word.TRY => {
+            const a = NTV();
+            return tf2(a, a, a);
+        },
+        word.DROP, word.TAKE => {
+            const a = lt(NTV());
+            return tf2(num_t, a, a);
+        },
+        word.SUBSCRIPT => {
+            const a = NTV();
+            return tf2(num_t, lt(a), a);
+        },
+        word.P => {
+            const a = NTV();
+            const b = lt(a);
+            return tf2(a, b, b);
+        },
+        word.B_p => {
+            const a = NTV();
+            const b = NTV();
+            const c_local = lt(a);
+            return tf3(a, tf(b, c_local), b, c_local);
+        },
+        word.C_p => {
+            const a = NTV();
+            const b = NTV();
+            const c_local = lt(b);
+            return tf3(tf(a, b), c_local, a, c_local);
+        },
+        word.S1 => {
+            const a = NTV();
+            const b = NTV();
+            const c_local = NTV();
+            const d = NTV();
+            return tf4(tf2(a, b, c_local), tf(d, a), tf(d, b), d, c_local);
+        },
+        word.B1 => {
+            const a = NTV();
+            const b = NTV();
+            const c_local = NTV();
+            const d = NTV();
+            return tf4(tf(a, b), tf(c_local, a), tf(d, c_local), d, b);
+        },
+        word.C1 => {
+            const a = NTV();
+            const b = NTV();
+            const c_local = NTV();
+            const d = NTV();
+            return tf4(tf2(a, b, c_local), tf(d, a), b, d, c_local);
+        },
+        word.SEQ => {
+            const a = NTV();
+            const b = NTV();
+            return tf2(a, b, b);
+        },
+        word.ITERATE1, word.ITERATE => {
+            const a = NTV();
+            return tf2(tf(a, a), a, lt(a));
+        },
+        word.EXEC => {
+            if (cs.exec_t == 0) {
+                const a = ap2(comma_t, cs.ltchar, ap2(comma_t, num_t, void_t));
+                cs.exec_t = tf(cs.ltchar, ap2(comma_t, cs.ltchar, a));
+            }
+            return cs.exec_t;
+        },
+        word.READBIN, word.READ => {
+            if (cs.read_t == 0) {
+                cs.read_t = tf(char_t, cs.ltchar);
+            }
+            return cs.read_t;
+        },
+        word.FILESTAT => {
+            return genlstatType();
+        },
+        word.FILEMODE, word.GETENV, word.NB_STARTREAD, word.STARTREADBIN, word.STARTREAD => {
+            return cs.tfstrstr;
+        },
+        word.GETARGS => {
+            return tf(char_t, lt(cs.ltchar));
+        },
+        word.SHOWHEX, word.SHOWOCT, word.SHOWNUM => {
+            return tf(num_t, cs.ltchar);
+        },
+        word.SHOWFLOAT, word.SHOWSCALED => {
+            return tf2(num_t, num_t, cs.ltchar);
+        },
+        word.NUMVAL => {
+            return tf(cs.ltchar, num_t);
+        },
+        word.INTEGER => {
+            return tf(num_t, bool_t);
+        },
+        word.CODE => {
+            return tf(char_t, num_t);
+        },
+        word.DECODE => {
+            return tf(num_t, char_t);
+        },
+        word.LENGTH => {
+            return tf(lt(NTV()), num_t);
+        },
+        word.ENTIER_FN, word.ARCTAN_FN, word.EXP_FN, word.SIN_FN, word.COS_FN, word.SQRT_FN, word.LOG_FN, word.LOG10_FN => {
+            return cs.tfnumnum;
+        },
+        word.MINUS, word.PLUS, word.TIMES, word.INTDIV, word.FDIV, word.MOD, word.POWER => {
+            return cs.tfnum2;
+        },
+        word.True, word.False => {
+            return bool_t;
+        },
+        NIL => {
+            const a = lt(NTV());
+            return a;
+        },
+        word.NILS => {
+            return cs.ltchar;
+        },
+        word.MKSTRICT => {
+            const a = NTV();
+            return tf(char_t, tf(a, a));
+        },
+        word.G_ALT => {
+            const a = NTV();
+            return tf2(a, a, a);
+        },
+        word.G_ERROR => {
+            const a = NTV();
+            return tf2(a, tf(lt(cs.bnf_t), a), a);
+        },
+        word.G_OPT, word.G_STAR => {
+            const a = NTV();
+            return tf(a, lt(a));
+        },
+        word.G_FBSTAR => {
+            const a = NTV();
+            const b = tf(a, a);
+            return tf(b, b);
+        },
+        word.G_SYMB => {
+            return cs.tfstrstr;
+        },
+        word.G_ANY => {
+            return cs.ltchar;
+        },
+        word.G_SUCHTHAT => {
+            return tf(tf(cs.ltchar, bool_t), cs.ltchar);
+        },
+        word.G_END => {
+            return lt(cs.bnf_t);
+        },
+        word.G_STATE => {
+            return t(h(t(cs.bnf_t)));
+        },
+        word.G_SEQ => {
+            const a = NTV();
+            const b = NTV();
+            return tf2(a, tf(a, b), b);
+        },
+        word.G_CLOSE => {
+            const a = NTV();
+            if (rt.rs.col_fn != 0) {
+                if (rt.rs.col_fn == -1) {
+                    cs.TYPERRS += 1;
+                } else {
+                    checkcolfn();
+                }
+            }
+            return tf3(cs.ltchar, a, lt(cs.bnf_t), a);
+        },
+        word.OFFSIDE => {
+            return cs.ltchar;
+        },
+        word.FAIL, word.CONFERROR, word.BADCASE, UNDEF => {
+            return NTV();
+        },
+        word.ERROR => {
+            return tf(cs.ltchar, NTV());
+        },
+        else => {
+            _ = word.print("do not know type of ", .{});
+            out(getStdout().?, x);
             _ = word.putchar('\n');
             return wrong_t;
         },
