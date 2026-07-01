@@ -82,10 +82,6 @@ inline fn tp(x: Word) *Word {
     return heap.heap.tp(x);
 }
 
-inline fn abnormal(x: Word) bool {
-    return x < 0;
-}
-
 inline fn lh(x: Word) Word {
     if (getTag(h(x)) == .STRCONS) {
         return t(h(x));
@@ -303,7 +299,7 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
             reduce_core.upLeft(ctx); // GETARG(arg1)
             ctx.args[0] = t(ctx.e);
 
-            if (abnormal(ctx.s)) return word.ACT_DONE;
+            if (ctx.spine.isEmpty()) return word.ACT_DONE;
 
             reduce_core.upLeft(ctx);
 

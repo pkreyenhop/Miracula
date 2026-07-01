@@ -1,27 +1,36 @@
 #!/usr/bin/env python3
-"""spine_differential_check.py -- differential validation for the explicit
+"""spine_differential_check.py -- stress/regression corpus for the explicit
 spine stack (src/runtime/reducer/spine.zig), B2 option (b) / Phase 2 of
 docs/REMAINING_WORK_PLAN.md.
 
-Runs real Miranda programs through the interpreter with MIRA_VALIDATE_SPINE=1
-set, which drives a shadow Spine in lockstep with the live pointer-reversal
-primitives (reduce_core.zig's downLeft/downRight/upLeft/upRight, plus
-combinators.zig's handleTRY/handleFAIL) and aborts via std.debug.assert on the
-first mismatch (see spine.zig's "Shadow-validation hooks" section).
+`Spine` is now the interpreter's live spine-traversal mechanism (the cutover
+that replaced in-graph pointer reversal). This script runs real Miranda
+programs through it and checks for a clean exit (no crash signal, no panic,
+no hang) -- a broader smoke test than the golden corpus's exact-output checks,
+covering shapes golden doesn't stress: deep recursion, guarded multi-equation
+functions (which pervasively exercise combinators.handleTRY/handleFAIL's
+direct spine manipulation), algebraic types, lazy infinite streams.
 
-This is *not* a correctness check on program output -- the golden corpus
-already covers that. It only asks: did the shadow ever disagree with the live
-mechanism? A clean (non-signal, non-panic) exit means no.
+It predates the cutover as a *differential* tool: an earlier version ran with
+an opt-in env var that drove a shadow Spine in lockstep with the
+then-still-live pointer reversal, asserting agreement on every primitive
+call. That shadow-validation pass (51 checks, zero mismatches) is what gave
+enough confidence to attempt the cutover, and caught two real bugs along the
+way -- see git history around 71c47ae..c617ae2 for the shadow mechanism itself,
+and the cutover commit for the two bugs the *live* run then caught that the
+shadow's narrower coverage had not (a `via_tl`-boundary check missing from
+`downright`/`upleft`/`handleTRY`/`handleFAIL`, and an algebraic-type
+regression). The shadow machinery is gone now that there is nothing left to
+shadow; this file keeps the corpus as an ordinary regression/smoke suite.
 
 Two corpora:
   1. Every tests/golden/*.m + *.in pair (reusing the existing fixtures).
   2. A curated set of real programs from miralib/ex/ (deep recursion, guarded
-     multi-equation functions -- which pervasively exercise TRY/FAIL --
-     algebraic types, lazy infinite streams), chosen for shapes the golden
-     corpus doesn't stress. Two miralib/ex/*.m files (ack.m, queens.m) and
-     hanoi.m use n+k patterns that this interpreter's parser/compiler
-     currently rejects outright (a genuine, separate, pre-existing bug,
-     unrelated to the reducer) -- ack.m is swapped for
+     multi-equation functions, algebraic types, lazy infinite streams), chosen
+     for shapes the golden corpus doesn't stress. Two miralib/ex/*.m files
+     (ack.m, queens.m) and hanoi.m use n+k patterns that this interpreter's
+     parser/compiler currently rejects outright (a genuine, separate,
+     pre-existing bug, unrelated to the reducer) -- ack.m is swapped for
      tests/spine_corpus/ack_nk_free.m; queens.m/hanoi.m are skipped.
 """
 import os
@@ -89,7 +98,6 @@ def main():
         sys.exit(1)
 
     env = dict(os.environ)
-    env["MIRA_VALIDATE_SPINE"] = "1"
 
     failed = False
 
@@ -118,11 +126,10 @@ def main():
             failed = True
 
     if failed:
-        print("Spine differential check FAILED -- the shadow spine disagreed "
-              "with the live pointer-reversal mechanism somewhere above.")
+        print("Spine stress check FAILED -- see the crash/hang above.")
         sys.exit(1)
-    print("All spine differential checks passed -- no shadow/live mismatch "
-          f"across {len(EX_CORPUS)} miralib/ex programs and the golden corpus.")
+    print("All spine stress checks passed -- clean exit across "
+          f"{len(EX_CORPUS)} miralib/ex programs and the golden corpus.")
     sys.exit(0)
 
 

@@ -15,7 +15,6 @@ const heap = @import("../heap.zig");
 const lex = @import("../../parser/lex.zig");
 const main_clib = @import("../main_clib.zig");
 const reduce_rt = @import("../reduce.zig");
-const spine = @import("spine.zig");
 const tu = @import("../../testutil.zig"); // unit-test harness (test builds only)
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
@@ -1142,7 +1141,7 @@ pub fn handleTRY(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    while (!reduce.abnormal(ctx.s)) {
+    while (!ctx.spine.atArgumentChainBoundary()) {
         if (reduce.upleft(ctx)) {
             ctx.action = word.ACT_DONE;
             return;
@@ -1153,31 +1152,28 @@ pub fn handleTRY(ctx: *ReductionCtx) void {
         arg2 = reduce.ap(arg2, lastarg);
         reduce.tlSet(ctx.e, arg2);
     }
+    // Fabricates a frame out of a cell already in hand (old_hd_e), tagged
+    // via_tl from the start -- distinct from an ordinary downLeft/downRight
+    // pair, hence the direct Spine.pushRaw rather than one of the four
+    // primitives. h_node (what downLeft is about to push a frame for) must be
+    // captured *before* the call -- there is no ctx.s to read it back from
+    // afterward the way the old pointer-reversal encoding allowed.
+    const h_node = ctx.e;
     reduce.downLeft(ctx);
-    const old_e = ctx.s;
     const old_hd_e = ctx.e;
     ctx.e = reduce.tlGet(old_hd_e);
-    reduce.tlSet(old_hd_e, old_e);
-    ctx.s = old_hd_e | word.tlptrbit;
-    // Fabricates a frame out of a cell already in hand (old_hd_e), tagged
-    // via_tl from the start -- distinct from downLeft/downRight, which is why
-    // the shadow spine (see spine.zig) needs its own explicit mirroring call
-    // here rather than picking this up through an instrumented primitive.
-    spine.shadowPushRaw(old_hd_e, true);
+    reduce.tlSet(old_hd_e, h_node);
+    ctx.spine.pushRaw(old_hd_e, true);
     ctx.action = word.ACT_NEXTREDEX;
 }
 
 /// Propagate `FAIL` up the spine, collapsing pending alternatives until a `TRY` catches it.
 pub fn handleFAIL(ctx: *ReductionCtx) void {
-    while (!reduce.abnormal(ctx.s)) {
-        ctx.hold = ctx.s;
-        ctx.s = reduce.hdGet(ctx.s);
-        reduce.hdSet(ctx.hold, word.FAIL);
-        reduce.tlSet(ctx.hold, 0);
+    while (!ctx.spine.atArgumentChainBoundary()) {
+        const node = ctx.spine.popNodeOnly().?;
+        reduce.hdSet(node, word.FAIL);
+        reduce.tlSet(node, 0);
     }
-    // Bulk-drains the entire spine directly (not via upLeft), so mirror it as
-    // a bulk drain on the shadow rather than relying on per-frame hooks.
-    spine.shadowDrainAll();
     ctx.action = word.ACT_DONE;
 }
 

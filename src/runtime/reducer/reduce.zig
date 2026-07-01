@@ -55,6 +55,8 @@ const trace = @import("trace.zig");
 const lex = @import("../../parser/lex.zig");
 const reduce_rt = @import("../reduce.zig");
 const main_clib = @import("../main_clib.zig");
+const rt = @import("../runtime_state.zig");
+const spine = @import("spine.zig");
 
 /// The interpreter machine word (re-exported from [core]).
 pub const Word = core.Word;
@@ -64,11 +66,15 @@ pub const ReductionCtx = core.ReductionCtx;
 /// Reduce `e_val` to weak head normal form and return the resulting node.
 /// Drives the graph in place; the returned `Word` is the rewritten root.
 pub fn reduce(e_val: Word) Word {
-    // Fresh machine state. `s = BACKSTOP` is the empty-spine sentinel (its sign
-    // bit makes `ctx.s < 0` true, terminating the upward walk).
+    // Fresh machine state: a fresh, empty Spine (see spine.zig) -- registered
+    // as a GC root for the duration (reduce() is recursive, so nested calls
+    // each get their own, nested LIFO with this one; see Spine.register).
     var ctx: ReductionCtx = undefined;
     ctx.e = e_val;
-    ctx.s = word.BACKSTOP;
+    ctx.spine = spine.Spine.init(rt.allocator);
+    ctx.spine.register();
+    defer ctx.spine.deinit();
+    defer ctx.spine.unregister();
     ctx.hold = 0;
     ctx.args[0] = 0;
     ctx.args[1] = 0;
@@ -259,13 +265,13 @@ pub fn reduce(e_val: Word) Word {
             continue :main_loop;
         }
 
-        // (3) `e` is in WHNF. Walk back *up* the spine, restoring reversed
-        //     pointers. At each `AP` we ascended through, force its right
-        //     argument (descend into it) so strict operators find their
-        //     operands ready; `ready.handleReadyState` applies the pending
-        //     rule once an argument has been reduced. Stop at `BACKSTOP`.
+        // (3) `e` is in WHNF. Walk back *up* the spine. At each `AP` we
+        //     ascended through, force its right argument (descend into it) so
+        //     strict operators find their operands ready;
+        //     `ready.handleReadyState` applies the pending rule once an
+        //     argument has been reduced. Stop when the spine is exhausted.
         while (true) {
-            if (ctx.s == word.BACKSTOP) {
+            if (ctx.spine.isEmpty()) {
                 return ctx.e;
             }
 

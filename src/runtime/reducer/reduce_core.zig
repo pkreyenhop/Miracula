@@ -1,34 +1,43 @@
 //! reduce_core.zig — the reduction machine's primitives, shared by the rewrite
 //! handlers (`combinators.zig`, `ready.zig`, `lex.zig`, `io.zig`, which all
 //! import this file as `reduce`). It owns the `ReductionCtx` register file and
-//! the pointer-reversal traversal/accessor/classifier/rewrite helpers.
+//! the spine-traversal/accessor/classifier/rewrite helpers.
 //!
-//! These primitives are duplicated, definition-for-definition, in the engine
-//! file `reducer/reduce.zig` (which uses its own copies inside `reduce()`); that
-//! file carries the full explanation of the graph-reduction machine and the
-//! pointer-reversal spine. **Keep the two copies in lock-step** — a change here
-//! must be mirrored there. This is also the seam where the B-track typed-value
-//! work (`Heap`/`Value`) will replace the raw-`Word` `hdGet`/`tlGet` reads.
+//! This is also the seam where the B-track typed-value work (`Heap`/`Value`)
+//! will replace the raw-`Word` `hdGet`/`tlGet` reads.
+//!
+//! **Spine representation (B2 option (b), 2026-07-01).** The spine used to be
+//! encoded in-graph via pointer reversal: a cell's own `hd`/`tl` field
+//! temporarily borrowed to hold the "previous stack top" pointer, tagged with
+//! `tlptrbits`. It is now `ctx.spine`, an explicit `Spine` (see `spine.zig`)
+//! — no cell ever holds a borrowed value, and no access needs
+//! `& ~tlptrbits` masking. The traversal primitives below (`downLeft`/
+//! `downRight`/`upLeft`/`upRight`) are now thin wrappers over `Spine`'s
+//! methods of the same name; `spine.zig`'s module doc has the full derivation
+//! (which read/write in each original primitive was a real graph mutation
+//! vs. pure bookkeeping) and the shadow-validation results (51 real-program
+//! checks, zero mismatches) that this cutover rests on.
 
-const std = @import("std");
 const word = @import("../word.zig");
 const strtab = @import("../strtab.zig");
+const spine = @import("spine.zig");
 
 /// The interpreter machine word (see `word.Word`).
 pub const Word = i64;
 
-/// The reduction machine's register file (kept `extern` for a stable layout
-/// matching the original C struct). See `reducer/reduce.zig` for the protocol:
-///   `e` focus node · `s` reversed-spine pointer (top bits = direction mark,
-///   `BACKSTOP` = bottom) · `hold` swap scratch · `args` pulled arguments ·
-///   `action` post-dispatch signal (`ACT_NONE`/`ACT_NEXTREDEX`/`ACT_DONE`).
-pub const ReductionCtx = extern struct {
+/// The reduction machine's register file. See `reducer/reduce.zig` for the
+/// protocol: `e` focus node · `spine` the explicit spine stack (see
+/// `spine.zig`) · `hold` general scratch (used by many handlers for
+/// unrelated temporaries, not just spine bookkeeping) · `args` pulled
+/// arguments · `action` post-dispatch signal (`ACT_NONE`/`ACT_NEXTREDEX`/
+/// `ACT_DONE`).
+pub const ReductionCtx = struct {
     /// Focus node: the redex currently under examination (the "expression" register).
     e: Word,
-    /// Reversed-spine pointer during the pointer-reversal walk (top bits mark the
-    /// direction; `BACKSTOP` marks the spine bottom). The "stack" register.
-    s: Word,
-    /// Swap scratch used while relinking nodes during `downLeft`/`upLeft`.
+    /// The explicit spine stack (replaces the old in-graph pointer-reversal
+    /// encoding — see the module doc above).
+    spine: spine.Spine,
+    /// General-purpose scratch used by many handlers for local temporaries.
     hold: Word,
     /// Arguments pulled off the spine for the current combinator rewrite.
     args: [4]Word,
@@ -69,7 +78,6 @@ const reducer_reduce = @import("reduce.zig");
 const lex_mod = @import("../../parser/lex.zig");
 const big = @import("../big.zig");
 const main_clib = @import("../main_clib.zig");
-const spine = @import("spine.zig");
 
 // Cell access through a spine word (mask off direction bits, then index the
 // heap). This is the raw-`Word` value boundary the B2 `Heap`/`Value` seam will
@@ -110,68 +118,50 @@ pub inline fn tlPtr(x: Word) *Word {
     return heap.heap.tp(x & ~word.tlptrbits);
 }
 
-// Pointer-reversal traversal — see `reducer/reduce.zig` for the mechanics.
-// `downX`/`upX` push/pop the reversed spine; the lowercase wrappers
-// (`downright`/`upleft`) stop at the `s < 0` bottom-of-spine sentinel.
+// Spine traversal — see `spine.zig` for the mechanics. `downX`/`upX` push/pop
+// the explicit spine; the lowercase wrappers (`downright`/`upleft`) stop when
+// the spine is exhausted (the old `s < 0` bottom-of-spine sentinel's
+// replacement).
 
-/// Descend into the head, reversing the spine link (push `e` onto `s`).
+/// Descend into the head: push `e` onto the spine.
 pub inline fn downLeft(ctx: *ReductionCtx) void {
-    const shadow_expect = spine.shadowDownLeft(ctx.e);
-    ctx.hold = ctx.s;
-    ctx.s = ctx.e;
-    ctx.e = hdGet(ctx.e);
-    hdSet(ctx.s, ctx.hold);
-    if (shadow_expect) |exp| std.debug.assert(exp == ctx.e);
+    ctx.e = ctx.spine.downLeft(ctx.e);
 }
 
-/// Descend into the tail, marking the spine word's direction bit.
+/// Descend into the tail of the spine's current top frame.
 pub inline fn downRight(ctx: *ReductionCtx) void {
-    const shadow_expect = spine.shadowDownRight(ctx.e);
-    ctx.hold = hdGet(ctx.s);
-    hdSet(ctx.s, ctx.e);
-    ctx.e = tlGet(ctx.s);
-    tlSet(ctx.s, ctx.hold);
-    ctx.s |= word.tlptrbit;
-    if (shadow_expect) |exp| std.debug.assert(exp == ctx.e);
+    ctx.e = ctx.spine.downRight(ctx.e);
 }
 
-/// [downRight] guarded by the bottom-of-spine sentinel; true if `s` is exhausted.
+/// [downRight] guarded by `atArgumentChainBoundary` (replaces the old
+/// `abnormal(ctx.s)`/`ctx.s < 0` guard — true when the spine is truly empty
+/// *or* the top frame is already `via_tl=true`; see `Spine.atArgumentChainBoundary`).
 pub inline fn downright(ctx: *ReductionCtx) bool {
-    if (ctx.s < 0) {
+    if (ctx.spine.atArgumentChainBoundary()) {
         return true;
     }
     downRight(ctx);
     return false;
 }
 
-/// Ascend out of the head, restoring the reversed spine link (pop `s` into `e`).
+/// Ascend out of the head: pop the spine into `e`.
 pub inline fn upLeft(ctx: *ReductionCtx) void {
-    const shadow_expect = spine.shadowUpLeft(ctx.e);
-    ctx.hold = ctx.s;
-    ctx.s = hdGet(ctx.s);
-    hdSet(ctx.hold, ctx.e);
-    ctx.e = ctx.hold;
-    if (shadow_expect) |exp| std.debug.assert(exp == ctx.e);
+    ctx.e = ctx.spine.upLeft(ctx.e);
 }
 
-/// [upLeft] guarded by the bottom-of-spine sentinel; true if `s` is exhausted.
+/// [upLeft] guarded by `atArgumentChainBoundary` (replaces the old
+/// `abnormal(ctx.s)`/`ctx.s < 0` guard — see `downright` above).
 pub inline fn upleft(ctx: *ReductionCtx) bool {
-    if (ctx.s < 0) {
+    if (ctx.spine.atArgumentChainBoundary()) {
         return true;
     }
     upLeft(ctx);
     return false;
 }
 
-/// Ascend out of the tail, clearing the direction mark and restoring the link.
+/// Ascend out of the tail of the spine's current (still-top) frame.
 pub inline fn upRight(ctx: *ReductionCtx) void {
-    const shadow_expect = spine.shadowUpRight(ctx.e);
-    ctx.s &= ~word.tlptrbits;
-    ctx.hold = tlGet(ctx.s);
-    tlSet(ctx.s, ctx.e);
-    ctx.e = hdGet(ctx.s);
-    hdSet(ctx.s, ctx.hold);
-    if (shadow_expect) |exp| std.debug.assert(exp == ctx.e);
+    ctx.e = ctx.spine.upRight(ctx.e);
 }
 
 /// Pull the next argument off the spine into `a` (unchecked — caller knows it exists).

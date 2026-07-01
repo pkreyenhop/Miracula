@@ -428,6 +428,13 @@ pub const Heap = struct {
                 }
             }
         }
+
+        // Every currently-registered Spine's frames (see reducer/spine.zig):
+        // an explicit spine's frame buffer is a separate heap allocation, not
+        // a Word sitting on the C stack the scan above already covers, and
+        // not reachable through any cell's hd/tl the way the old in-graph
+        // pointer-reversal encoding was -- so it needs its own root pass.
+        @import("reducer/spine.zig").markAllRoots(markRoot);
     }
 
     /// Whether `x` is a heap-cell pointer (rather than an atom/immediate).
@@ -529,6 +536,14 @@ pub fn t(x: Word) Word {
 /// Pointer to the tail field of cell `x` (for in-place mutation).
 pub fn tp(x: Word) *Word {
     return heap.tp(x);
+}
+
+/// Mark `x` reachable (GC). A free-function adapter to the singleton's
+/// method, matching `mark`'s signature to what `reducer/spine.zig`'s
+/// `markAllRoots` expects (a plain `fn (Word) void`, no bound receiver) —
+/// see `Heap.bases`, the only caller.
+fn markRoot(x: Word) void {
+    heap.mark(x);
 }
 
 /// The node tag of cell `x`.

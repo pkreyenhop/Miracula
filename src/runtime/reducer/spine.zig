@@ -1,24 +1,25 @@
-//! reducer/spine.zig — an explicit, heap-growable spine stack: a candidate
-//! replacement for in-graph pointer reversal (B2 option (b), "repivot the
+//! reducer/spine.zig — an explicit, heap-growable spine stack, replacing the
+//! reduction engine's in-graph pointer reversal (B2 option (b), "repivot the
 //! hard core" — see `docs/REMAINING_WORK_PLAN.md` Phase 2).
 //!
 //! ## Why this exists
 //!
-//! `reduce()`'s spine walk (`reduce_core.zig`'s `downLeft`/`downRight`/
-//! `upLeft`/`upRight`) has no separate stack: it threads the return path
+//! The old encoding had no separate stack: it threaded the return path
 //! through the graph itself, temporarily overwriting a cell's own `hd` or
 //! `tl` field with a "previous stack top" pointer (tagged with `tlptrbits` in
 //! its top two bits) and restoring it on the way back. That is why every
-//! `hd`/`tl`/`getTag` access in the hot loop masks `& ~tlptrbits`, and why a
-//! future tagged `Value` (B2 option (a)) competes for the same high bits.
+//! `hd`/`tl`/`getTag` access in the hot loop had to mask `& ~tlptrbits`, and
+//! why a future tagged `Value` (B2 option (a)) would have competed for the
+//! same high bits.
 //!
-//! This module replaces that encoding with an explicit stack of frames, kept
-//! separate from the graph. Tracing every read/write the four primitives
-//! perform shows exactly one write per call is a *real* graph mutation
-//! (writing back a reduced value so sharing still works); every other
-//! read/write is pure bookkeeping for "what's below this frame". Moving that
-//! bookkeeping into an explicit `Frame` means a cell's `hd`/`tl` hold a real
-//! graph value at every instant, and no access anywhere needs `& ~tlptrbits`.
+//! `Spine` replaces that encoding with an explicit stack of frames, kept
+//! separate from the graph. Tracing every read/write the four original
+//! primitives (`downLeft`/`downRight`/`upLeft`/`upRight`) performed showed
+//! exactly one write per call was a *real* graph mutation (writing back a
+//! reduced value so sharing still works); every other read/write was pure
+//! bookkeeping for "what's below this frame". Moving that bookkeeping into an
+//! explicit `Frame` means a cell's `hd`/`tl` hold a real graph value at every
+//! instant, and no access anywhere needs `& ~tlptrbits`.
 //!
 //! **Key correctness property: `downRight` does not push a new frame.** It
 //! *re-tags* the existing top frame (the one `downLeft` pushed for the same
@@ -27,44 +28,19 @@
 //! this: it does not pop — it writes back the reduced tail and flips the
 //! frame back to "via hd", leaving it as the top frame. Only `upLeft` pops.
 //!
-//! ## Status: validated in shadow, not yet the live mechanism
+//! ## Status: live
 //!
-//! `Spine` itself is **not** wired into `reduce()`'s dispatch — the live
-//! interpreter still runs on in-graph pointer reversal. What *is* wired in
-//! (guarded by `active == null`, the default, so it is a no-op unless
-//! explicitly enabled) is a **shadow-validation mode**: setting
-//! `MIRA_VALIDATE_SPINE` at process start drives a `Spine` in lockstep with
-//! the live primitives for the whole run, asserting agreement on every call.
-//! `tests/spine_differential_check.py` runs this over the golden corpus plus
-//! a curated set of `miralib/ex/` programs (44 + 7 checks, 2026-07-01) with
-//! zero mismatches — real evidence for the primitives' correctness, beyond
-//! this file's own hand-built unit tests.
-//!
-//! The shadow hooks also cover the *other* direct consumers of the raw spine
-//! encoding the Phase-2 investigation found — beyond the two files already
-//! flagged as lock-step duplicates of each other (`reducer/reduce.zig`,
-//! `reducer/reduce_core.zig`):
-//!   * `combinators.zig`'s `handleTRY`/`handleFAIL` — TRY/FAIL backtracking
-//!     walks the existing spine in bulk via raw `ctx.s`/`hdGet`/`tlptrbit`
-//!     manipulation. Mirrored via `shadowPushRaw`/`shadowDrainAll` rather than
-//!     the four primitives, since neither op fits `downLeft`/`downRight`/
-//!     `upLeft`/`upRight`'s shape.
-//!   * `runtime/reduce.zig`'s `streamRead` (a `pub export fn` — part of the
-//!     C-ABI surface) inlines its own "UPLEFT" using *unmasked* `h`/`hp`.
-//!     Mirrored via the same `shadowUpLeft` hook as the primitive.
-//!
-//! **Why shadow-validated, not yet cut over.** A live cutover means swapping
-//! the mechanism under ~4,200 lines of the hottest, least-tested code path in
-//! the interpreter. Shadow validation gets real confidence (thousands of real
-//! call sequences, not hand-derivation) without that risk: the shadow is
-//! deliberately **read-only** with respect to the heap (see the safety note
-//! by `active` below) — a divergence, even an unanticipated one, cleanly fails
-//! an assertion instead of silently corrupting the live program. Remaining
-//! before a cutover could be considered: an actual reduction-loop benchmark
-//! (none exists yet — `src/micro_benchmarks.zig` covers allocation/GC/
-//! interning, not the reducer), and turning `handleTRY`/`handleFAIL`/
-//! `streamRead` themselves over to `Spine` (today they still run pointer
-//! reversal for real; only the shadow observes them).
+//! `reduce_core.zig`'s `downLeft`/`downRight`/`upLeft`/`upRight` (and
+//! `combinators.zig`'s `handleTRY`/`handleFAIL`, which manipulate the spine
+//! directly rather than through those four) now run on `Spine` for real.
+//! This rests on a shadow-validation pass done before the cutover: an opt-in
+//! mode drove a `Spine` in lockstep with the (then still live) pointer
+//! reversal for the whole run of the golden corpus plus a curated set of
+//! `miralib/ex/` programs — 51 checks, zero mismatches (2026-07-01,
+//! `71c47ae`..`c617ae2`). See that history for the derivation and the safety
+//! bug it caught (an earlier version of the shadow performed real writes and
+//! could corrupt the live program once desynced — fixed by making it
+//! read-only before ever running it against anything live).
 
 const std = @import("std");
 const heap = @import("../heap.zig");
@@ -74,8 +50,8 @@ pub const Word = i64;
 
 /// One frame of the explicit spine: the cell descended into (`node`), and
 /// whether focus is currently inside it via `tl` (`via_tl`) or via `hd`.
-/// Mirrors what pointer-reversal borrows from the cell's own field plus the
-/// `tlptrbit` tag — but kept out of the graph.
+/// Mirrors what pointer-reversal used to borrow from the cell's own field
+/// plus the `tlptrbit` tag — but kept out of the graph.
 pub const Frame = struct {
     node: Word,
     via_tl: bool,
@@ -83,31 +59,82 @@ pub const Frame = struct {
 
 /// An explicit, growable spine stack. One per `reduce()` invocation — and
 /// `reduce()` is recursive (see `force()` and the strict-operator handlers),
-/// so each nested call would own its own `Spine`, exactly like each
-/// invocation today owns its own private `ReductionCtx.s` chain.
+/// so each nested call owns its own `Spine`, exactly like each invocation
+/// used to own its own private `ReductionCtx.s` chain.
 ///
-/// Deliberately growable, not fixed-capacity: pointer reversal has *no* depth
-/// bound (the "stack" is the heap itself), so a fixed-size array here would
+/// Deliberately growable, not fixed-capacity: pointer reversal had *no* depth
+/// bound (the "stack" was the heap itself), so a fixed-size array here would
 /// silently turn long lazy spines (e.g. `length [1..1000000]`) from "works"
 /// into "crashes". Preserving that property is the point of using
 /// `std.ArrayList` rather than a `[N]Frame` register file.
 pub const Spine = struct {
     frames: std.ArrayList(Frame),
     allocator: std.mem.Allocator,
+    /// Links every currently-registered `Spine` into `gc_roots_head` (see the
+    /// "GC roots" section below), in `reduce()`'s own call-stack nesting
+    /// order. GC-root bookkeeping only; unrelated to the spine's own
+    /// traversal semantics.
+    next: ?*Spine = null,
 
-    /// An empty spine backed by `allocator`.
+    /// An empty spine backed by `allocator`. Callers that keep it alive
+    /// across a possible GC point (any `reduce()` call does) must also
+    /// `register` it — seed `ReductionCtx.spine` does this, see `reduce()`.
     pub fn init(allocator: std.mem.Allocator) Spine {
         return .{ .frames = .empty, .allocator = allocator };
     }
 
-    /// Release the frame storage.
+    /// Release the frame storage. Callers that `register`ed this `Spine` must
+    /// `unregister` it first.
     pub fn deinit(self: *Spine) void {
         self.frames.deinit(self.allocator);
     }
 
-    /// True when no frame remains — the replacement for `ctx.s == word.BACKSTOP`.
+    /// Register this spine as a GC-root source: every `Frame.node` it holds
+    /// is treated as reachable (see `markAllRoots`) for as long as it stays
+    /// registered. Must be unregistered, in the exact reverse order of
+    /// registration, before this `Spine` is destroyed — guaranteed by normal
+    /// call-stack nesting (a nested `reduce()` call's spine is always
+    /// registered after, and unregistered before, its caller's).
+    pub fn register(self: *Spine) void {
+        self.next = gc_roots_head;
+        gc_roots_head = self;
+    }
+
+    /// Unregister this spine. Must currently be the registry head (see
+    /// `register`'s nesting requirement).
+    pub fn unregister(self: *Spine) void {
+        std.debug.assert(gc_roots_head == self);
+        gc_roots_head = self.next;
+    }
+
+    /// True when no frame remains — the replacement for the old
+    /// `ctx.s == word.BACKSTOP` bottom-of-spine *equality* check (used by
+    /// `reduce()`'s own part-3 loop to detect true exhaustion).
     pub fn isEmpty(self: *const Spine) bool {
         return self.frames.items.len == 0;
+    }
+
+    /// True when there is no frame left to walk through on the *current
+    /// argument-accumulation chain* — the replacement for the old
+    /// `abnormal(ctx.s)` (`ctx.s < 0`) guard used by the guarded traversal
+    /// wrappers (`reduce_core.downright`/`upleft`, and transitively `getarg`)
+    /// and by `combinators.handleTRY`/`handleFAIL`'s own loops. `abnormal` is
+    /// true both when the spine is truly empty (`BACKSTOP`, sign bit set)
+    /// *and* when the top frame is a real, non-empty one that happens to be
+    /// tagged `via_tl=true` (also sign-bit set, since `tlptrbit` is the same
+    /// bit) — every one of these call sites relies on that coincidence to
+    /// stop at the boundary of an outer, already-`downRight`'d ancestor (a
+    /// different context they must not reach into), not just at true
+    /// emptiness. Missing this distinction (using plain `isEmpty()` instead)
+    /// silently changes behaviour wherever the next frame happens to be
+    /// via_tl=true: `combinators.handleTRY`/`handleFAIL` loop one iteration
+    /// too many (found via differential comparison against the pre-cutover
+    /// build on `firstel (x:xs) = x`), while `downright`/`upleft` themselves
+    /// wrongly proceed to pop/descend into a frame they should have refused
+    /// (found the same way on `colour ::= Red | Green | Blue`).
+    pub fn atArgumentChainBoundary(self: *const Spine) bool {
+        if (self.isEmpty()) return true;
+        return self.frames.items[self.frames.items.len - 1].via_tl;
     }
 
     /// How many frames are on the spine (test/diagnostic use).
@@ -120,8 +147,7 @@ pub const Spine = struct {
     }
 
     /// Descend into `e`'s head: push a frame for `e`, focus becomes `hd(e)`.
-    /// Pure bookkeeping plus a read — `e` itself is never mutated. Mirrors
-    /// `reduce_core.downLeft`.
+    /// Pure bookkeeping plus a read — `e` itself is never mutated.
     pub fn downLeft(self: *Spine, e: Word) Word {
         self.frames.append(self.allocator, .{ .node = e, .via_tl = false }) catch heap.mallocPanic("spine");
         return heap.h(e);
@@ -130,7 +156,7 @@ pub const Spine = struct {
     /// Descend into the top frame's tail, having just finished reducing its
     /// head to `reduced_head`. Writes back the reduced head (the one real
     /// graph mutation here) and re-tags the *existing* top frame rather than
-    /// pushing a new one. Mirrors `reduce_core.downRight`.
+    /// pushing a new one.
     pub fn downRight(self: *Spine, reduced_head: Word) Word {
         const f = self.top();
         heap.hp(f.node).* = reduced_head;
@@ -139,7 +165,7 @@ pub const Spine = struct {
     }
 
     /// [downRight] guarded by spine-empty; `null` instead of descending when
-    /// the spine is exhausted. Mirrors `reduce_core.downright`.
+    /// the spine is exhausted.
     pub fn downright(self: *Spine, reduced_head: Word) ?Word {
         if (self.isEmpty()) return null;
         return self.downRight(reduced_head);
@@ -147,14 +173,13 @@ pub const Spine = struct {
 
     /// Ascend out of the head: pop the top frame, write back the now-reduced
     /// value `reduced` into it, focus becomes the popped frame's cell.
-    /// Mirrors `reduce_core.upLeft`.
     pub fn upLeft(self: *Spine, reduced: Word) Word {
         const f = self.frames.pop().?;
         heap.hp(f.node).* = reduced;
         return f.node;
     }
 
-    /// [upLeft] guarded by spine-empty. Mirrors `reduce_core.upleft`.
+    /// [upLeft] guarded by spine-empty.
     pub fn upleft(self: *Spine, reduced: Word) ?Word {
         if (self.isEmpty()) return null;
         return self.upLeft(reduced);
@@ -163,7 +188,7 @@ pub const Spine = struct {
     /// Ascend out of the tail: write back the now-reduced tail `reduced`,
     /// re-tag the still-top (*not popped*) frame back to "via hd", focus
     /// becomes the already-correct reduced head written by the matching
-    /// `downRight`. Mirrors `reduce_core.upRight`.
+    /// `downRight`.
     pub fn upRight(self: *Spine, reduced: Word) Word {
         const f = self.top();
         heap.tp(f.node).* = reduced;
@@ -171,31 +196,13 @@ pub const Spine = struct {
         return heap.h(f.node);
     }
 
-    /// Read-only counterpart of `downRight`, for shadow validation: predicts
-    /// the focus `downRight` is about to produce by *reading* the still-
-    /// pristine `tl` (safe to call before the real write happens), without
-    /// itself writing anything. See the "Shadow-validation hooks" section
-    /// below for why this distinction matters.
-    pub fn peekDownRight(self: *Spine) Word {
-        const f = self.top();
-        f.via_tl = true;
-        return heap.t(f.node);
-    }
-
-    /// Read-only counterpart of `upLeft`: pops the frame and returns its node,
-    /// without writing anything to the heap.
-    pub fn peekUpLeft(self: *Spine) Word {
-        const f = self.frames.pop().?;
+    /// Pop a frame and return just its node, with *no* write-back. For
+    /// `combinators.handleFAIL`, which poisons the popped node directly
+    /// (`FAIL` propagation) instead of writing back a normally-reduced value
+    /// the way `upLeft` does. `null` once the spine is exhausted.
+    pub fn popNodeOnly(self: *Spine) ?Word {
+        const f = self.frames.pop() orelse return null;
         return f.node;
-    }
-
-    /// Read-only counterpart of `upRight`: predicts the focus by reading the
-    /// already-real head (written back for real during the matching
-    /// `downRight`), without writing anything itself.
-    pub fn peekUpRight(self: *Spine) Word {
-        const f = self.top();
-        f.via_tl = false;
-        return heap.h(f.node);
     }
 
     /// Push a frame directly, bypassing the read `downLeft` normally does.
@@ -214,87 +221,48 @@ pub const Spine = struct {
     }
 };
 
-// --- Shadow-validation hooks -------------------------------------------------
+// --- GC roots ----------------------------------------------------------------
 //
-// `active`, when non-null, names a `Spine` that the live pointer-reversal
-// primitives (`reducer/reduce_core.zig`'s `downLeft`/`downRight`/`upLeft`/
-// `upRight`, plus the direct spine manipulation in `combinators.handleTRY`/
-// `handleFAIL` and `runtime/reduce.zig`'s `streamRead`) drive in lockstep,
-// asserting their result matches what the live mechanism actually produced.
-// This is how `spine_differential_test.zig` validates the new mechanism
-// against thousands of real call sequences drawn from real program
-// executions, instead of only the hand-built cases in this file's own tests.
+// The old in-graph pointer-reversal encoding kept every ancestor on the spine
+// reachable "for free": the spine chain was threaded through real cells' own
+// `hd`/`tl` fields, so the heap's conservative C-stack scan (`Heap.bases`,
+// which finds `ReductionCtx.e`/`.s` simply because they were Word-sized slots
+// on the Zig call stack) would find `ctx.s`, then `mark()`'s own hd/tl walk
+// would follow the chain the rest of the way -- no separate root-enumeration
+// needed.
 //
-// Default `null`: zero behavioural effect on the live interpreter or any
-// existing test. Every `shadow*` helper below is a guarded no-op when `active`
-// is `null` (the `orelse return null` short-circuits immediately), so the four
-// primitives and the two backtracking handlers pay only a null check when
-// validation is off.
-pub var active: ?*Spine = null;
+// An explicit `Spine`'s `frames` buffer breaks that: it is a *separate* heap
+// allocation (via `std.ArrayList`), not a Word sitting on the C stack, and
+// not reachable through any cell's `hd`/`tl`. The conservative scanner finds
+// `ctx.spine.frames.items.ptr` (a real memory address) as a stack-local Word,
+// but `Heap.isptr` rejects it immediately (`x < self.TOP()` fails for any
+// real pointer, which is astronomically larger than the heap's cell count)
+// -- so `mark()` silently does nothing with it. Without an explicit fix, a
+// cell reachable *only* via a `Frame.node` (not otherwise reachable through
+// the graph or another root at that instant) could be collected out from
+// under a paused reduction. This is exactly the "unblocks B3's precise GC
+// roots" upside the original B2 audit noted for repivoting to a spine stack
+// -- here realised as a requirement, not just a future opportunity.
+//
+// Fix: every live `Spine` links itself into `gc_roots_head` (`register`/
+// `unregister`, above), and `Heap.bases` calls `markAllRoots` to mark every
+// frame's `node` directly, alongside its existing root marking.
 
-// Safety property, load-bearing: every `shadow*` function below is read-only
-// with respect to the heap -- it never calls `heap.hp`/`heap.tp` (the
-// asserting, write-capable accessors), only `heap.h`/`heap.t` (which degrade
-// to `0` on an out-of-range index instead of asserting/crashing). This is
-// deliberate. TRY/FAIL backtracking is pervasive (every guarded multi-equation
-// function uses it), so the shadow *will* desync in ways this file's own
-// mirroring (`shadowPushRaw`/`shadowDrainAll`) does not perfectly track. If a
-// desynced shadow performed real writes (as `Spine.downRight`/`upLeft`/
-// `upRight` do for the eventual live-cutover use case), it could write a
-// *real* value to the *wrong* cell -- silently corrupting the live program,
-// not just failing a validation check. Reading instead of writing means the
-// worst case of a desync is a wrong (or `0`) predicted value, caught cleanly
-// by the `std.debug.assert` at the call site -- never heap corruption.
+/// Head of the singly-linked list of currently-registered spines (see
+/// `Spine.register`/`unregister`). Mirrors `reduce()`'s own call-stack
+/// nesting: the innermost active call's spine is always the head.
+var gc_roots_head: ?*Spine = null;
 
-/// Call at the *start* of `reduce_core.downLeft`, before any real mutation:
-/// drives the shadow and returns the value the live call is expected to
-/// produce, for the caller to assert against once it has computed its own.
-/// `downLeft` itself is already read-only (it only ever reads `hd(e)`), so
-/// this drives the real `Spine.downLeft` directly.
-pub fn shadowDownLeft(e: Word) ?Word {
-    const sh = active orelse return null;
-    return sh.downLeft(e);
-}
-
-/// Call at the start of `reduce_core.downRight`, before any real mutation.
-/// `reduced_head` is `ctx.e` at entry (the value about to be written back) --
-/// unused here (see the safety note above: shadow predicts by reading, it
-/// does not perform the write itself).
-pub fn shadowDownRight(reduced_head: Word) ?Word {
-    _ = reduced_head;
-    const sh = active orelse return null;
-    if (sh.isEmpty()) return null; // desynced -- stop checking until the next successful downLeft
-    return sh.peekDownRight();
-}
-
-/// Call at the start of `reduce_core.upLeft`, before any real mutation.
-pub fn shadowUpLeft(reduced: Word) ?Word {
-    _ = reduced;
-    const sh = active orelse return null;
-    if (sh.isEmpty()) return null;
-    return sh.peekUpLeft();
-}
-
-/// Call at the start of `reduce_core.upRight`, before any real mutation.
-pub fn shadowUpRight(reduced: Word) ?Word {
-    _ = reduced;
-    const sh = active orelse return null;
-    if (sh.isEmpty()) return null;
-    return sh.peekUpRight();
-}
-
-/// Mirror `combinators.handleTRY`'s raw fabricated frame (the one spot it
-/// pushes a frame for a cell it already holds, instead of descending into it
-/// via `downLeft`). `node`/`via_tl` are `handleTRY`'s `old_hd_e`/`true`.
-pub fn shadowPushRaw(node: Word, via_tl: bool) void {
-    const sh = active orelse return;
-    sh.pushRaw(node, via_tl);
-}
-
-/// Mirror `combinators.handleFAIL`'s bulk drain of the entire spine.
-pub fn shadowDrainAll() void {
-    const sh = active orelse return;
-    sh.drainAll();
+/// Mark every frame's `node` across every currently-registered spine as a GC
+/// root. Called from `Heap.bases` alongside its other root marking.
+pub fn markAllRoots(mark_fn: *const fn (Word) void) void {
+    var s = gc_roots_head;
+    while (s) |sp| {
+        for (sp.frames.items) |f| {
+            mark_fn(f.node);
+        }
+        s = sp.next;
+    }
 }
 
 const testing = std.testing;
@@ -411,10 +379,11 @@ test "guarded downright/upleft report exhaustion instead of underflowing" {
 
 test "depth is unbounded: a very long spine does not overflow a fixed stack" {
     tu.freshInterp();
-    // This is the property pointer-reversal gets "for free" (the stack is the
-    // heap, so it scales with available memory, not a fixed register file).
-    // A `Spine` must preserve it -- this is the whole reason it is backed by
-    // a growable `std.ArrayList` rather than a small fixed-size array.
+    // This is the property pointer-reversal used to get "for free" (the
+    // stack was the heap, so it scaled with available memory, not a fixed
+    // register file). A `Spine` must preserve it -- this is the whole reason
+    // it is backed by a growable `std.ArrayList` rather than a small
+    // fixed-size array.
     const depth_count = 200_000;
     var spine = Spine.init(testing.allocator);
     defer spine.deinit();
@@ -437,4 +406,67 @@ test "depth is unbounded: a very long spine does not overflow a fixed stack" {
         focus = spine.upLeft(focus);
     }
     try testing.expect(spine.isEmpty());
+}
+
+test "pushRaw/drainAll: the handleTRY/handleFAIL primitives" {
+    tu.freshInterp();
+    var spine = Spine.init(testing.allocator);
+    defer spine.deinit();
+
+    const a = heap.cons(1, 2);
+    const b = heap.cons(3, 4);
+    spine.pushRaw(a, false);
+    spine.pushRaw(b, true);
+    try testing.expectEqual(@as(usize, 2), spine.depth());
+
+    spine.drainAll();
+    try testing.expect(spine.isEmpty());
+}
+
+test "register/unregister: markAllRoots visits every frame of every registered spine, nested LIFO" {
+    tu.freshInterp();
+    var outer = Spine.init(testing.allocator);
+    defer outer.deinit();
+    const outer_node = heap.cons(1, 2);
+    _ = outer.downLeft(outer_node);
+    outer.register();
+    defer outer.unregister();
+
+    var seen = std.ArrayList(Word).empty;
+    defer seen.deinit(testing.allocator);
+    const Collector = struct {
+        var target: *std.ArrayList(Word) = undefined;
+        fn collect(w: Word) void {
+            target.append(testing.allocator, w) catch unreachable;
+        }
+    };
+    Collector.target = &seen;
+
+    markAllRoots(Collector.collect);
+    try testing.expectEqual(@as(usize, 1), seen.items.len);
+    try testing.expectEqual(outer_node, seen.items[0]);
+
+    // A nested spine (as a nested reduce() call would create) registers on
+    // top and unregisters before the outer one -- exactly LIFO call-stack
+    // nesting. markAllRoots must see both while the inner one is live.
+    {
+        var inner = Spine.init(testing.allocator);
+        defer inner.deinit();
+        const inner_node = heap.cons(5, 6);
+        _ = inner.downLeft(inner_node);
+        inner.register();
+        defer inner.unregister();
+
+        seen.clearRetainingCapacity();
+        markAllRoots(Collector.collect);
+        try testing.expectEqual(@as(usize, 2), seen.items.len);
+        try testing.expect(std.mem.findScalar(Word, seen.items, outer_node) != null);
+        try testing.expect(std.mem.findScalar(Word, seen.items, inner_node) != null);
+    }
+
+    // Back to just the outer spine after the inner one unregisters.
+    seen.clearRetainingCapacity();
+    markAllRoots(Collector.collect);
+    try testing.expectEqual(@as(usize, 1), seen.items.len);
+    try testing.expectEqual(outer_node, seen.items[0]);
 }
