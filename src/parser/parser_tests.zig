@@ -26,7 +26,7 @@ const makeId = lex.makeId;
 const resetPns = lex.resetPns;
 /// Build a dummy file record for the snapshot tests.
 fn makeFilRecord(name: [*:0]const u8) word.Word {
-    const name_word = @as(word.Word, strtab.strBits(name));
+    const name_word = @as(word.Word, strtab.strBits(strtab.table, name));
     const file_info = heap.make(.FILEINFO, name_word, 0);
     const share_cell = heap.make(.CONS, 1, word.NIL);
     const info_cell = heap.make(.CONS, file_info, share_cell);
@@ -183,7 +183,7 @@ fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]con
         // on cross-test dic state (see the shared-state plan's Phase-4 finding).
         if (tok == word.NAME or tok == word.CNAME) {
             const h = heap.h;
-            const id_text = std.mem.span(strtab.strOf(h(h(h(ls.yylval)))));
+            const id_text = std.mem.span(strtab.strOf(strtab.table, h(h(h(ls.yylval)))));
             if (id_text.len > 0 and isCleanAscii(id_text)) {
                 try list.print(allocator, "(\"{s}\")", .{id_text});
             }

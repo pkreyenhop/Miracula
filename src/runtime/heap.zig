@@ -708,17 +708,17 @@ pub fn idWho(x: Word) Word {
 
 /// The interned name text of id `x`.
 pub fn getId(x: Word) [*:0]const u8 {
-    return strtab.strOf(h(h(h(x))));
+    return strtab.strOf(strtab.table, h(h(h(x))));
 }
 
 /// The filename of file-record `fil`, or null when absent.
 ///
 /// The single file-name accessor: callers that want the empty string for an absent
-/// name use `getFil(fil) orelse ""` (matches `strtab.strOf(0)`).
+/// name use `getFil(fil) orelse ""` (matches `strtab.strOf(strtab.table, 0)`).
 pub fn getFil(fil: Word) ?[*:0]const u8 {
     const val = h(h(h(fil)));
     if (val == 0) return null;
-    return strtab.strOf(val);
+    return strtab.strOf(strtab.table, val);
 }
 
 /// Box char `ch`: bare Latin-1, or a `UNICODE` cell for wider code points.
@@ -776,7 +776,7 @@ pub fn getHere(x: Word) Word {
 /// The original ('also known as') name of id `x` (before any alias).
 pub fn getaka(x: Word) [*:0]const u8 {
     const y = idWho(x);
-    return if (getTag(y) != .CONS) getId(x) else strtab.strOf(h(h(y)));
+    return if (getTag(y) != .CONS) getId(x) else strtab.strOf(strtab.table, h(h(y)));
 }
 
 /// Append a single element to the end of list `x`.
@@ -1005,7 +1005,7 @@ const fileMtime = files.fileMtime;
 const unlinkObject = files.unlinkObject;
 /// Intern name `p1`, returning its dictionary `ID` node (inserting if new).
 pub fn stoId(p1: [*:0]const u8) Word {
-    return make(.ID, cons(make(.STRCONS, strtab.strBits(p1), word.NIL), word.undef_t), word.UNDEF);
+    return make(.ID, cons(make(.STRCONS, strtab.strBits(strtab.table, p1), word.NIL), word.undef_t), word.UNDEF);
 }
 
 /// Read a size-prefixed tagged `Word` from dump `file`.
@@ -1233,7 +1233,7 @@ test "dlhs / dval: definition-cell head and value accessors" {
 
 /// Reinterpret Word `val` as a C-string pointer.
 fn castPtr(val: Word) [*:0]const u8 {
-    return strtab.strOf(val);
+    return strtab.strOf(strtab.table, val);
 }
 
 /// Print cell `x` to `file` in readable form (debug/diagnostic dump).
@@ -1446,7 +1446,7 @@ pub fn filDefs(fil: Word) Word {
 
 /// Build a file record `(name, mtime, share, defs)`.
 pub fn makeFil(fil_name: ?[*:0]const u8, time_val: Word, share: Word, defs: Word) Word {
-    const name_word = if (fil_name) |n| @as(Word, strtab.strBits(n)) else 0;
+    const name_word = if (fil_name) |n| @as(Word, strtab.strBits(strtab.table, n)) else 0;
     return cons(cons(make(.FILEINFO, name_word, time_val), cons(share, word.NIL)), defs);
 }
 
@@ -1537,7 +1537,7 @@ pub fn constructor(n: Word, x: anytype) Word {
     const x_val: Word = switch (@TypeOf(x)) {
         Word => x,
         c_int, c_uint => @intCast(x),
-        [*:0]const u8, [*:0]u8 => strtab.strBits(x),
+        [*:0]const u8, [*:0]u8 => strtab.strBits(strtab.table, x),
         else => @compileError("Unsupported type for constructor"),
     };
     return make(.CONSTRUCTOR, n, x_val);
@@ -2006,7 +2006,7 @@ pub fn unscramble(aliases: Word) void {
             a = cons(old, a);
         } else if (member(cs.CLASHES, new_id) == 0) {
             if (getTag(idWho(new_id)) != .CONS) {
-                idWhoPtr(new_id).* = cons(datapair(strtab.strBits(getId(old)), 0), idWho(new_id));
+                idWhoPtr(new_id).* = cons(datapair(strtab.strBits(strtab.table, getId(old)), 0), idWho(new_id));
             }
         }
     }
@@ -2132,7 +2132,7 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                 if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
                     lex.dicovflo();
                 }
-                stackpPush(datapair(strtab.strBits(getId(name())), 0));
+                stackpPush(datapair(strtab.strBits(strtab.table, getId(name())), 0));
             },
             word.HERE_X => {
                 ls.dicq = ls.dicp;
@@ -2140,7 +2140,7 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                 if (next == 0) {
                     next = main_clib.getc(file);
                     next = next | (main_clib.getc(file) << 8);
-                    stackpPush(fileinfo(strtab.strBits(heap.CFN.?), next));
+                    stackpPush(fileinfo(strtab.strBits(strtab.table, heap.CFN.?), next));
                 } else {
                     if (next != '/') {
                         _ = main_clib.strcpy(ls.dicp, &heap.prefix);
@@ -2161,7 +2161,7 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                     }
                     var line = main_clib.getc(file);
                     line = line | (main_clib.getc(file) << 8);
-                    stackpPush(fileinfo(strtab.strBits(getId(name())), line));
+                    stackpPush(fileinfo(strtab.strBits(strtab.table, getId(name())), line));
                 }
             },
             word.DEF_X => {
@@ -2206,12 +2206,12 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                                     var a = cs.ALIASES;
                                     while (a != word.NIL) : (a = t(a)) {
                                         if (idVal(t(h(a))) == ch_val) {
-                                            akap_val = datapair(strtab.strBits(getId(t(h(a)))), 0);
+                                            akap_val = datapair(strtab.strBits(strtab.table, getId(t(h(a)))), 0);
                                             break;
                                         }
                                     }
                                 }
-                                pnValPtr(ch_val).* = ap(akap_val, fileinfo(strtab.strBits(heap.CFN.?), 0));
+                                pnValPtr(ch_val).* = ap(akap_val, fileinfo(strtab.strBits(strtab.table, heap.CFN.?), 0));
                             }
                             defs = cons(ch_val, defs);
                             ch = main_clib.getc(file);
@@ -2498,7 +2498,7 @@ pub fn srcUpdate() c_int {
     var ft: Word = undefined;
     var f = if (heap.files == NIL) rt.rs.oldfiles else heap.files;
     while (f != NIL) {
-        const _fil_path: [*:0]const u8 = strtab.strOf(h(h(h(h(f)))));
+        const _fil_path: [*:0]const u8 = strtab.strOf(strtab.table, h(h(h(h(f)))));
         if ((fileMtime(_fil_path)) != filTime(h(f))) {
             ft = fileMtime(_fil_path);
             if (ft == 0) {

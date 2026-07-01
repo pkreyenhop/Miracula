@@ -136,7 +136,7 @@ fn makeHere(line: u32) Word {
 fn isConstructorWord(x: Word) bool {
     if (tg(x) != .ID) return false;
     // getId(x) = (char*)hd(hd(hd(x)))
-    const name_ptr: [*:0]const u8 = strtab.strOf(h(h(h(x))));
+    const name_ptr: [*:0]const u8 = strtab.strOf(strtab.table, h(h(h(x))));
     return isconstrname(name_ptr);
 }
 

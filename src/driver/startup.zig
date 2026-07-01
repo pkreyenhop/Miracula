@@ -467,8 +467,8 @@ fn runSourcesMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
             var f = if (heap.heap.files == NIL) rt.rs.oldfiles else heap.heap.files;
             while (f != NIL) : (f = heap.t(f)) {
                 const filename_str = heap.getFil(heap.h(f)).?;
-                if (abi.member(x, strtab.strBits(filename_str)) == 0) {
-                    x = heap.cons(strtab.strBits(filename_str), x);
+                if (abi.member(x, strtab.strBits(strtab.table, filename_str)) == 0) {
+                    x = heap.cons(strtab.strBits(strtab.table, filename_str), x);
                     word.print("{s}\n", .{filename_str});
                 }
             }
@@ -494,7 +494,7 @@ fn runMakeMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
             if (rt.rs.make_status == 1) {
                 rt.rs.make_status = 0;
             }
-            rt.rs.make_status = abi.strcons(@as(Word, strtab.strBits(s)), rt.rs.make_status);
+            rt.rs.make_status = abi.strcons(@as(Word, strtab.strBits(strtab.table, s)), rt.rs.make_status);
         }
     }
     if (getTag(rt.rs.make_status) == .STRCONS) {
@@ -511,7 +511,7 @@ fn reportMakeFailures() void {
     word.print("errors or undefined names found in:-\n", .{});
     while (rt.rs.make_status != 0) {
         h_val = abi.strcons(heap.h(rt.rs.make_status), h_val);
-        const w = @as(Word, @intCast(word.strlen(strtab.strOf(heap.h(h_val)))));
+        const w = @as(Word, @intCast(word.strlen(strtab.strOf(strtab.table, heap.h(h_val)))));
         if (w > maxw) {
             maxw = w;
         }
@@ -522,7 +522,7 @@ fn reportMakeFailures() void {
     var w: Word = 0;
     while (h_val != 0) {
         w += 1;
-        const str = strtab.strOf(heap.h(h_val));
+        const str = strtab.strOf(strtab.table, heap.h(h_val));
         const len = word.strlen(str);
         const spaces_needed = if (@as(usize, @intCast(maxw)) > len) @as(usize, @intCast(maxw)) - len else 0;
         var pad_idx: usize = 0;

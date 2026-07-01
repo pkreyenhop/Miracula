@@ -286,7 +286,7 @@ fn cmdEdit() void {
                 files.copyFile(mf.?, t_val.?);
             }
         }
-        const err_line_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core_state.s.errline) else if (core_state.s.errs != 0 and word.strcmp(t_val.?, strtab.strOf(heap.h(core_state.s.errs))) == 0) @intCast(heap.t(core_state.s.errs)) else @intCast(abi.geterrlin(t_val.?));
+        const err_line_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core_state.s.errline) else if (core_state.s.errs != 0 and word.strcmp(t_val.?, strtab.strOf(strtab.table, heap.h(core_state.s.errs))) == 0) @intCast(heap.t(core_state.s.errs)) else @intCast(abi.geterrlin(t_val.?));
         editfile(t_val.?, err_line_num);
         return;
     }
@@ -641,7 +641,7 @@ pub fn finger(n: [*:0]const u8) void {
     if (x != NIL and heap.idType(x) != word.undef_t) {
         if (heap.idWho(x) != NIL) {
             const here_val = heap.getHere(x);
-            s = strtab.strOf(heap.h(here_val));
+            s = strtab.strOf(strtab.table, heap.h(here_val));
             line = heap.t(here_val);
         }
         if (rt.rs.lastid == 0) {

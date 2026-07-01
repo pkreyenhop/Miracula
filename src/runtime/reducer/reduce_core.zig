@@ -341,7 +341,7 @@ pub inline fn pnVal(x: Word) Word {
 }
 /// The interned name text of id node `x`.
 pub inline fn getId(x: Word) [*:0]const u8 {
-    return strtab.strOf(hdGet(hdGet(hdGet(x))));
+    return strtab.strOf(strtab.table, hdGet(hdGet(hdGet(x))));
 }
 /// The printed name of constructor node `x` (via its id or private-name value).
 pub inline fn constrName(x: Word) [*:0]const u8 {

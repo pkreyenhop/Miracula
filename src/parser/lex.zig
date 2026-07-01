@@ -87,7 +87,7 @@ fn fileinfo(file: Word, line: Word) Word {
 
 /// Build a file record `(path, time, share, defs)`.
 fn makeFil(path: [*:0]const u8, time: Word, share: Word, defs: Word) Word {
-    return cons(cons(fileinfo(strtab.strBits(path), time), cons(share, NIL)), defs);
+    return cons(cons(fileinfo(strtab.strBits(strtab.table, path), time), cons(share, NIL)), defs);
 }
 
 /// Allocate a `STARTREADVALS` node.
@@ -173,7 +173,7 @@ fn isconstructor(x: Word) bool {
 
 /// The interned name text of id `x`.
 fn getId(x: Word) [*:0]const u8 {
-    return strtab.strOf(h(h(h(x))));
+    return strtab.strOf(strtab.table, h(h(h(x))));
 }
 
 
@@ -775,7 +775,7 @@ fn lexPathname() c_int {
     if (pathname() == null) {
         syntax("badly formed pathname in %export list\n");
     } else {
-        ls.exportfiles = cons(strtab.strBits(addextn(1, ls.dicp)), ls.exportfiles);
+        ls.exportfiles = cons(strtab.strBits(strtab.table, addextn(1, ls.dicp)), ls.exportfiles);
         _ = keep(ls.dicp);
     }
     return word.PATHNAME;
@@ -1391,7 +1391,7 @@ pub fn directive() Word {
                 if (pathname() == null) {
                     syntax("bad pathname after %include\n");
                 } else {
-                    ls.yylval = make(.STRCONS, strtab.strBits(addextn(1, ls.dicp)), fileinfo(strtab.strBits(heap.getFil(heap.heap.current_file) orelse ""), holdlin));
+                    ls.yylval = make(.STRCONS, strtab.strBits(strtab.table, addextn(1, ls.dicp)), fileinfo(strtab.strBits(strtab.table, heap.getFil(heap.heap.current_file) orelse ""), holdlin));
                     _ = keep(ls.dicp);
                 }
                 return word.INCLUDE;
@@ -1802,7 +1802,7 @@ pub fn mkprivate(x_input: Word) void {
         // Interned bytes are immutable, so re-intern the privatised form and
         // store the new id back, rather than mutating the bytes in place.
         const strcons = h(h(h(x)));
-        hp(strcons).* = strtab.privatize(h(strcons));
+        hp(strcons).* = strtab.privatize(strtab.table, h(strcons));
         x = t(x);
     }
     ls.inprelude = false;
@@ -1921,9 +1921,9 @@ pub fn charclass() c_int {
 pub fn resetLex() void {
     if (core_state.s.commandmode == 0) {
         if (core_state.s.errs == 0) {
-            core_state.s.errs = fileinfo(strtab.strBits(heap.getFil(heap.heap.current_file) orelse ""), ls.line_no);
+            core_state.s.errs = fileinfo(strtab.strBits(strtab.table, heap.getFil(heap.heap.current_file) orelse ""), ls.line_no);
         }
-        const err_script_raw = @as(?[*:0]const u8, strtab.strOf(h(core_state.s.errs)));
+        const err_script_raw = @as(?[*:0]const u8, strtab.strOf(strtab.table, h(core_state.s.errs)));
         const err_script = err_script_raw orelse "test.m";
         const is_current = if (err_script_raw) |es|
             (if (rt.rs.current_script) |script| es == @as([*:0]const u8, @ptrCast(script)) else false)

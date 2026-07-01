@@ -178,13 +178,13 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                     rt.rs.lastid = x;
                     x = heap.idWho(x);
                     if (getTag(x) == .CONS) {
-                        aka = strtab.strOf(heap.h(heap.h(x)));
+                        aka = strtab.strOf(strtab.table, heap.h(heap.h(x)));
                         x = heap.t(x);
                     }
                     if (aka != null) {
                         word.print("originally defined as \"{s}\"\n", .{aka.?});
                     }
-                    commands.editfile(strtab.strOf(heap.h(x)), @intCast(heap.t(x)));
+                    commands.editfile(strtab.strOf(strtab.table, heap.h(x)), @intCast(heap.t(x)));
                 } else {
                     _ = abi.ungetc(ch, abi.stdin().?);
                     _ = token();

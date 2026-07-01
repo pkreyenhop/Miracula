@@ -113,11 +113,11 @@ fn privatise(x: Word) Word {
     const i = h(n);
 
     if (heap.idType(x) == word.type_t) {
-        tp(heap.tInfo(x)).* = heap.cons(abi.datapair(@as(Word, strtab.strBits(abi.getaka(x))), 0), heap.getHere(x));
+        tp(heap.tInfo(x)).* = heap.cons(abi.datapair(@as(Word, strtab.strBits(strtab.table, abi.getaka(x))), 0), heap.getHere(x));
     }
 
     if (heap.idVal(x) == word.UNDEF) {
-        tp(x).* = abi.ap(abi.datapair(@as(Word, strtab.strBits(abi.getaka(x))), 0), heap.getHere(x));
+        tp(x).* = abi.ap(abi.datapair(@as(Word, strtab.strBits(strtab.table, abi.getaka(x))), 0), heap.getHere(x));
     }
 
     ls.pnvec.?[@as(usize, @intCast(i))] = x;
@@ -229,7 +229,7 @@ pub fn readoption() void {
     word.print("cs.MISSING TYPENAME{s}\n", .{if (t(tlost) == NIL) "" else "S"});
     word.print("the following type{s} no name in this scope:\n", .{if (t(tlost) == NIL) " is needed but has" else "s are needed but have"});
     while (tlost != NIL) {
-        word.print("\'{s}\' of file \"{s}\", needed by: ", .{ strtab.strOf(h(h(heap.tInfo(h(h(tlost)))))), strtab.strOf(h(t(heap.tInfo(h(h(tlost)))))) });
+        word.print("\'{s}\' of file \"{s}\", needed by: ", .{ strtab.strOf(strtab.table, h(h(heap.tInfo(h(h(tlost)))))), strtab.strOf(strtab.table, h(t(heap.tInfo(h(h(tlost)))))) });
         abi.printlist(@constCast(""), heap.alfasort(t(h(tlost))));
         tlost = t(tlost);
     }

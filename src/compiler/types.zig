@@ -409,7 +409,7 @@ fn idWho(x: Word) Word {
 
 /// The interned name text of id `x`.
 fn getId(x: Word) [*:0]const u8 {
-    return strtab.strOf(h(h(h(x))));
+    return strtab.strOf(strtab.table, h(h(h(x))));
 }
 
 /// Rewrite a type's outer constructor to `list_t` in place (for structural compare).
@@ -437,7 +437,7 @@ fn metaTcheck(t_val: Word) errors.MiraError!Word {
                     locateInc();
                     _ = word.print("badly formed type \"", .{});
                     outType(t_val);
-                    _ = word.print("\" in binding for \"{s}\"\n", .{strtab.strOf(h(cs.current_id))});
+                    _ = word.print("\" in binding for \"{s}\"\n", .{strtab.strOf(strtab.table, h(cs.current_id))});
                     _ = word.print("(", .{});
                     outType(tn);
                     _ = word.print(" has zero arity)\n", .{});
@@ -462,7 +462,7 @@ fn metaTcheck(t_val: Word) errors.MiraError!Word {
                 }
                 _ = word.print("undeclared typename \"{s}\" ", .{getId(tn)});
                 if (getTag(cs.current_id) == .DATAPAIR) {
-                    _ = word.print("in binding for {s}\n", .{strtab.strOf(h(cs.current_id))});
+                    _ = word.print("in binding for {s}\n", .{strtab.strOf(strtab.table, h(cs.current_id))});
                 } else {
                     sayhere(getspecloc(cs.current_id), 1);
                 }
@@ -475,7 +475,7 @@ fn metaTcheck(t_val: Word) errors.MiraError!Word {
                 locateInc();
                 _ = word.print("badly formed type \"", .{});
                 outType(t_val);
-                _ = word.print("\" in binding for \"{s}\"\n", .{strtab.strOf(h(cs.current_id))});
+                _ = word.print("\" in binding for \"{s}\"\n", .{strtab.strOf(strtab.table, h(cs.current_id))});
             } else {
                 _ = word.print("badly formed type \"", .{});
                 outType(t_val);
@@ -745,7 +745,7 @@ pub fn locate(s: [*:0]const u8) void {
         if (cs.current_id != 0) {
             if (getTag(cs.current_id) == .DATAPAIR) {
                 locateInc();
-                _ = word.print("{s} in binding for {s}\n", .{ s, strtab.strOf(h(cs.current_id)) });
+                _ = word.print("{s} in binding for {s}\n", .{ s, strtab.strOf(strtab.table, h(cs.current_id)) });
                 return;
             }
             var x = cs.current_id;
@@ -795,7 +795,7 @@ pub fn sayhere(h_val: Word, nl: Word) void {
             return;
         }
     }
-    const h_str = strtab.strOf(h(h_node));
+    const h_str = strtab.strOf(strtab.table, h(h_node));
     const eq = std.mem.eql(u8, std.mem.span(h_str), std.mem.span(rt.rs.current_script.?));
     const prefix: [*:0]const u8 = if (eq) "" else "%insert file ";
     word.print("(line {d:>3} of {s}\"{s}\")", .{ t(h_node), prefix, h_str });
@@ -1028,10 +1028,10 @@ pub fn outType2(t_val: Word) void {
                         const pn_val_node = pnVal(t_val);
                         if (getTag(pn_val_node) == .ID) {
                             _ = word.print("{s}", .{getId(pn_val_node)});
-                        } else if (std.mem.eql(u8, std.mem.span(strtab.strOf(h(t(tInfo(t_val))))), std.mem.span(rt.rs.current_script.?))) {
-                            _ = word.print("{s}", .{strtab.strOf(h(h(tInfo(t_val))))});
+                        } else if (std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table, h(t(tInfo(t_val))))), std.mem.span(rt.rs.current_script.?))) {
+                            _ = word.print("{s}", .{strtab.strOf(strtab.table, h(h(tInfo(t_val))))});
                         } else {
-                            _ = word.print("`{s}@{s}'", .{ strtab.strOf(h(h(tInfo(t_val)))), strtab.strOf(h(t(tInfo(t_val)))) });
+                            _ = word.print("`{s}@{s}'", .{ strtab.strOf(strtab.table, h(h(tInfo(t_val)))), strtab.strOf(strtab.table, h(t(tInfo(t_val)))) });
                         }
                     },
                     else => {
@@ -1662,7 +1662,7 @@ pub fn checkfbs() void {
             if (subsumes(t_val, instantiate(t1)) == 0) {
                 cs.TYPERRS += 1;
                 locateInc();
-                _ = word.print("binding for parameter `{s}' has wrong type\n", .{strtab.strOf(h(cs.current_id))});
+                _ = word.print("binding for parameter `{s}' has wrong type\n", .{strtab.strOf(strtab.table, h(cs.current_id))});
                 _ = word.print("required :: ", .{});
                 outType(t(t(h(formals))));
                 _ = word.print("\n  actual :: ", .{});

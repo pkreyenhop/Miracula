@@ -52,7 +52,7 @@ inline fn getTag(x: word.Word) word.NodeTag {
 // C macro: getId(x) == (char*)hd(hd(hd(x))); the id string is an interned StrId.
 /// The interned identifier text behind a NAME/CNAME lexer value `x`.
 fn getIdText(x: word.Word) []const u8 {
-    return std.mem.span(strtab.strOf(hd_of(hd_of(hd_of(x)))));
+    return std.mem.span(strtab.strOf(strtab.table, hd_of(hd_of(hd_of(x)))));
 }
 
 /// Traverse a Miranda string CONS chain and produce a UTF-8 owned slice.

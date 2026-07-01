@@ -234,7 +234,7 @@ fn ap3(w: Word, x: Word, y: Word, z: Word) Word {
 
 /// The interned name text of id `x`.
 fn getId(x: Word) [*:0]const u8 {
-    return strtab.strOf(h(h(h(x))));
+    return strtab.strOf(strtab.table, h(h(h(x))));
 }
 
 /// The definition-site field of id `x`.
@@ -1027,7 +1027,7 @@ pub fn transtries(id: Word, input_x: Word) Word {
     var earliest: Word = 0;
     var r: Word = undefined;
     if (fallible(h(x)) != 0) {
-        const oldn = if (getTag(id) == .ID) datapair(@as(Word, strtab.strBits(getId(id))), 0) else 0;
+        const oldn = if (getTag(id) == .ID) datapair(@as(Word, strtab.strBits(strtab.table, getId(id))), 0) else 0;
         info = cons(oldn, 0);
         r = ap(BADCASE, info);
         if (x == NIL) {

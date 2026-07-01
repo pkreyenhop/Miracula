@@ -383,7 +383,7 @@ pub fn outHere(f: ?*word.FILE, h_val: Word, nl: c_int) void {
         word.printErr("(impossible event in outhere)\n", .{});
         return;
     }
-    f.?.print("(line {d:>3} of \"{s}\")", .{.{ t(h_val), strtab.strOf(h(h_val)) }});
+    f.?.print("(line {d:>3} of \"{s}\")", .{.{ t(h_val), strtab.strOf(strtab.table, h(h_val)) }});
     if (nl != 0) {
         _ = word.putc('\n', f.?);
     } else {
@@ -700,7 +700,7 @@ test "head: the leftmost atom of an application spine" {
 pub fn apfile(f: Word) void {
     var p = ev.outfilq;
     const fil = getstring(f, "Appendfile");
-    while (p != NIL and word.strcmp(strtab.strOf(h(h(p))), fil) != 0) {
+    while (p != NIL and word.strcmp(strtab.strOf(strtab.table, h(h(p))), fil) != 0) {
         p = t(p);
     }
     if (p == NIL) {
@@ -710,7 +710,7 @@ pub fn apfile(f: Word) void {
         } else {
             // datapair = (filename string, FILE* handle); the FILE* is a
             // raw cell cast (read back via @ptrFromInt), not a node string.
-            ev.outfilq = cons(datapair(strtab.strBits(lex.keep(fil.?)), @as(Word, @intCast(@intFromPtr(s.?)))), ev.outfilq);
+            ev.outfilq = cons(datapair(strtab.strBits(strtab.table, lex.keep(fil.?)), @as(Word, @intCast(@intFromPtr(s.?)))), ev.outfilq);
         }
     }
 }
@@ -719,7 +719,7 @@ pub fn apfile(f: Word) void {
 pub fn closefile(f: Word) void {
     var p = &ev.outfilq;
     const fil = getstring(f, "Closefile");
-    while (p.* != NIL and word.strcmp(strtab.strOf(h(h(p.*))), fil) != 0) {
+    while (p.* != NIL and word.strcmp(strtab.strOf(strtab.table, h(h(p.*))), fil) != 0) {
         p = tp(p.*);
     }
     if (p.* != NIL) {
@@ -732,7 +732,7 @@ pub fn closefile(f: Word) void {
 pub fn outf(e: Word) void {
     var p = ev.outfilq;
     const f = getstring(t(h(e)), "Tofile");
-    while (p != NIL and word.strcmp(strtab.strOf(h(h(p))), f) != 0) {
+    while (p != NIL and word.strcmp(strtab.strOf(strtab.table, h(h(p))), f) != 0) {
         p = t(p);
     }
     if (p == NIL) {
@@ -746,7 +746,7 @@ pub fn outf(e: Word) void {
             word.setbuf(ev.s_out.?, null);
         }
         // datapair = (filename string, FILE* handle); FILE* is a raw cell cast.
-        ev.outfilq = cons(datapair(strtab.strBits(lex.keep(f.?)), @as(Word, @intCast(@intFromPtr(ev.s_out.?)))), ev.outfilq);
+        ev.outfilq = cons(datapair(strtab.strBits(strtab.table, lex.keep(f.?)), @as(Word, @intCast(@intFromPtr(ev.s_out.?)))), ev.outfilq);
     } else {
         ev.s_out = @ptrFromInt(@as(usize, @intCast(t(h(p)))));
     }

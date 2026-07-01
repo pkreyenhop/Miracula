@@ -240,7 +240,7 @@ fn dispatchNonCombinatorHead(ctx: *ReductionCtx) void {
         },
         .DATAPAIR => {
             upLeft(ctx);
-            word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{ strtab.strOf(hdGet(hdGet(ctx.e))), strtab.strOf(tlGet(ctx.e)) });
+            word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{ strtab.strOf(strtab.table, hdGet(hdGet(ctx.e))), strtab.strOf(strtab.table, tlGet(ctx.e)) });
             reduce_rt.outstats();
             main_clib.exit(1);
         },
