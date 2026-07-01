@@ -22,6 +22,7 @@ const big = @import("big.zig");
 const lex = @import("../parser/lex.zig");
 const main_clib = @import("main_clib.zig");
 const core_state = @import("core_state.zig");
+const spine = @import("reducer/spine.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 const Word = i64;
@@ -260,10 +261,12 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
     switch (op) {
         word.READBIN => {
             // UPLEFT
+            const shadow_expect = spine.shadowUpLeft(ctx.e);
             ctx.hold = ctx.s;
             ctx.s = h(ctx.s);
             hp(ctx.hold).* = ctx.e;
             ctx.e = ctx.hold;
+            if (shadow_expect) |exp| std.debug.assert(exp == ctx.e);
 
             if (lastarg == 0) {
                 if (ev.stdinuse == '-') {
@@ -287,10 +290,12 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
         },
         word.READ => {
             // UPLEFT
+            const shadow_expect = spine.shadowUpLeft(ctx.e);
             ctx.hold = ctx.s;
             ctx.s = h(ctx.s);
             hp(ctx.hold).* = ctx.e;
             ctx.e = ctx.hold;
+            if (shadow_expect) |exp| std.debug.assert(exp == ctx.e);
 
             if (lastarg == 0) {
                 if (ev.stdinuse == ':') {
@@ -314,19 +319,23 @@ pub export fn streamRead(ctx: *reduce_ctx, op: Word) reduce_action {
         },
         word.READVALS => {
             // GETARG(arg1)
+            const shadow_expect1 = spine.shadowUpLeft(ctx.e);
             ctx.hold = ctx.s;
             ctx.s = h(ctx.s);
             hp(ctx.hold).* = ctx.e;
             ctx.e = ctx.hold;
+            if (shadow_expect1) |exp| std.debug.assert(exp == ctx.e);
             ctx.arg1 = t(ctx.e);
 
             if (abnormal(ctx.s)) return .REDUCE_DONE;
 
             // UPLEFT
+            const shadow_expect2 = spine.shadowUpLeft(ctx.e);
             ctx.hold = ctx.s;
             ctx.s = h(ctx.s);
             hp(ctx.hold).* = ctx.e;
             ctx.e = ctx.hold;
+            if (shadow_expect2) |exp| std.debug.assert(exp == ctx.e);
 
             const val = parseLine(h(ctx.arg1), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.arg1));
             if (val == main_clib.EOF) {

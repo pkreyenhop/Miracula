@@ -15,6 +15,7 @@ const heap = @import("../heap.zig");
 const lex = @import("../../parser/lex.zig");
 const main_clib = @import("../main_clib.zig");
 const reduce_rt = @import("../reduce.zig");
+const spine = @import("spine.zig");
 const tu = @import("../../testutil.zig"); // unit-test harness (test builds only)
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
@@ -1158,6 +1159,11 @@ pub fn handleTRY(ctx: *ReductionCtx) void {
     ctx.e = reduce.tlGet(old_hd_e);
     reduce.tlSet(old_hd_e, old_e);
     ctx.s = old_hd_e | word.tlptrbit;
+    // Fabricates a frame out of a cell already in hand (old_hd_e), tagged
+    // via_tl from the start -- distinct from downLeft/downRight, which is why
+    // the shadow spine (see spine.zig) needs its own explicit mirroring call
+    // here rather than picking this up through an instrumented primitive.
+    spine.shadowPushRaw(old_hd_e, true);
     ctx.action = word.ACT_NEXTREDEX;
 }
 
@@ -1169,6 +1175,9 @@ pub fn handleFAIL(ctx: *ReductionCtx) void {
         reduce.hdSet(ctx.hold, word.FAIL);
         reduce.tlSet(ctx.hold, 0);
     }
+    // Bulk-drains the entire spine directly (not via upLeft), so mirror it as
+    // a bulk drain on the shadow rather than relying on per-frame hooks.
+    spine.shadowDrainAll();
     ctx.action = word.ACT_DONE;
 }
 

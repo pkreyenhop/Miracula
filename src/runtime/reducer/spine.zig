@@ -149,7 +149,86 @@ pub const Spine = struct {
         f.via_tl = false;
         return heap.h(f.node);
     }
+
+    /// Push a frame directly, bypassing the read `downLeft` normally does.
+    /// For the one call site (`combinators.handleTRY`'s tail) that fabricates
+    /// a spine frame out of a cell it already holds, rather than descending
+    /// into one via the normal `downLeft`.
+    pub fn pushRaw(self: *Spine, node: Word, via_tl: bool) void {
+        self.frames.append(self.allocator, .{ .node = node, .via_tl = via_tl }) catch heap.mallocPanic("spine");
+    }
+
+    /// Drop every frame. For the one call site (`combinators.handleFAIL`)
+    /// that walks the *entire* spine down to empty in one bulk operation
+    /// distinct from an ordinary `upLeft` pop.
+    pub fn drainAll(self: *Spine) void {
+        self.frames.clearRetainingCapacity();
+    }
 };
+
+// --- Shadow-validation hooks -------------------------------------------------
+//
+// `active`, when non-null, names a `Spine` that the live pointer-reversal
+// primitives (`reducer/reduce_core.zig`'s `downLeft`/`downRight`/`upLeft`/
+// `upRight`, plus the direct spine manipulation in `combinators.handleTRY`/
+// `handleFAIL` and `runtime/reduce.zig`'s `streamRead`) drive in lockstep,
+// asserting their result matches what the live mechanism actually produced.
+// This is how `spine_differential_test.zig` validates the new mechanism
+// against thousands of real call sequences drawn from real program
+// executions, instead of only the hand-built cases in this file's own tests.
+//
+// Default `null`: zero behavioural effect on the live interpreter or any
+// existing test. Every `shadow*` helper below is a guarded no-op when `active`
+// is `null` (the `orelse return null` short-circuits immediately), so the four
+// primitives and the two backtracking handlers pay only a null check when
+// validation is off.
+pub var active: ?*Spine = null;
+
+/// Call at the *start* of `reduce_core.downLeft`, before any real mutation:
+/// drives the shadow and returns the value the live call is expected to
+/// produce, for the caller to assert against once it has computed its own.
+pub fn shadowDownLeft(e: Word) ?Word {
+    const sh = active orelse return null;
+    return sh.downLeft(e);
+}
+
+/// Call at the start of `reduce_core.downRight`, before any real mutation.
+/// `reduced_head` is `ctx.e` at entry (the value about to be written back).
+pub fn shadowDownRight(reduced_head: Word) ?Word {
+    const sh = active orelse return null;
+    if (sh.isEmpty()) return null; // desynced upstream (see shadowDesync) -- stop checking
+    return sh.downRight(reduced_head);
+}
+
+/// Call at the start of `reduce_core.upLeft`, before any real mutation.
+/// `reduced` is `ctx.e` at entry.
+pub fn shadowUpLeft(reduced: Word) ?Word {
+    const sh = active orelse return null;
+    if (sh.isEmpty()) return null;
+    return sh.upLeft(reduced);
+}
+
+/// Call at the start of `reduce_core.upRight`, before any real mutation.
+/// `reduced` is `ctx.e` at entry.
+pub fn shadowUpRight(reduced: Word) ?Word {
+    const sh = active orelse return null;
+    if (sh.isEmpty()) return null;
+    return sh.upRight(reduced);
+}
+
+/// Mirror `combinators.handleTRY`'s raw fabricated frame (the one spot it
+/// pushes a frame for a cell it already holds, instead of descending into it
+/// via `downLeft`). `node`/`via_tl` are `handleTRY`'s `old_hd_e`/`true`.
+pub fn shadowPushRaw(node: Word, via_tl: bool) void {
+    const sh = active orelse return;
+    sh.pushRaw(node, via_tl);
+}
+
+/// Mirror `combinators.handleFAIL`'s bulk drain of the entire spine.
+pub fn shadowDrainAll() void {
+    const sh = active orelse return;
+    sh.drainAll();
+}
 
 const testing = std.testing;
 

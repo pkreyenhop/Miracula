@@ -10,6 +10,7 @@
 //! must be mirrored there. This is also the seam where the B-track typed-value
 //! work (`Heap`/`Value`) will replace the raw-`Word` `hdGet`/`tlGet` reads.
 
+const std = @import("std");
 const word = @import("../word.zig");
 const strtab = @import("../strtab.zig");
 
@@ -68,6 +69,7 @@ const reducer_reduce = @import("reduce.zig");
 const lex_mod = @import("../../parser/lex.zig");
 const big = @import("../big.zig");
 const main_clib = @import("../main_clib.zig");
+const spine = @import("spine.zig");
 
 // Cell access through a spine word (mask off direction bits, then index the
 // heap). This is the raw-`Word` value boundary the B2 `Heap`/`Value` seam will
@@ -114,19 +116,23 @@ pub inline fn tlPtr(x: Word) *Word {
 
 /// Descend into the head, reversing the spine link (push `e` onto `s`).
 pub inline fn downLeft(ctx: *ReductionCtx) void {
+    const shadow_expect = spine.shadowDownLeft(ctx.e);
     ctx.hold = ctx.s;
     ctx.s = ctx.e;
     ctx.e = hdGet(ctx.e);
     hdSet(ctx.s, ctx.hold);
+    if (shadow_expect) |exp| std.debug.assert(exp == ctx.e);
 }
 
 /// Descend into the tail, marking the spine word's direction bit.
 pub inline fn downRight(ctx: *ReductionCtx) void {
+    const shadow_expect = spine.shadowDownRight(ctx.e);
     ctx.hold = hdGet(ctx.s);
     hdSet(ctx.s, ctx.e);
     ctx.e = tlGet(ctx.s);
     tlSet(ctx.s, ctx.hold);
     ctx.s |= word.tlptrbit;
+    if (shadow_expect) |exp| std.debug.assert(exp == ctx.e);
 }
 
 /// [downRight] guarded by the bottom-of-spine sentinel; true if `s` is exhausted.
@@ -140,10 +146,12 @@ pub inline fn downright(ctx: *ReductionCtx) bool {
 
 /// Ascend out of the head, restoring the reversed spine link (pop `s` into `e`).
 pub inline fn upLeft(ctx: *ReductionCtx) void {
+    const shadow_expect = spine.shadowUpLeft(ctx.e);
     ctx.hold = ctx.s;
     ctx.s = hdGet(ctx.s);
     hdSet(ctx.hold, ctx.e);
     ctx.e = ctx.hold;
+    if (shadow_expect) |exp| std.debug.assert(exp == ctx.e);
 }
 
 /// [upLeft] guarded by the bottom-of-spine sentinel; true if `s` is exhausted.
@@ -157,11 +165,13 @@ pub inline fn upleft(ctx: *ReductionCtx) bool {
 
 /// Ascend out of the tail, clearing the direction mark and restoring the link.
 pub inline fn upRight(ctx: *ReductionCtx) void {
+    const shadow_expect = spine.shadowUpRight(ctx.e);
     ctx.s &= ~word.tlptrbits;
     ctx.hold = tlGet(ctx.s);
     tlSet(ctx.s, ctx.e);
     ctx.e = hdGet(ctx.s);
     hdSet(ctx.s, ctx.hold);
+    if (shadow_expect) |exp| std.debug.assert(exp == ctx.e);
 }
 
 /// Pull the next argument off the spine into `a` (unchecked — caller knows it exists).
