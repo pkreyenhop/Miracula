@@ -153,170 +153,9 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             ctx.action = word.ACT_DONE;
             return;
         },
-        word.GETENV => {
-            reduce.upLeft(ctx);
-            const a = reduce.getstring(lastArg(ctx), "getenv");
-            const p = main_clib.getenv(a);
-            ctx.hold = word.NIL;
-            if (p) |ptr| {
-                var i = word.strlen(ptr);
-                if (rt.rs.UTF8 != 0) {
-                    const qbuf_slice = rt.allocator.alloc(u8, i + 1) catch heap.mallocPanic("utf8 conversion buffer");
-                    const qbuf = qbuf_slice.ptr;
-                    _ = word.strcpy(@as([*:0]u8, @ptrCast(qbuf)), ptr);
-                    var q = qbuf;
-                    var r = qbuf;
-                    while (r[0] != 0) {
-                        if (r[0] > 127) {
-                            if ((r[0] == 194 or r[0] == 195) and r[1] >= 128 and r[1] <= 191) {
-                                q[0] = if (r[0] == 194) r[1] else r[1] + 64;
-                                q += 1;
-                                r += 2;
-                            } else {
-                                reduce_rt.getenvError(a.?);
-                                q[0] = r[0];
-                                q += 1;
-                                r += 1;
-                            }
-                        } else {
-                            q[0] = r[0];
-                            q += 1;
-                            r += 1;
-                        }
-                    }
-                    q[0] = 0;
-                    i = word.strlen(@as([*:0]const u8, @ptrCast(qbuf)));
-                    while (i > 0) {
-                        i -= 1;
-                        ctx.hold = reduce.cons(qbuf[i], ctx.hold);
-                    }
-                    rt.allocator.free(qbuf_slice);
-                } else {
-                    while (i > 0) {
-                        i -= 1;
-                        ctx.hold = reduce.cons(ptr[i], ctx.hold);
-                    }
-                }
-            }
-            reduce.hdSet(ctx.e, word.I);
-            reduce.tlSet(ctx.e, ctx.hold);
-            ctx.e = ctx.hold;
-            ctx.action = word.ACT_DONE;
-            return;
-        },
-        word.EXEC => {
-            reduce.upLeft(ctx);
-            var pid: c_int = -1;
-            var fd: [2]c_int = undefined;
-            var fd_a: [2]c_int = undefined;
-            const cp = reduce.getstring(lastArg(ctx), "system");
-            var cond = false;
-            if (main_clib.pipe(&fd) == -1 or main_clib.pipe(&fd_a) == -1) {
-                cond = true;
-            } else {
-                pid = main_clib.fork();
-                cond = (pid != 0);
-            }
-            if (cond) {
-                var fp: ?*word.FILE = null;
-                var fp_a: ?*word.FILE = null;
-                if (pid != -1) {
-                    _ = main_clib.close(fd[1]);
-                    _ = main_clib.close(fd_a[1]);
-                    fp = word.fdopen(fd[0], "r");
-                    fp_a = word.fdopen(fd_a[0], "r");
-                }
-                if (pid == -1 or fp == null or fp_a == null) {
-                    reduce.rewriteToCons(ctx.e, word.NIL, reduce.cons(reduce_rt.piperrmess(pid), big.fromInt(-1)));
-                } else {
-                    reduce.rewriteToCons(ctx.e, reduce.ap(word.READ, @intCast(@intFromPtr(fp.?))), reduce.cons(reduce.ap(word.READ, @intCast(@intFromPtr(fp_a.?))), reduce.ap(word.WAIT, pid)));
-                }
-            } else {
-                const shell = "/bin/sh";
-                _ = main_clib.dup2(fd[1], 1);
-                _ = main_clib.dup2(fd_a[1], 2);
-                _ = main_clib.close(fd[1]);
-                _ = main_clib.close(fd[0]);
-                _ = main_clib.close(fd_a[1]);
-                _ = main_clib.close(fd_a[0]);
-                _ = word.fclose(reduce.getStdin().?);
-                _ = main_clib.execl(shell, .{ shell, "-c", cp });
-            }
-            ctx.action = word.ACT_DONE;
-            return;
-        },
-        word.NUMVAL => {
-            reduce.upLeft(ctx);
-            var x = lastArg(ctx);
-            var base: c_int = 10;
-            while (x != word.NIL) {
-                reduce.hdSet(x, reduce.reduce(reduce.hdGet(x)));
-                const next_tl = reduce.reduce(reduce.tlGet(x));
-                reduce.tlSet(x, next_tl);
-                x = next_tl;
-            }
-            while (lastArg(ctx) != word.NIL and word.isspace(reduce.hdGet(lastArg(ctx)))) {
-                setLastArg(ctx, reduce.tlGet(lastArg(ctx)));
-            }
-            x = lastArg(ctx);
-            if (x != word.NIL and reduce.hdGet(x) == '-') {
-                x = reduce.tlGet(x);
-            }
-            if (reduce.hdGet(x) == '0' and reduce.tlGet(x) != word.NIL) {
-                switch (word.tolower(reduce.hdGet(reduce.tlGet(x)))) {
-                    'o' => {
-                        base = 8;
-                        x = reduce.tlGet(reduce.tlGet(x));
-                        while (x != word.NIL and ('0' <= reduce.hdGet(x) and reduce.hdGet(x) <= '7')) {
-                            x = reduce.tlGet(x);
-                        }
-                    },
-                    'x' => {
-                        base = 16;
-                        x = reduce.tlGet(reduce.tlGet(x));
-                        while (x != word.NIL and word.isxdigit(reduce.hdGet(x))) {
-                            x = reduce.tlGet(x);
-                        }
-                    },
-                    else => {},
-                }
-            } else {
-                while (x != word.NIL and word.isdigit(reduce.hdGet(x))) {
-                    x = reduce.tlGet(x);
-                }
-            }
-            if (x == word.NIL) {
-                reduce.hdSet(ctx.e, word.I);
-                const val = big.parseString(lastArg(ctx), base);
-                reduce.tlSet(ctx.e, val);
-                ctx.e = val;
-            } else {
-                var p = &rt.rs.linebuf;
-                var d: f64 = 0.0;
-                var junk: u8 = 0;
-                x = lastArg(ctx);
-                var p_idx: usize = 0;
-                while (x != word.NIL and p_idx < 1023) {
-                    p[p_idx] = @intCast(reduce.hdGet(x));
-                    p_idx += 1;
-                    x = reduce.tlGet(x);
-                }
-                p[p_idx] = 0;
-                p_idx += 1;
-                if (p_idx > 60 or main_clib.sscanf(@ptrCast(p), "%lf%c", .{ &d, &junk }) != 1 or junk != 0) {
-                    word.printErr("\nbad arg for numval: \"{s}\"\n", .{@as([*:0]const u8, @ptrCast(p))});
-                    reduce_rt.outstats();
-                    main_clib.exit(1);
-                } else {
-                    reduce.hdSet(ctx.e, word.I);
-                    const val = heap.stoDbl(d);
-                    reduce.tlSet(ctx.e, val);
-                    ctx.e = val;
-                }
-            }
-            ctx.action = word.ACT_DONE;
-            return;
-        },
+        word.GETENV => return handleReadyGETENV(ctx),
+        word.EXEC => return handleReadyEXEC(ctx),
+        word.NUMVAL => return handleReadyNUMVAL(ctx),
         word.STARTREAD => {
             reduce.upLeft(ctx);
             const fil = reduce.getstring(lastArg(ctx), "read");
@@ -714,37 +553,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             ctx.action = word.ACT_DONE;
             return;
         },
-        word.POWER => {
-            reduce.GETARG(ctx, &ctx.args[0]);
-            reduce.upLeft(ctx);
-            var fa: f64 = 0.0;
-            var fb: f64 = 0.0;
-            if (reduce.isDouble(lastArg(ctx))) {
-                fa = reduce.forceDbl(ctx.args[0]);
-                if (fa < 0.0) {
-                    platform.setErrno(main_clib.EDOM);
-                    reduce_rt.mathError(@constCast("^"));
-                }
-                fb = heap.getDbl(lastArg(ctx));
-            } else if (reduce.isDouble(ctx.args[0])) {
-                fa = heap.getDbl(ctx.args[0]);
-                fb = big.toFloat(lastArg(ctx));
-            } else if (reduce.neg(lastArg(ctx))) {
-                fa = big.toFloat(ctx.args[0]);
-                fb = big.toFloat(lastArg(ctx));
-            } else {
-                reduce.simpl(ctx, big.pow(ctx.args[0], lastArg(ctx)));
-                ctx.action = word.ACT_DONE;
-                return;
-            }
-            platform.setErrno(0);
-            heap.setdbl(ctx.e, std.math.pow(f64, fa, fb));
-            if (platform.getErrno() != 0) {
-                reduce_rt.mathError(@constCast("power"));
-            }
-            ctx.action = word.ACT_DONE;
-            return;
-        },
+        word.POWER => return handleReadyPOWER(ctx),
         word.SHOWSCALED => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
@@ -801,45 +610,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             ctx.action = word.ACT_NEXTREDEX;
             return;
         },
-        word.Ush => {
-            reduce.GETARG(ctx, &ctx.args[0]);
-            reduce.GETARG(ctx, &ctx.args[1]);
-            reduce.GETARG(ctx, &ctx.args[2]);
-            if (reduce.hdGet(reduce.head(ctx.args[0])) != reduce.hdGet(reduce.head(ctx.args[2]))) {
-                reduce.rewriteToFail(&ctx.e);
-                ctx.action = word.ACT_DONE;
-                return;
-            }
-            if (reduce.isConstructor(ctx.args[0])) {
-                if (reduce.suppressed(ctx.args[0])) {
-                    reduce.rewriteToString(&ctx.e, "<unprintable>");
-                } else {
-                    reduce.rewriteToString(&ctx.e, reduce.constrName(ctx.args[0]));
-                }
-                ctx.action = word.ACT_DONE;
-                return;
-            }
-            ctx.hold = if (ctx.args[1] != 0) reduce.cons(')', word.NIL) else word.NIL;
-            while (!reduce.isConstructor(ctx.args[0])) {
-                ctx.hold = reduce.cons(' ', reduce.ap2(word.APPEND, reduce.ap(reduce.tlGet(ctx.args[0]), reduce.tlGet(ctx.args[2])), ctx.hold));
-                ctx.args[0] = reduce.hdGet(ctx.args[0]);
-                ctx.args[2] = reduce.hdGet(ctx.args[2]);
-            }
-            if (reduce.suppressed(ctx.args[0])) {
-                reduce.rewriteToString(&ctx.e, "<unprintable>");
-                ctx.action = word.ACT_DONE;
-                return;
-            }
-            ctx.hold = reduce.ap2(word.APPEND, lex.strConv(reduce.constrName(ctx.args[0])), ctx.hold);
-            if (ctx.args[1] != 0) {
-                reduce.rewriteToCons(ctx.e, '(', ctx.hold);
-                ctx.action = word.ACT_DONE;
-            } else {
-                reduce.rewriteToValue(&ctx.e, ctx.hold);
-                ctx.action = word.ACT_NEXTREDEX;
-            }
-            return;
-        },
+        word.Ush => return handleReadyUsh(ctx),
         else => {
             const tag_val = @intFromEnum(reduce.getTag(e_val));
             word.printErr("\nimpossible event in reduce (val: {}, tag: {})\n", .{ e_val, tag_val });
@@ -849,5 +620,256 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                 std.process.exit(1);
             }
         },
+    }
+}
+
+/// `getenv`: looks up the last argument (a Miranda string) in the process
+/// environment, converting UTF-8 bytes to Miranda's internal char
+/// representation if `$UTF8` output is on, then rewrites to the result string
+/// (or `nil` if unset).
+fn handleReadyGETENV(ctx: *ReductionCtx) void {
+    reduce.upLeft(ctx);
+    const a = reduce.getstring(lastArg(ctx), "getenv");
+    const p = main_clib.getenv(a);
+    ctx.hold = word.NIL;
+    if (p) |ptr| {
+        var i = word.strlen(ptr);
+        if (rt.rs.UTF8 != 0) {
+            const qbuf_slice = rt.allocator.alloc(u8, i + 1) catch heap.mallocPanic("utf8 conversion buffer");
+            const qbuf = qbuf_slice.ptr;
+            _ = word.strcpy(@as([*:0]u8, @ptrCast(qbuf)), ptr);
+            var q = qbuf;
+            var r = qbuf;
+            while (r[0] != 0) {
+                if (r[0] > 127) {
+                    if ((r[0] == 194 or r[0] == 195) and r[1] >= 128 and r[1] <= 191) {
+                        q[0] = if (r[0] == 194) r[1] else r[1] + 64;
+                        q += 1;
+                        r += 2;
+                    } else {
+                        reduce_rt.getenvError(a.?);
+                        q[0] = r[0];
+                        q += 1;
+                        r += 1;
+                    }
+                } else {
+                    q[0] = r[0];
+                    q += 1;
+                    r += 1;
+                }
+            }
+            q[0] = 0;
+            i = word.strlen(@as([*:0]const u8, @ptrCast(qbuf)));
+            while (i > 0) {
+                i -= 1;
+                ctx.hold = reduce.cons(qbuf[i], ctx.hold);
+            }
+            rt.allocator.free(qbuf_slice);
+        } else {
+            while (i > 0) {
+                i -= 1;
+                ctx.hold = reduce.cons(ptr[i], ctx.hold);
+            }
+        }
+    }
+    reduce.hdSet(ctx.e, word.I);
+    reduce.tlSet(ctx.e, ctx.hold);
+    ctx.e = ctx.hold;
+    ctx.action = word.ACT_DONE;
+}
+
+/// `system`: forks a `/bin/sh -c <cmd>` child, piping its stdout/stderr back
+/// as two lazy Miranda read-streams plus a `WAIT` thunk for its exit code (the
+/// child never returns from this function -- it `execl`s directly).
+fn handleReadyEXEC(ctx: *ReductionCtx) void {
+    reduce.upLeft(ctx);
+    var pid: c_int = -1;
+    var fd: [2]c_int = undefined;
+    var fd_a: [2]c_int = undefined;
+    const cp = reduce.getstring(lastArg(ctx), "system");
+    var cond = false;
+    if (main_clib.pipe(&fd) == -1 or main_clib.pipe(&fd_a) == -1) {
+        cond = true;
+    } else {
+        pid = main_clib.fork();
+        cond = (pid != 0);
+    }
+    if (cond) {
+        var fp: ?*word.FILE = null;
+        var fp_a: ?*word.FILE = null;
+        if (pid != -1) {
+            _ = main_clib.close(fd[1]);
+            _ = main_clib.close(fd_a[1]);
+            fp = word.fdopen(fd[0], "r");
+            fp_a = word.fdopen(fd_a[0], "r");
+        }
+        if (pid == -1 or fp == null or fp_a == null) {
+            reduce.rewriteToCons(ctx.e, word.NIL, reduce.cons(reduce_rt.piperrmess(pid), big.fromInt(-1)));
+        } else {
+            reduce.rewriteToCons(ctx.e, reduce.ap(word.READ, @intCast(@intFromPtr(fp.?))), reduce.cons(reduce.ap(word.READ, @intCast(@intFromPtr(fp_a.?))), reduce.ap(word.WAIT, pid)));
+        }
+    } else {
+        const shell = "/bin/sh";
+        _ = main_clib.dup2(fd[1], 1);
+        _ = main_clib.dup2(fd_a[1], 2);
+        _ = main_clib.close(fd[1]);
+        _ = main_clib.close(fd[0]);
+        _ = main_clib.close(fd_a[1]);
+        _ = main_clib.close(fd_a[0]);
+        _ = word.fclose(reduce.getStdin().?);
+        _ = main_clib.execl(shell, .{ shell, "-c", cp });
+    }
+    ctx.action = word.ACT_DONE;
+}
+
+/// `numval`: parses the last argument (a Miranda string) as a number,
+/// recognizing `0o`/`0x` integer prefixes and falling back to a float scan
+/// (via `sscanf`) if the string doesn't fully parse as an integer.
+fn handleReadyNUMVAL(ctx: *ReductionCtx) void {
+    reduce.upLeft(ctx);
+    var x = lastArg(ctx);
+    var base: c_int = 10;
+    while (x != word.NIL) {
+        reduce.hdSet(x, reduce.reduce(reduce.hdGet(x)));
+        const next_tl = reduce.reduce(reduce.tlGet(x));
+        reduce.tlSet(x, next_tl);
+        x = next_tl;
+    }
+    while (lastArg(ctx) != word.NIL and word.isspace(reduce.hdGet(lastArg(ctx)))) {
+        setLastArg(ctx, reduce.tlGet(lastArg(ctx)));
+    }
+    x = lastArg(ctx);
+    if (x != word.NIL and reduce.hdGet(x) == '-') {
+        x = reduce.tlGet(x);
+    }
+    if (reduce.hdGet(x) == '0' and reduce.tlGet(x) != word.NIL) {
+        switch (word.tolower(reduce.hdGet(reduce.tlGet(x)))) {
+            'o' => {
+                base = 8;
+                x = reduce.tlGet(reduce.tlGet(x));
+                while (x != word.NIL and ('0' <= reduce.hdGet(x) and reduce.hdGet(x) <= '7')) {
+                    x = reduce.tlGet(x);
+                }
+            },
+            'x' => {
+                base = 16;
+                x = reduce.tlGet(reduce.tlGet(x));
+                while (x != word.NIL and word.isxdigit(reduce.hdGet(x))) {
+                    x = reduce.tlGet(x);
+                }
+            },
+            else => {},
+        }
+    } else {
+        while (x != word.NIL and word.isdigit(reduce.hdGet(x))) {
+            x = reduce.tlGet(x);
+        }
+    }
+    if (x == word.NIL) {
+        reduce.hdSet(ctx.e, word.I);
+        const val = big.parseString(lastArg(ctx), base);
+        reduce.tlSet(ctx.e, val);
+        ctx.e = val;
+    } else {
+        var p = &rt.rs.linebuf;
+        var d: f64 = 0.0;
+        var junk: u8 = 0;
+        x = lastArg(ctx);
+        var p_idx: usize = 0;
+        while (x != word.NIL and p_idx < 1023) {
+            p[p_idx] = @intCast(reduce.hdGet(x));
+            p_idx += 1;
+            x = reduce.tlGet(x);
+        }
+        p[p_idx] = 0;
+        p_idx += 1;
+        if (p_idx > 60 or main_clib.sscanf(@ptrCast(p), "%lf%c", .{ &d, &junk }) != 1 or junk != 0) {
+            word.printErr("\nbad arg for numval: \"{s}\"\n", .{@as([*:0]const u8, @ptrCast(p))});
+            reduce_rt.outstats();
+            main_clib.exit(1);
+        } else {
+            reduce.hdSet(ctx.e, word.I);
+            const val = heap.stoDbl(d);
+            reduce.tlSet(ctx.e, val);
+            ctx.e = val;
+        }
+    }
+    ctx.action = word.ACT_DONE;
+}
+
+/// `^` (power): integer exponentiation via `big.pow` when both operands are
+/// non-negative integers; otherwise falls back to `f64` `pow`, reporting a
+/// domain error for a negative double base.
+fn handleReadyPOWER(ctx: *ReductionCtx) void {
+    reduce.GETARG(ctx, &ctx.args[0]);
+    reduce.upLeft(ctx);
+    var fa: f64 = 0.0;
+    var fb: f64 = 0.0;
+    if (reduce.isDouble(lastArg(ctx))) {
+        fa = reduce.forceDbl(ctx.args[0]);
+        if (fa < 0.0) {
+            platform.setErrno(main_clib.EDOM);
+            reduce_rt.mathError(@constCast("^"));
+        }
+        fb = heap.getDbl(lastArg(ctx));
+    } else if (reduce.isDouble(ctx.args[0])) {
+        fa = heap.getDbl(ctx.args[0]);
+        fb = big.toFloat(lastArg(ctx));
+    } else if (reduce.neg(lastArg(ctx))) {
+        fa = big.toFloat(ctx.args[0]);
+        fb = big.toFloat(lastArg(ctx));
+    } else {
+        reduce.simpl(ctx, big.pow(ctx.args[0], lastArg(ctx)));
+        ctx.action = word.ACT_DONE;
+        return;
+    }
+    platform.setErrno(0);
+    heap.setdbl(ctx.e, std.math.pow(f64, fa, fb));
+    if (platform.getErrno() != 0) {
+        reduce_rt.mathError(@constCast("power"));
+    }
+    ctx.action = word.ACT_DONE;
+}
+
+/// `show` on a saturated constructor application (`Ush`, the "unshow"
+/// combinator): renders the constructor name and its arguments (space- or
+/// parenthesis-separated per `ctx.args[1]`, the "needs parens" flag),
+/// short-circuiting to `"<unprintable>"` for a suppressed/hidden constructor.
+fn handleReadyUsh(ctx: *ReductionCtx) void {
+    reduce.GETARG(ctx, &ctx.args[0]);
+    reduce.GETARG(ctx, &ctx.args[1]);
+    reduce.GETARG(ctx, &ctx.args[2]);
+    if (reduce.hdGet(reduce.head(ctx.args[0])) != reduce.hdGet(reduce.head(ctx.args[2]))) {
+        reduce.rewriteToFail(&ctx.e);
+        ctx.action = word.ACT_DONE;
+        return;
+    }
+    if (reduce.isConstructor(ctx.args[0])) {
+        if (reduce.suppressed(ctx.args[0])) {
+            reduce.rewriteToString(&ctx.e, "<unprintable>");
+        } else {
+            reduce.rewriteToString(&ctx.e, reduce.constrName(ctx.args[0]));
+        }
+        ctx.action = word.ACT_DONE;
+        return;
+    }
+    ctx.hold = if (ctx.args[1] != 0) reduce.cons(')', word.NIL) else word.NIL;
+    while (!reduce.isConstructor(ctx.args[0])) {
+        ctx.hold = reduce.cons(' ', reduce.ap2(word.APPEND, reduce.ap(reduce.tlGet(ctx.args[0]), reduce.tlGet(ctx.args[2])), ctx.hold));
+        ctx.args[0] = reduce.hdGet(ctx.args[0]);
+        ctx.args[2] = reduce.hdGet(ctx.args[2]);
+    }
+    if (reduce.suppressed(ctx.args[0])) {
+        reduce.rewriteToString(&ctx.e, "<unprintable>");
+        ctx.action = word.ACT_DONE;
+        return;
+    }
+    ctx.hold = reduce.ap2(word.APPEND, lex.strConv(reduce.constrName(ctx.args[0])), ctx.hold);
+    if (ctx.args[1] != 0) {
+        reduce.rewriteToCons(ctx.e, '(', ctx.hold);
+        ctx.action = word.ACT_DONE;
+    } else {
+        reduce.rewriteToValue(&ctx.e, ctx.hold);
+        ctx.action = word.ACT_NEXTREDEX;
     }
 }
