@@ -27,23 +27,44 @@
 //! this: it does not pop — it writes back the reduced tail and flips the
 //! frame back to "via hd", leaving it as the top frame. Only `upLeft` pops.
 //!
-//! ## Status: additive and inert
+//! ## Status: validated in shadow, not yet the live mechanism
 //!
-//! This module is **not** wired into `reduce()`. It exists to develop and
-//! validate the replacement primitives in isolation before any cutover. A
-//! live cutover would additionally need to migrate the *other* direct
-//! consumers of the raw spine encoding found during the Phase-2
-//! investigation — beyond the two files already flagged as lock-step
-//! duplicates of each other (`reducer/reduce.zig`, `reducer/reduce_core.zig`):
+//! `Spine` itself is **not** wired into `reduce()`'s dispatch — the live
+//! interpreter still runs on in-graph pointer reversal. What *is* wired in
+//! (guarded by `active == null`, the default, so it is a no-op unless
+//! explicitly enabled) is a **shadow-validation mode**: setting
+//! `MIRA_VALIDATE_SPINE` at process start drives a `Spine` in lockstep with
+//! the live primitives for the whole run, asserting agreement on every call.
+//! `tests/spine_differential_check.py` runs this over the golden corpus plus
+//! a curated set of `miralib/ex/` programs (44 + 7 checks, 2026-07-01) with
+//! zero mismatches — real evidence for the primitives' correctness, beyond
+//! this file's own hand-built unit tests.
+//!
+//! The shadow hooks also cover the *other* direct consumers of the raw spine
+//! encoding the Phase-2 investigation found — beyond the two files already
+//! flagged as lock-step duplicates of each other (`reducer/reduce.zig`,
+//! `reducer/reduce_core.zig`):
 //!   * `combinators.zig`'s `handleTRY`/`handleFAIL` — TRY/FAIL backtracking
 //!     walks the existing spine in bulk via raw `ctx.s`/`hdGet`/`tlptrbit`
-//!     manipulation, not just the four primitives.
+//!     manipulation. Mirrored via `shadowPushRaw`/`shadowDrainAll` rather than
+//!     the four primitives, since neither op fits `downLeft`/`downRight`/
+//!     `upLeft`/`upRight`'s shape.
 //!   * `runtime/reduce.zig`'s `streamRead` (a `pub export fn` — part of the
-//!     C-ABI surface) inlines its own "UPLEFT" using *unmasked* `h`/`hp`,
-//!     relying silently on that particular frame having been pushed by a pure
-//!     `downLeft` chain (never `downRight`).
-//! Each of these needs its own migration and validation; none are touched
-//! here, and none are exercised by this module's tests.
+//!     C-ABI surface) inlines its own "UPLEFT" using *unmasked* `h`/`hp`.
+//!     Mirrored via the same `shadowUpLeft` hook as the primitive.
+//!
+//! **Why shadow-validated, not yet cut over.** A live cutover means swapping
+//! the mechanism under ~4,200 lines of the hottest, least-tested code path in
+//! the interpreter. Shadow validation gets real confidence (thousands of real
+//! call sequences, not hand-derivation) without that risk: the shadow is
+//! deliberately **read-only** with respect to the heap (see the safety note
+//! by `active` below) — a divergence, even an unanticipated one, cleanly fails
+//! an assertion instead of silently corrupting the live program. Remaining
+//! before a cutover could be considered: an actual reduction-loop benchmark
+//! (none exists yet — `src/micro_benchmarks.zig` covers allocation/GC/
+//! interning, not the reducer), and turning `handleTRY`/`handleFAIL`/
+//! `streamRead` themselves over to `Spine` (today they still run pointer
+//! reversal for real; only the shadow observes them).
 
 const std = @import("std");
 const heap = @import("../heap.zig");
