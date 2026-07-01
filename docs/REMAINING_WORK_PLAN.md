@@ -41,7 +41,7 @@ partial),
 | J2 | Standardise "dump stats then die" panics | TESTABILITY | ⬜ |
 | A4b | Recovery redesign — SIGFPE synchronous, reducer unwind (**overlaps R10 step 3**) | REDESIGN | ⬜ |
 | B2 | Option (a): char boundary done, range-test sites in `trans`/`types`/`reduce` remain (not started). Option (b): **✅ done** — `reduce_core.zig`'s spine primitives, `combinators.handleTRY`/`handleFAIL`, and `runtime/reduce.zig`'s `streamRead` all run on the explicit `Spine` for real; two real bugs (a `via_tl`-boundary correctness gap, a ~15x perf regression) found and fixed post-cutover | REDESIGN | ◐ |
-| B3 | Tracing GC (after B2) | REDESIGN | ⬜ |
+| B3 | Tracing GC (after B2) | REDESIGN | ✅ |
 | C1 | Final data-model scorecard | REDESIGN | ⬜ |
 | C2 | Rewrite `ARCHITECTURE.md` / `ZIG_MIGRATION.md` to the new model | REDESIGN | ⬜ |
 | Ph5 | Thread `*Interp` through the call graph (~2,100 sites) | SHARED_STATE | ⬜ |
@@ -293,16 +293,25 @@ individual, carefully-validated extraction.
    Recommended: Steps 1–2 as a dedicated PR; Step 3 as a separate, reviewed design
    proposal.
 
-### Phase 5 — B3 tracing GC *(unblocked — B2 option (b) landed)*
-Replace the sign-bit free-list mark-sweep with a precise tracing collector over the
-`Ref` graph: explicit typed root set, mark/sweep rebuilding the free list from a
-side `std.DynamicBitSet` (drops the tag sign-bit trick, making `NodeTag` fully
-exhaustive). *DoD: precise-root unit tests + GC stress test stable; golden green.*
-The `Spine` cutover already supplies part of this — every frame is an explicit,
-typed root (`Spine.markAllRoots`, added because the conservative stack scan can't
-see into `Spine`'s own heap-allocated buffer) — so the reduction-loop's roots are
-already precise; this phase is about the *cell-storage* side (the sign-bit
-mark/sweep itself).
+### Phase 5 — B3 tracing GC ✅ *(done)*
+Replaced the sign-bit-on-tag-byte mark-sweep with a precise tracing collector:
+`Heap.live: std.DynamicBitSetUnmanaged` (one bit per cell, persistent liveness
+bitmap) plus an explicit `free_head` free list threaded through freed cells' own
+`tl` fields. `mark()` now tests `!live.isSet(idx)` for cycle detection instead of
+flipping the tag byte's sign bit; `gc()` clears the bitmap, calls `bases()`, then
+rebuilds `free_head` from every unmarked cell in one sweep. `make()`'s allocation
+path is now O(1) (pop `free_head`) instead of the old bump-pointer's
+scan-for-a-gap. Dropped `poschar`/`negchar`/`gcpatch`/the `listp` field as dead
+code, and removed `NodeTag`'s trailing `_,` catch-all — the enum is now fully
+exhaustive since the new GC never stores anything but a named tag in a cell.
+The `Spine` cutover already supplied the reduction-loop half of this — every
+frame is an explicit, typed root (`Spine.markAllRoots`, added because the
+conservative stack scan can't see into `Spine`'s own heap-allocated buffer) — so
+this phase was the remaining *cell-storage* side (the sign-bit mark/sweep
+itself). *DoD met: new GC stress test (long-lived list survives many forced
+collections; garbage reclaimed) + all 166 unit tests + 44/44 golden + 51/51
+spine-corpus stress checks + lint all green; fib(27) timing shows no regression
+vs the pre-B3 baseline.*
 
 ### Phase 6 — SHARED_STATE Ph5 → Ph6 *(largest; only if multi-instance is needed)*
 Thread `*Interp` through the call graph (~2,100 sites), then delete the global
@@ -328,7 +337,7 @@ Phase 3 (R9 splits) ────────────┘
 Phase 4 (R10 + J1 + J2 + A4b)  ── design decision (a/b) on recovery model
         │
         ▼
-Phase 5 (B3 GC)  ── unblocked (B2 option (b) landed; Spine roots already precise)
+Phase 5 (B3 GC) ✅
         │
         ▼
 Phase 6 (Ph5 → Ph6)  ── largest; defer unless multi-instance required

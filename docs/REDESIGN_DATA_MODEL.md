@@ -59,7 +59,7 @@ library) links against it, so the *honest* C-ABI target is:
 | Track A4a — strip gratuitous `callconv` | ✅ `callconv(.c)` 13 → **6** (genuine signal boundary) |
 | Track A4b — recovery redesign | ⬜ Re-scoped — design-bearing (SIGFPE synchronous; reducer unwind; unverifiable by golden) |
 | `Value` union (R4.3/4.4) | ◐ B2(a) seam started — `word.Value`/`classify`; char boundary migrated. B2(b) ✅ done — pointer reversal → explicit `Spine` (Track B2) |
-| Tracing GC (R5) | ⬜ Planned, unblocked — `Spine` already supplies precise roots (Track B3) |
+| Tracing GC (R5) | ✅ Done — `Heap.live` bitmap + explicit free list (Track B3) |
 | String interning (R6) | ✅ Done — nodes hold an interned `StrId` (`strtab.zig`); node-string casts → **0** (Track B1) |
 
 ---
@@ -409,11 +409,20 @@ not wait behind Track B's design work.
   * **(c) Defer B2**: since boxing already disambiguates char/number, do B3 (tracing GC) or the
     close-out (C1/C2) first and revisit the value representation later.
 
-* **B3 (R5) — Tracing GC.** Replace the sign-bit free-list mark-sweep with a precise tracing
-  collector over the `Ref` graph: explicit typed root set, mark/sweep rebuilding the free list
-  from a side `std.DynamicBitSet` (drops the tag sign-bit trick, making `NodeTag` fully
-  exhaustive). Best after B2 (a clean `Ref` graph to trace). *DoD: precise-root unit tests + GC
-  stress test stable; golden green.*
+* **B3 (R5) — Tracing GC. ✅ Done.** Replaced the sign-bit-on-tag-byte mark-sweep with a precise
+  tracing collector: `Heap.live: std.DynamicBitSetUnmanaged` (persistent liveness bitmap, one bit
+  per cell) plus an explicit `free_head` free list threaded through freed cells' own `tl` fields.
+  `mark()` tests `!live.isSet(idx)` for cycle detection instead of flipping the tag byte's sign
+  bit; `gc()` clears the bitmap, calls `bases()`, then rebuilds `free_head` in one sweep.
+  `make()`'s allocation path is now O(1) (pop `free_head`) instead of the old bump-pointer's
+  scan-for-a-gap. Dropped `poschar`/`negchar`/`gcpatch`/the `listp` field as dead code, and
+  removed `NodeTag`'s trailing `_,` catch-all — the enum is now fully exhaustive, since the new
+  GC never stores anything but a named tag in a cell's tag byte. The `Spine` cutover (B2 option
+  (b)) already supplied precise, typed roots for the reduction loop (`Spine.markAllRoots`), so
+  this closed the remaining *cell-storage* half of tracing GC. *DoD met*: new GC stress test
+  (a long-lived list survives many forced collections; garbage is reclaimed) + all 166 unit
+  tests + 44/44 golden + 51/51 spine-corpus stress checks + lint all green; fib(27) timing shows
+  no regression vs. the pre-B3 baseline.
 
 ### Track C — Close-out
 
