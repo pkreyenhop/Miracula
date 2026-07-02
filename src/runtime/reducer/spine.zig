@@ -177,7 +177,7 @@ pub const Spine = struct {
     /// True when no frame remains — the replacement for the old
     /// `ctx.s == word.BACKSTOP` bottom-of-spine *equality* check (used by
     /// `reduce()`'s own part-3 loop to detect true exhaustion).
-    pub fn isEmpty(self: *const Spine) bool {
+    pub inline fn isEmpty(self: *const Spine) bool {
         return self.frames.items.len == 0;
     }
 
@@ -199,7 +199,7 @@ pub const Spine = struct {
     /// build on `firstel (x:xs) = x`), while `downright`/`upleft` themselves
     /// wrongly proceed to pop/descend into a frame they should have refused
     /// (found the same way on `colour ::= Red | Green | Blue`).
-    pub fn atArgumentChainBoundary(self: *const Spine) bool {
+    pub inline fn atArgumentChainBoundary(self: *const Spine) bool {
         if (self.isEmpty()) return true;
         return self.frames.items[self.frames.items.len - 1].via_tl;
     }
@@ -209,13 +209,13 @@ pub const Spine = struct {
         return self.frames.items.len;
     }
 
-    fn top(self: *Spine) *Frame {
+    inline fn top(self: *Spine) *Frame {
         return &self.frames.items[self.frames.items.len - 1];
     }
 
     /// Descend into `e`'s head: push a frame for `e`, focus becomes `hd(e)`.
     /// Pure bookkeeping plus a read — `e` itself is never mutated.
-    pub fn downLeft(self: *Spine, e: Word) Word {
+    pub inline fn downLeft(self: *Spine, e: Word) Word {
         self.frames.append(self.allocator, .{ .node = e, .via_tl = false }) catch heap.mallocPanic("spine");
         return heap.h(e);
     }
@@ -224,7 +224,7 @@ pub const Spine = struct {
     /// head to `reduced_head`. Writes back the reduced head (the one real
     /// graph mutation here) and re-tags the *existing* top frame rather than
     /// pushing a new one.
-    pub fn downRight(self: *Spine, reduced_head: Word) Word {
+    pub inline fn downRight(self: *Spine, reduced_head: Word) Word {
         const f = self.top();
         heap.hp(f.node).* = reduced_head;
         f.via_tl = true;
@@ -233,21 +233,21 @@ pub const Spine = struct {
 
     /// [downRight] guarded by spine-empty; `null` instead of descending when
     /// the spine is exhausted.
-    pub fn downright(self: *Spine, reduced_head: Word) ?Word {
+    pub inline fn downright(self: *Spine, reduced_head: Word) ?Word {
         if (self.isEmpty()) return null;
         return self.downRight(reduced_head);
     }
 
     /// Ascend out of the head: pop the top frame, write back the now-reduced
     /// value `reduced` into it, focus becomes the popped frame's cell.
-    pub fn upLeft(self: *Spine, reduced: Word) Word {
+    pub inline fn upLeft(self: *Spine, reduced: Word) Word {
         const f = self.frames.pop().?;
         heap.hp(f.node).* = reduced;
         return f.node;
     }
 
     /// [upLeft] guarded by spine-empty.
-    pub fn upleft(self: *Spine, reduced: Word) ?Word {
+    pub inline fn upleft(self: *Spine, reduced: Word) ?Word {
         if (self.isEmpty()) return null;
         return self.upLeft(reduced);
     }
@@ -256,7 +256,7 @@ pub const Spine = struct {
     /// re-tag the still-top (*not popped*) frame back to "via hd", focus
     /// becomes the already-correct reduced head written by the matching
     /// `downRight`.
-    pub fn upRight(self: *Spine, reduced: Word) Word {
+    pub inline fn upRight(self: *Spine, reduced: Word) Word {
         const f = self.top();
         heap.tp(f.node).* = reduced;
         f.via_tl = false;
