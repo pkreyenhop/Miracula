@@ -172,12 +172,12 @@ pub const Heap = struct {
     }
 
     /// The node tag of cell `x`.
-    pub fn getTag(self: Heap, x: Word) word.NodeTag {
+    pub inline fn getTag(self: Heap, x: Word) word.NodeTag {
         return self.tag.?[@intCast(x)];
     }
 
     /// Set the node tag of cell `x`.
-    pub fn setTag(self: *Heap, x: Word, val: word.NodeTag) void {
+    pub inline fn setTag(self: *Heap, x: Word, val: word.NodeTag) void {
         self.tag.?[@intCast(x)] = val;
     }
 
