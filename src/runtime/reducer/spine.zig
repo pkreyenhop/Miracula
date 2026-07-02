@@ -217,7 +217,7 @@ pub const Spine = struct {
     /// Pure bookkeeping plus a read — `e` itself is never mutated.
     pub inline fn downLeft(self: *Spine, e: Word) Word {
         self.frames.append(self.allocator, .{ .node = e, .via_tl = false }) catch heap.mallocPanic("spine");
-        return heap.h(e);
+        return heap.hCell(e);
     }
 
     /// Descend into the top frame's tail, having just finished reducing its
@@ -228,7 +228,7 @@ pub const Spine = struct {
         const f = self.top();
         heap.hp(f.node).* = reduced_head;
         f.via_tl = true;
-        return heap.t(f.node);
+        return heap.tCell(f.node);
     }
 
     /// [downRight] guarded by spine-empty; `null` instead of descending when
@@ -260,7 +260,7 @@ pub const Spine = struct {
         const f = self.top();
         heap.tp(f.node).* = reduced;
         f.via_tl = false;
-        return heap.h(f.node);
+        return heap.hCell(f.node);
     }
 
     /// Pop a frame and return just its node, with *no* write-back. For

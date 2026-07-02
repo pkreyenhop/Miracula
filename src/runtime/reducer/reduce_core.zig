@@ -85,7 +85,7 @@ const main_clib = @import("../main_clib.zig");
 
 /// Read the head (`hd`) field through (possibly marked) spine word `x`.
 pub inline fn hdGet(x: Word) Word {
-    return heap.heap.h(x & 0x3fffffffffffffff);
+    return heap.heap.hCell(x & 0x3fffffffffffffff);
 }
 
 /// Write the head (`hd`) field through spine word `x`.
@@ -95,7 +95,7 @@ pub inline fn hdSet(x: Word, val: Word) void {
 
 /// Read the tail (`tl`) field through spine word `x`.
 pub inline fn tlGet(x: Word) Word {
-    return heap.heap.t(x & 0x3fffffffffffffff);
+    return heap.heap.tCell(x & 0x3fffffffffffffff);
 }
 
 /// Write the tail (`tl`) field through spine word `x`.

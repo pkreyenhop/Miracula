@@ -137,6 +137,11 @@ pub const Heap = struct {
         self.tag = self.cells.items(.tag).ptr;
     }
 
+    /// Head (`hd`) of cell `x` without atom checks.
+    pub inline fn hCell(self: Heap, x: Word) Word {
+        return self.hd.?[@as(usize, @intCast(x))];
+    }
+
     /// Head (`hd`) of cell `x`.
     pub fn h(self: Heap, x: Word) Word {
         if (word.isAtom(x)) return 0;
@@ -147,6 +152,11 @@ pub const Heap = struct {
     pub fn hp(self: Heap, x: Word) *Word {
         std.debug.assert(x >= ATOMLIMIT);
         return &self.hd.?[@as(usize, @intCast(x))];
+    }
+
+    /// Tail (`tl`) of cell `x` without atom checks.
+    pub inline fn tCell(self: Heap, x: Word) Word {
+        return self.tl.?[@as(usize, @intCast(x))];
     }
 
     /// Tail (`tl`) of cell `x`.
@@ -994,6 +1004,16 @@ pub fn resetgcstats() void {
     heap.cellcount = -heap.claims;
     heap.nogcs = 0;
     initclock();
+}
+
+/// Head (`hd`) of cell `x` without atom checks.
+pub inline fn hCell(x: Word) Word {
+    return heap.hCell(x);
+}
+
+/// Tail (`tl`) of cell `x` without atom checks.
+pub inline fn tCell(x: Word) Word {
+    return heap.tCell(x);
 }
 
 /// Allocate a cell with tag `t_val` and fields `(x, y)` — the core allocator.
