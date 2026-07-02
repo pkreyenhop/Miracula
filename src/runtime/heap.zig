@@ -250,53 +250,59 @@ pub const Heap = struct {
         self.threadFree(ATOMLIMIT, self.TOP());
     }
 
-    /// Allocate a cell with tag `t_val` and fields `(x, y)` — the core allocator.
-    pub fn make(self: *Heap, t_val: word.NodeTag, x: Word, y: Word) Word {
-        if (self.free_head == 0) {
-            if (self.SPACE != rt.rs.SPACELIMIT) {
-                const old_top = self.TOP();
-                if (core.s.compiling == 0) {
+    pub fn makeSlow(self: *Heap, t_val: word.NodeTag, x: Word, y: Word) Word {
+        if (self.SPACE != rt.rs.SPACELIMIT) {
+            const old_top = self.TOP();
+            if (core.s.compiling == 0) {
+                self.SPACE = rt.rs.SPACELIMIT;
+            } else if (heap.claims <= @divTrunc(self.SPACE, 4) and heap.nogcs > 1) {
+                var wait: Word = 0;
+                const sp = self.SPACE;
+                if (wait != 0) {
+                    wait -= 1;
+                } else {
+                    self.SPACE += @divTrunc(self.SPACE, 2);
+                    wait = 2;
+                    self.SPACE = 5000 * (1 + @divTrunc(self.SPACE - 1, 5000));
+                }
+                if (self.SPACE > rt.rs.SPACELIMIT) {
                     self.SPACE = rt.rs.SPACELIMIT;
-                } else if (heap.claims <= @divTrunc(self.SPACE, 4) and heap.nogcs > 1) {
-                    var wait: Word = 0;
-                    const sp = self.SPACE;
-                    if (wait != 0) {
-                        wait -= 1;
-                    } else {
-                        self.SPACE += @divTrunc(self.SPACE, 2);
-                        wait = 2;
-                        self.SPACE = 5000 * (1 + @divTrunc(self.SPACE - 1, 5000));
-                    }
-                    if (self.SPACE > rt.rs.SPACELIMIT) {
-                        self.SPACE = rt.rs.SPACELIMIT;
-                    }
-                    if (rt.rs.atgc != 0 and self.SPACE > sp) {
-                        _ = word.printErr("\n<<increase heap from {d} to {d}>>\n", .{ sp, self.SPACE });
-                    }
                 }
-                const new_top = self.TOP();
-                if (new_top > old_top) {
-                    self.threadFree(old_top, new_top);
+                if (rt.rs.atgc != 0 and self.SPACE > sp) {
+                    _ = word.printErr("\n<<increase heap from {d} to {d}>>\n", .{ sp, self.SPACE });
                 }
             }
-            if (self.free_head == 0) {
-                self.gc();
-                if (@intFromEnum(t_val) > @intFromEnum(word.NodeTag.STRCONS)) {
-                    self.mark(x);
-                }
-                if (@intFromEnum(t_val) >= @intFromEnum(word.NodeTag.INT)) {
-                    self.mark(y);
-                }
-                return self.make(t_val, x, y);
+            const new_top = self.TOP();
+            if (new_top > old_top) {
+                self.threadFree(old_top, new_top);
             }
+        }
+        if (self.free_head == 0) {
+            self.gc();
+            if (@intFromEnum(t_val) > @intFromEnum(word.NodeTag.STRCONS)) {
+                self.mark(x);
+            }
+            if (@intFromEnum(t_val) >= @intFromEnum(word.NodeTag.INT)) {
+                self.mark(y);
+            }
+            return self.make(t_val, x, y);
+        }
+        return self.make(t_val, x, y);
+    }
+
+    /// Allocate a cell with tag `t_val` and fields `(x, y)` — the core allocator.
+    pub inline fn make(self: *Heap, t_val: word.NodeTag, x: Word, y: Word) Word {
+        if (self.free_head == 0) {
+            return self.makeSlow(t_val, x, y);
         }
         heap.claims += 1;
         const cell = self.free_head;
-        self.free_head = self.tp(cell).*;
-        self.live.set(@intCast(cell - ATOMLIMIT));
-        self.tag.?[@intCast(cell)] = t_val;
-        self.hp(cell).* = x;
-        self.tp(cell).* = y;
+        const idx: usize = @intCast(cell);
+        self.free_head = self.tl.?[idx];
+        self.live.set(idx - ATOMLIMIT);
+        self.tag.?[idx] = t_val;
+        self.hd.?[idx] = x;
+        self.tl.?[idx] = y;
         return cell;
     }
 
@@ -991,7 +997,7 @@ pub fn resetgcstats() void {
 }
 
 /// Allocate a cell with tag `t_val` and fields `(x, y)` — the core allocator.
-pub fn make(t_val: word.NodeTag, x: Word, y: Word) Word {
+pub inline fn make(t_val: word.NodeTag, x: Word, y: Word) Word {
     return heap.make(t_val, x, y);
 }
 
