@@ -296,13 +296,6 @@ pub const NodeTag = enum(u8) {
 
 // Tag-pointer bits and misc parser/config constants, relocated from c_abi.zig.
 
-/// The top `Word` bit, set on a tl-pointer during the pointer-reversal spine
-/// walk to mark a reversed link (`tlptrbit` is the same value).
-pub const BACKSTOP: Word = @as(Word, 1) << (@bitSizeOf(Word) - 1);
-/// Alias of [BACKSTOP]: the marked-tl-pointer bit.
-pub const tlptrbit = BACKSTOP;
-/// The top two `Word` bits — the tag-pointer mask the GC clears with `& ~tlptrbits`.
-pub const tlptrbits: Word = @as(Word, 3) << (@bitSizeOf(Word) - 2);
 /// Sentinel 0: end-of-list marker in the pattern compiler.
 pub const END = 0;
 /// List-comprehension qualifier kind: a generator (`pat <- src`).
