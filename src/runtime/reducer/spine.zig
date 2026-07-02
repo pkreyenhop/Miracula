@@ -213,10 +213,14 @@ pub const Spine = struct {
         return &self.frames.items[self.frames.items.len - 1];
     }
 
-    /// Descend into `e`'s head: push a frame for `e`, focus becomes `hd(e)`.
-    /// Pure bookkeeping plus a read — `e` itself is never mutated.
     pub inline fn downLeft(self: *Spine, e: Word) Word {
-        self.frames.append(self.allocator, .{ .node = e, .via_tl = false }) catch heap.mallocPanic("spine");
+        const len = self.frames.items.len;
+        if (len < self.frames.capacity) {
+            self.frames.items.len = len + 1;
+            self.frames.items[len] = .{ .node = e, .via_tl = false };
+        } else {
+            self.frames.append(self.allocator, .{ .node = e, .via_tl = false }) catch heap.mallocPanic("spine");
+        }
         return heap.hCell(e);
     }
 
