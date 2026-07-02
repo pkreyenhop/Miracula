@@ -316,6 +316,45 @@ pub const Heap = struct {
         return cell;
     }
 
+    /// Allocate two cells in bulk.
+    pub inline fn makeTwo(self: *Heap, t1: word.NodeTag, x1: Word, y1: Word, t2: word.NodeTag, x2: Word, y2: Word, c1: *Word, c2: *Word) void {
+        if (self.free_head == 0) {
+            c1.* = self.makeSlow(t1, x1, y1);
+            c2.* = self.makeSlow(t2, x2, y2);
+            return;
+        }
+        const cell1 = self.free_head;
+        const idx1: usize = @intCast(cell1);
+        const cell2 = self.tl.?[idx1];
+        if (cell2 == 0) {
+            self.free_head = 0;
+            self.live.set(idx1 - ATOMLIMIT);
+            self.tag.?[idx1] = t1;
+            self.hd.?[idx1] = x1;
+            self.tl.?[idx1] = y1;
+            c1.* = cell1;
+            c2.* = self.makeSlow(t2, x2, y2);
+            return;
+        }
+        const idx2: usize = @intCast(cell2);
+        self.free_head = self.tl.?[idx2];
+        
+        heap.claims += 2;
+        self.live.set(idx1 - ATOMLIMIT);
+        self.live.set(idx2 - ATOMLIMIT);
+        
+        self.tag.?[idx1] = t1;
+        self.hd.?[idx1] = x1;
+        self.tl.?[idx1] = y1;
+        
+        self.tag.?[idx2] = t2;
+        self.hd.?[idx2] = x2;
+        self.tl.?[idx2] = y2;
+        
+        c1.* = cell1;
+        c2.* = cell2;
+    }
+
     /// Run a precise mark-sweep garbage collection: clear `live`, mark every
     /// cell reachable from a root (see `bases`/`mark`), then rebuild the free
     /// list from whatever's left unmarked (garbage, or already free).
@@ -1052,6 +1091,11 @@ pub inline fn tCell(x: Word) Word {
 /// Allocate a cell with tag `t_val` and fields `(x, y)` — the core allocator.
 pub inline fn make(t_val: word.NodeTag, x: Word, y: Word) Word {
     return heap.make(t_val, x, y);
+}
+
+/// Allocate two cells in bulk.
+pub inline fn makeTwo(t1: word.NodeTag, x1: Word, y1: Word, t2: word.NodeTag, x2: Word, y2: Word, c1: *Word, c2: *Word) void {
+    heap.makeTwo(t1, x1, y1, t2, x2, y2, c1, c2);
 }
 
 /// Run a mark-sweep garbage collection.

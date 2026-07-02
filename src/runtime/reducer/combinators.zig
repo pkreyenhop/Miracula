@@ -60,8 +60,11 @@ pub fn handleS(ctx: *ReductionCtx) void {
         return;
     }
     const lastarg = reduce.tlGet(ctx.e);
-    reduce.hdSet(ctx.e, reduce.ap(arg1, lastarg));
-    reduce.tlSet(ctx.e, reduce.ap(arg2, lastarg));
+    var ap1: Word = undefined;
+    var ap2: Word = undefined;
+    reduce.apTwo(arg1, lastarg, arg2, lastarg, &ap1, &ap2);
+    reduce.hdSet(ctx.e, ap1);
+    reduce.tlSet(ctx.e, ap2);
     reduce.downLeft(ctx);
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;

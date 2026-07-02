@@ -292,6 +292,11 @@ pub inline fn ap(x: Word, y: Word) Word {
     return heap.make(.AP, x, y);
 }
 
+/// Allocate two application cells in bulk.
+pub inline fn apTwo(x1: Word, y1: Word, x2: Word, y2: Word, c1: *Word, c2: *Word) void {
+    heap.makeTwo(.AP, x1, y1, .AP, x2, y2, c1, c2);
+}
+
 /// Rewrite `*expr` to `success_value` if `left` equals `right` (structurally),
 /// else to `FAIL` — the pattern-match equality test.
 pub inline fn rewriteToMatchResult(expr: *Word, left: Word, right: Word, success_value: Word) void {
