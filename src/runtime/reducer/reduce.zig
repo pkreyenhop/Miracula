@@ -86,111 +86,115 @@ pub fn reduce(e_val: Word) Word {
             downLeft(&ctx);
         }
 
-        reduce_rt.ev.cycles += 1; // one reduction step (the perf counter)
-        trace.step(ctx.e); // per-combinator histogram (compiled out when off)
-        ctx.action = word.ACT_NONE;
+        if (ctx.e < 0 or ctx.e >= word.ATOMLIMIT) {
+            dispatchNonCombinatorHead(&ctx);
+        } else {
+            reduce_rt.ev.cycles += 1; // one reduction step (the perf counter)
+            trace.step(ctx.e); // per-combinator histogram (compiled out when off)
+            ctx.action = word.ACT_NONE;
 
-        // (2) Dispatch on the head. A bare combinator/operator atom selects a
-        //     rewrite handler; anything else falls to the tag switch below.
-        switch (ctx.e) {
-            word.S => combinators.handleS(&ctx),
-            word.B => combinators.handleB(&ctx),
-            word.CB => combinators.handleCB(&ctx),
-            word.C => combinators.handleC(&ctx),
-            word.Y => combinators.handleY(&ctx),
-            word.K => combinators.handleK(&ctx),
-            word.KI => combinators.handleKI(&ctx),
-            word.S1 => combinators.handleS1(&ctx),
-            word.B1 => combinators.handleB1(&ctx),
-            word.C1 => combinators.handleC1(&ctx),
-            word.S_p => combinators.handleS_p(&ctx),
-            word.B_p => combinators.handleB_p(&ctx),
-            word.C_p => combinators.handleC_p(&ctx),
-            word.ITERATE => combinators.handleITERATE(&ctx),
-            word.ITERATE1 => combinators.handleITERATE1(&ctx),
-            word.P, word.G_RULE => combinators.handleP(&ctx),
-            word.U => combinators.handleU(&ctx),
-            word.Uf => combinators.handleUf(&ctx),
-            word.ATLEAST => combinators.handleATLEAST(&ctx),
-            word.U_ => combinators.handleU_(&ctx),
-            word.Ug => combinators.handleUg(&ctx),
-            word.MATCH => combinators.handleMATCH(&ctx),
-            word.MATCHINT => combinators.handleMATCHINT(&ctx),
-            word.GENSEQ => combinators.handleGENSEQ(&ctx),
-            word.MAP => combinators.handleMAP(&ctx),
-            word.FLATMAP => combinators.handleFLATMAP(&ctx),
-            word.FILTER => combinators.handleFILTER(&ctx),
-            word.LIST_LAST => combinators.handleLIST_LAST(&ctx),
-            word.LENGTH => combinators.handleLENGTH(&ctx),
-            word.DROP => combinators.handleDROP(&ctx),
-            word.SUBSCRIPT => combinators.handleSUBSCRIPT(&ctx),
-            word.FOLDL1 => combinators.handleFOLDL1(&ctx),
-            word.FOLDL => combinators.handleFOLDL(&ctx),
-            word.FOLDR => combinators.handleFOLDR(&ctx),
-            word.BADCASE => combinators.handleBADCASE(&ctx),
-            word.GETARGS => combinators.handleGETARGS(&ctx),
-            word.CONFERROR => combinators.handleCONFERROR(&ctx),
-            word.ERROR => combinators.handleERROR(&ctx),
-            word.WAIT => combinators.handleWAIT(&ctx),
-            word.TRY => combinators.handleTRY(&ctx),
-            word.FAIL => combinators.handleFAIL(&ctx),
-            word.Ush1 => combinators.handleUsh1(&ctx),
-            word.MKSTRICT => combinators.handleMKSTRICT(&ctx),
+            // (2) Dispatch on the head. A bare combinator/operator atom selects a
+            //     rewrite handler; anything else falls to the tag switch below.
+            switch (ctx.e) {
+                word.S => combinators.handleS(&ctx),
+                word.B => combinators.handleB(&ctx),
+                word.CB => combinators.handleCB(&ctx),
+                word.C => combinators.handleC(&ctx),
+                word.Y => combinators.handleY(&ctx),
+                word.K => combinators.handleK(&ctx),
+                word.KI => combinators.handleKI(&ctx),
+                word.S1 => combinators.handleS1(&ctx),
+                word.B1 => combinators.handleB1(&ctx),
+                word.C1 => combinators.handleC1(&ctx),
+                word.S_p => combinators.handleS_p(&ctx),
+                word.B_p => combinators.handleB_p(&ctx),
+                word.C_p => combinators.handleC_p(&ctx),
+                word.ITERATE => combinators.handleITERATE(&ctx),
+                word.ITERATE1 => combinators.handleITERATE1(&ctx),
+                word.P, word.G_RULE => combinators.handleP(&ctx),
+                word.U => combinators.handleU(&ctx),
+                word.Uf => combinators.handleUf(&ctx),
+                word.ATLEAST => combinators.handleATLEAST(&ctx),
+                word.U_ => combinators.handleU_(&ctx),
+                word.Ug => combinators.handleUg(&ctx),
+                word.MATCH => combinators.handleMATCH(&ctx),
+                word.MATCHINT => combinators.handleMATCHINT(&ctx),
+                word.GENSEQ => combinators.handleGENSEQ(&ctx),
+                word.MAP => combinators.handleMAP(&ctx),
+                word.FLATMAP => combinators.handleFLATMAP(&ctx),
+                word.FILTER => combinators.handleFILTER(&ctx),
+                word.LIST_LAST => combinators.handleLIST_LAST(&ctx),
+                word.LENGTH => combinators.handleLENGTH(&ctx),
+                word.DROP => combinators.handleDROP(&ctx),
+                word.SUBSCRIPT => combinators.handleSUBSCRIPT(&ctx),
+                word.FOLDL1 => combinators.handleFOLDL1(&ctx),
+                word.FOLDL => combinators.handleFOLDL(&ctx),
+                word.FOLDR => combinators.handleFOLDR(&ctx),
+                word.BADCASE => combinators.handleBADCASE(&ctx),
+                word.GETARGS => combinators.handleGETARGS(&ctx),
+                word.CONFERROR => combinators.handleCONFERROR(&ctx),
+                word.ERROR => combinators.handleERROR(&ctx),
+                word.WAIT => combinators.handleWAIT(&ctx),
+                word.TRY => combinators.handleTRY(&ctx),
+                word.FAIL => combinators.handleFAIL(&ctx),
+                word.Ush1 => combinators.handleUsh1(&ctx),
+                word.MKSTRICT => combinators.handleMKSTRICT(&ctx),
 
-            word.I => combinators.handleI(&ctx),
+                word.I => combinators.handleI(&ctx),
 
-            word.SEQ, word.FORCE, word.HD, word.TL, word.BODY, word.LAST, word.EXEC, word.FILEMODE, word.FILESTAT, word.GETENV, word.INTEGER, word.NUMVAL, word.TAKE, word.STARTREAD, word.STARTREADBIN, word.NB_STARTREAD, word.COND, word.APPEND, word.AND, word.OR, word.NOT, word.NEG, word.CODE, word.DECODE, word.SHOWNUM, word.SHOWHEX, word.SHOWOCT, word.ARCTAN_FN, word.EXP_FN, word.ENTIER_FN, word.LOG_FN, word.LOG10_FN, word.SIN_FN, word.COS_FN, word.SQRT_FN => combinators.handleStrictMonadic(&ctx),
+                word.SEQ, word.FORCE, word.HD, word.TL, word.BODY, word.LAST, word.EXEC, word.FILEMODE, word.FILESTAT, word.GETENV, word.INTEGER, word.NUMVAL, word.TAKE, word.STARTREAD, word.STARTREADBIN, word.NB_STARTREAD, word.COND, word.APPEND, word.AND, word.OR, word.NOT, word.NEG, word.CODE, word.DECODE, word.SHOWNUM, word.SHOWHEX, word.SHOWOCT, word.ARCTAN_FN, word.EXP_FN, word.ENTIER_FN, word.LOG_FN, word.LOG10_FN, word.SIN_FN, word.COS_FN, word.SQRT_FN => combinators.handleStrictMonadic(&ctx),
 
-            word.ZIP, word.STEP, word.EQ, word.NEQ, word.PLUS, word.MINUS, word.TIMES, word.INTDIV, word.FDIV, word.MOD, word.GRE, word.GR, word.POWER, word.SHOWSCALED, word.SHOWFLOAT, word.MERGE => combinators.handleStrictDiadic(&ctx),
+                word.ZIP, word.STEP, word.EQ, word.NEQ, word.PLUS, word.MINUS, word.TIMES, word.INTDIV, word.FDIV, word.MOD, word.GRE, word.GR, word.POWER, word.SHOWSCALED, word.SHOWFLOAT, word.MERGE => combinators.handleStrictDiadic(&ctx),
 
-            word.Ush, word.STEPUNTIL => combinators.handleStrictTriadic(&ctx),
+                word.Ush, word.STEPUNTIL => combinators.handleStrictTriadic(&ctx),
 
-            // Grammar Combinators (lex.zig)
-            word.G_ERROR => lex_handlers.handle_G_ERROR(&ctx),
-            word.G_ALT => lex_handlers.handle_G_ALT(&ctx),
-            word.G_OPT => lex_handlers.handle_G_OPT(&ctx),
-            word.G_STAR => lex_handlers.handle_G_STAR(&ctx),
-            word.G_FBSTAR => lex_handlers.handle_G_FBSTAR(&ctx),
-            word.G_SYMB => lex_handlers.handle_G_SYMB(&ctx),
-            word.G_ANY => lex_handlers.handle_G_ANY(&ctx),
-            word.G_SUCHTHAT => lex_handlers.handle_G_SUCHTHAT(&ctx),
-            word.G_END => lex_handlers.handle_G_END(&ctx),
-            word.G_STATE => lex_handlers.handle_G_STATE(&ctx),
-            word.G_SEQ => lex_handlers.handle_G_SEQ(&ctx),
-            word.G_UNIT => lex_handlers.handle_G_UNIT(&ctx),
-            word.G_ZERO => lex_handlers.handle_G_ZERO(&ctx),
-            word.G_CLOSE => lex_handlers.handle_G_CLOSE(&ctx),
-            word.G_COUNT => lex_handlers.handle_G_COUNT(&ctx),
+                // Grammar Combinators (lex.zig)
+                word.G_ERROR => lex_handlers.handle_G_ERROR(&ctx),
+                word.G_ALT => lex_handlers.handle_G_ALT(&ctx),
+                word.G_OPT => lex_handlers.handle_G_OPT(&ctx),
+                word.G_STAR => lex_handlers.handle_G_STAR(&ctx),
+                word.G_FBSTAR => lex_handlers.handle_G_FBSTAR(&ctx),
+                word.G_SYMB => lex_handlers.handle_G_SYMB(&ctx),
+                word.G_ANY => lex_handlers.handle_G_ANY(&ctx),
+                word.G_SUCHTHAT => lex_handlers.handle_G_SUCHTHAT(&ctx),
+                word.G_END => lex_handlers.handle_G_END(&ctx),
+                word.G_STATE => lex_handlers.handle_G_STATE(&ctx),
+                word.G_SEQ => lex_handlers.handle_G_SEQ(&ctx),
+                word.G_UNIT => lex_handlers.handle_G_UNIT(&ctx),
+                word.G_ZERO => lex_handlers.handle_G_ZERO(&ctx),
+                word.G_CLOSE => lex_handlers.handle_G_CLOSE(&ctx),
+                word.G_COUNT => lex_handlers.handle_G_COUNT(&ctx),
 
-            // Lexer Combinators (lex.zig)
-            word.LEX_RPT1 => lex_handlers.handle_LEX_RPT1(&ctx),
-            word.LEX_RPT => lex_handlers.handle_LEX_RPT(&ctx),
-            word.LEX_TRY => lex_handlers.handle_LEX_TRY(&ctx),
-            word.LEX_TRY_ => lex_handlers.handle_LEX_TRY_(&ctx),
-            word.LEX_TRY1 => lex_handlers.handle_LEX_TRY1(&ctx),
-            word.LEX_TRY1_ => lex_handlers.handle_LEX_TRY1_(&ctx),
-            word.DESTREV => lex_handlers.handle_DESTREV(&ctx),
-            word.LEX_COUNT0 => lex_handlers.handle_LEX_COUNT0(&ctx),
-            word.LEX_COUNT => lex_handlers.handle_LEX_COUNT(&ctx),
-            word.LEX_STRING => lex_handlers.handle_LEX_STRING(&ctx),
-            word.LEX_CLASS => lex_handlers.handle_LEX_CLASS(&ctx),
-            word.LEX_DOT => lex_handlers.handle_LEX_DOT(&ctx),
-            word.LEX_CHAR => lex_handlers.handle_LEX_CHAR(&ctx),
-            word.LEX_SEQ => lex_handlers.handle_LEX_SEQ(&ctx),
-            word.LEX_OR => lex_handlers.handle_LEX_OR(&ctx),
-            word.LEX_RCONTEXT => lex_handlers.handle_LEX_RCONTEXT(&ctx),
-            word.LEX_STAR => lex_handlers.handle_LEX_STAR(&ctx),
-            word.LEX_OPT => lex_handlers.handle_LEX_OPT(&ctx),
+                // Lexer Combinators (lex.zig)
+                word.LEX_RPT1 => lex_handlers.handle_LEX_RPT1(&ctx),
+                word.LEX_RPT => lex_handlers.handle_LEX_RPT(&ctx),
+                word.LEX_TRY => lex_handlers.handle_LEX_TRY(&ctx),
+                word.LEX_TRY_ => lex_handlers.handle_LEX_TRY_(&ctx),
+                word.LEX_TRY1 => lex_handlers.handle_LEX_TRY1(&ctx),
+                word.LEX_TRY1_ => lex_handlers.handle_LEX_TRY1_(&ctx),
+                word.DESTREV => lex_handlers.handle_DESTREV(&ctx),
+                word.LEX_COUNT0 => lex_handlers.handle_LEX_COUNT0(&ctx),
+                word.LEX_COUNT => lex_handlers.handle_LEX_COUNT(&ctx),
+                word.LEX_STRING => lex_handlers.handle_LEX_STRING(&ctx),
+                word.LEX_CLASS => lex_handlers.handle_LEX_CLASS(&ctx),
+                word.LEX_DOT => lex_handlers.handle_LEX_DOT(&ctx),
+                word.LEX_CHAR => lex_handlers.handle_LEX_CHAR(&ctx),
+                word.LEX_SEQ => lex_handlers.handle_LEX_SEQ(&ctx),
+                word.LEX_OR => lex_handlers.handle_LEX_OR(&ctx),
+                word.LEX_RCONTEXT => lex_handlers.handle_LEX_RCONTEXT(&ctx),
+                word.LEX_STAR => lex_handlers.handle_LEX_STAR(&ctx),
+                word.LEX_OPT => lex_handlers.handle_LEX_OPT(&ctx),
 
-            // IO (io.zig)
-            word.READ => io_handlers.handle_READ(&ctx),
-            word.READBIN => io_handlers.handle_READBIN(&ctx),
-            word.READVALS => io_handlers.handle_READVALS(&ctx),
+                // IO (io.zig)
+                word.READ => io_handlers.handle_READ(&ctx),
+                word.READBIN => io_handlers.handle_READBIN(&ctx),
+                word.READVALS => io_handlers.handle_READVALS(&ctx),
 
-            // (2b) Head is not a known combinator atom: it is a data/name node.
-            //      Dispatch on its cell tag. (Undo the step count — these are
-            //      not combinator reductions; a negative `e` is a corrupt graph.)
-            else => dispatchNonCombinatorHead(&ctx),
+                else => {
+                    // Non-combinator atoms (like True, False, etc.) are already in WHNF.
+                    ctx.action = word.ACT_DONE;
+                },
+            }
         }
 
         // A handler rewrote the redex in place and wants it re-examined.
@@ -214,7 +218,6 @@ pub fn reduce(e_val: Word) Word {
 /// handful of "impossible" states (undefined name, black hole, corrupt tag)
 /// that indicate a bug rather than a normal reduction step.
 fn dispatchNonCombinatorHead(ctx: *ReductionCtx) void {
-    reduce_rt.ev.cycles -= 1; // undo the step count -- not a combinator reduction
     if (abnormal(ctx.e)) {
         word.printErr("\nBLACK HOLE\n", .{});
         reduce_rt.outstats();
