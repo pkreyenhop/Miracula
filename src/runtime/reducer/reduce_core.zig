@@ -68,7 +68,7 @@ pub const reduce = reducer_reduce.reduce;
 /// below masks `& ~tlptrbits` for the same reason — a spine word may carry a
 /// direction mark in its top two bits.
 pub inline fn cleanPtr(x: Word) usize {
-    return @as(usize, @intCast(x & ~word.tlptrbits));
+    return @as(usize, @intCast(x));
 }
 
 const heap = @import("../heap.zig");
@@ -85,37 +85,37 @@ const main_clib = @import("../main_clib.zig");
 
 /// Read the head (`hd`) field through (possibly marked) spine word `x`.
 pub inline fn hdGet(x: Word) Word {
-    return heap.heap.h(x & ~word.tlptrbits);
+    return heap.heap.h(x);
 }
 
 /// Write the head (`hd`) field through spine word `x`.
 pub inline fn hdSet(x: Word, val: Word) void {
-    heap.heap.hp(x & ~word.tlptrbits).* = val;
+    heap.heap.hp(x).* = val;
 }
 
 /// Read the tail (`tl`) field through spine word `x`.
 pub inline fn tlGet(x: Word) Word {
-    return heap.heap.t(x & ~word.tlptrbits);
+    return heap.heap.t(x);
 }
 
 /// Write the tail (`tl`) field through spine word `x`.
 pub inline fn tlSet(x: Word, val: Word) void {
-    heap.heap.tp(x & ~word.tlptrbits).* = val;
+    heap.heap.tp(x).* = val;
 }
 
 /// Read the cell tag through spine word `x`.
 pub inline fn getTag(x: Word) word.NodeTag {
-    return heap.heap.getTag(x & ~word.tlptrbits);
+    return heap.heap.getTag(x);
 }
 
 /// Write the cell tag through spine word `x`.
 pub inline fn setTag(x: Word, val: word.NodeTag) void {
-    heap.heap.setTag(x & ~word.tlptrbits, val);
+    heap.heap.setTag(x, val);
 }
 
 /// A pointer to the tail (`tl`) field through spine word `x` (for in-place edits).
 pub inline fn tlPtr(x: Word) *Word {
-    return heap.heap.tp(x & ~word.tlptrbits);
+    return heap.heap.tp(x);
 }
 
 // Spine traversal — see `spine.zig` for the mechanics. `downX`/`upX` push/pop

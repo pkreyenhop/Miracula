@@ -14,17 +14,14 @@
 //! head combinator, then applies that combinator's rewrite rule using the
 //! argument sub-graphs hanging off the spine's `AP` nodes.
 //!
-//! **Pointer reversal (no separate stack).** Instead of an explicit spine
-//! stack, the engine *reverses the graph pointers* as it descends: each node it
-//! enters has its `hd` (or `tl`) rewritten to point back at the parent, so the
-//! path back up is recorded in the graph itself and restored on the way up.
-//! This is why every `hd`/`tl` access masks `& ~tlptrbits` and why the loop is
-//! pure raw-`Word` bit-twiddling — the high bits of the spine word carry control
-//! state, not data. The `ReductionCtx` registers:
+//! **Explicit Spine Stack.** The engine uses an explicit, growable spine stack
+//! (`ctx.spine`) to track the traversal down the left-ancestor chain of `AP` nodes,
+//! keeping this bookkeeping separate from the graph itself. This replaces the legacy
+//! in-graph pointer-reversal encoding, meaning cell fields (`hd`/`tl`) hold real graph
+//! values at every instant and no access needs pointer masking. The `ReductionCtx` registers:
 //!   * `e`     — the node currently in focus (the candidate redex / result).
-//!   * `s`     — the reversed-spine pointer (the "stack top"), with a direction
-//!               mark in its top bits; `BACKSTOP` (sign bit) marks the bottom.
-//!   * `hold`  — scratch used by the three-way pointer swaps.
+//!   * `spine` — the explicit spine stack (see `spine.zig`).
+//!   * `hold`  — general-purpose scratch.
 //!   * `args`  — scratch slots for a combinator's pulled-out arguments.
 //!   * `action`— post-dispatch protocol (see below).
 //!
@@ -326,9 +323,8 @@ pub const force = reduce_rt.force;
 pub const cleanPtr = core.cleanPtr;
 
 // --- Cell access through the spine word --------------------------------------
-// A spine word may carry direction bits in its top two bits (`tlptrbits`), so
-// every access masks them off before indexing the heap. These mirror
-// `reduce_core.zig`; keep both in sync.
+// Direct heap cell read/write accessors. These mirror `reduce_core.zig`; keep
+// both in sync.
 
 pub const hdGet = core.hdGet;
 
