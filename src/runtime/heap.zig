@@ -319,24 +319,14 @@ pub const Heap = struct {
 
     /// Allocate two cells in bulk.
     pub inline fn makeTwo(self: *Heap, t1: word.NodeTag, x1: Word, y1: Word, t2: word.NodeTag, x2: Word, y2: Word, c1: *Word, c2: *Word) void {
-        if (self.free_head == 0) {
+        if (self.free_head == 0 or self.tl.?[@as(usize, @intCast(self.free_head))] == 0) {
             c1.* = self.makeSlow(t1, x1, y1);
-            c2.* = self.makeSlow(t2, x2, y2);
+            c2.* = self.make(t2, x2, y2);
             return;
         }
         const cell1 = self.free_head;
         const idx1: usize = @intCast(cell1);
         const cell2 = self.tl.?[idx1];
-        if (cell2 == 0) {
-            self.free_head = 0;
-            self.live.set(idx1 - ATOMLIMIT);
-            self.tag.?[idx1] = t1;
-            self.hd.?[idx1] = x1;
-            self.tl.?[idx1] = y1;
-            c1.* = cell1;
-            c2.* = self.makeSlow(t2, x2, y2);
-            return;
-        }
         const idx2: usize = @intCast(cell2);
         self.free_head = self.tl.?[idx2];
         
@@ -355,6 +345,25 @@ pub const Heap = struct {
         c1.* = cell1;
         c2.* = cell2;
     }
+    fn growHeap(self: *Heap) bool {
+        const old_bigtop = @as(usize, @intCast(self.BIGTOP()));
+        const old_limit = rt.rs.SPACELIMIT;
+        const new_limit = old_limit * 2;
+        rt.rs.SPACELIMIT = new_limit;
+        const new_bigtop = @as(usize, @intCast(self.BIGTOP()));
+
+        self.cells.resize(rt.allocator, new_bigtop + 1) catch return false;
+        self.refreshPointers();
+
+        @memset(self.tag.?[old_bigtop .. new_bigtop + 1], .ATOM);
+
+        self.live.resize(rt.allocator, new_bigtop + 1 - @as(usize, @intCast(ATOMLIMIT)), false) catch return false;
+
+        self.SPACE = new_limit;
+
+        _ = word.printErr("\n<<increase heap maximum from {d} to {d} cells>>\n", .{ old_limit, new_limit });
+        return true;
+    }
 
     /// Run a precise mark-sweep garbage collection: clear `live`, mark every
     /// cell reachable from a root (see `bases`/`mark`), then rebuild the free
@@ -366,15 +375,19 @@ pub const Heap = struct {
         }
         if (heap.claims <= @divTrunc(self.SPACE, 10) and heap.nogcs > 1 and self.SPACE == rt.rs.SPACELIMIT) {
             if (heap.nogcs == self.hnogcs) {
-                _ = word.printErr("<<not enough heap space -- task abandoned>>\n", .{});
-                if (core.s.compiling == 0) {
-                    outstats();
+                if (self.growHeap()) {
+                    self.hnogcs = 0;
+                } else {
+                    _ = word.printErr("<<not enough heap space -- task abandoned>>\n", .{});
+                    if (core.s.compiling == 0) {
+                        outstats();
+                    }
+                    if (core.s.compiling != 0 and rt.rs.ideep == 0) {
+                        _ = word.printErr("not enough heap to compile current script\n", .{});
+                        _ = word.printErr("script = \"{s}\", heap = {d}\n", .{ rt.rs.current_script orelse @as([*:0]const u8, "(null)"), self.SPACE });
+                    }
+                    main_clib.exit(1);
                 }
-                if (core.s.compiling != 0 and rt.rs.ideep == 0) {
-                    _ = word.printErr("not enough heap to compile current script\n", .{});
-                    _ = word.printErr("script = \"{s}\", heap = {d}\n", .{ rt.rs.current_script orelse @as([*:0]const u8, "(null)"), self.SPACE });
-                }
-                main_clib.exit(1);
             } else {
                 self.hnogcs = heap.nogcs + 1;
             }

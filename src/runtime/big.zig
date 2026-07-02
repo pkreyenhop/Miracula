@@ -83,8 +83,18 @@ fn rest(heap: *Heap, x: Word) Word {
     return heap.t(x);
 }
 /// Pointer to the chain link, for in-place mutation / appending digits.
-fn restPtr(heap: *Heap, x: Word) *Word {
-    return heap.tp(x);
+pub const CellPtr = struct {
+    heap: *Heap,
+    cell: Word,
+    pub inline fn set(self: CellPtr, val: Word) void {
+        self.heap.tp(self.cell).* = val;
+    }
+    pub inline fn get(self: CellPtr) Word {
+        return self.heap.tp(self.cell).*;
+    }
+};
+fn restPtr(heap: *Heap, x: Word) CellPtr {
+    return .{ .heap = heap, .cell = x };
 }
 
 /// Whether `x` is non-negative (no `SIGNBIT` on the head digit).
@@ -149,12 +159,12 @@ pub fn fromInt(heap: *Heap, input: c_longlong) Word {
     unsigned_i >>= DIGITWIDTH;
     if (unsigned_i != 0) {
         var p = restPtr(heap, x);
-        p.* = heap.make(.INT, @intCast(unsigned_i & MAXDIGIT), 0);
-        p = restPtr(heap, p.*);
+        p.set(heap.make(.INT, @intCast(unsigned_i & MAXDIGIT), 0));
+        p = restPtr(heap, p.get());
         unsigned_i >>= DIGITWIDTH;
         while (unsigned_i != 0) : (unsigned_i >>= DIGITWIDTH) {
-            p.* = heap.make(.INT, @intCast(unsigned_i & MAXDIGIT), 0);
-            p = restPtr(heap, p.*);
+            p.set(heap.make(.INT, @intCast(unsigned_i & MAXDIGIT), 0));
+            p = restPtr(heap, p.get());
         }
     }
     return x;
@@ -247,20 +257,20 @@ fn addMagnitude(heap: *Heap, input_x: Word, input_y: Word, signbit: Word) Word {
     while (x != 0 and y != 0) {
         d = carry + digit(heap, x) + digit(heap, y);
         carry = if ((d & IBASE) != 0) 1 else 0;
-        z.* = heap.make(.INT, d & MAXDIGIT, 0);
+        z.set(heap.make(.INT, d & MAXDIGIT, 0));
         x = rest(heap, x);
         y = rest(heap, y);
-        z = restPtr(heap, z.*);
+        z = restPtr(heap, z.get());
     }
     if (y != 0) x = y;
     while (x != 0) {
         d = carry + digit(heap, x);
         carry = if ((d & IBASE) != 0) 1 else 0;
-        z.* = heap.make(.INT, d & MAXDIGIT, 0);
+        z.set(heap.make(.INT, d & MAXDIGIT, 0));
         x = rest(heap, x);
-        z = restPtr(heap, z.*);
+        z = restPtr(heap, z.get());
     }
-    if (carry != 0) z.* = heap.make(.INT, 1, 0);
+    if (carry != 0) z.set(heap.make(.INT, 1, 0));
     return r;
 }
 
@@ -292,36 +302,36 @@ fn subMagnitude(heap: *Heap, input_x: Word, input_y: Word) Word {
     var borrow: Word = if ((d & IBASE) != 0) 1 else 0;
     const r = heap.make(.INT, d & MAXDIGIT, 0);
     var z = restPtr(heap, r);
-    var p: ?*Word = null;
+    var p: ?CellPtr = null;
     x = rest(heap, x);
     y = rest(heap, y);
     while (x != 0 and y != 0) {
         d = digit(heap, x) - digit(heap, y) - borrow;
         borrow = if ((d & IBASE) != 0) 1 else 0;
         d &= MAXDIGIT;
-        z.* = heap.make(.INT, d, 0);
+        z.set(heap.make(.INT, d, 0));
         if (d != 0) p = null else if (p == null) p = z;
         x = rest(heap, x);
         y = rest(heap, y);
-        z = restPtr(heap, z.*);
+        z = restPtr(heap, z.get());
     }
     while (y != 0) {
         d = -digit(heap, y) - borrow;
         borrow = if ((d & IBASE) != 0) 1 else 0;
         d &= MAXDIGIT;
-        z.* = heap.make(.INT, d, 0);
+        z.set(heap.make(.INT, d, 0));
         if (d != 0) p = null else if (p == null) p = z;
         y = rest(heap, y);
-        z = restPtr(heap, z.*);
+        z = restPtr(heap, z.get());
     }
     while (x != 0) {
         d = digit(heap, x) - borrow;
         borrow = if ((d & IBASE) != 0) 1 else 0;
         d &= MAXDIGIT;
-        z.* = heap.make(.INT, d, 0);
+        z.set(heap.make(.INT, d, 0));
         if (d != 0) p = null else if (p == null) p = z;
         x = rest(heap, x);
-        z = restPtr(heap, z.*);
+        z = restPtr(heap, z.get());
     }
     if (borrow != 0) {
         p = null;
@@ -329,16 +339,16 @@ fn subMagnitude(heap: *Heap, input_x: Word, input_y: Word) Word {
         borrow = if ((d & IBASE) != 0) 1 else 0;
         digitPtr(heap, r).* = SIGNBIT | d;
         z = restPtr(heap, r);
-        while (z.* != 0) {
-            d = (digit(heap, z.*) ^ MAXDIGIT) + borrow;
+        while (z.get() != 0) {
+            d = (digit(heap, z.get()) ^ MAXDIGIT) + borrow;
             borrow = if ((d & IBASE) != 0) 1 else 0;
             d &= MAXDIGIT;
-            digitPtr(heap, z.*).* = d;
+            digitPtr(heap, z.get()).* = d;
             if (d != 0) p = null else if (p == null) p = z;
-            z = restPtr(heap, z.*);
+            z = restPtr(heap, z.get());
         }
     }
-    if (p) |ptr| ptr.* = 0;
+    if (p) |ptr| ptr.set(0);
     return r;
 }
 
@@ -424,11 +434,11 @@ fn scaleBy(heap: *Heap, input_x: Word, n: Word) Word {
     x = rest(heap, x);
     while (x != 0) : (x = rest(heap, x)) {
         d = @intCast((n * digit(heap, x)) + carry);
-        y.* = heap.make(.INT, @intCast(d & MAXDIGIT), 0);
-        y = restPtr(heap, y.*);
+        y.set(heap.make(.INT, @intCast(d & MAXDIGIT), 0));
+        y = restPtr(heap, y.get());
         carry = @intCast(d >> DIGITWIDTH);
     }
-    if (carry != 0) y.* = heap.make(.INT, carry, 0);
+    if (carry != 0) y.set(heap.make(.INT, carry, 0));
     return r;
 }
 
@@ -455,7 +465,7 @@ pub fn div(heap: *Heap, self: *Bignum, input_x: Word, input_y: Word) Word {
                 if (digit(heap, qx) != IBASE) break;
                 digitPtr(heap, qx).* = 0;
                 if (rest(heap, qx) == 0) {
-                    restPtr(heap, qx).* = heap.make(.INT, 1, 0);
+                    restPtr(heap, qx).set(heap.make(.INT, 1, 0));
                     break;
                 }
                 qx = rest(heap, qx);
@@ -522,7 +532,7 @@ fn shortDiv(heap: *Heap, self: *Bignum, input_x: Word, n: Word) Word {
         s_rem = @rem(d, n);
         tmp = x;
         x = rest(heap, x);
-        restPtr(heap, tmp).* = q;
+        restPtr(heap, tmp).set(q);
         q = tmp;
     }
     self.b_rem = heap.make(.INT, s_rem, 0);
@@ -697,7 +707,7 @@ pub fn fromFloat(heap: *Heap, input: f64) Word {
         digitPtr(heap, ptr).* = @intFromFloat(n);
         y = (y - n) / @as(f64, @floatFromInt(IBASE));
         if (y > 0.0) {
-            restPtr(heap, ptr).* = heap.make(.INT, 0, 0);
+            restPtr(heap, ptr).set(heap.make(.INT, 0, 0));
             ptr = rest(heap, ptr);
         } else break;
     }
@@ -930,13 +940,13 @@ fn multiplyAddInPlace(heap: *Heap, r: Word, f: Word, addend: Word) void {
     var carry = d >> DIGITWIDTH;
     var x = restPtr(heap, r);
     digitPtr(heap, r).* = d & MAXDIGIT;
-    while (x.* != 0) {
-        d = (f * digit(heap, x.*)) + carry;
-        digitPtr(heap, x.*).* = d & MAXDIGIT;
+    while (x.get() != 0) {
+        d = (f * digit(heap, x.get())) + carry;
+        digitPtr(heap, x.get()).* = d & MAXDIGIT;
         carry = d >> DIGITWIDTH;
-        x = restPtr(heap, x.*);
+        x = restPtr(heap, x.get());
     }
-    if (carry != 0) x.* = heap.make(.INT, carry, 0);
+    if (carry != 0) x.set(heap.make(.INT, carry, 0));
 }
 
 /// Render a bignum as a Miranda char list of decimal digits.
