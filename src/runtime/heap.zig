@@ -346,12 +346,45 @@ pub const Heap = struct {
         self.bases();
 
         self.free_head = 0;
-        var i = self.TOP();
-        while (i > ATOMLIMIT) {
-            i -= 1;
-            if (!self.live.isSet(@intCast(i - ATOMLIMIT))) {
-                self.tp(i).* = self.free_head;
-                self.free_head = i;
+        const num_bits = self.TOP() - ATOMLIMIT;
+        if (num_bits > 0) {
+            const MaskInt = usize;
+            const bit_size = @bitSizeOf(MaskInt);
+            var mask_idx = @divTrunc(num_bits - 1, bit_size);
+            while (true) {
+                var mask = self.live.masks[@intCast(mask_idx)];
+                if (mask_idx == @divTrunc(num_bits - 1, bit_size)) {
+                    const active_bits = num_bits - mask_idx * bit_size;
+                    if (active_bits < bit_size) {
+                        mask |= (~@as(MaskInt, 0)) << @as(u6, @intCast(active_bits));
+                    }
+                }
+
+                if (mask == ~@as(MaskInt, 0)) {
+                    // All cells in this block are live. Skip.
+                } else if (mask == 0) {
+                    // All cells in this block are garbage. Thread them sequentially.
+                    var cell_idx = (mask_idx * bit_size) + ATOMLIMIT;
+                    const end_cell_idx = cell_idx + bit_size;
+                    while (cell_idx < end_cell_idx) : (cell_idx += 1) {
+                        self.tl.?[@intCast(cell_idx)] = self.free_head;
+                        self.free_head = @intCast(cell_idx);
+                    }
+                } else {
+                    // Mixed block. Loop from highest to lowest index to preserve order.
+                    var bit_idx: i32 = bit_size - 1;
+                    var cell_idx = (mask_idx * bit_size) + ATOMLIMIT + (bit_size - 1);
+                    while (bit_idx >= 0) : ({ bit_idx -= 1; cell_idx -= 1; }) {
+                        const is_live = (mask & (@as(MaskInt, 1) << @as(u6, @intCast(bit_idx)))) != 0;
+                        if (!is_live) {
+                            self.tl.?[@intCast(cell_idx)] = self.free_head;
+                            self.free_head = @intCast(cell_idx);
+                        }
+                    }
+                }
+
+                if (mask_idx == 0) break;
+                mask_idx -= 1;
             }
         }
 
