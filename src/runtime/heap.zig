@@ -120,6 +120,7 @@ pub const Heap = struct {
     cellcount: i64 = 0,
     claims: c_long = 0,
     nogcs: c_long = 0,
+    hnogcs: c_long = 0,
     dstack: ?[*]Word = null,
     stackp: ?[*]Word = null,
     collecting: c_int = 0,
@@ -364,8 +365,7 @@ pub const Heap = struct {
             _ = word.printErr("\n<<gc after {d} claims>>\n", .{heap.claims});
         }
         if (heap.claims <= @divTrunc(self.SPACE, 10) and heap.nogcs > 1 and self.SPACE == rt.rs.SPACELIMIT) {
-            var hnogcs: Word = 0;
-            if (heap.nogcs == hnogcs) {
+            if (heap.nogcs == self.hnogcs) {
                 _ = word.printErr("<<not enough heap space -- task abandoned>>\n", .{});
                 if (core.s.compiling == 0) {
                     outstats();
@@ -376,7 +376,7 @@ pub const Heap = struct {
                 }
                 main_clib.exit(1);
             } else {
-                hnogcs = heap.nogcs + 1;
+                self.hnogcs = heap.nogcs + 1;
             }
         }
         heap.nogcs += 1;
@@ -1075,6 +1075,7 @@ pub fn mallocPanic(what: [*:0]const u8) noreturn {
 pub fn resetgcstats() void {
     heap.cellcount = -heap.claims;
     heap.nogcs = 0;
+    heap.hnogcs = 0;
     initclock();
 }
 
