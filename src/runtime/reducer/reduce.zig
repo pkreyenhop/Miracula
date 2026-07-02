@@ -86,7 +86,7 @@ pub fn reduce(e_val: Word) Word {
             downLeft(&ctx);
         }
 
-        if (ctx.e < 0 or ctx.e >= word.ATOMLIMIT) {
+        if (@as(u64, @bitCast(ctx.e)) >= word.ATOMLIMIT) {
             dispatchNonCombinatorHead(&ctx);
         } else {
             reduce_rt.ev.cycles += 1; // one reduction step (the perf counter)
