@@ -158,12 +158,12 @@ fn namescom(l: Word) void {
 
 /// Dispatch a `/` or `:` REPL command — the main command switch (`/h`, `/e`, `/f`, `/l`, `/man`, ...).
 /// Handle the `'f'` REPL command (extracted from `command`).
-fn cmdFiles() void {
+fn cmdFiles() bool {
     var t_val: ?[*:0]u8 = undefined;
     var ch: c_int = undefined;
     if (is("f") or is("file")) {
         const t_tok = token();
-        if (abi.getchar() != '\n') return;
+        if (abi.getchar() != '\n') return true;
         if (t_tok) |tok| {
             t_val = abi.addextn(1, tok);
             _ = abi.keep(t_val.?);
@@ -187,16 +187,16 @@ fn cmdFiles() void {
         } else {
             word.print("{s}{s}\n", .{ rt.rs.current_script.?, @as([*:0]const u8, if (heap.heap.files == NIL) " (not loaded)" else "") });
         }
-        return;
+        return true;
     }
     if (is("files")) {
-        if (abi.getchar() != '\n') return;
+        if (abi.getchar() != '\n') return true;
         var f = heap.heap.files;
         while (f != NIL) : (f = heap.t(f)) {
             word.print("({s},{},{})", .{ heap.getFil(heap.h(f)).?, heap.filTime(heap.h(f)), heap.filShare(heap.h(f)) });
             abi.printlist(@constCast(""), heap.filDefs(heap.h(f)));
         }
-        return;
+        return true;
     }
     if (is("find")) {
         var i: Word = 0;
@@ -230,12 +230,13 @@ fn cmdFiles() void {
         if (i == 0) {
             word.print("\x07extra characters at end of command\n", .{});
         }
-        return;
+        return true;
     }
+    return false;
 }
 
 /// Handle the `'e'` REPL command (extracted from `command`).
-fn cmdEdit() void {
+fn cmdEdit() bool {
     var t_val: ?[*:0]u8 = undefined;
     var ch: c_int = undefined;
     var ch1: c_int = undefined;
@@ -246,7 +247,7 @@ fn cmdEdit() void {
         } else {
             t_val = rt.rs.current_script;
         }
-        if (abi.getchar() != '\n') return;
+        if (abi.getchar() != '\n') return true;
         if (!files.fileExists(t_val.?)) {
             if (lmirahdr == null) {
                 ls.dicp = ls.dicq;
@@ -279,7 +280,7 @@ fn cmdEdit() void {
                     ch = abi.getchar();
                 }
                 if (ch1 != 'y' and ch1 != 'Y') {
-                    return;
+                    return true;
                 }
             }
             if (mf != null) {
@@ -288,16 +289,16 @@ fn cmdEdit() void {
         }
         const err_line_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core_state.s.errline) else if (core_state.s.errs != 0 and word.strcmp(t_val.?, strtab.strOf(strtab.table, heap.h(core_state.s.errs))) == 0) @intCast(heap.t(core_state.s.errs)) else @intCast(abi.geterrlin(t_val.?));
         editfile(t_val.?, err_line_num);
-        return;
+        return true;
     }
     if (is("editor")) {
         const hold = @as([*]u8, @ptrCast(&rt.rs.linebuf[0]));
         if (repl.getLine(abi.stdin(), abi.pnlim - 1, hold) == 0) {
-            return;
+            return true;
         }
         if (hold[0] == 0) {
             word.print("{s}\n", .{rt.rs.editor orelse @constCast("")});
-            return;
+            return true;
         }
         var h_ptr = hold + word.strlen(hold);
         while ((h_ptr - 1)[0] == ' ' or (h_ptr - 1)[0] == '\t') {
@@ -306,7 +307,7 @@ fn cmdEdit() void {
         }
         if (hold[0] == '"' or hold[0] == '\'') {
             word.print("please type name of editor without quotation marks\n", .{});
-            return;
+            return true;
         }
         word.print("change editor to: \"{s}\"? [ny]", .{@as([*:0]const u8, @ptrCast(hold))});
         ch1 = abi.getchar();
@@ -316,7 +317,7 @@ fn cmdEdit() void {
         }
         if (ch1 != 'y' and ch1 != 'Y') {
             word.print("editor not changed\n", .{});
-            return;
+            return true;
         }
         _ = word.strcpy(&rt.rs.ebuf, hold);
         rt.rs.editor = @as([*:0]u8, @ptrCast(&rt.rs.ebuf));
@@ -324,8 +325,9 @@ fn cmdEdit() void {
         rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
         startup.writeRc();
         word.print("editor = {s}\n", .{rt.rs.editor orelse @constCast("")});
-        return;
+        return true;
     }
+    return false;
 }
 
 pub fn command() void {
@@ -378,8 +380,12 @@ pub fn command() void {
                 return;
             }
         },
-        'e' => cmdEdit(),
-        'f' => cmdFiles(),
+        'e' => {
+            if (cmdEdit()) return;
+        },
+        'f' => {
+            if (cmdFiles()) return;
+        },
         'g' => {
             if (is("gc")) {
                 if (abi.getchar() != '\n') return;
