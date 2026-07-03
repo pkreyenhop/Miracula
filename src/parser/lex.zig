@@ -1929,7 +1929,7 @@ pub fn resetLex() void {
         const err_script_raw = @as(?[*:0]const u8, strtab.strOf(strtab.table, h(core_state.s.errs)));
         const err_script = err_script_raw orelse "test.m";
         const is_current = if (err_script_raw) |es|
-            (if (rt.rs.current_script) |script| es == @as([*:0]const u8, @ptrCast(script)) else false)
+            (if (rt.rs.current_script) |script| word.strcmp(es, script) == 0 else false)
         else
             true;
         if (!@import("builtin").is_test) {

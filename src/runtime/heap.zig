@@ -2574,6 +2574,7 @@ pub fn unsetids(d_val: Word) void {
         if (getTag(item) == .ID) {
             tp(item).* = word.UNDEF;
             tp(h(h(item))).* = NIL;
+            tp(h(item)).* = word.undef_t;
         }
     }
 }

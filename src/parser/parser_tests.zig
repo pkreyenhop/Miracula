@@ -8,6 +8,7 @@ const std = @import("std");
 const parser_api = @import("parser_api.zig");
 const testing = std.testing;
 const heap = @import("../runtime/heap.zig");
+const module_loader = @import("../compiler/module_loader.zig");
 
 const setupheap = heap.setupheap;
 const setupdic = lex.setupdic;
@@ -365,4 +366,45 @@ test "error detection sets SYNERR and errline" {
     try testing.expectEqual(@as(word.Word, 1), core_state.s.SYNERR);
     try testing.expectEqual(@as(word.Word, 3), core_state.s.errline);
 }
+
+test "script reload after failed compile does not cause nameclash" {
+    ensureInitialized();
+    resetLexerState();
+
+    const old_init = rt.rs.initialising;
+    rt.rs.initialising = 0;
+    defer rt.rs.initialising = old_init;
+
+    const tmp_file = "test_reload.m";
+    defer _ = main_clib.unlink(tmp_file);
+
+    // 1. Successful first compile
+    {
+        const f = main_clib.fopen(tmp_file, "w");
+        _ = main_clib.fputs("add1 x = x+1\n", f.?);
+        _ = main_clib.fclose(f.?);
+    }
+    module_loader.loadfile(tmp_file);
+    try testing.expectEqual(@as(word.Word, 0), core_state.s.SYNERR);
+
+    // 2. Failed compile with syntax error
+    {
+        const f = main_clib.fopen(tmp_file, "w");
+        _ = main_clib.fputs("add1 x = x+1\nl = [1,,2]\n", f.?);
+        _ = main_clib.fclose(f.?);
+    }
+    module_loader.loadfile(tmp_file);
+    try testing.expectEqual(@as(word.Word, 2), core_state.s.errline);
+
+    // 3. Re-compile fixed script
+    {
+        const f = main_clib.fopen(tmp_file, "w");
+        _ = main_clib.fputs("add1 x = x+1\nl = [1,2]\n", f.?);
+        _ = main_clib.fclose(f.?);
+    }
+    module_loader.loadfile(tmp_file);
+    try testing.expectEqual(@as(word.Word, 0), core_state.s.SYNERR);
+    try testing.expectEqual(@as(word.Word, 0), core_state.s.errline);
+}
 // Cache invalidation comment for strict-main-tests
+
