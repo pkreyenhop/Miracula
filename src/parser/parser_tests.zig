@@ -347,4 +347,22 @@ test "new parser AST snapshot tests" {
     // Miranda type synonym names are lowercase identifiers
     try runASTSnapshotTest(allocator, "type_synonym", "type pair * ** == (*, **)\n");
 }
+
+test "error detection sets SYNERR and errline" {
+    ensureInitialized();
+    resetLexerState();
+
+    // 1. Check syntax error sets core.s.SYNERR and core.s.errline
+    const source1 = "add1 x = x+1\nl = [1,,2,3]\n";
+    _ = parser_api.parseString(source1) catch {};
+    try testing.expectEqual(@as(word.Word, 1), core_state.s.SYNERR);
+    try testing.expectEqual(@as(word.Word, 2), core_state.s.errline);
+
+    // 2. Syntax error on the last line gets detected and sets correct errline
+    resetLexerState();
+    const source2 = "add1 x = x+1\nfib 0 = 0\nerror_line = [1,,2]";
+    _ = parser_api.parseString(source2) catch {};
+    try testing.expectEqual(@as(word.Word, 1), core_state.s.SYNERR);
+    try testing.expectEqual(@as(word.Word, 3), core_state.s.errline);
+}
 // Cache invalidation comment for strict-main-tests

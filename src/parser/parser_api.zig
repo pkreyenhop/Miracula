@@ -108,6 +108,7 @@ fn parseCurrentNew() ParseError!ParseResult {
     }
     if (p.diagnostics.items.len > 0) {
         core.s.SYNERR = 1;
+        core.s.errline = @intCast(p.diagnostics.items[0].span.line);
         return ParseError.SyntaxError;
     }
 
@@ -218,6 +219,7 @@ pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!Ne
     }
     if (p.diagnostics.items.len > 0) {
         core.s.SYNERR = 1;
+        core.s.errline = @intCast(p.diagnostics.items[0].span.line);
         return ParseError.ParseFailed;
     }
 
