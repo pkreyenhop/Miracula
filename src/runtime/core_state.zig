@@ -22,6 +22,8 @@ pub const CoreState = struct {
     errs: Word = 0,
     /// Source line number of the first error (0 = unknown).
     errline: Word = 0,
+    /// Source column number of the first error (0 = unknown).
+    errcol: Word = 0,
     /// Suffix appended to source filenames to form the dump filename (e.g. `"x"`).
     obsuffix: [*:0]const u8 = "x",
     /// Non-zero when a syntax error has been detected by the parser.

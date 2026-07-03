@@ -184,7 +184,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                     if (aka != null) {
                         word.print("originally defined as \"{s}\"\n", .{aka.?});
                     }
-                    commands.editfile(strtab.strOf(strtab.table, heap.h(x)), @intCast(heap.t(x)));
+                    commands.editfile(strtab.strOf(strtab.table, heap.h(x)), @intCast(heap.t(x)), 0);
                 } else {
                     _ = abi.ungetc(ch, abi.stdin().?);
                     _ = token();

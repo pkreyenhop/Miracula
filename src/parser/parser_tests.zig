@@ -9,6 +9,7 @@ const parser_api = @import("parser_api.zig");
 const testing = std.testing;
 const heap = @import("../runtime/heap.zig");
 const module_loader = @import("../compiler/module_loader.zig");
+const commands = @import("../driver/commands.zig");
 
 const setupheap = heap.setupheap;
 const setupdic = lex.setupdic;
@@ -57,6 +58,7 @@ fn resetLexerState() void {
     ls.line_no = 0;
     ls.c = ' ';
     core_state.s.SYNERR = 0;
+    core_state.s.errcol = 0;
 }
 
 var initialized = false;
@@ -406,5 +408,32 @@ test "script reload after failed compile does not cause nameclash" {
     try testing.expectEqual(@as(word.Word, 0), core_state.s.SYNERR);
     try testing.expectEqual(@as(word.Word, 0), core_state.s.errline);
 }
+
+test "syntax error sets errcol and editfile expands column placeholder" {
+    ensureInitialized();
+    resetLexerState();
+
+    // 1. Check syntax error sets core.s.errcol
+    const source1 = "add1 x = x+1\nl = [1,,2,3]\n";
+    _ = parser_api.parseString(source1) catch {};
+    try testing.expectEqual(@as(word.Word, 2), core_state.s.errline);
+    // Double comma is at column 8 (1-indexed) in "l = [1,,2,3]\n",
+    // but the Pratt parser eagerly advances past the unexpected token before failing,
+    // positioning the error at the next token '2' at column 9.
+    try testing.expectEqual(@as(word.Word, 9), core_state.s.errcol);
+
+    // 2. Check editfile expands the column placeholder '&'
+    const old_editor = rt.rs.editor;
+    defer rt.rs.editor = old_editor;
+
+    rt.rs.editor = @constCast(@as([*:0]const u8, ": -l ! -c & -f %"));
+    commands.editfile("test.m", 42, 17);
+
+    // Verify ebuf_local contents in rt.rs.linebuf
+    const expected_cmd = ": -l 42 -c 17 -f \"test.m\"";
+    const actual_cmd = std.mem.span(@as([*:0]const u8, @ptrCast(&rt.rs.linebuf[0])));
+    try testing.expectEqualStrings(expected_cmd, actual_cmd);
+}
 // Cache invalidation comment for strict-main-tests
+
 

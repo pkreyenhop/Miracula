@@ -617,7 +617,6 @@ pub fn parseScript(p: *Parser) ParseError!ast.Script {
         while (p.eat(.offside) or p.eat(.elseq) or p.eat(.semicolon)) {}
         if (p.check(.eof)) break;
 
-        const sp = p.span();
         const item = parseTopLevel(p) catch |err| {
             // OOM is fatal; all other parse errors trigger recovery.
             if (err == error.OutOfMemory) return err;
@@ -625,8 +624,9 @@ pub fn parseScript(p: *Parser) ParseError!ast.Script {
                 "unexpected end of file"
             else
                 "unexpected token";
-            p.addError(sp, "syntax error at {d}:{d} - {s}", .{
-                sp.line, sp.col, kind,
+            const err_sp = p.span();
+            p.addError(err_sp, "syntax error at {d}:{d} - {s}", .{
+                err_sp.line, err_sp.col, kind,
             }) catch return error.OutOfMemory;
             p.syncToNextItem();
             continue;

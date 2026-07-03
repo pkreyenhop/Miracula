@@ -288,7 +288,8 @@ fn cmdEdit() bool {
             }
         }
         const err_line_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core_state.s.errline) else if (core_state.s.errs != 0 and word.strcmp(t_val.?, strtab.strOf(strtab.table, heap.h(core_state.s.errs))) == 0) @intCast(heap.t(core_state.s.errs)) else @intCast(abi.geterrlin(t_val.?));
-        editfile(t_val.?, err_line_num);
+        const err_col_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core_state.s.errcol) else 0;
+        editfile(t_val.?, err_line_num, err_col_num);
         return true;
     }
     if (is("editor")) {
@@ -561,8 +562,9 @@ pub fn manaction() void {
 }
 
 /// Open `t_val` at `line` in the user's editor, substituting into the editor-command template.
-pub fn editfile(t_val: [*:0]const u8, line: c_int) void {
+pub fn editfile(t_val: [*:0]const u8, line: c_int, col: c_int) void {
     var line_val = line;
+    const col_val = if (col == 0) @as(c_int, 1) else col;
     const ebuf_local = @as([*]u8, @ptrCast(&rt.rs.linebuf[0]));
     var p = ebuf_local;
     var q = rt.rs.editor.?;
@@ -590,12 +592,16 @@ pub fn editfile(t_val: [*:0]const u8, line: c_int) void {
         q += 1;
         p[0] = ch;
         p += 1;
-        if ((p - 1)[0] == '\\' and (q[0] == '!' or q[0] == '%')) {
+        if ((p - 1)[0] == '\\' and (q[0] == '!' or q[0] == '%' or q[0] == '&')) {
             (p - 1)[0] = q[0];
             q += 1;
         } else if ((p - 1)[0] == '!') {
             p -= 1;
             _ = abi.sprintf(p, "%d", .{line_val});
+            p += word.strlen(p);
+        } else if ((p - 1)[0] == '&') {
+            p -= 1;
+            _ = abi.sprintf(p, "%d", .{col_val});
             p += word.strlen(p);
         } else if ((p - 1)[0] == '%') {
             (p - 1)[0] = '"';
