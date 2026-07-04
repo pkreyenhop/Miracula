@@ -281,7 +281,7 @@ several simultaneously (entangled — narrow threading degenerates into passing
 |-----------|------------|----------------|---------|
 | `big.zig` (Bignum) | none (module constants) | `Heap` only (7 cell-accessor call sites) | **Clean** |
 | `strtab.zig` (StringTable) | `StringTable` | none | **Clean** |
-| reducer rewrite handlers | `ReductionCtx` (now owns `heap: *Heap`, Tier 1.5 ✅) | `RuntimeState` (2 scratch fields in `ready.zig`, Tier 2, still open) | **Done except Tier 2's 2 fields** |
+| reducer rewrite handlers | `ReductionCtx` (now owns `heap: *Heap`, Tier 1.5 ✅) | `RuntimeState` (2 scratch fields in `ready.zig`, Tier 2 ✅ — documented exception, deliberately left ambient) | **Done** |
 | `heap.zig` | `Heap` | `LexState` (58 sites, dict buffer), `RuntimeState`, `CompilerState`, `CoreState` — 133 fns total, only 11 already self-threaded | **Entangled** |
 | `types.zig` / `trans.zig` / `lex.zig` / `module_loader.zig` (compiler+parser core) | `CompilerState`/`LexState` | type info, source location, heap cells, and lexer state simultaneously, pervasively | **Entangled** |
 | `repl.zig` / `commands.zig` / `startup.zig` (driver) | — | legitimately needs most of the interpreter to dispatch commands | **Not a narrowing candidate** — this layer *should* look Interp-shaped |
@@ -332,15 +332,18 @@ several simultaneously (entangled — narrow threading degenerates into passing
    spine-corpus stress + sigint + smoke) all green; lint at the 17-warning
    pre-existing baseline; manual smoke test of `fib 27`/`map`/an undefined-name
    error (forked-child isolation still correct) all behave correctly.*
-3. **Tier 2 — tidy the existing `ReductionCtx` precedent.** `ready.zig` still
-   has ambient `rt.rs.UTF8`/`rt.rs.linebuf` touches (unrelated to the heap
-   threading above — a different external struct). Fold them into
-   `ReductionCtx` if they're reducer-specific enough to belong there, or leave
-   them as a documented, deliberate exception if they're better understood as
-   shared scratch. Small; mostly a documentation/judgment call, not a
-   mechanical sweep. Still open.
-   *DoD: `ready.zig`'s remaining ambient touches are either threaded or explicitly
-   justified; golden green.*
+3. **Tier 2 — tidy the existing `ReductionCtx` precedent. ✅ Done (2026-07-01),
+   resolved as "document, don't fold".** Checked the breadth of `ready.zig`'s
+   two remaining ambient touches before deciding: `rt.rs.linebuf` is also used
+   in `commands.zig`/`reduce.zig`/`lex.zig`/`parser_tests.zig`/`dump.zig`, and
+   `rt.rs.UTF8` also in `startup.zig`/`commands.zig`/`reduce.zig`/`lex.zig` —
+   both are whole-interpreter shared state, not reducer-local. Folding them
+   into `ReductionCtx` (the reducer's *own* register file) would have been a
+   category error, not a narrowing. Added a doc note on `ReductionCtx` itself
+   recording this as a deliberate exception rather than an oversight, so a
+   future reader doesn't re-litigate it.
+   *DoD met: the exception is explicitly documented; no code change needed;
+   `zig build` clean.*
 4. **Tier 3 — the entangled subsystems: stop and re-evaluate, don't proceed by
    default.** `heap.zig`, `types.zig`, `trans.zig`, `lex.zig`, `module_loader.zig`
    each touch 3+ external structs pervasively. A single narrow struct doesn't fit
@@ -358,11 +361,12 @@ several simultaneously (entangled — narrow threading degenerates into passing
    risk.
 
 **Sequencing:** `big.zig` ✅ → `strtab.zig` ✅ → `ReductionCtx.heap` ✅ (Tier 1.5) →
-`ready.zig` tidy-up (Tier 2, next) → **checkpoint** (re-evaluate before any Tier 3
-work). Each subsystem is its own PR, golden-gated (the full 48-case corpus + unit
-suite + spine-corpus stress checks + lint), with a reducer-loop timing check
-(reuse the ad hoc `fib(N)` comparison method used for the B2(b) `Spine` cutover
-and the B3 GC rewrite) for anything touching the hot path.
+`ready.zig` tidy-up ✅ (Tier 2) → **checkpoint** (re-evaluate before any Tier 3
+work — this is where we are now: Tiers 1/1.5/2 all done, Tier 3 not started).
+Each subsystem is its own PR, golden-gated (the full 48-case corpus + unit suite
++ spine-corpus stress checks + lint), with a reducer-loop timing check (reuse
+the ad hoc `fib(N)` comparison method used for the B2(b) `Spine` cutover and the
+B3 GC rewrite) for anything touching the hot path.
 * **Irreducible exception (unchanged):** OS signal handlers run on the C ABI and
   cannot take any explicit parameter; they read a single `current_interp: *Interp`
   set on entry — the one documented global, analogous to `errno` and the A4
