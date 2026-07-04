@@ -136,7 +136,7 @@ pub fn commandLoop(heap: *Heap, initscript: [*:0]u8) void {
         last_gc_count = null;
         ch = abi.getchar();
         if (rt.rs.rechecking != 0 and heap_mod.srcUpdate() != 0) {
-            module_loader.loadfile(rt.rs.current_script.?);
+            module_loader.loadfile(heap, rt.rs.current_script.?);
         }
         while (ch == ' ' or ch == '\t') {
             ch = abi.getchar();
@@ -234,7 +234,7 @@ pub fn commandLoop(heap: *Heap, initscript: [*:0]u8) void {
                         _ = abi.execl(shell.?, .{ shell.?, "-c", lb.? });
                     }
                     if (heap_mod.srcUpdate() != 0) {
-                        module_loader.loadfile(rt.rs.current_script.?);
+                        module_loader.loadfile(heap, rt.rs.current_script.?);
                     }
                 } else {
                     word.print("No previous shell command to substitute for \"!\"\n", .{});

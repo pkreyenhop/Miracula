@@ -181,10 +181,10 @@ fn cmdFiles(heap: *Heap) bool {
                 cs.CLASHES = NIL;
                 dump.undump(heap, t_val.?);
                 if (cs.CLASHES != NIL) {
-                    module_loader.loadfile(t_val.?);
+                    module_loader.loadfile(heap, t_val.?);
                 }
             } else {
-                module_loader.loadfile(t_val.?);
+                module_loader.loadfile(heap, t_val.?);
             }
         } else {
             word.print("{s}{s}\n", .{ rt.rs.current_script.?, @as([*:0]const u8, if (heap.files == NIL) " (not loaded)" else "") });
@@ -645,7 +645,7 @@ pub fn editfile(t_val: [*:0]const u8, line: c_int, col: c_int) void {
     }
     _ = abi.system(ebuf_local);
     if (heap_mod.srcUpdate() != 0) {
-        module_loader.loadfile(rt.rs.current_script.?);
+        module_loader.loadfile(heap_mod.heap, rt.rs.current_script.?);
     }
 }
 

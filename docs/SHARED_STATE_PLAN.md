@@ -555,9 +555,32 @@ timing flake documented in earlier increments, confirmed by 3 clean reruns
 of `zig build test-sigint` in isolation); lint at 16 warnings, no new ones;
 manual smoke test of `fib 27`/`show 42` correct.*
 
-Next candidates, in roughly ascending difficulty: `module_loader.zig` (690
-lines, ~232 touches), `lex.zig` (2079, ~134), then the two hardest:
-`trans.zig` (1830, ~807) and `types.zig` (2736, ~788).
+**Tier 3, increment 6 — `module_loader.zig` ✅ done (2026-07-05).** The
+widest cascade yet: `loadfile` (the pub entry point most of this file exists
+to support) has **12 external call sites** across `repl.zig` (2),
+`commands.zig` (3 — 2 in `cmdFiles`, 1 in `editfile`), `dump.zig` (4, inside
+`undump`), and `parser_tests.zig` (3, test code). Every site already had
+`heap`/`heap.heap` reachable locally (either an existing `heap: *Heap`
+parameter from an earlier increment, or the ambient module import), so this
+was mechanical one-line fixes throughout — no further cascading needed.
+Threaded `heap: *Heap` through: the local `getTag` helper, `loadfile`,
+`resolveExportFileList`, `computeBereavedNames`, `reportUnusedDefinitions`
+(uses `getTag` 4x), and `mkincludes` (the other `pub` entry point, no
+external callers besides `loadfile` itself — uses `getTag` 4x, plus
+`heap.heap.files`/`stackp`/`dstack`). `resolveExports` and
+`reportBereavedExports` needed no change (ambient-only). Followed the
+"bulk sed first, manual threading second" lesson from `commands.zig`
+throughout — no clobbering this time.
+
+*DoD met: `zig build` clean; 176/176 unit tests (main-tests run directly);
+`zig build test` green — 48/48 golden, spine-corpus stress, sigint, smoke
+all passed cleanly (no flake this run); lint at 16 warnings, no new ones;
+manual smoke test of `fib 27` and `/files` (which drives `loadfile`'s
+file-listing path) both correct.*
+
+Next candidates, in roughly ascending difficulty: `lex.zig` (2079 lines,
+~134 touches), then the two hardest: `trans.zig` (1830, ~807) and
+`types.zig` (2736, ~788).
 * **Irreducible exception (unchanged):** OS signal handlers run on the C ABI and
   cannot take any explicit parameter; they read a single `current_interp: *Interp`
   set on entry — the one documented global, analogous to `errno` and the A4

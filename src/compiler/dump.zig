@@ -286,7 +286,7 @@ pub fn undump(heap: *Heap, t_val: [*:0]const u8) void {
     var oldsig: usize = 0;
 
     if (files.isMirandaSource(t_val) == 0 and rt.rs.initialising == 0) {
-        module_loader.loadfile(t_val);
+        module_loader.loadfile(heap, t_val);
         return;
     }
 
@@ -305,14 +305,14 @@ pub fn undump(heap: *Heap, t_val: [*:0]const u8) void {
         _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
     }
     if (t2 == 0 or t2 < t1) {
-        module_loader.loadfile(t_val);
+        module_loader.loadfile(heap, t_val);
         return;
     }
 
     f = word.fopen(&obf, "r");
     if (f == null) {
         word.print("cannot open {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
-        module_loader.loadfile(t_val);
+        module_loader.loadfile(heap, t_val);
         return;
     }
 
@@ -369,7 +369,7 @@ pub fn undump(heap: *Heap, t_val: [*:0]const u8) void {
         if (rt.rs.initialising != 0) {
             errors.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
         }
-        module_loader.loadfile(t_val);
+        module_loader.loadfile(heap, t_val);
     } else {
         if (rt.rs.verbosity != 0 or rt.rs.magic or rt.rs.mkexports) {
             if (heap.files == NIL) {
