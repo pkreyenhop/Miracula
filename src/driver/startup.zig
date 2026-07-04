@@ -17,13 +17,14 @@ const abi = @import("../runtime/main_clib.zig");
 const Word = word.Word;
 const NIL = word.NIL;
 const CONS = word.CONS;
-const h = heap.h;
-const t = heap.t;
+const h = heap_mod.h;
+const t = heap_mod.t;
 
 const lex_state = @import("../parser/lex_state.zig");
 const version = @import("../runtime/version.zig");
 const reduce = @import("../runtime/reduce.zig");
-const heap = @import("../runtime/heap.zig");
+const heap_mod = @import("../runtime/heap.zig");
+const Heap = heap_mod.Heap;
 const repl = @import("repl.zig");
 const commands = @import("commands.zig");
 const files = @import("../io/files.zig");
@@ -34,8 +35,8 @@ const EDITOR: [*:0]const u8 = "vi +!";
 const lineedit = @import("lineedit.zig");
 const ls = lex_state.ls;
 
-inline fn getTag(x: Word) word.NodeTag {
-    return heap.heap.getTag(x);
+inline fn getTag(heap: *Heap, x: Word) word.NodeTag {
+    return heap.getTag(x);
 }
 
 /// True if a numeric command-line flag value is outside the accepted range (100 .. 50,000,000).
@@ -54,6 +55,7 @@ fn unlimitStack() void {
 
 /// Process entry point: parse flags and arguments, install signal handlers, set up the heap, locate the library, then enter `commandLoop`. Returns the exit code.
 pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
+    const heap = heap_mod.heap;
     var manonly: Word = 0;
     rt.rs.cstack = @ptrCast(&manonly);
     unlimitStack();
@@ -62,7 +64,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
 
     const okhome_rc = readHomeRc();
 
-    rt.rs.UTF8 = @intFromBool(heap.utf8test());
+    rt.rs.UTF8 = @intFromBool(heap_mod.utf8test());
     rt.rs.UTF8OUT = rt.rs.UTF8;
 
     const parsed = parseFlags(argc, argv);
@@ -103,21 +105,21 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
         repl.announce();
     }
 
-    heap.heap.files = NIL;
-    dump.undump(heap.heap, @as([*:0]const u8, @ptrCast(&rt.rs.PRELUDE)));
+    heap.files = NIL;
+    dump.undump(heap, @as([*:0]const u8, @ptrCast(&rt.rs.PRELUDE)));
     rt.rs.okprel = true;
-    abi.mkprivate(heap.filDefs(heap.h(heap.heap.files)));
-    heap.heap.files = NIL;
+    abi.mkprivate(heap_mod.filDefs(heap_mod.h(heap.files)));
+    heap.files = NIL;
 
     if (!rt.rs.nostdenv) {
-        dump.undump(heap.heap, @as([*:0]const u8, @ptrCast(&rt.rs.STDENV)));
-        while (heap.heap.files != NIL) {
-            rt.rs.primenv = heap.alfasort(abi.append1(rt.rs.primenv, heap.filDefs(heap.h(heap.heap.files))));
-            heap.heap.files = heap.t(heap.heap.files);
+        dump.undump(heap, @as([*:0]const u8, @ptrCast(&rt.rs.STDENV)));
+        while (heap.files != NIL) {
+            rt.rs.primenv = heap_mod.alfasort(abi.append1(rt.rs.primenv, heap_mod.filDefs(heap_mod.h(heap.files))));
+            heap.files = heap_mod.t(heap.files);
         }
-        rt.rs.primenv = heap.alfasort(rt.rs.primenv);
+        rt.rs.primenv = heap_mod.alfasort(rt.rs.primenv);
         cs.newtyps = NIL;
-        heap.heap.files = NIL;
+        heap.files = NIL;
     }
 
     if (!rt.rs.magic) {
@@ -128,15 +130,15 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     rt.rs.initialising = 0;
 
     if (rt.rs.mkexports) {
-        runExportsMode(argc_u, argv, arg_idx);
+        runExportsMode(heap, argc_u, argv, arg_idx);
     }
 
     if (rt.rs.mksources) {
-        runSourcesMode(argc_u, argv, arg_idx);
+        runSourcesMode(heap, argc_u, argv, arg_idx);
     }
 
     if (rt.rs.making) {
-        runMakeMode(argc_u, argv, arg_idx);
+        runMakeMode(heap, argc_u, argv, arg_idx);
     }
 
     var initscript: [*:0]const u8 = undefined;
@@ -160,7 +162,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     if (abi.isatty(0) != 0) {
         lineedit.init(rt.allocator, rt.io);
     }
-    repl.commandLoop(heap.heap, @constCast(initscript));
+    repl.commandLoop(heap, @constCast(initscript));
     return 0;
 }
 
@@ -392,7 +394,7 @@ fn resolveEnvironmentSettings() void {
 /// `-exports` mode: undumps each remaining argument and reports its export
 /// list (or all top-level definitions, if it has none), plus any `%free`
 /// declarations. Exits the process when done.
-fn runExportsMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
+fn runExportsMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
     const arg_count: usize = argc_u - arg_idx;
     var s: [*:0]u8 = undefined;
     _ = abi.sigsetjmp(&rt.rs.env, 1);
@@ -403,8 +405,8 @@ fn runExportsMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
         if (s == ls.dicp) {
             _ = abi.keep(ls.dicp);
         }
-        dump.undump(heap.heap, s);
-        if (heap.heap.files == NIL or cs.ND != NIL) {
+        dump.undump(heap, s);
+        if (heap.files == NIL or cs.ND != NIL) {
             continue;
         }
         if (arg_count != 1) {
@@ -413,35 +415,35 @@ fn runExportsMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
         if (rt.rs.exports != NIL) {
             x = rt.rs.exports;
         } else {
-            var f = heap.heap.files;
-            while (f != NIL) : (f = heap.t(f)) {
-                x = abi.append1(heap.filDefs(heap.h(f)), x);
+            var f = heap.files;
+            while (f != NIL) : (f = heap_mod.t(f)) {
+                x = abi.append1(heap_mod.filDefs(heap_mod.h(f)), x);
             }
         }
 
         if (rt.rs.freeids != NIL) {
             var f = rt.rs.freeids;
-            while (f != NIL) : (f = heap.t(f)) {
-                const n = abi.findid(@constCast(heap.getId(heap.h(f))));
-                heap.tp(n).* = heap.t(heap.t(heap.h(f)));
-                heap.tp(heap.h(heap.h(n))).* = heap.theVal(heap.h(f));
-                heap.hp(f).* = n;
+            while (f != NIL) : (f = heap_mod.t(f)) {
+                const n = abi.findid(@constCast(heap_mod.getId(heap_mod.h(f))));
+                heap_mod.tp(n).* = heap_mod.t(heap_mod.t(heap_mod.h(f)));
+                heap_mod.tp(heap_mod.h(heap_mod.h(n))).* = heap_mod.theVal(heap_mod.h(f));
+                heap_mod.hp(f).* = n;
             }
             rt.rs.freeids = abi.typesfirst(rt.rs.freeids);
             f = rt.rs.freeids;
             word.print("\t%free {{\n", .{});
-            while (f != NIL) : (f = heap.t(f)) {
+            while (f != NIL) : (f = heap_mod.t(f)) {
                 _ = word.putchar('\t');
-                abi.reportType(heap.h(f));
+                abi.reportType(heap_mod.h(f));
                 _ = word.putchar('\n');
             }
             word.print("\t}}\n", .{});
         }
 
-        var item = abi.typesfirst(heap.alfasort(x));
-        while (item != NIL) : (item = heap.t(item)) {
+        var item = abi.typesfirst(heap_mod.alfasort(x));
+        while (item != NIL) : (item = heap_mod.t(item)) {
             _ = word.putchar('\t');
-            abi.reportType(heap.h(item));
+            abi.reportType(heap_mod.h(item));
             _ = word.putchar('\n');
         }
     }
@@ -450,7 +452,7 @@ fn runExportsMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
 
 /// `-sources` mode: undumps each remaining argument and lists the distinct
 /// source filenames it depends on. Exits the process when done.
-fn runSourcesMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
+fn runSourcesMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
     var s: [*:0]u8 = undefined;
     var x: Word = NIL;
     _ = abi.sigsetjmp(&rt.rs.env, 1);
@@ -461,12 +463,12 @@ fn runSourcesMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
             if (s == ls.dicp) {
                 _ = abi.keep(ls.dicp);
             }
-            dump.undump(heap.heap, s);
-            var f = if (heap.heap.files == NIL) rt.rs.oldfiles else heap.heap.files;
-            while (f != NIL) : (f = heap.t(f)) {
-                const filename_str = heap.getFil(heap.h(f)).?;
+            dump.undump(heap, s);
+            var f = if (heap.files == NIL) rt.rs.oldfiles else heap.files;
+            while (f != NIL) : (f = heap_mod.t(f)) {
+                const filename_str = heap_mod.getFil(heap_mod.h(f)).?;
                 if (abi.member(x, strtab.strBits(strtab.table, filename_str)) == 0) {
-                    x = heap.cons(strtab.strBits(strtab.table, filename_str), x);
+                    x = heap_mod.cons(strtab.strBits(strtab.table, filename_str), x);
                     word.print("{s}\n", .{filename_str});
                 }
             }
@@ -478,7 +480,7 @@ fn runSourcesMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
 /// `-make` mode: undumps each remaining argument, collecting any that have
 /// errors or undefined names into `rt.rs.make_status`; reports them (see
 /// [reportMakeFailures]) and exits the process with the resulting status.
-fn runMakeMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
+fn runMakeMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
     var s: [*:0]u8 = undefined;
     _ = abi.sigsetjmp(&rt.rs.env, 1);
     var cur_argv_idx = arg_idx;
@@ -487,15 +489,15 @@ fn runMakeMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
         if (s == ls.dicp) {
             _ = abi.keep(ls.dicp);
         }
-        dump.undump(heap.heap, s);
-        if (cs.ND != NIL or (heap.heap.files == NIL and rt.rs.oldfiles != NIL)) {
+        dump.undump(heap, s);
+        if (cs.ND != NIL or (heap.files == NIL and rt.rs.oldfiles != NIL)) {
             if (rt.rs.make_status == 1) {
                 rt.rs.make_status = 0;
             }
             rt.rs.make_status = abi.strcons(@as(Word, strtab.strBits(strtab.table, s)), rt.rs.make_status);
         }
     }
-    if (getTag(rt.rs.make_status) == .STRCONS) {
+    if (getTag(heap, rt.rs.make_status) == .STRCONS) {
         reportMakeFailures();
     }
     abi.exit(@intCast(rt.rs.make_status));
@@ -508,19 +510,19 @@ fn reportMakeFailures() void {
     var maxw: Word = 0;
     word.print("errors or undefined names found in:-\n", .{});
     while (rt.rs.make_status != 0) {
-        h_val = abi.strcons(heap.h(rt.rs.make_status), h_val);
-        const w = @as(Word, @intCast(word.strlen(strtab.strOf(strtab.table, heap.h(h_val)))));
+        h_val = abi.strcons(heap_mod.h(rt.rs.make_status), h_val);
+        const w = @as(Word, @intCast(word.strlen(strtab.strOf(strtab.table, heap_mod.h(h_val)))));
         if (w > maxw) {
             maxw = w;
         }
-        rt.rs.make_status = heap.t(rt.rs.make_status);
+        rt.rs.make_status = heap_mod.t(rt.rs.make_status);
     }
     maxw += 1;
     const n = @max(@as(Word, 1), @divTrunc(@as(Word, 78), maxw));
     var w: Word = 0;
     while (h_val != 0) {
         w += 1;
-        const str = strtab.strOf(strtab.table, heap.h(h_val));
+        const str = strtab.strOf(strtab.table, heap_mod.h(h_val));
         const len = word.strlen(str);
         const spaces_needed = if (@as(usize, @intCast(maxw)) > len) @as(usize, @intCast(maxw)) - len else 0;
         var pad_idx: usize = 0;
@@ -529,7 +531,7 @@ fn reportMakeFailures() void {
         }
         const next_newline = if ((@rem(w, n)) != 0) "" else "\n";
         word.print("{s}{s}", .{ str, next_newline });
-        h_val = heap.t(h_val);
+        h_val = heap_mod.t(h_val);
     }
     if ((@rem(w, n)) != 0) {
         word.print("\n", .{});

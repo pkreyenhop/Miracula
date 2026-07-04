@@ -535,9 +535,29 @@ and bare `?` (`allnamescom`) all producing correct output (file listing,
 type + definition location, full name listing split into stdenv/script
 sections).*
 
-Next candidates, in roughly ascending difficulty: `startup.zig` (862 lines,
-~31 touches), `module_loader.zig` (690, ~232), `lex.zig` (2079, ~134), then
-the two hardest: `trans.zig` (1830, ~807) and `types.zig` (2736, ~788).
+**Tier 3, increment 5 — `startup.zig` ✅ done (2026-07-05).** Same pattern:
+most of the ~31 touches are ambient free-function calls (`utf8test`/
+`filDefs`/`alfasort`/`t`/`h`/`cons`/`tp`/`hp`/`getId`/`theVal`), left
+unconverted. Threaded `heap: *Heap` through the local `getTag` helper and
+the 4 functions touching `heap.heap.files` directly: `mainEntry`,
+`runExportsMode`, `runSourcesMode`, `runMakeMode`. `mainEntry` is the
+process's real root (`main.zig` calls it exactly once) so it keeps its old
+signature and grabs the ambient singleton once internally
+(`const heap = heap_mod.heap;`), exactly mirroring `reduce()`/`miraSetup()` —
+no external caller needed updating. The three `run*Mode` functions are
+private helpers called only from within `mainEntry`, so they got an
+explicit `heap: *Heap` parameter threaded from that one grab point.
+
+*DoD met: `zig build` clean; 176/176 unit tests (main-tests run directly);
+`zig build test` green — 48/48 golden, spine-corpus stress, smoke (one
+`sigint_check` `SIGABRT` seen on the full-suite run was the same pre-existing
+timing flake documented in earlier increments, confirmed by 3 clean reruns
+of `zig build test-sigint` in isolation); lint at 16 warnings, no new ones;
+manual smoke test of `fib 27`/`show 42` correct.*
+
+Next candidates, in roughly ascending difficulty: `module_loader.zig` (690
+lines, ~232 touches), `lex.zig` (2079, ~134), then the two hardest:
+`trans.zig` (1830, ~807) and `types.zig` (2736, ~788).
 * **Irreducible exception (unchanged):** OS signal handlers run on the C ABI and
   cannot take any explicit parameter; they read a single `current_interp: *Interp`
   set on entry — the one documented global, analogous to `errno` and the A4
