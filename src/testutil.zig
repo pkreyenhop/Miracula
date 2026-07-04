@@ -67,13 +67,19 @@ pub fn int(n: i64) Word {
 }
 
 /// Apply `f` to `x`: the heap node `(f x)`.
-pub const ap = reduce.ap;
+pub fn ap(x: Word, y: Word) Word {
+    return reduce.ap(heap.heap, x, y);
+}
 
 /// Apply `f` to two arguments: `((f x) y)`.
-pub const ap2 = reduce.ap2;
+pub fn ap2(f: Word, x: Word, y: Word) Word {
+    return reduce.ap2(heap.heap, f, x, y);
+}
 
 /// A cons cell `(head : tail)`.
-pub const cons = reduce.cons;
+pub fn cons(x: Word, y: Word) Word {
+    return reduce.cons(heap.heap, x, y);
+}
 
 /// A proper list of the given nodes, terminated by `NIL`: `a : b : … : NIL`.
 pub fn list(items: []const Word) Word {
@@ -81,7 +87,7 @@ pub fn list(items: []const Word) Word {
     var i = items.len;
     while (i > 0) {
         i -= 1;
-        result = reduce.cons(items[i], result);
+        result = reduce.cons(heap.heap, items[i], result);
     }
     return result;
 }
@@ -92,7 +98,7 @@ pub fn str(s: []const u8) Word {
     var i = s.len;
     while (i > 0) {
         i -= 1;
-        result = reduce.cons(heap.stoChar(s[i]), result);
+        result = reduce.cons(heap.heap, heap.stoChar(s[i]), result);
     }
     return result;
 }

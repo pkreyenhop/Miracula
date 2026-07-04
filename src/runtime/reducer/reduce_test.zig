@@ -20,8 +20,12 @@ const lex = @import("../../parser/lex.zig");
 const trans = @import("../../compiler/trans.zig");
 
 const Word = word.Word;
-const ap = reduce.ap;
-const ap2 = reduce.ap2;
+fn ap(x: Word, y: Word) Word {
+    return reduce.ap(heap.heap, x, y);
+}
+fn ap2(f: Word, x: Word, y: Word) Word {
+    return reduce.ap2(heap.heap, f, x, y);
+}
 
 // Phase 4 (shared-state plan): start from a pristine `Interp` via `interp.reset()`,
 // then run the *full* `miraSetup()` — the heavyweight init (rs.*/primenv, the
@@ -56,7 +60,7 @@ test "nested identity: reduce (I (I x)) == x" {
 
 test "already in WHNF: reduce of a CONS returns the same cell" {
     ensureSetup();
-    const c = reduce.cons(word.True, word.NIL);
+    const c = reduce.cons(heap.heap, word.True, word.NIL);
     try std.testing.expectEqual(c, reduce.reduce(c));
 }
 

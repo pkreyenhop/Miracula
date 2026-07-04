@@ -54,6 +54,7 @@ const reduce_rt = @import("../reduce.zig");
 const main_clib = @import("../main_clib.zig");
 const rt = @import("../runtime_state.zig");
 const spine = @import("spine.zig");
+const heap_mod = @import("../heap.zig");
 
 /// The interpreter machine word (re-exported from [core]).
 pub const Word = core.Word;
@@ -78,11 +79,12 @@ pub fn reduce(e_val: Word) Word {
     ctx.args[2] = 0;
     ctx.args[3] = 0;
     ctx.action = word.ACT_NONE;
+    ctx.heap = heap_mod.heap;
 
     main_loop: while (true) {
         // (1) Unwind the left spine: descend through `AP` nodes (reversing
         //     pointers) until `e` is the head atom/combinator/data node.
-        while (isAp(ctx.e)) {
+        while (isAp(ctx.heap, ctx.e)) {
             downLeft(&ctx);
         }
 
@@ -224,10 +226,10 @@ fn dispatchNonCombinatorHead(ctx: *ReductionCtx) void {
         main_clib.exit(1);
     }
 
-    switch (getTag(ctx.e)) {
+    switch (getTag(ctx.heap, ctx.e)) {
         // A private-name placeholder: chase to its bound value.
         .STRCONS => {
-            ctx.e = pnVal(ctx.e);
+            ctx.e = pnVal(ctx.heap, ctx.e);
             if (ctx.e == word.UNDEF or ctx.e == word.FREE) {
                 word.printErr("\nimpossible event in reduce - undefined pname\n", .{});
                 if (options.is_strict) {
@@ -240,18 +242,18 @@ fn dispatchNonCombinatorHead(ctx: *ReductionCtx) void {
         },
         .DATAPAIR => {
             upLeft(ctx);
-            word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{ strtab.strOf(strtab.table, hdGet(hdGet(ctx.e))), strtab.strOf(strtab.table, tlGet(ctx.e)) });
+            word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{ strtab.strOf(strtab.table, hdGet(ctx.heap, hdGet(ctx.heap, ctx.e))), strtab.strOf(strtab.table, tlGet(ctx.heap, ctx.e)) });
             reduce_rt.outstats();
             main_clib.exit(1);
         },
         // A defined name: substitute its value and re-examine.
         .ID => {
-            if (idVal(ctx.e) == word.UNDEF or idVal(ctx.e) == word.FREE) {
-                word.printErr("\nUNDEFINED NAME - {s}\n", .{getId(ctx.e)});
+            if (idVal(ctx.heap, ctx.e) == word.UNDEF or idVal(ctx.heap, ctx.e) == word.FREE) {
+                word.printErr("\nUNDEFINED NAME - {s}\n", .{getId(ctx.heap, ctx.e)});
                 reduce_rt.outstats();
                 main_clib.exit(1);
             }
-            ctx.e = idVal(ctx.e);
+            ctx.e = idVal(ctx.heap, ctx.e);
             ctx.action = word.ACT_NEXTREDEX;
         },
         // A saturated constructor application is already WHNF: pop
@@ -272,9 +274,9 @@ fn dispatchNonCombinatorHead(ctx: *ReductionCtx) void {
             ctx.action = word.ACT_DONE;
         },
         else => {
-            word.printErr("\nimpossible tag ({}) in reduce\n", .{@intFromEnum(getTag(ctx.e))});
+            word.printErr("\nimpossible tag ({}) in reduce\n", .{@intFromEnum(getTag(ctx.heap, ctx.e))});
             if (options.is_strict) {
-                std.debug.panic("impossible tag ({}) in reduce", .{@intFromEnum(getTag(ctx.e))});
+                std.debug.panic("impossible tag ({}) in reduce", .{@intFromEnum(getTag(ctx.heap, ctx.e))});
             } else {
                 main_clib.exit(1);
             }
@@ -296,7 +298,7 @@ fn forceSpineArguments(ctx: *ReductionCtx) ?Word {
 
         upRight(ctx);
 
-        if (isAp(ctx.e)) {
+        if (isAp(ctx.heap, ctx.e)) {
             downLeft(ctx);
             downRight(ctx);
             return null;
