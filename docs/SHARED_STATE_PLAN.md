@@ -281,7 +281,7 @@ several simultaneously (entangled — narrow threading degenerates into passing
 |-----------|------------|----------------|---------|
 | `big.zig` (Bignum) | none (module constants) | `Heap` only (7 cell-accessor call sites) | **Clean** |
 | `strtab.zig` (StringTable) | `StringTable` | none | **Clean** |
-| reducer rewrite handlers | `ReductionCtx` | `RuntimeState` (2 scratch fields) | **Already ~done** (see above) |
+| reducer rewrite handlers | `ReductionCtx` (now owns `heap: *Heap`, Tier 1.5 ✅) | `RuntimeState` (2 scratch fields in `ready.zig`, Tier 2, still open) | **Done except Tier 2's 2 fields** |
 | `heap.zig` | `Heap` | `LexState` (58 sites, dict buffer), `RuntimeState`, `CompilerState`, `CoreState` — 133 fns total, only 11 already self-threaded | **Entangled** |
 | `types.zig` / `trans.zig` / `lex.zig` / `module_loader.zig` (compiler+parser core) | `CompilerState`/`LexState` | type info, source location, heap cells, and lexer state simultaneously, pervasively | **Entangled** |
 | `repl.zig` / `commands.zig` / `startup.zig` (driver) | — | legitimately needs most of the interpreter to dispatch commands | **Not a narrowing candidate** — this layer *should* look Interp-shaped |
@@ -306,14 +306,42 @@ several simultaneously (entangled — narrow threading degenerates into passing
    surfaced one pre-existing, unrelated bug (hex/octal literals like `0xff`/
    `0o777` parse to the wrong value — confirmed via `git stash` to predate this
    work) — flagged as a separate follow-up, not fixed here.
-2. **Tier 2 — tidy the existing `ReductionCtx` precedent.** Fold `ready.zig`'s two
-   remaining `rt.rs.UTF8`/`rt.rs.linebuf` reads into `ReductionCtx` if they're
-   reducer-specific enough to belong there, or leave them as a documented,
-   deliberate exception if they're better understood as shared scratch. Small;
-   mostly a documentation/judgment call, not a mechanical sweep.
+2. **Tier 1.5 — `ReductionCtx.heap` (2026-07-01) ✅ done, larger than expected.**
+   Attempting to schedule "reducer" as its own small step (per the original
+   `bignum → reducer → heap/GC → …` ordering) revealed those two aren't
+   separable: `reduce_core.zig`'s own primitives (`hdGet`/`hdSet`/`tlGet`/
+   `tlSet`/`getTag`/`setTag`/`ap`/`ap2`/`cons`/`rewriteToXxx`/…) are thin
+   wrappers directly over `heap.zig`'s own `Heap.h`/`Heap.hp`/`Heap.make`/etc.
+   methods (which were already self-threaded, just never called with an
+   explicit pointer at this boundary). Since `ReductionCtx` is already threaded
+   through every reducer rewrite-handler, the fix was to give it a `heap: *Heap`
+   field and have the ~45 leaf primitives in `reduce_core.zig` take an explicit
+   `heap: *Heap` parameter — functions that already carry `ctx` pass `ctx.heap`
+   through rather than gaining a second parameter. `reducer/reduce.zig` (the
+   engine loop) initialises `ctx.heap` once per `reduce()` call from the
+   (still-global) `heap.heap` singleton. Updated ~500 call sites across
+   `combinators.zig`, `ready.zig`, `io.zig`, `reducer/lex.zig`,
+   `reducer/reduce.zig`, plus `testutil.zig`'s and `reduce_test.zig`'s own
+   `ap`/`ap2`/`cons` test-helper wrappers (kept their existing 2/3-arg public
+   signatures — hundreds of test call sites elsewhere were untouched).
+   **This does *not* thread `heap.zig` itself** — its own methods were already
+   `self`-taking; this step only stopped the *reducer's* call sites from
+   reaching the global singleton to get that `self`. Threading `heap.zig`'s
+   ~432 call sites system-wide (compiler/parser/driver too) remains full Tier 3.
+   *DoD met: `zig build check` (build + 176 unit tests + 48/48 golden +
+   spine-corpus stress + sigint + smoke) all green; lint at the 17-warning
+   pre-existing baseline; manual smoke test of `fib 27`/`map`/an undefined-name
+   error (forked-child isolation still correct) all behave correctly.*
+3. **Tier 2 — tidy the existing `ReductionCtx` precedent.** `ready.zig` still
+   has ambient `rt.rs.UTF8`/`rt.rs.linebuf` touches (unrelated to the heap
+   threading above — a different external struct). Fold them into
+   `ReductionCtx` if they're reducer-specific enough to belong there, or leave
+   them as a documented, deliberate exception if they're better understood as
+   shared scratch. Small; mostly a documentation/judgment call, not a
+   mechanical sweep. Still open.
    *DoD: `ready.zig`'s remaining ambient touches are either threaded or explicitly
    justified; golden green.*
-3. **Tier 3 — the entangled subsystems: stop and re-evaluate, don't proceed by
+4. **Tier 3 — the entangled subsystems: stop and re-evaluate, don't proceed by
    default.** `heap.zig`, `types.zig`, `trans.zig`, `lex.zig`, `module_loader.zig`
    each touch 3+ external structs pervasively. A single narrow struct doesn't fit
    here; the realistic options are (a) a purpose-built bundle per subsystem (e.g.
@@ -329,12 +357,12 @@ several simultaneously (entangled — narrow threading degenerates into passing
    it into the same PR-sized mechanical pattern as Tier 1 would understate its
    risk.
 
-**Sequencing:** `big.zig` ✅ → `strtab.zig` ✅ → `ready.zig` tidy-up (Tier 2, next)
-→ **checkpoint** (re-evaluate before any Tier 3 work). Each subsystem is its own
-PR, golden-gated (the full 48-case corpus + unit suite + spine-corpus stress
-checks + lint), with a reducer-loop timing check (reuse the ad hoc `fib(N)`
-comparison method used for the B2(b) `Spine` cutover and the B3 GC rewrite) for
-anything touching the hot path.
+**Sequencing:** `big.zig` ✅ → `strtab.zig` ✅ → `ReductionCtx.heap` ✅ (Tier 1.5) →
+`ready.zig` tidy-up (Tier 2, next) → **checkpoint** (re-evaluate before any Tier 3
+work). Each subsystem is its own PR, golden-gated (the full 48-case corpus + unit
+suite + spine-corpus stress checks + lint), with a reducer-loop timing check
+(reuse the ad hoc `fib(N)` comparison method used for the B2(b) `Spine` cutover
+and the B3 GC rewrite) for anything touching the hot path.
 * **Irreducible exception (unchanged):** OS signal handlers run on the C ABI and
   cannot take any explicit parameter; they read a single `current_interp: *Interp`
   set on entry — the one documented global, analogous to `errno` and the A4
