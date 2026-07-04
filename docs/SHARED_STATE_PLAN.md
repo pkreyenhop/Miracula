@@ -410,10 +410,49 @@ of `zig build test-sigint` in isolation — not caused by this change); lint at
 `True & False`, `show`, list comprehensions, and string concat (all exercise
 primitives seeded by `setup.zig`'s `primlib`/`privlib`/`stdlib`) all correct.*
 
-Next candidates, in roughly ascending difficulty: `repl.zig` (551 lines, ~18
-touches), `dump.zig` (421, ~126), `commands.zig` (787, ~47), `startup.zig`
-(862, ~31), `module_loader.zig` (690, ~232), `lex.zig` (2079, ~134), then the
-two hardest: `trans.zig` (1830, ~807) and `types.zig` (2736, ~788).
+**Tier 3, increment 2 — `repl.zig` ✅ done (2026-07-05).** Confirmed before
+starting that `repl.zig`'s ~18 `heap.`-prefixed touches split into two very
+different categories: most (`heap.idVal`/`idType`/`idWho`/`getId`/`srcUpdate`/
+`resetgcstats`/`utf8test`, plus the free-function `h`/`t`/`tp` aliased at the
+top of the file) resolve to *free functions declared outside the `Heap`
+struct* in `heap.zig` (confirmed via `grep -n "pub fn h(\|pub fn t(\|pub fn
+tp("` — each has both a struct method at lines 93-638 and an unrelated
+free-function of the same name further down, e.g. `h`'s method at line 147 vs.
+its free function at line 647). Those still take no `Heap` argument at all and
+were left alone — converting them is a `heap.zig`-wide change (used pervasively
+elsewhere), not specific to this file. Only the handful of genuine
+`heap.heap.X` accesses (`.files`, `.validate()`, `.nogcs`, `.getTag()`) were
+in scope: threaded an explicit `heap: *Heap` parameter through `commandLoop`,
+`obey`, `evaluateRepl`, and the local `getTag` helper. `process`/`announce`/
+`reset`/`dieClean`/`fpeError`/`edWarn`/`getLine`/`badEditor`/`parseLine`
+needed no change — the last three don't touch the struct at all, and `reset`/
+`dieClean`/`fpeError` are OS signal-handler callbacks (`callconv(.c)`) whose
+signature can't be changed regardless.
+
+Each of `commandLoop`/`obey`/`evaluateRepl` turned out to have exactly one
+external call site (`startup.zig:163`, `repl.zig`'s own `abi.obey` alias, and
+`parser_api.zig:92` respectively) — confirmed by grep before converting, since
+the whole point of threading is moot if a "cascade" is really just one call
+site restating the ambient singleton one frame up. Went ahead anyway per
+explicit instruction to do it for completeness/consistency rather than skip
+low-value files.
+
+*DoD met: `zig build` clean; 176/176 unit tests (main-tests run directly);
+`zig build check`-equivalent (`zig build test`, which subsumes it) green —
+48/48 golden spine-differential checks, sigint check, smoke tests; lint at 16
+warnings (no new ones); manual smoke test of expression evaluation (`fib 27`,
+`show 42`, `concat`), the `?name` identifier-info path (both undefined-name
+diagnosis and a defined-primitive lookup) all correct. The interactive `??`
+path (which additionally forks a real editor via `commands.editfile`) hangs
+under piped/non-tty stdin regardless of this change — pre-existing behavior,
+not a regression, and already covered independently by
+`parser_tests.zig`'s `"syntax error sets errcol and editfile expands column
+placeholder"` unit test, which calls `commands.editfile` directly.*
+
+Next candidates, in roughly ascending difficulty: `dump.zig` (421 lines,
+~126 touches), `commands.zig` (787, ~47), `startup.zig` (862, ~31),
+`module_loader.zig` (690, ~232), `lex.zig` (2079, ~134), then the two hardest:
+`trans.zig` (1830, ~807) and `types.zig` (2736, ~788).
 * **Irreducible exception (unchanged):** OS signal handlers run on the C ABI and
   cannot take any explicit parameter; they read a single `current_interp: *Interp`
   set on entry — the one documented global, analogous to `errno` and the A4

@@ -160,7 +160,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     if (abi.isatty(0) != 0) {
         lineedit.init(rt.allocator, rt.io);
     }
-    repl.commandLoop(@constCast(initscript));
+    repl.commandLoop(heap.heap, @constCast(initscript));
     return 0;
 }
 

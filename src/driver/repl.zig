@@ -20,14 +20,15 @@ const lineedit = @import("lineedit.zig");
 
 const Word = word.Word;
 const NIL = word.NIL;
-const h = heap.h;
-const t = heap.t;
+const h = heap_mod.h;
+const t = heap_mod.t;
 
 const lex_state = @import("../parser/lex_state.zig");
 const setup = @import("../compiler/setup.zig");
 const signals_mod = @import("../io/signals.zig");
 const lex = @import("../parser/lex.zig");
-const heap = @import("../runtime/heap.zig");
+const heap_mod = @import("../runtime/heap.zig");
+const Heap = heap_mod.Heap;
 const commands = @import("commands.zig");
 const trans_mod = @import("../compiler/trans.zig");
 const module_loader = @import("../compiler/module_loader.zig");
@@ -61,12 +62,12 @@ fn getMonotonicNs() i128 {
 }
 
 // State owned by reduce.zig / heap.zig — not yet accessible via @import.
-inline fn getTag(x: Word) word.NodeTag {
-    return heap.heap.getTag(x);
+inline fn getTag(heap: *Heap, x: Word) word.NodeTag {
+    return heap.getTag(x);
 }
 
 const signals = signals_mod.signals;
-const resetgcstats = heap.resetgcstats;
+const resetgcstats = heap_mod.resetgcstats;
 const outstats = reduce.outstats;
 const syntax = setup.syntax;
 const token = lex.token;
@@ -83,21 +84,21 @@ fn WTERMSIG(status: c_int) c_int {
 }
 
 /// The top-level REPL. Loads `initscript`, then reads and dispatches user input until EOF: `?`/`??` (info), `:`/`/` (commands), `!` (shell escape), `||` (comment), or an expression to evaluate.
-pub fn commandLoop(initscript: [*:0]u8) void {
+pub fn commandLoop(heap: *Heap, initscript: [*:0]u8) void {
     var ch: c_int = undefined;
     var lb: ?[*:0]u8 = undefined;
 
     if (abi.sigsetjmp(&rt.rs.env, 1) == 0) {
         if (rt.rs.magic) {
             dump.undump(initscript);
-            if (heap.heap.files == NIL or cs.ND != NIL or heap.idVal(rt.rs.main_id) == word.UNDEF) {
-                if (heap.heap.files != NIL and cs.ND == NIL and heap.idVal(rt.rs.main_id) == word.UNDEF) {
+            if (heap.files == NIL or cs.ND != NIL or heap_mod.idVal(rt.rs.main_id) == word.UNDEF) {
+                if (heap.files != NIL and cs.ND == NIL and heap_mod.idVal(rt.rs.main_id) == word.UNDEF) {
                     word.printErr("{s}: main not defined\n", .{initscript});
                 }
                 errors.fatal("mira: incorrect use of \"-exec\" flag\n", .{.{}});
             }
             rt.rs.magic = false;
-            abi.obey(rt.rs.main_id);
+            abi.obey(heap, rt.rs.main_id);
             abi.exit(0);
         }
         _ = signals(abi.SIGINT, @intFromPtr(&reset));
@@ -134,7 +135,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
         last_elapsed_ns = null;
         last_gc_count = null;
         ch = abi.getchar();
-        if (rt.rs.rechecking != 0 and heap.srcUpdate() != 0) {
+        if (rt.rs.rechecking != 0 and heap_mod.srcUpdate() != 0) {
             module_loader.loadfile(rt.rs.current_script.?);
         }
         while (ch == ' ' or ch == '\t') {
@@ -162,29 +163,29 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                     if (ls.dicp[0] != 0) {
                         x = abi.findid(ls.dicp);
                     } else {
-                        word.print("??{s}\n", .{heap.getId(rt.rs.lastid)});
+                        word.print("??{s}\n", .{heap_mod.getId(rt.rs.lastid)});
                         x = rt.rs.lastid;
                     }
-                    if (x == NIL or heap.idType(x) == word.undef_t) {
-                        commands.diagnose(if (ls.dicp[0] != 0) ls.dicp else heap.getId(rt.rs.lastid));
+                    if (x == NIL or heap_mod.idType(x) == word.undef_t) {
+                        commands.diagnose(if (ls.dicp[0] != 0) ls.dicp else heap_mod.getId(rt.rs.lastid));
                         rt.rs.lastid = 0;
                         continue;
                     }
-                    if (heap.idWho(x) == NIL) {
-                        word.print("{s} -- primitive to Miranda\n", .{@as([*:0]const u8, @ptrCast(if (ls.dicp[0] != 0) ls.dicp else heap.getId(rt.rs.lastid)))});
+                    if (heap_mod.idWho(x) == NIL) {
+                        word.print("{s} -- primitive to Miranda\n", .{@as([*:0]const u8, @ptrCast(if (ls.dicp[0] != 0) ls.dicp else heap_mod.getId(rt.rs.lastid)))});
                         rt.rs.lastid = 0;
                         continue;
                     }
                     rt.rs.lastid = x;
-                    x = heap.idWho(x);
-                    if (getTag(x) == .CONS) {
-                        aka = strtab.strOf(strtab.table, heap.h(heap.h(x)));
-                        x = heap.t(x);
+                    x = heap_mod.idWho(x);
+                    if (getTag(heap, x) == .CONS) {
+                        aka = strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(x)));
+                        x = heap_mod.t(x);
                     }
                     if (aka != null) {
                         word.print("originally defined as \"{s}\"\n", .{aka.?});
                     }
-                    commands.editfile(strtab.strOf(strtab.table, heap.h(x)), @intCast(heap.t(x)), 0);
+                    commands.editfile(strtab.strOf(strtab.table, heap_mod.h(x)), @intCast(heap_mod.t(x)), 0);
                 } else {
                     _ = abi.ungetc(ch, abi.stdin().?);
                     _ = token();
@@ -232,7 +233,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                     } else { // child
                         _ = abi.execl(shell.?, .{ shell.?, "-c", lb.? });
                     }
-                    if (heap.srcUpdate() != 0) {
+                    if (heap_mod.srcUpdate() != 0) {
                         module_loader.loadfile(rt.rs.current_script.?);
                     }
                 } else {
@@ -260,7 +261,7 @@ pub fn commandLoop(initscript: [*:0]u8) void {
                 const start = getMonotonicNs();
                 _ = abi.ungetc(ch, abi.stdin().?);
                 rt.rs.lastid = 0;
-                heap.tp(heap.h(ls.cook_stdin)).* = 0;
+                heap_mod.tp(heap_mod.h(ls.cook_stdin)).* = 0;
                 rt.rs.rv_expr = 0;
                 ls.c = word.EVAL;
                 rt.rs.echoing = 0;
@@ -348,17 +349,17 @@ pub fn fpeError(sig: c_int) callconv(.c) void {
 
 // Relocated REPL and interactive driver functions
 /// Compile `x` and send its value to standard output — used to run a script's `main`.
-pub fn obey(x_in: Word) void {
+pub fn obey(heap: *Heap, x_in: Word) void {
     var x = x_in;
     const typ = types_mod.typeOf(x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
-        heap.heap.validate();
+        heap.validate();
         trans_mod.validate();
         rt.rs.validate();
     }
     x = trans_mod.codegen(x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
-        heap.heap.validate();
+        heap.validate();
         trans_mod.validate();
         rt.rs.validate();
     }
@@ -366,7 +367,7 @@ pub fn obey(x_in: Word) void {
     core_state.s.compiling = 0;
     const list_t: Word = 4;
     const char_t: Word = 3;
-    const islist = typ >= word.ATOMLIMIT and getTag(typ) == .AP and h(typ) == list_t;
+    const islist = typ >= word.ATOMLIMIT and getTag(heap, typ) == .AP and h(typ) == list_t;
     const out_val: Word = if (islist and t(typ) == rt.rs.message)
         x
     else blk: {
@@ -380,11 +381,11 @@ pub fn obey(x_in: Word) void {
 }
 
 /// Evaluate a typed REPL expression: compile it and fork via `process`; the child prints the result and exits, leaving the parent's heap untouched.
-pub fn evaluateRepl(x_in: Word) void {
+pub fn evaluateRepl(heap: *Heap, x_in: Word) void {
     var x = x_in;
     const typ = types_mod.typeOf(x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
-        heap.heap.validate();
+        heap.validate();
         trans_mod.validate();
         rt.rs.validate();
     }
@@ -392,14 +393,14 @@ pub fn evaluateRepl(x_in: Word) void {
     rt.rs.lastexp = x;
     x = trans_mod.codegen(x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
-        heap.heap.validate();
+        heap.validate();
         trans_mod.validate();
         rt.rs.validate();
     }
     if (cs.polyshowerror != 0) return;
     const list_t: Word = 4;
     const char_t: Word = 3;
-    const islist = typ >= word.ATOMLIMIT and getTag(typ) == .AP and h(typ) == list_t;
+    const islist = typ >= word.ATOMLIMIT and getTag(heap, typ) == .AP and h(typ) == list_t;
     const out_val: Word = if (islist and t(typ) == rt.rs.message)
         x
     else blk: {
@@ -417,7 +418,7 @@ pub fn evaluateRepl(x_in: Word) void {
         abi.output(out_val);
         _ = word.putchar('\n');
         outstats();
-        const exit_code: c_int = if (heap.heap.nogcs == 0) 0 else @as(c_int, @intCast(@min(heap.heap.nogcs, 253))) + 1;
+        const exit_code: c_int = if (heap.nogcs == 0) 0 else @as(c_int, @intCast(@min(heap.nogcs, 253))) + 1;
         abi.exit(exit_code);
     }
     // Parent returns here; heap and compiling flag are unchanged.
@@ -452,7 +453,7 @@ pub fn edWarn() void {
 /// Print the Miranda release banner (version, plus `(UTF-8)` when applicable).
 pub fn announce() void {
     word.print("Miranda release {s}", .{startup.versionString(version.version)});
-    if (heap.utf8test()) {
+    if (heap_mod.utf8test()) {
         word.print(" (UTF-8)", .{});
     }
     word.print("\n", .{});
