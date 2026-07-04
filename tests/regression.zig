@@ -161,8 +161,14 @@ fn runBinary(allocator: std.mem.Allocator, io: std.Io, binary_path: []const u8, 
     multi_reader.init(allocator, io, multi_reader_buffer.toStreams(), &.{ child.stdout.?, child.stderr.? });
     defer multi_reader.deinit();
 
-    while (multi_reader.fill(64, .none)) |_| {} else |err| switch (err) {
+    const timeout = std.Io.Timeout{ .duration = .{ .raw = std.Io.Duration.fromSeconds(10), .clock = .real } };
+    while (multi_reader.fill(64, timeout)) |_| {} else |err| switch (err) {
         error.EndOfStream => {},
+        error.Timeout => {
+            child.kill(io);
+            _ = try child.wait(io);
+            return error.Timeout;
+        },
         else => |e| return e,
     }
 

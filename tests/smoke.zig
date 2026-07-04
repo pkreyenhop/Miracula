@@ -66,8 +66,14 @@ fn run_mira(
     multi_reader.init(allocator, io, multi_reader_buffer.toStreams(), &.{ child.stdout.?, child.stderr.? });
     defer multi_reader.deinit();
 
-    while (multi_reader.fill(64, .none)) |_| {} else |err| switch (err) {
+    const timeout = std.Io.Timeout{ .duration = .{ .raw = std.Io.Duration.fromSeconds(10), .clock = .real } };
+    while (multi_reader.fill(64, timeout)) |_| {} else |err| switch (err) {
         error.EndOfStream => {},
+        error.Timeout => {
+            child.kill(io);
+            _ = try child.wait(io);
+            return error.Timeout;
+        },
         else => |e| return e,
     }
 
@@ -139,8 +145,14 @@ fn run_mira_expect_stderr(
     multi_reader.init(allocator, io, multi_reader_buffer.toStreams(), &.{ child.stdout.?, child.stderr.? });
     defer multi_reader.deinit();
 
-    while (multi_reader.fill(64, .none)) |_| {} else |err| switch (err) {
+    const timeout = std.Io.Timeout{ .duration = .{ .raw = std.Io.Duration.fromSeconds(10), .clock = .real } };
+    while (multi_reader.fill(64, timeout)) |_| {} else |err| switch (err) {
         error.EndOfStream => {},
+        error.Timeout => {
+            child.kill(io);
+            _ = try child.wait(io);
+            return error.Timeout;
+        },
         else => |e| return e,
     }
 
@@ -210,8 +222,14 @@ fn run_compile_time_guard(
     multi_reader.init(allocator, io, multi_reader_buffer.toStreams(), &.{ child.stdout.?, child.stderr.? });
     defer multi_reader.deinit();
 
-    while (multi_reader.fill(64, .none)) |_| {} else |err| switch (err) {
+    const timeout = std.Io.Timeout{ .duration = .{ .raw = std.Io.Duration.fromSeconds(10), .clock = .real } };
+    while (multi_reader.fill(64, timeout)) |_| {} else |err| switch (err) {
         error.EndOfStream => {},
+        error.Timeout => {
+            child.kill(io);
+            _ = try child.wait(io);
+            return error.Timeout;
+        },
         else => |e| return e,
     }
 
@@ -264,8 +282,14 @@ fn run_standard_lib_load_guard(
     multi_reader.init(allocator, io, multi_reader_buffer.toStreams(), &.{ child.stdout.?, child.stderr.? });
     defer multi_reader.deinit();
 
-    while (multi_reader.fill(64, .none)) |_| {} else |err| switch (err) {
+    const timeout = std.Io.Timeout{ .duration = .{ .raw = std.Io.Duration.fromSeconds(10), .clock = .real } };
+    while (multi_reader.fill(64, timeout)) |_| {} else |err| switch (err) {
         error.EndOfStream => {},
+        error.Timeout => {
+            child.kill(io);
+            _ = try child.wait(io);
+            return error.Timeout;
+        },
         else => |e| return e,
     }
 

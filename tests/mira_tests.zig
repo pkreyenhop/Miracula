@@ -88,12 +88,18 @@ fn runMira(env: *const TestEnv, script: ?[]const u8, input: []const u8, extra_ar
     multi_reader.init(allocator, testing.io, multi_reader_buffer.toStreams(), &.{ child.stdout.?, child.stderr.? });
     defer multi_reader.deinit();
 
-    while (multi_reader.fill(64, .none)) |_| {
+    const timeout = std.Io.Timeout{ .duration = .{ .raw = std.Io.Duration.fromSeconds(10), .clock = .real } };
+    while (multi_reader.fill(64, timeout)) |_| {
         if (multi_reader.reader(0).buffered().len > 1024 * 1024 or multi_reader.reader(1).buffered().len > 1024 * 1024) {
             return error.StreamTooLong;
         }
     } else |err| switch (err) {
         error.EndOfStream => {},
+        error.Timeout => {
+            child.kill(testing.io);
+            _ = try child.wait(testing.io);
+            return error.Timeout;
+        },
         else => |e| return e,
     }
     try multi_reader.checkAnyError();
