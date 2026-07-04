@@ -361,12 +361,59 @@ several simultaneously (entangled — narrow threading degenerates into passing
    risk.
 
 **Sequencing:** `big.zig` ✅ → `strtab.zig` ✅ → `ReductionCtx.heap` ✅ (Tier 1.5) →
-`ready.zig` tidy-up ✅ (Tier 2) → **checkpoint** (re-evaluate before any Tier 3
-work — this is where we are now: Tiers 1/1.5/2 all done, Tier 3 not started).
+`ready.zig` tidy-up ✅ (Tier 2) → checkpoint (Tiers 1/1.5/2 done) → **Tier 3
+committed to** (explicit user decision, overriding the "do not commit by
+default" recommendation above) → **`setup.zig` increment ✅ done (2026-07-05),
+first concrete file.**
 Each subsystem is its own PR, golden-gated (the full 48-case corpus + unit suite
 + spine-corpus stress checks + lint), with a reducer-loop timing check (reuse
 the ad hoc `fib(N)` comparison method used for the B2(b) `Spine` cutover and the
 B3 GC rewrite) for anything touching the hot path.
+
+**Tier 3, increment 1 — `setup.zig` ✅ done (2026-07-05).** Chosen as the
+smallest/most tractable starting file (254 lines, ~15 heap-touch patterns,
+vs. 800+ in `trans.zig`/`types.zig`). `primdef`/`predef`/`primlib`/`privlib`/
+`stdlib` now take an explicit `heap: *Heap` first parameter, threaded through
+each other; `miraSetup()` itself keeps its old zero-arg public signature and
+grabs the ambient singleton once internally (`const heap = heap_mod.heap;`),
+mirroring exactly how `reducer/reduce.zig`'s `reduce()` seeds `ctx.heap` —
+this meant all 5 external callers of `miraSetup()` needed no changes; only
+`module_loader.zig`'s two `setup.privlib()`/`setup.stdlib()` call sites needed
+an explicit `heap.heap` argument added.
+
+Also converted 3 free functions in `heap.zig` that `setup.zig` calls
+(`constructor`, `isconstructor`, `addtoenv` — confirmed via grep to have only
+4 external call sites, all in `setup.zig`) to take an explicit `Heap`/`*Heap`
+parameter.
+
+**Gotcha for future Tier 3 increments:** these 3 functions live *outside* the
+`Heap` struct's own block (which spans `heap.zig` lines 93–638). Zig's
+`x.method(...)` call sugar only resolves against declarations physically
+inside the type's block — giving a free function a `self`/`heap` parameter
+does **not** make `heap.constructor(...)` work as method-call syntax. The
+compiler error is misleading (`"method invocation only supports up to one
+level of implicit pointer dereferencing"`, suggesting a deref problem) but the
+real fix is to call these as regular qualified functions: `constructor(heap,
+...)` from within `heap.zig` itself (bare name, same file), or
+`heap_mod.constructor(heap, ...)` from another file (module-qualified). Of
+`heap.zig`'s 99 functions, ~74 are free functions outside the struct — expect
+to hit this repeatedly as Tier 3 proceeds into `heap.zig` itself.
+
+*DoD met: `zig build` clean; `zig build test` — 176/176 unit tests pass (run
+`main-tests` directly per [[zig-build-test-listen-quirk]] rather than trusting
+the `--listen` wrapper's exit code); `zig build check` — sigint check, 48/48
+golden spine-differential checks, and smoke tests all green (the one
+`BrokenPipe` seen on an initial `zig build test` run was a pre-existing timing
+flake in `sigint_check.zig`'s child-stdin write, confirmed by 3 clean reruns
+of `zig build test-sigint` in isolation — not caused by this change); lint at
+16 warnings (pre-existing baseline, no new warnings); manual smoke test of
+`True & False`, `show`, list comprehensions, and string concat (all exercise
+primitives seeded by `setup.zig`'s `primlib`/`privlib`/`stdlib`) all correct.*
+
+Next candidates, in roughly ascending difficulty: `repl.zig` (551 lines, ~18
+touches), `dump.zig` (421, ~126), `commands.zig` (787, ~47), `startup.zig`
+(862, ~31), `module_loader.zig` (690, ~232), `lex.zig` (2079, ~134), then the
+two hardest: `trans.zig` (1830, ~807) and `types.zig` (2736, ~788).
 * **Irreducible exception (unchanged):** OS signal handlers run on the C ABI and
   cannot take any explicit parameter; they read a single `current_interp: *Interp`
   set on entry — the one documented global, analogous to `errno` and the A4

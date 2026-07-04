@@ -88,10 +88,10 @@ pub fn loadfile(t_val: [*:0]const u8) void {
     heap.tp(heap.h(ls.fileq)).* = heap.heap.current_file;
 
     if (rt.rs.initialising != 0 and word.strcmp(t_val, @as([*:0]const u8, @ptrCast(&rt.rs.PRELUDE))) == 0) {
-        setup.privlib();
+        setup.privlib(heap.heap);
     } else if (rt.rs.initialising != 0 or rt.rs.nostdenv) {
         if (word.strcmp(t_val, @as([*:0]const u8, @ptrCast(&rt.rs.STDENV))) == 0) {
-            setup.stdlib();
+            setup.stdlib(heap.heap);
         }
     }
 

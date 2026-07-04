@@ -1650,14 +1650,14 @@ fn fileinfo(x: Word, y: Word) Word {
 }
 
 /// Allocate a `CONSTRUCTOR` cell (tag `n`, fields `x`).
-pub fn constructor(n: Word, x: anytype) Word {
+pub fn constructor(self: *Heap, n: Word, x: anytype) Word {
     const x_val: Word = switch (@TypeOf(x)) {
         Word => x,
         c_int, c_uint => @intCast(x),
         [*:0]const u8, [*:0]u8 => strtab.strBits(strtab.table, x),
         else => @compileError("Unsupported type for constructor"),
     };
-    return make(.CONSTRUCTOR, n, x_val);
+    return self.make(.CONSTRUCTOR, n, x_val);
 }
 
 /// Allocate a `STARTREADVALS` node for the `readvals` reader.
@@ -2208,7 +2208,7 @@ pub fn loadDefs(file: ?*word.FILE) Word {
             word.CONSTRUCT_X => {
                 var val = main_clib.getc(file);
                 val = val | (main_clib.getc(file) << 8);
-                stackpSetTop(constructor(val, stackpTop()));
+                stackpSetTop(constructor(heap, val, stackpTop()));
             },
             word.RV_X => {
                 stackpSetTop(readvals(0, stackpTop()));
@@ -2424,8 +2424,8 @@ pub fn isfreeid(x: Word) bool {
 
 const isconstrname = lex.isconstrname;
 /// Whether `x` names a data constructor.
-pub fn isconstructor(x: Word) bool {
-    return getTag(x) == .ID and isconstrname(getId(x));
+pub fn isconstructor(self: Heap, x: Word) bool {
+    return self.getTag(x) == .ID and isconstrname(getId(x));
 }
 
 /// Whether `x` names an ordinary variable.
@@ -2434,8 +2434,8 @@ pub fn isvariable(x: Word) bool {
 }
 
 /// Add id `x` to the current file's definition environment.
-pub fn addtoenv(x: Word) void {
-    tp(h(heap.files)).* = cons(x, t(h(heap.files)));
+pub fn addtoenv(self: *Heap, x: Word) void {
+    self.tp(self.h(self.files)).* = self.cons(x, self.t(self.h(self.files)));
 }
 
 /// Reverse list `input`.

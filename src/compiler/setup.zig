@@ -8,7 +8,8 @@ const rt = @import("../runtime/runtime_state.zig");
 const cs = @import("compiler_state.zig").cs;
 const word = @import("../runtime/word.zig");
 const abi = @import("../runtime/main_clib.zig");
-const heap = @import("../runtime/heap.zig");
+const heap_mod = @import("../runtime/heap.zig");
+const Heap = heap_mod.Heap;
 
 const Word = word.Word;
 const NIL = word.NIL;
@@ -23,7 +24,7 @@ const ls = lex_state.ls;
 // Global variables defined/exported in parser/lex.zig
 
 // Exported initialization functions from other modules
-const setupheap = heap.setupheap;
+const setupheap = heap_mod.setupheap;
 const tsetup = types.tsetup;
 const resetPns = lex.resetPns;
 const bigsetup = big.setup;
@@ -106,7 +107,7 @@ pub fn acterror() void {
 
 /// Registers a primitive identifier `n` in the private primitive environment (`rs.primenv`).
 /// `v` is the combinator value; `t_val` is the type node. Called only from primlib().
-pub fn primdef(n: [*:0]const u8, v: Word, t_val: Word) void {
+pub fn primdef(heap: *Heap, n: [*:0]const u8, v: Word, t_val: Word) void {
     const x = abi.makeId(@constCast(n));
     rt.rs.primenv = heap.cons(x, rt.rs.primenv);
     heap.tp(x).* = v;
@@ -116,83 +117,83 @@ pub fn primdef(n: [*:0]const u8, v: Word, t_val: Word) void {
 /// Registers a predefined identifier `n` in the global environment.
 /// `v` is the combinator value (wrapped in `constructor()` if `n` is a constructor);
 /// `t_val` is the type node. Called from privlib() and stdlib().
-pub fn predef(n: [*:0]const u8, v: Word, t_val: Word) void {
+pub fn predef(heap: *Heap, n: [*:0]const u8, v: Word, t_val: Word) void {
     const x = abi.makeId(@constCast(n));
-    heap.addtoenv(x);
-    heap.tp(x).* = if (heap.isconstructor(x)) heap.constructor(v, x) else v;
+    heap_mod.addtoenv(heap, x);
+    heap.tp(x).* = if (heap_mod.isconstructor(heap.*, x)) heap_mod.constructor(heap, v, x) else v;
     heap.tp(heap.h(x)).* = t_val;
 }
 
 /// Seeds the primitive type aliases (num, char, bool) and built-in constructors
 /// (True, False) into the private primitive environment. Called by miraSetup().
-pub fn primlib() void {
-    primdef("num", abi.make_typ(0, 0, word.synonym_t, word.num_t), word.type_t);
-    primdef("char", abi.make_typ(0, 0, word.synonym_t, word.char_t), word.type_t);
-    primdef("bool", abi.make_typ(0, 0, word.synonym_t, word.bool_t), word.type_t);
-    primdef("True", 1, word.bool_t);
-    primdef("False", 0, word.bool_t);
+pub fn primlib(heap: *Heap) void {
+    primdef(heap, "num", abi.make_typ(0, 0, word.synonym_t, word.num_t), word.type_t);
+    primdef(heap, "char", abi.make_typ(0, 0, word.synonym_t, word.char_t), word.type_t);
+    primdef(heap, "bool", abi.make_typ(0, 0, word.synonym_t, word.bool_t), word.type_t);
+    primdef(heap, "True", 1, word.bool_t);
+    primdef(heap, "False", 0, word.bool_t);
 }
 
 /// Seeds the private-prelude identifiers (offside, changetype, hd/tl, etc.) that are
 /// always in scope but not user-visible. Called during prelude loading.
-pub fn privlib() void {
-    predef("offside", word.OFFSIDE, cs.ltchar);
-    predef("changetype", word.I, word.wrong_t);
-    predef("first", word.HD, word.wrong_t);
-    predef("rest", word.TL, word.wrong_t);
-    predef("code", word.CODE, word.undef_t);
-    predef("concat", abi.ap2(word.FOLDR, word.APPEND, NIL), word.undef_t);
-    predef("decode", word.DECODE, word.undef_t);
-    predef("drop", word.DROP, word.undef_t);
-    predef("error", word.ERROR, word.undef_t);
-    predef("filter", word.FILTER, word.undef_t);
-    predef("foldr", word.FOLDR, word.undef_t);
-    predef("hd", word.HD, word.undef_t);
-    predef("map", word.MAP, word.undef_t);
-    predef("shownum", word.SHOWNUM, word.undef_t);
-    predef("take", word.TAKE, word.undef_t);
-    predef("tl", word.TL, word.undef_t);
+pub fn privlib(heap: *Heap) void {
+    predef(heap, "offside", word.OFFSIDE, cs.ltchar);
+    predef(heap, "changetype", word.I, word.wrong_t);
+    predef(heap, "first", word.HD, word.wrong_t);
+    predef(heap, "rest", word.TL, word.wrong_t);
+    predef(heap, "code", word.CODE, word.undef_t);
+    predef(heap, "concat", abi.ap2(word.FOLDR, word.APPEND, NIL), word.undef_t);
+    predef(heap, "decode", word.DECODE, word.undef_t);
+    predef(heap, "drop", word.DROP, word.undef_t);
+    predef(heap, "error", word.ERROR, word.undef_t);
+    predef(heap, "filter", word.FILTER, word.undef_t);
+    predef(heap, "foldr", word.FOLDR, word.undef_t);
+    predef(heap, "hd", word.HD, word.undef_t);
+    predef(heap, "map", word.MAP, word.undef_t);
+    predef(heap, "shownum", word.SHOWNUM, word.undef_t);
+    predef(heap, "take", word.TAKE, word.undef_t);
+    predef(heap, "tl", word.TL, word.undef_t);
 }
 
 /// Seeds the standard-library identifiers (map, filter, foldr, trig fns, etc.) into
 /// the global environment. Called when STDENV is loaded successfully.
-pub fn stdlib() void {
-    predef("arctan", word.ARCTAN_FN, word.undef_t);
-    predef("code", word.CODE, word.undef_t);
-    predef("cos", word.COS_FN, word.undef_t);
-    predef("decode", word.DECODE, word.undef_t);
-    predef("drop", word.DROP, word.undef_t);
-    predef("entier", word.ENTIER_FN, word.undef_t);
-    predef("error", word.ERROR, word.undef_t);
-    predef("exp", word.EXP_FN, word.undef_t);
-    predef("filemode", word.FILEMODE, word.undef_t);
-    predef("filestat", word.FILESTAT, word.undef_t);
-    predef("foldl", word.FOLDL, word.undef_t);
-    predef("foldl1", word.FOLDL1, word.undef_t);
-    predef("hugenum", abi.stoDbl(abi.DBL_MAX), word.undef_t);
-    predef("last", word.LIST_LAST, word.undef_t);
-    predef("foldr", word.FOLDR, word.undef_t);
-    predef("force", word.FORCE, word.undef_t);
-    predef("getenv", word.GETENV, word.undef_t);
-    predef("integer", word.INTEGER, word.undef_t);
-    predef("log", word.LOG_FN, word.undef_t);
-    predef("log10", word.LOG10_FN, word.undef_t);
-    predef("merge", word.MERGE, word.undef_t);
-    predef("numval", word.NUMVAL, word.undef_t);
-    predef("read", word.STARTREAD, word.undef_t);
-    predef("readb", word.STARTREADBIN, word.undef_t);
-    predef("seq", word.SEQ, word.undef_t);
-    predef("shownum", word.SHOWNUM, word.undef_t);
-    predef("showhex", word.SHOWHEX, word.undef_t);
-    predef("showoct", word.SHOWOCT, word.undef_t);
-    predef("showfloat", word.SHOWFLOAT, word.undef_t);
-    predef("showscaled", word.SHOWSCALED, word.undef_t);
-    predef("sin", word.SIN_FN, word.undef_t);
-    predef("sqrt", word.SQRT_FN, word.undef_t);
-    predef("system", word.EXEC, word.undef_t);
-    predef("take", word.TAKE, word.undef_t);
-    predef("tinynum", mktiny(), word.undef_t);
-    predef("zip2", word.ZIP, word.undef_t);
+pub fn stdlib(heap: *Heap) void {
+    predef(heap, "arctan", word.ARCTAN_FN, word.undef_t);
+    predef(heap, "code", word.CODE, word.undef_t);
+    predef(heap, "cos", word.COS_FN, word.undef_t);
+    predef(heap, "decode", word.DECODE, word.undef_t);
+    predef(heap, "drop", word.DROP, word.undef_t);
+    predef(heap, "entier", word.ENTIER_FN, word.undef_t);
+    predef(heap, "error", word.ERROR, word.undef_t);
+    predef(heap, "exp", word.EXP_FN, word.undef_t);
+    predef(heap, "filemode", word.FILEMODE, word.undef_t);
+    predef(heap, "filestat", word.FILESTAT, word.undef_t);
+    predef(heap, "foldl", word.FOLDL, word.undef_t);
+    predef(heap, "foldl1", word.FOLDL1, word.undef_t);
+    predef(heap, "hugenum", abi.stoDbl(abi.DBL_MAX), word.undef_t);
+    predef(heap, "last", word.LIST_LAST, word.undef_t);
+    predef(heap, "foldr", word.FOLDR, word.undef_t);
+    predef(heap, "force", word.FORCE, word.undef_t);
+    predef(heap, "getenv", word.GETENV, word.undef_t);
+    predef(heap, "integer", word.INTEGER, word.undef_t);
+    predef(heap, "log", word.LOG_FN, word.undef_t);
+    predef(heap, "log10", word.LOG10_FN, word.undef_t);
+    predef(heap, "merge", word.MERGE, word.undef_t);
+    predef(heap, "numval", word.NUMVAL, word.undef_t);
+    predef(heap, "read", word.STARTREAD, word.undef_t);
+    predef(heap, "readb", word.STARTREADBIN, word.undef_t);
+    predef(heap, "seq", word.SEQ, word.undef_t);
+    predef(heap, "shownum", word.SHOWNUM, word.undef_t);
+    predef(heap, "showhex", word.SHOWHEX, word.undef_t);
+    predef(heap, "showoct", word.SHOWOCT, word.undef_t);
+    predef(heap, "showfloat", word.SHOWFLOAT, word.undef_t);
+    predef(heap, "showscaled", word.SHOWSCALED, word.undef_t);
+    predef(heap, "sin", word.SIN_FN, word.undef_t);
+    predef(heap, "sqrt", word.SQRT_FN, word.undef_t);
+    predef(heap, "system", word.EXEC, word.undef_t);
+    predef(heap, "take", word.TAKE, word.undef_t);
+    predef(heap, "tinynum", mktiny(), word.undef_t);
+    predef(heap, "zip2", word.ZIP, word.undef_t);
 }
 
 /// The smallest positive double the host represents, as a `DOUBLE` node (for `tiny`).
@@ -210,22 +211,23 @@ fn mktiny() Word {
 /// dictionary, and parser state, then seeds the primitive environment.
 /// Must be called exactly once before any source file is loaded.
 pub fn miraSetup() void {
+    const heap = heap_mod.heap;
     setupheap();
     tsetup();
     resetPns();
-    bigsetup(heap.heap, big.bn);
+    bigsetup(heap, big.bn);
     ls.common_stdin = abi.ap(word.READ, 0);
     ls.common_stdinb = abi.ap(word.READBIN, 0);
     ls.cook_stdin = abi.ap(abi.readvals(0, 0), word.OFFSIDE);
     core_state.s.nill = heap.cons(word.CONST, NIL);
     rt.rs.Void = abi.makeId(@constCast("()"));
     heap.tp(heap.h(rt.rs.Void)).* = word.void_t;
-    heap.tp(rt.rs.Void).* = heap.constructor(0, rt.rs.Void);
+    heap.tp(rt.rs.Void).* = heap_mod.constructor(heap, 0, rt.rs.Void);
     rt.rs.message = abi.makeId(@constCast("sys_message"));
     rt.rs.main_id = abi.makeId(@constCast("main"));
     rt.rs.concat = abi.makeId(@constCast("concat"));
     rt.rs.diagonalise = abi.makeId(@constCast("diagonalise"));
-    rt.rs.standardout = heap.constructor(0, @as([*:0]const u8, "Stdout"));
+    rt.rs.standardout = heap_mod.constructor(heap, 0, @as([*:0]const u8, "Stdout"));
     rt.rs.indent_fn = abi.makeId(@constCast("indent"));
     rt.rs.outdent_fn = abi.makeId(@constCast("outdent"));
     rt.rs.listdiff_fn = abi.makeId(@constCast("listdiff"));
@@ -240,7 +242,7 @@ pub fn miraSetup() void {
     rt.rs.showfunction = abi.makeId(@constCast("showfunction"));
     rt.rs.showabstract = abi.makeId(@constCast("showabstract"));
     rt.rs.showwhat = abi.makeId(@constCast("showwhat"));
-    primlib();
+    primlib(heap);
 }
 
 test "miraSetup initialisation and primitive seeding" {
