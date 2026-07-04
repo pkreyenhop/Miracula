@@ -27,12 +27,10 @@ const heap = @import("../runtime/heap.zig");
 const repl = @import("repl.zig");
 const commands = @import("commands.zig");
 const files = @import("../io/files.zig");
-const module_loader = @import("../compiler/module_loader.zig");
 const setup = @import("../compiler/setup.zig");
 const signals_mod = @import("../io/signals.zig");
 const dump = @import("../compiler/dump.zig");
 const EDITOR: [*:0]const u8 = "vi +!";
-const core_state = @import("../runtime/core_state.zig");
 const lineedit = @import("lineedit.zig");
 const ls = lex_state.ls;
 
@@ -545,54 +543,113 @@ var mstack: [4][*:0]const u8 = undefined; // the corresponding directory paths
 var mvp: usize = 0; // count of recorded mismatches (<= 4)
 var vbuf: [12]u8 = undefined; // formatting buffer for versionString
 
-/// Load the saved `.mirarc` dump `rcfile`, fixing up types. Returns 1 on success, 0 if missing/stale/clashing.
+/// Load the saved `.mirarc` dump `rcfile`. Returns 1 on success, 0 on failure.
 pub fn readRc(rcfile: [*:0]const u8) Word {
-    var f: ?*word.FILE = null;
-    var x: Word = undefined;
-    var res: Word = 0;
-    f = word.fopen(rcfile, "r");
-    if (f == null) return 0;
-    core_state.s.loading = 1;
-    res = abi.loadScript(f.?, @constCast(rcfile), NIL, NIL, 0);
-    _ = word.fclose(f.?);
-    if (cs.BAD_DUMP != 0) {
-        heap.unload();
-        cs.CLASHES = NIL;
-        heap.heap.stackp = heap.heap.dstack;
-        core_state.s.loading = 0;
+    var z: [20]u8 = undefined;
+    @memset(&z, 0);
+    var h_val: c_long = 0;
+    var d_val: c_long = 0;
+    var v_val: c_long = 0;
+    var s_val: c_long = 0;
+    var r: Word = 0;
+
+    const in = word.fopen(rcfile, "r") orelse return 0;
+    defer _ = word.fclose(in);
+
+    if (abi.fscanf(in, "%19s", .{@as([*c]u8, @ptrCast(&z))}) != 1) {
         return 0;
     }
-    if (cs.CLASHES != NIL) {
-        heap.unload();
-        core_state.s.loading = 0;
-        return 0;
-    }
-    if (heap.srcUpdate() != 0) {
-        module_loader.loadfile(rcfile);
-    }
-    core_state.s.loading = 0;
-    if (cs.ND != NIL or heap.heap.files == NIL) return 0;
-    x = heap.filDefs(h(heap.heap.files));
-    while (x != NIL) : (x = t(x)) {
-        if (heap.idType(h(x)) == word.synonym_t) {
-            heap.tp(heap.tInfo(h(x))).* = dump.fixtype(heap.tInfo(h(x)), h(x));
-        } else {
-            heap.tp(h(h(x))).* = dump.fixtype(heap.idType(h(x)), h(x));
+    const z_ptr: [*:0]const u8 = @ptrCast(&z);
+    const z_slice = std.mem.span(z_ptr);
+    if (std.mem.startsWith(u8, z_slice, "hdve") or std.mem.eql(u8, z_slice, "lhdve")) {
+        var z1 = @as([*]u8, @ptrCast(&z)) + 3;
+        if (z[0] == 'l') {
+            rt.rs.listing = 1;
+            z1 += 1;
         }
+        z1 += 1;
+        while (z1[0] != 0) : (z1 += 1) {
+            switch (z1[0]) {
+                'l' => rt.rs.listing = 1,
+                's' => {},
+                'r' => rt.rs.rechecking = 2,
+                else => rt.rs.rc_error = rcfile,
+            }
+        }
+
+        const read_ok = blk: {
+            if (abi.fscanf(in, "%ld%ld%ld%*c", .{ &h_val, &d_val, &v_val }) != 3) break :blk false;
+            if (repl.getLine(in, rt.rs.ebuf.len - 1, @ptrCast(&rt.rs.ebuf)) == 0) break :blk false;
+            if (flagOutOfRange(h_val) or flagOutOfRange(d_val) or flagOutOfRange(v_val)) break :blk false;
+            break :blk true;
+        };
+        if (!read_ok) {
+            rt.rs.rc_error = rcfile;
+        } else {
+            var len = word.strlen(&rt.rs.ebuf);
+            if (len > 0 and rt.rs.ebuf[len - 1] == '\n') {
+                rt.rs.ebuf[len - 1] = 0;
+                len -= 1;
+            }
+            rt.rs.editor = @ptrCast(&rt.rs.ebuf);
+            rt.rs.SPACELIMIT = h_val;
+            rt.rs.DICSPACE = d_val;
+            r = 1;
+        }
+    } else if (std.mem.eql(u8, z_slice, "ehdsv")) {
+        const read_ok = blk: {
+            if (abi.fscanf(in, "%19s%ld%ld%ld%ld", .{ &rt.rs.ebuf, &h_val, &d_val, &s_val, &v_val }) != 5) break :blk false;
+            if (flagOutOfRange(h_val) or flagOutOfRange(d_val) or flagOutOfRange(v_val)) break :blk false;
+            break :blk true;
+        };
+        if (!read_ok) {
+            rt.rs.rc_error = rcfile;
+        } else {
+            rt.rs.editor = @ptrCast(&rt.rs.ebuf);
+            rt.rs.SPACELIMIT = h_val;
+            rt.rs.DICSPACE = d_val;
+            r = 1;
+        }
+    } else if (std.mem.eql(u8, z_slice, "ehds")) {
+        const read_ok = blk: {
+            if (abi.fscanf(in, "%1023s%ld%ld%ld", .{ &rt.rs.ebuf, &h_val, &d_val, &s_val }) != 4) break :blk false;
+            if (flagOutOfRange(h_val) or flagOutOfRange(d_val)) break :blk false;
+            break :blk true;
+        };
+        if (!read_ok) {
+            rt.rs.rc_error = rcfile;
+        } else {
+            rt.rs.editor = @ptrCast(&rt.rs.ebuf);
+            rt.rs.SPACELIMIT = h_val;
+            rt.rs.DICSPACE = d_val;
+            r = 1;
+        }
+    } else {
+        rt.rs.rc_error = rcfile;
     }
-    return 1;
+    if (rt.rs.editor != null) {
+        rt.rs.baded = @intFromBool(repl.badEditor());
+    }
+    return r;
 }
 
-/// Write the current environment to the user's `~/.mirarc` dump.
+/// Write the current environment to the user's `~/.mirarc` config file.
 pub fn writeRc() void {
-    const home = abi.getenv("HOME");
-    var f: ?*word.FILE = null;
-    if (home == null or rt.rs.home_rc[0] == 0) return;
-    f = word.fopen(&rt.rs.home_rc, "w");
-    if (f == null) return;
-    abi.setprefix(@ptrCast(&rt.rs.home_rc));
-    abi.dumpScript(heap.heap.files, f.?);
-    _ = word.fclose(f.?);
+    if (rt.rs.home_rc[0] == 0) return;
+    const f = word.fopen(&rt.rs.home_rc, "w") orelse {
+        word.printErr("warning: cannot write to \"{s}\"\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&rt.rs.home_rc)))});
+        return;
+    };
+    defer _ = word.fclose(f);
+
+    _ = word.fprint(f, "hdve", .{});
+    if (rt.rs.listing != 0) {
+        _ = word.fprint(f, "l", .{});
+    }
+    if (rt.rs.rechecking == 2) {
+        _ = word.fprint(f, "r", .{});
+    }
+    _ = word.fprint(f, " {} {} {} {s}\n", .{ rt.rs.SPACELIMIT, rt.rs.DICSPACE, version.version, rt.rs.editor orelse @constCast("") });
 }
 
 /// Abort: command-line flag `s` was given without its required parameter.
@@ -657,4 +714,149 @@ pub fn versionInfo(full: c_int) void {
     if (full == 0) return;
     word.print("{s}", .{version.host});
     word.print("XVERSION {}\n", .{@as(c_uint, @intCast(word.XVERSION))});
+}
+
+test "readRc and writeRc roundtrip text config" {
+    const test_filename = "test_mirarc_temp";
+    const test_path: [*:0]const u8 = test_filename;
+
+    // Create the test .mirarc file with content
+    {
+        const f = word.fopen(test_path, "w") orelse return error.OpenFileFailed;
+        defer _ = word.fclose(f);
+        _ = word.fprint(f, "hdve 2500000 100000 2067 vi +!\n", .{});
+    }
+    defer _ = abi.unlink(test_path);
+
+    // Save previous values
+    const prev_limit = rt.rs.SPACELIMIT;
+    const prev_dic = rt.rs.DICSPACE;
+    const prev_editor = rt.rs.editor;
+    const prev_listing = rt.rs.listing;
+    const prev_rechecking = rt.rs.rechecking;
+    defer {
+        rt.rs.SPACELIMIT = prev_limit;
+        rt.rs.DICSPACE = prev_dic;
+        rt.rs.editor = prev_editor;
+        rt.rs.listing = prev_listing;
+        rt.rs.rechecking = prev_rechecking;
+    }
+
+    // Now call readRc
+    const res = readRc(test_path);
+    try std.testing.expectEqual(@as(Word, 1), res);
+    try std.testing.expectEqual(@as(Word, 2500000), rt.rs.SPACELIMIT);
+    try std.testing.expectEqual(@as(Word, 100000), rt.rs.DICSPACE);
+    try std.testing.expectEqualStrings("vi +!", std.mem.span(rt.rs.editor.?));
+
+    // Change settings and write
+    rt.rs.SPACELIMIT = 3000000;
+    rt.rs.DICSPACE = 150000;
+    rt.rs.listing = 1;
+    rt.rs.rechecking = 2;
+    rt.rs.editor = @constCast("emacs +! %");
+
+    // Set rt.rs.home_rc to our path so writeRc writes to it
+    _ = word.strcpy(&rt.rs.home_rc, test_path);
+
+    writeRc();
+
+    // Verify file content
+    {
+        const f = word.fopen(test_path, "r") orelse return error.OpenFileFailed;
+        defer _ = word.fclose(f);
+        var buf: [256]u8 = undefined;
+        @memset(&buf, 0);
+        _ = repl.getLine(f, buf.len - 1, &buf);
+        const file_content = std.mem.sliceTo(&buf, 0);
+        try std.testing.expectEqualStrings("hdvelr 3000000 150000 2067 emacs +! %\n", file_content);
+    }
+}
+
+/// Write `content` to a fresh temp `.mirarc`-style file, call `readRc` on it,
+/// and return the result -- shared by the legacy-format tests below.
+fn readRcFromContent(content: [*:0]const u8) !Word {
+    const test_path: [*:0]const u8 = "test_mirarc_legacy_temp";
+    {
+        const f = word.fopen(test_path, "w") orelse return error.OpenFileFailed;
+        defer _ = word.fclose(f);
+        _ = word.fprint(f, "{s}", .{content});
+    }
+    defer _ = abi.unlink(test_path);
+    return readRc(test_path);
+}
+
+test "readRc: \"lhdve\" sets the listing flag in addition to hdve's fields" {
+    const prev_limit = rt.rs.SPACELIMIT;
+    const prev_dic = rt.rs.DICSPACE;
+    const prev_editor = rt.rs.editor;
+    const prev_listing = rt.rs.listing;
+    defer {
+        rt.rs.SPACELIMIT = prev_limit;
+        rt.rs.DICSPACE = prev_dic;
+        rt.rs.editor = prev_editor;
+        rt.rs.listing = prev_listing;
+    }
+
+    const res = try readRcFromContent("lhdve 2500000 100000 2067 vi\n");
+    try std.testing.expectEqual(@as(Word, 1), res);
+    try std.testing.expectEqual(@as(Word, 1), rt.rs.listing);
+    try std.testing.expectEqual(@as(Word, 2500000), rt.rs.SPACELIMIT);
+    try std.testing.expectEqual(@as(Word, 100000), rt.rs.DICSPACE);
+    try std.testing.expectEqualStrings("vi", std.mem.span(rt.rs.editor.?));
+}
+
+test "readRc: \"hdve\" with an \"r\" flag sets rechecking" {
+    const prev_rechecking = rt.rs.rechecking;
+    defer rt.rs.rechecking = prev_rechecking;
+
+    const res = try readRcFromContent("hdver 2500000 100000 2067 vi\n");
+    try std.testing.expectEqual(@as(Word, 1), res);
+    try std.testing.expectEqual(@as(Word, 2), rt.rs.rechecking);
+}
+
+test "readRc: legacy \"ehdsv\" format (editor before the numeric fields)" {
+    const prev_limit = rt.rs.SPACELIMIT;
+    const prev_dic = rt.rs.DICSPACE;
+    const prev_editor = rt.rs.editor;
+    defer {
+        rt.rs.SPACELIMIT = prev_limit;
+        rt.rs.DICSPACE = prev_dic;
+        rt.rs.editor = prev_editor;
+    }
+
+    // ehdsv's editor token is read via a plain %s (no getLine), so it can't
+    // contain spaces -- a single-word editor name, unlike hdve's.
+    const res = try readRcFromContent("ehdsv vi 2500000 100000 80 2067\n");
+    try std.testing.expectEqual(@as(Word, 1), res);
+    try std.testing.expectEqual(@as(Word, 2500000), rt.rs.SPACELIMIT);
+    try std.testing.expectEqual(@as(Word, 100000), rt.rs.DICSPACE);
+    try std.testing.expectEqualStrings("vi", std.mem.span(rt.rs.editor.?));
+}
+
+test "readRc: legacy \"ehds\" format (no version field)" {
+    const prev_limit = rt.rs.SPACELIMIT;
+    const prev_dic = rt.rs.DICSPACE;
+    const prev_editor = rt.rs.editor;
+    defer {
+        rt.rs.SPACELIMIT = prev_limit;
+        rt.rs.DICSPACE = prev_dic;
+        rt.rs.editor = prev_editor;
+    }
+
+    const res = try readRcFromContent("ehds emacs 2500000 100000 80\n");
+    try std.testing.expectEqual(@as(Word, 1), res);
+    try std.testing.expectEqual(@as(Word, 2500000), rt.rs.SPACELIMIT);
+    try std.testing.expectEqual(@as(Word, 100000), rt.rs.DICSPACE);
+    try std.testing.expectEqualStrings("emacs", std.mem.span(rt.rs.editor.?));
+}
+
+test "readRc: unrecognised header sets rc_error and returns 0" {
+    const prev_rc_error = rt.rs.rc_error;
+    defer rt.rs.rc_error = prev_rc_error;
+    rt.rs.rc_error = null;
+
+    const res = try readRcFromContent("garbage 1 2 3\n");
+    try std.testing.expectEqual(@as(Word, 0), res);
+    try std.testing.expect(rt.rs.rc_error != null);
 }

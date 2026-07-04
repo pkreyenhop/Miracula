@@ -10,6 +10,7 @@ const testing = std.testing;
 const heap = @import("../runtime/heap.zig");
 const module_loader = @import("../compiler/module_loader.zig");
 const commands = @import("../driver/commands.zig");
+const abi = @import("../runtime/main_clib.zig");
 
 const setupheap = heap.setupheap;
 const setupdic = lex.setupdic;
@@ -433,6 +434,39 @@ test "syntax error sets errcol and editfile expands column placeholder" {
     const expected_cmd = ": -l 42 -c 17 -f \"test.m\"";
     const actual_cmd = std.mem.span(@as([*:0]const u8, @ptrCast(&rt.rs.linebuf[0])));
     try testing.expectEqualStrings(expected_cmd, actual_cmd);
+}
+
+test "/editor command parses arguments on the same line" {
+    ensureInitialized();
+    resetLexerState();
+
+    const old_editor = rt.rs.editor;
+    defer rt.rs.editor = old_editor;
+
+    // 1. /editor without arguments: just prints current editor (doesn't prompt/block)
+    ls.dicp = @constCast(@as([*:0]const u8, "editor"));
+    ls.c = '\n';
+    _ = commands.command();
+
+    // 2. /editor with arguments on the same line: changes editor
+    ls.dicp = @constCast(@as([*:0]const u8, "editor"));
+    ls.c = ' ';
+
+    if (abi.stdin()) |stdin_file| {
+        stdin_file.mem_buf = "my_custom_editor\ny\n";
+        stdin_file.mem_pos = 0;
+    }
+    defer {
+        if (abi.stdin()) |stdin_file| {
+            stdin_file.mem_buf = null;
+            stdin_file.mem_pos = 0;
+        }
+    }
+
+    _ = commands.command();
+
+    const actual_editor = std.mem.span(rt.rs.editor.?);
+    try testing.expectEqualStrings("my_custom_editor", actual_editor);
 }
 // Cache invalidation comment for strict-main-tests
 

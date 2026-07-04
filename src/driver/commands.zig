@@ -28,6 +28,7 @@ const files = @import("../io/files.zig");
 const repl = @import("repl.zig");
 const dump = @import("../compiler/dump.zig");
 const startup = @import("startup.zig");
+const lineedit = @import("lineedit.zig");
 const module_loader = @import("../compiler/module_loader.zig");
 const ls = lex_state.ls;
 
@@ -273,7 +274,13 @@ fn cmdEdit() bool {
                 mf = mirahdr;
             }
             if (mf != null and t_val != rt.rs.current_script) {
-                word.print("open new script \"{s}\"? [ny]", .{t_val.?});
+                var prompt_buf: [256]u8 = undefined;
+                const prompt = std.fmt.bufPrint(&prompt_buf, "open new script \"{s}\"? [ny]", .{t_val.?}) catch "open new script? [ny]";
+                if (lineedit.active) {
+                    lineedit.setPrompt(prompt);
+                } else {
+                    word.print("{s}", .{prompt});
+                }
                 ch1 = abi.getchar();
                 ch = ch1;
                 while (ch != '\n' and ch != abi.EOF) {
@@ -302,7 +309,7 @@ fn cmdEdit() bool {
             return true;
         }
         var h_ptr = hold + word.strlen(hold);
-        while ((h_ptr - 1)[0] == ' ' or (h_ptr - 1)[0] == '\t') {
+        while (h_ptr != hold and ((h_ptr - 1)[0] == ' ' or (h_ptr - 1)[0] == '\t' or (h_ptr - 1)[0] == '\n' or (h_ptr - 1)[0] == '\r')) {
             h_ptr -= 1;
             h_ptr[0] = 0;
         }
@@ -310,7 +317,13 @@ fn cmdEdit() bool {
             word.print("please type name of editor without quotation marks\n", .{});
             return true;
         }
-        word.print("change editor to: \"{s}\"? [ny]", .{@as([*:0]const u8, @ptrCast(hold))});
+        var prompt_buf: [256]u8 = undefined;
+        const prompt = std.fmt.bufPrint(&prompt_buf, "change editor to: \"{s}\"? [ny]", .{std.mem.span(@as([*:0]const u8, @ptrCast(hold)))}) catch "change editor to? [ny]";
+        if (lineedit.active) {
+            lineedit.setPrompt(prompt);
+        } else {
+            word.print("{s}", .{prompt});
+        }
         ch1 = abi.getchar();
         ch = ch1;
         while (ch != '\n' and ch != abi.EOF) {
