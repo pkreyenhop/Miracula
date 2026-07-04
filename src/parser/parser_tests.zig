@@ -446,7 +446,7 @@ test "/editor command parses arguments on the same line" {
     // 1. /editor without arguments: just prints current editor (doesn't prompt/block)
     ls.dicp = @constCast(@as([*:0]const u8, "editor"));
     ls.c = '\n';
-    _ = commands.command();
+    _ = commands.command(heap.heap);
 
     // 2. /editor with arguments on the same line: changes editor
     ls.dicp = @constCast(@as([*:0]const u8, "editor"));
@@ -463,7 +463,7 @@ test "/editor command parses arguments on the same line" {
         }
     }
 
-    _ = commands.command();
+    _ = commands.command(heap.heap);
 
     const actual_editor = std.mem.span(rt.rs.editor.?);
     try testing.expectEqualStrings("my_custom_editor", actual_editor);

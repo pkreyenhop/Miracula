@@ -496,10 +496,48 @@ fresh compile + `makedump`, confirmed `script.x` was created, then ran again
 to exercise the `undump`-from-cache path — both runs produced identical,
 correct output for `fib`/`add1`).*
 
-Next candidates, in roughly ascending difficulty: `commands.zig` (787 lines,
-~47 touches), `startup.zig` (862, ~31), `module_loader.zig` (690, ~232),
-`lex.zig` (2079, ~134), then the two hardest: `trans.zig` (1830, ~807) and
-`types.zig` (2736, ~788).
+**Tier 3, increment 4 — `commands.zig` ✅ done (2026-07-05).** Same split as
+every increment so far: most of the ~47 touches are ambient free-function
+calls (`idVal`/`idType`/`idWho`/`getId`/`getHere`/`tClass`/`filDefs`/
+`getFil`/`filTime`/`filShare`/`alfasort`/`cons`/`reverse`/`tp`/`h`/`t`/
+`srcUpdate`/`badval`/`makeFil`), left unconverted. Threaded `heap: *Heap`
+through the local `getTag` helper and the 4 functions that touch
+`heap.heap.files` directly: `cmdFiles` (private, called once from
+`command`), `command` (pub — threads into `cmdFiles`), `allnamescom` (pub).
+`namescom`/`cmdEdit`/`editfile`/`finger`/`diagnose` needed no change
+(ambient-only). External call sites: `repl.zig`'s `commandLoop` (2 sites,
+already had `heap` in scope from increment 2) and `parser_tests.zig`'s
+`/editor` command test (2 sites, passing `heap.heap` since that test has no
+existing `*Heap` in scope).
+
+**Second sed-adjacent gotcha, distinct from `dump.zig`'s:** this time the
+bulk `heap.heap.` → `heap.` / `heap.` → `heap_mod.` rewrite was run *after*
+a manual edit had already converted `getTag`'s body to `heap.getTag(x)`
+(using the new parameter). The bulk sed doesn't know `heap` is now a local
+parameter shadowing the module import — it just sees the literal text
+`heap.getTag` and rewrites it to `heap_mod.getTag`, silently clobbering the
+manual edit back to the ambient form. Caught by the compiler (`unused
+function parameter`), not by inspection. **Lesson for remaining
+increments:** run the mechanical bulk rewrite *first*, across the whole
+file, before doing any by-hand `heap: *Heap` parameter threading — don't
+interleave the two, since the bulk pass can't distinguish "text that
+happens to say heap." from "a parameter named heap already in scope."
+Also re-confirmed the `dump.zig` gotcha applies again here: a bare
+`heap.heap` (the ambient singleton passed as a plain argument, not
+`heap.heap.field`) isn't caught by the `heap.heap.` → placeholder trick
+either, since there's no trailing dot — it needs the same by-hand fixup
+as the import-string collision.
+
+*DoD met: `zig build` clean; 176/176 unit tests (main-tests run directly);
+`zig build test` green — 48/48 golden, spine-corpus stress, sigint, smoke;
+lint at 16 warnings, no new ones; manual smoke test of `/files`, `/find fib`,
+and bare `?` (`allnamescom`) all producing correct output (file listing,
+type + definition location, full name listing split into stdenv/script
+sections).*
+
+Next candidates, in roughly ascending difficulty: `startup.zig` (862 lines,
+~31 touches), `module_loader.zig` (690, ~232), `lex.zig` (2079, ~134), then
+the two hardest: `trans.zig` (1830, ~807) and `types.zig` (2736, ~788).
 * **Irreducible exception (unchanged):** OS signal handlers run on the C ABI and
   cannot take any explicit parameter; they read a single `current_interp: *Interp`
   set on entry — the one documented global, analogous to `errno` and the A4

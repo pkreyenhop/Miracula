@@ -194,7 +194,7 @@ pub fn commandLoop(heap: *Heap, initscript: [*:0]u8) void {
                         if (abi.getchar() != '\n') {
                             commands.xschars();
                         } else {
-                            commands.allnamescom();
+                            commands.allnamescom(heap);
                         }
                     } else {
                         while (ls.dicp[0] != 0) {
@@ -208,7 +208,7 @@ pub fn commandLoop(heap: *Heap, initscript: [*:0]u8) void {
             ':', '/' => {
                 _ = token();
                 rt.rs.lastid = 0;
-                commands.command();
+                commands.command(heap);
             },
             '!' => {
                 lb = rdline();

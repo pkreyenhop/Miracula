@@ -16,14 +16,15 @@ const Word = word.Word;
 const NIL = word.NIL;
 
 // State owned by heap.zig / reduce.zig — not yet accessible via @import.
-inline fn getTag(x: Word) word.NodeTag {
-    return heap.heap.getTag(x);
+inline fn getTag(heap: *Heap, x: Word) word.NodeTag {
+    return heap.getTag(x);
 }
 
 const lex_state = @import("../parser/lex_state.zig");
 const lex = @import("../parser/lex.zig");
 const core_state = @import("../runtime/core_state.zig");
-const heap = @import("../runtime/heap.zig");
+const heap_mod = @import("../runtime/heap.zig");
+const Heap = heap_mod.Heap;
 const files = @import("../io/files.zig");
 const repl = @import("repl.zig");
 const dump = @import("../compiler/dump.zig");
@@ -74,25 +75,25 @@ fn filequote(p: [:0]const u8) void {
 
 /// List the identifiers defined in `l` in aligned columns.
 fn namescom(l: Word) void {
-    var n = heap.filDefs(l);
+    var n = heap_mod.filDefs(l);
     var col_local: Word = 0;
     var undefs: Word = NIL;
     var wp: usize = 0;
     const scrwd = files.termWidth();
     if (rt.rs.sorted == 0 and n != rt.rs.primenv) {
-        n = heap.alfasort(n);
-        heap.tp(l).* = n;
+        n = heap_mod.alfasort(n);
+        heap_mod.tp(l).* = n;
     }
     if (n == NIL) return;
-    if (heap.getFil(l)) |gf| {
+    if (heap_mod.getFil(l)) |gf| {
         filequote(std.mem.span(gf));
     } else {
         word.print("primitive:", .{});
     }
     word.print("\n", .{});
     while (n != NIL) {
-        if (heap.idType(heap.h(n)) == word.wrong_t or heap.idVal(heap.h(n)) != word.UNDEF) {
-            const w = @as(Word, @intCast(word.strlen(heap.getId(heap.h(n)))));
+        if (heap_mod.idType(heap_mod.h(n)) == word.wrong_t or heap_mod.idVal(heap_mod.h(n)) != word.UNDEF) {
+            const w = @as(Word, @intCast(word.strlen(heap_mod.getId(heap_mod.h(n)))));
             if (col_local + w < @as(Word, @intCast(scrwd))) {
                 col_local += if (col_local != 0) 1 else 0;
             } else if (wp > 0 and col_local + w >= @as(Word, @intCast(scrwd))) {
@@ -112,7 +113,7 @@ fn namescom(l: Word) void {
                 if (leftist) {
                     col_local = 0;
                     while (col_local < wp) {
-                        word.print("{s}", .{heap.getId(words[@as(usize, @intCast(col_local))])});
+                        word.print("{s}", .{heap_mod.getId(words[@as(usize, @intCast(col_local))])});
                         col_local += 1;
                         if (col_local < wp) {
                             spaces(1 + i + if (r > 0) @as(Word, 1) else @as(Word, 0));
@@ -123,7 +124,7 @@ fn namescom(l: Word) void {
                     r = @as(Word, @intCast(wp)) - 1 - r;
                     col_local = 0;
                     while (col_local < wp) {
-                        word.print("{s}", .{heap.getId(words[@as(usize, @intCast(col_local))])});
+                        word.print("{s}", .{heap_mod.getId(words[@as(usize, @intCast(col_local))])});
                         col_local += 1;
                         if (col_local < wp) {
                             spaces(1 + i + if (r <= 0) @as(Word, 1) else @as(Word, 0));
@@ -137,29 +138,29 @@ fn namescom(l: Word) void {
                 _ = word.putchar('\n');
             }
             col_local += w;
-            words[wp] = heap.h(n);
+            words[wp] = heap_mod.h(n);
             wp += 1;
         } else {
-            undefs = heap.cons(heap.h(n), undefs);
+            undefs = heap_mod.cons(heap_mod.h(n), undefs);
         }
-        n = heap.t(n);
+        n = heap_mod.t(n);
     }
     if (wp > 0) {
         col_local = 0;
         while (col_local < wp) {
-            word.print("{s}", .{heap.getId(words[@as(usize, @intCast(col_local))])});
+            word.print("{s}", .{heap_mod.getId(words[@as(usize, @intCast(col_local))])});
             col_local += 1;
             _ = word.putc(if (col_local == wp) '\n' else ' ', abi.stdout());
         }
     }
     if (undefs == NIL) return;
-    undefs = heap.reverse(undefs);
+    undefs = heap_mod.reverse(undefs);
     abi.printlist(@constCast("SPECIFIED BUT NOT DEFINED: "), undefs);
 }
 
 /// Dispatch a `/` or `:` REPL command — the main command switch (`/h`, `/e`, `/f`, `/l`, `/man`, ...).
 /// Handle the `'f'` REPL command (extracted from `command`).
-fn cmdFiles() bool {
+fn cmdFiles(heap: *Heap) bool {
     var t_val: ?[*:0]u8 = undefined;
     var ch: c_int = undefined;
     if (is("f") or is("file")) {
@@ -176,9 +177,9 @@ fn cmdFiles() bool {
             core_state.s.errs = 0;
         }
         if (t_val != null) {
-            if (word.strcmp(t_val.?, rt.rs.current_script.?) != 0 or (heap.heap.files == NIL and abi.okdump(t_val.?))) {
+            if (word.strcmp(t_val.?, rt.rs.current_script.?) != 0 or (heap.files == NIL and abi.okdump(t_val.?))) {
                 cs.CLASHES = NIL;
-                dump.undump(heap.heap, t_val.?);
+                dump.undump(heap, t_val.?);
                 if (cs.CLASHES != NIL) {
                     module_loader.loadfile(t_val.?);
                 }
@@ -186,16 +187,16 @@ fn cmdFiles() bool {
                 module_loader.loadfile(t_val.?);
             }
         } else {
-            word.print("{s}{s}\n", .{ rt.rs.current_script.?, @as([*:0]const u8, if (heap.heap.files == NIL) " (not loaded)" else "") });
+            word.print("{s}{s}\n", .{ rt.rs.current_script.?, @as([*:0]const u8, if (heap.files == NIL) " (not loaded)" else "") });
         }
         return true;
     }
     if (is("files")) {
         if (abi.getchar() != '\n') return true;
-        var f = heap.heap.files;
-        while (f != NIL) : (f = heap.t(f)) {
-            word.print("({s},{},{})", .{ heap.getFil(heap.h(f)).?, heap.filTime(heap.h(f)), heap.filShare(heap.h(f)) });
-            abi.printlist(@constCast(""), heap.filDefs(heap.h(f)));
+        var f = heap.files;
+        while (f != NIL) : (f = heap_mod.t(f)) {
+            word.print("({s},{},{})", .{ heap_mod.getFil(heap_mod.h(f)).?, heap_mod.filTime(heap_mod.h(f)), heap_mod.filShare(heap_mod.h(f)) });
+            abi.printlist(@constCast(""), heap_mod.filDefs(heap_mod.h(f)));
         }
         return true;
     }
@@ -205,22 +206,22 @@ fn cmdFiles() bool {
             const x = abi.findid(ls.dicp);
             i += 1;
             if (x != NIL) {
-                const n = heap.getId(x);
+                const n = heap_mod.getId(x);
                 var y = rt.rs.primenv;
-                while (y != NIL) : (y = heap.t(y)) {
-                    if (getTag(heap.h(y)) == .ID) {
-                        if (heap.h(y) == x or word.strcmp(abi.getaka(heap.h(y)), n) == 0) {
-                            finger(heap.getId(heap.h(y)));
+                while (y != NIL) : (y = heap_mod.t(y)) {
+                    if (getTag(heap, heap_mod.h(y)) == .ID) {
+                        if (heap_mod.h(y) == x or word.strcmp(abi.getaka(heap_mod.h(y)), n) == 0) {
+                            finger(heap_mod.getId(heap_mod.h(y)));
                         }
                     }
                 }
-                var ff = heap.heap.files;
-                while (ff != NIL) : (ff = heap.t(ff)) {
-                    var y_def = heap.filDefs(heap.h(ff));
-                    while (y_def != NIL) : (y_def = heap.t(y_def)) {
-                        if (getTag(heap.h(y_def)) == .ID) {
-                            if (heap.h(y_def) == x or word.strcmp(abi.getaka(heap.h(y_def)), n) == 0) {
-                                finger(heap.getId(heap.h(y_def)));
+                var ff = heap.files;
+                while (ff != NIL) : (ff = heap_mod.t(ff)) {
+                    var y_def = heap_mod.filDefs(heap_mod.h(ff));
+                    while (y_def != NIL) : (y_def = heap_mod.t(y_def)) {
+                        if (getTag(heap, heap_mod.h(y_def)) == .ID) {
+                            if (heap_mod.h(y_def) == x or word.strcmp(abi.getaka(heap_mod.h(y_def)), n) == 0) {
+                                finger(heap_mod.getId(heap_mod.h(y_def)));
                             }
                         }
                     }
@@ -294,7 +295,7 @@ fn cmdEdit() bool {
                 files.copyFile(mf.?, t_val.?);
             }
         }
-        const err_line_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core_state.s.errline) else if (core_state.s.errs != 0 and word.strcmp(t_val.?, strtab.strOf(strtab.table, heap.h(core_state.s.errs))) == 0) @intCast(heap.t(core_state.s.errs)) else @intCast(abi.geterrlin(t_val.?));
+        const err_line_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core_state.s.errline) else if (core_state.s.errs != 0 and word.strcmp(t_val.?, strtab.strOf(strtab.table, heap_mod.h(core_state.s.errs))) == 0) @intCast(heap_mod.t(core_state.s.errs)) else @intCast(abi.geterrlin(t_val.?));
         const err_col_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core_state.s.errcol) else 0;
         editfile(t_val.?, err_line_num, err_col_num);
         return true;
@@ -344,7 +345,7 @@ fn cmdEdit() bool {
     return false;
 }
 
-pub fn command() void {
+pub fn command(heap: *Heap) void {
     switch (ls.dicp[0]) {
         'a' => {
             if (is("a") or is("aux")) {
@@ -371,8 +372,8 @@ pub fn command() void {
                 if (abi.getchar() != '\n') return;
                 if (abi.chdir(d.?) == -1) {
                     word.print("cannot cd to {s}\n", .{d.?});
-                } else if (heap.srcUpdate() != 0) {
-                    dump.undump(heap.heap, rt.rs.current_script.?);
+                } else if (heap_mod.srcUpdate() != 0) {
+                    dump.undump(heap, rt.rs.current_script.?);
                 }
                 return;
             }
@@ -398,7 +399,7 @@ pub fn command() void {
             if (cmdEdit()) return;
         },
         'f' => {
-            if (cmdFiles()) return;
+            if (cmdFiles(heap)) return;
         },
         'g' => {
             if (is("gc")) {
@@ -427,7 +428,7 @@ pub fn command() void {
                     return;
                 }
                 if (abi.getchar() != '\n') return;
-                if (abi.sscanf(ls.dicp, "%ld", .{&x}) != 1 or heap.badval(x)) {
+                if (abi.sscanf(ls.dicp, "%ld", .{&x}) != 1 or heap_mod.badval(x)) {
                     word.print("illegal value (heap unchanged)\n", .{});
                     return;
                 }
@@ -643,7 +644,7 @@ pub fn editfile(t_val: [*:0]const u8, line: c_int, col: c_int) void {
         p[0] = 0;
     }
     _ = abi.system(ebuf_local);
-    if (heap.srcUpdate() != 0) {
+    if (heap_mod.srcUpdate() != 0) {
         module_loader.loadfile(rt.rs.current_script.?);
     }
 }
@@ -663,29 +664,29 @@ pub fn finger(n: [*:0]const u8) void {
     const x = abi.findid(@constCast(n));
     var line: Word = 0;
     var s: ?[*:0]const u8 = null;
-    if (x != NIL and heap.idType(x) != word.undef_t) {
-        if (heap.idWho(x) != NIL) {
-            const here_val = heap.getHere(x);
-            s = strtab.strOf(strtab.table, heap.h(here_val));
-            line = heap.t(here_val);
+    if (x != NIL and heap_mod.idType(x) != word.undef_t) {
+        if (heap_mod.idWho(x) != NIL) {
+            const here_val = heap_mod.getHere(x);
+            s = strtab.strOf(strtab.table, heap_mod.h(here_val));
+            line = heap_mod.t(here_val);
         }
         if (rt.rs.lastid == 0) {
             rt.rs.lastid = x;
         }
         abi.reportType(x);
-        if (heap.idWho(x) == NIL) {
+        if (heap_mod.idWho(x) == NIL) {
             word.print(" ||primitive to Miranda\n", .{});
         } else {
             const aka = abi.getaka(x);
-            const aka_opt: ?[*:0]const u8 = if (word.strcmp(aka, heap.getId(x)) == 0) null else aka;
-            if (heap.idVal(x) == word.UNDEF and heap.idType(x) != word.wrong_t) {
+            const aka_opt: ?[*:0]const u8 = if (word.strcmp(aka, heap_mod.getId(x)) == 0) null else aka;
+            if (heap_mod.idVal(x) == word.UNDEF and heap_mod.idType(x) != word.wrong_t) {
                 word.print(" ||(UNDEFINED) specified in ", .{});
-            } else if (heap.idVal(x) == word.FREE) {
+            } else if (heap_mod.idVal(x) == word.FREE) {
                 word.print(" ||(FREE) specified in ", .{});
-            } else if (heap.idType(x) == word.type_t and heap.tClass(x) == word.free_t) {
+            } else if (heap_mod.idType(x) == word.type_t and heap_mod.tClass(x) == word.free_t) {
                 word.print(" ||(free type) specified in ", .{});
             } else {
-                const class_str: [*:0]const u8 = if (heap.idType(x) == word.type_t and heap.tClass(x) == word.abstract_t) "(abstract type) " else if (heap.idType(x) == word.type_t and heap.tClass(x) == word.algebraic_t) "(algebraic type) " else if (heap.idType(x) == word.type_t and heap.tClass(x) == word.placeholder_t) "(placeholder type) " else if (heap.idType(x) == word.type_t and heap.tClass(x) == word.synonym_t) "(synonym type) " else "";
+                const class_str: [*:0]const u8 = if (heap_mod.idType(x) == word.type_t and heap_mod.tClass(x) == word.abstract_t) "(abstract type) " else if (heap_mod.idType(x) == word.type_t and heap_mod.tClass(x) == word.algebraic_t) "(algebraic type) " else if (heap_mod.idType(x) == word.type_t and heap_mod.tClass(x) == word.placeholder_t) "(placeholder type) " else if (heap_mod.idType(x) == word.type_t and heap_mod.tClass(x) == word.synonym_t) "(synonym type) " else "";
                 word.print(" ||{s}defined in ", .{class_str});
             }
             filequote(std.mem.span(s.?));
@@ -699,8 +700,8 @@ pub fn finger(n: [*:0]const u8) void {
             }
         }
         if (rt.rs.atobject != 0) {
-            word.print("{s} = ", .{heap.getId(x)});
-            abi.out(abi.stdout(), heap.idVal(x));
+            word.print("{s} = ", .{heap_mod.getId(x)});
+            abi.out(abi.stdout(), heap_mod.idVal(x));
             _ = word.putchar('\n');
         }
         return;
@@ -734,37 +735,37 @@ pub fn diagnose(n: [*:0]const u8) void {
 }
 
 /// List every name currently in scope (the bare `?` command).
-pub fn allnamescom() void {
+pub fn allnamescom(heap: *Heap) void {
     var s: Word = undefined;
     var x = cs.ND;
     var y = cs.ND;
     var z: Word = 0;
     leftist = false;
-    namescom(heap.makeFil(if (rt.rs.nostdenv) null else @as([*:0]const u8, @ptrCast(&rt.rs.STDENV)), 0, 0, rt.rs.primenv));
-    if (heap.heap.files == NIL) return;
-    s = heap.t(heap.heap.files);
-    while (s != NIL) : (s = heap.t(s)) {
-        namescom(heap.h(s));
+    namescom(heap_mod.makeFil(if (rt.rs.nostdenv) null else @as([*:0]const u8, @ptrCast(&rt.rs.STDENV)), 0, 0, rt.rs.primenv));
+    if (heap.files == NIL) return;
+    s = heap_mod.t(heap.files);
+    while (s != NIL) : (s = heap_mod.t(s)) {
+        namescom(heap_mod.h(s));
     }
-    namescom(heap.h(heap.heap.files));
+    namescom(heap_mod.h(heap.files));
     rt.rs.sorted = 1;
 
-    while (x != NIL and heap.idType(heap.h(x)) == word.undef_t) {
-        x = heap.t(x);
+    while (x != NIL and heap_mod.idType(heap_mod.h(x)) == word.undef_t) {
+        x = heap_mod.t(x);
     }
-    while (y != NIL and heap.idType(heap.h(y)) != word.undef_t) {
-        y = heap.t(y);
+    while (y != NIL and heap_mod.idType(heap_mod.h(y)) != word.undef_t) {
+        y = heap_mod.t(y);
     }
     if (x != NIL) {
         word.print("WARNING, SCRIPT CONTAINS TYPE ERRORS: ", .{});
-        while (x != NIL) : (x = heap.t(x)) {
-            if (heap.idType(heap.h(x)) != word.undef_t) {
+        while (x != NIL) : (x = heap_mod.t(x)) {
+            if (heap_mod.idType(heap_mod.h(x)) != word.undef_t) {
                 if (z == 0) {
                     z = 1;
                 } else {
                     _ = word.putchar(',');
                 }
-                abi.out(abi.stdout(), heap.h(x));
+                abi.out(abi.stdout(), heap_mod.h(x));
             }
         }
         word.print(";\n", .{});
@@ -772,14 +773,14 @@ pub fn allnamescom() void {
     if (y != NIL) {
         word.print("{s} UNDEFINED NAMES: ", .{@as([*:0]const u8, if (z != 0) "AND" else "WARNING, SCRIPT CONTAINS")});
         z = 0;
-        while (y != NIL) : (y = heap.t(y)) {
-            if (heap.idType(heap.h(y)) == word.undef_t) {
+        while (y != NIL) : (y = heap_mod.t(y)) {
+            if (heap_mod.idType(heap_mod.h(y)) == word.undef_t) {
                 if (z == 0) {
                     z = 1;
                 } else {
                     _ = word.putchar(',');
                 }
-                abi.out(abi.stdout(), heap.h(y));
+                abi.out(abi.stdout(), heap_mod.h(y));
             }
         }
         word.print(";\n", .{});
