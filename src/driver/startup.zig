@@ -104,13 +104,13 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     }
 
     heap.heap.files = NIL;
-    dump.undump(@as([*:0]const u8, @ptrCast(&rt.rs.PRELUDE)));
+    dump.undump(heap.heap, @as([*:0]const u8, @ptrCast(&rt.rs.PRELUDE)));
     rt.rs.okprel = true;
     abi.mkprivate(heap.filDefs(heap.h(heap.heap.files)));
     heap.heap.files = NIL;
 
     if (!rt.rs.nostdenv) {
-        dump.undump(@as([*:0]const u8, @ptrCast(&rt.rs.STDENV)));
+        dump.undump(heap.heap, @as([*:0]const u8, @ptrCast(&rt.rs.STDENV)));
         while (heap.heap.files != NIL) {
             rt.rs.primenv = heap.alfasort(abi.append1(rt.rs.primenv, heap.filDefs(heap.h(heap.heap.files))));
             heap.heap.files = heap.t(heap.heap.files);
@@ -403,7 +403,7 @@ fn runExportsMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
         if (s == ls.dicp) {
             _ = abi.keep(ls.dicp);
         }
-        dump.undump(s);
+        dump.undump(heap.heap, s);
         if (heap.heap.files == NIL or cs.ND != NIL) {
             continue;
         }
@@ -461,7 +461,7 @@ fn runSourcesMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
             if (s == ls.dicp) {
                 _ = abi.keep(ls.dicp);
             }
-            dump.undump(s);
+            dump.undump(heap.heap, s);
             var f = if (heap.heap.files == NIL) rt.rs.oldfiles else heap.heap.files;
             while (f != NIL) : (f = heap.t(f)) {
                 const filename_str = heap.getFil(heap.h(f)).?;
@@ -487,7 +487,7 @@ fn runMakeMode(argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
         if (s == ls.dicp) {
             _ = abi.keep(ls.dicp);
         }
-        dump.undump(s);
+        dump.undump(heap.heap, s);
         if (cs.ND != NIL or (heap.heap.files == NIL and rt.rs.oldfiles != NIL)) {
             if (rt.rs.make_status == 1) {
                 rt.rs.make_status = 0;

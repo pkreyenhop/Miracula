@@ -178,7 +178,7 @@ fn cmdFiles() bool {
         if (t_val != null) {
             if (word.strcmp(t_val.?, rt.rs.current_script.?) != 0 or (heap.heap.files == NIL and abi.okdump(t_val.?))) {
                 cs.CLASHES = NIL;
-                dump.undump(t_val.?);
+                dump.undump(heap.heap, t_val.?);
                 if (cs.CLASHES != NIL) {
                     module_loader.loadfile(t_val.?);
                 }
@@ -372,7 +372,7 @@ pub fn command() void {
                 if (abi.chdir(d.?) == -1) {
                     word.print("cannot cd to {s}\n", .{d.?});
                 } else if (heap.srcUpdate() != 0) {
-                    dump.undump(rt.rs.current_script.?);
+                    dump.undump(heap.heap, rt.rs.current_script.?);
                 }
                 return;
             }

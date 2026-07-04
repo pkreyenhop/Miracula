@@ -449,10 +449,57 @@ not a regression, and already covered independently by
 `parser_tests.zig`'s `"syntax error sets errcol and editfile expands column
 placeholder"` unit test, which calls `commands.editfile` directly.*
 
-Next candidates, in roughly ascending difficulty: `dump.zig` (421 lines,
-~126 touches), `commands.zig` (787, ~47), `startup.zig` (862, ~31),
-`module_loader.zig` (690, ~232), `lex.zig` (2079, ~134), then the two hardest:
-`trans.zig` (1830, ~807) and `types.zig` (2736, ~788).
+**Tier 3, increment 3 — `dump.zig` ✅ done (2026-07-05).** Real cascading
+depth this time, unlike `repl.zig`. Same split as always: most of the ~126
+`heap.`-prefixed touches are free-function ambient calls (`idVal`/`idType`/
+`getId`/`filDefs`/`tInfo`/`getHere`/`tClass`/`alfasort`/`cons`/`srcUpdate`/
+`unload`, plus `t`/`h`/`tp`/`hp`) and stay unconverted; only the genuine
+`heap.heap.X` struct accesses (`.files`, `.stackp`, `.dstack`, plus the local
+`getTag`/`setTag` helpers) were threaded. This meant adding `heap: *Heap` to
+8 functions: `getTag`/`setTag` (the local helpers), `unpainted`, `privatise`,
+`publicise`, `readoption`, `fixtype`, `undump`, `makedump`, `fixexports`,
+`unfixexports` — `paint`/`unpaint` needed no change (ambient-only).
+
+`undump` turned out to be the real cascade: 10 external call sites across 4
+files (`repl.zig` x2, `startup.zig` x5, `commands.zig` x2, `module_loader.zig`
+x1), the widest external surface of any function converted so far in Tier 3.
+Every call site already had `heap`/`heap.heap` in scope locally (either the
+module import or, in `repl.zig`'s `commandLoop`, the `heap: *Heap` parameter
+from increment 2), so no further cascading was needed — one-line fixes
+throughout. `readoption`'s single external caller (`types.zig:2684`, itself
+a large not-yet-converted Tier 3 file) likewise already had `heap` imported.
+
+**Process note — a sed mishap worth recording for future increments.** The
+mechanical rewrite (`s/heap\.heap\./HEAPFIELD./g` then `s/heap\./heap_mod./g`
+then restore `HEAPFIELD.` → `heap.`) was first attempted with a `\b` word
+boundary (`s/\bheap\./heap_mod./g`) to be "safe" — this **silently no-op'd**
+the entire middle substitution, because BSD/macOS `sed` (unlike GNU sed)
+does not support `\b` in its regex dialect at all; it's read as two literal
+characters that never match, so the command exits 0 having changed nothing.
+Caught by noticing `heap.cons(...)` calls that should have become
+`heap_mod.cons(...)` were untouched. The fix was to drop `\b` entirely —
+safe here because after the first pass removes every `heap.heap.` occurrence,
+there's no other identifier ending in "heap" immediately before a bare
+`heap.` in this file (checked via `grep -n "[a-zA-Z0-9_]heap\."` before
+reverting and redoing). Second gotcha from the same rewrite: the plain
+`s/heap\./heap_mod./g` also matched inside the import string itself
+(`@import("../runtime/heap.zig")` contains the substring `heap.`), corrupting
+it to `heap_mod.zig`, a nonexistent file — caught immediately by the "file
+modified externally" diff view and fixed by hand. Both are worth checking
+for on every remaining Tier 3 file before trusting a bulk sed's exit code.
+
+*DoD met: `zig build` clean; 176/176 unit tests (main-tests run directly);
+`zig build test` (which subsumes `check`) green — 48/48 golden, spine-corpus
+stress, sigint, smoke; lint at 16 warnings, no new ones; manual smoke test of
+the dump/undump cycle (deleted `script.x`, ran the interpreter to force a
+fresh compile + `makedump`, confirmed `script.x` was created, then ran again
+to exercise the `undump`-from-cache path — both runs produced identical,
+correct output for `fib`/`add1`).*
+
+Next candidates, in roughly ascending difficulty: `commands.zig` (787 lines,
+~47 touches), `startup.zig` (862, ~31), `module_loader.zig` (690, ~232),
+`lex.zig` (2079, ~134), then the two hardest: `trans.zig` (1830, ~807) and
+`types.zig` (2736, ~788).
 * **Irreducible exception (unchanged):** OS signal handlers run on the C ABI and
   cannot take any explicit parameter; they read a single `current_interp: *Interp`
   set on entry — the one documented global, analogous to `errno` and the A4

@@ -90,7 +90,7 @@ pub fn commandLoop(heap: *Heap, initscript: [*:0]u8) void {
 
     if (abi.sigsetjmp(&rt.rs.env, 1) == 0) {
         if (rt.rs.magic) {
-            dump.undump(initscript);
+            dump.undump(heap, initscript);
             if (heap.files == NIL or cs.ND != NIL or heap_mod.idVal(rt.rs.main_id) == word.UNDEF) {
                 if (heap.files != NIL and cs.ND == NIL and heap_mod.idVal(rt.rs.main_id) == word.UNDEF) {
                     word.printErr("{s}: main not defined\n", .{initscript});
@@ -102,7 +102,7 @@ pub fn commandLoop(heap: *Heap, initscript: [*:0]u8) void {
             abi.exit(0);
         }
         _ = signals(abi.SIGINT, @intFromPtr(&reset));
-        dump.undump(initscript);
+        dump.undump(heap, initscript);
         if (rt.rs.verbosity != 0) {
             word.print("for help type /h\n", .{});
         }

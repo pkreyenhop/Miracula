@@ -2681,7 +2681,7 @@ pub fn checktypes() void {
     cs.ND = NIL;
     outer: {
         if (rt.rs.rfl != NIL) {
-            readoption();
+            readoption(heap.heap);
         }
         var s = reverse(t(h(heap.heap.files)));
         while (s != NIL) {

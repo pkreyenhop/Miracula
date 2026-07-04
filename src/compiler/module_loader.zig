@@ -163,12 +163,12 @@ pub fn loadfile(t_val: [*:0]const u8) void {
             errors.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, if (rt.rs.okprel) "stdenv" else "prelude")}});
         }
         if (rt.rs.initialising != 0) {
-            dump.makedump();
+            dump.makedump(heap.heap);
         } else if (files.isMirandaSource(t_val) != 0) {
             if (cs.ND == NIL) {
-                dump.fixexports();
-                dump.makedump();
-                dump.unfixexports();
+                dump.fixexports(heap.heap);
+                dump.makedump(heap.heap);
+                dump.unfixexports(heap.heap);
             } else {
                 var obf: [abi.pnlim]u8 = undefined;
                 _ = word.strcpy(&obf, t_val);
@@ -469,7 +469,7 @@ pub fn mkincludes(includees_val: Word) Word {
         rt.rs.magic = false;
         _ = abi.sigsetjmp(&rt.rs.env, 1);
         while (includees_list != NIL and rt.rs.make_status == 0) {
-            dump.undump(strtab.strOf(strtab.table, heap.h(heap.h(heap.h(includees_list)))));
+            dump.undump(heap.heap, strtab.strOf(strtab.table, heap.h(heap.h(heap.h(includees_list)))));
             if (cs.ND != NIL or (heap.heap.files == NIL and rt.rs.oldfiles != NIL)) {
                 rt.rs.make_status = 1;
             }
