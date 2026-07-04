@@ -161,7 +161,7 @@ pub fn commandLoop(heap: *Heap, initscript: [*:0]u8) void {
                         continue;
                     }
                     if (ls.dicp[0] != 0) {
-                        x = abi.findid(ls.dicp);
+                        x = abi.findid(heap, ls.dicp);
                     } else {
                         word.print("??{s}\n", .{heap_mod.getId(rt.rs.lastid)});
                         x = rt.rs.lastid;
@@ -198,7 +198,7 @@ pub fn commandLoop(heap: *Heap, initscript: [*:0]u8) void {
                         }
                     } else {
                         while (ls.dicp[0] != 0) {
-                            commands.finger(ls.dicp);
+                            commands.finger(heap, ls.dicp);
                             _ = token();
                         }
                         ch = abi.getchar();

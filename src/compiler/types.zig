@@ -2570,7 +2570,7 @@ pub fn checkcolfn() void {
 
 /// Derive the BNF token type from the grammar's `bnftokenstate`.
 pub fn genbnft() void {
-    const bnftokenstate = findid("bnftokenstate");
+    const bnftokenstate = findid(heap.heap, "bnftokenstate");
     if (bnftokenstate != NIL and idType(bnftokenstate) == type_t) {
         if (tArity(bnftokenstate) == 0) {
             cs.bnf_t = if (tClass(bnftokenstate) == synonym_t) tInfo(bnftokenstate) else bnftokenstate;

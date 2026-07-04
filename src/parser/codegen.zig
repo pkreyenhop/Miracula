@@ -160,7 +160,7 @@ fn nameWord(name: []const u8) Word {
     // name() calls during tokenization). This ensures the same source name
     // always maps to the same heap atom, which is required for multi-equation
     // definitions: decl1() checks `rt.rs.lastname == x` using pointer equality.
-    const existing = findid(&buf);
+    const existing = findid(heap.heap, &buf);
     if (existing != word.NIL) return existing;
     // Not yet in the name table (e.g., synthesised names). Intern it now.
     const perm = keep(@as([*:0]u8, @ptrCast(&buf)));

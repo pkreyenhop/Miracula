@@ -108,7 +108,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     heap.files = NIL;
     dump.undump(heap, @as([*:0]const u8, @ptrCast(&rt.rs.PRELUDE)));
     rt.rs.okprel = true;
-    abi.mkprivate(heap_mod.filDefs(heap_mod.h(heap.files)));
+    abi.mkprivate(heap, heap_mod.filDefs(heap_mod.h(heap.files)));
     heap.files = NIL;
 
     if (!rt.rs.nostdenv) {
@@ -424,7 +424,7 @@ fn runExportsMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
         if (rt.rs.freeids != NIL) {
             var f = rt.rs.freeids;
             while (f != NIL) : (f = heap_mod.t(f)) {
-                const n = abi.findid(@constCast(heap_mod.getId(heap_mod.h(f))));
+                const n = abi.findid(heap, @constCast(heap_mod.getId(heap_mod.h(f))));
                 heap_mod.tp(n).* = heap_mod.t(heap_mod.t(heap_mod.h(f)));
                 heap_mod.tp(heap_mod.h(heap_mod.h(n))).* = heap_mod.theVal(heap_mod.h(f));
                 heap_mod.hp(f).* = n;

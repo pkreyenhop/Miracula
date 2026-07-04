@@ -147,7 +147,7 @@ pub fn parseFile(filename: [*:0]const u8) ParseError!ParseResult {
     if (options.is_strict) {
         try validateUtf8File(filename);
     }
-    if (setupFile(filename) == 0) {
+    if (setupFile(heap.heap, filename) == 0) {
         return ParseError.ParseFailed;
     }
     return parseCurrentNew();

@@ -1000,7 +1000,7 @@ pub fn transletrec(input_dd: Word, e: Word) Word {
             rhs = cons(codegen(dval(x)), rhs);
         } else {
             var i: Word = 0;
-            const p = mkgvar(pn);
+            const p = mkgvar(heap.heap, pn);
             pn += 1;
             x = newMkLazy(x);
             var ids = dlhs(x);
@@ -1703,8 +1703,8 @@ pub fn codegen(x: Word) Word {
             var uses_state: Word = 0;
             var cur_x = x;
             while (cur_x != NIL) {
-                var rule = abstr(mklexvar(0), codegen(t(t(h(cur_x)))));
-                rule = abstr(mklexvar(1), rule);
+                var rule = abstr(mklexvar(heap.heap, 0), codegen(t(t(h(cur_x)))));
+                rule = abstr(mklexvar(heap.heap, 1), rule);
                 if (!(getTag(rule) == .AP and h(rule) == K)) {
                     uses_state = 1;
                 }

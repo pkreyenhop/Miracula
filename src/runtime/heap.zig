@@ -1970,7 +1970,7 @@ pub fn loadScript(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: 
                 return word.NIL;
             }
         }
-        heap.CFN = getId(name());
+        heap.CFN = getId(name(heap));
         files_list = cons(makeFil(heap.CFN, ch, s, loadDefs(file)), files_list);
         ch = main_clib.getc(file);
     }
@@ -2021,7 +2021,7 @@ pub fn loadScript(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: 
                     return word.NIL;
                 }
             }
-            rt.rs.oldfiles = cons(makeFil(getId(name()), ch, 0, word.NIL), rt.rs.oldfiles);
+            rt.rs.oldfiles = cons(makeFil(getId(name(heap)), ch, 0, word.NIL), rt.rs.oldfiles);
         }
         if (aliases != word.NIL) {
             unscramble(aliases);
@@ -2227,7 +2227,7 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                 if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
                     lex.dicovflo();
                 }
-                stackpPush(name());
+                stackpPush(name(heap));
                 const top = stackpTop();
                 if (idType(top) == word.new_t) {
                     cs.CLASHES = add1(top, cs.CLASHES);
@@ -2249,7 +2249,7 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                 if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
                     lex.dicovflo();
                 }
-                stackpPush(datapair(strtab.strBits(strtab.table, getId(name())), 0));
+                stackpPush(datapair(strtab.strBits(strtab.table, getId(name(heap))), 0));
             },
             word.HERE_X => {
                 ls.dicq = ls.dicp;
@@ -2278,7 +2278,7 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                     }
                     var line = main_clib.getc(file);
                     line = line | (main_clib.getc(file) << 8);
-                    stackpPush(fileinfo(strtab.strBits(strtab.table, getId(name())), line));
+                    stackpPush(fileinfo(strtab.strBits(strtab.table, getId(name(heap))), line));
                 }
             },
             word.DEF_X => {

@@ -14,6 +14,7 @@ const std = @import("std");
 const word = @import("../runtime/word.zig");
 const main_clib = @import("../runtime/main_clib.zig");
 const lex = @import("../parser/lex.zig");
+const heap = @import("../runtime/heap.zig");
 const Editor = @import("zigline").Editor;
 const CompletionSuggestion = Editor.CompletionSuggestion;
 
@@ -62,7 +63,7 @@ fn completeWord() []const CompletionSuggestion {
         if (buf[start + i] > 127) return &.{};
         prefix_buf[i] = @intCast(buf[start + i]);
     }
-    const count = lex.completeIds(prefix_buf[0..prefix_len], &name_storage);
+    const count = lex.completeIds(heap.heap, prefix_buf[0..prefix_len], &name_storage);
     for (name_storage[0..count], 0..) |name, n| {
         // text is the whole identifier; invariant_offset is the already-typed
         // prefix, so zigline inserts only the remaining suffix.

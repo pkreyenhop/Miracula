@@ -578,9 +578,72 @@ all passed cleanly (no flake this run); lint at 16 warnings, no new ones;
 manual smoke test of `fib 27` and `/files` (which drives `loadfile`'s
 file-listing path) both correct.*
 
-Next candidates, in roughly ascending difficulty: `lex.zig` (2079 lines,
-~134 touches), then the two hardest: `trans.zig` (1830, ~807) and
-`types.zig` (2736, ~788).
+**Tier 3, increment 7 — `lex.zig` ✅ done (2026-07-05), the deepest cascade in
+Tier 3.** Investigation before starting revealed this file breaks the pattern
+of every prior increment: its `heap.heap.X` touches route through 5 local
+wrapper functions (`h`/`hp`/`t`/`tp`/`getTag`) and `getch()` — the innermost
+character-reading primitive, called from ~70 internal sites across nearly
+every lexer state-machine function. Explicitly confirmed via user decision
+("do the full cascade anyway") before proceeding, given this was qualitatively
+riskier than repl.zig/dump.zig/commands.zig/module_loader.zig/startup.zig
+(all shallow 1-2 level chains; this one required threading through deeply
+nested call graphs with no existing scaffolding, exactly the "entangled
+subsystem" case the plan document originally flagged this file as).
+
+A transitive-closure script found **44 of the file's 80 functions**
+transitively touch the struct (not the ~134 raw grep-hit estimate — that
+number undercounts, since most of the 44 functions call `h`/`t`/etc.
+multiple times each). Threaded `heap: *Heap` through all 44, in dependency
+order (leaves first: `h`/`hp`/`t`/`tp`/`getTag`/`getch`, up through
+`getlitch`/`identifier`/`directive`/`numeral`/`hexnumeral`/`octnumeral`/
+`string`/`charclass`/`findid`/`name`/`yylex`/`layout`/`resetLex`/
+`resetState`/etc.). External cascade touched **10 other files**:
+`lex_bridge.zig`, `parser_api.zig`, `parser_tests.zig`, `repl.zig`,
+`commands.zig`, `startup.zig`, `setup.zig`, `trans.zig`, `types.zig`,
+`codegen.zig`, `lineedit.zig`, and `heap.zig` itself (which calls back into
+`lex.zig`'s `name()` — a real circular dependency between the two modules).
+Every call site outside `lex.zig`/`repl.zig`/`commands.zig`/`startup.zig`
+(which already had `heap: *Heap` params from earlier increments) fetches the
+ambient singleton at the call site (`heap.heap`/`heap_mod.heap`), since none
+of those files have been converted yet themselves.
+
+**Two new mechanical-editing gotchas found and fixed, worth recording for
+`trans.zig`/`types.zig`:**
+1. **The transitive-closure discovery script only matched lines starting
+   with `(pub )?fn NAME(`, silently missing `inline fn NAME(` declarations.**
+   This missed `tryCh` (an inline lookahead helper called from
+   `lexSymbolOrOperator`), causing a "use of undeclared identifier 'heap'"
+   compile error inside it. Also caused 3 functions (`getStderr`, `cleanup`,
+   `errclass`) to be **incorrectly flagged** as needing `heap` — their own
+   bodies don't touch the struct at all; they were pulled into the closure by
+   a same-named-caller confusion in the script's regex matching. Caught by
+   the compiler's "unused function parameter" error in each case; fixed by
+   reverting their signatures and call sites back to heap-free.
+2. **BSD `sed`'s global substitution doesn't overlap adjacent matches**, so a
+   pattern like `s/([^a-zA-Z0-9_.])h\(/\1h(heap, /g` applied to a deeply
+   nested call like `h(h(h(x)))` only converts every *other* occurrence
+   (the regex engine consumes the matched prefix character, so the next `h(`
+   immediately after can't be matched against — its own "preceding
+   character" was already consumed by the prior match). This produced
+   `h(heap, h(h(heap, x)))` instead of the correct
+   `h(heap, h(heap, h(heap, x)))` in several spots (`getId`, `charclass`,
+   the `setupFile`/`lexEndOfFile`/`resetLex` family's shared
+   `h(h(ls.fileq))` idiom). All caught by the compiler's "expected 2
+   argument(s), found 1" errors and fixed by hand — not a silent
+   correctness bug, but worth checking for directly (search for the
+   pattern `heap, h(h(` / `heap, t(t(` etc.) rather than trusting the sed's
+   exit code on any file with deeply nested short-name wrapper calls.
+
+*DoD met: `zig build` clean; 176/176 unit tests (main-tests run directly);
+`zig build test` green — 48/48 golden (including `hex_oct_literals`),
+spine-corpus stress, sigint, smoke; lint at 16 warnings, no new ones;
+thorough manual smoke test given the lexer's central role: `fib 27`, hex
+(`0x1F`) and octal (`0o17`) numerals, string and char literals, list
+literals, `/files`, `?fib` (type + location lookup), bare `?`
+(`allnamescom`), and undefined-name diagnosis all correct.*
+
+Remaining Tier 3 files, the two hardest: `trans.zig` (1830 lines, ~807
+touches) and `types.zig` (2736, ~788).
 * **Irreducible exception (unchanged):** OS signal handlers run on the C ABI and
   cannot take any explicit parameter; they read a single `current_interp: *Interp`
   set on entry — the one documented global, analogous to `errno` and the A4

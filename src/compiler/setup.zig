@@ -95,14 +95,14 @@ pub fn syntax(s: [*:0]const u8) void {
         _ = word.printErr("syntax error: {s}", .{.{s}});
     }
     core_state.s.SYNERR = 1;
-    resetLex();
+    resetLex(heap_mod.heap);
 }
 
 /// Flag a grammar-action error (set `SYNERR` and reset the lexer).
 pub fn acterror() void {
     if (core_state.s.SYNERR != 0) return;
     core_state.s.SYNERR = 1;
-    resetLex();
+    resetLex(heap_mod.heap);
 }
 
 /// Registers a primitive identifier `n` in the private primitive environment (`rs.primenv`).

@@ -49,7 +49,7 @@ const resetState = lex.resetState;
 /// allocation after the first call (it only `@memset`s the tag column), so this
 /// is cheap to repeat; `primenv` is reset first because `primlib` conses onto it.
 fn resetLexerState() void {
-    resetState();
+    resetState(heap.heap);
     setupdic();
     rt.rs.primenv = word.NIL;
     setup.miraSetup();
@@ -177,7 +177,7 @@ fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]con
     errdefer list.deinit(allocator);
 
     while (true) {
-        const tok = yylex();
+        const tok = yylex(heap.heap);
         if (tok == 0 or tok == word.END) break;
 
         try list.print(allocator, "{s}", .{tokenName(tok)});

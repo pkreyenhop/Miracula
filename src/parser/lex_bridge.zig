@@ -251,6 +251,7 @@ pub fn tokenizeCurrent(gpa: Allocator) ![]Token {
 
 /// Inner tokenize loop shared by tokenize() and tokenizeCurrent().
 fn tokenizeLoop(gpa: Allocator) ![]Token {
+    const heap_ptr = heap.heap;
     var toks: std.ArrayList(Token) = .empty;
     errdefer {
         for (toks.items) |tok| {
@@ -277,7 +278,7 @@ fn tokenizeLoop(gpa: Allocator) ![]Token {
     var paren_depth: i32 = 0;
 
     while (true) {
-        const raw = yylex();
+        const raw = yylex(heap_ptr);
         // Capture span AFTER yylex so that line_no reflects the line that was
         // just processed. Use tok_start_col (set by yylex right after layout())
         // for the column — this is the column at the START of the token, before
@@ -300,7 +301,7 @@ fn tokenizeLoop(gpa: Allocator) ![]Token {
                 // definition.  Subsequent '=' (comparisons) are skipped.
                 .eq => {
                     if (paren_depth == 0 and !seen_def_eq) {
-                        layout();
+                        layout(heap_ptr);
                         setlmargin();
                         seen_def_eq = true;
                     }
@@ -309,7 +310,7 @@ fn tokenizeLoop(gpa: Allocator) ![]Token {
                 // OFFSIDE ends the current definition; restore outer lmargin and
                 // reset seen_def_eq so the next definition '=' triggers setlmargin.
                 .offside => {
-                    unsetlmargin();
+                    unsetlmargin(heap_ptr);
                     seen_def_eq = false;
                     paren_depth = 0;
                 },
@@ -320,8 +321,8 @@ fn tokenizeLoop(gpa: Allocator) ![]Token {
                 // Then mark seen_def_eq=true because the ELSEQ itself consumed
                 // the '=' — the next RHS body should not trigger setlmargin again.
                 .elseq => {
-                    unsetlmargin();
-                    layout();
+                    unsetlmargin(heap_ptr);
+                    layout(heap_ptr);
                     setlmargin();
                     seen_def_eq = true;
                 },
@@ -339,7 +340,7 @@ fn tokenizeLoop(gpa: Allocator) ![]Token {
                 // constructor.  This prevents tokens on a new line at col < lmargin
                 // from being consumed as constructor field types.
                 .colon2eq => {
-                    layout();
+                    layout(heap_ptr);
                     setlmargin();
                 },
 
@@ -348,7 +349,7 @@ fn tokenizeLoop(gpa: Allocator) ![]Token {
                 // used as an equality comparison inside a function body is skipped.
                 .eq_eq => {
                     if (!seen_def_eq) {
-                        layout();
+                        layout(heap_ptr);
                         setlmargin();
                     }
                 },
@@ -363,7 +364,7 @@ fn tokenizeLoop(gpa: Allocator) ![]Token {
                 // expressions do not affect lmargin.
                 .coloncolon => {
                     if (paren_depth == 0) {
-                        layout();
+                        layout(heap_ptr);
                         setlmargin();
                     }
                 },

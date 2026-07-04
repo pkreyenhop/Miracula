@@ -203,7 +203,7 @@ fn cmdFiles(heap: *Heap) bool {
     if (is("find")) {
         var i: Word = 0;
         while (token() != null) {
-            const x = abi.findid(ls.dicp);
+            const x = abi.findid(heap, ls.dicp);
             i += 1;
             if (x != NIL) {
                 const n = heap_mod.getId(x);
@@ -211,7 +211,7 @@ fn cmdFiles(heap: *Heap) bool {
                 while (y != NIL) : (y = heap_mod.t(y)) {
                     if (getTag(heap, heap_mod.h(y)) == .ID) {
                         if (heap_mod.h(y) == x or word.strcmp(abi.getaka(heap_mod.h(y)), n) == 0) {
-                            finger(heap_mod.getId(heap_mod.h(y)));
+                            finger(heap, heap_mod.getId(heap_mod.h(y)));
                         }
                     }
                 }
@@ -221,7 +221,7 @@ fn cmdFiles(heap: *Heap) bool {
                     while (y_def != NIL) : (y_def = heap_mod.t(y_def)) {
                         if (getTag(heap, heap_mod.h(y_def)) == .ID) {
                             if (heap_mod.h(y_def) == x or word.strcmp(abi.getaka(heap_mod.h(y_def)), n) == 0) {
-                                finger(heap_mod.getId(heap_mod.h(y_def)));
+                                finger(heap, heap_mod.getId(heap_mod.h(y_def)));
                             }
                         }
                     }
@@ -660,8 +660,8 @@ pub fn xschars() void {
 }
 
 /// Print the type and definition location of name `n` (the `?name` query).
-pub fn finger(n: [*:0]const u8) void {
-    const x = abi.findid(@constCast(n));
+pub fn finger(heap: *Heap, n: [*:0]const u8) void {
+    const x = abi.findid(heap, @constCast(n));
     var line: Word = 0;
     var s: ?[*:0]const u8 = null;
     if (x != NIL and heap_mod.idType(x) != word.undef_t) {
