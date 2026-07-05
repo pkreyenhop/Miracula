@@ -38,6 +38,27 @@ const TEST_CASES = [_]TestCase{
         .script_content = "square x = x*x\ntwice f x = f (f x)\npairup x y = (x,y)\n",
         .input = "square 12\ntwice square 2\npairup 1 2\n/q\n",
     },
+    // docs/ZIG_NATIVE_PLAN.md Phase 0 step 4: differential coverage for the
+    // surfaces Phase 1's native lexer/parser rewrite will touch. Mirrors
+    // tests/golden/hex_oct_literals and tests/golden/literate_intro.lit.
+    .{
+        .name = "hex_octal_literals",
+        .input = "0xff\n0x1A2B3C\n0o777\n\n/q\n",
+    },
+    .{
+        .name = "literate_script",
+        .script_content = "> square x = x * x\n> cube x  = x * x * x\n\nProse below the code lines is not Miranda source.\n",
+        .input = "square 5\ncube 3\n\n/q\n",
+    },
+    // %insert is pure textual substitution in the legacy lexer (no AST node),
+    // so — unlike %include/%export/%free, see tests/golden/README_pending_phase1.md
+    // — it already works; resolves relative to reg_tmp.m's directory
+    // (tests/golden/), reusing the fixture body left there by that README.
+    .{
+        .name = "insert_directive",
+        .script_content = "%insert \"directive_insert_body.txt\"\n\nr = inserted_val + 1\n",
+        .input = "r\n\n/q\n",
+    },
 };
 
 const Stats = struct {

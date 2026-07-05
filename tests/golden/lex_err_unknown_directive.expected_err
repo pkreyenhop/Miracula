@@ -1,0 +1,4 @@
+error found near line 1 of file "tests/golden/lex_err_unknown_directive.m"
+compilation abandoned
+
+UNDEFINED NAME - x
