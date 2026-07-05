@@ -540,12 +540,6 @@ fn reportMakeFailures() void {
     rt.rs.make_status = 1;
 }
 
-// Version-mismatch scratch, filled by checkVersion and drained by libFails.
-var vstack: [4]c_int = undefined; // versions found at mismatched library dirs
-var mstack: [4][*:0]const u8 = undefined; // the corresponding directory paths
-var mvp: usize = 0; // count of recorded mismatches (<= 4)
-var vbuf: [12]u8 = undefined; // formatting buffer for versionString
-
 /// Load the saved `.mirarc` dump `rcfile`. Returns 1 on success, 0 on failure.
 pub fn readRc(rcfile: [*:0]const u8) Word {
     var z: [20]u8 = undefined;
@@ -676,10 +670,10 @@ pub fn checkVersion(m: [*:0]const u8) c_int {
         _ = word.fclose(f);
     }
     if (read_ok and r == 0) {
-        if (mvp < 4) {
-            mstack[mvp] = m;
-            vstack[mvp] = @intCast(v1);
-            mvp += 1;
+        if (rt.rs.mvp < 4) {
+            rt.rs.mstack[rt.rs.mvp] = m;
+            rt.rs.vstack[rt.rs.mvp] = @intCast(v1);
+            rt.rs.mvp += 1;
         }
     }
     return r;
@@ -689,8 +683,8 @@ pub fn checkVersion(m: [*:0]const u8) c_int {
 pub fn libFails() void {
     word.printErr("found", .{});
     var i: usize = 0;
-    while (i < mvp) : (i += 1) {
-        word.printErr("\tversion {s} at: {s}\n", .{ versionString(vstack[i]), mstack[i] });
+    while (i < rt.rs.mvp) : (i += 1) {
+        word.printErr("\tversion {s} at: {s}\n", .{ versionString(rt.rs.vstack[i]), rt.rs.mstack[i] });
     }
 }
 
@@ -701,8 +695,8 @@ pub fn versionString(v: c_int) [*:0]const u8 {
     if (v < 0 or v > 999999) {
         return "???";
     }
-    _ = abi.snprintf(&vbuf, vbuf.len, "%.3f", .{@as(f64, @floatFromInt(v)) / 1000.0});
-    return @ptrCast(&vbuf);
+    _ = abi.snprintf(&rt.rs.vbuf, rt.rs.vbuf.len, "%.3f", .{@as(f64, @floatFromInt(v)) / 1000.0});
+    return @ptrCast(&rt.rs.vbuf);
 }
 
 test "versionString: formats an integer version as M.mmm" {

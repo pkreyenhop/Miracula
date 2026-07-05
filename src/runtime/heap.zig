@@ -562,7 +562,7 @@ pub const Heap = struct {
         // a Word sitting on the C stack the scan above already covers, and
         // not reachable through any cell's hd/tl the way the old in-graph
         // pointer-reversal encoding was -- so it needs its own root pass.
-        @import("reducer/spine.zig").markAllRoots(markRoot);
+        @import("reducer/spine.zig").markAllRoots(reduce.ev.gc_roots_head, markRoot);
     }
 
     /// Whether `x` is a heap-cell pointer (rather than an atom/immediate).

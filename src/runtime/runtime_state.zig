@@ -181,6 +181,17 @@ pub const RuntimeState = struct {
     /// `last_gc_count` above.
     child_exit_status: ?u8 = null,
 
+    // ── Bootstrap scratch (startup.zig) ─────────────────────────────────────
+    /// Version-mismatch scratch, filled by `checkVersion` and drained by
+    /// `libFails` while resolving the miralib directory at startup.
+    vstack: [4]c_int = undefined,
+    /// The corresponding directory paths for `vstack`.
+    mstack: [4][*:0]const u8 = undefined,
+    /// Count of recorded mismatches in `vstack`/`mstack` (<= 4).
+    mvp: usize = 0,
+    /// Formatting scratch for `versionString`.
+    vbuf: [12]u8 = undefined,
+
     /// Validate all runtime state global variables holding heap references.
     pub fn validate(self: *const RuntimeState) void {
         const options = @import("version_options");

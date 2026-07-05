@@ -18,6 +18,7 @@ const heap = @import("heap.zig");
 const repl = @import("../driver/repl.zig");
 const engine = @import("reducer/reduce.zig");
 const reducer_trace = @import("reducer/trace.zig");
+const spine = @import("reducer/spine.zig");
 const big = @import("big.zig");
 const lex = @import("../parser/lex.zig");
 const main_clib = @import("main_clib.zig");
@@ -47,6 +48,15 @@ pub const EvalState = struct {
     errtrap: Word = 0,
     /// Reduction-step counter (the perf metric reported by `outstats`).
     cycles: i64 = 0,
+    /// Per-combinator step histogram (`-Dreduce-trace`; zero-overhead when off).
+    trace: reducer_trace.TraceState = .{},
+    /// Free-list of previously-`deinit`ed `Spine` frame buffers, reused by
+    /// `Spine.init` (see its doc for why this matters for `reduce()`'s
+    /// per-call allocation cost).
+    spine_buffer_pool: spine.BufferPool = .empty,
+    /// Head of the singly-linked list of currently-registered `Spine`s (see
+    /// `Spine.register`/`unregister` and `Heap.bases`'s GC-root marking).
+    gc_roots_head: ?*spine.Spine = null,
 };
 
 /// Pointer to the evaluator state held in `interp` (so `interp.reset()` clears
@@ -368,7 +378,7 @@ pub fn initclock() void {}
 
 /// Print the end-of-evaluation statistics (reductions, cells, GC) when enabled.
 pub fn outstats() void {
-    reducer_trace.dump(); // per-combinator trace (no-op unless -Dreduce-trace)
+    reducer_trace.dump(&ev.trace); // per-combinator trace (no-op unless -Dreduce-trace)
     if (rt.rs.atcount == 0) {
         return;
     }

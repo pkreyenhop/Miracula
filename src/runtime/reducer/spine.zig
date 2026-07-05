@@ -65,7 +65,7 @@ pub const Frame = struct {
 /// tracking their origin would let a buffer allocated by one get freed by the
 /// other, which is undefined behaviour and exactly what `testing.allocator`
 /// exists to catch.
-const PooledBuffer = struct {
+pub const PooledBuffer = struct {
     allocator: std.mem.Allocator,
     frames: std.ArrayList(Frame),
 };
@@ -77,7 +77,11 @@ const PooledBuffer = struct {
 /// one back) — not the number of calls made, which is unbounded. Pool
 /// bookkeeping itself always allocates via `std.heap.page_allocator`,
 /// independent of whichever allocator a given `Spine` uses for its frames.
-var buffer_pool: std.ArrayList(PooledBuffer) = .empty;
+///
+/// Owned by `reduce.EvalState` (`ctx.eval.spine_buffer_pool`) rather than a
+/// module global, per the shared-state plan's Phase 6 sweep — passed in
+/// explicitly since `Spine.init`/`deinit` have no `self` yet to hang it off.
+pub const BufferPool = std.ArrayList(PooledBuffer);
 const pool_allocator = std.heap.page_allocator;
 
 /// An explicit, growable spine stack. One per `reduce()` invocation — and
@@ -118,7 +122,7 @@ pub const Spine = struct {
     /// before this — fewer total memory writes per traversal step, see the
     /// module doc — this specifically closes the gap for the
     /// many-small-calls shape that regressed).
-    pub fn init(allocator: std.mem.Allocator) Spine {
+    pub fn init(allocator: std.mem.Allocator, pool: *BufferPool) Spine {
         // Pooling is skipped under `zig build test`: `std.testing.allocator`
         // does not offer the same "one stable, process-wide instance" lifetime
         // guarantee `rt.allocator` does in the real interpreter (reusing a
@@ -127,10 +131,10 @@ pub const Spine = struct {
         // bucket-mismatch assertions `std.testing.allocator` exists to catch).
         // Unit tests don't need the perf win; correctness there matters more.
         if (!builtin.is_test) {
-            for (buffer_pool.items, 0..) |pooled, i| {
+            for (pool.items, 0..) |pooled, i| {
                 if (std.meta.eql(pooled.allocator, allocator)) {
                     const frames = pooled.frames;
-                    _ = buffer_pool.swapRemove(i);
+                    _ = pool.swapRemove(i);
                     return .{ .frames = frames, .allocator = allocator };
                 }
             }
@@ -138,17 +142,17 @@ pub const Spine = struct {
         return .{ .frames = .empty, .allocator = allocator };
     }
 
-    /// Return the frame storage to `buffer_pool` for reuse by a later `init`
+    /// Return the frame storage to `pool` for reuse by a later `init`
     /// with the *same* allocator, instead of freeing it (skipped under test --
     /// see `init`). Callers that `register`ed this `Spine` must `unregister`
     /// it first.
-    pub fn deinit(self: *Spine) void {
+    pub fn deinit(self: *Spine, pool: *BufferPool) void {
         self.frames.clearRetainingCapacity();
         if (builtin.is_test) {
             self.frames.deinit(self.allocator);
             return;
         }
-        buffer_pool.append(pool_allocator, .{ .allocator = self.allocator, .frames = self.frames }) catch {
+        pool.append(pool_allocator, .{ .allocator = self.allocator, .frames = self.frames }) catch {
             // Pool itself is out of memory (rare -- it only grows to the
             // maximum concurrent reduce() nesting depth ever seen): just
             // free this buffer for real rather than leaking it.
@@ -162,16 +166,16 @@ pub const Spine = struct {
     /// registration, before this `Spine` is destroyed — guaranteed by normal
     /// call-stack nesting (a nested `reduce()` call's spine is always
     /// registered after, and unregistered before, its caller's).
-    pub fn register(self: *Spine) void {
-        self.next = gc_roots_head;
-        gc_roots_head = self;
+    pub fn register(self: *Spine, roots_head: *?*Spine) void {
+        self.next = roots_head.*;
+        roots_head.* = self;
     }
 
     /// Unregister this spine. Must currently be the registry head (see
     /// `register`'s nesting requirement).
-    pub fn unregister(self: *Spine) void {
-        std.debug.assert(gc_roots_head == self);
-        gc_roots_head = self.next;
+    pub fn unregister(self: *Spine, roots_head: *?*Spine) void {
+        std.debug.assert(roots_head.* == self);
+        roots_head.* = self.next;
     }
 
     /// True when no frame remains — the replacement for the old
@@ -319,15 +323,13 @@ pub const Spine = struct {
 // `unregister`, above), and `Heap.bases` calls `markAllRoots` to mark every
 // frame's `node` directly, alongside its existing root marking.
 
-/// Head of the singly-linked list of currently-registered spines (see
-/// `Spine.register`/`unregister`). Mirrors `reduce()`'s own call-stack
-/// nesting: the innermost active call's spine is always the head.
-var gc_roots_head: ?*Spine = null;
-
 /// Mark every frame's `node` across every currently-registered spine as a GC
-/// root. Called from `Heap.bases` alongside its other root marking.
-pub fn markAllRoots(mark_fn: *const fn (Word) void) void {
-    var s = gc_roots_head;
+/// root. Called from `Heap.bases` alongside its other root marking, passing
+/// the registry head owned by `reduce.EvalState` (`ev.gc_roots_head`) —
+/// mirrors `reduce()`'s own call-stack nesting: the innermost active call's
+/// spine is always the head.
+pub fn markAllRoots(roots_head: ?*Spine, mark_fn: *const fn (Word) void) void {
+    var s = roots_head;
     while (s) |sp| {
         for (sp.frames.items) |f| {
             mark_fn(f.node);
@@ -341,8 +343,9 @@ const testing = std.testing;
 test "downLeft: pushes a frame and reads hd without mutating the cell" {
     tu.freshInterp();
     const e = heap.cons(111, 222);
-    var spine = Spine.init(testing.allocator);
-    defer spine.deinit();
+    var pool: BufferPool = .empty;
+    var spine = Spine.init(testing.allocator, &pool);
+    defer spine.deinit(&pool);
 
     const focus = spine.downLeft(e);
 
@@ -356,8 +359,9 @@ test "downLeft: pushes a frame and reads hd without mutating the cell" {
 test "downLeft/upLeft round trip: writes back the reduced head and pops" {
     tu.freshInterp();
     const e = heap.cons(111, 222);
-    var spine = Spine.init(testing.allocator);
-    defer spine.deinit();
+    var pool: BufferPool = .empty;
+    var spine = Spine.init(testing.allocator, &pool);
+    defer spine.deinit(&pool);
 
     _ = spine.downLeft(e);
     const focus = spine.upLeft(999); // pretend the head reduced to 999
@@ -371,8 +375,9 @@ test "downLeft/upLeft round trip: writes back the reduced head and pops" {
 test "downLeft/downRight/upRight/upLeft: full visit of one AP cell" {
     tu.freshInterp();
     const e = heap.cons(111, 222);
-    var spine = Spine.init(testing.allocator);
-    defer spine.deinit();
+    var pool: BufferPool = .empty;
+    var spine = Spine.init(testing.allocator, &pool);
+    defer spine.deinit(&pool);
 
     // Visit the head: focus -> 111.
     var focus = spine.downLeft(e);
@@ -405,8 +410,9 @@ test "a chain of AP cells unwinds and rewinds in LIFO order" {
     const e1 = heap.cons(e2, 'b');
     const e0 = heap.cons(e1, 'a'); // outermost
 
-    var spine = Spine.init(testing.allocator);
-    defer spine.deinit();
+    var pool: BufferPool = .empty;
+    var spine = Spine.init(testing.allocator, &pool);
+    defer spine.deinit(&pool);
 
     // Unwind: downLeft(e0) -> e1, downLeft(e1) -> e2, downLeft(e2) -> head_atom.
     var focus = spine.downLeft(e0);
@@ -436,8 +442,9 @@ test "a chain of AP cells unwinds and rewinds in LIFO order" {
 
 test "guarded downright/upleft report exhaustion instead of underflowing" {
     tu.freshInterp();
-    var spine = Spine.init(testing.allocator);
-    defer spine.deinit();
+    var pool: BufferPool = .empty;
+    var spine = Spine.init(testing.allocator, &pool);
+    defer spine.deinit(&pool);
 
     try testing.expectEqual(@as(?Word, null), spine.upleft(0));
     try testing.expectEqual(@as(?Word, null), spine.downright(0));
@@ -456,8 +463,9 @@ test "depth is unbounded: a very long spine does not overflow a fixed stack" {
     // it is backed by a growable `std.ArrayList` rather than a small
     // fixed-size array.
     const depth_count = 200_000;
-    var spine = Spine.init(testing.allocator);
-    defer spine.deinit();
+    var pool: BufferPool = .empty;
+    var spine = Spine.init(testing.allocator, &pool);
+    defer spine.deinit(&pool);
 
     var chain = heap.cons(0, 0);
     var i: usize = 0;
@@ -481,8 +489,9 @@ test "depth is unbounded: a very long spine does not overflow a fixed stack" {
 
 test "pushRaw/drainAll: the handleTRY/handleFAIL primitives" {
     tu.freshInterp();
-    var spine = Spine.init(testing.allocator);
-    defer spine.deinit();
+    var pool: BufferPool = .empty;
+    var spine = Spine.init(testing.allocator, &pool);
+    defer spine.deinit(&pool);
 
     const a = heap.cons(1, 2);
     const b = heap.cons(3, 4);
@@ -496,12 +505,14 @@ test "pushRaw/drainAll: the handleTRY/handleFAIL primitives" {
 
 test "register/unregister: markAllRoots visits every frame of every registered spine, nested LIFO" {
     tu.freshInterp();
-    var outer = Spine.init(testing.allocator);
-    defer outer.deinit();
+    var pool: BufferPool = .empty;
+    var roots_head: ?*Spine = null;
+    var outer = Spine.init(testing.allocator, &pool);
+    defer outer.deinit(&pool);
     const outer_node = heap.cons(1, 2);
     _ = outer.downLeft(outer_node);
-    outer.register();
-    defer outer.unregister();
+    outer.register(&roots_head);
+    defer outer.unregister(&roots_head);
 
     var seen = std.ArrayList(Word).empty;
     defer seen.deinit(testing.allocator);
@@ -513,7 +524,7 @@ test "register/unregister: markAllRoots visits every frame of every registered s
     };
     Collector.target = &seen;
 
-    markAllRoots(Collector.collect);
+    markAllRoots(roots_head, Collector.collect);
     try testing.expectEqual(@as(usize, 1), seen.items.len);
     try testing.expectEqual(outer_node, seen.items[0]);
 
@@ -521,15 +532,15 @@ test "register/unregister: markAllRoots visits every frame of every registered s
     // top and unregisters before the outer one -- exactly LIFO call-stack
     // nesting. markAllRoots must see both while the inner one is live.
     {
-        var inner = Spine.init(testing.allocator);
-        defer inner.deinit();
+        var inner = Spine.init(testing.allocator, &pool);
+        defer inner.deinit(&pool);
         const inner_node = heap.cons(5, 6);
         _ = inner.downLeft(inner_node);
-        inner.register();
-        defer inner.unregister();
+        inner.register(&roots_head);
+        defer inner.unregister(&roots_head);
 
         seen.clearRetainingCapacity();
-        markAllRoots(Collector.collect);
+        markAllRoots(roots_head, Collector.collect);
         try testing.expectEqual(@as(usize, 2), seen.items.len);
         try testing.expect(std.mem.findScalar(Word, seen.items, outer_node) != null);
         try testing.expect(std.mem.findScalar(Word, seen.items, inner_node) != null);
@@ -537,7 +548,7 @@ test "register/unregister: markAllRoots visits every frame of every registered s
 
     // Back to just the outer spine after the inner one unregisters.
     seen.clearRetainingCapacity();
-    markAllRoots(Collector.collect);
+    markAllRoots(roots_head, Collector.collect);
     try testing.expectEqual(@as(usize, 1), seen.items.len);
     try testing.expectEqual(outer_node, seen.items[0]);
 }

@@ -69,19 +69,19 @@ pub fn reduce(e_val: Word) Word {
     // each get their own, nested LIFO with this one; see Spine.register).
     var ctx: ReductionCtx = undefined;
     ctx.e = e_val;
-    ctx.spine = spine.Spine.init(rt.allocator);
-    ctx.spine.register();
-    defer ctx.spine.deinit();
-    defer ctx.spine.unregister();
+    ctx.heap = heap_mod.heap;
+    ctx.eval = reduce_rt.ev;
+    ctx.rs = rt.rs;
+    ctx.spine = spine.Spine.init(rt.allocator, &ctx.eval.spine_buffer_pool);
+    ctx.spine.register(&ctx.eval.gc_roots_head);
+    defer ctx.spine.deinit(&ctx.eval.spine_buffer_pool);
+    defer ctx.spine.unregister(&ctx.eval.gc_roots_head);
     ctx.hold = 0;
     ctx.args[0] = 0;
     ctx.args[1] = 0;
     ctx.args[2] = 0;
     ctx.args[3] = 0;
     ctx.action = word.ACT_NONE;
-    ctx.heap = heap_mod.heap;
-    ctx.eval = reduce_rt.ev;
-    ctx.rs = rt.rs;
 
     main_loop: while (true) {
         // (1) Unwind the left spine: descend through `AP` nodes (reversing
@@ -94,7 +94,7 @@ pub fn reduce(e_val: Word) Word {
             dispatchNonCombinatorHead(&ctx);
         } else {
             ctx.eval.cycles += 1; // one reduction step (the perf counter)
-            trace.step(ctx.e); // per-combinator histogram (compiled out when off)
+            trace.step(&ctx.eval.trace, ctx.e); // per-combinator histogram (compiled out when off)
             ctx.action = word.ACT_NONE;
 
             // (2) Dispatch on the head. A bare combinator/operator atom selects a
