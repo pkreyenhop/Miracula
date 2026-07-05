@@ -168,9 +168,9 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
             dump.makedump(heap, core, comp, rs);
         } else if (files.isMirandaSource(t_val) != 0) {
             if (comp.ND == NIL) {
-                dump.fixexports(heap, rs, lexs);
+                dump.fixexports(heap, comp, rs, lexs);
                 dump.makedump(heap, core, comp, rs);
-                dump.unfixexports(heap, rs, lexs);
+                dump.unfixexports(heap, comp, rs, lexs);
             } else {
                 var obf: [abi.pnlim]u8 = undefined;
                 _ = word.strcpy(&obf, t_val);

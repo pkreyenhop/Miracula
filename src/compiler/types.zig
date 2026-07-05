@@ -617,8 +617,6 @@ pub fn subst(heap: *Heap, term: Word) Word {
     return walktype(heap, term, ult);
 }
 
-var NGT: Word = 0;
-
 /// Per-variable map for `linst`: copy generic vars, keep non-generic ones.
 fn lmap(heap: *Heap, tv: Word) Word {
     if (nonGeneric(heap, tv)) {
@@ -639,13 +637,13 @@ fn lmap(heap: *Heap, tv: Word) Word {
 /// Instantiate `term`, freshening its generic type variables (`ngt` = the non-generic set).
 pub fn linst(heap: *Heap, term: Word, ngt: Word) Word {
     cs.localtvmap = NIL;
-    NGT = ngt;
+    cs.NGT = ngt;
     return walktype(heap, term, lmap);
 }
 
 /// Whether type variable `tv` is non-generic / monomorphic (1/0).
 pub fn nonGeneric(heap: *Heap, tv: Word) bool {
-    var x = NGT;
+    var x = cs.NGT;
     while (x != NIL) {
         if (occurs(heap, tv, subst(heap, h(heap, x)))) {
             return true;
@@ -1074,15 +1072,13 @@ fn neg(heap: *Heap, x: Word) Word {
     return h(heap, x) & 0x10000000;
 }
 
-var allchars: Word = 0;
-
 /// The argument of the outermost type application of `x`.
 pub fn tail(heap: *Heap, x_in: Word) Word {
     var x = x_in;
-    allchars = 1;
+    cs.allchars = 1;
     while (getTag(heap, x) == .CONS) {
         const char_res = isChar(h(heap, x));
-        allchars = if (char_res) allchars & 1 else 0;
+        cs.allchars = if (char_res) cs.allchars & 1 else 0;
         x = t(heap, x);
     }
     return x;
@@ -1101,7 +1097,7 @@ pub fn outFormal1(heap: *Heap, f: *word.FILE, x_in: Word) void {
     switch (getTag(heap, x)) {
         .CONS => {
             if (tail(heap, x) == NIL) {
-                if (allchars != 0) {
+                if (cs.allchars != 0) {
                     _ = (f).print("\"", .{});
                     while (x != NIL) {
                         _ = (f).print("{s}", .{charname(h(heap, x))});

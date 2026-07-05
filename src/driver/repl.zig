@@ -41,9 +41,6 @@ const core_state = @import("../runtime/core_state.zig");
 const version = @import("../runtime/version.zig");
 const ls = lex_state.ls;
 
-var last_elapsed_ns: ?i128 = null;
-var last_gc_count: ?c_long = null;
-var child_exit_status: ?u8 = null;
 
 fn formatExecutionTime(ns: i128, buf: []u8) []const u8 {
     const ms = @as(f64, @floatFromInt(ns)) / 1_000_000.0;
@@ -113,10 +110,10 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
         resetgcstats();
         if (rs.verbosity != 0) {
             var prompt_buf: [256]u8 = undefined;
-            const prompt = if (last_elapsed_ns) |ns| blk: {
+            const prompt = if (rs.last_elapsed_ns) |ns| blk: {
                 var time_buf: [64]u8 = undefined;
                 const time_str = formatExecutionTime(ns, &time_buf);
-                if (last_gc_count) |gc_val| {
+                if (rs.last_gc_count) |gc_val| {
                     if (gc_val > 0) {
                         const suffix = if (gc_val == 1) "GC" else "GCs";
                         break :blk std.fmt.bufPrint(&prompt_buf, "[{s}, {} {s}] {s}", .{ time_str, gc_val, suffix, std.mem.span(rs.promptstr) }) catch std.mem.span(rs.promptstr);
@@ -133,8 +130,8 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
         } else if (lineedit.active) {
             lineedit.setPrompt("");
         }
-        last_elapsed_ns = null;
-        last_gc_count = null;
+        rs.last_elapsed_ns = null;
+        rs.last_gc_count = null;
         ch = abi.getchar();
         if (rs.rechecking != 0 and heap_mod.srcUpdate(rs) != 0) {
             module_loader.loadfile(heap, core_state.s, cs, rs, ls, rs.current_script.?);
@@ -279,17 +276,17 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                 }
                 core.commandmode = 0;
                 rs.echoing = rs.verbosity & rs.listing;
-                last_elapsed_ns = getMonotonicNs() - start;
-                if (child_exit_status) |exit_code| {
+                rs.last_elapsed_ns = getMonotonicNs() - start;
+                if (rs.child_exit_status) |exit_code| {
                     if (exit_code == 0) {
-                        last_gc_count = 0;
+                        rs.last_gc_count = 0;
                     } else if (exit_code >= 2) {
-                        last_gc_count = exit_code - 1;
+                        rs.last_gc_count = exit_code - 1;
                     } else {
-                        last_gc_count = null;
+                        rs.last_gc_count = null;
                     }
                 } else {
-                    last_gc_count = null;
+                    rs.last_gc_count = null;
                 }
             },
         }
@@ -297,7 +294,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
 }
 
 /// Fork a child for evaluation. In the parent, wait and report any fatal signal; returns 0 in the parent and 1 in the child.
-pub fn process() Word {
+pub fn process(rs: *rt.RuntimeState) Word {
     var oldsig: usize = undefined;
     oldsig = signals(abi.SIGINT, 1);
     const pid = abi.fork();
@@ -319,9 +316,9 @@ pub fn process() Word {
         }
         _ = signals(abi.SIGINT, oldsig);
         if (std.posix.W.IFEXITED(@bitCast(status))) {
-            child_exit_status = std.posix.W.EXITSTATUS(@bitCast(status));
+            rs.child_exit_status = std.posix.W.EXITSTATUS(@bitCast(status));
         } else {
-            child_exit_status = null;
+            rs.child_exit_status = null;
         }
         return 0;
     }
@@ -411,7 +408,7 @@ pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_st
             abi.make(.AP, abi.mkshow(heap, 0, 0, typ), x);
         break :blk abi.make(.CONS, abi.make(.AP, rs.standardout, inner), NIL);
     };
-    if (process() != 0) {
+    if (process(rs) != 0) {
         // Child: evaluate and print, then exit (compiling=0 only here, parent unaffected).
         _ = signals(abi.SIGINT, @intFromPtr(&dieClean));
         core.compiling = 0;
@@ -441,8 +438,8 @@ pub fn reset() callconv(.c) void {
         _ = abi.unlink(u);
         rt.rs.unlinkme = null;
     }
-    last_elapsed_ns = null;
-    last_gc_count = null;
+    rt.rs.last_elapsed_ns = null;
+    rt.rs.last_gc_count = null;
     abi.siglongjmp(&rt.rs.env, 1);
 }
 

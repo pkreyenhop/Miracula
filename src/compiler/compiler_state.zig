@@ -31,6 +31,12 @@ pub const CompilerState = struct {
     SBND: Word = NIL,
     /// Free-binding-set list for BNF rules.
     FBS: Word = NIL,
+    /// The non-generic type-variable set for the instantiation `linst()` is
+    /// currently performing; read by `nonGeneric()`.
+    NGT: Word = 0,
+    /// Whether the char-list `tail()` just walked was all chars (a `showString`
+    /// vs. general-list distinction); read by `outFormal1()`.
+    allchars: Word = 0,
     /// Heap list of type atoms (atoms used as type names).
     ATNAMES: Word = 0,
     /// Heap list of constructor–arity pairs for algebraic types.
@@ -96,6 +102,15 @@ pub const CompilerState = struct {
     DETROP: Word = 0,
     /// Heap list of identifiers referenced but not found during load.
     MISSING: Word = 0,
+    /// Ids privatised by `fixexports()` for the duration of a dump write,
+    /// restored to public by the matching `unfixexports()`.
+    internals: Word = NIL,
+    /// Type names present in the dump but missing from the current scope,
+    /// accumulated by `fixtype()` and reported by `readoption()`.
+    tlost: Word = NIL,
+    /// Scratch set of already-reported-missing type names, so `fixtype()`
+    /// doesn't re-report the same one twice within one `readoption()` pass.
+    pfrts: Word = NIL,
 };
 
 /// Singleton compiler-state instance (a `*CompilerState` into `interp`). Import

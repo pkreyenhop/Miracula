@@ -8,10 +8,10 @@ const vdate_text = options.vdate ++ "\x00";
 const host_text = options.host ++ "\x00";
 
 /// The interpreter version number (the build option `-Dversion`).
-pub var version: c_int = @as(c_int, options.version);
+pub const version: c_int = @as(c_int, options.version);
 
 /// The build date string, NUL-terminated for the C-string print path.
-pub var vdate: [*:0]const u8 = vdate_text.ptr;
+pub const vdate: [*:0]const u8 = vdate_text.ptr;
 
 /// The build host string, NUL-terminated for the C-string print path.
-pub var host: [*:0]const u8 = host_text.ptr;
+pub const host: [*:0]const u8 = host_text.ptr;

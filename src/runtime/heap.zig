@@ -26,7 +26,6 @@ const big = @import("big.zig");
 const reduce = @import("reduce.zig");
 const main_clib = @import("main_clib.zig");
 const setup = @import("../compiler/setup.zig");
-const dump = @import("../compiler/dump.zig");
 const cs = compiler_state.cs;
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
@@ -494,7 +493,7 @@ pub const Heap = struct {
             self.mark(rt.rs.includees);
             self.mark(rt.rs.freeids);
             self.mark(rt.rs.exports);
-            self.mark(dump.internals);
+            self.mark(cs.internals);
             self.mark(rt.rs.lexstates);
             self.mark(rt.rs.lexdefs);
             var i: usize = 0;
@@ -519,7 +518,7 @@ pub const Heap = struct {
                 self.mark(rt.rs.detrop);
                 self.mark(rt.rs.bereaved);
                 self.mark(rt.rs.ld_stuff);
-                self.mark(dump.tlost);
+                self.mark(cs.tlost);
                 i = 0;
                 const nextpn_val = @as(usize, @intCast(ls.nextpn));
                 while (i < nextpn_val) : (i += 1) {
@@ -1738,7 +1737,7 @@ pub fn dumpScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
     _ = word.putc(word.DEF_X, file);
     dumpOb(rs.freeids, file);
     _ = word.putc(word.DEF_X, file);
-    dumpDefs(dump.internals, file);
+    dumpDefs(comp.internals, file);
 }
 
 /// Write a definition list to dump `file`.
@@ -2044,7 +2043,7 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
         unscramble(comp, aliases);
     }
     if (main_flag != 0) {
-        dump.internals = loadDefs(comp, rs, lexs, file);
+        comp.internals = loadDefs(comp, rs, lexs, file);
     }
     return reverse(files_list);
 }
@@ -2594,8 +2593,8 @@ pub fn unload(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *
     comp.SGC = NIL;
     comp.TABSTRS = NIL;
     comp.ND = NIL;
-    unsetids(dump.internals);
-    dump.internals = NIL;
+    unsetids(comp.internals);
+    comp.internals = NIL;
     while (heap.files != NIL and heap.files != 0) : (heap.files = t(heap.files)) {
         const fil = h(heap.files);
         unsetids(t(fil));

@@ -33,34 +33,26 @@ inline fn setTag(heap: *Heap, x: Word, val: word.NodeTag) void {
     heap.setTag(x, val);
 }
 
-/// Heap list of identifiers hidden from the exported interface (privatised).
-/// Populated by fixexports(); cleared by unfixexports().
-pub var internals: Word = NIL;
-/// Heap list of types that are needed by the current script but have no name in scope.
-/// Non-NIL after readoption() means the dump cannot be used and type errors will be reported.
-pub var tlost: Word = NIL;
-var pfrts: Word = NIL;
-
 /// Marks all exported identifiers and privatises the rest.
 /// Must be paired with a call to unfixexports() once the dump is written.
-pub fn fixexports(heap: *Heap, rs: *rt.RuntimeState, lexs: *lex_state.LexState) void {
+pub fn fixexports(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState) void {
     var e = rs.exports;
     var f: Word = undefined;
     while (e != NIL) : (e = t(e)) {
         paint(h(e));
     }
-    internals = NIL;
+    comp.internals = NIL;
     if (rs.exports == NIL and lexs.exportfiles == NIL and rs.embargoes == NIL) {
         e = rs.freeids;
         while (e != NIL) : (e = t(e)) {
-            internals = heap_mod.cons(privatise(heap, lexs, h(h(e))), internals);
+            comp.internals = heap_mod.cons(privatise(heap, lexs, h(h(e))), comp.internals);
         }
         f = t(heap.files);
         while (f != NIL) : (f = t(f)) {
             var e_def = heap_mod.filDefs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
                 if (getTag(heap, h(e_def)) == .ID) {
-                    internals = heap_mod.cons(privatise(heap, lexs, h(e_def)), internals);
+                    comp.internals = heap_mod.cons(privatise(heap, lexs, h(e_def)), comp.internals);
                 }
             }
         }
@@ -70,7 +62,7 @@ pub fn fixexports(heap: *Heap, rs: *rt.RuntimeState, lexs: *lex_state.LexState) 
             var e_def = heap_mod.filDefs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
                 if (getTag(heap, h(e_def)) == .ID and unpainted(heap, h(e_def))) {
-                    internals = heap_mod.cons(privatise(heap, lexs, h(e_def)), internals);
+                    comp.internals = heap_mod.cons(privatise(heap, lexs, h(e_def)), comp.internals);
                 }
             }
         }
@@ -99,13 +91,13 @@ fn unpaint(x: Word) void {
 
 /// Reverses the privatisation done by fixexports(), restoring all `internals` to public.
 /// No-op when `rs.mkexports != 0` (the dump is being kept for distribution).
-pub fn unfixexports(heap: *Heap, rs: *rt.RuntimeState, lexs: *lex_state.LexState) void {
-    var i = internals;
+pub fn unfixexports(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState) void {
+    var i = comp.internals;
     if (rs.mkexports) return;
     while (i != NIL) : (i = t(i)) {
         _ = publicise(heap, lexs, h(i));
     }
-    internals = NIL;
+    comp.internals = NIL;
 }
 
 /// Move id `x` out of the public name bucket into a private name (for `%export` filtering).
@@ -194,8 +186,8 @@ pub fn readoption(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runt
     var f: Word = undefined;
     var t_val: Word = undefined;
 
-    pfrts = NIL;
-    tlost = NIL;
+    comp.pfrts = NIL;
+    comp.tlost = NIL;
 
     if (comp.FBS != NIL) {
         f = comp.FBS;
@@ -203,7 +195,7 @@ pub fn readoption(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runt
             t_val = t(h(f));
             while (t_val != NIL) : (t_val = t(t_val)) {
                 if (getTag(heap, h(h(t_val))) == .STRCONS and t(t(h(h(t_val)))) == word.type_t) {
-                    pfrts = heap_mod.cons(h(h(t_val)), pfrts);
+                    comp.pfrts = heap_mod.cons(h(h(t_val)), comp.pfrts);
                 }
             }
         }
@@ -217,37 +209,37 @@ pub fn readoption(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runt
                 t_val = heap_mod.idType(h(f));
                 if (t_val == word.type_t) {
                     if (heap_mod.tClass(h(f)) == word.synonym_t) {
-                        tp(heap_mod.tInfo(h(f))).* = fixtype(heap, heap_mod.tInfo(h(f)), h(f));
+                        tp(heap_mod.tInfo(h(f))).* = fixtype(heap, comp, heap_mod.tInfo(h(f)), h(f));
                     }
                 } else {
-                    tp(h(h(f))).* = fixtype(heap, t_val, h(f));
+                    tp(h(h(f))).* = fixtype(heap, comp, t_val, h(f));
                 }
             }
         }
     }
 
-    if (tlost == NIL) return;
+    if (comp.tlost == NIL) return;
     comp.TYPERRS += 1;
-    word.print("cs.MISSING TYPENAME{s}\n", .{if (t(tlost) == NIL) "" else "S"});
-    word.print("the following type{s} no name in this scope:\n", .{if (t(tlost) == NIL) " is needed but has" else "s are needed but have"});
-    while (tlost != NIL) {
-        word.print("\'{s}\' of file \"{s}\", needed by: ", .{ strtab.strOf(strtab.table, h(h(heap_mod.tInfo(h(h(tlost)))))), strtab.strOf(strtab.table, h(t(heap_mod.tInfo(h(h(tlost)))))) });
-        abi.printlist(heap, @constCast(""), heap_mod.alfasort(t(h(tlost))));
-        tlost = t(tlost);
+    word.print("cs.MISSING TYPENAME{s}\n", .{if (t(comp.tlost) == NIL) "" else "S"});
+    word.print("the following type{s} no name in this scope:\n", .{if (t(comp.tlost) == NIL) " is needed but has" else "s are needed but have"});
+    while (comp.tlost != NIL) {
+        word.print("\'{s}\' of file \"{s}\", needed by: ", .{ strtab.strOf(strtab.table, h(h(heap_mod.tInfo(h(h(comp.tlost)))))), strtab.strOf(strtab.table, h(t(heap_mod.tInfo(h(h(comp.tlost)))))) });
+        abi.printlist(heap, @constCast(""), heap_mod.alfasort(t(h(comp.tlost))));
+        comp.tlost = t(comp.tlost);
     }
 }
 
 /// Resolves STRCONS type nodes to their canonical ID form when loading a dump.
 /// Adds unresolvable types to `tlost` for deferred error reporting.
-pub fn fixtype(heap: *Heap, t_val: Word, x: Word) Word {
+pub fn fixtype(heap: *Heap, comp: *compiler_state.CompilerState, t_val: Word, x: Word) Word {
     switch (getTag(heap, t_val)) {
         .AP, .CONS => {
-            tp(t_val).* = fixtype(heap, t(t_val), x);
-            hp(t_val).* = fixtype(heap, h(t_val), x);
+            tp(t_val).* = fixtype(heap, comp, t(t_val), x);
+            hp(t_val).* = fixtype(heap, comp, h(t_val), x);
             return t_val;
         },
         .STRCONS => {
-            if (abi.member(heap, pfrts, t_val) != 0) {
+            if (abi.member(heap, comp.pfrts, t_val) != 0) {
                 return t_val;
             }
             var cur_t = t_val;
@@ -255,13 +247,13 @@ pub fn fixtype(heap: *Heap, t_val: Word, x: Word) Word {
                 cur_t = pnVal(cur_t);
             }
             if (getTag(heap, cur_t) != .ID) {
-                var w = tlost;
+                var w = comp.tlost;
                 while (w != NIL and h(h(w)) != cur_t) {
                     w = t(w);
                 }
                 if (w == NIL) {
-                    tlost = heap_mod.cons(heap_mod.cons(cur_t, heap_mod.cons(x, NIL)), tlost);
-                    w = tlost;
+                    comp.tlost = heap_mod.cons(heap_mod.cons(cur_t, heap_mod.cons(x, NIL)), comp.tlost);
+                    w = comp.tlost;
                 }
                 tp(h(w)).* = abi.add1(heap, x, t(h(w)));
             }
@@ -386,7 +378,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
     }
 
     if (heap.files != NIL and !rs.making and rs.initialising == 0) {
-        unfixexports(heap, rs, ls);
+        unfixexports(heap, comp, rs, ls);
     }
     core.loading = 0;
 }

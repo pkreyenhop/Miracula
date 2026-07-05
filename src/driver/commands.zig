@@ -35,16 +35,6 @@ const module_loader = @import("../compiler/module_loader.zig");
 const ls = lex_state.ls;
 
 const token = lex.token;
-// File-private state for the /edit command.
-var mirahdr: ?[*:0]u8 = null;
-var lmirahdr: ?[*:0]u8 = null;
-
-// File-private state for allnamescom / namescom.
-var leftist: bool = false;
-var words: [400]Word = undefined;
-
-// File-private state for filequote.
-var filequote_mlen: usize = 0;
 
 /// Print `s` space characters (column padding for listings).
 fn spaces(s: Word) void {
@@ -61,14 +51,14 @@ fn is(lexs: *lex_state.LexState, s: [:0]const u8) bool {
 
 /// Print path `p` for messages: `<name>` when it lives under the library dir, else `"path"`.
 fn filequote(rs: *rt.RuntimeState, p: [:0]const u8) void {
-    if (filequote_mlen == 0) {
+    if (rs.filequote_mlen == 0) {
         const last_slash = word.strrchr(&rs.PRELUDE, '/');
         if (last_slash != null) {
-            filequote_mlen = @intFromPtr(last_slash.?) - @intFromPtr(&rs.PRELUDE) + 1;
+            rs.filequote_mlen = @intFromPtr(last_slash.?) - @intFromPtr(&rs.PRELUDE) + 1;
         }
     }
-    if (word.strncmp(p.ptr, &rs.PRELUDE, filequote_mlen) == 0) {
-        word.print("<{s}>", .{p.ptr + filequote_mlen});
+    if (word.strncmp(p.ptr, &rs.PRELUDE, rs.filequote_mlen) == 0) {
+        word.print("<{s}>", .{p.ptr + rs.filequote_mlen});
     } else {
         word.print("\"{s}\"", .{p.ptr});
     }
@@ -111,10 +101,10 @@ fn namescom(heap: *Heap, rs: *rt.RuntimeState, l: Word) void {
                     i = 0;
                     r = 0;
                 }
-                if (leftist) {
+                if (rs.leftist) {
                     col_local = 0;
                     while (col_local < wp) {
-                        word.print("{s}", .{heap_mod.getId(words[@as(usize, @intCast(col_local))])});
+                        word.print("{s}", .{heap_mod.getId(rs.words[@as(usize, @intCast(col_local))])});
                         col_local += 1;
                         if (col_local < wp) {
                             spaces(1 + i + if (r > 0) @as(Word, 1) else @as(Word, 0));
@@ -125,7 +115,7 @@ fn namescom(heap: *Heap, rs: *rt.RuntimeState, l: Word) void {
                     r = @as(Word, @intCast(wp)) - 1 - r;
                     col_local = 0;
                     while (col_local < wp) {
-                        word.print("{s}", .{heap_mod.getId(words[@as(usize, @intCast(col_local))])});
+                        word.print("{s}", .{heap_mod.getId(rs.words[@as(usize, @intCast(col_local))])});
                         col_local += 1;
                         if (col_local < wp) {
                             spaces(1 + i + if (r <= 0) @as(Word, 1) else @as(Word, 0));
@@ -133,13 +123,13 @@ fn namescom(heap: *Heap, rs: *rt.RuntimeState, l: Word) void {
                         }
                     }
                 }
-                leftist = !leftist;
+                rs.leftist = !rs.leftist;
                 wp = 0;
                 col_local = 0;
                 _ = word.putchar('\n');
             }
             col_local += w;
-            words[wp] = heap_mod.h(n);
+            rs.words[wp] = heap_mod.h(n);
             wp += 1;
         } else {
             undefs = heap_mod.cons(heap_mod.h(n), undefs);
@@ -149,7 +139,7 @@ fn namescom(heap: *Heap, rs: *rt.RuntimeState, l: Word) void {
     if (wp > 0) {
         col_local = 0;
         while (col_local < wp) {
-            word.print("{s}", .{heap_mod.getId(words[@as(usize, @intCast(col_local))])});
+            word.print("{s}", .{heap_mod.getId(rs.words[@as(usize, @intCast(col_local))])});
             col_local += 1;
             _ = word.putc(if (col_local == wp) '\n' else ' ', abi.stdout());
         }
@@ -252,28 +242,28 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
         }
         if (abi.getchar() != '\n') return true;
         if (!files.fileExists(t_val.?)) {
-            if (lmirahdr == null) {
+            if (rs.lmirahdr == null) {
                 lexs.dicp = lexs.dicq;
                 _ = word.strcpy(lexs.dicp, abi.getenv("HOME"));
                 if (word.strcmp(lexs.dicp, "/") == 0) {
                     lexs.dicp[0] = 0;
                 }
                 _ = word.strcat(lexs.dicp, "/.mirahdr");
-                lmirahdr = lexs.dicp;
+                rs.lmirahdr = lexs.dicp;
                 lexs.dicq = lexs.dicp + word.strlen(lexs.dicp) + 1;
             }
-            if (files.fileExists(lmirahdr.?)) {
-                mf = lmirahdr;
+            if (files.fileExists(rs.lmirahdr.?)) {
+                mf = rs.lmirahdr;
             }
-            if (mf == null and mirahdr == null) {
+            if (mf == null and rs.mirahdr == null) {
                 lexs.dicp = lexs.dicq;
                 _ = word.strcpy(lexs.dicp, rs.miralib.?);
                 _ = word.strcat(lexs.dicp, "/.mirahdr");
-                mirahdr = lexs.dicp;
+                rs.mirahdr = lexs.dicp;
                 lexs.dicq = lexs.dicp + word.strlen(lexs.dicp) + 1;
             }
-            if (mf == null and files.fileExists(mirahdr.?)) {
-                mf = mirahdr;
+            if (mf == null and files.fileExists(rs.mirahdr.?)) {
+                mf = rs.mirahdr;
             }
             if (mf != null and t_val != rs.current_script) {
                 var prompt_buf: [256]u8 = undefined;
@@ -741,7 +731,7 @@ pub fn allnamescom(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Run
     var x = comp.ND;
     var y = comp.ND;
     var z: Word = 0;
-    leftist = false;
+    rs.leftist = false;
     namescom(heap, rs, heap_mod.makeFil(if (rs.nostdenv) null else @as([*:0]const u8, @ptrCast(&rs.STDENV)), 0, 0, rs.primenv));
     if (heap.files == NIL) return;
     s = heap_mod.t(heap.files);

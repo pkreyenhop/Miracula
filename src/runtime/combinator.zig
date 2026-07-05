@@ -12,7 +12,7 @@ const word = @import("word.zig");
 /// `word.zig` constant at the same offset.
 ///
 /// Tests: cmbnms aligns with the combinator codes in word.zig
-pub var cmbnms: [142]?[*:0]const u8 = .{
+pub const cmbnms: [142]?[*:0]const u8 = .{
     "S",
     "K",
     "Y",

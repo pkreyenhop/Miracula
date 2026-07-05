@@ -160,6 +160,27 @@ pub const RuntimeState = struct {
     lexstates: Word = NIL,
     lexdefs: Word = NIL,
 
+    // ── Driver / REPL display scratch (commands.zig, repl.zig) ─────────────
+    /// Cached path to the user's (and library's) `.mirahdr` file, computed
+    /// once on first `/edit` use.
+    mirahdr: ?[*:0]u8 = null,
+    lmirahdr: ?[*:0]u8 = null,
+    /// Column-alternation flag for `namescom`'s two-column name listing.
+    leftist: bool = false,
+    /// Scratch buffer of heap ids for one `namescom` listing pass.
+    words: [400]Word = undefined,
+    /// Cached length of the miralib path prefix, for `filequote`'s `<name>`
+    /// shorthand.
+    filequote_mlen: usize = 0,
+    /// Elapsed time and GC count from the last evaluated REPL expression,
+    /// surfaced in the next prompt string. Also read (as `rt.rs.X`, ambiently)
+    /// by `reset()`, the SIGINT handler, which cannot take parameters.
+    last_elapsed_ns: ?i128 = null,
+    last_gc_count: ?c_long = null,
+    /// The forked child's exit status, read once by `commandLoop` to derive
+    /// `last_gc_count` above.
+    child_exit_status: ?u8 = null,
+
     /// Validate all runtime state global variables holding heap references.
     pub fn validate(self: *const RuntimeState) void {
         const options = @import("version_options");
