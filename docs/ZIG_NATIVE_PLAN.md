@@ -399,9 +399,35 @@ front door is C.
    `%bnf`/`%lex` grammar-extension machinery (`eprodnts`/`nonterminals`/
    `lexstates`/`lexdefs`) ported **last** — it is the hairiest and
    least-covered corner; goldens from Phase 0 step 3 gate it.
+   **Investigated (2026-07-06):** `module_loader.zig`'s `mkincludes` (the
+   692-line reference above) is real, dense, still-`fork()`-using logic with
+   a triple-nested heap-cons encoding for its `includees` input — but it is
+   currently **dead code**: `loadfile()` only calls it when
+   `rs.includees != NIL`, and nothing populates `rs.includees` since
+   `codegen.zig:808` no-ops the `.include` AST node. So it has not been
+   exercised by any passing test through this whole porting effort, and its
+   exact heap encoding was built for a YACC grammar's mid-rule actions that
+   no longer exist to construct it correctly. Wiring straight into it would
+   mean reverse-engineering unverified legacy heap layout at real risk, for a
+   dependency (`fork()`) Phase 3 is deleting anyway — confirms "reference for
+   intended semantics, not something to reuse directly" is the right call,
+   and that a clean `semantics/modules.zig` needs `symbols.zig` (step 6, see
+   below) as a prerequisite for clean identifier binding, not the other way
+   around.
 6. `semantics/symbols.zig`; `codegen.zig`/`trans.zig` id lookups rewired from
    `lex.findid`/`makeId` to it. Dump/undump round-trip goldens verify private-name
-   serialization is unchanged.
+   serialization is unchanged. **Landed, partially** (2026-07-06):
+   `src/semantics/symbols.zig`'s `SymbolTable` (replaces the fixed-size
+   hash-bucket array + heap-cons chaining of `findid`/`makeId`/`name()` with
+   a `std.StringHashMapUnmanaged`, keyed by `heap.getId`'s stable
+   `strtab`-owned bytes — no string ownership of its own) and `PrivateNames`
+   (replaces the manually-`realloc`ed, fixed-+400-chunk-growth `pnvec` with a
+   plain `std.ArrayList`). The heap encoding downstream code already
+   understands (`ID`/`STRCONS` cells) is untouched — only the lookup
+   structure changed. 8 tests. **Not yet done:** actually rewiring
+   `codegen.zig`/`trans.zig`'s identifier lookups to use this instead of
+   `lex.findid`/`makeId` — today's increment is additive only, same pattern
+   as every `syntax/` file landed so far.
 7. Flip `parser_api.zig` to the native pipeline as the only path; keep the legacy
    lexer behind a build flag (`-Dlegacy-lexer`) for one commit window for
    differential debugging.
@@ -410,30 +436,35 @@ front door is C.
    the dictionary-space config (`DICSPACE`, `-dic` flag: accept-and-ignore with a
    deprecation note, since `.mirarc` files may set it).
 
-**Status as of 2026-07-06:** steps 1–3 landed, steps 4 and 5 partially landed
+**Status as of 2026-07-06:** steps 1–3 landed, steps 4–6 partially landed
 (`syntax/source.zig`, `syntax/lexer.zig`, `syntax/layout.zig`,
-`syntax/differential_test.zig`, `syntax/directives.zig` — 54 new tests
-total, all green, no leaks, including 8 scripts verified byte-for-byte
-against the real production tokenizer), none yet wired into `parser_api.zig`
-or each other. `layout.zig` went through two verified corrections in one
-session (see its step-3 entry above) — a reminder that "looks principled"
-and "matches the system it must replace" are different bars, and only the
-second one counts here; the differential harness this step added is exactly
-the tool that would have caught both corrections immediately instead of via
-manual trace-checking, and should have been built before, not after,
-hand-deriving the algorithm. A second, smaller lesson from the same session:
-`zig ast-check` only catches syntax errors — a real type error in
-`directives.zig` (`std.mem.trimRight`, which this Zig version calls
-`trimEnd`) passed `ast-check` and even a plain `zig build` silently, because
-nothing yet calls the new code from production, so it was never analyzed
-outside test mode; only `zig build test` (via `main-tests`) caught it. Every
-new `syntax/` file needs an actual `main-tests` run, not just `ast-check`,
-until it's wired into something reachable. Remaining: finish step 4
-(whole-corpus coverage, a standing build gate rather than a hand-picked test
-file); finish step 5 (path resolution, and the real `%include`/`%export`/
-`%free` semantics in `semantics/modules.zig` — currently non-functional even
-in production, see the step-5 correction above); symbol interning;
-production cutover; and deletion.
+`syntax/differential_test.zig`, `syntax/directives.zig`,
+`semantics/symbols.zig` — 62 new tests total, all green, no leaks, including
+8 scripts verified byte-for-byte against the real production tokenizer),
+none yet wired into `parser_api.zig` or each other. `layout.zig` went
+through two verified corrections in one session (see its step-3 entry
+above) — a reminder that "looks principled" and "matches the system it must
+replace" are different bars, and only the second one counts here; the
+differential harness this step added is exactly the tool that would have
+caught both corrections immediately instead of via manual trace-checking,
+and should have been built before, not after, hand-deriving the algorithm.
+A second lesson from the same session: `zig ast-check` only catches syntax
+errors — a real type error in `directives.zig` (`std.mem.trimRight`, which
+this Zig version calls `trimEnd`) passed `ast-check` and even a plain
+`zig build` silently, because nothing yet calls the new code from
+production, so it was never analyzed outside test mode; only
+`zig build test` (via `main-tests`) caught it. Every new `syntax/`/
+`semantics/` file needs an actual `main-tests` run, not just `ast-check`,
+until it's wired into something reachable. A third: before wiring into an
+existing subsystem (`mkincludes`, investigated for step 5), check whether
+it's actually exercised by anything first — dead code that still compiles
+is not a foundation to build on, however complete it looks. Remaining:
+finish step 4 (whole-corpus coverage, a standing build gate rather than a
+hand-picked test file); finish step 5 (path resolution, and the real
+`%include`/`%export`/`%free` semantics in `semantics/modules.zig` — a clean
+implementation using `symbols.zig`, not `mkincludes`, for identifier
+binding); finish step 6 (rewire `codegen.zig`/`trans.zig`'s identifier
+lookups to `symbols.zig`); production cutover; and deletion.
 
 **Deletes:** ~2,700 lines of C-ported lexing; the biggest single consumer of `FILE`,
 `[*:0]`, `c_int`, and `@ptrFromInt`.

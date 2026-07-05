@@ -1,0 +1,198 @@
+//! semantics/symbols.zig — the identifier dictionary as an allocator-backed
+//! hash map (docs/ZIG_NATIVE_PLAN.md Phase 1 step 6), replacing
+//! `parser/lex.zig`'s `makeId`/`findid`/`name()` (a fixed-size hash-bucket
+//! array — the lex state's `namebucket` field — chained through cons cells on
+//! the heap) and `makePn`/`stoPn`/`resetPns` (a manually `realloc`ed
+//! private-name vector — the lex state's `pnvec` field).
+//!
+//! **What doesn't change:** identifiers are still represented on the heap
+//! exactly as they are today — an `ID` cell wrapping a `STRCONS` cell whose
+//! `hd` is a `strtab`-interned `StrId` (`heap.stoId`/`heap.getId`). This
+//! module only replaces the *lookup structure* (how a name maps to its `ID`
+//! node) and the *private-name allocation* (how a compiler-synthesized name
+//! maps to its node) — the heap encoding downstream code
+//! (`codegen.zig`/`trans.zig`/`types.zig`) already understands is untouched.
+//!
+//! **`SymbolTable.intern`** is `makeId`+`findid`+`name()` combined: find the
+//! existing `ID` node for `name` if one exists (matching `findid`), else
+//! build a fresh one via `heap.stoId` and remember it (matching `makeId`).
+//! The map's key is the `ID` node's own interned string (via `heap.getId`,
+//! which resolves through `strtab` — permanent, stable storage), so this
+//! table owns no string memory of its own beyond the temporary NUL-terminated
+//! copy `heap.stoId` needs.
+//!
+//! **`PrivateNames`** replaces the fixed-growth-by-400, manually-`realloc`ed
+//! the lex state's `pnvec` field with a plain `std.ArrayList`. A private name is a raw
+//! `STRCONS` cell tagging an index and a value (`make(.STRCONS, index, val)`)
+//! — it never goes through `strtab` at all, since compiler-synthesized names
+//! have no user-typed text (see `makePn`/`stoPn` in `lex.zig`).
+//!
+//! Not yet wired into `codegen.zig`/`trans.zig`'s identifier lookups, or into
+//! `syntax/lexer.zig` — additive and independently tested, same as every
+//! other `syntax/`/`semantics/` file landed so far in this phase.
+//!
+//! Tests: SymbolTable.intern/find, PrivateNames.make/get — one test per
+//! behaviour, cross-checked against `lex.zig`'s existing `makeId`/`findid`
+//! test where the same interpreter state is safe to share.
+
+const std = @import("std");
+const word = @import("../runtime/word.zig");
+const heap_mod = @import("../runtime/heap.zig");
+
+const Word = word.Word;
+
+/// Maps identifier text to its heap `ID` node, first-seen-wins (matching
+/// `lex.zig`'s dictionary: the same node is returned for every later lookup
+/// of an already-interned name, so identity comparisons on `ID` nodes stay
+/// valid). The map owns no string memory of its own — keys are `heap.getId`'s
+/// stable, `strtab`-owned bytes.
+pub const SymbolTable = struct {
+    table: std.StringHashMapUnmanaged(Word) = .{},
+
+    pub fn deinit(self: *SymbolTable, gpa: std.mem.Allocator) void {
+        self.table.deinit(gpa);
+        self.* = undefined;
+    }
+
+    /// Find-or-create: intern `name` as an `ID` heap node. Matches `lex.zig`'s
+    /// `makeId`/`name()` — repeated calls with the same text return the same
+    /// node.
+    pub fn intern(self: *SymbolTable, gpa: std.mem.Allocator, name: []const u8) !Word {
+        if (self.table.get(name)) |id| return id;
+        const name_z = try gpa.dupeZ(u8, name);
+        defer gpa.free(name_z);
+        const id = heap_mod.stoId(name_z);
+        const stable_name = std.mem.span(heap_mod.getId(id));
+        try self.table.put(gpa, stable_name, id);
+        return id;
+    }
+
+    /// Look up `name` without creating it. Matches `lex.zig`'s `findid`:
+    /// returns `null` (not `NIL`) for "not present" — callers translate to
+    /// whatever sentinel their own heap-value convention needs.
+    pub fn find(self: *const SymbolTable, name: []const u8) ?Word {
+        return self.table.get(name);
+    }
+
+    /// Number of distinct identifiers interned so far.
+    pub fn count(self: *const SymbolTable) usize {
+        return self.table.count();
+    }
+};
+
+/// A compiler-synthesized ("private") name: an index-tagged `STRCONS` cell,
+/// never `strtab`-interned (it has no user-typed text). Replaces `lex.zig`'s
+/// manually-`realloc`ed private-name vector (the lex state's `pnvec` field,
+/// grown in fixed +400 chunks) with a plain growable list.
+pub const PrivateNames = struct {
+    table: std.ArrayList(Word) = .empty,
+
+    pub fn deinit(self: *PrivateNames, gpa: std.mem.Allocator) void {
+        self.table.deinit(gpa);
+        self.* = undefined;
+    }
+
+    /// Allocate a fresh private-name node holding `val`. Matches `lex.zig`'s
+    /// `makePn`: the node's index is its position (`nextpn` there, `items.len`
+    /// here) at allocation time.
+    pub fn make(self: *PrivateNames, gpa: std.mem.Allocator, val: Word) !Word {
+        const idx = self.table.items.len;
+        const node = heap_mod.make(.STRCONS, @intCast(idx), val);
+        try self.table.append(gpa, node);
+        return node;
+    }
+
+    /// The private name at index `n`, allocating placeholder nodes
+    /// (`val = UNDEF`) up to and including `n` if it hasn't been made yet.
+    /// Matches `lex.zig`'s `stoPn` (used when a private name is referenced —
+    /// e.g. during dump/undump — before `make` has been called for it).
+    pub fn get(self: *PrivateNames, gpa: std.mem.Allocator, n: usize) !Word {
+        while (self.table.items.len <= n) {
+            const idx = self.table.items.len;
+            try self.table.append(gpa, heap_mod.make(.STRCONS, @intCast(idx), word.UNDEF));
+        }
+        return self.table.items[n];
+    }
+
+    /// Number of private names allocated so far.
+    pub fn count(self: *const PrivateNames) usize {
+        return self.table.items.len;
+    }
+};
+
+const tu = @import("../testutil.zig");
+
+test "SymbolTable.intern: repeated interning of the same name returns the same ID node" {
+    tu.freshInterp();
+    var syms: SymbolTable = .{};
+    defer syms.deinit(std.testing.allocator);
+    const a = try syms.intern(std.testing.allocator, "zzsymfoo");
+    const b = try syms.intern(std.testing.allocator, "zzsymfoo");
+    try std.testing.expectEqual(a, b);
+}
+
+test "SymbolTable.intern: distinct names get distinct ID nodes" {
+    tu.freshInterp();
+    var syms: SymbolTable = .{};
+    defer syms.deinit(std.testing.allocator);
+    const a = try syms.intern(std.testing.allocator, "zzsymbar1");
+    const b = try syms.intern(std.testing.allocator, "zzsymbar2");
+    try std.testing.expect(a != b);
+}
+
+test "SymbolTable.find: absent name is null, present name matches intern's result" {
+    tu.freshInterp();
+    var syms: SymbolTable = .{};
+    defer syms.deinit(std.testing.allocator);
+    try std.testing.expectEqual(@as(?Word, null), syms.find("zzsymabsent"));
+    const id = try syms.intern(std.testing.allocator, "zzsympresent");
+    try std.testing.expectEqual(@as(?Word, id), syms.find("zzsympresent"));
+}
+
+test "SymbolTable.intern: the ID node round-trips through heap.getId" {
+    tu.freshInterp();
+    var syms: SymbolTable = .{};
+    defer syms.deinit(std.testing.allocator);
+    const id = try syms.intern(std.testing.allocator, "zzsymroundtrip");
+    try std.testing.expectEqualStrings("zzsymroundtrip", std.mem.span(heap_mod.getId(id)));
+}
+
+test "SymbolTable.count: tracks the number of distinct interned names" {
+    tu.freshInterp();
+    var syms: SymbolTable = .{};
+    defer syms.deinit(std.testing.allocator);
+    try std.testing.expectEqual(@as(usize, 0), syms.count());
+    _ = try syms.intern(std.testing.allocator, "zzsymcount1");
+    _ = try syms.intern(std.testing.allocator, "zzsymcount2");
+    _ = try syms.intern(std.testing.allocator, "zzsymcount1"); // repeat, not a new entry
+    try std.testing.expectEqual(@as(usize, 2), syms.count());
+}
+
+test "PrivateNames.make: each call allocates a fresh, index-tagged node" {
+    tu.freshInterp();
+    var pns: PrivateNames = .{};
+    defer pns.deinit(std.testing.allocator);
+    const n0 = try pns.make(std.testing.allocator, word.UNDEF);
+    const n1 = try pns.make(std.testing.allocator, word.UNDEF);
+    try std.testing.expect(n0 != n1);
+    try std.testing.expectEqual(@as(usize, 2), pns.count());
+}
+
+test "PrivateNames.get: allocates placeholders up to index n, then is stable" {
+    tu.freshInterp();
+    var pns: PrivateNames = .{};
+    defer pns.deinit(std.testing.allocator);
+    const n5_first = try pns.get(std.testing.allocator, 5);
+    try std.testing.expectEqual(@as(usize, 6), pns.count()); // indices 0..5
+    const n5_again = try pns.get(std.testing.allocator, 5);
+    try std.testing.expectEqual(n5_first, n5_again);
+}
+
+test "PrivateNames.get after make: pre-existing indices are not reallocated" {
+    tu.freshInterp();
+    var pns: PrivateNames = .{};
+    defer pns.deinit(std.testing.allocator);
+    const made = try pns.make(std.testing.allocator, word.UNDEF); // index 0
+    const fetched = try pns.get(std.testing.allocator, 0);
+    try std.testing.expectEqual(made, fetched);
+}
