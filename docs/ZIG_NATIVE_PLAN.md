@@ -306,19 +306,33 @@ front door is C.
    mechanical port. Do this as its own step, test-first against layout-heavy
    golden cases (nested `where`, multi-clause definitions, `%bnf` blocks)
    *before* wiring numerals/strings from step 2 into production. **Landed**
-   (2026-07-06): `syntax/layout.zig` — a standalone Haskell-style layout
-   algorithm (margin-column stack, no parser callback), verified against two
-   independent sources (`setlmargin`/`unsetlmargin`'s push logic, and
-   `parser.zig`'s actual `.offside`/`.elseq` consumption in `parseScript`/
-   `parseWhereDefs`/`parseGuardedRhs`) rather than a single reverse-engineered
-   reading. 6 unit tests plus 3 end-to-end tests that run
-   `Source → lexer.tokenize → applyLayout → parser.zig's parseScript` and
-   inspect the resulting AST — which caught a real bug (the first cut injected
-   `.elseq` *before* the `=` token instead of replacing it) that a
-   token-stream-only test would have missed. **Not yet differentially
-   verified** against the legacy lexer's actual token-for-token output — that
-   is step 4 below, still to do; treat this as a well-reasoned first
-   implementation, not a proven one.
+   (2026-07-06): `syntax/layout.zig`. First cut was a from-scratch
+   Haskell-style layout algorithm (push a margin at the first token and
+   after `where`/`with`) — **wrong**, corrected the same day after finding
+   `parser/lex_bridge.zig`'s `tokenizeLoop`, which is the mechanism *actually
+   driving today's shipping parser* (not a legacy-only artifact): it tracks
+   `seen_def_eq`/`paren_depth` and pushes a margin at the column *following*
+   a top-level `=`/`::`/`::=`/`==` (not at block-opening keywords), with
+   `where` only clearing `seen_def_eq` so the block's own first `=` does the
+   push. `layout.zig` is now a direct, faithful port of that proven state
+   machine rather than an independent re-derivation — much safer, since it's
+   provably what already works. Lesson: when a "the parser and lexer share
+   mutable state" tangle blocks a clean design, look for whether something
+   *already* untangles it in practice before designing a replacement from
+   principles — `lex_bridge.zig` already had the answer.
+   6 unit tests (one per trigger: `=`, `::`, `where`, cascading dedent,
+   bracket-guarded comparison `=`, explicit semicolon) plus 5 end-to-end
+   tests running `Source → lexer.tokenize → applyLayout →
+   parser.zig's parseScript` and inspecting the resulting AST — including
+   `miralib/ex/fib.m` verbatim (comments + a realigned guard) — which caught
+   two real bugs in turn (first cut: `.elseq` injected *before* the `=`
+   token instead of replacing it; second cut, while fixing the first: a
+   test asserting the *previous*, wrong algorithm's output, caught once the
+   rewrite disagreed with it). **Not yet differentially verified** against
+   the legacy lexer's actual token-for-token output — that is step 4 below,
+   still to do; being a direct port of proven logic is a much stronger
+   starting point than the first cut, but "ported by reading the source"
+   and "verified by running both and diffing" are still not the same claim.
 4. Numerals/strings/chars/comments (landed as part of step 2, above) and
    `syntax/layout.zig` (step 3) — parity-tested token-by-token against the
    bridge output over the whole golden corpus (a temporary dual-run test
@@ -366,11 +380,14 @@ front door is C.
    deprecation note, since `.mirarc` files may set it).
 
 **Status as of 2026-07-06:** steps 1–3 landed (`syntax/source.zig`,
-`syntax/lexer.zig`, `syntax/layout.zig` — 41 new tests total, all green, no
-leaks), none yet wired into `parser_api.zig`. Steps 4–8 remain: differential
-verification against the legacy lexer, the directive/module semantics
-(currently non-functional even in production, see the correction above),
-symbol interning, production cutover, and deletion.
+`syntax/lexer.zig`, `syntax/layout.zig` — 38 new tests total, all green, no
+leaks), none yet wired into `parser_api.zig`. `layout.zig` went through two
+verified corrections in one session (see its step-3 entry above) — a
+reminder that "looks principled" and "matches the system it must replace"
+are different bars, and only the second one counts here. Steps 4–8 remain:
+differential verification against the legacy lexer, the directive/module
+semantics (currently non-functional even in production, see the correction
+above), symbol interning, production cutover, and deletion.
 
 **Deletes:** ~2,700 lines of C-ported lexing; the biggest single consumer of `FILE`,
 `[*:0]`, `c_int`, and `@ptrFromInt`.
