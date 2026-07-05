@@ -65,6 +65,7 @@ comptime {
     _ = @import("syntax/source.zig");
     _ = @import("syntax/lexer.zig");
     _ = @import("syntax/layout.zig");
+    _ = @import("syntax/differential_test.zig");
     _ = @import("compiler/trans.zig");
     _ = @import("compiler/types.zig");
     _ = @import("compiler/setup.zig");

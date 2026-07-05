@@ -336,13 +336,26 @@ front door is C.
 4. Numerals/strings/chars/comments (landed as part of step 2, above) and
    `syntax/layout.zig` (step 3) — parity-tested token-by-token against the
    bridge output over the whole golden corpus (a temporary dual-run test
-   harness: run both lexers, diff the token streams). **Still to do** — the
-   remaining, most valuable verification step before anything here can be
-   trusted for production: everything landed so far is unit- and
-   integration-tested against the *new* parser in isolation, not
-   differentially compared against what the legacy lexer actually produces
-   for the same input. Char classes (`` `[...]` ``, `%bnf`/`%lex`-only) also
-   still to do.
+   harness: run both lexers, diff the token streams). **Landed, partially**
+   (2026-07-06): `src/syntax/differential_test.zig` — tokenizes the same
+   source through `lex_bridge.zig`'s `tokenize` (real `yylex()` +
+   `setlmargin`/`unsetlmargin`, the mechanism actually driving today's
+   parser) and the native `Source → lexer.tokenize → applyLayout`, and diffs
+   the `TokenId` sequences. 8 real scripts pass byte-for-byte (the golden
+   corpus's non-directive `.m` files plus `miralib/ex/fib.m` verbatim) — this
+   is the strongest evidence yet that `lexer.zig`/`layout.zig` are actually
+   correct, not just internally consistent. Caught one more thing worth
+   recording: `lex_bridge.tokenize()` is normally called once per process
+   (real `mira` usage) and leaves sticky global state (the dictionary
+   buffer, `SYNERR`, the margin stack) that corrupted the *next* call when
+   this harness ran it repeatedly — worked around with a full
+   `interp.reset()` + re-`miraSetup()` before each comparison, not a change
+   to `lex_bridge.zig` itself. **Not yet done:** running this over the
+   *whole* golden corpus mechanically (today's 8 cases were picked by hand,
+   excluding scripts with this lexer's known gaps) and wiring it as a build
+   step so it's a standing gate, not an ad hoc test file. Char classes
+   (`` `[...]` ``, `%bnf`/`%lex`-only) and the known-excluded forms
+   (`%`-directives, backtick infix names, hex-float) also still to do.
 5. `syntax/directives.zig` + `semantics/modules.zig` consumption. This is where
    `%include`/`%export`/`%free` actually get implemented (aliasing, free-binding
    substitution, cycle detection, dependency ordering) — module_loader.zig's real
@@ -379,15 +392,21 @@ front door is C.
    the dictionary-space config (`DICSPACE`, `-dic` flag: accept-and-ignore with a
    deprecation note, since `.mirarc` files may set it).
 
-**Status as of 2026-07-06:** steps 1–3 landed (`syntax/source.zig`,
-`syntax/lexer.zig`, `syntax/layout.zig` — 38 new tests total, all green, no
-leaks), none yet wired into `parser_api.zig`. `layout.zig` went through two
-verified corrections in one session (see its step-3 entry above) — a
+**Status as of 2026-07-06:** steps 1–3 landed and step 4 partially landed
+(`syntax/source.zig`, `syntax/lexer.zig`, `syntax/layout.zig`,
+`syntax/differential_test.zig` — 46 new tests total, all green, no leaks,
+including 8 scripts verified byte-for-byte against the real production
+tokenizer), none yet wired into `parser_api.zig`. `layout.zig` went through
+two verified corrections in one session (see its step-3 entry above) — a
 reminder that "looks principled" and "matches the system it must replace"
-are different bars, and only the second one counts here. Steps 4–8 remain:
-differential verification against the legacy lexer, the directive/module
-semantics (currently non-functional even in production, see the correction
-above), symbol interning, production cutover, and deletion.
+are different bars, and only the second one counts here; the differential
+harness this step added is exactly the tool that would have caught both
+corrections immediately instead of via manual trace-checking, and should
+have been built before, not after, hand-deriving the algorithm. Remaining:
+finish step 4 (whole-corpus coverage, a standing build gate rather than a
+hand-picked test file), the directive/module semantics (currently
+non-functional even in production, see the step-5 correction above), symbol
+interning, production cutover, and deletion.
 
 **Deletes:** ~2,700 lines of C-ported lexing; the biggest single consumer of `FILE`,
 `[*:0]`, `c_int`, and `@ptrFromInt`.
