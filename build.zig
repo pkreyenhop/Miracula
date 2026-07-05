@@ -316,6 +316,11 @@ pub fn build(b: *std.Build) void {
     tools_step.dependOn(&install_just.step);
     tools_step.dependOn(&install_menudriver.step);
 
+    // Zig-native migration scorecard (docs/ZIG_NATIVE_PLAN.md Phase 0): fails
+    // the build if any tracked C-ism/shared-state/structure metric has risen
+    // above scripts/scorecard.baseline.
+    const scorecard_check = b.addSystemCommand(&.{ "scripts/scorecard.sh", "--check" });
+
     const check_step = b.step("check", "Run the full Zig build verification gate");
     check_step.dependOn(&install_mira.step);
     check_step.dependOn(&install_fdate.step);
@@ -330,6 +335,7 @@ pub fn build(b: *std.Build) void {
     check_step.dependOn(&run_sigint_check.step);
     check_step.dependOn(&run_spine_check.step);
     check_step.dependOn(&run_smoke.step);
+    check_step.dependOn(&scorecard_check.step);
 
     const migration_check = b.step("check-migration", "Alias for the full Zig build verification gate");
     migration_check.dependOn(check_step);
@@ -512,6 +518,7 @@ pub fn build(b: *std.Build) void {
     strict_step.dependOn(&run_strict_golden_tests.step);
     strict_step.dependOn(&fmt_check.step);
     strict_step.dependOn(lint_step);
+    strict_step.dependOn(&scorecard_check.step);
 
     // Benchmark targets (optimized for ReleaseFast)
     const bench_version_options = b.addOptions();

@@ -96,4 +96,5 @@ Miracula officially supports and cross-compiles for:
 | **Phase 4** | libc Dependency Reduction | **Complete** ✔ |
 | **Phase 5** | Pure Zig Parser (No Yacc/C) | **Complete** ✔ |
 | **Phase 6** | Pure Zig Implementation (No libc) | **Complete** ✔ |
-| **Phase 7** | Idiomatic Zig Modernization | *Planned (See [IDIOMATIC_ZIG_PLAN.md](file:///Users/pkreyenhop/src/experiments/Miracula/docs/IDIOMATIC_ZIG_PLAN.md))* |
+| **Phase 7–9** | Idiomatic Zig Modernization | **Complete** ✔ (history: [docs/ZIG_MIGRATION.md](docs/ZIG_MIGRATION.md)) |
+| **Phase 10** | Zig-Native Rearchitecture | *Planned — see [docs/ZIG_NATIVE_PLAN.md](docs/ZIG_NATIVE_PLAN.md)* |

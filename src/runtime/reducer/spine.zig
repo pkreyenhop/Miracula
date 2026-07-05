@@ -1,6 +1,5 @@
 //! reducer/spine.zig — an explicit, heap-growable spine stack, replacing the
-//! reduction engine's in-graph pointer reversal (B2 option (b), "repivot the
-//! hard core" — see `docs/REMAINING_WORK_PLAN.md` Phase 2).
+//! reduction engine's in-graph pointer reversal.
 //!
 //! ## Why this exists
 //!

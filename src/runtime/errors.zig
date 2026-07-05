@@ -10,13 +10,11 @@ const word = @import("word.zig");
 ///
 /// Used wherever Zig error unions replace C setjmp/longjmp non-local exits.
 /// Signal-handler recovery (SIGINT, SIGFPE via siglongjmp on rs.env) is NOT
-/// represented here — POSIX signal handlers are asynchronous and cannot
-/// propagate Zig errors up the call stack; those paths retain sigjmp_buf.
-/// This is permanent, not a stopgap: an audit of every setjmp/longjmp call
-/// site (docs/REMAINING_WORK_PLAN.md, Phase 4) found both siglongjmp calls
-/// live inside C-calling-convention signal handlers with no ordinary-control-flow
-/// longjmp usage anywhere else to replace, so there is no viable end-to-end
-/// error-propagation alternative for this part of the recovery mechanism.
+/// yet represented here — POSIX signal handlers are asynchronous and cannot
+/// propagate Zig errors up the call stack, so those paths still use sigjmp_buf.
+/// docs/ZIG_NATIVE_PLAN.md Phase 3 replaces that mechanism with a polled
+/// atomic interrupt flag (handlers only set the flag; the reduce loop polls it
+/// and returns error.EvaluationInterrupted), removing setjmp/longjmp entirely.
 ///
 /// Tests: MiraError variants are all distinct, MiraError is a subset of anyerror
 pub const MiraError = error{

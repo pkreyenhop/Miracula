@@ -41,7 +41,7 @@ This document outlines the history, completed milestones, target platform suppor
 
 ### ✔ Phase 7: Idiomatic Zig Modernization *(2026-06-21)*
 * **Goal**: Refactor the codebase from a direct C translation to a native, idiomatic Zig codebase.
-* **Outcome**: All 24 steps across clusters A–G are complete. Full details in [IDIOMATIC_ZIG_PLAN.md](IDIOMATIC_ZIG_PLAN.md).
+* **Outcome**: All 24 steps across clusters A–G are complete. (Full details were tracked in the since-retired `IDIOMATIC_ZIG_PLAN` document; see git history.)
   - **Cluster A** — Monolithic `main.zig` decomposed: extracted `commands.zig`, `setup.zig`, `module_loader.zig`, `dump.zig`, `files.zig`. `repl.zig`'s 57 `extern var` declarations replaced with `@import`. `main.zig` reduced to ~267 lines (composition root + 8 C-ABI-constrained export vars).
   - **Cluster B** — `RuntimeState` struct introduced in `src/runtime/runtime_state.zig`; ~75 global variables consolidated into a single `pub var rs`. Heap array accessors (`h`/`t`/`hp`/`tp`) no longer re-exported from `main.zig`.
   - **Cluster C** — `NodeTag` non-exhaustive enum added. `FileNode`, `Identifier`, `TypeRef`, `NodeRef` domain types added as typed wrappers over heap `Word` values.
@@ -52,7 +52,7 @@ This document outlines the history, completed milestones, target platform suppor
 
 ### ✔ Phase 8: Deep Idiomatic Zig & Code Modernization *(2026-06-21)*
 * **Goal**: Eliminate remaining C-style patterns and platform assumptions to produce a fully native, type-safe, and standards-adhering Zig codebase.
-* **Outcome**: Clusters H, I (I2), and K (K1, K3) complete. Full details in [IDIOMATIC_ZIG_PLAN.md](IDIOMATIC_ZIG_PLAN.md).
+* **Outcome**: Clusters H, I (I2), and K (K1, K3) complete. (Full details were tracked in the since-retired `IDIOMATIC_ZIG_PLAN` document; see git history.)
   - **Cluster H** — Compiler state encapsulated into `CompilerState` struct (`compiler_state.zig`). Key compiler functions (`type_of`, `checktypes`, `codegen`) converted from `clib.*` linker calls to direct `@import` aliases via `main.zig`. 20 FFI-private heap accessor `export` keywords removed.
   - **Cluster I (partial)** — `c_int` fields in `RuntimeState` and `CompilerState` converted to native `i32` where no C-ABI boundary is crossed.
   - **Cluster K (partial)** — `zig fmt` applied to entire codebase (K1). `///` doc comments added to `CompilerState` and `core_state.zig` exports (K3).
@@ -62,11 +62,10 @@ This document outlines the history, completed milestones, target platform suppor
   representation and architecture questions the port had deliberately deferred: one
   aggregated state singleton instead of nine, string interning, the reduction engine's
   pointer-reversal encoding, the GC's sign-bit trick, the longest functions, and the
-  error/recovery model. Tracked in [REMAINING_WORK_PLAN.md](REMAINING_WORK_PLAN.md), which
-  consolidates and sequences the open items originally spread across
-  [REDESIGN_DATA_MODEL.md](REDESIGN_DATA_MODEL.md),
-  [IDIOMATIC_ARCHITECTURE_PLAN.md](IDIOMATIC_ARCHITECTURE_PLAN.md), and
-  [SHARED_STATE_PLAN.md](SHARED_STATE_PLAN.md).
+  error/recovery model. Tracked in the since-retired `REMAINING_WORK_PLAN` document, which
+  consolidated and sequenced the open items originally spread across the
+  `REDESIGN_DATA_MODEL`, `IDIOMATIC_ARCHITECTURE_PLAN`, and `SHARED_STATE_PLAN` documents
+  (all retired; superseded by [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md)).
 * **Outcome**:
   - **State aggregation (SHARED_STATE Phases 1–4)** — every mutable interpreter state struct
     (`RuntimeState`, `Heap`, `LexState`, `CompilerState`, `CoreState`, `IoState`, `EvalState`,
@@ -100,6 +99,17 @@ This document outlines the history, completed milestones, target platform suppor
     reviewable) three pre-existing, unrelated bugs: a divide-by-zero in `-make`'s failure
     report on long file paths, a crash evaluating `system "..."` at the REPL prompt, and a
     dump-cache bug that silently masks a script's syntax error on a second, unchanged run.
+
+### ⏳ Phase 10: Zig-Native Rearchitecture *(planned)*
+* **Goal**: Stop incrementally polishing the C translation and rearchitect toward a
+  program that could have been written Zig-first: one native front end (delete the C
+  lexer), native I/O and structured diagnostics (delete the libc shim), a polled
+  interrupt flag (delete `setjmp`/`longjmp` and fork-per-eval), an enforced module DAG
+  with explicit ownership (delete the ambient singleton), and a typed value model
+  (`Value`/`Comb`/`CellRef` instead of bare `Word`).
+* **Plan**: [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) — supersedes all earlier plan
+  documents. Note it deliberately re-opens two Phase 9 "resolved by necessity" decisions
+  (the `setjmp`/`longjmp` recovery floor and the deferred `*Interp` threading).
 
 ---
 

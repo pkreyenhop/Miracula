@@ -1,6 +1,6 @@
-//! testutil.zig — the shared unit-test harness (see docs/TESTABILITY_PLAN.md, P0).
+//! testutil.zig — the shared unit-test harness.
 //!
-//! The goal of the testability plan is "one inline `test` per function". Stateful
+//! The project's test convention is "one inline `test` per function". Stateful
 //! functions need a working interpreter (a heap, the dictionary, `primenv`); graph
 //! tests need to build small combinator graphs and assert how they reduce. Without
 //! a shared harness every such test repeats ~20 lines of setup. This module is that

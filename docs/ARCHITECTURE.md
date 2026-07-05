@@ -111,10 +111,10 @@ they read `current_interp`-derived accessors (`rt.rs()`, `core_state.s()`, …) 
 than through a threaded parameter — the same exception this document already carved out for
 the A4 signal trampoline.
 
-`scripts/shared-state-check.sh` tracks the scorecard this section describes; see
-`docs/SHARED_STATE_PLAN.md` for the full history (Phases 1–6) and the remaining
-non-`Interp` globals (the line-editor subsystem, a handful of test-only initialization
-guards) still being worked through.
+`scripts/scorecard.sh` tracks the scorecard this section describes (the history lived in
+the retired `SHARED_STATE_PLAN` document; see git history). Removing the ambient
+`current_interp` access pattern entirely is Phase 4 of
+[ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md).
 
 `src/main.zig` itself is now just the process entry point (~80 lines): it wires up the
 allocator/IO context from `std.process.Init`, forwards to `startup.mainEntry`, and
@@ -279,16 +279,16 @@ system) is gone — cross-module calls use `@import` directly. `export fn` = 1 (
 bridge in `utf8.zig`); `extern var` = 0; `clib.`/`c.` call sites = 0. The remaining
 `extern fn` = 13 is the genuine libc/syscall floor in `main_clib.zig`.
 
-**Signal-handler safety is permanent, not a stopgap.** `reset()`, `dieClean()`, and
+**Signal-handler recovery (current state).** `reset()`, `dieClean()`, and
 `fpeError()` in `repl.zig` (plus `sigdefer()` in `dump.zig`) are POSIX signal handlers,
 requiring the C calling convention (`callconv(.c)`) and calling `siglongjmp(&rt.rs.env, 1)`
-to restore a REPL/batch-mode recovery point. An audit of every `setjmp`/`longjmp` call site
-in the codebase (docs/REMAINING_WORK_PLAN.md, Phase 4) found **every** `siglongjmp` call is
-signal-handler-triggered — there is no ordinary-control-flow `longjmp` usage anywhere to
-replace with Zig error-union propagation. This resolves the question by technical necessity:
+to restore a REPL/batch-mode recovery point. Every `siglongjmp` call is
+signal-handler-triggered — there is no ordinary-control-flow `longjmp` usage anywhere.
 POSIX signal handlers are asynchronous and cannot unwind the Zig call stack or propagate an
-error union, so `callconv(.c)` = 6 and the `setjmp`/`longjmp` family in `main_clib.zig` are a
-permanent floor, not a temporary gap awaiting a rewrite.
+error union, so as long as recovery happens *inside the handler*, `setjmp`/`longjmp` must
+stay. [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) Phase 3 removes the premise instead: handlers
+only set an atomic interrupt flag, the reduce loop polls it and returns
+`error.EvaluationInterrupted`, and the `setjmp`/`longjmp` family is deleted.
 
 **`MiraError` coverage.** `error.TypeCheckAbort` is the only `MiraError` variant currently
 wired to Zig error union propagation (in `types.zig`). The remaining variants (`SyntaxError`,
@@ -296,29 +296,90 @@ wired to Zig error union propagation (in `types.zig`). The remaining variants (`
 not converted: surveying the actual `SYNERR`/`errs`/`errline` sentinel usage found `errs`/
 `errline` serve two unrelated purposes (a first-syntax-error-location recorder, and an
 unconditionally-overwritten current-compile-position breadcrumb used later for runtime error
-reporting) — unifying them under a shared error-union path would risk a real behaviour
-change, not just encapsulation. See Phase 4 in REMAINING_WORK_PLAN.md for the full survey.
+reporting) — unifying them under a shared error-union path was judged too risky as an
+in-place edit. [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) Phase 2 resolves it structurally
+instead: the two purposes get two named homes (a `Diagnostics` value and an explicit
+`last_position` breadcrumb).
+
+---
+
+## Testing cadence
+
+Four independent gates, each catching a different class of regression; a change is not
+considered verified until all four are green (or the failure is a known, already-flagged
+pre-existing issue — see below):
+
+1. **Inline unit tests** (`zig build` compiles them in; run the `main-tests` binary directly
+   — see the `--listen=-` quirk note below). Verify individual functions in isolation; the
+   project convention is one `test` block per function (see the fn-prefixed-name + `Tests:`
+   doc-comment convention), tracked by the scorecard's test-per-fn ratio.
+2. **Golden corpus** (`zig build test-golden`, `tests/golden/`) — byte-exact stdout/stderr
+   for a fixed `.in`/`.m` → `.expected`/`.expected_err` corpus, regenerated with
+   `zig build generate-golden` and reviewed before committing. This is the primary
+   behaviour-preservation gate for the [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) phases: a
+   phase's golden diff should be empty (or, for a deliberate bug fix, a reviewed,
+   intentional change to exactly the affected case). Phase 0 of that plan added coverage
+   for literate scripts, `%insert`, and lexer error wording ahead of Phase 1's front-end
+   rewrite; `%include`/`%export`/`%free` fixtures exist but are deliberately left unpinned
+   (see `tests/golden/README_pending_phase1.md` — pinning "feature absent" isn't useful).
+3. **C-differential regression** (`zig build test-regression`, `tests/regression.zig`) —
+   runs the same inputs through both `./mira_original` (a separately built reference C
+   Miranda, not part of this repo) and the Zig binary, comparing stdout/stderr and the
+   `-count` reduction/GC statistics exactly. Skips gracefully (exit 0) when
+   `./mira_original` isn't present, which is the case in most dev/CI sandboxes today — the
+   test cases are still maintained (extended in Phase 0 to cover the same new surfaces as
+   the golden corpus) so the coverage is ready whenever a reference binary is available.
+4. **Integration suites** — `test-sigint` (SIGINT recovery), `test-spine` (differential
+   stress-testing the reduction spine), `test-smoke` (REPL smoke tests). Each is a plain
+   executable run via `addRunArtifact`, not the `zig build test` protocol, so they don't hit
+   the quirk below.
+
+**The `--listen=-` quirk.** `zig build test`/`zig build check`/`zig build strict` drive the
+`addTest`-based binaries (`main-tests`, `parser-tests`, `mira-tests`, `utf8-tests`,
+`just-tests`, `menudriver-tests`) through Zig's test-server IPC protocol
+(`--listen=-`). In this project's sandboxed dev environment that protocol has been observed
+to hang indefinitely (zero CPU, no output) well after the binary itself has finished
+compiling and would otherwise run in milliseconds — a build-harness/environment
+interaction, not a test failure. When `zig build check`/`test` appears stuck, kill it and
+verify directly instead: `find .zig-cache -name main-tests -type f -perm +111` (take the
+one with the newest mtime) and run it with no arguments — it prints `All N tests passed.`
+on success. `zig build test-golden`/`test-regression`/`test-sigint`/`test-spine`/`test-smoke`
+are unaffected (plain executables, not `addTest`) and can be run directly as normal build
+steps.
+
+**Ratchet.** `scripts/scorecard.sh` (`--check` against `scripts/scorecard.baseline`,
+`--update-baseline` to record improvement) tracks every C-ism/shared-state/structure metric
+this document and [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) discuss — see that plan's Phase 0
+for the full metric list. It fails the build if a tracked count rises.
 
 ---
 
 ## Remaining Modernization Opportunities
 
-See [REMAINING_WORK_PLAN.md](REMAINING_WORK_PLAN.md) for the consolidated, sequenced plan and
-current status of every open item. As of this writing:
+See [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) for the current plan (it supersedes the
+retired REMAINING_WORK_PLAN / SHARED_STATE_PLAN / REDESIGN_DATA_MODEL documents). As of
+this writing:
 
 - **Done:** the mechanical C-ism elimination (Track A), string interning (B1), the spine
   cutover (B2 option (b)), the tracing GC (B3), all six R9 function-splits, the Phase 4
   error/recovery-model audit (R10-Step 3 / A4b / J2 resolved; J1 and the remaining
   `SYNERR`/`errs`/`errline` sentinel-wrapping deliberately not pursued — see above), and
-  Phase 6 (`SHARED_STATE_PLAN`) — every owner-module singleton now reads through
+  the shared-state consolidation — every owner-module singleton now reads through
   `current_interp`, `main()` constructs the `Interp` it runs explicitly, and the ~2,100
   call sites across the codebase were rewritten accordingly (see "State" above).
 - **Open, small:** the line-editor subsystem (`driver/lineedit.zig`) and a handful of
   test-only initialization guards still hold their own module-scope state rather than
-  living in `Interp` — see `SHARED_STATE_PLAN.md`'s scorecard for the current count and
-  reasoning.
+  living in `Interp` (tracked by `scripts/scorecard.sh`).
 - **Open, small:** a handful of reducer handlers remain untested (`show`/`MATCH`/`GENSEQ`,
-  `TRY`/`FAIL` backtracking) and two pre-existing, unrelated bugs are flagged but not yet
-  fixed (a divide-by-zero in `-make`'s failure report on long paths; a crash evaluating
+  `TRY`/`FAIL` backtracking) and several pre-existing, unrelated bugs are flagged but not
+  yet fixed (a divide-by-zero in `-make`'s failure report on long paths; a crash evaluating
   `system "..."` at the REPL prompt; a dump-cache bug that silently masks a script's syntax
-  error on the second run against an unchanged file).
+  error on the second run against an unchanged file; an off-by-one that reports line 0
+  instead of line 1 for a syntax error on a script's first line, `tests/golden/script_syntax_err`).
+- **Open, larger:** `%include`/`%export`/`%free` (the Miranda library mechanism, manual §27)
+  are not wired up end to end in the current parser/codegen pipeline — confirmed by two
+  findings (`codegen.zig:808` no-ops all three AST node kinds; `lex_bridge.zig` drops the
+  `%include` pathname payload so even a bare `%include "x"` fails to parse), reproducing on
+  the shipped `miralib/ex/polish.m` example. See `tests/golden/README_pending_phase1.md`.
+  [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) Phase 1 step 5 scopes this as a first
+  implementation against the native front end, not behaviour preservation.
