@@ -62,6 +62,8 @@ comptime {
     _ = @import("parser/lex.zig");
     _ = @import("parser/parser_tests.zig");
     _ = @import("parser/diagnostics.zig");
+    _ = @import("syntax/source.zig");
+    _ = @import("syntax/lexer.zig");
     _ = @import("compiler/trans.zig");
     _ = @import("compiler/types.zig");
     _ = @import("compiler/setup.zig");
