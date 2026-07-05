@@ -1087,16 +1087,49 @@ diffed against the pre-LexState commit via `git stash`.
 call chains threaded as narrow, separate params, matching Tier 3's `heap`
 precedent. Phase 6 (below) is now reachable.**
 
-### Phase 6 — De-globalize & document *(close-out; conditional on Tier 3 + Tier 4)*
-Delete the global `var interp`; `main()` constructs it explicitly
-(`var interp = Interp.init(gpa); defer interp.deinit(); return interp.run(args);`).
-Update [ARCHITECTURE.md](ARCHITECTURE.md) to drop the "singleton" language and
-describe the `Interp` ownership model + the lone signal-delivery exception.
+### Phase 6 — De-globalize & document *(mostly done, 2026-07-05)*
 
-This is only reachable once Tier 4 (above) closes out every remaining
-ambiently-reached struct, on top of Tier 3's `heap` work.
+Per explicit user decision, pursued as the full sweep toward the DoD's literal
+"= 1" rather than just the narrow "delete `var interp`" reading — both
+turned out achievable with mechanical (if large) rewrites:
+
+1. **The full-sweep pass (45 → 17 globals).** `combinator.zig`/`setup.zig`/
+   `version.zig` constants that were never reassigned became `const`;
+   `dump.zig`'s export-privatisation scratch and `types.zig`'s `NGT`/
+   `allchars` folded into `CompilerState`; `commands.zig`/`repl.zig`'s
+   display/timing scratch and `startup.zig`'s version-mismatch buffers folded
+   into `RuntimeState`; `reducer/trace.zig`'s histogram and
+   `reducer/spine.zig`'s GC-root-tracking state (the highest-risk single
+   change — verified with the spine differential stress suite plus a
+   dedicated GC-heavy diff) folded into `EvalState`.
+2. **The core accessor rewrite (~2,100 call sites).** All 8 owner singletons
+   (`heap.heap`, `core_state.s`, `compiler_state.cs`, `lex_state.ls`,
+   `runtime_state.rs`, `reduce.ev`, `big.bn`, `strtab.table`) plus
+   `word.fio` changed from `pub const X = &interp.Y` (a fixed address) to
+   `pub inline fn X() *T { return &current_interp.Y; }` (read through a
+   pointer), and every call site rewrote `owner.singleton.field` to
+   `owner.singleton().field` — done via an automated build-error-driven
+   fixer after a safe bulk-regex pass for fully-qualified patterns.
+3. **`main()` constructs the `Interp` explicitly**, pointing `current_interp`
+   at a local that lives for the process's whole run — the literal ask in
+   this section's original prose.
+4. **Test-harness exemption documented** (see Scorecard) rather than forcing
+   `testutil.zig`'s `ready`-style guards into `Interp`.
+
+**Remaining:** `driver/lineedit.zig` + `word.zig`'s `readInteractiveLine`
+hook (10 + 1 globals) — per explicit user decision, being threaded through
+rather than left as a documented exception; this is real, separate work
+(threading line-editor state through `word.zig`'s stdio read path) tracked
+as its own increment, not yet started as of this write-up.
+
 * *DoD: non-FFI module-scope mutable globals = **1** (documented); a second
-  `Interp` can be constructed and run independently; golden green.*
+  `Interp` can be constructed and run independently; golden green.* Currently
+  at 17 (target 1) with the `lineedit.zig` cluster as the only remaining gap
+  — `runtime_state.zig`'s 4 bootstrap globals and `interp.zig`'s 2
+  (`backing`/`current_interp`) are the realistic floor per the reasoning in
+  the Scorecard section, so the literal "1" isn't reachable even after
+  `lineedit.zig` is threaded; revisit whether the DoD wording itself should
+  be relaxed once that increment lands.
 
 ---
 
@@ -1138,20 +1171,53 @@ checkpoint concludes the signature clarity was worth pursuing further.
 
 Tracked by `scripts/shared-state-check.sh`.
 
-| Metric | Baseline (Phase 0) | Now | Target |
+| Metric | Baseline (Phase 0) | Now (2026-07-05) | Target |
 |--------|--------------------|-----|--------|
-| non-FFI module-scope mutable globals | 92 | **28** (Phases 2–4: all state under one `interp`; `reset()` covers it) | 1 (signal pointer) |
+| non-FFI module-scope mutable globals | 92 | **17** | 1 (signal pointer) |
 | &nbsp;&nbsp;↳ gratuitous `export var` | 35 | **0** ✓ (Phase 1) | 0 |
 | grouped state structs | 4 (`rs`/`ls`/`heap`/`cs`) | unified under one `Interp` |
 | global state aggregates | 4 structs + loose globals | 0 (constructed in `main`) |
-| interpreter instances constructible | 1 (implicit) | N (explicit) |
+| interpreter instances constructible | 1 (implicit) | N (explicit — `main()` builds one; `Interp.init()`-shaped construction supports more) |
 | golden corpus | 44/44 | 44/44 at every step |
+
+The remaining 17, by file: `driver/lineedit.zig` (10, the line-editor
+subsystem — Task 4, in progress), `runtime_state.zig` (4, the permanent
+bootstrap exception: `gpa`/`allocator`/`io`/`environ`, set once at process
+start, explicitly out of scope per `Interp`'s own doc comment), `interp.zig`
+(2: `backing` + `current_interp` — see below), `word.zig` (1:
+`readInteractiveLine`, the hook `lineedit.zig` installs — folds into Task 4).
+
+**Why `interp.zig` holds 2, not 0, once every owner accessor reads through
+`current_interp`.** `current_interp` defaults to `&backing` (a real,
+zero-initialized `Interp` living in `interp.zig`) rather than `undefined`,
+because the test binary (`main-tests`) never runs `main()` and needs a valid
+interpreter from the very first access — exactly what the old `pub var interp`
+singleton provided automatically. Reaching literally 1 would require
+`current_interp: *Interp = undefined` with no safe default, which breaks
+every test that doesn't first call some not-yet-invented bootstrap function.
+Treated as the realistic floor for this file rather than a gap to keep
+chasing.
+
+**Test-harness exemption.** `testutil.zig` and `*_test(s).zig` files are
+never linked into the `mira` executable (confirmed: only `main.zig`'s
+comptime test-aggregation block imports them, and every other importer is
+itself full of `test "..."` blocks) — their one-time-setup guard flags
+(`ready`, `initialized`) are bookkeeping about the *ambient singleton for
+test convenience*, not interpreter state a second `Interp` instance would
+need. `scripts/shared-state-check.sh` now exempts them alongside the
+pre-existing FFI-shim exemption.
 
 ## Notes on the irreducible boundary
 
 OS signals are delivered through the C ABI to a fixed-signature handler that
 takes no context, so a single `current_interp: *Interp` (set when an `Interp`
-begins running, like `errno`'s thread-local) is the one unavoidable global. This
-is the same category of exception documented for the A4 signal trampoline in
-[REDESIGN_DATA_MODEL.md](REDESIGN_DATA_MODEL.md): everything else — heap, lexer,
-runtime, compiler, I/O, bignum, strings — becomes owned, explicit `Interp` state.
+begins running, like `errno`'s thread-local) is the one unavoidable global.
+**Implemented, 2026-07-05:** `interp.zig`'s `current_interp` is exactly this
+pointer — every owner-module accessor (`heap.heap()`, `core_state.s()`, …)
+reads through it, `main()` sets it to a locally-constructed `Interp`, and the
+signal handlers (`repl.zig`'s `dieClean`/`reset`/`fpeError`, `dump.zig`'s
+`sigdefer`) read the same accessors ambiently since they cannot take
+parameters — the same category of exception documented for the A4 signal
+trampoline in [REDESIGN_DATA_MODEL.md](REDESIGN_DATA_MODEL.md). Everything
+else — heap, lexer, runtime, compiler, I/O, bignum, strings — is owned,
+explicit `Interp` state reached through that one pointer.
