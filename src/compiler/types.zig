@@ -449,7 +449,7 @@ fn metaTcheck(t_val: Word) errors.MiraError!Word {
                     _ = word.print("(", .{});
                     outType(tn);
                     _ = word.print(" has zero arity)\n", .{});
-                    sayhere(getspecloc(cs.current_id), 1);
+                    sayhere(getspecloc(heap.heap, cs.current_id), 1);
                 }
                 sterilise(t_val);
             }
@@ -464,7 +464,7 @@ fn metaTcheck(t_val: Word) errors.MiraError!Word {
                 if (getTag(cs.current_id) == .DATAPAIR) {
                     _ = word.print("in binding for {s}\n", .{strtab.strOf(strtab.table, h(cs.current_id))});
                 } else {
-                    sayhere(getspecloc(cs.current_id), 1);
+                    sayhere(getspecloc(heap.heap, cs.current_id), 1);
                 }
                 cs.NT = add1(tn, cs.NT);
             }
@@ -488,7 +488,7 @@ fn metaTcheck(t_val: Word) errors.MiraError!Word {
                 _ = word.print("(typename {s} has arity {d})\n", .{ getId(tn), tArity(tn) });
             }
             if (getTag(cs.current_id) != .DATAPAIR) {
-                sayhere(getspecloc(cs.current_id), 1);
+                sayhere(getspecloc(heap.heap, cs.current_id), 1);
             }
             sterilise(t_val);
             return t_val;
@@ -780,7 +780,7 @@ pub fn rhsHere(r: Word) Word {
         return h(r);
     }
     if (getTag(r) == .TRIES) {
-        return h(h(lastlink(t(r))));
+        return h(h(lastlink(heap.heap, t(r))));
     }
     return 0;
 }
@@ -915,7 +915,7 @@ pub fn typeError7(a: Word, b: Word) void {
 pub fn typeError8(t1_val: Word, t2_val: Word) void {
     var t1 = subst(t1_val);
     var t2 = subst(t2_val);
-    if (same(h(t1), h(t2)) != 0) {
+    if (same(heap.heap, h(t1), h(t2)) != 0) {
         t1 = t(t1);
         t2 = t(t2);
     }
@@ -1669,7 +1669,7 @@ pub fn checkfbs() void {
                 outType(redtvars(t_val));
                 _ = word.putchar('\n');
             }
-            tp(t(h(h(formals)))).* = codegen(theVal(h(h(formals))));
+            tp(t(h(h(formals)))).* = codegen(heap.heap, theVal(h(h(formals))));
             formals = t(formals);
         }
         cs.FBS = t(cs.FBS);
@@ -2563,7 +2563,7 @@ pub fn checkcolfn() void {
     _ = word.print("  actual type :: ", .{});
     outType(t_val);
     _ = word.putchar('\n');
-    sayhere(getspecloc(rt.rs.col_fn), 1);
+    sayhere(getspecloc(heap.heap, rt.rs.col_fn), 1);
     cs.TYPERRS += 1;
     rt.rs.col_fn = -1;
 }
@@ -2688,7 +2688,7 @@ pub fn checktypes() void {
             compDeps(h(s)) catch break :outer;
             s = t(s);
         }
-        cs.R = tclos(sortrel(cs.R));
+        cs.R = tclos(heap.heap, sortrel(heap.heap, cs.R));
         if (cs.FBS != NIL) {
             mcheckfbs() catch break :outer;
         }
@@ -2705,7 +2705,7 @@ pub fn checktypes() void {
     if (rt.rs.freeids != NIL) {
         redtfr(rt.rs.freeids);
     }
-    genshfns();
+    genshfns(heap.heap);
     if (rt.rs.fnts != NIL) {
         genbnft();
     }
@@ -2730,7 +2730,7 @@ pub fn checktypes() void {
     cs.lastloc = 0;
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.heap.validate();
-        @import("trans.zig").validate();
+        @import("trans.zig").validate(heap.heap);
         rt.rs.validate();
     }
 }

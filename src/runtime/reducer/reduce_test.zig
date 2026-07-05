@@ -115,7 +115,7 @@ test "codegen handles a deep application spine without overflow" {
     var g: Word = word.I;
     var i: usize = 0;
     while (i < spine_depth) : (i += 1) g = heap.make(.AP, g, word.NIL);
-    try std.testing.expect(trans.codegen(g) != 0);
+    try std.testing.expect(trans.codegen(heap.heap, g) != 0);
 }
 
 test "codegen handles a deep tuple spine without overflow" {
@@ -124,5 +124,5 @@ test "codegen handles a deep tuple spine without overflow" {
     var g: Word = heap.make(.PAIR, word.NIL, word.NIL);
     var i: usize = 0;
     while (i < spine_depth) : (i += 1) g = heap.make(.TCONS, word.NIL, g);
-    try std.testing.expect(trans.codegen(g) != 0);
+    try std.testing.expect(trans.codegen(heap.heap, g) != 0);
 }

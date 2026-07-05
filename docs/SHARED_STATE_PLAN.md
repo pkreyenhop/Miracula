@@ -642,8 +642,77 @@ thorough manual smoke test given the lexer's central role: `fib 27`, hex
 literals, `/files`, `?fib` (type + location lookup), bare `?`
 (`allnamescom`), and undefined-name diagnosis all correct.*
 
-Remaining Tier 3 files, the two hardest: `trans.zig` (1830 lines, ~807
-touches) and `types.zig` (2736, ~788).
+**Tier 3, increment 8 — `trans.zig` ✅ done (2026-07-05), the widest single-file
+conversion in Tier 3.** Investigation (requested by the user before starting,
+given lex.zig showed touch-count alone underestimates true scope) found this
+file breaks the pattern of every increment except `lex.zig`: its local
+`h`/`hp`/`t`/`tp`/`getTag` wrappers plus `codegen`/`validate`'s direct struct
+touches transitively reach **86 of the file's 100 functions** — essentially
+the entire file, not a contained subset. Confirmed via explicit user decision
+("do the full cascade anyway") before proceeding, since several of those 86
+functions (`genlhs`, `irrefutable`, `compzf`, `block`, `declare`, `specify`,
+`declType`, `declconstr`, `getspecloc`, `mktuple`, `tclos`, `sortrel`,
+`genshfns`, `same`, `lastlink`) are directly aliased and called from
+`types.zig` and `parser/codegen.zig`, meaning this increment forced real
+(if shallow — ambient-singleton-fetch-at-call-site) threading work into both
+of those files too, not just call-site patches.
+
+Threaded bottom-up: `h`/`hp`/`t`/`tp`/`getTag` first, then the ~25 small
+per-field accessors (`getId`/`idWho`/`idType`/`idVal`/`typeArity`/`typeClass`/
+`typeInfo`/`dlhs`/`dval`/etc.), then the ~55 larger `pub` functions
+(`abstract`/`abstr`/`combine`/`scanpattern`/`transtries`/`genlhs`/`declare`/
+`declType`/`specify`/`block`/`sort`/`sortrel`/`codegen`/etc.), finishing with
+`genshfns`/`validate`. External cascade touched **8 other files**:
+`module_loader.zig`, `types.zig`, `repl.zig`, `main.zig`, `parser/codegen.zig`,
+`runtime/reduce.zig` (the reducer's own `parseLine` caller — confirmed it
+already had `ctx.heap` from Tier 1.5, so this was a one-line fix), and
+`runtime/reducer/reduce_test.zig`.
+
+**The `lex.zig` nested-call sed under-conversion bug (BSD sed's
+non-overlapping-match semantics missing every other occurrence in calls like
+`h(h(h(x)))`) recurred extensively here — worse than in `lex.zig`, since this
+file's small field-accessor functions are almost entirely built from 2-4-level
+nested `h`/`t` chains** (`getId`'s `h(h(h(x)))`, `typeArity`'s `h(h(t(x)))`,
+`typeShowFn`'s `t(h(t(x)))`, `typeInfo`'s `t(t(t(x)))`, `tShowfn`/`tClass`/
+`tInfo`'s similar triple chains, several `COND`-abstraction recognizers in
+`abstr`/`combine` built from `getTag(t(h(x)))`-style lookaheads, `less1`'s
+inner comparison, `nclchk`'s hold/rhs traversal, `transzf`'s self-recursive
+call). None were caught by review — **all ~15 were caught by the Zig
+compiler's "expected N argument(s), found N-1" error**, one rebuild-fix cycle
+at a time, which is the reliable way to catch this class of bug on files this
+nesting-heavy: don't trust the sed's exit code, rebuild and let the compiler
+enumerate every remaining occurrence.
+
+**A new, distinct gap found in the transitive-closure discovery script:**
+it missed `less1` and `decl1` — both are functions whose calls to already-
+converted functions (`h`/`t`/`idVal`) should have added them to the closure,
+but weren't detected in the first pass for reasons not fully root-caused
+(possibly a script bug in the iteration, not a structural blind spot like
+`inline fn` was for `lex.zig`). Lesson holds regardless: **the compiler is the
+authoritative check, not the discovery script** — run `zig build` after the
+mechanical rewrite and trust its "undeclared identifier" / "expected N
+arguments" errors to find every function the script's heuristics missed.
+
+*DoD met: `zig build` clean; 176/176 unit tests (main-tests run directly);
+`zig build test` green — 48/48 golden (including `hex_oct_literals`),
+spine-corpus stress, sigint, smoke; lint at 16 warnings, no new ones;
+thorough manual smoke test covering the core compiler pipeline this touched:
+`fib 27`, a user-defined algebraic type with pattern matching over its
+constructors (`tree ::= Leaf | Node tree num tree`; `depth Leaf = 0; depth
+(Node l n r) = 1 + max2 (depth l) (depth r)`), a `where`-clause binding, a
+list-pattern recursive function (`g (x:xs) = x + g xs`), and a list
+comprehension (`[x*x | x <- [1..5]]`) — all correct via a script file (the
+REPL's "syntax error" response to typing multi-clause/`where` definitions
+directly at the interactive prompt is pre-existing, unrelated behavior, not
+a regression — confirmed by loading the same definitions from a `.m` file).*
+
+**Tier 3, increment 9 — `types.zig` (2736 lines, ~788 touches), the final
+remaining file — investigation pending.** `trans.zig`'s conversion already
+forced ambient-singleton call-site fixes into `types.zig` at 6 locations
+(`getspecloc` x3, `lastlink`, `same`, `tclos`/`sortrel`, `codegen`,
+`genshfns`, `validate`) — none of those threaded an actual `*Heap` param
+into `types.zig`'s own functions yet, so `types.zig`'s own closure size is
+still to be determined.
 * **Irreducible exception (unchanged):** OS signal handlers run on the C ABI and
   cannot take any explicit parameter; they read a single `current_interp: *Interp`
   set on entry — the one documented global, analogous to `errno` and the A4

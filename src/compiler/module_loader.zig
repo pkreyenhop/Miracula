@@ -150,7 +150,7 @@ pub fn loadfile(heap: *Heap, t_val: [*:0]const u8) void {
             if (heap_mod.idType(heap_mod.h(x)) != word.type_t) {
                 cs.current_id = heap_mod.h(x);
                 cs.polyshowerror = 0;
-                heap_mod.tp(heap_mod.h(x)).* = trans_mod.codegen(heap_mod.idVal(heap_mod.h(x)));
+                heap_mod.tp(heap_mod.h(x)).* = trans_mod.codegen(heap, heap_mod.idVal(heap_mod.h(x)));
                 if (cs.polyshowerror != 0) {
                     heap_mod.tp(heap_mod.h(x)).* = word.UNDEF;
                 }

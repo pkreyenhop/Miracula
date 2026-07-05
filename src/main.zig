@@ -24,7 +24,7 @@ pub fn main(ctx: std.process.Init) !void {
     if (@import("version_options").is_strict or @import("builtin").mode == .Debug) {
         const heap = @import("runtime/heap.zig");
         heap.heap.validate();
-        @import("compiler/trans.zig").validate();
+        @import("compiler/trans.zig").validate(heap.heap);
         rt.rs.validate();
     }
     const check = rt.gpa.deinit();

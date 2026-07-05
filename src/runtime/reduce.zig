@@ -305,7 +305,7 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
             reduce_core.upLeft(ctx);
             const lastarg = t(ctx.e);
 
-            const val = parseLine(h(ctx.args[0]), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.args[0]));
+            const val = parseLine(ctx.heap, h(ctx.args[0]), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.args[0]));
             if (val == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(lastarg))));
                 rewriteToNil(&ctx.e);

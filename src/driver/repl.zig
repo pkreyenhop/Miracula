@@ -354,13 +354,13 @@ pub fn obey(heap: *Heap, x_in: Word) void {
     const typ = types_mod.typeOf(x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.validate();
-        trans_mod.validate();
+        trans_mod.validate(heap);
         rt.rs.validate();
     }
-    x = trans_mod.codegen(x);
+    x = trans_mod.codegen(heap, x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.validate();
-        trans_mod.validate();
+        trans_mod.validate(heap);
         rt.rs.validate();
     }
     if (cs.polyshowerror != 0) return;
@@ -374,7 +374,7 @@ pub fn obey(heap: *Heap, x_in: Word) void {
         const inner: Word = if (islist and t(typ) == char_t)
             x
         else
-            abi.make(.AP, abi.mkshow(0, 0, typ), x);
+            abi.make(.AP, abi.mkshow(heap, 0, 0, typ), x);
         break :blk abi.make(.CONS, abi.make(.AP, rt.rs.standardout, inner), NIL);
     };
     abi.output(out_val);
@@ -386,15 +386,15 @@ pub fn evaluateRepl(heap: *Heap, x_in: Word) void {
     const typ = types_mod.typeOf(x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.validate();
-        trans_mod.validate();
+        trans_mod.validate(heap);
         rt.rs.validate();
     }
     if (typ == word.wrong_t) return;
     rt.rs.lastexp = x;
-    x = trans_mod.codegen(x);
+    x = trans_mod.codegen(heap, x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.validate();
-        trans_mod.validate();
+        trans_mod.validate(heap);
         rt.rs.validate();
     }
     if (cs.polyshowerror != 0) return;
@@ -407,7 +407,7 @@ pub fn evaluateRepl(heap: *Heap, x_in: Word) void {
         const inner: Word = if (islist and t(typ) == char_t)
             x
         else
-            abi.make(.AP, abi.mkshow(0, 0, typ), x);
+            abi.make(.AP, abi.mkshow(heap, 0, 0, typ), x);
         break :blk abi.make(.CONS, abi.make(.AP, rt.rs.standardout, inner), NIL);
     };
     if (process() != 0) {
@@ -485,7 +485,7 @@ pub fn badEditor() bool {
 }
 
 /// Read and type-check one expression of type `t_val` from file `f` (the `readvals` path). Returns its codegen, or `EOF`; re-prompts interactively and aborts on bad file data.
-pub fn parseLine(t_val: Word, f: ?*word.FILE, fil: Word) Word {
+pub fn parseLine(heap: *Heap, t_val: Word, f: ?*word.FILE, fil: Word) Word {
     var t1: Word = undefined;
     var ch: c_int = undefined;
     rt.rs.lastexp = word.UNDEF;
@@ -535,7 +535,7 @@ pub fn parseLine(t_val: Word, f: ?*word.FILE, fil: Word) Word {
             }
         }
         if (rt.rs.lastexp != word.UNDEF) {
-            return trans_mod.codegen(rt.rs.lastexp);
+            return trans_mod.codegen(heap, rt.rs.lastexp);
         }
         if (abi.isatty(word.fileno(f)) != 0) {
             word.print("please re-enter data:\n", .{});

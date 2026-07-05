@@ -555,7 +555,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
                         // Mirror that here so each generator's LHS variables
                         // are treated as fresh bindings, not references.
                         ls.idsused = word.NIL;
-                        const lhs_w = genlhs(codegenExpr(alloc, g.pat));
+                        const lhs_w = genlhs(heap.heap, codegenExpr(alloc, g.pat));
                         ls.idsused = word.NIL;
                         break :gen mkcons(
                             word.GENERATOR,
@@ -566,11 +566,11 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
                     // Mirrors rules.y: cons(GENERATOR, cons(p, ap2(ITERATE/ITERATE1, lambda(p,step), src)))
                     .sequence_generator => |sg| sgen: {
                         ls.idsused = word.NIL;
-                        const lhs_w = genlhs(codegenExpr(alloc, sg.pat));
+                        const lhs_w = genlhs(heap.heap, codegenExpr(alloc, sg.pat));
                         ls.idsused = word.NIL;
                         const src_w = codegenExpr(alloc, sg.source.*);
                         const step_w = codegenExpr(alloc, sg.step.*);
-                        const comb: Word = if (irrefutable(lhs_w) != 0) word.ITERATE else word.ITERATE1;
+                        const comb: Word = if (irrefutable(heap.heap, lhs_w) != 0) word.ITERATE else word.ITERATE1;
                         break :sgen mkcons(
                             word.GENERATOR,
                             mkcons(lhs_w, ap2(comb, mklambda(lhs_w, step_w), src_w)),
@@ -580,7 +580,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
                 };
                 qq = mkcons(qw, qq); // prepend → reverses order
             }
-            break :blk compzf(codegenExpr(alloc, lc.body.*), qq, 0);
+            break :blk compzf(heap.heap, codegenExpr(alloc, lc.body.*), qq, 0);
         },
     };
 }
@@ -674,7 +674,7 @@ fn buildLdefs(alloc: Allocator, where_defs: []const ast.Def) Word {
 /// Wrap expression `e` in its `where` definitions (as a `letrec`).
 fn applyWhereDefs(alloc: Allocator, e: Word, where_defs: []const ast.Def) Word {
     if (where_defs.len == 0) return e;
-    return block(buildLdefs(alloc, where_defs), e, 0);
+    return block(heap.heap, buildLdefs(alloc, where_defs), e, 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -699,7 +699,7 @@ fn codegenDef(alloc: Allocator, def: ast.Def) void {
         }
     }
     rhs = mklabel(here, rhs);
-    declare(lhs, rhs);
+    declare(heap.heap, lhs, rhs);
     // Mirror the YACC grammar: `declare(l,r), rt.rs.lastname=l` — allows
     // consecutive equations for the same function to be accumulated
     // by decl1 rather than triggering a nameclash error.
@@ -715,7 +715,7 @@ fn codegenTypeSpec(ts: ast.TypeSpec) void {
     const here = makeHere(@intCast(ts.span.line));
     const type_w = codegenType(ts.typ);
     for (ts.names) |name| {
-        specify(nameWord(name), type_w, here);
+        specify(heap.heap, nameWord(name), type_w, here);
     }
 }
 
@@ -735,7 +735,7 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
             // redtvars(ap(typeform, body)) normalises type vars
             const body_w = codegenType(s.body);
             const x = redtvars(ap(tf, body_w));
-            declType(h(x), word.synonym_t, t(x), here);
+            declType(heap.heap, h(x), word.synonym_t, t(x), here);
         },
 
         // --- algebraic type: name params ::= C1 fields | C2 fields | … ---
@@ -764,11 +764,11 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
                     hv = h(hv);
                 }
                 n -= 1;
-                _ = declconstr(hv, n, ct);
+                _ = declconstr(heap.heap, hv, n, ct);
                 r_ids = mkcons(hv, r_ids);
                 rhs = t(rhs);
             }
-            declType(tf, word.algebraic_t, r_ids, here);
+            declType(heap.heap, tf, word.algebraic_t, r_ids, here);
         },
 
         // --- abstype: abstype name params with specs ---
@@ -779,13 +779,13 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
                 const spec_here = makeHere(@intCast(spec.span.line));
                 const type_w = codegenType(spec.typ);
                 for (spec.names) |name| {
-                    specify(nameWord(name), type_w, spec_here);
+                    specify(heap.heap, nameWord(name), type_w, spec_here);
                 }
             }
             // Declare the abstract type itself
             var tf = nameWord(a.name);
             for (a.params) |p| tf = ap(tf, codegenTypeVar(p));
-            declType(tf, word.abstract_t, word.undef_t, here);
+            declType(heap.heap, tf, word.abstract_t, word.undef_t, here);
         },
     }
 }
