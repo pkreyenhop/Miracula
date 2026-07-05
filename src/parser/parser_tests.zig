@@ -387,7 +387,7 @@ test "script reload after failed compile does not cause nameclash" {
         _ = main_clib.fputs("add1 x = x+1\n", f.?);
         _ = main_clib.fclose(f.?);
     }
-    module_loader.loadfile(heap.heap, tmp_file);
+    module_loader.loadfile(heap.heap, core_state.s, tmp_file);
     try testing.expectEqual(@as(word.Word, 0), core_state.s.SYNERR);
 
     // 2. Failed compile with syntax error
@@ -396,7 +396,7 @@ test "script reload after failed compile does not cause nameclash" {
         _ = main_clib.fputs("add1 x = x+1\nl = [1,,2]\n", f.?);
         _ = main_clib.fclose(f.?);
     }
-    module_loader.loadfile(heap.heap, tmp_file);
+    module_loader.loadfile(heap.heap, core_state.s, tmp_file);
     try testing.expectEqual(@as(word.Word, 2), core_state.s.errline);
 
     // 3. Re-compile fixed script
@@ -405,7 +405,7 @@ test "script reload after failed compile does not cause nameclash" {
         _ = main_clib.fputs("add1 x = x+1\nl = [1,2]\n", f.?);
         _ = main_clib.fclose(f.?);
     }
-    module_loader.loadfile(heap.heap, tmp_file);
+    module_loader.loadfile(heap.heap, core_state.s, tmp_file);
     try testing.expectEqual(@as(word.Word, 0), core_state.s.SYNERR);
     try testing.expectEqual(@as(word.Word, 0), core_state.s.errline);
 }
@@ -446,7 +446,7 @@ test "/editor command parses arguments on the same line" {
     // 1. /editor without arguments: just prints current editor (doesn't prompt/block)
     ls.dicp = @constCast(@as([*:0]const u8, "editor"));
     ls.c = '\n';
-    _ = commands.command(heap.heap);
+    _ = commands.command(heap.heap, core_state.s);
 
     // 2. /editor with arguments on the same line: changes editor
     ls.dicp = @constCast(@as([*:0]const u8, "editor"));
@@ -463,7 +463,7 @@ test "/editor command parses arguments on the same line" {
         }
     }
 
-    _ = commands.command(heap.heap);
+    _ = commands.command(heap.heap, core_state.s);
 
     const actual_editor = std.mem.span(rt.rs.editor.?);
     try testing.expectEqualStrings("my_custom_editor", actual_editor);

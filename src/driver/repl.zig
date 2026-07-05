@@ -84,13 +84,13 @@ fn WTERMSIG(status: c_int) c_int {
 }
 
 /// The top-level REPL. Loads `initscript`, then reads and dispatches user input until EOF: `?`/`??` (info), `:`/`/` (commands), `!` (shell escape), `||` (comment), or an expression to evaluate.
-pub fn commandLoop(heap: *Heap, initscript: [*:0]u8) void {
+pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, initscript: [*:0]u8) void {
     var ch: c_int = undefined;
     var lb: ?[*:0]u8 = undefined;
 
     if (abi.sigsetjmp(&rt.rs.env, 1) == 0) {
         if (rt.rs.magic) {
-            dump.undump(heap, initscript);
+            dump.undump(heap, core_state.s, initscript);
             if (heap.files == NIL or cs.ND != NIL or heap_mod.idVal(rt.rs.main_id) == word.UNDEF) {
                 if (heap.files != NIL and cs.ND == NIL and heap_mod.idVal(rt.rs.main_id) == word.UNDEF) {
                     word.printErr("{s}: main not defined\n", .{initscript});
@@ -98,11 +98,11 @@ pub fn commandLoop(heap: *Heap, initscript: [*:0]u8) void {
                 errors.fatal("mira: incorrect use of \"-exec\" flag\n", .{.{}});
             }
             rt.rs.magic = false;
-            abi.obey(heap, rt.rs.main_id);
+            abi.obey(heap, core, rt.rs.main_id);
             abi.exit(0);
         }
         _ = signals(abi.SIGINT, @intFromPtr(&reset));
-        dump.undump(heap, initscript);
+        dump.undump(heap, core_state.s, initscript);
         if (rt.rs.verbosity != 0) {
             word.print("for help type /h\n", .{});
         }
@@ -136,7 +136,7 @@ pub fn commandLoop(heap: *Heap, initscript: [*:0]u8) void {
         last_gc_count = null;
         ch = abi.getchar();
         if (rt.rs.rechecking != 0 and heap_mod.srcUpdate() != 0) {
-            module_loader.loadfile(heap, rt.rs.current_script.?);
+            module_loader.loadfile(heap, core_state.s, rt.rs.current_script.?);
         }
         while (ch == ' ' or ch == '\t') {
             ch = abi.getchar();
@@ -208,7 +208,7 @@ pub fn commandLoop(heap: *Heap, initscript: [*:0]u8) void {
             ':', '/' => {
                 _ = token();
                 rt.rs.lastid = 0;
-                commands.command(heap);
+                commands.command(heap, core_state.s);
             },
             '!' => {
                 lb = rdline();
@@ -234,7 +234,7 @@ pub fn commandLoop(heap: *Heap, initscript: [*:0]u8) void {
                         _ = abi.execl(shell.?, .{ shell.?, "-c", lb.? });
                     }
                     if (heap_mod.srcUpdate() != 0) {
-                        module_loader.loadfile(heap, rt.rs.current_script.?);
+                        module_loader.loadfile(heap, core_state.s, rt.rs.current_script.?);
                     }
                 } else {
                     word.print("No previous shell command to substitute for \"!\"\n", .{});
@@ -266,17 +266,17 @@ pub fn commandLoop(heap: *Heap, initscript: [*:0]u8) void {
                 ls.c = word.EVAL;
                 rt.rs.echoing = 0;
                 cs.polyshowerror = 0;
-                core_state.s.commandmode = 1;
+                core.commandmode = 1;
                 _ = parser_api.parseCurrent() catch {};
-                if (core_state.s.SYNERR != 0) {
-                    core_state.s.SYNERR = 0;
+                if (core.SYNERR != 0) {
+                    core.SYNERR = 0;
                 } else if (ls.c != '\n') {
                     word.print("syntax error\n", .{});
                     while (ls.c != '\n' and ls.c != abi.EOF) {
                         ls.c = abi.getchar();
                     }
                 }
-                core_state.s.commandmode = 0;
+                core.commandmode = 0;
                 rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
                 last_elapsed_ns = getMonotonicNs() - start;
                 if (child_exit_status) |exit_code| {
@@ -349,7 +349,7 @@ pub fn fpeError(sig: c_int) callconv(.c) void {
 
 // Relocated REPL and interactive driver functions
 /// Compile `x` and send its value to standard output — used to run a script's `main`.
-pub fn obey(heap: *Heap, x_in: Word) void {
+pub fn obey(heap: *Heap, core: *core_state.CoreState, x_in: Word) void {
     var x = x_in;
     const typ = types_mod.typeOf(heap, x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
@@ -364,7 +364,7 @@ pub fn obey(heap: *Heap, x_in: Word) void {
         rt.rs.validate();
     }
     if (cs.polyshowerror != 0) return;
-    core_state.s.compiling = 0;
+    core.compiling = 0;
     const list_t: Word = 4;
     const char_t: Word = 3;
     const islist = typ >= word.ATOMLIMIT and getTag(heap, typ) == .AP and h(typ) == list_t;
@@ -381,7 +381,7 @@ pub fn obey(heap: *Heap, x_in: Word) void {
 }
 
 /// Evaluate a typed REPL expression: compile it and fork via `process`; the child prints the result and exits, leaving the parent's heap untouched.
-pub fn evaluateRepl(heap: *Heap, x_in: Word) void {
+pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, x_in: Word) void {
     var x = x_in;
     const typ = types_mod.typeOf(heap, x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
@@ -413,7 +413,7 @@ pub fn evaluateRepl(heap: *Heap, x_in: Word) void {
     if (process() != 0) {
         // Child: evaluate and print, then exit (compiling=0 only here, parent unaffected).
         _ = signals(abi.SIGINT, @intFromPtr(&dieClean));
-        core_state.s.compiling = 0;
+        core.compiling = 0;
         resetgcstats();
         abi.output(reduce.ev, out_val);
         _ = word.putchar('\n');
@@ -485,7 +485,7 @@ pub fn badEditor() bool {
 }
 
 /// Read and type-check one expression of type `t_val` from file `f` (the `readvals` path). Returns its codegen, or `EOF`; re-prompts interactively and aborts on bad file data.
-pub fn parseLine(heap: *Heap, t_val: Word, f: ?*word.FILE, fil: Word) Word {
+pub fn parseLine(heap: *Heap, core: *core_state.CoreState, t_val: Word, f: ?*word.FILE, fil: Word) Word {
     var t1: Word = undefined;
     var ch: c_int = undefined;
     rt.rs.lastexp = word.UNDEF;
@@ -514,12 +514,12 @@ pub fn parseLine(heap: *Heap, t_val: Word, f: ?*word.FILE, fil: Word) Word {
         _ = abi.ungetc(ch, f);
         ls.c = word.VALUE;
         rt.rs.echoing = 0;
-        core_state.s.commandmode = 1;
+        core.commandmode = 1;
         rt.rs.s_in = f;
         _ = parser_api.parseCurrent() catch {};
         rt.rs.s_in = abi.stdin();
-        if (core_state.s.SYNERR != 0) {
-            core_state.s.SYNERR = 0;
+        if (core.SYNERR != 0) {
+            core.SYNERR = 0;
             rt.rs.lastexp = word.UNDEF;
         } else {
             t1 = types_mod.typeOf(heap, rt.rs.lastexp);

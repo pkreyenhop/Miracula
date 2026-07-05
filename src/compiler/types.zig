@@ -1644,7 +1644,7 @@ fn mcheckfbs(heap: *Heap) errors.MiraError!void {
 }
 
 /// Type-check the grammar's free/bound symbols.
-pub fn checkfbs(heap: *Heap) void {
+pub fn checkfbs(heap: *Heap, core: *core_state.CoreState) void {
     const oldte = cs.TYPERRS;
     var formals: Word = undefined;
     cs.lasthereinc = 0;
@@ -1680,7 +1680,7 @@ pub fn checkfbs(heap: *Heap) void {
         cs.NT = NIL;
         cs.R = NIL;
         _ = word.printErr("compilation abandoned\n", .{});
-        core_state.s.SYNERR = 1;
+        core.SYNERR = 1;
     }
     resetSubst(heap);
 }
@@ -2673,7 +2673,7 @@ pub fn tsetup() void {
 }
 
 /// Type-check every definition in the current script.
-pub fn checktypes(heap: *Heap) void {
+pub fn checktypes(heap: *Heap, core: *core_state.CoreState) void {
     cs.ATNAMES = 0;
     cs.TYPERRS = 0;
     cs.NT = NIL;
@@ -2700,7 +2700,7 @@ pub fn checktypes(heap: *Heap) void {
         cs.NT = NIL;
         cs.R = NIL;
         _ = word.printErr("typecheck cannot proceed - compilation abandoned\n", .{});
-        core_state.s.SYNERR = 1;
+        core.SYNERR = 1;
         return;
     }
     if (rt.rs.freeids != NIL) {
@@ -2718,7 +2718,7 @@ pub fn checktypes(heap: *Heap) void {
         inferType(heap, h(heap, s));
         s = t(heap, s);
     }
-    checkfbs(heap);
+    checkfbs(heap, core);
     while (cs.TABSTRS != NIL) {
         abstrCheck(heap, h(heap, cs.TABSTRS)) catch {};
         cs.TABSTRS = t(heap, cs.TABSTRS);

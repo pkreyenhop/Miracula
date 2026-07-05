@@ -195,7 +195,7 @@ pub fn badcaseError(arg_info: Word) void {
         word.printErr(" of {s}", .{std.mem.span(getstring(subject, null).?)});
     }
     _ = word.putc('\n', getStderr().?);
-    outHere(getStderr().?, t(arg_info), 1);
+    outHere(core_state.s, getStderr().?, t(arg_info), 1);
     outstats();
     main_clib.exit(1);
 }
@@ -203,7 +203,7 @@ pub fn badcaseError(arg_info: Word) void {
 /// Abort with "lhs of definition doesn't match rhs" (a conformality error).
 pub fn confError(arg_info: Word) void {
     word.printErr("\nprogram error: lhs of definition doesn't match rhs\n", .{});
-    outHere(getStderr().?, t(arg_info), 1);
+    outHere(core_state.s, getStderr().?, t(arg_info), 1);
     outstats();
     main_clib.exit(1);
 }
@@ -305,7 +305,7 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
             reduce_core.upLeft(ctx);
             const lastarg = t(ctx.e);
 
-            const val = parseLine(ctx.heap, h(ctx.args[0]), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.args[0]));
+            const val = parseLine(ctx.heap, core_state.s, h(ctx.args[0]), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.args[0]));
             if (val == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(lastarg))));
                 rewriteToNil(&ctx.e);
@@ -380,7 +380,7 @@ pub fn outstats() void {
 }
 
 /// Write value `h_val` to file `f` for diagnostics, optionally followed by a newline.
-pub fn outHere(f: ?*word.FILE, h_val: Word, nl: c_int) void {
+pub fn outHere(core: *core_state.CoreState, f: ?*word.FILE, h_val: Word, nl: c_int) void {
     if (getTag(h_val) != .FILEINFO) {
         word.printErr("(impossible event in outhere)\n", .{});
         return;
@@ -391,8 +391,8 @@ pub fn outHere(f: ?*word.FILE, h_val: Word, nl: c_int) void {
     } else {
         _ = word.putc(' ', f.?);
     }
-    if (core_state.s.compiling != 0 and core_state.s.errs == 0) {
-        core_state.s.errs = h_val;
+    if (core.compiling != 0 and core.errs == 0) {
+        core.errs = h_val;
     }
 }
 

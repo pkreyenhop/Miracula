@@ -47,10 +47,10 @@ inline fn pnVal(x: Word) Word {
 /// list and environment. Sets `loading=1` for the duration; clears it on return.
 /// If the file does not exist during `initialising`, panics; otherwise prints a notice.
 /// Callers that want dump-or-load semantics should call `undump()` instead.
-pub fn loadfile(heap: *Heap, t_val: [*:0]const u8) void {
-    core_state.s.loading = 1;
-    core_state.s.errs = 0;
-    core_state.s.errline = 0;
+pub fn loadfile(heap: *Heap, core: *core_state.CoreState, t_val: [*:0]const u8) void {
+    core.loading = 1;
+    core.errs = 0;
+    core.errline = 0;
     rt.rs.current_script = @constCast(t_val);
     rt.rs.oldfiles = NIL;
     heap_mod.unload();
@@ -70,7 +70,7 @@ pub fn loadfile(heap: *Heap, t_val: [*:0]const u8) void {
         } else {
             rt.rs.oldfiles = heap_mod.cons(heap_mod.makeFil(t_val, 0, 0, NIL), NIL);
         }
-        core_state.s.loading = 0;
+        core.loading = 0;
         return;
     }
 
@@ -80,7 +80,7 @@ pub fn loadfile(heap: *Heap, t_val: [*:0]const u8) void {
         }
         word.print("cannot open {s}\n", .{t_val});
         rt.rs.oldfiles = heap_mod.cons(heap_mod.makeFil(t_val, 0, 0, NIL), NIL);
-        core_state.s.loading = 0;
+        core.loading = 0;
         return;
     }
 
@@ -101,7 +101,7 @@ pub fn loadfile(heap: *Heap, t_val: [*:0]const u8) void {
     rt.rs.s_in = @ptrFromInt(@as(usize, @intCast(heap_mod.h(heap_mod.h(ls.fileq)))));
     abi.adjustPrefix(@constCast(t_val));
 
-    core_state.s.commandmode = 0;
+    core.commandmode = 0;
     if (rt.rs.verbosity != 0 or rt.rs.making) {
         word.print("compiling {s}\n", .{t_val});
     }
@@ -120,30 +120,30 @@ pub fn loadfile(heap: *Heap, t_val: [*:0]const u8) void {
 
     _ = parser_api.parseCurrent() catch {};
 
-    resolveExportFileList(heap);
+    resolveExportFileList(heap, core);
 
-    if (core_state.s.SYNERR == 0 and rt.rs.includees != NIL) {
-        heap.files = abi.append1(heap.files, mkincludes(heap, rt.rs.includees));
+    if (core.SYNERR == 0 and rt.rs.includees != NIL) {
+        heap.files = abi.append1(heap.files, mkincludes(heap, core, rt.rs.includees));
         rt.rs.includees = NIL;
     }
     rt.rs.ld_stuff = NIL;
 
-    if (core_state.s.SYNERR == 0) {
+    if (core.SYNERR == 0) {
         if (rt.rs.verbosity != 0 or (rt.rs.making and !rt.rs.mkexports and !rt.rs.mksources)) {
             word.print("checking types in {s}\n", .{t_val});
         }
-        types_mod.checktypes(heap);
+        types_mod.checktypes(heap, core);
     }
 
-    const h_val = resolveExports(heap);
+    const h_val = resolveExports(heap, core);
 
-    computeBereavedNames(heap);
+    computeBereavedNames(heap, core);
 
-    reportBereavedExports(heap, h_val);
+    reportBereavedExports(heap, core, h_val);
 
-    reportUnusedDefinitions(heap);
+    reportUnusedDefinitions(heap, core);
 
-    if (core_state.s.SYNERR == 0) {
+    if (core.SYNERR == 0) {
         var x = heap_mod.filDefs(heap_mod.h(heap.files));
         cs.lfrule = 0;
         while (x != NIL) : (x = heap_mod.t(x)) {
@@ -164,25 +164,25 @@ pub fn loadfile(heap: *Heap, t_val: [*:0]const u8) void {
             errors.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, if (rt.rs.okprel) "stdenv" else "prelude")}});
         }
         if (rt.rs.initialising != 0) {
-            dump.makedump(heap);
+            dump.makedump(heap, core);
         } else if (files.isMirandaSource(t_val) != 0) {
             if (cs.ND == NIL) {
                 dump.fixexports(heap);
-                dump.makedump(heap);
+                dump.makedump(heap, core);
                 dump.unfixexports(heap);
             } else {
                 var obf: [abi.pnlim]u8 = undefined;
                 _ = word.strcpy(&obf, t_val);
                 const len = word.strlen(&obf);
-                _ = word.strcpy(obf[len - 1 ..].ptr, core_state.s.obsuffix);
+                _ = word.strcpy(obf[len - 1 ..].ptr, core.obsuffix);
                 _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
             }
         }
-        if (core_state.s.errline == 0 and core_state.s.errs != 0 and word.strcmp(strtab.strOf(strtab.table, heap_mod.h(core_state.s.errs)), rt.rs.current_script.?) == 0) {
-            core_state.s.errline = heap_mod.t(core_state.s.errs);
+        if (core.errline == 0 and core.errs != 0 and word.strcmp(strtab.strOf(strtab.table, heap_mod.h(core.errs)), rt.rs.current_script.?) == 0) {
+            core.errline = heap_mod.t(core.errs);
         }
         cs.ND = heap_mod.alfasort(cs.ND);
-        core_state.s.loading = 0;
+        core.loading = 0;
         return;
     }
 
@@ -195,18 +195,18 @@ pub fn loadfile(heap: *Heap, t_val: [*:0]const u8) void {
         var obf: [abi.pnlim]u8 = undefined;
         _ = word.strcpy(&obf, t_val);
         const len = word.strlen(&obf);
-        _ = word.strcpy(obf[len - 1 ..].ptr, core_state.s.obsuffix);
+        _ = word.strcpy(obf[len - 1 ..].ptr, core.obsuffix);
         _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
     }
-    core_state.s.SYNERR = 0;
-    core_state.s.loading = 0;
+    core.SYNERR = 0;
+    core.loading = 0;
 }
 
 /// Resolves each name in `ls.exportfiles` against `rt.rs.includees`: `+` pulls in
 /// every variable defined in the current file, anything else must match exactly
 /// one included fileid (ambiguous or missing matches abandon compilation).
-fn resolveExportFileList(heap: *Heap) void {
-    if (core_state.s.SYNERR == 0 and ls.exportfiles != NIL) {
+fn resolveExportFileList(heap: *Heap, core: *core_state.CoreState) void {
+    if (core.SYNERR == 0 and ls.exportfiles != NIL) {
         var s = ls.exportfiles;
         while (s != NIL) : (s = heap_mod.t(s)) {
             if (heap_mod.h(s) == word.PLUS) {
@@ -226,12 +226,12 @@ fn resolveExportFileList(heap: *Heap) void {
                     }
                 }
                 if (count != 1) {
-                    core_state.s.SYNERR = 1;
+                    core.SYNERR = 1;
                     word.print("illegal fileid \"{s}\" in export list ({s})\n", .{ strtab.strOf(strtab.table, heap_mod.h(s)), @as([*:0]const u8, if (count != 0) "ambiguous" else "not %included in script") });
                 }
             }
         }
-        if (core_state.s.SYNERR != 0) {
+        if (core.SYNERR != 0) {
             abi.sayhere(heap, heap_mod.h(rt.rs.exports), 1);
             word.printErr("compilation abandoned\n", .{});
         }
@@ -242,9 +242,9 @@ fn resolveExportFileList(heap: *Heap) void {
 /// (previously-exported-but-now-hidden names) removed, undefined/redundant
 /// names reported and folded back into `cs.ND`/dropped. Returns the export-list
 /// declaration node (for error-location reporting by the caller), or `NIL`.
-fn resolveExports(heap: *Heap) Word {
+fn resolveExports(heap: *Heap, core: *core_state.CoreState) Word {
     var h_val: Word = NIL;
-    if (core_state.s.SYNERR == 0 and rt.rs.exports != NIL) {
+    if (core.SYNERR == 0 and rt.rs.exports != NIL) {
         if (cs.ND != NIL) {
             rt.rs.exports = NIL;
         } else {
@@ -302,7 +302,7 @@ fn resolveExports(heap: *Heap) Word {
                 abi.sayhere(heap, h_val, 1);
                 h_val = NIL;
             } else if (rt.rs.exports == NIL or n != NIL) {
-                abi.outHere(abi.stderr(), h_val, 1);
+                abi.outHere(core, abi.stderr(), h_val, 1);
                 h_val = NIL;
             }
         }
@@ -314,8 +314,8 @@ fn resolveExports(heap: *Heap) Word {
 /// with no explicit export list, from the whole file) plus from free ids, that
 /// aren't themselves exported — candidates for the "incomplete export list"
 /// warning.
-fn computeBereavedNames(heap: *Heap) void {
-    if (core_state.s.SYNERR == 0 and cs.ND == NIL and (rt.rs.exports != NIL or heap_mod.t(heap.files) != NIL)) {
+fn computeBereavedNames(heap: *Heap, core: *core_state.CoreState) void {
+    if (core.SYNERR == 0 and cs.ND == NIL and (rt.rs.exports != NIL or heap_mod.t(heap.files) != NIL)) {
         var e1 = rt.rs.exports;
         var r: Word = NIL;
         var e: Word = NIL;
@@ -372,7 +372,7 @@ fn computeBereavedNames(heap: *Heap) void {
 
 /// If the export list is missing a bereaved typename, warns and (if `h_val`,
 /// the export-list declaration node, is known) reports its source location.
-fn reportBereavedExports(heap: *Heap, h_val: Word) void {
+fn reportBereavedExports(heap: *Heap, core: *core_state.CoreState, h_val: Word) void {
     if (rt.rs.exports != NIL and rt.rs.bereaved != NIL) {
         const b = abi.intersection(heap, rt.rs.bereaved, cs.newtyps);
         if (b != NIL) {
@@ -380,15 +380,15 @@ fn reportBereavedExports(heap: *Heap, h_val: Word) void {
             abi.printlist(heap, @constCast(""), b);
         }
         if (b != NIL and h_val != NIL) {
-            abi.outHere(abi.stdout(), h_val, 1);
+            abi.outHere(core, abi.stdout(), h_val, 1);
         }
     }
 }
 
 /// Warns about unused local definitions (`rt.rs.detrop`) and unused grammar
 /// nonterminals, both skipping past leading `LABEL`-tagged entries.
-fn reportUnusedDefinitions(heap: *Heap) void {
-    if (core_state.s.SYNERR == 0 and rt.rs.detrop != NIL) {
+fn reportUnusedDefinitions(heap: *Heap, core: *core_state.CoreState) void {
+    if (core.SYNERR == 0 and rt.rs.detrop != NIL) {
         const gd = rt.rs.detrop;
         while (rt.rs.detrop != NIL and getTag(heap, heap_mod.dval(heap_mod.h(rt.rs.detrop))) == .LABEL) {
             rt.rs.detrop = heap_mod.t(rt.rs.detrop);
@@ -397,7 +397,7 @@ fn reportUnusedDefinitions(heap: *Heap) void {
             word.print("warning, script contains unused local definitions:-\n", .{});
         }
         while (rt.rs.detrop != NIL) {
-            abi.outHere(abi.stdout(), heap_mod.h(heap_mod.h(heap_mod.t(heap_mod.dval(heap_mod.h(rt.rs.detrop))))), 0);
+            abi.outHere(core, abi.stdout(), heap_mod.h(heap_mod.h(heap_mod.t(heap_mod.dval(heap_mod.h(rt.rs.detrop))))), 0);
             _ = word.putchar('\t');
             abi.outPattern(heap, abi.stdout().?, heap_mod.dlhs(heap_mod.h(rt.rs.detrop)));
             _ = word.putchar('\n');
@@ -415,7 +415,7 @@ fn reportUnusedDefinitions(heap: *Heap) void {
             word.print("warning, grammar contains unused nonterminals:-\n", .{});
         }
         while (gd_mut != NIL) {
-            abi.outHere(abi.stdout(), heap_mod.h(heap_mod.dval(heap_mod.h(gd_mut))), 0);
+            abi.outHere(core, abi.stdout(), heap_mod.h(heap_mod.dval(heap_mod.h(gd_mut))), 0);
             _ = word.putchar('\t');
             abi.outPattern(heap, abi.stdout().?, heap_mod.dlhs(heap_mod.h(gd_mut)));
             _ = word.putchar('\n');
@@ -429,7 +429,7 @@ fn reportUnusedDefinitions(heap: *Heap) void {
 
 /// Resolves a list of `%include` file nodes (`includees_val`) into a heap list
 /// of loaded file nodes, detecting and reporting clashes. Returns the resolved list.
-pub fn mkincludes(heap: *Heap, includees_val: Word) Word {
+pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, includees_val: Word) Word {
     var includees_list = includees_val;
     var result: Word = NIL;
     var tclashes: Word = NIL;
@@ -445,7 +445,7 @@ pub fn mkincludes(heap: *Heap, includees_val: Word) Word {
             if (rt.rs.ideep != 0) {
                 abi.exit(2);
             }
-            core_state.s.SYNERR = 2;
+            core.SYNERR = 2;
             word.print("compilation of \"{s}\" abandoned\n", .{rt.rs.current_script.?});
             return NIL;
         }
@@ -454,7 +454,7 @@ pub fn mkincludes(heap: *Heap, includees_val: Word) Word {
             if (rt.rs.ideep != 0) {
                 abi.exit(2);
             } else {
-                core_state.s.SYNERR = 2;
+                core.SYNERR = 2;
                 word.print("compilation of \"{s}\" abandoned\n", .{rt.rs.current_script.?});
                 return NIL;
             }
@@ -470,7 +470,7 @@ pub fn mkincludes(heap: *Heap, includees_val: Word) Word {
         rt.rs.magic = false;
         _ = abi.sigsetjmp(&rt.rs.env, 1);
         while (includees_list != NIL and rt.rs.make_status == 0) {
-            dump.undump(heap, strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(heap_mod.h(includees_list)))));
+            dump.undump(heap, core, strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(heap_mod.h(includees_list)))));
             if (cs.ND != NIL or (heap.files == NIL and rt.rs.oldfiles != NIL)) {
                 rt.rs.make_status = 1;
             }
@@ -487,7 +487,7 @@ pub fn mkincludes(heap: *Heap, includees_val: Word) Word {
         const fn_str = strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(heap_mod.h(includees_list))));
 
         _ = word.strcpy(ls.dicp, fn_str);
-        _ = word.strcpy(ls.dicp + word.strlen(ls.dicp) - 1, core_state.s.obsuffix);
+        _ = word.strcpy(ls.dicp + word.strlen(ls.dicp) - 1, core.obsuffix);
 
         if (!rt.rs.making) {
             oldsig = signals(abi.SIGINT, @intFromPtr(&dump.sigdefer));
@@ -596,7 +596,7 @@ pub fn mkincludes(heap: *Heap, includees_val: Word) Word {
             result = abi.append1(result, x);
         }
 
-        core_state.s.SYNERR = 1;
+        core.SYNERR = 1;
         word.print("unsuccessful %include directive ", .{});
         abi.sayhere(heap, heap_mod.t(heap_mod.h(heap_mod.h(includees_list))), 1);
 
@@ -678,7 +678,7 @@ pub fn mkincludes(heap: *Heap, includees_val: Word) Word {
             tclashes = heap_mod.t(tclashes);
         }
         word.printErr("typecheck cannot proceed - compilation abandoned\n", .{});
-        core_state.s.SYNERR = 1;
+        core.SYNERR = 1;
         return result;
     }
 

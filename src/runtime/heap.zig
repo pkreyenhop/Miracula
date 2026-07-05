@@ -2620,7 +2620,7 @@ pub fn srcUpdate() c_int {
         if ((fileMtime(_fil_path)) != filTime(h(f))) {
             ft = fileMtime(_fil_path);
             if (ft == 0) {
-                unlinkObject(_fil_path);
+                unlinkObject(core.s, _fil_path);
             }
             return 1;
         }

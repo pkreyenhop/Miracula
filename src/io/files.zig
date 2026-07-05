@@ -98,7 +98,7 @@ pub fn copyFile(from: [*:0]const u8, to: [*:0]const u8) void {
 
 /// Deletes the object-file counterpart of `t_path` (replaces the final char with `obsuffix`).
 /// No-op if the object file does not exist.
-pub fn unlinkObject(t_path: [*:0]const u8) void {
+pub fn unlinkObject(core: *core_state.CoreState, t_path: [*:0]const u8) void {
     var obf_buf: [1024]u8 = undefined;
     const t_slice = std.mem.span(t_path);
     if (t_slice.len == 0) return;
@@ -106,7 +106,7 @@ pub fn unlinkObject(t_path: [*:0]const u8) void {
 
     @memcpy(obf_buf[0 .. len - 1], t_slice[0 .. len - 1]);
 
-    const obsuffix_slice = std.mem.span(core_state.s.obsuffix);
+    const obsuffix_slice = std.mem.span(core.obsuffix);
     @memcpy(obf_buf[len - 1 .. len - 1 + obsuffix_slice.len], obsuffix_slice);
     obf_buf[len - 1 + obsuffix_slice.len] = 0;
 

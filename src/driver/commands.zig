@@ -160,7 +160,7 @@ fn namescom(heap: *Heap, l: Word) void {
 
 /// Dispatch a `/` or `:` REPL command — the main command switch (`/h`, `/e`, `/f`, `/l`, `/man`, ...).
 /// Handle the `'f'` REPL command (extracted from `command`).
-fn cmdFiles(heap: *Heap) bool {
+fn cmdFiles(heap: *Heap, core: *core_state.CoreState) bool {
     var t_val: ?[*:0]u8 = undefined;
     var ch: c_int = undefined;
     if (is("f") or is("file")) {
@@ -173,18 +173,18 @@ fn cmdFiles(heap: *Heap) bool {
             t_val = null;
         }
         if (t_val != null) {
-            core_state.s.errline = 0;
-            core_state.s.errs = 0;
+            core.errline = 0;
+            core.errs = 0;
         }
         if (t_val != null) {
             if (word.strcmp(t_val.?, rt.rs.current_script.?) != 0 or (heap.files == NIL and abi.okdump(t_val.?))) {
                 cs.CLASHES = NIL;
-                dump.undump(heap, t_val.?);
+                dump.undump(heap, core, t_val.?);
                 if (cs.CLASHES != NIL) {
-                    module_loader.loadfile(heap, t_val.?);
+                    module_loader.loadfile(heap, core, t_val.?);
                 }
             } else {
-                module_loader.loadfile(heap, t_val.?);
+                module_loader.loadfile(heap, core, t_val.?);
             }
         } else {
             word.print("{s}{s}\n", .{ rt.rs.current_script.?, @as([*:0]const u8, if (heap.files == NIL) " (not loaded)" else "") });
@@ -238,7 +238,7 @@ fn cmdFiles(heap: *Heap) bool {
 }
 
 /// Handle the `'e'` REPL command (extracted from `command`).
-fn cmdEdit() bool {
+fn cmdEdit(core: *core_state.CoreState) bool {
     var t_val: ?[*:0]u8 = undefined;
     var ch: c_int = undefined;
     var ch1: c_int = undefined;
@@ -295,8 +295,8 @@ fn cmdEdit() bool {
                 files.copyFile(mf.?, t_val.?);
             }
         }
-        const err_line_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core_state.s.errline) else if (core_state.s.errs != 0 and word.strcmp(t_val.?, strtab.strOf(strtab.table, heap_mod.h(core_state.s.errs))) == 0) @intCast(heap_mod.t(core_state.s.errs)) else @intCast(abi.geterrlin(t_val.?));
-        const err_col_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core_state.s.errcol) else 0;
+        const err_line_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core.errline) else if (core.errs != 0 and word.strcmp(t_val.?, strtab.strOf(strtab.table, heap_mod.h(core.errs))) == 0) @intCast(heap_mod.t(core.errs)) else @intCast(abi.geterrlin(t_val.?));
+        const err_col_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core.errcol) else 0;
         editfile(t_val.?, err_line_num, err_col_num);
         return true;
     }
@@ -345,7 +345,7 @@ fn cmdEdit() bool {
     return false;
 }
 
-pub fn command(heap: *Heap) void {
+pub fn command(heap: *Heap, core: *core_state.CoreState) void {
     switch (ls.dicp[0]) {
         'a' => {
             if (is("a") or is("aux")) {
@@ -373,7 +373,7 @@ pub fn command(heap: *Heap) void {
                 if (abi.chdir(d.?) == -1) {
                     word.print("cannot cd to {s}\n", .{d.?});
                 } else if (heap_mod.srcUpdate() != 0) {
-                    dump.undump(heap, rt.rs.current_script.?);
+                    dump.undump(heap, core, rt.rs.current_script.?);
                 }
                 return;
             }
@@ -396,10 +396,10 @@ pub fn command(heap: *Heap) void {
             }
         },
         'e' => {
-            if (cmdEdit()) return;
+            if (cmdEdit(core)) return;
         },
         'f' => {
-            if (cmdFiles(heap)) return;
+            if (cmdFiles(heap, core)) return;
         },
         'g' => {
             if (is("gc")) {
@@ -645,7 +645,7 @@ pub fn editfile(t_val: [*:0]const u8, line: c_int, col: c_int) void {
     }
     _ = abi.system(ebuf_local);
     if (heap_mod.srcUpdate() != 0) {
-        module_loader.loadfile(heap_mod.heap, rt.rs.current_script.?);
+        module_loader.loadfile(heap_mod.heap, core_state.s, rt.rs.current_script.?);
     }
 }
 

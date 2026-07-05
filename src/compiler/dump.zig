@@ -277,7 +277,7 @@ inline fn pnVal(x: Word) Word {
 /// Loads `t_val` from its pre-compiled dump file (.mx suffix) if the dump is newer
 /// than the source, otherwise falls back to `loadfile()`. Handles the case where
 /// the source does not exist (initialising-only panic) or the dump is missing/stale.
-pub fn undump(heap: *Heap, t_val: [*:0]const u8) void {
+pub fn undump(heap: *Heap, core: *core_state.CoreState, t_val: [*:0]const u8) void {
     var obf: [abi.pnlim]u8 = undefined;
     var f: ?*word.FILE = null;
     var flen: Word = undefined;
@@ -286,7 +286,7 @@ pub fn undump(heap: *Heap, t_val: [*:0]const u8) void {
     var oldsig: usize = 0;
 
     if (files.isMirandaSource(t_val) == 0 and rt.rs.initialising == 0) {
-        module_loader.loadfile(heap, t_val);
+        module_loader.loadfile(heap, core, t_val);
         return;
     }
 
@@ -298,26 +298,26 @@ pub fn undump(heap: *Heap, t_val: [*:0]const u8) void {
     }
 
     _ = word.strcpy(&obf, t_val);
-    _ = word.strcpy(obf[@intCast(flen - 1)..].ptr, core_state.s.obsuffix);
+    _ = word.strcpy(obf[@intCast(flen - 1)..].ptr, core.obsuffix);
     t2 = files.fileMtime(@as([*:0]const u8, @ptrCast(&obf)));
     if (t2 != 0 and t1 == 0) {
         t2 = 0;
         _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
     }
     if (t2 == 0 or t2 < t1) {
-        module_loader.loadfile(heap, t_val);
+        module_loader.loadfile(heap, core, t_val);
         return;
     }
 
     f = word.fopen(&obf, "r");
     if (f == null) {
         word.print("cannot open {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
-        module_loader.loadfile(heap, t_val);
+        module_loader.loadfile(heap, core, t_val);
         return;
     }
 
     rt.rs.current_script = @constCast(t_val);
-    core_state.s.loading = 1;
+    core.loading = 1;
     rt.rs.oldfiles = NIL;
     heap_mod.unload();
 
@@ -361,7 +361,7 @@ pub fn undump(heap: *Heap, t_val: [*:0]const u8) void {
             abi.printlist(heap, @constCast("due to name clashes: "), heap_mod.alfasort(cs.CLASHES));
         }
         heap_mod.unload();
-        core_state.s.loading = 0;
+        core.loading = 0;
         return;
     }
 
@@ -369,7 +369,7 @@ pub fn undump(heap: *Heap, t_val: [*:0]const u8) void {
         if (rt.rs.initialising != 0) {
             errors.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
         }
-        module_loader.loadfile(heap, t_val);
+        module_loader.loadfile(heap, core, t_val);
     } else {
         if (rt.rs.verbosity != 0 or rt.rs.magic or rt.rs.mkexports) {
             if (heap.files == NIL) {
@@ -387,18 +387,18 @@ pub fn undump(heap: *Heap, t_val: [*:0]const u8) void {
     if (heap.files != NIL and !rt.rs.making and rt.rs.initialising == 0) {
         unfixexports(heap);
     }
-    core_state.s.loading = 0;
+    core.loading = 0;
 }
 
 /// Writes a binary dump of the current heap state to the .mx file corresponding to
 /// `rs.current_script`. Installs `sigdefer` during the write so a SIGINT cannot
 /// leave a partial dump; re-raises any deferred signal afterward.
-pub fn makedump(heap: *Heap) void {
+pub fn makedump(heap: *Heap, core: *core_state.CoreState) void {
     const obf = &rt.rs.linebuf;
     var f: ?*word.FILE = null;
     _ = word.strcpy(obf, rt.rs.current_script.?);
     const len = word.strlen(obf);
-    _ = word.strcpy(obf[len - 1 ..].ptr, core_state.s.obsuffix);
+    _ = word.strcpy(obf[len - 1 ..].ptr, core.obsuffix);
     f = word.fopen(obf, "w");
     if (f == null) {
         word.print("WARNING: CANNOT WRITE TO {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(obf)))});

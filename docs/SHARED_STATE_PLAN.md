@@ -893,6 +893,51 @@ separately). Manual smoke test of the `Tofile`/`Stdout`/`Closefile` redirect
 dance and the `readvals` stdin path (via golden's `lazy_io_readvals`) behaved
 identically before and after.
 
+**`CoreState` (143 touches, 14 files) — done, 2026-07-05.** Threaded
+`core: *CoreState` through the tractable, low-fan-out call chains: `outHere`,
+`unlinkObject`, the `loadfile`/`undump`/`makedump`/`mkincludes`/
+`resolveExportFileList`/`resolveExports`/`computeBereavedNames`/
+`reportBereavedExports`/`reportUnusedDefinitions` cluster (module_loader.zig
++ dump.zig), `checkfbs`/`checktypes` (types.zig), `cmdFiles`/`cmdEdit`/
+`command` (commands.zig), and `commandLoop`/`obey`/`evaluateRepl`/`parseLine`
+(repl.zig). External callers with no narrower value in scope pass the
+ambient `core_state.s` global directly, same as `EvalState`'s pattern.
+
+The bigger finding this tier: most of `CoreState`'s remaining touches turned
+out to belong to a *pervasive ambient cluster* that doesn't get threaded at
+all, extending Tier 3's `setup.zig` exception into a real category rather
+than a one-off. Left untouched, by function:
+- **Signal handlers** (must stay zero-arg): `repl.zig`'s `fpeError` (SIGFPE)
+  and `reset` (SIGINT), both `callconv(.c)`.
+- **The `syntax`/`acterror` error-reporting cluster**: `setup.zig`'s
+  `syntax`/`acterror` (40+ call sites across `lex.zig`/`trans.zig` — Tier 3
+  precedent), plus everything that sets `core.errs`/`core.SYNERR` immediately
+  before calling into that cluster (`trans.zig`'s `nclchk`/`declconstr`/
+  `specify`/`arityCheck`/`declType`/`decl1`/`declare`/`respecError`/
+  `nameclash`) — these are mutually recursive with the already-ambient
+  reporters, so threading `core` through them would just plumb a param to
+  a function that reads the global anyway three lines later.
+- **The lexer/parser/codegen hot path**: `lex.zig`'s `getch`/`errclass`/
+  `yylex`/`lexSymbolOrOperator`/`identifier`/`resetLex`/`resetState`,
+  `trans.zig`'s `codegen` (34 call sites) and `genlhs`, `types.zig`'s
+  `sayhere` (20+ call sites)/`typeError2`/`outFormal1`/`etypeId` (embedded in
+  the 27-call-site `etype` dispatcher) — called thousands of times per
+  script; threading here would cascade into the entire parse/typecheck/
+  codegen pipeline for fields (`commandmode`/`compiling`/`SYNERR`/`errs`)
+  that are genuinely global compilation-session status, not per-request
+  state a caller would ever plausibly vary.
+- **`codegen.zig`**: already fully ambient in Tier 3 (no `heap`/`core` params
+  anywhere in this file), so its `core_state.s.nill` reads stay consistent
+  with that.
+- **Test files** (`reduce_test.zig`, `parser_tests.zig`): assert on the
+  ambient singleton directly, same as `EvalState`'s test.
+
+Verified the same way as `EvalState`: `zig build` clean, `lint` at the
+16-warning baseline, direct `main-tests` binary 176/176, `test-mira` exit 0,
+`test-golden` 43/44 (same pre-existing `script_syntax_err` failure), and a
+byte-identical manual REPL smoke test (`1+2` / syntax-error recovery / `/f`)
+diffed against the pre-CoreState commit via `git stash`.
+
 ### Phase 6 — De-globalize & document *(close-out; conditional on Tier 3 + Tier 4)*
 Delete the global `var interp`; `main()` constructs it explicitly
 (`var interp = Interp.init(gpa); defer interp.deinit(); return interp.run(args);`).
