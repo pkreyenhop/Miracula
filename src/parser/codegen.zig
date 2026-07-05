@@ -734,7 +734,7 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
             for (s.params) |p| tf = ap(tf, codegenTypeVar(p));
             // redtvars(ap(typeform, body)) normalises type vars
             const body_w = codegenType(s.body);
-            const x = redtvars(ap(tf, body_w));
+            const x = redtvars(heap.heap, ap(tf, body_w));
             declType(heap.heap, h(x), word.synonym_t, t(x), here);
         },
 

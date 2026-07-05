@@ -429,21 +429,21 @@ fn runExportsMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
                 heap_mod.tp(heap_mod.h(heap_mod.h(n))).* = heap_mod.theVal(heap_mod.h(f));
                 heap_mod.hp(f).* = n;
             }
-            rt.rs.freeids = abi.typesfirst(rt.rs.freeids);
+            rt.rs.freeids = abi.typesfirst(heap, rt.rs.freeids);
             f = rt.rs.freeids;
             word.print("\t%free {{\n", .{});
             while (f != NIL) : (f = heap_mod.t(f)) {
                 _ = word.putchar('\t');
-                abi.reportType(heap_mod.h(f));
+                abi.reportType(heap, heap_mod.h(f));
                 _ = word.putchar('\n');
             }
             word.print("\t}}\n", .{});
         }
 
-        var item = abi.typesfirst(heap_mod.alfasort(x));
+        var item = abi.typesfirst(heap, heap_mod.alfasort(x));
         while (item != NIL) : (item = heap_mod.t(item)) {
             _ = word.putchar('\t');
-            abi.reportType(heap_mod.h(item));
+            abi.reportType(heap, heap_mod.h(item));
             _ = word.putchar('\n');
         }
     }
@@ -467,7 +467,7 @@ fn runSourcesMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
             var f = if (heap.files == NIL) rt.rs.oldfiles else heap.files;
             while (f != NIL) : (f = heap_mod.t(f)) {
                 const filename_str = heap_mod.getFil(heap_mod.h(f)).?;
-                if (abi.member(x, strtab.strBits(strtab.table, filename_str)) == 0) {
+                if (abi.member(heap, x, strtab.strBits(strtab.table, filename_str)) == 0) {
                     x = heap_mod.cons(strtab.strBits(strtab.table, filename_str), x);
                     word.print("{s}\n", .{filename_str});
                 }

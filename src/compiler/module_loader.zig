@@ -132,14 +132,14 @@ pub fn loadfile(heap: *Heap, t_val: [*:0]const u8) void {
         if (rt.rs.verbosity != 0 or (rt.rs.making and !rt.rs.mkexports and !rt.rs.mksources)) {
             word.print("checking types in {s}\n", .{t_val});
         }
-        types_mod.checktypes();
+        types_mod.checktypes(heap);
     }
 
-    const h_val = resolveExports();
+    const h_val = resolveExports(heap);
 
     computeBereavedNames(heap);
 
-    reportBereavedExports(h_val);
+    reportBereavedExports(heap, h_val);
 
     reportUnusedDefinitions(heap);
 
@@ -213,7 +213,7 @@ fn resolveExportFileList(heap: *Heap) void {
                 var i = heap_mod.filDefs(heap_mod.h(heap.files));
                 while (i != NIL) : (i = heap_mod.t(i)) {
                     if (heap_mod.isvariable(heap_mod.h(i)) and !heap_mod.isfreeid(heap_mod.h(i))) {
-                        heap_mod.tp(rt.rs.exports).* = abi.add1(heap_mod.h(i), heap_mod.t(rt.rs.exports));
+                        heap_mod.tp(rt.rs.exports).* = abi.add1(heap, heap_mod.h(i), heap_mod.t(rt.rs.exports));
                     }
                 }
             } else {
@@ -232,7 +232,7 @@ fn resolveExportFileList(heap: *Heap) void {
             }
         }
         if (core_state.s.SYNERR != 0) {
-            abi.sayhere(heap_mod.h(rt.rs.exports), 1);
+            abi.sayhere(heap, heap_mod.h(rt.rs.exports), 1);
             word.printErr("compilation abandoned\n", .{});
         }
     }
@@ -242,7 +242,7 @@ fn resolveExportFileList(heap: *Heap) void {
 /// (previously-exported-but-now-hidden names) removed, undefined/redundant
 /// names reported and folded back into `cs.ND`/dropped. Returns the export-list
 /// declaration node (for error-location reporting by the caller), or `NIL`.
-fn resolveExports() Word {
+fn resolveExports(heap: *Heap) Word {
     var h_val: Word = NIL;
     if (core_state.s.SYNERR == 0 and rt.rs.exports != NIL) {
         if (cs.ND != NIL) {
@@ -258,14 +258,14 @@ fn resolveExports() Word {
             while (e != NIL) : (e = heap_mod.t(e)) {
                 if (heap_mod.idType(heap_mod.h(e)) == word.undef_t) {
                     u = heap_mod.cons(heap_mod.h(e), u);
-                    cs.ND = abi.add1(heap_mod.h(e), cs.ND);
-                } else if (abi.member(rt.rs.exports, heap_mod.h(e)) == 0) {
+                    cs.ND = abi.add1(heap, heap_mod.h(e), cs.ND);
+                } else if (abi.member(heap, rt.rs.exports, heap_mod.h(e)) == 0) {
                     n = heap_mod.cons(heap_mod.h(e), n);
                 }
             }
 
             if (rt.rs.embargoes != NIL) {
-                rt.rs.exports = abi.setdiff(rt.rs.exports, rt.rs.embargoes);
+                rt.rs.exports = abi.setdiff(heap, rt.rs.exports, rt.rs.embargoes);
             }
             rt.rs.exports = heap_mod.alfasort(rt.rs.exports);
 
@@ -273,7 +273,7 @@ fn resolveExports() Word {
             while (e != NIL) : (e = heap_mod.t(e)) {
                 if (heap_mod.idType(heap_mod.h(e)) == word.undef_t) {
                     u = heap_mod.cons(heap_mod.h(e), u);
-                    cs.ND = abi.add1(heap_mod.h(e), cs.ND);
+                    cs.ND = abi.add1(heap, heap_mod.h(e), cs.ND);
                 } else if (heap_mod.idType(heap_mod.h(e)) == word.type_t and heap_mod.tClass(heap_mod.h(e)) == word.algebraic_t) {
                     c_ctr = heap_mod.shunt(heap_mod.tInfo(heap_mod.h(e)), c_ctr);
                 }
@@ -295,11 +295,11 @@ fn resolveExports() Word {
 
             if (u != NIL) {
                 rt.rs.exports = NIL;
-                abi.printlist(@constCast("undefined names in export list: "), u);
+                abi.printlist(heap, @constCast("undefined names in export list: "), u);
             }
 
             if (u != NIL) {
-                abi.sayhere(h_val, 1);
+                abi.sayhere(heap, h_val, 1);
                 h_val = NIL;
             } else if (rt.rs.exports == NIL or n != NIL) {
                 abi.outHere(abi.stderr(), h_val, 1);
@@ -324,12 +324,12 @@ fn computeBereavedNames(heap: *Heap) void {
                 const ty = heap_mod.idType(heap_mod.h(e1));
                 if (ty == word.type_t) {
                     if (heap_mod.tClass(heap_mod.h(e1)) == word.synonym_t) {
-                        r = abi.UNION(r, abi.deps(heap_mod.tInfo(heap_mod.h(e1))));
+                        r = abi.UNION(heap, r, abi.deps(heap, heap_mod.tInfo(heap_mod.h(e1))));
                     } else {
                         e = heap_mod.cons(heap_mod.h(e1), e);
                     }
                 } else {
-                    r = abi.UNION(r, abi.deps(ty));
+                    r = abi.UNION(heap, r, abi.deps(heap, ty));
                 }
             }
         } else {
@@ -338,12 +338,12 @@ fn computeBereavedNames(heap: *Heap) void {
                 const ty = heap_mod.idType(heap_mod.h(e1));
                 if (ty == word.type_t) {
                     if (heap_mod.tClass(heap_mod.h(e1)) == word.synonym_t) {
-                        r = abi.UNION(r, abi.deps(heap_mod.tInfo(heap_mod.h(e1))));
+                        r = abi.UNION(heap, r, abi.deps(heap, heap_mod.tInfo(heap_mod.h(e1))));
                     } else {
                         e = heap_mod.cons(heap_mod.h(e1), e);
                     }
                 } else {
-                    r = abi.UNION(r, abi.deps(ty));
+                    r = abi.UNION(heap, r, abi.deps(heap, ty));
                 }
             }
         }
@@ -353,17 +353,17 @@ fn computeBereavedNames(heap: *Heap) void {
             const ty = heap_mod.idType(heap_mod.h(heap_mod.h(e1)));
             if (ty == word.type_t) {
                 if (heap_mod.tClass(heap_mod.h(heap_mod.h(e1))) == word.synonym_t) {
-                    r = abi.UNION(r, abi.deps(heap_mod.tInfo(heap_mod.h(heap_mod.h(e1)))));
+                    r = abi.UNION(heap, r, abi.deps(heap, heap_mod.tInfo(heap_mod.h(heap_mod.h(e1)))));
                 } else {
                     e = heap_mod.cons(heap_mod.h(heap_mod.h(e1)), e);
                 }
             } else {
-                r = abi.UNION(r, abi.deps(ty));
+                r = abi.UNION(heap, r, abi.deps(heap, ty));
             }
         }
 
         while (r != NIL) : (r = heap_mod.t(r)) {
-            if (abi.member(e, heap_mod.h(r)) == 0) {
+            if (abi.member(heap, e, heap_mod.h(r)) == 0) {
                 rt.rs.bereaved = heap_mod.cons(heap_mod.h(r), rt.rs.bereaved);
             }
         }
@@ -372,12 +372,12 @@ fn computeBereavedNames(heap: *Heap) void {
 
 /// If the export list is missing a bereaved typename, warns and (if `h_val`,
 /// the export-list declaration node, is known) reports its source location.
-fn reportBereavedExports(h_val: Word) void {
+fn reportBereavedExports(heap: *Heap, h_val: Word) void {
     if (rt.rs.exports != NIL and rt.rs.bereaved != NIL) {
-        const b = abi.intersection(rt.rs.bereaved, cs.newtyps);
+        const b = abi.intersection(heap, rt.rs.bereaved, cs.newtyps);
         if (b != NIL) {
             word.print("warning, export list is incomplete - missing typename: ", .{});
-            abi.printlist(@constCast(""), b);
+            abi.printlist(heap, @constCast(""), b);
         }
         if (b != NIL and h_val != NIL) {
             abi.outHere(abi.stdout(), h_val, 1);
@@ -399,7 +399,7 @@ fn reportUnusedDefinitions(heap: *Heap) void {
         while (rt.rs.detrop != NIL) {
             abi.outHere(abi.stdout(), heap_mod.h(heap_mod.h(heap_mod.t(heap_mod.dval(heap_mod.h(rt.rs.detrop))))), 0);
             _ = word.putchar('\t');
-            abi.outPattern(abi.stdout().?, heap_mod.dlhs(heap_mod.h(rt.rs.detrop)));
+            abi.outPattern(heap, abi.stdout().?, heap_mod.dlhs(heap_mod.h(rt.rs.detrop)));
             _ = word.putchar('\n');
             rt.rs.detrop = heap_mod.t(rt.rs.detrop);
             while (rt.rs.detrop != NIL and getTag(heap, heap_mod.dval(heap_mod.h(rt.rs.detrop))) == .LABEL) {
@@ -417,7 +417,7 @@ fn reportUnusedDefinitions(heap: *Heap) void {
         while (gd_mut != NIL) {
             abi.outHere(abi.stdout(), heap_mod.h(heap_mod.dval(heap_mod.h(gd_mut))), 0);
             _ = word.putchar('\t');
-            abi.outPattern(abi.stdout().?, heap_mod.dlhs(heap_mod.h(gd_mut)));
+            abi.outPattern(heap, abi.stdout().?, heap_mod.dlhs(heap_mod.h(gd_mut)));
             _ = word.putchar('\n');
             gd_mut = heap_mod.t(gd_mut);
             while (gd_mut != NIL and getTag(heap, heap_mod.dval(heap_mod.h(gd_mut))) != .LABEL) {
@@ -565,13 +565,13 @@ pub fn mkincludes(heap: *Heap, includees_val: Word) Word {
                 }
             }
 
-            if (abi.member(ls.exportfiles, strtab.strBits(strtab.table, fn_str)) != 0) {
+            if (abi.member(heap, ls.exportfiles, strtab.strBits(strtab.table, fn_str)) != 0) {
                 y = x;
                 while (y != NIL) : (y = heap_mod.t(y)) {
                     var z = heap_mod.filDefs(heap_mod.h(y));
                     while (z != NIL) : (z = heap_mod.t(z)) {
                         if (heap_mod.isvariable(heap_mod.h(z))) {
-                            heap_mod.tp(rt.rs.exports).* = abi.add1(heap_mod.h(z), heap_mod.t(rt.rs.exports));
+                            heap_mod.tp(rt.rs.exports).* = abi.add1(heap, heap_mod.h(z), heap_mod.t(rt.rs.exports));
                         }
                     }
                 }
@@ -598,7 +598,7 @@ pub fn mkincludes(heap: *Heap, includees_val: Word) Word {
 
         core_state.s.SYNERR = 1;
         word.print("unsuccessful %include directive ", .{});
-        abi.sayhere(heap_mod.t(heap_mod.h(heap_mod.h(includees_list))), 1);
+        abi.sayhere(heap, heap_mod.t(heap_mod.h(heap_mod.h(includees_list))), 1);
 
         if (f == null) {
             word.print("\"{s}\" cannot be loaded\n", .{fn_str});
@@ -606,12 +606,12 @@ pub fn mkincludes(heap: *Heap, includees_val: Word) Word {
             cs.DETROP = NIL;
             cs.MISSING = NIL;
         } else if (cs.BAD_DUMP == -2) {
-            abi.printlist(@constCast("aliasing causes nameclashes: "), cs.CLASHES);
+            abi.printlist(heap, @constCast("aliasing causes nameclashes: "), cs.CLASHES);
             cs.CLASHES = NIL;
         } else if (cs.ALIASES != NIL or cs.TSUPPRESSED != NIL) {
             if (cs.ALIASES != NIL) {
                 word.print("alias fails (name{s} not found in file", .{@as([*:0]const u8, if (heap_mod.t(cs.ALIASES) == NIL) "" else "s")});
-                abi.printlist(@constCast("): "), cs.ALIASES);
+                abi.printlist(heap, @constCast("): "), cs.ALIASES);
                 cs.ALIASES = NIL;
             }
             if (cs.TSUPPRESSED != NIL) {
@@ -632,7 +632,7 @@ pub fn mkincludes(heap: *Heap, includees_val: Word) Word {
 
         if (cs.ND == NIL and cs.CLASHES != NIL) {
             word.print("\"{s}\" ", .{fn_str});
-            abi.printlist(@constCast("causes nameclashes: "), cs.CLASHES);
+            abi.printlist(heap, @constCast("causes nameclashes: "), cs.CLASHES);
         }
 
         while (cs.DETROP != NIL and getTag(heap, heap_mod.h(cs.DETROP)) == .CONS) {
@@ -651,7 +651,7 @@ pub fn mkincludes(heap: *Heap, includees_val: Word) Word {
 
         if (cs.DETROP != NIL) {
             word.print("illegal parameter binding (name{s} not %free in file", .{@as([*:0]const u8, if (heap_mod.t(cs.DETROP) == NIL) "" else "s")});
-            abi.printlist(@constCast("): "), cs.DETROP);
+            abi.printlist(heap, @constCast("): "), cs.DETROP);
             cs.DETROP = NIL;
         }
 
@@ -674,7 +674,7 @@ pub fn mkincludes(heap: *Heap, includees_val: Word) Word {
         word.printErr("TYPECLASH - the following type{s} multiply named:\n", .{@as([*:0]const u8, if (heap_mod.t(tclashes) == NIL) " is" else "s are")});
         while (tclashes != NIL) {
             word.printErr("\'{s}\' of file \"{s}\", as: ", .{ abi.getaka(heap_mod.h(heap_mod.t(heap_mod.h(tclashes)))), strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(tclashes))) });
-            abi.printlist(@constCast(""), heap_mod.alfasort(heap_mod.t(heap_mod.t(heap_mod.h(tclashes)))));
+            abi.printlist(heap, @constCast(""), heap_mod.alfasort(heap_mod.t(heap_mod.t(heap_mod.h(tclashes)))));
             tclashes = heap_mod.t(tclashes);
         }
         word.printErr("typecheck cannot proceed - compilation abandoned\n", .{});

@@ -351,7 +351,7 @@ pub fn fpeError(sig: c_int) callconv(.c) void {
 /// Compile `x` and send its value to standard output — used to run a script's `main`.
 pub fn obey(heap: *Heap, x_in: Word) void {
     var x = x_in;
-    const typ = types_mod.typeOf(x);
+    const typ = types_mod.typeOf(heap, x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.validate();
         trans_mod.validate(heap);
@@ -383,7 +383,7 @@ pub fn obey(heap: *Heap, x_in: Word) void {
 /// Evaluate a typed REPL expression: compile it and fork via `process`; the child prints the result and exits, leaving the parent's heap untouched.
 pub fn evaluateRepl(heap: *Heap, x_in: Word) void {
     var x = x_in;
-    const typ = types_mod.typeOf(x);
+    const typ = types_mod.typeOf(heap, x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.validate();
         trans_mod.validate(heap);
@@ -522,14 +522,14 @@ pub fn parseLine(heap: *Heap, t_val: Word, f: ?*word.FILE, fil: Word) Word {
             core_state.s.SYNERR = 0;
             rt.rs.lastexp = word.UNDEF;
         } else {
-            t1 = types_mod.typeOf(rt.rs.lastexp);
+            t1 = types_mod.typeOf(heap, rt.rs.lastexp);
             if (t1 == word.wrong_t) {
                 rt.rs.lastexp = word.UNDEF;
-            } else if (abi.subsumes(abi.instantiate(t1), t_val) == 0) {
+            } else if (abi.subsumes(heap, abi.instantiate(heap, t1), t_val) == 0) {
                 word.print("data has wrong type :: ", .{});
-                abi.outType(t1);
+                abi.outType(heap, t1);
                 word.print("\nshould be :: ", .{});
-                abi.outType(t_val);
+                abi.outType(heap, t_val);
                 _ = word.putc('\n', abi.stdout());
                 rt.rs.lastexp = word.UNDEF;
             }

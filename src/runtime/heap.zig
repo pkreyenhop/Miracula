@@ -1905,7 +1905,7 @@ pub fn loadScript(file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: 
             idValPtr(old).* = new_id;
             if (getTag(new_id) == .ID) {
                 if ((idType(new_id) != word.undef_t or idVal(new_id) != word.UNDEF) and idType(new_id) != word.alias_t) {
-                    cs.CLASHES = add1(new_id, cs.CLASHES);
+                    cs.CLASHES = add1(heap, new_id, cs.CLASHES);
                 }
             }
             hp(h(a)).* = hold;
@@ -2111,7 +2111,7 @@ pub fn unscramble(aliases: Word) void {
         const new_id = h(h(al));
         const old = t(h(al));
         if (getTag(new_id) != .ID) {
-            if (member(cs.SUPPRESSED, new_id) == 0) {
+            if (member(heap, cs.SUPPRESSED, new_id) == 0) {
                 a = cons(old, a);
             }
             continue;
@@ -2121,7 +2121,7 @@ pub fn unscramble(aliases: Word) void {
         }
         if (idType(new_id) == word.undef_t) {
             a = cons(old, a);
-        } else if (member(cs.CLASHES, new_id) == 0) {
+        } else if (member(heap, cs.CLASHES, new_id) == 0) {
             if (getTag(idWho(new_id)) != .CONS) {
                 idWhoPtr(new_id).* = cons(datapair(strtab.strBits(strtab.table, getId(old)), 0), idWho(new_id));
             }
@@ -2230,7 +2230,7 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                 stackpPush(name(heap));
                 const top = stackpTop();
                 if (idType(top) == word.new_t) {
-                    cs.CLASHES = add1(top, cs.CLASHES);
+                    cs.CLASHES = add1(heap, top, cs.CLASHES);
                     stackpSetTop(word.NIL);
                 } else if (idType(top) == word.alias_t) {
                     stackpSetTop(idVal(top));
@@ -2352,7 +2352,7 @@ pub fn loadDefs(file: ?*word.FILE) Word {
                                 ch = main_clib.getc(file);
                                 continue;
                             }
-                            cs.CLASHES = add1(top_val, cs.CLASHES);
+                            cs.CLASHES = add1(heap, top_val, cs.CLASHES);
                             heap.stackp = heap.stackp.? - 4;
                         } else {
                             defs = cons(stackpPop(), defs);

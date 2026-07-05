@@ -231,7 +231,7 @@ pub fn readoption(heap: *Heap) void {
     word.print("the following type{s} no name in this scope:\n", .{if (t(tlost) == NIL) " is needed but has" else "s are needed but have"});
     while (tlost != NIL) {
         word.print("\'{s}\' of file \"{s}\", needed by: ", .{ strtab.strOf(strtab.table, h(h(heap_mod.tInfo(h(h(tlost)))))), strtab.strOf(strtab.table, h(t(heap_mod.tInfo(h(h(tlost)))))) });
-        abi.printlist(@constCast(""), heap_mod.alfasort(t(h(tlost))));
+        abi.printlist(heap, @constCast(""), heap_mod.alfasort(t(h(tlost))));
         tlost = t(tlost);
     }
 }
@@ -246,7 +246,7 @@ pub fn fixtype(heap: *Heap, t_val: Word, x: Word) Word {
             return t_val;
         },
         .STRCONS => {
-            if (abi.member(pfrts, t_val) != 0) {
+            if (abi.member(heap, pfrts, t_val) != 0) {
                 return t_val;
             }
             var cur_t = t_val;
@@ -262,7 +262,7 @@ pub fn fixtype(heap: *Heap, t_val: Word, x: Word) Word {
                     tlost = heap_mod.cons(heap_mod.cons(cur_t, heap_mod.cons(x, NIL)), tlost);
                     w = tlost;
                 }
-                tp(h(w)).* = abi.add1(x, t(h(w)));
+                tp(h(w)).* = abi.add1(heap, x, t(h(w)));
             }
             return cur_t;
         },
@@ -358,7 +358,7 @@ pub fn undump(heap: *Heap, t_val: [*:0]const u8) void {
     if (cs.CLASHES != NIL) {
         if (rt.rs.ideep == 0) {
             word.print("cannot load {s} ", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
-            abi.printlist(@constCast("due to name clashes: "), heap_mod.alfasort(cs.CLASHES));
+            abi.printlist(heap, @constCast("due to name clashes: "), heap_mod.alfasort(cs.CLASHES));
         }
         heap_mod.unload();
         core_state.s.loading = 0;

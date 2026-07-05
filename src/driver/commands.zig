@@ -74,7 +74,7 @@ fn filequote(p: [:0]const u8) void {
 }
 
 /// List the identifiers defined in `l` in aligned columns.
-fn namescom(l: Word) void {
+fn namescom(heap: *Heap, l: Word) void {
     var n = heap_mod.filDefs(l);
     var col_local: Word = 0;
     var undefs: Word = NIL;
@@ -155,7 +155,7 @@ fn namescom(l: Word) void {
     }
     if (undefs == NIL) return;
     undefs = heap_mod.reverse(undefs);
-    abi.printlist(@constCast("SPECIFIED BUT NOT DEFINED: "), undefs);
+    abi.printlist(heap, @constCast("SPECIFIED BUT NOT DEFINED: "), undefs);
 }
 
 /// Dispatch a `/` or `:` REPL command — the main command switch (`/h`, `/e`, `/f`, `/l`, `/man`, ...).
@@ -196,7 +196,7 @@ fn cmdFiles(heap: *Heap) bool {
         var f = heap.files;
         while (f != NIL) : (f = heap_mod.t(f)) {
             word.print("({s},{},{})", .{ heap_mod.getFil(heap_mod.h(f)).?, heap_mod.filTime(heap_mod.h(f)), heap_mod.filShare(heap_mod.h(f)) });
-            abi.printlist(@constCast(""), heap_mod.filDefs(heap_mod.h(f)));
+            abi.printlist(heap, @constCast(""), heap_mod.filDefs(heap_mod.h(f)));
         }
         return true;
     }
@@ -673,7 +673,7 @@ pub fn finger(heap: *Heap, n: [*:0]const u8) void {
         if (rt.rs.lastid == 0) {
             rt.rs.lastid = x;
         }
-        abi.reportType(x);
+        abi.reportType(heap, x);
         if (heap_mod.idWho(x) == NIL) {
             word.print(" ||primitive to Miranda\n", .{});
         } else {
@@ -741,13 +741,13 @@ pub fn allnamescom(heap: *Heap) void {
     var y = cs.ND;
     var z: Word = 0;
     leftist = false;
-    namescom(heap_mod.makeFil(if (rt.rs.nostdenv) null else @as([*:0]const u8, @ptrCast(&rt.rs.STDENV)), 0, 0, rt.rs.primenv));
+    namescom(heap, heap_mod.makeFil(if (rt.rs.nostdenv) null else @as([*:0]const u8, @ptrCast(&rt.rs.STDENV)), 0, 0, rt.rs.primenv));
     if (heap.files == NIL) return;
     s = heap_mod.t(heap.files);
     while (s != NIL) : (s = heap_mod.t(s)) {
-        namescom(heap_mod.h(s));
+        namescom(heap, heap_mod.h(s));
     }
-    namescom(heap_mod.h(heap.files));
+    namescom(heap, heap_mod.h(heap.files));
     rt.rs.sorted = 1;
 
     while (x != NIL and heap_mod.idType(heap_mod.h(x)) == word.undef_t) {

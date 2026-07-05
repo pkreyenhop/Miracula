@@ -364,7 +364,7 @@ pub fn handle_LEX_TRY_(ctx: *ReductionCtx) void {
             reduce_rt.lexfail(lastarg(ctx));
         }
         const hd_hd_hd_arg1 = reduce.hdGet(ctx.heap, reduce.hdGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.args[0])));
-        if (hd_hd_hd_arg1 != 0 and types.member(hd_hd_hd_arg1, ctx.args[1]) == 0) {
+        if (hd_hd_hd_arg1 != 0 and types.member(ctx.heap, hd_hd_hd_arg1, ctx.args[1]) == 0) {
             ctx.args[0] = reduce.tlGet(ctx.heap, ctx.args[0]);
             continue;
         }
@@ -407,7 +407,7 @@ pub fn handle_LEX_TRY1_(ctx: *ReductionCtx) void {
             reduce_rt.lexfail(lastarg(ctx));
         }
         const hd_hd_hd_arg1 = reduce.hdGet(ctx.heap, reduce.hdGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.args[0])));
-        if (hd_hd_hd_arg1 != 0 and types.member(hd_hd_hd_arg1, ctx.args[1]) == 0) {
+        if (hd_hd_hd_arg1 != 0 and types.member(ctx.heap, hd_hd_hd_arg1, ctx.args[1]) == 0) {
             ctx.args[0] = reduce.tlGet(ctx.heap, ctx.args[0]);
             continue;
         }

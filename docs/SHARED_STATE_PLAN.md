@@ -706,13 +706,112 @@ REPL's "syntax error" response to typing multi-clause/`where` definitions
 directly at the interactive prompt is pre-existing, unrelated behavior, not
 a regression — confirmed by loading the same definitions from a `.m` file).*
 
-**Tier 3, increment 9 — `types.zig` (2736 lines, ~788 touches), the final
-remaining file — investigation pending.** `trans.zig`'s conversion already
-forced ambient-singleton call-site fixes into `types.zig` at 6 locations
-(`getspecloc` x3, `lastlink`, `same`, `tclos`/`sortrel`, `codegen`,
-`genshfns`, `validate`) — none of those threaded an actual `*Heap` param
-into `types.zig`'s own functions yet, so `types.zig`'s own closure size is
-still to be determined.
+**Tier 3, increment 9 — `types.zig` ✅ done (2026-07-05), the final Tier 3
+file and the widest single-file conversion of the whole effort.** Its local
+`h`/`hp`/`t`/`tp`/`getTag` wrappers plus direct struct touches transitively
+reached **99 of the file's 108 functions**, edging out `trans.zig`'s 86/100.
+Threaded bottom-up: leaves first, then the ~30 small field accessors
+(`idType`/`idVal`/`idWho`/`tArity`/`tClass`/`tInfo`/`dlhs`/`dval`/etc.), then
+the larger `pub` functions (`unify`/`etype`/`conforms`/`checktype`/
+`checktypes`/`subsumes`/`redtvars`/`outType`/etc.).
+
+Several functions were missed by the transitive-closure script and only
+caught by compiler errors after the mechanical rewrite: `remove1`, `add1`,
+`newadd1`, `typeError1`–`typeError7`, `outType1`, `outType2`, `outFormal1`,
+`repT1`, `subsu1`, `unify1` all needed `heap` added by hand. `cons` was
+initially (incorrectly) added to the 99-set by the closure script's
+propagation logic — reverted once the compiler flagged its `heap` parameter
+as unused (it only calls the ambient `make`, never touches the struct).
+`walktype`'s callback parameter type also had to change from
+`*const fn (Word) Word` to `*const fn (*Heap, Word) Word` since all four of
+its callbacks (`ult`/`lmap`/`mapup`/`mapdown`) gained a `heap` parameter.
+
+**The external cascade was the widest yet**, because several of
+`types.zig`'s functions (`add1`, `member`, `UNION`, `intersection`,
+`setdiff`, `sayhere`, `printlist`, `reportType`, `typeOf`, `typesfirst`,
+`redtvars`, `outType`, `subsumes`, `instantiate`, `deps`) are ambient
+general-purpose utilities called pervasively from other files. Fixing their
+call sites touched **9 other files**: `trans.zig`, `module_loader.zig`,
+`dump.zig`, `commands.zig`, `repl.zig`, `startup.zig`, `parser/codegen.zig`,
+`heap.zig` (which calls `member`/`add1` on its own bare singleton), and
+`runtime/reducer/lex.zig` (via `ctx.heap`).
+
+**A real regression was found and fixed during verification — the most
+important finding of this entire Tier 3 effort.** `inferType` (the function
+that type-checks self-referential/recursive definitions) had a line where
+`idType(h(x1))` (one level of `h`) was over-converted to
+`idType(heap, h(heap, h(heap, x1)))` (two levels) during an earlier batch
+fix for the nested-call under-conversion bug. This compiled cleanly, passed
+`zig build`, all 176 unit tests, all 48/48 golden cases, the spine-corpus
+stress suite, the sigint check, and the smoke tests — **and was caught by
+none of them**. It was only caught by `zig build test-mira`'s integration
+suite, whose `"example script fib"` case failed with `cannot apply char to
+num` — because `miralib/ex/fib.m` is self-recursive and the golden/spine
+corpus's own `custom_fib`/`fib.m` cases happened to hit a **stale
+`script.x`/`.x` dump-cache file** that silently masked the bug by skipping
+recompilation. Root-caused via a minimal repro
+(`countdown 0 = 0; countdown n = countdown (n-1)`, confirmed correct against
+the pre-`types.zig` commit via `git stash`) and fixed by removing the extra
+`h()` wrap.
+
+**This is the critical lesson for any future nested-call mechanical rewrite
+of this kind:** the sed under-conversion bug (documented in the `lex.zig`
+and `trans.zig` sections above) can go in *either* direction — under- or
+over-conversion — and only under-conversion (wrong argument count) is
+reliably caught by the compiler. Over-conversion (extra, syntactically-valid
+levels of `h`/`t`/etc.) type-checks fine and silently produces wrong
+*runtime* behavior; catching it requires either exercising the actual code
+path with a real test, or better, an automated structural check. Developed
+and validated one here: **for each function, count `h(`/`t(`/`hp(`/`tp(`/
+`getTag(` call occurrences in the pre-edit backup vs. the post-edit file —
+the counts must match exactly per function.** Running this check against
+`types.zig`, `trans.zig`, and `lex.zig` after the `inferType` fix confirmed
+**zero remaining mismatches across all three files** — recommended as a
+standard verification step for any future increment of this kind, run
+*before* relying on the test suite alone.
+
+*DoD met: `zig build` clean; 176/176 unit tests (main-tests run directly);
+`zig build test` green — 48/48 golden (including `hex_oct_literals`),
+spine-corpus stress, sigint, smoke; **`zig build test-mira` green (1/1,
+including the `"example script fib"` integration case that caught the
+regression)**; lint at 16 warnings, no new ones; thorough manual smoke test
+(with `script.x` deliberately removed each time to force a fresh compile,
+not a stale dump-cache hit): `fib 27` via `script.m` (196418), the
+`countdown` self-recursion repro (0), a user-defined algebraic type with
+constructor pattern matching (`tree ::= Leaf | Node tree num tree`; `depth`
+returns 1 for a single-node tree), a list comprehension (`[1,4,9,16,25]`),
+`/files`, and `?name` lookup — all correct.*
+
+---
+
+## Tier 3 complete (2026-07-05)
+
+All 9 increments of the revised Phase 5 / Tier 3 effort are done, verified,
+committed, and pushed: `setup.zig`, `repl.zig`, `dump.zig`, `commands.zig`,
+`startup.zig`, `module_loader.zig`, `lex.zig`, `trans.zig`, `types.zig`.
+Every function that transitively touches the `Heap` struct (fields or
+methods) in the compiler/parser/driver stack now takes an explicit
+`heap: *Heap` parameter instead of reaching into the `heap.heap` ambient
+singleton; the ~74 free functions living outside the `Heap` struct in
+`heap.zig` itself remain ambient by design (a `heap.zig`-wide change, out of
+scope for this effort — documented as its own boundary in the increment 1
+note above).
+
+Recurring lessons worth carrying into any future mechanical rewrite of this
+shape: (1) run the bulk textual rewrite across a whole file *before* any
+by-hand parameter threading, never interleaved; (2) BSD `sed`'s non-
+overlapping-match semantics silently mis-convert deeply nested same-name
+calls in *either* direction — verify with the per-function call-count
+technique above, not just a successful build; (3) a transitive-closure
+discovery script based on regex will miss `inline fn` declarations and the
+occasional function whose only heap-need is calling something else in the
+closure (`less1`, `decl1`, `remove1`, etc.) — the compiler's "undeclared
+identifier" and "unused parameter" errors are the authoritative backstop,
+not the discovery script; (4) some functions get pulled into the closure
+incorrectly by the script's propagation logic even though they never touch
+heap themselves (`getStderr`, `cleanup`, `errclass`, `cons`) — the compiler's
+"unused function parameter" error catches these too, and they should be
+reverted rather than padded with a discard.
 * **Irreducible exception (unchanged):** OS signal handlers run on the C ABI and
   cannot take any explicit parameter; they read a single `current_interp: *Interp`
   set on entry — the one documented global, analogous to `errno` and the A4
