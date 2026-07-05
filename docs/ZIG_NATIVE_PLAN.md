@@ -287,7 +287,9 @@ front door is C.
    `token_filter.zig`'s `Token`/`TokenId`/`Span` vocabulary. Deliberately out of
    this step's scope, to keep it reviewable: hex-float numerals (`0x1.8p3`),
    backtick infix names, `%`-directive tokenization, char classes (`%bnf`/`%lex`
-   only) — noted as gaps in the file, not silently dropped.
+   only) — noted as gaps in the file, not silently dropped. **Landed**
+   (2026-07-06, merged with step 4 below since a real scanner naturally handles
+   literals together): 29 tests, verified digit-for-digit against `lex.zig`.
 3. **Correction (found 2026-07-06):** `token_filter.zig` is *only* the
    `Token`/`TokenId`/`Span` type vocabulary — zero logic. The offside rule itself
    is `lex.zig`'s `yylex()` checking `ls().col < ls().lmargin` against a
@@ -303,10 +305,30 @@ front door is C.
    name suggested but never implemented) — a real design decision, not a
    mechanical port. Do this as its own step, test-first against layout-heavy
    golden cases (nested `where`, multi-clause definitions, `%bnf` blocks)
-   *before* wiring numerals/strings from step 2 into production.
-4. Numerals/strings/chars/comments from step 2, plus char classes — parity-tested
-   token-by-token against the bridge output over the whole golden corpus (a
-   temporary dual-run test harness: run both lexers, diff the token streams).
+   *before* wiring numerals/strings from step 2 into production. **Landed**
+   (2026-07-06): `syntax/layout.zig` — a standalone Haskell-style layout
+   algorithm (margin-column stack, no parser callback), verified against two
+   independent sources (`setlmargin`/`unsetlmargin`'s push logic, and
+   `parser.zig`'s actual `.offside`/`.elseq` consumption in `parseScript`/
+   `parseWhereDefs`/`parseGuardedRhs`) rather than a single reverse-engineered
+   reading. 6 unit tests plus 3 end-to-end tests that run
+   `Source → lexer.tokenize → applyLayout → parser.zig's parseScript` and
+   inspect the resulting AST — which caught a real bug (the first cut injected
+   `.elseq` *before* the `=` token instead of replacing it) that a
+   token-stream-only test would have missed. **Not yet differentially
+   verified** against the legacy lexer's actual token-for-token output — that
+   is step 4 below, still to do; treat this as a well-reasoned first
+   implementation, not a proven one.
+4. Numerals/strings/chars/comments (landed as part of step 2, above) and
+   `syntax/layout.zig` (step 3) — parity-tested token-by-token against the
+   bridge output over the whole golden corpus (a temporary dual-run test
+   harness: run both lexers, diff the token streams). **Still to do** — the
+   remaining, most valuable verification step before anything here can be
+   trusted for production: everything landed so far is unit- and
+   integration-tested against the *new* parser in isolation, not
+   differentially compared against what the legacy lexer actually produces
+   for the same input. Char classes (`` `[...]` ``, `%bnf`/`%lex`-only) also
+   still to do.
 5. `syntax/directives.zig` + `semantics/modules.zig` consumption. This is where
    `%include`/`%export`/`%free` actually get implemented (aliasing, free-binding
    substitution, cycle detection, dependency ordering) — module_loader.zig's real
@@ -318,6 +340,20 @@ front door is C.
    `%include "mike" -g mike_f/f`). `%bnf`/`%lex` grammar-extension machinery
    (`eprodnts`/`nonterminals`/`lexstates`/`lexdefs`) ported **last** — it is the
    hairiest and least-covered corner; goldens from Phase 0 step 3 gate it.
+   **Scoping note (found 2026-07-06):** `%` isn't a token in `syntax/lexer.zig`
+   at all yet (step 2 deliberately deferred it) — legacy's `directive()` does
+   its own specialised scanning after `%` (a directive keyword, distinct from
+   plain identifiers; `"..."`/`<...>` pathnames with different quoting rules
+   than string literals; a brace-delimited, possibly multi-line binding/spec
+   block for `%include`'s bindings and `%free`'s signature). That block is
+   explicitly `{`/`}`-delimited, not layout/offside-sensitive, so
+   `directives.zig` can scan it by brace-depth directly off `lexer.tokenize`'s
+   output, *before* `applyLayout` runs — but the free-binding/signature
+   grammar (`var = exp` / `tform == type`) needs an expression/type parser
+   that doesn't fully exist in `syntax/` yet. Likely shape: keep binding/spec
+   RHS as raw token spans in the `Directive` value for this step, deferring
+   deep parsing to whichever of `semantics/lower.zig` or the ported
+   `semantics/infer.zig` needs it.
 6. `semantics/symbols.zig`; `codegen.zig`/`trans.zig` id lookups rewired from
    `lex.findid`/`makeId` to it. Dump/undump round-trip goldens verify private-name
    serialization is unchanged.
@@ -328,6 +364,13 @@ front door is C.
    `LexState` from `Interp`, `fileq`/`insertdepth`/`s_in` from the parse path, and
    the dictionary-space config (`DICSPACE`, `-dic` flag: accept-and-ignore with a
    deprecation note, since `.mirarc` files may set it).
+
+**Status as of 2026-07-06:** steps 1–3 landed (`syntax/source.zig`,
+`syntax/lexer.zig`, `syntax/layout.zig` — 41 new tests total, all green, no
+leaks), none yet wired into `parser_api.zig`. Steps 4–8 remain: differential
+verification against the legacy lexer, the directive/module semantics
+(currently non-functional even in production, see the correction above),
+symbol interning, production cutover, and deletion.
 
 **Deletes:** ~2,700 lines of C-ported lexing; the biggest single consumer of `FILE`,
 `[*:0]`, `c_int`, and `@ptrFromInt`.
