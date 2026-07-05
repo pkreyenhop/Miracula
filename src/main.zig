@@ -9,14 +9,25 @@ const std = @import("std");
 const rt = @import("runtime/runtime_state.zig");
 const abi = @import("runtime/main_clib.zig");
 const startup = @import("driver/startup.zig");
+const interp_mod = @import("runtime/interp.zig");
 
-/// Process entry point: wire up the runtime context (io / allocator / argv) and
-/// forward to `startup.mainEntry`.
+/// Process entry point: wire up the runtime context (io / allocator / argv),
+/// construct the interpreter explicitly, and forward to `startup.mainEntry`.
 pub fn main(ctx: std.process.Init) !void {
     rt.io = ctx.io;
     rt.environ = ctx.minimal.environ;
     rt.allocator = rt.gpa.allocator();
     abi.env_slice = ctx.minimal.environ.block.slice;
+
+    // Construct the interpreter explicitly (shared-state plan Phase 6) rather
+    // than relying on interp.zig's own default-initialized `backing` — this
+    // is what "a second Interp can be constructed and run independently"
+    // means in practice: `interp_storage` lives for main()'s whole duration
+    // (the process doesn't return until `std.process.exit` below), so
+    // pointing `current_interp` at it is as safe as the module-level default.
+    var interp_storage: interp_mod.Interp = .{};
+    interp_mod.current_interp = &interp_storage;
+
     const raw_args = ctx.minimal.args.vector;
     const argv: [*][*:0]u8 = @ptrCast(@constCast(raw_args.ptr));
     const argc: c_int = @intCast(raw_args.len);

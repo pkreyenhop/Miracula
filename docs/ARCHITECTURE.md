@@ -50,7 +50,7 @@ collection) that came out of the post-migration redesign work.
 
 ---
 
-## State: one aggregated singleton (`Interp`)
+## State: one aggregated `Interp`, owned explicitly (Phase 6, 2026-07-05)
 
 Every piece of mutable interpreter state — runtime flags, the heap, lexer state, compiler
 state, the small core-error sentinels, I/O, evaluation counters, bignum scratch, and the
@@ -68,38 +68,53 @@ pub const Interp = struct {
     big: Bignum = .{},
     strtab: StringTable = .{},
 };
-
-pub var interp: Interp = .{};
 ```
 
-This is a **transitional aggregation**, not the final shape: it is still one global, but a
-single one instead of nine independent globals. Each owning module re-points its own
-package-level singleton at the matching field, so the ~2,100 pre-existing
-`owner.singleton.field` access sites across the codebase are unchanged — they now read and
-write through `interp` without having been touched:
+`main()` owns the interpreter it runs: `src/main.zig` constructs an `Interp` as a local
+(`var interp_storage: Interp = .{};`, living for the process's whole run) and points the one
+remaining process-wide pointer at it: `current_interp = &interp_storage;`. Every owning
+module's singleton is now a function reading through that pointer rather than a `const`
+computed against a fixed address, so the ~2,100 pre-existing `owner.singleton.field` access
+sites became `owner.singleton().field` (mechanical, but a real rewrite — not something a
+`const` could paper over once the backing `Interp` could move):
 
 ```zig
 // runtime_state.zig
-pub const rs = &@import("interp.zig").interp.rs;
+pub inline fn rs() *RuntimeState { return &@import("interp.zig").current_interp.rs; }
 // compiler_state.zig
-pub const cs = &@import("../runtime/interp.zig").interp.comp;
+pub inline fn cs() *CompilerState { return &@import("../runtime/interp.zig").current_interp.comp; }
 // lex_state.zig
-pub const ls = &@import("../runtime/interp.zig").interp.lex;
+pub inline fn ls() *LexState { return &@import("../runtime/interp.zig").current_interp.lex; }
 // core_state.zig
-pub const s = &@import("interp.zig").interp.core;
+pub inline fn s() *CoreState { return &@import("interp.zig").current_interp.core; }
 ```
 
-`interp.reset()` (`interp = .{};`) gives every unit test a pristine interpreter without
-relying on ad-hoc per-module re-init — the owner-module pointers above stay valid because
-`interp`'s address never changes, only its value is replaced. Only the startup bootstrap
-infrastructure (`allocator`/`io`/`gpa`/`environ` in `runtime_state.zig`) sits outside
-`Interp`, since it is set once at process start and never reset.
+`current_interp` defaults to `&backing`, a real zero-initialized `Interp` living in
+`interp.zig` itself — the test binary (`main-tests`) never runs `main()`, so it needs a valid
+interpreter from the first access, exactly like the old `pub var interp` singleton provided
+one automatically. This means `interp.zig` still holds two module-scope globals
+(`backing`, `current_interp`), not the theoretical minimum of one: reaching exactly one would
+require `current_interp` to start `undefined`, which is unsafe for any code path that doesn't
+run through `main()`'s explicit construction first.
 
-**Where this is headed** (see [REMAINING_WORK_PLAN.md](REMAINING_WORK_PLAN.md) Phase 6,
-currently deferred — not required for serial per-function tests): thread `*Interp`
-explicitly through the ~2,100 call sites and delete the global, letting `main` construct the
-interpreter value itself. This is the largest remaining item in the redesign and is only
-worth doing if the interpreter needs multiple concurrent instances in one process.
+`interp.reset()` (`current_interp.* = .{};`) gives every unit test a pristine interpreter
+without relying on ad-hoc per-module re-init — every owner accessor re-reads
+`current_interp` at call time, so replacing its pointee (not its address) is enough; no
+pointer anywhere goes stale. Only the startup bootstrap infrastructure
+(`allocator`/`io`/`gpa`/`environ` in `runtime_state.zig`) sits outside `Interp`, since it is
+set once at process start and never reset.
+
+The one genuinely irreducible global left is the *class* `current_interp` belongs to: OS
+signal handlers (`dieClean`/`reset`/`fpeError` in `repl.zig`, `sigdefer` in `dump.zig`) are
+delivered through the C ABI to a fixed-signature callback that cannot take parameters, so
+they read `current_interp`-derived accessors (`rt.rs()`, `core_state.s()`, …) directly rather
+than through a threaded parameter — the same exception this document already carved out for
+the A4 signal trampoline.
+
+`scripts/shared-state-check.sh` tracks the scorecard this section describes; see
+`docs/SHARED_STATE_PLAN.md` for the full history (Phases 1–6) and the remaining
+non-`Interp` globals (the line-editor subsystem, a handful of test-only initialization
+guards) still being worked through.
 
 `src/main.zig` itself is now just the process entry point (~80 lines): it wires up the
 allocator/IO context from `std.process.Init`, forwards to `startup.mainEntry`, and
@@ -182,7 +197,7 @@ working now that `getId` no longer returns a stable pointer. Three accessors in 
 
 | File | Responsibility |
 |------|----------------|
-| `interp.zig` | The `Interp` aggregate struct and its process-wide singleton (`interp`); see "State" above. |
+| `interp.zig` | The `Interp` aggregate struct and `current_interp`, the one process-wide pointer `main()` sets; see "State" above. |
 | `core_state.zig` | Leaf module holding `CoreState` — small error/mode sentinels (`nill`, `loading`, `compiling`, `errs`, `errline`, `SYNERR`, `commandmode`). No imports from the Miracula source tree (the G1 acyclic invariant), so `heap.zig` and `parser_api.zig` can reach it without forming a cycle with `main.zig`. Plain `pub var`/struct fields — no C-ABI linker symbols; that was a historical stage, since removed. |
 | `runtime_state.zig` | `RuntimeState` struct — mutable interpreter state that doesn't need the G1 leaf-module isolation: identity atoms, file paths, compiler flags, evaluation control, I/O flags, working buffers, signal recovery (`env`, the `sigjmp_buf` for `rt.rs.env`). |
 | `heap.zig` | Cell allocation arena and the precise tracing GC (see "Garbage collection" above). Exports typed domain wrappers and accessor functions, and implements the `.x` dump/load (object-file) format. |
@@ -207,7 +222,7 @@ working now that `getId` no longer returns a stable pointer. Three accessors in 
 
 | File | Responsibility |
 |------|----------------|
-| `compiler_state.zig` | `CompilerState` struct — mutable typechecker and translator state. Accessed via `compiler_state.cs`, which points into `interp.comp`. |
+| `compiler_state.zig` | `CompilerState` struct — mutable typechecker and translator state. Accessed via `compiler_state.cs()`, which reads through `current_interp.comp`. |
 | `types.zig` | Type checker and type inference (`etype`, `conforms`, …). Uses `MiraError!T` return types; `TypeCheckAbort` propagates via `try`/`catch` rather than `setjmp`/`longjmp`. |
 | `trans.zig` | AST → combinator graph translator. Handles pattern matching, list comprehensions, and bracket abstraction. |
 | `setup.zig` | Interpreter initialisation: `miraSetup`, `primdef`, `predef`, `primlib`, `privlib`, `stdlib`. |
@@ -223,7 +238,7 @@ working now that `getId` no longer returns a stable pointer. Three accessors in 
 | `ast.zig` | Pure-Zig stateless AST node representations. |
 | `codegen.zig` | Lowers AST structures into heap cells. |
 | `lex.zig` | Layout-sensitive tokeniser; identifier and keyword classification. |
-| `lex_state.zig` | `LexState` struct — mutable lexer state, accessed via `lex_state.ls`, which points into `interp.lex`. |
+| `lex_state.zig` | `LexState` struct — mutable lexer state, accessed via `lex_state.ls()`, which reads through `current_interp.lex`. |
 | `lex_bridge.zig` | Stream buffering bridge between lexer and parser. |
 | `token_filter.zig` | Layout post-processing and comment stripping. |
 | `parser_api.zig` | Bridge so the legacy-shaped runtime code can call the Zig parser. |
@@ -292,13 +307,16 @@ See [REMAINING_WORK_PLAN.md](REMAINING_WORK_PLAN.md) for the consolidated, seque
 current status of every open item. As of this writing:
 
 - **Done:** the mechanical C-ism elimination (Track A), string interning (B1), the spine
-  cutover (B2 option (b)), the tracing GC (B3), all six R9 function-splits, and the Phase 4
+  cutover (B2 option (b)), the tracing GC (B3), all six R9 function-splits, the Phase 4
   error/recovery-model audit (R10-Step 3 / A4b / J2 resolved; J1 and the remaining
-  `SYNERR`/`errs`/`errline` sentinel-wrapping deliberately not pursued — see above).
-- **Open, deferred by design:** Phase 6 (`SHARED_STATE_PLAN`) — threading `*Interp` through
-  the call graph and deleting the global singleton. Large (~2,100 call sites) and only
-  valuable if the interpreter needs multiple concurrent instances in one process; not
-  required for the current serial, per-function test model.
+  `SYNERR`/`errs`/`errline` sentinel-wrapping deliberately not pursued — see above), and
+  Phase 6 (`SHARED_STATE_PLAN`) — every owner-module singleton now reads through
+  `current_interp`, `main()` constructs the `Interp` it runs explicitly, and the ~2,100
+  call sites across the codebase were rewritten accordingly (see "State" above).
+- **Open, small:** the line-editor subsystem (`driver/lineedit.zig`) and a handful of
+  test-only initialization guards still hold their own module-scope state rather than
+  living in `Interp` — see `SHARED_STATE_PLAN.md`'s scorecard for the current count and
+  reasoning.
 - **Open, small:** a handful of reducer handlers remain untested (`show`/`MATCH`/`GENSEQ`,
   `TRY`/`FAIL` backtracking) and two pre-existing, unrelated bugs are flagged but not yet
   fixed (a divide-by-zero in `-make`'s failure report on long paths; a crash evaluating
