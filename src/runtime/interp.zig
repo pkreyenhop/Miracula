@@ -28,11 +28,14 @@ const IoState = @import("word.zig").IoState;
 const EvalState = @import("reduce.zig").EvalState;
 const Bignum = @import("big.zig").Bignum;
 const StringTable = @import("strtab.zig").StringTable;
+const LineEditState = @import("../driver/lineedit.zig").LineEditState;
 
 /// All interpreter state, owned in one place — including heap's GC/dictionary
-/// scratch (folded into `heap` by Phase 2b) and the interned `strtab` table.
-/// (Only bootstrap infrastructure — `allocator`/`gpa`/`io`/`environ` in
-/// `runtime_state.zig` — stays a separate global, set once at startup.)
+/// scratch (folded into `heap` by Phase 2b), the interned `strtab` table, and
+/// the interactive line-editor's state (`lineedit`, only ever populated when
+/// stdin is a TTY). (Only bootstrap infrastructure —
+/// `allocator`/`gpa`/`io`/`environ` in `runtime_state.zig` — stays a separate
+/// global, set once at startup.)
 pub const Interp = struct {
     rs: RuntimeState = .{},
     heap: Heap = .{},
@@ -43,6 +46,7 @@ pub const Interp = struct {
     eval: EvalState = .{},
     big: Bignum = .{},
     strtab: StringTable = .{},
+    lineedit: LineEditState = .{},
 };
 
 /// Backing storage for the default interpreter instance. Not read directly —
@@ -62,12 +66,18 @@ pub var current_interp: *Interp = &backing;
 /// call time, so replacing `current_interp.*` (not its address) is enough —
 /// no pointer anywhere goes stale.
 ///
-/// Resets all aggregated state — the nine structs including `heap` (with its 2b
+/// Resets all aggregated state — the ten structs including `heap` (with its 2b
 /// scratch) and `strtab` (whose `initialized = false` makes the next access
 /// re-intern from empty). Only the startup bootstrap infra
 /// (`allocator`/`io`/`gpa`/`environ`) is left alone. Old heap/arena allocations
 /// are dropped (fine under the test allocator); a freeing `deinit` arrives with
 /// explicit construction in Phase 5.
+///
+/// `lineedit`'s `active` flag defaults back to `false` on reset — safe in
+/// practice since it's only ever `true` when stdin is a TTY, which no test
+/// run is, so `reset()` never blows away a live editor's system resources
+/// (terminal state, allocated history) without going through its own
+/// `deinit()` first.
 pub fn reset() void {
     current_interp.* = .{};
 }

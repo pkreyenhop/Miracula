@@ -1087,10 +1087,10 @@ diffed against the pre-LexState commit via `git stash`.
 call chains threaded as narrow, separate params, matching Tier 3's `heap`
 precedent. Phase 6 (below) is now reachable.**
 
-### Phase 6 — De-globalize & document *(mostly done, 2026-07-05)*
+### Phase 6 — De-globalize & document *(done except one DoD-wording gap, 2026-07-05)*
 
 Per explicit user decision, pursued as the full sweep toward the DoD's literal
-"= 1" rather than just the narrow "delete `var interp`" reading — both
+"= 1" rather than just the narrow "delete `var interp`" reading — all of it
 turned out achievable with mechanical (if large) rewrites:
 
 1. **The full-sweep pass (45 → 17 globals).** `combinator.zig`/`setup.zig`/
@@ -1115,21 +1115,37 @@ turned out achievable with mechanical (if large) rewrites:
    this section's original prose.
 4. **Test-harness exemption documented** (see Scorecard) rather than forcing
    `testutil.zig`'s `ready`-style guards into `Interp`.
-
-**Remaining:** `driver/lineedit.zig` + `word.zig`'s `readInteractiveLine`
-hook (10 + 1 globals) — per explicit user decision, being threaded through
-rather than left as a documented exception; this is real, separate work
-(threading line-editor state through `word.zig`'s stdio read path) tracked
-as its own increment, not yet started as of this write-up.
+5. **`driver/lineedit.zig` + `word.zig`'s `readInteractiveLine` hook (17 → 6
+   globals).** Per explicit user decision to thread this through rather than
+   document it as an exception: `word.zig`'s `FILE` struct gained a
+   `readInteractiveLine: ?*const fn([]u8) ?usize = null` *field* (checked as
+   `self.readInteractiveLine` in `readByte`, replacing the old module-global
+   check plus a redundant `handle == STDIN_FILENO` guard — redundant once the
+   hook only ever lives on the one `FILE` instance it's installed on).
+   `lineedit.zig`'s ten module globals (the `zigline` `Editor`, its
+   allocator, the prompt/history/tab-completion scratch) became one
+   `LineEditState` struct, added as `Interp`'s tenth field and reached via
+   `lineedit.state()` — the same "ambient read through `current_interp`"
+   exception already established for signal handlers, since `zigline`'s
+   reflection-based Tab-completion callback protocol has no seam for extra
+   context. `lineedit.active`/`init`/`deinit`/`setPrompt` keep their
+   pre-existing call-site shapes (only `active` needed `()` added, since the
+   other three were already functions).
 
 * *DoD: non-FFI module-scope mutable globals = **1** (documented); a second
   `Interp` can be constructed and run independently; golden green.* Currently
-  at 17 (target 1) with the `lineedit.zig` cluster as the only remaining gap
-  — `runtime_state.zig`'s 4 bootstrap globals and `interp.zig`'s 2
-  (`backing`/`current_interp`) are the realistic floor per the reasoning in
-  the Scorecard section, so the literal "1" isn't reachable even after
-  `lineedit.zig` is threaded; revisit whether the DoD wording itself should
-  be relaxed once that increment lands.
+  at **6** (target 1): `runtime_state.zig`'s 4 bootstrap globals
+  (`gpa`/`allocator`/`io`/`environ`, explicitly out of scope per `Interp`'s
+  own doc comment) and `interp.zig`'s 2 (`backing`/`current_interp`, the
+  realistic floor for a safely-defaulted pointer — see the Scorecard
+  section's reasoning) are what's left once every genuinely-movable piece of
+  state has moved. Reaching the literal "1" would require either accepting
+  an unsafe `undefined` default for `current_interp` (breaks the test
+  binary, which never runs `main()`) or eliminating the bootstrap
+  infrastructure's separate-global status (a decision this plan has
+  consistently deferred as out of scope, predating Phase 6). Treated as
+  done in spirit; the DoD wording itself is the one open item, not further
+  code.
 
 ---
 
@@ -1173,19 +1189,19 @@ Tracked by `scripts/shared-state-check.sh`.
 
 | Metric | Baseline (Phase 0) | Now (2026-07-05) | Target |
 |--------|--------------------|-----|--------|
-| non-FFI module-scope mutable globals | 92 | **17** | 1 (signal pointer) |
+| non-FFI module-scope mutable globals | 92 | **6** | 1 (signal pointer) |
 | &nbsp;&nbsp;↳ gratuitous `export var` | 35 | **0** ✓ (Phase 1) | 0 |
 | grouped state structs | 4 (`rs`/`ls`/`heap`/`cs`) | unified under one `Interp` |
 | global state aggregates | 4 structs + loose globals | 0 (constructed in `main`) |
 | interpreter instances constructible | 1 (implicit) | N (explicit — `main()` builds one; `Interp.init()`-shaped construction supports more) |
 | golden corpus | 44/44 | 44/44 at every step |
 
-The remaining 17, by file: `driver/lineedit.zig` (10, the line-editor
-subsystem — Task 4, in progress), `runtime_state.zig` (4, the permanent
-bootstrap exception: `gpa`/`allocator`/`io`/`environ`, set once at process
-start, explicitly out of scope per `Interp`'s own doc comment), `interp.zig`
-(2: `backing` + `current_interp` — see below), `word.zig` (1:
-`readInteractiveLine`, the hook `lineedit.zig` installs — folds into Task 4).
+The remaining 6, by file: `runtime_state.zig` (4, the permanent bootstrap
+exception: `gpa`/`allocator`/`io`/`environ`, set once at process start,
+explicitly out of scope per `Interp`'s own doc comment), `interp.zig` (2:
+`backing` + `current_interp` — see below). `driver/lineedit.zig`'s 10 and
+`word.zig`'s `readInteractiveLine` are done (folded into `Interp.lineedit`
+and a `FILE` field respectively).
 
 **Why `interp.zig` holds 2, not 0, once every owner accessor reads through
 `current_interp`.** `current_interp` defaults to `&backing` (a real,

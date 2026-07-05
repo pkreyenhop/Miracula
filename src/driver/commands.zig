@@ -268,7 +268,7 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
             if (mf != null and t_val != rs.current_script) {
                 var prompt_buf: [256]u8 = undefined;
                 const prompt = std.fmt.bufPrint(&prompt_buf, "open new script \"{s}\"? [ny]", .{t_val.?}) catch "open new script? [ny]";
-                if (lineedit.active) {
+                if (lineedit.active()) {
                     lineedit.setPrompt(prompt);
                 } else {
                     word.print("{s}", .{prompt});
@@ -311,7 +311,7 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
         }
         var prompt_buf: [256]u8 = undefined;
         const prompt = std.fmt.bufPrint(&prompt_buf, "change editor to: \"{s}\"? [ny]", .{std.mem.span(@as([*:0]const u8, @ptrCast(hold)))}) catch "change editor to? [ny]";
-        if (lineedit.active) {
+        if (lineedit.active()) {
             lineedit.setPrompt(prompt);
         } else {
             word.print("{s}", .{prompt});

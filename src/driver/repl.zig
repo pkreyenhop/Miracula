@@ -122,12 +122,12 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                 break :blk std.fmt.bufPrint(&prompt_buf, "[{s}] {s}", .{ time_str, std.mem.span(rs.promptstr) }) catch std.mem.span(rs.promptstr);
             } else std.mem.span(rs.promptstr);
 
-            if (lineedit.active) {
+            if (lineedit.active()) {
                 lineedit.setPrompt(prompt);
             } else {
                 word.print("{s}", .{prompt});
             }
-        } else if (lineedit.active) {
+        } else if (lineedit.active()) {
             lineedit.setPrompt("");
         }
         rs.last_elapsed_ns = null;
