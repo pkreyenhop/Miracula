@@ -85,33 +85,33 @@ fn WTERMSIG(status: c_int) c_int {
 }
 
 /// The top-level REPL. Loads `initscript`, then reads and dispatches user input until EOF: `?`/`??` (info), `:`/`/` (commands), `!` (shell escape), `||` (comment), or an expression to evaluate.
-pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, initscript: [*:0]u8) void {
+pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, initscript: [*:0]u8) void {
     var ch: c_int = undefined;
     var lb: ?[*:0]u8 = undefined;
 
-    if (abi.sigsetjmp(&rt.rs.env, 1) == 0) {
-        if (rt.rs.magic) {
-            dump.undump(heap, core_state.s, cs, initscript);
-            if (heap.files == NIL or comp.ND != NIL or heap_mod.idVal(rt.rs.main_id) == word.UNDEF) {
-                if (heap.files != NIL and comp.ND == NIL and heap_mod.idVal(rt.rs.main_id) == word.UNDEF) {
+    if (abi.sigsetjmp(&rs.env, 1) == 0) {
+        if (rs.magic) {
+            dump.undump(heap, core_state.s, cs, rs, initscript);
+            if (heap.files == NIL or comp.ND != NIL or heap_mod.idVal(rs.main_id) == word.UNDEF) {
+                if (heap.files != NIL and comp.ND == NIL and heap_mod.idVal(rs.main_id) == word.UNDEF) {
                     word.printErr("{s}: main not defined\n", .{initscript});
                 }
                 errors.fatal("mira: incorrect use of \"-exec\" flag\n", .{.{}});
             }
-            rt.rs.magic = false;
-            abi.obey(heap, core, comp, rt.rs.main_id);
+            rs.magic = false;
+            abi.obey(heap, core, comp, rs, rs.main_id);
             abi.exit(0);
         }
         _ = signals(abi.SIGINT, @intFromPtr(&reset));
-        dump.undump(heap, core_state.s, cs, initscript);
-        if (rt.rs.verbosity != 0) {
+        dump.undump(heap, core_state.s, cs, rs, initscript);
+        if (rs.verbosity != 0) {
             word.print("for help type /h\n", .{});
         }
     }
 
     while (true) {
         resetgcstats();
-        if (rt.rs.verbosity != 0) {
+        if (rs.verbosity != 0) {
             var prompt_buf: [256]u8 = undefined;
             const prompt = if (last_elapsed_ns) |ns| blk: {
                 var time_buf: [64]u8 = undefined;
@@ -119,11 +119,11 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                 if (last_gc_count) |gc_val| {
                     if (gc_val > 0) {
                         const suffix = if (gc_val == 1) "GC" else "GCs";
-                        break :blk std.fmt.bufPrint(&prompt_buf, "[{s}, {} {s}] {s}", .{ time_str, gc_val, suffix, std.mem.span(rt.rs.promptstr) }) catch std.mem.span(rt.rs.promptstr);
+                        break :blk std.fmt.bufPrint(&prompt_buf, "[{s}, {} {s}] {s}", .{ time_str, gc_val, suffix, std.mem.span(rs.promptstr) }) catch std.mem.span(rs.promptstr);
                     }
                 }
-                break :blk std.fmt.bufPrint(&prompt_buf, "[{s}] {s}", .{ time_str, std.mem.span(rt.rs.promptstr) }) catch std.mem.span(rt.rs.promptstr);
-            } else std.mem.span(rt.rs.promptstr);
+                break :blk std.fmt.bufPrint(&prompt_buf, "[{s}] {s}", .{ time_str, std.mem.span(rs.promptstr) }) catch std.mem.span(rs.promptstr);
+            } else std.mem.span(rs.promptstr);
 
             if (lineedit.active) {
                 lineedit.setPrompt(prompt);
@@ -136,8 +136,8 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
         last_elapsed_ns = null;
         last_gc_count = null;
         ch = abi.getchar();
-        if (rt.rs.rechecking != 0 and heap_mod.srcUpdate() != 0) {
-            module_loader.loadfile(heap, core_state.s, cs, rt.rs.current_script.?);
+        if (rs.rechecking != 0 and heap_mod.srcUpdate(rs) != 0) {
+            module_loader.loadfile(heap, core_state.s, cs, rs, rs.current_script.?);
         }
         while (ch == ' ' or ch == '\t') {
             ch = abi.getchar();
@@ -148,7 +148,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                 if (ch == '?') {
                     var x: Word = undefined;
                     var aka: ?[*:0]const u8 = null;
-                    if (token() == null and rt.rs.lastid == 0) {
+                    if (token() == null and rs.lastid == 0) {
                         word.print("\x07identifier needed after `??'\n", .{});
                         ch = abi.getchar();
                         continue;
@@ -157,27 +157,27 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                         commands.xschars();
                         continue;
                     }
-                    if (rt.rs.baded != 0) {
-                        edWarn();
+                    if (rs.baded != 0) {
+                        edWarn(rs);
                         continue;
                     }
                     if (ls.dicp[0] != 0) {
                         x = abi.findid(heap, ls.dicp);
                     } else {
-                        word.print("??{s}\n", .{heap_mod.getId(rt.rs.lastid)});
-                        x = rt.rs.lastid;
+                        word.print("??{s}\n", .{heap_mod.getId(rs.lastid)});
+                        x = rs.lastid;
                     }
                     if (x == NIL or heap_mod.idType(x) == word.undef_t) {
-                        commands.diagnose(if (ls.dicp[0] != 0) ls.dicp else heap_mod.getId(rt.rs.lastid));
-                        rt.rs.lastid = 0;
+                        commands.diagnose(if (ls.dicp[0] != 0) ls.dicp else heap_mod.getId(rs.lastid));
+                        rs.lastid = 0;
                         continue;
                     }
                     if (heap_mod.idWho(x) == NIL) {
-                        word.print("{s} -- primitive to Miranda\n", .{@as([*:0]const u8, @ptrCast(if (ls.dicp[0] != 0) ls.dicp else heap_mod.getId(rt.rs.lastid)))});
-                        rt.rs.lastid = 0;
+                        word.print("{s} -- primitive to Miranda\n", .{@as([*:0]const u8, @ptrCast(if (ls.dicp[0] != 0) ls.dicp else heap_mod.getId(rs.lastid)))});
+                        rs.lastid = 0;
                         continue;
                     }
-                    rt.rs.lastid = x;
+                    rs.lastid = x;
                     x = heap_mod.idWho(x);
                     if (getTag(heap, x) == .CONS) {
                         aka = strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(x)));
@@ -186,20 +186,20 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                     if (aka != null) {
                         word.print("originally defined as \"{s}\"\n", .{aka.?});
                     }
-                    commands.editfile(strtab.strOf(strtab.table, heap_mod.h(x)), @intCast(heap_mod.t(x)), 0);
+                    commands.editfile(rs, strtab.strOf(strtab.table, heap_mod.h(x)), @intCast(heap_mod.t(x)), 0);
                 } else {
                     _ = abi.ungetc(ch, abi.stdin().?);
                     _ = token();
-                    rt.rs.lastid = 0;
+                    rs.lastid = 0;
                     if (ls.dicp[0] == 0) {
                         if (abi.getchar() != '\n') {
                             commands.xschars();
                         } else {
-                            commands.allnamescom(heap, comp);
+                            commands.allnamescom(heap, comp, rs);
                         }
                     } else {
                         while (ls.dicp[0] != 0) {
-                            commands.finger(heap, ls.dicp);
+                            commands.finger(heap, rs, ls.dicp);
                             _ = token();
                         }
                         ch = abi.getchar();
@@ -208,13 +208,13 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
             },
             ':', '/' => {
                 _ = token();
-                rt.rs.lastid = 0;
-                commands.command(heap, core_state.s, comp);
+                rs.lastid = 0;
+                commands.command(heap, core_state.s, comp, rs);
             },
             '!' => {
                 lb = rdline();
                 if (lb == null) continue;
-                rt.rs.lastid = 0;
+                rs.lastid = 0;
                 if (lb.?[0] != 0) {
                     var shell: ?[*:0]const u8 = null;
                     var oldsig: usize = undefined;
@@ -234,8 +234,8 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                     } else { // child
                         _ = abi.execl(shell.?, .{ shell.?, "-c", lb.? });
                     }
-                    if (heap_mod.srcUpdate() != 0) {
-                        module_loader.loadfile(heap, core_state.s, cs, rt.rs.current_script.?);
+                    if (heap_mod.srcUpdate(rs) != 0) {
+                        module_loader.loadfile(heap, core_state.s, cs, rs, rs.current_script.?);
                     }
                 } else {
                     word.print("No previous shell command to substitute for \"!\"\n", .{});
@@ -252,7 +252,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
             },
             '\n' => {},
             abi.EOF => {
-                if (rt.rs.verbosity != 0) {
+                if (rs.verbosity != 0) {
                     word.print("\nmiranda logout\n", .{});
                 }
                 lineedit.deinit(); // persist history (no-op if not interactive)
@@ -261,11 +261,11 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
             else => {
                 const start = getMonotonicNs();
                 _ = abi.ungetc(ch, abi.stdin().?);
-                rt.rs.lastid = 0;
+                rs.lastid = 0;
                 heap_mod.tp(heap_mod.h(ls.cook_stdin)).* = 0;
-                rt.rs.rv_expr = 0;
+                rs.rv_expr = 0;
                 ls.c = word.EVAL;
-                rt.rs.echoing = 0;
+                rs.echoing = 0;
                 comp.polyshowerror = 0;
                 core.commandmode = 1;
                 _ = parser_api.parseCurrent() catch {};
@@ -278,7 +278,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                     }
                 }
                 core.commandmode = 0;
-                rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
+                rs.echoing = rs.verbosity & rs.listing;
                 last_elapsed_ns = getMonotonicNs() - start;
                 if (child_exit_status) |exit_code| {
                     if (exit_code == 0) {
@@ -350,73 +350,73 @@ pub fn fpeError(sig: c_int) callconv(.c) void {
 
 // Relocated REPL and interactive driver functions
 /// Compile `x` and send its value to standard output — used to run a script's `main`.
-pub fn obey(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, x_in: Word) void {
+pub fn obey(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, x_in: Word) void {
     var x = x_in;
     const typ = types_mod.typeOf(heap, x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.validate();
         trans_mod.validate(heap);
-        rt.rs.validate();
+        rs.validate();
     }
     x = trans_mod.codegen(heap, x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.validate();
         trans_mod.validate(heap);
-        rt.rs.validate();
+        rs.validate();
     }
     if (comp.polyshowerror != 0) return;
     core.compiling = 0;
     const list_t: Word = 4;
     const char_t: Word = 3;
     const islist = typ >= word.ATOMLIMIT and getTag(heap, typ) == .AP and h(typ) == list_t;
-    const out_val: Word = if (islist and t(typ) == rt.rs.message)
+    const out_val: Word = if (islist and t(typ) == rs.message)
         x
     else blk: {
         const inner: Word = if (islist and t(typ) == char_t)
             x
         else
             abi.make(.AP, abi.mkshow(heap, 0, 0, typ), x);
-        break :blk abi.make(.CONS, abi.make(.AP, rt.rs.standardout, inner), NIL);
+        break :blk abi.make(.CONS, abi.make(.AP, rs.standardout, inner), NIL);
     };
-    abi.output(reduce.ev, out_val);
+    abi.output(reduce.ev, rs, out_val);
 }
 
 /// Evaluate a typed REPL expression: compile it and fork via `process`; the child prints the result and exits, leaving the parent's heap untouched.
-pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, x_in: Word) void {
+pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, x_in: Word) void {
     var x = x_in;
     const typ = types_mod.typeOf(heap, x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.validate();
         trans_mod.validate(heap);
-        rt.rs.validate();
+        rs.validate();
     }
     if (typ == word.wrong_t) return;
-    rt.rs.lastexp = x;
+    rs.lastexp = x;
     x = trans_mod.codegen(heap, x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.validate();
         trans_mod.validate(heap);
-        rt.rs.validate();
+        rs.validate();
     }
     if (comp.polyshowerror != 0) return;
     const list_t: Word = 4;
     const char_t: Word = 3;
     const islist = typ >= word.ATOMLIMIT and getTag(heap, typ) == .AP and h(typ) == list_t;
-    const out_val: Word = if (islist and t(typ) == rt.rs.message)
+    const out_val: Word = if (islist and t(typ) == rs.message)
         x
     else blk: {
         const inner: Word = if (islist and t(typ) == char_t)
             x
         else
             abi.make(.AP, abi.mkshow(heap, 0, 0, typ), x);
-        break :blk abi.make(.CONS, abi.make(.AP, rt.rs.standardout, inner), NIL);
+        break :blk abi.make(.CONS, abi.make(.AP, rs.standardout, inner), NIL);
     };
     if (process() != 0) {
         // Child: evaluate and print, then exit (compiling=0 only here, parent unaffected).
         _ = signals(abi.SIGINT, @intFromPtr(&dieClean));
         core.compiling = 0;
         resetgcstats();
-        abi.output(reduce.ev, out_val);
+        abi.output(reduce.ev, rs, out_val);
         _ = word.putchar('\n');
         outstats();
         const exit_code: c_int = if (heap.nogcs == 0) 0 else @as(c_int, @intCast(@min(heap.nogcs, 253))) + 1;
@@ -447,8 +447,8 @@ pub fn reset() callconv(.c) void {
 }
 
 /// Warn that the configured editor lacks open-at-line support, disabling `??` and related features.
-pub fn edWarn() void {
-    word.print("The currently installed editor command, \"{s}\", does not\ninclude a facility for opening a file at a specified line number.  As a\nresult the `??' command and certain other features of the Miranda system\nare disabled.  See manual section 31/5 on changing the editor for more\ninformation.\n", .{rt.rs.editor orelse @constCast("")});
+pub fn edWarn(rs: *rt.RuntimeState) void {
+    word.print("The currently installed editor command, \"{s}\", does not\ninclude a facility for opening a file at a specified line number.  As a\nresult the `??' command and certain other features of the Miranda system\nare disabled.  See manual section 31/5 on changing the editor for more\ninformation.\n", .{rs.editor orelse @constCast("")});
 }
 
 /// Print the Miranda release banner (version, plus `(UTF-8)` when applicable).
@@ -477,8 +477,8 @@ pub fn getLine(in: ?*word.FILE, n_val: Word, s_ptr: [*]u8) c_int {
 }
 
 /// 1 if the editor command lacks an open-at-line placeholder (`+!`, `%d`, or `%l`).
-pub fn badEditor() bool {
-    const e = rt.rs.editor orelse return false;
+pub fn badEditor(rs: *rt.RuntimeState) bool {
+    const e = rs.editor orelse return false;
     if (word.strstr(e, "+!") != null or word.strstr(e, "%d") != null or word.strstr(e, "%l") != null) {
         return false;
     }
@@ -486,10 +486,10 @@ pub fn badEditor() bool {
 }
 
 /// Read and type-check one expression of type `t_val` from file `f` (the `readvals` path). Returns its codegen, or `EOF`; re-prompts interactively and aborts on bad file data.
-pub fn parseLine(heap: *Heap, core: *core_state.CoreState, t_val: Word, f: ?*word.FILE, fil: Word) Word {
+pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, t_val: Word, f: ?*word.FILE, fil: Word) Word {
     var t1: Word = undefined;
     var ch: c_int = undefined;
-    rt.rs.lastexp = word.UNDEF;
+    rs.lastexp = word.UNDEF;
     while (true) {
         ch = abi.getc(f);
         while (ch == ' ' or ch == '\t' or ch == '\n') {
@@ -514,29 +514,29 @@ pub fn parseLine(heap: *Heap, core: *core_state.CoreState, t_val: Word, f: ?*wor
         }
         _ = abi.ungetc(ch, f);
         ls.c = word.VALUE;
-        rt.rs.echoing = 0;
+        rs.echoing = 0;
         core.commandmode = 1;
-        rt.rs.s_in = f;
+        rs.s_in = f;
         _ = parser_api.parseCurrent() catch {};
-        rt.rs.s_in = abi.stdin();
+        rs.s_in = abi.stdin();
         if (core.SYNERR != 0) {
             core.SYNERR = 0;
-            rt.rs.lastexp = word.UNDEF;
+            rs.lastexp = word.UNDEF;
         } else {
-            t1 = types_mod.typeOf(heap, rt.rs.lastexp);
+            t1 = types_mod.typeOf(heap, rs.lastexp);
             if (t1 == word.wrong_t) {
-                rt.rs.lastexp = word.UNDEF;
+                rs.lastexp = word.UNDEF;
             } else if (abi.subsumes(heap, abi.instantiate(heap, t1), t_val) == 0) {
                 word.print("data has wrong type :: ", .{});
                 abi.outType(heap, t1);
                 word.print("\nshould be :: ", .{});
                 abi.outType(heap, t_val);
                 _ = word.putc('\n', abi.stdout());
-                rt.rs.lastexp = word.UNDEF;
+                rs.lastexp = word.UNDEF;
             }
         }
-        if (rt.rs.lastexp != word.UNDEF) {
-            return trans_mod.codegen(heap, rt.rs.lastexp);
+        if (rs.lastexp != word.UNDEF) {
+            return trans_mod.codegen(heap, rs.lastexp);
         }
         if (abi.isatty(word.fileno(f)) != 0) {
             word.print("please re-enter data:\n", .{});

@@ -60,14 +60,14 @@ fn is(s: [:0]const u8) bool {
 }
 
 /// Print path `p` for messages: `<name>` when it lives under the library dir, else `"path"`.
-fn filequote(p: [:0]const u8) void {
+fn filequote(rs: *rt.RuntimeState, p: [:0]const u8) void {
     if (filequote_mlen == 0) {
-        const last_slash = word.strrchr(&rt.rs.PRELUDE, '/');
+        const last_slash = word.strrchr(&rs.PRELUDE, '/');
         if (last_slash != null) {
-            filequote_mlen = @intFromPtr(last_slash.?) - @intFromPtr(&rt.rs.PRELUDE) + 1;
+            filequote_mlen = @intFromPtr(last_slash.?) - @intFromPtr(&rs.PRELUDE) + 1;
         }
     }
-    if (word.strncmp(p.ptr, &rt.rs.PRELUDE, filequote_mlen) == 0) {
+    if (word.strncmp(p.ptr, &rs.PRELUDE, filequote_mlen) == 0) {
         word.print("<{s}>", .{p.ptr + filequote_mlen});
     } else {
         word.print("\"{s}\"", .{p.ptr});
@@ -75,19 +75,19 @@ fn filequote(p: [:0]const u8) void {
 }
 
 /// List the identifiers defined in `l` in aligned columns.
-fn namescom(heap: *Heap, l: Word) void {
+fn namescom(heap: *Heap, rs: *rt.RuntimeState, l: Word) void {
     var n = heap_mod.filDefs(l);
     var col_local: Word = 0;
     var undefs: Word = NIL;
     var wp: usize = 0;
     const scrwd = files.termWidth();
-    if (rt.rs.sorted == 0 and n != rt.rs.primenv) {
+    if (rs.sorted == 0 and n != rs.primenv) {
         n = heap_mod.alfasort(n);
         heap_mod.tp(l).* = n;
     }
     if (n == NIL) return;
     if (heap_mod.getFil(l)) |gf| {
-        filequote(std.mem.span(gf));
+        filequote(rs, std.mem.span(gf));
     } else {
         word.print("primitive:", .{});
     }
@@ -161,7 +161,7 @@ fn namescom(heap: *Heap, l: Word) void {
 
 /// Dispatch a `/` or `:` REPL command — the main command switch (`/h`, `/e`, `/f`, `/l`, `/man`, ...).
 /// Handle the `'f'` REPL command (extracted from `command`).
-fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState) bool {
+fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState) bool {
     var t_val: ?[*:0]u8 = undefined;
     var ch: c_int = undefined;
     if (is("f") or is("file")) {
@@ -178,17 +178,17 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
             core.errs = 0;
         }
         if (t_val != null) {
-            if (word.strcmp(t_val.?, rt.rs.current_script.?) != 0 or (heap.files == NIL and abi.okdump(core, t_val.?))) {
+            if (word.strcmp(t_val.?, rs.current_script.?) != 0 or (heap.files == NIL and abi.okdump(core, t_val.?))) {
                 comp.CLASHES = NIL;
-                dump.undump(heap, core, comp, t_val.?);
+                dump.undump(heap, core, comp, rs, t_val.?);
                 if (comp.CLASHES != NIL) {
-                    module_loader.loadfile(heap, core, comp, t_val.?);
+                    module_loader.loadfile(heap, core, comp, rs, t_val.?);
                 }
             } else {
-                module_loader.loadfile(heap, core, comp, t_val.?);
+                module_loader.loadfile(heap, core, comp, rs, t_val.?);
             }
         } else {
-            word.print("{s}{s}\n", .{ rt.rs.current_script.?, @as([*:0]const u8, if (heap.files == NIL) " (not loaded)" else "") });
+            word.print("{s}{s}\n", .{ rs.current_script.?, @as([*:0]const u8, if (heap.files == NIL) " (not loaded)" else "") });
         }
         return true;
     }
@@ -208,11 +208,11 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
             i += 1;
             if (x != NIL) {
                 const n = heap_mod.getId(x);
-                var y = rt.rs.primenv;
+                var y = rs.primenv;
                 while (y != NIL) : (y = heap_mod.t(y)) {
                     if (getTag(heap, heap_mod.h(y)) == .ID) {
                         if (heap_mod.h(y) == x or word.strcmp(abi.getaka(heap_mod.h(y)), n) == 0) {
-                            finger(heap, heap_mod.getId(heap_mod.h(y)));
+                            finger(heap, rs, heap_mod.getId(heap_mod.h(y)));
                         }
                     }
                 }
@@ -222,7 +222,7 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
                     while (y_def != NIL) : (y_def = heap_mod.t(y_def)) {
                         if (getTag(heap, heap_mod.h(y_def)) == .ID) {
                             if (heap_mod.h(y_def) == x or word.strcmp(abi.getaka(heap_mod.h(y_def)), n) == 0) {
-                                finger(heap, heap_mod.getId(heap_mod.h(y_def)));
+                                finger(heap, rs, heap_mod.getId(heap_mod.h(y_def)));
                             }
                         }
                     }
@@ -239,7 +239,7 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
 }
 
 /// Handle the `'e'` REPL command (extracted from `command`).
-fn cmdEdit(core: *core_state.CoreState) bool {
+fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState) bool {
     var t_val: ?[*:0]u8 = undefined;
     var ch: c_int = undefined;
     var ch1: c_int = undefined;
@@ -248,7 +248,7 @@ fn cmdEdit(core: *core_state.CoreState) bool {
         if (token()) |tok| {
             t_val = abi.addextn(1, tok);
         } else {
-            t_val = rt.rs.current_script;
+            t_val = rs.current_script;
         }
         if (abi.getchar() != '\n') return true;
         if (!files.fileExists(t_val.?)) {
@@ -267,7 +267,7 @@ fn cmdEdit(core: *core_state.CoreState) bool {
             }
             if (mf == null and mirahdr == null) {
                 ls.dicp = ls.dicq;
-                _ = word.strcpy(ls.dicp, rt.rs.miralib.?);
+                _ = word.strcpy(ls.dicp, rs.miralib.?);
                 _ = word.strcat(ls.dicp, "/.mirahdr");
                 mirahdr = ls.dicp;
                 ls.dicq = ls.dicp + word.strlen(ls.dicp) + 1;
@@ -275,7 +275,7 @@ fn cmdEdit(core: *core_state.CoreState) bool {
             if (mf == null and files.fileExists(mirahdr.?)) {
                 mf = mirahdr;
             }
-            if (mf != null and t_val != rt.rs.current_script) {
+            if (mf != null and t_val != rs.current_script) {
                 var prompt_buf: [256]u8 = undefined;
                 const prompt = std.fmt.bufPrint(&prompt_buf, "open new script \"{s}\"? [ny]", .{t_val.?}) catch "open new script? [ny]";
                 if (lineedit.active) {
@@ -296,18 +296,18 @@ fn cmdEdit(core: *core_state.CoreState) bool {
                 files.copyFile(mf.?, t_val.?);
             }
         }
-        const err_line_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core.errline) else if (core.errs != 0 and word.strcmp(t_val.?, strtab.strOf(strtab.table, heap_mod.h(core.errs))) == 0) @intCast(heap_mod.t(core.errs)) else @intCast(abi.geterrlin(core, t_val.?));
-        const err_col_num: c_int = if (word.strcmp(t_val.?, rt.rs.current_script.?) == 0) @intCast(core.errcol) else 0;
-        editfile(t_val.?, err_line_num, err_col_num);
+        const err_line_num: c_int = if (word.strcmp(t_val.?, rs.current_script.?) == 0) @intCast(core.errline) else if (core.errs != 0 and word.strcmp(t_val.?, strtab.strOf(strtab.table, heap_mod.h(core.errs))) == 0) @intCast(heap_mod.t(core.errs)) else @intCast(abi.geterrlin(core, t_val.?));
+        const err_col_num: c_int = if (word.strcmp(t_val.?, rs.current_script.?) == 0) @intCast(core.errcol) else 0;
+        editfile(rs, t_val.?, err_line_num, err_col_num);
         return true;
     }
     if (is("editor")) {
-        const hold = @as([*]u8, @ptrCast(&rt.rs.linebuf[0]));
+        const hold = @as([*]u8, @ptrCast(&rs.linebuf[0]));
         if (repl.getLine(abi.stdin(), abi.pnlim - 1, hold) == 0) {
             return true;
         }
         if (hold[0] == 0) {
-            word.print("{s}\n", .{rt.rs.editor orelse @constCast("")});
+            word.print("{s}\n", .{rs.editor orelse @constCast("")});
             return true;
         }
         var h_ptr = hold + word.strlen(hold);
@@ -335,32 +335,32 @@ fn cmdEdit(core: *core_state.CoreState) bool {
             word.print("editor not changed\n", .{});
             return true;
         }
-        _ = word.strcpy(&rt.rs.ebuf, hold);
-        rt.rs.editor = @as([*:0]u8, @ptrCast(&rt.rs.ebuf));
-        rt.rs.baded = @intFromBool(repl.badEditor());
-        rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
+        _ = word.strcpy(&rs.ebuf, hold);
+        rs.editor = @as([*:0]u8, @ptrCast(&rs.ebuf));
+        rs.baded = @intFromBool(repl.badEditor(rs));
+        rs.echoing = rs.verbosity & rs.listing;
         startup.writeRc();
-        word.print("editor = {s}\n", .{rt.rs.editor orelse @constCast("")});
+        word.print("editor = {s}\n", .{rs.editor orelse @constCast("")});
         return true;
     }
     return false;
 }
 
-pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState) void {
+pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState) void {
     switch (ls.dicp[0]) {
         'a' => {
             if (is("a") or is("aux")) {
                 if (abi.getchar() != '\n') return;
-                _ = word.strcpy(&rt.rs.linebuf, rt.rs.miralib.?);
-                _ = word.strcat(&rt.rs.linebuf, "/auxfile");
-                files.fileCopy(@as([*:0]const u8, @ptrCast(&rt.rs.linebuf)));
+                _ = word.strcpy(&rs.linebuf, rs.miralib.?);
+                _ = word.strcat(&rs.linebuf, "/auxfile");
+                files.fileCopy(@as([*:0]const u8, @ptrCast(&rs.linebuf)));
                 return;
             }
         },
         'c' => {
             if (is("count")) {
                 if (abi.getchar() != '\n') return;
-                rt.rs.atcount = 1;
+                rs.atcount = 1;
                 return;
             }
             if (is("cd")) {
@@ -373,8 +373,8 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                 if (abi.getchar() != '\n') return;
                 if (abi.chdir(d.?) == -1) {
                     word.print("cannot cd to {s}\n", .{d.?});
-                } else if (heap_mod.srcUpdate() != 0) {
-                    dump.undump(heap, core, cs, rt.rs.current_script.?);
+                } else if (heap_mod.srcUpdate(rs) != 0) {
+                    dump.undump(heap, core, cs, rs, rs.current_script.?);
                 }
                 return;
             }
@@ -383,8 +383,8 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             if (is("dic")) {
                 if (token() == null) {
                     _ = abi.getchar();
-                    word.print("{} chars", .{rt.rs.DICSPACE});
-                    if (rt.rs.DICSPACE != 100000) {
+                    word.print("{} chars", .{rs.DICSPACE});
+                    if (rs.DICSPACE != 100000) {
                         word.print(" (default={})", .{@as(c_long, 100000)});
                     }
                     word.print(" {} in use\n", .{@as(c_long, @intCast(@intFromPtr(ls.dicq) - @intFromPtr(ls.dic.?)))});
@@ -397,32 +397,32 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             }
         },
         'e' => {
-            if (cmdEdit(core)) return;
+            if (cmdEdit(core, rs)) return;
         },
         'f' => {
-            if (cmdFiles(heap, core, comp)) return;
+            if (cmdFiles(heap, core, comp, rs)) return;
         },
         'g' => {
             if (is("gc")) {
                 if (abi.getchar() != '\n') return;
-                rt.rs.atgc = 1;
+                rs.atgc = 1;
                 return;
             }
         },
         'h' => {
             if (is("h") or is("help")) {
                 if (abi.getchar() != '\n') return;
-                _ = word.strcpy(&rt.rs.linebuf, rt.rs.miralib.?);
-                _ = word.strcat(&rt.rs.linebuf, "/helpfile");
-                files.fileCopy(@as([*:0]const u8, @ptrCast(&rt.rs.linebuf)));
+                _ = word.strcpy(&rs.linebuf, rs.miralib.?);
+                _ = word.strcat(&rs.linebuf, "/helpfile");
+                files.fileCopy(@as([*:0]const u8, @ptrCast(&rs.linebuf)));
                 return;
             }
             if (is("heap")) {
                 var x: c_long = undefined;
                 if (token() == null) {
                     _ = abi.getchar();
-                    word.print("{} cells", .{rt.rs.SPACELIMIT});
-                    if (rt.rs.SPACELIMIT != 2500000) {
+                    word.print("{} cells", .{rs.SPACELIMIT});
+                    if (rs.SPACELIMIT != 2500000) {
                         word.print(" (default={})", .{@as(c_long, 2500000)});
                     }
                     word.print("\n", .{});
@@ -436,27 +436,27 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                 if (x < abi.trueheapsize()) {
                     word.print("sorry, cannot shrink heap to {} at this time\n", .{x});
                 } else {
-                    if (x != rt.rs.SPACELIMIT) {
-                        rt.rs.SPACELIMIT = x;
+                    if (x != rs.SPACELIMIT) {
+                        rs.SPACELIMIT = x;
                         abi.resetheap();
                     }
-                    word.print("heaplimit = {} cells\n", .{rt.rs.SPACELIMIT});
+                    word.print("heaplimit = {} cells\n", .{rs.SPACELIMIT});
                     startup.writeRc();
                 }
                 return;
             }
             if (is("hush")) {
                 if (abi.getchar() != '\n') return;
-                rt.rs.echoing = 0;
-                rt.rs.verbosity = 0;
+                rs.echoing = 0;
+                rs.verbosity = 0;
                 return;
             }
         },
         'l' => {
             if (is("list")) {
                 if (abi.getchar() != '\n') return;
-                rt.rs.listing = 1;
-                rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
+                rs.listing = 1;
+                rs.echoing = rs.verbosity & rs.listing;
                 startup.writeRc();
                 return;
             }
@@ -464,42 +464,42 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
         'm' => {
             if (is("m") or is("man")) {
                 if (abi.getchar() != '\n') return;
-                manaction();
+                manaction(rs);
                 return;
             }
             if (is("miralib")) {
                 if (abi.getchar() != '\n') return;
-                word.print("{s}\n", .{rt.rs.miralib.?});
+                word.print("{s}\n", .{rs.miralib.?});
                 return;
             }
         },
         'n' => {
             if (is("nocount")) {
                 if (abi.getchar() != '\n') return;
-                rt.rs.atcount = 0;
+                rs.atcount = 0;
                 return;
             }
             if (is("nogc")) {
                 if (abi.getchar() != '\n') return;
-                rt.rs.atgc = 0;
+                rs.atgc = 0;
                 return;
             }
             if (is("nohush")) {
                 if (abi.getchar() != '\n') return;
-                rt.rs.echoing = rt.rs.listing;
-                rt.rs.verbosity = 1;
+                rs.echoing = rs.listing;
+                rs.verbosity = 1;
                 return;
             }
             if (is("nolist")) {
                 if (abi.getchar() != '\n') return;
-                rt.rs.listing = 0;
-                rt.rs.echoing = 0;
+                rs.listing = 0;
+                rs.echoing = 0;
                 startup.writeRc();
                 return;
             }
             if (is("norecheck")) {
                 if (abi.getchar() != '\n') return;
-                rt.rs.rechecking = 0;
+                rs.rechecking = 0;
                 startup.writeRc();
                 return;
             }
@@ -507,7 +507,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
         'q' => {
             if (is("q") or is("quit")) {
                 if (abi.getchar() != '\n') return;
-                if (rt.rs.verbosity != 0) {
+                if (rs.verbosity != 0) {
                     word.print("miranda logout\n", .{});
                 }
                 abi.exit(0);
@@ -516,7 +516,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
         'r' => {
             if (is("recheck")) {
                 if (abi.getchar() != '\n') return;
-                rt.rs.rechecking = 2;
+                rs.rechecking = 2;
                 startup.writeRc();
                 return;
             }
@@ -524,28 +524,28 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
         's' => {
             if (is("s") or is("settings")) {
                 if (abi.getchar() != '\n') return;
-                word.print("*\theap {}\n", .{rt.rs.SPACELIMIT});
-                word.print("*\tdic {}\n", .{rt.rs.DICSPACE});
-                word.print("*\teditor = {s}\n", .{rt.rs.editor orelse @constCast("")});
-                word.print("*\t{s}list\n", .{@as([*:0]const u8, if (rt.rs.listing != 0) "" else "no")});
-                word.print("*\t{s}recheck\n", .{@as([*:0]const u8, if (rt.rs.rechecking != 0) "" else "no")});
-                if (!rt.rs.strictif) {
+                word.print("*\theap {}\n", .{rs.SPACELIMIT});
+                word.print("*\tdic {}\n", .{rs.DICSPACE});
+                word.print("*\teditor = {s}\n", .{rs.editor orelse @constCast("")});
+                word.print("*\t{s}list\n", .{@as([*:0]const u8, if (rs.listing != 0) "" else "no")});
+                word.print("*\t{s}recheck\n", .{@as([*:0]const u8, if (rs.rechecking != 0) "" else "no")});
+                if (!rs.strictif) {
                     word.print("\t-nostrictif (deprecated!)\n", .{});
                 }
-                if (rt.rs.atcount != 0) {
+                if (rs.atcount != 0) {
                     word.print("\tcount\n", .{});
                 }
-                if (rt.rs.atgc != 0) {
+                if (rs.atgc != 0) {
                     word.print("\tgc\n", .{});
                 }
-                if (rt.rs.UTF8 != 0) {
+                if (rs.UTF8 != 0) {
                     word.print("\tUTF-8 i/o\n", .{});
                 }
-                if (rt.rs.verbosity == 0) {
+                if (rs.verbosity == 0) {
                     word.print("\thush\n", .{});
                 }
-                if (rt.rs.debug != 0) {
-                    word.print("\tdebug 0{o}\n", .{rt.rs.debug});
+                if (rs.debug != 0) {
+                    word.print("\tdebug 0{o}\n", .{rs.debug});
                 }
                 word.print("\n* items remembered between sessions\n", .{});
                 return;
@@ -571,18 +571,18 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
 }
 
 /// Run the `/man` command: launch the manual via the library's `menudriver`.
-pub fn manaction() void {
-    _ = abi.sprintf(&rt.rs.linebuf, "\"%s/menudriver\" \"%s/manual\"", .{ rt.rs.miralib.?, rt.rs.miralib.? });
-    _ = abi.system(&rt.rs.linebuf);
+pub fn manaction(rs: *rt.RuntimeState) void {
+    _ = abi.sprintf(&rs.linebuf, "\"%s/menudriver\" \"%s/manual\"", .{ rs.miralib.?, rs.miralib.? });
+    _ = abi.system(&rs.linebuf);
 }
 
 /// Open `t_val` at `line` in the user's editor, substituting into the editor-command template.
-pub fn editfile(t_val: [*:0]const u8, line: c_int, col: c_int) void {
+pub fn editfile(rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_int) void {
     var line_val = line;
     const col_val = if (col == 0) @as(c_int, 1) else col;
-    const ebuf_local = @as([*]u8, @ptrCast(&rt.rs.linebuf[0]));
+    const ebuf_local = @as([*]u8, @ptrCast(&rs.linebuf[0]));
     var p = ebuf_local;
-    var q = rt.rs.editor.?;
+    var q = rs.editor.?;
     var tdone: bool = false;
     var temp_editor: [512]u8 = undefined;
     if (line_val == 0) {
@@ -645,8 +645,8 @@ pub fn editfile(t_val: [*:0]const u8, line: c_int, col: c_int) void {
         p[0] = 0;
     }
     _ = abi.system(ebuf_local);
-    if (heap_mod.srcUpdate() != 0) {
-        module_loader.loadfile(heap_mod.heap, core_state.s, cs, rt.rs.current_script.?);
+    if (heap_mod.srcUpdate(rs) != 0) {
+        module_loader.loadfile(heap_mod.heap, core_state.s, cs, rs, rs.current_script.?);
     }
 }
 
@@ -661,7 +661,7 @@ pub fn xschars() void {
 }
 
 /// Print the type and definition location of name `n` (the `?name` query).
-pub fn finger(heap: *Heap, n: [*:0]const u8) void {
+pub fn finger(heap: *Heap, rs: *rt.RuntimeState, n: [*:0]const u8) void {
     const x = abi.findid(heap, @constCast(n));
     var line: Word = 0;
     var s: ?[*:0]const u8 = null;
@@ -671,8 +671,8 @@ pub fn finger(heap: *Heap, n: [*:0]const u8) void {
             s = strtab.strOf(strtab.table, heap_mod.h(here_val));
             line = heap_mod.t(here_val);
         }
-        if (rt.rs.lastid == 0) {
-            rt.rs.lastid = x;
+        if (rs.lastid == 0) {
+            rs.lastid = x;
         }
         abi.reportType(heap, x);
         if (heap_mod.idWho(x) == NIL) {
@@ -690,8 +690,8 @@ pub fn finger(heap: *Heap, n: [*:0]const u8) void {
                 const class_str: [*:0]const u8 = if (heap_mod.idType(x) == word.type_t and heap_mod.tClass(x) == word.abstract_t) "(abstract type) " else if (heap_mod.idType(x) == word.type_t and heap_mod.tClass(x) == word.algebraic_t) "(algebraic type) " else if (heap_mod.idType(x) == word.type_t and heap_mod.tClass(x) == word.placeholder_t) "(placeholder type) " else if (heap_mod.idType(x) == word.type_t and heap_mod.tClass(x) == word.synonym_t) "(synonym type) " else "";
                 word.print(" ||{s}defined in ", .{class_str});
             }
-            filequote(std.mem.span(s.?));
-            if (rt.rs.baded != 0 or rt.rs.rechecking != 0) {
+            filequote(rs, std.mem.span(s.?));
+            if (rs.baded != 0 or rs.rechecking != 0) {
                 word.print(" line {}", .{line});
             }
             if (aka_opt) |aka_s| {
@@ -700,7 +700,7 @@ pub fn finger(heap: *Heap, n: [*:0]const u8) void {
                 _ = word.putchar('\n');
             }
         }
-        if (rt.rs.atobject != 0) {
+        if (rs.atobject != 0) {
             word.print("{s} = ", .{heap_mod.getId(x)});
             abi.out(abi.stdout(), heap_mod.idVal(x));
             _ = word.putchar('\n');
@@ -736,20 +736,20 @@ pub fn diagnose(n: [*:0]const u8) void {
 }
 
 /// List every name currently in scope (the bare `?` command).
-pub fn allnamescom(heap: *Heap, comp: *compiler_state.CompilerState) void {
+pub fn allnamescom(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState) void {
     var s: Word = undefined;
     var x = comp.ND;
     var y = comp.ND;
     var z: Word = 0;
     leftist = false;
-    namescom(heap, heap_mod.makeFil(if (rt.rs.nostdenv) null else @as([*:0]const u8, @ptrCast(&rt.rs.STDENV)), 0, 0, rt.rs.primenv));
+    namescom(heap, rs, heap_mod.makeFil(if (rs.nostdenv) null else @as([*:0]const u8, @ptrCast(&rs.STDENV)), 0, 0, rs.primenv));
     if (heap.files == NIL) return;
     s = heap_mod.t(heap.files);
     while (s != NIL) : (s = heap_mod.t(s)) {
-        namescom(heap, heap_mod.h(s));
+        namescom(heap, rs, heap_mod.h(s));
     }
-    namescom(heap, heap_mod.h(heap.files));
-    rt.rs.sorted = 1;
+    namescom(heap, rs, heap_mod.h(heap.files));
+    rs.sorted = 1;
 
     while (x != NIL and heap_mod.idType(heap_mod.h(x)) == word.undef_t) {
         x = heap_mod.t(x);

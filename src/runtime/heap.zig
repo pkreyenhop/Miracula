@@ -1696,14 +1696,14 @@ pub fn getdbl(file: ?*word.FILE) Word {
 }
 
 /// Write the loaded files/definitions graph to dump `file`.
-pub fn dumpScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState, files_val: Word, file: ?*word.FILE) void {
+pub fn dumpScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, files_val: Word, file: ?*word.FILE) void {
     _ = word.putc(@intCast(wordsize), file);
     _ = word.putc(word.XVERSION, file);
 
     if (files_val == word.NIL) {
         _ = word.putc(0, file);
         putword(core_st.errline, file);
-        var x = rt.rs.oldfiles;
+        var x = rs.oldfiles;
         while (x != word.NIL) : (x = t(x)) {
             _ = word.fprint(file, "{s}", .{mkrel(getFil(h(x)) orelse "")});
             _ = word.putc(0, file);
@@ -1728,7 +1728,7 @@ pub fn dumpScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
     }
     _ = word.putc(0, file);
     dumpDefs(comp.algshfns, file);
-    if (comp.ND == word.NIL and rt.rs.bereaved != word.NIL) {
+    if (comp.ND == word.NIL and rs.bereaved != word.NIL) {
         dumpOb(word.True, file);
     } else {
         dumpOb(comp.ND, file);
@@ -1736,7 +1736,7 @@ pub fn dumpScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
     _ = word.putc(word.DEF_X, file);
     dumpOb(comp.SGC, file);
     _ = word.putc(word.DEF_X, file);
-    dumpOb(rt.rs.freeids, file);
+    dumpOb(rs.freeids, file);
     _ = word.putc(word.DEF_X, file);
     dumpDefs(dump.internals, file);
 }
@@ -1884,7 +1884,7 @@ pub fn dumpOb(x: Word, file: ?*word.FILE) void {
 }
 
 /// Load a script graph from a dump `file`, binding params and aliases.
-pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState, file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
+pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
     comp.TORPHANS = 0;
     comp.BAD_DUMP = 0;
     comp.CLASHES = word.NIL;
@@ -1956,7 +1956,7 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
                 break;
             }
         }
-        if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
+        if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rs.DICSPACE) {
             lex.dicovflo();
         }
         ch = getword(file);
@@ -1971,7 +1971,7 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
             }
         }
         heap.CFN = getId(name(heap));
-        files_list = cons(makeFil(heap.CFN, ch, s, loadDefs(comp, file)), files_list);
+        files_list = cons(makeFil(heap.CFN, ch, s, loadDefs(comp, rs, file)), files_list);
         ch = main_clib.getc(file);
     }
     if (ch == main_clib.EOF or comp.BAD_DUMP != 0) {
@@ -2008,11 +2008,11 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
                     break;
                 }
             }
-            if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
+            if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rs.DICSPACE) {
                 lex.dicovflo();
             }
             ch = getword(file);
-            if (rt.rs.oldfiles == word.NIL) {
+            if (rs.oldfiles == word.NIL) {
                 if (main_clib.strcmp(ls.dicp, src) != 0) {
                     comp.BAD_DUMP = 1;
                     if (aliases != word.NIL) {
@@ -2021,30 +2021,30 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
                     return word.NIL;
                 }
             }
-            rt.rs.oldfiles = cons(makeFil(getId(name(heap)), ch, 0, word.NIL), rt.rs.oldfiles);
+            rs.oldfiles = cons(makeFil(getId(name(heap)), ch, 0, word.NIL), rs.oldfiles);
         }
         if (aliases != word.NIL) {
             unscramble(comp, aliases);
         }
         return word.NIL;
     }
-    comp.algshfns = append1(comp.algshfns, loadDefs(comp, file));
-    comp.ND = loadDefs(comp, file);
+    comp.algshfns = append1(comp.algshfns, loadDefs(comp, rs, file));
+    comp.ND = loadDefs(comp, rs, file);
     if (comp.ND == word.True) {
         comp.ND = word.NIL;
         comp.TORPHANS = 1;
     }
-    comp.SGC = append1(comp.SGC, loadDefs(comp, file));
-    if (main_flag != 0 or rt.rs.includees == word.NIL) {
-        rt.rs.freeids = loadDefs(comp, file);
+    comp.SGC = append1(comp.SGC, loadDefs(comp, rs, file));
+    if (main_flag != 0 or rs.includees == word.NIL) {
+        rs.freeids = loadDefs(comp, rs, file);
     } else {
-        bindparams(comp, loadDefs(comp, file), hdsort(params));
+        bindparams(comp, loadDefs(comp, rs, file), hdsort(params));
     }
     if (aliases != word.NIL) {
         unscramble(comp, aliases);
     }
     if (main_flag != 0) {
-        dump.internals = loadDefs(comp, file);
+        dump.internals = loadDefs(comp, rs, file);
     }
     return reverse(files_list);
 }
@@ -2157,7 +2157,7 @@ pub fn dgrow() void {
 /// Load a definition list from a dump `file`.
 ///
 /// Tests: dumpOb / loadDefs: roundtrip a cons of two ints through the .x format
-pub fn loadDefs(comp: *compiler_state.CompilerState, file: ?*word.FILE) Word {
+pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, file: ?*word.FILE) Word {
     var ch = main_clib.getc(file);
     var defs: Word = word.NIL;
     while (ch != main_clib.EOF) {
@@ -2224,7 +2224,7 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, file: ?*word.FILE) Word {
                         break;
                     }
                 }
-                if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
+                if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rs.DICSPACE) {
                     lex.dicovflo();
                 }
                 stackpPush(name(heap));
@@ -2246,7 +2246,7 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, file: ?*word.FILE) Word {
                         break;
                     }
                 }
-                if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
+                if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rs.DICSPACE) {
                     lex.dicovflo();
                 }
                 stackpPush(datapair(strtab.strBits(strtab.table, getId(name(heap))), 0));
@@ -2273,7 +2273,7 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, file: ?*word.FILE) Word {
                             break;
                         }
                     }
-                    if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rt.rs.DICSPACE) {
+                    if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rs.DICSPACE) {
                         lex.dicovflo();
                     }
                     var line = main_clib.getc(file);
@@ -2580,17 +2580,17 @@ pub fn unsetids(d_val: Word) void {
 }
 
 /// Unload the current script: clear its definitions from the environment.
-pub fn unload(comp: *compiler_state.CompilerState) void {
-    rt.rs.sorted = 0;
+pub fn unload(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState) void {
+    rs.sorted = 0;
     comp.speclocs = NIL;
     ls.nextpn = 0;
     comp.rv_script = 0;
     comp.algshfns = NIL;
     unsetids(comp.newtyps);
     comp.newtyps = NIL;
-    unsetids(rt.rs.freeids);
-    rt.rs.freeids = NIL;
-    rt.rs.includees = NIL;
+    unsetids(rs.freeids);
+    rs.freeids = NIL;
+    rs.includees = NIL;
     comp.SGC = NIL;
     comp.TABSTRS = NIL;
     comp.ND = NIL;
@@ -2601,20 +2601,20 @@ pub fn unload(comp: *compiler_state.CompilerState) void {
         unsetids(t(fil));
         tp(fil).* = NIL;
     }
-    var ld = rt.rs.ld_stuff;
+    var ld = rs.ld_stuff;
     while (ld != NIL and ld != 0) : (ld = t(ld)) {
         var x = h(ld);
         while (x != NIL and x != 0) : (x = t(x)) {
             unsetids(t(h(x)));
         }
     }
-    rt.rs.ld_stuff = NIL;
+    rs.ld_stuff = NIL;
 }
 
 /// Whether any loaded source file has changed on disk since load (1/0).
-pub fn srcUpdate() c_int {
+pub fn srcUpdate(rs: *rt.RuntimeState) c_int {
     var ft: Word = undefined;
-    var f = if (heap.files == NIL) rt.rs.oldfiles else heap.files;
+    var f = if (heap.files == NIL) rs.oldfiles else heap.files;
     while (f != NIL) {
         const _fil_path: [*:0]const u8 = strtab.strOf(strtab.table, h(h(h(h(f)))));
         if ((fileMtime(_fil_path)) != filTime(h(f))) {
@@ -2763,7 +2763,7 @@ test "dumpOb / loadDefs: roundtrip a cons of two ints through the .x format" {
 
     // 6. Load it back using loadDefs (which pushes it onto stackp)
     const old_stackp = heap.stackp;
-    _ = loadDefs(cs, f_read);
+    _ = loadDefs(cs, rt.rs, f_read);
     _ = word.fclose(f_read.?);
 
     // Clean up temp file

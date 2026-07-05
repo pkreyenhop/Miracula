@@ -81,6 +81,7 @@ pub fn reduce(e_val: Word) Word {
     ctx.action = word.ACT_NONE;
     ctx.heap = heap_mod.heap;
     ctx.eval = reduce_rt.ev;
+    ctx.rs = rt.rs;
 
     main_loop: while (true) {
         // (1) Unwind the left spine: descend through `AP` nodes (reversing

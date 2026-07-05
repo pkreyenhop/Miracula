@@ -1087,7 +1087,7 @@ pub fn handleERROR(ctx: *ReductionCtx) void {
         ctx.eval.errtrap = 1;
         word.printErr("\nprogram error: ", .{});
         ctx.eval.s_out = reduce.getStderr();
-        reduce_rt.print(ctx.eval, lastarg);
+        reduce_rt.print(ctx.eval, ctx.rs, lastarg);
         _ = word.putc('\n', reduce.getStderr().?);
     }
     reduce_rt.outstats();

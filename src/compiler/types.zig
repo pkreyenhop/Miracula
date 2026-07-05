@@ -2673,7 +2673,7 @@ pub fn tsetup() void {
 }
 
 /// Type-check every definition in the current script.
-pub fn checktypes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState) void {
+pub fn checktypes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState) void {
     comp.ATNAMES = 0;
     comp.TYPERRS = 0;
     comp.NT = NIL;
@@ -2681,8 +2681,8 @@ pub fn checktypes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
     comp.SBND = NIL;
     comp.ND = NIL;
     outer: {
-        if (rt.rs.rfl != NIL) {
-            readoption(heap, comp);
+        if (rs.rfl != NIL) {
+            readoption(heap, comp, rs);
         }
         var s = reverse(t(heap, h(heap, heap.files)));
         while (s != NIL) {
@@ -2703,11 +2703,11 @@ pub fn checktypes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         core.SYNERR = 1;
         return;
     }
-    if (rt.rs.freeids != NIL) {
-        redtfr(heap, rt.rs.freeids);
+    if (rs.freeids != NIL) {
+        redtfr(heap, rs.freeids);
     }
     genshfns(heap);
-    if (rt.rs.fnts != NIL) {
+    if (rs.fnts != NIL) {
         genbnft(heap);
     }
     comp.R = msc(heap, comp.R);
@@ -2732,6 +2732,6 @@ pub fn checktypes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.validate();
         @import("trans.zig").validate(heap);
-        rt.rs.validate();
+        rs.validate();
     }
 }

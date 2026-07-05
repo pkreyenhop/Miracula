@@ -35,6 +35,7 @@ const word = @import("../word.zig");
 const strtab = @import("../strtab.zig");
 const spine = @import("spine.zig");
 const heap_mod = @import("../heap.zig");
+const rt = @import("../runtime_state.zig");
 
 /// The interpreter machine word (see `word.Word`).
 pub const Word = i64;
@@ -46,17 +47,13 @@ pub const Heap = heap_mod.Heap;
 /// `spine.zig`) · `hold` general scratch (used by many handlers for
 /// unrelated temporaries, not just spine bookkeeping) · `args` pulled
 /// arguments · `action` post-dispatch signal (`ACT_NONE`/`ACT_NEXTREDEX`/
-/// `ACT_DONE`) · `heap` the cell arena this reduction runs against.
-///
-/// **Deliberately not included** (SHARED_STATE Phase 5 Tier 2, 2026-07-01):
-/// `ready.zig` still reads `rt.rs.linebuf` (a `sprintf`-style scratch buffer)
-/// and `rt.rs.UTF8` (the UTF-8-output flag) ambiently in a few handlers
-/// (`SHOWNUM`/`SHOWHEX`/`SHOWSCALED`/`SHOWFLOAT`/`GETENV`). Both are
-/// whole-interpreter shared state used well beyond the reducer (`linebuf` also
-/// in `commands.zig`/`reduce.zig`/`lex.zig`/`dump.zig`; `UTF8` also in
-/// `startup.zig`/`commands.zig`/`reduce.zig`/`lex.zig`), so folding them into
-/// this reducer-local register file would be a category error, not a
-/// narrowing — this is a documented exception, not an oversight.
+/// `ACT_DONE`) · `heap` the cell arena this reduction runs against · `eval`
+/// I/O and evaluation-error-recovery state · `rs` the interpreter-wide
+/// `RuntimeState` (`ready.zig`'s `SHOWNUM`/`SHOWHEX`/`SHOWSCALED`/
+/// `SHOWFLOAT`/`GETENV` handlers read `ctx.rs.linebuf`/`ctx.rs.UTF8` through
+/// it as of Tier 4's `RuntimeState` increment, 2026-07-05 — despite both
+/// being whole-interpreter shared state used well beyond the reducer, adding
+/// the field costs nothing once `ctx` is already threaded everywhere).
 pub const ReductionCtx = struct {
     /// Focus node: the redex currently under examination (the "expression" register).
     e: Word,
@@ -74,6 +71,9 @@ pub const ReductionCtx = struct {
     /// I/O and evaluation-error-recovery state (`Tier 4` of the shared-state
     /// plan — mirrors `heap`'s Tier 1.5 threading; see [reduce_mod.EvalState]).
     eval: *reduce_mod.EvalState,
+    /// Interpreter-wide runtime state (`Tier 4`, `RuntimeState`) — same
+    /// threading rationale as `eval`.
+    rs: *rt.RuntimeState,
 };
 
 // Re-exports so handlers can reach engine/lexer helpers as `reduce.<name>`.

@@ -979,6 +979,65 @@ manual REPL smoke test (arithmetic / syntax-error recovery / `%include` of a
 missing file / `/f`) diffed against the pre-CompilerState commit via
 `git stash`.
 
+**`RuntimeState` (~700 touches, 19 files) — done, 2026-07-05.** The biggest
+tractable-vs-ambient split of the four increments so far — `rt.rs` is used
+far more broadly than `core`/`comp` (identity atoms, file paths, CLI-derived
+config, GC roots), so the tractable cluster came out much larger, not
+smaller. Threaded `rs: *RuntimeState` through:
+- The full `module_loader.zig` cluster (**all 7 functions**, not a subset —
+  every one of `loadfile`/`resolveExportFileList`/`resolveExports`/
+  `computeBereavedNames`/`reportBereavedExports`/`reportUnusedDefinitions`/
+  `mkincludes` touches `rt.rs` somewhere, unlike the Core/CompilerState
+  passes which skipped a couple of these).
+- `dump.zig`: `undump`/`makedump`/`readoption`/`fixexports`/`unfixexports`.
+- `heap.zig`'s binary-dump cluster: `dumpScript`/`loadScript`/`loadDefs`/
+  `unload`, plus `srcUpdate` (a new tractable single-hop found this tier —
+  all 5 callers already had `rs` in scope from the driver-level threading
+  below).
+- The full driver layer: `commands.zig`'s entire non-hot-path surface
+  (`filequote`/`namescom`/`cmdFiles`/`cmdEdit`/`command`/`manaction`/
+  `editfile`/`finger`/`allnamescom`) and `repl.zig`'s `commandLoop`/`obey`/
+  `evaluateRepl`/`parseLine`/`edWarn`/`badEditor` — i.e. essentially every
+  function in both files except the two signal handlers.
+- `types.zig`'s `checktypes` (extending the Tier-4-increment-two `comp`
+  threading with one more param).
+- **New for this tier:** `ReductionCtx` gained an `rs: *RuntimeState` field
+  (mirroring `heap`/`eval`), which made `reducer/ready.zig`'s three
+  `ctx`-having handlers (`handleReadyState`/`handleReadyGETENV`/
+  `handleReadyNUMVAL`, 15 touches total) and `reduce.zig`'s `streamRead`/
+  `print`/`output` tractable at **zero new parameters** — same "the ctx is
+  already everywhere" leverage that made Tier 1.5's `heap` field free.
+
+Confirms the pattern from the prior two increments for the remainder:
+`startup.zig` (189, almost entirely `mainEntry`/`parseFlags`/the
+`run*Mode` bootstrap functions — none of which have ever threaded any
+struct, matching `miraSetup`'s own precedent), `lex.zig` (62, the tokenizer
+hot path), `heap.zig`'s remaining 50 (`bases`/`gc`/`makeSlow`/`growHeap`/
+`setupheap`/`resetheap`/`BIGTOP` — the GC/allocator internals, plus test
+blocks), `trans.zig` (29, the `declare`/`specify`/`codegen` cluster —
+mutually recursive with the already-ambient `syntax`/`acterror`), `setup.zig`
+(27, `miraSetup` itself), `types.zig`'s remaining 9 and `codegen.zig`'s 8
+(the `etype`/`sayhere`/`outType` family and `codegen.zig`'s already-fully-
+ambient convention), `parser_api.zig`'s 8 (`parseCurrentNew`, the parser's
+own hot entry point), and `main.zig`/`micro_benchmarks.zig` (the true
+process entry points, which have never threaded anything). All left
+unchanged, same reasoning as before: pervasive fan-out into a core
+recursive/hot-path component, not per-request data.
+
+One near-miss caught before it shipped: `parser_tests.zig:432`'s
+`commands.editfile("test.m", 42, 17)` compiles fine under plain `zig build`
+(test files aren't part of the default install graph) but only surfaces
+under `zig build test` — a reminder that this increment's tractable-vs-
+ambient sweep needs the test build to be authoritative, not just the
+install build.
+
+Verified identically to the prior three increments: `zig build` clean,
+`lint` at the 16-warning baseline, `zig build test` (which caught and fixed
+the `parser_tests.zig` miss above) with direct `main-tests` binary 176/176,
+`test-mira` exit 0, `test-golden` 43/44 (same pre-existing `script_syntax_err`
+failure), and a byte-identical manual REPL smoke test diffed against the
+pre-RuntimeState commit via `git stash`.
+
 ### Phase 6 — De-globalize & document *(close-out; conditional on Tier 3 + Tier 4)*
 Delete the global `var interp`; `main()` constructs it explicitly
 (`var interp = Interp.init(gpa); defer interp.deinit(); return interp.run(args);`).

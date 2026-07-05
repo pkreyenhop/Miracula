@@ -287,7 +287,7 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
                 ctx.eval.stdinuse = '-';
                 tp(ctx.e).* = @as(Word, @intCast(@intFromPtr(getStdin().?)));
             }
-            const hold_char = if (rt.rs.UTF8 != 0) stoChar(fromUTF8(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))))) else main_clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
+            const hold_char = if (ctx.rs.UTF8 != 0) stoChar(fromUTF8(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))))) else main_clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
             if (hold_char == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
                 rewriteToNil(&ctx.e);
@@ -305,7 +305,7 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
             reduce_core.upLeft(ctx);
             const lastarg = t(ctx.e);
 
-            const val = parseLine(ctx.heap, core_state.s, h(ctx.args[0]), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.args[0]));
+            const val = parseLine(ctx.heap, core_state.s, rt.rs, h(ctx.args[0]), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.args[0]));
             if (val == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(lastarg))));
                 rewriteToNil(&ctx.e);
@@ -755,7 +755,7 @@ pub fn outf(eval: *EvalState, e: Word) void {
 }
 
 /// Print a Miranda char-list to the current output stream (`eval.s_out`), honouring UTF-8.
-pub fn print(eval: *EvalState, arg_e: Word) void {
+pub fn print(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) void {
     var e = reduce(arg_e);
     while (getTag(e) == .CONS) {
         hp(e).* = reduce(h(e));
@@ -763,7 +763,7 @@ pub fn print(eval: *EvalState, arg_e: Word) void {
             break;
         }
         const c = @as(u32, @intCast(heap.getChar(h(e))));
-        if (rt.rs.UTF8 != 0) {
+        if (rs.UTF8 != 0) {
             main_clib.outUTF8(c, eval.s_out);
         } else if (word.fitsInByte(c)) {
             _ = word.putc(@intCast(c), eval.s_out.?);
@@ -795,36 +795,36 @@ const Tofileb = 8;
 const Appendfileb = 9;
 
 /// Drive a list of output directives (`Stdout`/`Tofile`/`System`/`Exit`/…) — the top of the I/O interpreter.
-pub fn output(eval: *EvalState, arg_e: Word) void {
+pub fn output(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) void {
     var e = arg_e;
-    const old_cstack = rt.rs.cstack;
-    rt.rs.cstack = @ptrCast(&e);
-    defer rt.rs.cstack = old_cstack;
+    const old_cstack = rs.cstack;
+    rs.cstack = @ptrCast(&e);
+    defer rs.cstack = old_cstack;
 
     e = reduce(e);
     while (getTag(e) == .CONS) {
         hp(e).* = reduce(h(e));
         switch (h(head(h(e)))) {
             Stdout => {
-                print(eval, t(h(e)));
+                print(eval, rs, t(h(e)));
             },
             Stdoutb => {
-                rt.rs.UTF8OUT = 0;
-                print(eval, t(h(e)));
-                rt.rs.UTF8OUT = rt.rs.UTF8;
+                rs.UTF8OUT = 0;
+                print(eval, rs, t(h(e)));
+                rs.UTF8OUT = rs.UTF8;
             },
             Stderr => {
                 eval.s_out = getStderr();
-                print(eval, t(h(e)));
+                print(eval, rs, t(h(e)));
                 eval.s_out = getStdout();
             },
             Tofile => {
                 outf(eval, h(e));
             },
             Tofileb => {
-                rt.rs.UTF8OUT = 0;
+                rs.UTF8OUT = 0;
                 outf(eval, h(e));
-                rt.rs.UTF8OUT = rt.rs.UTF8;
+                rs.UTF8OUT = rs.UTF8;
             },
             Closefile => {
                 tp(h(e)).* = reduce(t(h(e)));
@@ -835,10 +835,10 @@ pub fn output(eval: *EvalState, arg_e: Word) void {
                 apfile(eval, t(h(e)));
             },
             Appendfileb => {
-                rt.rs.UTF8OUT = 0;
+                rs.UTF8OUT = 0;
                 tp(h(e)).* = reduce(t(h(e)));
                 apfile(eval, t(h(e)));
-                rt.rs.UTF8OUT = rt.rs.UTF8;
+                rs.UTF8OUT = rs.UTF8;
             },
             System => {
                 tp(h(e)).* = reduce(t(h(e)));

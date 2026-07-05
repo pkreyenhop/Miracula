@@ -303,17 +303,17 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             reduce.upLeft(ctx);
             if (reduce.isDouble(ctx.heap, lastArg(ctx))) {
                 const x = heap.getDbl(lastArg(ctx));
-                _ = main_clib.sprintf(&rt.rs.linebuf, "%.16g", .{x});
+                _ = main_clib.sprintf(&ctx.rs.linebuf, "%.16g", .{x});
                 var p_idx: usize = 0;
-                while (word.isdigit(rt.rs.linebuf[p_idx])) {
+                while (word.isdigit(ctx.rs.linebuf[p_idx])) {
                     p_idx += 1;
                 }
-                if (rt.rs.linebuf[p_idx] == 0) {
-                    rt.rs.linebuf[p_idx] = '.';
-                    rt.rs.linebuf[p_idx + 1] = '0';
-                    rt.rs.linebuf[p_idx + 2] = 0;
+                if (ctx.rs.linebuf[p_idx] == 0) {
+                    ctx.rs.linebuf[p_idx] = '.';
+                    ctx.rs.linebuf[p_idx + 1] = '0';
+                    ctx.rs.linebuf[p_idx + 2] = 0;
                 }
-                reduce.rewriteToString(ctx.heap, &ctx.e, @ptrCast(&rt.rs.linebuf));
+                reduce.rewriteToString(ctx.heap, &ctx.e, @ptrCast(&ctx.rs.linebuf));
             } else {
                 reduce.simpl(ctx, big.toDecimalList(heap.heap, lastArg(ctx)));
             }
@@ -323,8 +323,8 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
         word.SHOWHEX => {
             reduce.upLeft(ctx);
             if (reduce.isDouble(ctx.heap, lastArg(ctx))) {
-                _ = main_clib.sprintf(&rt.rs.linebuf, "%a", .{heap.getDbl(lastArg(ctx))});
-                reduce.rewriteToString(ctx.heap, &ctx.e, @ptrCast(&rt.rs.linebuf));
+                _ = main_clib.sprintf(&ctx.rs.linebuf, "%a", .{heap.getDbl(lastArg(ctx))});
+                reduce.rewriteToString(ctx.heap, &ctx.e, @ptrCast(&ctx.rs.linebuf));
             } else {
                 reduce.simpl(ctx, big.toHexList(heap.heap, lastArg(ctx)));
             }
@@ -561,8 +561,8 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                 reduce_rt.intError("showscaled");
             }
             const arg1_int = reduce.getsmallint(ctx.heap, ctx.args[0]);
-            _ = main_clib.sprintf(&rt.rs.linebuf, "%.*e", .{ @as(c_int, @intCast(arg1_int)), reduce.forceDbl(ctx.heap, lastArg(ctx)) });
-            reduce.rewriteToString(ctx.heap, &ctx.e, @ptrCast(&rt.rs.linebuf));
+            _ = main_clib.sprintf(&ctx.rs.linebuf, "%.*e", .{ @as(c_int, @intCast(arg1_int)), reduce.forceDbl(ctx.heap, lastArg(ctx)) });
+            reduce.rewriteToString(ctx.heap, &ctx.e, @ptrCast(&ctx.rs.linebuf));
             ctx.action = word.ACT_DONE;
             return;
         },
@@ -573,8 +573,8 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                 reduce_rt.intError("showfloat");
             }
             const arg1_int = reduce.getsmallint(ctx.heap, ctx.args[0]);
-            _ = main_clib.sprintf(&rt.rs.linebuf, "%.*f", .{ @as(c_int, @intCast(arg1_int)), reduce.forceDbl(ctx.heap, lastArg(ctx)) });
-            reduce.rewriteToString(ctx.heap, &ctx.e, @ptrCast(&rt.rs.linebuf));
+            _ = main_clib.sprintf(&ctx.rs.linebuf, "%.*f", .{ @as(c_int, @intCast(arg1_int)), reduce.forceDbl(ctx.heap, lastArg(ctx)) });
+            reduce.rewriteToString(ctx.heap, &ctx.e, @ptrCast(&ctx.rs.linebuf));
             ctx.action = word.ACT_DONE;
             return;
         },
@@ -634,7 +634,7 @@ fn handleReadyGETENV(ctx: *ReductionCtx) void {
     ctx.hold = word.NIL;
     if (p) |ptr| {
         var i = word.strlen(ptr);
-        if (rt.rs.UTF8 != 0) {
+        if (ctx.rs.UTF8 != 0) {
             const qbuf_slice = rt.allocator.alloc(u8, i + 1) catch heap.mallocPanic("utf8 conversion buffer");
             const qbuf = qbuf_slice.ptr;
             _ = word.strcpy(@as([*:0]u8, @ptrCast(qbuf)), ptr);
@@ -771,7 +771,7 @@ fn handleReadyNUMVAL(ctx: *ReductionCtx) void {
         reduce.tlSet(ctx.heap, ctx.e, val);
         ctx.e = val;
     } else {
-        var p = &rt.rs.linebuf;
+        var p = &ctx.rs.linebuf;
         var d: f64 = 0.0;
         var junk: u8 = 0;
         x = lastArg(ctx);

@@ -90,7 +90,7 @@ fn parseCurrentNew() ParseError!ParseResult {
             rt.rs.validate();
         }
         rt.rs.lastexp = expr_word; // anchor as GC root before typeOf() inside evaluateRepl() can trigger GC
-        evaluateRepl(heap.heap, core.s, compiler_state.cs, expr_word);
+        evaluateRepl(heap.heap, core.s, compiler_state.cs, rt.rs, expr_word);
         // Child prints newline before exit(0); parent returns here.
         return .success;
     }
