@@ -23,9 +23,9 @@ pub fn main(ctx: std.process.Init) !void {
     const exit_code = startup.mainEntry(argc, argv);
     if (@import("version_options").is_strict or @import("builtin").mode == .Debug) {
         const heap = @import("runtime/heap.zig");
-        heap.heap.validate();
-        @import("compiler/trans.zig").validate(heap.heap);
-        rt.rs.validate();
+        heap.heap().validate();
+        @import("compiler/trans.zig").validate(heap.heap());
+        rt.rs().validate();
     }
     const check = rt.gpa.deinit();
     const final_exit_code = if (check == .leak and @import("version_options").is_strict) 1 else exit_code;

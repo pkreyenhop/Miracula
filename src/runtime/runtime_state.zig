@@ -173,7 +173,7 @@ pub const RuntimeState = struct {
     /// shorthand.
     filequote_mlen: usize = 0,
     /// Elapsed time and GC count from the last evaluated REPL expression,
-    /// surfaced in the next prompt string. Also read (as `rt.rs.X`, ambiently)
+    /// surfaced in the next prompt string. Also read (as `rt.rs().X`, ambiently)
     /// by `reset()`, the SIGINT handler, which cannot take parameters.
     last_elapsed_ns: ?i128 = null,
     last_gc_count: ?c_long = null,
@@ -197,7 +197,7 @@ pub const RuntimeState = struct {
         const options = @import("version_options");
         if (@import("builtin").mode != .Debug and !options.is_strict) return;
 
-        const heap = &@import("interp.zig").interp.heap;
+        const heap = &@import("interp.zig").current_interp.heap;
         const top_limit = heap.TOP();
 
         inline for (.{ self.Void, self.main_id, self.message, self.standardout, self.diagonalise, self.concat, self.indent_fn, self.outdent_fn, self.listdiff_fn, self.shownum1, self.showbool, self.showchar, self.showlist, self.showstring, self.showparen, self.showpair, self.showvoid, self.showfunction, self.showabstract, self.showwhat, self.lastid, self.rv_expr, self.fnts, self.primenv, self.oldfiles, self.includees, self.freeids, self.exports, self.embargoes, self.lastname, self.suppressids, self.col_fn, self.eprodnts, self.nonterminals, self.ntmap, self.ntspecmap, self.lexstates, self.lexdefs, self.detrop, self.rfl, self.ld_stuff }) |field| {
@@ -210,9 +210,11 @@ pub const RuntimeState = struct {
     }
 };
 
-/// Pointer to the singleton runtime state held in `interp` (so `interp.reset()`
-/// clears it). Accessed as `rs.X`.
-pub const rs = &@import("interp.zig").interp.rs;
+/// Pointer to the singleton runtime state held in `current_interp` (so
+/// `interp.reset()` clears it). Accessed as `rt.rs().X`.
+pub inline fn rs() *RuntimeState {
+    return &@import("interp.zig").current_interp.rs;
+}
 
 test "RuntimeState default values are self-consistent" {
     const state: RuntimeState = .{};

@@ -1089,7 +1089,7 @@ test "rindex: last occurrence of a char (libc strrchr alias)" {
 
 /// I/O subsystem state (shared-state plan Phase 2c): the stderr/stdout writer
 /// caches, the three standard `FILE` streams, and the `FILE` allocation pool.
-/// Accessed as `word.fio.X`; folds into `Interp.io` in Phase 3.
+/// Accessed as `word.fio().X`; folds into `Interp.io` in Phase 3.
 pub const IoState = struct {
     stdout_buf: [8192]u8 = undefined,
     stderr_buf: [8192]u8 = undefined,
@@ -1103,17 +1103,19 @@ pub const IoState = struct {
     file_in_use: [16]bool = [_]bool{false} ** 16,
 };
 
-/// Pointer to the I/O subsystem state held in `interp` (so `interp.reset()`
-/// clears it). Accessed as `word.fio.X`.
-pub const fio = &@import("interp.zig").interp.io;
+/// Pointer to the I/O subsystem state held in `current_interp` (so
+/// `interp.reset()` clears it). Accessed as `word.fio().X`.
+pub inline fn fio() *IoState {
+    return &@import("interp.zig").current_interp.io;
+}
 
 /// Lazily initialise the buffered stdout/stderr writers (once).
 pub fn initWriters() void {
-    if (fio.writers_initialized) return;
+    if (fio().writers_initialized) return;
     const io = std.Options.debug_io;
-    fio.stdout_writer = std.Io.File.stdout().writer(io, &fio.stdout_buf);
-    fio.stderr_writer = std.Io.File.stderr().writer(io, &fio.stderr_buf);
-    fio.writers_initialized = true;
+    fio().stdout_writer = std.Io.File.stdout().writer(io, &fio().stdout_buf);
+    fio().stderr_writer = std.Io.File.stderr().writer(io, &fio().stderr_buf);
+    fio().writers_initialized = true;
 }
 
 // The Zig-native printers below tolerate a double-wrapped arg tuple
@@ -1128,11 +1130,11 @@ pub fn print(comptime fmt: []const u8, args: anytype) void {
     initWriters();
     const fs = std.meta.fields(@TypeOf(args));
     if (comptime (fs.len == 1 and @typeInfo(fs[0].type) == .@"struct")) {
-        fio.stdout_writer.interface.print(fmt, @field(args, fs[0].name)) catch {};
+        fio().stdout_writer.interface.print(fmt, @field(args, fs[0].name)) catch {};
     } else {
-        fio.stdout_writer.interface.print(fmt, args) catch {};
+        fio().stdout_writer.interface.print(fmt, args) catch {};
     }
-    fio.stdout_writer.interface.flush() catch {};
+    fio().stdout_writer.interface.flush() catch {};
 }
 
 /// Formatted write to stderr (the `print` analogue).
@@ -1140,11 +1142,11 @@ pub fn printErr(comptime fmt: []const u8, args: anytype) void {
     initWriters();
     const fs = std.meta.fields(@TypeOf(args));
     if (comptime (fs.len == 1 and @typeInfo(fs[0].type) == .@"struct")) {
-        fio.stderr_writer.interface.print(fmt, @field(args, fs[0].name)) catch {};
+        fio().stderr_writer.interface.print(fmt, @field(args, fs[0].name)) catch {};
     } else {
-        fio.stderr_writer.interface.print(fmt, args) catch {};
+        fio().stderr_writer.interface.print(fmt, args) catch {};
     }
-    fio.stderr_writer.interface.flush() catch {};
+    fio().stderr_writer.interface.flush() catch {};
 }
 
 /// Zig-native formatted write to an optional file (the `fprintf` analogue):
@@ -1175,26 +1177,26 @@ pub fn flush() void {
 
 /// The standard-input `FILE`.
 pub fn stdin() ?*FILE {
-    return &fio.std_in;
+    return &fio().std_in;
 }
 /// The standard-output `FILE`.
 pub fn stdout() ?*FILE {
-    return &fio.std_out;
+    return &fio().std_out;
 }
 /// The standard-error `FILE`.
 pub fn stderr() ?*FILE {
-    return &fio.std_err;
+    return &fio().std_err;
 }
 
 // (fio.file_pool / fio.file_in_use now live in `IoState` above.)
 
 /// Claim a free slot from the fixed `FILE` pool, or null if exhausted.
 fn allocFile() ?*FILE {
-    for (&fio.file_in_use, 0..) |*in_use, idx| {
+    for (&fio().file_in_use, 0..) |*in_use, idx| {
         if (!in_use.*) {
             in_use.* = true;
-            fio.file_pool[idx] = FILE{ .file = .{ .handle = -1, .flags = .{ .nonblocking = false } } };
-            return &fio.file_pool[idx];
+            fio().file_pool[idx] = FILE{ .file = .{ .handle = -1, .flags = .{ .nonblocking = false } } };
+            return &fio().file_pool[idx];
         }
     }
     return null;
@@ -1203,11 +1205,11 @@ fn allocFile() ?*FILE {
 /// Return a pooled `FILE` to the free list.
 fn freeFile(f: *FILE) void {
     const ptr_val = @intFromPtr(f);
-    const pool_start = @intFromPtr(&fio.file_pool[0]);
+    const pool_start = @intFromPtr(&fio().file_pool[0]);
     const pool_end = @as(usize, @intCast(pool_start + @sizeOf(FILE) * 16));
     if (ptr_val >= pool_start and ptr_val < pool_end) {
         const idx = (ptr_val - pool_start) / @sizeOf(FILE);
-        fio.file_in_use[idx] = false;
+        fio().file_in_use[idx] = false;
     }
 }
 
@@ -1255,7 +1257,7 @@ pub fn fopen(path: ?*const anyopaque, mode: [*:0]const u8) ?*FILE {
 /// libc `fclose` (a no-op for the std streams).
 pub fn fclose(file: ?*FILE) c_int {
     if (file) |f| {
-        if (f == &fio.std_in or f == &fio.std_out or f == &fio.std_err) {
+        if (f == &fio().std_in or f == &fio().std_out or f == &fio().std_err) {
             return 0;
         }
         if (f.file.handle >= 0) {
@@ -1290,7 +1292,7 @@ pub fn getc(file: ?*FILE) c_int {
 
 /// libc `getchar` (reads stdin).
 pub fn getchar() c_int {
-    return getc(&fio.std_in);
+    return getc(&fio().std_in);
 }
 
 /// Push a byte back so the next read returns it (libc `ungetc`).
@@ -1661,7 +1663,7 @@ pub fn fputc(ch: c_int, file: ?*FILE) c_int {
 
 /// libc `putchar` (to stdout).
 pub fn putchar(ch: c_int) c_int {
-    return putc(ch, &fio.std_out);
+    return putc(ch, &fio().std_out);
 }
 
 /// libc `isspace`: true for an ASCII whitespace byte (false out of range).

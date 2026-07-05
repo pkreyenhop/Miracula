@@ -63,22 +63,22 @@ pub fn freshInterp() void {
 
 /// A boxed integer node (bignum), the value `n`.
 pub fn int(n: i64) Word {
-    return big.fromInt(heap.heap, @intCast(n));
+    return big.fromInt(heap.heap(), @intCast(n));
 }
 
 /// Apply `f` to `x`: the heap node `(f x)`.
 pub fn ap(x: Word, y: Word) Word {
-    return reduce.ap(heap.heap, x, y);
+    return reduce.ap(heap.heap(), x, y);
 }
 
 /// Apply `f` to two arguments: `((f x) y)`.
 pub fn ap2(f: Word, x: Word, y: Word) Word {
-    return reduce.ap2(heap.heap, f, x, y);
+    return reduce.ap2(heap.heap(), f, x, y);
 }
 
 /// A cons cell `(head : tail)`.
 pub fn cons(x: Word, y: Word) Word {
-    return reduce.cons(heap.heap, x, y);
+    return reduce.cons(heap.heap(), x, y);
 }
 
 /// A proper list of the given nodes, terminated by `NIL`: `a : b : … : NIL`.
@@ -87,7 +87,7 @@ pub fn list(items: []const Word) Word {
     var i = items.len;
     while (i > 0) {
         i -= 1;
-        result = reduce.cons(heap.heap, items[i], result);
+        result = reduce.cons(heap.heap(), items[i], result);
     }
     return result;
 }
@@ -98,7 +98,7 @@ pub fn str(s: []const u8) Word {
     var i = s.len;
     while (i > 0) {
         i -= 1;
-        result = reduce.cons(heap.heap, heap.stoChar(s[i]), result);
+        result = reduce.cons(heap.heap(), heap.stoChar(s[i]), result);
     }
     return result;
 }
@@ -119,7 +119,7 @@ pub fn expectTag(tag: word.NodeTag, node: Word) !void {
 pub fn expectInt(expected: i64, node: Word) !void {
     const r = reduce.reduce(node);
     try std.testing.expect(heap.getTag(r) == .INT);
-    try std.testing.expectEqual(expected, @as(i64, @intCast(big.toInt(heap.heap, r))));
+    try std.testing.expectEqual(expected, @as(i64, @intCast(big.toInt(heap.heap(), r))));
 }
 
 /// Assert that `node` reduces to a proper list whose elements reduce, in order,

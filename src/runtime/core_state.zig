@@ -9,7 +9,7 @@
 const Word = i64;
 
 /// Core interpreter / error state, grouped into one struct (shared-state plan
-/// Phase 2a). Accessed as `core_state.s.<field>`; folds into `Interp.core` in
+/// Phase 2a). Accessed as `core_state.s().<field>`; folds into `Interp.core` in
 /// Phase 3.
 pub const CoreState = struct {
     /// Heap address of the `nil` combinator (set during miraSetup).
@@ -33,5 +33,8 @@ pub const CoreState = struct {
     commandmode: Word = 0,
 };
 
-/// The process-wide singleton (transitional; becomes `Interp.core` in Phase 3).
-pub const s = &@import("interp.zig").interp.core;
+/// Pointer to the singleton `CoreState` inside `current_interp`. Call sites
+/// use `core_state.s().X` (or `s().X` via a local alias).
+pub inline fn s() *CoreState {
+    return &@import("interp.zig").current_interp.core;
+}

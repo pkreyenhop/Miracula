@@ -235,7 +235,7 @@ fn ap3(w: Word, x: Word, y: Word, z: Word) Word {
 
 /// The interned name text of id `x`.
 fn getId(heap: *Heap, x: Word) [*:0]const u8 {
-    return strtab.strOf(strtab.table, h(heap, h(heap, h(heap, x))));
+    return strtab.strOf(strtab.table(), h(heap, h(heap, h(heap, x))));
 }
 
 /// The definition-site field of id `x`.
@@ -410,8 +410,8 @@ pub fn memb(heap: *Heap, input_l: Word, x: Word) Word {
 test "memb: membership in a list" {
     tu.freshInterp();
     const l = cons(word.True, cons(word.False, NIL));
-    try std.testing.expectEqual(@as(Word, 1), memb(heap_mod.heap, l, word.False));
-    try std.testing.expectEqual(@as(Word, 0), memb(heap_mod.heap, l, word.S));
+    try std.testing.expectEqual(@as(Word, 1), memb(heap_mod.heap(), l, word.False));
+    try std.testing.expectEqual(@as(Word, 0), memb(heap_mod.heap(), l, word.S));
 }
 
 /// Whether `x` and `y` are structurally equal.
@@ -437,11 +437,11 @@ pub fn same(heap: *Heap, x: Word, y: Word) Word {
 
 test "same: structural equality of graphs" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(Word, 1), same(heap_mod.heap, word.True, word.True));
+    try std.testing.expectEqual(@as(Word, 1), same(heap_mod.heap(), word.True, word.True));
     const a = cons(word.True, NIL);
     const b = cons(word.True, NIL);
-    try std.testing.expectEqual(@as(Word, 1), same(heap_mod.heap, a, b)); // distinct cells, equal structure
-    try std.testing.expectEqual(@as(Word, 0), same(heap_mod.heap, a, cons(word.False, NIL)));
+    try std.testing.expectEqual(@as(Word, 1), same(heap_mod.heap(), a, b)); // distinct cells, equal structure
+    try std.testing.expectEqual(@as(Word, 0), same(heap_mod.heap(), a, cons(word.False, NIL)));
 }
 
 /// Collect the identifiers bound by pattern/definition `x`.
@@ -490,7 +490,7 @@ pub fn irrefutable(heap: *Heap, x: Word) Word {
         return 0;
     }
     if (isConstructor(heap, x)) {
-        return member(heap, cs.SGC, x);
+        return member(heap, cs().SGC, x);
     }
     if (getTag(heap, x) == .ID) {
         return 1;
@@ -558,9 +558,9 @@ pub fn lastlink(heap: *Heap, input_x: Word) Word {
 test "lastlink: the last cell of a list" {
     tu.freshInterp();
     const l = cons(word.True, cons(word.False, cons(word.S, NIL)));
-    const last = lastlink(heap_mod.heap, l);
-    try std.testing.expectEqual(@as(Word, word.S), h(heap_mod.heap, last));
-    try std.testing.expectEqual(@as(Word, NIL), t(heap_mod.heap, last));
+    const last = lastlink(heap_mod.heap(), l);
+    try std.testing.expectEqual(@as(Word, word.S), h(heap_mod.heap(), last));
+    try std.testing.expectEqual(@as(Word, NIL), t(heap_mod.heap(), last));
 }
 
 /// Rewrite repeated variables in comprehension qualifiers `qq` into equality guards.
@@ -671,7 +671,7 @@ pub fn abstract(heap: *Heap, input_x: Word, input_e: Word) Word {
     switch (getTag(heap, x)) {
         .ID => {
             if (isConstructor(heap, x)) {
-                return if (member(heap, cs.SGC, x) != 0) ap(K, e) else ap2(Ug, primconstr(heap, x), e);
+                return if (member(heap, cs().SGC, x) != 0) ap(K, e) else ap2(Ug, primconstr(heap, x), e);
             }
             return abstr(heap, x, e);
         },
@@ -686,7 +686,7 @@ pub fn abstract(heap: *Heap, input_x: Word, input_e: Word) Word {
         },
         .TCONS, .PAIR => return ap(U, abstract(heap, h(heap, x), abstract(heap, t(heap, x), e))),
         .AP => {
-            if (member(heap, cs.SGC, appHead(heap, x)) != 0) {
+            if (member(heap, cs().SGC, appHead(heap, x)) != 0) {
                 return ap(Uf, abstract(heap, h(heap, x), abstract(heap, t(heap, x), e)));
             }
             if (getTag(heap, h(heap, x)) == .AP and h(heap, h(heap, x)) == PLUS) {
@@ -702,7 +702,7 @@ pub fn abstract(heap: *Heap, input_x: Word, input_e: Word) Word {
     if (isConstructor(heap, x)) {
         return ap2(Ug, primconstr(heap, x), e);
     }
-    _ = word.print("error in declaration of \"{s}\", undeclared constructor in pattern: ", .{getId(heap, cs.current_id)});
+    _ = word.print("error in declaration of \"{s}\", undeclared constructor in pattern: ", .{getId(heap, cs().current_id)});
     const stdout_val = getStdout();
     out(stdout_val, x);
     _ = word.print("\n", .{});
@@ -828,11 +828,11 @@ pub fn compzf(heap: *Heap, input_e: Word, input_qq: Word, diag: Word) Word {
     if (h(heap, h(heap, hold)) == GENERATOR) {
         g1 = t(heap, t(heap, h(heap, hold)));
     }
-    e = transzf(heap, e, hold, if (diag != 0) rt.rs.diagonalise else rt.rs.concat);
+    e = transzf(heap, e, hold, if (diag != 0) rt.rs().diagonalise else rt.rs().concat);
     if (diag != 0) {
         while (r != 0) {
             r -= 1;
-            e = ap(rt.rs.concat, e);
+            e = ap(rt.rs().concat, e);
         }
     }
     return if (e == g1) ap2(APPEND, NIL, e) else e;
@@ -860,7 +860,7 @@ pub fn transzf(heap: *Heap, e_input: Word, qq_input: Word, conc: Word) Word {
     }
     const q2 = h(heap, t(heap, qq));
     if (h(heap, q2) == GUARD) {
-        if (conc == rt.rs.concat) {
+        if (conc == rt.rs().concat) {
             tp(heap, t(heap, q)).* = ap2(FILTER, lambda(h(heap, t(heap, q)), t(heap, q2)), t(heap, t(heap, q)));
             tp(heap, qq).* = t(heap, t(heap, qq));
             return transzf(heap, e, qq, conc);
@@ -874,7 +874,7 @@ pub fn transzf(heap: *Heap, e_input: Word, qq_input: Word, conc: Word) Word {
 
 /// The recorded source location of the type spec for `x`.
 pub fn getspecloc(heap: *Heap, x: Word) Word {
-    var s = cs.speclocs;
+    var s = cs().speclocs;
     while (s != NIL and h(heap, h(heap, s)) != x) {
         s = t(heap, s);
     }
@@ -905,18 +905,18 @@ pub fn genlhs(heap: *Heap, x: Word) Word {
             return make(getTag(heap, x), hold, genlhs(heap, t(heap, x)));
         },
         .ID => {
-            if (member(heap, ls.idsused, x) != 0) {
+            if (member(heap, ls().idsused, x) != 0) {
                 return cons(CONST, x);
             }
             if (!isConstructor(heap, x)) {
-                ls.idsused = cons(x, ls.idsused);
+                ls().idsused = cons(x, ls().idsused);
             }
             return x;
         },
         .INT => return cons(CONST, x),
         .DOUBLE => {
             syntax("floating point literal in pattern\n");
-            return core_state.s.nill;
+            return core_state.s().nill;
         },
         .ATOM => {
             if (x == True or x == False or x == NILS or x == NIL or isChar(x)) {
@@ -926,7 +926,7 @@ pub fn genlhs(heap: *Heap, x: Word) Word {
         else => {},
     }
     syntax("illegal form on left of <-\n");
-    return core_state.s.nill;
+    return core_state.s().nill;
 }
 
 /// Left-factor the common prefixes among grammar alternatives `x`.
@@ -945,7 +945,7 @@ pub fn leftfactor(heap: *Heap, x: Word) Word {
     if (same(heap, a, d) != 0) {
         hp(heap, x).* = ap(G_SEQ, a);
         tp(heap, x).* = ap2(G_ALT, b, G_UNIT);
-        cs.lfrule += 1;
+        cs().lfrule += 1;
         return x;
     }
     if (getTag(heap, d) == .AP and getTag(heap, h(heap, d)) == .AP) {
@@ -957,7 +957,7 @@ pub fn leftfactor(heap: *Heap, x: Word) Word {
         rhs = t(heap, d);
         hp(heap, x).* = ap(G_SEQ, a);
         tp(heap, x).* = leftfactor(heap, ap2(G_ALT, b, rhs));
-        cs.lfrule += 1;
+        cs().lfrule += 1;
         return x;
     }
     if (rhs != G_ALT) {
@@ -968,7 +968,7 @@ pub fn leftfactor(heap: *Heap, x: Word) Word {
         d = t(heap, d);
         hp(heap, x).* = ap(G_ALT, ap2(G_SEQ, a, ap2(G_ALT, b, G_UNIT)));
         tp(heap, x).* = d;
-        cs.lfrule += 1;
+        cs().lfrule += 1;
         return leftfactor(heap, x);
     }
     if (getTag(heap, rhs) == .AP and getTag(heap, h(heap, rhs)) == .AP and h(heap, h(heap, rhs)) == G_SEQ and same(heap, a, t(heap, h(heap, rhs))) != 0) {
@@ -976,7 +976,7 @@ pub fn leftfactor(heap: *Heap, x: Word) Word {
         d = t(heap, d);
         hp(heap, x).* = ap(G_ALT, ap2(G_SEQ, a, leftfactor(heap, ap2(G_ALT, b, rhs))));
         tp(heap, x).* = d;
-        cs.lfrule += 1;
+        cs().lfrule += 1;
         return leftfactor(heap, x);
     }
     return x;
@@ -1028,7 +1028,7 @@ pub fn transtries(heap: *Heap, id: Word, input_x: Word) Word {
     var earliest: Word = 0;
     var r: Word = undefined;
     if (fallible(heap, h(heap, x)) != 0) {
-        const oldn = if (getTag(heap, id) == .ID) datapair(@as(Word, strtab.strBits(strtab.table, getId(heap, id))), 0) else 0;
+        const oldn = if (getTag(heap, id) == .ID) datapair(@as(Word, strtab.strBits(strtab.table(), getId(heap, id))), 0) else 0;
         info = cons(oldn, 0);
         r = ap(BADCASE, info);
         if (x == NIL) {
@@ -1052,19 +1052,19 @@ pub fn transtries(heap: *Heap, id: Word, input_x: Word) Word {
 
 /// Build the `show` function for a type at source location `here`.
 pub fn makeshow(heap: *Heap, here: Word, type_node: Word) Word {
-    cs.was_poly = 0;
+    cs().was_poly = 0;
     const f = mkshow(heap, 0, 0, type_node);
-    if (here != 0 and cs.was_poly != 0) {
-        _ = word.print("type error in definition of {s}\n", .{getId(heap, cs.current_id)});
+    if (here != 0 and cs().was_poly != 0) {
+        _ = word.print("type error in definition of {s}\n", .{getId(heap, cs().current_id)});
         sayhere(heap, here, 0);
         _ = word.print(" use of \"show\" at polymorphic type ", .{});
         outType(heap, redtvars(heap, type_node));
         _ = word.putchar('\n');
-        setIdType(heap, cs.current_id, wrong_t);
-        setIdVal(heap, cs.current_id, UNDEF);
-        cs.polyshowerror = 1;
-        cs.ND = add1(heap, cs.current_id, cs.ND);
-        cs.was_poly = 0;
+        setIdType(heap, cs().current_id, wrong_t);
+        setIdVal(heap, cs().current_id, UNDEF);
+        cs().polyshowerror = 1;
+        cs().ND = add1(heap, cs().current_id, cs().ND);
+        cs().was_poly = 0;
     }
     return f;
 }
@@ -1078,25 +1078,25 @@ pub fn mkshow(heap: *Heap, s: Word, p: Word, input_t: Word) Word {
         type_node = h(heap, type_node);
     }
     switch (type_node) {
-        num_t => return if (p != 0) rt.rs.shownum1 else SHOWNUM,
-        bool_t => return rt.rs.showbool,
-        char_t => return rt.rs.showchar,
+        num_t => return if (p != 0) rt.rs().shownum1 else SHOWNUM,
+        bool_t => return rt.rs().showbool,
+        char_t => return rt.rs().showchar,
         list_t => {
             if (h(heap, args) == char_t) {
-                return rt.rs.showstring;
+                return rt.rs().showstring;
             }
-            return ap(rt.rs.showlist, mkshow(heap, s, 0, h(heap, args)));
+            return ap(rt.rs().showlist, mkshow(heap, s, 0, h(heap, args)));
         },
-        comma_t => return ap(rt.rs.showparen, ap2(rt.rs.showpair, mkshow(heap, s, 0, h(heap, args)), mkshowt(heap, s, h(heap, t(heap, args))))),
-        void_t => return rt.rs.showvoid,
-        arrow_t => return rt.rs.showfunction,
+        comma_t => return ap(rt.rs().showparen, ap2(rt.rs().showpair, mkshow(heap, s, 0, h(heap, args)), mkshowt(heap, s, h(heap, t(heap, args))))),
+        void_t => return rt.rs().showvoid,
+        arrow_t => return rt.rs().showfunction,
         else => {
             if (getTag(heap, type_node) == .ID) {
                 var r = typeShowFn(heap, type_node);
                 if (r == 0) {
-                    return rt.rs.showabstract;
+                    return rt.rs().showabstract;
                 }
-                if (r == rt.rs.showwhat) {
+                if (r == rt.rs().showwhat) {
                     return r;
                 }
                 while (args != NIL) {
@@ -1112,17 +1112,17 @@ pub fn mkshow(heap: *Heap, s: Word, p: Word, input_t: Word) Word {
                 if (s != 0) {
                     return type_node;
                 }
-                cs.was_poly = 1;
-                return rt.rs.showwhat;
+                cs().was_poly = 1;
+                return rt.rs().showwhat;
             }
             if (getTag(heap, type_node) == .STRCONS) {
                 _ = word.print("warning - mkshow applied to suppressed type\n", .{});
-                return rt.rs.showwhat;
+                return rt.rs().showwhat;
             }
             _ = word.print("impossible event in mkshow (", .{});
             outType(heap, type_node);
             _ = word.print(")\n", .{});
-            return rt.rs.showwhat;
+            return rt.rs().showwhat;
         },
     }
 }
@@ -1132,7 +1132,7 @@ pub fn mkshowt(heap: *Heap, s: Word, type_tuple: Word) Word {
     if (t(heap, type_tuple) == void_t) {
         return mkshow(heap, s, 0, t(heap, h(heap, type_tuple)));
     }
-    return ap2(rt.rs.showpair, mkshow(heap, s, 0, t(heap, h(heap, type_tuple))), mkshowt(heap, s, t(heap, type_tuple)));
+    return ap2(rt.rs().showpair, mkshow(heap, s, 0, t(heap, h(heap, type_tuple))), mkshowt(heap, s, t(heap, type_tuple)));
 }
 
 /// Name-clash check helper (returns a count).
@@ -1144,10 +1144,10 @@ fn nclchk(heap: *Heap, n: Word, p: Word, hr: Word) bool {
         if (n != p) {
             return false;
         }
-        if (rt.rs.echoing != 0) {
+        if (rt.rs().echoing != 0) {
             _ = word.putchar('\n');
         }
-        core_state.s.errs = hr;
+        core_state.s().errs = hr;
         _ = word.print("syntax error: conflicting definitions of \"{s}\" in where clause\n", .{getId(heap, n)});
         acterror();
         return true;
@@ -1171,20 +1171,20 @@ pub fn nclashcheck(heap: *Heap, n: Word, input_dd: Word, hr: Word) void {
 
 /// Report a re-specification (duplicate `::`) error for `x`.
 pub fn respecError(heap: *Heap, x: Word) void {
-    if (rt.rs.echoing != 0) {
+    if (rt.rs().echoing != 0) {
         _ = word.putchar('\n');
     }
-    const suffix: [*:0]const u8 = if (member(heap, rt.rs.primenv, x) != 0) " (in standard environment)" else "";
+    const suffix: [*:0]const u8 = if (member(heap, rt.rs().primenv, x) != 0) " (in standard environment)" else "";
     _ = word.print("syntax error: type of \"{s}\" already declared{s}\n", .{ getId(heap, x), suffix });
     acterror();
 }
 
 /// Report a name clash for `x`.
 pub fn nameclash(heap: *Heap, x: Word) void {
-    if (rt.rs.echoing != 0) {
+    if (rt.rs().echoing != 0) {
         _ = word.putchar('\n');
     }
-    const suffix: [*:0]const u8 = if (member(heap, rt.rs.primenv, x) != 0) " (in standard environment)" else "";
+    const suffix: [*:0]const u8 = if (member(heap, rt.rs().primenv, x) != 0) " (in standard environment)" else "";
     _ = word.print("syntax error: nameclash, \"{s}\" already defined{s}\n", .{ getId(heap, x), suffix });
     acterror();
 }
@@ -1197,7 +1197,7 @@ pub fn declconstr(heap: *Heap, x: Word, n: Word, constr_type: Word) void {
         return;
     }
     if (idType(heap, x) != undef_t) {
-        core_state.s.errs = idWho(heap, x);
+        core_state.s().errs = idWho(heap, x);
         respecError(heap, x);
         return;
     }
@@ -1209,7 +1209,7 @@ pub fn declconstr(heap: *Heap, x: Word, n: Word, constr_type: Word) void {
 pub fn specify(heap: *Heap, input_x: Word, spec_type: Word, here: Word) void {
     var x = input_x;
     if (getTag(heap, x) != .ID and spec_type != type_t) {
-        core_state.s.errs = here;
+        core_state.s().errs = here;
         syntax("incorrect use of ::\n");
         return;
     }
@@ -1220,7 +1220,7 @@ pub fn specify(heap: *Heap, input_x: Word, spec_type: Word, here: Word) void {
             x = h(heap, x);
         }
         if (!(idVal(heap, x) == UNDEF and idType(heap, x) == undef_t)) {
-            core_state.s.errs = here;
+            core_state.s().errs = here;
             nameclash(heap, x);
             return;
         }
@@ -1228,13 +1228,13 @@ pub fn specify(heap: *Heap, input_x: Word, spec_type: Word, here: Word) void {
         if (idWho(heap, x) == NIL) {
             setIdWho(heap, x, here);
         }
-        setIdVal(heap, x, makeTyp(arity, rt.rs.showwhat, placeholder_t, NIL));
+        setIdVal(heap, x, makeTyp(arity, rt.rs().showwhat, placeholder_t, NIL));
         addToEnv(heap, x);
-        cs.newtyps = add1(heap, x, cs.newtyps);
+        cs().newtyps = add1(heap, x, cs().newtyps);
         return;
     }
     if (idType(heap, x) != undef_t) {
-        core_state.s.errs = here;
+        core_state.s().errs = here;
         respecError(heap, x);
         return;
     }
@@ -1242,7 +1242,7 @@ pub fn specify(heap: *Heap, input_x: Word, spec_type: Word, here: Word) void {
     if (idWho(heap, x) == NIL) {
         setIdWho(heap, x, here);
     } else {
-        cs.speclocs = cons(cons(x, here), cs.speclocs);
+        cs().speclocs = cons(cons(x, here), cs().speclocs);
     }
     if (idVal(heap, x) == UNDEF) {
         addToEnv(heap, x);
@@ -1252,13 +1252,13 @@ pub fn specify(heap: *Heap, input_x: Word, spec_type: Word, here: Word) void {
 /// Check that `type_name` is applied at its declared arity.
 fn arityCheck(heap: *Heap, type_name: Word, arity: Word, here: Word) void {
     if (typeArity(heap, type_name) != arity) {
-        const prefix: [*:0]const u8 = if (rt.rs.echoing != 0) "\n" else "";
+        const prefix: [*:0]const u8 = if (rt.rs().echoing != 0) "\n" else "";
         _ = word.print("{s}syntax error: wrong number of parameters for typename \"{s}\" ({d} expected)\n", .{
             prefix,
             getId(heap, type_name),
             typeArity(heap, type_name),
         });
-        core_state.s.errs = here;
+        core_state.s().errs = here;
         acterror();
     }
 }
@@ -1283,16 +1283,16 @@ pub fn declType(heap: *Heap, input_tf: Word, type_class: Word, info: Word, here:
         return;
     }
     if (idVal(heap, tf) != UNDEF) {
-        core_state.s.errs = here;
+        core_state.s().errs = here;
         nameclash(heap, tf);
         return;
     }
     if (type_class != synonym_t) {
-        cs.newtyps = add1(heap, tf, cs.newtyps);
+        cs().newtyps = add1(heap, tf, cs().newtyps);
     }
     setIdVal(heap, tf, makeTyp(arity, if (type_class == algebraic_t) makePn(UNDEF) else 0, type_class, info));
     if (idType(heap, tf) != undef_t) {
-        core_state.s.errs = here;
+        core_state.s().errs = here;
         respecError(heap, tf);
         return;
     }
@@ -1303,23 +1303,23 @@ pub fn declType(heap: *Heap, input_tf: Word, type_class: Word, info: Word, here:
 
 /// Declare a single binding `x` = `e` (the inner step).
 fn decl1(heap: *Heap, x: Word, e: Word) void {
-    if (idVal(heap, x) != UNDEF and rt.rs.lastname != x) {
-        core_state.s.errs = h(heap, e);
+    if (idVal(heap, x) != UNDEF and rt.rs().lastname != x) {
+        core_state.s().errs = h(heap, e);
         nameclash(heap, x);
         return;
     }
     if (idVal(heap, x) == UNDEF) {
         setIdVal(heap, x, tries(x, cons(e, NIL)));
         if (idWho(heap, x) != NIL) {
-            cs.speclocs = cons(cons(x, idWho(heap, x)), cs.speclocs);
+            cs().speclocs = cons(cons(x, idWho(heap, x)), cs().speclocs);
         }
         setIdWho(heap, x, h(heap, e));
         if (idType(heap, x) == undef_t) {
             addToEnv(heap, x);
         }
     } else if (fallible(heap, h(heap, t(heap, idVal(heap, x)))) == 0) {
-        const prefix: [*:0]const u8 = if (rt.rs.echoing != 0) "\n" else "";
-        core_state.s.errs = h(heap, e);
+        const prefix: [*:0]const u8 = if (rt.rs().echoing != 0) "\n" else "";
+        core_state.s().errs = h(heap, e);
         _ = word.print("{s}syntax error: unreachable case in defn of \"{s}\"\n", .{ prefix, getId(heap, x) });
         acterror();
     } else {
@@ -1335,22 +1335,22 @@ pub fn declare(heap: *Heap, x: Word, e: Word) void {
     }
     var bindings = scanpattern(heap, x, x, share(tries(x, cons(e, NIL)), undef_t), ap(CONFERROR, cons(x, h(heap, e))));
     if (bindings == NIL) {
-        core_state.s.errs = h(heap, e);
+        core_state.s().errs = h(heap, e);
         syntax("illegal lhs for definition\n");
         return;
     }
-    rt.rs.lastname = 0;
+    rt.rs().lastname = 0;
     while (bindings != NIL) {
         const binding = h(heap, bindings);
         const name = h(heap, binding);
         if (idVal(heap, name) != UNDEF) {
-            core_state.s.errs = h(heap, e);
+            core_state.s().errs = h(heap, e);
             nameclash(heap, name);
             return;
         }
         setIdVal(heap, name, t(heap, binding));
         if (idWho(heap, name) != NIL) {
-            cs.speclocs = cons(cons(name, idWho(heap, name)), cs.speclocs);
+            cs().speclocs = cons(cons(name, idWho(heap, name)), cs().speclocs);
         }
         setIdWho(heap, name, h(heap, e));
         if (idType(heap, name) == undef_t) {
@@ -1367,7 +1367,7 @@ pub fn block(heap: *Heap, input_defs: Word, input_e: Word, keep: Word) Word {
     var ids: Word = NIL;
     var deftoids: Word = NIL;
     var g: Word = NIL;
-    if (core_state.s.SYNERR != 0) {
+    if (core_state.s().SYNERR != 0) {
         return NIL;
     }
     var d = defs;
@@ -1399,7 +1399,7 @@ pub fn block(heap: *Heap, input_defs: Word, input_e: Word, keep: Word) Word {
         }
         defs = setdiff(heap, defs, y);
         if (defs != NIL) {
-            rt.rs.detrop = append1(rt.rs.detrop, defs);
+            rt.rs().detrop = append1(rt.rs().detrop, defs);
         }
         if (keep != 0) {
             return letrec(y, e);
@@ -1533,8 +1533,8 @@ pub fn sort(heap: *Heap, input_x: Word) Word {
 
 test "sort: orders a Word list ascending" {
     tu.freshInterp();
-    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, sort(heap_mod.heap, tu.list(&[_]Word{ 3000, 1000, 2000 })));
-    try tu.expectWords(&[_]Word{}, sort(heap_mod.heap, NIL));
+    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, sort(heap_mod.heap(), tu.list(&[_]Word{ 3000, 1000, 2000 })));
+    try tu.expectWords(&[_]Word{}, sort(heap_mod.heap(), NIL));
 }
 
 /// Topologically sort relation `x`.
@@ -1613,8 +1613,8 @@ pub fn codegen(heap: *Heap, x: Word) Word {
             var cur = x;
             var acc = while (true) {
                 if (getTag(heap, cur) != .AP) break codegen(heap, cur);
-                const shares = cur == ls.cook_stdin or cur == ls.common_stdin or cur == ls.common_stdinb;
-                const cmd = core_state.s.commandmode != 0 and !shares;
+                const shares = cur == ls().cook_stdin or cur == ls().common_stdin or cur == ls().common_stdinb;
+                const cmd = core_state.s().commandmode != 0 and !shares;
                 if (!cmd and getTag(heap, h(heap, cur)) == .AP and h(heap, h(heap, cur)) == APPEND and t(heap, h(heap, cur)) == NIL) {
                     break codegen(heap, t(heap, cur)); // post typecheck reversal of HR bug fix
                 }
@@ -1625,8 +1625,8 @@ pub fn codegen(heap: *Heap, x: Word) Word {
             while (i > 0) {
                 i -= 1;
                 const n = spine.items[i];
-                const shares = n == ls.cook_stdin or n == ls.common_stdin or n == ls.common_stdinb;
-                if (core_state.s.commandmode != 0 and !shares) { // beware of corrupting lastexp; share $+ $-
+                const shares = n == ls().cook_stdin or n == ls().common_stdin or n == ls().common_stdinb;
+                if (core_state.s().commandmode != 0 and !shares) { // beware of corrupting lastexp; share $+ $-
                     acc = make(.AP, acc, codegen(heap, t(heap, n)));
                 } else {
                     hp(heap, n).* = acc; // = codegen(heap, h(heap, n)), already computed down-spine
@@ -1655,7 +1655,7 @@ pub fn codegen(heap: *Heap, x: Word) Word {
             // a long string/list literal (e.g. a 4096-char string) would otherwise
             // recurse once per element and overflow the stack (codegen's frame is
             // large). Recursion is kept only for each head and the final tail.
-            if (core_state.s.commandmode != 0) {
+            if (core_state.s().commandmode != 0) {
                 const result = make(.CONS, codegen(heap, h(heap, x)), NIL);
                 var dst = tp(heap, result);
                 var cur = t(heap, x);
@@ -1728,24 +1728,24 @@ pub fn codegen(heap: *Heap, x: Word) Word {
         },
         .STARTREADVALS => {
             if (ispoly(heap, t(heap, x))) {
-                const name_str: [*:0]const u8 = if (ls.cook_stdin != 0 and x == h(heap, ls.cook_stdin)) "$+" else "readvals or $+";
+                const name_str: [*:0]const u8 = if (ls().cook_stdin != 0 and x == h(heap, ls().cook_stdin)) "$+" else "readvals or $+";
                 _ = word.print("type error - {s} used at polymorphic type :: [", .{name_str});
                 outType(heap, redtvars(heap, t(heap, x)));
                 _ = word.print("]\n", .{});
-                cs.polyshowerror = 1;
-                if (cs.current_id != 0) {
-                    cs.ND = add1(heap, cs.current_id, cs.ND);
-                    setIdType(heap, cs.current_id, wrong_t);
-                    setIdVal(heap, cs.current_id, UNDEF);
+                cs().polyshowerror = 1;
+                if (cs().current_id != 0) {
+                    cs().ND = add1(heap, cs().current_id, cs().ND);
+                    setIdType(heap, cs().current_id, wrong_t);
+                    setIdVal(heap, cs().current_id, UNDEF);
                 }
                 if (h(heap, x) != 0) {
                     sayhere(heap, h(heap, x), 1);
                 }
             }
-            if (core_state.s.commandmode != 0) {
-                rt.rs.rv_expr = 1;
+            if (core_state.s().commandmode != 0) {
+                rt.rs().rv_expr = 1;
             } else {
-                cs.rv_script = 1;
+                cs().rv_script = 1;
             }
             return x;
         },
@@ -1767,12 +1767,12 @@ pub fn codegen(heap: *Heap, x: Word) Word {
 
 /// Generate the `show` functions for all declared types.
 pub fn genshfns(heap: *Heap) void {
-    var s = cs.newtyps;
+    var s = cs().newtyps;
     while (s != NIL) {
         if (tClass(heap, h(heap, s)) == algebraic_t) {
             var f: Word = 0;
             var r = tInfo(heap, h(heap, s)); // r is list of constructors
-            const ush = if (t(heap, r) == NIL and member(heap, cs.SGC, h(heap, r)) != 0) Ush1 else Ush;
+            const ush = if (t(heap, r) == NIL and member(heap, cs().SGC, h(heap, r)) != 0) Ush1 else Ush;
             while (r != NIL) {
                 var type_var = idType(heap, h(heap, r));
                 var k = idVal(heap, h(heap, r));
@@ -1799,7 +1799,7 @@ pub fn genshfns(heap: *Heap) void {
             }
             // f ~= 0, placeholder types dealt with in specify(heap, )
             tp(heap, tShowfn(heap, h(heap, s))).* = f;
-            cs.algshfns = cons(tShowfn(heap, h(heap, s)), cs.algshfns);
+            cs().algshfns = cons(tShowfn(heap, h(heap, s)), cs().algshfns);
         } else if (tClass(heap, h(heap, s)) == abstract_t) {
             if (tShowfn(heap, h(heap, s)) != 0) {
                 if (abshfnck(heap, h(heap, s), idType(heap, tShowfn(heap, h(heap, s)))) == 0) {
@@ -1817,11 +1817,11 @@ pub fn validate(heap: *Heap) void {
     const options = @import("version_options");
     if (@import("builtin").mode != .Debug and !options.is_strict) return;
 
-    std.debug.assert(cs.TYPERRS >= 0);
+    std.debug.assert(cs().TYPERRS >= 0);
 
     const top_limit = heap.TOP();
 
-    inline for (.{ cs.ND, cs.NT, cs.ALIASES, cs.TSUPPRESSED, cs.TORPHANS, cs.DETROP, cs.MISSING }) |field| {
+    inline for (.{ cs().ND, cs().NT, cs().ALIASES, cs().TSUPPRESSED, cs().TORPHANS, cs().DETROP, cs().MISSING }) |field| {
         if (field >= ATOMLIMIT) {
             if (field >= top_limit) {
                 std.debug.panic("compiler.validate: compiler state field has out-of-bounds heap reference {d} (TOP is {d})", .{ field, top_limit });

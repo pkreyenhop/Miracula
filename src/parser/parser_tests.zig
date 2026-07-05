@@ -30,7 +30,7 @@ const makeId = lex.makeId;
 const resetPns = lex.resetPns;
 /// Build a dummy file record for the snapshot tests.
 fn makeFilRecord(name: [*:0]const u8) word.Word {
-    const name_word = @as(word.Word, strtab.strBits(strtab.table, name));
+    const name_word = @as(word.Word, strtab.strBits(strtab.table(), name));
     const file_info = heap.make(.FILEINFO, name_word, 0);
     const share_cell = heap.make(.CONS, 1, word.NIL);
     const info_cell = heap.make(.CONS, file_info, share_cell);
@@ -50,17 +50,17 @@ const resetState = lex.resetState;
 /// allocation after the first call (it only `@memset`s the tag column), so this
 /// is cheap to repeat; `primenv` is reset first because `primlib` conses onto it.
 fn resetLexerState() void {
-    resetState(heap.heap);
+    resetState(heap.heap());
     setupdic();
-    rt.rs.primenv = word.NIL;
+    rt.rs().primenv = word.NIL;
     setup.miraSetup();
-    heap.heap.current_file = makeFilRecord("test.m");
-    heap.heap.files = heap.make(.CONS, heap.heap.current_file, word.NIL);
-    ls.col = 0;
-    ls.line_no = 0;
-    ls.c = ' ';
-    core_state.s.SYNERR = 0;
-    core_state.s.errcol = 0;
+    heap.heap().current_file = makeFilRecord("test.m");
+    heap.heap().files = heap.make(.CONS, heap.heap().current_file, word.NIL);
+    ls().col = 0;
+    ls().line_no = 0;
+    ls().c = ' ';
+    core_state.s().SYNERR = 0;
+    core_state.s().errcol = 0;
 }
 
 var initialized = false;
@@ -70,8 +70,8 @@ fn ensureInitialized() void {
         setupheap();
         setupdic();
         resetPns();
-        heap.heap.current_file = makeFilRecord("test.m");
-        heap.heap.files = heap.make(.CONS, heap.heap.current_file, word.NIL);
+        heap.heap().current_file = makeFilRecord("test.m");
+        heap.heap().files = heap.make(.CONS, heap.heap().current_file, word.NIL);
         initialized = true;
     }
 }
@@ -178,7 +178,7 @@ fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]con
     errdefer list.deinit(allocator);
 
     while (true) {
-        const tok = yylex(heap.heap);
+        const tok = yylex(heap.heap());
         if (tok == 0 or tok == word.END) break;
 
         try list.print(allocator, "{s}", .{tokenName(tok)});
@@ -188,7 +188,7 @@ fn captureTokenStream(allocator: std.mem.Allocator, source: [:0]const u8) ![]con
         // on cross-test dic state (see the shared-state plan's Phase-4 finding).
         if (tok == word.NAME or tok == word.CNAME) {
             const h = heap.h;
-            const id_text = std.mem.span(strtab.strOf(strtab.table, h(h(h(ls.yylval)))));
+            const id_text = std.mem.span(strtab.strOf(strtab.table(), h(h(h(ls().yylval)))));
             if (id_text.len > 0 and isCleanAscii(id_text)) {
                 try list.print(allocator, "(\"{s}\")", .{id_text});
             }
@@ -360,24 +360,24 @@ test "error detection sets SYNERR and errline" {
     // 1. Check syntax error sets core.s.SYNERR and core.s.errline
     const source1 = "add1 x = x+1\nl = [1,,2,3]\n";
     _ = parser_api.parseString(source1) catch {};
-    try testing.expectEqual(@as(word.Word, 1), core_state.s.SYNERR);
-    try testing.expectEqual(@as(word.Word, 2), core_state.s.errline);
+    try testing.expectEqual(@as(word.Word, 1), core_state.s().SYNERR);
+    try testing.expectEqual(@as(word.Word, 2), core_state.s().errline);
 
     // 2. Syntax error on the last line gets detected and sets correct errline
     resetLexerState();
     const source2 = "add1 x = x+1\nfib 0 = 0\nerror_line = [1,,2]";
     _ = parser_api.parseString(source2) catch {};
-    try testing.expectEqual(@as(word.Word, 1), core_state.s.SYNERR);
-    try testing.expectEqual(@as(word.Word, 3), core_state.s.errline);
+    try testing.expectEqual(@as(word.Word, 1), core_state.s().SYNERR);
+    try testing.expectEqual(@as(word.Word, 3), core_state.s().errline);
 }
 
 test "script reload after failed compile does not cause nameclash" {
     ensureInitialized();
     resetLexerState();
 
-    const old_init = rt.rs.initialising;
-    rt.rs.initialising = 0;
-    defer rt.rs.initialising = old_init;
+    const old_init = rt.rs().initialising;
+    rt.rs().initialising = 0;
+    defer rt.rs().initialising = old_init;
 
     const tmp_file = "test_reload.m";
     defer _ = main_clib.unlink(tmp_file);
@@ -388,8 +388,8 @@ test "script reload after failed compile does not cause nameclash" {
         _ = main_clib.fputs("add1 x = x+1\n", f.?);
         _ = main_clib.fclose(f.?);
     }
-    module_loader.loadfile(heap.heap, core_state.s, cs, rt.rs, ls, tmp_file);
-    try testing.expectEqual(@as(word.Word, 0), core_state.s.SYNERR);
+    module_loader.loadfile(heap.heap(), core_state.s(), cs(), rt.rs(), ls(), tmp_file);
+    try testing.expectEqual(@as(word.Word, 0), core_state.s().SYNERR);
 
     // 2. Failed compile with syntax error
     {
@@ -397,8 +397,8 @@ test "script reload after failed compile does not cause nameclash" {
         _ = main_clib.fputs("add1 x = x+1\nl = [1,,2]\n", f.?);
         _ = main_clib.fclose(f.?);
     }
-    module_loader.loadfile(heap.heap, core_state.s, cs, rt.rs, ls, tmp_file);
-    try testing.expectEqual(@as(word.Word, 2), core_state.s.errline);
+    module_loader.loadfile(heap.heap(), core_state.s(), cs(), rt.rs(), ls(), tmp_file);
+    try testing.expectEqual(@as(word.Word, 2), core_state.s().errline);
 
     // 3. Re-compile fixed script
     {
@@ -406,9 +406,9 @@ test "script reload after failed compile does not cause nameclash" {
         _ = main_clib.fputs("add1 x = x+1\nl = [1,2]\n", f.?);
         _ = main_clib.fclose(f.?);
     }
-    module_loader.loadfile(heap.heap, core_state.s, cs, rt.rs, ls, tmp_file);
-    try testing.expectEqual(@as(word.Word, 0), core_state.s.SYNERR);
-    try testing.expectEqual(@as(word.Word, 0), core_state.s.errline);
+    module_loader.loadfile(heap.heap(), core_state.s(), cs(), rt.rs(), ls(), tmp_file);
+    try testing.expectEqual(@as(word.Word, 0), core_state.s().SYNERR);
+    try testing.expectEqual(@as(word.Word, 0), core_state.s().errline);
 }
 
 test "syntax error sets errcol and editfile expands column placeholder" {
@@ -418,22 +418,22 @@ test "syntax error sets errcol and editfile expands column placeholder" {
     // 1. Check syntax error sets core.s.errcol
     const source1 = "add1 x = x+1\nl = [1,,2,3]\n";
     _ = parser_api.parseString(source1) catch {};
-    try testing.expectEqual(@as(word.Word, 2), core_state.s.errline);
+    try testing.expectEqual(@as(word.Word, 2), core_state.s().errline);
     // Double comma is at column 8 (1-indexed) in "l = [1,,2,3]\n",
     // but the Pratt parser eagerly advances past the unexpected token before failing,
     // positioning the error at the next token '2' at column 9.
-    try testing.expectEqual(@as(word.Word, 9), core_state.s.errcol);
+    try testing.expectEqual(@as(word.Word, 9), core_state.s().errcol);
 
     // 2. Check editfile expands the column placeholder '&'
-    const old_editor = rt.rs.editor;
-    defer rt.rs.editor = old_editor;
+    const old_editor = rt.rs().editor;
+    defer rt.rs().editor = old_editor;
 
-    rt.rs.editor = @constCast(@as([*:0]const u8, ": -l ! -c & -f %"));
-    commands.editfile(rt.rs, "test.m", 42, 17);
+    rt.rs().editor = @constCast(@as([*:0]const u8, ": -l ! -c & -f %"));
+    commands.editfile(rt.rs(), "test.m", 42, 17);
 
-    // Verify ebuf_local contents in rt.rs.linebuf
+    // Verify ebuf_local contents in rt.rs().linebuf
     const expected_cmd = ": -l 42 -c 17 -f \"test.m\"";
-    const actual_cmd = std.mem.span(@as([*:0]const u8, @ptrCast(&rt.rs.linebuf[0])));
+    const actual_cmd = std.mem.span(@as([*:0]const u8, @ptrCast(&rt.rs().linebuf[0])));
     try testing.expectEqualStrings(expected_cmd, actual_cmd);
 }
 
@@ -441,17 +441,17 @@ test "/editor command parses arguments on the same line" {
     ensureInitialized();
     resetLexerState();
 
-    const old_editor = rt.rs.editor;
-    defer rt.rs.editor = old_editor;
+    const old_editor = rt.rs().editor;
+    defer rt.rs().editor = old_editor;
 
     // 1. /editor without arguments: just prints current editor (doesn't prompt/block)
-    ls.dicp = @constCast(@as([*:0]const u8, "editor"));
-    ls.c = '\n';
-    _ = commands.command(heap.heap, core_state.s, cs, rt.rs, ls);
+    ls().dicp = @constCast(@as([*:0]const u8, "editor"));
+    ls().c = '\n';
+    _ = commands.command(heap.heap(), core_state.s(), cs(), rt.rs(), ls());
 
     // 2. /editor with arguments on the same line: changes editor
-    ls.dicp = @constCast(@as([*:0]const u8, "editor"));
-    ls.c = ' ';
+    ls().dicp = @constCast(@as([*:0]const u8, "editor"));
+    ls().c = ' ';
 
     if (abi.stdin()) |stdin_file| {
         stdin_file.mem_buf = "my_custom_editor\ny\n";
@@ -464,9 +464,9 @@ test "/editor command parses arguments on the same line" {
         }
     }
 
-    _ = commands.command(heap.heap, core_state.s, cs, rt.rs, ls);
+    _ = commands.command(heap.heap(), core_state.s(), cs(), rt.rs(), ls());
 
-    const actual_editor = std.mem.span(rt.rs.editor.?);
+    const actual_editor = std.mem.span(rt.rs().editor.?);
     try testing.expectEqualStrings("my_custom_editor", actual_editor);
 }
 // Cache invalidation comment for strict-main-tests

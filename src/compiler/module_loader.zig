@@ -179,7 +179,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
                 _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
             }
         }
-        if (core.errline == 0 and core.errs != 0 and word.strcmp(strtab.strOf(strtab.table, heap_mod.h(core.errs)), rs.current_script.?) == 0) {
+        if (core.errline == 0 and core.errs != 0 and word.strcmp(strtab.strOf(strtab.table(), heap_mod.h(core.errs)), rs.current_script.?) == 0) {
             core.errline = heap_mod.t(core.errs);
         }
         comp.ND = heap_mod.alfasort(comp.ND);
@@ -221,14 +221,14 @@ fn resolveExportFileList(heap: *Heap, core: *core_state.CoreState, rs: *rt.Runti
                 var count: Word = 0;
                 var i = rs.includees;
                 while (i != NIL) : (i = heap_mod.t(i)) {
-                    if (word.strcmp(strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(heap_mod.h(i)))), strtab.strOf(strtab.table, heap_mod.h(s))) == 0) {
+                    if (word.strcmp(strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(heap_mod.h(i)))), strtab.strOf(strtab.table(), heap_mod.h(s))) == 0) {
                         heap_mod.hp(s).* = heap_mod.h(heap_mod.h(heap_mod.h(i)));
                         count += 1;
                     }
                 }
                 if (count != 1) {
                     core.SYNERR = 1;
-                    word.print("illegal fileid \"{s}\" in export list ({s})\n", .{ strtab.strOf(strtab.table, heap_mod.h(s)), @as([*:0]const u8, if (count != 0) "ambiguous" else "not %included in script") });
+                    word.print("illegal fileid \"{s}\" in export list ({s})\n", .{ strtab.strOf(strtab.table(), heap_mod.h(s)), @as([*:0]const u8, if (count != 0) "ambiguous" else "not %included in script") });
                 }
             }
         }
@@ -471,7 +471,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         rs.magic = false;
         _ = abi.sigsetjmp(&rs.env, 1);
         while (includees_list != NIL and rs.make_status == 0) {
-            dump.undump(heap, core, comp, rs, strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(heap_mod.h(includees_list)))));
+            dump.undump(heap, core, comp, rs, strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(heap_mod.h(includees_list)))));
             if (comp.ND != NIL or (heap.files == NIL and rs.oldfiles != NIL)) {
                 rs.make_status = 1;
             }
@@ -485,7 +485,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         var x: Word = NIL;
         var oldsig: usize = 0;
         var f: ?*word.FILE = null;
-        const fn_str = strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(heap_mod.h(includees_list))));
+        const fn_str = strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(heap_mod.h(includees_list))));
 
         _ = word.strcpy(lexs.dicp, fn_str);
         _ = word.strcpy(lexs.dicp + word.strlen(lexs.dicp) - 1, core.obsuffix);
@@ -545,7 +545,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
                                             w = heap_mod.t(w);
                                         }
                                         if (w == NIL) {
-                                            tclashes = heap_mod.cons(abi.strcons(@as(Word, strtab.strBits(strtab.table, heap_mod.getFil(heap_mod.h(z)).?)), heap_mod.cons(orig, NIL)), tclashes);
+                                            tclashes = heap_mod.cons(abi.strcons(@as(Word, strtab.strBits(strtab.table(), heap_mod.getFil(heap_mod.h(z)).?)), heap_mod.cons(orig, NIL)), tclashes);
                                             w = tclashes;
                                         }
                                         heap_mod.tp(heap_mod.t(heap_mod.t(heap_mod.h(w)))).* = heap_mod.cons(heap_mod.h(p), heap_mod.t(heap_mod.t(heap_mod.h(w))));
@@ -566,7 +566,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
                 }
             }
 
-            if (abi.member(heap, lexs.exportfiles, strtab.strBits(strtab.table, fn_str)) != 0) {
+            if (abi.member(heap, lexs.exportfiles, strtab.strBits(strtab.table(), fn_str)) != 0) {
                 y = x;
                 while (y != NIL) : (y = heap_mod.t(y)) {
                     var z = heap_mod.filDefs(heap_mod.h(y));
@@ -661,7 +661,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         }
 
         while (comp.MISSING != NIL) {
-            word.printErr("{s}{s}", .{ strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(comp.MISSING))), @as([*:0]const u8, if (heap_mod.t(comp.MISSING) == NIL) ";\n" else ",") });
+            word.printErr("{s}{s}", .{ strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(comp.MISSING))), @as([*:0]const u8, if (heap_mod.t(comp.MISSING) == NIL) ";\n" else ",") });
             comp.MISSING = heap_mod.t(comp.MISSING);
         }
 
@@ -674,7 +674,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
     if (tclashes != NIL) {
         word.printErr("TYPECLASH - the following type{s} multiply named:\n", .{@as([*:0]const u8, if (heap_mod.t(tclashes) == NIL) " is" else "s are")});
         while (tclashes != NIL) {
-            word.printErr("\'{s}\' of file \"{s}\", as: ", .{ abi.getaka(heap_mod.h(heap_mod.t(heap_mod.h(tclashes)))), strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(tclashes))) });
+            word.printErr("\'{s}\' of file \"{s}\", as: ", .{ abi.getaka(heap_mod.h(heap_mod.t(heap_mod.h(tclashes)))), strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(tclashes))) });
             abi.printlist(heap, @constCast(""), heap_mod.alfasort(heap_mod.t(heap_mod.t(heap_mod.h(tclashes)))));
             tclashes = heap_mod.t(tclashes);
         }

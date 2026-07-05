@@ -58,18 +58,18 @@ pub fn setupString(source: [*:0]const u8) void {
     const f = word.fmemopen(@ptrCast(@constCast(source)), len, "r") orelse return;
     // FILE* handle stored in the cell (read back via @ptrFromInt below);
     // this is a FILE-handle-in-cell cast, not a node string — out of B1 scope.
-    ls.fileq = cons(make(.STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls.fileq);
-    ls.insertdepth += 1;
-    rt.rs.s_in = f;
+    ls().fileq = cons(make(.STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls().fileq);
+    ls().insertdepth += 1;
+    rt.rs().s_in = f;
 }
 
 /// Tear down the lexer's string/file setup.
 pub fn cleanup() void {
-    if (rt.rs.s_in) |f| {
+    if (rt.rs().s_in) |f| {
         const is_stdio = (f == getStdin()) or (f == getStdout()) or (f == getStderr());
         if (!is_stdio) {
             _ = word.fclose(f);
-            rt.rs.s_in = null;
+            rt.rs().s_in = null;
         }
     }
 }
@@ -77,7 +77,7 @@ pub fn cleanup() void {
 /// Open `filename` and point the lexer at it; returns 0 on failure.
 pub fn setupFile(heap: *Heap, filename: [*:0]const u8) c_int {
     if (openfile(filename) == 0) return 0;
-    rt.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(heap, h(heap, ls.fileq)))));
+    rt.rs().s_in = @ptrFromInt(@as(usize, @intCast(h(heap, h(heap, ls().fileq)))));
     return 1;
 }
 
@@ -88,7 +88,7 @@ fn fileinfo(file: Word, line: Word) Word {
 
 /// Build a file record `(path, time, share, defs)`.
 fn makeFil(path: [*:0]const u8, time: Word, share: Word, defs: Word) Word {
-    return cons(cons(fileinfo(strtab.strBits(strtab.table, path), time), cons(share, NIL)), defs);
+    return cons(cons(fileinfo(strtab.strBits(strtab.table(), path), time), cons(share, NIL)), defs);
 }
 
 /// Allocate a `STARTREADVALS` node.
@@ -174,20 +174,20 @@ fn isconstructor(heap: *Heap, x: Word) bool {
 
 /// The interned name text of id `x`.
 fn getId(heap: *Heap, x: Word) [*:0]const u8 {
-    return strtab.strOf(strtab.table, h(heap, h(heap, h(heap, x))));
+    return strtab.strOf(strtab.table(), h(heap, h(heap, h(heap, x))));
 }
 
 
 /// Whether the current token text equals `s`.
 fn is(s: [*:0]const u8) bool {
-    return std.mem.eql(u8, std.mem.span(@as([*:0]u8, @ptrCast(ls.dicp))), std.mem.span(s));
+    return std.mem.eql(u8, std.mem.span(@as([*:0]u8, @ptrCast(ls().dicp))), std.mem.span(s));
 }
 
 /// Abort if the dictionary buffer has overflowed.
 fn ovflocheck() void {
-    const d_ptr = @as(usize, @intFromPtr(ls.dicq));
-    const start_ptr = @as(usize, @intFromPtr(ls.dic));
-    if (d_ptr - start_ptr > @as(usize, @intCast(rt.rs.DICSPACE))) {
+    const d_ptr = @as(usize, @intFromPtr(ls().dicq));
+    const start_ptr = @as(usize, @intFromPtr(ls().dic));
+    if (d_ptr - start_ptr > @as(usize, @intCast(rt.rs().DICSPACE))) {
         dicovflo();
     }
 }
@@ -199,19 +199,19 @@ pub fn dicovflo() void {
 
 /// Allocate and initialise the identifier dictionary.
 pub fn setupdic() void {
-    const space = rt.rs.DICSPACE;
-    if (ls.dic == null) {
+    const space = rt.rs().DICSPACE;
+    if (ls().dic == null) {
         const dict_slice = rt.allocator.alloc(u8, @intCast(space)) catch mallocPanic("dictionary");
-        ls.dic = dict_slice.ptr;
+        ls().dic = dict_slice.ptr;
 
-        const base_slice = rt.allocator.alloc(u8, @intCast(ls.prefixlimit)) catch mallocPanic("ls.prefixbase");
-        ls.prefixbase = base_slice.ptr;
+        const base_slice = rt.allocator.alloc(u8, @intCast(ls().prefixlimit)) catch mallocPanic("ls.prefixbase");
+        ls().prefixbase = base_slice.ptr;
     }
-    ls.dicp = @ptrCast(ls.dic.?);
-    ls.dicq = @ptrCast(ls.dic.?);
-    ls.prefixbase.?[0] = 0;
-    ls.prefix = 0;
-    @memset(&ls.namebucket, 0);
+    ls().dicp = @ptrCast(ls().dic.?);
+    ls().dicq = @ptrCast(ls().dic.?);
+    ls().prefixbase.?[0] = 0;
+    ls().prefix = 0;
+    @memset(&ls().namebucket, 0);
 }
 
 /// Resolve a `~`-relative path `n` against ``.
@@ -228,43 +228,43 @@ fn gethome(n: [*:0]const u8) ?[*:0]const u8 {
 /// Read the next whitespace-delimited token into the dictionary buffer.
 pub fn token() ?[*:0]u8 {
     var ch = main_clib.getchar();
-    ls.dicq = ls.dicp; // uses top of dictionary as temporary work space
+    ls().dicq = ls().dicp; // uses top of dictionary as temporary work space
     while (ch == ' ' or ch == '\t') {
         ch = main_clib.getchar();
     }
     if (ch == '~') {
-        ls.dicq[0] = @intCast(ch);
-        ls.dicq += 1;
+        ls().dicq[0] = @intCast(ch);
+        ls().dicq += 1;
         ch = main_clib.getchar();
         while (word.isalnum(ch) or ch == '-' or ch == '_' or ch == '.') {
-            ls.dicq[0] = @intCast(ch);
-            ls.dicq += 1;
+            ls().dicq[0] = @intCast(ch);
+            ls().dicq += 1;
             ch = main_clib.getchar();
         }
-        ls.dicq[0] = 0;
-        if (gethome(ls.dicp + 1)) |h_dir| {
-            _ = word.strcpy(ls.dicp, h_dir);
-            ls.dicq = ls.dicp + word.strlen(ls.dicp);
+        ls().dicq[0] = 0;
+        if (gethome(ls().dicp + 1)) |h_dir| {
+            _ = word.strcpy(ls().dicp, h_dir);
+            ls().dicq = ls().dicp + word.strlen(ls().dicp);
         }
     }
     while (ch != main_clib.EOF and !word.isspace(ch)) {
-        ls.dicq[0] = @intCast(ch);
-        ls.dicq += 1;
+        ls().dicq[0] = @intCast(ch);
+        ls().dicq += 1;
         if (ch == '%') {
-            const idx = @as(usize, @intFromPtr(ls.dicq)) - @as(usize, @intFromPtr(ls.dicp));
-            if (idx >= 2 and (ls.dicq - 2)[0] == '\\') {
-                (ls.dicq - 2)[0] = '%';
-                ls.dicq -= 1;
+            const idx = @as(usize, @intFromPtr(ls().dicq)) - @as(usize, @intFromPtr(ls().dicp));
+            if (idx >= 2 and (ls().dicq - 2)[0] == '\\') {
+                (ls().dicq - 2)[0] = '%';
+                ls().dicq -= 1;
             } else {
-                ls.dicq -= 1;
-                _ = word.strcpy(ls.dicq, rt.rs.current_script.?);
-                ls.dicq += word.strlen(rt.rs.current_script.?);
+                ls().dicq -= 1;
+                _ = word.strcpy(ls().dicq, rt.rs().current_script.?);
+                ls().dicq += word.strlen(rt.rs().current_script.?);
             }
         }
         ch = main_clib.getchar();
     }
-    ls.dicq[0] = 0;
-    ls.dicq += 1;
+    ls().dicq[0] = 0;
+    ls().dicq += 1;
     ovflocheck();
     while (ch == ' ' or ch == '\t') {
         ch = main_clib.getchar();
@@ -272,10 +272,10 @@ pub fn token() ?[*:0]u8 {
     if (getStdin()) |stdin_file| {
         _ = main_clib.ungetc(ch, stdin_file);
     }
-    if (ls.dicp[0] == 0) {
+    if (ls().dicp[0] == 0) {
         return null;
     }
-    return ls.dicp;
+    return ls().dicp;
 }
 
 /// Append the Miranda source extension to name `s` (flag `b` selects the variant).
@@ -285,53 +285,53 @@ pub fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
     if (s[0] == '<' and s[@intCast(n - 1)] == '>') {
         var miralen: usize = 0;
         if (miralen == 0) {
-            miralen = word.strlen(rt.rs.miralib.?);
+            miralen = word.strlen(rt.rs().miralib.?);
         }
-        _ = word.strcpy(&rt.rs.linebuf[0], rt.rs.miralib.?);
-        rt.rs.linebuf[miralen] = '/';
-        _ = word.strcpy(&rt.rs.linebuf[miralen + 1], s + 1);
-        _ = word.strcpy(ls.dicp, &rt.rs.linebuf[0]);
-        s = ls.dicp;
+        _ = word.strcpy(&rt.rs().linebuf[0], rt.rs().miralib.?);
+        rt.rs().linebuf[miralen] = '/';
+        _ = word.strcpy(&rt.rs().linebuf[miralen + 1], s + 1);
+        _ = word.strcpy(ls().dicp, &rt.rs().linebuf[0]);
+        s = ls().dicp;
         n = n + @as(Word, @intCast(miralen)) - 1;
-        ls.dicq = ls.dicp + @as(usize, @intCast(n + 1));
-        (ls.dicq - 1)[0] = 0; // overwrites '>'
+        ls().dicq = ls().dicp + @as(usize, @intCast(n + 1));
+        (ls().dicq - 1)[0] = 0; // overwrites '>'
         ovflocheck();
     } else if (s[0] == '"' and s[@intCast(n - 1)] == '"') {
-        ls.dicq = ls.dicp;
+        ls().dicq = ls().dicp;
         var p = s + 1;
         while (p[0] != 0) {
-            ls.dicq[0] = p[0];
-            ls.dicq += 1;
+            ls().dicq[0] = p[0];
+            ls().dicq += 1;
             p += 1;
         }
-        (ls.dicq - 1)[0] = 0; // overwrites '"'
-        s = ls.dicp;
+        (ls().dicq - 1)[0] = 0; // overwrites '"'
+        s = ls().dicp;
         n = n - 2;
     }
     if (b == 0 or (n >= 2 and std.mem.eql(u8, std.mem.span(s + @as(usize, @intCast(n - 2))), ".m"))) {
         return s;
     }
-    if (s == ls.dicp) {
-        ls.dicq -= 1;
+    if (s == ls().dicp) {
+        ls().dicq -= 1;
     } else {
-        ls.dicq = ls.dicp;
+        ls().dicq = ls().dicp;
         var p = s;
         while (p[0] != 0) {
-            ls.dicq[0] = p[0];
-            ls.dicq += 1;
+            ls().dicq[0] = p[0];
+            ls().dicq += 1;
             p += 1;
         }
-        ls.dicq[0] = 0;
+        ls().dicq[0] = 0;
     }
-    if (std.mem.eql(u8, std.mem.span(ls.dicq - 2), ".x")) {
-        ls.dicq -= 2;
-    } else if ((ls.dicq - 1)[0] == '.') {
-        ls.dicq -= 1;
+    if (std.mem.eql(u8, std.mem.span(ls().dicq - 2), ".x")) {
+        ls().dicq -= 2;
+    } else if ((ls().dicq - 1)[0] == '.') {
+        ls().dicq -= 1;
     }
-    _ = word.strcpy(ls.dicq, ".m");
-    ls.dicq += 3;
+    _ = word.strcpy(ls().dicq, ".m");
+    ls().dicq += 3;
     ovflocheck();
-    return ls.dicp;
+    return ls().dicp;
 }
 
 /// Emit `n` spaces (for listings).
@@ -350,71 +350,71 @@ fn litname(s: [*:0]const u8) bool {
 
 /// Read the next raw input character.
 fn getch(heap: *Heap) c_int {
-    if (rt.rs.s_in == null) {
+    if (rt.rs().s_in == null) {
         return main_clib.EOF;
     }
-    var ch = main_clib.getc(rt.rs.s_in);
-    if (ch == main_clib.EOF and ls.atnl == 0 and t(heap, ls.fileq) == NIL) {
-        ls.atnl = 1;
+    var ch = main_clib.getc(rt.rs().s_in);
+    if (ch == main_clib.EOF and ls().atnl == 0 and t(heap, ls().fileq) == NIL) {
+        ls().atnl = 1;
         return '\n';
     }
-    if (ls.atnl != 0) {
-        if ((ls.line_no == 0 and core_state.s.commandmode == 0) or (rt.rs.magic and ls.line_no == 1 and ls.litstack == NIL)) {
+    if (ls().atnl != 0) {
+        if ((ls().line_no == 0 and core_state.s().commandmode == 0) or (rt.rs().magic and ls().line_no == 1 and ls().litstack == NIL)) {
             const is_lit = (ch == '>') or litname(heap_mod.getFil(heap.current_file) orelse "");
-            ls.literate = if (is_lit) 1 else 0;
-            ls.litmain = ls.literate;
+            ls().literate = if (is_lit) 1 else 0;
+            ls().litmain = ls().literate;
         }
-        if (ls.literate != 0) {
+        if (ls().literate != 0) {
             var i: Word = 0;
             while (ch != main_clib.EOF and ch != '>') {
-                _ = main_clib.ungetc(ch, rt.rs.s_in);
-                ls.line_no += 1;
-                _ = word.fgets(ls.dicp, 250, rt.rs.s_in);
-                if (i == 0 and ls.line_no > 1) {
-                    chblank(ls.dicp);
+                _ = main_clib.ungetc(ch, rt.rs().s_in);
+                ls().line_no += 1;
+                _ = word.fgets(ls().dicp, 250, rt.rs().s_in);
+                if (i == 0 and ls().line_no > 1) {
+                    chblank(ls().dicp);
                 }
                 i += 1;
-                if (rt.rs.echoing != 0) {
-                    spaces(ls.lverge);
-                    _ = main_clib.fputs(ls.dicp, getStdout());
+                if (rt.rs().echoing != 0) {
+                    spaces(ls().lverge);
+                    _ = main_clib.fputs(ls().dicp, getStdout());
                 }
-                ch = main_clib.getc(rt.rs.s_in);
+                ch = main_clib.getc(rt.rs().s_in);
             }
-            if ((i > 1 or (ls.line_no == 1 and i == 1)) and ch != main_clib.EOF) {
-                chblank(ls.dicp);
+            if ((i > 1 or (ls().line_no == 1 and i == 1)) and ch != main_clib.EOF) {
+                chblank(ls().dicp);
             }
             if (ch == '>') {
-                if (rt.rs.echoing != 0) {
+                if (rt.rs().echoing != 0) {
                     _ = word.putchar(ch);
-                    spaces(ls.lverge);
+                    spaces(ls().lverge);
                 }
-                ch = main_clib.getc(rt.rs.s_in);
+                ch = main_clib.getc(rt.rs().s_in);
             }
         }
-        ls.atnl = 0;
-        ls.col = ls.lverge + ls.literate;
-        if (core_state.s.commandmode == 0 and ch != main_clib.EOF) {
-            ls.line_no += 1;
+        ls().atnl = 0;
+        ls().col = ls().lverge + ls().literate;
+        if (core_state.s().commandmode == 0 and ch != main_clib.EOF) {
+            ls().line_no += 1;
         }
     }
-    if (rt.rs.echoing != 0 and ch != main_clib.EOF) {
+    if (rt.rs().echoing != 0 and ch != main_clib.EOF) {
         _ = word.putchar(ch);
-        if (ch == '\n' and ls.literate == 0) {
-            if (ls.litmain != 0) {
+        if (ch == '\n' and ls().literate == 0) {
+            if (ls().litmain != 0) {
                 _ = word.putchar('>');
-                spaces(ls.lverge);
+                spaces(ls().lverge);
             } else {
-                spaces(ls.lverge);
+                spaces(ls().lverge);
             }
         }
     }
     if (ch == '\t') {
-        ls.col = (@divTrunc(ls.col - ls.lverge, 8) + 1) * 8 + ls.lverge;
+        ls().col = (@divTrunc(ls().col - ls().lverge, 8) + 1) * 8 + ls().lverge;
     } else {
-        ls.col += 1;
+        ls().col += 1;
     }
     if (ch == '\n') {
-        ls.atnl = 1;
+        ls().atnl = 1;
     }
     return ch;
 }
@@ -429,7 +429,7 @@ pub fn chblank(s_input: [*:0]u8) void {
         return;
     }
     syntax("formal text not delimited by blank line\n");
-    ls.blankerr = 1;
+    ls().blankerr = 1;
     reset(); // easiest way to recover is to pretend it was an interrupt
 }
 
@@ -437,47 +437,47 @@ const UMAX: Word = 0x10ffff;
 
 /// Read the next character, honouring literate-script `>` margins.
 fn getlitch(heap: *Heap) Word {
-    const ch: Word = ls.c;
-    ls.rawch = @intCast(ch);
+    const ch: Word = ls().c;
+    ls().rawch = @intCast(ch);
     if (ch == '\n') {
         return ch; // always an error
     }
-    if (rt.rs.UTF8 != 0 and ch > 127) {
+    if (rt.rs().UTF8 != 0 and ch > 127) {
         const ch1 = getch(heap);
-        ls.c = ch1;
+        ls().c = ch1;
         if ((ch & 0xe0) == 0xc0) { // 2 bytes
             if ((ch1 & 0xc0) != 0x80) {
-                return -5; // not valid rt.rs.UTF8
+                return -5; // not valid rt.rs().UTF8
             }
-            ls.c = getch(heap);
+            ls().c = getch(heap);
             return stoChar(((ch & 0x1f) << 6) | (ch1 & 0x3f));
         }
         const ch2 = getch(heap);
-        ls.c = ch2;
+        ls().c = ch2;
         if ((ch & 0xf0) == 0xe0) { // 3 bytes
             if ((ch1 & 0xc0) != 0x80 or (ch2 & 0xc0) != 0x80) {
-                return -5; // not valid rt.rs.UTF8
+                return -5; // not valid rt.rs().UTF8
             }
-            ls.c = getch(heap);
+            ls().c = getch(heap);
             return stoChar(((ch & 0xf) << 12) | ((ch1 & 0x3f) << 6) | (ch2 & 0x3f));
         }
         const ch3 = getch(heap);
-        ls.c = ch3;
+        ls().c = ch3;
         if ((ch & 0xf8) == 0xf0) { // 4 bytes
             if ((ch1 & 0xc0) != 0x80 or (ch2 & 0xc0) != 0x80 or (ch3 & 0xc0) != 0x80) {
-                return -5; // not valid rt.rs.UTF8
+                return -5; // not valid rt.rs().UTF8
             }
-            ls.c = getch(heap);
+            ls().c = getch(heap);
             return ((ch & 7) << 18) | ((ch1 & 0x3f) << 12) | ((ch2 & 0x3f) << 6) | (ch3 & 0x3f);
         }
         return -5;
     }
     if (ch != '\\') {
-        ls.c = getch(heap);
+        ls().c = getch(heap);
         return ch;
     }
     const escaped_ch = getch(heap);
-    ls.c = getch(heap);
+    ls().c = getch(heap);
     switch (escaped_ch) {
         '\n' => return getlitch(heap),
         'a' => return '\x07',
@@ -488,12 +488,12 @@ fn getlitch(heap: *Heap) Word {
         't' => return '\t',
         'v' => return '\x0b',
         'X', 'x' => {
-            if (word.isxdigit(ls.c)) {
+            if (word.isxdigit(ls().c)) {
                 var value: c_uint = 0;
                 const N: usize = if (escaped_ch == 'x') 4 else 6;
                 var hold = std.mem.zeroes([8]u8);
                 var count: usize = 0;
-                var xch = ls.c;
+                var xch = ls().c;
                 while (word.isxdigit(xch) and count < N) {
                     hold[count] = @intCast(xch);
                     count += 1;
@@ -501,7 +501,7 @@ fn getlitch(heap: *Heap) Word {
                 }
                 hold[count] = 0;
                 _ = main_clib.sscanf(&hold[0], "%x", .{&value});
-                ls.c = xch;
+                ls().c = xch;
                 return if (value > UMAX) -3 else stoChar(@intCast(value));
             } else {
                 return -2;
@@ -512,13 +512,13 @@ fn getlitch(heap: *Heap) Word {
                 var n: Word = escaped_ch - '0';
                 var count: usize = 1;
                 const N: usize = 3;
-                var xch = ls.c;
+                var xch = ls().c;
                 while (xch >= '0' and xch <= '9' and count < N) {
                     n = (10 * n) + xch - '0';
                     count += 1;
                     xch = getch(heap);
                 }
-                ls.c = xch;
+                ls().c = xch;
                 return stoChar(n);
             }
             if (escaped_ch == '\'' or escaped_ch == '"' or escaped_ch == '\\' or escaped_ch == '`') {
@@ -527,7 +527,7 @@ fn getlitch(heap: *Heap) Word {
             if (escaped_ch == '&') {
                 return -7;
             }
-            ls.errch = if (escaped_ch <= 255) @intCast(escaped_ch) else '?';
+            ls().errch = if (escaped_ch <= 255) @intCast(escaped_ch) else '?';
             return -6;
         },
     }
@@ -535,24 +535,24 @@ fn getlitch(heap: *Heap) Word {
 
 /// Read a whole input line into a buffer.
 pub fn rdline() ?[*:0]u8 {
-    var p: [*]u8 = &ls.rdline_linebuf;
+    var p: [*]u8 = &ls().rdline_linebuf;
     var ch = main_clib.getchar();
     var expansion: Word = 0;
     while (ch == ' ' or ch == '\t') {
         ch = main_clib.getchar();
     }
-    if (ch == '\n' or (ch == '!' and ls.rdline_linebuf[0] == 0)) {
-        if (ls.rdline_linebuf[0] != 0) {
-            word.print("!{s}", .{@as([*:0]const u8, @ptrCast(&ls.rdline_linebuf))});
+    if (ch == '\n' or (ch == '!' and ls().rdline_linebuf[0] == 0)) {
+        if (ls().rdline_linebuf[0] != 0) {
+            word.print("!{s}", .{@as([*:0]const u8, @ptrCast(&ls().rdline_linebuf))});
         }
         while (ch != '\n' and ch != main_clib.EOF) {
             ch = main_clib.getchar();
         }
-        return @ptrCast(&ls.rdline_linebuf);
+        return @ptrCast(&ls().rdline_linebuf);
     }
     if (ch == '!') {
         expansion = 1;
-        p = @ptrCast(&ls.rdline_linebuf[word.strlen(&ls.rdline_linebuf) - 1]); // p now points at old '\n'
+        p = @ptrCast(&ls().rdline_linebuf[word.strlen(&ls().rdline_linebuf) - 1]); // p now points at old '\n'
     } else {
         if (getStdin()) |stdin_file| {
             _ = main_clib.ungetc(ch, stdin_file);
@@ -565,10 +565,10 @@ pub fn rdline() ?[*:0]u8 {
         if (ch == '\n' or ch == main_clib.EOF) {
             break;
         }
-        const offset = @as(usize, @intFromPtr(p)) - @as(usize, @intFromPtr(&ls.rdline_linebuf));
+        const offset = @as(usize, @intFromPtr(p)) - @as(usize, @intFromPtr(&ls().rdline_linebuf));
         if (offset >= 1024) {
             p[0] = 0;
-            word.printErr("sorry, !command too long (limit={} chars): {s}...\n", .{ @as(c_int, 1024), @as([*:0]const u8, @ptrCast(&ls.rdline_linebuf)) });
+            word.printErr("sorry, !command too long (limit={} chars): {s}...\n", .{ @as(c_int, 1024), @as([*:0]const u8, @ptrCast(&ls().rdline_linebuf)) });
             while (true) {
                 ch = main_clib.getchar();
                 if (ch == '\n' or ch == main_clib.EOF) {
@@ -578,39 +578,39 @@ pub fn rdline() ?[*:0]u8 {
             return null;
         }
         if ((p - 1)[0] == '%') {
-            if (@intFromPtr(p) > @intFromPtr(&ls.rdline_linebuf[1]) and (p - 2)[0] == '\\') {
+            if (@intFromPtr(p) > @intFromPtr(&ls().rdline_linebuf[1]) and (p - 2)[0] == '\\') {
                 (p - 2)[0] = '%';
                 p -= 1;
             } else {
-                const remaining = 1024 - (@as(usize, @intFromPtr(p - 1)) - @as(usize, @intFromPtr(&ls.rdline_linebuf)));
-                _ = word.strncpy(p - 1, rt.rs.current_script.?, remaining);
-                p = @ptrCast(&ls.rdline_linebuf[word.strlen(&ls.rdline_linebuf)]);
+                const remaining = 1024 - (@as(usize, @intFromPtr(p - 1)) - @as(usize, @intFromPtr(&ls().rdline_linebuf)));
+                _ = word.strncpy(p - 1, rt.rs().current_script.?, remaining);
+                p = @ptrCast(&ls().rdline_linebuf[word.strlen(&ls().rdline_linebuf)]);
                 expansion = 1;
             }
         }
     }
     p[0] = 0;
     if (expansion != 0) {
-        word.print("!{s}", .{@as([*:0]const u8, @ptrCast(&ls.rdline_linebuf))});
+        word.print("!{s}", .{@as([*:0]const u8, @ptrCast(&ls().rdline_linebuf))});
     }
-    return @ptrCast(&ls.rdline_linebuf);
+    return @ptrCast(&ls().rdline_linebuf);
 }
 
 /// Begin enforcing the literate-script left margin.
 pub fn setlmargin() void {
-    ls.margstack = cons(ls.lmargin, ls.margstack);
-    if (ls.lmargin < ls.col) {
-        ls.lmargin = ls.col;
+    ls().margstack = cons(ls().lmargin, ls().margstack);
+    if (ls().lmargin < ls().col) {
+        ls().lmargin = ls().col;
     }
 }
 
 /// Stop enforcing the literate-script left margin.
 pub fn unsetlmargin(heap: *Heap) void {
-    if (ls.margstack == NIL) {
+    if (ls().margstack == NIL) {
         return;
     }
-    ls.lmargin = h(heap, ls.margstack);
-    ls.margstack = t(heap, ls.margstack);
+    ls().lmargin = h(heap, ls().margstack);
+    ls().margstack = t(heap, ls().margstack);
 }
 
 /// Report a bad character class in a string / char-class literal.
@@ -623,9 +623,9 @@ fn errclass(val: Word, string_flag: Word) void {
     } else if (val == -4) {
         word.print("\\decimal escape out of range in {s}\n", .{s});
     } else if (val == -5) {
-        word.print("unrecognised character in {s}(rt.rs.UTF8 error)\n", .{s});
+        word.print("unrecognised character in {s}(rt.rs().UTF8 error)\n", .{s});
     } else if (val == -6) {
-        word.print("unrecognised escape \\{c} in {s}\n", .{ @as(u8, @intCast(ls.errch)), s });
+        word.print("unrecognised escape \\{c} in {s}\n", .{ @as(u8, @intCast(ls().errch)), s });
     } else if (val == -7) {
         word.print("illegal use of \\& in char const\n", .{});
     } else {
@@ -636,8 +636,8 @@ fn errclass(val: Word, string_flag: Word) void {
 
 /// Lookahead: if the next char is `y`, consume it and yield `x`, else null.
 inline fn tryCh(heap: *Heap, x: Word, y: c_int) ?c_int {
-    if (ls.c == x) {
-        ls.c = getch(heap);
+    if (ls().c == x) {
+        ls().c = getch(heap);
         return y;
     }
     return null;
@@ -645,51 +645,51 @@ inline fn tryCh(heap: *Heap, x: Word, y: c_int) ?c_int {
 
 /// The main lexer: scan and return the next token id (yacc-style).
 pub fn yylex(heap: *Heap) c_int {
-    if (core_state.s.SYNERR != 0) {
+    if (core_state.s().SYNERR != 0) {
         return word.END;
     }
     layout(heap);
-    ls.tok_start_col = ls.col;
-    if (ls.c == '\n') {
+    ls().tok_start_col = ls().col;
+    if (ls().c == '\n') {
         return word.END;
     }
-    if (ls.col < ls.lmargin) {
+    if (ls().col < ls().lmargin) {
         return lexAtOffsideOrElseq(heap);
     }
-    if (ls.c == ';') {
+    if (ls().c == ';') {
         return lexSemicolonOrElseq(heap);
     }
-    if (word.isalpha(ls.c)) {
+    if (word.isalpha(ls().c)) {
         return lexIdentifier(heap);
     }
-    if ((ls.c >= '0' and ls.c <= '9') or (ls.c == '.' and peekdig())) {
+    if ((ls().c >= '0' and ls().c <= '9') or (ls().c == '.' and peekdig())) {
         return lexNumeral(heap);
     }
-    if (ls.c == '%' and core_state.s.commandmode == 0) {
+    if (ls().c == '%' and core_state.s().commandmode == 0) {
         return @intCast(directive(heap));
     }
-    if (ls.c == '\'') {
+    if (ls().c == '\'') {
         return lexCharConst(heap);
     }
-    if (ls.inexplist != 0 and (ls.c == '"' or ls.c == '<')) {
+    if (ls().inexplist != 0 and (ls().c == '"' or ls().c == '<')) {
         return lexPathname(heap);
     }
-    if (ls.inlex == 1 and ls.c == '`') {
+    if (ls().inlex == 1 and ls().c == '`') {
         return if (charclass(heap) != 0) word.ANTICHARCLASS else word.CHARCLASS;
     }
-    if (ls.c == '"') {
+    if (ls().c == '"') {
         return lexStringConst(heap);
     }
-    if (ls.inbnf == 2) {
-        if (ls.c == '[') {
-            ls.brct += 1;
-        } else if (ls.c == ']') {
-            ls.brct -= 1;
-        } else if (ls.c == '|' and ls.brct == 0) {
+    if (ls().inbnf == 2) {
+        if (ls().c == '[') {
+            ls().brct += 1;
+        } else if (ls().c == ']') {
+            ls().brct -= 1;
+        } else if (ls().c == '|' and ls().brct == 0) {
             return word.OFFSIDE;
         }
     }
-    if (ls.c == main_clib.EOF) {
+    if (ls().c == main_clib.EOF) {
         return lexEndOfFile(heap);
     }
     return lexSymbolOrOperator(heap);
@@ -698,8 +698,8 @@ pub fn yylex(heap: *Heap) c_int {
 /// Below the left margin: `=` at or past the current layout column resumes
 /// the same declaration (`ELSEQ`); otherwise the layout rule inserts `OFFSIDE`.
 fn lexAtOffsideOrElseq(heap: *Heap) c_int {
-    if (ls.c == '=' and (ls.margstack == NIL or ls.col >= h(heap, ls.margstack))) {
-        ls.c = getch(heap);
+    if (ls().c == '=' and (ls().margstack == NIL or ls().col >= h(heap, ls().margstack))) {
+        ls().c = getch(heap);
         return word.ELSEQ;
     }
     return word.OFFSIDE;
@@ -708,10 +708,10 @@ fn lexAtOffsideOrElseq(heap: *Heap) c_int {
 /// `;` as a declaration separator, or (followed by `=` at/past the layout
 /// column) as an `ELSEQ`.
 fn lexSemicolonOrElseq(heap: *Heap) c_int {
-    ls.c = getch(heap);
+    ls().c = getch(heap);
     layout(heap);
-    if (ls.c == '=' and (ls.margstack == NIL or ls.col >= h(heap, ls.margstack))) {
-        ls.c = getch(heap);
+    if (ls().c == '=' and (ls().margstack == NIL or ls().col >= h(heap, ls().margstack))) {
+        ls().c = getch(heap);
         return word.ELSEQ;
     }
     return ';';
@@ -722,24 +722,24 @@ fn lexSemicolonOrElseq(heap: *Heap) c_int {
 /// characters just collected are interpreted.
 fn lexIdentifier(heap: *Heap) c_int {
     kollect(heap, okid);
-    if (ls.inlex == 1) {
+    if (ls().inlex == 1) {
         layout(heap);
-        ls.yylval = name(heap);
-        return if (ls.c == '=') word.LEXDEF else if (isconstructor(heap, ls.yylval)) word.CNAME else word.NAME;
+        ls().yylval = name(heap);
+        return if (ls().c == '=') word.LEXDEF else if (isconstructor(heap, ls().yylval)) word.CNAME else word.NAME;
     }
-    if (ls.inbnf == 1) {
-        (ls.dicq - 1)[0] = ' ';
-        ls.dicq[0] = 0;
-        ls.dicq += 1;
+    if (ls().inbnf == 1) {
+        (ls().dicq - 1)[0] = ' ';
+        ls().dicq[0] = 0;
+        ls().dicq += 1;
     }
     return @intCast(identifier(heap, 0));
 }
 
 /// Scans a numeral: hex (`0x`), octal (`0o`), or decimal/float via `numeral(heap)`.
 fn lexNumeral(heap: *Heap) c_int {
-    if (ls.c == '0' and word.tolower(peekch()) == 'x') {
+    if (ls().c == '0' and word.tolower(peekch()) == 'x') {
         hexnumeral(heap);
-    } else if (ls.c == '0' and word.tolower(peekch()) == 'o') {
+    } else if (ls().c == '0' and word.tolower(peekch()) == 'o') {
         octnumeral(heap);
     } else {
         numeral(heap);
@@ -749,33 +749,33 @@ fn lexNumeral(heap: *Heap) c_int {
 
 /// Scans a `'c'` character constant, reporting malformed escapes/termination.
 fn lexCharConst(heap: *Heap) c_int {
-    ls.c = getch(heap);
-    ls.yylval = getlitch(heap);
-    if (ls.yylval < 0) {
-        errclass(ls.yylval, 0);
+    ls().c = getch(heap);
+    ls().yylval = getlitch(heap);
+    if (ls().yylval < 0) {
+        errclass(ls().yylval, 0);
         return word.CONST;
     }
-    if (!isChar(ls.yylval)) {
-        const prefix_str: [*:0]const u8 = if (rt.rs.echoing != 0) "\n" else "";
-        word.printErr("{s}impossible event while reading char const ('\\{}')\n", .{ prefix_str, ls.yylval });
+    if (!isChar(ls().yylval)) {
+        const prefix_str: [*:0]const u8 = if (rt.rs().echoing != 0) "\n" else "";
+        word.printErr("{s}impossible event while reading char const ('\\{}')\n", .{ prefix_str, ls().yylval });
         acterror();
     }
-    if (ls.rawch == '\n' or ls.c != '\'') {
+    if (ls().rawch == '\n' or ls().c != '\'') {
         syntax("improperly terminated char const\n");
     } else {
-        ls.c = getch(heap);
+        ls().c = getch(heap);
     }
     return word.CONST;
 }
 
 /// Scans a `%export`-list pathname (`"..."` or `<...>`), recording it in
-/// `ls.exportfiles`.
+/// `ls().exportfiles`.
 fn lexPathname(heap: *Heap) c_int {
     if (pathname(heap) == null) {
         syntax("badly formed pathname in %export list\n");
     } else {
-        ls.exportfiles = cons(strtab.strBits(strtab.table, addextn(1, ls.dicp)), ls.exportfiles);
-        _ = keep(ls.dicp);
+        ls().exportfiles = cons(strtab.strBits(strtab.table(), addextn(1, ls().dicp)), ls().exportfiles);
+        _ = keep(ls().dicp);
     }
     return word.PATHNAME;
 }
@@ -783,8 +783,8 @@ fn lexPathname(heap: *Heap) c_int {
 /// Scans a `"..."` string constant.
 fn lexStringConst(heap: *Heap) c_int {
     string(heap);
-    if (ls.yylval == NIL) {
-        ls.yylval = NILS;
+    if (ls().yylval == NIL) {
+        ls().yylval = NILS;
     }
     return word.CONST;
 }
@@ -793,275 +793,275 @@ fn lexStringConst(heap: *Heap) c_int {
 /// file/echo/verge/literate/line-number stacks, and either signals `END` (top
 /// level exhausted) or resumes lexing the enclosing file.
 fn lexEndOfFile(heap: *Heap) c_int {
-    if (ls.fileq == NIL) {
-        ls.c = 0;
+    if (ls().fileq == NIL) {
+        ls().c = 0;
         return word.END;
     }
-    if (t(heap, ls.fileq) == NIL and ls.margstack != NIL) {
+    if (t(heap, ls().fileq) == NIL and ls().margstack != NIL) {
         return word.OFFSIDE;
     }
-    const file_ptr: ?*word.FILE = @ptrFromInt(@as(usize, @intCast(h(heap, h(heap, ls.fileq)))));
+    const file_ptr: ?*word.FILE = @ptrFromInt(@as(usize, @intCast(h(heap, h(heap, ls().fileq)))));
     _ = word.fclose(file_ptr);
-    ls.fileq = t(heap, ls.fileq);
-    ls.insertdepth -= 1;
-    if (ls.fileq != NIL and h(heap, ls.echostack) != 0) {
-        if (ls.literate != 0) {
+    ls().fileq = t(heap, ls().fileq);
+    ls().insertdepth -= 1;
+    if (ls().fileq != NIL and h(heap, ls().echostack) != 0) {
+        if (ls().literate != 0) {
             _ = word.putchar('>');
-            spaces(ls.lverge);
+            spaces(ls().lverge);
         }
         word.print("<end of insert>", .{});
     }
-    rt.rs.s_in = if (ls.fileq == NIL) getStdin() else @ptrFromInt(@as(usize, @intCast(h(heap, h(heap, ls.fileq)))));
-    ls.c = ' ';
-    if (ls.fileq == NIL) {
-        ls.c = 0;
-        ls.col = 0;
-        ls.lmargin = 0;
-        ls.lverge = 0;
-        ls.atnl = 1;
-        rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
-        ls.lastline = ls.line_no;
-        ls.line_no = 0;
-        ls.literate = 0;
-        ls.litmain = 0;
+    rt.rs().s_in = if (ls().fileq == NIL) getStdin() else @ptrFromInt(@as(usize, @intCast(h(heap, h(heap, ls().fileq)))));
+    ls().c = ' ';
+    if (ls().fileq == NIL) {
+        ls().c = 0;
+        ls().col = 0;
+        ls().lmargin = 0;
+        ls().lverge = 0;
+        ls().atnl = 1;
+        rt.rs().echoing = rt.rs().verbosity & rt.rs().listing;
+        ls().lastline = ls().line_no;
+        ls().line_no = 0;
+        ls().literate = 0;
+        ls().litmain = 0;
         return word.END;
     }
-    heap.current_file = t(heap, h(heap, ls.fileq));
-    ls.prefix = h(heap, ls.prefixstack);
-    ls.prefixstack = t(heap, ls.prefixstack);
-    rt.rs.echoing = h(heap, ls.echostack);
-    ls.echostack = t(heap, ls.echostack);
-    ls.lverge = h(heap, ls.vergstack);
-    ls.vergstack = t(heap, ls.vergstack);
-    ls.literate = h(heap, ls.litstack);
-    ls.litstack = t(heap, ls.litstack);
-    ls.line_no = h(heap, ls.linostack);
-    ls.linostack = t(heap, ls.linostack);
+    heap.current_file = t(heap, h(heap, ls().fileq));
+    ls().prefix = h(heap, ls().prefixstack);
+    ls().prefixstack = t(heap, ls().prefixstack);
+    rt.rs().echoing = h(heap, ls().echostack);
+    ls().echostack = t(heap, ls().echostack);
+    ls().lverge = h(heap, ls().vergstack);
+    ls().vergstack = t(heap, ls().vergstack);
+    ls().literate = h(heap, ls().litstack);
+    ls().litstack = t(heap, ls().litstack);
+    ls().line_no = h(heap, ls().linostack);
+    ls().linostack = t(heap, ls().linostack);
     return yylex(heap);
 }
 
 /// Scans a punctuation/operator token: reads the next raw character and
-/// switches on the one just consumed (`ls.lastc`) to recognize the two-char
+/// switches on the one just consumed (`ls().lastc`) to recognize the two-char
 /// operators (`->`, `<-`, `==`, `++`, `..`, `\/`, `>=`, `~=`, `&>`, `//`,
 /// `**`, `::`(`=`), the `$`-family of special forms, and underline-prefixed
 /// identifiers), falling back to the single character itself.
 fn lexSymbolOrOperator(heap: *Heap) c_int {
-    ls.lastc = ls.c;
-    ls.c = getch(heap);
-    switch (ls.lastc) {
+    ls().lastc = ls().c;
+    ls().c = getch(heap);
+    switch (ls().lastc) {
         '_' => {
-            if (ls.c == ' ') {
-                ls.c = getch(heap);
-                if (ls.c == '<') {
-                    ls.c = getch(heap);
+            if (ls().c == ' ') {
+                ls().c = getch(heap);
+                if (ls().c == '<') {
+                    ls().c = getch(heap);
                     return word.LE;
                 }
-                if (ls.c == '>') {
-                    ls.c = getch(heap);
+                if (ls().c == '>') {
+                    ls().c = getch(heap);
                     return word.GE;
                 }
-                if (ls.c == '%' and core_state.s.commandmode == 0) {
+                if (ls().c == '%' and core_state.s().commandmode == 0) {
                     return @intCast(directive(heap));
                 }
-                if (word.isalpha(ls.c)) {
+                if (word.isalpha(ls().c)) {
                     kollect(heap, okulid);
-                    if (ls.dicp[1] == '_' and ls.dicp[2] == ' ') {
+                    if (ls().dicp[1] == '_' and ls().dicp[2] == ' ') {
                         return @intCast(identifier(heap, 1));
                     }
                 }
                 syntax("illegal use of underlining\n");
                 return '_';
             }
-            return @intCast(ls.lastc);
+            return @intCast(ls().lastc);
         },
         '-' => {
             if (tryCh(heap, '>', word.ARROW)) |ret| return ret;
             if (tryCh(heap, '-', word.MINUSMINUS)) |ret| return ret;
-            return @intCast(ls.lastc);
+            return @intCast(ls().lastc);
         },
         '<' => {
             if (tryCh(heap, '-', word.LEFTARROW)) |ret| return ret;
             if (tryCh(heap, '=', word.LE)) |ret| return ret;
-            return @intCast(ls.lastc);
+            return @intCast(ls().lastc);
         },
         '=' => {
-            if (ls.c == '>') {
+            if (ls().c == '>') {
                 syntax("unexpected symbol =>\n");
                 return '=';
             }
             if (tryCh(heap, '=', word.EQEQ)) |ret| return ret;
-            return @intCast(ls.lastc);
+            return @intCast(ls().lastc);
         },
         '+' => {
             if (tryCh(heap, '+', word.PLUSPLUS)) |ret| return ret;
-            return @intCast(ls.lastc);
+            return @intCast(ls().lastc);
         },
         '.' => {
-            if (ls.c == '.') {
-                ls.c = getch(heap);
+            if (ls().c == '.') {
+                ls().c = getch(heap);
                 return word.DOTDOT;
             }
-            return @intCast(ls.lastc);
+            return @intCast(ls().lastc);
         },
         '\\' => {
             if (tryCh(heap, '/', word.VEL)) |ret| return ret;
-            return @intCast(ls.lastc);
+            return @intCast(ls().lastc);
         },
         '>' => {
             if (tryCh(heap, '=', word.GE)) |ret| return ret;
-            return @intCast(ls.lastc);
+            return @intCast(ls().lastc);
         },
         '~' => {
             if (tryCh(heap, '=', word.NE)) |ret| return ret;
-            return @intCast(ls.lastc);
+            return @intCast(ls().lastc);
         },
         '&' => {
-            if (ls.c == '>') {
-                ls.c = getch(heap);
-                if (ls.c == '>') {
-                    ls.yylval = 1;
+            if (ls().c == '>') {
+                ls().c = getch(heap);
+                if (ls().c == '>') {
+                    ls().yylval = 1;
                 } else {
-                    ls.yylval = 0;
-                    _ = main_clib.ungetc(@intCast(ls.c), rt.rs.s_in);
+                    ls().yylval = 0;
+                    _ = main_clib.ungetc(@intCast(ls().c), rt.rs().s_in);
                 }
-                ls.c = ' ';
+                ls().c = ' ';
                 return word.TO;
             }
-            return @intCast(ls.lastc);
+            return @intCast(ls().lastc);
         },
         '/' => {
             if (tryCh(heap, '/', word.DIAG)) |ret| return ret;
-            return @intCast(ls.lastc);
+            return @intCast(ls().lastc);
         },
         '*' => {
-            if (ls.c == '*') {
-                ls.c = getch(heap);
+            if (ls().c == '*') {
+                ls().c = getch(heap);
                 return @intCast(collectstars(heap));
             }
-            return @intCast(ls.lastc);
+            return @intCast(ls().lastc);
         },
         ':' => {
-            if (ls.c == ':') {
-                ls.c = getch(heap);
-                if (ls.c == '=') {
-                    ls.c = getch(heap);
+            if (ls().c == ':') {
+                ls().c = getch(heap);
+                if (ls().c == '=') {
+                    ls().c = getch(heap);
                     return word.COLON2EQ;
                 }
                 return word.COLONCOLON;
             }
-            return @intCast(ls.lastc);
+            return @intCast(ls().lastc);
         },
         '$' => {
-            if (word.isalpha(ls.c)) {
+            if (word.isalpha(ls().c)) {
                 kollect(heap, okid);
                 const t_val = identifier(heap, 0);
                 return if (t_val == word.NAME) word.INFIXNAME else if (t_val == word.CNAME) word.INFIXCNAME else '$';
             }
-            if (ls.c >= '1' and ls.c <= '9') {
+            if (ls().c >= '1' and ls().c <= '9') {
                 var n: Word = 0;
-                while (ls.c >= '0' and ls.c <= '9' and n < 1000000) {
-                    n = (10 * n) + ls.c - '0';
-                    ls.c = getch(heap);
+                while (ls().c >= '0' and ls().c <= '9' and n < 1000000) {
+                    n = (10 * n) + ls().c - '0';
+                    ls().c = getch(heap);
                 }
-                if (n > ls.sreds) {
-                    word.print("{s}syntax error: illegal symbol ${}{s}\n", .{ if (rt.rs.echoing != 0) @as([*:0]const u8, "\n") else "", n, if (n >= 1000000) @as([*:0]const u8, "...") else "" });
+                if (n > ls().sreds) {
+                    word.print("{s}syntax error: illegal symbol ${}{s}\n", .{ if (rt.rs().echoing != 0) @as([*:0]const u8, "\n") else "", n, if (n >= 1000000) @as([*:0]const u8, "...") else "" });
                     acterror();
                 } else {
-                    ls.yylval = mkgvar(heap, n);
+                    ls().yylval = mkgvar(heap, n);
                     return word.NAME;
                 }
             }
-            if (ls.c == '-') {
-                if (core_state.s.compiling == 0) {
+            if (ls().c == '-') {
+                if (core_state.s().compiling == 0) {
                     syntax("unexpected symbol $-\n");
                 } else {
-                    ls.c = getch(heap);
-                    ls.yylval = ls.common_stdin;
+                    ls().c = getch(heap);
+                    ls().yylval = ls().common_stdin;
                     return word.CONST;
                 }
             }
-            if (ls.c == ':') {
-                ls.c = getch(heap);
-                if (ls.c != '-') {
+            if (ls().c == ':') {
+                ls().c = getch(heap);
+                if (ls().c != '-') {
                     syntax("unexpected symbol $:\n");
                 } else {
-                    if (core_state.s.compiling == 0) {
+                    if (core_state.s().compiling == 0) {
                         syntax("unexpected symbol $:-\n");
                     } else {
-                        ls.c = getch(heap);
-                        ls.yylval = ls.common_stdinb;
+                        ls().c = getch(heap);
+                        ls().yylval = ls().common_stdinb;
                         return word.CONST;
                     }
                 }
             }
-            if (ls.c == '+') {
-                if (core_state.s.compiling == 0) {
+            if (ls().c == '+') {
+                if (core_state.s().compiling == 0) {
                     syntax("unexpected symbol $+\n");
                 } else {
-                    ls.c = getch(heap);
-                    if (core_state.s.commandmode != 0) {
-                        ls.yylval = ls.cook_stdin;
+                    ls().c = getch(heap);
+                    if (core_state.s().commandmode != 0) {
+                        ls().yylval = ls().cook_stdin;
                     } else {
-                        ls.yylval = make(.CONS, readvals(0, 0), word.OFFSIDE);
+                        ls().yylval = make(.CONS, readvals(0, 0), word.OFFSIDE);
                     }
                     return word.CONST;
                 }
             }
-            if (ls.c == '$') {
-                if (ls.inlex != 2 and (core_state.s.commandmode == 0 or core_state.s.compiling == 0)) {
+            if (ls().c == '$') {
+                if (ls().inlex != 2 and (core_state.s().commandmode == 0 or core_state.s().compiling == 0)) {
                     syntax("unexpected symbol $$\n");
                 } else {
-                    ls.c = getch(heap);
-                    if (ls.inlex != 0) {
-                        ls.yylval = mklexvar(heap, 0);
+                    ls().c = getch(heap);
+                    if (ls().inlex != 0) {
+                        ls().yylval = mklexvar(heap, 0);
                         return word.NAME;
                     }
                     return word.DOLLARS;
                 }
             }
-            if (ls.c == '#') {
-                if (ls.inlex != 2) {
+            if (ls().c == '#') {
+                if (ls().inlex != 2) {
                     syntax("unexpected symbol $#\n");
                 } else {
-                    ls.c = getch(heap);
-                    ls.yylval = mklexvar(heap, 1);
+                    ls().c = getch(heap);
+                    ls().yylval = mklexvar(heap, 1);
                     return word.NAME;
                 }
             }
-            if (ls.c == '*') {
-                ls.c = getch(heap);
-                ls.yylval = make(.AP, word.GETARGS, 0);
+            if (ls().c == '*') {
+                ls().c = getch(heap);
+                ls().yylval = make(.AP, word.GETARGS, 0);
                 return word.CONST;
             }
-            if (ls.c == '0') {
+            if (ls().c == '0') {
                 syntax("illegal symbol $0\n");
             }
-            return @intCast(ls.lastc);
+            return @intCast(ls().lastc);
         },
-        else => return @intCast(ls.lastc),
+        else => return @intCast(ls().lastc),
     }
 }
 
 /// Apply the offside (layout) rule, inserting virtual block tokens.
 pub fn layout(heap: *Heap) void {
     while (true) {
-        if (ls.c == ' ' or (ls.c == '\n' and core_state.s.commandmode == 0) or ls.c == '\t') {
-            ls.c = getch(heap);
+        if (ls().c == ' ' or (ls().c == '\n' and core_state.s().commandmode == 0) or ls().c == '\t') {
+            ls().c = getch(heap);
             continue;
         }
-        if (ls.c == main_clib.EOF and core_state.s.commandmode != 0) {
-            ls.c = '\n';
+        if (ls().c == main_clib.EOF and core_state.s().commandmode != 0) {
+            ls().c = '\n';
             return;
         }
-        if ((ls.c == '|' and peekch() == '|') or (ls.col == 1 and ls.line_no == 1 and ls.c == '#' and peekch() == '!')) {
-            ls.c = getch(heap);
-            while (ls.c != '\n' and ls.c != main_clib.EOF) {
-                ls.c = getch(heap);
+        if ((ls().c == '|' and peekch() == '|') or (ls().col == 1 and ls().line_no == 1 and ls().c == '#' and peekch() == '!')) {
+            ls().c = getch(heap);
+            while (ls().c != '\n' and ls().c != main_clib.EOF) {
+                ls().c = getch(heap);
             }
-            if (ls.c == main_clib.EOF and core_state.s.commandmode == 0) {
+            if (ls().c == main_clib.EOF and core_state.s().commandmode == 0) {
                 return;
             }
-            ls.c = '\n';
+            ls().c = '\n';
             continue;
         }
         break;
@@ -1071,18 +1071,18 @@ pub fn layout(heap: *Heap) void {
 /// Collect a run of `*`s naming a type variable.
 fn collectstars(heap: *Heap) Word {
     var n: Word = 2;
-    while (ls.c == '*') {
-        ls.c = getch(heap);
+    while (ls().c == '*') {
+        ls().c = getch(heap);
         n += 1;
     }
-    ls.yylval = mktvar(n);
+    ls().yylval = mktvar(n);
     return word.TYPEVAR;
 }
 
 /// Make a grammar-variable node with index `i`.
 pub fn mkgvar(heap: *Heap, i_input: Word) Word {
     var i = i_input;
-    var p = &ls.gvars;
+    var p = &ls().gvars;
     while (i > 1) {
         if (p.* == NIL) {
             p.* = cons(stoId("gvar"), NIL);
@@ -1098,27 +1098,27 @@ pub fn mkgvar(heap: *Heap, i_input: Word) Word {
 
 /// Make a lexer-variable node with index `i`.
 pub fn mklexvar(heap: *Heap, i: Word) Word {
-    if (ls.lexvar == 0) {
-        ls.lexvar = cons(stoId("ls.lexvar"), stoId("ls.lexvar"));
-        tp(heap, h(heap, ls.lexvar)).* = cs.ltchar;
-        tp(heap, t(heap, ls.lexvar)).* = genlstatType();
+    if (ls().lexvar == 0) {
+        ls().lexvar = cons(stoId("ls.lexvar"), stoId("ls.lexvar"));
+        tp(heap, h(heap, ls().lexvar)).* = cs().ltchar;
+        tp(heap, t(heap, ls().lexvar)).* = genlstatType();
     }
-    return if (i != 0) t(heap, ls.lexvar) else h(heap, ls.lexvar);
+    return if (i != 0) t(heap, ls().lexvar) else h(heap, ls().lexvar);
 }
 
 /// Build the command-line argument list as a Miranda list value.
 pub fn convArgs() Word {
-    var i = ls.ARGC;
+    var i = ls().ARGC;
     var x = NIL;
     if (i == 0) {
         return NIL;
     }
     i -= 1;
     while (i > 0) {
-        x = cons(strConv(ls.ARGV[@intCast(i)].?), x);
+        x = cons(strConv(ls().ARGV[@intCast(i)].?), x);
         i -= 1;
     }
-    x = cons(strConv(ls.ARGV[0].?), x);
+    x = cons(strConv(ls().ARGV[0].?), x);
     return x;
 }
 
@@ -1144,97 +1144,97 @@ test "strConv: a C string becomes a Miranda char list" {
 /// Scan a `<...>` or quoted pathname token.
 pub fn pathname(heap: *Heap) ?[*:0]u8 {
     layout(heap);
-    if (ls.c == '<') {
-        const hold = ls.dicp;
-        ls.c = getch(heap);
-        _ = word.strcpy(ls.dicp, rt.rs.miralib.?);
-        ls.dicp += word.strlen(rt.rs.miralib.?);
-        ls.dicp[0] = '/';
-        ls.dicp += 1;
+    if (ls().c == '<') {
+        const hold = ls().dicp;
+        ls().c = getch(heap);
+        _ = word.strcpy(ls().dicp, rt.rs().miralib.?);
+        ls().dicp += word.strlen(rt.rs().miralib.?);
+        ls().dicp[0] = '/';
+        ls().dicp += 1;
         kollect(heap, okpath);
-        ls.dicp = hold;
-        if (ls.c != '>') {
+        ls().dicp = hold;
+        if (ls().c != '>') {
             return null;
         }
-        ls.c = ' ';
-        return ls.dicp;
+        ls().c = ' ';
+        return ls().dicp;
     }
-    if (ls.c != '"') {
+    if (ls().c != '"') {
         return null;
     }
-    ls.c = getch(heap);
-    if (ls.c == '~') {
-        const hold = ls.dicp;
-        ls.dicp[0] = @intCast(ls.c);
-        ls.dicp += 1;
-        ls.c = getch(heap);
-        while (word.isalnum(ls.c) or ls.c == '-' or ls.c == '_' or ls.c == '.') {
-            ls.dicp[0] = @intCast(ls.c);
-            ls.dicp += 1;
-            ls.c = getch(heap);
+    ls().c = getch(heap);
+    if (ls().c == '~') {
+        const hold = ls().dicp;
+        ls().dicp[0] = @intCast(ls().c);
+        ls().dicp += 1;
+        ls().c = getch(heap);
+        while (word.isalnum(ls().c) or ls().c == '-' or ls().c == '_' or ls().c == '.') {
+            ls().dicp[0] = @intCast(ls().c);
+            ls().dicp += 1;
+            ls().c = getch(heap);
         }
-        ls.dicp[0] = 0;
+        ls().dicp[0] = 0;
         if (gethome(hold + 1)) |h_dir| {
             _ = word.strcpy(hold, h_dir);
-            ls.dicp = hold + word.strlen(hold);
+            ls().dicp = hold + word.strlen(hold);
         } else {
-            _ = word.strcpy(&rt.rs.linebuf[0], hold);
-            _ = word.strcpy(hold, ls.prefixbase.? + @as(usize, @intCast(ls.prefix)));
-            ls.dicp = hold + word.strlen(ls.prefixbase.? + @as(usize, @intCast(ls.prefix)));
-            _ = word.strcpy(ls.dicp, &rt.rs.linebuf[0]);
-            ls.dicp += word.strlen(ls.dicp);
+            _ = word.strcpy(&rt.rs().linebuf[0], hold);
+            _ = word.strcpy(hold, ls().prefixbase.? + @as(usize, @intCast(ls().prefix)));
+            ls().dicp = hold + word.strlen(ls().prefixbase.? + @as(usize, @intCast(ls().prefix)));
+            _ = word.strcpy(ls().dicp, &rt.rs().linebuf[0]);
+            ls().dicp += word.strlen(ls().dicp);
         }
         kollect(heap, okpath);
-        ls.dicp = hold;
-    } else if (ls.c == '/') {
+        ls().dicp = hold;
+    } else if (ls().c == '/') {
         kollect(heap, okpath);
     } else {
-        const hold = ls.dicp;
-        _ = word.strcpy(ls.dicp, ls.prefixbase.? + @as(usize, @intCast(ls.prefix)));
-        ls.dicp += word.strlen(ls.prefixbase.? + @as(usize, @intCast(ls.prefix)));
+        const hold = ls().dicp;
+        _ = word.strcpy(ls().dicp, ls().prefixbase.? + @as(usize, @intCast(ls().prefix)));
+        ls().dicp += word.strlen(ls().prefixbase.? + @as(usize, @intCast(ls().prefix)));
         kollect(heap, okpath);
-        ls.dicp = hold;
+        ls().dicp = hold;
     }
-    if (ls.c != '"') {
+    if (ls().c != '"') {
         return null;
     }
-    ls.c = ' ';
-    return ls.dicp;
+    ls().c = ' ';
+    return ls().dicp;
 }
 
 /// Adjust the stored library path prefix for `f`.
 pub fn adjustPrefix(f: [*:0]const u8) void {
-    ls.prefixstack = cons(ls.prefix, ls.prefixstack);
-    ls.prefix += @as(Word, @intCast(word.strlen(ls.prefixbase.? + @as(usize, @intCast(ls.prefix))))) + 1;
-    while (@as(usize, @intCast(ls.prefix)) + word.strlen(f) >= @as(usize, @intCast(ls.prefixlimit))) {
-        const old_limit = ls.prefixlimit;
-        ls.prefixlimit += 1024;
-        const old_slice = ls.prefixbase.?[0..@intCast(old_limit)];
-        const new_slice = rt.allocator.realloc(old_slice, @intCast(ls.prefixlimit)) catch mallocPanic("ls.prefixbase");
-        ls.prefixbase = new_slice.ptr;
+    ls().prefixstack = cons(ls().prefix, ls().prefixstack);
+    ls().prefix += @as(Word, @intCast(word.strlen(ls().prefixbase.? + @as(usize, @intCast(ls().prefix))))) + 1;
+    while (@as(usize, @intCast(ls().prefix)) + word.strlen(f) >= @as(usize, @intCast(ls().prefixlimit))) {
+        const old_limit = ls().prefixlimit;
+        ls().prefixlimit += 1024;
+        const old_slice = ls().prefixbase.?[0..@intCast(old_limit)];
+        const new_slice = rt.allocator.realloc(old_slice, @intCast(ls().prefixlimit)) catch mallocPanic("ls.prefixbase");
+        ls().prefixbase = new_slice.ptr;
     }
-    _ = word.strcpy(ls.prefixbase.? + @as(usize, @intCast(ls.prefix)), f);
-    const g = word.rindex(ls.prefixbase.? + @as(usize, @intCast(ls.prefix)), '/');
+    _ = word.strcpy(ls().prefixbase.? + @as(usize, @intCast(ls().prefix)), f);
+    const g = word.rindex(ls().prefixbase.? + @as(usize, @intCast(ls().prefix)), '/');
     if (g) |gp| {
         gp[1] = 0;
     } else {
-        (ls.prefixbase.? + @as(usize, @intCast(ls.prefix)))[0] = 0;
+        (ls().prefixbase.? + @as(usize, @intCast(ls().prefix)))[0] = 0;
     }
 }
 
 /// Whether the next input char is a digit (without consuming).
 pub fn peekdig() bool {
-    if (rt.rs.s_in == null) return false;
-    const ch = main_clib.getc(rt.rs.s_in);
-    _ = main_clib.ungetc(ch, rt.rs.s_in);
+    if (rt.rs().s_in == null) return false;
+    const ch = main_clib.getc(rt.rs().s_in);
+    _ = main_clib.ungetc(ch, rt.rs().s_in);
     return ch >= '0' and ch <= '9';
 }
 
 /// Peek the next input char without consuming it.
 pub fn peekch() c_int {
-    if (rt.rs.s_in == null) return main_clib.EOF;
-    const ch = main_clib.getc(rt.rs.s_in);
-    _ = main_clib.ungetc(ch, rt.rs.s_in);
+    if (rt.rs().s_in == null) return main_clib.EOF;
+    const ch = main_clib.getc(rt.rs().s_in);
+    _ = main_clib.ungetc(ch, rt.rs().s_in);
     return ch;
 }
 
@@ -1243,14 +1243,14 @@ pub fn openfile(n: [*:0]const u8) c_int {
     const f = word.fopen(n, "r") orelse return 0;
     // FILE* handle stored in the cell (read back via @ptrFromInt below);
     // this is a FILE-handle-in-cell cast, not a node string — out of B1 scope.
-    ls.fileq = cons(make(.STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls.fileq);
-    ls.insertdepth += 1;
+    ls().fileq = cons(make(.STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls().fileq);
+    ls().insertdepth += 1;
     return 1;
 }
 
 /// Scan an identifier beginning with char `s`; returns its token id.
 fn identifier(heap: *Heap, s: c_int) c_int {
-    if (ls.inbnf == 1) {
+    if (ls().inbnf == 1) {
         if (is("empty ") or is("e_ m_ p_ t_ y")) {
             return word.EMPTYSY;
         }
@@ -1264,7 +1264,7 @@ fn identifier(heap: *Heap, s: c_int) c_int {
             return word.WHERE;
         }
     } else {
-        switch (ls.dicp[0]) {
+        switch (ls().dicp[0]) {
             'a' => {
                 if (is("abstype") or is("a_ b_ s_ t_ y_ p_ e")) {
                     return word.ABSTYPE;
@@ -1277,7 +1277,7 @@ fn identifier(heap: *Heap, s: c_int) c_int {
             },
             'F' => {
                 if (is("False")) {
-                    ls.yylval = False;
+                    ls().yylval = False;
                     return word.CONST;
                 }
             },
@@ -1308,7 +1308,7 @@ fn identifier(heap: *Heap, s: c_int) c_int {
             },
             'T' => {
                 if (is("True")) {
-                    ls.yylval = True;
+                    ls().yylval = True;
                     return word.CONST;
                 }
             },
@@ -1332,42 +1332,42 @@ fn identifier(heap: *Heap, s: c_int) c_int {
         syntax("illegal use of underlining\n");
         return '_';
     }
-    ls.yylval = name(heap);
-    if (core_state.s.commandmode != 0 and rt.rs.lastid == 0 and h(heap, ls.yylval) != 0) {
-        if (t(heap, h(heap, ls.yylval)) != 0) {
-            rt.rs.lastid = ls.yylval;
+    ls().yylval = name(heap);
+    if (core_state.s().commandmode != 0 and rt.rs().lastid == 0 and h(heap, ls().yylval) != 0) {
+        if (t(heap, h(heap, ls().yylval)) != 0) {
+            rt.rs().lastid = ls().yylval;
         }
     }
-    return if (isconstructor(heap, ls.yylval)) word.CNAME else word.NAME;
+    return if (isconstructor(heap, ls().yylval)) word.CNAME else word.NAME;
 }
 
 /// Handle a `%`-directive (`%include`/`%export`/`%free`/`%list`/...).
 pub fn directive(heap: *Heap) Word {
-    const holdcol = ls.col - 1;
-    const holdlin = ls.line_no;
-    ls.c = getch(heap);
-    if (ls.c == '%') {
-        ls.c = getch(heap);
+    const holdcol = ls().col - 1;
+    const holdlin = ls().line_no;
+    ls().c = getch(heap);
+    if (ls().c == '%') {
+        ls().c = getch(heap);
         return word.ENDIR;
     }
     kollect(heap, okulid);
-    const first_char = if (ls.dicp[0] == '_' and ls.dicp[1] == ' ') ls.dicp[2] else ls.dicp[0];
+    const first_char = if (ls().dicp[0] == '_' and ls().dicp[1] == ' ') ls().dicp[2] else ls().dicp[0];
     switch (first_char) {
         'b' => {
             if (is("begin") or is("_^Hb_^He_^Hg_^Hi_^Hn")) {
-                if (ls.inlex != 0) {
+                if (ls().inlex != 0) {
                     return word.LBEGIN;
                 }
             }
             if (is("bnf") or is("_^Hb_^Hn_^Hf")) {
                 setlmargin();
-                ls.col = holdcol + 4;
+                ls().col = holdcol + 4;
                 return word.BNF;
             }
         },
         'e' => {
             if (is("export") or is("_ e_ x_ p_ o_ r_ t")) {
-                if (rt.rs.magic) {
+                if (rt.rs().magic) {
                     syntax("%export directive not permitted in \"-exp\" script\n");
                 }
                 return word.EXPORT;
@@ -1375,7 +1375,7 @@ pub fn directive(heap: *Heap) Word {
         },
         'f' => {
             if (is("free") or is("_ f_ r_ e_ e")) {
-                if (rt.rs.magic) {
+                if (rt.rs().magic) {
                     syntax("%free directive not permitted in \"-exp\" script\n");
                 }
                 return word.FREE;
@@ -1383,15 +1383,15 @@ pub fn directive(heap: *Heap) Word {
         },
         'i' => {
             if (is("include") or is("_ i_ n_ c_ l_ u_ d_ e")) {
-                if (core_state.s.SYNERR == 0) {
+                if (core_state.s().SYNERR == 0) {
                     layout(heap);
                     setlmargin();
                 }
                 if (pathname(heap) == null) {
                     syntax("bad pathname after %include\n");
                 } else {
-                    ls.yylval = make(.STRCONS, strtab.strBits(strtab.table, addextn(1, ls.dicp)), fileinfo(strtab.strBits(strtab.table, heap_mod.getFil(heap.current_file) orelse ""), holdlin));
-                    _ = keep(ls.dicp);
+                    ls().yylval = make(.STRCONS, strtab.strBits(strtab.table(), addextn(1, ls().dicp)), fileinfo(strtab.strBits(strtab.table(), heap_mod.getFil(heap.current_file) orelse ""), holdlin));
+                    _ = keep(ls().dicp);
                 }
                 return word.INCLUDE;
             }
@@ -1399,27 +1399,27 @@ pub fn directive(heap: *Heap) Word {
                 const f = pathname(heap);
                 if (f == null) {
                     syntax("bad pathname after %insert\n");
-                } else if (ls.insertdepth < 12 and openfile(f.?) != 0) {
+                } else if (ls().insertdepth < 12 and openfile(f.?) != 0) {
                     adjustPrefix(f.?);
-                    ls.vergstack = cons(ls.lverge, ls.vergstack);
-                    ls.echostack = cons(rt.rs.echoing, ls.echostack);
-                    ls.litstack = cons(ls.literate, ls.litstack);
-                    ls.linostack = make(.STRCONS, ls.line_no, ls.linostack);
-                    ls.line_no = 0;
-                    ls.atnl = 1;
-                    _ = keep(ls.dicp);
+                    ls().vergstack = cons(ls().lverge, ls().vergstack);
+                    ls().echostack = cons(rt.rs().echoing, ls().echostack);
+                    ls().litstack = cons(ls().literate, ls().litstack);
+                    ls().linostack = make(.STRCONS, ls().line_no, ls().linostack);
+                    ls().line_no = 0;
+                    ls().atnl = 1;
+                    _ = keep(ls().dicp);
                     heap.current_file = makeFil(f.?, fileMtime(f.?), 0, NIL);
                     heap.files = append1(heap.files, cons(heap.current_file, NIL));
-                    tp(heap, h(heap, ls.fileq)).* = heap.current_file;
-                    rt.rs.s_in = @ptrFromInt(@as(usize, @intCast(h(heap, h(heap, ls.fileq)))));
+                    tp(heap, h(heap, ls().fileq)).* = heap.current_file;
+                    rt.rs().s_in = @ptrFromInt(@as(usize, @intCast(h(heap, h(heap, ls().fileq)))));
                     const is_lit = (peekch() == '>') or litname(f.?);
-                    ls.literate = if (is_lit) 1 else 0;
-                    ls.col = holdcol;
-                    ls.lverge = holdcol;
-                    if (rt.rs.echoing != 0) {
+                    ls().literate = if (is_lit) 1 else 0;
+                    ls().col = holdcol;
+                    ls().lverge = holdcol;
+                    if (rt.rs().echoing != 0) {
                         _ = word.putchar('\n');
-                        if (ls.literate == 0) {
-                            if (ls.litmain != 0) {
+                        if (ls().literate == 0) {
+                            if (ls().litmain != 0) {
                                 _ = word.putchar('>');
                                 spaces(holdcol);
                             } else {
@@ -1427,14 +1427,14 @@ pub fn directive(heap: *Heap) Word {
                             }
                         }
                     }
-                    ls.c = getch(heap);
+                    ls().c = getch(heap);
                 } else {
-                    const toomany = (ls.insertdepth >= 12);
-                    const prefix_str: [*:0]const u8 = if (rt.rs.echoing != 0) "\n" else "";
+                    const toomany = (ls().insertdepth >= 12);
+                    const prefix_str: [*:0]const u8 = if (rt.rs().echoing != 0) "\n" else "";
                     word.print("{s}%insert error - cannot open \"{s}\"\n", .{ prefix_str, f.? });
-                    _ = keep(ls.dicp);
+                    _ = keep(ls().dicp);
                     if (toomany) {
-                        word.print("too many nested %insert directives (limit={})\n", .{ls.insertdepth});
+                        word.print("too many nested %insert directives (limit={})\n", .{ls().insertdepth});
                     } else {
                         heap.files = append1(heap.files, cons(makeFil(f.?, 0, 0, NIL), NIL));
                     }
@@ -1445,54 +1445,54 @@ pub fn directive(heap: *Heap) Word {
         },
         'l' => {
             if (is("lex") or is("_^Hl_^He_^Hx")) {
-                if (ls.inlex != 0) {
+                if (ls().inlex != 0) {
                     syntax("nested %lex not permitted\n");
                 }
                 return word.LEX;
             }
             if (is("list") or is("_ l_ i_ s_ t")) {
-                rt.rs.echoing = rt.rs.verbosity;
+                rt.rs().echoing = rt.rs().verbosity;
                 return yylex(heap);
             }
         },
         'n' => {
             if (is("nolist") or is("_ n_ o_ l_ i_ s_ t")) {
-                rt.rs.echoing = 0;
+                rt.rs().echoing = 0;
                 return yylex(heap);
             }
         },
         else => {},
     }
-    if (rt.rs.echoing != 0) {
+    if (rt.rs().echoing != 0) {
         _ = word.putchar('\n');
     }
-    word.print("syntax error: unknown directive \"%{s}\"\n", .{ls.dicp});
+    word.print("syntax error: unknown directive \"%{s}\"\n", .{ls().dicp});
     acterror();
     return word.END;
 }
 
 /// Collect input characters while predicate `f` holds, into the dictionary.
 fn kollect(heap: *Heap, f: fn (c_int) bool) void {
-    ls.dicq = ls.dicp;
-    while (f(@intCast(ls.c))) {
-        ls.dicq[0] = @intCast(ls.c);
-        ls.dicq += 1;
-        ls.c = getch(heap);
+    ls().dicq = ls().dicp;
+    while (f(@intCast(ls().c))) {
+        ls().dicq[0] = @intCast(ls().c);
+        ls().dicq += 1;
+        ls().c = getch(heap);
     }
-    ls.dicq[0] = 0;
-    ls.dicq += 1;
+    ls().dicq[0] = 0;
+    ls().dicq += 1;
     ovflocheck();
 }
 
 /// Intern token text `p` into permanent dictionary storage.
 pub fn keep(p: [*:0]u8) [*:0]u8 {
-    if (p == ls.dicp) {
-        ls.dicp = ls.dicq;
+    if (p == ls().dicp) {
+        ls().dicp = ls().dicq;
     } else {
-        _ = word.strcpy(ls.dicp, p);
-        const ret = ls.dicp;
-        ls.dicp = ls.dicp + word.strlen(ls.dicp) + 1;
-        ls.dicq = ls.dicp;
+        _ = word.strcpy(ls().dicp, p);
+        const ret = ls().dicp;
+        ls().dicp = ls().dicp + word.strlen(ls().dicp) + 1;
+        ls().dicq = ls().dicp;
         dicCheck();
         return ret;
     }
@@ -1507,49 +1507,49 @@ pub fn dicCheck() void {
 /// Scan a decimal numeral literal.
 pub fn numeral(heap: *Heap) void {
     var nflag: Word = 1;
-    ls.dicq = ls.dicp;
-    while (ls.c >= '0' and ls.c <= '9') {
-        ls.dicq[0] = @intCast(ls.c);
-        ls.dicq += 1;
-        ls.c = getch(heap);
+    ls().dicq = ls().dicp;
+    while (ls().c >= '0' and ls().c <= '9') {
+        ls().dicq[0] = @intCast(ls().c);
+        ls().dicq += 1;
+        ls().c = getch(heap);
     }
-    if (ls.c == '.' and peekdig()) {
-        ls.dicq[0] = @intCast(ls.c);
-        ls.dicq += 1;
-        ls.c = getch(heap);
+    if (ls().c == '.' and peekdig()) {
+        ls().dicq[0] = @intCast(ls().c);
+        ls().dicq += 1;
+        ls().c = getch(heap);
         nflag = 0;
-        while (ls.c >= '0' and ls.c <= '9') {
-            ls.dicq[0] = @intCast(ls.c);
-            ls.dicq += 1;
-            ls.c = getch(heap);
+        while (ls().c >= '0' and ls().c <= '9') {
+            ls().dicq[0] = @intCast(ls().c);
+            ls().dicq += 1;
+            ls().c = getch(heap);
         }
     }
-    if (ls.c == 'e') {
+    if (ls().c == 'e') {
         var np: Word = 0;
-        ls.dicq[0] = @intCast(ls.c);
-        ls.dicq += 1;
-        ls.c = getch(heap);
+        ls().dicq[0] = @intCast(ls().c);
+        ls().dicq += 1;
+        ls().c = getch(heap);
         nflag = 0;
-        if (ls.c == '+') {
-            ls.c = getch(heap);
-        } else if (ls.c == '-') {
-            ls.dicq[0] = @intCast(ls.c);
-            ls.dicq += 1;
-            ls.c = getch(heap);
+        if (ls().c == '+') {
+            ls().c = getch(heap);
+        } else if (ls().c == '-') {
+            ls().dicq[0] = @intCast(ls().c);
+            ls().dicq += 1;
+            ls().c = getch(heap);
         }
-        if (ls.c < '0' or ls.c > '9') {
+        if (ls().c < '0' or ls().c > '9') {
             syntax("badly formed floating point number\n");
         }
-        while (ls.c == '0') {
-            ls.dicq[0] = @intCast(ls.c);
-            ls.dicq += 1;
-            ls.c = getch(heap);
+        while (ls().c == '0') {
+            ls().dicq[0] = @intCast(ls().c);
+            ls().dicq += 1;
+            ls().c = getch(heap);
         }
-        while (ls.c >= '0' and ls.c <= '9') {
+        while (ls().c >= '0' and ls().c <= '9') {
             np += 1;
-            ls.dicq[0] = @intCast(ls.c);
-            ls.dicq += 1;
-            ls.c = getch(heap);
+            ls().dicq[0] = @intCast(ls().c);
+            ls().dicq += 1;
+            ls().c = getch(heap);
         }
         if (nflag == 0 and np > 3) {
             syntax("floating point number out of range\n");
@@ -1558,147 +1558,147 @@ pub fn numeral(heap: *Heap) void {
     }
     ovflocheck();
     if (nflag != 0) {
-        ls.dicq[0] = 0;
-        ls.yylval = bigscan(heap, ls.dicp);
+        ls().dicq[0] = 0;
+        ls().yylval = bigscan(heap, ls().dicp);
     } else {
         var r: f64 = 0.0;
-        const len = @as(usize, @intFromPtr(ls.dicq)) - @as(usize, @intFromPtr(ls.dicp));
+        const len = @as(usize, @intFromPtr(ls().dicq)) - @as(usize, @intFromPtr(ls().dicp));
         if (len > 60) {
             syntax("illegal floating point constant (too many digits)\n");
             return;
         }
-        ls.dicq[0] = '\n';
-        ls.dicq[1] = 0;
-        _ = main_clib.sscanf(ls.dicp, "%lf", .{&r});
-        ls.yylval = stoDbl(r);
+        ls().dicq[0] = '\n';
+        ls().dicq[1] = 0;
+        _ = main_clib.sscanf(ls().dicp, "%lf", .{&r});
+        ls().yylval = stoDbl(r);
     }
 }
 
 /// Scan a hexadecimal numeral literal.
 pub fn hexnumeral(heap: *Heap) void {
-    ls.dicq = ls.dicp;
-    ls.dicq[0] = @intCast(ls.c); // 0
-    ls.dicq += 1;
-    ls.c = getch(heap);
-    ls.dicq[0] = @intCast(ls.c); // x
-    ls.dicq += 1;
-    ls.c = getch(heap);
-    if (!word.isxdigit(ls.c) and ls.c != '.') {
+    ls().dicq = ls().dicp;
+    ls().dicq[0] = @intCast(ls().c); // 0
+    ls().dicq += 1;
+    ls().c = getch(heap);
+    ls().dicq[0] = @intCast(ls().c); // x
+    ls().dicq += 1;
+    ls().c = getch(heap);
+    if (!word.isxdigit(ls().c) and ls().c != '.') {
         syntax("malformed hex number\n");
     }
-    while (ls.c == '0' and word.isxdigit(peekch())) {
-        ls.c = getch(heap); // skip zeros before first nonzero digit
+    while (ls().c == '0' and word.isxdigit(peekch())) {
+        ls().c = getch(heap); // skip zeros before first nonzero digit
     }
-    while (word.isxdigit(ls.c)) {
-        ls.dicq[0] = @intCast(ls.c);
-        ls.dicq += 1;
-        ls.c = getch(heap);
+    while (word.isxdigit(ls().c)) {
+        ls().dicq[0] = @intCast(ls().c);
+        ls().dicq += 1;
+        ls().c = getch(heap);
     }
     ovflocheck();
-    if (ls.c == '.' or word.tolower(ls.c) == 'p') {
+    if (ls().c == '.' or word.tolower(ls().c) == 'p') {
         var d: f64 = 0.0;
-        if (ls.c == '.') {
-            ls.dicq[0] = @intCast(ls.c);
-            ls.dicq += 1;
-            ls.c = getch(heap);
-            while (word.isxdigit(ls.c)) {
-                ls.dicq[0] = @intCast(ls.c);
-                ls.dicq += 1;
-                ls.c = getch(heap);
+        if (ls().c == '.') {
+            ls().dicq[0] = @intCast(ls().c);
+            ls().dicq += 1;
+            ls().c = getch(heap);
+            while (word.isxdigit(ls().c)) {
+                ls().dicq[0] = @intCast(ls().c);
+                ls().dicq += 1;
+                ls().c = getch(heap);
             }
         }
-        if (ls.c == 'p') {
-            ls.dicq[0] = @intCast(ls.c);
-            ls.dicq += 1;
-            ls.c = getch(heap);
-            if (ls.c == '+' or ls.c == '-') {
-                ls.dicq[0] = @intCast(ls.c);
-                ls.dicq += 1;
-                ls.c = getch(heap);
+        if (ls().c == 'p') {
+            ls().dicq[0] = @intCast(ls().c);
+            ls().dicq += 1;
+            ls().c = getch(heap);
+            if (ls().c == '+' or ls().c == '-') {
+                ls().dicq[0] = @intCast(ls().c);
+                ls().dicq += 1;
+                ls().c = getch(heap);
             }
-            if (ls.c < '0' or ls.c > '9') {
+            if (ls().c < '0' or ls().c > '9') {
                 syntax("malformed hex float\n");
             }
-            while (ls.c >= '0' and ls.c <= '9') {
-                ls.dicq[0] = @intCast(ls.c);
-                ls.dicq += 1;
-                ls.c = getch(heap);
+            while (ls().c >= '0' and ls().c <= '9') {
+                ls().dicq[0] = @intCast(ls().c);
+                ls().dicq += 1;
+                ls().c = getch(heap);
             }
         }
         ovflocheck();
-        ls.dicq[0] = 0;
-        const len = @as(usize, @intFromPtr(ls.dicq)) - @as(usize, @intFromPtr(ls.dicp));
-        if (len > 60 or main_clib.sscanf(ls.dicp, "%lf", .{&d}) != 1) {
+        ls().dicq[0] = 0;
+        const len = @as(usize, @intFromPtr(ls().dicq)) - @as(usize, @intFromPtr(ls().dicp));
+        if (len > 60 or main_clib.sscanf(ls().dicp, "%lf", .{&d}) != 1) {
             syntax("malformed hex float\n");
         } else {
-            ls.yylval = stoDbl(d);
+            ls().yylval = stoDbl(d);
         }
         return;
     }
-    ls.dicq[0] = 0;
-    ls.yylval = bigxscan(heap, ls.dicp + 2, ls.dicq);
+    ls().dicq[0] = 0;
+    ls().yylval = bigxscan(heap, ls().dicp + 2, ls().dicq);
 }
 
 pub fn octnumeral(heap: *Heap) void {
-    ls.dicq = ls.dicp;
-    ls.dicq[0] = @intCast(ls.c); // 0
-    ls.dicq += 1;
-    ls.c = getch(heap);
-    ls.dicq[0] = @intCast(ls.c); // o
-    ls.dicq += 1;
-    ls.c = getch(heap);
-    if (ls.c < '0' or ls.c > '7') {
+    ls().dicq = ls().dicp;
+    ls().dicq[0] = @intCast(ls().c); // 0
+    ls().dicq += 1;
+    ls().c = getch(heap);
+    ls().dicq[0] = @intCast(ls().c); // o
+    ls().dicq += 1;
+    ls().c = getch(heap);
+    if (ls().c < '0' or ls().c > '7') {
         syntax("malformed octal number\n");
     }
-    while (ls.c == '0' and peekch() >= '0' and peekch() <= '7') {
-        ls.c = getch(heap); // skip zeros before first nonzero digit
+    while (ls().c == '0' and peekch() >= '0' and peekch() <= '7') {
+        ls().c = getch(heap); // skip zeros before first nonzero digit
     }
-    while (ls.c >= '0' and ls.c <= '7') {
-        ls.dicq[0] = @intCast(ls.c);
-        ls.dicq += 1;
-        ls.c = getch(heap);
+    while (ls().c >= '0' and ls().c <= '7') {
+        ls().dicq[0] = @intCast(ls().c);
+        ls().dicq += 1;
+        ls().c = getch(heap);
     }
-    if (ls.c >= '0' and ls.c <= '9') {
+    if (ls().c >= '0' and ls().c <= '9') {
         syntax("illegal digit in octal number\n");
     }
     ovflocheck();
-    ls.dicq[0] = 0;
-    ls.yylval = bigoscan(heap, ls.dicp + 2, ls.dicq);
+    ls().dicq[0] = 0;
+    ls().yylval = bigoscan(heap, ls().dicp + 2, ls().dicq);
 }
 
 /// The filename associated with node `x`.
 pub fn getfname(heap: *Heap, x: Word) Word {
     const p = getId(heap, x);
-    ls.dicq = ls.dicp;
+    ls().dicq = ls().dicp;
     var i: usize = 0;
     while (true) {
-        ls.dicq[i] = p[i];
+        ls().dicq[i] = p[i];
         if (p[i] == 0) {
             break;
         }
         i += 1;
     }
-    ls.dicq += i + 1;
-    const len = @as(usize, @intFromPtr(ls.dicq)) - @as(usize, @intFromPtr(ls.dicp));
+    ls().dicq += i + 1;
+    const len = @as(usize, @intFromPtr(ls().dicq)) - @as(usize, @intFromPtr(ls().dicp));
     if (len < 3) {
         errors.fatal("impossible event in getfname\n", .{.{}});
     }
-    (ls.dicq - 2)[0] = 0;
+    (ls().dicq - 2)[0] = 0;
     ovflocheck();
     return name(heap);
 }
 
 /// Scan a name token, returning its dictionary `ID` node.
 pub fn name(heap: *Heap) Word {
-    const h_idx = @as(usize, @intCast(hash(ls.dicp)));
-    var q = ls.namebucket[h_idx];
+    const h_idx = @as(usize, @intCast(hash(ls().dicp)));
+    var q = ls().namebucket[h_idx];
     while (q != 0 and !is(getId(heap, h(heap, q)))) {
         q = t(heap, q);
     }
     if (q == 0) {
-        q = stoId(ls.dicp);
-        ls.namebucket[h_idx] = cons(q, ls.namebucket[h_idx]);
-        _ = keep(ls.dicp);
+        q = stoId(ls().dicp);
+        ls().namebucket[h_idx] = cons(q, ls().namebucket[h_idx]);
+        _ = keep(ls().dicp);
     } else {
         q = h(heap, q);
     }
@@ -1710,8 +1710,8 @@ pub fn name(heap: *Heap) Word {
 /// Tests: makeId / findid: intern then look up a dictionary name
 pub fn makeId(n: [*:0]const u8) Word {
     const h_idx = @as(usize, @intCast(hash(n)));
-    const x = stoId(if (ls.inprelude) keep(@constCast(n)) else n);
-    ls.namebucket[h_idx] = cons(x, ls.namebucket[h_idx]);
+    const x = stoId(if (ls().inprelude) keep(@constCast(n)) else n);
+    ls().namebucket[h_idx] = cons(x, ls().namebucket[h_idx]);
     return x;
 }
 
@@ -1720,7 +1720,7 @@ pub fn makeId(n: [*:0]const u8) Word {
 /// Tests: makeId / findid: intern then look up a dictionary name
 pub fn findid(heap: *Heap, n: [*:0]const u8) Word {
     const h_idx = @as(usize, @intCast(hash(n)));
-    var q = ls.namebucket[h_idx];
+    var q = ls().namebucket[h_idx];
     while (q != 0 and !std.mem.eql(u8, std.mem.span(n), std.mem.span(getId(heap, h(heap, q))))) {
         q = t(heap, q);
     }
@@ -1730,8 +1730,8 @@ pub fn findid(heap: *Heap, n: [*:0]const u8) Word {
 test "makeId / findid: intern then look up a dictionary name" {
     tu.freshInterp();
     const id = makeId("zzqunique");
-    try std.testing.expectEqual(id, findid(heap_mod.heap, "zzqunique"));
-    try std.testing.expectEqual(@as(Word, NIL), findid(heap_mod.heap, "zznotthere"));
+    try std.testing.expectEqual(id, findid(heap_mod.heap(), "zzqunique"));
+    try std.testing.expectEqual(@as(Word, NIL), findid(heap_mod.heap(), "zznotthere"));
 }
 
 /// Fill `out` with interned identifiers that are in scope (have a type) and whose
@@ -1740,7 +1740,7 @@ test "makeId / findid: intern then look up a dictionary name" {
 /// dictionary storage, so they stay valid.
 pub fn completeIds(heap: *Heap, prefix: []const u8, out: [][*:0]const u8) usize {
     var n: usize = 0;
-    for (ls.namebucket) |bucket| {
+    for (ls().namebucket) |bucket| {
         var q = bucket;
         while (q != 0) : (q = t(heap, q)) {
             if (n >= out.len) return n;
@@ -1758,44 +1758,44 @@ pub fn completeIds(heap: *Heap, prefix: []const u8, out: [][*:0]const u8) usize 
 
 /// Reset the private-name table.
 pub fn resetPns() void {
-    ls.nextpn = 0;
-    if (ls.pnvec == null) {
-        const slice = rt.allocator.alloc(Word, @intCast(ls.pn_lim)) catch mallocPanic("ls.pnvec");
-        ls.pnvec = slice.ptr;
+    ls().nextpn = 0;
+    if (ls().pnvec == null) {
+        const slice = rt.allocator.alloc(Word, @intCast(ls().pn_lim)) catch mallocPanic("ls.pnvec");
+        ls().pnvec = slice.ptr;
     }
 }
 
 /// Make a private-name node for value `val`.
 pub fn makePn(val: Word) Word {
-    if (ls.nextpn == ls.pn_lim) {
-        const old_lim = ls.pn_lim;
-        ls.pn_lim += 400;
-        const old_slice = ls.pnvec.?[0..@intCast(old_lim)];
-        const slice = rt.allocator.realloc(old_slice, @intCast(ls.pn_lim)) catch mallocPanic("ls.pnvec");
-        ls.pnvec = slice.ptr;
+    if (ls().nextpn == ls().pn_lim) {
+        const old_lim = ls().pn_lim;
+        ls().pn_lim += 400;
+        const old_slice = ls().pnvec.?[0..@intCast(old_lim)];
+        const slice = rt.allocator.realloc(old_slice, @intCast(ls().pn_lim)) catch mallocPanic("ls.pnvec");
+        ls().pnvec = slice.ptr;
     }
-    ls.pnvec.?[@intCast(ls.nextpn)] = make(.STRCONS, ls.nextpn, val);
-    const ret = ls.pnvec.?[@intCast(ls.nextpn)];
-    ls.nextpn += 1;
+    ls().pnvec.?[@intCast(ls().nextpn)] = make(.STRCONS, ls().nextpn, val);
+    const ret = ls().pnvec.?[@intCast(ls().nextpn)];
+    ls().nextpn += 1;
     return ret;
 }
 
 /// Allocate/store a private name `n`.
 pub fn stoPn(n: Word) Word {
-    if (n >= ls.pn_lim) {
-        const old_lim = ls.pn_lim;
-        while (ls.pn_lim <= n) {
-            ls.pn_lim += 400;
+    if (n >= ls().pn_lim) {
+        const old_lim = ls().pn_lim;
+        while (ls().pn_lim <= n) {
+            ls().pn_lim += 400;
         }
-        const old_slice = ls.pnvec.?[0..@intCast(old_lim)];
-        const slice = rt.allocator.realloc(old_slice, @intCast(ls.pn_lim)) catch mallocPanic("ls.pnvec");
-        ls.pnvec = slice.ptr;
+        const old_slice = ls().pnvec.?[0..@intCast(old_lim)];
+        const slice = rt.allocator.realloc(old_slice, @intCast(ls().pn_lim)) catch mallocPanic("ls.pnvec");
+        ls().pnvec = slice.ptr;
     }
-    while (ls.nextpn <= n) {
-        ls.pnvec.?[@intCast(ls.nextpn)] = make(.STRCONS, ls.nextpn, UNDEF);
-        ls.nextpn += 1;
+    while (ls().nextpn <= n) {
+        ls().pnvec.?[@intCast(ls().nextpn)] = make(.STRCONS, ls().nextpn, UNDEF);
+        ls().nextpn += 1;
     }
-    return ls.pnvec.?[@intCast(n)];
+    return ls().pnvec.?[@intCast(n)];
 }
 
 /// Re-intern id `x` under a private name (for `%export` hiding).
@@ -1806,10 +1806,10 @@ pub fn mkprivate(heap: *Heap, x_input: Word) void {
         // Interned bytes are immutable, so re-intern the privatised form and
         // store the new id back, rather than mutating the bytes in place.
         const strcons = h(heap, h(heap, h(heap, x)));
-        hp(heap, strcons).* = strtab.privatize(strtab.table, h(heap, strcons));
+        hp(heap, strcons).* = strtab.privatize(strtab.table(), h(heap, strcons));
         x = t(heap, x);
     }
-    ls.inprelude = false;
+    ls().inprelude = false;
 }
 
 /// Scan a string literal.
@@ -1817,11 +1817,11 @@ pub fn string(heap: *Heap) void {
     var p: Word = undefined;
     var ch: Word = undefined;
     var badch: Word = 0;
-    ls.c = getch(heap);
+    ls().c = getch(heap);
     ch = getlitch(heap);
-    ls.yylval = cons(NIL, NIL);
-    p = ls.yylval;
-    while (ch != main_clib.EOF and ls.rawch != '"' and ls.rawch != '\n') {
+    ls().yylval = cons(NIL, NIL);
+    p = ls().yylval;
+    while (ch != main_clib.EOF and ls().rawch != '"' and ls().rawch != '\n') {
         if (ch == -7) {
             ch = getlitch(heap);
         } else if (ch < 0) {
@@ -1833,22 +1833,22 @@ pub fn string(heap: *Heap) void {
             ch = getlitch(heap);
         }
     }
-    ls.yylval = t(heap, ls.yylval);
+    ls().yylval = t(heap, ls().yylval);
     if (badch != 0) {
         errclass(badch, 1);
     }
-    if (ls.rawch == '\n') {
+    if (ls().rawch == '\n') {
         syntax("non-escaped newline encountered inside string quotes\n");
     } else if (ch == main_clib.EOF) {
-        if (rt.rs.echoing != 0) {
+        if (rt.rs().echoing != 0) {
             _ = word.putchar('\n');
         }
         word.print("syntax error: script ends inside unclosed string quotes - \n", .{});
         word.print("    \"", .{});
-        while (ls.yylval != NIL and ls.sl > 0) {
-            _ = word.putchar(@intCast(h(heap, ls.yylval)));
-            ls.yylval = t(heap, ls.yylval);
-            ls.sl -= 1;
+        while (ls().yylval != NIL and ls().sl > 0) {
+            _ = word.putchar(@intCast(h(heap, ls().yylval)));
+            ls().yylval = t(heap, ls().yylval);
+            ls().sl -= 1;
         }
         word.print("...\"\n", .{});
         acterror();
@@ -1861,22 +1861,22 @@ pub fn charclass(heap: *Heap) c_int {
     var ch: Word = undefined;
     var badch: Word = 0;
     var anti: c_int = 0;
-    ls.c = getch(heap);
-    if (ls.c == '^') {
+    ls().c = getch(heap);
+    if (ls().c == '^') {
         anti = 1;
-        ls.c = getch(heap);
+        ls().c = getch(heap);
     }
     ch = getlitch(heap);
-    ls.yylval = cons(NIL, NIL);
-    p = ls.yylval;
-    while (ch != main_clib.EOF and ls.rawch != '`' and ls.rawch != '\n') {
+    ls().yylval = cons(NIL, NIL);
+    p = ls().yylval;
+    while (ch != main_clib.EOF and ls().rawch != '`' and ls().rawch != '\n') {
         if (ch == -7) {
             ch = getlitch(heap);
         } else if (ch < 0) {
             badch = ch;
             break;
         } else {
-            if (ls.rawch == '-' and h(heap, p) != NIL and h(heap, p) != word.DOTDOT) {
+            if (ls().rawch == '-' and h(heap, p) != NIL and h(heap, p) != word.DOTDOT) {
                 ch = word.DOTDOT;
             }
             tp(heap, p).* = cons(ch, NIL);
@@ -1887,7 +1887,7 @@ pub fn charclass(heap: *Heap) c_int {
     if (h(heap, p) == word.DOTDOT) {
         hp(heap, p).* = '-';
     }
-    p = ls.yylval;
+    p = ls().yylval;
     while (t(heap, p) != NIL) {
         if (h(heap, t(heap, p)) == word.DOTDOT) {
             hp(heap, t(heap, p)).* = h(heap, p);
@@ -1898,22 +1898,22 @@ pub fn charclass(heap: *Heap) c_int {
         }
         p = t(heap, p);
     }
-    ls.yylval = t(heap, ls.yylval);
+    ls().yylval = t(heap, ls().yylval);
     if (badch != 0) {
         errclass(badch, 2);
     }
-    if (ls.rawch == '\n') {
+    if (ls().rawch == '\n') {
         syntax("non-escaped newline encountered in char class\n");
     } else if (ch == main_clib.EOF) {
-        if (rt.rs.echoing != 0) {
+        if (rt.rs().echoing != 0) {
             _ = word.putchar('\n');
         }
         word.print("syntax error: script ends inside unclosed char class brackets - \n", .{});
         word.print("    [", .{});
-        while (ls.yylval != NIL and ls.sl > 0) {
-            _ = word.putchar(@intCast(h(heap, ls.yylval)));
-            ls.yylval = t(heap, ls.yylval);
-            ls.sl -= 1;
+        while (ls().yylval != NIL and ls().sl > 0) {
+            _ = word.putchar(@intCast(h(heap, ls().yylval)));
+            ls().yylval = t(heap, ls().yylval);
+            ls().sl -= 1;
         }
         word.print("...]\n", .{});
         acterror();
@@ -1923,35 +1923,35 @@ pub fn charclass(heap: *Heap) c_int {
 
 /// Reset the lexer's per-line scanning state.
 pub fn resetLex(heap: *Heap) void {
-    if (core_state.s.commandmode == 0) {
-        if (core_state.s.errs == 0) {
-            core_state.s.errs = fileinfo(strtab.strBits(strtab.table, heap_mod.getFil(heap.current_file) orelse ""), ls.line_no);
+    if (core_state.s().commandmode == 0) {
+        if (core_state.s().errs == 0) {
+            core_state.s().errs = fileinfo(strtab.strBits(strtab.table(), heap_mod.getFil(heap.current_file) orelse ""), ls().line_no);
         }
-        const err_script_raw = @as(?[*:0]const u8, strtab.strOf(strtab.table, h(heap, core_state.s.errs)));
+        const err_script_raw = @as(?[*:0]const u8, strtab.strOf(strtab.table(), h(heap, core_state.s().errs)));
         const err_script = err_script_raw orelse "test.m";
         const is_current = if (err_script_raw) |es|
-            (if (rt.rs.current_script) |script| word.strcmp(es, script) == 0 else false)
+            (if (rt.rs().current_script) |script| word.strcmp(es, script) == 0 else false)
         else
             true;
         if (!@import("builtin").is_test) {
-            if (t(heap, core_state.s.errs) == 0 and is_current) {
+            if (t(heap, core_state.s().errs) == 0 and is_current) {
                 word.printErr("error occurs at end of ", .{});
             } else {
-                word.printErr("error found near line {} of ", .{t(heap, core_state.s.errs)});
+                word.printErr("error found near line {} of ", .{t(heap, core_state.s().errs)});
             }
             word.printErr("{s}file \"{s}\"\ncompilation abandoned\n", .{ if (is_current) @as([*:0]const u8, "") else "%insert ", err_script });
         }
         if (is_current) {
-            core_state.s.errline = if (t(heap, core_state.s.errs) == 0) ls.lastline else t(heap, core_state.s.errs);
-            core_state.s.errs = 0;
+            core_state.s().errline = if (t(heap, core_state.s().errs) == 0) ls().lastline else t(heap, core_state.s().errs);
+            core_state.s().errs = 0;
         } else {
-            if (ls.linostack != NIL) {
-                while (t(heap, ls.linostack) != NIL) {
-                    ls.linostack = t(heap, ls.linostack);
+            if (ls().linostack != NIL) {
+                while (t(heap, ls().linostack) != NIL) {
+                    ls().linostack = t(heap, ls().linostack);
                 }
-                core_state.s.errline = h(heap, ls.linostack);
+                core_state.s().errline = h(heap, ls().linostack);
             } else {
-                core_state.s.errline = ls.lastline;
+                core_state.s().errline = ls().lastline;
             }
         }
     }
@@ -1960,54 +1960,54 @@ pub fn resetLex(heap: *Heap) void {
 
 /// Reset the full lexer state (between sessions).
 pub fn resetState(heap: *Heap) void {
-    if (core_state.s.commandmode != 0) {
-        while (ls.c != '\n' and ls.c != main_clib.EOF) {
-            if (rt.rs.s_in) |sin| {
-                ls.c = main_clib.getc(sin);
+    if (core_state.s().commandmode != 0) {
+        while (ls().c != '\n' and ls().c != main_clib.EOF) {
+            if (rt.rs().s_in) |sin| {
+                ls().c = main_clib.getc(sin);
             } else {
-                ls.c = main_clib.EOF;
+                ls().c = main_clib.EOF;
             }
         }
     }
-    while (ls.fileq != NIL) {
-        const file_ptr: ?*word.FILE = @ptrFromInt(@as(usize, @intCast(h(heap, h(heap, ls.fileq)))));
+    while (ls().fileq != NIL) {
+        const file_ptr: ?*word.FILE = @ptrFromInt(@as(usize, @intCast(h(heap, h(heap, ls().fileq)))));
         _ = word.fclose(file_ptr);
-        ls.fileq = t(heap, ls.fileq);
+        ls().fileq = t(heap, ls().fileq);
     }
-    ls.insertdepth = -1;
-    rt.rs.s_in = getStdin();
-    ls.echostack = NIL;
-    ls.idsused = NIL;
-    ls.prefixstack = NIL;
-    ls.litstack = NIL;
-    ls.linostack = NIL;
-    ls.vergstack = NIL;
-    ls.margstack = NIL;
-    ls.prefix = 0;
-    ls.prefixbase.?[0] = 0;
-    rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
-    ls.brct = 0;
-    ls.inbnf = 0;
-    ls.sreds = 0;
-    ls.inlex = 0;
-    ls.inexplist = 0;
-    core_state.s.commandmode = 0;
-    ls.lverge = 0;
-    ls.col = 0;
-    ls.lmargin = 0;
-    ls.atnl = 1;
-    cs.rv_script = 0;
-    cs.algshfns = NIL;
-    cs.newtyps = NIL;
-    cs.showchain = NIL;
-    cs.SGC = NIL;
-    cs.TABSTRS = NIL;
-    ls.c = ' ';
-    ls.line_no = 0;
-    ls.litmain = 0;
-    ls.literate = 0;
-    core_state.s.errs = 0;
-    core_state.s.errline = 0;
+    ls().insertdepth = -1;
+    rt.rs().s_in = getStdin();
+    ls().echostack = NIL;
+    ls().idsused = NIL;
+    ls().prefixstack = NIL;
+    ls().litstack = NIL;
+    ls().linostack = NIL;
+    ls().vergstack = NIL;
+    ls().margstack = NIL;
+    ls().prefix = 0;
+    ls().prefixbase.?[0] = 0;
+    rt.rs().echoing = rt.rs().verbosity & rt.rs().listing;
+    ls().brct = 0;
+    ls().inbnf = 0;
+    ls().sreds = 0;
+    ls().inlex = 0;
+    ls().inexplist = 0;
+    core_state.s().commandmode = 0;
+    ls().lverge = 0;
+    ls().col = 0;
+    ls().lmargin = 0;
+    ls().atnl = 1;
+    cs().rv_script = 0;
+    cs().algshfns = NIL;
+    cs().newtyps = NIL;
+    cs().showchain = NIL;
+    cs().SGC = NIL;
+    cs().TABSTRS = NIL;
+    ls().c = ' ';
+    ls().line_no = 0;
+    ls().litmain = 0;
+    ls().literate = 0;
+    core_state.s().errs = 0;
+    core_state.s().errline = 0;
 }
 
 /// Hash identifier text into a dictionary bucket index.

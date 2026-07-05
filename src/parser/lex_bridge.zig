@@ -40,19 +40,19 @@ const lex = @import("lex.zig");
 const strtab = @import("../runtime/strtab.zig");
 
 inline fn hd_of(x: word.Word) word.Word {
-    return heap.heap.h(x);
+    return heap.heap().h(x);
 }
 inline fn tl_of(x: word.Word) word.Word {
-    return heap.heap.t(x);
+    return heap.heap().t(x);
 }
 inline fn getTag(x: word.Word) word.NodeTag {
-    return heap.heap.getTag(x);
+    return heap.heap().getTag(x);
 }
 
 // C macro: getId(x) == (char*)hd(hd(hd(x))); the id string is an interned StrId.
 /// The interned identifier text behind a NAME/CNAME lexer value `x`.
 fn getIdText(x: word.Word) []const u8 {
-    return std.mem.span(strtab.strOf(strtab.table, hd_of(hd_of(hd_of(x)))));
+    return std.mem.span(strtab.strOf(strtab.table(), hd_of(hd_of(hd_of(x)))));
 }
 
 /// Traverse a Miranda string CONS chain and produce a UTF-8 owned slice.
@@ -85,7 +85,7 @@ fn stringFromCons(gpa: Allocator, cell: word.Word) ![]u8 {
 /// Map one yylex() return value to a Token.
 /// Returns null for internal tokens that the Zig parser should skip.
 fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
-    const w: word.Word = ls.yylval;
+    const w: word.Word = ls().yylval;
 
     return switch (raw) {
         // EOF / END (both == 0 from data.h)
@@ -179,7 +179,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
                 // Keep the original text so arbitrary precision values are not
                 // truncated to a machine integer before codegen calls bigscan().
                 if (t_tag == .INT) {
-                    const text_slice = std.mem.span(@as([*:0]u8, @ptrCast(ls.dicp)));
+                    const text_slice = std.mem.span(@as([*:0]u8, @ptrCast(ls().dicp)));
                     break :blk Token{ .id = .const_int, .span = span, .text = try gpa.dupe(u8, text_slice) };
                 }
             }
@@ -201,7 +201,7 @@ fn mapToken(gpa: Allocator, raw: c_int, span: Span) !?Token {
         word.PATHNAME => Token{
             .id = .pathname,
             .span = span,
-            .text = try gpa.dupe(u8, std.mem.span(@as([*:0]u8, @ptrCast(ls.dicp)))),
+            .text = try gpa.dupe(u8, std.mem.span(@as([*:0]u8, @ptrCast(ls().dicp)))),
         },
         word.BNF => Token{ .id = .kw_bnf, .span = span },
         word.LEX => Token{ .id = .kw_lex, .span = span },
@@ -251,7 +251,7 @@ pub fn tokenizeCurrent(gpa: Allocator) ![]Token {
 
 /// Inner tokenize loop shared by tokenize() and tokenizeCurrent().
 fn tokenizeLoop(gpa: Allocator) ![]Token {
-    const heap_ptr = heap.heap;
+    const heap_ptr = heap.heap();
     var toks: std.ArrayList(Token) = .empty;
     errdefer {
         for (toks.items) |tok| {
@@ -285,8 +285,8 @@ fn tokenizeLoop(gpa: Allocator) ![]Token {
         // any characters are read. Using col (post-read) would give different
         // columns for same-indented identifiers of different lengths.
         const span = Span{
-            .line = @intCast(ls.line_no),
-            .col = @intCast(ls.tok_start_col),
+            .line = @intCast(ls().line_no),
+            .col = @intCast(ls().tok_start_col),
         };
         if (try mapToken(gpa, raw, span)) |tok| {
             try toks.append(gpa, tok);

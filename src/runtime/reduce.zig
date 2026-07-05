@@ -34,7 +34,7 @@ const MAXDIGIT = 0x7fff;
 const SIGNBIT = 0x10000000;
 
 /// Evaluation / reducer-I/O state (shared-state plan Phase 2d). Accessed as
-/// `reduce.ev.X`; folds into `Interp.eval` in Phase 3.
+/// `reduce.ev().X`; folds into `Interp.eval` in Phase 3.
 pub const EvalState = struct {
     /// How stdin is currently bound (0 = free, ':' = text read, '-' = binary).
     stdinuse: Word = 0,
@@ -59,9 +59,11 @@ pub const EvalState = struct {
     gc_roots_head: ?*spine.Spine = null,
 };
 
-/// Pointer to the evaluator state held in `interp` (so `interp.reset()` clears
-/// it). Accessed as `ev.X`.
-pub const ev = &@import("interp.zig").interp.eval;
+/// Pointer to the evaluator state held in `current_interp` (so `interp.reset()`
+/// clears it). Accessed as `ev().X`.
+pub inline fn ev() *EvalState {
+    return &@import("interp.zig").current_interp.eval;
+}
 
 const stoChar = heap.stoChar;
 extern fn fromUTF8(f: ?*word.FILE) Word;
@@ -70,27 +72,27 @@ const reduce = engine.reduce;
 const charname = heap.charname;
 
 inline fn getTag(x: Word) word.NodeTag {
-    return heap.heap.getTag(x);
+    return heap.heap().getTag(x);
 }
 
 inline fn setTag(x: Word, val: word.NodeTag) void {
-    heap.heap.setTag(x, val);
+    heap.heap().setTag(x, val);
 }
 
 inline fn h(x: Word) Word {
-    return heap.heap.h(x);
+    return heap.heap().h(x);
 }
 
 inline fn t(x: Word) Word {
-    return heap.heap.t(x);
+    return heap.heap().t(x);
 }
 
 inline fn hp(x: Word) *Word {
-    return heap.heap.hp(x);
+    return heap.heap().hp(x);
 }
 
 inline fn tp(x: Word) *Word {
-    return heap.heap.tp(x);
+    return heap.heap().tp(x);
 }
 
 inline fn lh(x: Word) Word {
@@ -103,7 +105,7 @@ inline fn lh(x: Word) Word {
 
 inline fn forceDbl(x: Word) f64 {
     if (getTag(x) == .INT) {
-        return big.toFloat(heap.heap, x);
+        return big.toFloat(heap.heap(), x);
     } else {
         return heap.getDbl(x);
     }
@@ -206,7 +208,7 @@ pub fn badcaseError(arg_info: Word) void {
         word.printErr(" of {s}", .{std.mem.span(getstring(subject, null).?)});
     }
     _ = word.putc('\n', getStderr().?);
-    outHere(core_state.s, getStderr().?, t(arg_info), 1);
+    outHere(core_state.s(), getStderr().?, t(arg_info), 1);
     outstats();
     main_clib.exit(1);
 }
@@ -214,7 +216,7 @@ pub fn badcaseError(arg_info: Word) void {
 /// Abort with "lhs of definition doesn't match rhs" (a conformality error).
 pub fn confError(arg_info: Word) void {
     word.printErr("\nprogram error: lhs of definition doesn't match rhs\n", .{});
-    outHere(core_state.s, getStderr().?, t(arg_info), 1);
+    outHere(core_state.s(), getStderr().?, t(arg_info), 1);
     outstats();
     main_clib.exit(1);
 }
@@ -316,7 +318,7 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
             reduce_core.upLeft(ctx);
             const lastarg = t(ctx.e);
 
-            const val = parseLine(ctx.heap, core_state.s, rt.rs, lex_state.ls, h(ctx.args[0]), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.args[0]));
+            const val = parseLine(ctx.heap, core_state.s(), rt.rs(), lex_state.ls(), h(ctx.args[0]), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.args[0]));
             if (val == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(lastarg))));
                 rewriteToNil(&ctx.e);
@@ -348,22 +350,22 @@ pub fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
     var p_idx: usize = 0;
     while (getTag(curr_x) == .CONS and n > 0) {
         n -= 1;
-        rt.rs.linebuf[p_idx] = @intCast(h(curr_x));
+        rt.rs().linebuf[p_idx] = @intCast(h(curr_x));
         p_idx += 1;
         curr_x = t(curr_x);
     }
-    rt.rs.linebuf[p_idx] = 0;
+    rt.rs().linebuf[p_idx] = 0;
     p_idx += 1;
     if (p_idx > buf_size) {
         if (cmd) |cmd_str| {
-            word.printErr("\n{s}, argument string too long (limit={} chars): {s}...\n", .{ cmd_str, @as(c_int, buf_size), &rt.rs.linebuf });
+            word.printErr("\n{s}, argument string too long (limit={} chars): {s}...\n", .{ cmd_str, @as(c_int, buf_size), &rt.rs().linebuf });
             outstats();
             main_clib.exit(1);
         } else {
-            return @ptrCast(&rt.rs.linebuf);
+            return @ptrCast(&rt.rs().linebuf);
         }
     }
-    return @ptrCast(&rt.rs.linebuf);
+    return @ptrCast(&rt.rs().linebuf);
 }
 
 test "getstring: copies a char list into a C-string" {
@@ -378,16 +380,16 @@ pub fn initclock() void {}
 
 /// Print the end-of-evaluation statistics (reductions, cells, GC) when enabled.
 pub fn outstats() void {
-    reducer_trace.dump(&ev.trace); // per-combinator trace (no-op unless -Dreduce-trace)
-    if (rt.rs.atcount == 0) {
+    reducer_trace.dump(&ev().trace); // per-combinator trace (no-op unless -Dreduce-trace)
+    if (rt.rs().atcount == 0) {
         return;
     }
     var buffer: main_clib.struct_tms = undefined;
     _ = main_clib.times(&buffer);
     word.printErr("||", .{});
-    word.printErr("reductions = {}, cells claimed = {}, ", .{ ev.cycles, heap.heap.cellcount + heap.heap.claims });
+    word.printErr("reductions = {}, cells claimed = {}, ", .{ ev().cycles, heap.heap().cellcount + heap.heap().claims });
     const clk_tck = @as(f64, @floatFromInt(main_clib.sysconf(word._SC_CLK_TCK)));
-    word.printErr("no of gc's = {}, cpu = {d:.2}\n", .{ heap.heap.nogcs, @as(f64, @floatFromInt(buffer.tms_utime)) / clk_tck });
+    word.printErr("no of gc's = {}, cpu = {d:.2}\n", .{ heap.heap().nogcs, @as(f64, @floatFromInt(buffer.tms_utime)) / clk_tck });
 }
 
 /// Write value `h_val` to file `f` for diagnostics, optionally followed by a newline.
@@ -396,7 +398,7 @@ pub fn outHere(core: *core_state.CoreState, f: ?*word.FILE, h_val: Word, nl: c_i
         word.printErr("(impossible event in outhere)\n", .{});
         return;
     }
-    f.?.print("(line {d:>3} of \"{s}\")", .{.{ t(h_val), strtab.strOf(strtab.table, h(h_val)) }});
+    f.?.print("(line {d:>3} of \"{s}\")", .{.{ t(h_val), strtab.strOf(strtab.table(), h(h_val)) }});
     if (nl != 0) {
         _ = word.putc('\n', f.?);
     } else {
@@ -471,16 +473,16 @@ pub fn numplus(x: Word, y: Word) Word {
         return heap.stoDbl(heap.getDbl(x) + forceDbl(y));
     }
     if (getTag(y) == .DOUBLE) {
-        return heap.stoDbl(big.toFloat(heap.heap, x) + heap.getDbl(y));
+        return heap.stoDbl(big.toFloat(heap.heap(), x) + heap.getDbl(y));
     }
-    return big.add(heap.heap, x, y);
+    return big.add(heap.heap(), x, y);
 }
 
 test "numplus: integer add and float promotion" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(heap.heap, numplus(big.fromInt(heap.heap, 2), big.fromInt(heap.heap, 3))));
-    try std.testing.expectEqual(@as(c_longlong, -1), big.toInt(heap.heap, numplus(big.fromInt(heap.heap, 2), big.fromInt(heap.heap, -3))));
-    const r = numplus(heap.stoDbl(1.5), big.fromInt(heap.heap, 2)); // DOUBLE + INT → DOUBLE
+    try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(heap.heap(), numplus(big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), 3))));
+    try std.testing.expectEqual(@as(c_longlong, -1), big.toInt(heap.heap(), numplus(big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), -3))));
+    const r = numplus(heap.stoDbl(1.5), big.fromInt(heap.heap(), 2)); // DOUBLE + INT → DOUBLE
     try std.testing.expectEqual(word.NodeTag.DOUBLE, heap.getTag(r));
     try std.testing.expectEqual(@as(f64, 3.5), heap.getDbl(r));
 }
@@ -556,7 +558,7 @@ pub fn lexfail(x_val: Word) void {
 /// Split a packed lexer-state value into a `(hi . lo)` cons.
 pub fn lexstate(x: Word) Word {
     const val = h(h(x));
-    return cons(big.fromInt(heap.heap, val >> 8), stosmallint(val & 255));
+    return cons(big.fromInt(heap.heap(), val >> 8), stosmallint(val & 255));
 }
 
 /// The error message for a failed `fork`/pipe (used by `system`).
@@ -578,14 +580,14 @@ pub fn compare(arg_a: Word, arg_b: Word) c_int {
                 if (tag_b == .DOUBLE) {
                     return fsign(heap.getDbl(a) - heap.getDbl(b));
                 } else {
-                    return fsign(heap.getDbl(a) - big.toFloat(heap.heap, b));
+                    return fsign(heap.getDbl(a) - big.toFloat(heap.heap(), b));
                 }
             },
             .INT => {
                 if (tag_b == .INT) {
-                    return big.cmp(heap.heap, a, b);
+                    return big.cmp(heap.heap(), a, b);
                 } else {
-                    return fsign(big.toFloat(heap.heap, a) - heap.getDbl(b));
+                    return fsign(big.toFloat(heap.heap(), a) - heap.getDbl(b));
                 }
             },
             .UNICODE => {
@@ -639,9 +641,9 @@ pub fn compare(arg_a: Word, arg_b: Word) c_int {
 
 test "compare: orders ints, chars, and strings; 0 on equal" {
     tu.freshInterp();
-    try std.testing.expect(compare(big.fromInt(heap.heap, 2), big.fromInt(heap.heap, 3)) < 0);
-    try std.testing.expect(compare(big.fromInt(heap.heap, 3), big.fromInt(heap.heap, 2)) > 0);
-    try std.testing.expectEqual(@as(c_int, 0), compare(big.fromInt(heap.heap, 7), big.fromInt(heap.heap, 7)));
+    try std.testing.expect(compare(big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), 3)) < 0);
+    try std.testing.expect(compare(big.fromInt(heap.heap(), 3), big.fromInt(heap.heap(), 2)) > 0);
+    try std.testing.expectEqual(@as(c_int, 0), compare(big.fromInt(heap.heap(), 7), big.fromInt(heap.heap(), 7)));
     // strings (char lists) compare lexicographically, element by element
     try std.testing.expect(compare(tu.str("abc"), tu.str("abd")) < 0);
     try std.testing.expectEqual(@as(c_int, 0), compare(tu.str("hi"), tu.str("hi")));
@@ -682,11 +684,11 @@ pub fn force(x_val: Word) void {
 
 test "force: deep-evaluates a list of thunks to normal form" {
     tu.freshInterp();
-    const thunk = ap(ap(word.PLUS, big.fromInt(heap.heap, 2)), big.fromInt(heap.heap, 3));
+    const thunk = ap(ap(word.PLUS, big.fromInt(heap.heap(), 2)), big.fromInt(heap.heap(), 3));
     const lst = cons(thunk, NIL);
     force(lst);
     // the head thunk is now reduced to the INT 5 in place
-    try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(heap.heap, h(lst)));
+    try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(heap.heap(), h(lst)));
 }
 
 /// The head atom/combinator at the end of a left spine of applications.
@@ -713,7 +715,7 @@ test "head: the leftmost atom of an application spine" {
 pub fn apfile(eval: *EvalState, f: Word) void {
     var p = eval.outfilq;
     const fil = getstring(f, "Appendfile");
-    while (p != NIL and word.strcmp(strtab.strOf(strtab.table, h(h(p))), fil) != 0) {
+    while (p != NIL and word.strcmp(strtab.strOf(strtab.table(), h(h(p))), fil) != 0) {
         p = t(p);
     }
     if (p == NIL) {
@@ -723,7 +725,7 @@ pub fn apfile(eval: *EvalState, f: Word) void {
         } else {
             // datapair = (filename string, FILE* handle); the FILE* is a
             // raw cell cast (read back via @ptrFromInt), not a node string.
-            eval.outfilq = cons(datapair(strtab.strBits(strtab.table, lex.keep(fil.?)), @as(Word, @intCast(@intFromPtr(s.?)))), eval.outfilq);
+            eval.outfilq = cons(datapair(strtab.strBits(strtab.table(), lex.keep(fil.?)), @as(Word, @intCast(@intFromPtr(s.?)))), eval.outfilq);
         }
     }
 }
@@ -732,7 +734,7 @@ pub fn apfile(eval: *EvalState, f: Word) void {
 pub fn closefile(eval: *EvalState, f: Word) void {
     var p = &eval.outfilq;
     const fil = getstring(f, "Closefile");
-    while (p.* != NIL and word.strcmp(strtab.strOf(strtab.table, h(h(p.*))), fil) != 0) {
+    while (p.* != NIL and word.strcmp(strtab.strOf(strtab.table(), h(h(p.*))), fil) != 0) {
         p = tp(p.*);
     }
     if (p.* != NIL) {
@@ -745,7 +747,7 @@ pub fn closefile(eval: *EvalState, f: Word) void {
 pub fn outf(eval: *EvalState, e: Word) void {
     var p = eval.outfilq;
     const f = getstring(t(h(e)), "Tofile");
-    while (p != NIL and word.strcmp(strtab.strOf(strtab.table, h(h(p))), f) != 0) {
+    while (p != NIL and word.strcmp(strtab.strOf(strtab.table(), h(h(p))), f) != 0) {
         p = t(p);
     }
     if (p == NIL) {
@@ -759,7 +761,7 @@ pub fn outf(eval: *EvalState, e: Word) void {
             word.setbuf(eval.s_out.?, null);
         }
         // datapair = (filename string, FILE* handle); FILE* is a raw cell cast.
-        eval.outfilq = cons(datapair(strtab.strBits(strtab.table, lex.keep(f.?)), @as(Word, @intCast(@intFromPtr(eval.s_out.?)))), eval.outfilq);
+        eval.outfilq = cons(datapair(strtab.strBits(strtab.table(), lex.keep(f.?)), @as(Word, @intCast(@intFromPtr(eval.s_out.?)))), eval.outfilq);
     } else {
         eval.s_out = @ptrFromInt(@as(usize, @intCast(t(h(p)))));
     }
@@ -876,7 +878,7 @@ pub fn output(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) void {
         e = t(e);
     }
     if (options.is_strict or @import("builtin").mode == .Debug) {
-        heap.heap.validate();
+        heap.heap().validate();
     }
     if (e == NIL) {
         return;

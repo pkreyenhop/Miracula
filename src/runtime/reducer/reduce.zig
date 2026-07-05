@@ -69,9 +69,9 @@ pub fn reduce(e_val: Word) Word {
     // each get their own, nested LIFO with this one; see Spine.register).
     var ctx: ReductionCtx = undefined;
     ctx.e = e_val;
-    ctx.heap = heap_mod.heap;
-    ctx.eval = reduce_rt.ev;
-    ctx.rs = rt.rs;
+    ctx.heap = heap_mod.heap();
+    ctx.eval = reduce_rt.ev();
+    ctx.rs = rt.rs();
     ctx.spine = spine.Spine.init(rt.allocator, &ctx.eval.spine_buffer_pool);
     ctx.spine.register(&ctx.eval.gc_roots_head);
     defer ctx.spine.deinit(&ctx.eval.spine_buffer_pool);
@@ -244,7 +244,7 @@ fn dispatchNonCombinatorHead(ctx: *ReductionCtx) void {
         },
         .DATAPAIR => {
             upLeft(ctx);
-            word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{ strtab.strOf(strtab.table, hdGet(ctx.heap, hdGet(ctx.heap, ctx.e))), strtab.strOf(strtab.table, tlGet(ctx.heap, ctx.e)) });
+            word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{ strtab.strOf(strtab.table(), hdGet(ctx.heap, hdGet(ctx.heap, ctx.e))), strtab.strOf(strtab.table(), tlGet(ctx.heap, ctx.e)) });
             reduce_rt.outstats();
             main_clib.exit(1);
         },

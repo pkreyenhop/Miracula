@@ -87,29 +87,29 @@ pub const yysterm = yysterm_data;
 
 /// Report a syntax error `s`: print the location and set `SYNERR`.
 pub fn syntax(s: [*:0]const u8) void {
-    if (core_state.s.SYNERR != 0) return;
+    if (core_state.s().SYNERR != 0) return;
     if (!@import("builtin").is_test) {
-        if (rt.rs.echoing != 0) {
+        if (rt.rs().echoing != 0) {
             _ = word.printErr("\n", .{.{}});
         }
         _ = word.printErr("syntax error: {s}", .{.{s}});
     }
-    core_state.s.SYNERR = 1;
-    resetLex(heap_mod.heap);
+    core_state.s().SYNERR = 1;
+    resetLex(heap_mod.heap());
 }
 
 /// Flag a grammar-action error (set `SYNERR` and reset the lexer).
 pub fn acterror() void {
-    if (core_state.s.SYNERR != 0) return;
-    core_state.s.SYNERR = 1;
-    resetLex(heap_mod.heap);
+    if (core_state.s().SYNERR != 0) return;
+    core_state.s().SYNERR = 1;
+    resetLex(heap_mod.heap());
 }
 
 /// Registers a primitive identifier `n` in the private primitive environment (`rs.primenv`).
 /// `v` is the combinator value; `t_val` is the type node. Called only from primlib().
 pub fn primdef(heap: *Heap, n: [*:0]const u8, v: Word, t_val: Word) void {
     const x = abi.makeId(@constCast(n));
-    rt.rs.primenv = heap.cons(x, rt.rs.primenv);
+    rt.rs().primenv = heap.cons(x, rt.rs().primenv);
     heap.tp(x).* = v;
     heap.tp(heap.h(x)).* = t_val;
 }
@@ -137,7 +137,7 @@ pub fn primlib(heap: *Heap) void {
 /// Seeds the private-prelude identifiers (offside, changetype, hd/tl, etc.) that are
 /// always in scope but not user-visible. Called during prelude loading.
 pub fn privlib(heap: *Heap) void {
-    predef(heap, "offside", word.OFFSIDE, cs.ltchar);
+    predef(heap, "offside", word.OFFSIDE, cs().ltchar);
     predef(heap, "changetype", word.I, word.wrong_t);
     predef(heap, "first", word.HD, word.wrong_t);
     predef(heap, "rest", word.TL, word.wrong_t);
@@ -211,37 +211,37 @@ fn mktiny() Word {
 /// dictionary, and parser state, then seeds the primitive environment.
 /// Must be called exactly once before any source file is loaded.
 pub fn miraSetup() void {
-    const heap = heap_mod.heap;
+    const heap = heap_mod.heap();
     setupheap();
     tsetup();
     resetPns();
-    bigsetup(heap, big.bn);
-    ls.common_stdin = abi.ap(word.READ, 0);
-    ls.common_stdinb = abi.ap(word.READBIN, 0);
-    ls.cook_stdin = abi.ap(abi.readvals(0, 0), word.OFFSIDE);
-    core_state.s.nill = heap.cons(word.CONST, NIL);
-    rt.rs.Void = abi.makeId(@constCast("()"));
-    heap.tp(heap.h(rt.rs.Void)).* = word.void_t;
-    heap.tp(rt.rs.Void).* = heap_mod.constructor(heap, 0, rt.rs.Void);
-    rt.rs.message = abi.makeId(@constCast("sys_message"));
-    rt.rs.main_id = abi.makeId(@constCast("main"));
-    rt.rs.concat = abi.makeId(@constCast("concat"));
-    rt.rs.diagonalise = abi.makeId(@constCast("diagonalise"));
-    rt.rs.standardout = heap_mod.constructor(heap, 0, @as([*:0]const u8, "Stdout"));
-    rt.rs.indent_fn = abi.makeId(@constCast("indent"));
-    rt.rs.outdent_fn = abi.makeId(@constCast("outdent"));
-    rt.rs.listdiff_fn = abi.makeId(@constCast("listdiff"));
-    rt.rs.shownum1 = abi.makeId(@constCast("shownum1"));
-    rt.rs.showbool = abi.makeId(@constCast("showbool"));
-    rt.rs.showchar = abi.makeId(@constCast("showchar"));
-    rt.rs.showlist = abi.makeId(@constCast("showlist"));
-    rt.rs.showstring = abi.makeId(@constCast("showstring"));
-    rt.rs.showparen = abi.makeId(@constCast("showparen"));
-    rt.rs.showpair = abi.makeId(@constCast("showpair"));
-    rt.rs.showvoid = abi.makeId(@constCast("showvoid"));
-    rt.rs.showfunction = abi.makeId(@constCast("showfunction"));
-    rt.rs.showabstract = abi.makeId(@constCast("showabstract"));
-    rt.rs.showwhat = abi.makeId(@constCast("showwhat"));
+    bigsetup(heap, big.bn());
+    ls().common_stdin = abi.ap(word.READ, 0);
+    ls().common_stdinb = abi.ap(word.READBIN, 0);
+    ls().cook_stdin = abi.ap(abi.readvals(0, 0), word.OFFSIDE);
+    core_state.s().nill = heap.cons(word.CONST, NIL);
+    rt.rs().Void = abi.makeId(@constCast("()"));
+    heap.tp(heap.h(rt.rs().Void)).* = word.void_t;
+    heap.tp(rt.rs().Void).* = heap_mod.constructor(heap, 0, rt.rs().Void);
+    rt.rs().message = abi.makeId(@constCast("sys_message"));
+    rt.rs().main_id = abi.makeId(@constCast("main"));
+    rt.rs().concat = abi.makeId(@constCast("concat"));
+    rt.rs().diagonalise = abi.makeId(@constCast("diagonalise"));
+    rt.rs().standardout = heap_mod.constructor(heap, 0, @as([*:0]const u8, "Stdout"));
+    rt.rs().indent_fn = abi.makeId(@constCast("indent"));
+    rt.rs().outdent_fn = abi.makeId(@constCast("outdent"));
+    rt.rs().listdiff_fn = abi.makeId(@constCast("listdiff"));
+    rt.rs().shownum1 = abi.makeId(@constCast("shownum1"));
+    rt.rs().showbool = abi.makeId(@constCast("showbool"));
+    rt.rs().showchar = abi.makeId(@constCast("showchar"));
+    rt.rs().showlist = abi.makeId(@constCast("showlist"));
+    rt.rs().showstring = abi.makeId(@constCast("showstring"));
+    rt.rs().showparen = abi.makeId(@constCast("showparen"));
+    rt.rs().showpair = abi.makeId(@constCast("showpair"));
+    rt.rs().showvoid = abi.makeId(@constCast("showvoid"));
+    rt.rs().showfunction = abi.makeId(@constCast("showfunction"));
+    rt.rs().showabstract = abi.makeId(@constCast("showabstract"));
+    rt.rs().showwhat = abi.makeId(@constCast("showwhat"));
     primlib(heap);
 }
 
@@ -250,7 +250,7 @@ test "miraSetup initialisation and primitive seeding" {
     miraSetup();
 
     // Verify primitives from primlib are seeded correctly
-    try std.testing.expect(rt.rs.primenv != NIL);
-    try std.testing.expect(rt.rs.Void != 0);
-    try std.testing.expect(rt.rs.standardout != 0);
+    try std.testing.expect(rt.rs().primenv != NIL);
+    try std.testing.expect(rt.rs().Void != 0);
+    try std.testing.expect(rt.rs().standardout != 0);
 }

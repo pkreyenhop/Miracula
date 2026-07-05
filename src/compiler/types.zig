@@ -111,9 +111,9 @@ pub fn remove1(heap: *Heap, e: Word, ss: *Word) Word {
 test "remove1: removes an element in place, reports hit/miss" {
     tu.freshInterp();
     var s = tu.list(&[_]Word{ 1000, 2000, 3000 });
-    try std.testing.expectEqual(@as(Word, 1), remove1(heap_mod.heap, 2000, &s));
+    try std.testing.expectEqual(@as(Word, 1), remove1(heap_mod.heap(), 2000, &s));
     try tu.expectWords(&[_]Word{ 1000, 3000 }, s);
-    try std.testing.expectEqual(@as(Word, 0), remove1(heap_mod.heap, 5000, &s)); // miss
+    try std.testing.expectEqual(@as(Word, 0), remove1(heap_mod.heap(), 5000, &s)); // miss
 }
 
 /// Set difference `s1 \ s2`.
@@ -137,7 +137,7 @@ pub fn setdiff(heap: *Heap, s1_input: Word, s2_input: Word) Word {
 
 test "setdiff: s1 minus s2" {
     tu.freshInterp();
-    try tu.expectWords(&[_]Word{ 1000, 3000 }, setdiff(heap_mod.heap, tu.list(&[_]Word{ 1000, 2000, 3000 }), tu.list(&[_]Word{2000})));
+    try tu.expectWords(&[_]Word{ 1000, 3000 }, setdiff(heap_mod.heap(), tu.list(&[_]Word{ 1000, 2000, 3000 }), tu.list(&[_]Word{2000})));
 }
 
 /// Add element `e` to set `s` (if not already present).
@@ -164,9 +164,9 @@ pub fn add1(heap: *Heap, e: Word, s_input: Word) Word {
 
 test "add1: inserts in sorted order without duplicates" {
     tu.freshInterp();
-    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, add1(heap_mod.heap, 2000, tu.list(&[_]Word{ 1000, 3000 })));
+    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, add1(heap_mod.heap(), 2000, tu.list(&[_]Word{ 1000, 3000 })));
     // already present → unchanged
-    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, add1(heap_mod.heap, 2000, tu.list(&[_]Word{ 1000, 2000, 3000 })));
+    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, add1(heap_mod.heap(), 2000, tu.list(&[_]Word{ 1000, 2000, 3000 })));
 }
 
 /// Prepend element `e` to set `s` (no membership check).
@@ -224,7 +224,7 @@ pub fn UNION(heap: *Heap, s1_input: Word, s2_input: Word) Word {
 
 test "UNION: sorted set union" {
     tu.freshInterp();
-    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, UNION(heap_mod.heap, tu.list(&[_]Word{ 1000, 3000 }), tu.list(&[_]Word{ 2000, 3000 })));
+    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, UNION(heap_mod.heap(), tu.list(&[_]Word{ 1000, 3000 }), tu.list(&[_]Word{ 2000, 3000 })));
 }
 
 /// Set intersection of `s1` and `s2`.
@@ -250,7 +250,7 @@ pub fn intersection(heap: *Heap, s1_input: Word, s2_input: Word) Word {
 
 test "intersection: common elements" {
     tu.freshInterp();
-    try tu.expectWords(&[_]Word{ 2000, 3000 }, intersection(heap_mod.heap, tu.list(&[_]Word{ 1000, 2000, 3000 }), tu.list(&[_]Word{ 2000, 3000, 4000 })));
+    try tu.expectWords(&[_]Word{ 2000, 3000 }, intersection(heap_mod.heap(), tu.list(&[_]Word{ 1000, 2000, 3000 }), tu.list(&[_]Word{ 2000, 3000, 4000 })));
 }
 
 /// Whether `x` is a member of set `s`.
@@ -267,8 +267,8 @@ pub fn member(heap: *Heap, s_input: Word, x: Word) Word {
 test "member: set membership (1/0)" {
     tu.freshInterp();
     const s = tu.list(&[_]Word{ 1000, 2000, 3000 });
-    try std.testing.expectEqual(@as(Word, 1), member(heap_mod.heap, s, 2000));
-    try std.testing.expectEqual(@as(Word, 0), member(heap_mod.heap, s, 5000));
+    try std.testing.expectEqual(@as(Word, 1), member(heap_mod.heap(), s, 2000));
+    try std.testing.expectEqual(@as(Word, 0), member(heap_mod.heap(), s, 5000));
 }
 
 const type_t: Word = 10;
@@ -410,7 +410,7 @@ fn idWho(heap: *Heap, x: Word) Word {
 
 /// The interned name text of id `x`.
 fn getId(heap: *Heap, x: Word) [*:0]const u8 {
-    return strtab.strOf(strtab.table, h(heap, h(heap, h(heap, x))));
+    return strtab.strOf(strtab.table(), h(heap, h(heap, h(heap, x))));
 }
 
 /// Rewrite a type's outer constructor to `list_t` in place (for structural compare).
@@ -433,63 +433,63 @@ fn metaTcheck(heap: *Heap, t_val: Word) errors.MiraError!Word {
     if (getTag(heap, tn) != .STRCONS) {
         if (getTag(heap, tn) != .ID) {
             if (i > 0 and (isVarType(heap, tn) or tn == bool_t or tn == num_t or tn == char_t)) {
-                cs.TYPERRS += 1;
-                if (getTag(heap, cs.current_id) == .DATAPAIR) {
+                cs().TYPERRS += 1;
+                if (getTag(heap, cs().current_id) == .DATAPAIR) {
                     locateInc(heap);
                     _ = word.print("badly formed type \"", .{});
                     outType(heap, t_val);
-                    _ = word.print("\" in binding for \"{s}\"\n", .{strtab.strOf(strtab.table, h(heap, cs.current_id))});
+                    _ = word.print("\" in binding for \"{s}\"\n", .{strtab.strOf(strtab.table(), h(heap, cs().current_id))});
                     _ = word.print("(", .{});
                     outType(heap, tn);
                     _ = word.print(" has zero arity)\n", .{});
                 } else {
                     _ = word.print("badly formed type \"", .{});
                     outType(heap, t_val);
-                    const msg: [*:0]const u8 = if (idType(heap, cs.current_id) == type_t) "== binding" else "specification";
-                    _ = word.print("\" in {s} for \"{s}\"\n", .{ msg, getId(heap, cs.current_id) });
+                    const msg: [*:0]const u8 = if (idType(heap, cs().current_id) == type_t) "== binding" else "specification";
+                    _ = word.print("\" in {s} for \"{s}\"\n", .{ msg, getId(heap, cs().current_id) });
                     _ = word.print("(", .{});
                     outType(heap, tn);
                     _ = word.print(" has zero arity)\n", .{});
-                    sayhere(heap, getspecloc(heap, cs.current_id), 1);
+                    sayhere(heap, getspecloc(heap, cs().current_id), 1);
                 }
                 sterilise(heap, t_val);
             }
             return t_val;
         } else if (idType(heap, tn) == undef_t and idVal(heap, tn) == UNDEF) {
-            cs.TYPERRS += 1;
-            if (member(heap, cs.NT, tn) == 0) {
-                if (getTag(heap, cs.current_id) == .DATAPAIR) {
+            cs().TYPERRS += 1;
+            if (member(heap, cs().NT, tn) == 0) {
+                if (getTag(heap, cs().current_id) == .DATAPAIR) {
                     locateInc(heap);
                 }
                 _ = word.print("undeclared typename \"{s}\" ", .{getId(heap, tn)});
-                if (getTag(heap, cs.current_id) == .DATAPAIR) {
-                    _ = word.print("in binding for {s}\n", .{strtab.strOf(strtab.table, h(heap, cs.current_id))});
+                if (getTag(heap, cs().current_id) == .DATAPAIR) {
+                    _ = word.print("in binding for {s}\n", .{strtab.strOf(strtab.table(), h(heap, cs().current_id))});
                 } else {
-                    sayhere(heap, getspecloc(heap, cs.current_id), 1);
+                    sayhere(heap, getspecloc(heap, cs().current_id), 1);
                 }
-                cs.NT = add1(heap, tn, cs.NT);
+                cs().NT = add1(heap, tn, cs().NT);
             }
             return t_val;
         } else if (idType(heap, tn) != type_t or tArity(heap, tn) != i) {
-            cs.TYPERRS += 1;
-            if (getTag(heap, cs.current_id) == .DATAPAIR) {
+            cs().TYPERRS += 1;
+            if (getTag(heap, cs().current_id) == .DATAPAIR) {
                 locateInc(heap);
                 _ = word.print("badly formed type \"", .{});
                 outType(heap, t_val);
-                _ = word.print("\" in binding for \"{s}\"\n", .{strtab.strOf(strtab.table, h(heap, cs.current_id))});
+                _ = word.print("\" in binding for \"{s}\"\n", .{strtab.strOf(strtab.table(), h(heap, cs().current_id))});
             } else {
                 _ = word.print("badly formed type \"", .{});
                 outType(heap, t_val);
-                const msg: [*:0]const u8 = if (idType(heap, cs.current_id) == type_t) "== binding" else "specification";
-                _ = word.print("\" in {s} for \"{s}\"\n", .{ msg, getId(heap, cs.current_id) });
+                const msg: [*:0]const u8 = if (idType(heap, cs().current_id) == type_t) "== binding" else "specification";
+                _ = word.print("\" in {s} for \"{s}\"\n", .{ msg, getId(heap, cs().current_id) });
             }
             if (idType(heap, tn) != type_t) {
                 _ = word.print("({s} not defined as typename)\n", .{getId(heap, tn)});
             } else {
                 _ = word.print("(typename {s} has arity {d})\n", .{ getId(heap, tn), tArity(heap, tn) });
             }
-            if (getTag(heap, cs.current_id) != .DATAPAIR) {
-                sayhere(heap, getspecloc(heap, cs.current_id), 1);
+            if (getTag(heap, cs().current_id) != .DATAPAIR) {
+                sayhere(heap, getspecloc(heap, cs().current_id), 1);
             }
             sterilise(heap, t_val);
             return t_val;
@@ -499,21 +499,21 @@ fn metaTcheck(heap: *Heap, t_val: Word) errors.MiraError!Word {
     if (tClass(heap, tn) != synonym_t) {
         return t_val;
     }
-    if (member(heap, cs.meta_pending, tn) != 0) {
-        cs.TYPERRS += 1; // report cycle
-        if (getTag(heap, cs.current_id) == .DATAPAIR) {
+    if (member(heap, cs().meta_pending, tn) != 0) {
+        cs().TYPERRS += 1; // report cycle
+        if (getTag(heap, cs().current_id) == .DATAPAIR) {
             locateInc(heap);
         }
-        const suffix: [*:0]const u8 = if (cs.meta_pending == NIL) "" else "s";
+        const suffix: [*:0]const u8 = if (cs().meta_pending == NIL) "" else "s";
         _ = word.print("error: cycle in type \"==\" definition{s} ", .{suffix});
-        printelement(heap, cs.meta_pending);
+        printelement(heap, cs().meta_pending);
         _ = word.print("\n", .{});
-        if (getTag(heap, cs.current_id) != .DATAPAIR) {
+        if (getTag(heap, cs().current_id) != .DATAPAIR) {
             sayhere(heap, idWho(heap, tn), 1);
         }
         return error.TypeCheckAbort;
     }
-    cs.meta_pending = cons(tn, cs.meta_pending);
+    cs().meta_pending = cons(tn, cs().meta_pending);
     tn = NIL;
     var cur_t = t_val;
     while (isCompoundType(heap, cur_t)) {
@@ -521,7 +521,7 @@ fn metaTcheck(heap: *Heap, t_val: Word) errors.MiraError!Word {
         cur_t = h(heap, cur_t);
     }
     const res = try metaTcheck(heap, apSubst(heap, tInfo(heap, cur_t), tn));
-    cs.meta_pending = t(heap, cs.meta_pending);
+    cs().meta_pending = t(heap, cs().meta_pending);
     return res;
 }
 
@@ -549,30 +549,30 @@ fn hashval(heap: *Heap, x: Word) usize {
 
 /// Allocate a fresh type variable.
 fn NTV() Word {
-    const res = mktvar(cs.tvcount);
-    cs.tvcount += 1;
+    const res = mktvar(cs().tvcount);
+    cs().tvcount += 1;
     return res;
 }
 
 /// Reset the substitution and return the empty substitution.
 pub fn clearSubst(heap: *Heap) Word {
     fixshows(heap);
-    @memset(&cs.SUBST, 0);
-    cs.tvcount = 1;
+    @memset(&cs().SUBST, 0);
+    cs().tvcount = 1;
     return 0;
 }
 
 /// Fix up the `show` functions after inference.
 pub fn fixshows(heap: *Heap) void {
-    while (cs.showchain != NIL) {
-        tp(heap, h(heap, cs.showchain)).* = subst(heap, t(heap, h(heap, cs.showchain)));
-        cs.showchain = t(heap, cs.showchain);
+    while (cs().showchain != NIL) {
+        tp(heap, h(heap, cs().showchain)).* = subst(heap, t(heap, h(heap, cs().showchain)));
+        cs().showchain = t(heap, cs().showchain);
     }
 }
 
 /// The substitution binding for type variable `tv` (or `tv` itself if unbound).
 pub fn lookup(heap: *Heap, tv: Word) Word {
-    var h_val = cs.SUBST[hashval(heap, tv)];
+    var h_val = cs().SUBST[hashval(heap, tv)];
     while (h_val != 0) {
         if (eqtvar(heap, h(heap, h(heap, h_val)), tv)) {
             return t(heap, h(heap, h_val));
@@ -585,7 +585,7 @@ pub fn lookup(heap: *Heap, tv: Word) Word {
 /// Bind type variable `tv` to `term` in the substitution.
 pub fn addsubst(heap: *Heap, tv: Word, term: Word) void {
     const hv = hashval(heap, tv);
-    cs.SUBST[hv] = cons(cons(tv, term), cs.SUBST[hv]);
+    cs().SUBST[hv] = cons(cons(tv, term), cs().SUBST[hv]);
 }
 
 /// Resolve `tv` to its ultimate substituted form (union-find walk).
@@ -622,7 +622,7 @@ fn lmap(heap: *Heap, tv: Word) Word {
     if (nonGeneric(heap, tv)) {
         return tv;
     }
-    var l = cs.localtvmap;
+    var l = cs().localtvmap;
     while (l != NIL) {
         if (h(heap, h(heap, l)) == tv) {
             return t(heap, h(heap, l));
@@ -630,20 +630,20 @@ fn lmap(heap: *Heap, tv: Word) Word {
         l = t(heap, l);
     }
     const new_var = NTV();
-    cs.localtvmap = cons(cons(tv, new_var), cs.localtvmap);
+    cs().localtvmap = cons(cons(tv, new_var), cs().localtvmap);
     return new_var;
 }
 
 /// Instantiate `term`, freshening its generic type variables (`ngt` = the non-generic set).
 pub fn linst(heap: *Heap, term: Word, ngt: Word) Word {
-    cs.localtvmap = NIL;
-    cs.NGT = ngt;
+    cs().localtvmap = NIL;
+    cs().NGT = ngt;
     return walktype(heap, term, lmap);
 }
 
 /// Whether type variable `tv` is non-generic / monomorphic (1/0).
 pub fn nonGeneric(heap: *Heap, tv: Word) bool {
-    var x = cs.NGT;
+    var x = cs().NGT;
     while (x != NIL) {
         if (occurs(heap, tv, subst(heap, h(heap, x)))) {
             return true;
@@ -655,7 +655,7 @@ pub fn nonGeneric(heap: *Heap, tv: Word) bool {
 
 /// Map a type variable up through `tvmap` (instantiation direction).
 fn mapup(heap: *Heap, tv_in: Word) Word {
-    var m: *Word = &cs.tvmap;
+    var m: *Word = &cs().tvmap;
     var tv = gettvar(heap, tv_in);
     tv -= 1;
     while (tv > 0) : (tv -= 1) {
@@ -669,21 +669,21 @@ fn mapup(heap: *Heap, tv_in: Word) Word {
 
 /// Instantiate a polymorphic type with fresh variables.
 pub fn instantiate(heap: *Heap, term: Word) Word {
-    cs.tvmap = NIL;
+    cs().tvmap = NIL;
     return walktype(heap, term, mapup);
 }
 
 /// Apply the substitution `args` to `term`.
 pub fn apSubst(heap: *Heap, term: Word, args: Word) Word {
-    cs.tvmap = args;
+    cs().tvmap = args;
     const r = walktype(heap, term, mapup);
-    cs.tvmap = NIL;
+    cs().tvmap = NIL;
     return r;
 }
 
 /// Map a type variable down to a compact index through `tvmap`.
 fn mapdown(heap: *Heap, tv: Word) Word {
-    var m: *Word = &cs.tvmap;
+    var m: *Word = &cs().tvmap;
     var i: Word = 1;
     while (m.* != NIL and !eqtvar(heap, h(heap, m.*), tv)) {
         m = tp(heap, m.*);
@@ -697,7 +697,7 @@ fn mapdown(heap: *Heap, tv: Word) Word {
 
 /// Renumber a term's type variables to a compact 1..n.
 pub fn redtvars(heap: *Heap, term: Word) Word {
-    cs.tvmap = NIL;
+    cs().tvmap = NIL;
     return walktype(heap, term, mapdown);
 }
 
@@ -739,18 +739,18 @@ fn getStdout() ?*word.FILE {
 
 /// Record the current definition name `s` for error messages.
 pub fn locate(heap: *Heap, s: [*:0]const u8) void {
-    cs.TYPERRS += 1;
-    if (cs.TYPERRS == 1 or cs.lastloc != cs.current_id) {
-        if (cs.current_id != 0) {
-            if (getTag(heap, cs.current_id) == .DATAPAIR) {
+    cs().TYPERRS += 1;
+    if (cs().TYPERRS == 1 or cs().lastloc != cs().current_id) {
+        if (cs().current_id != 0) {
+            if (getTag(heap, cs().current_id) == .DATAPAIR) {
                 locateInc(heap);
-                _ = word.print("{s} in binding for {s}\n", .{ s, strtab.strOf(strtab.table, h(heap, cs.current_id)) });
+                _ = word.print("{s} in binding for {s}\n", .{ s, strtab.strOf(strtab.table(), h(heap, cs().current_id)) });
                 return;
             }
-            var x = cs.current_id;
+            var x = cs().current_id;
             _ = word.print("{s} in definition of ", .{s});
             while (getTag(heap, x) == .CONS) {
-                if (getTag(heap, t(heap, x)) == .ID and member(heap, rt.rs.fnts, t(heap, x)) != 0) {
+                if (getTag(heap, t(heap, x)) == .ID and member(heap, rt.rs().fnts, t(heap, x)) != 0) {
                     _ = word.print("nonterminal ", .{});
                     x = h(heap, x);
                 } else {
@@ -765,12 +765,12 @@ pub fn locate(heap: *Heap, s: [*:0]const u8) void {
             _ = word.print("{s} in expression\n", .{s});
         }
     }
-    if (cs.lineptr != 0) {
-        sayhere(heap, cs.lineptr, 0);
-    } else if (cs.current_id != 0 and idWho(heap, cs.current_id) != NIL) {
-        sayhere(heap, idWho(heap, cs.current_id), 0);
+    if (cs().lineptr != 0) {
+        sayhere(heap, cs().lineptr, 0);
+    } else if (cs().current_id != 0 and idWho(heap, cs().current_id) != NIL) {
+        sayhere(heap, idWho(heap, cs().current_id), 0);
     }
-    cs.lastloc = cs.current_id;
+    cs().lastloc = cs().current_id;
 }
 
 /// The source location of right-hand side `r`.
@@ -794,8 +794,8 @@ pub fn sayhere(heap: *Heap, h_val: Word, nl: Word) void {
             return;
         }
     }
-    const h_str = strtab.strOf(strtab.table, h(heap, h_node));
-    const eq = std.mem.eql(u8, std.mem.span(h_str), std.mem.span(rt.rs.current_script.?));
+    const h_str = strtab.strOf(strtab.table(), h(heap, h_node));
+    const eq = std.mem.eql(u8, std.mem.span(h_str), std.mem.span(rt.rs().current_script.?));
     const prefix: [*:0]const u8 = if (eq) "" else "%insert file ";
     word.print("(line {d:>3} of {s}\"{s}\")", .{ t(heap, h_node), prefix, h_str });
     if (nl != 0) {
@@ -804,12 +804,12 @@ pub fn sayhere(heap: *Heap, h_val: Word, nl: Word) void {
         _ = word.print(" ", .{});
     }
     if (eq) {
-        if (core_state.s.errline == 0) {
-            core_state.s.errline = t(heap, h_node);
+        if (core_state.s().errline == 0) {
+            core_state.s().errline = t(heap, h_node);
         }
     } else {
-        if (core_state.s.errs == 0) {
-            core_state.s.errs = h_node;
+        if (core_state.s().errs == 0) {
+            core_state.s().errs = h_node;
         }
     }
 }
@@ -857,10 +857,10 @@ pub fn typeError1(heap: *Heap, x: Word) void {
 
 /// Report type error variant 2 for `x`.
 pub fn typeError2(heap: *Heap, x: Word) void {
-    if (core_state.s.compiling != 0) {
+    if (core_state.s().compiling != 0) {
         return;
     }
-    cs.TYPERRS += 1;
+    cs().TYPERRS += 1;
     _ = word.print("undefined name - {s}\n", .{getId(heap, x)});
 }
 
@@ -884,14 +884,14 @@ pub fn typeError5(heap: *Heap, x: Word) void {
     _ = word.print("undeclared constructor \"", .{});
     outPattern(heap, getStdout().?, x);
     _ = word.print("\" in formal\n", .{});
-    cs.ND = add1(heap, x, cs.ND);
+    cs().ND = add1(heap, x, cs().ND);
 }
 
 /// Report type error variant 6 (`x` applied to `f`/`a`).
 pub fn typeError6(heap: *Heap, x: Word, f: Word, a: Word) void {
-    cs.TYPERRS += 1;
+    cs().TYPERRS += 1;
     _ = word.print("incorrect declaration ", .{});
-    sayhere(heap, cs.lineptr, 1);
+    sayhere(heap, cs().lineptr, 1);
     _ = word.print("specified, {s} :: ", .{getId(heap, x)});
     outType(heap, f);
     _ = word.print("\n", .{});
@@ -1027,10 +1027,10 @@ pub fn outType2(heap: *Heap, t_val: Word) void {
                         const pn_val_node = pnVal(heap, t_val);
                         if (getTag(heap, pn_val_node) == .ID) {
                             _ = word.print("{s}", .{getId(heap, pn_val_node)});
-                        } else if (std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table, h(heap, t(heap, tInfo(heap, t_val))))), std.mem.span(rt.rs.current_script.?))) {
-                            _ = word.print("{s}", .{strtab.strOf(strtab.table, h(heap, h(heap, tInfo(heap, t_val))))});
+                        } else if (std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(heap, t(heap, tInfo(heap, t_val))))), std.mem.span(rt.rs().current_script.?))) {
+                            _ = word.print("{s}", .{strtab.strOf(strtab.table(), h(heap, h(heap, tInfo(heap, t_val))))});
                         } else {
-                            _ = word.print("`{s}@{s}'", .{ strtab.strOf(strtab.table, h(heap, h(heap, tInfo(heap, t_val)))), strtab.strOf(strtab.table, h(heap, t(heap, tInfo(heap, t_val)))) });
+                            _ = word.print("`{s}@{s}'", .{ strtab.strOf(strtab.table(), h(heap, h(heap, tInfo(heap, t_val)))), strtab.strOf(strtab.table(), h(heap, t(heap, tInfo(heap, t_val)))) });
                         }
                     },
                     else => {
@@ -1075,10 +1075,10 @@ fn neg(heap: *Heap, x: Word) Word {
 /// The argument of the outermost type application of `x`.
 pub fn tail(heap: *Heap, x_in: Word) Word {
     var x = x_in;
-    cs.allchars = 1;
+    cs().allchars = 1;
     while (getTag(heap, x) == .CONS) {
         const char_res = isChar(h(heap, x));
-        cs.allchars = if (char_res) cs.allchars & 1 else 0;
+        cs().allchars = if (char_res) cs().allchars & 1 else 0;
         x = t(heap, x);
     }
     return x;
@@ -1097,7 +1097,7 @@ pub fn outFormal1(heap: *Heap, f: *word.FILE, x_in: Word) void {
     switch (getTag(heap, x)) {
         .CONS => {
             if (tail(heap, x) == NIL) {
-                if (cs.allchars != 0) {
+                if (cs().allchars != 0) {
                     _ = (f).print("\"", .{});
                     while (x != NIL) {
                         _ = (f).print("{s}", .{charname(h(heap, x))});
@@ -1106,10 +1106,10 @@ pub fn outFormal1(heap: *Heap, f: *word.FILE, x_in: Word) void {
                     _ = (f).print("\"", .{});
                 } else {
                     _ = (f).print("[", .{});
-                    while (x != core_state.s.nill and x != NIL) {
+                    while (x != core_state.s().nill and x != NIL) {
                         outPattern(heap, f, h(heap, x));
                         x = t(heap, x);
-                        if (x != core_state.s.nill and x != NIL) {
+                        if (x != core_state.s().nill and x != NIL) {
                             _ = (f).print(",", .{});
                         }
                     }
@@ -1300,51 +1300,51 @@ fn compDeps(heap: *Heap, n: Word) errors.MiraError!void {
             algebraic_t => {
                 r = tInfo(heap, n);
                 while (r != NIL) {
-                    cs.current_id = h(heap, r);
+                    cs().current_id = h(heap, r);
                     tp(heap, h(heap, h(heap, r))).* = redtvars(heap, try metaTcheck(heap, idType(heap, h(heap, r))));
                     r = t(heap, r);
                 }
             },
             synonym_t => {
-                cs.current_id = n;
+                cs().current_id = n;
                 tp(heap, t(heap, t(heap, n))).* = try metaTcheck(heap, tInfo(heap, n));
             },
             abstract_t => {
                 if (tInfo(heap, n) == undef_t) {
                     _ = word.print("error: script contains no binding for abstract typename \"{s}\"\n", .{getId(heap, n)});
                     sayhere(heap, idWho(heap, n), 1);
-                    cs.TYPERRS += 1;
+                    cs().TYPERRS += 1;
                 } else {
-                    cs.current_id = n;
+                    cs().current_id = n;
                     tp(heap, t(heap, t(heap, n))).* = try metaTcheck(heap, tInfo(heap, n));
                 }
             },
             else => {},
         }
-        cs.current_id = 0;
+        cs().current_id = 0;
         return;
     }
     if (getTag(heap, t(heap, n)) == .CONSTRUCTOR) {
         return;
     }
     if (idType(heap, n) != undef_t) {
-        cs.current_id = n;
+        cs().current_id = n;
         if (getTag(heap, idType(heap, n)) == .CONS) {
             if (t(heap, n) == UNDEF) {
-                cs.SBND = add1(heap, n, cs.SBND);
+                cs().SBND = add1(heap, n, cs().SBND);
             }
             tp(heap, h(heap, n)).* = redtvars(heap, try metaTcheck(heap, h(heap, idType(heap, n))));
-            cs.current_id = 0;
+            cs().current_id = 0;
             return;
         }
         tp(heap, h(heap, n)).* = redtvars(heap, try metaTcheck(heap, idType(heap, n)));
-        cs.current_id = 0;
+        cs().current_id = 0;
     }
     if (t(heap, n) == FREE) {
         return;
     }
     if (t(heap, n) == UNDEF) {
-        cs.SBND = add1(heap, n, cs.SBND);
+        cs().SBND = add1(heap, n, cs().SBND);
         return;
     }
     r = deps(heap, t(heap, n));
@@ -1354,7 +1354,7 @@ fn compDeps(heap: *Heap, n: Word) errors.MiraError!void {
         }
         r = t(heap, r);
     }
-    cs.R = cons(cons(n, rhs), cs.R);
+    cs().R = cons(cons(n, rhs), cs().R);
 }
 
 const algebraic_t = word.algebraic_t;
@@ -1408,17 +1408,17 @@ fn theVal(heap: *Heap, x: Word) Word {
 
 /// Clear the substitution table.
 fn resetSubst(heap: *Heap) void {
-    cs.current_id = if (cs.tvcount >= @as(Word, @intCast(hashsize))) clearSubst(heap) else 0;
+    cs().current_id = if (cs().tvcount >= @as(Word, @intCast(hashsize))) clearSubst(heap) else 0;
 }
 
 /// Mark the current location as inside an `%include`.
 pub fn locateInc(heap: *Heap) void {
-    if (cs.lasthereinc == cs.hereinc) {
+    if (cs().lasthereinc == cs().hereinc) {
         return;
     }
     _ = word.print("incorrect %include directive ", .{});
-    cs.lasthereinc = cs.hereinc;
-    sayhere(heap, cs.hereinc, 1);
+    cs().lasthereinc = cs().hereinc;
+    sayhere(heap, cs().hereinc, 1);
 }
 
 /// Detect cyclic abstract-type definitions among `atnames`.
@@ -1436,7 +1436,7 @@ pub fn cyclicAbstr(heap: *Heap, atnames: Word) Word {
             printelement(heap, atnames);
             _ = word.putchar('\n');
             sayhere(heap, idWho(heap, h(heap, x)), 1);
-            cs.TYPERRS += 1;
+            cs().TYPERRS += 1;
             return 1;
         }
         x = t(heap, x);
@@ -1515,15 +1515,15 @@ fn abstrCheck(heap: *Heap, x_in: Word) errors.MiraError!void {
     var x = x_in;
     const rtypes = t(heap, h(heap, x));
     const sigids = t(heap, x);
-    cs.ATNAMES = h(heap, h(heap, x));
+    cs().ATNAMES = h(heap, h(heap, x));
     txchange(heap, sigids, rtypes); // install representation types
     x = sigids;
     while (x != NIL) {
-        const oldte = cs.TYPERRS;
-        cs.current_id = h(heap, x);
+        const oldte = cs().TYPERRS;
+        cs().current_id = h(heap, x);
         const t_val = subst(heap, try etype(heap, idVal(heap, h(heap, x)), NIL, NIL));
         if (subsumes(heap, t_val, instantiate(heap, idType(heap, h(heap, x)))) == 0) {
-            cs.TYPERRS += 1;
+            cs().TYPERRS += 1;
             _ = word.print("abstype implementation error\n", .{});
             _ = word.print("\"{s}\" is bound to value of type: ", .{getId(heap, h(heap, x))});
             outType(heap, redtvars(heap, t_val));
@@ -1532,10 +1532,10 @@ fn abstrCheck(heap: *Heap, x_in: Word) errors.MiraError!void {
             _ = word.putchar('\n');
             sayhere(heap, idWho(heap, h(heap, x)), 1);
         }
-        if (cs.TYPERRS > oldte) {
+        if (cs().TYPERRS > oldte) {
             tp(heap, h(heap, h(heap, x))).* = wrong_t;
             tp(heap, h(heap, x)).* = UNDEF;
-            cs.ND = add1(heap, h(heap, x), cs.ND);
+            cs().ND = add1(heap, h(heap, x), cs().ND);
         }
         resetSubst(heap);
         x = t(heap, x);
@@ -1550,7 +1550,7 @@ fn abstrCheck(heap: *Heap, x_in: Word) errors.MiraError!void {
         x = t(heap, x);
         rty = t(heap, rty);
     }
-    cs.ATNAMES = 0;
+    cs().ATNAMES = 0;
 }
 
 /// Check a group of mutually-recursive abstract types.
@@ -1583,10 +1583,10 @@ fn mcheckfbs(heap: *Heap) errors.MiraError!void {
     var ff: Word = undefined;
     var formals: Word = undefined;
     var n: Word = undefined;
-    cs.lasthereinc = 0;
-    ff = cs.FBS;
+    cs().lasthereinc = 0;
+    ff = cs().FBS;
     while (ff != NIL) {
-        cs.hereinc = h(heap, h(heap, cs.FBS));
+        cs().hereinc = h(heap, h(heap, cs().FBS));
         formals = t(heap, h(heap, ff));
         while (formals != NIL) {
             const t_val = t(heap, t(heap, h(heap, formals)));
@@ -1594,12 +1594,12 @@ fn mcheckfbs(heap: *Heap) errors.MiraError!void {
                 formals = t(heap, formals);
                 continue;
             }
-            cs.current_id = h(heap, t(heap, h(heap, formals))); // nb datapair(orig,0) not id
+            cs().current_id = h(heap, t(heap, h(heap, formals))); // nb datapair(orig,0) not id
             tp(heap, t(heap, t(heap, h(heap, h(heap, formals))))).* = try metaTcheck(heap, tInfo(heap, h(heap, h(heap, formals))));
-            cs.current_id = 0;
+            cs().current_id = 0;
             formals = t(heap, formals);
         }
-        if (cs.TYPERRS != 0) {
+        if (cs().TYPERRS != 0) {
             return; // to avoid misleading error messages
         }
         formals = t(heap, h(heap, ff));
@@ -1609,14 +1609,14 @@ fn mcheckfbs(heap: *Heap) errors.MiraError!void {
                 formals = t(heap, formals);
                 continue;
             }
-            cs.current_id = h(heap, t(heap, h(heap, formals))); // nb datapair(orig,0) not id
+            cs().current_id = h(heap, t(heap, h(heap, formals))); // nb datapair(orig,0) not id
             tp(heap, t(heap, h(heap, formals))).* = redtvars(heap, try metaTcheck(heap, t_val));
-            cs.current_id = 0;
+            cs().current_id = 0;
             formals = t(heap, formals);
         }
         ff = t(heap, ff);
     }
-    if (cs.TYPERRS != 0) {
+    if (cs().TYPERRS != 0) {
         return;
     }
     ff = t(heap, heap.files);
@@ -1659,7 +1659,7 @@ pub fn checkfbs(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
             if (subsumes(heap, t_val, instantiate(heap, t1)) == 0) {
                 comp.TYPERRS += 1;
                 locateInc(heap);
-                _ = word.print("binding for parameter `{s}' has wrong type\n", .{strtab.strOf(strtab.table, h(heap, comp.current_id))});
+                _ = word.print("binding for parameter `{s}' has wrong type\n", .{strtab.strOf(strtab.table(), h(heap, comp.current_id))});
                 _ = word.print("required :: ", .{});
                 outType(heap, t(heap, t(heap, h(heap, formals))));
                 _ = word.print("\n  actual :: ", .{});
@@ -1683,10 +1683,10 @@ pub fn checkfbs(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
 
 /// Build and cache the `filestat` result type.
 pub fn genlstatType() Word {
-    if (cs.filestat_t == 0) {
-        cs.filestat_t = tf(cs.ltchar, pairType(pairType(num_t, num_t), num_t));
+    if (cs().filestat_t == 0) {
+        cs().filestat_t = tf(cs().ltchar, pairType(pairType(num_t, num_t), num_t));
     }
-    return cs.filestat_t;
+    return cs().filestat_t;
 }
 
 const bind_t: Word = 9;
@@ -1871,7 +1871,7 @@ fn conforms(heap: *Heap, p: Word, t_val: Word, e_in: Word, ngt: Word) errors.Mir
             typeError5(heap, cur_p);
             return -1;
         }
-        pt = instantiate(heap, if (cs.ATNAMES != 0) repT(heap, idType(heap, cur_p), cs.ATNAMES) else idType(heap, cur_p));
+        pt = instantiate(heap, if (cs().ATNAMES != 0) repT(heap, idType(heap, cur_p), cs().ATNAMES) else idType(heap, cur_p));
         while (p_args != NIL and isArrowType(heap, pt)) {
             e = try conforms(heap, h(heap, p_args), t(heap, h(heap, pt)), e, ngt);
             pt = t(heap, pt);
@@ -1921,44 +1921,44 @@ fn etype(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
         .LETREC => return etypeLetrec(heap, x, env, ngt),
         .TRIES => return etypeTries(heap, x, env, ngt),
         .LABEL => {
-            const hold = cs.lineptr;
-            cs.lineptr = h(heap, x);
+            const hold = cs().lineptr;
+            cs().lineptr = h(heap, x);
             const ty = try etype(heap, t(heap, x), env, ngt);
-            cs.lineptr = hold;
+            cs().lineptr = hold;
             return ty;
         },
         .STARTREADVALS => {
             if (t(heap, x) == 0) {
-                hp(heap, x).* = cs.lineptr;
+                hp(heap, x).* = cs().lineptr;
                 tp(heap, x).* = NTV();
-                cs.showchain = cons(x, cs.showchain);
+                cs().showchain = cons(x, cs().showchain);
             }
-            return tf(cs.ltchar, lt(t(heap, x)));
+            return tf(cs().ltchar, lt(t(heap, x)));
         },
         .SHOW => {
-            hp(heap, x).* = cs.lineptr;
-            cs.showchain = cons(x, cs.showchain);
+            hp(heap, x).* = cs().lineptr;
+            cs().showchain = cons(x, cs().showchain);
             tp(heap, x).* = NTV();
-            return tf(t(heap, x), cs.ltchar);
+            return tf(t(heap, x), cs().ltchar);
         },
         .SHARE => {
             if (t(heap, x) == undef_t) {
-                const hold = cs.TYPERRS;
+                const hold = cs().TYPERRS;
                 tp(heap, x).* = subst(heap, try etype(heap, h(heap, x), env, ngt));
-                if (cs.TYPERRS > hold) {
+                if (cs().TYPERRS > hold) {
                     hp(heap, x).* = UNDEF;
                     tp(heap, x).* = wrong_t;
                 }
             }
             if (t(heap, x) == wrong_t) {
-                cs.TYPERRS += 1;
+                cs().TYPERRS += 1;
                 return NTV();
             }
             return t(heap, x);
         },
         .CONSTRUCTOR => {
             const a = idType(heap, t(heap, x));
-            return instantiate(heap, if (cs.ATNAMES != 0) repT(heap, a, cs.ATNAMES) else a);
+            return instantiate(heap, if (cs().ATNAMES != 0) repT(heap, a, cs().ATNAMES) else a);
         },
         .UNICODE => {
             return char_t;
@@ -2045,25 +2045,25 @@ fn etypeCons(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
 /// against the first alternative's type, restoring `cs.lineptr` (used for
 /// error-location reporting) around each check.
 fn etypeLexer(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
-    const hold = cs.lineptr;
-    cs.lineptr = h(heap, t(heap, t(heap, h(heap, x))));
+    const hold = cs().lineptr;
+    cs().lineptr = h(heap, t(heap, t(heap, h(heap, x))));
     tp(heap, t(heap, h(heap, x))).* = t(heap, t(heap, t(heap, h(heap, x))));
     const a = try etype(heap, t(heap, t(heap, h(heap, x))), env, ngt);
     var cur_x = x;
     while (true) {
         cur_x = t(heap, cur_x);
         if (cur_x == NIL) break;
-        cs.lineptr = h(heap, t(heap, t(heap, h(heap, cur_x))));
+        cs().lineptr = h(heap, t(heap, t(heap, h(heap, cur_x))));
         tp(heap, t(heap, h(heap, cur_x))).* = t(heap, t(heap, t(heap, h(heap, cur_x))));
         const b = try etype(heap, t(heap, t(heap, h(heap, cur_x))), env, ngt);
         if (unify1(heap, a, b) == 0) {
             typeError7(heap, a, b);
-            cs.lineptr = hold;
+            cs().lineptr = hold;
             return NTV();
         }
     }
-    cs.lineptr = hold;
-    return tf(cs.ltchar, lt(a));
+    cs().lineptr = hold;
+    return tf(cs().ltchar, lt(a));
 }
 
 /// [etype] for a `.ID` node: looks it up in the local type environment first
@@ -2086,23 +2086,23 @@ fn etypeId(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
         typeError1(heap, x);
     }
     if (a == undef_t) {
-        if (core_state.s.commandmode != 0) {
+        if (core_state.s().commandmode != 0) {
             typeError2(heap, x);
-        } else if (member(heap, cs.ND, x) == 0) {
-            if (cs.lineptr != 0) {
-                sayhere(heap, cs.lineptr, 0);
-            } else if (getTag(heap, cs.current_id) == .DATAPAIR) {
+        } else if (member(heap, cs().ND, x) == 0) {
+            if (cs().lineptr != 0) {
+                sayhere(heap, cs().lineptr, 0);
+            } else if (getTag(heap, cs().current_id) == .DATAPAIR) {
                 locateInc(heap);
             }
             _ = word.print("undefined name \"{s}\"\n", .{getId(heap, x)});
-            cs.ND = add1(heap, x, cs.ND);
+            cs().ND = add1(heap, x, cs().ND);
         }
         return NTV();
     }
     if (a == wrong_t) {
         return NTV();
     }
-    return instantiate(heap, if (cs.ATNAMES != 0) repT(heap, a, cs.ATNAMES) else a);
+    return instantiate(heap, if (cs().ATNAMES != 0) repT(heap, a, cs().ATNAMES) else a);
 }
 
 /// [etype] for a `.LET` node: infers the bound expression's type against the
@@ -2112,12 +2112,12 @@ fn etypeLet(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
     const def = h(heap, x);
     const a = NTV();
     e = try conforms(heap, dlhs(heap, def), a, env, cons(a, ngt));
-    cs.current_id = cons(dlhs(heap, def), cs.current_id);
-    const c_local = cs.lineptr;
-    cs.lineptr = dval(heap, def);
+    cs().current_id = cons(dlhs(heap, def), cs().current_id);
+    const c_local = cs().lineptr;
+    cs().lineptr = dval(heap, def);
     const unified = unify(heap, a, try etype(heap, dval(heap, def), env, ngt));
-    cs.lineptr = c_local;
-    cs.current_id = t(heap, cs.current_id);
+    cs().lineptr = c_local;
+    cs().current_id = t(heap, cs().current_id);
     if (e == -1 or unified == 0) {
         return NTV();
     }
@@ -2155,28 +2155,28 @@ fn etypeLetrec(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word
     var success = true;
     var cur_a = a;
     while (cur_a != NIL) {
-        cs.current_id = cons(dlhs(heap, h(heap, cur_a)), cs.current_id);
-        const hold = cs.lineptr;
-        cs.lineptr = dval(heap, h(heap, cur_a));
+        cs().current_id = cons(dlhs(heap, h(heap, cur_a)), cs().current_id);
+        const hold = cs().lineptr;
+        cs().lineptr = dval(heap, h(heap, cur_a));
         if (unify(heap, dtyp(heap, h(heap, cur_a)), try etype(heap, dval(heap, h(heap, cur_a)), e, c_local)) == 0) {
             success = false;
         }
-        cs.lineptr = hold;
-        cs.current_id = t(heap, cs.current_id);
+        cs().lineptr = hold;
+        cs().current_id = t(heap, cs().current_id);
         cur_a = t(heap, cur_a);
     }
     var cur_s = s;
     while (cur_s != NIL) {
-        cs.current_id = cons(dlhs(heap, h(heap, cur_s)), cs.current_id);
-        const hold = cs.lineptr;
-        cs.lineptr = dval(heap, h(heap, cur_s));
+        cs().current_id = cons(dlhs(heap, h(heap, cur_s)), cs().current_id);
+        const hold = cs().lineptr;
+        cs().lineptr = dval(heap, h(heap, cur_s));
         const ety = try etype(heap, dval(heap, h(heap, cur_s)), e, ngt);
         if (subsumes(heap, ety, linst(heap, dtyp(heap, h(heap, cur_s)), ngt)) == 0) {
             success = false;
             typeError6(heap, dlhs(heap, h(heap, cur_s)), dtyp(heap, h(heap, cur_s)), ety);
         }
-        cs.lineptr = hold;
-        cs.current_id = t(heap, cs.current_id);
+        cs().lineptr = hold;
+        cs().current_id = t(heap, cs().current_id);
         cur_s = t(heap, cur_s);
     }
     if (!success) {
@@ -2189,17 +2189,17 @@ fn etypeLetrec(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word
 /// unifies every alternative's type with the first, reporting a mismatch at
 /// the first alternative that disagrees.
 fn etypeTries(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
-    const hold = cs.lineptr;
+    const hold = cs().lineptr;
     const a = NTV();
     var cur_x = t(heap, x);
     while (cur_x != NIL) {
-        cs.lineptr = h(heap, h(heap, cur_x));
+        cs().lineptr = h(heap, h(heap, cur_x));
         if (unify(heap, a, try etype(heap, t(heap, h(heap, cur_x)), env, ngt)) == 0) {
             break;
         }
         cur_x = t(heap, cur_x);
     }
-    cs.lineptr = hold;
+    cs().lineptr = hold;
     if (cur_x != NIL) {
         return NTV();
     }
@@ -2296,23 +2296,23 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
             return tf2(a, a, bool_t);
         },
         word.NEG => {
-            return cs.tfnum;
+            return cs().tfnum;
         },
         word.AND, word.OR => {
-            return cs.tfbool2;
+            return cs().tfbool2;
         },
         word.NOT => {
-            return cs.tfbool;
+            return cs().tfbool;
         },
         word.MERGE, word.APPEND => {
             const a = lt(NTV());
             return tf2(a, a, a);
         },
         word.STEP => {
-            return cs.tstep;
+            return cs().tstep;
         },
         word.STEPUNTIL => {
-            return cs.tstepuntil;
+            return cs().tstepuntil;
         },
         word.MAP => {
             const a = NTV();
@@ -2417,35 +2417,35 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
             return tf2(tf(a, a), a, lt(a));
         },
         word.EXEC => {
-            if (cs.exec_t == 0) {
-                const a = ap2(comma_t, cs.ltchar, ap2(comma_t, num_t, void_t));
-                cs.exec_t = tf(cs.ltchar, ap2(comma_t, cs.ltchar, a));
+            if (cs().exec_t == 0) {
+                const a = ap2(comma_t, cs().ltchar, ap2(comma_t, num_t, void_t));
+                cs().exec_t = tf(cs().ltchar, ap2(comma_t, cs().ltchar, a));
             }
-            return cs.exec_t;
+            return cs().exec_t;
         },
         word.READBIN, word.READ => {
-            if (cs.read_t == 0) {
-                cs.read_t = tf(char_t, cs.ltchar);
+            if (cs().read_t == 0) {
+                cs().read_t = tf(char_t, cs().ltchar);
             }
-            return cs.read_t;
+            return cs().read_t;
         },
         word.FILESTAT => {
             return genlstatType();
         },
         word.FILEMODE, word.GETENV, word.NB_STARTREAD, word.STARTREADBIN, word.STARTREAD => {
-            return cs.tfstrstr;
+            return cs().tfstrstr;
         },
         word.GETARGS => {
-            return tf(char_t, lt(cs.ltchar));
+            return tf(char_t, lt(cs().ltchar));
         },
         word.SHOWHEX, word.SHOWOCT, word.SHOWNUM => {
-            return tf(num_t, cs.ltchar);
+            return tf(num_t, cs().ltchar);
         },
         word.SHOWFLOAT, word.SHOWSCALED => {
-            return tf2(num_t, num_t, cs.ltchar);
+            return tf2(num_t, num_t, cs().ltchar);
         },
         word.NUMVAL => {
-            return tf(cs.ltchar, num_t);
+            return tf(cs().ltchar, num_t);
         },
         word.INTEGER => {
             return tf(num_t, bool_t);
@@ -2460,10 +2460,10 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
             return tf(lt(NTV()), num_t);
         },
         word.ENTIER_FN, word.ARCTAN_FN, word.EXP_FN, word.SIN_FN, word.COS_FN, word.SQRT_FN, word.LOG_FN, word.LOG10_FN => {
-            return cs.tfnumnum;
+            return cs().tfnumnum;
         },
         word.MINUS, word.PLUS, word.TIMES, word.INTDIV, word.FDIV, word.MOD, word.POWER => {
-            return cs.tfnum2;
+            return cs().tfnum2;
         },
         word.True, word.False => {
             return bool_t;
@@ -2473,7 +2473,7 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
             return a;
         },
         word.NILS => {
-            return cs.ltchar;
+            return cs().ltchar;
         },
         word.MKSTRICT => {
             const a = NTV();
@@ -2485,7 +2485,7 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
         },
         word.G_ERROR => {
             const a = NTV();
-            return tf2(a, tf(lt(cs.bnf_t), a), a);
+            return tf2(a, tf(lt(cs().bnf_t), a), a);
         },
         word.G_OPT, word.G_STAR => {
             const a = NTV();
@@ -2497,19 +2497,19 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
             return tf(b, b);
         },
         word.G_SYMB => {
-            return cs.tfstrstr;
+            return cs().tfstrstr;
         },
         word.G_ANY => {
-            return cs.ltchar;
+            return cs().ltchar;
         },
         word.G_SUCHTHAT => {
-            return tf(tf(cs.ltchar, bool_t), cs.ltchar);
+            return tf(tf(cs().ltchar, bool_t), cs().ltchar);
         },
         word.G_END => {
-            return lt(cs.bnf_t);
+            return lt(cs().bnf_t);
         },
         word.G_STATE => {
-            return t(heap, h(heap, t(heap, cs.bnf_t)));
+            return t(heap, h(heap, t(heap, cs().bnf_t)));
         },
         word.G_SEQ => {
             const a = NTV();
@@ -2518,23 +2518,23 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
         },
         word.G_CLOSE => {
             const a = NTV();
-            if (rt.rs.col_fn != 0) {
-                if (rt.rs.col_fn == -1) {
-                    cs.TYPERRS += 1;
+            if (rt.rs().col_fn != 0) {
+                if (rt.rs().col_fn == -1) {
+                    cs().TYPERRS += 1;
                 } else {
                     checkcolfn(heap);
                 }
             }
-            return tf3(cs.ltchar, a, lt(cs.bnf_t), a);
+            return tf3(cs().ltchar, a, lt(cs().bnf_t), a);
         },
         word.OFFSIDE => {
-            return cs.ltchar;
+            return cs().ltchar;
         },
         word.FAIL, word.CONFERROR, word.BADCASE, UNDEF => {
             return NTV();
         },
         word.ERROR => {
-            return tf(cs.ltchar, NTV());
+            return tf(cs().ltchar, NTV());
         },
         else => {
             _ = word.print("do not know type of ", .{});
@@ -2547,10 +2547,10 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
 
 /// Type-check the grammar's collector function (`col_fn`).
 pub fn checkcolfn(heap: *Heap) void {
-    const t_val = idType(heap, rt.rs.col_fn);
-    const f = tf(t(heap, h(heap, t(heap, cs.bnf_t))), num_t);
+    const t_val = idType(heap, rt.rs().col_fn);
+    const f = tf(t(heap, h(heap, t(heap, cs().bnf_t))), num_t);
     if (t_val == undef_t or t_val == wrong_t or subsumes(heap, instantiate(heap, t_val), f) != 0) {
-        rt.rs.col_fn = 0;
+        rt.rs().col_fn = 0;
         return;
     }
     _ = word.print("`bnftokenindentation' has wrong type for use in offside rule\n", .{});
@@ -2560,9 +2560,9 @@ pub fn checkcolfn(heap: *Heap) void {
     _ = word.print("  actual type :: ", .{});
     outType(heap, t_val);
     _ = word.putchar('\n');
-    sayhere(heap, getspecloc(heap, rt.rs.col_fn), 1);
-    cs.TYPERRS += 1;
-    rt.rs.col_fn = -1;
+    sayhere(heap, getspecloc(heap, rt.rs().col_fn), 1);
+    cs().TYPERRS += 1;
+    rt.rs().col_fn = -1;
 }
 
 /// Derive the BNF token type from the grammar's `bnftokenstate`.
@@ -2570,15 +2570,15 @@ pub fn genbnft(heap: *Heap) void {
     const bnftokenstate = findid(heap, "bnftokenstate");
     if (bnftokenstate != NIL and idType(heap, bnftokenstate) == type_t) {
         if (tArity(heap, bnftokenstate) == 0) {
-            cs.bnf_t = if (tClass(heap, bnftokenstate) == synonym_t) tInfo(heap, bnftokenstate) else bnftokenstate;
+            cs().bnf_t = if (tClass(heap, bnftokenstate) == synonym_t) tInfo(heap, bnftokenstate) else bnftokenstate;
         } else {
             _ = word.print("warning - bnftokenstate has arity>0 (ignored by parser)\n", .{});
-            cs.bnf_t = void_t;
+            cs().bnf_t = void_t;
         }
     } else {
-        cs.bnf_t = void_t;
+        cs().bnf_t = void_t;
     }
-    cs.bnf_t = ap2(comma_t, cs.ltchar, ap2(comma_t, cs.bnf_t, void_t));
+    cs().bnf_t = ap2(comma_t, cs().ltchar, ap2(comma_t, cs().bnf_t, void_t));
 }
 
 /// Type-check `x`, returning its inferred type.
@@ -2591,10 +2591,10 @@ pub fn checktype(heap: *Heap, x: Word) Word {
 
 /// The inferred type of expression `x`.
 pub fn typeOf(heap: *Heap, x: Word) Word {
-    cs.TYPERRS = 0;
+    cs().TYPERRS = 0;
     var t_val = redtvars(heap, subst(heap, etype(heap, x, NIL, NIL) catch return wrong_t));
     fixshows(heap);
-    if (cs.TYPERRS > 0) {
+    if (cs().TYPERRS > 0) {
         t_val = wrong_t;
     }
     return t_val;
@@ -2604,8 +2604,8 @@ pub fn typeOf(heap: *Heap, x: Word) Word {
 fn inferType(heap: *Heap, x: Word) void {
     if (getTag(heap, x) == .ID) {
         var t_val: Word = undefined;
-        const oldte = cs.TYPERRS;
-        cs.current_id = x;
+        const oldte = cs().TYPERRS;
+        cs().current_id = x;
         if (idType(heap, x) != undef_t) {
             t_val = subst(heap, etype(heap, idVal(heap, x), NIL, NIL) catch return);
             if (subsumes(heap, t_val, instantiate(heap, idType(heap, x))) == 0) {
@@ -2614,10 +2614,10 @@ fn inferType(heap: *Heap, x: Word) void {
         } else {
             t_val = subst(heap, etype(heap, idVal(heap, x), NIL, NIL) catch return);
         }
-        if (cs.TYPERRS > oldte) {
+        if (cs().TYPERRS > oldte) {
             tp(heap, h(heap, x)).* = wrong_t;
             tp(heap, x).* = UNDEF;
-            cs.ND = add1(heap, x, cs.ND);
+            cs().ND = add1(heap, x, cs().ND);
         } else if (idType(heap, x) == undef_t) {
             tp(heap, h(heap, x)).* = redtvars(heap, t_val);
         }
@@ -2633,13 +2633,13 @@ fn inferType(heap: *Heap, x: Word) void {
         }
         x1 = x;
         while (x1 != NIL) {
-            oldte = cs.TYPERRS;
-            cs.current_id = h(heap, x1);
+            oldte = cs().TYPERRS;
+            cs().current_id = h(heap, x1);
             _ = unify(heap, t(heap, idType(heap, h(heap, x1))), etype(heap, idVal(heap, h(heap, x1)), NIL, ngt) catch return);
-            if (cs.TYPERRS > oldte) {
+            if (cs().TYPERRS > oldte) {
                 tp(heap, h(heap, h(heap, x1))).* = wrong_t;
                 tp(heap, h(heap, x1)).* = UNDEF;
-                cs.ND = add1(heap, h(heap, x1), cs.ND);
+                cs().ND = add1(heap, h(heap, x1), cs().ND);
             }
             x1 = t(heap, x1);
         }
@@ -2652,20 +2652,20 @@ fn inferType(heap: *Heap, x: Word) void {
         }
         resetSubst(heap);
     }
-    cs.current_id = 0;
+    cs().current_id = 0;
 }
 
 /// Initialise the type-system state (base types and counters).
 pub fn tsetup() void {
-    cs.tfnum = tf(num_t, num_t);
-    cs.tfbool = tf(bool_t, bool_t);
-    cs.tfnum2 = tf(num_t, cs.tfnum);
-    cs.tfbool2 = tf(bool_t, cs.tfbool);
-    cs.ltchar = lt(char_t);
-    cs.tfstrstr = tf(cs.ltchar, cs.ltchar);
-    cs.tfnumnum = tf(num_t, num_t);
-    cs.tstep = tf2(num_t, num_t, lt(num_t));
-    cs.tstepuntil = tf(num_t, cs.tstep);
+    cs().tfnum = tf(num_t, num_t);
+    cs().tfbool = tf(bool_t, bool_t);
+    cs().tfnum2 = tf(num_t, cs().tfnum);
+    cs().tfbool2 = tf(bool_t, cs().tfbool);
+    cs().ltchar = lt(char_t);
+    cs().tfstrstr = tf(cs().ltchar, cs().ltchar);
+    cs().tfnumnum = tf(num_t, num_t);
+    cs().tstep = tf2(num_t, num_t, lt(num_t));
+    cs().tstepuntil = tf(num_t, cs().tstep);
 }
 
 /// Type-check every definition in the current script.

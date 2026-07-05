@@ -18,9 +18,9 @@
 //! **Narrow substructure threading (Track SHARED_STATE, Phase 5 Tier 1,
 //! 2026-07-01).** Every function here takes the `*Heap`/`*Bignum` it needs as
 //! an explicit parameter instead of reaching the global `interp` singleton
-//! ambiently — the file itself never reads `bn.X`/`heap.heap.X` internally.
+//! ambiently — the file itself never reads `bn.X`/`heap.heap().X` internally.
 //! Callers still source these pointers from the (still-global, Tier-3-deferred)
-//! singletons via the `bn`/`heap.heap` convenience constants below; only this
+//! singletons via the `bn`/`heap.heap()` convenience constants below; only this
 //! module's own internals stopped assuming where they come from.
 
 const std = @import("std");
@@ -60,10 +60,13 @@ pub const Bignum = struct {
     big_one: Word = 0,
 };
 
-/// Pointer to the bignum subsystem state held in `interp` (so `interp.reset()`
-/// clears it). A convenience for *callers* to obtain a `*Bignum` to pass in —
-/// this module's own functions no longer read `bn.X` themselves.
-pub const bn = &@import("interp.zig").interp.big;
+/// Pointer to the bignum subsystem state held in `current_interp` (so
+/// `interp.reset()` clears it). A convenience for *callers* to obtain a
+/// `*Bignum` to pass in — this module's own functions no longer read `bn.X`
+/// themselves.
+pub inline fn bn() *Bignum {
+    return &@import("interp.zig").current_interp.big;
+}
 
 /// The head cell's digit with the sign/overflow bits masked off (its plain
 /// 0..MAXDIGIT value).
@@ -125,8 +128,8 @@ pub fn setup(heap: *Heap, self: *Bignum) void {
 
 test "setup: initialises the bignum constants" {
     tu.freshInterp();
-    setup(&heap_mod.heap.*, bn);
-    try std.testing.expectEqual(@as(c_longlong, 1), toInt(&heap_mod.heap.*, bn.big_one));
+    setup(&heap_mod.heap().*, bn());
+    try std.testing.expectEqual(@as(c_longlong, 1), toInt(&heap_mod.heap().*, bn().big_one));
 }
 
 /// 1 if `x` is a non-negative integer (`INT`-tagged and positive), else 0.
@@ -138,7 +141,7 @@ pub fn isNat(heap: *Heap, x: Word) bool {
 
 test "isNat: 1 for non-negative INTs, 0 for negatives" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     try std.testing.expect(isNat(heap, fromInt(heap, 5)));
     try std.testing.expect(isNat(heap, fromInt(heap, 0)));
     try std.testing.expect(!isNat(heap, fromInt(heap, -5)));
@@ -172,7 +175,7 @@ pub fn fromInt(heap: *Heap, input: c_longlong) Word {
 
 test "fromInt: round-trips through toInt across the digit boundary" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     for ([_]c_longlong{ 0, 1, -1, 42, -42, 32768, 1 << 20, 1 << 40 }) |n| {
         try std.testing.expectEqual(n, toInt(heap, fromInt(heap, n)));
     }
@@ -201,7 +204,7 @@ pub fn toInt(heap: *Heap, input: Word) c_longlong {
 
 test "toInt: saturates above 2^60" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     // 2^61 exceeds the 60-bit window, so toInt clamps to 2^60.
     const big61 = mul(heap, fromInt(heap, 1 << 40), fromInt(heap, 1 << 21));
     try std.testing.expectEqual(@as(c_longlong, 1) << 60, toInt(heap, big61));
@@ -218,7 +221,7 @@ pub fn negate(heap: *Heap, x: Word) Word {
 
 test "negate: flips the sign, fixed point at zero" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     try std.testing.expectEqual(@as(c_longlong, -7), toInt(heap, negate(heap, fromInt(heap, 7))));
     try std.testing.expectEqual(@as(c_longlong, 7), toInt(heap, negate(heap, fromInt(heap, -7))));
     try std.testing.expectEqual(@as(c_longlong, 0), toInt(heap, negate(heap, fromInt(heap, 0))));
@@ -238,7 +241,7 @@ pub fn add(heap: *Heap, x: Word, y: Word) Word {
 
 test "add: sums across signs and the digit boundary" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     try std.testing.expectEqual(@as(c_longlong, 5), toInt(heap, add(heap, fromInt(heap, 2), fromInt(heap, 3))));
     try std.testing.expectEqual(@as(c_longlong, -1), toInt(heap, add(heap, fromInt(heap, 2), fromInt(heap, -3))));
     try std.testing.expectEqual(@as(c_longlong, 65536), toInt(heap, add(heap, fromInt(heap, 32768), fromInt(heap, 32768))));
@@ -288,7 +291,7 @@ pub fn sub(heap: *Heap, x: Word, y: Word) Word {
 
 test "sub: differences across signs" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     try std.testing.expectEqual(@as(c_longlong, -1), toInt(heap, sub(heap, fromInt(heap, 2), fromInt(heap, 3))));
     try std.testing.expectEqual(@as(c_longlong, 5), toInt(heap, sub(heap, fromInt(heap, 2), fromInt(heap, -3))));
     try std.testing.expectEqual(@as(c_longlong, 0), toInt(heap, sub(heap, fromInt(heap, 40), fromInt(heap, 40))));
@@ -376,7 +379,7 @@ pub fn cmp(heap: *Heap, input_x: Word, input_y: Word) c_int {
 
 test "cmp: three-way -1 / 0 / 1" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     try std.testing.expectEqual(@as(c_int, -1), cmp(heap, fromInt(heap, 1), fromInt(heap, 2)));
     try std.testing.expectEqual(@as(c_int, 0), cmp(heap, fromInt(heap, 2), fromInt(heap, 2)));
     try std.testing.expectEqual(@as(c_int, 1), cmp(heap, fromInt(heap, 2), fromInt(heap, 1)));
@@ -410,7 +413,7 @@ pub fn mul(heap: *Heap, input_x: Word, input_y: Word) Word {
 
 test "mul: products including large operands" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     try std.testing.expectEqual(@as(c_longlong, 42), toInt(heap, mul(heap, fromInt(heap, 6), fromInt(heap, 7))));
     try std.testing.expectEqual(@as(c_longlong, -42), toInt(heap, mul(heap, fromInt(heap, -6), fromInt(heap, 7))));
     try std.testing.expectEqual(@as(c_longlong, 1 << 40), toInt(heap, mul(heap, fromInt(heap, 1 << 20), fromInt(heap, 1 << 20))));
@@ -478,11 +481,11 @@ pub fn div(heap: *Heap, self: *Bignum, input_x: Word, input_y: Word) Word {
 
 test "div: floored division (toward negative infinity)" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
-    try std.testing.expectEqual(@as(c_longlong, 6), toInt(heap, div(heap, bn, fromInt(heap, 20), fromInt(heap, 3))));
-    try std.testing.expectEqual(@as(c_longlong, 5), toInt(heap, div(heap, bn, fromInt(heap, 20), fromInt(heap, 4))));
-    try std.testing.expectEqual(@as(c_longlong, -7), toInt(heap, div(heap, bn, fromInt(heap, -20), fromInt(heap, 3))));
-    try std.testing.expectEqual(@as(c_longlong, 6), toInt(heap, div(heap, bn, fromInt(heap, -20), fromInt(heap, -3))));
+    const heap = &heap_mod.heap().*;
+    try std.testing.expectEqual(@as(c_longlong, 6), toInt(heap, div(heap, bn(), fromInt(heap, 20), fromInt(heap, 3))));
+    try std.testing.expectEqual(@as(c_longlong, 5), toInt(heap, div(heap, bn(), fromInt(heap, 20), fromInt(heap, 4))));
+    try std.testing.expectEqual(@as(c_longlong, -7), toInt(heap, div(heap, bn(), fromInt(heap, -20), fromInt(heap, 3))));
+    try std.testing.expectEqual(@as(c_longlong, 6), toInt(heap, div(heap, bn(), fromInt(heap, -20), fromInt(heap, -3))));
 }
 
 /// Return `x mod y` (the result's sign follows the divisor `y`).
@@ -504,11 +507,11 @@ pub fn mod(heap: *Heap, self: *Bignum, input_x: Word, input_y: Word) Word {
 
 test "mod: remainder whose sign follows the divisor" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
-    try std.testing.expectEqual(@as(c_longlong, 2), toInt(heap, mod(heap, bn, fromInt(heap, 20), fromInt(heap, 3))));
-    try std.testing.expectEqual(@as(c_longlong, 0), toInt(heap, mod(heap, bn, fromInt(heap, 20), fromInt(heap, 4))));
-    try std.testing.expectEqual(@as(c_longlong, 1), toInt(heap, mod(heap, bn, fromInt(heap, -20), fromInt(heap, 3))));
-    try std.testing.expectEqual(@as(c_longlong, -1), toInt(heap, mod(heap, bn, fromInt(heap, 20), fromInt(heap, -3))));
+    const heap = &heap_mod.heap().*;
+    try std.testing.expectEqual(@as(c_longlong, 2), toInt(heap, mod(heap, bn(), fromInt(heap, 20), fromInt(heap, 3))));
+    try std.testing.expectEqual(@as(c_longlong, 0), toInt(heap, mod(heap, bn(), fromInt(heap, 20), fromInt(heap, 4))));
+    try std.testing.expectEqual(@as(c_longlong, 1), toInt(heap, mod(heap, bn(), fromInt(heap, -20), fromInt(heap, 3))));
+    try std.testing.expectEqual(@as(c_longlong, -1), toInt(heap, mod(heap, bn(), fromInt(heap, 20), fromInt(heap, -3))));
 }
 
 /// Divide a bignum by a single digit `n`; remainder left in `self.b_rem`.
@@ -664,7 +667,7 @@ pub fn pow(heap: *Heap, input_x: Word, input_y: Word) Word {
 
 test "pow: repeated-squaring exponentiation" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     try std.testing.expectEqual(@as(c_longlong, 1024), toInt(heap, pow(heap, fromInt(heap, 2), fromInt(heap, 10))));
     try std.testing.expectEqual(@as(c_longlong, 1), toInt(heap, pow(heap, fromInt(heap, 7), fromInt(heap, 0))));
     try std.testing.expectEqual(@as(c_longlong, 59049), toInt(heap, pow(heap, fromInt(heap, 3), fromInt(heap, 10))));
@@ -689,7 +692,7 @@ pub fn toFloat(heap: *Heap, input_x: Word) f64 {
 
 test "toFloat: exact for small integers" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     try std.testing.expectEqual(@as(f64, 3.0), toFloat(heap, fromInt(heap, 3)));
     try std.testing.expectEqual(@as(f64, -3.0), toFloat(heap, fromInt(heap, -3)));
 }
@@ -717,7 +720,7 @@ pub fn fromFloat(heap: *Heap, input: f64) Word {
 
 test "fromFloat: floors the input toward negative infinity" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     try std.testing.expectEqual(@as(c_longlong, 3), toInt(heap, fromFloat(heap, 3.9)));
     try std.testing.expectEqual(@as(c_longlong, 3), toInt(heap, fromFloat(heap, 3.0)));
     try std.testing.expectEqual(@as(c_longlong, -4), toInt(heap, fromFloat(heap, -3.9)));
@@ -744,10 +747,10 @@ pub fn ln(heap: *Heap, self: *Bignum, input_x: Word) f64 {
 
 test "ln: natural logarithm; ln 1 == 0" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
-    setup(heap, bn);
-    try std.testing.expectApproxEqAbs(@as(f64, 0.0), ln(heap, bn, fromInt(heap, 1)), 1e-9);
-    try std.testing.expectApproxEqAbs(@as(f64, 6.907755), ln(heap, bn, fromInt(heap, 1000)), 1e-5);
+    const heap = &heap_mod.heap().*;
+    setup(heap, bn());
+    try std.testing.expectApproxEqAbs(@as(f64, 0.0), ln(heap, bn(), fromInt(heap, 1)), 1e-9);
+    try std.testing.expectApproxEqAbs(@as(f64, 6.907755), ln(heap, bn(), fromInt(heap, 1000)), 1e-5);
 }
 
 /// Base-10 logarithm of a positive bignum (domain-errors on `<= 0`).
@@ -771,10 +774,10 @@ pub fn log10(heap: *Heap, self: *Bignum, input_x: Word) f64 {
 
 test "log10: base-10 logarithm; log10 1000 == 3" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
-    setup(heap, bn);
-    try std.testing.expectApproxEqAbs(@as(f64, 0.0), log10(heap, bn, fromInt(heap, 1)), 1e-9);
-    try std.testing.expectApproxEqAbs(@as(f64, 3.0), log10(heap, bn, fromInt(heap, 1000)), 1e-9);
+    const heap = &heap_mod.heap().*;
+    setup(heap, bn());
+    try std.testing.expectApproxEqAbs(@as(f64, 0.0), log10(heap, bn(), fromInt(heap, 1)), 1e-9);
+    try std.testing.expectApproxEqAbs(@as(f64, 3.0), log10(heap, bn(), fromInt(heap, 1000)), 1e-9);
 }
 
 /// Set errno to `EDOM` (a maths domain error).
@@ -810,7 +813,7 @@ pub fn scanDecimal(heap: *Heap, p: [*:0]const u8) Word {
 
 test "scanDecimal: parses a NUL-terminated decimal string" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     try std.testing.expectEqual(@as(c_longlong, 12345), toInt(heap, scanDecimal(heap, "12345")));
     try std.testing.expectEqual(@as(c_longlong, -42), toInt(heap, scanDecimal(heap, "-42")));
 }
@@ -838,7 +841,7 @@ pub fn scanHex(heap: *Heap, p: [*]const u8, q: [*]const u8) Word {
 
 test "scanHex: parses a hex byte range into a bignum" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     const p: [*]const u8 = "ff";
     try std.testing.expectEqual(@as(c_longlong, 255), toInt(heap, scanHex(heap, p, p + 2)));
     const q: [*]const u8 = "1000";
@@ -872,7 +875,7 @@ pub fn scanOctal(heap: *Heap, p: [*]const u8, q: [*]const u8) Word {
 
 test "scanOctal: parses an octal byte range into a bignum" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     const p: [*]const u8 = "17";
     try std.testing.expectEqual(@as(c_longlong, 15), toInt(heap, scanOctal(heap, p, p + 2)));
     const q: [*]const u8 = "777";
@@ -927,7 +930,7 @@ pub fn parseString(heap: *Heap, input_z: Word, base: c_int) Word {
 
 test "parseString: parses a char-list of digits in a given base" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     try std.testing.expectEqual(@as(c_longlong, 123), toInt(heap, parseString(heap, tu.str("123"), 10)));
     try std.testing.expectEqual(@as(c_longlong, -7), toInt(heap, parseString(heap, tu.str("-7"), 10)));
     // base != 10 skips the two-char prefix (e.g. "0xff")
@@ -994,7 +997,7 @@ pub fn toDecimalList(heap: *Heap, input_x: Word) Word {
 
 test "toDecimalList: renders a bignum as decimal digits" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     try tu.expectStr("12345", toDecimalList(heap, fromInt(heap, 12345)));
     try tu.expectStr("-42", toDecimalList(heap, fromInt(heap, -42)));
     try tu.expectStr("0", toDecimalList(heap, fromInt(heap, 0)));
@@ -1047,7 +1050,7 @@ pub fn toHexList(heap: *Heap, input_x: Word) Word {
 
 test "toHexList: renders a 0x-prefixed hex char list" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     try tu.expectStr("0xff", toHexList(heap, fromInt(heap, 255)));
     try tu.expectStr("0x0", toHexList(heap, fromInt(heap, 0)));
 }
@@ -1078,7 +1081,7 @@ pub fn toOctalList(heap: *Heap, input_x: Word) Word {
 
 test "toOctalList: renders a 0o-prefixed octal char list" {
     tu.freshInterp();
-    const heap = &heap_mod.heap.*;
+    const heap = &heap_mod.heap().*;
     try tu.expectStr("0o17", toOctalList(heap, fromInt(heap, 15)));
     try tu.expectStr("0o0", toOctalList(heap, fromInt(heap, 0)));
 }

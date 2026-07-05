@@ -56,17 +56,17 @@ fn unlimitStack() void {
 
 /// Process entry point: parse flags and arguments, install signal handlers, set up the heap, locate the library, then enter `commandLoop`. Returns the exit code.
 pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
-    const heap = heap_mod.heap;
+    const heap = heap_mod.heap();
     var manonly: Word = 0;
-    rt.rs.cstack = @ptrCast(&manonly);
+    rt.rs().cstack = @ptrCast(&manonly);
     unlimitStack();
-    rt.rs.verbosity = if (abi.isatty(0) != 0) 1 else 0;
+    rt.rs().verbosity = if (abi.isatty(0) != 0) 1 else 0;
     word.setbuf(abi.stdout(), null);
 
     const okhome_rc = readHomeRc();
 
-    rt.rs.UTF8 = @intFromBool(heap_mod.utf8test());
-    rt.rs.UTF8OUT = rt.rs.UTF8;
+    rt.rs().UTF8 = @intFromBool(heap_mod.utf8test());
+    rt.rs().UTF8OUT = rt.rs().UTF8;
 
     const parsed = parseFlags(argc, argv);
     const arg_idx = parsed.arg_idx;
@@ -74,7 +74,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     const argc_u = @as(usize, @intCast(argc));
 
     const remaining_argc = argc_u - arg_idx;
-    if (remaining_argc > 1 and !rt.rs.magic and !rt.rs.making) {
+    if (remaining_argc > 1 and !rt.rs().magic and !rt.rs().making) {
         errors.fatal("mira: too many args\n", .{.{}});
     }
 
@@ -85,74 +85,74 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     resolveEnvironmentSettings();
 
     abi.setupdic();
-    rt.rs.s_in = abi.stdin();
-    reduce.ev.s_out = abi.stdout();
-    rt.rs.miralib = files.makeAbsolute(rt.rs.miralib.?);
+    rt.rs().s_in = abi.stdin();
+    reduce.ev().s_out = abi.stdout();
+    rt.rs().miralib = files.makeAbsolute(rt.rs().miralib.?);
 
     if (manonly != 0) {
-        commands.manaction(rt.rs);
+        commands.manaction(rt.rs());
         abi.exit(0);
     }
 
-    _ = word.strcpy(&rt.rs.PRELUDE, rt.rs.miralib.?);
-    _ = word.strcat(&rt.rs.PRELUDE, "/prelude");
+    _ = word.strcpy(&rt.rs().PRELUDE, rt.rs().miralib.?);
+    _ = word.strcat(&rt.rs().PRELUDE, "/prelude");
 
-    _ = word.strcpy(&rt.rs.STDENV, rt.rs.miralib.?);
-    _ = word.strcat(&rt.rs.STDENV, "/stdenv.m");
+    _ = word.strcpy(&rt.rs().STDENV, rt.rs().miralib.?);
+    _ = word.strcat(&rt.rs().STDENV, "/stdenv.m");
 
     setup.miraSetup();
 
-    if (rt.rs.verbosity != 0) {
+    if (rt.rs().verbosity != 0) {
         repl.announce();
     }
 
     heap.files = NIL;
-    dump.undump(heap, core_state.s, cs, rt.rs, @as([*:0]const u8, @ptrCast(&rt.rs.PRELUDE)));
-    rt.rs.okprel = true;
+    dump.undump(heap, core_state.s(), cs(), rt.rs(), @as([*:0]const u8, @ptrCast(&rt.rs().PRELUDE)));
+    rt.rs().okprel = true;
     abi.mkprivate(heap, heap_mod.filDefs(heap_mod.h(heap.files)));
     heap.files = NIL;
 
-    if (!rt.rs.nostdenv) {
-        dump.undump(heap, core_state.s, cs, rt.rs, @as([*:0]const u8, @ptrCast(&rt.rs.STDENV)));
+    if (!rt.rs().nostdenv) {
+        dump.undump(heap, core_state.s(), cs(), rt.rs(), @as([*:0]const u8, @ptrCast(&rt.rs().STDENV)));
         while (heap.files != NIL) {
-            rt.rs.primenv = heap_mod.alfasort(abi.append1(rt.rs.primenv, heap_mod.filDefs(heap_mod.h(heap.files))));
+            rt.rs().primenv = heap_mod.alfasort(abi.append1(rt.rs().primenv, heap_mod.filDefs(heap_mod.h(heap.files))));
             heap.files = heap_mod.t(heap.files);
         }
-        rt.rs.primenv = heap_mod.alfasort(rt.rs.primenv);
-        cs.newtyps = NIL;
+        rt.rs().primenv = heap_mod.alfasort(rt.rs().primenv);
+        cs().newtyps = NIL;
         heap.files = NIL;
     }
 
-    if (!rt.rs.magic) {
+    if (!rt.rs().magic) {
         writeRc();
     }
 
-    rt.rs.echoing = rt.rs.verbosity & rt.rs.listing;
-    rt.rs.initialising = 0;
+    rt.rs().echoing = rt.rs().verbosity & rt.rs().listing;
+    rt.rs().initialising = 0;
 
-    if (rt.rs.mkexports) {
+    if (rt.rs().mkexports) {
         runExportsMode(heap, argc_u, argv, arg_idx);
     }
 
-    if (rt.rs.mksources) {
+    if (rt.rs().mksources) {
         runSourcesMode(heap, argc_u, argv, arg_idx);
     }
 
-    if (rt.rs.making) {
+    if (rt.rs().making) {
         runMakeMode(heap, argc_u, argv, arg_idx);
     }
 
     var initscript: [*:0]const u8 = undefined;
     if (remaining_argc == 0) {
         initscript = "script.m";
-    } else if (rt.rs.magic) {
+    } else if (rt.rs().magic) {
         initscript = argv[arg_idx];
     } else {
         initscript = abi.addextn(1, argv[arg_idx]);
     }
 
-    if (initscript == ls.dicp) {
-        _ = abi.keep(ls.dicp);
+    if (initscript == ls().dicp) {
+        _ = abi.keep(ls().dicp);
     }
 
     _ = signals_mod.signals(abi.SIGFPE, @intFromPtr(&repl.fpeError));
@@ -163,7 +163,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     if (abi.isatty(0) != 0) {
         lineedit.init(rt.allocator, rt.io);
     }
-    repl.commandLoop(heap, core_state.s, cs, rt.rs, ls, @constCast(initscript));
+    repl.commandLoop(heap, core_state.s(), cs(), rt.rs(), ls(), @constCast(initscript));
     return 0;
 }
 
@@ -174,12 +174,12 @@ fn readHomeRc() Word {
     const home = abi.getenv("HOME");
     var okhome_rc: Word = 0;
     if (home != null) {
-        _ = word.strcpy(&rt.rs.home_rc, home);
-        if (word.strcmp(&rt.rs.home_rc, "/") == 0) {
-            rt.rs.home_rc[0] = 0;
+        _ = word.strcpy(&rt.rs().home_rc, home);
+        if (word.strcmp(&rt.rs().home_rc, "/") == 0) {
+            rt.rs().home_rc[0] = 0;
         }
-        _ = word.strcat(&rt.rs.home_rc, "/.mirarc");
-        okhome_rc = readRc(@as([*:0]const u8, @ptrCast(&rt.rs.home_rc)));
+        _ = word.strcat(&rt.rs().home_rc, "/.mirarc");
+        okhome_rc = readRc(@as([*:0]const u8, @ptrCast(&rt.rs().home_rc)));
     }
     return okhome_rc;
 }
@@ -189,7 +189,7 @@ fn readHomeRc() Word {
 const ParsedFlags = struct { arg_idx: usize, manonly: Word };
 
 /// Parses every leading `-flag` (and its parameter, where one is expected) in
-/// `argv`, applying each directly to the relevant `rt.rs`/`ls` global. Stops at
+/// `argv`, applying each directly to the relevant `rt.rs()`/`ls` global. Stops at
 /// the first argument that doesn't start with `-` (or at `-exec`/`-exec2`,
 /// which consume the remainder of the command line for the script itself).
 fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
@@ -199,25 +199,25 @@ fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
     while (arg_idx < argc_u and argv[arg_idx][0] == '-') {
         const arg = argv[arg_idx];
         if (word.strcmp(arg, "-stdenv") == 0) {
-            rt.rs.nostdenv = true;
+            rt.rs().nostdenv = true;
         } else if (word.strcmp(arg, "-count") == 0) {
-            rt.rs.atcount = 1;
+            rt.rs().atcount = 1;
         } else if (word.strcmp(arg, "-list") == 0) {
-            rt.rs.listing = 1;
+            rt.rs().listing = 1;
         } else if (word.strcmp(arg, "-nolist") == 0) {
-            rt.rs.listing = 0;
+            rt.rs().listing = 0;
         } else if (word.strcmp(arg, "-nostrictif") == 0) {
-            rt.rs.strictif = false;
+            rt.rs().strictif = false;
         } else if (word.strcmp(arg, "-gc") == 0) {
-            rt.rs.atgc = 1;
+            rt.rs().atgc = 1;
         } else if (word.strcmp(arg, "-object") == 0) {
-            rt.rs.atobject = 1;
+            rt.rs().atobject = 1;
         } else if (word.strcmp(arg, "-lib") == 0) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
                 missingParam("lib");
             } else {
-                rt.rs.miralib = argv[arg_idx];
+                rt.rs().miralib = argv[arg_idx];
             }
         } else if (word.strcmp(arg, "-dic") == 0) {
             arg_idx += 1;
@@ -228,7 +228,7 @@ fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
                 if (abi.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or flagOutOfRange(val)) {
                     errors.fatal("mira: bad value after flag \"-dic\"\n", .{.{}});
                 }
-                rt.rs.DICSPACE = val;
+                rt.rs().DICSPACE = val;
             }
         } else if (word.strcmp(arg, "-heap") == 0) {
             arg_idx += 1;
@@ -239,27 +239,27 @@ fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
                 if (abi.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or flagOutOfRange(val)) {
                     errors.fatal("mira: bad value after flag \"-heap\"\n", .{.{}});
                 }
-                rt.rs.SPACELIMIT = val;
+                rt.rs().SPACELIMIT = val;
             }
         } else if (word.strcmp(arg, "-editor") == 0) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
                 missingParam("editor");
             } else {
-                rt.rs.editor = argv[arg_idx];
-                rt.rs.baded = @intFromBool(repl.badEditor(rt.rs));
+                rt.rs().editor = argv[arg_idx];
+                rt.rs().baded = @intFromBool(repl.badEditor(rt.rs()));
             }
         } else if (word.strcmp(arg, "-hush") == 0) {
-            rt.rs.verbosity = 0;
+            rt.rs().verbosity = 0;
         } else if (word.strcmp(arg, "-nohush") == 0) {
-            rt.rs.verbosity = 1;
+            rt.rs().verbosity = 1;
         } else if (word.strcmp(arg, "-exp") == 0 or word.strcmp(arg, "-log") == 0) {
             errors.fatal("mira: obsolete flag \"%s\"\nuse \"-exec\" or \"-exec2\", see manual\n", .{.{arg}});
         } else if (word.strcmp(arg, "-exec") == 0) {
-            ls.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
-            ls.ARGV = @ptrCast(argv + arg_idx + 1);
-            rt.rs.magic = true;
-            rt.rs.verbosity = 0;
+            ls().ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
+            ls().ARGV = @ptrCast(argv + arg_idx + 1);
+            rt.rs().magic = true;
+            rt.rs().verbosity = 0;
             arg_idx = argc_u;
             break;
         } else if (word.strcmp(arg, "-exec2") == 0) {
@@ -286,10 +286,10 @@ fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
             } else {
                 word.printErr("could not open {s}\n", .{logfilname});
             }
-            ls.ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
-            ls.ARGV = @ptrCast(argv + arg_idx + 1);
-            rt.rs.magic = true;
-            rt.rs.verbosity = 0;
+            ls().ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
+            ls().ARGV = @ptrCast(argv + arg_idx + 1);
+            rt.rs().magic = true;
+            rt.rs().verbosity = 0;
             arg_idx = argc_u;
             break;
         } else if (word.strcmp(arg, "-man") == 0) {
@@ -301,20 +301,20 @@ fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
             versionInfo(1);
             abi.exit(0);
         } else if (word.strcmp(arg, "-make") == 0) {
-            rt.rs.making = true;
-            rt.rs.verbosity = 0;
+            rt.rs().making = true;
+            rt.rs().verbosity = 0;
         } else if (word.strcmp(arg, "-exports") == 0) {
-            rt.rs.making = true;
-            rt.rs.mkexports = true;
-            rt.rs.verbosity = 0;
+            rt.rs().making = true;
+            rt.rs().mkexports = true;
+            rt.rs().verbosity = 0;
         } else if (word.strcmp(arg, "-sources") == 0) {
-            rt.rs.making = true;
-            rt.rs.mksources = true;
-            rt.rs.verbosity = 0;
+            rt.rs().making = true;
+            rt.rs().mksources = true;
+            rt.rs().verbosity = 0;
         } else if (word.strcmp(arg, "-UTF-8") == 0) {
-            rt.rs.UTF8 = 1;
+            rt.rs().UTF8 = 1;
         } else if (word.strcmp(arg, "-noUTF-8") == 0) {
-            rt.rs.UTF8 = 0;
+            rt.rs().UTF8 = 0;
         } else {
             errors.fatal("mira: unknown flag \"%s\"\n", .{.{arg}});
         }
@@ -328,15 +328,15 @@ fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
 /// binary. Exits fatally if none match.
 fn resolveMiralib() void {
     var badlib: bool = false;
-    if (rt.rs.miralib == null) {
+    if (rt.rs().miralib == null) {
         if (abi.getenv("MIRALIB")) |m| {
-            rt.rs.miralib = @constCast(m);
+            rt.rs().miralib = @constCast(m);
         } else if (checkVersion("/usr/lib/miralib") != 0) {
-            rt.rs.miralib = @constCast("/usr/lib/miralib");
+            rt.rs().miralib = @constCast("/usr/lib/miralib");
         } else if (checkVersion("/usr/local/lib/miralib") != 0) {
-            rt.rs.miralib = @constCast("/usr/local/lib/miralib");
+            rt.rs().miralib = @constCast("/usr/local/lib/miralib");
         } else if (checkVersion("miralib") != 0) {
-            rt.rs.miralib = @constCast("miralib");
+            rt.rs().miralib = @constCast("miralib");
         } else {
             badlib = true;
         }
@@ -353,12 +353,12 @@ fn resolveMiralib() void {
 /// `$HOME/.mirarc` (see [readHomeRc]) wasn't found.
 fn readLibRcIfNeeded(okhome_rc: Word) void {
     if (okhome_rc == 0) {
-        if (rt.rs.rc_error == @as(?[*:0]const u8, @ptrCast(&rt.rs.lib_rc))) {
-            rt.rs.rc_error = null;
+        if (rt.rs().rc_error == @as(?[*:0]const u8, @ptrCast(&rt.rs().lib_rc))) {
+            rt.rs().rc_error = null;
         }
-        _ = word.strcpy(&rt.rs.lib_rc, rt.rs.miralib.?);
-        _ = word.strcat(&rt.rs.lib_rc, "/.mirarc");
-        _ = readRc(@as([*:0]const u8, @ptrCast(&rt.rs.lib_rc)));
+        _ = word.strcpy(&rt.rs().lib_rc, rt.rs().miralib.?);
+        _ = word.strcat(&rt.rs().lib_rc, "/.mirarc");
+        _ = readRc(@as([*:0]const u8, @ptrCast(&rt.rs().lib_rc)));
     }
 }
 
@@ -366,29 +366,29 @@ fn readLibRcIfNeeded(okhome_rc: Word) void {
 /// remaining one-shot environment-variable overrides (`$MIRAPROMPT`,
 /// `$RECHECKMIRA`, `$NOSTRICTIF`).
 fn resolveEnvironmentSettings() void {
-    if (rt.rs.editor == null) {
+    if (rt.rs().editor == null) {
         if (abi.getenv("EDITOR")) |ed| {
-            rt.rs.editor = @constCast(ed);
+            rt.rs().editor = @constCast(ed);
         } else {
-            rt.rs.editor = @constCast(EDITOR);
+            rt.rs().editor = @constCast(EDITOR);
         }
-        if (rt.rs.editor != null) {
-            _ = word.strcpy(&rt.rs.ebuf, rt.rs.editor.?);
-            rt.rs.editor = @as([*:0]u8, @ptrCast(&rt.rs.ebuf));
-            rt.rs.baded = @intFromBool(repl.badEditor(rt.rs));
+        if (rt.rs().editor != null) {
+            _ = word.strcpy(&rt.rs().ebuf, rt.rs().editor.?);
+            rt.rs().editor = @as([*:0]u8, @ptrCast(&rt.rs().ebuf));
+            rt.rs().baded = @intFromBool(repl.badEditor(rt.rs()));
         }
     }
 
     if (abi.getenv("MIRAPROMPT")) |prs| {
-        rt.rs.promptstr = prs;
+        rt.rs().promptstr = prs;
     }
 
-    if (abi.getenv("RECHECKMIRA") != null and rt.rs.rechecking == 0) {
-        rt.rs.rechecking = 1;
+    if (abi.getenv("RECHECKMIRA") != null and rt.rs().rechecking == 0) {
+        rt.rs().rechecking = 1;
     }
 
     if (abi.getenv("NOSTRICTIF") != null) {
-        rt.rs.strictif = false;
+        rt.rs().strictif = false;
     }
 }
 
@@ -398,23 +398,23 @@ fn resolveEnvironmentSettings() void {
 fn runExportsMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
     const arg_count: usize = argc_u - arg_idx;
     var s: [*:0]u8 = undefined;
-    _ = abi.sigsetjmp(&rt.rs.env, 1);
+    _ = abi.sigsetjmp(&rt.rs().env, 1);
     var cur_argv_idx = arg_idx;
     while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
         var x: Word = NIL;
         s = abi.addextn(1, argv[cur_argv_idx]);
-        if (s == ls.dicp) {
-            _ = abi.keep(ls.dicp);
+        if (s == ls().dicp) {
+            _ = abi.keep(ls().dicp);
         }
-        dump.undump(heap, core_state.s, cs, rt.rs, s);
-        if (heap.files == NIL or cs.ND != NIL) {
+        dump.undump(heap, core_state.s(), cs(), rt.rs(), s);
+        if (heap.files == NIL or cs().ND != NIL) {
             continue;
         }
         if (arg_count != 1) {
             word.print("{s}\n", .{s});
         }
-        if (rt.rs.exports != NIL) {
-            x = rt.rs.exports;
+        if (rt.rs().exports != NIL) {
+            x = rt.rs().exports;
         } else {
             var f = heap.files;
             while (f != NIL) : (f = heap_mod.t(f)) {
@@ -422,16 +422,16 @@ fn runExportsMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
             }
         }
 
-        if (rt.rs.freeids != NIL) {
-            var f = rt.rs.freeids;
+        if (rt.rs().freeids != NIL) {
+            var f = rt.rs().freeids;
             while (f != NIL) : (f = heap_mod.t(f)) {
                 const n = abi.findid(heap, @constCast(heap_mod.getId(heap_mod.h(f))));
                 heap_mod.tp(n).* = heap_mod.t(heap_mod.t(heap_mod.h(f)));
                 heap_mod.tp(heap_mod.h(heap_mod.h(n))).* = heap_mod.theVal(heap_mod.h(f));
                 heap_mod.hp(f).* = n;
             }
-            rt.rs.freeids = abi.typesfirst(heap, rt.rs.freeids);
-            f = rt.rs.freeids;
+            rt.rs().freeids = abi.typesfirst(heap, rt.rs().freeids);
+            f = rt.rs().freeids;
             word.print("\t%free {{\n", .{});
             while (f != NIL) : (f = heap_mod.t(f)) {
                 _ = word.putchar('\t');
@@ -456,20 +456,20 @@ fn runExportsMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
 fn runSourcesMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
     var s: [*:0]u8 = undefined;
     var x: Word = NIL;
-    _ = abi.sigsetjmp(&rt.rs.env, 1);
+    _ = abi.sigsetjmp(&rt.rs().env, 1);
     var cur_argv_idx = arg_idx;
     while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
         s = abi.addextn(1, argv[cur_argv_idx]);
         if (files.fileExists(s)) {
-            if (s == ls.dicp) {
-                _ = abi.keep(ls.dicp);
+            if (s == ls().dicp) {
+                _ = abi.keep(ls().dicp);
             }
-            dump.undump(heap, core_state.s, cs, rt.rs, s);
-            var f = if (heap.files == NIL) rt.rs.oldfiles else heap.files;
+            dump.undump(heap, core_state.s(), cs(), rt.rs(), s);
+            var f = if (heap.files == NIL) rt.rs().oldfiles else heap.files;
             while (f != NIL) : (f = heap_mod.t(f)) {
                 const filename_str = heap_mod.getFil(heap_mod.h(f)).?;
-                if (abi.member(heap, x, strtab.strBits(strtab.table, filename_str)) == 0) {
-                    x = heap_mod.cons(strtab.strBits(strtab.table, filename_str), x);
+                if (abi.member(heap, x, strtab.strBits(strtab.table(), filename_str)) == 0) {
+                    x = heap_mod.cons(strtab.strBits(strtab.table(), filename_str), x);
                     word.print("{s}\n", .{filename_str});
                 }
             }
@@ -479,51 +479,51 @@ fn runSourcesMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
 }
 
 /// `-make` mode: undumps each remaining argument, collecting any that have
-/// errors or undefined names into `rt.rs.make_status`; reports them (see
+/// errors or undefined names into `rt.rs().make_status`; reports them (see
 /// [reportMakeFailures]) and exits the process with the resulting status.
 fn runMakeMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
     var s: [*:0]u8 = undefined;
-    _ = abi.sigsetjmp(&rt.rs.env, 1);
+    _ = abi.sigsetjmp(&rt.rs().env, 1);
     var cur_argv_idx = arg_idx;
     while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
         s = abi.addextn(1, argv[cur_argv_idx]);
-        if (s == ls.dicp) {
-            _ = abi.keep(ls.dicp);
+        if (s == ls().dicp) {
+            _ = abi.keep(ls().dicp);
         }
-        dump.undump(heap, core_state.s, cs, rt.rs, s);
-        if (cs.ND != NIL or (heap.files == NIL and rt.rs.oldfiles != NIL)) {
-            if (rt.rs.make_status == 1) {
-                rt.rs.make_status = 0;
+        dump.undump(heap, core_state.s(), cs(), rt.rs(), s);
+        if (cs().ND != NIL or (heap.files == NIL and rt.rs().oldfiles != NIL)) {
+            if (rt.rs().make_status == 1) {
+                rt.rs().make_status = 0;
             }
-            rt.rs.make_status = abi.strcons(@as(Word, strtab.strBits(strtab.table, s)), rt.rs.make_status);
+            rt.rs().make_status = abi.strcons(@as(Word, strtab.strBits(strtab.table(), s)), rt.rs().make_status);
         }
     }
-    if (getTag(heap, rt.rs.make_status) == .STRCONS) {
+    if (getTag(heap, rt.rs().make_status) == .STRCONS) {
         reportMakeFailures();
     }
-    abi.exit(@intCast(rt.rs.make_status));
+    abi.exit(@intCast(rt.rs().make_status));
 }
 
-/// Prints the `-make` failure list (`rt.rs.make_status`) as a padded,
+/// Prints the `-make` failure list (`rt.rs().make_status`) as a padded,
 /// multi-column table, then resets it to the generic nonzero status `1`.
 fn reportMakeFailures() void {
     var h_val: Word = 0;
     var maxw: Word = 0;
     word.print("errors or undefined names found in:-\n", .{});
-    while (rt.rs.make_status != 0) {
-        h_val = abi.strcons(heap_mod.h(rt.rs.make_status), h_val);
-        const w = @as(Word, @intCast(word.strlen(strtab.strOf(strtab.table, heap_mod.h(h_val)))));
+    while (rt.rs().make_status != 0) {
+        h_val = abi.strcons(heap_mod.h(rt.rs().make_status), h_val);
+        const w = @as(Word, @intCast(word.strlen(strtab.strOf(strtab.table(), heap_mod.h(h_val)))));
         if (w > maxw) {
             maxw = w;
         }
-        rt.rs.make_status = heap_mod.t(rt.rs.make_status);
+        rt.rs().make_status = heap_mod.t(rt.rs().make_status);
     }
     maxw += 1;
     const n = @max(@as(Word, 1), @divTrunc(@as(Word, 78), maxw));
     var w: Word = 0;
     while (h_val != 0) {
         w += 1;
-        const str = strtab.strOf(strtab.table, heap_mod.h(h_val));
+        const str = strtab.strOf(strtab.table(), heap_mod.h(h_val));
         const len = word.strlen(str);
         const spaces_needed = if (@as(usize, @intCast(maxw)) > len) @as(usize, @intCast(maxw)) - len else 0;
         var pad_idx: usize = 0;
@@ -537,7 +537,7 @@ fn reportMakeFailures() void {
     if ((@rem(w, n)) != 0) {
         word.print("\n", .{});
     }
-    rt.rs.make_status = 1;
+    rt.rs().make_status = 1;
 }
 
 /// Load the saved `.mirarc` dump `rcfile`. Returns 1 on success, 0 on failure.
@@ -561,92 +561,92 @@ pub fn readRc(rcfile: [*:0]const u8) Word {
     if (std.mem.startsWith(u8, z_slice, "hdve") or std.mem.eql(u8, z_slice, "lhdve")) {
         var z1 = @as([*]u8, @ptrCast(&z)) + 3;
         if (z[0] == 'l') {
-            rt.rs.listing = 1;
+            rt.rs().listing = 1;
             z1 += 1;
         }
         z1 += 1;
         while (z1[0] != 0) : (z1 += 1) {
             switch (z1[0]) {
-                'l' => rt.rs.listing = 1,
+                'l' => rt.rs().listing = 1,
                 's' => {},
-                'r' => rt.rs.rechecking = 2,
-                else => rt.rs.rc_error = rcfile,
+                'r' => rt.rs().rechecking = 2,
+                else => rt.rs().rc_error = rcfile,
             }
         }
 
         const read_ok = blk: {
             if (abi.fscanf(in, "%ld%ld%ld%*c", .{ &h_val, &d_val, &v_val }) != 3) break :blk false;
-            if (repl.getLine(in, rt.rs.ebuf.len - 1, @ptrCast(&rt.rs.ebuf)) == 0) break :blk false;
+            if (repl.getLine(in, rt.rs().ebuf.len - 1, @ptrCast(&rt.rs().ebuf)) == 0) break :blk false;
             if (flagOutOfRange(h_val) or flagOutOfRange(d_val) or flagOutOfRange(v_val)) break :blk false;
             break :blk true;
         };
         if (!read_ok) {
-            rt.rs.rc_error = rcfile;
+            rt.rs().rc_error = rcfile;
         } else {
-            var len = word.strlen(&rt.rs.ebuf);
-            if (len > 0 and rt.rs.ebuf[len - 1] == '\n') {
-                rt.rs.ebuf[len - 1] = 0;
+            var len = word.strlen(&rt.rs().ebuf);
+            if (len > 0 and rt.rs().ebuf[len - 1] == '\n') {
+                rt.rs().ebuf[len - 1] = 0;
                 len -= 1;
             }
-            rt.rs.editor = @ptrCast(&rt.rs.ebuf);
-            rt.rs.SPACELIMIT = h_val;
-            rt.rs.DICSPACE = d_val;
+            rt.rs().editor = @ptrCast(&rt.rs().ebuf);
+            rt.rs().SPACELIMIT = h_val;
+            rt.rs().DICSPACE = d_val;
             r = 1;
         }
     } else if (std.mem.eql(u8, z_slice, "ehdsv")) {
         const read_ok = blk: {
-            if (abi.fscanf(in, "%19s%ld%ld%ld%ld", .{ &rt.rs.ebuf, &h_val, &d_val, &s_val, &v_val }) != 5) break :blk false;
+            if (abi.fscanf(in, "%19s%ld%ld%ld%ld", .{ &rt.rs().ebuf, &h_val, &d_val, &s_val, &v_val }) != 5) break :blk false;
             if (flagOutOfRange(h_val) or flagOutOfRange(d_val) or flagOutOfRange(v_val)) break :blk false;
             break :blk true;
         };
         if (!read_ok) {
-            rt.rs.rc_error = rcfile;
+            rt.rs().rc_error = rcfile;
         } else {
-            rt.rs.editor = @ptrCast(&rt.rs.ebuf);
-            rt.rs.SPACELIMIT = h_val;
-            rt.rs.DICSPACE = d_val;
+            rt.rs().editor = @ptrCast(&rt.rs().ebuf);
+            rt.rs().SPACELIMIT = h_val;
+            rt.rs().DICSPACE = d_val;
             r = 1;
         }
     } else if (std.mem.eql(u8, z_slice, "ehds")) {
         const read_ok = blk: {
-            if (abi.fscanf(in, "%1023s%ld%ld%ld", .{ &rt.rs.ebuf, &h_val, &d_val, &s_val }) != 4) break :blk false;
+            if (abi.fscanf(in, "%1023s%ld%ld%ld", .{ &rt.rs().ebuf, &h_val, &d_val, &s_val }) != 4) break :blk false;
             if (flagOutOfRange(h_val) or flagOutOfRange(d_val)) break :blk false;
             break :blk true;
         };
         if (!read_ok) {
-            rt.rs.rc_error = rcfile;
+            rt.rs().rc_error = rcfile;
         } else {
-            rt.rs.editor = @ptrCast(&rt.rs.ebuf);
-            rt.rs.SPACELIMIT = h_val;
-            rt.rs.DICSPACE = d_val;
+            rt.rs().editor = @ptrCast(&rt.rs().ebuf);
+            rt.rs().SPACELIMIT = h_val;
+            rt.rs().DICSPACE = d_val;
             r = 1;
         }
     } else {
-        rt.rs.rc_error = rcfile;
+        rt.rs().rc_error = rcfile;
     }
-    if (rt.rs.editor != null) {
-        rt.rs.baded = @intFromBool(repl.badEditor(rt.rs));
+    if (rt.rs().editor != null) {
+        rt.rs().baded = @intFromBool(repl.badEditor(rt.rs()));
     }
     return r;
 }
 
 /// Write the current environment to the user's `~/.mirarc` config file.
 pub fn writeRc() void {
-    if (rt.rs.home_rc[0] == 0) return;
-    const f = word.fopen(&rt.rs.home_rc, "w") orelse {
-        word.printErr("warning: cannot write to \"{s}\"\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&rt.rs.home_rc)))});
+    if (rt.rs().home_rc[0] == 0) return;
+    const f = word.fopen(&rt.rs().home_rc, "w") orelse {
+        word.printErr("warning: cannot write to \"{s}\"\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&rt.rs().home_rc)))});
         return;
     };
     defer _ = word.fclose(f);
 
     _ = word.fprint(f, "hdve", .{});
-    if (rt.rs.listing != 0) {
+    if (rt.rs().listing != 0) {
         _ = word.fprint(f, "l", .{});
     }
-    if (rt.rs.rechecking == 2) {
+    if (rt.rs().rechecking == 2) {
         _ = word.fprint(f, "r", .{});
     }
-    _ = word.fprint(f, " {} {} {} {s}\n", .{ rt.rs.SPACELIMIT, rt.rs.DICSPACE, version.version, rt.rs.editor orelse @constCast("") });
+    _ = word.fprint(f, " {} {} {} {s}\n", .{ rt.rs().SPACELIMIT, rt.rs().DICSPACE, version.version, rt.rs().editor orelse @constCast("") });
 }
 
 /// Abort: command-line flag `s` was given without its required parameter.
@@ -670,10 +670,10 @@ pub fn checkVersion(m: [*:0]const u8) c_int {
         _ = word.fclose(f);
     }
     if (read_ok and r == 0) {
-        if (rt.rs.mvp < 4) {
-            rt.rs.mstack[rt.rs.mvp] = m;
-            rt.rs.vstack[rt.rs.mvp] = @intCast(v1);
-            rt.rs.mvp += 1;
+        if (rt.rs().mvp < 4) {
+            rt.rs().mstack[rt.rs().mvp] = m;
+            rt.rs().vstack[rt.rs().mvp] = @intCast(v1);
+            rt.rs().mvp += 1;
         }
     }
     return r;
@@ -683,8 +683,8 @@ pub fn checkVersion(m: [*:0]const u8) c_int {
 pub fn libFails() void {
     word.printErr("found", .{});
     var i: usize = 0;
-    while (i < rt.rs.mvp) : (i += 1) {
-        word.printErr("\tversion {s} at: {s}\n", .{ versionString(rt.rs.vstack[i]), rt.rs.mstack[i] });
+    while (i < rt.rs().mvp) : (i += 1) {
+        word.printErr("\tversion {s} at: {s}\n", .{ versionString(rt.rs().vstack[i]), rt.rs().mstack[i] });
     }
 }
 
@@ -695,8 +695,8 @@ pub fn versionString(v: c_int) [*:0]const u8 {
     if (v < 0 or v > 999999) {
         return "???";
     }
-    _ = abi.snprintf(&rt.rs.vbuf, rt.rs.vbuf.len, "%.3f", .{@as(f64, @floatFromInt(v)) / 1000.0});
-    return @ptrCast(&rt.rs.vbuf);
+    _ = abi.snprintf(&rt.rs().vbuf, rt.rs().vbuf.len, "%.3f", .{@as(f64, @floatFromInt(v)) / 1000.0});
+    return @ptrCast(&rt.rs().vbuf);
 }
 
 test "versionString: formats an integer version as M.mmm" {
@@ -726,35 +726,35 @@ test "readRc and writeRc roundtrip text config" {
     defer _ = abi.unlink(test_path);
 
     // Save previous values
-    const prev_limit = rt.rs.SPACELIMIT;
-    const prev_dic = rt.rs.DICSPACE;
-    const prev_editor = rt.rs.editor;
-    const prev_listing = rt.rs.listing;
-    const prev_rechecking = rt.rs.rechecking;
+    const prev_limit = rt.rs().SPACELIMIT;
+    const prev_dic = rt.rs().DICSPACE;
+    const prev_editor = rt.rs().editor;
+    const prev_listing = rt.rs().listing;
+    const prev_rechecking = rt.rs().rechecking;
     defer {
-        rt.rs.SPACELIMIT = prev_limit;
-        rt.rs.DICSPACE = prev_dic;
-        rt.rs.editor = prev_editor;
-        rt.rs.listing = prev_listing;
-        rt.rs.rechecking = prev_rechecking;
+        rt.rs().SPACELIMIT = prev_limit;
+        rt.rs().DICSPACE = prev_dic;
+        rt.rs().editor = prev_editor;
+        rt.rs().listing = prev_listing;
+        rt.rs().rechecking = prev_rechecking;
     }
 
     // Now call readRc
     const res = readRc(test_path);
     try std.testing.expectEqual(@as(Word, 1), res);
-    try std.testing.expectEqual(@as(Word, 2500000), rt.rs.SPACELIMIT);
-    try std.testing.expectEqual(@as(Word, 100000), rt.rs.DICSPACE);
-    try std.testing.expectEqualStrings("vi +!", std.mem.span(rt.rs.editor.?));
+    try std.testing.expectEqual(@as(Word, 2500000), rt.rs().SPACELIMIT);
+    try std.testing.expectEqual(@as(Word, 100000), rt.rs().DICSPACE);
+    try std.testing.expectEqualStrings("vi +!", std.mem.span(rt.rs().editor.?));
 
     // Change settings and write
-    rt.rs.SPACELIMIT = 3000000;
-    rt.rs.DICSPACE = 150000;
-    rt.rs.listing = 1;
-    rt.rs.rechecking = 2;
-    rt.rs.editor = @constCast("emacs +! %");
+    rt.rs().SPACELIMIT = 3000000;
+    rt.rs().DICSPACE = 150000;
+    rt.rs().listing = 1;
+    rt.rs().rechecking = 2;
+    rt.rs().editor = @constCast("emacs +! %");
 
-    // Set rt.rs.home_rc to our path so writeRc writes to it
-    _ = word.strcpy(&rt.rs.home_rc, test_path);
+    // Set rt.rs().home_rc to our path so writeRc writes to it
+    _ = word.strcpy(&rt.rs().home_rc, test_path);
 
     writeRc();
 
@@ -784,76 +784,76 @@ fn readRcFromContent(content: [*:0]const u8) !Word {
 }
 
 test "readRc: \"lhdve\" sets the listing flag in addition to hdve's fields" {
-    const prev_limit = rt.rs.SPACELIMIT;
-    const prev_dic = rt.rs.DICSPACE;
-    const prev_editor = rt.rs.editor;
-    const prev_listing = rt.rs.listing;
+    const prev_limit = rt.rs().SPACELIMIT;
+    const prev_dic = rt.rs().DICSPACE;
+    const prev_editor = rt.rs().editor;
+    const prev_listing = rt.rs().listing;
     defer {
-        rt.rs.SPACELIMIT = prev_limit;
-        rt.rs.DICSPACE = prev_dic;
-        rt.rs.editor = prev_editor;
-        rt.rs.listing = prev_listing;
+        rt.rs().SPACELIMIT = prev_limit;
+        rt.rs().DICSPACE = prev_dic;
+        rt.rs().editor = prev_editor;
+        rt.rs().listing = prev_listing;
     }
 
     const res = try readRcFromContent("lhdve 2500000 100000 2067 vi\n");
     try std.testing.expectEqual(@as(Word, 1), res);
-    try std.testing.expectEqual(@as(Word, 1), rt.rs.listing);
-    try std.testing.expectEqual(@as(Word, 2500000), rt.rs.SPACELIMIT);
-    try std.testing.expectEqual(@as(Word, 100000), rt.rs.DICSPACE);
-    try std.testing.expectEqualStrings("vi", std.mem.span(rt.rs.editor.?));
+    try std.testing.expectEqual(@as(Word, 1), rt.rs().listing);
+    try std.testing.expectEqual(@as(Word, 2500000), rt.rs().SPACELIMIT);
+    try std.testing.expectEqual(@as(Word, 100000), rt.rs().DICSPACE);
+    try std.testing.expectEqualStrings("vi", std.mem.span(rt.rs().editor.?));
 }
 
 test "readRc: \"hdve\" with an \"r\" flag sets rechecking" {
-    const prev_rechecking = rt.rs.rechecking;
-    defer rt.rs.rechecking = prev_rechecking;
+    const prev_rechecking = rt.rs().rechecking;
+    defer rt.rs().rechecking = prev_rechecking;
 
     const res = try readRcFromContent("hdver 2500000 100000 2067 vi\n");
     try std.testing.expectEqual(@as(Word, 1), res);
-    try std.testing.expectEqual(@as(Word, 2), rt.rs.rechecking);
+    try std.testing.expectEqual(@as(Word, 2), rt.rs().rechecking);
 }
 
 test "readRc: legacy \"ehdsv\" format (editor before the numeric fields)" {
-    const prev_limit = rt.rs.SPACELIMIT;
-    const prev_dic = rt.rs.DICSPACE;
-    const prev_editor = rt.rs.editor;
+    const prev_limit = rt.rs().SPACELIMIT;
+    const prev_dic = rt.rs().DICSPACE;
+    const prev_editor = rt.rs().editor;
     defer {
-        rt.rs.SPACELIMIT = prev_limit;
-        rt.rs.DICSPACE = prev_dic;
-        rt.rs.editor = prev_editor;
+        rt.rs().SPACELIMIT = prev_limit;
+        rt.rs().DICSPACE = prev_dic;
+        rt.rs().editor = prev_editor;
     }
 
     // ehdsv's editor token is read via a plain %s (no getLine), so it can't
     // contain spaces -- a single-word editor name, unlike hdve's.
     const res = try readRcFromContent("ehdsv vi 2500000 100000 80 2067\n");
     try std.testing.expectEqual(@as(Word, 1), res);
-    try std.testing.expectEqual(@as(Word, 2500000), rt.rs.SPACELIMIT);
-    try std.testing.expectEqual(@as(Word, 100000), rt.rs.DICSPACE);
-    try std.testing.expectEqualStrings("vi", std.mem.span(rt.rs.editor.?));
+    try std.testing.expectEqual(@as(Word, 2500000), rt.rs().SPACELIMIT);
+    try std.testing.expectEqual(@as(Word, 100000), rt.rs().DICSPACE);
+    try std.testing.expectEqualStrings("vi", std.mem.span(rt.rs().editor.?));
 }
 
 test "readRc: legacy \"ehds\" format (no version field)" {
-    const prev_limit = rt.rs.SPACELIMIT;
-    const prev_dic = rt.rs.DICSPACE;
-    const prev_editor = rt.rs.editor;
+    const prev_limit = rt.rs().SPACELIMIT;
+    const prev_dic = rt.rs().DICSPACE;
+    const prev_editor = rt.rs().editor;
     defer {
-        rt.rs.SPACELIMIT = prev_limit;
-        rt.rs.DICSPACE = prev_dic;
-        rt.rs.editor = prev_editor;
+        rt.rs().SPACELIMIT = prev_limit;
+        rt.rs().DICSPACE = prev_dic;
+        rt.rs().editor = prev_editor;
     }
 
     const res = try readRcFromContent("ehds emacs 2500000 100000 80\n");
     try std.testing.expectEqual(@as(Word, 1), res);
-    try std.testing.expectEqual(@as(Word, 2500000), rt.rs.SPACELIMIT);
-    try std.testing.expectEqual(@as(Word, 100000), rt.rs.DICSPACE);
-    try std.testing.expectEqualStrings("emacs", std.mem.span(rt.rs.editor.?));
+    try std.testing.expectEqual(@as(Word, 2500000), rt.rs().SPACELIMIT);
+    try std.testing.expectEqual(@as(Word, 100000), rt.rs().DICSPACE);
+    try std.testing.expectEqualStrings("emacs", std.mem.span(rt.rs().editor.?));
 }
 
 test "readRc: unrecognised header sets rc_error and returns 0" {
-    const prev_rc_error = rt.rs.rc_error;
-    defer rt.rs.rc_error = prev_rc_error;
-    rt.rs.rc_error = null;
+    const prev_rc_error = rt.rs().rc_error;
+    defer rt.rs().rc_error = prev_rc_error;
+    rt.rs().rc_error = null;
 
     const res = try readRcFromContent("garbage 1 2 3\n");
     try std.testing.expectEqual(@as(Word, 0), res);
-    try std.testing.expect(rt.rs.rc_error != null);
+    try std.testing.expect(rt.rs().rc_error != null);
 }

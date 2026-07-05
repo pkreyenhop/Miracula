@@ -426,9 +426,9 @@ pub fn handleITERATE(ctx: *ReductionCtx) void {
 test "handleITERATE: iterate f x heads x then repeats" {
     tu.freshInterp();
     const lst = reduce.reduce(tu.ap2(word.ITERATE, word.I, tu.int(5)));
-    try tu.expectInt(5, reduce.hdGet(heap.heap, lst)); // head is x
-    const rest = reduce.reduce(reduce.tlGet(heap.heap, lst));
-    try tu.expectInt(5, reduce.hdGet(heap.heap, rest)); // next element is I 5 = 5
+    try tu.expectInt(5, reduce.hdGet(heap.heap(), lst)); // head is x
+    const rest = reduce.reduce(reduce.tlGet(heap.heap(), lst));
+    try tu.expectInt(5, reduce.hdGet(heap.heap(), rest)); // next element is I 5 = 5
 }
 
 /// Like `ITERATE`, but stops when the next value reduces to `FAIL`.
@@ -549,7 +549,7 @@ pub fn handleATLEAST(ctx: *ReductionCtx) void {
     var lastarg = reduce.tlGet(ctx.heap, ctx.e);
     lastarg = reduce.reduce(lastarg);
     if (reduce.isInt(ctx.heap, lastarg)) {
-        const hold = big.sub(heap.heap, lastarg, arg1);
+        const hold = big.sub(heap.heap(), lastarg, arg1);
         if (reduce.poz(ctx.heap, hold)) {
             reduce.hdSet(ctx.heap, ctx.e, arg2);
             reduce.tlSet(ctx.heap, ctx.e, hold);
@@ -848,7 +848,7 @@ pub fn handleLENGTH(ctx: *ReductionCtx) void {
         lastarg = reduce.tlGet(ctx.heap, lastarg);
         n += 1;
     }
-    reduce.simpl(ctx, big.fromInt(heap.heap, n));
+    reduce.simpl(ctx, big.fromInt(heap.heap(), n));
     ctx.action = word.ACT_DONE;
 }
 
@@ -876,7 +876,7 @@ pub fn handleDROP(ctx: *ReductionCtx) void {
     if (!reduce.isInt(ctx.heap, arg1)) {
         reduce_rt.intError("drop");
     }
-    var n = big.toInt(heap.heap, arg1);
+    var n = big.toInt(heap.heap(), arg1);
     var lastarg = reduce.tlGet(ctx.heap, ctx.e);
     while (n > 0) : (n -= 1) {
         lastarg = reduce.reduce(lastarg);
@@ -919,7 +919,7 @@ pub fn handleSUBSCRIPT(ctx: *ReductionCtx) void {
     if (reduce.isAtom(ctx.heap, arg1)) {
         indx = arg1;
     } else if (reduce.isInt(ctx.heap, arg1)) {
-        indx = big.toInt(heap.heap, arg1);
+        indx = big.toInt(heap.heap(), arg1);
     } else {
         reduce_rt.intError("!");
     }

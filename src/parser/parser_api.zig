@@ -44,7 +44,7 @@ pub fn parseCurrent() ParseError!ParseResult {
 /// s_in must already be opened (e.g. by openfile() in lex.zig).
 fn parseCurrentNew() ParseError!ParseResult {
     if (options.is_strict) {
-        if (rt.rs.current_script) |script_name| {
+        if (rt.rs().current_script) |script_name| {
             validateUtf8File(script_name) catch |err| {
                 core.s.SYNERR = 1;
                 return err;
@@ -62,9 +62,9 @@ fn parseCurrentNew() ParseError!ParseResult {
     // Command mode: the user typed an expression at the REPL prompt.
     // In the old YACC grammar this was handled by `EVAL exp { evaluate($2); }`.
     // We parse one expression, codegen it, then fork via evaluateRepl().
-    if (core.s.commandmode != 0) {
+    if (core.s().commandmode != 0) {
         const expr = parser_mod.parseExpr(&p) catch |err| {
-            core.s.SYNERR = 1;
+            core.s().SYNERR = 1;
             if (err == error.UnexpectedEof) {
                 _ = word.print("syntax error - unexpected newline\n", .{.{}});
             } else {
@@ -73,33 +73,33 @@ fn parseCurrentNew() ParseError!ParseResult {
             return ParseError.SyntaxError;
         };
         if (options.is_strict or @import("builtin").mode == .Debug) {
-            heap.heap.validate();
+            heap.heap().validate();
             p.validate();
-            rt.rs.validate();
+            rt.rs().validate();
         }
         if (!p.ts.check(.eof) and !p.ts.check(.offside)) {
             // Trailing tokens after the expression — treat as syntax error.
-            core.s.SYNERR = 1;
+            core.s().SYNERR = 1;
             _ = word.print("syntax error - unexpected token\n", .{.{}});
             return ParseError.SyntaxError;
         }
         const expr_word = codegen.codegenExpr(alloc, expr);
         if (options.is_strict or @import("builtin").mode == .Debug) {
-            heap.heap.validate();
+            heap.heap().validate();
             p.validate();
-            rt.rs.validate();
+            rt.rs().validate();
         }
-        rt.rs.lastexp = expr_word; // anchor as GC root before typeOf() inside evaluateRepl() can trigger GC
-        evaluateRepl(heap.heap, core.s, compiler_state.cs, rt.rs, expr_word);
+        rt.rs().lastexp = expr_word; // anchor as GC root before typeOf() inside evaluateRepl() can trigger GC
+        evaluateRepl(heap.heap(), core.s(), compiler_state.cs(), rt.rs(), expr_word);
         // Child prints newline before exit(0); parent returns here.
         return .success;
     }
 
     const script = parser_mod.parseScript(&p) catch return ParseError.ParseFailed;
     if (options.is_strict or @import("builtin").mode == .Debug) {
-        heap.heap.validate();
+        heap.heap().validate();
         p.validate();
-        rt.rs.validate();
+        rt.rs().validate();
     }
 
     if (!@import("builtin").is_test) {
@@ -108,17 +108,17 @@ fn parseCurrentNew() ParseError!ParseResult {
         }
     }
     if (p.diagnostics.items.len > 0) {
-        core.s.SYNERR = 1;
-        core.s.errline = @intCast(p.diagnostics.items[0].span.line);
-        core.s.errcol = @intCast(p.diagnostics.items[0].span.col);
+        core.s().SYNERR = 1;
+        core.s().errline = @intCast(p.diagnostics.items[0].span.line);
+        core.s().errcol = @intCast(p.diagnostics.items[0].span.col);
         return ParseError.SyntaxError;
     }
 
     codegen.codegenScript(alloc, script);
     if (options.is_strict or @import("builtin").mode == .Debug) {
-        heap.heap.validate();
+        heap.heap().validate();
         p.validate();
-        rt.rs.validate();
+        rt.rs().validate();
     }
     return .success;
 }
@@ -148,7 +148,7 @@ pub fn parseFile(filename: [*:0]const u8) ParseError!ParseResult {
     if (options.is_strict) {
         try validateUtf8File(filename);
     }
-    if (setupFile(heap.heap, filename) == 0) {
+    if (setupFile(heap.heap(), filename) == 0) {
         return ParseError.ParseFailed;
     }
     return parseCurrentNew();
@@ -208,9 +208,9 @@ pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!Ne
     var p = parser_mod.Parser.init(alloc, tokens);
     const script = parser_mod.parseScript(&p) catch return ParseError.ParseFailed;
     if (options.is_strict or @import("builtin").mode == .Debug) {
-        heap.heap.validate();
+        heap.heap().validate();
         p.validate();
-        rt.rs.validate();
+        rt.rs().validate();
     }
 
     // Report accumulated diagnostics before the arena is freed.
@@ -220,17 +220,17 @@ pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!Ne
         }
     }
     if (p.diagnostics.items.len > 0) {
-        core.s.SYNERR = 1;
-        core.s.errline = @intCast(p.diagnostics.items[0].span.line);
-        core.s.errcol = @intCast(p.diagnostics.items[0].span.col);
+        core.s().SYNERR = 1;
+        core.s().errline = @intCast(p.diagnostics.items[0].span.line);
+        core.s().errcol = @intCast(p.diagnostics.items[0].span.col);
         return ParseError.ParseFailed;
     }
 
     codegen.codegenScript(alloc, script);
     if (options.is_strict or @import("builtin").mode == .Debug) {
-        heap.heap.validate();
+        heap.heap().validate();
         p.validate();
-        rt.rs.validate();
+        rt.rs().validate();
     }
 
     return NewParseResult{};

@@ -52,10 +52,12 @@ pub const StringTable = struct {
     initialized: bool = false,
 };
 
-/// Pointer to the string table held in `interp`. A convenience for *callers*
-/// to obtain a `*StringTable` to pass in — this module's own functions no
-/// longer read it ambiently.
-pub const table = &@import("interp.zig").interp.strtab;
+/// Pointer to the string table held in `current_interp`. A convenience for
+/// *callers* to obtain a `*StringTable` to pass in — this module's own
+/// functions no longer read it ambiently.
+pub inline fn table() *StringTable {
+    return &@import("interp.zig").current_interp.strtab;
+}
 
 /// Abort: the string table ran out of memory.
 fn oom() noreturn {
@@ -92,19 +94,19 @@ pub fn strBits(self: *StringTable, p: anytype) Word {
 }
 
 test "intern de-dups by content and resolves" {
-    deinit(table);
-    defer deinit(table);
+    deinit(table());
+    defer deinit(table());
 
-    const foo1 = strBits(table, @as([*:0]const u8, "foo"));
-    const foo2 = strBits(table, @as([*:0]const u8, "foo"));
-    const bar = strBits(table, @as([*:0]const u8, "bar"));
+    const foo1 = strBits(table(), @as([*:0]const u8, "foo"));
+    const foo2 = strBits(table(), @as([*:0]const u8, "foo"));
+    const bar = strBits(table(), @as([*:0]const u8, "bar"));
 
     try std.testing.expectEqual(foo1, foo2); // dedup: same content -> same id
     try std.testing.expect(foo1 != bar);
     try std.testing.expect(foo1 < 0); // real ids are negative (out of ptr range)
 
-    try std.testing.expectEqualStrings("foo", std.mem.span(strOf(table, foo1)));
-    try std.testing.expectEqualStrings("bar", std.mem.span(strOf(table, bar)));
+    try std.testing.expectEqualStrings("foo", std.mem.span(strOf(table(), foo1)));
+    try std.testing.expectEqualStrings("bar", std.mem.span(strOf(table(), bar)));
 }
 
 /// Resolve an id `Word` (as stored in a node) back to its NUL-terminated bytes.
@@ -120,13 +122,13 @@ pub fn strOf(self: *StringTable, handle: Word) [*:0]const u8 {
 }
 
 test "empty interns to the 0 sentinel and 0 resolves to empty" {
-    deinit(table);
-    defer deinit(table);
+    deinit(table());
+    defer deinit(table());
 
-    try std.testing.expectEqual(@as(Word, 0), strBits(table, @as([*:0]const u8, "")));
-    try std.testing.expectEqualStrings("", std.mem.span(strOf(table, 0)));
+    try std.testing.expectEqual(@as(Word, 0), strBits(table(), @as([*:0]const u8, "")));
+    try std.testing.expectEqualStrings("", std.mem.span(strOf(table(), 0)));
     // A real string never collides with the sentinel.
-    try std.testing.expect(strBits(table, @as([*:0]const u8, "x")) != 0);
+    try std.testing.expect(strBits(table(), @as([*:0]const u8, "x")) != 0);
 }
 
 /// Re-intern the string identified by `handle` with its first byte privatised
@@ -147,16 +149,16 @@ pub fn privatize(self: *StringTable, handle: Word) Word {
 }
 
 test "privatize re-interns with the first byte high-bit set" {
-    deinit(table);
-    defer deinit(table);
+    deinit(table());
+    defer deinit(table());
 
-    const foo = strBits(table, @as([*:0]const u8, "foo"));
-    const priv = privatize(table, foo);
+    const foo = strBits(table(), @as([*:0]const u8, "foo"));
+    const priv = privatize(table(), foo);
     try std.testing.expect(priv != foo); // a fresh entry, not an in-place mutation
-    const bytes = std.mem.span(strOf(table, priv));
+    const bytes = std.mem.span(strOf(table(), priv));
     try std.testing.expectEqual(@as(u8, 'f' + 128), bytes[0]);
     try std.testing.expectEqualStrings("oo", bytes[1..]);
-    try std.testing.expectEqual(@as(Word, 0), privatize(table, 0)); // empty unchanged
+    try std.testing.expectEqual(@as(Word, 0), privatize(table(), 0)); // empty unchanged
 }
 
 /// Release all interned storage. For test teardown / a clean shutdown; the
@@ -173,14 +175,14 @@ pub fn deinit(self: *StringTable) void {
 }
 
 test "deinit clears the table so the next use re-inits fresh" {
-    deinit(table);
-    const a = strBits(table, @as([*:0]const u8, "alpha"));
-    try std.testing.expectEqualStrings("alpha", std.mem.span(strOf(table, a)));
-    deinit(table);
+    deinit(table());
+    const a = strBits(table(), @as([*:0]const u8, "alpha"));
+    try std.testing.expectEqualStrings("alpha", std.mem.span(strOf(table(), a)));
+    deinit(table());
     // After deinit the table is empty, so the old handle no longer resolves.
-    try std.testing.expectEqualStrings("", std.mem.span(strOf(table, a)));
+    try std.testing.expectEqualStrings("", std.mem.span(strOf(table(), a)));
     // A fresh intern restarts ids, so "beta" reclaims the first id that "alpha" had.
-    const b = strBits(table, @as([*:0]const u8, "beta"));
+    const b = strBits(table(), @as([*:0]const u8, "beta"));
     try std.testing.expectEqual(a, b);
-    deinit(table);
+    deinit(table());
 }

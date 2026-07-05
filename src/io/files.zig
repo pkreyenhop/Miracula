@@ -123,14 +123,14 @@ pub fn makeAbsolute(m: [*:0]u8) [*:0]u8 {
     if (m[0] == '/') {
         return m;
     }
-    if (abi.getcwd(ls.dicp, abi.pnlim) == null) {
+    if (abi.getcwd(ls().dicp, abi.pnlim) == null) {
         errors.fatal("panic: cwd too long\n", .{.{}});
     }
-    _ = word.strcat(ls.dicp, "/");
-    _ = word.strcat(ls.dicp, m);
-    const m_new = ls.dicp;
-    ls.dicq += word.strlen(ls.dicp) + 1;
-    ls.dicp = ls.dicq;
+    _ = word.strcat(ls().dicp, "/");
+    _ = word.strcat(ls().dicp, m);
+    const m_new = ls().dicp;
+    ls().dicq += word.strlen(ls().dicp) + 1;
+    ls().dicp = ls().dicq;
     lex.dicCheck();
     return m_new;
 }

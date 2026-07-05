@@ -21,10 +21,10 @@ const trans = @import("../../compiler/trans.zig");
 
 const Word = word.Word;
 fn ap(x: Word, y: Word) Word {
-    return reduce.ap(heap.heap, x, y);
+    return reduce.ap(heap.heap(), x, y);
 }
 fn ap2(f: Word, x: Word, y: Word) Word {
-    return reduce.ap2(heap.heap, f, x, y);
+    return reduce.ap2(heap.heap(), f, x, y);
 }
 
 // Phase 4 (shared-state plan): start from a pristine `Interp` via `interp.reset()`,
@@ -60,22 +60,22 @@ test "nested identity: reduce (I (I x)) == x" {
 
 test "already in WHNF: reduce of a CONS returns the same cell" {
     ensureSetup();
-    const c = reduce.cons(heap.heap, word.True, word.NIL);
+    const c = reduce.cons(heap.heap(), word.True, word.NIL);
     try std.testing.expectEqual(c, reduce.reduce(c));
 }
 
 test "strict arithmetic: reduce (PLUS 2 3) yields INT 5" {
     ensureSetup();
-    const r = reduce.reduce(ap2(word.PLUS, big.fromInt(heap.heap, 2), big.fromInt(heap.heap, 3)));
+    const r = reduce.reduce(ap2(word.PLUS, big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), 3)));
     try std.testing.expect(heap.getTag(r) == .INT);
-    try std.testing.expectEqual(@as(i64, 5), @as(i64, @intCast(big.toInt(heap.heap, r))));
+    try std.testing.expectEqual(@as(i64, 5), @as(i64, @intCast(big.toInt(heap.heap(), r))));
 }
 
 test "strict arithmetic: reduce (TIMES 6 7) yields INT 42" {
     ensureSetup();
-    const r = reduce.reduce(ap2(word.TIMES, big.fromInt(heap.heap, 6), big.fromInt(heap.heap, 7)));
+    const r = reduce.reduce(ap2(word.TIMES, big.fromInt(heap.heap(), 6), big.fromInt(heap.heap(), 7)));
     try std.testing.expect(heap.getTag(r) == .INT);
-    try std.testing.expectEqual(@as(i64, 42), @as(i64, @intCast(big.toInt(heap.heap, r))));
+    try std.testing.expectEqual(@as(i64, 42), @as(i64, @intCast(big.toInt(heap.heap(), r))));
 }
 
 // Phase 4 proof: `interp.reset()` restores every aggregated state struct to its
@@ -85,18 +85,18 @@ test "interp.reset clears the aggregated state structs" {
     ensureSetup();
 
     // Dirty fields in four different aggregated structs.
-    rt.rs.SPACELIMIT = 42;
-    core_state.s.SYNERR = 7;
-    reduce_rt.ev.cycles = 999;
-    big.bn.b_rem = 123;
+    rt.rs().SPACELIMIT = 42;
+    core_state.s().SYNERR = 7;
+    reduce_rt.ev().cycles = 999;
+    big.bn().b_rem = 123;
 
     interp.reset();
 
     // One reset returns them all to their struct defaults.
-    try std.testing.expectEqual(@as(Word, 2500000), rt.rs.SPACELIMIT);
-    try std.testing.expectEqual(@as(Word, 0), core_state.s.SYNERR);
-    try std.testing.expectEqual(@as(i64, 0), reduce_rt.ev.cycles);
-    try std.testing.expectEqual(@as(Word, 0), big.bn.b_rem);
+    try std.testing.expectEqual(@as(Word, 2500000), rt.rs().SPACELIMIT);
+    try std.testing.expectEqual(@as(Word, 0), core_state.s().SYNERR);
+    try std.testing.expectEqual(@as(i64, 0), reduce_rt.ev().cycles);
+    try std.testing.expectEqual(@as(Word, 0), big.bn().b_rem);
 
     // Re-establish a working interpreter for subsequent tests (reset wiped it).
     initialized = false;
@@ -115,7 +115,7 @@ test "codegen handles a deep application spine without overflow" {
     var g: Word = word.I;
     var i: usize = 0;
     while (i < spine_depth) : (i += 1) g = heap.make(.AP, g, word.NIL);
-    try std.testing.expect(trans.codegen(heap.heap, g) != 0);
+    try std.testing.expect(trans.codegen(heap.heap(), g) != 0);
 }
 
 test "codegen handles a deep tuple spine without overflow" {
@@ -124,5 +124,5 @@ test "codegen handles a deep tuple spine without overflow" {
     var g: Word = heap.make(.PAIR, word.NIL, word.NIL);
     var i: usize = 0;
     while (i < spine_depth) : (i += 1) g = heap.make(.TCONS, word.NIL, g);
-    try std.testing.expect(trans.codegen(heap.heap, g) != 0);
+    try std.testing.expect(trans.codegen(heap.heap(), g) != 0);
 }

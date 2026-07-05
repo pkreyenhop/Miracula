@@ -11,7 +11,7 @@ const NIL = word.NIL;
 /// linker symbol.  Extracted in H1 from the scattered `export var` globals in
 /// `types.zig`, `trans.zig`, and `heap.zig`.
 ///
-/// Accessed via `compiler_state.cs`, which points into `interp.comp`.
+/// Accessed via `compiler_state.cs()`, which points into `interp.comp`.
 pub const CompilerState = struct {
     // ── Typechecker (types.zig) ──────────────────────────────────────────────
     /// Fresh type-variable counter; reset at start of each type-check pass.
@@ -113,6 +113,8 @@ pub const CompilerState = struct {
     pfrts: Word = NIL,
 };
 
-/// Singleton compiler-state instance (a `*CompilerState` into `interp`). Import
-/// this module and use `cs` so all mutations are reflected everywhere.
-pub const cs = &@import("../runtime/interp.zig").interp.comp;
+/// Singleton compiler-state instance (a `*CompilerState` into `current_interp`).
+/// Import this module and use `cs()` so all mutations are reflected everywhere.
+pub inline fn cs() *CompilerState {
+    return &@import("../runtime/interp.zig").current_interp.comp;
+}

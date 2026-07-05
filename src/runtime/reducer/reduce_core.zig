@@ -376,7 +376,7 @@ pub inline fn pnVal(heap: *Heap, x: Word) Word {
 }
 /// The interned name text of id node `x`.
 pub inline fn getId(heap: *Heap, x: Word) [*:0]const u8 {
-    return strtab.strOf(strtab.table, hdGet(heap, hdGet(heap, hdGet(heap, x))));
+    return strtab.strOf(strtab.table(), hdGet(heap, hdGet(heap, hdGet(heap, x))));
 }
 /// The printed name of constructor node `x` (via its id or private-name value).
 pub inline fn constrName(heap: *Heap, x: Word) [*:0]const u8 {

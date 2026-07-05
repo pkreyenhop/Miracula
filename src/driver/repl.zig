@@ -88,7 +88,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
 
     if (abi.sigsetjmp(&rs.env, 1) == 0) {
         if (rs.magic) {
-            dump.undump(heap, core_state.s, cs, rs, initscript);
+            dump.undump(heap, core_state.s(), cs(), rs, initscript);
             if (heap.files == NIL or comp.ND != NIL or heap_mod.idVal(rs.main_id) == word.UNDEF) {
                 if (heap.files != NIL and comp.ND == NIL and heap_mod.idVal(rs.main_id) == word.UNDEF) {
                     word.printErr("{s}: main not defined\n", .{initscript});
@@ -100,7 +100,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
             abi.exit(0);
         }
         _ = signals(abi.SIGINT, @intFromPtr(&reset));
-        dump.undump(heap, core_state.s, cs, rs, initscript);
+        dump.undump(heap, core_state.s(), cs(), rs, initscript);
         if (rs.verbosity != 0) {
             word.print("for help type /h\n", .{});
         }
@@ -134,7 +134,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
         rs.last_gc_count = null;
         ch = abi.getchar();
         if (rs.rechecking != 0 and heap_mod.srcUpdate(rs) != 0) {
-            module_loader.loadfile(heap, core_state.s, cs, rs, ls, rs.current_script.?);
+            module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), rs.current_script.?);
         }
         while (ch == ' ' or ch == '\t') {
             ch = abi.getchar();
@@ -177,13 +177,13 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                     rs.lastid = x;
                     x = heap_mod.idWho(x);
                     if (getTag(heap, x) == .CONS) {
-                        aka = strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(x)));
+                        aka = strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(x)));
                         x = heap_mod.t(x);
                     }
                     if (aka != null) {
                         word.print("originally defined as \"{s}\"\n", .{aka.?});
                     }
-                    commands.editfile(rs, strtab.strOf(strtab.table, heap_mod.h(x)), @intCast(heap_mod.t(x)), 0);
+                    commands.editfile(rs, strtab.strOf(strtab.table(), heap_mod.h(x)), @intCast(heap_mod.t(x)), 0);
                 } else {
                     _ = abi.ungetc(ch, abi.stdin().?);
                     _ = token();
@@ -206,7 +206,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
             ':', '/' => {
                 _ = token();
                 rs.lastid = 0;
-                commands.command(heap, core_state.s, comp, rs, lexs);
+                commands.command(heap, core_state.s(), comp, rs, lexs);
             },
             '!' => {
                 lb = rdline();
@@ -232,7 +232,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                         _ = abi.execl(shell.?, .{ shell.?, "-c", lb.? });
                     }
                     if (heap_mod.srcUpdate(rs) != 0) {
-                        module_loader.loadfile(heap, core_state.s, cs, rs, ls, rs.current_script.?);
+                        module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), rs.current_script.?);
                     }
                 } else {
                     word.print("No previous shell command to substitute for \"!\"\n", .{});
@@ -334,11 +334,11 @@ pub fn dieClean() callconv(.c) void {
 
 /// SIGFPE handler: treat as a syntax error while compiling, otherwise a fatal floating-point overflow.
 pub fn fpeError(sig: c_int) callconv(.c) void {
-    if (core_state.s.compiling != 0) {
+    if (core_state.s().compiling != 0) {
         _ = signals(sig, @intFromPtr(&fpeError));
         syntax("floating point number out of range\n");
-        core_state.s.SYNERR = 0;
-        abi.siglongjmp(&rt.rs.env, 1);
+        core_state.s().SYNERR = 0;
+        abi.siglongjmp(&rt.rs().env, 1);
     } else {
         word.print("\nFLOATING POINT OVERFLOW\n", .{});
         abi.exit(1);
@@ -375,7 +375,7 @@ pub fn obey(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
             abi.make(.AP, abi.mkshow(heap, 0, 0, typ), x);
         break :blk abi.make(.CONS, abi.make(.AP, rs.standardout, inner), NIL);
     };
-    abi.output(reduce.ev, rs, out_val);
+    abi.output(reduce.ev(), rs, out_val);
 }
 
 /// Evaluate a typed REPL expression: compile it and fork via `process`; the child prints the result and exits, leaving the parent's heap untouched.
@@ -413,7 +413,7 @@ pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_st
         _ = signals(abi.SIGINT, @intFromPtr(&dieClean));
         core.compiling = 0;
         resetgcstats();
-        abi.output(reduce.ev, rs, out_val);
+        abi.output(reduce.ev(), rs, out_val);
         _ = word.putchar('\n');
         outstats();
         const exit_code: c_int = if (heap.nogcs == 0) 0 else @as(c_int, @intCast(@min(heap.nogcs, 253))) + 1;
@@ -424,23 +424,23 @@ pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_st
 
 /// SIGINT handler at the prompt: restore input/echo/compile state and `longjmp` back into the command loop.
 pub fn reset() callconv(.c) void {
-    if (rt.rs.echoing != 0) {
+    if (rt.rs().echoing != 0) {
         _ = word.putchar('\n');
     }
-    rt.rs.s_in = abi.stdin();
-    rt.rs.echoing = 0;
-    rt.rs.listing = 0;
-    core_state.s.compiling = 0;
-    core_state.s.commandmode = 0;
-    core_state.s.SYNERR = 0;
-    rt.rs.sigflag = 0;
-    if (rt.rs.unlinkme) |u| {
+    rt.rs().s_in = abi.stdin();
+    rt.rs().echoing = 0;
+    rt.rs().listing = 0;
+    core_state.s().compiling = 0;
+    core_state.s().commandmode = 0;
+    core_state.s().SYNERR = 0;
+    rt.rs().sigflag = 0;
+    if (rt.rs().unlinkme) |u| {
         _ = abi.unlink(u);
-        rt.rs.unlinkme = null;
+        rt.rs().unlinkme = null;
     }
-    rt.rs.last_elapsed_ns = null;
-    rt.rs.last_gc_count = null;
-    abi.siglongjmp(&rt.rs.env, 1);
+    rt.rs().last_elapsed_ns = null;
+    rt.rs().last_gc_count = null;
+    abi.siglongjmp(&rt.rs().env, 1);
 }
 
 /// Warn that the configured editor lacks open-at-line support, disabling `??` and related features.

@@ -172,10 +172,10 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
                 comp.CLASHES = NIL;
                 dump.undump(heap, core, comp, rs, t_val.?);
                 if (comp.CLASHES != NIL) {
-                    module_loader.loadfile(heap, core, comp, rs, ls, t_val.?);
+                    module_loader.loadfile(heap, core, comp, rs, ls(), t_val.?);
                 }
             } else {
-                module_loader.loadfile(heap, core, comp, rs, ls, t_val.?);
+                module_loader.loadfile(heap, core, comp, rs, ls(), t_val.?);
             }
         } else {
             word.print("{s}{s}\n", .{ rs.current_script.?, @as([*:0]const u8, if (heap.files == NIL) " (not loaded)" else "") });
@@ -286,7 +286,7 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
                 files.copyFile(mf.?, t_val.?);
             }
         }
-        const err_line_num: c_int = if (word.strcmp(t_val.?, rs.current_script.?) == 0) @intCast(core.errline) else if (core.errs != 0 and word.strcmp(t_val.?, strtab.strOf(strtab.table, heap_mod.h(core.errs))) == 0) @intCast(heap_mod.t(core.errs)) else @intCast(abi.geterrlin(core, lexs, t_val.?));
+        const err_line_num: c_int = if (word.strcmp(t_val.?, rs.current_script.?) == 0) @intCast(core.errline) else if (core.errs != 0 and word.strcmp(t_val.?, strtab.strOf(strtab.table(), heap_mod.h(core.errs))) == 0) @intCast(heap_mod.t(core.errs)) else @intCast(abi.geterrlin(core, lexs, t_val.?));
         const err_col_num: c_int = if (word.strcmp(t_val.?, rs.current_script.?) == 0) @intCast(core.errcol) else 0;
         editfile(rs, t_val.?, err_line_num, err_col_num);
         return true;
@@ -364,7 +364,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                 if (abi.chdir(d.?) == -1) {
                     word.print("cannot cd to {s}\n", .{d.?});
                 } else if (heap_mod.srcUpdate(rs) != 0) {
-                    dump.undump(heap, core, cs, rs, rs.current_script.?);
+                    dump.undump(heap, core, cs(), rs, rs.current_script.?);
                 }
                 return;
             }
@@ -636,7 +636,7 @@ pub fn editfile(rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_
     }
     _ = abi.system(ebuf_local);
     if (heap_mod.srcUpdate(rs) != 0) {
-        module_loader.loadfile(heap_mod.heap, core_state.s, cs, rs, ls, rs.current_script.?);
+        module_loader.loadfile(heap_mod.heap(), core_state.s(), cs(), rs, ls(), rs.current_script.?);
     }
 }
 
@@ -658,7 +658,7 @@ pub fn finger(heap: *Heap, rs: *rt.RuntimeState, n: [*:0]const u8) void {
     if (x != NIL and heap_mod.idType(x) != word.undef_t) {
         if (heap_mod.idWho(x) != NIL) {
             const here_val = heap_mod.getHere(x);
-            s = strtab.strOf(strtab.table, heap_mod.h(here_val));
+            s = strtab.strOf(strtab.table(), heap_mod.h(here_val));
             line = heap_mod.t(here_val);
         }
         if (rs.lastid == 0) {
