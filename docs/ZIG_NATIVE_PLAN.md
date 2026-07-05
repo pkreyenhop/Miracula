@@ -350,12 +350,19 @@ front door is C.
    buffer, `SYNERR`, the margin stack) that corrupted the *next* call when
    this harness ran it repeatedly — worked around with a full
    `interp.reset()` + re-`miraSetup()` before each comparison, not a change
-   to `lex_bridge.zig` itself. **Not yet done:** running this over the
-   *whole* golden corpus mechanically (today's 8 cases were picked by hand,
-   excluding scripts with this lexer's known gaps) and wiring it as a build
-   step so it's a standing gate, not an ad hoc test file. Char classes
+   to `lex_bridge.zig` itself. **Corpus auto-discovery landed** (2026-07-06):
+   a 9th test walks every `.m` file under `tests/golden/` via
+   `std.testing.io` (not `ctx.io` — that's only available in `main()`-style
+   entry points; `std.testing.io` is the equivalent inside a `test` block,
+   confirmed from `parser_tests.zig`'s existing use of it), skipping any
+   script containing `%` or `` ` `` (this lexer's known gaps), so a newly
+   added golden case is covered automatically rather than needing someone to
+   remember to hand-add a differential test for it. **Still not done:**
+   wiring this as its own build step (it currently only runs as part of
+   `main-tests`) so it's a visibly standing gate; char classes
    (`` `[...]` ``, `%bnf`/`%lex`-only) and the known-excluded forms
-   (`%`-directives, backtick infix names, hex-float) also still to do.
+   themselves (`%`-directives, backtick infix names, hex-float) remain
+   unimplemented in the lexer, not just untested here.
 5. `syntax/directives.zig` + `semantics/modules.zig` consumption. This is where
    `%include`/`%export`/`%free` actually get implemented (aliasing, free-binding
    substitution, cycle detection, dependency ordering) — module_loader.zig's real
@@ -436,12 +443,13 @@ front door is C.
    the dictionary-space config (`DICSPACE`, `-dic` flag: accept-and-ignore with a
    deprecation note, since `.mirarc` files may set it).
 
-**Status as of 2026-07-06:** steps 1–3 landed, steps 4–6 partially landed
-(`syntax/source.zig`, `syntax/lexer.zig`, `syntax/layout.zig`,
-`syntax/differential_test.zig`, `syntax/directives.zig`,
-`semantics/symbols.zig` — 62 new tests total, all green, no leaks, including
-8 scripts verified byte-for-byte against the real production tokenizer),
-none yet wired into `parser_api.zig` or each other. `layout.zig` went
+**Status as of 2026-07-06:** steps 1–3 landed, step 4 essentially done, steps
+5–6 partially landed (`syntax/source.zig`, `syntax/lexer.zig`,
+`syntax/layout.zig`, `syntax/differential_test.zig`, `syntax/directives.zig`,
+`semantics/symbols.zig` — 63 new tests total, all green, no leaks, including
+every non-gap golden `.m` script — auto-discovered, not hand-picked — plus
+`miralib/ex/fib.m` verbatim, all verified byte-for-byte against the real
+production tokenizer), none yet wired into `parser_api.zig` or each other. `layout.zig` went
 through two verified corrections in one session (see its step-3 entry
 above) — a reminder that "looks principled" and "matches the system it must
 replace" are different bars, and only the second one counts here; the

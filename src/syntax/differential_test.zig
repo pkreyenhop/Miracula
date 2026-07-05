@@ -143,3 +143,42 @@ test "differential: miralib/ex/fib.m verbatim (comments + realigned guard)" {
         \\
     );
 }
+
+/// Known lexer gaps that make a golden `.m` script unfair game for this
+/// harness (see the file header): `%`-directives (`%` isn't a token in
+/// `lexer.zig` yet) and backtick infix names (also unhandled). A script
+/// containing either byte is skipped, not silently mis-compared.
+fn hasKnownGap(source: []const u8) bool {
+    return std.mem.indexOfScalar(u8, source, '%') != null or
+        std.mem.indexOfScalar(u8, source, '`') != null;
+}
+
+// Whole-corpus completeness gate for step 4 (docs/ZIG_NATIVE_PLAN.md): walks
+// every `.m` file under `tests/golden/`, not just the 8 hand-picked above,
+// so a newly-added golden script is covered automatically instead of
+// silently falling outside this harness until someone remembers to add it.
+test "differential: every non-gap golden .m script matches token-for-token" {
+    const gpa = std.testing.allocator;
+    var dir = try std.Io.Dir.cwd().openDir(std.testing.io, "tests/golden", .{ .iterate = true });
+    defer dir.close(std.testing.io);
+
+    var checked: usize = 0;
+    var iter = dir.iterate();
+    while (try iter.next(std.testing.io)) |entry| {
+        if (!std.mem.endsWith(u8, entry.name, ".m")) continue;
+        const path = try std.fmt.allocPrint(gpa, "tests/golden/{s}", .{entry.name});
+        defer gpa.free(path);
+        const source = try dir.readFileAlloc(std.testing.io, entry.name, gpa, .limited(1024 * 1024));
+        defer gpa.free(source);
+        if (hasKnownGap(source)) continue;
+
+        checked += 1;
+        expectSameIds(gpa, source) catch |err| {
+            std.debug.print("differential mismatch in {s}\n", .{path});
+            return err;
+        };
+    }
+    // A sanity floor, not the exact count -- new golden scripts should grow
+    // this without needing to update a hardcoded number here.
+    try std.testing.expect(checked >= 7);
+}
