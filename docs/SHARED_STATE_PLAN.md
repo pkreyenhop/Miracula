@@ -819,18 +819,88 @@ reverted rather than padded with a discard.
 * *DoD per subsystem: no ambient-global-singleton access outside the subsystem's
   own threaded struct(s) (or an explicitly documented exception); golden green.*
 
-### Phase 6 — De-globalize & document *(close-out; conditional on Tier 3)*
+### Phase 5, Tier 4 — the other four structs (`rs`/`ls`/`cs`/`core`/`eval`)
+*(in progress, 2026-07-05 — explicit user decision to pursue the full Phase 6
+effort despite both plan docs framing it as optional/deferred)*
+
+Tier 3 threaded `*Heap` only. Deleting the global (Phase 6) requires *every*
+aggregated struct in `Interp` to stop being reached ambiently, not just
+`heap`. A fresh survey (grepping each owner-module accessor across `src/`)
+found the remaining scope is **larger than all of Tier 3 combined**:
+
+| Struct | Accessor | Ambient touches | Files |
+|--------|----------|-----------------:|------:|
+| `RuntimeState` | `rt.rs.*` | 814 | 19 |
+| `LexState` | `ls.*` | 979 | 14 |
+| `CompilerState` | `cs.*` | 516 | 12 |
+| `CoreState` | `core_state.s.*` | 143 | 14 |
+| `EvalState` | `reduce.ev.*` | 45 | few |
+| **Total** | | **~2,500** | (overlapping — fewer distinct files) |
+
+(`big`/`strtab` — Tier 1, done. `heap` — Tier 3, done. `rt.allocator`/`rt.gpa`/
+`rt.io`/`rt.environ` are the confirmed-permanent bootstrap exception per
+`interp.zig`'s own doc comment — process-wide by nature, not aggregated
+per-request state, out of scope forever.)
+
+**Sequencing:** smallest first, same discipline as Tier 3 (bulk textual
+rewrite of a whole file before any by-hand parameter threading, verify with
+`zig build`, run the **per-function `h`/`t`/`hp`/`tp`/`getTag`-style
+call-count check is N/A here** since these structs aren't reached through
+nested nested-wrapper calls the way `Heap` cells are — the risk profile is
+different (see below) — full test suite including `zig build test-mira`,
+manual smoke test, commit, push, update this doc. Order: `EvalState` (45,
+smallest) → `CoreState` (143) → `CompilerState` (516) → `RuntimeState` (814)
+→ `LexState` (979, largest).
+
+**Different risk profile than Tier 3.** Tier 3's bug (the `inferType`
+over-conversion) came from mis-nesting `h(t(x))`-style Heap-cell accessor
+chains during mechanical rewrites — these four structs are accessed as flat
+field reads (`rt.rs.exports`, `cs.CLASHES`, `ls.dicp`), not nested nested
+calls, so that specific class of bug doesn't apply here. The real risk this
+tier: many of these fields are read *and written* from deep inside
+long-lived call chains (parser state, compiler diagnostics, REPL prompt
+state) with no natural "the caller already has this" shortcut the way
+`ctx.heap` did for the reducer — expect several already-encountered patterns
+to recur (functions needing a new struct parameter threaded through many
+existing callers; `abi.*`-aliased functions in `main_clib.zig` needing their
+call sites tracked down; test files needing the ambient singleton fetched
+explicitly).
+
+**`EvalState` (45 touches) — done, 2026-07-05.** Added `eval: *EvalState` to
+`ReductionCtx` (mirroring `heap`'s Tier 1.5 field) and threaded it through
+`reduce.zig`'s I/O-directive family (`output`/`print`/`outf`/`apfile`/
+`closefile`), `streamRead`/`stdinError`, and the two `combinators.zig` handlers
+that touched `ev` directly (`handleERROR`, `handleWAIT`). External callers
+that don't have a narrower value in scope (`repl.zig`'s `obey`/`evaluateRepl`)
+pass the ambient `reduce.ev` global directly at the call site, the same
+pattern already used for `heap.heap` in `parser_api.zig` — Tier 3/4 threading
+makes functions stop reading ambient state *internally*, it doesn't require
+erasing every ambient read at every call site (that's Phase 6's job once the
+global itself goes away). Three call sites were confirmed as legitimate
+permanent exceptions and left untouched: `outstats()` (reads `ev.cycles`
+ambiently — reachable from the `dieClean` signal handler, same class as
+Tier 3's `setup.zig` exceptions), `heap.zig`'s `bases()` GC-root scanner
+(reads `reduce.ev.outfilq`/`waiting` plus every other still-ambient struct —
+it's the conservative-stack-scan root function, fired from arbitrary
+allocation sites with no natural caller to thread through), and
+`reduce_test.zig`'s `interp.reset()` test (deliberately asserts on the
+ambient singleton). Verified: `zig build` clean, `zig build lint` (16-warning
+baseline, no new), direct `main-tests` binary run (176/176), `zig build
+test-mira` (0 exit), `zig build test-golden` (43/44 — the one failure,
+`script_syntax_err`, reproduces identically on the pre-Tier-4 commit via
+`git stash`, so it's a pre-existing unrelated bug, not a regression; flagged
+separately). Manual smoke test of the `Tofile`/`Stdout`/`Closefile` redirect
+dance and the `readvals` stdin path (via golden's `lazy_io_readvals`) behaved
+identically before and after.
+
+### Phase 6 — De-globalize & document *(close-out; conditional on Tier 3 + Tier 4)*
 Delete the global `var interp`; `main()` constructs it explicitly
 (`var interp = Interp.init(gpa); defer interp.deinit(); return interp.run(args);`).
 Update [ARCHITECTURE.md](ARCHITECTURE.md) to drop the "singleton" language and
 describe the `Interp` ownership model + the lone signal-delivery exception.
 
-This is only reachable if Tier 3 of the revised Phase 5 happens — deleting the
-global requires *every* subsystem (including the entangled compiler/heap tier)
-to have stopped reaching it ambiently. If Tier 3 is judged not worth its bundle-
-design cost after the Tier 1–2 checkpoint, Phase 6 stays permanently deferred
-alongside it; Tier 1–2 alone do not remove enough ambient access to make deleting
-`interp` sound.
+This is only reachable once Tier 4 (above) closes out every remaining
+ambiently-reached struct, on top of Tier 3's `heap` work.
 * *DoD: non-FFI module-scope mutable globals = **1** (documented); a second
   `Interp` can be constructed and run independently; golden green.*
 

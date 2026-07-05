@@ -377,7 +377,7 @@ pub fn obey(heap: *Heap, x_in: Word) void {
             abi.make(.AP, abi.mkshow(heap, 0, 0, typ), x);
         break :blk abi.make(.CONS, abi.make(.AP, rt.rs.standardout, inner), NIL);
     };
-    abi.output(out_val);
+    abi.output(reduce.ev, out_val);
 }
 
 /// Evaluate a typed REPL expression: compile it and fork via `process`; the child prints the result and exits, leaving the parent's heap untouched.
@@ -415,7 +415,7 @@ pub fn evaluateRepl(heap: *Heap, x_in: Word) void {
         _ = signals(abi.SIGINT, @intFromPtr(&dieClean));
         core_state.s.compiling = 0;
         resetgcstats();
-        abi.output(out_val);
+        abi.output(reduce.ev, out_val);
         _ = word.putchar('\n');
         outstats();
         const exit_code: c_int = if (heap.nogcs == 0) 0 else @as(c_int, @intCast(@min(heap.nogcs, 253))) + 1;

@@ -253,14 +253,14 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
             const lastarg = t(ctx.e);
 
             if (lastarg == 0) {
-                if (ev.stdinuse == '-') {
-                    stdinError(':');
+                if (ctx.eval.stdinuse == '-') {
+                    stdinError(ctx.eval, ':');
                 }
-                if (ev.stdinuse != 0) {
+                if (ctx.eval.stdinuse != 0) {
                     rewriteToNil(&ctx.e);
                     return word.ACT_DONE;
                 }
-                ev.stdinuse = ':';
+                ctx.eval.stdinuse = ':';
                 tp(ctx.e).* = @as(Word, @intCast(@intFromPtr(getStdin().?)));
             }
             const hold_char = main_clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
@@ -277,14 +277,14 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
             const lastarg = t(ctx.e);
 
             if (lastarg == 0) {
-                if (ev.stdinuse == ':') {
-                    stdinError('-');
+                if (ctx.eval.stdinuse == ':') {
+                    stdinError(ctx.eval, '-');
                 }
-                if (ev.stdinuse != 0) {
+                if (ctx.eval.stdinuse != 0) {
                     rewriteToNil(&ctx.e);
                     return word.ACT_DONE;
                 }
-                ev.stdinuse = '-';
+                ctx.eval.stdinuse = '-';
                 tp(ctx.e).* = @as(Word, @intCast(@intFromPtr(getStdin().?)));
             }
             const hold_char = if (rt.rs.UTF8 != 0) stoChar(fromUTF8(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))))) else main_clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
@@ -402,11 +402,11 @@ fn stdname(c_val: c_int) [*:0]const u8 {
 }
 
 /// Abort: stdin was read both as characters and as values (the `-`/`:` conflict).
-pub fn stdinError(c_val: c_int) void {
-    if (ev.stdinuse == c_val) {
+pub fn stdinError(eval: *EvalState, c_val: c_int) void {
+    if (eval.stdinuse == c_val) {
         word.printErr("program error: duplicate use of {s}\n", .{stdname(c_val)});
     } else {
-        word.printErr("program error: simultaneous use of {s} and {s}\n", .{ stdname(c_val), stdname(@intCast(ev.stdinuse)) });
+        word.printErr("program error: simultaneous use of {s} and {s}\n", .{ stdname(c_val), stdname(@intCast(eval.stdinuse)) });
     }
     outstats();
     main_clib.exit(1);
@@ -699,8 +699,8 @@ test "head: the leftmost atom of an application spine" {
 }
 
 /// Open `f` for appending (the `Appendfile` directive), recording it in the open-file list.
-pub fn apfile(f: Word) void {
-    var p = ev.outfilq;
+pub fn apfile(eval: *EvalState, f: Word) void {
+    var p = eval.outfilq;
     const fil = getstring(f, "Appendfile");
     while (p != NIL and word.strcmp(strtab.strOf(strtab.table, h(h(p))), fil) != 0) {
         p = t(p);
@@ -712,14 +712,14 @@ pub fn apfile(f: Word) void {
         } else {
             // datapair = (filename string, FILE* handle); the FILE* is a
             // raw cell cast (read back via @ptrFromInt), not a node string.
-            ev.outfilq = cons(datapair(strtab.strBits(strtab.table, lex.keep(fil.?)), @as(Word, @intCast(@intFromPtr(s.?)))), ev.outfilq);
+            eval.outfilq = cons(datapair(strtab.strBits(strtab.table, lex.keep(fil.?)), @as(Word, @intCast(@intFromPtr(s.?)))), eval.outfilq);
         }
     }
 }
 
 /// Close the output file named by `f` (the `Closefile` directive).
-pub fn closefile(f: Word) void {
-    var p = &ev.outfilq;
+pub fn closefile(eval: *EvalState, f: Word) void {
+    var p = &eval.outfilq;
     const fil = getstring(f, "Closefile");
     while (p.* != NIL and word.strcmp(strtab.strOf(strtab.table, h(h(p.*))), fil) != 0) {
         p = tp(p.*);
@@ -731,31 +731,31 @@ pub fn closefile(f: Word) void {
 }
 
 /// Switch output to the file named in `e` (the `Tofile` directive), opening it if needed.
-pub fn outf(e: Word) void {
-    var p = ev.outfilq;
+pub fn outf(eval: *EvalState, e: Word) void {
+    var p = eval.outfilq;
     const f = getstring(t(h(e)), "Tofile");
     while (p != NIL and word.strcmp(strtab.strOf(strtab.table, h(h(p))), f) != 0) {
         p = t(p);
     }
     if (p == NIL) {
-        ev.s_out = word.fopen(f, "w");
-        if (ev.s_out == null) {
+        eval.s_out = word.fopen(f, "w");
+        if (eval.s_out == null) {
             word.printErr("\nTofile: cannot write to \"{s}\"\n", .{std.mem.span(f.?)});
-            ev.s_out = getStdout();
+            eval.s_out = getStdout();
             return;
         }
-        if (main_clib.isatty(word.fileno(ev.s_out.?)) != 0) {
-            word.setbuf(ev.s_out.?, null);
+        if (main_clib.isatty(word.fileno(eval.s_out.?)) != 0) {
+            word.setbuf(eval.s_out.?, null);
         }
         // datapair = (filename string, FILE* handle); FILE* is a raw cell cast.
-        ev.outfilq = cons(datapair(strtab.strBits(strtab.table, lex.keep(f.?)), @as(Word, @intCast(@intFromPtr(ev.s_out.?)))), ev.outfilq);
+        eval.outfilq = cons(datapair(strtab.strBits(strtab.table, lex.keep(f.?)), @as(Word, @intCast(@intFromPtr(eval.s_out.?)))), eval.outfilq);
     } else {
-        ev.s_out = @ptrFromInt(@as(usize, @intCast(t(h(p)))));
+        eval.s_out = @ptrFromInt(@as(usize, @intCast(t(h(p)))));
     }
 }
 
-/// Print a Miranda char-list to the current output stream (`ev.s_out`), honouring UTF-8.
-pub fn print(arg_e: Word) void {
+/// Print a Miranda char-list to the current output stream (`eval.s_out`), honouring UTF-8.
+pub fn print(eval: *EvalState, arg_e: Word) void {
     var e = reduce(arg_e);
     while (getTag(e) == .CONS) {
         hp(e).* = reduce(h(e));
@@ -764,9 +764,9 @@ pub fn print(arg_e: Word) void {
         }
         const c = @as(u32, @intCast(heap.getChar(h(e))));
         if (rt.rs.UTF8 != 0) {
-            main_clib.outUTF8(c, ev.s_out);
+            main_clib.outUTF8(c, eval.s_out);
         } else if (word.fitsInByte(c)) {
-            _ = word.putc(@intCast(c), ev.s_out.?);
+            _ = word.putc(@intCast(c), eval.s_out.?);
         } else {
             word.printErr("\n warning: non Latin1 char {x} in print, ignored\n", .{c});
         }
@@ -795,7 +795,7 @@ const Tofileb = 8;
 const Appendfileb = 9;
 
 /// Drive a list of output directives (`Stdout`/`Tofile`/`System`/`Exit`/…) — the top of the I/O interpreter.
-pub fn output(arg_e: Word) void {
+pub fn output(eval: *EvalState, arg_e: Word) void {
     var e = arg_e;
     const old_cstack = rt.rs.cstack;
     rt.rs.cstack = @ptrCast(&e);
@@ -806,38 +806,38 @@ pub fn output(arg_e: Word) void {
         hp(e).* = reduce(h(e));
         switch (h(head(h(e)))) {
             Stdout => {
-                print(t(h(e)));
+                print(eval, t(h(e)));
             },
             Stdoutb => {
                 rt.rs.UTF8OUT = 0;
-                print(t(h(e)));
+                print(eval, t(h(e)));
                 rt.rs.UTF8OUT = rt.rs.UTF8;
             },
             Stderr => {
-                ev.s_out = getStderr();
-                print(t(h(e)));
-                ev.s_out = getStdout();
+                eval.s_out = getStderr();
+                print(eval, t(h(e)));
+                eval.s_out = getStdout();
             },
             Tofile => {
-                outf(h(e));
+                outf(eval, h(e));
             },
             Tofileb => {
                 rt.rs.UTF8OUT = 0;
-                outf(h(e));
+                outf(eval, h(e));
                 rt.rs.UTF8OUT = rt.rs.UTF8;
             },
             Closefile => {
                 tp(h(e)).* = reduce(t(h(e)));
-                closefile(t(h(e)));
+                closefile(eval, t(h(e)));
             },
             Appendfile => {
                 tp(h(e)).* = reduce(t(h(e)));
-                apfile(t(h(e)));
+                apfile(eval, t(h(e)));
             },
             Appendfileb => {
                 rt.rs.UTF8OUT = 0;
                 tp(h(e)).* = reduce(t(h(e)));
-                apfile(t(h(e)));
+                apfile(eval, t(h(e)));
                 rt.rs.UTF8OUT = rt.rs.UTF8;
             },
             System => {

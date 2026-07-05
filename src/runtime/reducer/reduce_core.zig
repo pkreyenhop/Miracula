@@ -71,6 +71,9 @@ pub const ReductionCtx = struct {
     action: c_int,
     /// The cell arena backing every accessor/allocator call this reduction makes.
     heap: *Heap,
+    /// I/O and evaluation-error-recovery state (`Tier 4` of the shared-state
+    /// plan — mirrors `heap`'s Tier 1.5 threading; see [reduce_mod.EvalState]).
+    eval: *reduce_mod.EvalState,
 };
 
 // Re-exports so handlers can reach engine/lexer helpers as `reduce.<name>`.

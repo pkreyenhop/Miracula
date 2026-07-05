@@ -1081,13 +1081,13 @@ pub fn handleERROR(ctx: *ReductionCtx) void {
         return;
     }
     const lastarg = reduce.tlGet(ctx.heap, ctx.e);
-    if (reduce_rt.ev.errtrap != 0) {
+    if (ctx.eval.errtrap != 0) {
         word.printErr("\n(repeated error)\n", .{});
     } else {
-        reduce_rt.ev.errtrap = 1;
+        ctx.eval.errtrap = 1;
         word.printErr("\nprogram error: ", .{});
-        reduce_rt.ev.s_out = reduce.getStderr();
-        reduce.print(lastarg);
+        ctx.eval.s_out = reduce.getStderr();
+        reduce_rt.print(ctx.eval, lastarg);
         _ = word.putc('\n', reduce.getStderr().?);
     }
     reduce_rt.outstats();
@@ -1107,7 +1107,7 @@ pub fn handleWAIT(ctx: *ReductionCtx) void {
     }
     const lastarg = reduce.tlGet(ctx.heap, ctx.e);
     var hold: Word = 0;
-    var w: *Word = &reduce_rt.ev.waiting;
+    var w: *Word = &ctx.eval.waiting;
     while (w.* != word.NIL and reduce.hdGet(ctx.heap, w.*) != lastarg) {
         w = reduce.tlPtr(ctx.heap, reduce.tlGet(ctx.heap, w.*));
     }
@@ -1122,7 +1122,7 @@ pub fn handleWAIT(ctx: *ReductionCtx) void {
                 hold = res;
                 break;
             }
-            reduce_rt.ev.waiting = reduce.cons(ctx.heap, res, reduce.cons(ctx.heap, @intCast(WEXITSTATUS(status)), reduce_rt.ev.waiting));
+            ctx.eval.waiting = reduce.cons(ctx.heap, res, reduce.cons(ctx.heap, @intCast(WEXITSTATUS(status)), ctx.eval.waiting));
         }
         if (hold != -1) {
             hold = WEXITSTATUS(status);

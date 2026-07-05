@@ -80,6 +80,7 @@ pub fn reduce(e_val: Word) Word {
     ctx.args[3] = 0;
     ctx.action = word.ACT_NONE;
     ctx.heap = heap_mod.heap;
+    ctx.eval = reduce_rt.ev;
 
     main_loop: while (true) {
         // (1) Unwind the left spine: descend through `AP` nodes (reversing
@@ -91,7 +92,7 @@ pub fn reduce(e_val: Word) Word {
         if (@as(u64, @bitCast(ctx.e)) >= word.ATOMLIMIT) {
             dispatchNonCombinatorHead(&ctx);
         } else {
-            reduce_rt.ev.cycles += 1; // one reduction step (the perf counter)
+            ctx.eval.cycles += 1; // one reduction step (the perf counter)
             trace.step(ctx.e); // per-combinator histogram (compiled out when off)
             ctx.action = word.ACT_NONE;
 
