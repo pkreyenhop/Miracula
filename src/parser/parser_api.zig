@@ -12,6 +12,7 @@ const options = @import("version_options");
 const word = @import("../runtime/word.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const core = @import("../runtime/core_state.zig");
+const compiler_state = @import("../compiler/compiler_state.zig");
 
 const lex_bridge = @import("lex_bridge.zig");
 const parser_mod = @import("parser.zig");
@@ -89,7 +90,7 @@ fn parseCurrentNew() ParseError!ParseResult {
             rt.rs.validate();
         }
         rt.rs.lastexp = expr_word; // anchor as GC root before typeOf() inside evaluateRepl() can trigger GC
-        evaluateRepl(heap.heap, core.s, expr_word);
+        evaluateRepl(heap.heap, core.s, compiler_state.cs, expr_word);
         // Child prints newline before exit(0); parent returns here.
         return .success;
     }

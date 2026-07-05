@@ -8,7 +8,8 @@ const word = @import("../runtime/word.zig");
 const errors = @import("../runtime/errors.zig");
 const strtab = @import("../runtime/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
-const cs = @import("compiler_state.zig").cs;
+const compiler_state = @import("compiler_state.zig");
+const cs = compiler_state.cs;
 inline fn getTag(heap: *Heap, x: word.Word) word.NodeTag {
     return heap.getTag(x);
 }
@@ -47,13 +48,13 @@ inline fn pnVal(x: Word) Word {
 /// list and environment. Sets `loading=1` for the duration; clears it on return.
 /// If the file does not exist during `initialising`, panics; otherwise prints a notice.
 /// Callers that want dump-or-load semantics should call `undump()` instead.
-pub fn loadfile(heap: *Heap, core: *core_state.CoreState, t_val: [*:0]const u8) void {
+pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, t_val: [*:0]const u8) void {
     core.loading = 1;
     core.errs = 0;
     core.errline = 0;
     rt.rs.current_script = @constCast(t_val);
     rt.rs.oldfiles = NIL;
-    heap_mod.unload();
+    heap_mod.unload(comp);
 
     if (!files.fileExists(t_val)) {
         if (rt.rs.initialising != 0) {
@@ -116,14 +117,14 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, t_val: [*:0]const u8) 
     rt.rs.freeids = NIL;
     rt.rs.exports = NIL;
     rt.rs.includees = NIL;
-    cs.FBS = NIL;
+    comp.FBS = NIL;
 
     _ = parser_api.parseCurrent() catch {};
 
     resolveExportFileList(heap, core);
 
     if (core.SYNERR == 0 and rt.rs.includees != NIL) {
-        heap.files = abi.append1(heap.files, mkincludes(heap, core, rt.rs.includees));
+        heap.files = abi.append1(heap.files, mkincludes(heap, core, comp, rt.rs.includees));
         rt.rs.includees = NIL;
     }
     rt.rs.ld_stuff = NIL;
@@ -132,43 +133,43 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, t_val: [*:0]const u8) 
         if (rt.rs.verbosity != 0 or (rt.rs.making and !rt.rs.mkexports and !rt.rs.mksources)) {
             word.print("checking types in {s}\n", .{t_val});
         }
-        types_mod.checktypes(heap, core);
+        types_mod.checktypes(heap, core, comp);
     }
 
-    const h_val = resolveExports(heap, core);
+    const h_val = resolveExports(heap, core, comp);
 
-    computeBereavedNames(heap, core);
+    computeBereavedNames(heap, core, comp);
 
-    reportBereavedExports(heap, core, h_val);
+    reportBereavedExports(heap, core, comp, h_val);
 
     reportUnusedDefinitions(heap, core);
 
     if (core.SYNERR == 0) {
         var x = heap_mod.filDefs(heap_mod.h(heap.files));
-        cs.lfrule = 0;
+        comp.lfrule = 0;
         while (x != NIL) : (x = heap_mod.t(x)) {
             if (heap_mod.idType(heap_mod.h(x)) != word.type_t) {
-                cs.current_id = heap_mod.h(x);
-                cs.polyshowerror = 0;
+                comp.current_id = heap_mod.h(x);
+                comp.polyshowerror = 0;
                 heap_mod.tp(heap_mod.h(x)).* = trans_mod.codegen(heap, heap_mod.idVal(heap_mod.h(x)));
-                if (cs.polyshowerror != 0) {
+                if (comp.polyshowerror != 0) {
                     heap_mod.tp(heap_mod.h(x)).* = word.UNDEF;
                 }
             }
         }
-        cs.current_id = 0;
-        if (cs.lfrule != 0 and (rt.rs.verbosity != 0 or rt.rs.making)) {
-            word.print("grammar optimisation: {} common left factors found\n", .{cs.lfrule});
+        comp.current_id = 0;
+        if (comp.lfrule != 0 and (rt.rs.verbosity != 0 or rt.rs.making)) {
+            word.print("grammar optimisation: {} common left factors found\n", .{comp.lfrule});
         }
-        if (rt.rs.initialising != 0 and cs.ND != NIL) {
+        if (rt.rs.initialising != 0 and comp.ND != NIL) {
             errors.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, if (rt.rs.okprel) "stdenv" else "prelude")}});
         }
         if (rt.rs.initialising != 0) {
-            dump.makedump(heap, core);
+            dump.makedump(heap, core, comp);
         } else if (files.isMirandaSource(t_val) != 0) {
-            if (cs.ND == NIL) {
+            if (comp.ND == NIL) {
                 dump.fixexports(heap);
-                dump.makedump(heap, core);
+                dump.makedump(heap, core, comp);
                 dump.unfixexports(heap);
             } else {
                 var obf: [abi.pnlim]u8 = undefined;
@@ -181,7 +182,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, t_val: [*:0]const u8) 
         if (core.errline == 0 and core.errs != 0 and word.strcmp(strtab.strOf(strtab.table, heap_mod.h(core.errs)), rt.rs.current_script.?) == 0) {
             core.errline = heap_mod.t(core.errs);
         }
-        cs.ND = heap_mod.alfasort(cs.ND);
+        comp.ND = heap_mod.alfasort(comp.ND);
         core.loading = 0;
         return;
     }
@@ -190,7 +191,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, t_val: [*:0]const u8) 
         errors.fatal("panic: cannot compile %s\n", .{.{@as([*:0]const u8, if (rt.rs.okprel) "stdenv" else "prelude")}});
     }
     rt.rs.oldfiles = heap.files;
-    heap_mod.unload();
+    heap_mod.unload(comp);
     if (files.isMirandaSource(t_val) != 0) {
         var obf: [abi.pnlim]u8 = undefined;
         _ = word.strcpy(&obf, t_val);
@@ -242,10 +243,10 @@ fn resolveExportFileList(heap: *Heap, core: *core_state.CoreState) void {
 /// (previously-exported-but-now-hidden names) removed, undefined/redundant
 /// names reported and folded back into `cs.ND`/dropped. Returns the export-list
 /// declaration node (for error-location reporting by the caller), or `NIL`.
-fn resolveExports(heap: *Heap, core: *core_state.CoreState) Word {
+fn resolveExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState) Word {
     var h_val: Word = NIL;
     if (core.SYNERR == 0 and rt.rs.exports != NIL) {
-        if (cs.ND != NIL) {
+        if (comp.ND != NIL) {
             rt.rs.exports = NIL;
         } else {
             var e = rt.rs.embargoes;
@@ -258,7 +259,7 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState) Word {
             while (e != NIL) : (e = heap_mod.t(e)) {
                 if (heap_mod.idType(heap_mod.h(e)) == word.undef_t) {
                     u = heap_mod.cons(heap_mod.h(e), u);
-                    cs.ND = abi.add1(heap, heap_mod.h(e), cs.ND);
+                    comp.ND = abi.add1(heap, heap_mod.h(e), comp.ND);
                 } else if (abi.member(heap, rt.rs.exports, heap_mod.h(e)) == 0) {
                     n = heap_mod.cons(heap_mod.h(e), n);
                 }
@@ -273,7 +274,7 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState) Word {
             while (e != NIL) : (e = heap_mod.t(e)) {
                 if (heap_mod.idType(heap_mod.h(e)) == word.undef_t) {
                     u = heap_mod.cons(heap_mod.h(e), u);
-                    cs.ND = abi.add1(heap, heap_mod.h(e), cs.ND);
+                    comp.ND = abi.add1(heap, heap_mod.h(e), comp.ND);
                 } else if (heap_mod.idType(heap_mod.h(e)) == word.type_t and heap_mod.tClass(heap_mod.h(e)) == word.algebraic_t) {
                     c_ctr = heap_mod.shunt(heap_mod.tInfo(heap_mod.h(e)), c_ctr);
                 }
@@ -314,8 +315,8 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState) Word {
 /// with no explicit export list, from the whole file) plus from free ids, that
 /// aren't themselves exported — candidates for the "incomplete export list"
 /// warning.
-fn computeBereavedNames(heap: *Heap, core: *core_state.CoreState) void {
-    if (core.SYNERR == 0 and cs.ND == NIL and (rt.rs.exports != NIL or heap_mod.t(heap.files) != NIL)) {
+fn computeBereavedNames(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState) void {
+    if (core.SYNERR == 0 and comp.ND == NIL and (rt.rs.exports != NIL or heap_mod.t(heap.files) != NIL)) {
         var e1 = rt.rs.exports;
         var r: Word = NIL;
         var e: Word = NIL;
@@ -372,9 +373,9 @@ fn computeBereavedNames(heap: *Heap, core: *core_state.CoreState) void {
 
 /// If the export list is missing a bereaved typename, warns and (if `h_val`,
 /// the export-list declaration node, is known) reports its source location.
-fn reportBereavedExports(heap: *Heap, core: *core_state.CoreState, h_val: Word) void {
+fn reportBereavedExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, h_val: Word) void {
     if (rt.rs.exports != NIL and rt.rs.bereaved != NIL) {
-        const b = abi.intersection(heap, rt.rs.bereaved, cs.newtyps);
+        const b = abi.intersection(heap, rt.rs.bereaved, comp.newtyps);
         if (b != NIL) {
             word.print("warning, export list is incomplete - missing typename: ", .{});
             abi.printlist(heap, @constCast(""), b);
@@ -429,7 +430,7 @@ fn reportUnusedDefinitions(heap: *Heap, core: *core_state.CoreState) void {
 
 /// Resolves a list of `%include` file nodes (`includees_val`) into a heap list
 /// of loaded file nodes, detecting and reporting clashes. Returns the resolved list.
-pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, includees_val: Word) Word {
+pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, includees_val: Word) Word {
     var includees_list = includees_val;
     var result: Word = NIL;
     var tclashes: Word = NIL;
@@ -470,8 +471,8 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, includees_val: Word)
         rt.rs.magic = false;
         _ = abi.sigsetjmp(&rt.rs.env, 1);
         while (includees_list != NIL and rt.rs.make_status == 0) {
-            dump.undump(heap, core, strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(heap_mod.h(includees_list)))));
-            if (cs.ND != NIL or (heap.files == NIL and rt.rs.oldfiles != NIL)) {
+            dump.undump(heap, core, comp, strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(heap_mod.h(includees_list)))));
+            if (comp.ND != NIL or (heap.files == NIL and rt.rs.oldfiles != NIL)) {
                 rt.rs.make_status = 1;
             }
             includees_list = heap_mod.t(includees_list);
@@ -495,7 +496,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, includees_val: Word)
 
         f = word.fopen(ls.dicp, "r");
         if (f != null) {
-            x = abi.loadScript(f.?, @constCast(fn_str), heap_mod.h(heap_mod.t(heap_mod.h(includees_list))), heap_mod.t(heap_mod.t(heap_mod.h(includees_list))), 0);
+            x = abi.loadScript(core, comp, f.?, @constCast(fn_str), heap_mod.h(heap_mod.t(heap_mod.h(includees_list))), heap_mod.t(heap_mod.t(heap_mod.h(includees_list))), 0);
             _ = word.fclose(f.?);
         }
 
@@ -512,8 +513,8 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, includees_val: Word)
             }
         }
 
-        if (f != null and cs.BAD_DUMP == 0 and x != NIL and cs.ND == NIL and cs.CLASHES == NIL and cs.ALIASES == NIL and cs.TSUPPRESSED == NIL and cs.DETROP == NIL and cs.MISSING == NIL) {
-            if (cs.TORPHANS != 0) {
+        if (f != null and comp.BAD_DUMP == 0 and x != NIL and comp.ND == NIL and comp.CLASHES == NIL and comp.ALIASES == NIL and comp.TSUPPRESSED == NIL and comp.DETROP == NIL and comp.MISSING == NIL) {
+            if (comp.TORPHANS != 0) {
                 rt.rs.rfl = heap_mod.shunt(x, rt.rs.rfl);
             }
             var y = x;
@@ -578,10 +579,10 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, includees_val: Word)
             }
 
             result = abi.append1(result, x);
-            if (heap_mod.h(cs.FBS) == NIL) {
-                cs.FBS = heap_mod.t(cs.FBS);
+            if (heap_mod.h(comp.FBS) == NIL) {
+                comp.FBS = heap_mod.t(comp.FBS);
             } else {
-                heap_mod.hp(cs.FBS).* = heap_mod.cons(heap_mod.t(heap_mod.h(heap_mod.h(includees_list))), heap_mod.h(cs.FBS));
+                heap_mod.hp(comp.FBS).* = heap_mod.cons(heap_mod.t(heap_mod.h(heap_mod.h(includees_list))), heap_mod.h(comp.FBS));
             }
             includees_list = heap_mod.t(includees_list);
             continue;
@@ -589,7 +590,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, includees_val: Word)
 
         if (f == null) {
             result = heap_mod.cons(heap_mod.makeFil(fn_str, files.fileMtime(fn_str), 0, NIL), result);
-        } else if (x == NIL and cs.BAD_DUMP != -2) {
+        } else if (x == NIL and comp.BAD_DUMP != -2) {
             result = abi.append1(result, rt.rs.oldfiles);
             rt.rs.oldfiles = NIL;
         } else {
@@ -602,43 +603,43 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, includees_val: Word)
 
         if (f == null) {
             word.print("\"{s}\" cannot be loaded\n", .{fn_str});
-            cs.CLASHES = NIL;
-            cs.DETROP = NIL;
-            cs.MISSING = NIL;
-        } else if (cs.BAD_DUMP == -2) {
-            abi.printlist(heap, @constCast("aliasing causes nameclashes: "), cs.CLASHES);
-            cs.CLASHES = NIL;
-        } else if (cs.ALIASES != NIL or cs.TSUPPRESSED != NIL) {
-            if (cs.ALIASES != NIL) {
-                word.print("alias fails (name{s} not found in file", .{@as([*:0]const u8, if (heap_mod.t(cs.ALIASES) == NIL) "" else "s")});
-                abi.printlist(heap, @constCast("): "), cs.ALIASES);
-                cs.ALIASES = NIL;
+            comp.CLASHES = NIL;
+            comp.DETROP = NIL;
+            comp.MISSING = NIL;
+        } else if (comp.BAD_DUMP == -2) {
+            abi.printlist(heap, @constCast("aliasing causes nameclashes: "), comp.CLASHES);
+            comp.CLASHES = NIL;
+        } else if (comp.ALIASES != NIL or comp.TSUPPRESSED != NIL) {
+            if (comp.ALIASES != NIL) {
+                word.print("alias fails (name{s} not found in file", .{@as([*:0]const u8, if (heap_mod.t(comp.ALIASES) == NIL) "" else "s")});
+                abi.printlist(heap, @constCast("): "), comp.ALIASES);
+                comp.ALIASES = NIL;
             }
-            if (cs.TSUPPRESSED != NIL) {
-                word.print("illegal alias (cannot suppress typename{s}):", .{@as([*:0]const u8, if (heap_mod.t(cs.TSUPPRESSED) == NIL) "" else "s")});
-                var ts = cs.TSUPPRESSED;
+            if (comp.TSUPPRESSED != NIL) {
+                word.print("illegal alias (cannot suppress typename{s}):", .{@as([*:0]const u8, if (heap_mod.t(comp.TSUPPRESSED) == NIL) "" else "s")});
+                var ts = comp.TSUPPRESSED;
                 while (ts != NIL) : (ts = heap_mod.t(ts)) {
                     word.print(" -{s}", .{heap_mod.getId(heap_mod.h(ts))});
                 }
                 _ = word.putchar('\n');
             }
-        } else if (cs.BAD_DUMP != 0) {
+        } else if (comp.BAD_DUMP != 0) {
             word.print("\"{s}\" has bad data in dump file\n", .{fn_str});
         } else if (x == NIL) {
             word.print("\"{s}\" contains syntax error\n", .{fn_str});
-        } else if (cs.ND != NIL) {
+        } else if (comp.ND != NIL) {
             word.print("\"{s}\" contains undefined names or type errors\n", .{fn_str});
         }
 
-        if (cs.ND == NIL and cs.CLASHES != NIL) {
+        if (comp.ND == NIL and comp.CLASHES != NIL) {
             word.print("\"{s}\" ", .{fn_str});
-            abi.printlist(heap, @constCast("causes nameclashes: "), cs.CLASHES);
+            abi.printlist(heap, @constCast("causes nameclashes: "), comp.CLASHES);
         }
 
-        while (cs.DETROP != NIL and getTag(heap, heap_mod.h(cs.DETROP)) == .CONS) {
-            const fa = heap_mod.h(heap_mod.t(heap_mod.h(cs.DETROP)));
-            const ta = heap_mod.t(heap_mod.t(heap_mod.h(cs.DETROP)));
-            const pn = heap_mod.getId(heap_mod.h(heap_mod.h(cs.DETROP)));
+        while (comp.DETROP != NIL and getTag(heap, heap_mod.h(comp.DETROP)) == .CONS) {
+            const fa = heap_mod.h(heap_mod.t(heap_mod.h(comp.DETROP)));
+            const ta = heap_mod.t(heap_mod.t(heap_mod.h(comp.DETROP)));
+            const pn = heap_mod.getId(heap_mod.h(heap_mod.h(comp.DETROP)));
             if (fa == -1 or ta == -1) {
                 word.print("`{s}' has binding of wrong kind ", .{pn});
                 word.print("(should be \"= value\" not \"== type\")\n", .{});
@@ -646,22 +647,22 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, includees_val: Word)
                 word.print("`{s}' has == binding of wrong arity ", .{pn});
                 word.print("(formal has arity {}, actual has arity {})\n", .{ fa, ta });
             }
-            cs.DETROP = heap_mod.t(cs.DETROP);
+            comp.DETROP = heap_mod.t(comp.DETROP);
         }
 
-        if (cs.DETROP != NIL) {
-            word.print("illegal parameter binding (name{s} not %free in file", .{@as([*:0]const u8, if (heap_mod.t(cs.DETROP) == NIL) "" else "s")});
-            abi.printlist(heap, @constCast("): "), cs.DETROP);
-            cs.DETROP = NIL;
+        if (comp.DETROP != NIL) {
+            word.print("illegal parameter binding (name{s} not %free in file", .{@as([*:0]const u8, if (heap_mod.t(comp.DETROP) == NIL) "" else "s")});
+            abi.printlist(heap, @constCast("): "), comp.DETROP);
+            comp.DETROP = NIL;
         }
 
-        if (cs.MISSING != NIL) {
-            word.print("missing parameter binding{s}: ", .{@as([*:0]const u8, if (heap_mod.t(cs.MISSING) == NIL) "" else "s")});
+        if (comp.MISSING != NIL) {
+            word.print("missing parameter binding{s}: ", .{@as([*:0]const u8, if (heap_mod.t(comp.MISSING) == NIL) "" else "s")});
         }
 
-        while (cs.MISSING != NIL) {
-            word.printErr("{s}{s}", .{ strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(cs.MISSING))), @as([*:0]const u8, if (heap_mod.t(cs.MISSING) == NIL) ";\n" else ",") });
-            cs.MISSING = heap_mod.t(cs.MISSING);
+        while (comp.MISSING != NIL) {
+            word.printErr("{s}{s}", .{ strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(comp.MISSING))), @as([*:0]const u8, if (heap_mod.t(comp.MISSING) == NIL) ";\n" else ",") });
+            comp.MISSING = heap_mod.t(comp.MISSING);
         }
 
         word.printErr("compilation abandoned\n", .{});

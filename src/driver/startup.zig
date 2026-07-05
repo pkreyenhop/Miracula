@@ -107,13 +107,13 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     }
 
     heap.files = NIL;
-    dump.undump(heap, core_state.s, @as([*:0]const u8, @ptrCast(&rt.rs.PRELUDE)));
+    dump.undump(heap, core_state.s, cs, @as([*:0]const u8, @ptrCast(&rt.rs.PRELUDE)));
     rt.rs.okprel = true;
     abi.mkprivate(heap, heap_mod.filDefs(heap_mod.h(heap.files)));
     heap.files = NIL;
 
     if (!rt.rs.nostdenv) {
-        dump.undump(heap, core_state.s, @as([*:0]const u8, @ptrCast(&rt.rs.STDENV)));
+        dump.undump(heap, core_state.s, cs, @as([*:0]const u8, @ptrCast(&rt.rs.STDENV)));
         while (heap.files != NIL) {
             rt.rs.primenv = heap_mod.alfasort(abi.append1(rt.rs.primenv, heap_mod.filDefs(heap_mod.h(heap.files))));
             heap.files = heap_mod.t(heap.files);
@@ -163,7 +163,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     if (abi.isatty(0) != 0) {
         lineedit.init(rt.allocator, rt.io);
     }
-    repl.commandLoop(heap, core_state.s, @constCast(initscript));
+    repl.commandLoop(heap, core_state.s, cs, @constCast(initscript));
     return 0;
 }
 
@@ -406,7 +406,7 @@ fn runExportsMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
         if (s == ls.dicp) {
             _ = abi.keep(ls.dicp);
         }
-        dump.undump(heap, core_state.s, s);
+        dump.undump(heap, core_state.s, cs, s);
         if (heap.files == NIL or cs.ND != NIL) {
             continue;
         }
@@ -464,7 +464,7 @@ fn runSourcesMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
             if (s == ls.dicp) {
                 _ = abi.keep(ls.dicp);
             }
-            dump.undump(heap, core_state.s, s);
+            dump.undump(heap, core_state.s, cs, s);
             var f = if (heap.files == NIL) rt.rs.oldfiles else heap.files;
             while (f != NIL) : (f = heap_mod.t(f)) {
                 const filename_str = heap_mod.getFil(heap_mod.h(f)).?;
@@ -490,7 +490,7 @@ fn runMakeMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) voi
         if (s == ls.dicp) {
             _ = abi.keep(ls.dicp);
         }
-        dump.undump(heap, core_state.s, s);
+        dump.undump(heap, core_state.s, cs, s);
         if (cs.ND != NIL or (heap.files == NIL and rt.rs.oldfiles != NIL)) {
             if (rt.rs.make_status == 1) {
                 rt.rs.make_status = 0;

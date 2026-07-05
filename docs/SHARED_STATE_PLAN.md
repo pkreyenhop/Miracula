@@ -938,6 +938,47 @@ Verified the same way as `EvalState`: `zig build` clean, `lint` at the
 byte-identical manual REPL smoke test (`1+2` / syntax-error recovery / `/f`)
 diffed against the pre-CoreState commit via `git stash`.
 
+**`CompilerState` (~419 touches, 10 files) — done, 2026-07-05.** Same shape as
+`CoreState`: threaded `comp: *CompilerState` through the already-`core`-
+threaded cluster (`loadfile`/`resolveExports`/`computeBereavedNames`/
+`reportBereavedExports`/`mkincludes` in module_loader.zig; `undump`/
+`makedump`/`readoption` in dump.zig; `checkfbs`/`checktypes` in types.zig;
+`cmdFiles`/`command`/`allnamescom` in commands.zig; `commandLoop`/`obey`/
+`evaluateRepl` in repl.zig) plus a new cluster discovered this tier in
+`heap.zig`'s binary dump/undump serializer: `dumpScript`/`loadScript`/
+`bindparams`/`unscramble`/`loadDefs`/`unload`/`okdump`/`geterrlin` — all
+tractable because their callers are the same already-threaded functions
+above. External callers with no narrower value pass the ambient `cs`
+singleton directly (`cs` was already every file's local alias for
+`compiler_state.cs`, same role `core_state.s` played for `CoreState`).
+
+Confirms the CoreState-tier finding rather than complicating it: the
+remaining ~236 touches (`types.zig` 202, `trans.zig` 34) are the
+type-checker's own working state (`NEW`/`SUBST`/`tvcount`/`ATNAMES`/etc.) —
+not occasional reads but the substitution/unification machinery's core
+mutable state, read and written from inside the `etype`/`etypeAtom`/
+`metaTcheck`/`compDeps`/`abstrCheck`/`mcheckfbs`/`inferType` family, which is
+one giant mutually-recursive component (`etype` alone has 27 call sites,
+`etypeAtom` 30 internal touches). This is the same ambient-exception shape
+as Tier 3's `bases()`/`gc()` for the heap: a core recursive algorithm's
+state, not per-request data a caller would parameterize. Left ambient,
+unchanged.
+
+Also found (and fixed in-place, not a regression — heap.zig aliases the
+`core_state` import as `core` rather than `core_state`, so the Tier-4-
+increment-two grep for `core_state\.s\.` silently missed it): `okdump`/
+`geterrlin`/`dumpScript`/`loadScript` also touch `core.s.*` directly, now
+threaded alongside their new `comp` params in the same pass. `bases()`/
+`gc()`/`makeSlow()`'s own `core.s.*` reads stay ambient, matching Tier 3/4's
+GC-root/hot-allocator precedent.
+
+Verified identically to the prior two increments: `zig build` clean, `lint`
+at the 16-warning baseline, direct `main-tests` binary 176/176, `test-mira`
+exit 0, `test-golden` 43/44 (same pre-existing failure), and a byte-identical
+manual REPL smoke test (arithmetic / syntax-error recovery / `%include` of a
+missing file / `/f`) diffed against the pre-CompilerState commit via
+`git stash`.
+
 ### Phase 6 — De-globalize & document *(close-out; conditional on Tier 3 + Tier 4)*
 Delete the global `var interp`; `main()` constructs it explicitly
 (`var interp = Interp.init(gpa); defer interp.deinit(); return interp.run(args);`).

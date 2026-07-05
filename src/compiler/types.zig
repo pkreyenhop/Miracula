@@ -1644,13 +1644,13 @@ fn mcheckfbs(heap: *Heap) errors.MiraError!void {
 }
 
 /// Type-check the grammar's free/bound symbols.
-pub fn checkfbs(heap: *Heap, core: *core_state.CoreState) void {
-    const oldte = cs.TYPERRS;
+pub fn checkfbs(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState) void {
+    const oldte = comp.TYPERRS;
     var formals: Word = undefined;
-    cs.lasthereinc = 0;
-    while (cs.FBS != NIL) {
-        cs.hereinc = h(heap, h(heap, cs.FBS));
-        formals = t(heap, h(heap, cs.FBS));
+    comp.lasthereinc = 0;
+    while (comp.FBS != NIL) {
+        comp.hereinc = h(heap, h(heap, comp.FBS));
+        formals = t(heap, h(heap, comp.FBS));
         while (formals != NIL) {
             var t_val: Word = undefined;
             const t1 = fixType(heap, t(heap, t(heap, h(heap, formals))));
@@ -1658,12 +1658,12 @@ pub fn checkfbs(heap: *Heap, core: *core_state.CoreState) void {
                 formals = t(heap, formals);
                 continue;
             }
-            cs.current_id = h(heap, t(heap, h(heap, formals))); // nb datapair(orig,0) not id
+            comp.current_id = h(heap, t(heap, h(heap, formals))); // nb datapair(orig,0) not id
             t_val = subst(heap, etype(heap, theVal(heap, h(heap, h(heap, formals))), NIL, NIL) catch return);
             if (subsumes(heap, t_val, instantiate(heap, t1)) == 0) {
-                cs.TYPERRS += 1;
+                comp.TYPERRS += 1;
                 locateInc(heap);
-                _ = word.print("binding for parameter `{s}' has wrong type\n", .{strtab.strOf(strtab.table, h(heap, cs.current_id))});
+                _ = word.print("binding for parameter `{s}' has wrong type\n", .{strtab.strOf(strtab.table, h(heap, comp.current_id))});
                 _ = word.print("required :: ", .{});
                 outType(heap, t(heap, t(heap, h(heap, formals))));
                 _ = word.print("\n  actual :: ", .{});
@@ -1673,12 +1673,12 @@ pub fn checkfbs(heap: *Heap, core: *core_state.CoreState) void {
             tp(heap, t(heap, h(heap, h(heap, formals)))).* = codegen(heap, theVal(heap, h(heap, h(heap, formals))));
             formals = t(heap, formals);
         }
-        cs.FBS = t(heap, cs.FBS);
+        comp.FBS = t(heap, comp.FBS);
     }
-    if (cs.TYPERRS > oldte) { // badly typed parameter bindings, so give up
-        cs.TABSTRS = NIL;
-        cs.NT = NIL;
-        cs.R = NIL;
+    if (comp.TYPERRS > oldte) { // badly typed parameter bindings, so give up
+        comp.TABSTRS = NIL;
+        comp.NT = NIL;
+        comp.R = NIL;
         _ = word.printErr("compilation abandoned\n", .{});
         core.SYNERR = 1;
     }
@@ -2673,32 +2673,32 @@ pub fn tsetup() void {
 }
 
 /// Type-check every definition in the current script.
-pub fn checktypes(heap: *Heap, core: *core_state.CoreState) void {
-    cs.ATNAMES = 0;
-    cs.TYPERRS = 0;
-    cs.NT = NIL;
-    cs.R = NIL;
-    cs.SBND = NIL;
-    cs.ND = NIL;
+pub fn checktypes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState) void {
+    comp.ATNAMES = 0;
+    comp.TYPERRS = 0;
+    comp.NT = NIL;
+    comp.R = NIL;
+    comp.SBND = NIL;
+    comp.ND = NIL;
     outer: {
         if (rt.rs.rfl != NIL) {
-            readoption(heap);
+            readoption(heap, comp);
         }
         var s = reverse(t(heap, h(heap, heap.files)));
         while (s != NIL) {
             compDeps(heap, h(heap, s)) catch break :outer;
             s = t(heap, s);
         }
-        cs.R = tclos(heap, sortrel(heap, cs.R));
-        if (cs.FBS != NIL) {
+        comp.R = tclos(heap, sortrel(heap, comp.R));
+        if (comp.FBS != NIL) {
             mcheckfbs(heap) catch break :outer;
         }
-        abstrMcheck(heap, cs.TABSTRS) catch break :outer;
+        abstrMcheck(heap, comp.TABSTRS) catch break :outer;
     }
-    if (cs.TYPERRS != 0) {
-        cs.TABSTRS = NIL;
-        cs.NT = NIL;
-        cs.R = NIL;
+    if (comp.TYPERRS != 0) {
+        comp.TABSTRS = NIL;
+        comp.NT = NIL;
+        comp.R = NIL;
         _ = word.printErr("typecheck cannot proceed - compilation abandoned\n", .{});
         core.SYNERR = 1;
         return;
@@ -2710,25 +2710,25 @@ pub fn checktypes(heap: *Heap, core: *core_state.CoreState) void {
     if (rt.rs.fnts != NIL) {
         genbnft(heap);
     }
-    cs.R = msc(heap, cs.R);
-    var s = tsort(heap, cs.R);
-    cs.NT = NIL;
-    cs.R = NIL;
+    comp.R = msc(heap, comp.R);
+    var s = tsort(heap, comp.R);
+    comp.NT = NIL;
+    comp.R = NIL;
     while (s != NIL) {
         inferType(heap, h(heap, s));
         s = t(heap, s);
     }
-    checkfbs(heap, core);
-    while (cs.TABSTRS != NIL) {
-        abstrCheck(heap, h(heap, cs.TABSTRS)) catch {};
-        cs.TABSTRS = t(heap, cs.TABSTRS);
+    checkfbs(heap, core, comp);
+    while (comp.TABSTRS != NIL) {
+        abstrCheck(heap, h(heap, comp.TABSTRS)) catch {};
+        comp.TABSTRS = t(heap, comp.TABSTRS);
     }
-    if (cs.SBND != NIL) {
-        printlist(heap, "SPECIFIED BUT NOT DEFINED: ", alfasort(cs.SBND));
-        cs.SBND = NIL;
+    if (comp.SBND != NIL) {
+        printlist(heap, "SPECIFIED BUT NOT DEFINED: ", alfasort(comp.SBND));
+        comp.SBND = NIL;
     }
     fixshows(heap);
-    cs.lastloc = 0;
+    comp.lastloc = 0;
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.validate();
         @import("trans.zig").validate(heap);

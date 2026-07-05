@@ -8,7 +8,8 @@ const word = @import("../runtime/word.zig");
 const errors = @import("../runtime/errors.zig");
 const strtab = @import("../runtime/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
-const cs = @import("compiler_state.zig").cs;
+const compiler_state = @import("compiler_state.zig");
+const cs = compiler_state.cs;
 const abi = @import("../runtime/main_clib.zig");
 const lex_state = @import("../parser/lex_state.zig");
 const heap_mod = @import("../runtime/heap.zig");
@@ -189,15 +190,15 @@ pub fn sigdefer(_: c_int) callconv(.c) void {
 
 /// Repairs type references after loading a dump: re-resolves STRCONS nodes and
 /// reports types that are in the dump but missing from the current scope (`tlost`).
-pub fn readoption(heap: *Heap) void {
+pub fn readoption(heap: *Heap, comp: *compiler_state.CompilerState) void {
     var f: Word = undefined;
     var t_val: Word = undefined;
 
     pfrts = NIL;
     tlost = NIL;
 
-    if (cs.FBS != NIL) {
-        f = cs.FBS;
+    if (comp.FBS != NIL) {
+        f = comp.FBS;
         while (f != NIL) : (f = t(f)) {
             t_val = t(h(f));
             while (t_val != NIL) : (t_val = t(t_val)) {
@@ -226,7 +227,7 @@ pub fn readoption(heap: *Heap) void {
     }
 
     if (tlost == NIL) return;
-    cs.TYPERRS += 1;
+    comp.TYPERRS += 1;
     word.print("cs.MISSING TYPENAME{s}\n", .{if (t(tlost) == NIL) "" else "S"});
     word.print("the following type{s} no name in this scope:\n", .{if (t(tlost) == NIL) " is needed but has" else "s are needed but have"});
     while (tlost != NIL) {
@@ -277,7 +278,7 @@ inline fn pnVal(x: Word) Word {
 /// Loads `t_val` from its pre-compiled dump file (.mx suffix) if the dump is newer
 /// than the source, otherwise falls back to `loadfile()`. Handles the case where
 /// the source does not exist (initialising-only panic) or the dump is missing/stale.
-pub fn undump(heap: *Heap, core: *core_state.CoreState, t_val: [*:0]const u8) void {
+pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, t_val: [*:0]const u8) void {
     var obf: [abi.pnlim]u8 = undefined;
     var f: ?*word.FILE = null;
     var flen: Word = undefined;
@@ -286,7 +287,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, t_val: [*:0]const u8) vo
     var oldsig: usize = 0;
 
     if (files.isMirandaSource(t_val) == 0 and rt.rs.initialising == 0) {
-        module_loader.loadfile(heap, core, t_val);
+        module_loader.loadfile(heap, core, comp, t_val);
         return;
     }
 
@@ -305,42 +306,42 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, t_val: [*:0]const u8) vo
         _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
     }
     if (t2 == 0 or t2 < t1) {
-        module_loader.loadfile(heap, core, t_val);
+        module_loader.loadfile(heap, core, comp, t_val);
         return;
     }
 
     f = word.fopen(&obf, "r");
     if (f == null) {
         word.print("cannot open {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
-        module_loader.loadfile(heap, core, t_val);
+        module_loader.loadfile(heap, core, comp, t_val);
         return;
     }
 
     rt.rs.current_script = @constCast(t_val);
     core.loading = 1;
     rt.rs.oldfiles = NIL;
-    heap_mod.unload();
+    heap_mod.unload(comp);
 
     if (rt.rs.initialising == 0 and !rt.rs.making) {
         rt.rs.sigflag = 0;
         oldsig = signals_mod.signals(abi.SIGINT, @intFromPtr(&sigdefer));
     }
 
-    heap.files = abi.loadScript(f.?, @constCast(t_val), NIL, NIL, if (!rt.rs.making and rt.rs.initialising == 0) 1 else 0);
+    heap.files = abi.loadScript(core, comp, f.?, @constCast(t_val), NIL, NIL, if (!rt.rs.making and rt.rs.initialising == 0) 1 else 0);
     _ = word.fclose(f.?);
 
-    if (cs.BAD_DUMP != 0) {
+    if (comp.BAD_DUMP != 0) {
         _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
-        heap_mod.unload();
-        cs.CLASHES = NIL;
+        heap_mod.unload(comp);
+        comp.CLASHES = NIL;
         heap.stackp = heap.dstack;
         word.print("warning: {s} contains incorrect data (file removed)\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
-        if (cs.BAD_DUMP == -1) {
+        if (comp.BAD_DUMP == -1) {
             word.print("(unrecognised dump format)\n", .{});
-        } else if (cs.BAD_DUMP == 1) {
+        } else if (comp.BAD_DUMP == 1) {
             word.print("(wrong source file)\n", .{});
         } else {
-            word.print("(error {})\n", .{cs.BAD_DUMP});
+            word.print("(error {})\n", .{comp.BAD_DUMP});
         }
     }
 
@@ -355,27 +356,27 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, t_val: [*:0]const u8) vo
         }
     }
 
-    if (cs.CLASHES != NIL) {
+    if (comp.CLASHES != NIL) {
         if (rt.rs.ideep == 0) {
             word.print("cannot load {s} ", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
-            abi.printlist(heap, @constCast("due to name clashes: "), heap_mod.alfasort(cs.CLASHES));
+            abi.printlist(heap, @constCast("due to name clashes: "), heap_mod.alfasort(comp.CLASHES));
         }
-        heap_mod.unload();
+        heap_mod.unload(comp);
         core.loading = 0;
         return;
     }
 
-    if (cs.BAD_DUMP != 0 or heap_mod.srcUpdate() != 0 or heap.files == NIL or cs.ND != NIL) {
+    if (comp.BAD_DUMP != 0 or heap_mod.srcUpdate() != 0 or heap.files == NIL or comp.ND != NIL) {
         if (rt.rs.initialising != 0) {
             errors.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
         }
-        module_loader.loadfile(heap, core, t_val);
+        module_loader.loadfile(heap, core, comp, t_val);
     } else {
         if (rt.rs.verbosity != 0 or rt.rs.magic or rt.rs.mkexports) {
             if (heap.files == NIL) {
                 word.print("{s} contains syntax error\n", .{std.mem.span(t_val)});
             } else {
-                if (cs.ND != NIL) {
+                if (comp.ND != NIL) {
                     word.print("{s} contains undefined names or type errors\n", .{std.mem.span(t_val)});
                 } else if (!rt.rs.making and !rt.rs.magic) {
                     word.print("{s}\n", .{std.mem.span(t_val)});
@@ -393,7 +394,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, t_val: [*:0]const u8) vo
 /// Writes a binary dump of the current heap state to the .mx file corresponding to
 /// `rs.current_script`. Installs `sigdefer` during the write so a SIGINT cannot
 /// leave a partial dump; re-raises any deferred signal afterward.
-pub fn makedump(heap: *Heap, core: *core_state.CoreState) void {
+pub fn makedump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState) void {
     const obf = &rt.rs.linebuf;
     var f: ?*word.FILE = null;
     _ = word.strcpy(obf, rt.rs.current_script.?);
@@ -412,7 +413,7 @@ pub fn makedump(heap: *Heap, core: *core_state.CoreState) void {
     }
     rt.rs.unlinkme = @ptrCast(obf);
     abi.setprefix(rt.rs.current_script.?);
-    abi.dumpScript(heap.files, f.?);
+    abi.dumpScript(core, comp, heap.files, f.?);
     rt.rs.unlinkme = null;
     _ = word.fclose(f.?);
 }
