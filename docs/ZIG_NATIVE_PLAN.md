@@ -372,15 +372,33 @@ front door is C.
    its own specialised scanning after `%` (a directive keyword, distinct from
    plain identifiers; `"..."`/`<...>` pathnames with different quoting rules
    than string literals; a brace-delimited, possibly multi-line binding/spec
-   block for `%include`'s bindings and `%free`'s signature). That block is
-   explicitly `{`/`}`-delimited, not layout/offside-sensitive, so
-   `directives.zig` can scan it by brace-depth directly off `lexer.tokenize`'s
-   output, *before* `applyLayout` runs — but the free-binding/signature
-   grammar (`var = exp` / `tform == type`) needs an expression/type parser
-   that doesn't fully exist in `syntax/` yet. Likely shape: keep binding/spec
-   RHS as raw token spans in the `Directive` value for this step, deferring
+   block for `%include`'s bindings and `%free`'s signature).
+   **Landed** (2026-07-06): `src/syntax/directives.zig`'s `Scanner` — scans
+   directly over `Source` bytes (not `lexer.tokenize`'s output; a directive's
+   pathname/keyword rules are different enough from ordinary tokens that
+   scanning raw bytes was simpler than threading directive-awareness through
+   the general lexer). Produces a `Directive` value per `%include`/`%export`/
+   `%free` with the bindings/spec/parts-list kept as raw text (deferring
    deep parsing to whichever of `semantics/lower.zig` or the ported
-   `semantics/infer.zig` needs it.
+   `semantics/infer.zig` needs it, as planned) plus fully-parsed alias lists
+   (`new/old`, `-old`) since that grammar is simple enough to scan directly.
+   `%insert`/`%list`/`%nolist`/`%bnf`/`%lex`/`%begin` are recognized but
+   explicitly not processed (see the file's header for why each is out of
+   scope). 8 tests, drawn from docs/man/mira.man.ms §27's own worked examples
+   (`%include "matrices" {elem==num; ...}`, `%include "mike" -g mike_f/f`)
+   where possible. **Not yet done:** wiring this into `lexer.zig`/a real
+   pipeline (nothing calls `Scanner` yet — same "additive, independently
+   tested first" order as `source.zig`/`lexer.zig`/`layout.zig`), path
+   resolution (`<...>`/`~`/prefix-relative — needs interpreter context), and
+   `semantics/modules.zig` itself (the actual %include/%export/%free
+   semantics — aliasing effects, free-binding substitution, cycle detection,
+   dependency ordering — module_loader.zig's real logic, 692 lines, is the
+   reference for *intended* behaviour but none of its wiring to this AST
+   exists yet). Verify the eventual semantics against
+   `tests/golden/directive_*` (promote from pending to pinned once working).
+   `%bnf`/`%lex` grammar-extension machinery (`eprodnts`/`nonterminals`/
+   `lexstates`/`lexdefs`) ported **last** — it is the hairiest and
+   least-covered corner; goldens from Phase 0 step 3 gate it.
 6. `semantics/symbols.zig`; `codegen.zig`/`trans.zig` id lookups rewired from
    `lex.findid`/`makeId` to it. Dump/undump round-trip goldens verify private-name
    serialization is unchanged.
@@ -392,21 +410,30 @@ front door is C.
    the dictionary-space config (`DICSPACE`, `-dic` flag: accept-and-ignore with a
    deprecation note, since `.mirarc` files may set it).
 
-**Status as of 2026-07-06:** steps 1–3 landed and step 4 partially landed
+**Status as of 2026-07-06:** steps 1–3 landed, steps 4 and 5 partially landed
 (`syntax/source.zig`, `syntax/lexer.zig`, `syntax/layout.zig`,
-`syntax/differential_test.zig` — 46 new tests total, all green, no leaks,
-including 8 scripts verified byte-for-byte against the real production
-tokenizer), none yet wired into `parser_api.zig`. `layout.zig` went through
-two verified corrections in one session (see its step-3 entry above) — a
-reminder that "looks principled" and "matches the system it must replace"
-are different bars, and only the second one counts here; the differential
-harness this step added is exactly the tool that would have caught both
-corrections immediately instead of via manual trace-checking, and should
-have been built before, not after, hand-deriving the algorithm. Remaining:
-finish step 4 (whole-corpus coverage, a standing build gate rather than a
-hand-picked test file), the directive/module semantics (currently
-non-functional even in production, see the step-5 correction above), symbol
-interning, production cutover, and deletion.
+`syntax/differential_test.zig`, `syntax/directives.zig` — 54 new tests
+total, all green, no leaks, including 8 scripts verified byte-for-byte
+against the real production tokenizer), none yet wired into `parser_api.zig`
+or each other. `layout.zig` went through two verified corrections in one
+session (see its step-3 entry above) — a reminder that "looks principled"
+and "matches the system it must replace" are different bars, and only the
+second one counts here; the differential harness this step added is exactly
+the tool that would have caught both corrections immediately instead of via
+manual trace-checking, and should have been built before, not after,
+hand-deriving the algorithm. A second, smaller lesson from the same session:
+`zig ast-check` only catches syntax errors — a real type error in
+`directives.zig` (`std.mem.trimRight`, which this Zig version calls
+`trimEnd`) passed `ast-check` and even a plain `zig build` silently, because
+nothing yet calls the new code from production, so it was never analyzed
+outside test mode; only `zig build test` (via `main-tests`) caught it. Every
+new `syntax/` file needs an actual `main-tests` run, not just `ast-check`,
+until it's wired into something reachable. Remaining: finish step 4
+(whole-corpus coverage, a standing build gate rather than a hand-picked test
+file); finish step 5 (path resolution, and the real `%include`/`%export`/
+`%free` semantics in `semantics/modules.zig` — currently non-functional even
+in production, see the step-5 correction above); symbol interning;
+production cutover; and deletion.
 
 **Deletes:** ~2,700 lines of C-ported lexing; the biggest single consumer of `FILE`,
 `[*:0]`, `c_int`, and `@ptrFromInt`.
