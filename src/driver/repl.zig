@@ -85,7 +85,7 @@ fn WTERMSIG(status: c_int) c_int {
 }
 
 /// The top-level REPL. Loads `initscript`, then reads and dispatches user input until EOF: `?`/`??` (info), `:`/`/` (commands), `!` (shell escape), `||` (comment), or an expression to evaluate.
-pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, initscript: [*:0]u8) void {
+pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, initscript: [*:0]u8) void {
     var ch: c_int = undefined;
     var lb: ?[*:0]u8 = undefined;
 
@@ -137,7 +137,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
         last_gc_count = null;
         ch = abi.getchar();
         if (rs.rechecking != 0 and heap_mod.srcUpdate(rs) != 0) {
-            module_loader.loadfile(heap, core_state.s, cs, rs, rs.current_script.?);
+            module_loader.loadfile(heap, core_state.s, cs, rs, ls, rs.current_script.?);
         }
         while (ch == ' ' or ch == '\t') {
             ch = abi.getchar();
@@ -161,19 +161,19 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                         edWarn(rs);
                         continue;
                     }
-                    if (ls.dicp[0] != 0) {
-                        x = abi.findid(heap, ls.dicp);
+                    if (lexs.dicp[0] != 0) {
+                        x = abi.findid(heap, lexs.dicp);
                     } else {
                         word.print("??{s}\n", .{heap_mod.getId(rs.lastid)});
                         x = rs.lastid;
                     }
                     if (x == NIL or heap_mod.idType(x) == word.undef_t) {
-                        commands.diagnose(if (ls.dicp[0] != 0) ls.dicp else heap_mod.getId(rs.lastid));
+                        commands.diagnose(if (lexs.dicp[0] != 0) lexs.dicp else heap_mod.getId(rs.lastid));
                         rs.lastid = 0;
                         continue;
                     }
                     if (heap_mod.idWho(x) == NIL) {
-                        word.print("{s} -- primitive to Miranda\n", .{@as([*:0]const u8, @ptrCast(if (ls.dicp[0] != 0) ls.dicp else heap_mod.getId(rs.lastid)))});
+                        word.print("{s} -- primitive to Miranda\n", .{@as([*:0]const u8, @ptrCast(if (lexs.dicp[0] != 0) lexs.dicp else heap_mod.getId(rs.lastid)))});
                         rs.lastid = 0;
                         continue;
                     }
@@ -191,15 +191,15 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                     _ = abi.ungetc(ch, abi.stdin().?);
                     _ = token();
                     rs.lastid = 0;
-                    if (ls.dicp[0] == 0) {
+                    if (lexs.dicp[0] == 0) {
                         if (abi.getchar() != '\n') {
                             commands.xschars();
                         } else {
                             commands.allnamescom(heap, comp, rs);
                         }
                     } else {
-                        while (ls.dicp[0] != 0) {
-                            commands.finger(heap, rs, ls.dicp);
+                        while (lexs.dicp[0] != 0) {
+                            commands.finger(heap, rs, lexs.dicp);
                             _ = token();
                         }
                         ch = abi.getchar();
@@ -209,7 +209,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
             ':', '/' => {
                 _ = token();
                 rs.lastid = 0;
-                commands.command(heap, core_state.s, comp, rs);
+                commands.command(heap, core_state.s, comp, rs, lexs);
             },
             '!' => {
                 lb = rdline();
@@ -235,7 +235,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                         _ = abi.execl(shell.?, .{ shell.?, "-c", lb.? });
                     }
                     if (heap_mod.srcUpdate(rs) != 0) {
-                        module_loader.loadfile(heap, core_state.s, cs, rs, rs.current_script.?);
+                        module_loader.loadfile(heap, core_state.s, cs, rs, ls, rs.current_script.?);
                     }
                 } else {
                     word.print("No previous shell command to substitute for \"!\"\n", .{});
@@ -262,19 +262,19 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                 const start = getMonotonicNs();
                 _ = abi.ungetc(ch, abi.stdin().?);
                 rs.lastid = 0;
-                heap_mod.tp(heap_mod.h(ls.cook_stdin)).* = 0;
+                heap_mod.tp(heap_mod.h(lexs.cook_stdin)).* = 0;
                 rs.rv_expr = 0;
-                ls.c = word.EVAL;
+                lexs.c = word.EVAL;
                 rs.echoing = 0;
                 comp.polyshowerror = 0;
                 core.commandmode = 1;
                 _ = parser_api.parseCurrent() catch {};
                 if (core.SYNERR != 0) {
                     core.SYNERR = 0;
-                } else if (ls.c != '\n') {
+                } else if (lexs.c != '\n') {
                     word.print("syntax error\n", .{});
-                    while (ls.c != '\n' and ls.c != abi.EOF) {
-                        ls.c = abi.getchar();
+                    while (lexs.c != '\n' and lexs.c != abi.EOF) {
+                        lexs.c = abi.getchar();
                     }
                 }
                 core.commandmode = 0;
@@ -486,7 +486,7 @@ pub fn badEditor(rs: *rt.RuntimeState) bool {
 }
 
 /// Read and type-check one expression of type `t_val` from file `f` (the `readvals` path). Returns its codegen, or `EOF`; re-prompts interactively and aborts on bad file data.
-pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, t_val: Word, f: ?*word.FILE, fil: Word) Word {
+pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, t_val: Word, f: ?*word.FILE, fil: Word) Word {
     var t1: Word = undefined;
     var ch: c_int = undefined;
     rs.lastexp = word.UNDEF;
@@ -513,7 +513,7 @@ pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState,
             return abi.EOF;
         }
         _ = abi.ungetc(ch, f);
-        ls.c = word.VALUE;
+        lexs.c = word.VALUE;
         rs.echoing = 0;
         core.commandmode = 1;
         rs.s_in = f;

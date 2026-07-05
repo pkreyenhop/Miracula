@@ -1222,7 +1222,7 @@ pub fn okdump(core_st: *core.CoreState, t_ptr: [*:0]const u8) bool {
 }
 
 /// The error line number recorded in a bad object file for `t_ptr`.
-pub fn geterrlin(core_st: *core.CoreState, t_ptr: [*:0]const u8) Word {
+pub fn geterrlin(core_st: *core.CoreState, lexs: *lex_state.LexState, t_ptr: [*:0]const u8) Word {
     var obf: [120]u8 = undefined;
     const t_len = std.mem.len(t_ptr);
     if (t_len >= obf.len) {
@@ -1257,29 +1257,29 @@ pub fn geterrlin(core_st: *core.CoreState, t_ptr: [*:0]const u8) Word {
     // now check this is right dump
     setprefix(t_ptr);
     var ch = main_clib.getc(f);
-    ls.dicq = ls.dicp;
+    lexs.dicq = lexs.dicp;
     if (ch != '/') {
         const prefix_len = @as(usize, @intCast(heap.preflen));
-        @memcpy(ls.dicp[0..prefix_len], heap.prefix[0..prefix_len]);
-        ls.dicp[prefix_len] = 0;
-        ls.dicq = ls.dicp + prefix_len;
+        @memcpy(lexs.dicp[0..prefix_len], heap.prefix[0..prefix_len]);
+        lexs.dicp[prefix_len] = 0;
+        lexs.dicq = lexs.dicp + prefix_len;
     }
 
     // locate wrt current posn
-    ls.dicq[0] = @intCast(ch);
-    ls.dicq += 1;
+    lexs.dicq[0] = @intCast(ch);
+    lexs.dicq += 1;
 
     while (true) {
         ch = main_clib.getc(f);
-        ls.dicq[0] = @intCast(ch);
-        ls.dicq += 1;
+        lexs.dicq[0] = @intCast(ch);
+        lexs.dicq += 1;
         if (ch == 0 or ch == main_clib.EOF) {
             break;
         }
     }
 
     const mtime = getword(f);
-    if (main_clib.strcmp(ls.dicp, t_ptr) != 0 or mtime != fileMtime(t_ptr)) {
+    if (main_clib.strcmp(lexs.dicp, t_ptr) != 0 or mtime != fileMtime(t_ptr)) {
         return 0; // wrong dump
     }
 
@@ -1884,7 +1884,7 @@ pub fn dumpOb(x: Word, file: ?*word.FILE) void {
 }
 
 /// Load a script graph from a dump `file`, binding params and aliases.
-pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
+pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
     comp.TORPHANS = 0;
     comp.BAD_DUMP = 0;
     comp.CLASHES = word.NIL;
@@ -1925,7 +1925,7 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
             }
         }
     }
-    heap.PNBASE = ls.nextpn;
+    heap.PNBASE = lexs.nextpn;
     comp.SUPPRESSED = word.NIL;
     comp.TSUPPRESSED = word.NIL;
 
@@ -1934,7 +1934,7 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
     while (ch != 0 and ch != main_clib.EOF and comp.BAD_DUMP == 0) {
         var s: Word = 0;
         var holde: Word = 0;
-        ls.dicq = ls.dicp;
+        lexs.dicq = lexs.dicp;
         if (files_list == word.NIL and ch == 1) {
             holde = getword(file);
             ch = main_clib.getc(file);
@@ -1943,26 +1943,26 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
             }
         }
         if (ch != '/') {
-            _ = main_clib.strcpy(ls.dicp, &heap.prefix);
-            ls.dicq = ls.dicp + @as(usize, @intCast(heap.preflen));
+            _ = main_clib.strcpy(lexs.dicp, &heap.prefix);
+            lexs.dicq = lexs.dicp + @as(usize, @intCast(heap.preflen));
         }
-        ls.dicq[0] = @intCast(ch);
-        ls.dicq += 1;
+        lexs.dicq[0] = @intCast(ch);
+        lexs.dicq += 1;
         while (true) {
             ch = main_clib.getc(file);
-            ls.dicq[0] = @intCast(ch);
-            ls.dicq += 1;
+            lexs.dicq[0] = @intCast(ch);
+            lexs.dicq += 1;
             if (ch == 0 or ch == main_clib.EOF) {
                 break;
             }
         }
-        if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rs.DICSPACE) {
+        if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > rs.DICSPACE) {
             lex.dicovflo();
         }
         ch = getword(file);
         s = main_clib.getc(file);
         if (files_list == word.NIL) {
-            if (main_clib.strcmp(ls.dicp, src) != 0) {
+            if (main_clib.strcmp(lexs.dicp, src) != 0) {
                 comp.BAD_DUMP = 1;
                 if (aliases != word.NIL) {
                     unscramble(comp, aliases);
@@ -1971,7 +1971,7 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
             }
         }
         heap.CFN = getId(name(heap));
-        files_list = cons(makeFil(heap.CFN, ch, s, loadDefs(comp, rs, file)), files_list);
+        files_list = cons(makeFil(heap.CFN, ch, s, loadDefs(comp, rs, lexs, file)), files_list);
         ch = main_clib.getc(file);
     }
     if (ch == main_clib.EOF or comp.BAD_DUMP != 0) {
@@ -1993,27 +1993,27 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
             if (ch == main_clib.EOF) {
                 break;
             }
-            ls.dicq = ls.dicp;
+            lexs.dicq = lexs.dicp;
             if (ch != '/') {
-                _ = main_clib.strcpy(ls.dicp, &heap.prefix);
-                ls.dicq = ls.dicp + @as(usize, @intCast(heap.preflen));
+                _ = main_clib.strcpy(lexs.dicp, &heap.prefix);
+                lexs.dicq = lexs.dicp + @as(usize, @intCast(heap.preflen));
             }
-            ls.dicq[0] = @intCast(ch);
-            ls.dicq += 1;
+            lexs.dicq[0] = @intCast(ch);
+            lexs.dicq += 1;
             while (true) {
                 ch = main_clib.getc(file);
-                ls.dicq[0] = @intCast(ch);
-                ls.dicq += 1;
+                lexs.dicq[0] = @intCast(ch);
+                lexs.dicq += 1;
                 if (ch == 0 or ch == main_clib.EOF) {
                     break;
                 }
             }
-            if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rs.DICSPACE) {
+            if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > rs.DICSPACE) {
                 lex.dicovflo();
             }
             ch = getword(file);
             if (rs.oldfiles == word.NIL) {
-                if (main_clib.strcmp(ls.dicp, src) != 0) {
+                if (main_clib.strcmp(lexs.dicp, src) != 0) {
                     comp.BAD_DUMP = 1;
                     if (aliases != word.NIL) {
                         unscramble(comp, aliases);
@@ -2028,23 +2028,23 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
         }
         return word.NIL;
     }
-    comp.algshfns = append1(comp.algshfns, loadDefs(comp, rs, file));
-    comp.ND = loadDefs(comp, rs, file);
+    comp.algshfns = append1(comp.algshfns, loadDefs(comp, rs, lexs, file));
+    comp.ND = loadDefs(comp, rs, lexs, file);
     if (comp.ND == word.True) {
         comp.ND = word.NIL;
         comp.TORPHANS = 1;
     }
-    comp.SGC = append1(comp.SGC, loadDefs(comp, rs, file));
+    comp.SGC = append1(comp.SGC, loadDefs(comp, rs, lexs, file));
     if (main_flag != 0 or rs.includees == word.NIL) {
-        rs.freeids = loadDefs(comp, rs, file);
+        rs.freeids = loadDefs(comp, rs, lexs, file);
     } else {
-        bindparams(comp, loadDefs(comp, rs, file), hdsort(params));
+        bindparams(comp, loadDefs(comp, rs, lexs, file), hdsort(params));
     }
     if (aliases != word.NIL) {
         unscramble(comp, aliases);
     }
     if (main_flag != 0) {
-        dump.internals = loadDefs(comp, rs, file);
+        dump.internals = loadDefs(comp, rs, lexs, file);
     }
     return reverse(files_list);
 }
@@ -2157,7 +2157,7 @@ pub fn dgrow() void {
 /// Load a definition list from a dump `file`.
 ///
 /// Tests: dumpOb / loadDefs: roundtrip a cons of two ints through the .x format
-pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, file: ?*word.FILE) Word {
+pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, file: ?*word.FILE) Word {
     var ch = main_clib.getc(file);
     var defs: Word = word.NIL;
     while (ch != main_clib.EOF) {
@@ -2199,11 +2199,11 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, file:
                 var val = main_clib.getc(file);
                 val = val | (main_clib.getc(file) << 8);
                 const idx = heap.PNBASE + val;
-                stackpPush(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else lex.stoPn(idx));
+                stackpPush(if (idx < lexs.nextpn) lexs.pnvec.?[@intCast(idx)] else lex.stoPn(idx));
             },
             word.PN1_X => {
                 const idx = heap.PNBASE + getint(file);
-                stackpPush(if (idx < ls.nextpn) ls.pnvec.?[@intCast(idx)] else lex.stoPn(idx));
+                stackpPush(if (idx < lexs.nextpn) lexs.pnvec.?[@intCast(idx)] else lex.stoPn(idx));
             },
             word.CONSTRUCT_X => {
                 var val = main_clib.getc(file);
@@ -2215,16 +2215,16 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, file:
                 comp.rv_script = 1;
             },
             word.ID_X => {
-                ls.dicq = ls.dicp;
+                lexs.dicq = lexs.dicp;
                 while (true) {
                     const next = main_clib.getc(file);
-                    ls.dicq[0] = @intCast(next);
-                    ls.dicq += 1;
+                    lexs.dicq[0] = @intCast(next);
+                    lexs.dicq += 1;
                     if (next == 0 or next == main_clib.EOF) {
                         break;
                     }
                 }
-                if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rs.DICSPACE) {
+                if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > rs.DICSPACE) {
                     lex.dicovflo();
                 }
                 stackpPush(name(heap));
@@ -2237,22 +2237,22 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, file:
                 }
             },
             word.AKA_X => {
-                ls.dicq = ls.dicp;
+                lexs.dicq = lexs.dicp;
                 while (true) {
                     const next = main_clib.getc(file);
-                    ls.dicq[0] = @intCast(next);
-                    ls.dicq += 1;
+                    lexs.dicq[0] = @intCast(next);
+                    lexs.dicq += 1;
                     if (next == 0 or next == main_clib.EOF) {
                         break;
                     }
                 }
-                if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rs.DICSPACE) {
+                if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > rs.DICSPACE) {
                     lex.dicovflo();
                 }
                 stackpPush(datapair(strtab.strBits(strtab.table, getId(name(heap))), 0));
             },
             word.HERE_X => {
-                ls.dicq = ls.dicp;
+                lexs.dicq = lexs.dicp;
                 var next = main_clib.getc(file);
                 if (next == 0) {
                     next = main_clib.getc(file);
@@ -2260,20 +2260,20 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, file:
                     stackpPush(fileinfo(strtab.strBits(strtab.table, heap.CFN.?), next));
                 } else {
                     if (next != '/') {
-                        _ = main_clib.strcpy(ls.dicp, &heap.prefix);
-                        ls.dicq = ls.dicp + @as(usize, @intCast(heap.preflen));
+                        _ = main_clib.strcpy(lexs.dicp, &heap.prefix);
+                        lexs.dicq = lexs.dicp + @as(usize, @intCast(heap.preflen));
                     }
-                    ls.dicq[0] = @intCast(next);
-                    ls.dicq += 1;
+                    lexs.dicq[0] = @intCast(next);
+                    lexs.dicq += 1;
                     while (true) {
                         const val = main_clib.getc(file);
-                        ls.dicq[0] = @intCast(val);
-                        ls.dicq += 1;
+                        lexs.dicq[0] = @intCast(val);
+                        lexs.dicq += 1;
                         if (val == 0 or val == main_clib.EOF) {
                             break;
                         }
                     }
-                    if (@intFromPtr(ls.dicq) - @intFromPtr(ls.dicp) > rs.DICSPACE) {
+                    if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > rs.DICSPACE) {
                         lex.dicovflo();
                     }
                     var line = main_clib.getc(file);
@@ -2370,9 +2370,9 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, file:
                 const ch_val = stackpPop();
                 const top = stackpTop();
                 if (top == word.READ and ch_val == 0) {
-                    stackpSetTop(ls.common_stdin);
+                    stackpSetTop(lexs.common_stdin);
                 } else if (top == word.READBIN and ch_val == 0) {
-                    stackpSetTop(ls.common_stdinb);
+                    stackpSetTop(lexs.common_stdinb);
                 } else {
                     stackpSetTop(ap(top, ch_val));
                 }
@@ -2580,10 +2580,10 @@ pub fn unsetids(d_val: Word) void {
 }
 
 /// Unload the current script: clear its definitions from the environment.
-pub fn unload(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState) void {
+pub fn unload(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState) void {
     rs.sorted = 0;
     comp.speclocs = NIL;
-    ls.nextpn = 0;
+    lexs.nextpn = 0;
     comp.rv_script = 0;
     comp.algshfns = NIL;
     unsetids(comp.newtyps);
@@ -2763,7 +2763,7 @@ test "dumpOb / loadDefs: roundtrip a cons of two ints through the .x format" {
 
     // 6. Load it back using loadDefs (which pushes it onto stackp)
     const old_stackp = heap.stackp;
-    _ = loadDefs(cs, rt.rs, f_read);
+    _ = loadDefs(cs, rt.rs, ls, f_read);
     _ = word.fclose(f_read.?);
 
     // Clean up temp file

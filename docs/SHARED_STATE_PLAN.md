@@ -1038,6 +1038,55 @@ the `parser_tests.zig` miss above) with direct `main-tests` binary 176/176,
 failure), and a byte-identical manual REPL smoke test diffed against the
 pre-RuntimeState commit via `git stash`.
 
+**`LexState` (~660 touches, 14 files) — done, 2026-07-05. Tier 4 complete.**
+The last and largest struct by the original estimate, but the smallest
+actual increment of the four: `lex.zig` itself (the tokenizer) owns 599 of
+the ~660 touches and is the hot path already established ambient for every
+other struct, so almost the whole struct's nominal size was already
+"priced in." The tractable remainder was exactly the same already-threaded
+cluster as the other three increments, extended by one more parameter:
+- `module_loader.zig`: `loadfile`/`resolveExportFileList`/`mkincludes`.
+- `dump.zig`: `fixexports`/`unfixexports`/`privatise`/`publicise` (a new
+  small cluster this tier — `privatise`/`publicise` are `fixexports`/
+  `unfixexports`'s only callees, so threading cascaded one hop deeper than
+  in prior increments).
+- `heap.zig`'s binary-dump cluster, now including `geterrlin` (missed as
+  tractable in the RuntimeState pass since its `LexState` touches weren't
+  scanned for until this tier).
+- `commands.zig`'s `is`/`cmdFiles`/`cmdEdit`/`command` and `repl.zig`'s
+  `commandLoop`/`parseLine` — the last driver-layer functions with any
+  remaining ambient struct touches at all.
+
+One naming wrinkle distinct from the other three structs: `core`/`comp`/`rs`
+never collided with anything because they shadow the *module* names
+(`core_state`/`compiler_state`/`rt`), not the singleton accessors (`.s`/
+`cs`/`rt.rs`). `ls`, however, *is* the singleton accessor's own name in
+every file (`const ls = lex_state.ls;`), so a parameter named `ls` is a
+compile error ("function parameter shadows declaration of 'ls'"). Every new
+`*LexState` parameter this tier is named `lexs` instead, with call sites
+falling back to the ambient `ls` global exactly where `EvalState`/
+`CoreState`/etc. fell back to their own ambient globals — the pattern is
+identical, only the local name differs.
+
+Confirms the same shape as the other three for the remainder: `startup.zig`
+(bootstrap, never threaded), `heap.zig`'s `bases()` (GC-root scan, already
+ambient), `files.zig`'s `makeAbsolute` (1 caller, `mainEntry`, bootstrap),
+`lex_bridge.zig`'s `mapToken` (the new-pipeline per-token hot path, mirrors
+`lex.zig`'s own), `trans.zig`/`codegen.zig` (the `declare`/`codegen`/`genlhs`
+cluster, already ambient), and `setup.zig` (`miraSetup`). All left
+unchanged.
+
+Verified identically to the prior increments: `zig build` clean, `lint` at
+the 16-warning baseline, `zig build test` with direct `main-tests` binary
+176/176, `test-mira` exit 0, `test-golden` 43/44 (same pre-existing
+`script_syntax_err` failure), and a byte-identical manual REPL smoke test
+diffed against the pre-LexState commit via `git stash`.
+
+**Tier 4 is now complete: all five aggregated structs (`EvalState`/
+`CoreState`/`CompilerState`/`RuntimeState`/`LexState`) have their tractable
+call chains threaded as narrow, separate params, matching Tier 3's `heap`
+precedent. Phase 6 (below) is now reachable.**
+
 ### Phase 6 — De-globalize & document *(close-out; conditional on Tier 3 + Tier 4)*
 Delete the global `var interp`; `main()` constructs it explicitly
 (`var interp = Interp.init(gpa); defer interp.deinit(); return interp.run(args);`).

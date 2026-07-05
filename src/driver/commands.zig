@@ -55,8 +55,8 @@ fn spaces(s: Word) void {
 }
 
 /// True if the just-read dictionary token equals the command keyword `s`.
-fn is(s: [:0]const u8) bool {
-    return std.mem.eql(u8, std.mem.span(@as([*:0]u8, @ptrCast(ls.dicp))), s);
+fn is(lexs: *lex_state.LexState, s: [:0]const u8) bool {
+    return std.mem.eql(u8, std.mem.span(@as([*:0]u8, @ptrCast(lexs.dicp))), s);
 }
 
 /// Print path `p` for messages: `<name>` when it lives under the library dir, else `"path"`.
@@ -161,10 +161,10 @@ fn namescom(heap: *Heap, rs: *rt.RuntimeState, l: Word) void {
 
 /// Dispatch a `/` or `:` REPL command — the main command switch (`/h`, `/e`, `/f`, `/l`, `/man`, ...).
 /// Handle the `'f'` REPL command (extracted from `command`).
-fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState) bool {
+fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState) bool {
     var t_val: ?[*:0]u8 = undefined;
     var ch: c_int = undefined;
-    if (is("f") or is("file")) {
+    if (is(lexs, "f") or is(lexs, "file")) {
         const t_tok = token();
         if (abi.getchar() != '\n') return true;
         if (t_tok) |tok| {
@@ -182,17 +182,17 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
                 comp.CLASHES = NIL;
                 dump.undump(heap, core, comp, rs, t_val.?);
                 if (comp.CLASHES != NIL) {
-                    module_loader.loadfile(heap, core, comp, rs, t_val.?);
+                    module_loader.loadfile(heap, core, comp, rs, ls, t_val.?);
                 }
             } else {
-                module_loader.loadfile(heap, core, comp, rs, t_val.?);
+                module_loader.loadfile(heap, core, comp, rs, ls, t_val.?);
             }
         } else {
             word.print("{s}{s}\n", .{ rs.current_script.?, @as([*:0]const u8, if (heap.files == NIL) " (not loaded)" else "") });
         }
         return true;
     }
-    if (is("files")) {
+    if (is(lexs, "files")) {
         if (abi.getchar() != '\n') return true;
         var f = heap.files;
         while (f != NIL) : (f = heap_mod.t(f)) {
@@ -201,10 +201,10 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
         }
         return true;
     }
-    if (is("find")) {
+    if (is(lexs, "find")) {
         var i: Word = 0;
         while (token() != null) {
-            const x = abi.findid(heap, ls.dicp);
+            const x = abi.findid(heap, lexs.dicp);
             i += 1;
             if (x != NIL) {
                 const n = heap_mod.getId(x);
@@ -239,11 +239,11 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
 }
 
 /// Handle the `'e'` REPL command (extracted from `command`).
-fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState) bool {
+fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.LexState) bool {
     var t_val: ?[*:0]u8 = undefined;
     var ch: c_int = undefined;
     var ch1: c_int = undefined;
-    if (is("e") or is("edit")) {
+    if (is(lexs, "e") or is(lexs, "edit")) {
         var mf: ?[*:0]u8 = null;
         if (token()) |tok| {
             t_val = abi.addextn(1, tok);
@@ -253,24 +253,24 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState) bool {
         if (abi.getchar() != '\n') return true;
         if (!files.fileExists(t_val.?)) {
             if (lmirahdr == null) {
-                ls.dicp = ls.dicq;
-                _ = word.strcpy(ls.dicp, abi.getenv("HOME"));
-                if (word.strcmp(ls.dicp, "/") == 0) {
-                    ls.dicp[0] = 0;
+                lexs.dicp = lexs.dicq;
+                _ = word.strcpy(lexs.dicp, abi.getenv("HOME"));
+                if (word.strcmp(lexs.dicp, "/") == 0) {
+                    lexs.dicp[0] = 0;
                 }
-                _ = word.strcat(ls.dicp, "/.mirahdr");
-                lmirahdr = ls.dicp;
-                ls.dicq = ls.dicp + word.strlen(ls.dicp) + 1;
+                _ = word.strcat(lexs.dicp, "/.mirahdr");
+                lmirahdr = lexs.dicp;
+                lexs.dicq = lexs.dicp + word.strlen(lexs.dicp) + 1;
             }
             if (files.fileExists(lmirahdr.?)) {
                 mf = lmirahdr;
             }
             if (mf == null and mirahdr == null) {
-                ls.dicp = ls.dicq;
-                _ = word.strcpy(ls.dicp, rs.miralib.?);
-                _ = word.strcat(ls.dicp, "/.mirahdr");
-                mirahdr = ls.dicp;
-                ls.dicq = ls.dicp + word.strlen(ls.dicp) + 1;
+                lexs.dicp = lexs.dicq;
+                _ = word.strcpy(lexs.dicp, rs.miralib.?);
+                _ = word.strcat(lexs.dicp, "/.mirahdr");
+                mirahdr = lexs.dicp;
+                lexs.dicq = lexs.dicp + word.strlen(lexs.dicp) + 1;
             }
             if (mf == null and files.fileExists(mirahdr.?)) {
                 mf = mirahdr;
@@ -296,12 +296,12 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState) bool {
                 files.copyFile(mf.?, t_val.?);
             }
         }
-        const err_line_num: c_int = if (word.strcmp(t_val.?, rs.current_script.?) == 0) @intCast(core.errline) else if (core.errs != 0 and word.strcmp(t_val.?, strtab.strOf(strtab.table, heap_mod.h(core.errs))) == 0) @intCast(heap_mod.t(core.errs)) else @intCast(abi.geterrlin(core, t_val.?));
+        const err_line_num: c_int = if (word.strcmp(t_val.?, rs.current_script.?) == 0) @intCast(core.errline) else if (core.errs != 0 and word.strcmp(t_val.?, strtab.strOf(strtab.table, heap_mod.h(core.errs))) == 0) @intCast(heap_mod.t(core.errs)) else @intCast(abi.geterrlin(core, lexs, t_val.?));
         const err_col_num: c_int = if (word.strcmp(t_val.?, rs.current_script.?) == 0) @intCast(core.errcol) else 0;
         editfile(rs, t_val.?, err_line_num, err_col_num);
         return true;
     }
-    if (is("editor")) {
+    if (is(lexs, "editor")) {
         const hold = @as([*]u8, @ptrCast(&rs.linebuf[0]));
         if (repl.getLine(abi.stdin(), abi.pnlim - 1, hold) == 0) {
             return true;
@@ -346,10 +346,10 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState) bool {
     return false;
 }
 
-pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState) void {
-    switch (ls.dicp[0]) {
+pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState) void {
+    switch (lexs.dicp[0]) {
         'a' => {
-            if (is("a") or is("aux")) {
+            if (is(lexs, "a") or is(lexs, "aux")) {
                 if (abi.getchar() != '\n') return;
                 _ = word.strcpy(&rs.linebuf, rs.miralib.?);
                 _ = word.strcat(&rs.linebuf, "/auxfile");
@@ -358,12 +358,12 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             }
         },
         'c' => {
-            if (is("count")) {
+            if (is(lexs, "count")) {
                 if (abi.getchar() != '\n') return;
                 rs.atcount = 1;
                 return;
             }
-            if (is("cd")) {
+            if (is(lexs, "cd")) {
                 var d = token();
                 if (d == null) {
                     d = @constCast(abi.getenv("HOME"));
@@ -380,44 +380,44 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             }
         },
         'd' => {
-            if (is("dic")) {
+            if (is(lexs, "dic")) {
                 if (token() == null) {
                     _ = abi.getchar();
                     word.print("{} chars", .{rs.DICSPACE});
                     if (rs.DICSPACE != 100000) {
                         word.print(" (default={})", .{@as(c_long, 100000)});
                     }
-                    word.print(" {} in use\n", .{@as(c_long, @intCast(@intFromPtr(ls.dicq) - @intFromPtr(ls.dic.?)))});
+                    word.print(" {} in use\n", .{@as(c_long, @intCast(@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dic.?)))});
                     return;
                 }
                 if (abi.getchar() != '\n') return;
                 word.print("sorry, cannot change size of dictionary while in use\n", .{});
-                word.print("(/q and reinvoke with flag: mira -dic {s} ... )\n", .{@as([*:0]const u8, @ptrCast(ls.dicp))});
+                word.print("(/q and reinvoke with flag: mira -dic {s} ... )\n", .{@as([*:0]const u8, @ptrCast(lexs.dicp))});
                 return;
             }
         },
         'e' => {
-            if (cmdEdit(core, rs)) return;
+            if (cmdEdit(core, rs, lexs)) return;
         },
         'f' => {
-            if (cmdFiles(heap, core, comp, rs)) return;
+            if (cmdFiles(heap, core, comp, rs, lexs)) return;
         },
         'g' => {
-            if (is("gc")) {
+            if (is(lexs, "gc")) {
                 if (abi.getchar() != '\n') return;
                 rs.atgc = 1;
                 return;
             }
         },
         'h' => {
-            if (is("h") or is("help")) {
+            if (is(lexs, "h") or is(lexs, "help")) {
                 if (abi.getchar() != '\n') return;
                 _ = word.strcpy(&rs.linebuf, rs.miralib.?);
                 _ = word.strcat(&rs.linebuf, "/helpfile");
                 files.fileCopy(@as([*:0]const u8, @ptrCast(&rs.linebuf)));
                 return;
             }
-            if (is("heap")) {
+            if (is(lexs, "heap")) {
                 var x: c_long = undefined;
                 if (token() == null) {
                     _ = abi.getchar();
@@ -429,7 +429,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                     return;
                 }
                 if (abi.getchar() != '\n') return;
-                if (abi.sscanf(ls.dicp, "%ld", .{&x}) != 1 or heap_mod.badval(x)) {
+                if (abi.sscanf(lexs.dicp, "%ld", .{&x}) != 1 or heap_mod.badval(x)) {
                     word.print("illegal value (heap unchanged)\n", .{});
                     return;
                 }
@@ -445,7 +445,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                 }
                 return;
             }
-            if (is("hush")) {
+            if (is(lexs, "hush")) {
                 if (abi.getchar() != '\n') return;
                 rs.echoing = 0;
                 rs.verbosity = 0;
@@ -453,7 +453,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             }
         },
         'l' => {
-            if (is("list")) {
+            if (is(lexs, "list")) {
                 if (abi.getchar() != '\n') return;
                 rs.listing = 1;
                 rs.echoing = rs.verbosity & rs.listing;
@@ -462,42 +462,42 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             }
         },
         'm' => {
-            if (is("m") or is("man")) {
+            if (is(lexs, "m") or is(lexs, "man")) {
                 if (abi.getchar() != '\n') return;
                 manaction(rs);
                 return;
             }
-            if (is("miralib")) {
+            if (is(lexs, "miralib")) {
                 if (abi.getchar() != '\n') return;
                 word.print("{s}\n", .{rs.miralib.?});
                 return;
             }
         },
         'n' => {
-            if (is("nocount")) {
+            if (is(lexs, "nocount")) {
                 if (abi.getchar() != '\n') return;
                 rs.atcount = 0;
                 return;
             }
-            if (is("nogc")) {
+            if (is(lexs, "nogc")) {
                 if (abi.getchar() != '\n') return;
                 rs.atgc = 0;
                 return;
             }
-            if (is("nohush")) {
+            if (is(lexs, "nohush")) {
                 if (abi.getchar() != '\n') return;
                 rs.echoing = rs.listing;
                 rs.verbosity = 1;
                 return;
             }
-            if (is("nolist")) {
+            if (is(lexs, "nolist")) {
                 if (abi.getchar() != '\n') return;
                 rs.listing = 0;
                 rs.echoing = 0;
                 startup.writeRc();
                 return;
             }
-            if (is("norecheck")) {
+            if (is(lexs, "norecheck")) {
                 if (abi.getchar() != '\n') return;
                 rs.rechecking = 0;
                 startup.writeRc();
@@ -505,7 +505,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             }
         },
         'q' => {
-            if (is("q") or is("quit")) {
+            if (is(lexs, "q") or is(lexs, "quit")) {
                 if (abi.getchar() != '\n') return;
                 if (rs.verbosity != 0) {
                     word.print("miranda logout\n", .{});
@@ -514,7 +514,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             }
         },
         'r' => {
-            if (is("recheck")) {
+            if (is(lexs, "recheck")) {
                 if (abi.getchar() != '\n') return;
                 rs.rechecking = 2;
                 startup.writeRc();
@@ -522,7 +522,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             }
         },
         's' => {
-            if (is("s") or is("settings")) {
+            if (is(lexs, "s") or is(lexs, "settings")) {
                 if (abi.getchar() != '\n') return;
                 word.print("*\theap {}\n", .{rs.SPACELIMIT});
                 word.print("*\tdic {}\n", .{rs.DICSPACE});
@@ -552,14 +552,14 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             }
         },
         'v' => {
-            if (is("v") or is("version")) {
+            if (is(lexs, "v") or is(lexs, "version")) {
                 if (abi.getchar() != '\n') return;
                 startup.versionInfo(0);
                 return;
             }
         },
         'V' => {
-            if (is("V")) {
+            if (is(lexs, "V")) {
                 if (abi.getchar() != '\n') return;
                 startup.versionInfo(1);
                 return;
@@ -646,7 +646,7 @@ pub fn editfile(rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_
     }
     _ = abi.system(ebuf_local);
     if (heap_mod.srcUpdate(rs) != 0) {
-        module_loader.loadfile(heap_mod.heap, core_state.s, cs, rs, rs.current_script.?);
+        module_loader.loadfile(heap_mod.heap, core_state.s, cs, rs, ls, rs.current_script.?);
     }
 }
 

@@ -43,24 +43,24 @@ var pfrts: Word = NIL;
 
 /// Marks all exported identifiers and privatises the rest.
 /// Must be paired with a call to unfixexports() once the dump is written.
-pub fn fixexports(heap: *Heap, rs: *rt.RuntimeState) void {
+pub fn fixexports(heap: *Heap, rs: *rt.RuntimeState, lexs: *lex_state.LexState) void {
     var e = rs.exports;
     var f: Word = undefined;
     while (e != NIL) : (e = t(e)) {
         paint(h(e));
     }
     internals = NIL;
-    if (rs.exports == NIL and ls.exportfiles == NIL and rs.embargoes == NIL) {
+    if (rs.exports == NIL and lexs.exportfiles == NIL and rs.embargoes == NIL) {
         e = rs.freeids;
         while (e != NIL) : (e = t(e)) {
-            internals = heap_mod.cons(privatise(heap, h(h(e))), internals);
+            internals = heap_mod.cons(privatise(heap, lexs, h(h(e))), internals);
         }
         f = t(heap.files);
         while (f != NIL) : (f = t(f)) {
             var e_def = heap_mod.filDefs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
                 if (getTag(heap, h(e_def)) == .ID) {
-                    internals = heap_mod.cons(privatise(heap, h(e_def)), internals);
+                    internals = heap_mod.cons(privatise(heap, lexs, h(e_def)), internals);
                 }
             }
         }
@@ -70,7 +70,7 @@ pub fn fixexports(heap: *Heap, rs: *rt.RuntimeState) void {
             var e_def = heap_mod.filDefs(h(f));
             while (e_def != NIL) : (e_def = t(e_def)) {
                 if (getTag(heap, h(e_def)) == .ID and unpainted(heap, h(e_def))) {
-                    internals = heap_mod.cons(privatise(heap, h(e_def)), internals);
+                    internals = heap_mod.cons(privatise(heap, lexs, h(e_def)), internals);
                 }
             }
         }
@@ -99,17 +99,17 @@ fn unpaint(x: Word) void {
 
 /// Reverses the privatisation done by fixexports(), restoring all `internals` to public.
 /// No-op when `rs.mkexports != 0` (the dump is being kept for distribution).
-pub fn unfixexports(heap: *Heap, rs: *rt.RuntimeState) void {
+pub fn unfixexports(heap: *Heap, rs: *rt.RuntimeState, lexs: *lex_state.LexState) void {
     var i = internals;
     if (rs.mkexports) return;
     while (i != NIL) : (i = t(i)) {
-        _ = publicise(heap, h(i));
+        _ = publicise(heap, lexs, h(i));
     }
     internals = NIL;
 }
 
 /// Move id `x` out of the public name bucket into a private name (for `%export` filtering).
-fn privatise(heap: *Heap, x: Word) Word {
+fn privatise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
     const n = abi.makePn(x);
     const hash_idx = hash(heap_mod.getId(x));
     const i = h(n);
@@ -122,13 +122,13 @@ fn privatise(heap: *Heap, x: Word) Word {
         tp(x).* = abi.ap(abi.datapair(@as(Word, strtab.strBits(strtab.table, abi.getaka(x))), 0), heap_mod.getHere(x));
     }
 
-    ls.pnvec.?[@as(usize, @intCast(i))] = x;
+    lexs.pnvec.?[@as(usize, @intCast(i))] = x;
     setTag(heap, n, .ID);
     hp(n).* = h(x);
     setTag(heap, x, .STRCONS);
     hp(x).* = i;
 
-    const current_bucket = ls.namebucket[hash_idx];
+    const current_bucket = lexs.namebucket[hash_idx];
     if (h(current_bucket) == x) {
         hp(current_bucket).* = n;
     } else {
@@ -152,7 +152,7 @@ fn hash(s: [*:0]const u8) usize {
 }
 
 /// Restore a privatised id `x` to the public name bucket.
-fn publicise(heap: *Heap, x: Word) Word {
+fn publicise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
     const i = heap_mod.idVal(x);
     const hash_idx = hash(heap_mod.getId(x));
 
@@ -164,7 +164,7 @@ fn publicise(heap: *Heap, x: Word) Word {
         tp(i).* = word.UNDEF;
     }
 
-    const current_bucket = ls.namebucket[hash_idx];
+    const current_bucket = lexs.namebucket[hash_idx];
     if (h(current_bucket) == x) {
         hp(current_bucket).* = i;
     } else {
@@ -287,7 +287,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
     var oldsig: usize = 0;
 
     if (files.isMirandaSource(t_val) == 0 and rs.initialising == 0) {
-        module_loader.loadfile(heap, core, comp, rs, t_val);
+        module_loader.loadfile(heap, core, comp, rs, ls, t_val);
         return;
     }
 
@@ -306,33 +306,33 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
         _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
     }
     if (t2 == 0 or t2 < t1) {
-        module_loader.loadfile(heap, core, comp, rs, t_val);
+        module_loader.loadfile(heap, core, comp, rs, ls, t_val);
         return;
     }
 
     f = word.fopen(&obf, "r");
     if (f == null) {
         word.print("cannot open {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
-        module_loader.loadfile(heap, core, comp, rs, t_val);
+        module_loader.loadfile(heap, core, comp, rs, ls, t_val);
         return;
     }
 
     rs.current_script = @constCast(t_val);
     core.loading = 1;
     rs.oldfiles = NIL;
-    heap_mod.unload(comp, rs);
+    heap_mod.unload(comp, rs, ls);
 
     if (rs.initialising == 0 and !rs.making) {
         rs.sigflag = 0;
         oldsig = signals_mod.signals(abi.SIGINT, @intFromPtr(&sigdefer));
     }
 
-    heap.files = abi.loadScript(core, comp, rs, f.?, @constCast(t_val), NIL, NIL, if (!rs.making and rs.initialising == 0) 1 else 0);
+    heap.files = abi.loadScript(core, comp, rs, ls, f.?, @constCast(t_val), NIL, NIL, if (!rs.making and rs.initialising == 0) 1 else 0);
     _ = word.fclose(f.?);
 
     if (comp.BAD_DUMP != 0) {
         _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
-        heap_mod.unload(comp, rs);
+        heap_mod.unload(comp, rs, ls);
         comp.CLASHES = NIL;
         heap.stackp = heap.dstack;
         word.print("warning: {s} contains incorrect data (file removed)\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
@@ -361,7 +361,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
             word.print("cannot load {s} ", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
             abi.printlist(heap, @constCast("due to name clashes: "), heap_mod.alfasort(comp.CLASHES));
         }
-        heap_mod.unload(comp, rs);
+        heap_mod.unload(comp, rs, ls);
         core.loading = 0;
         return;
     }
@@ -370,7 +370,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
         if (rs.initialising != 0) {
             errors.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
         }
-        module_loader.loadfile(heap, core, comp, rs, t_val);
+        module_loader.loadfile(heap, core, comp, rs, ls, t_val);
     } else {
         if (rs.verbosity != 0 or rs.magic or rs.mkexports) {
             if (heap.files == NIL) {
@@ -386,7 +386,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
     }
 
     if (heap.files != NIL and !rs.making and rs.initialising == 0) {
-        unfixexports(heap, rs);
+        unfixexports(heap, rs, ls);
     }
     core.loading = 0;
 }

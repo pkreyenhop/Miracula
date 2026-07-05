@@ -48,13 +48,13 @@ inline fn pnVal(x: Word) Word {
 /// list and environment. Sets `loading=1` for the duration; clears it on return.
 /// If the file does not exist during `initialising`, panics; otherwise prints a notice.
 /// Callers that want dump-or-load semantics should call `undump()` instead.
-pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, t_val: [*:0]const u8) void {
+pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, t_val: [*:0]const u8) void {
     core.loading = 1;
     core.errs = 0;
     core.errline = 0;
     rs.current_script = @constCast(t_val);
     rs.oldfiles = NIL;
-    heap_mod.unload(comp, rs);
+    heap_mod.unload(comp, rs, lexs);
 
     if (!files.fileExists(t_val)) {
         if (rs.initialising != 0) {
@@ -87,7 +87,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
 
     heap.files = heap_mod.cons(heap_mod.makeFil(t_val, files.fileMtime(t_val), 1, NIL), NIL);
     heap.current_file = heap_mod.h(heap.files);
-    heap_mod.tp(heap_mod.h(ls.fileq)).* = heap.current_file;
+    heap_mod.tp(heap_mod.h(lexs.fileq)).* = heap.current_file;
 
     if (rs.initialising != 0 and word.strcmp(t_val, @as([*:0]const u8, @ptrCast(&rs.PRELUDE))) == 0) {
         setup.privlib(heap);
@@ -97,23 +97,23 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         }
     }
 
-    ls.c = ' ';
-    ls.col = 0;
-    rs.s_in = @ptrFromInt(@as(usize, @intCast(heap_mod.h(heap_mod.h(ls.fileq)))));
+    lexs.c = ' ';
+    lexs.col = 0;
+    rs.s_in = @ptrFromInt(@as(usize, @intCast(heap_mod.h(heap_mod.h(lexs.fileq)))));
     abi.adjustPrefix(@constCast(t_val));
 
     core.commandmode = 0;
     if (rs.verbosity != 0 or rs.making) {
         word.print("compiling {s}\n", .{t_val});
     }
-    ls.nextpn = 0;
+    lexs.nextpn = 0;
     rs.embargoes = NIL;
     rs.detrop = NIL;
     rs.fnts = NIL;
     rs.rfl = NIL;
     rs.bereaved = NIL;
     rs.ld_stuff = NIL;
-    ls.exportfiles = NIL;
+    lexs.exportfiles = NIL;
     rs.freeids = NIL;
     rs.exports = NIL;
     rs.includees = NIL;
@@ -121,10 +121,10 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
 
     _ = parser_api.parseCurrent() catch {};
 
-    resolveExportFileList(heap, core, rs);
+    resolveExportFileList(heap, core, rs, lexs);
 
     if (core.SYNERR == 0 and rs.includees != NIL) {
-        heap.files = abi.append1(heap.files, mkincludes(heap, core, comp, rs, rs.includees));
+        heap.files = abi.append1(heap.files, mkincludes(heap, core, comp, rs, lexs, rs.includees));
         rs.includees = NIL;
     }
     rs.ld_stuff = NIL;
@@ -168,9 +168,9 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
             dump.makedump(heap, core, comp, rs);
         } else if (files.isMirandaSource(t_val) != 0) {
             if (comp.ND == NIL) {
-                dump.fixexports(heap, rs);
+                dump.fixexports(heap, rs, lexs);
                 dump.makedump(heap, core, comp, rs);
-                dump.unfixexports(heap, rs);
+                dump.unfixexports(heap, rs, lexs);
             } else {
                 var obf: [abi.pnlim]u8 = undefined;
                 _ = word.strcpy(&obf, t_val);
@@ -191,7 +191,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         errors.fatal("panic: cannot compile %s\n", .{.{@as([*:0]const u8, if (rs.okprel) "stdenv" else "prelude")}});
     }
     rs.oldfiles = heap.files;
-    heap_mod.unload(comp, rs);
+    heap_mod.unload(comp, rs, lexs);
     if (files.isMirandaSource(t_val) != 0) {
         var obf: [abi.pnlim]u8 = undefined;
         _ = word.strcpy(&obf, t_val);
@@ -203,12 +203,12 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     core.loading = 0;
 }
 
-/// Resolves each name in `ls.exportfiles` against `rs.includees`: `+` pulls in
+/// Resolves each name in `lexs.exportfiles` against `rs.includees`: `+` pulls in
 /// every variable defined in the current file, anything else must match exactly
 /// one included fileid (ambiguous or missing matches abandon compilation).
-fn resolveExportFileList(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState) void {
-    if (core.SYNERR == 0 and ls.exportfiles != NIL) {
-        var s = ls.exportfiles;
+fn resolveExportFileList(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.LexState) void {
+    if (core.SYNERR == 0 and lexs.exportfiles != NIL) {
+        var s = lexs.exportfiles;
         while (s != NIL) : (s = heap_mod.t(s)) {
             if (heap_mod.h(s) == word.PLUS) {
                 var i = heap_mod.filDefs(heap_mod.h(heap.files));
@@ -430,7 +430,7 @@ fn reportUnusedDefinitions(heap: *Heap, core: *core_state.CoreState, rs: *rt.Run
 
 /// Resolves a list of `%include` file nodes (`includees_val`) into a heap list
 /// of loaded file nodes, detecting and reporting clashes. Returns the resolved list.
-pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, includees_val: Word) Word {
+pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, includees_val: Word) Word {
     var includees_list = includees_val;
     var result: Word = NIL;
     var tclashes: Word = NIL;
@@ -487,16 +487,16 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         var f: ?*word.FILE = null;
         const fn_str = strtab.strOf(strtab.table, heap_mod.h(heap_mod.h(heap_mod.h(includees_list))));
 
-        _ = word.strcpy(ls.dicp, fn_str);
-        _ = word.strcpy(ls.dicp + word.strlen(ls.dicp) - 1, core.obsuffix);
+        _ = word.strcpy(lexs.dicp, fn_str);
+        _ = word.strcpy(lexs.dicp + word.strlen(lexs.dicp) - 1, core.obsuffix);
 
         if (!rs.making) {
             oldsig = signals(abi.SIGINT, @intFromPtr(&dump.sigdefer));
         }
 
-        f = word.fopen(ls.dicp, "r");
+        f = word.fopen(lexs.dicp, "r");
         if (f != null) {
-            x = abi.loadScript(core, comp, rs, f.?, @constCast(fn_str), heap_mod.h(heap_mod.t(heap_mod.h(includees_list))), heap_mod.t(heap_mod.t(heap_mod.h(includees_list))), 0);
+            x = abi.loadScript(core, comp, rs, lexs, f.?, @constCast(fn_str), heap_mod.h(heap_mod.t(heap_mod.h(includees_list))), heap_mod.t(heap_mod.t(heap_mod.h(includees_list))), 0);
             _ = word.fclose(f.?);
         }
 
@@ -566,7 +566,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
                 }
             }
 
-            if (abi.member(heap, ls.exportfiles, strtab.strBits(strtab.table, fn_str)) != 0) {
+            if (abi.member(heap, lexs.exportfiles, strtab.strBits(strtab.table, fn_str)) != 0) {
                 y = x;
                 while (y != NIL) : (y = heap_mod.t(y)) {
                     var z = heap_mod.filDefs(heap_mod.h(y));

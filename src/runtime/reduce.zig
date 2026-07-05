@@ -22,6 +22,7 @@ const big = @import("big.zig");
 const lex = @import("../parser/lex.zig");
 const main_clib = @import("main_clib.zig");
 const core_state = @import("core_state.zig");
+const lex_state = @import("../parser/lex_state.zig");
 const reduce_core = @import("reducer/reduce_core.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
@@ -305,7 +306,7 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
             reduce_core.upLeft(ctx);
             const lastarg = t(ctx.e);
 
-            const val = parseLine(ctx.heap, core_state.s, rt.rs, h(ctx.args[0]), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.args[0]));
+            const val = parseLine(ctx.heap, core_state.s, rt.rs, lex_state.ls, h(ctx.args[0]), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.args[0]));
             if (val == main_clib.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(lastarg))));
                 rewriteToNil(&ctx.e);
