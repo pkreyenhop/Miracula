@@ -1049,11 +1049,77 @@ the value vocabulary; `main_clib.zig` shrinks to `os.zig`.
 1. **Writers.** `Interp` gains `out`/`err` buffered writers (from `ctx.io` in
    `main`, from in-memory buffers in tests). Convert the driver/REPL surface first
    (prompts, `//commands`, stats), then compiler messages, then reducer output.
+
+   **Landed (2026-07-07), much smaller than framed.** Investigation found
+   this infrastructure already ~80% built (an earlier shared-state-plan
+   pass had already folded it in): `Interp.io: IoState` already holds
+   buffered `stdout_writer`/`stderr_writer` (`std.Io.File.Writer`, 8KB
+   backing buffers), and `word.print`/`word.printErr` — which
+   `driver/repl.zig` and `driver/commands.zig` already call exclusively,
+   no ambient `FILE*`/libc calls — already route through them. The one
+   real gap: `word.zig`'s `initWriters()`/`fopen()`/`fclose()` were
+   hardcoded to `std.Options.debug_io` instead of `runtime_state.zig`'s
+   `io` var (set from `ctx.io` in `main.zig`) — harmless today since both
+   resolve to the same implementation for the native CLI binary, but a
+   latent inconsistency where the one module owning every writer and file
+   handle silently ignored the process's actual `std.Io` context. Fixed
+   via an inline `@import` (`procIo()`, matching the existing `fio()`
+   pattern) rather than a top-level `const` import, since `word.zig` is a
+   leaf module every other file imports freely and `runtime_state.zig`
+   imports `main_clib.zig` which imports `word.zig` back — a top-level
+   import would cycle. Steps 3-5 (format conversion, ctype/string-helper
+   deletion, `main_clib.zig` → `os.zig`) are unaffected and still ahead.
+
 2. **Diagnostics.** Promote the parser's `Diagnostic{span, message}` to a shared
    `Diagnostics` type (list + counts). Replace `SYNERR`/`errs`/`errline`/`errcol`
    with it: `errs`'s second life as a "current compile position breadcrumb" for
    runtime error reporting becomes an explicit `last_position: Span` field —
    the two unrelated purposes the old survey found get two named homes.
+
+   **Landed (2026-07-07), scope narrowed after investigation (confirmed
+   with the user).** A full-tree caller audit found `errs` far more deeply
+   coupled than "replace it" suggests: it's a heap `FILEINFO` cons cell
+   `(file . line)`, read via `h()`/`t()` by 12 sites in `compiler/trans.zig`
+   alone, plus `compiler/types.zig`, `runtime/reduce.zig`, and
+   `parser/lex.zig`'s `resetLex` (trimmed just last session in Phase 1 step
+   8) — each with a load-bearing "first-error-wins" `== 0` guard. Fully
+   retiring it in one pass, as the plan's wording implies, would mean
+   touching all of those simultaneously — a large, deep, cross-cutting
+   risk disproportionate to one step. Landed instead, confirmed with the
+   user: **(a)** the three independently-defined, near-identical
+   `Diagnostic` structs (`parser/parser.zig`, `syntax/lexer.zig`,
+   `syntax/directives.zig` — the first missing the other two's `stream`/
+   `add_prefix` routing fields) converged on one shared type in
+   `parser/token_filter.zig` (already the zero-dependency home `Span`/
+   `DiagnosticStream` live in, for the same import-cycle reason), each
+   site now a one-line re-export; **(b)** `parser/diagnostics.zig` — a
+   fourth, differently-shaped, never-actually-integrated "modern
+   collector" (`severity`/`line`/`column` fields, a `Diagnostics` type
+   with `addError`/`addWarning`/`addNote`) whose only caller anywhere was
+   `main.zig`'s test-aggregator import — deleted outright, since leaving
+   a second, dead, incompatible "Diagnostic" type around would undercut
+   the entire point of converging on one; **(c)** `CoreState` gains
+   `last_diagnostic_message: []const u8 = ""`, populated additively by
+   `parser_api.zig`'s four diagnostic-reporting sites (`runParsedTokens`
+   and `parseWithNew`, one lexer-diagnostic and one parser-diagnostic path
+   each) alongside the existing `errline`/`errcol` writes — first
+   diagnostic wins, matching their existing semantics. The message text is
+   arena-backed at the point it's reported (the same arena
+   `parseCurrentNative`/`parseWithNew` frees on return), so
+   `recordDiagnosticMessage()` duplicates it with `rt.allocator` before
+   storing — deliberately leaked, same convention as `lex.zig`'s `keep()`
+   permanently retaining dictionary strings, matching this field's
+   "one message per failed compile, for the life of the process" role.
+   `core_state.zig` deliberately has zero source-tree imports (its own
+   header's G1 acyclic invariant, so `heap.zig`/`parser_api.zig` can reach
+   it without a cycle), so the new field is a plain `[]const u8`, not the
+   shared `Diagnostic` type itself — callers copy just what they need.
+   **Not done — deliberately deferred, a separate future step:** `errs`
+   itself, and `trans.zig`/`types.zig`/`reduce.zig`/`resetLex`'s existing
+   usage of it, are completely untouched; `last_diagnostic_message` is not
+   yet read by anything (a foundation for a future step, same as
+   `syntax/`'s early landings coexisted unread by production code for
+   several steps before their own cutover).
 3. **Format conversion.** Mechanically convert the ~320 C-format call sites
    (`%s`/`%d`/`%ld` → `{s}`/`{d}`), dropping the `.{.{a}}` tuple convention. Module
    by module; a temporary comptime C-format shim is permitted mid-phase and deleted

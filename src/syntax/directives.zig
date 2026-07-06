@@ -54,16 +54,12 @@ pub const Alias = tf.DirectiveAlias;
 pub const Include = tf.DirectiveInclude;
 pub const Directive = tf.Directive;
 
-pub const Diagnostic = struct {
-    span: Span,
-    message: []const u8,
-    /// See `syntax/lexer.zig`'s `Diagnostic` doc comment — same routing
-    /// distinction (legacy's `syntax()` helper vs. an ad hoc `word.print`
-    /// call site), mirrored here so `lexer.zig`'s `lexDirective` can copy
-    /// these over without losing that information.
-    stream: tf.DiagnosticStream = .stderr,
-    add_prefix: bool = true,
-};
+/// Re-exported from `token_filter.zig` (Phase 2 step 2) — the same shared
+/// type `parser/parser.zig` and `syntax/lexer.zig` use, so `lexer.zig`'s
+/// `lexDirective` can copy these over (including `stream`/`add_prefix`'s
+/// routing distinction — see `syntax/lexer.zig`'s `Diagnostic` doc comment)
+/// without a type mismatch.
+pub const Diagnostic = tf.Diagnostic;
 
 const keywords = std.StaticStringMap(void).initComptime(.{
     .{"begin"}, .{"bnf"}, .{"export"}, .{"free"}, .{"include"}, .{"insert"}, .{"lex"}, .{"list"}, .{"nolist"},

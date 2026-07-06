@@ -26,11 +26,12 @@ const ParseError = pratt.ParseError;
 // Diagnostics
 // ---------------------------------------------------------------------------
 
-/// A structured parse error recorded during error recovery.
-pub const Diagnostic = struct {
-    span: Span,
-    message: []const u8,
-};
+/// A structured parse error recorded during error recovery. Re-exported
+/// from `token_filter.zig` (Phase 2 step 2) — shared with `syntax/lexer.zig`
+/// and `syntax/directives.zig`'s own diagnostics, which is why it also
+/// carries `stream`/`add_prefix` fields this file's own reporting never
+/// reads (their defaults are inert here).
+pub const Diagnostic = tf.Diagnostic;
 
 // ---------------------------------------------------------------------------
 // Parser state

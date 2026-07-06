@@ -10,12 +10,27 @@ const std = @import("std");
 /// legacy's printing isn't uniform across call sites (`compiler/setup.zig`'s
 /// `syntax()` helper: stderr, adds its own "syntax error: " prefix; ad hoc
 /// `word.print` call sites like `errclass()`/`directive()`: stdout, exact
-/// text). Shared between `syntax/lexer.zig`'s and `syntax/directives.zig`'s
-/// own `Diagnostic` types (each defined separately, mirroring `parser/
-/// parser.zig`'s own `Diagnostic` shape, so neither pulls in a tree it
-/// doesn't need) so a diagnostic keeps its routing when copied from one to
-/// the other.
+/// text).
 pub const DiagnosticStream = enum { stdout, stderr };
+
+/// A single parse/lex-level diagnostic: where it happened, what it says,
+/// and (since legacy's printing isn't uniform across call sites — see
+/// `DiagnosticStream`'s doc comment) how to print it. Shared by
+/// `parser/parser.zig`, `syntax/lexer.zig`, and `syntax/directives.zig`
+/// (Phase 2 step 2, docs/ZIG_NATIVE_PLAN.md — promoted from three
+/// independently-defined, near-identical structs to one, living here for
+/// the same reason `Span`/`DiagnosticStream` do: `syntax/` already depends
+/// on `parser/`, so `parser/ast.zig`/`parser/parser.zig` importing
+/// `syntax/lexer.zig` back would cycle, and `token_filter.zig` has no
+/// dependencies of its own). `parser.zig`'s own diagnostics never set
+/// `stream`/`add_prefix` explicitly — the defaults (`.stderr`/`true`) are
+/// inert for its existing reporting path, which doesn't read either field.
+pub const Diagnostic = struct {
+    span: Span,
+    message: []const u8,
+    stream: DiagnosticStream = .stderr,
+    add_prefix: bool = true,
+};
 
 /// The lexical token kinds the Pratt parser consumes: identifiers/literals,
 /// keywords, the single- and multi-character operators, the layout tokens the

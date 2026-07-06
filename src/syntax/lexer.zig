@@ -79,24 +79,22 @@ pub const TokenId = tf.TokenId;
 pub const Span = tf.Span;
 pub const Directive = directives_mod.Directive;
 
-/// A structured lex error recorded during scanning (mirrors
-/// `parser/parser.zig`'s `Diagnostic` shape; kept as a separate type so
-/// `syntax/` does not import the legacy `parser/parser.zig` tree it is
-/// replacing).
-pub const Diagnostic = struct {
-    span: Span,
-    message: []const u8,
-    /// Legacy's diagnostic printing isn't uniform across call sites: the
-    /// shared `syntax()` helper (`compiler/setup.zig`) writes to *stderr*
-    /// with a "syntax error: " prefix it adds itself; other call sites
-    /// (`errclass()`'s string/char-const escape errors, `directive()`'s
-    /// "unknown directive") print directly to *stdout*, ad hoc, sometimes
-    /// with their own "syntax error: " text already in the literal,
-    /// sometimes not. Each diagnostic records which so the caller
-    /// (`parser_api.zig`) can match exactly instead of assuming one.
-    stream: tf.DiagnosticStream = .stderr,
-    add_prefix: bool = true,
-};
+/// A structured lex error recorded during scanning. Re-exported from
+/// `token_filter.zig` (Phase 2 step 2) — shared with `parser/parser.zig`'s
+/// and `syntax/directives.zig`'s own diagnostics; `token_filter.zig` has
+/// no dependencies of its own, so this doesn't pull in the legacy
+/// `parser/parser.zig` tree (the reason this was a separate, duplicated
+/// type before).
+///
+/// `stream`/`add_prefix` exist because legacy's diagnostic printing isn't
+/// uniform across call sites: the shared `syntax()` helper
+/// (`compiler/setup.zig`) writes to *stderr* with a "syntax error: " prefix
+/// it adds itself; other call sites (`errclass()`'s string/char-const
+/// escape errors, `directive()`'s "unknown directive") print directly to
+/// *stdout*, ad hoc, sometimes with their own "syntax error: " text already
+/// in the literal, sometimes not. Each diagnostic records which so the
+/// caller (`parser_api.zig`) can match exactly instead of assuming one.
+pub const Diagnostic = tf.Diagnostic;
 
 const keywords = std.StaticStringMap(TokenId).initComptime(.{
     .{ "abstype", .kw_abstype },

@@ -243,12 +243,14 @@ fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagno
         core.s().SYNERR = 1;
         core.s().errline = @intCast(lexer_diagnostics[0].span.line);
         core.s().errcol = @intCast(lexer_diagnostics[0].span.col);
+        recordDiagnosticMessage(lexer_diagnostics[0].message);
         return ParseError.SyntaxError;
     }
     if (p.diagnostics.items.len > 0) {
         core.s().SYNERR = 1;
         core.s().errline = @intCast(p.diagnostics.items[0].span.line);
         core.s().errcol = @intCast(p.diagnostics.items[0].span.col);
+        recordDiagnosticMessage(p.diagnostics.items[0].message);
         return ParseError.SyntaxError;
     }
 
@@ -266,6 +268,20 @@ fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagno
         rt.rs().validate();
     }
     return .success;
+}
+
+/// Persist the first diagnostic's message text into
+/// `core.s().last_diagnostic_message` (Phase 2 step 2, additive). `message`
+/// is arena-backed (the caller's diagnostics list lives in the same arena
+/// `parseCurrentNative`/`parseWithNew` frees on return), so it must be
+/// duplicated with a longer-lived allocator to survive past this call —
+/// leaked deliberately (like `lex.zig`'s `keep()` permanently retaining
+/// dictionary strings), matching this field's "one message per failed
+/// compile, for the life of the process" role. First diagnostic wins:
+/// callers only reach this once per parse (each call site returns
+/// immediately after), same as `errline`/`errcol`/`SYNERR`.
+fn recordDiagnosticMessage(message: []const u8) void {
+    core.s().last_diagnostic_message = rt.allocator.dupe(u8, message) catch return;
 }
 
 /// Report a `modules.processIncludes` failure and set `SYNERR` — shared by
@@ -366,12 +382,14 @@ pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!Ne
         core.s().SYNERR = 1;
         core.s().errline = @intCast(tok_result.diagnostics[0].span.line);
         core.s().errcol = @intCast(tok_result.diagnostics[0].span.col);
+        recordDiagnosticMessage(tok_result.diagnostics[0].message);
         return ParseError.ParseFailed;
     }
     if (p.diagnostics.items.len > 0) {
         core.s().SYNERR = 1;
         core.s().errline = @intCast(p.diagnostics.items[0].span.line);
         core.s().errcol = @intCast(p.diagnostics.items[0].span.col);
+        recordDiagnosticMessage(p.diagnostics.items[0].message);
         return ParseError.ParseFailed;
     }
 

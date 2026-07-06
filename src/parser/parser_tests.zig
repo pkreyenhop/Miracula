@@ -136,6 +136,11 @@ test "error detection sets SYNERR and errline" {
     _ = parser_api.parseString(source1) catch {};
     try testing.expectEqual(@as(word.Word, 1), core_state.s().SYNERR);
     try testing.expectEqual(@as(word.Word, 2), core_state.s().errline);
+    // Phase 2 step 2: the diagnostic's message text is also persisted
+    // (additively, alongside errline/errcol) -- must survive past the
+    // parse's own arena, so it's non-empty here even though the arena
+    // that originally held it is long gone.
+    try testing.expect(core_state.s().last_diagnostic_message.len > 0);
 
     // 2. Syntax error on the last line gets detected and sets correct errline
     resetLexerState();

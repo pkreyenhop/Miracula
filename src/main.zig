@@ -61,7 +61,6 @@ comptime {
     _ = @import("runtime/big.zig");
     _ = @import("parser/lex.zig");
     _ = @import("parser/parser_tests.zig");
-    _ = @import("parser/diagnostics.zig");
     _ = @import("syntax/source.zig");
     _ = @import("syntax/lexer.zig");
     _ = @import("syntax/layout.zig");
