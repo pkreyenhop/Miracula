@@ -1109,10 +1109,21 @@ pub inline fn fio() *IoState {
     return &@import("interp.zig").current_interp.io;
 }
 
+/// The process's actual `std.Io` implementation (`rt.io`, set from
+/// `ctx.io` in `main.zig`) — not `std.Options.debug_io`, which is only a
+/// default and may not be the same implementation the process was
+/// actually handed. Read via an inline `@import` (not a top-level const)
+/// to avoid a cycle: `runtime_state.zig` imports `main_clib.zig`, which
+/// imports this file, and `word.zig` is a leaf module every other file is
+/// meant to import freely.
+inline fn procIo() std.Io {
+    return @import("runtime_state.zig").io;
+}
+
 /// Lazily initialise the buffered stdout/stderr writers (once).
 pub fn initWriters() void {
     if (fio().writers_initialized) return;
-    const io = std.Options.debug_io;
+    const io = procIo();
     fio().stdout_writer = std.Io.File.stdout().writer(io, &fio().stdout_buf);
     fio().stderr_writer = std.Io.File.stderr().writer(io, &fio().stderr_buf);
     fio().writers_initialized = true;
@@ -1228,7 +1239,7 @@ pub fn fopen(path: ?*const anyopaque, mode: [*:0]const u8) ?*FILE {
         if (mc == 'a') for_append = true;
     }
 
-    const io = std.Options.debug_io;
+    const io = procIo();
     const dir = std.Io.Dir.cwd();
 
     const file = if (for_read)
@@ -1261,7 +1272,7 @@ pub fn fclose(file: ?*FILE) c_int {
             return 0;
         }
         if (f.file.handle >= 0) {
-            const io = std.Options.debug_io;
+            const io = procIo();
             f.file.close(io);
             f.file.handle = -1;
         }
