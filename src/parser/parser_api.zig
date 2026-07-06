@@ -1,9 +1,15 @@
 //! parser_api.zig — the entry points that drive parsing.
 //!
-//! Bridges the REPL/loader to both pipelines: `parseCurrent`/`parseString` run
-//! the legacy lexer + grammar (the production path that feeds `evaluateRepl`),
-//! while `parseWithNew` runs the new Zig lexer→parser→codegen pipeline. Also
-//! re-exports the lexer string setup (`lexSetupString`/`lexCleanup`).
+//! `parseCurrent`/`parseFile`/`parseString` are the production entry points
+//! (`parseCurrent` feeds `module_loader.zig`'s `loadfile` and the REPL loop).
+//! Phase 1 step 7: the native `syntax/` pipeline (`Source` → `lexer` →
+//! `applyLayout` → `parser.zig`/`codegen.zig`) is the default front end for
+//! all of them; `-Dlegacy-lexer` (`options.legacy_lexer`) forces the old
+//! `lex_bridge.zig` (real `yylex()`) path instead, for differential
+//! debugging during the cutover window. `parseWithNew` is a separate,
+//! narrower entry point (string input only) still on the legacy bridge —
+//! not yet touched by this cutover (only `parser_tests.zig` calls it).
+//! Also re-exports the lexer string setup (`lexSetupString`/`lexCleanup`).
 
 const std = @import("std");
 const heap = @import("../runtime/heap.zig");
@@ -19,11 +25,16 @@ const parser_mod = @import("parser.zig");
 const codegen = @import("codegen.zig");
 const repl = @import("../driver/repl.zig");
 const lex = @import("lex.zig");
+const lex_state = @import("lex_state.zig");
 const setupString = lex.setupString;
 const cleanup = lex.cleanup;
 const setupFile = lex.setupFile;
 // Forks like the original C evaluate(): compiling=0 only in child; parent's heap is safe.
 const evaluateRepl = repl.evaluateRepl;
+
+const source_mod = @import("../syntax/source.zig");
+const lexer_mod = @import("../syntax/lexer.zig");
+const layout_mod = @import("../syntax/layout.zig");
 /// Errors the parse entry points can return.
 pub const ParseError = error{
     SyntaxError,
@@ -37,12 +48,15 @@ pub const ParseResult = enum {
 
 /// Parses the currently active stream.
 pub fn parseCurrent() ParseError!ParseResult {
-    return parseCurrentNew();
+    if (options.legacy_lexer) return parseCurrentLegacy();
+    return parseCurrentNative();
 }
 
-/// Run the Zig pipeline on the currently active Miranda lex stream.
-/// s_in must already be opened (e.g. by openfile() in lex.zig).
-fn parseCurrentNew() ParseError!ParseResult {
+/// Run the legacy `lex_bridge.zig` (real `yylex()`) pipeline on the
+/// currently active Miranda lex stream. s_in must already be opened (e.g.
+/// by openfile() in lex.zig). Kept behind `-Dlegacy-lexer` for differential
+/// debugging during the Phase 1 step 7 cutover window.
+fn parseCurrentLegacy() ParseError!ParseResult {
     if (options.is_strict) {
         if (rt.rs().current_script) |script_name| {
             validateUtf8File(script_name) catch |err| {
@@ -56,16 +70,138 @@ fn parseCurrentNew() ParseError!ParseResult {
     const alloc = arena.allocator();
 
     const tokens = lex_bridge.tokenizeCurrent(alloc) catch return ParseError.ParseFailed;
-
     var p = parser_mod.Parser.init(alloc, tokens);
+    return runParsedTokens(&p, alloc, &.{});
+}
 
+/// Read from the currently-open legacy stream (`rt.rs().s_in`) into an owned
+/// buffer, one byte at a time via the same `word.getc` `lex_bridge` itself
+/// reads through — the native pipeline's `Source` needs a whole unit of
+/// input up front (it isn't a streaming reader), but this doesn't require
+/// changing how/where the stream was opened (`setupFile`/`openfile`, driven
+/// by callers like `module_loader.zig`'s `loadfile`, are untouched).
+///
+/// `stop_at_newline`: command-mode (the interactive REPL prompt) reads
+/// **one line at a time** from a long-lived `stdin` shared across many
+/// `parseCurrent` calls — `driver/repl.zig`'s command loop calls this once
+/// per line the user types, and reads the *next* line on its *next* call.
+/// Draining the whole stream here (as whole-script compilation correctly
+/// does) would silently swallow lines meant for later prompts. Matches
+/// `lex.zig`'s own line-oriented reading, driven by `lexs.c` at the
+/// caller's level (see `runParsedTokens`'s command-mode success path for
+/// why that field still matters even though this pipeline never reads it).
+fn slurpCurrentStream(gpa: std.mem.Allocator, stop_at_newline: bool) ![]u8 {
+    var out: std.ArrayList(u8) = .empty;
+    errdefer out.deinit(gpa);
+    while (true) {
+        const c = word.getc(rt.rs().s_in);
+        if (c < 0) break;
+        try out.append(gpa, @intCast(c));
+        if (stop_at_newline and c == '\n') break;
+    }
+    return out.toOwnedSlice(gpa);
+}
+
+/// Run the native `syntax/` pipeline (`Source` → `lexer` → `applyLayout` →
+/// `parser.zig`/`codegen.zig`) on the currently active Miranda lex stream.
+/// The Phase 1 step 7 default.
+fn parseCurrentNative() ParseError!ParseResult {
+    if (options.is_strict) {
+        if (rt.rs().current_script) |script_name| {
+            validateUtf8File(script_name) catch |err| {
+                core.s.SYNERR = 1;
+                return err;
+            };
+        }
+    }
+    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+    defer arena.deinit();
+    const alloc = arena.allocator();
+
+    // Command mode (the interactive REPL prompt) reads one line at a time
+    // from a long-lived stdin, not a whole standalone file — neither
+    // "read until EOF" nor filename-based literate detection apply.
+    const command_mode = core.s().commandmode != 0;
+    const raw = slurpCurrentStream(alloc, command_mode) catch return ParseError.ParseFailed;
+
+    // legacy's yylex() resets `s_in` to stdin itself, as a side effect of
+    // lexEndOfFile() popping the last entry off the file queue while
+    // reading character-by-character -- the batch/slurp model above has no
+    // equivalent incremental moment, so replicate the same postcondition
+    // explicitly: once a whole file (not a REPL line) has been fully read,
+    // its stream is spent and must not be read from again. Close it (
+    // lexEndOfFile() does too, once per popped queue entry) and point
+    // s_in back at stdin, matching getStdin()'s role there. Guarded on
+    // "not already stdin" so REPL/string input (s_in already == stdin) is
+    // never closed.
+    if (!command_mode and rt.rs().s_in != word.stdin()) {
+        _ = word.fclose(rt.rs().s_in);
+        rt.rs().s_in = word.stdin();
+    }
+
+    const name_says_literate = !command_mode and if (rt.rs().current_script) |name|
+        source_mod.Source.isLiterateName(std.mem.span(name))
+    else
+        false;
+    // %insert splices another file's bytes in place, textually, before
+    // tokenizing at all -- see Source.resolveInserts's doc comment. Resolved
+    // relative to the current script's own directory (REPL/string input has
+    // no current_script, so nothing to resolve against -- "." is inert
+    // there since %insert can't meaningfully appear in a typed expression
+    // anyway).
+    const base_dir = if (!command_mode and rt.rs().current_script != null)
+        std.fs.path.dirname(std.mem.span(rt.rs().current_script.?)) orelse "."
+    else
+        ".";
+    const spliced = source_mod.Source.resolveInserts(alloc, raw, base_dir, std.Options.debug_io, 0) catch return ParseError.ParseFailed;
+    var src = source_mod.Source.init(alloc, spliced, name_says_literate) catch return ParseError.ParseFailed;
+    const tok_result = lexer_mod.tokenizeWithDirectives(alloc, &src) catch return ParseError.ParseFailed;
+    const laid_out = layout_mod.applyLayout(alloc, tok_result.tokens) catch return ParseError.ParseFailed;
+
+    var p = parser_mod.Parser.initWithDirectives(alloc, laid_out, tok_result.directives);
+    return runParsedTokens(&p, alloc, tok_result.diagnostics);
+}
+
+/// Print one lex-level diagnostic exactly as legacy would have, given which
+/// stream/wrapper its originating call site used (see `lexer_mod.Diagnostic`'s
+/// doc comment).
+fn reportLexerDiagnostic(d: lexer_mod.Diagnostic) void {
+    switch (d.stream) {
+        // Legacy's ad hoc word.print() call sites (errclass(),
+        // directive()'s "unknown directive") -- stdout, exact text, no
+        // prefix added here (baked into the message already if the call
+        // site needs one).
+        .stdout => word.print("{s}\n", .{d.message}),
+        // Legacy's shared syntax() helper -- stderr, with a "syntax
+        // error: " prefix syntax() adds itself.
+        .stderr => if (d.add_prefix)
+            word.printErr("syntax error: {s}\n", .{d.message})
+        else
+            word.printErr("{s}\n", .{d.message}),
+    }
+}
+
+/// Shared tail of `parseCurrent{Legacy,Native}`: command-mode expression
+/// evaluation, or full-script parse + codegen + diagnostic reporting.
+/// `lexer_diagnostics` are the native pipeline's lex-level diagnostics
+/// (always empty from the legacy path — `lex_bridge`'s own lex errors go
+/// through `acterror()`/`syntax()` directly during tokenization, not a
+/// separate list collected afterward).
+fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagnostics: []const lexer_mod.Diagnostic) ParseError!ParseResult {
     // Command mode: the user typed an expression at the REPL prompt.
     // In the old YACC grammar this was handled by `EVAL exp { evaluate($2); }`.
     // We parse one expression, codegen it, then fork via evaluateRepl().
     if (core.s().commandmode != 0) {
-        const expr = parser_mod.parseExpr(&p) catch |err| {
+        const expr = parser_mod.parseExpr(p) catch |err| {
             core.s().SYNERR = 1;
-            if (err == error.UnexpectedEof) {
+            // A lex-level error (e.g. a bad string escape) surfaces here as
+            // parseExpr choking on the resulting .error_tok -- report the
+            // *specific* lexer diagnostic instead of the generic fallback
+            // when one exists, matching legacy (whose lexer prints its own
+            // message immediately, before the parser ever sees anything).
+            if (lexer_diagnostics.len > 0) {
+                reportLexerDiagnostic(lexer_diagnostics[0]);
+            } else if (err == error.UnexpectedEof) {
                 _ = word.print("syntax error - unexpected newline\n", .{.{}});
             } else {
                 _ = word.print("syntax error - unexpected token\n", .{.{}});
@@ -91,21 +227,45 @@ fn parseCurrentNew() ParseError!ParseResult {
         }
         rt.rs().lastexp = expr_word; // anchor as GC root before typeOf() inside evaluateRepl() can trigger GC
         evaluateRepl(heap.heap(), core.s(), compiler_state.cs(), rt.rs(), expr_word);
+        // driver/repl.zig's command loop checks `lexs.c` after this call
+        // returns to decide whether the line held trailing garbage (`lexs.c
+        // != '\n'` -> "syntax error", matching the legacy lexer's own
+        // single-character-lookahead contract). The checks above already
+        // confirmed nothing but eof/offside follows the parsed expression,
+        // so satisfy that contract explicitly -- this pipeline never
+        // touches `lexs.c` otherwise (it's internal to the lex.zig/
+        // lex_state.zig machinery this pipeline doesn't use).
+        lex_state.ls().c = '\n';
         // Child prints newline before exit(0); parent returns here.
         return .success;
     }
 
-    const script = parser_mod.parseScript(&p) catch return ParseError.ParseFailed;
+    const script = parser_mod.parseScript(p) catch return ParseError.ParseFailed;
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.heap().validate();
         p.validate();
         rt.rs().validate();
     }
 
+    // Lexer diagnostics logically precede parser diagnostics in source order
+    // for the common case (a lex error yields an .error_tok the parser then
+    // also complains about) -- report them first. Only the *first* lexer
+    // diagnostic, matching legacy's `syntax()`/`acterror()`: both guard on
+    // `SYNERR != 0` and are no-ops once it's already set, so only the
+    // earliest lex-level error ever actually prints.
     if (!@import("builtin").is_test) {
+        if (lexer_diagnostics.len > 0) {
+            reportLexerDiagnostic(lexer_diagnostics[0]);
+        }
         for (p.diagnostics.items) |d| {
             std.debug.print("{d}:{d}: {s}\n", .{ d.span.line, d.span.col, d.message });
         }
+    }
+    if (lexer_diagnostics.len > 0) {
+        core.s().SYNERR = 1;
+        core.s().errline = @intCast(lexer_diagnostics[0].span.line);
+        core.s().errcol = @intCast(lexer_diagnostics[0].span.col);
+        return ParseError.SyntaxError;
     }
     if (p.diagnostics.items.len > 0) {
         core.s().SYNERR = 1;
@@ -151,7 +311,7 @@ pub fn parseFile(filename: [*:0]const u8) ParseError!ParseResult {
     if (setupFile(heap.heap(), filename) == 0) {
         return ParseError.ParseFailed;
     }
-    return parseCurrentNew();
+    return parseCurrent();
 }
 
 /// Parses a source string.

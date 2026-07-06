@@ -63,9 +63,110 @@ pub const Source = struct {
         return init(allocator, owned, false);
     }
 
+    /// Recursively resolve `%insert "path"` directives by splicing the
+    /// target file's bytes in place of the whole directive line — legacy's
+    /// `lex.zig` switches the character stream to another file mid-`yylex`
+    /// for `%insert` (a real, C-preprocessor-`#include`-style substitution,
+    /// not a token); this is the batch-model equivalent: splice once, up
+    /// front, before tokenizing at all, rather than mid-scan (matches this
+    /// file's header framing of `%insert`'ed text as "an in-memory buffer",
+    /// prepared before `Source.init` runs). Call this on the raw bytes
+    /// *before* `init`/`fromBytes`/literate detection, since splicing
+    /// changes the byte layout those depend on.
+    ///
+    /// `base_dir` is the directory `"..."`-form paths resolve relative to
+    /// (the including file's own directory — nested inserts resolve
+    /// relative to *their own* file, not the original). `<...>`-form
+    /// (miralib-relative) paths are not resolved here — not exercised by
+    /// the shipped corpus, a known gap matching `%include`'s own
+    /// unresolved path-resolution TODO (needs interpreter context this
+    /// preprocessing step doesn't have access to).
+    ///
+    /// **Known limitation:** legacy attributes diagnostics inside an
+    /// inserted file to *that file's own* line numbers (a stack of
+    /// per-file line counters, restored when the insert ends), and
+    /// continues the *outer* file's line count correctly afterward. This
+    /// function's straight byte-concatenation does neither — line numbers
+    /// after an insert are simply the running total across the spliced
+    /// buffer. Not observed to matter for the shipped corpus (no golden
+    /// case has a diagnostic after an `%insert`), but a real gap if one
+    /// ever does.
+    pub fn resolveInserts(gpa: std.mem.Allocator, raw: []const u8, base_dir: []const u8, io: std.Io, depth: u8) ![]u8 {
+        if (depth > 12) return error.InsertNestingTooDeep; // matches lex.zig's `insertdepth < 12` check
+        var out: std.ArrayList(u8) = .empty;
+        errdefer out.deinit(gpa);
+        var i: usize = 0;
+        while (i < raw.len) {
+            if (raw[i] == '%' and matchesInsertKeyword(raw, i + 1)) {
+                if (try spliceOneInsert(gpa, raw, i, base_dir, io, depth, &out)) |next_i| {
+                    i = next_i;
+                    continue;
+                }
+            }
+            try out.append(gpa, raw[i]);
+            i += 1;
+        }
+        return out.toOwnedSlice(gpa);
+    }
+
+    fn matchesInsertKeyword(raw: []const u8, start: usize) bool {
+        const kw = "insert";
+        if (start + kw.len > raw.len) return false;
+        if (!std.mem.eql(u8, raw[start .. start + kw.len], kw)) return false;
+        // The keyword must end here (not e.g. "insertx") -- next byte (if
+        // any) must not continue an identifier.
+        const after = start + kw.len;
+        if (after < raw.len) {
+            const c = raw[after];
+            if (std.ascii.isAlphanumeric(c) or c == '_' or c == '\'') return false;
+        }
+        return true;
+    }
+
+    /// Attempt to splice one `%insert "path"` directive starting at `raw[at]`
+    /// (`raw[at] == '%'`) into `out`. Returns the byte index in `raw` to
+    /// resume scanning from on success, or `null` if this isn't a
+    /// well-formed `%insert "..."` (caller falls back to copying `'%'`
+    /// through unchanged, matching `directives.zig`'s "unknown directive"
+    /// tolerance elsewhere).
+    // Explicit (not inferred) error set: spliceOneInsert and resolveInserts
+    // call each other, and Zig can't infer an error set across a
+    // recursive/mutual-recursion cycle.
+    fn spliceOneInsert(gpa: std.mem.Allocator, raw: []const u8, at: usize, base_dir: []const u8, io: std.Io, depth: u8, out: *std.ArrayList(u8)) anyerror!?usize {
+        var p = at + 1 + "insert".len;
+        while (p < raw.len and (raw[p] == ' ' or raw[p] == '\t')) p += 1;
+        if (p >= raw.len or raw[p] != '"') return null;
+        const path_start = p + 1;
+        var q = path_start;
+        while (q < raw.len and raw[q] != '"' and raw[q] != '\n') q += 1;
+        if (q >= raw.len or raw[q] != '"') return null;
+        const path = raw[path_start..q];
+        var end = q + 1;
+        if (end < raw.len and raw[end] == '\n') end += 1;
+
+        const full_path = try std.fs.path.join(gpa, &.{ base_dir, path });
+        defer gpa.free(full_path);
+        const file = try std.Io.Dir.cwd().openFile(io, full_path, .{});
+        defer file.close(io);
+        const len = try file.length(io);
+        const inserted_raw = try gpa.alloc(u8, @intCast(len));
+        defer gpa.free(inserted_raw);
+        _ = try file.readPositionalAll(io, inserted_raw, 0);
+
+        const inserted_dir = std.fs.path.dirname(full_path) orelse ".";
+        const resolved = try resolveInserts(gpa, inserted_raw, inserted_dir, io, depth + 1);
+        defer gpa.free(resolved);
+        try out.appendSlice(gpa, resolved);
+        return end;
+    }
+
     /// Whether `path` names a literate script by convention
-    /// (`parser/lex.zig`'s `litname`: filename ends in `.lit.m`).
-    fn isLiterateName(path: []const u8) bool {
+    /// (`parser/lex.zig`'s `litname`: filename ends in `.lit.m`). Public so
+    /// callers that already have a file's bytes in hand (e.g. read via the
+    /// legacy `FILE` stream rather than a fresh disk read — see
+    /// `parser_api.zig`'s native-pipeline entry points) can compute
+    /// `name_says_literate` themselves before calling `init` directly.
+    pub fn isLiterateName(path: []const u8) bool {
         return std.mem.endsWith(u8, path, ".lit.m");
     }
 
@@ -120,6 +221,20 @@ pub const Source = struct {
     }
 
     /// The 1-based (line, col) of byte offset `pos` (must be `<= bytes.len`).
+    ///
+    /// Tabs expand to the next multiple-of-8 column (`parser/lex.zig`'s
+    /// `getch`: `col = (col/8 + 1)*8`, computed here relative to column 1
+    /// instead of `getch`'s current left-verge (`lverge`) — this module has
+    /// no layout/margin state to consult (that's `syntax/layout.zig`'s job,
+    /// which runs *after* tokenizing, on the token stream, not the bytes).
+    /// Verified against `miralib/prelude`'s real (tab-indented) `cutoff`
+    /// function: since the offside rule only ever compares two columns
+    /// computed the *same* way, lines sharing an identical tab/space prefix
+    /// still align correctly under this simpler, lverge-0 assumption; it
+    /// would only disagree with `lverge`-relative expansion for a prefix
+    /// that mixes tabs and spaces differently across two lines meant to
+    /// align at a *non-zero* lverge — not seen in the shipped corpus, but
+    /// flagged here in case it surfaces later.
     pub fn position(self: *const Source, pos: usize) Span {
         var lo: usize = 0;
         var hi: usize = self.line_starts.len;
@@ -127,7 +242,17 @@ pub const Source = struct {
             const mid = lo + (hi - lo) / 2;
             if (self.line_starts[mid] <= pos) lo = mid else hi = mid;
         }
-        return .{ .line = @intCast(lo + 1), .col = @intCast(pos - self.line_starts[lo] + 1) };
+        const line_start = self.line_starts[lo];
+        var col: usize = 1;
+        var i = line_start;
+        while (i < pos) : (i += 1) {
+            if (self.bytes[i] == '\t') {
+                col = (col - 1) / 8 * 8 + 9;
+            } else {
+                col += 1;
+            }
+        }
+        return .{ .line = @intCast(lo + 1), .col = @intCast(col) };
     }
 };
 
@@ -185,6 +310,18 @@ test "Source.position: 1-based (line, col) for a multi-line buffer" {
     try std.testing.expectEqual(Span{ .line = 1, .col = 4 }, src.position(3)); // the '\n' itself
     try std.testing.expectEqual(Span{ .line = 2, .col = 1 }, src.position(4)); // 'd'
     try std.testing.expectEqual(Span{ .line = 3, .col = 3 }, src.position(9)); // 'h'
+}
+
+test "Source.position: a tab expands to the next multiple-of-8 column" {
+    const gpa = std.testing.allocator;
+    // "\t" (col 1->9), "a\t" (col 2->9), "ab\t" (col 3->9), "\t\t" (col 1->9->17).
+    const raw = try gpa.dupe(u8, "\tx\na\tx\nab\tx\n\t\tx\n");
+    var src = try Source.init(gpa, raw, false);
+    defer src.deinit();
+    try std.testing.expectEqual(@as(u32, 9), src.position(1).col); // 'x' after "\t"
+    try std.testing.expectEqual(@as(u32, 9), src.position(5).col); // 'x' after "a\t"
+    try std.testing.expectEqual(@as(u32, 9), src.position(10).col); // 'x' after "ab\t"
+    try std.testing.expectEqual(@as(u32, 17), src.position(14).col); // 'x' after "\t\t"
 }
 
 test "Source.position: empty buffer has one line, position 0" {

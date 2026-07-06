@@ -86,6 +86,16 @@ pub const Directive = directives_mod.Directive;
 pub const Diagnostic = struct {
     span: Span,
     message: []const u8,
+    /// Legacy's diagnostic printing isn't uniform across call sites: the
+    /// shared `syntax()` helper (`compiler/setup.zig`) writes to *stderr*
+    /// with a "syntax error: " prefix it adds itself; other call sites
+    /// (`errclass()`'s string/char-const escape errors, `directive()`'s
+    /// "unknown directive") print directly to *stdout*, ad hoc, sometimes
+    /// with their own "syntax error: " text already in the literal,
+    /// sometimes not. Each diagnostic records which so the caller
+    /// (`parser_api.zig`) can match exactly instead of assuming one.
+    stream: tf.DiagnosticStream = .stderr,
+    add_prefix: bool = true,
 };
 
 const keywords = std.StaticStringMap(TokenId).initComptime(.{
@@ -177,9 +187,22 @@ pub const Lexer = struct {
         }
     }
 
+    /// Record a diagnostic matching legacy's `syntax()` helper: stderr, with
+    /// a "syntax error: " prefix added at print time (not baked into
+    /// `message` itself).
     fn record(self: *Lexer, span: Span, comptime fmt: []const u8, args: anytype) void {
         const msg = std.fmt.allocPrint(self.gpa, fmt, args) catch return;
         self.diagnostics.append(self.gpa, .{ .span = span, .message = msg }) catch {};
+    }
+
+    /// Record a diagnostic matching legacy's ad hoc `word.print(...)`
+    /// call sites (`errclass()`, `directive()`'s "unknown directive"):
+    /// stdout, `message` printed exactly as given, no added prefix (bake
+    /// "syntax error: " into `fmt` directly if the specific call site needs
+    /// it — `directive()`'s does, `errclass()`'s doesn't).
+    fn recordStdout(self: *Lexer, span: Span, comptime fmt: []const u8, args: anytype) void {
+        const msg = std.fmt.allocPrint(self.gpa, fmt, args) catch return;
+        self.diagnostics.append(self.gpa, .{ .span = span, .message = msg, .stream = .stdout, .add_prefix = false }) catch {};
     }
 
     /// Two-char lookahead: if the next byte is `expected`, consume it and
@@ -218,6 +241,14 @@ pub const Lexer = struct {
             '+' => .{ .id = self.tryFollow('+', .plus_plus) orelse .plus, .span = span },
             '.' => .{ .id = self.tryFollow('.', .dot_dot) orelse .dot, .span = span },
             '\\' => .{ .id = self.tryFollow('/', .vel) orelse .error_tok, .span = span },
+            // Verified against lex.zig's own '/' case: a bare '/' is the
+            // (floating-point) division operator, .slash -- already in
+            // token_filter.zig's vocabulary (lex_bridge.zig maps it too),
+            // just never actually produced here. '//' (word.DIAG,
+            // "diagonalise" for infinite list comprehensions) has no
+            // TokenId or lex_bridge.zig mapping at all -- out of scope,
+            // matching this lexer's other documented gaps, not this fix.
+            '/' => .{ .id = .slash, .span = span },
             ':' => blk: {
                 if (self.tryFollow(':', .coloncolon) != null) {
                     break :blk .{ .id = self.tryFollow('=', .colon2eq) orelse .coloncolon, .span = span };
@@ -454,12 +485,33 @@ pub const Lexer = struct {
         return .{ .id = .const_float, .span = span, .float_val = value };
     }
 
+    /// The bad-escape cases `parser/lex.zig`'s `errclass()` reports —
+    /// mirrors its `val` codes (-2, -3, -5, -6; -4, decimal-escape-out-of-
+    /// range, is unreachable from `getlitch()`, the function this decoder
+    /// matches, so it's not modeled here; -7, `\&` outside a string, is
+    /// `.elided` at the `Escape` level, not an error here). `errclass()`'s
+    /// exact wording needs the string/char-const *context* this decoder
+    /// doesn't have, and its own newline/EOF handling differs entirely by
+    /// caller (`string()` vs `lexCharConst`) rather than sharing one
+    /// message — callers (`lexCharConst`/`lexStringConst`) special-case
+    /// `.newline`/`.eof` themselves and delegate the rest to
+    /// `recordEscapeError`.
+    const EscapeErrorKind = union(enum) {
+        newline,
+        eof,
+        invalid_utf8,
+        unterminated_escape,
+        no_hex_digits,
+        hex_out_of_range,
+        unrecognised_escape: u8,
+    };
+
     /// One decoded logical character from a string/char literal, or `.elided`
     /// (the `\&` no-op escape — legal only inside a string), or an error.
     const Escape = union(enum) {
         char: u21,
         elided,
-        err: []const u8,
+        err: EscapeErrorKind,
     };
 
     /// Decode one character at `self.pos`: a raw byte (UTF-8-decoded if its
@@ -470,8 +522,8 @@ pub const Lexer = struct {
     /// continuation, recurses for the next real character). An unescaped
     /// literal newline is always an error.
     fn decodeEscape(self: *Lexer) Escape {
-        const ch = self.peekByte() orelse return .{ .err = "unexpected end of input in a literal" };
-        if (ch == '\n') return .{ .err = "non-escaped newline encountered inside a literal" };
+        const ch = self.peekByte() orelse return .{ .err = .eof };
+        if (ch == '\n') return .{ .err = .newline };
         if (ch != '\\') {
             if (ch < 0x80) {
                 self.pos += 1;
@@ -479,22 +531,22 @@ pub const Lexer = struct {
             }
             const len = std.unicode.utf8ByteSequenceLength(ch) catch {
                 self.pos += 1;
-                return .{ .err = "invalid UTF-8 in source" };
+                return .{ .err = .invalid_utf8 };
             };
             if (self.pos + len > self.source.bytes.len) {
                 self.pos += 1;
-                return .{ .err = "invalid UTF-8 in source (truncated sequence)" };
+                return .{ .err = .invalid_utf8 };
             }
             const seq = self.source.bytes[self.pos .. self.pos + len];
             const cp = std.unicode.utf8Decode(seq) catch {
                 self.pos += 1;
-                return .{ .err = "invalid UTF-8 in source" };
+                return .{ .err = .invalid_utf8 };
             };
             self.pos += len;
             return .{ .char = cp };
         }
         self.pos += 1; // consume '\'
-        const esc = self.peekByte() orelse return .{ .err = "unterminated escape sequence" };
+        const esc = self.peekByte() orelse return .{ .err = .unterminated_escape };
         self.pos += 1;
         switch (esc) {
             '\n' => return self.decodeEscape(), // line continuation
@@ -515,8 +567,8 @@ pub const Lexer = struct {
                     value = value * 16 + d;
                     self.pos += 1;
                 }
-                if (count == 0) return .{ .err = "\\x with no hex digits" };
-                if (value > 0x10ffff) return .{ .err = "hexadecimal escape out of range" };
+                if (count == 0) return .{ .err = .no_hex_digits };
+                if (value > 0x10ffff) return .{ .err = .hex_out_of_range };
                 return .{ .char = @intCast(value) };
             },
             '\'', '"', '\\', '`' => return .{ .char = esc },
@@ -532,24 +584,49 @@ pub const Lexer = struct {
                 }
                 return .{ .char = @intCast(value) };
             },
-            else => return .{ .err = "unrecognised escape character" },
+            else => return .{ .err = .{ .unrecognised_escape = esc } },
         }
     }
 
+    /// Report the `errclass()`-style escape errors with `errclass()`'s exact
+    /// wording (`ctx` is "string" or "char const"). `.newline`/`.eof` aren't
+    /// handled here — `errclass()` never sees them either; `string()`/
+    /// `lexCharConst()` report those with their own, unrelated wording
+    /// (see the call sites).
+    fn recordEscapeError(self: *Lexer, span: Span, kind: EscapeErrorKind, ctx: []const u8) void {
+        switch (kind) {
+            .newline, .eof => unreachable, // handled by each caller directly
+            .invalid_utf8 => self.recordStdout(span, "unrecognised character in {s}(UTF8 error)", .{ctx}),
+            .unterminated_escape => self.recordStdout(span, "unterminated escape sequence in {s}", .{ctx}),
+            .no_hex_digits => self.recordStdout(span, "\\x with no xdigits in {s}", .{ctx}),
+            .hex_out_of_range => self.recordStdout(span, "hexadecimal escape out of range in {s}", .{ctx}),
+            .unrecognised_escape => |c| self.recordStdout(span, "unrecognised escape \\{c} in {s}", .{ c, ctx }),
+        }
+    }
+
+    /// Scans a `'c'` character constant. Verified against `lex.zig`'s
+    /// `lexCharConst`: an unescaped newline *or* a missing closing `'` are
+    /// the same "improperly terminated char const" message (via `syntax()`
+    /// — unlike `string()`, which reports these two cases differently and
+    /// doesn't cover the missing-terminator case for them at all as a
+    /// distinct message).
     fn lexCharConst(self: *Lexer, span: Span) Token {
         self.pos += 1; // opening '\''
         switch (self.decodeEscape()) {
-            .err => |msg| {
-                self.record(span, "{s}", .{msg});
+            .err => |kind| {
+                switch (kind) {
+                    .newline, .eof => self.record(span, "improperly terminated char const", .{}),
+                    else => self.recordEscapeError(span, kind, "char const"),
+                }
                 return .{ .id = .error_tok, .span = span };
             },
             .elided => {
-                self.record(span, "'\\&' does not denote a character", .{});
+                self.recordStdout(span, "illegal use of \\& in char const", .{});
                 return .{ .id = .error_tok, .span = span };
             },
             .char => |cp| {
                 if (self.peekByte() != '\'') {
-                    self.record(span, "malformed character constant (expected closing ')", .{});
+                    self.record(span, "improperly terminated char const", .{});
                     return .{ .id = .error_tok, .span = span };
                 }
                 self.pos += 1; // closing '\''
@@ -558,13 +635,20 @@ pub const Lexer = struct {
         }
     }
 
+    /// Scans a `"..."` string constant. Verified against `lex.zig`'s
+    /// `string()`: an unescaped newline is `syntax()` (stderr, "syntax
+    /// error: " prefix added there); running out of input first is a
+    /// separate, stdout-routed message with its own baked-in "syntax
+    /// error: " text (this decoder's version doesn't replicate `string()`'s
+    /// further behaviour of echoing back the partial string content — not
+    /// exercised by the shipped corpus, a known simplification).
     fn lexStringConst(self: *Lexer, span: Span) Token {
         self.pos += 1; // opening '"'
         var out: std.ArrayList(u8) = .empty;
         errdefer out.deinit(self.gpa);
         while (true) {
             const c = self.peekByte() orelse {
-                self.record(span, "script ends inside unclosed string quotes", .{});
+                self.recordStdout(span, "syntax error: script ends inside unclosed string quotes", .{});
                 out.deinit(self.gpa);
                 return .{ .id = .error_tok, .span = span };
             };
@@ -573,8 +657,12 @@ pub const Lexer = struct {
                 break;
             }
             switch (self.decodeEscape()) {
-                .err => |msg| {
-                    self.record(span, "{s}", .{msg});
+                .err => |kind| {
+                    switch (kind) {
+                        .newline => self.record(span, "non-escaped newline encountered inside string quotes", .{}),
+                        .eof => self.recordStdout(span, "syntax error: script ends inside unclosed string quotes", .{}),
+                        else => self.recordEscapeError(span, kind, "string"),
+                    }
                     out.deinit(self.gpa);
                     return .{ .id = .error_tok, .span = span };
                 },
@@ -612,7 +700,7 @@ pub const Lexer = struct {
         };
         for (scanner.diagnostics.items) |d| {
             const message = self.gpa.dupe(u8, d.message) catch continue;
-            self.diagnostics.append(self.gpa, .{ .span = d.span, .message = message }) catch {
+            self.diagnostics.append(self.gpa, .{ .span = d.span, .message = message, .stream = d.stream, .add_prefix = d.add_prefix }) catch {
                 self.gpa.free(message);
             };
         }
@@ -673,21 +761,27 @@ pub fn tokenize(gpa: std.mem.Allocator, source: *const Source) ![]Token {
     return out.toOwnedSlice(gpa);
 }
 
-/// `tokenize`'s result plus the `.directive` tokens' structured payloads —
-/// `tokens[i].int_val` for a `.directive` token indexes `directives`.
+/// `tokenize`'s result plus the `.directive` tokens' structured payloads and
+/// any lexical diagnostics (unterminated strings, bad escapes, unknown
+/// directive keywords, …) — `tokens[i].int_val` for a `.directive` token
+/// indexes `directives`.
 pub const TokenizeResult = struct {
     tokens: []Token,
     directives: []Directive,
+    diagnostics: []Diagnostic,
 
     pub fn deinit(self: *TokenizeResult, gpa: std.mem.Allocator) void {
         gpa.free(self.tokens);
         for (self.directives) |d| d.deinit(gpa);
         gpa.free(self.directives);
+        for (self.diagnostics) |d| gpa.free(d.message);
+        gpa.free(self.diagnostics);
     }
 };
 
 /// Like `tokenize`, but also returns the `Directive` payloads any
-/// `.directive` tokens produced (see `TokenizeResult`).
+/// `.directive` tokens produced, and any diagnostics recorded during the
+/// scan (see `TokenizeResult`).
 pub fn tokenizeWithDirectives(gpa: std.mem.Allocator, source: *const Source) !TokenizeResult {
     var lexer = Lexer.init(gpa, source);
     defer lexer.deinit();
@@ -701,6 +795,7 @@ pub fn tokenizeWithDirectives(gpa: std.mem.Allocator, source: *const Source) !To
     return .{
         .tokens = try out.toOwnedSlice(gpa),
         .directives = try lexer.directives.toOwnedSlice(gpa),
+        .diagnostics = try lexer.diagnostics.toOwnedSlice(gpa),
     };
 }
 
@@ -805,11 +900,11 @@ test "Lexer.next: multi-character operators" {
 
 test "Lexer.next: single-character operators fall through when lookahead fails" {
     const gpa = std.testing.allocator;
-    var src = try testSource(gpa, "- < > ~ = + . : ^ ! # & | ( ) [ ] { } , ; ?");
+    var src = try testSource(gpa, "- < > ~ = + . : ^ ! # & | ( ) [ ] { } , ; ? /");
     defer src.deinit();
     var lex = Lexer.init(gpa, &src);
     defer lex.deinit();
-    const expected = [_]TokenId{ .minus, .lt, .gt, .tilde, .eq, .plus, .dot, .cons, .caret, .bang, .hash, .amp, .pipe, .lparen, .rparen, .lbracket, .rbracket, .lbrace, .rbrace, .comma, .semicolon, .question };
+    const expected = [_]TokenId{ .minus, .lt, .gt, .tilde, .eq, .plus, .dot, .cons, .caret, .bang, .hash, .amp, .pipe, .lparen, .rparen, .lbracket, .rbracket, .lbrace, .rbrace, .comma, .semicolon, .question, .slash };
     for (expected) |id| {
         try std.testing.expectEqual(id, lex.next().id);
     }

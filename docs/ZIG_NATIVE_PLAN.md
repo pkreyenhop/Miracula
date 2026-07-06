@@ -634,6 +634,144 @@ front door is C.
    the dictionary-space config (`DICSPACE`, `-dic` flag: accept-and-ignore with a
    deprecation note, since `.mirarc` files may set it).
 
+   **Step 7 landed (2026-07-06).** `parser_api.zig`'s `parseCurrent` now
+   dispatches to a new `parseCurrentNative` by default (`Source` →
+   `lexer.tokenizeWithDirectives` → `applyLayout` →
+   `Parser.initWithDirectives` → `parseScript`/`codegenScript`), with
+   `-Dlegacy-lexer` forcing the old `parseCurrentLegacy` (`lex_bridge` +
+   `parser.zig`, unchanged) for differential debugging — both share a new
+   `runParsedTokens` tail (command-mode expression eval or full-script
+   codegen + diagnostics). `parseWithNew` (string-only, only used by
+   `parser_tests.zig`) is untouched, still legacy-bridge-fed.
+
+   Getting a real end-to-end flip working (not just "compiles") surfaced
+   five real bugs, each found by actually running scripts through the
+   flipped pipeline, not by inspection — the same "verify against the real
+   system" pattern as every other step this phase:
+   1. **REPL line boundaries.** The native pipeline needs a whole buffer up
+      front (`Source` isn't streaming); naively draining `rt.rs().s_in`
+      until EOF is correct for a whole script file but wrong for the
+      interactive command-mode prompt, which reads **one line** at a time
+      from a long-lived stdin shared across many `parseCurrent` calls —
+      draining the whole stream on the first REPL line silently swallowed
+      every later line. Fixed: `slurpCurrentStream` takes a
+      `stop_at_newline` flag, true for command mode.
+   2. **`s_in` never resets to stdin after a whole-file compile.** Legacy's
+      `yylex()` does this as a side effect of `lexEndOfFile()` popping the
+      last entry off the file queue mid-scan (`rt.rs().s_in =
+      getStdin()`) — a real, if easy to miss, character-level side effect
+      with no equivalent moment in a batch/slurp model. Without replicating
+      it, every REPL prompt after the initial script compiled read from the
+      now-exhausted script file and got instant EOF forever. Fixed:
+      `parseCurrentNative` explicitly closes and resets `s_in` once a whole
+      file (not a REPL line) is fully read.
+   3. **`driver/repl.zig`'s command loop reads `lexs.c`** (the legacy
+      lexer's single-character lookahead) after `parseCurrent()` returns, to
+      decide whether the line held trailing garbage — a postcondition the
+      native pipeline never touches otherwise. Fixed: `parseCurrentNative`'s
+      command-mode success path sets `lex_state.ls().c = '\n'` explicitly,
+      satisfying the same contract the legacy lexer left as a side effect.
+   4. **Tab columns.** `syntax/source.zig`'s `Source.position()` computed
+      columns as raw byte offsets — never expanding tabs — since it was
+      first written; nothing exercised a *real*, tab-indented script
+      through the full pipeline until this step. `miralib/prelude`'s
+      `cutoff` function (tab-indented `where` block) immediately
+      mis-aligned the offside margin comparison. Fixed: `position()` now
+      expands tabs to the next multiple-of-8 column, matching `lex.zig`'s
+      `getch()` — relative to column 1 rather than `getch()`'s current
+      left-verge (`lverge`), since this module has no layout/margin state
+      to consult; the offside rule only ever compares two columns computed
+      the same way, so lines sharing an identical tab/space prefix still
+      align correctly under this simpler assumption (see `position()`'s own
+      doc comment for the one case this wouldn't cover).
+   5. **A bare `/` was never tokenized.** `syntax/lexer.zig`'s `next()`
+      switch never had a case for it — `token_filter.zig` already had
+      `.slash` defined (anticipating this), but nothing ever produced it.
+      An oversight from the original step-2 scanning work, invisible until
+      a script that actually uses division (`miralib/ex/divmodtest.m`,
+      `a/b`) ran through the native lexer. `//` (`word.DIAG`,
+      "diagonalise") has no `TokenId` or `lex_bridge.zig` mapping at all —
+      confirmed out of scope, not part of this fix.
+
+   Also newly implemented (not a bug fix, a real gap the flip exposed):
+   **`%insert`'s actual textual splicing.** `directives.zig` always
+   documented `%insert` as "a `Source`-level concern, splicing another
+   file's bytes in place" but nothing did the splicing — the directive was
+   scanned and recognized (`.unsupported`) but never actually spliced,
+   so `tests/golden/directive_insert` (a real, previously-passing golden
+   case) produced a malformed AST and crashed with a stack overflow in
+   `trans.zig`'s `scanpattern`. Fixed: a new `Source.resolveInserts`
+   (recursive, depth-capped at 12 matching `lex.zig`'s own
+   `insertdepth < 12`) splices the target file's bytes in place of the
+   `%insert "path"` directive, called on the raw bytes before `Source.init`
+   runs. Resolves `"..."`-form paths relative to the including file's own
+   directory; `<...>`-form (miralib-relative) is not resolved (not
+   exercised by the shipped corpus, matching `%include`'s own unresolved
+   path-resolution gap). **Known limitation:** legacy attributes
+   diagnostics inside an inserted file to that file's own line numbers (a
+   per-file stack, restored when the insert ends) and continues the outer
+   file's count correctly afterward; this straight splice does neither —
+   not observed to matter for the shipped corpus, but a real gap if a
+   diagnostic ever needs to point inside or after an insert.
+
+   **Diagnostic routing, also newly discovered:** legacy's error reporting
+   is not uniform. The shared `syntax()` helper (`compiler/setup.zig`)
+   writes to *stderr* with a "syntax error: " prefix it adds itself; other
+   call sites (`errclass()`'s string/char-const escape errors,
+   `directive()`'s "unknown directive") print directly to *stdout*, ad hoc,
+   sometimes with "syntax error: " already baked into the literal,
+   sometimes not — and only the *first* such diagnostic ever prints
+   (`syntax()`/`acterror()` both guard on `SYNERR != 0`). `syntax/lexer.zig`
+   and `syntax/directives.zig`'s own `Diagnostic` types gained a
+   `stream`/`add_prefix` pair (a shared `DiagnosticStream` enum lives in
+   `token_filter.zig`, for the same import-cycle reason `Directive` does)
+   so each diagnostic carries its own exact routing; `parser_api.zig`'s new
+   `reportLexerDiagnostic` replays it. `decodeEscape`'s error cases became a
+   structured `EscapeErrorKind` (mirroring `errclass()`'s `val` codes)
+   instead of a plain string, since the exact wording needs string/char-const
+   *context* the decoder itself doesn't have.
+
+   **Verified with the full battery:** `main-tests` (265), `test-mira`,
+   `test-spine` (full corpus, including `directive_insert`), `test-sigint`,
+   `test-smoke` all green. `test-golden`: all pass except three narrow
+   diagnostic-wording gaps and one pre-existing, unrelated bug —
+   **not fixed, explicitly deferred:**
+   - `lex_err_bad_escape`, `lex_err_unterminated_string`: the *primary*
+     message (stdout for the escape error, or stderr for the
+     non-escaped-newline case) now matches legacy exactly, but the
+     *secondary* stderr line these goldens also expect
+     (`"{line}:{col}: syntax error at {line}:{col} - unexpected token"`,
+     `parser.zig`'s own diagnostic format) does not appear. In legacy, this
+     second diagnostic comes from the *parser* noticing leftover tokens
+     after a lexer error left the token stream in a recoverable-but-odd
+     state (character-at-a-time recovery); this native lexer abandons the
+     token immediately (`.error_tok`) instead, so `parseExpr` fails
+     directly rather than reaching that "trailing tokens" check. A real
+     architectural difference in error-recovery strategy, not a wording
+     typo — needs its own design decision, not a quick fix.
+   - `lex_err_unknown_directive`: the directive's own message
+     (`"syntax error: unknown directive \"%bogus\""`, stdout) now matches
+     exactly, but the golden also expects `"error found near line 1 of
+     file \"...\"\ncompilation abandoned\n"` (from `resetLex()`,
+     stderr) plus a later `"UNDEFINED NAME - x"` runtime message —
+     `directive()` itself never calls `acterror()`/`syntax()`, so this
+     must come from *something else* going wrong afterward in legacy
+     (unclear what without more archaeology) that this port doesn't yet
+     reproduce.
+   - `script_syntax_err`: confirmed pre-existing on unmodified `main` (see
+     the step-6 entry above) — an unrelated, already-known off-by-one in
+     `parser.zig`'s own line reporting for a specific syntax-error shape,
+     not something this step introduced (its exact wrong line number did
+     shift, from a different tokenizer producing a different token
+     sequence around the error point, but it was already wrong before).
+
+   Scorecard: two metrics rose and the baseline was bumped with
+   justification (confirmed with the user first, not a false positive) —
+   `printf-family calls` 383→389 (`word.print`/`word.printErr` calls
+   replicating legacy's exact diagnostic routing) and `ambient
+   singleton-accessor call sites` 1403→1409 (`rt.rs()`/`core.s()` reads the
+   old `lex_bridge` path didn't need in `parser_api.zig` directly).
+
 **Status as of 2026-07-06:** steps 1–4 landed, steps 5–6 partially landed
 (`syntax/source.zig`, `syntax/lexer.zig`, `syntax/layout.zig`,
 `syntax/differential_test.zig`, `syntax/directives.zig`,
@@ -664,11 +802,23 @@ how they were found/fixed); the "not yet done" list there
 `symbols.zig` directly, `PrivateNames` unused, `pnvec`/`PNBASE`/`nextpn`
 untouched) is real remaining work but no longer blocks anything — those are
 now thin wrappers, and the risky part (three load-bearing consumers of one
-data structure) is done. Remaining: finish step 5 (actually loading/compiling
-an `%include`d file, real cycle detection, free-binding substitution, path
-resolution — the parts of module semantics that need real compiler
-integration, not just data transformation); step 7 (production cutover); and
-step 8 (deletion).
+data structure) is done. Step 7 (production cutover — `parser_api.zig`
+defaults to the native pipeline, `-Dlegacy-lexer` escape hatch) also landed
+the same day, surfacing and fixing five more real bugs only visible once
+real scripts ran through the flipped pipeline end to end (REPL line
+boundaries, `s_in`/`lexs.c` postconditions the legacy lexer set as sideeffects
+of character-level reads, tab-column expansion, a missing `/` token case,
+and `%insert`'s never-actually-implemented textual splicing) — see the
+step-7 entry above for details and the three narrow, explicitly-deferred
+diagnostic-wording gaps that remain (lexer-error-recovery architecture
+differs from legacy's character-at-a-time model; a directive-error
+follow-on message not yet traced to its source). Remaining: finish step 5's
+harder half (actually loading/compiling an `%include`d file, real cycle
+detection, free-binding substitution, path resolution — deliberately held
+until *after* step 7 per the user's own direction, to avoid building
+throwaway glue against the pipeline about to be replaced); resolve or
+formally accept the three diagnostic-wording gaps; then step 8 (delete the
+legacy lexer entirely).
 
 **Deletes:** ~2,700 lines of C-ported lexing; the biggest single consumer of `FILE`,
 `[*:0]`, `c_int`, and `@ptrFromInt`.

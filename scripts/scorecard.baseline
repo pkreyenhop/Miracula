@@ -3,13 +3,13 @@ c_int/c_long/c_uint/c_ulong (non-FFI)	210
 extern fn declarations	13
 extern var declarations	0
 @intFromPtr / @ptrFromInt (non-FFI)	66
-printf-family calls (non-FFI)	383
+printf-family calls (non-FFI)	389
 setjmp/longjmp/jmp_buf mentions	35
 clib./c. call sites (non-FFI)	0
 callconv(.c) usage	6
 sentinel == NIL / != NIL (non-FFI)	345
 fork()/wait() call sites (non-FFI)	8
 module-scope mutable globals (non-FFI)	6
-ambient singleton-accessor call sites	1403
+ambient singleton-accessor call sites	1409
 current_interp references	36
 files > 1000 lines	10

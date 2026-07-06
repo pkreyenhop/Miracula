@@ -57,6 +57,12 @@ pub const Directive = tf.Directive;
 pub const Diagnostic = struct {
     span: Span,
     message: []const u8,
+    /// See `syntax/lexer.zig`'s `Diagnostic` doc comment — same routing
+    /// distinction (legacy's `syntax()` helper vs. an ad hoc `word.print`
+    /// call site), mirrored here so `lexer.zig`'s `lexDirective` can copy
+    /// these over without losing that information.
+    stream: tf.DiagnosticStream = .stderr,
+    add_prefix: bool = true,
 };
 
 const keywords = std.StaticStringMap(void).initComptime(.{
@@ -87,6 +93,14 @@ pub const Scanner = struct {
     fn record(self: *Scanner, span: Span, comptime fmt: []const u8, args: anytype) void {
         const msg = std.fmt.allocPrint(self.gpa, fmt, args) catch return;
         self.diagnostics.append(self.gpa, .{ .span = span, .message = msg }) catch {};
+    }
+
+    /// Like `record`, but matches legacy's ad hoc `word.print(...)` call
+    /// sites: stdout, `message` printed exactly as given (see
+    /// `syntax/lexer.zig`'s `recordStdout`).
+    fn recordStdout(self: *Scanner, span: Span, comptime fmt: []const u8, args: anytype) void {
+        const msg = std.fmt.allocPrint(self.gpa, fmt, args) catch return;
+        self.diagnostics.append(self.gpa, .{ .span = span, .message = msg, .stream = .stdout, .add_prefix = false }) catch {};
     }
 
     fn peekByte(self: *const Scanner) ?u8 {
@@ -231,7 +245,7 @@ pub const Scanner = struct {
 
         if (!keywords.has(keyword)) {
             const rest = self.scanToEndOfLine();
-            self.record(span, "unknown directive \"%{s}\"", .{keyword});
+            self.recordStdout(span, "syntax error: unknown directive \"%{s}\"", .{keyword});
             return .{ .unknown = .{ .text = rest, .span = span } };
         }
 

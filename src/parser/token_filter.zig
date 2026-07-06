@@ -6,6 +6,17 @@
 
 const std = @import("std");
 
+/// Which stream + wrapper format a lex-level diagnostic prints with —
+/// legacy's printing isn't uniform across call sites (`compiler/setup.zig`'s
+/// `syntax()` helper: stderr, adds its own "syntax error: " prefix; ad hoc
+/// `word.print` call sites like `errclass()`/`directive()`: stdout, exact
+/// text). Shared between `syntax/lexer.zig`'s and `syntax/directives.zig`'s
+/// own `Diagnostic` types (each defined separately, mirroring `parser/
+/// parser.zig`'s own `Diagnostic` shape, so neither pulls in a tree it
+/// doesn't need) so a diagnostic keeps its routing when copied from one to
+/// the other.
+pub const DiagnosticStream = enum { stdout, stderr };
+
 /// The lexical token kinds the Pratt parser consumes: identifiers/literals,
 /// keywords, the single- and multi-character operators, the layout tokens the
 /// offside filter injects, and the `eof`/`error_tok` specials.
