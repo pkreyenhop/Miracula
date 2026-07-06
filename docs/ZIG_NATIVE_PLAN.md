@@ -837,6 +837,30 @@ front door is C.
      not something this step introduced (its exact wrong line number did
      shift, from a different tokenizer producing a different token
      sequence around the error point, but it was already wrong before).
+     Still open, still unrelated to the lexer-diagnostic-routing gaps
+     below — deliberately not touched by the decision that follows.
+
+   **Formally accepted (2026-07-06, confirmed with the user), not fixed:**
+   the three lexer-diagnostic-wording gaps above are a genuine, permanent
+   architectural difference (character-at-a-time error recovery leaving a
+   still-parseable trailing token for the parser to also complain about,
+   vs. this lexer's `.error_tok`-and-abandon strategy; a legacy
+   `directive()`/`resetLex()` follow-on message never fully traced to its
+   source) rather than a bug to keep chasing — re-fixing them would mean
+   either reintroducing character-level recovery (undoing the batch-lexer
+   design step 2 deliberately chose) or reverse-engineering an
+   under-documented legacy control path for cosmetic parity alone. Pinned
+   the native pipeline's own (still correct, just differently-worded)
+   output as the new golden expectation: `lex_err_bad_escape`'s stderr is
+   now empty (the primary "unrecognised escape" message alone, on stdout,
+   already conveys the error — no secondary parser diagnostic follows
+   since there's no trailing token to notice); `lex_err_unterminated_string`
+   drops the secondary parser line for the same reason;
+   `lex_err_unknown_directive`'s stderr is now exactly `"UNDEFINED NAME -
+   x"` (the directive's own "unknown directive" message already appears
+   correctly on stdout; the "compilation abandoned" follow-on legacy
+   printed here never had a traced cause and isn't reproduced). This
+   clears step 8's gate — see below.
 
    Scorecard: two metrics rose and the baseline was bumped with
    justification (confirmed with the user first, not a false positive) —
@@ -893,8 +917,10 @@ avoid building throwaway glue against the pipeline about to be replaced;
 see the step-5 entry above for the design and the two real bugs (a
 directive-scanner position-restore bug that silently swallowed the next
 declaration's first token; an avoidable `[*:0]` scorecard regression) found
-landing it. Remaining: resolve or formally accept the three
-diagnostic-wording gaps; then step 8 (delete the legacy lexer entirely).
+landing it. The three diagnostic-wording gaps were formally accepted
+(2026-07-06, confirmed with the user) rather than fixed — see the step-7
+entry above for why, and the re-pinned goldens. Remaining: step 8 (delete
+the legacy lexer entirely).
 
 **Deletes:** ~2,700 lines of C-ported lexing; the biggest single consumer of `FILE`,
 `[*:0]`, `c_int`, and `@ptrFromInt`.
