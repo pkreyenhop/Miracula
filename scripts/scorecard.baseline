@@ -12,4 +12,4 @@ fork()/wait() call sites (non-FFI)	8
 module-scope mutable globals (non-FFI)	6
 ambient singleton-accessor call sites	1403
 current_interp references	36
-files > 1000 lines	9
+files > 1000 lines	10

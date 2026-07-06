@@ -355,14 +355,21 @@ front door is C.
    `std.testing.io` (not `ctx.io` — that's only available in `main()`-style
    entry points; `std.testing.io` is the equivalent inside a `test` block,
    confirmed from `parser_tests.zig`'s existing use of it), skipping any
-   script containing `%` or `` ` `` (this lexer's known gaps), so a newly
-   added golden case is covered automatically rather than needing someone to
-   remember to hand-add a differential test for it. **Still not done:**
-   wiring this as its own build step (it currently only runs as part of
-   `main-tests`) so it's a visibly standing gate; char classes
-   (`` `[...]` ``, `%bnf`/`%lex`-only) and the known-excluded forms
-   themselves (`%`-directives, backtick infix names, hex-float) remain
-   unimplemented in the lexer, not just untested here.
+   script containing `%` or `` ` `` (this lexer's known gaps at the time —
+   see below, `%` no longer is one). **Still not done:** wiring this as its
+   own build step (it currently only runs as part of `main-tests`); char
+   classes (`` `[...]` ``, `%bnf`/`%lex`-only, deferred with `%bnf`/`%lex`
+   themselves per the plan's own ordering).
+   **Landed (2026-07-06):** `%`-directive tokenization (see the step-5
+   `Scanner`-wiring entry below) and `$name`/`$Cname`/`$$` infix notation —
+   correcting a wrong assumption in `lexer.zig`'s own original header, which
+   described this as backtick notation; verified against `lex.zig`'s `'$'`
+   case, real Miranda uses `$`, backtick has no general lexical meaning
+   here. Hex-float numerals (`0x1.8p3`) also landed: `std.fmt.parseFloat`
+   accepts the same lenient grammar `lex.zig`'s `hexnumeral` does (leading-
+   dot fractions, optional exponent), verified directly rather than assumed,
+   so the whole matched text is handed to it rather than hand-rolling hex
+   arithmetic. 15 new tests across these three additions.
 5. `syntax/directives.zig` + `semantics/modules.zig` consumption. This is where
    `%include`/`%export`/`%free` actually get implemented (aliasing, free-binding
    substitution, cycle detection, dependency ordering) — module_loader.zig's real

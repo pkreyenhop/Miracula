@@ -3,13 +3,14 @@
 //!
 //! Scope of this increment: whitespace/comment skipping, identifiers/keywords,
 //! typevars/`*`, the fixed operator/punctuation set, numerals (decimal/hex/
-//! octal integers, decimal floats), and string/char literals with the full
-//! escape table. Not yet implemented, on purpose (kept as separately-staged,
+//! octal integers, decimal and hex floats), string/char literals with the
+//! full escape table, `%`-directives, and `$name`/`$Cname`/`$$` infix
+//! notation. Not yet implemented, on purpose (kept as separately-staged,
 //! separately-verified work per the plan):
 //!
-//!   - Hex-float numerals (`0x1.8p3`) — `error_tok` with a diagnostic, not a
-//!     silent mis-scan; char classes (`` `[...]` ``, `%bnf`/`%lex`-only).
-//!   - Backtick infix names (`` `f` ``) and the `$$`/`$*` internal `CONST` forms.
+//!   - Char classes (`` `[...]` ``, `%bnf`/`%lex`-only) — deferred with
+//!     `%bnf`/`%lex` themselves, which the plan orders last (hairiest,
+//!     least-covered corner).
 //!   - The offside/layout rule — NOT a token-stream transform (see the plan's
 //!     Phase 1 step 3 correction): today's `lex.zig` couples the lexer to
 //!     parser-driven margin state (`setlmargin`/`unsetlmargin`). This lexer
@@ -205,6 +206,7 @@ pub const Lexer = struct {
         if (ch == '\'') return self.lexCharConst(span);
         if (ch == '"') return self.lexStringConst(span);
         if (ch == '%') return self.lexDirective(span);
+        if (ch == '$') return self.lexDollar(span);
 
         self.pos += 1;
         return switch (ch) {
@@ -255,6 +257,49 @@ pub const Lexer = struct {
         return .{ .id = id, .span = span, .text = text };
     }
 
+    /// `$name`/`$Cname` — Miranda's notation for using an ordinarily-prefix
+    /// function as an infix operator (`` x $mod y ``, equivalent to
+    /// `mod x y`); `$$` is its own `.dollars` token. Verified against
+    /// `lex.zig`'s `'$'` case, not guessed (an earlier, unverified draft of
+    /// this file's header described this as backtick notation — wrong; real
+    /// Miranda uses `$`, backtick has no general lexical meaning here).
+    ///
+    /// The other `$`-forms `lex.zig` recognizes (`$1`-`$9` interactive
+    /// history references, `$-`/`$:-`/`$+` REPL stdin/stdinb constants, `$#`
+    /// a `%lex`-only internal) build heap values or read interpreter state
+    /// directly in the legacy lexer — out of scope for a pure, heap-free
+    /// lexer (this file's own design constraint) and not part of ordinary
+    /// compiled-script syntax anyway. `error_tok`, not a silent mis-scan.
+    /// A `$` followed by a *keyword* (`$where`, `$if`, …) is also out of
+    /// scope here (legacy falls through to a bare `'$'` char token in that
+    /// case, which has no equivalent in this token vocabulary) — vanishingly
+    /// unlikely in real source, `error_tok` rather than misclassifying it as
+    /// an infix name.
+    fn lexDollar(self: *Lexer, span: Span) Token {
+        self.pos += 1; // the '$'
+        if (self.peekByte() == '$') {
+            self.pos += 1;
+            return .{ .id = .dollars, .span = span };
+        }
+        if (self.peekByte()) |c| {
+            if (std.ascii.isAlphabetic(c)) {
+                const start = self.pos;
+                self.pos += 1;
+                while (self.peekByte()) |cc| {
+                    if (!isIdentCont(cc)) break;
+                    self.pos += 1;
+                }
+                const text = self.source.bytes[start..self.pos];
+                if (keywords.get(text) == null) {
+                    const id: TokenId = if (std.ascii.isUpper(text[0])) .infixcname else .infixname;
+                    return .{ .id = id, .span = span, .text = text };
+                }
+            }
+        }
+        self.record(span, "unexpected symbol after '$' (only $name, $Cname, $$ are supported)", .{});
+        return .{ .id = .error_tok, .span = span };
+    }
+
     /// A lone `*` is `.star`; two or more consecutive `*`s are `.typevar`
     /// (`int_val` = the star count — matches `lex_bridge.zig`'s encoding, so
     /// `**` is type variable 2, `***` is type variable 3, and so on).
@@ -270,14 +315,15 @@ pub const Lexer = struct {
         return .{ .id = .typevar, .span = span, .int_val = count };
     }
 
-    /// Scan a numeral: `0x`/`0o` integer, or decimal integer/float (verified
-    /// against `lex.zig`'s `numeral`/`hexnumeral`/`octnumeral`).
+    /// Scan a numeral: `0x`/`0o` integer, `0x` hex-float, or decimal
+    /// integer/float (verified against `lex.zig`'s `numeral`/`hexnumeral`/
+    /// `octnumeral`).
     fn lexNumeral(self: *Lexer, start: usize, span: Span) Token {
         if (self.peekByte() == '0' and (self.peekByteAt(1) == 'x' or self.peekByteAt(1) == 'X')) {
-            return self.lexRadixInt(span, 16);
+            return self.lexRadixInt(start, span, 16);
         }
         if (self.peekByte() == '0' and (self.peekByteAt(1) == 'o' or self.peekByteAt(1) == 'O')) {
-            return self.lexRadixInt(span, 8);
+            return self.lexRadixInt(start, span, 8);
         }
         return self.lexDecimal(start, span);
     }
@@ -287,23 +333,25 @@ pub const Lexer = struct {
         return true;
     }
 
-    /// `0x`/`0o` integer literal. Digits are converted to decimal text on the
-    /// spot (`digitsToDecimal`) — see the file header for why. Hex-float
-    /// (`0x1.8p3`) is deliberately unsupported: `error_tok`, not a silent
-    /// truncated-integer mis-scan.
-    fn lexRadixInt(self: *Lexer, span: Span, base: u8) Token {
+    /// `0x`/`0o` integer literal, or (base 16 only) a hex-float continuation
+    /// (`lexHexFloat`) once a `.`/`p`/`P` follows the digits. Integer digits
+    /// are converted to decimal text on the spot (`digitsToDecimal`) — see
+    /// the file header for why.
+    fn lexRadixInt(self: *Lexer, start: usize, span: Span, base: u8) Token {
         self.pos += 2; // the "0x"/"0o" (or upper-case) prefix
         const digits_start = self.pos;
         while (self.peekByte()) |c| {
             if (!isRadixDigit(c, base)) break;
             self.pos += 1;
         }
+        // Matches `hexnumeral`'s own grammar: a hex-float's fraction may lead
+        // with `.` before any digits (`0x.8p3`), so this check comes before
+        // the "at least one digit" requirement below, not after.
+        if (base == 16 and (self.peekByte() == '.' or self.peekByte() == 'p' or self.peekByte() == 'P')) {
+            return self.lexHexFloat(start, span);
+        }
         if (self.pos == digits_start) {
             self.record(span, "malformed base-{d} number: no digits after the prefix", .{base});
-            return .{ .id = .error_tok, .span = span };
-        }
-        if (base == 16 and (self.peekByte() == '.' or self.peekByte() == 'p' or self.peekByte() == 'P')) {
-            self.record(span, "hex-float literals are not yet supported by the native lexer", .{});
             return .{ .id = .error_tok, .span = span };
         }
         const digits = self.source.bytes[digits_start..self.pos];
@@ -312,6 +360,48 @@ pub const Lexer = struct {
             return .{ .id = .error_tok, .span = span };
         };
         return .{ .id = .const_int, .span = span, .text = decimal };
+    }
+
+    /// A hex-float continuation after `0x`'s digits: an optional `.`-fraction
+    /// (itself hex digits, possibly none — `0x.8p3` is legal, matching
+    /// `hexnumeral`'s own grammar) and/or a `p`/`P` exponent (decimal digits,
+    /// optional sign). Unlike decimal floats, the exponent is *not* required
+    /// (`0x1.8` alone is a legal hex-float, matching `hexnumeral`'s lenient
+    /// `sscanf("%lf", ...)` — Zig's `parseFloat` accepts the same shape,
+    /// verified: it defaults a missing exponent to 0). The whole matched
+    /// text (from `0x`/`0X` onward) is handed to `parseFloat` rather than
+    /// hand-rolling hex-float arithmetic here.
+    fn lexHexFloat(self: *Lexer, start: usize, span: Span) Token {
+        if (self.peekByte() == '.') {
+            self.pos += 1;
+            while (self.peekByte()) |c| {
+                if (!isRadixDigit(c, 16)) break;
+                self.pos += 1;
+            }
+        }
+        if (self.peekByte() == 'p' or self.peekByte() == 'P') {
+            self.pos += 1;
+            if (self.peekByte() == '+' or self.peekByte() == '-') self.pos += 1;
+            const exp_start = self.pos;
+            while (self.peekByte()) |c| {
+                if (!std.ascii.isDigit(c)) break;
+                self.pos += 1;
+            }
+            if (self.pos == exp_start) {
+                self.record(span, "malformed hex float: no digits in the exponent", .{});
+                return .{ .id = .error_tok, .span = span };
+            }
+        }
+        const text = self.source.bytes[start..self.pos];
+        if (text.len > 60) {
+            self.record(span, "illegal floating point constant (too many digits)", .{});
+            return .{ .id = .error_tok, .span = span };
+        }
+        const value = std.fmt.parseFloat(f64, text) catch {
+            self.record(span, "malformed hex float '{s}'", .{text});
+            return .{ .id = .error_tok, .span = span };
+        };
+        return .{ .id = .const_float, .span = span, .float_val = value };
     }
 
     /// Decimal integer or float. A float has a `.` (followed by a digit) and/
@@ -747,6 +837,42 @@ test "Lexer.next: an exhausted Source yields .eof forever" {
     try std.testing.expectEqual(TokenId.eof, lex.next().id);
 }
 
+test "Lexer.next: $name and $Cname are infix notation for a prefix function" {
+    const gpa = std.testing.allocator;
+    // "max" isn't a plain-position reserved word (unlike "div"/"mod", which
+    // already have direct infix syntax and so aren't realistic $-examples).
+    var src = try testSource(gpa, "x $max y $Foo z");
+    defer src.deinit();
+    var lex = Lexer.init(gpa, &src);
+    defer lex.deinit();
+    _ = lex.next(); // x
+    var tok = lex.next();
+    try std.testing.expectEqual(TokenId.infixname, tok.id);
+    try std.testing.expectEqualStrings("max", tok.text);
+    _ = lex.next(); // y
+    tok = lex.next();
+    try std.testing.expectEqual(TokenId.infixcname, tok.id);
+    try std.testing.expectEqualStrings("Foo", tok.text);
+}
+
+test "Lexer.next: $$ is its own .dollars token" {
+    const gpa = std.testing.allocator;
+    var src = try testSource(gpa, "$$");
+    defer src.deinit();
+    var lex = Lexer.init(gpa, &src);
+    defer lex.deinit();
+    try std.testing.expectEqual(TokenId.dollars, lex.next().id);
+}
+
+test "Lexer.next: $ forms outside $name/$Cname/$$ are out of scope, error_tok" {
+    const gpa = std.testing.allocator;
+    var src = try testSource(gpa, "$5");
+    defer src.deinit();
+    var lex = Lexer.init(gpa, &src);
+    defer lex.deinit();
+    try std.testing.expectEqual(TokenId.error_tok, lex.next().id);
+}
+
 test "tokenize: collects a full stream ending in .eof" {
     const gpa = std.testing.allocator;
     var src = try testSource(gpa, "square x = x * x");
@@ -827,9 +953,53 @@ test "Lexer.next: hex and octal integers convert to decimal text" {
     gpa.free(tok.text);
 }
 
-test "Lexer.next: hex-float is a deliberately unsupported error_tok" {
+test "Lexer.next: hex-float with a fraction and exponent" {
     const gpa = std.testing.allocator;
     var src = try testSource(gpa, "0x1.8p3");
+    defer src.deinit();
+    var lex = Lexer.init(gpa, &src);
+    defer lex.deinit();
+    const tok = lex.next();
+    try std.testing.expectEqual(TokenId.const_float, tok.id);
+    try std.testing.expectApproxEqRel(@as(f64, 12.0), tok.float_val, 1e-12);
+}
+
+test "Lexer.next: hex-float with no exponent is legal (matches hexnumeral's leniency)" {
+    const gpa = std.testing.allocator;
+    var src = try testSource(gpa, "0x1.8");
+    defer src.deinit();
+    var lex = Lexer.init(gpa, &src);
+    defer lex.deinit();
+    const tok = lex.next();
+    try std.testing.expectEqual(TokenId.const_float, tok.id);
+    try std.testing.expectApproxEqRel(@as(f64, 1.5), tok.float_val, 1e-12);
+}
+
+test "Lexer.next: hex-float with a leading-dot fraction and no digits before it" {
+    const gpa = std.testing.allocator;
+    var src = try testSource(gpa, "0x.8p3");
+    defer src.deinit();
+    var lex = Lexer.init(gpa, &src);
+    defer lex.deinit();
+    const tok = lex.next();
+    try std.testing.expectEqual(TokenId.const_float, tok.id);
+    try std.testing.expectApproxEqRel(@as(f64, 4.0), tok.float_val, 1e-12);
+}
+
+test "Lexer.next: hex-float with just a 'p' exponent, no fraction" {
+    const gpa = std.testing.allocator;
+    var src = try testSource(gpa, "0x1p4");
+    defer src.deinit();
+    var lex = Lexer.init(gpa, &src);
+    defer lex.deinit();
+    const tok = lex.next();
+    try std.testing.expectEqual(TokenId.const_float, tok.id);
+    try std.testing.expectApproxEqRel(@as(f64, 16.0), tok.float_val, 1e-12);
+}
+
+test "Lexer.next: hex-float exponent with no digits is an error" {
+    const gpa = std.testing.allocator;
+    var src = try testSource(gpa, "0x1.8p");
     defer src.deinit();
     var lex = Lexer.init(gpa, &src);
     defer lex.deinit();
