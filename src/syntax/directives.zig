@@ -160,7 +160,14 @@ pub const Scanner = struct {
     /// expression doesn't end it early. Returns the raw text between the
     /// outer braces (braces excluded), or `null` if `{` isn't next.
     fn scanBraceBlock(self: *Scanner, span: Span) ?[]const u8 {
-        self.skipWhitespaceAndNewlines();
+        // Only horizontal whitespace, not newlines: an %include with no
+        // bindings block is immediately followed by its aliases or the
+        // line's end, possibly after a blank line before the *next*
+        // top-level declaration -- skipping newlines here would walk past
+        // that boundary speculatively looking for a '{' and (since this
+        // probe doesn't restore self.pos on a miss) corrupt the scan
+        // position, silently swallowing the next declaration's first token.
+        self.skipHorizontalWhitespace();
         if (self.peekByte() != '{') return null;
         self.pos += 1;
         const start = self.pos;
@@ -180,13 +187,6 @@ pub const Scanner = struct {
         const text = self.source.bytes[start..self.pos];
         self.pos += 1; // the closing '}'
         return text;
-    }
-
-    fn skipWhitespaceAndNewlines(self: *Scanner) void {
-        while (self.peekByte()) |c| {
-            if (c != ' ' and c != '\t' and c != '\n' and c != '\r') break;
-            self.pos += 1;
-        }
     }
 
     /// The rest of the current line, trimmed of trailing whitespace and the

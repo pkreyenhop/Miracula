@@ -38,6 +38,7 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const heap_mod = @import("../runtime/heap.zig");
+const strtab = @import("../runtime/strtab.zig");
 
 const Word = word.Word;
 
@@ -127,6 +128,27 @@ pub const SymbolTable = struct {
     pub fn rebind(self: *SymbolTable, gpa: std.mem.Allocator, name: []const u8, new_id: Word) !void {
         if (!self.table.contains(name)) return;
         try self.table.put(gpa, name, new_id);
+    }
+
+    /// Bind `name` to `id`, unconditionally — inserts a new entry or
+    /// overwrites an existing one, whether or not `name` was interned
+    /// before. Used for `%include` aliasing (`syntax/directives.zig`'s
+    /// `Alias.rename`): the alias name (e.g. `mike_f` in `%include "mike"
+    /// mike_f/f`) usually isn't interned yet, unlike `rebind`'s
+    /// requirement, and this isn't a *node* changing identity for a name
+    /// that already resolves there (`rebind`'s job) — it's introducing a
+    /// brand new *name* for an existing node.
+    ///
+    /// `name` need not outlive this call (interned into `strtab`
+    /// immediately, same as `createFresh`) — callers may pass a
+    /// transient/arena-backed slice (e.g. straight out of a `Source`'s
+    /// bytes) safely.
+    pub fn bind(self: *SymbolTable, gpa: std.mem.Allocator, name: []const u8, id: Word) !void {
+        const name_z = try gpa.dupeZ(u8, name);
+        defer gpa.free(name_z);
+        const bits = strtab.strBits(strtab.table(), name_z.ptr);
+        const stable_name = std.mem.span(strtab.strOf(strtab.table(), bits));
+        try self.table.put(gpa, stable_name, id);
     }
 };
 
@@ -283,4 +305,35 @@ test "SymbolTable.rebind: a no-op for a name that was never interned" {
     try st.rebind(std.testing.allocator, "zzsymneverexisted", 42);
     try std.testing.expectEqual(@as(?Word, null), st.find("zzsymneverexisted"));
     try std.testing.expectEqual(@as(usize, 0), st.count());
+}
+
+test "SymbolTable.bind: introduces a brand new name for an existing id" {
+    tu.freshInterp();
+    var st: SymbolTable = .{};
+    defer st.deinit(std.testing.allocator);
+    const id = try st.createFresh(std.testing.allocator, "zzsymoriginal");
+    try st.bind(std.testing.allocator, "zzsymalias", id);
+    try std.testing.expectEqual(@as(?Word, id), st.find("zzsymalias"));
+    try std.testing.expectEqual(@as(?Word, id), st.find("zzsymoriginal")); // unaffected
+}
+
+test "SymbolTable.bind: overwrites an existing name's binding" {
+    tu.freshInterp();
+    var st: SymbolTable = .{};
+    defer st.deinit(std.testing.allocator);
+    _ = try st.createFresh(std.testing.allocator, "zzsymtarget");
+    try st.bind(std.testing.allocator, "zzsymtarget", 777);
+    try std.testing.expectEqual(@as(?Word, 777), st.find("zzsymtarget"));
+}
+
+test "SymbolTable.bind: name survives even if the caller's buffer is freed" {
+    tu.freshInterp();
+    var st: SymbolTable = .{};
+    defer st.deinit(std.testing.allocator);
+    {
+        const transient = try std.testing.allocator.dupe(u8, "zzsymtransient");
+        defer std.testing.allocator.free(transient);
+        try st.bind(std.testing.allocator, transient, 55);
+    }
+    try std.testing.expectEqual(@as(?Word, 55), st.find("zzsymtransient"));
 }

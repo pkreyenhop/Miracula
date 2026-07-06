@@ -51,9 +51,8 @@ const TEST_CASES = [_]TestCase{
         .input = "square 5\ncube 3\n\n/q\n",
     },
     // %insert is pure textual substitution in the legacy lexer (no AST node),
-    // so — unlike %include/%export/%free, see tests/golden/README_pending_phase1.md
-    // — it already works; resolves relative to reg_tmp.m's directory
-    // (tests/golden/), reusing the fixture body left there by that README.
+    // so it already works; resolves relative to reg_tmp.m's directory
+    // (tests/golden/), reusing directive_insert_body.txt there.
     .{
         .name = "insert_directive",
         .script_content = "%insert \"directive_insert_body.txt\"\n\nr = inserted_val + 1\n",

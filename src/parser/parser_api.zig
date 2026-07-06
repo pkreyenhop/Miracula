@@ -35,6 +35,7 @@ const evaluateRepl = repl.evaluateRepl;
 const source_mod = @import("../syntax/source.zig");
 const lexer_mod = @import("../syntax/lexer.zig");
 const layout_mod = @import("../syntax/layout.zig");
+const modules = @import("../semantics/modules.zig");
 /// Errors the parse entry points can return.
 pub const ParseError = error{
     SyntaxError,
@@ -71,7 +72,7 @@ fn parseCurrentLegacy() ParseError!ParseResult {
 
     const tokens = lex_bridge.tokenizeCurrent(alloc) catch return ParseError.ParseFailed;
     var p = parser_mod.Parser.init(alloc, tokens);
-    return runParsedTokens(&p, alloc, &.{});
+    return runParsedTokens(&p, alloc, &.{}, ".");
 }
 
 /// Read from the currently-open legacy stream (`rt.rs().s_in`) into an owned
@@ -159,7 +160,7 @@ fn parseCurrentNative() ParseError!ParseResult {
     const laid_out = layout_mod.applyLayout(alloc, tok_result.tokens) catch return ParseError.ParseFailed;
 
     var p = parser_mod.Parser.initWithDirectives(alloc, laid_out, tok_result.directives);
-    return runParsedTokens(&p, alloc, tok_result.diagnostics);
+    return runParsedTokens(&p, alloc, tok_result.diagnostics, base_dir);
 }
 
 /// Print one lex-level diagnostic exactly as legacy would have, given which
@@ -187,7 +188,7 @@ fn reportLexerDiagnostic(d: lexer_mod.Diagnostic) void {
 /// (always empty from the legacy path — `lex_bridge`'s own lex errors go
 /// through `acterror()`/`syntax()` directly during tokenization, not a
 /// separate list collected afterward).
-fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagnostics: []const lexer_mod.Diagnostic) ParseError!ParseResult {
+fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagnostics: []const lexer_mod.Diagnostic, base_dir: []const u8) ParseError!ParseResult {
     // Command mode: the user typed an expression at the REPL prompt.
     // In the old YACC grammar this was handled by `EVAL exp { evaluate($2); }`.
     // We parse one expression, codegen it, then fork via evaluateRepl().
@@ -273,6 +274,17 @@ fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagno
         core.s().errcol = @intCast(p.diagnostics.items[0].span.col);
         return ParseError.SyntaxError;
     }
+
+    var including_stack: modules.IncludingStack = .{};
+    defer including_stack.deinit(alloc);
+    modules.processIncludes(alloc, script, base_dir, &including_stack) catch |err| {
+        core.s().SYNERR = 1;
+        switch (err) {
+            modules.ModuleError.IncludeCycle => word.printErr("syntax error: circular %include\n", .{}),
+            else => word.printErr("syntax error: %include failed ({s})\n", .{@errorName(err)}),
+        }
+        return ParseError.ParseFailed;
+    };
 
     codegen.codegenScript(alloc, script);
     if (options.is_strict or @import("builtin").mode == .Debug) {

@@ -31,6 +31,16 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const directives = @import("../syntax/directives.zig");
+const source_mod = @import("../syntax/source.zig");
+const lexer_mod = @import("../syntax/lexer.zig");
+const layout_mod = @import("../syntax/layout.zig");
+const parser_mod = @import("../parser/parser.zig");
+const ast = @import("../parser/ast.zig");
+const codegen = @import("../parser/codegen.zig");
+const lex = @import("../parser/lex.zig");
+const heap_mod = @import("../runtime/heap.zig");
+const symbols = @import("symbols.zig");
+const rt = @import("../runtime/runtime_state.zig");
 
 const Word = word.Word;
 const Alias = directives.Alias;
@@ -146,6 +156,241 @@ pub fn applyAliases(
         }
     }
     return result;
+}
+
+// ---------------------------------------------------------------------------
+// The harder half: actually loading, compiling, and binding an `%include`d
+// file (docs/ZIG_NATIVE_PLAN.md Phase 1 step 5, landed 2026-07-06 — after
+// step 7's production cutover, per the user's own direction, so this is
+// built against the native pipeline rather than the legacy one about to be
+// replaced).
+// ---------------------------------------------------------------------------
+
+/// Resolved, absolute paths of files currently being `%include`d — cycle
+/// detection: a file that tries to `%include` itself, directly or
+/// transitively, is a compile error, not infinite recursion.
+pub const IncludingStack = std.StringHashMapUnmanaged(void);
+
+pub const ModuleError = error{
+    IncludeCycle,
+    IncludeCompileFailed,
+};
+
+/// The identifier a definition's LHS `Expr` introduces — `f` for both
+/// `f = ...` (`.name`) and `f x y = ...` (nested `.application`, the
+/// innermost `.func`). `null` for LHS shapes that don't name a single
+/// identifier (destructuring patterns, operator definitions) — not yet
+/// part of any export set, a known gap matching this step's scope (no
+/// shipped fixture defines a top-level operator or destructures at the top
+/// level).
+fn defName(lhs: ast.Expr) ?[]const u8 {
+    return switch (lhs) {
+        .name => |n| n.text,
+        .cname => |n| n.text,
+        .application => |a| defName(a.func.*),
+        .typed => |t| defName(t.expr.*),
+        else => null,
+    };
+}
+
+/// Every name `script` defines at its own top level. `.definition` items
+/// only, for now — type declarations/specs aren't yet part of any export
+/// set (a known gap; no shipped `%include` fixture exports a type).
+/// Caller frees the result.
+pub fn collectTopLevelNames(gpa: std.mem.Allocator, script: ast.Script) ![][]const u8 {
+    var names: std.ArrayList([]const u8) = .empty;
+    errdefer names.deinit(gpa);
+    for (script.items) |item| {
+        if (item == .definition) {
+            if (defName(item.definition.lhs)) |n| try names.append(gpa, n);
+        }
+    }
+    return names.toOwnedSlice(gpa);
+}
+
+/// Resolve an `%include`'s path: `<...>`-form is relative to `miralib`
+/// (`rt.rs().miralib`); `"..."`-form is relative to the including file's
+/// own directory (`base_dir`). Appends `.m` if the path has no extension
+/// already (matching legacy's `addextn`). Caller frees the result.
+fn resolveIncludePath(gpa: std.mem.Allocator, path: []const u8, from_miralib: bool, base_dir: []const u8) ![]u8 {
+    const dir: []const u8 = if (from_miralib)
+        (if (rt.rs().miralib) |m| std.mem.span(m) else ".")
+    else
+        base_dir;
+    const has_ext = std.mem.indexOfScalar(u8, std.fs.path.basename(path), '.') != null;
+    const with_ext = if (has_ext) path else try std.fmt.allocPrint(gpa, "{s}.m", .{path});
+    defer if (!has_ext) gpa.free(with_ext);
+    return std.fs.path.join(gpa, &.{ dir, with_ext });
+}
+
+/// Tokenize/layout/parse `text` as a standalone unit — shared by full-file
+/// compilation and the `%include` bindings-block pre-pass (which builds a
+/// small synthetic snippet, not a whole file — see `compileBindings`).
+/// Caller must have already appended a trailing newline if needed; the
+/// returned `ast.Script`'s memory lives in `arena_alloc` (an arena — call
+/// sites don't free the intermediate tokens/AST individually).
+fn parseSnippet(arena_alloc: std.mem.Allocator, text: []const u8) !ast.Script {
+    var src = try source_mod.Source.fromBytes(arena_alloc, text);
+    const tok_result = try lexer_mod.tokenizeWithDirectives(arena_alloc, &src);
+    const laid_out = try layout_mod.applyLayout(arena_alloc, tok_result.tokens);
+    var p = parser_mod.Parser.initWithDirectives(arena_alloc, laid_out, tok_result.directives);
+    const script = try parser_mod.parseScript(&p);
+    if (p.diagnostics.items.len > 0) return ModuleError.IncludeCompileFailed;
+    return script;
+}
+
+/// Compile an `%include`'s bindings block (`{elem==num; zero=0; add=+}`) —
+/// a semicolon-separated list of type-synonym (`name==type`) and value
+/// (`name=expr`) bindings, in the library's own abbreviated grammar (no
+/// `type` keyword for the synonym form; a bare operator symbol like `+` on
+/// a value binding's RHS is accepted unparenthesized, unlike ordinary
+/// Miranda expression syntax). Reduces each clause to ordinary top-level
+/// syntax (`type {lhs} == {rhs}`, or `{lhs} = ({rhs})` — wrapping the RHS in
+/// parens handles the bare-operator case, e.g. `add=+` -> `add = (+)`,
+/// `(+)` already being ordinary `op_func` syntax) and compiles it through
+/// the normal pipeline, so `elem`/`zero`/`add` are bound in the shared
+/// symbol table exactly like any other top-level definition — the
+/// including library's own later references to them (compiled next, by
+/// `processOneInclude`) resolve to these bindings via the same lookup
+/// mechanism everything else uses.
+fn compileBindings(arena_alloc: std.mem.Allocator, bindings_text: []const u8) !void {
+    var it = std.mem.splitScalar(u8, bindings_text, ';');
+    while (it.next()) |raw_clause| {
+        const clause = std.mem.trim(u8, raw_clause, " \t\r\n");
+        if (clause.len == 0) continue;
+        const snippet: []const u8 = if (std.mem.indexOf(u8, clause, "==")) |eq_pos| blk: {
+            const lhs = std.mem.trim(u8, clause[0..eq_pos], " \t");
+            const rhs = std.mem.trim(u8, clause[eq_pos + 2 ..], " \t");
+            break :blk try std.fmt.allocPrint(arena_alloc, "type {s} == {s}\n", .{ lhs, rhs });
+        } else if (std.mem.indexOfScalar(u8, clause, '=')) |eq_pos| blk: {
+            const lhs = std.mem.trim(u8, clause[0..eq_pos], " \t");
+            const rhs = std.mem.trim(u8, clause[eq_pos + 1 ..], " \t");
+            break :blk try std.fmt.allocPrint(arena_alloc, "{s} = ({s})\n", .{ lhs, rhs });
+        } else continue; // malformed clause -- skip rather than guess
+        const script = try parseSnippet(arena_alloc, snippet);
+        codegen.codegenScript(arena_alloc, script);
+    }
+}
+
+/// Determine `script`'s export set (its own `%export` directive, or the
+/// default "everything" if absent), resolve `aliases` against it, hide
+/// (permanently, for the rest of the process — see `lex.mkprivate`'s own
+/// doc comment on why `%export`'s hiding needs to be a *live* dictionary
+/// operation here, unlike `dump.zig`'s dump-time-only privatise/publicise)
+/// every one of `script`'s own top-level names that ends up not visible,
+/// and `symbols.zig`-`bind` every alias name that isn't already the name
+/// its target was compiled under.
+fn applyExportsAndAliases(gpa: std.mem.Allocator, script: ast.Script, aliases: []const Alias) !void {
+    const own_names = try collectTopLevelNames(gpa, script);
+    defer gpa.free(own_names);
+
+    var export_parts: []const ExportPart = &.{};
+    var parsed_parts: ?[]ExportPart = null;
+    defer if (parsed_parts) |pp| gpa.free(pp);
+    for (script.items) |item| {
+        if (item == .directive and item.directive == .export_list) {
+            parsed_parts = try parseExportParts(gpa, item.directive.export_list.parts_text);
+            export_parts = parsed_parts.?;
+        }
+    }
+
+    var file_exports: std.StringHashMapUnmanaged([]const []const u8) = .{};
+    defer file_exports.deinit(gpa);
+    var exported_set = try resolveExports(gpa, own_names, export_parts, &file_exports);
+    defer exported_set.deinit(gpa);
+
+    var exports_map: std.StringHashMapUnmanaged(Word) = .{};
+    defer exports_map.deinit(gpa);
+    var eit = exported_set.keyIterator();
+    while (eit.next()) |k| {
+        if (symbols.syms().find(k.*)) |id| try exports_map.put(gpa, k.*, id);
+    }
+
+    var visible = try applyAliases(gpa, &exports_map, aliases);
+    defer visible.deinit(gpa);
+
+    // Bind every alias name that isn't already the name its id resolves
+    // under (a rename's "new" half; the "old" half is handled by the hide
+    // pass below, since applyAliases already dropped it from `visible`).
+    var vit = visible.iterator();
+    while (vit.next()) |entry| {
+        if (symbols.syms().find(entry.key_ptr.*)) |existing| {
+            if (existing == entry.value_ptr.*) continue; // already bound under this name
+        }
+        try symbols.syms().bind(gpa, entry.key_ptr.*, entry.value_ptr.*);
+    }
+
+    // Hide every one of this script's own top-level names that didn't
+    // survive into `visible` under its original spelling (not exported at
+    // all, or exported but renamed/suppressed by an alias).
+    var to_hide: Word = word.NIL;
+    for (own_names) |n| {
+        if (visible.contains(n)) continue;
+        if (symbols.syms().find(n)) |id| to_hide = heap_mod.cons(id, to_hide);
+    }
+    if (to_hide != word.NIL) lex.mkprivate(heap_mod.heap(), to_hide);
+}
+
+/// Fully resolve one `%include` directive: resolve its path, detect cycles,
+/// read + `%insert`-splice + parse the target file, compile any bindings
+/// block first (so the target's own free-variable references resolve to
+/// them), recursively process the target's own `%include`s before its own
+/// definitions (same order as the top level), compile the target's own
+/// definitions, then apply its `%export`/alias visibility.
+// Explicit (not inferred) error set: processOneInclude and processIncludes
+// call each other, and Zig can't infer an error set across a
+// recursive/mutual-recursion cycle (same issue as source.zig's
+// spliceOneInsert/resolveInserts).
+fn processOneInclude(gpa: std.mem.Allocator, inc: directives.Include, base_dir: []const u8, stack: *IncludingStack) anyerror!void {
+    const resolved_path = try resolveIncludePath(gpa, inc.path, inc.from_miralib, base_dir);
+    defer gpa.free(resolved_path);
+
+    if (stack.contains(resolved_path)) return ModuleError.IncludeCycle;
+    const stack_key = try gpa.dupe(u8, resolved_path);
+    try stack.put(gpa, stack_key, {});
+    defer {
+        _ = stack.remove(stack_key);
+        gpa.free(stack_key);
+    }
+
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+    const arena_alloc = arena.allocator();
+
+    const io = std.Options.debug_io;
+    const src = try source_mod.Source.loadFile(arena_alloc, io, resolved_path);
+    const inc_dir = std.fs.path.dirname(resolved_path) orelse ".";
+    const spliced = try source_mod.Source.resolveInserts(arena_alloc, src.bytes, inc_dir, io, 0);
+    var real_src = try source_mod.Source.init(arena_alloc, spliced, source_mod.Source.isLiterateName(resolved_path));
+
+    const tok_result = try lexer_mod.tokenizeWithDirectives(arena_alloc, &real_src);
+    const laid_out = try layout_mod.applyLayout(arena_alloc, tok_result.tokens);
+    var p = parser_mod.Parser.initWithDirectives(arena_alloc, laid_out, tok_result.directives);
+    const inc_script = try parser_mod.parseScript(&p);
+    if (p.diagnostics.items.len > 0) return ModuleError.IncludeCompileFailed;
+
+    if (inc.bindings_text.len > 0) {
+        try compileBindings(arena_alloc, inc.bindings_text);
+    }
+
+    try processIncludes(gpa, inc_script, inc_dir, stack);
+    codegen.codegenScript(arena_alloc, inc_script);
+    try applyExportsAndAliases(gpa, inc_script, inc.aliases);
+}
+
+/// Process every `%include` directive in `script.items`, in source order,
+/// before `script`'s own definitions are compiled (they may reference
+/// names the includes bring into scope). Call this before `codegenScript`;
+/// `%export` needs no equivalent call for `script` itself — its own
+/// `%export` only has an observable effect on whoever `%include`s *it*
+/// (`processOneInclude`'s `applyExportsAndAliases` call, made once per
+/// include, handles that).
+pub fn processIncludes(gpa: std.mem.Allocator, script: ast.Script, base_dir: []const u8, stack: *IncludingStack) anyerror!void {
+    for (script.items) |item| {
+        if (item == .directive and item.directive == .include) {
+            try processOneInclude(gpa, item.directive.include, base_dir, stack);
+        }
+    }
 }
 
 fn expectPartsEqual(gpa: std.mem.Allocator, expected: []const ExportPart, text: []const u8) !void {

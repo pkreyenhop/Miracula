@@ -487,6 +487,79 @@ front door is C.
    `%bnf`/`%lex` grammar-extension machinery (`eprodnts`/`nonterminals`/
    `lexstates`/`lexdefs`) ported **last** — it is the hairiest and
    least-covered corner; goldens from Phase 0 step 3 gate it.
+   **The harder half landed (2026-07-06), against the native pipeline** (per
+   the user's own direction — built after step 7's cutover, not against the
+   legacy path about to be deleted): `semantics/modules.zig` gained
+   `processIncludes`/`processOneInclude`, wired into `parser_api.zig`'s
+   `runParsedTokens` right before the including script's own `codegenScript`
+   call. Per `%include`: resolve the path (`<...>` relative to
+   `rt.rs().miralib`, `"..."` relative to the including file's own
+   directory, `.m` appended if missing), cycle-detect via an
+   `IncludingStack` (a `StringHashMapUnmanaged(void)` of resolved absolute
+   paths, push/pop around the recursive call so a diamond-shaped, non-cyclic
+   include graph is still fine), read + `%insert`-splice + tokenize/layout/
+   parse the target file, compile any `{bindings}` block *first* (see below),
+   recursively process the target's own nested `%include`s, `codegenScript`
+   the target's own definitions, then compute its `%export` set (the
+   already-existing, already-tested `resolveExports`/`parseExportParts`),
+   resolve each exported name to its `Word` via `symbols.syms().find`, apply
+   the including directive's aliases (the already-existing, already-tested
+   `applyAliases`), `SymbolTable.bind` (a new primitive — see below) each
+   alias's new name, and permanently hide every one of the included file's
+   own top-level names that didn't survive into the final visible set via
+   `lex.mkprivate` (proven earlier in this phase for prelude's own
+   internal-primitive hiding; applied here for the first time to something
+   other than bootstrap). `%free`'s bindings block (`{elem==num; zero=0;
+   add=+}`) is compiled by a pragmatic clause-splitting transformation, not
+   real abstract/opaque free-variable type-checking: each `;`-separated
+   clause becomes ordinary top-level syntax (`==` → `type {lhs} == {rhs}`,
+   single `=` → `{lhs} = ({rhs})`, the parens letting a bare operator symbol
+   like `add=+` parse as `add = (+)`) and is compiled as a normal top-level
+   definition *before* the library's own code, so the library's later
+   references to `elem`/`zero`/`add` resolve via ordinary name lookup — the
+   "no bindings supplied" case (genuine abstract free variables) is an
+   accepted, documented gap, matching every shipped fixture. Needed one new
+   `symbols.zig` primitive, `SymbolTable.bind` (unconditional insert-or-
+   overwrite, whether or not the name existed before) — distinct from the
+   three that already existed (`intern` find-or-create, `createFresh`
+   always-fresh, `rebind` requires a pre-existing name): an alias's "new"
+   name usually isn't interned yet, and it's a new *name* pointing at an
+   *existing* node, not a node changing identity for a name that already
+   resolves there.
+   Two real, previously-invisible bugs found purely by running the five
+   `directive_*` golden fixtures end to end (not by inspection) and fixed:
+   **(1)** `directives.zig`'s `Scanner.scanBraceBlock` (the optional
+   `{bindings}` block probe following an `%include`'s pathname) called
+   `skipWhitespaceAndNewlines()` before checking for `{` — with no bindings
+   block present, this walked the scanner's position *past* a blank line
+   onto the *next* top-level declaration looking for a `{` that was never
+   there, found none, and returned `null` without restoring `self.pos` —
+   silently corrupting the scan position so the *next* declaration's first
+   token (e.g. `use_it` in `use_it x = visible_fn x`) got swallowed by the
+   subsequent alias-list scan and discarded (it doesn't match the
+   `identifier/identifier` or `-identifier` alias grammar, so `scanAliases`
+   just aborted after consuming it). Fixed by only skipping horizontal
+   whitespace before the `{` probe — a bindings block, when present, always
+   follows on the same line as the pathname/aliases in every fixture and
+   the manual's own examples. **(2)** A first attempt at `symbols.bind`
+   used explicit `[*:0]const u8` casts where the called functions
+   (`strtab.strBits` takes `anytype`; a `[:0]u8`'s own `.ptr` already
+   coerces) didn't need them — removed to avoid an avoidable scorecard
+   `[*:0]` regression, same as `createFresh`'s parameter-type redesign
+   earlier in this phase.
+   All five `tests/golden/directive_*` fixtures promoted from pending to
+   pinned (`zig build generate-golden`, reviewed): `directive_include`
+   (105/101), `directive_include_alias` (aliased, 105),
+   `directive_export_scope` (`hidden_fn` genuinely inaccessible after
+   `%include` — `UNDEFINED NAME - hidden_fn`, confirmed distinct from and
+   unaffected by two *pre-existing*, unrelated bugs also surfaced by this
+   fixture: `sayhere`'s "undefined name" diagnostic on stdout interleaves
+   oddly with stderr's "UNDEFINED NAME" under a naive `2>&1` capture — not a
+   real formatting bug, reproduces on a plain script with no `%include` at
+   all, each stream is coherent read separately), `directive_free` (6).
+   `tests/golden/README_pending_phase1.md` is stale as a result and
+   should be deleted; its history is preserved in this entry and in the
+   commit that pinned the five fixtures.
    **Investigated (2026-07-06):** `module_loader.zig`'s `mkincludes` (the
    692-line reference above) is real, dense, still-`fork()`-using logic with
    a triple-nested heap-cons encoding for its `includees` input — but it is
@@ -812,13 +885,16 @@ and `%insert`'s never-actually-implemented textual splicing) — see the
 step-7 entry above for details and the three narrow, explicitly-deferred
 diagnostic-wording gaps that remain (lexer-error-recovery architecture
 differs from legacy's character-at-a-time model; a directive-error
-follow-on message not yet traced to its source). Remaining: finish step 5's
-harder half (actually loading/compiling an `%include`d file, real cycle
-detection, free-binding substitution, path resolution — deliberately held
-until *after* step 7 per the user's own direction, to avoid building
-throwaway glue against the pipeline about to be replaced); resolve or
-formally accept the three diagnostic-wording gaps; then step 8 (delete the
-legacy lexer entirely).
+follow-on message not yet traced to its source). Step 5's harder half
+(actually loading/compiling an `%include`d file, real cycle detection,
+free-binding substitution, path resolution) landed the same day too —
+deliberately held until *after* step 7 per the user's own direction, to
+avoid building throwaway glue against the pipeline about to be replaced;
+see the step-5 entry above for the design and the two real bugs (a
+directive-scanner position-restore bug that silently swallowed the next
+declaration's first token; an avoidable `[*:0]` scorecard regression) found
+landing it. Remaining: resolve or formally accept the three
+diagnostic-wording gaps; then step 8 (delete the legacy lexer entirely).
 
 **Deletes:** ~2,700 lines of C-ported lexing; the biggest single consumer of `FILE`,
 `[*:0]`, `c_int`, and `@ptrFromInt`.

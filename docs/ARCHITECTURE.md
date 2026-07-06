@@ -320,8 +320,11 @@ pre-existing issue — see below):
    phase's golden diff should be empty (or, for a deliberate bug fix, a reviewed,
    intentional change to exactly the affected case). Phase 0 of that plan added coverage
    for literate scripts, `%insert`, and lexer error wording ahead of Phase 1's front-end
-   rewrite; `%include`/`%export`/`%free` fixtures exist but are deliberately left unpinned
-   (see `tests/golden/README_pending_phase1.md` — pinning "feature absent" isn't useful).
+   rewrite; `%include`/`%export`/`%free` fixtures (`directive_include`/
+   `directive_include_alias`/`directive_export_scope`/`directive_free`) were left
+   deliberately unpinned until the library mechanism was actually implemented
+   (Phase 1 step 5's "harder half" — pinning "feature absent" isn't useful), then pinned
+   once real (2026-07-06, see [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md)).
 3. **C-differential regression** (`zig build test-regression`, `tests/regression.zig`) —
    runs the same inputs through both `./mira_original` (a separately built reference C
    Miranda, not part of this repo) and the Zig binary, comparing stdout/stderr and the
@@ -376,10 +379,11 @@ this writing:
   `system "..."` at the REPL prompt; a dump-cache bug that silently masks a script's syntax
   error on the second run against an unchanged file; an off-by-one that reports line 0
   instead of line 1 for a syntax error on a script's first line, `tests/golden/script_syntax_err`).
-- **Open, larger:** `%include`/`%export`/`%free` (the Miranda library mechanism, manual §27)
-  are not wired up end to end in the current parser/codegen pipeline — confirmed by two
-  findings (`codegen.zig:808` no-ops all three AST node kinds; `lex_bridge.zig` drops the
-  `%include` pathname payload so even a bare `%include "x"` fails to parse), reproducing on
-  the shipped `miralib/ex/polish.m` example. See `tests/golden/README_pending_phase1.md`.
-  [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) Phase 1 step 5 scopes this as a first
-  implementation against the native front end, not behaviour preservation.
+- **Done:** `%include`/`%export`/`%free` (the Miranda library mechanism, manual §27) —
+  implemented against the native front end (`semantics/modules.zig`'s `processIncludes`,
+  wired into `parser_api.zig`), not the legacy pipeline (which never wired these up end to
+  end at all — `codegen.zig:808` no-oped all three AST node kinds, and `lex_bridge.zig`
+  dropped the `%include` pathname payload so even a bare `%include "x"` failed to parse;
+  reproduced on the shipped `miralib/ex/polish.m` example on a clean `main` checkout before
+  this work). See [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) Phase 1 step 5 for the design and
+  the two real bugs found landing it.
