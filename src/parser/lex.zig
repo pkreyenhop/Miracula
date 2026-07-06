@@ -1701,38 +1701,20 @@ pub fn name(heap: *Heap) Word {
 }
 
 /// Intern name `n` as a *fresh* `ID` node, unconditionally, shadowing any
-/// existing entry for `n` in the dictionary.
+/// existing entry for `n` in the dictionary. Thin wrapper over
+/// `symbols.zig`'s `SymbolTable.createFresh` — see its doc comment for why
+/// this must not be find-or-create.
 ///
-/// **Not find-or-create** — verified empirically, not just by inspection
-/// (the first attempt at this got it wrong): `setup.zig`'s `predef`/`primdef`
-/// call this repeatedly for overlapping names across `privlib()` (prelude
-/// bootstrap) and `stdlib()` (stdenv bootstrap) — e.g. "error"/"code"/
-/// "decode"/"drop"/"foldr"/"shownum"/"take" are each `predef`'d once in each
-/// stage — deliberately creating a *new* cell that shadows the previous
-/// one for name lookup, not reusing it. A find-or-create `makeId` silently
-/// merges these into one cell, which corrupts prelude/stdenv bootstrap
-/// (`predef`'s later calls end up mutating the *earlier* cell in place,
-/// observed as a totally garbled prelude/stdenv load — every golden test
-/// failing). `codegen.zig`'s `nameWord` fallback (only reached after
-/// `findid()` already confirmed absence) and `miraSetup`'s bootstrap
-/// identifiers are unaffected either way, since nothing to shadow exists yet
-/// there.
-///
-/// The `keep()` call is unrelated to interning (a fresh `stoId` always makes
-/// its own permanent copy in `strtab`): it protects the scratch dictionary
-/// buffer's bytes at `n` from being overwritten by the next `kollect()`
-/// before anything else needs them, exactly as it does elsewhere in this file.
+/// The `keep()` call is unrelated to interning (`createFresh`'s `stoId` always
+/// makes its own permanent copy in `strtab`): it protects the scratch
+/// dictionary buffer's bytes at `n` from being overwritten by the next
+/// `kollect()` before anything else needs them, exactly as it does elsewhere
+/// in this file.
 ///
 /// Tests: makeId / findid: intern then look up a dictionary name
 pub fn makeId(n: [*:0]const u8) Word {
     const kept = if (ls().inprelude) keep(@constCast(n)) else n;
-    const id = stoId(kept);
-    // The dictionary key must be strtab's own stable copy (via getId), not
-    // `kept` -- which may be the scratch buffer, whose bytes do not outlive
-    // the next `kollect()`.
-    const stable_name = std.mem.span(heap_mod.getId(id));
-    symbols.syms().table.put(rt.allocator, stable_name, id) catch mallocPanic("symbols dictionary");
-    return id;
+    return symbols.syms().createFresh(rt.allocator, std.mem.span(kept)) catch mallocPanic("symbols dictionary");
 }
 
 /// Look up name `n` in the dictionary (NIL if absent).

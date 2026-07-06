@@ -63,8 +63,11 @@ pub const SymbolTable = struct {
     }
 
     /// Find-or-create: intern `name` as an `ID` heap node. Matches `lex.zig`'s
-    /// `makeId`/`name()` — repeated calls with the same text return the same
-    /// node.
+    /// `name()` — repeated calls with the same text return the same node.
+    ///
+    /// **Not** a match for `makeId` — see `createFresh` for that. (An earlier
+    /// attempt at this migration used `intern` for `makeId` too and broke
+    /// prelude/stdenv bootstrap; see `createFresh`'s doc comment.)
     pub fn intern(self: *SymbolTable, gpa: std.mem.Allocator, name: []const u8) !Word {
         if (self.table.get(name)) |id| return id;
         const name_z = try gpa.dupeZ(u8, name);
@@ -80,6 +83,32 @@ pub const SymbolTable = struct {
     /// whatever sentinel their own heap-value convention needs.
     pub fn find(self: *const SymbolTable, name: []const u8) ?Word {
         return self.table.get(name);
+    }
+
+    /// Intern `name` as a *fresh* `ID` node, unconditionally — creates a new
+    /// heap cell and overwrites any existing dictionary entry for `name`,
+    /// rather than reusing one. Matches `lex.zig`'s `makeId`.
+    ///
+    /// **Not find-or-create** — verified empirically (not just by inspection):
+    /// `compiler/setup.zig`'s `predef`/`primdef` call this repeatedly for
+    /// overlapping names across `privlib()` (prelude bootstrap) and `stdlib()`
+    /// (stdenv bootstrap) — e.g. "error"/"code"/"decode"/"drop"/"foldr"/
+    /// "shownum"/"take" are each `predef`'d once in each stage — deliberately
+    /// creating a *new* cell that shadows the previous one for name lookup,
+    /// not reusing it. A find-or-create version silently merges these into
+    /// one cell, corrupting prelude/stdenv bootstrap (garbled dump/undump
+    /// round trip — every golden test failing).
+    ///
+    /// `name` need not outlive this call — a NUL-terminated copy is made for
+    /// `heap.stoId`'s benefit and freed before returning; `stoId` interns its
+    /// own permanent copy via `strtab` immediately, same as `intern`.
+    pub fn createFresh(self: *SymbolTable, gpa: std.mem.Allocator, name: []const u8) !Word {
+        const name_z = try gpa.dupeZ(u8, name);
+        defer gpa.free(name_z);
+        const id = heap_mod.stoId(name_z);
+        const stable_name = std.mem.span(heap_mod.getId(id));
+        try self.table.put(gpa, stable_name, id);
+        return id;
     }
 
     /// Number of distinct identifiers interned so far.
@@ -187,6 +216,24 @@ test "SymbolTable.count: tracks the number of distinct interned names" {
     _ = try st.intern(std.testing.allocator, "zzsymcount2");
     _ = try st.intern(std.testing.allocator, "zzsymcount1"); // repeat, not a new entry
     try std.testing.expectEqual(@as(usize, 2), st.count());
+}
+
+test "SymbolTable.createFresh: repeated calls with the same name yield distinct nodes" {
+    tu.freshInterp();
+    var st: SymbolTable = .{};
+    defer st.deinit(std.testing.allocator);
+    const a = try st.createFresh(std.testing.allocator, "zzsymfresh");
+    const b = try st.createFresh(std.testing.allocator, "zzsymfresh");
+    try std.testing.expect(a != b);
+}
+
+test "SymbolTable.createFresh: the newest call wins subsequent find lookups" {
+    tu.freshInterp();
+    var st: SymbolTable = .{};
+    defer st.deinit(std.testing.allocator);
+    _ = try st.createFresh(std.testing.allocator, "zzsymshadow");
+    const b = try st.createFresh(std.testing.allocator, "zzsymshadow");
+    try std.testing.expectEqual(@as(?Word, b), st.find("zzsymshadow"));
 }
 
 test "PrivateNames.make: each call allocates a fresh, index-tagged node" {

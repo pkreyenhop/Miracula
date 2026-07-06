@@ -27,6 +27,22 @@ pub fn build(b: *std.Build) void {
 
     const is_strict = b.option(bool, "strict", "Enable strict build validation features") orelse false;
 
+    // Some sandboxed environments hang indefinitely on the default test
+    // runner's `--listen=-` IPC protocol (the build's `run test ...` step
+    // blocks forever after the test binary finishes compiling, requiring an
+    // operator to notice, kill the hung process by hand, and re-run the
+    // compiled binary directly to see results). Force the compiler's own
+    // default test runner into its "simple" mode instead: it runs to
+    // completion and reports pass/fail via its exit code, like any other
+    // program, with no IPC — `addRunArtifact` skips `--listen=-` entirely
+    // whenever a test's `test_runner.mode` is `.simple`.
+    const simple_test_runner: std.Build.Step.Compile.TestRunner = .{
+        .path = .{ .cwd_relative = b.fmt("{s}/compiler/test_runner.zig", .{
+            b.graph.zig_lib_directory.path orelse @panic("zig_lib_directory.path is null"),
+        }) },
+        .mode = .simple,
+    };
+
     const version_options = b.addOptions();
     version_options.addOption(i32, "version", parseVersion(version_text));
     version_options.addOption([]const u8, "vdate", vdate);
@@ -133,6 +149,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
             .link_libc = need_libc,
         }),
+        .test_runner = simple_test_runner,
     });
     utf8_tests.root_module.addImport("utf8", utf8_module);
     const run_utf8_tests = b.addRunArtifact(utf8_tests);
@@ -140,18 +157,21 @@ pub fn build(b: *std.Build) void {
     const just_tests = b.addTest(.{
         .name = "just-tests",
         .root_module = just_module,
+        .test_runner = simple_test_runner,
     });
     const run_just_tests = b.addRunArtifact(just_tests);
 
     const menudriver_tests = b.addTest(.{
         .name = "menudriver-tests",
         .root_module = menudriver_module,
+        .test_runner = simple_test_runner,
     });
     const run_menudriver_tests = b.addRunArtifact(menudriver_tests);
 
     const main_tests = b.addTest(.{
         .name = "main-tests",
         .root_module = mira_module,
+        .test_runner = simple_test_runner,
     });
     const run_main_tests = b.addRunArtifact(main_tests);
 
@@ -162,6 +182,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
         }),
+        .test_runner = simple_test_runner,
     });
     const run_parser_tests = b.addRunArtifact(parser_tests);
 
@@ -176,6 +197,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = optimize,
         }),
+        .test_runner = simple_test_runner,
     });
     mira_tests.root_module.addOptions("build_options", mira_test_options);
     const run_mira_tests = b.addRunArtifact(mira_tests);
@@ -441,6 +463,7 @@ pub fn build(b: *std.Build) void {
             .optimize = .Debug,
             .link_libc = need_libc,
         }),
+        .test_runner = simple_test_runner,
     });
     strict_utf8_tests.root_module.addImport("utf8", utf8_module);
     const run_strict_utf8_tests = b.addRunArtifact(strict_utf8_tests);
@@ -448,18 +471,21 @@ pub fn build(b: *std.Build) void {
     const strict_just_tests = b.addTest(.{
         .name = "strict-just-tests",
         .root_module = strict_just_module,
+        .test_runner = simple_test_runner,
     });
     const run_strict_just_tests = b.addRunArtifact(strict_just_tests);
 
     const strict_menudriver_tests = b.addTest(.{
         .name = "strict-menudriver-tests",
         .root_module = strict_menudriver_module,
+        .test_runner = simple_test_runner,
     });
     const run_strict_menudriver_tests = b.addRunArtifact(strict_menudriver_tests);
 
     const strict_main_tests = b.addTest(.{
         .name = "strict-main-tests",
         .root_module = strict_mira_module,
+        .test_runner = simple_test_runner,
     });
     const run_strict_main_tests = b.addRunArtifact(strict_main_tests);
 
@@ -473,6 +499,7 @@ pub fn build(b: *std.Build) void {
     const strict_parser_tests = b.addTest(.{
         .name = "strict-parser-tests",
         .root_module = strict_parser_module,
+        .test_runner = simple_test_runner,
     });
     const run_strict_parser_tests = b.addRunArtifact(strict_parser_tests);
 
@@ -487,6 +514,7 @@ pub fn build(b: *std.Build) void {
             .target = target,
             .optimize = .Debug,
         }),
+        .test_runner = simple_test_runner,
     });
     strict_mira_tests.root_module.addOptions("build_options", strict_mira_test_options);
     const run_strict_mira_tests = b.addRunArtifact(strict_mira_tests);
