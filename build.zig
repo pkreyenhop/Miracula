@@ -27,13 +27,6 @@ pub fn build(b: *std.Build) void {
 
     const is_strict = b.option(bool, "strict", "Enable strict build validation features") orelse false;
 
-    // Phase 1 step 7: the native syntax/ pipeline (Source -> lexer -> layout
-    // -> parser -> codegen) is the default front end; `-Dlegacy-lexer`
-    // forces parser_api.zig back onto the old lex_bridge.zig (real yylex())
-    // path for differential debugging during the cutover window (see
-    // docs/ZIG_NATIVE_PLAN.md's Phase 1 step 7).
-    const legacy_lexer = b.option(bool, "legacy-lexer", "Force the legacy lex_bridge.zig front end instead of the native syntax/ pipeline") orelse false;
-
     // Some sandboxed environments hang indefinitely on the default test
     // runner's `--listen=-` IPC protocol (the build's `run test ...` step
     // blocks forever after the test binary finishes compiling, requiring an
@@ -56,7 +49,6 @@ pub fn build(b: *std.Build) void {
     version_options.addOption([]const u8, "host", b.fmt("compiled by zig build\n{s}\n", .{host}));
     version_options.addOption(bool, "reduce_trace", reduce_trace);
     version_options.addOption(bool, "is_strict", is_strict);
-    version_options.addOption(bool, "legacy_lexer", legacy_lexer);
 
     // On macOS, libSystem is implicitly linked by the OS linker — no explicit link_libc needed.
     // On Linux (including musl targets), link musl/glibc so setjmp, strcmp, getcwd etc. resolve.
@@ -407,7 +399,6 @@ pub fn build(b: *std.Build) void {
     strict_version_options.addOption([]const u8, "host", b.fmt("compiled by zig build\n{s}\n", .{host}));
     strict_version_options.addOption(bool, "reduce_trace", reduce_trace);
     strict_version_options.addOption(bool, "is_strict", true);
-    strict_version_options.addOption(bool, "legacy_lexer", legacy_lexer);
 
     const strict_mira_module = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),

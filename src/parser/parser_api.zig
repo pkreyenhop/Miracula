@@ -1,15 +1,16 @@
 //! parser_api.zig — the entry points that drive parsing.
 //!
-//! `parseCurrent`/`parseFile`/`parseString` are the production entry points
-//! (`parseCurrent` feeds `module_loader.zig`'s `loadfile` and the REPL loop).
-//! Phase 1 step 7: the native `syntax/` pipeline (`Source` → `lexer` →
-//! `applyLayout` → `parser.zig`/`codegen.zig`) is the default front end for
-//! all of them; `-Dlegacy-lexer` (`options.legacy_lexer`) forces the old
-//! `lex_bridge.zig` (real `yylex()`) path instead, for differential
-//! debugging during the cutover window. `parseWithNew` is a separate,
-//! narrower entry point (string input only) still on the legacy bridge —
-//! not yet touched by this cutover (only `parser_tests.zig` calls it).
-//! Also re-exports the lexer string setup (`lexSetupString`/`lexCleanup`).
+//! `parseCurrent`/`parseString` are the production entry points
+//! (`parseCurrent` feeds `module_loader.zig`'s `loadfile` and the REPL loop;
+//! file-based parsing goes through `loadfile`'s own open+`parseCurrent`
+//! sequence, not a `parseFile` wrapper here — see `compiler/module_loader.zig`).
+//! Phase 1 step 8: the native `syntax/` pipeline (`Source` → `lexer` →
+//! `applyLayout` → `parser.zig`/`codegen.zig`) is the only front end —
+//! the legacy `lex_bridge.zig` (real `yylex()`) path and the
+//! `-Dlegacy-lexer` escape hatch were deleted once the native pipeline had
+//! been the production default (step 7) for long enough to trust.
+//! `parseWithNew` (string input only, used by `parser_tests.zig`) now goes
+//! through the same native pipeline as `parseCurrentNative`.
 
 const std = @import("std");
 const heap = @import("../runtime/heap.zig");
@@ -20,15 +21,10 @@ const rt = @import("../runtime/runtime_state.zig");
 const core = @import("../runtime/core_state.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
 
-const lex_bridge = @import("lex_bridge.zig");
 const parser_mod = @import("parser.zig");
 const codegen = @import("codegen.zig");
 const repl = @import("../driver/repl.zig");
-const lex = @import("lex.zig");
 const lex_state = @import("lex_state.zig");
-const setupString = lex.setupString;
-const cleanup = lex.cleanup;
-const setupFile = lex.setupFile;
 // Forks like the original C evaluate(): compiling=0 only in child; parent's heap is safe.
 const evaluateRepl = repl.evaluateRepl;
 
@@ -47,40 +43,22 @@ pub const ParseResult = enum {
     success,
 };
 
-/// Parses the currently active stream.
+/// Parses the currently active stream through the native `syntax/`
+/// pipeline (`Source` → `lexer` → `applyLayout` → `parser.zig`/
+/// `codegen.zig`) — the only front end since the legacy `lex_bridge.zig`
+/// (real `yylex()`) path and its `-Dlegacy-lexer` escape hatch were deleted
+/// (Phase 1 step 8), once step 7 had proven the native pipeline out as the
+/// production default.
 pub fn parseCurrent() ParseError!ParseResult {
-    if (options.legacy_lexer) return parseCurrentLegacy();
     return parseCurrentNative();
 }
 
-/// Run the legacy `lex_bridge.zig` (real `yylex()`) pipeline on the
-/// currently active Miranda lex stream. s_in must already be opened (e.g.
-/// by openfile() in lex.zig). Kept behind `-Dlegacy-lexer` for differential
-/// debugging during the Phase 1 step 7 cutover window.
-fn parseCurrentLegacy() ParseError!ParseResult {
-    if (options.is_strict) {
-        if (rt.rs().current_script) |script_name| {
-            validateUtf8File(script_name) catch |err| {
-                core.s.SYNERR = 1;
-                return err;
-            };
-        }
-    }
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const alloc = arena.allocator();
-
-    const tokens = lex_bridge.tokenizeCurrent(alloc) catch return ParseError.ParseFailed;
-    var p = parser_mod.Parser.init(alloc, tokens);
-    return runParsedTokens(&p, alloc, &.{}, ".");
-}
-
-/// Read from the currently-open legacy stream (`rt.rs().s_in`) into an owned
-/// buffer, one byte at a time via the same `word.getc` `lex_bridge` itself
-/// reads through — the native pipeline's `Source` needs a whole unit of
-/// input up front (it isn't a streaming reader), but this doesn't require
-/// changing how/where the stream was opened (`setupFile`/`openfile`, driven
-/// by callers like `module_loader.zig`'s `loadfile`, are untouched).
+/// Read from the currently-open stream (`rt.rs().s_in`) into an owned
+/// buffer, one byte at a time via `word.getc` — the native pipeline's
+/// `Source` needs a whole unit of input up front (it isn't a streaming
+/// reader), but this doesn't require changing how/where the stream was
+/// opened (`lex.zig`'s `openfile`, driven by callers like
+/// `module_loader.zig`'s `loadfile`, is untouched).
 ///
 /// `stop_at_newline`: command-mode (the interactive REPL prompt) reads
 /// **one line at a time** from a long-lived `stdin` shared across many
@@ -182,12 +160,11 @@ fn reportLexerDiagnostic(d: lexer_mod.Diagnostic) void {
     }
 }
 
-/// Shared tail of `parseCurrent{Legacy,Native}`: command-mode expression
-/// evaluation, or full-script parse + codegen + diagnostic reporting.
-/// `lexer_diagnostics` are the native pipeline's lex-level diagnostics
-/// (always empty from the legacy path — `lex_bridge`'s own lex errors go
-/// through `acterror()`/`syntax()` directly during tokenization, not a
-/// separate list collected afterward).
+/// `parseCurrentNative`'s tail: command-mode expression evaluation, or
+/// full-script parse + codegen + diagnostic reporting. `lexer_diagnostics`
+/// are the native pipeline's lex-level diagnostics, collected during
+/// tokenization rather than reported immediately (unlike the deleted
+/// legacy lexer's `acterror()`/`syntax()` calls, made directly mid-scan).
 fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagnostics: []const lexer_mod.Diagnostic, base_dir: []const u8) ParseError!ParseResult {
     // Command mode: the user typed an expression at the REPL prompt.
     // In the old YACC grammar this was handled by `EVAL exp { evaluate($2); }`.
@@ -278,11 +255,7 @@ fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagno
     var including_stack: modules.IncludingStack = .{};
     defer including_stack.deinit(alloc);
     modules.processIncludes(alloc, script, base_dir, &including_stack) catch |err| {
-        core.s().SYNERR = 1;
-        switch (err) {
-            modules.ModuleError.IncludeCycle => word.printErr("syntax error: circular %include\n", .{}),
-            else => word.printErr("syntax error: %include failed ({s})\n", .{@errorName(err)}),
-        }
+        reportIncludeError(err);
         return ParseError.ParseFailed;
     };
 
@@ -294,6 +267,18 @@ fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagno
     }
     return .success;
 }
+
+/// Report a `modules.processIncludes` failure and set `SYNERR` — shared by
+/// `runParsedTokens` and `parseWithNew`, both of which process `%include`s
+/// before their own `codegenScript` call.
+fn reportIncludeError(err: anyerror) void {
+    core.s().SYNERR = 1;
+    switch (err) {
+        modules.ModuleError.IncludeCycle => word.printErr("syntax error: circular %include\n", .{}),
+        else => word.printErr("syntax error: %include failed ({s})\n", .{@errorName(err)}),
+    }
+}
+
 fn validateUtf8File(filename: [*:0]const u8) ParseError!void {
     const io = std.Options.debug_io;
     const dir = std.Io.Dir.cwd();
@@ -315,17 +300,6 @@ fn validateUtf8File(filename: [*:0]const u8) ParseError!void {
     }
 }
 
-/// Parses a script file by filename.
-pub fn parseFile(filename: [*:0]const u8) ParseError!ParseResult {
-    if (options.is_strict) {
-        try validateUtf8File(filename);
-    }
-    if (setupFile(heap.heap(), filename) == 0) {
-        return ParseError.ParseFailed;
-    }
-    return parseCurrent();
-}
-
 /// Parses a source string.
 pub fn parseString(source: [*:0]const u8) ParseError!ParseResult {
     if (options.is_strict) {
@@ -342,28 +316,21 @@ pub fn parseString(source: [*:0]const u8) ParseError!ParseResult {
     return .success;
 }
 
-/// Point the legacy lexer at the in-memory `source` string (wraps `lex.setupString`).
-pub fn lexSetupString(source: [*:0]const u8) void {
-    setupString(source);
-}
-
-/// Tear down the lexer's string setup (wraps `lex.cleanup`).
-pub fn lexCleanup() void {
-    cleanup();
-}
-
 /// Result of parsing with the new Zig pipeline.
 pub const NewParseResult = struct {
     /// No-op cleanup — the result owns no heap memory of its own.
     pub fn deinit(_: *NewParseResult) void {}
 };
 
-/// Parse a Miranda source string through the Zig lexer bridge + recursive-descent parser.
-/// Uses an arena so all intermediate allocations are freed on return.
-/// On parse errors, diagnostics are printed to stderr and SYNERR is set.
+/// Parse a Miranda source string through the native `syntax/` pipeline
+/// (`Source` → `lexer` → `applyLayout` → `parser.zig`/`codegen.zig`) — the
+/// same front end `parseCurrentNative` uses for file/REPL input, just fed a
+/// string directly instead of a stream. Uses an arena so all intermediate
+/// allocations are freed on return. On parse errors, diagnostics are
+/// printed to stderr and SYNERR is set.
 pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!NewParseResult {
+    const source_slice = std.mem.span(source);
     if (options.is_strict) {
-        const source_slice = std.mem.span(source);
         if (!std.unicode.utf8ValidateSlice(source_slice)) {
             std.debug.print("UTF-8 validation failed for source string\n", .{});
             core.s.SYNERR = 1;
@@ -374,10 +341,11 @@ pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!Ne
     defer arena.deinit();
     const alloc = arena.allocator();
 
-    const source_span: [:0]const u8 = std.mem.span(source);
-    const tokens = lex_bridge.tokenize(alloc, source_span) catch return ParseError.ParseFailed;
+    var src = source_mod.Source.fromBytes(alloc, source_slice) catch return ParseError.ParseFailed;
+    const tok_result = lexer_mod.tokenizeWithDirectives(alloc, &src) catch return ParseError.ParseFailed;
+    const laid_out = layout_mod.applyLayout(alloc, tok_result.tokens) catch return ParseError.ParseFailed;
 
-    var p = parser_mod.Parser.init(alloc, tokens);
+    var p = parser_mod.Parser.initWithDirectives(alloc, laid_out, tok_result.directives);
     const script = parser_mod.parseScript(&p) catch return ParseError.ParseFailed;
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.heap().validate();
@@ -387,9 +355,18 @@ pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!Ne
 
     // Report accumulated diagnostics before the arena is freed.
     if (!@import("builtin").is_test) {
+        if (tok_result.diagnostics.len > 0) {
+            reportLexerDiagnostic(tok_result.diagnostics[0]);
+        }
         for (p.diagnostics.items) |d| {
             std.debug.print("{d}:{d}: {s}\n", .{ d.span.line, d.span.col, d.message });
         }
+    }
+    if (tok_result.diagnostics.len > 0) {
+        core.s().SYNERR = 1;
+        core.s().errline = @intCast(tok_result.diagnostics[0].span.line);
+        core.s().errcol = @intCast(tok_result.diagnostics[0].span.col);
+        return ParseError.ParseFailed;
     }
     if (p.diagnostics.items.len > 0) {
         core.s().SYNERR = 1;
@@ -397,6 +374,13 @@ pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!Ne
         core.s().errcol = @intCast(p.diagnostics.items[0].span.col);
         return ParseError.ParseFailed;
     }
+
+    var including_stack: modules.IncludingStack = .{};
+    defer including_stack.deinit(alloc);
+    modules.processIncludes(alloc, script, ".", &including_stack) catch |err| {
+        reportIncludeError(err);
+        return ParseError.ParseFailed;
+    };
 
     codegen.codegenScript(alloc, script);
     if (options.is_strict or @import("builtin").mode == .Debug) {

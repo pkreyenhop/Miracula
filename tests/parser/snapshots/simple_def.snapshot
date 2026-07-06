@@ -1,9 +1,0 @@
-PARSE_RESULT: SUCCESS
-
-TOKENS:
-NAME("square")
-NAME("x")
-EQUALS
-NAME("x")
-TIMES
-NAME("x")
