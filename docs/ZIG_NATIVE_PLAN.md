@@ -413,10 +413,36 @@ front door is C.
    `semantics/symbols.zig` (itself not wired into `codegen.zig`/`trans.zig`
    yet either — see step 6), cycle detection across a chain of `%include`s,
    and free-binding substitution (`%free`'s signature is still raw text,
-   needing an expression/type parser `syntax/` doesn't have). Also still not
-   done: wiring `directives.zig`'s `Scanner` into `lexer.zig`/a real pipeline
-   (nothing calls it yet), path resolution (`<...>`/`~`/prefix-relative —
-   needs interpreter context). Verify the eventual full semantics against
+   needing an expression/type parser `syntax/` doesn't have — though
+   `parser.zig`'s existing `parseType`/`parseOneTypeSpec` may cover this by
+   re-tokenizing the captured spec text rather than needing something new).
+   Also still not done: path resolution (`<...>`/`~`/prefix-relative — needs
+   interpreter context), and consuming the now-landed `.directive` token in
+   `parser.zig`/building the real AST shape (see below).
+   **`Scanner` wired into `syntax/lexer.zig` (landed 2026-07-06):** a `%`
+   dispatches to a new `lexDirective`, which hands off to `directives.zig`'s
+   `Scanner` and produces one atomic `.directive` token (a new `TokenId`)
+   whose `int_val` indexes a side-list of parsed `Directive` values
+   (`Lexer.directives`; `tokenize` discards it, `tokenizeWithDirectives`
+   returns both) — directive grammar doesn't decompose into the lexer's
+   ordinary token set, so it's scanned as one unit rather than token-by-token.
+   6 new tests. **Deliberately not touched:** `token_filter.zig`'s existing
+   `kw_include`/`kw_export`/`kw_free`/`kw_bnf`/`kw_lex`/`pathname` token kinds
+   and `parser.zig`'s existing `parseInclude`/`parseExport`/`parseFree`/
+   `parseDiscardSection` — these turned out to be *live production code*,
+   not dead placeholders: `lex_bridge.zig` (driving today's shipping parser)
+   already maps the legacy lexer's own directive scanning into these exact
+   token kinds, so `%include`/`%export`/`%free`/`%bnf`/`%lex` already parse
+   (into a simpler, narrower AST shape) via the legacy bridge today, even
+   though `codegen.zig:808` still no-ops the resulting AST nodes (matches
+   the step-5 correction above — parses, does nothing). Extending
+   `ast.TopLevel`'s `include`/`export_list`/`free_directive` shapes to the
+   richer fields the new `.directive` token carries (bindings, aliases,
+   `from_miralib`, full `%export` parts grammar) and teaching `parser.zig`
+   to consume `.directive` tokens is deferred to the "harder half" work
+   above, once the real compilation semantics make clear exactly what shape
+   `semantics/modules.zig` needs — changing the AST shape twice would be
+   wasted motion. Verify the eventual full semantics against
    `tests/golden/directive_*` (promote from pending to pinned once working).
    `%bnf`/`%lex` grammar-extension machinery (`eprodnts`/`nonterminals`/
    `lexstates`/`lexdefs`) ported **last** — it is the hairiest and

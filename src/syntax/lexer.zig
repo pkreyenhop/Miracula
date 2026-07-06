@@ -9,7 +9,6 @@
 //!
 //!   - Hex-float numerals (`0x1.8p3`) — `error_tok` with a diagnostic, not a
 //!     silent mis-scan; char classes (`` `[...]` ``, `%bnf`/`%lex`-only).
-//!   - `%`-directive tokenization (deferred to `syntax/directives.zig`).
 //!   - Backtick infix names (`` `f` ``) and the `$$`/`$*` internal `CONST` forms.
 //!   - The offside/layout rule — NOT a token-stream transform (see the plan's
 //!     Phase 1 step 3 correction): today's `lex.zig` couples the lexer to
@@ -44,22 +43,40 @@
 //! Not yet wired into `parser_api.zig` — the legacy lexer remains the
 //! production path until Phase 1 step 7.
 //!
+//! **`%`-directive tokenization** (landed 2026-07-06): a `%` dispatches to
+//! `syntax/directives.zig`'s `Scanner`, which consumes the *whole* directive
+//! (keyword, pathname, brace block, alias list, or unsupported/unknown
+//! fallback) as one unit — its grammar doesn't decompose into this lexer's
+//! ordinary token set (see that file's header). The result is a single
+//! `.directive` token whose `int_val` indexes `Lexer.directives`, a
+//! side-list of parsed `Directive` values (`tokenize`'s plain `[]Token`
+//! silently discards these; `tokenizeWithDirectives` returns both). Scanning
+//! resumes immediately after whatever the directive consumed — normal
+//! tokens follow on the same or a later line exactly as the source has them.
+//! Not yet consumed by `parser.zig` (a separate step: the AST shape and real
+//! `%include`/`%export`/`%free` semantics are step 5's harder half, not this
+//! file's).
+//!
 //! **Token text ownership** (a wrinkle worth settling before step 7, not
 //! solved here): `.name`/`.cname`/decimal `.const_int`/`.const_float`'s
 //! `.text` are borrowed slices into the `Source`'s bytes — safe as long as
 //! the `Source` outlives the token, nothing to free. Hex/octal `.const_int`
 //! (`digitsToDecimal`'s output) and `.const_str` (`lexStringConst`'s decoded
 //! buffer) are freshly `gpa`-allocated — the caller owns and must free them.
+//! A `.directive` token's payload lives in `Lexer.directives`/
+//! `TokenizeResult.directives`, not in the token itself.
 //!
 //! Tests: Lexer.next — one test per token family below.
 
 const std = @import("std");
 const tf = @import("../parser/token_filter.zig");
 const Source = @import("source.zig").Source;
+const directives_mod = @import("directives.zig");
 
 pub const Token = tf.Token;
 pub const TokenId = tf.TokenId;
 pub const Span = tf.Span;
+pub const Directive = directives_mod.Directive;
 
 /// A structured lex error recorded during scanning (mirrors
 /// `parser/parser.zig`'s `Diagnostic` shape; kept as a separate type so
@@ -96,6 +113,11 @@ pub const Lexer = struct {
     pos: usize = 0,
     gpa: std.mem.Allocator,
     diagnostics: std.ArrayList(Diagnostic) = .empty,
+    /// One entry per `.directive` token produced so far, in order — a
+    /// `.directive` token's `int_val` is its index into this list. Owned by
+    /// the `Lexer` until moved out (see `tokenize`'s `TokenizeResult`);
+    /// `deinit` frees whatever wasn't moved out.
+    directives: std.ArrayList(Directive) = .empty,
 
     pub fn init(gpa: std.mem.Allocator, source: *const Source) Lexer {
         return .{ .source = source, .gpa = gpa };
@@ -104,6 +126,8 @@ pub const Lexer = struct {
     pub fn deinit(self: *Lexer) void {
         for (self.diagnostics.items) |d| self.gpa.free(d.message);
         self.diagnostics.deinit(self.gpa);
+        for (self.directives.items) |d| d.deinit(self.gpa);
+        self.directives.deinit(self.gpa);
         self.* = undefined;
     }
 
@@ -180,6 +204,7 @@ pub const Lexer = struct {
         if (std.ascii.isDigit(ch) or (ch == '.' and self.digitFollows(1))) return self.lexNumeral(start, span);
         if (ch == '\'') return self.lexCharConst(span);
         if (ch == '"') return self.lexStringConst(span);
+        if (ch == '%') return self.lexDirective(span);
 
         self.pos += 1;
         return switch (ch) {
@@ -481,6 +506,35 @@ pub const Lexer = struct {
         const text = out.toOwnedSlice(self.gpa) catch return .{ .id = .error_tok, .span = span };
         return .{ .id = .const_str, .span = span, .text = text };
     }
+
+    /// Scan a whole `%`-directive as one atomic token via
+    /// `directives.zig`'s `Scanner` (its pathname/brace-block/alias grammar
+    /// doesn't decompose into this lexer's ordinary token set — see that
+    /// file's header). The parsed `Directive` is appended to `self.directives`;
+    /// the returned token's `int_val` is its index there.
+    fn lexDirective(self: *Lexer, span: Span) Token {
+        self.pos += 1; // the '%'
+        var scanner = directives_mod.Scanner.init(self.gpa, self.source, self.pos);
+        defer scanner.deinit();
+        const directive = scanner.scanDirective() catch {
+            self.record(span, "out of memory scanning directive", .{});
+            return .{ .id = .error_tok, .span = span };
+        };
+        for (scanner.diagnostics.items) |d| {
+            const message = self.gpa.dupe(u8, d.message) catch continue;
+            self.diagnostics.append(self.gpa, .{ .span = d.span, .message = message }) catch {
+                self.gpa.free(message);
+            };
+        }
+        self.pos = scanner.pos;
+        const index = self.directives.items.len;
+        self.directives.append(self.gpa, directive) catch {
+            directive.deinit(self.gpa);
+            self.record(span, "out of memory recording directive", .{});
+            return .{ .id = .error_tok, .span = span };
+        };
+        return .{ .id = .directive, .span = span, .int_val = @intCast(index) };
+    }
 };
 
 /// Convert a validated run of base-`base` digit characters to a plain
@@ -513,8 +567,9 @@ fn digitsToDecimal(gpa: std.mem.Allocator, digits: []const u8, base: u8) ![]u8 {
 
 /// Tokenize all of `source`, returning an owned slice ending in `.eof`
 /// (caller frees with `gpa.free`). Diagnostics recorded during the scan are
-/// left in `lexer.diagnostics` if the caller passes one in, else discarded —
-/// most callers will want `tokenizeCollect` below instead.
+/// discarded (nothing outlives `lexer.deinit()` above) — callers that need
+/// them, or that need `.directive` tokens' payloads, want
+/// `tokenizeWithDirectives` instead.
 pub fn tokenize(gpa: std.mem.Allocator, source: *const Source) ![]Token {
     var lexer = Lexer.init(gpa, source);
     defer lexer.deinit();
@@ -526,6 +581,37 @@ pub fn tokenize(gpa: std.mem.Allocator, source: *const Source) ![]Token {
         if (tok.id == .eof) break;
     }
     return out.toOwnedSlice(gpa);
+}
+
+/// `tokenize`'s result plus the `.directive` tokens' structured payloads —
+/// `tokens[i].int_val` for a `.directive` token indexes `directives`.
+pub const TokenizeResult = struct {
+    tokens: []Token,
+    directives: []Directive,
+
+    pub fn deinit(self: *TokenizeResult, gpa: std.mem.Allocator) void {
+        gpa.free(self.tokens);
+        for (self.directives) |d| d.deinit(gpa);
+        gpa.free(self.directives);
+    }
+};
+
+/// Like `tokenize`, but also returns the `Directive` payloads any
+/// `.directive` tokens produced (see `TokenizeResult`).
+pub fn tokenizeWithDirectives(gpa: std.mem.Allocator, source: *const Source) !TokenizeResult {
+    var lexer = Lexer.init(gpa, source);
+    defer lexer.deinit();
+    var out: std.ArrayList(Token) = .empty;
+    errdefer out.deinit(gpa);
+    while (true) {
+        const tok = lexer.next();
+        try out.append(gpa, tok);
+        if (tok.id == .eof) break;
+    }
+    return .{
+        .tokens = try out.toOwnedSlice(gpa),
+        .directives = try lexer.directives.toOwnedSlice(gpa),
+    };
 }
 
 fn testSource(gpa: std.mem.Allocator, text: []const u8) !Source {
@@ -801,4 +887,65 @@ test "Lexer.next: an unescaped newline inside a string is an error" {
     var lex = Lexer.init(gpa, &src);
     defer lex.deinit();
     try std.testing.expectEqual(TokenId.error_tok, lex.next().id);
+}
+
+test "Lexer.next: a %-directive scans as one atomic .directive token" {
+    const gpa = std.testing.allocator;
+    var src = try testSource(gpa, "%export + -flooby\nsquare x = x * x\n");
+    defer src.deinit();
+    var lex = Lexer.init(gpa, &src);
+    defer lex.deinit();
+    const tok = lex.next();
+    try std.testing.expectEqual(TokenId.directive, tok.id);
+    try std.testing.expectEqual(@as(i64, 0), tok.int_val);
+    try std.testing.expectEqual(@as(usize, 1), lex.directives.items.len);
+    const d = lex.directives.items[0];
+    try std.testing.expect(d == .export_list);
+    try std.testing.expectEqualStrings("+ -flooby", d.export_list.parts_text);
+    // Scanning resumes normally right after the directive's own line.
+    const next_tok = lex.next();
+    try std.testing.expectEqual(TokenId.name, next_tok.id);
+    try std.testing.expectEqualStrings("square", next_tok.text);
+}
+
+test "Lexer.next: multiple directives each get their own index" {
+    const gpa = std.testing.allocator;
+    var src = try testSource(gpa, "%include \"mylib\"\n%free { elem :: type }\n");
+    defer src.deinit();
+    var lex = Lexer.init(gpa, &src);
+    defer lex.deinit();
+    const first = lex.next();
+    try std.testing.expectEqual(TokenId.directive, first.id);
+    try std.testing.expectEqual(@as(i64, 0), first.int_val);
+    const second = lex.next();
+    try std.testing.expectEqual(TokenId.directive, second.id);
+    try std.testing.expectEqual(@as(i64, 1), second.int_val);
+    try std.testing.expectEqual(@as(usize, 2), lex.directives.items.len);
+    try std.testing.expect(lex.directives.items[0] == .include);
+    try std.testing.expectEqualStrings("mylib", lex.directives.items[0].include.path);
+    try std.testing.expect(lex.directives.items[1] == .free);
+}
+
+test "Lexer.next: an unknown directive keyword is recorded as a diagnostic, not error_tok" {
+    const gpa = std.testing.allocator;
+    var src = try testSource(gpa, "%bogus foo bar\n");
+    defer src.deinit();
+    var lex = Lexer.init(gpa, &src);
+    defer lex.deinit();
+    const tok = lex.next();
+    try std.testing.expectEqual(TokenId.directive, tok.id);
+    try std.testing.expect(lex.directives.items[0] == .unknown);
+    try std.testing.expectEqual(@as(usize, 1), lex.diagnostics.items.len);
+}
+
+test "tokenizeWithDirectives: collects both the token stream and directive payloads" {
+    const gpa = std.testing.allocator;
+    var src = try testSource(gpa, "%export +\nsquare x = x * x\n");
+    defer src.deinit();
+    var result = try tokenizeWithDirectives(gpa, &src);
+    defer result.deinit(gpa);
+    try std.testing.expectEqual(TokenId.directive, result.tokens[0].id);
+    try std.testing.expectEqual(@as(usize, 1), result.directives.len);
+    try std.testing.expect(result.directives[0] == .export_list);
+    try std.testing.expectEqualStrings("square", result.tokens[1].text);
 }

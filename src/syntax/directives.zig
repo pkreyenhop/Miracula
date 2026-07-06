@@ -82,6 +82,16 @@ pub const Directive = union(enum) {
     /// A `%` followed by a name that isn't a known directive keyword
     /// (matches `lex.zig`'s `directive()` "unknown directive" error path).
     unknown: struct { text: []const u8, span: Span },
+
+    /// Frees whatever this directive owns. Every field except `.include`'s
+    /// `aliases` (from `scanAliases`'s `toOwnedSlice`) is a borrowed slice
+    /// into the `Source` that produced it — nothing else to free.
+    pub fn deinit(self: Directive, gpa: std.mem.Allocator) void {
+        switch (self) {
+            .include => |inc| gpa.free(inc.aliases),
+            .export_list, .free, .unsupported, .unknown => {},
+        }
+    }
 };
 
 pub const Diagnostic = struct {

@@ -20,6 +20,12 @@ pub const TokenId = enum {
     infixcname, // `Cname`
     dollars, // $$
     pathname,
+    /// A whole `%include`/`%export`/`%free`/`%insert`/... directive, scanned
+    /// as one atomic unit (`syntax/directives.zig`'s `Scanner`) rather than as
+    /// ordinary tokens — its structured payload lives in a side table the
+    /// lexer/parser share, indexed by this token's `int_val`. See
+    /// `syntax/lexer.zig`'s `lexDirective`.
+    directive,
 
     // --- keywords ---
     kw_where,
