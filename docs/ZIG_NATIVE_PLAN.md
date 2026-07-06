@@ -393,15 +393,30 @@ front door is C.
    explicitly not processed (see the file's header for why each is out of
    scope). 8 tests, drawn from docs/man/mira.man.ms §27's own worked examples
    (`%include "matrices" {elem==num; ...}`, `%include "mike" -g mike_f/f`)
-   where possible. **Not yet done:** wiring this into `lexer.zig`/a real
-   pipeline (nothing calls `Scanner` yet — same "additive, independently
-   tested first" order as `source.zig`/`lexer.zig`/`layout.zig`), path
-   resolution (`<...>`/`~`/prefix-relative — needs interpreter context), and
-   `semantics/modules.zig` itself (the actual %include/%export/%free
-   semantics — aliasing effects, free-binding substitution, cycle detection,
-   dependency ordering — module_loader.zig's real logic, 692 lines, is the
-   reference for *intended* behaviour but none of its wiring to this AST
-   exists yet). Verify the eventual semantics against
+   where possible.
+   **`semantics/modules.zig` landed, partially** (2026-07-06): the two *pure*
+   transformations the manual specifies, independent of actually compiling
+   anything. `resolveExports` computes a script's export set from its
+   top-level names and a parsed `%export` directive (`parseExportParts`
+   handles `+`, bare names, `-exclude`, and `"fileid"` re-export forms;
+   a negative occurrence overrides positives regardless of ordering, per
+   the manual, checked with a dedicated test) — no `%export` directive
+   defaults to exactly `+`. `applyAliases` applies an `%include`'s alias
+   list (`new/old` rename, `-old` suppress) to a name→`ID`-node map. Both
+   operate on plain name maps, not real compiled scripts, so both are fully
+   unit-tested without a heap or parser; 9 tests, several matching the
+   manual's own worked examples (`%export + -flooby`, `%export "liba" "libb"`,
+   `-g mike_f/f`) exactly. **Not yet done — the harder half of step 5:**
+   actually loading and compiling an `%include`d file, extracting its real
+   export set from a real heap (today's tests supply a stub map), binding
+   the result into the including script's identifier scope via
+   `semantics/symbols.zig` (itself not wired into `codegen.zig`/`trans.zig`
+   yet either — see step 6), cycle detection across a chain of `%include`s,
+   and free-binding substitution (`%free`'s signature is still raw text,
+   needing an expression/type parser `syntax/` doesn't have). Also still not
+   done: wiring `directives.zig`'s `Scanner` into `lexer.zig`/a real pipeline
+   (nothing calls it yet), path resolution (`<...>`/`~`/prefix-relative —
+   needs interpreter context). Verify the eventual full semantics against
    `tests/golden/directive_*` (promote from pending to pinned once working).
    `%bnf`/`%lex` grammar-extension machinery (`eprodnts`/`nonterminals`/
    `lexstates`/`lexdefs`) ported **last** — it is the hairiest and
@@ -443,36 +458,33 @@ front door is C.
    the dictionary-space config (`DICSPACE`, `-dic` flag: accept-and-ignore with a
    deprecation note, since `.mirarc` files may set it).
 
-**Status as of 2026-07-06:** steps 1–3 landed, step 4 essentially done, steps
-5–6 partially landed (`syntax/source.zig`, `syntax/lexer.zig`,
-`syntax/layout.zig`, `syntax/differential_test.zig`, `syntax/directives.zig`,
-`semantics/symbols.zig` — 63 new tests total, all green, no leaks, including
-every non-gap golden `.m` script — auto-discovered, not hand-picked — plus
-`miralib/ex/fib.m` verbatim, all verified byte-for-byte against the real
-production tokenizer), none yet wired into `parser_api.zig` or each other. `layout.zig` went
-through two verified corrections in one session (see its step-3 entry
-above) — a reminder that "looks principled" and "matches the system it must
-replace" are different bars, and only the second one counts here; the
-differential harness this step added is exactly the tool that would have
-caught both corrections immediately instead of via manual trace-checking,
-and should have been built before, not after, hand-deriving the algorithm.
-A second lesson from the same session: `zig ast-check` only catches syntax
-errors — a real type error in `directives.zig` (`std.mem.trimRight`, which
-this Zig version calls `trimEnd`) passed `ast-check` and even a plain
-`zig build` silently, because nothing yet calls the new code from
-production, so it was never analyzed outside test mode; only
-`zig build test` (via `main-tests`) caught it. Every new `syntax/`/
-`semantics/` file needs an actual `main-tests` run, not just `ast-check`,
-until it's wired into something reachable. A third: before wiring into an
-existing subsystem (`mkincludes`, investigated for step 5), check whether
-it's actually exercised by anything first — dead code that still compiles
-is not a foundation to build on, however complete it looks. Remaining:
-finish step 4 (whole-corpus coverage, a standing build gate rather than a
-hand-picked test file); finish step 5 (path resolution, and the real
-`%include`/`%export`/`%free` semantics in `semantics/modules.zig` — a clean
-implementation using `symbols.zig`, not `mkincludes`, for identifier
-binding); finish step 6 (rewire `codegen.zig`/`trans.zig`'s identifier
-lookups to `symbols.zig`); production cutover; and deletion.
+**Status as of 2026-07-06:** steps 1–4 landed, steps 5–6 partially landed
+(`syntax/source.zig`, `syntax/lexer.zig`, `syntax/layout.zig`,
+`syntax/differential_test.zig`, `syntax/directives.zig`,
+`semantics/symbols.zig`, `semantics/modules.zig` — 72 new tests total, all
+green, no leaks, including every non-gap golden `.m` script —
+auto-discovered, not hand-picked — plus `miralib/ex/fib.m` verbatim, all
+verified byte-for-byte against the real production tokenizer), none yet
+wired into `parser_api.zig` or each other. Three lessons from this session,
+each general enough to apply for the rest of the plan, not just Phase 1:
+(1) a from-scratch design (`layout.zig`'s first cut) needs verifying against
+the system it replaces, not just internal consistency — the differential
+harness this step added is exactly the tool that would have caught both of
+`layout.zig`'s corrections immediately, and should have been built before,
+not after, hand-deriving an algorithm; (2) `zig ast-check` only catches
+syntax errors — a real type error in `directives.zig`
+(`std.mem.trimRight`/`trimEnd`) passed `ast-check` and a plain `zig build`
+silently because nothing calls the new code from production yet, so it's
+never analyzed outside test mode; every new file needs an actual
+`main-tests` run; (3) before wiring into an existing subsystem
+(`mkincludes`, investigated for step 5), check whether it's actually
+exercised by anything first — dead code that still compiles is not a
+foundation to build on, however complete it looks. Remaining: finish step 5
+(actually loading/compiling an `%include`d file, real cycle detection,
+free-binding substitution, path resolution — the parts of module semantics
+that need real compiler integration, not just data transformation); finish
+step 6 (rewire `codegen.zig`/`trans.zig`'s identifier lookups to
+`symbols.zig`); production cutover; and deletion.
 
 **Deletes:** ~2,700 lines of C-ported lexing; the biggest single consumer of `FILE`,
 `[*:0]`, `c_int`, and `@ptrFromInt`.

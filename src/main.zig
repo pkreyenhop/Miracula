@@ -68,6 +68,7 @@ comptime {
     _ = @import("syntax/differential_test.zig");
     _ = @import("syntax/directives.zig");
     _ = @import("semantics/symbols.zig");
+    _ = @import("semantics/modules.zig");
     _ = @import("compiler/trans.zig");
     _ = @import("compiler/types.zig");
     _ = @import("compiler/setup.zig");
