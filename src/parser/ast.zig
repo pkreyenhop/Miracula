@@ -192,10 +192,32 @@ pub const TopLevel = union(enum) {
     type_spec: TypeSpec,
     type_decl: TypeDecl,
     eval: Expr,
+    /// A directive parsed via the *legacy-bridge-fed* token stream
+    /// (`kw_include`/`pathname` etc. — see `parser.zig`'s `parseInclude`):
+    /// today's live production shape, narrower than what real
+    /// `%include`/`%export`/`%free` semantics need (no bindings, no
+    /// aliases, no `<...>` miralib-relative form, no `+`/`-exclude`/quoted-
+    /// fileid export forms). Left untouched — see `.directive` below.
     include: struct { path: []const u8, span: Span },
     export_list: struct { names: [][]const u8, span: Span },
     free_directive: struct { specs: []TypeSpec, span: Span },
+    /// A directive parsed via the *native* pipeline's single atomic
+    /// `.directive` token (`syntax/lexer.zig`'s `lexDirective`,
+    /// `syntax/directives.zig`'s `Scanner`) — carries the real grammar's
+    /// full data (bindings, aliases, `from_miralib`, the full `%export`
+    /// parts grammar as raw text). Not yet consumed by `codegen.zig` (a
+    /// no-op there, like the three variants above) or bound to real
+    /// `%include`/`%export`/`%free` compilation semantics — see
+    /// docs/ZIG_NATIVE_PLAN.md's step 5 for what's still needed
+    /// (loading/compiling the included file, cycle detection,
+    /// free-binding substitution).
+    directive: Directive,
 };
+
+/// Re-exported from `token_filter.zig`: see its own doc comment on
+/// `Directive` for why the type lives there rather than being imported from
+/// `syntax/directives.zig` (which produces it) or defined fresh here.
+pub const Directive = @import("token_filter.zig").Directive;
 
 /// A parsed script: its sequence of top-level `items`.
 pub const Script = struct {

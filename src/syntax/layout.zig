@@ -431,6 +431,26 @@ test "end-to-end: three top-level definitions in a row (regression for cascading
     try std.testing.expectEqual(@as(usize, 3), script.items.len);
 }
 
+test "end-to-end: a %-directive parses as one .directive top-level item" {
+    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    defer arena.deinit();
+    const gpa = arena.allocator();
+
+    var src = try Source.fromBytes(gpa, "%export + -flooby\nsquare x = x * x\n");
+    const result = try lexer_mod.tokenizeWithDirectives(gpa, &src);
+    const laid_out = try applyLayout(gpa, result.tokens);
+
+    var p = parser_mod.Parser.initWithDirectives(gpa, laid_out, result.directives);
+    const script = try parser_mod.parseScript(&p);
+
+    try std.testing.expectEqual(@as(usize, 0), p.diagnostics.items.len);
+    try std.testing.expectEqual(@as(usize, 2), script.items.len);
+    try std.testing.expect(script.items[0] == .directive);
+    try std.testing.expect(script.items[0].directive == .export_list);
+    try std.testing.expectEqualStrings("+ -flooby", script.items[0].directive.export_list.parts_text);
+    try std.testing.expect(script.items[1] == .definition);
+}
+
 test "end-to-end: miralib/ex/fib.m verbatim (real script, comments + realigned guard)" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();

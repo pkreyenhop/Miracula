@@ -442,15 +442,48 @@ front door is C.
    token kinds, so `%include`/`%export`/`%free`/`%bnf`/`%lex` already parse
    (into a simpler, narrower AST shape) via the legacy bridge today, even
    though `codegen.zig:808` still no-ops the resulting AST nodes (matches
-   the step-5 correction above — parses, does nothing). Extending
-   `ast.TopLevel`'s `include`/`export_list`/`free_directive` shapes to the
-   richer fields the new `.directive` token carries (bindings, aliases,
-   `from_miralib`, full `%export` parts grammar) and teaching `parser.zig`
-   to consume `.directive` tokens is deferred to the "harder half" work
-   above, once the real compilation semantics make clear exactly what shape
-   `semantics/modules.zig` needs — changing the AST shape twice would be
-   wasted motion. Verify the eventual full semantics against
-   `tests/golden/directive_*` (promote from pending to pinned once working).
+   the step-5 correction above — parses, does nothing).
+   **AST + parser wiring landed (2026-07-06):** `ast.TopLevel` gains a
+   `.directive` variant carrying the *real* grammar's full data (bindings,
+   aliases, `from_miralib`, the full `%export` parts grammar as raw text) —
+   added alongside, not instead of, the existing `include`/`export_list`/
+   `free_directive` variants, which stay exactly as the legacy-bridge path
+   left them. The payload type (`Directive`, plus `DirectiveAlias`/
+   `DirectiveInclude`) moved from `syntax/directives.zig` into
+   `parser/token_filter.zig` (which re-exports it for source compat) so
+   `parser/ast.zig` and `parser/parser.zig` could reference it without
+   creating an import cycle: `syntax/` already depends on `parser/`
+   (`syntax/layout.zig` imports `parser/parser.zig`), so `parser/` importing
+   `syntax/directives.zig` back would cycle — `token_filter.zig` has no
+   dependencies of its own, so it's the shared home, the same role `Span`
+   already plays there. `Parser` gained a `directives` field and
+   `initWithDirectives` constructor (additive — `Parser.init` and all 13
+   existing callers are unchanged, defaulting to an empty slice, since the
+   legacy-bridge-fed production path never produces `.directive` tokens);
+   `parseTopLevel` dispatches `.directive` tokens to a new
+   `parseDirectiveToken`, which just wraps the already-parsed payload (no
+   further parsing needed — the `Scanner` already did it); `codegenScript`
+   no-ops it like the other three. One new end-to-end test
+   (`syntax/layout.zig`): `Source → tokenizeWithDirectives → applyLayout →
+   Parser.initWithDirectives → parseScript` on a script with `%export`,
+   checking the resulting `.directive` node's `export_list.parts_text`.
+   **Still not done — the actual "harder half":** loading and compiling an
+   `%include`d file, extracting its real export set from a real heap
+   (`semantics/modules.zig`'s `resolveExports`/`applyAliases` exist but
+   operate on stub maps in their own tests, not a real compiled script),
+   binding the result into the including script's `symbols.zig` scope,
+   cycle detection across a chain of `%include`s, path resolution
+   (`<...>`/`~`/prefix-relative — needs interpreter context), and
+   free-binding substitution for `%free` (still raw `spec_text`; likely
+   re-tokenizes-and-reparses via `parser.zig`'s existing `parseOneTypeSpec`
+   rather than needing a new parser, but not attempted yet). This is a
+   genuinely large, mostly-from-scratch feature (no reusable reference
+   implementation — `module_loader.zig`'s `mkincludes` was already
+   confirmed dead code with an unverifiable heap encoding, see the
+   step-5 "Investigated" entry below) — expect it to need its own
+   dedicated design pass, not a mechanical continuation of this entry.
+   Verify the eventual full semantics against `tests/golden/directive_*`
+   (promote from pending to pinned once working).
    `%bnf`/`%lex` grammar-extension machinery (`eprodnts`/`nonterminals`/
    `lexstates`/`lexdefs`) ported **last** — it is the hairiest and
    least-covered corner; goldens from Phase 0 step 3 gate it.

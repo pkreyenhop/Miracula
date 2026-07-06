@@ -803,7 +803,9 @@ pub fn codegenScript(alloc: Allocator, script: ast.Script) void {
                 _ = codegenExpr(alloc, e);
             },
             // Directives are handled at a higher level (file inclusion etc.)
-            .include, .export_list, .free_directive => {},
+            // -- .directive is the native-pipeline counterpart of the three
+            // above (see ast.zig's TopLevel doc comment); same no-op today.
+            .include, .export_list, .free_directive, .directive => {},
         }
     }
 }

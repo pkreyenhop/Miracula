@@ -43,6 +43,14 @@ pub const Parser = struct {
     ts: TokenStream,
     /// Errors accumulated during error-recovery parsing.
     diagnostics: std.ArrayList(Diagnostic),
+    /// `.directive` tokens' payloads (native pipeline only — a `.directive`
+    /// token's `int_val` indexes this slice). Always empty for the
+    /// legacy-bridge-fed production path, which never produces `.directive`
+    /// tokens (`lex_bridge.zig` maps its own directive scanning into
+    /// `kw_include`/`kw_export`/`kw_free`/`pathname` instead — see
+    /// `parseInclude`/`parseExport`/`parseFree`). Use `initWithDirectives`
+    /// when parsing native-pipeline tokens that may include `.directive`.
+    directives: []const ast.Directive = &.{},
 
     /// Create a parser positioned at the start of `tokens`.
     pub fn init(gpa: Allocator, tokens: []const Token) Parser {
@@ -50,6 +58,17 @@ pub const Parser = struct {
             .gpa = gpa,
             .ts = TokenStream{ .tokens = tokens },
             .diagnostics = .empty,
+        };
+    }
+
+    /// Like `init`, but also supplies `.directive` tokens' payloads (see
+    /// `syntax/lexer.zig`'s `tokenizeWithDirectives`).
+    pub fn initWithDirectives(gpa: Allocator, tokens: []const Token, directives: []const ast.Directive) Parser {
+        return .{
+            .gpa = gpa,
+            .ts = TokenStream{ .tokens = tokens },
+            .diagnostics = .empty,
+            .directives = directives,
         };
     }
 
@@ -646,12 +665,14 @@ fn parseTopLevel(p: *Parser) ParseError!ast.TopLevel {
         .kw_type => return parseTypeSynonym(p),
         // Abstract type: `abstype name params with specs`
         .kw_abstype => return parseAbstype(p),
-        // Module directives
+        // Module directives (legacy-bridge-fed token stream)
         .kw_include => return parseInclude(p),
         .kw_export => return parseExport(p),
         .kw_free => return parseFree(p),
         // BNF / LEX sections — parse and discard
         .kw_bnf, .kw_lex => return parseDiscardSection(p),
+        // A whole directive, scanned atomically (native pipeline only)
+        .directive => return parseDirectiveToken(p),
         else => {},
     }
 
@@ -848,6 +869,15 @@ fn parseFree(p: *Parser) ParseError!ast.TopLevel {
         .specs = try specs.toOwnedSlice(p.gpa),
         .span = sp,
     } };
+}
+
+/// Consume a `.directive` token (native pipeline only — see `Parser.directives`)
+/// and wrap its already-parsed payload directly as an AST node; no further
+/// parsing needed here, `syntax/directives.zig`'s `Scanner` already did it.
+fn parseDirectiveToken(p: *Parser) ParseError!ast.TopLevel {
+    const tok = p.advance();
+    const idx: usize = @intCast(tok.int_val);
+    return ast.TopLevel{ .directive = p.directives[idx] };
 }
 
 /// Consume a `%bnf` or `%lex` section and discard its content.

@@ -43,56 +43,16 @@
 
 const std = @import("std");
 const Source = @import("source.zig").Source;
-const Span = @import("../parser/token_filter.zig").Span;
+const tf = @import("../parser/token_filter.zig");
+const Span = tf.Span;
 
-/// One `new/old` rename or `-old` suppression in an alias list
-/// (`%include "mike" -g mike_f/f`).
-pub const Alias = union(enum) {
-    rename: struct { new: []const u8, old: []const u8 },
-    suppress: []const u8,
-};
-
-pub const Include = struct {
-    /// The pathname exactly as written (no `.m` extension added, no `~`
-    /// expansion, no prefix resolution).
-    path: []const u8,
-    /// `<...>` (relative to miralib) vs `"..."` (relative to the including
-    /// script's own directory, or absolute, or `~`-relative).
-    from_miralib: bool,
-    /// Raw text of the `{...}` free-binding block, or `&.{}` if absent.
-    bindings_text: []const u8,
-    /// Alias list following the pathname/bindings, parsed (unlike the
-    /// bindings block, since the alias grammar is simple enough to scan
-    /// directly: `identifier/identifier` or `-identifier`, whitespace
-    /// separated, ending at the line's end).
-    aliases: []const Alias,
-    span: Span,
-};
-
-pub const Directive = union(enum) {
-    include: Include,
-    /// Raw text of the parts list (`identifier`/`Cname`/`"fileid"`/`+`/
-    /// `-identifier`, space separated), up to end-of-line.
-    export_list: struct { parts_text: []const u8, span: Span },
-    /// Raw text of the `{ signature }` block (braces excluded).
-    free: struct { spec_text: []const u8, span: Span },
-    /// `%insert`/`%list`/`%nolist`/`%bnf`/`%lex`/`%begin` — recognized, not
-    /// processed (see the file header).
-    unsupported: struct { keyword: []const u8, span: Span },
-    /// A `%` followed by a name that isn't a known directive keyword
-    /// (matches `lex.zig`'s `directive()` "unknown directive" error path).
-    unknown: struct { text: []const u8, span: Span },
-
-    /// Frees whatever this directive owns. Every field except `.include`'s
-    /// `aliases` (from `scanAliases`'s `toOwnedSlice`) is a borrowed slice
-    /// into the `Source` that produced it — nothing else to free.
-    pub fn deinit(self: Directive, gpa: std.mem.Allocator) void {
-        switch (self) {
-            .include => |inc| gpa.free(inc.aliases),
-            .export_list, .free, .unsupported, .unknown => {},
-        }
-    }
-};
+/// Re-exported from `token_filter.zig`, not defined here: `parser/ast.zig`
+/// needs the same type for its `.directive` AST node, and `parser/` can't
+/// import `syntax/` (the reverse already holds — see `token_filter.zig`'s
+/// own doc comment on `Directive`).
+pub const Alias = tf.DirectiveAlias;
+pub const Include = tf.DirectiveInclude;
+pub const Directive = tf.Directive;
 
 pub const Diagnostic = struct {
     span: Span,
