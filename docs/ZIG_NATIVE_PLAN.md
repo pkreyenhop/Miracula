@@ -450,6 +450,45 @@ front door is C.
    `codegen.zig`/`trans.zig`'s identifier lookups to use this instead of
    `lex.findid`/`makeId` — today's increment is additive only, same pattern
    as every `syntax/` file landed so far.
+   **Attempted and reverted (2026-07-06) — read before trying again.** A
+   first attempt swapped `findid`/`makeId`/`name()`/`completeIds`'s bodies
+   over to `SymbolTable`, keeping their signatures unchanged (so callers —
+   `codegen.zig`'s `nameWord`, `setup.zig`'s bootstrap identifiers — needed
+   no edits). That part checked out: `makeId`'s real call sites (verified by
+   reading every one, not assumed) never call it for a name already present,
+   so `SymbolTable.intern`'s find-or-create is behaviourally identical to
+   the original always-insert semantics, and `miraSetup()`'s bootstrap
+   identifiers run before any script is lexed, so the dictionary is
+   genuinely empty at that point. But `LexState.namebucket` (the field being
+   replaced) turned out to have **three** load-bearing consumers, not one:
+   1. `findid`/`makeId`/`name()`/`completeIds` (`lex.zig`) — the dictionary
+      lookup itself, the one this step is about.
+   2. **GC root marking** (`heap.zig`'s `mark()`, ~line 500): every bucket
+      head is marked as a root, keeping every dictionary-referenced `ID`
+      node alive. Nothing marks a replacement structure automatically —
+      miss this and the GC silently collects identifiers still "in scope."
+   3. **`%export` dump-time hiding** (`compiler/dump.zig`'s `privatise`/
+      `publicise`): the mechanism that hides non-exported definitions when
+      writing/reading a `.x` file works by *finding and mutating the
+      specific cons cell inside the bucket chain* that references a given
+      `ID` node, swapping it for a private-name node in place. This has no
+      equivalent operation on a flat hash map (which stores values directly,
+      not via a searchable/mutable chain) — it's a structural mismatch, not
+      a missing method to add.
+   (2) has a small, mechanical fix (iterate the new table and mark each
+   value). (3) does not — it needs either a redesigned hiding mechanism (a
+   real design task, and exactly what `semantics/modules.zig`'s eventual
+   `%export` implementation should probably subsume rather than duplicate)
+   or keeping a parallel structure just for this one narrow purpose, which
+   defeats the point. Reverted cleanly (`git checkout --`) rather than ship
+   partial: shipping (1)+(2) without (3) would silently break `%export`'s
+   dump-time hiding for any script that dumps/undumps with private
+   definitions — a regression the existing test suite would very likely
+   *not* catch (no golden case exercises `%export` + dump/undump together,
+   since `%include`/`%export` are non-functional in the current pipeline
+   anyway — see the step-5 correction above). Next attempt should design (3)
+   as part of `semantics/modules.zig`'s real `%export` semantics, not as a
+   drop-in dictionary swap; do (1)+(2) together with it, not before it.
 7. Flip `parser_api.zig` to the native pipeline as the only path; keep the legacy
    lexer behind a build flag (`-Dlegacy-lexer`) for one commit window for
    differential debugging.
