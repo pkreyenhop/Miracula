@@ -41,6 +41,14 @@ const heap_mod = @import("../runtime/heap.zig");
 
 const Word = word.Word;
 
+/// Pointer to the singleton `SymbolTable` inside `current_interp` (so
+/// `interp.reset()` clears it, same convention as `heap.heap()`/`core_state.s()`).
+/// Accessed as `symbols.syms().X`. (Named `syms`, not `table`, to avoid
+/// colliding with `strtab.table()`.)
+pub inline fn syms() *SymbolTable {
+    return &@import("../runtime/interp.zig").current_interp.symbols;
+}
+
 /// Maps identifier text to its heap `ID` node, first-seen-wins (matching
 /// `lex.zig`'s dictionary: the same node is returned for every later lookup
 /// of an already-interned name, so identity comparisons on `ID` nodes stay
@@ -77,6 +85,19 @@ pub const SymbolTable = struct {
     /// Number of distinct identifiers interned so far.
     pub fn count(self: *const SymbolTable) usize {
         return self.table.count();
+    }
+
+    /// Rebind an already-interned `name` to a different `ID` node, without
+    /// interning a new name. Used by `compiler/dump.zig`'s `%export`
+    /// dump-time hiding (`privatise`/`publicise`): the *node* a name's
+    /// dictionary entry points to changes (swapped for a private-name node
+    /// while writing a `.x` file, swapped back after), the name itself
+    /// doesn't. A no-op (silently) if `name` isn't present — callers own
+    /// verifying that invariant, matching the legacy bucket-chain code's own
+    /// "if not found, do nothing" fallthrough.
+    pub fn rebind(self: *SymbolTable, gpa: std.mem.Allocator, name: []const u8, new_id: Word) !void {
+        if (!self.table.contains(name)) return;
+        try self.table.put(gpa, name, new_id);
     }
 };
 
@@ -124,48 +145,48 @@ const tu = @import("../testutil.zig");
 
 test "SymbolTable.intern: repeated interning of the same name returns the same ID node" {
     tu.freshInterp();
-    var syms: SymbolTable = .{};
-    defer syms.deinit(std.testing.allocator);
-    const a = try syms.intern(std.testing.allocator, "zzsymfoo");
-    const b = try syms.intern(std.testing.allocator, "zzsymfoo");
+    var st: SymbolTable = .{};
+    defer st.deinit(std.testing.allocator);
+    const a = try st.intern(std.testing.allocator, "zzsymfoo");
+    const b = try st.intern(std.testing.allocator, "zzsymfoo");
     try std.testing.expectEqual(a, b);
 }
 
 test "SymbolTable.intern: distinct names get distinct ID nodes" {
     tu.freshInterp();
-    var syms: SymbolTable = .{};
-    defer syms.deinit(std.testing.allocator);
-    const a = try syms.intern(std.testing.allocator, "zzsymbar1");
-    const b = try syms.intern(std.testing.allocator, "zzsymbar2");
+    var st: SymbolTable = .{};
+    defer st.deinit(std.testing.allocator);
+    const a = try st.intern(std.testing.allocator, "zzsymbar1");
+    const b = try st.intern(std.testing.allocator, "zzsymbar2");
     try std.testing.expect(a != b);
 }
 
 test "SymbolTable.find: absent name is null, present name matches intern's result" {
     tu.freshInterp();
-    var syms: SymbolTable = .{};
-    defer syms.deinit(std.testing.allocator);
-    try std.testing.expectEqual(@as(?Word, null), syms.find("zzsymabsent"));
-    const id = try syms.intern(std.testing.allocator, "zzsympresent");
-    try std.testing.expectEqual(@as(?Word, id), syms.find("zzsympresent"));
+    var st: SymbolTable = .{};
+    defer st.deinit(std.testing.allocator);
+    try std.testing.expectEqual(@as(?Word, null), st.find("zzsymabsent"));
+    const id = try st.intern(std.testing.allocator, "zzsympresent");
+    try std.testing.expectEqual(@as(?Word, id), st.find("zzsympresent"));
 }
 
 test "SymbolTable.intern: the ID node round-trips through heap.getId" {
     tu.freshInterp();
-    var syms: SymbolTable = .{};
-    defer syms.deinit(std.testing.allocator);
-    const id = try syms.intern(std.testing.allocator, "zzsymroundtrip");
+    var st: SymbolTable = .{};
+    defer st.deinit(std.testing.allocator);
+    const id = try st.intern(std.testing.allocator, "zzsymroundtrip");
     try std.testing.expectEqualStrings("zzsymroundtrip", std.mem.span(heap_mod.getId(id)));
 }
 
 test "SymbolTable.count: tracks the number of distinct interned names" {
     tu.freshInterp();
-    var syms: SymbolTable = .{};
-    defer syms.deinit(std.testing.allocator);
-    try std.testing.expectEqual(@as(usize, 0), syms.count());
-    _ = try syms.intern(std.testing.allocator, "zzsymcount1");
-    _ = try syms.intern(std.testing.allocator, "zzsymcount2");
-    _ = try syms.intern(std.testing.allocator, "zzsymcount1"); // repeat, not a new entry
-    try std.testing.expectEqual(@as(usize, 2), syms.count());
+    var st: SymbolTable = .{};
+    defer st.deinit(std.testing.allocator);
+    try std.testing.expectEqual(@as(usize, 0), st.count());
+    _ = try st.intern(std.testing.allocator, "zzsymcount1");
+    _ = try st.intern(std.testing.allocator, "zzsymcount2");
+    _ = try st.intern(std.testing.allocator, "zzsymcount1"); // repeat, not a new entry
+    try std.testing.expectEqual(@as(usize, 2), st.count());
 }
 
 test "PrivateNames.make: each call allocates a fresh, index-tagged node" {
@@ -195,4 +216,24 @@ test "PrivateNames.get after make: pre-existing indices are not reallocated" {
     const made = try pns.make(std.testing.allocator, word.UNDEF); // index 0
     const fetched = try pns.get(std.testing.allocator, 0);
     try std.testing.expectEqual(made, fetched);
+}
+
+test "SymbolTable.rebind: changes an existing name's node without re-interning" {
+    tu.freshInterp();
+    var st: SymbolTable = .{};
+    defer st.deinit(std.testing.allocator);
+    const original = try st.intern(std.testing.allocator, "zzsymrebind");
+    try st.rebind(std.testing.allocator, "zzsymrebind", 999);
+    try std.testing.expectEqual(@as(?Word, 999), st.find("zzsymrebind"));
+    try std.testing.expectEqual(@as(usize, 1), st.count()); // no new entry
+    _ = original;
+}
+
+test "SymbolTable.rebind: a no-op for a name that was never interned" {
+    tu.freshInterp();
+    var st: SymbolTable = .{};
+    defer st.deinit(std.testing.allocator);
+    try st.rebind(std.testing.allocator, "zzsymneverexisted", 42);
+    try std.testing.expectEqual(@as(?Word, null), st.find("zzsymneverexisted"));
+    try std.testing.expectEqual(@as(usize, 0), st.count());
 }

@@ -18,6 +18,7 @@ const files = @import("../io/files.zig");
 const module_loader = @import("module_loader.zig");
 const signals_mod = @import("../io/signals.zig");
 const core_state = @import("../runtime/core_state.zig");
+const symbols = @import("../semantics/symbols.zig");
 const ls = lex_state.ls;
 
 const Word = word.Word;
@@ -100,10 +101,16 @@ pub fn unfixexports(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Ru
     comp.internals = NIL;
 }
 
-/// Move id `x` out of the public name bucket into a private name (for `%export` filtering).
+/// Move id `x` out of the public dictionary into a private name (for `%export` filtering).
+///
+/// `nm` is captured *before* `x`'s tag is mutated below (`getId` navigates
+/// `x`'s own head chain, which the mutation rewrites) — same ordering the
+/// legacy `hash_idx = hash(getId(x))` computation used, just replacing a
+/// bucket-chain search with a direct rebind now that the dictionary is
+/// keyed by name (`semantics/symbols.zig`, ZIG_NATIVE_PLAN.md Phase 1 step 6).
 fn privatise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
     const n = abi.makePn(x);
-    const hash_idx = hash(heap_mod.getId(x));
+    const nm = std.mem.span(heap_mod.getId(x));
     const i = h(n);
 
     if (heap_mod.idType(x) == word.type_t) {
@@ -120,33 +127,21 @@ fn privatise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
     setTag(heap, x, .STRCONS);
     hp(x).* = i;
 
-    const current_bucket = lexs.namebucket[hash_idx];
-    if (h(current_bucket) == x) {
-        hp(current_bucket).* = n;
-    } else {
-        var prev = current_bucket;
-        var curr = t(current_bucket);
-        while (curr != NIL) {
-            if (h(curr) == x) {
-                hp(curr).* = n;
-                break;
-            }
-            prev = curr;
-            curr = t(curr);
-        }
-    }
+    symbols.syms().rebind(rt.allocator, nm, n) catch heap_mod.mallocPanic("symbols dictionary");
     return n;
 }
 
-/// Hash a C-string into a 0..127 name-bucket index (first + last byte).
-fn hash(s: [*:0]const u8) usize {
-    return (@as(usize, s[0]) + @as(usize, s[word.strlen(s) - 1])) & 127;
-}
-
-/// Restore a privatised id `x` to the public name bucket.
+/// Restore a privatised id back to the public dictionary. `x` here is
+/// actually the private `n` node `privatise` returned (see its callers,
+/// which iterate `comp.internals` — the list of `privatise`'s return
+/// values) — its head still mirrors the original id's head (`privatise` set
+/// `hp(n).* = h(orig_x)`), so `getId(x)` resolves the same name `privatise`
+/// captured, and `idVal(x)` (`t(x)`, untouched by `privatise`) recovers the
+/// original cell reference.
 fn publicise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
+    _ = lexs;
     const i = heap_mod.idVal(x);
-    const hash_idx = hash(heap_mod.getId(x));
+    const nm = std.mem.span(heap_mod.getId(x));
 
     setTag(heap, i, .ID);
     hp(i).* = h(x);
@@ -156,21 +151,7 @@ fn publicise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
         tp(i).* = word.UNDEF;
     }
 
-    const current_bucket = lexs.namebucket[hash_idx];
-    if (h(current_bucket) == x) {
-        hp(current_bucket).* = i;
-    } else {
-        var prev = current_bucket;
-        var curr = t(current_bucket);
-        while (curr != NIL) {
-            if (h(curr) == x) {
-                hp(curr).* = i;
-                break;
-            }
-            prev = curr;
-            curr = t(curr);
-        }
-    }
+    symbols.syms().rebind(rt.allocator, nm, i) catch heap_mod.mallocPanic("symbols dictionary");
     return i;
 }
 

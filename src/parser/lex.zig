@@ -25,6 +25,7 @@ const files = @import("../io/files.zig");
 const big = @import("../runtime/big.zig");
 const main_clib = @import("../runtime/main_clib.zig");
 const core_state = @import("../runtime/core_state.zig");
+const symbols = @import("../semantics/symbols.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 const Word = i64;
@@ -211,7 +212,8 @@ pub fn setupdic() void {
     ls().dicq = @ptrCast(ls().dic.?);
     ls().prefixbase.?[0] = 0;
     ls().prefix = 0;
-    @memset(&ls().namebucket, 0);
+    symbols.syms().deinit(rt.allocator);
+    symbols.syms().* = .{};
 }
 
 /// Resolve a `~`-relative path `n` against ``.
@@ -1690,41 +1692,55 @@ pub fn getfname(heap: *Heap, x: Word) Word {
 
 /// Scan a name token, returning its dictionary `ID` node.
 pub fn name(heap: *Heap) Word {
-    const h_idx = @as(usize, @intCast(hash(ls().dicp)));
-    var q = ls().namebucket[h_idx];
-    while (q != 0 and !is(getId(heap, h(heap, q)))) {
-        q = t(heap, q);
-    }
-    if (q == 0) {
-        q = stoId(ls().dicp);
-        ls().namebucket[h_idx] = cons(q, ls().namebucket[h_idx]);
-        _ = keep(ls().dicp);
-    } else {
-        q = h(heap, q);
-    }
+    _ = heap;
+    const nm = std.mem.span(@as([*:0]const u8, @ptrCast(ls().dicp)));
+    const existed = symbols.syms().find(nm) != null;
+    const q = symbols.syms().intern(rt.allocator, nm) catch mallocPanic("symbols dictionary");
+    if (!existed) _ = keep(ls().dicp);
     return q;
 }
 
-/// Intern name `n` as an `ID` node (inserting if new).
+/// Intern name `n` as a *fresh* `ID` node, unconditionally, shadowing any
+/// existing entry for `n` in the dictionary.
+///
+/// **Not find-or-create** — verified empirically, not just by inspection
+/// (the first attempt at this got it wrong): `setup.zig`'s `predef`/`primdef`
+/// call this repeatedly for overlapping names across `privlib()` (prelude
+/// bootstrap) and `stdlib()` (stdenv bootstrap) — e.g. "error"/"code"/
+/// "decode"/"drop"/"foldr"/"shownum"/"take" are each `predef`'d once in each
+/// stage — deliberately creating a *new* cell that shadows the previous
+/// one for name lookup, not reusing it. A find-or-create `makeId` silently
+/// merges these into one cell, which corrupts prelude/stdenv bootstrap
+/// (`predef`'s later calls end up mutating the *earlier* cell in place,
+/// observed as a totally garbled prelude/stdenv load — every golden test
+/// failing). `codegen.zig`'s `nameWord` fallback (only reached after
+/// `findid()` already confirmed absence) and `miraSetup`'s bootstrap
+/// identifiers are unaffected either way, since nothing to shadow exists yet
+/// there.
+///
+/// The `keep()` call is unrelated to interning (a fresh `stoId` always makes
+/// its own permanent copy in `strtab`): it protects the scratch dictionary
+/// buffer's bytes at `n` from being overwritten by the next `kollect()`
+/// before anything else needs them, exactly as it does elsewhere in this file.
 ///
 /// Tests: makeId / findid: intern then look up a dictionary name
 pub fn makeId(n: [*:0]const u8) Word {
-    const h_idx = @as(usize, @intCast(hash(n)));
-    const x = stoId(if (ls().inprelude) keep(@constCast(n)) else n);
-    ls().namebucket[h_idx] = cons(x, ls().namebucket[h_idx]);
-    return x;
+    const kept = if (ls().inprelude) keep(@constCast(n)) else n;
+    const id = stoId(kept);
+    // The dictionary key must be strtab's own stable copy (via getId), not
+    // `kept` -- which may be the scratch buffer, whose bytes do not outlive
+    // the next `kollect()`.
+    const stable_name = std.mem.span(heap_mod.getId(id));
+    symbols.syms().table.put(rt.allocator, stable_name, id) catch mallocPanic("symbols dictionary");
+    return id;
 }
 
 /// Look up name `n` in the dictionary (NIL if absent).
 ///
 /// Tests: makeId / findid: intern then look up a dictionary name
 pub fn findid(heap: *Heap, n: [*:0]const u8) Word {
-    const h_idx = @as(usize, @intCast(hash(n)));
-    var q = ls().namebucket[h_idx];
-    while (q != 0 and !std.mem.eql(u8, std.mem.span(n), std.mem.span(getId(heap, h(heap, q))))) {
-        q = t(heap, q);
-    }
-    return if (q != 0) h(heap, q) else NIL;
+    _ = heap;
+    return symbols.syms().find(std.mem.span(n)) orelse NIL;
 }
 
 test "makeId / findid: intern then look up a dictionary name" {
@@ -1739,18 +1755,21 @@ test "makeId / findid: intern then look up a dictionary name" {
 /// Backs the REPL's tab completion; the returned pointers are into the permanent
 /// dictionary storage, so they stay valid.
 pub fn completeIds(heap: *Heap, prefix: []const u8, out: [][*:0]const u8) usize {
+    _ = heap;
     var n: usize = 0;
-    for (ls().namebucket) |bucket| {
-        var q = bucket;
-        while (q != 0) : (q = t(heap, q)) {
-            if (n >= out.len) return n;
-            const idnode = h(heap, q);
-            if (heap_mod.idType(idnode) == word.undef_t) continue; // not (yet) in scope
-            const id_name = getId(heap, idnode);
-            if (std.mem.startsWith(u8, std.mem.span(id_name), prefix)) {
-                out[n] = id_name;
-                n += 1;
-            }
+    var it = symbols.syms().table.iterator();
+    while (it.next()) |entry| {
+        if (n >= out.len) return n;
+        const idnode = entry.value_ptr.*;
+        if (heap_mod.idType(idnode) == word.undef_t) continue; // not (yet) in scope
+        // Safe: every SymbolTable key is `heap.getId()`'s result (via
+        // `intern`), itself `[*:0]const u8` `strtab` storage -- the map's
+        // `[]const u8` key type just doesn't carry that guarantee at the
+        // type level.
+        const id_name: [*:0]const u8 = @ptrCast(entry.key_ptr.*.ptr);
+        if (std.mem.startsWith(u8, std.mem.span(id_name), prefix)) {
+            out[n] = id_name;
+            n += 1;
         }
     }
     return n;
@@ -1805,8 +1824,37 @@ pub fn mkprivate(heap: *Heap, x_input: Word) void {
         // h(heap, x) is an ID node; its name's StrId lives in the STRCONS node's hd.
         // Interned bytes are immutable, so re-intern the privatised form and
         // store the new id back, rather than mutating the bytes in place.
-        const strcons = h(heap, h(heap, h(heap, x)));
+        const id_node = h(heap, x);
+        // `SymbolTable` (unlike the legacy `namebucket`) keys on a name captured
+        // at insertion time, not re-derived from the node's current name at
+        // lookup time. `namebucket`'s bucket-chain scan compared each
+        // candidate's *live* `getId()` against the sought text, and its
+        // `hash()` discards the top bit of the first byte -- exactly the bit
+        // `strtab.privatize` flips -- so a privatised id landed in the *same*
+        // bucket it was already chained in. That gave the legacy dictionary a
+        // dual lookup for free: the *old* name no longer matches this entry's
+        // (now-privatised) live name, so it's correctly invisible to plain
+        // lookups, while the *privatised* text (as read back verbatim from a
+        // dump's `ID_X` payload -- `dumpOb`'s `.ID` case writes whatever
+        // `getId()` currently returns, and `trans.zig`'s `ap(rt.rs().concat, e)`
+        // embeds bootstrap ids like "concat" directly into compiled graphs
+        // that outlive this privatisation) still finds it.
+        //
+        // `SymbolTable.find` can't replicate that duality implicitly, so both
+        // halves must be explicit: drop the old-name entry (else a later
+        // re-definition of the same name -- privlib/stdlib's overlapping
+        // predef names, undumped from prelude.x then stdenv.x -- finds this
+        // now-privatised, still-bound node and is wrongly flagged as a name
+        // clash by `loadDefs`'s `DEF_X` case), and add a new entry keyed by
+        // the privatised text pointing at the same node (else a later dump
+        // that references this id via its privatised spelling resolves to
+        // nothing and misreports "UNDEFINED NAME").
+        const old_name = std.mem.span(getId(heap, id_node));
+        _ = symbols.syms().table.remove(old_name);
+        const strcons = h(heap, h(heap, id_node));
         hp(heap, strcons).* = strtab.privatize(strtab.table(), h(heap, strcons));
+        const new_name = std.mem.span(getId(heap, id_node));
+        symbols.syms().table.put(rt.allocator, new_name, id_node) catch mallocPanic("symbols dictionary");
         x = t(heap, x);
     }
     ls().inprelude = false;

@@ -489,6 +489,77 @@ front door is C.
    anyway — see the step-5 correction above). Next attempt should design (3)
    as part of `semantics/modules.zig`'s real `%export` semantics, not as a
    drop-in dictionary swap; do (1)+(2) together with it, not before it.
+   **Landed (2026-07-06), second attempt.** Did (1)+(2)+(3) together as a
+   single rewiring: `findid`/`makeId`/`name()`/`completeIds` (lex.zig), GC
+   root marking (`heap.zig`'s `mark()`), and `dump.zig`'s `privatise`/
+   `publicise` all moved to `symbols.zig`'s `SymbolTable`, using a new
+   `rebind(name, new_id)` method for (3) instead of a redesigned `%export`
+   mechanism — `privatise`/`publicise` still swap *which node* a name
+   resolves to exactly as before, `rebind` just does that swap by name
+   instead of by bucket-chain-splice. Two real bugs found only by running
+   the actual golden/mira suites end-to-end (not by code inspection), both
+   in `parser/lex.zig`'s `mkprivate` (the `%export`-independent mechanism
+   that hides *every* private-prelude identifier — `offside`, `hd`, `error`,
+   `concat`, etc. — right after the prelude loads, so its own name never
+   shadows a script's later use of the same word):
+   - `makeId` itself first went in as `SymbolTable.intern` (find-or-create).
+     Wrong: verified empirically (not just by inspection) that `setup.zig`'s
+     `predef`/`primdef` rely on `makeId` being *always create a fresh,
+     shadowing cell*, because `privlib()`/`stdlib()` deliberately `predef`
+     the same names ("error", "code", "decode", "drop", "foldr", "shownum",
+     "take") once per bootstrap stage. Symptom: 100% golden failure,
+     `stdenv.x` reported "name clashes" with garbled entries. Fixed by
+     making `makeId` always `stoId` + unconditional `table.put` (shadowing
+     overwrite), matching the original bucket-chain's unconditional insert.
+   - After that fix, golden tests still failed 100%, but only on a
+     *second* process invocation (i.e. loading a previously-dumped `.x`
+     file, not fresh compilation) — a dump/undump round-trip bug, not a
+     bootstrap bug. Root cause: `mkprivate` mutates a privatised
+     identifier's name in place (`strtab.privatize`, which flips the top
+     bit of the first byte) but leaves the node's *tag* and *binding*
+     alone — the legacy `namebucket`'s `hash()` masks away exactly that
+     bit before taking `& 127`, so a privatised name lands in the *same*
+     bucket its un-privatised self was already chained in; combined with
+     the bucket scan comparing each candidate's *live* `getId()` against
+     the sought text, this gave two lookups for the price of one: the old
+     (plain) name silently stops matching (correctly hidden), while the
+     new (privatised) name — exactly the bytes `dumpOb`'s `.ID` case writes
+     for any live reference to the node, e.g. `trans.zig`'s
+     `ap(rt.rs().concat, e)` embedding `rt.rs().concat` directly into a
+     compiled list-comprehension graph — still finds it. `SymbolTable`,
+     keyed by a name fixed at insertion time, cannot reproduce that
+     duality implicitly. Fixed by making `mkprivate` explicit about both
+     halves: remove the old-name entry, then insert a new entry keyed by
+     the post-privatisation (garbled) name pointing at the same node.
+     Verified against a real repro (`miralib/ex/divmodtest.m`, which uses
+     `concat` internally via list comprehensions): compile fresh, then run
+     the resulting `.x` five times in a row.
+   Verified with the full battery: `main-tests` (250, direct binary run
+   per the `--listen=-` quirk), `test-golden` (all pass except the
+   pre-existing, unrelated `script_syntax_err` off-by-one, confirmed
+   present on unmodified HEAD too), `test-mira` (3 consecutive clean runs —
+   this suite reuses the same `miralib/*.x` cache across all its cases
+   sequentially, so it's a stronger dump/undump stress test than golden),
+   `test-spine`, `test-sigint`, `test-smoke`. `test-regression` skips (no
+   `mira_original` C binary in this environment). Scorecard: two metrics
+   rose and the baseline was bumped with justification (not a false
+   positive, a real and expected consequence, confirmed with the user
+   first) — `current_interp references` 34→36 (`symbols.zig`'s new `syms()`
+   accessor follows the exact existing `heap.heap()`/`core_state.s()`
+   pattern for interp-owned singleton state; every new field on `Interp`
+   costs one of these until Phase 4 removes the global entirely) and
+   `[*:0] C-string types` 253→255 (`mkprivate`'s two new `getId(heap, ...)`
+   calls, in a `parser/lex.zig` file not yet migrated to native strings —
+   that's Phase 2's target, not this step's).
+   **Not yet done:** `codegen.zig`/`trans.zig` still call `lex.findid`/
+   `makeId` directly rather than `symbols.zig` — those now happen to be
+   thin wrappers over `SymbolTable`, but the indirection through
+   `lex_state.LexState` (`pnvec`/`PNBASE`/`nextpn`) is still live and
+   untouched; `PrivateNames` (symbols.zig) is still unused by production
+   code (`dump.zig`'s `privatise`/`publicise` still call `lexs.pnvec`
+   directly, unchanged). Step 7/8 (flip `parser_api.zig`, delete the legacy
+   lexer) still requires the syntax/ pipeline wiring from steps 5-6's
+   "not yet done" list above, independent of this dictionary swap.
 7. Flip `parser_api.zig` to the native pipeline as the only path; keep the legacy
    lexer behind a build flag (`-Dlegacy-lexer`) for one commit window for
    differential debugging.
@@ -518,12 +589,20 @@ never analyzed outside test mode; every new file needs an actual
 `main-tests` run; (3) before wiring into an existing subsystem
 (`mkincludes`, investigated for step 5), check whether it's actually
 exercised by anything first — dead code that still compiles is not a
-foundation to build on, however complete it looks. Remaining: finish step 5
-(actually loading/compiling an `%include`d file, real cycle detection,
-free-binding substitution, path resolution — the parts of module semantics
-that need real compiler integration, not just data transformation); finish
-step 6 (rewire `codegen.zig`/`trans.zig`'s identifier lookups to
-`symbols.zig`); production cutover; and deletion.
+foundation to build on, however complete it looks. Step 6's dictionary swap
+(`LexState.namebucket` → `symbols.zig`'s `SymbolTable`, all three consumers —
+lookup, GC marking, `%export` hiding — together) landed the same day (see the
+step-6 entry above for the two dump/undump-round-trip bugs this surfaced and
+how they were found/fixed); the "not yet done" list there
+(`codegen.zig`/`trans.zig` still call `lex.findid`/`makeId` rather than
+`symbols.zig` directly, `PrivateNames` unused, `pnvec`/`PNBASE`/`nextpn`
+untouched) is real remaining work but no longer blocks anything — those are
+now thin wrappers, and the risky part (three load-bearing consumers of one
+data structure) is done. Remaining: finish step 5 (actually loading/compiling
+an `%include`d file, real cycle detection, free-binding substitution, path
+resolution — the parts of module semantics that need real compiler
+integration, not just data transformation); step 7 (production cutover); and
+step 8 (deletion).
 
 **Deletes:** ~2,700 lines of C-ported lexing; the biggest single consumer of `FILE`,
 `[*:0]`, `c_int`, and `@ptrFromInt`.

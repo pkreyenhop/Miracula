@@ -29,6 +29,7 @@ const EvalState = @import("reduce.zig").EvalState;
 const Bignum = @import("big.zig").Bignum;
 const StringTable = @import("strtab.zig").StringTable;
 const LineEditState = @import("../driver/lineedit.zig").LineEditState;
+const SymbolTable = @import("../semantics/symbols.zig").SymbolTable;
 
 /// All interpreter state, owned in one place — including heap's GC/dictionary
 /// scratch (folded into `heap` by Phase 2b), the interned `strtab` table, and
@@ -47,6 +48,10 @@ pub const Interp = struct {
     big: Bignum = .{},
     strtab: StringTable = .{},
     lineedit: LineEditState = .{},
+    /// The identifier dictionary (docs/ZIG_NATIVE_PLAN.md Phase 1 step 6):
+    /// replaces `LexState.namebucket`'s fixed-size hash-bucket array. See
+    /// `semantics/symbols.zig`.
+    symbols: SymbolTable = .{},
 };
 
 /// Backing storage for the default interpreter instance. Not read directly —

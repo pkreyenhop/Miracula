@@ -22,6 +22,7 @@ const types = @import("../compiler/types.zig");
 const repl = @import("../driver/repl.zig");
 const files = @import("../io/files.zig");
 const lex = @import("../parser/lex.zig");
+const symbols = @import("../semantics/symbols.zig");
 const big = @import("big.zig");
 const reduce = @import("reduce.zig");
 const main_clib = @import("main_clib.zig");
@@ -496,11 +497,13 @@ pub const Heap = struct {
             self.mark(cs().internals);
             self.mark(rt.rs().lexstates);
             self.mark(rt.rs().lexdefs);
-            var i: usize = 0;
-            while (i < 128) : (i += 1) {
-                if (ls().namebucket[i] != 0) {
-                    self.mark(ls().namebucket[i]);
-                }
+            // The identifier dictionary (semantics/symbols.zig's SymbolTable,
+            // replacing LexState.namebucket's hash-bucket array -- see
+            // ZIG_NATIVE_PLAN.md Phase 1 step 6): every ID node it references
+            // must stay reachable, exactly as every namebucket entry used to.
+            var syms_it = symbols.syms().table.valueIterator();
+            while (syms_it.next()) |id| {
+                self.mark(id.*);
             }
             const p_dstack = heap().dstack;
             const p_stackp = heap().stackp;
@@ -519,7 +522,7 @@ pub const Heap = struct {
                 self.mark(rt.rs().bereaved);
                 self.mark(rt.rs().ld_stuff);
                 self.mark(cs().tlost);
-                i = 0;
+                var i: usize = 0;
                 const nextpn_val = @as(usize, @intCast(ls().nextpn));
                 while (i < nextpn_val) : (i += 1) {
                     self.mark(ls().pnvec.?[i]);
