@@ -88,7 +88,7 @@ fn parseCurrentNative() ParseError!ParseResult {
     if (options.is_strict) {
         if (rt.rs().current_script) |script_name| {
             validateUtf8File(script_name) catch |err| {
-                core.s.SYNERR = 1;
+                core.s().SYNERR = 1;
                 return err;
             };
         }
@@ -306,7 +306,7 @@ pub fn parseString(source: [*:0]const u8) ParseError!ParseResult {
         const source_slice = std.mem.span(source);
         if (!std.unicode.utf8ValidateSlice(source_slice)) {
             std.debug.print("UTF-8 validation failed for source string\n", .{});
-            core.s.SYNERR = 1;
+            core.s().SYNERR = 1;
             return ParseError.ParseFailed;
         }
     }
@@ -333,7 +333,7 @@ pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!Ne
     if (options.is_strict) {
         if (!std.unicode.utf8ValidateSlice(source_slice)) {
             std.debug.print("UTF-8 validation failed for source string\n", .{});
-            core.s.SYNERR = 1;
+            core.s().SYNERR = 1;
             return ParseError.ParseFailed;
         }
     }

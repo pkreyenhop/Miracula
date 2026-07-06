@@ -232,6 +232,13 @@ pass against the current binary (they pin today's behaviour, bugs included).
 
 ### Phase 1 — One front end (delete the C lexer)
 
+**Complete as of 2026-07-06** (all 8 steps landed — see each step's own
+"landed" entry below for what shipped and, for step 8, how the original
+goal below was corrected on investigation: `lex.zig`/`lex_state.zig` are
+trimmed of the character-at-a-time tokenizer, not deleted outright, since
+both still hold genuinely load-bearing production state/helpers unrelated
+to lexing).
+
 **Goal:** a single, native `syntax/` pipeline: `Source → Lexer → layout → Parser →
 AST → lower`. Delete `parser/lex.zig` (2,080 lines), `parser/lex_bridge.zig` (387),
 `parser/lex_state.zig`, and the FILE-handle-in-a-cell hack.
@@ -919,16 +926,111 @@ directive-scanner position-restore bug that silently swallowed the next
 declaration's first token; an avoidable `[*:0]` scorecard regression) found
 landing it. The three diagnostic-wording gaps were formally accepted
 (2026-07-06, confirmed with the user) rather than fixed — see the step-7
-entry above for why, and the re-pinned goldens. Remaining: step 8 (delete
-the legacy lexer entirely).
+entry above for why, and the re-pinned goldens.
 
-**Deletes:** ~2,700 lines of C-ported lexing; the biggest single consumer of `FILE`,
-`[*:0]`, `c_int`, and `@ptrFromInt`.
+**Step 8 landed (2026-07-06), scope corrected on investigation.** The
+plan's framing above ("delete `lex.zig`, `lex_bridge.zig`, `lex_state.zig`,
+... `LexState` from `Interp`, `fileq`/`insertdepth`/`s_in` from the parse
+path, ... `DICSPACE`") turned out not to match reality once actually
+investigated — the same "verify before believing the plan" pattern as
+every other step. A careful function-by-function and field-by-field
+caller audit (grepping every call site across the whole tree, not just
+lex.zig, and cross-checking against `runtime/main_clib.zig`'s re-exports —
+several of lex.zig's functions are reachable under the same name through
+that module, which an external-caller grep restricted to lex.zig itself
+would miss) found:
+- **Genuinely deletable** (the character-at-a-time tokenizer and
+  everything only it needed): `yylex`, the offside `layout` rule,
+  `setlmargin`/`unsetlmargin`, `%`-`directive` handling, `pathname`,
+  numeral/hex/octal-numeral scanning, string/char-class scanning,
+  `identifier`/`kollect`/`getch`/`getlitch`/`errclass` and a dozen smaller
+  helpers — genuinely dead once `lex_bridge.zig` (their only entry point)
+  is gone. ~1,400 lines deleted from `lex.zig` (2,110 → 696 lines, now
+  under the scorecard's 1,000-line-file threshold), plus `lex_bridge.zig`
+  (387 lines) and `syntax/differential_test.zig` (184 lines, its whole
+  purpose — diffing legacy vs. native tokenizers — was step 7's own
+  verification tool, moot once there's no more "legacy" to diff against)
+  deleted outright, plus the `-Dlegacy-lexer` build flag and
+  `parseCurrentLegacy`.
+- **Not deletable — genuinely still load-bearing production code that
+  happened to live in the same file**: the identifier dictionary
+  (`setupdic`/`makeId`/`findid`/`keep`/`name`, used throughout
+  `compiler/setup.zig`'s bootstrap), the private-name machinery
+  (`makePn`/`mkprivate`, `%export`'s permanent-hiding mechanism this
+  phase's own step 5 depends on), REPL-only raw token/line reading
+  (`token`/`rdline`, driving slash commands — not Miranda expression
+  parsing, so untouched by the tokenizer swap), value-building helpers
+  (`convArgs`/`strConv`) the reducer calls directly, and `openfile`/
+  `dicCheck`/`adjustPrefix` (called via `main_clib.zig`'s re-exports from
+  `module_loader.zig`'s real file-loading path and `driver/lineedit.zig`'s
+  tab completion). `LexState` similarly stays close to its current shape —
+  `fileq`/`dic`/`dicp`/`dicq`/the GC-root stacks/`ARGC`/`ARGV` are real,
+  live production state, not tokenizer-internal scratch; only ~20 fields
+  that were exclusively read/written by the deleted tokenizer
+  (`insertdepth`'s reader — not its writer, still harmlessly written by
+  `openfile`/`resetLex` — `lmargin`, `col`-adjacent scanning flags,
+  `tok_start_col`, `blankerr`, `rawch`, `errch`, `lastc`, `sl`,
+  `namebucket` (superseded by `symbols.zig` back in step 6, but left
+  sitting unused until now), etc.) were actually removable. `fileq`/`s_in`
+  themselves are `module_loader.zig`'s current production file-I/O layer
+  (`word.FILE`-based), a separate concern from tokenization — replacing
+  *that* is Phase 2's job ("native I/O & diagnostics"), not this step's.
+  `DICSPACE`/`-dic` likewise remain live, active configuration for the
+  (still-needed) dictionary, not dead weight.
+- Also migrated in the same pass: `parseWithNew` (`parser_tests.zig`'s
+  string-input entry point, previously always legacy-bridge-fed regardless
+  of `-Dlegacy-lexer`) now goes through the same native pipeline as
+  `parseCurrentNative`, gaining `%include` processing and lexer
+  diagnostics for free; a shared `reportIncludeError` helper avoids
+  duplicating `parseCurrentNative`'s diagnostic call sites (this would
+  otherwise have been a `printf-family calls` scorecard regression —
+  avoided instead of bumped, confirmed with the user). `parser_tests.zig`
+  lost `captureTokenStream`/`runSnapshotTest` and the "golden/error
+  snapshot tests" that existed specifically to test `yylex`'s token
+  stream — meaningless once `yylex` is gone, redundant with
+  `syntax/lexer.zig`'s own unit tests and `test-golden`. Its orphaned
+  `tests/parser/snapshots/*.snapshot` files went with them. "prelude
+  parsing test" (`parseFile`'s only caller) was rewritten to read the file
+  directly and call `parseString`, letting `parseFile`/`lex.setupFile`
+  drop too without inventing a replacement file-opening path for a
+  single test.
+- Two pre-existing bugs surfaced and fixed along the way, unrelated to the
+  deletion itself: `parser_api.zig` had three `core.s.SYNERR = 1` sites
+  missing the `()` call (a copy-paste-shaped typo predating this session,
+  confirmed via `git log`) — harmless under a plain Debug build but a hard
+  compile error under `-Dstrict`, caught by building the strict variant as
+  part of this step's verification; and `lex.zig`/`parser_tests.zig` both
+  already failed `zig fmt --check` before this session touched them
+  (confirmed by stashing and re-checking) — reformatted as a low-risk
+  courtesy since both files were already being heavily edited.
 
-**Gate:** golden corpus byte-identical **including error wording**; token-stream
-differential harness retired in the same commit that deletes the bridge;
-parser-tests still build standalone (the "never import from parser-tests" C-linkage
-warning in lex_bridge dies with it).
+  Verified: `main-tests` (256), `test-mira`, `test-spine`, `test-smoke`,
+  `test-golden` (only the pre-existing, unrelated `script_syntax_err` gap
+  fails, same as before this step) all green; `-Dstrict` and `zig build
+  strict` both build cleanly (the latter's remaining two failures —
+  `script_syntax_err` again, and a codebase-wide `zig fmt --check`
+  non-compliance across many files this step never touched — are both
+  pre-existing, confirmed via git history/stash, not regressions).
+  `test-sigint` is flaky specifically when run inside the aggregate `zig
+  build test`/`check` step (fails intermittently there) but passes
+  reliably (3/3) standalone — pre-existing test-harness timing flakiness,
+  not a logic regression (no signal-handling or fork code was touched).
+  Scorecard: every tracked metric *improved* (no bump needed) —
+  `ambient singleton-accessor call sites` 1412→931, `files > 1000 lines`
+  10→9, `[*:0]` 251→238, `printf-family calls` 393→372, and so on across
+  the board, since the deleted code was saturated with exactly the
+  C-isms this whole migration tracks.
+
+**Deletes:** ~1,970 lines total (`lex_bridge.zig` 387 + `differential_test.zig`
+184 + ~1,400 from `lex.zig` + the orphaned parser-snapshot fixtures) — the
+character-at-a-time C-ported tokenizer and its dedicated migration-era
+verification harness. `lex.zig`/`lex_state.zig` themselves are not fully
+deleted (see above); the remaining ~700 lines are load-bearing dictionary/
+private-name/REPL-token machinery, not lexing.
+
+**Gate:** golden corpus unchanged except the already-accepted step-7 gaps;
+scorecard improved on every tracked metric; `main-tests`/`test-mira`/
+`test-spine`/`test-smoke` green.
 
 **Risks & fallbacks:** error-message parity (mitigated by Phase 0 goldens);
 `%bnf`/`%lex` semantics (mitigated by doing it last within the phase, dual-run

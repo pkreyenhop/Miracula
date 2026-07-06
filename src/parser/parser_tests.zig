@@ -244,5 +244,3 @@ test "/editor command parses arguments on the same line" {
     try testing.expectEqualStrings("my_custom_editor", actual_editor);
 }
 // Cache invalidation comment for strict-main-tests
-
-
