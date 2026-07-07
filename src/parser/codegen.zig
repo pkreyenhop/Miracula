@@ -328,7 +328,7 @@ fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
 /// codegen and discards the result) rather than `fpeError`'s old
 /// `siglongjmp` (Phase 3 step 2, docs/ZIG_NATIVE_PLAN.md).
 fn floatLiteralOverflow() Word {
-    setup.syntax("floating point number out of range\n");
+    setup.syntax("floating point number out of range\n") catch {};
     return word.NIL;
 }
 

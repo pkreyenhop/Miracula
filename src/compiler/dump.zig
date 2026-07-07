@@ -252,7 +252,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
     var t2: Word = undefined;
 
     if (files.isMirandaSource(t_val) == 0 and rs.initialising == 0) {
-        module_loader.loadfile(heap, core, comp, rs, ls(), t_val);
+        module_loader.loadfile(heap, core, comp, rs, ls(), t_val) catch {};
         return;
     }
 
@@ -278,14 +278,14 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
         _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
     }
     if (t2 == 0 or t2 < t1) {
-        module_loader.loadfile(heap, core, comp, rs, ls(), t_val);
+        module_loader.loadfile(heap, core, comp, rs, ls(), t_val) catch {};
         return;
     }
 
     f = word.fopen(&obf, "r");
     if (f == null) {
         word.print("cannot open {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
-        module_loader.loadfile(heap, core, comp, rs, ls(), t_val);
+        module_loader.loadfile(heap, core, comp, rs, ls(), t_val) catch {};
         return;
     }
 
@@ -326,7 +326,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
         if (rs.initialising != 0) {
             errors.fatal("panic: {s} contains errors\n", .{@as([*:0]const u8, @ptrCast(&obf))});
         }
-        module_loader.loadfile(heap, core, comp, rs, ls(), t_val);
+        module_loader.loadfile(heap, core, comp, rs, ls(), t_val) catch {};
     } else {
         if (rs.verbosity != 0 or rs.magic or rs.mkexports) {
             if (heap.files == NIL) {

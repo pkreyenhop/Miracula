@@ -136,7 +136,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
         rs.last_gc_count = null;
         ch = abi.getchar();
         if (rs.rechecking != 0 and heap_mod.srcUpdate(rs) != 0) {
-            module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), rs.current_script.?);
+            module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), rs.current_script.?) catch {};
         }
         while (ch == ' ' or ch == '\t') {
             ch = abi.getchar();
@@ -235,7 +235,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                     }
                     _ = signals(abi.SIGINT, oldsig);
                     if (heap_mod.srcUpdate(rs) != 0) {
-                        module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), rs.current_script.?);
+                        module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), rs.current_script.?) catch {};
                     }
                 } else {
                     word.print("No previous shell command to substitute for \"!\"\n", .{});

@@ -175,10 +175,10 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
                 comp.CLASHES = NIL;
                 dump.undump(heap, core, comp, rs, t_val.?);
                 if (comp.CLASHES != NIL) {
-                    module_loader.loadfile(heap, core, comp, rs, ls(), t_val.?);
+                    module_loader.loadfile(heap, core, comp, rs, ls(), t_val.?) catch {};
                 }
             } else {
-                module_loader.loadfile(heap, core, comp, rs, ls(), t_val.?);
+                module_loader.loadfile(heap, core, comp, rs, ls(), t_val.?) catch {};
             }
         } else {
             word.print("{s}{s}\n", .{ rs.current_script.?, @as([*:0]const u8, if (heap.files == NIL) " (not loaded)" else "") });
@@ -683,7 +683,7 @@ pub fn editfile(rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_
     }
     _ = abi.system(ebuf_local);
     if (heap_mod.srcUpdate(rs) != 0) {
-        module_loader.loadfile(heap_mod.heap(), core_state.s(), cs(), rs, ls(), rs.current_script.?);
+        module_loader.loadfile(heap_mod.heap(), core_state.s(), cs(), rs, ls(), rs.current_script.?) catch {};
     }
 }
 

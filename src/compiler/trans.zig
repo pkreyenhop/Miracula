@@ -914,7 +914,7 @@ pub fn genlhs(heap: *Heap, x: Word) Word {
         },
         .INT => return cons(CONST, x),
         .DOUBLE => {
-            syntax("floating point literal in pattern\n");
+            syntax("floating point literal in pattern\n") catch {};
             return core_state.s().nill;
         },
         .ATOM => {
@@ -924,7 +924,7 @@ pub fn genlhs(heap: *Heap, x: Word) Word {
         },
         else => {},
     }
-    syntax("illegal form on left of <-\n");
+    syntax("illegal form on left of <-\n") catch {};
     return core_state.s().nill;
 }
 
@@ -1148,7 +1148,7 @@ fn nclchk(heap: *Heap, n: Word, p: Word, hr: Word) bool {
         }
         core_state.s().errs = hr;
         _ = word.print("syntax error: conflicting definitions of \"{s}\" in where clause\n", .{getId(heap, n)});
-        acterror();
+        acterror() catch {};
         return true;
     }
     if (getTag(heap, p) == .AP and h(heap, p) == PLUS) {
@@ -1175,7 +1175,7 @@ pub fn respecError(heap: *Heap, x: Word) void {
     }
     const suffix: [*:0]const u8 = if (member(heap, rt.rs().primenv, x) != 0) " (in standard environment)" else "";
     _ = word.print("syntax error: type of \"{s}\" already declared{s}\n", .{ getId(heap, x), suffix });
-    acterror();
+    acterror() catch {};
 }
 
 /// Report a name clash for `x`.
@@ -1185,14 +1185,14 @@ pub fn nameclash(heap: *Heap, x: Word) void {
     }
     const suffix: [*:0]const u8 = if (member(heap, rt.rs().primenv, x) != 0) " (in standard environment)" else "";
     _ = word.print("syntax error: nameclash, \"{s}\" already defined{s}\n", .{ getId(heap, x), suffix });
-    acterror();
+    acterror() catch {};
 }
 
 /// Declare data constructor `x` of type `constr_type`.
 pub fn declconstr(heap: *Heap, x: Word, n: Word, constr_type: Word) void {
     setIdVal(heap, x, constructor(n, x));
     if ((n >> 16) != 0) {
-        syntax("algebraic type has too many constructors\n");
+        syntax("algebraic type has too many constructors\n") catch {};
         return;
     }
     if (idType(heap, x) != undef_t) {
@@ -1209,7 +1209,7 @@ pub fn specify(heap: *Heap, input_x: Word, spec_type: Word, here: Word) void {
     var x = input_x;
     if (getTag(heap, x) != .ID and spec_type != type_t) {
         core_state.s().errs = here;
-        syntax("incorrect use of ::\n");
+        syntax("incorrect use of ::\n") catch {};
         return;
     }
     if (spec_type == type_t) {
@@ -1258,7 +1258,7 @@ fn arityCheck(heap: *Heap, type_name: Word, arity: Word, here: Word) void {
             typeArity(heap, type_name),
         });
         core_state.s().errs = here;
-        acterror();
+        acterror() catch {};
     }
 }
 
@@ -1320,7 +1320,7 @@ fn decl1(heap: *Heap, x: Word, e: Word) void {
         const prefix: [*:0]const u8 = if (rt.rs().echoing != 0) "\n" else "";
         core_state.s().errs = h(heap, e);
         _ = word.print("{s}syntax error: unreachable case in defn of \"{s}\"\n", .{ prefix, getId(heap, x) });
-        acterror();
+        acterror() catch {};
     } else {
         tp(heap, idVal(heap, x)).* = cons(e, t(heap, idVal(heap, x)));
     }
@@ -1335,7 +1335,7 @@ pub fn declare(heap: *Heap, x: Word, e: Word) void {
     var bindings = scanpattern(heap, x, x, share(tries(x, cons(e, NIL)), undef_t), ap(CONFERROR, cons(x, h(heap, e))));
     if (bindings == NIL) {
         core_state.s().errs = h(heap, e);
-        syntax("illegal lhs for definition\n");
+        syntax("illegal lhs for definition\n") catch {};
         return;
     }
     rt.rs().lastname = 0;

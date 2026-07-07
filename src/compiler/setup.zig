@@ -10,6 +10,7 @@ const word = @import("../runtime/word.zig");
 const abi = @import("../runtime/os.zig");
 const heap_mod = @import("../runtime/heap.zig");
 const Heap = heap_mod.Heap;
+const errors = @import("../runtime/errors.zig");
 
 const Word = word.Word;
 const NIL = word.NIL;
@@ -85,9 +86,12 @@ const yysterm_data = [_]?[*:0]const u8{
 /// The terminal-symbol name table (token code → display name), used in syntax-error messages.
 pub const yysterm = yysterm_data;
 
-/// Report a syntax error `s`: print the location and set `SYNERR`.
-pub fn syntax(s: [*:0]const u8) void {
-    if (core_state.s().SYNERR != 0) return;
+/// Report a syntax error `s`: print the location, set `SYNERR`, and return
+/// `error.SyntaxError` (Phase 3 step 5, docs/ZIG_NATIVE_PLAN.md — callers
+/// that already gate on `SYNERR` afterward can keep doing so via `catch {}`;
+/// callers that want an honest fallible contract can `try`/propagate it).
+pub fn syntax(s: [*:0]const u8) errors.MiraError!void {
+    if (core_state.s().SYNERR != 0) return error.SyntaxError;
     if (!@import("builtin").is_test) {
         if (rt.rs().echoing != 0) {
             _ = word.printErr("\n", .{});
@@ -96,13 +100,16 @@ pub fn syntax(s: [*:0]const u8) void {
     }
     core_state.s().SYNERR = 1;
     resetLex(heap_mod.heap());
+    return error.SyntaxError;
 }
 
-/// Flag a grammar-action error (set `SYNERR` and reset the lexer).
-pub fn acterror() void {
-    if (core_state.s().SYNERR != 0) return;
+/// Flag a grammar-action error (set `SYNERR`, reset the lexer, and return
+/// `error.SyntaxError` -- see `syntax`'s doc comment).
+pub fn acterror() errors.MiraError!void {
+    if (core_state.s().SYNERR != 0) return error.SyntaxError;
     core_state.s().SYNERR = 1;
     resetLex(heap_mod.heap());
+    return error.SyntaxError;
 }
 
 /// Registers a primitive identifier `n` in the private primitive environment (`rs.primenv`).

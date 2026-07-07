@@ -48,7 +48,17 @@ inline fn pnVal(x: Word) Word {
 /// list and environment. Sets `loading=1` for the duration; clears it on return.
 /// If the file does not exist during `initialising`, panics; otherwise prints a notice.
 /// Callers that want dump-or-load semantics should call `undump()` instead.
-pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, t_val: [*:0]const u8) void {
+///
+/// Returns `error.LoadError` if the file doesn't exist or can't be opened, and
+/// `error.SyntaxError` if compilation failed (`SYNERR` ended up set -- the
+/// diagnostic has already been printed by whichever `setup.syntax`/`acterror`
+/// call set it). The internal pipeline stages still gate on `core.SYNERR`
+/// exactly as before (Phase 3 step 5, docs/ZIG_NATIVE_PLAN.md, deliberately
+/// keeps that -- it's what lets codegen continue past one bad definition and
+/// collect every diagnostic in one pass); only the function's own external
+/// contract becomes an honest fallible one instead of an implicit
+/// caller-must-remember-to-poll-`SYNERR` convention.
+pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, t_val: [*:0]const u8) errors.MiraError!void {
     core.loading = 1;
     core.errs = 0;
     core.errline = 0;
@@ -72,7 +82,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
             rs.oldfiles = heap_mod.cons(heap_mod.makeFil(t_val, 0, 0, NIL), NIL);
         }
         core.loading = 0;
-        return;
+        return error.LoadError;
     }
 
     if (abi.openfile(@constCast(t_val)) == 0) {
@@ -82,7 +92,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         word.print("cannot open {s}\n", .{t_val});
         rs.oldfiles = heap_mod.cons(heap_mod.makeFil(t_val, 0, 0, NIL), NIL);
         core.loading = 0;
-        return;
+        return error.LoadError;
     }
 
     heap.files = heap_mod.cons(heap_mod.makeFil(t_val, files.fileMtime(t_val), 1, NIL), NIL);
@@ -213,6 +223,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     }
     core.SYNERR = 0;
     core.loading = 0;
+    return error.SyntaxError;
 }
 
 /// Resolves each name in `lexs.exportfiles` against `rs.includees`: `+` pulls in

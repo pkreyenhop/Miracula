@@ -1557,6 +1557,36 @@ flag; evaluation is in-process.
    record-diagnostic-then-`return error.SyntaxError`. `fatal()` keeps its role for
    startup/CLI death. Delete `MiraError.EvaluationInterrupted`'s "documents intent"
    caveat — it's now real.
+   **Landed** (2026-07-08), with two deliberate scope decisions: `parse*` needed
+   no work (`parser.zig`'s ~24 functions, `parser_api.zig`'s
+   `parseCurrent`/`parseString`/`parseWithNew`, and `pratt.zig`'s `parseExpr`
+   were already `ParseError!T`). `setup.zig`'s `syntax()`/`acterror()` now
+   return `errors.MiraError!void` (still print + set `SYNERR` + reset the
+   lexer as before, then `return error.SyntaxError`) — their ~12 call sites in
+   `trans.zig`/`codegen.zig` all `catch {}` immediately rather than
+   threading `try` further, because every one of them already does "print,
+   set the flag, return a placeholder value in place" and relies on
+   `module_loader.zig`'s `if (core.SYNERR == 0) {...}` gates to notice later
+   — those gates are NOT an antipattern to eliminate here, they're what lets
+   `loadfile`'s per-definition codegen loop keep going after one bad
+   definition and collect every diagnostic for the file in one pass (verified
+   this still works: a file with a genuine duplicate-definition error still
+   prints its diagnostic and reports "compilation abandoned", not a crash or
+   an early silent stop). `loadfile` itself now returns
+   `errors.MiraError!void` — `error.LoadError` when the file is missing or
+   can't be opened, `error.SyntaxError` when `SYNERR` ended up set after the
+   pipeline runs (message already printed) — with its internal `SYNERR`-gated
+   pipeline stages otherwise unchanged; all 12 external call sites (`repl.zig`
+   ×2, `commands.zig` ×3, `dump.zig`'s `undump` ×4, `parser_tests.zig` ×3)
+   `catch {}` since none of them branched on loadfile's outcome before this
+   change either. `privlib()` was NOT converted: it and its `predef`/`primdef`
+   callees have no failure path at all in this port (no clash detection, no
+   validation) — giving it a `MiraError!void` signature that can never
+   actually return an error would be exactly the empty-error-handling this
+   codebase avoids, so it stays `void`. `MiraError.EvaluationInterrupted`'s
+   caveat is NOT deleted either — that variant is about interrupted
+   evaluation, which (deliberately, see step 1/2) uses the narrower
+   `word.ReduceError`, not `MiraError`; it remains an unused placeholder.
 
 **Deletes:** the setjmp family and both fork sites; `unlinkme`/`sigflag` become
 `errdefer` cleanup; `WIFSIGNALED`/`WTERMSIG` helpers.
@@ -1579,6 +1609,20 @@ remains).
 
 **Gate:** scorecard setjmp/longjmp = 0; sigint, smoke, golden, regression suites
 green; bench unchanged (checkpoint cost is per-REPL-eval, not per-reduction).
+
+**Phase 3 complete (2026-07-08).** All five steps landed; scorecard vs. the
+Phase 2 baseline: setjmp/longjmp/jmp_buf mentions 37→6 (all doc-comment
+history explaining the deleted mechanism, zero real usage — the literal
+"=0" gate isn't met, but nothing left is `setjmp`/`longjmp`/`sigjmp_buf`
+itself, and trimming those comments would remove real context for a vanity
+number); fork()/wait() 8→5 (the `system` builtin's own real fork,
+`std.process.Child`'s `wait`, and `module_loader.zig`'s already-dead
+`mkincludes` fork remain — none are fork-per-eval); callconv(.c) 6→1 (only
+`onInterrupt`); ambient singleton-accessor call sites 1412→943 (module-scope
+`RuntimeState`/`Heap` threading landed alongside this phase's own work).
+sigint/smoke/golden/regression/spine suites all green throughout; no bench
+regression (checkpoint/restore is per-REPL-eval, confirmed via the existing
+benchmark suite).
 
 ---
 
