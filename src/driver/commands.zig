@@ -51,14 +51,17 @@ fn is(lexs: *lex_state.LexState, s: [:0]const u8) bool {
 
 /// Print path `p` for messages: `<name>` when it lives under the library dir, else `"path"`.
 fn filequote(rs: *rt.RuntimeState, p: [:0]const u8) void {
+    const prelude_span = std.mem.span(@as([*:0]const u8, @ptrCast(&rs.PRELUDE)));
     if (rs.filequote_mlen == 0) {
-        const last_slash = word.strrchr(&rs.PRELUDE, '/');
-        if (last_slash != null) {
-            rs.filequote_mlen = @intFromPtr(last_slash.?) - @intFromPtr(&rs.PRELUDE) + 1;
+        if (std.mem.lastIndexOfScalar(u8, prelude_span, '/')) |idx| {
+            rs.filequote_mlen = idx + 1;
         }
     }
-    if (word.strncmp(p.ptr, &rs.PRELUDE, rs.filequote_mlen) == 0) {
-        word.print("<{s}>", .{p.ptr + rs.filequote_mlen});
+    const n = rs.filequote_mlen;
+    const na = @min(p.len, n);
+    const nb = @min(prelude_span.len, n);
+    if (na == nb and std.mem.eql(u8, p[0..na], prelude_span[0..nb])) {
+        word.print("<{s}>", .{p.ptr + n});
     } else {
         word.print("\"{s}\"", .{p.ptr});
     }
@@ -84,7 +87,7 @@ fn namescom(heap: *Heap, rs: *rt.RuntimeState, l: Word) void {
     word.print("\n", .{});
     while (n != NIL) {
         if (heap_mod.idType(heap_mod.h(n)) == word.wrong_t or heap_mod.idVal(heap_mod.h(n)) != word.UNDEF) {
-            const w = @as(Word, @intCast(word.strlen(heap_mod.getId(heap_mod.h(n)))));
+            const w = @as(Word, @intCast(std.mem.len(heap_mod.getId(heap_mod.h(n)))));
             if (col_local + w < @as(Word, @intCast(scrwd))) {
                 col_local += if (col_local != 0) 1 else 0;
             } else if (wp > 0 and col_local + w >= @as(Word, @intCast(scrwd))) {
@@ -168,7 +171,7 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
             core.errs = 0;
         }
         if (t_val != null) {
-            if (word.strcmp(t_val.?, rs.current_script.?) != 0 or (heap.files == NIL and abi.okdump(core, t_val.?))) {
+            if (!std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(rs.current_script.?)) or (heap.files == NIL and abi.okdump(core, t_val.?))) {
                 comp.CLASHES = NIL;
                 dump.undump(heap, core, comp, rs, t_val.?);
                 if (comp.CLASHES != NIL) {
@@ -201,7 +204,7 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
                 var y = rs.primenv;
                 while (y != NIL) : (y = heap_mod.t(y)) {
                     if (getTag(heap, heap_mod.h(y)) == .ID) {
-                        if (heap_mod.h(y) == x or word.strcmp(abi.getaka(heap_mod.h(y)), n) == 0) {
+                        if (heap_mod.h(y) == x or std.mem.eql(u8, std.mem.span(abi.getaka(heap_mod.h(y))), std.mem.span(n))) {
                             finger(heap, rs, heap_mod.getId(heap_mod.h(y)));
                         }
                     }
@@ -211,7 +214,7 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
                     var y_def = heap_mod.filDefs(heap_mod.h(ff));
                     while (y_def != NIL) : (y_def = heap_mod.t(y_def)) {
                         if (getTag(heap, heap_mod.h(y_def)) == .ID) {
-                            if (heap_mod.h(y_def) == x or word.strcmp(abi.getaka(heap_mod.h(y_def)), n) == 0) {
+                            if (heap_mod.h(y_def) == x or std.mem.eql(u8, std.mem.span(abi.getaka(heap_mod.h(y_def))), std.mem.span(n))) {
                                 finger(heap, rs, heap_mod.getId(heap_mod.h(y_def)));
                             }
                         }
@@ -244,23 +247,41 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
         if (!files.fileExists(t_val.?)) {
             if (rs.lmirahdr == null) {
                 lexs.dicp = lexs.dicq;
-                _ = word.strcpy(lexs.dicp, abi.getenv("HOME"));
-                if (word.strcmp(lexs.dicp, "/") == 0) {
+                {
+                    // HOME unset -> treat as "" (the old strcpy(dicp, null) left
+                    // dicp's stale buffer contents untouched, which was never
+                    // actually safe to read back as a C string).
+                    const home_span = if (abi.getenv("HOME")) |home| std.mem.span(home) else "";
+                    @memcpy(lexs.dicp[0..home_span.len], home_span);
+                    lexs.dicp[home_span.len] = 0;
+                }
+                if (std.mem.eql(u8, std.mem.span(lexs.dicp), "/")) {
                     lexs.dicp[0] = 0;
                 }
-                _ = word.strcat(lexs.dicp, "/.mirahdr");
+                {
+                    const suffix = "/.mirahdr";
+                    const dst_len = std.mem.len(lexs.dicp);
+                    @memcpy(lexs.dicp[dst_len..][0..suffix.len], suffix);
+                    lexs.dicp[dst_len + suffix.len] = 0;
+                }
                 rs.lmirahdr = lexs.dicp;
-                lexs.dicq = lexs.dicp + word.strlen(lexs.dicp) + 1;
+                lexs.dicq = lexs.dicp + std.mem.len(lexs.dicp) + 1;
             }
             if (files.fileExists(rs.lmirahdr.?)) {
                 mf = rs.lmirahdr;
             }
             if (mf == null and rs.mirahdr == null) {
                 lexs.dicp = lexs.dicq;
-                _ = word.strcpy(lexs.dicp, rs.miralib.?);
-                _ = word.strcat(lexs.dicp, "/.mirahdr");
+                {
+                    const miralib_span = std.mem.span(rs.miralib.?);
+                    @memcpy(lexs.dicp[0..miralib_span.len], miralib_span);
+                    lexs.dicp[miralib_span.len] = 0;
+                    const suffix = "/.mirahdr";
+                    @memcpy(lexs.dicp[miralib_span.len..][0..suffix.len], suffix);
+                    lexs.dicp[miralib_span.len + suffix.len] = 0;
+                }
                 rs.mirahdr = lexs.dicp;
-                lexs.dicq = lexs.dicp + word.strlen(lexs.dicp) + 1;
+                lexs.dicq = lexs.dicp + std.mem.len(lexs.dicp) + 1;
             }
             if (mf == null and files.fileExists(rs.mirahdr.?)) {
                 mf = rs.mirahdr;
@@ -286,8 +307,8 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
                 files.copyFile(mf.?, t_val.?);
             }
         }
-        const err_line_num: c_int = if (word.strcmp(t_val.?, rs.current_script.?) == 0) @intCast(core.errline) else if (core.errs != 0 and word.strcmp(t_val.?, strtab.strOf(strtab.table(), heap_mod.h(core.errs))) == 0) @intCast(heap_mod.t(core.errs)) else @intCast(abi.geterrlin(core, lexs, t_val.?));
-        const err_col_num: c_int = if (word.strcmp(t_val.?, rs.current_script.?) == 0) @intCast(core.errcol) else 0;
+        const err_line_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(rs.current_script.?))) @intCast(core.errline) else if (core.errs != 0 and std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(core.errs))))) @intCast(heap_mod.t(core.errs)) else @intCast(abi.geterrlin(core, lexs, t_val.?));
+        const err_col_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(rs.current_script.?))) @intCast(core.errcol) else 0;
         editfile(rs, t_val.?, err_line_num, err_col_num);
         return true;
     }
@@ -300,7 +321,7 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
             word.print("{s}\n", .{rs.editor orelse @constCast("")});
             return true;
         }
-        var h_ptr = hold + word.strlen(hold);
+        var h_ptr = hold + std.mem.len(@as([*:0]const u8, @ptrCast(hold)));
         while (h_ptr != hold and ((h_ptr - 1)[0] == ' ' or (h_ptr - 1)[0] == '\t' or (h_ptr - 1)[0] == '\n' or (h_ptr - 1)[0] == '\r')) {
             h_ptr -= 1;
             h_ptr[0] = 0;
@@ -325,7 +346,11 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
             word.print("editor not changed\n", .{});
             return true;
         }
-        _ = word.strcpy(&rs.ebuf, hold);
+        {
+            const hold_span = std.mem.span(@as([*:0]const u8, @ptrCast(hold)));
+            @memcpy(rs.ebuf[0..hold_span.len], hold_span);
+            rs.ebuf[hold_span.len] = 0;
+        }
         rs.editor = @as([*:0]u8, @ptrCast(&rs.ebuf));
         rs.baded = @intFromBool(repl.badEditor(rs));
         rs.echoing = rs.verbosity & rs.listing;
@@ -341,8 +366,13 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
         'a' => {
             if (is(lexs, "a") or is(lexs, "aux")) {
                 if (abi.getchar() != '\n') return;
-                _ = word.strcpy(&rs.linebuf, rs.miralib.?);
-                _ = word.strcat(&rs.linebuf, "/auxfile");
+                {
+                    const miralib_span = std.mem.span(rs.miralib.?);
+                    @memcpy(rs.linebuf[0..miralib_span.len], miralib_span);
+                    const suffix = "/auxfile";
+                    @memcpy(rs.linebuf[miralib_span.len..][0..suffix.len], suffix);
+                    rs.linebuf[miralib_span.len + suffix.len] = 0;
+                }
                 files.fileCopy(@as([*:0]const u8, @ptrCast(&rs.linebuf)));
                 return;
             }
@@ -402,8 +432,13 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
         'h' => {
             if (is(lexs, "h") or is(lexs, "help")) {
                 if (abi.getchar() != '\n') return;
-                _ = word.strcpy(&rs.linebuf, rs.miralib.?);
-                _ = word.strcat(&rs.linebuf, "/helpfile");
+                {
+                    const miralib_span = std.mem.span(rs.miralib.?);
+                    @memcpy(rs.linebuf[0..miralib_span.len], miralib_span);
+                    const suffix = "/helpfile";
+                    @memcpy(rs.linebuf[miralib_span.len..][0..suffix.len], suffix);
+                    rs.linebuf[miralib_span.len + suffix.len] = 0;
+                }
                 files.fileCopy(@as([*:0]const u8, @ptrCast(&rs.linebuf)));
                 return;
             }
@@ -577,7 +612,7 @@ pub fn editfile(rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_
     var temp_editor: [512]u8 = undefined;
     if (line_val == 0) {
         _ = std.fmt.bufPrintZ(&temp_editor, "{s}", .{q}) catch {};
-        const len = word.strlen(&temp_editor);
+        const len = std.mem.len(@as([*:0]const u8, @ptrCast(&temp_editor)));
         if (len > 0) {
             var tp_ptr = @as([*]u8, @ptrCast(&temp_editor)) + len - 1;
             while (tp_ptr != &temp_editor and tp_ptr[0] == ' ') : (tp_ptr -= 1) {}
@@ -603,17 +638,23 @@ pub fn editfile(rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_
         } else if ((p - 1)[0] == '!') {
             p -= 1;
             _ = std.fmt.bufPrintZ(p[0..16], "{d}", .{line_val}) catch "";
-            p += word.strlen(p);
+            p += std.mem.len(@as([*:0]const u8, @ptrCast(p)));
         } else if ((p - 1)[0] == '&') {
             p -= 1;
             _ = std.fmt.bufPrintZ(p[0..16], "{d}", .{col_val}) catch "";
-            p += word.strlen(p);
+            p += std.mem.len(@as([*:0]const u8, @ptrCast(p)));
         } else if ((p - 1)[0] == '%') {
             (p - 1)[0] = '"';
             p[0] = 0;
             const limit = @as(usize, @intCast(abi.BUFSIZE + @intFromPtr(ebuf_local) - @intFromPtr(p)));
-            _ = word.strncat(p, t_val, limit);
-            p += word.strlen(p);
+            {
+                const dst_len = std.mem.len(@as([*:0]const u8, @ptrCast(p)));
+                const src_span = std.mem.span(t_val);
+                const lim = @min(src_span.len, limit);
+                @memcpy(p[dst_len..][0..lim], src_span[0..lim]);
+                p[dst_len + lim] = 0;
+            }
+            p += std.mem.len(@as([*:0]const u8, @ptrCast(p)));
             p[0] = '"';
             p += 1;
             p[0] = 0;
@@ -628,8 +669,14 @@ pub fn editfile(rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_
         p += 1;
         p[0] = 0;
         const limit = @as(usize, @intCast(abi.BUFSIZE + @intFromPtr(ebuf_local) - @intFromPtr(p)));
-        _ = word.strncat(p, t_val, limit);
-        p += word.strlen(p);
+        {
+            const dst_len = std.mem.len(@as([*:0]const u8, @ptrCast(p)));
+            const src_span = std.mem.span(t_val);
+            const lim = @min(src_span.len, limit);
+            @memcpy(p[dst_len..][0..lim], src_span[0..lim]);
+            p[dst_len + lim] = 0;
+        }
+        p += std.mem.len(@as([*:0]const u8, @ptrCast(p)));
         p[0] = '"';
         p += 1;
         p[0] = 0;
@@ -669,7 +716,7 @@ pub fn finger(heap: *Heap, rs: *rt.RuntimeState, n: [*:0]const u8) void {
             word.print(" ||primitive to Miranda\n", .{});
         } else {
             const aka = abi.getaka(x);
-            const aka_opt: ?[*:0]const u8 = if (word.strcmp(aka, heap_mod.getId(x)) == 0) null else aka;
+            const aka_opt: ?[*:0]const u8 = if (std.mem.eql(u8, std.mem.span(aka), std.mem.span(heap_mod.getId(x)))) null else aka;
             if (heap_mod.idVal(x) == word.UNDEF and heap_mod.idType(x) != word.wrong_t) {
                 word.print(" ||(UNDEFINED) specified in ", .{});
             } else if (heap_mod.idVal(x) == word.FREE) {
@@ -717,7 +764,7 @@ pub fn diagnose(n: [*:0]const u8) void {
     };
     const presym_n = [_]i32{ 21, 8, 15, 8, 15, 31, 23, 22, 15, 21 };
     inline for (presym, presym_n) |sym, sym_n| {
-        if (word.strcmp(n, sym) == 0) {
+        if (std.mem.eql(u8, std.mem.span(n), std.mem.span(sym))) {
             word.print("{s} -- keyword (see manual, section {})\n", .{ n, sym_n });
             return;
         }
