@@ -20,7 +20,7 @@ const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
 
 /// `I x -> x` — identity.
-pub fn handleI(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleI(ctx: *ReductionCtx) void {
     if (reduce.downright(ctx)) {
         ctx.action = word.ACT_DONE;
         return;
@@ -29,7 +29,7 @@ pub fn handleI(ctx: *ReductionCtx) reduce.ReduceError!void {
 }
 
 /// `K x y -> x` — first projection.
-pub fn handleK(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleK(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
         ctx.action = word.ACT_DONE;
@@ -44,7 +44,7 @@ pub fn handleK(ctx: *ReductionCtx) reduce.ReduceError!void {
 }
 
 /// `S f g x -> (f x) (g x)` — applicative S.
-pub fn handleS(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleS(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -73,7 +73,7 @@ pub fn handleS(ctx: *ReductionCtx) reduce.ReduceError!void {
 /// `B f g x -> f (g x)` — composition.
 ///
 /// Tests: handleB: B f g x reduces to f (g x)
-pub fn handleB(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleB(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -104,7 +104,7 @@ test "handleB: B f g x reduces to f (g x)" {
 /// `CB f g x -> g (f x)` — reverse composition.
 ///
 /// Tests: handleCB: CB f g x reduces to g (f x)
-pub fn handleCB(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleCB(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -135,7 +135,7 @@ test "handleCB: CB f g x reduces to g (f x)" {
 /// `C f g x -> f x g` — flip the last two arguments.
 ///
 /// Tests: handleC: C f g x reduces to f x g
-pub fn handleC(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleC(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -167,7 +167,7 @@ test "handleC: C f g x reduces to f x g" {
 /// `Y f -> f (Y f)` — fixpoint, built as a self-referential (cyclic) node.
 ///
 /// Tests: handleY: Y f reduces to f (Y f)
-pub fn handleY(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleY(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
         return;
@@ -187,7 +187,7 @@ test "handleY: Y f reduces to f (Y f)" {
 /// `KI x y -> y` — second projection (`K I`).
 ///
 /// Tests: handleKI: KI x y reduces to y
-pub fn handleKI(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleKI(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
         return;
@@ -208,7 +208,7 @@ test "handleKI: KI x y reduces to y" {
 /// `S1 c f g x -> c (f x) (g x)` — Turner's S' with a context `c`.
 ///
 /// Tests: handleS1: S1 c f g x reduces to c (f x) (g x)
-pub fn handleS1(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleS1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     var arg3: Word = 0;
@@ -246,7 +246,7 @@ test "handleS1: S1 c f g x reduces to c (f x) (g x)" {
 /// `B1 c f g x -> c (f (g x))` — Turner's B' with a context `c`.
 ///
 /// Tests: handleB1: B1 c f g x reduces to c (f (g x))
-pub fn handleB1(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleB1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     var arg3: Word = 0;
@@ -283,7 +283,7 @@ test "handleB1: B1 c f g x reduces to c (f (g x))" {
 /// `C1 c f g x -> c (f x) g` — Turner's C' with a context `c`.
 ///
 /// Tests: handleC1: C1 c f g x reduces to c (f x) g
-pub fn handleC1(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleC1(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     var arg3: Word = 0;
@@ -320,7 +320,7 @@ test "handleC1: C1 c f g x reduces to c (f x) g" {
 /// `S_p f g x -> (f x) : (g x)` — paired S' (builds a cons).
 ///
 /// Tests: handleS_p: S_p f g x builds (f x) : (g x)
-pub fn handleS_p(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleS_p(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -349,7 +349,7 @@ test "handleS_p: S_p f g x builds (f x) : (g x)" {
 /// `B_p f g x -> f : (g x)` — paired B' (builds a cons).
 ///
 /// Tests: handleB_p: B_p f g x builds f : (g x)
-pub fn handleB_p(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleB_p(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -378,7 +378,7 @@ test "handleB_p: B_p f g x builds f : (g x)" {
 /// `C_p f g x -> (f x) : g` — paired C' (builds a cons).
 ///
 /// Tests: handleC_p: C_p f g x builds (f x) : g
-pub fn handleC_p(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleC_p(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -407,7 +407,7 @@ test "handleC_p: C_p f g x builds (f x) : g" {
 /// `iterate f x -> x : iterate f (f x)` — lazy infinite repeated application.
 ///
 /// Tests: handleITERATE: iterate f x heads x then repeats
-pub fn handleITERATE(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleITERATE(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
         ctx.action = word.ACT_DONE;
@@ -456,7 +456,7 @@ pub fn handleITERATE1(ctx: *ReductionCtx) reduce.ReduceError!void {
 /// `P x xs -> x : xs` — the cons (pair) constructor.
 ///
 /// Tests: handleP: P x xs builds the cons (x : xs)
-pub fn handleP(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleP(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
         ctx.action = word.ACT_DONE;
@@ -480,7 +480,7 @@ test "handleP: P x xs builds the cons (x : xs)" {
 /// `U f p -> f (hd p) (tl p)` — uncurry a pair.
 ///
 /// Tests: handleU: U f p applies f to hd p and tl p
-pub fn handleU(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleU(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
         ctx.action = word.ACT_DONE;
@@ -505,7 +505,7 @@ test "handleU: U f p applies f to hd p and tl p" {
 }
 
 /// Uncurry handling partial constructors: split via hd/tl for a cons, else via `BODY`/`LAST`, and apply `f`.
-pub fn handleUf(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleUf(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
         ctx.action = word.ACT_DONE;
@@ -1055,7 +1055,7 @@ pub fn handleBADCASE(ctx: *ReductionCtx) reduce.ReduceError!void {
 }
 
 /// Yield the program's command-line arguments as a Miranda list (`convArgs`).
-pub fn handleGETARGS(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleGETARGS(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
         return;
@@ -1100,7 +1100,7 @@ fn WEXITSTATUS(status: c_int) c_int {
 }
 
 /// `wait pid` — reap child `pid` (consulting the pending-children list) and yield its exit status.
-pub fn handleWAIT(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleWAIT(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
         return;
@@ -1133,7 +1133,7 @@ pub fn handleWAIT(ctx: *ReductionCtx) reduce.ReduceError!void {
 }
 
 /// Alternation: evaluate the first alternative, falling back to the second on `FAIL` — backtracking across multi-equation definitions.
-pub fn handleTRY(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleTRY(ctx: *ReductionCtx) void {
     var arg1: Word = 0;
     var arg2: Word = 0;
     if (reduce.getarg(ctx, &arg1)) {
@@ -1171,7 +1171,7 @@ pub fn handleTRY(ctx: *ReductionCtx) reduce.ReduceError!void {
 }
 
 /// Propagate `FAIL` up the spine, collapsing pending alternatives until a `TRY` catches it.
-pub fn handleFAIL(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleFAIL(ctx: *ReductionCtx) void {
     while (!ctx.spine.atArgumentChainBoundary()) {
         const node = ctx.spine.popNodeOnly().?;
         reduce.hdSet(ctx.heap, node, word.FAIL);
@@ -1260,7 +1260,7 @@ pub fn handleMKSTRICT(ctx: *ReductionCtx) reduce.ReduceError!void {
 }
 
 /// Strict 1-arg primitive: force the single argument, then re-dispatch (`NEG`, `HD`, the maths functions, ...).
-pub fn handleStrictMonadic(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleStrictMonadic(ctx: *ReductionCtx) void {
     if (reduce.downright(ctx)) {
         ctx.action = word.ACT_DONE;
         return;
@@ -1269,7 +1269,7 @@ pub fn handleStrictMonadic(ctx: *ReductionCtx) reduce.ReduceError!void {
 }
 
 /// Strict 2-arg primitive: force both arguments, then re-dispatch (`PLUS`, `EQ`, `MOD`, ...).
-pub fn handleStrictDiadic(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleStrictDiadic(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
         return;
@@ -1282,7 +1282,7 @@ pub fn handleStrictDiadic(ctx: *ReductionCtx) reduce.ReduceError!void {
 }
 
 /// Strict 3-arg primitive: force all three arguments, then re-dispatch (`Ush`, `STEPUNTIL`).
-pub fn handleStrictTriadic(ctx: *ReductionCtx) reduce.ReduceError!void {
+pub fn handleStrictTriadic(ctx: *ReductionCtx) void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
         return;

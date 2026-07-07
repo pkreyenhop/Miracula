@@ -357,10 +357,10 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             reduce.upLeft(ctx);
             if (lastArg(ctx) == word.True) {
                 reduce.rewriteToValue(ctx.heap, &ctx.e, word.K);
-                try combinators.handleK(ctx);
+                combinators.handleK(ctx);
             } else {
                 reduce.rewriteToValue(ctx.heap, &ctx.e, word.KI);
-                try combinators.handleKI(ctx);
+                combinators.handleKI(ctx);
             }
             return;
         },
@@ -383,11 +383,11 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             reduce.upLeft(ctx);
             if (lastArg(ctx) == word.True) {
                 ctx.e = word.I;
-                try combinators.handleStrictMonadic(ctx);
+                combinators.handleStrictMonadic(ctx);
             } else {
                 reduce.hdSet(ctx.heap, ctx.e, word.K);
                 reduce.downLeft(ctx);
-                try combinators.handleK(ctx);
+                combinators.handleK(ctx);
             }
             return;
         },
@@ -396,10 +396,10 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             if (lastArg(ctx) == word.True) {
                 reduce.hdSet(ctx.heap, ctx.e, word.K);
                 reduce.downLeft(ctx);
-                try combinators.handleK(ctx);
+                combinators.handleK(ctx);
             } else {
                 ctx.e = word.I;
-                try combinators.handleStrictMonadic(ctx);
+                combinators.handleStrictMonadic(ctx);
             }
             return;
         },
@@ -951,7 +951,7 @@ fn handleReadyNUMVAL(ctx: *ReductionCtx) reduce.ReduceError!void {
 /// `^` (power): integer exponentiation via `big.pow` when both operands are
 /// non-negative integers; otherwise falls back to `f64` `pow`, reporting a
 /// domain error for a negative double base.
-fn handleReadyPOWER(ctx: *ReductionCtx) reduce.ReduceError!void {
+fn handleReadyPOWER(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.upLeft(ctx);
     var fa: f64 = 0.0;
@@ -986,7 +986,7 @@ fn handleReadyPOWER(ctx: *ReductionCtx) reduce.ReduceError!void {
 /// combinator): renders the constructor name and its arguments (space- or
 /// parenthesis-separated per `ctx.args[1]`, the "needs parens" flag),
 /// short-circuiting to `"<unprintable>"` for a suppressed/hidden constructor.
-fn handleReadyUsh(ctx: *ReductionCtx) reduce.ReduceError!void {
+fn handleReadyUsh(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     reduce.GETARG(ctx, &ctx.args[2]);
