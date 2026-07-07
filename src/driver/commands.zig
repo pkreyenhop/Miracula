@@ -562,7 +562,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
 
 /// Run the `/man` command: launch the manual via the library's `menudriver`.
 pub fn manaction(rs: *rt.RuntimeState) void {
-    _ = abi.sprintf(&rs.linebuf, "\"%s/menudriver\" \"%s/manual\"", .{ rs.miralib.?, rs.miralib.? });
+    _ = std.fmt.bufPrintZ(&rs.linebuf, "\"{s}/menudriver\" \"{s}/manual\"", .{ rs.miralib.?, rs.miralib.? }) catch {};
     _ = abi.system(&rs.linebuf);
 }
 
@@ -602,11 +602,11 @@ pub fn editfile(rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_
             q += 1;
         } else if ((p - 1)[0] == '!') {
             p -= 1;
-            _ = abi.sprintf(p, "%d", .{line_val});
+            _ = std.fmt.bufPrintZ(p[0..16], "{d}", .{line_val}) catch "";
             p += word.strlen(p);
         } else if ((p - 1)[0] == '&') {
             p -= 1;
-            _ = abi.sprintf(p, "%d", .{col_val});
+            _ = std.fmt.bufPrintZ(p[0..16], "{d}", .{col_val}) catch "";
             p += word.strlen(p);
         } else if ((p - 1)[0] == '%') {
             (p - 1)[0] = '"';

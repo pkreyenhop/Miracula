@@ -279,7 +279,7 @@ fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
                 unreachable;
             };
             const logfilname = slice.ptr;
-            _ = abi.sprintf(logfilname, "miralog/%s", .{p.?});
+            _ = std.fmt.bufPrintZ(slice, "miralog/{s}", .{p.?}) catch {};
             const fil = word.fopen(logfilname, "a");
             if (fil != null) {
                 _ = abi.dup2(word.fileno(fil), 2);
