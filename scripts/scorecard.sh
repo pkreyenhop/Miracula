@@ -47,7 +47,7 @@ done
 # FFI exemption: the C-shim, standalone tools, and the test harness
 # legitimately use C types/pointers/globals and are excluded from every
 # C-ism / shared-state metric (not from the structure or readability ones).
-FFI_EXEMPT='src/runtime/main_clib\.zig|src/runtime/c_abi\.zig|src/tools/'
+FFI_EXEMPT='src/runtime/os\.zig|src/runtime/c_abi\.zig|src/tools/'
 TEST_EXEMPT='testutil\.zig|_tests?\.zig'
 NONFFI_EXEMPT="${FFI_EXEMPT}|${TEST_EXEMPT}"
 
@@ -63,8 +63,8 @@ add_metric() { # name count target detail
 }
 
 # ---------------------------------------------------------------------------
-# Category 1: C-ism elimination (target: confined to os.zig once it exists;
-# today, confined to the FFI shim src/runtime/main_clib.zig).
+# Category 1: C-ism elimination (target: confined to the FFI shim
+# src/runtime/os.zig, renamed from main_clib.zig in Phase 2 step 5).
 # ---------------------------------------------------------------------------
 m=$(zg 'c_int|c_long|c_uint|c_ulong' | drop_ffi_sig)
 add_metric "c_int/c_long/c_uint/c_ulong (non-FFI)" "$(count "$m")" "0 outside os.zig" "$m"

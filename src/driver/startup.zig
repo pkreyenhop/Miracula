@@ -12,7 +12,7 @@ const errors = @import("../runtime/errors.zig");
 const strtab = @import("../runtime/strtab.zig");
 const cs = @import("../compiler/compiler_state.zig").cs;
 const rt = @import("../runtime/runtime_state.zig");
-const abi = @import("../runtime/main_clib.zig");
+const abi = @import("../runtime/os.zig");
 
 const Word = word.Word;
 const NIL = word.NIL;
@@ -730,7 +730,7 @@ pub fn versionString(v: c_int) [*:0]const u8 {
     if (v < 0 or v > 999999) {
         return "???";
     }
-    // Was `abi.snprintf(..., "%.3f", ...)` -- main_clib.zig's formatC engine
+    // Was `abi.snprintf(..., "%.3f", ...)` -- os.zig's formatC engine
     // discards the precision for every float specifier (confirmed this
     // session while converting runtime/reducer/ready.zig's showfloat/
     // showscaled; see formatMiraFixed's doc comment there), always doing

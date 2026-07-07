@@ -7,7 +7,7 @@
 
 const std = @import("std");
 const rt = @import("runtime/runtime_state.zig");
-const abi = @import("runtime/main_clib.zig");
+const abi = @import("runtime/os.zig");
 const startup = @import("driver/startup.zig");
 const interp_mod = @import("runtime/interp.zig");
 

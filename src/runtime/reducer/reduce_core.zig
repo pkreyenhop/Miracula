@@ -107,7 +107,7 @@ const reduce_mod = @import("../reduce.zig");
 const reducer_reduce = @import("reduce.zig");
 const lex_mod = @import("../../parser/lex.zig");
 const big = @import("../big.zig");
-const main_clib = @import("../main_clib.zig");
+const os = @import("../os.zig");
 
 // Cell access through a spine word (mask off direction bits, then index the
 // heap). This is the raw-`Word` value boundary the B2 `Heap`/`Value` seam will
@@ -395,35 +395,35 @@ pub inline fn suppressed(heap: *Heap, x: Word) bool {
 
 /// The standard-error `Stream` handle.
 pub fn getStderr() ?*word.Stream {
-    const T = @TypeOf(main_clib.stderr);
+    const T = @TypeOf(os.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
-        return main_clib.stderr();
+        return os.stderr();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return main_clib.stderr();
+        return os.stderr();
     } else {
-        return main_clib.stderr;
+        return os.stderr;
     }
 }
 /// The standard-output `Stream` handle.
 pub fn getStdout() ?*word.Stream {
-    const T = @TypeOf(main_clib.stdout);
+    const T = @TypeOf(os.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
-        return main_clib.stdout();
+        return os.stdout();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return main_clib.stdout();
+        return os.stdout();
     } else {
-        return main_clib.stdout;
+        return os.stdout;
     }
 }
 /// The standard-input `Stream` handle.
 pub fn getStdin() ?*word.Stream {
-    const T = @TypeOf(main_clib.stdin);
+    const T = @TypeOf(os.stdin);
     if (comptime @typeInfo(T) == .@"fn") {
-        return main_clib.stdin();
+        return os.stdin();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return main_clib.stdin();
+        return os.stdin();
     } else {
-        return main_clib.stdin;
+        return os.stdin;
     }
 }
 

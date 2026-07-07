@@ -1,8 +1,13 @@
-//! main_clib.zig — the Zig-native C-standard-library shim. Implements the
-//! `printf`/`fopen`/`getc`/`fork`/`wait`/`errno`/… surface the C-ported
+//! os.zig (renamed from main_clib.zig, Phase 2 step 5, docs/ZIG_NATIVE_PLAN.md)
+//! — the Zig-native C-standard-library/OS shim. Implements the
+//! `fork`/`wait`/`errno`/signals/rlimits/`sscanf` surface the C-ported
 //! interpreter calls, layered over `std` and the raw OS syscalls, so the binary
 //! links no external libc. This is the project's irreducible FFI boundary (the
-//! few remaining `extern fn`s are the OS syscall floor).
+//! few remaining `extern fn`s are the OS syscall floor). `printf`/`fopen`/
+//! `getc` and the rest of stdio live in `stream.zig`, re-exported from here
+//! (and from `word.zig`) unchanged; the value-vocabulary constants re-exported
+//! here (`CONS`/`AP`/combinator codes/…) are a much older consolidation this
+//! rename didn't revisit.
 
 const word_mod = @import("word.zig");
 const std = @import("std");

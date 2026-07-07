@@ -25,7 +25,7 @@ const lex = @import("../parser/lex.zig");
 const symbols = @import("../semantics/symbols.zig");
 const big = @import("big.zig");
 const reduce = @import("reduce.zig");
-const main_clib = @import("main_clib.zig");
+const os = @import("os.zig");
 const setup = @import("../compiler/setup.zig");
 const cs = compiler_state.cs;
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
@@ -240,7 +240,7 @@ pub const Heap = struct {
     pub fn resetheap(self: *Heap) void {
         if (rt.rs().SPACELIMIT < self.trueheapsize()) {
             _ = word.printErr("impossible event in resetheap\n", .{});
-            main_clib.exit(1);
+            os.exit(1);
         }
         const bigtop_val = @as(usize, @intCast(self.BIGTOP()));
         self.cells.resize(rt.allocator, bigtop_val + 1) catch mallocPanic("heap");
@@ -385,7 +385,7 @@ pub const Heap = struct {
                         _ = word.printErr("not enough heap to compile current script\n", .{});
                         _ = word.printErr("script = \"{s}\", heap = {d}\n", .{ rt.rs().current_script orelse @as([*:0]const u8, "(null)"), self.SPACE });
                     }
-                    main_clib.exit(1);
+                    os.exit(1);
                 }
             } else {
                 self.hnogcs = heap().nogcs + 1;
@@ -845,7 +845,7 @@ pub fn getChar(x: Word) Word {
         .atom => {},
     }
     std.debug.print("impossible event in getChar(x), tag[x]=={d}\n", .{heap().getTag(x)});
-    main_clib.exit(1);
+    os.exit(1);
 }
 
 /// Whether `x` is a char value (1/0).
@@ -1006,7 +1006,7 @@ pub fn getDbl(x: Word) f64 {
 /// Tests: stoDbl / getDbl / setdbl: round-trip an f64 in a DOUBLE cell
 pub fn stoDbl(R_val: f64) Word {
     if (!std.math.isFinite(R_val)) {
-        fpeError(main_clib.SIGFPE);
+        fpeError(os.SIGFPE);
     }
     var r: fpdatum = undefined;
     r.real = R_val;
@@ -1022,7 +1022,7 @@ pub fn stoDbl(R_val: f64) Word {
 /// Tests: stoDbl / getDbl / setdbl: round-trip an f64 in a DOUBLE cell
 pub fn setdbl(x: Word, R_val: f64) void {
     if (!std.math.isFinite(R_val)) {
-        fpeError(main_clib.SIGFPE);
+        fpeError(os.SIGFPE);
     }
     var r: fpdatum = undefined;
     r.real = R_val;
@@ -1081,7 +1081,7 @@ pub fn resetheap() void {
 /// Report (non-fatally) a failed allocation for `x`.
 pub fn mallocfail(x: [*:0]const u8) void {
     _ = word.printErr("panic: cannot find enough free space for {s}\n", .{x});
-    main_clib.exit(1);
+    os.exit(1);
 }
 
 /// Panic and abort: outTerm of memory allocating `what`.
@@ -1135,11 +1135,11 @@ pub fn stoId(p1: [*:0]const u8) Word {
 pub fn getword(file: ?*word.Stream) Word {
     var s: i32 = 0;
     var i: usize = @sizeOf(Word);
-    var x = @as(Word, @intCast(main_clib.getc(file)));
+    var x = @as(Word, @intCast(os.getc(file)));
     while (i > 1) {
         i -= 1;
         s += 8;
-        const next_ch = @as(Word, @intCast(main_clib.getc(file)));
+        const next_ch = @as(Word, @intCast(os.getc(file)));
         x |= next_ch << @intCast(s);
     }
     return x;
@@ -1219,8 +1219,8 @@ pub fn okdump(core_st: *core.CoreState, t_ptr: [*:0]const u8) bool {
     const f = word.fopen(&obf, "r") orelse return false;
     defer _ = word.fclose(f);
 
-    const ch1 = main_clib.getc(f);
-    const ch2 = main_clib.getc(f);
+    const ch1 = os.getc(f);
+    const ch2 = os.getc(f);
     if (ch1 == word.XVERSION and ch2 != 0) {
         return true;
     }
@@ -1248,12 +1248,12 @@ pub fn geterrlin(core_st: *core.CoreState, lexs: *lex_state.LexState, t_ptr: [*:
     const f = word.fopen(&obf, "r") orelse return 0;
     defer _ = word.fclose(f);
 
-    const ch1 = main_clib.getc(f);
+    const ch1 = os.getc(f);
     if (ch1 != word.XVERSION) {
         return 0;
     }
 
-    const ch2 = main_clib.getc(f);
+    const ch2 = os.getc(f);
     if (ch2 != 0 and ch2 != 1) {
         return 0;
     }
@@ -1262,7 +1262,7 @@ pub fn geterrlin(core_st: *core.CoreState, lexs: *lex_state.LexState, t_ptr: [*:
 
     // now check this is right dump
     setprefix(t_ptr);
-    var ch = main_clib.getc(f);
+    var ch = os.getc(f);
     lexs.dicq = lexs.dicp;
     if (ch != '/') {
         const prefix_len = @as(usize, @intCast(heap().preflen));
@@ -1276,16 +1276,16 @@ pub fn geterrlin(core_st: *core.CoreState, lexs: *lex_state.LexState, t_ptr: [*:
     lexs.dicq += 1;
 
     while (true) {
-        ch = main_clib.getc(f);
+        ch = os.getc(f);
         lexs.dicq[0] = @intCast(ch);
         lexs.dicq += 1;
-        if (ch == 0 or ch == main_clib.EOF) {
+        if (ch == 0 or ch == os.EOF) {
             break;
         }
     }
 
     const mtime = getword(f);
-    if (main_clib.strcmp(lexs.dicp, t_ptr) != 0 or mtime != fileMtime(t_ptr)) {
+    if (os.strcmp(lexs.dicp, t_ptr) != 0 or mtime != fileMtime(t_ptr)) {
         return 0; // wrong dump
     }
 
@@ -1835,7 +1835,7 @@ pub fn dumpOb(x: Word, file: ?*word.Stream) void {
         .FILEINFO => {
             var line = t(x);
             const path = castPtr(h(x));
-            if (main_clib.strcmp(path, heap().CFN.?) == 0) {
+            if (os.strcmp(path, heap().CFN.?) == 0) {
                 _ = word.putc(word.HERE_X, file);
             } else {
                 _ = word.fprint(file, "{c}{s}", .{ @as(u8, @intCast(word.HERE_X)), mkrel(path) });
@@ -1896,7 +1896,7 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
     comp.CLASHES = word.NIL;
     dsetup();
     setprefix(src);
-    if (main_clib.getc(file) != wordsize or main_clib.getc(file) != word.XVERSION) {
+    if (os.getc(file) != wordsize or os.getc(file) != word.XVERSION) {
         comp.BAD_DUMP = -1;
         return word.NIL;
     }
@@ -1936,29 +1936,29 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
     comp.TSUPPRESSED = word.NIL;
 
     var files_list: Word = word.NIL;
-    var ch: Word = main_clib.getc(file);
-    while (ch != 0 and ch != main_clib.EOF and comp.BAD_DUMP == 0) {
+    var ch: Word = os.getc(file);
+    while (ch != 0 and ch != os.EOF and comp.BAD_DUMP == 0) {
         var s: Word = 0;
         var holde: Word = 0;
         lexs.dicq = lexs.dicp;
         if (files_list == word.NIL and ch == 1) {
             holde = getword(file);
-            ch = main_clib.getc(file);
+            ch = os.getc(file);
             if (main_flag != 0) {
                 core_st.errline = holde;
             }
         }
         if (ch != '/') {
-            _ = main_clib.strcpy(lexs.dicp, &heap().prefix);
+            _ = os.strcpy(lexs.dicp, &heap().prefix);
             lexs.dicq = lexs.dicp + @as(usize, @intCast(heap().preflen));
         }
         lexs.dicq[0] = @intCast(ch);
         lexs.dicq += 1;
         while (true) {
-            ch = main_clib.getc(file);
+            ch = os.getc(file);
             lexs.dicq[0] = @intCast(ch);
             lexs.dicq += 1;
-            if (ch == 0 or ch == main_clib.EOF) {
+            if (ch == 0 or ch == os.EOF) {
                 break;
             }
         }
@@ -1966,9 +1966,9 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
             lex.dicovflo();
         }
         ch = getword(file);
-        s = main_clib.getc(file);
+        s = os.getc(file);
         if (files_list == word.NIL) {
-            if (main_clib.strcmp(lexs.dicp, src) != 0) {
+            if (os.strcmp(lexs.dicp, src) != 0) {
                 comp.BAD_DUMP = 1;
                 if (aliases != word.NIL) {
                     unscramble(comp, aliases);
@@ -1978,9 +1978,9 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
         }
         heap().CFN = getId(name(heap()));
         files_list = cons(makeFil(heap().CFN, ch, s, loadDefs(comp, rs, lexs, file)), files_list);
-        ch = main_clib.getc(file);
+        ch = os.getc(file);
     }
-    if (ch == main_clib.EOF or comp.BAD_DUMP != 0) {
+    if (ch == os.EOF or comp.BAD_DUMP != 0) {
         if (comp.BAD_DUMP == 0) {
             comp.BAD_DUMP = 2;
         }
@@ -1995,22 +1995,22 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
             core_st.errline = ch;
         }
         while (true) {
-            ch = main_clib.getc(file);
-            if (ch == main_clib.EOF) {
+            ch = os.getc(file);
+            if (ch == os.EOF) {
                 break;
             }
             lexs.dicq = lexs.dicp;
             if (ch != '/') {
-                _ = main_clib.strcpy(lexs.dicp, &heap().prefix);
+                _ = os.strcpy(lexs.dicp, &heap().prefix);
                 lexs.dicq = lexs.dicp + @as(usize, @intCast(heap().preflen));
             }
             lexs.dicq[0] = @intCast(ch);
             lexs.dicq += 1;
             while (true) {
-                ch = main_clib.getc(file);
+                ch = os.getc(file);
                 lexs.dicq[0] = @intCast(ch);
                 lexs.dicq += 1;
-                if (ch == 0 or ch == main_clib.EOF) {
+                if (ch == 0 or ch == os.EOF) {
                     break;
                 }
             }
@@ -2019,7 +2019,7 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
             }
             ch = getword(file);
             if (rs.oldfiles == word.NIL) {
-                if (main_clib.strcmp(lexs.dicp, src) != 0) {
+                if (os.strcmp(lexs.dicp, src) != 0) {
                     comp.BAD_DUMP = 1;
                     if (aliases != word.NIL) {
                         unscramble(comp, aliases);
@@ -2070,7 +2070,7 @@ pub fn bindparams(comp: *compiler_state.CompilerState, formal_val: Word, actual_
         while (formal != word.NIL and (actual == word.NIL or blk: {
             f = castPtr(h(h(t(h(formal)))));
             a = h(h(actual));
-            break :blk main_clib.strcmp(f, getId(a)) < 0;
+            break :blk os.strcmp(f, getId(a)) < 0;
         })) {
             comp.MISSING = cons(h(t(h(formal))), comp.MISSING);
             formal = t(formal);
@@ -2078,7 +2078,7 @@ pub fn bindparams(comp: *compiler_state.CompilerState, formal_val: Word, actual_
         if (actual == word.NIL) {
             break;
         }
-        if (formal == word.NIL or main_clib.strcmp(f, getId(a)) != 0) {
+        if (formal == word.NIL or os.strcmp(f, getId(a)) != 0) {
             comp.DETROP = cons(a, comp.DETROP);
         } else {
             const fa = if (t(t(h(formal))) == word.type_t) tArity(h(h(formal))) else -1;
@@ -2164,21 +2164,21 @@ pub fn dgrow() void {
 ///
 /// Tests: dumpOb / loadDefs: roundtrip a cons of two ints through the .x format
 pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, file: ?*word.Stream) Word {
-    var ch = main_clib.getc(file);
+    var ch = os.getc(file);
     var defs: Word = word.NIL;
-    while (ch != main_clib.EOF) {
+    while (ch != os.EOF) {
         if (heap().stackp == heap().dlim) {
             dgrow();
         }
         switch (ch) {
             word.CHAR_X => {
-                stackpPush(main_clib.getc(file) + 128);
+                stackpPush(os.getc(file) + 128);
             },
             word.TVAR_X => {
-                stackpPush(mktvar(main_clib.getc(file)));
+                stackpPush(mktvar(os.getc(file)));
             },
             word.SHORT_X => {
-                var val = main_clib.getc(file);
+                var val = os.getc(file);
                 if ((val & 128) != 0) {
                     val = val | (~@as(c_int, 127));
                 }
@@ -2202,8 +2202,8 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs:
                 stackpPush(make(.UNICODE, getint(file), 0));
             },
             word.PN_X => {
-                var val = main_clib.getc(file);
-                val = val | (main_clib.getc(file) << 8);
+                var val = os.getc(file);
+                val = val | (os.getc(file) << 8);
                 const idx = heap().PNBASE + val;
                 stackpPush(if (idx < lexs.nextpn) lexs.pnvec.?[@intCast(idx)] else lex.stoPn(idx));
             },
@@ -2212,8 +2212,8 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs:
                 stackpPush(if (idx < lexs.nextpn) lexs.pnvec.?[@intCast(idx)] else lex.stoPn(idx));
             },
             word.CONSTRUCT_X => {
-                var val = main_clib.getc(file);
-                val = val | (main_clib.getc(file) << 8);
+                var val = os.getc(file);
+                val = val | (os.getc(file) << 8);
                 stackpSetTop(constructor(heap(), val, stackpTop()));
             },
             word.RV_X => {
@@ -2223,10 +2223,10 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs:
             word.ID_X => {
                 lexs.dicq = lexs.dicp;
                 while (true) {
-                    const next = main_clib.getc(file);
+                    const next = os.getc(file);
                     lexs.dicq[0] = @intCast(next);
                     lexs.dicq += 1;
-                    if (next == 0 or next == main_clib.EOF) {
+                    if (next == 0 or next == os.EOF) {
                         break;
                     }
                 }
@@ -2245,10 +2245,10 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs:
             word.AKA_X => {
                 lexs.dicq = lexs.dicp;
                 while (true) {
-                    const next = main_clib.getc(file);
+                    const next = os.getc(file);
                     lexs.dicq[0] = @intCast(next);
                     lexs.dicq += 1;
-                    if (next == 0 or next == main_clib.EOF) {
+                    if (next == 0 or next == os.EOF) {
                         break;
                     }
                 }
@@ -2259,31 +2259,31 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs:
             },
             word.HERE_X => {
                 lexs.dicq = lexs.dicp;
-                var next = main_clib.getc(file);
+                var next = os.getc(file);
                 if (next == 0) {
-                    next = main_clib.getc(file);
-                    next = next | (main_clib.getc(file) << 8);
+                    next = os.getc(file);
+                    next = next | (os.getc(file) << 8);
                     stackpPush(fileinfo(strtab.strBits(strtab.table(), heap().CFN.?), next));
                 } else {
                     if (next != '/') {
-                        _ = main_clib.strcpy(lexs.dicp, &heap().prefix);
+                        _ = os.strcpy(lexs.dicp, &heap().prefix);
                         lexs.dicq = lexs.dicp + @as(usize, @intCast(heap().preflen));
                     }
                     lexs.dicq[0] = @intCast(next);
                     lexs.dicq += 1;
                     while (true) {
-                        const val = main_clib.getc(file);
+                        const val = os.getc(file);
                         lexs.dicq[0] = @intCast(val);
                         lexs.dicq += 1;
-                        if (val == 0 or val == main_clib.EOF) {
+                        if (val == 0 or val == os.EOF) {
                             break;
                         }
                     }
                     if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > rs.DICSPACE) {
                         lex.dicovflo();
                     }
-                    var line = main_clib.getc(file);
-                    line = line | (main_clib.getc(file) << 8);
+                    var line = os.getc(file);
+                    line = line | (os.getc(file) << 8);
                     stackpPush(fileinfo(strtab.strBits(strtab.table(), getId(name(heap()))), line));
                 }
             },
@@ -2306,7 +2306,7 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs:
                         if (getTag(top) != .ID) {
                             if (top == word.NIL) {
                                 heap().stackp = heap().stackp.? - 4;
-                                ch = main_clib.getc(file);
+                                ch = os.getc(file);
                                 continue;
                             }
                             const ch_val = stackpPop();
@@ -2337,7 +2337,7 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs:
                                 pnValPtr(ch_val).* = ap(akap_val, fileinfo(strtab.strBits(strtab.table(), heap().CFN.?), 0));
                             }
                             defs = cons(ch_val, defs);
-                            ch = main_clib.getc(file);
+                            ch = os.getc(file);
                             continue;
                         }
                         const top_val = stackpTop();
@@ -2348,14 +2348,14 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs:
                                 if (a == word.NIL) {
                                     std.debug.print("impossible event in cyclic alias ({s})\n", .{getId(top_val)});
                                     heap().stackp = heap().stackp.? - 4;
-                                    ch = main_clib.getc(file);
+                                    ch = os.getc(file);
                                     continue;
                                 }
                                 defs = cons(stackpPop(), defs);
                                 hp(h(h(a))).* = stackpPop(); // who
                                 hp(t(h(h(a)))).* = stackpPop(); // type
                                 tp(t(h(h(a)))).* = stackpPop(); // value
-                                ch = main_clib.getc(file);
+                                ch = os.getc(file);
                                 continue;
                             }
                             comp.CLASHES = add1(heap(), top_val, comp.CLASHES);
@@ -2391,7 +2391,7 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs:
                 stackpPush(if (ch > 127) ch + 256 else ch);
             },
         }
-        ch = main_clib.getc(file);
+        ch = os.getc(file);
     }
     comp.BAD_DUMP = 4;
     return defs;
@@ -2556,15 +2556,15 @@ pub fn alfasort(x_val: Word) Word {
 
 /// Detect whether the current locale is UTF-8 (1/0).
 pub fn utf8test() bool {
-    var lang = main_clib.getenv("LC_CTYPE");
+    var lang = os.getenv("LC_CTYPE");
     if (lang == null) {
-        lang = main_clib.getenv("LANG");
+        lang = os.getenv("LANG");
     }
     if (lang) |l| {
-        if (main_clib.strstr(l, "UTF-8") != null or
-            main_clib.strstr(l, "UTF8") != null or
-            main_clib.strstr(l, "utf-8") != null or
-            main_clib.strstr(l, "utf8") != null)
+        if (os.strstr(l, "UTF-8") != null or
+            os.strstr(l, "UTF8") != null or
+            os.strstr(l, "utf-8") != null or
+            os.strstr(l, "utf8") != null)
         {
             return true;
         }
@@ -2773,7 +2773,7 @@ test "dumpOb / loadDefs: roundtrip a cons of two ints through the .x format" {
     _ = word.fclose(f_read.?);
 
     // Clean up temp file
-    _ = main_clib.unlink(filename);
+    _ = os.unlink(filename);
 
     // 7. Verify structural equality
     try std.testing.expect(@intFromPtr(heap().stackp.?) > @intFromPtr(old_stackp.?));

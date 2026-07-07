@@ -16,7 +16,7 @@
 //! slash commands, not Miranda expression parsing), and value-building
 //! helpers (`convArgs`/`strConv`) the reducer calls directly. Several of
 //! these are re-exported under the same names through
-//! `runtime/main_clib.zig` for callers that reach them via that module
+//! `runtime/os.zig` for callers that reach them via that module
 //! instead of importing this one directly.
 
 const std = @import("std");
@@ -30,7 +30,7 @@ const heap_mod = @import("../runtime/heap.zig");
 const Heap = heap_mod.Heap;
 const rt = @import("../runtime/runtime_state.zig");
 const types = @import("../compiler/types.zig");
-const main_clib = @import("../runtime/main_clib.zig");
+const os = @import("../runtime/os.zig");
 const core_state = @import("../runtime/core_state.zig");
 const symbols = @import("../semantics/symbols.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
@@ -46,13 +46,13 @@ const genlstatType = types.genlstatType;
 
 /// The standard-input `Stream` handle.
 fn getStdin() ?*word.Stream {
-    const T = @TypeOf(main_clib.stdin);
+    const T = @TypeOf(os.stdin);
     if (comptime @typeInfo(T) == .@"fn") {
-        return main_clib.stdin();
+        return os.stdin();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return main_clib.stdin();
+        return os.stdin();
     } else {
-        return main_clib.stdin;
+        return os.stdin;
     }
 }
 
@@ -133,7 +133,7 @@ inline fn charOf(ch: c_int) ?u8 {
 /// Resolve a `~`-relative path `n` against ``.
 fn gethome(n: [*:0]const u8) ?[*:0]const u8 {
     if (n[0] == 0) {
-        if (main_clib.getenv("HOME")) |h_dir| {
+        if (os.getenv("HOME")) |h_dir| {
             return h_dir;
         }
         return null;
@@ -143,19 +143,19 @@ fn gethome(n: [*:0]const u8) ?[*:0]const u8 {
 
 /// Read the next whitespace-delimited token into the dictionary buffer.
 pub fn token() ?[*:0]u8 {
-    var ch = main_clib.getchar();
+    var ch = os.getchar();
     ls().dicq = ls().dicp; // uses top of dictionary as temporary work space
     while (ch == ' ' or ch == '\t') {
-        ch = main_clib.getchar();
+        ch = os.getchar();
     }
     if (ch == '~') {
         ls().dicq[0] = @intCast(ch);
         ls().dicq += 1;
-        ch = main_clib.getchar();
+        ch = os.getchar();
         while ((if (charOf(ch)) |b| std.ascii.isAlphanumeric(b) else false) or ch == '-' or ch == '_' or ch == '.') {
             ls().dicq[0] = @intCast(ch);
             ls().dicq += 1;
-            ch = main_clib.getchar();
+            ch = os.getchar();
         }
         ls().dicq[0] = 0;
         if (gethome(ls().dicp + 1)) |h_dir| {
@@ -165,7 +165,7 @@ pub fn token() ?[*:0]u8 {
             ls().dicq = ls().dicp + std.mem.len(ls().dicp);
         }
     }
-    while (ch != main_clib.EOF and !(if (charOf(ch)) |b| std.ascii.isWhitespace(b) else false)) {
+    while (ch != os.EOF and !(if (charOf(ch)) |b| std.ascii.isWhitespace(b) else false)) {
         ls().dicq[0] = @intCast(ch);
         ls().dicq += 1;
         if (ch == '%') {
@@ -183,16 +183,16 @@ pub fn token() ?[*:0]u8 {
                 ls().dicq += std.mem.len(rt.rs().current_script.?);
             }
         }
-        ch = main_clib.getchar();
+        ch = os.getchar();
     }
     ls().dicq[0] = 0;
     ls().dicq += 1;
     ovflocheck();
     while (ch == ' ' or ch == '\t') {
-        ch = main_clib.getchar();
+        ch = os.getchar();
     }
     if (getStdin()) |stdin_file| {
-        _ = main_clib.ungetc(ch, stdin_file);
+        _ = os.ungetc(ch, stdin_file);
     }
     if (ls().dicp[0] == 0) {
         return null;
@@ -275,17 +275,17 @@ pub fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
 /// Read a whole input line into a buffer.
 pub fn rdline() ?[*:0]u8 {
     var p: [*]u8 = &ls().rdline_linebuf;
-    var ch = main_clib.getchar();
+    var ch = os.getchar();
     var expansion: Word = 0;
     while (ch == ' ' or ch == '\t') {
-        ch = main_clib.getchar();
+        ch = os.getchar();
     }
     if (ch == '\n' or (ch == '!' and ls().rdline_linebuf[0] == 0)) {
         if (ls().rdline_linebuf[0] != 0) {
             word.print("!{s}", .{@as([*:0]const u8, @ptrCast(&ls().rdline_linebuf))});
         }
-        while (ch != '\n' and ch != main_clib.EOF) {
-            ch = main_clib.getchar();
+        while (ch != '\n' and ch != os.EOF) {
+            ch = os.getchar();
         }
         return @ptrCast(&ls().rdline_linebuf);
     }
@@ -294,14 +294,14 @@ pub fn rdline() ?[*:0]u8 {
         p = @ptrCast(&ls().rdline_linebuf[std.mem.len(@as([*:0]const u8, @ptrCast(&ls().rdline_linebuf))) - 1]); // p now points at old '\n'
     } else {
         if (getStdin()) |stdin_file| {
-            _ = main_clib.ungetc(ch, stdin_file);
+            _ = os.ungetc(ch, stdin_file);
         }
     }
     while (true) {
-        ch = main_clib.getchar();
+        ch = os.getchar();
         p[0] = @intCast(ch);
         p += 1;
-        if (ch == '\n' or ch == main_clib.EOF) {
+        if (ch == '\n' or ch == os.EOF) {
             break;
         }
         const offset = @as(usize, @intFromPtr(p)) - @as(usize, @intFromPtr(&ls().rdline_linebuf));
@@ -309,8 +309,8 @@ pub fn rdline() ?[*:0]u8 {
             p[0] = 0;
             word.printErr("sorry, !command too long (limit={} chars): {s}...\n", .{ @as(c_int, 1024), @as([*:0]const u8, @ptrCast(&ls().rdline_linebuf)) });
             while (true) {
-                ch = main_clib.getchar();
-                if (ch == '\n' or ch == main_clib.EOF) {
+                ch = os.getchar();
+                if (ch == '\n' or ch == os.EOF) {
                     break;
                 }
             }
@@ -664,11 +664,11 @@ pub fn resetLex(heap: *Heap) void {
 /// Reset the full lexer state (between sessions).
 pub fn resetState(heap: *Heap) void {
     if (core_state.s().commandmode != 0) {
-        while (ls().c != '\n' and ls().c != main_clib.EOF) {
+        while (ls().c != '\n' and ls().c != os.EOF) {
             if (rt.rs().s_in) |sin| {
-                ls().c = main_clib.getc(sin);
+                ls().c = os.getc(sin);
             } else {
-                ls().c = main_clib.EOF;
+                ls().c = os.EOF;
             }
         }
     }

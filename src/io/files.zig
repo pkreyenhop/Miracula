@@ -1,6 +1,6 @@
 //! files.zig — filesystem helpers for the interpreter's loader and REPL.
 //!
-//! Thin wrappers over `platform`/`main_clib` (stat, copy, unlink, terminal
+//! Thin wrappers over `platform`/`os` (stat, copy, unlink, terminal
 //! width) plus the file-identity helpers the module loader uses to detect when
 //! a source file has changed or two paths name the same inode. Most entry
 //! points are re-exported through `main.zig` and called as `main.<fn>`.
@@ -8,7 +8,7 @@
 const std = @import("std");
 const word = @import("../runtime/word.zig");
 const errors = @import("../runtime/errors.zig");
-const abi = @import("../runtime/main_clib.zig");
+const abi = @import("../runtime/os.zig");
 const platform = @import("platform.zig");
 const heap = @import("../runtime/heap.zig");
 const lex = @import("../parser/lex.zig");

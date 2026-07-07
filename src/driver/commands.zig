@@ -11,7 +11,7 @@ const strtab = @import("../runtime/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
 const cs = compiler_state.cs;
-const abi = @import("../runtime/main_clib.zig");
+const abi = @import("../runtime/os.zig");
 
 const Word = word.Word;
 const NIL = word.NIL;

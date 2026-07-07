@@ -10,7 +10,7 @@ const reduce = @import("reduce_core.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
 const word = @import("../word.zig");
-const main_clib = @import("../main_clib.zig");
+const os = @import("../os.zig");
 const reduce_rt = @import("../reduce.zig");
 
 /// Reduce the `READ` combinator: lazily stream characters from an input file.
@@ -56,7 +56,7 @@ pub fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
         if (f == null) {
             word.printErr("\nreadvals, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
             reduce_rt.outstats();
-            main_clib.exit(1);
+            os.exit(1);
         }
         reduce.tlSet(ctx.heap, ctx.e, reduce_rt.wrapPtr(@intCast(@intFromPtr(f.?))));
     }

@@ -13,7 +13,7 @@ const reduce = @import("reduce_core.zig");
 const big = @import("../big.zig");
 const heap = @import("../heap.zig");
 const lex = @import("../../parser/lex.zig");
-const main_clib = @import("../main_clib.zig");
+const os = @import("../os.zig");
 const reduce_rt = @import("../reduce.zig");
 const tu = @import("../../testutil.zig"); // unit-test harness (test builds only)
 const ReductionCtx = reduce.ReductionCtx;
@@ -1091,7 +1091,7 @@ pub fn handleERROR(ctx: *ReductionCtx) void {
         _ = word.putc('\n', reduce.getStderr().?);
     }
     reduce_rt.outstats();
-    main_clib.exit(1);
+    os.exit(1);
 }
 
 /// POSIX `WEXITSTATUS`: the low-byte exit code from a child's wait status.
@@ -1117,7 +1117,7 @@ pub fn handleWAIT(ctx: *ReductionCtx) void {
     } else {
         var status: c_int = 0;
         while (true) {
-            const res = main_clib.wait(&status);
+            const res = os.wait(&status);
             if (res == lastarg or res == -1) {
                 hold = res;
                 break;

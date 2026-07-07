@@ -7,7 +7,7 @@ const std = @import("std");
 const rt = @import("../runtime/runtime_state.zig");
 const cs = @import("compiler_state.zig").cs;
 const word = @import("../runtime/word.zig");
-const abi = @import("../runtime/main_clib.zig");
+const abi = @import("../runtime/os.zig");
 const heap_mod = @import("../runtime/heap.zig");
 const Heap = heap_mod.Heap;
 

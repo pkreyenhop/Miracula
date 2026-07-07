@@ -51,7 +51,7 @@ const io_handlers = @import("io.zig");
 const trace = @import("trace.zig");
 const lex = @import("../../parser/lex.zig");
 const reduce_rt = @import("../reduce.zig");
-const main_clib = @import("../main_clib.zig");
+const os = @import("../os.zig");
 const rt = @import("../runtime_state.zig");
 const spine = @import("spine.zig");
 const heap_mod = @import("../heap.zig");
@@ -225,7 +225,7 @@ fn dispatchNonCombinatorHead(ctx: *ReductionCtx) void {
     if (abnormal(ctx.e)) {
         word.printErr("\nBLACK HOLE\n", .{});
         reduce_rt.outstats();
-        main_clib.exit(1);
+        os.exit(1);
     }
 
     switch (getTag(ctx.heap, ctx.e)) {
@@ -237,7 +237,7 @@ fn dispatchNonCombinatorHead(ctx: *ReductionCtx) void {
                 if (options.is_strict) {
                     std.debug.panic("impossible event in reduce - undefined pname", .{});
                 } else {
-                    main_clib.exit(1);
+                    os.exit(1);
                 }
             }
             ctx.action = word.ACT_NEXTREDEX;
@@ -246,14 +246,14 @@ fn dispatchNonCombinatorHead(ctx: *ReductionCtx) void {
             upLeft(ctx);
             word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{ strtab.strOf(strtab.table(), hdGet(ctx.heap, hdGet(ctx.heap, ctx.e))), strtab.strOf(strtab.table(), tlGet(ctx.heap, ctx.e)) });
             reduce_rt.outstats();
-            main_clib.exit(1);
+            os.exit(1);
         },
         // A defined name: substitute its value and re-examine.
         .ID => {
             if (idVal(ctx.heap, ctx.e) == word.UNDEF or idVal(ctx.heap, ctx.e) == word.FREE) {
                 word.printErr("\nUNDEFINED NAME - {s}\n", .{getId(ctx.heap, ctx.e)});
                 reduce_rt.outstats();
-                main_clib.exit(1);
+                os.exit(1);
             }
             ctx.e = idVal(ctx.heap, ctx.e);
             ctx.action = word.ACT_NEXTREDEX;
@@ -280,7 +280,7 @@ fn dispatchNonCombinatorHead(ctx: *ReductionCtx) void {
             if (options.is_strict) {
                 std.debug.panic("impossible tag ({}) in reduce", .{@intFromEnum(getTag(ctx.heap, ctx.e))});
             } else {
-                main_clib.exit(1);
+                os.exit(1);
             }
         },
     }

@@ -10,7 +10,7 @@
 
 const word = @import("../word.zig");
 const reduce = @import("reduce_core.zig");
-const main_clib = @import("../main_clib.zig");
+const os = @import("../os.zig");
 const reduce_rt = @import("../reduce.zig");
 const types = @import("../../compiler/types.zig");
 const ReductionCtx = reduce.ReductionCtx;
@@ -448,7 +448,7 @@ pub fn handle_LEX_COUNT0(ctx: *ReductionCtx) void {
         return;
     }
     reduce.hdSet(ctx.heap, ctx.e, word.LEX_COUNT);
-    reduce.tlSet(ctx.heap, ctx.e, main_clib.strcons(0, reduce.tlGet(ctx.heap, ctx.e)));
+    reduce.tlSet(ctx.heap, ctx.e, os.strcons(0, reduce.tlGet(ctx.heap, ctx.e)));
     reduce.downLeft(ctx);
     ctx.action = word.ACT_NEXTREDEX;
 }
@@ -464,7 +464,7 @@ pub fn handle_LEX_COUNT(ctx: *ReductionCtx) void {
         return;
     }
     ctx.hold = reduce.hdGet(ctx.heap, next_tl);
-    reduce.rewriteToCons(ctx.heap, ctx.e, main_clib.strcons(reduce.hdGet(ctx.heap, ctx.args[0]), ctx.hold), reduce.ap(ctx.heap, word.LEX_COUNT, ctx.args[0]));
+    reduce.rewriteToCons(ctx.heap, ctx.e, os.strcons(reduce.hdGet(ctx.heap, ctx.args[0]), ctx.hold), reduce.ap(ctx.heap, word.LEX_COUNT, ctx.args[0]));
     if (ctx.hold == '\n') {
         reduce.hdSet(ctx.heap, ctx.args[0], ((reduce.hdGet(ctx.heap, ctx.args[0]) >> 8) + 1) << 8);
     } else {

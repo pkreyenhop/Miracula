@@ -12,7 +12,7 @@ const testing = std.testing;
 const heap = @import("../runtime/heap.zig");
 const module_loader = @import("../compiler/module_loader.zig");
 const commands = @import("../driver/commands.zig");
-const abi = @import("../runtime/main_clib.zig");
+const abi = @import("../runtime/os.zig");
 
 const setupheap = heap.setupheap;
 const setupdic = lex.setupdic;
@@ -20,7 +20,7 @@ const lex_state = @import("lex_state.zig");
 const lex = @import("lex.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const setup = @import("../compiler/setup.zig");
-const main_clib = @import("../runtime/main_clib.zig");
+const os = @import("../runtime/os.zig");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
 const core_state = @import("../runtime/core_state.zig");
@@ -159,31 +159,31 @@ test "script reload after failed compile does not cause nameclash" {
     defer rt.rs().initialising = old_init;
 
     const tmp_file = "test_reload.m";
-    defer _ = main_clib.unlink(tmp_file);
+    defer _ = os.unlink(tmp_file);
 
     // 1. Successful first compile
     {
-        const f = main_clib.fopen(tmp_file, "w");
-        _ = main_clib.fputs("add1 x = x+1\n", f.?);
-        _ = main_clib.fclose(f.?);
+        const f = os.fopen(tmp_file, "w");
+        _ = os.fputs("add1 x = x+1\n", f.?);
+        _ = os.fclose(f.?);
     }
     module_loader.loadfile(heap.heap(), core_state.s(), cs(), rt.rs(), ls(), tmp_file);
     try testing.expectEqual(@as(word.Word, 0), core_state.s().SYNERR);
 
     // 2. Failed compile with syntax error
     {
-        const f = main_clib.fopen(tmp_file, "w");
-        _ = main_clib.fputs("add1 x = x+1\nl = [1,,2]\n", f.?);
-        _ = main_clib.fclose(f.?);
+        const f = os.fopen(tmp_file, "w");
+        _ = os.fputs("add1 x = x+1\nl = [1,,2]\n", f.?);
+        _ = os.fclose(f.?);
     }
     module_loader.loadfile(heap.heap(), core_state.s(), cs(), rt.rs(), ls(), tmp_file);
     try testing.expectEqual(@as(word.Word, 2), core_state.s().errline);
 
     // 3. Re-compile fixed script
     {
-        const f = main_clib.fopen(tmp_file, "w");
-        _ = main_clib.fputs("add1 x = x+1\nl = [1,2]\n", f.?);
-        _ = main_clib.fclose(f.?);
+        const f = os.fopen(tmp_file, "w");
+        _ = os.fputs("add1 x = x+1\nl = [1,2]\n", f.?);
+        _ = os.fclose(f.?);
     }
     module_loader.loadfile(heap.heap(), core_state.s(), cs(), rt.rs(), ls(), tmp_file);
     try testing.expectEqual(@as(word.Word, 0), core_state.s().SYNERR);

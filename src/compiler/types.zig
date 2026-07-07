@@ -13,7 +13,7 @@ const word = @import("../runtime/word.zig");
 const errors = @import("../runtime/errors.zig");
 const dump = @import("dump.zig");
 const strtab = @import("../runtime/strtab.zig");
-const main_clib = @import("../runtime/main_clib.zig");
+const os = @import("../runtime/os.zig");
 const rt = @import("../runtime/runtime_state.zig");
 
 const compiler_state = @import("compiler_state.zig");
@@ -23,9 +23,9 @@ const Heap = heap_mod.Heap;
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 const cs = compiler_state.cs;
 // `abi` — a private namespace of libc / `word`-combinator re-export aliases so
-// this file can write `main_clib.printf(...)`, `word.PLUS`, etc. Internal only (the
+// this file can write `os.printf(...)`, `word.PLUS`, etc. Internal only (the
 // container is not `pub`, so these never appear in autodoc); each member just
-// re-exports an already-documented symbol from `main_clib`/`word`.
+// re-exports an already-documented symbol from `os`/`word`.
 
 const Word = word.Word;
 const CMBASE = word.CMBASE;
@@ -727,13 +727,13 @@ pub fn ispoly(heap: *Heap, t_val: Word) bool {
 
 /// The standard-output `Stream` handle.
 fn getStdout() ?*word.Stream {
-    const T = @TypeOf(main_clib.stdout);
+    const T = @TypeOf(os.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
-        return main_clib.stdout();
+        return os.stdout();
     } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return main_clib.stdout();
+        return os.stdout();
     } else {
-        return main_clib.stdout;
+        return os.stdout;
     }
 }
 

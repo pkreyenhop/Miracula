@@ -145,7 +145,7 @@ pub inline fn fio() *IoState {
 /// `ctx.io` in `main.zig`) — not `std.Options.debug_io`, which is only a
 /// default and may not be the same implementation the process was
 /// actually handed. Read via an inline `@import` (not a top-level const)
-/// to avoid a cycle: `runtime_state.zig` imports `main_clib.zig`, which
+/// to avoid a cycle: `runtime_state.zig` imports `os.zig`, which
 /// imports this file, and `word.zig` is a leaf module every other file is
 /// meant to import freely.
 inline fn procIo() std.Io {
@@ -190,7 +190,7 @@ pub fn fprint(file: ?*Stream, comptime fmt: []const u8, args: anytype) void {
 // now uses Zig-native format strings via `word.print`/`printErr`/`fprint`, or
 // (for reading dumps) `fopen` directly. `putc`/`putchar` stay: still used by
 // `heap.zig`'s dump writer. The whole stdio subsystem lives next to the Stream
-// struct; main_clib.zig
+// struct; os.zig
 // re-exports these. fread/fwrite preserve the dump (.x) byte format.
 // (fio.std_in/fio.std_out/fio.std_err and the Stream pool now live in `IoState` above.)
 

@@ -12,7 +12,7 @@
 
 const std = @import("std");
 const word = @import("../runtime/word.zig");
-const main_clib = @import("../runtime/main_clib.zig");
+const os = @import("../runtime/os.zig");
 const lex = @import("../parser/lex.zig");
 const heap = @import("../runtime/heap.zig");
 const Editor = @import("zigline").Editor;
@@ -100,7 +100,7 @@ pub fn init(allocator: std.mem.Allocator, io: std.Io) void {
     st.gpa = allocator;
     st.editor = Editor.init(allocator, io, .{});
     st.editor.setHandler(&st.completion_handler); // Tab → identifier completion
-    if (main_clib.getenv("HOME")) |home_ptr| {
+    if (os.getenv("HOME")) |home_ptr| {
         const home = std.mem.span(home_ptr);
         if (std.fmt.bufPrint(&st.hist_path_buf, "{s}/.miranda_history", .{home})) |path| {
             st.hist_path = path;

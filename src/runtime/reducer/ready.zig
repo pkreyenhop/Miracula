@@ -20,7 +20,7 @@ const rt = @import("../runtime_state.zig");
 const big = @import("../big.zig");
 const heap = @import("../heap.zig");
 const lex = @import("../../parser/lex.zig");
-const main_clib = @import("../main_clib.zig");
+const os = @import("../os.zig");
 const reduce_rt = @import("../reduce.zig");
 
 /// The current combinator's last (rightmost) argument: the tail of the focus node.
@@ -56,7 +56,7 @@ inline fn toLowerW(w: Word) u8 {
 /// otherwise look like an integer (`show 2.0` must print "2.0", not "2").
 /// Verified byte-identical to the old `sprintf(..., "%.16g", ...)` path
 /// across a range of representative values (both already delegated to
-/// Zig's own `{d}` float formatter under the hood — `main_clib.zig`'s
+/// Zig's own `{d}` float formatter under the hood — `os.zig`'s
 /// `formatC`'s `'f'/'g'/'e'/'a'` case ignored the requested C specifier
 /// and precision entirely, always calling `std.fmt.bufPrint(&buf, "{d}",
 /// .{val})` — so this is a direct, behavior-preserving port of what was
@@ -227,7 +227,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             if (lastArg(ctx) == word.NIL) {
                 word.printErr("\nATTEMPT TO TAKE hd OF nil\n", .{});
                 reduce_rt.outstats();
-                main_clib.exit(1);
+                os.exit(1);
             }
             reduce.rewriteToValue(ctx.heap, &ctx.e, reduce.hdGet(ctx.heap, lastArg(ctx)));
             ctx.action = word.ACT_NEXTREDEX;
@@ -238,7 +238,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             if (lastArg(ctx) == word.NIL) {
                 word.printErr("\nATTEMPT TO TAKE tl OF nil\n", .{});
                 reduce_rt.outstats();
-                main_clib.exit(1);
+                os.exit(1);
             }
             reduce.rewriteToValue(ctx.heap, &ctx.e, reduce.tlGet(ctx.heap, lastArg(ctx)));
             ctx.action = word.ACT_NEXTREDEX;
@@ -313,7 +313,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             if (f == null) {
                 word.printErr("\nread, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
                 reduce_rt.outstats();
-                main_clib.exit(1);
+                os.exit(1);
             }
             setLastArg(ctx, reduce_rt.wrapPtr(@intCast(@intFromPtr(f.?))));
             reduce.hdSet(ctx.heap, ctx.e, word.READ);
@@ -328,7 +328,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             if (f == null) {
                 word.printErr("\nreadb, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
                 reduce_rt.outstats();
-                main_clib.exit(1);
+                os.exit(1);
             }
             setLastArg(ctx, reduce_rt.wrapPtr(@intCast(@intFromPtr(f.?))));
             reduce.hdSet(ctx.heap, ctx.e, word.READBIN);
@@ -434,7 +434,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             if (val < 0 or val > word.UMAX) {
                 word.printErr("\nCHARACTER OUT-OF-RANGE decode({})\n", .{val});
                 reduce_rt.outstats();
-                main_clib.exit(1);
+                os.exit(1);
             }
             reduce.hdSet(ctx.heap, ctx.e, word.I);
             const val_char = heap.stoChar(@intCast(val));
@@ -777,7 +777,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
 fn handleReadyGETENV(ctx: *ReductionCtx) void {
     reduce.upLeft(ctx);
     const a = reduce.getstring(lastArg(ctx), "getenv");
-    const p = main_clib.getenv(a);
+    const p = os.getenv(a);
     ctx.hold = word.NIL;
     if (p) |ptr| {
         var i = std.mem.len(ptr);
@@ -839,18 +839,18 @@ fn handleReadyEXEC(ctx: *ReductionCtx) void {
     var fd_a: [2]c_int = undefined;
     const cp = reduce.getstring(lastArg(ctx), "system");
     var cond = false;
-    if (main_clib.pipe(&fd) == -1 or main_clib.pipe(&fd_a) == -1) {
+    if (os.pipe(&fd) == -1 or os.pipe(&fd_a) == -1) {
         cond = true;
     } else {
-        pid = main_clib.fork();
+        pid = os.fork();
         cond = (pid != 0);
     }
     if (cond) {
         var fp: ?*word.Stream = null;
         var fp_a: ?*word.Stream = null;
         if (pid != -1) {
-            _ = main_clib.close(fd[1]);
-            _ = main_clib.close(fd_a[1]);
+            _ = os.close(fd[1]);
+            _ = os.close(fd_a[1]);
             fp = word.fdopen(fd[0], "r");
             fp_a = word.fdopen(fd_a[0], "r");
         }
@@ -861,14 +861,14 @@ fn handleReadyEXEC(ctx: *ReductionCtx) void {
         }
     } else {
         const shell = "/bin/sh";
-        _ = main_clib.dup2(fd[1], 1);
-        _ = main_clib.dup2(fd_a[1], 2);
-        _ = main_clib.close(fd[1]);
-        _ = main_clib.close(fd[0]);
-        _ = main_clib.close(fd_a[1]);
-        _ = main_clib.close(fd_a[0]);
+        _ = os.dup2(fd[1], 1);
+        _ = os.dup2(fd_a[1], 2);
+        _ = os.close(fd[1]);
+        _ = os.close(fd[0]);
+        _ = os.close(fd_a[1]);
+        _ = os.close(fd_a[0]);
         _ = word.fclose(reduce.getStdin().?);
-        _ = main_clib.execl(shell, .{ shell, "-c", cp });
+        _ = os.execl(shell, .{ shell, "-c", cp });
     }
     ctx.action = word.ACT_DONE;
 }
@@ -934,10 +934,10 @@ fn handleReadyNUMVAL(ctx: *ReductionCtx) void {
         }
         p[p_idx] = 0;
         p_idx += 1;
-        if (p_idx > 60 or main_clib.sscanf(@ptrCast(p), "%lf%c", .{ &d, &junk }) != 1 or junk != 0) {
+        if (p_idx > 60 or os.sscanf(@ptrCast(p), "%lf%c", .{ &d, &junk }) != 1 or junk != 0) {
             word.printErr("\nbad arg for numval: \"{s}\"\n", .{@as([*:0]const u8, @ptrCast(p))});
             reduce_rt.outstats();
-            main_clib.exit(1);
+            os.exit(1);
         } else {
             reduce.hdSet(ctx.heap, ctx.e, word.I);
             const val = heap.stoDbl(d);
@@ -959,7 +959,7 @@ fn handleReadyPOWER(ctx: *ReductionCtx) void {
     if (reduce.isDouble(ctx.heap, lastArg(ctx))) {
         fa = reduce.forceDbl(ctx.heap, ctx.args[0]);
         if (fa < 0.0) {
-            platform.setErrno(main_clib.EDOM);
+            platform.setErrno(os.EDOM);
             reduce_rt.mathError(@constCast("^"));
         }
         fb = heap.getDbl(lastArg(ctx));

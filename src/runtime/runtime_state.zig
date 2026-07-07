@@ -4,7 +4,7 @@
 //! singleton lives in `interp`; callers reach it as `rs.X`.
 
 const std = @import("std");
-const abi = @import("main_clib.zig");
+const abi = @import("os.zig");
 
 /// The process-wide debug allocator that backs `allocator`.
 pub var gpa = std.heap.DebugAllocator(.{}){};

@@ -12,13 +12,13 @@ const std = @import("std");
 const word = @import("../runtime/word.zig");
 const strtab = @import("../runtime/strtab.zig");
 
-const main_clib = @import("../runtime/main_clib.zig");
+const os = @import("../runtime/os.zig");
 
 const compiler_state = @import("compiler_state.zig");
 const cs = compiler_state.cs;
 // `abi` — a private namespace of libc re-export aliases so this file can write
-// `main_clib.printf(...)`, etc. Internal only (the container is not `pub`, so these
-// never appear in autodoc); each member re-exports a `main_clib` symbol.
+// `os.printf(...)`, etc. Internal only (the container is not `pub`, so these
+// never appear in autodoc); each member re-exports a `os` symbol.
 
 const lex_state = @import("../parser/lex_state.zig");
 const core_state = @import("../runtime/core_state.zig");
@@ -27,7 +27,7 @@ const ls = lex_state.ls;
 
 /// The standard-output `Stream` handle.
 fn getStdout() ?*word.Stream {
-    return main_clib.stdout();
+    return os.stdout();
 }
 
 const Word = i64;
@@ -720,7 +720,7 @@ pub fn abstr(heap: *Heap, x: Word, e: Word) Word {
         },
         .LAMBDA, .LET, .LETREC, .TRIES, .LABEL, .SHOW, .LEXER, .SHARE => {
             std.debug.print("impossible event in abstr (main.tag={d})\n", .{getTag(heap, e)});
-            main_clib.exit(1);
+            os.exit(1);
         },
         else => {
             if (x == e or (isTypeVariable(heap, x) and isTypeVariable(heap, e) and getTypeVariable(heap, x) == getTypeVariable(heap, e))) {
@@ -743,7 +743,7 @@ pub fn abstrlist(heap: *Heap, x_input: Word, e: Word) Word {
         },
         .LAMBDA, .LET, .LETREC, .TRIES, .LABEL, .SHOW, .LEXER, .SHARE => {
             std.debug.print("impossible event in abstrlist (main.tag={d})\n", .{getTag(heap, e)});
-            main_clib.exit(1);
+            os.exit(1);
         },
         else => {
             var i: Word = 0;
@@ -1443,7 +1443,7 @@ pub fn invgetrel(heap: *Heap, input_r: Word, x: Word) Word {
     while (r != NIL and member(heap, t(heap, h(heap, r)), x) == 0) r = t(heap, r);
     if (r == NIL) {
         std.debug.print("impossible event in invgetrel\n", .{});
-        main_clib.exit(1);
+        os.exit(1);
     }
     return h(heap, h(heap, r));
 }
