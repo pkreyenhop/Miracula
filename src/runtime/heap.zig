@@ -260,6 +260,83 @@ pub const Heap = struct {
         self.threadFree(ATOMLIMIT, self.TOP());
     }
 
+    /// A snapshot of the heap's mutable state, taken before an in-process
+    /// evaluation whose reductions must not persist if the evaluation is
+    /// interrupted or simply finishes (Phase 3, docs/ZIG_NATIVE_PLAN.md).
+    ///
+    /// Replaces fork-per-eval: the old design forked a child to do the
+    /// reduction, and the child's heap mutations (being a separate,
+    /// COW-copied address space) simply died with it when it exited --
+    /// `evaluateRepl`'s own doc comment already said as much ("leaving the
+    /// parent's heap untouched"). `checkpoint`/`restore` reproduce that same
+    /// invariant in-process: every REPL expression evaluation is checkpointed
+    /// first and *always* restored afterward (success, interrupt, or
+    /// otherwise), matching the fork model exactly rather than only undoing
+    /// mutations on the interrupted path.
+    pub const Checkpoint = struct {
+        space: Word,
+        hd: []Word,
+        tl: []Word,
+        tag: []word.NodeTag,
+        live: std.DynamicBitSetUnmanaged,
+        free_head: Word,
+        cellcount: i64,
+        claims: c_long,
+        nogcs: c_long,
+        hnogcs: c_long,
+        files: Word,
+        current_file: Word,
+    };
+
+    /// Snapshot the heap's mutable state. Only the currently-in-play
+    /// `[ATOMLIMIT, TOP())` cell range is copied (not the full
+    /// `SPACELIMIT`-sized backing arrays), bounding the cost to the heap's
+    /// actual working set.
+    ///
+    /// Tests: Heap.checkpoint/restore: undoes cell mutations and new allocations made after the snapshot
+    pub fn checkpoint(self: *Heap) Checkpoint {
+        const n: usize = @intCast(self.SPACE);
+        const start: usize = @intCast(ATOMLIMIT);
+        return .{
+            .space = self.SPACE,
+            .hd = rt.allocator.dupe(Word, self.hd.?[start..][0..n]) catch mallocPanic("checkpoint"),
+            .tl = rt.allocator.dupe(Word, self.tl.?[start..][0..n]) catch mallocPanic("checkpoint"),
+            .tag = rt.allocator.dupe(word.NodeTag, self.tag.?[start..][0..n]) catch mallocPanic("checkpoint"),
+            .live = self.live.clone(rt.allocator) catch mallocPanic("checkpoint"),
+            .free_head = self.free_head,
+            .cellcount = self.cellcount,
+            .claims = self.claims,
+            .nogcs = self.nogcs,
+            .hnogcs = self.hnogcs,
+            .files = self.files,
+            .current_file = self.current_file,
+        };
+    }
+
+    /// Restore the heap to a previous `checkpoint`, discarding any
+    /// allocations, in-place rewrites, or GCs made since. Consumes `snap`
+    /// (its backing memory is freed here; do not reuse it afterward).
+    pub fn restore(self: *Heap, snap: *Checkpoint) void {
+        const n: usize = @intCast(snap.space);
+        const start: usize = @intCast(ATOMLIMIT);
+        self.SPACE = snap.space;
+        @memcpy(self.hd.?[start..][0..n], snap.hd);
+        @memcpy(self.tl.?[start..][0..n], snap.tl);
+        @memcpy(self.tag.?[start..][0..n], snap.tag);
+        rt.allocator.free(snap.hd);
+        rt.allocator.free(snap.tl);
+        rt.allocator.free(snap.tag);
+        self.live.deinit(rt.allocator);
+        self.live = snap.live;
+        self.free_head = snap.free_head;
+        self.cellcount = snap.cellcount;
+        self.claims = snap.claims;
+        self.nogcs = snap.nogcs;
+        self.hnogcs = snap.hnogcs;
+        self.files = snap.files;
+        self.current_file = snap.current_file;
+    }
+
     pub fn makeSlow(self: *Heap, t_val: word.NodeTag, x: Word, y: Word) Word {
         if (self.SPACE != rt.rs().SPACELIMIT) {
             const old_top = self.TOP();
@@ -789,6 +866,49 @@ test "gc: a long-lived list survives many forced collections; garbage is reclaim
         expected -= 1;
     }
     try std.testing.expectEqual(@as(Word, -1), expected);
+}
+
+test "Heap.checkpoint/restore: undoes cell mutations and new allocations made after the snapshot" {
+    tu.freshInterp();
+
+    var stack_anchor: Word = 0;
+    const saved_cstack = rt.rs().cstack;
+    rt.rs().cstack = @ptrCast(&stack_anchor);
+    defer rt.rs().cstack = saved_cstack;
+
+    // A cell that exists *before* the checkpoint: restore must put its
+    // fields back exactly, even though it gets mutated in place below.
+    const before = heap().cons(1, 2);
+    try std.testing.expectEqual(@as(Word, 1), h(before));
+    try std.testing.expectEqual(@as(Word, 2), t(before));
+
+    const top_before = heap().TOP();
+    const free_head_before = heap().free_head;
+    const cellcount_before = heap().cellcount;
+    const claims_before = heap().claims;
+
+    var snap = heap().checkpoint();
+
+    // Mutate the pre-checkpoint cell in place and allocate a chain past it
+    // (forcing `TOP`/`free_head`/`claims`/`cellcount` to move) before
+    // restoring -- the snapshot itself is inert data, not a GC root; it does
+    // not need a live mark/sweep pass to exercise (that's `gc()`'s own test,
+    // above).
+    hp(before).* = 99;
+    tp(before).* = 98;
+    var i: Word = 0;
+    while (i < 50) : (i += 1) {
+        _ = heap().cons(0, 0);
+    }
+
+    heap().restore(&snap);
+
+    try std.testing.expectEqual(@as(Word, 1), h(before));
+    try std.testing.expectEqual(@as(Word, 2), t(before));
+    try std.testing.expectEqual(top_before, heap().TOP());
+    try std.testing.expectEqual(free_head_before, heap().free_head);
+    try std.testing.expectEqual(cellcount_before, heap().cellcount);
+    try std.testing.expectEqual(claims_before, heap().claims);
 }
 
 /// Allocate a `TRIES` cell `(x . y)` (a pattern-match alternative chain).
