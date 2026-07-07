@@ -94,11 +94,20 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
         abi.exit(0);
     }
 
-    _ = word.strcpy(&rt.rs().PRELUDE, rt.rs().miralib.?);
-    _ = word.strcat(&rt.rs().PRELUDE, "/prelude");
-
-    _ = word.strcpy(&rt.rs().STDENV, rt.rs().miralib.?);
-    _ = word.strcat(&rt.rs().STDENV, "/stdenv.m");
+    {
+        const miralib_span = std.mem.span(rt.rs().miralib.?);
+        @memcpy(rt.rs().PRELUDE[0..miralib_span.len], miralib_span);
+        const suffix = "/prelude";
+        @memcpy(rt.rs().PRELUDE[miralib_span.len..][0..suffix.len], suffix);
+        rt.rs().PRELUDE[miralib_span.len + suffix.len] = 0;
+    }
+    {
+        const miralib_span = std.mem.span(rt.rs().miralib.?);
+        @memcpy(rt.rs().STDENV[0..miralib_span.len], miralib_span);
+        const suffix = "/stdenv.m";
+        @memcpy(rt.rs().STDENV[miralib_span.len..][0..suffix.len], suffix);
+        rt.rs().STDENV[miralib_span.len + suffix.len] = 0;
+    }
 
     setup.miraSetup();
 
@@ -174,11 +183,20 @@ fn readHomeRc() Word {
     const home = abi.getenv("HOME");
     var okhome_rc: Word = 0;
     if (home != null) {
-        _ = word.strcpy(&rt.rs().home_rc, home);
-        if (word.strcmp(&rt.rs().home_rc, "/") == 0) {
+        {
+            const home_span = std.mem.span(home.?);
+            @memcpy(rt.rs().home_rc[0..home_span.len], home_span);
+            rt.rs().home_rc[home_span.len] = 0;
+        }
+        if (std.mem.eql(u8, std.mem.span(@as([*:0]const u8, @ptrCast(&rt.rs().home_rc))), "/")) {
             rt.rs().home_rc[0] = 0;
         }
-        _ = word.strcat(&rt.rs().home_rc, "/.mirarc");
+        {
+            const dst_len = std.mem.len(@as([*:0]const u8, @ptrCast(&rt.rs().home_rc)));
+            const suffix = "/.mirarc";
+            @memcpy(rt.rs().home_rc[dst_len..][0..suffix.len], suffix);
+            rt.rs().home_rc[dst_len + suffix.len] = 0;
+        }
         okhome_rc = readRc(@as([*:0]const u8, @ptrCast(&rt.rs().home_rc)));
     }
     return okhome_rc;
@@ -187,6 +205,11 @@ fn readHomeRc() Word {
 /// The parsed result of the leading `-flag` run of `argv`: the index of the
 /// first non-flag argument, and whether `-man` was given.
 const ParsedFlags = struct { arg_idx: usize, manonly: Word };
+
+/// True if the command-line argument `arg` is exactly the flag literal `lit`.
+inline fn argIs(arg: [*:0]const u8, lit: []const u8) bool {
+    return std.mem.eql(u8, std.mem.span(arg), lit);
+}
 
 /// Parses every leading `-flag` (and its parameter, where one is expected) in
 /// `argv`, applying each directly to the relevant `rt.rs()`/`ls` global. Stops at
@@ -198,28 +221,28 @@ fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
     const argc_u = @as(usize, @intCast(argc));
     while (arg_idx < argc_u and argv[arg_idx][0] == '-') {
         const arg = argv[arg_idx];
-        if (word.strcmp(arg, "-stdenv") == 0) {
+        if (argIs(arg, "-stdenv")) {
             rt.rs().nostdenv = true;
-        } else if (word.strcmp(arg, "-count") == 0) {
+        } else if (argIs(arg, "-count")) {
             rt.rs().atcount = 1;
-        } else if (word.strcmp(arg, "-list") == 0) {
+        } else if (argIs(arg, "-list")) {
             rt.rs().listing = 1;
-        } else if (word.strcmp(arg, "-nolist") == 0) {
+        } else if (argIs(arg, "-nolist")) {
             rt.rs().listing = 0;
-        } else if (word.strcmp(arg, "-nostrictif") == 0) {
+        } else if (argIs(arg, "-nostrictif")) {
             rt.rs().strictif = false;
-        } else if (word.strcmp(arg, "-gc") == 0) {
+        } else if (argIs(arg, "-gc")) {
             rt.rs().atgc = 1;
-        } else if (word.strcmp(arg, "-object") == 0) {
+        } else if (argIs(arg, "-object")) {
             rt.rs().atobject = 1;
-        } else if (word.strcmp(arg, "-lib") == 0) {
+        } else if (argIs(arg, "-lib")) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
                 missingParam("lib");
             } else {
                 rt.rs().miralib = argv[arg_idx];
             }
-        } else if (word.strcmp(arg, "-dic") == 0) {
+        } else if (argIs(arg, "-dic")) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
                 missingParam("dic");
@@ -230,7 +253,7 @@ fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
                 }
                 rt.rs().DICSPACE = val;
             }
-        } else if (word.strcmp(arg, "-heap") == 0) {
+        } else if (argIs(arg, "-heap")) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
                 missingParam("heap");
@@ -241,7 +264,7 @@ fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
                 }
                 rt.rs().SPACELIMIT = val;
             }
-        } else if (word.strcmp(arg, "-editor") == 0) {
+        } else if (argIs(arg, "-editor")) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
                 missingParam("editor");
@@ -249,31 +272,34 @@ fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
                 rt.rs().editor = argv[arg_idx];
                 rt.rs().baded = @intFromBool(repl.badEditor(rt.rs()));
             }
-        } else if (word.strcmp(arg, "-hush") == 0) {
+        } else if (argIs(arg, "-hush")) {
             rt.rs().verbosity = 0;
-        } else if (word.strcmp(arg, "-nohush") == 0) {
+        } else if (argIs(arg, "-nohush")) {
             rt.rs().verbosity = 1;
-        } else if (word.strcmp(arg, "-exp") == 0 or word.strcmp(arg, "-log") == 0) {
+        } else if (argIs(arg, "-exp") or argIs(arg, "-log")) {
             errors.fatal("mira: obsolete flag \"{s}\"\nuse \"-exec\" or \"-exec2\", see manual\n", .{arg});
-        } else if (word.strcmp(arg, "-exec") == 0) {
+        } else if (argIs(arg, "-exec")) {
             ls().ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
             ls().ARGV = @ptrCast(argv + arg_idx + 1);
             rt.rs().magic = true;
             rt.rs().verbosity = 0;
             arg_idx = argc_u;
             break;
-        } else if (word.strcmp(arg, "-exec2") == 0) {
+        } else if (argIs(arg, "-exec2")) {
             if (arg_idx + 1 >= argc_u) {
                 errors.fatal("incorrect use of -exec2 flag, missing filename\n", .{});
             }
             const filename = argv[arg_idx + 1];
-            var p = word.strrchr(filename, '/');
+            var p: ?[*:0]u8 = blk: {
+                const filename_span = std.mem.span(filename);
+                break :blk if (std.mem.lastIndexOfScalar(u8, filename_span, '/')) |idx| filename + idx else null;
+            };
             if (p == null) {
                 p = filename;
             } else {
                 p = p.? + 1;
             }
-            const len = word.strlen(p.?) + 9;
+            const len = std.mem.len(p.?) + 9;
             const slice = rt.allocator.allocSentinel(u8, len, 0) catch {
                 abi.mallocfail(@constCast("logfile name"));
                 unreachable;
@@ -292,28 +318,28 @@ fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
             rt.rs().verbosity = 0;
             arg_idx = argc_u;
             break;
-        } else if (word.strcmp(arg, "-man") == 0) {
+        } else if (argIs(arg, "-man")) {
             manonly = 1;
-        } else if (word.strcmp(arg, "-version") == 0) {
+        } else if (argIs(arg, "-version")) {
             versionInfo(0);
             abi.exit(0);
-        } else if (word.strcmp(arg, "-V") == 0) {
+        } else if (argIs(arg, "-V")) {
             versionInfo(1);
             abi.exit(0);
-        } else if (word.strcmp(arg, "-make") == 0) {
+        } else if (argIs(arg, "-make")) {
             rt.rs().making = true;
             rt.rs().verbosity = 0;
-        } else if (word.strcmp(arg, "-exports") == 0) {
+        } else if (argIs(arg, "-exports")) {
             rt.rs().making = true;
             rt.rs().mkexports = true;
             rt.rs().verbosity = 0;
-        } else if (word.strcmp(arg, "-sources") == 0) {
+        } else if (argIs(arg, "-sources")) {
             rt.rs().making = true;
             rt.rs().mksources = true;
             rt.rs().verbosity = 0;
-        } else if (word.strcmp(arg, "-UTF-8") == 0) {
+        } else if (argIs(arg, "-UTF-8")) {
             rt.rs().UTF8 = 1;
-        } else if (word.strcmp(arg, "-noUTF-8") == 0) {
+        } else if (argIs(arg, "-noUTF-8")) {
             rt.rs().UTF8 = 0;
         } else {
             errors.fatal("mira: unknown flag \"{s}\"\n", .{arg});
@@ -356,8 +382,13 @@ fn readLibRcIfNeeded(okhome_rc: Word) void {
         if (rt.rs().rc_error == @as(?[*:0]const u8, @ptrCast(&rt.rs().lib_rc))) {
             rt.rs().rc_error = null;
         }
-        _ = word.strcpy(&rt.rs().lib_rc, rt.rs().miralib.?);
-        _ = word.strcat(&rt.rs().lib_rc, "/.mirarc");
+        {
+            const miralib_span = std.mem.span(rt.rs().miralib.?);
+            @memcpy(rt.rs().lib_rc[0..miralib_span.len], miralib_span);
+            const suffix = "/.mirarc";
+            @memcpy(rt.rs().lib_rc[miralib_span.len..][0..suffix.len], suffix);
+            rt.rs().lib_rc[miralib_span.len + suffix.len] = 0;
+        }
         _ = readRc(@as([*:0]const u8, @ptrCast(&rt.rs().lib_rc)));
     }
 }
@@ -373,7 +404,11 @@ fn resolveEnvironmentSettings() void {
             rt.rs().editor = @constCast(EDITOR);
         }
         if (rt.rs().editor != null) {
-            _ = word.strcpy(&rt.rs().ebuf, rt.rs().editor.?);
+            {
+                const editor_span = std.mem.span(rt.rs().editor.?);
+                @memcpy(rt.rs().ebuf[0..editor_span.len], editor_span);
+                rt.rs().ebuf[editor_span.len] = 0;
+            }
             rt.rs().editor = @as([*:0]u8, @ptrCast(&rt.rs().ebuf));
             rt.rs().baded = @intFromBool(repl.badEditor(rt.rs()));
         }
@@ -512,7 +547,7 @@ fn reportMakeFailures() void {
     word.print("errors or undefined names found in:-\n", .{});
     while (rt.rs().make_status != 0) {
         h_val = abi.strcons(heap_mod.h(rt.rs().make_status), h_val);
-        const w = @as(Word, @intCast(word.strlen(strtab.strOf(strtab.table(), heap_mod.h(h_val)))));
+        const w = @as(Word, @intCast(std.mem.len(strtab.strOf(strtab.table(), heap_mod.h(h_val)))));
         if (w > maxw) {
             maxw = w;
         }
@@ -524,7 +559,7 @@ fn reportMakeFailures() void {
     while (h_val != 0) {
         w += 1;
         const str = strtab.strOf(strtab.table(), heap_mod.h(h_val));
-        const len = word.strlen(str);
+        const len = std.mem.len(str);
         const spaces_needed = if (@as(usize, @intCast(maxw)) > len) @as(usize, @intCast(maxw)) - len else 0;
         var pad_idx: usize = 0;
         while (pad_idx < spaces_needed) : (pad_idx += 1) {
@@ -583,7 +618,7 @@ pub fn readRc(rcfile: [*:0]const u8) Word {
         if (!read_ok) {
             rt.rs().rc_error = rcfile;
         } else {
-            var len = word.strlen(&rt.rs().ebuf);
+            var len = std.mem.len(@as([*:0]const u8, @ptrCast(&rt.rs().ebuf)));
             if (len > 0 and rt.rs().ebuf[len - 1] == '\n') {
                 rt.rs().ebuf[len - 1] = 0;
                 len -= 1;
@@ -766,7 +801,11 @@ test "readRc and writeRc roundtrip text config" {
     rt.rs().editor = @constCast("emacs +! %");
 
     // Set rt.rs().home_rc to our path so writeRc writes to it
-    _ = word.strcpy(&rt.rs().home_rc, test_path);
+    {
+        const test_path_span = std.mem.span(test_path);
+        @memcpy(rt.rs().home_rc[0..test_path_span.len], test_path_span);
+        rt.rs().home_rc[test_path_span.len] = 0;
+    }
 
     writeRc();
 
