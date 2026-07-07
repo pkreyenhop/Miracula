@@ -66,14 +66,14 @@ test "already in WHNF: reduce of a CONS returns the same cell" {
 
 test "strict arithmetic: reduce (PLUS 2 3) yields INT 5" {
     ensureSetup();
-    const r = reduce.reduce(ap2(word.PLUS, big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), 3)));
+    const r = try reduce.reduce(ap2(word.PLUS, big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), 3)));
     try std.testing.expect(heap.getTag(r) == .INT);
     try std.testing.expectEqual(@as(i64, 5), @as(i64, @intCast(big.toInt(heap.heap(), r))));
 }
 
 test "strict arithmetic: reduce (TIMES 6 7) yields INT 42" {
     ensureSetup();
-    const r = reduce.reduce(ap2(word.TIMES, big.fromInt(heap.heap(), 6), big.fromInt(heap.heap(), 7)));
+    const r = try reduce.reduce(ap2(word.TIMES, big.fromInt(heap.heap(), 6), big.fromInt(heap.heap(), 7)));
     try std.testing.expect(heap.getTag(r) == .INT);
     try std.testing.expectEqual(@as(i64, 42), @as(i64, @intCast(big.toInt(heap.heap(), r))));
 }
