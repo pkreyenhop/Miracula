@@ -126,10 +126,17 @@ pub fn makeAbsolute(m: [*:0]u8) [*:0]u8 {
     if (abi.getcwd(ls().dicp, abi.pnlim) == null) {
         errors.fatal("panic: cwd too long\n", .{});
     }
-    _ = word.strcat(ls().dicp, "/");
-    _ = word.strcat(ls().dicp, m);
+    {
+        var dst_len = std.mem.len(ls().dicp);
+        ls().dicp[dst_len] = '/';
+        dst_len += 1;
+        ls().dicp[dst_len] = 0;
+        const m_span = std.mem.span(m);
+        @memcpy(ls().dicp[dst_len..][0..m_span.len], m_span);
+        ls().dicp[dst_len + m_span.len] = 0;
+    }
     const m_new = ls().dicp;
-    ls().dicq += word.strlen(ls().dicp) + 1;
+    ls().dicq += std.mem.len(ls().dicp) + 1;
     ls().dicp = ls().dicq;
     lex.dicCheck();
     return m_new;

@@ -715,7 +715,7 @@ test "head: the leftmost atom of an application spine" {
 pub fn apfile(eval: *EvalState, f: Word) void {
     var p = eval.outfilq;
     const fil = getstring(f, "Appendfile");
-    while (p != NIL and word.strcmp(strtab.strOf(strtab.table(), h(h(p))), fil) != 0) {
+    while (p != NIL and !std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(h(p)))), std.mem.span(fil.?))) {
         p = t(p);
     }
     if (p == NIL) {
@@ -734,7 +734,7 @@ pub fn apfile(eval: *EvalState, f: Word) void {
 pub fn closefile(eval: *EvalState, f: Word) void {
     var p = &eval.outfilq;
     const fil = getstring(f, "Closefile");
-    while (p.* != NIL and word.strcmp(strtab.strOf(strtab.table(), h(h(p.*))), fil) != 0) {
+    while (p.* != NIL and !std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(h(p.*)))), std.mem.span(fil.?))) {
         p = tp(p.*);
     }
     if (p.* != NIL) {
@@ -747,7 +747,7 @@ pub fn closefile(eval: *EvalState, f: Word) void {
 pub fn outf(eval: *EvalState, e: Word) void {
     var p = eval.outfilq;
     const f = getstring(t(h(e)), "Tofile");
-    while (p != NIL and word.strcmp(strtab.strOf(strtab.table(), h(h(p))), f) != 0) {
+    while (p != NIL and !std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(h(p)))), std.mem.span(f.?))) {
         p = t(p);
     }
     if (p == NIL) {

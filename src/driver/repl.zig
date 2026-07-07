@@ -41,7 +41,6 @@ const core_state = @import("../runtime/core_state.zig");
 const version = @import("../runtime/version.zig");
 const ls = lex_state.ls;
 
-
 fn formatExecutionTime(ns: i128, buf: []u8) []const u8 {
     const ms = @as(f64, @floatFromInt(ns)) / 1_000_000.0;
     if (ms < 1.0) {
@@ -475,8 +474,8 @@ pub fn getLine(in: ?*word.FILE, n_val: Word, s_ptr: [*]u8) c_int {
 
 /// 1 if the editor command lacks an open-at-line placeholder (`+!`, `%d`, or `%l`).
 pub fn badEditor(rs: *rt.RuntimeState) bool {
-    const e = rs.editor orelse return false;
-    if (word.strstr(e, "+!") != null or word.strstr(e, "%d") != null or word.strstr(e, "%l") != null) {
+    const e = std.mem.span(rs.editor orelse return false);
+    if (std.mem.indexOf(u8, e, "+!") != null or std.mem.indexOf(u8, e, "%d") != null or std.mem.indexOf(u8, e, "%l") != null) {
         return false;
     }
     return true;

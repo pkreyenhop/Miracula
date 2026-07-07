@@ -159,8 +159,10 @@ pub fn token() ?[*:0]u8 {
         }
         ls().dicq[0] = 0;
         if (gethome(ls().dicp + 1)) |h_dir| {
-            _ = word.strcpy(ls().dicp, h_dir);
-            ls().dicq = ls().dicp + word.strlen(ls().dicp);
+            const h_span = std.mem.span(h_dir);
+            @memcpy(ls().dicp[0..h_span.len], h_span);
+            ls().dicp[h_span.len] = 0;
+            ls().dicq = ls().dicp + std.mem.len(ls().dicp);
         }
     }
     while (ch != main_clib.EOF and !(if (charOf(ch)) |b| std.ascii.isWhitespace(b) else false)) {
@@ -173,8 +175,12 @@ pub fn token() ?[*:0]u8 {
                 ls().dicq -= 1;
             } else {
                 ls().dicq -= 1;
-                _ = word.strcpy(ls().dicq, rt.rs().current_script.?);
-                ls().dicq += word.strlen(rt.rs().current_script.?);
+                {
+                    const script_span = std.mem.span(rt.rs().current_script.?);
+                    @memcpy(ls().dicq[0..script_span.len], script_span);
+                    ls().dicq[script_span.len] = 0;
+                }
+                ls().dicq += std.mem.len(rt.rs().current_script.?);
             }
         }
         ch = main_clib.getchar();
@@ -197,16 +203,27 @@ pub fn token() ?[*:0]u8 {
 /// Append the Miranda source extension to name `s` (flag `b` selects the variant).
 pub fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
     var s = s_input;
-    var n: Word = @intCast(word.strlen(s));
+    var n: Word = @intCast(std.mem.len(s));
     if (s[0] == '<' and s[@intCast(n - 1)] == '>') {
         var miralen: usize = 0;
         if (miralen == 0) {
-            miralen = word.strlen(rt.rs().miralib.?);
+            miralen = std.mem.len(rt.rs().miralib.?);
         }
-        _ = word.strcpy(&rt.rs().linebuf[0], rt.rs().miralib.?);
+        {
+            const miralib_span = std.mem.span(rt.rs().miralib.?);
+            @memcpy(rt.rs().linebuf[0..miralib_span.len], miralib_span);
+        }
         rt.rs().linebuf[miralen] = '/';
-        _ = word.strcpy(&rt.rs().linebuf[miralen + 1], s + 1);
-        _ = word.strcpy(ls().dicp, &rt.rs().linebuf[0]);
+        {
+            const rest_span = std.mem.span(s + 1);
+            @memcpy(rt.rs().linebuf[miralen + 1 ..][0..rest_span.len], rest_span);
+            rt.rs().linebuf[miralen + 1 + rest_span.len] = 0;
+        }
+        {
+            const linebuf_span = std.mem.span(@as([*:0]const u8, @ptrCast(&rt.rs().linebuf)));
+            @memcpy(ls().dicp[0..linebuf_span.len], linebuf_span);
+            ls().dicp[linebuf_span.len] = 0;
+        }
         s = ls().dicp;
         n = n + @as(Word, @intCast(miralen)) - 1;
         ls().dicq = ls().dicp + @as(usize, @intCast(n + 1));
@@ -244,7 +261,11 @@ pub fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
     } else if ((ls().dicq - 1)[0] == '.') {
         ls().dicq -= 1;
     }
-    _ = word.strcpy(ls().dicq, ".m");
+    {
+        const ext = ".m";
+        @memcpy(ls().dicq[0..ext.len], ext);
+        ls().dicq[ext.len] = 0;
+    }
     ls().dicq += 3;
     ovflocheck();
     return ls().dicp;
@@ -270,7 +291,7 @@ pub fn rdline() ?[*:0]u8 {
     }
     if (ch == '!') {
         expansion = 1;
-        p = @ptrCast(&ls().rdline_linebuf[word.strlen(&ls().rdline_linebuf) - 1]); // p now points at old '\n'
+        p = @ptrCast(&ls().rdline_linebuf[std.mem.len(@as([*:0]const u8, @ptrCast(&ls().rdline_linebuf))) - 1]); // p now points at old '\n'
     } else {
         if (getStdin()) |stdin_file| {
             _ = main_clib.ungetc(ch, stdin_file);
@@ -301,8 +322,15 @@ pub fn rdline() ?[*:0]u8 {
                 p -= 1;
             } else {
                 const remaining = 1024 - (@as(usize, @intFromPtr(p - 1)) - @as(usize, @intFromPtr(&ls().rdline_linebuf)));
-                _ = word.strncpy(p - 1, rt.rs().current_script.?, remaining);
-                p = @ptrCast(&ls().rdline_linebuf[word.strlen(&ls().rdline_linebuf)]);
+                {
+                    const src_span = std.mem.span(rt.rs().current_script.?);
+                    const limit = @min(src_span.len, remaining);
+                    @memcpy((p - 1)[0..limit], src_span[0..limit]);
+                    if (limit < remaining) {
+                        @memset((p - 1)[limit..remaining], 0);
+                    }
+                }
+                p = @ptrCast(&ls().rdline_linebuf[std.mem.len(@as([*:0]const u8, @ptrCast(&ls().rdline_linebuf)))]);
                 expansion = 1;
             }
         }
@@ -363,7 +391,7 @@ pub fn convArgs() Word {
 /// Tests: strConv: a C string becomes a Miranda char list
 pub fn strConv(s: [*:0]const u8) Word {
     var x = NIL;
-    var i = word.strlen(s);
+    var i = std.mem.len(s);
     while (i > 0) {
         i -= 1;
         x = cons(s[i], x);
@@ -381,16 +409,25 @@ test "strConv: a C string becomes a Miranda char list" {
 /// Adjust the stored library path prefix for `f`.
 pub fn adjustPrefix(f: [*:0]const u8) void {
     ls().prefixstack = cons(ls().prefix, ls().prefixstack);
-    ls().prefix += @as(Word, @intCast(word.strlen(ls().prefixbase.? + @as(usize, @intCast(ls().prefix))))) + 1;
-    while (@as(usize, @intCast(ls().prefix)) + word.strlen(f) >= @as(usize, @intCast(ls().prefixlimit))) {
+    ls().prefix += @as(Word, @intCast(std.mem.len(@as([*:0]const u8, @ptrCast(ls().prefixbase.? + @as(usize, @intCast(ls().prefix))))))) + 1;
+    while (@as(usize, @intCast(ls().prefix)) + std.mem.len(f) >= @as(usize, @intCast(ls().prefixlimit))) {
         const old_limit = ls().prefixlimit;
         ls().prefixlimit += 1024;
         const old_slice = ls().prefixbase.?[0..@intCast(old_limit)];
         const new_slice = rt.allocator.realloc(old_slice, @intCast(ls().prefixlimit)) catch mallocPanic("ls.prefixbase");
         ls().prefixbase = new_slice.ptr;
     }
-    _ = word.strcpy(ls().prefixbase.? + @as(usize, @intCast(ls().prefix)), f);
-    const g = word.rindex(ls().prefixbase.? + @as(usize, @intCast(ls().prefix)), '/');
+    {
+        const dest = ls().prefixbase.? + @as(usize, @intCast(ls().prefix));
+        const f_span = std.mem.span(f);
+        @memcpy(dest[0..f_span.len], f_span);
+        dest[f_span.len] = 0;
+    }
+    const g: ?[*]u8 = blk: {
+        const dest = ls().prefixbase.? + @as(usize, @intCast(ls().prefix));
+        const dest_span = std.mem.span(@as([*:0]const u8, @ptrCast(dest)));
+        break :blk if (std.mem.lastIndexOfScalar(u8, dest_span, '/')) |idx| dest + idx else null;
+    };
     if (g) |gp| {
         gp[1] = 0;
     } else {
@@ -414,9 +451,13 @@ pub fn keep(p: [*:0]u8) [*:0]u8 {
     if (p == ls().dicp) {
         ls().dicp = ls().dicq;
     } else {
-        _ = word.strcpy(ls().dicp, p);
+        {
+            const p_span = std.mem.span(p);
+            @memcpy(ls().dicp[0..p_span.len], p_span);
+            ls().dicp[p_span.len] = 0;
+        }
         const ret = ls().dicp;
-        ls().dicp = ls().dicp + word.strlen(ls().dicp) + 1;
+        ls().dicp = ls().dicp + std.mem.len(ls().dicp) + 1;
         ls().dicq = ls().dicp;
         dicCheck();
         return ret;
@@ -592,7 +633,7 @@ pub fn resetLex(heap: *Heap) void {
         const err_script_raw = @as(?[*:0]const u8, strtab.strOf(strtab.table(), h(heap, core_state.s().errs)));
         const err_script = err_script_raw orelse "test.m";
         const is_current = if (err_script_raw) |es|
-            (if (rt.rs().current_script) |script| word.strcmp(es, script) == 0 else false)
+            (if (rt.rs().current_script) |script| std.mem.eql(u8, std.mem.span(es), std.mem.span(script)) else false)
         else
             true;
         if (!@import("builtin").is_test) {

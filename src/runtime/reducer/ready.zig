@@ -780,11 +780,15 @@ fn handleReadyGETENV(ctx: *ReductionCtx) void {
     const p = main_clib.getenv(a);
     ctx.hold = word.NIL;
     if (p) |ptr| {
-        var i = word.strlen(ptr);
+        var i = std.mem.len(ptr);
         if (ctx.rs.UTF8 != 0) {
             const qbuf_slice = rt.allocator.alloc(u8, i + 1) catch heap.mallocPanic("utf8 conversion buffer");
             const qbuf = qbuf_slice.ptr;
-            _ = word.strcpy(@as([*:0]u8, @ptrCast(qbuf)), ptr);
+            {
+                const ptr_span = std.mem.span(ptr);
+                @memcpy(qbuf[0..ptr_span.len], ptr_span);
+                qbuf[ptr_span.len] = 0;
+            }
             var q = qbuf;
             var r = qbuf;
             while (r[0] != 0) {
@@ -806,7 +810,7 @@ fn handleReadyGETENV(ctx: *ReductionCtx) void {
                 }
             }
             q[0] = 0;
-            i = word.strlen(@as([*:0]const u8, @ptrCast(qbuf)));
+            i = std.mem.len(@as([*:0]const u8, @ptrCast(qbuf)));
             while (i > 0) {
                 i -= 1;
                 ctx.hold = reduce.cons(ctx.heap, qbuf[i], ctx.hold);

@@ -89,10 +89,10 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     heap.current_file = heap_mod.h(heap.files);
     heap_mod.tp(heap_mod.h(lexs.fileq)).* = heap.current_file;
 
-    if (rs.initialising != 0 and word.strcmp(t_val, @as([*:0]const u8, @ptrCast(&rs.PRELUDE))) == 0) {
+    if (rs.initialising != 0 and std.mem.eql(u8, std.mem.span(t_val), std.mem.span(@as([*:0]const u8, @ptrCast(&rs.PRELUDE))))) {
         setup.privlib(heap);
     } else if (rs.initialising != 0 or rs.nostdenv) {
-        if (word.strcmp(t_val, @as([*:0]const u8, @ptrCast(&rs.STDENV))) == 0) {
+        if (std.mem.eql(u8, std.mem.span(t_val), std.mem.span(@as([*:0]const u8, @ptrCast(&rs.STDENV))))) {
             setup.stdlib(heap);
         }
     }
@@ -173,13 +173,19 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
                 dump.unfixexports(heap, comp, rs, lexs);
             } else {
                 var obf: [abi.pnlim]u8 = undefined;
-                _ = word.strcpy(&obf, t_val);
-                const len = word.strlen(&obf);
-                _ = word.strcpy(obf[len - 1 ..].ptr, core.obsuffix);
+                {
+                    const t_val_span = std.mem.span(t_val);
+                    @memcpy(obf[0..t_val_span.len], t_val_span);
+                    obf[t_val_span.len] = 0;
+                    const suffix_span = std.mem.span(core.obsuffix);
+                    const base = t_val_span.len - 1;
+                    @memcpy(obf[base..][0..suffix_span.len], suffix_span);
+                    obf[base + suffix_span.len] = 0;
+                }
                 _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
             }
         }
-        if (core.errline == 0 and core.errs != 0 and word.strcmp(strtab.strOf(strtab.table(), heap_mod.h(core.errs)), rs.current_script.?) == 0) {
+        if (core.errline == 0 and core.errs != 0 and std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(core.errs))), std.mem.span(rs.current_script.?))) {
             core.errline = heap_mod.t(core.errs);
         }
         comp.ND = heap_mod.alfasort(comp.ND);
@@ -194,9 +200,15 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     heap_mod.unload(comp, rs, lexs);
     if (files.isMirandaSource(t_val) != 0) {
         var obf: [abi.pnlim]u8 = undefined;
-        _ = word.strcpy(&obf, t_val);
-        const len = word.strlen(&obf);
-        _ = word.strcpy(obf[len - 1 ..].ptr, core.obsuffix);
+        {
+            const t_val_span = std.mem.span(t_val);
+            @memcpy(obf[0..t_val_span.len], t_val_span);
+            obf[t_val_span.len] = 0;
+            const suffix_span = std.mem.span(core.obsuffix);
+            const base = t_val_span.len - 1;
+            @memcpy(obf[base..][0..suffix_span.len], suffix_span);
+            obf[base + suffix_span.len] = 0;
+        }
         _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
     }
     core.SYNERR = 0;
@@ -221,7 +233,7 @@ fn resolveExportFileList(heap: *Heap, core: *core_state.CoreState, rs: *rt.Runti
                 var count: Word = 0;
                 var i = rs.includees;
                 while (i != NIL) : (i = heap_mod.t(i)) {
-                    if (word.strcmp(strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(heap_mod.h(i)))), strtab.strOf(strtab.table(), heap_mod.h(s))) == 0) {
+                    if (std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(heap_mod.h(i))))), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(s))))) {
                         heap_mod.hp(s).* = heap_mod.h(heap_mod.h(heap_mod.h(i)));
                         count += 1;
                     }
@@ -487,8 +499,15 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         var f: ?*word.FILE = null;
         const fn_str = strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(heap_mod.h(includees_list))));
 
-        _ = word.strcpy(lexs.dicp, fn_str);
-        _ = word.strcpy(lexs.dicp + word.strlen(lexs.dicp) - 1, core.obsuffix);
+        {
+            const fn_span = std.mem.span(fn_str);
+            @memcpy(lexs.dicp[0..fn_span.len], fn_span);
+            lexs.dicp[fn_span.len] = 0;
+            const suffix_span = std.mem.span(core.obsuffix);
+            const base = fn_span.len - 1;
+            @memcpy(lexs.dicp[base..][0..suffix_span.len], suffix_span);
+            lexs.dicp[base + suffix_span.len] = 0;
+        }
 
         if (!rs.making) {
             oldsig = signals(abi.SIGINT, @intFromPtr(&dump.sigdefer));
@@ -541,7 +560,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
                                             q = heap_mod.t(q);
                                             continue;
                                         }
-                                        while (w != NIL and (word.strcmp(heap_mod.getFil(heap_mod.h(w)).?, heap_mod.getFil(heap_mod.h(z)).?) != 0 or heap_mod.h(heap_mod.t(heap_mod.h(w))) != orig)) {
+                                        while (w != NIL and (!std.mem.eql(u8, std.mem.span(heap_mod.getFil(heap_mod.h(w)).?), std.mem.span(heap_mod.getFil(heap_mod.h(z)).?)) or heap_mod.h(heap_mod.t(heap_mod.h(w))) != orig)) {
                                             w = heap_mod.t(w);
                                         }
                                         if (w == NIL) {

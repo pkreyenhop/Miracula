@@ -264,15 +264,22 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
         return;
     }
 
-    flen = @intCast(word.strlen(t_val));
+    flen = @intCast(std.mem.len(t_val));
     t1 = files.fileMtime(t_val);
     if (flen > abi.pnlim) {
         word.print("sorry, pathname too long (limit={}): {s}\n", .{ abi.pnlim, std.mem.span(t_val) });
         return;
     }
 
-    _ = word.strcpy(&obf, t_val);
-    _ = word.strcpy(obf[@intCast(flen - 1)..].ptr, core.obsuffix);
+    {
+        const t_val_span = std.mem.span(t_val);
+        @memcpy(obf[0..t_val_span.len], t_val_span);
+        obf[t_val_span.len] = 0;
+        const suffix_span = std.mem.span(core.obsuffix);
+        const base: usize = @intCast(flen - 1);
+        @memcpy(obf[base..][0..suffix_span.len], suffix_span);
+        obf[base + suffix_span.len] = 0;
+    }
     t2 = files.fileMtime(@as([*:0]const u8, @ptrCast(&obf)));
     if (t2 != 0 and t1 == 0) {
         t2 = 0;
@@ -370,13 +377,20 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
 pub fn makedump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState) void {
     const obf = &rs.linebuf;
     var f: ?*word.FILE = null;
-    _ = word.strcpy(obf, rs.current_script.?);
-    const len = word.strlen(obf);
-    _ = word.strcpy(obf[len - 1 ..].ptr, core.obsuffix);
+    {
+        const script_span = std.mem.span(rs.current_script.?);
+        @memcpy(obf[0..script_span.len], script_span);
+        obf[script_span.len] = 0;
+        const suffix_span = std.mem.span(core.obsuffix);
+        const base = script_span.len - 1;
+        @memcpy(obf[base..][0..suffix_span.len], suffix_span);
+        obf[base + suffix_span.len] = 0;
+    }
     f = word.fopen(obf, "w");
     if (f == null) {
         word.print("WARNING: CANNOT WRITE TO {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(obf)))});
-        if (word.strcmp(rs.current_script.?, &rs.PRELUDE) == 0 or word.strcmp(rs.current_script.?, &rs.STDENV) == 0) {
+        const current_script_span = std.mem.span(rs.current_script.?);
+        if (std.mem.eql(u8, current_script_span, std.mem.span(@as([*:0]const u8, @ptrCast(&rs.PRELUDE)))) or std.mem.eql(u8, current_script_span, std.mem.span(@as([*:0]const u8, @ptrCast(&rs.STDENV))))) {
             word.print("TO FIX THIS PROBLEM PLEASE GET SUPER-USER TO EXECUTE `mira'\n", .{});
         }
         if (rs.making and rs.make_status == 0) {
