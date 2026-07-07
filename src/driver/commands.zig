@@ -703,7 +703,7 @@ pub fn finger(heap: *Heap, rs: *rt.RuntimeState, n: [*:0]const u8) void {
 /// Explain why name `n` is unusable: not an identifier, a reserved keyword, or simply not in scope.
 pub fn diagnose(n: [*:0]const u8) void {
     var i: usize = 0;
-    if (word.isalpha(n[0])) {
+    if (std.ascii.isAlphabetic(n[0])) {
         while (n[i] != 0 and abi.okid(n[i])) {
             i += 1;
         }

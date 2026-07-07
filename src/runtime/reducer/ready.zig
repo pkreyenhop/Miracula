@@ -32,6 +32,25 @@ inline fn setLastArg(ctx: *ReductionCtx, val: Word) void {
     reduce.tlSet(ctx.heap, ctx.e, val);
 }
 
+/// A heap-stored character code, narrowed to a byte iff it's in ASCII-byte
+/// range (Phase 2 step 5: heap cells are `Word`/`i64` and can hold values
+/// outside 0-255, which `std.ascii`'s predicates can't accept directly).
+inline fn charOfWord(w: Word) ?u8 {
+    return if (w >= 0 and w <= 255) @intCast(w) else null;
+}
+inline fn isSpaceW(w: Word) bool {
+    return if (charOfWord(w)) |b| std.ascii.isWhitespace(b) else false;
+}
+inline fn isDigitW(w: Word) bool {
+    return if (charOfWord(w)) |b| std.ascii.isDigit(b) else false;
+}
+inline fn isHexW(w: Word) bool {
+    return if (charOfWord(w)) |b| std.ascii.isHex(b) else false;
+}
+inline fn toLowerW(w: Word) u8 {
+    return if (charOfWord(w)) |b| std.ascii.toLower(b) else 0;
+}
+
 /// Miranda's `shownum` on a double: the shortest decimal string that
 /// round-trips exactly, with a guaranteed ".0" suffix if it would
 /// otherwise look like an integer (`show 2.0` must print "2.0", not "2").
@@ -863,7 +882,7 @@ fn handleReadyNUMVAL(ctx: *ReductionCtx) void {
         reduce.tlSet(ctx.heap, x, next_tl);
         x = next_tl;
     }
-    while (lastArg(ctx) != word.NIL and word.isspace(reduce.hdGet(ctx.heap, lastArg(ctx)))) {
+    while (lastArg(ctx) != word.NIL and isSpaceW(reduce.hdGet(ctx.heap, lastArg(ctx)))) {
         setLastArg(ctx, reduce.tlGet(ctx.heap, lastArg(ctx)));
     }
     x = lastArg(ctx);
@@ -871,7 +890,7 @@ fn handleReadyNUMVAL(ctx: *ReductionCtx) void {
         x = reduce.tlGet(ctx.heap, x);
     }
     if (reduce.hdGet(ctx.heap, x) == '0' and reduce.tlGet(ctx.heap, x) != word.NIL) {
-        switch (word.tolower(reduce.hdGet(ctx.heap, reduce.tlGet(ctx.heap, x)))) {
+        switch (toLowerW(reduce.hdGet(ctx.heap, reduce.tlGet(ctx.heap, x)))) {
             'o' => {
                 base = 8;
                 x = reduce.tlGet(ctx.heap, reduce.tlGet(ctx.heap, x));
@@ -882,14 +901,14 @@ fn handleReadyNUMVAL(ctx: *ReductionCtx) void {
             'x' => {
                 base = 16;
                 x = reduce.tlGet(ctx.heap, reduce.tlGet(ctx.heap, x));
-                while (x != word.NIL and word.isxdigit(reduce.hdGet(ctx.heap, x))) {
+                while (x != word.NIL and isHexW(reduce.hdGet(ctx.heap, x))) {
                     x = reduce.tlGet(ctx.heap, x);
                 }
             },
             else => {},
         }
     } else {
-        while (x != word.NIL and word.isdigit(reduce.hdGet(ctx.heap, x))) {
+        while (x != word.NIL and isDigitW(reduce.hdGet(ctx.heap, x))) {
             x = reduce.tlGet(ctx.heap, x);
         }
     }

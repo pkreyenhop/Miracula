@@ -123,6 +123,13 @@ pub fn setupdic() void {
     symbols.syms().* = .{};
 }
 
+/// A `getchar()`-style `c_int` (may be `EOF` = -1), narrowed to a byte iff
+/// it's in ASCII-byte range (Phase 2 step 5: `std.ascii`'s predicates need a
+/// `u8`, and can't see the EOF sentinel directly).
+inline fn charOf(ch: c_int) ?u8 {
+    return if (ch >= 0 and ch <= 255) @intCast(ch) else null;
+}
+
 /// Resolve a `~`-relative path `n` against ``.
 fn gethome(n: [*:0]const u8) ?[*:0]const u8 {
     if (n[0] == 0) {
@@ -145,7 +152,7 @@ pub fn token() ?[*:0]u8 {
         ls().dicq[0] = @intCast(ch);
         ls().dicq += 1;
         ch = main_clib.getchar();
-        while (word.isalnum(ch) or ch == '-' or ch == '_' or ch == '.') {
+        while ((if (charOf(ch)) |b| std.ascii.isAlphanumeric(b) else false) or ch == '-' or ch == '_' or ch == '.') {
             ls().dicq[0] = @intCast(ch);
             ls().dicq += 1;
             ch = main_clib.getchar();
@@ -156,7 +163,7 @@ pub fn token() ?[*:0]u8 {
             ls().dicq = ls().dicp + word.strlen(ls().dicp);
         }
     }
-    while (ch != main_clib.EOF and !word.isspace(ch)) {
+    while (ch != main_clib.EOF and !(if (charOf(ch)) |b| std.ascii.isWhitespace(b) else false)) {
         ls().dicq[0] = @intCast(ch);
         ls().dicq += 1;
         if (ch == '%') {
