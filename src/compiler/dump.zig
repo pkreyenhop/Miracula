@@ -16,7 +16,6 @@ const heap_mod = @import("../runtime/heap.zig");
 const Heap = heap_mod.Heap;
 const files = @import("../io/files.zig");
 const module_loader = @import("module_loader.zig");
-const signals_mod = @import("../io/signals.zig");
 const core_state = @import("../runtime/core_state.zig");
 const symbols = @import("../semantics/symbols.zig");
 const ls = lex_state.ls;
@@ -155,12 +154,6 @@ fn publicise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
     return i;
 }
 
-/// Signal handler that defers delivery by setting `rs.sigflag`.
-/// Installed during dump I/O so that SIGINT cannot corrupt the dump file mid-write.
-pub fn sigdefer(_: c_int) callconv(.c) void {
-    rt.rs().sigflag = 1;
-}
-
 /// Repairs type references after loading a dump: re-resolves STRCONS nodes and
 /// reports types that are in the dump but missing from the current scope (`tlost`).
 pub fn readoption(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState) void {
@@ -257,7 +250,6 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
     var flen: Word = undefined;
     var t1: Word = undefined;
     var t2: Word = undefined;
-    var oldsig: usize = 0;
 
     if (files.isMirandaSource(t_val) == 0 and rs.initialising == 0) {
         module_loader.loadfile(heap, core, comp, rs, ls(), t_val);
@@ -302,11 +294,6 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
     rs.oldfiles = NIL;
     heap_mod.unload(comp, rs, ls());
 
-    if (rs.initialising == 0 and !rs.making) {
-        rs.sigflag = 0;
-        oldsig = signals_mod.signals(abi.SIGINT, @intFromPtr(&sigdefer));
-    }
-
     heap.files = abi.loadScript(core, comp, rs, ls(), f.?, @constCast(t_val), NIL, NIL, if (!rs.making and rs.initialising == 0) 1 else 0);
     _ = word.fclose(f.?);
 
@@ -322,17 +309,6 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
             word.print("(wrong source file)\n", .{});
         } else {
             word.print("(error {})\n", .{comp.BAD_DUMP});
-        }
-    }
-
-    if (rs.initialising == 0 and !rs.making) {
-        _ = signals_mod.signals(abi.SIGINT, oldsig);
-    }
-    if (rs.sigflag != 0) {
-        rs.sigflag = 0;
-        if (oldsig > 1) {
-            const handler: *const fn (c_int) callconv(.c) void = @ptrFromInt(oldsig);
-            handler(abi.SIGINT);
         }
     }
 
@@ -372,8 +348,11 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
 }
 
 /// Writes a binary dump of the current heap state to the .mx file corresponding to
-/// `rs.current_script`. Installs `sigdefer` during the write so a SIGINT cannot
-/// leave a partial dump; re-raises any deferred signal afterward.
+/// `rs.current_script`. A SIGINT mid-write is harmless (Phase 3,
+/// docs/ZIG_NATIVE_PLAN.md): the installed handler only sets a polled flag, so
+/// no signal-deferral dance is needed here -- an interrupted write completes
+/// normally and, if it somehow leaves a corrupt dump, `undump`'s `BAD_DUMP`
+/// check deletes it on the next load anyway.
 pub fn makedump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState) void {
     const obf = &rs.linebuf;
     var f: ?*word.Stream = null;
@@ -398,10 +377,8 @@ pub fn makedump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         }
         return;
     }
-    rs.unlinkme = @ptrCast(obf);
     abi.setprefix(rs.current_script.?);
     abi.dumpScript(core, comp, rs, heap.files, f.?);
-    rs.unlinkme = null;
     _ = word.fclose(f.?);
 }
 

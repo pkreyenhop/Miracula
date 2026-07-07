@@ -131,10 +131,6 @@ pub const RuntimeState = struct {
     /// Non-null when readRc fails; points into home_rc or lib_rc (not heap-allocated).
     rc_error: ?[*:0]const u8 = null,
 
-    /// Path of a temp file to unlink if a signal fires during dump/undump.
-    unlinkme: ?[*:0]const u8 = null,
-    sigflag: i32 = 0,
-
     // Sorted output and GC-adjacent state
     sorted: i32 = 0,
     detrop: Word = NIL,
@@ -241,5 +237,4 @@ test "RuntimeState null-initialised optional fields" {
     try std.testing.expectEqual(@as(?[*:0]u8, null), state.editor);
     try std.testing.expectEqual(@as(?[*:0]u8, null), state.current_script);
     try std.testing.expectEqual(@as(?[*:0]const u8, null), state.rc_error);
-    try std.testing.expectEqual(@as(?[*:0]const u8, null), state.unlinkme);
 }

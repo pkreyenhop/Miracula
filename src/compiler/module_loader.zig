@@ -491,10 +491,8 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         abi.exit(@intCast(rs.make_status));
     }
 
-    rs.sigflag = 0;
     while (includees_list != NIL) {
         var x: Word = NIL;
-        var oldsig: usize = 0;
         var f: ?*word.Stream = null;
         const fn_str = strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(heap_mod.h(includees_list))));
 
@@ -508,10 +506,6 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
             lexs.dicp[base + suffix_span.len] = 0;
         }
 
-        if (!rs.making) {
-            oldsig = signals(abi.SIGINT, @intFromPtr(&dump.sigdefer));
-        }
-
         f = word.fopen(lexs.dicp, "r");
         if (f != null) {
             x = abi.loadScript(core, comp, rs, lexs, f.?, @constCast(fn_str), heap_mod.h(heap_mod.t(heap_mod.h(includees_list))), heap_mod.t(heap_mod.t(heap_mod.h(includees_list))), 0);
@@ -519,17 +513,6 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         }
 
         rs.ld_stuff = heap_mod.cons(x, rs.ld_stuff);
-        if (!rs.making) {
-            _ = signals(abi.SIGINT, oldsig);
-        }
-
-        if (rs.sigflag != 0) {
-            rs.sigflag = 0;
-            if (oldsig > 1) {
-                const handler: *const fn (c_int) callconv(.c) void = @ptrFromInt(oldsig);
-                handler(abi.SIGINT);
-            }
-        }
 
         if (f != null and comp.BAD_DUMP == 0 and x != NIL and comp.ND == NIL and comp.CLASHES == NIL and comp.ALIASES == NIL and comp.TSUPPRESSED == NIL and comp.DETROP == NIL and comp.MISSING == NIL) {
             if (comp.TORPHANS != 0) {

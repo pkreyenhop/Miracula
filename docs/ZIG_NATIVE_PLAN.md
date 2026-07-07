@@ -1560,6 +1560,22 @@ flag; evaluation is in-process.
 
 **Deletes:** the setjmp family and both fork sites; `unlinkme`/`sigflag` become
 `errdefer` cleanup; `WIFSIGNALED`/`WTERMSIG` helpers.
+**Landed** (2026-07-08): `unlinkme`/`sigflag`/`sigdefer` deleted outright rather
+than reimplemented as `errdefer`. `unlinkme` was dead on arrival in this port —
+set/cleared in `dump.zig`'s `makedump` but never once read, so it protected
+nothing. `sigflag`/`sigdefer` existed to defer SIGINT during dump I/O (swap in
+a flag-setting handler, restore the old one after, manually re-raise if it
+fired) because the *old* handlers it was deferring (`reset`/`dieClean`,
+gone since step 3) were unsafe to run mid-write. The now-permanent
+`onInterrupt` (step 1) is already async-signal-safe everywhere — it only
+does one atomic store, never touches heap state or longjmps — so there is
+nothing left to defer; the swap-and-redeliver dance in `dump.zig`'s `undump`
+and `module_loader.zig`'s `mkincludes` is simply removed, and dump writes
+now rely on the pre-existing `BAD_DUMP` corruption check to clean up a
+partial file on the next load (already true before this change; SIGKILL and
+panics were never covered by `unlinkme` either, since neither runs Zig
+`defer`s). `callconv(.c)` usage drops from 4 to 1 (only `onInterrupt`
+remains).
 
 **Gate:** scorecard setjmp/longjmp = 0; sigint, smoke, golden, regression suites
 green; bench unchanged (checkpoint cost is per-REPL-eval, not per-reduction).
