@@ -38,22 +38,6 @@ const WaitStatusType = c_int;
 pub const word = word_mod.Word;
 pub const unicode = word_mod.Unicode;
 
-// jmp_buf/sigjmp_buf: opaque buffers large enough for all supported platforms.
-// setjmp/longjmp/sigsetjmp/siglongjmp live in libSystem on macOS and libc on Linux.
-pub const jmp_buf = extern struct { __opaque: [512]u8 align(16) = [_]u8{0} ** 512 };
-pub const sigjmp_buf = extern struct { __opaque: [520]u8 align(16) = [_]u8{0} ** 520 };
-pub extern fn setjmp(env: *anyopaque) c_int;
-pub extern fn longjmp(env: *anyopaque, val: c_int) noreturn;
-pub const sigsetjmp = if (builtin.os.tag == .macos)
-    struct {
-        extern fn sigsetjmp(env: *anyopaque, savemask: c_int) c_int;
-    }.sigsetjmp
-else
-    struct {
-        extern fn __sigsetjmp(env: *anyopaque, savemask: c_int) c_int;
-    }.__sigsetjmp;
-pub extern fn siglongjmp(env: *anyopaque, val: c_int) noreturn;
-
 // Definitions from data.h / combs.h
 pub const pnlim: c_int = 1024;
 pub const BUFSIZE: c_int = 1024;
@@ -204,7 +188,6 @@ pub const resetheap = heap_mod.resetheap;
 pub const sayhere = types_mod.sayhere;
 pub const setprefix = heap_mod.setprefix;
 pub const setupdic = lex_mod.setupdic;
-// sigjmp_buf, sigsetjmp, siglongjmp are declared above with the jmp_buf family.
 pub const EDOM = 33;
 pub const ERANGE = 34;
 

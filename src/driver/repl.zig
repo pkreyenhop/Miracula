@@ -13,14 +13,16 @@
 //! (async-signal-safe by construction); `reduce()`'s main loop polls it and
 //! unwinds via a normal `error.Interrupted` return, which `evaluateRepl`
 //! catches, reports, and clears -- no more signal-context non-local jump for
-//! this path. `fpeError`'s own `siglongjmp` (a *synchronous* call from
-//! `heap.zig`'s `stoDbl`/`setdbl` on a non-finite float, not an async signal)
-//! and `rs.env`/`sigsetjmp` stay for now -- eliminating those needs float
-//! overflow threaded through as its own error return, deferred as a
-//! separate, similarly-sized follow-up (see docs/ZIG_NATIVE_PLAN.md).
+//! this path. Float overflow (Phase 3 step 2) follows the same shape:
+//! `heap.zig`'s `stoDbl`/`setdbl` return `error.FloatOverflow` on a
+//! non-finite result (a *synchronous* check, never an async signal --
+//! there never was a real SIGFPE delivery path here), and `evaluateRepl`
+//! catches it alongside `error.Interrupted` and reports "FLOATING POINT
+//! OVERFLOW" instead of killing the process. No SIGFPE handler is
+//! registered any more.
 //!
-//! Also houses `fpeError`, the editor-command checks, and `parseLine` (the
-//! `readvals` reader).
+//! Also houses the editor-command checks and `parseLine` (the `readvals`
+//! reader).
 
 const std = @import("std");
 const options = @import("version_options");
@@ -40,7 +42,6 @@ const h = heap_mod.h;
 const t = heap_mod.t;
 
 const lex_state = @import("../parser/lex_state.zig");
-const setup = @import("../compiler/setup.zig");
 const signals_mod = @import("../io/signals.zig");
 const lex = @import("../parser/lex.zig");
 const heap_mod = @import("../runtime/heap.zig");
@@ -81,7 +82,6 @@ inline fn getTag(heap: *Heap, x: Word) word.NodeTag {
 const signals = signals_mod.signals;
 const resetgcstats = heap_mod.resetgcstats;
 const outstats = reduce.outstats;
-const syntax = setup.syntax;
 const token = lex.token;
 const rdline = lex.rdline;
 const resetLex = lex.resetLex;
@@ -298,19 +298,6 @@ pub fn onInterrupt(sig: c_int) callconv(.c) void {
     rt.interrupt_flag.store(true, .release);
 }
 
-/// SIGFPE handler: treat as a syntax error while compiling, otherwise a fatal floating-point overflow.
-pub fn fpeError(sig: c_int) callconv(.c) void {
-    if (core_state.s().compiling != 0) {
-        _ = signals(sig, @intFromPtr(&fpeError));
-        syntax("floating point number out of range\n");
-        core_state.s().SYNERR = 0;
-        abi.siglongjmp(&rt.rs().env, 1);
-    } else {
-        word.print("\nFLOATING POINT OVERFLOW\n", .{});
-        abi.exit(1);
-    }
-}
-
 // Relocated REPL and interactive driver functions
 /// Compile `x` and send its value to standard output — used to run a script's `main`.
 pub fn obey(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, x_in: Word) void {
@@ -389,6 +376,9 @@ pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_st
         error.Interrupted => {
             word.printErr("<<...interrupt>>\n", .{});
             rt.interrupt_flag.store(false, .release);
+        },
+        error.FloatOverflow => {
+            word.print("\nFLOATING POINT OVERFLOW\n", .{});
         },
     }
     outstats();

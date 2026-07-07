@@ -42,11 +42,10 @@ pub const Word = i64;
 /// The cell arena (see `heap.zig`); threaded explicitly by the primitives below.
 pub const Heap = heap_mod.Heap;
 
-/// The reduction engine's only fallible outcome: the user interrupted
-/// evaluation (SIGINT/SIGTERM), detected via `rt.interrupt_flag` polling
-/// inside `reduce()`'s main loop (Phase 3, docs/ZIG_NATIVE_PLAN.md — the
-/// replacement for the old sigsetjmp/siglongjmp non-local exit).
-pub const ReduceError = error{Interrupted};
+/// Re-export of [word.ReduceError] (defined there, not here, so `heap.zig`
+/// can return it from `stoDbl`/`setdbl` without importing this module back
+/// — see `word.zig`'s doc comment on `ReduceError` for the cycle rationale).
+pub const ReduceError = word.ReduceError;
 
 /// The reduction machine's register file. See `reducer/reduce.zig` for the
 /// protocol: `e` focus node · `spine` the explicit spine stack (see
@@ -443,7 +442,7 @@ pub inline fn forceDbl(heap: *Heap, x: Word) f64 {
 }
 
 /// Coerce `x` to a `DOUBLE` cell (no-op if already double; else promote the int).
-pub inline fn coerceDbl(heap: *Heap, x: Word) Word {
+pub inline fn coerceDbl(heap: *Heap, x: Word) ReduceError!Word {
     if (isDouble(heap, x)) return x;
     return heap_mod.stoDbl(big.toFloat(heap, x));
 }

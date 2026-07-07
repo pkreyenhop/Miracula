@@ -497,7 +497,7 @@ pub fn intError(s: [*:0]const u8) void {
 /// Add `x + y`, promoting to `f64` if either is a `DOUBLE`, else bignum add.
 ///
 /// Tests: numplus: integer add and float promotion
-pub fn numplus(x: Word, y: Word) Word {
+pub fn numplus(x: Word, y: Word) word.ReduceError!Word {
     if (getTag(x) == .DOUBLE) {
         return heap.stoDbl(heap.getDbl(x) + forceDbl(y));
     }
@@ -509,9 +509,9 @@ pub fn numplus(x: Word, y: Word) Word {
 
 test "numplus: integer add and float promotion" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(heap.heap(), numplus(big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), 3))));
-    try std.testing.expectEqual(@as(c_longlong, -1), big.toInt(heap.heap(), numplus(big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), -3))));
-    const r = numplus(heap.stoDbl(1.5), big.fromInt(heap.heap(), 2)); // DOUBLE + INT → DOUBLE
+    try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(heap.heap(), try numplus(big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), 3))));
+    try std.testing.expectEqual(@as(c_longlong, -1), big.toInt(heap.heap(), try numplus(big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), -3))));
+    const r = try numplus(try heap.stoDbl(1.5), big.fromInt(heap.heap(), 2)); // DOUBLE + INT → DOUBLE
     try std.testing.expectEqual(word.NodeTag.DOUBLE, heap.getTag(r));
     try std.testing.expectEqual(@as(f64, 3.5), heap.getDbl(r));
 }

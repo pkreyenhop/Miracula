@@ -164,7 +164,6 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
         _ = abi.keep(ls().dicp);
     }
 
-    _ = signals_mod.signals(abi.SIGFPE, @intFromPtr(&repl.fpeError));
     _ = signals_mod.signals(abi.SIGTERM, @intFromPtr(&abi.exit));
     // Interactive stdin gets zigline line editing + history; piped/file stdin
     // keeps the plain read path (so the golden corpus and integration suite run
@@ -433,7 +432,6 @@ fn resolveEnvironmentSettings() void {
 fn runExportsMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
     const arg_count: usize = argc_u - arg_idx;
     var s: [*:0]u8 = undefined;
-    _ = abi.sigsetjmp(&rt.rs().env, 1);
     var cur_argv_idx = arg_idx;
     while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
         var x: Word = NIL;
@@ -491,7 +489,6 @@ fn runExportsMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
 fn runSourcesMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
     var s: [*:0]u8 = undefined;
     var x: Word = NIL;
-    _ = abi.sigsetjmp(&rt.rs().env, 1);
     var cur_argv_idx = arg_idx;
     while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
         s = abi.addextn(1, argv[cur_argv_idx]);
@@ -518,7 +515,6 @@ fn runSourcesMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
 /// [reportMakeFailures]) and exits the process with the resulting status.
 fn runMakeMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
     var s: [*:0]u8 = undefined;
-    _ = abi.sigsetjmp(&rt.rs().env, 1);
     var cur_argv_idx = arg_idx;
     while (cur_argv_idx < argc_u) : (cur_argv_idx += 1) {
         s = abi.addextn(1, argv[cur_argv_idx]);

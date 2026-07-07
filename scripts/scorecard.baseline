@@ -1,15 +1,15 @@
-c_int/c_long/c_uint/c_ulong (non-FFI)	210
-[*:0] C-string types (non-FFI)	255
-extern fn declarations	13
+c_int/c_long/c_uint/c_ulong (non-FFI)	163
+[*:0] C-string types (non-FFI)	228
+extern fn declarations	8
 extern var declarations	0
-@intFromPtr / @ptrFromInt (non-FFI)	66
-printf-family calls (non-FFI)	391
-setjmp/longjmp/jmp_buf mentions	37
+@intFromPtr / @ptrFromInt (non-FFI)	54
+printf-family calls (non-FFI)	361
+setjmp/longjmp/jmp_buf mentions	6
 clib./c. call sites (non-FFI)	0
-callconv(.c) usage	6
-sentinel == NIL / != NIL (non-FFI)	345
-fork()/wait() call sites (non-FFI)	8
+callconv(.c) usage	4
+sentinel == NIL / != NIL (non-FFI)	326
+fork()/wait() call sites (non-FFI)	5
 module-scope mutable globals (non-FFI)	7
-ambient singleton-accessor call sites	1412
+ambient singleton-accessor call sites	944
 current_interp references	36
-files > 1000 lines	10
+files > 1000 lines	9

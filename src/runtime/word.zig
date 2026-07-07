@@ -16,6 +16,21 @@ const std = @import("std");
 /// immediate (char/small int), an atom code (token/combinator/named atom), or a
 /// heap-cell handle. Native 64-bit (R4.5 retired the old `c_long`).
 pub const Word = i64;
+
+/// The reduction engine's fallible outcomes (Phase 3, docs/ZIG_NATIVE_PLAN.md
+/// — the replacement for the old sigsetjmp/siglongjmp non-local exits):
+/// `Interrupted` when the user interrupts evaluation (SIGINT/SIGTERM,
+/// detected via `runtime_state.zig`'s `interrupt_flag` polling inside
+/// `reduce()`'s main loop) and `FloatOverflow` when a floating-point result
+/// is non-finite (detected explicitly in `heap.zig`'s `stoDbl`/`setdbl`,
+/// a *synchronous* check — not an async signal — so this is a normal Zig
+/// error return, not signal-handler recovery). Defined here (word.zig has
+/// no imports of its own, so every other module can reach it) rather than
+/// in `reducer/reduce_core.zig` (where the reduction engine's own call
+/// sites reference it as `ReduceError`, re-exported from here) specifically
+/// so `heap.zig` — which the reducer already imports — can return it from
+/// `stoDbl`/`setdbl` without importing the reducer back (a cycle).
+pub const ReduceError = error{ Interrupted, FloatOverflow };
 /// A Unicode code point, as carried by the char / `UNICODE`-cell paths.
 pub const Unicode = c_ulong;
 

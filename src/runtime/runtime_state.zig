@@ -18,10 +18,10 @@ pub var environ: std.process.Environ = .empty;
 /// Set by the SIGINT/SIGTERM handler (Phase 3, docs/ZIG_NATIVE_PLAN.md — the
 /// replacement for the old `sigsetjmp`/`siglongjmp` mechanism). The handler's
 /// *only* job is this one atomic store (async-signal-safe by construction);
-/// `reduce()`'s main loop and the compiler's per-definition loop poll it and
-/// unwind via a normal Zig error return (`error.EvaluationInterrupted`)
-/// instead of a signal-context non-local jump. Cleared once the interrupted
-/// evaluation has been reported back to the REPL prompt.
+/// `reduce()`'s main loop polls it and unwinds via a normal Zig error return
+/// (`error.Interrupted`, from `word.ReduceError`) instead of a signal-context
+/// non-local jump. Cleared once the interrupted evaluation has been reported
+/// back to the REPL prompt.
 pub var interrupt_flag: std.atomic.Value(bool) = .init(false);
 
 const Word = i64;
@@ -131,12 +131,6 @@ pub const RuntimeState = struct {
     /// Non-null when readRc fails; points into home_rc or lib_rc (not heap-allocated).
     rc_error: ?[*:0]const u8 = null,
 
-    // Signal / longjmp recovery
-    /// Recovery point for SIGINT and SIGFPE via siglongjmp().  POSIX signal
-    /// handlers are asynchronous (fire on any call stack) and cannot propagate
-    /// Zig error unions via stack unwinding.  This sigjmp_buf MUST remain —
-    /// it cannot be replaced with error{EvaluationInterrupted}.
-    env: abi.sigjmp_buf = .{},
     /// Path of a temp file to unlink if a signal fires during dump/undump.
     unlinkme: ?[*:0]const u8 = null,
     sigflag: i32 = 0,

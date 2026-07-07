@@ -84,12 +84,6 @@ comptime {
     std.debug.assert(@bitSizeOf(word.Word) == 64);
     std.debug.assert(@sizeOf(*anyopaque) == 8);
 
-    // Structure sizes and alignments
-    std.debug.assert(@sizeOf(abi.jmp_buf) == 512);
-    std.debug.assert(@sizeOf(abi.sigjmp_buf) == 528);
-    std.debug.assert(@alignOf(abi.jmp_buf) == 16);
-    std.debug.assert(@alignOf(abi.sigjmp_buf) == 16);
-
     // Enum layout checks
     std.debug.assert(@sizeOf(word.NodeTag) == 1);
     std.debug.assert(@intFromEnum(word.NodeTag.ATOM) == 0);

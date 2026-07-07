@@ -21,6 +21,7 @@ const reduce_mod = @import("../runtime/reduce.zig");
 const heap = @import("../runtime/heap.zig");
 const core_state = @import("../runtime/core_state.zig");
 const symbols = @import("../semantics/symbols.zig");
+const setup = @import("../compiler/setup.zig");
 
 const Word = word.Word;
 
@@ -321,6 +322,16 @@ fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
     return y;
 }
 
+/// A source float literal (e.g. `1e400`) overflowed `f64` during codegen.
+/// Reported the same way other codegen-time syntax errors are (`setup.syntax`
+/// sets `SYNERR` and resets the lexer; the caller checks `SYNERR` after
+/// codegen and discards the result) rather than `fpeError`'s old
+/// `siglongjmp` (Phase 3 step 2, docs/ZIG_NATIVE_PLAN.md).
+fn floatLiteralOverflow() Word {
+    setup.syntax("floating point number out of range\n");
+    return word.NIL;
+}
+
 // ---------------------------------------------------------------------------
 // String literal → CONS chain of character words
 // ---------------------------------------------------------------------------
@@ -364,7 +375,7 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
                 .int => |v| bigscanZ(alloc, v),
                 .char => |c| stoChar(@intCast(c)),
                 .string => |s| codegenString(s),
-                .float => |v| stoDbl(v), // type checker will reject this later
+                .float => |v| stoDbl(v) catch floatLiteralOverflow(), // type checker will reject this later
             };
             break :blk mkcons(word.CONST, val);
         },
@@ -434,7 +445,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         // --- Literals ---
         .literal => |lit| switch (lit.value) {
             .int => |v| bigscanZ(alloc, v),
-            .float => |v| stoDbl(v),
+            .float => |v| stoDbl(v) catch floatLiteralOverflow(),
             .char => |c| stoChar(@intCast(c)),
             .string => |s| codegenString(s),
         },

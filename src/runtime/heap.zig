@@ -19,7 +19,6 @@ const ls = lex_state.ls;
 
 const compiler_state = @import("../compiler/compiler_state.zig");
 const types = @import("../compiler/types.zig");
-const repl = @import("../driver/repl.zig");
 const files = @import("../io/files.zig");
 const lex = @import("../parser/lex.zig");
 const symbols = @import("../semantics/symbols.zig");
@@ -57,7 +56,6 @@ const ATOMLIMIT = word.ATOMLIMIT;
 const NIL = word.NIL;
 const NILS = word.NILS;
 
-const fpeError = repl.fpeError;
 const fpdatum = if (@sizeOf(Word) == 4)
     extern union {
         real: f64,
@@ -1124,9 +1122,9 @@ pub fn getDbl(x: Word) f64 {
 /// Box `f64` `R_val` in a `DOUBLE` cell.
 ///
 /// Tests: stoDbl / getDbl / setdbl: round-trip an f64 in a DOUBLE cell
-pub fn stoDbl(R_val: f64) Word {
+pub fn stoDbl(R_val: f64) word.ReduceError!Word {
     if (!std.math.isFinite(R_val)) {
-        fpeError(os.SIGFPE);
+        return error.FloatOverflow;
     }
     var r: fpdatum = undefined;
     r.real = R_val;
@@ -1140,9 +1138,9 @@ pub fn stoDbl(R_val: f64) Word {
 /// Overwrite the `f64` in `DOUBLE` cell `x`.
 ///
 /// Tests: stoDbl / getDbl / setdbl: round-trip an f64 in a DOUBLE cell
-pub fn setdbl(x: Word, R_val: f64) void {
+pub fn setdbl(x: Word, R_val: f64) word.ReduceError!void {
     if (!std.math.isFinite(R_val)) {
-        fpeError(os.SIGFPE);
+        return error.FloatOverflow;
     }
     var r: fpdatum = undefined;
     r.real = R_val;
@@ -1158,11 +1156,18 @@ pub fn setdbl(x: Word, R_val: f64) void {
 
 test "stoDbl / getDbl / setdbl: round-trip an f64 in a DOUBLE cell" {
     tu.freshInterp();
-    const d = stoDbl(3.14);
+    const d = try stoDbl(3.14);
     try std.testing.expectEqual(word.NodeTag.DOUBLE, getTag(d));
     try std.testing.expectEqual(@as(f64, 3.14), getDbl(d));
-    setdbl(d, -2.5);
+    try setdbl(d, -2.5);
     try std.testing.expectEqual(@as(f64, -2.5), getDbl(d));
+}
+
+test "stoDbl / setdbl: non-finite result returns error.FloatOverflow" {
+    tu.freshInterp();
+    try std.testing.expectError(error.FloatOverflow, stoDbl(std.math.inf(f64)));
+    const d = try stoDbl(1.0);
+    try std.testing.expectError(error.FloatOverflow, setdbl(d, -std.math.inf(f64)));
 }
 
 /// The `NIL` sentinel.
@@ -1814,11 +1819,18 @@ pub fn putdbl(x: Word, file: ?*word.Stream) void {
     _ = word.fwrite(&d, @sizeOf(f64), 1, file);
 }
 
-/// Read a double from dump `file` (as a `DOUBLE` node).
+/// Read a double from dump `file` (as a `DOUBLE` node). A non-finite value
+/// can only come from a corrupt dump (a well-formed one was itself written
+/// from a value `stoDbl`/`setdbl` already accepted) — flagged the same way
+/// other dump corruption is, via `BAD_DUMP`, rather than threading a Zig
+/// error through the whole dump-loading loop.
 pub fn getdbl(file: ?*word.Stream) Word {
     var d: f64 = 0;
     _ = word.fread(&d, @sizeOf(f64), 1, file);
-    return stoDbl(d);
+    return stoDbl(d) catch {
+        cs().BAD_DUMP = 1;
+        return word.NIL;
+    };
 }
 
 /// Write the loaded files/definitions graph to dump `file`.

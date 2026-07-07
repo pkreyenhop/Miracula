@@ -481,7 +481,6 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         rs.listing = 0;
         rs.verbosity = 0;
         rs.magic = false;
-        _ = abi.sigsetjmp(&rs.env, 1);
         while (includees_list != NIL and rs.make_status == 0) {
             dump.undump(heap, core, comp, rs, strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(heap_mod.h(includees_list)))));
             if (comp.ND != NIL or (heap.files == NIL and rs.oldfiles != NIL)) {

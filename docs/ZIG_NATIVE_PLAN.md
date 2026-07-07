@@ -1502,6 +1502,33 @@ flag; evaluation is in-process.
 2. **SIGFPE elimination.** Audit arithmetic paths: integer division already guards
    zero (bignum); float overflow routes to `fpeError`'s *message* via an explicit
    check, not a signal. Remove FPE signal recovery.
+   **Landed** (2026-07-08): `heap.zig`'s `stoDbl`/`setdbl` return
+   `word.ReduceError!Word`/`!void` (a new `FloatOverflow` variant alongside
+   `Interrupted` — both live in `word.zig`, the cycle-free leaf module, with
+   `reduce_core.ReduceError` re-exporting it) instead of calling `fpeError`.
+   The 23 runtime call sites (`reduce.zig`, `reduce_core.zig`, `ready.zig`)
+   thread `try` through the already-fallible reducer; `evaluateRepl` catches
+   `error.FloatOverflow` next to `error.Interrupted` and prints "FLOATING
+   POINT OVERFLOW" *without exiting the process* — a deliberate behavior
+   change from the old eval-time `abi.exit(1)`, matching this phase's "evaluation
+   is in-process" goal. The 2 compile-time call sites (`codegen.zig`'s float
+   literal codegen) are NOT threaded through the whole compiler (that's step
+   5's job) — `stoDbl(v) catch floatLiteralOverflow()` reports via the
+   existing `setup.syntax()`/`SYNERR` set-flag-and-continue idiom, the same
+   one every other codegen-time syntax error already uses. The 2
+   `setup.zig` bootstrap call sites (`hugenum`, `tiny`) use `catch
+   unreachable` — both values are hardcoded finite constants, so the error
+   path is provably dead there. `heap.zig`'s dump-loading `getdbl` (a
+   non-finite value can only mean a corrupt `.x` file, since a well-formed
+   one was itself written from a value `stoDbl`/`setdbl` already accepted)
+   flags `BAD_DUMP` instead, matching the existing dump-corruption
+   convention. `fpeError`, its SIGFPE registration, `rs.env`, and
+   `sigsetjmp`/`siglongjmp`/`jmp_buf`/`sigjmp_buf` (and main.zig's size
+   asserts for them) are deleted; the 4 now-inert `sigsetjmp(&rs.env, ...)`
+   calls whose only purpose was establishing fpeError's landing point
+   (`startup.zig` x3, `module_loader.zig`'s already-dead `mkincludes` path)
+   are deleted too. Scorecard's `setjmp/longjmp/jmp_buf mentions` metric
+   dropped from 37 to 6 (all doc-comment history, no real usage).
 3. **Checkpoint/restore replaces fork-per-eval.** `Heap.checkpoint()` copies the
    `MultiArrayList` columns (up to `len`), the live bitset, `free_head`, and a
    snapshot of registered roots; `Heap.restore()` puts them back. `repl.process()`'s

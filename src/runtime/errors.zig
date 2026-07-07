@@ -9,12 +9,15 @@ const word = @import("word.zig");
 /// Miranda interpreter domain errors.
 ///
 /// Used wherever Zig error unions replace C setjmp/longjmp non-local exits.
-/// Signal-handler recovery (SIGINT, SIGFPE via siglongjmp on rs.env) is NOT
-/// yet represented here — POSIX signal handlers are asynchronous and cannot
-/// propagate Zig errors up the call stack, so those paths still use sigjmp_buf.
-/// docs/ZIG_NATIVE_PLAN.md Phase 3 replaces that mechanism with a polled
-/// atomic interrupt flag (handlers only set the flag; the reduce loop polls it
-/// and returns error.EvaluationInterrupted), removing setjmp/longjmp entirely.
+/// SIGINT and float-overflow recovery (docs/ZIG_NATIVE_PLAN.md Phase 3) no
+/// longer uses signal-context `siglongjmp`/`sigjmp_buf` at all: the SIGINT
+/// handler only sets a polled atomic flag (`runtime_state.zig`'s
+/// `interrupt_flag`), and float overflow is an explicit finite-check, not a
+/// real signal — both unwind via `word.ReduceError` (`Interrupted`/
+/// `FloatOverflow`), the reduction engine's own narrow error set, rather
+/// than through this broader `MiraError`. `EvaluationInterrupted` below
+/// remains an unused placeholder for the compiler's own error-union work
+/// (Phase 3 step 5, not yet done).
 ///
 /// Tests: MiraError variants are all distinct, MiraError is a subset of anyerror
 pub const MiraError = error{
@@ -38,9 +41,10 @@ pub const MiraError = error{
     LoadError,
 
     /// Evaluation was interrupted by the user (Ctrl-C) or a recoverable
-    /// runtime error (e.g. floating-point overflow).
-    /// Recovery is via siglongjmp on rs.env; this variant documents the
-    /// intent without replacing the signal mechanism.
+    /// runtime error (e.g. floating-point overflow). Unused placeholder:
+    /// the reduction engine actually signals these via `word.ReduceError`
+    /// (`Interrupted`/`FloatOverflow`), not this broader `MiraError` set —
+    /// reserved for the compiler's own error-union work (Phase 3 step 5).
     EvaluationInterrupted,
 };
 

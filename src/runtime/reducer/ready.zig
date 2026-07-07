@@ -414,7 +414,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             if (reduce.isInt(ctx.heap, lastArg(ctx))) {
                 reduce.simpl(ctx, big.negate(heap.heap(), lastArg(ctx)));
             } else {
-                heap.setdbl(ctx.e, -heap.getDbl(lastArg(ctx)));
+                try heap.setdbl(ctx.e, -heap.getDbl(lastArg(ctx)));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -487,7 +487,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.ARCTAN_FN => {
             reduce.upLeft(ctx);
             platform.setErrno(0);
-            heap.setdbl(ctx.e, std.math.atan(reduce.forceDbl(ctx.heap, lastArg(ctx))));
+            try heap.setdbl(ctx.e, std.math.atan(reduce.forceDbl(ctx.heap, lastArg(ctx))));
             if (platform.getErrno() != 0) {
                 reduce_rt.mathError(@constCast("atan"));
             }
@@ -497,7 +497,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.EXP_FN => {
             reduce.upLeft(ctx);
             platform.setErrno(0);
-            heap.setdbl(ctx.e, std.math.exp(reduce.forceDbl(ctx.heap, lastArg(ctx))));
+            try heap.setdbl(ctx.e, std.math.exp(reduce.forceDbl(ctx.heap, lastArg(ctx))));
             if (platform.getErrno() != 0) {
                 reduce_rt.mathError(@constCast("exp"));
             }
@@ -517,10 +517,10 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.LOG_FN => {
             reduce.upLeft(ctx);
             if (reduce.isInt(ctx.heap, lastArg(ctx))) {
-                heap.setdbl(ctx.e, big.ln(heap.heap(), big.bn(), lastArg(ctx)));
+                try heap.setdbl(ctx.e, big.ln(heap.heap(), big.bn(), lastArg(ctx)));
             } else {
                 platform.setErrno(0);
-                heap.setdbl(ctx.e, @log(reduce.forceDbl(ctx.heap, lastArg(ctx))));
+                try heap.setdbl(ctx.e, @log(reduce.forceDbl(ctx.heap, lastArg(ctx))));
                 if (platform.getErrno() != 0) {
                     reduce_rt.mathError(@constCast("log"));
                 }
@@ -531,10 +531,10 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.LOG10_FN => {
             reduce.upLeft(ctx);
             if (reduce.isInt(ctx.heap, lastArg(ctx))) {
-                heap.setdbl(ctx.e, big.log10(heap.heap(), big.bn(), lastArg(ctx)));
+                try heap.setdbl(ctx.e, big.log10(heap.heap(), big.bn(), lastArg(ctx)));
             } else {
                 platform.setErrno(0);
-                heap.setdbl(ctx.e, @log10(reduce.forceDbl(ctx.heap, lastArg(ctx))));
+                try heap.setdbl(ctx.e, @log10(reduce.forceDbl(ctx.heap, lastArg(ctx))));
                 if (platform.getErrno() != 0) {
                     reduce_rt.mathError(@constCast("log10"));
                 }
@@ -545,7 +545,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.SIN_FN => {
             reduce.upLeft(ctx);
             platform.setErrno(0);
-            heap.setdbl(ctx.e, std.math.sin(reduce.forceDbl(ctx.heap, lastArg(ctx))));
+            try heap.setdbl(ctx.e, std.math.sin(reduce.forceDbl(ctx.heap, lastArg(ctx))));
             if (platform.getErrno() != 0) {
                 reduce_rt.mathError(@constCast("sin"));
             }
@@ -555,7 +555,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.COS_FN => {
             reduce.upLeft(ctx);
             platform.setErrno(0);
-            heap.setdbl(ctx.e, std.math.cos(reduce.forceDbl(ctx.heap, lastArg(ctx))));
+            try heap.setdbl(ctx.e, std.math.cos(reduce.forceDbl(ctx.heap, lastArg(ctx))));
             if (platform.getErrno() != 0) {
                 reduce_rt.mathError(@constCast("cos"));
             }
@@ -565,7 +565,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.SQRT_FN => {
             reduce.upLeft(ctx);
             platform.setErrno(0);
-            heap.setdbl(ctx.e, std.math.sqrt(reduce.forceDbl(ctx.heap, lastArg(ctx))));
+            try heap.setdbl(ctx.e, std.math.sqrt(reduce.forceDbl(ctx.heap, lastArg(ctx))));
             if (platform.getErrno() != 0) {
                 reduce_rt.mathError(@constCast("sqrt"));
             }
@@ -609,9 +609,9 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.isDouble(ctx.heap, ctx.args[0])) {
-                heap.setdbl(ctx.e, heap.getDbl(ctx.args[0]) + reduce.forceDbl(ctx.heap, lastArg(ctx)));
+                try heap.setdbl(ctx.e, heap.getDbl(ctx.args[0]) + reduce.forceDbl(ctx.heap, lastArg(ctx)));
             } else if (reduce.isDouble(ctx.heap, lastArg(ctx))) {
-                heap.setdbl(ctx.e, big.toFloat(heap.heap(), ctx.args[0]) + heap.getDbl(lastArg(ctx)));
+                try heap.setdbl(ctx.e, big.toFloat(heap.heap(), ctx.args[0]) + heap.getDbl(lastArg(ctx)));
             } else {
                 reduce.simpl(ctx, big.add(heap.heap(), ctx.args[0], lastArg(ctx)));
             }
@@ -622,9 +622,9 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.isDouble(ctx.heap, ctx.args[0])) {
-                heap.setdbl(ctx.e, heap.getDbl(ctx.args[0]) - reduce.forceDbl(ctx.heap, lastArg(ctx)));
+                try heap.setdbl(ctx.e, heap.getDbl(ctx.args[0]) - reduce.forceDbl(ctx.heap, lastArg(ctx)));
             } else if (reduce.isDouble(ctx.heap, lastArg(ctx))) {
-                heap.setdbl(ctx.e, big.toFloat(heap.heap(), ctx.args[0]) - heap.getDbl(lastArg(ctx)));
+                try heap.setdbl(ctx.e, big.toFloat(heap.heap(), ctx.args[0]) - heap.getDbl(lastArg(ctx)));
             } else {
                 reduce.simpl(ctx, big.sub(heap.heap(), ctx.args[0], lastArg(ctx)));
             }
@@ -635,9 +635,9 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.isDouble(ctx.heap, ctx.args[0])) {
-                heap.setdbl(ctx.e, heap.getDbl(ctx.args[0]) * reduce.forceDbl(ctx.heap, lastArg(ctx)));
+                try heap.setdbl(ctx.e, heap.getDbl(ctx.args[0]) * reduce.forceDbl(ctx.heap, lastArg(ctx)));
             } else if (reduce.isDouble(ctx.heap, lastArg(ctx))) {
-                heap.setdbl(ctx.e, big.toFloat(heap.heap(), ctx.args[0]) * heap.getDbl(lastArg(ctx)));
+                try heap.setdbl(ctx.e, big.toFloat(heap.heap(), ctx.args[0]) * heap.getDbl(lastArg(ctx)));
             } else {
                 reduce.simpl(ctx, big.mul(heap.heap(), ctx.args[0], lastArg(ctx)));
             }
@@ -665,7 +665,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             if (fb == 0.0) {
                 reduce_rt.divError();
             }
-            heap.setdbl(ctx.e, fa / fb);
+            try heap.setdbl(ctx.e, fa / fb);
             ctx.action = word.ACT_DONE;
             return;
         },
@@ -696,7 +696,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             ctx.action = word.ACT_DONE;
             return;
         },
-        word.POWER => return handleReadyPOWER(ctx),
+        word.POWER => return try handleReadyPOWER(ctx),
         word.SHOWSCALED => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
@@ -940,7 +940,7 @@ fn handleReadyNUMVAL(ctx: *ReductionCtx) reduce.ReduceError!void {
             os.exit(1);
         } else {
             reduce.hdSet(ctx.heap, ctx.e, word.I);
-            const val = heap.stoDbl(d);
+            const val = try heap.stoDbl(d);
             reduce.tlSet(ctx.heap, ctx.e, val);
             ctx.e = val;
         }
@@ -951,7 +951,7 @@ fn handleReadyNUMVAL(ctx: *ReductionCtx) reduce.ReduceError!void {
 /// `^` (power): integer exponentiation via `big.pow` when both operands are
 /// non-negative integers; otherwise falls back to `f64` `pow`, reporting a
 /// domain error for a negative double base.
-fn handleReadyPOWER(ctx: *ReductionCtx) void {
+fn handleReadyPOWER(ctx: *ReductionCtx) reduce.ReduceError!void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.upLeft(ctx);
     var fa: f64 = 0.0;
@@ -975,7 +975,7 @@ fn handleReadyPOWER(ctx: *ReductionCtx) void {
         return;
     }
     platform.setErrno(0);
-    heap.setdbl(ctx.e, std.math.pow(f64, fa, fb));
+    try heap.setdbl(ctx.e, std.math.pow(f64, fa, fb));
     if (platform.getErrno() != 0) {
         reduce_rt.mathError(@constCast("power"));
     }

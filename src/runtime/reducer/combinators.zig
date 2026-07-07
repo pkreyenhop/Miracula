@@ -698,7 +698,7 @@ pub fn handleGENSEQ(ctx: *ReductionCtx) reduce.ReduceError!void {
     {
         reduce.rewriteToNil(ctx.heap, &ctx.e);
     } else {
-        const hold = reduce.ap(ctx.heap, reduce.hdGet(ctx.heap, ctx.e), reduce_rt.numplus(lastarg, reduce.hdGet(ctx.heap, arg1)));
+        const hold = reduce.ap(ctx.heap, reduce.hdGet(ctx.heap, ctx.e), try reduce_rt.numplus(lastarg, reduce.hdGet(ctx.heap, arg1)));
         reduce.rewriteToCons(ctx.heap, ctx.e, lastarg, hold);
     }
     ctx.action = word.ACT_DONE;
