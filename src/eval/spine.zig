@@ -43,7 +43,7 @@
 
 const std = @import("std");
 const builtin = @import("builtin");
-const heap = @import("../runtime/heap.zig");
+const heap = @import("../graph/heap.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 pub const Word = i64;

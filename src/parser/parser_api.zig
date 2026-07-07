@@ -13,7 +13,7 @@
 //! through the same native pipeline as `parseCurrentNative`.
 
 const std = @import("std");
-const heap = @import("../runtime/heap.zig");
+const heap = @import("../graph/heap.zig");
 const options = @import("version_options");
 
 const word = @import("../graph/word.zig");

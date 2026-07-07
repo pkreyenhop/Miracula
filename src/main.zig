@@ -33,7 +33,7 @@ pub fn main(ctx: std.process.Init) !void {
     const argc: c_int = @intCast(raw_args.len);
     const exit_code = startup.mainEntry(argc, argv);
     if (@import("version_options").is_strict or @import("builtin").mode == .Debug) {
-        const heap = @import("runtime/heap.zig");
+        const heap = @import("graph/heap.zig");
         heap.heap().validate();
         @import("semantics/lower.zig").validate(heap.heap());
         rt.rs().validate();
@@ -51,7 +51,7 @@ comptime {
     _ = @import("session/config.zig");
     _ = @import("session/repl.zig");
     _ = @import("session/commands.zig");
-    _ = @import("runtime/heap.zig");
+    _ = @import("graph/heap.zig");
     _ = @import("graph/strtab.zig");
     _ = @import("eval/reduce_test.zig");
     _ = @import("eval/spine.zig");

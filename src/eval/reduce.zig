@@ -54,7 +54,7 @@ const reduce_rt = @import("reduce_rt.zig");
 const os = @import("../os.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const spine = @import("spine.zig");
-const heap_mod = @import("../runtime/heap.zig");
+const heap_mod = @import("../graph/heap.zig");
 
 /// The interpreter machine word (re-exported from [core]).
 pub const Word = core.Word;

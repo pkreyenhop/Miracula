@@ -114,7 +114,7 @@ const ATOMLIMIT = word.ATOMLIMIT;
 
 // Cross-module functions: direct @import aliases replace extern-fn linker
 // declarations (R7.3 — eliminate the linker-as-module-system pattern).
-const heap_mod = @import("../runtime/heap.zig");
+const heap_mod = @import("../graph/heap.zig");
 const Heap = heap_mod.Heap;
 const depend = @import("depend.zig");
 const type_errors = @import("type_errors.zig");

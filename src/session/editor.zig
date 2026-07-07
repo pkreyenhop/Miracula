@@ -16,7 +16,7 @@ const std = @import("std");
 const word = @import("../graph/word.zig");
 const os = @import("../os.zig");
 const lex = @import("../parser/lex.zig");
-const heap = @import("../runtime/heap.zig");
+const heap = @import("../graph/heap.zig");
 const Editor = @import("zigline").Editor;
 const CompletionSuggestion = Editor.CompletionSuggestion;
 

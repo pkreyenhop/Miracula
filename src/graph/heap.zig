@@ -9,11 +9,11 @@
 //! struct holds the state; module-level free functions wrap the singleton.
 
 const std = @import("std");
-const word = @import("../graph/word.zig");
-const strtab = @import("../graph/strtab.zig");
-const combinator = @import("../graph/combinator.zig");
-const rt = @import("runtime_state.zig");
-const core = @import("core_state.zig");
+const word = @import("word.zig");
+const strtab = @import("strtab.zig");
+const combinator = @import("combinator.zig");
+const rt = @import("../runtime/runtime_state.zig");
+const core = @import("../runtime/core_state.zig");
 const lex_state = @import("../parser/lex_state.zig");
 const ls = lex_state.ls;
 
@@ -22,7 +22,7 @@ const types = @import("../semantics/depend.zig");
 const files = @import("../io/files.zig");
 const lex = @import("../parser/lex.zig");
 const symbols = @import("../semantics/symbols.zig");
-const big = @import("../graph/bignum.zig");
+const big = @import("bignum.zig");
 const reduce = @import("../eval/reduce_rt.zig");
 const os = @import("../os.zig");
 const setup = @import("../compiler/setup.zig");

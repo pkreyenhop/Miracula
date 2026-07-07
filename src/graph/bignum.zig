@@ -27,7 +27,7 @@
 const std = @import("std");
 
 const platform = @import("../io/platform.zig");
-const heap_mod = @import("../runtime/heap.zig");
+const heap_mod = @import("heap.zig");
 const Heap = heap_mod.Heap;
 const word = @import("word.zig");
 const reduce = @import("../eval/reduce_rt.zig");

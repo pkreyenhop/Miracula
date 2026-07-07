@@ -38,7 +38,7 @@ const parser_mod = @import("../syntax/parser.zig");
 const ast = @import("../syntax/ast.zig");
 const codegen = @import("../parser/codegen.zig");
 const lex = @import("../parser/lex.zig");
-const heap_mod = @import("../runtime/heap.zig");
+const heap_mod = @import("../graph/heap.zig");
 const symbols = @import("symbols.zig");
 const rt = @import("../runtime/runtime_state.zig");
 

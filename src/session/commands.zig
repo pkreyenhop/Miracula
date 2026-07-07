@@ -24,7 +24,7 @@ inline fn getTag(heap: *Heap, x: Word) word.NodeTag {
 const lex_state = @import("../parser/lex_state.zig");
 const lex = @import("../parser/lex.zig");
 const core_state = @import("../runtime/core_state.zig");
-const heap_mod = @import("../runtime/heap.zig");
+const heap_mod = @import("../graph/heap.zig");
 const Heap = heap_mod.Heap;
 const files = @import("../io/files.zig");
 const repl = @import("repl.zig");

@@ -20,7 +20,7 @@
 //! accessor functions, so there is no comptime size cycle.
 
 const RuntimeState = @import("../runtime/runtime_state.zig").RuntimeState;
-const Heap = @import("../runtime/heap.zig").Heap;
+const Heap = @import("../graph/heap.zig").Heap;
 const LexState = @import("../parser/lex_state.zig").LexState;
 const CompilerState = @import("../compiler/compiler_state.zig").CompilerState;
 const CoreState = @import("../runtime/core_state.zig").CoreState;

@@ -37,7 +37,7 @@
 
 const std = @import("std");
 const word = @import("../graph/word.zig");
-const heap_mod = @import("../runtime/heap.zig");
+const heap_mod = @import("../graph/heap.zig");
 const strtab = @import("../graph/strtab.zig");
 
 const Word = word.Word;

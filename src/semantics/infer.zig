@@ -18,7 +18,7 @@ const rt = @import("../runtime/runtime_state.zig");
 
 const compiler_state = @import("../compiler/compiler_state.zig");
 const core_state = @import("../runtime/core_state.zig");
-const heap_mod = @import("../runtime/heap.zig");
+const heap_mod = @import("../graph/heap.zig");
 const Heap = heap_mod.Heap;
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 const cs = compiler_state.cs;

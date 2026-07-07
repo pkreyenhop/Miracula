@@ -10,7 +10,7 @@ const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
 const abi = @import("../os.zig");
 const platform = @import("platform.zig");
-const heap = @import("../runtime/heap.zig");
+const heap = @import("../graph/heap.zig");
 const lex = @import("../parser/lex.zig");
 
 const lex_state = @import("../parser/lex_state.zig");

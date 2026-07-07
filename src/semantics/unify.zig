@@ -10,7 +10,7 @@
 
 const std = @import("std");
 const word = @import("../graph/word.zig");
-const heap_mod = @import("../runtime/heap.zig");
+const heap_mod = @import("../graph/heap.zig");
 const Heap = heap_mod.Heap;
 const compiler_state = @import("../compiler/compiler_state.zig");
 const cs = compiler_state.cs;

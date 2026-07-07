@@ -8,7 +8,7 @@
 
 const std = @import("std");
 const word = @import("../graph/word.zig");
-const heap = @import("../runtime/heap.zig");
+const heap = @import("../graph/heap.zig");
 const big = @import("../graph/bignum.zig");
 const reduce = @import("reduce.zig");
 const reduce_rt = @import("reduce_rt.zig");

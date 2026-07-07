@@ -34,7 +34,7 @@
 const word = @import("../graph/word.zig");
 const strtab = @import("../graph/strtab.zig");
 const spine = @import("spine.zig");
-const heap_mod = @import("../runtime/heap.zig");
+const heap_mod = @import("../graph/heap.zig");
 const rt = @import("../runtime/runtime_state.zig");
 
 /// The interpreter machine word (see `word.Word`).

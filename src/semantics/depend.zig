@@ -9,7 +9,7 @@
 
 const std = @import("std");
 const word = @import("../graph/word.zig");
-const heap_mod = @import("../runtime/heap.zig");
+const heap_mod = @import("../graph/heap.zig");
 const Heap = heap_mod.Heap;
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 const lex_mod = @import("../parser/lex.zig");

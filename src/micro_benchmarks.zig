@@ -1,5 +1,5 @@
 const std = @import("std");
-const heap = @import("runtime/heap.zig");
+const heap = @import("graph/heap.zig");
 const lex = @import("parser/lex.zig");
 const word = @import("graph/word.zig");
 const setup = @import("compiler/setup.zig");
