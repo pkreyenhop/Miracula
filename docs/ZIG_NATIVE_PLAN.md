@@ -1201,6 +1201,80 @@ the value vocabulary; `main_clib.zig` shrinks to `os.zig`.
    plus a fixed-buffer variant (replaces `fmemopen` remnants). Port `READ`/
    `READBIN`/`READVALS`, `Tofile`/`Appendfile` (`outfilq`), and dump/undump file
    I/O in `heap.zig`/`dump.zig`.
+
+   **Landed (2026-07-07), scope split after investigation (confirmed with
+   the user).** A full-tree audit found real, structural risk beyond what
+   "port to a Stream" suggests: `FILE*` pointers are embedded as raw
+   `@intFromPtr`/`@ptrFromInt` casts inside three separate heap cons-lists
+   (`lex_state.zig`'s `fileq`, `reduce.zig`'s `EvalState.outfilq`, and
+   `READ`/`READVALS`'s own lazy stream cells in `reduce.zig`'s
+   `streamRead`) — a genuine redesign of that representation, not a
+   type-level swap, and the binary `.x` dump format (`heap.zig`'s
+   `dumpOb`/`loadDefs`) is byte-order-sensitive with (before this step)
+   only one unit test covering round-trip, and none checking byte-for-byte
+   stability. Landed in three parts, each verified independently, deferring
+   the actual cell-embedding redesign and the `FILE`→`Stream` rename to a
+   later, dedicated pass:
+   - **Prerequisite:** a real CLI-level dump/undump round-trip test
+     (`tests/mira_tests.zig`'s `caseDumpUndumpRoundTrip`) — compiles a
+     script exercising a spread of `dumpOb`'s node kinds once from source,
+     then again unchanged so `undump` takes the fast reload path (both
+     confirmed by reading `module_loader.zig`/`dump.zig` directly, not
+     assumed), asserting matching stdout *and* a byte-identical `.x` file
+     across both runs. This is the safety net the rest of step 4 (and any
+     future Stream work) checks against.
+   - **Format-conversion cleanup, discovered while scoping the move:**
+     two real `snprintf` call sites step 3's own grep missed (it only
+     matched `sprintf`, not `snprintf`) — `driver/startup.zig`'s
+     `versionString` and `driver/commands.zig`'s `editfile`. Converting
+     the first surfaced a fourth real, pre-existing float-formatting bug
+     matching `showfloat`/`showscaled`'s: `formatC`'s float case ignores
+     precision entirely, so `versionString(2000)` silently produced `"2"`
+     instead of `"2.000"` — the existing two-case test happened not to
+     exercise a trailing-zero value. Fixed with Zig's own `{d:.3}`.
+   - **Dead-code deletion:** with those two converted, `printf`/`fprintf`/
+     `sprintf`/`snprintf` (and the `formatC`/`formatArg` engine plus
+     `BufferWriter` they're built on — duplicated near-identically in both
+     `word.zig` and `main_clib.zig`) had zero real callers left anywhere,
+     confirmed via a whole-tree grep. Deleted both copies outright, plus
+     `fmemopen` and the standalone `flush()` (both already confirmed dead
+     earlier this phase), rather than moving dead code into a new
+     abstraction. `word.print`/`word.printErr`/`word.fprint` (the last
+     still used extensively by `heap.zig`'s dump/`outTerm` pretty-printer)
+     are unaffected.
+   - **The move:** `FILE`, `IoState`, and every stdio-shaped operation
+     built on them (`fopen`/`fclose`/`fileno`/`setbuf`/`getc`/`getchar`/
+     `ungetc`/`fgets`/`fread`/`fwrite`/`fdopen`/`putc`/`putchar`, `fio()`,
+     `initWriters`/`print`/`printErr`/`fprint`, `stdin`/`stdout`/`stderr`)
+     moved from `word.zig` to a new `runtime/stream.zig` (the current-tree
+     equivalent of the plan's aspirational `eval/stream.zig` — no `eval/`
+     directory exists yet; that's Phase 4's "moves" step) — a pure
+     relocation, same names, `word.zig` re-exporting every one so no other
+     file's imports needed to change. `word.zig` shrank from ~1,720 to
+     ~1,060 lines (with the dead-code deletions above also counted).
+     First extraction attempt swept in ~280 unrelated lines (the
+     `strcpy`/`strcat`/`strcmp`/... string helpers, interspersed in the
+     original file between `FILE`'s definition and the rest of the stdio
+     block) — caught immediately by the build (`"no member named
+     strcpy"`) and moved back to `word.zig` before proceeding.
+   **Not done — deliberately deferred:** the `FILE`→`Stream` rename
+   itself (kept the name `FILE` to avoid touching call sites in the same
+   pass that moved their import path); the actual redesign of the
+   `fileq`/`outfilq`/`streamRead` cell-embedding pattern (still raw
+   pointer casts, now pointing at the relocated but otherwise identical
+   type); the fixed-buffer `Stream` variant (`fmemopen`'s replacement —
+   moot, since `fmemopen` itself was already dead); and "porting"
+   `READ`/`READBIN`/`READVALS`/`Tofile`/`Appendfile`/dump-undump to
+   anything new — they call the exact same functions as before, just via
+   the new file's re-exported names.
+
+   Verified: `main-tests` (258, all `FILE`/string-helper tests correctly
+   relocated/retained and passing under their new module paths), the new
+   round-trip test, `test-golden` (only the pre-existing
+   `script_syntax_err` gap), `test-mira`/`test-spine`/`test-smoke` all
+   green; manual compile-then-reload-from-dump check against the real
+   binary; scorecard improved (`printf-family` 372→364, `[*:0]` and
+   `c_int` both down) with no regressions.
 5. **Deletions.** From `word.zig`: the `FILE` struct + pool, `fopen`/`fclose`/
    `getc`/`ungetc`/`fflush`, the printf engine, ctype predicates (→ `std.ascii`),
    `strcmp`/`strlen`/`strcpy` (→ `std.mem`). `word.zig` ends ≤ ~600 lines of value
