@@ -190,6 +190,7 @@ test "mira integration suite" {
     try caseRuntimeGcStress();
     try caseMakeFailureLongPath();
     try caseSyntaxErrorRepeat();
+    try caseDumpUndumpRoundTrip();
 }
 
 fn caseStandardArithmeticAndLists() !void {
@@ -358,7 +359,7 @@ fn caseMakeFailureLongPath() !void {
     var env = try TestEnv.init();
     defer env.deinit();
     const base_name = "a_file_with_an_undefined_name_and_a_very_long_path_to_reproduce_the_divide_by_zero_panic";
-    const script = try std.fmt.allocPrint(allocator, "{s}/{s}.m", .{env.work, base_name});
+    const script = try std.fmt.allocPrint(allocator, "{s}/{s}.m", .{ env.work, base_name });
     defer allocator.free(script);
     try writeFile(script, "foo = bar\n");
     var result = try runMira(&env, script, "", &.{"-make"});
@@ -390,4 +391,73 @@ fn caseSyntaxErrorRepeat() !void {
     var result2 = try runMira(&env, script, "", &.{});
     defer result2.deinit();
     try testing.expect(std.mem.find(u8, result2.stderr, "syntax error") != null);
+}
+
+/// A real, CLI-level compile -> dump -> undump round-trip check (Phase 2
+/// step 4 prerequisite, docs/ZIG_NATIVE_PLAN.md): every successful script
+/// compile unconditionally writes a `.x` dump (`module_loader.zig`'s
+/// `loadfile`, confirmed by reading it directly, not assumed), and the
+/// *second* invocation against an unchanged source loads from that dump
+/// instead of recompiling (`dump.zig`'s `undump`, gated on the dump's
+/// mtime being >= the source's). Exercises a spread of `dumpOb`'s node
+/// kinds in one script — small and big integers, a double, a string, a
+/// tuple, a user-defined function, and an algebraic type — so a Stream-
+/// abstraction change that corrupts any one of `dumpOb`/`loadDefs`'s
+/// tagged cases (`SHORT_X`/`INT_X`/`DBL_X`/`DATAPAIR`/`CONSTRUCT_X`/etc.,
+/// `heap.zig`) has a concrete failure to show for it. The existing
+/// `dumpOb`/`loadDefs` unit test in `heap.zig` only checks structural
+/// round-trip fidelity for a bare cons of two ints in isolation, not real
+/// CLI-driven behavior, and not byte-for-byte format stability.
+///
+/// Two independent signals, either one sufficient to catch a regression:
+/// (1) evaluating the same expressions against the fresh-compiled state
+/// and the dump-reloaded state gives byte-identical output, and (2) the
+/// `.x` file itself is untouched (byte-identical) after the second run --
+/// `dump.zig`'s `undump` only re-invokes `loadfile` (which would rewrite
+/// the dump) on a load failure, so an unchanged dump file is direct
+/// evidence the fast path was taken, not a silent fallback recompile.
+/// Also asserts neither run's stderr contains the "contains incorrect
+/// data" warning `undump` prints when a dump fails to parse.
+fn caseDumpUndumpRoundTrip() !void {
+    var env = try TestEnv.init();
+    defer env.deinit();
+    const script = try std.fmt.allocPrint(allocator, "{s}/roundtrip.m", .{env.work});
+    defer allocator.free(script);
+    try writeFile(script,
+        \\tree ::= Leaf | Node tree num tree
+        \\depth Leaf = 0
+        \\depth (Node l x r) = 1 + max [depth l, depth r]
+        \\sample = Node (Node Leaf 1 Leaf) 2 (Node Leaf 3 Leaf)
+        \\big = 2^80 + 1
+        \\pi_ish = 3.14159265358979
+        \\greeting = "hello, dump"
+        \\pair = (big, greeting)
+        \\
+    );
+    const input = "depth sample\nbig\npi_ish\ngreeting\npair\n/q\n";
+
+    const dump_path = try std.fmt.allocPrint(allocator, "{s}/roundtrip.x", .{env.work});
+    defer allocator.free(dump_path);
+
+    // Run 1: no .x present yet, compiles from source and dumps as a side effect.
+    var result1 = try runMira(&env, script, input, &.{});
+    defer result1.deinit();
+    try assertSuccessStatus("dump/undump round trip (fresh compile)", &result1);
+    try testing.expect(std.mem.find(u8, result1.stderr, "contains incorrect data") == null);
+
+    const dump_bytes_1 = try std.Io.Dir.cwd().readFileAlloc(testing.io, dump_path, allocator, .limited(1024 * 1024));
+    defer allocator.free(dump_bytes_1);
+    try testing.expect(dump_bytes_1.len > 0);
+
+    // Run 2: source unchanged, .x present and newer -- should load from the dump.
+    var result2 = try runMira(&env, script, input, &.{});
+    defer result2.deinit();
+    try assertSuccessStatus("dump/undump round trip (reload from dump)", &result2);
+    try testing.expect(std.mem.find(u8, result2.stderr, "contains incorrect data") == null);
+
+    try testing.expectEqualStrings(result1.stdout, result2.stdout);
+
+    const dump_bytes_2 = try std.Io.Dir.cwd().readFileAlloc(testing.io, dump_path, allocator, .limited(1024 * 1024));
+    defer allocator.free(dump_bytes_2);
+    try testing.expectEqualStrings(dump_bytes_1, dump_bytes_2);
 }
