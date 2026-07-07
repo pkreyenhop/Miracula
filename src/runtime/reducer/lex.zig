@@ -251,7 +251,7 @@ pub fn handle_G_SEQ(ctx: *ReductionCtx) reduce.ReduceError!void {
 }
 
 /// `G_UNIT`: the epsilon grammar — succeed consuming nothing, yielding the identity result.
-pub fn handle_G_UNIT(ctx: *ReductionCtx) void {
+pub fn handle_G_UNIT(ctx: *ReductionCtx) reduce.ReduceError!void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
         return;
@@ -261,7 +261,7 @@ pub fn handle_G_UNIT(ctx: *ReductionCtx) void {
 }
 
 /// `G_ZERO`: the grammar that always fails.
-pub fn handle_G_ZERO(ctx: *ReductionCtx) void {
+pub fn handle_G_ZERO(ctx: *ReductionCtx) reduce.ReduceError!void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
         return;
@@ -306,7 +306,7 @@ pub fn handle_G_COUNT(ctx: *ReductionCtx) reduce.ReduceError!void {
 }
 
 /// `LEX_RPT1`: one-or-more repetition of a lexer rule.
-pub fn handle_LEX_RPT1(ctx: *ReductionCtx) void {
+pub fn handle_LEX_RPT1(ctx: *ReductionCtx) reduce.ReduceError!void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.upLeft(ctx);
     reduce.hdSet(ctx.heap, ctx.e, reduce.ap(ctx.heap, word.B, reduce.ap2(ctx.heap, word.LEX_RPT, ctx.args[0], lastarg(ctx))));
@@ -425,7 +425,7 @@ pub fn handle_LEX_TRY1_(ctx: *ReductionCtx) reduce.ReduceError!void {
 }
 
 /// `DESTREV`: destructively reverse the accumulated result list.
-pub fn handle_DESTREV(ctx: *ReductionCtx) void {
+pub fn handle_DESTREV(ctx: *ReductionCtx) reduce.ReduceError!void {
     reduce.GETARG(ctx, &ctx.args[0]);
     ctx.args[1] = word.NIL;
     while (ctx.args[0] != word.NIL) {
@@ -442,7 +442,7 @@ pub fn handle_DESTREV(ctx: *ReductionCtx) void {
 }
 
 /// `LEX_COUNT0`: begin counting matched input (from position 0).
-pub fn handle_LEX_COUNT0(ctx: *ReductionCtx) void {
+pub fn handle_LEX_COUNT0(ctx: *ReductionCtx) reduce.ReduceError!void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
         return;
