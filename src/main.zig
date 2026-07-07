@@ -8,7 +8,7 @@
 const std = @import("std");
 const rt = @import("runtime/runtime_state.zig");
 const abi = @import("os.zig");
-const startup = @import("driver/startup.zig");
+const startup = @import("session/boot.zig");
 const interp_mod = @import("session/interp.zig");
 
 /// Process entry point: wire up the runtime context (io / allocator / argv),
@@ -47,7 +47,8 @@ pub fn main(ctx: std.process.Init) !void {
 // tests are listed too so they are still type-checked as part of this build.)
 comptime {
     _ = @import("runtime/core_state.zig");
-    _ = @import("driver/startup.zig");
+    _ = @import("session/boot.zig");
+    _ = @import("session/config.zig");
     _ = @import("session/repl.zig");
     _ = @import("session/commands.zig");
     _ = @import("runtime/heap.zig");

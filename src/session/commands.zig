@@ -29,7 +29,7 @@ const Heap = heap_mod.Heap;
 const files = @import("../io/files.zig");
 const repl = @import("repl.zig");
 const dump = @import("../compiler/dump.zig");
-const startup = @import("../driver/startup.zig");
+const config = @import("config.zig");
 const lineedit = @import("editor.zig");
 const module_loader = @import("../compiler/module_loader.zig");
 const ls = lex_state.ls;
@@ -354,7 +354,7 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
         rs.editor = @as([*:0]u8, @ptrCast(&rs.ebuf));
         rs.baded = @intFromBool(repl.badEditor(rs));
         rs.echoing = rs.verbosity & rs.listing;
-        startup.writeRc();
+        config.writeRc();
         word.print("editor = {s}\n", .{rs.editor orelse @constCast("")});
         return true;
     }
@@ -466,7 +466,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                         abi.resetheap();
                     }
                     word.print("heaplimit = {} cells\n", .{rs.SPACELIMIT});
-                    startup.writeRc();
+                    config.writeRc();
                 }
                 return;
             }
@@ -482,7 +482,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                 if (abi.getchar() != '\n') return;
                 rs.listing = 1;
                 rs.echoing = rs.verbosity & rs.listing;
-                startup.writeRc();
+                config.writeRc();
                 return;
             }
         },
@@ -519,13 +519,13 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                 if (abi.getchar() != '\n') return;
                 rs.listing = 0;
                 rs.echoing = 0;
-                startup.writeRc();
+                config.writeRc();
                 return;
             }
             if (is(lexs, "norecheck")) {
                 if (abi.getchar() != '\n') return;
                 rs.rechecking = 0;
-                startup.writeRc();
+                config.writeRc();
                 return;
             }
         },
@@ -542,7 +542,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             if (is(lexs, "recheck")) {
                 if (abi.getchar() != '\n') return;
                 rs.rechecking = 2;
-                startup.writeRc();
+                config.writeRc();
                 return;
             }
         },
@@ -579,14 +579,14 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
         'v' => {
             if (is(lexs, "v") or is(lexs, "version")) {
                 if (abi.getchar() != '\n') return;
-                startup.versionInfo(0);
+                config.versionInfo(0);
                 return;
             }
         },
         'V' => {
             if (is(lexs, "V")) {
                 if (abi.getchar() != '\n') return;
-                startup.versionInfo(1);
+                config.versionInfo(1);
                 return;
             }
         },

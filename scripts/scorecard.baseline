@@ -10,7 +10,7 @@ callconv(.c) usage	1
 sentinel == NIL / != NIL (non-FFI)	326
 fork()/wait() call sites (non-FFI)	5
 module-scope mutable globals (non-FFI)	7
-ambient singleton-accessor call sites	943
+ambient singleton-accessor call sites	942
 current_interp references	36
 files > 1000 lines	9
 @import cycles	1

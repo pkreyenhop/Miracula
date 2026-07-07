@@ -1709,6 +1709,31 @@ subsystems and passed explicitly; the ambient singleton deleted.
    - `trans.zig` → `lower.zig` / `match.zig`.
    - `startup.zig` → `session/config.zig` (flags, `.mirarc`) + `session/boot.zig`
      (miralib resolution, version stack).
+     **Landed** (2026-07-08), first of the four splits (smallest/least
+     depended-upon, done first per this phase's own risk-ordering). One
+     genuine two-way call exists between the split files (`boot.zig`'s
+     `mainEntry` drives `config.zig`'s flag/rc functions; `config.zig`'s
+     `parseFlags` calls `boot.zig`... except it doesn't — `versionInfo`/
+     `versionString` were deliberately placed in `config.zig`, not `boot.zig`
+     as the plan's one-line description might suggest, specifically so the
+     dependency stays one-directional: `boot.zig` imports `config.zig` (for
+     `versionString` in the miralib-not-found message), `config.zig` imports
+     nothing from `boot.zig`. **A verification lesson worth keeping:** the
+     first draft of this split, done from memory of an earlier read of
+     `startup.zig` rather than by copying the actual text, silently
+     corrupted three things — `runSourcesMode` called a nonexistent
+     `heap_mod.filName`, `runMakeMode`'s failure-collection logic used a
+     completely different (wrong) data structure, and `parseFlags`'s first
+     two flag branches were invented (`-nostandard`/`-verbose`/`-quiet`
+     instead of the real `-stdenv`/`-count`) — all three compiled fine
+     syntactically (the `filName` one didn't even compile, but the other two
+     would have silently shipped wrong CLI/`-make` behavior). Caught by
+     diffing every function's extracted body against `git show
+     HEAD:src/driver/startup.zig` programmatically before considering the
+     split done, not by eyeballing or trusting a green `zig build`. Applies
+     generally to the remaining god-file splits: reconstruct from the actual
+     committed text, not from memory of having read it earlier, and diff
+     each moved function against the original mechanically.
 4. **Dissolve the state bags** into owners (each move = one commit):
    - `RuntimeState` → `Config` (heap limit, paths, UTF-8 flags, editor),
      `ScriptStore` (`files`, `oldfiles`, `rfl`, `includees`, `exports`,

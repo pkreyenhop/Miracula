@@ -50,7 +50,7 @@ const commands = @import("commands.zig");
 const trans_mod = @import("../compiler/trans.zig");
 const module_loader = @import("../compiler/module_loader.zig");
 const types_mod = @import("../compiler/types.zig");
-const startup = @import("../driver/startup.zig");
+const config = @import("config.zig");
 const dump = @import("../compiler/dump.zig");
 const reduce = @import("../eval/reduce_rt.zig");
 const core_state = @import("../runtime/core_state.zig");
@@ -393,7 +393,7 @@ pub fn edWarn(rs: *rt.RuntimeState) void {
 
 /// Print the Miranda release banner (version, plus `(UTF-8)` when applicable).
 pub fn announce() void {
-    word.print("Miranda release {s}", .{startup.versionString(version.version)});
+    word.print("Miranda release {s}", .{config.versionString(version.version)});
     if (heap_mod.utf8test()) {
         word.print(" (UTF-8)", .{});
     }
