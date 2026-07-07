@@ -90,9 +90,9 @@ pub fn syntax(s: [*:0]const u8) void {
     if (core_state.s().SYNERR != 0) return;
     if (!@import("builtin").is_test) {
         if (rt.rs().echoing != 0) {
-            _ = word.printErr("\n", .{.{}});
+            _ = word.printErr("\n", .{});
         }
-        _ = word.printErr("syntax error: {s}", .{.{s}});
+        _ = word.printErr("syntax error: {s}", .{s});
     }
     core_state.s().SYNERR = 1;
     resetLex(heap_mod.heap());

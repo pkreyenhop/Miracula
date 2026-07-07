@@ -1192,7 +1192,7 @@ pub fn mkrel(p: [*:0]const u8) [*:0]const u8 {
     if (p[0] == '/') {
         return p;
     }
-    _ = word.printErr("impossible event in mkrelative\n", .{.{}});
+    _ = word.printErr("impossible event in mkrelative\n", .{});
     return p;
 }
 

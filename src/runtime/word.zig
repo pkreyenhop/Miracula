@@ -1129,34 +1129,18 @@ pub fn initWriters() void {
     fio().writers_initialized = true;
 }
 
-// The Zig-native printers below tolerate a double-wrapped arg tuple
-// `.{.{a,b}}` (the convention inherited from the C-format shim) by unwrapping
-// when the single field is itself a tuple. Scalar/string args like `.{x}` pass
-// through untouched, so existing single-brace call sites are unaffected. This
-// lets call sites be converted from `printf`/`fprintf` by translating only the
-// format string, leaving the arg tuple as-is (R1.4 polish).
 /// Formatted write to stdout using Zig format strings (the buffered analogue of
 /// libc `printf`); flushes after each call.
 pub fn print(comptime fmt: []const u8, args: anytype) void {
     initWriters();
-    const fs = std.meta.fields(@TypeOf(args));
-    if (comptime (fs.len == 1 and @typeInfo(fs[0].type) == .@"struct")) {
-        fio().stdout_writer.interface.print(fmt, @field(args, fs[0].name)) catch {};
-    } else {
-        fio().stdout_writer.interface.print(fmt, args) catch {};
-    }
+    fio().stdout_writer.interface.print(fmt, args) catch {};
     fio().stdout_writer.interface.flush() catch {};
 }
 
 /// Formatted write to stderr (the `print` analogue).
 pub fn printErr(comptime fmt: []const u8, args: anytype) void {
     initWriters();
-    const fs = std.meta.fields(@TypeOf(args));
-    if (comptime (fs.len == 1 and @typeInfo(fs[0].type) == .@"struct")) {
-        fio().stderr_writer.interface.print(fmt, @field(args, fs[0].name)) catch {};
-    } else {
-        fio().stderr_writer.interface.print(fmt, args) catch {};
-    }
+    fio().stderr_writer.interface.print(fmt, args) catch {};
     fio().stderr_writer.interface.flush() catch {};
 }
 

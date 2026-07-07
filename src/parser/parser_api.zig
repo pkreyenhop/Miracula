@@ -180,9 +180,9 @@ fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagno
             if (lexer_diagnostics.len > 0) {
                 reportLexerDiagnostic(lexer_diagnostics[0]);
             } else if (err == error.UnexpectedEof) {
-                _ = word.print("syntax error - unexpected newline\n", .{.{}});
+                _ = word.print("syntax error - unexpected newline\n", .{});
             } else {
-                _ = word.print("syntax error - unexpected token\n", .{.{}});
+                _ = word.print("syntax error - unexpected token\n", .{});
             }
             return ParseError.SyntaxError;
         };
@@ -194,7 +194,7 @@ fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagno
         if (!p.ts.check(.eof) and !p.ts.check(.offside)) {
             // Trailing tokens after the expression — treat as syntax error.
             core.s().SYNERR = 1;
-            _ = word.print("syntax error - unexpected token\n", .{.{}});
+            _ = word.print("syntax error - unexpected token\n", .{});
             return ParseError.SyntaxError;
         }
         const expr_word = codegen.codegenExpr(alloc, expr);
