@@ -184,7 +184,7 @@ test "formatMiraHex matches the manual's showhex pi example" {
 
 /// Dispatch a combinator that now has all its arguments: switch on its tag and
 /// perform the in-place rewrite (or delegate to `combinators`/`io`/`lex`).
-pub fn handleReadyState(ctx: *ReductionCtx) void {
+pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
     @setEvalBranchQuota(50000);
     // shadow vars to replicate C macro-mappings
     // #define e (ctx->e)
@@ -217,7 +217,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
         },
         word.FORCE => {
             reduce.upLeft(ctx);
-            reduce.force(lastArg(ctx));
+            try reduce.force(lastArg(ctx));
             ctx.e = reduce.rewriteToExistingTail(ctx.heap, ctx.e);
             ctx.action = word.ACT_NEXTREDEX;
             return;
@@ -266,7 +266,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                 reduce_rt.intError("take");
             }
             const n = big.toInt(heap.heap(), ctx.args[0]);
-            const lastarg_reduced = reduce.reduce(lastArg(ctx));
+            const lastarg_reduced = try reduce.reduce(lastArg(ctx));
             setLastArg(ctx, lastarg_reduced);
             if (n <= 0 or lastarg_reduced == word.NIL) {
                 reduce.rewriteToNil(ctx.heap, &ctx.e);
@@ -279,7 +279,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
         },
         word.FILEMODE => {
             reduce.upLeft(ctx);
-            if (platform.getFileInfo(reduce.getstring(lastArg(ctx), "filemode"))) |info| {
+            if (platform.getFileInfo(try reduce.getstring(lastArg(ctx), "filemode"))) |info| {
                 const mode = info.mode;
                 const d = if ((mode & 0o170000) == 0o040000) @as(Word, 'd') else '-';
                 const perm = if (info.uid == platform.geteuid()) (mode & 0o700) >> 6 else if (info.gid == platform.getegid()) (mode & 0o070) >> 3 else mode & 0o007;
@@ -295,7 +295,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
         },
         word.FILESTAT => {
             reduce.upLeft(ctx);
-            if (platform.getFileInfo(reduce.getstring(lastArg(ctx), "filestat"))) |info| {
+            if (platform.getFileInfo(try reduce.getstring(lastArg(ctx), "filestat"))) |info| {
                 reduce.rewriteToCons(ctx.heap, ctx.e, reduce.cons(ctx.heap, big.fromInt(heap.heap(), @intCast(info.ino)), big.fromInt(heap.heap(), @intCast(info.dev))), big.fromInt(heap.heap(), @intCast(info.mtime)));
             } else {
                 reduce.rewriteToCons(ctx.heap, ctx.e, reduce.cons(ctx.heap, heap.stosmallint(0), heap.stosmallint(-1)), heap.stosmallint(0));
@@ -308,7 +308,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
         word.NUMVAL => return handleReadyNUMVAL(ctx),
         word.STARTREAD => {
             reduce.upLeft(ctx);
-            const fil = reduce.getstring(lastArg(ctx), "read");
+            const fil = try reduce.getstring(lastArg(ctx), "read");
             const f = word.fopen(fil, "r");
             if (f == null) {
                 word.printErr("\nread, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
@@ -323,7 +323,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
         },
         word.STARTREADBIN => {
             reduce.upLeft(ctx);
-            const fil = reduce.getstring(lastArg(ctx), "readb");
+            const fil = try reduce.getstring(lastArg(ctx), "readb");
             const f = word.fopen(fil, "r");
             if (f == null) {
                 word.printErr("\nreadb, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
@@ -357,10 +357,10 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             reduce.upLeft(ctx);
             if (lastArg(ctx) == word.True) {
                 reduce.rewriteToValue(ctx.heap, &ctx.e, word.K);
-                combinators.handleK(ctx);
+                try combinators.handleK(ctx);
             } else {
                 reduce.rewriteToValue(ctx.heap, &ctx.e, word.KI);
-                combinators.handleKI(ctx);
+                try combinators.handleKI(ctx);
             }
             return;
         },
@@ -383,11 +383,11 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             reduce.upLeft(ctx);
             if (lastArg(ctx) == word.True) {
                 ctx.e = word.I;
-                combinators.handleStrictMonadic(ctx);
+                try combinators.handleStrictMonadic(ctx);
             } else {
                 reduce.hdSet(ctx.heap, ctx.e, word.K);
                 reduce.downLeft(ctx);
-                combinators.handleK(ctx);
+                try combinators.handleK(ctx);
             }
             return;
         },
@@ -396,10 +396,10 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             if (lastArg(ctx) == word.True) {
                 reduce.hdSet(ctx.heap, ctx.e, word.K);
                 reduce.downLeft(ctx);
-                combinators.handleK(ctx);
+                try combinators.handleK(ctx);
             } else {
                 ctx.e = word.I;
-                combinators.handleStrictMonadic(ctx);
+                try combinators.handleStrictMonadic(ctx);
             }
             return;
         },
@@ -594,14 +594,14 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
         word.EQ => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
-            reduce.rewriteToCompareEq(ctx.heap, &ctx.e, ctx.args[0], lastArg(ctx));
+            try reduce.rewriteToCompareEq(ctx.heap, &ctx.e, ctx.args[0], lastArg(ctx));
             ctx.action = word.ACT_DONE;
             return;
         },
         word.NEQ => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
-            reduce.rewriteToCompareNeq(ctx.heap, &ctx.e, ctx.args[0], lastArg(ctx));
+            try reduce.rewriteToCompareNeq(ctx.heap, &ctx.e, ctx.args[0], lastArg(ctx));
             ctx.action = word.ACT_DONE;
             return;
         },
@@ -685,14 +685,14 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
         word.GRE => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
-            reduce.rewriteToCompareGe(ctx.heap, &ctx.e, ctx.args[0], lastArg(ctx));
+            try reduce.rewriteToCompareGe(ctx.heap, &ctx.e, ctx.args[0], lastArg(ctx));
             ctx.action = word.ACT_DONE;
             return;
         },
         word.GR => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
-            reduce.rewriteToCompareGt(ctx.heap, &ctx.e, ctx.args[0], lastArg(ctx));
+            try reduce.rewriteToCompareGt(ctx.heap, &ctx.e, ctx.args[0], lastArg(ctx));
             ctx.action = word.ACT_DONE;
             return;
         },
@@ -733,11 +733,11 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
             } else if (lastArg(ctx) == word.NIL) {
                 reduce.rewriteToValue(ctx.heap, &ctx.e, ctx.args[0]);
             } else {
-                const hd_arg1 = reduce.reduce(reduce.hdGet(ctx.heap, ctx.args[0]));
+                const hd_arg1 = try reduce.reduce(reduce.hdGet(ctx.heap, ctx.args[0]));
                 reduce.hdSet(ctx.heap, ctx.args[0], hd_arg1);
-                const hd_lastarg = reduce.reduce(reduce.hdGet(ctx.heap, lastArg(ctx)));
+                const hd_lastarg = try reduce.reduce(reduce.hdGet(ctx.heap, lastArg(ctx)));
                 reduce.hdSet(ctx.heap, lastArg(ctx), hd_lastarg);
-                if (reduce_rt.compare(hd_arg1, hd_lastarg) <= 0) {
+                if (try reduce_rt.compare(hd_arg1, hd_lastarg) <= 0) {
                     reduce.rewriteToCons(ctx.heap, ctx.e, hd_arg1, reduce.ap2(ctx.heap, word.MERGE, reduce.tlGet(ctx.heap, ctx.args[0]), lastArg(ctx)));
                 } else {
                     reduce.rewriteToCons(ctx.heap, ctx.e, hd_lastarg, reduce.ap2(ctx.heap, word.MERGE, reduce.tlGet(ctx.heap, lastArg(ctx)), ctx.args[0]));
@@ -774,9 +774,9 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
 /// environment, converting UTF-8 bytes to Miranda's internal char
 /// representation if `$UTF8` output is on, then rewrites to the result string
 /// (or `nil` if unset).
-fn handleReadyGETENV(ctx: *ReductionCtx) void {
+fn handleReadyGETENV(ctx: *ReductionCtx) reduce.ReduceError!void {
     reduce.upLeft(ctx);
-    const a = reduce.getstring(lastArg(ctx), "getenv");
+    const a = try reduce.getstring(lastArg(ctx), "getenv");
     const p = os.getenv(a);
     ctx.hold = word.NIL;
     if (p) |ptr| {
@@ -832,12 +832,12 @@ fn handleReadyGETENV(ctx: *ReductionCtx) void {
 /// `system`: forks a `/bin/sh -c <cmd>` child, piping its stdout/stderr back
 /// as two lazy Miranda read-streams plus a `WAIT` thunk for its exit code (the
 /// child never returns from this function -- it `execl`s directly).
-fn handleReadyEXEC(ctx: *ReductionCtx) void {
+fn handleReadyEXEC(ctx: *ReductionCtx) reduce.ReduceError!void {
     reduce.upLeft(ctx);
     var pid: c_int = -1;
     var fd: [2]c_int = undefined;
     var fd_a: [2]c_int = undefined;
-    const cp = reduce.getstring(lastArg(ctx), "system");
+    const cp = try reduce.getstring(lastArg(ctx), "system");
     var cond = false;
     if (os.pipe(&fd) == -1 or os.pipe(&fd_a) == -1) {
         cond = true;
@@ -876,13 +876,13 @@ fn handleReadyEXEC(ctx: *ReductionCtx) void {
 /// `numval`: parses the last argument (a Miranda string) as a number,
 /// recognizing `0o`/`0x` integer prefixes and falling back to a float scan
 /// (via `sscanf`) if the string doesn't fully parse as an integer.
-fn handleReadyNUMVAL(ctx: *ReductionCtx) void {
+fn handleReadyNUMVAL(ctx: *ReductionCtx) reduce.ReduceError!void {
     reduce.upLeft(ctx);
     var x = lastArg(ctx);
     var base: c_int = 10;
     while (x != word.NIL) {
-        reduce.hdSet(ctx.heap, x, reduce.reduce(reduce.hdGet(ctx.heap, x)));
-        const next_tl = reduce.reduce(reduce.tlGet(ctx.heap, x));
+        reduce.hdSet(ctx.heap, x, try reduce.reduce(reduce.hdGet(ctx.heap, x)));
+        const next_tl = try reduce.reduce(reduce.tlGet(ctx.heap, x));
         reduce.tlSet(ctx.heap, x, next_tl);
         x = next_tl;
     }
@@ -951,7 +951,7 @@ fn handleReadyNUMVAL(ctx: *ReductionCtx) void {
 /// `^` (power): integer exponentiation via `big.pow` when both operands are
 /// non-negative integers; otherwise falls back to `f64` `pow`, reporting a
 /// domain error for a negative double base.
-fn handleReadyPOWER(ctx: *ReductionCtx) void {
+fn handleReadyPOWER(ctx: *ReductionCtx) reduce.ReduceError!void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.upLeft(ctx);
     var fa: f64 = 0.0;
@@ -986,7 +986,7 @@ fn handleReadyPOWER(ctx: *ReductionCtx) void {
 /// combinator): renders the constructor name and its arguments (space- or
 /// parenthesis-separated per `ctx.args[1]`, the "needs parens" flag),
 /// short-circuiting to `"<unprintable>"` for a suppressed/hidden constructor.
-fn handleReadyUsh(ctx: *ReductionCtx) void {
+fn handleReadyUsh(ctx: *ReductionCtx) reduce.ReduceError!void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     reduce.GETARG(ctx, &ctx.args[2]);

@@ -230,11 +230,11 @@ inline fn rewriteToCons(e: Word, hd_value: Word, tl_value: Word) void {
 }
 
 /// Abort with "missing case in definition" — the `BADCASE` combinator's reporter.
-pub fn badcaseError(arg_info: Word) void {
+pub fn badcaseError(arg_info: Word) reduce_core.ReduceError!void {
     const subject = h(arg_info);
     word.printErr("\nprogram error: missing case in definition", .{});
     if (subject != 0) {
-        word.printErr(" of {s}", .{std.mem.span(getstring(subject, null).?)});
+        word.printErr(" of {s}", .{std.mem.span((try getstring(subject, null)).?)});
     }
     _ = word.putc('\n', getStderr().?);
     outHere(core_state.s(), getStderr().?, t(arg_info), 1);
@@ -251,21 +251,21 @@ pub fn confError(arg_info: Word) void {
 }
 
 /// Abort a failed `$$`-grammar parse, reporting the unexpected token (or end of input).
-pub fn parseCloseError(arg1: Word, arg3: Word) void {
-    word.printErr("\nPARSE OF {s}FAILS WITH UNEXPECTED ", .{std.mem.span(getstring(arg1, null).?)});
-    const arg3_reduced = reduce(t(gResidue(arg3)));
+pub fn parseCloseError(arg1: Word, arg3: Word) reduce_core.ReduceError!void {
+    word.printErr("\nPARSE OF {s}FAILS WITH UNEXPECTED ", .{std.mem.span((try getstring(arg1, null)).?)});
+    const arg3_reduced = try reduce(t(gResidue(arg3)));
     if (arg3_reduced == NIL) {
         word.printErr("END OF INPUT\n", .{});
         outstats();
         os.exit(1);
     }
     var hold_val = heap.make(.AP, FST, h(arg3_reduced));
-    hold_val = reduce(hold_val);
+    hold_val = try reduce(hold_val);
     word.printErr("TOKEN \"", .{});
     if (hold_val == word.OFFSIDE) {
         word.printErr("offside", .{});
     }
-    const p = getstring(hold_val, null);
+    const p = try getstring(hold_val, null);
     if (p) |ptr| {
         var i: usize = 0;
         while (ptr[i] != 0) : (i += 1) {
@@ -364,15 +364,15 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
 /// Flatten a Miranda char-list `x` into a NUL-terminated C string in `linebuf`; aborts via `cmd` if it exceeds 1024 chars.
 ///
 /// Tests: getstring: copies a char list into a C-string
-pub fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
+pub fn getstring(x: Word, cmd: ?[*:0]const u8) reduce_core.ReduceError!?[*:0]u8 {
     var curr_x = x;
     const x1 = x;
     var n: usize = 0;
     const buf_size = 1024;
     while (getTag(curr_x) == .CONS and n < buf_size) {
         n += 1;
-        hp(curr_x).* = reduce(h(curr_x));
-        tp(curr_x).* = reduce(t(curr_x));
+        hp(curr_x).* = try reduce(h(curr_x));
+        tp(curr_x).* = try reduce(t(curr_x));
         curr_x = t(curr_x);
     }
     curr_x = x1;
@@ -399,7 +399,7 @@ pub fn getstring(x: Word, cmd: ?[*:0]const u8) ?[*:0]u8 {
 
 test "getstring: copies a char list into a C-string" {
     tu.freshInterp();
-    const s = getstring(tu.str("hello"), null);
+    const s = try getstring(tu.str("hello"), null);
     try std.testing.expect(s != null);
     try std.testing.expectEqualStrings("hello", std.mem.span(@as([*:0]const u8, s.?)));
 }
@@ -598,7 +598,7 @@ pub fn piperrmess(pid: Word) Word {
 /// Structurally compare two values (`<0`/`0`/`>0`); errors on comparing functions.
 ///
 /// Tests: compare: orders ints, chars, and strings; 0 on equal
-pub fn compare(arg_a: Word, arg_b: Word) c_int {
+pub fn compare(arg_a: Word, arg_b: Word) reduce_core.ReduceError!c_int {
     var a = arg_a;
     var b = arg_b;
     while (true) {
@@ -643,15 +643,15 @@ pub fn compare(arg_a: Word, arg_b: Word) c_int {
             },
             .CONS, .AP => {
                 if (tag_a == tag_b) {
-                    hp(a).* = reduce(h(a));
-                    hp(b).* = reduce(h(b));
-                    const temp = compare(h(a), h(b));
+                    hp(a).* = try reduce(h(a));
+                    hp(b).* = try reduce(h(b));
+                    const temp = try compare(h(a), h(b));
                     if (temp != 0) {
                         return temp;
                     }
-                    tp(a).* = reduce(t(a));
+                    tp(a).* = try reduce(t(a));
                     a = t(a);
-                    tp(b).* = reduce(t(b));
+                    tp(b).* = try reduce(t(b));
                     b = t(b);
                     continue;
                 } else if (word.S <= b and b <= word.ERROR) {
@@ -670,18 +670,18 @@ pub fn compare(arg_a: Word, arg_b: Word) c_int {
 
 test "compare: orders ints, chars, and strings; 0 on equal" {
     tu.freshInterp();
-    try std.testing.expect(compare(big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), 3)) < 0);
-    try std.testing.expect(compare(big.fromInt(heap.heap(), 3), big.fromInt(heap.heap(), 2)) > 0);
-    try std.testing.expectEqual(@as(c_int, 0), compare(big.fromInt(heap.heap(), 7), big.fromInt(heap.heap(), 7)));
+    try std.testing.expect(try compare(big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), 3)) < 0);
+    try std.testing.expect(try compare(big.fromInt(heap.heap(), 3), big.fromInt(heap.heap(), 2)) > 0);
+    try std.testing.expectEqual(@as(c_int, 0), try compare(big.fromInt(heap.heap(), 7), big.fromInt(heap.heap(), 7)));
     // strings (char lists) compare lexicographically, element by element
-    try std.testing.expect(compare(tu.str("abc"), tu.str("abd")) < 0);
-    try std.testing.expectEqual(@as(c_int, 0), compare(tu.str("hi"), tu.str("hi")));
+    try std.testing.expect(try compare(tu.str("abc"), tu.str("abd")) < 0);
+    try std.testing.expectEqual(@as(c_int, 0), try compare(tu.str("hi"), tu.str("hi")));
 }
 
 /// Fully evaluate `x` to normal form (deep `reduce`), descending applications and conses.
 ///
 /// Tests: force: deep-evaluates a list of thunks to normal form
-pub fn force(x_val: Word) void {
+pub fn force(x_val: Word) reduce_core.ReduceError!void {
     var x = x_val;
     switch (getTag(x)) {
         .AP => {
@@ -693,17 +693,17 @@ pub fn force(x_val: Word) void {
                 return;
             }
             while (getTag(x) == .AP) {
-                tp(x).* = reduce(t(x));
-                force(t(x));
+                tp(x).* = try reduce(t(x));
+                try force(t(x));
                 x = h(x);
             }
             return;
         },
         .CONS => {
             while (getTag(x) == .CONS) {
-                hp(x).* = reduce(h(x));
-                force(h(x));
-                tp(x).* = reduce(t(x));
+                hp(x).* = try reduce(h(x));
+                try force(h(x));
+                tp(x).* = try reduce(t(x));
                 x = t(x);
             }
         },
@@ -715,7 +715,7 @@ test "force: deep-evaluates a list of thunks to normal form" {
     tu.freshInterp();
     const thunk = ap(ap(word.PLUS, big.fromInt(heap.heap(), 2)), big.fromInt(heap.heap(), 3));
     const lst = cons(thunk, NIL);
-    force(lst);
+    try force(lst);
     // the head thunk is now reduced to the INT 5 in place
     try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(heap.heap(), h(lst)));
 }
@@ -741,9 +741,9 @@ test "head: the leftmost atom of an application spine" {
 }
 
 /// Open `f` for appending (the `Appendfile` directive), recording it in the open-file list.
-pub fn apfile(eval: *EvalState, f: Word) void {
+pub fn apfile(eval: *EvalState, f: Word) reduce_core.ReduceError!void {
     var p = eval.outfilq;
-    const fil = getstring(f, "Appendfile");
+    const fil = try getstring(f, "Appendfile");
     while (p != NIL and !std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(h(p)))), std.mem.span(fil.?))) {
         p = t(p);
     }
@@ -760,9 +760,9 @@ pub fn apfile(eval: *EvalState, f: Word) void {
 }
 
 /// Close the output file named by `f` (the `Closefile` directive).
-pub fn closefile(eval: *EvalState, f: Word) void {
+pub fn closefile(eval: *EvalState, f: Word) reduce_core.ReduceError!void {
     var p = &eval.outfilq;
-    const fil = getstring(f, "Closefile");
+    const fil = try getstring(f, "Closefile");
     while (p.* != NIL and !std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(h(p.*)))), std.mem.span(fil.?))) {
         p = tp(p.*);
     }
@@ -773,9 +773,9 @@ pub fn closefile(eval: *EvalState, f: Word) void {
 }
 
 /// Switch output to the file named in `e` (the `Tofile` directive), opening it if needed.
-pub fn outf(eval: *EvalState, e: Word) void {
+pub fn outf(eval: *EvalState, e: Word) reduce_core.ReduceError!void {
     var p = eval.outfilq;
-    const f = getstring(t(h(e)), "Tofile");
+    const f = try getstring(t(h(e)), "Tofile");
     while (p != NIL and !std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(h(p)))), std.mem.span(f.?))) {
         p = t(p);
     }
@@ -797,10 +797,10 @@ pub fn outf(eval: *EvalState, e: Word) void {
 }
 
 /// Print a Miranda char-list to the current output stream (`eval.s_out`), honouring UTF-8.
-pub fn print(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) void {
-    var e = reduce(arg_e);
+pub fn print(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) reduce_core.ReduceError!void {
+    var e = try reduce(arg_e);
     while (getTag(e) == .CONS) {
-        hp(e).* = reduce(h(e));
+        hp(e).* = try reduce(h(e));
         if (!heap.isChar(h(e))) {
             break;
         }
@@ -812,7 +812,7 @@ pub fn print(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) void {
         } else {
             word.printErr("\n warning: non Latin1 char {x} in print, ignored\n", .{c});
         }
-        tp(e).* = reduce(t(e));
+        tp(e).* = try reduce(t(e));
         e = t(e);
     }
     if (e == NIL) {
@@ -837,60 +837,60 @@ const Tofileb = 8;
 const Appendfileb = 9;
 
 /// Drive a list of output directives (`Stdout`/`Tofile`/`System`/`Exit`/…) — the top of the I/O interpreter.
-pub fn output(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) void {
+pub fn output(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) reduce_core.ReduceError!void {
     var e = arg_e;
     const old_cstack = rs.cstack;
     rs.cstack = @ptrCast(&e);
     defer rs.cstack = old_cstack;
 
-    e = reduce(e);
+    e = try reduce(e);
     while (getTag(e) == .CONS) {
-        hp(e).* = reduce(h(e));
+        hp(e).* = try reduce(h(e));
         switch (h(head(h(e)))) {
             Stdout => {
-                print(eval, rs, t(h(e)));
+                try print(eval, rs, t(h(e)));
             },
             Stdoutb => {
                 rs.UTF8OUT = 0;
-                print(eval, rs, t(h(e)));
+                try print(eval, rs, t(h(e)));
                 rs.UTF8OUT = rs.UTF8;
             },
             Stderr => {
                 eval.s_out = getStderr();
-                print(eval, rs, t(h(e)));
+                try print(eval, rs, t(h(e)));
                 eval.s_out = getStdout();
             },
             Tofile => {
-                outf(eval, h(e));
-                print(eval, rs, t(h(e)));
+                try outf(eval, h(e));
+                try print(eval, rs, t(h(e)));
             },
             Tofileb => {
                 rs.UTF8OUT = 0;
-                outf(eval, h(e));
-                print(eval, rs, t(h(e)));
+                try outf(eval, h(e));
+                try print(eval, rs, t(h(e)));
                 rs.UTF8OUT = rs.UTF8;
             },
             Closefile => {
-                tp(h(e)).* = reduce(t(h(e)));
-                closefile(eval, t(h(e)));
+                tp(h(e)).* = try reduce(t(h(e)));
+                try closefile(eval, t(h(e)));
             },
             Appendfile => {
-                tp(h(e)).* = reduce(t(h(e)));
-                apfile(eval, t(h(e)));
+                tp(h(e)).* = try reduce(t(h(e)));
+                try apfile(eval, t(h(e)));
             },
             Appendfileb => {
                 rs.UTF8OUT = 0;
-                tp(h(e)).* = reduce(t(h(e)));
-                apfile(eval, t(h(e)));
+                tp(h(e)).* = try reduce(t(h(e)));
+                try apfile(eval, t(h(e)));
                 rs.UTF8OUT = rs.UTF8;
             },
             System => {
-                tp(h(e)).* = reduce(t(h(e)));
-                const cmd = getstring(t(h(e)), "System");
+                tp(h(e)).* = try reduce(t(h(e)));
+                const cmd = try getstring(t(h(e)), "System");
                 _ = os.system(cmd);
             },
             Exit => {
-                var n = reduce(t(h(e)));
+                var n = try reduce(t(h(e)));
                 if (getTag(n) == .INT) {
                     n = digit0(n);
                 } else {
@@ -905,7 +905,7 @@ pub fn output(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) void {
                 word.printErr(">\n", .{});
             },
         }
-        tp(e).* = reduce(t(e));
+        tp(e).* = try reduce(t(e));
         e = t(e);
     }
     if (options.is_strict or @import("builtin").mode == .Debug) {

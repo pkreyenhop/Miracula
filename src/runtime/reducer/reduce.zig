@@ -63,7 +63,7 @@ pub const ReductionCtx = core.ReductionCtx;
 
 /// Reduce `e_val` to weak head normal form and return the resulting node.
 /// Drives the graph in place; the returned `Word` is the rewritten root.
-pub fn reduce(e_val: Word) Word {
+pub fn reduce(e_val: Word) core.ReduceError!Word {
     // Fresh machine state: a fresh, empty Spine (see spine.zig) -- registered
     // as a GC root for the duration (reduce() is recursive, so nested calls
     // each get their own, nested LIFO with this one; see Spine.register).
@@ -91,103 +91,106 @@ pub fn reduce(e_val: Word) Word {
         }
 
         if (@as(u64, @bitCast(ctx.e)) >= word.ATOMLIMIT) {
-            dispatchNonCombinatorHead(&ctx);
+            try dispatchNonCombinatorHead(&ctx);
         } else {
             ctx.eval.cycles += 1; // one reduction step (the perf counter)
+            if (ctx.eval.cycles & 0xFFF == 0 and rt.interrupt_flag.load(.acquire)) {
+                return error.Interrupted;
+            }
             trace.step(&ctx.eval.trace, ctx.e); // per-combinator histogram (compiled out when off)
             ctx.action = word.ACT_NONE;
 
             // (2) Dispatch on the head. A bare combinator/operator atom selects a
             //     rewrite handler; anything else falls to the tag switch below.
             switch (ctx.e) {
-                word.S => combinators.handleS(&ctx),
-                word.B => combinators.handleB(&ctx),
-                word.CB => combinators.handleCB(&ctx),
-                word.C => combinators.handleC(&ctx),
-                word.Y => combinators.handleY(&ctx),
-                word.K => combinators.handleK(&ctx),
-                word.KI => combinators.handleKI(&ctx),
-                word.S1 => combinators.handleS1(&ctx),
-                word.B1 => combinators.handleB1(&ctx),
-                word.C1 => combinators.handleC1(&ctx),
-                word.S_p => combinators.handleS_p(&ctx),
-                word.B_p => combinators.handleB_p(&ctx),
-                word.C_p => combinators.handleC_p(&ctx),
-                word.ITERATE => combinators.handleITERATE(&ctx),
-                word.ITERATE1 => combinators.handleITERATE1(&ctx),
-                word.P, word.G_RULE => combinators.handleP(&ctx),
-                word.U => combinators.handleU(&ctx),
-                word.Uf => combinators.handleUf(&ctx),
-                word.ATLEAST => combinators.handleATLEAST(&ctx),
-                word.U_ => combinators.handleU_(&ctx),
-                word.Ug => combinators.handleUg(&ctx),
-                word.MATCH => combinators.handleMATCH(&ctx),
-                word.MATCHINT => combinators.handleMATCHINT(&ctx),
-                word.GENSEQ => combinators.handleGENSEQ(&ctx),
-                word.MAP => combinators.handleMAP(&ctx),
-                word.FLATMAP => combinators.handleFLATMAP(&ctx),
-                word.FILTER => combinators.handleFILTER(&ctx),
-                word.LIST_LAST => combinators.handleLIST_LAST(&ctx),
-                word.LENGTH => combinators.handleLENGTH(&ctx),
-                word.DROP => combinators.handleDROP(&ctx),
-                word.SUBSCRIPT => combinators.handleSUBSCRIPT(&ctx),
-                word.FOLDL1 => combinators.handleFOLDL1(&ctx),
-                word.FOLDL => combinators.handleFOLDL(&ctx),
-                word.FOLDR => combinators.handleFOLDR(&ctx),
-                word.BADCASE => combinators.handleBADCASE(&ctx),
-                word.GETARGS => combinators.handleGETARGS(&ctx),
-                word.CONFERROR => combinators.handleCONFERROR(&ctx),
-                word.ERROR => combinators.handleERROR(&ctx),
-                word.WAIT => combinators.handleWAIT(&ctx),
-                word.TRY => combinators.handleTRY(&ctx),
-                word.FAIL => combinators.handleFAIL(&ctx),
-                word.Ush1 => combinators.handleUsh1(&ctx),
-                word.MKSTRICT => combinators.handleMKSTRICT(&ctx),
+                word.S => try combinators.handleS(&ctx),
+                word.B => try combinators.handleB(&ctx),
+                word.CB => try combinators.handleCB(&ctx),
+                word.C => try combinators.handleC(&ctx),
+                word.Y => try combinators.handleY(&ctx),
+                word.K => try combinators.handleK(&ctx),
+                word.KI => try combinators.handleKI(&ctx),
+                word.S1 => try combinators.handleS1(&ctx),
+                word.B1 => try combinators.handleB1(&ctx),
+                word.C1 => try combinators.handleC1(&ctx),
+                word.S_p => try combinators.handleS_p(&ctx),
+                word.B_p => try combinators.handleB_p(&ctx),
+                word.C_p => try combinators.handleC_p(&ctx),
+                word.ITERATE => try combinators.handleITERATE(&ctx),
+                word.ITERATE1 => try combinators.handleITERATE1(&ctx),
+                word.P, word.G_RULE => try combinators.handleP(&ctx),
+                word.U => try combinators.handleU(&ctx),
+                word.Uf => try combinators.handleUf(&ctx),
+                word.ATLEAST => try combinators.handleATLEAST(&ctx),
+                word.U_ => try combinators.handleU_(&ctx),
+                word.Ug => try combinators.handleUg(&ctx),
+                word.MATCH => try combinators.handleMATCH(&ctx),
+                word.MATCHINT => try combinators.handleMATCHINT(&ctx),
+                word.GENSEQ => try combinators.handleGENSEQ(&ctx),
+                word.MAP => try combinators.handleMAP(&ctx),
+                word.FLATMAP => try combinators.handleFLATMAP(&ctx),
+                word.FILTER => try combinators.handleFILTER(&ctx),
+                word.LIST_LAST => try combinators.handleLIST_LAST(&ctx),
+                word.LENGTH => try combinators.handleLENGTH(&ctx),
+                word.DROP => try combinators.handleDROP(&ctx),
+                word.SUBSCRIPT => try combinators.handleSUBSCRIPT(&ctx),
+                word.FOLDL1 => try combinators.handleFOLDL1(&ctx),
+                word.FOLDL => try combinators.handleFOLDL(&ctx),
+                word.FOLDR => try combinators.handleFOLDR(&ctx),
+                word.BADCASE => try combinators.handleBADCASE(&ctx),
+                word.GETARGS => try combinators.handleGETARGS(&ctx),
+                word.CONFERROR => try combinators.handleCONFERROR(&ctx),
+                word.ERROR => try combinators.handleERROR(&ctx),
+                word.WAIT => try combinators.handleWAIT(&ctx),
+                word.TRY => try combinators.handleTRY(&ctx),
+                word.FAIL => try combinators.handleFAIL(&ctx),
+                word.Ush1 => try combinators.handleUsh1(&ctx),
+                word.MKSTRICT => try combinators.handleMKSTRICT(&ctx),
 
-                word.I => combinators.handleI(&ctx),
+                word.I => try combinators.handleI(&ctx),
 
-                word.SEQ, word.FORCE, word.HD, word.TL, word.BODY, word.LAST, word.EXEC, word.FILEMODE, word.FILESTAT, word.GETENV, word.INTEGER, word.NUMVAL, word.TAKE, word.STARTREAD, word.STARTREADBIN, word.NB_STARTREAD, word.COND, word.APPEND, word.AND, word.OR, word.NOT, word.NEG, word.CODE, word.DECODE, word.SHOWNUM, word.SHOWHEX, word.SHOWOCT, word.ARCTAN_FN, word.EXP_FN, word.ENTIER_FN, word.LOG_FN, word.LOG10_FN, word.SIN_FN, word.COS_FN, word.SQRT_FN => combinators.handleStrictMonadic(&ctx),
+                word.SEQ, word.FORCE, word.HD, word.TL, word.BODY, word.LAST, word.EXEC, word.FILEMODE, word.FILESTAT, word.GETENV, word.INTEGER, word.NUMVAL, word.TAKE, word.STARTREAD, word.STARTREADBIN, word.NB_STARTREAD, word.COND, word.APPEND, word.AND, word.OR, word.NOT, word.NEG, word.CODE, word.DECODE, word.SHOWNUM, word.SHOWHEX, word.SHOWOCT, word.ARCTAN_FN, word.EXP_FN, word.ENTIER_FN, word.LOG_FN, word.LOG10_FN, word.SIN_FN, word.COS_FN, word.SQRT_FN => try combinators.handleStrictMonadic(&ctx),
 
-                word.ZIP, word.STEP, word.EQ, word.NEQ, word.PLUS, word.MINUS, word.TIMES, word.INTDIV, word.FDIV, word.MOD, word.GRE, word.GR, word.POWER, word.SHOWSCALED, word.SHOWFLOAT, word.MERGE => combinators.handleStrictDiadic(&ctx),
+                word.ZIP, word.STEP, word.EQ, word.NEQ, word.PLUS, word.MINUS, word.TIMES, word.INTDIV, word.FDIV, word.MOD, word.GRE, word.GR, word.POWER, word.SHOWSCALED, word.SHOWFLOAT, word.MERGE => try combinators.handleStrictDiadic(&ctx),
 
-                word.Ush, word.STEPUNTIL => combinators.handleStrictTriadic(&ctx),
+                word.Ush, word.STEPUNTIL => try combinators.handleStrictTriadic(&ctx),
 
                 // Grammar Combinators (lex.zig)
-                word.G_ERROR => lex_handlers.handle_G_ERROR(&ctx),
-                word.G_ALT => lex_handlers.handle_G_ALT(&ctx),
-                word.G_OPT => lex_handlers.handle_G_OPT(&ctx),
-                word.G_STAR => lex_handlers.handle_G_STAR(&ctx),
-                word.G_FBSTAR => lex_handlers.handle_G_FBSTAR(&ctx),
-                word.G_SYMB => lex_handlers.handle_G_SYMB(&ctx),
-                word.G_ANY => lex_handlers.handle_G_ANY(&ctx),
-                word.G_SUCHTHAT => lex_handlers.handle_G_SUCHTHAT(&ctx),
-                word.G_END => lex_handlers.handle_G_END(&ctx),
-                word.G_STATE => lex_handlers.handle_G_STATE(&ctx),
-                word.G_SEQ => lex_handlers.handle_G_SEQ(&ctx),
+                word.G_ERROR => try lex_handlers.handle_G_ERROR(&ctx),
+                word.G_ALT => try lex_handlers.handle_G_ALT(&ctx),
+                word.G_OPT => try lex_handlers.handle_G_OPT(&ctx),
+                word.G_STAR => try lex_handlers.handle_G_STAR(&ctx),
+                word.G_FBSTAR => try lex_handlers.handle_G_FBSTAR(&ctx),
+                word.G_SYMB => try lex_handlers.handle_G_SYMB(&ctx),
+                word.G_ANY => try lex_handlers.handle_G_ANY(&ctx),
+                word.G_SUCHTHAT => try lex_handlers.handle_G_SUCHTHAT(&ctx),
+                word.G_END => try lex_handlers.handle_G_END(&ctx),
+                word.G_STATE => try lex_handlers.handle_G_STATE(&ctx),
+                word.G_SEQ => try lex_handlers.handle_G_SEQ(&ctx),
                 word.G_UNIT => lex_handlers.handle_G_UNIT(&ctx),
                 word.G_ZERO => lex_handlers.handle_G_ZERO(&ctx),
-                word.G_CLOSE => lex_handlers.handle_G_CLOSE(&ctx),
-                word.G_COUNT => lex_handlers.handle_G_COUNT(&ctx),
+                word.G_CLOSE => try lex_handlers.handle_G_CLOSE(&ctx),
+                word.G_COUNT => try lex_handlers.handle_G_COUNT(&ctx),
 
                 // Lexer Combinators (lex.zig)
                 word.LEX_RPT1 => lex_handlers.handle_LEX_RPT1(&ctx),
-                word.LEX_RPT => lex_handlers.handle_LEX_RPT(&ctx),
-                word.LEX_TRY => lex_handlers.handle_LEX_TRY(&ctx),
-                word.LEX_TRY_ => lex_handlers.handle_LEX_TRY_(&ctx),
-                word.LEX_TRY1 => lex_handlers.handle_LEX_TRY1(&ctx),
-                word.LEX_TRY1_ => lex_handlers.handle_LEX_TRY1_(&ctx),
+                word.LEX_RPT => try lex_handlers.handle_LEX_RPT(&ctx),
+                word.LEX_TRY => try lex_handlers.handle_LEX_TRY(&ctx),
+                word.LEX_TRY_ => try lex_handlers.handle_LEX_TRY_(&ctx),
+                word.LEX_TRY1 => try lex_handlers.handle_LEX_TRY1(&ctx),
+                word.LEX_TRY1_ => try lex_handlers.handle_LEX_TRY1_(&ctx),
                 word.DESTREV => lex_handlers.handle_DESTREV(&ctx),
                 word.LEX_COUNT0 => lex_handlers.handle_LEX_COUNT0(&ctx),
-                word.LEX_COUNT => lex_handlers.handle_LEX_COUNT(&ctx),
-                word.LEX_STRING => lex_handlers.handle_LEX_STRING(&ctx),
-                word.LEX_CLASS => lex_handlers.handle_LEX_CLASS(&ctx),
-                word.LEX_DOT => lex_handlers.handle_LEX_DOT(&ctx),
-                word.LEX_CHAR => lex_handlers.handle_LEX_CHAR(&ctx),
-                word.LEX_SEQ => lex_handlers.handle_LEX_SEQ(&ctx),
-                word.LEX_OR => lex_handlers.handle_LEX_OR(&ctx),
-                word.LEX_RCONTEXT => lex_handlers.handle_LEX_RCONTEXT(&ctx),
-                word.LEX_STAR => lex_handlers.handle_LEX_STAR(&ctx),
-                word.LEX_OPT => lex_handlers.handle_LEX_OPT(&ctx),
+                word.LEX_COUNT => try lex_handlers.handle_LEX_COUNT(&ctx),
+                word.LEX_STRING => try lex_handlers.handle_LEX_STRING(&ctx),
+                word.LEX_CLASS => try lex_handlers.handle_LEX_CLASS(&ctx),
+                word.LEX_DOT => try lex_handlers.handle_LEX_DOT(&ctx),
+                word.LEX_CHAR => try lex_handlers.handle_LEX_CHAR(&ctx),
+                word.LEX_SEQ => try lex_handlers.handle_LEX_SEQ(&ctx),
+                word.LEX_OR => try lex_handlers.handle_LEX_OR(&ctx),
+                word.LEX_RCONTEXT => try lex_handlers.handle_LEX_RCONTEXT(&ctx),
+                word.LEX_STAR => try lex_handlers.handle_LEX_STAR(&ctx),
+                word.LEX_OPT => try lex_handlers.handle_LEX_OPT(&ctx),
 
                 // IO (io.zig)
                 word.READ => io_handlers.handle_READ(&ctx),
@@ -209,7 +212,7 @@ pub fn reduce(e_val: Word) Word {
         // (3) `e` is in WHNF. Walk back up the spine, forcing each ancestor
         //     `AP`'s right argument in turn, until the spine is exhausted or a
         //     rule rewrote the graph and wants the redex re-examined.
-        if (forceSpineArguments(&ctx)) |result| {
+        if (try forceSpineArguments(&ctx)) |result| {
             return result;
         }
     }
@@ -221,7 +224,7 @@ pub fn reduce(e_val: Word) Word {
 /// already-saturated constructor application as WHNF, and reports the
 /// handful of "impossible" states (undefined name, black hole, corrupt tag)
 /// that indicate a bug rather than a normal reduction step.
-fn dispatchNonCombinatorHead(ctx: *ReductionCtx) void {
+fn dispatchNonCombinatorHead(ctx: *ReductionCtx) core.ReduceError!void {
     if (abnormal(ctx.e)) {
         word.printErr("\nBLACK HOLE\n", .{});
         reduce_rt.outstats();
@@ -269,7 +272,7 @@ fn dispatchNonCombinatorHead(ctx: *ReductionCtx) void {
             }
         },
         .STARTREADVALS => {
-            io_handlers.handle_STARTREADVALS(ctx);
+            try io_handlers.handle_STARTREADVALS(ctx);
         },
         // Already a head-normal value (data leaf): nothing to rewrite.
         .ATOM, .INT, .UNICODE, .DOUBLE, .CONS => {
@@ -292,7 +295,7 @@ fn dispatchNonCombinatorHead(ctx: *ReductionCtx) void {
 /// once an argument has been reduced. Returns the final WHNF value once the
 /// whole spine is unwound; returns `null` if the graph was rewritten and
 /// `reduce()`'s main loop should re-examine `ctx.e` from the top.
-fn forceSpineArguments(ctx: *ReductionCtx) ?Word {
+fn forceSpineArguments(ctx: *ReductionCtx) core.ReduceError!?Word {
     while (true) {
         if (ctx.spine.isEmpty()) {
             return ctx.e;
@@ -306,7 +309,7 @@ fn forceSpineArguments(ctx: *ReductionCtx) ?Word {
             return null;
         }
 
-        ready.handleReadyState(ctx);
+        try ready.handleReadyState(ctx);
         if (ctx.action == word.ACT_NEXTREDEX) {
             return null;
         }

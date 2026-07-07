@@ -30,13 +30,13 @@ pub fn handle_READVALS(ctx: *ReductionCtx) void {
 
 /// Reduce `STARTREADVALS`: open the source (a file path, or stdin on `OFFSIDE`),
 /// then hand off to `handle_READVALS` to stream the parsed values.
-pub fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
+pub fn handle_STARTREADVALS(ctx: *ReductionCtx) reduce.ReduceError!void {
     if (reduce.upleft(ctx)) {
         ctx.action = word.ACT_DONE;
         return;
     }
 
-    const lastarg_val = reduce.reduce(reduce.tlGet(ctx.heap, ctx.e));
+    const lastarg_val = try reduce.reduce(reduce.tlGet(ctx.heap, ctx.e));
     reduce.tlSet(ctx.heap, ctx.e, lastarg_val);
 
     if (lastarg_val == word.OFFSIDE) {
@@ -51,7 +51,7 @@ pub fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
         reduce.tlSet(ctx.heap, ctx.e, reduce_rt.wrapPtr(@intCast(@intFromPtr(reduce.getStdin().?))));
     } else {
         ctx.hold = reduce.cons(ctx.heap, reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e)), lastarg_val);
-        const fil = reduce.getstring(lastarg_val, "readvals");
+        const fil = try reduce.getstring(lastarg_val, "readvals");
         const f = word.fopen(fil, "r");
         if (f == null) {
             word.printErr("\nreadvals, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});

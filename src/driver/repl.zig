@@ -375,7 +375,7 @@ pub fn obey(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
             abi.make(.AP, abi.mkshow(heap, 0, 0, typ), x);
         break :blk abi.make(.CONS, abi.make(.AP, rs.standardout, inner), NIL);
     };
-    abi.output(reduce.ev(), rs, out_val);
+    abi.output(reduce.ev(), rs, out_val) catch {};
 }
 
 /// Evaluate a typed REPL expression: compile it and fork via `process`; the child prints the result and exits, leaving the parent's heap untouched.
@@ -413,7 +413,7 @@ pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_st
         _ = signals(abi.SIGINT, @intFromPtr(&dieClean));
         core.compiling = 0;
         resetgcstats();
-        abi.output(reduce.ev(), rs, out_val);
+        abi.output(reduce.ev(), rs, out_val) catch {};
         _ = word.putchar('\n');
         outstats();
         const exit_code: c_int = if (heap.nogcs == 0) 0 else @as(c_int, @intCast(@min(heap.nogcs, 253))) + 1;
@@ -539,7 +539,7 @@ pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState,
             word.print("please re-enter data:\n", .{});
         } else {
             if (fil != 0) {
-                word.printErr("readvals: bad data in file \"{s}\"\n", .{abi.getstring(fil, @constCast("")) orelse "?"});
+                word.printErr("readvals: bad data in file \"{s}\"\n", .{(abi.getstring(fil, @constCast("")) catch null) orelse "?"});
             } else {
                 word.printErr("bad data in $+ input\n", .{});
             }

@@ -15,6 +15,15 @@ pub var io: std.Io = std.Options.debug_io;
 /// The process environment block (set in `main`).
 pub var environ: std.process.Environ = .empty;
 
+/// Set by the SIGINT/SIGTERM handler (Phase 3, docs/ZIG_NATIVE_PLAN.md — the
+/// replacement for the old `sigsetjmp`/`siglongjmp` mechanism). The handler's
+/// *only* job is this one atomic store (async-signal-safe by construction);
+/// `reduce()`'s main loop and the compiler's per-definition loop poll it and
+/// unwind via a normal Zig error return (`error.EvaluationInterrupted`)
+/// instead of a signal-context non-local jump. Cleared once the interrupted
+/// evaluation has been reported back to the REPL prompt.
+pub var interrupt_flag: std.atomic.Value(bool) = .init(false);
+
 const Word = i64;
 const CMBASE: Word = 306;
 const NIL: Word = CMBASE + 138;
