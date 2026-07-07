@@ -1437,6 +1437,52 @@ goldens byte-identical (float formatting is the watch item); scorecard `[*:0]` a
 **Risks:** float-format parity (`formatMiraFloat` + goldens); output buffering/flush
 order around child processes (flush before spawn; differential suite watches).
 
+**Phase 2 complete (2026-07-07).** All five steps landed; scorecard vs. the
+Phase 0/1 baseline: `c_int`-family 210→165, `[*:0]` 255→230, `@intFromPtr`/
+`@ptrFromInt` 66→57, sentinel `== NIL`/`!= NIL` 345→326, files > 1000 lines
+10→9, `extern fn` unchanged at 13 (already the signal/process floor) —
+every metric this phase actually targets moved the right direction; none
+regressed. `test-golden`/`test-mira`/`test-spine`/`test-smoke` all green
+throughout (only the pre-existing, unrelated `script_syntax_err` gap).
+
+One gate line needs a correction, not a deferral: **"printf-family count
+= 0" is unreachable as literally worded and was never actually the goal**
+— `scripts/scorecard.sh`'s `printf-family` metric counts `word.print`/
+`word.printErr` calls alongside real `printf`/`fprintf`/`sprintf`, but
+the former are `comptime`-format-string Zig-native calls (the *correct*,
+permanent replacement for C's output, not a C-ism to eliminate) — of the
+reported 391→364, roughly 350 are `word.print`/`printErr`; the real
+C-format engine (`printf`/`fprintf`/`sprintf`/`snprintf`/`fmemopen`, ~15
+genuine call sites plus `errors.zig`'s `fatal()`) was fully converted
+and deleted in step 3/4. This was identified early in step 3 (see its own
+landed note above) but the scorecard metric itself and this gate's wording
+were never updated to reflect it — worth fixing the metric definition in
+a later pass so it doesn't misreport a permanently-nonzero number as an
+open gap.
+
+**Deliberately not done, carried forward:**
+- The `fileq`/`outfilq`/`streamRead` cell-embedding redesign (raw
+  pointer → pool-slot index). No longer correctness-critical — the
+  GC-safety crash that originally motivated this was root-caused and
+  fixed with `wrapPtr`/`unwrapPtr` (step 4) — so this is now a pure
+  cosmetic/structural improvement, not a bug fix. Revisit alongside
+  Phase 4's "moves" work if `eval/stream.zig`'s target location makes
+  the representation change natural to bundle in.
+- `word.zig`'s `Stream` (and `fopen`/`fclose`/`getc`/… ) re-export
+  aliases. The plan's step 5 wording implies removing these from
+  `word.zig` entirely, but by the time step 4 moved the real
+  implementation to `stream.zig`, the aliases are the *entire* remaining
+  cost (~25 lines) — removing them requires updating every one of
+  ~600 call sites (`word.print`/`printErr` alone: 365) to import
+  `stream.zig` directly instead, for zero functional change. This
+  contradicts the explicit design choice step 4 made ("`word.zig`
+  re-exporting every one so no other file's imports needed to change")
+  and was assessed as not worth undoing for a documentation-level line
+  count. Left in place; `word.zig` sits at 732 lines of genuine value
+  vocabulary plus this one re-export block.
+- `readvals`'s per-value echo (documented under step 4's second landed
+  note) — tied to Phase 3 step 3's fork-per-eval removal.
+
 ---
 
 ### Phase 3 — Structured control flow (delete setjmp/longjmp and fork-per-eval)
