@@ -116,7 +116,9 @@ const ATOMLIMIT = word.ATOMLIMIT;
 // declarations (R7.3 — eliminate the linker-as-module-system pattern).
 const heap_mod = @import("../runtime/heap.zig");
 const Heap = heap_mod.Heap;
-const types_mod = @import("../compiler/types.zig");
+const depend = @import("depend.zig");
+const type_errors = @import("type_errors.zig");
+const unify_mod = @import("unify.zig");
 const big = @import("../graph/bignum.zig");
 const lex = @import("../parser/lex.zig");
 const setup = @import("../compiler/setup.zig");
@@ -127,17 +129,17 @@ const append1 = heap_mod.append1;
 const reverse = heap_mod.reverse;
 const shunt = heap_mod.shunt;
 const out = heap_mod.outTerm;
-const member = types_mod.member;
-const UNION = types_mod.UNION;
-const add1 = types_mod.add1;
-const deps = types_mod.deps;
-const intersection = types_mod.intersection;
-const outType = types_mod.outType;
-const redtvars = types_mod.redtvars;
-const sayhere = types_mod.sayhere;
-const setdiff = types_mod.setdiff;
-const msc = types_mod.msc;
-const tsort = types_mod.tsort;
+const member = depend.member;
+const UNION = depend.UNION;
+const add1 = depend.add1;
+const deps = depend.deps;
+const intersection = depend.intersection;
+const outType = type_errors.outType;
+const redtvars = unify_mod.redtvars;
+const sayhere = type_errors.sayhere;
+const setdiff = depend.setdiff;
+const msc = depend.msc;
+const tsort = depend.tsort;
 const isnat = big.isNat;
 const isconstrname = lex.isconstrname;
 const makePn = lex.makePn;
@@ -1499,7 +1501,7 @@ const LEX_TRY: Word = CMBASE + 114;
 const LEX_TRY1: Word = CMBASE + 116;
 
 const mklexvar = lex.mklexvar;
-const ispoly = types_mod.ispoly;
+const ispoly = unify_mod.ispoly;
 
 /// Whether a type node is a tuple (comma) type.
 /// Whether a type node is a type variable.

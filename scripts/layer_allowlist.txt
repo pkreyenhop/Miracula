@@ -5,6 +5,7 @@
 src/eval/combinators/combinators.zig -> src/os.zig
 src/eval/combinators/io.zig -> src/os.zig
 src/eval/combinators/lex.zig -> src/os.zig
+src/eval/combinators/lex.zig -> src/semantics/depend.zig
 src/eval/combinators/ready.zig -> src/os.zig
 src/eval/reduce.zig -> src/os.zig
 src/eval/reduce_core.zig -> src/os.zig
@@ -20,7 +21,12 @@ src/graph/strtab.zig -> src/session/interp.zig
 src/graph/word.zig -> src/eval/stream.zig
 src/os.zig -> src/eval/reduce_rt.zig
 src/os.zig -> src/graph/word.zig
+src/os.zig -> src/semantics/depend.zig
+src/os.zig -> src/semantics/infer.zig
 src/os.zig -> src/semantics/lower.zig
+src/os.zig -> src/semantics/type_errors.zig
+src/os.zig -> src/semantics/unify.zig
 src/os.zig -> src/session/repl.zig
+src/semantics/infer.zig -> src/os.zig
 src/semantics/lower.zig -> src/os.zig
 src/semantics/symbols.zig -> src/session/interp.zig

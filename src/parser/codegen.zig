@@ -15,7 +15,7 @@ const ls = lex_state.ls;
 // Cross-module functions via direct @import (R7.3 — eliminate extern-fn linker decls).
 const trans = @import("../semantics/lower.zig");
 const match = @import("../semantics/match.zig");
-const types_mod = @import("../compiler/types.zig");
+const types_mod = @import("../semantics/unify.zig");
 const big = @import("../graph/bignum.zig");
 const lex = @import("lex.zig");
 const reduce_mod = @import("../eval/reduce_rt.zig");

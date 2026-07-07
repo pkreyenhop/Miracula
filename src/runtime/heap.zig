@@ -18,7 +18,7 @@ const lex_state = @import("../parser/lex_state.zig");
 const ls = lex_state.ls;
 
 const compiler_state = @import("../compiler/compiler_state.zig");
-const types = @import("../compiler/types.zig");
+const types = @import("../semantics/depend.zig");
 const files = @import("../io/files.zig");
 const lex = @import("../parser/lex.zig");
 const symbols = @import("../semantics/symbols.zig");

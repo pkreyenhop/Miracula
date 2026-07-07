@@ -16,7 +16,7 @@ const Word = word.Word;
 const NIL = word.NIL;
 
 const lex_state = @import("../parser/lex_state.zig");
-const types = @import("types.zig");
+const types = @import("../semantics/infer.zig");
 const lex = @import("../parser/lex.zig");
 const big = @import("../graph/bignum.zig");
 const core_state = @import("../runtime/core_state.zig");

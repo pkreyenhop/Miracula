@@ -1706,6 +1706,46 @@ subsystems and passed explicitly; the ambient singleton deleted.
      (`dumpScript`/`loadScript` + XBASE), `graph/print.zig` (`outTerm`, `charname`);
      `alfasort` → `semantics/`.
    - `types.zig` → `infer.zig` / `unify.zig` / `type_errors.zig` / `depend.zig`.
+     **Landed** (2026-07-08), third of the four splits and the largest so
+     far (128 functions, 6 tests, 2733 lines). `depend.zig` got the generic
+     sorted-set operations (`remove1`/`setdiff`/`add1`/`newadd1`/`UNION`/
+     `intersection`/`member`/`typesfirst`) plus `tsort`/`msc`/`deps`/
+     `rembvars`/`redtfr` — deliberately *not* `compDeps`, which the plan's
+     one-line "tsort/deps" summary might suggest belongs there too, but
+     which is tightly coupled to `metaTcheck`/`sayhere` (the type-checking
+     driver) rather than being a reusable dependency-analysis primitive, so
+     it stayed in `infer.zig`. `unify.zig` got the substitution engine
+     (`lookup`/`addsubst`/`subst`/`occurs`/`instantiate`/`linst`/
+     `redtvars`/`unify`/`subsumes`) — `conforms` stayed in `infer.zig` for
+     the same reason as `compDeps`. `type_errors.zig` got `typeError`
+     through `typeError8`, `locate`/`sayhere`, and the `outType*`/
+     `outPattern`/`outFormal*` printers. Genuine multi-way dependencies
+     exist between all four (e.g. `unify.zig`'s `unify` calls
+     `type_errors.zig`'s `typeError`; `infer.zig` and `depend.zig` import
+     each other for `getId`) — same rationale as `lower.zig`↔`match.zig`:
+     the original single file's internal call graph didn't respect these
+     boundaries, so splitting it necessarily crosses them in both
+     directions; all four land in the same `semantics/` layer so this
+     isn't a cross-layer violation.
+     Verified with the same programmatic-diff process as the `trans.zig`
+     split (all 128 functions and 6 tests extracted and diffed against
+     `git show HEAD:src/compiler/types.zig` before considering this done).
+     One deliberate, documented deviation survived that diff: `newadd1`
+     (dead code — no call sites anywhere in the codebase, confirmed in
+     both the original and after) had a genuine pre-existing bug
+     (`cs.NEW = 1` instead of `cs().NEW = 1`, since `cs` is a function) that
+     never surfaced because Zig's lazy analysis never type-checks an
+     unreferenced `pub fn`'s body; fixed in place rather than preserved,
+     since preserving a non-compiling statement verbatim isn't meaningful
+     and the fix cannot change behavior (the function is never called).
+     **Also fixed in passing:** `src/syntax/layout.zig` still imported
+     `parser/token_filter.zig` and `parser/parser.zig` via their pre-move
+     paths from Phase 4 step 1 — invisible locally because an uncommitted
+     working-tree fix (present since before this session, never staged)
+     already corrected it, but the actual pushed history had been
+     unbuildable from a clean checkout ever since that step landed
+     (confirmed via `git worktree add` against the prior commit). Committed
+     separately as its own fix ahead of this split.
    - `trans.zig` → `lower.zig` / `match.zig`.
      **Landed** (2026-07-08), second of the four splits. `match.zig` got
      exactly the three functions the file's own module doc named as

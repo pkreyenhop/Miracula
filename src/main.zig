@@ -70,7 +70,10 @@ comptime {
     _ = @import("semantics/modules.zig");
     _ = @import("semantics/lower.zig");
     _ = @import("semantics/match.zig");
-    _ = @import("compiler/types.zig");
+    _ = @import("semantics/infer.zig");
+    _ = @import("semantics/depend.zig");
+    _ = @import("semantics/unify.zig");
+    _ = @import("semantics/type_errors.zig");
     _ = @import("compiler/setup.zig");
     _ = @import("compiler/module_loader.zig");
     _ = @import("compiler/dump.zig");

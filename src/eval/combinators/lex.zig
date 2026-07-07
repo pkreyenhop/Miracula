@@ -12,7 +12,7 @@ const word = @import("../../graph/word.zig");
 const reduce = @import("../reduce_core.zig");
 const os = @import("../../os.zig");
 const reduce_rt = @import("../reduce_rt.zig");
-const types = @import("../../compiler/types.zig");
+const types = @import("../../semantics/depend.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
 

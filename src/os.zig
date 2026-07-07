@@ -18,7 +18,10 @@ const lex_mod = @import("parser/lex.zig");
 const reduce_mod = @import("eval/reduce_rt.zig");
 const repl_mod = @import("session/repl.zig");
 const trans_mod = @import("semantics/lower.zig");
-const types_mod = @import("compiler/types.zig");
+const infer_mod = @import("semantics/infer.zig");
+const depend_mod = @import("semantics/depend.zig");
+const unify_mod = @import("semantics/unify.zig");
+const type_errors_mod = @import("semantics/type_errors.zig");
 
 pub var env_slice: [:null]const ?[*:0]const u8 = &[_:null]?[*:0]const u8{};
 
@@ -115,13 +118,13 @@ pub const TAKE = word_mod.TAKE;
 pub const TIOCGWINSZ: c_ulong = if (builtin.os.tag == .macos) 0x40087468 else 0x5413;
 pub const TL = word_mod.TL;
 pub const UNDEF = word_mod.UNDEF;
-pub const UNION = types_mod.UNION;
+pub const UNION = depend_mod.UNION;
 pub const VALUE = word_mod.VALUE;
 pub const XVERSION = 83;
 pub const ZIP = word_mod.ZIP;
 pub const abstract_t = word_mod.abstract_t;
 pub const placeholder_t = word_mod.placeholder_t;
-pub const add1 = types_mod.add1;
+pub const add1 = depend_mod.add1;
 pub const addextn = lex_mod.addextn;
 pub const adjustPrefix = lex_mod.adjustPrefix;
 pub const algebraic_t = word_mod.algebraic_t;
@@ -134,7 +137,7 @@ pub fn ap2(x: Word, y: Word, z: Word) Word {
 pub const append1 = heap_mod.append1;
 pub const bool_t = word_mod.bool_t;
 pub const char_t = word_mod.char_t;
-pub const checktypes = types_mod.checktypes;
+pub const checktypes = infer_mod.checktypes;
 pub const codegen = trans_mod.codegen;
 pub fn cons(x: Word, y: Word) Word {
     return make(.CONS, x, y);
@@ -142,7 +145,7 @@ pub fn cons(x: Word, y: Word) Word {
 pub fn datapair(x: Word, y: Word) Word {
     return make(.DATAPAIR, x, y);
 }
-pub const deps = types_mod.deps;
+pub const deps = depend_mod.deps;
 pub const dumpScript = heap_mod.dumpScript;
 pub const findid = lex_mod.findid;
 pub const gc = heap_mod.gc;
@@ -151,19 +154,19 @@ pub const getHere = heap_mod.getHere;
 pub const getaka = heap_mod.getaka;
 pub const geterrlin = heap_mod.geterrlin;
 pub const getstring = reduce_mod.getstring;
-pub const instantiate = types_mod.instantiate;
-pub const intersection = types_mod.intersection;
+pub const instantiate = unify_mod.instantiate;
+pub const intersection = depend_mod.intersection;
 pub const make = heap_mod.make;
 pub const keep = lex_mod.keep;
 pub const loadScript = heap_mod.loadScript;
 pub const makeId = lex_mod.makeId;
 pub const mallocfail = heap_mod.mallocfail;
-pub const setdiff = types_mod.setdiff;
+pub const setdiff = depend_mod.setdiff;
 pub const makePn = lex_mod.makePn;
 pub fn make_typ(a: Word, shf: Word, class: Word, info: Word) Word {
     return cons(cons(a, shf), cons(class, info));
 }
-pub const member = types_mod.member;
+pub const member = depend_mod.member;
 pub const mkprivate = lex_mod.mkprivate;
 pub const mkshow = trans_mod.mkshow;
 pub const num_t = word_mod.num_t;
@@ -173,19 +176,19 @@ pub const okid = lex_mod.okid;
 pub const openfile = lex_mod.openfile;
 pub const out = heap_mod.outTerm;
 pub const outHere = reduce_mod.outHere;
-pub const outPattern = types_mod.outPattern;
-pub const outType = types_mod.outType;
+pub const outPattern = type_errors_mod.outPattern;
+pub const outType = type_errors_mod.outType;
 pub const output = reduce_mod.output;
 pub const outstats = reduce_mod.outstats;
-pub const printlist = types_mod.printlist;
+pub const printlist = infer_mod.printlist;
 pub const process = repl_mod.process;
 pub const rdline = lex_mod.rdline;
 pub fn readvals(x: Word, y: Word) Word {
     return make(.STARTREADVALS, x, y);
 }
-pub const reportType = types_mod.reportType;
+pub const reportType = type_errors_mod.reportType;
 pub const resetheap = heap_mod.resetheap;
-pub const sayhere = types_mod.sayhere;
+pub const sayhere = type_errors_mod.sayhere;
 pub const setprefix = heap_mod.setprefix;
 pub const setupdic = lex_mod.setupdic;
 pub const EDOM = 33;
@@ -205,14 +208,14 @@ pub const struct_rlimit = extern struct {
     rlim_cur: u64,
     rlim_max: u64,
 };
-pub const subsumes = types_mod.subsumes;
+pub const subsumes = unify_mod.subsumes;
 pub const synonym_t = word_mod.synonym_t;
 pub const time_t = c_long;
 pub const token = lex_mod.token;
 pub const trueheapsize = heap_mod.trueheapsize;
-pub const typeOf = types_mod.typeOf;
+pub const typeOf = infer_mod.typeOf;
 pub const type_t = word_mod.type_t;
-pub const typesfirst = types_mod.typesfirst;
+pub const typesfirst = depend_mod.typesfirst;
 pub const undef_t = word_mod.undef_t;
 pub const void_t = word_mod.void_t;
 pub const wrong_t = word_mod.wrong_t;
