@@ -1268,7 +1268,78 @@ the value vocabulary; `main_clib.zig` shrinks to `os.zig`.
    anything new — they call the exact same functions as before, just via
    the new file's re-exported names.
 
-   Verified: `main-tests` (258, all `FILE`/string-helper tests correctly
+   **Landed (2026-07-07), a second pass: test-first coverage for the
+   deferred hard parts, plus two real bugs it surfaced (confirmed with
+   the user before fixing).** Before attempting the `fileq`/`outfilq`/
+   `streamRead` redesign, built the promised regression coverage first
+   (`Tofile`/`Appendfile`/`Closefile`/`read`/`readvals` had zero test
+   coverage anywhere in the tree) — and found the redesign's premise
+   was more urgent than scoped: an Explore agent's "handle-based
+   redesign is low-risk, zero dump-format impact" assessment was
+   correct about the dump format but missed a live crash. Found via
+   direct experimentation against the real binary (matching this
+   session's established "run it before writing the test" discipline):
+   - `Tofile fil string` (`runtime/reduce.zig`'s `output()`) only
+     switched the output stream (`outf`) and silently dropped `string`
+     instead of writing it — contradicting the manual's documented
+     behavior (`"the characters of the string are transmitted to the
+     file"`). Fixed by also calling `print(eval, rs, t(h(e)))` after
+     `outf`, matching `Stdout`'s own case shape.
+   - `sum (readvals "file")` on trivial input (`"1\n2\n3\n"`) crashed
+     with `heap.validate: cell ... (tag AP) has out-of-bounds tl
+     reference <huge number>` — heap corruption, not a hang or a clean
+     error. Confirmed via a throwaway `git worktree` at an earlier
+     commit that this predates the whole session (undiscovered only
+     because nothing ever exercised it). Root-caused (a first hypothesis
+     — a missing `lastexp` save/restore across `streamRead`'s reentrant
+     call into `parseLine`/`parseCurrent`/`evaluateRepl` — was tested
+     and empirically ruled out; the corruption was already present
+     before the reentrant call's own first `validate()` ran) to
+     `Heap.mark`/`Heap.validate` (`runtime/heap.zig`): both walk a
+     cell's tail as a chase-able reference whenever its tag ordinal is
+     `>= NodeTag.INT`, with no way to know a particular field holds a
+     disguised raw pointer instead. `STARTREAD`/`STARTREADBIN`/
+     `STARTREADVALS`/`system`'s pipe-reading `EXEC` handler, plus
+     `streamRead`'s own per-character chain-building, all embed a raw
+     `FILE*` directly in an `AP`-tagged cell's tail (`AP`'s ordinal is
+     above both thresholds) — reusing the reduction spine's own cell,
+     unlike `fileq`/`outfilq`'s dedicated `DATAPAIR`-wrapped entries
+     (`DATAPAIR`'s ordinal sits below both thresholds, so `mark`/
+     `validate` never look inside one). Any GC landing while such a
+     cell is reachable tries to treat the pointer bit pattern as a cell
+     index and panics. `readvals`'s own per-value reentrant parse+
+     codegen+typecheck+fork cycle allocates enough to make hitting this
+     nearly certain (which is how it was found); `read`/`readb`/
+     `system` share the identical hazard, just less reliably — confirmed
+     the hard way when `system_exec`'s own spine-differential
+     regression test caught an incomplete first pass that only patched
+     `streamRead`'s sites and missed `handleReadyEXEC`'s pipe-opening
+     ones (`reducer/ready.zig`). Fixed with `wrapPtr`/`unwrapPtr`
+     (`runtime/reduce.zig`): wrap the raw pointer in a `DATAPAIR` cell
+     before storing it — extending the exact pattern `fileq`/`outfilq`
+     already used to the sites that had instead reused the spine's own
+     `AP` cells directly. A whole-tree `@intFromPtr` grep after the fix
+     found no other unwrapped write sites.
+   - Added the missing regression coverage: `caseTofileAppendfileRoundTrip`
+     and `caseReadvalsSurvivesGcPressure` (`tests/mira_tests.zig`), the
+     latter run under `-heap 100` — the minimum accepted heap size — to
+     force real GC pressure rather than relying on a lucky pass.
+   - **Noted but deliberately not fixed:** `readvals`'s reentrant
+     `parseLine` call reuses the *full* `evaluateRepl` (fork + reduce +
+     default-output-mechanism print + exit) just to parse-and-typecheck
+     one value, so every value read is also echoed to stdout as a side
+     effect (confirmed harmless — no crash, no corruption — but
+     surprising, and almost certainly not the intent of a "just parse
+     this value" helper). Fixing it properly means changing `parseLine`
+     to skip the fork/reduce/print ceremony entirely, which overlaps
+     substantially with Phase 3 step 3's planned checkpoint/restore
+     replacement for fork-per-eval — attempting it now would likely be
+     redone by that work. The new `caseReadvalsSurvivesGcPressure` test
+     asserts today's actual (echoing) output, not the eventually-correct
+     one, so Phase 3 will need to update that assertion once
+     fork-per-eval is gone.
+
+   Verified: `main-tests` (245, all `FILE`/string-helper tests correctly
    relocated/retained and passing under their new module paths), the new
    round-trip test, `test-golden` (only the pre-existing
    `script_syntax_err` gap), `test-mira`/`test-spine`/`test-smoke` all
@@ -1379,6 +1450,16 @@ flag; evaluation is in-process.
    never saw the child's reductions; restore reproduces that exactly).
    **Fallback:** keep a fork path behind one function in `os.zig`, comptime-selected;
    delete after a full release cycle of differential green.
+   **Also fix here (noted, Phase 2 step 4):** `driver/repl.zig`'s `parseLine`
+   (the `readvals` value-at-a-time reader) reuses the *full* `evaluateRepl`
+   (fork + reduce + default-output-mechanism print + exit) just to parse-
+   and-typecheck one value, so every value `readvals` reads is also echoed
+   to stdout as a side effect — confirmed harmless (no crash) but almost
+   certainly not intended. `tests/mira_tests.zig`'s
+   `caseReadvalsSurvivesGcPressure` currently asserts *today's* echoing
+   output; once fork-per-eval is gone, `parseLine` should skip straight to
+   returning the codegen'd expression without forking/reducing/printing,
+   and that test's expected string should drop the per-value echoes.
 4. **Shell escape and editor** (`!cmd`, `/e`) → `std.process.Child` (argv built
    as slices, no `execl`/`[*:0]` juggling outside `os.zig`).
 5. **Error unions end-to-end.** `loadfile`/`privlib`/`parse*`/`compile` return
