@@ -315,7 +315,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                 reduce_rt.outstats();
                 main_clib.exit(1);
             }
-            setLastArg(ctx, @intCast(@intFromPtr(f.?)));
+            setLastArg(ctx, reduce_rt.wrapPtr(@intCast(@intFromPtr(f.?))));
             reduce.hdSet(ctx.heap, ctx.e, word.READ);
             reduce.downLeft(ctx);
             io_handlers.handle_READ(ctx);
@@ -330,7 +330,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) void {
                 reduce_rt.outstats();
                 main_clib.exit(1);
             }
-            setLastArg(ctx, @intCast(@intFromPtr(f.?)));
+            setLastArg(ctx, reduce_rt.wrapPtr(@intCast(@intFromPtr(f.?))));
             reduce.hdSet(ctx.heap, ctx.e, word.READBIN);
             reduce.downLeft(ctx);
             io_handlers.handle_READBIN(ctx);
@@ -857,7 +857,7 @@ fn handleReadyEXEC(ctx: *ReductionCtx) void {
         if (pid == -1 or fp == null or fp_a == null) {
             reduce.rewriteToCons(ctx.heap, ctx.e, word.NIL, reduce.cons(ctx.heap, reduce_rt.piperrmess(pid), big.fromInt(heap.heap(), -1)));
         } else {
-            reduce.rewriteToCons(ctx.heap, ctx.e, reduce.ap(ctx.heap, word.READ, @intCast(@intFromPtr(fp.?))), reduce.cons(ctx.heap, reduce.ap(ctx.heap, word.READ, @intCast(@intFromPtr(fp_a.?))), reduce.ap(ctx.heap, word.WAIT, pid)));
+            reduce.rewriteToCons(ctx.heap, ctx.e, reduce.ap(ctx.heap, word.READ, reduce_rt.wrapPtr(@intCast(@intFromPtr(fp.?)))), reduce.cons(ctx.heap, reduce.ap(ctx.heap, word.READ, reduce_rt.wrapPtr(@intCast(@intFromPtr(fp_a.?)))), reduce.ap(ctx.heap, word.WAIT, pid)));
         }
     } else {
         const shell = "/bin/sh";

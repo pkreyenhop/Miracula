@@ -191,6 +191,8 @@ test "mira integration suite" {
     try caseMakeFailureLongPath();
     try caseSyntaxErrorRepeat();
     try caseDumpUndumpRoundTrip();
+    try caseTofileAppendfileRoundTrip();
+    try caseReadvalsSurvivesGcPressure();
 }
 
 fn caseStandardArithmeticAndLists() !void {
@@ -460,4 +462,82 @@ fn caseDumpUndumpRoundTrip() !void {
     const dump_bytes_2 = try std.Io.Dir.cwd().readFileAlloc(testing.io, dump_path, allocator, .limited(1024 * 1024));
     defer allocator.free(dump_bytes_2);
     try testing.expectEqualStrings(dump_bytes_1, dump_bytes_2);
+}
+
+/// `Tofile`/`Appendfile`/`Closefile` had zero test coverage before this
+/// (Phase 2 step 4, docs/ZIG_NATIVE_PLAN.md) -- and turned out to have a
+/// real bug: `Tofile fil string` only switched the output stream and
+/// silently dropped `string` instead of writing it (fixed in
+/// `runtime/reduce.zig`'s `output()`, which now also `print`s the message's
+/// own string after `outf` switches the stream, matching the manual's
+/// documented behaviour and `Stdout`'s existing shape). This exercises:
+/// a fresh `Tofile` (truncates + writes), then a second command-level
+/// evaluation that `Appendfile`s the same path before `Tofile`-ing more
+/// (append, not truncate, across separate message-list evaluations --
+/// `Tofile`'s own doc comment above explains why the stream stays switched
+/// open until eval end, and `Appendfile` must be re-asserted per
+/// evaluation to pre-register append mode for the *next* `Tofile`).
+fn caseTofileAppendfileRoundTrip() !void {
+    var env = try TestEnv.init();
+    defer env.deinit();
+    const out_path = try std.fmt.allocPrint(allocator, "{s}/tofile_out.txt", .{env.work});
+    defer allocator.free(out_path);
+
+    const input = try std.fmt.allocPrint(allocator,
+        \\[Tofile "{s}" "first\n"]
+        \\[Appendfile "{s}", Tofile "{s}" "second\n"]
+        \\/q
+        \\
+    , .{ out_path, out_path, out_path });
+    defer allocator.free(input);
+
+    var result = try runMira(&env, "", input, &.{});
+    defer result.deinit();
+    try assertSuccessStatus("Tofile/Appendfile round trip", &result);
+
+    const written = try std.Io.Dir.cwd().readFileAlloc(testing.io, out_path, allocator, .limited(4096));
+    defer allocator.free(written);
+    try testing.expectEqualStrings("first\nsecond\n", written);
+}
+
+/// `readvals` had zero test coverage before this and was found to crash
+/// with heap corruption (`heap.validate: cell ... has out-of-bounds tl
+/// reference ...`) on ordinary input: `STARTREAD`/`STARTREADBIN`/
+/// `STARTREADVALS`/`system`'s pipe-reading `EXEC` handler all embedded a
+/// raw `FILE*` directly in an `AP`-tagged cell's tail (reusing the
+/// reduction spine's own cell), which is above the tag-ordinal threshold
+/// `Heap.mark`/`Heap.validate` use to decide whether to chase a cell's tl
+/// as a reference -- so any GC landing while such a cell was reachable
+/// tried to treat the pointer bit pattern as a cell index. `readvals`'s
+/// own per-value reentrant parse+codegen+typecheck+fork cycle allocates
+/// enough that a GC landing there was nearly certain, which is how this
+/// was found; `read`/`readb`/`system` share the identical hazard, just
+/// less reliably. Fixed by wrapping the pointer in a `DATAPAIR` cell
+/// (`runtime/reduce.zig`'s `wrapPtr`/`unwrapPtr`) -- the same established
+/// pattern `fileq`/`outfilq` already used, extended to these call sites.
+/// `-heap 100` (the minimum accepted) forces maximum GC pressure so this
+/// is a real regression test, not a lucky pass.
+fn caseReadvalsSurvivesGcPressure() !void {
+    var env = try TestEnv.init();
+    defer env.deinit();
+    const vals_path = try std.fmt.allocPrint(allocator, "{s}/readvals_in.txt", .{env.work});
+    defer allocator.free(vals_path);
+    try writeFile(vals_path, "1\n2\n3\n4\n5\n");
+
+    const input = try std.fmt.allocPrint(allocator,
+        \\sum (readvals "{s}")
+        \\/q
+        \\
+    , .{vals_path});
+    defer allocator.free(input);
+
+    var result = try runMira(&env, "", input, &.{ "-heap", "100" });
+    defer result.deinit();
+    try assertSuccessStatus("readvals survives GC pressure", &result);
+    // Each value read triggers its own reentrant desk-calculator echo
+    // (a separate, already-known-and-documented oddity of readvals's
+    // fork-per-value reuse of the REPL evaluation path, not something
+    // this test asserts is *correct* -- just capturing today's actual
+    // behavior) before the outer `sum`'s own result.
+    try testing.expectEqualStrings("1\n2\n3\n4\n5\n15", result.stdout);
 }

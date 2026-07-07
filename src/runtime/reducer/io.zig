@@ -48,7 +48,7 @@ pub fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
         }
         ctx.eval.stdinuse = '+';
         ctx.hold = reduce.cons(ctx.heap, reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e)), 0);
-        reduce.tlSet(ctx.heap, ctx.e, @intCast(@intFromPtr(reduce.getStdin().?)));
+        reduce.tlSet(ctx.heap, ctx.e, reduce_rt.wrapPtr(@intCast(@intFromPtr(reduce.getStdin().?))));
     } else {
         ctx.hold = reduce.cons(ctx.heap, reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e)), lastarg_val);
         const fil = reduce.getstring(lastarg_val, "readvals");
@@ -58,7 +58,7 @@ pub fn handle_STARTREADVALS(ctx: *ReductionCtx) void {
             reduce_rt.outstats();
             main_clib.exit(1);
         }
-        reduce.tlSet(ctx.heap, ctx.e, @intCast(@intFromPtr(f.?)));
+        reduce.tlSet(ctx.heap, ctx.e, reduce_rt.wrapPtr(@intCast(@intFromPtr(f.?))));
     }
 
     reduce.hdSet(ctx.heap, ctx.e, reduce.ap(ctx.heap, word.READVALS, ctx.hold));

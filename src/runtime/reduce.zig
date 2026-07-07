@@ -135,6 +135,35 @@ inline fn datapair(x: Word, y: Word) Word {
     return heap.make(.DATAPAIR, x, y);
 }
 
+/// Wrap a raw native pointer (already cast to a `Word` via `@intFromPtr`) as
+/// a GC-safe heap value, for storing in a cell field that `Heap.mark`/
+/// `Heap.validate` might otherwise walk as if it were a cell reference.
+///
+/// `fileq`/`outfilq`'s entries have always stashed a `FILE*` this way (as a
+/// `DATAPAIR`'s second field, alongside a filename) precisely because
+/// `DATAPAIR`'s tag ordinal sits below both thresholds `mark`/`validate`
+/// use to decide whether to recurse into a cell's hd/tl — so a raw pointer
+/// there can never be mistaken for an out-of-range cell index. `streamRead`/
+/// `STARTREADVALS`, however, wrote the raw pointer directly into an `AP`
+/// cell's tail (reusing the reduction spine's own cell rather than
+/// allocating a dedicated one) — `AP`'s ordinal is above both thresholds,
+/// so any GC landing while that cell was reachable would try to chase the
+/// pointer bit pattern as a cell reference and panic (`heap.validate:
+/// cell ... has out-of-bounds tl reference ...`). Confirmed via `readvals`,
+/// whose per-value reentrant parse+codegen+typecheck+fork cycle allocates
+/// enough to make hitting this nearly certain; `read`/`readb` have the
+/// identical hazard, just rarely unlucky enough to land a GC mid-stream.
+/// `wrapPtr` extends the same established `fileq`/`outfilq` pattern to
+/// these call sites instead of inventing a new one.
+pub fn wrapPtr(raw: Word) Word {
+    return datapair(0, raw);
+}
+
+/// Undo `wrapPtr`: read the raw pointer word back out of the wrapper cell.
+pub fn unwrapPtr(wrapped: Word) Word {
+    return t(wrapped);
+}
+
 inline fn digit0(x: Word) Word {
     return h(x) & MAXDIGIT;
 }
@@ -274,11 +303,11 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
                     return word.ACT_DONE;
                 }
                 ctx.eval.stdinuse = ':';
-                tp(ctx.e).* = @as(Word, @intCast(@intFromPtr(getStdin().?)));
+                tp(ctx.e).* = wrapPtr(@intCast(@intFromPtr(getStdin().?)));
             }
-            const hold_char = main_clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
+            const hold_char = main_clib.getc(@ptrFromInt(@as(usize, @intCast(unwrapPtr(t(ctx.e))))));
             if (hold_char == main_clib.EOF) {
-                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
+                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(t(ctx.e))))));
                 rewriteToNil(&ctx.e);
                 return word.ACT_DONE;
             }
@@ -298,11 +327,11 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
                     return word.ACT_DONE;
                 }
                 ctx.eval.stdinuse = '-';
-                tp(ctx.e).* = @as(Word, @intCast(@intFromPtr(getStdin().?)));
+                tp(ctx.e).* = wrapPtr(@intCast(@intFromPtr(getStdin().?)));
             }
-            const hold_char = if (ctx.rs.UTF8 != 0) stoChar(fromUTF8(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))))) else main_clib.getc(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
+            const hold_char = if (ctx.rs.UTF8 != 0) stoChar(fromUTF8(@ptrFromInt(@as(usize, @intCast(unwrapPtr(t(ctx.e))))))) else main_clib.getc(@ptrFromInt(@as(usize, @intCast(unwrapPtr(t(ctx.e))))));
             if (hold_char == main_clib.EOF) {
-                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(t(ctx.e)))));
+                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(t(ctx.e))))));
                 rewriteToNil(&ctx.e);
                 return word.ACT_DONE;
             }
@@ -318,9 +347,9 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
             reduce_core.upLeft(ctx);
             const lastarg = t(ctx.e);
 
-            const val = parseLine(ctx.heap, core_state.s(), rt.rs(), lex_state.ls(), h(ctx.args[0]), @ptrFromInt(@as(usize, @intCast(lastarg))), t(ctx.args[0]));
+            const val = parseLine(ctx.heap, core_state.s(), rt.rs(), lex_state.ls(), h(ctx.args[0]), @ptrFromInt(@as(usize, @intCast(unwrapPtr(lastarg)))), t(ctx.args[0]));
             if (val == main_clib.EOF) {
-                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(lastarg))));
+                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(lastarg)))));
                 rewriteToNil(&ctx.e);
                 return word.ACT_DONE;
             }
@@ -833,10 +862,12 @@ pub fn output(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) void {
             },
             Tofile => {
                 outf(eval, h(e));
+                print(eval, rs, t(h(e)));
             },
             Tofileb => {
                 rs.UTF8OUT = 0;
                 outf(eval, h(e));
+                print(eval, rs, t(h(e)));
                 rs.UTF8OUT = rs.UTF8;
             },
             Closefile => {
