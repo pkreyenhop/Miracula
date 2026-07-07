@@ -182,13 +182,11 @@ pub const RuntimeState = struct {
     /// shorthand.
     filequote_mlen: usize = 0,
     /// Elapsed time and GC count from the last evaluated REPL expression,
-    /// surfaced in the next prompt string. Also read (as `rt.rs().X`, ambiently)
-    /// by `reset()`, the SIGINT handler, which cannot take parameters.
+    /// surfaced in the next prompt string. Set directly by `evaluateRepl`
+    /// after each in-process evaluation (Phase 3, docs/ZIG_NATIVE_PLAN.md —
+    /// no more forked-child exit-code round trip to smuggle it back).
     last_elapsed_ns: ?i128 = null,
     last_gc_count: ?c_long = null,
-    /// The forked child's exit status, read once by `commandLoop` to derive
-    /// `last_gc_count` above.
-    child_exit_status: ?u8 = null,
 
     // ── Bootstrap scratch (startup.zig) ─────────────────────────────────────
     /// Version-mismatch scratch, filled by `checkVersion` and drained by

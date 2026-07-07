@@ -1,11 +1,26 @@
 //! repl.zig — the interactive driver (read-eval-print loop).
 //!
 //! `commandLoop` is the top-level prompt: it reads a line, dispatches `/`/`:`
-//! commands, `?`/`??` queries, `!` shell escapes, and bare expressions. Each
-//! expression is type-checked, compiled, and evaluated in a forked child
-//! (`process`/`evaluateRepl`) so an interrupt or fault can't take down the
-//! session. Also houses the signal handlers (`reset`, `dieClean`, `fpeError`),
-//! the editor-command checks, and `parseLine` (the `readvals` reader).
+//! commands, `?`/`??` queries, `!` shell escapes, and bare expressions.
+//!
+//! `evaluateRepl` no longer forks a child per expression (Phase 3 step 3,
+//! docs/ZIG_NATIVE_PLAN.md): it checkpoints the heap first and always
+//! restores it afterward (success or interrupt alike), reproducing the old
+//! fork model's actual invariant -- the forked child's reductions, being a
+//! separate COW-copied address space, never persisted into the parent's
+//! heap -- in-process instead. `onInterrupt`, the single SIGINT handler
+//! installed for the whole session, only sets `rt.interrupt_flag`
+//! (async-signal-safe by construction); `reduce()`'s main loop polls it and
+//! unwinds via a normal `error.Interrupted` return, which `evaluateRepl`
+//! catches, reports, and clears -- no more signal-context non-local jump for
+//! this path. `fpeError`'s own `siglongjmp` (a *synchronous* call from
+//! `heap.zig`'s `stoDbl`/`setdbl` on a non-finite float, not an async signal)
+//! and `rs.env`/`sigsetjmp` stay for now -- eliminating those needs float
+//! overflow threaded through as its own error return, deferred as a
+//! separate, similarly-sized follow-up (see docs/ZIG_NATIVE_PLAN.md).
+//!
+//! Also houses `fpeError`, the editor-command checks, and `parseLine` (the
+//! `readvals` reader).
 
 const std = @import("std");
 const options = @import("version_options");
@@ -70,39 +85,27 @@ const syntax = setup.syntax;
 const token = lex.token;
 const rdline = lex.rdline;
 const resetLex = lex.resetLex;
-/// POSIX `WIFSIGNALED`: true if `status` reports a child killed by a signal.
-fn WIFSIGNALED(status: c_int) bool {
-    return (status & 0x7f) != 0 and (status & 0x7f) != 0x7f;
-}
-
-/// POSIX `WTERMSIG`: the signal number that terminated the child.
-fn WTERMSIG(status: c_int) c_int {
-    return status & 0x7f;
-}
-
 /// The top-level REPL. Loads `initscript`, then reads and dispatches user input until EOF: `?`/`??` (info), `:`/`/` (commands), `!` (shell escape), `||` (comment), or an expression to evaluate.
 pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, initscript: [*:0]u8) void {
     var ch: c_int = undefined;
     var lb: ?[*:0]u8 = undefined;
 
-    if (abi.sigsetjmp(&rs.env, 1) == 0) {
-        if (rs.magic) {
-            dump.undump(heap, core_state.s(), cs(), rs, initscript);
-            if (heap.files == NIL or comp.ND != NIL or heap_mod.idVal(rs.main_id) == word.UNDEF) {
-                if (heap.files != NIL and comp.ND == NIL and heap_mod.idVal(rs.main_id) == word.UNDEF) {
-                    word.printErr("{s}: main not defined\n", .{initscript});
-                }
-                errors.fatal("mira: incorrect use of \"-exec\" flag\n", .{});
-            }
-            rs.magic = false;
-            abi.obey(heap, core, comp, rs, rs.main_id);
-            abi.exit(0);
-        }
-        _ = signals(abi.SIGINT, @intFromPtr(&reset));
+    if (rs.magic) {
         dump.undump(heap, core_state.s(), cs(), rs, initscript);
-        if (rs.verbosity != 0) {
-            word.print("for help type /h\n", .{});
+        if (heap.files == NIL or comp.ND != NIL or heap_mod.idVal(rs.main_id) == word.UNDEF) {
+            if (heap.files != NIL and comp.ND == NIL and heap_mod.idVal(rs.main_id) == word.UNDEF) {
+                word.printErr("{s}: main not defined\n", .{initscript});
+            }
+            errors.fatal("mira: incorrect use of \"-exec\" flag\n", .{});
         }
+        rs.magic = false;
+        abi.obey(heap, core, comp, rs, rs.main_id);
+        abi.exit(0);
+    }
+    _ = signals(abi.SIGINT, @intFromPtr(&onInterrupt));
+    dump.undump(heap, core_state.s(), cs(), rs, initscript);
+    if (rs.verbosity != 0) {
+        word.print("for help type /h\n", .{});
     }
 
     while (true) {
@@ -277,59 +280,22 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                 core.commandmode = 0;
                 rs.echoing = rs.verbosity & rs.listing;
                 rs.last_elapsed_ns = getMonotonicNs() - start;
-                if (rs.child_exit_status) |exit_code| {
-                    if (exit_code == 0) {
-                        rs.last_gc_count = 0;
-                    } else if (exit_code >= 2) {
-                        rs.last_gc_count = exit_code - 1;
-                    } else {
-                        rs.last_gc_count = null;
-                    }
-                } else {
-                    rs.last_gc_count = null;
-                }
+                // rs.last_gc_count is set directly by evaluateRepl now (no
+                // more fork + exit-code round trip to smuggle it back).
             },
         }
     }
 }
 
-/// Fork a child for evaluation. In the parent, wait and report any fatal signal; returns 0 in the parent and 1 in the child.
-pub fn process(rs: *rt.RuntimeState) Word {
-    var oldsig: usize = undefined;
-    oldsig = signals(abi.SIGINT, 1);
-    const pid = abi.fork();
-    if (pid != 0) { // parent
-        var status: c_int = 0;
-        if (pid == -1) {
-            abi.perror("UNIX error - cannot create process");
-            return 0;
-        }
-        while (pid != abi.wait(&status)) {}
-        if (WIFSIGNALED(status)) {
-            const cd: [*:0]const u8 = if ((status & 0x80) != 0) " (core dumped)" else "";
-            const sig = WTERMSIG(status);
-            switch (sig) {
-                abi.SIGBUS => word.printErr("\n<<...bus error{s}>>\n", .{cd}),
-                abi.SIGSEGV => word.printErr("\n<<...segmentation fault{s}>>\n", .{cd}),
-                else => word.printErr("\n<<...uncaught signal {}>>\n", .{sig}),
-            }
-        }
-        _ = signals(abi.SIGINT, oldsig);
-        if (std.posix.W.IFEXITED(@bitCast(status))) {
-            rs.child_exit_status = std.posix.W.EXITSTATUS(@bitCast(status));
-        } else {
-            rs.child_exit_status = null;
-        }
-        return 0;
-    }
-    return 1; // child
-}
-
-/// SIGINT handler during evaluation: print the interrupt notice, dump stats, and exit.
-pub fn dieClean() callconv(.c) void {
-    word.printErr("<<...interrupt>>\n", .{});
-    outstats();
-    abi.exit(0);
+/// SIGINT/SIGTERM handler for the whole session (Phase 3, docs/ZIG_NATIVE_PLAN.md):
+/// async-signal-safe by construction -- the only thing it does is set the
+/// flag. Everything else (reporting the interrupt, restoring the heap,
+/// clearing the flag again) happens synchronously once `reduce()`'s polled
+/// check propagates `error.Interrupted` up through normal Zig control flow,
+/// in `evaluateRepl` below.
+pub fn onInterrupt(sig: c_int) callconv(.c) void {
+    _ = sig;
+    rt.interrupt_flag.store(true, .release);
 }
 
 /// SIGFPE handler: treat as a syntax error while compiling, otherwise a fatal floating-point overflow.
@@ -378,7 +344,11 @@ pub fn obey(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
     abi.output(reduce.ev(), rs, out_val) catch {};
 }
 
-/// Evaluate a typed REPL expression: compile it and fork via `process`; the child prints the result and exits, leaving the parent's heap untouched.
+/// Evaluate a typed REPL expression: compile it, then reduce and print
+/// in-process, checkpointing the heap first and always restoring it
+/// afterward (success or interrupt alike) -- reductions never persist
+/// between REPL commands, matching the old forked-child model's own
+/// invariant exactly (see this file's module doc for why).
 pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, x_in: Word) void {
     var x = x_in;
     const typ = types_mod.typeOf(heap, x);
@@ -408,39 +378,22 @@ pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_st
             abi.make(.AP, abi.mkshow(heap, 0, 0, typ), x);
         break :blk abi.make(.CONS, abi.make(.AP, rs.standardout, inner), NIL);
     };
-    if (process(rs) != 0) {
-        // Child: evaluate and print, then exit (compiling=0 only here, parent unaffected).
-        _ = signals(abi.SIGINT, @intFromPtr(&dieClean));
-        core.compiling = 0;
-        resetgcstats();
-        abi.output(reduce.ev(), rs, out_val) catch {};
-        _ = word.putchar('\n');
-        outstats();
-        const exit_code: c_int = if (heap.nogcs == 0) 0 else @as(c_int, @intCast(@min(heap.nogcs, 253))) + 1;
-        abi.exit(exit_code);
-    }
-    // Parent returns here; heap and compiling flag are unchanged.
-}
 
-/// SIGINT handler at the prompt: restore input/echo/compile state and `longjmp` back into the command loop.
-pub fn reset() callconv(.c) void {
-    if (rt.rs().echoing != 0) {
+    rt.interrupt_flag.store(false, .release); // discard any stale, pre-eval interrupt
+    var snap = heap.checkpoint();
+    core.compiling = 0;
+    resetgcstats();
+    if (abi.output(reduce.ev(), rs, out_val)) {
         _ = word.putchar('\n');
+    } else |err| switch (err) {
+        error.Interrupted => {
+            word.printErr("<<...interrupt>>\n", .{});
+            rt.interrupt_flag.store(false, .release);
+        },
     }
-    rt.rs().s_in = abi.stdin();
-    rt.rs().echoing = 0;
-    rt.rs().listing = 0;
-    core_state.s().compiling = 0;
-    core_state.s().commandmode = 0;
-    core_state.s().SYNERR = 0;
-    rt.rs().sigflag = 0;
-    if (rt.rs().unlinkme) |u| {
-        _ = abi.unlink(u);
-        rt.rs().unlinkme = null;
-    }
-    rt.rs().last_elapsed_ns = null;
-    rt.rs().last_gc_count = null;
-    abi.siglongjmp(&rt.rs().env, 1);
+    outstats();
+    rs.last_gc_count = heap.nogcs;
+    heap.restore(&snap);
 }
 
 /// Warn that the configured editor lacks open-at-line support, disabling `??` and related features.
