@@ -1282,6 +1282,66 @@ the value vocabulary; `main_clib.zig` shrinks to `os.zig`.
    `fork`/`wait`/`execl` (until Phase 3), `sigsetjmp` (until Phase 3), rlimits.
    `malloc`-family shims die (allocator everywhere).
 
+   **Landed (2026-07-07), ctype/string-helper half only — scope confirmed
+   with the user after investigation showed the plan's assumption didn't
+   quite hold.** These wrappers weren't dead/broken code like the printf
+   engine (Step 3) — they were legitimate polymorphic-pointer coercions
+   (`castToCStr`/`castToCStrMut` accepting `anytype` C-string-ish
+   arguments, plus null handling) already delegating to `std.ascii`/
+   `std.mem` internally. Converting every call site to the raw
+   `std.ascii`/`std.mem` idiom directly (rather than through the wrapper)
+   is more inline code at each site, not less — a real cost the plan
+   didn't account for — but the user chose to do it anyway "to fully
+   match the plan's original wording," so it was carried out call-site by
+   call-site rather than deferred:
+   - **ctype predicates** (7 real call sites total: `isspace`/`isdigit`/
+     `isxdigit`/`isalpha`/`isalnum`/`tolower` across `reducer/ready.zig`,
+     `parser/lex.zig`, `driver/commands.zig`) converted to direct
+     `std.ascii` calls, with small local range-guard helpers where the
+     source is a heap `Word`/`i64` or a `getchar()`-shaped `c_int` that
+     can be out of ASCII-byte range or `EOF` (`std.ascii`'s predicates
+     take a `u8`, and can't see either case directly).
+   - **String helpers** (`strcmp`/`strlen`/`strcpy`/`strcat`/`strncmp`/
+     `strncpy`/`strncat`/`strrchr`/`strstr`/`rindex`, ~140 real call
+     sites once two file-scope `const strcmp = word.strcmp;` aliases in
+     `heap.zig`/`trans.zig` were found — missed by the first grep, which
+     only matched `word.strcmp(` directly, not local aliases; caught
+     immediately by the build once the wrapper was deleted) converted
+     file by file (`io/files.zig`, `driver/repl.zig`, `compiler/dump.zig`,
+     `compiler/module_loader.zig`, `runtime/reduce.zig`,
+     `runtime/reducer/ready.zig`, `parser/lex.zig`, `driver/commands.zig`,
+     `driver/startup.zig`, `runtime/heap.zig`, `compiler/trans.zig`) to
+     `std.mem.span`/`eql`/`len`/`order`/`lastIndexOfScalar`/`indexOf` plus
+     `@memcpy` for the copy/concat sites, preserving each site's exact
+     byte-level semantics — including `strncpy`'s C-style pad-not-
+     terminate behavior, `strncmp`'s prefix-comparison quirk (a bounded
+     compare where both operands are also truncated to `n`, so a
+     shorter-than-`n` operand can still "match" — reproduced exactly in
+     `commands.zig`'s `filequote`), and `hdsort`/`alfasort`'s two
+     genuine *ordering* comparisons (`strcmp(...) < 0`, not equality —
+     the only two of ~150 sites that weren't; converted to
+     `std.mem.order(...) == .lt`). One real behavior *improvement*, not
+     just a port: `commands.zig`'s `getenv("HOME")` site previously left
+     a stale/uninitialized buffer untouched (and then read it back as a
+     C string) when `$HOME` is unset — undefined behavior on a path with
+     no test oracle — now treated as `""`, matching every other missing-
+     env-var fallback already in that function. An Explore agent mapped
+     every call site's argument types first (optional vs. already-
+     unwrapped) to catch this kind of case before converting rather than
+     after; only that one site turned out to need it.
+   - Deleted `castToCStr`/`castToCStrMut` and all ten string helpers plus
+     the six ctype predicates from `word.zig` once a whole-tree grep
+     confirmed zero real callers remained anywhere (`word.zig`: 1,058 →
+     732 lines). `strchr` (0 callers from the start) went with them.
+   - **Not done:** the `FILE` struct/pool deletion (still gated on the
+     Step 4 hard parts — `FILE`→`Stream` rename, `fileq`/`outfilq`/
+     `streamRead` cell-embedding redesign) and the `main_clib.zig` →
+     `os.zig` rename.
+   - Verified: `zig build test` (256/256), `test-mira`/`test-spine`/
+     `test-smoke` all green, `scripts/scorecard.sh --check` OK (no
+     tracked metric rose above baseline — `printf-family` and `[*:0]`
+     both still trending down from Step 3/4's work).
+
 **Gate:** printf-family count = 0; `extern fn` reduced to the signal/process floor;
 goldens byte-identical (float formatting is the watch item); scorecard `[*:0]` and
 `@intFromPtr` drop sharply.
