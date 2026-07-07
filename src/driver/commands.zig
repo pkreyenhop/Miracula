@@ -576,7 +576,7 @@ pub fn editfile(rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_
     var tdone: bool = false;
     var temp_editor: [512]u8 = undefined;
     if (line_val == 0) {
-        _ = abi.snprintf(&temp_editor, temp_editor.len, "%s", .{q});
+        _ = std.fmt.bufPrintZ(&temp_editor, "{s}", .{q}) catch {};
         const len = word.strlen(&temp_editor);
         if (len > 0) {
             var tp_ptr = @as([*]u8, @ptrCast(&temp_editor)) + len - 1;

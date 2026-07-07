@@ -695,13 +695,25 @@ pub fn versionString(v: c_int) [*:0]const u8 {
     if (v < 0 or v > 999999) {
         return "???";
     }
-    _ = abi.snprintf(&rt.rs().vbuf, rt.rs().vbuf.len, "%.3f", .{@as(f64, @floatFromInt(v)) / 1000.0});
+    // Was `abi.snprintf(..., "%.3f", ...)` -- main_clib.zig's formatC engine
+    // discards the precision for every float specifier (confirmed this
+    // session while converting runtime/reducer/ready.zig's showfloat/
+    // showscaled; see formatMiraFixed's doc comment there), always doing
+    // Zig's own round-trip `{d}` regardless -- a real, pre-existing,
+    // trailing-zero-dropping bug the old two-case test happened not to
+    // exercise (2046/1000 and 1/1000 both round-trip without trailing
+    // zeros anyway). Fixed with Zig's own fixed-precision formatting.
+    const buf: []u8 = &rt.rs().vbuf;
+    _ = std.fmt.bufPrintZ(buf, "{d:.3}", .{@as(f64, @floatFromInt(v)) / 1000.0}) catch {};
     return @ptrCast(&rt.rs().vbuf);
 }
 
 test "versionString: formats an integer version as M.mmm" {
     try std.testing.expectEqualStrings("2.046", std.mem.span(versionString(2046)));
     try std.testing.expectEqualStrings("0.001", std.mem.span(versionString(1)));
+    // Regression: a value whose fixed-3-decimal form has trailing zeros --
+    // the exact case the old %.3f-that-ignored-precision bug dropped.
+    try std.testing.expectEqualStrings("2.000", std.mem.span(versionString(2000)));
     try std.testing.expectEqualStrings("???", std.mem.span(versionString(-1)));
 }
 
