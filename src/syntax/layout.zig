@@ -67,7 +67,7 @@
 //! checks that feed the result into the real `parser.zig`.
 
 const std = @import("std");
-const tf = @import("../parser/token_filter.zig");
+const tf = @import("token_filter.zig");
 
 pub const Token = tf.Token;
 pub const TokenId = tf.TokenId;
@@ -192,7 +192,7 @@ test "applyLayout: a single top-level definition needs no separator, just a fina
     // square x = x * x
     const input = [_]Token{
         tokText(.name, 1, 1, "square"), tokText(.name, 1, 8, "x"), tok(.eq, 1, 10),
-        tokText(.name, 1, 12, "x"),     tok(.star, 1, 14),          tokText(.name, 1, 16, "x"),
+        tokText(.name, 1, 12, "x"),     tok(.star, 1, 14),         tokText(.name, 1, 16, "x"),
         tok(.eof, 2, 1),
     };
     const out = try applyLayout(gpa, &input);
@@ -208,9 +208,9 @@ test "applyLayout: '=' pushes a margin at the RHS column; a less-indented siblin
     // cube x = x * x * x   ("cube" at col 1 -- well left of 12, dedents)
     const input = [_]Token{
         tokText(.name, 1, 1, "square"), tokText(.name, 1, 8, "x"), tok(.eq, 1, 10),
-        tokText(.name, 1, 12, "x"),     tok(.star, 1, 14),          tokText(.name, 1, 16, "x"),
+        tokText(.name, 1, 12, "x"),     tok(.star, 1, 14),         tokText(.name, 1, 16, "x"),
         tokText(.name, 2, 1, "cube"),   tokText(.name, 2, 6, "x"), tok(.eq, 2, 8),
-        tokText(.name, 2, 10, "x"),     tok(.star, 2, 12),          tokText(.name, 2, 14, "x"),
+        tokText(.name, 2, 10, "x"),     tok(.star, 2, 12),         tokText(.name, 2, 14, "x"),
         tok(.eof, 3, 1),
     };
     const out = try applyLayout(gpa, &input);
@@ -220,7 +220,12 @@ test "applyLayout: '=' pushes a margin at the RHS column; a less-indented siblin
     try std.testing.expectEqualSlices(TokenId, &.{
         .name, .name, .eq, .name, .star, .name,
         .offside, // "cube" (col 1) dedents past the RHS margin (col 12)
-        .name, .name, .eq, .name, .star, .name,
+        .name,
+        .name,
+        .eq,
+        .name,
+        .star,
+        .name,
         .offside, // final unwind at eof
         .eof,
     }, ids);
@@ -236,12 +241,11 @@ test "applyLayout: a where clause opens a new margin at its own first '='" {
     //   g y = y     (where-block's own margin at col 9)
     // h x = x       (col 1 dedents past g's margin)
     const input = [_]Token{
-        tokText(.name, 1, 1, "f"),  tokText(.name, 1, 3, "x"), tok(.eq, 1, 5),
-        tokText(.name, 1, 7, "g"),  tokText(.name, 1, 9, "x"),
-        tok(.kw_where, 2, 3),
-        tokText(.name, 3, 3, "g"),  tokText(.name, 3, 5, "y"), tok(.eq, 3, 7), tokText(.name, 3, 9, "y"),
-        tokText(.name, 4, 1, "h"),  tokText(.name, 4, 3, "x"), tok(.eq, 4, 5), tokText(.name, 4, 7, "x"),
-        tok(.eof, 5, 1),
+        tokText(.name, 1, 1, "f"), tokText(.name, 1, 3, "x"), tok(.eq, 1, 5),
+        tokText(.name, 1, 7, "g"), tokText(.name, 1, 9, "x"), tok(.kw_where, 2, 3),
+        tokText(.name, 3, 3, "g"), tokText(.name, 3, 5, "y"), tok(.eq, 3, 7),
+        tokText(.name, 3, 9, "y"), tokText(.name, 4, 1, "h"), tokText(.name, 4, 3, "x"),
+        tok(.eq, 4, 5),            tokText(.name, 4, 7, "x"), tok(.eof, 5, 1),
     };
     const out = try applyLayout(gpa, &input);
     defer gpa.free(out);
@@ -252,9 +256,15 @@ test "applyLayout: a where clause opens a new margin at its own first '='" {
         .offside, // "where" (col 3) dedents past f's RHS margin (col 7) --
         // matches parser.zig's parseDef case 2 (OFFSIDE then kw_where)
         .kw_where,
-        .name, .name, .eq, .name,
+        .name,
+        .name,
+        .eq,
+        .name,
         .offside, // "h" (col 1) dedents past g's where-block margin (col 9)
-        .name, .name, .eq, .name,
+        .name,
+        .name,
+        .eq,
+        .name,
         .offside, // final unwind at eof
         .eof,
     }, ids);
@@ -265,9 +275,10 @@ test "applyLayout: a realigned '=' inside brackets is a comparison, not a defini
     // f x = [x = 1]     ('=' inside brackets never opens a margin)
     // g x = x
     const input = [_]Token{
-        tokText(.name, 1, 1, "f"), tokText(.name, 1, 3, "x"), tok(.eq, 1, 5),
-        tok(.lbracket, 1, 7),      tokText(.name, 1, 8, "x"), tok(.eq, 1, 10), .{ .id = .const_int, .span = .{ .line = 1, .col = 12 }, .text = "1" }, tok(.rbracket, 1, 13),
-        tokText(.name, 2, 1, "g"), tokText(.name, 2, 3, "x"), tok(.eq, 2, 5), tokText(.name, 2, 7, "x"),
+        tokText(.name, 1, 1, "f"),                                             tokText(.name, 1, 3, "x"), tok(.eq, 1, 5),
+        tok(.lbracket, 1, 7),                                                  tokText(.name, 1, 8, "x"), tok(.eq, 1, 10),
+        .{ .id = .const_int, .span = .{ .line = 1, .col = 12 }, .text = "1" }, tok(.rbracket, 1, 13),     tokText(.name, 2, 1, "g"),
+        tokText(.name, 2, 3, "x"),                                             tok(.eq, 2, 5),            tokText(.name, 2, 7, "x"),
         tok(.eof, 3, 1),
     };
     const out = try applyLayout(gpa, &input);
@@ -278,11 +289,8 @@ test "applyLayout: a realigned '=' inside brackets is a comparison, not a defini
     // dedents past it with a single offside; the bracketed '=' at col 10
     // never opens a second, inner margin (paren_depth guards it).
     try std.testing.expectEqualSlices(TokenId, &.{
-        .name, .name, .eq, .lbracket, .name, .eq, .const_int, .rbracket,
-        .offside,
-        .name, .name, .eq, .name,
-        .offside,
-        .eof,
+        .name,    .name, .eq,   .lbracket, .name, .eq,      .const_int, .rbracket,
+        .offside, .name, .name, .eq,       .name, .offside, .eof,
     }, ids);
 }
 
@@ -292,9 +300,9 @@ test "applyLayout: :: opens a margin the same way '=' does" {
     //       -> num    (continuation indented AT/PAST the signature's margin: no separator)
     // g x = x          (dedents past the :: margin)
     const input = [_]Token{
-        tokText(.name, 1, 1, "f"), tok(.coloncolon, 1, 3), tokText(.name, 1, 6, "num"),
-        tok(.arrow, 2, 7),         tokText(.name, 2, 10, "num"),
-        tokText(.name, 3, 1, "g"), tokText(.name, 3, 3, "x"), tok(.eq, 3, 5), tokText(.name, 3, 7, "x"),
+        tokText(.name, 1, 1, "f"), tok(.coloncolon, 1, 3),       tokText(.name, 1, 6, "num"),
+        tok(.arrow, 2, 7),         tokText(.name, 2, 10, "num"), tokText(.name, 3, 1, "g"),
+        tokText(.name, 3, 3, "x"), tok(.eq, 3, 5),               tokText(.name, 3, 7, "x"),
         tok(.eof, 4, 1),
     };
     const out = try applyLayout(gpa, &input);
@@ -305,12 +313,10 @@ test "applyLayout: :: opens a margin the same way '=' does" {
     // col 7 is >= 6, so it's a plain continuation (no separator); "g" at
     // col 1 dedents past the margin with a single offside.
     try std.testing.expectEqualSlices(TokenId, &.{
-        .name, .coloncolon, .name,
-        .arrow, .name,
-        .offside,
-        .name, .name, .eq, .name,
-        .offside,
-        .eof,
+        .name,  .coloncolon, .name,
+        .arrow, .name,       .offside,
+        .name,  .name,       .eq,
+        .name,  .offside,    .eof,
     }, ids);
 }
 
@@ -318,10 +324,9 @@ test "applyLayout: an explicit semicolon is left alone, no extra offside injecte
     const gpa = std.testing.allocator;
     // f x = x; g y = y
     const input = [_]Token{
-        tokText(.name, 1, 1, "f"), tokText(.name, 1, 3, "x"), tok(.eq, 1, 5), tokText(.name, 1, 7, "x"),
-        tok(.semicolon, 1, 8),
-        tokText(.name, 1, 10, "g"), tokText(.name, 1, 12, "y"), tok(.eq, 1, 14), tokText(.name, 1, 16, "y"),
-        tok(.eof, 2, 1),
+        tokText(.name, 1, 1, "f"),  tokText(.name, 1, 3, "x"),  tok(.eq, 1, 5),             tokText(.name, 1, 7, "x"),
+        tok(.semicolon, 1, 8),      tokText(.name, 1, 10, "g"), tokText(.name, 1, 12, "y"), tok(.eq, 1, 14),
+        tokText(.name, 1, 16, "y"), tok(.eof, 2, 1),
     };
     const out = try applyLayout(gpa, &input);
     defer gpa.free(out);
@@ -331,7 +336,7 @@ test "applyLayout: an explicit semicolon is left alone, no extra offside injecte
     // margin f's own '=' opened (col 7) -- the semicolon is the only
     // separator, passed through untouched.
     try std.testing.expectEqualSlices(TokenId, &.{
-        .name, .name, .eq, .name, .semicolon, .name, .name, .eq, .name,
+        .name,    .name, .eq, .name, .semicolon, .name, .name, .eq, .name,
         .offside, .eof,
     }, ids);
 }
@@ -348,7 +353,7 @@ test "applyLayout: an explicit semicolon is left alone, no extra offside injecte
 
 const lexer_mod = @import("lexer.zig");
 const Source = @import("source.zig").Source;
-const parser_mod = @import("../parser/parser.zig");
+const parser_mod = @import("parser.zig");
 
 test "end-to-end: two top-level definitions parse as two definition items, no diagnostics" {
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
