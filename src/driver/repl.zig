@@ -212,24 +212,25 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                 if (lb == null) continue;
                 rs.lastid = 0;
                 if (lb.?[0] != 0) {
-                    var shell: ?[*:0]const u8 = null;
-                    var oldsig: usize = undefined;
-                    var pid: c_int = undefined;
-                    shell = abi.getenv("SHELL");
-                    if (shell == null) {
-                        shell = "/bin/sh";
+                    const shell_env = abi.getenv("SHELL");
+                    const shell: []const u8 = if (shell_env) |s| std.mem.span(s) else "/bin/sh";
+                    // Ignore SIGINT for the duration: a Ctrl-C meant for the
+                    // shell command (e.g. an interactive `!vi`) must not also
+                    // kill mira itself. Restored once the child returns.
+                    const oldsig = signals(abi.SIGINT, 1);
+                    const argv = [_][]const u8{ shell, "-c", std.mem.span(lb.?) };
+                    if (std.process.spawn(rt.io, .{
+                        .argv = &argv,
+                        .stdin = .inherit,
+                        .stdout = .inherit,
+                        .stderr = .inherit,
+                    })) |spawned| {
+                        var child = spawned;
+                        _ = child.wait(rt.io) catch {};
+                    } else |_| {
+                        abi.perror("UNIX error - cannot create process");
                     }
-                    oldsig = signals(abi.SIGINT, 1);
-                    pid = abi.fork();
-                    if (pid != 0) { // parent
-                        if (pid == -1) {
-                            abi.perror("UNIX error - cannot create process");
-                        }
-                        while (pid != abi.wait(null)) {}
-                        _ = signals(abi.SIGINT, oldsig);
-                    } else { // child
-                        _ = abi.execl(shell.?, .{ shell.?, "-c", lb.? });
-                    }
+                    _ = signals(abi.SIGINT, oldsig);
                     if (heap_mod.srcUpdate(rs) != 0) {
                         module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), rs.current_script.?);
                     }
