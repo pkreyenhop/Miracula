@@ -1126,6 +1126,77 @@ the value vocabulary; `main_clib.zig` shrinks to `os.zig`.
    at the end. Miranda's number printing (`%g`-family in `shownum`/`outTerm`) gets a
    dedicated `formatMiraFloat` helper replicating current output digit-for-digit
    (golden-gated).
+
+   **Landed (2026-07-07), and the "~320 sites" scope corrected.** The
+   scorecard's "printf-family calls" metric double-counts two very
+   different things: real `printf`/`fprintf`/`sprintf` calls (interpreted
+   at runtime by `main_clib.zig`'s C-format engine, `formatC`) and
+   `word.print`/`word.printErr` calls — but the latter already require
+   comptime Zig format strings (Zig won't compile a bare `%s` there), so
+   357 of the ~372 sites were already effectively converted; only ~13 real
+   C-format call sites remained. Landed in four parts:
+   - Dropped the `.{.{a}}` double-wrapped tuple convention (6 real call
+     sites, all now written directly) and, once nothing needed it, deleted
+     `word.print`/`word.printErr`'s comptime unwrap branch that tolerated it.
+   - Converted the four non-float `sprintf` sites (`driver/commands.zig`'s
+     `manaction`/`editfile` line-and-column-placeholder substitution,
+     `driver/startup.zig`'s logfile name) to `std.fmt.bufPrintZ`/`bufPrint`.
+   - The four float-formatting `sprintf` sites (`runtime/reducer/ready.zig`'s
+     `SHOWNUM`/`SHOWHEX`/`SHOWSCALED`/`SHOWFLOAT`) — the plan's own flagged
+     risk item. Investigation found `formatC`'s float-formatting case
+     (`'f'/'g'/'e'/'a'`) already discarded the C specifier and the
+     `precision` parameter entirely (a literal `_ = precision;` in
+     `formatArg`), always calling `std.fmt.bufPrint(&buf, "{d}", .{val})`
+     regardless — so `SHOWNUM`'s `%.16g` was **already** Zig-native
+     under the hood; a direct `std.fmt.bufPrint(..., "{d}", ...)` port
+     (`formatMiraShowNum`) is confirmed byte-identical across a range of
+     representative values (matching `formatC`'s own already-broken
+     handling of astronomical magnitudes too — both silently produce
+     nothing past a certain exponent, `formatArg`'s internal 128-byte
+     scratch buffer being far smaller than a full decimal expansion of
+     e.g. `1e300` needs; not fixed, out of scope, no golden coverage).
+     `SHOWFLOAT`/`SHOWSCALED`/`SHOWHEX`, though, were **completely
+     broken already** — `formatC`'s `%.*` (read-precision-from-args)
+     parsing didn't handle the `*` form at all, producing literal
+     `?INVALID_SPECIFIER?f` garbage for every call, and `%a` fell through
+     to the same ignore-everything decimal case as `%g` (printing a
+     *decimal* number for what's documented, `docs/man/mira.man.ms`, as a
+     hex-float builtin). Fixed properly rather than mechanically
+     preserving broken output: `formatMiraFixed`/`formatMiraScaled` use
+     Zig's own runtime-precision format specifiers (`{d:.[1]}`,
+     `{e:.[1]}`); `formatMiraScaled`'s scientific notation and
+     `formatMiraHex`'s hex-float both need a small postprocessing step
+     (`toCScientificExponent`) since Zig's bare exponent (`e5`, `p1`) needs
+     a C-mandated sign (`e+05`, `p+1`) — `%e`'s convention also requires a
+     2-digit floor (`%a`'s doesn't). `formatMiraHex` is verified against
+     `docs/man/mira.man.ms`'s own worked example (`showhex pi =>
+     0x1.921fb54442d18p+1`) byte-for-byte; `formatMiraScaled`'s exponent
+     convention is verified against the C standard's own `%e` specification
+     (mandatory sign, 2-digit floor) rather than a live reference binary
+     (none was available in this sandbox) — the one part of this step
+     without an executable oracle, flagged as such in the code itself.
+     11 new unit tests across all four helpers.
+   - `errors.zig`'s `fatal()` (`noreturn`, print-then-`exit(1)`) was the
+     last genuine C-format consumer: its own `fmt` parameter was runtime
+     `[*:0]const u8`, not comptime, so all 16 call sites across
+     `driver/startup.zig`/`repl.zig`, `io/files.zig`, `parser/lex.zig`,
+     `compiler/dump.zig`/`module_loader.zig` passed real `%s`-style format
+     strings. Converted `fatal`'s `fmt` to `comptime []const u8` (matching
+     `word.print`/`word.printErr`) and every call site's format string and
+     arg tuple.
+
+   Not yet done (deliberately, follow-on work): `main_clib.zig`'s
+   `printf`/`fprintf`/`sprintf`/`formatC` engine itself, and `word.zig`'s
+   `FILE` struct/pool/ctype predicates/string helpers — step 5's charter,
+   gated on nothing calling them anymore, which is now true except for
+   incidental internal uses (`fopen`/`fclose`/`getc`, `fmemopen` for dump
+   reading) that belong to step 4 (Streams). `ready.zig` crossed 1,000
+   lines (996 → 1,003) adding the four `formatMira*` helpers plus their
+   tests — the scorecard's "files > 1000 lines" check still passes (the
+   recorded baseline ceiling is 10, unchanged since before Phase 1 step 8
+   lowered the *actual* count to 9; this uses up that slack rather than
+   requiring a bump, but is worth noting rather than leaving silently
+   implicit).
 4. **Streams.** `eval/stream.zig`: a `Stream` over `std.fs.File` with pushback,
    plus a fixed-buffer variant (replaces `fmemopen` remnants). Port `READ`/
    `READBIN`/`READVALS`, `Tofile`/`Appendfile` (`outfilq`), and dump/undump file

@@ -93,7 +93,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                 if (heap.files != NIL and comp.ND == NIL and heap_mod.idVal(rs.main_id) == word.UNDEF) {
                     word.printErr("{s}: main not defined\n", .{initscript});
                 }
-                errors.fatal("mira: incorrect use of \"-exec\" flag\n", .{.{}});
+                errors.fatal("mira: incorrect use of \"-exec\" flag\n", .{});
             }
             rs.magic = false;
             abi.obey(heap, core, comp, rs, rs.main_id);

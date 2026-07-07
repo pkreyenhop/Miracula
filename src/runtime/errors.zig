@@ -73,13 +73,15 @@ test "MiraError is a subset of anyerror" {
 ///
 /// Not for the evaluator's heap-exhaustion / impossible-state aborts, which
 /// dump interpreter statistics via `outstats()` before exiting — those remain
-/// their own category. `fmt`/`args` follow the `word.fprintf` printf-style
-/// convention (both `.{a}` and `.{.{a}}` arg tuples are accepted).
+/// their own category. `fmt`/`args` are Zig format strings (Phase 2 step 3,
+/// docs/ZIG_NATIVE_PLAN.md — converted from the old C-format/`word.fprintf`
+/// convention along with all 16 call sites; `fmt` is now `comptime`, matching
+/// `word.print`/`word.printErr`).
 ///
 /// Not unit-tested: it is `noreturn` (calls `exit(1)`), so exercising it would
 /// terminate the test runner; covered by the integration suite's error paths.
-pub fn fatal(fmt: [*:0]const u8, args: anytype) noreturn {
-    _ = word.fprintf(abi.stderr(), fmt, args);
+pub fn fatal(comptime fmt: []const u8, args: anytype) noreturn {
+    word.printErr(fmt, args);
     const options = @import("version_options");
     if (options.is_strict) {
         std.debug.panic("fatal error in strict mode", .{});

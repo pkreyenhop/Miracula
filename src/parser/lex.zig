@@ -102,7 +102,7 @@ fn ovflocheck() void {
 
 /// Handle dictionary overflow (report and abort).
 pub fn dicovflo() void {
-    errors.fatal("\npanic: dictionary overflow\n", .{.{}});
+    errors.fatal("\npanic: dictionary overflow\n", .{});
 }
 
 /// Allocate and initialise the identifier dictionary.

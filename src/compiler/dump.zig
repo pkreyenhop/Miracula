@@ -341,7 +341,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
 
     if (comp.BAD_DUMP != 0 or heap_mod.srcUpdate(rs) != 0 or heap.files == NIL or comp.ND != NIL) {
         if (rs.initialising != 0) {
-            errors.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, @ptrCast(&obf))}});
+            errors.fatal("panic: {s} contains errors\n", .{@as([*:0]const u8, @ptrCast(&obf))});
         }
         module_loader.loadfile(heap, core, comp, rs, ls(), t_val);
     } else {

@@ -58,13 +58,13 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
 
     if (!files.fileExists(t_val)) {
         if (rs.initialising != 0) {
-            errors.fatal("panic: %s not found\n", .{.{t_val}});
+            errors.fatal("panic: {s} not found\n", .{t_val});
         }
         if (rs.verbosity != 0) {
             word.print("new file {s}\n", .{t_val});
         }
         if (rs.magic) {
-            errors.fatal("mira -exec %s: no such file\n", .{.{t_val}});
+            errors.fatal("mira -exec {s}: no such file\n", .{t_val});
         }
         if (rs.making and rs.ideep == 0) {
             word.print("mira -make {s}: no such file\n", .{t_val});
@@ -77,7 +77,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
 
     if (abi.openfile(@constCast(t_val)) == 0) {
         if (rs.initialising != 0) {
-            errors.fatal("panic: cannot open %s\n", .{.{t_val}});
+            errors.fatal("panic: cannot open {s}\n", .{t_val});
         }
         word.print("cannot open {s}\n", .{t_val});
         rs.oldfiles = heap_mod.cons(heap_mod.makeFil(t_val, 0, 0, NIL), NIL);
@@ -162,7 +162,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
             word.print("grammar optimisation: {} common left factors found\n", .{comp.lfrule});
         }
         if (rs.initialising != 0 and comp.ND != NIL) {
-            errors.fatal("panic: %s contains errors\n", .{.{@as([*:0]const u8, if (rs.okprel) "stdenv" else "prelude")}});
+            errors.fatal("panic: {s} contains errors\n", .{if (rs.okprel) "stdenv" else "prelude"});
         }
         if (rs.initialising != 0) {
             dump.makedump(heap, core, comp, rs);
@@ -188,7 +188,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     }
 
     if (rs.initialising != 0) {
-        errors.fatal("panic: cannot compile %s\n", .{.{@as([*:0]const u8, if (rs.okprel) "stdenv" else "prelude")}});
+        errors.fatal("panic: cannot compile {s}\n", .{if (rs.okprel) "stdenv" else "prelude"});
     }
     rs.oldfiles = heap.files;
     heap_mod.unload(comp, rs, lexs);

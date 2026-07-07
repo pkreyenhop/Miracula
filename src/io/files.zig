@@ -124,7 +124,7 @@ pub fn makeAbsolute(m: [*:0]u8) [*:0]u8 {
         return m;
     }
     if (abi.getcwd(ls().dicp, abi.pnlim) == null) {
-        errors.fatal("panic: cwd too long\n", .{.{}});
+        errors.fatal("panic: cwd too long\n", .{});
     }
     _ = word.strcat(ls().dicp, "/");
     _ = word.strcat(ls().dicp, m);
