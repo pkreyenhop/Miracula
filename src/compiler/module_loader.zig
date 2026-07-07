@@ -496,7 +496,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
     while (includees_list != NIL) {
         var x: Word = NIL;
         var oldsig: usize = 0;
-        var f: ?*word.FILE = null;
+        var f: ?*word.Stream = null;
         const fn_str = strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(heap_mod.h(includees_list))));
 
         {

@@ -978,7 +978,7 @@ test "charname: escapes control chars, passes printables through" {
 }
 
 /// Print double `value` to `file`.
-pub fn outReal(file: ?*word.FILE, value: f64) void {
+pub fn outReal(file: ?*word.Stream, value: f64) void {
     const magnitude = if (value < 0) -value else value;
     if (magnitude >= 1000.0 or magnitude <= 0.001) {
         _ = word.fprint(file, "{d}", .{value});
@@ -1123,7 +1123,7 @@ pub fn gc() void {
     heap.gc();
 }
 
-/// The standard-error `FILE` handle (tolerating either a fn or value form).
+/// The standard-error `Stream` handle (tolerating either a fn or value form).
 const fileMtime = files.fileMtime;
 const unlinkObject = files.unlinkObject;
 /// Intern name `p1`, returning its dictionary `ID` node (inserting if new).
@@ -1132,7 +1132,7 @@ pub fn stoId(p1: [*:0]const u8) Word {
 }
 
 /// Read a size-prefixed tagged `Word` from dump `file`.
-pub fn getword(file: ?*word.FILE) Word {
+pub fn getword(file: ?*word.Stream) Word {
     var s: i32 = 0;
     var i: usize = @sizeOf(Word);
     var x = @as(Word, @intCast(main_clib.getc(file)));
@@ -1146,7 +1146,7 @@ pub fn getword(file: ?*word.FILE) Word {
 }
 
 /// Write a size-prefixed tagged `Word` to dump `file`.
-pub fn putword(x_val: Word, file: ?*word.FILE) void {
+pub fn putword(x_val: Word, file: ?*word.Stream) void {
     var x = x_val;
     var i: usize = @sizeOf(Word);
     _ = word.putc(@intCast(x & 255), file);
@@ -1360,7 +1360,7 @@ fn castPtr(val: Word) [*:0]const u8 {
 }
 
 /// Print cell `x` to `file` in readable form (debug/diagnostic dump).
-pub fn outTerm(file: ?*word.FILE, x_val: Word) void {
+pub fn outTerm(file: ?*word.Stream, x_val: Word) void {
     var x = x_val;
     if (x < 0 or x > TOP()) {
         _ = word.fprint(file, "<{d}>", .{x});
@@ -1382,7 +1382,7 @@ pub fn outTerm(file: ?*word.FILE, x_val: Word) void {
 }
 
 /// Helper for `outTerm`: print one sub-term.
-pub fn outSubterm(file: ?*word.FILE, x: Word) void {
+pub fn outSubterm(file: ?*word.Stream, x: Word) void {
     if (x < 0 or x > TOP()) {
         _ = word.fprint(file, "<{d}>", .{x});
         return;
@@ -1397,7 +1397,7 @@ pub fn outSubterm(file: ?*word.FILE, x: Word) void {
 }
 
 /// Helper for `outTerm`: print one sub-term.
-pub fn outAtom(file: ?*word.FILE, x_val: Word) void {
+pub fn outAtom(file: ?*word.Stream, x_val: Word) void {
     var x = x_val;
     if (x < 0 or x > TOP()) {
         _ = word.fprint(file, "<{d}>", .{x});
@@ -1677,32 +1677,32 @@ fn ap(x: Word, y: Word) Word {
 }
 
 /// Write a 32-bit int to dump `file`.
-pub fn putint(n: i32, file: ?*word.FILE) void {
+pub fn putint(n: i32, file: ?*word.Stream) void {
     _ = word.fwrite(&n, @sizeOf(i32), 1, file);
 }
 
 /// Read a 32-bit int from dump `file`.
-pub fn getint(file: ?*word.FILE) i32 {
+pub fn getint(file: ?*word.Stream) i32 {
     var r: i32 = 0;
     _ = word.fread(&r, @sizeOf(i32), 1, file);
     return r;
 }
 
 /// Write the double in cell `x` to dump `file`.
-pub fn putdbl(x: Word, file: ?*word.FILE) void {
+pub fn putdbl(x: Word, file: ?*word.Stream) void {
     var d = getDbl(x);
     _ = word.fwrite(&d, @sizeOf(f64), 1, file);
 }
 
 /// Read a double from dump `file` (as a `DOUBLE` node).
-pub fn getdbl(file: ?*word.FILE) Word {
+pub fn getdbl(file: ?*word.Stream) Word {
     var d: f64 = 0;
     _ = word.fread(&d, @sizeOf(f64), 1, file);
     return stoDbl(d);
 }
 
 /// Write the loaded files/definitions graph to dump `file`.
-pub fn dumpScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, files_val: Word, file: ?*word.FILE) void {
+pub fn dumpScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, files_val: Word, file: ?*word.Stream) void {
     _ = word.putc(@intCast(wordsize), file);
     _ = word.putc(word.XVERSION, file);
 
@@ -1748,7 +1748,7 @@ pub fn dumpScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
 }
 
 /// Write a definition list to dump `file`.
-pub fn dumpDefs(defs_val: Word, file: ?*word.FILE) void {
+pub fn dumpDefs(defs_val: Word, file: ?*word.Stream) void {
     var defs = defs_val;
     while (defs != word.NIL) : (defs = t(defs)) {
         const item = h(defs);
@@ -1780,7 +1780,7 @@ pub fn dumpDefs(defs_val: Word, file: ?*word.FILE) void {
 /// Write one object (graph node) to dump `file`.
 ///
 /// Tests: dumpOb / loadDefs: roundtrip a cons of two ints through the .x format
-pub fn dumpOb(x: Word, file: ?*word.FILE) void {
+pub fn dumpOb(x: Word, file: ?*word.Stream) void {
     switch (heap().getTag(x)) {
         .ATOM => {
             if (x < 128) {
@@ -1890,7 +1890,7 @@ pub fn dumpOb(x: Word, file: ?*word.FILE) void {
 }
 
 /// Load a script graph from a dump `file`, binding params and aliases.
-pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, file: ?*word.FILE, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
+pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, file: ?*word.Stream, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
     comp.TORPHANS = 0;
     comp.BAD_DUMP = 0;
     comp.CLASHES = word.NIL;
@@ -2163,7 +2163,7 @@ pub fn dgrow() void {
 /// Load a definition list from a dump `file`.
 ///
 /// Tests: dumpOb / loadDefs: roundtrip a cons of two ints through the .x format
-pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, file: ?*word.FILE) Word {
+pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, file: ?*word.Stream) Word {
     var ch = main_clib.getc(file);
     var defs: Word = word.NIL;
     while (ch != main_clib.EOF) {

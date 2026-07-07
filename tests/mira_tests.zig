@@ -504,7 +504,7 @@ fn caseTofileAppendfileRoundTrip() !void {
 /// with heap corruption (`heap.validate: cell ... has out-of-bounds tl
 /// reference ...`) on ordinary input: `STARTREAD`/`STARTREADBIN`/
 /// `STARTREADVALS`/`system`'s pipe-reading `EXEC` handler all embedded a
-/// raw `FILE*` directly in an `AP`-tagged cell's tail (reusing the
+/// raw `Stream` pointer directly in an `AP`-tagged cell's tail (reusing the
 /// reduction spine's own cell), which is above the tag-ordinal threshold
 /// `Heap.mark`/`Heap.validate` use to decide whether to chase a cell's tl
 /// as a reference -- so any GC landing while such a cell was reachable

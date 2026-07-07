@@ -44,8 +44,8 @@ const mallocPanic = heap_mod.mallocPanic;
 const stoId = heap_mod.stoId;
 const genlstatType = types.genlstatType;
 
-/// The standard-input `FILE` handle.
-fn getStdin() ?*word.FILE {
+/// The standard-input `Stream` handle.
+fn getStdin() ?*word.Stream {
     const T = @TypeOf(main_clib.stdin);
     if (comptime @typeInfo(T) == .@"fn") {
         return main_clib.stdin();
@@ -438,8 +438,8 @@ pub fn adjustPrefix(f: [*:0]const u8) void {
 /// Open source file `n` for reading; returns 0 on failure.
 pub fn openfile(n: [*:0]const u8) c_int {
     const f = word.fopen(n, "r") orelse return 0;
-    // FILE* handle stored in the cell (read back via @ptrFromInt below);
-    // this is a FILE-handle-in-cell cast, not a node string — out of B1 scope.
+    // Stream* handle stored in the cell (read back via @ptrFromInt below);
+    // this is a Stream-handle-in-cell cast, not a node string — out of B1 scope.
     ls().fileq = cons(make(.STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls().fileq);
     ls().insertdepth += 1;
     return 1;
@@ -673,7 +673,7 @@ pub fn resetState(heap: *Heap) void {
         }
     }
     while (ls().fileq != NIL) {
-        const file_ptr: ?*word.FILE = @ptrFromInt(@as(usize, @intCast(h(heap, h(heap, ls().fileq)))));
+        const file_ptr: ?*word.Stream = @ptrFromInt(@as(usize, @intCast(h(heap, h(heap, ls().fileq)))));
         _ = word.fclose(file_ptr);
         ls().fileq = t(heap, ls().fileq);
     }

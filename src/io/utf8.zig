@@ -1,4 +1,4 @@
-//! utf8.zig — UTF-8 encode/decode against C `FILE` streams.
+//! utf8.zig — UTF-8 encode/decode against C `Stream` streams.
 //!
 //! `fromUTF8` reads one code point (used by `READ` when the session is in UTF-8
 //! mode) and `outUTF8` writes one (used by `print`). Malformed input aborts with
@@ -6,14 +6,14 @@
 
 const std = @import("std");
 
-/// Opaque C `FILE` handle — this module talks to libc `getc`/`putc` directly.
-pub const FILE = opaque {};
-extern fn getc(fil: ?*FILE) c_int;
-extern fn putc(ch: c_int, fil: ?*FILE) c_int;
+/// Opaque C `Stream` handle — this module talks to libc `getc`/`putc` directly.
+pub const Stream = opaque {};
+extern fn getc(fil: ?*Stream) c_int;
+extern fn putc(ch: c_int, fil: ?*Stream) c_int;
 const EOF: c_int = -1;
 
 ///
-pub export fn fromUTF8(fil: ?*FILE) c_ulong {
+pub export fn fromUTF8(fil: ?*Stream) c_ulong {
     const c0 = getc(fil);
     if (c0 == EOF) {
         return std.math.maxInt(c_ulong);
@@ -62,7 +62,7 @@ pub export fn fromUTF8(fil: ?*FILE) c_ulong {
 }
 
 ///
-pub fn outUTF8(u: c_ulong, fil: ?*FILE) void {
+pub fn outUTF8(u: c_ulong, fil: ?*Stream) void {
     if (u <= 0x7f) {
         out(u, fil);
     } else if (u <= 0x7ff) {
@@ -84,7 +84,7 @@ pub fn outUTF8(u: c_ulong, fil: ?*FILE) void {
 }
 
 ///
-pub fn out(byte: c_ulong, fil: ?*FILE) void {
+pub fn out(byte: c_ulong, fil: ?*Stream) void {
     _ = putc(@intCast(byte), fil);
 }
 

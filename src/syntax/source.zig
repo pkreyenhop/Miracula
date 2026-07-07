@@ -163,7 +163,7 @@ pub const Source = struct {
     /// Whether `path` names a literate script by convention
     /// (`parser/lex.zig`'s `litname`: filename ends in `.lit.m`). Public so
     /// callers that already have a file's bytes in hand (e.g. read via the
-    /// legacy `FILE` stream rather than a fresh disk read — see
+    /// legacy `Stream` stream rather than a fresh disk read — see
     /// `parser_api.zig`'s native-pipeline entry points) can compute
     /// `name_says_literate` themselves before calling `init` directly.
     pub fn isLiterateName(path: []const u8) bool {

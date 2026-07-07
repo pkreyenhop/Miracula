@@ -25,8 +25,8 @@ const core_state = @import("../runtime/core_state.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 const ls = lex_state.ls;
 
-/// The standard-output `FILE` handle.
-fn getStdout() ?*word.FILE {
+/// The standard-output `Stream` handle.
+fn getStdout() ?*word.Stream {
     return main_clib.stdout();
 }
 

@@ -846,8 +846,8 @@ fn handleReadyEXEC(ctx: *ReductionCtx) void {
         cond = (pid != 0);
     }
     if (cond) {
-        var fp: ?*word.FILE = null;
-        var fp_a: ?*word.FILE = null;
+        var fp: ?*word.Stream = null;
+        var fp_a: ?*word.Stream = null;
         if (pid != -1) {
             _ = main_clib.close(fd[1]);
             _ = main_clib.close(fd_a[1]);

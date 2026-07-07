@@ -9,7 +9,7 @@ var mock_read_idx: usize = 0;
 var mock_write_buf: [100]u8 = undefined;
 var mock_write_len: usize = 0;
 
-export fn getc(fil: ?*utf8.FILE) c_int {
+export fn getc(fil: ?*utf8.Stream) c_int {
     _ = fil;
     if (mock_read_idx >= mock_read_buf.len) {
         return -1;
@@ -19,7 +19,7 @@ export fn getc(fil: ?*utf8.FILE) c_int {
     return byte;
 }
 
-export fn putc(ch: c_int, fil: ?*utf8.FILE) c_int {
+export fn putc(ch: c_int, fil: ?*utf8.Stream) c_int {
     _ = fil;
     if (mock_write_len < mock_write_buf.len) {
         mock_write_buf[mock_write_len] = @intCast(ch);

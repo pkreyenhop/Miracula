@@ -127,7 +127,7 @@ pub fn setPrompt(p: []const u8) void {
     state().next_prompt = p;
 }
 
-/// `FILE.readInteractiveLine` hook (installed on `std_in` only): read one
+/// `Stream.readInteractiveLine` hook (installed on `std_in` only): read one
 /// edited line and copy it (plus a terminating newline, which the lexer
 /// expects) into `dst`. Returns the byte count written, or null at end of
 /// input (Ctrl-D / read error).

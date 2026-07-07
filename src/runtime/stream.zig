@@ -1,5 +1,5 @@
 //! stream.zig — the interpreter's file-handle abstraction: a minimal, pooled
-//! `FILE` (posix fd or in-memory buffer, one-byte pushback, an 8 KiB read
+//! `Stream` (posix fd or in-memory buffer, one-byte pushback, an 8 KiB read
 //! buffer) plus the C-stdio-shaped operations built on it (`fopen`/`fclose`/
 //! `getc`/`fread`/`fwrite`/`putc`/...) and the buffered stdout/stderr writers
 //! (`IoState`) `word.print`/`word.printErr` use.
@@ -12,10 +12,10 @@
 
 const std = @import("std");
 
-/// A minimal stdio `FILE`: a posix fd (or an in-memory buffer for reading
+/// A minimal stdio `Stream`: a posix fd (or an in-memory buffer for reading
 /// dumps) with one-byte pushback and an 8 KiB read buffer. Allocated from a
 /// fixed pool (`allocFile`/`freeFile`); the std streams are static instances.
-pub const FILE = struct {
+pub const Stream = struct {
     file: std.Io.File = .{ .handle = -1, .flags = .{ .nonblocking = false } },
     pushback: ?u8 = null,
     mem_buf: ?[]const u8 = null,
@@ -27,12 +27,12 @@ pub const FILE = struct {
     /// (zigline) on the `std_in` instance specifically. When non-null,
     /// `readByte` fills its buffer by calling this — an edited line (with
     /// history) plus a trailing newline, or null at end of input. Left null
-    /// for non-interactive input (pipes, files) and every non-stdin `FILE`,
+    /// for non-interactive input (pipes, files) and every non-stdin `Stream`,
     /// which keeps using plain `read`, so piped tests are unaffected.
     readInteractiveLine: ?*const fn (dst: []u8) ?usize = null,
 
     /// Read one byte, honouring pushback, a memory-backed buffer, or the read buffer; errors at EOF.
-    pub fn readByte(self: *FILE) !u8 {
+    pub fn readByte(self: *Stream) !u8 {
         if (self.pushback) |pb| {
             self.pushback = null;
             return pb;
@@ -60,19 +60,19 @@ pub const FILE = struct {
     }
 
     /// Push a byte back so the next read returns it (libc `ungetc`).
-    pub fn ungetc(self: *FILE, c: u8) void {
+    pub fn ungetc(self: *Stream, c: u8) void {
         self.pushback = c;
     }
 
     /// Write a single byte directly (unbuffered).
-    pub fn writeByte(self: *FILE, c: u8) !void {
+    pub fn writeByte(self: *Stream, c: u8) !void {
         const buf = [1]u8{c};
         const rc = std.posix.system.write(self.file.handle, &buf, 1);
         if (rc < 0) return error.WriteFailed;
     }
 
     /// Write the whole slice, looping over short writes.
-    pub fn writeAll(self: *FILE, slice: []const u8) !void {
+    pub fn writeAll(self: *Stream, slice: []const u8) !void {
         var written: usize = 0;
         while (written < slice.len) {
             const rc = std.posix.system.write(self.file.handle, slice[written..].ptr, slice.len - written);
@@ -82,7 +82,7 @@ pub const FILE = struct {
     }
 
     /// Write byte `c` `count` times (a padding helper).
-    pub fn writeByteNTimes(self: *FILE, c: u8, count: usize) !void {
+    pub fn writeByteNTimes(self: *Stream, c: u8, count: usize) !void {
         var i: usize = 0;
         while (i < count) : (i += 1) {
             try self.writeByte(c);
@@ -92,7 +92,7 @@ pub const FILE = struct {
     /// Zig-native formatted write to this file (R1.4): the file analogue of
     /// `word.print`/`printErr`. Formats to a stack buffer and writes using
     /// writeAll to maintain correct streaming file offsets.
-    pub fn print(self: *FILE, comptime fmt: []const u8, args: anytype) void {
+    pub fn print(self: *Stream, comptime fmt: []const u8, args: anytype) void {
         var buf: [4096]u8 = undefined;
         const fs = std.meta.fields(@TypeOf(args));
         const slice = if (comptime (fs.len == 1 and @typeInfo(fs[0].type) == .@"struct"))
@@ -103,15 +103,15 @@ pub const FILE = struct {
     }
 };
 
-test "FILE.readByte: streams a memory buffer, then EndOfStream" {
-    var f: FILE = .{ .mem_buf = "ab" };
+test "Stream.readByte: streams a memory buffer, then EndOfStream" {
+    var f: Stream = .{ .mem_buf = "ab" };
     try std.testing.expectEqual(@as(u8, 'a'), try f.readByte());
     try std.testing.expectEqual(@as(u8, 'b'), try f.readByte());
     try std.testing.expectError(error.EndOfStream, f.readByte());
 }
 
-test "FILE.ungetc: the pushed byte is returned before the buffer resumes" {
-    var f: FILE = .{ .mem_buf = "x" };
+test "Stream.ungetc: the pushed byte is returned before the buffer resumes" {
+    var f: Stream = .{ .mem_buf = "x" };
     f.ungetc('Z');
     try std.testing.expectEqual(@as(u8, 'Z'), try f.readByte());
     try std.testing.expectEqual(@as(u8, 'x'), try f.readByte());
@@ -120,7 +120,7 @@ test "FILE.ungetc: the pushed byte is returned before the buffer resumes" {
 /// Coerce any pointer/optional/null to an optional const C-string.
 ///
 /// I/O subsystem state (shared-state plan Phase 2c): the stderr/stdout writer
-/// caches, the three standard `FILE` streams, and the `FILE` allocation pool.
+/// caches, the three standard `Stream` streams, and the `Stream` allocation pool.
 /// Accessed as `word.fio().X`; folds into `Interp.io` in Phase 3.
 pub const IoState = struct {
     stdout_buf: [8192]u8 = undefined,
@@ -128,10 +128,10 @@ pub const IoState = struct {
     stdout_writer: std.Io.File.Writer = undefined,
     stderr_writer: std.Io.File.Writer = undefined,
     writers_initialized: bool = false,
-    std_in: FILE = .{ .file = .{ .handle = std.posix.STDIN_FILENO, .flags = .{ .nonblocking = false } } },
-    std_out: FILE = .{ .file = .{ .handle = std.posix.STDOUT_FILENO, .flags = .{ .nonblocking = false } } },
-    std_err: FILE = .{ .file = .{ .handle = std.posix.STDERR_FILENO, .flags = .{ .nonblocking = false } } },
-    file_pool: [16]FILE = undefined,
+    std_in: Stream = .{ .file = .{ .handle = std.posix.STDIN_FILENO, .flags = .{ .nonblocking = false } } },
+    std_out: Stream = .{ .file = .{ .handle = std.posix.STDOUT_FILENO, .flags = .{ .nonblocking = false } } },
+    std_err: Stream = .{ .file = .{ .handle = std.posix.STDERR_FILENO, .flags = .{ .nonblocking = false } } },
+    file_pool: [16]Stream = undefined,
     file_in_use: [16]bool = [_]bool{false} ** 16,
 };
 
@@ -179,61 +179,61 @@ pub fn printErr(comptime fmt: []const u8, args: anytype) void {
 /// Zig-native formatted write to an optional file (the `fprintf` analogue):
 /// a no-op when `file` is null, matching the old shim's behaviour. Lets
 /// file-targeted call sites convert without sprinkling `.?`.
-pub fn fprint(file: ?*FILE, comptime fmt: []const u8, args: anytype) void {
+pub fn fprint(file: ?*Stream, comptime fmt: []const u8, args: anytype) void {
     if (file) |f| f.print(fmt, args);
 }
 
-// stdio: std streams, FILE pool, and C-style file ops (R1.5/R1.6 consolidation).
+// stdio: std streams, Stream pool, and C-style file ops (R1.5/R1.6 consolidation).
 // `printf`/`fprintf`/`sprintf`/`snprintf`/`formatC`/`formatArg` (the runtime
 // C-format-string engine) and `fmemopen` were deleted here (Phase 2 step 3/4,
 // docs/ZIG_NATIVE_PLAN.md) once nothing called them anymore — every call site
 // now uses Zig-native format strings via `word.print`/`printErr`/`fprint`, or
 // (for reading dumps) `fopen` directly. `putc`/`putchar` stay: still used by
-// `heap.zig`'s dump writer. The whole stdio subsystem lives next to the FILE
+// `heap.zig`'s dump writer. The whole stdio subsystem lives next to the Stream
 // struct; main_clib.zig
 // re-exports these. fread/fwrite preserve the dump (.x) byte format.
-// (fio.std_in/fio.std_out/fio.std_err and the FILE pool now live in `IoState` above.)
+// (fio.std_in/fio.std_out/fio.std_err and the Stream pool now live in `IoState` above.)
 
-/// The standard-input `FILE`.
-pub fn stdin() ?*FILE {
+/// The standard-input `Stream`.
+pub fn stdin() ?*Stream {
     return &fio().std_in;
 }
-/// The standard-output `FILE`.
-pub fn stdout() ?*FILE {
+/// The standard-output `Stream`.
+pub fn stdout() ?*Stream {
     return &fio().std_out;
 }
-/// The standard-error `FILE`.
-pub fn stderr() ?*FILE {
+/// The standard-error `Stream`.
+pub fn stderr() ?*Stream {
     return &fio().std_err;
 }
 
 // (fio.file_pool / fio.file_in_use now live in `IoState` above.)
 
-/// Claim a free slot from the fixed `FILE` pool, or null if exhausted.
-fn allocFile() ?*FILE {
+/// Claim a free slot from the fixed `Stream` pool, or null if exhausted.
+fn allocFile() ?*Stream {
     for (&fio().file_in_use, 0..) |*in_use, idx| {
         if (!in_use.*) {
             in_use.* = true;
-            fio().file_pool[idx] = FILE{ .file = .{ .handle = -1, .flags = .{ .nonblocking = false } } };
+            fio().file_pool[idx] = Stream{ .file = .{ .handle = -1, .flags = .{ .nonblocking = false } } };
             return &fio().file_pool[idx];
         }
     }
     return null;
 }
 
-/// Return a pooled `FILE` to the free list.
-fn freeFile(f: *FILE) void {
+/// Return a pooled `Stream` to the free list.
+fn freeFile(f: *Stream) void {
     const ptr_val = @intFromPtr(f);
     const pool_start = @intFromPtr(&fio().file_pool[0]);
-    const pool_end = @as(usize, @intCast(pool_start + @sizeOf(FILE) * 16));
+    const pool_end = @as(usize, @intCast(pool_start + @sizeOf(Stream) * 16));
     if (ptr_val >= pool_start and ptr_val < pool_end) {
-        const idx = (ptr_val - pool_start) / @sizeOf(FILE);
+        const idx = (ptr_val - pool_start) / @sizeOf(Stream);
         fio().file_in_use[idx] = false;
     }
 }
 
-/// libc `fopen` (modes r/w/a) over the `FILE` pool.
-pub fn fopen(path: ?*const anyopaque, mode: [*:0]const u8) ?*FILE {
+/// libc `fopen` (modes r/w/a) over the `Stream` pool.
+pub fn fopen(path: ?*const anyopaque, mode: [*:0]const u8) ?*Stream {
     if (path == null) return null;
     const path_str = @as([*:0]const u8, @ptrCast(path.?));
     const mode_slice = std.mem.span(mode);
@@ -274,7 +274,7 @@ pub fn fopen(path: ?*const anyopaque, mode: [*:0]const u8) ?*FILE {
 }
 
 /// libc `fclose` (a no-op for the std streams).
-pub fn fclose(file: ?*FILE) c_int {
+pub fn fclose(file: ?*Stream) c_int {
     if (file) |f| {
         if (f == &fio().std_in or f == &fio().std_out or f == &fio().std_err) {
             return 0;
@@ -291,19 +291,19 @@ pub fn fclose(file: ?*FILE) c_int {
 }
 
 /// The underlying file descriptor, or -1.
-pub fn fileno(file: ?*FILE) c_int {
+pub fn fileno(file: ?*Stream) c_int {
     if (file) |f| return f.file.handle;
     return -1;
 }
 
 /// libc `setbuf` — a no-op here (I/O is already unbuffered).
-pub fn setbuf(file: ?*FILE, buf: ?[*]u8) void {
+pub fn setbuf(file: ?*Stream, buf: ?[*]u8) void {
     _ = file;
     _ = buf;
 }
 
 /// libc `getc`: next byte, or -1 at EOF.
-pub fn getc(file: ?*FILE) c_int {
+pub fn getc(file: ?*Stream) c_int {
     const f = file orelse return -1;
     const byte = f.readByte() catch return -1;
     return @as(c_int, byte);
@@ -315,7 +315,7 @@ pub fn getchar() c_int {
 }
 
 /// Push a byte back so the next read returns it (libc `ungetc`).
-pub fn ungetc(ch: c_int, file: ?*FILE) c_int {
+pub fn ungetc(ch: c_int, file: ?*Stream) c_int {
     const f = file orelse return -1;
     if (ch == -1) return -1;
     f.ungetc(@intCast(@as(u8, @intCast(ch))));
@@ -323,7 +323,7 @@ pub fn ungetc(ch: c_int, file: ?*FILE) c_int {
 }
 
 /// libc `fgets`: read a line (up to `size-1` bytes or a newline) into `buf`.
-pub fn fgets(buf: [*]u8, size: c_int, file: ?*FILE) ?[*]u8 {
+pub fn fgets(buf: [*]u8, size: c_int, file: ?*Stream) ?[*]u8 {
     const f = file orelse return null;
     if (size <= 1) return null;
     var i: usize = 0;
@@ -345,7 +345,7 @@ pub fn fgets(buf: [*]u8, size: c_int, file: ?*FILE) ?[*]u8 {
 }
 
 /// libc `fread`: read `nmemb` items of `size` bytes; returns items read.
-pub fn fread(ptr: ?*anyopaque, size: usize, nmemb: usize, file: ?*FILE) usize {
+pub fn fread(ptr: ?*anyopaque, size: usize, nmemb: usize, file: ?*Stream) usize {
     const f = file orelse return 0;
     if (ptr == null or size == 0 or nmemb == 0) return 0;
     const buf = @as([*]u8, @ptrCast(ptr.?));
@@ -359,7 +359,7 @@ pub fn fread(ptr: ?*anyopaque, size: usize, nmemb: usize, file: ?*FILE) usize {
 }
 
 /// libc `fwrite`: write `nmemb` items of `size` bytes; returns items written.
-pub fn fwrite(ptr: ?*const anyopaque, size: usize, nmemb: usize, file: ?*FILE) usize {
+pub fn fwrite(ptr: ?*const anyopaque, size: usize, nmemb: usize, file: ?*Stream) usize {
     const f = file orelse return 0;
     if (ptr == null or size == 0 or nmemb == 0) return 0;
     const buf = @as([*]const u8, @ptrCast(ptr.?));
@@ -371,8 +371,8 @@ pub fn fwrite(ptr: ?*const anyopaque, size: usize, nmemb: usize, file: ?*FILE) u
     return i / size;
 }
 
-/// libc `fdopen`: wrap an existing fd in a pooled `FILE`.
-pub fn fdopen(fd: c_int, mode: [*:0]const u8) ?*FILE {
+/// libc `fdopen`: wrap an existing fd in a pooled `Stream`.
+pub fn fdopen(fd: c_int, mode: [*:0]const u8) ?*Stream {
     _ = mode;
     const f_ptr = allocFile() orelse return null;
     f_ptr.file = .{ .handle = fd, .flags = .{ .nonblocking = false } };
@@ -383,14 +383,14 @@ pub fn fdopen(fd: c_int, mode: [*:0]const u8) ?*FILE {
 }
 
 /// libc `putc`: write one char to `file`.
-pub fn putc(ch: c_int, file: ?*FILE) c_int {
+pub fn putc(ch: c_int, file: ?*Stream) c_int {
     const f = file orelse return -1;
     f.writeByte(@intCast(@as(u8, @intCast(ch)))) catch return -1;
     return ch;
 }
 
 /// libc `fputc` (an alias for `putc`).
-pub fn fputc(ch: c_int, file: ?*FILE) c_int {
+pub fn fputc(ch: c_int, file: ?*Stream) c_int {
     return putc(ch, file);
 }
 

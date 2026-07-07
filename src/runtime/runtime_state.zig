@@ -76,7 +76,7 @@ pub const RuntimeState = struct {
     baded: Word = 0,
     miralib: ?[*:0]u8 = null,
     promptstr: [*:0]const u8 = "Miranda ",
-    s_in: ?*abi.FILE = null,
+    s_in: ?*abi.Stream = null,
 
     // Runtime counters (all updated by the GC and evaluator; read by //stats).
     atobject: i32 = 0,

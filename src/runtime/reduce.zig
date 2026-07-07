@@ -43,7 +43,7 @@ pub const EvalState = struct {
     /// List of child processes awaiting `wait`.
     waiting: Word = NIL,
     /// Current `Tofile` output stream.
-    s_out: ?*word.FILE = null,
+    s_out: ?*word.Stream = null,
     /// Evaluation-error recovery trap.
     errtrap: Word = 0,
     /// Reduction-step counter (the perf metric reported by `outstats`).
@@ -66,7 +66,7 @@ pub inline fn ev() *EvalState {
 }
 
 const stoChar = heap.stoChar;
-extern fn fromUTF8(f: ?*word.FILE) Word;
+extern fn fromUTF8(f: ?*word.Stream) Word;
 const parseLine = repl.parseLine;
 const reduce = engine.reduce;
 const charname = heap.charname;
@@ -139,7 +139,7 @@ inline fn datapair(x: Word, y: Word) Word {
 /// a GC-safe heap value, for storing in a cell field that `Heap.mark`/
 /// `Heap.validate` might otherwise walk as if it were a cell reference.
 ///
-/// `fileq`/`outfilq`'s entries have always stashed a `FILE*` this way (as a
+/// `fileq`/`outfilq`'s entries have always stashed a `Stream*` this way (as a
 /// `DATAPAIR`'s second field, alongside a filename) precisely because
 /// `DATAPAIR`'s tag ordinal sits below both thresholds `mark`/`validate`
 /// use to decide whether to recurse into a cell's hd/tl — so a raw pointer
@@ -173,8 +173,8 @@ inline fn stosmallint(x: Word) Word {
     return heap.make(.INT, val, 0);
 }
 
-/// The standard-input `FILE*` handle.
-fn getStdin() ?*word.FILE {
+/// The standard-input `Stream*` handle.
+fn getStdin() ?*word.Stream {
     const T = @TypeOf(main_clib.stdin);
     if (comptime @typeInfo(T) == .@"fn") {
         return main_clib.stdin();
@@ -185,8 +185,8 @@ fn getStdin() ?*word.FILE {
     }
 }
 
-/// The standard-error `FILE*` handle.
-fn getStderr() ?*word.FILE {
+/// The standard-error `Stream*` handle.
+fn getStderr() ?*word.Stream {
     const T = @TypeOf(main_clib.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
         return main_clib.stderr();
@@ -197,8 +197,8 @@ fn getStderr() ?*word.FILE {
     }
 }
 
-/// The standard-output `FILE*` handle.
-fn getStdout() ?*word.FILE {
+/// The standard-output `Stream*` handle.
+fn getStdout() ?*word.Stream {
     const T = @TypeOf(main_clib.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
         return main_clib.stdout();
@@ -422,7 +422,7 @@ pub fn outstats() void {
 }
 
 /// Write value `h_val` to file `f` for diagnostics, optionally followed by a newline.
-pub fn outHere(core: *core_state.CoreState, f: ?*word.FILE, h_val: Word, nl: c_int) void {
+pub fn outHere(core: *core_state.CoreState, f: ?*word.Stream, h_val: Word, nl: c_int) void {
     if (getTag(h_val) != .FILEINFO) {
         word.printErr("(impossible event in outhere)\n", .{});
         return;
@@ -752,7 +752,7 @@ pub fn apfile(eval: *EvalState, f: Word) void {
         if (s == null) {
             word.printErr("\nAppendfile: cannot write to \"{s}\"\n", .{std.mem.span(fil.?)});
         } else {
-            // datapair = (filename string, FILE* handle); the FILE* is a
+            // datapair = (filename string, Stream* handle); the Stream* is a
             // raw cell cast (read back via @ptrFromInt), not a node string.
             eval.outfilq = cons(datapair(strtab.strBits(strtab.table(), lex.keep(fil.?)), @as(Word, @intCast(@intFromPtr(s.?)))), eval.outfilq);
         }
@@ -789,7 +789,7 @@ pub fn outf(eval: *EvalState, e: Word) void {
         if (main_clib.isatty(word.fileno(eval.s_out.?)) != 0) {
             word.setbuf(eval.s_out.?, null);
         }
-        // datapair = (filename string, FILE* handle); FILE* is a raw cell cast.
+        // datapair = (filename string, Stream* handle); Stream* is a raw cell cast.
         eval.outfilq = cons(datapair(strtab.strBits(strtab.table(), lex.keep(f.?)), @as(Word, @intCast(@intFromPtr(eval.s_out.?)))), eval.outfilq);
     } else {
         eval.s_out = @ptrFromInt(@as(usize, @intCast(t(h(p)))));

@@ -253,7 +253,7 @@ inline fn pnVal(x: Word) Word {
 /// the source does not exist (initialising-only panic) or the dump is missing/stale.
 pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, t_val: [*:0]const u8) void {
     var obf: [abi.pnlim]u8 = undefined;
-    var f: ?*word.FILE = null;
+    var f: ?*word.Stream = null;
     var flen: Word = undefined;
     var t1: Word = undefined;
     var t2: Word = undefined;
@@ -376,7 +376,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
 /// leave a partial dump; re-raises any deferred signal afterward.
 pub fn makedump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState) void {
     const obf = &rs.linebuf;
-    var f: ?*word.FILE = null;
+    var f: ?*word.Stream = null;
     {
         const script_span = std.mem.span(rs.current_script.?);
         @memcpy(obf[0..script_span.len], script_span);

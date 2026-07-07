@@ -393,8 +393,8 @@ pub inline fn suppressed(heap: *Heap, x: Word) bool {
     return isStrcons(heap, tlx) and !isId(heap, pnVal(heap, tlx));
 }
 
-/// The standard-error `FILE` handle.
-pub fn getStderr() ?*word.FILE {
+/// The standard-error `Stream` handle.
+pub fn getStderr() ?*word.Stream {
     const T = @TypeOf(main_clib.stderr);
     if (comptime @typeInfo(T) == .@"fn") {
         return main_clib.stderr();
@@ -404,8 +404,8 @@ pub fn getStderr() ?*word.FILE {
         return main_clib.stderr;
     }
 }
-/// The standard-output `FILE` handle.
-pub fn getStdout() ?*word.FILE {
+/// The standard-output `Stream` handle.
+pub fn getStdout() ?*word.Stream {
     const T = @TypeOf(main_clib.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
         return main_clib.stdout();
@@ -415,8 +415,8 @@ pub fn getStdout() ?*word.FILE {
         return main_clib.stdout;
     }
 }
-/// The standard-input `FILE` handle.
-pub fn getStdin() ?*word.FILE {
+/// The standard-input `Stream` handle.
+pub fn getStdin() ?*word.Stream {
     const T = @TypeOf(main_clib.stdin);
     if (comptime @typeInfo(T) == .@"fn") {
         return main_clib.stdin();

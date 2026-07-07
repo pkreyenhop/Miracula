@@ -73,7 +73,7 @@ pub const EVAL = word_mod.EVAL;
 pub const EXEC = word_mod.EXEC;
 pub const EXPORT = word_mod.EXPORT;
 pub const EXP_FN = word_mod.EXP_FN;
-pub const FILE = word_mod.FILE;
+pub const Stream = word_mod.Stream;
 pub const FILEINFO = @intFromEnum(word_mod.NodeTag.FILEINFO);
 pub const FILEMODE = word_mod.FILEMODE;
 pub const FILESTAT = word_mod.FILESTAT;
@@ -251,7 +251,7 @@ pub const fputc = word_mod.fputc;
 pub const putchar = word_mod.putchar;
 pub const ungetc = word_mod.ungetc;
 
-pub export fn fromUTF8(fil: ?*FILE) c_ulong {
+pub export fn fromUTF8(fil: ?*Stream) c_ulong {
     const c0 = getc(fil);
     if (c0 == EOF) return std.math.maxInt(c_ulong);
     if (c0 <= 0x7f) return @intCast(c0);
@@ -279,7 +279,7 @@ pub export fn fromUTF8(fil: ?*FILE) c_ulong {
     return std.math.maxInt(c_ulong);
 }
 
-pub fn outUTF8(u: c_ulong, fil: ?*FILE) void {
+pub fn outUTF8(u: c_ulong, fil: ?*Stream) void {
     if (u <= 0x7f) {
         _ = putc(@intCast(u), fil);
     } else if (u <= 0x7ff) {
@@ -298,7 +298,6 @@ pub fn outUTF8(u: c_ulong, fil: ?*FILE) void {
 }
 
 pub const fgets = word_mod.fgets;
-
 
 // Scanning implementations
 fn scanVal(str: []const u8, s_idx: *usize, spec: u8, width: ?usize, ptr: anytype) bool {
@@ -508,7 +507,7 @@ pub fn sscanf(buf: ?*const anyopaque, format: [*:0]const u8, args: anytype) c_in
     return parsed_count;
 }
 
-fn scanValFromFile(f: *FILE, spec: u8, width: ?usize, ptr: anytype) bool {
+fn scanValFromFile(f: *Stream, spec: u8, width: ?usize, ptr: anytype) bool {
     const PtrType = @TypeOf(ptr);
     const ptr_info = @typeInfo(PtrType).pointer;
     const ChildType = ptr_info.child;
@@ -673,7 +672,7 @@ fn scanValFromFile(f: *FILE, spec: u8, width: ?usize, ptr: anytype) bool {
     }
 }
 
-pub fn fscanf(file: ?*FILE, format: [*:0]const u8, args: anytype) c_int {
+pub fn fscanf(file: ?*Stream, format: [*:0]const u8, args: anytype) c_int {
     const f = file orelse return -1;
     const fmt = std.mem.span(format);
     const ArgsType = @TypeOf(args);
@@ -1095,7 +1094,7 @@ pub const struct_tms = extern struct {
     tms_cstime: c_long,
 };
 
-pub fn fputs(s: [*:0]const u8, file: ?*FILE) c_int {
+pub fn fputs(s: [*:0]const u8, file: ?*Stream) c_int {
     const len = strlen(s);
     _ = fwrite(s, 1, len, file);
     return 0;

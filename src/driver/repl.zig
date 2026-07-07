@@ -457,7 +457,7 @@ pub fn announce() void {
 }
 
 /// Read up to `n_val-1` bytes (or through a newline) from `in` into `s_ptr`. Returns 0 on immediate EOF, else 1.
-pub fn getLine(in: ?*word.FILE, n_val: Word, s_ptr: [*]u8) c_int {
+pub fn getLine(in: ?*word.Stream, n_val: Word, s_ptr: [*]u8) c_int {
     var s = s_ptr;
     var n = n_val;
     var ch: c_int = undefined;
@@ -482,7 +482,7 @@ pub fn badEditor(rs: *rt.RuntimeState) bool {
 }
 
 /// Read and type-check one expression of type `t_val` from file `f` (the `readvals` path). Returns its codegen, or `EOF`; re-prompts interactively and aborts on bad file data.
-pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, t_val: Word, f: ?*word.FILE, fil: Word) Word {
+pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, t_val: Word, f: ?*word.Stream, fil: Word) Word {
     var t1: Word = undefined;
     var ch: c_int = undefined;
     rs.lastexp = word.UNDEF;

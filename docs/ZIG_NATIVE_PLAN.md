@@ -1257,12 +1257,15 @@ the value vocabulary; `main_clib.zig` shrinks to `os.zig`.
      original file between `FILE`'s definition and the rest of the stdio
      block) — caught immediately by the build (`"no member named
      strcpy"`) and moved back to `word.zig` before proceeding.
-   **Not done — deliberately deferred:** the `FILE`→`Stream` rename
-   itself (kept the name `FILE` to avoid touching call sites in the same
-   pass that moved their import path); the actual redesign of the
-   `fileq`/`outfilq`/`streamRead` cell-embedding pattern (still raw
-   pointer casts, now pointing at the relocated but otherwise identical
-   type); the fixed-buffer `Stream` variant (`fmemopen`'s replacement —
+   **Not done — deliberately deferred at the time (the `FILE`→`Stream`
+   rename itself landed later this same step, once the GC-safety crash
+   below was fixed — see further down):** kept the name `FILE` to avoid
+   touching call sites in the same pass that moved their import path;
+   the actual redesign of the `fileq`/`outfilq`/`streamRead` cell-
+   embedding pattern (still raw pointer casts, now `wrapPtr`-wrapped
+   rather than embedded bare — see the GC-safety fix below — but still
+   pointers, not pool-slot indices); the fixed-buffer `Stream` variant
+   (`fmemopen`'s replacement —
    moot, since `fmemopen` itself was already dead); and "porting"
    `READ`/`READBIN`/`READVALS`/`Tofile`/`Appendfile`/dump-undump to
    anything new — they call the exact same functions as before, just via
@@ -1338,6 +1341,19 @@ the value vocabulary; `main_clib.zig` shrinks to `os.zig`.
      asserts today's actual (echoing) output, not the eventually-correct
      one, so Phase 3 will need to update that assertion once
      fork-per-eval is gone.
+   - **`FILE`→`Stream` rename, landed.** With the GC-safety crash fixed
+     at its root, the rename deferred earlier in this same step was low
+     enough risk to do immediately: `runtime/stream.zig`'s `FILE` struct
+     (and every `word.FILE`/`abi.FILE`/`?*FILE`/`*FILE` call site across
+     the tree — 15 files, ~120 sites) renamed to `Stream`, via `perl -pe
+     's/\bFILE\b/Stream/g'` per file (word-boundary-safe, so `FILEINFO` —
+     an unrelated, pre-existing tag name — is untouched) followed by a
+     full rebuild to catch anything the mechanical pass missed (it
+     needed one follow-up: `tests/utf8_tests.zig`, a test-only file the
+     first tree-wide grep's file list omitted). Pure rename, zero
+     behavior change — the cell-embedding representation itself (still
+     `wrapPtr`-wrapped raw pointers, not pool-slot indices) is untouched
+     and still not attempted.
 
    Verified: `main-tests` (245, all `FILE`/string-helper tests correctly
    relocated/retained and passing under their new module paths), the new
@@ -1346,7 +1362,8 @@ the value vocabulary; `main_clib.zig` shrinks to `os.zig`.
    green; manual compile-then-reload-from-dump check against the real
    binary; scorecard improved (`printf-family` 372→364, `[*:0]` and
    `c_int` both down) with no regressions.
-5. **Deletions.** From `word.zig`: the `FILE` struct + pool, `fopen`/`fclose`/
+5. **Deletions.** From `word.zig`: the `Stream` struct (renamed from `FILE`,
+   Phase 2 step 4) + pool, `fopen`/`fclose`/
    `getc`/`ungetc`/`fflush`, the printf engine, ctype predicates (→ `std.ascii`),
    `strcmp`/`strlen`/`strcpy` (→ `std.mem`). `word.zig` ends ≤ ~600 lines of value
    vocabulary. Rename what's left of `main_clib.zig` to `os.zig`: signals,

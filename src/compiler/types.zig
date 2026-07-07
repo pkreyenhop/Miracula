@@ -295,7 +295,7 @@ pub fn typesfirst(heap: *Heap, input_x: Word) Word {
     return shunt(z, x);
 }
 
-/// The standard-error `FILE` handle.
+/// The standard-error `Stream` handle.
 /// Topologically sort dependency graph `g` (for definition ordering).
 pub fn tsort(heap: *Heap, g_input: Word) Word {
     var NP = NIL; // NP is set of elements with no predecessor
@@ -725,8 +725,8 @@ pub fn ispoly(heap: *Heap, t_val: Word) bool {
     return isVarType(heap, term);
 }
 
-/// The standard-output `FILE` handle.
-fn getStdout() ?*word.FILE {
+/// The standard-output `Stream` handle.
+fn getStdout() ?*word.Stream {
     const T = @TypeOf(main_clib.stdout);
     if (comptime @typeInfo(T) == .@"fn") {
         return main_clib.stdout();
@@ -1085,7 +1085,7 @@ pub fn tail(heap: *Heap, x_in: Word) Word {
 }
 
 /// Print a formal parameter at the next precedence level.
-pub fn outFormal1(heap: *Heap, f: *word.FILE, x_in: Word) void {
+pub fn outFormal1(heap: *Heap, f: *word.Stream, x_in: Word) void {
     var x = x_in;
     if (h(heap, x) == CONST) {
         x = t(heap, x);
@@ -1163,7 +1163,7 @@ pub fn outFormal1(heap: *Heap, f: *word.FILE, x_in: Word) void {
 }
 
 /// Print a pattern `x`.
-pub fn outPattern(heap: *Heap, f: *word.FILE, x: Word) void {
+pub fn outPattern(heap: *Heap, f: *word.Stream, x: Word) void {
     if (getTag(heap, x) == .CONS) {
         if (h(heap, x) == CONST and (getTag(heap, t(heap, x)) == .INT or getTag(heap, t(heap, x)) == .DOUBLE)) {
             out(f, t(heap, x));
@@ -1180,7 +1180,7 @@ pub fn outPattern(heap: *Heap, f: *word.FILE, x: Word) void {
 }
 
 /// Print a formal parameter `x`.
-pub fn outFormal(heap: *Heap, f: *word.FILE, x: Word) void {
+pub fn outFormal(heap: *Heap, f: *word.Stream, x: Word) void {
     if (getTag(heap, x) != .AP) {
         outFormal1(heap, f, x);
     } else if (getTag(heap, h(heap, x)) == .AP and h(heap, h(heap, x)) == PLUS) {

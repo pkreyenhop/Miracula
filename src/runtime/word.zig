@@ -1,6 +1,6 @@
 //! word.zig — the leaf vocabulary of the interpreter: the `Word` value model,
 //! every numeric constant (cell tags, combinator/token codes, type codes,
-//! `XBASE` dump markers), and the `FILE`/stdio machinery re-exported from
+//! `XBASE` dump markers), and the `Stream`/stdio machinery re-exported from
 //! `stream.zig`. It has no allocator dependency, so everything else can import
 //! it freely. String-*handle* accessors live in `strtab.zig`, not here.
 //!
@@ -705,9 +705,9 @@ pub const UNICODE_X: Word = XBASE + 15;
 
 // stdio / file-handle machinery (Phase 2 step 4, docs/ZIG_NATIVE_PLAN.md) —
 // moved to stream.zig; re-exported here unchanged so every existing
-// `word.FILE`/`word.fopen`/etc. call site keeps compiling as-is.
+// `word.Stream`/`word.fopen`/etc. call site keeps compiling as-is.
 const stream = @import("stream.zig");
-pub const FILE = stream.FILE;
+pub const Stream = stream.Stream;
 pub const IoState = stream.IoState;
 pub const fio = stream.fio;
 pub const initWriters = stream.initWriters;
