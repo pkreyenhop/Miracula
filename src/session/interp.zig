@@ -19,16 +19,16 @@
 //! Zig — a struct's size depends only on its fields, not on the lazily-evaluated
 //! accessor functions, so there is no comptime size cycle.
 
-const RuntimeState = @import("runtime_state.zig").RuntimeState;
-const Heap = @import("heap.zig").Heap;
+const RuntimeState = @import("../runtime/runtime_state.zig").RuntimeState;
+const Heap = @import("../runtime/heap.zig").Heap;
 const LexState = @import("../parser/lex_state.zig").LexState;
 const CompilerState = @import("../compiler/compiler_state.zig").CompilerState;
-const CoreState = @import("core_state.zig").CoreState;
-const IoState = @import("word.zig").IoState;
-const EvalState = @import("reduce.zig").EvalState;
-const Bignum = @import("big.zig").Bignum;
-const StringTable = @import("strtab.zig").StringTable;
-const LineEditState = @import("../driver/lineedit.zig").LineEditState;
+const CoreState = @import("../runtime/core_state.zig").CoreState;
+const IoState = @import("../graph/word.zig").IoState;
+const EvalState = @import("../eval/reduce_rt.zig").EvalState;
+const Bignum = @import("../graph/bignum.zig").Bignum;
+const StringTable = @import("../graph/strtab.zig").StringTable;
+const LineEditState = @import("editor.zig").LineEditState;
 const SymbolTable = @import("../semantics/symbols.zig").SymbolTable;
 
 /// All interpreter state, owned in one place — including heap's GC/dictionary

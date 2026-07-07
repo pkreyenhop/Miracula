@@ -3,7 +3,7 @@
 //! lists, substitution scratch, spec locations, the `current_id`, error counts,
 //! and so on. The singleton lives in `interp`; accessed as `cs.X`.
 
-const word = @import("../runtime/word.zig");
+const word = @import("../graph/word.zig");
 const Word = word.Word;
 const NIL = word.NIL;
 
@@ -116,5 +116,5 @@ pub const CompilerState = struct {
 /// Singleton compiler-state instance (a `*CompilerState` into `current_interp`).
 /// Import this module and use `cs()` so all mutations are reflected everywhere.
 pub inline fn cs() *CompilerState {
-    return &@import("../runtime/interp.zig").current_interp.comp;
+    return &@import("../session/interp.zig").current_interp.comp;
 }

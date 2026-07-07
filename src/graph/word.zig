@@ -721,7 +721,7 @@ pub const UNICODE_X: Word = XBASE + 15;
 // stdio / file-handle machinery (Phase 2 step 4, docs/ZIG_NATIVE_PLAN.md) —
 // moved to stream.zig; re-exported here unchanged so every existing
 // `word.Stream`/`word.fopen`/etc. call site keeps compiling as-is.
-const stream = @import("stream.zig");
+const stream = @import("../eval/stream.zig");
 pub const Stream = stream.Stream;
 pub const IoState = stream.IoState;
 pub const fio = stream.fio;

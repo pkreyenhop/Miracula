@@ -6,8 +6,8 @@
 const std = @import("std");
 const rt = @import("../runtime/runtime_state.zig");
 const cs = @import("compiler_state.zig").cs;
-const word = @import("../runtime/word.zig");
-const abi = @import("../runtime/os.zig");
+const word = @import("../graph/word.zig");
+const abi = @import("../os.zig");
 const heap_mod = @import("../runtime/heap.zig");
 const Heap = heap_mod.Heap;
 const errors = @import("../runtime/errors.zig");
@@ -18,7 +18,7 @@ const NIL = word.NIL;
 const lex_state = @import("../parser/lex_state.zig");
 const types = @import("types.zig");
 const lex = @import("../parser/lex.zig");
-const big = @import("../runtime/big.zig");
+const big = @import("../graph/bignum.zig");
 const core_state = @import("../runtime/core_state.zig");
 const ls = lex_state.ls;
 

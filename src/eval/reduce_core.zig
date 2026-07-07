@@ -31,11 +31,11 @@
 //! ~94 call sites, unlike threading `*Heap` through the compiler/parser/
 //! driver's call graphs from scratch (no existing scaffolding there).
 
-const word = @import("../word.zig");
-const strtab = @import("../strtab.zig");
+const word = @import("../graph/word.zig");
+const strtab = @import("../graph/strtab.zig");
 const spine = @import("spine.zig");
-const heap_mod = @import("../heap.zig");
-const rt = @import("../runtime_state.zig");
+const heap_mod = @import("../runtime/heap.zig");
+const rt = @import("../runtime/runtime_state.zig");
 
 /// The interpreter machine word (see `word.Word`).
 pub const Word = i64;
@@ -108,10 +108,10 @@ pub inline fn cleanPtr(x: Word) usize {
 }
 
 // Cross-module functions via direct (circular) @import — R7.3.
-const reduce_mod = @import("../reduce.zig");
+const reduce_mod = @import("reduce_rt.zig");
 const reducer_reduce = @import("reduce.zig");
-const lex_mod = @import("../../parser/lex.zig");
-const big = @import("../big.zig");
+const lex_mod = @import("../parser/lex.zig");
+const big = @import("../graph/bignum.zig");
 const os = @import("../os.zig");
 
 // Cell access through a spine word (mask off direction bits, then index the

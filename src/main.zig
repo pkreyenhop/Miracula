@@ -7,9 +7,9 @@
 
 const std = @import("std");
 const rt = @import("runtime/runtime_state.zig");
-const abi = @import("runtime/os.zig");
+const abi = @import("os.zig");
 const startup = @import("driver/startup.zig");
-const interp_mod = @import("runtime/interp.zig");
+const interp_mod = @import("session/interp.zig");
 
 /// Process entry point: wire up the runtime context (io / allocator / argv),
 /// construct the interpreter explicitly, and forward to `startup.mainEntry`.
@@ -48,17 +48,17 @@ pub fn main(ctx: std.process.Init) !void {
 comptime {
     _ = @import("runtime/core_state.zig");
     _ = @import("driver/startup.zig");
-    _ = @import("driver/repl.zig");
-    _ = @import("driver/commands.zig");
+    _ = @import("session/repl.zig");
+    _ = @import("session/commands.zig");
     _ = @import("runtime/heap.zig");
-    _ = @import("runtime/strtab.zig");
-    _ = @import("runtime/reducer/reduce_test.zig");
-    _ = @import("runtime/reducer/spine.zig");
-    _ = @import("runtime/reducer/combinators.zig");
+    _ = @import("graph/strtab.zig");
+    _ = @import("eval/reduce_test.zig");
+    _ = @import("eval/spine.zig");
+    _ = @import("eval/combinators/combinators.zig");
     _ = @import("runtime/errors.zig");
-    _ = @import("runtime/reduce.zig");
-    _ = @import("runtime/combinator.zig");
-    _ = @import("runtime/big.zig");
+    _ = @import("eval/reduce_rt.zig");
+    _ = @import("graph/combinator.zig");
+    _ = @import("graph/bignum.zig");
     _ = @import("parser/lex.zig");
     _ = @import("parser/parser_tests.zig");
     _ = @import("syntax/source.zig");
@@ -79,7 +79,7 @@ comptime {
     _ = @import("testutil.zig");
 
     // Static compile-time validations
-    const word = @import("runtime/word.zig");
+    const word = @import("graph/word.zig");
     // Word and pointer size checks
     std.debug.assert(@bitSizeOf(word.Word) == 64);
     std.debug.assert(@sizeOf(*anyopaque) == 8);

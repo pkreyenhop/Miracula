@@ -9,11 +9,11 @@
 
 const std = @import("std");
 const options = @import("version_options");
-const word = @import("../runtime/word.zig");
+const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
 const dump = @import("dump.zig");
-const strtab = @import("../runtime/strtab.zig");
-const os = @import("../runtime/os.zig");
+const strtab = @import("../graph/strtab.zig");
+const os = @import("../os.zig");
 const rt = @import("../runtime/runtime_state.zig");
 
 const compiler_state = @import("compiler_state.zig");

@@ -22,7 +22,7 @@
 //! sentinel (real ids are negative); resolving 0 yields "".
 
 const std = @import("std");
-const rt = @import("runtime_state.zig");
+const rt = @import("../runtime/runtime_state.zig");
 const word = @import("word.zig");
 
 const Word = word.Word;
@@ -56,7 +56,7 @@ pub const StringTable = struct {
 /// *callers* to obtain a `*StringTable` to pass in — this module's own
 /// functions no longer read it ambiently.
 pub inline fn table() *StringTable {
-    return &@import("interp.zig").current_interp.strtab;
+    return &@import("../session/interp.zig").current_interp.strtab;
 }
 
 /// Abort: the string table ran out of memory.

@@ -1,13 +1,13 @@
 //! Phase 10: AST → Miranda heap codegen.
 //! Walks ast.Script and produces the same Word heap values as the legacy YACC parser.
 //! IMPORTANT: this file calls C runtime functions and must NOT be imported from the
-//! pure parser-tests binary (src/parser/parser.zig).  Import it from parser_api.zig or main.zig.
+//! pure parser-tests binary (src/syntax/parser.zig).  Import it from parser_api.zig or main.zig.
 
 const std = @import("std");
-const word = @import("../runtime/word.zig");
-const strtab = @import("../runtime/strtab.zig");
+const word = @import("../graph/word.zig");
+const strtab = @import("../graph/strtab.zig");
 const Allocator = std.mem.Allocator;
-const ast = @import("ast.zig");
+const ast = @import("../syntax/ast.zig");
 
 const rt = @import("../runtime/runtime_state.zig");
 const lex_state = @import("lex_state.zig");
@@ -15,9 +15,9 @@ const ls = lex_state.ls;
 // Cross-module functions via direct @import (R7.3 — eliminate extern-fn linker decls).
 const trans = @import("../compiler/trans.zig");
 const types_mod = @import("../compiler/types.zig");
-const big = @import("../runtime/big.zig");
+const big = @import("../graph/bignum.zig");
 const lex = @import("lex.zig");
-const reduce_mod = @import("../runtime/reduce.zig");
+const reduce_mod = @import("../eval/reduce_rt.zig");
 const heap = @import("../runtime/heap.zig");
 const core_state = @import("../runtime/core_state.zig");
 const symbols = @import("../semantics/symbols.zig");

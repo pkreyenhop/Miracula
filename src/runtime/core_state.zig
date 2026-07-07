@@ -51,5 +51,5 @@ pub const CoreState = struct {
 /// Pointer to the singleton `CoreState` inside `current_interp`. Call sites
 /// use `core_state.s().X` (or `s().X` via a local alias).
 pub inline fn s() *CoreState {
-    return &@import("interp.zig").current_interp.core;
+    return &@import("../session/interp.zig").current_interp.core;
 }

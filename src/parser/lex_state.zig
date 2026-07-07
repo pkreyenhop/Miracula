@@ -67,5 +67,5 @@ pub const LexState = struct {
 /// Pointer to the singleton [LexState] held in `current_interp` (so
 /// `interp.reset()` clears it). Accessed as `ls().X`.
 pub inline fn ls() *LexState {
-    return &@import("../runtime/interp.zig").current_interp.lex;
+    return &@import("../session/interp.zig").current_interp.lex;
 }

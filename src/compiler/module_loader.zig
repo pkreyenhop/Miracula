@@ -4,16 +4,16 @@
 //! pull one script's definitions into another.
 
 const std = @import("std");
-const word = @import("../runtime/word.zig");
+const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
-const strtab = @import("../runtime/strtab.zig");
+const strtab = @import("../graph/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const compiler_state = @import("compiler_state.zig");
 const cs = compiler_state.cs;
 inline fn getTag(heap: *Heap, x: word.Word) word.NodeTag {
     return heap.getTag(x);
 }
-const abi = @import("../runtime/os.zig");
+const abi = @import("../os.zig");
 const parser_api = @import("../parser/parser_api.zig");
 const setup = @import("setup.zig");
 

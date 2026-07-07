@@ -1,4 +1,4 @@
-//! reducer/trace.zig — zero-overhead reduction tracing (functionality + perf).
+//! eval/trace.zig — zero-overhead reduction tracing (functionality + perf).
 //!
 //! Records, per `reduce()` step, which head combinator fired — a histogram that
 //! answers both "what ran" (functionality) and "what's hot" (performance), and
@@ -12,8 +12,8 @@
 //! Enable with: `zig build -Dreduce-trace`.
 
 const std = @import("std");
-const word = @import("../word.zig");
-const combinator = @import("../combinator.zig");
+const word = @import("../graph/word.zig");
+const combinator = @import("../graph/combinator.zig");
 const opts = @import("version_options");
 
 /// Compile-time master switch. When false, every function below is a no-op that

@@ -20,9 +20,9 @@
 //! instead of importing this one directly.
 
 const std = @import("std");
-const word = @import("../runtime/word.zig");
+const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
-const strtab = @import("../runtime/strtab.zig");
+const strtab = @import("../graph/strtab.zig");
 const lex_state = @import("lex_state.zig");
 const ls = lex_state.ls;
 const cs = @import("../compiler/compiler_state.zig").cs;
@@ -30,7 +30,7 @@ const heap_mod = @import("../runtime/heap.zig");
 const Heap = heap_mod.Heap;
 const rt = @import("../runtime/runtime_state.zig");
 const types = @import("../compiler/types.zig");
-const os = @import("../runtime/os.zig");
+const os = @import("../os.zig");
 const core_state = @import("../runtime/core_state.zig");
 const symbols = @import("../semantics/symbols.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)

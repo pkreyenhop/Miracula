@@ -1,4 +1,4 @@
-//! reducer/lex.zig — reduction handlers for the grammar/lexer combinators.
+//! eval/combinators/lex.zig — reduction handlers for the grammar/lexer combinators.
 //!
 //! Implements Miranda's `%bnf` parser combinators (`G_*`, over a token stream)
 //! and `%lex` lexer combinators (`LEX_*`, over a character stream): alternation,
@@ -8,10 +8,10 @@
 //! the `word.<NAME>` combinator constant. A grammar yields `(result . rest)` on
 //! success or `NIL` on failure.
 
-const word = @import("../word.zig");
-const reduce = @import("reduce_core.zig");
-const os = @import("../os.zig");
-const reduce_rt = @import("../reduce.zig");
+const word = @import("../../graph/word.zig");
+const reduce = @import("../reduce_core.zig");
+const os = @import("../../os.zig");
+const reduce_rt = @import("../reduce_rt.zig");
 const types = @import("../../compiler/types.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;

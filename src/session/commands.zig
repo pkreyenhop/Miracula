@@ -6,12 +6,12 @@
 //! (why a name is unusable), `allnamescom` (bare `?`), and `editfile`.
 
 const std = @import("std");
-const word = @import("../runtime/word.zig");
-const strtab = @import("../runtime/strtab.zig");
+const word = @import("../graph/word.zig");
+const strtab = @import("../graph/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
 const cs = compiler_state.cs;
-const abi = @import("../runtime/os.zig");
+const abi = @import("../os.zig");
 
 const Word = word.Word;
 const NIL = word.NIL;
@@ -29,8 +29,8 @@ const Heap = heap_mod.Heap;
 const files = @import("../io/files.zig");
 const repl = @import("repl.zig");
 const dump = @import("../compiler/dump.zig");
-const startup = @import("startup.zig");
-const lineedit = @import("lineedit.zig");
+const startup = @import("../driver/startup.zig");
+const lineedit = @import("editor.zig");
 const module_loader = @import("../compiler/module_loader.zig");
 const ls = lex_state.ls;
 

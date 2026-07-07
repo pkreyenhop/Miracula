@@ -1,4 +1,6 @@
-//! lineedit.zig — interactive REPL line editing and history (via zigline).
+//! editor.zig (renamed from driver/lineedit.zig, Phase 4 step 1,
+//! docs/ZIG_NATIVE_PLAN.md) — interactive REPL line editing and history
+//! (via zigline).
 //!
 //! Installs `word.readInteractiveLine` so the stdin read path yields fully edited
 //! lines — arrow-key history, cursor movement, the usual emacs-style editing —
@@ -11,8 +13,8 @@
 //! runs (the golden corpus, the integration suite) are completely unaffected.
 
 const std = @import("std");
-const word = @import("../runtime/word.zig");
-const os = @import("../runtime/os.zig");
+const word = @import("../graph/word.zig");
+const os = @import("../os.zig");
 const lex = @import("../parser/lex.zig");
 const heap = @import("../runtime/heap.zig");
 const Editor = @import("zigline").Editor;
@@ -54,7 +56,7 @@ pub const LineEditState = struct {
 
 /// Pointer to the singleton `LineEditState` inside `current_interp`.
 pub inline fn state() *LineEditState {
-    return &@import("../runtime/interp.zig").current_interp.lineedit;
+    return &@import("interp.zig").current_interp.lineedit;
 }
 
 /// Whether the line editor is installed (stdin was interactive at startup).

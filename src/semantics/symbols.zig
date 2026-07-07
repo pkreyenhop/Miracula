@@ -36,9 +36,9 @@
 //! test where the same interpreter state is safe to share.
 
 const std = @import("std");
-const word = @import("../runtime/word.zig");
+const word = @import("../graph/word.zig");
 const heap_mod = @import("../runtime/heap.zig");
-const strtab = @import("../runtime/strtab.zig");
+const strtab = @import("../graph/strtab.zig");
 
 const Word = word.Word;
 
@@ -47,7 +47,7 @@ const Word = word.Word;
 /// Accessed as `symbols.syms().X`. (Named `syms`, not `table`, to avoid
 /// colliding with `strtab.table()`.)
 pub inline fn syms() *SymbolTable {
-    return &@import("../runtime/interp.zig").current_interp.symbols;
+    return &@import("../session/interp.zig").current_interp.symbols;
 }
 
 /// Maps identifier text to its heap `ID` node, first-seen-wins (matching

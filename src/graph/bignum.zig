@@ -1,4 +1,5 @@
-//! big.zig — arbitrary-precision integers (bignums).
+//! bignum.zig (renamed from big.zig, Phase 4 step 1, docs/ZIG_NATIVE_PLAN.md)
+//! — arbitrary-precision integers (bignums).
 //!
 //! A bignum is a linked chain of `INT` heap cells: each cell's `hd` holds one
 //! base-2^15 **digit** and its `tl` points at the next, more-significant cell.
@@ -26,10 +27,10 @@
 const std = @import("std");
 
 const platform = @import("../io/platform.zig");
-const heap_mod = @import("heap.zig");
+const heap_mod = @import("../runtime/heap.zig");
 const Heap = heap_mod.Heap;
 const word = @import("word.zig");
-const reduce = @import("reduce.zig");
+const reduce = @import("../eval/reduce_rt.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 const Word = i64;
@@ -65,7 +66,7 @@ pub const Bignum = struct {
 /// `*Bignum` to pass in — this module's own functions no longer read `bn.X`
 /// themselves.
 pub inline fn bn() *Bignum {
-    return &@import("interp.zig").current_interp.big;
+    return &@import("../session/interp.zig").current_interp.big;
 }
 
 /// The head cell's digit with the sign/overflow bits masked off (its plain

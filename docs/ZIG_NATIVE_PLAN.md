@@ -1635,9 +1635,71 @@ subsystems and passed explicitly; the ambient singleton deleted.
 
 1. **Moves.** Pure `git mv` into the target tree + import-path fixes. One commit,
    zero logic change.
+   **Landed** (2026-07-08), **partial by design** — paced deliberately to stop
+   before the god-file splits (step 3) and receiver threading (step 5), which
+   are the actual size/risk of this phase. 24 files moved: `runtime/os.zig` →
+   top-level `os.zig`; `runtime/{big,word,strtab,combinator}.zig` →
+   `graph/{bignum,word,strtab,combinator}.zig`; `runtime/stream.zig` and all
+   of `runtime/reducer/*` → `eval/` (`combinators.zig`/`ready.zig`/`lex.zig`/
+   `io.zig` under `eval/combinators/`); `runtime/reduce.zig` → renamed to
+   `eval/reduce_rt.zig` (its old name collided with `reducer/reduce.zig`,
+   the dispatch engine itself, once both landed under `eval/`);
+   `parser/{ast,pratt,parser,token_filter}.zig` → `syntax/`; `runtime/interp.zig`
+   → `session/interp.zig`; `driver/{repl,commands}.zig` → `session/`;
+   `driver/lineedit.zig` → renamed to `session/editor.zig` (matching the
+   plan's own §4.1 naming). Import paths fixed via a script (computes each
+   edge's new relative path from both endpoints' old/new locations — plain
+   sed can't do this correctly since the same import string means a
+   different relative path depending on which file is asking).
+   **Deliberately NOT moved this pass** (no unambiguous 1:1 mapping without
+   guessing at file boundaries that step 3/4 own): `heap.zig` (splits into
+   4 files), `types.zig`/`trans.zig` (split into `infer`/`unify`/
+   `type_errors`/`depend`/`lower`/`match`), `module_loader.zig` (folds into
+   the *existing*, differently-scoped `semantics/modules.zig`), `dump.zig`/
+   `setup.zig`/`compiler_state.zig` (naming collides with the target's own
+   `graph/dump.zig`, and/or are state-bag territory for step 4),
+   `runtime/{core_state,runtime_state,errors,version}.zig` (state-bag
+   dissolution is step 4's job, not a pure move), `parser/{lex,lex_state,
+   codegen,parser_api,parser_tests}.zig`, `driver/startup.zig`, `io/*.zig`.
+   **A scare worth recording:** partway through, a stray `git checkout --
+   src/graph/word.zig` (used to undo a sanity-test edit) silently reverted
+   the file to a *stale staged-index* version with a since-fixed broken
+   import (`@import("stream.zig")`, valid before the move, broken after) —
+   the working tree had been correct the whole time, but the index entry
+   `git mv` had captured did not match, and `zig build`'s cache didn't
+   re-surface the discrepancy until a full cache wipe (`rm -rf .zig-cache`)
+   forced a real recompile. Fixed by re-verifying every moved file's import
+   resolves to a real on-disk path, then `git add -A` (minus the two
+   pre-existing, unrelated files this session found already dirty at
+   startup) to force the index back in sync with disk. **Lesson:** after a
+   bulk move-and-rewrite, don't trust `zig build` success alone if the cache
+   might be stale from before the move landed — a clean-cache rebuild is the
+   real check, and the git index can silently diverge from the working tree
+   in ways `git status`'s rename heuristic doesn't surface.
 2. **DAG check.** A small Zig tool (or script) parses `@import` edges and validates
    the layer rules; wire into scorecard. Existing cycles get a temporary allowlist
    that must shrink to empty within the phase.
+   **Landed** (2026-07-08): `scripts/layer_check.py` implements the §4.1 rule
+   (`graph`/`syntax` leaves; `semantics` → `syntax`+`graph`; `eval` →
+   `graph`; `session` → everything; only `main.zig`/`session`/
+   `eval/stream.zig` → `os.zig`). It only checks edges where BOTH endpoints
+   have already landed in the target tree (`graph`/`syntax`/`semantics`/
+   `eval`/`session`/`main.zig`/`os.zig`) — most of the codebase is still in
+   the pre-Phase-4 `runtime`/`compiler`/`parser`/`driver`/`io` directories
+   after step 1's partial move, so those edges aren't classified into a
+   layer yet and are silently skipped (they start being checked the moment
+   the file on either end moves). The 19 real violations among
+   already-migrated files today (mostly `os.zig`'s giant re-export surface
+   reaching into `eval`/`session`, and `graph/{bignum,strtab,word}.zig`
+   reaching into `eval`/`session` via the still-ambient `current_interp`
+   singleton) are grandfathered into `scripts/layer_allowlist.txt`, per-edge,
+   and must shrink to empty by the end of the phase — new violations not in
+   the allowlist fail the check. Wired into `scorecard.sh` as
+   `unallowed §4.1 layer violations` (target 0, gated) alongside `@import
+   cycles` (pre-existing tool, was computed but never actually gated —
+   `RATCHET_COUNT` was stale at 15 from before that metric existed; bumped
+   to 17 to cover both, matching the script's own "Category 3: structure"
+   comment that said they should be).
 3. **Split the god files** (move-only commits, one per split):
    - `heap.zig` → `graph/heap.zig` (arena, make/cons, payload accessors),
      `graph/gc.zig` (mark/sweep, dstack, root marking), `graph/dump.zig`

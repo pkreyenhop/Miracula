@@ -47,7 +47,7 @@ done
 # FFI exemption: the C-shim, standalone tools, and the test harness
 # legitimately use C types/pointers/globals and are excluded from every
 # C-ism / shared-state metric (not from the structure or readability ones).
-FFI_EXEMPT='src/runtime/os\.zig|src/runtime/c_abi\.zig|src/tools/'
+FFI_EXEMPT='src/os\.zig|src/runtime/c_abi\.zig|src/tools/'
 TEST_EXEMPT='testutil\.zig|_tests?\.zig'
 NONFFI_EXEMPT="${FFI_EXEMPT}|${TEST_EXEMPT}"
 
@@ -64,7 +64,7 @@ add_metric() { # name count target detail
 
 # ---------------------------------------------------------------------------
 # Category 1: C-ism elimination (target: confined to the FFI shim
-# src/runtime/os.zig, renamed from main_clib.zig in Phase 2 step 5).
+# src/os.zig, moved from src/runtime/os.zig in Phase 4 step 1).
 # ---------------------------------------------------------------------------
 m=$(zg 'c_int|c_long|c_uint|c_ulong' | drop_ffi_sig)
 add_metric "c_int/c_long/c_uint/c_ulong (non-FFI)" "$(count "$m")" "0 outside os.zig" "$m"
@@ -121,6 +121,10 @@ cycles_out=$(python3 scripts/import_cycles.py "$SRC" -v 2>/dev/null || true)
 cycles_n=$(printf '%s\n' "$cycles_out" | head -1 | grep -oE '[0-9]+$' || echo 0)
 add_metric "@import cycles" "$cycles_n" "0 (Phase 4)" "$cycles_out"
 
+layer_out=$(python3 scripts/layer_check.py "$SRC" 2>&1 || true)
+layer_n=$(printf '%s\n' "$layer_out" | head -1 | grep -oE '[0-9]+ new' | grep -oE '^[0-9]+' || echo 0)
+add_metric "unallowed §4.1 layer violations" "$layer_n" "0 (Phase 4)" "$layer_out"
+
 # ---------------------------------------------------------------------------
 # Category 4: readability / testability (carried over, informational)
 # ---------------------------------------------------------------------------
@@ -170,7 +174,7 @@ print_summary() {
 # Only the strictly-numeric metrics (categories 1-3) are ratchet-checked;
 # the readability/testability ones (category 4) are informational trends,
 # not gates (they are meant to visibly *rise*, not fall).
-RATCHET_COUNT=15
+RATCHET_COUNT=17
 
 case "$MODE" in
     summary)

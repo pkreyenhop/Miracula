@@ -9,10 +9,10 @@
 //! relation/topological-sort helpers used to order mutually-recursive groups.
 
 const std = @import("std");
-const word = @import("../runtime/word.zig");
-const strtab = @import("../runtime/strtab.zig");
+const word = @import("../graph/word.zig");
+const strtab = @import("../graph/strtab.zig");
 
-const os = @import("../runtime/os.zig");
+const os = @import("../os.zig");
 
 const compiler_state = @import("compiler_state.zig");
 const cs = compiler_state.cs;
@@ -110,7 +110,7 @@ const ATOMLIMIT = word.ATOMLIMIT;
 const heap_mod = @import("../runtime/heap.zig");
 const Heap = heap_mod.Heap;
 const types_mod = @import("types.zig");
-const big = @import("../runtime/big.zig");
+const big = @import("../graph/bignum.zig");
 const lex = @import("../parser/lex.zig");
 const setup = @import("setup.zig");
 const rt = @import("../runtime/runtime_state.zig");

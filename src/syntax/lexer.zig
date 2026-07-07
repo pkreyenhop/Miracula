@@ -70,7 +70,7 @@
 //! Tests: Lexer.next — one test per token family below.
 
 const std = @import("std");
-const tf = @import("../parser/token_filter.zig");
+const tf = @import("token_filter.zig");
 const Source = @import("source.zig").Source;
 const directives_mod = @import("directives.zig");
 

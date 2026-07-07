@@ -9,16 +9,16 @@
 //! here (`CONS`/`AP`/combinator codes/…) are a much older consolidation this
 //! rename didn't revisit.
 
-const word_mod = @import("word.zig");
+const word_mod = @import("graph/word.zig");
 const std = @import("std");
 const builtin = @import("builtin");
-const rt = @import("runtime_state.zig");
-const heap_mod = @import("heap.zig");
-const lex_mod = @import("../parser/lex.zig");
-const reduce_mod = @import("reduce.zig");
-const repl_mod = @import("../driver/repl.zig");
-const trans_mod = @import("../compiler/trans.zig");
-const types_mod = @import("../compiler/types.zig");
+const rt = @import("runtime/runtime_state.zig");
+const heap_mod = @import("runtime/heap.zig");
+const lex_mod = @import("parser/lex.zig");
+const reduce_mod = @import("eval/reduce_rt.zig");
+const repl_mod = @import("session/repl.zig");
+const trans_mod = @import("compiler/trans.zig");
+const types_mod = @import("compiler/types.zig");
 
 pub var env_slice: [:null]const ?[*:0]const u8 = &[_:null]?[*:0]const u8{};
 

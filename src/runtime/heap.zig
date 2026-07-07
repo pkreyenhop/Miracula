@@ -9,9 +9,9 @@
 //! struct holds the state; module-level free functions wrap the singleton.
 
 const std = @import("std");
-const word = @import("word.zig");
-const strtab = @import("strtab.zig");
-const combinator = @import("combinator.zig");
+const word = @import("../graph/word.zig");
+const strtab = @import("../graph/strtab.zig");
+const combinator = @import("../graph/combinator.zig");
 const rt = @import("runtime_state.zig");
 const core = @import("core_state.zig");
 const lex_state = @import("../parser/lex_state.zig");
@@ -22,9 +22,9 @@ const types = @import("../compiler/types.zig");
 const files = @import("../io/files.zig");
 const lex = @import("../parser/lex.zig");
 const symbols = @import("../semantics/symbols.zig");
-const big = @import("big.zig");
-const reduce = @import("reduce.zig");
-const os = @import("os.zig");
+const big = @import("../graph/bignum.zig");
+const reduce = @import("../eval/reduce_rt.zig");
+const os = @import("../os.zig");
 const setup = @import("../compiler/setup.zig");
 const cs = compiler_state.cs;
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
@@ -642,7 +642,7 @@ pub const Heap = struct {
         // a Word sitting on the C stack the scan above already covers, and
         // not reachable through any cell's hd/tl the way the old in-graph
         // pointer-reversal encoding was -- so it needs its own root pass.
-        @import("reducer/spine.zig").markAllRoots(reduce.ev().gc_roots_head, markRoot);
+        @import("../eval/spine.zig").markAllRoots(reduce.ev().gc_roots_head, markRoot);
     }
 
     /// Whether `x` is a heap-cell pointer (rather than an atom/immediate).
@@ -719,7 +719,7 @@ pub const Heap = struct {
 /// Pointer to the singleton [Heap] inside `current_interp` (so `interp.reset()`
 /// clears it). The free functions below operate on it; call sites use `heap.heap().X`.
 pub inline fn heap() *Heap {
-    return &@import("interp.zig").current_interp.heap;
+    return &@import("../session/interp.zig").current_interp.heap;
 }
 
 /// Head (`hd`) of cell `x`.

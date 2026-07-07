@@ -1,4 +1,4 @@
-//! reducer/spine.zig — an explicit, heap-growable spine stack, replacing the
+//! eval/spine.zig — an explicit, heap-growable spine stack, replacing the
 //! reduction engine's in-graph pointer reversal.
 //!
 //! ## Why this exists
@@ -43,8 +43,8 @@
 
 const std = @import("std");
 const builtin = @import("builtin");
-const heap = @import("../heap.zig");
-const tu = @import("../../testutil.zig"); // unit-test harness (test builds only)
+const heap = @import("../runtime/heap.zig");
+const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 pub const Word = i64;
 

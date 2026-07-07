@@ -7,17 +7,17 @@
 //! without going through the parser/compiler. Run via the `main-tests` step.
 
 const std = @import("std");
-const word = @import("../word.zig");
-const heap = @import("../heap.zig");
-const big = @import("../big.zig");
+const word = @import("../graph/word.zig");
+const heap = @import("../runtime/heap.zig");
+const big = @import("../graph/bignum.zig");
 const reduce = @import("reduce.zig");
-const reduce_rt = @import("../reduce.zig");
-const interp = @import("../interp.zig");
-const rt = @import("../runtime_state.zig");
-const core_state = @import("../core_state.zig");
-const setup = @import("../../compiler/setup.zig");
-const lex = @import("../../parser/lex.zig");
-const trans = @import("../../compiler/trans.zig");
+const reduce_rt = @import("reduce_rt.zig");
+const interp = @import("../session/interp.zig");
+const rt = @import("../runtime/runtime_state.zig");
+const core_state = @import("../runtime/core_state.zig");
+const setup = @import("../compiler/setup.zig");
+const lex = @import("../parser/lex.zig");
+const trans = @import("../compiler/trans.zig");
 
 const Word = word.Word;
 fn ap(x: Word, y: Word) Word {

@@ -26,15 +26,15 @@
 
 const std = @import("std");
 const options = @import("version_options");
-const word = @import("../runtime/word.zig");
+const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
-const strtab = @import("../runtime/strtab.zig");
+const strtab = @import("../graph/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
 const cs = compiler_state.cs;
-const abi = @import("../runtime/os.zig");
+const abi = @import("../os.zig");
 const parser_api = @import("../parser/parser_api.zig");
-const lineedit = @import("lineedit.zig");
+const lineedit = @import("editor.zig");
 
 const Word = word.Word;
 const NIL = word.NIL;
@@ -50,9 +50,9 @@ const commands = @import("commands.zig");
 const trans_mod = @import("../compiler/trans.zig");
 const module_loader = @import("../compiler/module_loader.zig");
 const types_mod = @import("../compiler/types.zig");
-const startup = @import("startup.zig");
+const startup = @import("../driver/startup.zig");
 const dump = @import("../compiler/dump.zig");
-const reduce = @import("../runtime/reduce.zig");
+const reduce = @import("../eval/reduce_rt.zig");
 const core_state = @import("../runtime/core_state.zig");
 const version = @import("../runtime/version.zig");
 const ls = lex_state.ls;

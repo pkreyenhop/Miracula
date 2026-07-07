@@ -1,4 +1,4 @@
-//! reducer/io.zig — reduction handlers for the lazy input combinators.
+//! eval/combinators/io.zig — reduction handlers for the lazy input combinators.
 //!
 //! Implements `READ`/`READBIN`/`READVALS`/`STARTREADVALS`: the combinators that
 //! turn a file (or stdin) into a lazy list of characters or parsed values.
@@ -6,12 +6,12 @@
 //! mirrors the `word.<NAME>` constant the dispatcher switches on.
 
 const std = @import("std");
-const reduce = @import("reduce_core.zig");
+const reduce = @import("../reduce_core.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
-const word = @import("../word.zig");
-const os = @import("../os.zig");
-const reduce_rt = @import("../reduce.zig");
+const word = @import("../../graph/word.zig");
+const os = @import("../../os.zig");
+const reduce_rt = @import("../reduce_rt.zig");
 
 /// Reduce the `READ` combinator: lazily stream characters from an input file.
 pub fn handle_READ(ctx: *ReductionCtx) void {

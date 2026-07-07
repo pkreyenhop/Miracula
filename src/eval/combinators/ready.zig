@@ -1,4 +1,4 @@
-//! reducer/ready.zig — the "ready state" combinator dispatcher.
+//! eval/combinators/ready.zig — the "ready state" combinator dispatcher.
 //!
 //! `handleReadyState` is the heart of the reduction loop: once the spine is
 //! unwound and a combinator has all of its arguments in hand, this routine
@@ -9,19 +9,19 @@
 
 const std = @import("std");
 const options = @import("version_options");
-const word = @import("../word.zig");
-const reduce = @import("reduce_core.zig");
+const word = @import("../../graph/word.zig");
+const reduce = @import("../reduce_core.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
 const platform = @import("../../io/platform.zig");
 const combinators = @import("combinators.zig");
 const io_handlers = @import("io.zig");
-const rt = @import("../runtime_state.zig");
-const big = @import("../big.zig");
-const heap = @import("../heap.zig");
+const rt = @import("../../runtime/runtime_state.zig");
+const big = @import("../../graph/bignum.zig");
+const heap = @import("../../runtime/heap.zig");
 const lex = @import("../../parser/lex.zig");
-const os = @import("../os.zig");
-const reduce_rt = @import("../reduce.zig");
+const os = @import("../../os.zig");
+const reduce_rt = @import("../reduce_rt.zig");
 
 /// The current combinator's last (rightmost) argument: the tail of the focus node.
 inline fn lastArg(ctx: *ReductionCtx) Word {

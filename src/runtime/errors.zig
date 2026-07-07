@@ -3,8 +3,8 @@
 //! the print-then-exit helper for unrecoverable command-line/startup/load errors.
 
 const std = @import("std");
-const abi = @import("os.zig");
-const word = @import("word.zig");
+const abi = @import("../os.zig");
+const word = @import("../graph/word.zig");
 
 /// Miranda interpreter domain errors.
 ///

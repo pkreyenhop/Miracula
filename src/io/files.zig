@@ -6,9 +6,9 @@
 //! points are re-exported through `main.zig` and called as `main.<fn>`.
 
 const std = @import("std");
-const word = @import("../runtime/word.zig");
+const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
-const abi = @import("../runtime/os.zig");
+const abi = @import("../os.zig");
 const platform = @import("platform.zig");
 const heap = @import("../runtime/heap.zig");
 const lex = @import("../parser/lex.zig");

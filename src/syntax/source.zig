@@ -14,7 +14,7 @@
 //! Source.position — byte offset to 1-based (line, col)
 
 const std = @import("std");
-const tf = @import("../parser/token_filter.zig");
+const tf = @import("token_filter.zig");
 
 /// Re-exported so callers don't need to know `Span` lives in `token_filter.zig`.
 pub const Span = tf.Span;

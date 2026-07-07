@@ -4,13 +4,13 @@
 //! export-table fix-up (`fixexports`) and dump-file options (`readoption`).
 
 const std = @import("std");
-const word = @import("../runtime/word.zig");
+const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
-const strtab = @import("../runtime/strtab.zig");
+const strtab = @import("../graph/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const compiler_state = @import("compiler_state.zig");
 const cs = compiler_state.cs;
-const abi = @import("../runtime/os.zig");
+const abi = @import("../os.zig");
 const lex_state = @import("../parser/lex_state.zig");
 const heap_mod = @import("../runtime/heap.zig");
 const Heap = heap_mod.Heap;

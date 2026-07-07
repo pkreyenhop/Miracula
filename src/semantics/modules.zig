@@ -29,13 +29,13 @@
 //! their doc comments.
 
 const std = @import("std");
-const word = @import("../runtime/word.zig");
+const word = @import("../graph/word.zig");
 const directives = @import("../syntax/directives.zig");
 const source_mod = @import("../syntax/source.zig");
 const lexer_mod = @import("../syntax/lexer.zig");
 const layout_mod = @import("../syntax/layout.zig");
-const parser_mod = @import("../parser/parser.zig");
-const ast = @import("../parser/ast.zig");
+const parser_mod = @import("../syntax/parser.zig");
+const ast = @import("../syntax/ast.zig");
 const codegen = @import("../parser/codegen.zig");
 const lex = @import("../parser/lex.zig");
 const heap_mod = @import("../runtime/heap.zig");

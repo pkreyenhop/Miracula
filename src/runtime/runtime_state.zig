@@ -4,7 +4,7 @@
 //! singleton lives in `interp`; callers reach it as `rs.X`.
 
 const std = @import("std");
-const abi = @import("os.zig");
+const abi = @import("../os.zig");
 
 /// The process-wide debug allocator that backs `allocator`.
 pub var gpa = std.heap.DebugAllocator(.{}){};
@@ -194,11 +194,11 @@ pub const RuntimeState = struct {
         const options = @import("version_options");
         if (@import("builtin").mode != .Debug and !options.is_strict) return;
 
-        const heap = &@import("interp.zig").current_interp.heap;
+        const heap = &@import("../session/interp.zig").current_interp.heap;
         const top_limit = heap.TOP();
 
         inline for (.{ self.Void, self.main_id, self.message, self.standardout, self.diagonalise, self.concat, self.indent_fn, self.outdent_fn, self.listdiff_fn, self.shownum1, self.showbool, self.showchar, self.showlist, self.showstring, self.showparen, self.showpair, self.showvoid, self.showfunction, self.showabstract, self.showwhat, self.lastid, self.rv_expr, self.fnts, self.primenv, self.oldfiles, self.includees, self.freeids, self.exports, self.embargoes, self.lastname, self.suppressids, self.col_fn, self.eprodnts, self.nonterminals, self.ntmap, self.ntspecmap, self.lexstates, self.lexdefs, self.detrop, self.rfl, self.ld_stuff }) |field| {
-            if (field >= @import("word.zig").ATOMLIMIT) {
+            if (field >= @import("../graph/word.zig").ATOMLIMIT) {
                 if (field >= top_limit) {
                     std.debug.panic("runtime.validate: runtime state field has out-of-bounds heap reference {d} (TOP is {d})", .{ field, top_limit });
                 }
@@ -210,7 +210,7 @@ pub const RuntimeState = struct {
 /// Pointer to the singleton runtime state held in `current_interp` (so
 /// `interp.reset()` clears it). Accessed as `rt.rs().X`.
 pub inline fn rs() *RuntimeState {
-    return &@import("interp.zig").current_interp.rs;
+    return &@import("../session/interp.zig").current_interp.rs;
 }
 
 test "RuntimeState default values are self-consistent" {

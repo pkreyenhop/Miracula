@@ -7,12 +7,12 @@
 //! library-mismatch reporting used during that search.
 
 const std = @import("std");
-const word = @import("../runtime/word.zig");
+const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
-const strtab = @import("../runtime/strtab.zig");
+const strtab = @import("../graph/strtab.zig");
 const cs = @import("../compiler/compiler_state.zig").cs;
 const rt = @import("../runtime/runtime_state.zig");
-const abi = @import("../runtime/os.zig");
+const abi = @import("../os.zig");
 
 const Word = word.Word;
 const NIL = word.NIL;
@@ -22,18 +22,18 @@ const t = heap_mod.t;
 
 const lex_state = @import("../parser/lex_state.zig");
 const version = @import("../runtime/version.zig");
-const reduce = @import("../runtime/reduce.zig");
+const reduce = @import("../eval/reduce_rt.zig");
 const heap_mod = @import("../runtime/heap.zig");
 const Heap = heap_mod.Heap;
-const repl = @import("repl.zig");
-const commands = @import("commands.zig");
+const repl = @import("../session/repl.zig");
+const commands = @import("../session/commands.zig");
 const files = @import("../io/files.zig");
 const setup = @import("../compiler/setup.zig");
 const signals_mod = @import("../io/signals.zig");
 const dump = @import("../compiler/dump.zig");
 const core_state = @import("../runtime/core_state.zig");
 const EDITOR: [*:0]const u8 = "vi +!";
-const lineedit = @import("lineedit.zig");
+const lineedit = @import("../session/editor.zig");
 const ls = lex_state.ls;
 
 inline fn getTag(heap: *Heap, x: Word) word.NodeTag {

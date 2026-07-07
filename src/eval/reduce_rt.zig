@@ -1,4 +1,7 @@
-//! reduce.zig — runtime support around the reduction engine.
+//! reduce_rt.zig (renamed from runtime/reduce.zig, Phase 4 step 1,
+//! docs/ZIG_NATIVE_PLAN.md — the name collided with `reducer/reduce.zig`,
+//! the dispatch engine itself, once both moved under `eval/`) — runtime
+//! support around the reduction engine.
 //!
 //! Holds the evaluation-time state (`EvalState`/`ev`) and the services the
 //! combinator handlers call into: the I/O-directive interpreter (`output`/
@@ -10,21 +13,21 @@
 
 const std = @import("std");
 const options = @import("version_options");
-const word = @import("word.zig");
-const strtab = @import("strtab.zig");
+const word = @import("../graph/word.zig");
+const strtab = @import("../graph/strtab.zig");
 const platform = @import("../io/platform.zig");
-const rt = @import("runtime_state.zig");
-const heap = @import("heap.zig");
-const repl = @import("../driver/repl.zig");
-const engine = @import("reducer/reduce.zig");
-const reducer_trace = @import("reducer/trace.zig");
-const spine = @import("reducer/spine.zig");
-const big = @import("big.zig");
+const rt = @import("../runtime/runtime_state.zig");
+const heap = @import("../runtime/heap.zig");
+const repl = @import("../session/repl.zig");
+const engine = @import("reduce.zig");
+const reducer_trace = @import("trace.zig");
+const spine = @import("spine.zig");
+const big = @import("../graph/bignum.zig");
 const lex = @import("../parser/lex.zig");
-const os = @import("os.zig");
-const core_state = @import("core_state.zig");
+const os = @import("../os.zig");
+const core_state = @import("../runtime/core_state.zig");
 const lex_state = @import("../parser/lex_state.zig");
-const reduce_core = @import("reducer/reduce_core.zig");
+const reduce_core = @import("reduce_core.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 const Word = i64;
@@ -62,7 +65,7 @@ pub const EvalState = struct {
 /// Pointer to the evaluator state held in `current_interp` (so `interp.reset()`
 /// clears it). Accessed as `ev().X`.
 pub inline fn ev() *EvalState {
-    return &@import("interp.zig").current_interp.eval;
+    return &@import("../session/interp.zig").current_interp.eval;
 }
 
 const stoChar = heap.stoChar;
@@ -923,9 +926,9 @@ pub fn output(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) reduce_core.R
 
 comptime {
     @setEvalBranchQuota(50000);
-    _ = @import("reducer/reduce.zig");
-    _ = @import("reducer/combinators.zig");
-    _ = @import("reducer/ready.zig");
-    _ = @import("reducer/io.zig");
-    _ = @import("reducer/lex.zig");
+    _ = @import("reduce.zig");
+    _ = @import("combinators/combinators.zig");
+    _ = @import("combinators/ready.zig");
+    _ = @import("combinators/io.zig");
+    _ = @import("combinators/lex.zig");
 }

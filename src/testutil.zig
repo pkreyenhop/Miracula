@@ -27,11 +27,11 @@
 //! emitted into the `mira` executable (nothing there references them).
 
 const std = @import("std");
-const word = @import("runtime/word.zig");
+const word = @import("graph/word.zig");
 const heap = @import("runtime/heap.zig");
-const big = @import("runtime/big.zig");
-const reduce = @import("runtime/reducer/reduce.zig");
-const interp = @import("runtime/interp.zig");
+const big = @import("graph/bignum.zig");
+const reduce = @import("eval/reduce.zig");
+const interp = @import("session/interp.zig");
 const lex = @import("parser/lex.zig");
 const setup = @import("compiler/setup.zig");
 

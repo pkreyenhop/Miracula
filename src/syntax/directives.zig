@@ -43,7 +43,7 @@
 
 const std = @import("std");
 const Source = @import("source.zig").Source;
-const tf = @import("../parser/token_filter.zig");
+const tf = @import("token_filter.zig");
 const Span = tf.Span;
 
 /// Re-exported from `token_filter.zig`, not defined here: `parser/ast.zig`

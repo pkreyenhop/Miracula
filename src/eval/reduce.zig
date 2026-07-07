@@ -1,4 +1,4 @@
-//! reducer/reduce.zig — the graph-reduction engine (the `reduce()` loop).
+//! eval/reduce.zig — the graph-reduction engine (the `reduce()` loop).
 //!
 //! Miranda programs are compiled to a **combinator graph**: a DAG of binary
 //! `AP` (application) cells whose leaves are atoms — the SK-family combinators
@@ -37,24 +37,24 @@
 //! helpers below are duplicated in `reduce_core.zig` (the copy the handlers
 //! import); see that file for the canonical set. Keep the two in lock-step.
 
-const word = @import("../word.zig");
+const word = @import("../graph/word.zig");
 const options = @import("version_options");
 const std = @import("std");
-const strtab = @import("../strtab.zig");
+const strtab = @import("../graph/strtab.zig");
 const core = @import("reduce_core.zig");
 const getTag = core.getTag;
 const setTag = core.setTag;
-const combinators = @import("combinators.zig");
-const ready = @import("ready.zig");
-const lex_handlers = @import("lex.zig");
-const io_handlers = @import("io.zig");
+const combinators = @import("combinators/combinators.zig");
+const ready = @import("combinators/ready.zig");
+const lex_handlers = @import("combinators/lex.zig");
+const io_handlers = @import("combinators/io.zig");
 const trace = @import("trace.zig");
-const lex = @import("../../parser/lex.zig");
-const reduce_rt = @import("../reduce.zig");
+const lex = @import("../parser/lex.zig");
+const reduce_rt = @import("reduce_rt.zig");
 const os = @import("../os.zig");
-const rt = @import("../runtime_state.zig");
+const rt = @import("../runtime/runtime_state.zig");
 const spine = @import("spine.zig");
-const heap_mod = @import("../heap.zig");
+const heap_mod = @import("../runtime/heap.zig");
 
 /// The interpreter machine word (re-exported from [core]).
 pub const Word = core.Word;

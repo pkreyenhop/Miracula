@@ -138,7 +138,7 @@ pub const IoState = struct {
 /// Pointer to the I/O subsystem state held in `current_interp` (so
 /// `interp.reset()` clears it). Accessed as `word.fio().X`.
 pub inline fn fio() *IoState {
-    return &@import("interp.zig").current_interp.io;
+    return &@import("../session/interp.zig").current_interp.io;
 }
 
 /// The process's actual `std.Io` implementation (`rt.io`, set from
@@ -149,7 +149,7 @@ pub inline fn fio() *IoState {
 /// imports this file, and `word.zig` is a leaf module every other file is
 /// meant to import freely.
 inline fn procIo() std.Io {
-    return @import("runtime_state.zig").io;
+    return @import("../runtime/runtime_state.zig").io;
 }
 
 /// Lazily initialise the buffered stdout/stderr writers (once).

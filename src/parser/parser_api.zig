@@ -16,14 +16,14 @@ const std = @import("std");
 const heap = @import("../runtime/heap.zig");
 const options = @import("version_options");
 
-const word = @import("../runtime/word.zig");
+const word = @import("../graph/word.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const core = @import("../runtime/core_state.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
 
-const parser_mod = @import("parser.zig");
+const parser_mod = @import("../syntax/parser.zig");
 const codegen = @import("codegen.zig");
-const repl = @import("../driver/repl.zig");
+const repl = @import("../session/repl.zig");
 const lex_state = @import("lex_state.zig");
 // Forks like the original C evaluate(): compiling=0 only in child; parent's heap is safe.
 const evaluateRepl = repl.evaluateRepl;

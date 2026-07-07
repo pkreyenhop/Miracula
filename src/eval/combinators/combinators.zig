@@ -1,4 +1,4 @@
-//! reducer/combinators.zig — rewrite rules for the core combinators.
+//! eval/combinators/combinators.zig — rewrite rules for the core combinators.
 //!
 //! One `handle<COMBINATOR>` per combinator, dispatched from `reducer/reduce.zig`
 //! by tag (the handler name mirrors the `word.<COMBINATOR>` constant). They span
@@ -8,13 +8,13 @@
 //! `Ug`), and the strict-primitive forcers (`handleStrict{Monadic,Diadic,Triadic}`).
 //! Each rewrites the focus node in place and sets `ctx.action` for the driver.
 
-const word = @import("../word.zig");
-const reduce = @import("reduce_core.zig");
-const big = @import("../big.zig");
-const heap = @import("../heap.zig");
+const word = @import("../../graph/word.zig");
+const reduce = @import("../reduce_core.zig");
+const big = @import("../../graph/bignum.zig");
+const heap = @import("../../runtime/heap.zig");
 const lex = @import("../../parser/lex.zig");
-const os = @import("../os.zig");
-const reduce_rt = @import("../reduce.zig");
+const os = @import("../../os.zig");
+const reduce_rt = @import("../reduce_rt.zig");
 const tu = @import("../../testutil.zig"); // unit-test harness (test builds only)
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
