@@ -1,12 +1,18 @@
-//! trans.zig — translation from parse trees to combinator graphs.
+//! lower.zig (split from compiler/trans.zig, Phase 4 step 3,
+//! docs/ZIG_NATIVE_PLAN.md) — translation from parse trees to combinator
+//! graphs.
 //!
 //! Turns definitions and expressions into the `S`/`K`/`I`… combinator graph the
-//! reducer runs: bracket abstraction (`abstract`/`abstr`/`combine`), pattern-match
-//! compilation (`scanpattern`/`transtries`/`genlhs`), `let`/`letrec` and ZF
-//! list-comprehension translation (`translet`/`transzf`), `show`-function
-//! generation, and the top-level `codegen`. Also handles declaration bookkeeping
-//! (`declare`/`declType`/`declconstr`, name-clash and arity checks) and the
-//! relation/topological-sort helpers used to order mutually-recursive groups.
+//! reducer runs: bracket abstraction (`abstract`/`abstr`/`combine`), `let`/
+//! `letrec` and ZF list-comprehension translation (`translet`/`transzf`),
+//! `show`-function generation, and the top-level `codegen`. Also handles
+//! declaration bookkeeping (`declare`/`declType`/`declconstr`, name-clash and
+//! arity checks) and the relation/topological-sort helpers used to order
+//! mutually-recursive groups. Pattern-match compilation itself
+//! (`scanpattern`/`transtries`/`genlhs`) lives in the sibling `match.zig` --
+//! `declare` and `codegen` call into it, and it calls back into this file's
+//! `codegen` (`transtries` codegens each match alternative), a genuine
+//! two-way dependency inherent to the algorithm, not an accident of the split.
 
 const std = @import("std");
 const word = @import("../graph/word.zig");
@@ -14,7 +20,7 @@ const strtab = @import("../graph/strtab.zig");
 
 const os = @import("../os.zig");
 
-const compiler_state = @import("compiler_state.zig");
+const compiler_state = @import("../compiler/compiler_state.zig");
 const cs = compiler_state.cs;
 // `abi` — a private namespace of libc re-export aliases so this file can write
 // `os.printf(...)`, etc. Internal only (the container is not `pub`, so these
@@ -24,6 +30,7 @@ const lex_state = @import("../parser/lex_state.zig");
 const core_state = @import("../runtime/core_state.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 const ls = lex_state.ls;
+const match = @import("match.zig");
 
 /// The standard-output `Stream` handle.
 fn getStdout() ?*word.Stream {
@@ -109,10 +116,10 @@ const ATOMLIMIT = word.ATOMLIMIT;
 // declarations (R7.3 — eliminate the linker-as-module-system pattern).
 const heap_mod = @import("../runtime/heap.zig");
 const Heap = heap_mod.Heap;
-const types_mod = @import("types.zig");
+const types_mod = @import("../compiler/types.zig");
 const big = @import("../graph/bignum.zig");
 const lex = @import("../parser/lex.zig");
-const setup = @import("setup.zig");
+const setup = @import("../compiler/setup.zig");
 const rt = @import("../runtime/runtime_state.zig");
 
 const make = heap_mod.make;
@@ -233,7 +240,7 @@ fn ap3(w: Word, x: Word, y: Word, z: Word) Word {
 }
 
 /// The interned name text of id `x`.
-fn getId(heap: *Heap, x: Word) [*:0]const u8 {
+pub fn getId(heap: *Heap, x: Word) [*:0]const u8 {
     return strtab.strOf(strtab.table(), h(heap, h(heap, h(heap, x))));
 }
 
@@ -760,21 +767,6 @@ pub fn abstrlist(heap: *Heap, x_input: Word, e: Word) Word {
     }
 }
 
-/// Compile pattern `p` against scrutinee `x` into `e`, with `fail` as the no-match continuation.
-pub fn scanpattern(heap: *Heap, p: Word, x: Word, e: Word, fail: Word) Word {
-    if (h(heap, x) == CONST or isConstructor(heap, x)) {
-        return NIL;
-    }
-    if (getTag(heap, x) == .ID) {
-        const binding = cons(x, ap2(TRY, ap(lambda(p, x), e), fail));
-        return cons(binding, NIL);
-    }
-    if (isNPlusKPattern(heap, x)) {
-        return scanpattern(heap, p, t(heap, x), e, fail);
-    }
-    return shunt(scanpattern(heap, p, h(heap, x), e, fail), scanpattern(heap, p, t(heap, x), e, fail));
-}
-
 /// Build a lazy (shared) binding for definition `d`.
 pub fn mklazy(heap: *Heap, d: Word) Word {
     if (irrefutable(heap, dlhs(heap, d)) != 0) {
@@ -889,45 +881,6 @@ pub fn transtypeid(heap: *Heap, x: Word) Word {
     return x;
 }
 
-/// Generate the canonical left-hand-side pattern from definition head `x`.
-pub fn genlhs(heap: *Heap, x: Word) Word {
-    switch (getTag(heap, x)) {
-        .AP => {
-            if (getTag(heap, h(heap, x)) == .AP and h(heap, h(heap, x)) == PLUS and isnat(heap, t(heap, x))) {
-                return ap2(PLUS, t(heap, x), genlhs(heap, t(heap, h(heap, x))));
-            }
-            const hold = genlhs(heap, h(heap, x));
-            return make(.AP, hold, genlhs(heap, t(heap, x)));
-        },
-        .CONS, .TCONS, .PAIR => {
-            const hold = genlhs(heap, h(heap, x));
-            return make(getTag(heap, x), hold, genlhs(heap, t(heap, x)));
-        },
-        .ID => {
-            if (member(heap, ls().idsused, x) != 0) {
-                return cons(CONST, x);
-            }
-            if (!isConstructor(heap, x)) {
-                ls().idsused = cons(x, ls().idsused);
-            }
-            return x;
-        },
-        .INT => return cons(CONST, x),
-        .DOUBLE => {
-            syntax("floating point literal in pattern\n") catch {};
-            return core_state.s().nill;
-        },
-        .ATOM => {
-            if (x == True or x == False or x == NILS or x == NIL or isChar(x)) {
-                return cons(CONST, x);
-            }
-        },
-        else => {},
-    }
-    syntax("illegal form on left of <-\n") catch {};
-    return core_state.s().nill;
-}
-
 /// Left-factor the common prefixes among grammar alternatives `x`.
 pub fn leftfactor(heap: *Heap, x: Word) Word {
     var a: Word = undefined;
@@ -1018,35 +971,6 @@ pub fn transletrec(heap: *Heap, input_dd: Word, e: Word) Word {
         return ap(abstr(heap, h(heap, lhs), codegen(heap, e)), ap(Y, abstr(heap, h(heap, lhs), h(heap, rhs))));
     }
     return ap(abstrlist(heap, lhs, codegen(heap, e)), ap(Y, abstrlist(heap, lhs, rhs)));
-}
-
-/// Translate the pattern-match alternatives `x` of an id into a `TRIES` chain.
-pub fn transtries(heap: *Heap, id: Word, input_x: Word) Word {
-    var x = input_x;
-    var info: Word = 0;
-    var earliest: Word = 0;
-    var r: Word = undefined;
-    if (fallible(heap, h(heap, x)) != 0) {
-        const oldn = if (getTag(heap, id) == .ID) datapair(@as(Word, strtab.strBits(strtab.table(), getId(heap, id))), 0) else 0;
-        info = cons(oldn, 0);
-        r = ap(BADCASE, info);
-        if (x == NIL) {
-            std.debug.print("Internal error: `earliest' is used uninitialised in transtries(heap, )\nPlease report it to miranda@groups.io\n", .{});
-        }
-    } else {
-        earliest = h(heap, x);
-        r = codegen(heap, earliest);
-        x = t(heap, x);
-    }
-    while (x != NIL) {
-        earliest = h(heap, x);
-        r = ap2(TRY, codegen(heap, earliest), r);
-        x = t(heap, x);
-    }
-    if (info != 0) {
-        tp(heap, info).* = h(heap, earliest);
-    }
-    return r;
 }
 
 /// Build the `show` function for a type at source location `here`.
@@ -1332,7 +1256,7 @@ pub fn declare(heap: *Heap, x: Word, e: Word) void {
         decl1(heap, x, e);
         return;
     }
-    var bindings = scanpattern(heap, x, x, share(tries(x, cons(e, NIL)), undef_t), ap(CONFERROR, cons(x, h(heap, e))));
+    var bindings = match.scanpattern(heap, x, x, share(tries(x, cons(e, NIL)), undef_t), ap(CONFERROR, cons(x, h(heap, e))));
     if (bindings == NIL) {
         core_state.s().errs = h(heap, e);
         syntax("illegal lhs for definition\n") catch {};
@@ -1690,7 +1614,7 @@ pub fn codegen(heap: *Heap, x: Word) Word {
             return transletrec(heap, h(heap, x), t(heap, x));
         },
         .TRIES => {
-            return transtries(heap, h(heap, x), t(heap, x));
+            return match.transtries(heap, h(heap, x), t(heap, x));
         },
         .LABEL => {
             return codegen(heap, t(heap, x));

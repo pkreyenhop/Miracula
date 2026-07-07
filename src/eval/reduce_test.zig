@@ -17,7 +17,7 @@ const rt = @import("../runtime/runtime_state.zig");
 const core_state = @import("../runtime/core_state.zig");
 const setup = @import("../compiler/setup.zig");
 const lex = @import("../parser/lex.zig");
-const trans = @import("../compiler/trans.zig");
+const trans = @import("../semantics/lower.zig");
 
 const Word = word.Word;
 fn ap(x: Word, y: Word) Word {

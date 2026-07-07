@@ -17,7 +17,7 @@ const heap_mod = @import("runtime/heap.zig");
 const lex_mod = @import("parser/lex.zig");
 const reduce_mod = @import("eval/reduce_rt.zig");
 const repl_mod = @import("session/repl.zig");
-const trans_mod = @import("compiler/trans.zig");
+const trans_mod = @import("semantics/lower.zig");
 const types_mod = @import("compiler/types.zig");
 
 pub var env_slice: [:null]const ?[*:0]const u8 = &[_:null]?[*:0]const u8{};

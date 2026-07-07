@@ -1707,6 +1707,44 @@ subsystems and passed explicitly; the ambient singleton deleted.
      `alfasort` → `semantics/`.
    - `types.zig` → `infer.zig` / `unify.zig` / `type_errors.zig` / `depend.zig`.
    - `trans.zig` → `lower.zig` / `match.zig`.
+     **Landed** (2026-07-08), second of the four splits. `match.zig` got
+     exactly the three functions the file's own module doc named as
+     "pattern-match compilation" (`scanpattern`, `genlhs`, `transtries`);
+     everything else (bracket abstraction, let/letrec/ZF translation,
+     show-function generation, declaration bookkeeping, the relation/
+     topological-sort helpers, the top-level `codegen`, and every low-level
+     graph accessor) went to `lower.zig`. Unlike the config/boot split, a
+     genuine two-way dependency was unavoidable here: `lower.zig`'s
+     `declare` calls `match.scanpattern`, `lower.zig`'s `codegen` calls
+     `match.transtries`, and `match.zig`'s `transtries` calls back into
+     `lower.zig`'s `codegen` to compile each match alternative -- inherent
+     to the algorithm (this is exactly how the single original file's
+     internal recursion worked), not a design mistake. `match.zig`
+     duplicates a handful of one-line graph accessors (`h`/`t`/`cons`/`ap`/
+     etc.) rather than importing them, matching the existing convention in
+     `eval/combinators/*.zig`; `getId` was made `pub` in `lower.zig` and
+     called from there instead of being duplicated a third time, since its
+     `[*:0]const u8` return type is one of the scorecard's tracked C-string
+     metrics and a second copy would have shown up as a regression.
+     Verified the same way as the `startup.zig` split, and more thoroughly
+     given that one's near-miss: every one of the original's 104 functions
+     and 4 tests were extracted programmatically and diffed against `git
+     show HEAD:src/compiler/trans.zig` byte-for-byte (modulo the expected
+     cross-file call prefixes) before this was considered done -- caught
+     zero corruption this time, unlike the previous split, which is itself
+     the point of doing it this way. Exercised constructor pattern matching,
+     multi-clause guards, and recursive numeric definitions in the built
+     binary as a live check, not just the existing test suite. Also fixed a
+     real gap the layer-check tool surfaced: `trans.zig` living in the
+     unclassified `compiler/` directory had hidden 3 real cross-layer edges
+     (`os.zig` ↔ `lower.zig`, `eval/reduce_test.zig` → `lower.zig`) from
+     the checker; now that it's in `semantics/`, they're visible and
+     grandfathered into the allowlist like the original 19. Separately
+     discovered `scripts/layer_allowlist.txt` was never actually committed
+     in the prior "steps 1-2" commit -- a blanket `*.txt` `.gitignore` rule
+     silently excluded it, so a fresh clone would have seen 19 false
+     "new" violations. Fixed with a `.gitignore` exception; the file is
+     version-controlled from this commit onward.
    - `startup.zig` → `session/config.zig` (flags, `.mirarc`) + `session/boot.zig`
      (miralib resolution, version stack).
      **Landed** (2026-07-08), first of the four splits (smallest/least

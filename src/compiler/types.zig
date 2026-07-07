@@ -59,7 +59,7 @@ const size = heap_mod.size;
 const same = trans_mod.same;
 const getDbl = heap_mod.getDbl;
 const lastlink = trans_mod.lastlink;
-const trans_mod = @import("trans.zig");
+const trans_mod = @import("../semantics/lower.zig");
 const lex_mod = @import("../parser/lex.zig");
 const isconstrname = lex_mod.isconstrname;
 
@@ -2727,7 +2727,7 @@ pub fn checktypes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
     comp.lastloc = 0;
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.validate();
-        @import("trans.zig").validate(heap);
+        @import("../semantics/lower.zig").validate(heap);
         rs.validate();
     }
 }

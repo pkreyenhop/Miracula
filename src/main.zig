@@ -35,7 +35,7 @@ pub fn main(ctx: std.process.Init) !void {
     if (@import("version_options").is_strict or @import("builtin").mode == .Debug) {
         const heap = @import("runtime/heap.zig");
         heap.heap().validate();
-        @import("compiler/trans.zig").validate(heap.heap());
+        @import("semantics/lower.zig").validate(heap.heap());
         rt.rs().validate();
     }
     const check = rt.gpa.deinit();
@@ -68,7 +68,8 @@ comptime {
     _ = @import("syntax/directives.zig");
     _ = @import("semantics/symbols.zig");
     _ = @import("semantics/modules.zig");
-    _ = @import("compiler/trans.zig");
+    _ = @import("semantics/lower.zig");
+    _ = @import("semantics/match.zig");
     _ = @import("compiler/types.zig");
     _ = @import("compiler/setup.zig");
     _ = @import("compiler/module_loader.zig");

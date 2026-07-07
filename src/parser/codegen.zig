@@ -13,7 +13,8 @@ const rt = @import("../runtime/runtime_state.zig");
 const lex_state = @import("lex_state.zig");
 const ls = lex_state.ls;
 // Cross-module functions via direct @import (R7.3 — eliminate extern-fn linker decls).
-const trans = @import("../compiler/trans.zig");
+const trans = @import("../semantics/lower.zig");
+const match = @import("../semantics/match.zig");
 const types_mod = @import("../compiler/types.zig");
 const big = @import("../graph/bignum.zig");
 const lex = @import("lex.zig");
@@ -80,7 +81,7 @@ inline fn mktcons(x: Word, y: Word) Word {
 // C function externs
 // ---------------------------------------------------------------------------
 
-const genlhs = trans.genlhs;
+const genlhs = match.genlhs;
 const irrefutable = trans.irrefutable;
 const compzf = trans.compzf;
 const block = trans.block;

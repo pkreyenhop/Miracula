@@ -1,0 +1,26 @@
+# layer_check.py allowlist -- grandfathered layering violations.
+# Format: src/a.zig -> src/b.zig (one per line). Must shrink to
+# empty by the end of Phase 4 (docs/ZIG_NATIVE_PLAN.md).
+
+src/eval/combinators/combinators.zig -> src/os.zig
+src/eval/combinators/io.zig -> src/os.zig
+src/eval/combinators/lex.zig -> src/os.zig
+src/eval/combinators/ready.zig -> src/os.zig
+src/eval/reduce.zig -> src/os.zig
+src/eval/reduce_core.zig -> src/os.zig
+src/eval/reduce_rt.zig -> src/os.zig
+src/eval/reduce_rt.zig -> src/session/interp.zig
+src/eval/reduce_rt.zig -> src/session/repl.zig
+src/eval/reduce_test.zig -> src/semantics/lower.zig
+src/eval/reduce_test.zig -> src/session/interp.zig
+src/eval/stream.zig -> src/session/interp.zig
+src/graph/bignum.zig -> src/eval/reduce_rt.zig
+src/graph/bignum.zig -> src/session/interp.zig
+src/graph/strtab.zig -> src/session/interp.zig
+src/graph/word.zig -> src/eval/stream.zig
+src/os.zig -> src/eval/reduce_rt.zig
+src/os.zig -> src/graph/word.zig
+src/os.zig -> src/semantics/lower.zig
+src/os.zig -> src/session/repl.zig
+src/semantics/lower.zig -> src/os.zig
+src/semantics/symbols.zig -> src/session/interp.zig
