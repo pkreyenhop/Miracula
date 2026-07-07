@@ -135,7 +135,6 @@ const isnat = big.isNat;
 const isconstrname = lex.isconstrname;
 const makePn = lex.makePn;
 const mkgvar = lex.mkgvar;
-const strcmp = word.strcmp;
 const syntax = setup.syntax;
 const acterror = setup.acterror;
 
@@ -883,10 +882,10 @@ pub fn getspecloc(heap: *Heap, x: Word) Word {
 
 /// Translate a type identifier `x`.
 pub fn transtypeid(heap: *Heap, x: Word) Word {
-    const n = getId(heap, x);
-    if (strcmp(n, "bool") == 0) return bool_t;
-    if (strcmp(n, "num") == 0) return num_t;
-    if (strcmp(n, "char") == 0) return char_t;
+    const n_span = std.mem.span(getId(heap, x));
+    if (std.mem.eql(u8, n_span, "bool")) return bool_t;
+    if (std.mem.eql(u8, n_span, "num")) return num_t;
+    if (std.mem.eql(u8, n_span, "char")) return char_t;
     return x;
 }
 

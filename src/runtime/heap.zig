@@ -57,7 +57,6 @@ const ATOMLIMIT = word.ATOMLIMIT;
 const NIL = word.NIL;
 const NILS = word.NILS;
 
-const strcmp = word.strcmp;
 const fpeError = repl.fpeError;
 const fpdatum = if (@sizeOf(Word) == 4)
     extern union {
@@ -329,19 +328,19 @@ pub const Heap = struct {
         const cell2 = self.tl.?[idx1];
         const idx2: usize = @intCast(cell2);
         self.free_head = self.tl.?[idx2];
-        
+
         heap().claims += 2;
         self.live.set(idx1 - ATOMLIMIT);
         self.live.set(idx2 - ATOMLIMIT);
-        
+
         self.tag.?[idx1] = t1;
         self.hd.?[idx1] = x1;
         self.tl.?[idx1] = y1;
-        
+
         self.tag.?[idx2] = t2;
         self.hd.?[idx2] = x2;
         self.tl.?[idx2] = y2;
-        
+
         c1.* = cell1;
         c2.* = cell2;
     }
@@ -426,7 +425,10 @@ pub const Heap = struct {
                     // Mixed block. Loop from highest to lowest index to preserve order.
                     var bit_idx: i32 = bit_size - 1;
                     var cell_idx = (mask_idx * bit_size) + ATOMLIMIT + (bit_size - 1);
-                    while (bit_idx >= 0) : ({ bit_idx -= 1; cell_idx -= 1; }) {
+                    while (bit_idx >= 0) : ({
+                        bit_idx -= 1;
+                        cell_idx -= 1;
+                    }) {
                         const is_live = (mask & (@as(MaskInt, 1) << @as(u6, @intCast(bit_idx)))) != 0;
                         if (!is_live) {
                             self.tl.?[@intCast(cell_idx)] = self.free_head;
@@ -925,7 +927,7 @@ pub fn hdsort(input: Word) Word {
     a = hdsort(a);
     b = hdsort(b);
     while (a != nil() and b != nil()) {
-        if (strcmp(getId(h(h(a))), getId(h(h(b)))) < 0) {
+        if (std.mem.order(u8, std.mem.span(getId(h(h(a)))), std.mem.span(getId(h(h(b))))) == .lt) {
             x = cons(h(a), x);
             a = t(a);
         } else {
@@ -2534,7 +2536,7 @@ pub fn alfasort(x_val: Word) Word {
     b = alfasort(b);
     x = NIL;
     while (a != NIL and b != NIL) {
-        if (strcmp(getId(h(a)), getId(h(b))) < 0) {
+        if (std.mem.order(u8, std.mem.span(getId(h(a))), std.mem.span(getId(h(b)))) == .lt) {
             x = cons(h(a), x);
             a = t(a);
         } else {
@@ -2786,4 +2788,3 @@ test "dumpOb / loadDefs: roundtrip a cons of two ints through the .x format" {
     try std.testing.expectEqual(word.NodeTag.INT, heap().getTag(loaded_t));
     try std.testing.expectEqual(@as(Word, 100), getsmallint(loaded_t));
 }
-
