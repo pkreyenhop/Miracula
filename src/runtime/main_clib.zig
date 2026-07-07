@@ -785,25 +785,6 @@ pub fn fscanf(file: ?*Stream, format: [*:0]const u8, args: anytype) c_int {
     return parsed_count;
 }
 
-// Memory implementations
-pub fn malloc(size: usize) ?*anyopaque {
-    if (size == 0) return null;
-    const total_size = size + @sizeOf(usize);
-    const bytes = std.heap.page_allocator.alloc(u8, total_size) catch return null;
-    const len_ptr = @as(*usize, @ptrCast(@alignCast(&bytes[0])));
-    len_ptr.* = total_size;
-    return @ptrCast(&bytes[@sizeOf(usize)]);
-}
-
-pub fn free(ptr: ?*anyopaque) void {
-    if (ptr) |p| {
-        const u8_ptr = @as([*]u8, @ptrCast(p)) - @sizeOf(usize);
-        const len_ptr = @as(*const usize, @ptrCast(@alignCast(u8_ptr)));
-        const total_size = len_ptr.*;
-        std.heap.page_allocator.free(u8_ptr[0..total_size]);
-    }
-}
-
 // POSIX wrappers
 pub fn fork() c_int {
     return @intCast(std.c.fork());
@@ -1100,34 +1081,8 @@ pub fn fputs(s: [*:0]const u8, file: ?*Stream) c_int {
     return 0;
 }
 
-pub const fmemopen = word_mod.fmemopen;
-
 pub const fread = word_mod.fread;
 pub const fwrite = word_mod.fwrite;
-
-pub fn calloc(nmemb: usize, size: usize) ?*anyopaque {
-    const total = nmemb * size;
-    const ptr = malloc(total) orelse return null;
-    @memset(@as([*]u8, @ptrCast(ptr))[0..total], 0);
-    return ptr;
-}
-
-pub fn realloc(ptr: ?*anyopaque, size: usize) ?*anyopaque {
-    if (ptr == null) return malloc(size);
-    if (size == 0) {
-        free(ptr);
-        return null;
-    }
-    const u8_ptr = @as([*]u8, @ptrCast(ptr.?)) - @sizeOf(usize);
-    const len_ptr = @as(*const usize, @ptrCast(@alignCast(u8_ptr)));
-    const old_total_size = len_ptr.*;
-    const old_data_size = old_total_size - @sizeOf(usize);
-    const new_ptr = malloc(size) orelse return null;
-    const copy_size = @min(old_data_size, size);
-    @memcpy(@as([*]u8, @ptrCast(new_ptr))[0..copy_size], @as([*]const u8, @ptrCast(ptr.?))[0..copy_size]);
-    free(ptr);
-    return new_ptr;
-}
 
 pub fn pipe(fds: *[2]c_int) c_int {
     return syscallResult(std.posix.system.pipe(fds));
