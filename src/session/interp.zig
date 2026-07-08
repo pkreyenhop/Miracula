@@ -31,6 +31,7 @@ const StringTable = @import("../graph/strtab.zig").StringTable;
 const LineEditState = @import("editor.zig").LineEditState;
 const SymbolTable = @import("../semantics/symbols.zig").SymbolTable;
 const MakeState = @import("make_state.zig").MakeState;
+const BnfState = @import("bnf_state.zig").BnfState;
 
 /// All interpreter state, owned in one place — including heap's GC/dictionary
 /// scratch (folded into `heap` by Phase 2b), the interned `strtab` table, and
@@ -57,6 +58,9 @@ pub const Interp = struct {
     /// 4, docs/ZIG_NATIVE_PLAN.md): the first field carved out of the
     /// monolithic `RuntimeState`.
     make: MakeState = .{},
+    /// The `%bnf` grammar-extension bookkeeping (Phase 4 step 4): mostly
+    /// dead GC roots left over from Phase 1's lexer rewrite.
+    bnf: BnfState = .{},
 };
 
 /// Backing storage for the default interpreter instance. Not read directly —

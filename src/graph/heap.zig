@@ -19,6 +19,7 @@ const ls = lex_state.ls;
 
 const compiler_state = @import("../compiler/compiler_state.zig");
 const make_state = @import("../session/make_state.zig");
+const bnf_state = @import("../session/bnf_state.zig");
 const lex = @import("../parser/lex.zig");
 const symbols = @import("../semantics/symbols.zig");
 const big = @import("bignum.zig");
@@ -538,11 +539,11 @@ pub const Heap = struct {
             self.mark(rt.rs().primenv);
             self.mark(ls().fileq);
             self.mark(ls().idsused);
-            self.mark(rt.rs().eprodnts);
-            self.mark(rt.rs().nonterminals);
-            self.mark(rt.rs().ntmap);
-            self.mark(rt.rs().ihlist);
-            self.mark(rt.rs().ntspecmap);
+            self.mark(bnf_state.bnf().eprodnts);
+            self.mark(bnf_state.bnf().nonterminals);
+            self.mark(bnf_state.bnf().ntmap);
+            self.mark(bnf_state.bnf().ihlist);
+            self.mark(bnf_state.bnf().ntspecmap);
             self.mark(ls().gvars);
             self.mark(ls().lexvar);
             self.mark(ls().common_stdin);
@@ -559,8 +560,8 @@ pub const Heap = struct {
             self.mark(rt.rs().freeids);
             self.mark(rt.rs().exports);
             self.mark(cs().internals);
-            self.mark(rt.rs().lexstates);
-            self.mark(rt.rs().lexdefs);
+            self.mark(bnf_state.bnf().lexstates);
+            self.mark(bnf_state.bnf().lexdefs);
             // The identifier dictionary (semantics/symbols.zig's SymbolTable,
             // replacing LexState.namebucket's hash-bucket array -- see
             // ZIG_NATIVE_PLAN.md Phase 1 step 6): every ID node it references

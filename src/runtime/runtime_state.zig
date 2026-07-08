@@ -144,15 +144,6 @@ pub const RuntimeState = struct {
     suppressids: Word = NIL,
     col_fn: Word = 0,
 
-    // BNF / lex extension state
-    eprodnts: Word = NIL,
-    nonterminals: Word = NIL,
-    ntmap: Word = NIL,
-    ihlist: Word = 0,
-    ntspecmap: Word = NIL,
-    lexstates: Word = NIL,
-    lexdefs: Word = NIL,
-
     // ── Driver / REPL display scratch (commands.zig, repl.zig) ─────────────
     /// Cached path to the user's (and library's) `.mirahdr` file, computed
     /// once on first `/edit` use.
@@ -191,7 +182,7 @@ pub const RuntimeState = struct {
         const heap = &@import("../session/interp.zig").current_interp.heap;
         const top_limit = heap.TOP();
 
-        inline for (.{ self.Void, self.main_id, self.message, self.standardout, self.diagonalise, self.concat, self.indent_fn, self.outdent_fn, self.listdiff_fn, self.shownum1, self.showbool, self.showchar, self.showlist, self.showstring, self.showparen, self.showpair, self.showvoid, self.showfunction, self.showabstract, self.showwhat, self.lastid, self.rv_expr, self.fnts, self.primenv, self.oldfiles, self.includees, self.freeids, self.exports, self.embargoes, self.lastname, self.suppressids, self.col_fn, self.eprodnts, self.nonterminals, self.ntmap, self.ntspecmap, self.lexstates, self.lexdefs, self.detrop, self.rfl, self.ld_stuff }) |field| {
+        inline for (.{ self.Void, self.main_id, self.message, self.standardout, self.diagonalise, self.concat, self.indent_fn, self.outdent_fn, self.listdiff_fn, self.shownum1, self.showbool, self.showchar, self.showlist, self.showstring, self.showparen, self.showpair, self.showvoid, self.showfunction, self.showabstract, self.showwhat, self.lastid, self.rv_expr, self.fnts, self.primenv, self.oldfiles, self.includees, self.freeids, self.exports, self.embargoes, self.lastname, self.suppressids, self.col_fn, self.detrop, self.rfl, self.ld_stuff }) |field| {
             if (field >= @import("../graph/word.zig").ATOMLIMIT) {
                 if (field >= top_limit) {
                     std.debug.panic("runtime.validate: runtime state field has out-of-bounds heap reference {d} (TOP is {d})", .{ field, top_limit });
