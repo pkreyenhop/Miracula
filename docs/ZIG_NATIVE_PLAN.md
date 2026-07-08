@@ -1858,14 +1858,103 @@ subsystems and passed explicitly; the ambient singleton deleted.
      generally to the remaining god-file splits: reconstruct from the actual
      committed text, not from memory of having read it earlier, and diff
      each moved function against the original mechanically.
-4. **Dissolve the state bags** into owners (each move = one commit):
-   - `RuntimeState` → `Config` (heap limit, paths, UTF-8 flags, editor),
-     `ScriptStore` (`files`, `oldfiles`, `rfl`, `includees`, `exports`,
-     `embargoes`, `freeids`, `current_script`, `ld_stuff`…), `MakeState`
-     (`making`/`mkexports`/`mksources`/`make_status`), `ShowFns` (the 20 `show*`
-     atom fields → `std.EnumArray(ShowFn, Value)`), `ReplSession` (`lastexp`,
-     `lastid`, `echoing`, `listing`, prompt, timing), `BnfState` (already reduced
-     by Phase 1).
+4. **Dissolve the state bags** into owners (each move = one commit).
+   **Landed** (2026-07-08), all six slices, each verified independently
+   (clean-cache `zig build test`, `layer_check.py`, `scorecard.sh`) and
+   pushed as its own commit:
+   - `MakeState` (`session/make_state.zig`): `making`/`mkexports`/
+     `mksources`/`make_status`. Smallest slice (~30 sites); established
+     the pattern every later slice followed (a value field on `Interp`
+     alongside `rs`/`heap`/`lex`/…, a `pub inline fn X() *T` singleton
+     accessor mirroring `rs()`, cleared automatically by `interp.reset()`'s
+     `.* = .{}` since it's just one more field on that struct).
+   - `BnfState` (`session/bnf_state.zig`): `eprodnts`/`nonterminals`/
+     `ntmap`/`ihlist`/`ntspecmap`/`lexstates`/`lexdefs`. Confirmed
+     genuinely dead outside `heap.zig`'s GC root-marking loop — "already
+     reduced by Phase 1" turned out to mean "reduced to nothing but
+     always-NIL roots a future `%bnf` implementation would repopulate".
+   - `ShowFns` (`semantics/show_fns.zig`, **not** `session/`):
+     `shownum1`/`showbool`/`showchar`/`showlist`/`showstring`/
+     `showparen`/`showpair`/`showvoid`/`showfunction`/`showabstract`/
+     `showwhat` — 11 fields, not the "20" this line originally said (the
+     rest were apparently retired earlier). Its only real reader,
+     `semantics/lower.zig`, is semantics-layer, and semantics may not
+     import session (`layer_check.py` caught this on the first attempt
+     at `session/show_fns.zig` — a real violation, unlike the graph-side
+     slices' GC-reach edges, which are grandfathered precedent). Kept
+     plain named `Word` fields rather than `std.EnumArray(ShowFn, Value)`
+     — `Value` doesn't exist before Phase 5, and retyping the access
+     pattern itself is bigger, distinct work from "which struct owns
+     this data".
+   - `ReplSession` (`session/repl_session.zig`): `lastexp`/`lastid`/
+     `echoing`/`listing`/`promptstr`/`last_elapsed_ns`/`last_gc_count`,
+     plus `verbosity` (not in this line's original list, but folded in
+     since every `echoing` site computes it as `verbosity & listing`
+     identically — splitting it out would cut across that expression for
+     no reason). ~90 sites, the first slice to also need repointing the
+     explicit `rs: *RuntimeState` parameter form (`module_loader.zig`/
+     `repl.zig`/`commands.zig`/`dump.zig`, which already took `rs` for
+     other fields) alongside the ambient `rt.rs()` form. Couldn't avoid a
+     real `semantics/lower.zig -> session/repl_session.zig` edge either
+     (`echoing` is REPL-owned state lower.zig merely reads); grandfathered
+     rather than relocating the whole struct, since the cleaner fix (an
+     explicit flag threaded into lower.zig's own context) is step-5
+     territory, not a data move.
+   - `ConfigState` (`session/config_state.zig`, **not** `config.zig` —
+     that name was already taken by the flag-parsing/`.mirarc` logic from
+     the step-3 `startup.zig` split, which populates this struct but
+     isn't it): `PRELUDE`/`STDENV`/`SPACELIMIT`/`DICSPACE`/`editor`/
+     `okprel`/`nostdenv`/`baded`/`miralib`/`s_in`. `UTF8`/`UTF8OUT`
+     deliberately stayed on `RuntimeState` despite being in the same
+     source comment block — they're read as `ctx.rs.UTF8` inside
+     `eval/reduce_rt.zig`'s `ReductionCtx` (the reduction hot path's own
+     receiver-carrying context), so moving them means changing
+     `ReductionCtx`'s signature, which is step 5's job. Largest slice:
+     ~140 sites across 14 files.
+   - `ScriptStore` (`session/script_store.zig`): `oldfiles`/`includees`/
+     `freeids`/`exports`/`embargoes`/`lastname`/`suppressids`/`col_fn`/
+     `sorted`/`detrop`/`rfl`/`bereaved`/`ld_stuff`/`current_script`/
+     `fnts`. `files` itself stays on `Heap` — an earlier phase (shared-
+     state Phase 2b) already folded it there, so every accessor already
+     reaches it as `heap().files`, never `rt.rs().files`; this line's
+     "`files`, `oldfiles`, …" phrasing predates that. `RuntimeState.
+     validate()` (the hand-maintained heap-root-safety check the Root
+     registry below is meant to eventually replace) now also walks
+     ScriptStore's fields internally, so every existing
+     `rt.rs().validate()` call site catches the moved fields too without
+     a second call needed at each site.
+
+   **Left on `RuntimeState` after all six slices** (~35 fields, no clean
+   single-bucket fit): identity atoms set once by `miraSetup` and never
+   touched again (`Void`/`main_id`/`message`/…), `UTF8`/`UTF8OUT` (tied to
+   `ReductionCtx`, see above), GC/evaluator counters (`atobject`/`atgc`/…),
+   working buffers (`linebuf`/`ebuf`/`home_rc`/…), and startup/REPL-
+   display scratch (`vstack`/`mstack`/`mirahdr`/…). The phase's gate
+   (singleton-accessor count, `current_interp` references, layer
+   allowlist) is checked at the end of the whole phase, after step 5's
+   receiver threading — not against `RuntimeState` itself being empty —
+   so this residual state is left alone rather than force-fit into a
+   seventh bag.
+
+   Each slice caught the same shape of build error once its fields
+   moved out from under an explicit `rs: *RuntimeState` parameter that
+   also carried other fields: the parameter goes fully unused in a few
+   functions (`compiler/dump.zig`'s `unfixexports`/`fixexports`/
+   `readoption`, `compiler/module_loader.zig`'s several `resolveExports`-
+   family functions, `graph/dump.zig`'s `dumpScript`/`unload`/
+   `srcUpdate`, `session/repl.zig`'s `edWarn`/`badEditor`/`parseLine`,
+   `graph/dump.zig`'s `loadDefs`) — each fixed with an explicit `_ = rs;`
+   rather than removing the parameter, since dropping it would be a
+   signature change (step-5 territory) forced by an incidental
+   consequence of a pure data move, not something this step should do.
+
+   One pre-existing bug investigated and ruled out as unrelated: `double
+   21` immediately followed by `/heap` in the REPL loses the `"42"`
+   output. Confirmed via `git stash` + rebuild that this reproduces
+   identically before any of this step's commits landed — the same class
+   of bug as the already-flagged output-loss-after-a-type-error issue,
+   not a regression introduced here. Flagged separately (task_7b741d68)
+   rather than fixed inline.
    - `CoreState`: `SYNERR`/`errs`/`errline`/`errcol` are gone (Phase 2);
      `loading`/`compiling` → a `Mode` enum on the compile context; `commandmode` →
      a parse-mode *parameter*; `nill` → a `graph` constant.
