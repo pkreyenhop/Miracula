@@ -336,7 +336,7 @@ pub inline fn apTwo(heap: *Heap, x1: Word, y1: Word, x2: Word, y2: Word, c1: *Wo
 /// else to `FAIL` — the pattern-match equality test.
 pub inline fn rewriteToMatchResult(heap: *Heap, expr: *Word, left: Word, right: Word, success_value: Word) ReduceError!void {
     hdSet(heap, expr.*, word.I);
-    const val = if (try reduce_mod.compare(left, right) == 0) success_value else word.FAIL;
+    const val = if (try reduce_mod.compare(heap, left, right) == 0) success_value else word.FAIL;
     tlSet(heap, expr.*, val);
     expr.* = val;
 }
@@ -450,7 +450,7 @@ pub inline fn coerceDbl(heap: *Heap, x: Word) ReduceError!Word {
 /// Rewrite `*expr` to `True`/`False` for `left == right` (structural compare).
 pub inline fn rewriteToCompareEq(heap: *Heap, expr: *Word, left: Word, right: Word) ReduceError!void {
     hdSet(heap, expr.*, word.I);
-    const val = if (try reduce_mod.compare(left, right) == 0) word.True else word.False;
+    const val = if (try reduce_mod.compare(heap, left, right) == 0) word.True else word.False;
     tlSet(heap, expr.*, val);
     expr.* = val;
 }
@@ -458,7 +458,7 @@ pub inline fn rewriteToCompareEq(heap: *Heap, expr: *Word, left: Word, right: Wo
 /// Rewrite `*expr` to `True`/`False` for `left != right`.
 pub inline fn rewriteToCompareNeq(heap: *Heap, expr: *Word, left: Word, right: Word) ReduceError!void {
     hdSet(heap, expr.*, word.I);
-    const val = if (try reduce_mod.compare(left, right) != 0) word.True else word.False;
+    const val = if (try reduce_mod.compare(heap, left, right) != 0) word.True else word.False;
     tlSet(heap, expr.*, val);
     expr.* = val;
 }
@@ -466,7 +466,7 @@ pub inline fn rewriteToCompareNeq(heap: *Heap, expr: *Word, left: Word, right: W
 /// Rewrite `*expr` to `True`/`False` for `left > right`.
 pub inline fn rewriteToCompareGt(heap: *Heap, expr: *Word, left: Word, right: Word) ReduceError!void {
     hdSet(heap, expr.*, word.I);
-    const val = if (try reduce_mod.compare(left, right) > 0) word.True else word.False;
+    const val = if (try reduce_mod.compare(heap, left, right) > 0) word.True else word.False;
     tlSet(heap, expr.*, val);
     expr.* = val;
 }
@@ -474,7 +474,7 @@ pub inline fn rewriteToCompareGt(heap: *Heap, expr: *Word, left: Word, right: Wo
 /// Rewrite `*expr` to `True`/`False` for `left >= right`.
 pub inline fn rewriteToCompareGe(heap: *Heap, expr: *Word, left: Word, right: Word) ReduceError!void {
     hdSet(heap, expr.*, word.I);
-    const val = if (try reduce_mod.compare(left, right) >= 0) word.True else word.False;
+    const val = if (try reduce_mod.compare(heap, left, right) >= 0) word.True else word.False;
     tlSet(heap, expr.*, val);
     expr.* = val;
 }

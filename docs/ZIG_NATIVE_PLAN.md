@@ -2027,9 +2027,46 @@ subsystems and passed explicitly; the ambient singleton deleted.
    matching `loadDefs`, its inverse) before it can be receiver-threaded like
    the rest of the file.
 
-   Remaining subsystems (`eval`'s `ReductionCtx`, `semantics`'s `Compile`
-   context, `session`) and the final singleton-deletion step are not yet
-   started.
+   **`eval` subsystem's leaf helpers, in progress.** `ReductionCtx` (`eval/
+   reduce_core.zig`) already carried an explicit `heap: *Heap` field from an
+   earlier, pre-Phase-4 pass (SHARED_STATE Phase 6, 2026-07-01) — its own
+   accessor/rewrite primitives (`hdGet`/`tlGet`/`getTag`/`cons`/`ap`/…) were
+   already receiver-threaded, so the reducer's own dispatch loop needed no
+   further work. What remained was `eval/reduce_rt.zig`'s *own*, separate set
+   of small private ambient helpers (`h`/`t`/`hp`/`tp`/`getTag`/`setTag`/
+   `cons`/`ap`/`datapair`/`digit0`/`stosmallint`/`lh` — duplicates of
+   `reduce_core.zig`'s already-threaded equivalents, but calling
+   `heap.heap()` internally instead) and the ~20 public functions built on
+   top of them (`wrapPtr`/`unwrapPtr`, `rewriteToValue`/`rewriteToNil`/
+   `setcell`/`rewriteToCons`, `badcaseError`/`confError`/`parseCloseError`,
+   `gResidue`/`lexstate`, `outHere`, `apfile`/`closefile`/`outf`/`print`/
+   `output`, `numplus`/`memclass`/`lexfail`/`compare`/`force`/`head`) —
+   explicitly asked for despite the cascade (a fanned-out choice over
+   stopping at eval's "good enough" pre-existing state). All ~30 now take an
+   explicit `heap: *Heap` (or route through their existing `ctx: *ReductionCtx`
+   receiver where one was already in scope), with every external call site
+   across `combinators.zig`/`ready.zig`/`io.zig`/`lex.zig`/`session/repl.zig`/
+   `parser/codegen.zig` fixed to pass `ctx.heap`/`heap` explicitly.
+   `compare`/`force`/`head` were the ones flagged by the earlier recursion-risk
+   audit (task_a08ed1a5) — their added parameter was checked against the same
+   dumpOb-class regression before converting: their recursion depth is bounded
+   by *value nesting* (a data structure's own type-bounded shape), not *list
+   length* (unbounded user data), so adding one pointer-sized parameter here
+   doesn't reproduce dumpOb's regression — confirmed empirically with a
+   depth-5000 user-defined recursive-tree walk (runs on the heap-backed
+   `Spine`, not native recursion, so unaffected either way) and a depth-3000
+   `force`/`compare` exercise via `-make`, both clean. Ambient singleton-
+   accessor call sites: 702 → 695 (`scorecard.sh`). `fsign`/`sign`/`getStdin`/
+   `getStderr`/`getStdout`/`stdname` untouched — none touch heap-cell data.
+
+   Remaining subsystems (`semantics`'s `Compile` context, `session`) and the
+   final singleton-deletion step are not yet started; ~85 ambient
+   `heap.heap()` calls remain in `eval/` (down from ~95) — mostly
+   `spine.zig`'s/`combinators.zig`'s/`ready.zig`'s own not-yet-converted
+   ambient call sites (a separate, not-yet-attempted slice from
+   `reduce_rt.zig`'s), plus a handful of genuinely-no-receiver-anywhere
+   top-level functions (`outstats`, `getStdin`/`getStderr`/`getStdout`) left
+   ambient since nothing in their call chain carries `heap` to thread.
 
 **Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
 interrupt flag); DAG check green with empty allowlist; files > 1,000 lines = 0;

@@ -332,7 +332,7 @@ pub fn obey(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
             abi.make(heap, .AP, abi.mkshow(heap, 0, 0, typ), x);
         break :blk abi.make(heap, .CONS, abi.make(heap, .AP, rs.standardout, inner), NIL);
     };
-    abi.output(reduce.ev(), rs, out_val) catch {};
+    abi.output(heap, reduce.ev(), rs, out_val) catch {};
 }
 
 /// Evaluate a typed REPL expression: compile it, then reduce and print
@@ -374,7 +374,7 @@ pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_st
     var snap = heap.checkpoint();
     core.compiling = 0;
     resetgcstats();
-    if (abi.output(reduce.ev(), rs, out_val)) {
+    if (abi.output(heap, reduce.ev(), rs, out_val)) {
         _ = word.putchar('\n');
     } else |err| switch (err) {
         error.Interrupted => {
@@ -489,7 +489,7 @@ pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState,
             word.print("please re-enter data:\n", .{});
         } else {
             if (fil != 0) {
-                word.printErr("readvals: bad data in file \"{s}\"\n", .{(abi.getstring(fil, @constCast("")) catch null) orelse "?"});
+                word.printErr("readvals: bad data in file \"{s}\"\n", .{(abi.getstring(heap, fil, @constCast("")) catch null) orelse "?"});
             } else {
                 word.printErr("bad data in $+ input\n", .{});
             }

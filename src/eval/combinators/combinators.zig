@@ -516,7 +516,7 @@ pub fn handleUf(ctx: *ReductionCtx) void {
         return;
     }
     const lastarg = reduce.tlGet(ctx.heap, ctx.e);
-    if (reduce.isConstructor(ctx.heap, reduce.head(lastarg))) {
+    if (reduce.isConstructor(ctx.heap, reduce.head(ctx.heap, lastarg))) {
         reduce.hdSet(ctx.heap, ctx.e, reduce.ap(ctx.heap, arg1, reduce.hdGet(ctx.heap, lastarg)));
         reduce.tlSet(ctx.heap, ctx.e, reduce.tlGet(ctx.heap, lastarg));
     } else {
@@ -621,7 +621,7 @@ pub fn handleUg(ctx: *ReductionCtx) reduce.ReduceError!void {
     }
     var lastarg = reduce.tlGet(ctx.heap, ctx.e);
     lastarg = try reduce.reduce(lastarg);
-    if (reduce.hdGet(ctx.heap, arg1) != reduce.hdGet(ctx.heap, reduce.head(lastarg))) {
+    if (reduce.hdGet(ctx.heap, arg1) != reduce.hdGet(ctx.heap, reduce.head(ctx.heap, lastarg))) {
         reduce.rewriteToFail(ctx.heap, &ctx.e);
         ctx.action = word.ACT_NEXTREDEX;
         return;
@@ -694,11 +694,11 @@ pub fn handleGENSEQ(ctx: *ReductionCtx) reduce.ReduceError!void {
     }
     const lastarg = reduce.tlGet(ctx.heap, ctx.e);
     if (reduce.tlGet(ctx.heap, arg1) != word.NIL and
-        (if (reduce.isAp(ctx.heap, arg1)) try reduce_rt.compare(lastarg, reduce.tlGet(ctx.heap, arg1)) else try reduce_rt.compare(reduce.tlGet(ctx.heap, arg1), lastarg)) > 0)
+        (if (reduce.isAp(ctx.heap, arg1)) try reduce_rt.compare(ctx.heap, lastarg, reduce.tlGet(ctx.heap, arg1)) else try reduce_rt.compare(ctx.heap, reduce.tlGet(ctx.heap, arg1), lastarg)) > 0)
     {
         reduce.rewriteToNil(ctx.heap, &ctx.e);
     } else {
-        const hold = reduce.ap(ctx.heap, reduce.hdGet(ctx.heap, ctx.e), try reduce_rt.numplus(lastarg, reduce.hdGet(ctx.heap, arg1)));
+        const hold = reduce.ap(ctx.heap, reduce.hdGet(ctx.heap, ctx.e), try reduce_rt.numplus(ctx.heap, lastarg, reduce.hdGet(ctx.heap, arg1)));
         reduce.rewriteToCons(ctx.heap, ctx.e, lastarg, hold);
     }
     ctx.action = word.ACT_DONE;
@@ -1051,7 +1051,7 @@ pub fn handleBADCASE(ctx: *ReductionCtx) reduce.ReduceError!void {
         return;
     }
     const lastarg = reduce.tlGet(ctx.heap, ctx.e);
-    try reduce.badcaseError(lastarg);
+    try reduce.badcaseError(ctx.heap, lastarg);
 }
 
 /// Yield the program's command-line arguments as a Miranda list (`convArgs`).
@@ -1071,7 +1071,7 @@ pub fn handleCONFERROR(ctx: *ReductionCtx) reduce.ReduceError!void {
         return;
     }
     const lastarg = reduce.tlGet(ctx.heap, ctx.e);
-    reduce.confError(lastarg);
+    reduce.confError(ctx.heap, lastarg);
 }
 
 /// `error s` — print the message and abort the program (guarding against repeated errors).
@@ -1087,7 +1087,7 @@ pub fn handleERROR(ctx: *ReductionCtx) reduce.ReduceError!void {
         ctx.eval.errtrap = 1;
         word.printErr("\nprogram error: ", .{});
         ctx.eval.s_out = reduce.getStderr();
-        try reduce_rt.print(ctx.eval, ctx.rs, lastarg);
+        try reduce_rt.print(ctx.heap, ctx.eval, ctx.rs, lastarg);
         _ = word.putc('\n', reduce.getStderr().?);
     }
     reduce_rt.outstats();

@@ -640,7 +640,7 @@ fn codegenLocalDef(alloc: Allocator, def: ast.Def) Word {
     rhs = applyWhereDefs(alloc, rhs, def.where_defs);
 
     // Lambda-desugar: f x y = body → lhs becomes f, rhs gets lambda wrappers
-    const f = head(lhs);
+    const f = head(heap.heap(), lhs);
     if (tg(f) == .ID and !isConstructorWord(f)) {
         while (tg(lhs) == .AP) {
             rhs = mklambda(t(lhs), rhs);
@@ -702,7 +702,7 @@ fn codegenDef(alloc: Allocator, def: ast.Def) void {
     rhs = applyWhereDefs(alloc, rhs, def.where_defs);
 
     // Lambda-desugar
-    const f = head(lhs);
+    const f = head(heap.heap(), lhs);
     if (tg(f) == .ID and !isConstructorWord(f)) {
         while (tg(lhs) == .AP) {
             rhs = mklambda(t(lhs), rhs);

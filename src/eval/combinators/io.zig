@@ -48,17 +48,17 @@ pub fn handle_STARTREADVALS(ctx: *ReductionCtx) reduce.ReduceError!void {
         }
         ctx.eval.stdinuse = '+';
         ctx.hold = reduce.cons(ctx.heap, reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e)), 0);
-        reduce.tlSet(ctx.heap, ctx.e, reduce_rt.wrapPtr(@intCast(@intFromPtr(reduce.getStdin().?))));
+        reduce.tlSet(ctx.heap, ctx.e, reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(reduce.getStdin().?))));
     } else {
         ctx.hold = reduce.cons(ctx.heap, reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e)), lastarg_val);
-        const fil = try reduce.getstring(lastarg_val, "readvals");
+        const fil = try reduce.getstring(ctx.heap, lastarg_val, "readvals");
         const f = word.fopen(fil, "r");
         if (f == null) {
             word.printErr("\nreadvals, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
             reduce_rt.outstats();
             os.exit(1);
         }
-        reduce.tlSet(ctx.heap, ctx.e, reduce_rt.wrapPtr(@intCast(@intFromPtr(f.?))));
+        reduce.tlSet(ctx.heap, ctx.e, reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(f.?))));
     }
 
     reduce.hdSet(ctx.heap, ctx.e, reduce.ap(ctx.heap, word.READVALS, ctx.hold));

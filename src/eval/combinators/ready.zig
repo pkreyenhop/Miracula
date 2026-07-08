@@ -217,7 +217,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         },
         word.FORCE => {
             reduce.upLeft(ctx);
-            try reduce.force(lastArg(ctx));
+            try reduce.force(ctx.heap, lastArg(ctx));
             ctx.e = reduce.rewriteToExistingTail(ctx.heap, ctx.e);
             ctx.action = word.ACT_NEXTREDEX;
             return;
@@ -279,7 +279,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         },
         word.FILEMODE => {
             reduce.upLeft(ctx);
-            if (platform.getFileInfo(try reduce.getstring(lastArg(ctx), "filemode"))) |info| {
+            if (platform.getFileInfo(try reduce.getstring(ctx.heap, lastArg(ctx), "filemode"))) |info| {
                 const mode = info.mode;
                 const d = if ((mode & 0o170000) == 0o040000) @as(Word, 'd') else '-';
                 const perm = if (info.uid == platform.geteuid()) (mode & 0o700) >> 6 else if (info.gid == platform.getegid()) (mode & 0o070) >> 3 else mode & 0o007;
@@ -295,7 +295,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         },
         word.FILESTAT => {
             reduce.upLeft(ctx);
-            if (platform.getFileInfo(try reduce.getstring(lastArg(ctx), "filestat"))) |info| {
+            if (platform.getFileInfo(try reduce.getstring(ctx.heap, lastArg(ctx), "filestat"))) |info| {
                 reduce.rewriteToCons(ctx.heap, ctx.e, reduce.cons(ctx.heap, big.fromInt(heap.heap(), @intCast(info.ino)), big.fromInt(heap.heap(), @intCast(info.dev))), big.fromInt(heap.heap(), @intCast(info.mtime)));
             } else {
                 reduce.rewriteToCons(ctx.heap, ctx.e, reduce.cons(ctx.heap, heap.stosmallint(0), heap.stosmallint(-1)), heap.stosmallint(0));
@@ -308,14 +308,14 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.NUMVAL => return handleReadyNUMVAL(ctx),
         word.STARTREAD => {
             reduce.upLeft(ctx);
-            const fil = try reduce.getstring(lastArg(ctx), "read");
+            const fil = try reduce.getstring(ctx.heap, lastArg(ctx), "read");
             const f = word.fopen(fil, "r");
             if (f == null) {
                 word.printErr("\nread, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
                 reduce_rt.outstats();
                 os.exit(1);
             }
-            setLastArg(ctx, reduce_rt.wrapPtr(@intCast(@intFromPtr(f.?))));
+            setLastArg(ctx, reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(f.?))));
             reduce.hdSet(ctx.heap, ctx.e, word.READ);
             reduce.downLeft(ctx);
             io_handlers.handle_READ(ctx);
@@ -323,14 +323,14 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         },
         word.STARTREADBIN => {
             reduce.upLeft(ctx);
-            const fil = try reduce.getstring(lastArg(ctx), "readb");
+            const fil = try reduce.getstring(ctx.heap, lastArg(ctx), "readb");
             const f = word.fopen(fil, "r");
             if (f == null) {
                 word.printErr("\nreadb, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
                 reduce_rt.outstats();
                 os.exit(1);
             }
-            setLastArg(ctx, reduce_rt.wrapPtr(@intCast(@intFromPtr(f.?))));
+            setLastArg(ctx, reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(f.?))));
             reduce.hdSet(ctx.heap, ctx.e, word.READBIN);
             reduce.downLeft(ctx);
             io_handlers.handle_READBIN(ctx);
@@ -344,7 +344,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
                 ctx.action = word.ACT_NEXTREDEX;
                 return;
             }
-            ctx.hold = reduce.head(ctx.args[0]);
+            ctx.hold = reduce.head(ctx.heap, ctx.args[0]);
             if (word.S <= ctx.hold and ctx.hold <= word.ERROR) {
                 ctx.action = word.ACT_DONE;
                 return;
@@ -737,7 +737,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
                 reduce.hdSet(ctx.heap, ctx.args[0], hd_arg1);
                 const hd_lastarg = try reduce.reduce(reduce.hdGet(ctx.heap, lastArg(ctx)));
                 reduce.hdSet(ctx.heap, lastArg(ctx), hd_lastarg);
-                if (try reduce_rt.compare(hd_arg1, hd_lastarg) <= 0) {
+                if (try reduce_rt.compare(ctx.heap, hd_arg1, hd_lastarg) <= 0) {
                     reduce.rewriteToCons(ctx.heap, ctx.e, hd_arg1, reduce.ap2(ctx.heap, word.MERGE, reduce.tlGet(ctx.heap, ctx.args[0]), lastArg(ctx)));
                 } else {
                     reduce.rewriteToCons(ctx.heap, ctx.e, hd_lastarg, reduce.ap2(ctx.heap, word.MERGE, reduce.tlGet(ctx.heap, lastArg(ctx)), ctx.args[0]));
@@ -776,7 +776,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
 /// (or `nil` if unset).
 fn handleReadyGETENV(ctx: *ReductionCtx) reduce.ReduceError!void {
     reduce.upLeft(ctx);
-    const a = try reduce.getstring(lastArg(ctx), "getenv");
+    const a = try reduce.getstring(ctx.heap, lastArg(ctx), "getenv");
     const p = os.getenv(a);
     ctx.hold = word.NIL;
     if (p) |ptr| {
@@ -837,7 +837,7 @@ fn handleReadyEXEC(ctx: *ReductionCtx) reduce.ReduceError!void {
     var pid: c_int = -1;
     var fd: [2]c_int = undefined;
     var fd_a: [2]c_int = undefined;
-    const cp = try reduce.getstring(lastArg(ctx), "system");
+    const cp = try reduce.getstring(ctx.heap, lastArg(ctx), "system");
     var cond = false;
     if (os.pipe(&fd) == -1 or os.pipe(&fd_a) == -1) {
         cond = true;
@@ -857,7 +857,7 @@ fn handleReadyEXEC(ctx: *ReductionCtx) reduce.ReduceError!void {
         if (pid == -1 or fp == null or fp_a == null) {
             reduce.rewriteToCons(ctx.heap, ctx.e, word.NIL, reduce.cons(ctx.heap, reduce_rt.piperrmess(pid), big.fromInt(heap.heap(), -1)));
         } else {
-            reduce.rewriteToCons(ctx.heap, ctx.e, reduce.ap(ctx.heap, word.READ, reduce_rt.wrapPtr(@intCast(@intFromPtr(fp.?)))), reduce.cons(ctx.heap, reduce.ap(ctx.heap, word.READ, reduce_rt.wrapPtr(@intCast(@intFromPtr(fp_a.?)))), reduce.ap(ctx.heap, word.WAIT, pid)));
+            reduce.rewriteToCons(ctx.heap, ctx.e, reduce.ap(ctx.heap, word.READ, reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(fp.?)))), reduce.cons(ctx.heap, reduce.ap(ctx.heap, word.READ, reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(fp_a.?)))), reduce.ap(ctx.heap, word.WAIT, pid)));
         }
     } else {
         const shell = "/bin/sh";
@@ -990,7 +990,7 @@ fn handleReadyUsh(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     reduce.GETARG(ctx, &ctx.args[2]);
-    if (reduce.hdGet(ctx.heap, reduce.head(ctx.args[0])) != reduce.hdGet(ctx.heap, reduce.head(ctx.args[2]))) {
+    if (reduce.hdGet(ctx.heap, reduce.head(ctx.heap, ctx.args[0])) != reduce.hdGet(ctx.heap, reduce.head(ctx.heap, ctx.args[2]))) {
         reduce.rewriteToFail(ctx.heap, &ctx.e);
         ctx.action = word.ACT_DONE;
         return;
