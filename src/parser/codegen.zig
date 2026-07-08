@@ -22,7 +22,6 @@ const big = @import("../graph/bignum.zig");
 const lex = @import("lex.zig");
 const reduce_mod = @import("../eval/reduce_rt.zig");
 const heap = @import("../graph/heap.zig");
-const core_state = @import("../runtime/core_state.zig");
 const symbols = @import("../semantics/symbols.zig");
 const setup = @import("../compiler/setup.zig");
 
@@ -365,7 +364,7 @@ fn codegenString(s: []const u8) Word {
 fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
     return switch (e) {
         // `[]` in a pattern → nill (the empty list pattern atom).
-        .list_nil => core_state.s().nill,
+        .list_nil => heap.heap().nill,
 
         // Literal constants in patterns must be tagged with `cons(CONST, value)`
         // so the Miranda runtime distinguishes them from binding positions.
@@ -385,7 +384,7 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
 
         // Non-empty list literal patterns: cons-chain terminated with nill.
         .list => |items| blk: {
-            var result: Word = core_state.s().nill;
+            var result: Word = heap.heap().nill;
             var i: usize = items.len;
             while (i > 0) {
                 i -= 1;

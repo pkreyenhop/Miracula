@@ -105,6 +105,13 @@ pub const Heap = struct {
     // and `interp.reset()` covers it. Accessed as `heap.<field>` (the singleton).
     files: Word = word.NIL,
     current_file: Word = word.NIL,
+    /// Heap address of the `nil` combinator (Phase 4 step 4,
+    /// docs/ZIG_NATIVE_PLAN.md; set once during `miraSetup`, never
+    /// mutated after — moved off `CoreState`, whose "core state" was
+    /// meant for cross-cutting error/mode flags, not heap-node identity
+    /// already covered by this struct's other setup-time fields like
+    /// `files`/`CFN`).
+    nill: Word = 0,
     cellcount: i64 = 0,
     claims: c_long = 0,
     nogcs: c_long = 0,
@@ -599,7 +606,7 @@ pub const Heap = struct {
             self.mark(script_store.store().lastname);
             self.mark(script_store.store().suppressids);
             self.mark(repl_session.session().lastexp);
-            self.mark(core.s().nill);
+            self.mark(self.nill);
             self.mark(rt.rs().standardout);
             self.mark(big.bn().big_one);
             self.mark(big.bn().b_rem);

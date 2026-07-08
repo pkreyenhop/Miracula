@@ -15,7 +15,6 @@
 const std = @import("std");
 const word = @import("../graph/word.zig");
 const strtab = @import("../graph/strtab.zig");
-const core_state = @import("../runtime/core_state.zig");
 const types_mod = @import("depend.zig");
 const setup = @import("../compiler/setup.zig");
 const lex = @import("../parser/lex.zig");
@@ -146,7 +145,7 @@ pub fn genlhs(heap: *Heap, x: Word) Word {
         .INT => return cons(CONST, x),
         .DOUBLE => {
             syntax("floating point literal in pattern\n") catch {};
-            return core_state.s().nill;
+            return heap.nill;
         },
         .ATOM => {
             if (x == True or x == False or x == NILS or x == NIL or isChar(x)) {
@@ -156,7 +155,7 @@ pub fn genlhs(heap: *Heap, x: Word) Word {
         else => {},
     }
     syntax("illegal form on left of <-\n") catch {};
-    return core_state.s().nill;
+    return heap.nill;
 }
 
 /// Translate the pattern-match alternatives `x` of an id into a `TRIES` chain.

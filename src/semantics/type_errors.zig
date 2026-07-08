@@ -443,10 +443,10 @@ pub fn outFormal1(heap: *Heap, f: *word.Stream, x_in: Word) void {
                     _ = (f).print("\"", .{});
                 } else {
                     _ = (f).print("[", .{});
-                    while (x != core_state.s().nill and x != NIL) {
+                    while (x != heap.nill and x != NIL) {
                         outPattern(heap, f, h(heap, x));
                         x = t(heap, x);
-                        if (x != core_state.s().nill and x != NIL) {
+                        if (x != heap.nill and x != NIL) {
                             _ = (f).print(",", .{});
                         }
                     }

@@ -228,7 +228,7 @@ pub fn miraSetup() void {
     ls().common_stdin = abi.ap(word.READ, 0);
     ls().common_stdinb = abi.ap(word.READBIN, 0);
     ls().cook_stdin = abi.ap(abi.readvals(0, 0), word.OFFSIDE);
-    core_state.s().nill = heap.cons(word.CONST, NIL);
+    heap.nill = heap.cons(word.CONST, NIL);
     rt.rs().Void = abi.makeId(@constCast("()"));
     heap.tp(heap.h(rt.rs().Void)).* = word.void_t;
     heap.tp(rt.rs().Void).* = heap_mod.constructor(heap, 0, rt.rs().Void);

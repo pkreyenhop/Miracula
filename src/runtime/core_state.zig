@@ -1,4 +1,4 @@
-//! core_state.zig — core interpreter / error state (`nill`, `loading`,
+//! core_state.zig — core interpreter / error state (`loading`,
 //! `compiling`, `errs`, `errline`, `SYNERR`, `commandmode`, …), kept in this leaf
 //! module (no imports from the Miracula source tree — the G1 acyclic invariant)
 //! so that `heap.zig` and `parser_api.zig` can reach it without `@import`-ing
@@ -12,8 +12,6 @@ const Word = i64;
 /// Phase 2a). Accessed as `core_state.s().<field>`; folds into `Interp.core` in
 /// Phase 3.
 pub const CoreState = struct {
-    /// Heap address of the `nil` combinator (set during miraSetup).
-    nill: Word = 0,
     /// Non-zero while a source file is being loaded (`loadfile` guard).
     loading: c_int = 0,
     /// Non-zero while compilation of the current script is in progress.
