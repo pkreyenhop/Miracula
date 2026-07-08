@@ -165,7 +165,7 @@ pub inline fn downLeft(ctx: *ReductionCtx) void {
 
 /// Descend into the tail of the spine's current top frame.
 pub inline fn downRight(ctx: *ReductionCtx) void {
-    ctx.e = ctx.spine.downRight(ctx.e);
+    ctx.e = ctx.spine.downRight(ctx.heap, ctx.e);
 }
 
 /// [downRight] guarded by `atArgumentChainBoundary` (replaces the old
@@ -181,7 +181,7 @@ pub inline fn downright(ctx: *ReductionCtx) bool {
 
 /// Ascend out of the head: pop the spine into `e`.
 pub inline fn upLeft(ctx: *ReductionCtx) void {
-    ctx.e = ctx.spine.upLeft(ctx.e);
+    ctx.e = ctx.spine.upLeft(ctx.heap, ctx.e);
 }
 
 /// [upLeft] guarded by `atArgumentChainBoundary` (replaces the old
@@ -196,7 +196,7 @@ pub inline fn upleft(ctx: *ReductionCtx) bool {
 
 /// Ascend out of the tail of the spine's current (still-top) frame.
 pub inline fn upRight(ctx: *ReductionCtx) void {
-    ctx.e = ctx.spine.upRight(ctx.e);
+    ctx.e = ctx.spine.upRight(ctx.heap, ctx.e);
 }
 
 /// Pull the next argument off the spine into `a` (unchecked — caller knows it exists).

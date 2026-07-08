@@ -231,41 +231,41 @@ pub const Spine = struct {
     /// head to `reduced_head`. Writes back the reduced head (the one real
     /// graph mutation here) and re-tags the *existing* top frame rather than
     /// pushing a new one.
-    pub inline fn downRight(self: *Spine, reduced_head: Word) Word {
+    pub inline fn downRight(self: *Spine, heap_ptr: *heap.Heap, reduced_head: Word) Word {
         const f = self.top();
-        heap.hp(heap.heap(), f.node).* = reduced_head;
+        heap.hp(heap_ptr, f.node).* = reduced_head;
         f.via_tl = true;
         return heap.tCell(f.node);
     }
 
     /// [downRight] guarded by spine-empty; `null` instead of descending when
     /// the spine is exhausted.
-    pub inline fn downright(self: *Spine, reduced_head: Word) ?Word {
+    pub inline fn downright(self: *Spine, heap_ptr: *heap.Heap, reduced_head: Word) ?Word {
         if (self.isEmpty()) return null;
-        return self.downRight(reduced_head);
+        return self.downRight(heap_ptr, reduced_head);
     }
 
     /// Ascend out of the head: pop the top frame, write back the now-reduced
     /// value `reduced` into it, focus becomes the popped frame's cell.
-    pub inline fn upLeft(self: *Spine, reduced: Word) Word {
+    pub inline fn upLeft(self: *Spine, heap_ptr: *heap.Heap, reduced: Word) Word {
         const f = self.frames.pop().?;
-        heap.hp(heap.heap(), f.node).* = reduced;
+        heap.hp(heap_ptr, f.node).* = reduced;
         return f.node;
     }
 
     /// [upLeft] guarded by spine-empty.
-    pub inline fn upleft(self: *Spine, reduced: Word) ?Word {
+    pub inline fn upleft(self: *Spine, heap_ptr: *heap.Heap, reduced: Word) ?Word {
         if (self.isEmpty()) return null;
-        return self.upLeft(reduced);
+        return self.upLeft(heap_ptr, reduced);
     }
 
     /// Ascend out of the tail: write back the now-reduced tail `reduced`,
     /// re-tag the still-top (*not popped*) frame back to "via hd", focus
     /// becomes the already-correct reduced head written by the matching
     /// `downRight`.
-    pub inline fn upRight(self: *Spine, reduced: Word) Word {
+    pub inline fn upRight(self: *Spine, heap_ptr: *heap.Heap, reduced: Word) Word {
         const f = self.top();
-        heap.tp(heap.heap(), f.node).* = reduced;
+        heap.tp(heap_ptr, f.node).* = reduced;
         f.via_tl = false;
         return heap.hCell(f.node);
     }
@@ -363,7 +363,7 @@ test "downLeft/upLeft round trip: writes back the reduced head and pops" {
     defer spine.deinit(&pool);
 
     _ = spine.downLeft(e);
-    const focus = spine.upLeft(999); // pretend the head reduced to 999
+    const focus = spine.upLeft(heap.heap(), 999); // pretend the head reduced to 999
 
     try testing.expectEqual(e, focus);
     try testing.expect(spine.isEmpty());
@@ -383,19 +383,19 @@ test "downLeft/downRight/upRight/upLeft: full visit of one AP cell" {
     try testing.expectEqual(@as(Word, 111), focus);
 
     // Head reduced to 'H'; descend into the tail: focus -> 222 (pristine).
-    focus = spine.downRight('H');
+    focus = spine.downRight(heap.heap(), 'H');
     try testing.expectEqual(@as(Word, 222), focus);
     try testing.expectEqual(@as(Word, 'H'), heap.h(heap.heap(), e)); // real write-back already happened
     try testing.expectEqual(@as(usize, 1), spine.depth()); // still one frame -- not pushed again
 
     // Tail reduced to 'T'; ascend back: focus -> the already-written head 'H'.
-    focus = spine.upRight('T');
+    focus = spine.upRight(heap.heap(), 'T');
     try testing.expectEqual(@as(Word, 'H'), focus);
     try testing.expectEqual(@as(Word, 'T'), heap.t(heap.heap(), e)); // real write-back of the tail
     try testing.expectEqual(@as(usize, 1), spine.depth()); // upRight does not pop
 
     // Finally leave the cell: pop with the (possibly further-rewritten) head.
-    focus = spine.upLeft('H');
+    focus = spine.upLeft(heap.heap(), 'H');
     try testing.expectEqual(e, focus);
     try testing.expect(spine.isEmpty());
     try testing.expectEqual(@as(Word, 'H'), heap.h(heap.heap(), e));
@@ -424,15 +424,15 @@ test "a chain of AP cells unwinds and rewinds in LIFO order" {
 
     // Walk back up, writing a distinguishable marker at each level -- exactly
     // the shape repeated `upLeft` calls take in the real loop.
-    focus = spine.upLeft(1000);
+    focus = spine.upLeft(heap.heap(), 1000);
     try testing.expectEqual(e2, focus);
     try testing.expectEqual(@as(Word, 1000), heap.h(heap.heap(), e2));
 
-    focus = spine.upLeft(1001);
+    focus = spine.upLeft(heap.heap(), 1001);
     try testing.expectEqual(e1, focus);
     try testing.expectEqual(@as(Word, 1001), heap.h(heap.heap(), e1));
 
-    focus = spine.upLeft(1002);
+    focus = spine.upLeft(heap.heap(), 1002);
     try testing.expectEqual(e0, focus);
     try testing.expectEqual(@as(Word, 1002), heap.h(heap.heap(), e0));
 
@@ -445,12 +445,12 @@ test "guarded downright/upleft report exhaustion instead of underflowing" {
     var spine = Spine.init(testing.allocator, &pool);
     defer spine.deinit(&pool);
 
-    try testing.expectEqual(@as(?Word, null), spine.upleft(0));
-    try testing.expectEqual(@as(?Word, null), spine.downright(0));
+    try testing.expectEqual(@as(?Word, null), spine.upleft(heap.heap(), 0));
+    try testing.expectEqual(@as(?Word, null), spine.downright(heap.heap(), 0));
 
     const e = heap.cons(heap.heap(), 1, 2);
     _ = spine.downLeft(e);
-    try testing.expect(spine.upleft(7) != null);
+    try testing.expect(spine.upleft(heap.heap(), 7) != null);
     try testing.expect(spine.isEmpty());
 }
 
@@ -481,7 +481,7 @@ test "depth is unbounded: a very long spine does not overflow a fixed stack" {
 
     i = 0;
     while (i < depth_count) : (i += 1) {
-        focus = spine.upLeft(focus);
+        focus = spine.upLeft(heap.heap(), focus);
     }
     try testing.expect(spine.isEmpty());
 }

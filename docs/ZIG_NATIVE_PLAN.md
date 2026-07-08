@@ -2059,14 +2059,35 @@ subsystems and passed explicitly; the ambient singleton deleted.
    accessor call sites: 702 → 695 (`scorecard.sh`). `fsign`/`sign`/`getStdin`/
    `getStderr`/`getStdout`/`stdname` untouched — none touch heap-cell data.
 
+   **`eval`'s `Spine`/`combinators.zig`/`ready.zig`, landed.** `Spine`'s three
+   real-write primitives (`downRight`/`upLeft`/`upRight`, plus their
+   spine-empty-guarded variants `downright`/`upleft`) took an explicit
+   `heap: *Heap` receiver too — their only callers turned out to be
+   `reduce_core.zig`'s three already-`ctx`-taking wrappers of the same name
+   (`downRight(ctx)`/`upLeft(ctx)`/`upRight(ctx)`, which the ~140
+   `combinators.zig`/`ready.zig`/`lex.zig`/`io.zig` call sites already used),
+   so only those 3 wrapper bodies needed a one-line fix
+   (`ctx.spine.downRight(ctx.heap, ctx.e)`) — the ~140 sites downstream of
+   them needed no changes at all, since their own signature (`ctx: *ReductionCtx`)
+   was already the receiver. `Spine`'s own guarded `downright`/`upleft`
+   methods (distinct from `reduce_core.zig`'s same-named wrappers, which
+   reimplement the same guard directly against `ctx.spine` rather than
+   delegating) turned out to have no callers outside `spine.zig`'s own tests.
+   `combinators.zig` (7 sites) and `ready.zig` (25 sites) — mostly
+   `big.toInt`/`fromInt`/`sub`/`add`/`mul`/`div`/`mod`/`pow`/… calls inside
+   handlers that already had `ctx: *ReductionCtx` — fixed the same way,
+   `heap.heap()` → `ctx.heap`, no signature changes needed anywhere in either
+   file. `eval/reduce.zig`'s `reduce()` itself (the ONE remaining non-test
+   ambient site in `eval/`) is deliberately left ambient — it is the actual
+   root of the whole `ReductionCtx` chain (nothing calls it with a `heap`
+   already in hand; it's where `ctx.heap` first gets populated from the
+   singleton, once per `reduce()` invocation), so it stays until the final
+   singleton-deletion step, same as `outstats`'s in-file no-receiver-anywhere
+   case. `eval/` subsystem is now effectively fully receiver-threaded outside
+   test code and those two structural exceptions.
+
    Remaining subsystems (`semantics`'s `Compile` context, `session`) and the
-   final singleton-deletion step are not yet started; ~85 ambient
-   `heap.heap()` calls remain in `eval/` (down from ~95) — mostly
-   `spine.zig`'s/`combinators.zig`'s/`ready.zig`'s own not-yet-converted
-   ambient call sites (a separate, not-yet-attempted slice from
-   `reduce_rt.zig`'s), plus a handful of genuinely-no-receiver-anywhere
-   top-level functions (`outstats`, `getStdin`/`getStderr`/`getStdout`) left
-   ambient since nothing in their call chain carries `heap` to thread.
+   final singleton-deletion step are not yet started.
 
 **Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
 interrupt flag); DAG check green with empty allowlist; files > 1,000 lines = 0;
