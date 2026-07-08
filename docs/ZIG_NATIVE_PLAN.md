@@ -2139,17 +2139,102 @@ subsystems and passed explicitly; the ambient singleton deleted.
 
    `graph`/`eval`/`semantics`/`session` — the four subsystems step 5 named —
    are now all done to the point where every remaining ambient call is one of
-   these structural roots/no-receiver cases, or sits inside one of the two
-   deliberately-deferred giant dispatch-table clusters (`infer.zig`'s
-   `tf`/`tf2`/`tf3`/`ap`/`lt`/`pairType`, `lower.zig`'s `codegen`'s own
-   `cons`/`ap`/`ap2`/`ap3`). Next: the singleton-deletion step itself
-   (`heap.heap()`/`rs()`/`cs()`/`ls()`/`ev()`/`s()`/`interp.current_interp`/
-   `interp.reset()`) — not yet scoped in detail; likely needs its own
-   accounting pass given the two dispatch-table clusters and four structural
-   roots are real, permanent blockers to a literal zero unless addressed
-   first (a smaller `Interp`-construction-based fix for the roots, and a
-   decision on whether the dispatch-table clusters are worth cascading into
-   or should stay as a documented, load-bearing exception to the phase gate).
+   a handful of structural roots, or sits inside one of two deliberately-
+   deferred giant dispatch-table clusters. A scoping pass (2026-07-08, no code
+   changes) investigated what actually stands between here and the phase's
+   literal gate (singleton-accessor count = 0). Conclusion: **nothing left is
+   architecturally blocked** — every remaining site is either already
+   receiver-threaded one level up (so the fix is mechanical, "thread one more
+   parameter through"), or has a viable concrete fix identified below. The
+   remaining volume is comparable to everything already landed across the
+   `graph`/`eval`/`semantics`/`session` slices combined — a multi-commit
+   undertaking, not a quick finish. Four things stand between here and zero:
+
+   1. **`session/interp.zig`'s architecture already supports this.** `Interp`
+      bundles every owner module's state as a *value* field; `current_interp:
+      *Interp` is a pointer to it (still a module-scope mutable global — one
+      of the "module-scope mutable globals" the scorecard counts, exempted
+      from the target-of-1 count same as the interrupt flag until this step
+      lands). Every `heap.heap()`/`rs()`/`cs()`/`ls()`/`ev()`/`s()` accessor is
+      a one-line `return &current_interp.X`. Deleting them doesn't mean
+      deleting `Interp`/`current_interp` — it means no code path may read
+      `current_interp` *ambiently* anymore; `main()` reads it once (or owns an
+      `Interp` value directly) and threads every sub-state down explicitly
+      from there. `current_interp` itself likely survives as the one place OS
+      signal handlers (which cannot take parameters) still read state from —
+      already called out as "the one irreducible C-ABI exception" in
+      `interp.zig`'s own module doc.
+   2. **The four structural roots, reassessed — none are hard blockers:**
+      - `main.zig`'s two post-`mainEntry` validate calls (`heap.heap().validate()`,
+        `lower.validate(heap.heap())`) — **trivial, zero risk**: `main()`
+        already holds `interp_storage: Interp` as a local two lines above:
+        `interp_storage.heap.validate()` needs no architectural change at all.
+      - `boot.zig`'s `mainEntry`'s `const heap = heap_mod.heap();` — **small**:
+        `main()` already constructs `interp_storage` and points
+        `current_interp` at it *before* calling `mainEntry`; passing
+        `&interp_storage.heap` (or `&interp_storage`) into `mainEntry` as a
+        parameter instead of having it re-derive the same pointer from the
+        global is a direct, low-risk substitution.
+      - `eval/reduce.zig`'s `reduce()`'s `ctx.heap = heap_mod.heap();` — **the
+        real remaining bulk**: `reduce()` has ~90 real (non-comment, non-test)
+        call sites, confined entirely to `eval/` (`combinators.zig`,
+        `combinators/lex.zig`, `reduce_rt.zig`, `combinators/ready.zig`,
+        `reduce.zig` itself). Sampled call sites confirm the overwhelming
+        majority already sit inside `handle*(ctx: *ReductionCtx)` functions
+        with `ctx.heap` on hand (this is `eval/`'s own call graph, already
+        fully receiver-threaded elsewhere this phase) — so threading `heap`
+        through `reduce()`'s own signature is mechanical, just large: same
+        shape and scale as the `eval` subsystem slice already landed.
+      - `session/editor.zig`'s zigline tab-completion callback — **not
+        actually blocked**: zigline's lower-level `CallbackReturning` type
+        (`src/main.zig` in the vendored package) already carries a
+        `context: *anyopaque` parameter through to the underlying callback;
+        the higher-level reflection-based `setHandler`/`CompletionHandler`
+        wrapper this file uses just doesn't expose it as a *second* parameter
+        — but `CompletionHandler` is a plain struct or own, and adding a
+        `heap: ?*Heap = null` field to it, set once by `editor.init()` (called
+        from `mainEntry`, which already has `heap`), would let
+        `tab_complete(self: *CompletionHandler)` read `self.heap.?` instead of
+        the ambient `state()`. Moderate effort, small blast radius (1 struct +
+        1 call site) — this file's own doc comment currently says "no seam for
+        extra context", which undersold the lower-level API; worth revisiting
+        once the bulk of `reduce()`'s threading is done.
+   3. **The two giant dispatch-table clusters, unwind cost estimated:**
+      - `infer.zig`'s `ap`/`tf`/`tf2`/`tf3`/`lt`/`pairType`/`NTV` cluster:
+        `NTV()` alone has ~100 call sites across the primitive-type dispatch
+        table (`infer.zig` lines ~1200-1650); `ap`/`tf`-family layer on top of
+        that. All confirmed (this phase, `unify.zig`'s parallel investigation)
+        to sit within functions that already carry `heap` — so, like `reduce()`,
+        mechanical but voluminous.
+      - `lower.zig`'s own `codegen()`-internal `cons`/`ap`/`ap2`/`ap3`: 47 and
+        38 real call sites respectively, same shape.
+      - Combined, these two clusters are on the order of ~150-200 call sites
+        — roughly the size of the `semantics` subsystem slice already landed,
+        just concentrated in two single functions instead of spread across a
+        file. Whether to cascade into these now or document them as a
+        permanently-accepted exception to "singleton-accessor count = 0" (the
+        dispatch tables are pure, non-recursive, one-shot-per-typecheck code —
+        arguably lower-value to convert than everything else) is a real
+        decision, not yet made.
+   4. **Files never swept under the `graph`/`eval`/`semantics`/`session`
+      checklist**, still carrying real (non-test) ambient calls:
+      `graph/dump.zig` (22 — all `dumpOb`'s own deliberately-ambient body,
+      already documented, not new work), plus `parser/codegen.zig`,
+      `parser/lex.zig`, `parser/parser_api.zig`, `compiler/setup.zig`,
+      `compiler/module_loader.zig`, `graph/bignum.zig` (not individually
+      surveyed this pass — step 5's plan text named only the four subsystems
+      above, so these were always going to need their own pass regardless of
+      how the four named subsystems turned out).
+
+   **Bottom line:** reaching a literal zero is achievable with no redesign,
+   but is roughly double the remaining effort of what's landed so far this
+   phase (four more slices at least: `reduce()`'s cascade, the two dispatch-
+   table clusters, and the not-yet-swept files above), before the accessor
+   functions themselves and `interp.reset()` can actually be deleted and the
+   two-`Interp` isolation test (step 6) attempted. Not started as of this
+   scoping pass — the next actionable slice, if resumed, is `reduce()`'s
+   cascade (item 2's third bullet), since it directly unblocks `mainEntry`'s
+   own `heap.heap()` call once done.
 
 **Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
 interrupt flag); DAG check green with empty allowlist; files > 1,000 lines = 0;
