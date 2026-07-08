@@ -10,6 +10,7 @@ const Allocator = std.mem.Allocator;
 const ast = @import("../syntax/ast.zig");
 
 const rt = @import("../runtime/runtime_state.zig");
+const repl_session = @import("../session/repl_session.zig");
 const lex_state = @import("lex_state.zig");
 const ls = lex_state.ls;
 // Cross-module functions via direct @import (R7.3 — eliminate extern-fn linker decls).
@@ -253,7 +254,7 @@ fn opWord(op: []const u8) Word {
     // SHOWSYM → make(SHOW, 0, 0); READVALSY → make(STARTREADVALS, 0, 0).
     if (std.mem.eql(u8, op, "kw_show")) return heap.make(.SHOW, 0, 0);
     if (std.mem.eql(u8, op, "kw_readvals")) return heap.make(.STARTREADVALS, 0, 0);
-    if (std.mem.eql(u8, op, "dollars")) return rt.rs().lastexp;
+    if (std.mem.eql(u8, op, "dollars")) return repl_session.session().lastexp;
     // Fall back: user-defined infix operator stored as an identifier
     return nameWord(op);
 }

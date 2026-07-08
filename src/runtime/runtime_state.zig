@@ -27,7 +27,6 @@ pub var interrupt_flag: std.atomic.Value(bool) = .init(false);
 const Word = i64;
 const CMBASE: Word = 306;
 const NIL: Word = CMBASE + 138;
-const UNDEF: Word = CMBASE + 140;
 
 /// All mutable interpreter state that does not require a C-ABI linker symbol
 /// (see main.zig for the 8 vars that must remain as export var due to heap.zig /
@@ -44,8 +43,6 @@ pub const RuntimeState = struct {
     indent_fn: Word = 0,
     outdent_fn: Word = 0,
     listdiff_fn: Word = 0,
-    /// Last identifier referenced interactively; used for `//f` finger command.
-    lastid: Word = 0,
     rv_expr: Word = 0,
 
     // File paths — null-terminated byte arrays populated by startup; treated as C strings.
@@ -73,7 +70,6 @@ pub const RuntimeState = struct {
     /// Non-zero when the configured editor command is invalid.
     baded: Word = 0,
     miralib: ?[*:0]u8 = null,
-    promptstr: [*:0]const u8 = "Miranda ",
     s_in: ?*abi.Stream = null,
 
     // Runtime counters (all updated by the GC and evaluator; read by //stats).
@@ -93,12 +89,7 @@ pub const RuntimeState = struct {
     primenv: Word = NIL,
     /// Path of the .m file currently being loaded; null outside a load.
     current_script: ?[*:0]u8 = null,
-    lastexp: Word = UNDEF,
 
-    // I/O mode flags
-    echoing: Word = 0,
-    listing: Word = 0,
-    verbosity: Word = 0,
     /// When true, `if` guards are strict (unevaluated guards are errors).
     /// Converted from Word at B1; only ever true/false.
     strictif: bool = true,
@@ -145,12 +136,6 @@ pub const RuntimeState = struct {
     /// Cached length of the miralib path prefix, for `filequote`'s `<name>`
     /// shorthand.
     filequote_mlen: usize = 0,
-    /// Elapsed time and GC count from the last evaluated REPL expression,
-    /// surfaced in the next prompt string. Set directly by `evaluateRepl`
-    /// after each in-process evaluation (Phase 3, docs/ZIG_NATIVE_PLAN.md —
-    /// no more forked-child exit-code round trip to smuggle it back).
-    last_elapsed_ns: ?i128 = null,
-    last_gc_count: ?c_long = null,
 
     // ── Bootstrap scratch (startup.zig) ─────────────────────────────────────
     /// Version-mismatch scratch, filled by `checkVersion` and drained by
@@ -171,7 +156,7 @@ pub const RuntimeState = struct {
         const heap = &@import("../session/interp.zig").current_interp.heap;
         const top_limit = heap.TOP();
 
-        inline for (.{ self.Void, self.main_id, self.message, self.standardout, self.diagonalise, self.concat, self.indent_fn, self.outdent_fn, self.listdiff_fn, self.lastid, self.rv_expr, self.fnts, self.primenv, self.oldfiles, self.includees, self.freeids, self.exports, self.embargoes, self.lastname, self.suppressids, self.col_fn, self.detrop, self.rfl, self.ld_stuff }) |field| {
+        inline for (.{ self.Void, self.main_id, self.message, self.standardout, self.diagonalise, self.concat, self.indent_fn, self.outdent_fn, self.listdiff_fn, self.rv_expr, self.fnts, self.primenv, self.oldfiles, self.includees, self.freeids, self.exports, self.embargoes, self.lastname, self.suppressids, self.col_fn, self.detrop, self.rfl, self.ld_stuff }) |field| {
             if (field >= @import("../graph/word.zig").ATOMLIMIT) {
                 if (field >= top_limit) {
                     std.debug.panic("runtime.validate: runtime state field has out-of-bounds heap reference {d} (TOP is {d})", .{ field, top_limit });

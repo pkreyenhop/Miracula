@@ -5,6 +5,7 @@
 
 const std = @import("std");
 const rt = @import("../runtime/runtime_state.zig");
+const repl_session = @import("../session/repl_session.zig");
 const show_fns = @import("../semantics/show_fns.zig");
 const cs = @import("compiler_state.zig").cs;
 const word = @import("../graph/word.zig");
@@ -94,7 +95,7 @@ pub const yysterm = yysterm_data;
 pub fn syntax(s: [*:0]const u8) errors.MiraError!void {
     if (core_state.s().SYNERR != 0) return error.SyntaxError;
     if (!@import("builtin").is_test) {
-        if (rt.rs().echoing != 0) {
+        if (repl_session.session().echoing != 0) {
             _ = word.printErr("\n", .{});
         }
         _ = word.printErr("syntax error: {s}", .{s});

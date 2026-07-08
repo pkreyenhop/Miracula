@@ -30,6 +30,7 @@ const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
 const strtab = @import("../graph/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const repl_session = @import("repl_session.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
 const cs = compiler_state.cs;
 const abi = @import("../os.zig");
@@ -105,25 +106,25 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
     }
     _ = signals(abi.SIGINT, @intFromPtr(&onInterrupt));
     dump.undump(heap, core_state.s(), cs(), rs, initscript);
-    if (rs.verbosity != 0) {
+    if (repl_session.session().verbosity != 0) {
         word.print("for help type /h\n", .{});
     }
 
     while (true) {
         resetgcstats();
-        if (rs.verbosity != 0) {
+        if (repl_session.session().verbosity != 0) {
             var prompt_buf: [256]u8 = undefined;
-            const prompt = if (rs.last_elapsed_ns) |ns| blk: {
+            const prompt = if (repl_session.session().last_elapsed_ns) |ns| blk: {
                 var time_buf: [64]u8 = undefined;
                 const time_str = formatExecutionTime(ns, &time_buf);
-                if (rs.last_gc_count) |gc_val| {
+                if (repl_session.session().last_gc_count) |gc_val| {
                     if (gc_val > 0) {
                         const suffix = if (gc_val == 1) "GC" else "GCs";
-                        break :blk std.fmt.bufPrint(&prompt_buf, "[{s}, {} {s}] {s}", .{ time_str, gc_val, suffix, std.mem.span(rs.promptstr) }) catch std.mem.span(rs.promptstr);
+                        break :blk std.fmt.bufPrint(&prompt_buf, "[{s}, {} {s}] {s}", .{ time_str, gc_val, suffix, std.mem.span(repl_session.session().promptstr) }) catch std.mem.span(repl_session.session().promptstr);
                     }
                 }
-                break :blk std.fmt.bufPrint(&prompt_buf, "[{s}] {s}", .{ time_str, std.mem.span(rs.promptstr) }) catch std.mem.span(rs.promptstr);
-            } else std.mem.span(rs.promptstr);
+                break :blk std.fmt.bufPrint(&prompt_buf, "[{s}] {s}", .{ time_str, std.mem.span(repl_session.session().promptstr) }) catch std.mem.span(repl_session.session().promptstr);
+            } else std.mem.span(repl_session.session().promptstr);
 
             if (lineedit.active()) {
                 lineedit.setPrompt(prompt);
@@ -133,8 +134,8 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
         } else if (lineedit.active()) {
             lineedit.setPrompt("");
         }
-        rs.last_elapsed_ns = null;
-        rs.last_gc_count = null;
+        repl_session.session().last_elapsed_ns = null;
+        repl_session.session().last_gc_count = null;
         ch = abi.getchar();
         if (rs.rechecking != 0 and dump_mod.srcUpdate(rs) != 0) {
             module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), rs.current_script.?) catch {};
@@ -148,7 +149,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                 if (ch == '?') {
                     var x: Word = undefined;
                     var aka: ?[*:0]const u8 = null;
-                    if (token() == null and rs.lastid == 0) {
+                    if (token() == null and repl_session.session().lastid == 0) {
                         word.print("\x07identifier needed after `??'\n", .{});
                         ch = abi.getchar();
                         continue;
@@ -164,20 +165,20 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                     if (lexs.dicp[0] != 0) {
                         x = abi.findid(heap, lexs.dicp);
                     } else {
-                        word.print("??{s}\n", .{heap_mod.getId(rs.lastid)});
-                        x = rs.lastid;
+                        word.print("??{s}\n", .{heap_mod.getId(repl_session.session().lastid)});
+                        x = repl_session.session().lastid;
                     }
                     if (x == NIL or heap_mod.idType(x) == word.undef_t) {
-                        commands.diagnose(if (lexs.dicp[0] != 0) lexs.dicp else heap_mod.getId(rs.lastid));
-                        rs.lastid = 0;
+                        commands.diagnose(if (lexs.dicp[0] != 0) lexs.dicp else heap_mod.getId(repl_session.session().lastid));
+                        repl_session.session().lastid = 0;
                         continue;
                     }
                     if (heap_mod.idWho(x) == NIL) {
-                        word.print("{s} -- primitive to Miranda\n", .{@as([*:0]const u8, @ptrCast(if (lexs.dicp[0] != 0) lexs.dicp else heap_mod.getId(rs.lastid)))});
-                        rs.lastid = 0;
+                        word.print("{s} -- primitive to Miranda\n", .{@as([*:0]const u8, @ptrCast(if (lexs.dicp[0] != 0) lexs.dicp else heap_mod.getId(repl_session.session().lastid)))});
+                        repl_session.session().lastid = 0;
                         continue;
                     }
-                    rs.lastid = x;
+                    repl_session.session().lastid = x;
                     x = heap_mod.idWho(x);
                     if (getTag(heap, x) == .CONS) {
                         aka = strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(x)));
@@ -190,7 +191,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                 } else {
                     _ = abi.ungetc(ch, abi.stdin().?);
                     _ = token();
-                    rs.lastid = 0;
+                    repl_session.session().lastid = 0;
                     if (lexs.dicp[0] == 0) {
                         if (abi.getchar() != '\n') {
                             commands.xschars();
@@ -208,13 +209,13 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
             },
             ':', '/' => {
                 _ = token();
-                rs.lastid = 0;
+                repl_session.session().lastid = 0;
                 commands.command(heap, core_state.s(), comp, rs, lexs);
             },
             '!' => {
                 lb = rdline();
                 if (lb == null) continue;
-                rs.lastid = 0;
+                repl_session.session().lastid = 0;
                 if (lb.?[0] != 0) {
                     const shell_env = abi.getenv("SHELL");
                     const shell: []const u8 = if (shell_env) |s| std.mem.span(s) else "/bin/sh";
@@ -253,7 +254,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
             },
             '\n' => {},
             abi.EOF => {
-                if (rs.verbosity != 0) {
+                if (repl_session.session().verbosity != 0) {
                     word.print("\nmiranda logout\n", .{});
                 }
                 lineedit.deinit(); // persist history (no-op if not interactive)
@@ -262,11 +263,11 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
             else => {
                 const start = getMonotonicNs();
                 _ = abi.ungetc(ch, abi.stdin().?);
-                rs.lastid = 0;
+                repl_session.session().lastid = 0;
                 heap_mod.tp(heap_mod.h(lexs.cook_stdin)).* = 0;
                 rs.rv_expr = 0;
                 lexs.c = word.EVAL;
-                rs.echoing = 0;
+                repl_session.session().echoing = 0;
                 comp.polyshowerror = 0;
                 core.commandmode = 1;
                 _ = parser_api.parseCurrent() catch {};
@@ -279,9 +280,9 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                     }
                 }
                 core.commandmode = 0;
-                rs.echoing = rs.verbosity & rs.listing;
-                rs.last_elapsed_ns = getMonotonicNs() - start;
-                // rs.last_gc_count is set directly by evaluateRepl now (no
+                repl_session.session().echoing = repl_session.session().verbosity & repl_session.session().listing;
+                repl_session.session().last_elapsed_ns = getMonotonicNs() - start;
+                // repl_session.session().last_gc_count is set directly by evaluateRepl now (no
                 // more fork + exit-code round trip to smuggle it back).
             },
         }
@@ -346,7 +347,7 @@ pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_st
         rs.validate();
     }
     if (typ == word.wrong_t) return;
-    rs.lastexp = x;
+    repl_session.session().lastexp = x;
     x = trans_mod.codegen(heap, x);
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.validate();
@@ -383,7 +384,7 @@ pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_st
         },
     }
     outstats();
-    rs.last_gc_count = heap.nogcs;
+    repl_session.session().last_gc_count = heap.nogcs;
     heap.restore(&snap);
 }
 
@@ -430,7 +431,7 @@ pub fn badEditor(rs: *rt.RuntimeState) bool {
 pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, t_val: Word, f: ?*word.Stream, fil: Word) Word {
     var t1: Word = undefined;
     var ch: c_int = undefined;
-    rs.lastexp = word.UNDEF;
+    repl_session.session().lastexp = word.UNDEF;
     while (true) {
         ch = abi.getc(f);
         while (ch == ' ' or ch == '\t' or ch == '\n') {
@@ -455,29 +456,29 @@ pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState,
         }
         _ = abi.ungetc(ch, f);
         lexs.c = word.VALUE;
-        rs.echoing = 0;
+        repl_session.session().echoing = 0;
         core.commandmode = 1;
         rs.s_in = f;
         _ = parser_api.parseCurrent() catch {};
         rs.s_in = abi.stdin();
         if (core.SYNERR != 0) {
             core.SYNERR = 0;
-            rs.lastexp = word.UNDEF;
+            repl_session.session().lastexp = word.UNDEF;
         } else {
-            t1 = types_mod.typeOf(heap, rs.lastexp);
+            t1 = types_mod.typeOf(heap, repl_session.session().lastexp);
             if (t1 == word.wrong_t) {
-                rs.lastexp = word.UNDEF;
+                repl_session.session().lastexp = word.UNDEF;
             } else if (abi.subsumes(heap, abi.instantiate(heap, t1), t_val) == 0) {
                 word.print("data has wrong type :: ", .{});
                 abi.outType(heap, t1);
                 word.print("\nshould be :: ", .{});
                 abi.outType(heap, t_val);
                 _ = word.putc('\n', abi.stdout());
-                rs.lastexp = word.UNDEF;
+                repl_session.session().lastexp = word.UNDEF;
             }
         }
-        if (rs.lastexp != word.UNDEF) {
-            return trans_mod.codegen(heap, rs.lastexp);
+        if (repl_session.session().lastexp != word.UNDEF) {
+            return trans_mod.codegen(heap, repl_session.session().lastexp);
         }
         if (abi.isatty(word.fileno(f)) != 0) {
             word.print("please re-enter data:\n", .{});

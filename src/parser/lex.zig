@@ -29,6 +29,7 @@ const cs = @import("../compiler/compiler_state.zig").cs;
 const heap_mod = @import("../graph/heap.zig");
 const Heap = heap_mod.Heap;
 const rt = @import("../runtime/runtime_state.zig");
+const repl_session = @import("../session/repl_session.zig");
 const types = @import("../semantics/infer.zig");
 const os = @import("../os.zig");
 const core_state = @import("../runtime/core_state.zig");
@@ -688,7 +689,7 @@ pub fn resetState(heap: *Heap) void {
     ls().margstack = NIL;
     ls().prefix = 0;
     ls().prefixbase.?[0] = 0;
-    rt.rs().echoing = rt.rs().verbosity & rt.rs().listing;
+    repl_session.session().echoing = repl_session.session().verbosity & repl_session.session().listing;
     ls().brct = 0;
     ls().inbnf = 0;
     ls().sreds = 0;

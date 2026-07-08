@@ -26,6 +26,7 @@ src/graph/heap.zig -> src/semantics/symbols.zig
 src/graph/heap.zig -> src/session/bnf_state.zig
 src/graph/heap.zig -> src/session/interp.zig
 src/graph/heap.zig -> src/session/make_state.zig
+src/graph/heap.zig -> src/session/repl_session.zig
 src/graph/strtab.zig -> src/session/interp.zig
 src/graph/word.zig -> src/eval/stream.zig
 src/os.zig -> src/eval/reduce_rt.zig
@@ -41,5 +42,6 @@ src/os.zig -> src/semantics/unify.zig
 src/os.zig -> src/session/repl.zig
 src/semantics/infer.zig -> src/os.zig
 src/semantics/lower.zig -> src/os.zig
+src/semantics/lower.zig -> src/session/repl_session.zig
 src/semantics/show_fns.zig -> src/session/interp.zig
 src/semantics/symbols.zig -> src/session/interp.zig

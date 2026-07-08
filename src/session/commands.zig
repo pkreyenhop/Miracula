@@ -9,6 +9,7 @@ const std = @import("std");
 const word = @import("../graph/word.zig");
 const strtab = @import("../graph/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const repl_session = @import("repl_session.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
 const cs = compiler_state.cs;
 const abi = @import("../os.zig");
@@ -355,7 +356,7 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
         }
         rs.editor = @as([*:0]u8, @ptrCast(&rs.ebuf));
         rs.baded = @intFromBool(repl.badEditor(rs));
-        rs.echoing = rs.verbosity & rs.listing;
+        repl_session.session().echoing = repl_session.session().verbosity & repl_session.session().listing;
         config.writeRc();
         word.print("editor = {s}\n", .{rs.editor orelse @constCast("")});
         return true;
@@ -474,16 +475,16 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             }
             if (is(lexs, "hush")) {
                 if (abi.getchar() != '\n') return;
-                rs.echoing = 0;
-                rs.verbosity = 0;
+                repl_session.session().echoing = 0;
+                repl_session.session().verbosity = 0;
                 return;
             }
         },
         'l' => {
             if (is(lexs, "list")) {
                 if (abi.getchar() != '\n') return;
-                rs.listing = 1;
-                rs.echoing = rs.verbosity & rs.listing;
+                repl_session.session().listing = 1;
+                repl_session.session().echoing = repl_session.session().verbosity & repl_session.session().listing;
                 config.writeRc();
                 return;
             }
@@ -513,14 +514,14 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             }
             if (is(lexs, "nohush")) {
                 if (abi.getchar() != '\n') return;
-                rs.echoing = rs.listing;
-                rs.verbosity = 1;
+                repl_session.session().echoing = repl_session.session().listing;
+                repl_session.session().verbosity = 1;
                 return;
             }
             if (is(lexs, "nolist")) {
                 if (abi.getchar() != '\n') return;
-                rs.listing = 0;
-                rs.echoing = 0;
+                repl_session.session().listing = 0;
+                repl_session.session().echoing = 0;
                 config.writeRc();
                 return;
             }
@@ -534,7 +535,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
         'q' => {
             if (is(lexs, "q") or is(lexs, "quit")) {
                 if (abi.getchar() != '\n') return;
-                if (rs.verbosity != 0) {
+                if (repl_session.session().verbosity != 0) {
                     word.print("miranda logout\n", .{});
                 }
                 abi.exit(0);
@@ -554,7 +555,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                 word.print("*\theap {}\n", .{rs.SPACELIMIT});
                 word.print("*\tdic {}\n", .{rs.DICSPACE});
                 word.print("*\teditor = {s}\n", .{rs.editor orelse @constCast("")});
-                word.print("*\t{s}list\n", .{@as([*:0]const u8, if (rs.listing != 0) "" else "no")});
+                word.print("*\t{s}list\n", .{@as([*:0]const u8, if (repl_session.session().listing != 0) "" else "no")});
                 word.print("*\t{s}recheck\n", .{@as([*:0]const u8, if (rs.rechecking != 0) "" else "no")});
                 if (!rs.strictif) {
                     word.print("\t-nostrictif (deprecated!)\n", .{});
@@ -568,7 +569,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                 if (rs.UTF8 != 0) {
                     word.print("\tUTF-8 i/o\n", .{});
                 }
-                if (rs.verbosity == 0) {
+                if (repl_session.session().verbosity == 0) {
                     word.print("\thush\n", .{});
                 }
                 if (rs.debug != 0) {
@@ -710,8 +711,8 @@ pub fn finger(heap: *Heap, rs: *rt.RuntimeState, n: [*:0]const u8) void {
             s = strtab.strOf(strtab.table(), heap_mod.h(here_val));
             line = heap_mod.t(here_val);
         }
-        if (rs.lastid == 0) {
-            rs.lastid = x;
+        if (repl_session.session().lastid == 0) {
+            repl_session.session().lastid = x;
         }
         abi.reportType(heap, x);
         if (heap_mod.idWho(x) == NIL) {

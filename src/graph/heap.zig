@@ -20,6 +20,7 @@ const ls = lex_state.ls;
 const compiler_state = @import("../compiler/compiler_state.zig");
 const make_state = @import("../session/make_state.zig");
 const bnf_state = @import("../session/bnf_state.zig");
+const repl_session = @import("../session/repl_session.zig");
 const lex = @import("../parser/lex.zig");
 const symbols = @import("../semantics/symbols.zig");
 const big = @import("bignum.zig");
@@ -595,7 +596,7 @@ pub const Heap = struct {
             }
             self.mark(rt.rs().lastname);
             self.mark(rt.rs().suppressids);
-            self.mark(rt.rs().lastexp);
+            self.mark(repl_session.session().lastexp);
             self.mark(core.s().nill);
             self.mark(rt.rs().standardout);
             self.mark(big.bn().big_one);

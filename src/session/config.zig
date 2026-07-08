@@ -9,6 +9,7 @@ const std = @import("std");
 const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const repl_session = @import("repl_session.zig");
 const make_state = @import("make_state.zig");
 const abi = @import("../os.zig");
 
@@ -50,9 +51,9 @@ pub fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
         } else if (argIs(arg, "-count")) {
             rt.rs().atcount = 1;
         } else if (argIs(arg, "-list")) {
-            rt.rs().listing = 1;
+            repl_session.session().listing = 1;
         } else if (argIs(arg, "-nolist")) {
-            rt.rs().listing = 0;
+            repl_session.session().listing = 0;
         } else if (argIs(arg, "-nostrictif")) {
             rt.rs().strictif = false;
         } else if (argIs(arg, "-gc")) {
@@ -97,16 +98,16 @@ pub fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
                 rt.rs().baded = @intFromBool(repl.badEditor(rt.rs()));
             }
         } else if (argIs(arg, "-hush")) {
-            rt.rs().verbosity = 0;
+            repl_session.session().verbosity = 0;
         } else if (argIs(arg, "-nohush")) {
-            rt.rs().verbosity = 1;
+            repl_session.session().verbosity = 1;
         } else if (argIs(arg, "-exp") or argIs(arg, "-log")) {
             errors.fatal("mira: obsolete flag \"{s}\"\nuse \"-exec\" or \"-exec2\", see manual\n", .{arg});
         } else if (argIs(arg, "-exec")) {
             ls().ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
             ls().ARGV = @ptrCast(argv + arg_idx + 1);
             rt.rs().magic = true;
-            rt.rs().verbosity = 0;
+            repl_session.session().verbosity = 0;
             arg_idx = argc_u;
             break;
         } else if (argIs(arg, "-exec2")) {
@@ -139,7 +140,7 @@ pub fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
             ls().ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
             ls().ARGV = @ptrCast(argv + arg_idx + 1);
             rt.rs().magic = true;
-            rt.rs().verbosity = 0;
+            repl_session.session().verbosity = 0;
             arg_idx = argc_u;
             break;
         } else if (argIs(arg, "-man")) {
@@ -152,15 +153,15 @@ pub fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
             abi.exit(0);
         } else if (argIs(arg, "-make")) {
             make_state.make().making = true;
-            rt.rs().verbosity = 0;
+            repl_session.session().verbosity = 0;
         } else if (argIs(arg, "-exports")) {
             make_state.make().making = true;
             make_state.make().mkexports = true;
-            rt.rs().verbosity = 0;
+            repl_session.session().verbosity = 0;
         } else if (argIs(arg, "-sources")) {
             make_state.make().making = true;
             make_state.make().mksources = true;
-            rt.rs().verbosity = 0;
+            repl_session.session().verbosity = 0;
         } else if (argIs(arg, "-UTF-8")) {
             rt.rs().UTF8 = 1;
         } else if (argIs(arg, "-noUTF-8")) {
@@ -239,7 +240,7 @@ pub fn resolveEnvironmentSettings() void {
     }
 
     if (abi.getenv("MIRAPROMPT")) |prs| {
-        rt.rs().promptstr = prs;
+        repl_session.session().promptstr = prs;
     }
 
     if (abi.getenv("RECHECKMIRA") != null and rt.rs().rechecking == 0) {
@@ -272,13 +273,13 @@ pub fn readRc(rcfile: [*:0]const u8) Word {
     if (std.mem.startsWith(u8, z_slice, "hdve") or std.mem.eql(u8, z_slice, "lhdve")) {
         var z1 = @as([*]u8, @ptrCast(&z)) + 3;
         if (z[0] == 'l') {
-            rt.rs().listing = 1;
+            repl_session.session().listing = 1;
             z1 += 1;
         }
         z1 += 1;
         while (z1[0] != 0) : (z1 += 1) {
             switch (z1[0]) {
-                'l' => rt.rs().listing = 1,
+                'l' => repl_session.session().listing = 1,
                 's' => {},
                 'r' => rt.rs().rechecking = 2,
                 else => rt.rs().rc_error = rcfile,
@@ -351,7 +352,7 @@ pub fn writeRc() void {
     defer _ = word.fclose(f);
 
     _ = word.fprint(f, "hdve", .{});
-    if (rt.rs().listing != 0) {
+    if (repl_session.session().listing != 0) {
         _ = word.fprint(f, "l", .{});
     }
     if (rt.rs().rechecking == 2) {
@@ -418,13 +419,13 @@ test "readRc and writeRc roundtrip text config" {
     const prev_limit = rt.rs().SPACELIMIT;
     const prev_dic = rt.rs().DICSPACE;
     const prev_editor = rt.rs().editor;
-    const prev_listing = rt.rs().listing;
+    const prev_listing = repl_session.session().listing;
     const prev_rechecking = rt.rs().rechecking;
     defer {
         rt.rs().SPACELIMIT = prev_limit;
         rt.rs().DICSPACE = prev_dic;
         rt.rs().editor = prev_editor;
-        rt.rs().listing = prev_listing;
+        repl_session.session().listing = prev_listing;
         rt.rs().rechecking = prev_rechecking;
     }
 
@@ -438,7 +439,7 @@ test "readRc and writeRc roundtrip text config" {
     // Change settings and write
     rt.rs().SPACELIMIT = 3000000;
     rt.rs().DICSPACE = 150000;
-    rt.rs().listing = 1;
+    repl_session.session().listing = 1;
     rt.rs().rechecking = 2;
     rt.rs().editor = @constCast("emacs +! %");
 
@@ -480,17 +481,17 @@ test "readRc: \"lhdve\" sets the listing flag in addition to hdve's fields" {
     const prev_limit = rt.rs().SPACELIMIT;
     const prev_dic = rt.rs().DICSPACE;
     const prev_editor = rt.rs().editor;
-    const prev_listing = rt.rs().listing;
+    const prev_listing = repl_session.session().listing;
     defer {
         rt.rs().SPACELIMIT = prev_limit;
         rt.rs().DICSPACE = prev_dic;
         rt.rs().editor = prev_editor;
-        rt.rs().listing = prev_listing;
+        repl_session.session().listing = prev_listing;
     }
 
     const res = try readRcFromContent("lhdve 2500000 100000 2067 vi\n");
     try std.testing.expectEqual(@as(Word, 1), res);
-    try std.testing.expectEqual(@as(Word, 1), rt.rs().listing);
+    try std.testing.expectEqual(@as(Word, 1), repl_session.session().listing);
     try std.testing.expectEqual(@as(Word, 2500000), rt.rs().SPACELIMIT);
     try std.testing.expectEqual(@as(Word, 100000), rt.rs().DICSPACE);
     try std.testing.expectEqualStrings("vi", std.mem.span(rt.rs().editor.?));

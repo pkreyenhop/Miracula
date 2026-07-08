@@ -124,6 +124,7 @@ const big = @import("../graph/bignum.zig");
 const lex = @import("../parser/lex.zig");
 const setup = @import("../compiler/setup.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const repl_session = @import("../session/repl_session.zig");
 const show_fns = @import("show_fns.zig");
 
 const make = heap_mod.make;
@@ -1071,7 +1072,7 @@ fn nclchk(heap: *Heap, n: Word, p: Word, hr: Word) bool {
         if (n != p) {
             return false;
         }
-        if (rt.rs().echoing != 0) {
+        if (repl_session.session().echoing != 0) {
             _ = word.putchar('\n');
         }
         core_state.s().errs = hr;
@@ -1098,7 +1099,7 @@ pub fn nclashcheck(heap: *Heap, n: Word, input_dd: Word, hr: Word) void {
 
 /// Report a re-specification (duplicate `::`) error for `x`.
 pub fn respecError(heap: *Heap, x: Word) void {
-    if (rt.rs().echoing != 0) {
+    if (repl_session.session().echoing != 0) {
         _ = word.putchar('\n');
     }
     const suffix: [*:0]const u8 = if (member(heap, rt.rs().primenv, x) != 0) " (in standard environment)" else "";
@@ -1108,7 +1109,7 @@ pub fn respecError(heap: *Heap, x: Word) void {
 
 /// Report a name clash for `x`.
 pub fn nameclash(heap: *Heap, x: Word) void {
-    if (rt.rs().echoing != 0) {
+    if (repl_session.session().echoing != 0) {
         _ = word.putchar('\n');
     }
     const suffix: [*:0]const u8 = if (member(heap, rt.rs().primenv, x) != 0) " (in standard environment)" else "";
@@ -1179,7 +1180,7 @@ pub fn specify(heap: *Heap, input_x: Word, spec_type: Word, here: Word) void {
 /// Check that `type_name` is applied at its declared arity.
 fn arityCheck(heap: *Heap, type_name: Word, arity: Word, here: Word) void {
     if (typeArity(heap, type_name) != arity) {
-        const prefix: [*:0]const u8 = if (rt.rs().echoing != 0) "\n" else "";
+        const prefix: [*:0]const u8 = if (repl_session.session().echoing != 0) "\n" else "";
         _ = word.print("{s}syntax error: wrong number of parameters for typename \"{s}\" ({d} expected)\n", .{
             prefix,
             getId(heap, type_name),
@@ -1245,7 +1246,7 @@ fn decl1(heap: *Heap, x: Word, e: Word) void {
             addToEnv(heap, x);
         }
     } else if (fallible(heap, h(heap, t(heap, idVal(heap, x)))) == 0) {
-        const prefix: [*:0]const u8 = if (rt.rs().echoing != 0) "\n" else "";
+        const prefix: [*:0]const u8 = if (repl_session.session().echoing != 0) "\n" else "";
         core_state.s().errs = h(heap, e);
         _ = word.print("{s}syntax error: unreachable case in defn of \"{s}\"\n", .{ prefix, getId(heap, x) });
         acterror() catch {};

@@ -9,6 +9,7 @@ const errors = @import("../runtime/errors.zig");
 const strtab = @import("../graph/strtab.zig");
 const cs = @import("../compiler/compiler_state.zig").cs;
 const rt = @import("../runtime/runtime_state.zig");
+const repl_session = @import("repl_session.zig");
 const make_state = @import("make_state.zig");
 const abi = @import("../os.zig");
 
@@ -54,7 +55,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     var manonly: Word = 0;
     rt.rs().cstack = @ptrCast(&manonly);
     unlimitStack();
-    rt.rs().verbosity = if (abi.isatty(0) != 0) 1 else 0;
+    repl_session.session().verbosity = if (abi.isatty(0) != 0) 1 else 0;
     word.setbuf(abi.stdout(), null);
 
     const okhome_rc = config.readHomeRc();
@@ -105,7 +106,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
 
     setup.miraSetup();
 
-    if (rt.rs().verbosity != 0) {
+    if (repl_session.session().verbosity != 0) {
         repl.announce();
     }
 
@@ -130,7 +131,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
         config.writeRc();
     }
 
-    rt.rs().echoing = rt.rs().verbosity & rt.rs().listing;
+    repl_session.session().echoing = repl_session.session().verbosity & repl_session.session().listing;
     rt.rs().initialising = 0;
 
     if (make_state.make().mkexports) {

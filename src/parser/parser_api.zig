@@ -18,6 +18,7 @@ const options = @import("version_options");
 
 const word = @import("../graph/word.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const repl_session = @import("../session/repl_session.zig");
 const core = @import("../runtime/core_state.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
 
@@ -203,7 +204,7 @@ fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagno
             p.validate();
             rt.rs().validate();
         }
-        rt.rs().lastexp = expr_word; // anchor as GC root before typeOf() inside evaluateRepl() can trigger GC
+        repl_session.session().lastexp = expr_word; // anchor as GC root before typeOf() inside evaluateRepl() can trigger GC
         evaluateRepl(heap.heap(), core.s(), compiler_state.cs(), rt.rs(), expr_word);
         // driver/repl.zig's command loop checks `lexs.c` after this call
         // returns to decide whether the line held trailing garbage (`lexs.c
