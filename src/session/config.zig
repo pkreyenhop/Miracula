@@ -9,6 +9,7 @@ const std = @import("std");
 const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const make_state = @import("make_state.zig");
 const abi = @import("../os.zig");
 
 const Word = word.Word;
@@ -150,15 +151,15 @@ pub fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
             versionInfo(1);
             abi.exit(0);
         } else if (argIs(arg, "-make")) {
-            rt.rs().making = true;
+            make_state.make().making = true;
             rt.rs().verbosity = 0;
         } else if (argIs(arg, "-exports")) {
-            rt.rs().making = true;
-            rt.rs().mkexports = true;
+            make_state.make().making = true;
+            make_state.make().mkexports = true;
             rt.rs().verbosity = 0;
         } else if (argIs(arg, "-sources")) {
-            rt.rs().making = true;
-            rt.rs().mksources = true;
+            make_state.make().making = true;
+            make_state.make().mksources = true;
             rt.rs().verbosity = 0;
         } else if (argIs(arg, "-UTF-8")) {
             rt.rs().UTF8 = 1;

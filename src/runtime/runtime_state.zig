@@ -96,12 +96,6 @@ pub const RuntimeState = struct {
     // Evaluation control flags
     /// True when building a .mirarc dump; suppresses side-effects.
     magic: bool = false,
-    /// True when `//make` is in progress.
-    making: bool = false,
-    /// True when `//exports` should write an export header.
-    mkexports: bool = false,
-    mksources: bool = false,
-    make_status: Word = 0,
     ideep: i32 = 0,
     /// Non-zero during the one-time startup before `commandLoop` begins.
     /// Guards paths that must not repeat (e.g. panic on missing prelude).
@@ -225,9 +219,6 @@ test "RuntimeState default values are self-consistent" {
 test "RuntimeState bool fields default to false" {
     const state: RuntimeState = .{};
     try std.testing.expect(!state.magic);
-    try std.testing.expect(!state.making);
-    try std.testing.expect(!state.mkexports);
-    try std.testing.expect(!state.mksources);
     try std.testing.expect(!state.okprel);
     try std.testing.expect(!state.nostdenv);
 }

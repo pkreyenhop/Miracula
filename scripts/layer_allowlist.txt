@@ -24,6 +24,7 @@ src/graph/heap.zig -> src/eval/spine.zig
 src/graph/heap.zig -> src/os.zig
 src/graph/heap.zig -> src/semantics/symbols.zig
 src/graph/heap.zig -> src/session/interp.zig
+src/graph/heap.zig -> src/session/make_state.zig
 src/graph/strtab.zig -> src/session/interp.zig
 src/graph/word.zig -> src/eval/stream.zig
 src/os.zig -> src/eval/reduce_rt.zig

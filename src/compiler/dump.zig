@@ -8,6 +8,7 @@ const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
 const strtab = @import("../graph/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const make_state = @import("../session/make_state.zig");
 const compiler_state = @import("compiler_state.zig");
 const cs = compiler_state.cs;
 const abi = @import("../os.zig");
@@ -92,10 +93,11 @@ fn unpaint(x: Word) void {
 }
 
 /// Reverses the privatisation done by fixexports(), restoring all `internals` to public.
-/// No-op when `rs.mkexports != 0` (the dump is being kept for distribution).
+/// No-op when `mkexports` (`//exports`) is set (the dump is being kept for distribution).
 pub fn unfixexports(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState) void {
+    _ = rs;
     var i = comp.internals;
-    if (rs.mkexports) return;
+    if (make_state.make().mkexports) return;
     while (i != NIL) : (i = t(i)) {
         _ = publicise(heap, lexs, h(i));
     }
@@ -296,7 +298,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
     rs.oldfiles = NIL;
     dump_mod.unload(comp, rs, ls());
 
-    heap.files = abi.loadScript(core, comp, rs, ls(), f.?, @constCast(t_val), NIL, NIL, if (!rs.making and rs.initialising == 0) 1 else 0);
+    heap.files = abi.loadScript(core, comp, rs, ls(), f.?, @constCast(t_val), NIL, NIL, if (!make_state.make().making and rs.initialising == 0) 1 else 0);
     _ = word.fclose(f.?);
 
     if (comp.BAD_DUMP != 0) {
@@ -330,20 +332,20 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
         }
         module_loader.loadfile(heap, core, comp, rs, ls(), t_val) catch {};
     } else {
-        if (rs.verbosity != 0 or rs.magic or rs.mkexports) {
+        if (rs.verbosity != 0 or rs.magic or make_state.make().mkexports) {
             if (heap.files == NIL) {
                 word.print("{s} contains syntax error\n", .{std.mem.span(t_val)});
             } else {
                 if (comp.ND != NIL) {
                     word.print("{s} contains undefined names or type errors\n", .{std.mem.span(t_val)});
-                } else if (!rs.making and !rs.magic) {
+                } else if (!make_state.make().making and !rs.magic) {
                     word.print("{s}\n", .{std.mem.span(t_val)});
                 }
             }
         }
     }
 
-    if (heap.files != NIL and !rs.making and rs.initialising == 0) {
+    if (heap.files != NIL and !make_state.make().making and rs.initialising == 0) {
         unfixexports(heap, comp, rs, ls());
     }
     core.loading = 0;
@@ -374,8 +376,8 @@ pub fn makedump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         if (std.mem.eql(u8, current_script_span, std.mem.span(@as([*:0]const u8, @ptrCast(&rs.PRELUDE)))) or std.mem.eql(u8, current_script_span, std.mem.span(@as([*:0]const u8, @ptrCast(&rs.STDENV))))) {
             word.print("TO FIX THIS PROBLEM PLEASE GET SUPER-USER TO EXECUTE `mira'\n", .{});
         }
-        if (rs.making and rs.make_status == 0) {
-            rs.make_status = 1;
+        if (make_state.make().making and make_state.make().make_status == 0) {
+            make_state.make().make_status = 1;
         }
         return;
     }

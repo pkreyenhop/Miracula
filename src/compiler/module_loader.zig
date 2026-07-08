@@ -8,6 +8,7 @@ const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
 const strtab = @import("../graph/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const make_state = @import("../session/make_state.zig");
 const compiler_state = @import("compiler_state.zig");
 const cs = compiler_state.cs;
 inline fn getTag(heap: *Heap, x: word.Word) word.NodeTag {
@@ -78,7 +79,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         if (rs.magic) {
             errors.fatal("mira -exec {s}: no such file\n", .{t_val});
         }
-        if (rs.making and rs.ideep == 0) {
+        if (make_state.make().making and rs.ideep == 0) {
             word.print("mira -make {s}: no such file\n", .{t_val});
         } else {
             rs.oldfiles = heap_mod.cons(heap_mod.makeFil(t_val, 0, 0, NIL), NIL);
@@ -115,7 +116,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     abi.adjustPrefix(@constCast(t_val));
 
     core.commandmode = 0;
-    if (rs.verbosity != 0 or rs.making) {
+    if (rs.verbosity != 0 or make_state.make().making) {
         word.print("compiling {s}\n", .{t_val});
     }
     lexs.nextpn = 0;
@@ -142,7 +143,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     rs.ld_stuff = NIL;
 
     if (core.SYNERR == 0) {
-        if (rs.verbosity != 0 or (rs.making and !rs.mkexports and !rs.mksources)) {
+        if (rs.verbosity != 0 or (make_state.make().making and !make_state.make().mkexports and !make_state.make().mksources)) {
             word.print("checking types in {s}\n", .{t_val});
         }
         types_mod.checktypes(heap, core, comp, rs);
@@ -170,7 +171,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
             }
         }
         comp.current_id = 0;
-        if (comp.lfrule != 0 and (rs.verbosity != 0 or rs.making)) {
+        if (comp.lfrule != 0 and (rs.verbosity != 0 or make_state.make().making)) {
             word.print("grammar optimisation: {} common left factors found\n", .{comp.lfrule});
         }
         if (rs.initialising != 0 and comp.ND != NIL) {
@@ -488,20 +489,20 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
     } else { // child
         _ = signals(abi.SIGINT, 0);
         rs.ideep += 1;
-        rs.making = true;
-        rs.make_status = 0;
+        make_state.make().making = true;
+        make_state.make().make_status = 0;
         rs.echoing = 0;
         rs.listing = 0;
         rs.verbosity = 0;
         rs.magic = false;
-        while (includees_list != NIL and rs.make_status == 0) {
+        while (includees_list != NIL and make_state.make().make_status == 0) {
             dump.undump(heap, core, comp, rs, strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(heap_mod.h(includees_list)))));
             if (comp.ND != NIL or (heap.files == NIL and rs.oldfiles != NIL)) {
-                rs.make_status = 1;
+                make_state.make().make_status = 1;
             }
             includees_list = heap_mod.t(includees_list);
         }
-        abi.exit(@intCast(rs.make_status));
+        abi.exit(@intCast(make_state.make().make_status));
     }
 
     while (includees_list != NIL) {

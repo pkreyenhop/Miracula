@@ -9,6 +9,7 @@ const errors = @import("../runtime/errors.zig");
 const strtab = @import("../graph/strtab.zig");
 const cs = @import("../compiler/compiler_state.zig").cs;
 const rt = @import("../runtime/runtime_state.zig");
+const make_state = @import("make_state.zig");
 const abi = @import("../os.zig");
 
 const Word = word.Word;
@@ -67,7 +68,7 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     const argc_u = @as(usize, @intCast(argc));
 
     const remaining_argc = argc_u - arg_idx;
-    if (remaining_argc > 1 and !rt.rs().magic and !rt.rs().making) {
+    if (remaining_argc > 1 and !rt.rs().magic and !make_state.make().making) {
         errors.fatal("mira: too many args\n", .{});
     }
 
@@ -132,15 +133,15 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     rt.rs().echoing = rt.rs().verbosity & rt.rs().listing;
     rt.rs().initialising = 0;
 
-    if (rt.rs().mkexports) {
+    if (make_state.make().mkexports) {
         runExportsMode(heap, argc_u, argv, arg_idx);
     }
 
-    if (rt.rs().mksources) {
+    if (make_state.make().mksources) {
         runSourcesMode(heap, argc_u, argv, arg_idx);
     }
 
-    if (rt.rs().making) {
+    if (make_state.make().making) {
         runMakeMode(heap, argc_u, argv, arg_idx);
     }
 
@@ -279,7 +280,7 @@ fn runSourcesMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
 }
 
 /// `-make` mode: undumps each remaining argument, collecting any that have
-/// errors or undefined names into `rt.rs().make_status`; reports them (see
+/// errors or undefined names into `make_state.make().make_status`; reports them (see
 /// [reportMakeFailures]) and exits the process with the resulting status.
 fn runMakeMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) void {
     var s: [*:0]u8 = undefined;
@@ -291,16 +292,16 @@ fn runMakeMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) voi
         }
         dump.undump(heap, core_state.s(), cs(), rt.rs(), s);
         if (cs().ND != NIL or (heap.files == NIL and rt.rs().oldfiles != NIL)) {
-            if (rt.rs().make_status == 1) {
-                rt.rs().make_status = 0;
+            if (make_state.make().make_status == 1) {
+                make_state.make().make_status = 0;
             }
-            rt.rs().make_status = abi.strcons(@as(Word, strtab.strBits(strtab.table(), s)), rt.rs().make_status);
+            make_state.make().make_status = abi.strcons(@as(Word, strtab.strBits(strtab.table(), s)), make_state.make().make_status);
         }
     }
-    if (getTag(heap, rt.rs().make_status) == .STRCONS) {
+    if (getTag(heap, make_state.make().make_status) == .STRCONS) {
         reportMakeFailures();
     }
-    abi.exit(@intCast(rt.rs().make_status));
+    abi.exit(@intCast(make_state.make().make_status));
 }
 
 /// Reports the accumulated `-make` failures (see [runMakeMode]) as a
@@ -309,13 +310,13 @@ fn reportMakeFailures() void {
     var h_val: Word = 0;
     var maxw: Word = 0;
     word.print("errors or undefined names found in:-\n", .{});
-    while (rt.rs().make_status != 0) {
-        h_val = abi.strcons(heap_mod.h(rt.rs().make_status), h_val);
+    while (make_state.make().make_status != 0) {
+        h_val = abi.strcons(heap_mod.h(make_state.make().make_status), h_val);
         const w = @as(Word, @intCast(std.mem.len(strtab.strOf(strtab.table(), heap_mod.h(h_val)))));
         if (w > maxw) {
             maxw = w;
         }
-        rt.rs().make_status = heap_mod.t(rt.rs().make_status);
+        make_state.make().make_status = heap_mod.t(make_state.make().make_status);
     }
     maxw += 1;
     const n = @max(@as(Word, 1), @divTrunc(@as(Word, 78), maxw));
@@ -336,7 +337,7 @@ fn reportMakeFailures() void {
     if ((@rem(w, n)) != 0) {
         word.print("\n", .{});
     }
-    rt.rs().make_status = 1;
+    make_state.make().make_status = 1;
 }
 
 /// Check the `.version` file under directory `m`; returns 1 if it matches this build, else records the mismatch for `libFails`.

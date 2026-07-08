@@ -30,6 +30,7 @@ const Bignum = @import("../graph/bignum.zig").Bignum;
 const StringTable = @import("../graph/strtab.zig").StringTable;
 const LineEditState = @import("editor.zig").LineEditState;
 const SymbolTable = @import("../semantics/symbols.zig").SymbolTable;
+const MakeState = @import("make_state.zig").MakeState;
 
 /// All interpreter state, owned in one place — including heap's GC/dictionary
 /// scratch (folded into `heap` by Phase 2b), the interned `strtab` table, and
@@ -52,6 +53,10 @@ pub const Interp = struct {
     /// replaces `LexState.namebucket`'s fixed-size hash-bucket array. See
     /// `semantics/symbols.zig`.
     symbols: SymbolTable = .{},
+    /// The `//make`/`-make` build-mode flags and failure list (Phase 4 step
+    /// 4, docs/ZIG_NATIVE_PLAN.md): the first field carved out of the
+    /// monolithic `RuntimeState`.
+    make: MakeState = .{},
 };
 
 /// Backing storage for the default interpreter instance. Not read directly —

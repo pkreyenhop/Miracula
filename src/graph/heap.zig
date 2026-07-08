@@ -18,6 +18,7 @@ const lex_state = @import("../parser/lex_state.zig");
 const ls = lex_state.ls;
 
 const compiler_state = @import("../compiler/compiler_state.zig");
+const make_state = @import("../session/make_state.zig");
 const lex = @import("../parser/lex.zig");
 const symbols = @import("../semantics/symbols.zig");
 const big = @import("bignum.zig");
@@ -533,7 +534,7 @@ pub const Heap = struct {
         self.mark(reduce.ev().outfilq);
         self.mark(reduce.ev().waiting);
         if (core.s().compiling != 0 or rt.rs().rv_expr != 0 or cs().rv_script != 0) {
-            self.mark(rt.rs().make_status);
+            self.mark(make_state.make().make_status);
             self.mark(rt.rs().primenv);
             self.mark(ls().fileq);
             self.mark(ls().idsused);
