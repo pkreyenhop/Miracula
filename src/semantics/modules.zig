@@ -327,7 +327,7 @@ fn applyExportsAndAliases(gpa: std.mem.Allocator, script: ast.Script, aliases: [
     var to_hide: Word = word.NIL;
     for (own_names) |n| {
         if (visible.contains(n)) continue;
-        if (symbols.syms().find(n)) |id| to_hide = heap_mod.cons(id, to_hide);
+        if (symbols.syms().find(n)) |id| to_hide = heap_mod.cons(heap_mod.heap(), id, to_hide);
     }
     if (to_hide != word.NIL) lex.mkprivate(heap_mod.heap(), to_hide);
 }

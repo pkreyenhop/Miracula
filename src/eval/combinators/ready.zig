@@ -421,7 +421,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         },
         word.CODE => {
             reduce.upLeft(ctx);
-            reduce.simpl(ctx, heap.make(.INT, heap.getChar(lastArg(ctx)), 0));
+            reduce.simpl(ctx, heap.make(ctx.heap, .INT, heap.getChar(lastArg(ctx)), 0));
             ctx.action = word.ACT_DONE;
             return;
         },

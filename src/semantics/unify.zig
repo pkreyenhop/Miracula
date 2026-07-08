@@ -45,12 +45,12 @@ fn t(heap: *Heap, x: Word) Word {
 
 /// Allocate a `CONS` cell `(x . y)`.
 fn cons(x: Word, y: Word) Word {
-    return make(.CONS, x, y);
+    return make(heap_mod.heap(), .CONS, x, y);
 }
 
 /// Make a type-variable node with index `i`.
 fn mktvar(i: Word) Word {
-    return make(.TVAR, 0, i);
+    return make(heap_mod.heap(), .TVAR, 0, i);
 }
 
 /// The index of type variable `x`.
@@ -119,7 +119,7 @@ pub fn ult(heap: *Heap, tv: Word) Word {
 
 /// Allocate an application cell `(x y)`.
 fn ap(x: Word, y: Word) Word {
-    return make(.AP, x, y);
+    return make(heap_mod.heap(), .AP, x, y);
 }
 
 /// Apply `f` to every type variable in `term`, rebuilding it.

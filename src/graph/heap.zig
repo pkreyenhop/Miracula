@@ -36,12 +36,12 @@ const Word = i64;
 
 /// The value field of a type/definition cell.
 pub inline fn theVal(x: Word) Word {
-    return t(x);
+    return t(heap(), x);
 }
 
 /// The arity recorded in a type node.
 pub inline fn tArity(x: Word) Word {
-    return h(h(t(x)));
+    return h(heap(), h(heap(), t(heap(), x)));
 }
 const ATOMLIMIT = word.ATOMLIMIT;
 const NIL = word.NIL;
@@ -723,23 +723,23 @@ pub inline fn heap() *Heap {
 /// Head (`hd`) of cell `x`.
 ///
 /// Tests: heap accessors: cons/make build cells that h/t/getTag read back
-pub fn h(x: Word) Word {
-    return heap().h(x);
+pub fn h(heap_ptr: *Heap, x: Word) Word {
+    return heap_ptr.h(x);
 }
 
 /// Pointer to the head field of cell `x` (for in-place mutation).
-pub fn hp(x: Word) *Word {
-    return heap().hp(x);
+pub fn hp(heap_ptr: *Heap, x: Word) *Word {
+    return heap_ptr.hp(x);
 }
 
 /// Tail (`tl`) of cell `x`.
-pub fn t(x: Word) Word {
-    return heap().t(x);
+pub fn t(heap_ptr: *Heap, x: Word) Word {
+    return heap_ptr.t(x);
 }
 
 /// Pointer to the tail field of cell `x` (for in-place mutation).
-pub fn tp(x: Word) *Word {
-    return heap().tp(x);
+pub fn tp(heap_ptr: *Heap, x: Word) *Word {
+    return heap_ptr.tp(x);
 }
 
 /// Mark `x` reachable (GC). A free-function adapter to the singleton's
@@ -751,33 +751,34 @@ fn markRoot(x: Word) void {
 }
 
 /// The node tag of cell `x`.
-pub fn getTag(x: Word) word.NodeTag {
-    return heap().getTag(x);
+pub fn getTag(heap_ptr: *Heap, x: Word) word.NodeTag {
+    return heap_ptr.getTag(x);
 }
 
 /// Allocate a `CONS` cell `(x . y)`.
 ///
 /// Tests: heap accessors: cons/make build cells that h/t/getTag read back
-pub fn cons(x: Word, y: Word) Word {
-    return heap().cons(x, y);
+pub fn cons(heap_ptr: *Heap, x: Word, y: Word) Word {
+    return heap_ptr.cons(x, y);
 }
 
 test "heap accessors: cons/make build cells that h/t/getTag read back" {
     tu.freshInterp();
-    const c = cons(word.True, word.NIL);
-    try std.testing.expectEqual(word.NodeTag.CONS, getTag(c));
-    try std.testing.expectEqual(@as(Word, word.True), h(c));
-    try std.testing.expectEqual(@as(Word, word.NIL), t(c));
+    const heap_val = heap();
+    const c = cons(heap_val, word.True, word.NIL);
+    try std.testing.expectEqual(word.NodeTag.CONS, getTag(heap_val, c));
+    try std.testing.expectEqual(@as(Word, word.True), h(heap_val, c));
+    try std.testing.expectEqual(@as(Word, word.NIL), t(heap_val, c));
     // hp/tp expose the fields for in-place mutation.
-    hp(c).* = word.False;
-    tp(c).* = word.True;
-    try std.testing.expectEqual(@as(Word, word.False), h(c));
-    try std.testing.expectEqual(@as(Word, word.True), t(c));
+    hp(heap_val, c).* = word.False;
+    tp(heap_val, c).* = word.True;
+    try std.testing.expectEqual(@as(Word, word.False), h(heap_val, c));
+    try std.testing.expectEqual(@as(Word, word.True), t(heap_val, c));
     // make builds a cell with an arbitrary tag; setTag (on the singleton) rewrites it.
-    const apnode = make(.AP, word.I, word.NIL);
-    try std.testing.expectEqual(word.NodeTag.AP, getTag(apnode));
-    heap().setTag(apnode, .CONS);
-    try std.testing.expectEqual(word.NodeTag.CONS, getTag(apnode));
+    const apnode = make(heap_val, .AP, word.I, word.NIL);
+    try std.testing.expectEqual(word.NodeTag.AP, getTag(heap_val, apnode));
+    heap_val.setTag(apnode, .CONS);
+    try std.testing.expectEqual(word.NodeTag.CONS, getTag(heap_val, apnode));
 }
 
 test "gc: a long-lived list survives many forced collections; garbage is reclaimed" {
@@ -856,9 +857,9 @@ test "gc: a long-lived list survives many forced collections; garbage is reclaim
     var w = chain;
     var expected: Word = chain_len - 1;
     while (w != word.NIL) {
-        try std.testing.expectEqual(word.NodeTag.CONS, getTag(w));
-        try std.testing.expectEqual(@mod(expected, 100), h(w));
-        w = t(w);
+        try std.testing.expectEqual(word.NodeTag.CONS, getTag(heap(), w));
+        try std.testing.expectEqual(@mod(expected, 100), h(heap(), w));
+        w = t(heap(), w);
         expected -= 1;
     }
     try std.testing.expectEqual(@as(Word, -1), expected);
@@ -875,8 +876,8 @@ test "Heap.checkpoint/restore: undoes cell mutations and new allocations made af
     // A cell that exists *before* the checkpoint: restore must put its
     // fields back exactly, even though it gets mutated in place below.
     const before = heap().cons(1, 2);
-    try std.testing.expectEqual(@as(Word, 1), h(before));
-    try std.testing.expectEqual(@as(Word, 2), t(before));
+    try std.testing.expectEqual(@as(Word, 1), h(heap(), before));
+    try std.testing.expectEqual(@as(Word, 2), t(heap(), before));
 
     const top_before = heap().TOP();
     const free_head_before = heap().free_head;
@@ -890,8 +891,8 @@ test "Heap.checkpoint/restore: undoes cell mutations and new allocations made af
     // restoring -- the snapshot itself is inert data, not a GC root; it does
     // not need a live mark/sweep pass to exercise (that's `gc()`'s own test,
     // above).
-    hp(before).* = 99;
-    tp(before).* = 98;
+    hp(heap(), before).* = 99;
+    tp(heap(), before).* = 98;
     var i: Word = 0;
     while (i < 50) : (i += 1) {
         _ = heap().cons(0, 0);
@@ -899,8 +900,8 @@ test "Heap.checkpoint/restore: undoes cell mutations and new allocations made af
 
     heap().restore(&snap);
 
-    try std.testing.expectEqual(@as(Word, 1), h(before));
-    try std.testing.expectEqual(@as(Word, 2), t(before));
+    try std.testing.expectEqual(@as(Word, 1), h(heap(), before));
+    try std.testing.expectEqual(@as(Word, 2), t(heap(), before));
     try std.testing.expectEqual(top_before, heap().TOP());
     try std.testing.expectEqual(free_head_before, heap().free_head);
     try std.testing.expectEqual(cellcount_before, heap().cellcount);
@@ -913,25 +914,25 @@ test "Heap.checkpoint/restore: undoes cell mutations and new allocations made af
 ///
 /// Tests: tries: builds a TRIES alternative-chain cell
 pub fn tries(x: Word, y: Word) Word {
-    return make(.TRIES, x, y);
+    return make(heap(), .TRIES, x, y);
 }
 
 test "tries: builds a TRIES alternative-chain cell" {
     tu.freshInterp();
     const tr = tries(word.True, word.NIL);
-    try std.testing.expectEqual(word.NodeTag.TRIES, getTag(tr));
-    try std.testing.expectEqual(@as(Word, word.True), h(tr));
-    try std.testing.expectEqual(@as(Word, word.NIL), t(tr));
+    try std.testing.expectEqual(word.NodeTag.TRIES, getTag(heap(), tr));
+    try std.testing.expectEqual(@as(Word, word.True), h(heap(), tr));
+    try std.testing.expectEqual(@as(Word, word.NIL), t(heap(), tr));
 }
 
 /// The 'who' (definition-site) field of id `x`.
 pub fn idWho(x: Word) Word {
-    return t(h(h(x)));
+    return t(heap(), h(heap(), h(heap(), x)));
 }
 
 /// The interned name text of id `x`.
 pub fn getId(x: Word) [*:0]const u8 {
-    return strtab.strOf(strtab.table(), h(h(h(x))));
+    return strtab.strOf(strtab.table(), h(heap(), h(heap(), h(heap(), x))));
 }
 
 /// The filename of file-record `fil`, or null when absent.
@@ -939,7 +940,7 @@ pub fn getId(x: Word) [*:0]const u8 {
 /// The single file-name accessor: callers that want the empty string for an absent
 /// name use `getFil(fil) orelse ""` (matches `strtab.strOf(strtab.table(), 0)`).
 pub fn getFil(fil: Word) ?[*:0]const u8 {
-    const val = h(h(h(fil)));
+    const val = h(heap(), h(heap(), h(heap(), fil)));
     if (val == 0) return null;
     return strtab.strOf(strtab.table(), val);
 }
@@ -948,7 +949,7 @@ pub fn getFil(fil: Word) ?[*:0]const u8 {
 ///
 /// Tests: stoChar / getChar / isChar: bare Latin-1 and wide UNICODE chars
 pub fn stoChar(ch: Word) Word {
-    return if (word.fitsInByte(ch)) ch else make(.UNICODE, ch, 0);
+    return if (word.fitsInByte(ch)) ch else make(heap(), .UNICODE, ch, 0);
 }
 
 /// The code point of char value `x`.
@@ -957,7 +958,7 @@ pub fn stoChar(ch: Word) Word {
 pub fn getChar(x: Word) Word {
     switch (word.classify(x)) {
         .imm => |c| return c, // bare Latin-1 code point
-        .ref => if (getTag(x) == .UNICODE) return h(x), // UNICODE cell: code point in hd
+        .ref => if (getTag(heap(), x) == .UNICODE) return h(heap(), x), // UNICODE cell: code point in hd
         .atom => {},
     }
     std.debug.print("impossible event in getChar(x), tag[x]=={d}\n", .{heap().getTag(x)});
@@ -970,7 +971,7 @@ pub fn getChar(x: Word) Word {
 pub fn isChar(x: Word) bool {
     return switch (word.classify(x)) {
         .imm => true, // bare Latin-1 char
-        .ref => getTag(x) == .UNICODE, // wide char cell
+        .ref => getTag(heap(), x) == .UNICODE, // wide char cell
         .atom => false, // a combinator/named atom is not a char
     };
 }
@@ -983,7 +984,7 @@ test "stoChar / getChar / isChar: bare Latin-1 and wide UNICODE chars" {
     try std.testing.expectEqual(@as(Word, 65), getChar(65));
     // Wide: boxed in a UNICODE cell, but still a char that decodes back.
     const emoji = stoChar(0x1F600);
-    try std.testing.expectEqual(word.NodeTag.UNICODE, getTag(emoji));
+    try std.testing.expectEqual(word.NodeTag.UNICODE, getTag(heap(), emoji));
     try std.testing.expect(isChar(emoji));
     try std.testing.expectEqual(@as(Word, 0x1F600), getChar(emoji));
     // A combinator atom is not a char.
@@ -993,13 +994,13 @@ test "stoChar / getChar / isChar: bare Latin-1 and wide UNICODE chars" {
 /// The source location (`HERE`) recorded for id `x`.
 pub fn getHere(x: Word) Word {
     const y = idWho(x);
-    return if (getTag(y) == .CONS) t(y) else y;
+    return if (getTag(heap(), y) == .CONS) t(heap(), y) else y;
 }
 
 /// The original ('also known as') name of id `x` (before any alias).
 pub fn getaka(x: Word) [*:0]const u8 {
     const y = idWho(x);
-    return if (getTag(y) != .CONS) getId(x) else strtab.strOf(strtab.table(), h(h(y)));
+    return if (getTag(heap(), y) != .CONS) getId(x) else strtab.strOf(strtab.table(), h(heap(), h(heap(), y)));
 }
 
 /// Append a single element to the end of list `x`.
@@ -1008,21 +1009,21 @@ pub fn getaka(x: Word) [*:0]const u8 {
 pub fn append1(x: Word, y: Word) Word {
     var x1 = x;
     if (x1 == nil()) return y;
-    while (t(x1) != nil()) x1 = t(x1);
-    tp(x1).* = y;
+    while (t(heap(), x1) != nil()) x1 = t(heap(), x1);
+    tp(heap(), x1).* = y;
     return x;
 }
 
 test "append1: links y onto the tail of list x" {
     tu.freshInterp();
     // [True] with [False] linked on → True : False : NIL
-    const x = cons(word.True, word.NIL);
-    const y = cons(word.False, word.NIL);
+    const x = cons(heap(), word.True, word.NIL);
+    const y = cons(heap(), word.False, word.NIL);
     const r = append1(x, y);
     try std.testing.expectEqual(x, r); // mutates and returns x
-    try std.testing.expectEqual(@as(Word, word.True), h(r));
-    try std.testing.expectEqual(@as(Word, word.False), h(t(r)));
-    try std.testing.expectEqual(@as(Word, word.NIL), t(t(r)));
+    try std.testing.expectEqual(@as(Word, word.True), h(heap(), r));
+    try std.testing.expectEqual(@as(Word, word.False), h(heap(), t(heap(), r)));
+    try std.testing.expectEqual(@as(Word, word.NIL), t(heap(), t(heap(), r)));
     // appending onto nil just yields y
     try std.testing.expectEqual(y, append1(word.NIL, y));
 }
@@ -1033,28 +1034,28 @@ pub fn hdsort(input: Word) Word {
     var a: Word = nil();
     var b: Word = nil();
     if (x == nil()) return nil();
-    if (t(x) == nil()) return x;
+    if (t(heap(), x) == nil()) return x;
     while (x != nil()) {
         const hold = a;
-        a = cons(h(x), b);
+        a = cons(heap(), h(heap(), x), b);
         b = hold;
-        x = t(x);
+        x = t(heap(), x);
     }
     a = hdsort(a);
     b = hdsort(b);
     while (a != nil() and b != nil()) {
-        if (std.mem.order(u8, std.mem.span(getId(h(h(a)))), std.mem.span(getId(h(h(b))))) == .lt) {
-            x = cons(h(a), x);
-            a = t(a);
+        if (std.mem.order(u8, std.mem.span(getId(h(heap(), h(heap(), a)))), std.mem.span(getId(h(heap(), h(heap(), b))))) == .lt) {
+            x = cons(heap(), h(heap(), a), x);
+            a = t(heap(), a);
         } else {
-            x = cons(h(b), x);
-            b = t(b);
+            x = cons(heap(), h(heap(), b), x);
+            b = t(heap(), b);
         }
     }
     if (a == nil()) a = b;
     while (a != nil()) {
-        x = cons(h(a), x);
-        a = t(a);
+        x = cons(heap(), h(heap(), a), x);
+        a = t(heap(), a);
     }
     return reverse(x);
 }
@@ -1065,10 +1066,10 @@ pub fn hdsort(input: Word) Word {
 pub fn getDbl(x: Word) f64 {
     var r: fpdatum = undefined;
     if (comptime @sizeOf(Word) == 4) {
-        r.bits.left = h(x);
-        r.bits.right = t(x);
+        r.bits.left = h(heap(), x);
+        r.bits.right = t(heap(), x);
     } else {
-        r.bits = h(x);
+        r.bits = h(heap(), x);
     }
     return r.real;
 }
@@ -1083,9 +1084,9 @@ pub fn stoDbl(R_val: f64) word.ReduceError!Word {
     var r: fpdatum = undefined;
     r.real = R_val;
     if (comptime @sizeOf(Word) == 4) {
-        return make(.DOUBLE, r.bits.left, r.bits.right);
+        return make(heap(), .DOUBLE, r.bits.left, r.bits.right);
     } else {
-        return make(.DOUBLE, r.bits, 0);
+        return make(heap(), .DOUBLE, r.bits, 0);
     }
 }
 
@@ -1100,18 +1101,18 @@ pub fn setdbl(x: Word, R_val: f64) word.ReduceError!void {
     r.real = R_val;
     heap().setTag(x, .DOUBLE);
     if (comptime @sizeOf(Word) == 4) {
-        hp(x).* = r.bits.left;
-        tp(x).* = r.bits.right;
+        hp(heap(), x).* = r.bits.left;
+        tp(heap(), x).* = r.bits.right;
     } else {
-        hp(x).* = r.bits;
-        tp(x).* = 0;
+        hp(heap(), x).* = r.bits;
+        tp(heap(), x).* = 0;
     }
 }
 
 test "stoDbl / getDbl / setdbl: round-trip an f64 in a DOUBLE cell" {
     tu.freshInterp();
     const d = try stoDbl(3.14);
-    try std.testing.expectEqual(word.NodeTag.DOUBLE, getTag(d));
+    try std.testing.expectEqual(word.NodeTag.DOUBLE, getTag(heap(), d));
     try std.testing.expectEqual(@as(f64, 3.14), getDbl(d));
     try setdbl(d, -2.5);
     try std.testing.expectEqual(@as(f64, -2.5), getDbl(d));
@@ -1188,23 +1189,18 @@ pub inline fn tCell(x: Word) Word {
 }
 
 /// Allocate a cell with tag `t_val` and fields `(x, y)` — the core allocator.
-pub inline fn make(t_val: word.NodeTag, x: Word, y: Word) Word {
-    return heap().make(t_val, x, y);
-}
-
-/// Allocate two cells in bulk.
-pub inline fn makeTwo(t1: word.NodeTag, x1: Word, y1: Word, t2: word.NodeTag, x2: Word, y2: Word, c1: *Word, c2: *Word) void {
-    heap.makeTwo(t1, x1, y1, t2, x2, y2, c1, c2);
+pub inline fn make(heap_ptr: *Heap, t_val: word.NodeTag, x: Word, y: Word) Word {
+    return heap_ptr.make(t_val, x, y);
 }
 
 /// Run a mark-sweep garbage collection.
 pub fn gc() void {
-    heap.gc();
+    heap().gc();
 }
 
 /// Intern name `p1`, returning its dictionary `ID` node (inserting if new).
 pub fn stoId(p1: [*:0]const u8) Word {
-    return make(.ID, cons(make(.STRCONS, strtab.strBits(strtab.table(), p1), word.NIL), word.undef_t), word.UNDEF);
+    return make(heap(), .ID, cons(heap(), make(heap(), .STRCONS, strtab.strBits(strtab.table(), p1), word.NIL), word.undef_t), word.UNDEF);
 }
 
 
@@ -1214,22 +1210,22 @@ const MAXDIGIT = 0x7fff;
 
 /// The next digit cell of a bignum chain.
 pub fn rest(x: Word) Word {
-    return t(x);
+    return t(heap(), x);
 }
 
 /// The raw head digit of a bignum cell.
 fn digit(x: Word) Word {
-    return h(x);
+    return h(heap(), x);
 }
 
 /// The head digit of a bignum cell with the sign bit masked off.
 fn digit0(x: Word) Word {
-    return h(x) & MAXDIGIT;
+    return h(heap(), x) & MAXDIGIT;
 }
 
 /// Decode a single-cell bignum to a signed `Word`.
 pub fn getsmallint(x: Word) Word {
-    return if ((h(x) & SIGNBIT) != 0) -digit0(x) else digit(x);
+    return if ((h(heap(), x) & SIGNBIT) != 0) -digit0(x) else digit(x);
 }
 
 /// Box small int `x`: bare, or as an `INT` cell if it doesn't fit.
@@ -1237,13 +1233,13 @@ pub fn getsmallint(x: Word) Word {
 /// Tests: stosmallint: boxes a signed small int as an INT cell
 pub fn stosmallint(x: Word) Word {
     const val = if (x < 0) SIGNBIT | @as(Word, @intCast(-x)) else x;
-    return make(.INT, val, 0);
+    return make(heap(), .INT, val, 0);
 }
 
 test "stosmallint: boxes a signed small int as an INT cell" {
     tu.freshInterp();
     const a = stosmallint(42);
-    try std.testing.expectEqual(word.NodeTag.INT, getTag(a));
+    try std.testing.expectEqual(word.NodeTag.INT, getTag(heap(), a));
     try std.testing.expectEqual(@as(Word, 42), getsmallint(a));
     try std.testing.expectEqual(@as(Word, -5), getsmallint(stosmallint(-5)));
 }
@@ -1252,63 +1248,63 @@ test "stosmallint: boxes a signed small int as an INT cell" {
 ///
 /// Tests: dlhs / dval: definition-cell head and value accessors
 pub inline fn dlhs(d: Word) Word {
-    return h(d);
+    return h(heap(), d);
 }
 
 /// The value of a definition cell `d` (`t(t(d))`).
 ///
 /// Tests: dlhs / dval: definition-cell head and value accessors
 pub inline fn dval(d: Word) Word {
-    return t(t(d));
+    return t(heap(), t(heap(), d));
 }
 
 test "dlhs / dval: definition-cell head and value accessors" {
     tu.freshInterp();
     // a def cell d = (lhs : (mid : val))
-    const d = cons(word.True, cons(word.NIL, word.False));
+    const d = cons(heap(), word.True, cons(heap(), word.NIL, word.False));
     try std.testing.expectEqual(@as(Word, word.True), dlhs(d));
     try std.testing.expectEqual(@as(Word, word.False), dval(d));
 }
 
 /// The mtime stored in file record `fil`.
 pub fn filTime(fil: Word) Word {
-    return t(h(h(fil)));
+    return t(heap(), h(heap(), h(heap(), fil)));
 }
 
 /// The share/include flag of file record `fil`.
 pub fn filShare(fil: Word) Word {
-    return h(t(h(fil)));
+    return h(heap(), t(heap(), h(heap(), fil)));
 }
 
 /// The definitions list of file record `fil`.
 pub fn filDefs(fil: Word) Word {
-    return t(fil);
+    return t(heap(), fil);
 }
 
 /// Build a file record `(name, mtime, share, defs)`.
 pub fn makeFil(fil_name: ?[*:0]const u8, time_val: Word, share: Word, defs: Word) Word {
     const name_word = if (fil_name) |n| @as(Word, strtab.strBits(strtab.table(), n)) else 0;
-    return cons(cons(make(.FILEINFO, name_word, time_val), cons(share, word.NIL)), defs);
+    return cons(heap(), cons(heap(), make(heap(), .FILEINFO, name_word, time_val), cons(heap(), share, word.NIL)), defs);
 }
 
 /// The type field of id `x`.
 pub fn idType(x: Word) Word {
-    return t(h(x));
+    return t(heap(), h(heap(), x));
 }
 
 /// The value field of id `x`.
 pub fn idVal(x: Word) Word {
-    return t(x);
+    return t(heap(), x);
 }
 
 /// The type class (algebraic/synonym/abstract/…) of type node `x`.
 pub fn tClass(x: Word) Word {
-    return h(t(theVal(x)));
+    return h(heap(), t(heap(), theVal(x)));
 }
 
 /// The info field of type node `x`.
 pub fn tInfo(x: Word) Word {
-    return t(t(x));
+    return t(heap(), t(heap(), x));
 }
 
 /// Allocate a `CONSTRUCTOR` cell (tag `n`, fields `x`).
@@ -1325,14 +1321,14 @@ pub fn constructor(self: *Heap, n: Word, x: anytype) Word {
 // Relocated heap/node domain metadata accessors and lifecycle utilities
 /// The `(dev . ino)` filesystem identity of file record `fil`.
 pub fn filInodev(fil: Word) Word {
-    return t(t(h(fil)));
+    return t(heap(), t(heap(), h(heap(), fil)));
 }
 
 /// Whether two file records name the same inode.
 pub fn sameFile(x: Word, y: Word) bool {
     const ix = filInodev(x);
     const iy = filInodev(y);
-    return h(ix) == h(iy) and t(ix) == t(iy);
+    return h(heap(), ix) == h(heap(), iy) and t(heap(), ix) == t(heap(), iy);
 }
 
 /// Whether `x` is a bad/error sentinel value.
@@ -1361,7 +1357,7 @@ pub fn isconstructor(self: Heap, x: Word) bool {
 
 /// Whether `x` names an ordinary variable.
 pub fn isvariable(x: Word) bool {
-    return getTag(x) == .ID and !isconstrname(getId(x));
+    return getTag(heap(), x) == .ID and !isconstrname(getId(x));
 }
 
 /// Add id `x` to the current file's definition environment.
@@ -1376,20 +1372,20 @@ pub fn reverse(input: Word) Word {
     var x = input;
     var y: Word = NIL;
     while (x != NIL) {
-        y = cons(h(x), y);
-        x = t(x);
+        y = cons(heap(), h(heap(), x), y);
+        x = t(heap(), x);
     }
     return y;
 }
 
 test "reverse: reverses a list" {
     tu.freshInterp();
-    const l = cons(word.I, cons(word.K, cons(word.S, word.NIL)));
+    const l = cons(heap(), word.I, cons(heap(), word.K, cons(heap(), word.S, word.NIL)));
     const r = reverse(l);
-    try std.testing.expectEqual(@as(Word, word.S), h(r));
-    try std.testing.expectEqual(@as(Word, word.K), h(t(r)));
-    try std.testing.expectEqual(@as(Word, word.I), h(t(t(r))));
-    try std.testing.expectEqual(@as(Word, word.NIL), t(t(t(r))));
+    try std.testing.expectEqual(@as(Word, word.S), h(heap(), r));
+    try std.testing.expectEqual(@as(Word, word.K), h(heap(), t(heap(), r)));
+    try std.testing.expectEqual(@as(Word, word.I), h(heap(), t(heap(), t(heap(), r))));
+    try std.testing.expectEqual(@as(Word, word.NIL), t(heap(), t(heap(), t(heap(), r))));
     try std.testing.expectEqual(@as(Word, word.NIL), reverse(word.NIL));
 }
 
@@ -1400,21 +1396,21 @@ pub fn shunt(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
     while (x != NIL) {
-        y = cons(h(x), y);
-        x = t(x);
+        y = cons(heap(), h(heap(), x), y);
+        x = t(heap(), x);
     }
     return y;
 }
 
 test "shunt: reverses x onto the front of y" {
     tu.freshInterp();
-    const x = cons(word.I, cons(word.K, word.NIL));
-    const y = cons(word.S, word.NIL);
+    const x = cons(heap(), word.I, cons(heap(), word.K, word.NIL));
+    const y = cons(heap(), word.S, word.NIL);
     const r = shunt(x, y); // reverse [I,K] onto [S] → [K,I,S]
-    try std.testing.expectEqual(@as(Word, word.K), h(r));
-    try std.testing.expectEqual(@as(Word, word.I), h(t(r)));
-    try std.testing.expectEqual(@as(Word, word.S), h(t(t(r))));
-    try std.testing.expectEqual(@as(Word, word.NIL), t(t(t(r))));
+    try std.testing.expectEqual(@as(Word, word.K), h(heap(), r));
+    try std.testing.expectEqual(@as(Word, word.I), h(heap(), t(heap(), r)));
+    try std.testing.expectEqual(@as(Word, word.S), h(heap(), t(heap(), t(heap(), r))));
+    try std.testing.expectEqual(@as(Word, word.NIL), t(heap(), t(heap(), t(heap(), r))));
 }
 
 /// The length of list `input`.
@@ -1423,9 +1419,9 @@ test "shunt: reverses x onto the front of y" {
 pub fn size(input: Word) Word {
     var x = input;
     var s: Word = 0;
-    while (getTag(x) == .CONS or getTag(x) == .AP) {
-        s += 1 + size(h(x));
-        x = t(x);
+    while (getTag(heap(), x) == .CONS or getTag(heap(), x) == .AP) {
+        s += 1 + size(h(heap(), x));
+        x = t(heap(), x);
     }
     return s;
 }
@@ -1433,7 +1429,7 @@ pub fn size(input: Word) Word {
 test "size: counts the cells of a flat list" {
     tu.freshInterp();
     try std.testing.expectEqual(@as(Word, 0), size(word.NIL));
-    const l = cons(stosmallint(1), cons(stosmallint(2), cons(stosmallint(3), word.NIL)));
+    const l = cons(heap(), stosmallint(1), cons(heap(), stosmallint(2), cons(heap(), stosmallint(3), word.NIL)));
     try std.testing.expectEqual(@as(Word, 3), size(l));
 }
 

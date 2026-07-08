@@ -47,7 +47,7 @@ fn WEXITSTATUS(status: c_int) c_int {
 }
 
 inline fn pnVal(x: Word) Word {
-    return heap_mod.t(x);
+    return heap_mod.t(heap_mod.heap(), x);
 }
 
 /// Parses and compiles the Miranda source file at `t_val`, updating the global file
@@ -85,7 +85,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         if (make_state.make().making and rs.ideep == 0) {
             word.print("mira -make {s}: no such file\n", .{t_val});
         } else {
-            script_store.store().oldfiles = heap_mod.cons(heap_mod.makeFil(t_val, 0, 0, NIL), NIL);
+            script_store.store().oldfiles = heap_mod.cons(heap, heap_mod.makeFil(t_val, 0, 0, NIL), NIL);
         }
         core.loading = 0;
         return error.LoadError;
@@ -96,14 +96,14 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
             errors.fatal("panic: cannot open {s}\n", .{t_val});
         }
         word.print("cannot open {s}\n", .{t_val});
-        script_store.store().oldfiles = heap_mod.cons(heap_mod.makeFil(t_val, 0, 0, NIL), NIL);
+        script_store.store().oldfiles = heap_mod.cons(heap, heap_mod.makeFil(t_val, 0, 0, NIL), NIL);
         core.loading = 0;
         return error.LoadError;
     }
 
-    heap.files = heap_mod.cons(heap_mod.makeFil(t_val, files.fileMtime(t_val), 1, NIL), NIL);
-    heap.current_file = heap_mod.h(heap.files);
-    heap_mod.tp(heap_mod.h(lexs.fileq)).* = heap.current_file;
+    heap.files = heap_mod.cons(heap, heap_mod.makeFil(t_val, files.fileMtime(t_val), 1, NIL), NIL);
+    heap.current_file = heap_mod.h(heap, heap.files);
+    heap_mod.tp(heap, heap_mod.h(heap, lexs.fileq)).* = heap.current_file;
 
     if (rs.initialising != 0 and std.mem.eql(u8, std.mem.span(t_val), std.mem.span(@as([*:0]const u8, @ptrCast(&config_state.config().PRELUDE))))) {
         setup.privlib(heap);
@@ -115,7 +115,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
 
     lexs.c = ' ';
     lexs.col = 0;
-    config_state.config().s_in = @ptrFromInt(@as(usize, @intCast(heap_mod.h(heap_mod.h(lexs.fileq)))));
+    config_state.config().s_in = @ptrFromInt(@as(usize, @intCast(heap_mod.h(heap, heap_mod.h(heap, lexs.fileq)))));
     abi.adjustPrefix(@constCast(t_val));
 
     core.commandmode = 0;
@@ -161,15 +161,15 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     reportUnusedDefinitions(heap, core, rs);
 
     if (core.SYNERR == 0) {
-        var x = heap_mod.filDefs(heap_mod.h(heap.files));
+        var x = heap_mod.filDefs(heap_mod.h(heap, heap.files));
         comp.lfrule = 0;
-        while (x != NIL) : (x = heap_mod.t(x)) {
-            if (heap_mod.idType(heap_mod.h(x)) != word.type_t) {
-                comp.current_id = heap_mod.h(x);
+        while (x != NIL) : (x = heap_mod.t(heap, x)) {
+            if (heap_mod.idType(heap_mod.h(heap, x)) != word.type_t) {
+                comp.current_id = heap_mod.h(heap, x);
                 comp.polyshowerror = 0;
-                heap_mod.tp(heap_mod.h(x)).* = trans_mod.codegen(heap, heap_mod.idVal(heap_mod.h(x)));
+                heap_mod.tp(heap, heap_mod.h(heap, x)).* = trans_mod.codegen(heap, heap_mod.idVal(heap_mod.h(heap, x)));
                 if (comp.polyshowerror != 0) {
-                    heap_mod.tp(heap_mod.h(x)).* = word.UNDEF;
+                    heap_mod.tp(heap, heap_mod.h(heap, x)).* = word.UNDEF;
                 }
             }
         }
@@ -201,8 +201,8 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
                 _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
             }
         }
-        if (core.errline == 0 and core.errs != 0 and std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(core.errs))), std.mem.span(script_store.store().current_script.?))) {
-            core.errline = heap_mod.t(core.errs);
+        if (core.errline == 0 and core.errs != 0 and std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap, core.errs))), std.mem.span(script_store.store().current_script.?))) {
+            core.errline = heap_mod.t(heap, core.errs);
         }
         comp.ND = depend_mod.alfasort(comp.ND);
         core.loading = 0;
@@ -239,31 +239,31 @@ fn resolveExportFileList(heap: *Heap, core: *core_state.CoreState, rs: *rt.Runti
     _ = rs;
     if (core.SYNERR == 0 and lexs.exportfiles != NIL) {
         var s = lexs.exportfiles;
-        while (s != NIL) : (s = heap_mod.t(s)) {
-            if (heap_mod.h(s) == word.PLUS) {
-                var i = heap_mod.filDefs(heap_mod.h(heap.files));
-                while (i != NIL) : (i = heap_mod.t(i)) {
-                    if (heap_mod.isvariable(heap_mod.h(i)) and !heap_mod.isfreeid(heap_mod.h(i))) {
-                        heap_mod.tp(script_store.store().exports).* = abi.add1(heap, heap_mod.h(i), heap_mod.t(script_store.store().exports));
+        while (s != NIL) : (s = heap_mod.t(heap, s)) {
+            if (heap_mod.h(heap, s) == word.PLUS) {
+                var i = heap_mod.filDefs(heap_mod.h(heap, heap.files));
+                while (i != NIL) : (i = heap_mod.t(heap, i)) {
+                    if (heap_mod.isvariable(heap_mod.h(heap, i)) and !heap_mod.isfreeid(heap_mod.h(heap, i))) {
+                        heap_mod.tp(heap, script_store.store().exports).* = abi.add1(heap, heap_mod.h(heap, i), heap_mod.t(heap, script_store.store().exports));
                     }
                 }
             } else {
                 var count: Word = 0;
                 var i = script_store.store().includees;
-                while (i != NIL) : (i = heap_mod.t(i)) {
-                    if (std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(heap_mod.h(i))))), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(s))))) {
-                        heap_mod.hp(s).* = heap_mod.h(heap_mod.h(heap_mod.h(i)));
+                while (i != NIL) : (i = heap_mod.t(heap, i)) {
+                    if (std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap, heap_mod.h(heap, heap_mod.h(heap, i))))), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap, s))))) {
+                        heap_mod.hp(heap, s).* = heap_mod.h(heap, heap_mod.h(heap, heap_mod.h(heap, i)));
                         count += 1;
                     }
                 }
                 if (count != 1) {
                     core.SYNERR = 1;
-                    word.print("illegal fileid \"{s}\" in export list ({s})\n", .{ strtab.strOf(strtab.table(), heap_mod.h(s)), @as([*:0]const u8, if (count != 0) "ambiguous" else "not %included in script") });
+                    word.print("illegal fileid \"{s}\" in export list ({s})\n", .{ strtab.strOf(strtab.table(), heap_mod.h(heap, s)), @as([*:0]const u8, if (count != 0) "ambiguous" else "not %included in script") });
                 }
             }
         }
         if (core.SYNERR != 0) {
-            abi.sayhere(heap, heap_mod.h(script_store.store().exports), 1);
+            abi.sayhere(heap, heap_mod.h(heap, script_store.store().exports), 1);
             word.printErr("compilation abandoned\n", .{});
         }
     }
@@ -284,15 +284,15 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
             var u: Word = NIL;
             var n: Word = NIL;
             var c_ctr: Word = NIL;
-            h_val = heap_mod.h(script_store.store().exports);
-            script_store.store().exports = heap_mod.t(script_store.store().exports);
+            h_val = heap_mod.h(heap, script_store.store().exports);
+            script_store.store().exports = heap_mod.t(heap, script_store.store().exports);
 
-            while (e != NIL) : (e = heap_mod.t(e)) {
-                if (heap_mod.idType(heap_mod.h(e)) == word.undef_t) {
-                    u = heap_mod.cons(heap_mod.h(e), u);
-                    comp.ND = abi.add1(heap, heap_mod.h(e), comp.ND);
-                } else if (abi.member(heap, script_store.store().exports, heap_mod.h(e)) == 0) {
-                    n = heap_mod.cons(heap_mod.h(e), n);
+            while (e != NIL) : (e = heap_mod.t(heap, e)) {
+                if (heap_mod.idType(heap_mod.h(heap, e)) == word.undef_t) {
+                    u = heap_mod.cons(heap, heap_mod.h(heap, e), u);
+                    comp.ND = abi.add1(heap, heap_mod.h(heap, e), comp.ND);
+                } else if (abi.member(heap, script_store.store().exports, heap_mod.h(heap, e)) == 0) {
+                    n = heap_mod.cons(heap, heap_mod.h(heap, e), n);
                 }
             }
 
@@ -302,12 +302,12 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
             script_store.store().exports = depend_mod.alfasort(script_store.store().exports);
 
             e = script_store.store().exports;
-            while (e != NIL) : (e = heap_mod.t(e)) {
-                if (heap_mod.idType(heap_mod.h(e)) == word.undef_t) {
-                    u = heap_mod.cons(heap_mod.h(e), u);
-                    comp.ND = abi.add1(heap, heap_mod.h(e), comp.ND);
-                } else if (heap_mod.idType(heap_mod.h(e)) == word.type_t and heap_mod.tClass(heap_mod.h(e)) == word.algebraic_t) {
-                    c_ctr = heap_mod.shunt(heap_mod.tInfo(heap_mod.h(e)), c_ctr);
+            while (e != NIL) : (e = heap_mod.t(heap, e)) {
+                if (heap_mod.idType(heap_mod.h(heap, e)) == word.undef_t) {
+                    u = heap_mod.cons(heap, heap_mod.h(heap, e), u);
+                    comp.ND = abi.add1(heap, heap_mod.h(heap, e), comp.ND);
+                } else if (heap_mod.idType(heap_mod.h(heap, e)) == word.type_t and heap_mod.tClass(heap_mod.h(heap, e)) == word.algebraic_t) {
+                    c_ctr = heap_mod.shunt(heap_mod.tInfo(heap_mod.h(heap, e)), c_ctr);
                 }
             }
 
@@ -319,8 +319,8 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
 
             if (n != NIL) {
                 word.print("redundant entry in export list:", .{});
-                while (n != NIL) : (n = heap_mod.t(n)) {
-                    word.print(" -{s}", .{heap_mod.getId(heap_mod.h(n))});
+                while (n != NIL) : (n = heap_mod.t(heap, n)) {
+                    word.print(" -{s}", .{heap_mod.getId(heap_mod.h(heap, n))});
                 }
                 _ = word.putchar('\n');
             }
@@ -348,32 +348,32 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
 /// warning.
 fn computeBereavedNames(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState) void {
     _ = rs;
-    if (core.SYNERR == 0 and comp.ND == NIL and (script_store.store().exports != NIL or heap_mod.t(heap.files) != NIL)) {
+    if (core.SYNERR == 0 and comp.ND == NIL and (script_store.store().exports != NIL or heap_mod.t(heap, heap.files) != NIL)) {
         var e1 = script_store.store().exports;
         var r: Word = NIL;
         var e: Word = NIL;
         if (script_store.store().exports != NIL) {
-            while (e1 != NIL) : (e1 = heap_mod.t(e1)) {
-                const ty = heap_mod.idType(heap_mod.h(e1));
+            while (e1 != NIL) : (e1 = heap_mod.t(heap, e1)) {
+                const ty = heap_mod.idType(heap_mod.h(heap, e1));
                 if (ty == word.type_t) {
-                    if (heap_mod.tClass(heap_mod.h(e1)) == word.synonym_t) {
-                        r = abi.UNION(heap, r, abi.deps(heap, heap_mod.tInfo(heap_mod.h(e1))));
+                    if (heap_mod.tClass(heap_mod.h(heap, e1)) == word.synonym_t) {
+                        r = abi.UNION(heap, r, abi.deps(heap, heap_mod.tInfo(heap_mod.h(heap, e1))));
                     } else {
-                        e = heap_mod.cons(heap_mod.h(e1), e);
+                        e = heap_mod.cons(heap, heap_mod.h(heap, e1), e);
                     }
                 } else {
                     r = abi.UNION(heap, r, abi.deps(heap, ty));
                 }
             }
         } else {
-            e1 = heap_mod.filDefs(heap_mod.h(heap.files));
-            while (e1 != NIL) : (e1 = heap_mod.t(e1)) {
-                const ty = heap_mod.idType(heap_mod.h(e1));
+            e1 = heap_mod.filDefs(heap_mod.h(heap, heap.files));
+            while (e1 != NIL) : (e1 = heap_mod.t(heap, e1)) {
+                const ty = heap_mod.idType(heap_mod.h(heap, e1));
                 if (ty == word.type_t) {
-                    if (heap_mod.tClass(heap_mod.h(e1)) == word.synonym_t) {
-                        r = abi.UNION(heap, r, abi.deps(heap, heap_mod.tInfo(heap_mod.h(e1))));
+                    if (heap_mod.tClass(heap_mod.h(heap, e1)) == word.synonym_t) {
+                        r = abi.UNION(heap, r, abi.deps(heap, heap_mod.tInfo(heap_mod.h(heap, e1))));
                     } else {
-                        e = heap_mod.cons(heap_mod.h(e1), e);
+                        e = heap_mod.cons(heap, heap_mod.h(heap, e1), e);
                     }
                 } else {
                     r = abi.UNION(heap, r, abi.deps(heap, ty));
@@ -382,22 +382,22 @@ fn computeBereavedNames(heap: *Heap, core: *core_state.CoreState, comp: *compile
         }
 
         e1 = script_store.store().freeids;
-        while (e1 != NIL) : (e1 = heap_mod.t(e1)) {
-            const ty = heap_mod.idType(heap_mod.h(heap_mod.h(e1)));
+        while (e1 != NIL) : (e1 = heap_mod.t(heap, e1)) {
+            const ty = heap_mod.idType(heap_mod.h(heap, heap_mod.h(heap, e1)));
             if (ty == word.type_t) {
-                if (heap_mod.tClass(heap_mod.h(heap_mod.h(e1))) == word.synonym_t) {
-                    r = abi.UNION(heap, r, abi.deps(heap, heap_mod.tInfo(heap_mod.h(heap_mod.h(e1)))));
+                if (heap_mod.tClass(heap_mod.h(heap, heap_mod.h(heap, e1))) == word.synonym_t) {
+                    r = abi.UNION(heap, r, abi.deps(heap, heap_mod.tInfo(heap_mod.h(heap, heap_mod.h(heap, e1)))));
                 } else {
-                    e = heap_mod.cons(heap_mod.h(heap_mod.h(e1)), e);
+                    e = heap_mod.cons(heap, heap_mod.h(heap, heap_mod.h(heap, e1)), e);
                 }
             } else {
                 r = abi.UNION(heap, r, abi.deps(heap, ty));
             }
         }
 
-        while (r != NIL) : (r = heap_mod.t(r)) {
-            if (abi.member(heap, e, heap_mod.h(r)) == 0) {
-                script_store.store().bereaved = heap_mod.cons(heap_mod.h(r), script_store.store().bereaved);
+        while (r != NIL) : (r = heap_mod.t(heap, r)) {
+            if (abi.member(heap, e, heap_mod.h(heap, r)) == 0) {
+                script_store.store().bereaved = heap_mod.cons(heap, heap_mod.h(heap, r), script_store.store().bereaved);
             }
         }
     }
@@ -425,38 +425,38 @@ fn reportUnusedDefinitions(heap: *Heap, core: *core_state.CoreState, rs: *rt.Run
     _ = rs;
     if (core.SYNERR == 0 and script_store.store().detrop != NIL) {
         const gd = script_store.store().detrop;
-        while (script_store.store().detrop != NIL and getTag(heap, heap_mod.dval(heap_mod.h(script_store.store().detrop))) == .LABEL) {
-            script_store.store().detrop = heap_mod.t(script_store.store().detrop);
+        while (script_store.store().detrop != NIL and getTag(heap, heap_mod.dval(heap_mod.h(heap, script_store.store().detrop))) == .LABEL) {
+            script_store.store().detrop = heap_mod.t(heap, script_store.store().detrop);
         }
         if (script_store.store().detrop != NIL) {
             word.print("warning, script contains unused local definitions:-\n", .{});
         }
         while (script_store.store().detrop != NIL) {
-            abi.outHere(core, abi.stdout(), heap_mod.h(heap_mod.h(heap_mod.t(heap_mod.dval(heap_mod.h(script_store.store().detrop))))), 0);
+            abi.outHere(core, abi.stdout(), heap_mod.h(heap, heap_mod.h(heap, heap_mod.t(heap, heap_mod.dval(heap_mod.h(heap, script_store.store().detrop))))), 0);
             _ = word.putchar('\t');
-            abi.outPattern(heap, abi.stdout().?, heap_mod.dlhs(heap_mod.h(script_store.store().detrop)));
+            abi.outPattern(heap, abi.stdout().?, heap_mod.dlhs(heap_mod.h(heap, script_store.store().detrop)));
             _ = word.putchar('\n');
-            script_store.store().detrop = heap_mod.t(script_store.store().detrop);
-            while (script_store.store().detrop != NIL and getTag(heap, heap_mod.dval(heap_mod.h(script_store.store().detrop))) == .LABEL) {
-                script_store.store().detrop = heap_mod.t(script_store.store().detrop);
+            script_store.store().detrop = heap_mod.t(heap, script_store.store().detrop);
+            while (script_store.store().detrop != NIL and getTag(heap, heap_mod.dval(heap_mod.h(heap, script_store.store().detrop))) == .LABEL) {
+                script_store.store().detrop = heap_mod.t(heap, script_store.store().detrop);
             }
         }
 
         var gd_mut = gd;
-        while (gd_mut != NIL and getTag(heap, heap_mod.dval(heap_mod.h(gd_mut))) != .LABEL) {
-            gd_mut = heap_mod.t(gd_mut);
+        while (gd_mut != NIL and getTag(heap, heap_mod.dval(heap_mod.h(heap, gd_mut))) != .LABEL) {
+            gd_mut = heap_mod.t(heap, gd_mut);
         }
         if (gd_mut != NIL) {
             word.print("warning, grammar contains unused nonterminals:-\n", .{});
         }
         while (gd_mut != NIL) {
-            abi.outHere(core, abi.stdout(), heap_mod.h(heap_mod.dval(heap_mod.h(gd_mut))), 0);
+            abi.outHere(core, abi.stdout(), heap_mod.h(heap, heap_mod.dval(heap_mod.h(heap, gd_mut))), 0);
             _ = word.putchar('\t');
-            abi.outPattern(heap, abi.stdout().?, heap_mod.dlhs(heap_mod.h(gd_mut)));
+            abi.outPattern(heap, abi.stdout().?, heap_mod.dlhs(heap_mod.h(heap, gd_mut)));
             _ = word.putchar('\n');
-            gd_mut = heap_mod.t(gd_mut);
-            while (gd_mut != NIL and getTag(heap, heap_mod.dval(heap_mod.h(gd_mut))) != .LABEL) {
-                gd_mut = heap_mod.t(gd_mut);
+            gd_mut = heap_mod.t(heap, gd_mut);
+            while (gd_mut != NIL and getTag(heap, heap_mod.dval(heap_mod.h(heap, gd_mut))) != .LABEL) {
+                gd_mut = heap_mod.t(heap, gd_mut);
             }
         }
     }
@@ -504,11 +504,11 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         repl_session.session().verbosity = 0;
         rs.magic = false;
         while (includees_list != NIL and make_state.make().make_status == 0) {
-            dump.undump(heap, core, comp, rs, strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(heap_mod.h(includees_list)))));
+            dump.undump(heap, core, comp, rs, strtab.strOf(strtab.table(), heap_mod.h(heap, heap_mod.h(heap, heap_mod.h(heap, includees_list)))));
             if (comp.ND != NIL or (heap.files == NIL and script_store.store().oldfiles != NIL)) {
                 make_state.make().make_status = 1;
             }
-            includees_list = heap_mod.t(includees_list);
+            includees_list = heap_mod.t(heap, includees_list);
         }
         abi.exit(@intCast(make_state.make().make_status));
     }
@@ -516,7 +516,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
     while (includees_list != NIL) {
         var x: Word = NIL;
         var f: ?*word.Stream = null;
-        const fn_str = strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(heap_mod.h(includees_list))));
+        const fn_str = strtab.strOf(strtab.table(), heap_mod.h(heap, heap_mod.h(heap, heap_mod.h(heap, includees_list))));
 
         {
             const fn_span = std.mem.span(fn_str);
@@ -530,56 +530,56 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
 
         f = word.fopen(lexs.dicp, "r");
         if (f != null) {
-            x = abi.loadScript(heap, core, comp, rs, lexs, f.?, @constCast(fn_str), heap_mod.h(heap_mod.t(heap_mod.h(includees_list))), heap_mod.t(heap_mod.t(heap_mod.h(includees_list))), 0);
+            x = abi.loadScript(heap, core, comp, rs, lexs, f.?, @constCast(fn_str), heap_mod.h(heap, heap_mod.t(heap, heap_mod.h(heap, includees_list))), heap_mod.t(heap, heap_mod.t(heap, heap_mod.h(heap, includees_list))), 0);
             _ = word.fclose(f.?);
         }
 
-        script_store.store().ld_stuff = heap_mod.cons(x, script_store.store().ld_stuff);
+        script_store.store().ld_stuff = heap_mod.cons(heap, x, script_store.store().ld_stuff);
 
         if (f != null and comp.BAD_DUMP == 0 and x != NIL and comp.ND == NIL and comp.CLASHES == NIL and comp.ALIASES == NIL and comp.TSUPPRESSED == NIL and comp.DETROP == NIL and comp.MISSING == NIL) {
             if (comp.TORPHANS != 0) {
                 script_store.store().rfl = heap_mod.shunt(x, script_store.store().rfl);
             }
             var y = x;
-            while (y != NIL) : (y = heap_mod.t(y)) {
-                const nodev = files.inodeId(heap_mod.getFil(heap_mod.h(y)).?);
-                heap_mod.tp(heap_mod.filInodev(heap_mod.h(y))).* = nodev;
+            while (y != NIL) : (y = heap_mod.t(heap, y)) {
+                const nodev = files.inodeId(heap_mod.getFil(heap_mod.h(heap, y)).?);
+                heap_mod.tp(heap, heap_mod.filInodev(heap_mod.h(heap, y))).* = nodev;
             }
 
             y = x;
-            while (y != NIL) : (y = heap_mod.t(y)) {
-                if (heap_mod.filShare(heap_mod.h(y)) != 0) {
+            while (y != NIL) : (y = heap_mod.t(heap, y)) {
+                if (heap_mod.filShare(heap_mod.h(heap, y)) != 0) {
                     var z = result;
-                    while (z != NIL) : (z = heap_mod.t(z)) {
-                        if (heap_mod.filShare(heap_mod.h(z)) != 0 and files.sameFile(heap_mod.h(y), heap_mod.h(z)) and heap_mod.filTime(heap_mod.h(y)) == heap_mod.filTime(heap_mod.h(z))) {
-                            var p = heap_mod.filDefs(heap_mod.h(y));
-                            var q = heap_mod.filDefs(heap_mod.h(z));
+                    while (z != NIL) : (z = heap_mod.t(heap, z)) {
+                        if (heap_mod.filShare(heap_mod.h(heap, z)) != 0 and files.sameFile(heap_mod.h(heap, y), heap_mod.h(heap, z)) and heap_mod.filTime(heap_mod.h(heap, y)) == heap_mod.filTime(heap_mod.h(heap, z))) {
+                            var p = heap_mod.filDefs(heap_mod.h(heap, y));
+                            var q = heap_mod.filDefs(heap_mod.h(heap, z));
                             while (p != NIL and q != NIL) {
-                                if (getTag(heap, heap_mod.h(p)) == .ID) {
-                                    if (heap_mod.idType(heap_mod.h(p)) == word.type_t and (getTag(heap, heap_mod.h(q)) == .ID or getTag(heap, pnVal(heap_mod.h(q))) == .ID)) {
+                                if (getTag(heap, heap_mod.h(heap, p)) == .ID) {
+                                    if (heap_mod.idType(heap_mod.h(heap, p)) == word.type_t and (getTag(heap, heap_mod.h(heap, q)) == .ID or getTag(heap, pnVal(heap_mod.h(heap, q))) == .ID)) {
                                         var w = tclashes;
-                                        const orig = if (getTag(heap, heap_mod.h(q)) == .ID) heap_mod.h(q) else pnVal(heap_mod.h(q));
-                                        if (heap_mod.tClass(heap_mod.h(p)) == word.synonym_t) {
-                                            p = heap_mod.t(p);
-                                            q = heap_mod.t(q);
+                                        const orig = if (getTag(heap, heap_mod.h(heap, q)) == .ID) heap_mod.h(heap, q) else pnVal(heap_mod.h(heap, q));
+                                        if (heap_mod.tClass(heap_mod.h(heap, p)) == word.synonym_t) {
+                                            p = heap_mod.t(heap, p);
+                                            q = heap_mod.t(heap, q);
                                             continue;
                                         }
-                                        while (w != NIL and (!std.mem.eql(u8, std.mem.span(heap_mod.getFil(heap_mod.h(w)).?), std.mem.span(heap_mod.getFil(heap_mod.h(z)).?)) or heap_mod.h(heap_mod.t(heap_mod.h(w))) != orig)) {
-                                            w = heap_mod.t(w);
+                                        while (w != NIL and (!std.mem.eql(u8, std.mem.span(heap_mod.getFil(heap_mod.h(heap, w)).?), std.mem.span(heap_mod.getFil(heap_mod.h(heap, z)).?)) or heap_mod.h(heap, heap_mod.t(heap, heap_mod.h(heap, w))) != orig)) {
+                                            w = heap_mod.t(heap, w);
                                         }
                                         if (w == NIL) {
-                                            tclashes = heap_mod.cons(abi.strcons(@as(Word, strtab.strBits(strtab.table(), heap_mod.getFil(heap_mod.h(z)).?)), heap_mod.cons(orig, NIL)), tclashes);
+                                            tclashes = heap_mod.cons(heap, abi.strcons(heap, @as(Word, strtab.strBits(strtab.table(), heap_mod.getFil(heap_mod.h(heap, z)).?)), heap_mod.cons(heap, orig, NIL)), tclashes);
                                             w = tclashes;
                                         }
-                                        heap_mod.tp(heap_mod.t(heap_mod.t(heap_mod.h(w)))).* = heap_mod.cons(heap_mod.h(p), heap_mod.t(heap_mod.t(heap_mod.h(w))));
+                                        heap_mod.tp(heap, heap_mod.t(heap, heap_mod.t(heap, heap_mod.h(heap, w)))).* = heap_mod.cons(heap, heap_mod.h(heap, p), heap_mod.t(heap, heap_mod.t(heap, heap_mod.h(heap, w))));
                                     } else {
-                                        heap_mod.tp(heap_mod.h(q)).* = heap_mod.h(p);
+                                        heap_mod.tp(heap, heap_mod.h(heap, q)).* = heap_mod.h(heap, p);
                                     }
                                 } else {
-                                    heap_mod.tp(heap_mod.h(p)).* = heap_mod.h(q);
+                                    heap_mod.tp(heap, heap_mod.h(heap, p)).* = heap_mod.h(heap, q);
                                 }
-                                p = heap_mod.t(p);
-                                q = heap_mod.t(q);
+                                p = heap_mod.t(heap, p);
+                                q = heap_mod.t(heap, q);
                             }
                             if (p != NIL or q != NIL) {
                                 word.printErr("impossible event in mkincludes\n", .{});
@@ -591,28 +591,28 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
 
             if (abi.member(heap, lexs.exportfiles, strtab.strBits(strtab.table(), fn_str)) != 0) {
                 y = x;
-                while (y != NIL) : (y = heap_mod.t(y)) {
-                    var z = heap_mod.filDefs(heap_mod.h(y));
-                    while (z != NIL) : (z = heap_mod.t(z)) {
-                        if (heap_mod.isvariable(heap_mod.h(z))) {
-                            heap_mod.tp(script_store.store().exports).* = abi.add1(heap, heap_mod.h(z), heap_mod.t(script_store.store().exports));
+                while (y != NIL) : (y = heap_mod.t(heap, y)) {
+                    var z = heap_mod.filDefs(heap_mod.h(heap, y));
+                    while (z != NIL) : (z = heap_mod.t(heap, z)) {
+                        if (heap_mod.isvariable(heap_mod.h(heap, z))) {
+                            heap_mod.tp(heap, script_store.store().exports).* = abi.add1(heap, heap_mod.h(heap, z), heap_mod.t(heap, script_store.store().exports));
                         }
                     }
                 }
             }
 
             result = abi.append1(result, x);
-            if (heap_mod.h(comp.FBS) == NIL) {
-                comp.FBS = heap_mod.t(comp.FBS);
+            if (heap_mod.h(heap, comp.FBS) == NIL) {
+                comp.FBS = heap_mod.t(heap, comp.FBS);
             } else {
-                heap_mod.hp(comp.FBS).* = heap_mod.cons(heap_mod.t(heap_mod.h(heap_mod.h(includees_list))), heap_mod.h(comp.FBS));
+                heap_mod.hp(heap, comp.FBS).* = heap_mod.cons(heap, heap_mod.t(heap, heap_mod.h(heap, heap_mod.h(heap, includees_list))), heap_mod.h(heap, comp.FBS));
             }
-            includees_list = heap_mod.t(includees_list);
+            includees_list = heap_mod.t(heap, includees_list);
             continue;
         }
 
         if (f == null) {
-            result = heap_mod.cons(heap_mod.makeFil(fn_str, files.fileMtime(fn_str), 0, NIL), result);
+            result = heap_mod.cons(heap, heap_mod.makeFil(fn_str, files.fileMtime(fn_str), 0, NIL), result);
         } else if (x == NIL and comp.BAD_DUMP != -2) {
             result = abi.append1(result, script_store.store().oldfiles);
             script_store.store().oldfiles = NIL;
@@ -622,7 +622,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
 
         core.SYNERR = 1;
         word.print("unsuccessful %include directive ", .{});
-        abi.sayhere(heap, heap_mod.t(heap_mod.h(heap_mod.h(includees_list))), 1);
+        abi.sayhere(heap, heap_mod.t(heap, heap_mod.h(heap, heap_mod.h(heap, includees_list))), 1);
 
         if (f == null) {
             word.print("\"{s}\" cannot be loaded\n", .{fn_str});
@@ -634,15 +634,15 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
             comp.CLASHES = NIL;
         } else if (comp.ALIASES != NIL or comp.TSUPPRESSED != NIL) {
             if (comp.ALIASES != NIL) {
-                word.print("alias fails (name{s} not found in file", .{@as([*:0]const u8, if (heap_mod.t(comp.ALIASES) == NIL) "" else "s")});
+                word.print("alias fails (name{s} not found in file", .{@as([*:0]const u8, if (heap_mod.t(heap, comp.ALIASES) == NIL) "" else "s")});
                 abi.printlist(heap, @constCast("): "), comp.ALIASES);
                 comp.ALIASES = NIL;
             }
             if (comp.TSUPPRESSED != NIL) {
-                word.print("illegal alias (cannot suppress typename{s}):", .{@as([*:0]const u8, if (heap_mod.t(comp.TSUPPRESSED) == NIL) "" else "s")});
+                word.print("illegal alias (cannot suppress typename{s}):", .{@as([*:0]const u8, if (heap_mod.t(heap, comp.TSUPPRESSED) == NIL) "" else "s")});
                 var ts = comp.TSUPPRESSED;
-                while (ts != NIL) : (ts = heap_mod.t(ts)) {
-                    word.print(" -{s}", .{heap_mod.getId(heap_mod.h(ts))});
+                while (ts != NIL) : (ts = heap_mod.t(heap, ts)) {
+                    word.print(" -{s}", .{heap_mod.getId(heap_mod.h(heap, ts))});
                 }
                 _ = word.putchar('\n');
             }
@@ -659,10 +659,10 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
             abi.printlist(heap, @constCast("causes nameclashes: "), comp.CLASHES);
         }
 
-        while (comp.DETROP != NIL and getTag(heap, heap_mod.h(comp.DETROP)) == .CONS) {
-            const fa = heap_mod.h(heap_mod.t(heap_mod.h(comp.DETROP)));
-            const ta = heap_mod.t(heap_mod.t(heap_mod.h(comp.DETROP)));
-            const pn = heap_mod.getId(heap_mod.h(heap_mod.h(comp.DETROP)));
+        while (comp.DETROP != NIL and getTag(heap, heap_mod.h(heap, comp.DETROP)) == .CONS) {
+            const fa = heap_mod.h(heap, heap_mod.t(heap, heap_mod.h(heap, comp.DETROP)));
+            const ta = heap_mod.t(heap, heap_mod.t(heap, heap_mod.h(heap, comp.DETROP)));
+            const pn = heap_mod.getId(heap_mod.h(heap, heap_mod.h(heap, comp.DETROP)));
             if (fa == -1 or ta == -1) {
                 word.print("`{s}' has binding of wrong kind ", .{pn});
                 word.print("(should be \"= value\" not \"== type\")\n", .{});
@@ -670,36 +670,36 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
                 word.print("`{s}' has == binding of wrong arity ", .{pn});
                 word.print("(formal has arity {}, actual has arity {})\n", .{ fa, ta });
             }
-            comp.DETROP = heap_mod.t(comp.DETROP);
+            comp.DETROP = heap_mod.t(heap, comp.DETROP);
         }
 
         if (comp.DETROP != NIL) {
-            word.print("illegal parameter binding (name{s} not %free in file", .{@as([*:0]const u8, if (heap_mod.t(comp.DETROP) == NIL) "" else "s")});
+            word.print("illegal parameter binding (name{s} not %free in file", .{@as([*:0]const u8, if (heap_mod.t(heap, comp.DETROP) == NIL) "" else "s")});
             abi.printlist(heap, @constCast("): "), comp.DETROP);
             comp.DETROP = NIL;
         }
 
         if (comp.MISSING != NIL) {
-            word.print("missing parameter binding{s}: ", .{@as([*:0]const u8, if (heap_mod.t(comp.MISSING) == NIL) "" else "s")});
+            word.print("missing parameter binding{s}: ", .{@as([*:0]const u8, if (heap_mod.t(heap, comp.MISSING) == NIL) "" else "s")});
         }
 
         while (comp.MISSING != NIL) {
-            word.printErr("{s}{s}", .{ strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(comp.MISSING))), @as([*:0]const u8, if (heap_mod.t(comp.MISSING) == NIL) ";\n" else ",") });
-            comp.MISSING = heap_mod.t(comp.MISSING);
+            word.printErr("{s}{s}", .{ strtab.strOf(strtab.table(), heap_mod.h(heap, heap_mod.h(heap, comp.MISSING))), @as([*:0]const u8, if (heap_mod.t(heap, comp.MISSING) == NIL) ";\n" else ",") });
+            comp.MISSING = heap_mod.t(heap, comp.MISSING);
         }
 
         word.printErr("compilation abandoned\n", .{});
         heap.stackp = heap.dstack;
-        includees_list = heap_mod.t(includees_list);
+        includees_list = heap_mod.t(heap, includees_list);
         return result;
     }
 
     if (tclashes != NIL) {
-        word.printErr("TYPECLASH - the following type{s} multiply named:\n", .{@as([*:0]const u8, if (heap_mod.t(tclashes) == NIL) " is" else "s are")});
+        word.printErr("TYPECLASH - the following type{s} multiply named:\n", .{@as([*:0]const u8, if (heap_mod.t(heap, tclashes) == NIL) " is" else "s are")});
         while (tclashes != NIL) {
-            word.printErr("\'{s}\' of file \"{s}\", as: ", .{ abi.getaka(heap_mod.h(heap_mod.t(heap_mod.h(tclashes)))), strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(tclashes))) });
-            abi.printlist(heap, @constCast(""), depend_mod.alfasort(heap_mod.t(heap_mod.t(heap_mod.h(tclashes)))));
-            tclashes = heap_mod.t(tclashes);
+            word.printErr("\'{s}\' of file \"{s}\", as: ", .{ abi.getaka(heap_mod.h(heap, heap_mod.t(heap, heap_mod.h(heap, tclashes)))), strtab.strOf(strtab.table(), heap_mod.h(heap, heap_mod.h(heap, tclashes))) });
+            abi.printlist(heap, @constCast(""), depend_mod.alfasort(heap_mod.t(heap, heap_mod.t(heap, heap_mod.h(heap, tclashes)))));
+            tclashes = heap_mod.t(heap, tclashes);
         }
         word.printErr("typecheck cannot proceed - compilation abandoned\n", .{});
         core.SYNERR = 1;

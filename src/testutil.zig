@@ -112,13 +112,13 @@ pub fn expectReducesTo(expected: Word, node: Word) !void {
 
 /// Assert that `node` (reduced) is a node of tag `tag`.
 pub fn expectTag(tag: word.NodeTag, node: Word) !void {
-    try std.testing.expectEqual(tag, heap.getTag(try reduce.reduce(node)));
+    try std.testing.expectEqual(tag, heap.getTag(heap.heap(), try reduce.reduce(node)));
 }
 
 /// Assert that `node` reduces to the integer `expected`.
 pub fn expectInt(expected: i64, node: Word) !void {
     const r = try reduce.reduce(node);
-    try std.testing.expect(heap.getTag(r) == .INT);
+    try std.testing.expect(heap.getTag(heap.heap(), r) == .INT);
     try std.testing.expectEqual(expected, @as(i64, @intCast(big.toInt(heap.heap(), r))));
 }
 
@@ -127,9 +127,9 @@ pub fn expectInt(expected: i64, node: Word) !void {
 pub fn expectList(expected: []const i64, node: Word) !void {
     var cur = try reduce.reduce(node);
     for (expected) |e| {
-        try std.testing.expect(heap.getTag(cur) == .CONS);
-        try expectInt(e, heap.h(cur));
-        cur = try reduce.reduce(heap.t(cur));
+        try std.testing.expect(heap.getTag(heap.heap(), cur) == .CONS);
+        try expectInt(e, heap.h(heap.heap(), cur));
+        cur = try reduce.reduce(heap.t(heap.heap(), cur));
     }
     try std.testing.expectEqual(@as(Word, word.NIL), cur);
 }
@@ -140,9 +140,9 @@ pub fn expectList(expected: []const i64, node: Word) !void {
 pub fn expectWords(expected: []const Word, node: Word) !void {
     var cur = node;
     for (expected) |e| {
-        try std.testing.expect(heap.getTag(cur) == .CONS);
-        try std.testing.expectEqual(e, heap.h(cur));
-        cur = heap.t(cur);
+        try std.testing.expect(heap.getTag(heap.heap(), cur) == .CONS);
+        try std.testing.expectEqual(e, heap.h(heap.heap(), cur));
+        cur = heap.t(heap.heap(), cur);
     }
     try std.testing.expectEqual(@as(Word, word.NIL), cur);
 }
@@ -153,10 +153,10 @@ pub fn expectStr(expected: []const u8, node: Word) !void {
     var buf: [256]u8 = undefined;
     var len: usize = 0;
     var cur = try reduce.reduce(node);
-    while (heap.getTag(cur) == .CONS) {
-        buf[len] = @intCast(try reduce.reduce(heap.h(cur)));
+    while (heap.getTag(heap.heap(), cur) == .CONS) {
+        buf[len] = @intCast(try reduce.reduce(heap.h(heap.heap(), cur)));
         len += 1;
-        cur = try reduce.reduce(heap.t(cur));
+        cur = try reduce.reduce(heap.t(heap.heap(), cur));
     }
     try std.testing.expectEqualStrings(expected, buf[0..len]);
 }
@@ -187,10 +187,10 @@ test "list + expectList: builds and walks a proper list" {
 test "str: builds a Miranda string as a char list" {
     freshInterp();
     const s = str("hi");
-    try std.testing.expect(heap.getTag(s) == .CONS);
-    try std.testing.expectEqual(@as(Word, 'h'), heap.h(s));
-    try std.testing.expectEqual(@as(Word, 'i'), heap.h(heap.t(s)));
-    try std.testing.expectEqual(@as(Word, word.NIL), heap.t(heap.t(s)));
+    try std.testing.expect(heap.getTag(heap.heap(), s) == .CONS);
+    try std.testing.expectEqual(@as(Word, 'h'), heap.h(heap.heap(), s));
+    try std.testing.expectEqual(@as(Word, 'i'), heap.h(heap.heap(), heap.t(heap.heap(), s)));
+    try std.testing.expectEqual(@as(Word, word.NIL), heap.t(heap.heap(), heap.t(heap.heap(), s)));
 }
 
 test "expectStr: matches a char list against bytes" {

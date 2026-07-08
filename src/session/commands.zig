@@ -81,7 +81,7 @@ fn namescom(heap: *Heap, rs: *rt.RuntimeState, l: Word) void {
     const scrwd = files.termWidth();
     if (script_store.store().sorted == 0 and n != rs.primenv) {
         n = depend_mod.alfasort(n);
-        heap_mod.tp(l).* = n;
+        heap_mod.tp(heap, l).* = n;
     }
     if (n == NIL) return;
     if (heap_mod.getFil(l)) |gf| {
@@ -91,8 +91,8 @@ fn namescom(heap: *Heap, rs: *rt.RuntimeState, l: Word) void {
     }
     word.print("\n", .{});
     while (n != NIL) {
-        if (heap_mod.idType(heap_mod.h(n)) == word.wrong_t or heap_mod.idVal(heap_mod.h(n)) != word.UNDEF) {
-            const w = @as(Word, @intCast(std.mem.len(heap_mod.getId(heap_mod.h(n)))));
+        if (heap_mod.idType(heap_mod.h(heap, n)) == word.wrong_t or heap_mod.idVal(heap_mod.h(heap, n)) != word.UNDEF) {
+            const w = @as(Word, @intCast(std.mem.len(heap_mod.getId(heap_mod.h(heap, n)))));
             if (col_local + w < @as(Word, @intCast(scrwd))) {
                 col_local += if (col_local != 0) 1 else 0;
             } else if (wp > 0 and col_local + w >= @as(Word, @intCast(scrwd))) {
@@ -137,12 +137,12 @@ fn namescom(heap: *Heap, rs: *rt.RuntimeState, l: Word) void {
                 _ = word.putchar('\n');
             }
             col_local += w;
-            rs.words[wp] = heap_mod.h(n);
+            rs.words[wp] = heap_mod.h(heap, n);
             wp += 1;
         } else {
-            undefs = heap_mod.cons(heap_mod.h(n), undefs);
+            undefs = heap_mod.cons(heap, heap_mod.h(heap, n), undefs);
         }
-        n = heap_mod.t(n);
+        n = heap_mod.t(heap, n);
     }
     if (wp > 0) {
         col_local = 0;
@@ -193,9 +193,9 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
     if (is(lexs, "files")) {
         if (abi.getchar() != '\n') return true;
         var f = heap.files;
-        while (f != NIL) : (f = heap_mod.t(f)) {
-            word.print("({s},{},{})", .{ heap_mod.getFil(heap_mod.h(f)).?, heap_mod.filTime(heap_mod.h(f)), heap_mod.filShare(heap_mod.h(f)) });
-            abi.printlist(heap, @constCast(""), heap_mod.filDefs(heap_mod.h(f)));
+        while (f != NIL) : (f = heap_mod.t(heap, f)) {
+            word.print("({s},{},{})", .{ heap_mod.getFil(heap_mod.h(heap, f)).?, heap_mod.filTime(heap_mod.h(heap, f)), heap_mod.filShare(heap_mod.h(heap, f)) });
+            abi.printlist(heap, @constCast(""), heap_mod.filDefs(heap_mod.h(heap, f)));
         }
         return true;
     }
@@ -207,20 +207,20 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
             if (x != NIL) {
                 const n = heap_mod.getId(x);
                 var y = rs.primenv;
-                while (y != NIL) : (y = heap_mod.t(y)) {
-                    if (getTag(heap, heap_mod.h(y)) == .ID) {
-                        if (heap_mod.h(y) == x or std.mem.eql(u8, std.mem.span(abi.getaka(heap_mod.h(y))), std.mem.span(n))) {
-                            finger(heap, rs, heap_mod.getId(heap_mod.h(y)));
+                while (y != NIL) : (y = heap_mod.t(heap, y)) {
+                    if (getTag(heap, heap_mod.h(heap, y)) == .ID) {
+                        if (heap_mod.h(heap, y) == x or std.mem.eql(u8, std.mem.span(abi.getaka(heap_mod.h(heap, y))), std.mem.span(n))) {
+                            finger(heap, rs, heap_mod.getId(heap_mod.h(heap, y)));
                         }
                     }
                 }
                 var ff = heap.files;
-                while (ff != NIL) : (ff = heap_mod.t(ff)) {
-                    var y_def = heap_mod.filDefs(heap_mod.h(ff));
-                    while (y_def != NIL) : (y_def = heap_mod.t(y_def)) {
-                        if (getTag(heap, heap_mod.h(y_def)) == .ID) {
-                            if (heap_mod.h(y_def) == x or std.mem.eql(u8, std.mem.span(abi.getaka(heap_mod.h(y_def))), std.mem.span(n))) {
-                                finger(heap, rs, heap_mod.getId(heap_mod.h(y_def)));
+                while (ff != NIL) : (ff = heap_mod.t(heap, ff)) {
+                    var y_def = heap_mod.filDefs(heap_mod.h(heap, ff));
+                    while (y_def != NIL) : (y_def = heap_mod.t(heap, y_def)) {
+                        if (getTag(heap, heap_mod.h(heap, y_def)) == .ID) {
+                            if (heap_mod.h(heap, y_def) == x or std.mem.eql(u8, std.mem.span(abi.getaka(heap_mod.h(heap, y_def))), std.mem.span(n))) {
+                                finger(heap, rs, heap_mod.getId(heap_mod.h(heap, y_def)));
                             }
                         }
                     }
@@ -312,7 +312,7 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
                 files.copyFile(mf.?, t_val.?);
             }
         }
-        const err_line_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errline) else if (core.errs != 0 and std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(core.errs))))) @intCast(heap_mod.t(core.errs)) else @intCast(abi.geterrlin(heap_mod.heap(), core, lexs, t_val.?));
+        const err_line_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errline) else if (core.errs != 0 and std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap_mod.heap(), core.errs))))) @intCast(heap_mod.t(heap_mod.heap(), core.errs)) else @intCast(abi.geterrlin(heap_mod.heap(), core, lexs, t_val.?));
         const err_col_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errcol) else 0;
         editfile(rs, t_val.?, err_line_num, err_col_num);
         return true;
@@ -710,8 +710,8 @@ pub fn finger(heap: *Heap, rs: *rt.RuntimeState, n: [*:0]const u8) void {
     if (x != NIL and heap_mod.idType(x) != word.undef_t) {
         if (heap_mod.idWho(x) != NIL) {
             const here_val = heap_mod.getHere(x);
-            s = strtab.strOf(strtab.table(), heap_mod.h(here_val));
-            line = heap_mod.t(here_val);
+            s = strtab.strOf(strtab.table(), heap_mod.h(heap, here_val));
+            line = heap_mod.t(heap, here_val);
         }
         if (repl_session.session().lastid == 0) {
             repl_session.session().lastid = x;
@@ -786,29 +786,29 @@ pub fn allnamescom(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Run
     rs.leftist = false;
     namescom(heap, rs, heap_mod.makeFil(if (config_state.config().nostdenv) null else @as([*:0]const u8, @ptrCast(&config_state.config().STDENV)), 0, 0, rs.primenv));
     if (heap.files == NIL) return;
-    s = heap_mod.t(heap.files);
-    while (s != NIL) : (s = heap_mod.t(s)) {
-        namescom(heap, rs, heap_mod.h(s));
+    s = heap_mod.t(heap, heap.files);
+    while (s != NIL) : (s = heap_mod.t(heap, s)) {
+        namescom(heap, rs, heap_mod.h(heap, s));
     }
-    namescom(heap, rs, heap_mod.h(heap.files));
+    namescom(heap, rs, heap_mod.h(heap, heap.files));
     script_store.store().sorted = 1;
 
-    while (x != NIL and heap_mod.idType(heap_mod.h(x)) == word.undef_t) {
-        x = heap_mod.t(x);
+    while (x != NIL and heap_mod.idType(heap_mod.h(heap, x)) == word.undef_t) {
+        x = heap_mod.t(heap, x);
     }
-    while (y != NIL and heap_mod.idType(heap_mod.h(y)) != word.undef_t) {
-        y = heap_mod.t(y);
+    while (y != NIL and heap_mod.idType(heap_mod.h(heap, y)) != word.undef_t) {
+        y = heap_mod.t(heap, y);
     }
     if (x != NIL) {
         word.print("WARNING, SCRIPT CONTAINS TYPE ERRORS: ", .{});
-        while (x != NIL) : (x = heap_mod.t(x)) {
-            if (heap_mod.idType(heap_mod.h(x)) != word.undef_t) {
+        while (x != NIL) : (x = heap_mod.t(heap, x)) {
+            if (heap_mod.idType(heap_mod.h(heap, x)) != word.undef_t) {
                 if (z == 0) {
                     z = 1;
                 } else {
                     _ = word.putchar(',');
                 }
-                abi.out(heap, abi.stdout(), heap_mod.h(x));
+                abi.out(heap, abi.stdout(), heap_mod.h(heap, x));
             }
         }
         word.print(";\n", .{});
@@ -816,14 +816,14 @@ pub fn allnamescom(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Run
     if (y != NIL) {
         word.print("{s} UNDEFINED NAMES: ", .{@as([*:0]const u8, if (z != 0) "AND" else "WARNING, SCRIPT CONTAINS")});
         z = 0;
-        while (y != NIL) : (y = heap_mod.t(y)) {
-            if (heap_mod.idType(heap_mod.h(y)) == word.undef_t) {
+        while (y != NIL) : (y = heap_mod.t(heap, y)) {
+            if (heap_mod.idType(heap_mod.h(heap, y)) == word.undef_t) {
                 if (z == 0) {
                     z = 1;
                 } else {
                     _ = word.putchar(',');
                 }
-                abi.out(heap, abi.stdout(), heap_mod.h(y));
+                abi.out(heap, abi.stdout(), heap_mod.h(heap, y));
             }
         }
         word.print(";\n", .{});

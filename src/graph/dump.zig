@@ -484,15 +484,15 @@ pub fn dumpOb(x: Word, file: ?*word.Stream) void {
         },
         .UNICODE => {
             _ = word.putc(word.UNICODE_X, file);
-            putint(@intCast(h(x)), file);
+            putint(@intCast(h(heap_mod.heap(), x)), file);
         },
         .DATAPAIR => {
-            _ = word.fprint(file, "{c}{s}", .{ @as(u8, @intCast(word.AKA_X)), castPtr(h(x)) });
+            _ = word.fprint(file, "{c}{s}", .{ @as(u8, @intCast(word.AKA_X)), castPtr(h(heap_mod.heap(), x)) });
             _ = word.putc(0, file);
         },
         .FILEINFO => {
-            var line = t(x);
-            const path = castPtr(h(x));
+            var line = t(heap_mod.heap(), x);
+            const path = castPtr(h(heap_mod.heap(), x));
             if (os.strcmp(path, heap_mod.heap().CFN.?) == 0) {
                 _ = word.putc(word.HERE_X, file);
             } else {
@@ -503,17 +503,17 @@ pub fn dumpOb(x: Word, file: ?*word.Stream) void {
             line >>= 8;
             _ = word.putc(@intCast(line & 255), file);
             if (line > 255) {
-                std.debug.print("impossible line number {d} in dumpOb\n", .{t(x)});
+                std.debug.print("impossible line number {d} in dumpOb\n", .{t(heap_mod.heap(), x)});
             }
         },
         .CONSTRUCTOR => {
-            dumpOb(t(x), file);
+            dumpOb(t(heap_mod.heap(), x), file);
             _ = word.putc(word.CONSTRUCT_X, file);
-            _ = word.putc(@intCast(h(x) & 255), file);
-            _ = word.putc(@intCast(h(x) >> 8), file);
+            _ = word.putc(@intCast(h(heap_mod.heap(), x) & 255), file);
+            _ = word.putc(@intCast(h(heap_mod.heap(), x) >> 8), file);
         },
         .STARTREADVALS => {
-            dumpOb(t(x), file);
+            dumpOb(t(heap_mod.heap(), x), file);
             _ = word.putc(word.RV_X, file);
         },
         .ID => {
@@ -532,13 +532,13 @@ pub fn dumpOb(x: Word, file: ?*word.Stream) void {
             }
         },
         .AP => {
-            dumpOb(h(x), file);
-            dumpOb(t(x), file);
+            dumpOb(h(heap_mod.heap(), x), file);
+            dumpOb(t(heap_mod.heap(), x), file);
             _ = word.putc(word.AP_X, file);
         },
         .CONS => {
-            dumpOb(t(x), file);
-            dumpOb(h(x), file);
+            dumpOb(t(heap_mod.heap(), x), file);
+            dumpOb(h(heap_mod.heap(), x), file);
             _ = word.putc(word.CONS_X, file);
         },
         else => {
@@ -550,7 +550,7 @@ pub fn dumpOb(x: Word, file: ?*word.Stream) void {
 /// Ambient-singleton form of `gettvar`, for `dumpOb` (see its own doc for why
 /// it stays ambient rather than receiver-threaded).
 fn gettvarAmbient(x: Word) Word {
-    return t(x);
+    return t(heap_mod.heap(), x);
 }
 
 /// Load a script graph from a dump `file`, binding params and aliases.
@@ -870,11 +870,11 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
                 var val = os.getc(file);
                 val = val | (os.getc(file) << 8);
                 const idx = heap.PNBASE + val;
-                stackpPush(heap, if (idx < lexs.nextpn) lexs.pnvec.?[@intCast(idx)] else lex.stoPn(idx));
+                stackpPush(heap, if (idx < lexs.nextpn) lexs.pnvec.?[@intCast(idx)] else lex.stoPn(heap, idx));
             },
             word.PN1_X => {
                 const idx = heap.PNBASE + getint(file);
-                stackpPush(heap, if (idx < lexs.nextpn) lexs.pnvec.?[@intCast(idx)] else lex.stoPn(idx));
+                stackpPush(heap, if (idx < lexs.nextpn) lexs.pnvec.?[@intCast(idx)] else lex.stoPn(heap, idx));
             },
             word.CONSTRUCT_X => {
                 var val = os.getc(file);
@@ -1137,7 +1137,7 @@ test "dumpOb / loadDefs: roundtrip a cons of two ints through the .x format" {
     // 2. Build a representative structure: a cons pair of two small integers
     const item1 = stosmallint(42);
     const item2 = stosmallint(100);
-    const list = cons(item1, item2);
+    const list = cons(heap_val, item1, item2);
 
     // 3. Open a temp file for writing
     const filename = "test_roundtrip.dump";

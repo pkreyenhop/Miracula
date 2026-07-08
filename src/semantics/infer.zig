@@ -92,7 +92,7 @@ fn tp(heap: *Heap, x: Word) *Word {
 
 /// Allocate a `CONS` cell `(x . y)`.
 fn cons(x: Word, y: Word) Word {
-    return make(.CONS, x, y);
+    return make(heap_mod.heap(), .CONS, x, y);
 }
 
 const depend = @import("depend.zig");
@@ -289,7 +289,7 @@ const hashsize: usize = 512;
 
 /// Allocate an application cell `(x y)`.
 fn ap(x: Word, y: Word) Word {
-    return make(.AP, x, y);
+    return make(heap_mod.heap(), .AP, x, y);
 }
 
 /// The value (tail) of a private-name node.

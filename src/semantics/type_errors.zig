@@ -78,7 +78,7 @@ fn t(heap: *Heap, x: Word) Word {
 
 /// Allocate an application cell `(x y)`.
 fn ap(x: Word, y: Word) Word {
-    return heap_mod.make(.AP, x, y);
+    return heap_mod.make(heap_mod.heap(), .AP, x, y);
 }
 
 /// The value (tail) of a private-name node.

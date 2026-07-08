@@ -1982,6 +1982,55 @@ subsystems and passed explicitly; the ambient singleton deleted.
 6. **The two-Interp test** — construct two `Interp`s, load a small script in each,
    evaluate interleaved, assert isolation. This is the phase's definition of done.
 
+   **`graph` subsystem, in progress.** Landed subsystem-by-subsystem, each a
+   green commit: `graph/print.zig` (`charname`/`outTerm`/`outSubterm`/`outAtom`
+   take an explicit `heap: *Heap`; `outReal`/`castPtr` untouched, neither
+   touches heap-cell data), `graph/dump.zig` (nearly everything —
+   `setprefix`/`mkrel`/`dumpScript`/`dumpDefs`/`loadScript`/`bindparams`/
+   `unscramble`/`dsetup`/`dgrow`/`loadDefs`/`unsetids`/`unload`/`srcUpdate`
+   plus a dozen private helpers), then `graph/heap.zig`'s own core API
+   (`h`/`hp`/`t`/`tp`/`getTag`/`cons`/`make` — the file's central allocator
+   primitives, called from every other subsystem). The `heap.zig` conversion
+   also deleted one genuinely dead free function (`makeTwo`, confirmed
+   unreferenced via a `@compileError` injection: its only apparent caller
+   actually calls the `Heap.makeTwo` *method* through its own explicit
+   receiver) and fixed the same shadowing bug in `gc()` (reachable only from
+   `micro_benchmarks.zig`, outside `zig build test`'s default coverage).
+   Every other subsystem that calls these seven functions was fixed
+   mechanically (`h(x)` → `h(heap, x)`) wherever a `heap: *Heap` was already
+   in scope; where a small, high-fanout helper (e.g. a file-local `cons`/`ap`
+   wrapper called from dozens of sites) had no receiver of its own and adding
+   one would cascade into unrelated signature changes, the helper's own
+   signature was left alone and its *body* calls `heap_mod.heap()` explicitly
+   instead ("ambient-internal", as distinct from the "thread it explicitly"
+   treatment used everywhere a receiver was already in scope) — used in
+   `heap.zig` itself (its ~25 small accessors), `parser/lex.zig`, `parser/
+   codegen.zig`, `semantics/{infer,lower,match,unify,type_errors,modules}.zig`,
+   `eval/reduce_rt.zig`, `eval/spine.zig`, `os.zig`'s `strcons`.
+
+   **`dumpOb` deliberately kept ambient, not receiver-threaded** (see its own
+   doc comment in `graph/dump.zig`): a receiver-threaded version measurably
+   regressed the safe recursion depth (dumpOb recurses on `.CONS`'s tail
+   *before* its head, so it isn't tail-call-optimisable, and its depth is
+   proportional to list length, which is user data — unbounded). Confirmed
+   via `git stash` bisection: pre-conversion handled a 1500-element list
+   literal through `-make`; the receiver-threaded version crashed at 1000.
+   Reverted to its original ambient form (only `heap_mod.heap()` calls
+   inserted, no new parameter), then re-verified via the same stress
+   methodology against `graph/heap.zig`'s core-API conversion (extra
+   stress-testing per explicit request): n=1500 succeeds cleanly, matching
+   pre-existing behaviour; n=8000 crashes identically on both the pre- and
+   post-heap.zig-conversion binaries (built and diffed via a throwaway `git
+   worktree` at the prior commit) — confirming the crash threshold is
+   unchanged, not a new regression. `dumpOb` itself still needs the deferred
+   fix (walk its own `stackpPush`/`stackpPop` scratch stack explicitly,
+   matching `loadDefs`, its inverse) before it can be receiver-threaded like
+   the rest of the file.
+
+   Remaining subsystems (`eval`'s `ReductionCtx`, `semantics`'s `Compile`
+   context, `session`) and the final singleton-deletion step are not yet
+   started.
+
 **Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
 interrupt flag); DAG check green with empty allowlist; files > 1,000 lines = 0;
 goldens identical.

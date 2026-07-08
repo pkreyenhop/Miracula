@@ -81,7 +81,7 @@ fn tp(heap: *Heap, x: Word) *Word {
 
 /// Allocate a `CONS` cell `(x . y)`.
 fn cons(x: Word, y: Word) Word {
-    return make(.CONS, x, y);
+    return make(heap_mod.heap(), .CONS, x, y);
 }
 
 /// The interned name text of id `x`.
@@ -91,7 +91,7 @@ fn getId(heap: *Heap, x: Word) [*:0]const u8 {
 
 /// Allocate a `FILEINFO` cell `(file . line)`.
 fn fileinfo(file: Word, line: Word) Word {
-    return make(.FILEINFO, file, line);
+    return make(heap_mod.heap(), .FILEINFO, file, line);
 }
 
 /// Abort if the dictionary buffer has overflowed.
@@ -443,7 +443,7 @@ pub fn openfile(n: [*:0]const u8) c_int {
     const f = word.fopen(n, "r") orelse return 0;
     // Stream* handle stored in the cell (read back via @ptrFromInt below);
     // this is a Stream-handle-in-cell cast, not a node string — out of B1 scope.
-    ls().fileq = cons(make(.STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls().fileq);
+    ls().fileq = cons(make(heap_mod.heap(), .STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls().fileq);
     ls().insertdepth += 1;
     return 1;
 }
@@ -559,14 +559,14 @@ pub fn makePn(val: Word) Word {
         const slice = rt.allocator.realloc(old_slice, @intCast(ls().pn_lim)) catch mallocPanic("ls.pnvec");
         ls().pnvec = slice.ptr;
     }
-    ls().pnvec.?[@intCast(ls().nextpn)] = make(.STRCONS, ls().nextpn, val);
+    ls().pnvec.?[@intCast(ls().nextpn)] = make(heap_mod.heap(), .STRCONS, ls().nextpn, val);
     const ret = ls().pnvec.?[@intCast(ls().nextpn)];
     ls().nextpn += 1;
     return ret;
 }
 
 /// Allocate/store a private name `n`.
-pub fn stoPn(n: Word) Word {
+pub fn stoPn(heap: *Heap, n: Word) Word {
     if (n >= ls().pn_lim) {
         const old_lim = ls().pn_lim;
         while (ls().pn_lim <= n) {
@@ -577,7 +577,7 @@ pub fn stoPn(n: Word) Word {
         ls().pnvec = slice.ptr;
     }
     while (ls().nextpn <= n) {
-        ls().pnvec.?[@intCast(ls().nextpn)] = make(.STRCONS, ls().nextpn, UNDEF);
+        ls().pnvec.?[@intCast(ls().nextpn)] = make(heap, .STRCONS, ls().nextpn, UNDEF);
         ls().nextpn += 1;
     }
     return ls().pnvec.?[@intCast(n)];

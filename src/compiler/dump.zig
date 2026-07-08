@@ -45,55 +45,55 @@ pub fn fixexports(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runt
     _ = rs;
     var e = script_store.store().exports;
     var f: Word = undefined;
-    while (e != NIL) : (e = t(e)) {
-        paint(h(e));
+    while (e != NIL) : (e = t(heap, e)) {
+        paint(heap, h(heap, e));
     }
     comp.internals = NIL;
     if (script_store.store().exports == NIL and lexs.exportfiles == NIL and script_store.store().embargoes == NIL) {
         e = script_store.store().freeids;
-        while (e != NIL) : (e = t(e)) {
-            comp.internals = heap_mod.cons(privatise(heap, lexs, h(h(e))), comp.internals);
+        while (e != NIL) : (e = t(heap, e)) {
+            comp.internals = heap_mod.cons(heap, privatise(heap, lexs, h(heap, h(heap, e))), comp.internals);
         }
-        f = t(heap.files);
-        while (f != NIL) : (f = t(f)) {
-            var e_def = heap_mod.filDefs(h(f));
-            while (e_def != NIL) : (e_def = t(e_def)) {
-                if (getTag(heap, h(e_def)) == .ID) {
-                    comp.internals = heap_mod.cons(privatise(heap, lexs, h(e_def)), comp.internals);
+        f = t(heap, heap.files);
+        while (f != NIL) : (f = t(heap, f)) {
+            var e_def = heap_mod.filDefs(h(heap, f));
+            while (e_def != NIL) : (e_def = t(heap, e_def)) {
+                if (getTag(heap, h(heap, e_def)) == .ID) {
+                    comp.internals = heap_mod.cons(heap, privatise(heap, lexs, h(heap, e_def)), comp.internals);
                 }
             }
         }
     } else {
         f = heap.files;
-        while (f != NIL) : (f = t(f)) {
-            var e_def = heap_mod.filDefs(h(f));
-            while (e_def != NIL) : (e_def = t(e_def)) {
-                if (getTag(heap, h(e_def)) == .ID and unpainted(heap, h(e_def))) {
-                    comp.internals = heap_mod.cons(privatise(heap, lexs, h(e_def)), comp.internals);
+        while (f != NIL) : (f = t(heap, f)) {
+            var e_def = heap_mod.filDefs(h(heap, f));
+            while (e_def != NIL) : (e_def = t(heap, e_def)) {
+                if (getTag(heap, h(heap, e_def)) == .ID and unpainted(heap, h(heap, e_def))) {
+                    comp.internals = heap_mod.cons(heap, privatise(heap, lexs, h(heap, e_def)), comp.internals);
                 }
             }
         }
     }
     e = script_store.store().exports;
-    while (e != NIL) : (e = t(e)) {
-        unpaint(h(e));
+    while (e != NIL) : (e = t(heap, e)) {
+        unpaint(heap, h(heap, e));
     }
 }
 
 /// Mark id `x` as exported by wrapping its value in an `EXPORT` node (dump graph-walk).
-fn paint(x: Word) void {
-    tp(x).* = abi.ap(word.EXPORT, heap_mod.idVal(x));
+fn paint(heap: *Heap, x: Word) void {
+    tp(heap, x).* = abi.ap(heap, word.EXPORT, heap_mod.idVal(x));
 }
 
 /// Whether id `x` is not marked as exported.
 fn unpainted(heap: *Heap, x: Word) bool {
     const v = heap_mod.idVal(x);
-    return getTag(heap, v) != .AP or h(v) != word.EXPORT;
+    return getTag(heap, v) != .AP or h(heap, v) != word.EXPORT;
 }
 
 /// Remove the `EXPORT` mark from id `x`.
-fn unpaint(x: Word) void {
-    tp(x).* = t(heap_mod.idVal(x));
+fn unpaint(heap: *Heap, x: Word) void {
+    tp(heap, x).* = t(heap, heap_mod.idVal(x));
 }
 
 /// Reverses the privatisation done by fixexports(), restoring all `internals` to public.
@@ -102,8 +102,8 @@ pub fn unfixexports(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Ru
     _ = rs;
     var i = comp.internals;
     if (make_state.make().mkexports) return;
-    while (i != NIL) : (i = t(i)) {
-        _ = publicise(heap, lexs, h(i));
+    while (i != NIL) : (i = t(heap, i)) {
+        _ = publicise(heap, lexs, h(heap, i));
     }
     comp.internals = NIL;
 }
@@ -118,21 +118,21 @@ pub fn unfixexports(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Ru
 fn privatise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
     const n = abi.makePn(x);
     const nm = std.mem.span(heap_mod.getId(x));
-    const i = h(n);
+    const i = h(heap, n);
 
     if (heap_mod.idType(x) == word.type_t) {
-        tp(heap_mod.tInfo(x)).* = heap_mod.cons(abi.datapair(@as(Word, strtab.strBits(strtab.table(), abi.getaka(x))), 0), heap_mod.getHere(x));
+        tp(heap, heap_mod.tInfo(x)).* = heap_mod.cons(heap, abi.datapair(heap, @as(Word, strtab.strBits(strtab.table(), abi.getaka(x))), 0), heap_mod.getHere(x));
     }
 
     if (heap_mod.idVal(x) == word.UNDEF) {
-        tp(x).* = abi.ap(abi.datapair(@as(Word, strtab.strBits(strtab.table(), abi.getaka(x))), 0), heap_mod.getHere(x));
+        tp(heap, x).* = abi.ap(heap, abi.datapair(heap, @as(Word, strtab.strBits(strtab.table(), abi.getaka(x))), 0), heap_mod.getHere(x));
     }
 
     lexs.pnvec.?[@as(usize, @intCast(i))] = x;
     setTag(heap, n, .ID);
-    hp(n).* = h(x);
+    hp(heap, n).* = h(heap, x);
     setTag(heap, x, .STRCONS);
-    hp(x).* = i;
+    hp(heap, x).* = i;
 
     symbols.syms().rebind(rt.allocator, nm, n) catch heap_mod.mallocPanic("symbols dictionary");
     return n;
@@ -151,11 +151,11 @@ fn publicise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
     const nm = std.mem.span(heap_mod.getId(x));
 
     setTag(heap, i, .ID);
-    hp(i).* = h(x);
+    hp(heap, i).* = h(heap, x);
 
-    const val = t(i);
-    if (getTag(heap, val) == .AP and getTag(heap, h(val)) == .DATAPAIR) {
-        tp(i).* = word.UNDEF;
+    const val = t(heap, i);
+    if (getTag(heap, val) == .AP and getTag(heap, h(heap, val)) == .DATAPAIR) {
+        tp(heap, i).* = word.UNDEF;
     }
 
     symbols.syms().rebind(rt.allocator, nm, i) catch heap_mod.mallocPanic("symbols dictionary");
@@ -174,28 +174,28 @@ pub fn readoption(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runt
 
     if (comp.FBS != NIL) {
         f = comp.FBS;
-        while (f != NIL) : (f = t(f)) {
-            t_val = t(h(f));
-            while (t_val != NIL) : (t_val = t(t_val)) {
-                if (getTag(heap, h(h(t_val))) == .STRCONS and t(t(h(h(t_val)))) == word.type_t) {
-                    comp.pfrts = heap_mod.cons(h(h(t_val)), comp.pfrts);
+        while (f != NIL) : (f = t(heap, f)) {
+            t_val = t(heap, h(heap, f));
+            while (t_val != NIL) : (t_val = t(heap, t_val)) {
+                if (getTag(heap, h(heap, h(heap, t_val))) == .STRCONS and t(heap, t(heap, h(heap, h(heap, t_val)))) == word.type_t) {
+                    comp.pfrts = heap_mod.cons(heap, h(heap, h(heap, t_val)), comp.pfrts);
                 }
             }
         }
     }
 
     var rfl_ptr = script_store.store().rfl;
-    while (rfl_ptr != NIL) : (rfl_ptr = t(rfl_ptr)) {
-        f = heap_mod.filDefs(h(rfl_ptr));
-        while (f != NIL) : (f = t(f)) {
-            if (getTag(heap, h(f)) == .ID) {
-                t_val = heap_mod.idType(h(f));
+    while (rfl_ptr != NIL) : (rfl_ptr = t(heap, rfl_ptr)) {
+        f = heap_mod.filDefs(h(heap, rfl_ptr));
+        while (f != NIL) : (f = t(heap, f)) {
+            if (getTag(heap, h(heap, f)) == .ID) {
+                t_val = heap_mod.idType(h(heap, f));
                 if (t_val == word.type_t) {
-                    if (heap_mod.tClass(h(f)) == word.synonym_t) {
-                        tp(heap_mod.tInfo(h(f))).* = fixtype(heap, comp, heap_mod.tInfo(h(f)), h(f));
+                    if (heap_mod.tClass(h(heap, f)) == word.synonym_t) {
+                        tp(heap, heap_mod.tInfo(h(heap, f))).* = fixtype(heap, comp, heap_mod.tInfo(h(heap, f)), h(heap, f));
                     }
                 } else {
-                    tp(h(h(f))).* = fixtype(heap, comp, t_val, h(f));
+                    tp(heap, h(heap, h(heap, f))).* = fixtype(heap, comp, t_val, h(heap, f));
                 }
             }
         }
@@ -203,12 +203,12 @@ pub fn readoption(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runt
 
     if (comp.tlost == NIL) return;
     comp.TYPERRS += 1;
-    word.print("cs.MISSING TYPENAME{s}\n", .{if (t(comp.tlost) == NIL) "" else "S"});
-    word.print("the following type{s} no name in this scope:\n", .{if (t(comp.tlost) == NIL) " is needed but has" else "s are needed but have"});
+    word.print("cs.MISSING TYPENAME{s}\n", .{if (t(heap, comp.tlost) == NIL) "" else "S"});
+    word.print("the following type{s} no name in this scope:\n", .{if (t(heap, comp.tlost) == NIL) " is needed but has" else "s are needed but have"});
     while (comp.tlost != NIL) {
-        word.print("\'{s}\' of file \"{s}\", needed by: ", .{ strtab.strOf(strtab.table(), h(h(heap_mod.tInfo(h(h(comp.tlost)))))), strtab.strOf(strtab.table(), h(t(heap_mod.tInfo(h(h(comp.tlost)))))) });
-        abi.printlist(heap, @constCast(""), depend_mod.alfasort(t(h(comp.tlost))));
-        comp.tlost = t(comp.tlost);
+        word.print("\'{s}\' of file \"{s}\", needed by: ", .{ strtab.strOf(strtab.table(), h(heap, h(heap, heap_mod.tInfo(h(heap, h(heap, comp.tlost)))))), strtab.strOf(strtab.table(), h(heap, t(heap, heap_mod.tInfo(h(heap, h(heap, comp.tlost)))))) });
+        abi.printlist(heap, @constCast(""), depend_mod.alfasort(t(heap, h(heap, comp.tlost))));
+        comp.tlost = t(heap, comp.tlost);
     }
 }
 
@@ -217,8 +217,8 @@ pub fn readoption(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runt
 pub fn fixtype(heap: *Heap, comp: *compiler_state.CompilerState, t_val: Word, x: Word) Word {
     switch (getTag(heap, t_val)) {
         .AP, .CONS => {
-            tp(t_val).* = fixtype(heap, comp, t(t_val), x);
-            hp(t_val).* = fixtype(heap, comp, h(t_val), x);
+            tp(heap, t_val).* = fixtype(heap, comp, t(heap, t_val), x);
+            hp(heap, t_val).* = fixtype(heap, comp, h(heap, t_val), x);
             return t_val;
         },
         .STRCONS => {
@@ -226,19 +226,19 @@ pub fn fixtype(heap: *Heap, comp: *compiler_state.CompilerState, t_val: Word, x:
                 return t_val;
             }
             var cur_t = t_val;
-            while (getTag(heap, pnVal(cur_t)) != .CONS) {
-                cur_t = pnVal(cur_t);
+            while (getTag(heap, pnVal(heap, cur_t)) != .CONS) {
+                cur_t = pnVal(heap, cur_t);
             }
             if (getTag(heap, cur_t) != .ID) {
                 var w = comp.tlost;
-                while (w != NIL and h(h(w)) != cur_t) {
-                    w = t(w);
+                while (w != NIL and h(heap, h(heap, w)) != cur_t) {
+                    w = t(heap, w);
                 }
                 if (w == NIL) {
-                    comp.tlost = heap_mod.cons(heap_mod.cons(cur_t, heap_mod.cons(x, NIL)), comp.tlost);
+                    comp.tlost = heap_mod.cons(heap, heap_mod.cons(heap, cur_t, heap_mod.cons(heap, x, NIL)), comp.tlost);
                     w = comp.tlost;
                 }
-                tp(h(w)).* = abi.add1(heap, x, t(h(w)));
+                tp(heap, h(heap, w)).* = abi.add1(heap, x, t(heap, h(heap, w)));
             }
             return cur_t;
         },
@@ -246,8 +246,8 @@ pub fn fixtype(heap: *Heap, comp: *compiler_state.CompilerState, t_val: Word, x:
     }
 }
 
-inline fn pnVal(x: Word) Word {
-    return t(x);
+inline fn pnVal(heap: *Heap, x: Word) Word {
+    return t(heap, x);
 }
 
 /// Loads `t_val` from its pre-compiled dump file (.mx suffix) if the dump is newer

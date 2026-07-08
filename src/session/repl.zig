@@ -183,13 +183,13 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                     repl_session.session().lastid = x;
                     x = heap_mod.idWho(x);
                     if (getTag(heap, x) == .CONS) {
-                        aka = strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(x)));
-                        x = heap_mod.t(x);
+                        aka = strtab.strOf(strtab.table(), heap_mod.h(heap, heap_mod.h(heap, x)));
+                        x = heap_mod.t(heap, x);
                     }
                     if (aka != null) {
                         word.print("originally defined as \"{s}\"\n", .{aka.?});
                     }
-                    commands.editfile(rs, strtab.strOf(strtab.table(), heap_mod.h(x)), @intCast(heap_mod.t(x)), 0);
+                    commands.editfile(rs, strtab.strOf(strtab.table(), heap_mod.h(heap, x)), @intCast(heap_mod.t(heap, x)), 0);
                 } else {
                     _ = abi.ungetc(ch, abi.stdin().?);
                     _ = token();
@@ -266,7 +266,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                 const start = getMonotonicNs();
                 _ = abi.ungetc(ch, abi.stdin().?);
                 repl_session.session().lastid = 0;
-                heap_mod.tp(heap_mod.h(lexs.cook_stdin)).* = 0;
+                heap_mod.tp(heap, heap_mod.h(heap, lexs.cook_stdin)).* = 0;
                 rs.rv_expr = 0;
                 lexs.c = word.EVAL;
                 repl_session.session().echoing = 0;
@@ -322,15 +322,15 @@ pub fn obey(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
     core.compiling = 0;
     const list_t: Word = 4;
     const char_t: Word = 3;
-    const islist = typ >= word.ATOMLIMIT and getTag(heap, typ) == .AP and h(typ) == list_t;
-    const out_val: Word = if (islist and t(typ) == rs.message)
+    const islist = typ >= word.ATOMLIMIT and getTag(heap, typ) == .AP and h(heap, typ) == list_t;
+    const out_val: Word = if (islist and t(heap, typ) == rs.message)
         x
     else blk: {
-        const inner: Word = if (islist and t(typ) == char_t)
+        const inner: Word = if (islist and t(heap, typ) == char_t)
             x
         else
-            abi.make(.AP, abi.mkshow(heap, 0, 0, typ), x);
-        break :blk abi.make(.CONS, abi.make(.AP, rs.standardout, inner), NIL);
+            abi.make(heap, .AP, abi.mkshow(heap, 0, 0, typ), x);
+        break :blk abi.make(heap, .CONS, abi.make(heap, .AP, rs.standardout, inner), NIL);
     };
     abi.output(reduce.ev(), rs, out_val) catch {};
 }
@@ -359,15 +359,15 @@ pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_st
     if (comp.polyshowerror != 0) return;
     const list_t: Word = 4;
     const char_t: Word = 3;
-    const islist = typ >= word.ATOMLIMIT and getTag(heap, typ) == .AP and h(typ) == list_t;
-    const out_val: Word = if (islist and t(typ) == rs.message)
+    const islist = typ >= word.ATOMLIMIT and getTag(heap, typ) == .AP and h(heap, typ) == list_t;
+    const out_val: Word = if (islist and t(heap, typ) == rs.message)
         x
     else blk: {
-        const inner: Word = if (islist and t(typ) == char_t)
+        const inner: Word = if (islist and t(heap, typ) == char_t)
             x
         else
-            abi.make(.AP, abi.mkshow(heap, 0, 0, typ), x);
-        break :blk abi.make(.CONS, abi.make(.AP, rs.standardout, inner), NIL);
+            abi.make(heap, .AP, abi.mkshow(heap, 0, 0, typ), x);
+        break :blk abi.make(heap, .CONS, abi.make(heap, .AP, rs.standardout, inner), NIL);
     };
 
     rt.interrupt_flag.store(false, .release); // discard any stale, pre-eval interrupt

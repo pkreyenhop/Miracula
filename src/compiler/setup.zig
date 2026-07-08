@@ -136,9 +136,9 @@ pub fn predef(heap: *Heap, n: [*:0]const u8, v: Word, t_val: Word) void {
 /// Seeds the primitive type aliases (num, char, bool) and built-in constructors
 /// (True, False) into the private primitive environment. Called by miraSetup().
 pub fn primlib(heap: *Heap) void {
-    primdef(heap, "num", abi.make_typ(0, 0, word.synonym_t, word.num_t), word.type_t);
-    primdef(heap, "char", abi.make_typ(0, 0, word.synonym_t, word.char_t), word.type_t);
-    primdef(heap, "bool", abi.make_typ(0, 0, word.synonym_t, word.bool_t), word.type_t);
+    primdef(heap, "num", abi.make_typ(heap, 0, 0, word.synonym_t, word.num_t), word.type_t);
+    primdef(heap, "char", abi.make_typ(heap, 0, 0, word.synonym_t, word.char_t), word.type_t);
+    primdef(heap, "bool", abi.make_typ(heap, 0, 0, word.synonym_t, word.bool_t), word.type_t);
     primdef(heap, "True", 1, word.bool_t);
     primdef(heap, "False", 0, word.bool_t);
 }
@@ -151,7 +151,7 @@ pub fn privlib(heap: *Heap) void {
     predef(heap, "first", word.HD, word.wrong_t);
     predef(heap, "rest", word.TL, word.wrong_t);
     predef(heap, "code", word.CODE, word.undef_t);
-    predef(heap, "concat", abi.ap2(word.FOLDR, word.APPEND, NIL), word.undef_t);
+    predef(heap, "concat", abi.ap2(heap, word.FOLDR, word.APPEND, NIL), word.undef_t);
     predef(heap, "decode", word.DECODE, word.undef_t);
     predef(heap, "drop", word.DROP, word.undef_t);
     predef(heap, "error", word.ERROR, word.undef_t);
@@ -225,9 +225,9 @@ pub fn miraSetup() void {
     tsetup();
     resetPns();
     bigsetup(heap, big.bn());
-    ls().common_stdin = abi.ap(word.READ, 0);
-    ls().common_stdinb = abi.ap(word.READBIN, 0);
-    ls().cook_stdin = abi.ap(abi.readvals(0, 0), word.OFFSIDE);
+    ls().common_stdin = abi.ap(heap, word.READ, 0);
+    ls().common_stdinb = abi.ap(heap, word.READBIN, 0);
+    ls().cook_stdin = abi.ap(heap, abi.readvals(heap, 0, 0), word.OFFSIDE);
     heap.nill = heap.cons(word.CONST, NIL);
     rt.rs().Void = abi.makeId(@constCast("()"));
     heap.tp(heap.h(rt.rs().Void)).* = word.void_t;

@@ -187,52 +187,52 @@ fn appHead(heap: *Heap, input_x: Word) Word {
 
 /// Allocate a `CONS` cell `(x . y)`.
 fn cons(x: Word, y: Word) Word {
-    return make(.CONS, x, y);
+    return make(heap_mod.heap(), .CONS, x, y);
 }
 
 /// Allocate a `PAIR` cell `(x . y)`.
 fn pair(x: Word, y: Word) Word {
-    return make(.PAIR, x, y);
+    return make(heap_mod.heap(), .PAIR, x, y);
 }
 
 /// Allocate a `DATAPAIR` cell.
 fn datapair(x: Word, y: Word) Word {
-    return make(.DATAPAIR, x, y);
+    return make(heap_mod.heap(), .DATAPAIR, x, y);
 }
 
 /// Allocate a `CONSTRUCTOR` cell (tag `n`, fields `x`).
 fn constructor(n: Word, x: Word) Word {
-    return make(.CONSTRUCTOR, n, x);
+    return make(heap_mod.heap(), .CONSTRUCTOR, n, x);
 }
 
 /// Allocate a `LAMBDA` cell `(x . y)`.
 fn lambda(x: Word, y: Word) Word {
-    return make(.LAMBDA, x, y);
+    return make(heap_mod.heap(), .LAMBDA, x, y);
 }
 
 /// Allocate a `SHARE` cell (a shared / lazily-evaluated binding).
 fn share(x: Word, y: Word) Word {
-    return make(.SHARE, x, y);
+    return make(heap_mod.heap(), .SHARE, x, y);
 }
 
 /// Allocate a `TRIES` cell (a chain of pattern-match alternatives).
 fn tries(x: Word, y: Word) Word {
-    return make(.TRIES, x, y);
+    return make(heap_mod.heap(), .TRIES, x, y);
 }
 
 /// Allocate a `LET` cell.
 fn let(x: Word, y: Word) Word {
-    return make(.LET, x, y);
+    return make(heap_mod.heap(), .LET, x, y);
 }
 
 /// Allocate a `LETREC` cell.
 fn letrec(x: Word, y: Word) Word {
-    return make(.LETREC, x, y);
+    return make(heap_mod.heap(), .LETREC, x, y);
 }
 
 /// Allocate an application `(x y)`.
 fn ap(x: Word, y: Word) Word {
-    return make(.AP, x, y);
+    return make(heap_mod.heap(), .AP, x, y);
 }
 
 /// Allocate `((x y) z)`.
@@ -370,7 +370,7 @@ fn getTypeVariable(heap: *Heap, x: Word) Word {
 
 /// Box index `i` (bare if small, else an `INT` cell).
 fn mkindex(i: Word) Word {
-    return if (word.fitsInByte(i)) i else make(.INT, i, 0);
+    return if (word.fitsInByte(i)) i else make(heap_mod.heap(), .INT, i, 0);
 }
 
 /// The left-hand side of a definition cell `d`.
@@ -1556,7 +1556,7 @@ pub fn codegen(heap: *Heap, x: Word) Word {
                 const n = spine.items[i];
                 const shares = n == ls().cook_stdin or n == ls().common_stdin or n == ls().common_stdinb;
                 if (core_state.s().commandmode != 0 and !shares) { // beware of corrupting lastexp; share $+ $-
-                    acc = make(.AP, acc, codegen(heap, t(heap, n)));
+                    acc = make(heap, .AP, acc, codegen(heap, t(heap, n)));
                 } else {
                     hp(heap, n).* = acc; // = codegen(heap, h(heap, n)), already computed down-spine
                     tp(heap, n).* = codegen(heap, t(heap, n));
@@ -1568,11 +1568,11 @@ pub fn codegen(heap: *Heap, x: Word) Word {
         .TCONS, .PAIR => {
             // Iterate the tuple spine (recursed via t(heap, x)) so a large tuple can't
             // overflow the stack; mirrors the cons-list fix.
-            const result = make(.CONS, codegen(heap, h(heap, x)), NIL);
+            const result = make(heap, .CONS, codegen(heap, h(heap, x)), NIL);
             var dst = tp(heap, result);
             var cur = t(heap, x);
             while (getTag(heap, cur) == .TCONS or getTag(heap, cur) == .PAIR) {
-                dst.* = make(.CONS, codegen(heap, h(heap, cur)), NIL);
+                dst.* = make(heap, .CONS, codegen(heap, h(heap, cur)), NIL);
                 dst = tp(heap, dst.*);
                 cur = t(heap, cur);
             }
@@ -1585,11 +1585,11 @@ pub fn codegen(heap: *Heap, x: Word) Word {
             // recurse once per element and overflow the stack (codegen's frame is
             // large). Recursion is kept only for each head and the final tail.
             if (core_state.s().commandmode != 0) {
-                const result = make(.CONS, codegen(heap, h(heap, x)), NIL);
+                const result = make(heap, .CONS, codegen(heap, h(heap, x)), NIL);
                 var dst = tp(heap, result);
                 var cur = t(heap, x);
                 while (getTag(heap, cur) == .CONS) {
-                    dst.* = make(.CONS, codegen(heap, h(heap, cur)), NIL);
+                    dst.* = make(heap, .CONS, codegen(heap, h(heap, cur)), NIL);
                     dst = tp(heap, dst.*);
                     cur = t(heap, cur);
                 }

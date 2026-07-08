@@ -130,22 +130,22 @@ pub const add1 = depend_mod.add1;
 pub const addextn = lex_mod.addextn;
 pub const adjustPrefix = lex_mod.adjustPrefix;
 pub const algebraic_t = word_mod.algebraic_t;
-pub fn ap(x: Word, y: Word) Word {
-    return make(.AP, x, y);
+pub fn ap(heap: *heap_mod.Heap, x: Word, y: Word) Word {
+    return make(heap, .AP, x, y);
 }
-pub fn ap2(x: Word, y: Word, z: Word) Word {
-    return ap(ap(x, y), z);
+pub fn ap2(heap: *heap_mod.Heap, x: Word, y: Word, z: Word) Word {
+    return ap(heap, ap(heap, x, y), z);
 }
 pub const append1 = heap_mod.append1;
 pub const bool_t = word_mod.bool_t;
 pub const char_t = word_mod.char_t;
 pub const checktypes = infer_mod.checktypes;
 pub const codegen = trans_mod.codegen;
-pub fn cons(x: Word, y: Word) Word {
-    return make(.CONS, x, y);
+pub fn cons(heap: *heap_mod.Heap, x: Word, y: Word) Word {
+    return make(heap, .CONS, x, y);
 }
-pub fn datapair(x: Word, y: Word) Word {
-    return make(.DATAPAIR, x, y);
+pub fn datapair(heap: *heap_mod.Heap, x: Word, y: Word) Word {
+    return make(heap, .DATAPAIR, x, y);
 }
 pub const deps = depend_mod.deps;
 pub const dumpScript = dump_mod.dumpScript;
@@ -165,8 +165,8 @@ pub const makeId = lex_mod.makeId;
 pub const mallocfail = heap_mod.mallocfail;
 pub const setdiff = depend_mod.setdiff;
 pub const makePn = lex_mod.makePn;
-pub fn make_typ(a: Word, shf: Word, class: Word, info: Word) Word {
-    return cons(cons(a, shf), cons(class, info));
+pub fn make_typ(heap: *heap_mod.Heap, a: Word, shf: Word, class: Word, info: Word) Word {
+    return cons(heap, cons(heap, a, shf), cons(heap, class, info));
 }
 pub const member = depend_mod.member;
 pub const mkprivate = lex_mod.mkprivate;
@@ -185,8 +185,8 @@ pub const outstats = reduce_mod.outstats;
 pub const printlist = infer_mod.printlist;
 pub const process = repl_mod.process;
 pub const rdline = lex_mod.rdline;
-pub fn readvals(x: Word, y: Word) Word {
-    return make(.STARTREADVALS, x, y);
+pub fn readvals(heap: *heap_mod.Heap, x: Word, y: Word) Word {
+    return make(heap, .STARTREADVALS, x, y);
 }
 pub const reportType = type_errors_mod.reportType;
 pub const resetheap = heap_mod.resetheap;
@@ -197,8 +197,8 @@ pub const EDOM = 33;
 pub const ERANGE = 34;
 
 pub const stoDbl = heap_mod.stoDbl;
-pub fn strcons(x: Word, y: Word) Word {
-    return make(.STRCONS, x, y);
+pub fn strcons(heap: *heap_mod.Heap, x: Word, y: Word) Word {
+    return make(heap, .STRCONS, x, y);
 }
 pub const struct_winsize = extern struct {
     ws_row: c_ushort,

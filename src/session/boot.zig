@@ -115,14 +115,14 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     heap.files = NIL;
     dump.undump(heap, core_state.s(), cs(), rt.rs(), @as([*:0]const u8, @ptrCast(&config_state.config().PRELUDE)));
     config_state.config().okprel = true;
-    abi.mkprivate(heap, heap_mod.filDefs(heap_mod.h(heap.files)));
+    abi.mkprivate(heap, heap_mod.filDefs(heap_mod.h(heap, heap.files)));
     heap.files = NIL;
 
     if (!config_state.config().nostdenv) {
         dump.undump(heap, core_state.s(), cs(), rt.rs(), @as([*:0]const u8, @ptrCast(&config_state.config().STDENV)));
         while (heap.files != NIL) {
-            rt.rs().primenv = depend_mod.alfasort(abi.append1(rt.rs().primenv, heap_mod.filDefs(heap_mod.h(heap.files))));
-            heap.files = heap_mod.t(heap.files);
+            rt.rs().primenv = depend_mod.alfasort(abi.append1(rt.rs().primenv, heap_mod.filDefs(heap_mod.h(heap, heap.files))));
+            heap.files = heap_mod.t(heap, heap.files);
         }
         rt.rs().primenv = depend_mod.alfasort(rt.rs().primenv);
         cs().newtyps = NIL;
@@ -222,34 +222,34 @@ fn runExportsMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
             x = script_store.store().exports;
         } else {
             var f = heap.files;
-            while (f != NIL) : (f = heap_mod.t(f)) {
-                x = abi.append1(heap_mod.filDefs(heap_mod.h(f)), x);
+            while (f != NIL) : (f = heap_mod.t(heap, f)) {
+                x = abi.append1(heap_mod.filDefs(heap_mod.h(heap, f)), x);
             }
         }
 
         if (script_store.store().freeids != NIL) {
             var f = script_store.store().freeids;
-            while (f != NIL) : (f = heap_mod.t(f)) {
-                const n = abi.findid(heap, @constCast(heap_mod.getId(heap_mod.h(f))));
-                heap_mod.tp(n).* = heap_mod.t(heap_mod.t(heap_mod.h(f)));
-                heap_mod.tp(heap_mod.h(heap_mod.h(n))).* = heap_mod.theVal(heap_mod.h(f));
-                heap_mod.hp(f).* = n;
+            while (f != NIL) : (f = heap_mod.t(heap, f)) {
+                const n = abi.findid(heap, @constCast(heap_mod.getId(heap_mod.h(heap, f))));
+                heap_mod.tp(heap, n).* = heap_mod.t(heap, heap_mod.t(heap, heap_mod.h(heap, f)));
+                heap_mod.tp(heap, heap_mod.h(heap, heap_mod.h(heap, n))).* = heap_mod.theVal(heap_mod.h(heap, f));
+                heap_mod.hp(heap, f).* = n;
             }
             script_store.store().freeids = abi.typesfirst(heap, script_store.store().freeids);
             f = script_store.store().freeids;
             word.print("\t%free {{\n", .{});
-            while (f != NIL) : (f = heap_mod.t(f)) {
+            while (f != NIL) : (f = heap_mod.t(heap, f)) {
                 _ = word.putchar('\t');
-                abi.reportType(heap, heap_mod.h(f));
+                abi.reportType(heap, heap_mod.h(heap, f));
                 _ = word.putchar('\n');
             }
             word.print("\t}}\n", .{});
         }
 
         var item = abi.typesfirst(heap, depend_mod.alfasort(x));
-        while (item != NIL) : (item = heap_mod.t(item)) {
+        while (item != NIL) : (item = heap_mod.t(heap, item)) {
             _ = word.putchar('\t');
-            abi.reportType(heap, heap_mod.h(item));
+            abi.reportType(heap, heap_mod.h(heap, item));
             _ = word.putchar('\n');
         }
     }
@@ -270,10 +270,10 @@ fn runSourcesMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
             }
             dump.undump(heap, core_state.s(), cs(), rt.rs(), s);
             var f = if (heap.files == NIL) script_store.store().oldfiles else heap.files;
-            while (f != NIL) : (f = heap_mod.t(f)) {
-                const filename_str = heap_mod.getFil(heap_mod.h(f)).?;
+            while (f != NIL) : (f = heap_mod.t(heap, f)) {
+                const filename_str = heap_mod.getFil(heap_mod.h(heap, f)).?;
                 if (abi.member(heap, x, strtab.strBits(strtab.table(), filename_str)) == 0) {
-                    x = heap_mod.cons(strtab.strBits(strtab.table(), filename_str), x);
+                    x = heap_mod.cons(heap, strtab.strBits(strtab.table(), filename_str), x);
                     word.print("{s}\n", .{filename_str});
                 }
             }
@@ -298,35 +298,35 @@ fn runMakeMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) voi
             if (make_state.make().make_status == 1) {
                 make_state.make().make_status = 0;
             }
-            make_state.make().make_status = abi.strcons(@as(Word, strtab.strBits(strtab.table(), s)), make_state.make().make_status);
+            make_state.make().make_status = abi.strcons(heap, @as(Word, strtab.strBits(strtab.table(), s)), make_state.make().make_status);
         }
     }
     if (getTag(heap, make_state.make().make_status) == .STRCONS) {
-        reportMakeFailures();
+        reportMakeFailures(heap);
     }
     abi.exit(@intCast(make_state.make().make_status));
 }
 
 /// Reports the accumulated `-make` failures (see [runMakeMode]) as a
 /// column-wrapped listing of filenames, then resets `make_status` to 1.
-fn reportMakeFailures() void {
+fn reportMakeFailures(heap: *Heap) void {
     var h_val: Word = 0;
     var maxw: Word = 0;
     word.print("errors or undefined names found in:-\n", .{});
     while (make_state.make().make_status != 0) {
-        h_val = abi.strcons(heap_mod.h(make_state.make().make_status), h_val);
-        const w = @as(Word, @intCast(std.mem.len(strtab.strOf(strtab.table(), heap_mod.h(h_val)))));
+        h_val = abi.strcons(heap, heap_mod.h(heap, make_state.make().make_status), h_val);
+        const w = @as(Word, @intCast(std.mem.len(strtab.strOf(strtab.table(), heap_mod.h(heap, h_val)))));
         if (w > maxw) {
             maxw = w;
         }
-        make_state.make().make_status = heap_mod.t(make_state.make().make_status);
+        make_state.make().make_status = heap_mod.t(heap, make_state.make().make_status);
     }
     maxw += 1;
     const n = @max(@as(Word, 1), @divTrunc(@as(Word, 78), maxw));
     var w: Word = 0;
     while (h_val != 0) {
         w += 1;
-        const str = strtab.strOf(strtab.table(), heap_mod.h(h_val));
+        const str = strtab.strOf(strtab.table(), heap_mod.h(heap, h_val));
         const len = std.mem.len(str);
         const spaces_needed = if (@as(usize, @intCast(maxw)) > len) @as(usize, @intCast(maxw)) - len else 0;
         var pad_idx: usize = 0;
@@ -335,7 +335,7 @@ fn reportMakeFailures() void {
         }
         const next_newline = if ((@rem(w, n)) != 0) "" else "\n";
         word.print("{s}{s}", .{ str, next_newline });
-        h_val = heap_mod.t(h_val);
+        h_val = heap_mod.t(heap, h_val);
     }
     if ((@rem(w, n)) != 0) {
         word.print("\n", .{});

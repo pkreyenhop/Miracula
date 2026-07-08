@@ -68,14 +68,14 @@ test "already in WHNF: reduce of a CONS returns the same cell" {
 test "strict arithmetic: reduce (PLUS 2 3) yields INT 5" {
     ensureSetup();
     const r = try reduce.reduce(ap2(word.PLUS, big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), 3)));
-    try std.testing.expect(heap.getTag(r) == .INT);
+    try std.testing.expect(heap.getTag(heap.heap(), r) == .INT);
     try std.testing.expectEqual(@as(i64, 5), @as(i64, @intCast(big.toInt(heap.heap(), r))));
 }
 
 test "strict arithmetic: reduce (TIMES 6 7) yields INT 42" {
     ensureSetup();
     const r = try reduce.reduce(ap2(word.TIMES, big.fromInt(heap.heap(), 6), big.fromInt(heap.heap(), 7)));
-    try std.testing.expect(heap.getTag(r) == .INT);
+    try std.testing.expect(heap.getTag(heap.heap(), r) == .INT);
     try std.testing.expectEqual(@as(i64, 42), @as(i64, @intCast(big.toInt(heap.heap(), r))));
 }
 
@@ -115,15 +115,15 @@ test "codegen handles a deep application spine without overflow" {
     // ap(ap(...ap(I, NIL)...), NIL) — a left-nested spine recursed via h(x).
     var g: Word = word.I;
     var i: usize = 0;
-    while (i < spine_depth) : (i += 1) g = heap.make(.AP, g, word.NIL);
+    while (i < spine_depth) : (i += 1) g = heap.make(heap.heap(), .AP, g, word.NIL);
     try std.testing.expect(trans.codegen(heap.heap(), g) != 0);
 }
 
 test "codegen handles a deep tuple spine without overflow" {
     ensureSetup();
     // tcons(NIL, tcons(NIL, ... pair(NIL, NIL))) — a right-nested spine recursed via t(x).
-    var g: Word = heap.make(.PAIR, word.NIL, word.NIL);
+    var g: Word = heap.make(heap.heap(), .PAIR, word.NIL, word.NIL);
     var i: usize = 0;
-    while (i < spine_depth) : (i += 1) g = heap.make(.TCONS, word.NIL, g);
+    while (i < spine_depth) : (i += 1) g = heap.make(heap.heap(), .TCONS, word.NIL, g);
     try std.testing.expect(trans.codegen(heap.heap(), g) != 0);
 }

@@ -233,7 +233,7 @@ pub const Spine = struct {
     /// pushing a new one.
     pub inline fn downRight(self: *Spine, reduced_head: Word) Word {
         const f = self.top();
-        heap.hp(f.node).* = reduced_head;
+        heap.hp(heap.heap(), f.node).* = reduced_head;
         f.via_tl = true;
         return heap.tCell(f.node);
     }
@@ -249,7 +249,7 @@ pub const Spine = struct {
     /// value `reduced` into it, focus becomes the popped frame's cell.
     pub inline fn upLeft(self: *Spine, reduced: Word) Word {
         const f = self.frames.pop().?;
-        heap.hp(f.node).* = reduced;
+        heap.hp(heap.heap(), f.node).* = reduced;
         return f.node;
     }
 
@@ -265,7 +265,7 @@ pub const Spine = struct {
     /// `downRight`.
     pub inline fn upRight(self: *Spine, reduced: Word) Word {
         const f = self.top();
-        heap.tp(f.node).* = reduced;
+        heap.tp(heap.heap(), f.node).* = reduced;
         f.via_tl = false;
         return heap.hCell(f.node);
     }
@@ -341,7 +341,7 @@ const testing = std.testing;
 
 test "downLeft: pushes a frame and reads hd without mutating the cell" {
     tu.freshInterp();
-    const e = heap.cons(111, 222);
+    const e = heap.cons(heap.heap(), 111, 222);
     var pool: BufferPool = .empty;
     var spine = Spine.init(testing.allocator, &pool);
     defer spine.deinit(&pool);
@@ -351,13 +351,13 @@ test "downLeft: pushes a frame and reads hd without mutating the cell" {
     try testing.expectEqual(@as(Word, 111), focus);
     try testing.expectEqual(@as(usize, 1), spine.depth());
     // `e` itself must be untouched -- no borrowed bookkeeping in the cell.
-    try testing.expectEqual(@as(Word, 111), heap.h(e));
-    try testing.expectEqual(@as(Word, 222), heap.t(e));
+    try testing.expectEqual(@as(Word, 111), heap.h(heap.heap(), e));
+    try testing.expectEqual(@as(Word, 222), heap.t(heap.heap(), e));
 }
 
 test "downLeft/upLeft round trip: writes back the reduced head and pops" {
     tu.freshInterp();
-    const e = heap.cons(111, 222);
+    const e = heap.cons(heap.heap(), 111, 222);
     var pool: BufferPool = .empty;
     var spine = Spine.init(testing.allocator, &pool);
     defer spine.deinit(&pool);
@@ -367,13 +367,13 @@ test "downLeft/upLeft round trip: writes back the reduced head and pops" {
 
     try testing.expectEqual(e, focus);
     try testing.expect(spine.isEmpty());
-    try testing.expectEqual(@as(Word, 999), heap.h(e));
-    try testing.expectEqual(@as(Word, 222), heap.t(e)); // tl untouched
+    try testing.expectEqual(@as(Word, 999), heap.h(heap.heap(), e));
+    try testing.expectEqual(@as(Word, 222), heap.t(heap.heap(), e)); // tl untouched
 }
 
 test "downLeft/downRight/upRight/upLeft: full visit of one AP cell" {
     tu.freshInterp();
-    const e = heap.cons(111, 222);
+    const e = heap.cons(heap.heap(), 111, 222);
     var pool: BufferPool = .empty;
     var spine = Spine.init(testing.allocator, &pool);
     defer spine.deinit(&pool);
@@ -385,29 +385,29 @@ test "downLeft/downRight/upRight/upLeft: full visit of one AP cell" {
     // Head reduced to 'H'; descend into the tail: focus -> 222 (pristine).
     focus = spine.downRight('H');
     try testing.expectEqual(@as(Word, 222), focus);
-    try testing.expectEqual(@as(Word, 'H'), heap.h(e)); // real write-back already happened
+    try testing.expectEqual(@as(Word, 'H'), heap.h(heap.heap(), e)); // real write-back already happened
     try testing.expectEqual(@as(usize, 1), spine.depth()); // still one frame -- not pushed again
 
     // Tail reduced to 'T'; ascend back: focus -> the already-written head 'H'.
     focus = spine.upRight('T');
     try testing.expectEqual(@as(Word, 'H'), focus);
-    try testing.expectEqual(@as(Word, 'T'), heap.t(e)); // real write-back of the tail
+    try testing.expectEqual(@as(Word, 'T'), heap.t(heap.heap(), e)); // real write-back of the tail
     try testing.expectEqual(@as(usize, 1), spine.depth()); // upRight does not pop
 
     // Finally leave the cell: pop with the (possibly further-rewritten) head.
     focus = spine.upLeft('H');
     try testing.expectEqual(e, focus);
     try testing.expect(spine.isEmpty());
-    try testing.expectEqual(@as(Word, 'H'), heap.h(e));
-    try testing.expectEqual(@as(Word, 'T'), heap.t(e));
+    try testing.expectEqual(@as(Word, 'H'), heap.h(heap.heap(), e));
+    try testing.expectEqual(@as(Word, 'T'), heap.t(heap.heap(), e));
 }
 
 test "a chain of AP cells unwinds and rewinds in LIFO order" {
     tu.freshInterp();
     const head_atom: Word = 42;
-    const e2 = heap.cons(head_atom, 'c'); // innermost: hd = the "head atom"
-    const e1 = heap.cons(e2, 'b');
-    const e0 = heap.cons(e1, 'a'); // outermost
+    const e2 = heap.cons(heap.heap(), head_atom, 'c'); // innermost: hd = the "head atom"
+    const e1 = heap.cons(heap.heap(), e2, 'b');
+    const e0 = heap.cons(heap.heap(), e1, 'a'); // outermost
 
     var pool: BufferPool = .empty;
     var spine = Spine.init(testing.allocator, &pool);
@@ -426,15 +426,15 @@ test "a chain of AP cells unwinds and rewinds in LIFO order" {
     // the shape repeated `upLeft` calls take in the real loop.
     focus = spine.upLeft(1000);
     try testing.expectEqual(e2, focus);
-    try testing.expectEqual(@as(Word, 1000), heap.h(e2));
+    try testing.expectEqual(@as(Word, 1000), heap.h(heap.heap(), e2));
 
     focus = spine.upLeft(1001);
     try testing.expectEqual(e1, focus);
-    try testing.expectEqual(@as(Word, 1001), heap.h(e1));
+    try testing.expectEqual(@as(Word, 1001), heap.h(heap.heap(), e1));
 
     focus = spine.upLeft(1002);
     try testing.expectEqual(e0, focus);
-    try testing.expectEqual(@as(Word, 1002), heap.h(e0));
+    try testing.expectEqual(@as(Word, 1002), heap.h(heap.heap(), e0));
 
     try testing.expect(spine.isEmpty());
 }
@@ -448,7 +448,7 @@ test "guarded downright/upleft report exhaustion instead of underflowing" {
     try testing.expectEqual(@as(?Word, null), spine.upleft(0));
     try testing.expectEqual(@as(?Word, null), spine.downright(0));
 
-    const e = heap.cons(1, 2);
+    const e = heap.cons(heap.heap(), 1, 2);
     _ = spine.downLeft(e);
     try testing.expect(spine.upleft(7) != null);
     try testing.expect(spine.isEmpty());
@@ -466,10 +466,10 @@ test "depth is unbounded: a very long spine does not overflow a fixed stack" {
     var spine = Spine.init(testing.allocator, &pool);
     defer spine.deinit(&pool);
 
-    var chain = heap.cons(0, 0);
+    var chain = heap.cons(heap.heap(), 0, 0);
     var i: usize = 0;
     while (i < depth_count) : (i += 1) {
-        chain = heap.cons(chain, @as(Word, @intCast(i)));
+        chain = heap.cons(heap.heap(), chain, @as(Word, @intCast(i)));
     }
 
     var focus = chain;
@@ -492,8 +492,8 @@ test "pushRaw/drainAll: the handleTRY/handleFAIL primitives" {
     var spine = Spine.init(testing.allocator, &pool);
     defer spine.deinit(&pool);
 
-    const a = heap.cons(1, 2);
-    const b = heap.cons(3, 4);
+    const a = heap.cons(heap.heap(), 1, 2);
+    const b = heap.cons(heap.heap(), 3, 4);
     spine.pushRaw(a, false);
     spine.pushRaw(b, true);
     try testing.expectEqual(@as(usize, 2), spine.depth());
@@ -508,7 +508,7 @@ test "register/unregister: markAllRoots visits every frame of every registered s
     var roots_head: ?*Spine = null;
     var outer = Spine.init(testing.allocator, &pool);
     defer outer.deinit(&pool);
-    const outer_node = heap.cons(1, 2);
+    const outer_node = heap.cons(heap.heap(), 1, 2);
     _ = outer.downLeft(outer_node);
     outer.register(&roots_head);
     defer outer.unregister(&roots_head);
@@ -533,7 +533,7 @@ test "register/unregister: markAllRoots visits every frame of every registered s
     {
         var inner = Spine.init(testing.allocator, &pool);
         defer inner.deinit(&pool);
-        const inner_node = heap.cons(5, 6);
+        const inner_node = heap.cons(heap.heap(), 5, 6);
         _ = inner.downLeft(inner_node);
         inner.register(&roots_head);
         defer inner.unregister(&roots_head);

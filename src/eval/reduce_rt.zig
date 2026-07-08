@@ -128,15 +128,15 @@ inline fn sign(x: c_long) c_int {
 }
 
 inline fn cons(x: Word, y: Word) Word {
-    return heap.make(.CONS, x, y);
+    return heap.make(heap.heap(), .CONS, x, y);
 }
 
 inline fn ap(x: Word, y: Word) Word {
-    return heap.make(.AP, x, y);
+    return heap.make(heap.heap(), .AP, x, y);
 }
 
 inline fn datapair(x: Word, y: Word) Word {
-    return heap.make(.DATAPAIR, x, y);
+    return heap.make(heap.heap(), .DATAPAIR, x, y);
 }
 
 /// Wrap a raw native pointer (already cast to a `Word` via `@intFromPtr`) as
@@ -174,7 +174,7 @@ inline fn digit0(x: Word) Word {
 
 inline fn stosmallint(x: Word) Word {
     const val = if (x < 0) SIGNBIT | (-x) else x;
-    return heap.make(.INT, val, 0);
+    return heap.make(heap.heap(), .INT, val, 0);
 }
 
 /// The standard-input `Stream*` handle.
@@ -263,7 +263,7 @@ pub fn parseCloseError(arg1: Word, arg3: Word) reduce_core.ReduceError!void {
         outstats();
         os.exit(1);
     }
-    var hold_val = heap.make(.AP, FST, h(arg3_reduced));
+    var hold_val = heap.make(heap.heap(), .AP, FST, h(arg3_reduced));
     hold_val = try reduce(hold_val);
     word.printErr("TOKEN \"", .{});
     if (hold_val == word.OFFSIDE) {
@@ -315,7 +315,7 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
                 rewriteToNil(&ctx.e);
                 return word.ACT_DONE;
             }
-            rewriteToCons(ctx.e, hold_char, heap.make(.AP, word.READBIN, t(ctx.e)));
+            rewriteToCons(ctx.e, hold_char, heap.make(ctx.heap, .AP, word.READBIN, t(ctx.e)));
             return word.ACT_DONE;
         },
         word.READ => {
@@ -339,7 +339,7 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
                 rewriteToNil(&ctx.e);
                 return word.ACT_DONE;
             }
-            rewriteToCons(ctx.e, hold_char, heap.make(.AP, word.READ, t(ctx.e)));
+            rewriteToCons(ctx.e, hold_char, heap.make(ctx.heap, .AP, word.READ, t(ctx.e)));
             return word.ACT_DONE;
         },
         word.READVALS => {
@@ -357,7 +357,7 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
                 rewriteToNil(&ctx.e);
                 return word.ACT_DONE;
             }
-            ctx.args[1] = heap.make(.AP, h(ctx.e), lastarg);
+            ctx.args[1] = heap.make(ctx.heap, .AP, h(ctx.e), lastarg);
             rewriteToCons(ctx.e, val, ctx.args[1]);
             return word.ACT_DONE;
         },
@@ -516,7 +516,7 @@ test "numplus: integer add and float promotion" {
     try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(heap.heap(), try numplus(big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), 3))));
     try std.testing.expectEqual(@as(c_longlong, -1), big.toInt(heap.heap(), try numplus(big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), -3))));
     const r = try numplus(try heap.stoDbl(1.5), big.fromInt(heap.heap(), 2)); // DOUBLE + INT → DOUBLE
-    try std.testing.expectEqual(word.NodeTag.DOUBLE, heap.getTag(r));
+    try std.testing.expectEqual(word.NodeTag.DOUBLE, heap.getTag(heap.heap(), r));
     try std.testing.expectEqual(@as(f64, 3.5), heap.getDbl(r));
 }
 

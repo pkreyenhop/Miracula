@@ -32,10 +32,10 @@ const resetPns = lex.resetPns;
 /// Build a dummy file record for the snapshot tests.
 fn makeFilRecord(name: [*:0]const u8) word.Word {
     const name_word = @as(word.Word, strtab.strBits(strtab.table(), name));
-    const file_info = heap.make(.FILEINFO, name_word, 0);
-    const share_cell = heap.make(.CONS, 1, word.NIL);
-    const info_cell = heap.make(.CONS, file_info, share_cell);
-    return heap.make(.CONS, info_cell, word.NIL);
+    const file_info = heap.make(heap.heap(), .FILEINFO, name_word, 0);
+    const share_cell = heap.make(heap.heap(), .CONS, 1, word.NIL);
+    const info_cell = heap.make(heap.heap(), .CONS, file_info, share_cell);
+    return heap.make(heap.heap(), .CONS, info_cell, word.NIL);
 }
 
 const resetState = lex.resetState;
@@ -56,7 +56,7 @@ fn resetLexerState() void {
     rt.rs().primenv = word.NIL;
     setup.miraSetup();
     heap.heap().current_file = makeFilRecord("test.m");
-    heap.heap().files = heap.make(.CONS, heap.heap().current_file, word.NIL);
+    heap.heap().files = heap.make(heap.heap(), .CONS, heap.heap().current_file, word.NIL);
     ls().col = 0;
     ls().line_no = 0;
     ls().c = ' ';
@@ -72,7 +72,7 @@ fn ensureInitialized() void {
         setupdic();
         resetPns();
         heap.heap().current_file = makeFilRecord("test.m");
-        heap.heap().files = heap.make(.CONS, heap.heap().current_file, word.NIL);
+        heap.heap().files = heap.make(heap.heap(), .CONS, heap.heap().current_file, word.NIL);
         initialized = true;
     }
 }

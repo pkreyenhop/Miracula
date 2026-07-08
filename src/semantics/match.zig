@@ -66,12 +66,12 @@ fn t(heap: *Heap, x: Word) Word {
 
 /// Allocate a `CONS` cell `(x . y)`.
 fn cons(x: Word, y: Word) Word {
-    return make(.CONS, x, y);
+    return make(heap_mod.heap(), .CONS, x, y);
 }
 
 /// Allocate an `AP` cell `(x y)`.
 fn ap(x: Word, y: Word) Word {
-    return make(.AP, x, y);
+    return make(heap_mod.heap(), .AP, x, y);
 }
 
 /// Allocate `((x y) z)`.
@@ -81,12 +81,12 @@ fn ap2(x: Word, y: Word, z: Word) Word {
 
 /// Allocate a `LAMBDA` cell `(x . y)`.
 fn lambda(x: Word, y: Word) Word {
-    return make(.LAMBDA, x, y);
+    return make(heap_mod.heap(), .LAMBDA, x, y);
 }
 
 /// Allocate a `DATAPAIR` cell.
 fn datapair(x: Word, y: Word) Word {
-    return make(.DATAPAIR, x, y);
+    return make(heap_mod.heap(), .DATAPAIR, x, y);
 }
 
 /// Whether `x` names a data constructor.
@@ -127,11 +127,11 @@ pub fn genlhs(heap: *Heap, x: Word) Word {
                 return ap2(PLUS, t(heap, x), genlhs(heap, t(heap, h(heap, x))));
             }
             const hold = genlhs(heap, h(heap, x));
-            return make(.AP, hold, genlhs(heap, t(heap, x)));
+            return make(heap, .AP, hold, genlhs(heap, t(heap, x)));
         },
         .CONS, .TCONS, .PAIR => {
             const hold = genlhs(heap, h(heap, x));
-            return make(getTag(heap, x), hold, genlhs(heap, t(heap, x)));
+            return make(heap, getTag(heap, x), hold, genlhs(heap, t(heap, x)));
         },
         .ID => {
             if (member(heap, ls().idsused, x) != 0) {

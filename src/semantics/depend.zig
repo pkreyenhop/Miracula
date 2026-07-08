@@ -52,8 +52,8 @@ fn tp(heap: *Heap, x: Word) *Word {
 }
 
 /// Allocate a `CONS` cell `(x . y)`.
-fn cons(x: Word, y: Word) Word {
-    return heap_mod.make(.CONS, x, y);
+fn cons(heap: *Heap, x: Word, y: Word) Word {
+    return heap_mod.make(heap, .CONS, x, y);
 }
 
 /// Whether `x` names a data constructor.
@@ -114,7 +114,7 @@ test "setdiff: s1 minus s2" {
 pub fn add1(heap: *Heap, e: Word, s_input: Word) Word {
     var s = s_input;
     if (s == NIL or e < h(heap, s)) {
-        return cons(e, s);
+        return cons(heap, e, s);
     }
     if (e == h(heap, s)) {
         return s;
@@ -123,9 +123,9 @@ pub fn add1(heap: *Heap, e: Word, s_input: Word) Word {
         s = t(heap, s);
     }
     if (t(heap, s) == NIL) {
-        tp(heap, s).* = cons(e, NIL);
+        tp(heap, s).* = cons(heap, e, NIL);
     } else if (e != h(heap, t(heap, s))) {
-        tp(heap, s).* = cons(e, t(heap, s));
+        tp(heap, s).* = cons(heap, e, t(heap, s));
     }
     return s_input;
 }
@@ -143,7 +143,7 @@ pub fn newadd1(heap: *Heap, e: Word, s_input: Word) Word {
     const cs = @import("../compiler/compiler_state.zig").cs;
     cs().NEW = 1;
     if (s == NIL or e < h(heap, s)) {
-        return cons(e, s);
+        return cons(heap, e, s);
     }
     if (e == h(heap, s)) {
         cs().NEW = 0;
@@ -153,9 +153,9 @@ pub fn newadd1(heap: *Heap, e: Word, s_input: Word) Word {
         s = t(heap, s);
     }
     if (t(heap, s) == NIL) {
-        tp(heap, s).* = cons(e, NIL);
+        tp(heap, s).* = cons(heap, e, NIL);
     } else if (e != h(heap, t(heap, s))) {
-        tp(heap, s).* = cons(e, t(heap, s));
+        tp(heap, s).* = cons(heap, e, t(heap, s));
     } else {
         cs().NEW = 0;
     }
@@ -176,14 +176,14 @@ pub fn UNION(heap: *Heap, s1_input: Word, s2_input: Word) Word {
         } else if (h(heap, ss.*) < h(heap, s2)) {
             ss = tp(heap, ss.*);
         } else {
-            ss.* = cons(h(heap, s2), ss.*);
+            ss.* = cons(heap, h(heap, s2), ss.*);
             ss = tp(heap, ss.*);
             s2 = t(heap, s2);
         }
     }
     if (ss.* == NIL) {
         while (s2 != NIL) {
-            ss.* = cons(h(heap, s2), ss.*);
+            ss.* = cons(heap, h(heap, s2), ss.*);
             ss = tp(heap, ss.*);
             s2 = t(heap, s2);
         }
@@ -205,7 +205,7 @@ pub fn intersection(heap: *Heap, s1_input: Word, s2_input: Word) Word {
     var r: Word = NIL;
     while (s1 != NIL and s2 != NIL) {
         if (h(heap, s1) == h(heap, s2)) {
-            r = cons(h(heap, s1), r);
+            r = cons(heap, h(heap, s1), r);
             s1 = t(heap, s1);
             s2 = t(heap, s2);
         } else if (h(heap, s1) < h(heap, s2)) {
@@ -254,7 +254,7 @@ pub fn typesfirst(heap: *Heap, input_x: Word) Word {
     var z: Word = NIL;
     while (y.* != NIL) {
         if (idType(heap, h(heap, y.*)) == type_t) {
-            z = cons(h(heap, y.*), z);
+            z = cons(heap, h(heap, y.*), z);
             y.* = t(heap, y.*);
         } else {
             y = tp(heap, y.*);
@@ -271,16 +271,16 @@ pub fn tsort(heap: *Heap, g_input: Word) Word {
     var g = NIL;
     while (g1 != NIL) {
         if (t(heap, h(heap, g1)) == NIL) {
-            NP = cons(h(heap, h(heap, g1)), NP);
+            NP = cons(heap, h(heap, h(heap, g1)), NP);
         } else {
-            g = cons(h(heap, g1), g);
+            g = cons(heap, h(heap, g1), g);
         }
         g1 = t(heap, g1);
     }
     while (NP != NIL) {
         var D = NIL; // ids to be removed from range of g
         while (NP != NIL) {
-            r = cons(h(heap, NP), r);
+            r = cons(heap, h(heap, NP), r);
             if (getTag(heap, h(heap, NP)) == .ID) {
                 D = add1(heap, h(heap, NP), D);
             } else {
@@ -293,10 +293,10 @@ pub fn tsort(heap: *Heap, g_input: Word) Word {
         while (g1 != NIL) {
             const rhs = setdiff(heap, t(heap, h(heap, g1)), D);
             if (rhs == NIL) {
-                NP = cons(h(heap, h(heap, g1)), NP);
+                NP = cons(heap, h(heap, h(heap, g1)), NP);
             } else {
                 tp(heap, h(heap, g1)).* = rhs;
-                g = cons(h(heap, g1), g);
+                g = cons(heap, h(heap, g1), g);
             }
             g1 = t(heap, g1);
         }
@@ -314,7 +314,7 @@ pub fn msc(heap: *Heap, R_input: Word) Word {
         var r = tp(heap, h(heap, R1)); // word *r = &tl(hd(R1))
         const l = h(heap, h(heap, R1)); // word l = hd(hd(R1))
         if (remove1(heap, l, r) != 0) {
-            hp(heap, h(heap, R1)).* = cons(l, NIL); // hd(hd(R1)) = cons(l, NIL)
+            hp(heap, h(heap, R1)).* = cons(heap, l, NIL); // hd(hd(R1)) = cons(heap, l, NIL)
             while (r.* != NIL) {
                 const n = h(heap, r.*);
                 var R2 = tp(heap, R1); // word *R2 = &tl(R1)
@@ -443,35 +443,35 @@ pub fn alfasort(x_val: Word) Word {
     if (x == NIL) {
         return NIL;
     }
-    if (heap_mod.t(x) == NIL) {
-        return if (heap_mod.getTag(heap_mod.h(x)) != .ID) NIL else x;
+    if (heap_mod.t(heap_mod.heap(), x) == NIL) {
+        return if (heap_mod.getTag(heap_mod.heap(), heap_mod.h(heap_mod.heap(), x)) != .ID) NIL else x;
     }
     while (x != NIL) {
-        if (heap_mod.getTag(heap_mod.h(x)) == .ID) {
+        if (heap_mod.getTag(heap_mod.heap(), heap_mod.h(heap_mod.heap(), x)) == .ID) {
             hold = a;
-            a = heap_mod.cons(heap_mod.h(x), b);
+            a = heap_mod.cons(heap_mod.heap(), heap_mod.h(heap_mod.heap(), x), b);
             b = hold;
         }
-        x = heap_mod.t(x);
+        x = heap_mod.t(heap_mod.heap(), x);
     }
     a = alfasort(a);
     b = alfasort(b);
     x = NIL;
     while (a != NIL and b != NIL) {
-        if (std.mem.order(u8, std.mem.span(heap_mod.getId(heap_mod.h(a))), std.mem.span(heap_mod.getId(heap_mod.h(b)))) == .lt) {
-            x = heap_mod.cons(heap_mod.h(a), x);
-            a = heap_mod.t(a);
+        if (std.mem.order(u8, std.mem.span(heap_mod.getId(heap_mod.h(heap_mod.heap(), a))), std.mem.span(heap_mod.getId(heap_mod.h(heap_mod.heap(), b)))) == .lt) {
+            x = heap_mod.cons(heap_mod.heap(), heap_mod.h(heap_mod.heap(), a), x);
+            a = heap_mod.t(heap_mod.heap(), a);
         } else {
-            x = heap_mod.cons(heap_mod.h(b), x);
-            b = heap_mod.t(b);
+            x = heap_mod.cons(heap_mod.heap(), heap_mod.h(heap_mod.heap(), b), x);
+            b = heap_mod.t(heap_mod.heap(), b);
         }
     }
     if (a == NIL) {
         a = b;
     }
     while (a != NIL) {
-        x = heap_mod.cons(heap_mod.h(a), x);
-        a = heap_mod.t(a);
+        x = heap_mod.cons(heap_mod.heap(), heap_mod.h(heap_mod.heap(), a), x);
+        a = heap_mod.t(heap_mod.heap(), a);
     }
     return reverse(x);
 }

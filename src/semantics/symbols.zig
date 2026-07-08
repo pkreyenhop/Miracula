@@ -169,7 +169,7 @@ pub const PrivateNames = struct {
     /// here) at allocation time.
     pub fn make(self: *PrivateNames, gpa: std.mem.Allocator, val: Word) !Word {
         const idx = self.table.items.len;
-        const node = heap_mod.make(.STRCONS, @intCast(idx), val);
+        const node = heap_mod.make(heap_mod.heap(), .STRCONS, @intCast(idx), val);
         try self.table.append(gpa, node);
         return node;
     }
@@ -181,7 +181,7 @@ pub const PrivateNames = struct {
     pub fn get(self: *PrivateNames, gpa: std.mem.Allocator, n: usize) !Word {
         while (self.table.items.len <= n) {
             const idx = self.table.items.len;
-            try self.table.append(gpa, heap_mod.make(.STRCONS, @intCast(idx), word.UNDEF));
+            try self.table.append(gpa, heap_mod.make(heap_mod.heap(), .STRCONS, @intCast(idx), word.UNDEF));
         }
         return self.table.items[n];
     }

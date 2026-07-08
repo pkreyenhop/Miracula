@@ -42,16 +42,16 @@ pub fn isMirandaSource(path: [*:0]const u8) c_int {
 pub fn sameFile(x: Word, y: Word) bool {
     const ix = heap.filInodev(x);
     const iy = heap.filInodev(y);
-    return h(ix) == h(iy) and t(ix) == t(iy);
+    return h(heap.heap(), ix) == h(heap.heap(), iy) and t(heap.heap(), ix) == t(heap.heap(), iy);
 }
 
 /// Returns a heap cons cell `(dev . ino)` for `path`, used to track file identity across loads.
 /// Returns `(0 . 0)` if the file does not exist.
 pub fn inodeId(path: [*:0]const u8) Word {
     if (platform.getFileInfo(path)) |info| {
-        return heap.cons(heap.cons(@intCast(info.dev), @intCast(info.ino)), word.NIL);
+        return heap.cons(heap.heap(), heap.cons(heap.heap(), @intCast(info.dev), @intCast(info.ino)), word.NIL);
     } else {
-        return heap.cons(heap.cons(0, 0), word.NIL);
+        return heap.cons(heap.heap(), heap.cons(heap.heap(), 0, 0), word.NIL);
     }
 }
 
