@@ -29,6 +29,7 @@ const cs = @import("../compiler/compiler_state.zig").cs;
 const heap_mod = @import("../graph/heap.zig");
 const Heap = heap_mod.Heap;
 const rt = @import("../runtime/runtime_state.zig");
+const config_state = @import("../session/config_state.zig");
 const repl_session = @import("../session/repl_session.zig");
 const types = @import("../semantics/infer.zig");
 const os = @import("../os.zig");
@@ -96,7 +97,7 @@ fn fileinfo(file: Word, line: Word) Word {
 fn ovflocheck() void {
     const d_ptr = @as(usize, @intFromPtr(ls().dicq));
     const start_ptr = @as(usize, @intFromPtr(ls().dic));
-    if (d_ptr - start_ptr > @as(usize, @intCast(rt.rs().DICSPACE))) {
+    if (d_ptr - start_ptr > @as(usize, @intCast(config_state.config().DICSPACE))) {
         dicovflo();
     }
 }
@@ -108,7 +109,7 @@ pub fn dicovflo() void {
 
 /// Allocate and initialise the identifier dictionary.
 pub fn setupdic() void {
-    const space = rt.rs().DICSPACE;
+    const space = config_state.config().DICSPACE;
     if (ls().dic == null) {
         const dict_slice = rt.allocator.alloc(u8, @intCast(space)) catch mallocPanic("dictionary");
         ls().dic = dict_slice.ptr;
@@ -208,10 +209,10 @@ pub fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
     if (s[0] == '<' and s[@intCast(n - 1)] == '>') {
         var miralen: usize = 0;
         if (miralen == 0) {
-            miralen = std.mem.len(rt.rs().miralib.?);
+            miralen = std.mem.len(config_state.config().miralib.?);
         }
         {
-            const miralib_span = std.mem.span(rt.rs().miralib.?);
+            const miralib_span = std.mem.span(config_state.config().miralib.?);
             @memcpy(rt.rs().linebuf[0..miralib_span.len], miralib_span);
         }
         rt.rs().linebuf[miralen] = '/';
@@ -666,7 +667,7 @@ pub fn resetLex(heap: *Heap) void {
 pub fn resetState(heap: *Heap) void {
     if (core_state.s().commandmode != 0) {
         while (ls().c != '\n' and ls().c != os.EOF) {
-            if (rt.rs().s_in) |sin| {
+            if (config_state.config().s_in) |sin| {
                 ls().c = os.getc(sin);
             } else {
                 ls().c = os.EOF;
@@ -679,7 +680,7 @@ pub fn resetState(heap: *Heap) void {
         ls().fileq = t(heap, ls().fileq);
     }
     ls().insertdepth = -1;
-    rt.rs().s_in = getStdin();
+    config_state.config().s_in = getStdin();
     ls().echostack = NIL;
     ls().idsused = NIL;
     ls().prefixstack = NIL;

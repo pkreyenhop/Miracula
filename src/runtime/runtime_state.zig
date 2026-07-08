@@ -45,32 +45,12 @@ pub const RuntimeState = struct {
     listdiff_fn: Word = 0,
     rv_expr: Word = 0,
 
-    // File paths — null-terminated byte arrays populated by startup; treated as C strings.
-    // Zero-initialised so a `.{}` singleton reads as the empty string before startup fills them.
-    PRELUDE: [abi.pnlim + 10]u8 = std.mem.zeroes([abi.pnlim + 10]u8),
-    STDENV: [abi.pnlim + 9]u8 = std.mem.zeroes([abi.pnlim + 9]u8),
-
     // Compiler flags (Word-typed because they are linker-visible to lex.zig / trans.zig
     // which CAN switch to @import — no circular constraint, but keep as Word for now)
     /// Heap node holding the list of free-name-to-type bindings for %bnf rules.
     fnts: Word = NIL,
-    /// Maximum heap cells before GC triggers; set from `-heap N` CLI flag.
-    SPACELIMIT: Word = 2500000,
-    /// Dictionary space in bytes; set from `-dic N` CLI flag.
-    DICSPACE: Word = 100000,
     UTF8: i32 = 0,
     UTF8OUT: i32 = 0,
-
-    // Configuration — set from CLI flags or .mirarc before miraSetup().
-    editor: ?[*:0]u8 = null,
-    /// True when the prelude has been accepted without error.
-    okprel: bool = false,
-    /// True when `-nostandard` flag suppresses loading STDENV.
-    nostdenv: bool = false,
-    /// Non-zero when the configured editor command is invalid.
-    baded: Word = 0,
-    miralib: ?[*:0]u8 = null,
-    s_in: ?*abi.Stream = null,
 
     // Runtime counters (all updated by the GC and evaluator; read by //stats).
     atobject: i32 = 0,
@@ -178,19 +158,15 @@ test "RuntimeState default values are self-consistent" {
     try std.testing.expectEqual(@as(Word, NIL), state.primenv);
     try std.testing.expectEqual(true, state.strictif);
     try std.testing.expectEqual(@as(Word, 1), state.initialising);
-    try std.testing.expectEqual(@as(Word, 2500000), state.SPACELIMIT);
 }
 
 test "RuntimeState bool fields default to false" {
     const state: RuntimeState = .{};
     try std.testing.expect(!state.magic);
-    try std.testing.expect(!state.okprel);
-    try std.testing.expect(!state.nostdenv);
 }
 
 test "RuntimeState null-initialised optional fields" {
     const state: RuntimeState = .{};
-    try std.testing.expectEqual(@as(?[*:0]u8, null), state.editor);
     try std.testing.expectEqual(@as(?[*:0]u8, null), state.current_script);
     try std.testing.expectEqual(@as(?[*:0]const u8, null), state.rc_error);
 }

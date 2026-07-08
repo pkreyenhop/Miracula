@@ -9,6 +9,7 @@ const std = @import("std");
 const word = @import("../graph/word.zig");
 const strtab = @import("../graph/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const config_state = @import("config_state.zig");
 const repl_session = @import("repl_session.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
 const cs = compiler_state.cs;
@@ -54,7 +55,7 @@ fn is(lexs: *lex_state.LexState, s: [:0]const u8) bool {
 
 /// Print path `p` for messages: `<name>` when it lives under the library dir, else `"path"`.
 fn filequote(rs: *rt.RuntimeState, p: [:0]const u8) void {
-    const prelude_span = std.mem.span(@as([*:0]const u8, @ptrCast(&rs.PRELUDE)));
+    const prelude_span = std.mem.span(@as([*:0]const u8, @ptrCast(&config_state.config().PRELUDE)));
     if (rs.filequote_mlen == 0) {
         if (std.mem.lastIndexOfScalar(u8, prelude_span, '/')) |idx| {
             rs.filequote_mlen = idx + 1;
@@ -276,7 +277,7 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
             if (mf == null and rs.mirahdr == null) {
                 lexs.dicp = lexs.dicq;
                 {
-                    const miralib_span = std.mem.span(rs.miralib.?);
+                    const miralib_span = std.mem.span(config_state.config().miralib.?);
                     @memcpy(lexs.dicp[0..miralib_span.len], miralib_span);
                     lexs.dicp[miralib_span.len] = 0;
                     const suffix = "/.mirahdr";
@@ -321,7 +322,7 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
             return true;
         }
         if (hold[0] == 0) {
-            word.print("{s}\n", .{rs.editor orelse @constCast("")});
+            word.print("{s}\n", .{config_state.config().editor orelse @constCast("")});
             return true;
         }
         var h_ptr = hold + std.mem.len(@as([*:0]const u8, @ptrCast(hold)));
@@ -354,11 +355,11 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
             @memcpy(rs.ebuf[0..hold_span.len], hold_span);
             rs.ebuf[hold_span.len] = 0;
         }
-        rs.editor = @as([*:0]u8, @ptrCast(&rs.ebuf));
-        rs.baded = @intFromBool(repl.badEditor(rs));
+        config_state.config().editor = @as([*:0]u8, @ptrCast(&rs.ebuf));
+        config_state.config().baded = @intFromBool(repl.badEditor(rs));
         repl_session.session().echoing = repl_session.session().verbosity & repl_session.session().listing;
         config.writeRc();
-        word.print("editor = {s}\n", .{rs.editor orelse @constCast("")});
+        word.print("editor = {s}\n", .{config_state.config().editor orelse @constCast("")});
         return true;
     }
     return false;
@@ -370,7 +371,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             if (is(lexs, "a") or is(lexs, "aux")) {
                 if (abi.getchar() != '\n') return;
                 {
-                    const miralib_span = std.mem.span(rs.miralib.?);
+                    const miralib_span = std.mem.span(config_state.config().miralib.?);
                     @memcpy(rs.linebuf[0..miralib_span.len], miralib_span);
                     const suffix = "/auxfile";
                     @memcpy(rs.linebuf[miralib_span.len..][0..suffix.len], suffix);
@@ -406,8 +407,8 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             if (is(lexs, "dic")) {
                 if (token() == null) {
                     _ = abi.getchar();
-                    word.print("{} chars", .{rs.DICSPACE});
-                    if (rs.DICSPACE != 100000) {
+                    word.print("{} chars", .{config_state.config().DICSPACE});
+                    if (config_state.config().DICSPACE != 100000) {
                         word.print(" (default={})", .{@as(c_long, 100000)});
                     }
                     word.print(" {} in use\n", .{@as(c_long, @intCast(@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dic.?)))});
@@ -436,7 +437,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             if (is(lexs, "h") or is(lexs, "help")) {
                 if (abi.getchar() != '\n') return;
                 {
-                    const miralib_span = std.mem.span(rs.miralib.?);
+                    const miralib_span = std.mem.span(config_state.config().miralib.?);
                     @memcpy(rs.linebuf[0..miralib_span.len], miralib_span);
                     const suffix = "/helpfile";
                     @memcpy(rs.linebuf[miralib_span.len..][0..suffix.len], suffix);
@@ -449,8 +450,8 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                 var x: c_long = undefined;
                 if (token() == null) {
                     _ = abi.getchar();
-                    word.print("{} cells", .{rs.SPACELIMIT});
-                    if (rs.SPACELIMIT != 2500000) {
+                    word.print("{} cells", .{config_state.config().SPACELIMIT});
+                    if (config_state.config().SPACELIMIT != 2500000) {
                         word.print(" (default={})", .{@as(c_long, 2500000)});
                     }
                     word.print("\n", .{});
@@ -464,11 +465,11 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                 if (x < abi.trueheapsize()) {
                     word.print("sorry, cannot shrink heap to {} at this time\n", .{x});
                 } else {
-                    if (x != rs.SPACELIMIT) {
-                        rs.SPACELIMIT = x;
+                    if (x != config_state.config().SPACELIMIT) {
+                        config_state.config().SPACELIMIT = x;
                         abi.resetheap();
                     }
-                    word.print("heaplimit = {} cells\n", .{rs.SPACELIMIT});
+                    word.print("heaplimit = {} cells\n", .{config_state.config().SPACELIMIT});
                     config.writeRc();
                 }
                 return;
@@ -497,7 +498,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             }
             if (is(lexs, "miralib")) {
                 if (abi.getchar() != '\n') return;
-                word.print("{s}\n", .{rs.miralib.?});
+                word.print("{s}\n", .{config_state.config().miralib.?});
                 return;
             }
         },
@@ -552,9 +553,9 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
         's' => {
             if (is(lexs, "s") or is(lexs, "settings")) {
                 if (abi.getchar() != '\n') return;
-                word.print("*\theap {}\n", .{rs.SPACELIMIT});
-                word.print("*\tdic {}\n", .{rs.DICSPACE});
-                word.print("*\teditor = {s}\n", .{rs.editor orelse @constCast("")});
+                word.print("*\theap {}\n", .{config_state.config().SPACELIMIT});
+                word.print("*\tdic {}\n", .{config_state.config().DICSPACE});
+                word.print("*\teditor = {s}\n", .{config_state.config().editor orelse @constCast("")});
                 word.print("*\t{s}list\n", .{@as([*:0]const u8, if (repl_session.session().listing != 0) "" else "no")});
                 word.print("*\t{s}recheck\n", .{@as([*:0]const u8, if (rs.rechecking != 0) "" else "no")});
                 if (!rs.strictif) {
@@ -600,7 +601,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
 
 /// Run the `/man` command: launch the manual via the library's `menudriver`.
 pub fn manaction(rs: *rt.RuntimeState) void {
-    _ = std.fmt.bufPrintZ(&rs.linebuf, "\"{s}/menudriver\" \"{s}/manual\"", .{ rs.miralib.?, rs.miralib.? }) catch {};
+    _ = std.fmt.bufPrintZ(&rs.linebuf, "\"{s}/menudriver\" \"{s}/manual\"", .{ config_state.config().miralib.?, config_state.config().miralib.? }) catch {};
     _ = abi.system(&rs.linebuf);
 }
 
@@ -610,7 +611,7 @@ pub fn editfile(rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_
     const col_val = if (col == 0) @as(c_int, 1) else col;
     const ebuf_local = @as([*]u8, @ptrCast(&rs.linebuf[0]));
     var p = ebuf_local;
-    var q = rs.editor.?;
+    var q = config_state.config().editor.?;
     var tdone: bool = false;
     var temp_editor: [512]u8 = undefined;
     if (line_val == 0) {
@@ -731,7 +732,7 @@ pub fn finger(heap: *Heap, rs: *rt.RuntimeState, n: [*:0]const u8) void {
                 word.print(" ||{s}defined in ", .{class_str});
             }
             filequote(rs, std.mem.span(s.?));
-            if (rs.baded != 0 or rs.rechecking != 0) {
+            if (config_state.config().baded != 0 or rs.rechecking != 0) {
                 word.print(" line {}", .{line});
             }
             if (aka_opt) |aka_s| {
@@ -782,7 +783,7 @@ pub fn allnamescom(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Run
     var y = comp.ND;
     var z: Word = 0;
     rs.leftist = false;
-    namescom(heap, rs, heap_mod.makeFil(if (rs.nostdenv) null else @as([*:0]const u8, @ptrCast(&rs.STDENV)), 0, 0, rs.primenv));
+    namescom(heap, rs, heap_mod.makeFil(if (config_state.config().nostdenv) null else @as([*:0]const u8, @ptrCast(&config_state.config().STDENV)), 0, 0, rs.primenv));
     if (heap.files == NIL) return;
     s = heap_mod.t(heap.files);
     while (s != NIL) : (s = heap_mod.t(s)) {

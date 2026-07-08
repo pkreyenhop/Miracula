@@ -9,6 +9,7 @@ const errors = @import("../runtime/errors.zig");
 const strtab = @import("../graph/strtab.zig");
 const cs = @import("../compiler/compiler_state.zig").cs;
 const rt = @import("../runtime/runtime_state.zig");
+const config_state = @import("config_state.zig");
 const repl_session = @import("repl_session.zig");
 const make_state = @import("make_state.zig");
 const abi = @import("../os.zig");
@@ -80,9 +81,9 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     config.resolveEnvironmentSettings();
 
     abi.setupdic();
-    rt.rs().s_in = abi.stdin();
+    config_state.config().s_in = abi.stdin();
     reduce.ev().s_out = abi.stdout();
-    rt.rs().miralib = files.makeAbsolute(rt.rs().miralib.?);
+    config_state.config().miralib = files.makeAbsolute(config_state.config().miralib.?);
 
     if (manonly != 0) {
         commands.manaction(rt.rs());
@@ -90,18 +91,18 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     }
 
     {
-        const miralib_span = std.mem.span(rt.rs().miralib.?);
-        @memcpy(rt.rs().PRELUDE[0..miralib_span.len], miralib_span);
+        const miralib_span = std.mem.span(config_state.config().miralib.?);
+        @memcpy(config_state.config().PRELUDE[0..miralib_span.len], miralib_span);
         const suffix = "/prelude";
-        @memcpy(rt.rs().PRELUDE[miralib_span.len..][0..suffix.len], suffix);
-        rt.rs().PRELUDE[miralib_span.len + suffix.len] = 0;
+        @memcpy(config_state.config().PRELUDE[miralib_span.len..][0..suffix.len], suffix);
+        config_state.config().PRELUDE[miralib_span.len + suffix.len] = 0;
     }
     {
-        const miralib_span = std.mem.span(rt.rs().miralib.?);
-        @memcpy(rt.rs().STDENV[0..miralib_span.len], miralib_span);
+        const miralib_span = std.mem.span(config_state.config().miralib.?);
+        @memcpy(config_state.config().STDENV[0..miralib_span.len], miralib_span);
         const suffix = "/stdenv.m";
-        @memcpy(rt.rs().STDENV[miralib_span.len..][0..suffix.len], suffix);
-        rt.rs().STDENV[miralib_span.len + suffix.len] = 0;
+        @memcpy(config_state.config().STDENV[miralib_span.len..][0..suffix.len], suffix);
+        config_state.config().STDENV[miralib_span.len + suffix.len] = 0;
     }
 
     setup.miraSetup();
@@ -111,13 +112,13 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     }
 
     heap.files = NIL;
-    dump.undump(heap, core_state.s(), cs(), rt.rs(), @as([*:0]const u8, @ptrCast(&rt.rs().PRELUDE)));
-    rt.rs().okprel = true;
+    dump.undump(heap, core_state.s(), cs(), rt.rs(), @as([*:0]const u8, @ptrCast(&config_state.config().PRELUDE)));
+    config_state.config().okprel = true;
     abi.mkprivate(heap, heap_mod.filDefs(heap_mod.h(heap.files)));
     heap.files = NIL;
 
-    if (!rt.rs().nostdenv) {
-        dump.undump(heap, core_state.s(), cs(), rt.rs(), @as([*:0]const u8, @ptrCast(&rt.rs().STDENV)));
+    if (!config_state.config().nostdenv) {
+        dump.undump(heap, core_state.s(), cs(), rt.rs(), @as([*:0]const u8, @ptrCast(&config_state.config().STDENV)));
         while (heap.files != NIL) {
             rt.rs().primenv = depend_mod.alfasort(abi.append1(rt.rs().primenv, heap_mod.filDefs(heap_mod.h(heap.files))));
             heap.files = heap_mod.t(heap.files);
@@ -175,15 +176,15 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
 /// binary. Exits fatally if none match.
 fn resolveMiralib() void {
     var badlib: bool = false;
-    if (rt.rs().miralib == null) {
+    if (config_state.config().miralib == null) {
         if (abi.getenv("MIRALIB")) |m| {
-            rt.rs().miralib = @constCast(m);
+            config_state.config().miralib = @constCast(m);
         } else if (checkVersion("/usr/lib/miralib") != 0) {
-            rt.rs().miralib = @constCast("/usr/lib/miralib");
+            config_state.config().miralib = @constCast("/usr/lib/miralib");
         } else if (checkVersion("/usr/local/lib/miralib") != 0) {
-            rt.rs().miralib = @constCast("/usr/local/lib/miralib");
+            config_state.config().miralib = @constCast("/usr/local/lib/miralib");
         } else if (checkVersion("miralib") != 0) {
-            rt.rs().miralib = @constCast("miralib");
+            config_state.config().miralib = @constCast("miralib");
         } else {
             badlib = true;
         }

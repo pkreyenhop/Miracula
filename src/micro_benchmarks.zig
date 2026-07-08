@@ -4,6 +4,7 @@ const lex = @import("parser/lex.zig");
 const word = @import("graph/word.zig");
 const setup = @import("compiler/setup.zig");
 const rt = @import("runtime/runtime_state.zig");
+const config_state = @import("session/config_state.zig");
 
 pub fn main(ctx: std.process.Init) !void {
     rt.io = ctx.io;
@@ -20,7 +21,7 @@ pub fn main(ctx: std.process.Init) !void {
     // benchInterning() interns 100k unique identifiers (~16 bytes each) into the
     // lexer dictionary, which far exceeds the 100 KB production default. Size the
     // dictionary for the benchmark workload before setupdic() allocates it.
-    rt.rs().DICSPACE = 4_000_000;
+    config_state.config().DICSPACE = 4_000_000;
 
     // 1. Initialise the runtime environment
     heap.setupheap();

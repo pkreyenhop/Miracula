@@ -13,6 +13,7 @@ const word = @import("word.zig");
 const strtab = @import("strtab.zig");
 const combinator = @import("combinator.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const config_state = @import("../session/config_state.zig");
 const core = @import("../runtime/core_state.zig");
 const lex_state = @import("../parser/lex_state.zig");
 const ls = lex_state.ls;
@@ -181,7 +182,7 @@ pub const Heap = struct {
     /// The high-water heap limit.
     pub fn BIGTOP(self: Heap) Word {
         _ = self;
-        return rt.rs().SPACELIMIT + ATOMLIMIT;
+        return config_state.config().SPACELIMIT + ATOMLIMIT;
     }
 
     /// The usable heap size, in cells.
@@ -216,8 +217,8 @@ pub const Heap = struct {
             self.live.resize(rt.allocator, bigtop_val + 1 - @as(usize, @intCast(ATOMLIMIT)), false) catch mallocPanic("heap");
         }
         self.refreshPointers();
-        if (self.SPACE > rt.rs().SPACELIMIT) {
-            self.SPACE = rt.rs().SPACELIMIT;
+        if (self.SPACE > config_state.config().SPACELIMIT) {
+            self.SPACE = config_state.config().SPACELIMIT;
         }
         self.free_head = 0;
         self.threadFree(ATOMLIMIT, self.TOP());
@@ -225,7 +226,7 @@ pub const Heap = struct {
 
     /// Reset the heap to empty (between sessions).
     pub fn resetheap(self: *Heap) void {
-        if (rt.rs().SPACELIMIT < self.trueheapsize()) {
+        if (config_state.config().SPACELIMIT < self.trueheapsize()) {
             _ = word.printErr("impossible event in resetheap\n", .{});
             os.exit(1);
         }
@@ -234,10 +235,10 @@ pub const Heap = struct {
         self.refreshPointers();
 
         self.tag.?[@intCast(bigtop_val)] = .ATOM;
-        if (self.SPACE > rt.rs().SPACELIMIT) {
-            self.SPACE = rt.rs().SPACELIMIT;
+        if (self.SPACE > config_state.config().SPACELIMIT) {
+            self.SPACE = config_state.config().SPACELIMIT;
         }
-        if (self.SPACE < 1250000 and 1250000 <= rt.rs().SPACELIMIT) {
+        if (self.SPACE < 1250000 and 1250000 <= config_state.config().SPACELIMIT) {
             self.SPACE = 1250000;
             self.tag.?[@intCast(self.TOP())] = .ATOM;
         }
@@ -325,10 +326,10 @@ pub const Heap = struct {
     }
 
     pub fn makeSlow(self: *Heap, t_val: word.NodeTag, x: Word, y: Word) Word {
-        if (self.SPACE != rt.rs().SPACELIMIT) {
+        if (self.SPACE != config_state.config().SPACELIMIT) {
             const old_top = self.TOP();
             if (core.s().compiling == 0) {
-                self.SPACE = rt.rs().SPACELIMIT;
+                self.SPACE = config_state.config().SPACELIMIT;
             } else if (heap().claims <= @divTrunc(self.SPACE, 4) and heap().nogcs > 1) {
                 var wait: Word = 0;
                 const sp = self.SPACE;
@@ -339,8 +340,8 @@ pub const Heap = struct {
                     wait = 2;
                     self.SPACE = 5000 * (1 + @divTrunc(self.SPACE - 1, 5000));
                 }
-                if (self.SPACE > rt.rs().SPACELIMIT) {
-                    self.SPACE = rt.rs().SPACELIMIT;
+                if (self.SPACE > config_state.config().SPACELIMIT) {
+                    self.SPACE = config_state.config().SPACELIMIT;
                 }
                 if (rt.rs().atgc != 0 and self.SPACE > sp) {
                     _ = word.printErr("\n<<increase heap from {d} to {d}>>\n", .{ sp, self.SPACE });
@@ -410,9 +411,9 @@ pub const Heap = struct {
     }
     fn growHeap(self: *Heap) bool {
         const old_bigtop = @as(usize, @intCast(self.BIGTOP()));
-        const old_limit = rt.rs().SPACELIMIT;
+        const old_limit = config_state.config().SPACELIMIT;
         const new_limit = old_limit * 2;
-        rt.rs().SPACELIMIT = new_limit;
+        config_state.config().SPACELIMIT = new_limit;
         const new_bigtop = @as(usize, @intCast(self.BIGTOP()));
 
         self.cells.resize(rt.allocator, new_bigtop + 1) catch return false;
@@ -436,7 +437,7 @@ pub const Heap = struct {
         if (rt.rs().atgc != 0) {
             _ = word.printErr("\n<<gc after {d} claims>>\n", .{heap().claims});
         }
-        if (heap().claims <= @divTrunc(self.SPACE, 10) and heap().nogcs > 1 and self.SPACE == rt.rs().SPACELIMIT) {
+        if (heap().claims <= @divTrunc(self.SPACE, 10) and heap().nogcs > 1 and self.SPACE == config_state.config().SPACELIMIT) {
             if (heap().nogcs == self.hnogcs) {
                 if (self.growHeap()) {
                     self.hnogcs = 0;
@@ -788,10 +789,10 @@ test "gc: a long-lived list survives many forced collections; garbage is reclaim
     // many times (B3's own DoD: "GC stress test stable"), then restore it --
     // `tu.freshInterp()` only sets up once per test binary, so a later test
     // must see the original size, not this one's.
-    const saved_spacelimit = rt.rs().SPACELIMIT;
+    const saved_spacelimit = config_state.config().SPACELIMIT;
     const saved_space = heap().SPACE;
     defer {
-        rt.rs().SPACELIMIT = saved_spacelimit;
+        config_state.config().SPACELIMIT = saved_spacelimit;
         heap().SPACE = saved_space;
         heap().resetheap();
         rt.rs().cstack = saved_cstack;
@@ -805,7 +806,7 @@ test "gc: a long-lived list survives many forced collections; garbage is reclaim
     // (4x) while still being small enough that the churn phase below forces
     // many real collections.
     const chain_len = 500;
-    rt.rs().SPACELIMIT = chain_len * 4;
+    config_state.config().SPACELIMIT = chain_len * 4;
     heap().resetheap();
 
     // A long-lived chain, kept alive only by this local `Word` (matching how

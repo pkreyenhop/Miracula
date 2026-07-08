@@ -34,6 +34,7 @@ const MakeState = @import("make_state.zig").MakeState;
 const BnfState = @import("bnf_state.zig").BnfState;
 const ShowFns = @import("../semantics/show_fns.zig").ShowFns;
 const ReplSession = @import("repl_session.zig").ReplSession;
+const ConfigState = @import("config_state.zig").ConfigState;
 
 /// All interpreter state, owned in one place — including heap's GC/dictionary
 /// scratch (folded into `heap` by Phase 2b), the interned `strtab` table, and
@@ -68,6 +69,9 @@ pub const Interp = struct {
     /// Interactive REPL state (Phase 4 step 4): last expression/id, echo/
     /// listing/verbosity flags, prompt string, and timing scratch.
     repl: ReplSession = .{},
+    /// Process-wide startup configuration (Phase 4 step 4): prelude/stdenv
+    /// paths, heap/dictionary limits, editor, open source stream.
+    config: ConfigState = .{},
 };
 
 /// Backing storage for the default interpreter instance. Not read directly —

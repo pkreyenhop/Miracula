@@ -8,6 +8,7 @@ const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
 const strtab = @import("../graph/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const config_state = @import("../session/config_state.zig");
 const repl_session = @import("../session/repl_session.zig");
 const make_state = @import("../session/make_state.zig");
 const compiler_state = @import("compiler_state.zig");
@@ -374,7 +375,7 @@ pub fn makedump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     if (f == null) {
         word.print("WARNING: CANNOT WRITE TO {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(obf)))});
         const current_script_span = std.mem.span(rs.current_script.?);
-        if (std.mem.eql(u8, current_script_span, std.mem.span(@as([*:0]const u8, @ptrCast(&rs.PRELUDE)))) or std.mem.eql(u8, current_script_span, std.mem.span(@as([*:0]const u8, @ptrCast(&rs.STDENV))))) {
+        if (std.mem.eql(u8, current_script_span, std.mem.span(@as([*:0]const u8, @ptrCast(&config_state.config().PRELUDE)))) or std.mem.eql(u8, current_script_span, std.mem.span(@as([*:0]const u8, @ptrCast(&config_state.config().STDENV))))) {
             word.print("TO FIX THIS PROBLEM PLEASE GET SUPER-USER TO EXECUTE `mira'\n", .{});
         }
         if (make_state.make().making and make_state.make().make_status == 0) {

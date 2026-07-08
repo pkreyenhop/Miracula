@@ -9,6 +9,7 @@ const std = @import("std");
 const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const config_state = @import("config_state.zig");
 const repl_session = @import("repl_session.zig");
 const make_state = @import("make_state.zig");
 const abi = @import("../os.zig");
@@ -47,7 +48,7 @@ pub fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
     while (arg_idx < argc_u and argv[arg_idx][0] == '-') {
         const arg = argv[arg_idx];
         if (argIs(arg, "-stdenv")) {
-            rt.rs().nostdenv = true;
+            config_state.config().nostdenv = true;
         } else if (argIs(arg, "-count")) {
             rt.rs().atcount = 1;
         } else if (argIs(arg, "-list")) {
@@ -65,7 +66,7 @@ pub fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
             if (arg_idx == argc_u) {
                 missingParam("lib");
             } else {
-                rt.rs().miralib = argv[arg_idx];
+                config_state.config().miralib = argv[arg_idx];
             }
         } else if (argIs(arg, "-dic")) {
             arg_idx += 1;
@@ -76,7 +77,7 @@ pub fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
                 if (abi.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or flagOutOfRange(val)) {
                     errors.fatal("mira: bad value after flag \"-dic\"\n", .{});
                 }
-                rt.rs().DICSPACE = val;
+                config_state.config().DICSPACE = val;
             }
         } else if (argIs(arg, "-heap")) {
             arg_idx += 1;
@@ -87,15 +88,15 @@ pub fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
                 if (abi.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or flagOutOfRange(val)) {
                     errors.fatal("mira: bad value after flag \"-heap\"\n", .{});
                 }
-                rt.rs().SPACELIMIT = val;
+                config_state.config().SPACELIMIT = val;
             }
         } else if (argIs(arg, "-editor")) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
                 missingParam("editor");
             } else {
-                rt.rs().editor = argv[arg_idx];
-                rt.rs().baded = @intFromBool(repl.badEditor(rt.rs()));
+                config_state.config().editor = argv[arg_idx];
+                config_state.config().baded = @intFromBool(repl.badEditor(rt.rs()));
             }
         } else if (argIs(arg, "-hush")) {
             repl_session.session().verbosity = 0;
@@ -208,7 +209,7 @@ pub fn readLibRcIfNeeded(okhome_rc: Word) void {
             rt.rs().rc_error = null;
         }
         {
-            const miralib_span = std.mem.span(rt.rs().miralib.?);
+            const miralib_span = std.mem.span(config_state.config().miralib.?);
             @memcpy(rt.rs().lib_rc[0..miralib_span.len], miralib_span);
             const suffix = "/.mirarc";
             @memcpy(rt.rs().lib_rc[miralib_span.len..][0..suffix.len], suffix);
@@ -222,20 +223,20 @@ pub fn readLibRcIfNeeded(okhome_rc: Word) void {
 /// remaining one-shot environment-variable overrides (`$MIRAPROMPT`,
 /// `$RECHECKMIRA`, `$NOSTRICTIF`).
 pub fn resolveEnvironmentSettings() void {
-    if (rt.rs().editor == null) {
+    if (config_state.config().editor == null) {
         if (abi.getenv("EDITOR")) |ed| {
-            rt.rs().editor = @constCast(ed);
+            config_state.config().editor = @constCast(ed);
         } else {
-            rt.rs().editor = @constCast(EDITOR);
+            config_state.config().editor = @constCast(EDITOR);
         }
-        if (rt.rs().editor != null) {
+        if (config_state.config().editor != null) {
             {
-                const editor_span = std.mem.span(rt.rs().editor.?);
+                const editor_span = std.mem.span(config_state.config().editor.?);
                 @memcpy(rt.rs().ebuf[0..editor_span.len], editor_span);
                 rt.rs().ebuf[editor_span.len] = 0;
             }
-            rt.rs().editor = @as([*:0]u8, @ptrCast(&rt.rs().ebuf));
-            rt.rs().baded = @intFromBool(repl.badEditor(rt.rs()));
+            config_state.config().editor = @as([*:0]u8, @ptrCast(&rt.rs().ebuf));
+            config_state.config().baded = @intFromBool(repl.badEditor(rt.rs()));
         }
     }
 
@@ -300,9 +301,9 @@ pub fn readRc(rcfile: [*:0]const u8) Word {
                 rt.rs().ebuf[len - 1] = 0;
                 len -= 1;
             }
-            rt.rs().editor = @ptrCast(&rt.rs().ebuf);
-            rt.rs().SPACELIMIT = h_val;
-            rt.rs().DICSPACE = d_val;
+            config_state.config().editor = @ptrCast(&rt.rs().ebuf);
+            config_state.config().SPACELIMIT = h_val;
+            config_state.config().DICSPACE = d_val;
             r = 1;
         }
     } else if (std.mem.eql(u8, z_slice, "ehdsv")) {
@@ -314,9 +315,9 @@ pub fn readRc(rcfile: [*:0]const u8) Word {
         if (!read_ok) {
             rt.rs().rc_error = rcfile;
         } else {
-            rt.rs().editor = @ptrCast(&rt.rs().ebuf);
-            rt.rs().SPACELIMIT = h_val;
-            rt.rs().DICSPACE = d_val;
+            config_state.config().editor = @ptrCast(&rt.rs().ebuf);
+            config_state.config().SPACELIMIT = h_val;
+            config_state.config().DICSPACE = d_val;
             r = 1;
         }
     } else if (std.mem.eql(u8, z_slice, "ehds")) {
@@ -328,16 +329,16 @@ pub fn readRc(rcfile: [*:0]const u8) Word {
         if (!read_ok) {
             rt.rs().rc_error = rcfile;
         } else {
-            rt.rs().editor = @ptrCast(&rt.rs().ebuf);
-            rt.rs().SPACELIMIT = h_val;
-            rt.rs().DICSPACE = d_val;
+            config_state.config().editor = @ptrCast(&rt.rs().ebuf);
+            config_state.config().SPACELIMIT = h_val;
+            config_state.config().DICSPACE = d_val;
             r = 1;
         }
     } else {
         rt.rs().rc_error = rcfile;
     }
-    if (rt.rs().editor != null) {
-        rt.rs().baded = @intFromBool(repl.badEditor(rt.rs()));
+    if (config_state.config().editor != null) {
+        config_state.config().baded = @intFromBool(repl.badEditor(rt.rs()));
     }
     return r;
 }
@@ -358,7 +359,7 @@ pub fn writeRc() void {
     if (rt.rs().rechecking == 2) {
         _ = word.fprint(f, "r", .{});
     }
-    _ = word.fprint(f, " {} {} {} {s}\n", .{ rt.rs().SPACELIMIT, rt.rs().DICSPACE, version.version, rt.rs().editor orelse @constCast("") });
+    _ = word.fprint(f, " {} {} {} {s}\n", .{ config_state.config().SPACELIMIT, config_state.config().DICSPACE, version.version, config_state.config().editor orelse @constCast("") });
 }
 
 /// Abort: command-line flag `s` was given without its required parameter.
@@ -416,15 +417,15 @@ test "readRc and writeRc roundtrip text config" {
     defer _ = abi.unlink(test_path);
 
     // Save previous values
-    const prev_limit = rt.rs().SPACELIMIT;
-    const prev_dic = rt.rs().DICSPACE;
-    const prev_editor = rt.rs().editor;
+    const prev_limit = config_state.config().SPACELIMIT;
+    const prev_dic = config_state.config().DICSPACE;
+    const prev_editor = config_state.config().editor;
     const prev_listing = repl_session.session().listing;
     const prev_rechecking = rt.rs().rechecking;
     defer {
-        rt.rs().SPACELIMIT = prev_limit;
-        rt.rs().DICSPACE = prev_dic;
-        rt.rs().editor = prev_editor;
+        config_state.config().SPACELIMIT = prev_limit;
+        config_state.config().DICSPACE = prev_dic;
+        config_state.config().editor = prev_editor;
         repl_session.session().listing = prev_listing;
         rt.rs().rechecking = prev_rechecking;
     }
@@ -432,16 +433,16 @@ test "readRc and writeRc roundtrip text config" {
     // Now call readRc
     const res = readRc(test_path);
     try std.testing.expectEqual(@as(Word, 1), res);
-    try std.testing.expectEqual(@as(Word, 2500000), rt.rs().SPACELIMIT);
-    try std.testing.expectEqual(@as(Word, 100000), rt.rs().DICSPACE);
-    try std.testing.expectEqualStrings("vi +!", std.mem.span(rt.rs().editor.?));
+    try std.testing.expectEqual(@as(Word, 2500000), config_state.config().SPACELIMIT);
+    try std.testing.expectEqual(@as(Word, 100000), config_state.config().DICSPACE);
+    try std.testing.expectEqualStrings("vi +!", std.mem.span(config_state.config().editor.?));
 
     // Change settings and write
-    rt.rs().SPACELIMIT = 3000000;
-    rt.rs().DICSPACE = 150000;
+    config_state.config().SPACELIMIT = 3000000;
+    config_state.config().DICSPACE = 150000;
     repl_session.session().listing = 1;
     rt.rs().rechecking = 2;
-    rt.rs().editor = @constCast("emacs +! %");
+    config_state.config().editor = @constCast("emacs +! %");
 
     // Set rt.rs().home_rc to our path so writeRc writes to it
     {
@@ -478,23 +479,23 @@ fn readRcFromContent(content: [*:0]const u8) !Word {
 }
 
 test "readRc: \"lhdve\" sets the listing flag in addition to hdve's fields" {
-    const prev_limit = rt.rs().SPACELIMIT;
-    const prev_dic = rt.rs().DICSPACE;
-    const prev_editor = rt.rs().editor;
+    const prev_limit = config_state.config().SPACELIMIT;
+    const prev_dic = config_state.config().DICSPACE;
+    const prev_editor = config_state.config().editor;
     const prev_listing = repl_session.session().listing;
     defer {
-        rt.rs().SPACELIMIT = prev_limit;
-        rt.rs().DICSPACE = prev_dic;
-        rt.rs().editor = prev_editor;
+        config_state.config().SPACELIMIT = prev_limit;
+        config_state.config().DICSPACE = prev_dic;
+        config_state.config().editor = prev_editor;
         repl_session.session().listing = prev_listing;
     }
 
     const res = try readRcFromContent("lhdve 2500000 100000 2067 vi\n");
     try std.testing.expectEqual(@as(Word, 1), res);
     try std.testing.expectEqual(@as(Word, 1), repl_session.session().listing);
-    try std.testing.expectEqual(@as(Word, 2500000), rt.rs().SPACELIMIT);
-    try std.testing.expectEqual(@as(Word, 100000), rt.rs().DICSPACE);
-    try std.testing.expectEqualStrings("vi", std.mem.span(rt.rs().editor.?));
+    try std.testing.expectEqual(@as(Word, 2500000), config_state.config().SPACELIMIT);
+    try std.testing.expectEqual(@as(Word, 100000), config_state.config().DICSPACE);
+    try std.testing.expectEqualStrings("vi", std.mem.span(config_state.config().editor.?));
 }
 
 test "readRc: \"hdve\" with an \"r\" flag sets rechecking" {
@@ -507,39 +508,39 @@ test "readRc: \"hdve\" with an \"r\" flag sets rechecking" {
 }
 
 test "readRc: legacy \"ehdsv\" format (editor before the numeric fields)" {
-    const prev_limit = rt.rs().SPACELIMIT;
-    const prev_dic = rt.rs().DICSPACE;
-    const prev_editor = rt.rs().editor;
+    const prev_limit = config_state.config().SPACELIMIT;
+    const prev_dic = config_state.config().DICSPACE;
+    const prev_editor = config_state.config().editor;
     defer {
-        rt.rs().SPACELIMIT = prev_limit;
-        rt.rs().DICSPACE = prev_dic;
-        rt.rs().editor = prev_editor;
+        config_state.config().SPACELIMIT = prev_limit;
+        config_state.config().DICSPACE = prev_dic;
+        config_state.config().editor = prev_editor;
     }
 
     // ehdsv's editor token is read via a plain %s (no getLine), so it can't
     // contain spaces -- a single-word editor name, unlike hdve's.
     const res = try readRcFromContent("ehdsv vi 2500000 100000 80 2067\n");
     try std.testing.expectEqual(@as(Word, 1), res);
-    try std.testing.expectEqual(@as(Word, 2500000), rt.rs().SPACELIMIT);
-    try std.testing.expectEqual(@as(Word, 100000), rt.rs().DICSPACE);
-    try std.testing.expectEqualStrings("vi", std.mem.span(rt.rs().editor.?));
+    try std.testing.expectEqual(@as(Word, 2500000), config_state.config().SPACELIMIT);
+    try std.testing.expectEqual(@as(Word, 100000), config_state.config().DICSPACE);
+    try std.testing.expectEqualStrings("vi", std.mem.span(config_state.config().editor.?));
 }
 
 test "readRc: legacy \"ehds\" format (no version field)" {
-    const prev_limit = rt.rs().SPACELIMIT;
-    const prev_dic = rt.rs().DICSPACE;
-    const prev_editor = rt.rs().editor;
+    const prev_limit = config_state.config().SPACELIMIT;
+    const prev_dic = config_state.config().DICSPACE;
+    const prev_editor = config_state.config().editor;
     defer {
-        rt.rs().SPACELIMIT = prev_limit;
-        rt.rs().DICSPACE = prev_dic;
-        rt.rs().editor = prev_editor;
+        config_state.config().SPACELIMIT = prev_limit;
+        config_state.config().DICSPACE = prev_dic;
+        config_state.config().editor = prev_editor;
     }
 
     const res = try readRcFromContent("ehds emacs 2500000 100000 80\n");
     try std.testing.expectEqual(@as(Word, 1), res);
-    try std.testing.expectEqual(@as(Word, 2500000), rt.rs().SPACELIMIT);
-    try std.testing.expectEqual(@as(Word, 100000), rt.rs().DICSPACE);
-    try std.testing.expectEqualStrings("emacs", std.mem.span(rt.rs().editor.?));
+    try std.testing.expectEqual(@as(Word, 2500000), config_state.config().SPACELIMIT);
+    try std.testing.expectEqual(@as(Word, 100000), config_state.config().DICSPACE);
+    try std.testing.expectEqualStrings("emacs", std.mem.span(config_state.config().editor.?));
 }
 
 test "readRc: unrecognised header sets rc_error and returns 0" {

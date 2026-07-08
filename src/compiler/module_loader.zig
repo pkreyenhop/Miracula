@@ -8,6 +8,7 @@ const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
 const strtab = @import("../graph/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const config_state = @import("../session/config_state.zig");
 const repl_session = @import("../session/repl_session.zig");
 const make_state = @import("../session/make_state.zig");
 const compiler_state = @import("compiler_state.zig");
@@ -103,17 +104,17 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     heap.current_file = heap_mod.h(heap.files);
     heap_mod.tp(heap_mod.h(lexs.fileq)).* = heap.current_file;
 
-    if (rs.initialising != 0 and std.mem.eql(u8, std.mem.span(t_val), std.mem.span(@as([*:0]const u8, @ptrCast(&rs.PRELUDE))))) {
+    if (rs.initialising != 0 and std.mem.eql(u8, std.mem.span(t_val), std.mem.span(@as([*:0]const u8, @ptrCast(&config_state.config().PRELUDE))))) {
         setup.privlib(heap);
-    } else if (rs.initialising != 0 or rs.nostdenv) {
-        if (std.mem.eql(u8, std.mem.span(t_val), std.mem.span(@as([*:0]const u8, @ptrCast(&rs.STDENV))))) {
+    } else if (rs.initialising != 0 or config_state.config().nostdenv) {
+        if (std.mem.eql(u8, std.mem.span(t_val), std.mem.span(@as([*:0]const u8, @ptrCast(&config_state.config().STDENV))))) {
             setup.stdlib(heap);
         }
     }
 
     lexs.c = ' ';
     lexs.col = 0;
-    rs.s_in = @ptrFromInt(@as(usize, @intCast(heap_mod.h(heap_mod.h(lexs.fileq)))));
+    config_state.config().s_in = @ptrFromInt(@as(usize, @intCast(heap_mod.h(heap_mod.h(lexs.fileq)))));
     abi.adjustPrefix(@constCast(t_val));
 
     core.commandmode = 0;
@@ -176,7 +177,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
             word.print("grammar optimisation: {} common left factors found\n", .{comp.lfrule});
         }
         if (rs.initialising != 0 and comp.ND != NIL) {
-            errors.fatal("panic: {s} contains errors\n", .{if (rs.okprel) "stdenv" else "prelude"});
+            errors.fatal("panic: {s} contains errors\n", .{if (config_state.config().okprel) "stdenv" else "prelude"});
         }
         if (rs.initialising != 0) {
             dump.makedump(heap, core, comp, rs);
@@ -208,7 +209,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     }
 
     if (rs.initialising != 0) {
-        errors.fatal("panic: cannot compile {s}\n", .{if (rs.okprel) "stdenv" else "prelude"});
+        errors.fatal("panic: cannot compile {s}\n", .{if (config_state.config().okprel) "stdenv" else "prelude"});
     }
     rs.oldfiles = heap.files;
     dump_mod.unload(comp, rs, lexs);

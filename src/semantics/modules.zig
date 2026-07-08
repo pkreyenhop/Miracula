@@ -41,6 +41,7 @@ const lex = @import("../parser/lex.zig");
 const heap_mod = @import("../graph/heap.zig");
 const symbols = @import("symbols.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const config_state = @import("../session/config_state.zig");
 
 const Word = word.Word;
 const Alias = directives.Alias;
@@ -209,12 +210,12 @@ pub fn collectTopLevelNames(gpa: std.mem.Allocator, script: ast.Script) ![][]con
 }
 
 /// Resolve an `%include`'s path: `<...>`-form is relative to `miralib`
-/// (`rt.rs().miralib`); `"..."`-form is relative to the including file's
+/// (`config_state.config().miralib`); `"..."`-form is relative to the including file's
 /// own directory (`base_dir`). Appends `.m` if the path has no extension
 /// already (matching legacy's `addextn`). Caller frees the result.
 fn resolveIncludePath(gpa: std.mem.Allocator, path: []const u8, from_miralib: bool, base_dir: []const u8) ![]u8 {
     const dir: []const u8 = if (from_miralib)
-        (if (rt.rs().miralib) |m| std.mem.span(m) else ".")
+        (if (config_state.config().miralib) |m| std.mem.span(m) else ".")
     else
         base_dir;
     const has_ext = std.mem.indexOfScalar(u8, std.fs.path.basename(path), '.') != null;

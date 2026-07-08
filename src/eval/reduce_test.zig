@@ -14,6 +14,7 @@ const reduce = @import("reduce.zig");
 const reduce_rt = @import("reduce_rt.zig");
 const interp = @import("../session/interp.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const config_state = @import("../session/config_state.zig");
 const core_state = @import("../runtime/core_state.zig");
 const setup = @import("../compiler/setup.zig");
 const lex = @import("../parser/lex.zig");
@@ -85,7 +86,7 @@ test "interp.reset clears the aggregated state structs" {
     ensureSetup();
 
     // Dirty fields in four different aggregated structs.
-    rt.rs().SPACELIMIT = 42;
+    config_state.config().SPACELIMIT = 42;
     core_state.s().SYNERR = 7;
     reduce_rt.ev().cycles = 999;
     big.bn().b_rem = 123;
@@ -93,7 +94,7 @@ test "interp.reset clears the aggregated state structs" {
     interp.reset();
 
     // One reset returns them all to their struct defaults.
-    try std.testing.expectEqual(@as(Word, 2500000), rt.rs().SPACELIMIT);
+    try std.testing.expectEqual(@as(Word, 2500000), config_state.config().SPACELIMIT);
     try std.testing.expectEqual(@as(Word, 0), core_state.s().SYNERR);
     try std.testing.expectEqual(@as(i64, 0), reduce_rt.ev().cycles);
     try std.testing.expectEqual(@as(Word, 0), big.bn().b_rem);

@@ -19,6 +19,7 @@ const setupdic = lex.setupdic;
 const lex_state = @import("lex_state.zig");
 const lex = @import("lex.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const config_state = @import("../session/config_state.zig");
 const setup = @import("../compiler/setup.zig");
 const os = @import("../os.zig");
 const word = @import("../graph/word.zig");
@@ -204,10 +205,10 @@ test "syntax error sets errcol and editfile expands column placeholder" {
     try testing.expectEqual(@as(word.Word, 9), core_state.s().errcol);
 
     // 2. Check editfile expands the column placeholder '&'
-    const old_editor = rt.rs().editor;
-    defer rt.rs().editor = old_editor;
+    const old_editor = config_state.config().editor;
+    defer config_state.config().editor = old_editor;
 
-    rt.rs().editor = @constCast(@as([*:0]const u8, ": -l ! -c & -f %"));
+    config_state.config().editor = @constCast(@as([*:0]const u8, ": -l ! -c & -f %"));
     commands.editfile(rt.rs(), "test.m", 42, 17);
 
     // Verify ebuf_local contents in rt.rs().linebuf
@@ -220,8 +221,8 @@ test "/editor command parses arguments on the same line" {
     ensureInitialized();
     resetLexerState();
 
-    const old_editor = rt.rs().editor;
-    defer rt.rs().editor = old_editor;
+    const old_editor = config_state.config().editor;
+    defer config_state.config().editor = old_editor;
 
     // 1. /editor without arguments: just prints current editor (doesn't prompt/block)
     ls().dicp = @constCast(@as([*:0]const u8, "editor"));
@@ -245,7 +246,7 @@ test "/editor command parses arguments on the same line" {
 
     _ = commands.command(heap.heap(), core_state.s(), cs(), rt.rs(), ls());
 
-    const actual_editor = std.mem.span(rt.rs().editor.?);
+    const actual_editor = std.mem.span(config_state.config().editor.?);
     try testing.expectEqualStrings("my_custom_editor", actual_editor);
 }
 // Cache invalidation comment for strict-main-tests

@@ -13,17 +13,20 @@ src/eval/reduce_rt.zig -> src/os.zig
 src/eval/reduce_rt.zig -> src/session/interp.zig
 src/eval/reduce_rt.zig -> src/session/repl.zig
 src/eval/reduce_test.zig -> src/semantics/lower.zig
+src/eval/reduce_test.zig -> src/session/config_state.zig
 src/eval/reduce_test.zig -> src/session/interp.zig
 src/eval/stream.zig -> src/session/interp.zig
 src/graph/bignum.zig -> src/eval/reduce_rt.zig
 src/graph/bignum.zig -> src/session/interp.zig
 src/graph/dump.zig -> src/os.zig
 src/graph/dump.zig -> src/semantics/depend.zig
+src/graph/dump.zig -> src/session/config_state.zig
 src/graph/heap.zig -> src/eval/reduce_rt.zig
 src/graph/heap.zig -> src/eval/spine.zig
 src/graph/heap.zig -> src/os.zig
 src/graph/heap.zig -> src/semantics/symbols.zig
 src/graph/heap.zig -> src/session/bnf_state.zig
+src/graph/heap.zig -> src/session/config_state.zig
 src/graph/heap.zig -> src/session/interp.zig
 src/graph/heap.zig -> src/session/make_state.zig
 src/graph/heap.zig -> src/session/repl_session.zig
@@ -43,5 +46,6 @@ src/os.zig -> src/session/repl.zig
 src/semantics/infer.zig -> src/os.zig
 src/semantics/lower.zig -> src/os.zig
 src/semantics/lower.zig -> src/session/repl_session.zig
+src/semantics/modules.zig -> src/session/config_state.zig
 src/semantics/show_fns.zig -> src/session/interp.zig
 src/semantics/symbols.zig -> src/session/interp.zig

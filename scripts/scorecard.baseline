@@ -1,5 +1,5 @@
 c_int/c_long/c_uint/c_ulong (non-FFI)	164
-[*:0] C-string types (non-FFI)	226
+[*:0] C-string types (non-FFI)	227
 extern fn declarations	8
 extern var declarations	0
 @intFromPtr / @ptrFromInt (non-FFI)	50
@@ -10,8 +10,8 @@ callconv(.c) usage	1
 sentinel == NIL / != NIL (non-FFI)	320
 fork()/wait() call sites (non-FFI)	5
 module-scope mutable globals (non-FFI)	7
-ambient singleton-accessor call sites	861
-current_interp references	44
+ambient singleton-accessor call sites	749
+current_interp references	46
 files > 1000 lines	10
 @import cycles	1
 unallowed §4.1 layer violations	0

@@ -30,6 +30,7 @@ const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
 const strtab = @import("../graph/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const config_state = @import("config_state.zig");
 const repl_session = @import("repl_session.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
 const cs = compiler_state.cs;
@@ -158,7 +159,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                         commands.xschars();
                         continue;
                     }
-                    if (rs.baded != 0) {
+                    if (config_state.config().baded != 0) {
                         edWarn(rs);
                         continue;
                     }
@@ -390,7 +391,8 @@ pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_st
 
 /// Warn that the configured editor lacks open-at-line support, disabling `??` and related features.
 pub fn edWarn(rs: *rt.RuntimeState) void {
-    word.print("The currently installed editor command, \"{s}\", does not\ninclude a facility for opening a file at a specified line number.  As a\nresult the `??' command and certain other features of the Miranda system\nare disabled.  See manual section 31/5 on changing the editor for more\ninformation.\n", .{rs.editor orelse @constCast("")});
+    _ = rs;
+    word.print("The currently installed editor command, \"{s}\", does not\ninclude a facility for opening a file at a specified line number.  As a\nresult the `??' command and certain other features of the Miranda system\nare disabled.  See manual section 31/5 on changing the editor for more\ninformation.\n", .{config_state.config().editor orelse @constCast("")});
 }
 
 /// Print the Miranda release banner (version, plus `(UTF-8)` when applicable).
@@ -420,7 +422,8 @@ pub fn getLine(in: ?*word.Stream, n_val: Word, s_ptr: [*]u8) c_int {
 
 /// 1 if the editor command lacks an open-at-line placeholder (`+!`, `%d`, or `%l`).
 pub fn badEditor(rs: *rt.RuntimeState) bool {
-    const e = std.mem.span(rs.editor orelse return false);
+    _ = rs;
+    const e = std.mem.span(config_state.config().editor orelse return false);
     if (std.mem.indexOf(u8, e, "+!") != null or std.mem.indexOf(u8, e, "%d") != null or std.mem.indexOf(u8, e, "%l") != null) {
         return false;
     }
@@ -429,6 +432,7 @@ pub fn badEditor(rs: *rt.RuntimeState) bool {
 
 /// Read and type-check one expression of type `t_val` from file `f` (the `readvals` path). Returns its codegen, or `EOF`; re-prompts interactively and aborts on bad file data.
 pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, t_val: Word, f: ?*word.Stream, fil: Word) Word {
+    _ = rs;
     var t1: Word = undefined;
     var ch: c_int = undefined;
     repl_session.session().lastexp = word.UNDEF;
@@ -458,9 +462,9 @@ pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState,
         lexs.c = word.VALUE;
         repl_session.session().echoing = 0;
         core.commandmode = 1;
-        rs.s_in = f;
+        config_state.config().s_in = f;
         _ = parser_api.parseCurrent() catch {};
-        rs.s_in = abi.stdin();
+        config_state.config().s_in = abi.stdin();
         if (core.SYNERR != 0) {
             core.SYNERR = 0;
             repl_session.session().lastexp = word.UNDEF;

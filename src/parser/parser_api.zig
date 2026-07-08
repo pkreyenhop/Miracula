@@ -18,6 +18,7 @@ const options = @import("version_options");
 
 const word = @import("../graph/word.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const config_state = @import("../session/config_state.zig");
 const repl_session = @import("../session/repl_session.zig");
 const core = @import("../runtime/core_state.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
@@ -54,7 +55,7 @@ pub fn parseCurrent() ParseError!ParseResult {
     return parseCurrentNative();
 }
 
-/// Read from the currently-open stream (`rt.rs().s_in`) into an owned
+/// Read from the currently-open stream (`config_state.config().s_in`) into an owned
 /// buffer, one byte at a time via `word.getc` — the native pipeline's
 /// `Source` needs a whole unit of input up front (it isn't a streaming
 /// reader), but this doesn't require changing how/where the stream was
@@ -74,7 +75,7 @@ fn slurpCurrentStream(gpa: std.mem.Allocator, stop_at_newline: bool) ![]u8 {
     var out: std.ArrayList(u8) = .empty;
     errdefer out.deinit(gpa);
     while (true) {
-        const c = word.getc(rt.rs().s_in);
+        const c = word.getc(config_state.config().s_in);
         if (c < 0) break;
         try out.append(gpa, @intCast(c));
         if (stop_at_newline and c == '\n') break;
@@ -114,9 +115,9 @@ fn parseCurrentNative() ParseError!ParseResult {
     // s_in back at stdin, matching getStdin()'s role there. Guarded on
     // "not already stdin" so REPL/string input (s_in already == stdin) is
     // never closed.
-    if (!command_mode and rt.rs().s_in != word.stdin()) {
-        _ = word.fclose(rt.rs().s_in);
-        rt.rs().s_in = word.stdin();
+    if (!command_mode and config_state.config().s_in != word.stdin()) {
+        _ = word.fclose(config_state.config().s_in);
+        config_state.config().s_in = word.stdin();
     }
 
     const name_says_literate = !command_mode and if (rt.rs().current_script) |name|

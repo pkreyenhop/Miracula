@@ -10,6 +10,7 @@ const std = @import("std");
 const word = @import("word.zig");
 const strtab = @import("strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const config_state = @import("../session/config_state.zig");
 const core = @import("../runtime/core_state.zig");
 const lex_state = @import("../parser/lex_state.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
@@ -605,7 +606,7 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
                 break;
             }
         }
-        if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > rs.DICSPACE) {
+        if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > config_state.config().DICSPACE) {
             lex.dicovflo();
         }
         ch = getword(file);
@@ -657,7 +658,7 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
                     break;
                 }
             }
-            if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > rs.DICSPACE) {
+            if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > config_state.config().DICSPACE) {
                 lex.dicovflo();
             }
             ch = getword(file);
@@ -807,6 +808,7 @@ pub fn dgrow() void {
 ///
 /// Tests: dumpOb / loadDefs: roundtrip a cons of two ints through the .x format
 pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, file: ?*word.Stream) Word {
+    _ = rs;
     var ch = os.getc(file);
     var defs: Word = word.NIL;
     while (ch != os.EOF) {
@@ -873,7 +875,7 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs:
                         break;
                     }
                 }
-                if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > rs.DICSPACE) {
+                if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > config_state.config().DICSPACE) {
                     lex.dicovflo();
                 }
                 stackpPush(name(heap()));
@@ -895,7 +897,7 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs:
                         break;
                     }
                 }
-                if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > rs.DICSPACE) {
+                if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > config_state.config().DICSPACE) {
                     lex.dicovflo();
                 }
                 stackpPush(datapair(strtab.strBits(strtab.table(), getId(name(heap()))), 0));
@@ -922,7 +924,7 @@ pub fn loadDefs(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs:
                             break;
                         }
                     }
-                    if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > rs.DICSPACE) {
+                    if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > config_state.config().DICSPACE) {
                         lex.dicovflo();
                     }
                     var line = os.getc(file);
@@ -1105,7 +1107,7 @@ pub fn srcUpdate(rs: *rt.RuntimeState) c_int {
 
 test "dumpOb / loadDefs: roundtrip a cons of two ints through the .x format" {
     // 1. Initialize heap and stack
-    rt.rs().SPACELIMIT = 10000;
+    config_state.config().SPACELIMIT = 10000;
     setupheap();
     dsetup();
 
