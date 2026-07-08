@@ -16,23 +16,16 @@ const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 const Word = i64;
 
-const heap = heap_mod.heap;
-const h = heap_mod.h;
-const t = heap_mod.t;
-const getTag = heap_mod.getTag;
 const getDbl = heap_mod.getDbl;
 const getId = heap_mod.getId;
 const rest = heap_mod.rest;
 const getsmallint = heap_mod.getsmallint;
-const dlhs = heap_mod.dlhs;
-const dval = heap_mod.dval;
-const TOP = heap_mod.TOP;
 const bigtostr = big.toDecimalList;
 
 /// A printable name/escape for char `ch`.
 ///
 /// Tests: charname: escapes control chars, passes printables through
-pub fn charname(ch: Word) [*:0]const u8 {
+pub fn charname(heap: *Heap, ch: Word) [*:0]const u8 {
     return switch (ch) {
         '\n' => "\\n",
         '\t' => "\\t",
@@ -44,23 +37,23 @@ pub fn charname(ch: Word) [*:0]const u8 {
         '"' => "\\\"",
         else => blk: {
             if (ch < 32 or ch > 126) {
-                const text = std.fmt.bufPrintSentinel(&heap().charname_buffer, "\\{d}", .{ch}, 0) catch unreachable;
+                const text = std.fmt.bufPrintSentinel(&heap.charname_buffer, "\\{d}", .{ch}, 0) catch unreachable;
                 break :blk text.ptr;
             }
-            heap().charname_buffer[0] = @intCast(ch);
-            heap().charname_buffer[1] = 0;
-            break :blk @as([*:0]const u8, @ptrCast(heap().charname_buffer[0..].ptr));
+            heap.charname_buffer[0] = @intCast(ch);
+            heap.charname_buffer[1] = 0;
+            break :blk @as([*:0]const u8, @ptrCast(heap.charname_buffer[0..].ptr));
         },
     };
 }
 
 test "charname: escapes control chars, passes printables through" {
     tu.freshInterp();
-    try std.testing.expectEqualStrings("\\n", std.mem.span(charname('\n')));
-    try std.testing.expectEqualStrings("\\t", std.mem.span(charname('\t')));
-    try std.testing.expectEqualStrings("\\\\", std.mem.span(charname('\\')));
-    try std.testing.expectEqualStrings("A", std.mem.span(charname('A')));
-    try std.testing.expectEqualStrings("\\7", std.mem.span(charname(7))); // bell → \7
+    try std.testing.expectEqualStrings("\\n", std.mem.span(charname(heap_mod.heap(), '\n')));
+    try std.testing.expectEqualStrings("\\t", std.mem.span(charname(heap_mod.heap(), '\t')));
+    try std.testing.expectEqualStrings("\\\\", std.mem.span(charname(heap_mod.heap(), '\\')));
+    try std.testing.expectEqualStrings("A", std.mem.span(charname(heap_mod.heap(), 'A')));
+    try std.testing.expectEqualStrings("\\7", std.mem.span(charname(heap_mod.heap(), 7))); // bell → \7
 }
 
 /// Print double `value` to `file`.
@@ -79,56 +72,56 @@ pub fn castPtr(val: Word) [*:0]const u8 {
 }
 
 /// Print cell `x` to `file` in readable form (debug/diagnostic dump).
-pub fn outTerm(file: ?*word.Stream, x_val: Word) void {
+pub fn outTerm(heap: *Heap, file: ?*word.Stream, x_val: Word) void {
     var x = x_val;
-    if (x < 0 or x > TOP()) {
+    if (x < 0 or x > heap.TOP()) {
         _ = word.fprint(file, "<{d}>", .{x});
         return;
     }
-    if (getTag(x) == .LAMBDA) {
+    if (heap.getTag(x) == .LAMBDA) {
         _ = word.fprint(file, "$(", .{.{}});
-        outTerm(file, h(x));
+        outTerm(heap, file, heap.h(x));
         _ = word.putc(')', file);
-        outTerm(file, t(x));
+        outTerm(heap, file, heap.t(x));
     } else {
-        while (getTag(x) == .CONS) {
-            outSubterm(file, h(x));
+        while (heap.getTag(x) == .CONS) {
+            outSubterm(heap, file, heap.h(x));
             _ = word.putc(':', file);
-            x = t(x);
+            x = heap.t(x);
         }
-        outSubterm(file, x);
+        outSubterm(heap, file, x);
     }
 }
 
 /// Helper for `outTerm`: print one sub-term.
-pub fn outSubterm(file: ?*word.Stream, x: Word) void {
-    if (x < 0 or x > TOP()) {
+pub fn outSubterm(heap: *Heap, file: ?*word.Stream, x: Word) void {
+    if (x < 0 or x > heap.TOP()) {
         _ = word.fprint(file, "<{d}>", .{x});
         return;
     }
-    if (getTag(x) == .AP) {
-        outSubterm(file, h(x));
+    if (heap.getTag(x) == .AP) {
+        outSubterm(heap, file, heap.h(x));
         _ = word.putc(' ', file);
-        outAtom(file, t(x));
+        outAtom(heap, file, heap.t(x));
     } else {
-        outAtom(file, x);
+        outAtom(heap, file, x);
     }
 }
 
 /// Helper for `outTerm`: print one sub-term.
-pub fn outAtom(file: ?*word.Stream, x_val: Word) void {
+pub fn outAtom(heap: *Heap, file: ?*word.Stream, x_val: Word) void {
     var x = x_val;
-    if (x < 0 or x > TOP()) {
+    if (x < 0 or x > heap.TOP()) {
         _ = word.fprint(file, "<{d}>", .{x});
         return;
     }
-    const tag_val = getTag(x);
+    const tag_val = heap.getTag(x);
     if (tag_val == .INT) {
         if (rest(x) != 0) {
-            x = bigtostr(heap(), x);
+            x = bigtostr(heap, x);
             while (x != 0) {
-                _ = word.putc(@intCast(h(x)), file);
-                x = t(x);
+                _ = word.putc(@intCast(heap.h(x)), file);
+                x = heap.t(x);
             }
         } else {
             _ = word.fprint(file, "{d}", .{getsmallint(x)});
@@ -144,11 +137,11 @@ pub fn outAtom(file: ?*word.Stream, x_val: Word) void {
         return;
     }
     if (word.fitsInByte(x)) {
-        _ = word.fprint(file, "'{s}'", .{charname(x)});
+        _ = word.fprint(file, "'{s}'", .{charname(heap, x)});
         return;
     }
     if (tag_val == .UNICODE) {
-        _ = word.fprint(file, "'{x}'", .{h(x)});
+        _ = word.fprint(file, "'{x}'", .{heap.h(x)});
         return;
     }
     if (tag_val == .ATOM) {
@@ -169,94 +162,94 @@ pub fn outAtom(file: ?*word.Stream, x_val: Word) void {
     }
     if (tag_val == .TCONS or tag_val == .PAIR) {
         _ = word.fprint(file, "(", .{.{}});
-        while (getTag(x) == .TCONS) {
-            outTerm(file, h(x));
+        while (heap.getTag(x) == .TCONS) {
+            outTerm(heap, file, heap.h(x));
             _ = word.putc(',', file);
-            x = t(x);
+            x = heap.t(x);
         }
-        outTerm(file, h(x));
+        outTerm(heap, file, heap.h(x));
         _ = word.putc(',', file);
-        outTerm(file, t(x));
+        outTerm(heap, file, heap.t(x));
         _ = word.putc(')', file);
         return;
     }
     if (tag_val == .TRIES) {
         _ = word.fprint(file, "TRIES(", .{.{}});
-        outTerm(file, h(x));
+        outTerm(heap, file, heap.h(x));
         _ = word.putc(',', file);
-        outTerm(file, t(x));
+        outTerm(heap, file, heap.t(x));
         _ = word.putc(')', file);
         return;
     }
     if (tag_val == .LABEL) {
         _ = word.fprint(file, "LABEL(", .{.{}});
-        outTerm(file, h(x));
+        outTerm(heap, file, heap.h(x));
         _ = word.putc(',', file);
-        outTerm(file, t(x));
+        outTerm(heap, file, heap.t(x));
         _ = word.putc(')', file);
         return;
     }
     if (tag_val == .SHOW) {
         _ = word.fprint(file, "SHOW(", .{.{}});
-        outTerm(file, h(x));
+        outTerm(heap, file, heap.h(x));
         _ = word.putc(',', file);
-        outTerm(file, t(x));
+        outTerm(heap, file, heap.t(x));
         _ = word.putc(')', file);
         return;
     }
     if (tag_val == .STARTREADVALS) {
         _ = word.fprint(file, "READVALS(", .{.{}});
-        outTerm(file, h(x));
+        outTerm(heap, file, heap.h(x));
         _ = word.putc(',', file);
-        outTerm(file, t(x));
+        outTerm(heap, file, heap.t(x));
         _ = word.putc(')', file);
         return;
     }
     if (tag_val == .LET) {
         _ = word.fprint(file, "(LET ", .{.{}});
-        outTerm(file, dlhs(h(x)));
+        outTerm(heap, file, heap.h(heap.h(x)));
         _ = word.fprint(file, "=", .{.{}});
-        outTerm(file, dval(h(x)));
+        outTerm(heap, file, heap.t(heap.t(heap.h(x))));
         _ = word.fprint(file, ";IN ", .{.{}});
-        outTerm(file, t(x));
+        outTerm(heap, file, heap.t(x));
         _ = word.fprint(file, ")", .{.{}});
         return;
     }
     if (tag_val == .LETREC) {
-        const body = t(x);
+        const body = heap.t(x);
         _ = word.fprint(file, "(LETREC ", .{.{}});
-        x = h(x);
+        x = heap.h(x);
         while (x != word.NIL) {
-            outTerm(file, dlhs(h(x)));
+            outTerm(heap, file, heap.h(heap.h(x)));
             _ = word.fprint(file, "=", .{.{}});
-            outTerm(file, dval(h(x)));
+            outTerm(heap, file, heap.t(heap.t(heap.h(x))));
             _ = word.fprint(file, ";", .{.{}});
-            x = t(x);
+            x = heap.t(x);
         }
         _ = word.fprint(file, "IN ", .{.{}});
-        outTerm(file, body);
+        outTerm(heap, file, body);
         _ = word.fprint(file, ")", .{.{}});
         return;
     }
     if (tag_val == .DATAPAIR) {
-        _ = word.fprint(file, "DATAPAIR({s},{d})", .{ castPtr(h(x)), t(x) });
+        _ = word.fprint(file, "DATAPAIR({s},{d})", .{ castPtr(heap.h(x)), heap.t(x) });
         return;
     }
     if (tag_val == .FILEINFO) {
-        _ = word.fprint(file, "FILEINFO({s},{d})", .{ castPtr(h(x)), t(x) });
+        _ = word.fprint(file, "FILEINFO({s},{d})", .{ castPtr(heap.h(x)), heap.t(x) });
         return;
     }
     if (tag_val == .CONSTRUCTOR) {
-        _ = word.fprint(file, "CONSTRUCTOR({d})", .{h(x)});
+        _ = word.fprint(file, "CONSTRUCTOR({d})", .{heap.h(x)});
         return;
     }
     if (tag_val == .STRCONS) {
-        _ = word.fprint(file, "<${d}>", .{h(x)});
+        _ = word.fprint(file, "<${d}>", .{heap.h(x)});
         return;
     }
     if (tag_val == .SHARE) {
         _ = word.fprint(file, "(SHARE:", .{.{}});
-        outTerm(file, h(x));
+        outTerm(heap, file, heap.h(x));
         _ = word.fprint(file, ")", .{.{}});
         return;
     }

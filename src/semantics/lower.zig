@@ -716,7 +716,7 @@ pub fn abstract(heap: *Heap, input_x: Word, input_e: Word) Word {
     }
     _ = word.print("error in declaration of \"{s}\", undeclared constructor in pattern: ", .{getId(heap, cs().current_id)});
     const stdout_val = getStdout();
-    out(stdout_val, x);
+    out(heap, stdout_val, x);
     _ = word.print("\n", .{});
     return NIL;
 }

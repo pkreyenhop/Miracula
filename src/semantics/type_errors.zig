@@ -437,7 +437,7 @@ pub fn outFormal1(heap: *Heap, f: *word.Stream, x_in: Word) void {
                 if (cs().allchars != 0) {
                     _ = (f).print("\"", .{});
                     while (x != NIL) {
-                        _ = (f).print("{s}", .{charname(h(heap, x))});
+                        _ = (f).print("{s}", .{charname(heap, h(heap, x))});
                         x = t(heap, x);
                     }
                     _ = (f).print("\"", .{});
@@ -478,23 +478,23 @@ pub fn outFormal1(heap: *Heap, f: *word.Stream, x_in: Word) void {
         .INT => {
             if (neg(heap, x) != 0) {
                 _ = (f).print("(", .{});
-                out(f, x);
+                out(heap, f, x);
                 _ = (f).print(")", .{});
             } else {
-                out(f, x);
+                out(heap, f, x);
             }
         },
         .DOUBLE => {
             if (getDbl(x) < 0) {
                 _ = (f).print("(", .{});
-                out(f, x);
+                out(heap, f, x);
                 _ = (f).print(")", .{});
             } else {
-                out(f, x);
+                out(heap, f, x);
             }
         },
         else => {
-            out(f, x);
+            out(heap, f, x);
         },
     }
 }
@@ -503,7 +503,7 @@ pub fn outFormal1(heap: *Heap, f: *word.Stream, x_in: Word) void {
 pub fn outPattern(heap: *Heap, f: *word.Stream, x: Word) void {
     if (getTag(heap, x) == .CONS) {
         if (h(heap, x) == CONST and (getTag(heap, t(heap, x)) == .INT or getTag(heap, t(heap, x)) == .DOUBLE)) {
-            out(f, t(heap, x));
+            out(heap, f, t(heap, x));
         } else if (h(heap, x) != CONST and tail(heap, x) != NIL) {
             outFormal(heap, f, h(heap, x));
             _ = (f).print(":", .{});
@@ -523,7 +523,7 @@ pub fn outFormal(heap: *Heap, f: *word.Stream, x: Word) void {
     } else if (getTag(heap, h(heap, x)) == .AP and h(heap, h(heap, x)) == PLUS) {
         outFormal(heap, f, t(heap, x));
         _ = (f).print("+", .{});
-        out(f, t(heap, h(heap, x)));
+        out(heap, f, t(heap, h(heap, x)));
     } else {
         outFormal(heap, f, h(heap, x));
         _ = (f).print(" ", .{});

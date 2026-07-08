@@ -744,7 +744,7 @@ pub fn finger(heap: *Heap, rs: *rt.RuntimeState, n: [*:0]const u8) void {
         }
         if (rs.atobject != 0) {
             word.print("{s} = ", .{heap_mod.getId(x)});
-            abi.out(abi.stdout(), heap_mod.idVal(x));
+            abi.out(heap, abi.stdout(), heap_mod.idVal(x));
             _ = word.putchar('\n');
         }
         return;
@@ -808,7 +808,7 @@ pub fn allnamescom(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Run
                 } else {
                     _ = word.putchar(',');
                 }
-                abi.out(abi.stdout(), heap_mod.h(x));
+                abi.out(heap, abi.stdout(), heap_mod.h(x));
             }
         }
         word.print(";\n", .{});
@@ -823,7 +823,7 @@ pub fn allnamescom(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Run
                 } else {
                     _ = word.putchar(',');
                 }
-                abi.out(abi.stdout(), heap_mod.h(y));
+                abi.out(heap, abi.stdout(), heap_mod.h(y));
             }
         }
         word.print(";\n", .{});

@@ -410,13 +410,13 @@ const FREE = word.FREE;
 /// Print one debug element.
 pub fn printelement(heap: *Heap, x: Word) void {
     if (getTag(heap, x) != .CONS) {
-        out(getStdout().?, x);
+        out(heap, getStdout().?, x);
         return;
     }
     _ = word.print("(", .{});
     var cur = x;
     while (cur != NIL) {
-        out(getStdout().?, h(heap, cur));
+        out(heap, getStdout().?, h(heap, cur));
         cur = t(heap, cur);
         if (cur != NIL) {
             _ = word.print(" ", .{});
@@ -941,7 +941,7 @@ fn etype(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
         .ATOM => return etypeAtom(heap, x),
         else => {
             _ = word.print("unexpected tag in etype ", .{});
-            out(getStdout().?, @intFromEnum(getTag(heap, x)));
+            out(heap, getStdout().?, @intFromEnum(getTag(heap, x)));
             _ = word.putchar('\n');
             return wrong_t;
         },
@@ -1513,7 +1513,7 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
         },
         else => {
             _ = word.print("do not know type of ", .{});
-            out(getStdout().?, x);
+            out(heap, getStdout().?, x);
             _ = word.putchar('\n');
             return wrong_t;
         },

@@ -273,7 +273,7 @@ pub fn parseCloseError(arg1: Word, arg3: Word) reduce_core.ReduceError!void {
     if (p) |ptr| {
         var i: usize = 0;
         while (ptr[i] != 0) : (i += 1) {
-            word.printErr("{s}", .{charname(ptr[i])});
+            word.printErr("{s}", .{charname(heap.heap(), ptr[i])});
         }
     }
     word.printErr("\"\n", .{});
@@ -580,7 +580,7 @@ pub fn lexfail(x_val: Word) void {
     word.printErr("\nLEX FAILS WITH UNRECOGNISED INPUT: \"", .{});
     while (i > 0 and x != NIL and 0 <= lh(x) and lh(x) <= 255) {
         i -= 1;
-        word.printErr("{s}", .{charname(@intCast(lh(x)))});
+        word.printErr("{s}", .{charname(heap.heap(), @intCast(lh(x)))});
         x = t(x);
     }
     word.printErr("{s}\"\n", .{if (x == NIL) @as([*:0]const u8, "") else "..."});
@@ -824,7 +824,7 @@ pub fn print(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) reduce_core.Re
     }
     word.printErr("\nimpossible event in print\n", .{});
     _ = word.putc('<', getStderr().?);
-    print_mod.outTerm(getStderr().?, e);
+    print_mod.outTerm(heap.heap(), getStderr().?, e);
     word.printErr(">\n", .{});
     os.exit(1);
 }
@@ -905,7 +905,7 @@ pub fn output(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) reduce_core.R
             },
             else => {
                 word.printErr("\n<impossible event in output list: ", .{});
-                print_mod.outTerm(getStderr().?, h(e));
+                print_mod.outTerm(heap.heap(), getStderr().?, h(e));
                 word.printErr(">\n", .{});
             },
         }
@@ -920,7 +920,7 @@ pub fn output(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) reduce_core.R
     }
     word.printErr("\nimpossible event in output\n", .{});
     _ = word.putc('<', getStderr().?);
-    print_mod.outTerm(getStderr().?, e);
+    print_mod.outTerm(heap.heap(), getStderr().?, e);
     word.printErr(">\n", .{});
     os.exit(1);
 }
