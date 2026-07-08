@@ -204,7 +204,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         if (core.errline == 0 and core.errs != 0 and std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap, core.errs))), std.mem.span(script_store.store().current_script.?))) {
             core.errline = heap_mod.t(heap, core.errs);
         }
-        comp.ND = depend_mod.alfasort(comp.ND);
+        comp.ND = depend_mod.alfasort(heap, comp.ND);
         core.loading = 0;
         return;
     }
@@ -299,7 +299,7 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
             if (script_store.store().embargoes != NIL) {
                 script_store.store().exports = abi.setdiff(heap, script_store.store().exports, script_store.store().embargoes);
             }
-            script_store.store().exports = depend_mod.alfasort(script_store.store().exports);
+            script_store.store().exports = depend_mod.alfasort(heap, script_store.store().exports);
 
             e = script_store.store().exports;
             while (e != NIL) : (e = heap_mod.t(heap, e)) {
@@ -314,7 +314,7 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
             if (script_store.store().exports == NIL) {
                 word.print("warning, export list has void contents\n", .{});
             } else {
-                script_store.store().exports = abi.append1(depend_mod.alfasort(c_ctr), script_store.store().exports);
+                script_store.store().exports = abi.append1(depend_mod.alfasort(heap, c_ctr), script_store.store().exports);
             }
 
             if (n != NIL) {
@@ -698,7 +698,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         word.printErr("TYPECLASH - the following type{s} multiply named:\n", .{@as([*:0]const u8, if (heap_mod.t(heap, tclashes) == NIL) " is" else "s are")});
         while (tclashes != NIL) {
             word.printErr("\'{s}\' of file \"{s}\", as: ", .{ abi.getaka(heap_mod.h(heap, heap_mod.t(heap, heap_mod.h(heap, tclashes)))), strtab.strOf(strtab.table(), heap_mod.h(heap, heap_mod.h(heap, tclashes))) });
-            abi.printlist(heap, @constCast(""), depend_mod.alfasort(heap_mod.t(heap, heap_mod.t(heap, heap_mod.h(heap, tclashes)))));
+            abi.printlist(heap, @constCast(""), depend_mod.alfasort(heap, heap_mod.t(heap, heap_mod.t(heap, heap_mod.h(heap, tclashes)))));
             tclashes = heap_mod.t(heap, tclashes);
         }
         word.printErr("typecheck cannot proceed - compilation abandoned\n", .{});

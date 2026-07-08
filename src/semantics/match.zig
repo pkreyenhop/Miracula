@@ -65,28 +65,28 @@ fn t(heap: *Heap, x: Word) Word {
 }
 
 /// Allocate a `CONS` cell `(x . y)`.
-fn cons(x: Word, y: Word) Word {
-    return make(heap_mod.heap(), .CONS, x, y);
+fn cons(heap: *Heap, x: Word, y: Word) Word {
+    return make(heap, .CONS, x, y);
 }
 
 /// Allocate an `AP` cell `(x y)`.
-fn ap(x: Word, y: Word) Word {
-    return make(heap_mod.heap(), .AP, x, y);
+fn ap(heap: *Heap, x: Word, y: Word) Word {
+    return make(heap, .AP, x, y);
 }
 
 /// Allocate `((x y) z)`.
-fn ap2(x: Word, y: Word, z: Word) Word {
-    return ap(ap(x, y), z);
+fn ap2(heap: *Heap, x: Word, y: Word, z: Word) Word {
+    return ap(heap, ap(heap, x, y), z);
 }
 
 /// Allocate a `LAMBDA` cell `(x . y)`.
-fn lambda(x: Word, y: Word) Word {
-    return make(heap_mod.heap(), .LAMBDA, x, y);
+fn lambda(heap: *Heap, x: Word, y: Word) Word {
+    return make(heap, .LAMBDA, x, y);
 }
 
 /// Allocate a `DATAPAIR` cell.
-fn datapair(x: Word, y: Word) Word {
-    return make(heap_mod.heap(), .DATAPAIR, x, y);
+fn datapair(heap: *Heap, x: Word, y: Word) Word {
+    return make(heap, .DATAPAIR, x, y);
 }
 
 /// Whether `x` names a data constructor.
@@ -110,8 +110,8 @@ pub fn scanpattern(heap: *Heap, p: Word, x: Word, e: Word, fail: Word) Word {
         return NIL;
     }
     if (getTag(heap, x) == .ID) {
-        const binding = cons(x, ap2(TRY, ap(lambda(p, x), e), fail));
-        return cons(binding, NIL);
+        const binding = cons(heap, x, ap2(heap, TRY, ap(heap, lambda(heap, p, x), e), fail));
+        return cons(heap, binding, NIL);
     }
     if (isNPlusKPattern(heap, x)) {
         return scanpattern(heap, p, t(heap, x), e, fail);
@@ -124,7 +124,7 @@ pub fn genlhs(heap: *Heap, x: Word) Word {
     switch (getTag(heap, x)) {
         .AP => {
             if (getTag(heap, h(heap, x)) == .AP and h(heap, h(heap, x)) == PLUS and isnat(heap, t(heap, x))) {
-                return ap2(PLUS, t(heap, x), genlhs(heap, t(heap, h(heap, x))));
+                return ap2(heap, PLUS, t(heap, x), genlhs(heap, t(heap, h(heap, x))));
             }
             const hold = genlhs(heap, h(heap, x));
             return make(heap, .AP, hold, genlhs(heap, t(heap, x)));
@@ -135,21 +135,21 @@ pub fn genlhs(heap: *Heap, x: Word) Word {
         },
         .ID => {
             if (member(heap, ls().idsused, x) != 0) {
-                return cons(CONST, x);
+                return cons(heap, CONST, x);
             }
             if (!isConstructor(heap, x)) {
-                ls().idsused = cons(x, ls().idsused);
+                ls().idsused = cons(heap, x, ls().idsused);
             }
             return x;
         },
-        .INT => return cons(CONST, x),
+        .INT => return cons(heap, CONST, x),
         .DOUBLE => {
             syntax("floating point literal in pattern\n") catch {};
             return heap.nill;
         },
         .ATOM => {
             if (x == True or x == False or x == NILS or x == NIL or isChar(x)) {
-                return cons(CONST, x);
+                return cons(heap, CONST, x);
             }
         },
         else => {},
@@ -165,9 +165,9 @@ pub fn transtries(heap: *Heap, id: Word, input_x: Word) Word {
     var earliest: Word = 0;
     var r: Word = undefined;
     if (lower.fallible(heap, h(heap, x)) != 0) {
-        const oldn = if (getTag(heap, id) == .ID) datapair(@as(Word, strtab.strBits(strtab.table(), lower.getId(heap, id))), 0) else 0;
-        info = cons(oldn, 0);
-        r = ap(BADCASE, info);
+        const oldn = if (getTag(heap, id) == .ID) datapair(heap, @as(Word, strtab.strBits(strtab.table(), lower.getId(heap, id))), 0) else 0;
+        info = cons(heap, oldn, 0);
+        r = ap(heap, BADCASE, info);
         if (x == NIL) {
             std.debug.print("Internal error: `earliest' is used uninitialised in transtries(heap, )\nPlease report it to miranda@groups.io\n", .{});
         }
@@ -178,7 +178,7 @@ pub fn transtries(heap: *Heap, id: Word, input_x: Word) Word {
     }
     while (x != NIL) {
         earliest = h(heap, x);
-        r = ap2(TRY, lower.codegen(heap, earliest), r);
+        r = ap2(heap, TRY, lower.codegen(heap, earliest), r);
         x = t(heap, x);
     }
     if (info != 0) {

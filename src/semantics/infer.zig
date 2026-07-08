@@ -1695,7 +1695,7 @@ pub fn checktypes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         comp.TABSTRS = t(heap, comp.TABSTRS);
     }
     if (comp.SBND != NIL) {
-        printlist(heap, "SPECIFIED BUT NOT DEFINED: ", alfasort(comp.SBND));
+        printlist(heap, "SPECIFIED BUT NOT DEFINED: ", alfasort(heap, comp.SBND));
         comp.SBND = NIL;
     }
     fixshows(heap);

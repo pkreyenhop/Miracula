@@ -207,7 +207,7 @@ pub fn readoption(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runt
     word.print("the following type{s} no name in this scope:\n", .{if (t(heap, comp.tlost) == NIL) " is needed but has" else "s are needed but have"});
     while (comp.tlost != NIL) {
         word.print("\'{s}\' of file \"{s}\", needed by: ", .{ strtab.strOf(strtab.table(), h(heap, h(heap, heap_mod.tInfo(h(heap, h(heap, comp.tlost)))))), strtab.strOf(strtab.table(), h(heap, t(heap, heap_mod.tInfo(h(heap, h(heap, comp.tlost)))))) });
-        abi.printlist(heap, @constCast(""), depend_mod.alfasort(t(heap, h(heap, comp.tlost))));
+        abi.printlist(heap, @constCast(""), depend_mod.alfasort(heap, t(heap, h(heap, comp.tlost))));
         comp.tlost = t(heap, comp.tlost);
     }
 }
@@ -324,7 +324,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
     if (comp.CLASHES != NIL) {
         if (rs.ideep == 0) {
             word.print("cannot load {s} ", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
-            abi.printlist(heap, @constCast("due to name clashes: "), depend_mod.alfasort(comp.CLASHES));
+            abi.printlist(heap, @constCast("due to name clashes: "), depend_mod.alfasort(heap, comp.CLASHES));
         }
         dump_mod.unload(heap, comp, rs, ls());
         core.loading = 0;

@@ -121,10 +121,10 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     if (!config_state.config().nostdenv) {
         dump.undump(heap, core_state.s(), cs(), rt.rs(), @as([*:0]const u8, @ptrCast(&config_state.config().STDENV)));
         while (heap.files != NIL) {
-            rt.rs().primenv = depend_mod.alfasort(abi.append1(rt.rs().primenv, heap_mod.filDefs(heap_mod.h(heap, heap.files))));
+            rt.rs().primenv = depend_mod.alfasort(heap, abi.append1(rt.rs().primenv, heap_mod.filDefs(heap_mod.h(heap, heap.files))));
             heap.files = heap_mod.t(heap, heap.files);
         }
-        rt.rs().primenv = depend_mod.alfasort(rt.rs().primenv);
+        rt.rs().primenv = depend_mod.alfasort(heap, rt.rs().primenv);
         cs().newtyps = NIL;
         heap.files = NIL;
     }
@@ -246,7 +246,7 @@ fn runExportsMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
             word.print("\t}}\n", .{});
         }
 
-        var item = abi.typesfirst(heap, depend_mod.alfasort(x));
+        var item = abi.typesfirst(heap, depend_mod.alfasort(heap, x));
         while (item != NIL) : (item = heap_mod.t(heap, item)) {
             _ = word.putchar('\t');
             abi.reportType(heap, heap_mod.h(heap, item));

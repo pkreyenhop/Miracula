@@ -167,9 +167,9 @@ pub const PrivateNames = struct {
     /// Allocate a fresh private-name node holding `val`. Matches `lex.zig`'s
     /// `makePn`: the node's index is its position (`nextpn` there, `items.len`
     /// here) at allocation time.
-    pub fn make(self: *PrivateNames, gpa: std.mem.Allocator, val: Word) !Word {
+    pub fn make(self: *PrivateNames, heap: *heap_mod.Heap, gpa: std.mem.Allocator, val: Word) !Word {
         const idx = self.table.items.len;
-        const node = heap_mod.make(heap_mod.heap(), .STRCONS, @intCast(idx), val);
+        const node = heap_mod.make(heap, .STRCONS, @intCast(idx), val);
         try self.table.append(gpa, node);
         return node;
     }
@@ -178,10 +178,10 @@ pub const PrivateNames = struct {
     /// (`val = UNDEF`) up to and including `n` if it hasn't been made yet.
     /// Matches `lex.zig`'s `stoPn` (used when a private name is referenced —
     /// e.g. during dump/undump — before `make` has been called for it).
-    pub fn get(self: *PrivateNames, gpa: std.mem.Allocator, n: usize) !Word {
+    pub fn get(self: *PrivateNames, heap: *heap_mod.Heap, gpa: std.mem.Allocator, n: usize) !Word {
         while (self.table.items.len <= n) {
             const idx = self.table.items.len;
-            try self.table.append(gpa, heap_mod.make(heap_mod.heap(), .STRCONS, @intCast(idx), word.UNDEF));
+            try self.table.append(gpa, heap_mod.make(heap, .STRCONS, @intCast(idx), word.UNDEF));
         }
         return self.table.items[n];
     }
@@ -262,8 +262,8 @@ test "PrivateNames.make: each call allocates a fresh, index-tagged node" {
     tu.freshInterp();
     var pns: PrivateNames = .{};
     defer pns.deinit(std.testing.allocator);
-    const n0 = try pns.make(std.testing.allocator, word.UNDEF);
-    const n1 = try pns.make(std.testing.allocator, word.UNDEF);
+    const n0 = try pns.make(heap_mod.heap(), std.testing.allocator, word.UNDEF);
+    const n1 = try pns.make(heap_mod.heap(), std.testing.allocator, word.UNDEF);
     try std.testing.expect(n0 != n1);
     try std.testing.expectEqual(@as(usize, 2), pns.count());
 }
@@ -272,9 +272,9 @@ test "PrivateNames.get: allocates placeholders up to index n, then is stable" {
     tu.freshInterp();
     var pns: PrivateNames = .{};
     defer pns.deinit(std.testing.allocator);
-    const n5_first = try pns.get(std.testing.allocator, 5);
+    const n5_first = try pns.get(heap_mod.heap(), std.testing.allocator, 5);
     try std.testing.expectEqual(@as(usize, 6), pns.count()); // indices 0..5
-    const n5_again = try pns.get(std.testing.allocator, 5);
+    const n5_again = try pns.get(heap_mod.heap(), std.testing.allocator, 5);
     try std.testing.expectEqual(n5_first, n5_again);
 }
 
@@ -282,8 +282,8 @@ test "PrivateNames.get after make: pre-existing indices are not reallocated" {
     tu.freshInterp();
     var pns: PrivateNames = .{};
     defer pns.deinit(std.testing.allocator);
-    const made = try pns.make(std.testing.allocator, word.UNDEF); // index 0
-    const fetched = try pns.get(std.testing.allocator, 0);
+    const made = try pns.make(heap_mod.heap(), std.testing.allocator, word.UNDEF); // index 0
+    const fetched = try pns.get(heap_mod.heap(), std.testing.allocator, 0);
     try std.testing.expectEqual(made, fetched);
 }
 

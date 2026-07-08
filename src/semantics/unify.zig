@@ -44,8 +44,8 @@ fn t(heap: *Heap, x: Word) Word {
 }
 
 /// Allocate a `CONS` cell `(x . y)`.
-fn cons(x: Word, y: Word) Word {
-    return make(heap_mod.heap(), .CONS, x, y);
+fn cons(heap: *Heap, x: Word, y: Word) Word {
+    return make(heap, .CONS, x, y);
 }
 
 /// Make a type-variable node with index `i`.
@@ -108,7 +108,7 @@ pub fn lookup(heap: *Heap, tv: Word) Word {
 /// Bind type variable `tv` to `term` in the substitution.
 pub fn addsubst(heap: *Heap, tv: Word, term: Word) void {
     const hv = hashval(heap, tv);
-    cs().SUBST[hv] = cons(cons(tv, term), cs().SUBST[hv]);
+    cs().SUBST[hv] = cons(heap, cons(heap, tv, term), cs().SUBST[hv]);
 }
 
 /// Resolve `tv` to its ultimate substituted form (union-find walk).
@@ -118,8 +118,8 @@ pub fn ult(heap: *Heap, tv: Word) Word {
 }
 
 /// Allocate an application cell `(x y)`.
-fn ap(x: Word, y: Word) Word {
-    return make(heap_mod.heap(), .AP, x, y);
+fn ap(heap: *Heap, x: Word, y: Word) Word {
+    return make(heap, .AP, x, y);
 }
 
 /// Apply `f` to every type variable in `term`, rebuilding it.
@@ -130,7 +130,7 @@ fn walktype(heap: *Heap, term: Word, f: *const fn (*Heap, Word) Word) Word {
     if (isCompoundType(heap, term)) {
         const h1 = walktype(heap, h(heap, term), f);
         const t1 = walktype(heap, t(heap, term), f);
-        return if (h1 == h(heap, term) and t1 == t(heap, term)) term else ap(h1, t1);
+        return if (h1 == h(heap, term) and t1 == t(heap, term)) term else ap(heap, h1, t1);
     }
     return term;
 }
@@ -153,7 +153,7 @@ fn lmap(heap: *Heap, tv: Word) Word {
         l = t(heap, l);
     }
     const new_var = NTV();
-    cs().localtvmap = cons(cons(tv, new_var), cs().localtvmap);
+    cs().localtvmap = cons(heap, cons(heap, tv, new_var), cs().localtvmap);
     return new_var;
 }
 
@@ -185,7 +185,7 @@ fn mapup(heap: *Heap, tv_in: Word) Word {
         m = tp(heap, m.*);
     }
     if (m.* == NIL) {
-        m.* = cons(NTV(), NIL);
+        m.* = cons(heap, NTV(), NIL);
     }
     return h(heap, m.*);
 }
@@ -213,7 +213,7 @@ fn mapdown(heap: *Heap, tv: Word) Word {
         i += 1;
     }
     if (m.* == NIL) {
-        m.* = cons(tv, NIL);
+        m.* = cons(heap, tv, NIL);
     }
     return mktvar(i);
 }

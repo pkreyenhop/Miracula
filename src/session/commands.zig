@@ -80,7 +80,7 @@ fn namescom(heap: *Heap, rs: *rt.RuntimeState, l: Word) void {
     var wp: usize = 0;
     const scrwd = files.termWidth();
     if (script_store.store().sorted == 0 and n != rs.primenv) {
-        n = depend_mod.alfasort(n);
+        n = depend_mod.alfasort(heap, n);
         heap_mod.tp(heap, l).* = n;
     }
     if (n == NIL) return;

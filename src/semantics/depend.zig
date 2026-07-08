@@ -435,7 +435,7 @@ pub fn redtfr(heap: *Heap, x_in: Word) void {
 }
 
 /// Sort a list of identifiers alphabetically by name.
-pub fn alfasort(x_val: Word) Word {
+pub fn alfasort(heap: *Heap, x_val: Word) Word {
     var x = x_val;
     var a = NIL;
     var b = NIL;
@@ -443,35 +443,35 @@ pub fn alfasort(x_val: Word) Word {
     if (x == NIL) {
         return NIL;
     }
-    if (heap_mod.t(heap_mod.heap(), x) == NIL) {
-        return if (heap_mod.getTag(heap_mod.heap(), heap_mod.h(heap_mod.heap(), x)) != .ID) NIL else x;
+    if (heap_mod.t(heap, x) == NIL) {
+        return if (heap_mod.getTag(heap, heap_mod.h(heap, x)) != .ID) NIL else x;
     }
     while (x != NIL) {
-        if (heap_mod.getTag(heap_mod.heap(), heap_mod.h(heap_mod.heap(), x)) == .ID) {
+        if (heap_mod.getTag(heap, heap_mod.h(heap, x)) == .ID) {
             hold = a;
-            a = heap_mod.cons(heap_mod.heap(), heap_mod.h(heap_mod.heap(), x), b);
+            a = heap_mod.cons(heap, heap_mod.h(heap, x), b);
             b = hold;
         }
-        x = heap_mod.t(heap_mod.heap(), x);
+        x = heap_mod.t(heap, x);
     }
-    a = alfasort(a);
-    b = alfasort(b);
+    a = alfasort(heap, a);
+    b = alfasort(heap, b);
     x = NIL;
     while (a != NIL and b != NIL) {
-        if (std.mem.order(u8, std.mem.span(heap_mod.getId(heap_mod.h(heap_mod.heap(), a))), std.mem.span(heap_mod.getId(heap_mod.h(heap_mod.heap(), b)))) == .lt) {
-            x = heap_mod.cons(heap_mod.heap(), heap_mod.h(heap_mod.heap(), a), x);
-            a = heap_mod.t(heap_mod.heap(), a);
+        if (std.mem.order(u8, std.mem.span(heap_mod.getId(heap_mod.h(heap, a))), std.mem.span(heap_mod.getId(heap_mod.h(heap, b)))) == .lt) {
+            x = heap_mod.cons(heap, heap_mod.h(heap, a), x);
+            a = heap_mod.t(heap, a);
         } else {
-            x = heap_mod.cons(heap_mod.heap(), heap_mod.h(heap_mod.heap(), b), x);
-            b = heap_mod.t(heap_mod.heap(), b);
+            x = heap_mod.cons(heap, heap_mod.h(heap, b), x);
+            b = heap_mod.t(heap, b);
         }
     }
     if (a == NIL) {
         a = b;
     }
     while (a != NIL) {
-        x = heap_mod.cons(heap_mod.heap(), heap_mod.h(heap_mod.heap(), a), x);
-        a = heap_mod.t(heap_mod.heap(), a);
+        x = heap_mod.cons(heap, heap_mod.h(heap, a), x);
+        a = heap_mod.t(heap, a);
     }
     return reverse(x);
 }

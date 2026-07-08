@@ -191,43 +191,43 @@ fn cons(x: Word, y: Word) Word {
 }
 
 /// Allocate a `PAIR` cell `(x . y)`.
-fn pair(x: Word, y: Word) Word {
-    return make(heap_mod.heap(), .PAIR, x, y);
+fn pair(heap: *Heap, x: Word, y: Word) Word {
+    return make(heap, .PAIR, x, y);
 }
 
 /// Allocate a `DATAPAIR` cell.
-fn datapair(x: Word, y: Word) Word {
-    return make(heap_mod.heap(), .DATAPAIR, x, y);
+fn datapair(heap: *Heap, x: Word, y: Word) Word {
+    return make(heap, .DATAPAIR, x, y);
 }
 
 /// Allocate a `CONSTRUCTOR` cell (tag `n`, fields `x`).
-fn constructor(n: Word, x: Word) Word {
-    return make(heap_mod.heap(), .CONSTRUCTOR, n, x);
+fn constructor(heap: *Heap, n: Word, x: Word) Word {
+    return make(heap, .CONSTRUCTOR, n, x);
 }
 
 /// Allocate a `LAMBDA` cell `(x . y)`.
-fn lambda(x: Word, y: Word) Word {
-    return make(heap_mod.heap(), .LAMBDA, x, y);
+fn lambda(heap: *Heap, x: Word, y: Word) Word {
+    return make(heap, .LAMBDA, x, y);
 }
 
 /// Allocate a `SHARE` cell (a shared / lazily-evaluated binding).
-fn share(x: Word, y: Word) Word {
-    return make(heap_mod.heap(), .SHARE, x, y);
+fn share(heap: *Heap, x: Word, y: Word) Word {
+    return make(heap, .SHARE, x, y);
 }
 
 /// Allocate a `TRIES` cell (a chain of pattern-match alternatives).
-fn tries(x: Word, y: Word) Word {
-    return make(heap_mod.heap(), .TRIES, x, y);
+fn tries(heap: *Heap, x: Word, y: Word) Word {
+    return make(heap, .TRIES, x, y);
 }
 
 /// Allocate a `LET` cell.
-fn let(x: Word, y: Word) Word {
-    return make(heap_mod.heap(), .LET, x, y);
+fn let(heap: *Heap, x: Word, y: Word) Word {
+    return make(heap, .LET, x, y);
 }
 
 /// Allocate a `LETREC` cell.
-fn letrec(x: Word, y: Word) Word {
-    return make(heap_mod.heap(), .LETREC, x, y);
+fn letrec(heap: *Heap, x: Word, y: Word) Word {
+    return make(heap, .LETREC, x, y);
 }
 
 /// Allocate an application `(x y)`.
@@ -490,7 +490,7 @@ pub fn mktuple(heap: *Heap, input_x: Word) Word {
     }
     const y = mktuple(heap, t(heap, x));
     x = mktuple(heap, h(heap, x));
-    return if (x == NIL) y else if (y == NIL) x else pair(x, y);
+    return if (x == NIL) y else if (y == NIL) x else pair(heap, x, y);
 }
 
 /// Whether pattern `x` is irrefutable (always matches).
@@ -783,7 +783,7 @@ pub fn mklazy(heap: *Heap, d: Word) Word {
         std.debug.print("impossible event in mklazy\n", .{});
         return d;
     }
-    setDval(heap, d, ap2(TRY, ap(lambda(dlhs(heap, d), ids), dval(heap, d)), ap(CONFERROR, cons(dlhs(heap, d), hereInfo(heap, dval(heap, d))))));
+    setDval(heap, d, ap2(TRY, ap(lambda(heap, dlhs(heap, d), ids), dval(heap, d)), ap(CONFERROR, cons(dlhs(heap, d), hereInfo(heap, dval(heap, d))))));
     setDlhs(heap, d, ids);
     return d;
 }
@@ -795,7 +795,7 @@ pub fn newMkLazy(heap: *Heap, d: Word) Word {
         std.debug.print("impossible event in newMkLazy\n", .{});
         return d;
     }
-    setDval(heap, d, ap2(TRY, ap(lambda(dlhs(heap, d), ids), dval(heap, d)), ap(CONFERROR, cons(dlhs(heap, d), hereInfo(heap, dval(heap, d))))));
+    setDval(heap, d, ap2(TRY, ap(lambda(heap, dlhs(heap, d), ids), dval(heap, d)), ap(CONFERROR, cons(dlhs(heap, d), hereInfo(heap, dval(heap, d))))));
     setDlhs(heap, d, ids);
     return d;
 }
@@ -851,14 +851,14 @@ pub fn transzf(heap: *Heap, e_input: Word, qq_input: Word, conc: Word) Word {
             return t(heap, t(heap, q));
         }
         if (irrefutable(heap, h(heap, t(heap, q))) != 0) {
-            return ap2(MAP, lambda(h(heap, t(heap, q)), e), t(heap, t(heap, q)));
+            return ap2(MAP, lambda(heap, h(heap, t(heap, q)), e), t(heap, t(heap, q)));
         }
-        return ap2(FLATMAP, lambda(h(heap, t(heap, q)), cons(e, NIL)), t(heap, t(heap, q)));
+        return ap2(FLATMAP, lambda(heap, h(heap, t(heap, q)), cons(e, NIL)), t(heap, t(heap, q)));
     }
     const q2 = h(heap, t(heap, qq));
     if (h(heap, q2) == GUARD) {
         if (conc == rt.rs().concat) {
-            tp(heap, t(heap, q)).* = ap2(FILTER, lambda(h(heap, t(heap, q)), t(heap, q2)), t(heap, t(heap, q)));
+            tp(heap, t(heap, q)).* = ap2(FILTER, lambda(heap, h(heap, t(heap, q)), t(heap, q2)), t(heap, t(heap, q)));
             tp(heap, qq).* = t(heap, t(heap, qq));
             return transzf(heap, e, qq, conc);
         }
@@ -1120,7 +1120,7 @@ pub fn nameclash(heap: *Heap, x: Word) void {
 
 /// Declare data constructor `x` of type `constr_type`.
 pub fn declconstr(heap: *Heap, x: Word, n: Word, constr_type: Word) void {
-    setIdVal(heap, x, constructor(n, x));
+    setIdVal(heap, x, constructor(heap, n, x));
     if ((n >> 16) != 0) {
         syntax("algebraic type has too many constructors\n") catch {};
         return;
@@ -1238,7 +1238,7 @@ fn decl1(heap: *Heap, x: Word, e: Word) void {
         return;
     }
     if (idVal(heap, x) == UNDEF) {
-        setIdVal(heap, x, tries(x, cons(e, NIL)));
+        setIdVal(heap, x, tries(heap, x, cons(e, NIL)));
         if (idWho(heap, x) != NIL) {
             cs().speclocs = cons(cons(x, idWho(heap, x)), cs().speclocs);
         }
@@ -1262,7 +1262,7 @@ pub fn declare(heap: *Heap, x: Word, e: Word) void {
         decl1(heap, x, e);
         return;
     }
-    var bindings = match.scanpattern(heap, x, x, share(tries(x, cons(e, NIL)), undef_t), ap(CONFERROR, cons(x, h(heap, e))));
+    var bindings = match.scanpattern(heap, x, x, share(heap, tries(heap, x, cons(e, NIL)), undef_t), ap(CONFERROR, cons(x, h(heap, e))));
     if (bindings == NIL) {
         core_state.s().errs = h(heap, e);
         syntax("illegal lhs for definition\n") catch {};
@@ -1331,7 +1331,7 @@ pub fn block(heap: *Heap, input_defs: Word, input_e: Word, keep: Word) Word {
             script_store.store().detrop = append1(script_store.store().detrop, defs);
         }
         if (keep != 0) {
-            return letrec(y, e);
+            return letrec(heap, y, e);
         }
     }
     g = msc(heap, g);
@@ -1339,9 +1339,9 @@ pub fn block(heap: *Heap, input_defs: Word, input_e: Word, keep: Word) Word {
     g = reverse(g);
     while (g != NIL) : (g = t(heap, g)) {
         if (t(heap, h(heap, g)) == NIL and intersection(heap, getIds(heap, dlhs(heap, h(heap, h(heap, g)))), deps(heap, dval(heap, h(heap, h(heap, g))))) == NIL) {
-            e = let(h(heap, h(heap, g)), e);
+            e = let(heap, h(heap, h(heap, g)), e);
         } else {
-            e = letrec(h(heap, g), e);
+            e = letrec(heap, h(heap, g), e);
         }
     }
     return e;

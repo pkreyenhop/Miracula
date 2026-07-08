@@ -2086,8 +2086,44 @@ subsystems and passed explicitly; the ambient singleton deleted.
    case. `eval/` subsystem is now effectively fully receiver-threaded outside
    test code and those two structural exceptions.
 
-   Remaining subsystems (`semantics`'s `Compile` context, `session`) and the
-   final singleton-deletion step are not yet started.
+   **`semantics` subsystem, in progress.** No `Compile` context struct was
+   introduced — `heap: *Heap` was already the first parameter on essentially
+   every `pub fn` across `depend.zig`/`lower.zig`/`match.zig`/`infer.zig`/
+   `unify.zig`/`type_errors.zig`/`modules.zig`/`symbols.zig` from earlier
+   phases' work, so this slice was purely about each file's own small private
+   ambient helpers (the same `cons`/`ap`/`datapair`/… pattern as `eval`'s).
+   Converted where the caller count was small and every caller already had
+   `heap` in scope: `type_errors.zig`'s `ap` (2 callers), `unify.zig`'s
+   `cons`/`ap` (4 and 1 callers — `mktvar` stays ambient-internal, entangled
+   with `NTV()`'s ~100 far-flung callers in `infer.zig`'s dispatch table, see
+   below), `symbols.zig`'s `PrivateNames.make`/`get` (test-only callers, no
+   non-test call sites exist yet — `PrivateNames` isn't wired into
+   `codegen.zig`/`lex.zig` yet), `match.zig`'s `cons`/`ap`/`ap2`/`lambda`/
+   `datapair` (8 real call sites total, all within `heap`-scoped functions),
+   `depend.zig`'s `alfasort` (the recursive merge-sort flagged safe by the
+   earlier audit — O(log n) depth — now takes `heap` explicitly, fixing all
+   12 external call sites across `infer.zig`/`compiler/dump.zig`/
+   `compiler/module_loader.zig`/`session/boot.zig`/`session/commands.zig`),
+   and `lower.zig`'s `pair`/`datapair`/`constructor`/`lambda`/`share`/`tries`/
+   `let`/`letrec` (2-6 callers each, all within `heap`-scoped functions).
+
+   **Deliberately left ambient-internal** (matching the `infer.zig` `ap`/
+   `tf`/`tf2`/`tf3`/`lt`/`pairType` precedent from earlier this phase):
+   `infer.zig`'s own `cons`/`ap` (entangled with that same ~50+-site dispatch
+   table), `unify.zig`'s `mktvar` (wraps `NTV()`, called ~100 times across
+   `infer.zig`'s dispatch with no `heap` anywhere nearby), and `lower.zig`'s
+   `cons`/`ap`/`ap2`/`ap3` (47 and 38 real call sites respectively — the
+   file's own version of the same giant `codegen()` dispatch-table shape).
+   `modules.zig`'s 2 sites (inside `applyExportsAndAliases`, one caller deep
+   with no `heap` threaded anywhere in that particular call chain) also left
+   as-is — a real but small cascade, lower priority than the sites just
+   fixed.
+
+   `zig build test`: all 253 unit tests + integration suite + spine
+   differential/golden corpus green after every sub-slice. `layer_check.py`:
+   0 new violations. `scorecard.sh`: no regression.
+
+   Remaining: `session` subsystem, then the final singleton-deletion step.
 
 **Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
 interrupt flag); DAG check green with empty allowlist; files > 1,000 lines = 0;

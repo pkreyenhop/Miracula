@@ -77,8 +77,8 @@ fn t(heap: *Heap, x: Word) Word {
 }
 
 /// Allocate an application cell `(x y)`.
-fn ap(x: Word, y: Word) Word {
-    return heap_mod.make(heap_mod.heap(), .AP, x, y);
+fn ap(heap: *Heap, x: Word, y: Word) Word {
+    return heap_mod.make(heap, .AP, x, y);
 }
 
 /// The value (tail) of a private-name node.
@@ -192,7 +192,7 @@ pub fn reportType(heap: *Heap, x: Word) void {
 
 /// Report a type mismatch between `t1_val` and `t2_val` (`a`/`b` name the sides).
 pub fn typeError(heap: *Heap, a: [*:0]const u8, b: [*:0]const u8, t1_val: Word, t2_val: Word) void {
-    var t1 = redtvars(heap, ap(subst(heap, t1_val), subst(heap, t2_val)));
+    var t1 = redtvars(heap, ap(heap, subst(heap, t1_val), subst(heap, t2_val)));
     const t2 = t(heap, t1);
     t1 = h(heap, t1);
     locate(heap, "type error");
@@ -272,7 +272,7 @@ pub fn typeError8(heap: *Heap, t1_val: Word, t2_val: Word) void {
         t1 = t(heap, t1);
         t2 = t(heap, t2);
     }
-    t1 = redtvars(heap, ap(t1, t2));
+    t1 = redtvars(heap, ap(heap, t1, t2));
     t2 = t(heap, t1);
     t1 = h(heap, t1);
     const big = size(t1) >= 10 or size(t2) >= 10;
