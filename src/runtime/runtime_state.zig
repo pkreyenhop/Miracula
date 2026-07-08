@@ -44,17 +44,6 @@ pub const RuntimeState = struct {
     indent_fn: Word = 0,
     outdent_fn: Word = 0,
     listdiff_fn: Word = 0,
-    shownum1: Word = 0,
-    showbool: Word = 0,
-    showchar: Word = 0,
-    showlist: Word = 0,
-    showstring: Word = 0,
-    showparen: Word = 0,
-    showpair: Word = 0,
-    showvoid: Word = 0,
-    showfunction: Word = 0,
-    showabstract: Word = 0,
-    showwhat: Word = 0,
     /// Last identifier referenced interactively; used for `//f` finger command.
     lastid: Word = 0,
     rv_expr: Word = 0,
@@ -182,7 +171,7 @@ pub const RuntimeState = struct {
         const heap = &@import("../session/interp.zig").current_interp.heap;
         const top_limit = heap.TOP();
 
-        inline for (.{ self.Void, self.main_id, self.message, self.standardout, self.diagonalise, self.concat, self.indent_fn, self.outdent_fn, self.listdiff_fn, self.shownum1, self.showbool, self.showchar, self.showlist, self.showstring, self.showparen, self.showpair, self.showvoid, self.showfunction, self.showabstract, self.showwhat, self.lastid, self.rv_expr, self.fnts, self.primenv, self.oldfiles, self.includees, self.freeids, self.exports, self.embargoes, self.lastname, self.suppressids, self.col_fn, self.detrop, self.rfl, self.ld_stuff }) |field| {
+        inline for (.{ self.Void, self.main_id, self.message, self.standardout, self.diagonalise, self.concat, self.indent_fn, self.outdent_fn, self.listdiff_fn, self.lastid, self.rv_expr, self.fnts, self.primenv, self.oldfiles, self.includees, self.freeids, self.exports, self.embargoes, self.lastname, self.suppressids, self.col_fn, self.detrop, self.rfl, self.ld_stuff }) |field| {
             if (field >= @import("../graph/word.zig").ATOMLIMIT) {
                 if (field >= top_limit) {
                     std.debug.panic("runtime.validate: runtime state field has out-of-bounds heap reference {d} (TOP is {d})", .{ field, top_limit });

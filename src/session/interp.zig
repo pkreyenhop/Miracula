@@ -32,6 +32,7 @@ const LineEditState = @import("editor.zig").LineEditState;
 const SymbolTable = @import("../semantics/symbols.zig").SymbolTable;
 const MakeState = @import("make_state.zig").MakeState;
 const BnfState = @import("bnf_state.zig").BnfState;
+const ShowFns = @import("../semantics/show_fns.zig").ShowFns;
 
 /// All interpreter state, owned in one place — including heap's GC/dictionary
 /// scratch (folded into `heap` by Phase 2b), the interned `strtab` table, and
@@ -61,6 +62,8 @@ pub const Interp = struct {
     /// The `%bnf` grammar-extension bookkeeping (Phase 4 step 4): mostly
     /// dead GC roots left over from Phase 1's lexer rewrite.
     bnf: BnfState = .{},
+    /// The per-type `show` combinator identifiers (Phase 4 step 4).
+    show: ShowFns = .{},
 };
 
 /// Backing storage for the default interpreter instance. Not read directly —

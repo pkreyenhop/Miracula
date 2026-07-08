@@ -41,4 +41,5 @@ src/os.zig -> src/semantics/unify.zig
 src/os.zig -> src/session/repl.zig
 src/semantics/infer.zig -> src/os.zig
 src/semantics/lower.zig -> src/os.zig
+src/semantics/show_fns.zig -> src/session/interp.zig
 src/semantics/symbols.zig -> src/session/interp.zig

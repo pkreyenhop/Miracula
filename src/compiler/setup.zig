@@ -5,6 +5,7 @@
 
 const std = @import("std");
 const rt = @import("../runtime/runtime_state.zig");
+const show_fns = @import("../semantics/show_fns.zig");
 const cs = @import("compiler_state.zig").cs;
 const word = @import("../graph/word.zig");
 const abi = @import("../os.zig");
@@ -238,17 +239,17 @@ pub fn miraSetup() void {
     rt.rs().indent_fn = abi.makeId(@constCast("indent"));
     rt.rs().outdent_fn = abi.makeId(@constCast("outdent"));
     rt.rs().listdiff_fn = abi.makeId(@constCast("listdiff"));
-    rt.rs().shownum1 = abi.makeId(@constCast("shownum1"));
-    rt.rs().showbool = abi.makeId(@constCast("showbool"));
-    rt.rs().showchar = abi.makeId(@constCast("showchar"));
-    rt.rs().showlist = abi.makeId(@constCast("showlist"));
-    rt.rs().showstring = abi.makeId(@constCast("showstring"));
-    rt.rs().showparen = abi.makeId(@constCast("showparen"));
-    rt.rs().showpair = abi.makeId(@constCast("showpair"));
-    rt.rs().showvoid = abi.makeId(@constCast("showvoid"));
-    rt.rs().showfunction = abi.makeId(@constCast("showfunction"));
-    rt.rs().showabstract = abi.makeId(@constCast("showabstract"));
-    rt.rs().showwhat = abi.makeId(@constCast("showwhat"));
+    show_fns.show().shownum1 = abi.makeId(@constCast("shownum1"));
+    show_fns.show().showbool = abi.makeId(@constCast("showbool"));
+    show_fns.show().showchar = abi.makeId(@constCast("showchar"));
+    show_fns.show().showlist = abi.makeId(@constCast("showlist"));
+    show_fns.show().showstring = abi.makeId(@constCast("showstring"));
+    show_fns.show().showparen = abi.makeId(@constCast("showparen"));
+    show_fns.show().showpair = abi.makeId(@constCast("showpair"));
+    show_fns.show().showvoid = abi.makeId(@constCast("showvoid"));
+    show_fns.show().showfunction = abi.makeId(@constCast("showfunction"));
+    show_fns.show().showabstract = abi.makeId(@constCast("showabstract"));
+    show_fns.show().showwhat = abi.makeId(@constCast("showwhat"));
     primlib(heap);
 }
 

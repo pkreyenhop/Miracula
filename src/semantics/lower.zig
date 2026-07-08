@@ -124,6 +124,7 @@ const big = @import("../graph/bignum.zig");
 const lex = @import("../parser/lex.zig");
 const setup = @import("../compiler/setup.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const show_fns = @import("show_fns.zig");
 
 const make = heap_mod.make;
 const append1 = heap_mod.append1;
@@ -1004,25 +1005,25 @@ pub fn mkshow(heap: *Heap, s: Word, p: Word, input_t: Word) Word {
         type_node = h(heap, type_node);
     }
     switch (type_node) {
-        num_t => return if (p != 0) rt.rs().shownum1 else SHOWNUM,
-        bool_t => return rt.rs().showbool,
-        char_t => return rt.rs().showchar,
+        num_t => return if (p != 0) show_fns.show().shownum1 else SHOWNUM,
+        bool_t => return show_fns.show().showbool,
+        char_t => return show_fns.show().showchar,
         list_t => {
             if (h(heap, args) == char_t) {
-                return rt.rs().showstring;
+                return show_fns.show().showstring;
             }
-            return ap(rt.rs().showlist, mkshow(heap, s, 0, h(heap, args)));
+            return ap(show_fns.show().showlist, mkshow(heap, s, 0, h(heap, args)));
         },
-        comma_t => return ap(rt.rs().showparen, ap2(rt.rs().showpair, mkshow(heap, s, 0, h(heap, args)), mkshowt(heap, s, h(heap, t(heap, args))))),
-        void_t => return rt.rs().showvoid,
-        arrow_t => return rt.rs().showfunction,
+        comma_t => return ap(show_fns.show().showparen, ap2(show_fns.show().showpair, mkshow(heap, s, 0, h(heap, args)), mkshowt(heap, s, h(heap, t(heap, args))))),
+        void_t => return show_fns.show().showvoid,
+        arrow_t => return show_fns.show().showfunction,
         else => {
             if (getTag(heap, type_node) == .ID) {
                 var r = typeShowFn(heap, type_node);
                 if (r == 0) {
-                    return rt.rs().showabstract;
+                    return show_fns.show().showabstract;
                 }
-                if (r == rt.rs().showwhat) {
+                if (r == show_fns.show().showwhat) {
                     return r;
                 }
                 while (args != NIL) {
@@ -1039,16 +1040,16 @@ pub fn mkshow(heap: *Heap, s: Word, p: Word, input_t: Word) Word {
                     return type_node;
                 }
                 cs().was_poly = 1;
-                return rt.rs().showwhat;
+                return show_fns.show().showwhat;
             }
             if (getTag(heap, type_node) == .STRCONS) {
                 _ = word.print("warning - mkshow applied to suppressed type\n", .{});
-                return rt.rs().showwhat;
+                return show_fns.show().showwhat;
             }
             _ = word.print("impossible event in mkshow (", .{});
             outType(heap, type_node);
             _ = word.print(")\n", .{});
-            return rt.rs().showwhat;
+            return show_fns.show().showwhat;
         },
     }
 }
@@ -1058,7 +1059,7 @@ pub fn mkshowt(heap: *Heap, s: Word, type_tuple: Word) Word {
     if (t(heap, type_tuple) == void_t) {
         return mkshow(heap, s, 0, t(heap, h(heap, type_tuple)));
     }
-    return ap2(rt.rs().showpair, mkshow(heap, s, 0, t(heap, h(heap, type_tuple))), mkshowt(heap, s, t(heap, type_tuple)));
+    return ap2(show_fns.show().showpair, mkshow(heap, s, 0, t(heap, h(heap, type_tuple))), mkshowt(heap, s, t(heap, type_tuple)));
 }
 
 /// Name-clash check helper (returns a count).
@@ -1154,7 +1155,7 @@ pub fn specify(heap: *Heap, input_x: Word, spec_type: Word, here: Word) void {
         if (idWho(heap, x) == NIL) {
             setIdWho(heap, x, here);
         }
-        setIdVal(heap, x, makeTyp(arity, rt.rs().showwhat, placeholder_t, NIL));
+        setIdVal(heap, x, makeTyp(arity, show_fns.show().showwhat, placeholder_t, NIL));
         addToEnv(heap, x);
         cs().newtyps = add1(heap, x, cs().newtyps);
         return;
