@@ -1704,7 +1704,53 @@ subsystems and passed explicitly; the ambient singleton deleted.
    - `heap.zig` → `graph/heap.zig` (arena, make/cons, payload accessors),
      `graph/gc.zig` (mark/sweep, dstack, root marking), `graph/dump.zig`
      (`dumpScript`/`loadScript` + XBASE), `graph/print.zig` (`outTerm`, `charname`);
-     `alfasort` → `semantics/`.
+     `alfasort` → `semantics/`. **Landed** (2026-07-08), fourth and last of
+     the four splits, done in three commits. (1) A pure move
+     `runtime/heap.zig` → `graph/heap.zig` (34 importers fixed), no logic
+     change. (2) `graph/print.zig`: `charname`/`outReal`/`castPtr`
+     (private→pub)/`outTerm`/`outSubterm`/`outAtom`, the term/type printer.
+     (3) `graph/dump.zig`: the full `.x` wire format —
+     `setprefix`/`mkrel`/`okdump`/`geterrlin`, `getword`/`putword`/
+     `putint`/`getint`/`putdbl`/`getdbl`, `dumpScript`/`dumpDefs`/`dumpOb`,
+     `loadScript`/`loadDefs`, `bindparams`/`unscramble`, `unload`/
+     `unsetids`/`srcUpdate`, plus the private helpers used only by those
+     (the four `id*Ptr` accessors, `getPn`/`pnVal`, the dump scratch-stack
+     `stackp*`, `datapair`/`fileinfo`/`readvals`/`ap`, a duplicated
+     `gettvar`/`mktvar`) — matching the existing convention of duplicating
+     cheap accessors into each split file rather than exporting internals.
+     `alfasort` moved to `semantics/depend.zig` in the same pass (a generic
+     list-sort utility, not heap machinery); 8 external call sites
+     repointed. **No separate `graph/gc.zig` this pass**: the plan's
+     one-line manifest lists "mark/sweep, dstack, root marking" for it, but
+     `Heap.mark`/`Heap.gc` are *methods* on the `Heap` struct itself (which
+     stays intact as one unit per the pure-move commit), and the
+     free-function wrappers around them (`gc()`, `setupheap`/`resetheap`/
+     `resetgcstats`, `mallocfail`/`mallocPanic`, `markRoot`) are thin
+     singleton-delegators — the same category as `h`/`t`/`cons`, which
+     already stay in `heap.zig` rather than getting their own file.
+     `dstack`'s allocation (`dsetup`/`dgrow`) turned out to be dump-load
+     scratch-stack management, not GC bookkeeping (the comment literally
+     says "the dump scratch stack"), so it went to `dump.zig` with the rest
+     of the load path, not a hypothetical `gc.zig`. A real `graph/gc.zig`
+     would mean pulling `mark`/`gc` out of the `Heap` struct itself — an
+     actual architecture change, not a move, and out of scope here.
+     **Corruption caught during verification**: the first draft of
+     `dump.zig` reconstructed `getPn`/`pnVal` and the four `id*Ptr` helpers
+     from memory instead of copying the committed source, and got every
+     field-offset formula wrong (e.g. `idTypePtr` as `hp(t(x))` instead of
+     the real `tp(h(x))`). This compiled cleanly and was invisible until
+     the built binary crashed loading the prelude (`reached unreachable
+     code` in `Heap.hp`'s bounds assert) on the first `zig build test` —
+     caught by running the full programmatic function-body diff against
+     every moved function (not a sample), which flagged exactly those six
+     plus a `mallocPanic`/`mallocfail` mix-up in `setprefix` (the original
+     calls the plain `mallocfail`, not the `noreturn` wrapper). Both fixed;
+     a second clean-cache `zig build test` plus a fresh `git worktree`
+     build confirmed the fix. `files > 1000 lines` rises 9→10 (`dump.zig`
+     lands at 1150 lines — the wire-format reader/writer has real internal
+     call dependencies, e.g. `loadScript` calls `loadDefs`, and further
+     subdivision would cut arbitrarily through that graph rather than along
+     a real seam); baseline updated with this justification.
    - `types.zig` → `infer.zig` / `unify.zig` / `type_errors.zig` / `depend.zig`.
      **Landed** (2026-07-08), third of the four splits and the largest so
      far (128 functions, 6 tests, 2733 lines). `depend.zig` got the generic
