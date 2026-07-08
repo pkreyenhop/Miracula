@@ -47,8 +47,6 @@ pub const RuntimeState = struct {
 
     // Compiler flags (Word-typed because they are linker-visible to lex.zig / trans.zig
     // which CAN switch to @import — no circular constraint, but keep as Word for now)
-    /// Heap node holding the list of free-name-to-type bindings for %bnf rules.
-    fnts: Word = NIL,
     UTF8: i32 = 0,
     UTF8OUT: i32 = 0,
 
@@ -67,8 +65,6 @@ pub const RuntimeState = struct {
     initialising: Word = 1,
     /// Heap list of primitive environment bindings, built by primlib().
     primenv: Word = NIL,
-    /// Path of the .m file currently being loaded; null outside a load.
-    current_script: ?[*:0]u8 = null,
 
     /// When true, `if` guards are strict (unevaluated guards are errors).
     /// Converted from Word at B1; only ever true/false.
@@ -84,25 +80,6 @@ pub const RuntimeState = struct {
     lib_rc: [abi.pnlim + 8]u8 = std.mem.zeroes([abi.pnlim + 8]u8),
     /// Non-null when readRc fails; points into home_rc or lib_rc (not heap-allocated).
     rc_error: ?[*:0]const u8 = null,
-
-    // Sorted output and GC-adjacent state
-    sorted: i32 = 0,
-    detrop: Word = NIL,
-    /// Reload-file list: heap list of file nodes needing re-checking after a change.
-    rfl: Word = NIL,
-    bereaved: Word = 0,
-    ld_stuff: Word = NIL,
-
-    // Module / name tables
-    /// Snapshot of `files` at the start of a load; restored on error.
-    oldfiles: Word = NIL,
-    includees: Word = NIL,
-    freeids: Word = NIL,
-    exports: Word = NIL,
-    embargoes: Word = NIL,
-    lastname: Word = 0,
-    suppressids: Word = NIL,
-    col_fn: Word = 0,
 
     // ── Driver / REPL display scratch (commands.zig, repl.zig) ─────────────
     /// Cached path to the user's (and library's) `.mirahdr` file, computed
@@ -136,10 +113,19 @@ pub const RuntimeState = struct {
         const heap = &@import("../session/interp.zig").current_interp.heap;
         const top_limit = heap.TOP();
 
-        inline for (.{ self.Void, self.main_id, self.message, self.standardout, self.diagonalise, self.concat, self.indent_fn, self.outdent_fn, self.listdiff_fn, self.rv_expr, self.fnts, self.primenv, self.oldfiles, self.includees, self.freeids, self.exports, self.embargoes, self.lastname, self.suppressids, self.col_fn, self.detrop, self.rfl, self.ld_stuff }) |field| {
+        inline for (.{ self.Void, self.main_id, self.message, self.standardout, self.diagonalise, self.concat, self.indent_fn, self.outdent_fn, self.listdiff_fn, self.rv_expr, self.primenv }) |field| {
             if (field >= @import("../graph/word.zig").ATOMLIMIT) {
                 if (field >= top_limit) {
                     std.debug.panic("runtime.validate: runtime state field has out-of-bounds heap reference {d} (TOP is {d})", .{ field, top_limit });
+                }
+            }
+        }
+
+        const script = @import("../session/script_store.zig").store();
+        inline for (.{ script.oldfiles, script.includees, script.freeids, script.exports, script.embargoes, script.lastname, script.suppressids, script.col_fn, script.detrop, script.rfl, script.ld_stuff, script.fnts }) |field| {
+            if (field >= @import("../graph/word.zig").ATOMLIMIT) {
+                if (field >= top_limit) {
+                    std.debug.panic("runtime.validate: script store field has out-of-bounds heap reference {d} (TOP is {d})", .{ field, top_limit });
                 }
             }
         }
@@ -154,7 +140,6 @@ pub inline fn rs() *RuntimeState {
 
 test "RuntimeState default values are self-consistent" {
     const state: RuntimeState = .{};
-    try std.testing.expectEqual(@as(Word, NIL), state.detrop);
     try std.testing.expectEqual(@as(Word, NIL), state.primenv);
     try std.testing.expectEqual(true, state.strictif);
     try std.testing.expectEqual(@as(Word, 1), state.initialising);
@@ -167,6 +152,5 @@ test "RuntimeState bool fields default to false" {
 
 test "RuntimeState null-initialised optional fields" {
     const state: RuntimeState = .{};
-    try std.testing.expectEqual(@as(?[*:0]u8, null), state.current_script);
     try std.testing.expectEqual(@as(?[*:0]const u8, null), state.rc_error);
 }

@@ -124,6 +124,7 @@ const big = @import("../graph/bignum.zig");
 const lex = @import("../parser/lex.zig");
 const setup = @import("../compiler/setup.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const script_store = @import("../session/script_store.zig");
 const repl_session = @import("../session/repl_session.zig");
 const show_fns = @import("show_fns.zig");
 
@@ -1231,7 +1232,7 @@ pub fn declType(heap: *Heap, input_tf: Word, type_class: Word, info: Word, here:
 
 /// Declare a single binding `x` = `e` (the inner step).
 fn decl1(heap: *Heap, x: Word, e: Word) void {
-    if (idVal(heap, x) != UNDEF and rt.rs().lastname != x) {
+    if (idVal(heap, x) != UNDEF and script_store.store().lastname != x) {
         core_state.s().errs = h(heap, e);
         nameclash(heap, x);
         return;
@@ -1267,7 +1268,7 @@ pub fn declare(heap: *Heap, x: Word, e: Word) void {
         syntax("illegal lhs for definition\n") catch {};
         return;
     }
-    rt.rs().lastname = 0;
+    script_store.store().lastname = 0;
     while (bindings != NIL) {
         const binding = h(heap, bindings);
         const name = h(heap, binding);
@@ -1327,7 +1328,7 @@ pub fn block(heap: *Heap, input_defs: Word, input_e: Word, keep: Word) Word {
         }
         defs = setdiff(heap, defs, y);
         if (defs != NIL) {
-            rt.rs().detrop = append1(rt.rs().detrop, defs);
+            script_store.store().detrop = append1(script_store.store().detrop, defs);
         }
         if (keep != 0) {
             return letrec(y, e);

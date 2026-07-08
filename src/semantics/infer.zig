@@ -15,6 +15,7 @@ const dump = @import("../compiler/dump.zig");
 const strtab = @import("../graph/strtab.zig");
 const os = @import("../os.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const script_store = @import("../session/script_store.zig");
 
 const compiler_state = @import("../compiler/compiler_state.zig");
 const core_state = @import("../runtime/core_state.zig");
@@ -1492,8 +1493,8 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
         },
         word.G_CLOSE => {
             const a = NTV();
-            if (rt.rs().col_fn != 0) {
-                if (rt.rs().col_fn == -1) {
+            if (script_store.store().col_fn != 0) {
+                if (script_store.store().col_fn == -1) {
                     cs().TYPERRS += 1;
                 } else {
                     checkcolfn(heap);
@@ -1521,10 +1522,10 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
 
 /// Type-check the grammar's collector function (`col_fn`).
 pub fn checkcolfn(heap: *Heap) void {
-    const t_val = idType(heap, rt.rs().col_fn);
+    const t_val = idType(heap, script_store.store().col_fn);
     const f = tf(t(heap, h(heap, t(heap, cs().bnf_t))), num_t);
     if (t_val == undef_t or t_val == wrong_t or subsumes(heap, instantiate(heap, t_val), f) != 0) {
-        rt.rs().col_fn = 0;
+        script_store.store().col_fn = 0;
         return;
     }
     _ = word.print("`bnftokenindentation' has wrong type for use in offside rule\n", .{});
@@ -1534,9 +1535,9 @@ pub fn checkcolfn(heap: *Heap) void {
     _ = word.print("  actual type :: ", .{});
     outType(heap, t_val);
     _ = word.putchar('\n');
-    sayhere(heap, getspecloc(heap, rt.rs().col_fn), 1);
+    sayhere(heap, getspecloc(heap, script_store.store().col_fn), 1);
     cs().TYPERRS += 1;
-    rt.rs().col_fn = -1;
+    script_store.store().col_fn = -1;
 }
 
 /// Derive the BNF token type from the grammar's `bnftokenstate`.
@@ -1651,7 +1652,7 @@ pub fn checktypes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
     comp.SBND = NIL;
     comp.ND = NIL;
     outer: {
-        if (rs.rfl != NIL) {
+        if (script_store.store().rfl != NIL) {
             readoption(heap, comp, rs);
         }
         var s = reverse(t(heap, h(heap, heap.files)));
@@ -1673,11 +1674,11 @@ pub fn checktypes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         core.SYNERR = 1;
         return;
     }
-    if (rs.freeids != NIL) {
-        redtfr(heap, rs.freeids);
+    if (script_store.store().freeids != NIL) {
+        redtfr(heap, script_store.store().freeids);
     }
     genshfns(heap);
-    if (rs.fnts != NIL) {
+    if (script_store.store().fnts != NIL) {
         genbnft(heap);
     }
     comp.R = msc(heap, comp.R);

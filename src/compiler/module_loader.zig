@@ -8,6 +8,7 @@ const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
 const strtab = @import("../graph/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const script_store = @import("../session/script_store.zig");
 const config_state = @import("../session/config_state.zig");
 const repl_session = @import("../session/repl_session.zig");
 const make_state = @import("../session/make_state.zig");
@@ -67,8 +68,8 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     core.loading = 1;
     core.errs = 0;
     core.errline = 0;
-    rs.current_script = @constCast(t_val);
-    rs.oldfiles = NIL;
+    script_store.store().current_script = @constCast(t_val);
+    script_store.store().oldfiles = NIL;
     dump_mod.unload(comp, rs, lexs);
 
     if (!files.fileExists(t_val)) {
@@ -84,7 +85,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         if (make_state.make().making and rs.ideep == 0) {
             word.print("mira -make {s}: no such file\n", .{t_val});
         } else {
-            rs.oldfiles = heap_mod.cons(heap_mod.makeFil(t_val, 0, 0, NIL), NIL);
+            script_store.store().oldfiles = heap_mod.cons(heap_mod.makeFil(t_val, 0, 0, NIL), NIL);
         }
         core.loading = 0;
         return error.LoadError;
@@ -95,7 +96,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
             errors.fatal("panic: cannot open {s}\n", .{t_val});
         }
         word.print("cannot open {s}\n", .{t_val});
-        rs.oldfiles = heap_mod.cons(heap_mod.makeFil(t_val, 0, 0, NIL), NIL);
+        script_store.store().oldfiles = heap_mod.cons(heap_mod.makeFil(t_val, 0, 0, NIL), NIL);
         core.loading = 0;
         return error.LoadError;
     }
@@ -122,27 +123,27 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         word.print("compiling {s}\n", .{t_val});
     }
     lexs.nextpn = 0;
-    rs.embargoes = NIL;
-    rs.detrop = NIL;
-    rs.fnts = NIL;
-    rs.rfl = NIL;
-    rs.bereaved = NIL;
-    rs.ld_stuff = NIL;
+    script_store.store().embargoes = NIL;
+    script_store.store().detrop = NIL;
+    script_store.store().fnts = NIL;
+    script_store.store().rfl = NIL;
+    script_store.store().bereaved = NIL;
+    script_store.store().ld_stuff = NIL;
     lexs.exportfiles = NIL;
-    rs.freeids = NIL;
-    rs.exports = NIL;
-    rs.includees = NIL;
+    script_store.store().freeids = NIL;
+    script_store.store().exports = NIL;
+    script_store.store().includees = NIL;
     comp.FBS = NIL;
 
     _ = parser_api.parseCurrent() catch {};
 
     resolveExportFileList(heap, core, rs, lexs);
 
-    if (core.SYNERR == 0 and rs.includees != NIL) {
-        heap.files = abi.append1(heap.files, mkincludes(heap, core, comp, rs, lexs, rs.includees));
-        rs.includees = NIL;
+    if (core.SYNERR == 0 and script_store.store().includees != NIL) {
+        heap.files = abi.append1(heap.files, mkincludes(heap, core, comp, rs, lexs, script_store.store().includees));
+        script_store.store().includees = NIL;
     }
-    rs.ld_stuff = NIL;
+    script_store.store().ld_stuff = NIL;
 
     if (core.SYNERR == 0) {
         if (repl_session.session().verbosity != 0 or (make_state.make().making and !make_state.make().mkexports and !make_state.make().mksources)) {
@@ -200,7 +201,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
                 _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
             }
         }
-        if (core.errline == 0 and core.errs != 0 and std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(core.errs))), std.mem.span(rs.current_script.?))) {
+        if (core.errline == 0 and core.errs != 0 and std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(core.errs))), std.mem.span(script_store.store().current_script.?))) {
             core.errline = heap_mod.t(core.errs);
         }
         comp.ND = depend_mod.alfasort(comp.ND);
@@ -211,7 +212,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     if (rs.initialising != 0) {
         errors.fatal("panic: cannot compile {s}\n", .{if (config_state.config().okprel) "stdenv" else "prelude"});
     }
-    rs.oldfiles = heap.files;
+    script_store.store().oldfiles = heap.files;
     dump_mod.unload(comp, rs, lexs);
     if (files.isMirandaSource(t_val) != 0) {
         var obf: [abi.pnlim]u8 = undefined;
@@ -231,10 +232,11 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     return error.SyntaxError;
 }
 
-/// Resolves each name in `lexs.exportfiles` against `rs.includees`: `+` pulls in
+/// Resolves each name in `lexs.exportfiles` against `script_store.store().includees`: `+` pulls in
 /// every variable defined in the current file, anything else must match exactly
 /// one included fileid (ambiguous or missing matches abandon compilation).
 fn resolveExportFileList(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.LexState) void {
+    _ = rs;
     if (core.SYNERR == 0 and lexs.exportfiles != NIL) {
         var s = lexs.exportfiles;
         while (s != NIL) : (s = heap_mod.t(s)) {
@@ -242,12 +244,12 @@ fn resolveExportFileList(heap: *Heap, core: *core_state.CoreState, rs: *rt.Runti
                 var i = heap_mod.filDefs(heap_mod.h(heap.files));
                 while (i != NIL) : (i = heap_mod.t(i)) {
                     if (heap_mod.isvariable(heap_mod.h(i)) and !heap_mod.isfreeid(heap_mod.h(i))) {
-                        heap_mod.tp(rs.exports).* = abi.add1(heap, heap_mod.h(i), heap_mod.t(rs.exports));
+                        heap_mod.tp(script_store.store().exports).* = abi.add1(heap, heap_mod.h(i), heap_mod.t(script_store.store().exports));
                     }
                 }
             } else {
                 var count: Word = 0;
-                var i = rs.includees;
+                var i = script_store.store().includees;
                 while (i != NIL) : (i = heap_mod.t(i)) {
                     if (std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(heap_mod.h(i))))), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(s))))) {
                         heap_mod.hp(s).* = heap_mod.h(heap_mod.h(heap_mod.h(i)));
@@ -261,44 +263,45 @@ fn resolveExportFileList(heap: *Heap, core: *core_state.CoreState, rs: *rt.Runti
             }
         }
         if (core.SYNERR != 0) {
-            abi.sayhere(heap, heap_mod.h(rs.exports), 1);
+            abi.sayhere(heap, heap_mod.h(script_store.store().exports), 1);
             word.printErr("compilation abandoned\n", .{});
         }
     }
 }
 
-/// Finalises `rs.exports`: sorts constructors ahead of the rest, embargoes
+/// Finalises `script_store.store().exports`: sorts constructors ahead of the rest, embargoes
 /// (previously-exported-but-now-hidden names) removed, undefined/redundant
 /// names reported and folded back into `cs.ND`/dropped. Returns the export-list
 /// declaration node (for error-location reporting by the caller), or `NIL`.
 fn resolveExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState) Word {
+    _ = rs;
     var h_val: Word = NIL;
-    if (core.SYNERR == 0 and rs.exports != NIL) {
+    if (core.SYNERR == 0 and script_store.store().exports != NIL) {
         if (comp.ND != NIL) {
-            rs.exports = NIL;
+            script_store.store().exports = NIL;
         } else {
-            var e = rs.embargoes;
+            var e = script_store.store().embargoes;
             var u: Word = NIL;
             var n: Word = NIL;
             var c_ctr: Word = NIL;
-            h_val = heap_mod.h(rs.exports);
-            rs.exports = heap_mod.t(rs.exports);
+            h_val = heap_mod.h(script_store.store().exports);
+            script_store.store().exports = heap_mod.t(script_store.store().exports);
 
             while (e != NIL) : (e = heap_mod.t(e)) {
                 if (heap_mod.idType(heap_mod.h(e)) == word.undef_t) {
                     u = heap_mod.cons(heap_mod.h(e), u);
                     comp.ND = abi.add1(heap, heap_mod.h(e), comp.ND);
-                } else if (abi.member(heap, rs.exports, heap_mod.h(e)) == 0) {
+                } else if (abi.member(heap, script_store.store().exports, heap_mod.h(e)) == 0) {
                     n = heap_mod.cons(heap_mod.h(e), n);
                 }
             }
 
-            if (rs.embargoes != NIL) {
-                rs.exports = abi.setdiff(heap, rs.exports, rs.embargoes);
+            if (script_store.store().embargoes != NIL) {
+                script_store.store().exports = abi.setdiff(heap, script_store.store().exports, script_store.store().embargoes);
             }
-            rs.exports = depend_mod.alfasort(rs.exports);
+            script_store.store().exports = depend_mod.alfasort(script_store.store().exports);
 
-            e = rs.exports;
+            e = script_store.store().exports;
             while (e != NIL) : (e = heap_mod.t(e)) {
                 if (heap_mod.idType(heap_mod.h(e)) == word.undef_t) {
                     u = heap_mod.cons(heap_mod.h(e), u);
@@ -308,10 +311,10 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
                 }
             }
 
-            if (rs.exports == NIL) {
+            if (script_store.store().exports == NIL) {
                 word.print("warning, export list has void contents\n", .{});
             } else {
-                rs.exports = abi.append1(depend_mod.alfasort(c_ctr), rs.exports);
+                script_store.store().exports = abi.append1(depend_mod.alfasort(c_ctr), script_store.store().exports);
             }
 
             if (n != NIL) {
@@ -323,14 +326,14 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
             }
 
             if (u != NIL) {
-                rs.exports = NIL;
+                script_store.store().exports = NIL;
                 abi.printlist(heap, @constCast("undefined names in export list: "), u);
             }
 
             if (u != NIL) {
                 abi.sayhere(heap, h_val, 1);
                 h_val = NIL;
-            } else if (rs.exports == NIL or n != NIL) {
+            } else if (script_store.store().exports == NIL or n != NIL) {
                 abi.outHere(core, abi.stderr(), h_val, 1);
                 h_val = NIL;
             }
@@ -339,16 +342,17 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
     return h_val;
 }
 
-/// Computes `rs.bereaved`: type names reachable from the export list (or,
+/// Computes `script_store.store().bereaved`: type names reachable from the export list (or,
 /// with no explicit export list, from the whole file) plus from free ids, that
 /// aren't themselves exported — candidates for the "incomplete export list"
 /// warning.
 fn computeBereavedNames(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState) void {
-    if (core.SYNERR == 0 and comp.ND == NIL and (rs.exports != NIL or heap_mod.t(heap.files) != NIL)) {
-        var e1 = rs.exports;
+    _ = rs;
+    if (core.SYNERR == 0 and comp.ND == NIL and (script_store.store().exports != NIL or heap_mod.t(heap.files) != NIL)) {
+        var e1 = script_store.store().exports;
         var r: Word = NIL;
         var e: Word = NIL;
-        if (rs.exports != NIL) {
+        if (script_store.store().exports != NIL) {
             while (e1 != NIL) : (e1 = heap_mod.t(e1)) {
                 const ty = heap_mod.idType(heap_mod.h(e1));
                 if (ty == word.type_t) {
@@ -377,7 +381,7 @@ fn computeBereavedNames(heap: *Heap, core: *core_state.CoreState, comp: *compile
             }
         }
 
-        e1 = rs.freeids;
+        e1 = script_store.store().freeids;
         while (e1 != NIL) : (e1 = heap_mod.t(e1)) {
             const ty = heap_mod.idType(heap_mod.h(heap_mod.h(e1)));
             if (ty == word.type_t) {
@@ -393,7 +397,7 @@ fn computeBereavedNames(heap: *Heap, core: *core_state.CoreState, comp: *compile
 
         while (r != NIL) : (r = heap_mod.t(r)) {
             if (abi.member(heap, e, heap_mod.h(r)) == 0) {
-                rs.bereaved = heap_mod.cons(heap_mod.h(r), rs.bereaved);
+                script_store.store().bereaved = heap_mod.cons(heap_mod.h(r), script_store.store().bereaved);
             }
         }
     }
@@ -402,8 +406,9 @@ fn computeBereavedNames(heap: *Heap, core: *core_state.CoreState, comp: *compile
 /// If the export list is missing a bereaved typename, warns and (if `h_val`,
 /// the export-list declaration node, is known) reports its source location.
 fn reportBereavedExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, h_val: Word) void {
-    if (rs.exports != NIL and rs.bereaved != NIL) {
-        const b = abi.intersection(heap, rs.bereaved, comp.newtyps);
+    _ = rs;
+    if (script_store.store().exports != NIL and script_store.store().bereaved != NIL) {
+        const b = abi.intersection(heap, script_store.store().bereaved, comp.newtyps);
         if (b != NIL) {
             word.print("warning, export list is incomplete - missing typename: ", .{});
             abi.printlist(heap, @constCast(""), b);
@@ -414,25 +419,26 @@ fn reportBereavedExports(heap: *Heap, core: *core_state.CoreState, comp: *compil
     }
 }
 
-/// Warns about unused local definitions (`rs.detrop`) and unused grammar
+/// Warns about unused local definitions (`script_store.store().detrop`) and unused grammar
 /// nonterminals, both skipping past leading `LABEL`-tagged entries.
 fn reportUnusedDefinitions(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState) void {
-    if (core.SYNERR == 0 and rs.detrop != NIL) {
-        const gd = rs.detrop;
-        while (rs.detrop != NIL and getTag(heap, heap_mod.dval(heap_mod.h(rs.detrop))) == .LABEL) {
-            rs.detrop = heap_mod.t(rs.detrop);
+    _ = rs;
+    if (core.SYNERR == 0 and script_store.store().detrop != NIL) {
+        const gd = script_store.store().detrop;
+        while (script_store.store().detrop != NIL and getTag(heap, heap_mod.dval(heap_mod.h(script_store.store().detrop))) == .LABEL) {
+            script_store.store().detrop = heap_mod.t(script_store.store().detrop);
         }
-        if (rs.detrop != NIL) {
+        if (script_store.store().detrop != NIL) {
             word.print("warning, script contains unused local definitions:-\n", .{});
         }
-        while (rs.detrop != NIL) {
-            abi.outHere(core, abi.stdout(), heap_mod.h(heap_mod.h(heap_mod.t(heap_mod.dval(heap_mod.h(rs.detrop))))), 0);
+        while (script_store.store().detrop != NIL) {
+            abi.outHere(core, abi.stdout(), heap_mod.h(heap_mod.h(heap_mod.t(heap_mod.dval(heap_mod.h(script_store.store().detrop))))), 0);
             _ = word.putchar('\t');
-            abi.outPattern(heap, abi.stdout().?, heap_mod.dlhs(heap_mod.h(rs.detrop)));
+            abi.outPattern(heap, abi.stdout().?, heap_mod.dlhs(heap_mod.h(script_store.store().detrop)));
             _ = word.putchar('\n');
-            rs.detrop = heap_mod.t(rs.detrop);
-            while (rs.detrop != NIL and getTag(heap, heap_mod.dval(heap_mod.h(rs.detrop))) == .LABEL) {
-                rs.detrop = heap_mod.t(rs.detrop);
+            script_store.store().detrop = heap_mod.t(script_store.store().detrop);
+            while (script_store.store().detrop != NIL and getTag(heap, heap_mod.dval(heap_mod.h(script_store.store().detrop))) == .LABEL) {
+                script_store.store().detrop = heap_mod.t(script_store.store().detrop);
             }
         }
 
@@ -475,7 +481,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
                 abi.exit(2);
             }
             core.SYNERR = 2;
-            word.print("compilation of \"{s}\" abandoned\n", .{rs.current_script.?});
+            word.print("compilation of \"{s}\" abandoned\n", .{script_store.store().current_script.?});
             return NIL;
         }
         while (pid != abi.wait(&status)) {}
@@ -484,7 +490,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
                 abi.exit(2);
             } else {
                 core.SYNERR = 2;
-                word.print("compilation of \"{s}\" abandoned\n", .{rs.current_script.?});
+                word.print("compilation of \"{s}\" abandoned\n", .{script_store.store().current_script.?});
                 return NIL;
             }
         }
@@ -499,7 +505,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         rs.magic = false;
         while (includees_list != NIL and make_state.make().make_status == 0) {
             dump.undump(heap, core, comp, rs, strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(heap_mod.h(includees_list)))));
-            if (comp.ND != NIL or (heap.files == NIL and rs.oldfiles != NIL)) {
+            if (comp.ND != NIL or (heap.files == NIL and script_store.store().oldfiles != NIL)) {
                 make_state.make().make_status = 1;
             }
             includees_list = heap_mod.t(includees_list);
@@ -528,11 +534,11 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
             _ = word.fclose(f.?);
         }
 
-        rs.ld_stuff = heap_mod.cons(x, rs.ld_stuff);
+        script_store.store().ld_stuff = heap_mod.cons(x, script_store.store().ld_stuff);
 
         if (f != null and comp.BAD_DUMP == 0 and x != NIL and comp.ND == NIL and comp.CLASHES == NIL and comp.ALIASES == NIL and comp.TSUPPRESSED == NIL and comp.DETROP == NIL and comp.MISSING == NIL) {
             if (comp.TORPHANS != 0) {
-                rs.rfl = heap_mod.shunt(x, rs.rfl);
+                script_store.store().rfl = heap_mod.shunt(x, script_store.store().rfl);
             }
             var y = x;
             while (y != NIL) : (y = heap_mod.t(y)) {
@@ -589,7 +595,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
                     var z = heap_mod.filDefs(heap_mod.h(y));
                     while (z != NIL) : (z = heap_mod.t(z)) {
                         if (heap_mod.isvariable(heap_mod.h(z))) {
-                            heap_mod.tp(rs.exports).* = abi.add1(heap, heap_mod.h(z), heap_mod.t(rs.exports));
+                            heap_mod.tp(script_store.store().exports).* = abi.add1(heap, heap_mod.h(z), heap_mod.t(script_store.store().exports));
                         }
                     }
                 }
@@ -608,8 +614,8 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         if (f == null) {
             result = heap_mod.cons(heap_mod.makeFil(fn_str, files.fileMtime(fn_str), 0, NIL), result);
         } else if (x == NIL and comp.BAD_DUMP != -2) {
-            result = abi.append1(result, rs.oldfiles);
-            rs.oldfiles = NIL;
+            result = abi.append1(result, script_store.store().oldfiles);
+            script_store.store().oldfiles = NIL;
         } else {
             result = abi.append1(result, x);
         }

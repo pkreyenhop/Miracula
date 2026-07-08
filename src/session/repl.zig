@@ -30,6 +30,7 @@ const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
 const strtab = @import("../graph/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const script_store = @import("script_store.zig");
 const config_state = @import("config_state.zig");
 const repl_session = @import("repl_session.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
@@ -139,7 +140,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
         repl_session.session().last_gc_count = null;
         ch = abi.getchar();
         if (rs.rechecking != 0 and dump_mod.srcUpdate(rs) != 0) {
-            module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), rs.current_script.?) catch {};
+            module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), script_store.store().current_script.?) catch {};
         }
         while (ch == ' ' or ch == '\t') {
             ch = abi.getchar();
@@ -238,7 +239,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                     }
                     _ = signals(abi.SIGINT, oldsig);
                     if (dump_mod.srcUpdate(rs) != 0) {
-                        module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), rs.current_script.?) catch {};
+                        module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), script_store.store().current_script.?) catch {};
                     }
                 } else {
                     word.print("No previous shell command to substitute for \"!\"\n", .{});

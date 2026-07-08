@@ -10,6 +10,7 @@ const Allocator = std.mem.Allocator;
 const ast = @import("../syntax/ast.zig");
 
 const rt = @import("../runtime/runtime_state.zig");
+const script_store = @import("../session/script_store.zig");
 const repl_session = @import("../session/repl_session.zig");
 const lex_state = @import("lex_state.zig");
 const ls = lex_state.ls;
@@ -161,7 +162,7 @@ fn nameWord(name: []const u8) Word {
     // Look up the interned atom from the name table (populated by yylex's
     // name() calls during tokenization). This ensures the same source name
     // always maps to the same heap atom, which is required for multi-equation
-    // definitions: decl1() checks `rt.rs().lastname == x` using pointer equality.
+    // definitions: decl1() checks `script_store.store().lastname == x` using pointer equality.
     if (symbols.syms().find(buf[0..n])) |existing| return existing;
     // Not yet in the name table (e.g., synthesised names). Intern it now.
     const perm = keep(@as([*:0]u8, @ptrCast(&buf)));
@@ -711,10 +712,10 @@ fn codegenDef(alloc: Allocator, def: ast.Def) void {
     }
     rhs = mklabel(here, rhs);
     declare(heap.heap(), lhs, rhs);
-    // Mirror the YACC grammar: `declare(l,r), rt.rs().lastname=l` — allows
+    // Mirror the YACC grammar: `declare(l,r), script_store.store().lastname=l` — allows
     // consecutive equations for the same function to be accumulated
     // by decl1 rather than triggering a nameclash error.
-    rt.rs().lastname = lhs;
+    script_store.store().lastname = lhs;
 }
 
 // ---------------------------------------------------------------------------

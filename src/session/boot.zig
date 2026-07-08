@@ -9,6 +9,7 @@ const errors = @import("../runtime/errors.zig");
 const strtab = @import("../graph/strtab.zig");
 const cs = @import("../compiler/compiler_state.zig").cs;
 const rt = @import("../runtime/runtime_state.zig");
+const script_store = @import("script_store.zig");
 const config_state = @import("config_state.zig");
 const repl_session = @import("repl_session.zig");
 const make_state = @import("make_state.zig");
@@ -217,8 +218,8 @@ fn runExportsMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
         if (arg_count != 1) {
             word.print("{s}\n", .{s});
         }
-        if (rt.rs().exports != NIL) {
-            x = rt.rs().exports;
+        if (script_store.store().exports != NIL) {
+            x = script_store.store().exports;
         } else {
             var f = heap.files;
             while (f != NIL) : (f = heap_mod.t(f)) {
@@ -226,16 +227,16 @@ fn runExportsMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
             }
         }
 
-        if (rt.rs().freeids != NIL) {
-            var f = rt.rs().freeids;
+        if (script_store.store().freeids != NIL) {
+            var f = script_store.store().freeids;
             while (f != NIL) : (f = heap_mod.t(f)) {
                 const n = abi.findid(heap, @constCast(heap_mod.getId(heap_mod.h(f))));
                 heap_mod.tp(n).* = heap_mod.t(heap_mod.t(heap_mod.h(f)));
                 heap_mod.tp(heap_mod.h(heap_mod.h(n))).* = heap_mod.theVal(heap_mod.h(f));
                 heap_mod.hp(f).* = n;
             }
-            rt.rs().freeids = abi.typesfirst(heap, rt.rs().freeids);
-            f = rt.rs().freeids;
+            script_store.store().freeids = abi.typesfirst(heap, script_store.store().freeids);
+            f = script_store.store().freeids;
             word.print("\t%free {{\n", .{});
             while (f != NIL) : (f = heap_mod.t(f)) {
                 _ = word.putchar('\t');
@@ -268,7 +269,7 @@ fn runSourcesMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
                 _ = abi.keep(ls().dicp);
             }
             dump.undump(heap, core_state.s(), cs(), rt.rs(), s);
-            var f = if (heap.files == NIL) rt.rs().oldfiles else heap.files;
+            var f = if (heap.files == NIL) script_store.store().oldfiles else heap.files;
             while (f != NIL) : (f = heap_mod.t(f)) {
                 const filename_str = heap_mod.getFil(heap_mod.h(f)).?;
                 if (abi.member(heap, x, strtab.strBits(strtab.table(), filename_str)) == 0) {
@@ -293,7 +294,7 @@ fn runMakeMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) voi
             _ = abi.keep(ls().dicp);
         }
         dump.undump(heap, core_state.s(), cs(), rt.rs(), s);
-        if (cs().ND != NIL or (heap.files == NIL and rt.rs().oldfiles != NIL)) {
+        if (cs().ND != NIL or (heap.files == NIL and script_store.store().oldfiles != NIL)) {
             if (make_state.make().make_status == 1) {
                 make_state.make().make_status = 0;
             }

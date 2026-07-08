@@ -9,6 +9,7 @@ const std = @import("std");
 const word = @import("../graph/word.zig");
 const strtab = @import("../graph/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const script_store = @import("script_store.zig");
 const config_state = @import("config_state.zig");
 const repl_session = @import("repl_session.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
@@ -78,7 +79,7 @@ fn namescom(heap: *Heap, rs: *rt.RuntimeState, l: Word) void {
     var undefs: Word = NIL;
     var wp: usize = 0;
     const scrwd = files.termWidth();
-    if (rs.sorted == 0 and n != rs.primenv) {
+    if (script_store.store().sorted == 0 and n != rs.primenv) {
         n = depend_mod.alfasort(n);
         heap_mod.tp(l).* = n;
     }
@@ -175,7 +176,7 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
             core.errs = 0;
         }
         if (t_val != null) {
-            if (!std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(rs.current_script.?)) or (heap.files == NIL and abi.okdump(core, t_val.?))) {
+            if (!std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?)) or (heap.files == NIL and abi.okdump(core, t_val.?))) {
                 comp.CLASHES = NIL;
                 dump.undump(heap, core, comp, rs, t_val.?);
                 if (comp.CLASHES != NIL) {
@@ -185,7 +186,7 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
                 module_loader.loadfile(heap, core, comp, rs, ls(), t_val.?) catch {};
             }
         } else {
-            word.print("{s}{s}\n", .{ rs.current_script.?, @as([*:0]const u8, if (heap.files == NIL) " (not loaded)" else "") });
+            word.print("{s}{s}\n", .{ script_store.store().current_script.?, @as([*:0]const u8, if (heap.files == NIL) " (not loaded)" else "") });
         }
         return true;
     }
@@ -245,7 +246,7 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
         if (token()) |tok| {
             t_val = abi.addextn(1, tok);
         } else {
-            t_val = rs.current_script;
+            t_val = script_store.store().current_script;
         }
         if (abi.getchar() != '\n') return true;
         if (!files.fileExists(t_val.?)) {
@@ -290,7 +291,7 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
             if (mf == null and files.fileExists(rs.mirahdr.?)) {
                 mf = rs.mirahdr;
             }
-            if (mf != null and t_val != rs.current_script) {
+            if (mf != null and t_val != script_store.store().current_script) {
                 var prompt_buf: [256]u8 = undefined;
                 const prompt = std.fmt.bufPrint(&prompt_buf, "open new script \"{s}\"? [ny]", .{t_val.?}) catch "open new script? [ny]";
                 if (lineedit.active()) {
@@ -311,8 +312,8 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
                 files.copyFile(mf.?, t_val.?);
             }
         }
-        const err_line_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(rs.current_script.?))) @intCast(core.errline) else if (core.errs != 0 and std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(core.errs))))) @intCast(heap_mod.t(core.errs)) else @intCast(abi.geterrlin(core, lexs, t_val.?));
-        const err_col_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(rs.current_script.?))) @intCast(core.errcol) else 0;
+        const err_line_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errline) else if (core.errs != 0 and std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(core.errs))))) @intCast(heap_mod.t(core.errs)) else @intCast(abi.geterrlin(core, lexs, t_val.?));
+        const err_col_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errcol) else 0;
         editfile(rs, t_val.?, err_line_num, err_col_num);
         return true;
     }
@@ -398,7 +399,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                 if (abi.chdir(d.?) == -1) {
                     word.print("cannot cd to {s}\n", .{d.?});
                 } else if (dump_mod.srcUpdate(rs) != 0) {
-                    dump.undump(heap, core, cs(), rs, rs.current_script.?);
+                    dump.undump(heap, core, cs(), rs, script_store.store().current_script.?);
                 }
                 return;
             }
@@ -687,7 +688,7 @@ pub fn editfile(rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_
     }
     _ = abi.system(ebuf_local);
     if (dump_mod.srcUpdate(rs) != 0) {
-        module_loader.loadfile(heap_mod.heap(), core_state.s(), cs(), rs, ls(), rs.current_script.?) catch {};
+        module_loader.loadfile(heap_mod.heap(), core_state.s(), cs(), rs, ls(), script_store.store().current_script.?) catch {};
     }
 }
 
@@ -790,7 +791,7 @@ pub fn allnamescom(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Run
         namescom(heap, rs, heap_mod.h(s));
     }
     namescom(heap, rs, heap_mod.h(heap.files));
-    rs.sorted = 1;
+    script_store.store().sorted = 1;
 
     while (x != NIL and heap_mod.idType(heap_mod.h(x)) == word.undef_t) {
         x = heap_mod.t(x);

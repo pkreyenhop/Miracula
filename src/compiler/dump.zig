@@ -8,6 +8,7 @@ const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
 const strtab = @import("../graph/strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const script_store = @import("../session/script_store.zig");
 const config_state = @import("../session/config_state.zig");
 const repl_session = @import("../session/repl_session.zig");
 const make_state = @import("../session/make_state.zig");
@@ -41,14 +42,15 @@ inline fn setTag(heap: *Heap, x: Word, val: word.NodeTag) void {
 /// Marks all exported identifiers and privatises the rest.
 /// Must be paired with a call to unfixexports() once the dump is written.
 pub fn fixexports(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState) void {
-    var e = rs.exports;
+    _ = rs;
+    var e = script_store.store().exports;
     var f: Word = undefined;
     while (e != NIL) : (e = t(e)) {
         paint(h(e));
     }
     comp.internals = NIL;
-    if (rs.exports == NIL and lexs.exportfiles == NIL and rs.embargoes == NIL) {
-        e = rs.freeids;
+    if (script_store.store().exports == NIL and lexs.exportfiles == NIL and script_store.store().embargoes == NIL) {
+        e = script_store.store().freeids;
         while (e != NIL) : (e = t(e)) {
             comp.internals = heap_mod.cons(privatise(heap, lexs, h(h(e))), comp.internals);
         }
@@ -72,7 +74,7 @@ pub fn fixexports(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runt
             }
         }
     }
-    e = rs.exports;
+    e = script_store.store().exports;
     while (e != NIL) : (e = t(e)) {
         unpaint(h(e));
     }
@@ -163,6 +165,7 @@ fn publicise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
 /// Repairs type references after loading a dump: re-resolves STRCONS nodes and
 /// reports types that are in the dump but missing from the current scope (`tlost`).
 pub fn readoption(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState) void {
+    _ = rs;
     var f: Word = undefined;
     var t_val: Word = undefined;
 
@@ -181,7 +184,7 @@ pub fn readoption(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runt
         }
     }
 
-    var rfl_ptr = rs.rfl;
+    var rfl_ptr = script_store.store().rfl;
     while (rfl_ptr != NIL) : (rfl_ptr = t(rfl_ptr)) {
         f = heap_mod.filDefs(h(rfl_ptr));
         while (f != NIL) : (f = t(f)) {
@@ -295,9 +298,9 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
         return;
     }
 
-    rs.current_script = @constCast(t_val);
+    script_store.store().current_script = @constCast(t_val);
     core.loading = 1;
-    rs.oldfiles = NIL;
+    script_store.store().oldfiles = NIL;
     dump_mod.unload(comp, rs, ls());
 
     heap.files = abi.loadScript(core, comp, rs, ls(), f.?, @constCast(t_val), NIL, NIL, if (!make_state.make().making and rs.initialising == 0) 1 else 0);
@@ -354,7 +357,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
 }
 
 /// Writes a binary dump of the current heap state to the .mx file corresponding to
-/// `rs.current_script`. A SIGINT mid-write is harmless (Phase 3,
+/// `script_store.store().current_script`. A SIGINT mid-write is harmless (Phase 3,
 /// docs/ZIG_NATIVE_PLAN.md): the installed handler only sets a polled flag, so
 /// no signal-deferral dance is needed here -- an interrupted write completes
 /// normally and, if it somehow leaves a corrupt dump, `undump`'s `BAD_DUMP`
@@ -363,7 +366,7 @@ pub fn makedump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     const obf = &rs.linebuf;
     var f: ?*word.Stream = null;
     {
-        const script_span = std.mem.span(rs.current_script.?);
+        const script_span = std.mem.span(script_store.store().current_script.?);
         @memcpy(obf[0..script_span.len], script_span);
         obf[script_span.len] = 0;
         const suffix_span = std.mem.span(core.obsuffix);
@@ -374,7 +377,7 @@ pub fn makedump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     f = word.fopen(obf, "w");
     if (f == null) {
         word.print("WARNING: CANNOT WRITE TO {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(obf)))});
-        const current_script_span = std.mem.span(rs.current_script.?);
+        const current_script_span = std.mem.span(script_store.store().current_script.?);
         if (std.mem.eql(u8, current_script_span, std.mem.span(@as([*:0]const u8, @ptrCast(&config_state.config().PRELUDE)))) or std.mem.eql(u8, current_script_span, std.mem.span(@as([*:0]const u8, @ptrCast(&config_state.config().STDENV))))) {
             word.print("TO FIX THIS PROBLEM PLEASE GET SUPER-USER TO EXECUTE `mira'\n", .{});
         }
@@ -383,7 +386,7 @@ pub fn makedump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         }
         return;
     }
-    abi.setprefix(rs.current_script.?);
+    abi.setprefix(script_store.store().current_script.?);
     abi.dumpScript(core, comp, rs, heap.files, f.?);
     _ = word.fclose(f.?);
 }

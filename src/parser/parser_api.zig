@@ -18,6 +18,7 @@ const options = @import("version_options");
 
 const word = @import("../graph/word.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const script_store = @import("../session/script_store.zig");
 const config_state = @import("../session/config_state.zig");
 const repl_session = @import("../session/repl_session.zig");
 const core = @import("../runtime/core_state.zig");
@@ -88,7 +89,7 @@ fn slurpCurrentStream(gpa: std.mem.Allocator, stop_at_newline: bool) ![]u8 {
 /// The Phase 1 step 7 default.
 fn parseCurrentNative() ParseError!ParseResult {
     if (options.is_strict) {
-        if (rt.rs().current_script) |script_name| {
+        if (script_store.store().current_script) |script_name| {
             validateUtf8File(script_name) catch |err| {
                 core.s().SYNERR = 1;
                 return err;
@@ -120,7 +121,7 @@ fn parseCurrentNative() ParseError!ParseResult {
         config_state.config().s_in = word.stdin();
     }
 
-    const name_says_literate = !command_mode and if (rt.rs().current_script) |name|
+    const name_says_literate = !command_mode and if (script_store.store().current_script) |name|
         source_mod.Source.isLiterateName(std.mem.span(name))
     else
         false;
@@ -130,8 +131,8 @@ fn parseCurrentNative() ParseError!ParseResult {
     // no current_script, so nothing to resolve against -- "." is inert
     // there since %insert can't meaningfully appear in a typed expression
     // anyway).
-    const base_dir = if (!command_mode and rt.rs().current_script != null)
-        std.fs.path.dirname(std.mem.span(rt.rs().current_script.?)) orelse "."
+    const base_dir = if (!command_mode and script_store.store().current_script != null)
+        std.fs.path.dirname(std.mem.span(script_store.store().current_script.?)) orelse "."
     else
         ".";
     const spliced = source_mod.Source.resolveInserts(alloc, raw, base_dir, std.Options.debug_io, 0) catch return ParseError.ParseFailed;

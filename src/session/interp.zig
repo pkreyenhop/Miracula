@@ -35,6 +35,7 @@ const BnfState = @import("bnf_state.zig").BnfState;
 const ShowFns = @import("../semantics/show_fns.zig").ShowFns;
 const ReplSession = @import("repl_session.zig").ReplSession;
 const ConfigState = @import("config_state.zig").ConfigState;
+const ScriptStore = @import("script_store.zig").ScriptStore;
 
 /// All interpreter state, owned in one place — including heap's GC/dictionary
 /// scratch (folded into `heap` by Phase 2b), the interned `strtab` table, and
@@ -72,6 +73,9 @@ pub const Interp = struct {
     /// Process-wide startup configuration (Phase 4 step 4): prelude/stdenv
     /// paths, heap/dictionary limits, editor, open source stream.
     config: ConfigState = .{},
+    /// The currently-loaded script's module/name tables (Phase 4 step 4,
+    /// the last of the six state-bag slices).
+    script: ScriptStore = .{},
 };
 
 /// Backing storage for the default interpreter instance. Not read directly —

@@ -13,6 +13,7 @@ const word = @import("word.zig");
 const strtab = @import("strtab.zig");
 const combinator = @import("combinator.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const script_store = @import("../session/script_store.zig");
 const config_state = @import("../session/config_state.zig");
 const core = @import("../runtime/core_state.zig");
 const lex_state = @import("../parser/lex_state.zig");
@@ -448,7 +449,7 @@ pub const Heap = struct {
                     }
                     if (core.s().compiling != 0 and rt.rs().ideep == 0) {
                         _ = word.printErr("not enough heap to compile current script\n", .{});
-                        _ = word.printErr("script = \"{s}\", heap = {d}\n", .{ rt.rs().current_script orelse @as([*:0]const u8, "(null)"), self.SPACE });
+                        _ = word.printErr("script = \"{s}\", heap = {d}\n", .{ script_store.store().current_script orelse @as([*:0]const u8, "(null)"), self.SPACE });
                     }
                     os.exit(1);
                 }
@@ -557,10 +558,10 @@ pub const Heap = struct {
             self.mark(ls().linostack);
             self.mark(ls().prefixstack);
             self.mark(heap().files);
-            self.mark(rt.rs().oldfiles);
-            self.mark(rt.rs().includees);
-            self.mark(rt.rs().freeids);
-            self.mark(rt.rs().exports);
+            self.mark(script_store.store().oldfiles);
+            self.mark(script_store.store().includees);
+            self.mark(script_store.store().freeids);
+            self.mark(script_store.store().exports);
             self.mark(cs().internals);
             self.mark(bnf_state.bnf().lexstates);
             self.mark(bnf_state.bnf().lexdefs);
@@ -583,11 +584,11 @@ pub const Heap = struct {
             }
             if (core.s().loading != 0) {
                 self.mark(ls().exportfiles);
-                self.mark(rt.rs().embargoes);
-                self.mark(rt.rs().rfl);
-                self.mark(rt.rs().detrop);
-                self.mark(rt.rs().bereaved);
-                self.mark(rt.rs().ld_stuff);
+                self.mark(script_store.store().embargoes);
+                self.mark(script_store.store().rfl);
+                self.mark(script_store.store().detrop);
+                self.mark(script_store.store().bereaved);
+                self.mark(script_store.store().ld_stuff);
                 self.mark(cs().tlost);
                 var i: usize = 0;
                 const nextpn_val = @as(usize, @intCast(ls().nextpn));
@@ -595,8 +596,8 @@ pub const Heap = struct {
                     self.mark(ls().pnvec.?[i]);
                 }
             }
-            self.mark(rt.rs().lastname);
-            self.mark(rt.rs().suppressids);
+            self.mark(script_store.store().lastname);
+            self.mark(script_store.store().suppressids);
             self.mark(repl_session.session().lastexp);
             self.mark(core.s().nill);
             self.mark(rt.rs().standardout);

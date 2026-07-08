@@ -10,6 +10,7 @@ const std = @import("std");
 const word = @import("word.zig");
 const strtab = @import("strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const script_store = @import("../session/script_store.zig");
 const config_state = @import("../session/config_state.zig");
 const core = @import("../runtime/core_state.zig");
 const lex_state = @import("../parser/lex_state.zig");
@@ -347,13 +348,14 @@ pub fn getdbl(file: ?*word.Stream) Word {
 
 /// Write the loaded files/definitions graph to dump `file`.
 pub fn dumpScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, files_val: Word, file: ?*word.Stream) void {
+    _ = rs;
     _ = word.putc(@intCast(wordsize), file);
     _ = word.putc(word.XVERSION, file);
 
     if (files_val == word.NIL) {
         _ = word.putc(0, file);
         putword(core_st.errline, file);
-        var x = rs.oldfiles;
+        var x = script_store.store().oldfiles;
         while (x != word.NIL) : (x = t(x)) {
             _ = word.fprint(file, "{s}", .{mkrel(getFil(h(x)) orelse "")});
             _ = word.putc(0, file);
@@ -378,7 +380,7 @@ pub fn dumpScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
     }
     _ = word.putc(0, file);
     dumpDefs(comp.algshfns, file);
-    if (comp.ND == word.NIL and rs.bereaved != word.NIL) {
+    if (comp.ND == word.NIL and script_store.store().bereaved != word.NIL) {
         dumpOb(word.True, file);
     } else {
         dumpOb(comp.ND, file);
@@ -386,7 +388,7 @@ pub fn dumpScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
     _ = word.putc(word.DEF_X, file);
     dumpOb(comp.SGC, file);
     _ = word.putc(word.DEF_X, file);
-    dumpOb(rs.freeids, file);
+    dumpOb(script_store.store().freeids, file);
     _ = word.putc(word.DEF_X, file);
     dumpDefs(comp.internals, file);
 }
@@ -662,7 +664,7 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
                 lex.dicovflo();
             }
             ch = getword(file);
-            if (rs.oldfiles == word.NIL) {
+            if (script_store.store().oldfiles == word.NIL) {
                 if (os.strcmp(lexs.dicp, src) != 0) {
                     comp.BAD_DUMP = 1;
                     if (aliases != word.NIL) {
@@ -671,7 +673,7 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
                     return word.NIL;
                 }
             }
-            rs.oldfiles = cons(makeFil(getId(name(heap())), ch, 0, word.NIL), rs.oldfiles);
+            script_store.store().oldfiles = cons(makeFil(getId(name(heap())), ch, 0, word.NIL), script_store.store().oldfiles);
         }
         if (aliases != word.NIL) {
             unscramble(comp, aliases);
@@ -685,8 +687,8 @@ pub fn loadScript(core_st: *core.CoreState, comp: *compiler_state.CompilerState,
         comp.TORPHANS = 1;
     }
     comp.SGC = append1(comp.SGC, loadDefs(comp, rs, lexs, file));
-    if (main_flag != 0 or rs.includees == word.NIL) {
-        rs.freeids = loadDefs(comp, rs, lexs, file);
+    if (main_flag != 0 or script_store.store().includees == word.NIL) {
+        script_store.store().freeids = loadDefs(comp, rs, lexs, file);
     } else {
         bindparams(comp, loadDefs(comp, rs, lexs, file), hdsort(params));
     }
@@ -1057,16 +1059,17 @@ pub fn unsetids(d_val: Word) void {
 
 /// Unload the current script: clear its definitions from the environment.
 pub fn unload(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState) void {
-    rs.sorted = 0;
+    _ = rs;
+    script_store.store().sorted = 0;
     comp.speclocs = word.NIL;
     lexs.nextpn = 0;
     comp.rv_script = 0;
     comp.algshfns = word.NIL;
     unsetids(comp.newtyps);
     comp.newtyps = word.NIL;
-    unsetids(rs.freeids);
-    rs.freeids = word.NIL;
-    rs.includees = word.NIL;
+    unsetids(script_store.store().freeids);
+    script_store.store().freeids = word.NIL;
+    script_store.store().includees = word.NIL;
     comp.SGC = word.NIL;
     comp.TABSTRS = word.NIL;
     comp.ND = word.NIL;
@@ -1077,20 +1080,21 @@ pub fn unload(comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *
         unsetids(t(fil));
         tp(fil).* = word.NIL;
     }
-    var ld = rs.ld_stuff;
+    var ld = script_store.store().ld_stuff;
     while (ld != word.NIL and ld != 0) : (ld = t(ld)) {
         var x = h(ld);
         while (x != word.NIL and x != 0) : (x = t(x)) {
             unsetids(t(h(x)));
         }
     }
-    rs.ld_stuff = word.NIL;
+    script_store.store().ld_stuff = word.NIL;
 }
 
 /// Whether any loaded source file has changed on disk since load (1/0).
 pub fn srcUpdate(rs: *rt.RuntimeState) c_int {
+    _ = rs;
     var ft: Word = undefined;
-    var f = if (heap().files == word.NIL) rs.oldfiles else heap().files;
+    var f = if (heap().files == word.NIL) script_store.store().oldfiles else heap().files;
     while (f != word.NIL) {
         const _fil_path: [*:0]const u8 = strtab.strOf(strtab.table(), h(h(h(h(f)))));
         if ((fileMtime(_fil_path)) != filTime(h(f))) {
