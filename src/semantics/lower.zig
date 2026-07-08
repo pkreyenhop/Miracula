@@ -116,6 +116,7 @@ const ATOMLIMIT = word.ATOMLIMIT;
 // declarations (R7.3 — eliminate the linker-as-module-system pattern).
 const heap_mod = @import("../graph/heap.zig");
 const Heap = heap_mod.Heap;
+const print_mod = @import("../graph/print.zig");
 const depend = @import("depend.zig");
 const type_errors = @import("type_errors.zig");
 const unify_mod = @import("unify.zig");
@@ -128,7 +129,7 @@ const make = heap_mod.make;
 const append1 = heap_mod.append1;
 const reverse = heap_mod.reverse;
 const shunt = heap_mod.shunt;
-const out = heap_mod.outTerm;
+const out = print_mod.outTerm;
 const member = depend.member;
 const UNION = depend.UNION;
 const add1 = depend.add1;

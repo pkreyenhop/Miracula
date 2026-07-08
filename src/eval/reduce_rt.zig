@@ -18,6 +18,7 @@ const strtab = @import("../graph/strtab.zig");
 const platform = @import("../io/platform.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const heap = @import("../graph/heap.zig");
+const print_mod = @import("../graph/print.zig");
 const repl = @import("../session/repl.zig");
 const engine = @import("reduce.zig");
 const reducer_trace = @import("trace.zig");
@@ -72,7 +73,7 @@ const stoChar = heap.stoChar;
 extern fn fromUTF8(f: ?*word.Stream) Word;
 const parseLine = repl.parseLine;
 const reduce = engine.reduce;
-const charname = heap.charname;
+const charname = print_mod.charname;
 
 inline fn getTag(x: Word) word.NodeTag {
     return heap.heap().getTag(x);
@@ -823,7 +824,7 @@ pub fn print(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) reduce_core.Re
     }
     word.printErr("\nimpossible event in print\n", .{});
     _ = word.putc('<', getStderr().?);
-    heap.outTerm(getStderr().?, e);
+    print_mod.outTerm(getStderr().?, e);
     word.printErr(">\n", .{});
     os.exit(1);
 }
@@ -904,7 +905,7 @@ pub fn output(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) reduce_core.R
             },
             else => {
                 word.printErr("\n<impossible event in output list: ", .{});
-                heap.outTerm(getStderr().?, h(e));
+                print_mod.outTerm(getStderr().?, h(e));
                 word.printErr(">\n", .{});
             },
         }
@@ -919,7 +920,7 @@ pub fn output(eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) reduce_core.R
     }
     word.printErr("\nimpossible event in output\n", .{});
     _ = word.putc('<', getStderr().?);
-    heap.outTerm(getStderr().?, e);
+    print_mod.outTerm(getStderr().?, e);
     word.printErr(">\n", .{});
     os.exit(1);
 }

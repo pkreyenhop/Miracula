@@ -27,6 +27,7 @@ src/graph/strtab.zig -> src/session/interp.zig
 src/graph/word.zig -> src/eval/stream.zig
 src/os.zig -> src/eval/reduce_rt.zig
 src/os.zig -> src/graph/heap.zig
+src/os.zig -> src/graph/print.zig
 src/os.zig -> src/graph/word.zig
 src/os.zig -> src/semantics/depend.zig
 src/os.zig -> src/semantics/infer.zig

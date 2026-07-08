@@ -53,9 +53,10 @@ const gettvar = unify_mod.gettvar;
 const same = lower.same;
 const lastlink = lower.lastlink;
 
-const out = heap_mod.outTerm;
+const print_mod = @import("../graph/print.zig");
+const out = print_mod.outTerm;
 const isChar = heap_mod.isChar;
-const charname = heap_mod.charname;
+const charname = print_mod.charname;
 const size = heap_mod.size;
 const getDbl = heap_mod.getDbl;
 
