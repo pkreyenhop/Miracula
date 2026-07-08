@@ -25,6 +25,8 @@ const lex_state = @import("../parser/lex_state.zig");
 const lex = @import("../parser/lex.zig");
 const core_state = @import("../runtime/core_state.zig");
 const heap_mod = @import("../graph/heap.zig");
+const dump_mod = @import("../graph/dump.zig");
+const depend_mod = @import("../semantics/depend.zig");
 const Heap = heap_mod.Heap;
 const files = @import("../io/files.zig");
 const repl = @import("repl.zig");
@@ -75,7 +77,7 @@ fn namescom(heap: *Heap, rs: *rt.RuntimeState, l: Word) void {
     var wp: usize = 0;
     const scrwd = files.termWidth();
     if (rs.sorted == 0 and n != rs.primenv) {
-        n = heap_mod.alfasort(n);
+        n = depend_mod.alfasort(n);
         heap_mod.tp(l).* = n;
     }
     if (n == NIL) return;
@@ -393,7 +395,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                 if (abi.getchar() != '\n') return;
                 if (abi.chdir(d.?) == -1) {
                     word.print("cannot cd to {s}\n", .{d.?});
-                } else if (heap_mod.srcUpdate(rs) != 0) {
+                } else if (dump_mod.srcUpdate(rs) != 0) {
                     dump.undump(heap, core, cs(), rs, rs.current_script.?);
                 }
                 return;
@@ -682,7 +684,7 @@ pub fn editfile(rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_
         p[0] = 0;
     }
     _ = abi.system(ebuf_local);
-    if (heap_mod.srcUpdate(rs) != 0) {
+    if (dump_mod.srcUpdate(rs) != 0) {
         module_loader.loadfile(heap_mod.heap(), core_state.s(), cs(), rs, ls(), rs.current_script.?) catch {};
     }
 }

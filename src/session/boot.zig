@@ -21,6 +21,7 @@ const lex_state = @import("../parser/lex_state.zig");
 const version = @import("../runtime/version.zig");
 const reduce = @import("../eval/reduce_rt.zig");
 const heap_mod = @import("../graph/heap.zig");
+const depend_mod = @import("../semantics/depend.zig");
 const Heap = heap_mod.Heap;
 const repl = @import("repl.zig");
 const commands = @import("commands.zig");
@@ -116,10 +117,10 @@ pub fn mainEntry(argc: c_int, argv: [*][*:0]u8) c_int {
     if (!rt.rs().nostdenv) {
         dump.undump(heap, core_state.s(), cs(), rt.rs(), @as([*:0]const u8, @ptrCast(&rt.rs().STDENV)));
         while (heap.files != NIL) {
-            rt.rs().primenv = heap_mod.alfasort(abi.append1(rt.rs().primenv, heap_mod.filDefs(heap_mod.h(heap.files))));
+            rt.rs().primenv = depend_mod.alfasort(abi.append1(rt.rs().primenv, heap_mod.filDefs(heap_mod.h(heap.files))));
             heap.files = heap_mod.t(heap.files);
         }
-        rt.rs().primenv = heap_mod.alfasort(rt.rs().primenv);
+        rt.rs().primenv = depend_mod.alfasort(rt.rs().primenv);
         cs().newtyps = NIL;
         heap.files = NIL;
     }
@@ -241,7 +242,7 @@ fn runExportsMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
             word.print("\t}}\n", .{});
         }
 
-        var item = abi.typesfirst(heap, heap_mod.alfasort(x));
+        var item = abi.typesfirst(heap, depend_mod.alfasort(x));
         while (item != NIL) : (item = heap_mod.t(item)) {
             _ = word.putchar('\t');
             abi.reportType(heap, heap_mod.h(item));

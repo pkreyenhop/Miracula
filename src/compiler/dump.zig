@@ -13,6 +13,8 @@ const cs = compiler_state.cs;
 const abi = @import("../os.zig");
 const lex_state = @import("../parser/lex_state.zig");
 const heap_mod = @import("../graph/heap.zig");
+const dump_mod = @import("../graph/dump.zig");
+const depend_mod = @import("../semantics/depend.zig");
 const Heap = heap_mod.Heap;
 const files = @import("../io/files.zig");
 const module_loader = @import("module_loader.zig");
@@ -198,7 +200,7 @@ pub fn readoption(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runt
     word.print("the following type{s} no name in this scope:\n", .{if (t(comp.tlost) == NIL) " is needed but has" else "s are needed but have"});
     while (comp.tlost != NIL) {
         word.print("\'{s}\' of file \"{s}\", needed by: ", .{ strtab.strOf(strtab.table(), h(h(heap_mod.tInfo(h(h(comp.tlost)))))), strtab.strOf(strtab.table(), h(t(heap_mod.tInfo(h(h(comp.tlost)))))) });
-        abi.printlist(heap, @constCast(""), heap_mod.alfasort(t(h(comp.tlost))));
+        abi.printlist(heap, @constCast(""), depend_mod.alfasort(t(h(comp.tlost))));
         comp.tlost = t(comp.tlost);
     }
 }
@@ -292,14 +294,14 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
     rs.current_script = @constCast(t_val);
     core.loading = 1;
     rs.oldfiles = NIL;
-    heap_mod.unload(comp, rs, ls());
+    dump_mod.unload(comp, rs, ls());
 
     heap.files = abi.loadScript(core, comp, rs, ls(), f.?, @constCast(t_val), NIL, NIL, if (!rs.making and rs.initialising == 0) 1 else 0);
     _ = word.fclose(f.?);
 
     if (comp.BAD_DUMP != 0) {
         _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
-        heap_mod.unload(comp, rs, ls());
+        dump_mod.unload(comp, rs, ls());
         comp.CLASHES = NIL;
         heap.stackp = heap.dstack;
         word.print("warning: {s} contains incorrect data (file removed)\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
@@ -315,14 +317,14 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
     if (comp.CLASHES != NIL) {
         if (rs.ideep == 0) {
             word.print("cannot load {s} ", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
-            abi.printlist(heap, @constCast("due to name clashes: "), heap_mod.alfasort(comp.CLASHES));
+            abi.printlist(heap, @constCast("due to name clashes: "), depend_mod.alfasort(comp.CLASHES));
         }
-        heap_mod.unload(comp, rs, ls());
+        dump_mod.unload(comp, rs, ls());
         core.loading = 0;
         return;
     }
 
-    if (comp.BAD_DUMP != 0 or heap_mod.srcUpdate(rs) != 0 or heap.files == NIL or comp.ND != NIL) {
+    if (comp.BAD_DUMP != 0 or dump_mod.srcUpdate(rs) != 0 or heap.files == NIL or comp.ND != NIL) {
         if (rs.initialising != 0) {
             errors.fatal("panic: {s} contains errors\n", .{@as([*:0]const u8, @ptrCast(&obf))});
         }

@@ -433,3 +433,45 @@ pub fn redtfr(heap: *Heap, x_in: Word) void {
         x = t(heap, x);
     }
 }
+
+/// Sort a list of identifiers alphabetically by name.
+pub fn alfasort(x_val: Word) Word {
+    var x = x_val;
+    var a = NIL;
+    var b = NIL;
+    var hold = NIL;
+    if (x == NIL) {
+        return NIL;
+    }
+    if (heap_mod.t(x) == NIL) {
+        return if (heap_mod.getTag(heap_mod.h(x)) != .ID) NIL else x;
+    }
+    while (x != NIL) {
+        if (heap_mod.getTag(heap_mod.h(x)) == .ID) {
+            hold = a;
+            a = heap_mod.cons(heap_mod.h(x), b);
+            b = hold;
+        }
+        x = heap_mod.t(x);
+    }
+    a = alfasort(a);
+    b = alfasort(b);
+    x = NIL;
+    while (a != NIL and b != NIL) {
+        if (std.mem.order(u8, std.mem.span(heap_mod.getId(heap_mod.h(a))), std.mem.span(heap_mod.getId(heap_mod.h(b)))) == .lt) {
+            x = heap_mod.cons(heap_mod.h(a), x);
+            a = heap_mod.t(a);
+        } else {
+            x = heap_mod.cons(heap_mod.h(b), x);
+            b = heap_mod.t(b);
+        }
+    }
+    if (a == NIL) {
+        a = b;
+    }
+    while (a != NIL) {
+        x = heap_mod.cons(heap_mod.h(a), x);
+        a = heap_mod.t(a);
+    }
+    return reverse(x);
+}

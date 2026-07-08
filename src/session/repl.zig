@@ -45,6 +45,7 @@ const lex_state = @import("../parser/lex_state.zig");
 const signals_mod = @import("../io/signals.zig");
 const lex = @import("../parser/lex.zig");
 const heap_mod = @import("../graph/heap.zig");
+const dump_mod = @import("../graph/dump.zig");
 const Heap = heap_mod.Heap;
 const commands = @import("commands.zig");
 const trans_mod = @import("../semantics/lower.zig");
@@ -135,7 +136,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
         rs.last_elapsed_ns = null;
         rs.last_gc_count = null;
         ch = abi.getchar();
-        if (rs.rechecking != 0 and heap_mod.srcUpdate(rs) != 0) {
+        if (rs.rechecking != 0 and dump_mod.srcUpdate(rs) != 0) {
             module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), rs.current_script.?) catch {};
         }
         while (ch == ' ' or ch == '\t') {
@@ -234,7 +235,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                         abi.perror("UNIX error - cannot create process");
                     }
                     _ = signals(abi.SIGINT, oldsig);
-                    if (heap_mod.srcUpdate(rs) != 0) {
+                    if (dump_mod.srcUpdate(rs) != 0) {
                         module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), rs.current_script.?) catch {};
                     }
                 } else {

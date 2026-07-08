@@ -24,6 +24,8 @@ const lex_state = @import("../parser/lex_state.zig");
 const signals_mod = @import("../io/signals.zig");
 const core_state = @import("../runtime/core_state.zig");
 const heap_mod = @import("../graph/heap.zig");
+const dump_mod = @import("../graph/dump.zig");
+const depend_mod = @import("../semantics/depend.zig");
 const Heap = heap_mod.Heap;
 const types_mod = @import("../semantics/infer.zig");
 const trans_mod = @import("../semantics/lower.zig");
@@ -64,7 +66,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     core.errline = 0;
     rs.current_script = @constCast(t_val);
     rs.oldfiles = NIL;
-    heap_mod.unload(comp, rs, lexs);
+    dump_mod.unload(comp, rs, lexs);
 
     if (!files.fileExists(t_val)) {
         if (rs.initialising != 0) {
@@ -198,7 +200,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         if (core.errline == 0 and core.errs != 0 and std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(core.errs))), std.mem.span(rs.current_script.?))) {
             core.errline = heap_mod.t(core.errs);
         }
-        comp.ND = heap_mod.alfasort(comp.ND);
+        comp.ND = depend_mod.alfasort(comp.ND);
         core.loading = 0;
         return;
     }
@@ -207,7 +209,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         errors.fatal("panic: cannot compile {s}\n", .{if (rs.okprel) "stdenv" else "prelude"});
     }
     rs.oldfiles = heap.files;
-    heap_mod.unload(comp, rs, lexs);
+    dump_mod.unload(comp, rs, lexs);
     if (files.isMirandaSource(t_val) != 0) {
         var obf: [abi.pnlim]u8 = undefined;
         {
@@ -291,7 +293,7 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
             if (rs.embargoes != NIL) {
                 rs.exports = abi.setdiff(heap, rs.exports, rs.embargoes);
             }
-            rs.exports = heap_mod.alfasort(rs.exports);
+            rs.exports = depend_mod.alfasort(rs.exports);
 
             e = rs.exports;
             while (e != NIL) : (e = heap_mod.t(e)) {
@@ -306,7 +308,7 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
             if (rs.exports == NIL) {
                 word.print("warning, export list has void contents\n", .{});
             } else {
-                rs.exports = abi.append1(heap_mod.alfasort(c_ctr), rs.exports);
+                rs.exports = abi.append1(depend_mod.alfasort(c_ctr), rs.exports);
             }
 
             if (n != NIL) {
@@ -687,7 +689,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         word.printErr("TYPECLASH - the following type{s} multiply named:\n", .{@as([*:0]const u8, if (heap_mod.t(tclashes) == NIL) " is" else "s are")});
         while (tclashes != NIL) {
             word.printErr("\'{s}\' of file \"{s}\", as: ", .{ abi.getaka(heap_mod.h(heap_mod.t(heap_mod.h(tclashes)))), strtab.strOf(strtab.table(), heap_mod.h(heap_mod.h(tclashes))) });
-            abi.printlist(heap, @constCast(""), heap_mod.alfasort(heap_mod.t(heap_mod.t(heap_mod.h(tclashes)))));
+            abi.printlist(heap, @constCast(""), depend_mod.alfasort(heap_mod.t(heap_mod.t(heap_mod.h(tclashes)))));
             tclashes = heap_mod.t(tclashes);
         }
         word.printErr("typecheck cannot proceed - compilation abandoned\n", .{});
