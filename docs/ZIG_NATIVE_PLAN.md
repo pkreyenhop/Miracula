@@ -1958,6 +1958,17 @@ subsystems and passed explicitly; the ambient singleton deleted.
    - `CoreState`: `SYNERR`/`errs`/`errline`/`errcol` are gone (Phase 2);
      `loading`/`compiling` → a `Mode` enum on the compile context; `commandmode` →
      a parse-mode *parameter*; `nill` → a `graph` constant.
+     **`nill` landed** (2026-07-08): moved onto `Heap` as a plain field
+     (`heap.nill`/`heap.heap().nill`), not a literal constant — it's a
+     heap-allocated cons cell built once by `miraSetup`, so it belongs
+     alongside `Heap`'s other setup-time identity fields (`files`/
+     `current_file`/`CFN`), the same category of move as every state-bag
+     slice above. **`loading`/`compiling` → `Mode` and `commandmode` →
+     parameter deliberately not attempted**: both are real signature/
+     behavior changes (an enum consolidation changes every read site's
+     comparison logic; "→ a parameter" is literally receiver-threading),
+     not data relocation — they belong to step 5's work, not this step's
+     "move fields to their right owner, no other changes" discipline.
    - **Root registry:** `graph/gc.zig` gets `Roots` — owners register slices/
      callbacks of heap refs. Replaces both the GC's hard-wired knowledge of every
      subsystem's fields and `RuntimeState.validate()`'s hand-maintained list.
