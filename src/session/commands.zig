@@ -312,7 +312,7 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
                 files.copyFile(mf.?, t_val.?);
             }
         }
-        const err_line_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errline) else if (core.errs != 0 and std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(core.errs))))) @intCast(heap_mod.t(core.errs)) else @intCast(abi.geterrlin(core, lexs, t_val.?));
+        const err_line_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errline) else if (core.errs != 0 and std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(core.errs))))) @intCast(heap_mod.t(core.errs)) else @intCast(abi.geterrlin(heap_mod.heap(), core, lexs, t_val.?));
         const err_col_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errcol) else 0;
         editfile(rs, t_val.?, err_line_num, err_col_num);
         return true;
@@ -398,7 +398,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                 if (abi.getchar() != '\n') return;
                 if (abi.chdir(d.?) == -1) {
                     word.print("cannot cd to {s}\n", .{d.?});
-                } else if (dump_mod.srcUpdate(rs) != 0) {
+                } else if (dump_mod.srcUpdate(heap, rs) != 0) {
                     dump.undump(heap, core, cs(), rs, script_store.store().current_script.?);
                 }
                 return;
@@ -687,7 +687,7 @@ pub fn editfile(rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_
         p[0] = 0;
     }
     _ = abi.system(ebuf_local);
-    if (dump_mod.srcUpdate(rs) != 0) {
+    if (dump_mod.srcUpdate(heap_mod.heap(), rs) != 0) {
         module_loader.loadfile(heap_mod.heap(), core_state.s(), cs(), rs, ls(), script_store.store().current_script.?) catch {};
     }
 }

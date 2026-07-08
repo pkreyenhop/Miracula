@@ -139,7 +139,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
         repl_session.session().last_elapsed_ns = null;
         repl_session.session().last_gc_count = null;
         ch = abi.getchar();
-        if (rs.rechecking != 0 and dump_mod.srcUpdate(rs) != 0) {
+        if (rs.rechecking != 0 and dump_mod.srcUpdate(heap, rs) != 0) {
             module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), script_store.store().current_script.?) catch {};
         }
         while (ch == ' ' or ch == '\t') {
@@ -238,7 +238,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                         abi.perror("UNIX error - cannot create process");
                     }
                     _ = signals(abi.SIGINT, oldsig);
-                    if (dump_mod.srcUpdate(rs) != 0) {
+                    if (dump_mod.srcUpdate(heap, rs) != 0) {
                         module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), script_store.store().current_script.?) catch {};
                     }
                 } else {

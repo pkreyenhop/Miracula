@@ -301,14 +301,14 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
     script_store.store().current_script = @constCast(t_val);
     core.loading = 1;
     script_store.store().oldfiles = NIL;
-    dump_mod.unload(comp, rs, ls());
+    dump_mod.unload(heap, comp, rs, ls());
 
-    heap.files = abi.loadScript(core, comp, rs, ls(), f.?, @constCast(t_val), NIL, NIL, if (!make_state.make().making and rs.initialising == 0) 1 else 0);
+    heap.files = abi.loadScript(heap, core, comp, rs, ls(), f.?, @constCast(t_val), NIL, NIL, if (!make_state.make().making and rs.initialising == 0) 1 else 0);
     _ = word.fclose(f.?);
 
     if (comp.BAD_DUMP != 0) {
         _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
-        dump_mod.unload(comp, rs, ls());
+        dump_mod.unload(heap, comp, rs, ls());
         comp.CLASHES = NIL;
         heap.stackp = heap.dstack;
         word.print("warning: {s} contains incorrect data (file removed)\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
@@ -326,12 +326,12 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
             word.print("cannot load {s} ", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
             abi.printlist(heap, @constCast("due to name clashes: "), depend_mod.alfasort(comp.CLASHES));
         }
-        dump_mod.unload(comp, rs, ls());
+        dump_mod.unload(heap, comp, rs, ls());
         core.loading = 0;
         return;
     }
 
-    if (comp.BAD_DUMP != 0 or dump_mod.srcUpdate(rs) != 0 or heap.files == NIL or comp.ND != NIL) {
+    if (comp.BAD_DUMP != 0 or dump_mod.srcUpdate(heap, rs) != 0 or heap.files == NIL or comp.ND != NIL) {
         if (rs.initialising != 0) {
             errors.fatal("panic: {s} contains errors\n", .{@as([*:0]const u8, @ptrCast(&obf))});
         }
@@ -386,8 +386,8 @@ pub fn makedump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         }
         return;
     }
-    abi.setprefix(script_store.store().current_script.?);
-    abi.dumpScript(core, comp, rs, heap.files, f.?);
+    abi.setprefix(heap, script_store.store().current_script.?);
+    abi.dumpScript(heap, core, comp, rs, heap.files, f.?);
     _ = word.fclose(f.?);
 }
 

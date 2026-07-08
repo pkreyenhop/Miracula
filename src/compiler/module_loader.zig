@@ -70,7 +70,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     core.errline = 0;
     script_store.store().current_script = @constCast(t_val);
     script_store.store().oldfiles = NIL;
-    dump_mod.unload(comp, rs, lexs);
+    dump_mod.unload(heap, comp, rs, lexs);
 
     if (!files.fileExists(t_val)) {
         if (rs.initialising != 0) {
@@ -213,7 +213,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         errors.fatal("panic: cannot compile {s}\n", .{if (config_state.config().okprel) "stdenv" else "prelude"});
     }
     script_store.store().oldfiles = heap.files;
-    dump_mod.unload(comp, rs, lexs);
+    dump_mod.unload(heap, comp, rs, lexs);
     if (files.isMirandaSource(t_val) != 0) {
         var obf: [abi.pnlim]u8 = undefined;
         {
@@ -530,7 +530,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
 
         f = word.fopen(lexs.dicp, "r");
         if (f != null) {
-            x = abi.loadScript(core, comp, rs, lexs, f.?, @constCast(fn_str), heap_mod.h(heap_mod.t(heap_mod.h(includees_list))), heap_mod.t(heap_mod.t(heap_mod.h(includees_list))), 0);
+            x = abi.loadScript(heap, core, comp, rs, lexs, f.?, @constCast(fn_str), heap_mod.h(heap_mod.t(heap_mod.h(includees_list))), heap_mod.t(heap_mod.t(heap_mod.h(includees_list))), 0);
             _ = word.fclose(f.?);
         }
 
