@@ -237,7 +237,7 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
 }
 
 /// Handle the `'e'` REPL command (extracted from `command`).
-fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.LexState) bool {
+fn cmdEdit(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.LexState) bool {
     var t_val: ?[*:0]u8 = undefined;
     var ch: c_int = undefined;
     var ch1: c_int = undefined;
@@ -312,9 +312,9 @@ fn cmdEdit(core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.L
                 files.copyFile(mf.?, t_val.?);
             }
         }
-        const err_line_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errline) else if (core.errs != 0 and std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap_mod.heap(), core.errs))))) @intCast(heap_mod.t(heap_mod.heap(), core.errs)) else @intCast(abi.geterrlin(heap_mod.heap(), core, lexs, t_val.?));
+        const err_line_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errline) else if (core.errs != 0 and std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap, core.errs))))) @intCast(heap_mod.t(heap, core.errs)) else @intCast(abi.geterrlin(heap, core, lexs, t_val.?));
         const err_col_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errcol) else 0;
-        editfile(rs, t_val.?, err_line_num, err_col_num);
+        editfile(heap, rs, t_val.?, err_line_num, err_col_num);
         return true;
     }
     if (is(lexs, "editor")) {
@@ -422,7 +422,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
             }
         },
         'e' => {
-            if (cmdEdit(core, rs, lexs)) return;
+            if (cmdEdit(heap, core, rs, lexs)) return;
         },
         'f' => {
             if (cmdFiles(heap, core, comp, rs, lexs)) return;
@@ -607,7 +607,7 @@ pub fn manaction(rs: *rt.RuntimeState) void {
 }
 
 /// Open `t_val` at `line` in the user's editor, substituting into the editor-command template.
-pub fn editfile(rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_int) void {
+pub fn editfile(heap: *Heap, rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_int) void {
     var line_val = line;
     const col_val = if (col == 0) @as(c_int, 1) else col;
     const ebuf_local = @as([*]u8, @ptrCast(&rs.linebuf[0]));
@@ -687,8 +687,8 @@ pub fn editfile(rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_
         p[0] = 0;
     }
     _ = abi.system(ebuf_local);
-    if (dump_mod.srcUpdate(heap_mod.heap(), rs) != 0) {
-        module_loader.loadfile(heap_mod.heap(), core_state.s(), cs(), rs, ls(), script_store.store().current_script.?) catch {};
+    if (dump_mod.srcUpdate(heap, rs) != 0) {
+        module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), script_store.store().current_script.?) catch {};
     }
 }
 

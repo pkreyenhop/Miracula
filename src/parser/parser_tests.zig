@@ -209,7 +209,7 @@ test "syntax error sets errcol and editfile expands column placeholder" {
     defer config_state.config().editor = old_editor;
 
     config_state.config().editor = @constCast(@as([*:0]const u8, ": -l ! -c & -f %"));
-    commands.editfile(rt.rs(), "test.m", 42, 17);
+    commands.editfile(heap.heap(), rt.rs(), "test.m", 42, 17);
 
     // Verify ebuf_local contents in rt.rs().linebuf
     const expected_cmd = ": -l 42 -c 17 -f \"test.m\"";

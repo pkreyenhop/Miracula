@@ -2123,7 +2123,33 @@ subsystems and passed explicitly; the ambient singleton deleted.
    differential/golden corpus green after every sub-slice. `layer_check.py`:
    0 new violations. `scorecard.sh`: no regression.
 
-   Remaining: `session` subsystem, then the final singleton-deletion step.
+   **`session` subsystem, landed.** Small: `commands.zig`'s `cmdEdit`
+   (single caller, `command`, already had `heap`) and `editfile` (2 real
+   callers, both already had `heap`) now take it explicitly. Everything else
+   found in `session/` turned out to be a structural exception rather than
+   something to fix: `boot.zig`'s `mainEntry` (`const heap = heap_mod.heap();`
+   — the literal root of the whole chain, nothing above it to thread from),
+   `main.zig`'s own two post-`mainEntry` validate calls (same reason —
+   `main()` predates any heap construction and outlives `mainEntry`'s own
+   local `heap`), and `editor.zig`'s tab-completion callback (`zigline`'s own
+   fixed callback signature, no room for an extra parameter). All four are
+   the same shape as `eval/reduce.zig`'s `reduce()` and `outstats()`: no
+   receiver exists anywhere in the call chain to thread from, so they're
+   deferred to the final singleton-deletion step rather than "fixed" now.
+
+   `graph`/`eval`/`semantics`/`session` — the four subsystems step 5 named —
+   are now all done to the point where every remaining ambient call is one of
+   these structural roots/no-receiver cases, or sits inside one of the two
+   deliberately-deferred giant dispatch-table clusters (`infer.zig`'s
+   `tf`/`tf2`/`tf3`/`ap`/`lt`/`pairType`, `lower.zig`'s `codegen`'s own
+   `cons`/`ap`/`ap2`/`ap3`). Next: the singleton-deletion step itself
+   (`heap.heap()`/`rs()`/`cs()`/`ls()`/`ev()`/`s()`/`interp.current_interp`/
+   `interp.reset()`) — not yet scoped in detail; likely needs its own
+   accounting pass given the two dispatch-table clusters and four structural
+   roots are real, permanent blockers to a literal zero unless addressed
+   first (a smaller `Interp`-construction-based fix for the roots, and a
+   decision on whether the dispatch-table clusters are worth cascading into
+   or should stay as a documented, load-bearing exception to the phase gate).
 
 **Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
 interrupt flag); DAG check green with empty allowlist; files > 1,000 lines = 0;

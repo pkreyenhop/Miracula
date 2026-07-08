@@ -189,7 +189,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                     if (aka != null) {
                         word.print("originally defined as \"{s}\"\n", .{aka.?});
                     }
-                    commands.editfile(rs, strtab.strOf(strtab.table(), heap_mod.h(heap, x)), @intCast(heap_mod.t(heap, x)), 0);
+                    commands.editfile(heap, rs, strtab.strOf(strtab.table(), heap_mod.h(heap, x)), @intCast(heap_mod.t(heap, x)), 0);
                 } else {
                     _ = abi.ungetc(ch, abi.stdin().?);
                     _ = token();
