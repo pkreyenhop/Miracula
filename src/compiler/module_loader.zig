@@ -46,8 +46,8 @@ fn WEXITSTATUS(status: c_int) c_int {
     return (status >> 8) & 0xff;
 }
 
-inline fn pnVal(x: Word) Word {
-    return heap_mod.t(heap_mod.heap(), x);
+inline fn pnVal(heap: *Heap, x: Word) Word {
+    return heap_mod.t(heap, x);
 }
 
 /// Parses and compiles the Miranda source file at `t_val`, updating the global file
@@ -91,7 +91,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         return error.LoadError;
     }
 
-    if (abi.openfile(@constCast(t_val)) == 0) {
+    if (abi.openfile(heap, @constCast(t_val)) == 0) {
         if (rs.initialising != 0) {
             errors.fatal("panic: cannot open {s}\n", .{t_val});
         }
@@ -135,7 +135,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     script_store.store().includees = NIL;
     comp.FBS = NIL;
 
-    _ = parser_api.parseCurrent() catch {};
+    _ = parser_api.parseCurrent(heap) catch {};
 
     resolveExportFileList(heap, core, rs, lexs);
 
@@ -556,9 +556,9 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
                             var q = heap_mod.filDefs(heap_mod.h(heap, z));
                             while (p != NIL and q != NIL) {
                                 if (getTag(heap, heap_mod.h(heap, p)) == .ID) {
-                                    if (heap_mod.idType(heap_mod.h(heap, p)) == word.type_t and (getTag(heap, heap_mod.h(heap, q)) == .ID or getTag(heap, pnVal(heap_mod.h(heap, q))) == .ID)) {
+                                    if (heap_mod.idType(heap_mod.h(heap, p)) == word.type_t and (getTag(heap, heap_mod.h(heap, q)) == .ID or getTag(heap, pnVal(heap, heap_mod.h(heap, q))) == .ID)) {
                                         var w = tclashes;
-                                        const orig = if (getTag(heap, heap_mod.h(heap, q)) == .ID) heap_mod.h(heap, q) else pnVal(heap_mod.h(heap, q));
+                                        const orig = if (getTag(heap, heap_mod.h(heap, q)) == .ID) heap_mod.h(heap, q) else pnVal(heap, heap_mod.h(heap, q));
                                         if (heap_mod.tClass(heap_mod.h(heap, p)) == word.synonym_t) {
                                             p = heap_mod.t(heap, p);
                                             q = heap_mod.t(heap, q);

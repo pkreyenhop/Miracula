@@ -272,7 +272,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                 repl_session.session().echoing = 0;
                 comp.polyshowerror = 0;
                 core.commandmode = 1;
-                _ = parser_api.parseCurrent() catch {};
+                _ = parser_api.parseCurrent(heap) catch {};
                 if (core.SYNERR != 0) {
                     core.SYNERR = 0;
                 } else if (lexs.c != '\n') {
@@ -464,7 +464,7 @@ pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState,
         repl_session.session().echoing = 0;
         core.commandmode = 1;
         config_state.config().s_in = f;
-        _ = parser_api.parseCurrent() catch {};
+        _ = parser_api.parseCurrent(heap) catch {};
         config_state.config().s_in = abi.stdin();
         if (core.SYNERR != 0) {
             core.SYNERR = 0;

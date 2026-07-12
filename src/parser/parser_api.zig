@@ -52,8 +52,8 @@ pub const ParseResult = enum {
 /// (real `yylex()`) path and its `-Dlegacy-lexer` escape hatch were deleted
 /// (Phase 1 step 8), once step 7 had proven the native pipeline out as the
 /// production default.
-pub fn parseCurrent() ParseError!ParseResult {
-    return parseCurrentNative();
+pub fn parseCurrent(heap_ptr: *heap.Heap) ParseError!ParseResult {
+    return parseCurrentNative(heap_ptr);
 }
 
 /// Read from the currently-open stream (`config_state.config().s_in`) into an owned
@@ -87,7 +87,7 @@ fn slurpCurrentStream(gpa: std.mem.Allocator, stop_at_newline: bool) ![]u8 {
 /// Run the native `syntax/` pipeline (`Source` → `lexer` → `applyLayout` →
 /// `parser.zig`/`codegen.zig`) on the currently active Miranda lex stream.
 /// The Phase 1 step 7 default.
-fn parseCurrentNative() ParseError!ParseResult {
+fn parseCurrentNative(heap_ptr: *heap.Heap) ParseError!ParseResult {
     if (options.is_strict) {
         if (script_store.store().current_script) |script_name| {
             validateUtf8File(script_name) catch |err| {
@@ -141,7 +141,7 @@ fn parseCurrentNative() ParseError!ParseResult {
     const laid_out = layout_mod.applyLayout(alloc, tok_result.tokens) catch return ParseError.ParseFailed;
 
     var p = parser_mod.Parser.initWithDirectives(alloc, laid_out, tok_result.directives);
-    return runParsedTokens(&p, alloc, tok_result.diagnostics, base_dir);
+    return runParsedTokens(heap_ptr, &p, alloc, tok_result.diagnostics, base_dir);
 }
 
 /// Print one lex-level diagnostic exactly as legacy would have, given which
@@ -168,7 +168,7 @@ fn reportLexerDiagnostic(d: lexer_mod.Diagnostic) void {
 /// are the native pipeline's lex-level diagnostics, collected during
 /// tokenization rather than reported immediately (unlike the deleted
 /// legacy lexer's `acterror()`/`syntax()` calls, made directly mid-scan).
-fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagnostics: []const lexer_mod.Diagnostic, base_dir: []const u8) ParseError!ParseResult {
+fn runParsedTokens(heap_ptr: *heap.Heap, p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagnostics: []const lexer_mod.Diagnostic, base_dir: []const u8) ParseError!ParseResult {
     // Command mode: the user typed an expression at the REPL prompt.
     // In the old YACC grammar this was handled by `EVAL exp { evaluate($2); }`.
     // We parse one expression, codegen it, then fork via evaluateRepl().
@@ -190,7 +190,7 @@ fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagno
             return ParseError.SyntaxError;
         };
         if (options.is_strict or @import("builtin").mode == .Debug) {
-            heap.heap().validate();
+            heap_ptr.validate();
             p.validate();
             rt.rs().validate();
         }
@@ -202,12 +202,12 @@ fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagno
         }
         const expr_word = codegen.codegenExpr(alloc, expr);
         if (options.is_strict or @import("builtin").mode == .Debug) {
-            heap.heap().validate();
+            heap_ptr.validate();
             p.validate();
             rt.rs().validate();
         }
         repl_session.session().lastexp = expr_word; // anchor as GC root before typeOf() inside evaluateRepl() can trigger GC
-        evaluateRepl(heap.heap(), core.s(), compiler_state.cs(), rt.rs(), expr_word);
+        evaluateRepl(heap_ptr, core.s(), compiler_state.cs(), rt.rs(), expr_word);
         // driver/repl.zig's command loop checks `lexs.c` after this call
         // returns to decide whether the line held trailing garbage (`lexs.c
         // != '\n'` -> "syntax error", matching the legacy lexer's own
@@ -223,7 +223,7 @@ fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagno
 
     const script = parser_mod.parseScript(p) catch return ParseError.ParseFailed;
     if (options.is_strict or @import("builtin").mode == .Debug) {
-        heap.heap().validate();
+        heap_ptr.validate();
         p.validate();
         rt.rs().validate();
     }
@@ -266,7 +266,7 @@ fn runParsedTokens(p: *parser_mod.Parser, alloc: std.mem.Allocator, lexer_diagno
 
     codegen.codegenScript(alloc, script);
     if (options.is_strict or @import("builtin").mode == .Debug) {
-        heap.heap().validate();
+        heap_ptr.validate();
         p.validate();
         rt.rs().validate();
     }

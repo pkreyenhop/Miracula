@@ -144,7 +144,7 @@ pub fn genlhs(heap: *Heap, x: Word) Word {
         },
         .INT => return cons(heap, CONST, x),
         .DOUBLE => {
-            syntax("floating point literal in pattern\n") catch {};
+            syntax(heap, "floating point literal in pattern\n") catch {};
             return heap.nill;
         },
         .ATOM => {
@@ -154,7 +154,7 @@ pub fn genlhs(heap: *Heap, x: Word) Word {
         },
         else => {},
     }
-    syntax("illegal form on left of <-\n") catch {};
+    syntax(heap, "illegal form on left of <-\n") catch {};
     return heap.nill;
 }
 

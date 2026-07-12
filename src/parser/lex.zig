@@ -439,11 +439,11 @@ pub fn adjustPrefix(f: [*:0]const u8) void {
 }
 
 /// Open source file `n` for reading; returns 0 on failure.
-pub fn openfile(n: [*:0]const u8) c_int {
+pub fn openfile(heap: *Heap, n: [*:0]const u8) c_int {
     const f = word.fopen(n, "r") orelse return 0;
     // Stream* handle stored in the cell (read back via @ptrFromInt below);
     // this is a Stream-handle-in-cell cast, not a node string — out of B1 scope.
-    ls().fileq = cons(make(heap_mod.heap(), .STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls().fileq);
+    ls().fileq = cons(make(heap, .STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls().fileq);
     ls().insertdepth += 1;
     return 1;
 }
@@ -551,7 +551,7 @@ pub fn resetPns() void {
 }
 
 /// Make a private-name node for value `val`.
-pub fn makePn(val: Word) Word {
+pub fn makePn(heap: *Heap, val: Word) Word {
     if (ls().nextpn == ls().pn_lim) {
         const old_lim = ls().pn_lim;
         ls().pn_lim += 400;
@@ -559,7 +559,7 @@ pub fn makePn(val: Word) Word {
         const slice = rt.allocator.realloc(old_slice, @intCast(ls().pn_lim)) catch mallocPanic("ls.pnvec");
         ls().pnvec = slice.ptr;
     }
-    ls().pnvec.?[@intCast(ls().nextpn)] = make(heap_mod.heap(), .STRCONS, ls().nextpn, val);
+    ls().pnvec.?[@intCast(ls().nextpn)] = make(heap, .STRCONS, ls().nextpn, val);
     const ret = ls().pnvec.?[@intCast(ls().nextpn)];
     ls().nextpn += 1;
     return ret;

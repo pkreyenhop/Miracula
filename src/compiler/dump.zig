@@ -116,7 +116,7 @@ pub fn unfixexports(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Ru
 /// bucket-chain search with a direct rebind now that the dictionary is
 /// keyed by name (`semantics/symbols.zig`, ZIG_NATIVE_PLAN.md Phase 1 step 6).
 fn privatise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
-    const n = abi.makePn(x);
+    const n = abi.makePn(heap, x);
     const nm = std.mem.span(heap_mod.getId(x));
     const i = h(heap, n);
 

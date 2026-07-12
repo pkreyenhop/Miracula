@@ -2252,10 +2252,8 @@ subsystems and passed explicitly; the ambient singleton deleted.
    violations. `scorecard.sh`: no regression.
 
    This was item 2's third (and largest) bullet from the scoping pass, and it
-   directly unblocks `mainEntry`'s own remaining `heap.heap()` call (item 2's
-   second bullet) — `mainEntry`'s callees no longer need the ambient
-   accessor once `reduce()` itself doesn't either, so `main()` can thread
-   `interp_storage`'s heap down explicitly instead of relying on the global.
+   directly unblocks `mainEntry`'s own remaining `heap.heap()` call.
+
    **`mainEntry`/`main()`'s bootstrap restructuring and the `editor.zig`
    callback fix, landed (2026-07-08, same session).** `mainEntry` now takes
    `heap: *Heap` as its first parameter instead of computing it from the
@@ -2272,11 +2270,37 @@ subsystems and passed explicitly; the ambient singleton deleted.
    smoke test (`echo "2+3" | mira -lib ./miralib -hush` → `5`) confirmed the
    ordinary non-interactive path survives the `mainEntry` signature change.
 
+   **The not-yet-swept files, mostly landed (2026-07-08, same session).**
+   `compiler/module_loader.zig`'s one remaining site (`pnVal`, 2 callers, both
+   with `heap`) is now fully clean. `compiler/setup.zig`'s `syntax`/`acterror`
+   (the two grammar/parse-error reporters) now take `heap: *Heap` explicitly —
+   all ~10 real callers across `lower.zig`/`match.zig` already had it;
+   `codegen.zig`'s one caller (`floatLiteralOverflow`, itself still ambient,
+   deferred with the rest of `codegen.zig` below) passes `heap.heap()`
+   explicitly instead of relying on `syntax`'s own old ambient read — the
+   same "ambient-internal for the one caller that can't provide a receiver"
+   pattern used throughout this phase. `parser/lex.zig`'s `openfile` (1
+   caller) and `makePn` (2 callers) now take `heap` too. `parser/parser_api.zig`'s
+   production entry point chain — `parseCurrent` → `parseCurrentNative` →
+   `runParsedTokens` — now threads `heap` explicitly end to end (3 real
+   callers: `module_loader.zig`'s `loadfile`, `repl.zig`'s `commandLoop` and
+   `parseLine`, all already had it); `parseString`/`parseWithNew` (test-only
+   callers, no production use) stay ambient. `setup.zig`'s `miraSetup` (used
+   by both `mainEntry` *and* several test-harness `freshInterp()`-style
+   helpers with no natural `heap` binding) and `graph/bignum.zig` (not
+   examined this pass) are the two files' remaining ambient work, both
+   correctly left as-is — `miraSetup` for the same "many far-flung ambient
+   callers, some without a receiver at all" reason `NTV()`/dispatch-table
+   helpers stay ambient. `zig build test` green throughout (all 253 unit
+   tests + integration suite + spine differential/golden corpus).
+   `layer_check.py`: 0 new violations. `scorecard.sh`: ambient singleton-
+   accessor call sites 694 → 690.
+
    Remaining before the accessor functions can actually be deleted: the two
    dispatch-table clusters (~150-200 sites, decision on cascading vs.
-   documenting as an exception still open), and the not-yet-swept files
-   (`parser/codegen.zig`, `parser/lex.zig`, `parser/parser_api.zig`,
-   `compiler/setup.zig`, `compiler/module_loader.zig`, `graph/bignum.zig`).
+   documenting as an exception still open), `graph/bignum.zig` (not yet
+   examined), and `parser/codegen.zig` (its own ~35-site ambient cluster,
+   likely similar in shape to `lower.zig`'s `codegen()`).
 
 **Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
 interrupt flag); DAG check green with empty allowlist; files > 1,000 lines = 0;

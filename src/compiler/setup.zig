@@ -92,7 +92,7 @@ pub const yysterm = yysterm_data;
 /// `error.SyntaxError` (Phase 3 step 5, docs/ZIG_NATIVE_PLAN.md — callers
 /// that already gate on `SYNERR` afterward can keep doing so via `catch {}`;
 /// callers that want an honest fallible contract can `try`/propagate it).
-pub fn syntax(s: [*:0]const u8) errors.MiraError!void {
+pub fn syntax(heap: *Heap, s: [*:0]const u8) errors.MiraError!void {
     if (core_state.s().SYNERR != 0) return error.SyntaxError;
     if (!@import("builtin").is_test) {
         if (repl_session.session().echoing != 0) {
@@ -101,16 +101,16 @@ pub fn syntax(s: [*:0]const u8) errors.MiraError!void {
         _ = word.printErr("syntax error: {s}", .{s});
     }
     core_state.s().SYNERR = 1;
-    resetLex(heap_mod.heap());
+    resetLex(heap);
     return error.SyntaxError;
 }
 
 /// Flag a grammar-action error (set `SYNERR`, reset the lexer, and return
 /// `error.SyntaxError` -- see `syntax`'s doc comment).
-pub fn acterror() errors.MiraError!void {
+pub fn acterror(heap: *Heap) errors.MiraError!void {
     if (core_state.s().SYNERR != 0) return error.SyntaxError;
     core_state.s().SYNERR = 1;
-    resetLex(heap_mod.heap());
+    resetLex(heap);
     return error.SyntaxError;
 }
 
