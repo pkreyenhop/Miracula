@@ -2599,6 +2599,38 @@ code that was about to move twice.
    struct(u64)` + inline methods compile to the same machine ops as raw `i64`; if a
    step regresses, inspect the hot loop before proceeding.
 
+   **Landed (2026-07-12), step 1: `Comb`.** New `src/graph/value.zig`
+   (registered in `main.zig`'s comptime test list). `Comb` is generated at
+   comptime *directly from `combinator.cmbnms`* — not hand-transcribed —
+   specifically so it can never drift from the numbering `word.zig`'s
+   `S`/`PLUS`/`NIL`/… constants and every reducer dispatch table depend on.
+   141 members (`cmbnms.len - 1`, excluding `cmbnms`'s own trailing `null`
+   end-sentinel), `False`/`True`/`NIL`/`NILS`/`UNDEF` included as the plan
+   specifies, numbered `0..140` matching `CMBASE + n`.
+   - **Toolchain finding, worth recording for the rest of this phase:** this
+     Zig version (0.16.0) has **no `@Type` builtin** — reification was split
+     into per-kind builtins. The enum one is
+     `@Enum(tag_type: type, mode: std.builtin.Type.Enum.Mode, field_names: []const []const u8, field_values: []const tag_type) type`
+     (`mode` is `.exhaustive`/`.nonexhaustive`, replacing the old
+     `is_exhaustive: bool` field; there is no `decls` parameter at all).
+     Presumably `@Struct`/`@Union`/`@Pointer`/`@Vector`/`@Int` follow the
+     same "per-kind, own argument list" shape — check each against a small
+     throwaway file the same way (deliberately wrong arg count/types to read
+     the compiler's own corrections) before assuming the old `@Type(info)`
+     shape applies when step 2 gets to `Value`/`CellRef`.
+   - `@setEvalBranchQuota(10_000)` needed inside the comptime block:
+     `std.mem.span` on cmbnms's 141 `[*:0]const u8` entries at comptime
+     exceeded the default 1000-backwards-branch budget.
+   - Verified against `word.zig`'s numbering with a dedicated test spot-
+     checking `S`, `PLUS`, `False`, `True`, `NIL`, `NILS`, and `UNDEF` (the
+     last one below `ATOMLIMIT`), plus the member count. `Comb` has no
+     callers yet — it's step 1 only, additive and inert; nothing in the
+     production path reads it.
+   - `zig build`/`zig build test` (255 unit tests, integration suite,
+     spine/golden corpus, `sigint_check`) green; `layer_check.py`/
+     `scorecard.sh --check` unchanged (this step added a type, not a
+     C-accent removal, so no tracked metric was expected to move).
+
 **Gate:** no `Word` outside `graph/dump.zig`; no numeric range tests on values;
 goldens + differential + bench green; GC invariant (mark follows `hd`/`tl` only for
 cell-payload tags) now *type-enforced* rather than convention-enforced.
