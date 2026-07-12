@@ -43,9 +43,10 @@ pub fn main(ctx: std.process.Init) !void {
 fn benchAllocation() !void {
     const started = std.Io.Clock.Timestamp.now(rt.io, .awake);
     const count = 500_000;
+    const heap_ptr = heap.heap();
     var i: usize = 0;
     while (i < count) : (i += 1) {
-        _ = heap.make(.CONS, word.NIL, word.NIL);
+        _ = heap.make(heap_ptr, .CONS, word.NIL, word.NIL);
     }
     const elapsed = started.untilNow(rt.io);
     const elapsed_ms = @as(f64, @floatFromInt(elapsed.raw.nanoseconds)) / 1_000_000.0;
@@ -58,9 +59,10 @@ fn benchAllocation() !void {
 fn benchGC() !void {
     // Fill the heap to 80% capacity with unreachable garbage
     const fill_count = 800_000;
+    const heap_ptr = heap.heap();
     var i: usize = 0;
     while (i < fill_count) : (i += 1) {
-        _ = heap.make(.CONS, word.NIL, word.NIL);
+        _ = heap.make(heap_ptr, .CONS, word.NIL, word.NIL);
     }
 
     // Measure GC execution time

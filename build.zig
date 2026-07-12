@@ -578,6 +578,7 @@ pub fn build(b: *std.Build) void {
         .link_libc = need_libc,
     });
     bench_micro_module.addOptions("version_options", bench_version_options);
+    bench_micro_module.addImport("zigline", zigline_dep.module("zigline"));
 
     const bench_micro = b.addExecutable(.{
         .name = "bench-micro",
