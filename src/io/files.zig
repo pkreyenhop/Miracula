@@ -39,19 +39,19 @@ pub fn isMirandaSource(path: [*:0]const u8) c_int {
 }
 
 /// Returns true if heap nodes `x` and `y` refer to the same filesystem inode.
-pub fn sameFile(x: Word, y: Word) bool {
+pub fn sameFile(heap_ptr: *heap.Heap, x: Word, y: Word) bool {
     const ix = heap.filInodev(x);
     const iy = heap.filInodev(y);
-    return h(heap.heap(), ix) == h(heap.heap(), iy) and t(heap.heap(), ix) == t(heap.heap(), iy);
+    return h(heap_ptr, ix) == h(heap_ptr, iy) and t(heap_ptr, ix) == t(heap_ptr, iy);
 }
 
 /// Returns a heap cons cell `(dev . ino)` for `path`, used to track file identity across loads.
 /// Returns `(0 . 0)` if the file does not exist.
-pub fn inodeId(path: [*:0]const u8) Word {
+pub fn inodeId(heap_ptr: *heap.Heap, path: [*:0]const u8) Word {
     if (platform.getFileInfo(path)) |info| {
-        return heap.cons(heap.heap(), heap.cons(heap.heap(), @intCast(info.dev), @intCast(info.ino)), word.NIL);
+        return heap.cons(heap_ptr, heap.cons(heap_ptr, @intCast(info.dev), @intCast(info.ino)), word.NIL);
     } else {
-        return heap.cons(heap.heap(), heap.cons(heap.heap(), 0, 0), word.NIL);
+        return heap.cons(heap_ptr, heap.cons(heap_ptr, 0, 0), word.NIL);
     }
 }
 

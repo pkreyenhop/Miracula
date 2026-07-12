@@ -2425,16 +2425,49 @@ subsystems and passed explicitly; the ambient singleton deleted.
    `.current_file` — that the scorecard's regex *does* catch, unlike the
    argument-passing style the other two clusters were mostly made of).
 
-   **All three dispatch-table clusters are now done.** Combined with every
-   earlier slice this phase, the remaining ambient singleton call sites are
-   now confined to: the four structural roots (already accepted as
-   permanent), genuinely-test-only call sites (every file's own convention),
-   and a small number of individually-reviewed "many far-flung callers, some
-   with no receiver at all" cases (`miraSetup`, `tsetup`, `mkindex`,
-   `dumpOb`). The next step is a final full-codebase sweep to confirm the
-   singleton-accessor count is genuinely at its structural floor, then
-   actually deleting `heap.heap()`/`rs()`/`cs()`/`ls()`/`ev()`/`s()`/
-   `interp.reset()` and attempting the two-`Interp` isolation test (step 6).
+   **All three dispatch-table clusters are now done.** A final full-codebase
+   sweep (2026-07-08, same session) found one more small, real fix
+   (`io/files.zig`'s `sameFile`/`inodeId`, 2 callers in `module_loader.zig`,
+   both with `heap` — converted) and confirmed every other remaining
+   `heap_mod.heap()`/`heap.heap()` site in the whole codebase is one of:
+   - **Test-only** — `testutil.zig` (the shared test harness — its
+     `expectReducesTo`/`expectInt`/etc. helpers are deliberately simple 2-arg
+     calls, not receiver-threaded), `reduce_test.zig`, `parser_tests.zig`,
+     and inline `test "..."` blocks scattered through otherwise-fully-
+     threaded files (`spine.zig`, `bignum.zig`, `lower.zig`, `combinators.zig`,
+     `depend.zig`, …). None of these run in the production path.
+   - **Individually-reviewed, no-receiver-anywhere leaf cases** — `mkindex`
+     (`lower.zig`), `cons`/`fileinfo` (`lex.zig`, ~9 callers each), `outstats`
+     (`reduce_rt.zig`), `dumpOb` (`graph/dump.zig`, deliberately ambient per
+     its own doc comment — the dumpOb stack-depth story from earlier this
+     phase).
+   - **`miraSetup`/`tsetup`** (`compiler/setup.zig`/`semantics/infer.zig`) —
+     re-examined at the end of this sweep with a sharper question than
+     before: not just "does this have many ambient callers" but "does the
+     *production* path (`mainEntry` → `miraSetup`) still touch the singleton
+     even though `mainEntry` itself now receives `heap` explicitly?" **Yes.**
+     `mainEntry` has `heap: *Heap` as a parameter now, but still calls
+     `setup.miraSetup()` (no arguments), which internally reads
+     `heap_mod.heap()` — for the single-`Interp`-per-process case today this
+     is the *same* value, so it's not a correctness bug, but it *is* exactly
+     the kind of gap the two-`Interp` isolation test (step 6) exists to
+     catch: two concurrent `Interp`s would both have their `miraSetup()` call
+     read whichever one happens to be `current_interp` at that moment, not
+     necessarily their own. Fixing it means threading `heap` through
+     `miraSetup`/`tsetup` and the ~15+ test-harness `freshInterp()`-style
+     helpers that also call them with no natural `heap` binding today — a
+     different, more invasive shape of work than anything landed so far
+     this phase (changing a widely-used test convention, not just a
+     production call chain), and not yet started.
+
+   **Bottom line for the singleton-accessor gate:** every *production* call
+   path except `miraSetup`/`tsetup` is now fully receiver-threaded from
+   `main()` down to `reduce()`. `miraSetup`/`tsetup` is the one remaining
+   real gap standing between here and a literal zero, and it's the right
+   next thing to scope before attempting step 6, since the two-`Interp` test
+   would fail on exactly this gap today.
+
+**Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
 
 **Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
 interrupt flag); DAG check green with empty allowlist; files > 1,000 lines = 0;

@@ -542,7 +542,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
             }
             var y = x;
             while (y != NIL) : (y = heap_mod.t(heap, y)) {
-                const nodev = files.inodeId(heap_mod.getFil(heap_mod.h(heap, y)).?);
+                const nodev = files.inodeId(heap, heap_mod.getFil(heap_mod.h(heap, y)).?);
                 heap_mod.tp(heap, heap_mod.filInodev(heap_mod.h(heap, y))).* = nodev;
             }
 
@@ -551,7 +551,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
                 if (heap_mod.filShare(heap_mod.h(heap, y)) != 0) {
                     var z = result;
                     while (z != NIL) : (z = heap_mod.t(heap, z)) {
-                        if (heap_mod.filShare(heap_mod.h(heap, z)) != 0 and files.sameFile(heap_mod.h(heap, y), heap_mod.h(heap, z)) and heap_mod.filTime(heap_mod.h(heap, y)) == heap_mod.filTime(heap_mod.h(heap, z))) {
+                        if (heap_mod.filShare(heap_mod.h(heap, z)) != 0 and files.sameFile(heap, heap_mod.h(heap, y), heap_mod.h(heap, z)) and heap_mod.filTime(heap_mod.h(heap, y)) == heap_mod.filTime(heap_mod.h(heap, z))) {
                             var p = heap_mod.filDefs(heap_mod.h(heap, y));
                             var q = heap_mod.filDefs(heap_mod.h(heap, z));
                             while (p != NIL and q != NIL) {
