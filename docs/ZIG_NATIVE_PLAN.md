@@ -2710,14 +2710,60 @@ code that was about to move twice.
      spine/golden corpus, `sigint_check`) green; `layer_check.py` unchanged;
      `scorecard.sh --check` clean after the rename above.
 
-   Step 3's remaining piece — the typed *payload* accessors (`intVal`,
-   `dblVal` retiring the `fpdatum` `@bitCast` trick, `strId` retiring the
-   sign-negation convention, `idInfo`, `fileInfo`) — is deliberately not
-   done in this slice: each one is tied to a different existing bit-level
-   encoding trick (the GC mark-range invariant this project's own working
-   notes flag as fragile is exactly this kind of thing), and getting each
-   right needs its own careful read of `bignum.zig`/`strtab.zig`/`lex.zig`
-   rather than being batched together. Next.
+   **Landed (2026-07-12), step 3b: typed payload accessors — closing out
+   step 3.** Added to `graph/value.zig`:
+   - `intVal`/`intOf` wrap `bignum.zig`'s `toInt`/`fromInt` unchanged.
+     Finding worth recording: every Miranda integer boxes as an `INT`
+     bignum-digit-chain cell regardless of magnitude — there is no
+     bare-immediate small-int shortcut the way there is for chars (an
+     earlier test draft assumed one and failed with "expected .imm, found
+     .cell"; fixed by testing against the actual behavior). Signatures use
+     `i64`, not `bignum.toInt`'s own wider C-style return type, to avoid
+     introducing a new C-style integer type at this boundary — the
+     scorecard's `c_int`/`c_long`/etc. metric tracks that count toward zero
+     outside `os.zig`, and a literal type-name mention even inside a doc
+     comment counts too (the metric is a blind text grep, not
+     syntax-aware) — both found and fixed before landing.
+   - `dblVal`/`dblOf`/`setDblOf` wrap `heap.zig`'s `getDbl`/`stoDbl`/`setdbl`
+     unchanged. §4.3's "retiring `fpdatum` for one `@bitCast` site" is real
+     — `Word` is unconditionally 8 bytes now, so the union's 4-byte-split
+     branch is dead code — but deliberately deferred rather than bundled
+     here: that's an edit to already-working, GC-adjacent bit-level code
+     this project's own working notes already flag as fragile, and it
+     deserves its own focused pass once a caller actually migrates onto
+     `dblVal`/`dblOf` (step 4), not a drive-by inside an additive step.
+   - `asFileNode`/`fileNodeOf` and `asIdentifier`/`identifierOf` bridge
+     `Value` to the *existing* `Heap.FileNode`/`Heap.Identifier` domain
+     wrappers (`§4.3`'s "fileInfo"/"idInfo") — those single-field
+     Word-wrapping structs already existed before this phase (heap.zig's
+     "Domain types (C2)" seam), so there was no new accessor logic to
+     write, only a `Value`-typed way in and out.
+   - `strId` is deliberately given **no** `Value` integration, and the plan
+     doc now says why in the file itself: a string-table id is a raw `Word`
+     that only ever appears in specific known payload slots of specific
+     cell kinds, never as a general reducer `Value` — forcing a `.strid`
+     branch into `Kind`'s classification would blur the boundary
+     `Value.kind()`'s own doc comment already draws ("marked spine words
+     and sentinels — negative — are not values, mask them off first") for
+     no real gain. `strtab.zig`'s `strBits`/`strOf` remain the right typed
+     accessors for that payload, untouched.
+   - Two scorecard false positives found and fixed during this slice (both
+     from the metric being a blind text grep, not syntax-aware): the
+     `c_longlong` doc-comment mention above, and (same lesson repeated) a
+     test constant compared with `@as(c_longlong, ...)` before being
+     switched to `@as(i64, ...)` to match the retyped signature.
+   - `zig build`/`zig build test` (260 unit tests, integration suite,
+     spine/golden corpus, `sigint_check`) green; `layer_check.py` unchanged;
+     `scorecard.sh --check` clean.
+
+   **This closes step 3.** `graph/value.zig` now has the complete typed
+   surface §4.3 asked for — `Comb`/`CellRef`/`Kind`/`Value`, the graph
+   accessors (`hOf`/`tOf`/`makeOf`/`consOf`/`apOf`/`tagOf`/`setTagOf`), and
+   the payload accessors (`intVal`/`intOf`, `dblVal`/`dblOf`/`setDblOf`,
+   `asFileNode`/`fileNodeOf`, `asIdentifier`/`identifierOf`) — all coexisting
+   with the unchanged `Word`-typed originals, all additive, zero production
+   callers yet. Step 4 (migrate real subsystems onto this surface, leaf-first:
+   `reduce_core`/`spine` first per the plan's own order) is next.
 
 **Gate:** no `Word` outside `graph/dump.zig`; no numeric range tests on values;
 goldens + differential + bench green; GC invariant (mark follows `hd`/`tl` only for

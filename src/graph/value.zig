@@ -12,6 +12,7 @@ const std = @import("std");
 const combinator = @import("combinator.zig");
 const word = @import("word.zig");
 const heap_mod = @import("heap.zig");
+const big = @import("bignum.zig");
 const Word = word.Word;
 const Heap = heap_mod.Heap;
 
@@ -263,3 +264,122 @@ test "typed heap-graph accessors: consOf/makeOf/apOf build cells that hOf/tOf/ta
     try std.testing.expectEqual(heap_ptr.t(cell_val.toRaw()), tOf(heap_ptr, cell_val).toRaw());
     try std.testing.expectEqual(heap_ptr.getTag(cell_val.toRaw()), tagOf(heap_ptr, cell_val));
 }
+
+// ── Step 3b: typed payload accessors ────────────────────────────────────────
+//
+// `intVal`/`dblVal` (and their `Value`-constructing counterparts) are the
+// typed readers for the two numeric cell payloads named in §4.3. Both wrap
+// existing, already-correct, already-tested functions unchanged
+// (`bignum.zig`'s `toInt`/`fromInt`, `heap.zig`'s `getDbl`/`stoDbl`/`setdbl`)
+// rather than reimplementing their bit tricks — `stoDbl`/`setdbl`'s `fpdatum`
+// extern-union split is exactly the kind of GC-adjacent bit-level code this
+// project's own working notes flag as fragile, and it isn't touched here;
+// retiring it for a plain `@bitCast` (as §4.3 suggests, since `Word` is
+// unconditionally 8 bytes now — the union's 4-byte-`Word` branch is dead)
+// is a real simplification, but a separate, focused edit for whenever a
+// caller actually migrates onto `dblVal`/`dblOf` (step 4), not bundled here.
+
+/// The integer stored in an `INT`-tagged (arbitrary-precision bignum) `Value`.
+/// `i64`, not the wider C-style return type `bignum.toInt` itself still
+/// uses — matching this file's other signatures and not introducing a new
+/// C-style integer type at this API (the scorecard tracks those toward zero
+/// outside `os.zig`; the cast at this one boundary is free, since both
+/// representations are 64-bit on every real target).
+pub inline fn intVal(heap_ptr: *Heap, v: Value) i64 {
+    return @intCast(big.toInt(heap_ptr, v.toRaw()));
+}
+
+/// Box the integer `n` as a fresh `INT`-tagged `Value` (always boxed —
+/// Miranda's integers are arbitrary-precision, so there's no bare-immediate
+/// small-int representation the way there is for chars).
+pub inline fn intOf(heap_ptr: *Heap, n: i64) Value {
+    return Value.fromRaw(big.fromInt(heap_ptr, n));
+}
+
+/// The `f64` stored in a `DOUBLE`-tagged `Value`.
+pub inline fn dblVal(v: Value) f64 {
+    return heap_mod.getDbl(v.toRaw());
+}
+
+/// Box `r` as a fresh `DOUBLE`-tagged `Value`.
+pub inline fn dblOf(r: f64) word.ReduceError!Value {
+    return Value.fromRaw(try heap_mod.stoDbl(r));
+}
+
+/// Overwrite the `f64` stored in an existing `DOUBLE`-tagged `Value` in place.
+pub inline fn setDblOf(v: Value, r: f64) word.ReduceError!void {
+    try heap_mod.setdbl(v.toRaw(), r);
+}
+
+test "intVal/intOf and dblVal/dblOf/setDblOf: typed numeric payload accessors" {
+    const tu = @import("../testutil.zig");
+    tu.freshInterp();
+    const heap_ptr = heap_mod.heap();
+
+    // Every integer boxes as an INT (bignum digit-chain) cell — Miranda's
+    // integers are arbitrary-precision, so there's no bare-immediate
+    // small-int shortcut here (unlike chars, which do have one; see
+    // Value.imm/Kind's doc comment). intVal reads the same integer back out
+    // regardless of magnitude.
+    const small = intOf(heap_ptr, 42);
+    try std.testing.expectEqual(word.NodeTag.INT, tagOf(heap_ptr, small));
+    try std.testing.expectEqual(@as(i64, 42), intVal(heap_ptr, small));
+
+    const big_int = intOf(heap_ptr, 1_000_000);
+    try std.testing.expectEqual(word.NodeTag.INT, tagOf(heap_ptr, big_int));
+    try std.testing.expectEqual(@as(i64, 1_000_000), intVal(heap_ptr, big_int));
+
+    // DOUBLE cells: construct, read, then overwrite in place.
+    const d = try dblOf(3.14);
+    try std.testing.expectEqual(word.NodeTag.DOUBLE, tagOf(heap_ptr, d));
+    try std.testing.expectEqual(@as(f64, 3.14), dblVal(d));
+    try setDblOf(d, -2.5);
+    try std.testing.expectEqual(@as(f64, -2.5), dblVal(d));
+
+    // Non-finite results are rejected, matching the wrapped functions' own
+    // FloatOverflow contract.
+    try std.testing.expectError(error.FloatOverflow, dblOf(std.math.inf(f64)));
+}
+
+// `asFileNode`/`fileNodeOf` and `asIdentifier`/`identifierOf` bridge `Value`
+// to the *existing* `Heap.FileNode`/`Heap.Identifier` domain wrappers — the
+// "fileInfo"/"idInfo" typed payload accessors §4.3 names. Those wrappers
+// already existed before this phase (heap.zig's "Domain types (C2)" seam,
+// each a single-field struct carrying semantic intent over a raw `Word`), so
+// there is no new accessor logic to write here, only a `Value`-typed way in
+// and out for callers migrating onto `Value` who need to reach them.
+pub inline fn asFileNode(v: Value) heap_mod.FileNode {
+    return .{ .word = v.toRaw() };
+}
+
+pub inline fn fileNodeOf(n: heap_mod.FileNode) Value {
+    return Value.fromRaw(n.word);
+}
+
+pub inline fn asIdentifier(v: Value) heap_mod.Identifier {
+    return .{ .word = v.toRaw() };
+}
+
+pub inline fn identifierOf(id: heap_mod.Identifier) Value {
+    return Value.fromRaw(id.word);
+}
+
+test "asFileNode/fileNodeOf and asIdentifier/identifierOf: bridge to the existing domain wrappers" {
+    const w: Word = 42;
+    try std.testing.expectEqual(w, asFileNode(Value.fromRaw(w)).word);
+    try std.testing.expectEqual(@as(Value, Value.fromRaw(w)), fileNodeOf(.{ .word = w }));
+    try std.testing.expectEqual(w, asIdentifier(Value.fromRaw(w)).word);
+    try std.testing.expectEqual(@as(Value, Value.fromRaw(w)), identifierOf(.{ .word = w }));
+}
+
+// `strId` (a string-table index, stored *negated* in a `Word` — see
+// `strtab.zig`'s own file header) is deliberately **not** given a `Value`
+// integration. It never appears as a general reducer `Value`: it lives only
+// in specific known payload slots of specific cell kinds (a `CONS.hd` in
+// `exportfiles`, a `CONSTRUCTOR.tl`, an `ID`/`STRCONS` cell's string field),
+// each already read by a typed accessor that knows the cell's tag going in.
+// `Value.kind()` explicitly documents that negative `Word`s (marked spine
+// words, sentinels) are "not values — mask them off first"; forcing a
+// `strid` branch into `Kind`'s general classification would blur that
+// boundary for no real gain. `strtab.zig`'s own `strBits`/`strOf` are
+// already the right typed accessors for this payload and are untouched.
