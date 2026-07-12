@@ -31,11 +31,10 @@ pub fn main(ctx: std.process.Init) !void {
     const raw_args = ctx.minimal.args.vector;
     const argv: [*][*:0]u8 = @ptrCast(@constCast(raw_args.ptr));
     const argc: c_int = @intCast(raw_args.len);
-    const exit_code = startup.mainEntry(argc, argv);
+    const exit_code = startup.mainEntry(&interp_storage.heap, argc, argv);
     if (@import("version_options").is_strict or @import("builtin").mode == .Debug) {
-        const heap = @import("graph/heap.zig");
-        heap.heap().validate();
-        @import("semantics/lower.zig").validate(heap.heap());
+        interp_storage.heap.validate();
+        @import("semantics/lower.zig").validate(&interp_storage.heap);
         rt.rs().validate();
     }
     const check = rt.gpa.deinit();

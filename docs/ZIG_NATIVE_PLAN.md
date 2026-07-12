@@ -2164,41 +2164,40 @@ subsystems and passed explicitly; the ambient singleton deleted.
       signal handlers (which cannot take parameters) still read state from —
       already called out as "the one irreducible C-ABI exception" in
       `interp.zig`'s own module doc.
-   2. **The four structural roots, reassessed — none are hard blockers:**
-      - `main.zig`'s two post-`mainEntry` validate calls (`heap.heap().validate()`,
-        `lower.validate(heap.heap())`) — **trivial, zero risk**: `main()`
-        already holds `interp_storage: Interp` as a local two lines above:
-        `interp_storage.heap.validate()` needs no architectural change at all.
-      - `boot.zig`'s `mainEntry`'s `const heap = heap_mod.heap();` — **small**:
-        `main()` already constructs `interp_storage` and points
-        `current_interp` at it *before* calling `mainEntry`; passing
-        `&interp_storage.heap` (or `&interp_storage`) into `mainEntry` as a
-        parameter instead of having it re-derive the same pointer from the
-        global is a direct, low-risk substitution.
+   2. **The four structural roots, reassessed — none were hard blockers, and
+      all four are now landed (2026-07-08):**
+      - `main.zig`'s two post-`mainEntry` validate calls — **landed**:
+        `interp_storage.heap.validate()`/`lower.validate(&interp_storage.heap)`
+        read the already-in-scope local directly; no architectural change.
+      - `boot.zig`'s `mainEntry`'s `const heap = heap_mod.heap();` — **landed**:
+        `mainEntry(heap: *Heap, argc: c_int, argv: [*][*:0]u8)` now takes it
+        as a parameter; `main()` passes `&interp_storage.heap`. Zero other
+        changes needed inside `mainEntry` itself — the whole function already
+        used its local `heap` binding consistently, so turning that binding
+        from a computed constant into a parameter was the entire fix.
       - `eval/reduce.zig`'s `reduce()`'s `ctx.heap = heap_mod.heap();` — **the
-        real remaining bulk**: `reduce()` has ~90 real (non-comment, non-test)
-        call sites, confined entirely to `eval/` (`combinators.zig`,
-        `combinators/lex.zig`, `reduce_rt.zig`, `combinators/ready.zig`,
-        `reduce.zig` itself). Sampled call sites confirm the overwhelming
-        majority already sit inside `handle*(ctx: *ReductionCtx)` functions
-        with `ctx.heap` on hand (this is `eval/`'s own call graph, already
-        fully receiver-threaded elsewhere this phase) — so threading `heap`
-        through `reduce()`'s own signature is mechanical, just large: same
-        shape and scale as the `eval` subsystem slice already landed.
-      - `session/editor.zig`'s zigline tab-completion callback — **not
-        actually blocked**: zigline's lower-level `CallbackReturning` type
-        (`src/main.zig` in the vendored package) already carries a
-        `context: *anyopaque` parameter through to the underlying callback;
-        the higher-level reflection-based `setHandler`/`CompletionHandler`
-        wrapper this file uses just doesn't expose it as a *second* parameter
-        — but `CompletionHandler` is a plain struct or own, and adding a
-        `heap: ?*Heap = null` field to it, set once by `editor.init()` (called
-        from `mainEntry`, which already has `heap`), would let
-        `tab_complete(self: *CompletionHandler)` read `self.heap.?` instead of
-        the ambient `state()`. Moderate effort, small blast radius (1 struct +
-        1 call site) — this file's own doc comment currently says "no seam for
-        extra context", which undersold the lower-level API; worth revisiting
-        once the bulk of `reduce()`'s threading is done.
+        real remaining bulk, landed separately** (previous commit): `reduce()`
+        had ~90 real (non-comment, non-test) call sites, confined entirely to
+        `eval/` (`combinators.zig`, `combinators/lex.zig`, `reduce_rt.zig`,
+        `combinators/ready.zig`, `reduce.zig` itself), all already sitting
+        inside `handle*(ctx: *ReductionCtx)` functions with `ctx.heap` on
+        hand — mechanical, just large. This is what directly unblocked
+        `mainEntry` above: once `reduce()` no longer needed the ambient
+        accessor, nothing downstream of `mainEntry` did either.
+      - `session/editor.zig`'s zigline tab-completion callback — **landed**:
+        `CompletionHandler` gained a `heap: *Heap = undefined` field, set once
+        by `editor.init()` (now itself taking `heap_ptr` explicitly, threaded
+        from `mainEntry`) before `setHandler` ever registers the callback;
+        `tab_complete(self: *CompletionHandler)` reads `self.heap` instead of
+        the ambient ex-`state()` read. `completeWord` gained the same
+        parameter. 1 struct field + 2 call sites, exactly as scoped. Not
+        exercised by the automated suite (needs a real TTY), but the change
+        is a single field assignment before the only place the callback can
+        fire, so risk is low; the full non-interactive suite (which does
+        cover the rest of `editor.zig`'s init/deinit/fillLine path) stayed
+        green throughout, and a manual piped-REPL smoke test (`echo "2+3" |
+        mira -hush`) confirmed `mainEntry`'s own threading didn't regress the
+        ordinary path.
    3. **The two giant dispatch-table clusters, unwind cost estimated:**
       - `infer.zig`'s `ap`/`tf`/`tf2`/`tf3`/`lt`/`pairType`/`NTV` cluster:
         `NTV()` alone has ~100 call sites across the primitive-type dispatch
@@ -2257,13 +2256,27 @@ subsystems and passed explicitly; the ambient singleton deleted.
    second bullet) — `mainEntry`'s callees no longer need the ambient
    accessor once `reduce()` itself doesn't either, so `main()` can thread
    `interp_storage`'s heap down explicitly instead of relying on the global.
-   Not yet done. Remaining before the accessor functions can actually be
-   deleted: `mainEntry`/`main()`'s bootstrap restructuring (small), the
-   `editor.zig` callback fix (small), the two dispatch-table clusters
-   (~150-200 sites, decision on cascading vs. documenting as an exception
-   still open), and the not-yet-swept files (`parser/codegen.zig`,
-   `parser/lex.zig`, `parser/parser_api.zig`, `compiler/setup.zig`,
-   `compiler/module_loader.zig`, `graph/bignum.zig`).
+   **`mainEntry`/`main()`'s bootstrap restructuring and the `editor.zig`
+   callback fix, landed (2026-07-08, same session).** `mainEntry` now takes
+   `heap: *Heap` as its first parameter instead of computing it from the
+   ambient singleton (zero other changes needed inside the function — its
+   existing `heap` local was already used consistently throughout); `main()`
+   passes `&interp_storage.heap`, and its own two post-`mainEntry` validate
+   calls read that same local directly. `editor.zig`'s tab-completion
+   callback (see item 2 above) is fixed the same session. All four structural
+   roots the scoping pass identified are now closed. Ambient singleton-
+   accessor call sites: 695 → 694; `current_interp` references: 48 → 47 (small
+   deltas — these four sites were a handful of call sites each, not a bulk
+   cluster). `zig build test` green throughout (all 253 unit tests +
+   integration suite + spine differential/golden corpus); a manual piped-REPL
+   smoke test (`echo "2+3" | mira -lib ./miralib -hush` → `5`) confirmed the
+   ordinary non-interactive path survives the `mainEntry` signature change.
+
+   Remaining before the accessor functions can actually be deleted: the two
+   dispatch-table clusters (~150-200 sites, decision on cascading vs.
+   documenting as an exception still open), and the not-yet-swept files
+   (`parser/codegen.zig`, `parser/lex.zig`, `parser/parser_api.zig`,
+   `compiler/setup.zig`, `compiler/module_loader.zig`, `graph/bignum.zig`).
 
 **Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
 interrupt flag); DAG check green with empty allowlist; files > 1,000 lines = 0;

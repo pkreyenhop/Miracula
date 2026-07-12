@@ -22,14 +22,15 @@ const CompletionSuggestion = Editor.CompletionSuggestion;
 
 /// zigline calls this handler's `tab_complete` on Tab. It must declare *only*
 /// the handler methods it implements (setHandler reflects over its decls).
-/// zigline's reflection-based callback protocol has no seam for extra
-/// context, so `tab_complete` reads `state()` ambiently (through
-/// `current_interp`, like every other irreducible-callback exception in this
-/// codebase) rather than taking a parameter.
+/// `heap` is set once by `init()` (the only place that constructs this
+/// handler, already holding the process's one `*Heap`), so `tab_complete`
+/// reads it off `self` rather than the ambient singleton.
 const CompletionHandler = struct {
+    heap: *heap.Heap = undefined,
+
     /// zigline's reflected Tab handler: returns completions for the word at the cursor.
-    pub fn tab_complete(_: *CompletionHandler) ![]const CompletionSuggestion {
-        return completeWord();
+    pub fn tab_complete(self: *CompletionHandler) ![]const CompletionSuggestion {
+        return completeWord(self.heap);
     }
 };
 
@@ -71,7 +72,7 @@ fn isIdentChar(c: u32) bool {
 }
 
 /// Complete the identifier ending at the cursor against the in-scope dictionary.
-fn completeWord() []const CompletionSuggestion {
+fn completeWord(heap_ptr: *heap.Heap) []const CompletionSuggestion {
     const st = state();
     const buf = st.editor.getBuffer(); // code points
     const cursor = st.editor.cursor;
@@ -85,7 +86,7 @@ fn completeWord() []const CompletionSuggestion {
         if (buf[start + i] > 127) return &.{};
         st.prefix_buf[i] = @intCast(buf[start + i]);
     }
-    const count = lex.completeIds(heap.heap(), st.prefix_buf[0..prefix_len], &st.name_storage);
+    const count = lex.completeIds(heap_ptr, st.prefix_buf[0..prefix_len], &st.name_storage);
     for (st.name_storage[0..count], 0..) |name, n| {
         // text is the whole identifier; invariant_offset is the already-typed
         // prefix, so zigline inserts only the remaining suffix.
@@ -96,11 +97,12 @@ fn completeWord() []const CompletionSuggestion {
 
 /// Initialise the editor and install the stdin hook. Call once at REPL startup,
 /// only when stdin is a TTY. Loads persistent history from `$HOME/.miranda_history`.
-pub fn init(allocator: std.mem.Allocator, io: std.Io) void {
+pub fn init(heap_ptr: *heap.Heap, allocator: std.mem.Allocator, io: std.Io) void {
     const st = state();
     if (st.active) return;
     st.gpa = allocator;
     st.editor = Editor.init(allocator, io, .{});
+    st.completion_handler.heap = heap_ptr;
     st.editor.setHandler(&st.completion_handler); // Tab → identifier completion
     if (os.getenv("HOME")) |home_ptr| {
         const home = std.mem.span(home_ptr);
