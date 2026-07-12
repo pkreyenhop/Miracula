@@ -120,6 +120,7 @@ test "Interp: two independent instances stay isolated when interleaved" {
     const reduce = @import("../eval/reduce.zig");
     const big = @import("../graph/bignum.zig");
     const word = @import("../graph/word.zig");
+    const Value = @import("../graph/value.zig").Value;
 
     // Phase 4 step 6, docs/ZIG_NATIVE_PLAN.md: the phase's definition of done.
     // Every production call path is receiver-threaded from main() down to
@@ -151,11 +152,11 @@ test "Interp: two independent instances stay isolated when interleaved" {
     }
 
     current_interp = &interp_a;
-    const r_a = try reduce.reduce(heap_mod.heap(), reduce.ap2(heap_mod.heap(), word.PLUS, a_val, big.fromInt(heap_mod.heap(), 1)));
+    const r_a = try reduce.reduce(heap_mod.heap(), reduce.ap2(heap_mod.heap(), Value.fromRaw(word.PLUS), Value.fromRaw(a_val), Value.fromRaw(big.fromInt(heap_mod.heap(), 1))).toRaw());
     try std.testing.expectEqual(@as(i64, 112), @as(i64, @intCast(big.toInt(heap_mod.heap(), r_a))));
 
     current_interp = &interp_b;
-    const r_b = try reduce.reduce(heap_mod.heap(), reduce.ap2(heap_mod.heap(), word.TIMES, b_val, big.fromInt(heap_mod.heap(), 2)));
+    const r_b = try reduce.reduce(heap_mod.heap(), reduce.ap2(heap_mod.heap(), Value.fromRaw(word.TIMES), Value.fromRaw(b_val), Value.fromRaw(big.fromInt(heap_mod.heap(), 2))).toRaw());
     try std.testing.expectEqual(@as(i64, 444), @as(i64, @intCast(big.toInt(heap_mod.heap(), r_b))));
 
     // Reverse direction: churn interp_a, then confirm interp_b is unaffected.
@@ -165,6 +166,6 @@ test "Interp: two independent instances stay isolated when interleaved" {
         _ = heap_mod.make(heap_mod.heap(), .CONS, word.NIL, word.NIL);
     }
     current_interp = &interp_b;
-    const r_b2 = try reduce.reduce(heap_mod.heap(), reduce.ap2(heap_mod.heap(), word.PLUS, b_val, big.fromInt(heap_mod.heap(), 1)));
+    const r_b2 = try reduce.reduce(heap_mod.heap(), reduce.ap2(heap_mod.heap(), Value.fromRaw(word.PLUS), Value.fromRaw(b_val), Value.fromRaw(big.fromInt(heap_mod.heap(), 1))).toRaw());
     try std.testing.expectEqual(@as(i64, 223), @as(i64, @intCast(big.toInt(heap_mod.heap(), r_b2))));
 }

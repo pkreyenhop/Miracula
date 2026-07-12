@@ -58,17 +58,25 @@ const heap_mod = @import("../graph/heap.zig");
 
 /// The interpreter machine word (re-exported from [core]).
 pub const Word = core.Word;
+/// The typed graph value (re-exported from [core]; see `graph/value.zig`).
+pub const Value = core.Value;
 /// The reduction machine's register file (re-exported from [core]).
 pub const ReductionCtx = core.ReductionCtx;
 
 /// Reduce `e_val` to weak head normal form and return the resulting node.
 /// Drives the graph in place; the returned `Word` is the rewritten root.
+///
+/// Kept `Word`-in/`Word`-out: this is the reducer's public entry point,
+/// called from hundreds of sites across every subsystem (not just the
+/// reducer itself), so retyping its own signature is out of scope for this
+/// slice — only `ctx`'s internals are `Value`-typed (Phase 5 step 4). The
+/// boundary conversion happens once here, not at each of those call sites.
 pub fn reduce(heap: *heap_mod.Heap, e_val: Word) core.ReduceError!Word {
     // Fresh machine state: a fresh, empty Spine (see spine.zig) -- registered
     // as a GC root for the duration (reduce() is recursive, so nested calls
     // each get their own, nested LIFO with this one; see Spine.register).
     var ctx: ReductionCtx = undefined;
-    ctx.e = e_val;
+    ctx.e = Value.fromRaw(e_val);
     ctx.heap = heap;
     ctx.eval = reduce_rt.ev();
     ctx.rs = rt.rs();
@@ -76,11 +84,11 @@ pub fn reduce(heap: *heap_mod.Heap, e_val: Word) core.ReduceError!Word {
     ctx.spine.register(&ctx.eval.gc_roots_head);
     defer ctx.spine.deinit(&ctx.eval.spine_buffer_pool);
     defer ctx.spine.unregister(&ctx.eval.gc_roots_head);
-    ctx.hold = 0;
-    ctx.args[0] = 0;
-    ctx.args[1] = 0;
-    ctx.args[2] = 0;
-    ctx.args[3] = 0;
+    ctx.hold = Value.fromRaw(0);
+    ctx.args[0] = Value.fromRaw(0);
+    ctx.args[1] = Value.fromRaw(0);
+    ctx.args[2] = Value.fromRaw(0);
+    ctx.args[3] = Value.fromRaw(0);
     ctx.action = word.ACT_NONE;
 
     main_loop: while (true) {
@@ -90,19 +98,19 @@ pub fn reduce(heap: *heap_mod.Heap, e_val: Word) core.ReduceError!Word {
             downLeft(&ctx);
         }
 
-        if (@as(u64, @bitCast(ctx.e)) >= word.ATOMLIMIT) {
+        if (@as(u64, @bitCast(ctx.e.toRaw())) >= word.ATOMLIMIT) {
             try dispatchNonCombinatorHead(&ctx);
         } else {
             ctx.eval.cycles += 1; // one reduction step (the perf counter)
             if (ctx.eval.cycles & 0xFFF == 0 and rt.interrupt_flag.load(.acquire)) {
                 return error.Interrupted;
             }
-            trace.step(&ctx.eval.trace, ctx.e); // per-combinator histogram (compiled out when off)
+            trace.step(&ctx.eval.trace, ctx.e.toRaw()); // per-combinator histogram (compiled out when off)
             ctx.action = word.ACT_NONE;
 
             // (2) Dispatch on the head. A bare combinator/operator atom selects a
             //     rewrite handler; anything else falls to the tag switch below.
-            switch (ctx.e) {
+            switch (ctx.e.toRaw()) {
                 word.S => combinators.handleS(&ctx),
                 word.B => combinators.handleB(&ctx),
                 word.CB => combinators.handleCB(&ctx),
@@ -235,7 +243,7 @@ fn dispatchNonCombinatorHead(ctx: *ReductionCtx) core.ReduceError!void {
         // A private-name placeholder: chase to its bound value.
         .STRCONS => {
             ctx.e = pnVal(ctx.heap, ctx.e);
-            if (ctx.e == word.UNDEF or ctx.e == word.FREE) {
+            if (ctx.e.toRaw() == word.UNDEF or ctx.e.toRaw() == word.FREE) {
                 word.printErr("\nimpossible event in reduce - undefined pname\n", .{});
                 if (options.is_strict) {
                     std.debug.panic("impossible event in reduce - undefined pname", .{});
@@ -247,13 +255,13 @@ fn dispatchNonCombinatorHead(ctx: *ReductionCtx) core.ReduceError!void {
         },
         .DATAPAIR => {
             upLeft(ctx);
-            word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{ strtab.strOf(strtab.table(), hdGet(ctx.heap, hdGet(ctx.heap, ctx.e))), strtab.strOf(strtab.table(), tlGet(ctx.heap, ctx.e)) });
+            word.printErr("\nUNDEFINED NAME (specified as \"{s}\" in {s})\n", .{ strtab.strOf(strtab.table(), hdGet(ctx.heap, hdGet(ctx.heap, ctx.e)).toRaw()), strtab.strOf(strtab.table(), tlGet(ctx.heap, ctx.e).toRaw()) });
             reduce_rt.outstats();
             os.exit(1);
         },
         // A defined name: substitute its value and re-examine.
         .ID => {
-            if (idVal(ctx.heap, ctx.e) == word.UNDEF or idVal(ctx.heap, ctx.e) == word.FREE) {
+            if (idVal(ctx.heap, ctx.e).toRaw() == word.UNDEF or idVal(ctx.heap, ctx.e).toRaw() == word.FREE) {
                 word.printErr("\nUNDEFINED NAME - {s}\n", .{getId(ctx.heap, ctx.e)});
                 reduce_rt.outstats();
                 os.exit(1);
@@ -298,7 +306,7 @@ fn dispatchNonCombinatorHead(ctx: *ReductionCtx) core.ReduceError!void {
 fn forceSpineArguments(ctx: *ReductionCtx) core.ReduceError!?Word {
     while (true) {
         if (ctx.spine.isEmpty()) {
-            return ctx.e;
+            return ctx.e.toRaw();
         }
 
         upRight(ctx);

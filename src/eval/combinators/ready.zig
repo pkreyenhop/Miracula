@@ -13,6 +13,7 @@ const word = @import("../../graph/word.zig");
 const reduce = @import("../reduce_core.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
+const Value = reduce.Value;
 const platform = @import("../../io/platform.zig");
 const combinators = @import("combinators.zig");
 const io_handlers = @import("io.zig");
@@ -24,11 +25,11 @@ const os = @import("../../os.zig");
 const reduce_rt = @import("../reduce_rt.zig");
 
 /// The current combinator's last (rightmost) argument: the tail of the focus node.
-inline fn lastArg(ctx: *ReductionCtx) Word {
+inline fn lastArg(ctx: *ReductionCtx) Value {
     return reduce.tlGet(ctx.heap, ctx.e);
 }
 /// Overwrite the focus node's last argument with `val`.
-inline fn setLastArg(ctx: *ReductionCtx, val: Word) void {
+inline fn setLastArg(ctx: *ReductionCtx, val: Value) void {
     reduce.tlSet(ctx.heap, ctx.e, val);
 }
 
@@ -198,7 +199,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
 
     const e_val = ctx.e;
 
-    switch (e_val) {
+    switch (e_val.toRaw()) {
         word.I => {
             reduce.upLeft(ctx);
             ctx.e = reduce.tlGet(ctx.heap, ctx.e);
@@ -217,14 +218,14 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         },
         word.FORCE => {
             reduce.upLeft(ctx);
-            try reduce.force(ctx.heap, lastArg(ctx));
+            try reduce.forceVal(ctx.heap, lastArg(ctx));
             ctx.e = reduce.rewriteToExistingTail(ctx.heap, ctx.e);
             ctx.action = word.ACT_NEXTREDEX;
             return;
         },
         word.HD => {
             reduce.upLeft(ctx);
-            if (lastArg(ctx) == word.NIL) {
+            if (lastArg(ctx).toRaw() == word.NIL) {
                 word.printErr("\nATTEMPT TO TAKE hd OF nil\n", .{});
                 reduce_rt.outstats();
                 os.exit(1);
@@ -235,7 +236,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         },
         word.TL => {
             reduce.upLeft(ctx);
-            if (lastArg(ctx) == word.NIL) {
+            if (lastArg(ctx).toRaw() == word.NIL) {
                 word.printErr("\nATTEMPT TO TAKE tl OF nil\n", .{});
                 reduce_rt.outstats();
                 os.exit(1);
@@ -265,28 +266,28 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             if (!reduce.isInt(ctx.heap, ctx.args[0])) {
                 reduce_rt.intError("take");
             }
-            const n = big.toInt(ctx.heap, ctx.args[0]);
-            const lastarg_reduced = try reduce.reduce(ctx.heap, lastArg(ctx));
+            const n = big.toInt(ctx.heap, ctx.args[0].toRaw());
+            const lastarg_reduced = try reduce.reduceVal(ctx.heap, lastArg(ctx));
             setLastArg(ctx, lastarg_reduced);
-            if (n <= 0 or lastarg_reduced == word.NIL) {
+            if (n <= 0 or lastarg_reduced.toRaw() == word.NIL) {
                 reduce.rewriteToNil(ctx.heap, &ctx.e);
                 ctx.action = word.ACT_DONE;
                 return;
             }
-            reduce.rewriteToCons(ctx.heap, ctx.e, reduce.hdGet(ctx.heap, lastarg_reduced), reduce.ap2(ctx.heap, word.TAKE, big.fromInt(ctx.heap, n - 1), reduce.tlGet(ctx.heap, lastarg_reduced)));
+            reduce.rewriteToCons(ctx.heap, ctx.e, reduce.hdGet(ctx.heap, lastarg_reduced), reduce.ap2(ctx.heap, Value.fromRaw(word.TAKE), Value.fromRaw(big.fromInt(ctx.heap, n - 1)), reduce.tlGet(ctx.heap, lastarg_reduced)));
             ctx.action = word.ACT_DONE;
             return;
         },
         word.FILEMODE => {
             reduce.upLeft(ctx);
-            if (platform.getFileInfo(try reduce.getstring(ctx.heap, lastArg(ctx), "filemode"))) |info| {
+            if (platform.getFileInfo(try reduce.getstringVal(ctx.heap, lastArg(ctx), "filemode"))) |info| {
                 const mode = info.mode;
-                const d = if ((mode & 0o170000) == 0o040000) @as(Word, 'd') else '-';
+                const d = Value.imm(if ((mode & 0o170000) == 0o040000) 'd' else '-');
                 const perm = if (info.uid == platform.geteuid()) (mode & 0o700) >> 6 else if (info.gid == platform.getegid()) (mode & 0o070) >> 3 else mode & 0o007;
-                const r = if ((perm & 0o4) != 0) @as(Word, 'r') else '-';
-                const w = if ((perm & 0o2) != 0) @as(Word, 'w') else '-';
-                const x = if ((perm & 0o1) != 0) @as(Word, 'x') else '-';
-                reduce.rewriteToCons(ctx.heap, ctx.e, d, reduce.cons(ctx.heap, r, reduce.cons(ctx.heap, w, reduce.cons(ctx.heap, x, word.NIL))));
+                const r = Value.imm(if ((perm & 0o4) != 0) 'r' else '-');
+                const w = Value.imm(if ((perm & 0o2) != 0) 'w' else '-');
+                const x = Value.imm(if ((perm & 0o1) != 0) 'x' else '-');
+                reduce.rewriteToCons(ctx.heap, ctx.e, d, reduce.cons(ctx.heap, r, reduce.cons(ctx.heap, w, reduce.cons(ctx.heap, x, Value.fromRaw(word.NIL)))));
             } else {
                 reduce.rewriteToNil(ctx.heap, &ctx.e);
             }
@@ -295,10 +296,10 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         },
         word.FILESTAT => {
             reduce.upLeft(ctx);
-            if (platform.getFileInfo(try reduce.getstring(ctx.heap, lastArg(ctx), "filestat"))) |info| {
-                reduce.rewriteToCons(ctx.heap, ctx.e, reduce.cons(ctx.heap, big.fromInt(ctx.heap, @intCast(info.ino)), big.fromInt(ctx.heap, @intCast(info.dev))), big.fromInt(ctx.heap, @intCast(info.mtime)));
+            if (platform.getFileInfo(try reduce.getstringVal(ctx.heap, lastArg(ctx), "filestat"))) |info| {
+                reduce.rewriteToCons(ctx.heap, ctx.e, reduce.cons(ctx.heap, Value.fromRaw(big.fromInt(ctx.heap, @intCast(info.ino))), Value.fromRaw(big.fromInt(ctx.heap, @intCast(info.dev)))), Value.fromRaw(big.fromInt(ctx.heap, @intCast(info.mtime))));
             } else {
-                reduce.rewriteToCons(ctx.heap, ctx.e, reduce.cons(ctx.heap, heap.stosmallint(0), heap.stosmallint(-1)), heap.stosmallint(0));
+                reduce.rewriteToCons(ctx.heap, ctx.e, reduce.cons(ctx.heap, Value.fromRaw(heap.stosmallint(0)), Value.fromRaw(heap.stosmallint(-1))), Value.fromRaw(heap.stosmallint(0)));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -308,30 +309,30 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.NUMVAL => return handleReadyNUMVAL(ctx),
         word.STARTREAD => {
             reduce.upLeft(ctx);
-            const fil = try reduce.getstring(ctx.heap, lastArg(ctx), "read");
+            const fil = try reduce.getstringVal(ctx.heap, lastArg(ctx), "read");
             const f = word.fopen(fil, "r");
             if (f == null) {
                 word.printErr("\nread, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
                 reduce_rt.outstats();
                 os.exit(1);
             }
-            setLastArg(ctx, reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(f.?))));
-            reduce.hdSet(ctx.heap, ctx.e, word.READ);
+            setLastArg(ctx, Value.fromRaw(reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(f.?)))));
+            reduce.hdSet(ctx.heap, ctx.e, Value.fromRaw(word.READ));
             reduce.downLeft(ctx);
             io_handlers.handle_READ(ctx);
             return;
         },
         word.STARTREADBIN => {
             reduce.upLeft(ctx);
-            const fil = try reduce.getstring(ctx.heap, lastArg(ctx), "readb");
+            const fil = try reduce.getstringVal(ctx.heap, lastArg(ctx), "readb");
             const f = word.fopen(fil, "r");
             if (f == null) {
                 word.printErr("\nreadb, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
                 reduce_rt.outstats();
                 os.exit(1);
             }
-            setLastArg(ctx, reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(f.?))));
-            reduce.hdSet(ctx.heap, ctx.e, word.READBIN);
+            setLastArg(ctx, Value.fromRaw(reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(f.?)))));
+            reduce.hdSet(ctx.heap, ctx.e, Value.fromRaw(word.READBIN));
             reduce.downLeft(ctx);
             io_handlers.handle_READBIN(ctx);
             return;
@@ -339,13 +340,13 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.TRY => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
-            if (ctx.args[0] == word.FAIL) {
+            if (ctx.args[0].toRaw() == word.FAIL) {
                 ctx.e = reduce.rewriteToExistingTail(ctx.heap, ctx.e);
                 ctx.action = word.ACT_NEXTREDEX;
                 return;
             }
-            ctx.hold = reduce.head(ctx.heap, ctx.args[0]);
-            if (word.S <= ctx.hold and ctx.hold <= word.ERROR) {
+            ctx.hold = reduce.headVal(ctx.heap, ctx.args[0]);
+            if (word.S <= ctx.hold.toRaw() and ctx.hold.toRaw() <= word.ERROR) {
                 ctx.action = word.ACT_DONE;
                 return;
             }
@@ -355,11 +356,11 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         },
         word.COND => {
             reduce.upLeft(ctx);
-            if (lastArg(ctx) == word.True) {
-                reduce.rewriteToValue(ctx.heap, &ctx.e, word.K);
+            if (lastArg(ctx).toRaw() == word.True) {
+                reduce.rewriteToValue(ctx.heap, &ctx.e, Value.fromRaw(word.K));
                 combinators.handleK(ctx);
             } else {
-                reduce.rewriteToValue(ctx.heap, &ctx.e, word.KI);
+                reduce.rewriteToValue(ctx.heap, &ctx.e, Value.fromRaw(word.KI));
                 combinators.handleKI(ctx);
             }
             return;
@@ -370,22 +371,22 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
                 ctx.action = word.ACT_DONE;
                 return;
             }
-            if (ctx.args[0] == word.NIL) {
+            if (ctx.args[0].toRaw() == word.NIL) {
                 ctx.e = reduce.rewriteToExistingTail(ctx.heap, ctx.e);
                 ctx.action = word.ACT_NEXTREDEX;
                 return;
             }
-            reduce.rewriteToCons(ctx.heap, ctx.e, reduce.hdGet(ctx.heap, ctx.args[0]), reduce.ap2(ctx.heap, word.APPEND, reduce.tlGet(ctx.heap, ctx.args[0]), lastArg(ctx)));
+            reduce.rewriteToCons(ctx.heap, ctx.e, reduce.hdGet(ctx.heap, ctx.args[0]), reduce.ap2(ctx.heap, Value.fromRaw(word.APPEND), reduce.tlGet(ctx.heap, ctx.args[0]), lastArg(ctx)));
             ctx.action = word.ACT_DONE;
             return;
         },
         word.AND => {
             reduce.upLeft(ctx);
-            if (lastArg(ctx) == word.True) {
-                ctx.e = word.I;
+            if (lastArg(ctx).toRaw() == word.True) {
+                ctx.e = Value.fromRaw(word.I);
                 combinators.handleStrictMonadic(ctx);
             } else {
-                reduce.hdSet(ctx.heap, ctx.e, word.K);
+                reduce.hdSet(ctx.heap, ctx.e, Value.fromRaw(word.K));
                 reduce.downLeft(ctx);
                 combinators.handleK(ctx);
             }
@@ -393,35 +394,35 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         },
         word.OR => {
             reduce.upLeft(ctx);
-            if (lastArg(ctx) == word.True) {
-                reduce.hdSet(ctx.heap, ctx.e, word.K);
+            if (lastArg(ctx).toRaw() == word.True) {
+                reduce.hdSet(ctx.heap, ctx.e, Value.fromRaw(word.K));
                 reduce.downLeft(ctx);
                 combinators.handleK(ctx);
             } else {
-                ctx.e = word.I;
+                ctx.e = Value.fromRaw(word.I);
                 combinators.handleStrictMonadic(ctx);
             }
             return;
         },
         word.NOT => {
             reduce.upLeft(ctx);
-            reduce.rewriteToValue(ctx.heap, &ctx.e, if (lastArg(ctx) == word.True) word.False else word.True);
+            reduce.rewriteToValue(ctx.heap, &ctx.e, Value.fromRaw(if (lastArg(ctx).toRaw() == word.True) word.False else word.True));
             ctx.action = word.ACT_DONE;
             return;
         },
         word.NEG => {
             reduce.upLeft(ctx);
             if (reduce.isInt(ctx.heap, lastArg(ctx))) {
-                reduce.simpl(ctx, big.negate(ctx.heap, lastArg(ctx)));
+                reduce.simpl(ctx, Value.fromRaw(big.negate(ctx.heap, lastArg(ctx).toRaw())));
             } else {
-                try heap.setdbl(ctx.e, -heap.getDbl(lastArg(ctx)));
+                try heap.setdbl(ctx.e.toRaw(), -heap.getDbl(lastArg(ctx).toRaw()));
             }
             ctx.action = word.ACT_DONE;
             return;
         },
         word.CODE => {
             reduce.upLeft(ctx);
-            reduce.simpl(ctx, heap.make(ctx.heap, .INT, heap.getChar(lastArg(ctx)), 0));
+            reduce.simpl(ctx, Value.fromRaw(heap.make(ctx.heap, .INT, heap.getChar(lastArg(ctx).toRaw()), 0)));
             ctx.action = word.ACT_DONE;
             return;
         },
@@ -430,14 +431,14 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             if (reduce.isDouble(ctx.heap, lastArg(ctx))) {
                 reduce_rt.intError("decode");
             }
-            const val = big.toInt(ctx.heap, lastArg(ctx));
+            const val = big.toInt(ctx.heap, lastArg(ctx).toRaw());
             if (val < 0 or val > word.UMAX) {
                 word.printErr("\nCHARACTER OUT-OF-RANGE decode({})\n", .{val});
                 reduce_rt.outstats();
                 os.exit(1);
             }
-            reduce.hdSet(ctx.heap, ctx.e, word.I);
-            const val_char = heap.stoChar(@intCast(val));
+            reduce.hdSet(ctx.heap, ctx.e, Value.fromRaw(word.I));
+            const val_char = Value.fromRaw(heap.stoChar(@intCast(val)));
             reduce.tlSet(ctx.heap, ctx.e, val_char);
             ctx.e = val_char;
             ctx.action = word.ACT_DONE;
@@ -445,19 +446,19 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         },
         word.INTEGER => {
             reduce.upLeft(ctx);
-            reduce.rewriteToValue(ctx.heap, &ctx.e, if (reduce.isInt(ctx.heap, lastArg(ctx))) word.True else word.False);
+            reduce.rewriteToValue(ctx.heap, &ctx.e, Value.fromRaw(if (reduce.isInt(ctx.heap, lastArg(ctx))) word.True else word.False));
             ctx.action = word.ACT_NEXTREDEX;
             return;
         },
         word.SHOWNUM => {
             reduce.upLeft(ctx);
             if (reduce.isDouble(ctx.heap, lastArg(ctx))) {
-                const x = heap.getDbl(lastArg(ctx));
+                const x = heap.getDbl(lastArg(ctx).toRaw());
                 const s = formatMiraShowNum(&ctx.rs.linebuf, x);
                 ctx.rs.linebuf[s.len] = 0;
                 reduce.rewriteToString(ctx.heap, &ctx.e, @ptrCast(&ctx.rs.linebuf));
             } else {
-                reduce.simpl(ctx, big.toDecimalList(ctx.heap, lastArg(ctx)));
+                reduce.simpl(ctx, Value.fromRaw(big.toDecimalList(ctx.heap, lastArg(ctx).toRaw())));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -465,11 +466,11 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.SHOWHEX => {
             reduce.upLeft(ctx);
             if (reduce.isDouble(ctx.heap, lastArg(ctx))) {
-                const s = formatMiraHex(&ctx.rs.linebuf, heap.getDbl(lastArg(ctx)));
+                const s = formatMiraHex(&ctx.rs.linebuf, heap.getDbl(lastArg(ctx).toRaw()));
                 ctx.rs.linebuf[s.len] = 0;
                 reduce.rewriteToString(ctx.heap, &ctx.e, @ptrCast(&ctx.rs.linebuf));
             } else {
-                reduce.simpl(ctx, big.toHexList(ctx.heap, lastArg(ctx)));
+                reduce.simpl(ctx, Value.fromRaw(big.toHexList(ctx.heap, lastArg(ctx).toRaw())));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -479,7 +480,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             if (reduce.isDouble(ctx.heap, lastArg(ctx))) {
                 reduce_rt.intError("showoct");
             } else {
-                reduce.simpl(ctx, big.toOctalList(ctx.heap, lastArg(ctx)));
+                reduce.simpl(ctx, Value.fromRaw(big.toOctalList(ctx.heap, lastArg(ctx).toRaw())));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -487,7 +488,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.ARCTAN_FN => {
             reduce.upLeft(ctx);
             platform.setErrno(0);
-            try heap.setdbl(ctx.e, std.math.atan(reduce.forceDbl(ctx.heap, lastArg(ctx))));
+            try heap.setdbl(ctx.e.toRaw(), std.math.atan(reduce.forceDbl(ctx.heap, lastArg(ctx))));
             if (platform.getErrno() != 0) {
                 reduce_rt.mathError(@constCast("atan"));
             }
@@ -497,7 +498,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.EXP_FN => {
             reduce.upLeft(ctx);
             platform.setErrno(0);
-            try heap.setdbl(ctx.e, std.math.exp(reduce.forceDbl(ctx.heap, lastArg(ctx))));
+            try heap.setdbl(ctx.e.toRaw(), std.math.exp(reduce.forceDbl(ctx.heap, lastArg(ctx))));
             if (platform.getErrno() != 0) {
                 reduce_rt.mathError(@constCast("exp"));
             }
@@ -509,7 +510,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             if (reduce.isInt(ctx.heap, lastArg(ctx))) {
                 reduce.rewriteToValue(ctx.heap, &ctx.e, lastArg(ctx));
             } else {
-                reduce.simpl(ctx, big.fromFloat(ctx.heap, heap.getDbl(lastArg(ctx))));
+                reduce.simpl(ctx, Value.fromRaw(big.fromFloat(ctx.heap, heap.getDbl(lastArg(ctx).toRaw()))));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -517,10 +518,10 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.LOG_FN => {
             reduce.upLeft(ctx);
             if (reduce.isInt(ctx.heap, lastArg(ctx))) {
-                try heap.setdbl(ctx.e, big.ln(ctx.heap, big.bn(), lastArg(ctx)));
+                try heap.setdbl(ctx.e.toRaw(), big.ln(ctx.heap, big.bn(), lastArg(ctx).toRaw()));
             } else {
                 platform.setErrno(0);
-                try heap.setdbl(ctx.e, @log(reduce.forceDbl(ctx.heap, lastArg(ctx))));
+                try heap.setdbl(ctx.e.toRaw(), @log(reduce.forceDbl(ctx.heap, lastArg(ctx))));
                 if (platform.getErrno() != 0) {
                     reduce_rt.mathError(@constCast("log"));
                 }
@@ -531,10 +532,10 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.LOG10_FN => {
             reduce.upLeft(ctx);
             if (reduce.isInt(ctx.heap, lastArg(ctx))) {
-                try heap.setdbl(ctx.e, big.log10(ctx.heap, big.bn(), lastArg(ctx)));
+                try heap.setdbl(ctx.e.toRaw(), big.log10(ctx.heap, big.bn(), lastArg(ctx).toRaw()));
             } else {
                 platform.setErrno(0);
-                try heap.setdbl(ctx.e, @log10(reduce.forceDbl(ctx.heap, lastArg(ctx))));
+                try heap.setdbl(ctx.e.toRaw(), @log10(reduce.forceDbl(ctx.heap, lastArg(ctx))));
                 if (platform.getErrno() != 0) {
                     reduce_rt.mathError(@constCast("log10"));
                 }
@@ -545,7 +546,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.SIN_FN => {
             reduce.upLeft(ctx);
             platform.setErrno(0);
-            try heap.setdbl(ctx.e, std.math.sin(reduce.forceDbl(ctx.heap, lastArg(ctx))));
+            try heap.setdbl(ctx.e.toRaw(), std.math.sin(reduce.forceDbl(ctx.heap, lastArg(ctx))));
             if (platform.getErrno() != 0) {
                 reduce_rt.mathError(@constCast("sin"));
             }
@@ -555,7 +556,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.COS_FN => {
             reduce.upLeft(ctx);
             platform.setErrno(0);
-            try heap.setdbl(ctx.e, std.math.cos(reduce.forceDbl(ctx.heap, lastArg(ctx))));
+            try heap.setdbl(ctx.e.toRaw(), std.math.cos(reduce.forceDbl(ctx.heap, lastArg(ctx))));
             if (platform.getErrno() != 0) {
                 reduce_rt.mathError(@constCast("cos"));
             }
@@ -565,7 +566,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.SQRT_FN => {
             reduce.upLeft(ctx);
             platform.setErrno(0);
-            try heap.setdbl(ctx.e, std.math.sqrt(reduce.forceDbl(ctx.heap, lastArg(ctx))));
+            try heap.setdbl(ctx.e.toRaw(), std.math.sqrt(reduce.forceDbl(ctx.heap, lastArg(ctx))));
             if (platform.getErrno() != 0) {
                 reduce_rt.mathError(@constCast("sqrt"));
             }
@@ -575,19 +576,19 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.ZIP => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.GETARG(ctx, &ctx.args[1]);
-            if (ctx.args[0] == word.NIL or ctx.args[1] == word.NIL) {
+            if (ctx.args[0].toRaw() == word.NIL or ctx.args[1].toRaw() == word.NIL) {
                 reduce.rewriteToNil(ctx.heap, &ctx.e);
                 ctx.action = word.ACT_DONE;
                 return;
             }
-            reduce.rewriteToCons(ctx.heap, ctx.e, reduce.cons(ctx.heap, reduce.hdGet(ctx.heap, ctx.args[0]), reduce.hdGet(ctx.heap, ctx.args[1])), reduce.ap2(ctx.heap, word.ZIP, reduce.tlGet(ctx.heap, ctx.args[0]), reduce.tlGet(ctx.heap, ctx.args[1])));
+            reduce.rewriteToCons(ctx.heap, ctx.e, reduce.cons(ctx.heap, reduce.hdGet(ctx.heap, ctx.args[0]), reduce.hdGet(ctx.heap, ctx.args[1])), reduce.ap2(ctx.heap, Value.fromRaw(word.ZIP), reduce.tlGet(ctx.heap, ctx.args[0]), reduce.tlGet(ctx.heap, ctx.args[1])));
             ctx.action = word.ACT_DONE;
             return;
         },
         word.STEP => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
-            reduce.hdSet(ctx.heap, ctx.e, reduce.ap(ctx.heap, word.GENSEQ, reduce.cons(ctx.heap, ctx.args[0], word.NIL)));
+            reduce.hdSet(ctx.heap, ctx.e, reduce.ap(ctx.heap, Value.fromRaw(word.GENSEQ), reduce.cons(ctx.heap, ctx.args[0], Value.fromRaw(word.NIL))));
             ctx.action = word.ACT_NEXTREDEX;
             return;
         },
@@ -609,11 +610,11 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.isDouble(ctx.heap, ctx.args[0])) {
-                try heap.setdbl(ctx.e, heap.getDbl(ctx.args[0]) + reduce.forceDbl(ctx.heap, lastArg(ctx)));
+                try heap.setdbl(ctx.e.toRaw(), heap.getDbl(ctx.args[0].toRaw()) + reduce.forceDbl(ctx.heap, lastArg(ctx)));
             } else if (reduce.isDouble(ctx.heap, lastArg(ctx))) {
-                try heap.setdbl(ctx.e, big.toFloat(ctx.heap, ctx.args[0]) + heap.getDbl(lastArg(ctx)));
+                try heap.setdbl(ctx.e.toRaw(), big.toFloat(ctx.heap, ctx.args[0].toRaw()) + heap.getDbl(lastArg(ctx).toRaw()));
             } else {
-                reduce.simpl(ctx, big.add(ctx.heap, ctx.args[0], lastArg(ctx)));
+                reduce.simpl(ctx, Value.fromRaw(big.add(ctx.heap, ctx.args[0].toRaw(), lastArg(ctx).toRaw())));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -622,11 +623,11 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.isDouble(ctx.heap, ctx.args[0])) {
-                try heap.setdbl(ctx.e, heap.getDbl(ctx.args[0]) - reduce.forceDbl(ctx.heap, lastArg(ctx)));
+                try heap.setdbl(ctx.e.toRaw(), heap.getDbl(ctx.args[0].toRaw()) - reduce.forceDbl(ctx.heap, lastArg(ctx)));
             } else if (reduce.isDouble(ctx.heap, lastArg(ctx))) {
-                try heap.setdbl(ctx.e, big.toFloat(ctx.heap, ctx.args[0]) - heap.getDbl(lastArg(ctx)));
+                try heap.setdbl(ctx.e.toRaw(), big.toFloat(ctx.heap, ctx.args[0].toRaw()) - heap.getDbl(lastArg(ctx).toRaw()));
             } else {
-                reduce.simpl(ctx, big.sub(ctx.heap, ctx.args[0], lastArg(ctx)));
+                reduce.simpl(ctx, Value.fromRaw(big.sub(ctx.heap, ctx.args[0].toRaw(), lastArg(ctx).toRaw())));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -635,11 +636,11 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
             if (reduce.isDouble(ctx.heap, ctx.args[0])) {
-                try heap.setdbl(ctx.e, heap.getDbl(ctx.args[0]) * reduce.forceDbl(ctx.heap, lastArg(ctx)));
+                try heap.setdbl(ctx.e.toRaw(), heap.getDbl(ctx.args[0].toRaw()) * reduce.forceDbl(ctx.heap, lastArg(ctx)));
             } else if (reduce.isDouble(ctx.heap, lastArg(ctx))) {
-                try heap.setdbl(ctx.e, big.toFloat(ctx.heap, ctx.args[0]) * heap.getDbl(lastArg(ctx)));
+                try heap.setdbl(ctx.e.toRaw(), big.toFloat(ctx.heap, ctx.args[0].toRaw()) * heap.getDbl(lastArg(ctx).toRaw()));
             } else {
-                reduce.simpl(ctx, big.mul(ctx.heap, ctx.args[0], lastArg(ctx)));
+                reduce.simpl(ctx, Value.fromRaw(big.mul(ctx.heap, ctx.args[0].toRaw(), lastArg(ctx).toRaw())));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -653,7 +654,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             if (reduce.bigzero(ctx.heap, lastArg(ctx))) {
                 reduce_rt.divError();
             }
-            reduce.simpl(ctx, big.div(ctx.heap, big.bn(), ctx.args[0], lastArg(ctx)));
+            reduce.simpl(ctx, Value.fromRaw(big.div(ctx.heap, big.bn(), ctx.args[0].toRaw(), lastArg(ctx).toRaw())));
             ctx.action = word.ACT_DONE;
             return;
         },
@@ -665,7 +666,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             if (fb == 0.0) {
                 reduce_rt.divError();
             }
-            try heap.setdbl(ctx.e, fa / fb);
+            try heap.setdbl(ctx.e.toRaw(), fa / fb);
             ctx.action = word.ACT_DONE;
             return;
         },
@@ -678,7 +679,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             if (reduce.bigzero(ctx.heap, lastArg(ctx))) {
                 reduce_rt.divError();
             }
-            reduce.simpl(ctx, big.mod(ctx.heap, big.bn(), ctx.args[0], lastArg(ctx)));
+            reduce.simpl(ctx, Value.fromRaw(big.mod(ctx.heap, big.bn(), ctx.args[0].toRaw(), lastArg(ctx).toRaw())));
             ctx.action = word.ACT_DONE;
             return;
         },
@@ -728,19 +729,19 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
         word.MERGE => {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.upLeft(ctx);
-            if (ctx.args[0] == word.NIL) {
+            if (ctx.args[0].toRaw() == word.NIL) {
                 reduce.rewriteToValue(ctx.heap, &ctx.e, lastArg(ctx));
-            } else if (lastArg(ctx) == word.NIL) {
+            } else if (lastArg(ctx).toRaw() == word.NIL) {
                 reduce.rewriteToValue(ctx.heap, &ctx.e, ctx.args[0]);
             } else {
-                const hd_arg1 = try reduce.reduce(ctx.heap, reduce.hdGet(ctx.heap, ctx.args[0]));
+                const hd_arg1 = try reduce.reduceVal(ctx.heap, reduce.hdGet(ctx.heap, ctx.args[0]));
                 reduce.hdSet(ctx.heap, ctx.args[0], hd_arg1);
-                const hd_lastarg = try reduce.reduce(ctx.heap, reduce.hdGet(ctx.heap, lastArg(ctx)));
+                const hd_lastarg = try reduce.reduceVal(ctx.heap, reduce.hdGet(ctx.heap, lastArg(ctx)));
                 reduce.hdSet(ctx.heap, lastArg(ctx), hd_lastarg);
-                if (try reduce_rt.compare(ctx.heap, hd_arg1, hd_lastarg) <= 0) {
-                    reduce.rewriteToCons(ctx.heap, ctx.e, hd_arg1, reduce.ap2(ctx.heap, word.MERGE, reduce.tlGet(ctx.heap, ctx.args[0]), lastArg(ctx)));
+                if (try reduce_rt.compare(ctx.heap, hd_arg1.toRaw(), hd_lastarg.toRaw()) <= 0) {
+                    reduce.rewriteToCons(ctx.heap, ctx.e, hd_arg1, reduce.ap2(ctx.heap, Value.fromRaw(word.MERGE), reduce.tlGet(ctx.heap, ctx.args[0]), lastArg(ctx)));
                 } else {
-                    reduce.rewriteToCons(ctx.heap, ctx.e, hd_lastarg, reduce.ap2(ctx.heap, word.MERGE, reduce.tlGet(ctx.heap, lastArg(ctx)), ctx.args[0]));
+                    reduce.rewriteToCons(ctx.heap, ctx.e, hd_lastarg, reduce.ap2(ctx.heap, Value.fromRaw(word.MERGE), reduce.tlGet(ctx.heap, lastArg(ctx)), ctx.args[0]));
                 }
             }
             ctx.action = word.ACT_DONE;
@@ -750,7 +751,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             reduce.GETARG(ctx, &ctx.args[0]);
             reduce.GETARG(ctx, &ctx.args[1]);
             reduce.upLeft(ctx);
-            reduce.hdSet(ctx.heap, ctx.e, reduce.ap(ctx.heap, word.GENSEQ, reduce.cons(ctx.heap, ctx.args[0], ctx.args[1])));
+            reduce.hdSet(ctx.heap, ctx.e, reduce.ap(ctx.heap, Value.fromRaw(word.GENSEQ), reduce.cons(ctx.heap, ctx.args[0], ctx.args[1])));
             if (if (reduce.isInt(ctx.heap, ctx.args[0])) reduce.poz(ctx.heap, ctx.args[0]) else reduce.forceDbl(ctx.heap, ctx.args[0]) >= 0.0) {
                 reduce.setTag(ctx.heap, reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e)), .AP);
             }
@@ -776,9 +777,9 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
 /// (or `nil` if unset).
 fn handleReadyGETENV(ctx: *ReductionCtx) reduce.ReduceError!void {
     reduce.upLeft(ctx);
-    const a = try reduce.getstring(ctx.heap, lastArg(ctx), "getenv");
+    const a = try reduce.getstringVal(ctx.heap, lastArg(ctx), "getenv");
     const p = os.getenv(a);
-    ctx.hold = word.NIL;
+    ctx.hold = Value.fromRaw(word.NIL);
     if (p) |ptr| {
         var i = std.mem.len(ptr);
         if (ctx.rs.UTF8 != 0) {
@@ -813,17 +814,17 @@ fn handleReadyGETENV(ctx: *ReductionCtx) reduce.ReduceError!void {
             i = std.mem.len(@as([*:0]const u8, @ptrCast(qbuf)));
             while (i > 0) {
                 i -= 1;
-                ctx.hold = reduce.cons(ctx.heap, qbuf[i], ctx.hold);
+                ctx.hold = reduce.cons(ctx.heap, Value.imm(qbuf[i]), ctx.hold);
             }
             rt.allocator.free(qbuf_slice);
         } else {
             while (i > 0) {
                 i -= 1;
-                ctx.hold = reduce.cons(ctx.heap, ptr[i], ctx.hold);
+                ctx.hold = reduce.cons(ctx.heap, Value.imm(ptr[i]), ctx.hold);
             }
         }
     }
-    reduce.hdSet(ctx.heap, ctx.e, word.I);
+    reduce.hdSet(ctx.heap, ctx.e, Value.fromRaw(word.I));
     reduce.tlSet(ctx.heap, ctx.e, ctx.hold);
     ctx.e = ctx.hold;
     ctx.action = word.ACT_DONE;
@@ -837,7 +838,7 @@ fn handleReadyEXEC(ctx: *ReductionCtx) reduce.ReduceError!void {
     var pid: c_int = -1;
     var fd: [2]c_int = undefined;
     var fd_a: [2]c_int = undefined;
-    const cp = try reduce.getstring(ctx.heap, lastArg(ctx), "system");
+    const cp = try reduce.getstringVal(ctx.heap, lastArg(ctx), "system");
     var cond = false;
     if (os.pipe(&fd) == -1 or os.pipe(&fd_a) == -1) {
         cond = true;
@@ -855,9 +856,9 @@ fn handleReadyEXEC(ctx: *ReductionCtx) reduce.ReduceError!void {
             fp_a = word.fdopen(fd_a[0], "r");
         }
         if (pid == -1 or fp == null or fp_a == null) {
-            reduce.rewriteToCons(ctx.heap, ctx.e, word.NIL, reduce.cons(ctx.heap, reduce_rt.piperrmess(pid), big.fromInt(ctx.heap, -1)));
+            reduce.rewriteToCons(ctx.heap, ctx.e, Value.fromRaw(word.NIL), reduce.cons(ctx.heap, Value.fromRaw(reduce_rt.piperrmess(pid)), Value.fromRaw(big.fromInt(ctx.heap, -1))));
         } else {
-            reduce.rewriteToCons(ctx.heap, ctx.e, reduce.ap(ctx.heap, word.READ, reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(fp.?)))), reduce.cons(ctx.heap, reduce.ap(ctx.heap, word.READ, reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(fp_a.?)))), reduce.ap(ctx.heap, word.WAIT, pid)));
+            reduce.rewriteToCons(ctx.heap, ctx.e, reduce.ap(ctx.heap, Value.fromRaw(word.READ), Value.fromRaw(reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(fp.?))))), reduce.cons(ctx.heap, reduce.ap(ctx.heap, Value.fromRaw(word.READ), Value.fromRaw(reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(fp_a.?))))), reduce.ap(ctx.heap, Value.fromRaw(word.WAIT), Value.fromRaw(pid))));
         }
     } else {
         const shell = "/bin/sh";
@@ -880,45 +881,45 @@ fn handleReadyNUMVAL(ctx: *ReductionCtx) reduce.ReduceError!void {
     reduce.upLeft(ctx);
     var x = lastArg(ctx);
     var base: c_int = 10;
-    while (x != word.NIL) {
-        reduce.hdSet(ctx.heap, x, try reduce.reduce(ctx.heap, reduce.hdGet(ctx.heap, x)));
-        const next_tl = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, x));
+    while (x.toRaw() != word.NIL) {
+        reduce.hdSet(ctx.heap, x, try reduce.reduceVal(ctx.heap, reduce.hdGet(ctx.heap, x)));
+        const next_tl = try reduce.reduceVal(ctx.heap, reduce.tlGet(ctx.heap, x));
         reduce.tlSet(ctx.heap, x, next_tl);
         x = next_tl;
     }
-    while (lastArg(ctx) != word.NIL and isSpaceW(reduce.hdGet(ctx.heap, lastArg(ctx)))) {
+    while (lastArg(ctx).toRaw() != word.NIL and isSpaceW(reduce.hdGet(ctx.heap, lastArg(ctx)).toRaw())) {
         setLastArg(ctx, reduce.tlGet(ctx.heap, lastArg(ctx)));
     }
     x = lastArg(ctx);
-    if (x != word.NIL and reduce.hdGet(ctx.heap, x) == '-') {
+    if (x.toRaw() != word.NIL and reduce.hdGet(ctx.heap, x).toRaw() == '-') {
         x = reduce.tlGet(ctx.heap, x);
     }
-    if (reduce.hdGet(ctx.heap, x) == '0' and reduce.tlGet(ctx.heap, x) != word.NIL) {
-        switch (toLowerW(reduce.hdGet(ctx.heap, reduce.tlGet(ctx.heap, x)))) {
+    if (reduce.hdGet(ctx.heap, x).toRaw() == '0' and reduce.tlGet(ctx.heap, x).toRaw() != word.NIL) {
+        switch (toLowerW(reduce.hdGet(ctx.heap, reduce.tlGet(ctx.heap, x)).toRaw())) {
             'o' => {
                 base = 8;
                 x = reduce.tlGet(ctx.heap, reduce.tlGet(ctx.heap, x));
-                while (x != word.NIL and ('0' <= reduce.hdGet(ctx.heap, x) and reduce.hdGet(ctx.heap, x) <= '7')) {
+                while (x.toRaw() != word.NIL and ('0' <= reduce.hdGet(ctx.heap, x).toRaw() and reduce.hdGet(ctx.heap, x).toRaw() <= '7')) {
                     x = reduce.tlGet(ctx.heap, x);
                 }
             },
             'x' => {
                 base = 16;
                 x = reduce.tlGet(ctx.heap, reduce.tlGet(ctx.heap, x));
-                while (x != word.NIL and isHexW(reduce.hdGet(ctx.heap, x))) {
+                while (x.toRaw() != word.NIL and isHexW(reduce.hdGet(ctx.heap, x).toRaw())) {
                     x = reduce.tlGet(ctx.heap, x);
                 }
             },
             else => {},
         }
     } else {
-        while (x != word.NIL and isDigitW(reduce.hdGet(ctx.heap, x))) {
+        while (x.toRaw() != word.NIL and isDigitW(reduce.hdGet(ctx.heap, x).toRaw())) {
             x = reduce.tlGet(ctx.heap, x);
         }
     }
-    if (x == word.NIL) {
-        reduce.hdSet(ctx.heap, ctx.e, word.I);
-        const val = big.parseString(ctx.heap, lastArg(ctx), base);
+    if (x.toRaw() == word.NIL) {
+        reduce.hdSet(ctx.heap, ctx.e, Value.fromRaw(word.I));
+        const val = Value.fromRaw(big.parseString(ctx.heap, lastArg(ctx).toRaw(), base));
         reduce.tlSet(ctx.heap, ctx.e, val);
         ctx.e = val;
     } else {
@@ -927,8 +928,8 @@ fn handleReadyNUMVAL(ctx: *ReductionCtx) reduce.ReduceError!void {
         var junk: u8 = 0;
         x = lastArg(ctx);
         var p_idx: usize = 0;
-        while (x != word.NIL and p_idx < 1023) {
-            p[p_idx] = @intCast(reduce.hdGet(ctx.heap, x));
+        while (x.toRaw() != word.NIL and p_idx < 1023) {
+            p[p_idx] = @intCast(reduce.hdGet(ctx.heap, x).toRaw());
             p_idx += 1;
             x = reduce.tlGet(ctx.heap, x);
         }
@@ -939,8 +940,8 @@ fn handleReadyNUMVAL(ctx: *ReductionCtx) reduce.ReduceError!void {
             reduce_rt.outstats();
             os.exit(1);
         } else {
-            reduce.hdSet(ctx.heap, ctx.e, word.I);
-            const val = try heap.stoDbl(d);
+            reduce.hdSet(ctx.heap, ctx.e, Value.fromRaw(word.I));
+            const val = Value.fromRaw(try heap.stoDbl(d));
             reduce.tlSet(ctx.heap, ctx.e, val);
             ctx.e = val;
         }
@@ -962,20 +963,20 @@ fn handleReadyPOWER(ctx: *ReductionCtx) reduce.ReduceError!void {
             platform.setErrno(os.EDOM);
             reduce_rt.mathError(@constCast("^"));
         }
-        fb = heap.getDbl(lastArg(ctx));
+        fb = heap.getDbl(lastArg(ctx).toRaw());
     } else if (reduce.isDouble(ctx.heap, ctx.args[0])) {
-        fa = heap.getDbl(ctx.args[0]);
-        fb = big.toFloat(ctx.heap, lastArg(ctx));
+        fa = heap.getDbl(ctx.args[0].toRaw());
+        fb = big.toFloat(ctx.heap, lastArg(ctx).toRaw());
     } else if (reduce.neg(ctx.heap, lastArg(ctx))) {
-        fa = big.toFloat(ctx.heap, ctx.args[0]);
-        fb = big.toFloat(ctx.heap, lastArg(ctx));
+        fa = big.toFloat(ctx.heap, ctx.args[0].toRaw());
+        fb = big.toFloat(ctx.heap, lastArg(ctx).toRaw());
     } else {
-        reduce.simpl(ctx, big.pow(ctx.heap, ctx.args[0], lastArg(ctx)));
+        reduce.simpl(ctx, Value.fromRaw(big.pow(ctx.heap, ctx.args[0].toRaw(), lastArg(ctx).toRaw())));
         ctx.action = word.ACT_DONE;
         return;
     }
     platform.setErrno(0);
-    try heap.setdbl(ctx.e, std.math.pow(f64, fa, fb));
+    try heap.setdbl(ctx.e.toRaw(), std.math.pow(f64, fa, fb));
     if (platform.getErrno() != 0) {
         reduce_rt.mathError(@constCast("power"));
     }
@@ -990,7 +991,7 @@ fn handleReadyUsh(ctx: *ReductionCtx) void {
     reduce.GETARG(ctx, &ctx.args[0]);
     reduce.GETARG(ctx, &ctx.args[1]);
     reduce.GETARG(ctx, &ctx.args[2]);
-    if (reduce.hdGet(ctx.heap, reduce.head(ctx.heap, ctx.args[0])) != reduce.hdGet(ctx.heap, reduce.head(ctx.heap, ctx.args[2]))) {
+    if (reduce.hdGet(ctx.heap, reduce.headVal(ctx.heap, ctx.args[0])) != reduce.hdGet(ctx.heap, reduce.headVal(ctx.heap, ctx.args[2]))) {
         reduce.rewriteToFail(ctx.heap, &ctx.e);
         ctx.action = word.ACT_DONE;
         return;
@@ -1004,9 +1005,9 @@ fn handleReadyUsh(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    ctx.hold = if (ctx.args[1] != 0) reduce.cons(ctx.heap, ')', word.NIL) else word.NIL;
+    ctx.hold = if (ctx.args[1].toRaw() != 0) reduce.cons(ctx.heap, Value.imm(')'), Value.fromRaw(word.NIL)) else Value.fromRaw(word.NIL);
     while (!reduce.isConstructor(ctx.heap, ctx.args[0])) {
-        ctx.hold = reduce.cons(ctx.heap, ' ', reduce.ap2(ctx.heap, word.APPEND, reduce.ap(ctx.heap, reduce.tlGet(ctx.heap, ctx.args[0]), reduce.tlGet(ctx.heap, ctx.args[2])), ctx.hold));
+        ctx.hold = reduce.cons(ctx.heap, Value.imm(' '), reduce.ap2(ctx.heap, Value.fromRaw(word.APPEND), reduce.ap(ctx.heap, reduce.tlGet(ctx.heap, ctx.args[0]), reduce.tlGet(ctx.heap, ctx.args[2])), ctx.hold));
         ctx.args[0] = reduce.hdGet(ctx.heap, ctx.args[0]);
         ctx.args[2] = reduce.hdGet(ctx.heap, ctx.args[2]);
     }
@@ -1015,9 +1016,9 @@ fn handleReadyUsh(ctx: *ReductionCtx) void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    ctx.hold = reduce.ap2(ctx.heap, word.APPEND, lex.strConv(reduce.constrName(ctx.heap, ctx.args[0])), ctx.hold);
-    if (ctx.args[1] != 0) {
-        reduce.rewriteToCons(ctx.heap, ctx.e, '(', ctx.hold);
+    ctx.hold = reduce.ap2(ctx.heap, Value.fromRaw(word.APPEND), Value.fromRaw(lex.strConv(reduce.constrName(ctx.heap, ctx.args[0]))), ctx.hold);
+    if (ctx.args[1].toRaw() != 0) {
+        reduce.rewriteToCons(ctx.heap, ctx.e, Value.imm('('), ctx.hold);
         ctx.action = word.ACT_DONE;
     } else {
         reduce.rewriteToValue(ctx.heap, &ctx.e, ctx.hold);

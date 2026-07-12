@@ -1,5 +1,5 @@
 c_int/c_long/c_uint/c_ulong (non-FFI)	164
-[*:0] C-string types (non-FFI)	227
+[*:0] C-string types (non-FFI)	228
 extern fn declarations	8
 extern var declarations	0
 @intFromPtr / @ptrFromInt (non-FFI)	50

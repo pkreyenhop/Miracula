@@ -9,6 +9,7 @@ const std = @import("std");
 const reduce = @import("../reduce_core.zig");
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
+const Value = @import("../../graph/value.zig").Value;
 const word = @import("../../graph/word.zig");
 const os = @import("../../os.zig");
 const reduce_rt = @import("../reduce_rt.zig");
@@ -36,10 +37,10 @@ pub fn handle_STARTREADVALS(ctx: *ReductionCtx) reduce.ReduceError!void {
         return;
     }
 
-    const lastarg_val = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, ctx.e));
+    const lastarg_val = try reduce.reduceVal(ctx.heap, reduce.tlGet(ctx.heap, ctx.e));
     reduce.tlSet(ctx.heap, ctx.e, lastarg_val);
 
-    if (lastarg_val == word.OFFSIDE) {
+    if (lastarg_val.toRaw() == word.OFFSIDE) {
         if (ctx.eval.stdinuse != 0 and ctx.eval.stdinuse != '+') {
             reduce.setTag(ctx.heap, ctx.e, .AP);
             reduce.rewriteToNil(ctx.heap, &ctx.e);
@@ -47,21 +48,21 @@ pub fn handle_STARTREADVALS(ctx: *ReductionCtx) reduce.ReduceError!void {
             return;
         }
         ctx.eval.stdinuse = '+';
-        ctx.hold = reduce.cons(ctx.heap, reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e)), 0);
-        reduce.tlSet(ctx.heap, ctx.e, reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(reduce.getStdin().?))));
+        ctx.hold = reduce.cons(ctx.heap, reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e)), Value.fromRaw(0));
+        reduce.tlSet(ctx.heap, ctx.e, Value.fromRaw(reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(reduce.getStdin().?)))));
     } else {
         ctx.hold = reduce.cons(ctx.heap, reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e)), lastarg_val);
-        const fil = try reduce.getstring(ctx.heap, lastarg_val, "readvals");
+        const fil = try reduce.getstringVal(ctx.heap, lastarg_val, "readvals");
         const f = word.fopen(fil, "r");
         if (f == null) {
             word.printErr("\nreadvals, cannot open: \"{s}\"\n", .{std.mem.span(fil.?)});
             reduce_rt.outstats();
             os.exit(1);
         }
-        reduce.tlSet(ctx.heap, ctx.e, reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(f.?))));
+        reduce.tlSet(ctx.heap, ctx.e, Value.fromRaw(reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(f.?)))));
     }
 
-    reduce.hdSet(ctx.heap, ctx.e, reduce.ap(ctx.heap, word.READVALS, ctx.hold));
+    reduce.hdSet(ctx.heap, ctx.e, reduce.ap(ctx.heap, Value.fromRaw(word.READVALS), ctx.hold));
     reduce.downLeft(ctx);
     reduce.downLeft(ctx);
     handle_READVALS(ctx);

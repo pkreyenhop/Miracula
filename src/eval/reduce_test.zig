@@ -19,13 +19,15 @@ const core_state = @import("../runtime/core_state.zig");
 const setup = @import("../compiler/setup.zig");
 const lex = @import("../parser/lex.zig");
 const trans = @import("../semantics/lower.zig");
+const value_mod = @import("../graph/value.zig");
 
 const Word = word.Word;
+const Value = value_mod.Value;
 fn ap(x: Word, y: Word) Word {
-    return reduce.ap(heap.heap(), x, y);
+    return reduce.ap(heap.heap(), Value.fromRaw(x), Value.fromRaw(y)).toRaw();
 }
 fn ap2(f: Word, x: Word, y: Word) Word {
-    return reduce.ap2(heap.heap(), f, x, y);
+    return reduce.ap2(heap.heap(), Value.fromRaw(f), Value.fromRaw(x), Value.fromRaw(y)).toRaw();
 }
 
 // Phase 4 (shared-state plan): start from a pristine `Interp` via `interp.reset()`,
@@ -61,7 +63,7 @@ test "nested identity: reduce (I (I x)) == x" {
 
 test "already in WHNF: reduce of a CONS returns the same cell" {
     ensureSetup();
-    const c = reduce.cons(heap.heap(), word.True, word.NIL);
+    const c = reduce.cons(heap.heap(), Value.fromRaw(word.True), Value.fromRaw(word.NIL)).toRaw();
     try std.testing.expectEqual(c, reduce.reduce(heap.heap(), c));
 }
 

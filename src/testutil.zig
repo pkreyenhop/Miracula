@@ -34,8 +34,10 @@ const reduce = @import("eval/reduce.zig");
 const interp = @import("session/interp.zig");
 const lex = @import("parser/lex.zig");
 const setup = @import("compiler/setup.zig");
+const value_mod = @import("graph/value.zig");
 
 const Word = word.Word;
+const Value = value_mod.Value;
 
 // ── Interpreter setup ───────────────────────────────────────────────────────
 
@@ -68,17 +70,17 @@ pub fn int(n: i64) Word {
 
 /// Apply `f` to `x`: the heap node `(f x)`.
 pub fn ap(x: Word, y: Word) Word {
-    return reduce.ap(heap.heap(), x, y);
+    return reduce.ap(heap.heap(), Value.fromRaw(x), Value.fromRaw(y)).toRaw();
 }
 
 /// Apply `f` to two arguments: `((f x) y)`.
 pub fn ap2(f: Word, x: Word, y: Word) Word {
-    return reduce.ap2(heap.heap(), f, x, y);
+    return reduce.ap2(heap.heap(), Value.fromRaw(f), Value.fromRaw(x), Value.fromRaw(y)).toRaw();
 }
 
 /// A cons cell `(head : tail)`.
 pub fn cons(x: Word, y: Word) Word {
-    return reduce.cons(heap.heap(), x, y);
+    return reduce.cons(heap.heap(), Value.fromRaw(x), Value.fromRaw(y)).toRaw();
 }
 
 /// A proper list of the given nodes, terminated by `NIL`: `a : b : … : NIL`.
@@ -87,7 +89,7 @@ pub fn list(items: []const Word) Word {
     var i = items.len;
     while (i > 0) {
         i -= 1;
-        result = reduce.cons(heap.heap(), items[i], result);
+        result = reduce.cons(heap.heap(), Value.fromRaw(items[i]), Value.fromRaw(result)).toRaw();
     }
     return result;
 }
@@ -98,7 +100,7 @@ pub fn str(s: []const u8) Word {
     var i = s.len;
     while (i > 0) {
         i -= 1;
-        result = reduce.cons(heap.heap(), heap.stoChar(s[i]), result);
+        result = reduce.cons(heap.heap(), Value.fromRaw(heap.stoChar(s[i])), Value.fromRaw(result)).toRaw();
     }
     return result;
 }

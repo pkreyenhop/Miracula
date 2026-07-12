@@ -29,6 +29,7 @@ const os = @import("../os.zig");
 const core_state = @import("../runtime/core_state.zig");
 const lex_state = @import("../parser/lex_state.zig");
 const reduce_core = @import("reduce_core.zig");
+const Value = reduce_core.Value;
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 const Word = i64;
@@ -293,72 +294,78 @@ pub fn parseCloseError(heap_ptr: *heap.Heap, arg1: Word, arg3: Word) reduce_core
 /// itself (dropping the third copy of that primitive the Phase-2
 /// investigation found).
 pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
+    // `ctx.e`/`.args` are `Value` (Phase 5 step 4); this function's own
+    // `t`/`h`/`tp`/`rewriteToNil`/`rewriteToCons` above are reduce_rt.zig's
+    // private `Word`-typed duplicates (see this file's own module doc: kept
+    // in lock-step with reduce_core.zig's versions, not shared with them),
+    // so every touch of `ctx.e`/`.args` here converts at the boundary
+    // (`.toRaw()`/`Value.fromRaw()`/`@ptrCast` for the one `*Word` out-param).
     switch (op) {
         word.READBIN => {
             reduce_core.upLeft(ctx);
-            const lastarg = t(ctx.heap, ctx.e);
+            const lastarg = t(ctx.heap, ctx.e.toRaw());
 
             if (lastarg == 0) {
                 if (ctx.eval.stdinuse == '-') {
                     stdinError(ctx.eval, ':');
                 }
                 if (ctx.eval.stdinuse != 0) {
-                    rewriteToNil(ctx.heap, &ctx.e);
+                    rewriteToNil(ctx.heap, @ptrCast(&ctx.e));
                     return word.ACT_DONE;
                 }
                 ctx.eval.stdinuse = ':';
-                tp(ctx.heap, ctx.e).* = wrapPtr(ctx.heap, @intCast(@intFromPtr(getStdin().?)));
+                tp(ctx.heap, ctx.e.toRaw()).* = wrapPtr(ctx.heap, @intCast(@intFromPtr(getStdin().?)));
             }
-            const hold_char = os.getc(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, t(ctx.heap, ctx.e))))));
+            const hold_char = os.getc(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, t(ctx.heap, ctx.e.toRaw()))))));
             if (hold_char == os.EOF) {
-                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, t(ctx.heap, ctx.e))))));
-                rewriteToNil(ctx.heap, &ctx.e);
+                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, t(ctx.heap, ctx.e.toRaw()))))));
+                rewriteToNil(ctx.heap, @ptrCast(&ctx.e));
                 return word.ACT_DONE;
             }
-            rewriteToCons(ctx.heap, ctx.e, hold_char, heap.make(ctx.heap, .AP, word.READBIN, t(ctx.heap, ctx.e)));
+            rewriteToCons(ctx.heap, ctx.e.toRaw(), hold_char, heap.make(ctx.heap, .AP, word.READBIN, t(ctx.heap, ctx.e.toRaw())));
             return word.ACT_DONE;
         },
         word.READ => {
             reduce_core.upLeft(ctx);
-            const lastarg = t(ctx.heap, ctx.e);
+            const lastarg = t(ctx.heap, ctx.e.toRaw());
 
             if (lastarg == 0) {
                 if (ctx.eval.stdinuse == ':') {
                     stdinError(ctx.eval, '-');
                 }
                 if (ctx.eval.stdinuse != 0) {
-                    rewriteToNil(ctx.heap, &ctx.e);
+                    rewriteToNil(ctx.heap, @ptrCast(&ctx.e));
                     return word.ACT_DONE;
                 }
                 ctx.eval.stdinuse = '-';
-                tp(ctx.heap, ctx.e).* = wrapPtr(ctx.heap, @intCast(@intFromPtr(getStdin().?)));
+                tp(ctx.heap, ctx.e.toRaw()).* = wrapPtr(ctx.heap, @intCast(@intFromPtr(getStdin().?)));
             }
-            const hold_char = if (ctx.rs.UTF8 != 0) stoChar(fromUTF8(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, t(ctx.heap, ctx.e))))))) else os.getc(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, t(ctx.heap, ctx.e))))));
+            const hold_char = if (ctx.rs.UTF8 != 0) stoChar(fromUTF8(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, t(ctx.heap, ctx.e.toRaw()))))))) else os.getc(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, t(ctx.heap, ctx.e.toRaw()))))));
             if (hold_char == os.EOF) {
-                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, t(ctx.heap, ctx.e))))));
-                rewriteToNil(ctx.heap, &ctx.e);
+                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, t(ctx.heap, ctx.e.toRaw()))))));
+                rewriteToNil(ctx.heap, @ptrCast(&ctx.e));
                 return word.ACT_DONE;
             }
-            rewriteToCons(ctx.heap, ctx.e, hold_char, heap.make(ctx.heap, .AP, word.READ, t(ctx.heap, ctx.e)));
+            rewriteToCons(ctx.heap, ctx.e.toRaw(), hold_char, heap.make(ctx.heap, .AP, word.READ, t(ctx.heap, ctx.e.toRaw())));
             return word.ACT_DONE;
         },
         word.READVALS => {
             reduce_core.upLeft(ctx); // GETARG(arg1)
-            ctx.args[0] = t(ctx.heap, ctx.e);
+            ctx.args[0] = Value.fromRaw(t(ctx.heap, ctx.e.toRaw()));
 
             if (ctx.spine.isEmpty()) return word.ACT_DONE;
 
             reduce_core.upLeft(ctx);
-            const lastarg = t(ctx.heap, ctx.e);
+            const lastarg = t(ctx.heap, ctx.e.toRaw());
 
-            const val = parseLine(ctx.heap, core_state.s(), rt.rs(), lex_state.ls(), h(ctx.heap, ctx.args[0]), @ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, lastarg)))), t(ctx.heap, ctx.args[0]));
+            const val = parseLine(ctx.heap, core_state.s(), rt.rs(), lex_state.ls(), h(ctx.heap, ctx.args[0].toRaw()), @ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, lastarg)))), t(ctx.heap, ctx.args[0].toRaw()));
             if (val == os.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, lastarg)))));
-                rewriteToNil(ctx.heap, &ctx.e);
+                rewriteToNil(ctx.heap, @ptrCast(&ctx.e));
                 return word.ACT_DONE;
             }
-            ctx.args[1] = heap.make(ctx.heap, .AP, h(ctx.heap, ctx.e), lastarg);
-            rewriteToCons(ctx.heap, ctx.e, val, ctx.args[1]);
+            ctx.args[1] = Value.fromRaw(heap.make(ctx.heap, .AP, h(ctx.heap, ctx.e.toRaw()), lastarg));
+            rewriteToCons(ctx.heap, ctx.e.toRaw(), val, ctx.args[1].toRaw());
             return word.ACT_DONE;
         },
         else => return word.ACT_NONE,

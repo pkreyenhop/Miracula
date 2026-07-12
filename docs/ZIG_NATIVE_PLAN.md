@@ -2837,13 +2837,100 @@ code that was about to move twice.
      spine/golden corpus, `sigint_check`) green; `layer_check.py`/
      `scorecard.sh --check` unchanged.
 
-   **Remaining for step 4:** `ReductionCtx.e`/`.hold`/`.args` themselves,
-   cascading into every combinator handler (~94 call sites across
-   `combinators.zig`/`ready.zig`/`lex.zig`/`io.zig`) and `reduce.zig`'s main
-   dispatch loop (whose `switch (ctx.e) { word.S => ..., word.PLUS => ..., }`
-   would need `Value.comb(...)` arms or an equivalent) — not started. Then
-   the plan's own remaining step-4 list: combinator handlers, `bignum`,
-   `graph/print`, `semantics/lower` + `infer`, `session`.
+   **Landed (2026-07-13), step 4b: `ReductionCtx.e`/`.hold`/`.args` retyped
+   to `Value`, cascading through the entire combinator dispatch layer.**
+   `reduce_core.zig`'s register file and every accessor/classifier/rewrite
+   helper it defines (`hdGet`/`hdSet`/`tlGet`/`tlSet`/`getTag`/`setTag`/
+   `downLeft`/`downRight`/`downright`/`upLeft`/`upleft`/`upRight`/`GETARG`/
+   `getarg`/`simpl`/`abnormal`/every `isXxx`/`idVal`/every `rewriteToXxx`/
+   `ap`/`apTwo`/`cons`/`ap2`/`neg`/`poz`/`pnVal`/`getId`/`constrName`/
+   `suppressed`/`forceDbl`/`coerceDbl`/`bigzero`) now take/return `Value`.
+   Cascaded through `reduce.zig`'s main dispatch loop (`switch (ctx.e.toRaw())
+   { word.S => ..., }` — switches on the raw bits, since `word.*` combinator
+   constants aren't migrated), `reduce_rt.zig`'s `streamRead` (the one
+   function there that touches `ctx.e`/`.args` directly — its own private
+   `Word`-typed `t`/`h`/`tp`/`rewriteToNil`/`rewriteToCons` duplicates stayed
+   untouched, converting at the boundary), and every handler in
+   `combinators.zig`/`ready.zig`/`combinators/lex.zig`/`combinators/io.zig`.
+   - **Scope decision:** `reduce()`'s own public signature stayed
+     `Word`-in/`Word`-out — it's called from hundreds of sites across every
+     subsystem, not just the reducer, so retyping it is a separate, much
+     larger cascade left for later. Added `reduceVal`/`headVal`/`forceVal`/
+     `getstringVal`/`badcaseErrorVal`/`confErrorVal` — thin `Value`-typed
+     wrappers over the still-`Word`-typed `reduce`/`head`/`force`/
+     `getstring`/`badcaseError`/`confError` — and scripted a rename of every
+     `reduce.reduce(`/`.head(`/`.force(`/`.getstring(`/`.badcaseError(`/
+     `.confError(` call across the four handler files onto them, since the
+     callers already had `Value`-typed arguments in hand.
+   - **Mechanical pattern, used almost everywhere:** every bare `word.CONST`
+     passed where a `Value` was now expected became `Value.fromRaw(word.CONST)`;
+     every `Value` compared against a `word.CONST` became `.toRaw() ==`/`!=`;
+     calls into not-yet-migrated subsystems (`bignum`'s `toInt`/`fromInt`/
+     `add`/`sub`/`mul`/`div`/`mod`/`pow`/`negate`/`toFloat`/`parseString`/
+     `toDecimalList`/`toHexList`/`toOctalList`/`fromFloat`/`ln`/`log10`,
+     `heap`'s `getDbl`/`setdbl`/`stoDbl`/`stoChar`/`stosmallint`/`make`,
+     `strtab`, `reduce_rt`'s `compare`/`numplus`/`wrapPtr`/`piperrmess`/
+     `memclass`/`lexstate`/`gResidue`/`parseCloseError`) converted at the
+     boundary (`.toRaw()` in, `Value.fromRaw(...)` wrapping the result out).
+     Scripted where the pattern was uniform (regex passes per file, the same
+     technique used throughout Phase 4's big clusters); the rest — several
+     dozen sites where a bare char literal needed `Value.imm(')')` instead
+     of `Value.fromRaw(...)`, where a local variable turned out to be a
+     genuine scalar counter rather than a graph value (`handleMKSTRICT`'s
+     strictness count, `handleDROP`'s/`handleSUBSCRIPT`'s decrementing
+     index) and needed decoding once via `.toRaw()` rather than converting
+     at every use, or where two helper functions (`lex.zig`'s/`ready.zig`'s
+     own private `lastarg`/`lastArg` wrappers) needed their own return type
+     changed — were fixed by hand, compiler-error-driven, one `zig build`
+     cycle at a time.
+   - Also touched as direct fallout: `testutil.zig`'s `ap`/`ap2`/`cons`/
+     `list`/`str` (the shared test harness — kept `Word`-in/`Word`-out at
+     its own public boundary, converting via `Value.fromRaw`/`.toRaw()`
+     internally, exactly like `reduce()` itself), `reduce_test.zig`'s local
+     `ap`/`ap2` helpers and one direct `reduce.cons` call, `session/interp.zig`'s
+     two-`Interp` isolation test's `reduce.ap2` calls, and one inline test
+     in `combinators.zig` itself (`handleITERATE`'s).
+   - **Verification, not just "it compiles":** full `zig build test` (260
+     unit tests, `mira_tests` integration suite, spine differential/golden
+     corpus — every golden case, every `miralib/ex/` program — `sigint_check`)
+     green. `zig build bench` run repeatedly (with normal spacing — see the
+     flakiness note below) both before and after: reduction *counts*
+     matched the pre-migration baseline exactly every clean run
+     (Ackermann(3,8) 30,652,009; Fibonacci(30) 28,907,260; Prime Sieve
+     671,945), the strongest available signal that behavior, not just
+     representation, is unchanged. Throughput stayed in the same noisy
+     ranges as every prior bench check this phase.
+   - **Benchmark-harness flakiness found, not caused by this slice:**
+     running `zig build bench` twice in immediate succession (no gap)
+     intermittently produces a spurious "7 reductions" result for both
+     Ackermann and Fibonacci simultaneously — `tests/benchmark_runner.zig`
+     writes the *same* temp path (`./tests/golden/bench_tmp.m`) for every
+     benchmark and re-invokes the binary through it; back-to-back `zig
+     build bench` calls appear to race that shared file. Confirmed
+     pre-existing (reproduced identically during this same segment's
+     earlier `zig build bench` fix, before any register retyping) and
+     confirmed harmless: spacing invocations by even ~1 second (sequential
+     shell commands, not literally simultaneous) reproduces the correct
+     reduction counts every time. Not fixed here — out of scope for a
+     type-migration slice — but worth flagging for whoever next touches
+     the bench harness.
+   - `layer_check.py` unchanged. `scorecard.sh --check` found one real,
+     expected regression: `[*:0] C-string types` rose 227→228, from the new
+     `getstringVal` wrapper's own signature (`cmd: ?[*:0]const u8`) — a
+     legitimate byproduct of adding one more C-string-typed function during
+     the migration, not a new C-accent introduced gratuitously; baseline
+     updated.
+   - Full commit-by-commit reconstruction of every intermediate scripted
+     pass and hand-fix is in the commit history, not repeated here; this
+     note covers the shape and verification, not a blow-by-blow.
+
+   **Remaining for step 4:** the plan's own remaining list — `bignum`,
+   `graph/print`, `semantics/lower` + `infer`, `session` — plus, if pursued,
+   retyping `reduce()`/`head()`/`force()`/`getstring()`/`badcaseError()`/
+   `confError()` themselves (closing out the `reduceVal`-style wrapper
+   layer built above) and `reduce_rt.zig`'s own private duplicate
+   `t`/`h`/`hp`/`tp`/`rewriteToXxx`/`isXxx` helpers, each a comparable or
+   larger cascade than this slice.
 
 **Gate:** no `Word` outside `graph/dump.zig`; no numeric range tests on values;
 goldens + differential + bench green; GC invariant (mark follows `hd`/`tl` only for
