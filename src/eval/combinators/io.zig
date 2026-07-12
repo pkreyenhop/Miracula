@@ -36,7 +36,7 @@ pub fn handle_STARTREADVALS(ctx: *ReductionCtx) reduce.ReduceError!void {
         return;
     }
 
-    const lastarg_val = try reduce.reduce(reduce.tlGet(ctx.heap, ctx.e));
+    const lastarg_val = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, ctx.e));
     reduce.tlSet(ctx.heap, ctx.e, lastarg_val);
 
     if (lastarg_val == word.OFFSIDE) {

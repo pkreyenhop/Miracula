@@ -63,13 +63,13 @@ pub const ReductionCtx = core.ReductionCtx;
 
 /// Reduce `e_val` to weak head normal form and return the resulting node.
 /// Drives the graph in place; the returned `Word` is the rewritten root.
-pub fn reduce(e_val: Word) core.ReduceError!Word {
+pub fn reduce(heap: *heap_mod.Heap, e_val: Word) core.ReduceError!Word {
     // Fresh machine state: a fresh, empty Spine (see spine.zig) -- registered
     // as a GC root for the duration (reduce() is recursive, so nested calls
     // each get their own, nested LIFO with this one; see Spine.register).
     var ctx: ReductionCtx = undefined;
     ctx.e = e_val;
-    ctx.heap = heap_mod.heap();
+    ctx.heap = heap;
     ctx.eval = reduce_rt.ev();
     ctx.rs = rt.rs();
     ctx.spine = spine.Spine.init(rt.allocator, &ctx.eval.spine_buffer_pool);

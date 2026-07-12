@@ -46,35 +46,35 @@ fn ensureSetup() void {
 
 test "I combinator: reduce (I x) == x" {
     ensureSetup();
-    try std.testing.expectEqual(@as(Word, word.NIL), reduce.reduce(ap(word.I, word.NIL)));
+    try std.testing.expectEqual(@as(Word, word.NIL), reduce.reduce(heap.heap(), ap(word.I, word.NIL)));
 }
 
 test "K combinator: reduce (K x y) == x" {
     ensureSetup();
-    try std.testing.expectEqual(@as(Word, word.True), reduce.reduce(ap2(word.K, word.True, word.False)));
+    try std.testing.expectEqual(@as(Word, word.True), reduce.reduce(heap.heap(), ap2(word.K, word.True, word.False)));
 }
 
 test "nested identity: reduce (I (I x)) == x" {
     ensureSetup();
-    try std.testing.expectEqual(@as(Word, word.False), reduce.reduce(ap(word.I, ap(word.I, word.False))));
+    try std.testing.expectEqual(@as(Word, word.False), reduce.reduce(heap.heap(), ap(word.I, ap(word.I, word.False))));
 }
 
 test "already in WHNF: reduce of a CONS returns the same cell" {
     ensureSetup();
     const c = reduce.cons(heap.heap(), word.True, word.NIL);
-    try std.testing.expectEqual(c, reduce.reduce(c));
+    try std.testing.expectEqual(c, reduce.reduce(heap.heap(), c));
 }
 
 test "strict arithmetic: reduce (PLUS 2 3) yields INT 5" {
     ensureSetup();
-    const r = try reduce.reduce(ap2(word.PLUS, big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), 3)));
+    const r = try reduce.reduce(heap.heap(), ap2(word.PLUS, big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), 3)));
     try std.testing.expect(heap.getTag(heap.heap(), r) == .INT);
     try std.testing.expectEqual(@as(i64, 5), @as(i64, @intCast(big.toInt(heap.heap(), r))));
 }
 
 test "strict arithmetic: reduce (TIMES 6 7) yields INT 42" {
     ensureSetup();
-    const r = try reduce.reduce(ap2(word.TIMES, big.fromInt(heap.heap(), 6), big.fromInt(heap.heap(), 7)));
+    const r = try reduce.reduce(heap.heap(), ap2(word.TIMES, big.fromInt(heap.heap(), 6), big.fromInt(heap.heap(), 7)));
     try std.testing.expect(heap.getTag(heap.heap(), r) == .INT);
     try std.testing.expectEqual(@as(i64, 42), @as(i64, @intCast(big.toInt(heap.heap(), r))));
 }

@@ -107,17 +107,17 @@ pub fn str(s: []const u8) Word {
 
 /// Assert that the reduced WHNF of `node` is the heap value `expected`.
 pub fn expectReducesTo(expected: Word, node: Word) !void {
-    try std.testing.expectEqual(expected, reduce.reduce(node));
+    try std.testing.expectEqual(expected, reduce.reduce(heap.heap(), node));
 }
 
 /// Assert that `node` (reduced) is a node of tag `tag`.
 pub fn expectTag(tag: word.NodeTag, node: Word) !void {
-    try std.testing.expectEqual(tag, heap.getTag(heap.heap(), try reduce.reduce(node)));
+    try std.testing.expectEqual(tag, heap.getTag(heap.heap(), try reduce.reduce(heap.heap(), node)));
 }
 
 /// Assert that `node` reduces to the integer `expected`.
 pub fn expectInt(expected: i64, node: Word) !void {
-    const r = try reduce.reduce(node);
+    const r = try reduce.reduce(heap.heap(), node);
     try std.testing.expect(heap.getTag(heap.heap(), r) == .INT);
     try std.testing.expectEqual(expected, @as(i64, @intCast(big.toInt(heap.heap(), r))));
 }
@@ -125,11 +125,11 @@ pub fn expectInt(expected: i64, node: Word) !void {
 /// Assert that `node` reduces to a proper list whose elements reduce, in order,
 /// to the integers `expected` (and that the list ends in `NIL`).
 pub fn expectList(expected: []const i64, node: Word) !void {
-    var cur = try reduce.reduce(node);
+    var cur = try reduce.reduce(heap.heap(), node);
     for (expected) |e| {
         try std.testing.expect(heap.getTag(heap.heap(), cur) == .CONS);
         try expectInt(e, heap.h(heap.heap(), cur));
-        cur = try reduce.reduce(heap.t(heap.heap(), cur));
+        cur = try reduce.reduce(heap.heap(), heap.t(heap.heap(), cur));
     }
     try std.testing.expectEqual(@as(Word, word.NIL), cur);
 }
@@ -152,11 +152,11 @@ pub fn expectWords(expected: []const Word, node: Word) !void {
 pub fn expectStr(expected: []const u8, node: Word) !void {
     var buf: [256]u8 = undefined;
     var len: usize = 0;
-    var cur = try reduce.reduce(node);
+    var cur = try reduce.reduce(heap.heap(), node);
     while (heap.getTag(heap.heap(), cur) == .CONS) {
-        buf[len] = @intCast(try reduce.reduce(heap.h(heap.heap(), cur)));
+        buf[len] = @intCast(try reduce.reduce(heap.heap(), heap.h(heap.heap(), cur)));
         len += 1;
-        cur = try reduce.reduce(heap.t(heap.heap(), cur));
+        cur = try reduce.reduce(heap.heap(), heap.t(heap.heap(), cur));
     }
     try std.testing.expectEqualStrings(expected, buf[0..len]);
 }

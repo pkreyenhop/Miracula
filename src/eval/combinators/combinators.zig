@@ -425,9 +425,9 @@ pub fn handleITERATE(ctx: *ReductionCtx) void {
 
 test "handleITERATE: iterate f x heads x then repeats" {
     tu.freshInterp();
-    const lst = try reduce.reduce(tu.ap2(word.ITERATE, word.I, tu.int(5)));
+    const lst = try reduce.reduce(heap.heap(), tu.ap2(word.ITERATE, word.I, tu.int(5)));
     try tu.expectInt(5, reduce.hdGet(heap.heap(), lst)); // head is x
-    const rest = try reduce.reduce(reduce.tlGet(heap.heap(), lst));
+    const rest = try reduce.reduce(heap.heap(), reduce.tlGet(heap.heap(), lst));
     try tu.expectInt(5, reduce.hdGet(heap.heap(), rest)); // next element is I 5 = 5
 }
 
@@ -443,7 +443,7 @@ pub fn handleITERATE1(ctx: *ReductionCtx) reduce.ReduceError!void {
         return;
     }
     var lastarg = reduce.tlGet(ctx.heap, ctx.e);
-    lastarg = try reduce.reduce(lastarg);
+    lastarg = try reduce.reduce(ctx.heap, lastarg);
     if (lastarg == word.FAIL) {
         reduce.rewriteToNil(ctx.heap, &ctx.e);
     } else {
@@ -547,7 +547,7 @@ pub fn handleATLEAST(ctx: *ReductionCtx) reduce.ReduceError!void {
         return;
     }
     var lastarg = reduce.tlGet(ctx.heap, ctx.e);
-    lastarg = try reduce.reduce(lastarg);
+    lastarg = try reduce.reduce(ctx.heap, lastarg);
     if (reduce.isInt(ctx.heap, lastarg)) {
         const hold = big.sub(ctx.heap, lastarg, arg1);
         if (reduce.poz(ctx.heap, hold)) {
@@ -584,7 +584,7 @@ pub fn handleU_(ctx: *ReductionCtx) reduce.ReduceError!void {
         return;
     }
     var lastarg = reduce.tlGet(ctx.heap, ctx.e);
-    lastarg = try reduce.reduce(lastarg);
+    lastarg = try reduce.reduce(ctx.heap, lastarg);
     if (lastarg == word.NIL) {
         reduce.rewriteToFail(ctx.heap, &ctx.e);
         ctx.action = word.ACT_NEXTREDEX;
@@ -620,7 +620,7 @@ pub fn handleUg(ctx: *ReductionCtx) reduce.ReduceError!void {
         return;
     }
     var lastarg = reduce.tlGet(ctx.heap, ctx.e);
-    lastarg = try reduce.reduce(lastarg);
+    lastarg = try reduce.reduce(ctx.heap, lastarg);
     if (reduce.hdGet(ctx.heap, arg1) != reduce.hdGet(ctx.heap, reduce.head(ctx.heap, lastarg))) {
         reduce.rewriteToFail(ctx.heap, &ctx.e);
         ctx.action = word.ACT_NEXTREDEX;
@@ -647,7 +647,7 @@ pub fn handleMATCH(ctx: *ReductionCtx) reduce.ReduceError!void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    ctx.args[0] = try reduce.reduce(reduce.tlGet(ctx.heap, ctx.e));
+    ctx.args[0] = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, ctx.e));
     const arg1 = ctx.args[0];
     if (reduce.getarg(ctx, &ctx.args[1])) {
         ctx.action = word.ACT_DONE;
@@ -658,7 +658,7 @@ pub fn handleMATCH(ctx: *ReductionCtx) reduce.ReduceError!void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = try reduce.reduce(reduce.tlGet(ctx.heap, ctx.e));
+    const lastarg = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, ctx.e));
     try reduce.rewriteToMatchResult(ctx.heap, &ctx.e, arg1, lastarg, arg2);
     ctx.action = word.ACT_NEXTREDEX;
 }
@@ -679,7 +679,7 @@ pub fn handleMATCHINT(ctx: *ReductionCtx) reduce.ReduceError!void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = try reduce.reduce(reduce.tlGet(ctx.heap, ctx.e));
+    const lastarg = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, ctx.e));
     reduce.rewriteToIntMatchResult(ctx.heap, &ctx.e, arg1, lastarg, arg2);
     ctx.action = word.ACT_NEXTREDEX;
 }
@@ -717,7 +717,7 @@ pub fn handleMAP(ctx: *ReductionCtx) reduce.ReduceError!void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = try reduce.reduce(reduce.tlGet(ctx.heap, ctx.e));
+    const lastarg = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, ctx.e));
     if (lastarg == word.NIL) {
         reduce.rewriteToNil(ctx.heap, &ctx.e);
     } else {
@@ -747,13 +747,13 @@ pub fn handleFLATMAP(ctx: *ReductionCtx) reduce.ReduceError!void {
         return;
     }
     while (true) {
-        arg2 = try reduce.reduce(arg2);
+        arg2 = try reduce.reduce(ctx.heap, arg2);
         if (arg2 == word.NIL) {
             reduce.rewriteToNil(ctx.heap, &ctx.e);
             ctx.action = word.ACT_DONE;
             return;
         }
-        const hold = try reduce.reduce(reduce.ap(ctx.heap, arg1, reduce.hdGet(ctx.heap, arg2)));
+        const hold = try reduce.reduce(ctx.heap, reduce.ap(ctx.heap, arg1, reduce.hdGet(ctx.heap, arg2)));
         if (hold == word.FAIL or hold == word.NIL) {
             arg2 = reduce.tlGet(ctx.heap, arg2);
             continue;
@@ -784,9 +784,9 @@ pub fn handleFILTER(ctx: *ReductionCtx) reduce.ReduceError!void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    var lastarg = try reduce.reduce(reduce.tlGet(ctx.heap, ctx.e));
-    while (lastarg != word.NIL and try reduce.reduce(reduce.ap(ctx.heap, arg1, reduce.hdGet(ctx.heap, lastarg))) == word.False) {
-        lastarg = try reduce.reduce(reduce.tlGet(ctx.heap, lastarg));
+    var lastarg = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, ctx.e));
+    while (lastarg != word.NIL and try reduce.reduce(ctx.heap, reduce.ap(ctx.heap, arg1, reduce.hdGet(ctx.heap, lastarg))) == word.False) {
+        lastarg = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, lastarg));
     }
     if (lastarg == word.NIL) {
         reduce.rewriteToNil(ctx.heap, &ctx.e);
@@ -813,12 +813,12 @@ pub fn handleLIST_LAST(ctx: *ReductionCtx) reduce.ReduceError!void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    var lastarg = try reduce.reduce(reduce.tlGet(ctx.heap, ctx.e));
+    var lastarg = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, ctx.e));
     if (lastarg == word.NIL) {
         reduce_rt.fnError("last []");
     }
     while (true) {
-        const next_tl = try reduce.reduce(reduce.tlGet(ctx.heap, lastarg));
+        const next_tl = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, lastarg));
         reduce.tlSet(ctx.heap, lastarg, next_tl);
         if (next_tl == word.NIL) break;
         lastarg = next_tl;
@@ -843,7 +843,7 @@ pub fn handleLENGTH(ctx: *ReductionCtx) reduce.ReduceError!void {
     var n: i64 = 0;
     var lastarg = reduce.tlGet(ctx.heap, ctx.e);
     while (true) {
-        lastarg = try reduce.reduce(lastarg);
+        lastarg = try reduce.reduce(ctx.heap, lastarg);
         if (lastarg == word.NIL) break;
         lastarg = reduce.tlGet(ctx.heap, lastarg);
         n += 1;
@@ -871,7 +871,7 @@ pub fn handleDROP(ctx: *ReductionCtx) reduce.ReduceError!void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    arg1 = try reduce.reduce(reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e)));
+    arg1 = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e)));
     reduce.tlSet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e), arg1);
     if (!reduce.isInt(ctx.heap, arg1)) {
         reduce_rt.intError("drop");
@@ -879,7 +879,7 @@ pub fn handleDROP(ctx: *ReductionCtx) reduce.ReduceError!void {
     var n = big.toInt(ctx.heap, arg1);
     var lastarg = reduce.tlGet(ctx.heap, ctx.e);
     while (n > 0) : (n -= 1) {
-        lastarg = try reduce.reduce(lastarg);
+        lastarg = try reduce.reduce(ctx.heap, lastarg);
         if (lastarg == word.NIL) {
             reduce.rewriteToNil(ctx.heap, &ctx.e);
             ctx.action = word.ACT_DONE;
@@ -909,9 +909,9 @@ pub fn handleSUBSCRIPT(ctx: *ReductionCtx) reduce.ReduceError!void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const arg1 = try reduce.reduce(reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e)));
+    const arg1 = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e)));
     reduce.tlSet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e), arg1);
-    var lastarg = try reduce.reduce(reduce.tlGet(ctx.heap, ctx.e));
+    var lastarg = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, ctx.e));
     if (lastarg == word.NIL) {
         reduce_rt.subsError();
     }
@@ -927,7 +927,7 @@ pub fn handleSUBSCRIPT(ctx: *ReductionCtx) reduce.ReduceError!void {
         reduce_rt.subsError();
     }
     while (indx > 0) {
-        const next_tl = try reduce.reduce(reduce.tlGet(ctx.heap, lastarg));
+        const next_tl = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, lastarg));
         reduce.tlSet(ctx.heap, lastarg, next_tl);
         lastarg = next_tl;
         if (lastarg == word.NIL) {
@@ -958,7 +958,7 @@ pub fn handleFOLDL1(ctx: *ReductionCtx) reduce.ReduceError!void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = try reduce.reduce(reduce.tlGet(ctx.heap, ctx.e));
+    const lastarg = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, ctx.e));
     if (lastarg != word.NIL) {
         reduce.hdSet(ctx.heap, ctx.e, reduce.ap2(ctx.heap, word.FOLDL, arg1, reduce.hdGet(ctx.heap, lastarg)));
         reduce.tlSet(ctx.heap, ctx.e, reduce.tlGet(ctx.heap, lastarg));
@@ -994,9 +994,9 @@ pub fn handleFOLDL(ctx: *ReductionCtx) reduce.ReduceError!void {
     }
     var lastarg = reduce.tlGet(ctx.heap, ctx.e);
     while (true) {
-        lastarg = try reduce.reduce(lastarg);
+        lastarg = try reduce.reduce(ctx.heap, lastarg);
         if (lastarg == word.NIL) break;
-        arg2 = try reduce.reduce(reduce.ap2(ctx.heap, arg1, arg2, reduce.hdGet(ctx.heap, lastarg)));
+        arg2 = try reduce.reduce(ctx.heap, reduce.ap2(ctx.heap, arg1, arg2, reduce.hdGet(ctx.heap, lastarg)));
         lastarg = reduce.tlGet(ctx.heap, lastarg);
     }
     reduce.rewriteToValue(ctx.heap, &ctx.e, arg2);
@@ -1027,7 +1027,7 @@ pub fn handleFOLDR(ctx: *ReductionCtx) reduce.ReduceError!void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    const lastarg = try reduce.reduce(reduce.tlGet(ctx.heap, ctx.e));
+    const lastarg = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, ctx.e));
     if (lastarg == word.NIL) {
         reduce.rewriteToValue(ctx.heap, &ctx.e, arg2);
     } else {
@@ -1189,12 +1189,12 @@ pub fn handleUsh1(ctx: *ReductionCtx) reduce.ReduceError!void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    arg1 = try reduce.reduce(arg1);
+    arg1 = try reduce.reduce(ctx.heap, arg1);
     if (reduce.getarg(ctx, &arg2)) {
         ctx.action = word.ACT_DONE;
         return;
     }
-    arg2 = try reduce.reduce(arg2);
+    arg2 = try reduce.reduce(ctx.heap, arg2);
     if (reduce.getarg(ctx, &arg3)) {
         ctx.action = word.ACT_DONE;
         return;
@@ -1249,7 +1249,7 @@ pub fn handleMKSTRICT(ctx: *ReductionCtx) reduce.ReduceError!void {
         }
     }
     var lastarg = reduce.tlGet(ctx.heap, ctx.e);
-    lastarg = try reduce.reduce(lastarg);
+    lastarg = try reduce.reduce(ctx.heap, lastarg);
     while (arg1 > 1) {
         reduce.hdSet(ctx.heap, ctx.e, reduce.ap(ctx.heap, reduce.hdGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e)), reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.e))));
         reduce.downLeft(ctx);

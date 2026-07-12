@@ -257,14 +257,14 @@ pub fn confError(heap_ptr: *heap.Heap, arg_info: Word) void {
 /// Abort a failed `$$`-grammar parse, reporting the unexpected token (or end of input).
 pub fn parseCloseError(heap_ptr: *heap.Heap, arg1: Word, arg3: Word) reduce_core.ReduceError!void {
     word.printErr("\nPARSE OF {s}FAILS WITH UNEXPECTED ", .{std.mem.span((try getstring(heap_ptr, arg1, null)).?)});
-    const arg3_reduced = try reduce(t(heap_ptr, gResidue(heap_ptr, arg3)));
+    const arg3_reduced = try reduce(heap_ptr, t(heap_ptr, gResidue(heap_ptr, arg3)));
     if (arg3_reduced == NIL) {
         word.printErr("END OF INPUT\n", .{});
         outstats();
         os.exit(1);
     }
     var hold_val = heap.make(heap_ptr, .AP, FST, h(heap_ptr, arg3_reduced));
-    hold_val = try reduce(hold_val);
+    hold_val = try reduce(heap_ptr, hold_val);
     word.printErr("TOKEN \"", .{});
     if (hold_val == word.OFFSIDE) {
         word.printErr("offside", .{});
@@ -375,8 +375,8 @@ pub fn getstring(heap_ptr: *heap.Heap, x: Word, cmd: ?[*:0]const u8) reduce_core
     const buf_size = 1024;
     while (getTag(heap_ptr, curr_x) == .CONS and n < buf_size) {
         n += 1;
-        hp(heap_ptr, curr_x).* = try reduce(h(heap_ptr, curr_x));
-        tp(heap_ptr, curr_x).* = try reduce(t(heap_ptr, curr_x));
+        hp(heap_ptr, curr_x).* = try reduce(heap_ptr, h(heap_ptr, curr_x));
+        tp(heap_ptr, curr_x).* = try reduce(heap_ptr, t(heap_ptr, curr_x));
         curr_x = t(heap_ptr, curr_x);
     }
     curr_x = x1;
@@ -647,15 +647,15 @@ pub fn compare(heap_ptr: *heap.Heap, arg_a: Word, arg_b: Word) reduce_core.Reduc
             },
             .CONS, .AP => {
                 if (tag_a == tag_b) {
-                    hp(heap_ptr, a).* = try reduce(h(heap_ptr, a));
-                    hp(heap_ptr, b).* = try reduce(h(heap_ptr, b));
+                    hp(heap_ptr, a).* = try reduce(heap_ptr, h(heap_ptr, a));
+                    hp(heap_ptr, b).* = try reduce(heap_ptr, h(heap_ptr, b));
                     const temp = try compare(heap_ptr, h(heap_ptr, a), h(heap_ptr, b));
                     if (temp != 0) {
                         return temp;
                     }
-                    tp(heap_ptr, a).* = try reduce(t(heap_ptr, a));
+                    tp(heap_ptr, a).* = try reduce(heap_ptr, t(heap_ptr, a));
                     a = t(heap_ptr, a);
-                    tp(heap_ptr, b).* = try reduce(t(heap_ptr, b));
+                    tp(heap_ptr, b).* = try reduce(heap_ptr, t(heap_ptr, b));
                     b = t(heap_ptr, b);
                     continue;
                 } else if (word.S <= b and b <= word.ERROR) {
@@ -697,7 +697,7 @@ pub fn force(heap_ptr: *heap.Heap, x_val: Word) reduce_core.ReduceError!void {
                 return;
             }
             while (getTag(heap_ptr, x) == .AP) {
-                tp(heap_ptr, x).* = try reduce(t(heap_ptr, x));
+                tp(heap_ptr, x).* = try reduce(heap_ptr, t(heap_ptr, x));
                 try force(heap_ptr, t(heap_ptr, x));
                 x = h(heap_ptr, x);
             }
@@ -705,9 +705,9 @@ pub fn force(heap_ptr: *heap.Heap, x_val: Word) reduce_core.ReduceError!void {
         },
         .CONS => {
             while (getTag(heap_ptr, x) == .CONS) {
-                hp(heap_ptr, x).* = try reduce(h(heap_ptr, x));
+                hp(heap_ptr, x).* = try reduce(heap_ptr, h(heap_ptr, x));
                 try force(heap_ptr, h(heap_ptr, x));
-                tp(heap_ptr, x).* = try reduce(t(heap_ptr, x));
+                tp(heap_ptr, x).* = try reduce(heap_ptr, t(heap_ptr, x));
                 x = t(heap_ptr, x);
             }
         },
@@ -802,9 +802,9 @@ pub fn outf(heap_ptr: *heap.Heap, eval: *EvalState, e: Word) reduce_core.ReduceE
 
 /// Print a Miranda char-list to the current output stream (`eval.s_out`), honouring UTF-8.
 pub fn print(heap_ptr: *heap.Heap, eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) reduce_core.ReduceError!void {
-    var e = try reduce(arg_e);
+    var e = try reduce(heap_ptr, arg_e);
     while (getTag(heap_ptr, e) == .CONS) {
-        hp(heap_ptr, e).* = try reduce(h(heap_ptr, e));
+        hp(heap_ptr, e).* = try reduce(heap_ptr, h(heap_ptr, e));
         if (!heap.isChar(h(heap_ptr, e))) {
             break;
         }
@@ -816,7 +816,7 @@ pub fn print(heap_ptr: *heap.Heap, eval: *EvalState, rs: *rt.RuntimeState, arg_e
         } else {
             word.printErr("\n warning: non Latin1 char {x} in print, ignored\n", .{c});
         }
-        tp(heap_ptr, e).* = try reduce(t(heap_ptr, e));
+        tp(heap_ptr, e).* = try reduce(heap_ptr, t(heap_ptr, e));
         e = t(heap_ptr, e);
     }
     if (e == NIL) {
@@ -847,9 +847,9 @@ pub fn output(heap_ptr: *heap.Heap, eval: *EvalState, rs: *rt.RuntimeState, arg_
     rs.cstack = @ptrCast(&e);
     defer rs.cstack = old_cstack;
 
-    e = try reduce(e);
+    e = try reduce(heap_ptr, e);
     while (getTag(heap_ptr, e) == .CONS) {
-        hp(heap_ptr, e).* = try reduce(h(heap_ptr, e));
+        hp(heap_ptr, e).* = try reduce(heap_ptr, h(heap_ptr, e));
         switch (h(heap_ptr, head(heap_ptr, h(heap_ptr, e)))) {
             Stdout => {
                 try print(heap_ptr, eval, rs, t(heap_ptr, h(heap_ptr, e)));
@@ -875,26 +875,26 @@ pub fn output(heap_ptr: *heap.Heap, eval: *EvalState, rs: *rt.RuntimeState, arg_
                 rs.UTF8OUT = rs.UTF8;
             },
             Closefile => {
-                tp(heap_ptr, h(heap_ptr, e)).* = try reduce(t(heap_ptr, h(heap_ptr, e)));
+                tp(heap_ptr, h(heap_ptr, e)).* = try reduce(heap_ptr, t(heap_ptr, h(heap_ptr, e)));
                 try closefile(heap_ptr, eval, t(heap_ptr, h(heap_ptr, e)));
             },
             Appendfile => {
-                tp(heap_ptr, h(heap_ptr, e)).* = try reduce(t(heap_ptr, h(heap_ptr, e)));
+                tp(heap_ptr, h(heap_ptr, e)).* = try reduce(heap_ptr, t(heap_ptr, h(heap_ptr, e)));
                 try apfile(heap_ptr, eval, t(heap_ptr, h(heap_ptr, e)));
             },
             Appendfileb => {
                 rs.UTF8OUT = 0;
-                tp(heap_ptr, h(heap_ptr, e)).* = try reduce(t(heap_ptr, h(heap_ptr, e)));
+                tp(heap_ptr, h(heap_ptr, e)).* = try reduce(heap_ptr, t(heap_ptr, h(heap_ptr, e)));
                 try apfile(heap_ptr, eval, t(heap_ptr, h(heap_ptr, e)));
                 rs.UTF8OUT = rs.UTF8;
             },
             System => {
-                tp(heap_ptr, h(heap_ptr, e)).* = try reduce(t(heap_ptr, h(heap_ptr, e)));
+                tp(heap_ptr, h(heap_ptr, e)).* = try reduce(heap_ptr, t(heap_ptr, h(heap_ptr, e)));
                 const cmd = try getstring(heap_ptr, t(heap_ptr, h(heap_ptr, e)), "System");
                 _ = os.system(cmd);
             },
             Exit => {
-                var n = try reduce(t(heap_ptr, h(heap_ptr, e)));
+                var n = try reduce(heap_ptr, t(heap_ptr, h(heap_ptr, e)));
                 if (getTag(heap_ptr, n) == .INT) {
                     n = digit0(heap_ptr, n);
                 } else {
@@ -909,7 +909,7 @@ pub fn output(heap_ptr: *heap.Heap, eval: *EvalState, rs: *rt.RuntimeState, arg_
                 word.printErr(">\n", .{});
             },
         }
-        tp(heap_ptr, e).* = try reduce(t(heap_ptr, e));
+        tp(heap_ptr, e).* = try reduce(heap_ptr, t(heap_ptr, e));
         e = t(heap_ptr, e);
     }
     if (options.is_strict or @import("builtin").mode == .Debug) {

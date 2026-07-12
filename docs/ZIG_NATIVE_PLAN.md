@@ -2226,15 +2226,44 @@ subsystems and passed explicitly; the ambient singleton deleted.
       above, so these were always going to need their own pass regardless of
       how the four named subsystems turned out).
 
-   **Bottom line:** reaching a literal zero is achievable with no redesign,
-   but is roughly double the remaining effort of what's landed so far this
-   phase (four more slices at least: `reduce()`'s cascade, the two dispatch-
-   table clusters, and the not-yet-swept files above), before the accessor
-   functions themselves and `interp.reset()` can actually be deleted and the
-   two-`Interp` isolation test (step 6) attempted. Not started as of this
-   scoping pass — the next actionable slice, if resumed, is `reduce()`'s
-   cascade (item 2's third bullet), since it directly unblocks `mainEntry`'s
-   own `heap.heap()` call once done.
+   **`reduce()`'s cascade, landed (2026-07-08).** `reduce(heap: *heap_mod.Heap,
+   e_val: Word)` now takes its `Heap` explicitly instead of reading
+   `heap_mod.heap()` internally — the function's own body needed exactly one
+   line changed (`ctx.heap = heap;`), since everything else already operated
+   on `&ctx`. Every real call site turned out to already have `heap`/`ctx.heap`
+   on hand, confirming the scoping pass's read: `reduce_rt.zig`'s own internal
+   callers (`print`/`output`/`force`/`compare`/`parseCloseError`/`getstring`'s
+   force-loop/…) already took `heap_ptr` from earlier `eval`-subsystem work,
+   and all ~90 call sites across `combinators.zig`/`combinators/lex.zig`/
+   `combinators/io.zig`/`combinators/ready.zig` sit inside `handle*(ctx:
+   *ReductionCtx)` handlers with `ctx.heap` already in scope — fixed
+   mechanically via `reduce.reduce(` → `reduce.reduce(ctx.heap, `. The two
+   call sites inside a `combinators.zig` unit test (no `ctx` there) got
+   `heap.heap()` instead, matching every other test's own convention; same for
+   `testutil.zig`'s and `reduce_test.zig`'s remaining test-only `reduce()`
+   calls (test helpers stay ambient by design — `expectReducesTo`/`expectInt`/
+   etc. are meant to be simple 2-arg calls, not receiver-threaded).
+
+   `zig build test`: all 253 unit tests + integration suite + spine
+   differential/golden corpus green (no dedicated extra stress test needed —
+   `reduce()` itself is an iterative `while` loop, not self-recursive, so
+   adding one parameter to its own signature carries none of `dumpOb`'s
+   per-list-element stack-growth risk; the existing golden/differential suite
+   already exercises deep reduction chains). `layer_check.py`: 0 new
+   violations. `scorecard.sh`: no regression.
+
+   This was item 2's third (and largest) bullet from the scoping pass, and it
+   directly unblocks `mainEntry`'s own remaining `heap.heap()` call (item 2's
+   second bullet) — `mainEntry`'s callees no longer need the ambient
+   accessor once `reduce()` itself doesn't either, so `main()` can thread
+   `interp_storage`'s heap down explicitly instead of relying on the global.
+   Not yet done. Remaining before the accessor functions can actually be
+   deleted: `mainEntry`/`main()`'s bootstrap restructuring (small), the
+   `editor.zig` callback fix (small), the two dispatch-table clusters
+   (~150-200 sites, decision on cascading vs. documenting as an exception
+   still open), and the not-yet-swept files (`parser/codegen.zig`,
+   `parser/lex.zig`, `parser/parser_api.zig`, `compiler/setup.zig`,
+   `compiler/module_loader.zig`, `graph/bignum.zig`).
 
 **Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
 interrupt flag); DAG check green with empty allowlist; files > 1,000 lines = 0;

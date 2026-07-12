@@ -266,7 +266,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
                 reduce_rt.intError("take");
             }
             const n = big.toInt(ctx.heap, ctx.args[0]);
-            const lastarg_reduced = try reduce.reduce(lastArg(ctx));
+            const lastarg_reduced = try reduce.reduce(ctx.heap, lastArg(ctx));
             setLastArg(ctx, lastarg_reduced);
             if (n <= 0 or lastarg_reduced == word.NIL) {
                 reduce.rewriteToNil(ctx.heap, &ctx.e);
@@ -733,9 +733,9 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             } else if (lastArg(ctx) == word.NIL) {
                 reduce.rewriteToValue(ctx.heap, &ctx.e, ctx.args[0]);
             } else {
-                const hd_arg1 = try reduce.reduce(reduce.hdGet(ctx.heap, ctx.args[0]));
+                const hd_arg1 = try reduce.reduce(ctx.heap, reduce.hdGet(ctx.heap, ctx.args[0]));
                 reduce.hdSet(ctx.heap, ctx.args[0], hd_arg1);
-                const hd_lastarg = try reduce.reduce(reduce.hdGet(ctx.heap, lastArg(ctx)));
+                const hd_lastarg = try reduce.reduce(ctx.heap, reduce.hdGet(ctx.heap, lastArg(ctx)));
                 reduce.hdSet(ctx.heap, lastArg(ctx), hd_lastarg);
                 if (try reduce_rt.compare(ctx.heap, hd_arg1, hd_lastarg) <= 0) {
                     reduce.rewriteToCons(ctx.heap, ctx.e, hd_arg1, reduce.ap2(ctx.heap, word.MERGE, reduce.tlGet(ctx.heap, ctx.args[0]), lastArg(ctx)));
@@ -881,8 +881,8 @@ fn handleReadyNUMVAL(ctx: *ReductionCtx) reduce.ReduceError!void {
     var x = lastArg(ctx);
     var base: c_int = 10;
     while (x != word.NIL) {
-        reduce.hdSet(ctx.heap, x, try reduce.reduce(reduce.hdGet(ctx.heap, x)));
-        const next_tl = try reduce.reduce(reduce.tlGet(ctx.heap, x));
+        reduce.hdSet(ctx.heap, x, try reduce.reduce(ctx.heap, reduce.hdGet(ctx.heap, x)));
+        const next_tl = try reduce.reduce(ctx.heap, reduce.tlGet(ctx.heap, x));
         reduce.tlSet(ctx.heap, x, next_tl);
         x = next_tl;
     }
