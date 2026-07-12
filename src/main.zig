@@ -50,6 +50,7 @@ comptime {
     _ = @import("session/config.zig");
     _ = @import("session/repl.zig");
     _ = @import("session/commands.zig");
+    _ = @import("session/interp.zig");
     _ = @import("graph/heap.zig");
     _ = @import("graph/strtab.zig");
     _ = @import("eval/reduce_test.zig");

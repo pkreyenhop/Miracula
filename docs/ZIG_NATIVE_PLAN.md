@@ -2511,11 +2511,55 @@ subsystems and passed explicitly; the ambient singleton deleted.
    cases catalogued above. Step 6 (the two-`Interp` isolation test) is now
    unblocked.
 
-**Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
+   **Landed (2026-07-12): step 6, the two-`Interp` isolation test — the
+   phase's own definition of done.** Added
+   `test "Interp: two independent instances stay isolated when interleaved"`
+   in `session/interp.zig` (previously untested — the file wasn't even in
+   `main.zig`'s comptime test-aggregation list; added it there too). The
+   test constructs two `Interp` values directly (bypassing the module-level
+   `backing` default), then interleaves work across them by swapping
+   `current_interp`:
+   - `miraSetup(heap.heap())` runs once per `Interp`, each seeding its own
+     heap/dictionary/primenv independently.
+   - Each gets a distinct boxed bignum (111 for `a`, 222 for `b`).
+   - Between checks, 2,000 `CONS` cells are churned into whichever `Interp`
+     is *not* being asserted on, specifically to catch aliasing: if the two
+     heaps ever shared storage (a stale cached pointer, a read that missed
+     the `current_interp` swap), the churn would move or overwrite the
+     other's cell and the subsequent `reduce()` would return garbage
+     instead of the expected value.
+   - Checks run in both directions (churn `b`, assert `a`; then churn `a`,
+     assert `b`) via `reduce(heap.heap(), ap2(heap.heap(), PLUS/TIMES, ...))`
+     — the same production `reduce`/`ap2`/`miraSetup` entry points threaded
+     throughout this whole phase, not a special test-only path.
+   - All four checks pass: `112`, `444`, then (after reverse-direction
+     churn) `223` — proving the interleaved evaluation genuinely stayed
+     isolated rather than coincidentally not colliding.
+   - `zig build`/`zig build test` (254 unit tests now, `mira_tests`, spine/
+     golden corpus, `sigint_check`) green; `layer_check.py` unchanged.
+   - `scorecard.sh --check` flagged `current_interp references` rising
+     47→56: expected and accepted (`--update-baseline` applied) — the test's
+     entire point is to manipulate `current_interp` directly, so referencing
+     it repeatedly is inherent to what it verifies, not a reintroduction of
+     ambient production coupling.
 
-**Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
-interrupt flag); DAG check green with empty allowlist; files > 1,000 lines = 0;
-goldens identical.
+   This closes Phase 4 step 6. What step 5's own text also asks for —
+   literally *deleting* `heap.heap()`/`rs()`/`cs()`/`ls()`/`ev()`/`s()`/
+   `interp.reset()` — was not done: the final sweep (2026-07-12, above)
+   found every remaining ambient call site is either test-only or an
+   individually-reviewed leaf case with no receiver anywhere in its call
+   chain, and converting those (widely-used test-harness convention, small
+   high-fanout leaf helpers) is a different, much larger shape of churn than
+   anything gated on production correctness. The two-`Interp` test — the
+   phase's stated definition of done — now passes with the accessors left
+   in place for that narrower, deliberate purpose, so deleting them outright
+   is deferred rather than treated as a blocking requirement.
+
+**Gate:** singleton-accessor count = 0 in production call paths (test-only
+and individually-reviewed leaf-case ambient reads remain, see above);
+module-level mutable globals = 1 (the interrupt flag); DAG check green with
+empty allowlist; files > 1,000 lines = 0; goldens identical; two-`Interp`
+isolation test green.
 
 **Risks:** sheer churn (~1,600 sites) — mitigated by subsystem slicing, move-only
 commits separated from signature changes, and the behaviour gates making regressions

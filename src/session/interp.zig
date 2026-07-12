@@ -110,3 +110,61 @@ pub var current_interp: *Interp = &backing;
 pub fn reset() void {
     current_interp.* = .{};
 }
+
+// Tests: Interp: two independent instances stay isolated when interleaved
+test "Interp: two independent instances stay isolated when interleaved" {
+    const std = @import("std");
+    const heap_mod = @import("../graph/heap.zig");
+    const lex = @import("../parser/lex.zig");
+    const setup = @import("../compiler/setup.zig");
+    const reduce = @import("../eval/reduce.zig");
+    const big = @import("../graph/bignum.zig");
+    const word = @import("../graph/word.zig");
+
+    // Phase 4 step 6, docs/ZIG_NATIVE_PLAN.md: the phase's definition of done.
+    // Every production call path is receiver-threaded from main() down to
+    // reduce()/miraSetup(); this constructs two Interps directly (bypassing
+    // the module-level `backing` default) and swaps `current_interp` between
+    // them mid-evaluation to prove neither leaks into or corrupts the other.
+    var interp_a: Interp = .{};
+    var interp_b: Interp = .{};
+    const saved = current_interp;
+    defer current_interp = saved;
+
+    current_interp = &interp_a;
+    lex.setupdic();
+    setup.miraSetup(heap_mod.heap());
+    const a_val = big.fromInt(heap_mod.heap(), 111);
+
+    current_interp = &interp_b;
+    lex.setupdic();
+    setup.miraSetup(heap_mod.heap());
+    const b_val = big.fromInt(heap_mod.heap(), 222);
+
+    // Churn interp_b's heap heavily while interp_a sits untouched: if the two
+    // ever aliased the same underlying storage (a stray cached pointer, a
+    // singleton read that missed the swap), b's allocations would move or
+    // overwrite a's cell and the check below would see garbage instead of 112.
+    var i: usize = 0;
+    while (i < 2000) : (i += 1) {
+        _ = heap_mod.make(heap_mod.heap(), .CONS, word.NIL, word.NIL);
+    }
+
+    current_interp = &interp_a;
+    const r_a = try reduce.reduce(heap_mod.heap(), reduce.ap2(heap_mod.heap(), word.PLUS, a_val, big.fromInt(heap_mod.heap(), 1)));
+    try std.testing.expectEqual(@as(i64, 112), @as(i64, @intCast(big.toInt(heap_mod.heap(), r_a))));
+
+    current_interp = &interp_b;
+    const r_b = try reduce.reduce(heap_mod.heap(), reduce.ap2(heap_mod.heap(), word.TIMES, b_val, big.fromInt(heap_mod.heap(), 2)));
+    try std.testing.expectEqual(@as(i64, 444), @as(i64, @intCast(big.toInt(heap_mod.heap(), r_b))));
+
+    // Reverse direction: churn interp_a, then confirm interp_b is unaffected.
+    current_interp = &interp_a;
+    i = 0;
+    while (i < 2000) : (i += 1) {
+        _ = heap_mod.make(heap_mod.heap(), .CONS, word.NIL, word.NIL);
+    }
+    current_interp = &interp_b;
+    const r_b2 = try reduce.reduce(heap_mod.heap(), reduce.ap2(heap_mod.heap(), word.PLUS, b_val, big.fromInt(heap_mod.heap(), 1)));
+    try std.testing.expectEqual(@as(i64, 223), @as(i64, @intCast(big.toInt(heap_mod.heap(), r_b2))));
+}
