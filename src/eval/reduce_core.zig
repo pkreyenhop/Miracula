@@ -39,6 +39,7 @@
 //! need a *second* explicit parameter — they pass `ctx.heap` through to the
 //! leaf primitives internally.
 
+const std = @import("std");
 const word = @import("../graph/word.zig");
 const strtab = @import("../graph/strtab.zig");
 const spine = @import("spine.zig");
@@ -177,6 +178,7 @@ const reducer_reduce = @import("reduce.zig");
 const lex_mod = @import("../parser/lex.zig");
 const big = @import("../graph/bignum.zig");
 const os = @import("../os.zig");
+const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 // Cell access through a spine word (mask off direction bits, then index the
 // heap). This is the raw-`Word` value boundary the B2 `Heap`/`Value` seam will
@@ -220,6 +222,30 @@ pub inline fn setTag(heap: *Heap, x: Value, val: word.NodeTag) void {
 /// `EvalState` is out of scope for this slice.
 pub inline fn tlPtr(heap: *Heap, x: Value) *Word {
     return heap.tp(x.toRaw() & 0x3fffffffffffffff);
+}
+
+// Tests: hdGet/hdSet/tlGet/tlSet/getTag/setTag/tlPtr: read/write a cell's
+// fields and tag through a Value handle
+test "hdGet/hdSet/tlGet/tlSet/getTag/setTag/tlPtr: read/write a cell's fields and tag" {
+    tu.freshInterp();
+    const heap_ptr = heap_mod.heap();
+    const cell = cons(heap_ptr, Value.imm(1), Value.imm(2));
+
+    try std.testing.expectEqual(word.NodeTag.CONS, getTag(heap_ptr, cell));
+    try std.testing.expectEqual(Value.imm(1), hdGet(heap_ptr, cell));
+    try std.testing.expectEqual(Value.imm(2), tlGet(heap_ptr, cell));
+
+    hdSet(heap_ptr, cell, Value.imm(9));
+    tlSet(heap_ptr, cell, Value.imm(8));
+    try std.testing.expectEqual(Value.imm(9), hdGet(heap_ptr, cell));
+    try std.testing.expectEqual(Value.imm(8), tlGet(heap_ptr, cell));
+
+    setTag(heap_ptr, cell, .PAIR);
+    try std.testing.expectEqual(word.NodeTag.PAIR, getTag(heap_ptr, cell));
+
+    // tlPtr reaches the same storage tlGet/tlSet do.
+    tlPtr(heap_ptr, cell).* = 7;
+    try std.testing.expectEqual(Value.imm(7), tlGet(heap_ptr, cell));
 }
 
 // Spine traversal — see `spine.zig` for the mechanics. `downX`/`upX` push/pop
@@ -291,6 +317,109 @@ pub inline fn simpl(ctx: *ReductionCtx, r: Value) void {
     ctx.e = r;
 }
 
+/// A `ReductionCtx` wired up the same way [reduce] wires its own machine
+/// state, for direct unit tests of the traversal/rewrite primitives below
+/// (mirrors `spine.zig`'s own test setup, one layer up). Callers must
+/// `ctx.spine.register(&ctx.eval.gc_roots_head)` themselves once `ctx` is at
+/// its final address — registering here and returning by value would leave
+/// the registered pointer dangling into this function's stack frame.
+fn testCtx() ReductionCtx {
+    var ctx: ReductionCtx = undefined;
+    ctx.heap = heap_mod.heap();
+    ctx.eval = reduce_mod.ev();
+    ctx.rs = rt.rs();
+    ctx.spine = spine.Spine.init(rt.allocator, &ctx.eval.spine_buffer_pool);
+    ctx.hold = Value.imm(0);
+    ctx.args = .{ Value.imm(0), Value.imm(0), Value.imm(0), Value.imm(0) };
+    ctx.action = word.ACT_NONE;
+    return ctx;
+}
+
+// Tests: downLeft/downRight/downright/upLeft/upleft/upRight/GETARG/getarg/
+// simpl: the ReductionCtx-level spine wrappers, wired through a real ctx
+test "downLeft/downRight/downright/upLeft/upleft/upRight: ReductionCtx spine wrappers" {
+    tu.freshInterp();
+    var ctx = testCtx();
+    ctx.spine.register(&ctx.eval.gc_roots_head);
+    defer ctx.spine.deinit(&ctx.eval.spine_buffer_pool);
+    defer ctx.spine.unregister(&ctx.eval.gc_roots_head);
+
+    // Exhausted (empty-spine) guards report true and leave `e` untouched.
+    ctx.e = Value.imm(42);
+    try std.testing.expect(downright(&ctx));
+    try std.testing.expect(upleft(&ctx));
+    try std.testing.expectEqual(Value.imm(42), ctx.e);
+
+    const e = cons(ctx.heap, Value.imm(111), Value.imm(222));
+    ctx.e = e;
+    downLeft(&ctx);
+    try std.testing.expectEqual(Value.imm(111), ctx.e);
+
+    // Head reduced to 'H'; downright descends into the (pristine) tail.
+    ctx.e = Value.imm('H');
+    try std.testing.expect(!downright(&ctx));
+    try std.testing.expectEqual(Value.imm(222), ctx.e);
+    try std.testing.expectEqual(Value.imm('H'), hdGet(ctx.heap, e)); // write-back already happened
+
+    // Tail reduced to 'T'; upRight writes it back and refocuses to the head.
+    ctx.e = Value.imm('T');
+    upRight(&ctx);
+    try std.testing.expectEqual(Value.imm('H'), ctx.e);
+    try std.testing.expectEqual(Value.imm('T'), tlGet(ctx.heap, e));
+
+    // Leave the cell: upleft pops with the (possibly further-rewritten) head.
+    try std.testing.expect(!upleft(&ctx));
+    try std.testing.expectEqual(e, ctx.e);
+    try std.testing.expect(ctx.spine.isEmpty());
+}
+
+test "GETARG/getarg: pull spine arguments, reporting exhaustion" {
+    tu.freshInterp();
+    var ctx = testCtx();
+    ctx.spine.register(&ctx.eval.gc_roots_head);
+    defer ctx.spine.deinit(&ctx.eval.spine_buffer_pool);
+    defer ctx.spine.unregister(&ctx.eval.gc_roots_head);
+
+    // (f arg) -- downLeft focuses f, then GETARG/getarg pull `arg`.
+    const app = ap(ctx.heap, Value.comb(.I), Value.imm(9));
+    ctx.e = app;
+    downLeft(&ctx);
+    try std.testing.expectEqual(Value.comb(.I), ctx.e);
+
+    var a: Value = undefined;
+    try std.testing.expect(!getarg(&ctx, &a));
+    try std.testing.expectEqual(Value.imm(9), a);
+    try std.testing.expectEqual(app, ctx.e); // popped back to the AP cell itself
+
+    // Spine now exhausted: getarg reports true without touching `a`.
+    try std.testing.expect(getarg(&ctx, &a));
+    try std.testing.expectEqual(Value.imm(9), a);
+
+    // GETARG is the unchecked twin -- same pull when a frame is present.
+    downLeft(&ctx);
+    var b: Value = undefined;
+    GETARG(&ctx, &b);
+    try std.testing.expectEqual(Value.imm(9), b);
+}
+
+test "simpl: rewrites the focus to an I-indirection and refocuses" {
+    tu.freshInterp();
+    var ctx = testCtx();
+    ctx.spine.register(&ctx.eval.gc_roots_head);
+    defer ctx.spine.deinit(&ctx.eval.spine_buffer_pool);
+    defer ctx.spine.unregister(&ctx.eval.gc_roots_head);
+
+    // simpl rewrites hd/tl to an I-indirection but leaves the tag alone --
+    // real callers only ever apply it to an AP redex cell.
+    const e = ap(ctx.heap, Value.imm(1), Value.imm(2));
+    ctx.e = e;
+    simpl(&ctx, Value.imm(99));
+    try std.testing.expectEqual(word.NodeTag.AP, getTag(ctx.heap, e));
+    try std.testing.expectEqual(Value.comb(.I), hdGet(ctx.heap, e));
+    try std.testing.expectEqual(Value.imm(99), tlGet(ctx.heap, e));
+    try std.testing.expectEqual(Value.imm(99), ctx.e);
+}
+
 /// True for a marked/sentinel spine word (negative) — not a normal cell handle.
 pub inline fn abnormal(x: Value) bool {
     return x.toRaw() < 0;
@@ -350,6 +479,46 @@ pub inline fn isUnicode(heap: *Heap, x: Value) bool {
     return !abnormal(x) and getTag(heap, x) == .UNICODE;
 }
 
+// Tests: abnormal, isAp/isNum/isConstructor/isInt/isDouble/isAtom/isStrcons/
+// isId/isDatapair/isStartreadvals/isCons/isUnicode, idVal: cell-tag
+// classifiers and the abnormal (marked-word) guard they all share
+test "abnormal + isXxx classifiers + idVal: cell-tag checks" {
+    tu.freshInterp();
+    const heap_ptr = heap_mod.heap();
+
+    // A negative Word is "abnormal" -- a marked/sentinel spine word, not a
+    // normal cell handle -- and every isXxx classifier treats it as false.
+    const marked = Value.fromRaw(-5);
+    try std.testing.expect(abnormal(marked));
+    try std.testing.expect(!isAp(heap_ptr, marked));
+    try std.testing.expect(!isCons(heap_ptr, marked));
+
+    const mk = struct {
+        fn cell(h: *Heap, tag: word.NodeTag) Value {
+            return Value.fromRaw(h.make(tag, 0, 0));
+        }
+    }.cell;
+
+    try std.testing.expect(isAp(heap_ptr, mk(heap_ptr, .AP)));
+    try std.testing.expect(isNum(heap_ptr, mk(heap_ptr, .INT)));
+    try std.testing.expect(isNum(heap_ptr, mk(heap_ptr, .DOUBLE)));
+    try std.testing.expect(!isNum(heap_ptr, mk(heap_ptr, .CONS)));
+    try std.testing.expect(isConstructor(heap_ptr, mk(heap_ptr, .CONSTRUCTOR)));
+    try std.testing.expect(isInt(heap_ptr, mk(heap_ptr, .INT)));
+    try std.testing.expect(isDouble(heap_ptr, mk(heap_ptr, .DOUBLE)));
+    try std.testing.expect(isAtom(heap_ptr, mk(heap_ptr, .ATOM)));
+    try std.testing.expect(isStrcons(heap_ptr, mk(heap_ptr, .STRCONS)));
+    try std.testing.expect(isId(heap_ptr, mk(heap_ptr, .ID)));
+    try std.testing.expect(isDatapair(heap_ptr, mk(heap_ptr, .DATAPAIR)));
+    try std.testing.expect(isStartreadvals(heap_ptr, mk(heap_ptr, .STARTREADVALS)));
+    try std.testing.expect(isCons(heap_ptr, mk(heap_ptr, .CONS)));
+    try std.testing.expect(isUnicode(heap_ptr, mk(heap_ptr, .UNICODE)));
+
+    // idVal is the tail of an ID cell.
+    const id_cell = Value.fromRaw(heap_ptr.make(.ID, 0, 77));
+    try std.testing.expectEqual(Value.imm(77), idVal(heap_ptr, id_cell));
+}
+
 /// Rewrite `*expr` in place to an `I`-indirection to `value`, then refocus on it.
 pub inline fn rewriteToValue(heap: *Heap, expr: *Value, value: Value) void {
     hdSet(heap, expr.*, Value.comb(.I));
@@ -391,6 +560,51 @@ pub inline fn rewriteToExistingTail(heap: *Heap, expr: Value) Value {
     return tlGet(heap, expr);
 }
 
+// Tests: rewriteToValue/rewriteToNil/rewriteToFail/rewriteToFailure/
+// rewriteToConsHead/rewriteToCons/rewriteToExistingTail: the in-place
+// redex-rewrite family
+test "rewriteToValue/Nil/Fail/Failure/ConsHead/Cons/ExistingTail: in-place redex rewrites" {
+    tu.freshInterp();
+    const heap_ptr = heap_mod.heap();
+
+    const cell1 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    var e1 = cell1;
+    rewriteToValue(heap_ptr, &e1, Value.imm(77));
+    try std.testing.expectEqual(Value.comb(.I), hdGet(heap_ptr, cell1));
+    try std.testing.expectEqual(Value.imm(77), tlGet(heap_ptr, cell1));
+    try std.testing.expectEqual(Value.imm(77), e1);
+
+    var e2 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    rewriteToNil(heap_ptr, &e2);
+    try std.testing.expectEqual(Value.comb(.NIL), e2);
+
+    var e3 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    rewriteToFail(heap_ptr, &e3);
+    try std.testing.expectEqual(Value.comb(.FAIL), e3);
+
+    var e4 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    rewriteToFailure(heap_ptr, &e4);
+    try std.testing.expectEqual(Value.comb(.NIL), e4);
+
+    // rewriteToConsHead retags in place, leaving the existing tail untouched.
+    const e5 = ap(heap_ptr, Value.imm(0), Value.imm(42));
+    rewriteToConsHead(heap_ptr, e5, Value.imm(11));
+    try std.testing.expectEqual(word.NodeTag.CONS, getTag(heap_ptr, e5));
+    try std.testing.expectEqual(Value.imm(11), hdGet(heap_ptr, e5));
+    try std.testing.expectEqual(Value.imm(42), tlGet(heap_ptr, e5));
+
+    const e6 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    rewriteToCons(heap_ptr, e6, Value.imm(1), Value.imm(2));
+    try std.testing.expectEqual(word.NodeTag.CONS, getTag(heap_ptr, e6));
+    try std.testing.expectEqual(Value.imm(1), hdGet(heap_ptr, e6));
+    try std.testing.expectEqual(Value.imm(2), tlGet(heap_ptr, e6));
+
+    const e7 = cons(heap_ptr, Value.imm(1), Value.imm(2));
+    const tail = rewriteToExistingTail(heap_ptr, e7);
+    try std.testing.expectEqual(Value.comb(.I), hdGet(heap_ptr, e7));
+    try std.testing.expectEqual(Value.imm(2), tail);
+}
+
 /// Allocate an application cell `(x y)`.
 pub inline fn ap(heap: *Heap, x: Value, y: Value) Value {
     return Value.fromRaw(heap.make(.AP, x.toRaw(), y.toRaw()));
@@ -403,6 +617,30 @@ pub inline fn apTwo(heap: *Heap, x1: Value, y1: Value, x2: Value, y2: Value, c1:
     heap.makeTwo(.AP, x1.toRaw(), y1.toRaw(), .AP, x2.toRaw(), y2.toRaw(), &w1, &w2);
     c1.* = Value.fromRaw(w1);
     c2.* = Value.fromRaw(w2);
+}
+
+// Tests: ap/apTwo/cleanPtr: application-cell allocation, singly and in bulk
+test "ap/apTwo/cleanPtr: application-cell allocation" {
+    tu.freshInterp();
+    const heap_ptr = heap_mod.heap();
+
+    const a = ap(heap_ptr, Value.imm(1), Value.imm(2));
+    try std.testing.expectEqual(word.NodeTag.AP, getTag(heap_ptr, a));
+    try std.testing.expectEqual(Value.imm(1), hdGet(heap_ptr, a));
+    try std.testing.expectEqual(Value.imm(2), tlGet(heap_ptr, a));
+
+    var c1: Value = undefined;
+    var c2: Value = undefined;
+    apTwo(heap_ptr, Value.imm(3), Value.imm(4), Value.imm(5), Value.imm(6), &c1, &c2);
+    try std.testing.expectEqual(word.NodeTag.AP, getTag(heap_ptr, c1));
+    try std.testing.expectEqual(Value.imm(3), hdGet(heap_ptr, c1));
+    try std.testing.expectEqual(Value.imm(4), tlGet(heap_ptr, c1));
+    try std.testing.expectEqual(word.NodeTag.AP, getTag(heap_ptr, c2));
+    try std.testing.expectEqual(Value.imm(5), hdGet(heap_ptr, c2));
+    try std.testing.expectEqual(Value.imm(6), tlGet(heap_ptr, c2));
+
+    // cleanPtr masks off the (unused, post-Spine-cutover) direction bits.
+    try std.testing.expectEqual(@as(usize, @intCast(a.toRaw())), cleanPtr(a));
 }
 
 /// Rewrite `*expr` to `success_value` if `left` equals `right` (structurally),
@@ -430,6 +668,40 @@ pub inline fn rewriteToString(heap: *Heap, expr: *Value, value: [*:0]const u8) v
     expr.* = val;
 }
 
+// Tests: rewriteToMatchResult/rewriteToIntMatchResult/rewriteToString: the
+// pattern-match rewrite family that needs cross-module compare/parse helpers
+test "rewriteToMatchResult/rewriteToIntMatchResult/rewriteToString: match-result rewrites" {
+    tu.freshInterp();
+    const heap_ptr = heap_mod.heap();
+
+    var e1 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    const five_a = Value.fromRaw(big.fromInt(heap_ptr, 5));
+    const five_b = Value.fromRaw(big.fromInt(heap_ptr, 5));
+    try rewriteToMatchResult(heap_ptr, &e1, five_a, five_b, Value.imm(1));
+    try std.testing.expectEqual(Value.imm(1), e1);
+
+    var e2 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    const six = Value.fromRaw(big.fromInt(heap_ptr, 6));
+    try rewriteToMatchResult(heap_ptr, &e2, five_a, six, Value.imm(1));
+    try std.testing.expectEqual(Value.comb(.FAIL), e2);
+
+    var e3 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    rewriteToIntMatchResult(heap_ptr, &e3, five_a, five_b, Value.imm(1));
+    try std.testing.expectEqual(Value.imm(1), e3);
+
+    var e4 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    rewriteToIntMatchResult(heap_ptr, &e4, five_a, six, Value.imm(1));
+    try std.testing.expectEqual(Value.comb(.FAIL), e4);
+
+    var e5 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    rewriteToString(heap_ptr, &e5, "hi");
+    try std.testing.expectEqual(word.NodeTag.CONS, getTag(heap_ptr, e5));
+    try std.testing.expectEqual(Value.imm('h'), hdGet(heap_ptr, e5));
+    const rest = tlGet(heap_ptr, e5);
+    try std.testing.expectEqual(Value.imm('i'), hdGet(heap_ptr, rest));
+    try std.testing.expectEqual(Value.comb(.NIL), tlGet(heap_ptr, rest));
+}
+
 /// Allocate a cons cell `(x : y)`.
 pub inline fn cons(heap: *Heap, x: Value, y: Value) Value {
     return Value.fromRaw(heap.make(.CONS, x.toRaw(), y.toRaw()));
@@ -438,6 +710,25 @@ pub inline fn cons(heap: *Heap, x: Value, y: Value) Value {
 /// Build the application `((f x) y)`.
 pub inline fn ap2(heap: *Heap, f: Value, x: Value, y: Value) Value {
     return ap(heap, ap(heap, f, x), y);
+}
+
+// Tests: cons/ap2: the remaining allocators (ap/apTwo covered above)
+test "cons/ap2: cons-cell and two-deep application allocation" {
+    tu.freshInterp();
+    const heap_ptr = heap_mod.heap();
+
+    const c = cons(heap_ptr, Value.imm(1), Value.imm(2));
+    try std.testing.expectEqual(word.NodeTag.CONS, getTag(heap_ptr, c));
+    try std.testing.expectEqual(Value.imm(1), hdGet(heap_ptr, c));
+    try std.testing.expectEqual(Value.imm(2), tlGet(heap_ptr, c));
+
+    const a2 = ap2(heap_ptr, Value.imm(1), Value.imm(2), Value.imm(3));
+    try std.testing.expectEqual(word.NodeTag.AP, getTag(heap_ptr, a2));
+    try std.testing.expectEqual(Value.imm(3), tlGet(heap_ptr, a2));
+    const inner = hdGet(heap_ptr, a2);
+    try std.testing.expectEqual(word.NodeTag.AP, getTag(heap_ptr, inner));
+    try std.testing.expectEqual(Value.imm(1), hdGet(heap_ptr, inner));
+    try std.testing.expectEqual(Value.imm(2), tlGet(heap_ptr, inner));
 }
 
 /// True when bignum `x`'s head digit carries the sign bit (i.e. `x` is negative).
@@ -469,6 +760,45 @@ pub inline fn constrName(heap: *Heap, x: Value) [*:0]const u8 {
 pub inline fn suppressed(heap: *Heap, x: Value) bool {
     const tlx = tlGet(heap, x);
     return isStrcons(heap, tlx) and !isId(heap, pnVal(heap, tlx));
+}
+
+// Tests: neg/poz/pnVal/getId/constrName/suppressed: bignum sign bit and
+// identifier/constructor name lookup
+test "neg/poz/pnVal/getId/constrName/suppressed: sign and name accessors" {
+    tu.freshInterp();
+    const heap_ptr = heap_mod.heap();
+
+    const neg_cell = Value.fromRaw(heap_ptr.make(.INT, word.SIGNBIT | 5, 0));
+    const pos_cell = Value.fromRaw(heap_ptr.make(.INT, 5, 0));
+    try std.testing.expect(neg(heap_ptr, neg_cell));
+    try std.testing.expect(!poz(heap_ptr, neg_cell));
+    try std.testing.expect(!neg(heap_ptr, pos_cell));
+    try std.testing.expect(poz(heap_ptr, pos_cell));
+
+    // pnVal reads a private-name node's tail, just like idVal reads an id's.
+    const pn_cell = Value.fromRaw(heap_ptr.make(.DATAPAIR, 0, 33));
+    try std.testing.expectEqual(Value.imm(33), pnVal(heap_ptr, pn_cell));
+
+    const id = Value.fromRaw(lex_mod.makeId("zzrc_getid_test"));
+    try std.testing.expectEqualStrings("zzrc_getid_test", std.mem.span(getId(heap_ptr, id)));
+
+    // constrName: a CONSTRUCTOR whose tail is directly the id.
+    const ctor_direct = Value.fromRaw(heap_ptr.make(.CONSTRUCTOR, 0, id.toRaw()));
+    try std.testing.expectEqualStrings("zzrc_getid_test", std.mem.span(constrName(heap_ptr, ctor_direct)));
+
+    // constrName: a CONSTRUCTOR whose tail is a private-name node pointing at the id.
+    const ctor_via_pn = Value.fromRaw(heap_ptr.make(.CONSTRUCTOR, 0, pnVal(heap_ptr, Value.fromRaw(heap_ptr.make(.DATAPAIR, 0, id.toRaw()))).toRaw()));
+    try std.testing.expectEqualStrings("zzrc_getid_test", std.mem.span(constrName(heap_ptr, ctor_via_pn)));
+
+    // suppressed: a CONSTRUCTOR whose tail is a STRCONS with no id (tail 0).
+    const strcons_bare = Value.fromRaw(heap_ptr.make(.STRCONS, 0, 0));
+    const ctor_suppressed = Value.fromRaw(heap_ptr.make(.CONSTRUCTOR, 0, strcons_bare.toRaw()));
+    try std.testing.expect(suppressed(heap_ptr, ctor_suppressed));
+
+    // Not suppressed: the STRCONS's tail (pnVal) is an actual id.
+    const strcons_named = Value.fromRaw(heap_ptr.make(.STRCONS, 0, id.toRaw()));
+    const ctor_named = Value.fromRaw(heap_ptr.make(.CONSTRUCTOR, 0, strcons_named.toRaw()));
+    try std.testing.expect(!suppressed(heap_ptr, ctor_named));
 }
 
 /// The standard-error `Stream` handle.
@@ -520,6 +850,22 @@ pub inline fn coerceDbl(heap: *Heap, x: Value) ReduceError!Value {
     return Value.fromRaw(try heap_mod.stoDbl(big.toFloat(heap, x.toRaw())));
 }
 
+// Tests: forceDbl/coerceDbl: numeric coercion between INT and DOUBLE cells
+test "forceDbl/coerceDbl: coerce between boxed int and double" {
+    tu.freshInterp();
+    const heap_ptr = heap_mod.heap();
+
+    const int_cell = Value.fromRaw(big.fromInt(heap_ptr, 6));
+    try std.testing.expectEqual(@as(f64, 6.0), forceDbl(heap_ptr, int_cell));
+
+    const dbl_cell = try coerceDbl(heap_ptr, int_cell);
+    try std.testing.expectEqual(word.NodeTag.DOUBLE, getTag(heap_ptr, dbl_cell));
+    try std.testing.expectEqual(@as(f64, 6.0), forceDbl(heap_ptr, dbl_cell));
+
+    // Already-double coercion is a no-op (same cell back).
+    try std.testing.expectEqual(dbl_cell, try coerceDbl(heap_ptr, dbl_cell));
+}
+
 /// Rewrite `*expr` to `True`/`False` for `left == right` (structural compare).
 pub inline fn rewriteToCompareEq(heap: *Heap, expr: *Value, left: Value, right: Value) ReduceError!void {
     hdSet(heap, expr.*, Value.comb(.I));
@@ -552,6 +898,42 @@ pub inline fn rewriteToCompareGe(heap: *Heap, expr: *Value, left: Value, right: 
     expr.* = val;
 }
 
+// Tests: rewriteToCompareEq/Neq/Gt/Ge: the structural-comparison rewrite family
+test "rewriteToCompareEq/Neq/Gt/Ge: True/False comparison rewrites" {
+    tu.freshInterp();
+    const heap_ptr = heap_mod.heap();
+    const five = Value.fromRaw(big.fromInt(heap_ptr, 5));
+    const six = Value.fromRaw(big.fromInt(heap_ptr, 6));
+
+    var e1 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    try rewriteToCompareEq(heap_ptr, &e1, five, five);
+    try std.testing.expectEqual(Value.comb(.True), e1);
+    var e2 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    try rewriteToCompareEq(heap_ptr, &e2, five, six);
+    try std.testing.expectEqual(Value.comb(.False), e2);
+
+    var e3 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    try rewriteToCompareNeq(heap_ptr, &e3, five, six);
+    try std.testing.expectEqual(Value.comb(.True), e3);
+    var e4 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    try rewriteToCompareNeq(heap_ptr, &e4, five, five);
+    try std.testing.expectEqual(Value.comb(.False), e4);
+
+    var e5 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    try rewriteToCompareGt(heap_ptr, &e5, six, five);
+    try std.testing.expectEqual(Value.comb(.True), e5);
+    var e6 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    try rewriteToCompareGt(heap_ptr, &e6, five, six);
+    try std.testing.expectEqual(Value.comb(.False), e6);
+
+    var e7 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    try rewriteToCompareGe(heap_ptr, &e7, five, five);
+    try std.testing.expectEqual(Value.comb(.True), e7);
+    var e8 = ap(heap_ptr, Value.imm(0), Value.imm(0));
+    try rewriteToCompareGe(heap_ptr, &e8, five, six);
+    try std.testing.expectEqual(Value.comb(.False), e8);
+}
+
 /// True when single-cell bignum `x` is zero (head digit and tail both 0).
 pub inline fn bigzero(heap: *Heap, x: Value) bool {
     return hdGet(heap, x).toRaw() == 0 and tlGet(heap, x).toRaw() == 0;
@@ -563,4 +945,22 @@ pub inline fn bigzero(heap: *Heap, x: Value) bool {
 pub inline fn getsmallint(heap: *Heap, x: Value) Word {
     const h_val = hdGet(heap, x).toRaw();
     return if ((h_val & word.SIGNBIT) != 0) -(h_val & word.MAXDIGIT) else h_val;
+}
+
+// Tests: bigzero/getsmallint: single-cell bignum zero-check and signed decode
+test "bigzero/getsmallint: single-cell bignum checks" {
+    tu.freshInterp();
+    const heap_ptr = heap_mod.heap();
+
+    const zero_cell = Value.fromRaw(heap_ptr.make(.INT, 0, 0));
+    try std.testing.expect(bigzero(heap_ptr, zero_cell));
+    try std.testing.expectEqual(@as(Word, 0), getsmallint(heap_ptr, zero_cell));
+
+    const pos_cell = Value.fromRaw(heap_ptr.make(.INT, 42, 0));
+    try std.testing.expect(!bigzero(heap_ptr, pos_cell));
+    try std.testing.expectEqual(@as(Word, 42), getsmallint(heap_ptr, pos_cell));
+
+    const neg_cell = Value.fromRaw(heap_ptr.make(.INT, word.SIGNBIT | 17, 0));
+    try std.testing.expect(!bigzero(heap_ptr, neg_cell));
+    try std.testing.expectEqual(@as(Word, -17), getsmallint(heap_ptr, neg_cell));
 }

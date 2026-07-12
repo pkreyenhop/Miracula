@@ -3193,6 +3193,82 @@ dump compat (mitigated by keeping the bit layout and round-trip goldens).
 
 ---
 
+### Cross-cutting: test-coverage investment for future portability (2026-07-13)
+
+Asked to prioritize work that would specifically help a *future* rewrite of
+this codebase in another language (e.g. Go), independent of finishing Phase
+5/6 first. Reasoned from the scorecard: growing per-function test coverage
+(then 265/1267 fns, ~21%) is the single highest-leverage, language-agnostic
+investment — any future port translates fastest against an existing test to
+verify each function against, rather than a prose spec to reinterpret; this
+codebase's own "one inline test per function" convention already provides
+the pattern, just not the density. Second priority: finishing the collapse
+of ambient singleton access (683 call sites, Phase 4's own still-open goal)
+since Go idiom strongly favors explicit dependency passing over the
+`cs()`/`rt.rs()`/`current_interp`-style globals a port would otherwise have
+to redesign by hand. Third: keep pushing `Value`/`Kind` (Phase 5) so the
+320 remaining raw `== NIL`/`!= NIL` Word-sentinel comparisons — Zig's
+untyped-integer trick for a tagged union, which Go has no equivalent
+shortcut for — end up behind one typed API instead of scattered raw
+comparisons. `setjmp`/`longjmp` (Phase 3) and the `os.zig` C-interop floor
+were already judged in good shape; a Go port reimplements the floor with
+`os`/`syscall` regardless, and there was nothing further to do there.
+
+Landed a first slice against priority one: **`eval/reduce_core.zig`**, the
+reduction machine's shared primitive layer (`ReductionCtx`, every accessor/
+classifier/rewrite/allocator helper `combinators.zig`/`ready.zig`/
+`combinators/lex.zig`/`combinators/io.zig` call as `reduce.*`) — chosen
+because it was the largest fully-`Value`-typed file with **zero** existing
+tests (68 functions), foundational to every single reduction step, and
+already fully retyped this session (Phase 5 steps 4b/4d), so no test needed
+`.toRaw()`/`Value.fromRaw()` noise to work around a still-`Word`-typed
+signature. Added 13 grouped test blocks (mirroring `graph/value.zig`'s and
+`eval/spine.zig`'s established "test the cluster, not each one-line
+accessor separately" convention), covering: the `hdGet`/`hdSet`/`tlGet`/
+`tlSet`/`getTag`/`setTag`/`tlPtr` accessor group; the `ReductionCtx`-level
+spine wrappers `downLeft`/`downRight`/`downright`/`upLeft`/`upleft`/
+`upRight` (via a new `testCtx()` helper wiring up a real `ReductionCtx` the
+same way `reduce()` itself does); `GETARG`/`getarg`; `simpl`; `abnormal` +
+all twelve `isXxx` classifiers + `idVal`; the `rewriteToValue`/`Nil`/`Fail`/
+`Failure`/`ConsHead`/`Cons`/`ExistingTail` family; `ap`/`apTwo`/`cleanPtr`;
+`rewriteToMatchResult`/`rewriteToIntMatchResult`/`rewriteToString`; `cons`/
+`ap2`; `neg`/`poz`/`pnVal`/`getId`/`constrName`/`suppressed`; `forceDbl`/
+`coerceDbl`; `rewriteToCompareEq`/`Neq`/`Gt`/`Ge`; `bigzero`/`getsmallint`.
+
+Two bugs caught and fixed while writing these (both in the test code, not
+the production functions under test): (1) `testCtx()` originally called
+`ctx.spine.register(&ctx.eval.gc_roots_head)` *inside* the helper and
+returned `ReductionCtx` by value — the registered pointer pointed into
+`testCtx`'s own stack frame, which is gone by the time the caller's copy is
+used, corrupting the GC-roots list (`unregister` aborted on an assertion
+failure). Fixed by having `testCtx()` build everything *except* registration,
+and registering at the call site once `ctx` is at its final (stable) address
+— the same "register after the struct is at its final address" constraint
+`spine.zig`'s own tests already follow, just not yet written down as a rule
+here. (2) A `rewriteToValue` test initially read `hdGet`/`tlGet` back
+through the *same* `Value` variable the rewrite had just overwritten (by
+design, `rewriteToValue` rewrites `expr.*` to point at the new value, not
+the original cell) — reading through the post-rewrite value tried to
+dereference a bogus low heap index, hitting uninitialized (`0xAA`-pattern)
+memory. Fixed by capturing the original cell reference in a separate
+`const` before the rewrite and asserting the in-place mutation through that.
+
+`zig build`/`zig build test` (274 unit tests, up from 261; full integration
++ spine/golden corpus) green (`sigint_check`'s spurious quirk showed once,
+confirmed clean via the binary directly per the known harness flake);
+`zig build bench` reduction counts unchanged (test-only addition, no
+production code touched); `scorecard.sh --check` shows the `test blocks /
+fn definitions` metric moving 265/1267 (20%) → 278/1269 (21%), a genuine
+improvement, no other metric regressed. This is one file of many with zero
+or thin coverage (`infer.zig` 65 fns/0 tests, `unify.zig` 32/0,
+`type_errors.zig` 30/0, `graph/heap.zig` 89-fn gap/16 tests, `graph/dump.zig`
+39-fn gap/1 test — see the file-by-file gap ranking computed this session);
+continuing this investment in a future session should work down that list,
+prioritizing files that (like this one) are already fully `Value`-typed so
+tests don't fight an in-progress migration.
+
+---
+
 ### Phase 6 — Surface polish & docs
 
 **Goal:** the remaining C accents, the build script, and the documentation.
