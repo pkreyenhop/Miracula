@@ -2971,15 +2971,66 @@ code that was about to move twice.
      required for correctness, and deliberately left for later so this
      slice stayed additive and low-risk like steps 1-3.
 
-   **Remaining for step 4:** the plan's own remaining list — `graph/print`,
-   `semantics/lower` + `infer`, `session` — plus, if pursued, retyping
-   `reduce()`/`head()`/`force()`/`getstring()`/`badcaseError()`/
-   `confError()` themselves (closing out the `reduceVal`-style wrapper
-   layer built in step 4b) and `reduce_rt.zig`'s own private duplicate
-   `t`/`h`/`hp`/`tp`/`rewriteToXxx`/`isXxx` helpers, each a comparable or
-   larger cascade than step 4b. `bignum.zig`'s own internals (in-place
-   retype rather than the wrapper layer landed here) remain unconverted by
-   design — see the risk note above.
+   **Scoped (2026-07-13), `graph/print`: found genuinely nothing to do yet
+   — recorded rather than acted on.** `print.zig`'s only external callers
+   are `graph/dump.zig` (`castPtr`, 3 sites), `semantics/type_errors.zig`
+   (`charname`, 1 site), and `eval/reduce_rt.zig` (`charname`/`outTerm`, 5
+   sites) — every one of them a **still-`Word`-typed** local (`dump.zig`'s
+   own wire-format walk, `type_errors.zig`'s own private `getTag`/`h`/`t`
+   helpers, `reduce_rt.zig`'s own `e`/`hold_val`/`ptr[i]`/`lh(...)`
+   locals). Retyping `print.zig`'s public functions to `Value` right now
+   would mean every one of those 9 call sites immediately wraps its
+   already-`Word` local in `Value.fromRaw(...)` just to satisfy the new
+   signature, then `print.zig` immediately unwraps it again internally —
+   pure boilerplate, no actual type-safety gained, because *none* of
+   `print.zig`'s current callers hold a real `Value` in hand yet. This is
+   different from `bignum`'s wrapper layer (step 4c), which had genuine
+   `Value`-typed callers ready to use it immediately (`ready.zig`/
+   `combinators.zig` post-step-4b). `print.zig` becomes a good candidate
+   again once `reduce_rt.zig` and/or `semantics/type_errors.zig` migrate
+   their own locals onto `Value` — at that point its callers will already
+   have a `Value` to pass, and retyping stops being boilerplate. No code
+   changed in this scoping pass.
+
+   **Same check applied to `semantics/lower` + `infer` and `session`: same
+   answer.** `lower.zig`'s/`infer.zig`'s own `cons`/`ap`/`ap2`/`ap3`/`tf`-
+   family functions were heap-*threaded* back in Phase 4 step 5 (an
+   explicit `heap: *Heap` parameter instead of reading the singleton), but
+   never re-*typed* — they're still `Word`-in/`Word`-out. Their callers
+   (`codegen.zig`, `match.zig`, `unify.zig`, `type_errors.zig`,
+   `module_loader.zig`, `repl.zig`, `setup.zig`, `lex.zig`) are every one
+   of them compile-time front-end code — the parser/codegen/type-checker/
+   module-loader pipeline — and **none of it has been touched by `Value`
+   at all**, since this phase's work so far is confined to the `graph`/
+   `eval` layers (the runtime reducer side), not `semantics`/`parser`/
+   `compiler` (the compile-time side). Retyping `lower`/`infer` right now
+   would hit the identical "boilerplate wrapping, no real caller benefit"
+   problem `print.zig` did. "`session`" has the same root cause one layer
+   further out still: nothing in `session/` holds a bare graph `Word` in a
+   way `Value` would improve — it's `*Heap`/`*RuntimeState`/etc. struct
+   wiring, not individual value payloads.
+   - **What this actually means for the rest of step 4:** the plan's
+     listed remaining items aren't independent, pick-any-one slices — they
+     collectively describe *the entire compile-time front end*
+     (`semantics/*`, `parser/codegen.zig`, `compiler/*`), which would need
+     to move onto `Value` together (mutually, since they all call each
+     other) before any one piece of it stops being boilerplate. That's a
+     genuinely different, and likely larger, undertaking than everything
+     landed in steps 1-4c combined — closer in shape to Phase 4's own
+     god-file-split scale than to a single bounded slice.
+
+   **Remaining for step 4 (revised, 2026-07-13):** the compile-time front
+   end as one connected unit (`semantics/lower.zig`/`infer.zig`/
+   `match.zig`/`unify.zig`/`type_errors.zig`/`depend.zig`/`symbols.zig`,
+   `parser/codegen.zig`, `compiler/module_loader.zig`/`setup.zig`/
+   `dump.zig`) — not started, scoped only. Then `graph/print.zig` (unblocks
+   once the above lands). Then, if pursued: retyping `reduce()`/`head()`/
+   `force()`/`getstring()`/`badcaseError()`/`confError()` themselves
+   (closing out the `reduceVal`-style wrapper layer built in step 4b) and
+   `reduce_rt.zig`'s own private duplicate `t`/`h`/`hp`/`tp`/`rewriteToXxx`/
+   `isXxx` helpers. `bignum.zig`'s own internals (in-place retype rather
+   than the wrapper layer landed in step 4c) remain unconverted by design
+   — see that step's risk note.
 
 **Gate:** no `Word` outside `graph/dump.zig`; no numeric range tests on values;
 goldens + differential + bench green; GC invariant (mark follows `hd`/`tl` only for
