@@ -2765,6 +2765,86 @@ code that was about to move twice.
    callers yet. Step 4 (migrate real subsystems onto this surface, leaf-first:
    `reduce_core`/`spine` first per the plan's own order) is next.
 
+   **Investigation (2026-07-12), before touching `reduce_core`/`spine`: is
+   the "marked spine word" risk real?** `ReductionCtx.e` (the focus register
+   step 4 names first) sometimes triggers `abnormal(ctx.e)` — a negative-
+   `Word` check — in `reduce.zig`'s `dispatchNonCombinatorHead`, and
+   `Value.kind()` explicitly assumes clean, non-negative input. Before
+   retyping the registers, traced every path that can set `ctx.e`/`.hold`/
+   `.args`, since a wrong assumption here would be a real hot-path
+   correctness bug. Finding: the risk is **dead architecture, not live data
+   flow**. `spine.zig`'s own module doc confirms the old in-graph pointer-
+   reversal encoding (which genuinely did borrow a cell's `hd`/`tl` bits to
+   store a tagged "previous stack top" pointer — the actual source of the
+   historical "marked word" concern) was fully replaced by the explicit
+   `Spine.Frame { node: Word, via_tl: bool }` struct: `via_tl` is a real,
+   separate `bool` field, not a sign-bit trick on `node`. `ctx.s` (the old
+   register that used to carry the `BACKSTOP` sentinel) no longer exists in
+   `ReductionCtx` at all. Every live path that sets `ctx.e` (`Spine.downLeft`/
+   `.upLeft`/`.upRight`, and the `STRCONS`/`ID` dispatch cases, which read a
+   name node's bound-value tail) reads a genuine graph value, never a marked
+   one. The one remaining `abnormal(ctx.e)` check is a corruption/invariant-
+   violation safety net ("BLACK HOLE" = "this should be structurally
+   impossible") — the same category as `heap.badval`'s "flags values outside
+   the plausible heap range" — not business logic `Value.kind()` needs to
+   handle correctly. Conclusion: retyping the registers to `Value` is safe;
+   `abnormal`/`isXxx` predicates just become raw `.toRaw() < 0` /
+   `tagOf(heap, v) == .X` checks that never call `.kind()` at all, preserving
+   the exact same defensive semantics.
+
+   **Landed (2026-07-12), step 4a: `spine.zig` — the first non-additive
+   consumer of the typed surface.** `Spine.Frame.node` and every `Spine`
+   method (`downLeft`/`downRight`/`downright`/`upLeft`/`upleft`/`upRight`/
+   `popNodeOnly`/`pushRaw`/`markAllRoots`) now carry `Value` instead of
+   `Word` — genuinely retyped, not wrapped. Scope, deliberately bounded: the
+   plan's step 4 bullet lists `reduce_core`/`spine` together, but
+   `ReductionCtx.e`/`.hold`/`.args` (and every combinator handler across
+   `combinators.zig`/`ready.zig`/`lex.zig`/`io.zig` that touches them —
+   ~94 call sites) are **not** retyped in this slice; only `Spine` itself
+   is. `Spine`'s entire external call-site surface turned out to be small
+   and fully enumerable — grepped for it rather than assumed: `reduce_core
+   .zig`'s four wrappers (`downLeft`/`downRight`/`upLeft`/`upRight`),
+   `combinators.zig`'s `handleTRY`/`handleFAIL` (the two handlers that
+   manipulate the spine directly), and two bare `.isEmpty()` checks
+   (`reduce.zig`, `reduce_rt.zig`) needing no change at all. Every one of
+   those (still-`Word`-typed) callers converts at the boundary via
+   `Value.fromRaw`/`.toRaw()` — `ctx.e` itself stays `Word` until
+   `ReductionCtx` is retyped in a later slice.
+   - Bit-identical by construction: `Value` is `packed struct(u64) { raw: i64
+     }`, so every `fromRaw`/`toRaw` pair the boundary needed is a free
+     reinterpretation, not a real conversion — the reducer's actual
+     behavior is untouched, only the type flowing through `spine.zig`'s own
+     API changed.
+   - Verification went beyond "it compiles": ran `zig build bench` before
+     any edit and after, three times each. Reduction *counts* (the number
+     of rewrite steps taken, not just wall-clock time) matched exactly
+     across every run, before and after — Ackermann(3,8) 30,652,009,
+     Fibonacci(30) 28,907,260, Prime Sieve 671,945 — the strongest
+     available signal that the migration changed representation, not
+     behavior. Throughput stayed within normal run-to-run noise (Ackermann
+     ~51-64 M reductions/s, Fibonacci ~70-72, Prime Sieve ~32, matching the
+     pre-migration baseline's same ranges).
+   - Also fixed as a prerequisite (own commit, `27b5c94`): `zig build bench`
+     itself was broken two ways before this slice could even get a baseline
+     — `bench_micro_module` was missing the `zigline` import
+     `bench_mira_module` already had, and underneath that,
+     `micro_benchmarks.zig`'s `benchAllocation`/`benchGC` still called the
+     old 3-arg `heap.make(.CONS, x, y)`, stale since Phase 4 threaded a
+     `heap_ptr` receiver through the free function — never caught because
+     `micro_benchmarks.zig` isn't part of any `zig build`/`zig build test`
+     target, only the rarely-run `bench-micro` one.
+   - `zig build`/`zig build test` (260 unit tests, integration suite,
+     spine/golden corpus, `sigint_check`) green; `layer_check.py`/
+     `scorecard.sh --check` unchanged.
+
+   **Remaining for step 4:** `ReductionCtx.e`/`.hold`/`.args` themselves,
+   cascading into every combinator handler (~94 call sites across
+   `combinators.zig`/`ready.zig`/`lex.zig`/`io.zig`) and `reduce.zig`'s main
+   dispatch loop (whose `switch (ctx.e) { word.S => ..., word.PLUS => ..., }`
+   would need `Value.comb(...)` arms or an equivalent) — not started. Then
+   the plan's own remaining step-4 list: combinator handlers, `bignum`,
+   `graph/print`, `semantics/lower` + `infer`, `session`.
+
 **Gate:** no `Word` outside `graph/dump.zig`; no numeric range tests on values;
 goldens + differential + bench green; GC invariant (mark follows `hd`/`tl` only for
 cell-payload tags) now *type-enforced* rather than convention-enforced.

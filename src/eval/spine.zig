@@ -44,16 +44,24 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const heap = @import("../graph/heap.zig");
+const value = @import("../graph/value.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 pub const Word = i64;
+/// The typed graph value (Phase 5, docs/ZIG_NATIVE_PLAN.md §4.3, step 4):
+/// `Frame.node` and every `Spine` method below carry this instead of a bare
+/// `Word`. Callers not yet migrated (`reduce_core.zig`'s four wrappers,
+/// `combinators.zig`'s `handleTRY`/`handleFAIL`) convert at the boundary via
+/// `Value.fromRaw`/`.toRaw()` — this file is the first real (non-additive)
+/// consumer of the typed surface `graph/value.zig` built in steps 1-3.
+pub const Value = value.Value;
 
 /// One frame of the explicit spine: the cell descended into (`node`), and
 /// whether focus is currently inside it via `tl` (`via_tl`) or via `hd`.
 /// Mirrors what pointer-reversal used to borrow from the cell's own field
 /// plus the `tlptrbit` tag — but kept out of the graph.
 pub const Frame = struct {
-    node: Word,
+    node: Value,
     via_tl: bool,
 };
 
@@ -216,7 +224,7 @@ pub const Spine = struct {
         return &self.frames.items[self.frames.items.len - 1];
     }
 
-    pub inline fn downLeft(self: *Spine, e: Word) Word {
+    pub inline fn downLeft(self: *Spine, e: Value) Value {
         const len = self.frames.items.len;
         if (len < self.frames.capacity) {
             self.frames.items.len = len + 1;
@@ -224,37 +232,37 @@ pub const Spine = struct {
         } else {
             self.frames.append(self.allocator, .{ .node = e, .via_tl = false }) catch heap.mallocPanic("spine");
         }
-        return heap.hCell(e);
+        return Value.fromRaw(heap.hCell(e.toRaw()));
     }
 
     /// Descend into the top frame's tail, having just finished reducing its
     /// head to `reduced_head`. Writes back the reduced head (the one real
     /// graph mutation here) and re-tags the *existing* top frame rather than
     /// pushing a new one.
-    pub inline fn downRight(self: *Spine, heap_ptr: *heap.Heap, reduced_head: Word) Word {
+    pub inline fn downRight(self: *Spine, heap_ptr: *heap.Heap, reduced_head: Value) Value {
         const f = self.top();
-        heap.hp(heap_ptr, f.node).* = reduced_head;
+        heap.hp(heap_ptr, f.node.toRaw()).* = reduced_head.toRaw();
         f.via_tl = true;
-        return heap.tCell(f.node);
+        return Value.fromRaw(heap.tCell(f.node.toRaw()));
     }
 
     /// [downRight] guarded by spine-empty; `null` instead of descending when
     /// the spine is exhausted.
-    pub inline fn downright(self: *Spine, heap_ptr: *heap.Heap, reduced_head: Word) ?Word {
+    pub inline fn downright(self: *Spine, heap_ptr: *heap.Heap, reduced_head: Value) ?Value {
         if (self.isEmpty()) return null;
         return self.downRight(heap_ptr, reduced_head);
     }
 
     /// Ascend out of the head: pop the top frame, write back the now-reduced
     /// value `reduced` into it, focus becomes the popped frame's cell.
-    pub inline fn upLeft(self: *Spine, heap_ptr: *heap.Heap, reduced: Word) Word {
+    pub inline fn upLeft(self: *Spine, heap_ptr: *heap.Heap, reduced: Value) Value {
         const f = self.frames.pop().?;
-        heap.hp(heap_ptr, f.node).* = reduced;
+        heap.hp(heap_ptr, f.node.toRaw()).* = reduced.toRaw();
         return f.node;
     }
 
     /// [upLeft] guarded by spine-empty.
-    pub inline fn upleft(self: *Spine, heap_ptr: *heap.Heap, reduced: Word) ?Word {
+    pub inline fn upleft(self: *Spine, heap_ptr: *heap.Heap, reduced: Value) ?Value {
         if (self.isEmpty()) return null;
         return self.upLeft(heap_ptr, reduced);
     }
@@ -263,18 +271,18 @@ pub const Spine = struct {
     /// re-tag the still-top (*not popped*) frame back to "via hd", focus
     /// becomes the already-correct reduced head written by the matching
     /// `downRight`.
-    pub inline fn upRight(self: *Spine, heap_ptr: *heap.Heap, reduced: Word) Word {
+    pub inline fn upRight(self: *Spine, heap_ptr: *heap.Heap, reduced: Value) Value {
         const f = self.top();
-        heap.tp(heap_ptr, f.node).* = reduced;
+        heap.tp(heap_ptr, f.node.toRaw()).* = reduced.toRaw();
         f.via_tl = false;
-        return heap.hCell(f.node);
+        return Value.fromRaw(heap.hCell(f.node.toRaw()));
     }
 
     /// Pop a frame and return just its node, with *no* write-back. For
     /// `combinators.handleFAIL`, which poisons the popped node directly
     /// (`FAIL` propagation) instead of writing back a normally-reduced value
     /// the way `upLeft` does. `null` once the spine is exhausted.
-    pub fn popNodeOnly(self: *Spine) ?Word {
+    pub fn popNodeOnly(self: *Spine) ?Value {
         const f = self.frames.pop() orelse return null;
         return f.node;
     }
@@ -283,7 +291,7 @@ pub const Spine = struct {
     /// For the one call site (`combinators.handleTRY`'s tail) that fabricates
     /// a spine frame out of a cell it already holds, rather than descending
     /// into one via the normal `downLeft`.
-    pub fn pushRaw(self: *Spine, node: Word, via_tl: bool) void {
+    pub fn pushRaw(self: *Spine, node: Value, via_tl: bool) void {
         self.frames.append(self.allocator, .{ .node = node, .via_tl = via_tl }) catch heap.mallocPanic("spine");
     }
 
@@ -331,7 +339,7 @@ pub fn markAllRoots(roots_head: ?*Spine, mark_fn: *const fn (Word) void) void {
     var s = roots_head;
     while (s) |sp| {
         for (sp.frames.items) |f| {
-            mark_fn(f.node);
+            mark_fn(f.node.toRaw());
         }
         s = sp.next;
     }
@@ -346,9 +354,9 @@ test "downLeft: pushes a frame and reads hd without mutating the cell" {
     var spine = Spine.init(testing.allocator, &pool);
     defer spine.deinit(&pool);
 
-    const focus = spine.downLeft(e);
+    const focus = spine.downLeft(Value.fromRaw(e));
 
-    try testing.expectEqual(@as(Word, 111), focus);
+    try testing.expectEqual(@as(Word, 111), focus.toRaw());
     try testing.expectEqual(@as(usize, 1), spine.depth());
     // `e` itself must be untouched -- no borrowed bookkeeping in the cell.
     try testing.expectEqual(@as(Word, 111), heap.h(heap.heap(), e));
@@ -362,10 +370,10 @@ test "downLeft/upLeft round trip: writes back the reduced head and pops" {
     var spine = Spine.init(testing.allocator, &pool);
     defer spine.deinit(&pool);
 
-    _ = spine.downLeft(e);
-    const focus = spine.upLeft(heap.heap(), 999); // pretend the head reduced to 999
+    _ = spine.downLeft(Value.fromRaw(e));
+    const focus = spine.upLeft(heap.heap(), Value.fromRaw(999)); // pretend the head reduced to 999
 
-    try testing.expectEqual(e, focus);
+    try testing.expectEqual(e, focus.toRaw());
     try testing.expect(spine.isEmpty());
     try testing.expectEqual(@as(Word, 999), heap.h(heap.heap(), e));
     try testing.expectEqual(@as(Word, 222), heap.t(heap.heap(), e)); // tl untouched
@@ -379,24 +387,24 @@ test "downLeft/downRight/upRight/upLeft: full visit of one AP cell" {
     defer spine.deinit(&pool);
 
     // Visit the head: focus -> 111.
-    var focus = spine.downLeft(e);
-    try testing.expectEqual(@as(Word, 111), focus);
+    var focus = spine.downLeft(Value.fromRaw(e));
+    try testing.expectEqual(@as(Word, 111), focus.toRaw());
 
     // Head reduced to 'H'; descend into the tail: focus -> 222 (pristine).
-    focus = spine.downRight(heap.heap(), 'H');
-    try testing.expectEqual(@as(Word, 222), focus);
+    focus = spine.downRight(heap.heap(), Value.fromRaw('H'));
+    try testing.expectEqual(@as(Word, 222), focus.toRaw());
     try testing.expectEqual(@as(Word, 'H'), heap.h(heap.heap(), e)); // real write-back already happened
     try testing.expectEqual(@as(usize, 1), spine.depth()); // still one frame -- not pushed again
 
     // Tail reduced to 'T'; ascend back: focus -> the already-written head 'H'.
-    focus = spine.upRight(heap.heap(), 'T');
-    try testing.expectEqual(@as(Word, 'H'), focus);
+    focus = spine.upRight(heap.heap(), Value.fromRaw('T'));
+    try testing.expectEqual(@as(Word, 'H'), focus.toRaw());
     try testing.expectEqual(@as(Word, 'T'), heap.t(heap.heap(), e)); // real write-back of the tail
     try testing.expectEqual(@as(usize, 1), spine.depth()); // upRight does not pop
 
     // Finally leave the cell: pop with the (possibly further-rewritten) head.
-    focus = spine.upLeft(heap.heap(), 'H');
-    try testing.expectEqual(e, focus);
+    focus = spine.upLeft(heap.heap(), Value.fromRaw('H'));
+    try testing.expectEqual(e, focus.toRaw());
     try testing.expect(spine.isEmpty());
     try testing.expectEqual(@as(Word, 'H'), heap.h(heap.heap(), e));
     try testing.expectEqual(@as(Word, 'T'), heap.t(heap.heap(), e));
@@ -414,26 +422,26 @@ test "a chain of AP cells unwinds and rewinds in LIFO order" {
     defer spine.deinit(&pool);
 
     // Unwind: downLeft(e0) -> e1, downLeft(e1) -> e2, downLeft(e2) -> head_atom.
-    var focus = spine.downLeft(e0);
-    try testing.expectEqual(e1, focus);
+    var focus = spine.downLeft(Value.fromRaw(e0));
+    try testing.expectEqual(e1, focus.toRaw());
     focus = spine.downLeft(focus);
-    try testing.expectEqual(e2, focus);
+    try testing.expectEqual(e2, focus.toRaw());
     focus = spine.downLeft(focus);
-    try testing.expectEqual(head_atom, focus);
+    try testing.expectEqual(head_atom, focus.toRaw());
     try testing.expectEqual(@as(usize, 3), spine.depth());
 
     // Walk back up, writing a distinguishable marker at each level -- exactly
     // the shape repeated `upLeft` calls take in the real loop.
-    focus = spine.upLeft(heap.heap(), 1000);
-    try testing.expectEqual(e2, focus);
+    focus = spine.upLeft(heap.heap(), Value.fromRaw(1000));
+    try testing.expectEqual(e2, focus.toRaw());
     try testing.expectEqual(@as(Word, 1000), heap.h(heap.heap(), e2));
 
-    focus = spine.upLeft(heap.heap(), 1001);
-    try testing.expectEqual(e1, focus);
+    focus = spine.upLeft(heap.heap(), Value.fromRaw(1001));
+    try testing.expectEqual(e1, focus.toRaw());
     try testing.expectEqual(@as(Word, 1001), heap.h(heap.heap(), e1));
 
-    focus = spine.upLeft(heap.heap(), 1002);
-    try testing.expectEqual(e0, focus);
+    focus = spine.upLeft(heap.heap(), Value.fromRaw(1002));
+    try testing.expectEqual(e0, focus.toRaw());
     try testing.expectEqual(@as(Word, 1002), heap.h(heap.heap(), e0));
 
     try testing.expect(spine.isEmpty());
@@ -445,12 +453,12 @@ test "guarded downright/upleft report exhaustion instead of underflowing" {
     var spine = Spine.init(testing.allocator, &pool);
     defer spine.deinit(&pool);
 
-    try testing.expectEqual(@as(?Word, null), spine.upleft(heap.heap(), 0));
-    try testing.expectEqual(@as(?Word, null), spine.downright(heap.heap(), 0));
+    try testing.expectEqual(@as(?Value, null), spine.upleft(heap.heap(), Value.fromRaw(0)));
+    try testing.expectEqual(@as(?Value, null), spine.downright(heap.heap(), Value.fromRaw(0)));
 
     const e = heap.cons(heap.heap(), 1, 2);
-    _ = spine.downLeft(e);
-    try testing.expect(spine.upleft(heap.heap(), 7) != null);
+    _ = spine.downLeft(Value.fromRaw(e));
+    try testing.expect(spine.upleft(heap.heap(), Value.fromRaw(7)) != null);
     try testing.expect(spine.isEmpty());
 }
 
@@ -472,7 +480,7 @@ test "depth is unbounded: a very long spine does not overflow a fixed stack" {
         chain = heap.cons(heap.heap(), chain, @as(Word, @intCast(i)));
     }
 
-    var focus = chain;
+    var focus = Value.fromRaw(chain);
     i = 0;
     while (i < depth_count) : (i += 1) {
         focus = spine.downLeft(focus);
@@ -494,8 +502,8 @@ test "pushRaw/drainAll: the handleTRY/handleFAIL primitives" {
 
     const a = heap.cons(heap.heap(), 1, 2);
     const b = heap.cons(heap.heap(), 3, 4);
-    spine.pushRaw(a, false);
-    spine.pushRaw(b, true);
+    spine.pushRaw(Value.fromRaw(a), false);
+    spine.pushRaw(Value.fromRaw(b), true);
     try testing.expectEqual(@as(usize, 2), spine.depth());
 
     spine.drainAll();
@@ -509,7 +517,7 @@ test "register/unregister: markAllRoots visits every frame of every registered s
     var outer = Spine.init(testing.allocator, &pool);
     defer outer.deinit(&pool);
     const outer_node = heap.cons(heap.heap(), 1, 2);
-    _ = outer.downLeft(outer_node);
+    _ = outer.downLeft(Value.fromRaw(outer_node));
     outer.register(&roots_head);
     defer outer.unregister(&roots_head);
 
@@ -534,7 +542,7 @@ test "register/unregister: markAllRoots visits every frame of every registered s
         var inner = Spine.init(testing.allocator, &pool);
         defer inner.deinit(&pool);
         const inner_node = heap.cons(heap.heap(), 5, 6);
-        _ = inner.downLeft(inner_node);
+        _ = inner.downLeft(Value.fromRaw(inner_node));
         inner.register(&roots_head);
         defer inner.unregister(&roots_head);
 

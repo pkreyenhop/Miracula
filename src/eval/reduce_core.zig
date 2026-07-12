@@ -36,6 +36,8 @@ const strtab = @import("../graph/strtab.zig");
 const spine = @import("spine.zig");
 const heap_mod = @import("../graph/heap.zig");
 const rt = @import("../runtime/runtime_state.zig");
+const value_mod = @import("../graph/value.zig");
+const Value = value_mod.Value;
 
 /// The interpreter machine word (see `word.Word`).
 pub const Word = i64;
@@ -159,13 +161,17 @@ pub inline fn tlPtr(heap: *Heap, x: Word) *Word {
 // replacement).
 
 /// Descend into the head: push `e` onto the spine.
+///
+/// `ctx.e` itself stays `Word` (Phase 5 step 4 hasn't retyped `ReductionCtx`
+/// yet — only `Spine` has moved onto `Value`, see `spine.zig`'s module doc);
+/// `Value.fromRaw`/`.toRaw()` here are the migration-window boundary.
 pub inline fn downLeft(ctx: *ReductionCtx) void {
-    ctx.e = ctx.spine.downLeft(ctx.e);
+    ctx.e = ctx.spine.downLeft(Value.fromRaw(ctx.e)).toRaw();
 }
 
 /// Descend into the tail of the spine's current top frame.
 pub inline fn downRight(ctx: *ReductionCtx) void {
-    ctx.e = ctx.spine.downRight(ctx.heap, ctx.e);
+    ctx.e = ctx.spine.downRight(ctx.heap, Value.fromRaw(ctx.e)).toRaw();
 }
 
 /// [downRight] guarded by `atArgumentChainBoundary` (replaces the old
@@ -181,7 +187,7 @@ pub inline fn downright(ctx: *ReductionCtx) bool {
 
 /// Ascend out of the head: pop the spine into `e`.
 pub inline fn upLeft(ctx: *ReductionCtx) void {
-    ctx.e = ctx.spine.upLeft(ctx.heap, ctx.e);
+    ctx.e = ctx.spine.upLeft(ctx.heap, Value.fromRaw(ctx.e)).toRaw();
 }
 
 /// [upLeft] guarded by `atArgumentChainBoundary` (replaces the old
@@ -196,7 +202,7 @@ pub inline fn upleft(ctx: *ReductionCtx) bool {
 
 /// Ascend out of the tail of the spine's current (still-top) frame.
 pub inline fn upRight(ctx: *ReductionCtx) void {
-    ctx.e = ctx.spine.upRight(ctx.heap, ctx.e);
+    ctx.e = ctx.spine.upRight(ctx.heap, Value.fromRaw(ctx.e)).toRaw();
 }
 
 /// Pull the next argument off the spine into `a` (unchecked — caller knows it exists).

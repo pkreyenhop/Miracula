@@ -18,6 +18,7 @@ const reduce_rt = @import("../reduce_rt.zig");
 const tu = @import("../../testutil.zig"); // unit-test harness (test builds only)
 const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
+const Value = @import("../../graph/value.zig").Value;
 
 /// `I x -> x` — identity.
 pub fn handleI(ctx: *ReductionCtx) void {
@@ -1166,14 +1167,14 @@ pub fn handleTRY(ctx: *ReductionCtx) void {
     const old_hd_e = ctx.e;
     ctx.e = reduce.tlGet(ctx.heap, old_hd_e);
     reduce.tlSet(ctx.heap, old_hd_e, h_node);
-    ctx.spine.pushRaw(old_hd_e, true);
+    ctx.spine.pushRaw(Value.fromRaw(old_hd_e), true);
     ctx.action = word.ACT_NEXTREDEX;
 }
 
 /// Propagate `FAIL` up the spine, collapsing pending alternatives until a `TRY` catches it.
 pub fn handleFAIL(ctx: *ReductionCtx) void {
     while (!ctx.spine.atArgumentChainBoundary()) {
-        const node = ctx.spine.popNodeOnly().?;
+        const node = ctx.spine.popNodeOnly().?.toRaw();
         reduce.hdSet(ctx.heap, node, word.FAIL);
         reduce.tlSet(ctx.heap, node, 0);
     }
