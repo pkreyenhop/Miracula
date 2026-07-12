@@ -49,8 +49,8 @@ fn cons(heap: *Heap, x: Word, y: Word) Word {
 }
 
 /// Make a type-variable node with index `i`.
-fn mktvar(i: Word) Word {
-    return make(heap_mod.heap(), .TVAR, 0, i);
+fn mktvar(heap: *Heap, i: Word) Word {
+    return make(heap, .TVAR, 0, i);
 }
 
 /// The index of type variable `x`.
@@ -71,8 +71,8 @@ fn hashval(heap: *Heap, x: Word) usize {
 }
 
 /// Allocate a fresh type variable.
-pub fn NTV() Word {
-    const res = mktvar(cs().tvcount);
+pub fn NTV(heap: *Heap) Word {
+    const res = mktvar(heap, cs().tvcount);
     cs().tvcount += 1;
     return res;
 }
@@ -152,7 +152,7 @@ fn lmap(heap: *Heap, tv: Word) Word {
         }
         l = t(heap, l);
     }
-    const new_var = NTV();
+    const new_var = NTV(heap);
     cs().localtvmap = cons(heap, cons(heap, tv, new_var), cs().localtvmap);
     return new_var;
 }
@@ -185,7 +185,7 @@ fn mapup(heap: *Heap, tv_in: Word) Word {
         m = tp(heap, m.*);
     }
     if (m.* == NIL) {
-        m.* = cons(heap, NTV(), NIL);
+        m.* = cons(heap, NTV(heap), NIL);
     }
     return h(heap, m.*);
 }
@@ -215,7 +215,7 @@ fn mapdown(heap: *Heap, tv: Word) Word {
     if (m.* == NIL) {
         m.* = cons(heap, tv, NIL);
     }
-    return mktvar(i);
+    return mktvar(heap, i);
 }
 
 /// Renumber a term's type variables to a compact 1..n.

@@ -368,7 +368,7 @@ pub fn mklexvar(heap: *Heap, i: Word) Word {
     if (ls().lexvar == 0) {
         ls().lexvar = cons(stoId("ls.lexvar"), stoId("ls.lexvar"));
         tp(heap, h(heap, ls().lexvar)).* = cs().ltchar;
-        tp(heap, t(heap, ls().lexvar)).* = genlstatType();
+        tp(heap, t(heap, ls().lexvar)).* = genlstatType(heap);
     }
     return if (i != 0) t(heap, ls().lexvar) else h(heap, ls().lexvar);
 }

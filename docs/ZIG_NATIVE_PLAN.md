@@ -2350,6 +2350,33 @@ subsystems and passed explicitly; the ambient singleton deleted.
    `.method()`-chained ambient style, not the argument-passing style this
    cluster used).
 
+   **`infer.zig`'s dispatch-table cluster, landed (2026-07-08, same
+   session).** `unify.zig`'s `mktvar`/`NTV` took `heap: *Heap` first (their
+   own real callers — 2 in `unify.zig` itself, ~109 in `infer.zig` — needed
+   the same scripted fix once converted); `infer.zig`'s own `cons`/`ap`/
+   `ap2`/`tf`/`tf2`/`tf3`/`tf4`/`lt`/`pairType` followed the same way. One
+   scripted pass across the whole file (insert `heap, ` as the first
+   argument to every bare call to any of these ten names, careful to handle
+   the zero-extra-argument case — `NTV()` → `NTV(heap, )` is invalid Zig
+   syntax, needed a second pass collapsing `NTV(heap, )` → `NTV(heap)`)
+   left only **2 real compile errors**, both genuinely-ambient functions
+   with no receiver in their own call chain: `genlstatType()` (2 callers,
+   both with `heap` in scope — converted to take it) and `tsetup()` (1
+   caller, `compiler/setup.zig`'s `miraSetup`, itself deliberately ambient
+   — `tsetup` stays ambient too, matching `miraSetup`'s own "many far-flung
+   callers, some with no receiver at all" reason). Ambient
+   `heap_mod.heap()` sites in `infer.zig`: ~150 → 1 (just `tsetup`'s single
+   remaining internal read). `zig build test`: all 253 unit tests +
+   integration suite + spine differential/golden corpus green — no
+   dedicated extra stress test needed, since none of these are self-
+   recursive on unbounded runtime data (`tf`/`tf2`/`tf3`/`tf4` bottom out in
+   3-4 static calls each; `NTV()` itself doesn't recurse). `layer_check.py`:
+   0 new violations. `scorecard.sh`: no regression. This was the single
+   largest slice of the whole Phase 4 step 5 effort, and it went through
+   essentially mechanically — the scoping pass's read (every real call site
+   already sits within a `heap`-scoped function) held for all but 2 of
+   ~260 combined call sites across `infer.zig`/`unify.zig`.
+
 **Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
 interrupt flag); DAG check green with empty allowlist; files > 1,000 lines = 0;
 goldens identical.

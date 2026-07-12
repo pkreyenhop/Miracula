@@ -91,8 +91,8 @@ fn tp(heap: *Heap, x: Word) *Word {
 }
 
 /// Allocate a `CONS` cell `(x . y)`.
-fn cons(x: Word, y: Word) Word {
-    return make(heap_mod.heap(), .CONS, x, y);
+fn cons(heap: *Heap, x: Word, y: Word) Word {
+    return make(heap, .CONS, x, y);
 }
 
 const depend = @import("depend.zig");
@@ -259,11 +259,11 @@ fn metaTcheck(heap: *Heap, t_val: Word) errors.MiraError!Word {
         }
         return error.TypeCheckAbort;
     }
-    cs().meta_pending = cons(tn, cs().meta_pending);
+    cs().meta_pending = cons(heap, tn, cs().meta_pending);
     tn = NIL;
     var cur_t = t_val;
     while (isCompoundType(heap, cur_t)) {
-        tn = cons(t(heap, cur_t), tn);
+        tn = cons(heap, t(heap, cur_t), tn);
         cur_t = h(heap, cur_t);
     }
     const res = try metaTcheck(heap, apSubst(heap, tInfo(heap, cur_t), tn));
@@ -288,8 +288,8 @@ const clearSubst = unify_mod.clearSubst;
 const hashsize: usize = 512;
 
 /// Allocate an application cell `(x y)`.
-fn ap(x: Word, y: Word) Word {
-    return make(heap_mod.heap(), .AP, x, y);
+fn ap(heap: *Heap, x: Word, y: Word) Word {
+    return make(heap, .AP, x, y);
 }
 
 /// The value (tail) of a private-name node.
@@ -401,7 +401,7 @@ fn compDeps(heap: *Heap, n: Word) errors.MiraError!void {
         }
         r = t(heap, r);
     }
-    cs().R = cons(cons(n, rhs), cs().R);
+    cs().R = cons(heap, cons(heap, n, rhs), cs().R);
 }
 
 const algebraic_t = word.algebraic_t;
@@ -464,7 +464,7 @@ pub fn cyclicAbstr(heap: *Heap, atnames: Word) Word {
     var x = atnames;
     var y = NIL;
     while (x != NIL) {
-        y = ap(y, tInfo(heap, h(heap, x)));
+        y = ap(heap, y, tInfo(heap, h(heap, x)));
         x = t(heap, x);
     }
     x = atnames;
@@ -505,7 +505,7 @@ pub fn repT1(heap: *Heap, T: Word, L: Word) Word {
         if (a != t(heap, t1)) {
             changed = true;
         }
-        args = cons(a, args);
+        args = cons(heap, a, args);
         t1 = h(heap, t1);
     }
     if (member(heap, L, t1) != 0) {
@@ -515,7 +515,7 @@ pub fn repT1(heap: *Heap, T: Word, L: Word) Word {
         return T;
     }
     while (args != NIL) {
-        t1 = ap(t1, h(heap, args));
+        t1 = ap(heap, t1, h(heap, args));
         args = t(heap, args);
     }
     return t1;
@@ -604,14 +604,14 @@ fn abstrMcheck(heap: *Heap, tabstrs_in: Word) errors.MiraError!void {
         while (sigids != NIL) {
             const t_val = idType(heap, h(heap, sigids));
             if (t_val == undef_t) {
-                rtypes = cons(undef_t, rtypes);
+                rtypes = cons(heap, undef_t, rtypes);
             } else {
-                rtypes = cons(try metaTcheck(heap, t_val), rtypes);
+                rtypes = cons(heap, try metaTcheck(heap, t_val), rtypes);
             }
             sigids = t(heap, sigids);
         }
         rtypes = reverse(rtypes);
-        hp(heap, h(heap, tabstrs)).* = cons(h(heap, h(heap, tabstrs)), rtypes);
+        hp(heap, h(heap, tabstrs)).* = cons(heap, h(heap, h(heap, tabstrs)), rtypes);
         tabstrs = t(heap, tabstrs);
     }
 }
@@ -720,9 +720,9 @@ pub fn checkfbs(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
 }
 
 /// Build and cache the `filestat` result type.
-pub fn genlstatType() Word {
+pub fn genlstatType(heap: *Heap) Word {
     if (cs().filestat_t == 0) {
-        cs().filestat_t = tf(cs().ltchar, pairType(pairType(num_t, num_t), num_t));
+        cs().filestat_t = tf(heap, cs().ltchar, pairType(heap, pairType(heap, num_t, num_t), num_t));
     }
     return cs().filestat_t;
 }
@@ -735,38 +735,38 @@ fn isBoundType(heap: *Heap, type_node: Word) bool {
 }
 
 /// Allocate `((x y) z)`.
-fn ap2(x: Word, y: Word, z: Word) Word {
-    return ap(ap(x, y), z);
+fn ap2(heap: *Heap, x: Word, y: Word, z: Word) Word {
+    return ap(heap, ap(heap, x, y), z);
 }
 
 /// Build a function type `a -> b`.
-fn tf(a: Word, b: Word) Word {
-    return ap2(arrow_t, a, b);
+fn tf(heap: *Heap, a: Word, b: Word) Word {
+    return ap2(heap, arrow_t, a, b);
 }
 
 /// Build the function type `a -> b -> c`.
-fn tf2(a: Word, b: Word, c_param: Word) Word {
-    return tf(a, tf(b, c_param));
+fn tf2(heap: *Heap, a: Word, b: Word, c_param: Word) Word {
+    return tf(heap, a, tf(heap, b, c_param));
 }
 
 /// Build the function type `a -> b -> c -> d`.
-fn tf3(a: Word, b: Word, c_param: Word, d: Word) Word {
-    return tf(a, tf2(b, c_param, d));
+fn tf3(heap: *Heap, a: Word, b: Word, c_param: Word, d: Word) Word {
+    return tf(heap, a, tf2(heap, b, c_param, d));
 }
 
 /// Build the function type `a -> b -> c -> d -> e`.
-fn tf4(a: Word, b: Word, c_param: Word, d: Word, e: Word) Word {
-    return tf(a, tf3(b, c_param, d, e));
+fn tf4(heap: *Heap, a: Word, b: Word, c_param: Word, d: Word, e: Word) Word {
+    return tf(heap, a, tf3(heap, b, c_param, d, e));
 }
 
 /// Build the list type `[a]`.
-fn lt(a: Word) Word {
-    return ap(list_t, a);
+fn lt(heap: *Heap, a: Word) Word {
+    return ap(heap, list_t, a);
 }
 
 /// Build a pair (tuple) type `(x, y)`.
-fn pairType(x: Word, y: Word) Word {
-    return ap2(comma_t, x, ap2(comma_t, y, void_t));
+fn pairType(heap: *Heap, x: Word, y: Word) Word {
+    return ap2(heap, comma_t, x, ap2(heap, comma_t, y, void_t));
 }
 
 /// The left-hand side (head) of a definition cell `d`.
@@ -795,31 +795,31 @@ fn conforms(heap: *Heap, p: Word, t_val: Word, e_in: Word, ngt: Word) errors.Mir
         return -1;
     }
     if (getTag(heap, p) == .ID and !isConstructor(heap, p)) {
-        return cons(cons(p, t_val), e);
+        return cons(heap, cons(heap, p, t_val), e);
     }
     if (h(heap, p) == CONST) {
         _ = unify(heap, try etype(heap, t(heap, p), e, ngt), t_val);
         return e;
     }
     if (getTag(heap, p) == .CONS) {
-        const at = NTV();
-        if (unify(heap, lt(at), t_val) == 0) {
+        const at = NTV(heap);
+        if (unify(heap, lt(heap, at), t_val) == 0) {
             return -1;
         }
         return try conforms(heap, t(heap, p), t_val, try conforms(heap, h(heap, p), at, e, ngt), ngt);
     }
     if (getTag(heap, p) == .TCONS) {
-        const at = NTV();
-        const bt = NTV();
-        if (unify(heap, ap2(comma_t, at, bt), t_val) == 0) {
+        const at = NTV(heap);
+        const bt = NTV(heap);
+        if (unify(heap, ap2(heap, comma_t, at, bt), t_val) == 0) {
             return -1;
         }
         return try conforms(heap, t(heap, p), bt, try conforms(heap, h(heap, p), at, e, ngt), ngt);
     }
     if (getTag(heap, p) == .PAIR) {
-        const at = NTV();
-        const bt = NTV();
-        if (unify(heap, ap2(comma_t, at, ap2(comma_t, bt, void_t)), t_val) == 0) {
+        const at = NTV(heap);
+        const bt = NTV(heap);
+        if (unify(heap, ap2(heap, comma_t, at, ap2(heap, comma_t, bt, void_t)), t_val) == 0) {
             return -1;
         }
         return try conforms(heap, t(heap, p), bt, try conforms(heap, h(heap, p), at, e, ngt), ngt);
@@ -835,7 +835,7 @@ fn conforms(heap: *Heap, p: Word, t_val: Word, e_in: Word, ngt: Word) errors.Mir
         var pt: Word = undefined;
         var cur_p = p;
         while (getTag(heap, cur_p) == .AP) {
-            p_args = cons(t(heap, cur_p), p_args);
+            p_args = cons(heap, t(heap, cur_p), p_args);
             cur_p = h(heap, cur_p);
         }
         if (!isConstructor(heap, cur_p)) {
@@ -873,24 +873,24 @@ fn etype(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
         .CONS => return etypeCons(heap, x, env, ngt),
         .LEXER => return etypeLexer(heap, x, env, ngt),
         .TCONS => {
-            return ap2(comma_t, try etype(heap, h(heap, x), env, ngt), try etype(heap, t(heap, x), env, ngt));
+            return ap2(heap, comma_t, try etype(heap, h(heap, x), env, ngt), try etype(heap, t(heap, x), env, ngt));
         },
         .PAIR => {
-            return ap2(comma_t, try etype(heap, h(heap, x), env, ngt), ap2(comma_t, try etype(heap, t(heap, x), env, ngt), void_t));
+            return ap2(heap, comma_t, try etype(heap, h(heap, x), env, ngt), ap2(heap, comma_t, try etype(heap, t(heap, x), env, ngt), void_t));
         },
         .DOUBLE, .INT => {
             return num_t;
         },
         .ID => return etypeId(heap, x, env, ngt),
         .LAMBDA => {
-            const a = NTV();
-            const b = NTV();
-            const d = cons(a, ngt);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            const d = cons(heap, a, ngt);
             const c_local = try conforms(heap, h(heap, x), a, env, d);
             if (c_local == -1 or unify(heap, b, try etype(heap, t(heap, x), c_local, d)) == 0) {
-                return NTV();
+                return NTV(heap);
             }
-            return tf(a, b);
+            return tf(heap, a, b);
         },
         .LET => return etypeLet(heap, x, env, ngt),
         .LETREC => return etypeLetrec(heap, x, env, ngt),
@@ -905,16 +905,16 @@ fn etype(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
         .STARTREADVALS => {
             if (t(heap, x) == 0) {
                 hp(heap, x).* = cs().lineptr;
-                tp(heap, x).* = NTV();
-                cs().showchain = cons(x, cs().showchain);
+                tp(heap, x).* = NTV(heap);
+                cs().showchain = cons(heap, x, cs().showchain);
             }
-            return tf(cs().ltchar, lt(t(heap, x)));
+            return tf(heap, cs().ltchar, lt(heap, t(heap, x)));
         },
         .SHOW => {
             hp(heap, x).* = cs().lineptr;
-            cs().showchain = cons(x, cs().showchain);
-            tp(heap, x).* = NTV();
-            return tf(t(heap, x), cs().ltchar);
+            cs().showchain = cons(heap, x, cs().showchain);
+            tp(heap, x).* = NTV(heap);
+            return tf(heap, t(heap, x), cs().ltchar);
         },
         .SHARE => {
             if (t(heap, x) == undef_t) {
@@ -927,7 +927,7 @@ fn etype(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
             }
             if (t(heap, x) == wrong_t) {
                 cs().TYPERRS += 1;
-                return NTV();
+                return NTV(heap);
             }
             return t(heap, x);
         },
@@ -953,12 +953,12 @@ fn etype(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
 /// (with a special-cased message for grammar `%include` application errors).
 fn etypeAp(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
     if (h(heap, x) == word.BADCASE or h(heap, x) == word.CONFERROR) {
-        return NTV();
+        return NTV(heap);
     }
     const ft_val = try etype(heap, h(heap, x), env, ngt);
     const at = try etype(heap, t(heap, x), env, ngt);
-    const rt_ty = NTV();
-    if (unify1(heap, ft_val, ap2(arrow_t, at, rt_ty)) == 0) {
+    const rt_ty = NTV(heap);
+    if (unify1(heap, ft_val, ap2(heap, arrow_t, at, rt_ty)) == 0) {
         const ft = subst(heap, ft_val);
         if (isArrowType(heap, ft)) {
             if (getTag(heap, h(heap, x)) == .AP and h(heap, h(heap, x)) == word.G_ERROR) {
@@ -969,7 +969,7 @@ fn etypeAp(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
         } else {
             typeError(heap, "apply", "to", ft, at);
         }
-        return NTV();
+        return NTV(heap);
     }
     return rt_ty;
 }
@@ -979,8 +979,8 @@ fn etypeAp(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
 /// type, reporting the first mismatch found (checked tail-first, matching the
 /// original C reducer's error-reporting order).
 fn etypeCons(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
-    const elem_type = NTV();
-    const list_type = lt(elem_type);
+    const elem_type = NTV(heap);
+    const list_type = lt(heap, elem_type);
 
     // 1. Find the tail of the CONS chain
     var cur = x;
@@ -999,7 +999,7 @@ fn etypeCons(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
         }
         const ht = try etype(heap, h(heap, last_cons), env, ngt);
         typeError(heap, "cons", "to", ht, tail_type);
-        return NTV();
+        return NTV(heap);
     }
 
     // 3. Type check each head in the chain
@@ -1009,7 +1009,7 @@ fn etypeCons(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
         if (unify1(heap, ht, elem_type) == 0) {
             const rt_ty = try etype(heap, t(heap, cur), env, ngt);
             typeError(heap, "cons", "to", ht, rt_ty);
-            return NTV();
+            return NTV(heap);
         }
         cur = t(heap, cur);
     }
@@ -1034,11 +1034,11 @@ fn etypeLexer(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word 
         if (unify1(heap, a, b) == 0) {
             typeError7(heap, a, b);
             cs().lineptr = hold;
-            return NTV();
+            return NTV(heap);
         }
     }
     cs().lineptr = hold;
-    return tf(cs().ltchar, lt(a));
+    return tf(heap, cs().ltchar, lt(heap, a));
 }
 
 /// [etype] for a `.ID` node: looks it up in the local type environment first
@@ -1072,10 +1072,10 @@ fn etypeId(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
             _ = word.print("undefined name \"{s}\"\n", .{getId(heap, x)});
             cs().ND = add1(heap, x, cs().ND);
         }
-        return NTV();
+        return NTV(heap);
     }
     if (a == wrong_t) {
-        return NTV();
+        return NTV(heap);
     }
     return instantiate(heap, if (cs().ATNAMES != 0) repT(heap, a, cs().ATNAMES) else a);
 }
@@ -1085,16 +1085,16 @@ fn etypeId(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
 fn etypeLet(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
     var e: Word = undefined;
     const def = h(heap, x);
-    const a = NTV();
-    e = try conforms(heap, dlhs(heap, def), a, env, cons(a, ngt));
-    cs().current_id = cons(dlhs(heap, def), cs().current_id);
+    const a = NTV(heap);
+    e = try conforms(heap, dlhs(heap, def), a, env, cons(heap, a, ngt));
+    cs().current_id = cons(heap, dlhs(heap, def), cs().current_id);
     const c_local = cs().lineptr;
     cs().lineptr = dval(heap, def);
     const unified = unify(heap, a, try etype(heap, dval(heap, def), env, ngt));
     cs().lineptr = c_local;
     cs().current_id = t(heap, cs().current_id);
     if (e == -1 or unified == 0) {
-        return NTV();
+        return NTV(heap);
     }
     return try etype(heap, t(heap, x), e, ngt);
 }
@@ -1112,25 +1112,25 @@ fn etypeLetrec(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word
     var cur_d = h(heap, x);
     while (cur_d != NIL) {
         if (dtyp(heap, h(heap, cur_d)) == undef_t) {
-            a = cons(h(heap, cur_d), a);
-            const b = NTV();
+            a = cons(heap, h(heap, cur_d), a);
+            const b = NTV(heap);
             hp(heap, t(heap, h(heap, cur_d))).* = b;
-            c_local = cons(b, c_local);
+            c_local = cons(heap, b, c_local);
             e = try conforms(heap, dlhs(heap, h(heap, cur_d)), b, e, c_local);
         } else {
             hp(heap, t(heap, h(heap, cur_d))).* = try metaTcheck(heap, dtyp(heap, h(heap, cur_d)));
-            s = cons(h(heap, cur_d), s);
-            e = cons(cons(dlhs(heap, h(heap, cur_d)), dtyp(heap, h(heap, cur_d))), e);
+            s = cons(heap, h(heap, cur_d), s);
+            e = cons(heap, cons(heap, dlhs(heap, h(heap, cur_d)), dtyp(heap, h(heap, cur_d))), e);
         }
         cur_d = t(heap, cur_d);
     }
     if (e == -1) {
-        return NTV();
+        return NTV(heap);
     }
     var success = true;
     var cur_a = a;
     while (cur_a != NIL) {
-        cs().current_id = cons(dlhs(heap, h(heap, cur_a)), cs().current_id);
+        cs().current_id = cons(heap, dlhs(heap, h(heap, cur_a)), cs().current_id);
         const hold = cs().lineptr;
         cs().lineptr = dval(heap, h(heap, cur_a));
         if (unify(heap, dtyp(heap, h(heap, cur_a)), try etype(heap, dval(heap, h(heap, cur_a)), e, c_local)) == 0) {
@@ -1142,7 +1142,7 @@ fn etypeLetrec(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word
     }
     var cur_s = s;
     while (cur_s != NIL) {
-        cs().current_id = cons(dlhs(heap, h(heap, cur_s)), cs().current_id);
+        cs().current_id = cons(heap, dlhs(heap, h(heap, cur_s)), cs().current_id);
         const hold = cs().lineptr;
         cs().lineptr = dval(heap, h(heap, cur_s));
         const ety = try etype(heap, dval(heap, h(heap, cur_s)), e, ngt);
@@ -1155,7 +1155,7 @@ fn etypeLetrec(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word
         cur_s = t(heap, cur_s);
     }
     if (!success) {
-        return NTV();
+        return NTV(heap);
     }
     return try etype(heap, t(heap, x), e, ngt);
 }
@@ -1165,7 +1165,7 @@ fn etypeLetrec(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word
 /// the first alternative that disagrees.
 fn etypeTries(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
     const hold = cs().lineptr;
-    const a = NTV();
+    const a = NTV(heap);
     var cur_x = t(heap, x);
     while (cur_x != NIL) {
         cs().lineptr = h(heap, h(heap, cur_x));
@@ -1176,14 +1176,14 @@ fn etypeTries(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word 
     }
     cs().lineptr = hold;
     if (cur_x != NIL) {
-        return NTV();
+        return NTV(heap);
     }
     return a;
 }
 
 /// [etype] for an `.ATOM` node: single-byte atoms are characters; otherwise
 /// this is one of the built-in SK-family combinators or primitive operators,
-/// each with a fixed (possibly polymorphic, via fresh `NTV()` type
+/// each with a fixed (possibly polymorphic, via fresh `NTV(heap)` type
 /// variables) type -- effectively a static type table for the whole
 /// combinator/operator vocabulary.
 fn etypeAtom(heap: *Heap, x: Word) Word {
@@ -1192,83 +1192,83 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
     }
     switch (x) {
         word.S => {
-            const a = NTV();
-            const b = NTV();
-            const c_local = NTV();
-            const d = tf3(tf2(a, b, c_local), tf(a, b), a, c_local);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            const c_local = NTV(heap);
+            const d = tf3(heap, tf2(heap, a, b, c_local), tf(heap, a, b), a, c_local);
             return d;
         },
         word.K => {
-            const a = NTV();
-            const b = NTV();
-            return tf2(a, b, a);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            return tf2(heap, a, b, a);
         },
         word.Y => {
-            const a = NTV();
-            return tf(tf(a, a), a);
+            const a = NTV(heap);
+            return tf(heap, tf(heap, a, a), a);
         },
         word.C => {
-            const a = NTV();
-            const b = NTV();
-            const c_local = NTV();
-            return tf3(tf2(a, b, c_local), b, a, c_local);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            const c_local = NTV(heap);
+            return tf3(heap, tf2(heap, a, b, c_local), b, a, c_local);
         },
         word.B => {
-            const a = NTV();
-            const b = NTV();
-            const c_local = NTV();
-            return tf3(tf(a, b), tf(c_local, a), c_local, b);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            const c_local = NTV(heap);
+            return tf3(heap, tf(heap, a, b), tf(heap, c_local, a), c_local, b);
         },
         word.FORCE, word.G_UNIT, word.G_RULE, word.I => {
-            const a = NTV();
-            return tf(a, a);
+            const a = NTV(heap);
+            return tf(heap, a, a);
         },
         word.G_ZERO => {
-            return NTV();
+            return NTV(heap);
         },
         word.HD => {
-            const a = NTV();
-            return tf(lt(a), a);
+            const a = NTV(heap);
+            return tf(heap, lt(heap, a), a);
         },
         word.TL => {
-            const a = lt(NTV());
-            return tf(a, a);
+            const a = lt(heap, NTV(heap));
+            return tf(heap, a, a);
         },
         word.BODY => {
-            const a = NTV();
-            const b = NTV();
-            return tf(ap(a, b), a);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            return tf(heap, ap(heap, a, b), a);
         },
         word.LAST => {
-            const a = NTV();
-            const b = NTV();
-            return tf(ap(a, b), b);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            return tf(heap, ap(heap, a, b), b);
         },
         word.S_p => {
-            const a = NTV();
-            const b = NTV();
-            const c_local = lt(b);
-            return tf3(tf(a, b), tf(a, c_local), a, c_local);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            const c_local = lt(heap, b);
+            return tf3(heap, tf(heap, a, b), tf(heap, a, c_local), a, c_local);
         },
         word.U, word.U_ => {
-            const a = NTV();
-            const b = NTV();
-            const c_local = lt(a);
-            return tf2(tf2(a, c_local, b), c_local, b);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            const c_local = lt(heap, a);
+            return tf2(heap, tf2(heap, a, c_local, b), c_local, b);
         },
         word.Uf => {
-            const a = NTV();
-            const b = NTV();
-            const c_local = NTV();
-            return tf2(tf2(tf(a, b), a, c_local), b, c_local);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            const c_local = NTV(heap);
+            return tf2(heap, tf2(heap, tf(heap, a, b), a, c_local), b, c_local);
         },
         word.COND => {
-            const a = NTV();
-            return tf3(bool_t, a, a, a);
+            const a = NTV(heap);
+            return tf3(heap, bool_t, a, a, a);
         },
         word.EQ, word.GR, word.GRE, word.NEQ => {
-            const a = NTV();
-            return tf2(a, a, bool_t);
+            const a = NTV(heap);
+            return tf2(heap, a, a, bool_t);
         },
         word.NEG => {
             return cs().tfnum;
@@ -1280,8 +1280,8 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
             return cs().tfbool;
         },
         word.MERGE, word.APPEND => {
-            const a = lt(NTV());
-            return tf2(a, a, a);
+            const a = lt(heap, NTV(heap));
+            return tf2(heap, a, a, a);
         },
         word.STEP => {
             return cs().tstep;
@@ -1290,149 +1290,149 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
             return cs().tstepuntil;
         },
         word.MAP => {
-            const a = NTV();
-            const b = NTV();
-            return tf2(tf(a, b), lt(a), lt(b));
+            const a = NTV(heap);
+            const b = NTV(heap);
+            return tf2(heap, tf(heap, a, b), lt(heap, a), lt(heap, b));
         },
         word.FLATMAP => {
-            const a = NTV();
-            const b = lt(NTV());
-            return tf2(tf(a, b), lt(a), b);
+            const a = NTV(heap);
+            const b = lt(heap, NTV(heap));
+            return tf2(heap, tf(heap, a, b), lt(heap, a), b);
         },
         word.FILTER => {
-            const a = NTV();
-            const b = lt(a);
-            return tf2(tf(a, bool_t), b, b);
+            const a = NTV(heap);
+            const b = lt(heap, a);
+            return tf2(heap, tf(heap, a, bool_t), b, b);
         },
         word.ZIP => {
-            const a = NTV();
-            const b = NTV();
-            return tf2(lt(a), lt(b), lt(pairType(a, b)));
+            const a = NTV(heap);
+            const b = NTV(heap);
+            return tf2(heap, lt(heap, a), lt(heap, b), lt(heap, pairType(heap, a, b)));
         },
         word.FOLDL => {
-            const a = NTV();
-            const b = NTV();
-            return tf3(tf2(a, b, a), a, lt(b), a);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            return tf3(heap, tf2(heap, a, b, a), a, lt(heap, b), a);
         },
         word.FOLDL1 => {
-            const a = NTV();
-            return tf2(tf2(a, a, a), lt(a), a);
+            const a = NTV(heap);
+            return tf2(heap, tf2(heap, a, a, a), lt(heap, a), a);
         },
         word.LIST_LAST => {
-            const a = NTV();
-            return tf(lt(a), a);
+            const a = NTV(heap);
+            return tf(heap, lt(heap, a), a);
         },
         word.FOLDR => {
-            const a = NTV();
-            const b = NTV();
-            return tf3(tf2(a, b, b), b, lt(a), b);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            return tf3(heap, tf2(heap, a, b, b), b, lt(heap, a), b);
         },
         word.MATCHINT, word.MATCH => {
-            const a = NTV();
-            const b = NTV();
-            return tf3(a, b, a, b);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            return tf3(heap, a, b, a, b);
         },
         word.TRY => {
-            const a = NTV();
-            return tf2(a, a, a);
+            const a = NTV(heap);
+            return tf2(heap, a, a, a);
         },
         word.DROP, word.TAKE => {
-            const a = lt(NTV());
-            return tf2(num_t, a, a);
+            const a = lt(heap, NTV(heap));
+            return tf2(heap, num_t, a, a);
         },
         word.SUBSCRIPT => {
-            const a = NTV();
-            return tf2(num_t, lt(a), a);
+            const a = NTV(heap);
+            return tf2(heap, num_t, lt(heap, a), a);
         },
         word.P => {
-            const a = NTV();
-            const b = lt(a);
-            return tf2(a, b, b);
+            const a = NTV(heap);
+            const b = lt(heap, a);
+            return tf2(heap, a, b, b);
         },
         word.B_p => {
-            const a = NTV();
-            const b = NTV();
-            const c_local = lt(a);
-            return tf3(a, tf(b, c_local), b, c_local);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            const c_local = lt(heap, a);
+            return tf3(heap, a, tf(heap, b, c_local), b, c_local);
         },
         word.C_p => {
-            const a = NTV();
-            const b = NTV();
-            const c_local = lt(b);
-            return tf3(tf(a, b), c_local, a, c_local);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            const c_local = lt(heap, b);
+            return tf3(heap, tf(heap, a, b), c_local, a, c_local);
         },
         word.S1 => {
-            const a = NTV();
-            const b = NTV();
-            const c_local = NTV();
-            const d = NTV();
-            return tf4(tf2(a, b, c_local), tf(d, a), tf(d, b), d, c_local);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            const c_local = NTV(heap);
+            const d = NTV(heap);
+            return tf4(heap, tf2(heap, a, b, c_local), tf(heap, d, a), tf(heap, d, b), d, c_local);
         },
         word.B1 => {
-            const a = NTV();
-            const b = NTV();
-            const c_local = NTV();
-            const d = NTV();
-            return tf4(tf(a, b), tf(c_local, a), tf(d, c_local), d, b);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            const c_local = NTV(heap);
+            const d = NTV(heap);
+            return tf4(heap, tf(heap, a, b), tf(heap, c_local, a), tf(heap, d, c_local), d, b);
         },
         word.C1 => {
-            const a = NTV();
-            const b = NTV();
-            const c_local = NTV();
-            const d = NTV();
-            return tf4(tf2(a, b, c_local), tf(d, a), b, d, c_local);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            const c_local = NTV(heap);
+            const d = NTV(heap);
+            return tf4(heap, tf2(heap, a, b, c_local), tf(heap, d, a), b, d, c_local);
         },
         word.SEQ => {
-            const a = NTV();
-            const b = NTV();
-            return tf2(a, b, b);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            return tf2(heap, a, b, b);
         },
         word.ITERATE1, word.ITERATE => {
-            const a = NTV();
-            return tf2(tf(a, a), a, lt(a));
+            const a = NTV(heap);
+            return tf2(heap, tf(heap, a, a), a, lt(heap, a));
         },
         word.EXEC => {
             if (cs().exec_t == 0) {
-                const a = ap2(comma_t, cs().ltchar, ap2(comma_t, num_t, void_t));
-                cs().exec_t = tf(cs().ltchar, ap2(comma_t, cs().ltchar, a));
+                const a = ap2(heap, comma_t, cs().ltchar, ap2(heap, comma_t, num_t, void_t));
+                cs().exec_t = tf(heap, cs().ltchar, ap2(heap, comma_t, cs().ltchar, a));
             }
             return cs().exec_t;
         },
         word.READBIN, word.READ => {
             if (cs().read_t == 0) {
-                cs().read_t = tf(char_t, cs().ltchar);
+                cs().read_t = tf(heap, char_t, cs().ltchar);
             }
             return cs().read_t;
         },
         word.FILESTAT => {
-            return genlstatType();
+            return genlstatType(heap);
         },
         word.FILEMODE, word.GETENV, word.NB_STARTREAD, word.STARTREADBIN, word.STARTREAD => {
             return cs().tfstrstr;
         },
         word.GETARGS => {
-            return tf(char_t, lt(cs().ltchar));
+            return tf(heap, char_t, lt(heap, cs().ltchar));
         },
         word.SHOWHEX, word.SHOWOCT, word.SHOWNUM => {
-            return tf(num_t, cs().ltchar);
+            return tf(heap, num_t, cs().ltchar);
         },
         word.SHOWFLOAT, word.SHOWSCALED => {
-            return tf2(num_t, num_t, cs().ltchar);
+            return tf2(heap, num_t, num_t, cs().ltchar);
         },
         word.NUMVAL => {
-            return tf(cs().ltchar, num_t);
+            return tf(heap, cs().ltchar, num_t);
         },
         word.INTEGER => {
-            return tf(num_t, bool_t);
+            return tf(heap, num_t, bool_t);
         },
         word.CODE => {
-            return tf(char_t, num_t);
+            return tf(heap, char_t, num_t);
         },
         word.DECODE => {
-            return tf(num_t, char_t);
+            return tf(heap, num_t, char_t);
         },
         word.LENGTH => {
-            return tf(lt(NTV()), num_t);
+            return tf(heap, lt(heap, NTV(heap)), num_t);
         },
         word.ENTIER_FN, word.ARCTAN_FN, word.EXP_FN, word.SIN_FN, word.COS_FN, word.SQRT_FN, word.LOG_FN, word.LOG10_FN => {
             return cs().tfnumnum;
@@ -1444,32 +1444,32 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
             return bool_t;
         },
         NIL => {
-            const a = lt(NTV());
+            const a = lt(heap, NTV(heap));
             return a;
         },
         word.NILS => {
             return cs().ltchar;
         },
         word.MKSTRICT => {
-            const a = NTV();
-            return tf(char_t, tf(a, a));
+            const a = NTV(heap);
+            return tf(heap, char_t, tf(heap, a, a));
         },
         word.G_ALT => {
-            const a = NTV();
-            return tf2(a, a, a);
+            const a = NTV(heap);
+            return tf2(heap, a, a, a);
         },
         word.G_ERROR => {
-            const a = NTV();
-            return tf2(a, tf(lt(cs().bnf_t), a), a);
+            const a = NTV(heap);
+            return tf2(heap, a, tf(heap, lt(heap, cs().bnf_t), a), a);
         },
         word.G_OPT, word.G_STAR => {
-            const a = NTV();
-            return tf(a, lt(a));
+            const a = NTV(heap);
+            return tf(heap, a, lt(heap, a));
         },
         word.G_FBSTAR => {
-            const a = NTV();
-            const b = tf(a, a);
-            return tf(b, b);
+            const a = NTV(heap);
+            const b = tf(heap, a, a);
+            return tf(heap, b, b);
         },
         word.G_SYMB => {
             return cs().tfstrstr;
@@ -1478,21 +1478,21 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
             return cs().ltchar;
         },
         word.G_SUCHTHAT => {
-            return tf(tf(cs().ltchar, bool_t), cs().ltchar);
+            return tf(heap, tf(heap, cs().ltchar, bool_t), cs().ltchar);
         },
         word.G_END => {
-            return lt(cs().bnf_t);
+            return lt(heap, cs().bnf_t);
         },
         word.G_STATE => {
             return t(heap, h(heap, t(heap, cs().bnf_t)));
         },
         word.G_SEQ => {
-            const a = NTV();
-            const b = NTV();
-            return tf2(a, tf(a, b), b);
+            const a = NTV(heap);
+            const b = NTV(heap);
+            return tf2(heap, a, tf(heap, a, b), b);
         },
         word.G_CLOSE => {
-            const a = NTV();
+            const a = NTV(heap);
             if (script_store.store().col_fn != 0) {
                 if (script_store.store().col_fn == -1) {
                     cs().TYPERRS += 1;
@@ -1500,16 +1500,16 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
                     checkcolfn(heap);
                 }
             }
-            return tf3(cs().ltchar, a, lt(cs().bnf_t), a);
+            return tf3(heap, cs().ltchar, a, lt(heap, cs().bnf_t), a);
         },
         word.OFFSIDE => {
             return cs().ltchar;
         },
         word.FAIL, word.CONFERROR, word.BADCASE, UNDEF => {
-            return NTV();
+            return NTV(heap);
         },
         word.ERROR => {
-            return tf(cs().ltchar, NTV());
+            return tf(heap, cs().ltchar, NTV(heap));
         },
         else => {
             _ = word.print("do not know type of ", .{});
@@ -1523,7 +1523,7 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
 /// Type-check the grammar's collector function (`col_fn`).
 pub fn checkcolfn(heap: *Heap) void {
     const t_val = idType(heap, script_store.store().col_fn);
-    const f = tf(t(heap, h(heap, t(heap, cs().bnf_t))), num_t);
+    const f = tf(heap, t(heap, h(heap, t(heap, cs().bnf_t))), num_t);
     if (t_val == undef_t or t_val == wrong_t or subsumes(heap, instantiate(heap, t_val), f) != 0) {
         script_store.store().col_fn = 0;
         return;
@@ -1553,7 +1553,7 @@ pub fn genbnft(heap: *Heap) void {
     } else {
         cs().bnf_t = void_t;
     }
-    cs().bnf_t = ap2(comma_t, cs().ltchar, ap2(comma_t, cs().bnf_t, void_t));
+    cs().bnf_t = ap2(heap, comma_t, cs().ltchar, ap2(heap, comma_t, cs().bnf_t, void_t));
 }
 
 /// Type-check `x`, returning its inferred type.
@@ -1602,8 +1602,8 @@ fn inferType(heap: *Heap, x: Word) void {
         var oldte: Word = undefined;
         var ngt = NIL;
         while (x1 != NIL) {
-            ngt = cons(NTV(), ngt);
-            tp(heap, h(heap, h(heap, x1))).* = ap(bind_t, h(heap, ngt));
+            ngt = cons(heap, NTV(heap), ngt);
+            tp(heap, h(heap, h(heap, x1))).* = ap(heap, bind_t, h(heap, ngt));
             x1 = t(heap, x1);
         }
         x1 = x;
@@ -1632,15 +1632,16 @@ fn inferType(heap: *Heap, x: Word) void {
 
 /// Initialise the type-system state (base types and counters).
 pub fn tsetup() void {
-    cs().tfnum = tf(num_t, num_t);
-    cs().tfbool = tf(bool_t, bool_t);
-    cs().tfnum2 = tf(num_t, cs().tfnum);
-    cs().tfbool2 = tf(bool_t, cs().tfbool);
-    cs().ltchar = lt(char_t);
-    cs().tfstrstr = tf(cs().ltchar, cs().ltchar);
-    cs().tfnumnum = tf(num_t, num_t);
-    cs().tstep = tf2(num_t, num_t, lt(num_t));
-    cs().tstepuntil = tf(num_t, cs().tstep);
+    const heap = heap_mod.heap();
+    cs().tfnum = tf(heap, num_t, num_t);
+    cs().tfbool = tf(heap, bool_t, bool_t);
+    cs().tfnum2 = tf(heap, num_t, cs().tfnum);
+    cs().tfbool2 = tf(heap, bool_t, cs().tfbool);
+    cs().ltchar = lt(heap, char_t);
+    cs().tfstrstr = tf(heap, cs().ltchar, cs().ltchar);
+    cs().tfnumnum = tf(heap, num_t, num_t);
+    cs().tstep = tf2(heap, num_t, num_t, lt(heap, num_t));
+    cs().tstepuntil = tf(heap, num_t, cs().tstep);
 }
 
 /// Type-check every definition in the current script.
