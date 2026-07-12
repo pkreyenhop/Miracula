@@ -3155,6 +3155,35 @@ code that was about to move twice.
    Fibonacci(30)=28,907,260, Prime Sieve(500)=671,945);
    `layer_check.py`/`scorecard.sh --check` both clean, no regression.
 
+   **Front-end cluster re-measured after steps 4e/4f (2026-07-13):**
+   the same 11 files from the step-4-scoping note, re-measured:
+   `lower.zig` 1761L/48 pub fns, `infer.zig` 1709/25, `unify.zig` 322/19,
+   `type_errors.zig` 533/22, `depend.zig` 559/14 (**migrated**),
+   `symbols.zig` 339/0, `match.zig` 201/3 (**migrated**),
+   `codegen.zig` 825/2, `module_loader.zig` 716/2, `setup.zig` 264/8,
+   `graph/dump.zig` 1176/22 — 8,405 lines/165 pub fns total, essentially
+   unchanged from the original 8,306/~164 measurement (the small growth is
+   doc comments plus the private `Raw`-twin helpers steps 4e/4f added,
+   which don't count as `pub`). 760 lines/17 pub fns (~9%, match.zig +
+   depend.zig) are now `Value`-typed at their public boundary; **7,645
+   lines/148 pub fns across 9 files remain.** `scorecard.sh --check`
+   confirms no tracked metric regressed — no baseline bump needed this
+   round. Next-slice candidates checked and rejected: `unify.zig`
+   (164 external call sites, all from `infer.zig` itself — converting it
+   now would just relocate wrapping boilerplate into `infer.zig`, to be
+   redone when `infer.zig` converts) and `type_errors.zig` (38 sites, same
+   problem, mostly from `infer.zig`/`lower.zig`). `infer.zig`'s own public
+   API splits in two: 11 functions (`sterilise`/`printelement`/
+   `cyclicAbstr`/`txchange`/`repT1`/`repT`/`fixType`/`checkfbs`/
+   `checkcolfn`/`genbnft`/`checktype`) have zero external callers — a
+   `match.zig`-shaped next slice — but its core accessors (`getId`/
+   `idType`/`idWho`/`tInfo`/`isCompoundType`/`isVarType`/`tArity`) are
+   called 50-78 times each from nearly every front-end file (they function
+   like `graph/value.zig`'s `hOf`/`tOf` primitives) and need a closer look
+   at what each actually returns (graph value vs. bare tag/sentinel)
+   before typing — a materially bigger, riskier undertaking than either
+   slice landed so far, deliberately not started this session.
+
 **Gate:** no `Word` outside `graph/dump.zig`; no numeric range tests on values;
 goldens + differential + bench green; GC invariant (mark follows `hd`/`tl` only for
 cell-payload tags) now *type-enforced* rather than convention-enforced.
