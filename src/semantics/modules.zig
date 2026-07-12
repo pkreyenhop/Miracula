@@ -254,7 +254,7 @@ fn parseSnippet(arena_alloc: std.mem.Allocator, text: []const u8) !ast.Script {
 /// including library's own later references to them (compiled next, by
 /// `processOneInclude`) resolve to these bindings via the same lookup
 /// mechanism everything else uses.
-fn compileBindings(arena_alloc: std.mem.Allocator, bindings_text: []const u8) !void {
+fn compileBindings(heap: *heap_mod.Heap, arena_alloc: std.mem.Allocator, bindings_text: []const u8) !void {
     var it = std.mem.splitScalar(u8, bindings_text, ';');
     while (it.next()) |raw_clause| {
         const clause = std.mem.trim(u8, raw_clause, " \t\r\n");
@@ -269,7 +269,7 @@ fn compileBindings(arena_alloc: std.mem.Allocator, bindings_text: []const u8) !v
             break :blk try std.fmt.allocPrint(arena_alloc, "{s} = ({s})\n", .{ lhs, rhs });
         } else continue; // malformed clause -- skip rather than guess
         const script = try parseSnippet(arena_alloc, snippet);
-        codegen.codegenScript(arena_alloc, script);
+        codegen.codegenScript(heap, arena_alloc, script);
     }
 }
 
@@ -281,7 +281,7 @@ fn compileBindings(arena_alloc: std.mem.Allocator, bindings_text: []const u8) !v
 /// every one of `script`'s own top-level names that ends up not visible,
 /// and `symbols.zig`-`bind` every alias name that isn't already the name
 /// its target was compiled under.
-fn applyExportsAndAliases(gpa: std.mem.Allocator, script: ast.Script, aliases: []const Alias) !void {
+fn applyExportsAndAliases(heap: *heap_mod.Heap, gpa: std.mem.Allocator, script: ast.Script, aliases: []const Alias) !void {
     const own_names = try collectTopLevelNames(gpa, script);
     defer gpa.free(own_names);
 
@@ -327,9 +327,9 @@ fn applyExportsAndAliases(gpa: std.mem.Allocator, script: ast.Script, aliases: [
     var to_hide: Word = word.NIL;
     for (own_names) |n| {
         if (visible.contains(n)) continue;
-        if (symbols.syms().find(n)) |id| to_hide = heap_mod.cons(heap_mod.heap(), id, to_hide);
+        if (symbols.syms().find(n)) |id| to_hide = heap_mod.cons(heap, id, to_hide);
     }
-    if (to_hide != word.NIL) lex.mkprivate(heap_mod.heap(), to_hide);
+    if (to_hide != word.NIL) lex.mkprivate(heap, to_hide);
 }
 
 /// Fully resolve one `%include` directive: resolve its path, detect cycles,
@@ -342,7 +342,7 @@ fn applyExportsAndAliases(gpa: std.mem.Allocator, script: ast.Script, aliases: [
 // call each other, and Zig can't infer an error set across a
 // recursive/mutual-recursion cycle (same issue as source.zig's
 // spliceOneInsert/resolveInserts).
-fn processOneInclude(gpa: std.mem.Allocator, inc: directives.Include, base_dir: []const u8, stack: *IncludingStack) anyerror!void {
+fn processOneInclude(heap: *heap_mod.Heap, gpa: std.mem.Allocator, inc: directives.Include, base_dir: []const u8, stack: *IncludingStack) anyerror!void {
     const resolved_path = try resolveIncludePath(gpa, inc.path, inc.from_miralib, base_dir);
     defer gpa.free(resolved_path);
 
@@ -371,12 +371,12 @@ fn processOneInclude(gpa: std.mem.Allocator, inc: directives.Include, base_dir: 
     if (p.diagnostics.items.len > 0) return ModuleError.IncludeCompileFailed;
 
     if (inc.bindings_text.len > 0) {
-        try compileBindings(arena_alloc, inc.bindings_text);
+        try compileBindings(heap, arena_alloc, inc.bindings_text);
     }
 
-    try processIncludes(gpa, inc_script, inc_dir, stack);
-    codegen.codegenScript(arena_alloc, inc_script);
-    try applyExportsAndAliases(gpa, inc_script, inc.aliases);
+    try processIncludes(heap, gpa, inc_script, inc_dir, stack);
+    codegen.codegenScript(heap, arena_alloc, inc_script);
+    try applyExportsAndAliases(heap, gpa, inc_script, inc.aliases);
 }
 
 /// Process every `%include` directive in `script.items`, in source order,
@@ -386,10 +386,10 @@ fn processOneInclude(gpa: std.mem.Allocator, inc: directives.Include, base_dir: 
 /// `%export` only has an observable effect on whoever `%include`s *it*
 /// (`processOneInclude`'s `applyExportsAndAliases` call, made once per
 /// include, handles that).
-pub fn processIncludes(gpa: std.mem.Allocator, script: ast.Script, base_dir: []const u8, stack: *IncludingStack) anyerror!void {
+pub fn processIncludes(heap: *heap_mod.Heap, gpa: std.mem.Allocator, script: ast.Script, base_dir: []const u8, stack: *IncludingStack) anyerror!void {
     for (script.items) |item| {
         if (item == .directive and item.directive == .include) {
-            try processOneInclude(gpa, item.directive.include, base_dir, stack);
+            try processOneInclude(heap, gpa, item.directive.include, base_dir, stack);
         }
     }
 }

@@ -36,46 +36,46 @@ const TRUE_ATOM: Word = CMBASE + 137;
 // Heap cell accessors
 // ---------------------------------------------------------------------------
 
-inline fn h(x: Word) Word {
-    return heap.heap().h(x);
+inline fn h(heap_ptr: *heap.Heap, x: Word) Word {
+    return heap_ptr.h(x);
 }
-inline fn t(x: Word) Word {
-    return heap.heap().t(x);
+inline fn t(heap_ptr: *heap.Heap, x: Word) Word {
+    return heap_ptr.t(x);
 }
-inline fn tp(x: Word) *Word {
-    return heap.heap().tp(x);
+inline fn tp(heap_ptr: *heap.Heap, x: Word) *Word {
+    return heap_ptr.tp(x);
 }
-inline fn tg(x: Word) word.NodeTag {
-    return heap.heap().getTag(x);
+inline fn tg(heap_ptr: *heap.Heap, x: Word) word.NodeTag {
+    return heap_ptr.getTag(x);
 }
 
 // ---------------------------------------------------------------------------
 // Heap construction helpers (mirrors data.h macros)
 // ---------------------------------------------------------------------------
 
-inline fn ap(x: Word, y: Word) Word {
-    return heap.make(heap.heap(), .AP, x, y);
+inline fn ap(heap_ptr: *heap.Heap, x: Word, y: Word) Word {
+    return heap.make(heap_ptr, .AP, x, y);
 }
-inline fn ap2(x: Word, y: Word, z: Word) Word {
-    return ap(ap(x, y), z);
+inline fn ap2(heap_ptr: *heap.Heap, x: Word, y: Word, z: Word) Word {
+    return ap(heap_ptr, ap(heap_ptr, x, y), z);
 }
-inline fn ap3(w: Word, x: Word, y: Word, z: Word) Word {
-    return ap(ap2(w, x, y), z);
+inline fn ap3(heap_ptr: *heap.Heap, w: Word, x: Word, y: Word, z: Word) Word {
+    return ap(heap_ptr, ap2(heap_ptr, w, x, y), z);
 }
-inline fn mkcons(x: Word, y: Word) Word {
-    return heap.make(heap.heap(), .CONS, x, y);
+inline fn mkcons(heap_ptr: *heap.Heap, x: Word, y: Word) Word {
+    return heap.make(heap_ptr, .CONS, x, y);
 }
-inline fn mklabel(x: Word, y: Word) Word {
-    return heap.make(heap.heap(), .LABEL, x, y);
+inline fn mklabel(heap_ptr: *heap.Heap, x: Word, y: Word) Word {
+    return heap.make(heap_ptr, .LABEL, x, y);
 }
-inline fn mklambda(x: Word, y: Word) Word {
-    return heap.make(heap.heap(), .LAMBDA, x, y);
+inline fn mklambda(heap_ptr: *heap.Heap, x: Word, y: Word) Word {
+    return heap.make(heap_ptr, .LAMBDA, x, y);
 }
-inline fn mkpair(x: Word, y: Word) Word {
-    return heap.make(heap.heap(), .PAIR, x, y);
+inline fn mkpair(heap_ptr: *heap.Heap, x: Word, y: Word) Word {
+    return heap.make(heap_ptr, .PAIR, x, y);
 }
-inline fn mktcons(x: Word, y: Word) Word {
-    return heap.make(heap.heap(), .TCONS, x, y);
+inline fn mktcons(heap_ptr: *heap.Heap, x: Word, y: Word) Word {
+    return heap.make(heap_ptr, .TCONS, x, y);
 }
 
 // ---------------------------------------------------------------------------
@@ -100,14 +100,14 @@ const head = reduce_mod.head;
 const isconstrname = lex.isconstrname;
 
 /// Parse decimal `text` into a bignum (via a temporary NUL-terminated copy).
-fn bigscanZ(alloc: Allocator, text: []const u8) Word {
+fn bigscanZ(heap_ptr: *heap.Heap, alloc: Allocator, text: []const u8) Word {
     const z = alloc.dupeSentinel(u8, text, 0) catch return word.NIL;
     if (std.mem.startsWith(u8, z, "0x") or std.mem.startsWith(u8, z, "0X")) {
-        return big.scanHex(heap.heap(), z.ptr + 2, z.ptr + z.len);
+        return big.scanHex(heap_ptr, z.ptr + 2, z.ptr + z.len);
     } else if (std.mem.startsWith(u8, z, "0o") or std.mem.startsWith(u8, z, "0O")) {
-        return big.scanOctal(heap.heap(), z.ptr + 2, z.ptr + z.len);
+        return big.scanOctal(heap_ptr, z.ptr + 2, z.ptr + z.len);
     } else {
-        return bigscan(heap.heap(), z.ptr);
+        return bigscan(heap_ptr, z.ptr);
     }
 }
 
@@ -130,10 +130,10 @@ const void_t = word.void_t;
 // ---------------------------------------------------------------------------
 
 /// Build a source-location (`HERE`) marker node for `line`.
-fn makeHere(line: u32) Word {
+fn makeHere(heap_ptr: *heap.Heap, line: u32) Word {
     // getFil(current_file) = (char*)hd(hd(hd(current_file)))
-    const fil_name = h(h(h(heap.heap().current_file)));
-    return heap.make(heap.heap(), .FILEINFO, fil_name, @intCast(line));
+    const fil_name = h(heap_ptr, h(heap_ptr, h(heap_ptr, heap_ptr.current_file)));
+    return heap.make(heap_ptr, .FILEINFO, fil_name, @intCast(line));
 }
 
 // ---------------------------------------------------------------------------
@@ -141,10 +141,10 @@ fn makeHere(line: u32) Word {
 // ---------------------------------------------------------------------------
 
 /// Whether heap word `x` is a constructor identifier.
-fn isConstructorWord(x: Word) bool {
-    if (tg(x) != .ID) return false;
+fn isConstructorWord(heap_ptr: *heap.Heap, x: Word) bool {
+    if (tg(heap_ptr, x) != .ID) return false;
     // getId(x) = (char*)hd(hd(hd(x)))
-    const name_ptr: [*:0]const u8 = strtab.strOf(strtab.table(), h(h(h(x))));
+    const name_ptr: [*:0]const u8 = strtab.strOf(strtab.table(), h(heap_ptr, h(heap_ptr, h(heap_ptr, x))));
     return isconstrname(name_ptr);
 }
 
@@ -177,14 +177,14 @@ fn nameWord(name: []const u8) Word {
 // ---------------------------------------------------------------------------
 
 /// Code a type variable named `name`.
-fn codegenTypeVar(name: []const u8) Word {
+fn codegenTypeVar(heap_ptr: *heap.Heap, name: []const u8) Word {
     var star_count: Word = 0;
     for (name) |c| {
         if (c == '*') star_count += 1 else break;
     }
     if (star_count == @as(Word, @intCast(name.len))) {
         // Pure-star type variable: *, **, ***, …
-        return heap.make(heap.heap(), .TVAR, 0, star_count);
+        return heap.make(heap_ptr, .TVAR, 0, star_count);
     }
     // Named type variable like *a, *b — treat as identifier for now
     return nameWord(name);
@@ -195,28 +195,28 @@ fn codegenTypeVar(name: []const u8) Word {
 // ---------------------------------------------------------------------------
 
 /// Code a type expression `te` into its runtime type node.
-fn codegenType(te: ast.TypeExpr) Word {
+fn codegenType(heap_ptr: *heap.Heap, te: ast.TypeExpr) Word {
     return switch (te) {
-        .type_var => |v| codegenTypeVar(v.name),
+        .type_var => |v| codegenTypeVar(heap_ptr, v.name),
         .type_name => |n| nameWord(n.name),
-        .arrow => |a| ap2(arrow_t, codegenType(a.from.*), codegenType(a.to.*)),
+        .arrow => |a| ap2(heap_ptr, arrow_t, codegenType(heap_ptr, a.from.*), codegenType(heap_ptr, a.to.*)),
         .type_app => |ta| blk: {
-            var result = codegenType(ta.func.*);
-            for (ta.args) |arg| result = ap(result, codegenType(arg));
+            var result = codegenType(heap_ptr, ta.func.*);
+            for (ta.args) |arg| result = ap(heap_ptr, result, codegenType(heap_ptr, arg));
             break :blk result;
         },
         .tuple => |types| blk: {
             if (types.len == 0) break :blk void_t;
-            // (T1, T2, ..., Tn) = ap2(comma_t, T1, ap2(comma_t, T2, ... void_t...))
+            // (T1, T2, ..., Tn) = ap2(heap_ptr, comma_t, T1, ap2(heap_ptr, comma_t, T2, ... void_t...))
             var result: Word = void_t;
             var i: usize = types.len;
             while (i > 0) {
                 i -= 1;
-                result = ap2(comma_t, codegenType(types[i]), result);
+                result = ap2(heap_ptr, comma_t, codegenType(heap_ptr, types[i]), result);
             }
             break :blk result;
         },
-        .list => |inner| ap(list_t, codegenType(inner.*)),
+        .list => |inner| ap(heap_ptr, list_t, codegenType(heap_ptr, inner.*)),
         .void_t => void_t,
     };
 }
@@ -226,16 +226,16 @@ fn codegenType(te: ast.TypeExpr) Word {
 // ---------------------------------------------------------------------------
 
 /// Map an operator symbol `op` to its combinator/atom word.
-fn opWord(op: []const u8) Word {
+fn opWord(heap_ptr: *heap.Heap, op: []const u8) Word {
     if (std.mem.eql(u8, op, "vel")) return word.OR;
     if (std.mem.eql(u8, op, "amp")) return word.AND;
     if (std.mem.eql(u8, op, "eq")) return word.EQ;
     if (std.mem.eql(u8, op, "eqeq")) return word.EQ;
     if (std.mem.eql(u8, op, "ne")) return word.NEQ;
     if (std.mem.eql(u8, op, "gt")) return word.GR;
-    if (std.mem.eql(u8, op, "lt")) return ap(word.C, word.GR); // relop '<'
+    if (std.mem.eql(u8, op, "lt")) return ap(heap_ptr, word.C, word.GR); // relop '<'
     if (std.mem.eql(u8, op, "ge")) return word.GRE;
-    if (std.mem.eql(u8, op, "le")) return ap(word.C, word.GRE); // relop LE
+    if (std.mem.eql(u8, op, "le")) return ap(heap_ptr, word.C, word.GRE); // relop LE
     if (std.mem.eql(u8, op, "cons")) return word.P; // ':' as section
     if (std.mem.eql(u8, op, "plus_plus")) return word.APPEND;
     if (std.mem.eql(u8, op, "minus_minus")) return rt.rs().listdiff_fn;
@@ -247,13 +247,13 @@ fn opWord(op: []const u8) Word {
     if (std.mem.eql(u8, op, "kw_mod")) return word.MOD;
     if (std.mem.eql(u8, op, "caret")) return word.POWER;
     if (std.mem.eql(u8, op, "dot")) return word.B; // function composition
-    if (std.mem.eql(u8, op, "bang")) return ap(word.C, word.SUBSCRIPT); // '!'
+    if (std.mem.eql(u8, op, "bang")) return ap(heap_ptr, word.C, word.SUBSCRIPT); // '!'
     if (std.mem.eql(u8, op, "tilde")) return word.NOT;
     if (std.mem.eql(u8, op, "hash")) return word.LENGTH;
     // Miranda keyword built-ins emitted as keyword tokens by the C lexer.
     // SHOWSYM → make(SHOW, 0, 0); READVALSY → make(STARTREADVALS, 0, 0).
-    if (std.mem.eql(u8, op, "kw_show")) return heap.make(heap.heap(), .SHOW, 0, 0);
-    if (std.mem.eql(u8, op, "kw_readvals")) return heap.make(heap.heap(), .STARTREADVALS, 0, 0);
+    if (std.mem.eql(u8, op, "kw_show")) return heap.make(heap_ptr, .SHOW, 0, 0);
+    if (std.mem.eql(u8, op, "kw_readvals")) return heap.make(heap_ptr, .STARTREADVALS, 0, 0);
     if (std.mem.eql(u8, op, "dollars")) return repl_session.session().lastexp;
     // Fall back: user-defined infix operator stored as an identifier
     return nameWord(op);
@@ -265,9 +265,9 @@ fn opWord(op: []const u8) Word {
 // Legacy representation built by YACC (cases list, newest-first):
 //   [otherwise_alt, ..., middle_alts, first_alt]
 // parse_compose walks it:
-//   1. y = last (at h of list); if OTHERWISE, strip marker: y = t(y)
-//      else: if tg(y)==LABEL, y = label(h(y), ap(t(y),FAIL)); else y = ap(y,FAIL)
-//   2. fold remaining alts (middle, then first): y = label(h, ap(body, y)); y = ap(first, y)
+//   1. y = last (at h of list); if OTHERWISE, strip marker: y = t(heap_ptr, y)
+//      else: if tg(heap_ptr, y)==LABEL, y = label(h(heap_ptr, y), ap(heap_ptr, t(heap_ptr, y),FAIL)); else y = ap(heap_ptr, y,FAIL)
+//   2. fold remaining alts (middle, then first): y = label(h, ap(heap_ptr, body, y)); y = ap(heap_ptr, first, y)
 //
 // We replicate the output directly from our ordered guards list:
 //   guards[0]     = first  (no LABEL wrapper in output)
@@ -276,7 +276,7 @@ fn opWord(op: []const u8) Word {
 // ---------------------------------------------------------------------------
 
 /// Code a guarded right-hand side (`= e, if g`) into a conditional chain.
-fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
+fn codegenGuarded(heap_ptr: *heap.Heap, alloc: Allocator, guards: []const ast.Guard) Word {
     const N = guards.len;
     if (N == 0) return word.FAIL;
 
@@ -287,18 +287,18 @@ fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
     if (last.is_otherwise) {
         if (N == 1) {
             // Single `body, otherwise` → just body (parse_compose strips OTHERWISE)
-            return codegenExpr(alloc, last.body);
+            return codegenExpr(heap_ptr, alloc, last.body);
         }
         // Multi-case last otherwise: LABEL here body
-        y = mklabel(makeHere(@intCast(last.span.line)), codegenExpr(alloc, last.body));
+        y = mklabel(heap_ptr, makeHere(heap_ptr, @intCast(last.span.line)), codegenExpr(heap_ptr, alloc, last.body));
     } else {
         // Last case is a conditional: LABEL here (COND cond body FAIL) [if N>1]
         //                          or just COND cond body FAIL           [if N==1]
-        const cond_w = codegenExpr(alloc, last.cond);
-        const body_w = codegenExpr(alloc, last.body);
-        y = ap(ap2(word.COND, cond_w, body_w), word.FAIL);
+        const cond_w = codegenExpr(heap_ptr, alloc, last.cond);
+        const body_w = codegenExpr(heap_ptr, alloc, last.body);
+        y = ap(heap_ptr, ap2(heap_ptr, word.COND, cond_w, body_w), word.FAIL);
         if (N > 1) {
-            y = mklabel(makeHere(@intCast(last.span.line)), y);
+            y = mklabel(heap_ptr, makeHere(heap_ptr, @intCast(last.span.line)), y);
         }
     }
 
@@ -307,18 +307,18 @@ fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
         var j: usize = N - 2;
         while (j > 0) : (j -= 1) {
             const g = guards[j];
-            const body_w = codegenExpr(alloc, g.body);
-            const cond_w = codegenExpr(alloc, g.cond);
-            y = mklabel(makeHere(@intCast(g.span.line)), ap(ap2(word.COND, cond_w, body_w), y));
+            const body_w = codegenExpr(heap_ptr, alloc, g.body);
+            const cond_w = codegenExpr(heap_ptr, alloc, g.cond);
+            y = mklabel(heap_ptr, makeHere(heap_ptr, @intCast(g.span.line)), ap(heap_ptr, ap2(heap_ptr, word.COND, cond_w, body_w), y));
         }
     }
 
     // ── Apply the FIRST guard (index 0) without a LABEL wrapper ────────────
     if (N > 1) {
         const first = guards[0];
-        const cond_w = codegenExpr(alloc, first.cond);
-        const body_w = codegenExpr(alloc, first.body);
-        y = ap(ap2(word.COND, cond_w, body_w), y);
+        const cond_w = codegenExpr(heap_ptr, alloc, first.cond);
+        const body_w = codegenExpr(heap_ptr, alloc, first.body);
+        y = ap(heap_ptr, ap2(heap_ptr, word.COND, cond_w, body_w), y);
     }
 
     return y;
@@ -329,8 +329,8 @@ fn codegenGuarded(alloc: Allocator, guards: []const ast.Guard) Word {
 /// sets `SYNERR` and resets the lexer; the caller checks `SYNERR` after
 /// codegen and discards the result) rather than `fpeError`'s old
 /// `siglongjmp` (Phase 3 step 2, docs/ZIG_NATIVE_PLAN.md).
-fn floatLiteralOverflow() Word {
-    setup.syntax(heap.heap(), "floating point number out of range\n") catch {};
+fn floatLiteralOverflow(heap_ptr: *heap.Heap) Word {
+    setup.syntax(heap_ptr, "floating point number out of range\n") catch {};
     return word.NIL;
 }
 
@@ -339,7 +339,7 @@ fn floatLiteralOverflow() Word {
 // ---------------------------------------------------------------------------
 
 /// Code a string literal into a cons-list of characters.
-fn codegenString(s: []const u8) Word {
+fn codegenString(heap_ptr: *heap.Heap, s: []const u8) Word {
     // Walk the UTF-8 string right-to-left; decode codepoints for stoChar.
     var result: Word = word.NIL;
     var i: usize = s.len;
@@ -347,7 +347,7 @@ fn codegenString(s: []const u8) Word {
         // Simple byte-by-byte (ASCII) walk.  For multi-byte UTF-8 we'd need
         // to decode fully, but Miranda source is usually Latin-1 / ASCII.
         i -= 1;
-        result = mkcons(stoChar(@intCast(s[i])), result);
+        result = mkcons(heap_ptr, stoChar(@intCast(s[i])), result);
     }
     return result;
 }
@@ -361,10 +361,10 @@ fn codegenString(s: []const u8) Word {
 // ---------------------------------------------------------------------------
 
 /// Code pattern expression `e` into match-combinator form.
-fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
+fn codegenPattern(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
     return switch (e) {
         // `[]` in a pattern → nill (the empty list pattern atom).
-        .list_nil => heap.heap().nill,
+        .list_nil => heap_ptr.nill,
 
         // Literal constants in patterns must be tagged with `cons(CONST, value)`
         // so the Miranda runtime distinguishes them from binding positions.
@@ -374,21 +374,21 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
         // — the type checker will emit the real error).
         .literal => |lit| blk: {
             const val: Word = switch (lit.value) {
-                .int => |v| bigscanZ(alloc, v),
+                .int => |v| bigscanZ(heap_ptr, alloc, v),
                 .char => |c| stoChar(@intCast(c)),
-                .string => |s| codegenString(s),
-                .float => |v| stoDbl(v) catch floatLiteralOverflow(), // type checker will reject this later
+                .string => |s| codegenString(heap_ptr, s),
+                .float => |v| stoDbl(v) catch floatLiteralOverflow(heap_ptr), // type checker will reject this later
             };
-            break :blk mkcons(word.CONST, val);
+            break :blk mkcons(heap_ptr, word.CONST, val);
         },
 
         // Non-empty list literal patterns: cons-chain terminated with nill.
         .list => |items| blk: {
-            var result: Word = heap.heap().nill;
+            var result: Word = heap_ptr.nill;
             var i: usize = items.len;
             while (i > 0) {
                 i -= 1;
-                result = mkcons(codegenPattern(alloc, items[i]), result);
+                result = mkcons(heap_ptr, codegenPattern(heap_ptr, alloc, items[i]), result);
             }
             break :blk result;
         },
@@ -396,25 +396,25 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
         // Infix patterns: `:` is list cons; others fall through to expr.
         .infix => |inf| blk: {
             if (std.mem.eql(u8, inf.op, "cons"))
-                break :blk mkcons(codegenPattern(alloc, inf.lhs.*), codegenPattern(alloc, inf.rhs.*));
-            break :blk codegenExpr(alloc, e);
+                break :blk mkcons(heap_ptr, codegenPattern(heap_ptr, alloc, inf.lhs.*), codegenPattern(heap_ptr, alloc, inf.rhs.*));
+            break :blk codegenExpr(heap_ptr, alloc, e);
         },
 
         // Constructor application in patterns (e.g. `Node l r`).
-        .application => |app| ap(codegenPattern(alloc, app.func.*), codegenPattern(alloc, app.arg.*)),
+        .application => |app| ap(heap_ptr, codegenPattern(heap_ptr, alloc, app.func.*), codegenPattern(heap_ptr, alloc, app.arg.*)),
 
         // Tuple patterns: pair / tcons chain.
         .tuple => |items| blk: {
             if (items.len == 0) break :blk rt.rs().Void;
-            if (items.len == 1) break :blk codegenPattern(alloc, items[0]);
-            var result = mkpair(
-                codegenPattern(alloc, items[items.len - 2]),
-                codegenPattern(alloc, items[items.len - 1]),
+            if (items.len == 1) break :blk codegenPattern(heap_ptr, alloc, items[0]);
+            var result = mkpair(heap_ptr, 
+                codegenPattern(heap_ptr, alloc, items[items.len - 2]),
+                codegenPattern(heap_ptr, alloc, items[items.len - 1]),
             );
             var i: usize = items.len - 2;
             while (i > 0) {
                 i -= 1;
-                result = mktcons(codegenPattern(alloc, items[i]), result);
+                result = mktcons(heap_ptr, codegenPattern(heap_ptr, alloc, items[i]), result);
             }
             break :blk result;
         },
@@ -422,13 +422,13 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
         // True/False are CONST tokens in YACC (not CNAME), so patterns using
         // them are wrapped: cons(CONST, atom). Mirror that here.
         .cname => |n| blk: {
-            if (std.mem.eql(u8, n.text, "True")) break :blk mkcons(word.CONST, TRUE_ATOM);
-            if (std.mem.eql(u8, n.text, "False")) break :blk mkcons(word.CONST, FALSE_ATOM);
-            break :blk codegenExpr(alloc, e); // regular constructor: used as-is
+            if (std.mem.eql(u8, n.text, "True")) break :blk mkcons(heap_ptr, word.CONST, TRUE_ATOM);
+            if (std.mem.eql(u8, n.text, "False")) break :blk mkcons(heap_ptr, word.CONST, FALSE_ATOM);
+            break :blk codegenExpr(heap_ptr, alloc, e); // regular constructor: used as-is
         },
 
         // Names and other cases used as-is.
-        else => codegenExpr(alloc, e),
+        else => codegenExpr(heap_ptr, alloc, e),
     };
 }
 
@@ -437,7 +437,7 @@ fn codegenPattern(alloc: Allocator, e: ast.Expr) Word {
 // ---------------------------------------------------------------------------
 
 /// Code an expression AST node `e` into a combinator graph.
-pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
+pub fn codegenExpr(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
     return switch (e) {
         // --- Identifiers ---
         .name => |n| nameWord(n.text),
@@ -446,31 +446,31 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
 
         // --- Literals ---
         .literal => |lit| switch (lit.value) {
-            .int => |v| bigscanZ(alloc, v),
-            .float => |v| stoDbl(v) catch floatLiteralOverflow(),
+            .int => |v| bigscanZ(heap_ptr, alloc, v),
+            .float => |v| stoDbl(v) catch floatLiteralOverflow(heap_ptr),
             .char => |c| stoChar(@intCast(c)),
-            .string => |s| codegenString(s),
+            .string => |s| codegenString(heap_ptr, s),
         },
 
         // --- Function application ---
-        .application => |app| ap(codegenExpr(alloc, app.func.*), codegenExpr(alloc, app.arg.*)),
+        .application => |app| ap(heap_ptr, codegenExpr(heap_ptr, alloc, app.func.*), codegenExpr(heap_ptr, alloc, app.arg.*)),
 
         // --- Infix operators ---
         .infix => |inf| blk: {
             const op = inf.op;
-            const lhs = codegenExpr(alloc, inf.lhs.*);
-            const rhs_w = codegenExpr(alloc, inf.rhs.*);
-            // '!' subscript: args are REVERSED — ap2(SUBSCRIPT, rhs, lhs)
-            if (std.mem.eql(u8, op, "bang")) break :blk ap2(word.SUBSCRIPT, rhs_w, lhs);
+            const lhs = codegenExpr(heap_ptr, alloc, inf.lhs.*);
+            const rhs_w = codegenExpr(heap_ptr, alloc, inf.rhs.*);
+            // '!' subscript: args are REVERSED — ap2(heap_ptr, SUBSCRIPT, rhs, lhs)
+            if (std.mem.eql(u8, op, "bang")) break :blk ap2(heap_ptr, word.SUBSCRIPT, rhs_w, lhs);
             // ':' list cons: make(CONS, lhs, rhs)
-            if (std.mem.eql(u8, op, "cons")) break :blk mkcons(lhs, rhs_w);
-            // All other operators: ap2(opWord, lhs, rhs)
-            break :blk ap2(opWord(op), lhs, rhs_w);
+            if (std.mem.eql(u8, op, "cons")) break :blk mkcons(heap_ptr, lhs, rhs_w);
+            // All other operators: ap2(heap_ptr, opWord, lhs, rhs)
+            break :blk ap2(heap_ptr, opWord(heap_ptr, op), lhs, rhs_w);
         },
 
         // --- Unary operators ---
-        .neg => |ep| ap(word.NEG, codegenExpr(alloc, ep.*)),
-        .length => |ep| ap(word.LENGTH, codegenExpr(alloc, ep.*)),
+        .neg => |ep| ap(heap_ptr, word.NEG, codegenExpr(heap_ptr, alloc, ep.*)),
+        .length => |ep| ap(heap_ptr, word.LENGTH, codegenExpr(heap_ptr, alloc, ep.*)),
 
         // --- List literals ---
         .list_nil => word.NIL,
@@ -479,7 +479,7 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
             var i: usize = items.len;
             while (i > 0) {
                 i -= 1;
-                result = mkcons(codegenExpr(alloc, items[i]), result);
+                result = mkcons(heap_ptr, codegenExpr(heap_ptr, alloc, items[i]), result);
             }
             break :blk result;
         },
@@ -491,65 +491,65 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
         // ()           → rt.rs().Void
         .tuple => |items| blk: {
             if (items.len == 0) break :blk rt.rs().Void;
-            if (items.len == 1) break :blk codegenExpr(alloc, items[0]); // degenerate
-            var result = mkpair(
-                codegenExpr(alloc, items[items.len - 2]),
-                codegenExpr(alloc, items[items.len - 1]),
+            if (items.len == 1) break :blk codegenExpr(heap_ptr, alloc, items[0]); // degenerate
+            var result = mkpair(heap_ptr, 
+                codegenExpr(heap_ptr, alloc, items[items.len - 2]),
+                codegenExpr(heap_ptr, alloc, items[items.len - 1]),
             );
             var i: usize = items.len - 2;
             while (i > 0) {
                 i -= 1;
-                result = mktcons(codegenExpr(alloc, items[i]), result);
+                result = mktcons(heap_ptr, codegenExpr(heap_ptr, alloc, items[i]), result);
             }
             break :blk result;
         },
 
         // --- Type annotation: discard type, keep expression ---
-        .typed => |typed| codegenExpr(alloc, typed.expr.*),
+        .typed => |typed| codegenExpr(heap_ptr, alloc, typed.expr.*),
 
         // --- Where clause: block(ldefs, body, 0) ---
-        .where => |w| applyWhereDefs(alloc, codegenExpr(alloc, w.body.*), w.defs),
+        .where => |w| applyWhereDefs(heap_ptr, alloc, codegenExpr(heap_ptr, alloc, w.body.*), w.defs),
 
         // --- Conditional guard (internal) ---
-        .cond => |cond| ap2(word.COND, codegenExpr(alloc, cond.guard.*), codegenExpr(alloc, cond.then_expr.*)),
+        .cond => |cond| ap2(heap_ptr, word.COND, codegenExpr(heap_ptr, alloc, cond.guard.*), codegenExpr(heap_ptr, alloc, cond.then_expr.*)),
 
-        // --- Left section (e op) → ap(opWord, e) ---
-        .section_left => |s| ap(opWord(s.op), codegenExpr(alloc, s.arg.*)),
+        // --- Left section (e op) → ap(heap_ptr, opWord, e) ---
+        .section_left => |s| ap(heap_ptr, opWord(heap_ptr, s.op), codegenExpr(heap_ptr, alloc, s.arg.*)),
 
         // --- Right/post section (op e) ---
-        // Mirrors rules.y: '(' diop1 e1 ')' → if op_word = ap(C,x) then ap(x,e) else ap2(C,op,e)
+        // Mirrors rules.y: '(' diop1 e1 ')' → if op_word = ap(heap_ptr, C,x) then ap(heap_ptr, x,e) else ap2(heap_ptr, C,op,e)
         .section_right => |s| blk: {
-            const arg_w = codegenExpr(alloc, s.arg.*);
-            // Special-case operators whose opWord is already ap(C,x):
-            if (std.mem.eql(u8, s.op, "lt")) break :blk ap(word.GR, arg_w);
-            if (std.mem.eql(u8, s.op, "le")) break :blk ap(word.GRE, arg_w);
-            if (std.mem.eql(u8, s.op, "bang")) break :blk ap(word.SUBSCRIPT, arg_w);
-            break :blk ap2(word.C, opWord(s.op), arg_w);
+            const arg_w = codegenExpr(heap_ptr, alloc, s.arg.*);
+            // Special-case operators whose opWord is already ap(heap_ptr, C,x):
+            if (std.mem.eql(u8, s.op, "lt")) break :blk ap(heap_ptr, word.GR, arg_w);
+            if (std.mem.eql(u8, s.op, "le")) break :blk ap(heap_ptr, word.GRE, arg_w);
+            if (std.mem.eql(u8, s.op, "bang")) break :blk ap(heap_ptr, word.SUBSCRIPT, arg_w);
+            break :blk ap2(heap_ptr, word.C, opWord(heap_ptr, s.op), arg_w);
         },
 
         // --- Operator-as-function: (+), (*), … ---
-        .op_func => |op| opWord(op),
+        .op_func => |op| opWord(heap_ptr, op),
 
         // --- Arithmetic sequences ---
-        // [from..]         → ap2(STEP, big_one, from)
-        // [from..to]       → ap3(STEPUNTIL, big_one, to, from)
-        // [from,step..]    → ap2(STEP, step-from, from)
-        // [from,step..to]  → ap3(STEPUNTIL, step-from, to, from)
+        // [from..]         → ap2(heap_ptr, STEP, big_one, from)
+        // [from..to]       → ap3(heap_ptr, STEPUNTIL, big_one, to, from)
+        // [from,step..]    → ap2(heap_ptr, STEP, step-from, from)
+        // [from,step..to]  → ap3(heap_ptr, STEPUNTIL, step-from, to, from)
         .range => |r| blk: {
-            const from_w = codegenExpr(alloc, r.from.*);
+            const from_w = codegenExpr(heap_ptr, alloc, r.from.*);
             if (r.step) |step_ptr| {
-                const step_w = codegenExpr(alloc, step_ptr.*);
-                const delta = ap2(word.MINUS, step_w, from_w);
+                const step_w = codegenExpr(heap_ptr, alloc, step_ptr.*);
+                const delta = ap2(heap_ptr, word.MINUS, step_w, from_w);
                 if (r.to) |to_ptr| {
-                    break :blk ap3(word.STEPUNTIL, delta, codegenExpr(alloc, to_ptr.*), from_w);
+                    break :blk ap3(heap_ptr, word.STEPUNTIL, delta, codegenExpr(heap_ptr, alloc, to_ptr.*), from_w);
                 } else {
-                    break :blk ap2(word.STEP, delta, from_w);
+                    break :blk ap2(heap_ptr, word.STEP, delta, from_w);
                 }
             } else {
                 if (r.to) |to_ptr| {
-                    break :blk ap3(word.STEPUNTIL, big.bn().big_one, codegenExpr(alloc, to_ptr.*), from_w);
+                    break :blk ap3(heap_ptr, word.STEPUNTIL, big.bn().big_one, codegenExpr(heap_ptr, alloc, to_ptr.*), from_w);
                 } else {
-                    break :blk ap2(word.STEP, big.bn().big_one, from_w);
+                    break :blk ap2(heap_ptr, word.STEP, big.bn().big_one, from_w);
                 }
             }
         },
@@ -566,32 +566,32 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
                         // Mirror that here so each generator's LHS variables
                         // are treated as fresh bindings, not references.
                         ls().idsused = word.NIL;
-                        const lhs_w = genlhs(heap.heap(), codegenExpr(alloc, g.pat));
+                        const lhs_w = genlhs(heap_ptr, codegenExpr(heap_ptr, alloc, g.pat));
                         ls().idsused = word.NIL;
-                        break :gen mkcons(
+                        break :gen mkcons(heap_ptr, 
                             word.GENERATOR,
-                            mkcons(lhs_w, codegenExpr(alloc, g.source.*)),
+                            mkcons(heap_ptr, lhs_w, codegenExpr(heap_ptr, alloc, g.source.*)),
                         );
                     },
                     // Sequence generator: `pat <- src, step ..`
-                    // Mirrors rules.y: cons(GENERATOR, cons(p, ap2(ITERATE/ITERATE1, lambda(p,step), src)))
+                    // Mirrors rules.y: cons(GENERATOR, cons(p, ap2(heap_ptr, ITERATE/ITERATE1, lambda(p,step), src)))
                     .sequence_generator => |sg| sgen: {
                         ls().idsused = word.NIL;
-                        const lhs_w = genlhs(heap.heap(), codegenExpr(alloc, sg.pat));
+                        const lhs_w = genlhs(heap_ptr, codegenExpr(heap_ptr, alloc, sg.pat));
                         ls().idsused = word.NIL;
-                        const src_w = codegenExpr(alloc, sg.source.*);
-                        const step_w = codegenExpr(alloc, sg.step.*);
-                        const comb: Word = if (irrefutable(heap.heap(), lhs_w) != 0) word.ITERATE else word.ITERATE1;
-                        break :sgen mkcons(
+                        const src_w = codegenExpr(heap_ptr, alloc, sg.source.*);
+                        const step_w = codegenExpr(heap_ptr, alloc, sg.step.*);
+                        const comb: Word = if (irrefutable(heap_ptr, lhs_w) != 0) word.ITERATE else word.ITERATE1;
+                        break :sgen mkcons(heap_ptr, 
                             word.GENERATOR,
-                            mkcons(lhs_w, ap2(comb, mklambda(lhs_w, step_w), src_w)),
+                            mkcons(heap_ptr, lhs_w, ap2(heap_ptr, comb, mklambda(heap_ptr, lhs_w, step_w), src_w)),
                         );
                     },
-                    .guard => |gp| mkcons(word.GUARD, codegenExpr(alloc, gp.*)),
+                    .guard => |gp| mkcons(heap_ptr, word.GUARD, codegenExpr(heap_ptr, alloc, gp.*)),
                 };
-                qq = mkcons(qw, qq); // prepend → reverses order
+                qq = mkcons(heap_ptr, qw, qq); // prepend → reverses order
             }
-            break :blk compzf(heap.heap(), codegenExpr(alloc, lc.body.*), qq, 0);
+            break :blk compzf(heap_ptr, codegenExpr(heap_ptr, alloc, lc.body.*), qq, 0);
         },
     };
 }
@@ -599,15 +599,15 @@ pub fn codegenExpr(alloc: Allocator, e: ast.Expr) Word {
 // ---------------------------------------------------------------------------
 // LHS expression codegen: function application arguments use codegenPattern.
 //
-// The LHS of a definition is structured as ap(ap(f, arg1), arg2) etc.
+// The LHS of a definition is structured as ap(heap_ptr, ap(heap_ptr, f, arg1), arg2) etc.
 // Each arg is a PATTERN, so use codegenPattern instead of codegenExpr.
 // ---------------------------------------------------------------------------
 
 /// Code the left-hand side of a definition (the name/pattern being defined).
-fn codegenLhsExpr(alloc: Allocator, e: ast.Expr) Word {
+fn codegenLhsExpr(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
     return switch (e) {
-        .application => |app| ap(codegenLhsExpr(alloc, app.func.*), codegenPattern(alloc, app.arg.*)),
-        else => codegenExpr(alloc, e),
+        .application => |app| ap(heap_ptr, codegenLhsExpr(heap_ptr, alloc, app.func.*), codegenPattern(heap_ptr, alloc, app.arg.*)),
+        else => codegenExpr(heap_ptr, alloc, e),
     };
 }
 
@@ -616,10 +616,10 @@ fn codegenLhsExpr(alloc: Allocator, e: ast.Expr) Word {
 // ---------------------------------------------------------------------------
 
 /// Code a right-hand side, guarded or plain, including any `where`.
-fn codegenRhs(alloc: Allocator, rhs: ast.Rhs) Word {
+fn codegenRhs(heap_ptr: *heap.Heap, alloc: Allocator, rhs: ast.Rhs) Word {
     return switch (rhs) {
-        .expr => |e| codegenExpr(alloc, e),
-        .guarded => |guards| codegenGuarded(alloc, guards),
+        .expr => |e| codegenExpr(heap_ptr, alloc, e),
+        .guarded => |guards| codegenGuarded(heap_ptr, alloc, guards),
     };
 }
 
@@ -631,24 +631,24 @@ fn codegenRhs(alloc: Allocator, rhs: ast.Rhs) Word {
 // The tries() wrapping is NOT done here — buildLdefs handles it so consecutive
 // equations for the same function can be merged into a single TRIES list.
 /// Code a single local (`where`) definition.
-fn codegenLocalDef(alloc: Allocator, def: ast.Def) Word {
-    const here = makeHere(@intCast(def.span.line));
-    var lhs = codegenLhsExpr(alloc, def.lhs);
-    var rhs = codegenRhs(alloc, def.rhs);
+fn codegenLocalDef(heap_ptr: *heap.Heap, alloc: Allocator, def: ast.Def) Word {
+    const here = makeHere(heap_ptr, @intCast(def.span.line));
+    var lhs = codegenLhsExpr(heap_ptr, alloc, def.lhs);
+    var rhs = codegenRhs(heap_ptr, alloc, def.rhs);
 
     // Apply nested where clause before lambda-desugaring.
-    rhs = applyWhereDefs(alloc, rhs, def.where_defs);
+    rhs = applyWhereDefs(heap_ptr, alloc, rhs, def.where_defs);
 
     // Lambda-desugar: f x y = body → lhs becomes f, rhs gets lambda wrappers
-    const f = head(heap.heap(), lhs);
-    if (tg(f) == .ID and !isConstructorWord(f)) {
-        while (tg(lhs) == .AP) {
-            rhs = mklambda(t(lhs), rhs);
-            lhs = h(lhs);
+    const f = head(heap_ptr, lhs);
+    if (tg(heap_ptr, f) == .ID and !isConstructorWord(heap_ptr, f)) {
+        while (tg(heap_ptr, lhs) == .AP) {
+            rhs = mklambda(heap_ptr, t(heap_ptr, lhs), rhs);
+            lhs = h(heap_ptr, lhs);
         }
     }
-    const labeled = mklabel(here, rhs);
-    return mkcons(lhs, mkcons(undef_t, labeled));
+    const labeled = mklabel(heap_ptr, here, rhs);
+    return mkcons(heap_ptr, lhs, mkcons(heap_ptr, undef_t, labeled));
 }
 
 // Mirrors the YACC `ldefs` production: builds the defn list and merges
@@ -661,31 +661,31 @@ fn codegenLocalDef(alloc: Allocator, def: ast.Def) Word {
 //     tl(dval(hd($1)))=cons(dval($2),tl(dval(hd($1))));   // merge
 //   else { $$=cons($2,$1); dval($2)=tries(...); }          // new entry
 /// Build the binding list for a `letrec` of local definitions.
-fn buildLdefs(alloc: Allocator, where_defs: []const ast.Def) Word {
+fn buildLdefs(heap_ptr: *heap.Heap, alloc: Allocator, where_defs: []const ast.Def) Word {
     var ldefs: Word = word.NIL;
     for (where_defs) |wd| {
-        const cell = codegenLocalDef(alloc, wd); // defn(lhs, undef_t, labeled)
-        const lhs_word = h(cell);
-        const labeled = t(t(cell)); // dval(cell) = the labeled rhs
-        if (ldefs != word.NIL and h(h(ldefs)) == lhs_word) {
+        const cell = codegenLocalDef(heap_ptr, alloc, wd); // defn(lhs, undef_t, labeled)
+        const lhs_word = h(heap_ptr, cell);
+        const labeled = t(heap_ptr, t(heap_ptr, cell)); // dval(cell) = the labeled rhs
+        if (ldefs != word.NIL and h(heap_ptr, h(heap_ptr, ldefs)) == lhs_word) {
             // Same function as head of ldefs: prepend labeled to its tries list.
             // tries_cell = dval(hd(ldefs)) = tl(tl(hd(ldefs)))
-            const tries_cell = t(t(h(ldefs)));
-            tp(tries_cell).* = mkcons(labeled, t(tries_cell));
+            const tries_cell = t(heap_ptr, t(heap_ptr, h(heap_ptr, ldefs)));
+            tp(heap_ptr, tries_cell).* = mkcons(heap_ptr, labeled, t(heap_ptr, tries_cell));
         } else {
             // New function: wrap dval in tries(lhs, [labeled]) and prepend to ldefs.
-            const new_tries = heap.tries(lhs_word, mkcons(labeled, word.NIL));
-            tp(t(cell)).* = new_tries;
-            ldefs = mkcons(cell, ldefs);
+            const new_tries = heap.tries(lhs_word, mkcons(heap_ptr, labeled, word.NIL));
+            tp(heap_ptr, t(heap_ptr, cell)).* = new_tries;
+            ldefs = mkcons(heap_ptr, cell, ldefs);
         }
     }
     return ldefs;
 }
 
 /// Wrap expression `e` in its `where` definitions (as a `letrec`).
-fn applyWhereDefs(alloc: Allocator, e: Word, where_defs: []const ast.Def) Word {
+fn applyWhereDefs(heap_ptr: *heap.Heap, alloc: Allocator, e: Word, where_defs: []const ast.Def) Word {
     if (where_defs.len == 0) return e;
-    return block(heap.heap(), buildLdefs(alloc, where_defs), e, 0);
+    return block(heap_ptr, buildLdefs(heap_ptr, alloc, where_defs), e, 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -693,24 +693,24 @@ fn applyWhereDefs(alloc: Allocator, e: Word, where_defs: []const ast.Def) Word {
 // ---------------------------------------------------------------------------
 
 /// Code a top-level definition and install it in the environment.
-fn codegenDef(alloc: Allocator, def: ast.Def) void {
-    const here = makeHere(@intCast(def.span.line));
-    var lhs = codegenLhsExpr(alloc, def.lhs);
-    var rhs = codegenRhs(alloc, def.rhs);
+fn codegenDef(heap_ptr: *heap.Heap, alloc: Allocator, def: ast.Def) void {
+    const here = makeHere(heap_ptr, @intCast(def.span.line));
+    var lhs = codegenLhsExpr(heap_ptr, alloc, def.lhs);
+    var rhs = codegenRhs(heap_ptr, alloc, def.rhs);
 
     // Apply where clause (block wraps the rhs before lambda-desugaring).
-    rhs = applyWhereDefs(alloc, rhs, def.where_defs);
+    rhs = applyWhereDefs(heap_ptr, alloc, rhs, def.where_defs);
 
     // Lambda-desugar
-    const f = head(heap.heap(), lhs);
-    if (tg(f) == .ID and !isConstructorWord(f)) {
-        while (tg(lhs) == .AP) {
-            rhs = mklambda(t(lhs), rhs);
-            lhs = h(lhs);
+    const f = head(heap_ptr, lhs);
+    if (tg(heap_ptr, f) == .ID and !isConstructorWord(heap_ptr, f)) {
+        while (tg(heap_ptr, lhs) == .AP) {
+            rhs = mklambda(heap_ptr, t(heap_ptr, lhs), rhs);
+            lhs = h(heap_ptr, lhs);
         }
     }
-    rhs = mklabel(here, rhs);
-    declare(heap.heap(), lhs, rhs);
+    rhs = mklabel(heap_ptr, here, rhs);
+    declare(heap_ptr, lhs, rhs);
     // Mirror the YACC grammar: `declare(l,r), script_store.store().lastname=l` — allows
     // consecutive equations for the same function to be accumulated
     // by decl1 rather than triggering a nameclash error.
@@ -722,11 +722,11 @@ fn codegenDef(alloc: Allocator, def: ast.Def) void {
 // ---------------------------------------------------------------------------
 
 /// Code a type signature (`::`) declaration.
-fn codegenTypeSpec(ts: ast.TypeSpec) void {
-    const here = makeHere(@intCast(ts.span.line));
-    const type_w = codegenType(ts.typ);
+fn codegenTypeSpec(heap_ptr: *heap.Heap, ts: ast.TypeSpec) void {
+    const here = makeHere(heap_ptr, @intCast(ts.span.line));
+    const type_w = codegenType(heap_ptr, ts.typ);
     for (ts.names) |name| {
-        specify(heap.heap(), nameWord(name), type_w, here);
+        specify(heap_ptr, nameWord(name), type_w, here);
     }
 }
 
@@ -735,32 +735,32 @@ fn codegenTypeSpec(ts: ast.TypeSpec) void {
 // ---------------------------------------------------------------------------
 
 /// Code a type/data declaration (`==` / `::=`).
-fn codegenTypeDecl(td: ast.TypeDecl) void {
+fn codegenTypeDecl(heap_ptr: *heap.Heap, td: ast.TypeDecl) void {
     switch (td) {
         // --- type synonym: type name params == body ---
         .synonym => |s| {
-            const here = makeHere(@intCast(s.span.line));
-            // Build typeform: ap(ap(name_id, tvar1), tvar2, …)
+            const here = makeHere(heap_ptr, @intCast(s.span.line));
+            // Build typeform: ap(heap_ptr, ap(heap_ptr, name_id, tvar1), tvar2, …)
             var tf = nameWord(s.name);
-            for (s.params) |p| tf = ap(tf, codegenTypeVar(p));
-            // redtvars(ap(typeform, body)) normalises type vars
-            const body_w = codegenType(s.body);
-            const x = redtvars(heap.heap(), ap(tf, body_w));
-            declType(heap.heap(), h(x), word.synonym_t, t(x), here);
+            for (s.params) |p| tf = ap(heap_ptr, tf, codegenTypeVar(heap_ptr, p));
+            // redtvars(ap(heap_ptr, typeform, body)) normalises type vars
+            const body_w = codegenType(heap_ptr, s.body);
+            const x = redtvars(heap_ptr, ap(heap_ptr, tf, body_w));
+            declType(heap_ptr, h(heap_ptr, x), word.synonym_t, t(heap_ptr, x), here);
         },
 
         // --- algebraic type: name params ::= C1 fields | C2 fields | … ---
         .algebraic => |a| {
-            const here = makeHere(@intCast(a.span.line));
+            const here = makeHere(heap_ptr, @intCast(a.span.line));
             var tf = nameWord(a.name);
-            for (a.params) |p| tf = ap(tf, codegenTypeVar(p));
+            for (a.params) |p| tf = ap(heap_ptr, tf, codegenTypeVar(heap_ptr, p));
 
             // Build construction list in REVERSED order (mirrors rules.y `constructs`)
             var construction: Word = word.NIL;
             for (a.constructors) |ctor| {
                 var cw = nameWord(ctor.name);
-                for (ctor.fields) |field| cw = ap(cw, codegenType(field));
-                construction = mkcons(cw, construction);
+                for (ctor.fields) |field| cw = ap(heap_ptr, cw, codegenType(heap_ptr, field));
+                construction = mkcons(heap_ptr, cw, construction);
             }
 
             // Iterate through reversed construction; peel AP fields to build ctor type
@@ -768,35 +768,35 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
             var r_ids: Word = word.NIL;
             var rhs = construction;
             while (rhs != word.NIL) {
-                var hv = h(rhs);
+                var hv = h(heap_ptr, rhs);
                 var ct = tf;
-                while (tg(hv) == .AP) {
-                    ct = ap2(arrow_t, t(hv), ct);
-                    hv = h(hv);
+                while (tg(heap_ptr, hv) == .AP) {
+                    ct = ap2(heap_ptr, arrow_t, t(heap_ptr, hv), ct);
+                    hv = h(heap_ptr, hv);
                 }
                 n -= 1;
-                _ = declconstr(heap.heap(), hv, n, ct);
-                r_ids = mkcons(hv, r_ids);
-                rhs = t(rhs);
+                _ = declconstr(heap_ptr, hv, n, ct);
+                r_ids = mkcons(heap_ptr, hv, r_ids);
+                rhs = t(heap_ptr, rhs);
             }
-            declType(heap.heap(), tf, word.algebraic_t, r_ids, here);
+            declType(heap_ptr, tf, word.algebraic_t, r_ids, here);
         },
 
         // --- abstype: abstype name params with specs ---
         .abstype => |a| {
-            const here = makeHere(@intCast(a.span.line));
+            const here = makeHere(heap_ptr, @intCast(a.span.line));
             // Specify each operation in the abstract type
             for (a.specs) |spec| {
-                const spec_here = makeHere(@intCast(spec.span.line));
-                const type_w = codegenType(spec.typ);
+                const spec_here = makeHere(heap_ptr, @intCast(spec.span.line));
+                const type_w = codegenType(heap_ptr, spec.typ);
                 for (spec.names) |name| {
-                    specify(heap.heap(), nameWord(name), type_w, spec_here);
+                    specify(heap_ptr, nameWord(name), type_w, spec_here);
                 }
             }
             // Declare the abstract type itself
             var tf = nameWord(a.name);
-            for (a.params) |p| tf = ap(tf, codegenTypeVar(p));
-            declType(heap.heap(), tf, word.abstract_t, word.undef_t, here);
+            for (a.params) |p| tf = ap(heap_ptr, tf, codegenTypeVar(heap_ptr, p));
+            declType(heap_ptr, tf, word.abstract_t, word.undef_t, here);
         },
     }
 }
@@ -806,14 +806,14 @@ fn codegenTypeDecl(td: ast.TypeDecl) void {
 // ---------------------------------------------------------------------------
 
 /// Code an entire parsed `script` — the codegen entry point.
-pub fn codegenScript(alloc: Allocator, script: ast.Script) void {
+pub fn codegenScript(heap_ptr: *heap.Heap, alloc: Allocator, script: ast.Script) void {
     for (script.items) |item| {
         switch (item) {
-            .definition => |def| codegenDef(alloc, def),
-            .type_spec => |ts| codegenTypeSpec(ts),
-            .type_decl => |td| codegenTypeDecl(td),
+            .definition => |def| codegenDef(heap_ptr, alloc, def),
+            .type_spec => |ts| codegenTypeSpec(heap_ptr, ts),
+            .type_decl => |td| codegenTypeDecl(heap_ptr, td),
             .eval => |e| {
-                _ = codegenExpr(alloc, e);
+                _ = codegenExpr(heap_ptr, alloc, e);
             },
             // Directives are handled at a higher level (file inclusion etc.)
             // -- .directive is the native-pipeline counterpart of the three

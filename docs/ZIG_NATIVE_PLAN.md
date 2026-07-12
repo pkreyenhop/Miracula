@@ -2377,6 +2377,65 @@ subsystems and passed explicitly; the ambient singleton deleted.
    already sits within a `heap`-scoped function) held for all but 2 of
    ~260 combined call sites across `infer.zig`/`unify.zig`.
 
+   **`parser/codegen.zig`'s file-wide cluster, landed (2026-07-08, same
+   session) — the last of the three.** Unlike the other two clusters, this
+   file's *outer* functions (`codegenExpr`, `codegenScript`, …) were
+   themselves ambient too, not just their leaf helpers — so closing it
+   required threading `heap` through all ~20 of the file's own functions
+   (`h`/`t`/`tp`/`tg`/`ap`/`ap2`/`ap3`/`mkcons`/`mklabel`/`mklambda`/
+   `mkpair`/`mktcons`/`bigscanZ`/`makeHere`/`isConstructorWord`/
+   `codegenTypeVar`/`codegenType`/`opWord`/`codegenGuarded`/
+   `floatLiteralOverflow`/`codegenString`/`codegenPattern`/`codegenExpr`/
+   `codegenLhsExpr`/`codegenRhs`/`codegenLocalDef`/`buildLdefs`/
+   `applyWhereDefs`/`codegenDef`/`codegenTypeSpec`/`codegenTypeDecl`/
+   `codegenScript`) and, at the true boundary, through `semantics/modules.zig`'s
+   own `%include`-processing chain (`processIncludes`/`processOneInclude`/
+   `compileBindings`/`applyExportsAndAliases`) — traced back to confirm it
+   terminates at `parser_api.zig`'s `runParsedTokens`, which already had
+   `heap_ptr`. (`nameWord` was the one function checked and found *not* to
+   need it — it only touches the symbol table, never a heap cell directly.)
+
+   Same scripted-pass approach as the other two clusters (insert `heap_ptr, `
+   as the first argument to every bare call of any of the ~30 target names,
+   handling `floatLiteralOverflow()`'s zero-extra-argument case the same way
+   `NTV()` needed). Left only 4 real compile errors: three "unused function
+   parameter" cases (`bigscanZ`/`codegenTypeVar`/`floatLiteralOverflow` called
+   `big.scanHex`/`heap.make`/`setup.syntax` directly with the old
+   `heap.heap()` rather than through one of the ~30 scripted names, so the
+   newly-added `heap_ptr` parameter went unused until those specific call
+   sites were fixed by hand) and one real external-caller fixup
+   (`parser_api.zig`'s two `codegenExpr`/`codegenScript` call sites and two
+   `processIncludes` call sites — the production ones passing `heap_ptr`,
+   the test-only `parseWithNew` passing `heap.heap()` ambiently, matching
+   established convention for test-only paths). A follow-up sweep also found
+   and fixed ~21 more `heap.heap()` reads left over *inside* now-`heap_ptr`-
+   scoped functions (calls to already-heap-threaded external functions like
+   `match.genlhs`/`trans.declare`/`trans.specify`/`types_mod.redtvars`/
+   `reduce_mod.head` that weren't in the scripted names list, so the pass
+   correctly left them alone but they were still passing the ambient
+   singleton instead of the now-available `heap_ptr`) — `codegen.zig` is now
+   the *only* one of the three clusters with a literal zero non-test ambient
+   sites; `modules.zig` reached zero too.
+
+   `zig build test`: all 253 unit tests + integration suite + spine
+   differential/golden corpus green throughout every fixup round.
+   `layer_check.py`: 0 new violations. `scorecard.sh`: ambient singleton-
+   accessor call sites 690 → 683 (this cluster's clean-up included several
+   `.method()`-chained calls — `heap.heap().validate()`/`.nill`/
+   `.current_file` — that the scorecard's regex *does* catch, unlike the
+   argument-passing style the other two clusters were mostly made of).
+
+   **All three dispatch-table clusters are now done.** Combined with every
+   earlier slice this phase, the remaining ambient singleton call sites are
+   now confined to: the four structural roots (already accepted as
+   permanent), genuinely-test-only call sites (every file's own convention),
+   and a small number of individually-reviewed "many far-flung callers, some
+   with no receiver at all" cases (`miraSetup`, `tsetup`, `mkindex`,
+   `dumpOb`). The next step is a final full-codebase sweep to confirm the
+   singleton-accessor count is genuinely at its structural floor, then
+   actually deleting `heap.heap()`/`rs()`/`cs()`/`ls()`/`ev()`/`s()`/
+   `interp.reset()` and attempting the two-`Interp` isolation test (step 6).
+
 **Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
 interrupt flag); DAG check green with empty allowlist; files > 1,000 lines = 0;
 goldens identical.

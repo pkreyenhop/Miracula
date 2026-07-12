@@ -200,7 +200,7 @@ fn runParsedTokens(heap_ptr: *heap.Heap, p: *parser_mod.Parser, alloc: std.mem.A
             _ = word.print("syntax error - unexpected token\n", .{});
             return ParseError.SyntaxError;
         }
-        const expr_word = codegen.codegenExpr(alloc, expr);
+        const expr_word = codegen.codegenExpr(heap_ptr, alloc, expr);
         if (options.is_strict or @import("builtin").mode == .Debug) {
             heap_ptr.validate();
             p.validate();
@@ -259,12 +259,12 @@ fn runParsedTokens(heap_ptr: *heap.Heap, p: *parser_mod.Parser, alloc: std.mem.A
 
     var including_stack: modules.IncludingStack = .{};
     defer including_stack.deinit(alloc);
-    modules.processIncludes(alloc, script, base_dir, &including_stack) catch |err| {
+    modules.processIncludes(heap_ptr, alloc, script, base_dir, &including_stack) catch |err| {
         reportIncludeError(err);
         return ParseError.ParseFailed;
     };
 
-    codegen.codegenScript(alloc, script);
+    codegen.codegenScript(heap_ptr, alloc, script);
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap_ptr.validate();
         p.validate();
@@ -398,12 +398,12 @@ pub fn parseWithNew(gpa: std.mem.Allocator, source: [*:0]const u8) ParseError!Ne
 
     var including_stack: modules.IncludingStack = .{};
     defer including_stack.deinit(alloc);
-    modules.processIncludes(alloc, script, ".", &including_stack) catch |err| {
+    modules.processIncludes(heap.heap(), alloc, script, ".", &including_stack) catch |err| {
         reportIncludeError(err);
         return ParseError.ParseFailed;
     };
 
-    codegen.codegenScript(alloc, script);
+    codegen.codegenScript(heap.heap(), alloc, script);
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.heap().validate();
         p.validate();
