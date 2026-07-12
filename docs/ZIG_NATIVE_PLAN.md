@@ -2664,6 +2664,61 @@ code that was about to move twice.
      converted yet, so the `toRaw`-count ratchet mentioned in step 4 hasn't
      started moving; that begins at step 3, the heap-API retyping).
 
+   **Landed (2026-07-12), step 3a: typed heap-graph accessors, coexisting
+   with the `Word` API.** `graph/value.zig` gained `hOf`/`tOf`/`makeOf`/
+   `consOf`/`apOf`/`tagOf`/`setTagOf` — the `Value`-typed successors of
+   `Heap.h`/`.t`/`.make`/`.cons`/`eval/reduce_core.zig`'s `ap`/`.getTag`/
+   `.setTag`.
+   - **Scope decision, worth recording:** the plan's own wording ("Heap API
+     typed: cons/ap/make take and return Value") reads as an in-place
+     retype of the existing methods. Read literally, that's a single
+     Zig-enforced atomic edit — every call site across the whole codebase
+     (`reduce_rt`/`spine`/every combinator handler/`bignum`/`print`/`lower`/
+     `infer`/`match`/`unify`/`dump`/`module_loader`/`codegen`/session
+     state — easily 1,000+ sites, an order of magnitude past the largest
+     single cluster this project has converted so far, `infer.zig`'s ~150)
+     would have to change in the same commit, because Zig has no function
+     overloading and no partial typing. Doing that in one pass risks
+     exactly the kind of large, unreviewable, hard-to-bisect diff this
+     project's own cadence (small green commits, gated by build+test every
+     step) exists to avoid. Instead this step follows the precedent already
+     set by Phase 1 (the native `syntax/` pipeline was built and proven
+     *beside* the legacy lexer for 7 steps before the legacy path was
+     deleted in step 8) and by Phase 4 step 5 (ambient accessors coexisted
+     with threaded receivers until every real call site was converted):
+     new `*Of` functions coexist with the unchanged `Word`-typed `Heap`
+     methods; step 4 migrates callers onto them one subsystem at a time;
+     `Heap.h`/`.t`/`.cons`/`.make` are renamed/removed only once nothing
+     references the `Word` form — "no parallel half-migrations" means a
+     shim is gone by the *end* of the phase that introduced it, not
+     instantly.
+   - `apOf` is defined in `graph/value.zig` itself (not imported from
+     `eval/reduce_core.zig`) to keep `graph/` a leaf layer per §4.1 — `ap`
+     is just `make(.AP, x, y)`, so nothing from `eval/` was actually needed.
+   - Test builds a `CONS`, an `AP`, and a `PAIR`-retagged-to-`LABEL` cell
+     entirely through the typed accessors, then cross-checks every read
+     against the existing `Word`-typed API on the *same* cells — the point
+     being "coexist without diverging," not just "compiles."
+   - One scorecard false positive found and fixed: a test-local variable
+     named `c` (for "cell") false-positived the `clib./c.` C-interop-call
+     metric's regex (`\bc\.[a-zA-Z0-9_]+`, meant to catch things like
+     `c.foo()` C-library calls) purely because Zig method syntax on a
+     variable named `c` looks identical to that pattern. Renamed to
+     `cell_val`; not a real regression, just a naming collision with the
+     metric's own regex.
+   - `zig build`/`zig build test` (258 unit tests, integration suite,
+     spine/golden corpus, `sigint_check`) green; `layer_check.py` unchanged;
+     `scorecard.sh --check` clean after the rename above.
+
+   Step 3's remaining piece — the typed *payload* accessors (`intVal`,
+   `dblVal` retiring the `fpdatum` `@bitCast` trick, `strId` retiring the
+   sign-negation convention, `idInfo`, `fileInfo`) — is deliberately not
+   done in this slice: each one is tied to a different existing bit-level
+   encoding trick (the GC mark-range invariant this project's own working
+   notes flag as fragile is exactly this kind of thing), and getting each
+   right needs its own careful read of `bignum.zig`/`strtab.zig`/`lex.zig`
+   rather than being batched together. Next.
+
 **Gate:** no `Word` outside `graph/dump.zig`; no numeric range tests on values;
 goldens + differential + bench green; GC invariant (mark follows `hd`/`tl` only for
 cell-payload tags) now *type-enforced* rather than convention-enforced.

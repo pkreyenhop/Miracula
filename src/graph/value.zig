@@ -11,7 +11,9 @@
 const std = @import("std");
 const combinator = @import("combinator.zig");
 const word = @import("word.zig");
+const heap_mod = @import("heap.zig");
 const Word = word.Word;
+const Heap = heap_mod.Heap;
 
 /// Every combinator and named atom (`S`, `PLUS`, …, `False`/`True`/`NIL`/
 /// `NILS`/`UNDEF`), numbered `0..140` in the same order as
@@ -174,4 +176,90 @@ test "Value: fromRaw/toRaw round-trip and kind() matches word.classify's roles" 
     try std.testing.expectEqual(@as(Word, 65), Value.fromRaw(65).toRaw());
     try std.testing.expectEqual(@as(Word, word.PLUS), Value.fromRaw(word.PLUS).toRaw());
     try std.testing.expectEqual(@as(Word, word.ATOMLIMIT + 1000), Value.fromRaw(word.ATOMLIMIT + 1000).toRaw());
+}
+
+// ── Step 3: typed heap-graph accessors ──────────────────────────────────────
+//
+// The `Value`-typed successors of `Heap.h`/`.t`/`.cons`/`.make`/`.getTag`/
+// `.setTag` and `eval/reduce_core.zig`'s `ap`. These *coexist* with the
+// existing `Word`-typed methods for the length of this phase — exactly like
+// Phase 1's native `syntax/` pipeline coexisted with the legacy lexer until
+// its own final deletion step (docs/ZIG_NATIVE_PLAN.md, "no parallel
+// half-migrations" only means a shim must be gone by the *end* of the phase
+// that introduced it, not immediately). Callers migrate onto these one
+// subsystem at a time (step 4); `Heap.h`/`.t`/`.cons`/`.make` themselves are
+// only renamed/removed once nothing references the `Word` form anymore.
+//
+// `apOf` is defined here rather than imported from `eval/reduce_core.zig`'s
+// `ap` to keep `graph/` a leaf layer (docs/ZIG_NATIVE_PLAN.md §4.1: `graph`
+// may import nothing outside itself) — `ap` is just `make(.AP, x, y)`, so
+// there's nothing in `eval/` this actually needs.
+
+/// Head of a cons cell, typed.
+pub inline fn hOf(heap_ptr: *Heap, x: Value) Value {
+    return Value.fromRaw(heap_ptr.h(x.toRaw()));
+}
+
+/// Tail of a cons cell, typed.
+pub inline fn tOf(heap_ptr: *Heap, x: Value) Value {
+    return Value.fromRaw(heap_ptr.t(x.toRaw()));
+}
+
+/// Allocate a tagged cell, typed.
+pub inline fn makeOf(heap_ptr: *Heap, tag: word.NodeTag, x: Value, y: Value) Value {
+    return Value.fromRaw(heap_ptr.make(tag, x.toRaw(), y.toRaw()));
+}
+
+/// Allocate a `CONS` cell `(x . y)`, typed.
+pub inline fn consOf(heap_ptr: *Heap, x: Value, y: Value) Value {
+    return Value.fromRaw(heap_ptr.cons(x.toRaw(), y.toRaw()));
+}
+
+/// Allocate an application cell `(x y)`, typed.
+pub inline fn apOf(heap_ptr: *Heap, x: Value, y: Value) Value {
+    return makeOf(heap_ptr, .AP, x, y);
+}
+
+/// The node tag of a cell, typed.
+pub inline fn tagOf(heap_ptr: *Heap, x: Value) word.NodeTag {
+    return heap_ptr.getTag(x.toRaw());
+}
+
+/// Set the node tag of a cell, typed.
+pub inline fn setTagOf(heap_ptr: *Heap, x: Value, tag: word.NodeTag) void {
+    heap_ptr.setTag(x.toRaw(), tag);
+}
+
+test "typed heap-graph accessors: consOf/makeOf/apOf build cells that hOf/tOf/tagOf read back" {
+    const tu = @import("../testutil.zig");
+    tu.freshInterp();
+    const heap_ptr = heap_mod.heap();
+
+    // consOf: a CONS cell, read back through hOf/tOf/tagOf.
+    const true_val = Value.comb(.True);
+    const nil_val = Value.comb(.NIL);
+    const cell_val = consOf(heap_ptr, true_val, nil_val);
+    try std.testing.expectEqual(word.NodeTag.CONS, tagOf(heap_ptr, cell_val));
+    try std.testing.expectEqual(true_val, hOf(heap_ptr, cell_val));
+    try std.testing.expectEqual(nil_val, tOf(heap_ptr, cell_val));
+
+    // apOf: an AP cell with the same head/tail.
+    const a = apOf(heap_ptr, true_val, nil_val);
+    try std.testing.expectEqual(word.NodeTag.AP, tagOf(heap_ptr, a));
+    try std.testing.expectEqual(true_val, hOf(heap_ptr, a));
+    try std.testing.expectEqual(nil_val, tOf(heap_ptr, a));
+
+    // makeOf + setTagOf: build a PAIR cell, then retag it to LABEL in place.
+    const p = makeOf(heap_ptr, .PAIR, Value.imm(1), Value.imm(2));
+    try std.testing.expectEqual(word.NodeTag.PAIR, tagOf(heap_ptr, p));
+    setTagOf(heap_ptr, p, .LABEL);
+    try std.testing.expectEqual(word.NodeTag.LABEL, tagOf(heap_ptr, p));
+    try std.testing.expectEqual(Value.imm(1), hOf(heap_ptr, p));
+    try std.testing.expectEqual(Value.imm(2), tOf(heap_ptr, p));
+
+    // These agree exactly with the existing Word-typed API on the same cells
+    // (the whole point of "coexist, don't diverge" during the migration).
+    try std.testing.expectEqual(heap_ptr.h(cell_val.toRaw()), hOf(heap_ptr, cell_val).toRaw());
+    try std.testing.expectEqual(heap_ptr.t(cell_val.toRaw()), tOf(heap_ptr, cell_val).toRaw());
+    try std.testing.expectEqual(heap_ptr.getTag(cell_val.toRaw()), tagOf(heap_ptr, cell_val));
 }
