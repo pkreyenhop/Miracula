@@ -24,6 +24,8 @@ const heap_mod = @import("../graph/heap.zig");
 const Heap = heap_mod.Heap;
 const big = @import("../graph/bignum.zig");
 const lower = @import("lower.zig");
+const value_mod = @import("../graph/value.zig");
+const Value = value_mod.Value;
 
 const Word = i64;
 const CMBASE = word.CMBASE;
@@ -105,7 +107,7 @@ fn isChar(x: Word) bool {
 }
 
 /// Compile pattern `p` against scrutinee `x` into `e`, with `fail` as the no-match continuation.
-pub fn scanpattern(heap: *Heap, p: Word, x: Word, e: Word, fail: Word) Word {
+fn scanpatternRaw(heap: *Heap, p: Word, x: Word, e: Word, fail: Word) Word {
     if (h(heap, x) == CONST or isConstructor(heap, x)) {
         return NIL;
     }
@@ -114,24 +116,29 @@ pub fn scanpattern(heap: *Heap, p: Word, x: Word, e: Word, fail: Word) Word {
         return cons(heap, binding, NIL);
     }
     if (isNPlusKPattern(heap, x)) {
-        return scanpattern(heap, p, t(heap, x), e, fail);
+        return scanpatternRaw(heap, p, t(heap, x), e, fail);
     }
-    return shunt(scanpattern(heap, p, h(heap, x), e, fail), scanpattern(heap, p, t(heap, x), e, fail));
+    return shunt(scanpatternRaw(heap, p, h(heap, x), e, fail), scanpatternRaw(heap, p, t(heap, x), e, fail));
+}
+
+/// Compile pattern `p` against scrutinee `x` into `e`, with `fail` as the no-match continuation.
+pub fn scanpattern(heap: *Heap, p: Value, x: Value, e: Value, fail: Value) Value {
+    return Value.fromRaw(scanpatternRaw(heap, p.toRaw(), x.toRaw(), e.toRaw(), fail.toRaw()));
 }
 
 /// Generate the canonical left-hand-side pattern from definition head `x`.
-pub fn genlhs(heap: *Heap, x: Word) Word {
+fn genlhsRaw(heap: *Heap, x: Word) Word {
     switch (getTag(heap, x)) {
         .AP => {
             if (getTag(heap, h(heap, x)) == .AP and h(heap, h(heap, x)) == PLUS and isnat(heap, t(heap, x))) {
-                return ap2(heap, PLUS, t(heap, x), genlhs(heap, t(heap, h(heap, x))));
+                return ap2(heap, PLUS, t(heap, x), genlhsRaw(heap, t(heap, h(heap, x))));
             }
-            const hold = genlhs(heap, h(heap, x));
-            return make(heap, .AP, hold, genlhs(heap, t(heap, x)));
+            const hold = genlhsRaw(heap, h(heap, x));
+            return make(heap, .AP, hold, genlhsRaw(heap, t(heap, x)));
         },
         .CONS, .TCONS, .PAIR => {
-            const hold = genlhs(heap, h(heap, x));
-            return make(heap, getTag(heap, x), hold, genlhs(heap, t(heap, x)));
+            const hold = genlhsRaw(heap, h(heap, x));
+            return make(heap, getTag(heap, x), hold, genlhsRaw(heap, t(heap, x)));
         },
         .ID => {
             if (member(heap, ls().idsused, x) != 0) {
@@ -158,9 +165,15 @@ pub fn genlhs(heap: *Heap, x: Word) Word {
     return heap.nill;
 }
 
+/// Generate the canonical left-hand-side pattern from definition head `x`.
+pub fn genlhs(heap: *Heap, x: Value) Value {
+    return Value.fromRaw(genlhsRaw(heap, x.toRaw()));
+}
+
 /// Translate the pattern-match alternatives `x` of an id into a `TRIES` chain.
-pub fn transtries(heap: *Heap, id: Word, input_x: Word) Word {
-    var x = input_x;
+pub fn transtries(heap: *Heap, id_val: Value, input_x_val: Value) Value {
+    const id = id_val.toRaw();
+    var x = input_x_val.toRaw();
     var info: Word = 0;
     var earliest: Word = 0;
     var r: Word = undefined;
@@ -184,5 +197,5 @@ pub fn transtries(heap: *Heap, id: Word, input_x: Word) Word {
     if (info != 0) {
         tp(heap, info).* = h(heap, earliest);
     }
-    return r;
+    return Value.fromRaw(r);
 }

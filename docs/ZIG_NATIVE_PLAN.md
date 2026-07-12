@@ -3078,14 +3078,44 @@ code that was about to move twice.
    `Word`-in/`Word`-out signature (called from hundreds of sites well
    beyond the reducer — `reduceVal` is the one wrapper still doing a real
    conversion); the compile-time front end as one connected unit
-   (`semantics/lower.zig`/`infer.zig`/`match.zig`/`unify.zig`/
-   `type_errors.zig`/`depend.zig`/`symbols.zig`, `parser/codegen.zig`,
-   `compiler/module_loader.zig`/`setup.zig`/`dump.zig`) — not started,
-   scoped only, genuinely larger than everything landed in steps 1-4d
-   combined; `graph/print.zig` (unblocks once the front end migrates).
-   `bignum.zig`'s own internals (in-place retype rather than the wrapper
-   layer landed in step 4c) and `reduce_rt.zig`'s own private duplicate
-   leaf helpers remain unconverted by design.
+   (`semantics/lower.zig`/`infer.zig`/`unify.zig`/`type_errors.zig`/
+   `depend.zig`/`symbols.zig`, `parser/codegen.zig`,
+   `compiler/module_loader.zig`/`setup.zig`/`dump.zig`) — genuinely larger
+   than everything landed in steps 1-4d combined, being tackled file-by-file
+   starting with the smallest, most self-contained pieces rather than in one
+   pass (see `semantics/match.zig` below, the first slice landed);
+   `graph/print.zig` (unblocks once the front end migrates). `bignum.zig`'s
+   own internals (in-place retype rather than the wrapper layer landed in
+   step 4c) and `reduce_rt.zig`'s own private duplicate leaf helpers remain
+   unconverted by design.
+
+   **Step 4e — front end, first slice (`semantics/match.zig`), landed
+   (2026-07-13):** re-scoped the "front end must move as one unit" premise
+   from the step-4-scoping note: it's true that no *sub-slice* within the
+   front end has an already-`Value`-typed caller, but that only means each
+   slice's callers need `Value.fromRaw`/`.toRaw()` boundary wrapping (same
+   as every other slice this phase, e.g. `bignum.zig` wrapped from
+   `ready.zig` in step 4c, `reduce_rt.zig` wrapped from `module_loader.zig`/
+   `codegen.zig`/`repl.zig` in step 4d) — not that the whole 8,306-line
+   cluster must convert atomically. Converted `match.zig`'s 3 public
+   functions to take/return `Value`: `scanpattern`/`genlhs` (self-recursive
+   — renamed bodies to private `scanpatternRaw`/`genlhsRaw`, kept
+   `Word`-typed, added thin `Value`-typed public wrappers, matching the
+   rename+wrapper pattern from `reduce_rt.zig`'s `gResidue`/`force` in step
+   4d) and `transtries` (not self-recursive — unwrapped once at the top,
+   body unchanged, mirroring the `reduce_rt.zig` non-recursive functions).
+   Fixed the 3 external call sites: `lower.zig`'s `declare` (`scanpattern`)
+   and `codegen` (`transtries`, `.TRIES` case) and `codegen.zig`'s two
+   `genlhs` sites (`.listcomp`'s `.generator`/`.sequence_generator` arms) —
+   all wrapped with `Value.fromRaw`/`.toRaw()` at the boundary since
+   `lower.zig`/`codegen.zig` themselves remain `Word`-typed. `codegen.zig`
+   already imported `Value`; `lower.zig` needed a new import (`const Value
+   = @import("../graph/value.zig").Value;`). `zig build`/`zig build test`
+   (full suite, spine/golden corpus) green; `layer_check.py`/
+   `scorecard.sh --check` both clean, no regression. This is the first
+   slice of the front-end migration — proof the "boundary wrapping"
+   technique scales down into this cluster the same way it did everywhere
+   else in Phase 5; more files follow the same pattern.
 
 **Gate:** no `Word` outside `graph/dump.zig`; no numeric range tests on values;
 goldens + differential + bench green; GC invariant (mark follows `hd`/`tl` only for

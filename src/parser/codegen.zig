@@ -567,7 +567,7 @@ pub fn codegenExpr(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
                         // Mirror that here so each generator's LHS variables
                         // are treated as fresh bindings, not references.
                         ls().idsused = word.NIL;
-                        const lhs_w = genlhs(heap_ptr, codegenExpr(heap_ptr, alloc, g.pat));
+                        const lhs_w = genlhs(heap_ptr, Value.fromRaw(codegenExpr(heap_ptr, alloc, g.pat))).toRaw();
                         ls().idsused = word.NIL;
                         break :gen mkcons(heap_ptr, 
                             word.GENERATOR,
@@ -578,7 +578,7 @@ pub fn codegenExpr(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
                     // Mirrors rules.y: cons(GENERATOR, cons(p, ap2(heap_ptr, ITERATE/ITERATE1, lambda(p,step), src)))
                     .sequence_generator => |sg| sgen: {
                         ls().idsused = word.NIL;
-                        const lhs_w = genlhs(heap_ptr, codegenExpr(heap_ptr, alloc, sg.pat));
+                        const lhs_w = genlhs(heap_ptr, Value.fromRaw(codegenExpr(heap_ptr, alloc, sg.pat))).toRaw();
                         ls().idsused = word.NIL;
                         const src_w = codegenExpr(heap_ptr, alloc, sg.source.*);
                         const step_w = codegenExpr(heap_ptr, alloc, sg.step.*);

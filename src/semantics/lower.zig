@@ -38,6 +38,7 @@ fn getStdout() ?*word.Stream {
 }
 
 const Word = i64;
+const Value = @import("../graph/value.zig").Value;
 const GENERATOR: Word = 0;
 const GUARD: Word = 1;
 const REPEAT: Word = 2;
@@ -1262,7 +1263,7 @@ pub fn declare(heap: *Heap, x: Word, e: Word) void {
         decl1(heap, x, e);
         return;
     }
-    var bindings = match.scanpattern(heap, x, x, share(heap, tries(heap, x, cons(heap, e, NIL)), undef_t), ap(heap, CONFERROR, cons(heap, x, h(heap, e))));
+    var bindings = match.scanpattern(heap, Value.fromRaw(x), Value.fromRaw(x), Value.fromRaw(share(heap, tries(heap, x, cons(heap, e, NIL)), undef_t)), Value.fromRaw(ap(heap, CONFERROR, cons(heap, x, h(heap, e))))).toRaw();
     if (bindings == NIL) {
         core_state.s().errs = h(heap, e);
         syntax(heap, "illegal lhs for definition\n") catch {};
@@ -1620,7 +1621,7 @@ pub fn codegen(heap: *Heap, x: Word) Word {
             return transletrec(heap, h(heap, x), t(heap, x));
         },
         .TRIES => {
-            return match.transtries(heap, h(heap, x), t(heap, x));
+            return match.transtries(heap, Value.fromRaw(h(heap, x)), Value.fromRaw(t(heap, x))).toRaw();
         },
         .LABEL => {
             return codegen(heap, t(heap, x));
