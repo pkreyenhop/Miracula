@@ -219,10 +219,9 @@ fn mktiny() Word {
 /// Performs one-time interpreter initialisation: sets up the heap, type system,
 /// dictionary, and parser state, then seeds the primitive environment.
 /// Must be called exactly once before any source file is loaded.
-pub fn miraSetup() void {
-    const heap = heap_mod.heap();
-    setupheap();
-    tsetup();
+pub fn miraSetup(heap: *Heap) void {
+    heap.setupheap();
+    tsetup(heap);
     resetPns();
     bigsetup(heap, big.bn());
     ls().common_stdin = abi.ap(heap, word.READ, 0);
@@ -256,7 +255,7 @@ pub fn miraSetup() void {
 
 test "miraSetup initialisation and primitive seeding" {
     abi.setupdic();
-    miraSetup();
+    miraSetup(heap_mod.heap());
 
     // Verify primitives from primlib are seeded correctly
     try std.testing.expect(rt.rs().primenv != NIL);

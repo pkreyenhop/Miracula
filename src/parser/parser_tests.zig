@@ -54,7 +54,7 @@ fn resetLexerState() void {
     resetState(heap.heap());
     setupdic();
     rt.rs().primenv = word.NIL;
-    setup.miraSetup();
+    setup.miraSetup(heap.heap());
     heap.heap().current_file = makeFilRecord("test.m");
     heap.heap().files = heap.make(heap.heap(), .CONS, heap.heap().current_file, word.NIL);
     ls().col = 0;

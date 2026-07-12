@@ -105,7 +105,7 @@ pub fn mainEntry(heap: *Heap, argc: c_int, argv: [*][*:0]u8) c_int {
         config_state.config().STDENV[miralib_span.len + suffix.len] = 0;
     }
 
-    setup.miraSetup();
+    setup.miraSetup(heap);
 
     if (repl_session.session().verbosity != 0) {
         repl.announce();

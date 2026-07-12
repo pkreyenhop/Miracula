@@ -1631,8 +1631,7 @@ fn inferType(heap: *Heap, x: Word) void {
 }
 
 /// Initialise the type-system state (base types and counters).
-pub fn tsetup() void {
-    const heap = heap_mod.heap();
+pub fn tsetup(heap: *Heap) void {
     cs().tfnum = tf(heap, num_t, num_t);
     cs().tfbool = tf(heap, bool_t, bool_t);
     cs().tfnum2 = tf(heap, num_t, cs().tfnum);

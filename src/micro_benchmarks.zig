@@ -26,7 +26,7 @@ pub fn main(ctx: std.process.Init) !void {
     // 1. Initialise the runtime environment
     heap.setupheap();
     lex.setupdic();
-    setup.miraSetup();
+    setup.miraSetup(heap.heap());
 
     word.print("=== Miracula Micro-Benchmarks ===\n\n", .{});
 

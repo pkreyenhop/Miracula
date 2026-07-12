@@ -55,7 +55,7 @@ pub fn freshInterp() void {
     if (ready) return;
     interp.reset();
     lex.setupdic();
-    setup.miraSetup();
+    setup.miraSetup(heap.heap());
     ready = true;
 }
 

@@ -2467,6 +2467,50 @@ subsystems and passed explicitly; the ambient singleton deleted.
    next thing to scope before attempting step 6, since the two-`Interp` test
    would fail on exactly this gap today.
 
+   **Landed (2026-07-12): `miraSetup`/`tsetup` closed out — the last real
+   production gap.** Turned out much smaller than the "~15+ test-harness
+   helpers" the sweep speculated: `miraSetup()` had exactly 6 real call
+   sites, and `tsetup()` had exactly 1 (`miraSetup` itself). Converted:
+   - `compiler/setup.zig`: `pub fn miraSetup(heap: *Heap) void` (was
+     zero-arg, read `heap_mod.heap()` internally). Its own body already used
+     a local `heap` identifier throughout, so the only internal change was
+     the now-redundant `setupheap()` free-function call becoming
+     `heap.setupheap()` (the struct method, via Zig's automatic
+     pointer-receiver dereferencing) and `tsetup()` becoming `tsetup(heap)`
+     — deliberately *not* touching `setupheap()`'s other 3 (test-only)
+     callers.
+   - `semantics/infer.zig`: `pub fn tsetup(heap: *Heap) void` (was zero-arg,
+     same pattern) — body already used `heap` consistently once the
+     parameter existed.
+   - The 6 real callers, each threaded a `heap` value in exactly one place
+     and passed it down: `session/boot.zig`'s `mainEntry` (already had
+     `heap` in scope), `testutil.zig`'s `freshInterp()`, `micro_benchmarks.zig`'s
+     `main()`, `parser/parser_tests.zig`'s `resetLexerState()`,
+     `eval/reduce_test.zig`'s `ensureSetup()` (all four test-harness
+     bootstraps capture `heap.heap()` once at the top, matching the same
+     "ambient exactly once, then threaded" shape as `main()`/`mainEntry()`
+     themselves), and `compiler/setup.zig`'s own
+     `test "miraSetup initialisation and primitive seeding"` block.
+   - Confirmed via grep that both functions' signatures now take `heap`
+     as a real parameter and neither has any remaining internal
+     `heap_mod.heap()`/`heap.heap()` read — the only ambient capture left
+     is the one-time bootstrap call in each test harness/entry point,
+     which is the accepted, deliberate shape everywhere else in this phase.
+   - `zig build` clean; full `zig build test` (253 unit tests, `mira_tests`
+     integration suite, spine differential/golden corpus, `sigint_check`)
+     green; `layer_check.py` unchanged ("52 allowlisted, 0 new");
+     `scorecard.sh --check` shows no regression (ambient-call-site metric
+     stays at 683 — this slice used the argument-passing style throughout,
+     not the `.method()`-chained style the metric's regex matches, so the
+     count doesn't move even though the last real gap is now closed).
+
+   With this, **every production call path from `main()` down to `reduce()`
+   and `miraSetup()`/`tsetup()` is fully receiver-threaded** — the
+   remaining `heap_mod.heap()`/`heap.heap()` sites codebase-wide are all
+   either test-only or the individually-reviewed no-receiver-anywhere leaf
+   cases catalogued above. Step 6 (the two-`Interp` isolation test) is now
+   unblocked.
+
 **Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
 
 **Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the

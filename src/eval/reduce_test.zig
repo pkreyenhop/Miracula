@@ -40,7 +40,7 @@ fn ensureSetup() void {
     if (initialized) return;
     interp.reset();
     lex.setupdic();
-    setup.miraSetup();
+    setup.miraSetup(heap.heap());
     initialized = true;
 }
 
