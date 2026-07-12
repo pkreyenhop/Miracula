@@ -695,11 +695,11 @@ pub fn handleGENSEQ(ctx: *ReductionCtx) reduce.ReduceError!void {
     }
     const lastarg = reduce.tlGet(ctx.heap, ctx.e);
     if (reduce.tlGet(ctx.heap, arg1).toRaw() != word.NIL and
-        (if (reduce.isAp(ctx.heap, arg1)) try reduce_rt.compare(ctx.heap, lastarg.toRaw(), reduce.tlGet(ctx.heap, arg1).toRaw()) else try reduce_rt.compare(ctx.heap, reduce.tlGet(ctx.heap, arg1).toRaw(), lastarg.toRaw())) > 0)
+        (if (reduce.isAp(ctx.heap, arg1)) try reduce_rt.compare(ctx.heap, lastarg, reduce.tlGet(ctx.heap, arg1)) else try reduce_rt.compare(ctx.heap, reduce.tlGet(ctx.heap, arg1), lastarg)) > 0)
     {
         reduce.rewriteToNil(ctx.heap, &ctx.e);
     } else {
-        const hold = reduce.ap(ctx.heap, reduce.hdGet(ctx.heap, ctx.e), Value.fromRaw(try reduce_rt.numplus(ctx.heap, lastarg.toRaw(), reduce.hdGet(ctx.heap, arg1).toRaw())));
+        const hold = reduce.ap(ctx.heap, reduce.hdGet(ctx.heap, ctx.e), Value.fromRaw(try reduce_rt.numplus(ctx.heap, lastarg, reduce.hdGet(ctx.heap, arg1))));
         reduce.rewriteToCons(ctx.heap, ctx.e, lastarg, hold);
     }
     ctx.action = word.ACT_DONE;
@@ -1088,7 +1088,7 @@ pub fn handleERROR(ctx: *ReductionCtx) reduce.ReduceError!void {
         ctx.eval.errtrap = 1;
         word.printErr("\nprogram error: ", .{});
         ctx.eval.s_out = reduce.getStderr();
-        try reduce_rt.print(ctx.heap, ctx.eval, ctx.rs, lastarg.toRaw());
+        try reduce_rt.print(ctx.heap, ctx.eval, ctx.rs, lastarg);
         _ = word.putc('\n', reduce.getStderr().?);
     }
     reduce_rt.outstats();

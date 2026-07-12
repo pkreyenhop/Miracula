@@ -316,7 +316,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
                 reduce_rt.outstats();
                 os.exit(1);
             }
-            setLastArg(ctx, Value.fromRaw(reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(f.?)))));
+            setLastArg(ctx, reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(f.?))));
             reduce.hdSet(ctx.heap, ctx.e, Value.fromRaw(word.READ));
             reduce.downLeft(ctx);
             io_handlers.handle_READ(ctx);
@@ -331,7 +331,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
                 reduce_rt.outstats();
                 os.exit(1);
             }
-            setLastArg(ctx, Value.fromRaw(reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(f.?)))));
+            setLastArg(ctx, reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(f.?))));
             reduce.hdSet(ctx.heap, ctx.e, Value.fromRaw(word.READBIN));
             reduce.downLeft(ctx);
             io_handlers.handle_READBIN(ctx);
@@ -738,7 +738,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
                 reduce.hdSet(ctx.heap, ctx.args[0], hd_arg1);
                 const hd_lastarg = try reduce.reduceVal(ctx.heap, reduce.hdGet(ctx.heap, lastArg(ctx)));
                 reduce.hdSet(ctx.heap, lastArg(ctx), hd_lastarg);
-                if (try reduce_rt.compare(ctx.heap, hd_arg1.toRaw(), hd_lastarg.toRaw()) <= 0) {
+                if (try reduce_rt.compare(ctx.heap, hd_arg1, hd_lastarg) <= 0) {
                     reduce.rewriteToCons(ctx.heap, ctx.e, hd_arg1, reduce.ap2(ctx.heap, Value.fromRaw(word.MERGE), reduce.tlGet(ctx.heap, ctx.args[0]), lastArg(ctx)));
                 } else {
                     reduce.rewriteToCons(ctx.heap, ctx.e, hd_lastarg, reduce.ap2(ctx.heap, Value.fromRaw(word.MERGE), reduce.tlGet(ctx.heap, lastArg(ctx)), ctx.args[0]));
@@ -856,9 +856,9 @@ fn handleReadyEXEC(ctx: *ReductionCtx) reduce.ReduceError!void {
             fp_a = word.fdopen(fd_a[0], "r");
         }
         if (pid == -1 or fp == null or fp_a == null) {
-            reduce.rewriteToCons(ctx.heap, ctx.e, Value.fromRaw(word.NIL), reduce.cons(ctx.heap, Value.fromRaw(reduce_rt.piperrmess(pid)), Value.fromRaw(big.fromInt(ctx.heap, -1))));
+            reduce.rewriteToCons(ctx.heap, ctx.e, Value.fromRaw(word.NIL), reduce.cons(ctx.heap, reduce_rt.piperrmess(pid), Value.fromRaw(big.fromInt(ctx.heap, -1))));
         } else {
-            reduce.rewriteToCons(ctx.heap, ctx.e, reduce.ap(ctx.heap, Value.fromRaw(word.READ), Value.fromRaw(reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(fp.?))))), reduce.cons(ctx.heap, reduce.ap(ctx.heap, Value.fromRaw(word.READ), Value.fromRaw(reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(fp_a.?))))), reduce.ap(ctx.heap, Value.fromRaw(word.WAIT), Value.fromRaw(pid))));
+            reduce.rewriteToCons(ctx.heap, ctx.e, reduce.ap(ctx.heap, Value.fromRaw(word.READ), reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(fp.?)))), reduce.cons(ctx.heap, reduce.ap(ctx.heap, Value.fromRaw(word.READ), reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(fp_a.?)))), reduce.ap(ctx.heap, Value.fromRaw(word.WAIT), Value.fromRaw(pid))));
         }
     } else {
         const shell = "/bin/sh";

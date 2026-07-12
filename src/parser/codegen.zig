@@ -24,6 +24,7 @@ const reduce_mod = @import("../eval/reduce_rt.zig");
 const heap = @import("../graph/heap.zig");
 const symbols = @import("../semantics/symbols.zig");
 const setup = @import("../compiler/setup.zig");
+const Value = @import("../graph/value.zig").Value;
 
 const Word = word.Word;
 
@@ -640,7 +641,7 @@ fn codegenLocalDef(heap_ptr: *heap.Heap, alloc: Allocator, def: ast.Def) Word {
     rhs = applyWhereDefs(heap_ptr, alloc, rhs, def.where_defs);
 
     // Lambda-desugar: f x y = body → lhs becomes f, rhs gets lambda wrappers
-    const f = head(heap_ptr, lhs);
+    const f = head(heap_ptr, Value.fromRaw(lhs)).toRaw();
     if (tg(heap_ptr, f) == .ID and !isConstructorWord(heap_ptr, f)) {
         while (tg(heap_ptr, lhs) == .AP) {
             rhs = mklambda(heap_ptr, t(heap_ptr, lhs), rhs);
@@ -702,7 +703,7 @@ fn codegenDef(heap_ptr: *heap.Heap, alloc: Allocator, def: ast.Def) void {
     rhs = applyWhereDefs(heap_ptr, alloc, rhs, def.where_defs);
 
     // Lambda-desugar
-    const f = head(heap_ptr, lhs);
+    const f = head(heap_ptr, Value.fromRaw(lhs)).toRaw();
     if (tg(heap_ptr, f) == .ID and !isConstructorWord(heap_ptr, f)) {
         while (tg(heap_ptr, lhs) == .AP) {
             rhs = mklambda(heap_ptr, t(heap_ptr, lhs), rhs);

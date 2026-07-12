@@ -12,9 +12,15 @@
 //! bit pattern written to a cell — is unchanged; only the type flowing
 //! through this file's API changed. Functions this file calls that are
 //! *not yet* migrated (`bignum.zig`, `strtab.zig`, `heap.zig`'s
-//! `getDbl`/`stoDbl`, `reduce_rt.zig`'s `compare`) are called through
-//! `Value.fromRaw`/`.toRaw()` at the boundary — the same escape hatch named
-//! in `graph/value.zig`'s own doc comment.
+//! `getDbl`/`stoDbl`, `reducer/reduce.zig`'s own `reduce()`) are called
+//! through `Value.fromRaw`/`.toRaw()` at the boundary — the same escape
+//! hatch named in `graph/value.zig`'s own doc comment. `reduce_rt.zig`'s
+//! own public API (`head`/`force`/`getstring`/`compare`/`numplus`/
+//! `badcaseError`/`confError`/`gResidue`/`memclass`/`lexfail`/`lexstate`/
+//! `wrapPtr`/`piperrmess`/`apfile`/`closefile`/`outf`/`print`/`output`/
+//! `outHere`) was retyped onto `Value` in a later slice than this file's
+//! own (see that file's module doc); the `xxxVal` wrappers below now just
+//! forward to them directly.
 //!
 //! **Spine representation (B2 option (b), 2026-07-01; retyped 2026-07-12).**
 //! The spine used to be encoded in-graph via pointer reversal: a cell's own
@@ -125,28 +131,35 @@ pub inline fn reduceVal(heap: *Heap, e: Value) ReduceError!Value {
 }
 
 /// `Value`-typed [head]: the head atom of application spine `x`.
+///
+/// `head`/`force`/`getstring`/`badcaseError`/`confError` in `reduce_rt.zig`
+/// were themselves retyped onto `Value` in a later slice than this wrapper
+/// layer's original commit; these four are now trivial passthroughs kept
+/// under their original names so the ~80 call sites across
+/// `combinators.zig`/`ready.zig`/`combinators/lex.zig`/`combinators/io.zig`
+/// that already call `reduce.headVal`/etc. didn't need a second rename.
 pub inline fn headVal(heap: *Heap, x: Value) Value {
-    return Value.fromRaw(head(heap, x.toRaw()));
+    return head(heap, x);
 }
 
 /// `Value`-typed [force]: deep-evaluate `x` to normal form in place.
 pub inline fn forceVal(heap: *Heap, x: Value) ReduceError!void {
-    return force(heap, x.toRaw());
+    return force(heap, x);
 }
 
 /// `Value`-typed [getstring]: flatten char-list `x` to a C string.
 pub inline fn getstringVal(heap: *Heap, x: Value, cmd: ?[*:0]const u8) ReduceError!?[*:0]u8 {
-    return getstring(heap, x.toRaw(), cmd);
+    return getstring(heap, x, cmd);
 }
 
 /// `Value`-typed [badcaseError]: abort with "no matching case" for `arg_info`.
 pub inline fn badcaseErrorVal(heap: *Heap, arg_info: Value) ReduceError!void {
-    return badcaseError(heap, arg_info.toRaw());
+    return badcaseError(heap, arg_info);
 }
 
 /// `Value`-typed [confError]: report a conformality error for `arg_info`.
 pub inline fn confErrorVal(heap: *Heap, arg_info: Value) void {
-    confError(heap, arg_info.toRaw());
+    confError(heap, arg_info);
 }
 
 /// Strip the spine direction bits and yield a plain heap index. Dead code
@@ -396,7 +409,7 @@ pub inline fn apTwo(heap: *Heap, x1: Value, y1: Value, x2: Value, y2: Value, c1:
 /// else to `FAIL` — the pattern-match equality test.
 pub inline fn rewriteToMatchResult(heap: *Heap, expr: *Value, left: Value, right: Value, success_value: Value) ReduceError!void {
     hdSet(heap, expr.*, Value.comb(.I));
-    const val = if (try reduce_mod.compare(heap, left.toRaw(), right.toRaw()) == 0) success_value else Value.comb(.FAIL);
+    const val = if (try reduce_mod.compare(heap, left, right) == 0) success_value else Value.comb(.FAIL);
     tlSet(heap, expr.*, val);
     expr.* = val;
 }
@@ -510,7 +523,7 @@ pub inline fn coerceDbl(heap: *Heap, x: Value) ReduceError!Value {
 /// Rewrite `*expr` to `True`/`False` for `left == right` (structural compare).
 pub inline fn rewriteToCompareEq(heap: *Heap, expr: *Value, left: Value, right: Value) ReduceError!void {
     hdSet(heap, expr.*, Value.comb(.I));
-    const val = if (try reduce_mod.compare(heap, left.toRaw(), right.toRaw()) == 0) Value.comb(.True) else Value.comb(.False);
+    const val = if (try reduce_mod.compare(heap, left, right) == 0) Value.comb(.True) else Value.comb(.False);
     tlSet(heap, expr.*, val);
     expr.* = val;
 }
@@ -518,7 +531,7 @@ pub inline fn rewriteToCompareEq(heap: *Heap, expr: *Value, left: Value, right: 
 /// Rewrite `*expr` to `True`/`False` for `left != right`.
 pub inline fn rewriteToCompareNeq(heap: *Heap, expr: *Value, left: Value, right: Value) ReduceError!void {
     hdSet(heap, expr.*, Value.comb(.I));
-    const val = if (try reduce_mod.compare(heap, left.toRaw(), right.toRaw()) != 0) Value.comb(.True) else Value.comb(.False);
+    const val = if (try reduce_mod.compare(heap, left, right) != 0) Value.comb(.True) else Value.comb(.False);
     tlSet(heap, expr.*, val);
     expr.* = val;
 }
@@ -526,7 +539,7 @@ pub inline fn rewriteToCompareNeq(heap: *Heap, expr: *Value, left: Value, right:
 /// Rewrite `*expr` to `True`/`False` for `left > right`.
 pub inline fn rewriteToCompareGt(heap: *Heap, expr: *Value, left: Value, right: Value) ReduceError!void {
     hdSet(heap, expr.*, Value.comb(.I));
-    const val = if (try reduce_mod.compare(heap, left.toRaw(), right.toRaw()) > 0) Value.comb(.True) else Value.comb(.False);
+    const val = if (try reduce_mod.compare(heap, left, right) > 0) Value.comb(.True) else Value.comb(.False);
     tlSet(heap, expr.*, val);
     expr.* = val;
 }
@@ -534,7 +547,7 @@ pub inline fn rewriteToCompareGt(heap: *Heap, expr: *Value, left: Value, right: 
 /// Rewrite `*expr` to `True`/`False` for `left >= right`.
 pub inline fn rewriteToCompareGe(heap: *Heap, expr: *Value, left: Value, right: Value) ReduceError!void {
     hdSet(heap, expr.*, Value.comb(.I));
-    const val = if (try reduce_mod.compare(heap, left.toRaw(), right.toRaw()) >= 0) Value.comb(.True) else Value.comb(.False);
+    const val = if (try reduce_mod.compare(heap, left, right) >= 0) Value.comb(.True) else Value.comb(.False);
     tlSet(heap, expr.*, val);
     expr.* = val;
 }

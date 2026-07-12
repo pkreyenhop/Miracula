@@ -3019,18 +3019,73 @@ code that was about to move twice.
      landed in steps 1-4c combined — closer in shape to Phase 4's own
      god-file-split scale than to a single bounded slice.
 
-   **Remaining for step 4 (revised, 2026-07-13):** the compile-time front
-   end as one connected unit (`semantics/lower.zig`/`infer.zig`/
-   `match.zig`/`unify.zig`/`type_errors.zig`/`depend.zig`/`symbols.zig`,
-   `parser/codegen.zig`, `compiler/module_loader.zig`/`setup.zig`/
-   `dump.zig`) — not started, scoped only. Then `graph/print.zig` (unblocks
-   once the above lands). Then, if pursued: retyping `reduce()`/`head()`/
-   `force()`/`getstring()`/`badcaseError()`/`confError()` themselves
-   (closing out the `reduceVal`-style wrapper layer built in step 4b) and
-   `reduce_rt.zig`'s own private duplicate `t`/`h`/`hp`/`tp`/`rewriteToXxx`/
-   `isXxx` helpers. `bignum.zig`'s own internals (in-place retype rather
-   than the wrapper layer landed in step 4c) remain unconverted by design
-   — see that step's risk note.
+   **Landed (2026-07-13), step 4d: `reduce_rt.zig`'s own public API retyped
+   onto `Value`.** Revisited the "boilerplate, no benefit" conclusion above
+   with a sharper distinction: it applies to callers that are themselves
+   unmigrated (the front end), but `reduce_rt.zig` is squarely inside the
+   already-migrated `eval` layer, and its callers — `reduce_core.zig`'s own
+   `reduceVal`/`headVal`/`forceVal`/`getstringVal`/`badcaseErrorVal`/
+   `confErrorVal` wrappers (step 4b) — exist *specifically* to bridge a gap
+   that closing this file's own retype eliminates outright. Retyped:
+   `wrapPtr`/`unwrapPtr`, `badcaseError`/`confError`/`parseCloseError`,
+   `getstring`, `outHere`, `numplus`, `gResidue`, `memclass`/`lexfail`/
+   `lexstate`, `piperrmess`, `compare`, `force`/`head`, `apfile`/
+   `closefile`/`outf`/`print`/`output`. `streamRead` itself was already
+   `Value`-clean from step 4b (the one function here taking the whole
+   `ReductionCtx`); its own `op`/return stay `Word` (protocol/action codes,
+   not graph values, same category as `ctx.action: c_int`).
+   - This file's own private `Word`-typed duplicate leaf helpers
+     (`getTag`/`setTag`/`h`/`t`/`hp`/`tp`/`lh`/`forceDbl`/`cons`/`ap`/
+     `datapair`/`digit0`/`stosmallint`/`rewriteToValue`/`rewriteToNil`/
+     `setcell`/`rewriteToCons`) were deliberately **not** touched — same
+     reasoning as `reduce_core.zig`'s own leaf layer: every public function
+     unwraps its `Value` parameter to a local `Word` once at the top (or,
+     for the two genuinely self-recursive functions, `force`/`gResidue`,
+     was renamed to a private `xxxRaw` and given a thin `Value` wrapper
+     instead, so the recursive body needed zero changes), then the
+     function body runs exactly as before against these unchanged private
+     helpers.
+   - Closed the loop in `reduce_core.zig`: its own `headVal`/`forceVal`/
+     `getstringVal`/`badcaseErrorVal`/`confErrorVal` wrappers (built in
+     step 4b specifically because `reduce_rt.zig` was still `Word`-typed
+     then) became trivial passthroughs — kept under their original names
+     so none of the ~80 already-fixed call sites across
+     `combinators.zig`/`ready.zig`/`combinators/lex.zig`/`combinators/io.zig`
+     needed a second rename.
+   - Cascaded into a small, genuinely external ring: `compiler/
+     module_loader.zig` (4 `outHere` sites), `parser/codegen.zig` (2 `head`
+     sites — `head`'s only outside-the-reducer callers, confirming the
+     step-4-scoping note's premise that the front end mostly doesn't touch
+     `Value` yet, except at this one seam), and `session/repl.zig` (2
+     `output` sites, 1 `getstring` site) — all fixed with `Value.fromRaw`
+     at the boundary, since none of those three files are otherwise
+     migrated.
+   - `zig build`/`zig build test` (261 unit tests, integration suite,
+     spine/golden corpus, `sigint_check` — the spurious quirk showed once,
+     confirmed clean via the binary directly, then green again on rerun)
+     green; `zig build bench` reduction counts still match the
+     pre-migration baseline exactly; `layer_check.py`/`scorecard.sh --check`
+     both clean, no regression at all this time.
+
+   This closes the `eval` layer's own remaining gap from step 4b — every
+   function `combinators.zig`/`ready.zig`/`combinators/lex.zig`/
+   `combinators/io.zig` call, whether defined in `reduce_core.zig` or
+   `reduce_rt.zig`, is now genuinely `Value`-typed, with the `reduceVal`-
+   style wrapper layer reduced to pure naming convenience (not a real
+   type-conversion boundary anymore) for four of its six members.
+
+   **Remaining for step 4:** `reduce()`/`reducer/reduce.zig`'s own
+   `Word`-in/`Word`-out signature (called from hundreds of sites well
+   beyond the reducer — `reduceVal` is the one wrapper still doing a real
+   conversion); the compile-time front end as one connected unit
+   (`semantics/lower.zig`/`infer.zig`/`match.zig`/`unify.zig`/
+   `type_errors.zig`/`depend.zig`/`symbols.zig`, `parser/codegen.zig`,
+   `compiler/module_loader.zig`/`setup.zig`/`dump.zig`) — not started,
+   scoped only, genuinely larger than everything landed in steps 1-4d
+   combined; `graph/print.zig` (unblocks once the front end migrates).
+   `bignum.zig`'s own internals (in-place retype rather than the wrapper
+   layer landed in step 4c) and `reduce_rt.zig`'s own private duplicate
+   leaf helpers remain unconverted by design.
 
 **Gate:** no `Word` outside `graph/dump.zig`; no numeric range tests on values;
 goldens + differential + bench green; GC invariant (mark follows `hd`/`tl` only for

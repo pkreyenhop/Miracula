@@ -47,7 +47,7 @@ pub fn handle_G_ERROR(ctx: *ReductionCtx) reduce.ReduceError!void {
         ctx.action = word.ACT_DONE;
         return;
     }
-    ctx.hold = Value.fromRaw(reduce_rt.gResidue(ctx.heap, lastarg(ctx).toRaw()));
+    ctx.hold = reduce_rt.gResidue(ctx.heap, lastarg(ctx));
     reduce.rewriteToCons(ctx.heap, ctx.e, reduce.ap(ctx.heap, ctx.args[1], ctx.hold), Value.fromRaw(word.NIL));
     ctx.action = word.ACT_DONE;
 }
@@ -145,7 +145,7 @@ pub fn handle_G_SYMB(ctx: *ReductionCtx) reduce.ReduceError!void {
     }
     reduce.hdSet(ctx.heap, lastarg_reduced, try reduce.reduceVal(ctx.heap, reduce.hdGet(ctx.heap, lastarg_reduced)));
     ctx.hold = reduce.ap(ctx.heap, Value.fromRaw(word.HD), reduce.hdGet(ctx.heap, lastarg_reduced));
-    if (try reduce_rt.compare(ctx.heap, ctx.args[0].toRaw(), (try reduce.reduceVal(ctx.heap, ctx.hold)).toRaw()) != 0) {
+    if (try reduce_rt.compare(ctx.heap, ctx.args[0], try reduce.reduceVal(ctx.heap, ctx.hold)) != 0) {
         reduce.rewriteToValue(ctx.heap, &ctx.e, Value.fromRaw(word.NIL)); // rewriteToFailure in C is NIL
     } else {
         reduce.rewriteToCons(ctx.heap, ctx.e, ctx.args[0], reduce.tlGet(ctx.heap, lastarg_reduced));
@@ -283,7 +283,7 @@ pub fn handle_G_CLOSE(ctx: *ReductionCtx) reduce.ReduceError!void {
     ctx.hold = reduce.ap(ctx.heap, ctx.args[1], ctx.args[2]);
     ctx.hold = try reduce.reduceVal(ctx.heap, ctx.hold);
     if (ctx.hold.toRaw() == word.NIL) {
-        try reduce_rt.parseCloseError(ctx.heap, ctx.args[0].toRaw(), ctx.args[2].toRaw());
+        try reduce_rt.parseCloseError(ctx.heap, ctx.args[0], ctx.args[2]);
     }
     reduce.rewriteToValue(ctx.heap, &ctx.e, reduce.hdGet(ctx.heap, ctx.hold));
     ctx.action = word.ACT_NEXTREDEX;
@@ -362,7 +362,7 @@ pub fn handle_LEX_TRY_(ctx: *ReductionCtx) reduce.ReduceError!void {
     }
     while (true) {
         if (ctx.args[0].toRaw() == word.NIL) {
-            reduce_rt.lexfail(ctx.heap, lastarg(ctx).toRaw());
+            reduce_rt.lexfail(ctx.heap, lastarg(ctx));
         }
         const hd_hd_hd_arg1 = reduce.hdGet(ctx.heap, reduce.hdGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.args[0])));
         if (hd_hd_hd_arg1.toRaw() != 0 and types.member(ctx.heap, hd_hd_hd_arg1.toRaw(), ctx.args[1].toRaw()) == 0) {
@@ -405,7 +405,7 @@ pub fn handle_LEX_TRY1_(ctx: *ReductionCtx) reduce.ReduceError!void {
     }
     while (true) {
         if (ctx.args[0].toRaw() == word.NIL) {
-            reduce_rt.lexfail(ctx.heap, lastarg(ctx).toRaw());
+            reduce_rt.lexfail(ctx.heap, lastarg(ctx));
         }
         const hd_hd_hd_arg1 = reduce.hdGet(ctx.heap, reduce.hdGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.args[0])));
         if (hd_hd_hd_arg1.toRaw() != 0 and types.member(ctx.heap, hd_hd_hd_arg1.toRaw(), ctx.args[1].toRaw()) == 0) {
@@ -419,7 +419,7 @@ pub fn handle_LEX_TRY1_(ctx: *ReductionCtx) reduce.ReduceError!void {
             continue;
         }
         const tl_hd_hd_arg1 = reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.args[0])));
-        reduce.rewriteToCons(ctx.heap, ctx.e, reduce.ap2(ctx.heap, reduce.tlGet(ctx.heap, reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.args[0]))), Value.fromRaw(reduce_rt.lexstate(ctx.heap, lastarg(ctx).toRaw())), reduce.ap(ctx.heap, Value.fromRaw(word.DESTREV), reduce.hdGet(ctx.heap, ctx.hold))), reduce.cons(ctx.heap, if (tl_hd_hd_arg1.toRaw() != 0) Value.fromRaw(tl_hd_hd_arg1.toRaw() - 1) else ctx.args[1], reduce.tlGet(ctx.heap, ctx.hold)));
+        reduce.rewriteToCons(ctx.heap, ctx.e, reduce.ap2(ctx.heap, reduce.tlGet(ctx.heap, reduce.tlGet(ctx.heap, reduce.hdGet(ctx.heap, ctx.args[0]))), reduce_rt.lexstate(ctx.heap, lastarg(ctx)), reduce.ap(ctx.heap, Value.fromRaw(word.DESTREV), reduce.hdGet(ctx.heap, ctx.hold))), reduce.cons(ctx.heap, if (tl_hd_hd_arg1.toRaw() != 0) Value.fromRaw(tl_hd_hd_arg1.toRaw() - 1) else ctx.args[1], reduce.tlGet(ctx.heap, ctx.hold)));
         ctx.action = word.ACT_DONE;
         return;
     }
@@ -513,9 +513,9 @@ pub fn handle_LEX_CLASS(ctx: *ReductionCtx) reduce.ReduceError!void {
     setLastarg(ctx, lastarg_reduced);
     if (lastarg_reduced.toRaw() == word.NIL or
         (if (reduce.hdGet(ctx.heap, ctx.args[0]).toRaw() == word.ANTICHARCLASS)
-            reduce_rt.memclass(ctx.heap, @intCast(lh(ctx.heap, lastarg_reduced).toRaw()), reduce.tlGet(ctx.heap, ctx.args[0]).toRaw()) != 0
+            reduce_rt.memclass(ctx.heap, @intCast(lh(ctx.heap, lastarg_reduced).toRaw()), reduce.tlGet(ctx.heap, ctx.args[0])) != 0
         else
-            reduce_rt.memclass(ctx.heap, @intCast(lh(ctx.heap, lastarg_reduced).toRaw()), ctx.args[0].toRaw()) == 0))
+            reduce_rt.memclass(ctx.heap, @intCast(lh(ctx.heap, lastarg_reduced).toRaw()), ctx.args[0]) == 0))
     {
         reduce.rewriteToNil(ctx.heap, &ctx.e);
         ctx.action = word.ACT_DONE;

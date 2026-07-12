@@ -160,13 +160,13 @@ inline fn datapair(heap_ptr: *heap.Heap, x: Word, y: Word) Word {
 /// identical hazard, just rarely unlucky enough to land a GC mid-stream.
 /// `wrapPtr` extends the same established `fileq`/`outfilq` pattern to
 /// these call sites instead of inventing a new one.
-pub fn wrapPtr(heap_ptr: *heap.Heap, raw: Word) Word {
-    return datapair(heap_ptr, 0, raw);
+pub fn wrapPtr(heap_ptr: *heap.Heap, raw: Word) Value {
+    return Value.fromRaw(datapair(heap_ptr, 0, raw));
 }
 
 /// Undo `wrapPtr`: read the raw pointer word back out of the wrapper cell.
-pub fn unwrapPtr(heap_ptr: *heap.Heap, wrapped: Word) Word {
-    return t(heap_ptr, wrapped);
+pub fn unwrapPtr(heap_ptr: *heap.Heap, wrapped_val: Value) Word {
+    return t(heap_ptr, wrapped_val.toRaw());
 }
 
 inline fn digit0(heap_ptr: *heap.Heap, x: Word) Word {
@@ -235,30 +235,33 @@ inline fn rewriteToCons(heap_ptr: *heap.Heap, e: Word, hd_value: Word, tl_value:
 }
 
 /// Abort with "missing case in definition" — the `BADCASE` combinator's reporter.
-pub fn badcaseError(heap_ptr: *heap.Heap, arg_info: Word) reduce_core.ReduceError!void {
+pub fn badcaseError(heap_ptr: *heap.Heap, arg_info_val: Value) reduce_core.ReduceError!void {
+    const arg_info = arg_info_val.toRaw();
     const subject = h(heap_ptr, arg_info);
     word.printErr("\nprogram error: missing case in definition", .{});
     if (subject != 0) {
-        word.printErr(" of {s}", .{std.mem.span((try getstring(heap_ptr, subject, null)).?)});
+        word.printErr(" of {s}", .{std.mem.span((try getstring(heap_ptr, Value.fromRaw(subject), null)).?)});
     }
     _ = word.putc('\n', getStderr().?);
-    outHere(heap_ptr, core_state.s(), getStderr().?, t(heap_ptr, arg_info), 1);
+    outHere(heap_ptr, core_state.s(), getStderr().?, Value.fromRaw(t(heap_ptr, arg_info)), 1);
     outstats();
     os.exit(1);
 }
 
 /// Abort with "lhs of definition doesn't match rhs" (a conformality error).
-pub fn confError(heap_ptr: *heap.Heap, arg_info: Word) void {
+pub fn confError(heap_ptr: *heap.Heap, arg_info_val: Value) void {
+    const arg_info = arg_info_val.toRaw();
     word.printErr("\nprogram error: lhs of definition doesn't match rhs\n", .{});
-    outHere(heap_ptr, core_state.s(), getStderr().?, t(heap_ptr, arg_info), 1);
+    outHere(heap_ptr, core_state.s(), getStderr().?, Value.fromRaw(t(heap_ptr, arg_info)), 1);
     outstats();
     os.exit(1);
 }
 
 /// Abort a failed `$$`-grammar parse, reporting the unexpected token (or end of input).
-pub fn parseCloseError(heap_ptr: *heap.Heap, arg1: Word, arg3: Word) reduce_core.ReduceError!void {
-    word.printErr("\nPARSE OF {s}FAILS WITH UNEXPECTED ", .{std.mem.span((try getstring(heap_ptr, arg1, null)).?)});
-    const arg3_reduced = try reduce(heap_ptr, t(heap_ptr, gResidue(heap_ptr, arg3)));
+pub fn parseCloseError(heap_ptr: *heap.Heap, arg1_val: Value, arg3_val: Value) reduce_core.ReduceError!void {
+    const arg1 = arg1_val.toRaw();
+    word.printErr("\nPARSE OF {s}FAILS WITH UNEXPECTED ", .{std.mem.span((try getstring(heap_ptr, Value.fromRaw(arg1), null)).?)});
+    const arg3_reduced = try reduce(heap_ptr, t(heap_ptr, gResidue(heap_ptr, arg3_val).toRaw()));
     if (arg3_reduced == NIL) {
         word.printErr("END OF INPUT\n", .{});
         outstats();
@@ -270,7 +273,7 @@ pub fn parseCloseError(heap_ptr: *heap.Heap, arg1: Word, arg3: Word) reduce_core
     if (hold_val == word.OFFSIDE) {
         word.printErr("offside", .{});
     }
-    const p = try getstring(heap_ptr, hold_val, null);
+    const p = try getstring(heap_ptr, Value.fromRaw(hold_val), null);
     if (p) |ptr| {
         var i: usize = 0;
         while (ptr[i] != 0) : (i += 1) {
@@ -314,11 +317,11 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
                     return word.ACT_DONE;
                 }
                 ctx.eval.stdinuse = ':';
-                tp(ctx.heap, ctx.e.toRaw()).* = wrapPtr(ctx.heap, @intCast(@intFromPtr(getStdin().?)));
+                tp(ctx.heap, ctx.e.toRaw()).* = wrapPtr(ctx.heap, @intCast(@intFromPtr(getStdin().?))).toRaw();
             }
-            const hold_char = os.getc(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, t(ctx.heap, ctx.e.toRaw()))))));
+            const hold_char = os.getc(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))));
             if (hold_char == os.EOF) {
-                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, t(ctx.heap, ctx.e.toRaw()))))));
+                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))));
                 rewriteToNil(ctx.heap, @ptrCast(&ctx.e));
                 return word.ACT_DONE;
             }
@@ -338,11 +341,11 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
                     return word.ACT_DONE;
                 }
                 ctx.eval.stdinuse = '-';
-                tp(ctx.heap, ctx.e.toRaw()).* = wrapPtr(ctx.heap, @intCast(@intFromPtr(getStdin().?)));
+                tp(ctx.heap, ctx.e.toRaw()).* = wrapPtr(ctx.heap, @intCast(@intFromPtr(getStdin().?))).toRaw();
             }
-            const hold_char = if (ctx.rs.UTF8 != 0) stoChar(fromUTF8(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, t(ctx.heap, ctx.e.toRaw()))))))) else os.getc(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, t(ctx.heap, ctx.e.toRaw()))))));
+            const hold_char = if (ctx.rs.UTF8 != 0) stoChar(fromUTF8(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))))) else os.getc(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))));
             if (hold_char == os.EOF) {
-                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, t(ctx.heap, ctx.e.toRaw()))))));
+                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))));
                 rewriteToNil(ctx.heap, @ptrCast(&ctx.e));
                 return word.ACT_DONE;
             }
@@ -358,9 +361,9 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
             reduce_core.upLeft(ctx);
             const lastarg = t(ctx.heap, ctx.e.toRaw());
 
-            const val = parseLine(ctx.heap, core_state.s(), rt.rs(), lex_state.ls(), h(ctx.heap, ctx.args[0].toRaw()), @ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, lastarg)))), t(ctx.heap, ctx.args[0].toRaw()));
+            const val = parseLine(ctx.heap, core_state.s(), rt.rs(), lex_state.ls(), h(ctx.heap, ctx.args[0].toRaw()), @ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(lastarg))))), t(ctx.heap, ctx.args[0].toRaw()));
             if (val == os.EOF) {
-                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, lastarg)))));
+                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(lastarg))))));
                 rewriteToNil(ctx.heap, @ptrCast(&ctx.e));
                 return word.ACT_DONE;
             }
@@ -375,7 +378,8 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
 /// Flatten a Miranda char-list `x` into a NUL-terminated C string in `linebuf`; aborts via `cmd` if it exceeds 1024 chars.
 ///
 /// Tests: getstring: copies a char list into a C-string
-pub fn getstring(heap_ptr: *heap.Heap, x: Word, cmd: ?[*:0]const u8) reduce_core.ReduceError!?[*:0]u8 {
+pub fn getstring(heap_ptr: *heap.Heap, x_val: Value, cmd: ?[*:0]const u8) reduce_core.ReduceError!?[*:0]u8 {
+    const x = x_val.toRaw();
     var curr_x = x;
     const x1 = x;
     var n: usize = 0;
@@ -410,7 +414,7 @@ pub fn getstring(heap_ptr: *heap.Heap, x: Word, cmd: ?[*:0]const u8) reduce_core
 
 test "getstring: copies a char list into a C-string" {
     tu.freshInterp();
-    const s = try getstring(heap.heap(), tu.str("hello"), null);
+    const s = try getstring(heap.heap(), Value.fromRaw(tu.str("hello")), null);
     try std.testing.expect(s != null);
     try std.testing.expectEqualStrings("hello", std.mem.span(@as([*:0]const u8, s.?)));
 }
@@ -433,7 +437,8 @@ pub fn outstats() void {
 }
 
 /// Write value `h_val` to file `f` for diagnostics, optionally followed by a newline.
-pub fn outHere(heap_ptr: *heap.Heap, core: *core_state.CoreState, f: ?*word.Stream, h_val: Word, nl: c_int) void {
+pub fn outHere(heap_ptr: *heap.Heap, core: *core_state.CoreState, f: ?*word.Stream, h_val_arg: Value, nl: c_int) void {
+    const h_val = h_val_arg.toRaw();
     if (getTag(heap_ptr, h_val) != .FILEINFO) {
         word.printErr("(impossible event in outhere)\n", .{});
         return;
@@ -508,7 +513,9 @@ pub fn intError(s: [*:0]const u8) void {
 /// Add `x + y`, promoting to `f64` if either is a `DOUBLE`, else bignum add.
 ///
 /// Tests: numplus: integer add and float promotion
-pub fn numplus(heap_ptr: *heap.Heap, x: Word, y: Word) word.ReduceError!Word {
+pub fn numplus(heap_ptr: *heap.Heap, x_val: Value, y_val: Value) word.ReduceError!Word {
+    const x = x_val.toRaw();
+    const y = y_val.toRaw();
     if (getTag(heap_ptr, x) == .DOUBLE) {
         return heap.stoDbl(heap.getDbl(x) + forceDbl(heap_ptr, y));
     }
@@ -520,15 +527,19 @@ pub fn numplus(heap_ptr: *heap.Heap, x: Word, y: Word) word.ReduceError!Word {
 
 test "numplus: integer add and float promotion" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(heap.heap(), try numplus(heap.heap(), big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), 3))));
-    try std.testing.expectEqual(@as(c_longlong, -1), big.toInt(heap.heap(), try numplus(heap.heap(), big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), -3))));
-    const r = try numplus(heap.heap(), try heap.stoDbl(1.5), big.fromInt(heap.heap(), 2)); // DOUBLE + INT → DOUBLE
+    try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(heap.heap(), try numplus(heap.heap(), Value.fromRaw(big.fromInt(heap.heap(), 2)), Value.fromRaw(big.fromInt(heap.heap(), 3)))));
+    try std.testing.expectEqual(@as(c_longlong, -1), big.toInt(heap.heap(), try numplus(heap.heap(), Value.fromRaw(big.fromInt(heap.heap(), 2)), Value.fromRaw(big.fromInt(heap.heap(), -3)))));
+    const r = try numplus(heap.heap(), Value.fromRaw(try heap.stoDbl(1.5)), Value.fromRaw(big.fromInt(heap.heap(), 2))); // DOUBLE + INT → DOUBLE
     try std.testing.expectEqual(word.NodeTag.DOUBLE, heap.getTag(heap.heap(), r));
     try std.testing.expectEqual(@as(f64, 3.5), heap.getDbl(r));
 }
 
 /// The residual (unconsumed) token list after a grammar parse, reversed via `DESTREV`.
-pub fn gResidue(heap_ptr: *heap.Heap, toks2: Word) Word {
+pub fn gResidue(heap_ptr: *heap.Heap, toks2_val: Value) Value {
+    return Value.fromRaw(gResidueRaw(heap_ptr, toks2_val.toRaw()));
+}
+
+fn gResidueRaw(heap_ptr: *heap.Heap, toks2: Word) Word {
     var curr_toks2 = toks2;
     var toks1 = NIL;
     if (getTag(heap_ptr, curr_toks2) != .CONS) {
@@ -551,8 +562,8 @@ pub fn gResidue(heap_ptr: *heap.Heap, toks2: Word) Word {
 /// 1 if character `c_val` is in the lexer character-class list `x_val` (handles `..` ranges).
 ///
 /// Tests: memclass: character-class membership with ranges
-pub fn memclass(heap_ptr: *heap.Heap, c_val: c_int, x_val: Word) c_int {
-    var x = x_val;
+pub fn memclass(heap_ptr: *heap.Heap, c_val: c_int, x_arg: Value) c_int {
+    var x = x_arg.toRaw();
     while (x != NIL) {
         if (h(heap_ptr, x) == word.DOTDOT) {
             x = t(heap_ptr, x);
@@ -572,17 +583,17 @@ test "memclass: character-class membership with ranges" {
     tu.freshInterp();
     // a range is encoded as [DOTDOT, low, high]
     const range = cons(heap.heap(), word.DOTDOT, cons(heap.heap(), 'a', cons(heap.heap(), 'z', NIL)));
-    try std.testing.expectEqual(@as(c_int, 1), memclass(heap.heap(), 'm', range));
-    try std.testing.expectEqual(@as(c_int, 0), memclass(heap.heap(), 'A', range));
+    try std.testing.expectEqual(@as(c_int, 1), memclass(heap.heap(), 'm', Value.fromRaw(range)));
+    try std.testing.expectEqual(@as(c_int, 0), memclass(heap.heap(), 'A', Value.fromRaw(range)));
     // a bare class member
     const single = cons(heap.heap(), 'x', NIL);
-    try std.testing.expectEqual(@as(c_int, 1), memclass(heap.heap(), 'x', single));
-    try std.testing.expectEqual(@as(c_int, 0), memclass(heap.heap(), 'y', single));
+    try std.testing.expectEqual(@as(c_int, 1), memclass(heap.heap(), 'x', Value.fromRaw(single)));
+    try std.testing.expectEqual(@as(c_int, 0), memclass(heap.heap(), 'y', Value.fromRaw(single)));
 }
 
 /// Abort: the lexer hit unrecognised input; prints up to 24 chars of context.
-pub fn lexfail(heap_ptr: *heap.Heap, x_val: Word) void {
-    var x = x_val;
+pub fn lexfail(heap_ptr: *heap.Heap, x_arg: Value) void {
+    var x = x_arg.toRaw();
     var i: i32 = 24;
     word.printErr("\nLEX FAILS WITH UNRECOGNISED INPUT: \"", .{});
     while (i > 0 and x != NIL and 0 <= lh(heap_ptr, x) and lh(heap_ptr, x) <= 255) {
@@ -596,22 +607,23 @@ pub fn lexfail(heap_ptr: *heap.Heap, x_val: Word) void {
 }
 
 /// Split a packed lexer-state value into a `(hi . lo)` cons.
-pub fn lexstate(heap_ptr: *heap.Heap, x: Word) Word {
+pub fn lexstate(heap_ptr: *heap.Heap, x_val: Value) Value {
+    const x = x_val.toRaw();
     const val = h(heap_ptr, h(heap_ptr, x));
-    return cons(heap_ptr, big.fromInt(heap_ptr, val >> 8), stosmallint(heap_ptr, val & 255));
+    return Value.fromRaw(cons(heap_ptr, big.fromInt(heap_ptr, val >> 8), stosmallint(heap_ptr, val & 255)));
 }
 
 /// The error message for a failed `fork`/pipe (used by `system`).
-pub fn piperrmess(pid: Word) Word {
-    return lex.strConv(if (pid == -1) "cannot create process\n" else "cannot open pipe\n");
+pub fn piperrmess(pid: Word) Value {
+    return Value.fromRaw(lex.strConv(if (pid == -1) "cannot create process\n" else "cannot open pipe\n"));
 }
 
 /// Structurally compare two values (`<0`/`0`/`>0`); errors on comparing functions.
 ///
 /// Tests: compare: orders ints, chars, and strings; 0 on equal
-pub fn compare(heap_ptr: *heap.Heap, arg_a: Word, arg_b: Word) reduce_core.ReduceError!c_int {
-    var a = arg_a;
-    var b = arg_b;
+pub fn compare(heap_ptr: *heap.Heap, arg_a_val: Value, arg_b_val: Value) reduce_core.ReduceError!c_int {
+    var a = arg_a_val.toRaw();
+    var b = arg_b_val.toRaw();
     while (true) {
         const tag_a = getTag(heap_ptr, a);
         const tag_b = getTag(heap_ptr, b);
@@ -656,7 +668,7 @@ pub fn compare(heap_ptr: *heap.Heap, arg_a: Word, arg_b: Word) reduce_core.Reduc
                 if (tag_a == tag_b) {
                     hp(heap_ptr, a).* = try reduce(heap_ptr, h(heap_ptr, a));
                     hp(heap_ptr, b).* = try reduce(heap_ptr, h(heap_ptr, b));
-                    const temp = try compare(heap_ptr, h(heap_ptr, a), h(heap_ptr, b));
+                    const temp = try compare(heap_ptr, Value.fromRaw(h(heap_ptr, a)), Value.fromRaw(h(heap_ptr, b)));
                     if (temp != 0) {
                         return temp;
                     }
@@ -681,18 +693,22 @@ pub fn compare(heap_ptr: *heap.Heap, arg_a: Word, arg_b: Word) reduce_core.Reduc
 
 test "compare: orders ints, chars, and strings; 0 on equal" {
     tu.freshInterp();
-    try std.testing.expect(try compare(heap.heap(), big.fromInt(heap.heap(), 2), big.fromInt(heap.heap(), 3)) < 0);
-    try std.testing.expect(try compare(heap.heap(), big.fromInt(heap.heap(), 3), big.fromInt(heap.heap(), 2)) > 0);
-    try std.testing.expectEqual(@as(c_int, 0), try compare(heap.heap(), big.fromInt(heap.heap(), 7), big.fromInt(heap.heap(), 7)));
+    try std.testing.expect(try compare(heap.heap(), Value.fromRaw(big.fromInt(heap.heap(), 2)), Value.fromRaw(big.fromInt(heap.heap(), 3))) < 0);
+    try std.testing.expect(try compare(heap.heap(), Value.fromRaw(big.fromInt(heap.heap(), 3)), Value.fromRaw(big.fromInt(heap.heap(), 2))) > 0);
+    try std.testing.expectEqual(@as(c_int, 0), try compare(heap.heap(), Value.fromRaw(big.fromInt(heap.heap(), 7)), Value.fromRaw(big.fromInt(heap.heap(), 7))));
     // strings (char lists) compare lexicographically, element by element
-    try std.testing.expect(try compare(heap.heap(), tu.str("abc"), tu.str("abd")) < 0);
-    try std.testing.expectEqual(@as(c_int, 0), try compare(heap.heap(), tu.str("hi"), tu.str("hi")));
+    try std.testing.expect(try compare(heap.heap(), Value.fromRaw(tu.str("abc")), Value.fromRaw(tu.str("abd"))) < 0);
+    try std.testing.expectEqual(@as(c_int, 0), try compare(heap.heap(), Value.fromRaw(tu.str("hi")), Value.fromRaw(tu.str("hi"))));
 }
 
 /// Fully evaluate `x` to normal form (deep `reduce`), descending applications and conses.
 ///
 /// Tests: force: deep-evaluates a list of thunks to normal form
-pub fn force(heap_ptr: *heap.Heap, x_val: Word) reduce_core.ReduceError!void {
+pub fn force(heap_ptr: *heap.Heap, x_val: Value) reduce_core.ReduceError!void {
+    return forceRaw(heap_ptr, x_val.toRaw());
+}
+
+fn forceRaw(heap_ptr: *heap.Heap, x_val: Word) reduce_core.ReduceError!void {
     var x = x_val;
     switch (getTag(heap_ptr, x)) {
         .AP => {
@@ -705,7 +721,7 @@ pub fn force(heap_ptr: *heap.Heap, x_val: Word) reduce_core.ReduceError!void {
             }
             while (getTag(heap_ptr, x) == .AP) {
                 tp(heap_ptr, x).* = try reduce(heap_ptr, t(heap_ptr, x));
-                try force(heap_ptr, t(heap_ptr, x));
+                try forceRaw(heap_ptr, t(heap_ptr, x));
                 x = h(heap_ptr, x);
             }
             return;
@@ -713,7 +729,7 @@ pub fn force(heap_ptr: *heap.Heap, x_val: Word) reduce_core.ReduceError!void {
         .CONS => {
             while (getTag(heap_ptr, x) == .CONS) {
                 hp(heap_ptr, x).* = try reduce(heap_ptr, h(heap_ptr, x));
-                try force(heap_ptr, h(heap_ptr, x));
+                try forceRaw(heap_ptr, h(heap_ptr, x));
                 tp(heap_ptr, x).* = try reduce(heap_ptr, t(heap_ptr, x));
                 x = t(heap_ptr, x);
             }
@@ -726,7 +742,7 @@ test "force: deep-evaluates a list of thunks to normal form" {
     tu.freshInterp();
     const thunk = ap(heap.heap(), ap(heap.heap(), word.PLUS, big.fromInt(heap.heap(), 2)), big.fromInt(heap.heap(), 3));
     const lst = cons(heap.heap(), thunk, NIL);
-    try force(heap.heap(), lst);
+    try force(heap.heap(), Value.fromRaw(lst));
     // the head thunk is now reduced to the INT 5 in place
     try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(heap.heap(), h(heap.heap(), lst)));
 }
@@ -734,27 +750,27 @@ test "force: deep-evaluates a list of thunks to normal form" {
 /// The head atom/combinator at the end of a left spine of applications.
 ///
 /// Tests: head: the leftmost atom of an application spine
-pub fn head(heap_ptr: *heap.Heap, x_val: Word) Word {
-    var x = x_val;
+pub fn head(heap_ptr: *heap.Heap, x_val: Value) Value {
+    var x = x_val.toRaw();
     while (getTag(heap_ptr, x) == .AP) {
         x = h(heap_ptr, x);
     }
-    return x;
+    return Value.fromRaw(x);
 }
 
 test "head: the leftmost atom of an application spine" {
     tu.freshInterp();
     // ((K True) False) → head is K
     const g = ap(heap.heap(), ap(heap.heap(), word.K, word.True), word.False);
-    try std.testing.expectEqual(@as(Word, word.K), head(heap.heap(), g));
+    try std.testing.expectEqual(@as(Word, word.K), head(heap.heap(), Value.fromRaw(g)).toRaw());
     // a bare atom is its own head
-    try std.testing.expectEqual(@as(Word, word.I), head(heap.heap(), word.I));
+    try std.testing.expectEqual(@as(Word, word.I), head(heap.heap(), Value.fromRaw(word.I)).toRaw());
 }
 
 /// Open `f` for appending (the `Appendfile` directive), recording it in the open-file list.
-pub fn apfile(heap_ptr: *heap.Heap, eval: *EvalState, f: Word) reduce_core.ReduceError!void {
+pub fn apfile(heap_ptr: *heap.Heap, eval: *EvalState, f_val: Value) reduce_core.ReduceError!void {
     var p = eval.outfilq;
-    const fil = try getstring(heap_ptr, f, "Appendfile");
+    const fil = try getstring(heap_ptr, f_val, "Appendfile");
     while (p != NIL and !std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(heap_ptr, h(heap_ptr, p)))), std.mem.span(fil.?))) {
         p = t(heap_ptr, p);
     }
@@ -771,9 +787,9 @@ pub fn apfile(heap_ptr: *heap.Heap, eval: *EvalState, f: Word) reduce_core.Reduc
 }
 
 /// Close the output file named by `f` (the `Closefile` directive).
-pub fn closefile(heap_ptr: *heap.Heap, eval: *EvalState, f: Word) reduce_core.ReduceError!void {
+pub fn closefile(heap_ptr: *heap.Heap, eval: *EvalState, f_val: Value) reduce_core.ReduceError!void {
     var p = &eval.outfilq;
-    const fil = try getstring(heap_ptr, f, "Closefile");
+    const fil = try getstring(heap_ptr, f_val, "Closefile");
     while (p.* != NIL and !std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(heap_ptr, h(heap_ptr, p.*)))), std.mem.span(fil.?))) {
         p = tp(heap_ptr, p.*);
     }
@@ -784,9 +800,10 @@ pub fn closefile(heap_ptr: *heap.Heap, eval: *EvalState, f: Word) reduce_core.Re
 }
 
 /// Switch output to the file named in `e` (the `Tofile` directive), opening it if needed.
-pub fn outf(heap_ptr: *heap.Heap, eval: *EvalState, e: Word) reduce_core.ReduceError!void {
+pub fn outf(heap_ptr: *heap.Heap, eval: *EvalState, e_val: Value) reduce_core.ReduceError!void {
+    const e = e_val.toRaw();
     var p = eval.outfilq;
-    const f = try getstring(heap_ptr, t(heap_ptr, h(heap_ptr, e)), "Tofile");
+    const f = try getstring(heap_ptr, Value.fromRaw(t(heap_ptr, h(heap_ptr, e))), "Tofile");
     while (p != NIL and !std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(heap_ptr, h(heap_ptr, p)))), std.mem.span(f.?))) {
         p = t(heap_ptr, p);
     }
@@ -808,8 +825,8 @@ pub fn outf(heap_ptr: *heap.Heap, eval: *EvalState, e: Word) reduce_core.ReduceE
 }
 
 /// Print a Miranda char-list to the current output stream (`eval.s_out`), honouring UTF-8.
-pub fn print(heap_ptr: *heap.Heap, eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) reduce_core.ReduceError!void {
-    var e = try reduce(heap_ptr, arg_e);
+pub fn print(heap_ptr: *heap.Heap, eval: *EvalState, rs: *rt.RuntimeState, arg_e_val: Value) reduce_core.ReduceError!void {
+    var e = try reduce(heap_ptr, arg_e_val.toRaw());
     while (getTag(heap_ptr, e) == .CONS) {
         hp(heap_ptr, e).* = try reduce(heap_ptr, h(heap_ptr, e));
         if (!heap.isChar(h(heap_ptr, e))) {
@@ -848,8 +865,8 @@ const Tofileb = 8;
 const Appendfileb = 9;
 
 /// Drive a list of output directives (`Stdout`/`Tofile`/`System`/`Exit`/…) — the top of the I/O interpreter.
-pub fn output(heap_ptr: *heap.Heap, eval: *EvalState, rs: *rt.RuntimeState, arg_e: Word) reduce_core.ReduceError!void {
-    var e = arg_e;
+pub fn output(heap_ptr: *heap.Heap, eval: *EvalState, rs: *rt.RuntimeState, arg_e_val: Value) reduce_core.ReduceError!void {
+    var e = arg_e_val.toRaw();
     const old_cstack = rs.cstack;
     rs.cstack = @ptrCast(&e);
     defer rs.cstack = old_cstack;
@@ -857,47 +874,47 @@ pub fn output(heap_ptr: *heap.Heap, eval: *EvalState, rs: *rt.RuntimeState, arg_
     e = try reduce(heap_ptr, e);
     while (getTag(heap_ptr, e) == .CONS) {
         hp(heap_ptr, e).* = try reduce(heap_ptr, h(heap_ptr, e));
-        switch (h(heap_ptr, head(heap_ptr, h(heap_ptr, e)))) {
+        switch (h(heap_ptr, head(heap_ptr, Value.fromRaw(h(heap_ptr, e))).toRaw())) {
             Stdout => {
-                try print(heap_ptr, eval, rs, t(heap_ptr, h(heap_ptr, e)));
+                try print(heap_ptr, eval, rs, Value.fromRaw(t(heap_ptr, h(heap_ptr, e))));
             },
             Stdoutb => {
                 rs.UTF8OUT = 0;
-                try print(heap_ptr, eval, rs, t(heap_ptr, h(heap_ptr, e)));
+                try print(heap_ptr, eval, rs, Value.fromRaw(t(heap_ptr, h(heap_ptr, e))));
                 rs.UTF8OUT = rs.UTF8;
             },
             Stderr => {
                 eval.s_out = getStderr();
-                try print(heap_ptr, eval, rs, t(heap_ptr, h(heap_ptr, e)));
+                try print(heap_ptr, eval, rs, Value.fromRaw(t(heap_ptr, h(heap_ptr, e))));
                 eval.s_out = getStdout();
             },
             Tofile => {
-                try outf(heap_ptr, eval, h(heap_ptr, e));
-                try print(heap_ptr, eval, rs, t(heap_ptr, h(heap_ptr, e)));
+                try outf(heap_ptr, eval, Value.fromRaw(h(heap_ptr, e)));
+                try print(heap_ptr, eval, rs, Value.fromRaw(t(heap_ptr, h(heap_ptr, e))));
             },
             Tofileb => {
                 rs.UTF8OUT = 0;
-                try outf(heap_ptr, eval, h(heap_ptr, e));
-                try print(heap_ptr, eval, rs, t(heap_ptr, h(heap_ptr, e)));
+                try outf(heap_ptr, eval, Value.fromRaw(h(heap_ptr, e)));
+                try print(heap_ptr, eval, rs, Value.fromRaw(t(heap_ptr, h(heap_ptr, e))));
                 rs.UTF8OUT = rs.UTF8;
             },
             Closefile => {
                 tp(heap_ptr, h(heap_ptr, e)).* = try reduce(heap_ptr, t(heap_ptr, h(heap_ptr, e)));
-                try closefile(heap_ptr, eval, t(heap_ptr, h(heap_ptr, e)));
+                try closefile(heap_ptr, eval, Value.fromRaw(t(heap_ptr, h(heap_ptr, e))));
             },
             Appendfile => {
                 tp(heap_ptr, h(heap_ptr, e)).* = try reduce(heap_ptr, t(heap_ptr, h(heap_ptr, e)));
-                try apfile(heap_ptr, eval, t(heap_ptr, h(heap_ptr, e)));
+                try apfile(heap_ptr, eval, Value.fromRaw(t(heap_ptr, h(heap_ptr, e))));
             },
             Appendfileb => {
                 rs.UTF8OUT = 0;
                 tp(heap_ptr, h(heap_ptr, e)).* = try reduce(heap_ptr, t(heap_ptr, h(heap_ptr, e)));
-                try apfile(heap_ptr, eval, t(heap_ptr, h(heap_ptr, e)));
+                try apfile(heap_ptr, eval, Value.fromRaw(t(heap_ptr, h(heap_ptr, e))));
                 rs.UTF8OUT = rs.UTF8;
             },
             System => {
                 tp(heap_ptr, h(heap_ptr, e)).* = try reduce(heap_ptr, t(heap_ptr, h(heap_ptr, e)));
-                const cmd = try getstring(heap_ptr, t(heap_ptr, h(heap_ptr, e)), "System");
+                const cmd = try getstring(heap_ptr, Value.fromRaw(t(heap_ptr, h(heap_ptr, e))), "System");
                 _ = os.system(cmd);
             },
             Exit => {
