@@ -2324,15 +2324,31 @@ subsystems and passed explicitly; the ambient singleton deleted.
      fixing it properly means touching most of `codegen.zig`'s own top-level
      functions' signatures, not just a handful of leaf helpers.
 
-   Combined, these three clusters are ~270 call sites — noticeably bigger than
-   any single slice landed so far this session, concentrated in three
-   files' core dispatch logic rather than spread thin. Whether to cascade
-   into them now or document them as a permanently-accepted exception to
-   "singleton-accessor count = 0" (they are pure, deterministic, one-shot-
-   per-compile code with no recursion-depth stack-growth risk analogous to
-   `dumpOb`'s, since they're driven by a program's static structure, not
-   unbounded runtime data) is a real decision, deliberately left open rather
-   than made unilaterally.
+   Combined, these three clusters were ~270 call sites — noticeably bigger
+   than any single slice landed earlier this session, concentrated in three
+   files' core dispatch logic rather than spread thin. Explicitly chosen to
+   cascade into all three rather than document them as an exception (they
+   carry no recursion-depth stack-growth risk analogous to `dumpOb`'s, being
+   driven by a program's static structure rather than unbounded runtime
+   data, but the phase's own stated gate is a literal zero).
+
+   **`lower.zig`'s `codegen()`-internal cluster, landed (2026-07-08).**
+   `cons`/`ap`/`ap2`/`ap3` (and `makeTyp`, one more small helper found along
+   the way) now take `heap: *Heap` explicitly. All ~85 real call sites sit
+   within this file's own already-`heap`-scoped functions — a single
+   scripted pass (insert `heap, ` as the first argument to every bare
+   `cons(`/`ap(`/`ap2(`/`ap3(` call not already threaded) plus 4 manual
+   fixups (one true ambient helper, `makeTyp`, needing its own signature
+   change; three test blocks where the script's blanket `heap` substitution
+   didn't have a real `heap` binding in scope and needed `heap_mod.heap()`
+   instead, matching every other test's convention). `mkindex` stays
+   ambient-internal (matches the pattern used for `heap.zig`'s own small
+   leaf accessors). Zero external callers needed fixing — all four functions
+   are file-private. `zig build test`: all 253 unit tests + integration
+   suite + spine differential/golden corpus green. `layer_check.py`: 0 new
+   violations. `scorecard.sh`: no regression (this metric only tracks the
+   `.method()`-chained ambient style, not the argument-passing style this
+   cluster used).
 
 **Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
 interrupt flag); DAG check green with empty allowlist; files > 1,000 lines = 0;
