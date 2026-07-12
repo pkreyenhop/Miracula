@@ -1,4 +1,4 @@
-c_int/c_long/c_uint/c_ulong (non-FFI)	164
+c_int/c_long/c_uint/c_ulong (non-FFI)	166
 [*:0] C-string types (non-FFI)	228
 extern fn declarations	8
 extern var declarations	0

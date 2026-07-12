@@ -383,3 +383,124 @@ test "asFileNode/fileNodeOf and asIdentifier/identifierOf: bridge to the existin
 // `strid` branch into `Kind`'s general classification would blur that
 // boundary for no real gain. `strtab.zig`'s own `strBits`/`strOf` are
 // already the right typed accessors for this payload and are untouched.
+
+// ── Step 4 (bignum): typed wrappers over the arbitrary-precision arithmetic ─
+//
+// `bignum.zig`'s own functions stay `Word`-in/`Word`-out — that file's
+// digit-chain implementation (`digitPtr`/`restPtr`, raw `*Word` cell
+// mutation, carry/borrow logic) is exactly the kind of delicate, bit-level
+// code this project is careful not to touch as a drive-by in a type-
+// migration pass (matching the same caution `dblVal`'s doc comment already
+// applies to `heap.zig`'s `fpdatum` trick). These wrappers are the `Value`
+// in/out boundary callers use instead — the same pattern as `intVal`/
+// `intOf` above (which already wrap `bignum.toInt`/`.fromInt`), extended to
+// the rest of `bignum.zig`'s public API.
+
+/// True when boxed integer `x` is non-negative.
+pub inline fn isNatVal(heap_ptr: *Heap, x: Value) bool {
+    return big.isNat(heap_ptr, x.toRaw());
+}
+
+/// `-x` for boxed integer `x`.
+pub inline fn negateVal(heap_ptr: *Heap, x: Value) Value {
+    return Value.fromRaw(big.negate(heap_ptr, x.toRaw()));
+}
+
+/// `x + y` for boxed integers.
+pub inline fn addVal(heap_ptr: *Heap, x: Value, y: Value) Value {
+    return Value.fromRaw(big.add(heap_ptr, x.toRaw(), y.toRaw()));
+}
+
+/// `x - y` for boxed integers.
+pub inline fn subVal(heap_ptr: *Heap, x: Value, y: Value) Value {
+    return Value.fromRaw(big.sub(heap_ptr, x.toRaw(), y.toRaw()));
+}
+
+/// Three-way comparison of boxed integers `x`/`y` (negative/zero/positive).
+pub inline fn cmpVal(heap_ptr: *Heap, x: Value, y: Value) c_int {
+    return big.cmp(heap_ptr, x.toRaw(), y.toRaw());
+}
+
+/// `x * y` for boxed integers.
+pub inline fn mulVal(heap_ptr: *Heap, x: Value, y: Value) Value {
+    return Value.fromRaw(big.mul(heap_ptr, x.toRaw(), y.toRaw()));
+}
+
+/// `x div y` (integer division) for boxed integers.
+pub inline fn divVal(heap_ptr: *Heap, self: *big.Bignum, x: Value, y: Value) Value {
+    return Value.fromRaw(big.div(heap_ptr, self, x.toRaw(), y.toRaw()));
+}
+
+/// `x mod y` (remainder) for boxed integers.
+pub inline fn modVal(heap_ptr: *Heap, self: *big.Bignum, x: Value, y: Value) Value {
+    return Value.fromRaw(big.mod(heap_ptr, self, x.toRaw(), y.toRaw()));
+}
+
+/// `x ^ y` (integer exponentiation) for boxed integers.
+pub inline fn powVal(heap_ptr: *Heap, x: Value, y: Value) Value {
+    return Value.fromRaw(big.pow(heap_ptr, x.toRaw(), y.toRaw()));
+}
+
+/// Boxed integer `x` as an `f64`.
+pub inline fn toFloatVal(heap_ptr: *Heap, x: Value) f64 {
+    return big.toFloat(heap_ptr, x.toRaw());
+}
+
+/// Box `f64` `r` as an arbitrary-precision integer (truncating).
+pub inline fn fromFloatVal(heap_ptr: *Heap, r: f64) Value {
+    return Value.fromRaw(big.fromFloat(heap_ptr, r));
+}
+
+/// Natural log of boxed integer `x`.
+pub inline fn lnVal(heap_ptr: *Heap, self: *big.Bignum, x: Value) f64 {
+    return big.ln(heap_ptr, self, x.toRaw());
+}
+
+/// Base-10 log of boxed integer `x`.
+pub inline fn log10Val(heap_ptr: *Heap, self: *big.Bignum, x: Value) f64 {
+    return big.log10(heap_ptr, self, x.toRaw());
+}
+
+/// Parse a Miranda char-list `x` (in the given `base`) as a boxed integer.
+pub inline fn parseStringVal(heap_ptr: *Heap, x: Value, base: c_int) Value {
+    return Value.fromRaw(big.parseString(heap_ptr, x.toRaw(), base));
+}
+
+/// Boxed integer `x` as a Miranda char-list of decimal digits.
+pub inline fn toDecimalListVal(heap_ptr: *Heap, x: Value) Value {
+    return Value.fromRaw(big.toDecimalList(heap_ptr, x.toRaw()));
+}
+
+/// Boxed integer `x` as a Miranda char-list of hex digits.
+pub inline fn toHexListVal(heap_ptr: *Heap, x: Value) Value {
+    return Value.fromRaw(big.toHexList(heap_ptr, x.toRaw()));
+}
+
+/// Boxed integer `x` as a Miranda char-list of octal digits.
+pub inline fn toOctalListVal(heap_ptr: *Heap, x: Value) Value {
+    return Value.fromRaw(big.toOctalList(heap_ptr, x.toRaw()));
+}
+
+test "bignum Value wrappers: typed in/out over bignum.zig's unchanged Word API" {
+    const tu = @import("../testutil.zig");
+    tu.freshInterp();
+    const heap_ptr = heap_mod.heap();
+
+    const a = intOf(heap_ptr, 6);
+    const b = intOf(heap_ptr, 7);
+    try std.testing.expect(isNatVal(heap_ptr, a));
+    try std.testing.expectEqual(@as(i64, 42), intVal(heap_ptr, mulVal(heap_ptr, a, b)));
+    try std.testing.expectEqual(@as(i64, 13), intVal(heap_ptr, addVal(heap_ptr, a, b)));
+    try std.testing.expectEqual(@as(i64, -1), intVal(heap_ptr, subVal(heap_ptr, a, b)));
+    try std.testing.expectEqual(@as(i64, -6), intVal(heap_ptr, negateVal(heap_ptr, a)));
+    try std.testing.expect(cmpVal(heap_ptr, a, b) < 0);
+    try std.testing.expectEqual(@as(f64, 6.0), toFloatVal(heap_ptr, a));
+    try std.testing.expectEqual(@as(i64, 6), intVal(heap_ptr, fromFloatVal(heap_ptr, 6.9)));
+
+    const bn = big.bn();
+    const q = divVal(heap_ptr, bn, intOf(heap_ptr, 20), intOf(heap_ptr, 6));
+    try std.testing.expectEqual(@as(i64, 3), intVal(heap_ptr, q));
+    const r = modVal(heap_ptr, bn, intOf(heap_ptr, 20), intOf(heap_ptr, 6));
+    try std.testing.expectEqual(@as(i64, 2), intVal(heap_ptr, r));
+    try std.testing.expectEqual(@as(i64, 64), intVal(heap_ptr, powVal(heap_ptr, intOf(heap_ptr, 2), intOf(heap_ptr, 6))));
+}
