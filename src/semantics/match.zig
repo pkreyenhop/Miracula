@@ -141,7 +141,7 @@ fn genlhsRaw(heap: *Heap, x: Word) Word {
             return make(heap, getTag(heap, x), hold, genlhsRaw(heap, t(heap, x)));
         },
         .ID => {
-            if (member(heap, ls().idsused, x) != 0) {
+            if (member(heap, Value.fromRaw(ls().idsused), Value.fromRaw(x)) != 0) {
                 return cons(heap, CONST, x);
             }
             if (!isConstructor(heap, x)) {

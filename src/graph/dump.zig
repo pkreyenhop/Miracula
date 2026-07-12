@@ -16,6 +16,7 @@ const core = @import("../runtime/core_state.zig");
 const lex_state = @import("../parser/lex_state.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
 const depend_mod = @import("../semantics/depend.zig");
+const Value = @import("value.zig").Value;
 const files = @import("../io/files.zig");
 const lex = @import("../parser/lex.zig");
 const print = @import("print.zig");
@@ -575,7 +576,7 @@ pub fn loadScript(heap: *Heap, core_st: *core.CoreState, comp: *compiler_state.C
             idValPtr(heap, old).* = new_id;
             if (heap.getTag(new_id) == .ID) {
                 if ((idType(new_id) != word.undef_t or idVal(new_id) != word.UNDEF) and idType(new_id) != word.alias_t) {
-                    comp.CLASHES = add1(heap, new_id, comp.CLASHES);
+                    comp.CLASHES = add1(heap, Value.fromRaw(new_id), Value.fromRaw(comp.CLASHES)).toRaw();
                 }
             }
             heap.hp(heap.h(a)).* = hold;
@@ -781,7 +782,7 @@ pub fn unscramble(heap: *Heap, comp: *compiler_state.CompilerState, aliases: Wor
         const new_id = heap.h(heap.h(al));
         const old = heap.t(heap.h(al));
         if (heap.getTag(new_id) != .ID) {
-            if (member(heap, comp.SUPPRESSED, new_id) == 0) {
+            if (member(heap, Value.fromRaw(comp.SUPPRESSED), Value.fromRaw(new_id)) == 0) {
                 a = heap.cons(old, a);
             }
             continue;
@@ -791,7 +792,7 @@ pub fn unscramble(heap: *Heap, comp: *compiler_state.CompilerState, aliases: Wor
         }
         if (idType(new_id) == word.undef_t) {
             a = heap.cons(old, a);
-        } else if (member(heap, comp.CLASHES, new_id) == 0) {
+        } else if (member(heap, Value.fromRaw(comp.CLASHES), Value.fromRaw(new_id)) == 0) {
             if (heap.getTag(idWho(new_id)) != .CONS) {
                 idWhoPtr(heap, new_id).* = heap.cons(datapair(heap, strtab.strBits(strtab.table(), getId(old)), 0), idWho(new_id));
             }
@@ -901,7 +902,7 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
                 stackpPush(heap, name(heap));
                 const top = stackpTop(heap);
                 if (idType(top) == word.new_t) {
-                    comp.CLASHES = add1(heap, top, comp.CLASHES);
+                    comp.CLASHES = add1(heap, Value.fromRaw(top), Value.fromRaw(comp.CLASHES)).toRaw();
                     stackpSetTop(heap, word.NIL);
                 } else if (idType(top) == word.alias_t) {
                     stackpSetTop(heap, idVal(top));
@@ -1023,7 +1024,7 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
                                 ch = os.getc(file);
                                 continue;
                             }
-                            comp.CLASHES = add1(heap, top_val, comp.CLASHES);
+                            comp.CLASHES = add1(heap, Value.fromRaw(top_val), Value.fromRaw(comp.CLASHES)).toRaw();
                             heap.stackp = heap.stackp.? - 4;
                         } else {
                             defs = heap.cons(stackpPop(heap), defs);

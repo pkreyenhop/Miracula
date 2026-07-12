@@ -205,7 +205,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         if (core.errline == 0 and core.errs != 0 and std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap, core.errs))), std.mem.span(script_store.store().current_script.?))) {
             core.errline = heap_mod.t(heap, core.errs);
         }
-        comp.ND = depend_mod.alfasort(heap, comp.ND);
+        comp.ND = depend_mod.alfasort(heap, Value.fromRaw(comp.ND)).toRaw();
         core.loading = 0;
         return;
     }
@@ -245,7 +245,7 @@ fn resolveExportFileList(heap: *Heap, core: *core_state.CoreState, rs: *rt.Runti
                 var i = heap_mod.filDefs(heap_mod.h(heap, heap.files));
                 while (i != NIL) : (i = heap_mod.t(heap, i)) {
                     if (heap_mod.isvariable(heap_mod.h(heap, i)) and !heap_mod.isfreeid(heap_mod.h(heap, i))) {
-                        heap_mod.tp(heap, script_store.store().exports).* = abi.add1(heap, heap_mod.h(heap, i), heap_mod.t(heap, script_store.store().exports));
+                        heap_mod.tp(heap, script_store.store().exports).* = abi.add1(heap, Value.fromRaw(heap_mod.h(heap, i)), Value.fromRaw(heap_mod.t(heap, script_store.store().exports))).toRaw();
                     }
                 }
             } else {
@@ -291,22 +291,22 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
             while (e != NIL) : (e = heap_mod.t(heap, e)) {
                 if (heap_mod.idType(heap_mod.h(heap, e)) == word.undef_t) {
                     u = heap_mod.cons(heap, heap_mod.h(heap, e), u);
-                    comp.ND = abi.add1(heap, heap_mod.h(heap, e), comp.ND);
-                } else if (abi.member(heap, script_store.store().exports, heap_mod.h(heap, e)) == 0) {
+                    comp.ND = abi.add1(heap, Value.fromRaw(heap_mod.h(heap, e)), Value.fromRaw(comp.ND)).toRaw();
+                } else if (abi.member(heap, Value.fromRaw(script_store.store().exports), Value.fromRaw(heap_mod.h(heap, e))) == 0) {
                     n = heap_mod.cons(heap, heap_mod.h(heap, e), n);
                 }
             }
 
             if (script_store.store().embargoes != NIL) {
-                script_store.store().exports = abi.setdiff(heap, script_store.store().exports, script_store.store().embargoes);
+                script_store.store().exports = abi.setdiff(heap, Value.fromRaw(script_store.store().exports), Value.fromRaw(script_store.store().embargoes)).toRaw();
             }
-            script_store.store().exports = depend_mod.alfasort(heap, script_store.store().exports);
+            script_store.store().exports = depend_mod.alfasort(heap, Value.fromRaw(script_store.store().exports)).toRaw();
 
             e = script_store.store().exports;
             while (e != NIL) : (e = heap_mod.t(heap, e)) {
                 if (heap_mod.idType(heap_mod.h(heap, e)) == word.undef_t) {
                     u = heap_mod.cons(heap, heap_mod.h(heap, e), u);
-                    comp.ND = abi.add1(heap, heap_mod.h(heap, e), comp.ND);
+                    comp.ND = abi.add1(heap, Value.fromRaw(heap_mod.h(heap, e)), Value.fromRaw(comp.ND)).toRaw();
                 } else if (heap_mod.idType(heap_mod.h(heap, e)) == word.type_t and heap_mod.tClass(heap_mod.h(heap, e)) == word.algebraic_t) {
                     c_ctr = heap_mod.shunt(heap_mod.tInfo(heap_mod.h(heap, e)), c_ctr);
                 }
@@ -315,7 +315,7 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
             if (script_store.store().exports == NIL) {
                 word.print("warning, export list has void contents\n", .{});
             } else {
-                script_store.store().exports = abi.append1(depend_mod.alfasort(heap, c_ctr), script_store.store().exports);
+                script_store.store().exports = abi.append1(depend_mod.alfasort(heap, Value.fromRaw(c_ctr)).toRaw(), script_store.store().exports);
             }
 
             if (n != NIL) {
@@ -358,12 +358,12 @@ fn computeBereavedNames(heap: *Heap, core: *core_state.CoreState, comp: *compile
                 const ty = heap_mod.idType(heap_mod.h(heap, e1));
                 if (ty == word.type_t) {
                     if (heap_mod.tClass(heap_mod.h(heap, e1)) == word.synonym_t) {
-                        r = abi.UNION(heap, r, abi.deps(heap, heap_mod.tInfo(heap_mod.h(heap, e1))));
+                        r = abi.UNION(heap, Value.fromRaw(r), abi.deps(heap, Value.fromRaw(heap_mod.tInfo(heap_mod.h(heap, e1))))).toRaw();
                     } else {
                         e = heap_mod.cons(heap, heap_mod.h(heap, e1), e);
                     }
                 } else {
-                    r = abi.UNION(heap, r, abi.deps(heap, ty));
+                    r = abi.UNION(heap, Value.fromRaw(r), abi.deps(heap, Value.fromRaw(ty))).toRaw();
                 }
             }
         } else {
@@ -372,12 +372,12 @@ fn computeBereavedNames(heap: *Heap, core: *core_state.CoreState, comp: *compile
                 const ty = heap_mod.idType(heap_mod.h(heap, e1));
                 if (ty == word.type_t) {
                     if (heap_mod.tClass(heap_mod.h(heap, e1)) == word.synonym_t) {
-                        r = abi.UNION(heap, r, abi.deps(heap, heap_mod.tInfo(heap_mod.h(heap, e1))));
+                        r = abi.UNION(heap, Value.fromRaw(r), abi.deps(heap, Value.fromRaw(heap_mod.tInfo(heap_mod.h(heap, e1))))).toRaw();
                     } else {
                         e = heap_mod.cons(heap, heap_mod.h(heap, e1), e);
                     }
                 } else {
-                    r = abi.UNION(heap, r, abi.deps(heap, ty));
+                    r = abi.UNION(heap, Value.fromRaw(r), abi.deps(heap, Value.fromRaw(ty))).toRaw();
                 }
             }
         }
@@ -387,17 +387,17 @@ fn computeBereavedNames(heap: *Heap, core: *core_state.CoreState, comp: *compile
             const ty = heap_mod.idType(heap_mod.h(heap, heap_mod.h(heap, e1)));
             if (ty == word.type_t) {
                 if (heap_mod.tClass(heap_mod.h(heap, heap_mod.h(heap, e1))) == word.synonym_t) {
-                    r = abi.UNION(heap, r, abi.deps(heap, heap_mod.tInfo(heap_mod.h(heap, heap_mod.h(heap, e1)))));
+                    r = abi.UNION(heap, Value.fromRaw(r), abi.deps(heap, Value.fromRaw(heap_mod.tInfo(heap_mod.h(heap, heap_mod.h(heap, e1)))))).toRaw();
                 } else {
                     e = heap_mod.cons(heap, heap_mod.h(heap, heap_mod.h(heap, e1)), e);
                 }
             } else {
-                r = abi.UNION(heap, r, abi.deps(heap, ty));
+                r = abi.UNION(heap, Value.fromRaw(r), abi.deps(heap, Value.fromRaw(ty))).toRaw();
             }
         }
 
         while (r != NIL) : (r = heap_mod.t(heap, r)) {
-            if (abi.member(heap, e, heap_mod.h(heap, r)) == 0) {
+            if (abi.member(heap, Value.fromRaw(e), Value.fromRaw(heap_mod.h(heap, r))) == 0) {
                 script_store.store().bereaved = heap_mod.cons(heap, heap_mod.h(heap, r), script_store.store().bereaved);
             }
         }
@@ -409,7 +409,7 @@ fn computeBereavedNames(heap: *Heap, core: *core_state.CoreState, comp: *compile
 fn reportBereavedExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, h_val: Word) void {
     _ = rs;
     if (script_store.store().exports != NIL and script_store.store().bereaved != NIL) {
-        const b = abi.intersection(heap, script_store.store().bereaved, comp.newtyps);
+        const b = abi.intersection(heap, Value.fromRaw(script_store.store().bereaved), Value.fromRaw(comp.newtyps)).toRaw();
         if (b != NIL) {
             word.print("warning, export list is incomplete - missing typename: ", .{});
             abi.printlist(heap, @constCast(""), b);
@@ -590,13 +590,13 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
                 }
             }
 
-            if (abi.member(heap, lexs.exportfiles, strtab.strBits(strtab.table(), fn_str)) != 0) {
+            if (abi.member(heap, Value.fromRaw(lexs.exportfiles), Value.fromRaw(strtab.strBits(strtab.table(), fn_str))) != 0) {
                 y = x;
                 while (y != NIL) : (y = heap_mod.t(heap, y)) {
                     var z = heap_mod.filDefs(heap_mod.h(heap, y));
                     while (z != NIL) : (z = heap_mod.t(heap, z)) {
                         if (heap_mod.isvariable(heap_mod.h(heap, z))) {
-                            heap_mod.tp(heap, script_store.store().exports).* = abi.add1(heap, heap_mod.h(heap, z), heap_mod.t(heap, script_store.store().exports));
+                            heap_mod.tp(heap, script_store.store().exports).* = abi.add1(heap, Value.fromRaw(heap_mod.h(heap, z)), Value.fromRaw(heap_mod.t(heap, script_store.store().exports))).toRaw();
                         }
                     }
                 }
@@ -699,7 +699,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         word.printErr("TYPECLASH - the following type{s} multiply named:\n", .{@as([*:0]const u8, if (heap_mod.t(heap, tclashes) == NIL) " is" else "s are")});
         while (tclashes != NIL) {
             word.printErr("\'{s}\' of file \"{s}\", as: ", .{ abi.getaka(heap_mod.h(heap, heap_mod.t(heap, heap_mod.h(heap, tclashes)))), strtab.strOf(strtab.table(), heap_mod.h(heap, heap_mod.h(heap, tclashes))) });
-            abi.printlist(heap, @constCast(""), depend_mod.alfasort(heap, heap_mod.t(heap, heap_mod.t(heap, heap_mod.h(heap, tclashes)))));
+            abi.printlist(heap, @constCast(""), depend_mod.alfasort(heap, Value.fromRaw(heap_mod.t(heap, heap_mod.t(heap, heap_mod.h(heap, tclashes))))).toRaw());
             tclashes = heap_mod.t(heap, tclashes);
         }
         word.printErr("typecheck cannot proceed - compilation abandoned\n", .{});

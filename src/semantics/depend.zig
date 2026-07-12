@@ -6,6 +6,13 @@
 //! dependency pass, which also drives `metaTcheck`/`sayhere`) stays in
 //! `infer.zig` -- it's tightly coupled to the type-checking driver, not a
 //! reusable dependency-analysis primitive like the functions here.
+//!
+//! Phase 5 step 4e: every public function is `Value`-typed at its
+//! boundary; each has a private `*Raw` twin (unchanged `Word`-based logic,
+//! internal cross-calls stay within the `Raw` family so no wrapping noise
+//! leaks into the bodies below) plus a thin public wrapper that converts
+//! at the edge. This mirrors the rename+wrapper pattern used for
+//! `reduce_rt.zig`'s `gResidue`/`force` in Phase 5 step 4d.
 
 const std = @import("std");
 const word = @import("../graph/word.zig");
@@ -16,6 +23,8 @@ const lex_mod = @import("../parser/lex.zig");
 const isconstrname = lex_mod.isconstrname;
 const infer = @import("infer.zig");
 const getId = infer.getId;
+const value_mod = @import("../graph/value.zig");
+const Value = value_mod.Value;
 
 const Word = word.Word;
 const CMBASE = word.CMBASE;
@@ -62,9 +71,7 @@ fn isConstructor(heap: *Heap, x: Word) bool {
 }
 
 /// Remove element `e` from set `ss` (in place via the pointer).
-///
-/// Tests: remove1: removes an element in place, reports hit/miss
-pub fn remove1(heap: *Heap, e: Word, ss: *Word) Word {
+fn remove1Raw(heap: *Heap, e: Word, ss: *Word) Word {
     var p = ss;
     while (p.* != NIL and h(heap, p.*) < e) {
         p = tp(heap, p.*);
@@ -76,18 +83,26 @@ pub fn remove1(heap: *Heap, e: Word, ss: *Word) Word {
     return 1;
 }
 
+/// Remove element `e` from set `ss` (in place via the pointer).
+///
+/// Tests: remove1: removes an element in place, reports hit/miss
+pub fn remove1(heap: *Heap, e: Value, ss: *Value) Word {
+    var raw = ss.toRaw();
+    const r = remove1Raw(heap, e.toRaw(), &raw);
+    ss.* = Value.fromRaw(raw);
+    return r;
+}
+
 test "remove1: removes an element in place, reports hit/miss" {
     tu.freshInterp();
-    var s = tu.list(&[_]Word{ 1000, 2000, 3000 });
-    try std.testing.expectEqual(@as(Word, 1), remove1(heap_mod.heap(), 2000, &s));
-    try tu.expectWords(&[_]Word{ 1000, 3000 }, s);
-    try std.testing.expectEqual(@as(Word, 0), remove1(heap_mod.heap(), 5000, &s)); // miss
+    var s = Value.fromRaw(tu.list(&[_]Word{ 1000, 2000, 3000 }));
+    try std.testing.expectEqual(@as(Word, 1), remove1(heap_mod.heap(), Value.fromRaw(2000), &s));
+    try tu.expectWords(&[_]Word{ 1000, 3000 }, s.toRaw());
+    try std.testing.expectEqual(@as(Word, 0), remove1(heap_mod.heap(), Value.fromRaw(5000), &s)); // miss
 }
 
 /// Set difference `s1 \ s2`.
-///
-/// Tests: setdiff: s1 minus s2
-pub fn setdiff(heap: *Heap, s1_input: Word, s2_input: Word) Word {
+fn setdiffRaw(heap: *Heap, s1_input: Word, s2_input: Word) Word {
     var s1 = s1_input;
     var s2 = s2_input;
     var ss1 = &s1;
@@ -103,15 +118,20 @@ pub fn setdiff(heap: *Heap, s1_input: Word, s2_input: Word) Word {
     return s1;
 }
 
+/// Set difference `s1 \ s2`.
+///
+/// Tests: setdiff: s1 minus s2
+pub fn setdiff(heap: *Heap, s1_input: Value, s2_input: Value) Value {
+    return Value.fromRaw(setdiffRaw(heap, s1_input.toRaw(), s2_input.toRaw()));
+}
+
 test "setdiff: s1 minus s2" {
     tu.freshInterp();
-    try tu.expectWords(&[_]Word{ 1000, 3000 }, setdiff(heap_mod.heap(), tu.list(&[_]Word{ 1000, 2000, 3000 }), tu.list(&[_]Word{2000})));
+    try tu.expectWords(&[_]Word{ 1000, 3000 }, setdiff(heap_mod.heap(), Value.fromRaw(tu.list(&[_]Word{ 1000, 2000, 3000 })), Value.fromRaw(tu.list(&[_]Word{2000}))).toRaw());
 }
 
 /// Add element `e` to set `s` (if not already present).
-///
-/// Tests: add1: inserts in sorted order without duplicates
-pub fn add1(heap: *Heap, e: Word, s_input: Word) Word {
+fn add1Raw(heap: *Heap, e: Word, s_input: Word) Word {
     var s = s_input;
     if (s == NIL or e < h(heap, s)) {
         return cons(heap, e, s);
@@ -130,15 +150,22 @@ pub fn add1(heap: *Heap, e: Word, s_input: Word) Word {
     return s_input;
 }
 
+/// Add element `e` to set `s` (if not already present).
+///
+/// Tests: add1: inserts in sorted order without duplicates
+pub fn add1(heap: *Heap, e: Value, s_input: Value) Value {
+    return Value.fromRaw(add1Raw(heap, e.toRaw(), s_input.toRaw()));
+}
+
 test "add1: inserts in sorted order without duplicates" {
     tu.freshInterp();
-    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, add1(heap_mod.heap(), 2000, tu.list(&[_]Word{ 1000, 3000 })));
+    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, add1(heap_mod.heap(), Value.fromRaw(2000), Value.fromRaw(tu.list(&[_]Word{ 1000, 3000 }))).toRaw());
     // already present → unchanged
-    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, add1(heap_mod.heap(), 2000, tu.list(&[_]Word{ 1000, 2000, 3000 })));
+    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, add1(heap_mod.heap(), Value.fromRaw(2000), Value.fromRaw(tu.list(&[_]Word{ 1000, 2000, 3000 }))).toRaw());
 }
 
 /// Prepend element `e` to set `s` (no membership check).
-pub fn newadd1(heap: *Heap, e: Word, s_input: Word) Word {
+fn newadd1Raw(heap: *Heap, e: Word, s_input: Word) Word {
     var s = s_input;
     const cs = @import("../compiler/compiler_state.zig").cs;
     cs().NEW = 1;
@@ -162,10 +189,13 @@ pub fn newadd1(heap: *Heap, e: Word, s_input: Word) Word {
     return s_input;
 }
 
+/// Prepend element `e` to set `s` (no membership check).
+pub fn newadd1(heap: *Heap, e: Value, s_input: Value) Value {
+    return Value.fromRaw(newadd1Raw(heap, e.toRaw(), s_input.toRaw()));
+}
+
 /// Set union of `s1` and `s2`.
-///
-/// Tests: UNION: sorted set union
-pub fn UNION(heap: *Heap, s1_input: Word, s2_input: Word) Word {
+fn UNIONRaw(heap: *Heap, s1_input: Word, s2_input: Word) Word {
     var s1 = s1_input;
     var s2 = s2_input;
     var ss = &s1;
@@ -191,15 +221,20 @@ pub fn UNION(heap: *Heap, s1_input: Word, s2_input: Word) Word {
     return s1;
 }
 
+/// Set union of `s1` and `s2`.
+///
+/// Tests: UNION: sorted set union
+pub fn UNION(heap: *Heap, s1_input: Value, s2_input: Value) Value {
+    return Value.fromRaw(UNIONRaw(heap, s1_input.toRaw(), s2_input.toRaw()));
+}
+
 test "UNION: sorted set union" {
     tu.freshInterp();
-    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, UNION(heap_mod.heap(), tu.list(&[_]Word{ 1000, 3000 }), tu.list(&[_]Word{ 2000, 3000 })));
+    try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, UNION(heap_mod.heap(), Value.fromRaw(tu.list(&[_]Word{ 1000, 3000 })), Value.fromRaw(tu.list(&[_]Word{ 2000, 3000 }))).toRaw());
 }
 
 /// Set intersection of `s1` and `s2`.
-///
-/// Tests: intersection: common elements
-pub fn intersection(heap: *Heap, s1_input: Word, s2_input: Word) Word {
+fn intersectionRaw(heap: *Heap, s1_input: Word, s2_input: Word) Word {
     var s1 = s1_input;
     var s2 = s2_input;
     var r: Word = NIL;
@@ -217,15 +252,20 @@ pub fn intersection(heap: *Heap, s1_input: Word, s2_input: Word) Word {
     return reverse(r);
 }
 
+/// Set intersection of `s1` and `s2`.
+///
+/// Tests: intersection: common elements
+pub fn intersection(heap: *Heap, s1_input: Value, s2_input: Value) Value {
+    return Value.fromRaw(intersectionRaw(heap, s1_input.toRaw(), s2_input.toRaw()));
+}
+
 test "intersection: common elements" {
     tu.freshInterp();
-    try tu.expectWords(&[_]Word{ 2000, 3000 }, intersection(heap_mod.heap(), tu.list(&[_]Word{ 1000, 2000, 3000 }), tu.list(&[_]Word{ 2000, 3000, 4000 })));
+    try tu.expectWords(&[_]Word{ 2000, 3000 }, intersection(heap_mod.heap(), Value.fromRaw(tu.list(&[_]Word{ 1000, 2000, 3000 })), Value.fromRaw(tu.list(&[_]Word{ 2000, 3000, 4000 }))).toRaw());
 }
 
 /// Whether `x` is a member of set `s`.
-///
-/// Tests: member: set membership (1/0)
-pub fn member(heap: *Heap, s_input: Word, x: Word) Word {
+fn memberRaw(heap: *Heap, s_input: Word, x: Word) Word {
     var s = s_input;
     while (s != NIL and x != h(heap, s)) {
         s = t(heap, s);
@@ -233,11 +273,18 @@ pub fn member(heap: *Heap, s_input: Word, x: Word) Word {
     return if (s != NIL) 1 else 0;
 }
 
+/// Whether `x` is a member of set `s`.
+///
+/// Tests: member: set membership (1/0)
+pub fn member(heap: *Heap, s_input: Value, x: Value) Word {
+    return memberRaw(heap, s_input.toRaw(), x.toRaw());
+}
+
 test "member: set membership (1/0)" {
     tu.freshInterp();
-    const s = tu.list(&[_]Word{ 1000, 2000, 3000 });
-    try std.testing.expectEqual(@as(Word, 1), member(heap_mod.heap(), s, 2000));
-    try std.testing.expectEqual(@as(Word, 0), member(heap_mod.heap(), s, 5000));
+    const s = Value.fromRaw(tu.list(&[_]Word{ 1000, 2000, 3000 }));
+    try std.testing.expectEqual(@as(Word, 1), member(heap_mod.heap(), s, Value.fromRaw(2000)));
+    try std.testing.expectEqual(@as(Word, 0), member(heap_mod.heap(), s, Value.fromRaw(5000)));
 }
 
 const type_t: Word = 10;
@@ -248,7 +295,7 @@ fn idType(heap: *Heap, x: Word) Word {
 }
 
 /// Reorder a definition list so type declarations come first.
-pub fn typesfirst(heap: *Heap, input_x: Word) Word {
+fn typesfirstRaw(heap: *Heap, input_x: Word) Word {
     var x = input_x;
     var y = &x;
     var z: Word = NIL;
@@ -263,8 +310,13 @@ pub fn typesfirst(heap: *Heap, input_x: Word) Word {
     return shunt(z, x);
 }
 
+/// Reorder a definition list so type declarations come first.
+pub fn typesfirst(heap: *Heap, input_x: Value) Value {
+    return Value.fromRaw(typesfirstRaw(heap, input_x.toRaw()));
+}
+
 /// Topologically sort dependency graph `g` (for definition ordering).
-pub fn tsort(heap: *Heap, g_input: Word) Word {
+fn tsortRaw(heap: *Heap, g_input: Word) Word {
     var NP = NIL; // NP is set of elements with no predecessor
     var g1 = g_input;
     var r = NIL; // r is result
@@ -282,16 +334,16 @@ pub fn tsort(heap: *Heap, g_input: Word) Word {
         while (NP != NIL) {
             r = cons(heap, h(heap, NP), r);
             if (getTag(heap, h(heap, NP)) == .ID) {
-                D = add1(heap, h(heap, NP), D);
+                D = add1Raw(heap, h(heap, NP), D);
             } else {
-                D = UNION(heap, D, h(heap, NP));
+                D = UNIONRaw(heap, D, h(heap, NP));
             }
             NP = t(heap, NP);
         }
         g1 = g;
         g = NIL;
         while (g1 != NIL) {
-            const rhs = setdiff(heap, t(heap, h(heap, g1)), D);
+            const rhs = setdiffRaw(heap, t(heap, h(heap, g1)), D);
             if (rhs == NIL) {
                 NP = cons(heap, h(heap, h(heap, g1)), NP);
             } else {
@@ -307,13 +359,18 @@ pub fn tsort(heap: *Heap, g_input: Word) Word {
     return reverse(r);
 }
 
+/// Topologically sort dependency graph `g` (for definition ordering).
+pub fn tsort(heap: *Heap, g_input: Value) Value {
+    return Value.fromRaw(tsortRaw(heap, g_input.toRaw()));
+}
+
 /// Collapse mutually-recursive groups in relation `R` (companion to `tsort`).
-pub fn msc(heap: *Heap, R_input: Word) Word {
+fn mscRaw(heap: *Heap, R_input: Word) Word {
     var R1 = R_input;
     while (R1 != NIL) {
         var r = tp(heap, h(heap, R1)); // word *r = &tl(hd(R1))
         const l = h(heap, h(heap, R1)); // word l = hd(hd(R1))
-        if (remove1(heap, l, r) != 0) {
+        if (remove1Raw(heap, l, r) != 0) {
             hp(heap, h(heap, R1)).* = cons(heap, l, NIL); // hd(hd(R1)) = cons(heap, l, NIL)
             while (r.* != NIL) {
                 const n = h(heap, r.*);
@@ -321,10 +378,10 @@ pub fn msc(heap: *Heap, R_input: Word) Word {
                 while (R2.* != NIL and h(heap, h(heap, R2.*)) != n) {
                     R2 = tp(heap, R2.*);
                 }
-                if (R2.* != NIL and member(heap, t(heap, h(heap, R2.*)), l) != 0) {
+                if (R2.* != NIL and memberRaw(heap, t(heap, h(heap, R2.*)), l) != 0) {
                     r.* = t(heap, r.*); // *r = tl(*r)
                     R2.* = t(heap, R2.*); // *R2 = tl(*R2)
-                    hp(heap, h(heap, R1)).* = add1(heap, n, h(heap, h(heap, R1)));
+                    hp(heap, h(heap, R1)).* = add1Raw(heap, n, h(heap, h(heap, R1)));
                 } else {
                     r = tp(heap, r.*);
                 }
@@ -335,33 +392,38 @@ pub fn msc(heap: *Heap, R_input: Word) Word {
     return R_input;
 }
 
+/// Collapse mutually-recursive groups in relation `R` (companion to `tsort`).
+pub fn msc(heap: *Heap, R_input: Value) Value {
+    return Value.fromRaw(mscRaw(heap, R_input.toRaw()));
+}
+
 /// Remove the variables bound by pattern `p` from set `x`.
-pub fn rembvars(heap: *Heap, x_in: Word, p_in: Word) Word {
+fn rembvarsRaw(heap: *Heap, x_in: Word, p_in: Word) Word {
     var x = x_in;
     var p = p_in;
     while (true) {
         switch (getTag(heap, p)) {
             .ID => {
-                _ = remove1(heap, p, &x);
+                _ = remove1Raw(heap, p, &x);
                 return x;
             },
             .CONS => {
                 if (h(heap, p) == CONST) {
                     return x;
                 }
-                x = rembvars(heap, x, h(heap, p));
+                x = rembvarsRaw(heap, x, h(heap, p));
                 p = t(heap, p);
             },
             .AP => {
                 if (getTag(heap, h(heap, p)) == .AP and h(heap, h(heap, p)) == PLUS) {
                     p = t(heap, p);
                 } else {
-                    x = rembvars(heap, x, h(heap, p));
+                    x = rembvarsRaw(heap, x, h(heap, p));
                     p = t(heap, p);
                 }
             },
             .PAIR, .TCONS => {
-                x = rembvars(heap, x, h(heap, p));
+                x = rembvarsRaw(heap, x, h(heap, p));
                 p = t(heap, p);
             },
             else => {
@@ -372,36 +434,41 @@ pub fn rembvars(heap: *Heap, x_in: Word, p_in: Word) Word {
     }
 }
 
+/// Remove the variables bound by pattern `p` from set `x`.
+pub fn rembvars(heap: *Heap, x_in: Value, p_in: Value) Value {
+    return Value.fromRaw(rembvarsRaw(heap, x_in.toRaw(), p_in.toRaw()));
+}
+
 /// The dependency set of definition `x`.
-pub fn deps(heap: *Heap, x_in: Word) Word {
+fn depsRaw(heap: *Heap, x_in: Word) Word {
     var x = x_in;
     var d = NIL;
     while (true) {
         switch (getTag(heap, x)) {
             .AP, .TCONS, .PAIR, .CONS => {
-                d = UNION(heap, d, deps(heap, h(heap, x)));
+                d = UNIONRaw(heap, d, depsRaw(heap, h(heap, x)));
                 x = t(heap, x);
             },
             .ID => {
-                return if (isConstructor(heap, x)) d else add1(heap, x, d);
+                return if (isConstructor(heap, x)) d else add1Raw(heap, x, d);
             },
             .LAMBDA => {
-                return rembvars(heap, UNION(heap, d, deps(heap, t(heap, x))), h(heap, x));
+                return rembvarsRaw(heap, UNIONRaw(heap, d, depsRaw(heap, t(heap, x))), h(heap, x));
             },
             .LET => {
-                d = rembvars(heap, UNION(heap, d, deps(heap, t(heap, x))), h(heap, h(heap, x)));
-                return UNION(heap, d, deps(heap, t(heap, t(heap, h(heap, x)))));
+                d = rembvarsRaw(heap, UNIONRaw(heap, d, depsRaw(heap, t(heap, x))), h(heap, h(heap, x)));
+                return UNIONRaw(heap, d, depsRaw(heap, t(heap, t(heap, h(heap, x)))));
             },
             .LETREC => {
-                d = UNION(heap, d, deps(heap, t(heap, x)));
+                d = UNIONRaw(heap, d, depsRaw(heap, t(heap, x)));
                 var y = h(heap, x);
                 while (y != NIL) {
-                    d = UNION(heap, d, deps(heap, t(heap, t(heap, h(heap, y)))));
+                    d = UNIONRaw(heap, d, depsRaw(heap, t(heap, t(heap, h(heap, y)))));
                     y = t(heap, y);
                 }
                 y = h(heap, x);
                 while (y != NIL) {
-                    d = rembvars(heap, d, h(heap, h(heap, y)));
+                    d = rembvarsRaw(heap, d, h(heap, h(heap, y)));
                     y = t(heap, y);
                 }
                 return d;
@@ -409,7 +476,7 @@ pub fn deps(heap: *Heap, x_in: Word) Word {
             .LEXER => {
                 var lex_x = x;
                 while (lex_x != NIL) {
-                    d = UNION(heap, d, deps(heap, t(heap, t(heap, h(heap, lex_x)))));
+                    d = UNIONRaw(heap, d, depsRaw(heap, t(heap, t(heap, h(heap, lex_x)))));
                     lex_x = t(heap, lex_x);
                 }
                 return d;
@@ -425,8 +492,13 @@ pub fn deps(heap: *Heap, x_in: Word) Word {
     }
 }
 
+/// The dependency set of definition `x`.
+pub fn deps(heap: *Heap, x_in: Value) Value {
+    return Value.fromRaw(depsRaw(heap, x_in.toRaw()));
+}
+
 /// Renumber type variables across a list of definitions.
-pub fn redtfr(heap: *Heap, x_in: Word) void {
+fn redtfrRaw(heap: *Heap, x_in: Word) void {
     var x = x_in;
     while (x != NIL) {
         tp(heap, t(heap, h(heap, x))).* = idType(heap, h(heap, h(heap, x)));
@@ -434,8 +506,13 @@ pub fn redtfr(heap: *Heap, x_in: Word) void {
     }
 }
 
+/// Renumber type variables across a list of definitions.
+pub fn redtfr(heap: *Heap, x_in: Value) void {
+    redtfrRaw(heap, x_in.toRaw());
+}
+
 /// Sort a list of identifiers alphabetically by name.
-pub fn alfasort(heap: *Heap, x_val: Word) Word {
+fn alfasortRaw(heap: *Heap, x_val: Word) Word {
     var x = x_val;
     var a = NIL;
     var b = NIL;
@@ -454,8 +531,8 @@ pub fn alfasort(heap: *Heap, x_val: Word) Word {
         }
         x = heap_mod.t(heap, x);
     }
-    a = alfasort(heap, a);
-    b = alfasort(heap, b);
+    a = alfasortRaw(heap, a);
+    b = alfasortRaw(heap, b);
     x = NIL;
     while (a != NIL and b != NIL) {
         if (std.mem.order(u8, std.mem.span(heap_mod.getId(heap_mod.h(heap, a))), std.mem.span(heap_mod.getId(heap_mod.h(heap, b)))) == .lt) {
@@ -474,4 +551,9 @@ pub fn alfasort(heap: *Heap, x_val: Word) Word {
         a = heap_mod.t(heap, a);
     }
     return reverse(x);
+}
+
+/// Sort a list of identifiers alphabetically by name.
+pub fn alfasort(heap: *Heap, x_val: Value) Value {
+    return Value.fromRaw(alfasortRaw(heap, x_val.toRaw()));
 }

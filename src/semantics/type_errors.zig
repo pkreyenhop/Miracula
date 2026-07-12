@@ -20,6 +20,7 @@ const unify_mod = @import("unify.zig");
 const lower = @import("lower.zig");
 
 const Word = word.Word;
+const Value = @import("../graph/value.zig").Value;
 const NIL = word.NIL;
 const CMBASE = word.CMBASE;
 const CONST = word.CONST;
@@ -104,7 +105,7 @@ pub fn locate(heap: *Heap, s: [*:0]const u8) void {
             var x = cs().current_id;
             _ = word.print("{s} in definition of ", .{s});
             while (getTag(heap, x) == .CONS) {
-                if (getTag(heap, t(heap, x)) == .ID and member(heap, script_store.store().fnts, t(heap, x)) != 0) {
+                if (getTag(heap, t(heap, x)) == .ID and member(heap, Value.fromRaw(script_store.store().fnts), Value.fromRaw(t(heap, x))) != 0) {
                     _ = word.print("nonterminal ", .{});
                     x = h(heap, x);
                 } else {
@@ -238,7 +239,7 @@ pub fn typeError5(heap: *Heap, x: Word) void {
     _ = word.print("undeclared constructor \"", .{});
     outPattern(heap, getStdout().?, x);
     _ = word.print("\" in formal\n", .{});
-    cs().ND = add1(heap, x, cs().ND);
+    cs().ND = add1(heap, Value.fromRaw(x), Value.fromRaw(cs().ND)).toRaw();
 }
 
 /// Report type error variant 6 (`x` applied to `f`/`a`).

@@ -17,6 +17,7 @@ const cs = compiler_state.cs;
 const abi = @import("../os.zig");
 
 const Word = word.Word;
+const Value = @import("../graph/value.zig").Value;
 const NIL = word.NIL;
 
 // State owned by heap.zig / reduce.zig — not yet accessible via @import.
@@ -80,7 +81,7 @@ fn namescom(heap: *Heap, rs: *rt.RuntimeState, l: Word) void {
     var wp: usize = 0;
     const scrwd = files.termWidth();
     if (script_store.store().sorted == 0 and n != rs.primenv) {
-        n = depend_mod.alfasort(heap, n);
+        n = depend_mod.alfasort(heap, Value.fromRaw(n)).toRaw();
         heap_mod.tp(heap, l).* = n;
     }
     if (n == NIL) return;

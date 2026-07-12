@@ -30,6 +30,7 @@ const cs = compiler_state.cs;
 // re-exports an already-documented symbol from `os`/`word`.
 
 const Word = word.Word;
+const Value = @import("../graph/value.zig").Value;
 const CMBASE = word.CMBASE;
 const NIL = word.NIL;
 const ATOMLIMIT = word.ATOMLIMIT;
@@ -203,7 +204,7 @@ fn metaTcheck(heap: *Heap, t_val: Word) errors.MiraError!Word {
             return t_val;
         } else if (idType(heap, tn) == undef_t and idVal(heap, tn) == UNDEF) {
             cs().TYPERRS += 1;
-            if (member(heap, cs().NT, tn) == 0) {
+            if (member(heap, Value.fromRaw(cs().NT), Value.fromRaw(tn)) == 0) {
                 if (getTag(heap, cs().current_id) == .DATAPAIR) {
                     locateInc(heap);
                 }
@@ -213,7 +214,7 @@ fn metaTcheck(heap: *Heap, t_val: Word) errors.MiraError!Word {
                 } else {
                     sayhere(heap, getspecloc(heap, cs().current_id), 1);
                 }
-                cs().NT = add1(heap, tn, cs().NT);
+                cs().NT = add1(heap, Value.fromRaw(tn), Value.fromRaw(cs().NT)).toRaw();
             }
             return t_val;
         } else if (idType(heap, tn) != type_t or tArity(heap, tn) != i) {
@@ -245,7 +246,7 @@ fn metaTcheck(heap: *Heap, t_val: Word) errors.MiraError!Word {
     if (tClass(heap, tn) != synonym_t) {
         return t_val;
     }
-    if (member(heap, cs().meta_pending, tn) != 0) {
+    if (member(heap, Value.fromRaw(cs().meta_pending), Value.fromRaw(tn)) != 0) {
         cs().TYPERRS += 1; // report cycle
         if (getTag(heap, cs().current_id) == .DATAPAIR) {
             locateInc(heap);
@@ -378,7 +379,7 @@ fn compDeps(heap: *Heap, n: Word) errors.MiraError!void {
         cs().current_id = n;
         if (getTag(heap, idType(heap, n)) == .CONS) {
             if (t(heap, n) == UNDEF) {
-                cs().SBND = add1(heap, n, cs().SBND);
+                cs().SBND = add1(heap, Value.fromRaw(n), Value.fromRaw(cs().SBND)).toRaw();
             }
             tp(heap, h(heap, n)).* = redtvars(heap, try metaTcheck(heap, h(heap, idType(heap, n))));
             cs().current_id = 0;
@@ -391,13 +392,13 @@ fn compDeps(heap: *Heap, n: Word) errors.MiraError!void {
         return;
     }
     if (t(heap, n) == UNDEF) {
-        cs().SBND = add1(heap, n, cs().SBND);
+        cs().SBND = add1(heap, Value.fromRaw(n), Value.fromRaw(cs().SBND)).toRaw();
         return;
     }
-    r = deps(heap, t(heap, n));
+    r = deps(heap, Value.fromRaw(t(heap, n))).toRaw();
     while (r != NIL) {
         if (t(heap, h(heap, r)) != UNDEF and idType(heap, h(heap, r)) == undef_t) {
-            rhs = add1(heap, h(heap, r), rhs);
+            rhs = add1(heap, Value.fromRaw(h(heap, r)), Value.fromRaw(rhs)).toRaw();
         }
         r = t(heap, r);
     }
@@ -508,7 +509,7 @@ pub fn repT1(heap: *Heap, T: Word, L: Word) Word {
         args = cons(heap, a, args);
         t1 = h(heap, t1);
     }
-    if (member(heap, L, t1) != 0) {
+    if (member(heap, Value.fromRaw(L), Value.fromRaw(t1)) != 0) {
         return apSubst(heap, tInfo(heap, t1), args);
     }
     if (!changed) {
@@ -573,7 +574,7 @@ fn abstrCheck(heap: *Heap, x_in: Word) errors.MiraError!void {
         if (cs().TYPERRS > oldte) {
             tp(heap, h(heap, h(heap, x))).* = wrong_t;
             tp(heap, h(heap, x)).* = UNDEF;
-            cs().ND = add1(heap, h(heap, x), cs().ND);
+            cs().ND = add1(heap, Value.fromRaw(h(heap, x)), Value.fromRaw(cs().ND)).toRaw();
         }
         resetSubst(heap);
         x = t(heap, x);
@@ -1063,14 +1064,14 @@ fn etypeId(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
     if (a == undef_t) {
         if (core_state.s().commandmode != 0) {
             typeError2(heap, x);
-        } else if (member(heap, cs().ND, x) == 0) {
+        } else if (member(heap, Value.fromRaw(cs().ND), Value.fromRaw(x)) == 0) {
             if (cs().lineptr != 0) {
                 sayhere(heap, cs().lineptr, 0);
             } else if (getTag(heap, cs().current_id) == .DATAPAIR) {
                 locateInc(heap);
             }
             _ = word.print("undefined name \"{s}\"\n", .{getId(heap, x)});
-            cs().ND = add1(heap, x, cs().ND);
+            cs().ND = add1(heap, Value.fromRaw(x), Value.fromRaw(cs().ND)).toRaw();
         }
         return NTV(heap);
     }
@@ -1592,7 +1593,7 @@ fn inferType(heap: *Heap, x: Word) void {
         if (cs().TYPERRS > oldte) {
             tp(heap, h(heap, x)).* = wrong_t;
             tp(heap, x).* = UNDEF;
-            cs().ND = add1(heap, x, cs().ND);
+            cs().ND = add1(heap, Value.fromRaw(x), Value.fromRaw(cs().ND)).toRaw();
         } else if (idType(heap, x) == undef_t) {
             tp(heap, h(heap, x)).* = redtvars(heap, t_val);
         }
@@ -1614,7 +1615,7 @@ fn inferType(heap: *Heap, x: Word) void {
             if (cs().TYPERRS > oldte) {
                 tp(heap, h(heap, h(heap, x1))).* = wrong_t;
                 tp(heap, h(heap, x1)).* = UNDEF;
-                cs().ND = add1(heap, h(heap, x1), cs().ND);
+                cs().ND = add1(heap, Value.fromRaw(h(heap, x1)), Value.fromRaw(cs().ND)).toRaw();
             }
             x1 = t(heap, x1);
         }
@@ -1675,14 +1676,14 @@ pub fn checktypes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         return;
     }
     if (script_store.store().freeids != NIL) {
-        redtfr(heap, script_store.store().freeids);
+        redtfr(heap, Value.fromRaw(script_store.store().freeids));
     }
     genshfns(heap);
     if (script_store.store().fnts != NIL) {
         genbnft(heap);
     }
-    comp.R = msc(heap, comp.R);
-    var s = tsort(heap, comp.R);
+    comp.R = msc(heap, Value.fromRaw(comp.R)).toRaw();
+    var s = tsort(heap, Value.fromRaw(comp.R)).toRaw();
     comp.NT = NIL;
     comp.R = NIL;
     while (s != NIL) {
@@ -1695,7 +1696,7 @@ pub fn checktypes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         comp.TABSTRS = t(heap, comp.TABSTRS);
     }
     if (comp.SBND != NIL) {
-        printlist(heap, "SPECIFIED BUT NOT DEFINED: ", alfasort(heap, comp.SBND));
+        printlist(heap, "SPECIFIED BUT NOT DEFINED: ", alfasort(heap, Value.fromRaw(comp.SBND)).toRaw());
         comp.SBND = NIL;
     }
     fixshows(heap);

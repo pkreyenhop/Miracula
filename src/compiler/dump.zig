@@ -19,6 +19,7 @@ const lex_state = @import("../parser/lex_state.zig");
 const heap_mod = @import("../graph/heap.zig");
 const dump_mod = @import("../graph/dump.zig");
 const depend_mod = @import("../semantics/depend.zig");
+const Value = @import("../graph/value.zig").Value;
 const Heap = heap_mod.Heap;
 const files = @import("../io/files.zig");
 const module_loader = @import("module_loader.zig");
@@ -207,7 +208,7 @@ pub fn readoption(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runt
     word.print("the following type{s} no name in this scope:\n", .{if (t(heap, comp.tlost) == NIL) " is needed but has" else "s are needed but have"});
     while (comp.tlost != NIL) {
         word.print("\'{s}\' of file \"{s}\", needed by: ", .{ strtab.strOf(strtab.table(), h(heap, h(heap, heap_mod.tInfo(h(heap, h(heap, comp.tlost)))))), strtab.strOf(strtab.table(), h(heap, t(heap, heap_mod.tInfo(h(heap, h(heap, comp.tlost)))))) });
-        abi.printlist(heap, @constCast(""), depend_mod.alfasort(heap, t(heap, h(heap, comp.tlost))));
+        abi.printlist(heap, @constCast(""), depend_mod.alfasort(heap, Value.fromRaw(t(heap, h(heap, comp.tlost)))).toRaw());
         comp.tlost = t(heap, comp.tlost);
     }
 }
@@ -222,7 +223,7 @@ pub fn fixtype(heap: *Heap, comp: *compiler_state.CompilerState, t_val: Word, x:
             return t_val;
         },
         .STRCONS => {
-            if (abi.member(heap, comp.pfrts, t_val) != 0) {
+            if (abi.member(heap, Value.fromRaw(comp.pfrts), Value.fromRaw(t_val)) != 0) {
                 return t_val;
             }
             var cur_t = t_val;
@@ -238,7 +239,7 @@ pub fn fixtype(heap: *Heap, comp: *compiler_state.CompilerState, t_val: Word, x:
                     comp.tlost = heap_mod.cons(heap, heap_mod.cons(heap, cur_t, heap_mod.cons(heap, x, NIL)), comp.tlost);
                     w = comp.tlost;
                 }
-                tp(heap, h(heap, w)).* = abi.add1(heap, x, t(heap, h(heap, w)));
+                tp(heap, h(heap, w)).* = abi.add1(heap, Value.fromRaw(x), Value.fromRaw(t(heap, h(heap, w)))).toRaw();
             }
             return cur_t;
         },
@@ -324,7 +325,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
     if (comp.CLASHES != NIL) {
         if (rs.ideep == 0) {
             word.print("cannot load {s} ", .{std.mem.span(@as([*:0]const u8, @ptrCast(&obf)))});
-            abi.printlist(heap, @constCast("due to name clashes: "), depend_mod.alfasort(heap, comp.CLASHES));
+            abi.printlist(heap, @constCast("due to name clashes: "), depend_mod.alfasort(heap, Value.fromRaw(comp.CLASHES)).toRaw());
         }
         dump_mod.unload(heap, comp, rs, ls());
         core.loading = 0;

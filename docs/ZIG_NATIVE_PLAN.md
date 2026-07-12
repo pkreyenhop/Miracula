@@ -3117,6 +3117,44 @@ code that was about to move twice.
    technique scales down into this cluster the same way it did everywhere
    else in Phase 5; more files follow the same pattern.
 
+   **Step 4f — front end, second slice (`semantics/depend.zig`), landed
+   (2026-07-13):** the generic sorted-set/dependency-analysis module —
+   `remove1`/`setdiff`/`add1`/`newadd1`/`UNION`/`intersection`/`member`/
+   `typesfirst`/`tsort`/`msc`/`rembvars`/`deps`/`redtfr`/`alfasort`, 14
+   public functions total. Unlike `match.zig`'s 3-call-site fanout, these
+   functions are called from ~90 sites across 9 files (`graph/dump.zig`,
+   `compiler/dump.zig`, `compiler/module_loader.zig`, `semantics/lower.zig`,
+   `semantics/infer.zig`, `semantics/type_errors.zig`, `semantics/match.zig`,
+   `session/boot.zig`, `session/commands.zig`) — comparable in scale to
+   `reduce_rt.zig`'s step-4d cascade, not `match.zig`'s trivial case. Given
+   the functions' own tight interdependency (`tsort`/`msc`/`deps` all call
+   each other and `add1`/`UNION`/`setdiff`/`member`/`remove1` internally), a
+   partial in-file split (converting only the low-fanout functions) would
+   have meant manually tracking, for every internal cross-call, whether the
+   callee was migrated yet — riskier than converting the whole file at
+   once. Applied the rename+wrapper pattern uniformly: every function's
+   existing `Word`-based body moved verbatim into a private `fooRaw` twin
+   (internal cross-calls stay within the `Raw` family, so no wrapping noise
+   leaked into the bodies), with a thin public `Value`-typed wrapper at each
+   boundary. Two exceptions kept `Word`/`i64` return types since they're
+   scalar flags, not graph values: `member` (0/1 membership flag) and
+   `remove1` (0/1 hit/miss flag, plus its `*Word` in-out set pointer became
+   `*Value`). Fixed all ~90 external call sites across the 9 files with
+   `Value.fromRaw`/`.toRaw()` boundary wrapping (`Value` needed a fresh
+   import in `compiler/dump.zig`, `graph/dump.zig`, `semantics/infer.zig`,
+   `semantics/type_errors.zig`, `session/boot.zig`, `session/commands.zig`;
+   already present in the others). One genuine wrapper-elimination (not
+   just relocation) found in `eval/combinators/lex.zig`'s two
+   `handle_LEX_TRY1`/`handle_LEX_TRY1_` call sites: `hd_hd_hd_arg1` and
+   `ctx.args[1]` were already `Value` in the migrated eval layer, so
+   `types.member(...)` no longer needs `.toRaw()` on either argument —
+   confirmation the technique pays down real boilerplate, not just moves
+   it. `zig build`/`zig build test` (full 261-test suite + integration +
+   spine/golden corpus) green; `zig build bench` reduction counts still
+   exactly match baseline (Ackermann(3,8)=30,652,009,
+   Fibonacci(30)=28,907,260, Prime Sieve(500)=671,945);
+   `layer_check.py`/`scorecard.sh --check` both clean, no regression.
+
 **Gate:** no `Word` outside `graph/dump.zig`; no numeric range tests on values;
 goldens + differential + bench green; GC invariant (mark follows `hd`/`tl` only for
 cell-payload tags) now *type-enforced* rather than convention-enforced.

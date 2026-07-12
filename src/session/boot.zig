@@ -16,6 +16,7 @@ const make_state = @import("make_state.zig");
 const abi = @import("../os.zig");
 
 const Word = word.Word;
+const Value = @import("../graph/value.zig").Value;
 const NIL = word.NIL;
 const CONS = word.CONS;
 const h = heap_mod.h;
@@ -120,10 +121,10 @@ pub fn mainEntry(heap: *Heap, argc: c_int, argv: [*][*:0]u8) c_int {
     if (!config_state.config().nostdenv) {
         dump.undump(heap, core_state.s(), cs(), rt.rs(), @as([*:0]const u8, @ptrCast(&config_state.config().STDENV)));
         while (heap.files != NIL) {
-            rt.rs().primenv = depend_mod.alfasort(heap, abi.append1(rt.rs().primenv, heap_mod.filDefs(heap_mod.h(heap, heap.files))));
+            rt.rs().primenv = depend_mod.alfasort(heap, Value.fromRaw(abi.append1(rt.rs().primenv, heap_mod.filDefs(heap_mod.h(heap, heap.files))))).toRaw();
             heap.files = heap_mod.t(heap, heap.files);
         }
-        rt.rs().primenv = depend_mod.alfasort(heap, rt.rs().primenv);
+        rt.rs().primenv = depend_mod.alfasort(heap, Value.fromRaw(rt.rs().primenv)).toRaw();
         cs().newtyps = NIL;
         heap.files = NIL;
     }
@@ -234,7 +235,7 @@ fn runExportsMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
                 heap_mod.tp(heap, heap_mod.h(heap, heap_mod.h(heap, n))).* = heap_mod.theVal(heap_mod.h(heap, f));
                 heap_mod.hp(heap, f).* = n;
             }
-            script_store.store().freeids = abi.typesfirst(heap, script_store.store().freeids);
+            script_store.store().freeids = abi.typesfirst(heap, Value.fromRaw(script_store.store().freeids)).toRaw();
             f = script_store.store().freeids;
             word.print("\t%free {{\n", .{});
             while (f != NIL) : (f = heap_mod.t(heap, f)) {
@@ -245,7 +246,7 @@ fn runExportsMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
             word.print("\t}}\n", .{});
         }
 
-        var item = abi.typesfirst(heap, depend_mod.alfasort(heap, x));
+        var item = abi.typesfirst(heap, depend_mod.alfasort(heap, Value.fromRaw(x))).toRaw();
         while (item != NIL) : (item = heap_mod.t(heap, item)) {
             _ = word.putchar('\t');
             abi.reportType(heap, heap_mod.h(heap, item));
@@ -271,7 +272,7 @@ fn runSourcesMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) 
             var f = if (heap.files == NIL) script_store.store().oldfiles else heap.files;
             while (f != NIL) : (f = heap_mod.t(heap, f)) {
                 const filename_str = heap_mod.getFil(heap_mod.h(heap, f)).?;
-                if (abi.member(heap, x, strtab.strBits(strtab.table(), filename_str)) == 0) {
+                if (abi.member(heap, Value.fromRaw(x), Value.fromRaw(strtab.strBits(strtab.table(), filename_str))) == 0) {
                     x = heap_mod.cons(heap, strtab.strBits(strtab.table(), filename_str), x);
                     word.print("{s}\n", .{filename_str});
                 }
