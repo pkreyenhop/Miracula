@@ -2296,11 +2296,43 @@ subsystems and passed explicitly; the ambient singleton deleted.
    `layer_check.py`: 0 new violations. `scorecard.sh`: ambient singleton-
    accessor call sites 694 → 690.
 
-   Remaining before the accessor functions can actually be deleted: the two
-   dispatch-table clusters (~150-200 sites, decision on cascading vs.
-   documenting as an exception still open), `graph/bignum.zig` (not yet
-   examined), and `parser/codegen.zig` (its own ~35-site ambient cluster,
-   likely similar in shape to `lower.zig`'s `codegen()`).
+   **`graph/bignum.zig`, checked — already done.** Turns out to have been
+   fully receiver-threaded in an *earlier* phase (2026-07-01, "Track
+   SHARED_STATE, Phase 5 Tier 1", predating this whole Phase 4 step 5 effort)
+   — every real function already takes the `*Heap`/`*Bignum` it needs
+   explicitly, by the file's own module doc. Its 26 remaining
+   `heap_mod.heap()` sites are all test-only (constructing a heap value for
+   the test's own use, same convention as every other file's tests). Zero
+   work needed.
+
+   **Remaining, all grouped as one decision: three same-shape ambient
+   clusters,** now that everything smaller has landed:
+   - `infer.zig`'s `ap`/`tf`/`tf2`/`tf3`/`lt`/`pairType`/`NTV` cluster (~150
+     call sites, `NTV()` alone ~100).
+   - `lower.zig`'s own `codegen()`-internal `cons`/`ap`/`ap2`/`ap3` (~85 call
+     sites: 47 + 38).
+   - `parser/codegen.zig`'s file-wide ambient convention (~35 real sites) —
+     checked this pass: unlike the other two, this isn't one giant switch/
+     dispatch function but a *file-wide* pattern spread across many separate
+     top-level functions (`codegenDef`/`codegenLocalDef`/`buildLdefs`/
+     `applyWhereDefs`/`codegenExpr`/…), several of which recurse into each
+     other and are themselves called from `parser_api.zig`/`match.zig`
+     (`transtries` calls back into `lower.zig`'s `codegen`, which calls back
+     into `codegen.zig`'s own helpers) — same *mechanical* shape as the other
+     two (every site sits within a function whose callers, traced so far,
+     already have `heap` on hand), but the *cascade path* is less contained:
+     fixing it properly means touching most of `codegen.zig`'s own top-level
+     functions' signatures, not just a handful of leaf helpers.
+
+   Combined, these three clusters are ~270 call sites — noticeably bigger than
+   any single slice landed so far this session, concentrated in three
+   files' core dispatch logic rather than spread thin. Whether to cascade
+   into them now or document them as a permanently-accepted exception to
+   "singleton-accessor count = 0" (they are pure, deterministic, one-shot-
+   per-compile code with no recursion-depth stack-growth risk analogous to
+   `dumpOb`'s, since they're driven by a program's static structure, not
+   unbounded runtime data) is a real decision, deliberately left open rather
+   than made unilaterally.
 
 **Gate:** singleton-accessor count = 0; module-level mutable globals = 1 (the
 interrupt flag); DAG check green with empty allowlist; files > 1,000 lines = 0;
