@@ -2631,6 +2631,39 @@ code that was about to move twice.
      `scorecard.sh --check` unchanged (this step added a type, not a
      C-accent removal, so no tracked metric was expected to move).
 
+   **Landed (2026-07-12), step 2: `CellRef`/`Kind`/`Value`.** Added to
+   `graph/value.zig`, still purely additive — no production caller yet.
+   - `CellRef = enum(u32)` wraps a raw cell-index `Word`. `of`/`toWord` are
+     free: `Heap.h`/`.t`/`.getTag` already subscript their column arrays with
+     the cell's `Word` directly (confirmed by reading `heap.zig`), so there's
+     no offset to apply — a `CellRef`'s numeric value is exactly the `Word`
+     it wraps, just given a type a cell *count* can't be confused with.
+   - `Kind = union(enum) { imm: u8, comb: Comb, cell: CellRef }` — the
+     `Comb`/`CellRef`-typed successor to `word.classify`'s
+     `Value{ .imm / .atom / .ref }`. Only the names changed for two of the
+     three (`.atom`→`.comb`, `.ref`→`.cell`): `.imm` deliberately stays a
+     single ambiguous `u8` rather than splitting into `char`/`small` as
+     §4.3's illustrative sketch shows, because the bits themselves can't
+     tell a bare Latin-1 char from a small int/index — same ambiguity
+     `word.classify`'s own doc comment already documents. A `char` reader
+     that also covers non-Latin-1 code points needs the cell's tag
+     (`UNICODE` vs bare), i.e. heap access — that's a step 3/4 typed
+     accessor, not something a raw, heap-independent `Kind` can do.
+   - `Value = packed struct(u64) { raw: i64 }` — bit-identical to the `Word`
+     it replaces (confirmed: `packed struct(u64)` over one `i64` field is 8
+     bytes, same layout), so `.x` dump files and the reducer's bit tricks
+     are untouched by this step. `fromRaw`/`toRaw` are the migration-window
+     escape hatch named in §4.3; `imm`/`comb`/`cell` are the typed
+     constructors; `kind()` reads a `Value` back into its `Kind`.
+   - Round-trip tests cover all three roles both ways (`fromRaw(word.S).kind()
+     == .{.comb=.S}`, `Value.comb(.PLUS) == Value.fromRaw(word.PLUS)`, same
+     for `.imm`/`.cell`) plus `toRaw` as the exact inverse of `fromRaw`.
+   - `zig build`/`zig build test` (257 unit tests now, integration suite,
+     spine/golden corpus, `sigint_check`) green; `layer_check.py`/
+     `scorecard.sh --check` unchanged (additive again — no `Word` call site
+     converted yet, so the `toRaw`-count ratchet mentioned in step 4 hasn't
+     started moving; that begins at step 3, the heap-API retyping).
+
 **Gate:** no `Word` outside `graph/dump.zig`; no numeric range tests on values;
 goldens + differential + bench green; GC invariant (mark follows `hd`/`tl` only for
 cell-payload tags) now *type-enforced* rather than convention-enforced.
