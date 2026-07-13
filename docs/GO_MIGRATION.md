@@ -102,18 +102,21 @@ mechanical, line-by-line pass with no design questions left open?**
 - [ ] `compiler/`, `parser/`, `runtime/` folded into `semantics/`/`syntax/`/
       `session/`/`graph/` per the ZIG_NATIVE_PLAN target tree — no directory
       exists that doesn't already have a decided Go package name (§5.1).
-- [ ] Every `anytype` parameter has a documented resolution (§5.2): either
-      collapsed to a small number of named non-overloaded functions, or
-      flagged for a Go generic type parameter with a written-out constraint.
-- [ ] Every `union(enum)` has been mapped to the one canonical Go pattern
-      (§5.3) in a checked-in table — no per-site re-derivation during the port.
-- [ ] The `Comb` enum's comptime-generation strategy has a Go equivalent
-      decided and prototyped (§5.4), not left as "figure it out during the
-      port."
-- [ ] Every Zig error set member has a named Go counterpart in a checked-in
-      correspondence table (§5.5).
-- [ ] The bignum and allocator-threading questions (§5.6, §5.7) are decided,
-      not open.
+- [x] Every `anytype` parameter has a documented resolution (§5.2) — see
+      [GO_ANYTYPE_INVENTORY.md](GO_ANYTYPE_INVENTORY.md) (Phase 0, 2026-07-13).
+- [x] Every `union(enum)` has been mapped to a documented Go pattern (§5.3) in
+      a checked-in table — see [GO_UNION_INVENTORY.md](GO_UNION_INVENTORY.md)
+      (Phase 0, 2026-07-13; revised the plan from one canonical pattern to two,
+      chosen by hot-path-or-not).
+- [x] The `Comb` enum's comptime-generation strategy has a Go equivalent
+      decided (§5.4, Phase 0, 2026-07-13: `go:generate`) — not yet prototyped;
+      prototyping happens at Phase 5 (the dry-run translation), not Phase 0.
+- [x] Every Zig error set member has a named Go counterpart in a checked-in
+      correspondence table (§5.5) — see
+      [GO_ERROR_CORRESPONDENCE.md](GO_ERROR_CORRESPONDENCE.md) (Phase 0,
+      2026-07-13).
+- [x] The bignum and allocator-threading questions (§5.6, §5.7) are decided,
+      not open (Phase 0, 2026-07-13).
 - [ ] All user-facing behaviour stays byte-identical throughout every step of
       this plan (golden corpus + differential suite + spine + sigint +
       smoke) — this plan changes *shape*, never behaviour, same discipline as
@@ -123,11 +126,11 @@ mechanical, line-by-line pass with no design questions left open?**
 
 ### 5.1 Package layout and stdlib name collisions
 
-Target Go module layout, directly off [ZIG_NATIVE_PLAN §4.1](ZIG_NATIVE_PLAN.md)'s
-tree, with two renames forced by Go stdlib collisions and one forced by Go's
-own `os` package:
+**Decided (Phase 0, 2026-07-13).** Target Go module layout, directly off
+[ZIG_NATIVE_PLAN §4.1](ZIG_NATIVE_PLAN.md)'s tree, with two renames forced by
+Go stdlib collisions and one forced by Go's own `os` package:
 
-| Zig directory | Go package (proposed) | Why renamed |
+| Zig directory | Go package | Why |
 | --- | --- | --- |
 | `src/graph/` | `graph` | no collision |
 | `src/syntax/` | `syntax` | no collision |
@@ -137,48 +140,58 @@ own `os` package:
 | `src/io/` | `mirio` | Go stdlib owns `io` |
 | `src/runtime/` | `mrt` | Go stdlib owns `runtime` |
 | `src/os.zig` (the POSIX floor) | `platform` | Go stdlib owns `os`; this file's *purpose* — "the one place OS syscalls live" — is better served by a name that doesn't fight the import of Go's actual `os` package everywhere else |
-| `src/tools/` | `tools` (or split into `cmd/fdate`, `cmd/just`, `cmd/menudriver` — Go convention puts standalone binaries under `cmd/`) | idiomatic Go, not forced |
+| `src/tools/fdate.zig`, `just.zig`, `menudriver.zig` | `cmd/fdate`, `cmd/just`, `cmd/menudriver` | each is a standalone binary today (per ZIG_MIGRATION.md Phase 1); Go convention puts those under `cmd/`, one package per binary, rather than a shared `tools` package — settled in favor of the idiomatic form since nothing forces the shared-package shape |
 
-Decide and record this table before any file moves — it's a one-time
-decision, and every later phase step references it instead of re-deciding.
+This table is a one-time decision; every later phase step references it
+instead of re-deciding.
 
 ### 5.2 `anytype` resolution
 
 19 sites, 9 files (§3 table). Go has generics (type parameters with
 constraints) but not Zig's comptime duck-typing, and not overloading by name.
-Each site needs one of two resolutions, decided per-site and recorded in
-`docs/GO_ANYTYPE_INVENTORY.md` (to be created as this phase's own artifact):
 
-- **Fixed small set of concrete types** (e.g. `heap.zig`'s `constructor(self,
-  n, x: anytype)` dispatching on `Word`/`c_int`/`[*:0]const u8`): split into
-  named functions (`constructorWord`, `constructorInt`, `constructorStr`) —
-  the direct Go analogue of what Zig's comptime dispatch already compiles
-  down to, just made explicit. Prefer this; it's the more mechanical choice.
-- **Genuinely open-ended / allocator-shaped** (`os.zig`'s 6 sites,
-  `stream.zig`'s 4): likely collapse away entirely once allocator threading
-  is dropped (§5.7) — audit these *after* §5.7 is decided, not before.
+**Decided (Phase 0, 2026-07-13):** [GO_ANYTYPE_INVENTORY.md](GO_ANYTYPE_INVENTORY.md)
+resolves all 19 sites into five categories, not the two anticipated above.
+The two biggest surprises: 11 of 19 are the single "printf-style formatting"
+pattern (`comptime fmt, args: anytype` → Go's `format string, args ...any`,
+already the stdlib idiom — zero design left), and 4 more (`os.zig`'s hand-
+rolled `sscanf`/`fscanf`) turn out to have a direct Go stdlib replacement
+(`fmt.Sscanf`/`fmt.Fscanf`) — a deletion, not a translation. `heap.zig`'s
+`constructor` resolves as originally sketched, split into
+`ConstructorWord`/`ConstructorInt`/`ConstructorStr`. `strtab.strBits`
+(1 site) is expected to collapse to a single concrete type once Phase 1's
+c-string cleanup lands. See the inventory for the full per-site table.
 
 ### 5.3 `union(enum)` → Go pattern
 
-Go has no sum types. Pick **one** canonical pattern and apply it everywhere,
-rather than deciding per call site during the port (that's exactly the kind
-of decision this whole plan exists to front-load):
+Go has no sum types. Pick a small number of canonical patterns and apply them
+consistently, rather than deciding per call site during the port (that's
+exactly the kind of decision this whole plan exists to front-load).
 
-**Recommended: tagged struct, not interface-per-variant.** A `Kind` enum
-field plus a struct wide enough to hold every variant's payload — this is
-already the shape `graph/value.zig`'s `Kind = union(enum) { imm: u8, comb:
-Comb, cell: CellRef }` takes conceptually, and it matches this project's own
-stated preference (ZIG_NATIVE_PLAN §4.3) for keeping bit layout stable rather
-than growing an allocation-heavy object graph. An interface-per-variant
-(`type Kind interface { isKind() }` with `Imm`/`Comb`/`Cell` structs
-implementing it) is the more "idiomatic Go" answer but breaks the bit-layout
-goal and adds an allocation + dynamic dispatch to a hot path (`Value.kind()`
-runs on every reduction step). Reject it for hot-path types (`Value`,
-`Kind`, `Diagnostics`' node kinds); it's fine for genuinely cold, rare-branch
-unions if any turn up in the inventory.
+**Decided (Phase 0, 2026-07-13), revising the single-pattern recommendation
+below:** [GO_UNION_INVENTORY.md](GO_UNION_INVENTORY.md) found that "always
+tagged struct" is wrong for the AST. **Two** patterns, chosen by whether the
+type appears in the reduction hot path:
 
-Produce a table of all 15 sites with their chosen pattern before starting
-the translation itself.
+- **Tagged struct** (`Kind` field + a struct wide enough for every variant)
+  for hot-path, fixed-width types: `graph/value.zig`'s `Kind`,
+  `syntax/lexer.zig`'s `Escape`/`EscapeErrorKind`. Preserves bit layout,
+  avoids per-value allocation, matches ZIG_NATIVE_PLAN §4.3's stated
+  preference for these specific types.
+- **Interface + one concrete struct per variant** for cold, tree-shaped
+  types — all 11 AST/directive unions (`syntax/ast.zig`'s 8, `token_filter.zig`'s
+  2, `modules.zig`'s `ExportPart`). This matches Go's own `go/ast` package
+  convention exactly (`Expr` as an interface, `*ast.BinaryExpr` etc. as
+  implementers) — the AST is built once per script and walked a handful of
+  times, so the allocation/dispatch cost the tagged-struct pattern exists to
+  avoid for the reducer doesn't apply here, and the interface form is both
+  more idiomatic and a closer structural match to the existing `*Expr`/`*Pat`
+  child-pointer fields.
+- One site (`graph/word.zig`'s pre-Phase-5 `Value`/`classify` seam) is not
+  ported at all — superseded by `graph/value.zig`'s `Kind`, expected deleted
+  by the time Phase 1 of this plan finishes.
+
+See the inventory for the full 15-site table and the reasoning per row.
 
 ### 5.4 `Comb`'s comptime generation
 
@@ -186,21 +199,21 @@ the translation itself.
 directly from `combinator.cmbnms` (see ZIG_NATIVE_PLAN Phase 5 step 1's
 landed entry) specifically so it can never drift from the numbering every
 reducer dispatch table depends on. Go has no comptime reflection over a
-runtime slice. Two options:
+runtime slice.
 
-- **`go:generate` + a small generator program** reading `cmbnms`'s Go
-  translation and emitting `comb_gen.go` with `const` values — keeps the
-  "generated, can't drift" property, translates the *intent* rather than the
-  mechanism.
-- **Hand-transcribe once, pin with a test** that checks member count and a
-  handful of spot values (`S`, `PLUS`, `False`, `True`, `NIL`, `NILS`,
-  `UNDEF`) against `word.zig`'s numbering — simpler, matches how the Zig
-  version was itself *verified* (a dedicated spot-check test), loses the
-  "can't drift by construction" property.
-
-Recommend `go:generate`, since `cmbnms` itself is unlikely to change but the
-whole point of generating rather than hand-writing was drift-proofing, and
-that property is worth preserving across the port, not just at origin.
+**Decided (Phase 0, 2026-07-13): `go:generate`.** A small Go generator
+program reads `combinator.cmbnms`'s Go-side translation (a plain
+`[]string`, the Go form of the Zig source-of-truth slice) and emits
+`comb_gen.go` with `const` values via `go:generate go run
+./internal/gen/comb`, run once and checked in like any other generated Go
+file. This preserves the "generated, can't drift" property `Comb`'s Zig
+implementation was specifically built for (rejected the hand-transcribe
+alternative for the same reason the Zig version wasn't hand-transcribed
+either: `cmbnms` is unlikely to change, but the whole point of generating
+was drift-proofing, and that property is worth keeping across the port, not
+just at origin). Verification carries over unchanged: the same spot-check
+test (`S`, `PLUS`, `False`, `True`, `NIL`, `NILS`, `UNDEF`, plus member
+count) the Zig version already has, ported alongside.
 
 ### 5.5 Error-set correspondence
 
@@ -208,45 +221,53 @@ Five Zig error sets exist today: `word.ReduceError` (`Interrupted`,
 `FloatOverflow`), `runtime.errors.MiraError`, `semantics.modules.ModuleError`,
 `parser.parser_api.ParseError`, `syntax.pratt.ParseError`. Zig error unions
 (`E!T`) map onto Go's `(T, error)` idiom directly — that correspondence is
-not in question. What needs deciding once, not per-site:
+not in question.
 
-- **Representation:** sentinel `var ErrInterrupted = errors.New(...)` values
-  (simple, works with `errors.Is`) vs. a small custom `type MiraError struct
-  { Kind MiraErrorKind; ... }` implementing `error` (carries structured
-  data, matches the `Diagnostics{span, message}` shape ZIG_NATIVE_PLAN's
-  Phase 2 already built). **Recommend the custom-type form** — it's the
-  direct translation of the Diagnostics work already done, and Go's error
-  wrapping (`errors.As`) gives back the typed-switch behaviour Zig's
-  `switch (err)` has today.
-- Produce the five-set → Go-type correspondence table before translation
-  starts; it's small and mechanical once decided.
+**Decided (Phase 0, 2026-07-13):** [GO_ERROR_CORRESPONDENCE.md](GO_ERROR_CORRESPONDENCE.md)
+uses the custom-type form (`type XxxError struct { Kind XxxErrorKind; ... }`)
+as originally recommended, one per set, each in the Go package matching its
+Zig home (`graph`, `session`, `semantics` ×2, `syntax`). Two findings worth
+noting here: `MiraError`'s `EvaluationInterrupted` member is already a
+documented-unused placeholder in the Zig source and is flagged for likely
+non-porting (re-verify at port time); `pratt.ParseError`'s `OutOfMemory`
+member is dropped entirely, the first concrete case of §5.7's
+allocator-plumbing-disappears principle actually removing an error variant,
+not just a function parameter. See the correspondence doc for the full
+per-set table.
 
 ### 5.6 Bignum: port or replace with `math/big`?
 
 `graph/bignum.zig` (1,088 lines) is a hand-rolled arbitrary-precision
 integer implementation with Miranda-specific formatting rules (`show`'s
-output format is part of the golden-pinned behaviour). **Recommend: port
-the existing implementation mechanically first; do not swap to `math/big`
-in the same pass.** Swapping libraries changes formatting/rounding/edge
-cases in ways the differential suite would need to re-validate from
-scratch, which is exactly the kind of behaviour-affecting change this
-plan's "shape never behaviour" discipline exists to avoid. A `math/big`
-swap, if wanted, is a legitimate *follow-up* once the mechanical port is
-golden-verified byte-identical — not part of getting to that first
-checkpoint.
+output format is part of the golden-pinned behaviour).
+
+**Decided (Phase 0, 2026-07-13): port the existing implementation
+mechanically first; do not swap to `math/big` in the same pass.** Swapping
+libraries changes formatting/rounding/edge cases in ways the differential
+suite would need to re-validate from scratch, which is exactly the kind of
+behaviour-affecting change this plan's "shape never behaviour" discipline
+exists to avoid. A `math/big` swap, if wanted, is a legitimate *follow-up*
+once the mechanical port is golden-verified byte-identical — out of scope
+for this plan and for the port it prepares.
 
 ### 5.7 Allocator threading: keep or drop?
 
 18 files thread `std.mem.Allocator` explicitly (a Zig idiom with no
-motivating equivalent once Go's GC is available). **Recommend: drop it at
-translation time, not preserve it.** Each `alloc: std.mem.Allocator`
-parameter simply disappears from the Go signature; call sites use
-`make`/`append`/`new` directly. This is a *simplification* that happens
-naturally, one call site at a time, during translation — it does not need
-its own prep phase, but it does mean the "mechanical" claim for this project
-is "mechanical modulo mechanically-droppable allocator plumbing," which is
-worth stating explicitly so nobody expects a literal `Allocator` interface
-to appear in the Go code.
+motivating equivalent once Go's GC is available).
+
+**Decided (Phase 0, 2026-07-13): drop it at translation time, not preserve
+it.** Each `alloc: std.mem.Allocator` parameter simply disappears from the
+Go signature; call sites use `make`/`append`/`new` directly. This is a
+*simplification* that happens naturally, one call site at a time, during
+translation — it does not need its own prep phase, but it does mean the
+"mechanical" claim for this project is "mechanical modulo
+mechanically-droppable allocator plumbing," worth stating explicitly so
+nobody expects a literal `Allocator` interface to appear in the Go code.
+Confirmed by [GO_ERROR_CORRESPONDENCE.md](GO_ERROR_CORRESPONDENCE.md)'s
+`pratt.ParseError` row and [GO_UNION_INVENTORY.md](GO_UNION_INVENTORY.md)'s
+`token_filter.Directive` row: this principle already removes one error-set
+member and one hand-written `deinit` method during the Phase 0 inventory
+work, before the port has even started.
 
 ### 5.8 Testing convention
 
@@ -294,6 +315,28 @@ before any code moves.
    recommendations above; this step is where they become decisions).
 
 **Gate:** four artifacts exist; no code changed.
+
+**Phase 0 complete (2026-07-13).** All four artifacts landed. Two findings
+changed the plan's own text rather than just filling in blanks:
+
+- **§5.3's "one canonical `union(enum)` pattern" was wrong.** Working through
+  all 15 sites individually (not just the two illustrative examples §5.3
+  originally cited) showed the AST unions (11 of 15) need an
+  interface-per-variant representation matching Go's own `go/ast` convention,
+  not the tagged-struct form that's correct for the reducer's hot-path types.
+  §5.3 above now states two patterns, chosen by hot-path-or-not, and
+  [GO_UNION_INVENTORY.md](GO_UNION_INVENTORY.md) records which of the 15
+  sites gets which. This is exactly the kind of correction this phase exists
+  to catch before, not during, the real port.
+- **The allocator-drop principle (§5.7) already has two concrete
+  consequences**, found while inventorying, not invented in §5.7 itself:
+  `syntax/pratt.zig`'s `ParseError` loses its `OutOfMemory` member (no Go
+  allocation-failure error to carry), and `token_filter.zig`'s `Directive`
+  loses its hand-written `deinit` method (Go's GC reclaims what it freed).
+  Both recorded in their respective inventories rather than treated as
+  surprises to rediscover later.
+- No code changed, as the gate requires — all three inventories and this
+  document's own §5 updates are additive documentation.
 
 ---
 
