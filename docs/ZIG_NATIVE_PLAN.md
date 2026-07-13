@@ -3318,6 +3318,53 @@ code that was about to move twice.
      `heap_mod.heap()`-style ambient accessor reads, so the
      ambient-singleton metric didn't move).
 
+   **Step 4i — `compiler/setup.zig`'s `primdef`/`predef`, landed
+   (2026-07-13), done as part of [GO_MIGRATION.md](GO_MIGRATION.md) Phase
+   1.** Even safer than step 4h: checked real fanout first (same discipline
+   as every slice this phase) and found `primdef`/`predef` have **zero**
+   external callers — both are called only from `primlib`/`privlib`/`stdlib`,
+   all three in this same file. `setup.zig`'s other 6 `pub fn`s
+   (`syntax`/`acterror`/`primlib`/`privlib`/`stdlib`/`miraSetup`) take no
+   `Word` parameter at all (string/error/orchestration signatures only), so
+   they were never candidates for this phase — a `checkfbs`-shaped finding,
+   not an oversight.
+   - Retyped `primdef`/`predef`'s `v`/`t_val` params from `Word` to `Value`
+     directly (no rename+wrapper split — neither function is recursive).
+     Both bodies call `heap.tp(...)`/`heap.h(...)` and
+     `heap_mod.constructor(heap, v, x)`, all still `Word`-typed (`heap.zig`'s
+     public API retyping is a separate, much larger, not-yet-started item
+     in this same phase) — `.toRaw()` at each of those three call points.
+   - Since there is no external boundary to wrap, "verifying the retype"
+     meant actually converting all ~50 call sites across `primlib`/
+     `privlib`/`stdlib` (every built-in and stdlib identifier the
+     interpreter bootstraps) to pass `Value.fromRaw(...)` rather than a
+     bare `Word` — the only way this change is real rather than a signature
+     nobody exercises (the exact lesson step 4g's `checktype` bug already
+     taught: an unconverted call site is a compile that never happens, not
+     a proof of correctness). Handled as one deliberate full-block rewrite
+     rather than a scripted substitution — several call sites pass
+     multi-argument nested expressions as `v` (`abi.make_typ(heap, 0, 0,
+     word.synonym_t, word.num_t)`, `abi.ap2(heap, word.FOLDR, word.APPEND,
+     NIL)`, `abi.stoDbl(abi.DBL_MAX) catch unreachable`, `mktiny()`), which
+     a blind regex/sed pass over "wrap the last two comma-separated
+     arguments" would have mis-split on the nested commas.
+   - This is, in effect, the interpreter's entire built-in/stdlib bootstrap
+     surface (every combinator/type pairing `True`/`False`/`num`/`char`/
+     `bool`/`offside`/`hd`/`tl`/`map`/`filter`/`foldr`/`sin`/`cos`/... gets
+     registered through) now running through `Value` at its call sites,
+     even though the two functions themselves are the only "migrated" unit
+     — a good example of a slice being small in *declared* surface (2
+     functions) but real in *exercised* surface (~50 sites, every one
+     actually run by `miraSetup()` on every process start and every test
+     via `tu.freshInterp()`).
+   - `zig build`/`zig build test` (289 unit tests; full integration +
+     spine/golden corpus, sigint, smoke — the spurious `zig build test`
+     quirk from `docs/ZIG_NATIVE_PLAN.md`'s own testing notes showed once,
+     confirmed clean on immediate rerun) all green; `zig build bench`
+     reduction counts unchanged (Ackermann(3,8)=30,652,009,
+     Fibonacci(30)=28,907,260, Prime Sieve(500)=671,945). `scorecard.sh
+     --check` clean, no baseline change.
+
 **Gate:** no `Word` outside `graph/dump.zig`; no numeric range tests on values;
 goldens + differential + bench green; GC invariant (mark follows `hd`/`tl` only for
 cell-payload tags) now *type-enforced* rather than convention-enforced.
