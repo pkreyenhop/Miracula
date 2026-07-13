@@ -307,7 +307,7 @@ pub fn onInterrupt(sig: c_int) callconv(.c) void {
 /// Compile `x` and send its value to standard output — used to run a script's `main`.
 pub fn obey(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, x_in: Word) void {
     var x = x_in;
-    const typ = types_mod.typeOf(heap, x);
+    const typ = types_mod.typeOf(heap, Value.fromRaw(x)).toRaw();
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.validate();
         trans_mod.validate(heap);
@@ -343,7 +343,7 @@ pub fn obey(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
 /// invariant exactly (see this file's module doc for why).
 pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, x_in: Word) void {
     var x = x_in;
-    const typ = types_mod.typeOf(heap, x);
+    const typ = types_mod.typeOf(heap, Value.fromRaw(x)).toRaw();
     if (options.is_strict or @import("builtin").mode == .Debug) {
         heap.validate();
         trans_mod.validate(heap);
@@ -471,7 +471,7 @@ pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState,
             core.SYNERR = 0;
             repl_session.session().lastexp = word.UNDEF;
         } else {
-            t1 = types_mod.typeOf(heap, repl_session.session().lastexp);
+            t1 = types_mod.typeOf(heap, Value.fromRaw(repl_session.session().lastexp)).toRaw();
             if (t1 == word.wrong_t) {
                 repl_session.session().lastexp = word.UNDEF;
             } else if (abi.subsumes(heap, abi.instantiate(heap, t1), t_val) == 0) {

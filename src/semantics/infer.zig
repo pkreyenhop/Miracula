@@ -840,11 +840,11 @@ pub fn checkfbs(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
 }
 
 /// Build and cache the `filestat` result type.
-pub fn genlstatType(heap: *Heap) Word {
+pub fn genlstatType(heap: *Heap) Value {
     if (cs().filestat_t == 0) {
         cs().filestat_t = tf(heap, cs().ltchar, pairType(heap, pairType(heap, num_t, num_t), num_t));
     }
-    return cs().filestat_t;
+    return Value.fromRaw(cs().filestat_t);
 }
 
 const bind_t: Word = 9;
@@ -1525,7 +1525,7 @@ fn etypeAtom(heap: *Heap, x: Word) Word {
             return cs().read_t;
         },
         word.FILESTAT => {
-            return genlstatType(heap);
+            return genlstatType(heap).toRaw();
         },
         word.FILEMODE, word.GETENV, word.NB_STARTREAD, word.STARTREADBIN, word.STARTREAD => {
             return cs().tfstrstr;
@@ -1707,14 +1707,14 @@ test "checktype: a boxed int typechecks cleanly, returning 1" {
 }
 
 /// The inferred type of expression `x`.
-pub fn typeOf(heap: *Heap, x: Word) Word {
+pub fn typeOf(heap: *Heap, x: Value) Value {
     cs().TYPERRS = 0;
-    var t_val = redtvars(heap, subst(heap, etype(heap, x, NIL, NIL) catch return wrong_t));
+    var t_val = redtvars(heap, subst(heap, etype(heap, x.toRaw(), NIL, NIL) catch return Value.fromRaw(wrong_t)));
     fixshows(heap);
     if (cs().TYPERRS > 0) {
         t_val = wrong_t;
     }
-    return t_val;
+    return Value.fromRaw(t_val);
 }
 
 /// Run type inference over definition `x`.

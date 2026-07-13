@@ -3423,6 +3423,48 @@ code that was about to move twice.
      unchanged (Ackermann(3,8)=30,652,009, Fibonacci(30)=28,907,260, Prime
      Sieve(500)=671,945). `scorecard.sh --check` clean, no baseline change.
 
+   **Step 4k — `infer.zig`'s `genlstatType`/`typeOf`, landed (2026-07-13),
+   done as part of [GO_MIGRATION.md](GO_MIGRATION.md) Phase 1.** A second
+   pass over `infer.zig`'s remaining `pub fn` list (beyond the 7 core
+   accessors and the 11 already handled in step 4g) turned up two more
+   genuine candidates that the earlier "core accessors are the only thing
+   left, and they're risky" framing had missed: `genlstatType` (builds/
+   caches the `filestat` result type — 1 internal caller plus 1 external,
+   `parser/lex.zig`) and `typeOf` (the inferred type of an expression — 3
+   external callers, **all in `session/repl.zig`**, none in the
+   `unify.zig`/`type_errors.zig`/`lower.zig` cluster that motivated
+   rejecting the core accessors). `tsetup`/`checktypes`, the other two
+   previously-unchecked `pub fn`s, confirmed as non-candidates the same way
+   `checkfbs`/`checkcolfn`/`genbnft` were in step 4g — no `Word` parameter
+   crosses their boundary at all.
+   - Both retyped directly, no rename+wrapper split needed (neither is
+     recursive): `genlstatType(heap) Value` (was `Word`, no parameter to
+     convert), `typeOf(heap, x: Value) Value` (was `Word`/`Word`).
+   - Fixed all 4 external call sites: `parser/lex.zig`'s `mklexvar`
+     (`.toRaw()` at the assignment, `genlstatType` reached through an
+     existing `const genlstatType = types.genlstatType;` alias — the alias
+     itself needed no change, only its one call site); `session/repl.zig`'s
+     `obey`/`evaluateRepl`/the REPL's type-check-on-redisplay path (3 sites,
+     `Value.fromRaw()` in, `.toRaw()` out at each — `Value` was already
+     imported there from earlier phase work).
+   - **Flaky-harness note, not a regression:** this step's `zig build test`
+     run hit a *different* instance of the project's known flaky-test-
+     harness pattern than the main-tests one `docs/ZIG_NATIVE_PLAN.md`'s
+     testing notes already document — `sigint_check` failed with
+     `BrokenPipe` under `zig build test`'s runner once, then passed cleanly
+     (exit 0) when the same built binary was invoked directly by hand, and
+     a full `zig build test` rerun afterward was clean end to end (69
+     golden/spine `PASS`, sigint `PASS`, smoke `PASS`, zero `FAIL`) —
+     treated as the harness flake it demonstrably is, not silently ignored:
+     confirmed by running the exact failing binary standalone before
+     concluding it wasn't `session/repl.zig`'s freshly-edited REPL paths
+     actually breaking under signal interruption.
+   - `zig build`/`zig build test` (289 unit tests; 69 golden/spine `PASS`,
+     zero `FAIL`; sigint; smoke) all green on the confirming rerun; `zig
+     build bench` reduction counts unchanged (Ackermann(3,8)=30,652,009,
+     Fibonacci(30)=28,907,260, Prime Sieve(500)=671,945). `scorecard.sh
+     --check` clean, no baseline change.
+
 **Gate:** no `Word` outside `graph/dump.zig`; no numeric range tests on values;
 goldens + differential + bench green; GC invariant (mark follows `hd`/`tl` only for
 cell-payload tags) now *type-enforced* rather than convention-enforced.
