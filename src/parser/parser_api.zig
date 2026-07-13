@@ -200,7 +200,7 @@ fn runParsedTokens(heap_ptr: *heap.Heap, p: *parser_mod.Parser, alloc: std.mem.A
             _ = word.print("syntax error - unexpected token\n", .{});
             return ParseError.SyntaxError;
         }
-        const expr_word = codegen.codegenExpr(heap_ptr, alloc, expr);
+        const expr_word = codegen.codegenExpr(heap_ptr, alloc, expr).toRaw();
         if (options.is_strict or @import("builtin").mode == .Debug) {
             heap_ptr.validate();
             p.validate();

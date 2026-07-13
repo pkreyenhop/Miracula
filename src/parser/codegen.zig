@@ -288,15 +288,15 @@ fn codegenGuarded(heap_ptr: *heap.Heap, alloc: Allocator, guards: []const ast.Gu
     if (last.is_otherwise) {
         if (N == 1) {
             // Single `body, otherwise` → just body (parse_compose strips OTHERWISE)
-            return codegenExpr(heap_ptr, alloc, last.body);
+            return codegenExprRaw(heap_ptr, alloc, last.body);
         }
         // Multi-case last otherwise: LABEL here body
-        y = mklabel(heap_ptr, makeHere(heap_ptr, @intCast(last.span.line)), codegenExpr(heap_ptr, alloc, last.body));
+        y = mklabel(heap_ptr, makeHere(heap_ptr, @intCast(last.span.line)), codegenExprRaw(heap_ptr, alloc, last.body));
     } else {
         // Last case is a conditional: LABEL here (COND cond body FAIL) [if N>1]
         //                          or just COND cond body FAIL           [if N==1]
-        const cond_w = codegenExpr(heap_ptr, alloc, last.cond);
-        const body_w = codegenExpr(heap_ptr, alloc, last.body);
+        const cond_w = codegenExprRaw(heap_ptr, alloc, last.cond);
+        const body_w = codegenExprRaw(heap_ptr, alloc, last.body);
         y = ap(heap_ptr, ap2(heap_ptr, word.COND, cond_w, body_w), word.FAIL);
         if (N > 1) {
             y = mklabel(heap_ptr, makeHere(heap_ptr, @intCast(last.span.line)), y);
@@ -308,8 +308,8 @@ fn codegenGuarded(heap_ptr: *heap.Heap, alloc: Allocator, guards: []const ast.Gu
         var j: usize = N - 2;
         while (j > 0) : (j -= 1) {
             const g = guards[j];
-            const body_w = codegenExpr(heap_ptr, alloc, g.body);
-            const cond_w = codegenExpr(heap_ptr, alloc, g.cond);
+            const body_w = codegenExprRaw(heap_ptr, alloc, g.body);
+            const cond_w = codegenExprRaw(heap_ptr, alloc, g.cond);
             y = mklabel(heap_ptr, makeHere(heap_ptr, @intCast(g.span.line)), ap(heap_ptr, ap2(heap_ptr, word.COND, cond_w, body_w), y));
         }
     }
@@ -317,8 +317,8 @@ fn codegenGuarded(heap_ptr: *heap.Heap, alloc: Allocator, guards: []const ast.Gu
     // ── Apply the FIRST guard (index 0) without a LABEL wrapper ────────────
     if (N > 1) {
         const first = guards[0];
-        const cond_w = codegenExpr(heap_ptr, alloc, first.cond);
-        const body_w = codegenExpr(heap_ptr, alloc, first.body);
+        const cond_w = codegenExprRaw(heap_ptr, alloc, first.cond);
+        const body_w = codegenExprRaw(heap_ptr, alloc, first.body);
         y = ap(heap_ptr, ap2(heap_ptr, word.COND, cond_w, body_w), y);
     }
 
@@ -398,7 +398,7 @@ fn codegenPattern(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
         .infix => |inf| blk: {
             if (std.mem.eql(u8, inf.op, "cons"))
                 break :blk mkcons(heap_ptr, codegenPattern(heap_ptr, alloc, inf.lhs.*), codegenPattern(heap_ptr, alloc, inf.rhs.*));
-            break :blk codegenExpr(heap_ptr, alloc, e);
+            break :blk codegenExprRaw(heap_ptr, alloc, e);
         },
 
         // Constructor application in patterns (e.g. `Node l r`).
@@ -425,11 +425,11 @@ fn codegenPattern(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
         .cname => |n| blk: {
             if (std.mem.eql(u8, n.text, "True")) break :blk mkcons(heap_ptr, word.CONST, TRUE_ATOM);
             if (std.mem.eql(u8, n.text, "False")) break :blk mkcons(heap_ptr, word.CONST, FALSE_ATOM);
-            break :blk codegenExpr(heap_ptr, alloc, e); // regular constructor: used as-is
+            break :blk codegenExprRaw(heap_ptr, alloc, e); // regular constructor: used as-is
         },
 
         // Names and other cases used as-is.
-        else => codegenExpr(heap_ptr, alloc, e),
+        else => codegenExprRaw(heap_ptr, alloc, e),
     };
 }
 
@@ -438,7 +438,7 @@ fn codegenPattern(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
 // ---------------------------------------------------------------------------
 
 /// Code an expression AST node `e` into a combinator graph.
-pub fn codegenExpr(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
+fn codegenExprRaw(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
     return switch (e) {
         // --- Identifiers ---
         .name => |n| nameWord(n.text),
@@ -454,13 +454,13 @@ pub fn codegenExpr(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
         },
 
         // --- Function application ---
-        .application => |app| ap(heap_ptr, codegenExpr(heap_ptr, alloc, app.func.*), codegenExpr(heap_ptr, alloc, app.arg.*)),
+        .application => |app| ap(heap_ptr, codegenExprRaw(heap_ptr, alloc, app.func.*), codegenExprRaw(heap_ptr, alloc, app.arg.*)),
 
         // --- Infix operators ---
         .infix => |inf| blk: {
             const op = inf.op;
-            const lhs = codegenExpr(heap_ptr, alloc, inf.lhs.*);
-            const rhs_w = codegenExpr(heap_ptr, alloc, inf.rhs.*);
+            const lhs = codegenExprRaw(heap_ptr, alloc, inf.lhs.*);
+            const rhs_w = codegenExprRaw(heap_ptr, alloc, inf.rhs.*);
             // '!' subscript: args are REVERSED — ap2(heap_ptr, SUBSCRIPT, rhs, lhs)
             if (std.mem.eql(u8, op, "bang")) break :blk ap2(heap_ptr, word.SUBSCRIPT, rhs_w, lhs);
             // ':' list cons: make(CONS, lhs, rhs)
@@ -470,8 +470,8 @@ pub fn codegenExpr(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
         },
 
         // --- Unary operators ---
-        .neg => |ep| ap(heap_ptr, word.NEG, codegenExpr(heap_ptr, alloc, ep.*)),
-        .length => |ep| ap(heap_ptr, word.LENGTH, codegenExpr(heap_ptr, alloc, ep.*)),
+        .neg => |ep| ap(heap_ptr, word.NEG, codegenExprRaw(heap_ptr, alloc, ep.*)),
+        .length => |ep| ap(heap_ptr, word.LENGTH, codegenExprRaw(heap_ptr, alloc, ep.*)),
 
         // --- List literals ---
         .list_nil => word.NIL,
@@ -480,7 +480,7 @@ pub fn codegenExpr(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
             var i: usize = items.len;
             while (i > 0) {
                 i -= 1;
-                result = mkcons(heap_ptr, codegenExpr(heap_ptr, alloc, items[i]), result);
+                result = mkcons(heap_ptr, codegenExprRaw(heap_ptr, alloc, items[i]), result);
             }
             break :blk result;
         },
@@ -492,35 +492,35 @@ pub fn codegenExpr(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
         // ()           → rt.rs().Void
         .tuple => |items| blk: {
             if (items.len == 0) break :blk rt.rs().Void;
-            if (items.len == 1) break :blk codegenExpr(heap_ptr, alloc, items[0]); // degenerate
+            if (items.len == 1) break :blk codegenExprRaw(heap_ptr, alloc, items[0]); // degenerate
             var result = mkpair(heap_ptr, 
-                codegenExpr(heap_ptr, alloc, items[items.len - 2]),
-                codegenExpr(heap_ptr, alloc, items[items.len - 1]),
+                codegenExprRaw(heap_ptr, alloc, items[items.len - 2]),
+                codegenExprRaw(heap_ptr, alloc, items[items.len - 1]),
             );
             var i: usize = items.len - 2;
             while (i > 0) {
                 i -= 1;
-                result = mktcons(heap_ptr, codegenExpr(heap_ptr, alloc, items[i]), result);
+                result = mktcons(heap_ptr, codegenExprRaw(heap_ptr, alloc, items[i]), result);
             }
             break :blk result;
         },
 
         // --- Type annotation: discard type, keep expression ---
-        .typed => |typed| codegenExpr(heap_ptr, alloc, typed.expr.*),
+        .typed => |typed| codegenExprRaw(heap_ptr, alloc, typed.expr.*),
 
         // --- Where clause: block(ldefs, body, 0) ---
-        .where => |w| applyWhereDefs(heap_ptr, alloc, codegenExpr(heap_ptr, alloc, w.body.*), w.defs),
+        .where => |w| applyWhereDefs(heap_ptr, alloc, codegenExprRaw(heap_ptr, alloc, w.body.*), w.defs),
 
         // --- Conditional guard (internal) ---
-        .cond => |cond| ap2(heap_ptr, word.COND, codegenExpr(heap_ptr, alloc, cond.guard.*), codegenExpr(heap_ptr, alloc, cond.then_expr.*)),
+        .cond => |cond| ap2(heap_ptr, word.COND, codegenExprRaw(heap_ptr, alloc, cond.guard.*), codegenExprRaw(heap_ptr, alloc, cond.then_expr.*)),
 
         // --- Left section (e op) → ap(heap_ptr, opWord, e) ---
-        .section_left => |s| ap(heap_ptr, opWord(heap_ptr, s.op), codegenExpr(heap_ptr, alloc, s.arg.*)),
+        .section_left => |s| ap(heap_ptr, opWord(heap_ptr, s.op), codegenExprRaw(heap_ptr, alloc, s.arg.*)),
 
         // --- Right/post section (op e) ---
         // Mirrors rules.y: '(' diop1 e1 ')' → if op_word = ap(heap_ptr, C,x) then ap(heap_ptr, x,e) else ap2(heap_ptr, C,op,e)
         .section_right => |s| blk: {
-            const arg_w = codegenExpr(heap_ptr, alloc, s.arg.*);
+            const arg_w = codegenExprRaw(heap_ptr, alloc, s.arg.*);
             // Special-case operators whose opWord is already ap(heap_ptr, C,x):
             if (std.mem.eql(u8, s.op, "lt")) break :blk ap(heap_ptr, word.GR, arg_w);
             if (std.mem.eql(u8, s.op, "le")) break :blk ap(heap_ptr, word.GRE, arg_w);
@@ -537,18 +537,18 @@ pub fn codegenExpr(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
         // [from,step..]    → ap2(heap_ptr, STEP, step-from, from)
         // [from,step..to]  → ap3(heap_ptr, STEPUNTIL, step-from, to, from)
         .range => |r| blk: {
-            const from_w = codegenExpr(heap_ptr, alloc, r.from.*);
+            const from_w = codegenExprRaw(heap_ptr, alloc, r.from.*);
             if (r.step) |step_ptr| {
-                const step_w = codegenExpr(heap_ptr, alloc, step_ptr.*);
+                const step_w = codegenExprRaw(heap_ptr, alloc, step_ptr.*);
                 const delta = ap2(heap_ptr, word.MINUS, step_w, from_w);
                 if (r.to) |to_ptr| {
-                    break :blk ap3(heap_ptr, word.STEPUNTIL, delta, codegenExpr(heap_ptr, alloc, to_ptr.*), from_w);
+                    break :blk ap3(heap_ptr, word.STEPUNTIL, delta, codegenExprRaw(heap_ptr, alloc, to_ptr.*), from_w);
                 } else {
                     break :blk ap2(heap_ptr, word.STEP, delta, from_w);
                 }
             } else {
                 if (r.to) |to_ptr| {
-                    break :blk ap3(heap_ptr, word.STEPUNTIL, big.bn().big_one, codegenExpr(heap_ptr, alloc, to_ptr.*), from_w);
+                    break :blk ap3(heap_ptr, word.STEPUNTIL, big.bn().big_one, codegenExprRaw(heap_ptr, alloc, to_ptr.*), from_w);
                 } else {
                     break :blk ap2(heap_ptr, word.STEP, big.bn().big_one, from_w);
                 }
@@ -567,34 +567,39 @@ pub fn codegenExpr(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
                         // Mirror that here so each generator's LHS variables
                         // are treated as fresh bindings, not references.
                         ls().idsused = word.NIL;
-                        const lhs_w = genlhs(heap_ptr, Value.fromRaw(codegenExpr(heap_ptr, alloc, g.pat))).toRaw();
+                        const lhs_w = genlhs(heap_ptr, Value.fromRaw(codegenExprRaw(heap_ptr, alloc, g.pat))).toRaw();
                         ls().idsused = word.NIL;
                         break :gen mkcons(heap_ptr, 
                             word.GENERATOR,
-                            mkcons(heap_ptr, lhs_w, codegenExpr(heap_ptr, alloc, g.source.*)),
+                            mkcons(heap_ptr, lhs_w, codegenExprRaw(heap_ptr, alloc, g.source.*)),
                         );
                     },
                     // Sequence generator: `pat <- src, step ..`
                     // Mirrors rules.y: cons(GENERATOR, cons(p, ap2(heap_ptr, ITERATE/ITERATE1, lambda(p,step), src)))
                     .sequence_generator => |sg| sgen: {
                         ls().idsused = word.NIL;
-                        const lhs_w = genlhs(heap_ptr, Value.fromRaw(codegenExpr(heap_ptr, alloc, sg.pat))).toRaw();
+                        const lhs_w = genlhs(heap_ptr, Value.fromRaw(codegenExprRaw(heap_ptr, alloc, sg.pat))).toRaw();
                         ls().idsused = word.NIL;
-                        const src_w = codegenExpr(heap_ptr, alloc, sg.source.*);
-                        const step_w = codegenExpr(heap_ptr, alloc, sg.step.*);
+                        const src_w = codegenExprRaw(heap_ptr, alloc, sg.source.*);
+                        const step_w = codegenExprRaw(heap_ptr, alloc, sg.step.*);
                         const comb: Word = if (irrefutable(heap_ptr, lhs_w) != 0) word.ITERATE else word.ITERATE1;
                         break :sgen mkcons(heap_ptr, 
                             word.GENERATOR,
                             mkcons(heap_ptr, lhs_w, ap2(heap_ptr, comb, mklambda(heap_ptr, lhs_w, step_w), src_w)),
                         );
                     },
-                    .guard => |gp| mkcons(heap_ptr, word.GUARD, codegenExpr(heap_ptr, alloc, gp.*)),
+                    .guard => |gp| mkcons(heap_ptr, word.GUARD, codegenExprRaw(heap_ptr, alloc, gp.*)),
                 };
                 qq = mkcons(heap_ptr, qw, qq); // prepend → reverses order
             }
-            break :blk compzf(heap_ptr, codegenExpr(heap_ptr, alloc, lc.body.*), qq, 0);
+            break :blk compzf(heap_ptr, codegenExprRaw(heap_ptr, alloc, lc.body.*), qq, 0);
         },
     };
+}
+
+/// `Value`-typed wrapper for `codegenExprRaw` (§ ZIG_NATIVE_PLAN Phase 5 step 4).
+pub fn codegenExpr(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Value {
+    return Value.fromRaw(codegenExprRaw(heap_ptr, alloc, e));
 }
 
 // ---------------------------------------------------------------------------
@@ -608,7 +613,7 @@ pub fn codegenExpr(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
 fn codegenLhsExpr(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
     return switch (e) {
         .application => |app| ap(heap_ptr, codegenLhsExpr(heap_ptr, alloc, app.func.*), codegenPattern(heap_ptr, alloc, app.arg.*)),
-        else => codegenExpr(heap_ptr, alloc, e),
+        else => codegenExprRaw(heap_ptr, alloc, e),
     };
 }
 
@@ -619,7 +624,7 @@ fn codegenLhsExpr(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
 /// Code a right-hand side, guarded or plain, including any `where`.
 fn codegenRhs(heap_ptr: *heap.Heap, alloc: Allocator, rhs: ast.Rhs) Word {
     return switch (rhs) {
-        .expr => |e| codegenExpr(heap_ptr, alloc, e),
+        .expr => |e| codegenExprRaw(heap_ptr, alloc, e),
         .guarded => |guards| codegenGuarded(heap_ptr, alloc, guards),
     };
 }
@@ -814,7 +819,7 @@ pub fn codegenScript(heap_ptr: *heap.Heap, alloc: Allocator, script: ast.Script)
             .type_spec => |ts| codegenTypeSpec(heap_ptr, ts),
             .type_decl => |td| codegenTypeDecl(heap_ptr, td),
             .eval => |e| {
-                _ = codegenExpr(heap_ptr, alloc, e);
+                _ = codegenExprRaw(heap_ptr, alloc, e);
             },
             // Directives are handled at a higher level (file inclusion etc.)
             // -- .directive is the native-pipeline counterpart of the three

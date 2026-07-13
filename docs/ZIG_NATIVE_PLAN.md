@@ -3365,6 +3365,64 @@ code that was about to move twice.
      Fibonacci(30)=28,907,260, Prime Sieve(500)=671,945). `scorecard.sh
      --check` clean, no baseline change.
 
+   **Step 4j — `parser/codegen.zig`'s `codegenExpr`, landed (2026-07-13),
+   done as part of [GO_MIGRATION.md](GO_MIGRATION.md) Phase 1.** The
+   largest single function converted so far in this phase (~160 lines, a
+   recursive-descent switch over all 18 `ast.Expr` variants) — chosen
+   because, unlike `unify.zig`/`type_errors.zig`, its external fanout is
+   tiny (exactly **one** real external caller, `parser_api.zig`'s
+   `evaluateRepl`-adjacent expression-eval path) even though its *internal*
+   fanout is large: ~40 self- and mutually-recursive references across
+   `codegenExprRaw` itself and the private `codegenGuarded` helper (guarded
+   right-hand-side compilation). Confirmed by checking every call site, not
+   assumed from the function's size.
+   - Applied the rename+wrapper pattern exactly as at every self-recursive
+     site this phase (`repT1`/`fixType` in step 4g): the entire ~370-line
+     body renamed `fn codegenExprRaw` (now private — nothing outside this
+     file may reach the `Word`-typed form), all 40 in-file references
+     (self-recursion plus `codegenGuarded`'s calls into it) mechanically
+     renamed to match via a whole-file substitution scoped to this one
+     identifier (verified safe first: `codegenExpr(` appeared nowhere else
+     in the file as a substring of a different name). A new
+     `pub fn codegenExpr(...) Value` wrapper added immediately after the
+     renamed body, calling it once and wrapping the result.
+   - `codegenScript` (the file's other `pub fn`, the whole-script codegen
+     entry point) stays `Word`/`void`-typed and unmigrated — its own single
+     internal call (the `.eval` top-level-item case) was mechanically
+     renamed to `codegenExprRaw` by the same substitution, same "internal
+     unmigrated callers use the Raw twin directly" rule as every prior
+     step.
+   - The one real external call site (`parser_api.zig`'s expression-eval
+     path) wrapped with `.toRaw()` — `Value` was already imported there
+     from earlier phase work, no new import needed.
+   - **Correction, worth recording:** `graph/dump.zig` (1176 lines/22 pub
+     fns), still listed as one of "8 files remaining" in the front-end
+     cluster measurement above, is not actually a `Value`-retyping target
+     at all — [ZIG_NATIVE_PLAN §4.1](ZIG_NATIVE_PLAN.md) explicitly names
+     it as `Word`'s permanent final home ("the only home of `Word` at the
+     end," since the `.x` wire format is pinned bit-for-bit and must not
+     change shape). Confirmed by reading its callers (`os.zig`,
+     `compiler/dump.zig`, `compiler/module_loader.zig`,
+     `session/commands.zig`, `session/repl.zig` — session/format-layer
+     code, not the compile-time front end this cluster measurement was
+     tracking) — it was swept into the 8,405-line measurement because it's
+     *entangled with* the front end today, not because it's *meant to
+     become* `Value`-typed. The real remaining front-end surface is 7
+     files, not 8: `lower.zig`, the bulk of `infer.zig` (its 50–78-call-
+     site core accessors, still the biggest identified risk, still not
+     attempted), `unify.zig`, `type_errors.zig`, the rest of `codegen.zig`
+     (`codegenDef`/`codegenTypeSpec`/`codegenTypeDecl`/`codegenGuarded`
+     and friends — all still `Word`-typed, `codegenExpr` was one function
+     within this file, not the whole file), `module_loader.zig` (its 2
+     `pub fn`s, `loadfile`/`mkincludes`, take no `Word`-graph-value
+     parameter at all — a `checkfbs`-shaped non-candidate, checked and
+     confirmed, not skipped by oversight).
+   - `zig build`/`zig build test` (289 unit tests; full integration +
+     spine/golden corpus — 69 golden/spine `PASS` lines confirmed, zero
+     `FAIL`; sigint; smoke) all green; `zig build bench` reduction counts
+     unchanged (Ackermann(3,8)=30,652,009, Fibonacci(30)=28,907,260, Prime
+     Sieve(500)=671,945). `scorecard.sh --check` clean, no baseline change.
+
 **Gate:** no `Word` outside `graph/dump.zig`; no numeric range tests on values;
 goldens + differential + bench green; GC invariant (mark follows `hd`/`tl` only for
 cell-payload tags) now *type-enforced* rather than convention-enforced.
