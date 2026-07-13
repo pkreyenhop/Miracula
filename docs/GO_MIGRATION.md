@@ -359,6 +359,25 @@ translation — not all of ZIG_NATIVE_PLAN, just the load-bearing subset.
 3. Re-run `scripts/scorecard.sh` after each subsystem; update
    `scripts/scorecard.baseline` downward per ZIG_NATIVE_PLAN's own cadence.
 
+**Started (2026-07-13).** First slice landed against step 1: `infer.zig`'s
+11 zero-external-caller functions (`sterilise`/`printelement`/`cyclicAbstr`/
+`txchange`/`repT1`/`repT`/`fixType`/`checkfbs`/`checkcolfn`/`genbnft`/
+`checktype`) — the exact next-slice candidate ZIG_NATIVE_PLAN's own Phase 5
+step 4 notes had already identified and left unstarted. Full details,
+including a pre-existing compile-blocking bug this slice's first-ever test
+for `checktype` caught (Zig's lazy analysis had never compiled that
+function's body, since it had zero callers before this), are recorded as
+"Step 4g" in [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) rather than duplicated
+here — this plan tracks *that* the load-bearing work is progressing, not
+the mechanical detail of each slice. `heap.zig`'s public API, `lower.zig`'s
+remaining ~1,761 lines, and the rest of `infer.zig` (including its
+50–78-call-site core accessors, flagged as materially larger and riskier)
+are still ahead. Step 2 (the `c_int`/`[*:0]` sweep) has not been started;
+scorecard now shows 168/231 for those two metrics (up from the 166/228
+recorded in this plan's §3 baseline — pre-existing drift from before this
+session, not caused by step 1's work, confirmed by re-running the scorecard
+against a clean pre-session tree before attributing it).
+
 **Gate:** scorecard's `[*:0]`/`c_int`-family/`toRaw` counts all at the
 `os.zig`-only floor; full suite green.
 

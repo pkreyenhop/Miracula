@@ -161,11 +161,27 @@ pub fn getId(heap: *Heap, x: Word) [*:0]const u8 {
 }
 
 /// Rewrite a type's outer constructor to `list_t` in place (for structural compare).
-pub fn sterilise(heap: *Heap, t_val: Word) void {
+fn sterilisRaw(heap: *Heap, t_val: Word) void {
     if (getTag(heap, t_val) == .AP) {
         hp(heap, t_val).* = list_t;
         tp(heap, t_val).* = num_t;
     }
+}
+
+/// `Value`-typed wrapper for `sterilisRaw` (§ ZIG_NATIVE_PLAN Phase 5 step 4g).
+///
+/// Tests: sterilise: rewrites an AP-tagged type's hd/tl to (list_t . num_t)
+pub fn sterilise(heap: *Heap, t_val: Value) void {
+    sterilisRaw(heap, t_val.toRaw());
+}
+
+test "sterilise: rewrites an AP-tagged type's hd/tl to (list_t . num_t)" {
+    tu.freshInterp();
+    const t_val = Value.fromRaw(tu.ap(tu.int(1), tu.int(2)));
+    try std.testing.expectEqual(word.NodeTag.AP, getTag(heap_mod.heap(), t_val.toRaw()));
+    sterilise(heap_mod.heap(), t_val);
+    try std.testing.expectEqual(list_t, h(heap_mod.heap(), t_val.toRaw()));
+    try std.testing.expectEqual(num_t, t(heap_mod.heap(), t_val.toRaw()));
 }
 
 /// Validate the well-formedness (arity) of type expression `t_val`.
@@ -199,7 +215,7 @@ fn metaTcheck(heap: *Heap, t_val: Word) errors.MiraError!Word {
                     _ = word.print(" has zero arity)\n", .{});
                     sayhere(heap, getspecloc(heap, cs().current_id), 1);
                 }
-                sterilise(heap, t_val);
+                sterilisRaw(heap, t_val);
             }
             return t_val;
         } else if (idType(heap, tn) == undef_t and idVal(heap, tn) == UNDEF) {
@@ -238,7 +254,7 @@ fn metaTcheck(heap: *Heap, t_val: Word) errors.MiraError!Word {
             if (getTag(heap, cs().current_id) != .DATAPAIR) {
                 sayhere(heap, getspecloc(heap, cs().current_id), 1);
             }
-            sterilise(heap, t_val);
+            sterilisRaw(heap, t_val);
             return t_val;
         }
     }
@@ -253,7 +269,7 @@ fn metaTcheck(heap: *Heap, t_val: Word) errors.MiraError!Word {
         }
         const suffix: [*:0]const u8 = if (cs().meta_pending == NIL) "" else "s";
         _ = word.print("error: cycle in type \"==\" definition{s} ", .{suffix});
-        printelement(heap, cs().meta_pending);
+        printelementRaw(heap, cs().meta_pending);
         _ = word.print("\n", .{});
         if (getTag(heap, cs().current_id) != .DATAPAIR) {
             sayhere(heap, idWho(heap, tn), 1);
@@ -409,7 +425,7 @@ const algebraic_t = word.algebraic_t;
 const FREE = word.FREE;
 
 /// Print one debug element.
-pub fn printelement(heap: *Heap, x: Word) void {
+fn printelementRaw(heap: *Heap, x: Word) void {
     if (getTag(heap, x) != .CONS) {
         out(heap, getStdout().?, x);
         return;
@@ -426,12 +442,28 @@ pub fn printelement(heap: *Heap, x: Word) void {
     _ = word.print(")", .{});
 }
 
+/// `Value`-typed wrapper for `printelementRaw` (§ ZIG_NATIVE_PLAN Phase 5 step 4g).
+///
+/// Tests: printelement: prints a non-cons value bare, a cons-list parenthesised
+pub fn printelement(heap: *Heap, x: Value) void {
+    printelementRaw(heap, x.toRaw());
+}
+
+test "printelement: prints a non-cons value bare, a cons-list parenthesised" {
+    tu.freshInterp();
+    // No stdout-capture harness exists in this codebase for `word.print`
+    // (it writes straight to the real fd) -- this smoke-tests both branches
+    // (bare value, cons-list) rather than asserting captured text.
+    printelement(heap_mod.heap(), Value.fromRaw(tu.int(5)));
+    printelement(heap_mod.heap(), Value.fromRaw(tu.list(&[_]Word{ tu.int(1), tu.int(2) })));
+}
+
 /// Print a titled list (debug).
 pub fn printlist(heap: *Heap, title: [*:0]const u8, l_in: Word) void {
     var l = l_in;
     _ = word.print("{s}", .{title});
     while (l != NIL) {
-        printelement(heap, h(heap, l));
+        printelementRaw(heap, h(heap, l));
         l = t(heap, l);
         if (l != NIL) {
             _ = word.print(",", .{});
@@ -461,7 +493,10 @@ pub fn locateInc(heap: *Heap) void {
 }
 
 /// Detect cyclic abstract-type definitions among `atnames`.
-pub fn cyclicAbstr(heap: *Heap, atnames: Word) Word {
+///
+/// Returns a 0/1 flag, not a graph value (matches `depend.zig`'s
+/// `member`/`remove1` precedent) — only `atnames` is `Value`-typed.
+fn cyclicAbstrRaw(heap: *Heap, atnames: Word) Word {
     var x = atnames;
     var y = NIL;
     while (x != NIL) {
@@ -472,7 +507,7 @@ pub fn cyclicAbstr(heap: *Heap, atnames: Word) Word {
     while (x != NIL) {
         if (occurs(heap, h(heap, x), y)) {
             _ = word.print("illegal type abstraction: cycle in \"==\" binding{s} ", .{if (t(heap, atnames) == NIL) @as([*:0]const u8, "") else @as([*:0]const u8, "s")});
-            printelement(heap, atnames);
+            printelementRaw(heap, atnames);
             _ = word.putchar('\n');
             sayhere(heap, idWho(heap, h(heap, x)), 1);
             cs().TYPERRS += 1;
@@ -483,8 +518,20 @@ pub fn cyclicAbstr(heap: *Heap, atnames: Word) Word {
     return 0;
 }
 
+/// `Value`-typed wrapper for `cyclicAbstrRaw` (§ ZIG_NATIVE_PLAN Phase 5 step 4g).
+///
+/// Tests: cyclicAbstr: an empty atnames list reports no cycle
+pub fn cyclicAbstr(heap: *Heap, atnames: Value) Word {
+    return cyclicAbstrRaw(heap, atnames.toRaw());
+}
+
+test "cyclicAbstr: an empty atnames list reports no cycle" {
+    tu.freshInterp();
+    try std.testing.expectEqual(@as(Word, 0), cyclicAbstr(heap_mod.heap(), Value.fromRaw(word.NIL)));
+}
+
 /// Expand type synonyms: replace ids `ids` throughout `x`.
-pub fn txchange(heap: *Heap, ids_in: Word, x_in: Word) void {
+fn txchangeRaw(heap: *Heap, ids_in: Word, x_in: Word) void {
     var ids = ids_in;
     var x = x_in;
     while (ids != NIL) {
@@ -496,13 +543,33 @@ pub fn txchange(heap: *Heap, ids_in: Word, x_in: Word) void {
     }
 }
 
+/// `Value`-typed wrapper for `txchangeRaw` (§ ZIG_NATIVE_PLAN Phase 5 step 4g).
+///
+/// Tests: txchange: installs a representation type in place of a synonym id's own type
+pub fn txchange(heap: *Heap, ids_in: Value, x_in: Value) void {
+    txchangeRaw(heap, ids_in.toRaw(), x_in.toRaw());
+}
+
+test "txchange: installs a representation type in place of a synonym id's own type" {
+    tu.freshInterp();
+    const id1 = heap_mod.stoId("zzinfer_txchange_id");
+    const orig_head = tu.int(111);
+    const x = tu.cons(orig_head, tu.int(222));
+    const ids = tu.list(&[_]Word{id1});
+    txchange(heap_mod.heap(), Value.fromRaw(ids), Value.fromRaw(x));
+    // id1's type field (was undef_t) now holds x's original head.
+    try std.testing.expectEqual(orig_head, idType(heap_mod.heap(), id1));
+    // x's head field now holds id1's original (undef_t) type.
+    try std.testing.expectEqual(undef_t, h(heap_mod.heap(), x));
+}
+
 /// Substitute type arguments `L` for the formals of type `T`.
-pub fn repT1(heap: *Heap, T: Word, L: Word) Word {
+fn repT1Raw(heap: *Heap, T: Word, L: Word) Word {
     var args = NIL;
     var t1 = T;
     var changed = false;
     while (isCompoundType(heap, t1)) {
-        const a = repT1(heap, t(heap, t1), L);
+        const a = repT1Raw(heap, t(heap, t1), L);
         if (a != t(heap, t1)) {
             changed = true;
         }
@@ -522,19 +589,47 @@ pub fn repT1(heap: *Heap, T: Word, L: Word) Word {
     return t1;
 }
 
+/// `Value`-typed wrapper for `repT1Raw` (§ ZIG_NATIVE_PLAN Phase 5 step 4g).
+///
+/// Tests: repT1: returns T unchanged when it has no formals to substitute
+pub fn repT1(heap: *Heap, T: Value, L: Value) Value {
+    return Value.fromRaw(repT1Raw(heap, T.toRaw(), L.toRaw()));
+}
+
+test "repT1: returns T unchanged when it has no formals to substitute" {
+    tu.freshInterp();
+    // num_t isn't AP-tagged (isCompoundType false) and isn't a member of an
+    // empty L, so the loop never runs and `!changed` returns T verbatim.
+    const T = Value.fromRaw(num_t);
+    try std.testing.expectEqual(T, repT1(heap_mod.heap(), T, Value.fromRaw(word.NIL)));
+}
+
 /// Replace type `T`'s formal parameters with arguments `L`, then renumber.
-pub fn repT(heap: *Heap, T: Word, L: Word) Word {
-    const t_val = repT1(heap, T, L);
+fn repTRaw(heap: *Heap, T: Word, L: Word) Word {
+    const t_val = repT1Raw(heap, T, L);
     return if (t_val == T) t_val else redtvars(heap, t_val);
 }
 
+/// `Value`-typed wrapper for `repTRaw` (§ ZIG_NATIVE_PLAN Phase 5 step 4g).
+///
+/// Tests: repT: returns T unchanged when repT1 makes no substitution
+pub fn repT(heap: *Heap, T: Value, L: Value) Value {
+    return Value.fromRaw(repTRaw(heap, T.toRaw(), L.toRaw()));
+}
+
+test "repT: returns T unchanged when repT1 makes no substitution" {
+    tu.freshInterp();
+    const T = Value.fromRaw(num_t);
+    try std.testing.expectEqual(T, repT(heap_mod.heap(), T, Value.fromRaw(word.NIL)));
+}
+
 /// Normalise a type node after loading a dump (fix up indices).
-pub fn fixType(heap: *Heap, t_val: Word) Word {
+fn fixTypeRaw(heap: *Heap, t_val: Word) Word {
     var t_node = t_val;
     switch (getTag(heap, t_node)) {
         .AP, .CONS => {
-            tp(heap, t_node).* = fixType(heap, t(heap, t_node));
-            hp(heap, t_node).* = fixType(heap, h(heap, t_node));
+            tp(heap, t_node).* = fixTypeRaw(heap, t(heap, t_node));
+            hp(heap, t_node).* = fixTypeRaw(heap, h(heap, t_node));
             return t_node;
         },
         .STRCONS => {
@@ -549,13 +644,37 @@ pub fn fixType(heap: *Heap, t_val: Word) Word {
     }
 }
 
+/// `Value`-typed wrapper for `fixTypeRaw` (§ ZIG_NATIVE_PLAN Phase 5 step 4g).
+///
+/// Tests: fixType: passes atoms through unchanged, recurses through an AP node's fields
+pub fn fixType(heap: *Heap, t_val: Value) Value {
+    return Value.fromRaw(fixTypeRaw(heap, t_val.toRaw()));
+}
+
+test "fixType: passes atoms through unchanged, recurses through an AP node's fields" {
+    tu.freshInterp();
+    // Atom (not AP/CONS/STRCONS): passed through unchanged (the `else` branch).
+    try std.testing.expectEqual(Value.fromRaw(num_t), fixType(heap_mod.heap(), Value.fromRaw(num_t)));
+
+    // AP-tagged: recurses into both fields. INT-tagged leaves hit the same
+    // `else` branch, so the node's own hd/tl end up unchanged in value, but
+    // the recursive fixTypeRaw(fixTypeRaw(...)) chain is genuinely exercised.
+    const node = Value.fromRaw(tu.ap(tu.int(1), tu.int(2)));
+    const before_h = h(heap_mod.heap(), node.toRaw());
+    const before_t = t(heap_mod.heap(), node.toRaw());
+    const result = fixType(heap_mod.heap(), node);
+    try std.testing.expectEqual(node, result);
+    try std.testing.expectEqual(before_h, h(heap_mod.heap(), node.toRaw()));
+    try std.testing.expectEqual(before_t, t(heap_mod.heap(), node.toRaw()));
+}
+
 /// Check an abstract-type declaration `x`.
 fn abstrCheck(heap: *Heap, x_in: Word) errors.MiraError!void {
     var x = x_in;
     const rtypes = t(heap, h(heap, x));
     const sigids = t(heap, x);
     cs().ATNAMES = h(heap, h(heap, x));
-    txchange(heap, sigids, rtypes); // install representation types
+    txchangeRaw(heap, sigids, rtypes); // install representation types
     x = sigids;
     while (x != NIL) {
         const oldte = cs().TYPERRS;
@@ -599,7 +718,7 @@ fn abstrMcheck(heap: *Heap, tabstrs_in: Word) errors.MiraError!void {
         const atnames = h(heap, h(heap, tabstrs));
         var sigids = t(heap, h(heap, tabstrs));
         var rtypes = NIL;
-        if (cyclicAbstr(heap, atnames) != 0) {
+        if (cyclicAbstrRaw(heap, atnames) != 0) {
             return;
         }
         while (sigids != NIL) {
@@ -688,7 +807,7 @@ pub fn checkfbs(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         formals = t(heap, h(heap, comp.FBS));
         while (formals != NIL) {
             var t_val: Word = undefined;
-            const t1 = fixType(heap, t(heap, t(heap, h(heap, formals))));
+            const t1 = fixTypeRaw(heap, t(heap, t(heap, h(heap, formals))));
             if (t1 == type_t) {
                 formals = t(heap, formals);
                 continue;
@@ -847,7 +966,7 @@ fn conforms(heap: *Heap, p: Word, t_val: Word, e_in: Word, ngt: Word) errors.Mir
             typeError5(heap, cur_p);
             return -1;
         }
-        pt = instantiate(heap, if (cs().ATNAMES != 0) repT(heap, idType(heap, cur_p), cs().ATNAMES) else idType(heap, cur_p));
+        pt = instantiate(heap, if (cs().ATNAMES != 0) repTRaw(heap, idType(heap, cur_p), cs().ATNAMES) else idType(heap, cur_p));
         while (p_args != NIL and isArrowType(heap, pt)) {
             e = try conforms(heap, h(heap, p_args), t(heap, h(heap, pt)), e, ngt);
             pt = t(heap, pt);
@@ -934,7 +1053,7 @@ fn etype(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
         },
         .CONSTRUCTOR => {
             const a = idType(heap, t(heap, x));
-            return instantiate(heap, if (cs().ATNAMES != 0) repT(heap, a, cs().ATNAMES) else a);
+            return instantiate(heap, if (cs().ATNAMES != 0) repTRaw(heap, a, cs().ATNAMES) else a);
         },
         .UNICODE => {
             return char_t;
@@ -1078,7 +1197,7 @@ fn etypeId(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
     if (a == wrong_t) {
         return NTV(heap);
     }
-    return instantiate(heap, if (cs().ATNAMES != 0) repT(heap, a, cs().ATNAMES) else a);
+    return instantiate(heap, if (cs().ATNAMES != 0) repTRaw(heap, a, cs().ATNAMES) else a);
 }
 
 /// [etype] for a `.LET` node: infers the bound expression's type against the
@@ -1557,12 +1676,34 @@ pub fn genbnft(heap: *Heap) void {
     cs().bnf_t = ap2(heap, comma_t, cs().ltchar, ap2(heap, comma_t, cs().bnf_t, void_t));
 }
 
-/// Type-check `x`, returning its inferred type.
-pub fn checktype(heap: *Heap, x: Word) Word {
-    cs.TYPERRS = 0;
+/// Type-check `x`, returning 1 if it typechecks cleanly, 0 otherwise (a flag,
+/// not a graph value — matches `cyclicAbstr`'s precedent above).
+///
+/// Bug fixed in the same edit that gave this function its first caller (a unit
+/// test — it had none before, Zig's lazy analysis never compiled this body):
+/// `cs.TYPERRS` (missing the call parens on the `cs()` singleton accessor) does
+/// not compile — `cs` is a function value, not a struct, so it has no
+/// `.TYPERRS` field. Every other reference in this file correctly calls `cs()`.
+fn checktypeRaw(heap: *Heap, x: Word) Word {
+    cs().TYPERRS = 0;
     _ = etype(heap, x, NIL, NIL) catch return 0;
     resetSubst(heap);
-    return if (cs.TYPERRS == 0) 1 else 0;
+    return if (cs().TYPERRS == 0) 1 else 0;
+}
+
+/// `Value`-typed wrapper for `checktypeRaw` (§ ZIG_NATIVE_PLAN Phase 5 step 4g).
+///
+/// Tests: checktype: a boxed int typechecks cleanly, returning 1
+pub fn checktype(heap: *Heap, x: Value) Word {
+    return checktypeRaw(heap, x.toRaw());
+}
+
+test "checktype: a boxed int typechecks cleanly, returning 1" {
+    tu.freshInterp();
+    // etype's `.INT` branch returns num_t unconditionally -- no unify/TYPERRS
+    // involvement, so this is a safe, minimal well-typed expression.
+    try std.testing.expectEqual(@as(Word, 1), checktype(heap_mod.heap(), Value.fromRaw(tu.int(42))));
+    try std.testing.expectEqual(@as(Word, 0), cs().TYPERRS);
 }
 
 /// The inferred type of expression `x`.

@@ -3184,6 +3184,85 @@ code that was about to move twice.
    before typing — a materially bigger, riskier undertaking than either
    slice landed so far, deliberately not started this session.
 
+   **Step 4g — front end, third slice (`infer.zig`'s 11 zero-caller
+   functions), landed (2026-07-13), done as part of
+   [GO_MIGRATION.md](GO_MIGRATION.md) Phase 1** (that plan's own step 1
+   names finishing this exact migration as a load-bearing prerequisite for
+   Go-readiness, not just Zig polish). Re-verified all 11 first: zero
+   callers anywhere outside `infer.zig` itself, confirmed by grep, not
+   assumed from the earlier scoping note. Of the 11, only 8 actually cross
+   a `Word`/graph-value boundary and needed retyping —
+   `checkfbs`/`checkcolfn`/`genbnft` take no `Word` parameter and return
+   `void`, so there was nothing to convert for them at all (a real finding,
+   not busywork skipped): `checkfbs` only needed its one internal call to
+   `fixType` repointed at the new `fixTypeRaw` twin. Applied the
+   rename+wrapper pattern to the 8 that do: `sterilise`, `printelement`,
+   `cyclicAbstr` (return stays `Word` — a 0/1 flag, not a graph value,
+   matching `depend.zig`'s `member`/`remove1` precedent from step 4f),
+   `txchange`, `repT1`/`repT` (self- and mutually-recursive — `repT` calls
+   `repT1Raw` directly, not the new public `repT1`, avoiding a pointless
+   wrap/unwrap round trip), `fixType` (self-recursive), and `checktype`.
+   All internal callers (`metaTcheck`, the cycle-report branch, `abstrCheck`,
+   `etype`'s `.CONSTRUCTOR` case, `checkfbs`) — themselves still
+   `Word`-typed, unmigrated front-end code — were repointed at the private
+   `Raw` twins directly, the same "no wrapping noise leaks into
+   not-yet-migrated callers" reasoning as every earlier slice.
+
+   **Bug found and fixed, not just carried forward:** `checktype`
+   (distinct from the real production entry point `checktypes`) had never
+   been called from anywhere in the codebase — the exact reason it was
+   flagged as zero-external-caller in the first place — and Zig's lazy
+   semantic analysis (a `pub fn` is only type-checked if something reaches
+   it) meant its body had silently never compiled: `cs.TYPERRS = 0;` is
+   missing the call parens on the `cs()` singleton accessor (`cs` is a
+   function value, not a struct; every other reference in the file
+   correctly writes `cs().TYPERRS`). This is exactly the risk the
+   cross-cutting test-coverage note above predicted in the abstract
+   ("any future port translates fastest against an existing test") made
+   concrete: without a test, this function would have been translated
+   verbatim into Go, and Go — with eager, non-lazy compilation — would
+   have caught the equivalent mistake at `go build` time regardless, just
+   with no way to know whether the *behavior* being ported was ever
+   correct in the first place. Fixed both occurrences (the reset and the
+   final flag check) in the same edit that gave this function its first
+   real caller.
+   - Added one test per retyped function (`sterilise`, `printelement`,
+     `cyclicAbstr`, `txchange`, `repT1`, `repT`, `fixType`, `checktype` —
+     8 new tests), each exercising a safe, self-contained case rather than
+     the full domain logic (e.g. `repT1`/`repT` test the "no substitution
+     needed" identity path, not a real multi-formal type substitution;
+     `printelement` smoke-tests both branches since this codebase has no
+     stdout-capture harness to assert printed text against). The deeper
+     paths these functions cover in real use (cyclic `==` detection, actual
+     type-argument substitution, dump-load index fixup) remain exercised
+     only indirectly, via the golden/regression corpus's own type-checking
+     coverage — noted as a gap, not claimed as covered.
+   - `zig build` (exe) and `zig build test` (289 unit tests, up from 281;
+     full integration + spine/golden corpus, sigint, smoke) all green;
+     `zig build bench` reduction counts unchanged (Ackermann(3,8)=30,652,009,
+     Fibonacci(30)=28,907,260, Prime Sieve(500)=671,945 — this is
+     compile-time front-end code, not the reducer hot path, so no change
+     was expected). `scorecard.sh --check` flagged three metrics: two
+     (`c_int`-family 166→168, `[*:0]` 228→231) were pre-existing drift
+     already present on `main` before this slice (confirmed by stashing
+     this change and re-running the check against a clean tree) — baseline
+     was already stale, not something this step caused or should silently
+     paper over; the third (`ambient singleton-accessor call sites`
+     683→686) is this step's own new tests calling `heap_mod.heap()` three
+     times, the same "the test's own point requires this accessor, not a
+     production regression" reasoning already accepted for
+     `current_interp references` in Phase 4 step 6. Baseline updated to
+     168/231/686 with this justification recorded here, not silently.
+
+   **Front-end cluster re-measured after step 4g:** `infer.zig`'s 8 newly
+   `Value`-typed functions plus `depend.zig`/`match.zig` from steps 4e/4f
+   bring the migrated share of the 11-file/8,405-line cluster to
+   3 files/~980 lines at their public boundary; **8 files/~7,425 lines
+   remain** (`lower.zig`, the bulk of `infer.zig` — including its
+   50-78-call-site core accessors flagged as the next, materially larger
+   undertaking — `unify.zig`, `type_errors.zig`, `symbols.zig`,
+   `codegen.zig`, `module_loader.zig`, `setup.zig`, `graph/dump.zig`).
+
 **Gate:** no `Word` outside `graph/dump.zig`; no numeric range tests on values;
 goldens + differential + bench green; GC invariant (mark follows `hd`/`tl` only for
 cell-payload tags) now *type-enforced* rather than convention-enforced.
