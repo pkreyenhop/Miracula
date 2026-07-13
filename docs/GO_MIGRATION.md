@@ -359,8 +359,8 @@ translation — not all of ZIG_NATIVE_PLAN, just the load-bearing subset.
 3. Re-run `scripts/scorecard.sh` after each subsystem; update
    `scripts/scorecard.baseline` downward per ZIG_NATIVE_PLAN's own cadence.
 
-**Started (2026-07-13), three slices landed against step 1** (recorded as
-ZIG_NATIVE_PLAN.md's steps 4g/4h/4i — full mechanical detail there, not
+**Started (2026-07-13), five slices landed against step 1** (recorded as
+ZIG_NATIVE_PLAN.md's steps 4g–4k — full mechanical detail there, not
 duplicated here):
 
 1. `infer.zig`'s 11 zero-external-caller functions — the exact next-slice
@@ -379,25 +379,38 @@ duplicated here):
    internal call sites across the interpreter's entire built-in/stdlib
    bootstrap needed real conversion (not just a signature change) to prove
    the retype was exercised, not just declared.
+4. `codegen.zig`'s `codegenExpr` — a ~370-line, ~40-site self-recursive
+   switch over every `ast.Expr` variant, but only **one** real external
+   caller. Also corrected a tracking inaccuracy: `graph/dump.zig` was
+   listed as part of the remaining front-end cluster, but the plan's own
+   §4.1 names it as `Word`'s permanent final home (the `.x` wire format) —
+   not a `Value`-retyping target at all. 7 files remain, not 8.
+5. `infer.zig`'s `genlstatType`/`typeOf` — a second pass over the file's
+   `pub fn` list found two more genuine candidates the "only the risky core
+   accessors are left" framing had missed; `typeOf`'s 3 callers are all in
+   `session/repl.zig`, outside the risky cluster entirely.
 
 **What's still ahead, honestly sized:** `heap.zig`'s public API, `lower.zig`
-(1,761 lines), the bulk of `infer.zig` (including the 50–78-call-site core
-accessors — still correctly identified as the biggest remaining risk in
-this file, not attempted), `unify.zig`, `type_errors.zig`, `codegen.zig`,
-`module_loader.zig`, `graph/dump.zig`. These files are mutually
-interdependent enough that most of what's left doesn't decompose into
-small independent slices the way steps 4g–4i did — genuinely converting
-them means either accepting temporary wrap-boilerplate churn or converting
-several of them together. **Step 2 (the `c_int`/`[*:0]` sweep, 289+289
-sites) has not been started at all** — investigation this session found it
-is not a mechanical bulk pass: `getId`/`strOf` alone have 91+42 callers
-threaded through the whole pipeline, and several `c_int` uses are C-style
-EOF-sentinel patterns that would silently break if retyped carelessly (e.g.
-to `u8`, which can't represent `-1`). Scorecard shows 168/231 for those two
-metrics (up from the 166/228 recorded in this plan's §3 baseline —
-pre-existing drift from before this session, confirmed by re-running the
-scorecard against a clean pre-session tree before attributing it, not
-caused by any of steps 4g–4i).
+(1,761 lines), the bulk of `infer.zig` (the 7 core accessors, 50–78 callers
+each — still correctly identified as the biggest remaining risk in this
+file, not attempted), `unify.zig`, `type_errors.zig`, the rest of
+`codegen.zig` (`codegenDef`/`codegenTypeSpec`/`codegenTypeDecl`/
+`codegenGuarded` and friends), `module_loader.zig` (confirmed a
+non-candidate — its 2 `pub fn`s take no `Word`-graph-value parameter).
+Five slices in, the pattern holds: every file in this cluster has *some*
+low-risk pockets (a handful of zero- or low-fanout functions), but the bulk
+of each file's surface is tightly coupled to the others and doesn't
+decompose further without either accepting wrap-boilerplate churn or
+converting several files together — genuinely finishing this remains
+multi-session work. **Step 2 (the `c_int`/`[*:0]` sweep, 289+289 sites) has
+not been started at all** — investigation found it is not a mechanical bulk
+pass: `getId`/`strOf` alone have 91+42 callers threaded through the whole
+pipeline, and several `c_int` uses are C-style EOF-sentinel patterns that
+would silently break if retyped carelessly (e.g. to `u8`, which can't
+represent `-1`). Scorecard shows 168/231 for those two metrics (up from the
+166/228 recorded in this plan's §3 baseline — pre-existing drift from
+before this session, confirmed by re-running the scorecard against a clean
+pre-session tree before attributing it, not caused by any of steps 4g–4k).
 
 **Gate:** scorecard's `[*:0]`/`c_int`-family/`toRaw` counts all at the
 `os.zig`-only floor; full suite green.
