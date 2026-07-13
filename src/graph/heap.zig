@@ -1003,6 +1003,32 @@ pub fn getaka(x: Word) [*:0]const u8 {
     return if (getTag(heap(), y) != .CONS) getId(x) else strtab.strOf(strtab.table(), h(heap(), h(heap(), y)));
 }
 
+// Tests: stoId/idWho/getId/getHere/getaka: identifier construction and
+// name/location/alias accessors
+test "stoId/idWho/getId/getHere/getaka: identifier accessors" {
+    tu.freshInterp();
+
+    // stoId builds a plain id with no recorded "who" (definition-site/alias)
+    // info -- idWho is NIL, so getHere/getaka fall back to the simple case.
+    const plain = stoId("zzheap_getaka_plain");
+    try std.testing.expectEqualStrings("zzheap_getaka_plain", std.mem.span(getId(plain)));
+    try std.testing.expectEqual(@as(Word, word.NIL), idWho(plain));
+    try std.testing.expectEqual(@as(Word, word.NIL), getHere(plain));
+    try std.testing.expectEqualStrings("zzheap_getaka_plain", std.mem.span(getaka(plain)));
+
+    // An id whose "who" field is a CONS (aka-name-holder . location): getHere
+    // reads the location, getaka reads the alias name instead of the plain one.
+    const aka_container = cons(heap(), strtab.strBits(strtab.table(), @as([*:0]const u8, "zzheap_aka")), word.NIL);
+    const who_val = cons(heap(), aka_container, word.True); // word.True stands in for a location marker
+    const name_holder = make(heap(), .STRCONS, strtab.strBits(strtab.table(), @as([*:0]const u8, "zzheap_getaka_aliased")), who_val);
+    const aliased = make(heap(), .ID, cons(heap(), name_holder, word.undef_t), word.UNDEF);
+
+    try std.testing.expectEqualStrings("zzheap_getaka_aliased", std.mem.span(getId(aliased)));
+    try std.testing.expectEqual(who_val, idWho(aliased));
+    try std.testing.expectEqual(@as(Word, word.True), getHere(aliased));
+    try std.testing.expectEqualStrings("zzheap_aka", std.mem.span(getaka(aliased)));
+}
+
 /// Append a single element to the end of list `x`.
 ///
 /// Tests: append1: links y onto the tail of list x
@@ -1058,6 +1084,29 @@ pub fn hdsort(input: Word) Word {
         a = t(heap(), a);
     }
     return reverse(x);
+}
+
+// Tests: hdsort: merge sort by cell head
+test "hdsort: merge-sorts a list of (id . _) items by id name" {
+    tu.freshInterp();
+    const id_b = stoId("zzheap_hdsort_bbb");
+    const id_a = stoId("zzheap_hdsort_aaa");
+    const id_c = stoId("zzheap_hdsort_ccc");
+    const item_b = cons(heap(), id_b, 0);
+    const item_a = cons(heap(), id_a, 0);
+    const item_c = cons(heap(), id_c, 0);
+    const list = cons(heap(), item_c, cons(heap(), item_b, cons(heap(), item_a, word.NIL)));
+
+    const sorted = hdsort(list);
+    try std.testing.expectEqual(item_a, h(heap(), sorted));
+    try std.testing.expectEqual(item_b, h(heap(), t(heap(), sorted)));
+    try std.testing.expectEqual(item_c, h(heap(), t(heap(), t(heap(), sorted))));
+    try std.testing.expectEqual(@as(Word, word.NIL), t(heap(), t(heap(), t(heap(), sorted))));
+
+    try std.testing.expectEqual(@as(Word, word.NIL), hdsort(word.NIL));
+    // A single-element list is returned unchanged.
+    const single = cons(heap(), item_a, word.NIL);
+    try std.testing.expectEqual(single, hdsort(single));
 }
 
 /// The `f64` stored in `DOUBLE` cell `x`.
@@ -1287,6 +1336,21 @@ pub fn makeFil(fil_name: ?[*:0]const u8, time_val: Word, share: Word, defs: Word
     return cons(heap(), cons(heap(), make(heap(), .FILEINFO, name_word, time_val), cons(heap(), share, word.NIL)), defs);
 }
 
+// Tests: makeFil/filTime/filShare/filDefs: file-record construction and accessors
+test "makeFil/filTime/filShare/filDefs: file-record construction and accessors" {
+    tu.freshInterp();
+    const defs = cons(heap(), word.True, word.NIL);
+    const fil = makeFil("zzheap_fil_test", 12345, 1, defs);
+    try std.testing.expectEqual(@as(Word, 12345), filTime(fil));
+    try std.testing.expectEqual(@as(Word, 1), filShare(fil));
+    try std.testing.expectEqual(defs, filDefs(fil));
+
+    // A null filename stores 0 rather than an interned strBits value.
+    const anon = makeFil(null, 0, 0, word.NIL);
+    try std.testing.expectEqual(@as(Word, 0), filTime(anon));
+    try std.testing.expectEqual(@as(Word, 0), filShare(anon));
+}
+
 /// The type field of id `x`.
 pub fn idType(x: Word) Word {
     return t(heap(), h(heap(), x));
@@ -1295,6 +1359,17 @@ pub fn idType(x: Word) Word {
 /// The value field of id `x`.
 pub fn idVal(x: Word) Word {
     return t(heap(), x);
+}
+
+// Tests: idType/idVal: an id cell's type and value fields
+test "idType/idVal: an id cell's type and value fields" {
+    tu.freshInterp();
+    // idType(x) = t(h(x)); idVal(x) = t(x) -- an id cell's hd holds a
+    // (name . type) pair (matching stoId's own construction), its tl the value.
+    const type_holder = cons(heap(), 0, word.type_t);
+    const id = cons(heap(), type_holder, word.True);
+    try std.testing.expectEqual(@as(Word, word.type_t), idType(id));
+    try std.testing.expectEqual(@as(Word, word.True), idVal(id));
 }
 
 /// The type class (algebraic/synonym/abstract/…) of type node `x`.
@@ -1318,6 +1393,22 @@ pub fn constructor(self: *Heap, n: Word, x: anytype) Word {
     return self.make(.CONSTRUCTOR, n, x_val);
 }
 
+// Tests: constructor: builds a CONSTRUCTOR cell from a Word, C-int, or C string
+test "constructor: builds a CONSTRUCTOR cell from Word/c_int/C-string fields" {
+    tu.freshInterp();
+
+    const from_word = constructor(heap(), word.True, @as(Word, 77));
+    try std.testing.expectEqual(word.NodeTag.CONSTRUCTOR, getTag(heap(), from_word));
+    try std.testing.expectEqual(@as(Word, word.True), h(heap(), from_word));
+    try std.testing.expectEqual(@as(Word, 77), t(heap(), from_word));
+
+    const from_cint = constructor(heap(), word.True, @as(c_int, 9));
+    try std.testing.expectEqual(@as(Word, 9), t(heap(), from_cint));
+
+    const from_str = constructor(heap(), word.True, @as([*:0]const u8, "zzheap_constructor_test"));
+    try std.testing.expectEqualStrings("zzheap_constructor_test", std.mem.span(strtab.strOf(strtab.table(), t(heap(), from_str))));
+}
+
 // Relocated heap/node domain metadata accessors and lifecycle utilities
 /// The `(dev . ino)` filesystem identity of file record `fil`.
 pub fn filInodev(fil: Word) Word {
@@ -1329,6 +1420,26 @@ pub fn sameFile(x: Word, y: Word) bool {
     const ix = filInodev(x);
     const iy = filInodev(y);
     return h(heap(), ix) == h(heap(), iy) and t(heap(), ix) == t(heap(), iy);
+}
+
+// Tests: filInodev/sameFile: filesystem-identity comparison of file records
+test "filInodev/sameFile: dev/ino identity comparison" {
+    tu.freshInterp();
+    // filInodev(fil) = t(t(h(fil))) -- build the (name . (share . inodev)) shape directly.
+    const mk = struct {
+        fn fil(dev: Word, ino: Word) Word {
+            const inodev = cons(heap(), dev, ino);
+            const share_holder = cons(heap(), 0, inodev);
+            const name_holder = cons(heap(), 0, share_holder);
+            return cons(heap(), name_holder, word.NIL);
+        }
+    }.fil;
+
+    const a = mk(111, 222);
+    const b = mk(111, 222);
+    const c = mk(111, 333);
+    try std.testing.expect(sameFile(a, b));
+    try std.testing.expect(!sameFile(a, c));
 }
 
 /// Whether `x` is a bad/error sentinel value.
@@ -1358,6 +1469,30 @@ pub fn isconstructor(self: Heap, x: Word) bool {
 /// Whether `x` names an ordinary variable.
 pub fn isvariable(x: Word) bool {
     return getTag(heap(), x) == .ID and !isconstrname(getId(x));
+}
+
+// Tests: isfreeid/isconstructor/isvariable: identifier-kind predicates
+test "isfreeid/isconstructor/isvariable: identifier-kind predicates" {
+    tu.freshInterp();
+
+    // stoId builds a plain, undeclared id -- a %free candidate by construction.
+    const free_id = stoId("zzheap_isfreeid_test");
+    try std.testing.expect(isfreeid(free_id));
+
+    // Capitalised name: a constructor, not a variable.
+    const ctor_id = stoId("Zzheap_Isconstructor_Test");
+    try std.testing.expect(isconstructor(heap().*, ctor_id));
+    try std.testing.expect(!isvariable(ctor_id));
+
+    // Lowercase name: a variable, not a constructor.
+    const var_id = stoId("zzheap_isvariable_test");
+    try std.testing.expect(!isconstructor(heap().*, var_id));
+    try std.testing.expect(isvariable(var_id));
+
+    // Neither predicate holds for a non-ID cell.
+    const not_an_id = cons(heap(), word.True, word.NIL);
+    try std.testing.expect(!isconstructor(heap().*, not_an_id));
+    try std.testing.expect(!isvariable(not_an_id));
 }
 
 /// Add id `x` to the current file's definition environment.
