@@ -359,24 +359,45 @@ translation — not all of ZIG_NATIVE_PLAN, just the load-bearing subset.
 3. Re-run `scripts/scorecard.sh` after each subsystem; update
    `scripts/scorecard.baseline` downward per ZIG_NATIVE_PLAN's own cadence.
 
-**Started (2026-07-13).** First slice landed against step 1: `infer.zig`'s
-11 zero-external-caller functions (`sterilise`/`printelement`/`cyclicAbstr`/
-`txchange`/`repT1`/`repT`/`fixType`/`checkfbs`/`checkcolfn`/`genbnft`/
-`checktype`) — the exact next-slice candidate ZIG_NATIVE_PLAN's own Phase 5
-step 4 notes had already identified and left unstarted. Full details,
-including a pre-existing compile-blocking bug this slice's first-ever test
-for `checktype` caught (Zig's lazy analysis had never compiled that
-function's body, since it had zero callers before this), are recorded as
-"Step 4g" in [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) rather than duplicated
-here — this plan tracks *that* the load-bearing work is progressing, not
-the mechanical detail of each slice. `heap.zig`'s public API, `lower.zig`'s
-remaining ~1,761 lines, and the rest of `infer.zig` (including its
-50–78-call-site core accessors, flagged as materially larger and riskier)
-are still ahead. Step 2 (the `c_int`/`[*:0]` sweep) has not been started;
-scorecard now shows 168/231 for those two metrics (up from the 166/228
-recorded in this plan's §3 baseline — pre-existing drift from before this
-session, not caused by step 1's work, confirmed by re-running the scorecard
-against a clean pre-session tree before attributing it).
+**Started (2026-07-13), three slices landed against step 1** (recorded as
+ZIG_NATIVE_PLAN.md's steps 4g/4h/4i — full mechanical detail there, not
+duplicated here):
+
+1. `infer.zig`'s 11 zero-external-caller functions — the exact next-slice
+   candidate ZIG_NATIVE_PLAN's own Phase 5 step 4 notes had already
+   identified. Caught a real, pre-existing compile-blocking bug along the
+   way (`checktype` had zero callers anywhere before this, so Zig's lazy
+   analysis had never actually compiled its body).
+2. `symbols.zig`'s `SymbolTable`/`PrivateNames` methods (~15 external call
+   sites) — chosen *instead of* `infer.zig`'s own core accessors
+   (`getId`/`idType`/`idWho`/`tInfo`, 50–78 callers each, almost entirely
+   from unmigrated `lower.zig`/`unify.zig`/`type_errors.zig`) after
+   confirming that slice would just add wrapping boilerplate at 400+ call
+   sites that gets redone once those files convert — the plan's own
+   "premature slice" trap, already flagged, now confirmed by checking.
+3. `setup.zig`'s `primdef`/`predef` — zero external callers, but ~50
+   internal call sites across the interpreter's entire built-in/stdlib
+   bootstrap needed real conversion (not just a signature change) to prove
+   the retype was exercised, not just declared.
+
+**What's still ahead, honestly sized:** `heap.zig`'s public API, `lower.zig`
+(1,761 lines), the bulk of `infer.zig` (including the 50–78-call-site core
+accessors — still correctly identified as the biggest remaining risk in
+this file, not attempted), `unify.zig`, `type_errors.zig`, `codegen.zig`,
+`module_loader.zig`, `graph/dump.zig`. These files are mutually
+interdependent enough that most of what's left doesn't decompose into
+small independent slices the way steps 4g–4i did — genuinely converting
+them means either accepting temporary wrap-boilerplate churn or converting
+several of them together. **Step 2 (the `c_int`/`[*:0]` sweep, 289+289
+sites) has not been started at all** — investigation this session found it
+is not a mechanical bulk pass: `getId`/`strOf` alone have 91+42 callers
+threaded through the whole pipeline, and several `c_int` uses are C-style
+EOF-sentinel patterns that would silently break if retyped carelessly (e.g.
+to `u8`, which can't represent `-1`). Scorecard shows 168/231 for those two
+metrics (up from the 166/228 recorded in this plan's §3 baseline —
+pre-existing drift from before this session, confirmed by re-running the
+scorecard against a clean pre-session tree before attributing it, not
+caused by any of steps 4g–4i).
 
 **Gate:** scorecard's `[*:0]`/`c_int`-family/`toRaw` counts all at the
 `os.zig`-only floor; full suite green.
