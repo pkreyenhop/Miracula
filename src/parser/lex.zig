@@ -36,6 +36,7 @@ const types = @import("../semantics/infer.zig");
 const os = @import("../os.zig");
 const core_state = @import("../runtime/core_state.zig");
 const symbols = @import("../semantics/symbols.zig");
+const Value = @import("../graph/value.zig").Value;
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 const Word = i64;
@@ -479,7 +480,7 @@ pub fn name(heap: *Heap) Word {
     _ = heap;
     const nm = std.mem.span(@as([*:0]const u8, @ptrCast(ls().dicp)));
     const existed = symbols.syms().find(nm) != null;
-    const q = symbols.syms().intern(rt.allocator, nm) catch mallocPanic("symbols dictionary");
+    const q = (symbols.syms().intern(rt.allocator, nm) catch mallocPanic("symbols dictionary")).toRaw();
     if (!existed) _ = keep(ls().dicp);
     return q;
 }
@@ -498,7 +499,7 @@ pub fn name(heap: *Heap) Word {
 /// Tests: makeId / findid: intern then look up a dictionary name
 pub fn makeId(n: [*:0]const u8) Word {
     const kept = if (ls().inprelude) keep(@constCast(n)) else n;
-    return symbols.syms().createFresh(rt.allocator, std.mem.span(kept)) catch mallocPanic("symbols dictionary");
+    return (symbols.syms().createFresh(rt.allocator, std.mem.span(kept)) catch mallocPanic("symbols dictionary")).toRaw();
 }
 
 /// Look up name `n` in the dictionary (NIL if absent).
@@ -506,7 +507,7 @@ pub fn makeId(n: [*:0]const u8) Word {
 /// Tests: makeId / findid: intern then look up a dictionary name
 pub fn findid(heap: *Heap, n: [*:0]const u8) Word {
     _ = heap;
-    return symbols.syms().find(std.mem.span(n)) orelse NIL;
+    return if (symbols.syms().find(std.mem.span(n))) |v| v.toRaw() else NIL;
 }
 
 test "makeId / findid: intern then look up a dictionary name" {

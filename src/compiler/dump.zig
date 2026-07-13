@@ -135,7 +135,7 @@ fn privatise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
     setTag(heap, x, .STRCONS);
     hp(heap, x).* = i;
 
-    symbols.syms().rebind(rt.allocator, nm, n) catch heap_mod.mallocPanic("symbols dictionary");
+    symbols.syms().rebind(rt.allocator, nm, Value.fromRaw(n)) catch heap_mod.mallocPanic("symbols dictionary");
     return n;
 }
 
@@ -159,7 +159,7 @@ fn publicise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
         tp(heap, i).* = word.UNDEF;
     }
 
-    symbols.syms().rebind(rt.allocator, nm, i) catch heap_mod.mallocPanic("symbols dictionary");
+    symbols.syms().rebind(rt.allocator, nm, Value.fromRaw(i)) catch heap_mod.mallocPanic("symbols dictionary");
     return i;
 }
 

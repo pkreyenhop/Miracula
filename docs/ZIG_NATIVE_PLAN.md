@@ -3263,6 +3263,61 @@ code that was about to move twice.
    undertaking — `unify.zig`, `type_errors.zig`, `symbols.zig`,
    `codegen.zig`, `module_loader.zig`, `setup.zig`, `graph/dump.zig`).
 
+   **Step 4h — `semantics/symbols.zig`'s `SymbolTable`/`PrivateNames`
+   methods, landed (2026-07-13), done as part of
+   [GO_MIGRATION.md](GO_MIGRATION.md) Phase 1.** Not one of the 11-file
+   cluster's own members by the earlier measurement, but flagged there as
+   "0 pub fns" only because that count used a `^pub fn` (unindented,
+   top-level) grep that misses methods nested inside a struct —
+   `symbols.zig` in fact has 11 real methods, 7 of which cross a
+   `Word`/graph-value boundary. Chosen over `infer.zig`'s own core
+   accessors (the plan's previously-flagged next candidate) after checking
+   actual external fanout first: `getId`/`idType`/`idWho`/`tInfo` are
+   called 50-78 times *each*, almost entirely from `lower.zig`/`unify.zig`/
+   `type_errors.zig` — none of them migrated — so converting those
+   accessors now would add `.fromRaw()`/`.toRaw()` wrapping at ~400+ call
+   sites that gets redone the moment those files themselves convert, the
+   exact "premature slice creates rework" trap the plan's own step-4
+   scoping note already identified for `unify.zig`/`type_errors.zig`
+   directly. `symbols.zig`'s methods, by contrast, have only ~15 external
+   call sites total across 4 files (`parser/lex.zig` ×3 call sites within
+   `name`/`makeId`/`findid`, `semantics/modules.zig` ×4, `parser/codegen.zig`
+   ×2, `compiler/dump.zig` ×2) — comparable in scale to `match.zig`'s
+   3-site slice from step 4e, not `depend.zig`'s ~90-site or the rejected
+   accessors' ~400+-site shape.
+   - Retyped in place (no rename+wrapper split needed — none of these
+     seven methods are self- or mutually-recursive, so a direct signature
+     change plus inline `.toRaw()`/`Value.fromRaw()` at each method's own
+     boundary was simpler than the free-function pattern used elsewhere):
+     `SymbolTable.intern`/`.find`/`.createFresh` now return `!Value`/
+     `?Value`; `.rebind`/`.bind` take `new_id`/`id: Value`;
+     `PrivateNames.make`/`.get` take/return `Value`. Internal storage
+     (`table: std.StringHashMapUnmanaged(Word)`, `table: std.ArrayList(Word)`)
+     deliberately left `Word`-typed — only the public method boundary
+     changed, matching every earlier slice's "representation stays, type
+     changes" principle. Raw hashmap access bypassing these methods
+     entirely (`parser/lex.zig`'s `completeIds`/`mkprivate`, iterating/
+     mutating `symbols.syms().table` directly) is unaffected, confirmed by
+     inspection — it never goes through the now-retyped method surface.
+   - All ~15 external call sites fixed with `Value.fromRaw()`/`.toRaw()`
+     boundary wrapping (new `Value` import added to `parser/lex.zig` and
+     `semantics/modules.zig`; already present in `parser/codegen.zig` and
+     `compiler/dump.zig`) — same technique as every prior step.
+   - Updated all 10 of the file's own existing unit tests to the new
+     signatures (`@as(?Word, ...)` → `@as(?Value, ...)`, raw integer
+     literals like `999`/`42`/`777`/`55` passed to `rebind`/`bind` wrapped
+     in `Value.fromRaw(...)`) — no new tests needed, since this file
+     already had full coverage of every method before this step.
+   - `zig build`/`zig build test` (289 unit tests, unchanged count — this
+     step edited existing tests, added none; full integration + spine/
+     golden corpus, sigint, smoke) all green; `zig build bench` reduction
+     counts unchanged (Ackermann(3,8)=30,652,009, Fibonacci(30)=28,907,260,
+     Prime Sieve(500)=671,945). `scorecard.sh --check` clean — no baseline
+     change needed this time (unlike step 4g, this slice's wrapping is all
+     `.toRaw()`/`Value.fromRaw()` method calls, not new
+     `heap_mod.heap()`-style ambient accessor reads, so the
+     ambient-singleton metric didn't move).
+
 **Gate:** no `Word` outside `graph/dump.zig`; no numeric range tests on values;
 goldens + differential + bench green; GC invariant (mark follows `hd`/`tl` only for
 cell-payload tags) now *type-enforced* rather than convention-enforced.

@@ -41,6 +41,7 @@ const heap_mod = @import("../graph/heap.zig");
 const strtab = @import("../graph/strtab.zig");
 
 const Word = word.Word;
+const Value = @import("../graph/value.zig").Value;
 
 /// Pointer to the singleton `SymbolTable` inside `current_interp` (so
 /// `interp.reset()` clears it, same convention as `heap.heap()`/`core_state.s()`).
@@ -69,21 +70,21 @@ pub const SymbolTable = struct {
     /// **Not** a match for `makeId` — see `createFresh` for that. (An earlier
     /// attempt at this migration used `intern` for `makeId` too and broke
     /// prelude/stdenv bootstrap; see `createFresh`'s doc comment.)
-    pub fn intern(self: *SymbolTable, gpa: std.mem.Allocator, name: []const u8) !Word {
-        if (self.table.get(name)) |id| return id;
+    pub fn intern(self: *SymbolTable, gpa: std.mem.Allocator, name: []const u8) !Value {
+        if (self.table.get(name)) |id| return Value.fromRaw(id);
         const name_z = try gpa.dupeZ(u8, name);
         defer gpa.free(name_z);
         const id = heap_mod.stoId(name_z);
         const stable_name = std.mem.span(heap_mod.getId(id));
         try self.table.put(gpa, stable_name, id);
-        return id;
+        return Value.fromRaw(id);
     }
 
     /// Look up `name` without creating it. Matches `lex.zig`'s `findid`:
     /// returns `null` (not `NIL`) for "not present" — callers translate to
     /// whatever sentinel their own heap-value convention needs.
-    pub fn find(self: *const SymbolTable, name: []const u8) ?Word {
-        return self.table.get(name);
+    pub fn find(self: *const SymbolTable, name: []const u8) ?Value {
+        return if (self.table.get(name)) |id| Value.fromRaw(id) else null;
     }
 
     /// Intern `name` as a *fresh* `ID` node, unconditionally — creates a new
@@ -103,13 +104,13 @@ pub const SymbolTable = struct {
     /// `name` need not outlive this call — a NUL-terminated copy is made for
     /// `heap.stoId`'s benefit and freed before returning; `stoId` interns its
     /// own permanent copy via `strtab` immediately, same as `intern`.
-    pub fn createFresh(self: *SymbolTable, gpa: std.mem.Allocator, name: []const u8) !Word {
+    pub fn createFresh(self: *SymbolTable, gpa: std.mem.Allocator, name: []const u8) !Value {
         const name_z = try gpa.dupeZ(u8, name);
         defer gpa.free(name_z);
         const id = heap_mod.stoId(name_z);
         const stable_name = std.mem.span(heap_mod.getId(id));
         try self.table.put(gpa, stable_name, id);
-        return id;
+        return Value.fromRaw(id);
     }
 
     /// Number of distinct identifiers interned so far.
@@ -125,9 +126,9 @@ pub const SymbolTable = struct {
     /// doesn't. A no-op (silently) if `name` isn't present — callers own
     /// verifying that invariant, matching the legacy bucket-chain code's own
     /// "if not found, do nothing" fallthrough.
-    pub fn rebind(self: *SymbolTable, gpa: std.mem.Allocator, name: []const u8, new_id: Word) !void {
+    pub fn rebind(self: *SymbolTable, gpa: std.mem.Allocator, name: []const u8, new_id: Value) !void {
         if (!self.table.contains(name)) return;
-        try self.table.put(gpa, name, new_id);
+        try self.table.put(gpa, name, new_id.toRaw());
     }
 
     /// Bind `name` to `id`, unconditionally — inserts a new entry or
@@ -143,12 +144,12 @@ pub const SymbolTable = struct {
     /// immediately, same as `createFresh`) — callers may pass a
     /// transient/arena-backed slice (e.g. straight out of a `Source`'s
     /// bytes) safely.
-    pub fn bind(self: *SymbolTable, gpa: std.mem.Allocator, name: []const u8, id: Word) !void {
+    pub fn bind(self: *SymbolTable, gpa: std.mem.Allocator, name: []const u8, id: Value) !void {
         const name_z = try gpa.dupeZ(u8, name);
         defer gpa.free(name_z);
         const bits = strtab.strBits(strtab.table(), name_z.ptr);
         const stable_name = std.mem.span(strtab.strOf(strtab.table(), bits));
-        try self.table.put(gpa, stable_name, id);
+        try self.table.put(gpa, stable_name, id.toRaw());
     }
 };
 
@@ -167,23 +168,23 @@ pub const PrivateNames = struct {
     /// Allocate a fresh private-name node holding `val`. Matches `lex.zig`'s
     /// `makePn`: the node's index is its position (`nextpn` there, `items.len`
     /// here) at allocation time.
-    pub fn make(self: *PrivateNames, heap: *heap_mod.Heap, gpa: std.mem.Allocator, val: Word) !Word {
+    pub fn make(self: *PrivateNames, heap: *heap_mod.Heap, gpa: std.mem.Allocator, val: Value) !Value {
         const idx = self.table.items.len;
-        const node = heap_mod.make(heap, .STRCONS, @intCast(idx), val);
+        const node = heap_mod.make(heap, .STRCONS, @intCast(idx), val.toRaw());
         try self.table.append(gpa, node);
-        return node;
+        return Value.fromRaw(node);
     }
 
     /// The private name at index `n`, allocating placeholder nodes
     /// (`val = UNDEF`) up to and including `n` if it hasn't been made yet.
     /// Matches `lex.zig`'s `stoPn` (used when a private name is referenced —
     /// e.g. during dump/undump — before `make` has been called for it).
-    pub fn get(self: *PrivateNames, heap: *heap_mod.Heap, gpa: std.mem.Allocator, n: usize) !Word {
+    pub fn get(self: *PrivateNames, heap: *heap_mod.Heap, gpa: std.mem.Allocator, n: usize) !Value {
         while (self.table.items.len <= n) {
             const idx = self.table.items.len;
             try self.table.append(gpa, heap_mod.make(heap, .STRCONS, @intCast(idx), word.UNDEF));
         }
-        return self.table.items[n];
+        return Value.fromRaw(self.table.items[n]);
     }
 
     /// Number of private names allocated so far.
@@ -216,9 +217,9 @@ test "SymbolTable.find: absent name is null, present name matches intern's resul
     tu.freshInterp();
     var st: SymbolTable = .{};
     defer st.deinit(std.testing.allocator);
-    try std.testing.expectEqual(@as(?Word, null), st.find("zzsymabsent"));
+    try std.testing.expectEqual(@as(?Value, null), st.find("zzsymabsent"));
     const id = try st.intern(std.testing.allocator, "zzsympresent");
-    try std.testing.expectEqual(@as(?Word, id), st.find("zzsympresent"));
+    try std.testing.expectEqual(@as(?Value, id), st.find("zzsympresent"));
 }
 
 test "SymbolTable.intern: the ID node round-trips through heap.getId" {
@@ -226,7 +227,7 @@ test "SymbolTable.intern: the ID node round-trips through heap.getId" {
     var st: SymbolTable = .{};
     defer st.deinit(std.testing.allocator);
     const id = try st.intern(std.testing.allocator, "zzsymroundtrip");
-    try std.testing.expectEqualStrings("zzsymroundtrip", std.mem.span(heap_mod.getId(id)));
+    try std.testing.expectEqualStrings("zzsymroundtrip", std.mem.span(heap_mod.getId(id.toRaw())));
 }
 
 test "SymbolTable.count: tracks the number of distinct interned names" {
@@ -255,15 +256,15 @@ test "SymbolTable.createFresh: the newest call wins subsequent find lookups" {
     defer st.deinit(std.testing.allocator);
     _ = try st.createFresh(std.testing.allocator, "zzsymshadow");
     const b = try st.createFresh(std.testing.allocator, "zzsymshadow");
-    try std.testing.expectEqual(@as(?Word, b), st.find("zzsymshadow"));
+    try std.testing.expectEqual(@as(?Value, b), st.find("zzsymshadow"));
 }
 
 test "PrivateNames.make: each call allocates a fresh, index-tagged node" {
     tu.freshInterp();
     var pns: PrivateNames = .{};
     defer pns.deinit(std.testing.allocator);
-    const n0 = try pns.make(heap_mod.heap(), std.testing.allocator, word.UNDEF);
-    const n1 = try pns.make(heap_mod.heap(), std.testing.allocator, word.UNDEF);
+    const n0 = try pns.make(heap_mod.heap(), std.testing.allocator, Value.fromRaw(word.UNDEF));
+    const n1 = try pns.make(heap_mod.heap(), std.testing.allocator, Value.fromRaw(word.UNDEF));
     try std.testing.expect(n0 != n1);
     try std.testing.expectEqual(@as(usize, 2), pns.count());
 }
@@ -282,7 +283,7 @@ test "PrivateNames.get after make: pre-existing indices are not reallocated" {
     tu.freshInterp();
     var pns: PrivateNames = .{};
     defer pns.deinit(std.testing.allocator);
-    const made = try pns.make(heap_mod.heap(), std.testing.allocator, word.UNDEF); // index 0
+    const made = try pns.make(heap_mod.heap(), std.testing.allocator, Value.fromRaw(word.UNDEF)); // index 0
     const fetched = try pns.get(heap_mod.heap(), std.testing.allocator, 0);
     try std.testing.expectEqual(made, fetched);
 }
@@ -292,8 +293,8 @@ test "SymbolTable.rebind: changes an existing name's node without re-interning" 
     var st: SymbolTable = .{};
     defer st.deinit(std.testing.allocator);
     const original = try st.intern(std.testing.allocator, "zzsymrebind");
-    try st.rebind(std.testing.allocator, "zzsymrebind", 999);
-    try std.testing.expectEqual(@as(?Word, 999), st.find("zzsymrebind"));
+    try st.rebind(std.testing.allocator, "zzsymrebind", Value.fromRaw(999));
+    try std.testing.expectEqual(@as(?Value, Value.fromRaw(999)), st.find("zzsymrebind"));
     try std.testing.expectEqual(@as(usize, 1), st.count()); // no new entry
     _ = original;
 }
@@ -302,8 +303,8 @@ test "SymbolTable.rebind: a no-op for a name that was never interned" {
     tu.freshInterp();
     var st: SymbolTable = .{};
     defer st.deinit(std.testing.allocator);
-    try st.rebind(std.testing.allocator, "zzsymneverexisted", 42);
-    try std.testing.expectEqual(@as(?Word, null), st.find("zzsymneverexisted"));
+    try st.rebind(std.testing.allocator, "zzsymneverexisted", Value.fromRaw(42));
+    try std.testing.expectEqual(@as(?Value, null), st.find("zzsymneverexisted"));
     try std.testing.expectEqual(@as(usize, 0), st.count());
 }
 
@@ -313,8 +314,8 @@ test "SymbolTable.bind: introduces a brand new name for an existing id" {
     defer st.deinit(std.testing.allocator);
     const id = try st.createFresh(std.testing.allocator, "zzsymoriginal");
     try st.bind(std.testing.allocator, "zzsymalias", id);
-    try std.testing.expectEqual(@as(?Word, id), st.find("zzsymalias"));
-    try std.testing.expectEqual(@as(?Word, id), st.find("zzsymoriginal")); // unaffected
+    try std.testing.expectEqual(@as(?Value, id), st.find("zzsymalias"));
+    try std.testing.expectEqual(@as(?Value, id), st.find("zzsymoriginal")); // unaffected
 }
 
 test "SymbolTable.bind: overwrites an existing name's binding" {
@@ -322,8 +323,8 @@ test "SymbolTable.bind: overwrites an existing name's binding" {
     var st: SymbolTable = .{};
     defer st.deinit(std.testing.allocator);
     _ = try st.createFresh(std.testing.allocator, "zzsymtarget");
-    try st.bind(std.testing.allocator, "zzsymtarget", 777);
-    try std.testing.expectEqual(@as(?Word, 777), st.find("zzsymtarget"));
+    try st.bind(std.testing.allocator, "zzsymtarget", Value.fromRaw(777));
+    try std.testing.expectEqual(@as(?Value, Value.fromRaw(777)), st.find("zzsymtarget"));
 }
 
 test "SymbolTable.bind: name survives even if the caller's buffer is freed" {
@@ -333,7 +334,7 @@ test "SymbolTable.bind: name survives even if the caller's buffer is freed" {
     {
         const transient = try std.testing.allocator.dupe(u8, "zzsymtransient");
         defer std.testing.allocator.free(transient);
-        try st.bind(std.testing.allocator, transient, 55);
+        try st.bind(std.testing.allocator, transient, Value.fromRaw(55));
     }
-    try std.testing.expectEqual(@as(?Word, 55), st.find("zzsymtransient"));
+    try std.testing.expectEqual(@as(?Value, Value.fromRaw(55)), st.find("zzsymtransient"));
 }

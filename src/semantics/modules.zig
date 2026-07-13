@@ -44,6 +44,7 @@ const rt = @import("../runtime/runtime_state.zig");
 const config_state = @import("../session/config_state.zig");
 
 const Word = word.Word;
+const Value = @import("../graph/value.zig").Value;
 const Alias = directives.Alias;
 
 /// One item in an `%export` directive's parts list (manual §27/3).
@@ -304,7 +305,7 @@ fn applyExportsAndAliases(heap: *heap_mod.Heap, gpa: std.mem.Allocator, script: 
     defer exports_map.deinit(gpa);
     var eit = exported_set.keyIterator();
     while (eit.next()) |k| {
-        if (symbols.syms().find(k.*)) |id| try exports_map.put(gpa, k.*, id);
+        if (symbols.syms().find(k.*)) |id| try exports_map.put(gpa, k.*, id.toRaw());
     }
 
     var visible = try applyAliases(gpa, &exports_map, aliases);
@@ -316,9 +317,9 @@ fn applyExportsAndAliases(heap: *heap_mod.Heap, gpa: std.mem.Allocator, script: 
     var vit = visible.iterator();
     while (vit.next()) |entry| {
         if (symbols.syms().find(entry.key_ptr.*)) |existing| {
-            if (existing == entry.value_ptr.*) continue; // already bound under this name
+            if (existing.toRaw() == entry.value_ptr.*) continue; // already bound under this name
         }
-        try symbols.syms().bind(gpa, entry.key_ptr.*, entry.value_ptr.*);
+        try symbols.syms().bind(gpa, entry.key_ptr.*, Value.fromRaw(entry.value_ptr.*));
     }
 
     // Hide every one of this script's own top-level names that didn't
@@ -327,7 +328,7 @@ fn applyExportsAndAliases(heap: *heap_mod.Heap, gpa: std.mem.Allocator, script: 
     var to_hide: Word = word.NIL;
     for (own_names) |n| {
         if (visible.contains(n)) continue;
-        if (symbols.syms().find(n)) |id| to_hide = heap_mod.cons(heap, id, to_hide);
+        if (symbols.syms().find(n)) |id| to_hide = heap_mod.cons(heap, id.toRaw(), to_hide);
     }
     if (to_hide != word.NIL) lex.mkprivate(heap, to_hide);
 }

@@ -163,10 +163,10 @@ fn nameWord(name: []const u8) Word {
     // name() calls during tokenization). This ensures the same source name
     // always maps to the same heap atom, which is required for multi-equation
     // definitions: decl1() checks `script_store.store().lastname == x` using pointer equality.
-    if (symbols.syms().find(buf[0..n])) |existing| return existing;
+    if (symbols.syms().find(buf[0..n])) |existing| return existing.toRaw();
     // Not yet in the name table (e.g., synthesised names). Intern it now.
     const perm = keep(@as([*:0]u8, @ptrCast(&buf)));
-    return symbols.syms().createFresh(rt.allocator, std.mem.span(perm)) catch heap.mallocPanic("symbols dictionary");
+    return (symbols.syms().createFresh(rt.allocator, std.mem.span(perm)) catch heap.mallocPanic("symbols dictionary")).toRaw();
 }
 
 // ---------------------------------------------------------------------------
