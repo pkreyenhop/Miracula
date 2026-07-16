@@ -43,7 +43,7 @@ pub const Parser = struct {
     gpa: Allocator,
     ts: TokenStream,
     /// Errors accumulated during error-recovery parsing.
-    diagnostics: std.ArrayList(Diagnostic),
+    diagnostics: std.ArrayListUnmanaged(Diagnostic),
     /// `.directive` tokens' payloads (native pipeline only — a `.directive`
     /// token's `int_val` indexes this slice). Always empty for the
     /// legacy-bridge-fed production path, which never produces `.directive`
@@ -58,7 +58,7 @@ pub const Parser = struct {
         return .{
             .gpa = gpa,
             .ts = TokenStream{ .tokens = tokens },
-            .diagnostics = .empty,
+            .diagnostics = .{},
         };
     }
 
@@ -68,7 +68,7 @@ pub const Parser = struct {
         return .{
             .gpa = gpa,
             .ts = TokenStream{ .tokens = tokens },
-            .diagnostics = .empty,
+            .diagnostics = .{},
             .directives = directives,
         };
     }
@@ -230,7 +230,7 @@ fn parseArgtype(p: *Parser) ParseError!ast.TypeExpr {
             if (p.eat(.rparen)) break :paren first;
 
             // Tuple type: `(A, B, …)`
-            var elems: std.ArrayList(ast.TypeExpr) = .empty;
+            var elems: std.ArrayListUnmanaged(ast.TypeExpr) = .{};
             errdefer elems.deinit(p.gpa);
             try elems.append(p.gpa, first);
             while (p.eat(.comma)) {
@@ -259,7 +259,7 @@ fn parseArgtype(p: *Parser) ParseError!ast.TypeExpr {
 /// Parse a type specification / declaration as a top-level item.
 pub fn parseTypeSpec(p: *Parser) ParseError!ast.TopLevel {
     const sp = p.span();
-    var names: std.ArrayList([]const u8) = .empty;
+    var names: std.ArrayListUnmanaged([]const u8) = .{};
     errdefer names.deinit(p.gpa);
 
     // namelist: NAME (',' NAME)*
@@ -418,7 +418,7 @@ fn parsePatV3(p: *Parser) ParseError!ast.Pat {
             if (p.eat(.rbracket)) {
                 break :list ast.Pat{ .list = try p.gpa.alloc(ast.Pat, 0) };
             }
-            var elems: std.ArrayList(ast.Pat) = .empty;
+            var elems: std.ArrayListUnmanaged(ast.Pat) = .{};
             errdefer elems.deinit(p.gpa);
             try elems.append(p.gpa, try parsePat(p));
             while (p.eat(.comma)) {
@@ -432,7 +432,7 @@ fn parsePatV3(p: *Parser) ParseError!ast.Pat {
             if (p.eat(.rparen)) break :paren ast.Pat{ .wildcard = {} };
             const inner = try parsePat(p);
             if (p.eat(.rparen)) break :paren inner;
-            var elems: std.ArrayList(ast.Pat) = .empty;
+            var elems: std.ArrayListUnmanaged(ast.Pat) = .{};
             errdefer elems.deinit(p.gpa);
             try elems.append(p.gpa, inner);
             while (p.eat(.comma)) {
@@ -479,7 +479,7 @@ pub fn parseRhs(p: *Parser) ParseError!ast.Rhs {
 /// The caller has already parsed `body` and confirmed the lookahead is ',' followed
 /// by `if` or `otherwise`.
 fn parseGuardedRhs(p: *Parser, first_body: ast.Expr) ParseError!ast.Rhs {
-    var guards: std.ArrayList(ast.Guard) = .empty;
+    var guards: std.ArrayListUnmanaged(ast.Guard) = .{};
     errdefer guards.deinit(p.gpa);
 
     // First alternative: body already parsed, consume ',' then guard.
@@ -507,9 +507,8 @@ fn parseGuardedRhs(p: *Parser, first_body: ast.Expr) ParseError!ast.Rhs {
         // Alternative without an explicit guard — treat as `otherwise`
         // (deprecated bare-alt syntax; generate an otherwise guard).
         try guards.append(p.gpa, ast.Guard{
-            .cond = ast.Expr{ .list_nil = {} }, // unused placeholder
+            .cond = null,
             .body = alt_body,
-            .is_otherwise = true,
             .span = alt_sp,
         });
     }
@@ -522,9 +521,8 @@ fn parseGuardedRhs(p: *Parser, first_body: ast.Expr) ParseError!ast.Rhs {
 fn parseSingleGuard(p: *Parser, body: ast.Expr, sp: Span) ParseError!ast.Guard {
     if (p.eat(.kw_otherwise)) {
         return ast.Guard{
-            .cond = ast.Expr{ .list_nil = {} }, // unused
+            .cond = null,
             .body = body,
-            .is_otherwise = true,
             .span = sp,
         };
     }
@@ -534,7 +532,6 @@ fn parseSingleGuard(p: *Parser, body: ast.Expr, sp: Span) ParseError!ast.Guard {
     return ast.Guard{
         .cond = cond,
         .body = body,
-        .is_otherwise = false,
         .span = sp,
     };
 }
@@ -546,7 +543,7 @@ fn parseSingleGuard(p: *Parser, body: ast.Expr, sp: Span) ParseError!ast.Guard {
 /// This prevents `parseWhereDefs` from swallowing top-level definitions that
 /// follow the where block (which are at a lower indentation level).
 fn parseWhereDefs(p: *Parser, min_col: u32) ParseError![]ast.Def {
-    var defs: std.ArrayList(ast.Def) = .empty;
+    var defs: std.ArrayListUnmanaged(ast.Def) = .{};
     errdefer defs.deinit(p.gpa);
 
     // Skip any layout tokens before the first where-def.
@@ -629,7 +626,7 @@ pub fn parseDef(p: *Parser) ParseError!ast.Def {
 
 /// Parse a whole script — the parser entry point.
 pub fn parseScript(p: *Parser) ParseError!ast.Script {
-    var items: std.ArrayList(ast.TopLevel) = .empty;
+    var items: std.ArrayListUnmanaged(ast.TopLevel) = .{};
     errdefer items.deinit(p.gpa);
 
     while (!p.check(.eof)) {
@@ -709,7 +706,7 @@ fn parseTopLevel(p: *Parser) ParseError!ast.TopLevel {
 fn parseConstructor(p: *Parser) ParseError!ast.Constructor {
     const sp = p.span();
     const name_tok = try p.expect(.cname);
-    var fields: std.ArrayList(ast.TypeExpr) = .empty;
+    var fields: std.ArrayListUnmanaged(ast.TypeExpr) = .{};
     errdefer fields.deinit(p.gpa);
     while (isArgtypeStart(p.peek().id)) {
         try fields.append(p.gpa, try parseArgtype(p));
@@ -726,7 +723,7 @@ fn parseAlgebraicType(p: *Parser) ParseError!ast.TopLevel {
     const sp = p.span();
     const name_tok = try p.expect(.name);
 
-    var params: std.ArrayList([]const u8) = .empty;
+    var params: std.ArrayListUnmanaged([]const u8) = .{};
     errdefer params.deinit(p.gpa);
     while (p.check(.typevar) or p.check(.star)) {
         const pv = p.advance();
@@ -735,7 +732,7 @@ fn parseAlgebraicType(p: *Parser) ParseError!ast.TopLevel {
 
     _ = try p.expect(.colon2eq);
 
-    var ctors: std.ArrayList(ast.Constructor) = .empty;
+    var ctors: std.ArrayListUnmanaged(ast.Constructor) = .{};
     errdefer ctors.deinit(p.gpa);
     try ctors.append(p.gpa, try parseConstructor(p));
     while (p.eat(.pipe)) {
@@ -756,7 +753,7 @@ fn parseTypeSynonym(p: *Parser) ParseError!ast.TopLevel {
     _ = try p.expect(.kw_type);
     const name_tok = try p.expect(.name);
 
-    var params: std.ArrayList([]const u8) = .empty;
+    var params: std.ArrayListUnmanaged([]const u8) = .{};
     errdefer params.deinit(p.gpa);
     while (p.check(.typevar) or p.check(.star)) {
         const pv = p.advance();
@@ -777,7 +774,7 @@ fn parseTypeSynonym(p: *Parser) ParseError!ast.TopLevel {
 /// Parse a single type-spec inside an abstype/free block: `name (, name)* :: type`
 fn parseOneTypeSpec(p: *Parser) ParseError!ast.TypeSpec {
     const sp = p.span();
-    var names: std.ArrayList([]const u8) = .empty;
+    var names: std.ArrayListUnmanaged([]const u8) = .{};
     errdefer names.deinit(p.gpa);
     const first = try p.expect(.name);
     try names.append(p.gpa, first.text);
@@ -800,7 +797,7 @@ fn parseAbstype(p: *Parser) ParseError!ast.TopLevel {
     _ = try p.expect(.kw_abstype);
     const name_tok = try p.expect(.name);
 
-    var params: std.ArrayList([]const u8) = .empty;
+    var params: std.ArrayListUnmanaged([]const u8) = .{};
     errdefer params.deinit(p.gpa);
     while (p.check(.typevar) or p.check(.star)) {
         const pv = p.advance();
@@ -813,7 +810,7 @@ fn parseAbstype(p: *Parser) ParseError!ast.TopLevel {
 
     // Parse indented type specs
     while (p.eat(.offside) or p.eat(.elseq) or p.eat(.semicolon)) {}
-    var specs: std.ArrayList(ast.TypeSpec) = .empty;
+    var specs: std.ArrayListUnmanaged(ast.TypeSpec) = .{};
     errdefer specs.deinit(p.gpa);
     while (p.check(.name)) {
         try specs.append(p.gpa, try parseOneTypeSpec(p));
@@ -844,7 +841,7 @@ fn parseInclude(p: *Parser) ParseError!ast.TopLevel {
 fn parseExport(p: *Parser) ParseError!ast.TopLevel {
     const sp = p.span();
     _ = try p.expect(.kw_export);
-    var names: std.ArrayList([]const u8) = .empty;
+    var names: std.ArrayListUnmanaged([]const u8) = .{};
     errdefer names.deinit(p.gpa);
     while (p.check(.name) or p.check(.cname)) {
         try names.append(p.gpa, p.advance().text);
@@ -860,7 +857,7 @@ fn parseFree(p: *Parser) ParseError!ast.TopLevel {
     const sp = p.span();
     _ = try p.expect(.kw_free);
     while (p.eat(.offside) or p.eat(.elseq) or p.eat(.semicolon)) {}
-    var specs: std.ArrayList(ast.TypeSpec) = .empty;
+    var specs: std.ArrayListUnmanaged(ast.TypeSpec) = .{};
     errdefer specs.deinit(p.gpa);
     while (p.check(.name)) {
         try specs.append(p.gpa, try parseOneTypeSpec(p));
