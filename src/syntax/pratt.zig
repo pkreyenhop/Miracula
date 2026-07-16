@@ -345,7 +345,7 @@ pub fn parseExpr(
                 if (ts.eat(.pipe)) {
                     const bp = try gpa.create(Expr);
                     bp.* = first;
-                    var qs: std.ArrayList(ast.Qualifier) = .empty;
+                    var qs: std.ArrayListUnmanaged(ast.Qualifier) = .{};
                     errdefer qs.deinit(gpa);
                     try parseQualifier(gpa, ts, &qs);
                     while (ts.check(.semicolon)) {
@@ -361,7 +361,7 @@ pub fn parseExpr(
                 }
 
                 // [first] or [first, ...] or [first, step..to?]
-                var elems: std.ArrayList(Expr) = .empty;
+                var elems: std.ArrayListUnmanaged(Expr) = .{};
                 try elems.append(gpa, first);
 
                 while (ts.eat(.comma)) {
@@ -417,7 +417,7 @@ pub fn parseExpr(
                     firstp.* = first;
                     break :inner Expr{ .section_left = .{ .arg = firstp, .op = @tagName(op_tok.id) } };
                 }
-                var elems: std.ArrayList(Expr) = .empty;
+                var elems: std.ArrayListUnmanaged(Expr) = .{};
                 errdefer elems.deinit(gpa);
                 try elems.append(gpa, first);
                 while (ts.eat(.comma)) {
@@ -578,7 +578,7 @@ test "parseExpr: cons infix" {
 fn parseQualifier(
     gpa: Allocator,
     ts: *TokenStream,
-    qs: *std.ArrayList(ast.Qualifier),
+    qs: *std.ArrayListUnmanaged(ast.Qualifier),
 ) ParseError!void {
     const e = try parseExpr(gpa, ts, 0);
     if (ts.eat(.left_arrow)) {
@@ -610,7 +610,7 @@ fn parseQualifier(
     // independent generators producing the Cartesian product (matching legacy
     // behaviour: `a,b <- xs` ≡ `a <- xs ; b <- xs`).
     if (ts.check(.comma)) {
-        var vars: std.ArrayList(Expr) = .empty;
+        var vars: std.ArrayListUnmanaged(Expr) = .{};
         defer vars.deinit(gpa);
         try vars.append(gpa, e);
         while (ts.eat(.comma)) {
