@@ -507,9 +507,8 @@ fn parseGuardedRhs(p: *Parser, first_body: ast.Expr) ParseError!ast.Rhs {
         // Alternative without an explicit guard — treat as `otherwise`
         // (deprecated bare-alt syntax; generate an otherwise guard).
         try guards.append(p.gpa, ast.Guard{
-            .cond = ast.Expr{ .list_nil = {} }, // unused placeholder
+            .cond = null,
             .body = alt_body,
-            .is_otherwise = true,
             .span = alt_sp,
         });
     }
@@ -522,9 +521,8 @@ fn parseGuardedRhs(p: *Parser, first_body: ast.Expr) ParseError!ast.Rhs {
 fn parseSingleGuard(p: *Parser, body: ast.Expr, sp: Span) ParseError!ast.Guard {
     if (p.eat(.kw_otherwise)) {
         return ast.Guard{
-            .cond = ast.Expr{ .list_nil = {} }, // unused
+            .cond = null,
             .body = body,
-            .is_otherwise = true,
             .span = sp,
         };
     }
@@ -534,7 +532,6 @@ fn parseSingleGuard(p: *Parser, body: ast.Expr, sp: Span) ParseError!ast.Guard {
     return ast.Guard{
         .cond = cond,
         .body = body,
-        .is_otherwise = false,
         .span = sp,
     };
 }
