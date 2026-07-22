@@ -771,7 +771,8 @@ test "head: the leftmost atom of an application spine" {
 pub fn apfile(heap_ptr: *heap.Heap, eval: *EvalState, f_val: Value) reduce_core.ReduceError!void {
     var p = eval.outfilq;
     const fil = try getstring(heap_ptr, f_val, "Appendfile");
-    while (p != NIL and !std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(heap_ptr, h(heap_ptr, p)))), std.mem.span(fil.?))) {
+    const fil_span = std.mem.span(fil.?);
+    while (p != NIL and !std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(heap_ptr, h(heap_ptr, p)))), fil_span)) {
         p = t(heap_ptr, p);
     }
     if (p == NIL) {
@@ -790,7 +791,8 @@ pub fn apfile(heap_ptr: *heap.Heap, eval: *EvalState, f_val: Value) reduce_core.
 pub fn closefile(heap_ptr: *heap.Heap, eval: *EvalState, f_val: Value) reduce_core.ReduceError!void {
     var p = &eval.outfilq;
     const fil = try getstring(heap_ptr, f_val, "Closefile");
-    while (p.* != NIL and !std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(heap_ptr, h(heap_ptr, p.*)))), std.mem.span(fil.?))) {
+    const fil_span = std.mem.span(fil.?);
+    while (p.* != NIL and !std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(heap_ptr, h(heap_ptr, p.*)))), fil_span)) {
         p = tp(heap_ptr, p.*);
     }
     if (p.* != NIL) {
@@ -804,7 +806,8 @@ pub fn outf(heap_ptr: *heap.Heap, eval: *EvalState, e_val: Value) reduce_core.Re
     const e = e_val.toRaw();
     var p = eval.outfilq;
     const f = try getstring(heap_ptr, Value.fromRaw(t(heap_ptr, h(heap_ptr, e))), "Tofile");
-    while (p != NIL and !std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(heap_ptr, h(heap_ptr, p)))), std.mem.span(f.?))) {
+    const f_span = std.mem.span(f.?);
+    while (p != NIL and !std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(heap_ptr, h(heap_ptr, p)))), f_span)) {
         p = t(heap_ptr, p);
     }
     if (p == NIL) {
