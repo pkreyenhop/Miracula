@@ -1252,7 +1252,6 @@ pub fn stoId(p1: [*:0]const u8) Word {
     return make(heap(), .ID, cons(heap(), make(heap(), .STRCONS, strtab.strBits(strtab.table(), p1), word.NIL), word.undef_t), word.UNDEF);
 }
 
-
 const bigtostr = big.toDecimalList;
 const SIGNBIT = 0x10000000;
 const MAXDIGIT = 0x7fff;

@@ -113,13 +113,10 @@ pub const Pat = union(enum) {
 // ---------------------------------------------------------------------------
 
 /// One guarded alternative of a right-hand side: `body, if cond`. When
-/// `is_otherwise` is set the branch is unconditional and `cond` is a placeholder.
+/// the branch is `otherwise`, `cond` is null.
 pub const Guard = struct {
-    cond: Expr,
+    cond: ?Expr,
     body: Expr,
-    /// True when the guard is `body, otherwise` (always-true branch).
-    /// When true, `cond` is a placeholder and should not be evaluated.
-    is_otherwise: bool,
     span: Span,
 };
 
