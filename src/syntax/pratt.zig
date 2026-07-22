@@ -391,8 +391,7 @@ pub fn parseExpr(
             .lparen => inner: {
                 if (ts.eat(.rparen)) {
                     // Empty tuple / void: ()
-                    const items = try gpa.alloc(Expr, 0);
-                    break :inner Expr{ .tuple = items };
+                    break :inner Expr{ .tuple = @constCast(&[_]Expr{}) };
                 }
                 // (op) → operator as function;  (op expr) → right section.
                 // An infix-only operator here cannot start a normal prefix expression.
