@@ -70,7 +70,7 @@ pub fn main(ctx: std.process.Init) !void {
     }
 
     const term = try child.wait(ctx.io);
-    
+
     const stdout_text = try multi_reader.toOwnedSlice(0);
     defer allocator.free(stdout_text);
     const stderr_text = try multi_reader.toOwnedSlice(1);

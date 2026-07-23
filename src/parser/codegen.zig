@@ -408,7 +408,8 @@ fn codegenPattern(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
         .tuple => |items| blk: {
             if (items.len == 0) break :blk rt.rs().Void;
             if (items.len == 1) break :blk codegenPattern(heap_ptr, alloc, items[0]);
-            var result = mkpair(heap_ptr, 
+            var result = mkpair(
+                heap_ptr,
                 codegenPattern(heap_ptr, alloc, items[items.len - 2]),
                 codegenPattern(heap_ptr, alloc, items[items.len - 1]),
             );
@@ -493,7 +494,8 @@ fn codegenExprRaw(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
         .tuple => |items| blk: {
             if (items.len == 0) break :blk rt.rs().Void;
             if (items.len == 1) break :blk codegenExprRaw(heap_ptr, alloc, items[0]); // degenerate
-            var result = mkpair(heap_ptr, 
+            var result = mkpair(
+                heap_ptr,
                 codegenExprRaw(heap_ptr, alloc, items[items.len - 2]),
                 codegenExprRaw(heap_ptr, alloc, items[items.len - 1]),
             );
@@ -569,7 +571,8 @@ fn codegenExprRaw(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
                         ls().idsused = word.NIL;
                         const lhs_w = genlhs(heap_ptr, Value.fromRaw(codegenExprRaw(heap_ptr, alloc, g.pat))).toRaw();
                         ls().idsused = word.NIL;
-                        break :gen mkcons(heap_ptr, 
+                        break :gen mkcons(
+                            heap_ptr,
                             word.GENERATOR,
                             mkcons(heap_ptr, lhs_w, codegenExprRaw(heap_ptr, alloc, g.source.*)),
                         );
@@ -583,7 +586,8 @@ fn codegenExprRaw(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
                         const src_w = codegenExprRaw(heap_ptr, alloc, sg.source.*);
                         const step_w = codegenExprRaw(heap_ptr, alloc, sg.step.*);
                         const comb: Word = if (irrefutable(heap_ptr, lhs_w) != 0) word.ITERATE else word.ITERATE1;
-                        break :sgen mkcons(heap_ptr, 
+                        break :sgen mkcons(
+                            heap_ptr,
                             word.GENERATOR,
                             mkcons(heap_ptr, lhs_w, ap2(heap_ptr, comb, mklambda(heap_ptr, lhs_w, step_w), src_w)),
                         );

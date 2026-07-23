@@ -963,20 +963,6 @@ pub fn strcpy(dst: ?*anyopaque, src: ?*const anyopaque) ?*anyopaque {
     return dst;
 }
 
-pub fn strcat(dst: ?*anyopaque, src: ?*const anyopaque) ?*anyopaque {
-    if (dst == null or src == null) return dst;
-    const d = @as([*]u8, @ptrCast(dst.?));
-    const s = @as([*:0]const u8, @ptrCast(src.?));
-    var d_len: usize = 0;
-    while (d[d_len] != 0) : (d_len += 1) {}
-    var i: usize = 0;
-    while (s[i] != 0) : (i += 1) {
-        d[d_len + i] = s[i];
-    }
-    d[d_len + i] = 0;
-    return dst;
-}
-
 pub fn strncat(dst: ?*anyopaque, src: ?*const anyopaque, n: usize) ?*anyopaque {
     if (dst == null or src == null or n == 0) return dst;
     const d = @as([*]u8, @ptrCast(dst.?));

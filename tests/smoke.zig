@@ -162,7 +162,7 @@ fn run_mira_expect_stderr(
         else => 1,
     };
     if (code != 0) {
-        std.debug.print("FAIL: {s} exited with status {d}\n", .{name, code});
+        std.debug.print("FAIL: {s} exited with status {d}\n", .{ name, code });
         std.process.exit(1);
     }
 
@@ -182,7 +182,7 @@ fn run_mira_expect_stderr(
     }
 
     if (std.mem.indexOf(u8, stderr_text, expected_stderr) == null) {
-        std.debug.print("FAIL: {s} expected stderr to contain '{s}'\n", .{name, expected_stderr});
+        std.debug.print("FAIL: {s} expected stderr to contain '{s}'\n", .{ name, expected_stderr });
         std.debug.print("got stderr:\n{s}\n", .{stderr_text});
         std.process.exit(1);
     }
@@ -241,7 +241,7 @@ fn run_compile_time_guard(
     if (code != 0) {
         const raw_stderr = try multi_reader.toOwnedSlice(1);
         defer allocator.free(raw_stderr);
-        std.debug.print("FAIL: {s} failed to compile, exit code {d}\n", .{name, code});
+        std.debug.print("FAIL: {s} failed to compile, exit code {d}\n", .{ name, code });
         std.debug.print("stderr:\n{s}\n", .{raw_stderr});
         std.process.exit(1);
     }
