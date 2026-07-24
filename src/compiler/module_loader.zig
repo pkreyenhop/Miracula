@@ -565,7 +565,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
                                             q = heap_mod.t(heap, q);
                                             continue;
                                         }
-                                        while (w != NIL and (!std.mem.eql(u8, std.mem.span(heap_mod.getFil(heap_mod.h(heap, w)).?), std.mem.span(heap_mod.getFil(heap_mod.h(heap, z)).?)) or heap_mod.h(heap, heap_mod.t(heap, heap_mod.h(heap, w))) != orig)) {
+                                        while (w != NIL and (std.mem.orderZ(u8, heap_mod.getFil(heap_mod.h(heap, w)).?, heap_mod.getFil(heap_mod.h(heap, z)).?) != .eq or heap_mod.h(heap, heap_mod.t(heap, heap_mod.h(heap, w))) != orig)) {
                                             w = heap_mod.t(heap, w);
                                         }
                                         if (w == NIL) {
