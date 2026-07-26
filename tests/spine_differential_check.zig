@@ -90,7 +90,7 @@ pub fn main(ctx: std.process.Init) !void {
 
         var x_path_buf: [256]u8 = undefined;
         const x_path = std.fmt.bufPrint(&x_path_buf, "tests/golden/{s}.x", .{name}) catch "";
-        
+
         // Remove stale compiled-script cache
         if (m_exists) {
             std.Io.Dir.cwd().deleteFile(ctx.io, x_path) catch {};
@@ -254,12 +254,12 @@ pub fn main(ctx: std.process.Init) !void {
         };
 
         if (exit_code < 0 or checkCrash(combined)) {
-            std.debug.print("Spine differential check: {s} : {s} ... FAIL\n", .{item.script, item.expr});
+            std.debug.print("Spine differential check: {s} : {s} ... FAIL\n", .{ item.script, item.expr });
             std.debug.print("  exit code: {d}\n", .{exit_code});
             std.debug.print("  output: {s}\n", .{combined[if (combined.len > 2000) combined.len - 2000 else 0..]});
             failed = true;
         } else {
-            std.debug.print("Spine differential check: {s} : {s} ... PASS\n", .{item.script, item.expr});
+            std.debug.print("Spine differential check: {s} : {s} ... PASS\n", .{ item.script, item.expr });
         }
     }
 

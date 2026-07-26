@@ -51,19 +51,19 @@ fn parseStats(text: []const u8, stats: *Stats) void {
     while (lines.next()) |line| {
         if (std.mem.startsWith(u8, line, "||")) {
             if (std.mem.indexOf(u8, line, "reductions =")) |idx| {
-                const sub = line[idx + "reductions =".len..];
+                const sub = line[idx + "reductions =".len ..];
                 const trimmed = std.mem.trim(u8, sub, " \t\r\n");
                 var parts = std.mem.splitAny(u8, trimmed, ", \t\r\n");
                 stats.reductions = std.fmt.parseInt(u64, parts.first(), 10) catch 0;
             }
             if (std.mem.indexOf(u8, line, "cells claimed =")) |idx| {
-                const sub = line[idx + "cells claimed =".len..];
+                const sub = line[idx + "cells claimed =".len ..];
                 const trimmed = std.mem.trim(u8, sub, " \t\r\n");
                 var parts = std.mem.splitAny(u8, trimmed, ", \t\r\n");
                 stats.cells_claimed = std.fmt.parseInt(u64, parts.first(), 10) catch 0;
             }
             if (std.mem.indexOf(u8, line, "no of gc's =")) |idx| {
-                const sub = line[idx + "no of gc's =".len..];
+                const sub = line[idx + "no of gc's =".len ..];
                 const trimmed = std.mem.trim(u8, sub, " \t\r\n");
                 var parts = std.mem.splitAny(u8, trimmed, ", \t\r\n");
                 stats.no_of_gcs = std.fmt.parseInt(u64, parts.first(), 10) catch 0;
@@ -92,7 +92,7 @@ pub fn main(ctx: std.process.Init) !void {
 
         const temp_path = "./tests/golden/reg_tmp.m";
         var has_temp = false;
-        
+
         const argv_len = 7;
         var argv = try allocator.alloc([]const u8, argv_len);
         defer allocator.free(argv);

@@ -48,19 +48,19 @@ fn parseStats(text: []const u8, reductions: *u64, cells: *u64, gcs: *u64) void {
     var lines = std.mem.splitScalar(u8, text, '\n');
     while (lines.next()) |line| {
         if (std.mem.indexOf(u8, line, "reductions =")) |idx| {
-            const sub = line[idx + "reductions =".len..];
+            const sub = line[idx + "reductions =".len ..];
             const trimmed = std.mem.trim(u8, sub, " \t\r\n");
             var parts = std.mem.splitAny(u8, trimmed, ", \t\r\n");
             reductions.* = std.fmt.parseInt(u64, parts.first(), 10) catch 0;
         }
         if (std.mem.indexOf(u8, line, "cells claimed =")) |idx| {
-            const sub = line[idx + "cells claimed =".len..];
+            const sub = line[idx + "cells claimed =".len ..];
             const trimmed = std.mem.trim(u8, sub, " \t\r\n");
             var parts = std.mem.splitAny(u8, trimmed, ", \t\r\n");
             cells.* = std.fmt.parseInt(u64, parts.first(), 10) catch 0;
         }
         if (std.mem.indexOf(u8, line, "no of gc's =")) |idx| {
-            const sub = line[idx + "no of gc's =".len..];
+            const sub = line[idx + "no of gc's =".len ..];
             const trimmed = std.mem.trim(u8, sub, " \t\r\n");
             var parts = std.mem.splitAny(u8, trimmed, ", \t\r\n");
             gcs.* = std.fmt.parseInt(u64, parts.first(), 10) catch 0;
