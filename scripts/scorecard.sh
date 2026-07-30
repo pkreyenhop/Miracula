@@ -47,7 +47,7 @@ done
 # FFI exemption: the C-shim, standalone tools, and the test harness
 # legitimately use C types/pointers/globals and are excluded from every
 # C-ism / shared-state metric (not from the structure or readability ones).
-FFI_EXEMPT='src/os\.zig|src/runtime/c_abi\.zig|src/tools/'
+FFI_EXEMPT='src/os\.zig|src/os_scanf\.zig|src/runtime/c_abi\.zig|src/tools/'
 TEST_EXEMPT='testutil\.zig|_tests?\.zig'
 NONFFI_EXEMPT="${FFI_EXEMPT}|${TEST_EXEMPT}"
 
