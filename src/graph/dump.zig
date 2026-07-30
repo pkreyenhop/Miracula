@@ -708,7 +708,7 @@ pub fn unload(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.RuntimeS
 }
 
 /// Whether any loaded source file has changed on disk since load (1/0).
-pub fn srcUpdate(heap: *Heap, rs: *rt.RuntimeState) c_int {
+pub fn srcUpdate(heap: *Heap, rs: *rt.RuntimeState) i32 {
     _ = rs;
     var ft: Word = undefined;
     var f = if (heap.files == word.NIL) script_store.store().oldfiles else heap.files;

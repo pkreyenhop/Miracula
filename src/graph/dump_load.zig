@@ -278,7 +278,7 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
             word.SHORT_X => {
                 var val = os.getc(file);
                 if ((val & 128) != 0) {
-                    val = val | (~@as(c_int, 127));
+                    val = val | (~@as(i32, 127));
                 }
                 stackpPush(heap, stosmallint(val));
             },

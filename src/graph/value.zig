@@ -418,7 +418,7 @@ pub inline fn subVal(heap_ptr: *Heap, x: Value, y: Value) Value {
 }
 
 /// Three-way comparison of boxed integers `x`/`y` (negative/zero/positive).
-pub inline fn cmpVal(heap_ptr: *Heap, x: Value, y: Value) c_int {
+pub inline fn cmpVal(heap_ptr: *Heap, x: Value, y: Value) i32 {
     return big.cmp(heap_ptr, x.toRaw(), y.toRaw());
 }
 
@@ -463,7 +463,7 @@ pub inline fn log10Val(heap_ptr: *Heap, self: *big.Bignum, x: Value) f64 {
 }
 
 /// Parse a Miranda char-list `x` (in the given `base`) as a boxed integer.
-pub inline fn parseStringVal(heap_ptr: *Heap, x: Value, base: c_int) Value {
+pub inline fn parseStringVal(heap_ptr: *Heap, x: Value, base: i32) Value {
     return Value.fromRaw(big_fmt.parseString(heap_ptr, x.toRaw(), base));
 }
 

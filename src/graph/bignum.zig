@@ -359,7 +359,7 @@ fn subMagnitude(heap: *Heap, input_x: Word, input_y: Word) Word {
 /// Three-way compare: -1 / 0 / 1 for `x < y` / `x == y` / `x > y`.
 ///
 /// Tests: cmp: three-way -1 / 0 / 1
-pub fn cmp(heap: *Heap, input_x: Word, input_y: Word) c_int {
+pub fn cmp(heap: *Heap, input_x: Word, input_y: Word) i32 {
     var x = input_x;
     var y = input_y;
     const s = signBit(heap, x) != 0;

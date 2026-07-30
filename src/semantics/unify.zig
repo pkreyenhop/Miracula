@@ -279,7 +279,7 @@ pub fn subsumes(heap: *Heap, t1: Word, t2: Word) Word {
 }
 
 /// Core recursive step of `unify`.
-pub fn unify1(heap: *Heap, t1_val: Word, t2_val: Word) c_int {
+pub fn unify1(heap: *Heap, t1_val: Word, t2_val: Word) i32 {
     const t1 = subst(heap, t1_val);
     const t2 = subst(heap, t2_val);
     if (t1 == t2) {
@@ -300,7 +300,7 @@ pub fn unify1(heap: *Heap, t1_val: Word, t2_val: Word) c_int {
 }
 
 /// Unify types `t1` and `t2`, extending the substitution (1 on success).
-pub fn unify(heap: *Heap, t1_val: Word, t2_val: Word) c_int {
+pub fn unify(heap: *Heap, t1_val: Word, t2_val: Word) i32 {
     const t1 = subst(heap, t1_val);
     const t2 = subst(heap, t2_val);
     if (t1 == t2) {

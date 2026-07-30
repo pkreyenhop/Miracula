@@ -152,7 +152,7 @@ fn hexValue(ch: u8) Word {
 /// Parse a Miranda char-list `z` of digits in `base` (10/16/8) into a bignum.
 ///
 /// Tests: parseString: parses a char-list of digits in a given base
-pub fn parseString(heap: *Heap, input_z: Word, base: c_int) Word {
+pub fn parseString(heap: *Heap, input_z: Word, base: i32) Word {
     var z = input_z;
     var s = false;
     const r = heap.make(.INT, 0, 0);
