@@ -33,7 +33,7 @@ pub fn fileMtime(path: [*:0]const u8) Word {
 }
 
 /// Returns 1 if `path` ends in ".m" (a Miranda source file), 0 otherwise.
-pub fn isMirandaSource(path: [*:0]const u8) c_int {
+pub fn isMirandaSource(path: [*:0]const u8) i32 {
     const text = std.mem.span(path);
     return if (text.len >= 2 and std.mem.eql(u8, text[text.len - 2 ..], ".m")) 1 else 0;
 }
@@ -84,7 +84,7 @@ pub fn copyFile(from: [*:0]const u8, to: [*:0]const u8) void {
     if (f_in < 0) return;
     defer _ = abi.close(f_in);
 
-    const f_out = abi.open(to, abi.O_WRONLY | abi.O_CREAT | abi.O_TRUNC, @as(c_uint, 0o644));
+    const f_out = abi.open(to, abi.O_WRONLY | abi.O_CREAT | abi.O_TRUNC, @as(u32, 0o644));
     if (f_out < 0) return;
     defer _ = abi.close(f_out);
 
@@ -143,10 +143,10 @@ pub fn makeAbsolute(m: [*:0]u8) [*:0]u8 {
 }
 
 /// Returns the terminal column width minus 2, defaulting to 78 if unavailable.
-pub fn termWidth() c_int {
+pub fn termWidth() i32 {
     var window: abi.struct_winsize = undefined;
     if (abi.ioctl(abi.STDOUT_FILENO, abi.TIOCGWINSZ, &window) == -1 or window.ws_col == 0) {
         return 78;
     }
-    return @as(c_int, @intCast(window.ws_col)) - 2;
+    return @as(i32, @intCast(window.ws_col)) - 2;
 }
