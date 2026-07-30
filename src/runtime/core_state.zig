@@ -13,9 +13,9 @@ const Word = i64;
 /// Phase 3.
 pub const CoreState = struct {
     /// Non-zero while a source file is being loaded (`loadfile` guard).
-    loading: c_int = 0,
+    loading: i32 = 0,
     /// Non-zero while compilation of the current script is in progress.
-    compiling: c_int = 1,
+    compiling: i32 = 1,
     /// Heap node of the first error location in the current compilation unit.
     errs: Word = 0,
     /// Source line number of the first error (0 = unknown).

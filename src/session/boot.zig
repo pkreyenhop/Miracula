@@ -53,7 +53,7 @@ fn unlimitStack() void {
 }
 
 /// Process entry point: parse flags and arguments, install signal handlers, set up the heap, locate the library, then enter `commandLoop`. Returns the exit code.
-pub fn mainEntry(heap: *Heap, argc: c_int, argv: [*][*:0]u8) c_int {
+pub fn mainEntry(heap: *Heap, argc: i32, argv: [*][*:0]u8) i32 {
     var manonly: Word = 0;
     rt.rs().cstack = @ptrCast(&manonly);
     unlimitStack();
@@ -344,13 +344,13 @@ fn reportMakeFailures(heap: *Heap) void {
 }
 
 /// Check the `.version` file under directory `m`; returns 1 if it matches this build, else records the mismatch for `libFails`.
-fn checkVersion(m: [*:0]const u8) c_int {
+fn checkVersion(m: [*:0]const u8) i32 {
     var path_buf: [1024]u8 = undefined;
     const path = std.fmt.bufPrintSentinel(&path_buf, "{s}/.version", .{m}, 0) catch return 0;
     const f = word.fopen(path.ptr, "r");
-    var v1: c_uint = 0;
+    var v1: u32 = 0;
     var read_ok: bool = false;
-    var r: c_int = 0;
+    var r: i32 = 0;
     if (f != null) {
         if (abi.fscanf(f, "%u", .{&v1}) == 1) {
             r = if (v1 == version.version) 1 else 0;

@@ -346,7 +346,7 @@ test "constructor: builds a CONSTRUCTOR cell from Word/c_int/C-string fields" {
     try std.testing.expectEqual(@as(Word, word.True), h(heap(), from_word));
     try std.testing.expectEqual(@as(Word, 77), t(heap(), from_word));
 
-    const from_cint = constructor(heap(), word.True, @as(c_int, 9));
+    const from_cint = constructor(heap(), word.True, @as(i32, 9));
     try std.testing.expectEqual(@as(Word, 9), t(heap(), from_cint));
 
     const from_str = constructor(heap(), word.True, @as([*:0]const u8, "zzheap_constructor_test"));

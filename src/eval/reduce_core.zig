@@ -86,7 +86,7 @@ pub const ReductionCtx = struct {
     /// Arguments pulled off the spine for the current combinator rewrite.
     args: [4]Value,
     /// Post-dispatch signal: `ACT_NONE` / `ACT_NEXTREDEX` / `ACT_DONE`.
-    action: c_int,
+    action: i32,
     /// The cell arena backing every accessor/allocator call this reduction makes.
     heap: *Heap,
     /// I/O and evaluation-error-recovery state (`Tier 4` of the shared-state

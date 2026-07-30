@@ -162,7 +162,7 @@ fn namescom(heap: *Heap, rs: *rt.RuntimeState, l: Word) void {
 /// Handle the `'f'` REPL command (extracted from `command`).
 fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState) bool {
     var t_val: ?[*:0]u8 = undefined;
-    var ch: c_int = undefined;
+    var ch: i32 = undefined;
     if (is(lexs, "f") or is(lexs, "file")) {
         const t_tok = token();
         if (abi.getchar() != '\n') return true;
@@ -240,8 +240,8 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
 /// Handle the `'e'` REPL command (extracted from `command`).
 fn cmdEdit(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.LexState) bool {
     var t_val: ?[*:0]u8 = undefined;
-    var ch: c_int = undefined;
-    var ch1: c_int = undefined;
+    var ch: i32 = undefined;
+    var ch1: i32 = undefined;
     if (is(lexs, "e") or is(lexs, "edit")) {
         var mf: ?[*:0]u8 = null;
         if (token()) |tok| {
@@ -313,8 +313,8 @@ fn cmdEdit(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, lexs:
                 files.copyFile(mf.?, t_val.?);
             }
         }
-        const err_line_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errline) else if (core.errs != 0 and std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap, core.errs))))) @intCast(heap_mod.t(heap, core.errs)) else @intCast(abi.geterrlin(heap, core, lexs, t_val.?));
-        const err_col_num: c_int = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errcol) else 0;
+        const err_line_num: i32 = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errline) else if (core.errs != 0 and std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap, core.errs))))) @intCast(heap_mod.t(heap, core.errs)) else @intCast(abi.geterrlin(heap, core, lexs, t_val.?));
+        const err_col_num: i32 = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errcol) else 0;
         editfile(heap, rs, t_val.?, err_line_num, err_col_num);
         return true;
     }
@@ -411,9 +411,9 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                     _ = abi.getchar();
                     word.print("{} chars", .{config_state.config().DICSPACE});
                     if (config_state.config().DICSPACE != 100000) {
-                        word.print(" (default={})", .{@as(c_long, 100000)});
+                        word.print(" (default={})", .{@as(i64, 100000)});
                     }
-                    word.print(" {} in use\n", .{@as(c_long, @intCast(@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dic.?)))});
+                    word.print(" {} in use\n", .{@as(i64, @intCast(@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dic.?)))});
                     return;
                 }
                 if (abi.getchar() != '\n') return;
@@ -449,12 +449,12 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                 return;
             }
             if (is(lexs, "heap")) {
-                var x: c_long = undefined;
+                var x: i64 = undefined;
                 if (token() == null) {
                     _ = abi.getchar();
                     word.print("{} cells", .{config_state.config().SPACELIMIT});
                     if (config_state.config().SPACELIMIT != 2500000) {
-                        word.print(" (default={})", .{@as(c_long, 2500000)});
+                        word.print(" (default={})", .{@as(i64, 2500000)});
                     }
                     word.print("\n", .{});
                     return;
@@ -608,9 +608,9 @@ pub fn manaction(rs: *rt.RuntimeState) void {
 }
 
 /// Open `t_val` at `line` in the user's editor, substituting into the editor-command template.
-pub fn editfile(heap: *Heap, rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c_int, col: c_int) void {
+pub fn editfile(heap: *Heap, rs: *rt.RuntimeState, t_val: [*:0]const u8, line: i32, col: i32) void {
     var line_val = line;
-    const col_val = if (col == 0) @as(c_int, 1) else col;
+    const col_val = if (col == 0) @as(i32, 1) else col;
     const ebuf_local = @as([*]u8, @ptrCast(&rs.linebuf[0]));
     var p = ebuf_local;
     var q = config_state.config().editor.?;
@@ -695,7 +695,7 @@ pub fn editfile(heap: *Heap, rs: *rt.RuntimeState, t_val: [*:0]const u8, line: c
 
 /// Warn about and consume extra characters after a command, through end of line.
 pub fn xschars() void {
-    var ch: c_int = undefined;
+    var ch: i32 = undefined;
     word.print("\x07extra characters at end of command\n", .{});
     while (true) {
         ch = abi.getchar();

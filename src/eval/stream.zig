@@ -274,7 +274,7 @@ pub fn fopen(path: ?*const anyopaque, mode: [*:0]const u8) ?*Stream {
 }
 
 /// libc `fclose` (a no-op for the std streams).
-pub fn fclose(file: ?*Stream) c_int {
+pub fn fclose(file: ?*Stream) i32 {
     if (file) |f| {
         if (f == &fio().std_in or f == &fio().std_out or f == &fio().std_err) {
             return 0;
@@ -291,7 +291,7 @@ pub fn fclose(file: ?*Stream) c_int {
 }
 
 /// The underlying file descriptor, or -1.
-pub fn fileno(file: ?*Stream) c_int {
+pub fn fileno(file: ?*Stream) i32 {
     if (file) |f| return f.file.handle;
     return -1;
 }
@@ -303,19 +303,19 @@ pub fn setbuf(file: ?*Stream, buf: ?[*]u8) void {
 }
 
 /// libc `getc`: next byte, or -1 at EOF.
-pub fn getc(file: ?*Stream) c_int {
+pub fn getc(file: ?*Stream) i32 {
     const f = file orelse return -1;
     const byte = f.readByte() catch return -1;
-    return @as(c_int, byte);
+    return @as(i32, byte);
 }
 
 /// libc `getchar` (reads stdin).
-pub fn getchar() c_int {
+pub fn getchar() i32 {
     return getc(&fio().std_in);
 }
 
 /// Push a byte back so the next read returns it (libc `ungetc`).
-pub fn ungetc(ch: c_int, file: ?*Stream) c_int {
+pub fn ungetc(ch: i32, file: ?*Stream) i32 {
     const f = file orelse return -1;
     if (ch == -1) return -1;
     f.ungetc(@intCast(@as(u8, @intCast(ch))));
@@ -323,7 +323,7 @@ pub fn ungetc(ch: c_int, file: ?*Stream) c_int {
 }
 
 /// libc `fgets`: read a line (up to `size-1` bytes or a newline) into `buf`.
-pub fn fgets(buf: [*]u8, size: c_int, file: ?*Stream) ?[*]u8 {
+pub fn fgets(buf: [*]u8, size: i32, file: ?*Stream) ?[*]u8 {
     const f = file orelse return null;
     if (size <= 1) return null;
     var i: usize = 0;
@@ -372,7 +372,7 @@ pub fn fwrite(ptr: ?*const anyopaque, size: usize, nmemb: usize, file: ?*Stream)
 }
 
 /// libc `fdopen`: wrap an existing fd in a pooled `Stream`.
-pub fn fdopen(fd: c_int, mode: [*:0]const u8) ?*Stream {
+pub fn fdopen(fd: i32, mode: [*:0]const u8) ?*Stream {
     _ = mode;
     const f_ptr = allocFile() orelse return null;
     f_ptr.file = .{ .handle = fd, .flags = .{ .nonblocking = false } };
@@ -383,18 +383,18 @@ pub fn fdopen(fd: c_int, mode: [*:0]const u8) ?*Stream {
 }
 
 /// libc `putc`: write one char to `file`.
-pub fn putc(ch: c_int, file: ?*Stream) c_int {
+pub fn putc(ch: i32, file: ?*Stream) i32 {
     const f = file orelse return -1;
     f.writeByte(@intCast(@as(u8, @intCast(ch)))) catch return -1;
     return ch;
 }
 
 /// libc `fputc` (an alias for `putc`).
-pub fn fputc(ch: c_int, file: ?*Stream) c_int {
+pub fn fputc(ch: i32, file: ?*Stream) i32 {
     return putc(ch, file);
 }
 
 /// libc `putchar` (to stdout).
-pub fn putchar(ch: c_int) c_int {
+pub fn putchar(ch: i32) i32 {
     return putc(ch, &fio().std_out);
 }

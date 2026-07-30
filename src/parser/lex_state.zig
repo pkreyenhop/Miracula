@@ -43,7 +43,7 @@ pub const LexState = struct {
     exportfiles: Word = NIL,
     inexplist: Word = 0,
     idsused: Word = NIL,
-    ARGC: c_int = 0,
+    ARGC: i32 = 0,
     ARGV: [*]?[*:0]u8 = undefined,
     yylval: Word = NIL,
 

@@ -452,7 +452,7 @@ pub fn tInfo(x: Word) Word {
 pub fn constructor(self: *Heap, n: Word, x: anytype) Word {
     const x_val: Word = switch (@TypeOf(x)) {
         Word => x,
-        c_int, c_uint => @intCast(x),
+        i32, u32 => @intCast(x),
         [*:0]const u8, [*:0]u8 => strtab.strBits(strtab.table(), x),
         else => @compileError("Unsupported type for constructor"),
     };

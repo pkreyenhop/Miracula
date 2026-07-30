@@ -43,7 +43,7 @@ const ls = lex_state.ls;
 // C ABI / linked symbols
 const signals = signals_mod.signals;
 /// POSIX `WEXITSTATUS`: the exit code from a child's wait status.
-fn WEXITSTATUS(status: c_int) c_int {
+fn WEXITSTATUS(status: i32) i32 {
     return (status >> 8) & 0xff;
 }
 
@@ -472,7 +472,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
     includees_list = heap_mod.reverse(includees_list);
     const pid = abi.fork();
     if (pid != 0) { // parent
-        var status: c_int = 0;
+        var status: i32 = 0;
         if (pid == -1) {
             abi.perror("UNIX error - cannot create process");
             if (rs.ideep > 6) {

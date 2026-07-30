@@ -115,13 +115,13 @@ inline fn forceDbl(heap_ptr: *heap.Heap, x: Word) f64 {
     }
 }
 
-inline fn fsign(x: f64) c_int {
+inline fn fsign(x: f64) i32 {
     if (x < 0.0) return -1;
     if (x > 0.0) return 1;
     return 0;
 }
 
-inline fn sign(x: c_long) c_int {
+inline fn sign(x: i64) i32 {
     if (x < 0) return -1;
     if (x > 0) return 1;
     return 0;
@@ -406,7 +406,7 @@ pub fn getstring(heap_ptr: *heap.Heap, x_val: Value, cmd: ?[*:0]const u8) reduce
     p_idx += 1;
     if (p_idx > buf_size) {
         if (cmd) |cmd_str| {
-            word.printErr("\n{s}, argument string too long (limit={} chars): {s}...\n", .{ cmd_str, @as(c_int, buf_size), &rt.rs().linebuf });
+            word.printErr("\n{s}, argument string too long (limit={} chars): {s}...\n", .{ cmd_str, @as(i32, buf_size), &rt.rs().linebuf });
             outstats();
             os.exit(1);
         } else {
@@ -441,7 +441,7 @@ pub fn outstats() void {
 }
 
 /// Write value `h_val` to file `f` for diagnostics, optionally followed by a newline.
-pub fn outHere(heap_ptr: *heap.Heap, core: *core_state.CoreState, f: ?*word.Stream, h_val_arg: Value, nl: c_int) void {
+pub fn outHere(heap_ptr: *heap.Heap, core: *core_state.CoreState, f: ?*word.Stream, h_val_arg: Value, nl: i32) void {
     const h_val = h_val_arg.toRaw();
     if (getTag(heap_ptr, h_val) != .FILEINFO) {
         word.printErr("(impossible event in outhere)\n", .{});
@@ -459,12 +459,12 @@ pub fn outHere(heap_ptr: *heap.Heap, core: *core_state.CoreState, f: ?*word.Stre
 }
 
 /// Human-readable name of a standard-stream selector.
-fn stdname(c_val: c_int) [*:0]const u8 {
+fn stdname(c_val: i32) [*:0]const u8 {
     return if (c_val == ':') "$:-" else if (c_val == '-') "$-" else "$+";
 }
 
 /// Abort: stdin was read both as characters and as values (the `-`/`:` conflict).
-pub fn stdinError(eval: *EvalState, c_val: c_int) void {
+pub fn stdinError(eval: *EvalState, c_val: i32) void {
     if (eval.stdinuse == c_val) {
         word.printErr("program error: duplicate use of {s}\n", .{stdname(c_val)});
     } else {
@@ -566,7 +566,7 @@ fn gResidueRaw(heap_ptr: *heap.Heap, toks2: Word) Word {
 /// 1 if character `c_val` is in the lexer character-class list `x_val` (handles `..` ranges).
 ///
 /// Tests: memclass: character-class membership with ranges
-pub fn memclass(heap_ptr: *heap.Heap, c_val: c_int, x_arg: Value) c_int {
+pub fn memclass(heap_ptr: *heap.Heap, c_val: i32, x_arg: Value) i32 {
     var x = x_arg.toRaw();
     while (x != NIL) {
         if (h(heap_ptr, x) == word.DOTDOT) {
@@ -587,12 +587,12 @@ test "memclass: character-class membership with ranges" {
     tu.freshInterp();
     // a range is encoded as [DOTDOT, low, high]
     const range = cons(heap.heap(), word.DOTDOT, cons(heap.heap(), 'a', cons(heap.heap(), 'z', NIL)));
-    try std.testing.expectEqual(@as(c_int, 1), memclass(heap.heap(), 'm', Value.fromRaw(range)));
-    try std.testing.expectEqual(@as(c_int, 0), memclass(heap.heap(), 'A', Value.fromRaw(range)));
+    try std.testing.expectEqual(@as(i32, 1), memclass(heap.heap(), 'm', Value.fromRaw(range)));
+    try std.testing.expectEqual(@as(i32, 0), memclass(heap.heap(), 'A', Value.fromRaw(range)));
     // a bare class member
     const single = cons(heap.heap(), 'x', NIL);
-    try std.testing.expectEqual(@as(c_int, 1), memclass(heap.heap(), 'x', Value.fromRaw(single)));
-    try std.testing.expectEqual(@as(c_int, 0), memclass(heap.heap(), 'y', Value.fromRaw(single)));
+    try std.testing.expectEqual(@as(i32, 1), memclass(heap.heap(), 'x', Value.fromRaw(single)));
+    try std.testing.expectEqual(@as(i32, 0), memclass(heap.heap(), 'y', Value.fromRaw(single)));
 }
 
 /// Abort: the lexer hit unrecognised input; prints up to 24 chars of context.
@@ -625,7 +625,7 @@ pub fn piperrmess(pid: Word) Value {
 /// Structurally compare two values (`<0`/`0`/`>0`); errors on comparing functions.
 ///
 /// Tests: compare: orders ints, chars, and strings; 0 on equal
-pub fn compare(heap_ptr: *heap.Heap, arg_a_val: Value, arg_b_val: Value) reduce_core.ReduceError!c_int {
+pub fn compare(heap_ptr: *heap.Heap, arg_a_val: Value, arg_b_val: Value) reduce_core.ReduceError!i32 {
     var a = arg_a_val.toRaw();
     var b = arg_b_val.toRaw();
     while (true) {
@@ -699,10 +699,10 @@ test "compare: orders ints, chars, and strings; 0 on equal" {
     tu.freshInterp();
     try std.testing.expect(try compare(heap.heap(), Value.fromRaw(big.fromInt(heap.heap(), 2)), Value.fromRaw(big.fromInt(heap.heap(), 3))) < 0);
     try std.testing.expect(try compare(heap.heap(), Value.fromRaw(big.fromInt(heap.heap(), 3)), Value.fromRaw(big.fromInt(heap.heap(), 2))) > 0);
-    try std.testing.expectEqual(@as(c_int, 0), try compare(heap.heap(), Value.fromRaw(big.fromInt(heap.heap(), 7)), Value.fromRaw(big.fromInt(heap.heap(), 7))));
+    try std.testing.expectEqual(@as(i32, 0), try compare(heap.heap(), Value.fromRaw(big.fromInt(heap.heap(), 7)), Value.fromRaw(big.fromInt(heap.heap(), 7))));
     // strings (char lists) compare lexicographically, element by element
     try std.testing.expect(try compare(heap.heap(), Value.fromRaw(tu.str("abc")), Value.fromRaw(tu.str("abd"))) < 0);
-    try std.testing.expectEqual(@as(c_int, 0), try compare(heap.heap(), Value.fromRaw(tu.str("hi")), Value.fromRaw(tu.str("hi"))));
+    try std.testing.expectEqual(@as(i32, 0), try compare(heap.heap(), Value.fromRaw(tu.str("hi")), Value.fromRaw(tu.str("hi"))));
 }
 
 /// Fully evaluate `x` to normal form (deep `reduce`), descending applications and conses.

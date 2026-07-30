@@ -41,7 +41,7 @@ inline fn argIs(arg: [*:0]const u8, lit: []const u8) bool {
 /// of the first non-flag argument and whether `-man` was seen. `-version`/`-V`
 /// print and exit directly; `-exec`/`-exec2` stop flag parsing at the script
 /// name (everything after belongs to the script's own argv).
-pub fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
+pub fn parseFlags(argc: i32, argv: [*][*:0]u8) ParsedFlags {
     var manonly: Word = 0;
     var arg_idx: usize = 1;
     const argc_u = @as(usize, @intCast(argc));
@@ -73,7 +73,7 @@ pub fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
             if (arg_idx == argc_u) {
                 missingParam("dic");
             } else {
-                var val: c_long = 0;
+                var val: i64 = 0;
                 if (abi.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or flagOutOfRange(val)) {
                     errors.fatal("mira: bad value after flag \"-dic\"\n", .{});
                 }
@@ -84,7 +84,7 @@ pub fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
             if (arg_idx == argc_u) {
                 missingParam("heap");
             } else {
-                var val: c_long = 0;
+                var val: i64 = 0;
                 if (abi.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or flagOutOfRange(val)) {
                     errors.fatal("mira: bad value after flag \"-heap\"\n", .{});
                 }
@@ -105,7 +105,7 @@ pub fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
         } else if (argIs(arg, "-exp") or argIs(arg, "-log")) {
             errors.fatal("mira: obsolete flag \"{s}\"\nuse \"-exec\" or \"-exec2\", see manual\n", .{arg});
         } else if (argIs(arg, "-exec")) {
-            ls().ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
+            ls().ARGC = @intCast(argc - @as(i32, @intCast(arg_idx)) - 1);
             ls().ARGV = @ptrCast(argv + arg_idx + 1);
             rt.rs().magic = true;
             repl_session.session().verbosity = 0;
@@ -138,7 +138,7 @@ pub fn parseFlags(argc: c_int, argv: [*][*:0]u8) ParsedFlags {
             } else {
                 word.printErr("could not open {s}\n", .{logfilname});
             }
-            ls().ARGC = @intCast(argc - @as(c_int, @intCast(arg_idx)) - 1);
+            ls().ARGC = @intCast(argc - @as(i32, @intCast(arg_idx)) - 1);
             ls().ARGV = @ptrCast(argv + arg_idx + 1);
             rt.rs().magic = true;
             repl_session.session().verbosity = 0;
@@ -257,10 +257,10 @@ pub fn resolveEnvironmentSettings() void {
 pub fn readRc(rcfile: [*:0]const u8) Word {
     var z: [20]u8 = undefined;
     @memset(&z, 0);
-    var h_val: c_long = 0;
-    var d_val: c_long = 0;
-    var v_val: c_long = 0;
-    var s_val: c_long = 0;
+    var h_val: i64 = 0;
+    var d_val: i64 = 0;
+    var v_val: i64 = 0;
+    var s_val: i64 = 0;
     var r: Word = 0;
 
     const in = word.fopen(rcfile, "r") orelse return 0;
@@ -370,7 +370,7 @@ pub fn missingParam(s: [:0]const u8) noreturn {
 /// Format integer version `v` as an `M.mmm` string (`???` if out of range).
 ///
 /// Tests: versionString: formats an integer version as M.mmm
-pub fn versionString(v: c_int) [*:0]const u8 {
+pub fn versionString(v: i32) [*:0]const u8 {
     if (v < 0 or v > 999999) {
         return "???";
     }
@@ -397,11 +397,11 @@ test "versionString: formats an integer version as M.mmm" {
 }
 
 /// Print the release/date line; with `full` set, also the host string and XVERSION.
-pub fn versionInfo(full: c_int) void {
+pub fn versionInfo(full: i32) void {
     word.print("{s} last revised {s}\n", .{ versionString(version.version), version.vdate });
     if (full == 0) return;
     word.print("{s}", .{version.host});
-    word.print("XVERSION {}\n", .{@as(c_uint, @intCast(word.XVERSION))});
+    word.print("XVERSION {}\n", .{@as(u32, @intCast(word.XVERSION))});
 }
 
 test "readRc and writeRc roundtrip text config" {

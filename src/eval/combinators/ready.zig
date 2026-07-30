@@ -710,9 +710,9 @@ fn handleReadyGETENV(ctx: *ReductionCtx) reduce.ReduceError!void {
 /// child never returns from this function -- it `execl`s directly).
 fn handleReadyEXEC(ctx: *ReductionCtx) reduce.ReduceError!void {
     reduce.upLeft(ctx);
-    var pid: c_int = -1;
-    var fd: [2]c_int = undefined;
-    var fd_a: [2]c_int = undefined;
+    var pid: i32 = -1;
+    var fd: [2]i32 = undefined;
+    var fd_a: [2]i32 = undefined;
     const cp = try reduce.getstringVal(ctx.heap, lastArg(ctx), "system");
     var cond = false;
     if (os.pipe(&fd) == -1 or os.pipe(&fd_a) == -1) {
@@ -755,7 +755,7 @@ fn handleReadyEXEC(ctx: *ReductionCtx) reduce.ReduceError!void {
 fn handleReadyNUMVAL(ctx: *ReductionCtx) reduce.ReduceError!void {
     reduce.upLeft(ctx);
     var x = lastArg(ctx);
-    var base: c_int = 10;
+    var base: i32 = 10;
     while (x.toRaw() != word.NIL) {
         reduce.hdSet(ctx.heap, x, try reduce.reduceVal(ctx.heap, reduce.hdGet(ctx.heap, x)));
         const next_tl = try reduce.reduceVal(ctx.heap, reduce.tlGet(ctx.heap, x));

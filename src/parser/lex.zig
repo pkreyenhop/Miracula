@@ -127,10 +127,10 @@ pub fn setupdic() void {
     symbols.syms().* = .{};
 }
 
-/// A `getchar()`-style `c_int` (may be `EOF` = -1), narrowed to a byte iff
+/// A `getchar()`-style `i32` (may be `EOF` = -1), narrowed to a byte iff
 /// it's in ASCII-byte range (Phase 2 step 5: `std.ascii`'s predicates need a
 /// `u8`, and can't see the EOF sentinel directly).
-inline fn charOf(ch: c_int) ?u8 {
+inline fn charOf(ch: i32) ?u8 {
     return if (ch >= 0 and ch <= 255) @intCast(ch) else null;
 }
 
@@ -311,7 +311,7 @@ pub fn rdline() ?[*:0]u8 {
         const offset = @as(usize, @intFromPtr(p)) - @as(usize, @intFromPtr(&ls().rdline_linebuf));
         if (offset >= 1024) {
             p[0] = 0;
-            word.printErr("sorry, !command too long (limit={} chars): {s}...\n", .{ @as(c_int, 1024), @as([*:0]const u8, @ptrCast(&ls().rdline_linebuf)) });
+            word.printErr("sorry, !command too long (limit={} chars): {s}...\n", .{ @as(i32, 1024), @as([*:0]const u8, @ptrCast(&ls().rdline_linebuf)) });
             while (true) {
                 ch = os.getchar();
                 if (ch == '\n' or ch == os.EOF) {
@@ -440,7 +440,7 @@ pub fn adjustPrefix(f: [*:0]const u8) void {
 }
 
 /// Open source file `n` for reading; returns 0 on failure.
-pub fn openfile(heap: *Heap, n: [*:0]const u8) c_int {
+pub fn openfile(heap: *Heap, n: [*:0]const u8) i32 {
     const f = word.fopen(n, "r") orelse return 0;
     // Stream* handle stored in the cell (read back via @ptrFromInt below);
     // this is a Stream-handle-in-cell cast, not a node string — out of B1 scope.
@@ -730,7 +730,7 @@ pub fn isconstrname(input: [*:0]const u8) bool {
 /// Whether char `ch` is valid within an identifier (1/0).
 ///
 /// Tests: identifier classification matches Miranda lexer rules
-pub fn okid(ch: c_int) bool {
+pub fn okid(ch: i32) bool {
     return ((ch >= 'a' and ch <= 'z') or
         (ch >= 'A' and ch <= 'Z') or
         (ch >= '0' and ch <= '9') or

@@ -27,7 +27,7 @@ pub const ReplSession = struct {
     /// after each in-process evaluation (Phase 3, docs/GO_PORT_PLAN.md —
     /// no more forked-child exit-code round trip to smuggle it back).
     last_elapsed_ns: ?i128 = null,
-    last_gc_count: ?c_long = null,
+    last_gc_count: ?i64 = null,
 };
 
 /// Pointer to the singleton REPL session state held in `current_interp`
@@ -44,5 +44,5 @@ test "ReplSession default values are self-consistent" {
     try @import("std").testing.expectEqual(@as(Word, 0), state.listing);
     try @import("std").testing.expectEqual(@as(Word, 0), state.verbosity);
     try @import("std").testing.expectEqual(@as(?i128, null), state.last_elapsed_ns);
-    try @import("std").testing.expectEqual(@as(?c_long, null), state.last_gc_count);
+    try @import("std").testing.expectEqual(@as(?i64, null), state.last_gc_count);
 }

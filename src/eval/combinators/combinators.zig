@@ -756,7 +756,7 @@ pub fn handleERROR(ctx: *ReductionCtx) reduce.ReduceError!void {
 }
 
 /// POSIX `WEXITSTATUS`: the low-byte exit code from a child's wait status.
-fn WEXITSTATUS(status: c_int) c_int {
+fn WEXITSTATUS(status: i32) i32 {
     return (status >> 8) & 0xff;
 }
 
@@ -776,7 +776,7 @@ pub fn handleWAIT(ctx: *ReductionCtx) void {
         hold = reduce.hdGet(ctx.heap, reduce.tlGet(ctx.heap, Value.fromRaw(w.*))).toRaw();
         w.* = reduce.tlGet(ctx.heap, reduce.tlGet(ctx.heap, Value.fromRaw(w.*))).toRaw();
     } else {
-        var status: c_int = 0;
+        var status: i32 = 0;
         while (true) {
             const res = os.wait(&status);
             if (res == lastarg.toRaw() or res == -1) {

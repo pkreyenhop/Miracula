@@ -97,7 +97,7 @@ pub const RuntimeState = struct {
     // ── Bootstrap scratch (startup.zig) ─────────────────────────────────────
     /// Version-mismatch scratch, filled by `checkVersion` and drained by
     /// `libFails` while resolving the miralib directory at startup.
-    vstack: [4]c_int = undefined,
+    vstack: [4]i32 = undefined,
     /// The corresponding directory paths for `vstack`.
     mstack: [4][*:0]const u8 = undefined,
     /// Count of recorded mismatches in `vstack`/`mstack` (<= 4).

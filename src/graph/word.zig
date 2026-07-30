@@ -14,7 +14,7 @@ const std = @import("std");
 
 /// The interpreter's universal machine word — a tagged graph value: a bare
 /// immediate (char/small int), an atom code (token/combinator/named atom), or a
-/// heap-cell handle. Native 64-bit (R4.5 retired the old `c_long`).
+/// heap-cell handle. Native 64-bit (R4.5 retired the old `i64`).
 pub const Word = i64;
 
 /// The reduction engine's fallible outcomes (Phase 3, docs/GO_PORT_PLAN.md
@@ -32,7 +32,7 @@ pub const Word = i64;
 /// `stoDbl`/`setdbl` without importing the reducer back (a cycle).
 pub const ReduceError = error{ Interrupted, FloatOverflow };
 /// A Unicode code point, as carried by the char / `UNICODE`-cell paths.
-pub const Unicode = c_ulong;
+pub const Unicode = u64;
 
 /// Base of the combinator / named-atom code range: combinator code `n` is
 /// `CMBASE + n`, and its printed name is `combinator.cmbnms[n]`.

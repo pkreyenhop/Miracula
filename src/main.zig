@@ -30,7 +30,7 @@ pub fn main(ctx: std.process.Init) !void {
 
     const raw_args = ctx.minimal.args.vector;
     const argv: [*][*:0]u8 = @ptrCast(@constCast(raw_args.ptr));
-    const argc: c_int = @intCast(raw_args.len);
+    const argc: i32 = @intCast(raw_args.len);
     const exit_code = startup.mainEntry(&interp_storage.heap, argc, argv);
     if (@import("version_options").is_strict or @import("builtin").mode == .Debug) {
         interp_storage.heap.validate();

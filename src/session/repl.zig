@@ -92,7 +92,7 @@ const rdline = lex.rdline;
 const resetLex = lex.resetLex;
 /// The top-level REPL. Loads `initscript`, then reads and dispatches user input until EOF: `?`/`??` (info), `:`/`/` (commands), `!` (shell escape), `||` (comment), or an expression to evaluate.
 pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, initscript: [*:0]u8) void {
-    var ch: c_int = undefined;
+    var ch: i32 = undefined;
     var lb: ?[*:0]u8 = undefined;
 
     if (rs.magic) {
@@ -298,7 +298,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
 /// clearing the flag again) happens synchronously once `reduce()`'s polled
 /// check propagates `error.Interrupted` up through normal Zig control flow,
 /// in `evaluateRepl` below.
-pub fn onInterrupt(sig: c_int) callconv(.c) void {
+pub fn onInterrupt(sig: i32) callconv(.c) void {
     _ = sig;
     rt.interrupt_flag.store(true, .release);
 }
@@ -407,10 +407,10 @@ pub fn announce() void {
 }
 
 /// Read up to `n_val-1` bytes (or through a newline) from `in` into `s_ptr`. Returns 0 on immediate EOF, else 1.
-pub fn getLine(in: ?*word.Stream, n_val: Word, s_ptr: [*]u8) c_int {
+pub fn getLine(in: ?*word.Stream, n_val: Word, s_ptr: [*]u8) i32 {
     var s = s_ptr;
     var n = n_val;
-    var ch: c_int = undefined;
+    var ch: i32 = undefined;
     while (n > 1) : (n -= 1) {
         ch = abi.getc(in);
         if (ch == abi.EOF) break;
@@ -436,7 +436,7 @@ pub fn badEditor(rs: *rt.RuntimeState) bool {
 pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, t_val: Word, f: ?*word.Stream, fil: Word) Word {
     _ = rs;
     var t1: Word = undefined;
-    var ch: c_int = undefined;
+    var ch: i32 = undefined;
     repl_session.session().lastexp = word.UNDEF;
     while (true) {
         ch = abi.getc(f);
