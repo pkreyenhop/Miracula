@@ -71,7 +71,6 @@
 #       Martin Guy <martinwguy@gmail.com>, July-November 2024
 
 # TODO:
-# - If a URL transfer failed due to bad network connectivity, retry it.
 # - When creating new issues from local, fill in creation date and username.
 #   You can't set or change the remote creation date, but it your clocks are
 #   synchronized it will be the same within a second or two.
@@ -433,6 +432,7 @@ geturl() {
     local result
     local status
     local message
+    local retries
 
     errs=/tmp/issues-geturl-errs$$
 
@@ -475,10 +475,36 @@ geturl() {
     # $result here is a filename into which we put the result
     # because if we do result="$($command)" a final newline is removed.
     result=/tmp/issues-geturl-result$$
-    $command "$url" > $result 2> $errs
-    status=$?
-    if [ $status != 0 ]
-    then
+
+    retries=5
+    while :
+    do
+	$command "$url" > $result 2> $errs
+	status=$?
+
+	if [ $status -eq 0 ]
+	then
+	    break
+	fi
+
+	# 6: Could not resolve host
+	# 7: Failed to connect to host
+	# 28: Operation timeout
+	# 52: Empty reply from server
+	# 56: Failure in receiving network data
+	# 4 (wget): Network error
+	case $transfer:$status in
+	curl:6|curl:7|curl:28|curl:52|curl:56|wget:4)
+	    if [ $retries -gt 0 ]
+	    then
+		echo "Network error ($status), retrying... ($retries retries left)" 1>&2
+		sleep 2
+		retries=$((retries - 1))
+		continue
+	    fi
+	    ;;
+	esac
+
 	{
 	    echo "$method $url exited $status"
 	    cat $errs
@@ -491,7 +517,7 @@ geturl() {
 	} 1>&2
 	rm $errs $result
 	return $status
-    fi
+    done
     if [ "$method" = GET ] && [ ! -s $result ]
     then
 	{
@@ -531,6 +557,7 @@ puturl() {
     local command
     local result
     local status
+    local retries
 
     errs=/tmp/issues-puturl-errs$$
 
@@ -585,36 +612,58 @@ puturl() {
 	esac
     fi
 
-    case $transfer in
-    curl)
-	if $attachment
-	then
-	    $debug_URLs && \
-		 echo "$command -F attachment=@-;filename=\"$(echo "$data" | \
-				sed 's/[\"]/\\&/g')\"" "$url" 1>&2
-	    # Read data from stdin because @$data messes with {} and []
-	    result="$($command -F "attachment=@-;filename=\"$(echo "$data" | \
-				sed 's/[\"]/\\&/g')\"" "$url" < "$data" 2> $errs)"
+    retries=5
+    while :
+    do
+	case $transfer in
+	curl)
+	    if $attachment
+	    then
+		$debug_URLs && \
+		     echo "$command -F attachment=@-;filename=\"$(echo "$data" | \
+				    sed 's/[\"]/\\&/g')\"" "$url" 1>&2
+		# Read data from stdin because @$data messes with {} and []
+		result="$($command -F "attachment=@-;filename=\"$(echo "$data" | \
+				    sed 's/[\"]/\\&/g')\"" "$url" < "$data" 2> $errs)"
+		status=$?
+	    else
+		$debug_URLs && \
+		     echo "$command --data-binary \"$data\" \"$url\"" 1>&2
+		result="$($command --data-binary "$data" "$url" 2> $errs)"
+		status=$?
+	    fi
+	    ;;
+	wget)
+	    result="$($command --post-data "$data" "$url" 2> $errs)"
 	    status=$?
-	else
-	    $debug_URLs && \
-		 echo "$command --data-binary \"$data\" \"$url\"" 1>&2
-	    result="$($command --data-binary "$data" "$url" 2> $errs)"
-	    status=$?
-	fi
-	;;
-    wget)
-	result="$($command --post-data "$data" "$url" 2> $errs)"
-	status=$?
-    esac
+	esac
 
-    test $status != 0 && {
-	echo "$message":
-	cat $errs
-	test -n "$result" && echo "$result" | $jq -r .message
-    } 1>&2
+	if [ $status -eq 0 ]
+	then
+	    break
+	fi
+
+	case $transfer:$status in
+	curl:6|curl:7|curl:28|curl:52|curl:56|wget:4)
+	    if [ $retries -gt 0 ]
+	    then
+		echo "Network error ($status), retrying... ($retries retries left)" 1>&2
+		sleep 2
+		retries=$((retries - 1))
+		continue
+	    fi
+	    ;;
+	esac
+
+	test $status != 0 && {
+	    echo "$message":
+	    cat $errs
+	    test -n "$result" && echo "$result" | $jq -r .message
+	} 1>&2
+	rm $errs
+	return $status
+    done
     rm $errs
-    test $status != 0 && return $status
 
     # Eliminate CR from CRLF and ensure it is newline-terminated
     echo "$(echo "$result" | tr -d '\r')"
