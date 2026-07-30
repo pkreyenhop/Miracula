@@ -381,10 +381,10 @@ pub fn cmp(heap: *Heap, input_x: Word, input_y: Word) i32 {
 test "cmp: three-way -1 / 0 / 1" {
     tu.freshInterp();
     const heap = &heap_mod.heap().*;
-    try std.testing.expectEqual(@as(c_int, -1), cmp(heap, fromInt(heap, 1), fromInt(heap, 2)));
-    try std.testing.expectEqual(@as(c_int, 0), cmp(heap, fromInt(heap, 2), fromInt(heap, 2)));
-    try std.testing.expectEqual(@as(c_int, 1), cmp(heap, fromInt(heap, 2), fromInt(heap, 1)));
-    try std.testing.expectEqual(@as(c_int, -1), cmp(heap, fromInt(heap, -2), fromInt(heap, 1)));
+    try std.testing.expectEqual(@as(i32, -1), cmp(heap, fromInt(heap, 1), fromInt(heap, 2)));
+    try std.testing.expectEqual(@as(i32, 0), cmp(heap, fromInt(heap, 2), fromInt(heap, 2)));
+    try std.testing.expectEqual(@as(i32, 1), cmp(heap, fromInt(heap, 2), fromInt(heap, 1)));
+    try std.testing.expectEqual(@as(i32, -1), cmp(heap, fromInt(heap, -2), fromInt(heap, 1)));
 }
 
 /// Return `x * y`.
