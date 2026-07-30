@@ -4,6 +4,7 @@
 
 
 
+
 src/eval/combinators/combinators.zig -> src/os.zig
 src/eval/combinators/io.zig -> src/os.zig
 src/eval/combinators/lex.zig -> src/os.zig
@@ -63,6 +64,8 @@ src/os.zig -> src/semantics/unify.zig
 src/os.zig -> src/session/repl.zig
 src/semantics/infer.zig -> src/os.zig
 src/semantics/infer.zig -> src/session/script_store.zig
+src/semantics/infer_etype.zig -> src/session/script_store.zig
+src/semantics/infer_prims.zig -> src/os.zig
 src/semantics/lower.zig -> src/os.zig
 src/semantics/lower.zig -> src/session/repl_session.zig
 src/semantics/lower.zig -> src/session/script_store.zig
