@@ -2,6 +2,8 @@
 # Format: src/a.zig -> src/b.zig (one per line). Must shrink to
 # empty by the end of Phase 4 (docs/GO_PORT_PLAN.md).
 
+
+
 src/eval/combinators/combinators.zig -> src/os.zig
 src/eval/combinators/io.zig -> src/os.zig
 src/eval/combinators/lex.zig -> src/os.zig
@@ -64,6 +66,9 @@ src/semantics/infer.zig -> src/session/script_store.zig
 src/semantics/lower.zig -> src/os.zig
 src/semantics/lower.zig -> src/session/repl_session.zig
 src/semantics/lower.zig -> src/session/script_store.zig
+src/semantics/lower_front.zig -> src/os.zig
+src/semantics/lower_prims.zig -> src/os.zig
+src/semantics/lower_sort.zig -> src/os.zig
 src/semantics/modules.zig -> src/session/config_state.zig
 src/semantics/show_fns.zig -> src/session/interp.zig
 src/semantics/symbols.zig -> src/session/interp.zig

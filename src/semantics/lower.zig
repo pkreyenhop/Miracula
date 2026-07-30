@@ -32,10 +32,6 @@ const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 const ls = lex_state.ls;
 const match = @import("match.zig");
 
-/// The standard-output `Stream` handle.
-fn getStdout() ?*word.Stream {
-    return os.stdout();
-}
 
 const Word = i64;
 const Value = @import("../graph/value.zig").Value;
@@ -152,273 +148,54 @@ const mkgvar = lex.mkgvar;
 const syntax = setup.syntax;
 const acterror = setup.acterror;
 
-/// The node tag of cell `x`.
-inline fn getTag(heap: *Heap, x: Word) word.NodeTag {
-    return heap.getTag(x);
-}
 
-/// Head (`hd`) of cell `x`.
-fn h(heap: *Heap, x: Word) Word {
-    return heap.h(x);
-}
 
-/// Pointer to the head field of cell `x`.
-fn hp(heap: *Heap, x: Word) *Word {
-    return heap.hp(x);
-}
 
-/// Tail (`tl`) of cell `x`.
-fn t(heap: *Heap, x: Word) Word {
-    return heap.t(x);
-}
 
-/// Pointer to the tail field of cell `x`.
-fn tp(heap: *Heap, x: Word) *Word {
-    return heap.tp(x);
-}
 
-/// The head of an application spine (walk `hd` while it is an `AP`).
-fn appHead(heap: *Heap, input_x: Word) Word {
-    var x = input_x;
-    while (getTag(heap, x) == .AP) {
-        x = h(heap, x);
-    }
-    return x;
-}
 
-/// Allocate a `CONS` cell `(x . y)`.
-fn cons(heap: *Heap, x: Word, y: Word) Word {
-    return make(heap, .CONS, x, y);
-}
 
-/// Allocate a `PAIR` cell `(x . y)`.
-fn pair(heap: *Heap, x: Word, y: Word) Word {
-    return make(heap, .PAIR, x, y);
-}
 
-/// Allocate a `DATAPAIR` cell.
-fn datapair(heap: *Heap, x: Word, y: Word) Word {
-    return make(heap, .DATAPAIR, x, y);
-}
 
-/// Allocate a `CONSTRUCTOR` cell (tag `n`, fields `x`).
-fn constructor(heap: *Heap, n: Word, x: Word) Word {
-    return make(heap, .CONSTRUCTOR, n, x);
-}
 
-/// Allocate a `LAMBDA` cell `(x . y)`.
-fn lambda(heap: *Heap, x: Word, y: Word) Word {
-    return make(heap, .LAMBDA, x, y);
-}
 
-/// Allocate a `SHARE` cell (a shared / lazily-evaluated binding).
-fn share(heap: *Heap, x: Word, y: Word) Word {
-    return make(heap, .SHARE, x, y);
-}
 
-/// Allocate a `TRIES` cell (a chain of pattern-match alternatives).
-fn tries(heap: *Heap, x: Word, y: Word) Word {
-    return make(heap, .TRIES, x, y);
-}
 
-/// Allocate a `LET` cell.
-fn let(heap: *Heap, x: Word, y: Word) Word {
-    return make(heap, .LET, x, y);
-}
 
-/// Allocate a `LETREC` cell.
-fn letrec(heap: *Heap, x: Word, y: Word) Word {
-    return make(heap, .LETREC, x, y);
-}
 
-/// Allocate an application `(x y)`.
-fn ap(heap: *Heap, x: Word, y: Word) Word {
-    return make(heap, .AP, x, y);
-}
 
-/// Allocate `((x y) z)`.
-fn ap2(heap: *Heap, x: Word, y: Word, z: Word) Word {
-    return ap(heap, ap(heap, x, y), z);
-}
 
-/// Allocate `(((w x) y) z)`.
-fn ap3(heap: *Heap, w: Word, x: Word, y: Word, z: Word) Word {
-    return ap(heap, ap2(heap, w, x, y), z);
-}
 
-/// The interned name text of id `x`.
-pub fn getId(heap: *Heap, x: Word) [*:0]const u8 {
-    return strtab.strOf(strtab.table(), h(heap, h(heap, h(heap, x))));
-}
 
-/// The definition-site field of id `x`.
-fn idWho(heap: *Heap, x: Word) Word {
-    return t(heap, h(heap, h(heap, x)));
-}
 
-/// Set the definition-site field of id `x`.
-fn setIdWho(heap: *Heap, x: Word, value: Word) void {
-    tp(heap, h(heap, h(heap, x))).* = value;
-}
 
-/// The type field of id `x`.
-fn idType(heap: *Heap, x: Word) Word {
-    return t(heap, h(heap, x));
-}
 
-/// The value field of id `x`.
-fn idVal(heap: *Heap, x: Word) Word {
-    return t(heap, x);
-}
 
-/// Set the type field of id `x`.
-fn setIdType(heap: *Heap, x: Word, value: Word) void {
-    tp(heap, h(heap, x)).* = value;
-}
 
-/// Set the value field of id `x`.
-fn setIdVal(heap: *Heap, x: Word, value: Word) void {
-    tp(heap, x).* = value;
-}
 
-/// Build a type descriptor cell `((arity . showfn) . (class . info))`.
-fn makeTyp(heap: *Heap, arity: Word, showfn: Word, class: Word, info: Word) Word {
-    return cons(heap, cons(heap, arity, showfn), cons(heap, class, info));
-}
 
-/// Add id `x` to the current file's definition environment.
-fn addToEnv(heap: *Heap, x: Word) void {
-    const current_file_defs = h(heap, heap.files);
-    if (current_file_defs >= ATOMLIMIT) {
-        tp(heap, current_file_defs).* = cons(heap, x, tp(heap, current_file_defs).*);
-    }
-}
 
-/// Whether `x` names a data constructor.
-fn isConstructor(heap: *Heap, x: Word) bool {
-    return getTag(heap, x) == .ID and isconstrname(getId(heap, x));
-}
 
-/// Whether `x` names an ordinary variable.
-fn isVariable(heap: *Heap, x: Word) bool {
-    return getTag(heap, x) == .ID and !isconstrname(getId(heap, x));
-}
 
-/// Whether `x` is an `n+k` pattern.
-fn isNPlusKPattern(heap: *Heap, x: Word) bool {
-    return getTag(heap, x) == .AP and getTag(heap, h(heap, x)) == .AP and h(heap, h(heap, x)) == PLUS;
-}
 
-/// Whether a type node is a function (`->`) type.
-fn isArrowType(heap: *Heap, x: Word) bool {
-    return getTag(heap, x) == .AP and getTag(heap, h(heap, x)) == .AP and h(heap, h(heap, x)) == arrow_t;
-}
 
-/// Whether a type node is a list type.
-fn isListType(heap: *Heap, x: Word) bool {
-    return getTag(heap, x) == .AP and h(heap, x) == list_t;
-}
 
-/// Whether a type node is a type variable.
-fn isTypeVariable(heap: *Heap, x: Word) bool {
-    return getTag(heap, x) == .TVAR;
-}
 
-/// Whether a type node is a compound (application) type.
-fn isCompoundType(heap: *Heap, x: Word) bool {
-    return getTag(heap, x) == .AP;
-}
 
-/// Whether `x` is a char value.
-fn isChar(x: Word) bool {
-    return 0 <= x and x <= 255;
-}
 
-/// The arity recorded in a type descriptor.
-fn typeArity(heap: *Heap, x: Word) Word {
-    return h(heap, h(heap, t(heap, x)));
-}
 
-/// The `show` function recorded in a type descriptor.
-fn typeShowFn(heap: *Heap, x: Word) Word {
-    return t(heap, h(heap, t(heap, x)));
-}
 
-/// The class (algebraic/synonym/abstract) of a type descriptor.
-fn typeClass(heap: *Heap, x: Word) Word {
-    return h(heap, t(heap, t(heap, x)));
-}
 
-/// Set the class field of a type descriptor.
-fn setTypeClass(heap: *Heap, x: Word, value: Word) void {
-    hp(heap, t(heap, t(heap, x))).* = value;
-}
 
-/// The info field of a type descriptor.
-fn typeInfo(heap: *Heap, x: Word) Word {
-    return t(heap, t(heap, t(heap, x)));
-}
 
-/// Set the info field of a type descriptor.
-fn setTypeInfo(heap: *Heap, x: Word, value: Word) void {
-    tp(heap, t(heap, t(heap, x))).* = value;
-}
 
-/// The index of type variable `x`.
-fn getTypeVariable(heap: *Heap, x: Word) Word {
-    return t(heap, x);
-}
 
-/// Box index `i` (bare if small, else an `INT` cell).
-fn mkindex(i: Word) Word {
-    return if (word.fitsInByte(i)) i else make(heap_mod.heap(), .INT, i, 0);
-}
 
-/// The left-hand side of a definition cell `d`.
-fn dlhs(heap: *Heap, d: Word) Word {
-    return h(heap, d);
-}
 
-/// Set the left-hand side of a definition cell `d`.
-fn setDlhs(heap: *Heap, d: Word, value: Word) void {
-    hp(heap, d).* = value;
-}
 
-/// The value of a definition cell `d`.
-fn dval(heap: *Heap, d: Word) Word {
-    return t(heap, t(heap, d));
-}
 
-/// Set the value of a definition cell `d`.
-fn setDval(heap: *Heap, d: Word, value: Word) void {
-    tp(heap, t(heap, d)).* = value;
-}
 
-/// The underlying `CONSTRUCTOR` cell of id `x` (through any `MKSTRICT` wrapper).
-pub fn primconstr(heap: *Heap, input_x: Word) Word {
-    var x = t(heap, input_x); // idVal(heap, x) = CONSTRUCTOR cell (or MKSTRICT wrapper for strict ctors)
-    while (getTag(heap, x) != .CONSTRUCTOR) {
-        x = t(heap, x);
-    }
-    return x;
-}
 
-/// Whether `x` is a member of list `l`.
-///
-/// Tests: memb: membership in a list
-pub fn memb(heap: *Heap, input_l: Word, x: Word) Word {
-    var l = input_l;
-    if (getTag(heap, x) == .TVAR) {
-        while (l != NIL and t(heap, h(heap, l)) != t(heap, x)) {
-            l = t(heap, l);
-        }
-    } else {
-        while (l != NIL and h(heap, l) != x) {
-            l = t(heap, l);
-        }
-    }
-    return if (l != NIL) 1 else 0;
-}
 
 test "memb: membership in a list" {
     tu.freshInterp();
@@ -427,26 +204,6 @@ test "memb: membership in a list" {
     try std.testing.expectEqual(@as(Word, 0), memb(heap_mod.heap(), l, word.S));
 }
 
-/// Whether `x` and `y` are structurally equal.
-///
-/// Tests: same: structural equality of graphs
-pub fn same(heap: *Heap, x: Word, y: Word) Word {
-    if (x == y) {
-        return 1;
-    }
-    const x_tag = getTag(heap, x);
-    const y_tag = getTag(heap, y);
-    if (x_tag == .ATOM or y_tag == .ATOM or x_tag != y_tag) {
-        return 0;
-    }
-    if (@intFromEnum(x_tag) < @intFromEnum(word.NodeTag.INT)) {
-        return if (h(heap, x) == h(heap, y) and t(heap, x) == t(heap, y)) 1 else 0;
-    }
-    if (@intFromEnum(x_tag) > @intFromEnum(word.NodeTag.STRCONS)) {
-        return if (same(heap, h(heap, x), h(heap, y)) != 0 and same(heap, t(heap, x), t(heap, y)) != 0) 1 else 0;
-    }
-    return if (h(heap, x) == h(heap, y) and same(heap, t(heap, x), t(heap, y)) != 0) 1 else 0;
-}
 
 test "same: structural equality of graphs" {
     tu.freshInterp();
@@ -457,116 +214,11 @@ test "same: structural equality of graphs" {
     try std.testing.expectEqual(@as(Word, 0), same(heap_mod.heap(), a, cons(heap_mod.heap(), word.False, NIL)));
 }
 
-/// Collect the identifiers bound by pattern/definition `x`.
-pub fn getIds(heap: *Heap, x: Word) Word {
-    if (word.isAtom(x)) {
-        return NIL;
-    }
-    if (h(heap, x) == CONST or isConstructor(heap, x)) {
-        return NIL;
-    }
-    if (getTag(heap, x) == .ID) {
-        return cons(heap, x, NIL);
-    }
-    if (isNPlusKPattern(heap, x)) {
-        return getIds(heap, t(heap, x));
-    }
-    return UNION(heap, Value.fromRaw(getIds(heap, h(heap, x))), Value.fromRaw(getIds(heap, t(heap, x)))).toRaw();
-}
 
-/// Build a tuple from element list `x`.
-pub fn mktuple(heap: *Heap, input_x: Word) Word {
-    var x = input_x;
-    if (word.isAtom(x)) {
-        return NIL;
-    }
-    if (h(heap, x) == CONST or isConstructor(heap, x)) {
-        return NIL;
-    }
-    if (getTag(heap, x) == .ID) {
-        return x;
-    }
-    if (isNPlusKPattern(heap, x)) {
-        return mktuple(heap, t(heap, x));
-    }
-    const y = mktuple(heap, t(heap, x));
-    x = mktuple(heap, h(heap, x));
-    return if (x == NIL) y else if (y == NIL) x else pair(heap, x, y);
-}
 
-/// Whether pattern `x` is irrefutable (always matches).
-pub fn irrefutable(heap: *Heap, x: Word) Word {
-    if (word.isAtom(x)) {
-        return 0;
-    }
-    if (getTag(heap, x) == .CONS) {
-        return 0;
-    }
-    if (isConstructor(heap, x)) {
-        return member(heap, Value.fromRaw(cs().SGC), Value.fromRaw(x));
-    }
-    if (getTag(heap, x) == .ID) {
-        return 1;
-    }
-    if (isNPlusKPattern(heap, x)) {
-        return 0;
-    }
-    return if (irrefutable(heap, h(heap, x)) != 0 and irrefutable(heap, t(heap, x)) != 0) 1 else 0;
-}
 
-/// Whether expression `e` may fail to match.
-pub fn fallible(heap: *Heap, input_e: Word) Word {
-    var e = input_e;
-    while (true) {
-        const e_tag = getTag(heap, e);
-        switch (e_tag) {
-            .LABEL => {
-                e = t(heap, e);
-                continue;
-            },
-            .LETREC, .LET => {
-                e = t(heap, e);
-            },
-            .LAMBDA => {
-                if (irrefutable(heap, h(heap, e)) != 0) {
-                    e = t(heap, e);
-                } else {
-                    return 1;
-                }
-            },
-            .AP => {
-                if (getTag(heap, h(heap, e)) == .AP and getTag(heap, h(heap, h(heap, e))) == .AP and h(heap, h(heap, h(heap, e))) == COND) {
-                    e = t(heap, e);
-                } else {
-                    return if (e == FAIL) 1 else 0;
-                }
-            },
-            else => {
-                return if (e == FAIL) 1 else 0;
-            },
-        }
-    }
-}
 
-/// The source-location info attached to right-hand side `rhs`.
-pub fn hereInfo(heap: *Heap, rhs: Word) Word {
-    var x = t(heap, rhs);
-    while (t(heap, x) != NIL) {
-        x = t(heap, x);
-    }
-    return h(heap, h(heap, x));
-}
 
-/// The last cell of list `x`.
-///
-/// Tests: lastlink: the last cell of a list
-pub fn lastlink(heap: *Heap, input_x: Word) Word {
-    var x = input_x;
-    while (t(heap, x) != NIL) {
-        x = t(heap, x);
-    }
-    return x;
-}
 
 test "lastlink: the last cell of a list" {
     tu.freshInterp();
@@ -576,372 +228,91 @@ test "lastlink: the last cell of a list" {
     try std.testing.expectEqual(@as(Word, NIL), t(heap_mod.heap(), last));
 }
 
-/// Rewrite repeated variables in comprehension qualifiers `qq` into equality guards.
-pub fn fixrepeats(heap: *Heap, input_qq: Word) Word {
-    var q = h(heap, input_qq);
-    var rhs = q;
-    var qq = t(heap, input_qq);
-    while (h(heap, rhs) == REPEAT) {
-        rhs = t(heap, t(heap, rhs));
-    }
-    rhs = t(heap, t(heap, rhs));
-    while (h(heap, q) == REPEAT) {
-        qq = cons(heap, cons(heap, GENERATOR, cons(heap, h(heap, t(heap, q)), rhs)), qq);
-        q = t(heap, t(heap, q));
-    }
-    return cons(heap, q, qq);
-}
 
-/// Abstract a show function `f` over a type's arity parameters.
-pub fn abshfnck(heap: *Heap, t_type: Word, f_input: Word) Word {
-    var f = f_input;
-    var n = typeArity(heap, t_type);
-    var i: Word = 1;
-    while (i <= n) {
-        if (!isArrowType(heap, f)) {
-            return 0;
-        }
-        const param = t(heap, h(heap, f));
-        if (!(isArrowType(heap, param) and isTypeVariable(heap, t(heap, h(heap, param))) and getTypeVariable(heap, t(heap, h(heap, param))) == i and isListType(heap, t(heap, param)) and t(heap, t(heap, param)) == char_t)) {
-            return 0;
-        }
-        i += 1;
-        f = t(heap, f);
-    }
-    if (!(isArrowType(heap, f) and isListType(heap, t(heap, f)) and t(heap, t(heap, f)) == char_t)) {
-        return 0;
-    }
-    f = t(heap, h(heap, f));
-    while (isCompoundType(heap, f) and isTypeVariable(heap, t(heap, f)) and getTypeVariable(heap, t(heap, f)) == n) {
-        n -= 1;
-        f = h(heap, f);
-    }
-    return if (f == t_type) 1 else 0;
-}
 
-/// Combine two bracket-abstraction results, optimising redundant `K`s.
-pub fn combine(heap: *Heap, x: Word, y: Word) Word {
-    const a = getTag(heap, x) == .AP and h(heap, x) == K;
-    const b = getTag(heap, y) == .AP and h(heap, y) == K;
-    if (a and b) {
-        return ap(heap, K, ap(heap, t(heap, x), t(heap, y)));
-    }
-    if (a and y == I) {
-        return t(heap, x);
-    }
-    const b1 = getTag(heap, y) == .AP and getTag(heap, h(heap, y)) == .AP and h(heap, h(heap, y)) == B;
-    if (a) {
-        if (b1) {
-            return ap3(heap, B1, t(heap, x), t(heap, h(heap, y)), t(heap, y));
-        }
-        if (getTag(heap, t(heap, x)) == .AP and getTag(heap, h(heap, t(heap, x))) == .AP and h(heap, h(heap, t(heap, x))) == COND) {
-            return ap3(heap, COND, t(heap, h(heap, t(heap, x))), ap(heap, K, t(heap, t(heap, x))), y);
-        }
-        return ap2(heap, B, t(heap, x), y);
-    }
-    const a1 = getTag(heap, x) == .AP and getTag(heap, h(heap, x)) == .AP and h(heap, h(heap, x)) == B;
-    if (b) {
-        if (a1) {
-            if (getTag(heap, t(heap, h(heap, x))) == .AP and h(heap, t(heap, h(heap, x))) == COND) {
-                return ap3(heap, COND, t(heap, t(heap, h(heap, x))), t(heap, x), y);
-            }
-            return ap3(heap, C1, t(heap, h(heap, x)), t(heap, x), t(heap, y));
-        }
-        return ap2(heap, C, x, t(heap, y));
-    }
-    if (a1) {
-        if (getTag(heap, t(heap, h(heap, x))) == .AP and h(heap, t(heap, h(heap, x))) == COND) {
-            return ap3(heap, COND, t(heap, t(heap, h(heap, x))), t(heap, x), y);
-        }
-        return ap3(heap, S1, t(heap, h(heap, x)), t(heap, x), y);
-    }
-    return ap2(heap, S, x, y);
-}
 
-/// Combine two abstraction results building a cons, optimising the `K` cases.
-pub fn liscomb(heap: *Heap, x: Word, y: Word) Word {
-    const a = getTag(heap, x) == .AP and h(heap, x) == K;
-    const b = getTag(heap, y) == .AP and h(heap, y) == K;
-    if (a and b) {
-        return ap(heap, K, cons(heap, t(heap, x), t(heap, y)));
-    }
-    if (a) {
-        if (y == I) {
-            return ap(heap, P, t(heap, x));
-        }
-        return ap2(heap, B_p, t(heap, x), y);
-    }
-    if (b) {
-        return ap2(heap, C_p, x, t(heap, y));
-    }
-    return ap2(heap, S_p, x, y);
-}
 
-/// Bracket-abstract variable `x` out of expression `e` (Turner's algorithm).
-pub fn abstract(heap: *Heap, input_x: Word, input_e: Word) Word {
-    var x = input_x;
-    var e = input_e;
-    switch (getTag(heap, x)) {
-        .ID => {
-            if (isConstructor(heap, x)) {
-                return if (member(heap, Value.fromRaw(cs().SGC), Value.fromRaw(x)) != 0) ap(heap, K, e) else ap2(heap, Ug, primconstr(heap, x), e);
-            }
-            return abstr(heap, x, e);
-        },
-        .CONS => {
-            if (h(heap, x) == CONST) {
-                if (getTag(heap, t(heap, x)) == .INT) {
-                    return ap2(heap, MATCHINT, t(heap, x), e);
-                }
-                return ap2(heap, MATCH, if (t(heap, x) == NILS) NIL else t(heap, x), e);
-            }
-            return ap(heap, U_, abstract(heap, h(heap, x), abstract(heap, t(heap, x), e)));
-        },
-        .TCONS, .PAIR => return ap(heap, U, abstract(heap, h(heap, x), abstract(heap, t(heap, x), e))),
-        .AP => {
-            if (member(heap, Value.fromRaw(cs().SGC), Value.fromRaw(appHead(heap, x))) != 0) {
-                return ap(heap, Uf, abstract(heap, h(heap, x), abstract(heap, t(heap, x), e)));
-            }
-            if (getTag(heap, h(heap, x)) == .AP and h(heap, h(heap, x)) == PLUS) {
-                return ap2(heap, ATLEAST, t(heap, h(heap, x)), abstract(heap, t(heap, x), e));
-            }
-            while (getTag(heap, x) == .AP) {
-                e = abstract(heap, t(heap, x), e);
-                x = h(heap, x);
-            }
-        },
-        else => {},
-    }
-    if (isConstructor(heap, x)) {
-        return ap2(heap, Ug, primconstr(heap, x), e);
-    }
-    _ = word.print("error in declaration of \"{s}\", undeclared constructor in pattern: ", .{getId(heap, cs().current_id)});
-    const stdout_val = getStdout();
-    out(heap, stdout_val, x);
-    _ = word.print("\n", .{});
-    return NIL;
-}
 
-/// Bracket-abstract `x` from `e` (the recursive inner step).
-pub fn abstr(heap: *Heap, x: Word, e: Word) Word {
-    switch (getTag(heap, e)) {
-        .TCONS, .PAIR, .CONS => return liscomb(heap, abstr(heap, x, h(heap, e)), abstr(heap, x, t(heap, e))),
-        .AP => {
-            if (h(heap, e) == BADCASE or h(heap, e) == CONFERROR) {
-                return ap(heap, K, e);
-            }
-            return combine(heap, abstr(heap, x, h(heap, e)), abstr(heap, x, t(heap, e)));
-        },
-        .LAMBDA, .LET, .LETREC, .TRIES, .LABEL, .SHOW, .LEXER, .SHARE => {
-            std.debug.print("impossible event in abstr (main.tag={d})\n", .{getTag(heap, e)});
-            os.exit(1);
-        },
-        else => {
-            if (x == e or (isTypeVariable(heap, x) and isTypeVariable(heap, e) and getTypeVariable(heap, x) == getTypeVariable(heap, e))) {
-                return I;
-            }
-            return ap(heap, K, e);
-        },
-    }
-}
 
-/// Bracket-abstract a list of variables `x` from `e`.
-pub fn abstrlist(heap: *Heap, x_input: Word, e: Word) Word {
-    switch (getTag(heap, e)) {
-        .TCONS, .PAIR, .CONS => return liscomb(heap, abstrlist(heap, x_input, h(heap, e)), abstrlist(heap, x_input, t(heap, e))),
-        .AP => {
-            if (h(heap, e) == BADCASE or h(heap, e) == CONFERROR) {
-                return ap(heap, K, e);
-            }
-            return combine(heap, abstrlist(heap, x_input, h(heap, e)), abstrlist(heap, x_input, t(heap, e)));
-        },
-        .LAMBDA, .LET, .LETREC, .TRIES, .LABEL, .SHOW, .LEXER, .SHARE => {
-            std.debug.print("impossible event in abstrlist (main.tag={d})\n", .{getTag(heap, e)});
-            os.exit(1);
-        },
-        else => {
-            var i: Word = 0;
-            var x = x_input;
-            while (x != NIL and h(heap, x) != e) {
-                i += 1;
-                x = t(heap, x);
-            }
-            if (x == NIL) {
-                return ap(heap, K, e);
-            }
-            return ap(heap, SUBSCRIPT, mkindex(i));
-        },
-    }
-}
 
-/// Build a lazy (shared) binding for definition `d`.
-pub fn mklazy(heap: *Heap, d: Word) Word {
-    if (irrefutable(heap, dlhs(heap, d)) != 0) {
-        return d;
-    }
-    const ids = mktuple(heap, dlhs(heap, d));
-    if (ids == NIL) {
-        std.debug.print("impossible event in mklazy\n", .{});
-        return d;
-    }
-    setDval(heap, d, ap2(heap, TRY, ap(heap, lambda(heap, dlhs(heap, d), ids), dval(heap, d)), ap(heap, CONFERROR, cons(heap, dlhs(heap, d), hereInfo(heap, dval(heap, d))))));
-    setDlhs(heap, d, ids);
-    return d;
-}
 
-/// Build a lazy binding for `d` (the new-parser variant).
-pub fn newMkLazy(heap: *Heap, d: Word) Word {
-    const ids = getIds(heap, dlhs(heap, d));
-    if (ids == NIL) {
-        std.debug.print("impossible event in newMkLazy\n", .{});
-        return d;
-    }
-    setDval(heap, d, ap2(heap, TRY, ap(heap, lambda(heap, dlhs(heap, d), ids), dval(heap, d)), ap(heap, CONFERROR, cons(heap, dlhs(heap, d), hereInfo(heap, dval(heap, d))))));
-    setDlhs(heap, d, ids);
-    return d;
-}
 
-/// Compile a ZF (list comprehension) expression.
-pub fn compzf(heap: *Heap, input_e: Word, input_qq: Word, diag: Word) Word {
-    var e = input_e;
-    var qq = input_qq;
-    var hold: Word = NIL;
-    var r: Word = 0;
-    var g1: Word = -1;
-    while (qq != NIL) {
-        if (h(heap, h(heap, qq)) == REPEAT) {
-            qq = fixrepeats(heap, qq);
-        }
-        hold = cons(heap, h(heap, qq), hold);
-        if (h(heap, h(heap, qq)) == GUARD) {
-            r += 1;
-        }
-        qq = t(heap, qq);
-    }
-    qq = hold;
-    while (qq != NIL and h(heap, h(heap, qq)) == GUARD) {
-        r -= 1;
-        qq = t(heap, qq);
-    }
-    if (h(heap, h(heap, hold)) == GENERATOR) {
-        g1 = t(heap, t(heap, h(heap, hold)));
-    }
-    e = transzf(heap, e, hold, if (diag != 0) rt.rs().diagonalise else rt.rs().concat);
-    if (diag != 0) {
-        while (r != 0) {
-            r -= 1;
-            e = ap(heap, rt.rs().concat, e);
-        }
-    }
-    return if (e == g1) ap2(heap, APPEND, NIL, e) else e;
-}
 
-/// Translate a ZF comprehension body `e` over qualifiers `qq`.
-pub fn transzf(heap: *Heap, e_input: Word, qq_input: Word, conc: Word) Word {
-    var e = e_input;
-    const qq = qq_input;
-    if (qq == NIL) {
-        return cons(heap, e, NIL);
-    }
-    const q = h(heap, qq);
-    if (h(heap, q) == GUARD) {
-        return ap3(heap, COND, t(heap, q), transzf(heap, e, t(heap, qq), conc), NIL);
-    }
-    if (t(heap, qq) == NIL) {
-        if (h(heap, t(heap, q)) == e and isVariable(heap, e)) {
-            return t(heap, t(heap, q));
-        }
-        if (irrefutable(heap, h(heap, t(heap, q))) != 0) {
-            return ap2(heap, MAP, lambda(heap, h(heap, t(heap, q)), e), t(heap, t(heap, q)));
-        }
-        return ap2(heap, FLATMAP, lambda(heap, h(heap, t(heap, q)), cons(heap, e, NIL)), t(heap, t(heap, q)));
-    }
-    const q2 = h(heap, t(heap, qq));
-    if (h(heap, q2) == GUARD) {
-        if (conc == rt.rs().concat) {
-            tp(heap, t(heap, q)).* = ap2(heap, FILTER, lambda(heap, h(heap, t(heap, q)), t(heap, q2)), t(heap, t(heap, q)));
-            tp(heap, qq).* = t(heap, t(heap, qq));
-            return transzf(heap, e, qq, conc);
-        }
-        e = ap3(heap, COND, t(heap, q2), cons(heap, e, NIL), NIL);
-        tp(heap, qq).* = t(heap, t(heap, qq));
-        return transzf(heap, e, qq, conc);
-    }
-    return ap(heap, conc, transzf(heap, transzf(heap, e, t(heap, qq), conc), cons(heap, q, NIL), conc));
-}
 
-/// The recorded source location of the type spec for `x`.
-pub fn getspecloc(heap: *Heap, x: Word) Word {
-    var s = cs().speclocs;
-    while (s != NIL and h(heap, h(heap, s)) != x) {
-        s = t(heap, s);
-    }
-    return if (s == NIL) idWho(heap, x) else t(heap, h(heap, s));
-}
 
-/// Translate a type identifier `x`.
-pub fn transtypeid(heap: *Heap, x: Word) Word {
-    const n_span = std.mem.span(getId(heap, x));
-    if (std.mem.eql(u8, n_span, "bool")) return bool_t;
-    if (std.mem.eql(u8, n_span, "num")) return num_t;
-    if (std.mem.eql(u8, n_span, "char")) return char_t;
-    return x;
-}
 
-/// Left-factor the common prefixes among grammar alternatives `x`.
-pub fn leftfactor(heap: *Heap, x: Word) Word {
-    var a: Word = undefined;
-    var b: Word = undefined;
-    var rhs = t(heap, h(heap, x));
-    var d: Word = undefined;
-    if (getTag(heap, rhs) == .AP and getTag(heap, h(heap, rhs)) == .AP and h(heap, h(heap, rhs)) == G_SEQ) {
-        a = t(heap, h(heap, rhs));
-        b = t(heap, rhs);
-    } else {
-        return x;
-    }
-    d = t(heap, x);
-    if (same(heap, a, d) != 0) {
-        hp(heap, x).* = ap(heap, G_SEQ, a);
-        tp(heap, x).* = ap2(heap, G_ALT, b, G_UNIT);
-        cs().lfrule += 1;
-        return x;
-    }
-    if (getTag(heap, d) == .AP and getTag(heap, h(heap, d)) == .AP) {
-        rhs = h(heap, h(heap, d));
-    } else {
-        return x;
-    }
-    if (rhs == G_SEQ and same(heap, a, t(heap, h(heap, d))) != 0) {
-        rhs = t(heap, d);
-        hp(heap, x).* = ap(heap, G_SEQ, a);
-        tp(heap, x).* = leftfactor(heap, ap2(heap, G_ALT, b, rhs));
-        cs().lfrule += 1;
-        return x;
-    }
-    if (rhs != G_ALT) {
-        return x;
-    }
-    rhs = t(heap, h(heap, d));
-    if (same(heap, a, rhs) != 0) {
-        d = t(heap, d);
-        hp(heap, x).* = ap(heap, G_ALT, ap2(heap, G_SEQ, a, ap2(heap, G_ALT, b, G_UNIT)));
-        tp(heap, x).* = d;
-        cs().lfrule += 1;
-        return leftfactor(heap, x);
-    }
-    if (getTag(heap, rhs) == .AP and getTag(heap, h(heap, rhs)) == .AP and h(heap, h(heap, rhs)) == G_SEQ and same(heap, a, t(heap, h(heap, rhs))) != 0) {
-        rhs = t(heap, rhs);
-        d = t(heap, d);
-        hp(heap, x).* = ap(heap, G_ALT, ap2(heap, G_SEQ, a, leftfactor(heap, ap2(heap, G_ALT, b, rhs))));
-        tp(heap, x).* = d;
-        cs().lfrule += 1;
-        return leftfactor(heap, x);
-    }
-    return x;
-}
 
 /// Translate a `let` of definition `d` in body `e`.
+const lower_prims = @import("lower_prims.zig");
+pub const getTag = lower_prims.getTag;
+pub const h = lower_prims.h;
+pub const hp = lower_prims.hp;
+pub const t = lower_prims.t;
+pub const tp = lower_prims.tp;
+pub const cons = lower_prims.cons;
+pub const constructor = lower_prims.constructor;
+pub const share = lower_prims.share;
+pub const tries = lower_prims.tries;
+pub const let = lower_prims.let;
+pub const letrec = lower_prims.letrec;
+pub const ap = lower_prims.ap;
+pub const ap2 = lower_prims.ap2;
+pub const getId = lower_prims.getId;
+pub const idWho = lower_prims.idWho;
+pub const setIdWho = lower_prims.setIdWho;
+pub const idType = lower_prims.idType;
+pub const idVal = lower_prims.idVal;
+pub const setIdType = lower_prims.setIdType;
+pub const setIdVal = lower_prims.setIdVal;
+pub const makeTyp = lower_prims.makeTyp;
+pub const addToEnv = lower_prims.addToEnv;
+pub const isConstructor = lower_prims.isConstructor;
+pub const isArrowType = lower_prims.isArrowType;
+pub const isTypeVariable = lower_prims.isTypeVariable;
+pub const isCompoundType = lower_prims.isCompoundType;
+pub const typeArity = lower_prims.typeArity;
+pub const typeShowFn = lower_prims.typeShowFn;
+pub const typeClass = lower_prims.typeClass;
+pub const setTypeClass = lower_prims.setTypeClass;
+pub const typeInfo = lower_prims.typeInfo;
+pub const setTypeInfo = lower_prims.setTypeInfo;
+pub const mkindex = lower_prims.mkindex;
+pub const dlhs = lower_prims.dlhs;
+pub const dval = lower_prims.dval;
+const lower_front = @import("lower_front.zig");
+pub const primconstr = lower_front.primconstr;
+pub const memb = lower_front.memb;
+pub const same = lower_front.same;
+pub const getIds = lower_front.getIds;
+pub const mktuple = lower_front.mktuple;
+pub const irrefutable = lower_front.irrefutable;
+pub const fallible = lower_front.fallible;
+pub const hereInfo = lower_front.hereInfo;
+pub const lastlink = lower_front.lastlink;
+pub const fixrepeats = lower_front.fixrepeats;
+pub const abshfnck = lower_front.abshfnck;
+pub const combine = lower_front.combine;
+pub const liscomb = lower_front.liscomb;
+pub const abstract = lower_front.abstract;
+pub const abstr = lower_front.abstr;
+pub const abstrlist = lower_front.abstrlist;
+pub const mklazy = lower_front.mklazy;
+pub const newMkLazy = lower_front.newMkLazy;
+pub const compzf = lower_front.compzf;
+pub const transzf = lower_front.transzf;
+pub const getspecloc = lower_front.getspecloc;
+pub const transtypeid = lower_front.transtypeid;
+pub const leftfactor = lower_front.leftfactor;
+const lower_sort = @import("lower_sort.zig");
+pub const tclos = lower_sort.tclos;
+pub const getrel = lower_sort.getrel;
+pub const invgetrel = lower_sort.invgetrel;
+pub const imageless = lower_sort.imageless;
+pub const less = lower_sort.less;
+pub const less1 = lower_sort.less1;
+pub const sort = lower_sort.sort;
+pub const sortrel = lower_sort.sortrel;
+
 pub fn translet(heap: *Heap, d: Word, e: Word) Word {
     const x = mklazy(heap, d);
     return ap(heap, abstract(heap, dlhs(heap, x), codegen(heap, e)), codegen(heap, dval(heap, x)));
@@ -1348,118 +719,12 @@ pub fn block(heap: *Heap, input_defs: Word, input_e: Word, keep: Word) Word {
     return e;
 }
 
-/// Transitive closure of relation `r`.
-pub fn tclos(heap: *Heap, r: Word) Word {
-    var r1 = r;
-    while (r1 != NIL) : (r1 = t(heap, r1)) {
-        var x = less1(heap, t(heap, h(heap, r1)), h(heap, h(heap, r1)));
-        while (x != NIL) {
-            x = imageless(heap, r, x, t(heap, h(heap, r1)));
-            tp(heap, h(heap, r1)).* = UNION(heap, Value.fromRaw(t(heap, h(heap, r1))), Value.fromRaw(x)).toRaw();
-        }
-    }
-    return r;
-}
 
-/// The image (successors) of `x` under relation `r`.
-pub fn getrel(heap: *Heap, input_r: Word, x: Word) Word {
-    var r = input_r;
-    while (r != NIL and h(heap, h(heap, r)) != x) r = t(heap, r);
-    return if (r == NIL) NIL else t(heap, h(heap, r));
-}
 
-/// The inverse image (predecessors) of `x` under relation `r`.
-pub fn invgetrel(heap: *Heap, input_r: Word, x: Word) Word {
-    var r = input_r;
-    while (r != NIL and member(heap, Value.fromRaw(t(heap, h(heap, r))), Value.fromRaw(x)) == 0) r = t(heap, r);
-    if (r == NIL) {
-        std.debug.print("impossible event in invgetrel\n", .{});
-        os.exit(1);
-    }
-    return h(heap, h(heap, r));
-}
 
-/// The image of `y` under `r`, excluding `z`.
-pub fn imageless(heap: *Heap, input_r: Word, input_y: Word, z: Word) Word {
-    var r = input_r;
-    var y = input_y;
-    var i: Word = NIL;
-    while (r != NIL and y != NIL) {
-        if (h(heap, h(heap, r)) == h(heap, y)) {
-            i = UNION(heap, Value.fromRaw(i), Value.fromRaw(less(heap, t(heap, h(heap, r)), z))).toRaw();
-            r = t(heap, r);
-            y = t(heap, y);
-        } else if (h(heap, h(heap, r)) < h(heap, y)) {
-            r = t(heap, r);
-        } else {
-            y = t(heap, y);
-        }
-    }
-    return i;
-}
 
-/// Whether `x` should sort before `y`.
-pub fn less(heap: *Heap, input_x: Word, input_y: Word) Word {
-    var x = input_x;
-    var y = input_y;
-    var r: Word = NIL;
-    while (x != NIL and y != NIL) {
-        if (h(heap, x) == h(heap, y)) {
-            x = t(heap, x);
-            y = t(heap, y);
-        } else if (h(heap, x) < h(heap, y)) {
-            r = cons(heap, h(heap, x), r);
-            x = t(heap, x);
-        } else {
-            y = t(heap, y);
-        }
-    }
-    return shunt(r, x);
-}
 
-/// The elements of `x` that sort before `a`.
-pub fn less1(heap: *Heap, input_x: Word, a: Word) Word {
-    var x = input_x;
-    var r: Word = NIL;
-    while (x != NIL and h(heap, x) != a) {
-        r = cons(heap, h(heap, x), r);
-        x = t(heap, x);
-    }
-    return shunt(r, if (x == NIL) NIL else t(heap, x));
-}
 
-/// Sort list `x`.
-///
-/// Tests: sort: orders a Word list ascending
-pub fn sort(heap: *Heap, input_x: Word) Word {
-    var x = input_x;
-    var a: Word = NIL;
-    var b: Word = NIL;
-    if (x == NIL or t(heap, x) == NIL) return x;
-    while (x != NIL) {
-        const hold = a;
-        a = cons(heap, h(heap, x), b);
-        b = hold;
-        x = t(heap, x);
-    }
-    a = sort(heap, a);
-    b = sort(heap, b);
-    while (a != NIL and b != NIL) {
-        if (h(heap, a) < h(heap, b)) {
-            x = cons(heap, h(heap, a), x);
-            a = t(heap, a);
-        } else {
-            x = cons(heap, h(heap, b), x);
-            b = t(heap, b);
-        }
-    }
-    if (a == NIL) a = b;
-    while (a != NIL) {
-        x = cons(heap, h(heap, a), x);
-        a = t(heap, a);
-    }
-    return reverse(x);
-}
 
 test "sort: orders a Word list ascending" {
     tu.freshInterp();
@@ -1467,36 +732,6 @@ test "sort: orders a Word list ascending" {
     try tu.expectWords(&[_]Word{}, sort(heap_mod.heap(), NIL));
 }
 
-/// Topologically sort relation `x`.
-pub fn sortrel(heap: *Heap, input_x: Word) Word {
-    var x = input_x;
-    var a: Word = NIL;
-    var b: Word = NIL;
-    if (x == NIL or t(heap, x) == NIL) return x;
-    while (x != NIL) {
-        const hold = a;
-        a = cons(heap, h(heap, x), b);
-        b = hold;
-        x = t(heap, x);
-    }
-    a = sortrel(heap, a);
-    b = sortrel(heap, b);
-    while (a != NIL and b != NIL) {
-        if (h(heap, h(heap, a)) < h(heap, h(heap, b))) {
-            x = cons(heap, h(heap, a), x);
-            a = t(heap, a);
-        } else {
-            x = cons(heap, h(heap, b), x);
-            b = t(heap, b);
-        }
-    }
-    if (a == NIL) a = b;
-    while (a != NIL) {
-        x = cons(heap, h(heap, a), x);
-        a = t(heap, a);
-    }
-    return reverse(x);
-}
 
 const Ush: Word = CMBASE + 93;
 const Ush1: Word = CMBASE + 94;
