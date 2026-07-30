@@ -1,5 +1,5 @@
 //! dump.zig (split from graph/heap.zig, Phase 4 step 3,
-//! docs/ZIG_NATIVE_PLAN.md) — the low-level object-file (`.x`) wire format:
+//! docs/GO_PORT_PLAN.md) — the low-level object-file (`.x`) wire format:
 //! `dumpScript`/`loadScript` (and the `dumpDefs`/`dumpOb`/`loadDefs` graph
 //! walk they drive), `bindparams`/`unscramble` (`%include` alias resolution),
 //! and `unload`/`srcUpdate` (script teardown and staleness checks). This is

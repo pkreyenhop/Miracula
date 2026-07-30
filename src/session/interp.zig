@@ -54,12 +54,12 @@ pub const Interp = struct {
     big: Bignum = .{},
     strtab: StringTable = .{},
     lineedit: LineEditState = .{},
-    /// The identifier dictionary (docs/ZIG_NATIVE_PLAN.md Phase 1 step 6):
+    /// The identifier dictionary (docs/GO_PORT_PLAN.md Phase 1 step 6):
     /// replaces `LexState.namebucket`'s fixed-size hash-bucket array. See
     /// `semantics/symbols.zig`.
     symbols: SymbolTable = .{},
     /// The `//make`/`-make` build-mode flags and failure list (Phase 4 step
-    /// 4, docs/ZIG_NATIVE_PLAN.md): the first field carved out of the
+    /// 4, docs/GO_PORT_PLAN.md): the first field carved out of the
     /// monolithic `RuntimeState`.
     make: MakeState = .{},
     /// The `%bnf` grammar-extension bookkeeping (Phase 4 step 4): mostly
@@ -122,7 +122,7 @@ test "Interp: two independent instances stay isolated when interleaved" {
     const word = @import("../graph/word.zig");
     const Value = @import("../graph/value.zig").Value;
 
-    // Phase 4 step 6, docs/ZIG_NATIVE_PLAN.md: the phase's definition of done.
+    // Phase 4 step 6, docs/GO_PORT_PLAN.md: the phase's definition of done.
     // Every production call path is receiver-threaded from main() down to
     // reduce()/miraSetup(); this constructs two Interps directly (bypassing
     // the module-level `backing` default) and swaps `current_interp` between

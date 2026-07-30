@@ -4,7 +4,7 @@
 //! `stream.zig`. It has no allocator dependency, so everything else can import
 //! it freely. String-*handle* accessors live in `strtab.zig`, not here.
 //!
-//! Phase 2 step 5 (docs/ZIG_NATIVE_PLAN.md) deleted the C-string helpers
+//! Phase 2 step 5 (docs/GO_PORT_PLAN.md) deleted the C-string helpers
 //! (`strcmp`/`strlen`/`strcpy`/... and the `castToCStr`/`castToCStrMut`
 //! coercion pair they were built on) and the ctype predicates
 //! (`isspace`/`isdigit`/... and `tolower`) once every real call site was
@@ -17,7 +17,7 @@ const std = @import("std");
 /// heap-cell handle. Native 64-bit (R4.5 retired the old `c_long`).
 pub const Word = i64;
 
-/// The reduction engine's fallible outcomes (Phase 3, docs/ZIG_NATIVE_PLAN.md
+/// The reduction engine's fallible outcomes (Phase 3, docs/GO_PORT_PLAN.md
 /// — the replacement for the old sigsetjmp/siglongjmp non-local exits):
 /// `Interrupted` when the user interrupts evaluation (SIGINT/SIGTERM,
 /// detected via `runtime_state.zig`'s `interrupt_flag` polling inside
@@ -718,7 +718,7 @@ pub const TVAR_X: Word = XBASE + 14;
 /// Dump marker: a Unicode character.
 pub const UNICODE_X: Word = XBASE + 15;
 
-// stdio / file-handle machinery (Phase 2 step 4, docs/ZIG_NATIVE_PLAN.md) —
+// stdio / file-handle machinery (Phase 2 step 4, docs/GO_PORT_PLAN.md) —
 // moved to stream.zig; re-exported here unchanged so every existing
 // `word.Stream`/`word.fopen`/etc. call site keeps compiling as-is.
 const stream = @import("../eval/stream.zig");

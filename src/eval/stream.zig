@@ -4,7 +4,7 @@
 //! `getc`/`fread`/`fwrite`/`putc`/...) and the buffered stdout/stderr writers
 //! (`IoState`) `word.print`/`word.printErr` use.
 //!
-//! Moved out of `word.zig` (Phase 2 step 4, docs/ZIG_NATIVE_PLAN.md — word.zig
+//! Moved out of `word.zig` (Phase 2 step 4, docs/GO_PORT_PLAN.md — word.zig
 //! shrinking to the value vocabulary) as a pure relocation: every name here is
 //! re-exported from `word.zig` unchanged, so no other file's imports needed to
 //! change. `fread`/`fwrite` in particular preserve the dump (`.x`) file's byte
@@ -186,7 +186,7 @@ pub fn fprint(file: ?*Stream, comptime fmt: []const u8, args: anytype) void {
 // stdio: std streams, Stream pool, and C-style file ops (R1.5/R1.6 consolidation).
 // `printf`/`fprintf`/`sprintf`/`snprintf`/`formatC`/`formatArg` (the runtime
 // C-format-string engine) and `fmemopen` were deleted here (Phase 2 step 3/4,
-// docs/ZIG_NATIVE_PLAN.md) once nothing called them anymore — every call site
+// docs/GO_PORT_PLAN.md) once nothing called them anymore — every call site
 // now uses Zig-native format strings via `word.print`/`printErr`/`fprint`, or
 // (for reading dumps) `fopen` directly. `putc`/`putchar` stay: still used by
 // `heap.zig`'s dump writer. The whole stdio subsystem lives next to the Stream

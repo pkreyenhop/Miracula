@@ -1,5 +1,5 @@
 //! unify.zig (split from compiler/types.zig, Phase 4 step 3,
-//! docs/ZIG_NATIVE_PLAN.md) — the substitution/unification engine:
+//! docs/GO_PORT_PLAN.md) — the substitution/unification engine:
 //! `lookup`/`addsubst`/`subst` maintain a mutable substitution over type
 //! variables (with the `occurs` check), and `instantiate`/`linst`/
 //! `redtvars` handle generalisation and freshening of polymorphic

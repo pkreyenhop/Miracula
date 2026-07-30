@@ -1,4 +1,4 @@
-//! os.zig (renamed from main_clib.zig, Phase 2 step 5, docs/ZIG_NATIVE_PLAN.md)
+//! os.zig (renamed from main_clib.zig, Phase 2 step 5, docs/GO_PORT_PLAN.md)
 //! — the Zig-native C-standard-library/OS shim. Implements the
 //! `fork`/`wait`/`errno`/signals/rlimits/`sscanf` surface the C-ported
 //! interpreter calls, layered over `std` and the raw OS syscalls, so the binary

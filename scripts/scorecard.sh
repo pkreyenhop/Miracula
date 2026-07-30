@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # scorecard.sh — the single Zig-native-migration scorecard
-# (docs/ZIG_NATIVE_PLAN.md Phase 0).
+# (docs/GO_PORT_PLAN.md Phase 0).
 #
 # Consolidates the four retired scripts (idiomatic-check.sh,
 # readability-check.sh, shared-state-check.sh, test-coverage-check.sh — kept
@@ -213,7 +213,7 @@ case "$MODE" in
             fi
         done
         if [ "$fail" = 1 ]; then
-            echo "scorecard check FAILED — a tracked metric regressed. See docs/ZIG_NATIVE_PLAN.md." >&2
+            echo "scorecard check FAILED — a tracked metric regressed. See docs/GO_PORT_PLAN.md." >&2
             exit 1
         fi
         echo "scorecard check OK — no tracked metric rose above baseline."

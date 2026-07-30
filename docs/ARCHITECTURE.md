@@ -114,7 +114,7 @@ the A4 signal trampoline.
 `scripts/scorecard.sh` tracks the scorecard this section describes (the history lived in
 the retired `SHARED_STATE_PLAN` document; see git history). Removing the ambient
 `current_interp` access pattern entirely is Phase 4 of
-[ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md).
+[GO_PORT_PLAN.md](GO_PORT_PLAN.md).
 
 `src/main.zig` itself is now just the process entry point (~80 lines): it wires up the
 allocator/IO context from `std.process.Init`, forwards to `startup.mainEntry`, and
@@ -286,7 +286,7 @@ to restore a REPL/batch-mode recovery point. Every `siglongjmp` call is
 signal-handler-triggered — there is no ordinary-control-flow `longjmp` usage anywhere.
 POSIX signal handlers are asynchronous and cannot unwind the Zig call stack or propagate an
 error union, so as long as recovery happens *inside the handler*, `setjmp`/`longjmp` must
-stay. [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) Phase 3 removes the premise instead: handlers
+stay. [GO_PORT_PLAN.md](GO_PORT_PLAN.md) Phase 3 removes the premise instead: handlers
 only set an atomic interrupt flag, the reduce loop polls it and returns
 `error.EvaluationInterrupted`, and the `setjmp`/`longjmp` family is deleted.
 
@@ -297,7 +297,7 @@ not converted: surveying the actual `SYNERR`/`errs`/`errline` sentinel usage fou
 `errline` serve two unrelated purposes (a first-syntax-error-location recorder, and an
 unconditionally-overwritten current-compile-position breadcrumb used later for runtime error
 reporting) — unifying them under a shared error-union path was judged too risky as an
-in-place edit. [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) Phase 2 resolves it structurally
+in-place edit. [GO_PORT_PLAN.md](GO_PORT_PLAN.md) Phase 2 resolves it structurally
 instead: the two purposes get two named homes (a `Diagnostics` value and an explicit
 `last_position` breadcrumb).
 
@@ -316,7 +316,7 @@ pre-existing issue — see below):
 2. **Golden corpus** (`zig build test-golden`, `tests/golden/`) — byte-exact stdout/stderr
    for a fixed `.in`/`.m` → `.expected`/`.expected_err` corpus, regenerated with
    `zig build generate-golden` and reviewed before committing. This is the primary
-   behaviour-preservation gate for the [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) phases: a
+   behaviour-preservation gate for the [GO_PORT_PLAN.md](GO_PORT_PLAN.md) phases: a
    phase's golden diff should be empty (or, for a deliberate bug fix, a reviewed,
    intentional change to exactly the affected case). Phase 0 of that plan added coverage
    for literate scripts, `%insert`, and lexer error wording ahead of Phase 1's front-end
@@ -324,7 +324,7 @@ pre-existing issue — see below):
    `directive_include_alias`/`directive_export_scope`/`directive_free`) were left
    deliberately unpinned until the library mechanism was actually implemented
    (Phase 1 step 5's "harder half" — pinning "feature absent" isn't useful), then pinned
-   once real (2026-07-06, see [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md)).
+   once real (2026-07-06, see [GO_PORT_PLAN.md](GO_PORT_PLAN.md)).
 3. **C-differential regression** (`zig build test-regression`, `tests/regression.zig`) —
    runs the same inputs through both `./mira_original` (a separately built reference C
    Miranda, not part of this repo) and the Zig binary, comparing stdout/stderr and the
@@ -352,14 +352,14 @@ steps.
 
 **Ratchet.** `scripts/scorecard.sh` (`--check` against `scripts/scorecard.baseline`,
 `--update-baseline` to record improvement) tracks every C-ism/shared-state/structure metric
-this document and [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) discuss — see that plan's Phase 0
+this document and [GO_PORT_PLAN.md](GO_PORT_PLAN.md) discuss — see that plan's Phase 0
 for the full metric list. It fails the build if a tracked count rises.
 
 ---
 
 ## Remaining Modernization Opportunities
 
-See [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) for the current plan (it supersedes the
+See [GO_PORT_PLAN.md](GO_PORT_PLAN.md) for the current plan (it supersedes the
 retired REMAINING_WORK_PLAN / SHARED_STATE_PLAN / REDESIGN_DATA_MODEL documents). As of
 this writing:
 
@@ -385,5 +385,5 @@ this writing:
   end at all — `codegen.zig:808` no-oped all three AST node kinds, and `lex_bridge.zig`
   dropped the `%include` pathname payload so even a bare `%include "x"` failed to parse;
   reproduced on the shipped `miralib/ex/polish.m` example on a clean `main` checkout before
-  this work). See [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) Phase 1 step 5 for the design and
+  this work). See [GO_PORT_PLAN.md](GO_PORT_PLAN.md) Phase 1 step 5 for the design and
   the two real bugs found landing it.

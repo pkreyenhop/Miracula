@@ -38,7 +38,7 @@ const TEST_CASES = [_]TestCase{
         .script_content = "square x = x*x\ntwice f x = f (f x)\npairup x y = (x,y)\n",
         .input = "square 12\ntwice square 2\npairup 1 2\n/q\n",
     },
-    // docs/ZIG_NATIVE_PLAN.md Phase 0 step 4: differential coverage for the
+    // docs/GO_PORT_PLAN.md Phase 0 step 4: differential coverage for the
     // surfaces Phase 1's native lexer/parser rewrite will touch. Mirrors
     // tests/golden/hex_oct_literals and tests/golden/literate_intro.lit.
     .{
