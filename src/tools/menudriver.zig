@@ -368,13 +368,91 @@ fn runExecutable(ctx: std.process.Init, path: []const u8) !void {
 // readSelection().  Pagers like `less` open /dev/tty independently for
 // interactive keystrokes, so they work correctly even with stdin closed.
 fn runShellViewer(ctx: std.process.Init, command: []const u8) !void {
-    try runChild(ctx, &.{ "/bin/sh", "-c", command }, .ignore);
+    const args = try tokenizeCommand(ctx.gpa, command);
+    defer {
+        for (args) |arg| ctx.gpa.free(arg);
+        ctx.gpa.free(args);
+    }
+    if (args.len == 0) return;
+    try runChild(ctx, args, .ignore);
 }
 
 // Run a shell command for interactive use (shell escapes via !cmd).
 // stdin is inherited so the user can interact with the spawned shell.
 fn runShell(ctx: std.process.Init, command: []const u8) !void {
-    try runChild(ctx, &.{ "/bin/sh", "-c", command }, .inherit);
+    const args = try tokenizeCommand(ctx.gpa, command);
+    defer {
+        for (args) |arg| ctx.gpa.free(arg);
+        ctx.gpa.free(args);
+    }
+    if (args.len == 0) return;
+    try runChild(ctx, args, .inherit);
+}
+
+fn tokenizeCommand(allocator: std.mem.Allocator, command: []const u8) ![][]const u8 {
+    var args: std.ArrayListUnmanaged([]const u8) = .empty;
+    errdefer {
+        for (args.items) |arg| allocator.free(arg);
+        args.deinit(allocator);
+    }
+
+    var i: usize = 0;
+    while (i < command.len) {
+        // Skip whitespace
+        while (i < command.len and std.ascii.isWhitespace(command[i])) {
+            i += 1;
+        }
+        if (i == command.len) break;
+
+        var current_arg: std.ArrayListUnmanaged(u8) = .empty;
+        errdefer current_arg.deinit(allocator);
+
+        var in_single_quote = false;
+        var in_double_quote = false;
+        var escaped = false;
+
+        while (i < command.len) {
+            const c = command[i];
+            i += 1;
+
+            if (escaped) {
+                try current_arg.append(allocator, c);
+                escaped = false;
+            } else if (in_single_quote) {
+                if (c == '\'') {
+                    in_single_quote = false;
+                } else {
+                    try current_arg.append(allocator, c);
+                }
+            } else if (in_double_quote) {
+                if (c == '"') {
+                    in_double_quote = false;
+                } else if (c == '\\') {
+                    escaped = true;
+                } else {
+                    try current_arg.append(allocator, c);
+                }
+            } else {
+                if (c == '\\') {
+                    escaped = true;
+                } else if (c == '\'') {
+                    in_single_quote = true;
+                } else if (c == '"') {
+                    in_double_quote = true;
+                } else if (std.ascii.isWhitespace(c)) {
+                    break; // End of argument
+                } else {
+                    try current_arg.append(allocator, c);
+                }
+            }
+        }
+
+        const owned_arg = try current_arg.toOwnedSlice(allocator);
+        errdefer allocator.free(owned_arg);
+        try args.append(allocator, owned_arg);
+    }
+
+    return args.toOwnedSlice(allocator);
 }
 
 fn runChild(ctx: std.process.Init, argv: []const []const u8, stdin_mode: std.process.SpawnOptions.StdIo) !void {
@@ -413,4 +491,20 @@ test "owner execute bit detection matches manual executable sections" {
     try std.testing.expect(isOwnerExecutable(0o755));
     try std.testing.expect(!isOwnerExecutable(0o644));
     try std.testing.expect(!isOwnerExecutable(0o010));
+}
+
+test "tokenizeCommand correctly parses complex shell strings" {
+    const args = try tokenizeCommand(std.testing.allocator, "ls -la \"foo bar\" 'baz qux' \\'escaped \\\" \\ space");
+    defer {
+        for (args) |arg| std.testing.allocator.free(arg);
+        std.testing.allocator.free(args);
+    }
+    try std.testing.expectEqualStrings("ls", args[0]);
+    try std.testing.expectEqualStrings("-la", args[1]);
+    try std.testing.expectEqualStrings("foo bar", args[2]);
+    try std.testing.expectEqualStrings("baz qux", args[3]);
+    try std.testing.expectEqualStrings("'escaped", args[4]);
+    try std.testing.expectEqualStrings("\"", args[5]);
+    try std.testing.expectEqualStrings(" space", args[6]);
+    try std.testing.expectEqual(@as(usize, 7), args.len);
 }
