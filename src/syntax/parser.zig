@@ -1035,3 +1035,11 @@ test "parseScript: error recovery records diagnostic and parses remaining items"
         std.meta.activeTag(script.items[0]),
     );
 }
+
+test {
+    // lexer.zig's inline tests were moved to `lexer_test.zig` for the Go
+    // port's <1000-line file ratchet (docs/GO_PORT_PLAN.md P4). Aggregating
+    // them here (the syntax test-target root imports lexer one-way) keeps them
+    // in the same test run without a lexer<->lexer_test import cycle.
+    _ = @import("lexer_test.zig");
+}
