@@ -64,8 +64,8 @@ pub fn scanDecimal(heap: *Heap, p: [*:0]const u8) Word {
 test "scanDecimal: parses a NUL-terminated decimal string" {
     tu.freshInterp();
     const heap = &heap_mod.heap().*;
-    try std.testing.expectEqual(@as(c_longlong, 12345), toInt(heap, scanDecimal(heap, "12345")));
-    try std.testing.expectEqual(@as(c_longlong, -42), toInt(heap, scanDecimal(heap, "-42")));
+    try std.testing.expectEqual(@as(i64, 12345), toInt(heap, scanDecimal(heap, "12345")));
+    try std.testing.expectEqual(@as(i64, -42), toInt(heap, scanDecimal(heap, "-42")));
 }
 
 /// Parse the hex digits in the byte range `[p, q)` into a bignum.
@@ -93,13 +93,13 @@ test "scanHex: parses a hex byte range into a bignum" {
     tu.freshInterp();
     const heap = &heap_mod.heap().*;
     const p: [*]const u8 = "ff";
-    try std.testing.expectEqual(@as(c_longlong, 255), toInt(heap, scanHex(heap, p, p + 2)));
+    try std.testing.expectEqual(@as(i64, 255), toInt(heap, scanHex(heap, p, p + 2)));
     const q: [*]const u8 = "1000";
-    try std.testing.expectEqual(@as(c_longlong, 0x1000), toInt(heap, scanHex(heap, q, q + 4)));
+    try std.testing.expectEqual(@as(i64, 0x1000), toInt(heap, scanHex(heap, q, q + 4)));
     const z: [*]const u8 = "00";
-    try std.testing.expectEqual(@as(c_longlong, 0), toInt(heap, scanHex(heap, z, z + 2)));
+    try std.testing.expectEqual(@as(i64, 0), toInt(heap, scanHex(heap, z, z + 2)));
     const val: [*]const u8 = "1A2B3C";
-    try std.testing.expectEqual(@as(c_longlong, 1715004), toInt(heap, scanHex(heap, val, val + 6)));
+    try std.testing.expectEqual(@as(i64, 1715004), toInt(heap, scanHex(heap, val, val + 6)));
 }
 
 /// Parse the octal digits in the byte range `[p, q)` into a bignum.
@@ -127,11 +127,11 @@ test "scanOctal: parses an octal byte range into a bignum" {
     tu.freshInterp();
     const heap = &heap_mod.heap().*;
     const p: [*]const u8 = "17";
-    try std.testing.expectEqual(@as(c_longlong, 15), toInt(heap, scanOctal(heap, p, p + 2)));
+    try std.testing.expectEqual(@as(i64, 15), toInt(heap, scanOctal(heap, p, p + 2)));
     const q: [*]const u8 = "777";
-    try std.testing.expectEqual(@as(c_longlong, 511), toInt(heap, scanOctal(heap, q, q + 3)));
+    try std.testing.expectEqual(@as(i64, 511), toInt(heap, scanOctal(heap, q, q + 3)));
     const z: [*]const u8 = "0000";
-    try std.testing.expectEqual(@as(c_longlong, 0), toInt(heap, scanOctal(heap, z, z + 4)));
+    try std.testing.expectEqual(@as(i64, 0), toInt(heap, scanOctal(heap, z, z + 4)));
 }
 
 /// Numeric value of a decimal/hex digit character (`0`-`9`, `A`-`F`/`a`-`f`).
@@ -181,10 +181,10 @@ pub fn parseString(heap: *Heap, input_z: Word, base: i32) Word {
 test "parseString: parses a char-list of digits in a given base" {
     tu.freshInterp();
     const heap = &heap_mod.heap().*;
-    try std.testing.expectEqual(@as(c_longlong, 123), toInt(heap, parseString(heap, tu.str("123"), 10)));
-    try std.testing.expectEqual(@as(c_longlong, -7), toInt(heap, parseString(heap, tu.str("-7"), 10)));
+    try std.testing.expectEqual(@as(i64, 123), toInt(heap, parseString(heap, tu.str("123"), 10)));
+    try std.testing.expectEqual(@as(i64, -7), toInt(heap, parseString(heap, tu.str("-7"), 10)));
     // base != 10 skips the two-char prefix (e.g. "0xff")
-    try std.testing.expectEqual(@as(c_longlong, 255), toInt(heap, parseString(heap, tu.str("0xff"), 16)));
+    try std.testing.expectEqual(@as(i64, 255), toInt(heap, parseString(heap, tu.str("0xff"), 16)));
 }
 
 /// In place: `r = r*f + addend` — the Horner step shared by the scanners.

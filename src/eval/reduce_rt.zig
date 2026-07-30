@@ -531,8 +531,8 @@ pub fn numplus(heap_ptr: *heap.Heap, x_val: Value, y_val: Value) word.ReduceErro
 
 test "numplus: integer add and float promotion" {
     tu.freshInterp();
-    try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(heap.heap(), try numplus(heap.heap(), Value.fromRaw(big.fromInt(heap.heap(), 2)), Value.fromRaw(big.fromInt(heap.heap(), 3)))));
-    try std.testing.expectEqual(@as(c_longlong, -1), big.toInt(heap.heap(), try numplus(heap.heap(), Value.fromRaw(big.fromInt(heap.heap(), 2)), Value.fromRaw(big.fromInt(heap.heap(), -3)))));
+    try std.testing.expectEqual(@as(i64, 5), big.toInt(heap.heap(), try numplus(heap.heap(), Value.fromRaw(big.fromInt(heap.heap(), 2)), Value.fromRaw(big.fromInt(heap.heap(), 3)))));
+    try std.testing.expectEqual(@as(i64, -1), big.toInt(heap.heap(), try numplus(heap.heap(), Value.fromRaw(big.fromInt(heap.heap(), 2)), Value.fromRaw(big.fromInt(heap.heap(), -3)))));
     const r = try numplus(heap.heap(), Value.fromRaw(try heap.stoDbl(1.5)), Value.fromRaw(big.fromInt(heap.heap(), 2))); // DOUBLE + INT → DOUBLE
     try std.testing.expectEqual(word.NodeTag.DOUBLE, heap.getTag(heap.heap(), r));
     try std.testing.expectEqual(@as(f64, 3.5), heap.getDbl(r));
@@ -748,7 +748,7 @@ test "force: deep-evaluates a list of thunks to normal form" {
     const lst = cons(heap.heap(), thunk, NIL);
     try force(heap.heap(), Value.fromRaw(lst));
     // the head thunk is now reduced to the INT 5 in place
-    try std.testing.expectEqual(@as(c_longlong, 5), big.toInt(heap.heap(), h(heap.heap(), lst)));
+    try std.testing.expectEqual(@as(i64, 5), big.toInt(heap.heap(), h(heap.heap(), lst)));
 }
 
 /// The head atom/combinator at the end of a left spine of applications.

@@ -130,7 +130,7 @@ pub fn setup(heap: *Heap, self: *Bignum) void {
 test "setup: initialises the bignum constants" {
     tu.freshInterp();
     setup(&heap_mod.heap().*, bn());
-    try std.testing.expectEqual(@as(c_longlong, 1), toInt(&heap_mod.heap().*, bn().big_one));
+    try std.testing.expectEqual(@as(i64, 1), toInt(&heap_mod.heap().*, bn().big_one));
 }
 
 /// 1 if `x` is a non-negative integer (`INT`-tagged and positive), else 0.
@@ -151,14 +151,14 @@ test "isNat: 1 for non-negative INTs, 0 for negatives" {
 /// Build a bignum from a signed 64-bit integer.
 ///
 /// Tests: fromInt: round-trips through toInt across the digit boundary
-pub fn fromInt(heap: *Heap, input: c_longlong) Word {
+pub fn fromInt(heap: *Heap, input: i64) Word {
     var i = input;
     var s: Word = 0;
     if (i < 0) {
         s = SIGNBIT;
         i = -i;
     }
-    var unsigned_i: c_ulonglong = @intCast(i);
+    var unsigned_i: u64 = @intCast(i);
     const x = heap.make(.INT, s | @as(Word, @intCast(unsigned_i & MAXDIGIT)), 0);
     unsigned_i >>= DIGITWIDTH;
     if (unsigned_i != 0) {
@@ -177,7 +177,7 @@ pub fn fromInt(heap: *Heap, input: c_longlong) Word {
 test "fromInt: round-trips through toInt across the digit boundary" {
     tu.freshInterp();
     const heap = &heap_mod.heap().*;
-    for ([_]c_longlong{ 0, 1, -1, 42, -42, 32768, 1 << 20, 1 << 40 }) |n| {
+    for ([_]i64{ 0, 1, -1, 42, -42, 32768, 1 << 20, 1 << 40 }) |n| {
         try std.testing.expectEqual(n, toInt(heap, fromInt(heap, n)));
     }
 }
@@ -185,9 +185,9 @@ test "fromInt: round-trips through toInt across the digit boundary" {
 /// Convert a bignum to a signed 64-bit integer (saturates above ~2^60).
 ///
 /// Tests: toInt: saturates above 2^60
-pub fn toInt(heap: *Heap, input: Word) c_longlong {
+pub fn toInt(heap: *Heap, input: Word) i64 {
     var x = input;
-    var n: c_longlong = @intCast(digit0(heap, x));
+    var n: i64 = @intCast(digit0(heap, x));
     const sign = signBit(heap, x) != 0;
     x = rest(heap, x);
     if (x == 0) return if (sign) -n else n;
@@ -197,9 +197,9 @@ pub fn toInt(heap: *Heap, input: Word) c_longlong {
         w += DIGITWIDTH;
         x = rest(heap, x);
     }) {
-        n += @as(c_longlong, @intCast(digit(heap, x))) << @intCast(w);
+        n += @as(i64, @intCast(digit(heap, x))) << @intCast(w);
     }
-    if (x != 0) n = @as(c_longlong, 1) << 60;
+    if (x != 0) n = @as(i64, 1) << 60;
     return if (sign) -n else n;
 }
 
@@ -208,7 +208,7 @@ test "toInt: saturates above 2^60" {
     const heap = &heap_mod.heap().*;
     // 2^61 exceeds the 60-bit window, so toInt clamps to 2^60.
     const big61 = mul(heap, fromInt(heap, 1 << 40), fromInt(heap, 1 << 21));
-    try std.testing.expectEqual(@as(c_longlong, 1) << 60, toInt(heap, big61));
+    try std.testing.expectEqual(@as(i64, 1) << 60, toInt(heap, big61));
 }
 
 /// Return `-x`.
@@ -223,9 +223,9 @@ pub fn negate(heap: *Heap, x: Word) Word {
 test "negate: flips the sign, fixed point at zero" {
     tu.freshInterp();
     const heap = &heap_mod.heap().*;
-    try std.testing.expectEqual(@as(c_longlong, -7), toInt(heap, negate(heap, fromInt(heap, 7))));
-    try std.testing.expectEqual(@as(c_longlong, 7), toInt(heap, negate(heap, fromInt(heap, -7))));
-    try std.testing.expectEqual(@as(c_longlong, 0), toInt(heap, negate(heap, fromInt(heap, 0))));
+    try std.testing.expectEqual(@as(i64, -7), toInt(heap, negate(heap, fromInt(heap, 7))));
+    try std.testing.expectEqual(@as(i64, 7), toInt(heap, negate(heap, fromInt(heap, -7))));
+    try std.testing.expectEqual(@as(i64, 0), toInt(heap, negate(heap, fromInt(heap, 0))));
 }
 
 /// Return `x + y`.
@@ -243,9 +243,9 @@ pub fn add(heap: *Heap, x: Word, y: Word) Word {
 test "add: sums across signs and the digit boundary" {
     tu.freshInterp();
     const heap = &heap_mod.heap().*;
-    try std.testing.expectEqual(@as(c_longlong, 5), toInt(heap, add(heap, fromInt(heap, 2), fromInt(heap, 3))));
-    try std.testing.expectEqual(@as(c_longlong, -1), toInt(heap, add(heap, fromInt(heap, 2), fromInt(heap, -3))));
-    try std.testing.expectEqual(@as(c_longlong, 65536), toInt(heap, add(heap, fromInt(heap, 32768), fromInt(heap, 32768))));
+    try std.testing.expectEqual(@as(i64, 5), toInt(heap, add(heap, fromInt(heap, 2), fromInt(heap, 3))));
+    try std.testing.expectEqual(@as(i64, -1), toInt(heap, add(heap, fromInt(heap, 2), fromInt(heap, -3))));
+    try std.testing.expectEqual(@as(i64, 65536), toInt(heap, add(heap, fromInt(heap, 32768), fromInt(heap, 32768))));
 }
 
 /// Add the unsigned magnitudes of `x` and `y`, tagging the result with `signbit`.
@@ -293,9 +293,9 @@ pub fn sub(heap: *Heap, x: Word, y: Word) Word {
 test "sub: differences across signs" {
     tu.freshInterp();
     const heap = &heap_mod.heap().*;
-    try std.testing.expectEqual(@as(c_longlong, -1), toInt(heap, sub(heap, fromInt(heap, 2), fromInt(heap, 3))));
-    try std.testing.expectEqual(@as(c_longlong, 5), toInt(heap, sub(heap, fromInt(heap, 2), fromInt(heap, -3))));
-    try std.testing.expectEqual(@as(c_longlong, 0), toInt(heap, sub(heap, fromInt(heap, 40), fromInt(heap, 40))));
+    try std.testing.expectEqual(@as(i64, -1), toInt(heap, sub(heap, fromInt(heap, 2), fromInt(heap, 3))));
+    try std.testing.expectEqual(@as(i64, 5), toInt(heap, sub(heap, fromInt(heap, 2), fromInt(heap, -3))));
+    try std.testing.expectEqual(@as(i64, 0), toInt(heap, sub(heap, fromInt(heap, 40), fromInt(heap, 40))));
 }
 
 /// Subtract unsigned magnitudes (|x| - |y|, |x| >= |y|), normalising the result.
@@ -415,9 +415,9 @@ pub fn mul(heap: *Heap, input_x: Word, input_y: Word) Word {
 test "mul: products including large operands" {
     tu.freshInterp();
     const heap = &heap_mod.heap().*;
-    try std.testing.expectEqual(@as(c_longlong, 42), toInt(heap, mul(heap, fromInt(heap, 6), fromInt(heap, 7))));
-    try std.testing.expectEqual(@as(c_longlong, -42), toInt(heap, mul(heap, fromInt(heap, -6), fromInt(heap, 7))));
-    try std.testing.expectEqual(@as(c_longlong, 1 << 40), toInt(heap, mul(heap, fromInt(heap, 1 << 20), fromInt(heap, 1 << 20))));
+    try std.testing.expectEqual(@as(i64, 42), toInt(heap, mul(heap, fromInt(heap, 6), fromInt(heap, 7))));
+    try std.testing.expectEqual(@as(i64, -42), toInt(heap, mul(heap, fromInt(heap, -6), fromInt(heap, 7))));
+    try std.testing.expectEqual(@as(i64, 1 << 40), toInt(heap, mul(heap, fromInt(heap, 1 << 20), fromInt(heap, 1 << 20))));
 }
 
 /// Prepend `n` zero digits — i.e. multiply `x` by `IBASE^n`.
@@ -483,10 +483,10 @@ pub fn div(heap: *Heap, self: *Bignum, input_x: Word, input_y: Word) Word {
 test "div: floored division (toward negative infinity)" {
     tu.freshInterp();
     const heap = &heap_mod.heap().*;
-    try std.testing.expectEqual(@as(c_longlong, 6), toInt(heap, div(heap, bn(), fromInt(heap, 20), fromInt(heap, 3))));
-    try std.testing.expectEqual(@as(c_longlong, 5), toInt(heap, div(heap, bn(), fromInt(heap, 20), fromInt(heap, 4))));
-    try std.testing.expectEqual(@as(c_longlong, -7), toInt(heap, div(heap, bn(), fromInt(heap, -20), fromInt(heap, 3))));
-    try std.testing.expectEqual(@as(c_longlong, 6), toInt(heap, div(heap, bn(), fromInt(heap, -20), fromInt(heap, -3))));
+    try std.testing.expectEqual(@as(i64, 6), toInt(heap, div(heap, bn(), fromInt(heap, 20), fromInt(heap, 3))));
+    try std.testing.expectEqual(@as(i64, 5), toInt(heap, div(heap, bn(), fromInt(heap, 20), fromInt(heap, 4))));
+    try std.testing.expectEqual(@as(i64, -7), toInt(heap, div(heap, bn(), fromInt(heap, -20), fromInt(heap, 3))));
+    try std.testing.expectEqual(@as(i64, 6), toInt(heap, div(heap, bn(), fromInt(heap, -20), fromInt(heap, -3))));
 }
 
 /// Return `x mod y` (the result's sign follows the divisor `y`).
@@ -509,10 +509,10 @@ pub fn mod(heap: *Heap, self: *Bignum, input_x: Word, input_y: Word) Word {
 test "mod: remainder whose sign follows the divisor" {
     tu.freshInterp();
     const heap = &heap_mod.heap().*;
-    try std.testing.expectEqual(@as(c_longlong, 2), toInt(heap, mod(heap, bn(), fromInt(heap, 20), fromInt(heap, 3))));
-    try std.testing.expectEqual(@as(c_longlong, 0), toInt(heap, mod(heap, bn(), fromInt(heap, 20), fromInt(heap, 4))));
-    try std.testing.expectEqual(@as(c_longlong, 1), toInt(heap, mod(heap, bn(), fromInt(heap, -20), fromInt(heap, 3))));
-    try std.testing.expectEqual(@as(c_longlong, -1), toInt(heap, mod(heap, bn(), fromInt(heap, 20), fromInt(heap, -3))));
+    try std.testing.expectEqual(@as(i64, 2), toInt(heap, mod(heap, bn(), fromInt(heap, 20), fromInt(heap, 3))));
+    try std.testing.expectEqual(@as(i64, 0), toInt(heap, mod(heap, bn(), fromInt(heap, 20), fromInt(heap, 4))));
+    try std.testing.expectEqual(@as(i64, 1), toInt(heap, mod(heap, bn(), fromInt(heap, -20), fromInt(heap, 3))));
+    try std.testing.expectEqual(@as(i64, -1), toInt(heap, mod(heap, bn(), fromInt(heap, 20), fromInt(heap, -3))));
 }
 
 /// Divide a bignum by a single digit `n`; remainder left in `self.b_rem`.
@@ -669,9 +669,9 @@ pub fn pow(heap: *Heap, input_x: Word, input_y: Word) Word {
 test "pow: repeated-squaring exponentiation" {
     tu.freshInterp();
     const heap = &heap_mod.heap().*;
-    try std.testing.expectEqual(@as(c_longlong, 1024), toInt(heap, pow(heap, fromInt(heap, 2), fromInt(heap, 10))));
-    try std.testing.expectEqual(@as(c_longlong, 1), toInt(heap, pow(heap, fromInt(heap, 7), fromInt(heap, 0))));
-    try std.testing.expectEqual(@as(c_longlong, 59049), toInt(heap, pow(heap, fromInt(heap, 3), fromInt(heap, 10))));
+    try std.testing.expectEqual(@as(i64, 1024), toInt(heap, pow(heap, fromInt(heap, 2), fromInt(heap, 10))));
+    try std.testing.expectEqual(@as(i64, 1), toInt(heap, pow(heap, fromInt(heap, 7), fromInt(heap, 0))));
+    try std.testing.expectEqual(@as(i64, 59049), toInt(heap, pow(heap, fromInt(heap, 3), fromInt(heap, 10))));
 }
 
 /// Convert a bignum to an `f64`.
@@ -722,9 +722,9 @@ pub fn fromFloat(heap: *Heap, input: f64) Word {
 test "fromFloat: floors the input toward negative infinity" {
     tu.freshInterp();
     const heap = &heap_mod.heap().*;
-    try std.testing.expectEqual(@as(c_longlong, 3), toInt(heap, fromFloat(heap, 3.9)));
-    try std.testing.expectEqual(@as(c_longlong, 3), toInt(heap, fromFloat(heap, 3.0)));
-    try std.testing.expectEqual(@as(c_longlong, -4), toInt(heap, fromFloat(heap, -3.9)));
+    try std.testing.expectEqual(@as(i64, 3), toInt(heap, fromFloat(heap, 3.9)));
+    try std.testing.expectEqual(@as(i64, 3), toInt(heap, fromFloat(heap, 3.0)));
+    try std.testing.expectEqual(@as(i64, -4), toInt(heap, fromFloat(heap, -3.9)));
 }
 
 /// Natural logarithm of a positive bignum (domain-errors on `<= 0`).
