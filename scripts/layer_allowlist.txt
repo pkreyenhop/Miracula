@@ -22,6 +22,10 @@ src/graph/dump.zig -> src/os.zig
 src/graph/dump.zig -> src/semantics/depend.zig
 src/graph/dump.zig -> src/session/config_state.zig
 src/graph/dump.zig -> src/session/script_store.zig
+src/graph/dump_load.zig -> src/os.zig
+src/graph/dump_load.zig -> src/semantics/depend.zig
+src/graph/dump_load.zig -> src/session/config_state.zig
+src/graph/dump_load.zig -> src/session/script_store.zig
 src/graph/heap.zig -> src/eval/reduce_rt.zig
 src/graph/heap.zig -> src/eval/spine.zig
 src/graph/heap.zig -> src/os.zig
@@ -36,6 +40,7 @@ src/graph/strtab.zig -> src/session/interp.zig
 src/graph/word.zig -> src/eval/stream.zig
 src/os.zig -> src/eval/reduce_rt.zig
 src/os.zig -> src/graph/dump.zig
+src/os.zig -> src/graph/dump_load.zig
 src/os.zig -> src/graph/heap.zig
 src/os.zig -> src/graph/print.zig
 src/os.zig -> src/graph/word.zig
