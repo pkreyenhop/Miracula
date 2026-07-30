@@ -741,7 +741,20 @@ pub fn okid(ch: c_int) bool {
 test "identifier classification matches Miranda lexer rules" {
     try std.testing.expect(isconstrname("Name"));
     try std.testing.expect(isconstrname("$Name"));
+    try std.testing.expect(isconstrname("N"));
+    try std.testing.expect(isconstrname("$N"));
+
     try std.testing.expect(!(isconstrname("name")));
+    try std.testing.expect(!(isconstrname("$name")));
+    try std.testing.expect(!(isconstrname("n")));
+    try std.testing.expect(!(isconstrname("$n")));
+
+    // Edge cases
+    try std.testing.expect(!(isconstrname("")));
+    try std.testing.expect(!(isconstrname("$")));
+    try std.testing.expect(!(isconstrname("123")));
+    try std.testing.expect(!(isconstrname("$$Name")));
+
     try std.testing.expect(okid('a'));
     try std.testing.expect(okid('\''));
     try std.testing.expect(!(okid('-')));
