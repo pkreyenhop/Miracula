@@ -71,7 +71,6 @@ pub inline fn ev() *EvalState {
 }
 
 const stoChar = heap.stoChar;
-extern fn fromUTF8(f: ?*word.Stream) Word;
 const parseLine = repl.parseLine;
 const reduce = engine.reduce;
 const charname = print_mod.charname;
@@ -343,7 +342,12 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
                 ctx.eval.stdinuse = '-';
                 tp(ctx.heap, ctx.e.toRaw()).* = wrapPtr(ctx.heap, @intCast(@intFromPtr(getStdin().?))).toRaw();
             }
-            const hold_char = if (ctx.rs.UTF8 != 0) stoChar(fromUTF8(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))))) else os.getc(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))));
+            // `os.fromUTF8` returns an unsigned 64-bit C integer, signalling
+            // EOF/malformed as its maximum value; the removed `extern fn` used
+            // to reinterpret those bits as a signed `Word` (so EOF read back as
+            // `-1`), hence `@bitCast` rather than `@intCast` to preserve that
+            // exact reinterpretation.
+            const hold_char = if (ctx.rs.UTF8 != 0) stoChar(@as(Word, @bitCast(os.fromUTF8(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))))))) else os.getc(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))));
             if (hold_char == os.EOF) {
                 _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))));
                 rewriteToNil(ctx.heap, @ptrCast(&ctx.e));

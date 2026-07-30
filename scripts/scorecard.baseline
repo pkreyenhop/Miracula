@@ -1,6 +1,6 @@
 c_int/c_long/c_uint/c_ulong (non-FFI)	168
 [*:0] C-string types (non-FFI)	231
-extern fn declarations	8
+extern fn declarations	7
 extern var declarations	0
 @intFromPtr / @ptrFromInt (non-FFI)	50
 printf-family calls (non-FFI)	361
