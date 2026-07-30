@@ -9,6 +9,7 @@ const word = @import("word.zig");
 const strtab = @import("strtab.zig");
 const combinator = @import("combinator.zig");
 const big = @import("bignum.zig");
+const big_fmt = @import("bignum_fmt.zig");
 const setup = @import("../compiler/setup.zig");
 const heap_mod = @import("heap.zig");
 const Heap = heap_mod.Heap;
@@ -20,7 +21,7 @@ const getDbl = heap_mod.getDbl;
 const getId = heap_mod.getId;
 const rest = heap_mod.rest;
 const getsmallint = heap_mod.getsmallint;
-const bigtostr = big.toDecimalList;
+const bigtostr = big_fmt.toDecimalList;
 
 /// A printable name/escape for char `ch`.
 ///

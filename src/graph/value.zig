@@ -13,6 +13,7 @@ const combinator = @import("combinator.zig");
 const word = @import("word.zig");
 const heap_mod = @import("heap.zig");
 const big = @import("bignum.zig");
+const big_fmt = @import("bignum_fmt.zig");
 const Word = word.Word;
 const Heap = heap_mod.Heap;
 
@@ -463,22 +464,22 @@ pub inline fn log10Val(heap_ptr: *Heap, self: *big.Bignum, x: Value) f64 {
 
 /// Parse a Miranda char-list `x` (in the given `base`) as a boxed integer.
 pub inline fn parseStringVal(heap_ptr: *Heap, x: Value, base: c_int) Value {
-    return Value.fromRaw(big.parseString(heap_ptr, x.toRaw(), base));
+    return Value.fromRaw(big_fmt.parseString(heap_ptr, x.toRaw(), base));
 }
 
 /// Boxed integer `x` as a Miranda char-list of decimal digits.
 pub inline fn toDecimalListVal(heap_ptr: *Heap, x: Value) Value {
-    return Value.fromRaw(big.toDecimalList(heap_ptr, x.toRaw()));
+    return Value.fromRaw(big_fmt.toDecimalList(heap_ptr, x.toRaw()));
 }
 
 /// Boxed integer `x` as a Miranda char-list of hex digits.
 pub inline fn toHexListVal(heap_ptr: *Heap, x: Value) Value {
-    return Value.fromRaw(big.toHexList(heap_ptr, x.toRaw()));
+    return Value.fromRaw(big_fmt.toHexList(heap_ptr, x.toRaw()));
 }
 
 /// Boxed integer `x` as a Miranda char-list of octal digits.
 pub inline fn toOctalListVal(heap_ptr: *Heap, x: Value) Value {
-    return Value.fromRaw(big.toOctalList(heap_ptr, x.toRaw()));
+    return Value.fromRaw(big_fmt.toOctalList(heap_ptr, x.toRaw()));
 }
 
 test "bignum Value wrappers: typed in/out over bignum.zig's unchanged Word API" {

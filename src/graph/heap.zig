@@ -26,6 +26,7 @@ const repl_session = @import("../session/repl_session.zig");
 const lex = @import("../parser/lex.zig");
 const symbols = @import("../semantics/symbols.zig");
 const big = @import("bignum.zig");
+const big_fmt = @import("bignum_fmt.zig");
 const reduce = @import("../eval/reduce_rt.zig");
 const os = @import("../os.zig");
 const setup = @import("../compiler/setup.zig");
@@ -1252,7 +1253,7 @@ pub fn stoId(p1: [*:0]const u8) Word {
     return make(heap(), .ID, cons(heap(), make(heap(), .STRCONS, strtab.strBits(strtab.table(), p1), word.NIL), word.undef_t), word.UNDEF);
 }
 
-const bigtostr = big.toDecimalList;
+const bigtostr = big_fmt.toDecimalList;
 const SIGNBIT = 0x10000000;
 const MAXDIGIT = 0x7fff;
 

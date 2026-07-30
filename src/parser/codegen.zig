@@ -19,6 +19,7 @@ const trans = @import("../semantics/lower.zig");
 const match = @import("../semantics/match.zig");
 const types_mod = @import("../semantics/unify.zig");
 const big = @import("../graph/bignum.zig");
+const big_fmt = @import("../graph/bignum_fmt.zig");
 const lex = @import("lex.zig");
 const reduce_mod = @import("../eval/reduce_rt.zig");
 const heap = @import("../graph/heap.zig");
@@ -92,7 +93,7 @@ const specify = trans.specify;
 const declType = trans.declType;
 const declconstr = trans.declconstr;
 const redtvars = types_mod.redtvars;
-const bigscan = big.scanDecimal;
+const bigscan = big_fmt.scanDecimal;
 const stoDbl = heap.stoDbl;
 const stoId = heap.stoId;
 const keep = lex.keep;
@@ -104,9 +105,9 @@ const isconstrname = lex.isconstrname;
 fn bigscanZ(heap_ptr: *heap.Heap, alloc: Allocator, text: []const u8) Word {
     const z = alloc.dupeSentinel(u8, text, 0) catch return word.NIL;
     if (std.mem.startsWith(u8, z, "0x") or std.mem.startsWith(u8, z, "0X")) {
-        return big.scanHex(heap_ptr, z.ptr + 2, z.ptr + z.len);
+        return big_fmt.scanHex(heap_ptr, z.ptr + 2, z.ptr + z.len);
     } else if (std.mem.startsWith(u8, z, "0o") or std.mem.startsWith(u8, z, "0O")) {
-        return big.scanOctal(heap_ptr, z.ptr + 2, z.ptr + z.len);
+        return big_fmt.scanOctal(heap_ptr, z.ptr + 2, z.ptr + z.len);
     } else {
         return bigscan(heap_ptr, z.ptr);
     }

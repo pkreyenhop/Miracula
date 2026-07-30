@@ -19,6 +19,7 @@ const combinators = @import("combinators.zig");
 const io_handlers = @import("io.zig");
 const rt = @import("../../runtime/runtime_state.zig");
 const big = @import("../../graph/bignum.zig");
+const big_fmt = @import("../../graph/bignum_fmt.zig");
 const heap = @import("../../graph/heap.zig");
 const lex = @import("../../parser/lex.zig");
 const os = @import("../../os.zig");
@@ -458,7 +459,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
                 ctx.rs.linebuf[s.len] = 0;
                 reduce.rewriteToString(ctx.heap, &ctx.e, @ptrCast(&ctx.rs.linebuf));
             } else {
-                reduce.simpl(ctx, Value.fromRaw(big.toDecimalList(ctx.heap, lastArg(ctx).toRaw())));
+                reduce.simpl(ctx, Value.fromRaw(big_fmt.toDecimalList(ctx.heap, lastArg(ctx).toRaw())));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -470,7 +471,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
                 ctx.rs.linebuf[s.len] = 0;
                 reduce.rewriteToString(ctx.heap, &ctx.e, @ptrCast(&ctx.rs.linebuf));
             } else {
-                reduce.simpl(ctx, Value.fromRaw(big.toHexList(ctx.heap, lastArg(ctx).toRaw())));
+                reduce.simpl(ctx, Value.fromRaw(big_fmt.toHexList(ctx.heap, lastArg(ctx).toRaw())));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -480,7 +481,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
             if (reduce.isDouble(ctx.heap, lastArg(ctx))) {
                 reduce_rt.intError("showoct");
             } else {
-                reduce.simpl(ctx, Value.fromRaw(big.toOctalList(ctx.heap, lastArg(ctx).toRaw())));
+                reduce.simpl(ctx, Value.fromRaw(big_fmt.toOctalList(ctx.heap, lastArg(ctx).toRaw())));
             }
             ctx.action = word.ACT_DONE;
             return;
@@ -919,7 +920,7 @@ fn handleReadyNUMVAL(ctx: *ReductionCtx) reduce.ReduceError!void {
     }
     if (x.toRaw() == word.NIL) {
         reduce.hdSet(ctx.heap, ctx.e, Value.fromRaw(word.I));
-        const val = Value.fromRaw(big.parseString(ctx.heap, lastArg(ctx).toRaw(), base));
+        const val = Value.fromRaw(big_fmt.parseString(ctx.heap, lastArg(ctx).toRaw(), base));
         reduce.tlSet(ctx.heap, ctx.e, val);
         ctx.e = val;
     } else {
