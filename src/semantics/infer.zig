@@ -168,7 +168,7 @@ fn sterilisRaw(heap: *Heap, t_val: Word) void {
     }
 }
 
-/// `Value`-typed wrapper for `sterilisRaw` (§ ZIG_NATIVE_PLAN Phase 5 step 4g).
+/// `Value`-typed wrapper for `sterilisRaw` (§ GO_PORT_PLAN Phase 5 step 4g).
 ///
 /// Tests: sterilise: rewrites an AP-tagged type's hd/tl to (list_t . num_t)
 pub fn sterilise(heap: *Heap, t_val: Value) void {
@@ -442,7 +442,7 @@ fn printelementRaw(heap: *Heap, x: Word) void {
     _ = word.print(")", .{});
 }
 
-/// `Value`-typed wrapper for `printelementRaw` (§ ZIG_NATIVE_PLAN Phase 5 step 4g).
+/// `Value`-typed wrapper for `printelementRaw` (§ GO_PORT_PLAN Phase 5 step 4g).
 ///
 /// Tests: printelement: prints a non-cons value bare, a cons-list parenthesised
 pub fn printelement(heap: *Heap, x: Value) void {
@@ -518,7 +518,7 @@ fn cyclicAbstrRaw(heap: *Heap, atnames: Word) Word {
     return 0;
 }
 
-/// `Value`-typed wrapper for `cyclicAbstrRaw` (§ ZIG_NATIVE_PLAN Phase 5 step 4g).
+/// `Value`-typed wrapper for `cyclicAbstrRaw` (§ GO_PORT_PLAN Phase 5 step 4g).
 ///
 /// Tests: cyclicAbstr: an empty atnames list reports no cycle
 pub fn cyclicAbstr(heap: *Heap, atnames: Value) Word {
@@ -543,7 +543,7 @@ fn txchangeRaw(heap: *Heap, ids_in: Word, x_in: Word) void {
     }
 }
 
-/// `Value`-typed wrapper for `txchangeRaw` (§ ZIG_NATIVE_PLAN Phase 5 step 4g).
+/// `Value`-typed wrapper for `txchangeRaw` (§ GO_PORT_PLAN Phase 5 step 4g).
 ///
 /// Tests: txchange: installs a representation type in place of a synonym id's own type
 pub fn txchange(heap: *Heap, ids_in: Value, x_in: Value) void {
@@ -589,7 +589,7 @@ fn repT1Raw(heap: *Heap, T: Word, L: Word) Word {
     return t1;
 }
 
-/// `Value`-typed wrapper for `repT1Raw` (§ ZIG_NATIVE_PLAN Phase 5 step 4g).
+/// `Value`-typed wrapper for `repT1Raw` (§ GO_PORT_PLAN Phase 5 step 4g).
 ///
 /// Tests: repT1: returns T unchanged when it has no formals to substitute
 pub fn repT1(heap: *Heap, T: Value, L: Value) Value {
@@ -610,7 +610,7 @@ fn repTRaw(heap: *Heap, T: Word, L: Word) Word {
     return if (t_val == T) t_val else redtvars(heap, t_val);
 }
 
-/// `Value`-typed wrapper for `repTRaw` (§ ZIG_NATIVE_PLAN Phase 5 step 4g).
+/// `Value`-typed wrapper for `repTRaw` (§ GO_PORT_PLAN Phase 5 step 4g).
 ///
 /// Tests: repT: returns T unchanged when repT1 makes no substitution
 pub fn repT(heap: *Heap, T: Value, L: Value) Value {
@@ -644,7 +644,7 @@ fn fixTypeRaw(heap: *Heap, t_val: Word) Word {
     }
 }
 
-/// `Value`-typed wrapper for `fixTypeRaw` (§ ZIG_NATIVE_PLAN Phase 5 step 4g).
+/// `Value`-typed wrapper for `fixTypeRaw` (§ GO_PORT_PLAN Phase 5 step 4g).
 ///
 /// Tests: fixType: passes atoms through unchanged, recurses through an AP node's fields
 pub fn fixType(heap: *Heap, t_val: Value) Value {
@@ -1691,7 +1691,7 @@ fn checktypeRaw(heap: *Heap, x: Word) Word {
     return if (cs().TYPERRS == 0) 1 else 0;
 }
 
-/// `Value`-typed wrapper for `checktypeRaw` (§ ZIG_NATIVE_PLAN Phase 5 step 4g).
+/// `Value`-typed wrapper for `checktypeRaw` (§ GO_PORT_PLAN Phase 5 step 4g).
 ///
 /// Tests: checktype: a boxed int typechecks cleanly, returning 1
 pub fn checktype(heap: *Heap, x: Value) Word {

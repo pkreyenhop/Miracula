@@ -15,7 +15,7 @@ pub var io: std.Io = std.Options.debug_io;
 /// The process environment block (set in `main`).
 pub var environ: std.process.Environ = .empty;
 
-/// Set by the SIGINT/SIGTERM handler (Phase 3, docs/ZIG_NATIVE_PLAN.md — the
+/// Set by the SIGINT/SIGTERM handler (Phase 3, docs/GO_PORT_PLAN.md — the
 /// replacement for the old `sigsetjmp`/`siglongjmp` mechanism). The handler's
 /// *only* job is this one atomic store (async-signal-safe by construction);
 /// `reduce()`'s main loop polls it and unwinds via a normal Zig error return

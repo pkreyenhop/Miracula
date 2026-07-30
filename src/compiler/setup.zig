@@ -90,7 +90,7 @@ const yysterm_data = [_]?[*:0]const u8{
 pub const yysterm = yysterm_data;
 
 /// Report a syntax error `s`: print the location, set `SYNERR`, and return
-/// `error.SyntaxError` (Phase 3 step 5, docs/ZIG_NATIVE_PLAN.md — callers
+/// `error.SyntaxError` (Phase 3 step 5, docs/GO_PORT_PLAN.md — callers
 /// that already gate on `SYNERR` afterward can keep doing so via `catch {}`;
 /// callers that want an honest fallible contract can `try`/propagate it).
 pub fn syntax(heap: *Heap, s: [*:0]const u8) errors.MiraError!void {

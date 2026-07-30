@@ -1,5 +1,5 @@
 //! config_state.zig (split from RuntimeState, Phase 4 step 4,
-//! docs/ZIG_NATIVE_PLAN.md) — process-wide configuration set once at
+//! docs/GO_PORT_PLAN.md) — process-wide configuration set once at
 //! startup from CLI flags or `.mirarc` (`session/config.zig`'s
 //! `parseFlags`/`readRc`) and read throughout the run: the prelude/stdenv
 //! paths, the heap/dictionary size limits, the editor command, and the

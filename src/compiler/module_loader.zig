@@ -60,7 +60,7 @@ inline fn pnVal(heap: *Heap, x: Word) Word {
 /// `error.SyntaxError` if compilation failed (`SYNERR` ended up set -- the
 /// diagnostic has already been printed by whichever `setup.syntax`/`acterror`
 /// call set it). The internal pipeline stages still gate on `core.SYNERR`
-/// exactly as before (Phase 3 step 5, docs/ZIG_NATIVE_PLAN.md, deliberately
+/// exactly as before (Phase 3 step 5, docs/GO_PORT_PLAN.md, deliberately
 /// keeps that -- it's what lets codegen continue past one bad definition and
 /// collect every diagnostic in one pass); only the function's own external
 /// contract becomes an honest fallible one instead of an implicit

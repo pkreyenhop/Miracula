@@ -48,7 +48,7 @@ const value = @import("../graph/value.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 pub const Word = i64;
-/// The typed graph value (Phase 5, docs/ZIG_NATIVE_PLAN.md §4.3, step 4):
+/// The typed graph value (Phase 5, docs/GO_PORT_PLAN.md §4.3, step 4):
 /// `Frame.node` and every `Spine` method below carry this instead of a bare
 /// `Word`. Callers not yet migrated (`reduce_core.zig`'s four wrappers,
 /// `combinators.zig`'s `handleTRY`/`handleFAIL`) convert at the boundary via

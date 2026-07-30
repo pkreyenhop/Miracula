@@ -1,5 +1,5 @@
 //! type_errors.zig (split from compiler/types.zig, Phase 4 step 3,
-//! docs/ZIG_NATIVE_PLAN.md) — type-error reporting (`typeError`/
+//! docs/GO_PORT_PLAN.md) — type-error reporting (`typeError`/
 //! `typeError1`-`typeError8`, `locate`/`sayhere` for source-location
 //! context) and type/pattern pretty-printing (`outType*`/`outPattern`/
 //! `outFormal*`) used both by error messages and `::` responses.

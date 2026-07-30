@@ -1,4 +1,4 @@
-//! syntax/lexer.zig — the native tokenizer core (docs/ZIG_NATIVE_PLAN.md Phase 1
+//! syntax/lexer.zig — the native tokenizer core (docs/GO_PORT_PLAN.md Phase 1
 //! step 2), replacing (eventually) `parser/lex.zig`'s `yylex`.
 //!
 //! Scope of this increment: whitespace/comment skipping, identifiers/keywords,

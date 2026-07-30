@@ -1,5 +1,5 @@
 //! semantics/symbols.zig — the identifier dictionary as an allocator-backed
-//! hash map (docs/ZIG_NATIVE_PLAN.md Phase 1 step 6), replacing
+//! hash map (docs/GO_PORT_PLAN.md Phase 1 step 6), replacing
 //! `parser/lex.zig`'s `makeId`/`findid`/`name()` (a fixed-size hash-bucket
 //! array — the lex state's `namebucket` field — chained through cons cells on
 //! the heap) and `makePn`/`stoPn`/`resetPns` (a manually `realloc`ed

@@ -1,5 +1,5 @@
 //! repl_session.zig (split from RuntimeState, Phase 4 step 4,
-//! docs/ZIG_NATIVE_PLAN.md) — interactive REPL state: the last-evaluated
+//! docs/GO_PORT_PLAN.md) — interactive REPL state: the last-evaluated
 //! expression (`lastexp`, a GC root -- `//x`/`//f` and `$$` reference it),
 //! the last-referenced identifier (`lastid`, for `//f`), the echo/listing/
 //! verbosity flags (`echoing` is always `verbosity & listing`, computed
@@ -24,7 +24,7 @@ pub const ReplSession = struct {
 
     /// Elapsed time and GC count from the last evaluated REPL expression,
     /// surfaced in the next prompt string. Set directly by `evaluateRepl`
-    /// after each in-process evaluation (Phase 3, docs/ZIG_NATIVE_PLAN.md —
+    /// after each in-process evaluation (Phase 3, docs/GO_PORT_PLAN.md —
     /// no more forked-child exit-code round trip to smuggle it back).
     last_elapsed_ns: ?i128 = null,
     last_gc_count: ?c_long = null,

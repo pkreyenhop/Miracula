@@ -338,7 +338,7 @@ pub fn build(b: *std.Build) void {
     tools_step.dependOn(&install_just.step);
     tools_step.dependOn(&install_menudriver.step);
 
-    // Zig-native migration scorecard (docs/ZIG_NATIVE_PLAN.md Phase 0): fails
+    // Zig-native migration scorecard (docs/GO_PORT_PLAN.md Phase 0): fails
     // the build if any tracked C-ism/shared-state/structure metric has risen
     // above scripts/scorecard.baseline.
     const scorecard_check = b.addSystemCommand(&.{ "scripts/scorecard.sh", "--check" });

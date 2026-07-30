@@ -1,5 +1,5 @@
 //! boot.zig (split from driver/startup.zig, Phase 4 step 3,
-//! docs/ZIG_NATIVE_PLAN.md) — process entry, miralib resolution, the version
+//! docs/GO_PORT_PLAN.md) — process entry, miralib resolution, the version
 //! mismatch stack, and the batch CLI modes (`-exports`/`-sources`/`-make`).
 //! `config.zig` holds flag parsing and `.mirarc` I/O; `mainEntry` drives both.
 

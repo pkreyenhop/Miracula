@@ -1,5 +1,5 @@
 //! depend.zig (split from compiler/types.zig, Phase 4 step 3,
-//! docs/ZIG_NATIVE_PLAN.md) — generic sorted-set operations, topological
+//! docs/GO_PORT_PLAN.md) — generic sorted-set operations, topological
 //! sort/mutually-recursive-group collapse for ordering definitions
 //! (`tsort`/`msc`), and free-variable dependency computation (`deps`,
 //! built on `rembvars`). `compDeps` (the type-checker's own per-definition

@@ -1,5 +1,5 @@
 //! lower.zig (split from compiler/trans.zig, Phase 4 step 3,
-//! docs/ZIG_NATIVE_PLAN.md) — translation from parse trees to combinator
+//! docs/GO_PORT_PLAN.md) — translation from parse trees to combinator
 //! graphs.
 //!
 //! Turns definitions and expressions into the `S`/`K`/`I`… combinator graph the

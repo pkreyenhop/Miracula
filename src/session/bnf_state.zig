@@ -1,7 +1,7 @@
 //! bnf_state.zig (split from RuntimeState, Phase 4 step 4,
-//! docs/ZIG_NATIVE_PLAN.md) — the `%bnf` grammar-extension bookkeeping.
+//! docs/GO_PORT_PLAN.md) — the `%bnf` grammar-extension bookkeeping.
 //! Already reduced to a handful of GC-root fields by Phase 1's lexer
-//! rewrite (docs/ZIG_NATIVE_PLAN.md Phase 1); none of these are read or
+//! rewrite (docs/GO_PORT_PLAN.md Phase 1); none of these are read or
 //! written anywhere in the current codebase, only traced by the GC as
 //! roots in case a future `%bnf` implementation populates them.
 

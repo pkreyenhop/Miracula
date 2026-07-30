@@ -4,7 +4,7 @@
 //! commands, `?`/`??` queries, `!` shell escapes, and bare expressions.
 //!
 //! `evaluateRepl` no longer forks a child per expression (Phase 3 step 3,
-//! docs/ZIG_NATIVE_PLAN.md): it checkpoints the heap first and always
+//! docs/GO_PORT_PLAN.md): it checkpoints the heap first and always
 //! restores it afterward (success or interrupt alike), reproducing the old
 //! fork model's actual invariant -- the forked child's reductions, being a
 //! separate COW-copied address space, never persisted into the parent's
@@ -292,7 +292,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
     }
 }
 
-/// SIGINT/SIGTERM handler for the whole session (Phase 3, docs/ZIG_NATIVE_PLAN.md):
+/// SIGINT/SIGTERM handler for the whole session (Phase 3, docs/GO_PORT_PLAN.md):
 /// async-signal-safe by construction -- the only thing it does is set the
 /// flag. Everything else (reporting the interrupt, restoring the heap,
 /// clearing the flag again) happens synchronously once `reduce()`'s polled

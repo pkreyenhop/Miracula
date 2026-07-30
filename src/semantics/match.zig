@@ -1,5 +1,5 @@
 //! match.zig (split from compiler/trans.zig, Phase 4 step 3,
-//! docs/ZIG_NATIVE_PLAN.md) — pattern-match compilation: `scanpattern`
+//! docs/GO_PORT_PLAN.md) — pattern-match compilation: `scanpattern`
 //! (compiles a pattern against a scrutinee into `TRY`-guarded bindings),
 //! `genlhs` (canonicalises a definition's left-hand-side pattern), and
 //! `transtries` (translates an id's pattern-match alternatives into a

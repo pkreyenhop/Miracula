@@ -396,7 +396,7 @@ fn caseSyntaxErrorRepeat() !void {
 }
 
 /// A real, CLI-level compile -> dump -> undump round-trip check (Phase 2
-/// step 4 prerequisite, docs/ZIG_NATIVE_PLAN.md): every successful script
+/// step 4 prerequisite, docs/GO_PORT_PLAN.md): every successful script
 /// compile unconditionally writes a `.x` dump (`module_loader.zig`'s
 /// `loadfile`, confirmed by reading it directly, not assumed), and the
 /// *second* invocation against an unchanged source loads from that dump
@@ -465,7 +465,7 @@ fn caseDumpUndumpRoundTrip() !void {
 }
 
 /// `Tofile`/`Appendfile`/`Closefile` had zero test coverage before this
-/// (Phase 2 step 4, docs/ZIG_NATIVE_PLAN.md) -- and turned out to have a
+/// (Phase 2 step 4, docs/GO_PORT_PLAN.md) -- and turned out to have a
 /// real bug: `Tofile fil string` only switched the output stream and
 /// silently dropped `string` instead of writing it (fixed in
 /// `runtime/reduce.zig`'s `output()`, which now also `print`s the message's

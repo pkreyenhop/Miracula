@@ -65,7 +65,7 @@ This document outlines the history, completed milestones, target platform suppor
   error/recovery model. Tracked in the since-retired `REMAINING_WORK_PLAN` document, which
   consolidated and sequenced the open items originally spread across the
   `REDESIGN_DATA_MODEL`, `IDIOMATIC_ARCHITECTURE_PLAN`, and `SHARED_STATE_PLAN` documents
-  (all retired; superseded by [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md)).
+  (all retired; superseded by [GO_PORT_PLAN.md](GO_PORT_PLAN.md)).
 * **Outcome**:
   - **State aggregation (SHARED_STATE Phases 1–4)** — every mutable interpreter state struct
     (`RuntimeState`, `Heap`, `LexState`, `CompilerState`, `CoreState`, `IoState`, `EvalState`,
@@ -107,7 +107,7 @@ This document outlines the history, completed milestones, target platform suppor
   interrupt flag (delete `setjmp`/`longjmp` and fork-per-eval), an enforced module DAG
   with explicit ownership (delete the ambient singleton), and a typed value model
   (`Value`/`Comb`/`CellRef` instead of bare `Word`).
-* **Plan**: [ZIG_NATIVE_PLAN.md](ZIG_NATIVE_PLAN.md) — supersedes all earlier plan
+* **Plan**: [GO_PORT_PLAN.md](GO_PORT_PLAN.md) — supersedes all earlier plan
   documents. Note it deliberately re-opens two Phase 9 "resolved by necessity" decisions
   (the `setjmp`/`longjmp` recovery floor and the deferred `*Interp` threading).
 

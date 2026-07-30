@@ -329,7 +329,7 @@ fn codegenGuarded(heap_ptr: *heap.Heap, alloc: Allocator, guards: []const ast.Gu
 /// Reported the same way other codegen-time syntax errors are (`setup.syntax`
 /// sets `SYNERR` and resets the lexer; the caller checks `SYNERR` after
 /// codegen and discards the result) rather than `fpeError`'s old
-/// `siglongjmp` (Phase 3 step 2, docs/ZIG_NATIVE_PLAN.md).
+/// `siglongjmp` (Phase 3 step 2, docs/GO_PORT_PLAN.md).
 fn floatLiteralOverflow(heap_ptr: *heap.Heap) Word {
     setup.syntax(heap_ptr, "floating point number out of range\n") catch {};
     return word.NIL;
@@ -601,7 +601,7 @@ fn codegenExprRaw(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
     };
 }
 
-/// `Value`-typed wrapper for `codegenExprRaw` (§ ZIG_NATIVE_PLAN Phase 5 step 4).
+/// `Value`-typed wrapper for `codegenExprRaw` (§ GO_PORT_PLAN Phase 5 step 4).
 pub fn codegenExpr(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Value {
     return Value.fromRaw(codegenExprRaw(heap_ptr, alloc, e));
 }

@@ -1,4 +1,4 @@
-//! bignum.zig (renamed from big.zig, Phase 4 step 1, docs/ZIG_NATIVE_PLAN.md)
+//! bignum.zig (renamed from big.zig, Phase 4 step 1, docs/GO_PORT_PLAN.md)
 //! — arbitrary-precision integers (bignums).
 //!
 //! A bignum is a linked chain of `INT` heap cells: each cell's `hd` holds one

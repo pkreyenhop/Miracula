@@ -1,7 +1,7 @@
 //! syntax/source.zig — a script reduced to Miranda-lexical bytes: literate
 //! prose stripped, line-start offsets precomputed for `Span` reporting.
 //!
-//! Part of docs/ZIG_NATIVE_PLAN.md Phase 1 (the native front end). Today's
+//! Part of docs/GO_PORT_PLAN.md Phase 1 (the native front end). Today's
 //! `parser/lex.zig` interleaves literate-margin handling, line counting, and
 //! token scanning into one online, heap-mutating pass (`getch`/`yylex`). This
 //! module splits the *bytes* out first: prepare a `Source` once, then a pure
