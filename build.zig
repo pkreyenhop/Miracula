@@ -178,7 +178,7 @@ pub fn build(b: *std.Build) void {
     const parser_tests = b.addTest(.{
         .name = "parser-tests",
         .root_module = b.createModule(.{
-            .root_source_file = b.path("src/syntax/parser.zig"),
+            .root_source_file = b.path("src/syntax/parser_test.zig"),
             .target = target,
             .optimize = optimize,
         }),
@@ -490,7 +490,7 @@ pub fn build(b: *std.Build) void {
     const run_strict_main_tests = b.addRunArtifact(strict_main_tests);
 
     const strict_parser_module = b.createModule(.{
-        .root_source_file = b.path("src/syntax/parser.zig"),
+        .root_source_file = b.path("src/syntax/parser_test.zig"),
         .target = target,
         .optimize = .Debug,
     });
