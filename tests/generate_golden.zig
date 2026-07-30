@@ -14,7 +14,7 @@ fn cleanOutput(allocator: std.mem.Allocator, text: []const u8) ![]const u8 {
         }
         try list.append(allocator, line);
     }
-    
+
     var total_len: usize = 0;
     for (list.items) |line| {
         total_len += line.len;
@@ -22,7 +22,7 @@ fn cleanOutput(allocator: std.mem.Allocator, text: []const u8) ![]const u8 {
     if (list.items.len > 0) {
         total_len += list.items.len - 1;
     }
-    
+
     const joined = try allocator.alloc(u8, total_len);
     errdefer allocator.free(joined);
     var offset: usize = 0;
@@ -34,7 +34,7 @@ fn cleanOutput(allocator: std.mem.Allocator, text: []const u8) ![]const u8 {
             offset += 1;
         }
     }
-    
+
     const trimmed = std.mem.trim(u8, joined, " \t\r\n");
     const result = try allocator.dupe(u8, trimmed);
     allocator.free(joined);
