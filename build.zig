@@ -702,6 +702,12 @@ pub fn build(b: *std.Build) void {
     test_go_bootstrap.dependOn(&go_bootstrap_dag.step);
     test_go_bootstrap.dependOn(&go_bootstrap_diff.step);
 
+    const run_go_cutover_contract = b.addSystemCommand(&.{ "python3", "scripts/go_cutover.py" });
+    const run_go_cutover_acceptance = b.addSystemCommand(&.{ "python3", "tests/test_go_cutover.py" });
+    const test_go_cutover = b.step("test-go-cutover", "Verify ordered Go production-cutover progress");
+    test_go_cutover.dependOn(&run_go_cutover_contract.step);
+    test_go_cutover.dependOn(&run_go_cutover_acceptance.step);
+
     const run_gc_stress = b.addSystemCommand(&.{
         b.graph.zig_exe,
         "build",
@@ -743,6 +749,7 @@ pub fn build(b: *std.Build) void {
     go_ready_core.dependOn(test_phase12);
     go_ready_core.dependOn(test_phase13);
     go_ready_core.dependOn(test_go_bootstrap);
+    go_ready_core.dependOn(test_go_cutover);
 
     const run_go_ready_gc_stress = b.addSystemCommand(&.{
         b.graph.zig_exe,

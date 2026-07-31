@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "milestones": {
+    "00-contract": "complete",
+    "01-production-command": "pending",
+    "02-runtime-graph": "pending",
+    "03-source-parser": "pending",
+    "04-semantics-lowering": "pending",
+    "05-evaluator": "pending",
+    "06-module-dump-boot": "pending",
+    "07-repl-commands": "pending",
+    "08-platform-integration": "pending",
+    "09-full-parity": "pending",
+    "10-production-packaging": "pending",
+    "11-cutover": "pending"
+  }
+}
