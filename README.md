@@ -90,7 +90,6 @@ fib 20
   stress tests
 - `docs/` — project documentation and historical notes
 - `scripts/` — repository checks and maintenance utilities
-- `issues/` — issue-management utilities and records
 
 ## Building
 
