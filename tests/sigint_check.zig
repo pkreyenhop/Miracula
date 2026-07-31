@@ -58,12 +58,13 @@ pub fn main(ctx: std.process.Init) !void {
     multi_reader.init(allocator, ctx.io, multi_reader_buffer.toStreams(), &.{ child.stdout.?, child.stderr.? });
     defer multi_reader.deinit();
 
-    const timeout = std.Io.Timeout{ .duration = .{ .raw = std.Io.Duration.fromSeconds(10), .clock = .real } };
+    // Hosted CI can be heavily loaded while the surrounding readiness graph
+    // compiles. This is a liveness guard, not a performance assertion.
+    const timeout = std.Io.Timeout{ .duration = .{ .raw = std.Io.Duration.fromSeconds(30), .clock = .real } };
     while (multi_reader.fill(64, timeout)) |_| {} else |err| switch (err) {
         error.EndOfStream => {},
         error.Timeout => {
             child.kill(ctx.io);
-            _ = try child.wait(ctx.io);
             return error.Timeout;
         },
         else => |e| return e,

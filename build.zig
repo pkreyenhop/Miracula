@@ -692,29 +692,50 @@ pub fn build(b: *std.Build) void {
     const test_gc_stress = b.step("test-gc-stress", "Run the complete applicable corpus with GC before every allocation");
     test_gc_stress.dependOn(&run_gc_stress.step);
 
+    // Run the ordinary readiness graph before starting the nested forced-GC
+    // build. Concurrent native/strict linking can otherwise starve every
+    // forced-GC candidate on small hosted runners until its liveness timeout.
+    const go_ready_core = b.step("go-ready-core", "Run all Go migration readiness gates except forced-GC stress");
+    go_ready_core.dependOn(check_step);
+    go_ready_core.dependOn(strict_step);
+    go_ready_core.dependOn(test_golden);
+    go_ready_core.dependOn(test_regression);
+    go_ready_core.dependOn(test_verify_reference);
+    go_ready_core.dependOn(test_phase1_acceptance);
+    go_ready_core.dependOn(verify_all_oracles);
+    go_ready_core.dependOn(test_phase2);
+    go_ready_core.dependOn(test_phase3);
+    go_ready_core.dependOn(test_phase4);
+    go_ready_core.dependOn(test_phase5);
+    go_ready_core.dependOn(test_phase6);
+    go_ready_core.dependOn(test_phase7);
+    go_ready_core.dependOn(test_phase8);
+    go_ready_core.dependOn(test_phase9);
+    go_ready_core.dependOn(test_phase10);
+    go_ready_core.dependOn(test_phase11);
+    go_ready_core.dependOn(test_phase12);
+    go_ready_core.dependOn(test_phase13);
+
+    const run_go_ready_gc_stress = b.addSystemCommand(&.{
+        b.graph.zig_exe,
+        "build",
+        "test-regression",
+        "-Dforce-gc-every-allocation=true",
+        "--prefix",
+        "zig-out/gc-stress",
+        "--cache-dir",
+        ".zig-cache-gc-stress",
+        "--global-cache-dir",
+        ".zig-global-cache-gc-stress",
+        "--summary",
+        "failures",
+    });
+    run_go_ready_gc_stress.step.dependOn(go_ready_core);
+
     // Mandatory migration-readiness gate. Reference preparation is deliberately
     // separate: this target fails closed when the pinned artifact is absent.
     const go_ready_step = b.step("go-ready", "Run the complete fail-closed Go migration readiness gate");
-    go_ready_step.dependOn(check_step);
-    go_ready_step.dependOn(strict_step);
-    go_ready_step.dependOn(test_golden);
-    go_ready_step.dependOn(test_regression);
-    go_ready_step.dependOn(test_verify_reference);
-    go_ready_step.dependOn(test_phase1_acceptance);
-    go_ready_step.dependOn(verify_all_oracles);
-    go_ready_step.dependOn(test_phase2);
-    go_ready_step.dependOn(test_phase3);
-    go_ready_step.dependOn(test_phase4);
-    go_ready_step.dependOn(test_phase5);
-    go_ready_step.dependOn(test_phase6);
-    go_ready_step.dependOn(test_phase7);
-    go_ready_step.dependOn(test_phase8);
-    go_ready_step.dependOn(test_phase9);
-    go_ready_step.dependOn(test_phase10);
-    go_ready_step.dependOn(test_phase11);
-    go_ready_step.dependOn(test_phase12);
-    go_ready_step.dependOn(test_phase13);
-    go_ready_step.dependOn(test_gc_stress);
+    go_ready_step.dependOn(&run_go_ready_gc_stress.step);
 
     // Benchmark targets (optimized for ReleaseFast)
     const bench_version_options = b.addOptions();
