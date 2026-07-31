@@ -32,11 +32,11 @@ const repl = @import("repl.zig");
 const commands = @import("commands.zig");
 const files = @import("../io/files.zig");
 const setup = @import("../compiler/setup.zig");
-const signals_mod = @import("../io/signals.zig");
 const dump = @import("../compiler/dump.zig");
 const core_state = @import("../runtime/core_state.zig");
 const lineedit = @import("editor.zig");
 const config = @import("config.zig");
+const platform = @import("../io/platform.zig");
 const ls = lex_state.ls;
 
 inline fn getTag(heap: *Heap, x: Word) word.NodeTag {
@@ -56,7 +56,7 @@ fn unlimitStack() void {
 pub fn mainEntry(heap: *Heap, argc: i32, argv: [*][*:0]u8) i32 {
     var manonly: Word = 0;
     unlimitStack();
-    repl_session.session().verbosity = if (abi.isatty(0) != 0) 1 else 0;
+    repl_session.session().verbosity = if (platform.isTerminal(0)) 1 else 0;
     word.setbuf(abi.stdout(), null);
 
     const okhome_rc = config.readHomeRc();
@@ -160,11 +160,10 @@ pub fn mainEntry(heap: *Heap, argc: i32, argv: [*][*:0]u8) i32 {
         _ = abi.keep(ls().dicp);
     }
 
-    _ = signals_mod.signals(@intCast(abi.SIGTERM), abi.ptrInt(&abi.exit));
     // Interactive stdin gets zigline line editing + history; piped/file stdin
     // keeps the plain read path (so the golden corpus and integration suite run
     // unchanged).
-    if (abi.isatty(0) != 0) {
+    if (platform.isTerminal(0)) {
         lineedit.init(heap, rt.allocator, rt.io);
     }
     repl.commandLoop(heap, core_state.s(), cs(), rt.rs(), ls(), @constCast(initscript));

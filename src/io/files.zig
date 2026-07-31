@@ -144,9 +144,6 @@ pub fn makeAbsolute(m: [*:0]u8) [*:0]u8 {
 
 /// Returns the terminal column width minus 2, defaulting to 78 if unavailable.
 pub fn termWidth() i32 {
-    var window: abi.struct_winsize = undefined;
-    if (abi.ioctl(abi.STDOUT_FILENO, abi.TIOCGWINSZ, &window) == -1 or window.ws_col == 0) {
-        return 78;
-    }
-    return @as(i32, @intCast(window.ws_col)) - 2;
+    const columns = platform.terminalWidth(1) orelse return 78;
+    return @as(i32, @intCast(columns)) - 2;
 }

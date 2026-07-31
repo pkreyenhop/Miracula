@@ -1,0 +1,19 @@
+name: Go migration readiness
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  go-ready:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+      - run: zig build go-ready --summary failures

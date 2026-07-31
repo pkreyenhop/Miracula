@@ -38,6 +38,8 @@ const cs = compiler_state.cs;
 const abi = @import("../os.zig");
 const parser_api = @import("../parser/parser_api.zig");
 const lineedit = @import("editor.zig");
+const platform = @import("../io/platform.zig");
+const platform_contract = @import("../io/platform_contract.zig");
 
 const Word = word.Word;
 const Value = @import("../graph/value.zig").Value;
@@ -74,9 +76,7 @@ fn formatExecutionTime(ns: i128, buf: []u8) []const u8 {
 }
 
 fn getMonotonicNs() i128 {
-    var ts: std.posix.timespec = undefined;
-    _ = std.posix.system.clock_gettime(std.posix.CLOCK.MONOTONIC, &ts);
-    return @as(i128, ts.sec) * std.time.ns_per_s + ts.nsec;
+    return platform.monotonicNs();
 }
 
 // State owned by reduce.zig / heap.zig — not yet accessible via @import.
@@ -84,7 +84,6 @@ inline fn getTag(heap: *Heap, x: Word) word.NodeTag {
     return heap.getTag(x);
 }
 
-const signals = signals_mod.signals;
 const resetgcstats = heap_mod.resetgcstats;
 const outstats = reduce.outstats;
 const token = lex.token;
@@ -107,7 +106,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
         abi.obey(heap, core, comp, rs, rs.main_id);
         abi.exit(0);
     }
-    _ = signals(@intCast(abi.SIGINT), abi.ptrInt(&onInterrupt));
+    _ = signals_mod.register(.interrupt, .{ .notify = onInterrupt }) catch {};
     dump.undump(heap, core_state.s(), cs(), rs, initscript);
     if (repl_session.session().verbosity != 0) {
         word.print("for help type /h\n", .{});
@@ -221,24 +220,15 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                 repl_session.session().lastid = 0;
                 if (lb.?[0] != 0) {
                     const shell_env = abi.getenv("SHELL");
-                    const shell: []const u8 = if (shell_env) |s| std.mem.span(s) else "/bin/sh";
+                    const shell: []const u8 = if (shell_env) |s| std.mem.span(s) else platform_contract.ShellContract.fallback_path;
                     // Ignore SIGINT for the duration: a Ctrl-C meant for the
                     // shell command (e.g. an interactive `!vi`) must not also
                     // kill mira itself. Restored once the child returns.
-                    const oldsig = signals(@intCast(abi.SIGINT), 1);
-                    const argv = [_][]const u8{ shell, "-c", std.mem.span(lb.?) };
-                    if (std.process.spawn(rt.io, .{
-                        .argv = &argv,
-                        .stdin = .inherit,
-                        .stdout = .inherit,
-                        .stderr = .inherit,
-                    })) |spawned| {
-                        var child = spawned;
-                        _ = child.wait(rt.io) catch {};
-                    } else |_| {
+                    const ignored = signals_mod.register(.interrupt, .ignore) catch null;
+                    defer if (ignored) |registration| registration.restore();
+                    _ = platform.runShell(rt.io, shell, std.mem.span(lb.?)) catch {
                         abi.perror("UNIX error - cannot create process");
-                    }
-                    _ = signals(@intCast(abi.SIGINT), oldsig);
+                    };
                     if (dump_mod.srcUpdate(heap, rs) != 0) {
                         module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), script_store.store().current_script.?) catch {};
                     }
@@ -298,8 +288,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
 /// clearing the flag again) happens synchronously once `reduce()`'s polled
 /// check propagates `error.Interrupted` up through normal Zig control flow,
 /// in `evaluateRepl` below.
-pub fn onInterrupt(sig: i32) callconv(.c) void {
-    _ = sig;
+pub fn onInterrupt() void {
     rt.interrupt_flag.store(true, .release);
 }
 
@@ -486,7 +475,7 @@ pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState,
         if (repl_session.session().lastexp != word.UNDEF) {
             return trans_mod.codegen(heap, repl_session.session().lastexp);
         }
-        if (abi.isatty(word.fileno(f)) != 0) {
+        if (platform.isTerminal(word.fileno(f))) {
             word.print("please re-enter data:\n", .{});
         } else {
             if (fil != 0) {

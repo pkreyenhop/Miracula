@@ -81,6 +81,8 @@ comptime {
     _ = @import("compiler/module_loader.zig");
     _ = @import("compiler/dump.zig");
     _ = @import("io/files.zig");
+    _ = @import("io/platform_contract.zig");
+    _ = @import("io/process.zig");
     _ = @import("io/signals.zig");
     _ = @import("runtime/version.zig");
     _ = @import("runtime/runtime_state.zig");

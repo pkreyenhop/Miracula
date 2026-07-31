@@ -134,6 +134,8 @@
     "graph/xcodec.zig",
     "io/files.zig",
     "io/platform.zig",
+    "io/platform_contract.zig",
+    "io/process.zig",
     "io/signals.zig",
     "main.zig",
     "os.zig",

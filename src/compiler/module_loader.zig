@@ -38,16 +38,11 @@ const files = @import("../io/files.zig");
 const dump = @import("dump.zig");
 const ls = lex_state.ls;
 const resources = @import("../eval/resources.zig");
+const process = @import("../io/process.zig");
 
 // Global variables defined/exported in parser/lex.zig
 
 // C ABI / linked symbols
-const signals = signals_mod.signals;
-/// POSIX `WEXITSTATUS`: the exit code from a child's wait status.
-fn WEXITSTATUS(status: i32) i32 {
-    return (status >> 8) & 0xff;
-}
-
 inline fn pnVal(heap: *Heap, x: Word) Word {
     return heap_mod.t(heap, x);
 }
@@ -479,48 +474,56 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
     var result: Word = NIL;
     var tclashes: Word = NIL;
     includees_list = heap_mod.reverse(includees_list);
-    const pid = abi.fork();
-    if (pid != 0) { // parent
-        var status: i32 = 0;
-        if (pid == -1) {
-            abi.perror("UNIX error - cannot create process");
-            if (rs.ideep > 6) {
-                word.printErr("error occurs {} deep in %include files\n", .{rs.ideep});
-            }
-            if (rs.ideep != 0) {
-                abi.exit(2);
-            }
-            core.SYNERR = 2;
-            word.print("compilation of \"{s}\" abandoned\n", .{script_store.store().current_script.?});
-            return NIL;
+    const forked = process.forkProcess() catch {
+        abi.perror("UNIX error - cannot create process");
+        if (rs.ideep > 6) {
+            word.printErr("error occurs {} deep in %include files\n", .{rs.ideep});
         }
-        while (pid != abi.wait(&status)) {}
-        if (WEXITSTATUS(status) == 2) {
-            if (rs.ideep != 0) {
-                abi.exit(2);
-            } else {
+        if (rs.ideep != 0) {
+            abi.exit(2);
+        }
+        core.SYNERR = 2;
+        word.print("compilation of \"{s}\" abandoned\n", .{script_store.store().current_script.?});
+        return NIL;
+    };
+    switch (forked) {
+        .parent => |pid| {
+            const outcome = process.waitChild(pid) catch {
                 core.SYNERR = 2;
-                word.print("compilation of \"{s}\" abandoned\n", .{script_store.store().current_script.?});
                 return NIL;
+            };
+            const failed = switch (outcome) {
+                .exited => |code| code == 2,
+                .signaled => true,
+            };
+            if (failed) {
+                if (rs.ideep != 0) {
+                    abi.exit(2);
+                } else {
+                    core.SYNERR = 2;
+                    word.print("compilation of \"{s}\" abandoned\n", .{script_store.store().current_script.?});
+                    return NIL;
+                }
             }
-        }
-    } else { // child
-        _ = signals(@intCast(abi.SIGINT), 0);
-        rs.ideep += 1;
-        make_state.make().making = true;
-        make_state.make().make_status = 0;
-        repl_session.session().echoing = 0;
-        repl_session.session().listing = 0;
-        repl_session.session().verbosity = 0;
-        rs.magic = false;
-        while (includees_list != NIL and make_state.make().make_status == 0) {
-            dump.undump(heap, core, comp, rs, strtab.strOf(strtab.table(), heap_mod.h(heap, heap_mod.h(heap, heap_mod.h(heap, includees_list)))));
-            if (comp.ND != NIL or (heap.files == NIL and script_store.store().oldfiles != NIL)) {
-                make_state.make().make_status = 1;
+        },
+        .child => {
+            _ = signals_mod.register(.interrupt, .default) catch {};
+            rs.ideep += 1;
+            make_state.make().making = true;
+            make_state.make().make_status = 0;
+            repl_session.session().echoing = 0;
+            repl_session.session().listing = 0;
+            repl_session.session().verbosity = 0;
+            rs.magic = false;
+            while (includees_list != NIL and make_state.make().make_status == 0) {
+                dump.undump(heap, core, comp, rs, strtab.strOf(strtab.table(), heap_mod.h(heap, heap_mod.h(heap, heap_mod.h(heap, includees_list)))));
+                if (comp.ND != NIL or (heap.files == NIL and script_store.store().oldfiles != NIL)) {
+                    make_state.make().make_status = 1;
+                }
+                includees_list = heap_mod.t(heap, includees_list);
             }
-            includees_list = heap_mod.t(heap, includees_list);
-        }
-        abi.exit(@intCast(make_state.make().make_status));
+            abi.exit(@intCast(make_state.make().make_status));
+        },
     }
 
     while (includees_list != NIL) {

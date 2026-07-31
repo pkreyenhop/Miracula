@@ -35,6 +35,8 @@
     "graph/xcodec.zig": "protocol",
     "io/files.zig": "platformsvc",
     "io/platform.zig": "platformsvc",
+    "io/platform_contract.zig": "platformsvc",
+    "io/process.zig": "platformsvc",
     "io/signals.zig": "platformsvc",
     "io/utf8.zig": "platformsvc",
     "main.zig": "commandapp",

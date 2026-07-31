@@ -798,5 +798,5 @@ test "log10: base-10 logarithm; log10 1000 == 3" {
 
 /// Set errno to `EDOM` (a maths domain error).
 fn setErrnoDomain() void {
-    platform.setErrno(@intCast(@intFromEnum(std.posix.E.DOM)));
+    platform.setDomainError();
 }
