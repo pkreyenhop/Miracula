@@ -43172,7 +43172,7 @@
           "target_file": "files.go",
           "target_package": "platformsvc",
           "target_symbol": "FilesWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43205,7 +43205,7 @@
           "target_file": "files.go",
           "target_package": "platformsvc",
           "target_symbol": "FilesFileMtime",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43238,7 +43238,7 @@
           "target_file": "files.go",
           "target_package": "platformsvc",
           "target_symbol": "FilesIsMirandaSource",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43271,7 +43271,7 @@
           "target_file": "files.go",
           "target_package": "platformsvc",
           "target_symbol": "FilesSameFile",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43304,7 +43304,7 @@
           "target_file": "files.go",
           "target_package": "platformsvc",
           "target_symbol": "FilesInodeId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43337,7 +43337,7 @@
           "target_file": "files.go",
           "target_package": "platformsvc",
           "target_symbol": "FilesFileExists",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43370,7 +43370,7 @@
           "target_file": "files.go",
           "target_package": "platformsvc",
           "target_symbol": "FilesFileCopy",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43403,7 +43403,7 @@
           "target_file": "files.go",
           "target_package": "platformsvc",
           "target_symbol": "FilesCopyFile",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43436,7 +43436,7 @@
           "target_file": "files.go",
           "target_package": "platformsvc",
           "target_symbol": "FilesUnlinkObject",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43469,7 +43469,7 @@
           "target_file": "files.go",
           "target_package": "platformsvc",
           "target_symbol": "FilesMakeAbsolute",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43502,12 +43502,12 @@
           "target_file": "files.go",
           "target_package": "platformsvc",
           "target_symbol": "FilesTermWidth",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "files.go",
       "target_package": "platformsvc",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -43599,7 +43599,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformIsatty",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43625,7 +43625,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformIoctl",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43651,7 +43651,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformWindowSize",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43677,7 +43677,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformFileInfo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43703,7 +43703,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformErrnoLocation",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43729,7 +43729,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformGetErrno",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43755,7 +43755,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformSetErrno",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43781,7 +43781,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformGetFileInfo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43807,7 +43807,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformGeteuid",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43833,7 +43833,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformGetegid",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43859,7 +43859,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43885,7 +43885,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformStat",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43911,7 +43911,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformGetErrnoLine87",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43937,7 +43937,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformSetErrnoLine91",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43963,7 +43963,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformGetFileInfoLine96",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -43989,7 +43989,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformGeteuidLine124",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -44015,7 +44015,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformGetegidLine129",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -44041,7 +44041,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformSetDomainError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -44067,7 +44067,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformMonotonicNs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -44093,7 +44093,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformIsTerminal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -44119,7 +44119,7 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformTerminalWidth",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -44145,12 +44145,12 @@
           "target_file": "platform.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformRunShell",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "platform.go",
       "target_package": "platformsvc",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -44222,7 +44222,7 @@
           "target_file": "platform_contract.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformContractFileMetadata",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -44246,7 +44246,7 @@
           "target_file": "platform_contract.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformContractProcessRequest",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -44270,7 +44270,7 @@
           "target_file": "platform_contract.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformContractStreamMode",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -44294,7 +44294,7 @@
           "target_file": "platform_contract.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformContractProcessOutcome",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -44318,7 +44318,7 @@
           "target_file": "platform_contract.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformContractProcessError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -44342,7 +44342,7 @@
           "target_file": "platform_contract.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformContractShellContract",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -44366,7 +44366,7 @@
           "target_file": "platform_contract.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformContractSignal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -44390,7 +44390,7 @@
           "target_file": "platform_contract.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformContractSignalAction",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -44414,7 +44414,7 @@
           "target_file": "platform_contract.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformContractTerminalInfo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -44438,7 +44438,7 @@
           "target_file": "platform_contract.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformContractServices",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -44462,7 +44462,7 @@
           "target_file": "platform_contract.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformContractServices.Metadata",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -44486,7 +44486,7 @@
           "target_file": "platform_contract.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformContractServices.Run",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -44510,7 +44510,7 @@
           "target_file": "platform_contract.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformContractServices.Terminal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -44534,7 +44534,7 @@
           "target_file": "platform_contract.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformContractServices.MonotonicNs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -44558,7 +44558,7 @@
           "target_file": "platform_contract.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformContractServices.Environment",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -44582,12 +44582,12 @@
           "target_file": "platform_contract.go",
           "target_package": "platformsvc",
           "target_symbol": "PlatformContractServices.FindExecutable",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "platform_contract.go",
       "target_package": "platformsvc",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -44663,7 +44663,7 @@
           "target_file": "process.go",
           "target_package": "platformsvc",
           "target_symbol": "ProcessFork",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -44689,7 +44689,7 @@
           "target_file": "process.go",
           "target_package": "platformsvc",
           "target_symbol": "ProcessWaitpid",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -44715,7 +44715,7 @@
           "target_file": "process.go",
           "target_package": "platformsvc",
           "target_symbol": "ProcessProcessId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -44741,7 +44741,7 @@
           "target_file": "process.go",
           "target_package": "platformsvc",
           "target_symbol": "ProcessForkResult",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -44767,7 +44767,7 @@
           "target_file": "process.go",
           "target_package": "platformsvc",
           "target_symbol": "ProcessForkProcess",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -44793,12 +44793,12 @@
           "target_file": "process.go",
           "target_package": "platformsvc",
           "target_symbol": "ProcessWaitChild",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "process.go",
       "target_package": "platformsvc",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -44874,7 +44874,7 @@
           "target_file": "signals.go",
           "target_package": "platformsvc",
           "target_symbol": "SignalsSigaction",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -44900,7 +44900,7 @@
           "target_file": "signals.go",
           "target_package": "platformsvc",
           "target_symbol": "SignalsAction",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -44926,7 +44926,7 @@
           "target_file": "signals.go",
           "target_package": "platformsvc",
           "target_symbol": "SignalsRegistration",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -44952,7 +44952,7 @@
           "target_file": "signals.go",
           "target_package": "platformsvc",
           "target_symbol": "SignalsRegistration.Restore",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -44978,7 +44978,7 @@
           "target_file": "signals.go",
           "target_package": "platformsvc",
           "target_symbol": "SignalsRegisterError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -45004,7 +45004,7 @@
           "target_file": "signals.go",
           "target_package": "platformsvc",
           "target_symbol": "SignalsRegister",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -45030,7 +45030,7 @@
           "target_file": "signals.go",
           "target_package": "platformsvc",
           "target_symbol": "SignalsNativeNotify",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -45056,12 +45056,12 @@
           "target_file": "signals.go",
           "target_package": "platformsvc",
           "target_symbol": "SignalsSignalNumber",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "signals.go",
       "target_package": "platformsvc",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -45137,7 +45137,7 @@
           "target_file": "typed_parse.go",
           "target_package": "platformsvc",
           "target_symbol": "TypedParseError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -45163,7 +45163,7 @@
           "target_file": "typed_parse.go",
           "target_package": "platformsvc",
           "target_symbol": "TypedParseIntegerResult",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -45189,7 +45189,7 @@
           "target_file": "typed_parse.go",
           "target_package": "platformsvc",
           "target_symbol": "TypedParseIntegerPrefix",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -45215,7 +45215,7 @@
           "target_file": "typed_parse.go",
           "target_package": "platformsvc",
           "target_symbol": "TypedParseInteger",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -45241,7 +45241,7 @@
           "target_file": "typed_parse.go",
           "target_package": "platformsvc",
           "target_symbol": "TypedParseIntegerAuto",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -45267,7 +45267,7 @@
           "target_file": "typed_parse.go",
           "target_package": "platformsvc",
           "target_symbol": "TypedParseFloat",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -45293,7 +45293,7 @@
           "target_file": "typed_parse.go",
           "target_package": "platformsvc",
           "target_symbol": "TypedParseReadToken",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -45319,12 +45319,12 @@
           "target_file": "typed_parse.go",
           "target_package": "platformsvc",
           "target_symbol": "TypedParseReadInteger",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "typed_parse.go",
       "target_package": "platformsvc",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -45396,7 +45396,7 @@
           "target_file": "utf8.go",
           "target_package": "platformsvc",
           "target_symbol": "Utf8Stream",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -45420,7 +45420,7 @@
           "target_file": "utf8.go",
           "target_package": "platformsvc",
           "target_symbol": "Utf8Getc",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -45444,7 +45444,7 @@
           "target_file": "utf8.go",
           "target_package": "platformsvc",
           "target_symbol": "Utf8Putc",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -45468,7 +45468,7 @@
           "target_file": "utf8.go",
           "target_package": "platformsvc",
           "target_symbol": "Utf8FromUTF8",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -45492,7 +45492,7 @@
           "target_file": "utf8.go",
           "target_package": "platformsvc",
           "target_symbol": "Utf8OutUTF8",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -45516,7 +45516,7 @@
           "target_file": "utf8.go",
           "target_package": "platformsvc",
           "target_symbol": "Utf8Out",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -45540,12 +45540,12 @@
           "target_file": "utf8.go",
           "target_package": "platformsvc",
           "target_symbol": "Utf8ReportError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "utf8.go",
       "target_package": "platformsvc",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -46457,7 +46457,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsSyscallResult",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -46494,7 +46494,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsWaitStatusType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -46531,7 +46531,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsPtrInt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -46568,7 +46568,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsPtrFrom",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -46605,7 +46605,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -46642,7 +46642,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsUnicode",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -46679,7 +46679,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsWordTypeAlias",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -46716,7 +46716,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsStream",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -46753,7 +46753,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsAp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -46790,7 +46790,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsAp2",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -46827,7 +46827,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsCons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -46864,7 +46864,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsDatapair",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -46901,7 +46901,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsMakeTyp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -46938,7 +46938,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsReadvals",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -46975,7 +46975,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsStrcons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47012,7 +47012,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsStructWinsize",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47049,7 +47049,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsStructRlimit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47086,7 +47086,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsFromUTF8",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47123,7 +47123,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsOutUTF8",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47160,7 +47160,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsFork",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47197,7 +47197,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsWait",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47234,7 +47234,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsOpen",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47271,7 +47271,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsClose",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47308,7 +47308,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsRead",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47345,7 +47345,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsWrite",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47382,7 +47382,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsIoctl",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47419,7 +47419,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsUnlink",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47456,7 +47456,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsExit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47493,7 +47493,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsAbort",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47530,7 +47530,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsPerror",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47567,7 +47567,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsIsatty",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47604,7 +47604,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsGetcwd",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47641,7 +47641,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsChdir",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47678,7 +47678,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsGetenv",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47715,7 +47715,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsSystem",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47752,7 +47752,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsGetrlimit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47789,7 +47789,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsSetrlimit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47826,7 +47826,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsDup2",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47863,7 +47863,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsExecl",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47900,7 +47900,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsStrlen",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47937,7 +47937,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsStrcmp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -47974,7 +47974,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsStrncmp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48011,7 +48011,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsStrcpy",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48048,7 +48048,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsStrncat",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48085,7 +48085,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsStrchr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48122,7 +48122,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsStrrchr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48159,7 +48159,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsStrstr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48196,7 +48196,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsSafeChar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48233,7 +48233,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsIsalpha",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48270,7 +48270,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsIsalnum",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48307,7 +48307,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsIsdigit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48344,7 +48344,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsIsxdigit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48381,7 +48381,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsIsspace",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48418,7 +48418,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsTolower",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48455,7 +48455,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsStructTms",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48492,7 +48492,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsFputs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48529,7 +48529,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsPipe",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48566,7 +48566,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsStrncpy",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48603,7 +48603,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsStructTm",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48640,7 +48640,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsLocaltime",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48677,7 +48677,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsTimes",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48714,7 +48714,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsC",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48751,7 +48751,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsTimesLine631",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48788,7 +48788,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsSysconf",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48825,7 +48825,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsRindex",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48862,7 +48862,7 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsGeteuid",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -48899,12 +48899,12 @@
           "target_file": "os.go",
           "target_package": "platformsvc",
           "target_symbol": "OsGetegid",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "os.go",
       "target_package": "platformsvc",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -102492,16 +102492,7 @@
       "generated_check": "go generate ./... && git diff --exit-code",
       "id": "package:platformsvc",
       "package_test": "go test ./internal/platformsvc",
-      "source_files": [
-        "src/io/files.zig",
-        "src/io/platform.zig",
-        "src/io/platform_contract.zig",
-        "src/io/process.zig",
-        "src/io/signals.zig",
-        "src/io/typed_parse.zig",
-        "src/io/utf8.zig",
-        "src/os.zig"
-      ],
+      "source_files": [],
       "stage_oracles": [
         {
           "command": "python3 tests/oracle/oracle.py verify --stage reduce --producer 'go run ./cmd/miracula-go-oracle'",
@@ -102509,7 +102500,7 @@
         }
       ],
       "target_package": "platformsvc",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "dag_check": "go run ./cmd/checkdag",
