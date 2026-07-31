@@ -224,7 +224,22 @@ test "/editor command parses arguments on the same line" {
     const old_editor = config_state.config().editor;
     defer config_state.config().editor = old_editor;
 
-    // 1. /editor without arguments: just prints current editor (doesn't prompt/block)
+    if (abi.stdin()) |stdin_file| {
+        // Immediate EOF represents `/editor` with no following argument.
+        stdin_file.mem_buf = "";
+        stdin_file.mem_pos = 0;
+        stdin_file.pushback = null;
+        stdin_file.buf_start = 0;
+        stdin_file.buf_end = 0;
+    }
+    defer {
+        if (abi.stdin()) |stdin_file| {
+            stdin_file.mem_buf = null;
+            stdin_file.mem_pos = 0;
+        }
+    }
+
+    // 1. /editor without arguments: just prints the current editor.
     ls().dicp = @constCast(@as([*:0]const u8, "editor"));
     ls().c = '\n';
     _ = commands.command(heap.heap(), core_state.s(), cs(), rt.rs(), ls());
@@ -236,12 +251,6 @@ test "/editor command parses arguments on the same line" {
     if (abi.stdin()) |stdin_file| {
         stdin_file.mem_buf = "my_custom_editor\ny\n";
         stdin_file.mem_pos = 0;
-    }
-    defer {
-        if (abi.stdin()) |stdin_file| {
-            stdin_file.mem_buf = null;
-            stdin_file.mem_pos = 0;
-        }
     }
 
     _ = commands.command(heap.heap(), core_state.s(), cs(), rt.rs(), ls());
