@@ -1,5 +1,7 @@
 # Zig build outputs
 .zig-cache/
+.zig-cache-gc-stress/
+.zig-global-cache-gc-stress/
 zig-cache/
 zig-out/
 
