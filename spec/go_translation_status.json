@@ -3,7 +3,7 @@
   "units": {
     "bootstrap": "complete",
     "package:application": "complete",
-    "package:commandapp": "pending",
+    "package:commandapp": "complete",
     "package:devtools": "pending",
     "package:evaluation": "complete",
     "package:graphstore": "complete",

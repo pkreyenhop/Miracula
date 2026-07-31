@@ -45724,12 +45724,12 @@
           "target_file": "main.go",
           "target_package": "commandapp",
           "target_symbol": "Main",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "main.go",
       "target_package": "commandapp",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -85749,7 +85749,7 @@
           "target_file": "commands.go",
           "target_package": "commandapp",
           "target_symbol": "CommandsWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -85795,7 +85795,7 @@
           "target_file": "commands.go",
           "target_package": "commandapp",
           "target_symbol": "CommandsGetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -85841,7 +85841,7 @@
           "target_file": "commands.go",
           "target_package": "commandapp",
           "target_symbol": "CommandsHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -85887,7 +85887,7 @@
           "target_file": "commands.go",
           "target_package": "commandapp",
           "target_symbol": "CommandsSpaces",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -85933,7 +85933,7 @@
           "target_file": "commands.go",
           "target_package": "commandapp",
           "target_symbol": "CommandsIs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -85979,7 +85979,7 @@
           "target_file": "commands.go",
           "target_package": "commandapp",
           "target_symbol": "CommandsFilequote",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -86025,7 +86025,7 @@
           "target_file": "commands.go",
           "target_package": "commandapp",
           "target_symbol": "CommandsNamescom",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -86071,7 +86071,7 @@
           "target_file": "commands.go",
           "target_package": "commandapp",
           "target_symbol": "CommandsCmdFiles",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -86117,7 +86117,7 @@
           "target_file": "commands.go",
           "target_package": "commandapp",
           "target_symbol": "CommandsCmdEdit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -86163,7 +86163,7 @@
           "target_file": "commands.go",
           "target_package": "commandapp",
           "target_symbol": "CommandsCommand",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -86209,7 +86209,7 @@
           "target_file": "commands.go",
           "target_package": "commandapp",
           "target_symbol": "CommandsManaction",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -86255,7 +86255,7 @@
           "target_file": "commands.go",
           "target_package": "commandapp",
           "target_symbol": "CommandsEditfile",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -86301,7 +86301,7 @@
           "target_file": "commands.go",
           "target_package": "commandapp",
           "target_symbol": "CommandsXschars",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -86347,7 +86347,7 @@
           "target_file": "commands.go",
           "target_package": "commandapp",
           "target_symbol": "CommandsFinger",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -86393,7 +86393,7 @@
           "target_file": "commands.go",
           "target_package": "commandapp",
           "target_symbol": "CommandsDiagnose",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -86439,12 +86439,12 @@
           "target_file": "commands.go",
           "target_package": "commandapp",
           "target_symbol": "CommandsAllnamescom",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "commands.go",
       "target_package": "commandapp",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -102649,10 +102649,7 @@
       "generated_check": "go generate ./... && git diff --exit-code",
       "id": "package:commandapp",
       "package_test": "go test ./internal/commandapp",
-      "source_files": [
-        "src/main.zig",
-        "src/session/commands.zig"
-      ],
+      "source_files": [],
       "stage_oracles": [
         {
           "command": "python3 tests/oracle/oracle.py verify --stage reduce --producer 'go run ./cmd/miracula-go-oracle'",
@@ -102660,7 +102657,7 @@
         }
       ],
       "target_package": "commandapp",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "dag_check": "go run ./cmd/checkdag",
