@@ -12,6 +12,7 @@
 //! The graph-reduction machine itself lives in `reducer/reduce.zig`.
 
 const std = @import("std");
+const resources = @import("resources.zig");
 const options = @import("version_options");
 const word = @import("../graph/word.zig");
 const strtab = @import("../graph/strtab.zig");
@@ -139,33 +140,43 @@ inline fn datapair(heap_ptr: *heap.Heap, x: Word, y: Word) Word {
     return heap.make(heap_ptr, .DATAPAIR, x, y);
 }
 
-/// Wrap a raw native pointer (already cast to a `Word` via `os.ptrInt`) as
-/// a GC-safe heap value, for storing in a cell field that `Heap.mark`/
-/// `Heap.validate` might otherwise walk as if it were a cell reference.
-///
-/// `fileq`/`outfilq`'s entries have always stashed a `Stream*` this way (as a
-/// `DATAPAIR`'s second field, alongside a filename) precisely because
-/// `DATAPAIR`'s tag ordinal sits below both thresholds `mark`/`validate`
-/// use to decide whether to recurse into a cell's hd/tl — so a raw pointer
-/// there can never be mistaken for an out-of-range cell index. `streamRead`/
-/// `STARTREADVALS`, however, wrote the raw pointer directly into an `AP`
-/// cell's tail (reusing the reduction spine's own cell rather than
-/// allocating a dedicated one) — `AP`'s ordinal is above both thresholds,
-/// so any GC landing while that cell was reachable would try to chase the
-/// pointer bit pattern as a cell reference and panic (`heap.validate:
-/// cell ... has out-of-bounds tl reference ...`). Confirmed via `readvals`,
-/// whose per-value reentrant parse+codegen+typecheck+fork cycle allocates
-/// enough to make hitting this nearly certain; `read`/`readb` have the
-/// identical hazard, just rarely unlucky enough to land a GC mid-stream.
-/// `wrapPtr` extends the same established `fileq`/`outfilq` pattern to
-/// these call sites instead of inventing a new one.
-pub fn wrapPtr(heap_ptr: *heap.Heap, raw: Word) Value {
-    return Value.fromRaw(datapair(heap_ptr, 0, raw));
+/// Store a stream's opaque numeric ID in a non-traversed graph wrapper.
+pub fn wrapStreamID(heap_ptr: *heap.Heap, id: resources.StreamID) Value {
+    return Value.fromRaw(datapair(heap_ptr, 0, id.toWord()));
 }
 
-/// Undo `wrapPtr`: read the raw pointer word back out of the wrapper cell.
-pub fn unwrapPtr(heap_ptr: *heap.Heap, wrapped_val: Value) Word {
-    return t(heap_ptr, wrapped_val.toRaw());
+/// Read a stream ID from its graph wrapper.
+pub fn unwrapStreamID(heap_ptr: *heap.Heap, wrapped_val: Value) resources.StreamID {
+    return resources.StreamID.fromWord(t(heap_ptr, wrapped_val.toRaw())) catch
+        @panic("invalid stream resource ID in graph");
+}
+
+/// Register a native stream and return its GC-safe graph handle.
+pub fn registerStream(
+    heap_ptr: *heap.Heap,
+    value: *word.Stream,
+    close_on_release: bool,
+) Value {
+    const id = resources.table().registerStream(
+        rt.allocator,
+        value,
+        close_on_release,
+        if (close_on_release) resources.closeNativeStream else null,
+    ) catch @panic("unable to register stream resource");
+    return wrapStreamID(heap_ptr, id);
+}
+
+pub fn resolveStream(heap_ptr: *heap.Heap, wrapped_val: Value) ?*word.Stream {
+    return resources.table().resolveStream(
+        *word.Stream,
+        unwrapStreamID(heap_ptr, wrapped_val),
+    ) catch null;
+}
+
+pub fn closeStream(heap_ptr: *heap.Heap, wrapped_val: Value) void {
+    resources.table().closeStream(
+        unwrapStreamID(heap_ptr, wrapped_val),
+    ) catch {};
 }
 
 inline fn digit0(heap_ptr: *heap.Heap, x: Word) Word {
@@ -316,11 +327,12 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
                     return word.ACT_DONE;
                 }
                 ctx.eval.stdinuse = ':';
-                tp(ctx.heap, ctx.e.toRaw()).* = wrapPtr(ctx.heap, @intCast(os.ptrInt(getStdin().?))).toRaw();
+                tp(ctx.heap, ctx.e.toRaw()).* = registerStream(ctx.heap, getStdin().?, false).toRaw();
             }
-            const hold_char = os.getc(os.ptrFrom(?*word.Stream, unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))));
+            const stream_value = resolveStream(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())));
+            const hold_char = os.getc(stream_value);
             if (hold_char == os.EOF) {
-                _ = word.fclose(os.ptrFrom(?*word.Stream, unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))));
+                closeStream(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())));
                 rewriteToNil(ctx.heap, @ptrCast(&ctx.e));
                 return word.ACT_DONE;
             }
@@ -340,16 +352,20 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
                     return word.ACT_DONE;
                 }
                 ctx.eval.stdinuse = '-';
-                tp(ctx.heap, ctx.e.toRaw()).* = wrapPtr(ctx.heap, @intCast(os.ptrInt(getStdin().?))).toRaw();
+                tp(ctx.heap, ctx.e.toRaw()).* = registerStream(ctx.heap, getStdin().?, false).toRaw();
             }
             // `os.fromUTF8` returns an unsigned 64-bit C integer, signalling
             // EOF/malformed as its maximum value; the removed `extern fn` used
             // to reinterpret those bits as a signed `Word` (so EOF read back as
             // `-1`), hence `@bitCast` rather than `@intCast` to preserve that
             // exact reinterpretation.
-            const hold_char = if (ctx.rs.UTF8 != 0) stoChar(@as(Word, @bitCast(os.fromUTF8(os.ptrFrom(?*word.Stream, unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))))) else os.getc(os.ptrFrom(?*word.Stream, unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))));
+            const stream_value = resolveStream(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())));
+            const hold_char = if (ctx.rs.UTF8 != 0)
+                stoChar(@as(Word, @bitCast(os.fromUTF8(stream_value))))
+            else
+                os.getc(stream_value);
             if (hold_char == os.EOF) {
-                _ = word.fclose(os.ptrFrom(?*word.Stream, unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))));
+                closeStream(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())));
                 rewriteToNil(ctx.heap, @ptrCast(&ctx.e));
                 return word.ACT_DONE;
             }
@@ -365,9 +381,10 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
             reduce_core.upLeft(ctx);
             const lastarg = t(ctx.heap, ctx.e.toRaw());
 
-            const val = parseLine(ctx.heap, core_state.s(), rt.rs(), lex_state.ls(), h(ctx.heap, ctx.args[0].toRaw()), os.ptrFrom(?*word.Stream, unwrapPtr(ctx.heap, Value.fromRaw(lastarg))), t(ctx.heap, ctx.args[0].toRaw()));
+            const stream_value = resolveStream(ctx.heap, Value.fromRaw(lastarg));
+            const val = parseLine(ctx.heap, core_state.s(), rt.rs(), lex_state.ls(), h(ctx.heap, ctx.args[0].toRaw()), stream_value, t(ctx.heap, ctx.args[0].toRaw()));
             if (val == os.EOF) {
-                _ = word.fclose(os.ptrFrom(?*word.Stream, unwrapPtr(ctx.heap, Value.fromRaw(lastarg))));
+                closeStream(ctx.heap, Value.fromRaw(lastarg));
                 rewriteToNil(ctx.heap, @ptrCast(&ctx.e));
                 return word.ACT_DONE;
             }
@@ -784,9 +801,9 @@ pub fn apfile(heap_ptr: *heap.Heap, eval: *EvalState, f_val: Value) reduce_core.
         if (s == null) {
             word.printErr("\nAppendfile: cannot write to \"{s}\"\n", .{std.mem.span(fil.?)});
         } else {
-            // datapair = (filename string, Stream* handle); the Stream* is a
-            // raw cell cast (read back via os.ptrFrom), not a node string.
-            eval.outfilq = cons(heap_ptr, datapair(heap_ptr, strtab.strBits(strtab.table(), lex.keep(fil.?)), @as(Word, @intCast(os.ptrInt(s.?)))), eval.outfilq);
+            const id = resources.table().registerStream(rt.allocator, s.?, true, resources.closeNativeStream) catch
+                @panic("unable to register output stream");
+            eval.outfilq = cons(heap_ptr, datapair(heap_ptr, strtab.strBits(strtab.table(), lex.keep(fil.?)), id.toWord()), eval.outfilq);
         }
     }
 }
@@ -800,7 +817,9 @@ pub fn closefile(heap_ptr: *heap.Heap, eval: *EvalState, f_val: Value) reduce_co
         p = tp(heap_ptr, p.*);
     }
     if (p.* != NIL) {
-        _ = word.fclose(os.ptrFrom(?*word.Stream, t(heap_ptr, h(heap_ptr, p.*))));
+        const id = resources.StreamID.fromWord(t(heap_ptr, h(heap_ptr, p.*))) catch
+            @panic("invalid output stream ID");
+        resources.table().closeStream(id) catch {};
         p.* = t(heap_ptr, p.*);
     }
 }
@@ -824,10 +843,13 @@ pub fn outf(heap_ptr: *heap.Heap, eval: *EvalState, e_val: Value) reduce_core.Re
         if (os.isatty(word.fileno(eval.s_out.?)) != 0) {
             word.setbuf(eval.s_out.?, null);
         }
-        // datapair = (filename string, Stream* handle); Stream* is a raw cell cast.
-        eval.outfilq = cons(heap_ptr, datapair(heap_ptr, strtab.strBits(strtab.table(), lex.keep(f.?)), @as(Word, @intCast(os.ptrInt(eval.s_out.?)))), eval.outfilq);
+        const id = resources.table().registerStream(rt.allocator, eval.s_out.?, true, resources.closeNativeStream) catch
+            @panic("unable to register output stream");
+        eval.outfilq = cons(heap_ptr, datapair(heap_ptr, strtab.strBits(strtab.table(), lex.keep(f.?)), id.toWord()), eval.outfilq);
     } else {
-        eval.s_out = os.ptrFrom(?*word.Stream, t(heap_ptr, h(heap_ptr, p)));
+        const id = resources.StreamID.fromWord(t(heap_ptr, h(heap_ptr, p))) catch
+            @panic("invalid output stream ID");
+        eval.s_out = resources.table().resolveStream(*word.Stream, id) catch getStdout();
     }
 }
 

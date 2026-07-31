@@ -11,6 +11,7 @@
 //! format exactly — nothing about their behavior changed in this move.
 
 const std = @import("std");
+const resources_mod = @import("resources.zig");
 
 /// A minimal stdio `Stream`: a posix fd (or an in-memory buffer for reading
 /// dumps) with one-byte pushback and an 8 KiB read buffer. Allocated from a
@@ -133,6 +134,7 @@ pub const IoState = struct {
     std_err: Stream = .{ .file = .{ .handle = std.posix.STDERR_FILENO, .flags = .{ .nonblocking = false } } },
     file_pool: [16]Stream = undefined,
     file_in_use: [16]bool = [_]bool{false} ** 16,
+    resources: resources_mod.ResourceTable = .{},
 };
 
 /// Pointer to the I/O subsystem state held in `current_interp` (so

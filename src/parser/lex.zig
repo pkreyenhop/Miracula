@@ -38,6 +38,7 @@ const core_state = @import("../runtime/core_state.zig");
 const symbols = @import("../semantics/symbols.zig");
 const Value = @import("../graph/value.zig").Value;
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
+const resources = @import("../eval/resources.zig");
 
 const Word = i64;
 const NIL = word.NIL;
@@ -442,11 +443,29 @@ pub fn adjustPrefix(f: [*:0]const u8) void {
 /// Open source file `n` for reading; returns 0 on failure.
 pub fn openfile(heap: *Heap, n: [*:0]const u8) i32 {
     const f = word.fopen(n, "r") orelse return 0;
-    // Stream* handle stored in the cell (read back via os.ptrFrom below);
-    // this is a Stream-handle-in-cell cast, not a node string — out of B1 scope.
-    ls().fileq = cons(make(heap, .STRCONS, @as(Word, @intCast(os.ptrInt(f))), NIL), ls().fileq);
+    const id = resources.table().registerStream(
+        rt.allocator,
+        f,
+        true,
+        resources.closeNativeStream,
+    ) catch {
+        _ = word.fclose(f);
+        return 0;
+    };
+    ls().fileq = cons(make(heap, .STRCONS, id.toWord(), NIL), ls().fileq);
     ls().insertdepth += 1;
     return 1;
+}
+
+/// Close the source stream at the head of `fileq` without popping its graph
+/// entry. The batch parser uses this after slurping the file; `resetState`
+/// later removes the already-closed ID.
+pub fn closeCurrentStreamResource(heap: *Heap) void {
+    const state = ls();
+    if (state.fileq == word.NIL) return;
+    const id = resources.StreamID.fromWord(h(heap, h(heap, state.fileq))) catch
+        @panic("invalid source stream ID");
+    resources.table().closeStream(id) catch {};
 }
 
 /// Scan an identifier beginning with char `s`; returns its token id.
@@ -677,8 +696,7 @@ pub fn resetState(heap: *Heap) void {
         }
     }
     while (ls().fileq != NIL) {
-        const file_ptr: ?*word.Stream = os.ptrFrom(?*word.Stream, h(heap, h(heap, ls().fileq)));
-        _ = word.fclose(file_ptr);
+        closeCurrentStreamResource(heap);
         ls().fileq = t(heap, ls().fileq);
     }
     ls().insertdepth = -1;

@@ -35,6 +35,7 @@ const source_mod = @import("../syntax/source.zig");
 const lexer_mod = @import("../syntax/lexer.zig");
 const layout_mod = @import("../syntax/layout.zig");
 const modules = @import("../semantics/modules.zig");
+const legacy_lex = @import("lex.zig");
 /// Errors the parse entry points can return.
 pub const ParseError = error{
     SyntaxError,
@@ -117,7 +118,7 @@ fn parseCurrentNative(heap_ptr: *heap.Heap) ParseError!ParseResult {
     // "not already stdin" so REPL/string input (s_in already == stdin) is
     // never closed.
     if (!command_mode and config_state.config().s_in != word.stdin()) {
-        _ = word.fclose(config_state.config().s_in);
+        legacy_lex.closeCurrentStreamResource(heap.heap());
         config_state.config().s_in = word.stdin();
     }
 

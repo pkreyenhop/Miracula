@@ -108,7 +108,11 @@ pub var current_interp: *Interp = &backing;
 /// (terminal state, allocated history) without going through its own
 /// `deinit()` first.
 pub fn reset() void {
-    current_interp.* = .{};
+    const active = current_interp;
+    const next_resource_id = active.io.resources.next_id;
+    active.io.resources.reset(@import("../runtime/runtime_state.zig").allocator);
+    active.* = .{};
+    active.io.resources.next_id = next_resource_id;
 }
 
 // Tests: Interp: two independent instances stay isolated when interleaved

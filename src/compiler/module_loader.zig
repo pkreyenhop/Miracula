@@ -37,6 +37,7 @@ const trans_mod = @import("../semantics/lower.zig");
 const files = @import("../io/files.zig");
 const dump = @import("dump.zig");
 const ls = lex_state.ls;
+const resources = @import("../eval/resources.zig");
 
 // Global variables defined/exported in parser/lex.zig
 
@@ -116,7 +117,11 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
 
     lexs.c = ' ';
     lexs.col = 0;
-    config_state.config().s_in = abi.ptrFrom(?*word.Stream, heap_mod.h(heap, heap_mod.h(heap, lexs.fileq)));
+    const stream_id = resources.StreamID.fromWord(
+        heap_mod.h(heap, heap_mod.h(heap, lexs.fileq)),
+    ) catch return error.LoadError;
+    config_state.config().s_in = resources.table().resolveStream(*word.Stream, stream_id) catch
+        return error.LoadError;
     abi.adjustPrefix(@constCast(t_val));
 
     core.commandmode = 0;
