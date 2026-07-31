@@ -1,0 +1,121 @@
+[
+  {
+    "id": "empty",
+    "input_base64": "",
+    "stages": {
+      "source": {"outcome": "success", "payload": {"bytes_base64": "", "files": [{"id": 0, "path": "empty.m"}], "positions": [{"offset": 0, "file_id": 0, "line": 1, "column": 1}]}},
+      "lex": {"outcome": "success", "payload": {"tokens": [{"kind": "eof", "bytes_base64": "", "start": 0, "end": 0, "line": 1, "column": 1}], "directives": []}},
+      "layout": {"outcome": "success", "payload": {"tokens": [{"kind": "eof", "bytes_base64": "", "start": 0, "end": 0, "line": 1, "column": 1}]}},
+      "parse": {"outcome": "success", "payload": {"ast": {"variant": "script", "items": []}, "recovered": false}},
+      "module": {"outcome": "success", "payload": {"includes": [], "aliases": [], "exports": [], "symbols": []}},
+      "typecheck": {"outcome": "success", "payload": {"types": [], "substitutions": []}},
+      "lower": {"outcome": "success", "payload": {"roots": [], "cells": []}},
+      "reduce": {"outcome": "success", "payload": {"value": {"variant": "unit"}, "graph": {"roots": [], "cells": []}, "stdout_base64": "", "stderr_base64": "", "exit": {"kind": "code", "value": 0}, "trace": []}},
+      "dump": {"outcome": "success", "payload": {"input_base64": "", "records": [], "encoded_base64": "", "graph": {"roots": [], "cells": []}}}
+    }
+  },
+  {
+    "id": "lex-all-token-families",
+    "input_base64": "eCA9IDEgKyAyLjAgOiBbJ2EnLCAieCJdOyB5ID0geCBkaXYgMg==",
+    "stages": {
+      "lex": {"outcome": "success", "payload": {"tokens": [{"kind": "name", "bytes_base64": "eA==", "start": 0, "end": 1, "line": 1, "column": 1}, {"kind": "eq", "bytes_base64": "PQ==", "start": 2, "end": 3, "line": 1, "column": 3}, {"kind": "const_int", "bytes_base64": "MQ==", "start": 4, "end": 5, "line": 1, "column": 5}, {"kind": "plus", "bytes_base64": "Kw==", "start": 6, "end": 7, "line": 1, "column": 7}, {"kind": "const_float", "bytes_base64": "Mi4w", "start": 8, "end": 11, "line": 1, "column": 9}, {"kind": "cons", "bytes_base64": "Og==", "start": 12, "end": 13, "line": 1, "column": 13}, {"kind": "lbracket", "bytes_base64": "Ww==", "start": 14, "end": 15, "line": 1, "column": 15}, {"kind": "const_char", "bytes_base64": "J2En", "start": 15, "end": 18, "line": 1, "column": 16}, {"kind": "comma", "bytes_base64": "LA==", "start": 18, "end": 19, "line": 1, "column": 19}, {"kind": "const_str", "bytes_base64": "Ingi", "start": 20, "end": 23, "line": 1, "column": 21}, {"kind": "rbracket", "bytes_base64": "XQ==", "start": 23, "end": 24, "line": 1, "column": 24}, {"kind": "semicolon", "bytes_base64": "Ow==", "start": 24, "end": 25, "line": 1, "column": 25}, {"kind": "name", "bytes_base64": "eQ==", "start": 26, "end": 27, "line": 1, "column": 27}, {"kind": "eq", "bytes_base64": "PQ==", "start": 28, "end": 29, "line": 1, "column": 29}, {"kind": "name", "bytes_base64": "eA==", "start": 30, "end": 31, "line": 1, "column": 31}, {"kind": "kw_div", "bytes_base64": "ZGl2", "start": 32, "end": 35, "line": 1, "column": 33}, {"kind": "const_int", "bytes_base64": "Mg==", "start": 36, "end": 37, "line": 1, "column": 37}, {"kind": "eof", "bytes_base64": "", "start": 37, "end": 37, "line": 1, "column": 38}], "directives": []}}
+    }
+  },
+  {
+    "id": "lex-directive",
+    "input_base64": "JWluY2x1ZGUgImxpYi5tIiBuZXcvb2xkIC1oaWRkZW4K",
+    "stages": {
+      "lex": {"outcome": "success", "payload": {"tokens": [{"kind": "directive", "bytes_base64": "JWluY2x1ZGUgImxpYi5tIiBuZXcvb2xkIC1oaWRkZW4=", "start": 0, "end": 32, "line": 1, "column": 1}, {"kind": "eof", "bytes_base64": "", "start": 33, "end": 33, "line": 2, "column": 1}], "directives": [{"variant": "include", "path": "lib.m", "from_miralib": false, "bindings": "", "aliases": [{"variant": "rename", "new": "new", "old": "old"}, {"variant": "suppress", "old": "hidden"}]}]}}
+    }
+  },
+  {
+    "id": "layout-nested",
+    "input_base64": "ZiB4ID0geFxuICAgICAgZyB5ID0geSt4XG4gICAgICBnIDFcbg==",
+    "stages": {
+      "layout": {"outcome": "success", "payload": {"tokens": [{"kind": "name", "bytes_base64": "Zg==", "start": 0, "end": 1, "line": 1, "column": 1}, {"kind": "name", "bytes_base64": "eA==", "start": 2, "end": 3, "line": 1, "column": 3}, {"kind": "eq", "bytes_base64": "PQ==", "start": 4, "end": 5, "line": 1, "column": 5}, {"kind": "name", "bytes_base64": "eA==", "start": 6, "end": 7, "line": 1, "column": 7}, {"kind": "kw_where", "bytes_base64": "d2hlcmU=", "start": 8, "end": 13, "line": 1, "column": 9}, {"kind": "name", "bytes_base64": "Zw==", "start": 20, "end": 21, "line": 2, "column": 7}, {"kind": "name", "bytes_base64": "eQ==", "start": 22, "end": 23, "line": 2, "column": 9}, {"kind": "eq", "bytes_base64": "PQ==", "start": 24, "end": 25, "line": 2, "column": 11}, {"kind": "name", "bytes_base64": "eQ==", "start": 26, "end": 27, "line": 2, "column": 13}, {"kind": "plus", "bytes_base64": "Kw==", "start": 27, "end": 28, "line": 2, "column": 14}, {"kind": "name", "bytes_base64": "eA==", "start": 28, "end": 29, "line": 2, "column": 15}, {"kind": "offside", "bytes_base64": "", "start": 36, "end": 36, "line": 3, "column": 7}, {"kind": "name", "bytes_base64": "Zw==", "start": 36, "end": 37, "line": 3, "column": 7}, {"kind": "const_int", "bytes_base64": "MQ==", "start": 38, "end": 39, "line": 3, "column": 9}, {"kind": "offside", "bytes_base64": "", "start": 40, "end": 40, "line": 4, "column": 1}, {"kind": "eof", "bytes_base64": "", "start": 40, "end": 40, "line": 4, "column": 1}]}}
+    }
+  },
+  {
+    "id": "parse-variants",
+    "input_base64": "aWQgKGM6eHMpID0gYzp4c1xucGFpciA9ICgxLDI5XG4=",
+    "stages": {
+      "parse": {"outcome": "success", "payload": {"ast": {"variant": "script", "items": [{"variant": "definition", "lhs": {"variant": "application", "func": {"variant": "name", "text": "id"}, "arg": {"variant": "cons_pat", "head": {"variant": "name", "text": "c"}, "tail": {"variant": "name", "text": "xs"}}}, "rhs": {"variant": "cons", "head": {"variant": "name", "text": "c"}, "tail": {"variant": "name", "text": "xs"}}}, {"variant": "definition", "lhs": {"variant": "name", "text": "pair"}, "rhs": {"variant": "tuple", "items": [{"variant": "int", "text": "1"}, {"variant": "int", "text": "2"}]}}]}, "recovered": false}}
+    }
+  },
+  {
+    "id": "source-literate",
+    "input_base64": "UHJvc2UgdGhhdCBpcyBub3QgY29kZQo+IHNxdWFyZSB4ID0geCp4Cg==",
+    "stages": {
+      "source": {"outcome": "success", "payload": {"bytes_base64": "ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgc3F1YXJlIHggPSB4KngK", "files": [{"id": 0, "path": "sample.lit.m"}], "positions": [{"offset": 0, "file_id": 0, "line": 1, "column": 1}, {"offset": 28, "file_id": 0, "line": 2, "column": 1}, {"offset": 45, "file_id": 0, "line": 2, "column": 18}]}}
+    }
+  },
+  {
+    "id": "source-nested-insert",
+    "input_base64": "JWluc2VydCAiYS5tIgo=",
+    "stages": {
+      "source": {"outcome": "success", "payload": {"bytes_base64": "YSA9IDFcCmIgPSBhKzFcbg==", "files": [{"id": 0, "path": "main.m"}, {"id": 1, "path": "a.m"}, {"id": 2, "path": "nested/b.m"}], "positions": [{"offset": 0, "file_id": 1, "line": 1, "column": 1}, {"offset": 6, "file_id": 2, "line": 1, "column": 1}]}}
+    }
+  },
+  {
+    "id": "module-alias-export",
+    "input_base64": "JWluY2x1ZGUgImxpYi5tIiBsb2NhbC9wdWJsaWMgLXNlY3JldFxuJWV4cG9ydCBsb2NhbCArXG4=",
+    "stages": {
+      "module": {"outcome": "success", "payload": {"includes": [{"file_id": 1, "path": "lib.m"}], "aliases": [{"new": "local", "old": "public"}, {"suppress": "secret"}], "exports": [{"symbol_id": 0, "name": "local"}], "symbols": [{"id": 0, "name": "local", "visibility": "exported"}, {"id": 1, "name": "$private", "visibility": "private"}]}}
+    }
+  },
+  {
+    "id": "type-polymorphic",
+    "input_base64": "aWQgeCA9IHhcbmlkIDo6ICphIC0+ICphXG4=",
+    "stages": {
+      "typecheck": {"outcome": "success", "payload": {"types": [{"symbol": "id", "type": {"variant": "arrow", "from": {"variant": "var", "id": 0}, "to": {"variant": "var", "id": 0}}}], "substitutions": []}}
+    }
+  },
+  {
+    "id": "lower-application",
+    "input_base64": "bWFpbiA9IGYgMVxu",
+    "stages": {
+      "lower": {"outcome": "success", "payload": {"roots": [{"name": "main", "cell": 0}], "cells": [{"id": 0, "tag": "application", "head": {"kind": "cell", "id": 1}, "tail": {"kind": "cell", "id": 2}}, {"id": 1, "tag": "identifier", "name": "f"}, {"id": 2, "tag": "small_integer", "value": 1}]}}
+    }
+  },
+  {
+    "id": "reduce-runtime-error",
+    "input_base64": "MSBkaXYgMAo=",
+    "stages": {
+      "reduce": {"outcome": "failure", "failure_type": "division_by_zero", "payload": {"value": null, "graph": {"roots": [], "cells": []}, "stdout_base64": "", "stderr_base64": "ZGl2aXNpb24gYnkgemVybwo=", "exit": {"kind": "code", "value": 1}, "trace": [{"step": 0, "rule": "div", "result": "error"}]}, "diagnostics": [{"severity": "error", "message": "division by zero", "file": "runtime.m", "start": 0, "end": 7, "line": 1, "column": 1}]}
+    }
+  },
+  {
+    "id": "dump-roundtrip",
+    "input_base64": "TUlSQQEAAQID",
+    "stages": {
+      "dump": {"outcome": "success", "payload": {"input_base64": "TUlSQQEAAQID", "records": [{"variant": "header", "version": 1}, {"variant": "cell", "id": 0, "tag": "small_integer", "value": 3}], "encoded_base64": "TUlSQQEAAQID", "graph": {"roots": [0], "cells": [{"id": 0, "tag": "small_integer", "value": 3}]}}}
+    }
+  },
+  {
+    "id": "errors-and-boundaries",
+    "input_base64": "/2YgPSAiXG4=",
+    "stages": {
+      "lex": {"outcome": "failure", "failure_type": "invalid_source_byte", "payload": {"tokens": [{"kind": "error", "bytes_base64": "/w==", "start": 0, "end": 1, "line": 1, "column": 1}, {"kind": "name", "bytes_base64": "Zg==", "start": 1, "end": 2, "line": 1, "column": 2}, {"kind": "eq", "bytes_base64": "PQ==", "start": 3, "end": 4, "line": 1, "column": 4}, {"kind": "error", "bytes_base64": "Ig==", "start": 5, "end": 6, "line": 1, "column": 6}, {"kind": "eof", "bytes_base64": "", "start": 7, "end": 7, "line": 2, "column": 1}], "directives": []}, "diagnostics": [{"severity": "error", "message": "invalid source byte 0xff", "file": "bad.m", "start": 0, "end": 1, "line": 1, "column": 1}, {"severity": "error", "message": "unterminated string", "file": "bad.m", "start": 5, "end": 7, "line": 1, "column": 6}]},
+      "parse": {"outcome": "failure", "failure_type": "syntax_error", "payload": {"ast": {"variant": "script", "items": []}, "recovered": true}, "diagnostics": [{"severity": "error", "message": "unexpected token", "file": "bad.m", "start": 0, "end": 1, "line": 1, "column": 1}]},
+      "typecheck": {"outcome": "failure", "failure_type": "type_mismatch", "payload": {"types": [], "substitutions": []}, "diagnostics": [{"severity": "error", "message": "type mismatch", "file": "bad.m", "start": 0, "end": 6, "line": 1, "column": 1}]},
+      "layout": {"outcome": "failure", "failure_type": "invalid_token_stream", "payload": {"tokens": []}, "diagnostics": [{"severity": "error", "message": "layout input contains an error token", "file": "bad.m", "start": 0, "end": 1, "line": 1, "column": 1}]},
+      "lower": {"outcome": "failure", "failure_type": "invalid_ast", "payload": {"roots": [], "cells": []}, "diagnostics": [{"severity": "error", "message": "cannot lower recovered syntax", "file": "bad.m", "start": 0, "end": 7, "line": 1, "column": 1}]},
+      "dump": {"outcome": "failure", "failure_type": "truncated_input", "payload": {"input_base64": "/2YgPSAiXG4=", "records": [], "encoded_base64": "", "graph": {"roots": [], "cells": []}}, "diagnostics": [{"severity": "error", "message": "truncated or invalid dump", "file": null, "start": 0, "end": 7, "line": null, "column": null}]}
+    }
+  },
+  {
+    "id": "module-cycle-missing",
+    "input_base64": "JWluY2x1ZGUgIm1pc3NpbmcubSIK",
+    "stages": {
+      "source": {"outcome": "failure", "failure_type": "missing_insert", "payload": {"bytes_base64": "", "files": [{"id": 0, "path": "main.m"}], "positions": []}, "diagnostics": [{"severity": "error", "message": "insert file not found", "file": "main.m", "start": 0, "end": 19, "line": 1, "column": 1}]},
+      "module": {"outcome": "failure", "failure_type": "missing_include", "payload": {"includes": [{"file_id": null, "path": "missing.m"}], "aliases": [], "exports": [], "symbols": []}, "diagnostics": [{"severity": "error", "message": "included file not found", "file": "main.m", "start": 0, "end": 20, "line": 1, "column": 1}]}
+    }
+  },
+  {
+    "id": "reduce-interrupt-child-error",
+    "input_base64": "c3lzdGVtICJmYWxzZSIK",
+    "stages": {
+      "reduce": {"outcome": "failure", "failure_type": "child_process_error", "payload": {"value": null, "graph": {"roots": [], "cells": []}, "stdout_base64": "", "stderr_base64": "", "exit": {"kind": "signal", "value": 2}, "trace": []}, "diagnostics": [{"severity": "error", "message": "child process failed", "file": "child.m", "start": 0, "end": 14, "line": 1, "column": 1}]}
+    }
+  }
+]

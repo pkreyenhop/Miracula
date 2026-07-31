@@ -569,6 +569,44 @@ pub fn build(b: *std.Build) void {
     strict_step.dependOn(lint_step);
     strict_step.dependOn(&scorecard_check.step);
 
+    // Language-neutral, per-stage migration oracles. Each verifier launches
+    // an external producer and compares canonical JSONL; it never imports or
+    // calls the implementation under test.
+    const oracle_producer = b.option([]const u8, "oracle-producer", "External stage-oracle producer command");
+    const oracle_stages = [_][]const u8{
+        "source",
+        "lex",
+        "layout",
+        "parse",
+        "module",
+        "typecheck",
+        "lower",
+        "reduce",
+        "dump",
+    };
+    const verify_all_oracles = b.step("verify-oracles", "Verify every language-neutral stage oracle");
+    inline for (oracle_stages) |stage| {
+        const capture = b.addSystemCommand(&.{ "python3", "tests/oracle/oracle.py", "capture", "--stage", stage });
+        if (oracle_producer) |producer| capture.addArgs(&.{ "--producer", producer });
+        const capture_step = b.step(
+            "capture-" ++ stage ++ "-oracle",
+            "Capture the " ++ stage ++ " oracle (maintainer operation)",
+        );
+        capture_step.dependOn(&capture.step);
+
+        const verify = b.addSystemCommand(&.{ "python3", "tests/oracle/oracle.py", "verify", "--stage", stage });
+        if (oracle_producer) |producer| verify.addArgs(&.{ "--producer", producer });
+        const verify_step = b.step(
+            "verify-" ++ stage ++ "-oracle",
+            "Verify the " ++ stage ++ " oracle without changing fixtures",
+        );
+        verify_step.dependOn(&verify.step);
+        verify_all_oracles.dependOn(verify_step);
+    }
+    const run_phase2_acceptance = b.addSystemCommand(&.{ "python3", "-B", "-m", "unittest", "tests/test_phase2.py" });
+    const test_phase2 = b.step("test-phase2", "Run stage-oracle protocol acceptance tests");
+    test_phase2.dependOn(&run_phase2_acceptance.step);
+
     // Mandatory migration-readiness gate. Reference preparation is deliberately
     // separate: this target fails closed when the pinned artifact is absent.
     const go_ready_step = b.step("go-ready", "Run the complete fail-closed Go migration readiness gate");
@@ -578,6 +616,8 @@ pub fn build(b: *std.Build) void {
     go_ready_step.dependOn(test_regression);
     go_ready_step.dependOn(test_verify_reference);
     go_ready_step.dependOn(test_phase1_acceptance);
+    go_ready_step.dependOn(verify_all_oracles);
+    go_ready_step.dependOn(test_phase2);
 
     // Benchmark targets (optimized for ReleaseFast)
     const bench_version_options = b.addOptions();
