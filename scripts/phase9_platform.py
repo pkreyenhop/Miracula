@@ -24,7 +24,7 @@ ALLOWED_NATIVE = {
 def main() -> None:
     contract = json.loads(MANIFEST.read_text(encoding="utf-8"))
     assert contract["schema"] == 1
-    assert contract["supported_targets"] == ["aarch64-macos", "x86_64-linux"]
+    assert contract["supported_targets"] == ["aarch64-macos"]
     assert set(contract["services"]) == {
         "filesystem_metadata", "process_spawn_wait", "pipes_and_streams",
         "shell_execution", "signal_notification", "terminal_detection_and_size",

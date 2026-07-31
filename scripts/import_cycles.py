@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """import_cycles.py — detect @import cycles among src/**/*.zig files.
 
-Used by scripts/scorecard.sh (informational baseline metric today) and, from
-docs/GoReady.md Phase 4 onward, as the enforced module-layering gate:
-once the target tree lands, this script's cycle list must be empty (checked
-into an allowlist that only shrinks) for `zig build check` to pass.
+Standalone diagnostic for inspecting cycles in the current Zig source graph.
+The Go-readiness gate validates the planned Go package graph separately.
 
 Only edges to other in-tree .zig files are tracked; package imports (`std`,
 `version_options`, `zigline`, `build_options`, ...) have no `.zig` suffix and

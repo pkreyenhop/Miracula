@@ -52,9 +52,9 @@ def host_platform() -> str:
     machine = platform.machine().lower()
     if system == "darwin" and machine in {"arm64", "aarch64"}:
         return "darwin-arm64"
-    if system == "linux" and machine in {"x86_64", "amd64"}:
-        return "linux-amd64"
-    raise VerificationError(f"no pinned reference for host {system}-{machine}")
+    raise VerificationError(
+        f"unsupported reference host {system}-{machine}; expected darwin-arm64"
+    )
 
 
 def library_files(root: Path, config: dict) -> list[Path]:

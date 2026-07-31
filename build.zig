@@ -21,11 +21,7 @@ pub fn build(b: *std.Build) void {
             .aarch64 => "darwin-arm64",
             else => @panic("no pinned reference executable for this macOS architecture"),
         },
-        .linux => switch (target.result.cpu.arch) {
-            .x86_64 => "linux-amd64",
-            else => @panic("no pinned reference executable for this Linux architecture"),
-        },
-        else => @panic("no pinned reference executable for this operating system"),
+        else => @panic("Go migration readiness supports only macOS on 64-bit ARM"),
     };
     const reference_path = b.option([]const u8, "reference-path", "Override path to the pinned reference executable") orelse b.fmt("tests/reference/artifacts/{s}/mira", .{reference_platform});
 
@@ -679,8 +675,22 @@ pub fn build(b: *std.Build) void {
     test_phase12.dependOn(&run_main_tests.step);
 
     const run_phase13_translation = b.addSystemCommand(&.{ "python3", "scripts/phase13_translation.py" });
+    const run_phase13_acceptance = b.addSystemCommand(&.{ "python3", "tests/test_phase13.py" });
     const test_phase13 = b.step("test-phase13", "Verify the complete mechanical Go translation contract");
     test_phase13.dependOn(&run_phase13_translation.step);
+    test_phase13.dependOn(&run_phase13_acceptance.step);
+
+    const go_bootstrap_test = b.addSystemCommand(&.{ "go", "test", "./..." });
+    const go_bootstrap_dag = b.addSystemCommand(&.{ "go", "run", "./cmd/checkdag" });
+    const go_bootstrap_generate = b.addSystemCommand(&.{ "go", "generate", "./..." });
+    const go_bootstrap_diff = b.addSystemCommand(&.{
+        "git", "diff", "--exit-code", "--", "internal/protocol/combinator_generated.go",
+    });
+    go_bootstrap_diff.step.dependOn(&go_bootstrap_generate.step);
+    const test_go_bootstrap = b.step("test-go-bootstrap", "Verify Go migration bootstrap tooling and package skeleton");
+    test_go_bootstrap.dependOn(&go_bootstrap_test.step);
+    test_go_bootstrap.dependOn(&go_bootstrap_dag.step);
+    test_go_bootstrap.dependOn(&go_bootstrap_diff.step);
 
     const run_gc_stress = b.addSystemCommand(&.{
         b.graph.zig_exe,
@@ -722,6 +732,7 @@ pub fn build(b: *std.Build) void {
     go_ready_core.dependOn(test_phase11);
     go_ready_core.dependOn(test_phase12);
     go_ready_core.dependOn(test_phase13);
+    go_ready_core.dependOn(test_go_bootstrap);
 
     const run_go_ready_gc_stress = b.addSystemCommand(&.{
         b.graph.zig_exe,

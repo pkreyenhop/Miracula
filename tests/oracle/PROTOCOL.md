@@ -39,3 +39,16 @@ Pointer values, allocator state, timings, implementation type names, and
 iteration order from hash tables are forbidden. Capture commands may replace
 fixtures. Verify commands only read fixtures and compare them with a producer.
 All differences include the case ID and first differing field path.
+
+## Partial Go producer
+
+`cmd/miracula-go-oracle` is present before package translation begins. Its
+`--list-stages` operation prints the implemented stages in lexical order. A
+stage becomes available only when its owning translation unit registers a
+producer that computes records using the translated Go package.
+
+Requesting a stage that has not been implemented emits no JSONL, writes a
+diagnostic to stderr, and exits with status 3. The Python verifier treats that
+status as failure. A producer must compute its result from each case's
+`input_base64`; replaying the expected `stages` payload or fixture JSONL is
+forbidden.

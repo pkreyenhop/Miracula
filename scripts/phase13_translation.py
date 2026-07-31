@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 RULES_PATH = ROOT / "spec" / "go_translation_rules.json"
 MANIFEST = ROOT / "spec" / "go_translation_manifest.json"
+STATUS_PATH = ROOT / "spec" / "go_translation_status.json"
 
 DECL_RE = re.compile(
     r"(?m)^[ \t]*(?:pub[ \t]+)?(?:export[ \t]+|extern[ \t]+|inline[ \t]+|noinline[ \t]+)*"
@@ -188,7 +189,7 @@ def oracle_commands(package: str) -> list[dict]:
     return [
         {
             "stage": stage,
-            "command": f"python3 tests/oracle/oracle.py verify --stage {stage} --producer ./miracula-go-oracle",
+            "command": f"python3 tests/oracle/oracle.py verify --stage {stage} --producer 'go run ./cmd/miracula-go-oracle'",
         }
         for stage in PACKAGE_ORACLES[package]
     ]
@@ -265,7 +266,14 @@ def excluded_reason(rel: str) -> str | None:
     return None
 
 
-def build_manifest(rules: dict) -> dict:
+def load_status() -> dict[str, str]:
+    document = json.loads(STATUS_PATH.read_text(encoding="utf-8"))
+    if document.get("schema") != 1 or not isinstance(document.get("units"), dict):
+        raise SystemExit("unsupported Go translation status schema")
+    return document["units"]
+
+
+def build_manifest(rules: dict, statuses: dict[str, str]) -> dict:
     sources = []
     production_files = []
     for path in sorted(SRC.rglob("*.zig")):
@@ -279,7 +287,8 @@ def build_manifest(rules: dict) -> dict:
             for imported in IMPORT_RE.findall(source_text)
             if (resolved := resolve_import(rel, imported)) is not None
         })
-        status = "not_ported" if reason else "pending"
+        package_status = statuses[f"package:{package}"]
+        status = "not_ported" if reason else package_status
         if not reason:
             production_files.append(rel)
         target_file = rel.removesuffix(".zig").split("/")[-1] + ".go"
@@ -316,7 +325,18 @@ def build_manifest(rules: dict) -> dict:
             "symbols": unit_symbols,
         })
     package_contract = architecture.build_manifest()["packages"]
-    translation_units = []
+    translation_units = [{
+        "id": "bootstrap",
+        "target_package": None,
+        "dependencies": [],
+        "source_files": [],
+        "package_test": "go test ./...",
+        "stage_oracles": [],
+        "oracle_check": "go test ./cmd/miracula-go-oracle",
+        "dag_check": "go run ./cmd/checkdag",
+        "generated_check": "go generate ./... && git diff --exit-code",
+        "translation_status": statuses["bootstrap"],
+    }]
     for package in architecture.PACKAGES:
         package_sources = [
             source["id"]
@@ -326,13 +346,13 @@ def build_manifest(rules: dict) -> dict:
         translation_units.append({
             "id": f"package:{package}",
             "target_package": package,
-            "dependencies": [f"package:{item}" for item in package_contract[package]["may_import"]],
+            "dependencies": ["bootstrap", *[f"package:{item}" for item in package_contract[package]["may_import"]]],
             "source_files": package_sources,
             "package_test": f"go test ./internal/{package}",
             "stage_oracles": oracle_commands(package),
             "dag_check": "go run ./cmd/checkdag",
             "generated_check": "go generate ./... && git diff --exit-code",
-            "translation_status": "pending",
+            "translation_status": statuses[f"package:{package}"],
         })
     return {
         "schema": 1,
@@ -375,7 +395,7 @@ def unit_cycle(units: list[dict]) -> list[str] | None:
     return None
 
 
-def validate(manifest: dict, actual: dict, rules: dict) -> list[str]:
+def validate(manifest: dict, actual: dict, rules: dict, statuses: dict[str, str]) -> list[str]:
     errors = []
     if manifest.get("schema") != 1 or rules.get("schema") != 1:
         return ["unsupported Phase 13 schema"]
@@ -386,6 +406,11 @@ def validate(manifest: dict, actual: dict, rules: dict) -> list[str]:
     if len(unit_ids) != len(set(unit_ids)):
         errors.append("duplicate translation unit")
     known_units = set(unit_ids)
+    if set(statuses) != known_units:
+        errors.append("translation status keys do not match translation units")
+    for unit_id, status in statuses.items():
+        if status not in {"pending", "complete"}:
+            errors.append(f"{unit_id}: invalid translation status {status!r}")
     known_sources = {source["id"] for source in manifest["sources"]}
     scheduled_sources = []
     for unit in manifest["translation_units"]:
@@ -393,8 +418,12 @@ def validate(manifest: dict, actual: dict, rules: dict) -> list[str]:
         for dependency in unit["dependencies"]:
             if dependency not in known_units:
                 errors.append(f"{unit['id']}: unknown dependency {dependency}")
-        if not unit["stage_oracles"] or not unit["package_test"]:
+        if not unit["package_test"] or (
+            unit["id"] != "bootstrap" and not unit["stage_oracles"]
+        ):
             errors.append(f"{unit['id']}: missing immediate verifier")
+        if unit["id"] == "bootstrap" and not unit.get("oracle_check"):
+            errors.append("bootstrap: missing partial-oracle verifier")
     if len(scheduled_sources) != len(set(scheduled_sources)):
         errors.append("a source file is scheduled more than once")
     expected_scheduled = {
@@ -414,8 +443,8 @@ def validate(manifest: dict, actual: dict, rules: dict) -> list[str]:
                 errors.append(f"{source['id']}: untested not-ported reason")
             elif not rules["not_ported_reasons"][reason].get("verification_command"):
                 errors.append(f"{source['id']}: not-ported reason has no test")
-        elif reason is not None or source["translation_status"] != "pending":
-            errors.append(f"{source['id']}: invalid initial status")
+        elif reason is not None or source["translation_status"] not in {"pending", "complete"}:
+            errors.append(f"{source['id']}: invalid translation status")
         for symbol in source["symbols"]:
             symbol_id = f"{source['id']}:{symbol['source_kind']}:{symbol['source_symbol']}"
             symbol_ids.append(symbol_id)
@@ -438,7 +467,8 @@ def validate(manifest: dict, actual: dict, rules: dict) -> list[str]:
         errors.append("translation unit cycle: " + " -> ".join(found_unit_cycle))
     required_rules = {
         "errors", "optionals", "tagged_unions", "ownership", "strings", "numbers",
-        "cleanup", "build", "tests", "generation", "translation_loop",
+        "cleanup", "build", "tests", "generation", "translation_loop", "status",
+        "bootstrap", "oracle",
         "final_differential_command",
     }
     if not required_rules.issubset(rules) or len(rules["translation_loop"]) != 10:
@@ -451,13 +481,17 @@ def main() -> int:
     parser.add_argument("--write", action="store_true")
     args = parser.parse_args()
     rules = json.loads(RULES_PATH.read_text(encoding="utf-8"))
-    actual = build_manifest(rules)
+    statuses = load_status()
+    expected_ids = {"bootstrap", *(f"package:{name}" for name in architecture.PACKAGES)}
+    if set(statuses) != expected_ids:
+        raise SystemExit("Go translation status keys do not match the package contract")
+    actual = build_manifest(rules, statuses)
     if args.write:
         MANIFEST.write_text(json.dumps(actual, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         print(f"wrote {MANIFEST.relative_to(ROOT)}")
         return 0
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-    errors = validate(manifest, actual, rules)
+    errors = validate(manifest, actual, rules, statuses)
     if errors:
         print("\n".join(errors))
         return 1

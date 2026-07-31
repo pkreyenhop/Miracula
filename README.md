@@ -139,7 +139,6 @@ Common examples include:
 The project is tested on:
 
 - macOS on 64-bit ARM systems
-- Linux on 64-bit x86 systems
 
 Behavior that depends on processes, signals, terminals, or filesystem metadata
 may vary on unsupported systems.

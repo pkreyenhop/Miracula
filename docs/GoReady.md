@@ -61,7 +61,6 @@ zig build test-golden --summary all
 zig build test-regression --summary all
 python3 scripts/import_cycles.py -v
 python3 scripts/layer_check.py
-scripts/scorecard.sh
 ```
 
 If a required reference binary is absent, the baseline is incomplete. Do not
@@ -109,7 +108,7 @@ It must run all of the following:
 - Import-cycle check with a zero-cycle requirement.
 - Layering/package-boundary checks.
 - Prohibited-representation checks.
-- Linux/macOS platform contract tests where the host permits them.
+- macOS ARM64 platform contract tests.
 
 The gate must fail when:
 
@@ -124,6 +123,11 @@ The gate must fail when:
 
 The gate is the definition of “Go ready.” Individual existing commands may
 remain, but none may be required knowledge for the future translation agent.
+
+The former `scripts/scorecard.sh` and its ratchet baseline were retired when
+the earlier Zig-native cleanup plan was superseded. Its style and cleanup
+metrics are not Go-readiness criteria. Use only `zig build go-ready --summary
+all` for the readiness decision.
 
 ---
 
@@ -837,14 +841,9 @@ it must not manipulate handler addresses.
 
 ## 9.4 Establish supported-platform CI
 
-Run the mandatory gate on:
-
-- macOS arm64;
-- Linux amd64.
-
-If those are not the intended supported targets, replace the list with an
-explicit checked-in target list before implementation. Unsupported platforms
-must fail clearly at build time.
+The migration supports macOS ARM64 only. This target list is checked in and
+validated by the Phase 9 gate. Unsupported platforms must fail clearly at
+build time.
 
 Acceptance criteria:
 
@@ -1043,6 +1042,17 @@ Specify mechanically:
 Do not leave “choose whichever is idiomatic” instructions.
 
 ## 13.3 Define the unit translation loop
+
+The checked-in `bootstrap` unit is already complete. It owns `go.mod`, the nine
+package skeletons, the package-DAG checker, combinator generator, and the
+partial-stage `miracula-go-oracle` command. Translation progress lives in
+`spec/go_translation_status.json`; manifest regeneration reads that file and
+must never reset completed units.
+
+The Go oracle lists only implemented stages. Requesting an unavailable stage
+must emit no records and exit 3, which the verifier treats as failure. The unit
+that implements a stage registers its producer; producers compute results from
+the input bytes and must not replay expected fixture payloads.
 
 The future agent must be able to follow this exact loop:
 

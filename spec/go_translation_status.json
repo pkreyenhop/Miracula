@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "units": {
+    "bootstrap": "complete",
+    "package:application": "pending",
+    "package:commandapp": "pending",
+    "package:devtools": "pending",
+    "package:evaluation": "pending",
+    "package:graphstore": "pending",
+    "package:platformsvc": "pending",
+    "package:protocol": "pending",
+    "package:semantics": "pending",
+    "package:syntaxfront": "pending"
+  }
+}

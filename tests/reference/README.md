@@ -9,7 +9,6 @@ and `ReleaseSafe` optimization:
 
 ```sh
 zig build -Doptimize=ReleaseSafe -Dtarget=aarch64-macos
-zig build -Doptimize=ReleaseSafe -Dtarget=x86_64-linux-musl
 ```
 
 The exact binaries are committed because linked output contains

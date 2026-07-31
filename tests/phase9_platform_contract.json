@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "supported_targets": ["aarch64-macos", "x86_64-linux"],
+  "supported_targets": ["aarch64-macos"],
   "services": [
     "filesystem_metadata",
     "process_spawn_wait",
