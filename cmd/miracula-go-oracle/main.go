@@ -9,12 +9,16 @@ import (
 	"os"
 	"sort"
 	"strings"
+
+	"github.com/pkreyenhop/miracula-go/internal/protocol"
 )
 
 type producer func(casesPath string) error
 
 // Producers are added only by the translation unit that implements a stage.
-var producers = map[string]producer{}
+var producers = map[string]producer{
+	"dump": protocol.ProduceDumpOracle,
+}
 
 func main() {
 	stage := flag.String("stage", "", "pipeline stage to produce")

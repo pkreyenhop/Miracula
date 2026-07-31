@@ -25765,12 +25765,12 @@
           "target_file": "combinator.go",
           "target_package": "protocol",
           "target_symbol": "CombinatorComb",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "combinator.go",
       "target_package": "protocol",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -25846,12 +25846,12 @@
           "target_file": "combinator_generated.go",
           "target_package": "protocol",
           "target_symbol": "CombinatorGeneratedComb",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "combinator_generated.go",
       "target_package": "protocol",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -38862,7 +38862,7 @@
           "target_file": "semantic_types.go",
           "target_package": "protocol",
           "target_symbol": "SemanticTypesImmediateByte",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -38885,7 +38885,7 @@
           "target_file": "semantic_types.go",
           "target_package": "protocol",
           "target_symbol": "SemanticTypesStringID",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -38908,7 +38908,7 @@
           "target_file": "semantic_types.go",
           "target_package": "protocol",
           "target_symbol": "SemanticTypesFromStored",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -38931,7 +38931,7 @@
           "target_file": "semantic_types.go",
           "target_package": "protocol",
           "target_symbol": "SemanticTypesStringID.ToStored",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -38954,7 +38954,7 @@
           "target_file": "semantic_types.go",
           "target_package": "protocol",
           "target_symbol": "SemanticTypesProcessID",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -38977,7 +38977,7 @@
           "target_file": "semantic_types.go",
           "target_package": "protocol",
           "target_symbol": "SemanticTypesProcessStatus",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -39000,7 +39000,7 @@
           "target_file": "semantic_types.go",
           "target_package": "protocol",
           "target_symbol": "SemanticTypesProcessStatus.Exited",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -39023,7 +39023,7 @@
           "target_file": "semantic_types.go",
           "target_package": "protocol",
           "target_symbol": "SemanticTypesSourceID",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -39046,7 +39046,7 @@
           "target_file": "semantic_types.go",
           "target_package": "protocol",
           "target_symbol": "SemanticTypesFileID",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -39069,7 +39069,7 @@
           "target_file": "semantic_types.go",
           "target_package": "protocol",
           "target_symbol": "SemanticTypesModuleID",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -39092,7 +39092,7 @@
           "target_file": "semantic_types.go",
           "target_package": "protocol",
           "target_symbol": "SemanticTypesCount",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -39115,7 +39115,7 @@
           "target_file": "semantic_types.go",
           "target_package": "protocol",
           "target_symbol": "SemanticTypesIndex",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -39138,7 +39138,7 @@
           "target_file": "semantic_types.go",
           "target_package": "protocol",
           "target_symbol": "SemanticTypesSourceOffset",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -39161,12 +39161,12 @@
           "target_file": "semantic_types.go",
           "target_package": "protocol",
           "target_symbol": "SemanticTypesRawDumpWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "semantic_types.go",
       "target_package": "protocol",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -40131,7 +40131,7 @@
           "target_file": "value.go",
           "target_package": "protocol",
           "target_symbol": "ValueWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -40157,7 +40157,7 @@
           "target_file": "value.go",
           "target_package": "protocol",
           "target_symbol": "ValueComb",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -40183,7 +40183,7 @@
           "target_file": "value.go",
           "target_package": "protocol",
           "target_symbol": "ValueCellRef",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -40209,7 +40209,7 @@
           "target_file": "value.go",
           "target_package": "protocol",
           "target_symbol": "ValueOf",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -40235,7 +40235,7 @@
           "target_file": "value.go",
           "target_package": "protocol",
           "target_symbol": "ValueCellRef.ToWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -40261,7 +40261,7 @@
           "target_file": "value.go",
           "target_package": "protocol",
           "target_symbol": "ValueKind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -40287,7 +40287,7 @@
           "target_file": "value.go",
           "target_package": "protocol",
           "target_symbol": "Value",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -40313,7 +40313,7 @@
           "target_file": "value.go",
           "target_package": "protocol",
           "target_symbol": "ValueFromRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -40339,7 +40339,7 @@
           "target_file": "value.go",
           "target_package": "protocol",
           "target_symbol": "Value.ToRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -40365,7 +40365,7 @@
           "target_file": "value.go",
           "target_package": "protocol",
           "target_symbol": "ValueImm",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -40391,7 +40391,7 @@
           "target_file": "value.go",
           "target_package": "protocol",
           "target_symbol": "ValueCombFunction",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -40417,7 +40417,7 @@
           "target_file": "value.go",
           "target_package": "protocol",
           "target_symbol": "ValueCell",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -40443,12 +40443,12 @@
           "target_file": "value.go",
           "target_package": "protocol",
           "target_symbol": "Value.Kind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "value.go",
       "target_package": "protocol",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -41805,7 +41805,7 @@
           "target_file": "word.go",
           "target_package": "protocol",
           "target_symbol": "Word",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -41831,7 +41831,7 @@
           "target_file": "word.go",
           "target_package": "protocol",
           "target_symbol": "WordReduceError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -41857,7 +41857,7 @@
           "target_file": "word.go",
           "target_package": "protocol",
           "target_symbol": "WordUnicode",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -41883,7 +41883,7 @@
           "target_file": "word.go",
           "target_package": "protocol",
           "target_symbol": "WordRef",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -41909,7 +41909,7 @@
           "target_file": "word.go",
           "target_package": "protocol",
           "target_symbol": "WordRef.W",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -41935,7 +41935,7 @@
           "target_file": "word.go",
           "target_package": "protocol",
           "target_symbol": "WordOf",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -41961,7 +41961,7 @@
           "target_file": "word.go",
           "target_package": "protocol",
           "target_symbol": "WordIsAtom",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -41987,7 +41987,7 @@
           "target_file": "word.go",
           "target_package": "protocol",
           "target_symbol": "WordFitsInByte",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -42013,7 +42013,7 @@
           "target_file": "word.go",
           "target_package": "protocol",
           "target_symbol": "WordIsLatin1Char",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -42039,7 +42039,7 @@
           "target_file": "word.go",
           "target_package": "protocol",
           "target_symbol": "WordValue",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -42065,7 +42065,7 @@
           "target_file": "word.go",
           "target_package": "protocol",
           "target_symbol": "WordClassify",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -42091,7 +42091,7 @@
           "target_file": "word.go",
           "target_package": "protocol",
           "target_symbol": "WordNodeTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -42117,7 +42117,7 @@
           "target_file": "word.go",
           "target_package": "protocol",
           "target_symbol": "WordStream",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -42143,12 +42143,12 @@
           "target_file": "word.go",
           "target_package": "protocol",
           "target_symbol": "WordIoState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "word.go",
       "target_package": "protocol",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -42218,7 +42218,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42241,7 +42241,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42264,7 +42264,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecDecode",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42287,7 +42287,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecNodeTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42310,7 +42310,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecHeader",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42333,7 +42333,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecEncode",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42356,7 +42356,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecDecodeLine86",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42379,7 +42379,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecReader",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42402,7 +42402,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecInit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42425,7 +42425,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecReader.Remaining",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42448,7 +42448,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecReader.Finish",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42471,7 +42471,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecReader.ReadByte",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42494,7 +42494,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecReader.ReadU16",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42517,7 +42517,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecReader.ReadI32",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42540,7 +42540,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecReader.ReadWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42563,7 +42563,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecReader.ReadDouble",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42586,7 +42586,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecReader.ReadZ",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42609,7 +42609,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecReader.Take",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42632,7 +42632,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecWriter",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42655,7 +42655,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecInitLine160",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42678,7 +42678,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecWriter.Written",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42701,7 +42701,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecWriter.WriteByte",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42724,7 +42724,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecWriter.WriteU16",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42747,7 +42747,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecWriter.WriteI32",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42770,7 +42770,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecWriter.WriteWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42793,7 +42793,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecWriter.WriteDouble",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42816,7 +42816,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecWriter.WriteZ",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42839,7 +42839,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecWriter.Take",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42862,7 +42862,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecRecord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42885,7 +42885,7 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecReconstructor",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -42908,12 +42908,12 @@
           "target_file": "xcodec.go",
           "target_package": "protocol",
           "target_symbol": "XcodecReconstructor.Apply",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "xcodec.go",
       "target_package": "protocol",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -58171,7 +58171,7 @@
           "target_file": "errors.go",
           "target_package": "protocol",
           "target_symbol": "ErrorsMiraError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -58197,12 +58197,12 @@
           "target_file": "errors.go",
           "target_package": "protocol",
           "target_symbol": "ErrorsFatal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "errors.go",
       "target_package": "protocol",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -102473,15 +102473,7 @@
       "generated_check": "go generate ./... && git diff --exit-code",
       "id": "package:protocol",
       "package_test": "go test ./internal/protocol",
-      "source_files": [
-        "src/graph/combinator.zig",
-        "src/graph/combinator_generated.zig",
-        "src/graph/semantic_types.zig",
-        "src/graph/value.zig",
-        "src/graph/word.zig",
-        "src/graph/xcodec.zig",
-        "src/runtime/errors.zig"
-      ],
+      "source_files": [],
       "stage_oracles": [
         {
           "command": "python3 tests/oracle/oracle.py verify --stage dump --producer 'go run ./cmd/miracula-go-oracle'",
@@ -102489,7 +102481,7 @@
         }
       ],
       "target_package": "protocol",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "dag_check": "go run ./cmd/checkdag",

@@ -8,7 +8,7 @@
     "package:evaluation": "pending",
     "package:graphstore": "pending",
     "package:platformsvc": "pending",
-    "package:protocol": "pending",
+    "package:protocol": "complete",
     "package:semantics": "pending",
     "package:syntaxfront": "pending"
   }
