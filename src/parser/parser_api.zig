@@ -122,7 +122,7 @@ fn parseCurrentNative(heap_ptr: *heap.Heap) ParseError!ParseResult {
     }
 
     const name_says_literate = !command_mode and if (script_store.store().current_script) |name|
-        source_mod.Source.isLiterateName(std.mem.span(name))
+        source_mod.Source.isLiterateName(name)
     else
         false;
     // %insert splices another file's bytes in place, textually, before
@@ -132,7 +132,7 @@ fn parseCurrentNative(heap_ptr: *heap.Heap) ParseError!ParseResult {
     // there since %insert can't meaningfully appear in a typed expression
     // anyway).
     const base_dir = if (!command_mode and script_store.store().current_script != null)
-        std.fs.path.dirname(std.mem.span(script_store.store().current_script.?)) orelse "."
+        std.fs.path.dirname(script_store.store().current_script.?) orelse "."
     else
         ".";
     const spliced = source_mod.Source.resolveInserts(alloc, raw, base_dir, std.Options.debug_io, 0) catch return ParseError.ParseFailed;

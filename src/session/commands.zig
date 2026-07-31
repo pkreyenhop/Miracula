@@ -177,7 +177,7 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
             core.errs = 0;
         }
         if (t_val != null) {
-            if (!std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?)) or (heap.files == NIL and abi.okdump(core, t_val.?))) {
+            if (!std.mem.eql(u8, std.mem.span(t_val.?), script_store.store().current_script.?) or (heap.files == NIL and abi.okdump(core, t_val.?))) {
                 comp.CLASHES = NIL;
                 dump.undump(heap, core, comp, rs, t_val.?);
                 if (comp.CLASHES != NIL) {
@@ -247,7 +247,7 @@ fn cmdEdit(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, lexs:
         if (token()) |tok| {
             t_val = abi.addextn(1, tok);
         } else {
-            t_val = script_store.store().current_script;
+            t_val = if (script_store.store().current_script) |cur| @constCast(cur.ptr) else null;
         }
         if (abi.getchar() != '\n') return true;
         if (!files.fileExists(t_val.?)) {
@@ -292,7 +292,7 @@ fn cmdEdit(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, lexs:
             if (mf == null and files.fileExists(rs.mirahdr.?)) {
                 mf = rs.mirahdr;
             }
-            if (mf != null and t_val != script_store.store().current_script) {
+            if (mf != null and t_val != (if (script_store.store().current_script) |cur| @constCast(cur.ptr) else null)) {
                 var prompt_buf: [256]u8 = undefined;
                 const prompt = std.fmt.bufPrint(&prompt_buf, "open new script \"{s}\"? [ny]", .{t_val.?}) catch "open new script? [ny]";
                 if (lineedit.active()) {
@@ -313,8 +313,8 @@ fn cmdEdit(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, lexs:
                 files.copyFile(mf.?, t_val.?);
             }
         }
-        const err_line_num: i32 = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errline) else if (core.errs != 0 and std.mem.eql(u8, std.mem.span(t_val.?), strtab.strOf(strtab.table(), heap_mod.h(heap, core.errs)))) @intCast(heap_mod.t(heap, core.errs)) else @intCast(abi.geterrlin(heap, core, lexs, t_val.?));
-        const err_col_num: i32 = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errcol) else 0;
+        const err_line_num: i32 = if (std.mem.eql(u8, std.mem.span(t_val.?), script_store.store().current_script.?)) @intCast(core.errline) else if (core.errs != 0 and std.mem.eql(u8, std.mem.span(t_val.?), strtab.strOf(strtab.table(), heap_mod.h(heap, core.errs)))) @intCast(heap_mod.t(heap, core.errs)) else @intCast(abi.geterrlin(heap, core, lexs, t_val.?));
+        const err_col_num: i32 = if (std.mem.eql(u8, std.mem.span(t_val.?), script_store.store().current_script.?)) @intCast(core.errcol) else 0;
         editfile(heap, rs, t_val.?, err_line_num, err_col_num);
         return true;
     }

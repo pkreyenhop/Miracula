@@ -299,7 +299,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
         return;
     }
 
-    script_store.store().current_script = @constCast(t_val);
+    script_store.store().current_script = std.mem.span(t_val);
     core.loading = 1;
     script_store.store().oldfiles = NIL;
     dump_mod.unload(heap, comp, rs, ls());
@@ -367,7 +367,7 @@ pub fn makedump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     const obf = &rs.linebuf;
     var f: ?*word.Stream = null;
     {
-        const script_span = std.mem.span(script_store.store().current_script.?);
+        const script_span = script_store.store().current_script.?;
         @memcpy(obf[0..script_span.len], script_span);
         obf[script_span.len] = 0;
         const suffix_span = std.mem.span(core.obsuffix);
@@ -378,7 +378,7 @@ pub fn makedump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     f = word.fopen(obf, "w");
     if (f == null) {
         word.print("WARNING: CANNOT WRITE TO {s}\n", .{std.mem.span(@as([*:0]const u8, @ptrCast(obf)))});
-        const current_script_span = std.mem.span(script_store.store().current_script.?);
+        const current_script_span = script_store.store().current_script.?;
         if (std.mem.eql(u8, current_script_span, std.mem.span(@as([*:0]const u8, @ptrCast(&config_state.config().PRELUDE)))) or std.mem.eql(u8, current_script_span, std.mem.span(@as([*:0]const u8, @ptrCast(&config_state.config().STDENV))))) {
             word.print("TO FIX THIS PROBLEM PLEASE GET SUPER-USER TO EXECUTE `mira'\n", .{});
         }

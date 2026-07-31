@@ -431,7 +431,7 @@ pub const Heap = struct {
                     }
                     if (core.s().compiling != 0 and rt.rs().ideep == 0) {
                         _ = word.printErr("not enough heap to compile current script\n", .{});
-                        _ = word.printErr("script = \"{s}\", heap = {d}\n", .{ script_store.store().current_script orelse @as([*:0]const u8, "(null)"), self.SPACE });
+                        _ = word.printErr("script = \"{s}\", heap = {d}\n", .{ script_store.store().current_script orelse @as([:0]const u8, "(null)"), self.SPACE });
                     }
                     os.exit(1);
                 }

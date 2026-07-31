@@ -69,7 +69,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     core.loading = 1;
     core.errs = 0;
     core.errline = 0;
-    script_store.store().current_script = @constCast(t_val);
+    script_store.store().current_script = std.mem.span(t_val);
     script_store.store().oldfiles = NIL;
     dump_mod.unload(heap, comp, rs, lexs);
 
@@ -202,7 +202,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
                 _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
             }
         }
-        if (core.errline == 0 and core.errs != 0 and std.mem.eql(u8, strtab.strOf(strtab.table(), heap_mod.h(heap, core.errs)), std.mem.span(script_store.store().current_script.?))) {
+        if (core.errline == 0 and core.errs != 0 and std.mem.eql(u8, strtab.strOf(strtab.table(), heap_mod.h(heap, core.errs)), script_store.store().current_script.?)) {
             core.errline = heap_mod.t(heap, core.errs);
         }
         comp.ND = depend_mod.alfasort(heap, Value.fromRaw(comp.ND)).toRaw();

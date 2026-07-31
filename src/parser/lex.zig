@@ -180,11 +180,11 @@ pub fn token() ?[*:0]u8 {
             } else {
                 ls().dicq -= 1;
                 {
-                    const script_span = std.mem.span(script_store.store().current_script.?);
+                    const script_span = script_store.store().current_script.?;
                     @memcpy(ls().dicq[0..script_span.len], script_span);
                     ls().dicq[script_span.len] = 0;
                 }
-                ls().dicq += std.mem.len(script_store.store().current_script.?);
+                ls().dicq += script_store.store().current_script.?.len;
             }
         }
         ch = os.getchar();
@@ -327,7 +327,7 @@ pub fn rdline() ?[*:0]u8 {
             } else {
                 const remaining = 1024 - (@as(usize, @intFromPtr(p - 1)) - @as(usize, @intFromPtr(&ls().rdline_linebuf)));
                 {
-                    const src_span = std.mem.span(script_store.store().current_script.?);
+                    const src_span = script_store.store().current_script.?;
                     const limit = @min(src_span.len, remaining);
                     @memcpy((p - 1)[0..limit], src_span[0..limit]);
                     if (limit < remaining) {
@@ -637,7 +637,7 @@ pub fn resetLex(heap: *Heap) void {
         const err_script_raw = @as(?[*:0]const u8, strtab.strOf(strtab.table(), h(heap, core_state.s().errs)));
         const err_script = err_script_raw orelse "test.m";
         const is_current = if (err_script_raw) |es|
-            (if (script_store.store().current_script) |script| std.mem.eql(u8, std.mem.span(es), std.mem.span(script)) else false)
+            (if (script_store.store().current_script) |script| std.mem.eql(u8, std.mem.span(es), script) else false)
         else
             true;
         if (!@import("builtin").is_test) {

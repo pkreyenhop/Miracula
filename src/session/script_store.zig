@@ -32,7 +32,7 @@ pub const ScriptStore = struct {
     ld_stuff: Word = NIL,
 
     /// Path of the .m file currently being loaded; null outside a load.
-    current_script: ?[*:0]u8 = null,
+    current_script: ?[:0]const u8 = null,
 
     /// Heap node holding the list of free-name-to-type bindings for %bnf rules.
     fnts: Word = NIL,
@@ -51,5 +51,5 @@ test "ScriptStore default values are self-consistent" {
     try @import("std").testing.expectEqual(@as(Word, NIL), state.detrop);
     try @import("std").testing.expectEqual(@as(Word, NIL), state.rfl);
     try @import("std").testing.expectEqual(@as(Word, NIL), state.fnts);
-    try @import("std").testing.expectEqual(@as(?[*:0]u8, null), state.current_script);
+    try @import("std").testing.expectEqual(@as(?[:0]const u8, null), state.current_script);
 }
