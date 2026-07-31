@@ -4,7 +4,7 @@
     "00-contract": "complete",
     "01-production-command": "complete",
     "02-runtime-graph": "complete",
-    "03-source-parser": "pending",
+    "03-source-parser": "complete",
     "04-semantics-lowering": "pending",
     "05-evaluator": "pending",
     "06-module-dump-boot": "pending",

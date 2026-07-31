@@ -1,6 +1,10 @@
 package syntaxfront
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestSourceLiterateAndPositions(t *testing.T) {
 	s := NewSource([]byte("prose\n> x = 1\n"), true)
@@ -10,6 +14,43 @@ func TestSourceLiterateAndPositions(t *testing.T) {
 	p := s.Position(8)
 	if p.Line != 2 || p.Column != 3 {
 		t.Fatal(p)
+	}
+}
+
+func TestDirectivesHaveExplicitOwners(t *testing.T) {
+	for _, test := range []struct{ text, variant string }{
+		{`%include <ex/set> new/old -hidden`, "include"}, {`%insert "body.m"`, "insert"},
+		{`%export + -private`, "export"}, {`%free { f::num }`, "free"},
+		{`%list`, "list"}, {`%nolist`, "nolist"}, {`%bnf`, "bnf"}, {`%lex`, "lex"},
+		{`%mystery`, "unknown"},
+	} {
+		directive, ok := ParseDirective(test.text)
+		if !ok || directive.Variant != test.variant {
+			t.Errorf("%q => %+v, %v", test.text, directive, ok)
+		}
+	}
+}
+
+func TestLoadSourceExpandsNestedInsert(t *testing.T) {
+	directory := t.TempDir()
+	if err := os.Mkdir(filepath.Join(directory, "nested"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "main.m"), []byte("%insert \"a.m\"\nc = b+1\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "a.m"), []byte("%insert \"nested/b.m\"\na = b\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(directory, "nested/b.m"), []byte("b = 1\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	source, diagnostics := LoadSource(filepath.Join(directory, "main.m"))
+	if len(diagnostics) != 0 {
+		t.Fatal(diagnostics)
+	}
+	if string(source.Bytes) != "b = 1\na = b\nc = b+1\n" {
+		t.Fatalf("%q", source.Bytes)
 	}
 }
 func TestLexerFamilies(t *testing.T) {

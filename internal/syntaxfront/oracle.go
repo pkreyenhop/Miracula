@@ -230,10 +230,49 @@ func parseResult(c oracleCase, input []byte) stageResult {
 		file, start, end, line, column := "bad.m", 0, 1, 1, 1
 		return stageResult{oracleOutcome{Kind: "failure", FailureType: "syntax_error"}, parsePayload{scriptNode{"script", []any{}}, true}, []oracleDiagnostic{{"error", "unexpected token", &file, &start, &end, &line, &column}}}
 	}
-	n := func(s string) nameNode { return nameNode{"name", s} }
-	lhs := applicationNode{"application", n("id"), consNode{"cons_pat", n("c"), n("xs")}}
-	rhs := consNode{"cons", n("c"), n("xs")}
-	pair := tupleNode{"tuple", []any{nameNode{"int", "1"}, nameNode{"int", "2"}}}
-	items := []any{definitionNode{"definition", lhs, rhs}, definitionNode{"definition", n("pair"), pair}}
-	return stageResult{ok, parsePayload{scriptNode{"script", items}, false}, nil}
+	parsed := Run(input)
+	items := make([]any, 0, len(parsed.Script.Items))
+	for _, definition := range parsed.Script.Items {
+		if definition.Variant != "definition" {
+			continue
+		}
+		items = append(items, definitionNode{"definition", oracleExpr(definition.LHS, true), oracleExpr(definition.RHS, false)})
+	}
+	return stageResult{ok, parsePayload{scriptNode{"script", items}, len(parsed.Diagnostics) != 0}, nil}
+}
+
+func oracleExpr(expression Expr, pattern bool) any {
+	switch expression.Variant {
+	case "name", "constructor", "int", "float", "string", "char", "token":
+		variant := expression.Variant
+		if variant == "constructor" {
+			variant = "name"
+		}
+		return nameNode{variant, expression.Text}
+	case "application":
+		return applicationNode{"application", oracleExpr(*expression.Func, pattern), oracleExpr(*expression.Arg, pattern)}
+	case "infix":
+		if expression.Text == ":" {
+			variant := "cons"
+			if pattern {
+				variant = "cons_pat"
+			}
+			return consNode{variant, oracleExpr(*expression.Head, pattern), oracleExpr(*expression.Tail, pattern)}
+		}
+		return applicationNode{"application", applicationNode{"application", nameNode{"name", expression.Text}, oracleExpr(*expression.Head, pattern)}, oracleExpr(*expression.Tail, pattern)}
+	case "tuple":
+		items := make([]any, len(expression.Items))
+		for i := range expression.Items {
+			items[i] = oracleExpr(expression.Items[i], pattern)
+		}
+		return tupleNode{"tuple", items}
+	case "list":
+		items := make([]any, len(expression.Items))
+		for i := range expression.Items {
+			items[i] = oracleExpr(expression.Items[i], pattern)
+		}
+		return tupleNode{"list", items}
+	default:
+		return nameNode{"name", expression.Text}
+	}
 }

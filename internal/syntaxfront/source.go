@@ -1,6 +1,11 @@
 package syntaxfront
 
-import "sort"
+import (
+	"os"
+	"path/filepath"
+	"sort"
+	"strings"
+)
 
 type Position struct{ Line, Column int }
 type Source struct {
@@ -23,6 +28,52 @@ func NewSource(raw []byte, literateName bool) Source {
 	}
 	return Source{b, starts, lit}
 }
+
+// LoadSource expands source-local %insert directives recursively. Includes
+// remain module declarations and are owned by the semantic/module phase.
+func LoadSource(path string) (Source, []Diagnostic) {
+	bytes, diagnostics := loadSource(path, map[string]bool{})
+	return NewSource(bytes, strings.HasSuffix(path, ".lit.m")), diagnostics
+}
+
+func loadSource(path string, active map[string]bool) ([]byte, []Diagnostic) {
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return nil, []Diagnostic{{Severity: "error", Message: err.Error(), File: path}}
+	}
+	if active[absolute] {
+		return nil, []Diagnostic{{Severity: "error", Message: "recursive insert", File: path}}
+	}
+	raw, err := os.ReadFile(absolute)
+	if err != nil {
+		return nil, []Diagnostic{{Severity: "error", Message: "insert file not found", File: path}}
+	}
+	active[absolute] = true
+	defer delete(active, absolute)
+	var output []byte
+	var diagnostics []Diagnostic
+	lines := strings.SplitAfter(string(raw), "\n")
+	offset := 0
+	for lineIndex, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "%insert") {
+			directive, ok := ParseDirective(strings.TrimSuffix(trimmed, "\n"))
+			if !ok || directive.Variant != "insert" {
+				diagnostics = append(diagnostics, Diagnostic{"error", "invalid insert directive", path, Span{offset, offset + len(line), lineIndex + 1, 1}})
+			} else {
+				insertedPath := filepath.Join(filepath.Dir(absolute), directive.Path)
+				inserted, nested := loadSource(insertedPath, active)
+				output = append(output, inserted...)
+				diagnostics = append(diagnostics, nested...)
+			}
+		} else {
+			output = append(output, line...)
+		}
+		offset += len(line)
+	}
+	return output, diagnostics
+}
+
 func blankProse(b []byte) {
 	for start := 0; start < len(b); {
 		end := start
