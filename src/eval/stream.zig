@@ -223,12 +223,13 @@ fn allocFile() ?*Stream {
 
 /// Return a pooled `Stream` to the free list.
 fn freeFile(f: *Stream) void {
-    const ptr_val = @intFromPtr(f);
-    const pool_start = @intFromPtr(&fio().file_pool[0]);
-    const pool_end = @as(usize, @intCast(pool_start + @sizeOf(Stream) * 16));
-    if (ptr_val >= pool_start and ptr_val < pool_end) {
-        const idx = (ptr_val - pool_start) / @sizeOf(Stream);
-        fio().file_in_use[idx] = false;
+    // Find `f`'s slot by pointer identity (no int<->ptr cast); a no-op if `f`
+    // isn't a pooled Stream, matching the old in-range check.
+    for (&fio().file_pool, 0..) |*slot, i| {
+        if (slot == f) {
+            fio().file_in_use[i] = false;
+            return;
+        }
     }
 }
 

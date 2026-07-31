@@ -74,7 +74,7 @@ test "scanDecimal: parses a NUL-terminated decimal string" {
 pub fn scanHex(heap: *Heap, p: [*]const u8, q: [*]const u8) Word {
     const r = heap.make(.INT, 0, 0);
     var cursor: usize = 0;
-    const len = @intFromPtr(q) - @intFromPtr(p);
+    const len = q - p;
     while (cursor < len) {
         var d: Word = hexValue(p[cursor]);
         var f: Word = 16;
@@ -108,7 +108,7 @@ test "scanHex: parses a hex byte range into a bignum" {
 pub fn scanOctal(heap: *Heap, p: [*]const u8, q: [*]const u8) Word {
     const r = heap.make(.INT, 0, 0);
     var cursor: usize = 0;
-    const len = @intFromPtr(q) - @intFromPtr(p);
+    const len = q - p;
     while (cursor < len) {
         var d: Word = p[cursor] - '0';
         var f: Word = 8;

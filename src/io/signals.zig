@@ -5,6 +5,7 @@
 //! `signal()` contract that `repl.zig` (SIGINT/SIGFPE) relies on.
 
 const std = @import("std");
+const os = @import("../os.zig");
 
 extern fn sigaction(signum: c_int, act: ?*const std.posix.Sigaction, oldact: ?*std.posix.Sigaction) c_int;
 
@@ -13,13 +14,13 @@ pub fn signals(signum: i32, handler: usize) usize {
     var act: std.posix.Sigaction = undefined;
     var oldact: std.posix.Sigaction = undefined;
 
-    act.handler = .{ .handler = @ptrFromInt(handler) };
+    act.handler = .{ .handler = os.ptrFrom(@TypeOf(act.handler.handler), handler) };
     act.mask = std.posix.sigemptyset();
     act.flags = std.posix.SA.RESTART;
 
     if (sigaction(@intCast(signum), &act, &oldact) == 0) {
         if (oldact.handler.handler) |h| {
-            return @intFromPtr(h);
+            return os.ptrInt(h);
         }
         return 0; // SIG_DFL
     }

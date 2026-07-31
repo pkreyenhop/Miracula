@@ -2,7 +2,7 @@ c_int/c_long/c_uint/c_ulong (non-FFI)	0
 [*:0] C-string types (non-FFI)	209
 extern fn declarations	7
 extern var declarations	0
-@intFromPtr / @ptrFromInt (non-FFI)	6
+@intFromPtr / @ptrFromInt (non-FFI)	0
 printf-family calls (non-FFI)	361
 setjmp/longjmp/jmp_buf mentions	6
 clib./c. call sites (non-FFI)	0
