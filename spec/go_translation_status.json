@@ -6,7 +6,7 @@
     "package:commandapp": "pending",
     "package:devtools": "pending",
     "package:evaluation": "pending",
-    "package:graphstore": "pending",
+    "package:graphstore": "complete",
     "package:platformsvc": "complete",
     "package:protocol": "complete",
     "package:semantics": "pending",

@@ -19537,7 +19537,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesStreamID",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -19565,7 +19565,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesFromWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -19593,7 +19593,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesStreamID.ToWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -19621,7 +19621,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesResourceError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -19649,7 +19649,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesResource",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -19677,7 +19677,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesEntry",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -19705,7 +19705,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesCheckpoint",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -19733,7 +19733,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesResourceTable",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -19761,7 +19761,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesResourceTable.RegisterStream",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -19789,7 +19789,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesResourceTable.ResolveStream",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -19817,7 +19817,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesResourceTable.CloseStream",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -19845,7 +19845,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesResourceTable.Checkpoint",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -19873,7 +19873,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesResourceTable.Restore",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -19901,7 +19901,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesResourceTable.Reset",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -19929,7 +19929,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesResourceTable.CloseEntry",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -19957,7 +19957,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesResourceTable.AllocateID",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -19985,7 +19985,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesResourceTable.Find",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -20013,7 +20013,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesResourceTable.RegisterTestResource",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -20041,7 +20041,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -20069,7 +20069,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesBindNativeCloser",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -20097,7 +20097,7 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesTable",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -20125,12 +20125,12 @@
           "target_file": "resources.go",
           "target_package": "graphstore",
           "target_symbol": "ResourcesCloseNativeStream",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "resources.go",
       "target_package": "graphstore",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -21453,7 +21453,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "Stream",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21483,7 +21483,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "Stream.ReadByte",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21513,7 +21513,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "Stream.Ungetc",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21543,7 +21543,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "Stream.WriteByte",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21573,7 +21573,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "Stream.WriteAll",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21603,7 +21603,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "Stream.WriteByteNTimes",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21633,7 +21633,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "Stream.Print",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21663,7 +21663,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamIoState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21693,7 +21693,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21723,7 +21723,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamBindProcessIo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21753,7 +21753,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamCloseOpaque",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21783,7 +21783,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamFio",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21813,7 +21813,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamProcIo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21843,7 +21843,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamInitWriters",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21873,7 +21873,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamPrint",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21903,7 +21903,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamPrintErr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21933,7 +21933,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamFprint",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21963,7 +21963,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamStdin",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21993,7 +21993,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamStdout",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22023,7 +22023,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamStderr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22053,7 +22053,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamAllocFile",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22083,7 +22083,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamFreeFile",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22113,7 +22113,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamFopen",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22143,7 +22143,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamFclose",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22173,7 +22173,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamFileno",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22203,7 +22203,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamSetbuf",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22233,7 +22233,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamGetc",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22263,7 +22263,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamGetchar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22293,7 +22293,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamUngetc",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22323,7 +22323,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamFgets",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22353,7 +22353,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamFread",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22383,7 +22383,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamFwrite",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22413,7 +22413,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamFdopen",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22443,7 +22443,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamPutc",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22473,7 +22473,7 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamFputc",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22503,12 +22503,12 @@
           "target_file": "stream.go",
           "target_package": "graphstore",
           "target_symbol": "StreamPutchar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "stream.go",
       "target_package": "graphstore",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -23419,7 +23419,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23452,7 +23452,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23485,7 +23485,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFail",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23518,7 +23518,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumBindMathError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23551,7 +23551,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "Bignum",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23584,7 +23584,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23617,7 +23617,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumBn",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23650,7 +23650,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumDigit0",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23683,7 +23683,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumDigit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23716,7 +23716,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumDigitPtr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23749,7 +23749,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumRest",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23782,7 +23782,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumCellPtr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23815,7 +23815,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumCellPtr.Set",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23848,7 +23848,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumCellPtr.Get",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23881,7 +23881,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumRestPtr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23914,7 +23914,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumIsPositive",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23947,7 +23947,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumSignBit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -23980,7 +23980,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumIsZero",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24013,7 +24013,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumToSmallInt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24046,7 +24046,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumSetup",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24079,7 +24079,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumIsNat",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24112,7 +24112,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFromInt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24145,7 +24145,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumToInt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24178,7 +24178,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumNegate",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24211,7 +24211,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumAdd",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24244,7 +24244,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumAddMagnitude",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24277,7 +24277,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumSub",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24310,7 +24310,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumSubMagnitude",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24343,7 +24343,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumCmp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24376,7 +24376,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumMul",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24409,7 +24409,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumShiftLeftDigits",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24442,7 +24442,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumScaleBy",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24475,7 +24475,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumDiv",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24508,7 +24508,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumMod",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24541,7 +24541,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumShortDiv",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24574,7 +24574,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumLongDiv",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24607,7 +24607,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumDigitCount",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24640,7 +24640,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumMostSignificantDigit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24673,7 +24673,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumTopTwoDigits",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24706,7 +24706,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumPow",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24739,7 +24739,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumToFloat",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24772,7 +24772,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFromFloat",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24805,7 +24805,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumLn",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24838,7 +24838,7 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumLog10",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -24871,12 +24871,12 @@
           "target_file": "bignum.go",
           "target_package": "graphstore",
           "target_symbol": "BignumSetErrnoDomain",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "bignum.go",
       "target_package": "graphstore",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -25234,7 +25234,7 @@
           "target_file": "bignum_fmt.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFmtHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -25267,7 +25267,7 @@
           "target_file": "bignum_fmt.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFmtWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -25300,7 +25300,7 @@
           "target_file": "bignum_fmt.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFmtCellPtr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -25333,7 +25333,7 @@
           "target_file": "bignum_fmt.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFmtScanDecimal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -25366,7 +25366,7 @@
           "target_file": "bignum_fmt.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFmtScanHex",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -25399,7 +25399,7 @@
           "target_file": "bignum_fmt.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFmtScanOctal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -25432,7 +25432,7 @@
           "target_file": "bignum_fmt.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFmtDigitValue",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -25465,7 +25465,7 @@
           "target_file": "bignum_fmt.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFmtHexValue",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -25498,7 +25498,7 @@
           "target_file": "bignum_fmt.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFmtParseString",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -25531,7 +25531,7 @@
           "target_file": "bignum_fmt.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFmtMultiplyAddInPlace",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -25564,7 +25564,7 @@
           "target_file": "bignum_fmt.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFmtToDecimalList",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -25597,7 +25597,7 @@
           "target_file": "bignum_fmt.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFmtWordToDecimalList",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -25630,7 +25630,7 @@
           "target_file": "bignum_fmt.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFmtToHexList",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -25663,12 +25663,12 @@
           "target_file": "bignum_fmt.go",
           "target_package": "graphstore",
           "target_symbol": "BignumFmtToOctalList",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "bignum_fmt.go",
       "target_package": "graphstore",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -26505,7 +26505,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -26551,7 +26551,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -26597,7 +26597,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpGettvar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -26643,7 +26643,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpMktvar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -26689,7 +26689,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpDigit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -26735,7 +26735,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpGetPn",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -26781,7 +26781,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpPnVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -26827,7 +26827,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpIdWhoPtr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -26873,7 +26873,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpIdTypePtr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -26919,7 +26919,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpIdValPtr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -26965,7 +26965,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpPnValPtr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27011,7 +27011,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpStackpPush",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27057,7 +27057,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpStackpPop",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27103,7 +27103,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpStackpTop",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27149,7 +27149,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpStackpSetTop",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27195,7 +27195,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpDatapair",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27241,7 +27241,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpFileinfo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27287,7 +27287,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpReadvals",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27333,7 +27333,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpAp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27379,7 +27379,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpSetprefix",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27425,7 +27425,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpMkrel",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27471,7 +27471,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpOkdump",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27517,7 +27517,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpGeterrlin",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27563,7 +27563,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpGetword",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27609,7 +27609,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpPutword",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27655,7 +27655,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpPutint",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27701,7 +27701,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpFlagBadDump",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27747,7 +27747,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpGetint",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27793,7 +27793,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpPutdbl",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27839,7 +27839,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpGetdbl",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27885,7 +27885,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpDumpScript",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27931,7 +27931,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpDumpDefs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -27977,7 +27977,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpDumpOb",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -28023,7 +28023,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpGettvarAmbient",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -28069,7 +28069,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpBindparams",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -28115,7 +28115,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpUnscramble",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -28161,7 +28161,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpDsetup",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -28207,7 +28207,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpDgrow",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -28253,7 +28253,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpUnsetids",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -28299,7 +28299,7 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpUnload",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -28345,12 +28345,12 @@
           "target_file": "dump.go",
           "target_package": "graphstore",
           "target_symbol": "DumpSrcUpdate",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "dump.go",
       "target_package": "graphstore",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -28732,7 +28732,7 @@
           "target_file": "dump_load.go",
           "target_package": "graphstore",
           "target_symbol": "DumpLoadHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -28778,7 +28778,7 @@
           "target_file": "dump_load.go",
           "target_package": "graphstore",
           "target_symbol": "DumpLoadWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -28824,7 +28824,7 @@
           "target_file": "dump_load.go",
           "target_package": "graphstore",
           "target_symbol": "DumpLoadLoadScript",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -28870,12 +28870,12 @@
           "target_file": "dump_load.go",
           "target_package": "graphstore",
           "target_symbol": "DumpLoadLoadDefs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "dump_load.go",
       "target_package": "graphstore",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -30287,7 +30287,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "Heap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -30329,7 +30329,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCell",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -30371,7 +30371,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -30413,7 +30413,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapTheVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -30455,7 +30455,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapTArity",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -30497,7 +30497,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapH",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -30539,7 +30539,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapHp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -30581,7 +30581,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -30623,7 +30623,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapTp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -30665,7 +30665,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapGetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -30707,7 +30707,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -30749,7 +30749,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapTries",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -30791,7 +30791,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapIdWho",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -30833,7 +30833,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapGetId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -30875,7 +30875,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapGetFil",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -30917,7 +30917,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapStoChar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -30959,7 +30959,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapGetChar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31001,7 +31001,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapIsChar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31043,7 +31043,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapGetHere",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31085,7 +31085,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapGetaka",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31127,7 +31127,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapAppend1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31169,7 +31169,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapHdsort",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31211,7 +31211,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapGetDbl",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31253,7 +31253,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapStoDbl",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31295,7 +31295,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapSetdbl",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31337,7 +31337,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapNil",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31379,7 +31379,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapNoop",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31421,7 +31421,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapBindInitClock",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31463,7 +31463,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapTOP",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31505,7 +31505,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapTrueheapsize",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31547,7 +31547,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapSetupheap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31589,7 +31589,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapResetheap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31631,7 +31631,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapResetgcstats",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31673,7 +31673,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapHCell",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31715,7 +31715,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapTCell",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31757,7 +31757,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapMake",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31799,7 +31799,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapGc",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31841,7 +31841,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapStoId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31883,7 +31883,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapRest",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31925,7 +31925,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapDigit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -31967,7 +31967,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapDigit0",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32009,7 +32009,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapGetsmallint",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32051,7 +32051,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapStosmallint",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32093,7 +32093,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapDlhs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32135,7 +32135,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapDval",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32177,7 +32177,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapFilTime",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32219,7 +32219,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapFilShare",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32261,7 +32261,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapFilDefs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32303,7 +32303,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapMakeFil",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32345,7 +32345,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapIdType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32387,7 +32387,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapIdVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32429,7 +32429,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapTClass",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32471,7 +32471,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapTInfo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32513,7 +32513,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "Heap.Constructor",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32555,7 +32555,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "Heap.ConstructorInt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32597,7 +32597,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "Heap.ConstructorName",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32639,7 +32639,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapFilInodev",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32681,7 +32681,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapSameFile",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32723,7 +32723,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapBadval",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32765,7 +32765,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapIsfreeid",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32807,7 +32807,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapIsconstrname",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32849,7 +32849,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "Heap.Isconstructor",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32891,7 +32891,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapIsvariable",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32933,7 +32933,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "Heap.Addtoenv",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -32975,7 +32975,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapReverse",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33017,7 +33017,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapShunt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33059,7 +33059,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapSize",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33101,7 +33101,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapUtf8test",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33143,7 +33143,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapFileNode",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33185,7 +33185,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapFileNode.Time",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33227,7 +33227,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapFileNode.Share",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33269,7 +33269,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapFileNode.Defs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33311,7 +33311,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapFileNode.InodeId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33353,7 +33353,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapFileNode.SameAs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33395,7 +33395,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapIdentifier",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33437,7 +33437,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapIdentifier.Typ",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33479,7 +33479,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapIdentifier.Val",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33521,7 +33521,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapIdentifier.Who",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33563,7 +33563,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapIdentifier.IsConstructor",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33605,7 +33605,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapIdentifier.IsVariable",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33647,7 +33647,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapIdentifier.IsFreeId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33689,7 +33689,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapIdentifier.AddToEnv",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33731,7 +33731,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapTypeRef",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33773,7 +33773,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapTypeRef.Class",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33815,7 +33815,7 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapTypeRef.Info",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -33857,12 +33857,12 @@
           "target_file": "heap.go",
           "target_package": "graphstore",
           "target_symbol": "HeapNodeRef",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "heap.go",
       "target_package": "graphstore",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -34886,7 +34886,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -34935,7 +34935,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsCell",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -34984,7 +34984,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35033,7 +35033,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.RefreshPointers",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35082,7 +35082,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.HCell",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35131,7 +35131,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.H",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35180,7 +35180,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.Hp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35229,7 +35229,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.TCell",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35278,7 +35278,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.T",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35327,7 +35327,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.Tp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35376,7 +35376,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.GetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35425,7 +35425,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.SetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35474,7 +35474,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.Cons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35523,7 +35523,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.TOP",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35572,7 +35572,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.BIGTOP",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35621,7 +35621,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.Trueheapsize",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35670,7 +35670,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.ThreadFree",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35719,7 +35719,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.Setupheap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35768,7 +35768,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.Resetheap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35817,7 +35817,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsCheckpoint",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35866,7 +35866,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.Checkpoint",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35915,7 +35915,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.Restore",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -35964,7 +35964,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.MakeSlow",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -36013,7 +36013,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.Make",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -36062,7 +36062,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.GcCheckpoint",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -36111,7 +36111,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.MakeTwo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -36160,7 +36160,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.GrowHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -36209,7 +36209,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.Gc",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -36258,7 +36258,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsMaskInt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -36307,7 +36307,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.Bases",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -36356,7 +36356,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.Isptr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -36405,7 +36405,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.Mark",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -36454,7 +36454,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeap.Validate",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -36503,7 +36503,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -36552,7 +36552,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsHeapFunction",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -36601,7 +36601,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsMarkRoot",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -36650,7 +36650,7 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsMallocfail",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -36699,12 +36699,12 @@
           "target_file": "heap_cells.go",
           "target_package": "graphstore",
           "target_symbol": "HeapCellsMallocPanic",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "heap_cells.go",
       "target_package": "graphstore",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -38142,7 +38142,7 @@
           "target_file": "print.go",
           "target_package": "graphstore",
           "target_symbol": "PrintHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -38178,7 +38178,7 @@
           "target_file": "print.go",
           "target_package": "graphstore",
           "target_symbol": "PrintWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -38214,7 +38214,7 @@
           "target_file": "print.go",
           "target_package": "graphstore",
           "target_symbol": "PrintCharname",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -38250,7 +38250,7 @@
           "target_file": "print.go",
           "target_package": "graphstore",
           "target_symbol": "PrintOutReal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -38286,7 +38286,7 @@
           "target_file": "print.go",
           "target_package": "graphstore",
           "target_symbol": "PrintCastPtr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -38322,7 +38322,7 @@
           "target_file": "print.go",
           "target_package": "graphstore",
           "target_symbol": "PrintOutTerm",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -38358,7 +38358,7 @@
           "target_file": "print.go",
           "target_package": "graphstore",
           "target_symbol": "PrintOutSubterm",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -38394,12 +38394,12 @@
           "target_file": "print.go",
           "target_package": "graphstore",
           "target_symbol": "PrintOutAtom",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "print.go",
       "target_package": "graphstore",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -38535,7 +38535,7 @@
           "target_file": "roots.go",
           "target_package": "graphstore",
           "target_symbol": "RootsWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -38563,7 +38563,7 @@
           "target_file": "roots.go",
           "target_package": "graphstore",
           "target_symbol": "RootsEntry",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -38591,7 +38591,7 @@
           "target_file": "roots.go",
           "target_package": "graphstore",
           "target_symbol": "RootsRegistry",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -38619,7 +38619,7 @@
           "target_file": "roots.go",
           "target_package": "graphstore",
           "target_symbol": "RootsRegistry.Root",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -38647,7 +38647,7 @@
           "target_file": "roots.go",
           "target_package": "graphstore",
           "target_symbol": "RootsRegistry.RootSlice",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -38675,7 +38675,7 @@
           "target_file": "roots.go",
           "target_package": "graphstore",
           "target_symbol": "RootsRegistry.RootList",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -38703,7 +38703,7 @@
           "target_file": "roots.go",
           "target_package": "graphstore",
           "target_symbol": "RootsRegistry.MarkAll",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -38731,7 +38731,7 @@
           "target_file": "roots.go",
           "target_package": "graphstore",
           "target_symbol": "RootsRegistry.Reset",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -38759,7 +38759,7 @@
           "target_file": "roots.go",
           "target_package": "graphstore",
           "target_symbol": "RootsGuard",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -38787,12 +38787,12 @@
           "target_file": "roots.go",
           "target_package": "graphstore",
           "target_symbol": "RootsGuard.Deinit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "roots.go",
       "target_package": "graphstore",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -39408,7 +39408,7 @@
           "target_file": "strtab.go",
           "target_package": "graphstore",
           "target_symbol": "StrtabWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -39440,7 +39440,7 @@
           "target_file": "strtab.go",
           "target_package": "graphstore",
           "target_symbol": "StrtabStringID",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -39472,7 +39472,7 @@
           "target_file": "strtab.go",
           "target_package": "graphstore",
           "target_symbol": "StrtabStrId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -39504,7 +39504,7 @@
           "target_file": "strtab.go",
           "target_package": "graphstore",
           "target_symbol": "StrtabStringTable",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -39536,7 +39536,7 @@
           "target_file": "strtab.go",
           "target_package": "graphstore",
           "target_symbol": "StrtabBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -39568,7 +39568,7 @@
           "target_file": "strtab.go",
           "target_package": "graphstore",
           "target_symbol": "StrtabTable",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -39600,7 +39600,7 @@
           "target_file": "strtab.go",
           "target_package": "graphstore",
           "target_symbol": "StrtabOom",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -39632,7 +39632,7 @@
           "target_file": "strtab.go",
           "target_package": "graphstore",
           "target_symbol": "StrtabStringTable.EnsureInit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -39664,7 +39664,7 @@
           "target_file": "strtab.go",
           "target_package": "graphstore",
           "target_symbol": "StrtabStringTable.StrBits",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -39696,7 +39696,7 @@
           "target_file": "strtab.go",
           "target_package": "graphstore",
           "target_symbol": "StrtabStringTable.StrBitsZ",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -39728,7 +39728,7 @@
           "target_file": "strtab.go",
           "target_package": "graphstore",
           "target_symbol": "StrtabStringTable.StrOf",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -39760,7 +39760,7 @@
           "target_file": "strtab.go",
           "target_package": "graphstore",
           "target_symbol": "StrtabStringTable.Privatize",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -39792,12 +39792,12 @@
           "target_file": "strtab.go",
           "target_package": "graphstore",
           "target_symbol": "StrtabStringTable.Deinit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "strtab.go",
       "target_package": "graphstore",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -102512,19 +102512,7 @@
       "generated_check": "go generate ./... && git diff --exit-code",
       "id": "package:graphstore",
       "package_test": "go test ./internal/graphstore",
-      "source_files": [
-        "src/eval/resources.zig",
-        "src/eval/stream.zig",
-        "src/graph/bignum.zig",
-        "src/graph/bignum_fmt.zig",
-        "src/graph/dump.zig",
-        "src/graph/dump_load.zig",
-        "src/graph/heap.zig",
-        "src/graph/heap_cells.zig",
-        "src/graph/print.zig",
-        "src/graph/roots.zig",
-        "src/graph/strtab.zig"
-      ],
+      "source_files": [],
       "stage_oracles": [
         {
           "command": "python3 tests/oracle/oracle.py verify --stage lower --producer 'go run ./cmd/miracula-go-oracle'",
@@ -102536,7 +102524,7 @@
         }
       ],
       "target_package": "graphstore",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "dag_check": "go run ./cmd/checkdag",
