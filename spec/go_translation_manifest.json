@@ -5547,7 +5547,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsReductionCtx",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -5579,7 +5579,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -5611,7 +5611,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleI",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -5643,7 +5643,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleK",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -5675,7 +5675,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleS",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -5707,7 +5707,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleB",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -5739,7 +5739,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleCB",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -5771,7 +5771,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleC",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -5803,7 +5803,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleY",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -5835,7 +5835,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleKI",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -5867,7 +5867,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleS1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -5899,7 +5899,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleB1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -5931,7 +5931,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleC1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -5963,7 +5963,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleSP",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -5995,7 +5995,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleBP",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6027,7 +6027,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleCP",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6059,7 +6059,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleITERATE",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6091,7 +6091,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleITERATE1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6123,7 +6123,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleP",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6155,7 +6155,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleU",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6187,7 +6187,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleUf",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6219,7 +6219,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleATLEAST",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6251,7 +6251,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleUFunction",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6283,7 +6283,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleUg",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6315,7 +6315,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleMATCH",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6347,7 +6347,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleMATCHINT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6379,7 +6379,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleGENSEQ",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6411,7 +6411,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleBADCASE",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6443,7 +6443,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleGETARGS",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6475,7 +6475,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleCONFERROR",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6507,7 +6507,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleERROR",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6539,7 +6539,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsWEXITSTATUS",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6571,7 +6571,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleWAIT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6603,7 +6603,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleTRY",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6635,7 +6635,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleFAIL",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6667,7 +6667,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleUsh1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6699,7 +6699,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleMKSTRICT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6731,7 +6731,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleStrictMonadic",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6763,7 +6763,7 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleStrictDiadic",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -6795,12 +6795,12 @@
           "target_file": "combinators.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsHandleStrictTriadic",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "combinators.go",
       "target_package": "evaluation",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -7055,7 +7055,7 @@
           "target_file": "combinators_list.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsListReductionCtx",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -7084,7 +7084,7 @@
           "target_file": "combinators_list.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsListWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -7113,7 +7113,7 @@
           "target_file": "combinators_list.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsListHandleMAP",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -7142,7 +7142,7 @@
           "target_file": "combinators_list.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsListHandleFLATMAP",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -7171,7 +7171,7 @@
           "target_file": "combinators_list.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsListHandleFILTER",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -7200,7 +7200,7 @@
           "target_file": "combinators_list.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsListHandleLISTLAST",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -7229,7 +7229,7 @@
           "target_file": "combinators_list.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsListHandleLENGTH",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -7258,7 +7258,7 @@
           "target_file": "combinators_list.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsListHandleDROP",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -7287,7 +7287,7 @@
           "target_file": "combinators_list.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsListHandleSUBSCRIPT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -7316,7 +7316,7 @@
           "target_file": "combinators_list.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsListHandleFOLDL1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -7345,7 +7345,7 @@
           "target_file": "combinators_list.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsListHandleFOLDL",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -7374,12 +7374,12 @@
           "target_file": "combinators_list.go",
           "target_package": "evaluation",
           "target_symbol": "CombinatorsListHandleFOLDR",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "combinators_list.go",
       "target_package": "evaluation",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -7495,7 +7495,7 @@
           "target_file": "io.go",
           "target_package": "evaluation",
           "target_symbol": "IoReductionCtx",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -7524,7 +7524,7 @@
           "target_file": "io.go",
           "target_package": "evaluation",
           "target_symbol": "IoWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -7553,7 +7553,7 @@
           "target_file": "io.go",
           "target_package": "evaluation",
           "target_symbol": "IoHandleREAD",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -7582,7 +7582,7 @@
           "target_file": "io.go",
           "target_package": "evaluation",
           "target_symbol": "IoHandleREADBIN",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -7611,7 +7611,7 @@
           "target_file": "io.go",
           "target_package": "evaluation",
           "target_symbol": "IoHandleREADVALS",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -7640,12 +7640,12 @@
           "target_file": "io.go",
           "target_package": "evaluation",
           "target_symbol": "IoHandleSTARTREADVALS",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "io.go",
       "target_package": "evaluation",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -8235,7 +8235,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexReductionCtx",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8264,7 +8264,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8293,7 +8293,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexValue",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8322,7 +8322,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexLastarg",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8351,7 +8351,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexSetLastarg",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8380,7 +8380,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexLh",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8409,7 +8409,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleGERROR",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8438,7 +8438,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleGALT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8467,7 +8467,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleGOPT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8496,7 +8496,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleGSTAR",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8525,7 +8525,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleGFBSTAR",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8554,7 +8554,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleGSYMB",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8583,7 +8583,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleGANY",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8612,7 +8612,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleGSUCHTHAT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8641,7 +8641,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleGEND",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8670,7 +8670,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleGSTATE",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8699,7 +8699,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleGSEQ",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8728,7 +8728,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleGUNIT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8757,7 +8757,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleGZERO",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8786,7 +8786,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleGCLOSE",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8815,7 +8815,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleGCOUNT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8844,7 +8844,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXRPT1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8873,7 +8873,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXRPT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8902,7 +8902,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXTRY",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8931,7 +8931,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXTRYFunction",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8960,7 +8960,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXTRY1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -8989,7 +8989,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXTRY1Function",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -9018,7 +9018,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleDESTREV",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -9047,7 +9047,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXCOUNT0",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -9076,7 +9076,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXCOUNT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -9105,7 +9105,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXSTRING",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -9134,7 +9134,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXCLASS",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -9163,7 +9163,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXDOT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -9192,7 +9192,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXCHAR",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -9221,7 +9221,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXSEQ",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -9250,7 +9250,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXOR",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -9279,7 +9279,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXRCONTEXT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -9308,7 +9308,7 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXSTAR",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -9337,12 +9337,12 @@
           "target_file": "lex.go",
           "target_package": "evaluation",
           "target_symbol": "LexHandleLEXOPT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "lex.go",
       "target_package": "evaluation",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -10283,7 +10283,7 @@
           "target_file": "ready.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyReductionCtx",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -10321,7 +10321,7 @@
           "target_file": "ready.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -10359,7 +10359,7 @@
           "target_file": "ready.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyValue",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -10397,7 +10397,7 @@
           "target_file": "ready.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyLastArg",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -10435,7 +10435,7 @@
           "target_file": "ready.go",
           "target_package": "evaluation",
           "target_symbol": "ReadySetLastArg",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -10473,7 +10473,7 @@
           "target_file": "ready.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyCharOfWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -10511,7 +10511,7 @@
           "target_file": "ready.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyIsSpaceW",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -10549,7 +10549,7 @@
           "target_file": "ready.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyIsDigitW",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -10587,7 +10587,7 @@
           "target_file": "ready.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyIsHexW",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -10625,7 +10625,7 @@
           "target_file": "ready.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyToLowerW",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -10663,7 +10663,7 @@
           "target_file": "ready.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyHandleReadyState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -10701,7 +10701,7 @@
           "target_file": "ready.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyHandleReadyGETENV",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -10739,7 +10739,7 @@
           "target_file": "ready.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyHandleReadyEXEC",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -10777,7 +10777,7 @@
           "target_file": "ready.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyHandleReadyNUMVAL",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -10815,7 +10815,7 @@
           "target_file": "ready.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyHandleReadyPOWER",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -10853,12 +10853,12 @@
           "target_file": "ready.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyHandleReadyUsh",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "ready.go",
       "target_package": "evaluation",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -10928,7 +10928,7 @@
           "target_file": "ready_format.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyFormatFormatMiraShowNum",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -10951,7 +10951,7 @@
           "target_file": "ready_format.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyFormatBufFallback",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -10974,7 +10974,7 @@
           "target_file": "ready_format.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyFormatFormatMiraFixed",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -10997,7 +10997,7 @@
           "target_file": "ready_format.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyFormatFormatMiraScaled",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -11020,7 +11020,7 @@
           "target_file": "ready_format.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyFormatToCScientificExponent",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -11043,12 +11043,12 @@
           "target_file": "ready_format.go",
           "target_package": "evaluation",
           "target_symbol": "ReadyFormatFormatMiraHex",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "ready_format.go",
       "target_package": "evaluation",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -11300,7 +11300,7 @@
           "target_file": "reduce.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -11339,7 +11339,7 @@
           "target_file": "reduce.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceValue",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -11378,7 +11378,7 @@
           "target_file": "reduce.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceReductionCtx",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -11417,7 +11417,7 @@
           "target_file": "reduce.go",
           "target_package": "evaluation",
           "target_symbol": "Reduce",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -11456,7 +11456,7 @@
           "target_file": "reduce.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceClearScratchRoots",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -11495,7 +11495,7 @@
           "target_file": "reduce.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceDispatchNonCombinatorHead",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -11534,12 +11534,12 @@
           "target_file": "reduce.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceForceSpineArguments",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "reduce.go",
       "target_package": "evaluation",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -12224,7 +12224,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12258,7 +12258,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreValue",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12292,7 +12292,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12326,7 +12326,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreReduceError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12360,7 +12360,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreReductionCtx",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12394,7 +12394,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreBindReducer",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12428,7 +12428,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreReduceVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12462,7 +12462,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreHeadVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12496,7 +12496,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreForceVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12530,7 +12530,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreGetstringVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12564,7 +12564,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreBadcaseErrorVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12598,7 +12598,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreConfErrorVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12632,7 +12632,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreCleanPtr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12666,7 +12666,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreHdGet",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12700,7 +12700,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreHdSet",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12734,7 +12734,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreTlGet",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12768,7 +12768,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreTlSet",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12802,7 +12802,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreGetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12836,7 +12836,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreSetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12870,7 +12870,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreTlPtr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12904,7 +12904,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreDownLeft",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12938,7 +12938,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreDownRight",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -12972,7 +12972,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreDownright",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13006,7 +13006,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreUpLeft",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13040,7 +13040,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreUpleft",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13074,7 +13074,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreUpRight",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13108,7 +13108,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreGETARG",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13142,7 +13142,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreGetarg",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13176,7 +13176,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCorePinArgument",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13210,7 +13210,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreSimpl",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13244,7 +13244,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreTestCtx",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13278,7 +13278,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreAbnormal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13312,7 +13312,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreIsAp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13346,7 +13346,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreIsNum",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13380,7 +13380,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreIsConstructor",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13414,7 +13414,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreIsInt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13448,7 +13448,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreIsDouble",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13482,7 +13482,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreIsAtom",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13516,7 +13516,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreIsStrcons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13550,7 +13550,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreIsId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13584,7 +13584,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreIdVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13618,7 +13618,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreIsDatapair",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13652,7 +13652,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreIsStartreadvals",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13686,7 +13686,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreIsCons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13720,7 +13720,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreIsUnicode",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13754,7 +13754,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreRewriteToValue",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13788,7 +13788,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreRewriteToNil",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13822,7 +13822,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreRewriteToFail",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13856,7 +13856,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreRewriteToFailure",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13890,7 +13890,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreRewriteToConsHead",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13924,7 +13924,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreRewriteToCons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13958,7 +13958,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreRewriteToExistingTail",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -13992,7 +13992,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreAp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14026,7 +14026,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreApTwo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14060,7 +14060,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreRewriteToMatchResult",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14094,7 +14094,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreRewriteToIntMatchResult",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14128,7 +14128,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreRewriteToString",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14162,7 +14162,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreCons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14196,7 +14196,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreAp2",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14230,7 +14230,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreNeg",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14264,7 +14264,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCorePoz",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14298,7 +14298,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCorePnVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14332,7 +14332,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreGetId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14366,7 +14366,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreConstrName",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14400,7 +14400,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreSuppressed",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14434,7 +14434,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreGetStderr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14468,7 +14468,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreGetStdout",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14502,7 +14502,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreGetStdin",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14536,7 +14536,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreForceDbl",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14570,7 +14570,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreCoerceDbl",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14604,7 +14604,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreRewriteToCompareEq",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14638,7 +14638,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreRewriteToCompareNeq",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14672,7 +14672,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreRewriteToCompareGt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14706,7 +14706,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreRewriteToCompareGe",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14740,7 +14740,7 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreBigzero",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -14774,12 +14774,12 @@
           "target_file": "reduce_core.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceCoreGetsmallint",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "reduce_core.go",
       "target_package": "evaluation",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -16068,7 +16068,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtValue",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16113,7 +16113,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16158,7 +16158,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtEvalState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16203,7 +16203,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16248,7 +16248,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtEv",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16293,7 +16293,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtGetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16338,7 +16338,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtSetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16383,7 +16383,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtH",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16428,7 +16428,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16473,7 +16473,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtHp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16518,7 +16518,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtTp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16563,7 +16563,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtLh",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16608,7 +16608,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtForceDbl",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16653,7 +16653,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtFsign",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16698,7 +16698,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtSign",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16743,7 +16743,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtCons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16788,7 +16788,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtAp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16833,7 +16833,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtDatapair",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16878,7 +16878,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtWrapStreamID",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16923,7 +16923,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtUnwrapStreamID",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -16968,7 +16968,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtRegisterStream",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17013,7 +17013,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtResolveStream",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17058,7 +17058,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtCloseStream",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17103,7 +17103,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtDigit0",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17148,7 +17148,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtStosmallint",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17193,7 +17193,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtGetStdin",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17238,7 +17238,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtGetStderr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17283,7 +17283,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtGetStdout",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17328,7 +17328,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtRewriteToValue",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17373,7 +17373,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtRewriteToNil",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17418,7 +17418,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtSetcell",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17463,7 +17463,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtRewriteToCons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17508,7 +17508,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtBadcaseError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17553,7 +17553,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtConfError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17598,7 +17598,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtParseCloseError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17643,7 +17643,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtStreamRead",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17688,7 +17688,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtGetstring",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17733,7 +17733,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtInitclock",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17778,7 +17778,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtOutstats",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17823,7 +17823,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtOutHere",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17868,7 +17868,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtStdname",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17913,7 +17913,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtStdinError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -17958,7 +17958,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtFnError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18003,7 +18003,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtGetenvError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18048,7 +18048,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtSubsError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18093,7 +18093,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtDivError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18138,7 +18138,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtMathError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18183,7 +18183,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtIntError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18228,7 +18228,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtNumplus",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18273,7 +18273,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtGResidue",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18318,7 +18318,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtGResidueRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18363,7 +18363,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtMemclass",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18408,7 +18408,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtLexfail",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18453,7 +18453,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtLexstate",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18498,7 +18498,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtPiperrmess",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18543,7 +18543,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtCompare",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18588,7 +18588,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtForce",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18633,7 +18633,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtForceRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18678,7 +18678,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtHead",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18723,7 +18723,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtApfile",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18768,7 +18768,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtClosefile",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18813,7 +18813,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtOutf",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18858,7 +18858,7 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtPrint",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -18903,12 +18903,12 @@
           "target_file": "reduce_rt.go",
           "target_package": "evaluation",
           "target_symbol": "ReduceRtOutput",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "reduce_rt.go",
       "target_package": "evaluation",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -20755,7 +20755,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "SpineWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -20781,7 +20781,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "SpineValue",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -20807,7 +20807,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "SpineFrame",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -20833,7 +20833,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "SpinePooledBuffer",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -20859,7 +20859,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -20885,7 +20885,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "SpineInit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -20911,7 +20911,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine.Deinit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -20937,7 +20937,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine.Register",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -20963,7 +20963,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine.Unregister",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -20989,7 +20989,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine.IsEmpty",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21015,7 +21015,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine.AtArgumentChainBoundary",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21041,7 +21041,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine.Depth",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21067,7 +21067,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine.Top",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21093,7 +21093,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine.DownLeft",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21119,7 +21119,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine.DownRight",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21145,7 +21145,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine.Downright",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21171,7 +21171,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine.UpLeft",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21197,7 +21197,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine.Upleft",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21223,7 +21223,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine.UpRight",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21249,7 +21249,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine.PopNodeOnly",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21275,7 +21275,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine.PushRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21301,7 +21301,7 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "Spine.DrainAll",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -21327,12 +21327,12 @@
           "target_file": "spine.go",
           "target_package": "evaluation",
           "target_symbol": "SpineMarkAllRoots",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "spine.go",
       "target_package": "evaluation",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -22602,7 +22602,7 @@
           "target_file": "trace.go",
           "target_package": "evaluation",
           "target_symbol": "TraceTraceState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22628,7 +22628,7 @@
           "target_file": "trace.go",
           "target_package": "evaluation",
           "target_symbol": "TraceStep",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22654,7 +22654,7 @@
           "target_file": "trace.go",
           "target_package": "evaluation",
           "target_symbol": "TraceReset",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22680,7 +22680,7 @@
           "target_file": "trace.go",
           "target_package": "evaluation",
           "target_symbol": "TraceDump",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -22706,12 +22706,12 @@
           "target_file": "trace.go",
           "target_package": "evaluation",
           "target_symbol": "TraceLt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "trace.go",
       "target_package": "evaluation",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -102600,19 +102600,7 @@
       "generated_check": "go generate ./... && git diff --exit-code",
       "id": "package:evaluation",
       "package_test": "go test ./internal/evaluation",
-      "source_files": [
-        "src/eval/combinators/combinators.zig",
-        "src/eval/combinators/combinators_list.zig",
-        "src/eval/combinators/io.zig",
-        "src/eval/combinators/lex.zig",
-        "src/eval/combinators/ready.zig",
-        "src/eval/combinators/ready_format.zig",
-        "src/eval/reduce.zig",
-        "src/eval/reduce_core.zig",
-        "src/eval/reduce_rt.zig",
-        "src/eval/spine.zig",
-        "src/eval/trace.zig"
-      ],
+      "source_files": [],
       "stage_oracles": [
         {
           "command": "python3 tests/oracle/oracle.py verify --stage reduce --producer 'go run ./cmd/miracula-go-oracle'",
@@ -102620,7 +102608,7 @@
         }
       ],
       "target_package": "evaluation",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "dag_check": "go run ./cmd/checkdag",
