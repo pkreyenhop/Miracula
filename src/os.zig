@@ -43,6 +43,20 @@ inline fn syscallResult(rc: anytype) c_int {
 
 const WaitStatusType = c_int;
 
+/// Pointer<->integer casts, confined to the os.zig floor (like c_int/extern):
+/// the interpreter logic calls these instead of the raw `@intFromPtr`/
+/// `@ptrFromInt` builtins so the unsafe pointer-as-integer surface lives in one
+/// auditable place. Used for buffer/stack pointer arithmetic and comparison
+/// (Zig has no `<`/`-` on pointers) and for native `Stream*`-in-`Word`-cell
+/// storage (a Go port replaces the latter with a handle table).
+pub inline fn ptrInt(p: anytype) usize {
+    return @intFromPtr(p);
+}
+/// The inverse of `ptrInt`: reinterpret integer `x` as a `T` pointer.
+pub inline fn ptrFrom(comptime T: type, x: anytype) T {
+    return @ptrFromInt(@as(usize, @intCast(x)));
+}
+
 // Word types
 pub const word = word_mod.Word;
 pub const unicode = word_mod.Unicode;

@@ -116,7 +116,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
 
     lexs.c = ' ';
     lexs.col = 0;
-    config_state.config().s_in = @ptrFromInt(@as(usize, @intCast(heap_mod.h(heap, heap_mod.h(heap, lexs.fileq)))));
+    config_state.config().s_in = abi.ptrFrom(?*word.Stream, heap_mod.h(heap, heap_mod.h(heap, lexs.fileq)));
     abi.adjustPrefix(@constCast(t_val));
 
     core.commandmode = 0;

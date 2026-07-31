@@ -97,8 +97,8 @@ fn fileinfo(file: Word, line: Word) Word {
 
 /// Abort if the dictionary buffer has overflowed.
 fn ovflocheck() void {
-    const d_ptr = @as(usize, @intFromPtr(ls().dicq));
-    const start_ptr = @as(usize, @intFromPtr(ls().dic));
+    const d_ptr = @as(usize, os.ptrInt(ls().dicq));
+    const start_ptr = @as(usize, os.ptrInt(ls().dic));
     if (d_ptr - start_ptr > @as(usize, @intCast(config_state.config().DICSPACE))) {
         dicovflo();
     }
@@ -173,7 +173,7 @@ pub fn token() ?[*:0]u8 {
         ls().dicq[0] = @intCast(ch);
         ls().dicq += 1;
         if (ch == '%') {
-            const idx = @as(usize, @intFromPtr(ls().dicq)) - @as(usize, @intFromPtr(ls().dicp));
+            const idx = @as(usize, os.ptrInt(ls().dicq)) - @as(usize, os.ptrInt(ls().dicp));
             if (idx >= 2 and (ls().dicq - 2)[0] == '\\') {
                 (ls().dicq - 2)[0] = '%';
                 ls().dicq -= 1;
@@ -308,7 +308,7 @@ pub fn rdline() ?[*:0]u8 {
         if (ch == '\n' or ch == os.EOF) {
             break;
         }
-        const offset = @as(usize, @intFromPtr(p)) - @as(usize, @intFromPtr(&ls().rdline_linebuf));
+        const offset = @as(usize, os.ptrInt(p)) - @as(usize, os.ptrInt(&ls().rdline_linebuf));
         if (offset >= 1024) {
             p[0] = 0;
             word.printErr("sorry, !command too long (limit={} chars): {s}...\n", .{ @as(i32, 1024), @as([*:0]const u8, @ptrCast(&ls().rdline_linebuf)) });
@@ -321,11 +321,11 @@ pub fn rdline() ?[*:0]u8 {
             return null;
         }
         if ((p - 1)[0] == '%') {
-            if (@intFromPtr(p) > @intFromPtr(&ls().rdline_linebuf[1]) and (p - 2)[0] == '\\') {
+            if (os.ptrInt(p) > os.ptrInt(&ls().rdline_linebuf[1]) and (p - 2)[0] == '\\') {
                 (p - 2)[0] = '%';
                 p -= 1;
             } else {
-                const remaining = 1024 - (@as(usize, @intFromPtr(p - 1)) - @as(usize, @intFromPtr(&ls().rdline_linebuf)));
+                const remaining = 1024 - (@as(usize, os.ptrInt(p - 1)) - @as(usize, os.ptrInt(&ls().rdline_linebuf)));
                 {
                     const src_span = script_store.store().current_script.?;
                     const limit = @min(src_span.len, remaining);
@@ -442,9 +442,9 @@ pub fn adjustPrefix(f: [*:0]const u8) void {
 /// Open source file `n` for reading; returns 0 on failure.
 pub fn openfile(heap: *Heap, n: [*:0]const u8) i32 {
     const f = word.fopen(n, "r") orelse return 0;
-    // Stream* handle stored in the cell (read back via @ptrFromInt below);
+    // Stream* handle stored in the cell (read back via os.ptrFrom below);
     // this is a Stream-handle-in-cell cast, not a node string — out of B1 scope.
-    ls().fileq = cons(make(heap, .STRCONS, @as(Word, @intCast(@intFromPtr(f))), NIL), ls().fileq);
+    ls().fileq = cons(make(heap, .STRCONS, @as(Word, @intCast(os.ptrInt(f))), NIL), ls().fileq);
     ls().insertdepth += 1;
     return 1;
 }
@@ -677,7 +677,7 @@ pub fn resetState(heap: *Heap) void {
         }
     }
     while (ls().fileq != NIL) {
-        const file_ptr: ?*word.Stream = @ptrFromInt(@as(usize, @intCast(h(heap, h(heap, ls().fileq)))));
+        const file_ptr: ?*word.Stream = os.ptrFrom(?*word.Stream, h(heap, h(heap, ls().fileq)));
         _ = word.fclose(file_ptr);
         ls().fileq = t(heap, ls().fileq);
     }

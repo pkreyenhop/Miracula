@@ -413,7 +413,7 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                     if (config_state.config().DICSPACE != 100000) {
                         word.print(" (default={})", .{@as(i64, 100000)});
                     }
-                    word.print(" {} in use\n", .{@as(i64, @intCast(@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dic.?)))});
+                    word.print(" {} in use\n", .{@as(i64, @intCast(abi.ptrInt(lexs.dicq) - abi.ptrInt(lexs.dic.?)))});
                     return;
                 }
                 if (abi.getchar() != '\n') return;
@@ -652,7 +652,7 @@ pub fn editfile(heap: *Heap, rs: *rt.RuntimeState, t_val: [*:0]const u8, line: i
         } else if ((p - 1)[0] == '%') {
             (p - 1)[0] = '"';
             p[0] = 0;
-            const limit = @as(usize, @intCast(abi.BUFSIZE + @intFromPtr(ebuf_local) - @intFromPtr(p)));
+            const limit = @as(usize, @intCast(abi.BUFSIZE + abi.ptrInt(ebuf_local) - abi.ptrInt(p)));
             {
                 const dst_len = std.mem.len(@as([*:0]const u8, @ptrCast(p)));
                 const src_span = std.mem.span(t_val);
@@ -674,7 +674,7 @@ pub fn editfile(heap: *Heap, rs: *rt.RuntimeState, t_val: [*:0]const u8, line: i
         p[0] = '"';
         p += 1;
         p[0] = 0;
-        const limit = @as(usize, @intCast(abi.BUFSIZE + @intFromPtr(ebuf_local) - @intFromPtr(p)));
+        const limit = @as(usize, @intCast(abi.BUFSIZE + abi.ptrInt(ebuf_local) - abi.ptrInt(p)));
         {
             const dst_len = std.mem.len(@as([*:0]const u8, @ptrCast(p)));
             const src_span = std.mem.span(t_val);

@@ -191,7 +191,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
                 reduce_rt.outstats();
                 os.exit(1);
             }
-            setLastArg(ctx, reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(f.?))));
+            setLastArg(ctx, reduce_rt.wrapPtr(ctx.heap, @intCast(os.ptrInt(f.?))));
             reduce.hdSet(ctx.heap, ctx.e, Value.fromRaw(word.READ));
             reduce.downLeft(ctx);
             io_handlers.handle_READ(ctx);
@@ -206,7 +206,7 @@ pub fn handleReadyState(ctx: *ReductionCtx) reduce.ReduceError!void {
                 reduce_rt.outstats();
                 os.exit(1);
             }
-            setLastArg(ctx, reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(f.?))));
+            setLastArg(ctx, reduce_rt.wrapPtr(ctx.heap, @intCast(os.ptrInt(f.?))));
             reduce.hdSet(ctx.heap, ctx.e, Value.fromRaw(word.READBIN));
             reduce.downLeft(ctx);
             io_handlers.handle_READBIN(ctx);
@@ -733,7 +733,7 @@ fn handleReadyEXEC(ctx: *ReductionCtx) reduce.ReduceError!void {
         if (pid == -1 or fp == null or fp_a == null) {
             reduce.rewriteToCons(ctx.heap, ctx.e, Value.fromRaw(word.NIL), reduce.cons(ctx.heap, reduce_rt.piperrmess(pid), Value.fromRaw(big.fromInt(ctx.heap, -1))));
         } else {
-            reduce.rewriteToCons(ctx.heap, ctx.e, reduce.ap(ctx.heap, Value.fromRaw(word.READ), reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(fp.?)))), reduce.cons(ctx.heap, reduce.ap(ctx.heap, Value.fromRaw(word.READ), reduce_rt.wrapPtr(ctx.heap, @intCast(@intFromPtr(fp_a.?)))), reduce.ap(ctx.heap, Value.fromRaw(word.WAIT), Value.fromRaw(pid))));
+            reduce.rewriteToCons(ctx.heap, ctx.e, reduce.ap(ctx.heap, Value.fromRaw(word.READ), reduce_rt.wrapPtr(ctx.heap, @intCast(os.ptrInt(fp.?)))), reduce.cons(ctx.heap, reduce.ap(ctx.heap, Value.fromRaw(word.READ), reduce_rt.wrapPtr(ctx.heap, @intCast(os.ptrInt(fp_a.?)))), reduce.ap(ctx.heap, Value.fromRaw(word.WAIT), Value.fromRaw(pid))));
         }
     } else {
         const shell = "/bin/sh";

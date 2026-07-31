@@ -139,7 +139,7 @@ inline fn datapair(heap_ptr: *heap.Heap, x: Word, y: Word) Word {
     return heap.make(heap_ptr, .DATAPAIR, x, y);
 }
 
-/// Wrap a raw native pointer (already cast to a `Word` via `@intFromPtr`) as
+/// Wrap a raw native pointer (already cast to a `Word` via `os.ptrInt`) as
 /// a GC-safe heap value, for storing in a cell field that `Heap.mark`/
 /// `Heap.validate` might otherwise walk as if it were a cell reference.
 ///
@@ -316,11 +316,11 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
                     return word.ACT_DONE;
                 }
                 ctx.eval.stdinuse = ':';
-                tp(ctx.heap, ctx.e.toRaw()).* = wrapPtr(ctx.heap, @intCast(@intFromPtr(getStdin().?))).toRaw();
+                tp(ctx.heap, ctx.e.toRaw()).* = wrapPtr(ctx.heap, @intCast(os.ptrInt(getStdin().?))).toRaw();
             }
-            const hold_char = os.getc(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))));
+            const hold_char = os.getc(os.ptrFrom(?*word.Stream, unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))));
             if (hold_char == os.EOF) {
-                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))));
+                _ = word.fclose(os.ptrFrom(?*word.Stream, unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))));
                 rewriteToNil(ctx.heap, @ptrCast(&ctx.e));
                 return word.ACT_DONE;
             }
@@ -340,16 +340,16 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
                     return word.ACT_DONE;
                 }
                 ctx.eval.stdinuse = '-';
-                tp(ctx.heap, ctx.e.toRaw()).* = wrapPtr(ctx.heap, @intCast(@intFromPtr(getStdin().?))).toRaw();
+                tp(ctx.heap, ctx.e.toRaw()).* = wrapPtr(ctx.heap, @intCast(os.ptrInt(getStdin().?))).toRaw();
             }
             // `os.fromUTF8` returns an unsigned 64-bit C integer, signalling
             // EOF/malformed as its maximum value; the removed `extern fn` used
             // to reinterpret those bits as a signed `Word` (so EOF read back as
             // `-1`), hence `@bitCast` rather than `@intCast` to preserve that
             // exact reinterpretation.
-            const hold_char = if (ctx.rs.UTF8 != 0) stoChar(@as(Word, @bitCast(os.fromUTF8(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))))))) else os.getc(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))));
+            const hold_char = if (ctx.rs.UTF8 != 0) stoChar(@as(Word, @bitCast(os.fromUTF8(os.ptrFrom(?*word.Stream, unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))))) else os.getc(os.ptrFrom(?*word.Stream, unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))));
             if (hold_char == os.EOF) {
-                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))))));
+                _ = word.fclose(os.ptrFrom(?*word.Stream, unwrapPtr(ctx.heap, Value.fromRaw(t(ctx.heap, ctx.e.toRaw())))));
                 rewriteToNil(ctx.heap, @ptrCast(&ctx.e));
                 return word.ACT_DONE;
             }
@@ -365,9 +365,9 @@ pub fn streamRead(ctx: *reduce_core.ReductionCtx, op: Word) Word {
             reduce_core.upLeft(ctx);
             const lastarg = t(ctx.heap, ctx.e.toRaw());
 
-            const val = parseLine(ctx.heap, core_state.s(), rt.rs(), lex_state.ls(), h(ctx.heap, ctx.args[0].toRaw()), @ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(lastarg))))), t(ctx.heap, ctx.args[0].toRaw()));
+            const val = parseLine(ctx.heap, core_state.s(), rt.rs(), lex_state.ls(), h(ctx.heap, ctx.args[0].toRaw()), os.ptrFrom(?*word.Stream, unwrapPtr(ctx.heap, Value.fromRaw(lastarg))), t(ctx.heap, ctx.args[0].toRaw()));
             if (val == os.EOF) {
-                _ = word.fclose(@ptrFromInt(@as(usize, @intCast(unwrapPtr(ctx.heap, Value.fromRaw(lastarg))))));
+                _ = word.fclose(os.ptrFrom(?*word.Stream, unwrapPtr(ctx.heap, Value.fromRaw(lastarg))));
                 rewriteToNil(ctx.heap, @ptrCast(&ctx.e));
                 return word.ACT_DONE;
             }
@@ -785,8 +785,8 @@ pub fn apfile(heap_ptr: *heap.Heap, eval: *EvalState, f_val: Value) reduce_core.
             word.printErr("\nAppendfile: cannot write to \"{s}\"\n", .{std.mem.span(fil.?)});
         } else {
             // datapair = (filename string, Stream* handle); the Stream* is a
-            // raw cell cast (read back via @ptrFromInt), not a node string.
-            eval.outfilq = cons(heap_ptr, datapair(heap_ptr, strtab.strBits(strtab.table(), lex.keep(fil.?)), @as(Word, @intCast(@intFromPtr(s.?)))), eval.outfilq);
+            // raw cell cast (read back via os.ptrFrom), not a node string.
+            eval.outfilq = cons(heap_ptr, datapair(heap_ptr, strtab.strBits(strtab.table(), lex.keep(fil.?)), @as(Word, @intCast(os.ptrInt(s.?)))), eval.outfilq);
         }
     }
 }
@@ -800,7 +800,7 @@ pub fn closefile(heap_ptr: *heap.Heap, eval: *EvalState, f_val: Value) reduce_co
         p = tp(heap_ptr, p.*);
     }
     if (p.* != NIL) {
-        _ = word.fclose(@ptrFromInt(@as(usize, @intCast(t(heap_ptr, h(heap_ptr, p.*))))));
+        _ = word.fclose(os.ptrFrom(?*word.Stream, t(heap_ptr, h(heap_ptr, p.*))));
         p.* = t(heap_ptr, p.*);
     }
 }
@@ -825,9 +825,9 @@ pub fn outf(heap_ptr: *heap.Heap, eval: *EvalState, e_val: Value) reduce_core.Re
             word.setbuf(eval.s_out.?, null);
         }
         // datapair = (filename string, Stream* handle); Stream* is a raw cell cast.
-        eval.outfilq = cons(heap_ptr, datapair(heap_ptr, strtab.strBits(strtab.table(), lex.keep(f.?)), @as(Word, @intCast(@intFromPtr(eval.s_out.?)))), eval.outfilq);
+        eval.outfilq = cons(heap_ptr, datapair(heap_ptr, strtab.strBits(strtab.table(), lex.keep(f.?)), @as(Word, @intCast(os.ptrInt(eval.s_out.?)))), eval.outfilq);
     } else {
-        eval.s_out = @ptrFromInt(@as(usize, @intCast(t(heap_ptr, h(heap_ptr, p)))));
+        eval.s_out = os.ptrFrom(?*word.Stream, t(heap_ptr, h(heap_ptr, p)));
     }
 }
 

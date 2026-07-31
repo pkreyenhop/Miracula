@@ -107,7 +107,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
         abi.obey(heap, core, comp, rs, rs.main_id);
         abi.exit(0);
     }
-    _ = signals(@intCast(abi.SIGINT), @intFromPtr(&onInterrupt));
+    _ = signals(@intCast(abi.SIGINT), abi.ptrInt(&onInterrupt));
     dump.undump(heap, core_state.s(), cs(), rs, initscript);
     if (repl_session.session().verbosity != 0) {
         word.print("for help type /h\n", .{});

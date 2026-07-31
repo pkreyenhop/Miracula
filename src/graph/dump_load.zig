@@ -164,7 +164,7 @@ pub fn loadScript(heap: *Heap, core_st: *core.CoreState, comp: *compiler_state.C
                 break;
             }
         }
-        if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > config_state.config().DICSPACE) {
+        if (os.ptrInt(lexs.dicq) - os.ptrInt(lexs.dicp) > config_state.config().DICSPACE) {
             lex.dicovflo();
         }
         ch = getword(file);
@@ -216,7 +216,7 @@ pub fn loadScript(heap: *Heap, core_st: *core.CoreState, comp: *compiler_state.C
                     break;
                 }
             }
-            if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > config_state.config().DICSPACE) {
+            if (os.ptrInt(lexs.dicq) - os.ptrInt(lexs.dicp) > config_state.config().DICSPACE) {
                 lex.dicovflo();
             }
             ch = getword(file);
@@ -328,7 +328,7 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
                         break;
                     }
                 }
-                if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > config_state.config().DICSPACE) {
+                if (os.ptrInt(lexs.dicq) - os.ptrInt(lexs.dicp) > config_state.config().DICSPACE) {
                     lex.dicovflo();
                 }
                 stackpPush(heap, name(heap));
@@ -350,7 +350,7 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
                         break;
                     }
                 }
-                if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > config_state.config().DICSPACE) {
+                if (os.ptrInt(lexs.dicq) - os.ptrInt(lexs.dicp) > config_state.config().DICSPACE) {
                     lex.dicovflo();
                 }
                 stackpPush(heap, datapair(heap, strtab.strBits(strtab.table(), getId(name(heap))), 0));
@@ -377,7 +377,7 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
                             break;
                         }
                     }
-                    if (@intFromPtr(lexs.dicq) - @intFromPtr(lexs.dicp) > config_state.config().DICSPACE) {
+                    if (os.ptrInt(lexs.dicq) - os.ptrInt(lexs.dicp) > config_state.config().DICSPACE) {
                         lex.dicovflo();
                     }
                     var line = os.getc(file);
@@ -529,7 +529,7 @@ test "dumpOb / loadDefs: roundtrip a cons of two ints through the .x format" {
     _ = os.unlink(filename);
 
     // 7. Verify structural equality
-    try std.testing.expect(@intFromPtr(heap_val.stackp.?) > @intFromPtr(old_stackp.?));
+    try std.testing.expect(os.ptrInt(heap_val.stackp.?) > os.ptrInt(old_stackp.?));
     const loaded = stackpTop(heap_val);
 
     try std.testing.expectEqual(word.NodeTag.CONS, heap_val.getTag(loaded));

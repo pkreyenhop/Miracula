@@ -504,14 +504,14 @@ pub const Heap = struct {
         var p: [*]Word = undefined;
         p = @ptrCast(@alignCast(&p));
         const cstack_ptr = rt.rs().cstack.?;
-        if (@intFromPtr(p) < @intFromPtr(cstack_ptr)) {
+        if (os.ptrInt(p) < os.ptrInt(cstack_ptr)) {
             p += 1;
-            while (@intFromPtr(p) < @intFromPtr(cstack_ptr)) : (p += 1) {
+            while (os.ptrInt(p) < os.ptrInt(cstack_ptr)) : (p += 1) {
                 self.mark(p[0]);
             }
         } else {
             p -= 1;
-            while (@intFromPtr(p) > @intFromPtr(cstack_ptr)) : (p -= 1) {
+            while (os.ptrInt(p) > os.ptrInt(cstack_ptr)) : (p -= 1) {
                 self.mark(p[0]);
             }
         }
@@ -560,7 +560,7 @@ pub const Heap = struct {
             if (p_dstack != null and p_stackp != null) {
                 var curr = p_dstack.?;
                 const end = p_stackp.?;
-                while (@intFromPtr(curr) < @intFromPtr(end)) : (curr += 1) {
+                while (os.ptrInt(curr) < os.ptrInt(end)) : (curr += 1) {
                     self.mark(curr[0]);
                 }
             }
