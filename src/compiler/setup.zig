@@ -236,7 +236,7 @@ pub fn miraSetup(heap: *Heap) void {
     rt.rs().main_id = abi.makeId(@constCast("main"));
     rt.rs().concat = abi.makeId(@constCast("concat"));
     rt.rs().diagonalise = abi.makeId(@constCast("diagonalise"));
-    rt.rs().standardout = heap_mod.constructor(heap, 0, @as([*:0]const u8, "Stdout"));
+    rt.rs().standardout = heap_mod.constructorName(heap, 0, "Stdout");
     rt.rs().indent_fn = abi.makeId(@constCast("indent"));
     rt.rs().outdent_fn = abi.makeId(@constCast("outdent"));
     rt.rs().listdiff_fn = abi.makeId(@constCast("listdiff"));

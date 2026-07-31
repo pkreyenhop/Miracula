@@ -21,6 +21,7 @@
     "graph/bignum.zig": "graphstore",
     "graph/bignum_fmt.zig": "graphstore",
     "graph/combinator.zig": "protocol",
+    "graph/combinator_generated.zig": "protocol",
     "graph/dump.zig": "graphstore",
     "graph/dump_load.zig": "graphstore",
     "graph/heap.zig": "graphstore",

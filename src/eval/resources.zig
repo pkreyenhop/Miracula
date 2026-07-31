@@ -50,14 +50,14 @@ pub const ResourceTable = struct {
     pub fn registerStream(
         self: *ResourceTable,
         allocator: std.mem.Allocator,
-        value: anytype,
+        value: *anyopaque,
         close_on_release: bool,
         close_fn: ?*const fn (*anyopaque) void,
     ) (std.mem.Allocator.Error || ResourceError)!StreamID {
         const id = try self.allocateID();
         try self.entries.append(allocator, .{
             .id = id,
-            .resource = .{ .stream = @ptrCast(value) },
+            .resource = .{ .stream = value },
             .close_on_release = close_on_release,
             .close_fn = close_fn,
         });

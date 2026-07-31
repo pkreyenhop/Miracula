@@ -31,7 +31,7 @@ const ls = lex_state.ls;
 const resetPns = lex.resetPns;
 /// Build a dummy file record for the snapshot tests.
 fn makeFilRecord(name: [*:0]const u8) word.Word {
-    const name_word = @as(word.Word, strtab.strBits(strtab.table(), name));
+    const name_word = @as(word.Word, strtab.strBitsZ(strtab.table(), name));
     const file_info = heap.make(heap.heap(), .FILEINFO, name_word, 0);
     const share_cell = heap.make(heap.heap(), .CONS, 1, word.NIL);
     const info_cell = heap.make(heap.heap(), .CONS, file_info, share_cell);

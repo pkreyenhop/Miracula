@@ -147,7 +147,7 @@ pub const SymbolTable = struct {
     pub fn bind(self: *SymbolTable, gpa: std.mem.Allocator, name: []const u8, id: Value) !void {
         const name_z = try gpa.dupeZ(u8, name);
         defer gpa.free(name_z);
-        const bits = strtab.strBits(strtab.table(), name_z.ptr);
+        const bits = strtab.strBitsZ(strtab.table(), name_z.ptr);
         const stable_name = strtab.strOf(strtab.table(), bits);
         try self.table.put(gpa, stable_name, id.toRaw());
     }

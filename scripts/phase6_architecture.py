@@ -56,7 +56,7 @@ SINGLETON_RE = re.compile(
 
 def destination(rel: str) -> str:
     if rel in {"graph/word.zig", "graph/value.zig", "graph/xcodec.zig", "graph/semantic_types.zig",
-               "graph/combinator.zig", "runtime/errors.zig"}:
+               "graph/combinator.zig", "graph/combinator_generated.zig", "runtime/errors.zig"}:
         return "protocol"
     if rel == "main.zig":
         return "commandapp"

@@ -51,14 +51,7 @@ const genlstatType = types.genlstatType;
 
 /// The standard-input `Stream` handle.
 fn getStdin() ?*word.Stream {
-    const T = @TypeOf(os.stdin);
-    if (comptime @typeInfo(T) == .@"fn") {
-        return os.stdin();
-    } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return os.stdin();
-    } else {
-        return os.stdin;
-    }
+    return os.stdin();
 }
 
 /// Head (`hd`) of cell `x`.

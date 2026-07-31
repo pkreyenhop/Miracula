@@ -649,6 +649,15 @@ pub fn build(b: *std.Build) void {
     test_phase10.dependOn(&run_phase10_strings.step);
     test_phase10.dependOn(&run_main_tests.step);
 
+    const run_phase11_generation = b.addSystemCommand(&.{ "python3", "scripts/phase11_generation.py" });
+    const test_phase11 = b.step("test-phase11", "Verify generated combinators and reflection ownership");
+    test_phase11.dependOn(&run_phase11_generation.step);
+    test_phase11.dependOn(&run_main_tests.step);
+
+    const write_combinators = b.addSystemCommand(&.{ "python3", "scripts/generate_combinators.py", "--write" });
+    const generate_combinators = b.step("generate-combinators", "Regenerate Zig combinator artifacts from the language-neutral schema");
+    generate_combinators.dependOn(&write_combinators.step);
+
     // Mandatory migration-readiness gate. Reference preparation is deliberately
     // separate: this target fails closed when the pinned artifact is absent.
     const go_ready_step = b.step("go-ready", "Run the complete fail-closed Go migration readiness gate");
@@ -668,6 +677,7 @@ pub fn build(b: *std.Build) void {
     go_ready_step.dependOn(test_phase8);
     go_ready_step.dependOn(test_phase9);
     go_ready_step.dependOn(test_phase10);
+    go_ready_step.dependOn(test_phase11);
 
     // Benchmark targets (optimized for ReleaseFast)
     const bench_version_options = b.addOptions();

@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "owners": {
+    "eval/stream.zig:Stream.print": "diagnostic_formatting",
+    "eval/stream.zig:fprint": "diagnostic_formatting",
+    "eval/stream.zig:print": "diagnostic_formatting",
+    "eval/stream.zig:printErr": "diagnostic_formatting",
+    "os.zig:execl": "platform_fixed_tuple",
+    "os.zig:ptrFrom": "platform_pointer_boundary",
+    "os.zig:ptrInt": "platform_pointer_boundary",
+    "os.zig:syscallResult": "platform_integer_boundary",
+    "runtime/errors.zig:fatal": "diagnostic_formatting",
+    "syntax/directives.zig:Scanner.record": "diagnostic_formatting",
+    "syntax/directives.zig:Scanner.recordStdout": "diagnostic_formatting",
+    "syntax/lexer.zig:Lexer.record": "diagnostic_formatting",
+    "syntax/lexer.zig:Lexer.recordStdout": "diagnostic_formatting",
+    "syntax/parser.zig:Parser.addError": "diagnostic_formatting",
+    "tools/menudriver.zig:Driver.setNextFmt": "diagnostic_formatting"
+  }
+}

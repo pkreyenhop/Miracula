@@ -121,6 +121,7 @@
     "graph/bignum.zig",
     "graph/bignum_fmt.zig",
     "graph/combinator.zig",
+    "graph/combinator_generated.zig",
     "graph/dump.zig",
     "graph/dump_load.zig",
     "graph/heap.zig",

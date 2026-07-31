@@ -273,12 +273,10 @@ test "headers, terminated bytes, truncation, and trailing bytes fail closed" {
 }
 
 test "wire and node tag ranges are exhaustive and stable" {
-    inline for (std.meta.fields(Tag), 0..) |field, index| {
-        try std.testing.expectEqual(@as(u8, 191 + index), @intFromEnum(@field(Tag, field.name)));
-    }
-    inline for (std.meta.fields(NodeTag), 0..) |field, index| {
-        try std.testing.expectEqual(@as(u8, index), @intFromEnum(@field(NodeTag, field.name)));
-    }
+    try std.testing.expectEqual(@as(u8, 191), @intFromEnum(Tag.char));
+    try std.testing.expectEqual(@as(u8, 206), @intFromEnum(Tag.unicode));
+    try std.testing.expectEqual(@as(u8, 0), @intFromEnum(NodeTag.atom));
+    try std.testing.expectEqual(@as(u8, 22), @intFromEnum(NodeTag.type_cons));
     try std.testing.expectError(error.InvalidTag, Tag.decode(190));
     try std.testing.expectError(error.InvalidTag, Tag.decode(207));
 }

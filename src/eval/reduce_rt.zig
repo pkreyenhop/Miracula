@@ -190,38 +190,17 @@ inline fn stosmallint(heap_ptr: *heap.Heap, x: Word) Word {
 
 /// The standard-input `Stream*` handle.
 fn getStdin() ?*word.Stream {
-    const T = @TypeOf(os.stdin);
-    if (comptime @typeInfo(T) == .@"fn") {
-        return os.stdin();
-    } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return os.stdin();
-    } else {
-        return os.stdin;
-    }
+    return os.stdin();
 }
 
 /// The standard-error `Stream*` handle.
 fn getStderr() ?*word.Stream {
-    const T = @TypeOf(os.stderr);
-    if (comptime @typeInfo(T) == .@"fn") {
-        return os.stderr();
-    } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return os.stderr();
-    } else {
-        return os.stderr;
-    }
+    return os.stderr();
 }
 
 /// The standard-output `Stream*` handle.
 fn getStdout() ?*word.Stream {
-    const T = @TypeOf(os.stdout);
-    if (comptime @typeInfo(T) == .@"fn") {
-        return os.stdout();
-    } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return os.stdout();
-    } else {
-        return os.stdout;
-    }
+    return os.stdout();
 }
 
 inline fn rewriteToValue(heap_ptr: *heap.Heap, expr: *Word, value: Word) void {
@@ -803,7 +782,7 @@ pub fn apfile(heap_ptr: *heap.Heap, eval: *EvalState, f_val: Value) reduce_core.
         } else {
             const id = resources.table().registerStream(rt.allocator, s.?, true, resources.closeNativeStream) catch
                 @panic("unable to register output stream");
-            eval.outfilq = cons(heap_ptr, datapair(heap_ptr, strtab.strBits(strtab.table(), lex.keep(fil.?)), id.toWord()), eval.outfilq);
+            eval.outfilq = cons(heap_ptr, datapair(heap_ptr, strtab.strBitsZ(strtab.table(), lex.keep(fil.?)), id.toWord()), eval.outfilq);
         }
     }
 }
@@ -845,7 +824,7 @@ pub fn outf(heap_ptr: *heap.Heap, eval: *EvalState, e_val: Value) reduce_core.Re
         }
         const id = resources.table().registerStream(rt.allocator, eval.s_out.?, true, resources.closeNativeStream) catch
             @panic("unable to register output stream");
-        eval.outfilq = cons(heap_ptr, datapair(heap_ptr, strtab.strBits(strtab.table(), lex.keep(f.?)), id.toWord()), eval.outfilq);
+        eval.outfilq = cons(heap_ptr, datapair(heap_ptr, strtab.strBitsZ(strtab.table(), lex.keep(f.?)), id.toWord()), eval.outfilq);
     } else {
         const id = resources.StreamID.fromWord(t(heap_ptr, h(heap_ptr, p))) catch
             @panic("invalid output stream ID");

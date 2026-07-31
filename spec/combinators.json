@@ -1,0 +1,1134 @@
+{
+  "schema": 1,
+  "base": 306,
+  "entries": [
+    {
+      "stable_name": "S",
+      "display_name": "S",
+      "aliases": [],
+      "offset": 0,
+      "value": 306,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "K",
+      "display_name": "K",
+      "aliases": [],
+      "offset": 1,
+      "value": 307,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "Y",
+      "display_name": "Y",
+      "aliases": [],
+      "offset": 2,
+      "value": 308,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "C",
+      "display_name": "C",
+      "aliases": [],
+      "offset": 3,
+      "value": 309,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "B",
+      "display_name": "B",
+      "aliases": [],
+      "offset": 4,
+      "value": 310,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "CB",
+      "display_name": "CB",
+      "aliases": [],
+      "offset": 5,
+      "value": 311,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "I",
+      "display_name": "I",
+      "aliases": [],
+      "offset": 6,
+      "value": 312,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "HD",
+      "display_name": "HD",
+      "aliases": [],
+      "offset": 7,
+      "value": 313,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "TL",
+      "display_name": "TL",
+      "aliases": [],
+      "offset": 8,
+      "value": 314,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "BODY",
+      "display_name": "BODY",
+      "aliases": [],
+      "offset": 9,
+      "value": 315,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "LAST",
+      "display_name": "LAST",
+      "aliases": [],
+      "offset": 10,
+      "value": 316,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "S_p",
+      "display_name": "S_p",
+      "aliases": [],
+      "offset": 11,
+      "value": 317,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "U",
+      "display_name": "U",
+      "aliases": [],
+      "offset": 12,
+      "value": 318,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "Uf",
+      "display_name": "Uf",
+      "aliases": [],
+      "offset": 13,
+      "value": 319,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "U_",
+      "display_name": "U_",
+      "aliases": [],
+      "offset": 14,
+      "value": 320,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "Ug",
+      "display_name": "Ug",
+      "aliases": [],
+      "offset": 15,
+      "value": 321,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "COND",
+      "display_name": "COND",
+      "aliases": [],
+      "offset": 16,
+      "value": 322,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "EQ",
+      "display_name": "EQ",
+      "aliases": [],
+      "offset": 17,
+      "value": 323,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "NEQ",
+      "display_name": "NEQ",
+      "aliases": [],
+      "offset": 18,
+      "value": 324,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "NEG",
+      "display_name": "NEG",
+      "aliases": [],
+      "offset": 19,
+      "value": 325,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "AND",
+      "display_name": "AND",
+      "aliases": [],
+      "offset": 20,
+      "value": 326,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "OR",
+      "display_name": "OR",
+      "aliases": [],
+      "offset": 21,
+      "value": 327,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "NOT",
+      "display_name": "NOT",
+      "aliases": [],
+      "offset": 22,
+      "value": 328,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "APPEND",
+      "display_name": "APPEND",
+      "aliases": [],
+      "offset": 23,
+      "value": 329,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "STEP",
+      "display_name": "STEP",
+      "aliases": [],
+      "offset": 24,
+      "value": 330,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "STEPUNTIL",
+      "display_name": "STEPUNTIL",
+      "aliases": [],
+      "offset": 25,
+      "value": 331,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "GENSEQ",
+      "display_name": "GENSEQ",
+      "aliases": [],
+      "offset": 26,
+      "value": 332,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "MAP",
+      "display_name": "MAP",
+      "aliases": [],
+      "offset": 27,
+      "value": 333,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "ZIP",
+      "display_name": "ZIP",
+      "aliases": [],
+      "offset": 28,
+      "value": 334,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "TAKE",
+      "display_name": "TAKE",
+      "aliases": [],
+      "offset": 29,
+      "value": 335,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "DROP",
+      "display_name": "DROP",
+      "aliases": [],
+      "offset": 30,
+      "value": 336,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "FLATMAP",
+      "display_name": "FLATMAP",
+      "aliases": [],
+      "offset": 31,
+      "value": 337,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "FILTER",
+      "display_name": "FILTER",
+      "aliases": [],
+      "offset": 32,
+      "value": 338,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "FOLDL",
+      "display_name": "FOLDL",
+      "aliases": [],
+      "offset": 33,
+      "value": 339,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "MERGE",
+      "display_name": "MERGE",
+      "aliases": [],
+      "offset": 34,
+      "value": 340,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "FOLDL1",
+      "display_name": "FOLDL1",
+      "aliases": [],
+      "offset": 35,
+      "value": 341,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "LIST_LAST",
+      "display_name": "LIST_LAST",
+      "aliases": [],
+      "offset": 36,
+      "value": 342,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "FOLDR",
+      "display_name": "FOLDR",
+      "aliases": [],
+      "offset": 37,
+      "value": 343,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "MATCH",
+      "display_name": "MATCH",
+      "aliases": [],
+      "offset": 38,
+      "value": 344,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "MATCHINT",
+      "display_name": "MATCHINT",
+      "aliases": [],
+      "offset": 39,
+      "value": 345,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "TRY",
+      "display_name": "TRY",
+      "aliases": [],
+      "offset": 40,
+      "value": 346,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "SUBSCRIPT",
+      "display_name": "SUBSCRIPT",
+      "aliases": [],
+      "offset": 41,
+      "value": 347,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "ATLEAST",
+      "display_name": "ATLEAST",
+      "aliases": [],
+      "offset": 42,
+      "value": 348,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "P",
+      "display_name": "P",
+      "aliases": [],
+      "offset": 43,
+      "value": 349,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "B_p",
+      "display_name": "B_p",
+      "aliases": [],
+      "offset": 44,
+      "value": 350,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "C_p",
+      "display_name": "C_p",
+      "aliases": [],
+      "offset": 45,
+      "value": 351,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "S1",
+      "display_name": "S1",
+      "aliases": [],
+      "offset": 46,
+      "value": 352,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "B1",
+      "display_name": "B1",
+      "aliases": [],
+      "offset": 47,
+      "value": 353,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "C1",
+      "display_name": "C1",
+      "aliases": [],
+      "offset": 48,
+      "value": 354,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "ITERATE",
+      "display_name": "ITERATE",
+      "aliases": [],
+      "offset": 49,
+      "value": 355,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "ITERATE1",
+      "display_name": "ITERATE1",
+      "aliases": [],
+      "offset": 50,
+      "value": 356,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "SEQ",
+      "display_name": "SEQ",
+      "aliases": [],
+      "offset": 51,
+      "value": 357,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "FORCE",
+      "display_name": "FORCE",
+      "aliases": [],
+      "offset": 52,
+      "value": 358,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "MINUS",
+      "display_name": "MINUS",
+      "aliases": [],
+      "offset": 53,
+      "value": 359,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "PLUS",
+      "display_name": "PLUS",
+      "aliases": [],
+      "offset": 54,
+      "value": 360,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "TIMES",
+      "display_name": "TIMES",
+      "aliases": [],
+      "offset": 55,
+      "value": 361,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "INTDIV",
+      "display_name": "INTDIV",
+      "aliases": [],
+      "offset": 56,
+      "value": 362,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "FDIV",
+      "display_name": "FDIV",
+      "aliases": [],
+      "offset": 57,
+      "value": 363,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "MOD",
+      "display_name": "MOD",
+      "aliases": [],
+      "offset": 58,
+      "value": 364,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "GR",
+      "display_name": "GR",
+      "aliases": [],
+      "offset": 59,
+      "value": 365,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "GRE",
+      "display_name": "GRE",
+      "aliases": [],
+      "offset": 60,
+      "value": 366,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "POWER",
+      "display_name": "POWER",
+      "aliases": [],
+      "offset": 61,
+      "value": 367,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "CODE",
+      "display_name": "CODE",
+      "aliases": [],
+      "offset": 62,
+      "value": 368,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "DECODE",
+      "display_name": "DECODE",
+      "aliases": [],
+      "offset": 63,
+      "value": 369,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "LENGTH",
+      "display_name": "LENGTH",
+      "aliases": [],
+      "offset": 64,
+      "value": 370,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "ARCTAN_FN",
+      "display_name": "ARCTAN_FN",
+      "aliases": [],
+      "offset": 65,
+      "value": 371,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "EXP_FN",
+      "display_name": "EXP_FN",
+      "aliases": [],
+      "offset": 66,
+      "value": 372,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "ENTIER_FN",
+      "display_name": "ENTIER_FN",
+      "aliases": [],
+      "offset": 67,
+      "value": 373,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "LOG_FN",
+      "display_name": "LOG_FN",
+      "aliases": [],
+      "offset": 68,
+      "value": 374,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "LOG10_FN",
+      "display_name": "LOG10_FN",
+      "aliases": [],
+      "offset": 69,
+      "value": 375,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "SIN_FN",
+      "display_name": "SIN_FN",
+      "aliases": [],
+      "offset": 70,
+      "value": 376,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "COS_FN",
+      "display_name": "COS_FN",
+      "aliases": [],
+      "offset": 71,
+      "value": 377,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "SQRT_FN",
+      "display_name": "SQRT_FN",
+      "aliases": [],
+      "offset": 72,
+      "value": 378,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "FILEMODE",
+      "display_name": "FILEMODE",
+      "aliases": [],
+      "offset": 73,
+      "value": 379,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "FILESTAT",
+      "display_name": "FILESTAT",
+      "aliases": [],
+      "offset": 74,
+      "value": 380,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "GETENV",
+      "display_name": "GETENV",
+      "aliases": [],
+      "offset": 75,
+      "value": 381,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "EXEC",
+      "display_name": "EXEC",
+      "aliases": [],
+      "offset": 76,
+      "value": 382,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "WAIT",
+      "display_name": "WAIT",
+      "aliases": [],
+      "offset": 77,
+      "value": 383,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "INTEGER",
+      "display_name": "INTEGER",
+      "aliases": [],
+      "offset": 78,
+      "value": 384,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "SHOWNUM",
+      "display_name": "SHOWNUM",
+      "aliases": [],
+      "offset": 79,
+      "value": 385,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "SHOWHEX",
+      "display_name": "SHOWHEX",
+      "aliases": [],
+      "offset": 80,
+      "value": 386,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "SHOWOCT",
+      "display_name": "SHOWOCT",
+      "aliases": [],
+      "offset": 81,
+      "value": 387,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "SHOWSCALED",
+      "display_name": "SHOWSCALED",
+      "aliases": [],
+      "offset": 82,
+      "value": 388,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "SHOWFLOAT",
+      "display_name": "SHOWFLOAT",
+      "aliases": [],
+      "offset": 83,
+      "value": 389,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "NUMVAL",
+      "display_name": "NUMVAL",
+      "aliases": [],
+      "offset": 84,
+      "value": 390,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "STARTREAD",
+      "display_name": "STARTREAD",
+      "aliases": [],
+      "offset": 85,
+      "value": 391,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "STARTREADBIN",
+      "display_name": "STARTREADBIN",
+      "aliases": [],
+      "offset": 86,
+      "value": 392,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "NB_STARTREAD",
+      "display_name": "NB_STARTREAD",
+      "aliases": [],
+      "offset": 87,
+      "value": 393,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "READVALS",
+      "display_name": "READVALS",
+      "aliases": [],
+      "offset": 88,
+      "value": 394,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "NB_READ",
+      "display_name": "NB_READ",
+      "aliases": [],
+      "offset": 89,
+      "value": 395,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "READ",
+      "display_name": "READ",
+      "aliases": [],
+      "offset": 90,
+      "value": 396,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "READBIN",
+      "display_name": "READBIN",
+      "aliases": [],
+      "offset": 91,
+      "value": 397,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "GETARGS",
+      "display_name": "GETARGS",
+      "aliases": [],
+      "offset": 92,
+      "value": 398,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "Ush",
+      "display_name": "Ush",
+      "aliases": [],
+      "offset": 93,
+      "value": 399,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "Ush1",
+      "display_name": "Ush1",
+      "aliases": [],
+      "offset": 94,
+      "value": 400,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "KI",
+      "display_name": "KI",
+      "aliases": [],
+      "offset": 95,
+      "value": 401,
+      "dispatch": "evaluation"
+    },
+    {
+      "stable_name": "G_ERROR",
+      "display_name": "G_ERROR",
+      "aliases": [],
+      "offset": 96,
+      "value": 402,
+      "dispatch": "grammar"
+    },
+    {
+      "stable_name": "G_ALT",
+      "display_name": "G_ALT",
+      "aliases": [],
+      "offset": 97,
+      "value": 403,
+      "dispatch": "grammar"
+    },
+    {
+      "stable_name": "G_OPT",
+      "display_name": "G_OPT",
+      "aliases": [],
+      "offset": 98,
+      "value": 404,
+      "dispatch": "grammar"
+    },
+    {
+      "stable_name": "G_STAR",
+      "display_name": "G_STAR",
+      "aliases": [],
+      "offset": 99,
+      "value": 405,
+      "dispatch": "grammar"
+    },
+    {
+      "stable_name": "G_FBSTAR",
+      "display_name": "G_FBSTAR",
+      "aliases": [],
+      "offset": 100,
+      "value": 406,
+      "dispatch": "grammar"
+    },
+    {
+      "stable_name": "G_SYMB",
+      "display_name": "G_SYMB",
+      "aliases": [],
+      "offset": 101,
+      "value": 407,
+      "dispatch": "grammar"
+    },
+    {
+      "stable_name": "G_ANY",
+      "display_name": "G_ANY",
+      "aliases": [],
+      "offset": 102,
+      "value": 408,
+      "dispatch": "grammar"
+    },
+    {
+      "stable_name": "G_SUCHTHAT",
+      "display_name": "G_SUCHTHAT",
+      "aliases": [],
+      "offset": 103,
+      "value": 409,
+      "dispatch": "grammar"
+    },
+    {
+      "stable_name": "G_END",
+      "display_name": "G_END",
+      "aliases": [],
+      "offset": 104,
+      "value": 410,
+      "dispatch": "grammar"
+    },
+    {
+      "stable_name": "G_STATE",
+      "display_name": "G_STATE",
+      "aliases": [],
+      "offset": 105,
+      "value": 411,
+      "dispatch": "grammar"
+    },
+    {
+      "stable_name": "G_SEQ",
+      "display_name": "G_SEQ",
+      "aliases": [],
+      "offset": 106,
+      "value": 412,
+      "dispatch": "grammar"
+    },
+    {
+      "stable_name": "G_RULE",
+      "display_name": "G_RULE",
+      "aliases": [],
+      "offset": 107,
+      "value": 413,
+      "dispatch": "grammar"
+    },
+    {
+      "stable_name": "G_UNIT",
+      "display_name": "G_UNIT",
+      "aliases": [],
+      "offset": 108,
+      "value": 414,
+      "dispatch": "grammar"
+    },
+    {
+      "stable_name": "G_ZERO",
+      "display_name": "G_ZERO",
+      "aliases": [],
+      "offset": 109,
+      "value": 415,
+      "dispatch": "grammar"
+    },
+    {
+      "stable_name": "G_CLOSE",
+      "display_name": "G_CLOSE",
+      "aliases": [],
+      "offset": 110,
+      "value": 416,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "G_COUNT",
+      "display_name": "G_COUNT",
+      "aliases": [],
+      "offset": 111,
+      "value": 417,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_RPT",
+      "display_name": "LEX_RPT",
+      "aliases": [],
+      "offset": 112,
+      "value": 418,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_RPT1",
+      "display_name": "LEX_RPT1",
+      "aliases": [],
+      "offset": 113,
+      "value": 419,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_TRY",
+      "display_name": "LEX_TRY",
+      "aliases": [],
+      "offset": 114,
+      "value": 420,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_TRY_",
+      "display_name": "LEX_TRY_",
+      "aliases": [],
+      "offset": 115,
+      "value": 421,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_TRY1",
+      "display_name": "LEX_TRY1",
+      "aliases": [],
+      "offset": 116,
+      "value": 422,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_TRY1_",
+      "display_name": "LEX_TRY1_",
+      "aliases": [],
+      "offset": 117,
+      "value": 423,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "DESTREV",
+      "display_name": "DESTREV",
+      "aliases": [],
+      "offset": 118,
+      "value": 424,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_COUNT",
+      "display_name": "LEX_COUNT",
+      "aliases": [],
+      "offset": 119,
+      "value": 425,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_COUNT0",
+      "display_name": "LEX_COUNT0",
+      "aliases": [],
+      "offset": 120,
+      "value": 426,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_FAIL",
+      "display_name": "LEX_FAIL",
+      "aliases": [],
+      "offset": 121,
+      "value": 427,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_STRING",
+      "display_name": "LEX_STRING",
+      "aliases": [],
+      "offset": 122,
+      "value": 428,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_CLASS",
+      "display_name": "LEX_CLASS",
+      "aliases": [],
+      "offset": 123,
+      "value": 429,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_CHAR",
+      "display_name": "LEX_CHAR",
+      "aliases": [],
+      "offset": 124,
+      "value": 430,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_DOT",
+      "display_name": "LEX_DOT",
+      "aliases": [],
+      "offset": 125,
+      "value": 431,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_SEQ",
+      "display_name": "LEX_SEQ",
+      "aliases": [],
+      "offset": 126,
+      "value": 432,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_OR",
+      "display_name": "LEX_OR",
+      "aliases": [],
+      "offset": 127,
+      "value": 433,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_RCONTEXT",
+      "display_name": "LEX_RCONTEXT",
+      "aliases": [],
+      "offset": 128,
+      "value": 434,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_STAR",
+      "display_name": "LEX_STAR",
+      "aliases": [],
+      "offset": 129,
+      "value": 435,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "LEX_OPT",
+      "display_name": "LEX_OPT",
+      "aliases": [],
+      "offset": 130,
+      "value": 436,
+      "dispatch": "lexer"
+    },
+    {
+      "stable_name": "MKSTRICT",
+      "display_name": "MKSTRICT",
+      "aliases": [],
+      "offset": 131,
+      "value": 437,
+      "dispatch": "control"
+    },
+    {
+      "stable_name": "BADCASE",
+      "display_name": "BADCASE",
+      "aliases": [],
+      "offset": 132,
+      "value": 438,
+      "dispatch": "control"
+    },
+    {
+      "stable_name": "CONFERROR",
+      "display_name": "CONFERROR",
+      "aliases": [],
+      "offset": 133,
+      "value": 439,
+      "dispatch": "control"
+    },
+    {
+      "stable_name": "ERROR",
+      "display_name": "ERROR",
+      "aliases": [],
+      "offset": 134,
+      "value": 440,
+      "dispatch": "control"
+    },
+    {
+      "stable_name": "FAIL",
+      "display_name": "FAIL",
+      "aliases": [],
+      "offset": 135,
+      "value": 441,
+      "dispatch": "control"
+    },
+    {
+      "stable_name": "False",
+      "display_name": "False",
+      "aliases": [],
+      "offset": 136,
+      "value": 442,
+      "dispatch": "control"
+    },
+    {
+      "stable_name": "True",
+      "display_name": "True",
+      "aliases": [],
+      "offset": 137,
+      "value": 443,
+      "dispatch": "control"
+    },
+    {
+      "stable_name": "NIL",
+      "display_name": "NIL",
+      "aliases": [],
+      "offset": 138,
+      "value": 444,
+      "dispatch": "sentinel"
+    },
+    {
+      "stable_name": "NILS",
+      "display_name": "NILS",
+      "aliases": [],
+      "offset": 139,
+      "value": 445,
+      "dispatch": "sentinel"
+    },
+    {
+      "stable_name": "UNDEF",
+      "display_name": "UNDEF",
+      "aliases": [],
+      "offset": 140,
+      "value": 446,
+      "dispatch": "sentinel"
+    }
+  ]
+}

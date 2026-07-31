@@ -83,8 +83,7 @@ fn ensureInit(self: *StringTable) void {
 /// 0 sentinel.
 ///
 /// Tests: intern de-dups by content and resolves
-pub fn strBits(self: *StringTable, p: anytype) Word {
-    const span = if (@typeInfo(@TypeOf(p)) == .pointer and @typeInfo(@TypeOf(p)).pointer.size == .slice) p else std.mem.span(p);
+pub fn strBits(self: *StringTable, span: []const u8) Word {
     if (span.len == 0) return 0;
     ensureInit(self);
     if (self.dedup.get(span)) |id| return id.toStored();
@@ -93,6 +92,10 @@ pub fn strBits(self: *StringTable, p: anytype) Word {
     self.slices.append(rt.allocator, copy) catch oom();
     self.dedup.put(rt.allocator, copy, id) catch oom();
     return id.toStored();
+}
+
+pub fn strBitsZ(self: *StringTable, value: [*:0]const u8) Word {
+    return strBits(self, std.mem.span(value));
 }
 
 test "intern de-dups by content and resolves" {

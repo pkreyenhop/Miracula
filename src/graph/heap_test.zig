@@ -25,6 +25,8 @@ const append1 = heap_mod.append1;
 const badval = heap_mod.badval;
 const cons = heap_mod.cons;
 const constructor = heap_mod.constructor;
+const constructorInt = heap_mod.constructorInt;
+const constructorName = heap_mod.constructorName;
 const dlhs = heap_mod.dlhs;
 const dval = heap_mod.dval;
 const filDefs = heap_mod.filDefs;
@@ -253,9 +255,9 @@ test "stoId/idWho/getId/getHere/getaka: identifier accessors" {
 
     // An id whose "who" field is a CONS (aka-name-holder . location): getHere
     // reads the location, getaka reads the alias name instead of the plain one.
-    const aka_container = cons(heap(), strtab.strBits(strtab.table(), @as([*:0]const u8, "zzheap_aka")), word.NIL);
+    const aka_container = cons(heap(), strtab.strBitsZ(strtab.table(), @as([*:0]const u8, "zzheap_aka")), word.NIL);
     const who_val = cons(heap(), aka_container, word.True); // word.True stands in for a location marker
-    const name_holder = make(heap(), .STRCONS, strtab.strBits(strtab.table(), @as([*:0]const u8, "zzheap_getaka_aliased")), who_val);
+    const name_holder = make(heap(), .STRCONS, strtab.strBitsZ(strtab.table(), @as([*:0]const u8, "zzheap_getaka_aliased")), who_val);
     const aliased = make(heap(), .ID, cons(heap(), name_holder, word.undef_t), word.UNDEF);
 
     try std.testing.expectEqualStrings("zzheap_getaka_aliased", getId(aliased));
@@ -355,10 +357,10 @@ test "constructor: builds a CONSTRUCTOR cell from Word/i32/C-string fields" {
     try std.testing.expectEqual(@as(Word, word.True), h(heap(), from_word));
     try std.testing.expectEqual(@as(Word, 77), t(heap(), from_word));
 
-    const from_cint = constructor(heap(), word.True, @as(i32, 9));
+    const from_cint = constructorInt(heap(), word.True, 9);
     try std.testing.expectEqual(@as(Word, 9), t(heap(), from_cint));
 
-    const from_str = constructor(heap(), word.True, @as([*:0]const u8, "zzheap_constructor_test"));
+    const from_str = constructorName(heap(), word.True, "zzheap_constructor_test");
     try std.testing.expectEqualStrings("zzheap_constructor_test", strtab.strOf(strtab.table(), t(heap(), from_str)));
 }
 test "filInodev/sameFile: dev/ino identity comparison" {

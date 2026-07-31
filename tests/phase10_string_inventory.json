@@ -17,7 +17,7 @@
     "compiler/setup.zig": {
       "classification": "migration_compatibility",
       "pointer_arithmetic": 0,
-      "sentinel_pointer": 5,
+      "sentinel_pointer": 4,
       "sentinel_slice": 0,
       "span_conversion": 0
     },
@@ -73,9 +73,16 @@
     "graph/combinator.zig": {
       "classification": "migration_compatibility",
       "pointer_arithmetic": 0,
+      "sentinel_pointer": 0,
+      "sentinel_slice": 0,
+      "span_conversion": 4
+    },
+    "graph/combinator_generated.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
       "sentinel_pointer": 1,
       "sentinel_slice": 0,
-      "span_conversion": 1
+      "span_conversion": 0
     },
     "graph/dump.zig": {
       "classification": "migration_compatibility",
@@ -94,7 +101,7 @@
     "graph/heap.zig": {
       "classification": "migration_compatibility",
       "pointer_arithmetic": 0,
-      "sentinel_pointer": 4,
+      "sentinel_pointer": 3,
       "sentinel_slice": 3,
       "span_conversion": 0
     },
@@ -108,7 +115,7 @@
     "graph/heap_test.zig": {
       "classification": "migration_compatibility",
       "pointer_arithmetic": 0,
-      "sentinel_pointer": 3,
+      "sentinel_pointer": 2,
       "sentinel_slice": 0,
       "span_conversion": 0
     },
@@ -122,15 +129,8 @@
     "graph/strtab.zig": {
       "classification": "migration_compatibility",
       "pointer_arithmetic": 0,
-      "sentinel_pointer": 0,
+      "sentinel_pointer": 1,
       "sentinel_slice": 10,
-      "span_conversion": 1
-    },
-    "graph/value.zig": {
-      "classification": "migration_compatibility",
-      "pointer_arithmetic": 0,
-      "sentinel_pointer": 0,
-      "sentinel_slice": 0,
       "span_conversion": 1
     },
     "io/files.zig": {

@@ -820,36 +820,15 @@ test "neg/poz/pnVal/getId/constrName/suppressed: sign and name accessors" {
 
 /// The standard-error `Stream` handle.
 pub fn getStderr() ?*word.Stream {
-    const T = @TypeOf(os.stderr);
-    if (comptime @typeInfo(T) == .@"fn") {
-        return os.stderr();
-    } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return os.stderr();
-    } else {
-        return os.stderr;
-    }
+    return os.stderr();
 }
 /// The standard-output `Stream` handle.
 pub fn getStdout() ?*word.Stream {
-    const T = @TypeOf(os.stdout);
-    if (comptime @typeInfo(T) == .@"fn") {
-        return os.stdout();
-    } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return os.stdout();
-    } else {
-        return os.stdout;
-    }
+    return os.stdout();
 }
 /// The standard-input `Stream` handle.
 pub fn getStdin() ?*word.Stream {
-    const T = @TypeOf(os.stdin);
-    if (comptime @typeInfo(T) == .@"fn") {
-        return os.stdin();
-    } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return os.stdin();
-    } else {
-        return os.stdin;
-    }
+    return os.stdin();
 }
 
 /// `x` as an `f64`, converting from a bignum (`INT`) or reading a `DOUBLE` cell.

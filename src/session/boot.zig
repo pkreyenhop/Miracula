@@ -297,7 +297,7 @@ fn runMakeMode(heap: *Heap, argc_u: usize, argv: [*][*:0]u8, arg_idx: usize) voi
             if (make_state.make().make_status == 1) {
                 make_state.make().make_status = 0;
             }
-            make_state.make().make_status = abi.strcons(heap, @as(Word, strtab.strBits(strtab.table(), s)), make_state.make().make_status);
+            make_state.make().make_status = abi.strcons(heap, @as(Word, strtab.strBitsZ(strtab.table(), s)), make_state.make().make_status);
         }
     }
     if (getTag(heap, make_state.make().make_status) == .STRCONS) {

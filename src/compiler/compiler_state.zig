@@ -116,16 +116,46 @@ pub const CompilerState = struct {
     /// and source-line fields are intentionally absent: treating an arbitrary
     /// integer as a cell can enter the collector's free-list chain.
     pub fn markRoots(self: *const CompilerState, mark: *const fn (Word) void) void {
-        inline for (.{
-            "current_id",   "NT",      "ND",         "R",           "SBND",
-            "FBS",          "NGT",     "ATNAMES",    "TABSTRS",     "bnf_t",
-            "meta_pending", "tvmap",   "localtvmap", "showchain",   "tfnum",
-            "tfbool",       "tfbool2", "tfnum2",     "tfstrstr",    "tfnumnum",
-            "ltchar",       "tstep",   "tstepuntil", "exec_t",      "read_t",
-            "filestat_t",   "SGC",     "newtyps",    "speclocs",    "algshfns",
-            "rv_script",    "ALIASES", "SUPPRESSED", "TSUPPRESSED", "TORPHANS",
-            "DETROP",       "MISSING", "internals",  "tlost",       "pfrts",
-        }) |name| mark(@field(self, name));
+        mark(self.current_id);
+        mark(self.NT);
+        mark(self.ND);
+        mark(self.R);
+        mark(self.SBND);
+        mark(self.FBS);
+        mark(self.NGT);
+        mark(self.ATNAMES);
+        mark(self.TABSTRS);
+        mark(self.bnf_t);
+        mark(self.meta_pending);
+        mark(self.tvmap);
+        mark(self.localtvmap);
+        mark(self.showchain);
+        mark(self.tfnum);
+        mark(self.tfbool);
+        mark(self.tfbool2);
+        mark(self.tfnum2);
+        mark(self.tfstrstr);
+        mark(self.tfnumnum);
+        mark(self.ltchar);
+        mark(self.tstep);
+        mark(self.tstepuntil);
+        mark(self.exec_t);
+        mark(self.read_t);
+        mark(self.filestat_t);
+        mark(self.SGC);
+        mark(self.newtyps);
+        mark(self.speclocs);
+        mark(self.algshfns);
+        mark(self.rv_script);
+        mark(self.ALIASES);
+        mark(self.SUPPRESSED);
+        mark(self.TSUPPRESSED);
+        mark(self.TORPHANS);
+        mark(self.DETROP);
+        mark(self.MISSING);
+        mark(self.internals);
+        mark(self.tlost);
+        mark(self.pfrts);
         for (self.SUBST) |value| mark(value);
     }
 };

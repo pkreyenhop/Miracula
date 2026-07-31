@@ -369,7 +369,7 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
                 if (next == 0) {
                     next = os.getc(file);
                     next = next | (os.getc(file) << 8);
-                    stackpPush(heap, fileinfo(heap, strtab.strBits(strtab.table(), heap.CFN.?), next));
+                    stackpPush(heap, fileinfo(heap, strtab.strBitsZ(strtab.table(), heap.CFN.?), next));
                 } else {
                     if (next != '/') {
                         _ = os.strcpy(lexs.dicp, &heap.prefix);
@@ -440,7 +440,7 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
                                         }
                                     }
                                 }
-                                pnValPtr(heap, ch_val).* = ap(heap, akap_val, fileinfo(heap, strtab.strBits(strtab.table(), heap.CFN.?), 0));
+                                pnValPtr(heap, ch_val).* = ap(heap, akap_val, fileinfo(heap, strtab.strBitsZ(strtab.table(), heap.CFN.?), 0));
                             }
                             defs = heap.cons(ch_val, defs);
                             ch = os.getc(file);

@@ -102,14 +102,7 @@ pub fn pnVal(heap: *Heap, x: Word) Word {
 
 /// The standard-output `Stream` handle.
 pub fn getStdout() ?*word.Stream {
-    const T = @TypeOf(os.stdout);
-    if (comptime @typeInfo(T) == .@"fn") {
-        return os.stdout();
-    } else if (comptime @typeInfo(T) == .pointer and @typeInfo(@typeInfo(T).pointer.child) == .@"fn") {
-        return os.stdout();
-    } else {
-        return os.stdout;
-    }
+    return os.stdout();
 }
 
 /// Whether `x` names a data constructor.

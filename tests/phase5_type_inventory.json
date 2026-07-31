@@ -118,7 +118,7 @@
       "from_raw": 0,
       "owner": "graph-and-codec",
       "to_raw": 0,
-      "word": 134
+      "word": 137
     },
     "graph/heap_cells.zig": {
       "from_raw": 0,
@@ -148,7 +148,7 @@
       "from_raw": 0,
       "owner": "graph-and-codec",
       "to_raw": 0,
-      "word": 17
+      "word": 18
     },
     "graph/value.zig": {
       "from_raw": 39,

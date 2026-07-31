@@ -337,7 +337,7 @@ pub fn gc() void {
 
 /// Intern name `p1`, returning its dictionary `ID` node (inserting if new).
 pub fn stoId(p1: [*:0]const u8) Word {
-    return make(heap(), .ID, cons(heap(), make(heap(), .STRCONS, strtab.strBits(strtab.table(), p1), word.NIL), word.undef_t), word.UNDEF);
+    return make(heap(), .ID, cons(heap(), make(heap(), .STRCONS, strtab.strBitsZ(strtab.table(), p1), word.NIL), word.undef_t), word.UNDEF);
 }
 
 const bigtostr = big_fmt.toDecimalList;
@@ -403,7 +403,7 @@ pub fn filDefs(fil: Word) Word {
 
 /// Build a file record `(name, mtime, share, defs)`.
 pub fn makeFil(fil_name: ?[*:0]const u8, time_val: Word, share: Word, defs: Word) Word {
-    const name_word = if (fil_name) |n| @as(Word, strtab.strBits(strtab.table(), n)) else 0;
+    const name_word = if (fil_name) |n| @as(Word, strtab.strBitsZ(strtab.table(), n)) else 0;
     return cons(heap(), cons(heap(), make(heap(), .FILEINFO, name_word, time_val), cons(heap(), share, word.NIL)), defs);
 }
 
@@ -432,14 +432,16 @@ pub fn tInfo(x: Word) Word {
 }
 
 /// Allocate a `CONSTRUCTOR` cell (tag `n`, fields `x`).
-pub fn constructor(self: *Heap, n: Word, x: anytype) Word {
-    const x_val: Word = switch (@TypeOf(x)) {
-        Word => x,
-        i32, u32 => @intCast(x),
-        [*:0]const u8, [*:0]u8 => strtab.strBits(strtab.table(), x),
-        else => @compileError("Unsupported type for constructor"),
-    };
-    return self.make(.CONSTRUCTOR, n, x_val);
+pub fn constructor(self: *Heap, n: Word, x: Word) Word {
+    return self.make(.CONSTRUCTOR, n, x);
+}
+
+pub fn constructorInt(self: *Heap, n: Word, x: i32) Word {
+    return constructor(self, n, @intCast(x));
+}
+
+pub fn constructorName(self: *Heap, n: Word, x: [*:0]const u8) Word {
+    return constructor(self, n, strtab.strBitsZ(strtab.table(), x));
 }
 
 // Tests: constructor: builds a CONSTRUCTOR cell from a Word, C-int, or C string
