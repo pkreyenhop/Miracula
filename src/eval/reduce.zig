@@ -105,7 +105,7 @@ pub fn reduce(heap: *heap_mod.Heap, e_val: Word) core.ReduceError!Word {
             downLeft(&ctx);
         }
 
-        if (@as(u64, @bitCast(ctx.e.toRaw())) >= word.ATOMLIMIT) {
+        if (ctx.e.kind() == .cell) {
             try dispatchNonCombinatorHead(&ctx);
         } else {
             ctx.eval.cycles += 1; // one reduction step (the perf counter)

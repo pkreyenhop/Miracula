@@ -158,7 +158,7 @@ pub fn makeTyp(heap: *Heap, arity: Word, showfn: Word, class: Word, info: Word) 
 /// Add id `x` to the current file's definition environment.
 pub fn addToEnv(heap: *Heap, x: Word) void {
     const current_file_defs = h(heap, heap.files);
-    if (current_file_defs >= ATOMLIMIT) {
+    if (word.classify(current_file_defs) == .ref) {
         tp(heap, current_file_defs).* = cons(heap, x, tp(heap, current_file_defs).*);
     }
 }

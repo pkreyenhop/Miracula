@@ -323,7 +323,7 @@ pub fn obey(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
     core.compiling = 0;
     const list_t: Word = 4;
     const char_t: Word = 3;
-    const islist = typ >= word.ATOMLIMIT and getTag(heap, typ) == .AP and h(heap, typ) == list_t;
+    const islist = word.classify(typ) == .ref and getTag(heap, typ) == .AP and h(heap, typ) == list_t;
     const out_val: Word = if (islist and t(heap, typ) == rs.message)
         x
     else blk: {
@@ -360,7 +360,7 @@ pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_st
     if (comp.polyshowerror != 0) return;
     const list_t: Word = 4;
     const char_t: Word = 3;
-    const islist = typ >= word.ATOMLIMIT and getTag(heap, typ) == .AP and h(heap, typ) == list_t;
+    const islist = word.classify(typ) == .ref and getTag(heap, typ) == .AP and h(heap, typ) == list_t;
     const out_val: Word = if (islist and t(heap, typ) == rs.message)
         x
     else blk: {

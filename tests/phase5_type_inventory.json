@@ -1,0 +1,409 @@
+{
+  "files": {
+    "compiler/compiler_state.zig": {
+      "from_raw": 0,
+      "owner": "module-integration",
+      "to_raw": 0,
+      "word": 56
+    },
+    "compiler/dump.zig": {
+      "from_raw": 8,
+      "owner": "module-integration",
+      "to_raw": 3,
+      "word": 24
+    },
+    "compiler/module_loader.zig": {
+      "from_raw": 38,
+      "owner": "module-integration",
+      "to_raw": 16,
+      "word": 20
+    },
+    "compiler/setup.zig": {
+      "from_raw": 114,
+      "owner": "module-integration",
+      "to_raw": 5,
+      "word": 3
+    },
+    "eval/combinators/combinators.zig": {
+      "from_raw": 70,
+      "owner": "reducer",
+      "to_raw": 16,
+      "word": 4
+    },
+    "eval/combinators/combinators_list.zig": {
+      "from_raw": 13,
+      "owner": "reducer",
+      "to_raw": 19,
+      "word": 2
+    },
+    "eval/combinators/io.zig": {
+      "from_raw": 2,
+      "owner": "reducer",
+      "to_raw": 1,
+      "word": 2
+    },
+    "eval/combinators/lex.zig": {
+      "from_raw": 46,
+      "owner": "reducer",
+      "to_raw": 52,
+      "word": 3
+    },
+    "eval/combinators/ready.zig": {
+      "from_raw": 57,
+      "owner": "reducer",
+      "to_raw": 94,
+      "word": 8
+    },
+    "eval/reduce.zig": {
+      "from_raw": 8,
+      "owner": "reducer",
+      "to_raw": 9,
+      "word": 10
+    },
+    "eval/reduce_core.zig": {
+      "from_raw": 33,
+      "owner": "reducer",
+      "to_raw": 42,
+      "word": 19
+    },
+    "eval/reduce_rt.zig": {
+      "from_raw": 58,
+      "owner": "reducer",
+      "to_raw": 45,
+      "word": 54
+    },
+    "eval/reduce_test.zig": {
+      "from_raw": 7,
+      "owner": "reducer",
+      "to_raw": 3,
+      "word": 17
+    },
+    "eval/spine.zig": {
+      "from_raw": 23,
+      "owner": "reducer",
+      "to_raw": 23,
+      "word": 28
+    },
+    "eval/trace.zig": {
+      "from_raw": 0,
+      "owner": "reducer",
+      "to_raw": 0,
+      "word": 1
+    },
+    "graph/bignum.zig": {
+      "from_raw": 0,
+      "owner": "graph-and-codec",
+      "to_raw": 0,
+      "word": 101
+    },
+    "graph/bignum_fmt.zig": {
+      "from_raw": 0,
+      "owner": "graph-and-codec",
+      "to_raw": 0,
+      "word": 45
+    },
+    "graph/dump.zig": {
+      "from_raw": 4,
+      "owner": "graph-and-codec",
+      "to_raw": 0,
+      "word": 60
+    },
+    "graph/dump_load.zig": {
+      "from_raw": 6,
+      "owner": "graph-and-codec",
+      "to_raw": 3,
+      "word": 14
+    },
+    "graph/heap.zig": {
+      "from_raw": 0,
+      "owner": "graph-and-codec",
+      "to_raw": 0,
+      "word": 134
+    },
+    "graph/heap_cells.zig": {
+      "from_raw": 0,
+      "owner": "graph-and-codec",
+      "to_raw": 0,
+      "word": 65
+    },
+    "graph/heap_test.zig": {
+      "from_raw": 0,
+      "owner": "graph-and-codec",
+      "to_raw": 0,
+      "word": 65
+    },
+    "graph/print.zig": {
+      "from_raw": 0,
+      "owner": "graph-and-codec",
+      "to_raw": 0,
+      "word": 6
+    },
+    "graph/roots.zig": {
+      "from_raw": 0,
+      "owner": "graph-and-codec",
+      "to_raw": 0,
+      "word": 11
+    },
+    "graph/strtab.zig": {
+      "from_raw": 0,
+      "owner": "graph-and-codec",
+      "to_raw": 0,
+      "word": 17
+    },
+    "graph/value.zig": {
+      "from_raw": 39,
+      "owner": "graph-and-codec",
+      "to_raw": 45,
+      "word": 45
+    },
+    "graph/word.zig": {
+      "from_raw": 0,
+      "owner": "graph-and-codec",
+      "to_raw": 0,
+      "word": 256
+    },
+    "io/files.zig": {
+      "from_raw": 0,
+      "owner": "platform-io",
+      "to_raw": 0,
+      "word": 7
+    },
+    "main.zig": {
+      "from_raw": 0,
+      "owner": "platform-support",
+      "to_raw": 0,
+      "word": 2
+    },
+    "os.zig": {
+      "from_raw": 0,
+      "owner": "platform-support",
+      "to_raw": 0,
+      "word": 29
+    },
+    "os_scanf.zig": {
+      "from_raw": 0,
+      "owner": "platform-support",
+      "to_raw": 0,
+      "word": 2
+    },
+    "parser/codegen.zig": {
+      "from_raw": 5,
+      "owner": "syntax-and-codegen",
+      "to_raw": 6,
+      "word": 74
+    },
+    "parser/lex.zig": {
+      "from_raw": 0,
+      "owner": "syntax-and-codegen",
+      "to_raw": 4,
+      "word": 37
+    },
+    "parser/lex_state.zig": {
+      "from_raw": 0,
+      "owner": "syntax-and-codegen",
+      "to_raw": 0,
+      "word": 39
+    },
+    "parser/parser_api.zig": {
+      "from_raw": 0,
+      "owner": "syntax-and-codegen",
+      "to_raw": 1,
+      "word": 0
+    },
+    "parser/parser_tests.zig": {
+      "from_raw": 0,
+      "owner": "syntax-and-codegen",
+      "to_raw": 0,
+      "word": 12
+    },
+    "runtime/core_state.zig": {
+      "from_raw": 0,
+      "owner": "runtime-state",
+      "to_raw": 0,
+      "word": 6
+    },
+    "runtime/runtime_state.zig": {
+      "from_raw": 0,
+      "owner": "runtime-state",
+      "to_raw": 0,
+      "word": 22
+    },
+    "semantics/depend.zig": {
+      "from_raw": 28,
+      "owner": "type-and-lowering",
+      "to_raw": 28,
+      "word": 86
+    },
+    "semantics/infer.zig": {
+      "from_raw": 26,
+      "owner": "type-and-lowering",
+      "to_raw": 15,
+      "word": 32
+    },
+    "semantics/infer_etype.zig": {
+      "from_raw": 4,
+      "owner": "type-and-lowering",
+      "to_raw": 2,
+      "word": 53
+    },
+    "semantics/infer_prims.zig": {
+      "from_raw": 0,
+      "owner": "type-and-lowering",
+      "to_raw": 0,
+      "word": 74
+    },
+    "semantics/infer_subst.zig": {
+      "from_raw": 19,
+      "owner": "type-and-lowering",
+      "to_raw": 15,
+      "word": 33
+    },
+    "semantics/lower.zig": {
+      "from_raw": 40,
+      "owner": "type-and-lowering",
+      "to_raw": 16,
+      "word": 125
+    },
+    "semantics/lower_front.zig": {
+      "from_raw": 8,
+      "owner": "type-and-lowering",
+      "to_raw": 1,
+      "word": 103
+    },
+    "semantics/lower_prims.zig": {
+      "from_raw": 0,
+      "owner": "type-and-lowering",
+      "to_raw": 0,
+      "word": 103
+    },
+    "semantics/lower_sort.zig": {
+      "from_raw": 6,
+      "owner": "type-and-lowering",
+      "to_raw": 2,
+      "word": 31
+    },
+    "semantics/match.zig": {
+      "from_raw": 5,
+      "owner": "type-and-lowering",
+      "to_raw": 7,
+      "word": 41
+    },
+    "semantics/modules.zig": {
+      "from_raw": 1,
+      "owner": "type-and-lowering",
+      "to_raw": 3,
+      "word": 15
+    },
+    "semantics/show_fns.zig": {
+      "from_raw": 0,
+      "owner": "type-and-lowering",
+      "to_raw": 0,
+      "word": 15
+    },
+    "semantics/symbols.zig": {
+      "from_raw": 16,
+      "owner": "type-and-lowering",
+      "to_raw": 4,
+      "word": 4
+    },
+    "semantics/type_errors.zig": {
+      "from_raw": 4,
+      "owner": "type-and-lowering",
+      "to_raw": 1,
+      "word": 52
+    },
+    "semantics/unify.zig": {
+      "from_raw": 0,
+      "owner": "type-and-lowering",
+      "to_raw": 0,
+      "word": 71
+    },
+    "session/bnf_state.zig": {
+      "from_raw": 0,
+      "owner": "session-integration",
+      "to_raw": 0,
+      "word": 17
+    },
+    "session/boot.zig": {
+      "from_raw": 6,
+      "owner": "session-integration",
+      "to_raw": 4,
+      "word": 13
+    },
+    "session/commands.zig": {
+      "from_raw": 1,
+      "owner": "session-integration",
+      "to_raw": 1,
+      "word": 26
+    },
+    "session/config.zig": {
+      "from_raw": 0,
+      "owner": "session-integration",
+      "to_raw": 0,
+      "word": 27
+    },
+    "session/config_state.zig": {
+      "from_raw": 0,
+      "owner": "session-integration",
+      "to_raw": 0,
+      "word": 6
+    },
+    "session/interp.zig": {
+      "from_raw": 9,
+      "owner": "session-integration",
+      "to_raw": 3,
+      "word": 0
+    },
+    "session/make_state.zig": {
+      "from_raw": 0,
+      "owner": "session-integration",
+      "to_raw": 0,
+      "word": 3
+    },
+    "session/repl.zig": {
+      "from_raw": 6,
+      "owner": "session-integration",
+      "to_raw": 3,
+      "word": 19
+    },
+    "session/repl_session.zig": {
+      "from_raw": 0,
+      "owner": "session-integration",
+      "to_raw": 0,
+      "word": 13
+    },
+    "session/script_store.zig": {
+      "from_raw": 0,
+      "owner": "session-integration",
+      "to_raw": 0,
+      "word": 21
+    },
+    "testutil.zig": {
+      "from_raw": 11,
+      "owner": "platform-support",
+      "to_raw": 5,
+      "word": 33
+    }
+  },
+  "policy": "Compatibility counts are upper bounds. The Go translator maps each file through its owner and semantic_types.zig; it must not translate a raw i64 by numeric inference.",
+  "schema": 1,
+  "typed_vocabulary": [
+    "Value",
+    "CellRef",
+    "Comb",
+    "ImmediateByte",
+    "TokenKind",
+    "NodeTag",
+    "StringID",
+    "StreamID",
+    "ProcessID",
+    "ProcessStatus",
+    "SourceID",
+    "FileID",
+    "ModuleID",
+    "Count",
+    "Index",
+    "SourceOffset",
+    "RawDumpWord"
+  ]
+}

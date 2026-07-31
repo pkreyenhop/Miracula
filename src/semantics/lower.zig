@@ -910,7 +910,7 @@ pub fn validate(heap: *Heap) void {
     const top_limit = heap.TOP();
 
     inline for (.{ cs().ND, cs().NT, cs().ALIASES, cs().TSUPPRESSED, cs().TORPHANS, cs().DETROP, cs().MISSING }) |field| {
-        if (field >= ATOMLIMIT) {
+        if (word.classify(field) == .ref) {
             if (field >= top_limit) {
                 std.debug.panic("compiler.validate: compiler state field has out-of-bounds heap reference {d} (TOP is {d})", .{ field, top_limit });
             }

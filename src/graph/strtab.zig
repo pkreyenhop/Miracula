@@ -24,12 +24,14 @@
 const std = @import("std");
 const rt = @import("../runtime/runtime_state.zig");
 const word = @import("word.zig");
+const semantic = @import("semantic_types.zig");
 
 const Word = word.Word;
+pub const StringID = semantic.StringID;
 
 /// Dense table index (1-based; slot 0 is the empty/sentinel string). The value
 /// stored in a node is the *negation* of this — see the file header.
-const StrId = u32;
+const StrId = StringID;
 
 /// Interned string table — folded into `interp.strtab` (shared-state plan) so
 /// `interp.reset()` clears it. The arena can't default-construct (it needs an
@@ -85,12 +87,12 @@ pub fn strBits(self: *StringTable, p: anytype) Word {
     const span = if (@typeInfo(@TypeOf(p)) == .pointer and @typeInfo(@TypeOf(p)).pointer.size == .slice) p else std.mem.span(p);
     if (span.len == 0) return 0;
     ensureInit(self);
-    if (self.dedup.get(span)) |id| return -@as(Word, id);
+    if (self.dedup.get(span)) |id| return id.toStored();
     const copy = self.arena.allocator().dupeSentinel(u8, span, 0) catch oom();
-    const id: StrId = @intCast(self.slices.items.len);
+    const id: StrId = @enumFromInt(@as(u32, @intCast(self.slices.items.len)));
     self.slices.append(rt.allocator, copy) catch oom();
     self.dedup.put(rt.allocator, copy, id) catch oom();
-    return -@as(Word, id);
+    return id.toStored();
 }
 
 test "intern de-dups by content and resolves" {
@@ -116,7 +118,7 @@ test "intern de-dups by content and resolves" {
 pub fn strOf(self: *StringTable, handle: Word) [:0]const u8 {
     if (handle >= 0) return "";
     ensureInit(self);
-    const id: usize = @intCast(-handle);
+    const id: usize = @intFromEnum(StringID.fromStored(handle) orelse return "");
     if (id >= self.slices.items.len) return "";
     return self.slices.items[id];
 }

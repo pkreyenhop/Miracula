@@ -124,6 +124,10 @@ pub const TokenId = enum {
     error_tok,
 };
 
+/// Language-neutral name used by the Go migration manifest. `TokenId` remains
+/// as the compatibility spelling while Zig callers are converted.
+pub const TokenKind = TokenId;
+
 /// A source position: 1-based `line` and `col`.
 pub const Span = struct {
     line: u32,
