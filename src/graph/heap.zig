@@ -40,7 +40,6 @@ pub const heap = heap_cells.heap;
 pub const mallocPanic = heap_cells.mallocPanic;
 pub const mallocfail = heap_cells.mallocfail;
 
-
 const Word = i64;
 
 /// The value field of a type/definition cell.
@@ -72,9 +71,6 @@ else if (@sizeOf(Word) == 8)
 else
     @compileError("platform has unknown word size");
 
-
-
-
 /// Head (`hd`) of cell `x`.
 ///
 /// Tests: heap accessors: cons/make build cells that h/t/getTag read back
@@ -97,7 +93,6 @@ pub fn tp(heap_ptr: *Heap, x: Word) *Word {
     return heap_ptr.tp(x);
 }
 
-
 /// The node tag of cell `x`.
 pub fn getTag(heap_ptr: *Heap, x: Word) word.NodeTag {
     return heap_ptr.getTag(x);
@@ -110,9 +105,6 @@ pub fn cons(heap_ptr: *Heap, x: Word, y: Word) Word {
     return heap_ptr.cons(x, y);
 }
 
-
-
-
 /// Allocate a `TRIES` cell `(x . y)` (a pattern-match alternative chain).
 ///
 /// Tests: tries: builds a TRIES alternative-chain cell
@@ -121,7 +113,6 @@ pub fn cons(heap_ptr: *Heap, x: Word, y: Word) Word {
 pub fn tries(x: Word, y: Word) Word {
     return make(heap(), .TRIES, x, y);
 }
-
 
 /// The 'who' (definition-site) field of id `x`.
 pub fn idWho(x: Word) Word {
@@ -174,7 +165,6 @@ pub fn isChar(x: Word) bool {
     };
 }
 
-
 /// The source location (`HERE`) recorded for id `x`.
 pub fn getHere(x: Word) Word {
     const y = idWho(x);
@@ -200,7 +190,6 @@ pub fn append1(x: Word, y: Word) Word {
     tp(heap(), x1).* = y;
     return x;
 }
-
 
 /// Sort list `input` by cell head (merge sort).
 pub fn hdsort(input: Word) Word {
@@ -285,8 +274,6 @@ pub fn setdbl(x: Word, R_val: f64) word.ReduceError!void {
     }
 }
 
-
-
 /// The `NIL` sentinel.
 pub fn nil() Word {
     return 306 + 138;
@@ -319,8 +306,6 @@ pub fn setupheap() void {
 pub fn resetheap() void {
     heap().resetheap();
 }
-
-
 
 /// Reset the per-evaluation GC counters.
 pub fn resetgcstats() void {
@@ -387,7 +372,6 @@ pub fn stosmallint(x: Word) Word {
     return make(heap(), .INT, val, 0);
 }
 
-
 /// The left-hand side (head) of a definition cell `d`.
 ///
 /// Tests: dlhs / dval: definition-cell head and value accessors
@@ -401,7 +385,6 @@ pub inline fn dlhs(d: Word) Word {
 pub inline fn dval(d: Word) Word {
     return t(heap(), t(heap(), d));
 }
-
 
 /// The mtime stored in file record `fil`.
 pub fn filTime(fil: Word) Word {
@@ -483,7 +466,6 @@ pub fn badval(x: Word) bool {
     return x < 100 or x > 50000000;
 }
 
-
 /// Whether id `x` is a `%free` identifier.
 pub fn isfreeid(x: Word) bool {
     return idType(x) == word.undef_t and idVal(x) == word.UNDEF;
@@ -520,7 +502,6 @@ pub fn reverse(input: Word) Word {
     return y;
 }
 
-
 /// Reverse `x` onto the front of `y` (shunt / reverse-append).
 ///
 /// Tests: shunt: reverses x onto the front of y
@@ -534,7 +515,6 @@ pub fn shunt(input_x: Word, input_y: Word) Word {
     return y;
 }
 
-
 /// The length of list `input`.
 ///
 /// Tests: size: counts the cells of a flat list
@@ -547,7 +527,6 @@ pub fn size(input: Word) Word {
     }
     return s;
 }
-
 
 /// Detect whether the current locale is UTF-8 (1/0).
 pub fn utf8test() bool {

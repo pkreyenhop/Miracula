@@ -41,6 +41,7 @@ build_errors.log
 
 # Editor and metadata
 .DS_Store
+__pycache__/
 .claude/
 zig-pkg/
 zig-linux-x86_64-0.14.0

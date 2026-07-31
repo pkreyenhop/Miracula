@@ -796,4 +796,3 @@ pub fn tokenizeWithDirectives(gpa: std.mem.Allocator, source: *const Source) !To
         .diagnostics = try lexer.diagnostics.toOwnedSlice(gpa),
     };
 }
-

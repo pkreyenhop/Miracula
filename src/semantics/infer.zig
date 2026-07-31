@@ -66,12 +66,6 @@ const trans_mod = @import("../semantics/lower.zig");
 const lex_mod = @import("../parser/lex.zig");
 const isconstrname = lex_mod.isconstrname;
 
-
-
-
-
-
-
 const depend = @import("depend.zig");
 const remove1 = depend.remove1;
 const setdiff = depend.setdiff;
@@ -86,7 +80,6 @@ const redtfr = depend.redtfr;
 
 pub const type_t: Word = 10;
 
-
 const undef_t: Word = 0;
 const bool_t: Word = 1;
 const num_t: Word = 2;
@@ -96,11 +89,6 @@ const synonym_t = word.synonym_t;
 const abstract_t = word.abstract_t;
 const UNDEF: Word = CMBASE + 140;
 
-
-
-
-
-
 test "sterilise: rewrites an AP-tagged type's hd/tl to (list_t . num_t)" {
     tu.freshInterp();
     const t_val = Value.fromRaw(tu.ap(tu.int(1), tu.int(2)));
@@ -109,7 +97,6 @@ test "sterilise: rewrites an AP-tagged type's hd/tl to (list_t . num_t)" {
     try std.testing.expectEqual(list_t, h(heap_mod.heap(), t_val.toRaw()));
     try std.testing.expectEqual(num_t, t(heap_mod.heap(), t_val.toRaw()));
 }
-
 
 const unify_mod = @import("unify.zig");
 const fixshows = unify_mod.fixshows;
@@ -127,13 +114,10 @@ const ult = unify_mod.ult;
 const clearSubst = unify_mod.clearSubst;
 const hashsize: usize = 512;
 
-
-
 const comma_t: Word = 5;
 const arrow_t: Word = 6;
 const void_t: Word = 7;
 const wrong_t: Word = 8;
-
 
 const type_errors = @import("type_errors.zig");
 const locate = type_errors.locate;
@@ -154,12 +138,8 @@ const isArrowType = type_errors.isArrowType;
 
 const CONST = word.CONST;
 
-
-
 const algebraic_t = word.algebraic_t;
 const FREE = word.FREE;
-
-
 
 test "printelement: prints a non-cons value bare, a cons-list parenthesised" {
     tu.freshInterp();
@@ -170,18 +150,10 @@ test "printelement: prints a non-cons value bare, a cons-list parenthesised" {
     printelement(heap_mod.heap(), Value.fromRaw(tu.list(&[_]Word{ tu.int(1), tu.int(2) })));
 }
 
-
-
-
-
-
-
 test "cyclicAbstr: an empty atnames list reports no cycle" {
     tu.freshInterp();
     try std.testing.expectEqual(@as(Word, 0), cyclicAbstr(heap_mod.heap(), Value.fromRaw(word.NIL)));
 }
-
-
 
 test "txchange: installs a representation type in place of a synonym id's own type" {
     tu.freshInterp();
@@ -196,8 +168,6 @@ test "txchange: installs a representation type in place of a synonym id's own ty
     try std.testing.expectEqual(undef_t, h(heap_mod.heap(), x));
 }
 
-
-
 test "repT1: returns T unchanged when it has no formals to substitute" {
     tu.freshInterp();
     // num_t isn't AP-tagged (isCompoundType false) and isn't a member of an
@@ -206,15 +176,11 @@ test "repT1: returns T unchanged when it has no formals to substitute" {
     try std.testing.expectEqual(T, repT1(heap_mod.heap(), T, Value.fromRaw(word.NIL)));
 }
 
-
-
 test "repT: returns T unchanged when repT1 makes no substitution" {
     tu.freshInterp();
     const T = Value.fromRaw(num_t);
     try std.testing.expectEqual(T, repT(heap_mod.heap(), T, Value.fromRaw(word.NIL)));
 }
-
-
 
 test "fixType: passes atoms through unchanged, recurses through an AP node's fields" {
     tu.freshInterp();
@@ -471,35 +437,11 @@ pub fn checkfbs(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
     resetSubst(heap);
 }
 
-
 const bind_t: Word = 9;
-
-
-
-
-
-
-
-
-
-
-
 
 const subsu1 = unify_mod.subsu1;
 const subsumes = unify_mod.subsumes;
 const unify = unify_mod.unify;
-
-
-
-
-
-
-
-
-
-
-
-
 
 /// Type-check `x`, returning 1 if it typechecks cleanly, 0 otherwise (a flag,
 /// not a graph value — matches `cyclicAbstr`'s precedent above).

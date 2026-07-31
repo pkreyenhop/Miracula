@@ -15,6 +15,19 @@ pub fn build(b: *std.Build) void {
     const configured_mira_path = b.option([]const u8, "mira-path", "Path to the mira binary used by tests");
     const mira_path = configured_mira_path orelse "./zig-out/bin/mira";
     const lib_path = b.option([]const u8, "lib-path", "Path to the miralib directory used by tests") orelse "./miralib";
+    const reference_manifest = b.option([]const u8, "reference-manifest", "Pinned reference manifest used by differential tests") orelse "tests/reference/manifest.json";
+    const reference_platform = b.option([]const u8, "reference-platform", "Pinned reference platform key") orelse switch (target.result.os.tag) {
+        .macos => switch (target.result.cpu.arch) {
+            .aarch64 => "darwin-arm64",
+            else => @panic("no pinned reference executable for this macOS architecture"),
+        },
+        .linux => switch (target.result.cpu.arch) {
+            .x86_64 => "linux-amd64",
+            else => @panic("no pinned reference executable for this Linux architecture"),
+        },
+        else => @panic("no pinned reference executable for this operating system"),
+    };
+    const reference_path = b.option([]const u8, "reference-path", "Override path to the pinned reference executable") orelse b.fmt("tests/reference/artifacts/{s}/mira", .{reference_platform});
 
     const version_text = readTrimmed(b, "miralib/.version");
     const vdate = readTrimmed(b, ".vdate");
@@ -236,15 +249,17 @@ pub fn build(b: *std.Build) void {
     run_spine_check.addArg(mira_path);
     run_spine_check.step.dependOn(&install_mira.step);
 
-    const run_regression = b.addRunArtifact(b.addExecutable(.{
-        .name = "regression_runner",
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("tests/regression.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-    }));
+    const verify_reference = b.addSystemCommand(&.{ "python3", "scripts/reference_oracle.py" });
+    verify_reference.addArgs(&.{ "--manifest", reference_manifest, "verify", "--platform", reference_platform, "--binary", reference_path, "--library", lib_path });
+
+    const run_phase1_acceptance = b.addSystemCommand(&.{ "python3", "-B", "-m", "unittest", "tests/test_phase1.py" });
+
+    const run_regression = b.addSystemCommand(&.{ "python3", "tests/regression.py" });
+    run_regression.addArg("--candidate");
+    run_regression.addFileArg(mira.getEmittedBin());
+    run_regression.addArgs(&.{ "--reference", reference_path, "--library", lib_path, "--repository", b.pathFromRoot(".") });
     run_regression.step.dependOn(&install_mira.step);
+    run_regression.step.dependOn(&verify_reference.step);
 
     const run_smoke = b.addRunArtifact(b.addExecutable(.{
         .name = "smoke_runner",
@@ -317,6 +332,12 @@ pub fn build(b: *std.Build) void {
 
     const test_regression = b.step("test-regression", "Run the C compatibility differential regression tests");
     test_regression.dependOn(&run_regression.step);
+
+    const test_verify_reference = b.step("verify-reference", "Verify pinned reference executable and Miranda library checksums");
+    test_verify_reference.dependOn(&verify_reference.step);
+
+    const test_phase1_acceptance = b.step("test-phase1", "Run fail-closed compatibility harness acceptance tests");
+    test_phase1_acceptance.dependOn(&run_phase1_acceptance.step);
 
     const test_smoke = b.step("test-smoke", "Run the REPL integration smoke tests");
     test_smoke.dependOn(&run_smoke.step);
@@ -547,6 +568,16 @@ pub fn build(b: *std.Build) void {
     strict_step.dependOn(&fmt_check.step);
     strict_step.dependOn(lint_step);
     strict_step.dependOn(&scorecard_check.step);
+
+    // Mandatory migration-readiness gate. Reference preparation is deliberately
+    // separate: this target fails closed when the pinned artifact is absent.
+    const go_ready_step = b.step("go-ready", "Run the complete fail-closed Go migration readiness gate");
+    go_ready_step.dependOn(check_step);
+    go_ready_step.dependOn(strict_step);
+    go_ready_step.dependOn(test_golden);
+    go_ready_step.dependOn(test_regression);
+    go_ready_step.dependOn(test_verify_reference);
+    go_ready_step.dependOn(test_phase1_acceptance);
 
     // Benchmark targets (optimized for ReleaseFast)
     const bench_version_options = b.addOptions();

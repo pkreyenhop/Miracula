@@ -5,47 +5,6 @@ fn sortLess(context: void, lhs: []const u8, rhs: []const u8) bool {
     return std.mem.lessThan(u8, lhs, rhs);
 }
 
-fn cleanOutput(allocator: std.mem.Allocator, text: []const u8) ![]const u8 {
-    var list: std.ArrayList([]const u8) = .empty;
-    defer list.deinit(allocator);
-    var iter = std.mem.splitScalar(u8, text, '\n');
-    while (iter.next()) |line| {
-        if (std.mem.startsWith(u8, line, "||reductions =") or
-            std.mem.startsWith(u8, line, "[TRACE]") or
-            std.mem.startsWith(u8, line, "[ALLOC]") or
-            std.mem.startsWith(u8, line, "[DIAG"))
-        {
-            continue;
-        }
-        try list.append(allocator, line);
-    }
-
-    var total_len: usize = 0;
-    for (list.items) |line| {
-        total_len += line.len;
-    }
-    if (list.items.len > 0) {
-        total_len += list.items.len - 1;
-    }
-
-    const joined = try allocator.alloc(u8, total_len);
-    errdefer allocator.free(joined);
-    var offset: usize = 0;
-    for (list.items, 0..) |line, idx| {
-        std.mem.copyForwards(u8, joined[offset..], line);
-        offset += line.len;
-        if (idx < list.items.len - 1) {
-            joined[offset] = '\n';
-            offset += 1;
-        }
-    }
-
-    const trimmed = std.mem.trim(u8, joined, " \t\r\n");
-    const result = try allocator.dupe(u8, trimmed);
-    allocator.free(joined);
-    return result;
-}
-
 fn printDiff(allocator: std.mem.Allocator, expected: []const u8, actual: []const u8) !void {
     var exp_lines: std.ArrayList([]const u8) = .empty;
     defer exp_lines.deinit(allocator);
@@ -163,8 +122,6 @@ pub fn main(ctx: std.process.Init) !void {
             continue;
         };
         defer allocator.free(expected_stdout);
-        const expected_stdout_trimmed = std.mem.trim(u8, expected_stdout, " \t\r\n");
-
         var expected_stderr_path_buf: [256]u8 = undefined;
         const expected_stderr_path = std.fmt.bufPrint(&expected_stderr_path_buf, "tests/golden/{s}.expected_err", .{name}) catch "";
         const expected_stderr_exists = if (std.Io.Dir.cwd().statFile(ctx.io, expected_stderr_path, .{})) |_| true else |_| false;
@@ -178,9 +135,31 @@ pub fn main(ctx: std.process.Init) !void {
                 continue;
             };
             expected_stderr_alloc = data;
-            expected_stderr = std.mem.trim(u8, data, " \t\r\n");
+            expected_stderr = data;
         }
         defer if (expected_stderr_alloc) |data| allocator.free(data);
+
+        var expected_status_path_buf: [256]u8 = undefined;
+        const expected_status_path = std.fmt.bufPrint(&expected_status_path_buf, "tests/golden/{s}.expected_status", .{name}) catch "";
+        const expected_status_data = if (std.Io.Dir.cwd().readFileAlloc(ctx.io, expected_status_path, allocator, .limited(32))) |data|
+            data
+        else |err| switch (err) {
+            error.FileNotFound => null,
+            else => {
+                std.debug.print("FAIL (failed to read expected status: {any})\n", .{err});
+                failed = true;
+                continue;
+            },
+        };
+        defer if (expected_status_data) |data| allocator.free(data);
+        const expected_status = if (expected_status_data) |data|
+            std.fmt.parseInt(u8, std.mem.trim(u8, data, " \t\r\n"), 10) catch {
+                std.debug.print("FAIL (invalid expected status file)\n", .{});
+                failed = true;
+                continue;
+            }
+        else
+            0;
 
         // Run mira
         const argv_len = 5 + if (script_exists) @as(usize, 1) else 0;
@@ -239,30 +218,49 @@ pub fn main(ctx: std.process.Init) !void {
             },
         }
 
-        _ = child.wait(ctx.io) catch {};
+        const term = child.wait(ctx.io) catch |err| {
+            std.debug.print("FAIL (failed to wait for child: {any})\n", .{err});
+            failed = true;
+            continue;
+        };
 
         const raw_stdout = try multi_reader.toOwnedSlice(0);
         defer allocator.free(raw_stdout);
         const raw_stderr = try multi_reader.toOwnedSlice(1);
         defer allocator.free(raw_stderr);
 
-        const actual_stdout = try cleanOutput(allocator, raw_stdout);
-        defer allocator.free(actual_stdout);
-        const actual_stderr = try cleanOutput(allocator, raw_stderr);
-        defer allocator.free(actual_stderr);
+        switch (term) {
+            .exited => |status| {
+                if (status != expected_status) {
+                    std.debug.print("FAIL (exit status mismatch: expected {d}, got {d})\n", .{ expected_status, status });
+                    failed = true;
+                    continue;
+                }
+            },
+            .signal => |signal| {
+                std.debug.print("FAIL (unexpected signal {s})\n", .{@tagName(signal)});
+                failed = true;
+                continue;
+            },
+            else => {
+                std.debug.print("FAIL (unexpected process termination: {any})\n", .{term});
+                failed = true;
+                continue;
+            },
+        }
 
-        if (!std.mem.eql(u8, actual_stdout, expected_stdout_trimmed)) {
+        if (!std.mem.eql(u8, raw_stdout, expected_stdout)) {
             std.debug.print("FAIL (stdout mismatch)\n", .{});
             std.debug.print("Diff:\n", .{});
-            try printDiff(allocator, expected_stdout_trimmed, actual_stdout);
+            try printDiff(allocator, expected_stdout, raw_stdout);
             failed = true;
             continue;
         }
 
-        if (!std.mem.eql(u8, actual_stderr, expected_stderr)) {
+        if (!std.mem.eql(u8, raw_stderr, expected_stderr)) {
             std.debug.print("FAIL (stderr mismatch)\n", .{});
             std.debug.print("Expected stderr:\n{s}\n", .{expected_stderr});
-            std.debug.print("Actual stderr:\n{s}\n", .{actual_stderr});
+            std.debug.print("Actual stderr:\n{s}\n", .{raw_stderr});
             failed = true;
             continue;
         }

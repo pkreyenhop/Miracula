@@ -32,7 +32,6 @@ const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 const ls = lex_state.ls;
 const match = @import("match.zig");
 
-
 const Word = i64;
 const Value = @import("../graph/value.zig").Value;
 const GENERATOR: Word = 0;
@@ -148,62 +147,12 @@ const mkgvar = lex.mkgvar;
 const syntax = setup.syntax;
 const acterror = setup.acterror;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 test "memb: membership in a list" {
     tu.freshInterp();
     const l = cons(heap_mod.heap(), word.True, cons(heap_mod.heap(), word.False, NIL));
     try std.testing.expectEqual(@as(Word, 1), memb(heap_mod.heap(), l, word.False));
     try std.testing.expectEqual(@as(Word, 0), memb(heap_mod.heap(), l, word.S));
 }
-
 
 test "same: structural equality of graphs" {
     tu.freshInterp();
@@ -214,12 +163,6 @@ test "same: structural equality of graphs" {
     try std.testing.expectEqual(@as(Word, 0), same(heap_mod.heap(), a, cons(heap_mod.heap(), word.False, NIL)));
 }
 
-
-
-
-
-
-
 test "lastlink: the last cell of a list" {
     tu.freshInterp();
     const l = cons(heap_mod.heap(), word.True, cons(heap_mod.heap(), word.False, cons(heap_mod.heap(), word.S, NIL)));
@@ -227,20 +170,6 @@ test "lastlink: the last cell of a list" {
     try std.testing.expectEqual(@as(Word, word.S), h(heap_mod.heap(), last));
     try std.testing.expectEqual(@as(Word, NIL), t(heap_mod.heap(), last));
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /// Translate a `let` of definition `d` in body `e`.
 const lower_prims = @import("lower_prims.zig");
@@ -719,19 +648,11 @@ pub fn block(heap: *Heap, input_defs: Word, input_e: Word, keep: Word) Word {
     return e;
 }
 
-
-
-
-
-
-
-
 test "sort: orders a Word list ascending" {
     tu.freshInterp();
     try tu.expectWords(&[_]Word{ 1000, 2000, 3000 }, sort(heap_mod.heap(), tu.list(&[_]Word{ 3000, 1000, 2000 })));
     try tu.expectWords(&[_]Word{}, sort(heap_mod.heap(), NIL));
 }
-
 
 const Ush: Word = CMBASE + 93;
 const Ush1: Word = CMBASE + 94;
