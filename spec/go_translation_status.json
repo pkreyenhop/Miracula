@@ -9,7 +9,7 @@
     "package:graphstore": "complete",
     "package:platformsvc": "complete",
     "package:protocol": "complete",
-    "package:semantics": "pending",
+    "package:semantics": "complete",
     "package:syntaxfront": "complete"
   }
 }

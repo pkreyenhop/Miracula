@@ -59534,7 +59534,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -59574,7 +59574,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependValue",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -59614,7 +59614,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -59654,7 +59654,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependGetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -59694,7 +59694,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependH",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -59734,7 +59734,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependHp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -59774,7 +59774,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -59814,7 +59814,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependTp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -59854,7 +59854,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependCons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -59894,7 +59894,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependIsConstructor",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -59934,7 +59934,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependRemove1Raw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -59974,7 +59974,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependRemove1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60014,7 +60014,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependSetdiffRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60054,7 +60054,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependSetdiff",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60094,7 +60094,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependAdd1Raw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60134,7 +60134,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependAdd1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60174,7 +60174,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependNewadd1Raw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60214,7 +60214,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependNewadd1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60254,7 +60254,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependUNIONRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60294,7 +60294,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependUNION",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60334,7 +60334,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependIntersectionRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60374,7 +60374,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependIntersection",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60414,7 +60414,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependMemberRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60454,7 +60454,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependMember",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60494,7 +60494,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependIdType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60534,7 +60534,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependTypesfirstRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60574,7 +60574,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependTypesfirst",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60614,7 +60614,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependTsortRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60654,7 +60654,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependTsort",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60694,7 +60694,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependMscRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60734,7 +60734,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependMsc",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60774,7 +60774,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependRembvarsRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60814,7 +60814,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependRembvars",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60854,7 +60854,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependUnionDepsRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60894,7 +60894,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependGenericDepsRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60934,7 +60934,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependDepsRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -60974,7 +60974,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependDeps",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -61014,7 +61014,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependRedtfrRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -61054,7 +61054,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependRedtfr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -61094,7 +61094,7 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependAlfasortRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -61134,12 +61134,12 @@
           "target_file": "depend.go",
           "target_package": "semantics",
           "target_symbol": "DependAlfasort",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "depend.go",
       "target_package": "semantics",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -62013,7 +62013,7 @@
           "target_file": "infer.go",
           "target_package": "semantics",
           "target_symbol": "InferHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -62065,7 +62065,7 @@
           "target_file": "infer.go",
           "target_package": "semantics",
           "target_symbol": "InferWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -62117,7 +62117,7 @@
           "target_file": "infer.go",
           "target_package": "semantics",
           "target_symbol": "InferAbstrCheck",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -62169,7 +62169,7 @@
           "target_file": "infer.go",
           "target_package": "semantics",
           "target_symbol": "InferAbstrMcheck",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -62221,7 +62221,7 @@
           "target_file": "infer.go",
           "target_package": "semantics",
           "target_symbol": "InferMcheckfbs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -62273,7 +62273,7 @@
           "target_file": "infer.go",
           "target_package": "semantics",
           "target_symbol": "InferCheckfbs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -62325,7 +62325,7 @@
           "target_file": "infer.go",
           "target_package": "semantics",
           "target_symbol": "InferUnify",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -62377,7 +62377,7 @@
           "target_file": "infer.go",
           "target_package": "semantics",
           "target_symbol": "InferChecktypeRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -62429,7 +62429,7 @@
           "target_file": "infer.go",
           "target_package": "semantics",
           "target_symbol": "InferChecktype",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -62481,7 +62481,7 @@
           "target_file": "infer.go",
           "target_package": "semantics",
           "target_symbol": "InferTypeOf",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -62533,7 +62533,7 @@
           "target_file": "infer.go",
           "target_package": "semantics",
           "target_symbol": "InferInferType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -62585,7 +62585,7 @@
           "target_file": "infer.go",
           "target_package": "semantics",
           "target_symbol": "InferTsetup",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -62637,12 +62637,12 @@
           "target_file": "infer.go",
           "target_package": "semantics",
           "target_symbol": "InferChecktypes",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "infer.go",
       "target_package": "semantics",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -63605,7 +63605,7 @@
           "target_file": "infer_etype.go",
           "target_package": "semantics",
           "target_symbol": "InferEtypeHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -63654,7 +63654,7 @@
           "target_file": "infer_etype.go",
           "target_package": "semantics",
           "target_symbol": "InferEtypeWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -63703,7 +63703,7 @@
           "target_file": "infer_etype.go",
           "target_package": "semantics",
           "target_symbol": "InferEtypeUnify",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -63752,7 +63752,7 @@
           "target_file": "infer_etype.go",
           "target_package": "semantics",
           "target_symbol": "InferEtypeConforms",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -63801,7 +63801,7 @@
           "target_file": "infer_etype.go",
           "target_package": "semantics",
           "target_symbol": "InferEtypeEtype",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -63850,7 +63850,7 @@
           "target_file": "infer_etype.go",
           "target_package": "semantics",
           "target_symbol": "InferEtypeEtypeAp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -63899,7 +63899,7 @@
           "target_file": "infer_etype.go",
           "target_package": "semantics",
           "target_symbol": "InferEtypeEtypeCons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -63948,7 +63948,7 @@
           "target_file": "infer_etype.go",
           "target_package": "semantics",
           "target_symbol": "InferEtypeEtypeLexer",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -63997,7 +63997,7 @@
           "target_file": "infer_etype.go",
           "target_package": "semantics",
           "target_symbol": "InferEtypeEtypeId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -64046,7 +64046,7 @@
           "target_file": "infer_etype.go",
           "target_package": "semantics",
           "target_symbol": "InferEtypeEtypeLet",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -64095,7 +64095,7 @@
           "target_file": "infer_etype.go",
           "target_package": "semantics",
           "target_symbol": "InferEtypeEtypeLetrec",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -64144,7 +64144,7 @@
           "target_file": "infer_etype.go",
           "target_package": "semantics",
           "target_symbol": "InferEtypeEtypeTries",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -64193,7 +64193,7 @@
           "target_file": "infer_etype.go",
           "target_package": "semantics",
           "target_symbol": "InferEtypeEtypeAtom",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -64242,7 +64242,7 @@
           "target_file": "infer_etype.go",
           "target_package": "semantics",
           "target_symbol": "InferEtypeCheckcolfn",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -64291,12 +64291,12 @@
           "target_file": "infer_etype.go",
           "target_package": "semantics",
           "target_symbol": "InferEtypeGenbnft",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "infer_etype.go",
       "target_package": "semantics",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -64773,7 +64773,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -64811,7 +64811,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -64849,7 +64849,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsGetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -64887,7 +64887,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsH",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -64925,7 +64925,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsHp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -64963,7 +64963,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65001,7 +65001,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsTp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65039,7 +65039,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsCons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65077,7 +65077,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsIdType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65115,7 +65115,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsIsCompoundType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65153,7 +65153,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsIsVarType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65191,7 +65191,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsTArity",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65229,7 +65229,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsTClass",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65267,7 +65267,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsTInfo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65305,7 +65305,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsIdVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65343,7 +65343,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsIdWho",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65381,7 +65381,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsGetId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65419,7 +65419,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsAp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65457,7 +65457,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsPnVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65495,7 +65495,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsGetStdout",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65533,7 +65533,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsIsConstructor",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65571,7 +65571,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsTheVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65609,7 +65609,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsAp2",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65647,7 +65647,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsTf",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65685,7 +65685,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsTf2",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65723,7 +65723,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsTf3",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65761,7 +65761,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsTf4",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65799,7 +65799,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsLt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65837,7 +65837,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsPairType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65875,7 +65875,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsDlhs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65913,7 +65913,7 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsDtyp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -65951,12 +65951,12 @@
           "target_file": "infer_prims.go",
           "target_package": "semantics",
           "target_symbol": "InferPrimsDval",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "infer_prims.go",
       "target_package": "semantics",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -66739,7 +66739,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -66786,7 +66786,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -66833,7 +66833,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstUnify",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -66880,7 +66880,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstSterilisRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -66927,7 +66927,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstSterilise",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -66974,7 +66974,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstMetaTcheck",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67021,7 +67021,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstCompDeps",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67068,7 +67068,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstPrintelementRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67115,7 +67115,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstPrintelement",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67162,7 +67162,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstPrintlist",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67209,7 +67209,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstResetSubst",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67256,7 +67256,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstLocateInc",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67303,7 +67303,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstCyclicAbstrRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67350,7 +67350,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstCyclicAbstr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67397,7 +67397,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstTxchangeRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67444,7 +67444,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstTxchange",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67491,7 +67491,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstRepT1Raw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67538,7 +67538,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstRepT1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67585,7 +67585,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstRepTRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67632,7 +67632,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstRepT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67679,7 +67679,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstFixTypeRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67726,7 +67726,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstFixType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67773,7 +67773,7 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstGenlstatType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -67820,12 +67820,12 @@
           "target_file": "infer_subst.go",
           "target_package": "semantics",
           "target_symbol": "InferSubstIsBoundType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "infer_subst.go",
       "target_package": "semantics",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -69380,7 +69380,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -69435,7 +69435,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerFalse",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -69490,7 +69490,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerTrue",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -69545,7 +69545,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -69600,7 +69600,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerTranslet",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -69655,7 +69655,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerTransletrec",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -69710,7 +69710,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerMakeshow",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -69765,7 +69765,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerMkshow",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -69820,7 +69820,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerMkshowt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -69875,7 +69875,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerNclchk",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -69930,7 +69930,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerNclashcheck",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -69985,7 +69985,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerRespecError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -70040,7 +70040,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerNameclash",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -70095,7 +70095,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerDeclconstr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -70150,7 +70150,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerSpecify",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -70205,7 +70205,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerArityCheck",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -70260,7 +70260,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerDeclType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -70315,7 +70315,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerDecl1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -70370,7 +70370,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerDeclare",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -70425,7 +70425,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerBlock",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -70480,7 +70480,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerTShowfn",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -70535,7 +70535,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerTClass",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -70590,7 +70590,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerTInfo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -70645,7 +70645,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerCodegen",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -70700,7 +70700,7 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerGenshfns",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -70755,12 +70755,12 @@
           "target_file": "lower.go",
           "target_package": "semantics",
           "target_symbol": "LowerValidate",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "lower.go",
       "target_package": "semantics",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -71500,7 +71500,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -71543,7 +71543,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -71586,7 +71586,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontPrimconstr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -71629,7 +71629,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontMemb",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -71672,7 +71672,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontSame",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -71715,7 +71715,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontGetIds",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -71758,7 +71758,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontMktuple",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -71801,7 +71801,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontIrrefutable",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -71844,7 +71844,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontFallible",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -71887,7 +71887,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontHereInfo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -71930,7 +71930,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontLastlink",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -71973,7 +71973,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontFixrepeats",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -72016,7 +72016,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontAbshfnck",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -72059,7 +72059,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontCombine",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -72102,7 +72102,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontLiscomb",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -72145,7 +72145,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontAbstract",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -72188,7 +72188,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontAbstr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -72231,7 +72231,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontAbstrlist",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -72274,7 +72274,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontMklazy",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -72317,7 +72317,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontNewMkLazy",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -72360,7 +72360,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontCompzf",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -72403,7 +72403,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontTranszf",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -72446,7 +72446,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontGetspecloc",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -72489,7 +72489,7 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontTranstypeid",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -72532,12 +72532,12 @@
           "target_file": "lower_front.go",
           "target_package": "semantics",
           "target_symbol": "LowerFrontLeftfactor",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "lower_front.go",
       "target_package": "semantics",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -73167,7 +73167,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73206,7 +73206,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73245,7 +73245,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsGetStdout",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73284,7 +73284,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsGetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73323,7 +73323,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsH",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73362,7 +73362,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsHp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73401,7 +73401,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73440,7 +73440,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsTp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73479,7 +73479,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsAppHead",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73518,7 +73518,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsCons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73557,7 +73557,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsPair",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73596,7 +73596,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsDatapair",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73635,7 +73635,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsConstructor",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73674,7 +73674,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsLambda",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73713,7 +73713,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsShare",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73752,7 +73752,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsTries",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73791,7 +73791,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsLet",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73830,7 +73830,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsLetrec",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73869,7 +73869,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsAp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73908,7 +73908,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsAp2",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73947,7 +73947,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsAp3",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -73986,7 +73986,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsGetId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74025,7 +74025,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsIdWho",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74064,7 +74064,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsSetIdWho",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74103,7 +74103,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsIdType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74142,7 +74142,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsIdVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74181,7 +74181,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsSetIdType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74220,7 +74220,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsSetIdVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74259,7 +74259,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsMakeTyp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74298,7 +74298,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsAddToEnv",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74337,7 +74337,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsIsConstructor",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74376,7 +74376,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsIsVariable",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74415,7 +74415,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsIsNPlusKPattern",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74454,7 +74454,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsIsArrowType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74493,7 +74493,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsIsListType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74532,7 +74532,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsIsTypeVariable",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74571,7 +74571,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsIsCompoundType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74610,7 +74610,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsIsChar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74649,7 +74649,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsTypeArity",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74688,7 +74688,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsTypeShowFn",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74727,7 +74727,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsTypeClass",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74766,7 +74766,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsSetTypeClass",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74805,7 +74805,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsTypeInfo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74844,7 +74844,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsSetTypeInfo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74883,7 +74883,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsGetTypeVariable",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74922,7 +74922,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsMkindex",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -74961,7 +74961,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsDlhs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -75000,7 +75000,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsSetDlhs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -75039,7 +75039,7 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsDval",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -75078,12 +75078,12 @@
           "target_file": "lower_prims.go",
           "target_package": "semantics",
           "target_symbol": "LowerPrimsSetDval",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "lower_prims.go",
       "target_package": "semantics",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -75383,7 +75383,7 @@
           "target_file": "lower_sort.go",
           "target_package": "semantics",
           "target_symbol": "LowerSortWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -75422,7 +75422,7 @@
           "target_file": "lower_sort.go",
           "target_package": "semantics",
           "target_symbol": "LowerSortHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -75461,7 +75461,7 @@
           "target_file": "lower_sort.go",
           "target_package": "semantics",
           "target_symbol": "LowerSortTclos",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -75500,7 +75500,7 @@
           "target_file": "lower_sort.go",
           "target_package": "semantics",
           "target_symbol": "LowerSortGetrel",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -75539,7 +75539,7 @@
           "target_file": "lower_sort.go",
           "target_package": "semantics",
           "target_symbol": "LowerSortInvgetrel",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -75578,7 +75578,7 @@
           "target_file": "lower_sort.go",
           "target_package": "semantics",
           "target_symbol": "LowerSortImageless",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -75617,7 +75617,7 @@
           "target_file": "lower_sort.go",
           "target_package": "semantics",
           "target_symbol": "LowerSortLess",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -75656,7 +75656,7 @@
           "target_file": "lower_sort.go",
           "target_package": "semantics",
           "target_symbol": "LowerSortLess1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -75695,7 +75695,7 @@
           "target_file": "lower_sort.go",
           "target_package": "semantics",
           "target_symbol": "LowerSortSort",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -75734,12 +75734,12 @@
           "target_file": "lower_sort.go",
           "target_package": "semantics",
           "target_symbol": "LowerSortSortrel",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "lower_sort.go",
       "target_package": "semantics",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -76182,7 +76182,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76224,7 +76224,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchValue",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76266,7 +76266,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76308,7 +76308,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchTrue",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76350,7 +76350,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchFalse",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76392,7 +76392,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchBindLower",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76434,7 +76434,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchIdentifierName",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76476,7 +76476,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchGetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76518,7 +76518,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchH",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76560,7 +76560,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchTp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76602,7 +76602,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76644,7 +76644,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchCons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76686,7 +76686,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchAp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76728,7 +76728,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchAp2",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76770,7 +76770,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchLambda",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76812,7 +76812,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchDatapair",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76854,7 +76854,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchIsConstructor",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76896,7 +76896,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchIsNPlusKPattern",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76938,7 +76938,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchIsChar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -76980,7 +76980,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchScanpatternRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -77022,7 +77022,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchScanpattern",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -77064,7 +77064,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchGenlhsRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -77106,7 +77106,7 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchGenlhs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -77148,12 +77148,12 @@
           "target_file": "match.go",
           "target_package": "semantics",
           "target_symbol": "MatchTranstries",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "match.go",
       "target_package": "semantics",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -77407,7 +77407,7 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -77454,7 +77454,7 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesAlias",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -77501,7 +77501,7 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesExportPart",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -77548,7 +77548,7 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesParseExportParts",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -77595,7 +77595,7 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesResolveExports",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -77642,7 +77642,7 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesApplyAliases",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -77689,7 +77689,7 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesModuleError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -77736,7 +77736,7 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesDefName",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -77783,7 +77783,7 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesCollectTopLevelNames",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -77830,7 +77830,7 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesResolveIncludePath",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -77877,7 +77877,7 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesParseSnippet",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -77924,7 +77924,7 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesCompileBindings",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -77971,7 +77971,7 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesApplyExportsAndAliases",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -78018,7 +78018,7 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesLessThan",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -78065,7 +78065,7 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesProcessOneInclude",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -78112,7 +78112,7 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesProcessIncludes",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -78159,12 +78159,12 @@
           "target_file": "modules.go",
           "target_package": "semantics",
           "target_symbol": "ModulesExpectPartsEqual",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "modules.go",
       "target_package": "semantics",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -78328,7 +78328,7 @@
           "target_file": "show_fns.go",
           "target_package": "semantics",
           "target_symbol": "ShowFnsWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -78360,7 +78360,7 @@
           "target_file": "show_fns.go",
           "target_package": "semantics",
           "target_symbol": "ShowFns",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -78392,7 +78392,7 @@
           "target_file": "show_fns.go",
           "target_package": "semantics",
           "target_symbol": "ShowFnsBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -78424,12 +78424,12 @@
           "target_file": "show_fns.go",
           "target_package": "semantics",
           "target_symbol": "ShowFnsShow",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "show_fns.go",
       "target_package": "semantics",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -78698,7 +78698,7 @@
           "target_file": "symbols.go",
           "target_package": "semantics",
           "target_symbol": "SymbolsWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -78735,7 +78735,7 @@
           "target_file": "symbols.go",
           "target_package": "semantics",
           "target_symbol": "SymbolsBindActive",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -78772,7 +78772,7 @@
           "target_file": "symbols.go",
           "target_package": "semantics",
           "target_symbol": "SymbolsSyms",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -78809,7 +78809,7 @@
           "target_file": "symbols.go",
           "target_package": "semantics",
           "target_symbol": "SymbolsSymbolTable",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -78846,7 +78846,7 @@
           "target_file": "symbols.go",
           "target_package": "semantics",
           "target_symbol": "SymbolsSymbolTable.Deinit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -78883,7 +78883,7 @@
           "target_file": "symbols.go",
           "target_package": "semantics",
           "target_symbol": "SymbolsSymbolTable.Intern",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -78920,7 +78920,7 @@
           "target_file": "symbols.go",
           "target_package": "semantics",
           "target_symbol": "SymbolsSymbolTable.Find",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -78957,7 +78957,7 @@
           "target_file": "symbols.go",
           "target_package": "semantics",
           "target_symbol": "SymbolsSymbolTable.CreateFresh",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -78994,7 +78994,7 @@
           "target_file": "symbols.go",
           "target_package": "semantics",
           "target_symbol": "SymbolsSymbolTable.Count",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -79031,7 +79031,7 @@
           "target_file": "symbols.go",
           "target_package": "semantics",
           "target_symbol": "SymbolsSymbolTable.Rebind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -79068,7 +79068,7 @@
           "target_file": "symbols.go",
           "target_package": "semantics",
           "target_symbol": "SymbolsSymbolTable.Bind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -79105,7 +79105,7 @@
           "target_file": "symbols.go",
           "target_package": "semantics",
           "target_symbol": "SymbolsPrivateNames",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -79142,7 +79142,7 @@
           "target_file": "symbols.go",
           "target_package": "semantics",
           "target_symbol": "SymbolsPrivateNames.Deinit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -79179,7 +79179,7 @@
           "target_file": "symbols.go",
           "target_package": "semantics",
           "target_symbol": "SymbolsPrivateNames.Make",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -79216,7 +79216,7 @@
           "target_file": "symbols.go",
           "target_package": "semantics",
           "target_symbol": "SymbolsPrivateNames.Get",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -79253,12 +79253,12 @@
           "target_file": "symbols.go",
           "target_package": "semantics",
           "target_symbol": "SymbolsPrivateNames.Count",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "symbols.go",
       "target_package": "semantics",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -79886,7 +79886,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -79932,7 +79932,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -79978,7 +79978,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsLocateInc",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80024,7 +80024,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsGetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80070,7 +80070,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsH",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80116,7 +80116,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80162,7 +80162,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsAp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80208,7 +80208,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsPnVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80254,7 +80254,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsNeg",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80300,7 +80300,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsLocate",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80346,7 +80346,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsRhsHere",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80392,7 +80392,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsSayhere",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80438,7 +80438,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsReportType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80484,7 +80484,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsTypeError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80530,7 +80530,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsTypeError1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80576,7 +80576,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsTypeError2",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80622,7 +80622,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsTypeError3",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80668,7 +80668,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsTypeError4",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80714,7 +80714,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsTypeError5",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80760,7 +80760,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsTypeError6",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80806,7 +80806,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsTypeError7",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80852,7 +80852,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsTypeError8",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80898,7 +80898,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsIsArrowType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80944,7 +80944,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsIsCommaType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -80990,7 +80990,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsIsListType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -81036,7 +81036,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsOutType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -81082,7 +81082,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsOutType1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -81128,7 +81128,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsOutType2",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -81174,7 +81174,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsOutTypeList",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -81220,7 +81220,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsTail",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -81266,7 +81266,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsOutFormal1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -81312,7 +81312,7 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsOutPattern",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -81358,12 +81358,12 @@
           "target_file": "type_errors.go",
           "target_package": "semantics",
           "target_symbol": "TypeErrorsOutFormal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "type_errors.go",
       "target_package": "semantics",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -81940,7 +81940,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -81978,7 +81978,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82016,7 +82016,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyGetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82054,7 +82054,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyH",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82092,7 +82092,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyTp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82130,7 +82130,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82168,7 +82168,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyCons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82206,7 +82206,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyMktvar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82244,7 +82244,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyGettvar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82282,7 +82282,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyEqtvar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82320,7 +82320,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyHashval",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82358,7 +82358,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyNTV",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82396,7 +82396,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyClearSubst",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82434,7 +82434,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyFixshows",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82472,7 +82472,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyLookup",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82510,7 +82510,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyAddsubst",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82548,7 +82548,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyUlt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82586,7 +82586,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyAp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82624,7 +82624,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyWalktype",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82662,7 +82662,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifySubst",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82700,7 +82700,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyLmap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82738,7 +82738,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyLinst",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82776,7 +82776,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyNonGeneric",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82814,7 +82814,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyMapup",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82852,7 +82852,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyInstantiate",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82890,7 +82890,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyApSubst",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82928,7 +82928,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyMapdown",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -82966,7 +82966,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyRedtvars",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -83004,7 +83004,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyOccurs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -83042,7 +83042,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyIspoly",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -83080,7 +83080,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifySubsu1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -83118,7 +83118,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifySubsumes",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -83156,7 +83156,7 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "UnifyUnify1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -83194,12 +83194,12 @@
           "target_file": "unify.go",
           "target_package": "semantics",
           "target_symbol": "Unify",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "unify.go",
       "target_package": "semantics",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -102571,23 +102571,7 @@
       "generated_check": "go generate ./... && git diff --exit-code",
       "id": "package:semantics",
       "package_test": "go test ./internal/semantics",
-      "source_files": [
-        "src/semantics/depend.zig",
-        "src/semantics/infer.zig",
-        "src/semantics/infer_etype.zig",
-        "src/semantics/infer_prims.zig",
-        "src/semantics/infer_subst.zig",
-        "src/semantics/lower.zig",
-        "src/semantics/lower_front.zig",
-        "src/semantics/lower_prims.zig",
-        "src/semantics/lower_sort.zig",
-        "src/semantics/match.zig",
-        "src/semantics/modules.zig",
-        "src/semantics/show_fns.zig",
-        "src/semantics/symbols.zig",
-        "src/semantics/type_errors.zig",
-        "src/semantics/unify.zig"
-      ],
+      "source_files": [],
       "stage_oracles": [
         {
           "command": "python3 tests/oracle/oracle.py verify --stage module --producer 'go run ./cmd/miracula-go-oracle'",
@@ -102603,7 +102587,7 @@
         }
       ],
       "target_package": "semantics",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "dag_check": "go run ./cmd/checkdag",

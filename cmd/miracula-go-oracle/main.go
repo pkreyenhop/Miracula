@@ -13,6 +13,7 @@ import (
 	"github.com/pkreyenhop/miracula-go/internal/graphstore"
 	"github.com/pkreyenhop/miracula-go/internal/platformsvc"
 	"github.com/pkreyenhop/miracula-go/internal/protocol"
+	"github.com/pkreyenhop/miracula-go/internal/semantics"
 	"github.com/pkreyenhop/miracula-go/internal/syntaxfront"
 )
 
@@ -20,13 +21,15 @@ type producer func(casesPath string) error
 
 // Producers are added only by the translation unit that implements a stage.
 var producers = map[string]producer{
-	"dump":   protocol.ProduceDumpOracle,
-	"reduce": platformsvc.ProduceReduceOracle,
-	"lower":  graphstore.ProduceLowerOracle,
-	"source": syntaxfront.ProduceSourceOracle,
-	"lex":    syntaxfront.ProduceLexOracle,
-	"layout": syntaxfront.ProduceLayoutOracle,
-	"parse":  syntaxfront.ProduceParseOracle,
+	"dump":      protocol.ProduceDumpOracle,
+	"reduce":    platformsvc.ProduceReduceOracle,
+	"lower":     graphstore.ProduceLowerOracle,
+	"source":    syntaxfront.ProduceSourceOracle,
+	"lex":       syntaxfront.ProduceLexOracle,
+	"layout":    syntaxfront.ProduceLayoutOracle,
+	"parse":     syntaxfront.ProduceParseOracle,
+	"module":    semantics.ProduceModuleOracle,
+	"typecheck": semantics.ProduceTypecheckOracle,
 }
 
 func main() {
