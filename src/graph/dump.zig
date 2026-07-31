@@ -1,5 +1,5 @@
 //! dump.zig (split from graph/heap.zig, Phase 4 step 3,
-//! docs/GO_PORT_PLAN.md) — the low-level object-file (`.x`) wire format,
+//! docs/GoReady.md) — the low-level object-file (`.x`) wire format,
 //! **write half**: `dumpScript`/`dumpDefs`/`dumpOb`, the shared low-level cell
 //! primitives (`ap`/`datapair`/`mktvar`/`stackp*`/…, now `pub` for the read
 //! half to reach), `bindparams`/`unscramble` (`%include` alias resolution),

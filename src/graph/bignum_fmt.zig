@@ -1,5 +1,5 @@
 //! bignum_fmt.zig (split from graph/bignum.zig for the Go port's <1000-line
-//! file ratchet, docs/GO_PORT_PLAN.md P4) — the string<->bignum conversion
+//! file ratchet, docs/GoReady.md P4) — the string<->bignum conversion
 //! half: scan (`scanDecimal`/`scanHex`/`scanOctal`/`parseString`) and format
 //! (`toDecimalList`/`toHexList`/`toOctalList`). The arithmetic core and the
 //! shared digit-cell primitives stay in `bignum.zig`; the moved bodies reach

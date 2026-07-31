@@ -1,6 +1,6 @@
 //! syntax/parser_test.zig — the inline test suite for parser.zig, moved to a
 //! companion file for the Go port's <1000-line file ratchet
-//! (docs/GO_PORT_PLAN.md P4). It is the root of the `parser-tests` build
+//! (docs/GoReady.md P4). It is the root of the `parser-tests` build
 //! target: it imports parser.zig one-way (no cycle) and also aggregates
 //! lexer.zig's moved tests via `_ = @import("lexer_test.zig")`.
 
@@ -155,7 +155,7 @@ test "parseScript: error recovery records diagnostic and parses remaining items"
 
 test {
     // lexer.zig's inline tests were moved to `lexer_test.zig` for the Go
-    // port's <1000-line file ratchet (docs/GO_PORT_PLAN.md P4). Aggregating
+    // port's <1000-line file ratchet (docs/GoReady.md P4). Aggregating
     // them here (the syntax test-target root imports lexer one-way) keeps them
     // in the same test run without a lexer<->lexer_test import cycle.
     _ = @import("lexer_test.zig");

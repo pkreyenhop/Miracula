@@ -1,4 +1,4 @@
-//! semantics/infer_etype.zig — expression type-inference walker + conforms (docs/GO_PORT_PLAN.md P4).
+//! semantics/infer_etype.zig — expression type-inference walker + conforms (docs/GoReady.md P4).
 
 const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");

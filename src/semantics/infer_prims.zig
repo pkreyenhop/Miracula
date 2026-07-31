@@ -1,4 +1,4 @@
-//! semantics/infer_prims.zig — trivial cell/type wrappers (docs/GO_PORT_PLAN.md P4).
+//! semantics/infer_prims.zig — trivial cell/type wrappers (docs/GoReady.md P4).
 
 const word = @import("../graph/word.zig");
 const strtab = @import("../graph/strtab.zig");

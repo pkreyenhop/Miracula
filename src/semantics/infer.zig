@@ -516,7 +516,7 @@ fn checktypeRaw(heap: *Heap, x: Word) Word {
     return if (cs().TYPERRS == 0) 1 else 0;
 }
 
-/// `Value`-typed wrapper for `checktypeRaw` (§ GO_PORT_PLAN Phase 5 step 4g).
+/// `Value`-typed wrapper for `checktypeRaw` (§ GoReady Phase 5 step 4g).
 ///
 /// Tests: checktype: a boxed int typechecks cleanly, returning 1
 pub fn checktype(heap: *Heap, x: Value) Word {

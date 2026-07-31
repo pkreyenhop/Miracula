@@ -2,7 +2,7 @@
 """import_cycles.py — detect @import cycles among src/**/*.zig files.
 
 Used by scripts/scorecard.sh (informational baseline metric today) and, from
-docs/GO_PORT_PLAN.md Phase 4 onward, as the enforced module-layering gate:
+docs/GoReady.md Phase 4 onward, as the enforced module-layering gate:
 once the target tree lands, this script's cycle list must be empty (checked
 into an allowlist that only shrinks) for `zig build check` to pass.
 

@@ -1,5 +1,5 @@
 //! eval/combinators/ready_format.zig (split from ready.zig for the Go port's
-//! <1000-line file ratchet, docs/GO_PORT_PLAN.md P4) — Miranda `show`/`shownum`
+//! <1000-line file ratchet, docs/GoReady.md P4) — Miranda `show`/`shownum`
 //! float formatting: `formatMiraShowNum`/`formatMiraFixed`/`formatMiraScaled`/
 //! `formatMiraHex` (and the `bufFallback`/`toCScientificExponent` helpers).
 //! Pure `(buf, value) -> []const u8` string formatting, depending only on

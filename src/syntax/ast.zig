@@ -205,7 +205,7 @@ pub const TopLevel = union(enum) {
     /// parts grammar as raw text). Not yet consumed by `codegen.zig` (a
     /// no-op there, like the three variants above) or bound to real
     /// `%include`/`%export`/`%free` compilation semantics — see
-    /// docs/GO_PORT_PLAN.md's step 5 for what's still needed
+    /// docs/GoReady.md's step 5 for what's still needed
     /// (loading/compiling the included file, cycle detection,
     /// free-binding substitution).
     directive: Directive,

@@ -1,5 +1,5 @@
 //! script_store.zig (split from RuntimeState, Phase 4 step 4,
-//! docs/GO_PORT_PLAN.md) — the currently-loaded script's module/name
+//! docs/GoReady.md) — the currently-loaded script's module/name
 //! tables: the file lists a load walks and restores on error (`oldfiles`,
 //! `includees`, `ld_stuff`, `rfl`), the identifier sets a load produces
 //! (`freeids`, `exports`, `embargoes`, `detrop`), small per-load counters

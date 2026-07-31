@@ -1,5 +1,5 @@
 //! semantics/modules.zig — `%include`/`%export` semantics
-//! (docs/GO_PORT_PLAN.md Phase 1 step 5), built on `syntax/directives.zig`'s
+//! (docs/GoReady.md Phase 1 step 5), built on `syntax/directives.zig`'s
 //! structured `Directive` values.
 //!
 //! **Scope of this increment:** the two *pure* transformations the manual
@@ -162,7 +162,7 @@ pub fn applyAliases(
 
 // ---------------------------------------------------------------------------
 // The harder half: actually loading, compiling, and binding an `%include`d
-// file (docs/GO_PORT_PLAN.md Phase 1 step 5, landed 2026-07-06 — after
+// file (docs/GoReady.md Phase 1 step 5, landed 2026-07-06 — after
 // step 7's production cutover, per the user's own direction, so this is
 // built against the native pipeline rather than the legacy one about to be
 // replaced).

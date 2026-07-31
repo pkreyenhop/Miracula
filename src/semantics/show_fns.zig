@@ -1,5 +1,5 @@
 //! show_fns.zig (split from RuntimeState, Phase 4 step 4,
-//! docs/GO_PORT_PLAN.md) — the per-type `show` combinator identifiers
+//! docs/GoReady.md) — the per-type `show` combinator identifiers
 //! (heap `ID` nodes for `shownum1`/`showbool`/…, interned once at startup
 //! by `compiler/setup.zig` and read by `semantics/lower.zig`'s `mkshowt`
 //! when generating a type's derived show function).

@@ -2,7 +2,7 @@
 //! handful of REPL-facing helpers that outlived the character-at-a-time
 //! `yylex` tokenizer it used to share a file with.
 //!
-//! Phase 1 step 8 (docs/GO_PORT_PLAN.md) deleted `yylex`/the offside
+//! Phase 1 step 8 (docs/GoReady.md) deleted `yylex`/the offside
 //! `layout` rule/`%`-`directive` handling/numeral-string-charclass scanning
 //! and everything only they needed (~1,400 lines) once the native
 //! `syntax/` pipeline (`Source` → `lexer` → `applyLayout` →

@@ -1,5 +1,5 @@
 //! print.zig (split from runtime/heap.zig, Phase 4 step 3,
-//! docs/GO_PORT_PLAN.md) — term/type printing: `outTerm`/`outSubterm`/
+//! docs/GoReady.md) — term/type printing: `outTerm`/`outSubterm`/
 //! `outAtom` (readable dumps of a graph value, used for debug output and
 //! error messages) and `charname`/`outReal` (the char-escape and
 //! double-formatting helpers they call).

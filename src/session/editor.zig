@@ -1,5 +1,5 @@
 //! editor.zig (renamed from driver/lineedit.zig, Phase 4 step 1,
-//! docs/GO_PORT_PLAN.md) — interactive REPL line editing and history
+//! docs/GoReady.md) — interactive REPL line editing and history
 //! (via zigline).
 //!
 //! Installs `word.readInteractiveLine` so the stdin read path yields fully edited

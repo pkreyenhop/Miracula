@@ -1,4 +1,4 @@
-//! semantics/lower_sort.zig — relation/topological-sort helpers (docs/GO_PORT_PLAN.md P4).
+//! semantics/lower_sort.zig — relation/topological-sort helpers (docs/GoReady.md P4).
 
 const std = @import("std");
 const word = @import("../graph/word.zig");

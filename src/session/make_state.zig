@@ -1,5 +1,5 @@
 //! make_state.zig (split from RuntimeState, Phase 4 step 4,
-//! docs/GO_PORT_PLAN.md) — the `//make`/`-make` build-mode flags and its
+//! docs/GoReady.md) — the `//make`/`-make` build-mode flags and its
 //! accumulated failure list (`make_status`), previously four fields
 //! scattered among ~90 others in the monolithic `RuntimeState`.
 

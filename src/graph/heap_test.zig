@@ -1,6 +1,6 @@
 //! graph/heap_test.zig — inline test suite for heap.zig, moved to a
 //! companion file for the Go port's <1000-line file ratchet
-//! (docs/GO_PORT_PLAN.md P4). Same tests/names; reaches heap.zig through its
+//! (docs/GoReady.md P4). Same tests/names; reaches heap.zig through its
 //! public API. Aggregated into the test build one-way (no import cycle).
 
 const std = @import("std");

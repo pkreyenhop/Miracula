@@ -1,5 +1,5 @@
 //! config.zig (split from driver/startup.zig, Phase 4 step 3,
-//! docs/GO_PORT_PLAN.md) — command-line flag parsing and `.mirarc`
+//! docs/GoReady.md) — command-line flag parsing and `.mirarc`
 //! read/write. `boot.zig` drives these during `mainEntry`; nothing here
 //! depends on `boot.zig` (a deliberate one-directional split: `boot.zig`
 //! calls into `config.zig` for `versionString` in its miralib-not-found

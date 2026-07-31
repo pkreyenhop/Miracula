@@ -1,4 +1,4 @@
-//! semantics/lower_front.zig — expression helpers + bracket abstraction (docs/GO_PORT_PLAN.md P4).
+//! semantics/lower_front.zig — expression helpers + bracket abstraction (docs/GoReady.md P4).
 
 const std = @import("std");
 const word = @import("../graph/word.zig");

@@ -9,7 +9,7 @@ const word = @import("../graph/word.zig");
 /// Miranda interpreter domain errors.
 ///
 /// Used wherever Zig error unions replace C setjmp/longjmp non-local exits.
-/// SIGINT and float-overflow recovery (docs/GO_PORT_PLAN.md Phase 3) no
+/// SIGINT and float-overflow recovery (docs/GoReady.md Phase 3) no
 /// longer uses signal-context `siglongjmp`/`sigjmp_buf` at all: the SIGINT
 /// handler only sets a polled atomic flag (`runtime_state.zig`'s
 /// `interrupt_flag`), and float overflow is an explicit finite-check, not a
@@ -78,7 +78,7 @@ test "MiraError is a subset of anyerror" {
 /// Not for the evaluator's heap-exhaustion / impossible-state aborts, which
 /// dump interpreter statistics via `outstats()` before exiting — those remain
 /// their own category. `fmt`/`args` are Zig format strings (Phase 2 step 3,
-/// docs/GO_PORT_PLAN.md — converted from the old C-format/`word.fprintf`
+/// docs/GoReady.md — converted from the old C-format/`word.fprintf`
 /// convention along with all 16 call sites; `fmt` is now `comptime`, matching
 /// `word.print`/`word.printErr`).
 ///

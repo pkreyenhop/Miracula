@@ -1,5 +1,5 @@
 //! dump_load.zig (split from graph/dump.zig for the Go port's <1000-line file
-//! ratchet, docs/GO_PORT_PLAN.md P4) — the read half of the `.x` wire format:
+//! ratchet, docs/GoReady.md P4) — the read half of the `.x` wire format:
 //! `loadScript`/`loadDefs`. The write half (`dumpScript`/`dumpDefs`/`dumpOb`)
 //! and the shared low-level cell primitives stay in `dump.zig`; the moved
 //! bodies below reach them verbatim through the `dump.*` aliases.

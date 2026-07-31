@@ -1,5 +1,5 @@
 //! syntax/layout.zig — the offside/layout rule as an independent token-stream
-//! pass (docs/GO_PORT_PLAN.md Phase 1 step 3).
+//! pass (docs/GoReady.md Phase 1 step 3).
 //!
 //! `parser/lex.zig`'s offside handling is NOT a standalone pass: `yylex()`
 //! checks the current token's column against the lex state's `lmargin`

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""layer_check.py — enforce docs/GO_PORT_PLAN.md §4.1's import-layering rule.
+"""layer_check.py — enforce docs/GoReady.md §4.1's import-layering rule.
 
 Layer rule (CI-enforced, Phase 4): `graph` and `syntax` are leaves; `semantics`
 may import `syntax` + `graph`; `eval` may import `graph`; `session` may import
@@ -8,7 +8,7 @@ everything; nothing imports `session`; only `main.zig`/`session` and
 
 This only applies to files that have already landed in the target tree
 (src/graph, src/syntax, src/semantics, src/eval, src/session, src/main.zig,
-src/os.zig) -- Phase 4 step 1 was a partial move (see docs/GO_PORT_PLAN.md),
+src/os.zig) -- Phase 4 step 1 was a partial move (see docs/GoReady.md),
 so most of the codebase still lives in the pre-Phase-4 src/runtime,
 src/compiler, src/parser, src/driver, src/io directories and isn't classified
 into a layer yet. An edge is only checked once BOTH its source and target
@@ -128,7 +128,7 @@ def main():
         lines = [
             "# layer_check.py allowlist -- grandfathered layering violations.",
             "# Format: src/a.zig -> src/b.zig (one per line). Must shrink to",
-            "# empty by the end of Phase 4 (docs/GO_PORT_PLAN.md).",
+            "# empty by the end of Phase 4 (docs/GoReady.md).",
             "",
         ]
         for a, b in sorted(set(violations)):

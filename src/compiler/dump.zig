@@ -115,7 +115,7 @@ pub fn unfixexports(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Ru
 /// `x`'s own head chain, which the mutation rewrites) — same ordering the
 /// legacy `hash_idx = hash(getId(x))` computation used, just replacing a
 /// bucket-chain search with a direct rebind now that the dictionary is
-/// keyed by name (`semantics/symbols.zig`, GO_PORT_PLAN.md Phase 1 step 6).
+/// keyed by name (`semantics/symbols.zig`, GoReady.md Phase 1 step 6).
 fn privatise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
     const n = abi.makePn(heap, x);
     const nm = heap_mod.getId(x);
@@ -359,7 +359,7 @@ pub fn undump(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Co
 
 /// Writes a binary dump of the current heap state to the .mx file corresponding to
 /// `script_store.store().current_script`. A SIGINT mid-write is harmless (Phase 3,
-/// docs/GO_PORT_PLAN.md): the installed handler only sets a polled flag, so
+/// docs/GoReady.md): the installed handler only sets a polled flag, so
 /// no signal-deferral dance is needed here -- an interrupted write completes
 /// normally and, if it somehow leaves a corrupt dump, `undump`'s `BAD_DUMP`
 /// check deletes it on the next load anyway.

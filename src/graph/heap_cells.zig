@@ -1,6 +1,6 @@
 //! graph/heap_cells.zig — the cell arena + GC state (`Heap`/`Cell` structs
 //! and the `heap()` singleton) split out of heap.zig for the Go port's
-//! <1000-line file ratchet (docs/GO_PORT_PLAN.md P4). heap.zig keeps the
+//! <1000-line file ratchet (docs/GoReady.md P4). heap.zig keeps the
 //! free-function accessor API and re-exports these; one-way heap -> heap_cells.
 
 const std = @import("std");
@@ -81,7 +81,7 @@ pub const Heap = struct {
     files: Word = word.NIL,
     current_file: Word = word.NIL,
     /// Heap address of the `nil` combinator (Phase 4 step 4,
-    /// docs/GO_PORT_PLAN.md; set once during `miraSetup`, never
+    /// docs/GoReady.md; set once during `miraSetup`, never
     /// mutated after — moved off `CoreState`, whose "core state" was
     /// meant for cross-cutting error/mode flags, not heap-node identity
     /// already covered by this struct's other setup-time fields like
@@ -233,7 +233,7 @@ pub const Heap = struct {
 
     /// A snapshot of the heap's mutable state, taken before an in-process
     /// evaluation whose reductions must not persist if the evaluation is
-    /// interrupted or simply finishes (Phase 3, docs/GO_PORT_PLAN.md).
+    /// interrupted or simply finishes (Phase 3, docs/GoReady.md).
     ///
     /// Replaces fork-per-eval: the old design forked a child to do the
     /// reduction, and the child's heap mutations (being a separate,
@@ -549,7 +549,7 @@ pub const Heap = struct {
             self.mark(bnf_state.bnf().lexdefs);
             // The identifier dictionary (semantics/symbols.zig's SymbolTable,
             // replacing LexState.namebucket's hash-bucket array -- see
-            // GO_PORT_PLAN.md Phase 1 step 6): every ID node it references
+            // GoReady.md Phase 1 step 6): every ID node it references
             // must stay reachable, exactly as every namebucket entry used to.
             var syms_it = symbols.syms().table.valueIterator();
             while (syms_it.next()) |id| {

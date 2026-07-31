@@ -17,7 +17,7 @@ pub const DiagnosticStream = enum { stdout, stderr };
 /// and (since legacy's printing isn't uniform across call sites — see
 /// `DiagnosticStream`'s doc comment) how to print it. Shared by
 /// `parser/parser.zig`, `syntax/lexer.zig`, and `syntax/directives.zig`
-/// (Phase 2 step 2, docs/GO_PORT_PLAN.md — promoted from three
+/// (Phase 2 step 2, docs/GoReady.md — promoted from three
 /// independently-defined, near-identical structs to one, living here for
 /// the same reason `Span`/`DiagnosticStream` do: `syntax/` already depends
 /// on `parser/`, so `parser/ast.zig`/`parser/parser.zig` importing

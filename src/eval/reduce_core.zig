@@ -3,7 +3,7 @@
 //! import this file as `reduce`). It owns the `ReductionCtx` register file and
 //! the spine-traversal/accessor/classifier/rewrite helpers.
 //!
-//! **Typed registers (Phase 5 step 4, docs/GO_PORT_PLAN.md, 2026-07-13).**
+//! **Typed registers (Phase 5 step 4, docs/GoReady.md, 2026-07-13).**
 //! `ReductionCtx.e`/`.hold`/`.args` and every accessor/classifier/rewrite
 //! helper below now carry `graph/value.zig`'s `Value` instead of a bare
 //! `Word`. This is a real retype, not a wrapper: `Value` is a

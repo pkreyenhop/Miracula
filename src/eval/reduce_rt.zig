@@ -1,5 +1,5 @@
 //! reduce_rt.zig (renamed from runtime/reduce.zig, Phase 4 step 1,
-//! docs/GO_PORT_PLAN.md — the name collided with `reducer/reduce.zig`,
+//! docs/GoReady.md — the name collided with `reducer/reduce.zig`,
 //! the dispatch engine itself, once both moved under `eval/`) — runtime
 //! support around the reduction engine.
 //!

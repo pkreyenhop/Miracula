@@ -1,4 +1,4 @@
-//! semantics/lower_prims.zig — trivial cell/type wrapper layer (docs/GO_PORT_PLAN.md P4).
+//! semantics/lower_prims.zig — trivial cell/type wrapper layer (docs/GoReady.md P4).
 
 const word = @import("../graph/word.zig");
 const strtab = @import("../graph/strtab.zig");

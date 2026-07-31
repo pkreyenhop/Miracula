@@ -1,5 +1,5 @@
 //! eval/combinators/combinators_list.zig (split from combinators.zig for the
-//! Go port's <1000-line file ratchet, docs/GO_PORT_PLAN.md P4) — the list
+//! Go port's <1000-line file ratchet, docs/GoReady.md P4) — the list
 //! higher-order combinator handlers: `MAP`/`FLATMAP`/`FILTER`/`LIST_LAST`/
 //! `LENGTH`/`DROP`/`SUBSCRIPT`/`FOLDL1`/`FOLDL`/`FOLDR`. Each is an independent
 //! `handle<COMBINATOR>(ctx)` rewrite rule dispatched from `eval/reduce.zig`,

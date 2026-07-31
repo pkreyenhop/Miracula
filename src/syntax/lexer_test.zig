@@ -1,6 +1,6 @@
 //! syntax/lexer_test.zig — the inline test suite for lexer.zig, moved to a
 //! companion file for the Go port's <1000-line file ratchet
-//! (docs/GO_PORT_PLAN.md P4). Same tests, same names; lexer.zig aggregates
+//! (docs/GoReady.md P4). Same tests, same names; lexer.zig aggregates
 //! them via `test { _ = @import("lexer_test.zig"); }` so they run unchanged.
 
 const std = @import("std");

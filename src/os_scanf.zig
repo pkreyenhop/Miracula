@@ -1,5 +1,5 @@
 //! os_scanf.zig — the hand-rolled C `scanf`/`fscanf` family, split out of os.zig
-//! for the Go port's <1000-line file ratchet (docs/GO_PORT_PLAN.md P4). Part of
+//! for the Go port's <1000-line file ratchet (docs/GoReady.md P4). Part of
 //! the FFI floor (`os.zig` re-exports `sscanf`/`fscanf`); one-way os -> os_scanf.
 //! Per GO_ANYTYPE_INVENTORY these are slated for deletion in the Go port
 //! (replaced by fmt.Sscanf/fmt.Fscanf), so they live isolated here.

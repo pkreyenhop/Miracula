@@ -1,6 +1,6 @@
 # layer_check.py allowlist -- grandfathered layering violations.
 # Format: src/a.zig -> src/b.zig (one per line). Must shrink to
-# empty by the end of Phase 4 (docs/GO_PORT_PLAN.md).
+# empty by the end of Phase 4 (docs/GoReady.md).
 
 
 

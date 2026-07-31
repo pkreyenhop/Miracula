@@ -1,100 +1,168 @@
 # Miracula
 
-Miracula is a modern implementation of the **Miranda** programming language, migrated to the **Zig** programming language.
+Miracula is a modern implementation of the
+[Miranda](https://en.wikipedia.org/wiki/Miranda_(programming_language))
+programming language.
 
-The project's goal is to transition the original, historical C codebase into an idiomatic, pure-Zig implementation with clean module boundaries, solid cross-compilation support, and zero legacy build headaches.
+It provides an interactive environment, script compilation, lazy graph
+reduction, arbitrary-precision integer arithmetic, module directives, and the
+standard Miranda library and documentation.
 
----
+## Features
 
-## Current Status
+- Interactive read-evaluate-print loop
+- Miranda scripts and literate scripts
+- Lazy evaluation through combinator graph reduction
+- Pattern matching and algebraic data types
+- Type inference and type checking
+- Arbitrary-precision integers
+- Module inclusion, exports, aliases, and free declarations
+- Layout-sensitive syntax
+- Saved object files for compiled scripts
+- Standard environment, examples, help, and manual pages
+- Command-line, batch, and interactive workflows
 
-* **✔ Runtime Migrated to Zig**: The garbage-collected graph reduction runtime is fully rewritten and functioning in Zig.
-* **✔ Unified Zig Build System**: Replaced the legacy Makefiles and build scripts with `build.zig`.
-* **✔ Modular Source Structure**: Reorganized the source tree into logical packages (runtime, compiler, parser, and IO subsystems).
-* **✔ Pure Zig Parser**: The YACC/C parser (`rules.y` / `y.tab.c`) has been fully replaced with a recursive-descent + Pratt parser in Zig. No C parser files are compiled.
-* **✔ REPL Works Correctly**: The interactive REPL evaluates expressions with proper fork-based isolation — heavy computations (e.g. `fib 32`) do not corrupt the heap for subsequent evaluations.
-* **✔ Menudriver Works**: The Miranda menu-driven help viewer (`menudriver`) is built and installed into `miralib/` by `build.zig`. Zig 0.16 `writableVector` aliasing and shell read-ahead stdin isolation bugs fixed.
-* **✔ Tests Passing**: 60/61 tests pass across all suites (steer: 21, lex: 21, parser: 14, menudriver: 2, just: 2). The single known failure is a pre-existing `mira-tests` integration test.
-* **✔ Pure Zig Subsystem (No libc)**: Removed C standard library dependencies from the core interpreter. On macOS, it builds against libSystem, and on Linux, it compiles to statically linked ELF binaries via Musl, or dynamically linked binaries via glibc.
+## Quick start
 
----
+After building or installing the project, start the interactive environment:
 
-## Repository Layout
+```sh
+mira
+```
 
-* [src/runtime](src/runtime) — Graph reduction engine, big integers, and heap/garbage collector.
-* [src/compiler](src/compiler) — Typechecker, code generator, and translation structures.
-* [src/parser](src/parser) — Pure Zig lexer, recursive-descent + Pratt parser, and codegen bridge to the Miranda heap.
-* [src/io](src/io) — UTF-8 and signals platform IO abstractions.
-* [menudriver.zig](menudriver.zig) — Miranda menu-driven help viewer; built by `zig build` and installed into `miralib/`.
-* [tests](tests) — Integration, golden, and regression tests.
-* [miralib](miralib) — Miranda standard environment prelude and libraries.
+Load a script:
 
----
+```sh
+mira myfile.m
+```
+
+At the prompt, enter an expression to evaluate it:
+
+```text
+1 + 2
+take 10 [1..]
+```
+
+Quit with:
+
+```text
+/q
+```
+
+If the standard library is not in its installed location, provide it
+explicitly:
+
+```sh
+mira -lib /path/to/miralib myfile.m
+```
+
+The manual under `miralib/manual/` describes the available command-line and
+interactive options.
+
+## Example program
+
+Create `fib.m`:
+
+```miranda
+fib 0 = 0
+fib 1 = 1
+fib n = fib (n - 1) + fib (n - 2)
+```
+
+Load it:
+
+```sh
+mira fib.m
+```
+
+Then evaluate:
+
+```text
+fib 20
+```
+
+## Repository contents
+
+- `src/` — interpreter, parser, type checker, graph runtime, session, and
+  platform services
+- `miralib/` — standard environment, manual, help data, and example programs
+- `tests/` — unit, integration, compatibility, golden-output, interrupt, and
+  stress tests
+- `docs/` — project documentation and historical notes
+- `scripts/` — repository checks and maintenance utilities
+- `issues/` — issue-management utilities and records
 
 ## Building
 
-To build the `mira` executable:
+Use the build tooling supplied with the source checkout. A successful default
+build produces the `mira` command and the companion utilities used by the
+standard library.
 
-```bash
-zig build
-```
+Build instructions may change as the implementation evolves. The available
+targets in the project build definition are the source of truth for a given
+checkout.
 
-This compiles the executable and places it in `zig-out/bin/mira`.
+## Testing
 
-> [!IMPORTANT]
-> **Linux Build Relocation Error Workaround (glibc 2.43+ / GCC 15+)**
-> If you are compiling a Debug binary on rolling-release Linux distros (such as Arch Linux, Fedora, or Ubuntu 24.10+) and hit an ELF linker relocation error (related to `R_X86_64_PC64` in `.sframe` sections), you are running into a known upstream Zig compiler bug ([ziglang/zig#31272](https://github.com/ziglang/zig/issues/31272)).
->
-> To bypass this linker bug, compile with Release optimization enabled (which forces the use of LLVM instead of the self-hosted linker):
-> ```bash
-> zig build -Doptimize=ReleaseSafe
-> ```
+The repository includes:
 
----
+- focused subsystem tests;
+- parser and lexer tests;
+- executable smoke tests;
+- golden stdout and stderr comparisons;
+- object-file round-trip tests;
+- interrupt handling tests;
+- graph-reduction stress tests; and
+- compatibility comparisons against a reference executable.
 
-## Running
+Before submitting a change, run the complete verification target provided by
+the project build tooling. Tests that require a reference executable must run
+against the pinned reference rather than being treated as optional.
 
-```bash
-./zig-out/bin/mira            # load script.m and start REPL
-./zig-out/bin/mira myfile.m   # load a script and start REPL
-./zig-out/bin/mira -lib miralib miralib/stdenv.m   # load stdenv explicitly
-```
+## Standard library and examples
 
----
+The `miralib/` directory contains the standard environment and the historical
+Miranda documentation. Example programs are under `miralib/ex/`.
 
-## Running Tests
+Common examples include:
 
-To run all native unit and integration tests:
+- Fibonacci numbers
+- Prime-number streams
+- Quicksort and tree sort
+- The Hamming-number sequence
+- Matrices
+- Arbitrary-precision arithmetic
+- List and set operations
 
-```bash
-zig build test --summary all
-```
+## Supported systems
 
-To run only the main steer tests (fastest):
+The project is tested on:
 
-```bash
-zig build test-steer --summary all
-```
+- macOS on 64-bit ARM systems
+- Linux on 64-bit x86 systems
 
----
+Behavior that depends on processes, signals, terminals, or filesystem metadata
+may vary on unsupported systems.
 
-## Target Platforms
+## Compatibility
 
-Miracula officially supports and cross-compiles for:
-* **Apple Silicon macOS** (`aarch64-macos`)
-* **Intel 64-bit Linux** (`x86_64-linux`)
+Miracula aims to preserve Miranda language behavior, interactive behavior, and
+compiled object compatibility. Observable behavior is protected by
+golden-output, regression, and differential test suites.
 
----
+The project includes material derived from the historical Miranda distribution.
+See [LICENSE](LICENSE) and `miralib/COPYING` for licensing information.
 
-## Migration Roadmap
+## Contributing
 
-| Phase | Description | Status |
-| --- | --- | --- |
-| **Phase 1** | Runtime Migration to Zig | **Complete** ✔ |
-| **Phase 2** | Source Modularization | **Complete** ✔ |
-| **Phase 3** | Unified Build System | **Complete** ✔ |
-| **Phase 4** | libc Dependency Reduction | **Complete** ✔ |
-| **Phase 5** | Pure Zig Parser (No Yacc/C) | **Complete** ✔ |
-| **Phase 6** | Pure Zig Implementation (No libc) | **Complete** ✔ |
-| **Phase 7–9** | Idiomatic Zig Modernization | **Complete** ✔ (history: [docs/ZIG_MIGRATION.md](docs/ZIG_MIGRATION.md)) |
-| **Phase 10** | Go Port Preparation | *Planned — see [docs/GO_PORT_PLAN.md](docs/GO_PORT_PLAN.md)* |
+Changes should preserve:
+
+- language semantics;
+- lazy evaluation behavior;
+- standard-library compatibility;
+- command-line and interactive behavior;
+- diagnostic output where covered by compatibility tests; and
+- the compiled object-file format.
+
+Add or update tests for observable behavior changes. Keep generated fixtures
+deterministic and avoid committing local build outputs.

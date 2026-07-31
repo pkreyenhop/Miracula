@@ -1,4 +1,4 @@
-//! value.zig — the typed object model (Phase 5, docs/GO_PORT_PLAN.md §4.3).
+//! value.zig — the typed object model (Phase 5, docs/GoReady.md §4.3).
 //!
 //! Step 1: `Comb`, an exhaustive enum of every combinator/named-atom code,
 //! generated at comptime directly from `combinator.cmbnms` so it can never
@@ -186,14 +186,14 @@ test "Value: fromRaw/toRaw round-trip and kind() matches word.classify's roles" 
 // `.setTag` and `eval/reduce_core.zig`'s `ap`. These *coexist* with the
 // existing `Word`-typed methods for the length of this phase — exactly like
 // Phase 1's native `syntax/` pipeline coexisted with the legacy lexer until
-// its own final deletion step (docs/GO_PORT_PLAN.md, "no parallel
+// its own final deletion step (docs/GoReady.md, "no parallel
 // half-migrations" only means a shim must be gone by the *end* of the phase
 // that introduced it, not immediately). Callers migrate onto these one
 // subsystem at a time (step 4); `Heap.h`/`.t`/`.cons`/`.make` themselves are
 // only renamed/removed once nothing references the `Word` form anymore.
 //
 // `apOf` is defined here rather than imported from `eval/reduce_core.zig`'s
-// `ap` to keep `graph/` a leaf layer (docs/GO_PORT_PLAN.md §4.1: `graph`
+// `ap` to keep `graph/` a leaf layer (docs/GoReady.md §4.1: `graph`
 // may import nothing outside itself) — `ap` is just `make(.AP, x, y)`, so
 // there's nothing in `eval/` this actually needs.
 

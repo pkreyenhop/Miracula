@@ -1,5 +1,5 @@
 //! syntax/directives.zig — scans `%`-directives into structured `Directive`
-//! values (docs/GO_PORT_PLAN.md Phase 1 step 5, first half).
+//! values (docs/GoReady.md Phase 1 step 5, first half).
 //!
 //! `%` isn't a token in `syntax/lexer.zig` (deliberately deferred there):
 //! legacy's `directive()` does its own specialised scanning after `%` — a
