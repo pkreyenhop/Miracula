@@ -189,9 +189,9 @@ pub const Directive = union(enum) {
     export_list: struct { parts_text: []const u8, span: Span },
     /// Raw text of the `{ signature }` block (braces excluded).
     free: struct { spec_text: []const u8, span: Span },
-    /// `%insert`/`%list`/`%nolist`/`%bnf`/`%lex`/`%begin` — recognized, not
-    /// processed (see `syntax/directives.zig`'s header).
-    unsupported: struct { keyword: []const u8, span: Span },
+    /// `%list`/`%nolist`/`%bnf`/`%lex`/`%begin`: deliberately recognized
+    /// compatibility no-ops. `%insert` is consumed earlier by `Source`.
+    compat_noop: struct { keyword: []const u8, span: Span },
     /// A `%` followed by a name that isn't a known directive keyword
     /// (matches `lex.zig`'s `directive()` "unknown directive" error path).
     unknown: struct { text: []const u8, span: Span },
@@ -203,7 +203,7 @@ pub const Directive = union(enum) {
     pub fn deinit(self: Directive, gpa: std.mem.Allocator) void {
         switch (self) {
             .include => |inc| gpa.free(inc.aliases),
-            .export_list, .free, .unsupported, .unknown => {},
+            .export_list, .free, .compat_noop, .unknown => {},
         }
     }
 };

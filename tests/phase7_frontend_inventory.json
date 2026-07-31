@@ -1,0 +1,202 @@
+{
+  "directives": {
+    "bnf": {
+      "behavior": "recognized compatibility no-op; grammar extension is not translated as a second parser",
+      "owner": "syntax/directives.zig",
+      "test": "directives.Scanner compatibility ownership"
+    },
+    "export": {
+      "behavior": "parse export parts and apply the module export surface",
+      "owner": "semantics/modules.zig",
+      "test": "directive_export_scope"
+    },
+    "free": {
+      "behavior": "capture the signature block as a structured front-end directive",
+      "owner": "syntax/directives.zig",
+      "test": "directives.Scanner free"
+    },
+    "include": {
+      "behavior": "parse structured include, recursively load, bind aliases and detect cycles",
+      "owner": "semantics/modules.zig",
+      "test": "directive_include"
+    },
+    "insert": {
+      "behavior": "recursively splice source bytes before tokenization",
+      "owner": "syntax/source.zig",
+      "test": "insert_directive"
+    },
+    "lex": {
+      "behavior": "recognized compatibility no-op; lexer extension is not translated as a second lexer",
+      "owner": "syntax/directives.zig",
+      "test": "directives.Scanner compatibility ownership"
+    },
+    "list": {
+      "behavior": "recognized compatibility no-op",
+      "owner": "syntax/directives.zig",
+      "test": "directives.Scanner compatibility ownership"
+    },
+    "nolist": {
+      "behavior": "recognized compatibility no-op",
+      "owner": "syntax/directives.zig",
+      "test": "directives.Scanner compatibility ownership"
+    },
+    "unknown": {
+      "behavior": "stdout diagnostic: syntax error: unknown directive \"%<name>\"",
+      "owner": "syntax/directives.zig",
+      "test": "lex_err_unknown_directive"
+    }
+  },
+  "nonproduction_files": [
+    "eval/reduce_test.zig",
+    "graph/heap_test.zig",
+    "io/utf8.zig",
+    "micro_benchmarks.zig",
+    "parser/parser_tests.zig",
+    "syntax/lexer_test.zig",
+    "syntax/parser_test.zig",
+    "tools/fdate.zig",
+    "tools/just.zig",
+    "tools/menudriver.zig"
+  ],
+  "pipeline": {
+    "ast": {
+      "oracle": "parse-oracle",
+      "owner": "syntax/ast.zig"
+    },
+    "entry": {
+      "oracle": "source-oracle",
+      "owner": "parser/parser_api.zig"
+    },
+    "graph_codegen": {
+      "oracle": "lower-oracle",
+      "owner": "parser/codegen.zig"
+    },
+    "layout": {
+      "oracle": "layout-oracle",
+      "owner": "syntax/layout.zig"
+    },
+    "lex": {
+      "oracle": "lex-oracle",
+      "owner": "syntax/lexer.zig"
+    },
+    "module_directives": {
+      "oracle": "module-oracle",
+      "owner": "semantics/modules.zig"
+    },
+    "parse": {
+      "oracle": "parse-oracle",
+      "owner": "syntax/parser.zig"
+    },
+    "source": {
+      "oracle": "source-oracle",
+      "owner": "syntax/source.zig"
+    },
+    "token": {
+      "oracle": "lex-oracle",
+      "owner": "syntax/token_filter.zig"
+    }
+  },
+  "production_entrypoints": [
+    "main.zig:main",
+    "parser/parser_api.zig:parseCurrent"
+  ],
+  "reachable_files": [
+    "compiler/compiler_state.zig",
+    "compiler/dump.zig",
+    "compiler/module_loader.zig",
+    "compiler/setup.zig",
+    "eval/combinators/combinators.zig",
+    "eval/combinators/combinators_list.zig",
+    "eval/combinators/io.zig",
+    "eval/combinators/lex.zig",
+    "eval/combinators/ready.zig",
+    "eval/combinators/ready_format.zig",
+    "eval/reduce.zig",
+    "eval/reduce_core.zig",
+    "eval/reduce_rt.zig",
+    "eval/resources.zig",
+    "eval/spine.zig",
+    "eval/stream.zig",
+    "eval/trace.zig",
+    "graph/bignum.zig",
+    "graph/bignum_fmt.zig",
+    "graph/combinator.zig",
+    "graph/dump.zig",
+    "graph/dump_load.zig",
+    "graph/heap.zig",
+    "graph/heap_cells.zig",
+    "graph/print.zig",
+    "graph/roots.zig",
+    "graph/semantic_types.zig",
+    "graph/strtab.zig",
+    "graph/value.zig",
+    "graph/word.zig",
+    "io/files.zig",
+    "io/platform.zig",
+    "io/signals.zig",
+    "main.zig",
+    "os.zig",
+    "os_scanf.zig",
+    "parser/codegen.zig",
+    "parser/lex.zig",
+    "parser/lex_state.zig",
+    "parser/parser_api.zig",
+    "runtime/core_state.zig",
+    "runtime/errors.zig",
+    "runtime/runtime_state.zig",
+    "runtime/version.zig",
+    "semantics/depend.zig",
+    "semantics/infer.zig",
+    "semantics/infer_etype.zig",
+    "semantics/infer_prims.zig",
+    "semantics/infer_subst.zig",
+    "semantics/lower.zig",
+    "semantics/lower_front.zig",
+    "semantics/lower_prims.zig",
+    "semantics/lower_sort.zig",
+    "semantics/match.zig",
+    "semantics/modules.zig",
+    "semantics/show_fns.zig",
+    "semantics/symbols.zig",
+    "semantics/type_errors.zig",
+    "semantics/unify.zig",
+    "session/bnf_state.zig",
+    "session/boot.zig",
+    "session/commands.zig",
+    "session/config.zig",
+    "session/config_state.zig",
+    "session/editor.zig",
+    "session/interp.zig",
+    "session/make_state.zig",
+    "session/repl.zig",
+    "session/repl_session.zig",
+    "session/script_store.zig",
+    "syntax/ast.zig",
+    "syntax/directives.zig",
+    "syntax/layout.zig",
+    "syntax/lexer.zig",
+    "syntax/parser.zig",
+    "syntax/pratt.zig",
+    "syntax/source.zig",
+    "syntax/token_filter.zig",
+    "testutil.zig"
+  ],
+  "retained_parser_services": {
+    "parser/codegen.zig": [
+      "AST-to-graph construction only"
+    ],
+    "parser/lex.zig": [
+      "identifier dictionary and name interning",
+      "source stream open/close lifecycle",
+      "private-name and lexer-variable graph constructors"
+    ],
+    "parser/lex_state.zig": [
+      "file queue and module compilation state",
+      "dictionary-related compiler roots"
+    ],
+    "parser/parser_api.zig": [
+      "sole production parse entry and pipeline orchestration"
+    ]
+  },
+  "schema": 1
+}

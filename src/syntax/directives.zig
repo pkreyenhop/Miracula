@@ -19,7 +19,7 @@
 //! another file's bytes in place, not a token-level one), `%list`/`%nolist`
 //! (REPL echo verbosity, irrelevant to a native batch compiler), `%bnf`/
 //! `%lex`/`%begin` (the grammar-extension machinery, explicitly deferred to
-//! last in the plan). All five come back as `.unsupported`.
+//! last in the plan). These come back as explicit `.compat_noop` directives.
 //!
 //! **Deliberately raw text, not deep-parsed:** `%include`'s binder block
 //! (`{elem==num; zero=0; ...}`) and alias list, `%free`'s signature block,
@@ -275,7 +275,7 @@ pub const Scanner = struct {
         }
 
         // insert / list / nolist / bnf / lex / begin
-        return .{ .unsupported = .{ .keyword = keyword, .span = span } };
+        return .{ .compat_noop = .{ .keyword = keyword, .span = span } };
     }
 };
 
@@ -361,7 +361,7 @@ test "Scanner: %free { signature } (spec captured, braces excluded)" {
     try std.testing.expect(std.mem.indexOf(u8, d.free.spec_text, "zero :: elem") != null);
 }
 
-test "Scanner: %insert/%list/%nolist/%bnf/%lex are recognized as unsupported" {
+test "Scanner: %insert/%list/%nolist/%bnf/%lex have explicit compatibility ownership" {
     const gpa = std.testing.allocator;
     const cases = [_][]const u8{ "%insert \"x\"\n", "%list\n", "%nolist\n", "%bnf\n", "%lex\n" };
     const expected_keywords = [_][]const u8{ "insert", "list", "nolist", "bnf", "lex" };
@@ -369,8 +369,8 @@ test "Scanner: %insert/%list/%nolist/%bnf/%lex are recognized as unsupported" {
         var src = try Source.fromBytes(gpa, case);
         defer src.deinit();
         const d = try scanOne(gpa, &src, 0);
-        try std.testing.expect(d == .unsupported);
-        try std.testing.expectEqualStrings(expected, d.unsupported.keyword);
+        try std.testing.expect(d == .compat_noop);
+        try std.testing.expectEqualStrings(expected, d.compat_noop.keyword);
     }
 }
 
