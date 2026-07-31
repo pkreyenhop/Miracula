@@ -10,6 +10,7 @@
 
 const std = @import("std");
 const word = @import("word.zig");
+const xcodec = @import("xcodec.zig");
 const strtab = @import("strtab.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const script_store = @import("../session/script_store.zig");
@@ -319,20 +320,33 @@ pub fn putword(x_val: Word, file: ?*word.Stream) void {
 
 /// Write a 32-bit int to dump `file`.
 pub fn putint(n: i32, file: ?*word.Stream) void {
-    _ = word.fwrite(&n, @sizeOf(i32), 1, file);
+    var bytes: [4]u8 = undefined;
+    var writer = xcodec.Writer.init(&bytes);
+    writer.writeI32(n) catch unreachable;
+    _ = word.fwrite(&bytes, bytes.len, 1, file);
+}
+
+fn flagBadDump() void {
+    cs().BAD_DUMP = 1;
 }
 
 /// Read a 32-bit int from dump `file`.
 pub fn getint(file: ?*word.Stream) i32 {
-    var r: i32 = 0;
-    _ = word.fread(&r, @sizeOf(i32), 1, file);
-    return r;
+    var bytes: [4]u8 = undefined;
+    if (word.fread(&bytes, bytes.len, 1, file) != 1) {
+        flagBadDump();
+        return 0;
+    }
+    var reader = xcodec.Reader.init(&bytes);
+    return reader.readI32() catch unreachable;
 }
 
 /// Write the double in cell `x` to dump `file`.
 pub fn putdbl(x: Word, file: ?*word.Stream) void {
-    var d = getDbl(x);
-    _ = word.fwrite(&d, @sizeOf(f64), 1, file);
+    var bytes: [8]u8 = undefined;
+    var writer = xcodec.Writer.init(&bytes);
+    writer.writeDouble(getDbl(x)) catch unreachable;
+    _ = word.fwrite(&bytes, bytes.len, 1, file);
 }
 
 /// Read a double from dump `file` (as a `DOUBLE` node). A non-finite value
@@ -341,10 +355,15 @@ pub fn putdbl(x: Word, file: ?*word.Stream) void {
 /// other dump corruption is, via `BAD_DUMP`, rather than threading a Zig
 /// error through the whole dump-loading loop.
 pub fn getdbl(file: ?*word.Stream) Word {
-    var d: f64 = 0;
-    _ = word.fread(&d, @sizeOf(f64), 1, file);
+    var bytes: [8]u8 = undefined;
+    if (word.fread(&bytes, bytes.len, 1, file) != 1) {
+        flagBadDump();
+        return word.NIL;
+    }
+    var reader = xcodec.Reader.init(&bytes);
+    const d = reader.readDouble() catch unreachable;
     return stoDbl(d) catch {
-        cs().BAD_DUMP = 1;
+        flagBadDump();
         return word.NIL;
     };
 }

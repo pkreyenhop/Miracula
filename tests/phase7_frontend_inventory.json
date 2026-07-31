@@ -131,6 +131,7 @@
     "graph/strtab.zig",
     "graph/value.zig",
     "graph/word.zig",
+    "graph/xcodec.zig",
     "io/files.zig",
     "io/platform.zig",
     "io/signals.zig",

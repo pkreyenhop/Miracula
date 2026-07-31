@@ -54,6 +54,7 @@ comptime {
     _ = @import("graph/heap.zig");
     _ = @import("graph/heap_test.zig");
     _ = @import("graph/value.zig");
+    _ = @import("graph/xcodec.zig");
     _ = @import("graph/strtab.zig");
     _ = @import("eval/reduce_test.zig");
     _ = @import("eval/spine.zig");

@@ -32,6 +32,7 @@
     "graph/strtab.zig": "graphstore",
     "graph/value.zig": "protocol",
     "graph/word.zig": "protocol",
+    "graph/xcodec.zig": "protocol",
     "io/files.zig": "platformsvc",
     "io/platform.zig": "platformsvc",
     "io/signals.zig": "platformsvc",

@@ -11,6 +11,7 @@
 //! converted to `std.mem`/`std.ascii` directly.
 
 const std = @import("std");
+const xcodec = @import("xcodec.zig");
 
 /// The interpreter's universal machine word — a tagged graph value: a bare
 /// immediate (char/small int), an atom code (token/combinator/named atom), or a
@@ -287,29 +288,29 @@ pub const INFIXCNAME: Word = 305;
 /// `std.DynamicBitSetUnmanaged`) tracks that separately now, so a cell's tag
 /// byte is always exactly one of the 23 members below, and Zig can enforce it.
 pub const NodeTag = enum(u8) {
-    ATOM = 0,
-    DOUBLE = 1,
-    DATAPAIR = 2,
-    FILEINFO = 3,
-    TVAR = 4,
-    INT = 5,
-    CONSTRUCTOR = 6,
-    STRCONS = 7,
-    ID = 8,
-    AP = 9,
-    LAMBDA = 10,
-    CONS = 11,
-    TRIES = 12,
-    LABEL = 13,
-    SHOW = 14,
-    STARTREADVALS = 15,
-    LET = 16,
-    LETREC = 17,
-    SHARE = 18,
-    LEXER = 19,
-    PAIR = 20,
-    UNICODE = 21,
-    TCONS = 22,
+    ATOM = @intFromEnum(xcodec.NodeTag.atom),
+    DOUBLE = @intFromEnum(xcodec.NodeTag.double),
+    DATAPAIR = @intFromEnum(xcodec.NodeTag.data_pair),
+    FILEINFO = @intFromEnum(xcodec.NodeTag.file_info),
+    TVAR = @intFromEnum(xcodec.NodeTag.type_variable),
+    INT = @intFromEnum(xcodec.NodeTag.integer),
+    CONSTRUCTOR = @intFromEnum(xcodec.NodeTag.constructor),
+    STRCONS = @intFromEnum(xcodec.NodeTag.string_cons),
+    ID = @intFromEnum(xcodec.NodeTag.identifier),
+    AP = @intFromEnum(xcodec.NodeTag.application),
+    LAMBDA = @intFromEnum(xcodec.NodeTag.lambda),
+    CONS = @intFromEnum(xcodec.NodeTag.cons),
+    TRIES = @intFromEnum(xcodec.NodeTag.tries),
+    LABEL = @intFromEnum(xcodec.NodeTag.label),
+    SHOW = @intFromEnum(xcodec.NodeTag.show),
+    STARTREADVALS = @intFromEnum(xcodec.NodeTag.start_read_values),
+    LET = @intFromEnum(xcodec.NodeTag.let),
+    LETREC = @intFromEnum(xcodec.NodeTag.letrec),
+    SHARE = @intFromEnum(xcodec.NodeTag.share),
+    LEXER = @intFromEnum(xcodec.NodeTag.lexer),
+    PAIR = @intFromEnum(xcodec.NodeTag.pair),
+    UNICODE = @intFromEnum(xcodec.NodeTag.unicode),
+    TCONS = @intFromEnum(xcodec.NodeTag.type_cons),
 };
 
 // Tag-pointer bits and misc parser/config constants, relocated from c_abi.zig.
@@ -678,7 +679,7 @@ pub const MAXDIGIT: Word = 0x7fff;
 /// Largest Unicode code point (`U+10FFFF`).
 pub const UMAX: Word = 0x10ffff;
 /// Dump-file format version written/expected by the `.x` serialiser.
-pub const XVERSION: Word = 83;
+pub const XVERSION: Word = xcodec.version;
 
 // Dump-file (`.x`) serialiser marker codes (`XBASE + n`): the tag bytes the
 // dump/undump round-trip writes ahead of each serialised node.
@@ -686,37 +687,37 @@ pub const XVERSION: Word = 83;
 /// Base of the dump-marker range.
 pub const XBASE: Word = ATOMLIMIT - 256;
 /// Dump marker: a character value.
-pub const CHAR_X: Word = XBASE;
+pub const CHAR_X: Word = @intFromEnum(xcodec.Tag.char);
 /// Dump marker: a short integer.
-pub const SHORT_X: Word = XBASE + 1;
+pub const SHORT_X: Word = @intFromEnum(xcodec.Tag.short);
 /// Dump marker: a (big) integer.
-pub const INT_X: Word = XBASE + 2;
+pub const INT_X: Word = @intFromEnum(xcodec.Tag.integer);
 /// Dump marker: a double-precision float.
-pub const DBL_X: Word = XBASE + 3;
+pub const DBL_X: Word = @intFromEnum(xcodec.Tag.double);
 /// Dump marker: an identifier.
-pub const ID_X: Word = XBASE + 4;
+pub const ID_X: Word = @intFromEnum(xcodec.Tag.identifier);
 /// Dump marker: an alias (`a.k.a.`) reference to an already-dumped node.
-pub const AKA_X: Word = XBASE + 5;
+pub const AKA_X: Word = @intFromEnum(xcodec.Tag.alias);
 /// Dump marker: a source-position (`here`) annotation.
-pub const HERE_X: Word = XBASE + 6;
+pub const HERE_X: Word = @intFromEnum(xcodec.Tag.here);
 /// Dump marker: a constructor node.
-pub const CONSTRUCT_X: Word = XBASE + 7;
+pub const CONSTRUCT_X: Word = @intFromEnum(xcodec.Tag.constructor);
 /// Dump marker: a `readvals` node.
-pub const RV_X: Word = XBASE + 8;
+pub const RV_X: Word = @intFromEnum(xcodec.Tag.read_values);
 /// Dump marker: a pattern node.
-pub const PN_X: Word = XBASE + 9;
+pub const PN_X: Word = @intFromEnum(xcodec.Tag.pattern);
 /// Dump marker: a one-argument pattern node.
-pub const PN1_X: Word = XBASE + 10;
+pub const PN1_X: Word = @intFromEnum(xcodec.Tag.wide_pattern);
 /// Dump marker: a definition.
-pub const DEF_X: Word = XBASE + 11;
+pub const DEF_X: Word = @intFromEnum(xcodec.Tag.definition);
 /// Dump marker: a function application.
-pub const AP_X: Word = XBASE + 12;
+pub const AP_X: Word = @intFromEnum(xcodec.Tag.application);
 /// Dump marker: a cons cell.
-pub const CONS_X: Word = XBASE + 13;
+pub const CONS_X: Word = @intFromEnum(xcodec.Tag.cons);
 /// Dump marker: a type variable.
-pub const TVAR_X: Word = XBASE + 14;
+pub const TVAR_X: Word = @intFromEnum(xcodec.Tag.type_variable);
 /// Dump marker: a Unicode character.
-pub const UNICODE_X: Word = XBASE + 15;
+pub const UNICODE_X: Word = @intFromEnum(xcodec.Tag.unicode);
 
 // stdio / file-handle machinery (Phase 2 step 4, docs/GoReady.md) —
 // moved to stream.zig; re-exported here unchanged so every existing
