@@ -314,12 +314,25 @@ fn applyExportsAndAliases(heap: *heap_mod.Heap, gpa: std.mem.Allocator, script: 
     // Bind every alias name that isn't already the name its id resolves
     // under (a rename's "new" half; the "old" half is handled by the hide
     // pass below, since applyAliases already dropped it from `visible`).
+    // Hash-map order is deliberately discarded at this semantic boundary.
+    var visible_names = try gpa.alloc([]const u8, visible.count());
+    defer gpa.free(visible_names);
     var vit = visible.iterator();
-    while (vit.next()) |entry| {
-        if (symbols.syms().find(entry.key_ptr.*)) |existing| {
-            if (existing.toRaw() == entry.value_ptr.*) continue; // already bound under this name
+    var visible_count: usize = 0;
+    while (vit.next()) |entry| : (visible_count += 1) {
+        visible_names[visible_count] = entry.key_ptr.*;
+    }
+    std.sort.pdq([]const u8, visible_names, {}, struct {
+        fn lessThan(_: void, left: []const u8, right: []const u8) bool {
+            return std.mem.lessThan(u8, left, right);
         }
-        try symbols.syms().bind(gpa, entry.key_ptr.*, Value.fromRaw(entry.value_ptr.*));
+    }.lessThan);
+    for (visible_names) |name| {
+        const value = visible.get(name).?;
+        if (symbols.syms().find(name)) |existing| {
+            if (existing.toRaw() == value) continue; // already bound under this name
+        }
+        try symbols.syms().bind(gpa, name, Value.fromRaw(value));
     }
 
     // Hide every one of this script's own top-level names that didn't

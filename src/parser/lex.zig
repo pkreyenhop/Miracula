@@ -538,7 +538,6 @@ pub fn completeIds(heap: *Heap, prefix: []const u8, out: [][*:0]const u8) usize 
     var n: usize = 0;
     var it = symbols.syms().table.iterator();
     while (it.next()) |entry| {
-        if (n >= out.len) return n;
         const idnode = entry.value_ptr.*;
         if (heap_mod.idType(idnode) == word.undef_t) continue; // not (yet) in scope
         // Safe: every SymbolTable key is `heap.getId()`'s result (via
@@ -547,8 +546,20 @@ pub fn completeIds(heap: *Heap, prefix: []const u8, out: [][*:0]const u8) usize 
         // type level.
         const id_name: [*:0]const u8 = @ptrCast(entry.key_ptr.*.ptr);
         if (std.mem.startsWith(u8, std.mem.span(id_name), prefix)) {
-            out[n] = id_name;
-            n += 1;
+            if (n < out.len) {
+                out[n] = id_name;
+                n += 1;
+            } else if (out.len == 0 or !std.mem.lessThan(u8, std.mem.span(id_name), std.mem.span(out[n - 1]))) {
+                continue;
+            } else {
+                // Keep the lexicographically smallest `out.len` matches even
+                // when the hash table contains more candidates.
+                out[n - 1] = id_name;
+            }
+            var pos = n - 1;
+            while (pos > 0 and std.mem.lessThan(u8, std.mem.span(out[pos]), std.mem.span(out[pos - 1]))) : (pos -= 1) {
+                std.mem.swap([*:0]const u8, &out[pos], &out[pos - 1]);
+            }
         }
     }
     return n;

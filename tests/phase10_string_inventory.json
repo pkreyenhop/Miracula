@@ -171,9 +171,9 @@
     "parser/lex.zig": {
       "classification": "migration_compatibility",
       "pointer_arithmetic": 10,
-      "sentinel_pointer": 27,
+      "sentinel_pointer": 28,
       "sentinel_slice": 1,
-      "span_conversion": 14
+      "span_conversion": 18
     },
     "parser/lex_state.zig": {
       "classification": "migration_compatibility",

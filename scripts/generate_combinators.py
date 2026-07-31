@@ -98,6 +98,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--bootstrap", action="store_true")
     parser.add_argument("--write", action="store_true")
+    parser.add_argument("--output", type=Path, default=OUTPUT)
     args = parser.parse_args()
     if args.bootstrap:
         SCHEMA.parent.mkdir(parents=True, exist_ok=True)
@@ -106,10 +107,11 @@ def main() -> int:
     validate(data)
     generated = render(data)
     if args.write:
-        OUTPUT.write_text(generated, encoding="utf-8")
-        print(f"wrote {OUTPUT.relative_to(ROOT)}")
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(generated, encoding="utf-8")
+        print(f"wrote {args.output}")
         return 0
-    if not OUTPUT.exists() or OUTPUT.read_text(encoding="utf-8") != generated:
+    if not args.output.exists() or args.output.read_text(encoding="utf-8") != generated:
         print("generated combinator output is stale; run with --write")
         return 1
     print(f"combinator artifact verified: {len(data['entries'])} stable entries")

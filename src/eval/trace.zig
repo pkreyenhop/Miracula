@@ -70,7 +70,8 @@ pub fn dump(t: *TraceState) void {
     std.sort.pdq(usize, order[0..n], t, struct {
         /// Order comparator: sort combinator slots by descending step count.
         fn lt(ts: *TraceState, a: usize, b: usize) bool {
-            return ts.heads[a] > ts.heads[b];
+            if (ts.heads[a] != ts.heads[b]) return ts.heads[a] > ts.heads[b];
+            return a < b;
         }
     }.lt);
 

@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "byte_order": "unsigned UTF-8 bytes, ascending",
+  "sites": {
+    "graph/heap_cells.zig:bases:valueIterator": "GC marking is a commutative reachability operation; sweep order is heap-index order",
+    "parser/lex.zig:completeIds:iterator": "completion retains and returns the lexicographically smallest matches in canonical byte order",
+    "semantics/modules.zig:applyAliases:iterator": "map copy only; aliases are subsequently applied in source order",
+    "semantics/modules.zig:applyExportsAndAliases:iterator": "visible binding names are sorted in canonical byte order before binding",
+    "semantics/modules.zig:applyExportsAndAliases:keyIterator": "map construction only; its user-visible binding boundary is sorted",
+    "semantics/modules.zig:resolveExports:keyIterator": "set subtraction is commutative and has no output order"
+  }
+}
