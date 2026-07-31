@@ -540,7 +540,7 @@
           "target_file": "compiler_state.go",
           "target_package": "application",
           "target_symbol": "CompilerStateWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -569,7 +569,7 @@
           "target_file": "compiler_state.go",
           "target_package": "application",
           "target_symbol": "CompilerState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -598,7 +598,7 @@
           "target_file": "compiler_state.go",
           "target_package": "application",
           "target_symbol": "CompilerState.MarkRoots",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -627,7 +627,7 @@
           "target_file": "compiler_state.go",
           "target_package": "application",
           "target_symbol": "CompilerStateBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -656,12 +656,12 @@
           "target_file": "compiler_state.go",
           "target_package": "application",
           "target_symbol": "CompilerStateCs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "compiler_state.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -1260,7 +1260,7 @@
           "target_file": "dump.go",
           "target_package": "application",
           "target_symbol": "DumpHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -1307,7 +1307,7 @@
           "target_file": "dump.go",
           "target_package": "application",
           "target_symbol": "DumpWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -1354,7 +1354,7 @@
           "target_file": "dump.go",
           "target_package": "application",
           "target_symbol": "DumpGetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -1401,7 +1401,7 @@
           "target_file": "dump.go",
           "target_package": "application",
           "target_symbol": "DumpSetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -1448,7 +1448,7 @@
           "target_file": "dump.go",
           "target_package": "application",
           "target_symbol": "DumpFixexports",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -1495,7 +1495,7 @@
           "target_file": "dump.go",
           "target_package": "application",
           "target_symbol": "DumpPaint",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -1542,7 +1542,7 @@
           "target_file": "dump.go",
           "target_package": "application",
           "target_symbol": "DumpUnpainted",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -1589,7 +1589,7 @@
           "target_file": "dump.go",
           "target_package": "application",
           "target_symbol": "DumpUnpaint",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -1636,7 +1636,7 @@
           "target_file": "dump.go",
           "target_package": "application",
           "target_symbol": "DumpUnfixexports",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -1683,7 +1683,7 @@
           "target_file": "dump.go",
           "target_package": "application",
           "target_symbol": "DumpPrivatise",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -1730,7 +1730,7 @@
           "target_file": "dump.go",
           "target_package": "application",
           "target_symbol": "DumpPublicise",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -1777,7 +1777,7 @@
           "target_file": "dump.go",
           "target_package": "application",
           "target_symbol": "DumpReadoption",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -1824,7 +1824,7 @@
           "target_file": "dump.go",
           "target_package": "application",
           "target_symbol": "DumpFixtype",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -1871,7 +1871,7 @@
           "target_file": "dump.go",
           "target_package": "application",
           "target_symbol": "DumpPnVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -1918,7 +1918,7 @@
           "target_file": "dump.go",
           "target_package": "application",
           "target_symbol": "DumpUndump",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -1965,12 +1965,12 @@
           "target_file": "dump.go",
           "target_package": "application",
           "target_symbol": "DumpMakedump",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "dump.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -3121,7 +3121,7 @@
           "target_file": "module_loader.go",
           "target_package": "application",
           "target_symbol": "ModuleLoaderGetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -3175,7 +3175,7 @@
           "target_file": "module_loader.go",
           "target_package": "application",
           "target_symbol": "ModuleLoaderWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -3229,7 +3229,7 @@
           "target_file": "module_loader.go",
           "target_package": "application",
           "target_symbol": "ModuleLoaderHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -3283,7 +3283,7 @@
           "target_file": "module_loader.go",
           "target_package": "application",
           "target_symbol": "ModuleLoaderPnVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -3337,7 +3337,7 @@
           "target_file": "module_loader.go",
           "target_package": "application",
           "target_symbol": "ModuleLoaderLoadfile",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -3391,7 +3391,7 @@
           "target_file": "module_loader.go",
           "target_package": "application",
           "target_symbol": "ModuleLoaderResolveExportFileList",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -3445,7 +3445,7 @@
           "target_file": "module_loader.go",
           "target_package": "application",
           "target_symbol": "ModuleLoaderResolveExports",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -3499,7 +3499,7 @@
           "target_file": "module_loader.go",
           "target_package": "application",
           "target_symbol": "ModuleLoaderComputeBereavedNames",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -3553,7 +3553,7 @@
           "target_file": "module_loader.go",
           "target_package": "application",
           "target_symbol": "ModuleLoaderReportBereavedExports",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -3607,7 +3607,7 @@
           "target_file": "module_loader.go",
           "target_package": "application",
           "target_symbol": "ModuleLoaderReportUnusedDefinitions",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -3661,12 +3661,12 @@
           "target_file": "module_loader.go",
           "target_package": "application",
           "target_symbol": "ModuleLoaderMkincludes",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "module_loader.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -4555,7 +4555,7 @@
           "target_file": "setup.go",
           "target_package": "application",
           "target_symbol": "SetupHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -4597,7 +4597,7 @@
           "target_file": "setup.go",
           "target_package": "application",
           "target_symbol": "SetupWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -4639,7 +4639,7 @@
           "target_file": "setup.go",
           "target_package": "application",
           "target_symbol": "SetupSyntax",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -4681,7 +4681,7 @@
           "target_file": "setup.go",
           "target_package": "application",
           "target_symbol": "SetupActerror",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -4723,7 +4723,7 @@
           "target_file": "setup.go",
           "target_package": "application",
           "target_symbol": "SetupPrimdef",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -4765,7 +4765,7 @@
           "target_file": "setup.go",
           "target_package": "application",
           "target_symbol": "SetupPredef",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -4807,7 +4807,7 @@
           "target_file": "setup.go",
           "target_package": "application",
           "target_symbol": "SetupPrimlib",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -4849,7 +4849,7 @@
           "target_file": "setup.go",
           "target_package": "application",
           "target_symbol": "SetupPrivlib",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -4891,7 +4891,7 @@
           "target_file": "setup.go",
           "target_package": "application",
           "target_symbol": "SetupStdlib",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -4933,7 +4933,7 @@
           "target_file": "setup.go",
           "target_package": "application",
           "target_symbol": "SetupMktiny",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -4975,12 +4975,12 @@
           "target_file": "setup.go",
           "target_package": "application",
           "target_symbol": "SetupMiraSetup",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "setup.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -57797,7 +57797,7 @@
           "target_file": "c_compat.go",
           "target_package": "application",
           "target_symbol": "CCompatPtrInt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -57824,7 +57824,7 @@
           "target_file": "c_compat.go",
           "target_package": "application",
           "target_symbol": "CCompatStrcmp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -57851,7 +57851,7 @@
           "target_file": "c_compat.go",
           "target_package": "application",
           "target_symbol": "CCompatStrcpy",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -57878,12 +57878,12 @@
           "target_file": "c_compat.go",
           "target_package": "application",
           "target_symbol": "CCompatUnlink",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "c_compat.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -58009,7 +58009,7 @@
           "target_file": "core_state.go",
           "target_package": "application",
           "target_symbol": "CoreStateWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -58036,7 +58036,7 @@
           "target_file": "core_state.go",
           "target_package": "application",
           "target_symbol": "CoreState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -58063,7 +58063,7 @@
           "target_file": "core_state.go",
           "target_package": "application",
           "target_symbol": "CoreStateBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -58090,12 +58090,12 @@
           "target_file": "core_state.go",
           "target_package": "application",
           "target_symbol": "CoreStateS",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "core_state.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -58434,7 +58434,7 @@
           "target_file": "runtime_state.go",
           "target_package": "application",
           "target_symbol": "RuntimeStateDefaultHeapTop",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -58464,7 +58464,7 @@
           "target_file": "runtime_state.go",
           "target_package": "application",
           "target_symbol": "RuntimeStateBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -58494,7 +58494,7 @@
           "target_file": "runtime_state.go",
           "target_package": "application",
           "target_symbol": "RuntimeStateWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -58524,7 +58524,7 @@
           "target_file": "runtime_state.go",
           "target_package": "application",
           "target_symbol": "RuntimeState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -58554,7 +58554,7 @@
           "target_file": "runtime_state.go",
           "target_package": "application",
           "target_symbol": "RuntimeState.Validate",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -58584,12 +58584,12 @@
           "target_file": "runtime_state.go",
           "target_package": "application",
           "target_symbol": "RuntimeStateRs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "runtime_state.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -58655,7 +58655,7 @@
       "symbols": [],
       "target_file": "version.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -83369,7 +83369,7 @@
           "target_file": "bnf_state.go",
           "target_package": "application",
           "target_symbol": "BnfStateWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -83396,7 +83396,7 @@
           "target_file": "bnf_state.go",
           "target_package": "application",
           "target_symbol": "BnfState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -83423,7 +83423,7 @@
           "target_file": "bnf_state.go",
           "target_package": "application",
           "target_symbol": "BnfStateBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -83450,12 +83450,12 @@
           "target_file": "bnf_state.go",
           "target_package": "application",
           "target_symbol": "BnfStateBnf",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "bnf_state.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -84291,7 +84291,7 @@
           "target_file": "boot.go",
           "target_package": "application",
           "target_symbol": "BootWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -84345,7 +84345,7 @@
           "target_file": "boot.go",
           "target_package": "application",
           "target_symbol": "BootHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -84399,7 +84399,7 @@
           "target_file": "boot.go",
           "target_package": "application",
           "target_symbol": "BootGetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -84453,7 +84453,7 @@
           "target_file": "boot.go",
           "target_package": "application",
           "target_symbol": "BootUnlimitStack",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -84507,7 +84507,7 @@
           "target_file": "boot.go",
           "target_package": "application",
           "target_symbol": "BootMainEntry",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -84561,7 +84561,7 @@
           "target_file": "boot.go",
           "target_package": "application",
           "target_symbol": "BootResolveMiralib",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -84615,7 +84615,7 @@
           "target_file": "boot.go",
           "target_package": "application",
           "target_symbol": "BootRunExportsMode",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -84669,7 +84669,7 @@
           "target_file": "boot.go",
           "target_package": "application",
           "target_symbol": "BootRunSourcesMode",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -84723,7 +84723,7 @@
           "target_file": "boot.go",
           "target_package": "application",
           "target_symbol": "BootRunMakeMode",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -84777,7 +84777,7 @@
           "target_file": "boot.go",
           "target_package": "application",
           "target_symbol": "BootReportMakeFailures",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -84831,7 +84831,7 @@
           "target_file": "boot.go",
           "target_package": "application",
           "target_symbol": "BootCheckVersion",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -84885,12 +84885,12 @@
           "target_file": "boot.go",
           "target_package": "application",
           "target_symbol": "BootLibFails",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "boot.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -87600,7 +87600,7 @@
           "target_file": "config.go",
           "target_package": "application",
           "target_symbol": "ConfigWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -87639,7 +87639,7 @@
           "target_file": "config.go",
           "target_package": "application",
           "target_symbol": "ConfigFlagOutOfRange",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -87678,7 +87678,7 @@
           "target_file": "config.go",
           "target_package": "application",
           "target_symbol": "ConfigParsedFlags",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -87717,7 +87717,7 @@
           "target_file": "config.go",
           "target_package": "application",
           "target_symbol": "ConfigArgIs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -87756,7 +87756,7 @@
           "target_file": "config.go",
           "target_package": "application",
           "target_symbol": "ConfigParseFlags",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -87795,7 +87795,7 @@
           "target_file": "config.go",
           "target_package": "application",
           "target_symbol": "ConfigReadHomeRc",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -87834,7 +87834,7 @@
           "target_file": "config.go",
           "target_package": "application",
           "target_symbol": "ConfigReadLibRcIfNeeded",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -87873,7 +87873,7 @@
           "target_file": "config.go",
           "target_package": "application",
           "target_symbol": "ConfigResolveEnvironmentSettings",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -87912,7 +87912,7 @@
           "target_file": "config.go",
           "target_package": "application",
           "target_symbol": "ConfigReadRc",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -87951,7 +87951,7 @@
           "target_file": "config.go",
           "target_package": "application",
           "target_symbol": "ConfigWriteRc",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -87990,7 +87990,7 @@
           "target_file": "config.go",
           "target_package": "application",
           "target_symbol": "ConfigMissingParam",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88029,7 +88029,7 @@
           "target_file": "config.go",
           "target_package": "application",
           "target_symbol": "ConfigVersionString",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88068,7 +88068,7 @@
           "target_file": "config.go",
           "target_package": "application",
           "target_symbol": "ConfigVersionInfo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88107,12 +88107,12 @@
           "target_file": "config.go",
           "target_package": "application",
           "target_symbol": "ConfigReadRcFromContent",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "config.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -88252,7 +88252,7 @@
           "target_file": "config_state.go",
           "target_package": "application",
           "target_symbol": "ConfigStateWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88281,7 +88281,7 @@
           "target_file": "config_state.go",
           "target_package": "application",
           "target_symbol": "ConfigState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88310,7 +88310,7 @@
           "target_file": "config_state.go",
           "target_package": "application",
           "target_symbol": "ConfigStateBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88339,12 +88339,12 @@
           "target_file": "config_state.go",
           "target_package": "application",
           "target_symbol": "ConfigStateConfig",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "config_state.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -88449,7 +88449,7 @@
           "target_file": "editor.go",
           "target_package": "application",
           "target_symbol": "EditorCompletionSuggestion",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88481,7 +88481,7 @@
           "target_file": "editor.go",
           "target_package": "application",
           "target_symbol": "EditorCompletionHandler",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88513,7 +88513,7 @@
           "target_file": "editor.go",
           "target_package": "application",
           "target_symbol": "EditorCompletionHandler.TabComplete",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88545,7 +88545,7 @@
           "target_file": "editor.go",
           "target_package": "application",
           "target_symbol": "EditorLineEditState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88577,7 +88577,7 @@
           "target_file": "editor.go",
           "target_package": "application",
           "target_symbol": "EditorBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88609,7 +88609,7 @@
           "target_file": "editor.go",
           "target_package": "application",
           "target_symbol": "EditorState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88641,7 +88641,7 @@
           "target_file": "editor.go",
           "target_package": "application",
           "target_symbol": "EditorActive",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88673,7 +88673,7 @@
           "target_file": "editor.go",
           "target_package": "application",
           "target_symbol": "EditorIsIdentChar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88705,7 +88705,7 @@
           "target_file": "editor.go",
           "target_package": "application",
           "target_symbol": "EditorCompleteWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88737,7 +88737,7 @@
           "target_file": "editor.go",
           "target_package": "application",
           "target_symbol": "EditorInit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88769,7 +88769,7 @@
           "target_file": "editor.go",
           "target_package": "application",
           "target_symbol": "EditorDeinit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88801,7 +88801,7 @@
           "target_file": "editor.go",
           "target_package": "application",
           "target_symbol": "EditorSetPrompt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -88833,12 +88833,12 @@
           "target_file": "editor.go",
           "target_package": "application",
           "target_symbol": "EditorFillLine",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "editor.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -89150,7 +89150,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpRuntimeState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -89207,7 +89207,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -89264,7 +89264,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpLexState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -89321,7 +89321,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpCompilerState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -89378,7 +89378,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpCoreState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -89435,7 +89435,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpIoState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -89492,7 +89492,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpEvalState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -89549,7 +89549,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpBignum",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -89606,7 +89606,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpStringTable",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -89663,7 +89663,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpLineEditState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -89720,7 +89720,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpSymbolTable",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -89777,7 +89777,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpMakeState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -89834,7 +89834,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpBnfState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -89891,7 +89891,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpShowFns",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -89948,7 +89948,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpReplSession",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -90005,7 +90005,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpConfigState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -90062,7 +90062,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpScriptStore",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -90119,7 +90119,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "Interp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -90176,7 +90176,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpActiveHeapTop",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -90233,7 +90233,7 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpSetCurrent",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -90290,12 +90290,12 @@
           "target_file": "interp.go",
           "target_package": "application",
           "target_symbol": "InterpReset",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "interp.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -90395,7 +90395,7 @@
           "target_file": "make_state.go",
           "target_package": "application",
           "target_symbol": "MakeStateWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -90422,7 +90422,7 @@
           "target_file": "make_state.go",
           "target_package": "application",
           "target_symbol": "MakeState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -90449,7 +90449,7 @@
           "target_file": "make_state.go",
           "target_package": "application",
           "target_symbol": "MakeStateBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -90476,12 +90476,12 @@
           "target_file": "make_state.go",
           "target_package": "application",
           "target_symbol": "MakeStateMake",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "make_state.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -91142,7 +91142,7 @@
           "target_file": "repl.go",
           "target_package": "application",
           "target_symbol": "ReplWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -91199,7 +91199,7 @@
           "target_file": "repl.go",
           "target_package": "application",
           "target_symbol": "ReplHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -91256,7 +91256,7 @@
           "target_file": "repl.go",
           "target_package": "application",
           "target_symbol": "ReplFormatExecutionTime",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -91313,7 +91313,7 @@
           "target_file": "repl.go",
           "target_package": "application",
           "target_symbol": "ReplGetMonotonicNs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -91370,7 +91370,7 @@
           "target_file": "repl.go",
           "target_package": "application",
           "target_symbol": "ReplGetTag",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -91427,7 +91427,7 @@
           "target_file": "repl.go",
           "target_package": "application",
           "target_symbol": "ReplCommandLoop",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -91484,7 +91484,7 @@
           "target_file": "repl.go",
           "target_package": "application",
           "target_symbol": "ReplOnInterrupt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -91541,7 +91541,7 @@
           "target_file": "repl.go",
           "target_package": "application",
           "target_symbol": "ReplObey",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -91598,7 +91598,7 @@
           "target_file": "repl.go",
           "target_package": "application",
           "target_symbol": "ReplEvaluateRepl",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -91655,7 +91655,7 @@
           "target_file": "repl.go",
           "target_package": "application",
           "target_symbol": "ReplEdWarn",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -91712,7 +91712,7 @@
           "target_file": "repl.go",
           "target_package": "application",
           "target_symbol": "ReplAnnounce",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -91769,7 +91769,7 @@
           "target_file": "repl.go",
           "target_package": "application",
           "target_symbol": "ReplGetLine",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -91826,7 +91826,7 @@
           "target_file": "repl.go",
           "target_package": "application",
           "target_symbol": "ReplBadEditor",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -91883,12 +91883,12 @@
           "target_file": "repl.go",
           "target_package": "application",
           "target_symbol": "ReplParseLine",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "repl.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -92044,7 +92044,7 @@
           "target_file": "repl_session.go",
           "target_package": "application",
           "target_symbol": "ReplSessionWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -92071,7 +92071,7 @@
           "target_file": "repl_session.go",
           "target_package": "application",
           "target_symbol": "ReplSession",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -92098,7 +92098,7 @@
           "target_file": "repl_session.go",
           "target_package": "application",
           "target_symbol": "ReplSessionBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -92125,12 +92125,12 @@
           "target_file": "repl_session.go",
           "target_package": "application",
           "target_symbol": "ReplSessionSession",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "repl_session.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -92337,7 +92337,7 @@
           "target_file": "script_store.go",
           "target_package": "application",
           "target_symbol": "ScriptStoreWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -92364,7 +92364,7 @@
           "target_file": "script_store.go",
           "target_package": "application",
           "target_symbol": "ScriptStore",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -92391,7 +92391,7 @@
           "target_file": "script_store.go",
           "target_package": "application",
           "target_symbol": "ScriptStoreBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -92418,12 +92418,12 @@
           "target_file": "script_store.go",
           "target_package": "application",
           "target_symbol": "ScriptStoreStore",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "script_store.go",
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -102624,26 +102624,7 @@
       "generated_check": "go generate ./... && git diff --exit-code",
       "id": "package:application",
       "package_test": "go test ./internal/application",
-      "source_files": [
-        "src/compiler/compiler_state.zig",
-        "src/compiler/dump.zig",
-        "src/compiler/module_loader.zig",
-        "src/compiler/setup.zig",
-        "src/platform/c_compat.zig",
-        "src/runtime/core_state.zig",
-        "src/runtime/runtime_state.zig",
-        "src/runtime/version.zig",
-        "src/session/bnf_state.zig",
-        "src/session/boot.zig",
-        "src/session/config.zig",
-        "src/session/config_state.zig",
-        "src/session/editor.zig",
-        "src/session/interp.zig",
-        "src/session/make_state.zig",
-        "src/session/repl.zig",
-        "src/session/repl_session.zig",
-        "src/session/script_store.zig"
-      ],
+      "source_files": [],
       "stage_oracles": [
         {
           "command": "python3 tests/oracle/oracle.py verify --stage module --producer 'go run ./cmd/miracula-go-oracle'",
@@ -102655,7 +102636,7 @@
         }
       ],
       "target_package": "application",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "dag_check": "go run ./cmd/checkdag",

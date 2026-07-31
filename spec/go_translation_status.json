@@ -2,7 +2,7 @@
   "schema": 1,
   "units": {
     "bootstrap": "complete",
-    "package:application": "pending",
+    "package:application": "complete",
     "package:commandapp": "pending",
     "package:devtools": "pending",
     "package:evaluation": "complete",
