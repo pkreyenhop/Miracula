@@ -33870,31 +33870,16 @@
           "bignum": [
             {
               "column": 23,
-              "line": 635,
+              "line": 638,
               "target": "receiver parameter interp.Bignum"
             },
             {
               "column": 23,
-              "line": 636,
+              "line": 639,
               "target": "receiver parameter interp.Bignum"
             }
           ],
           "bnf": [
-            {
-              "column": 23,
-              "line": 576,
-              "target": "receiver parameter interp.Bnf"
-            },
-            {
-              "column": 23,
-              "line": 577,
-              "target": "receiver parameter interp.Bnf"
-            },
-            {
-              "column": 23,
-              "line": 578,
-              "target": "receiver parameter interp.Bnf"
-            },
             {
               "column": 23,
               "line": 579,
@@ -33907,34 +33892,49 @@
             },
             {
               "column": 23,
-              "line": 597,
+              "line": 581,
               "target": "receiver parameter interp.Bnf"
             },
             {
               "column": 23,
-              "line": 598,
+              "line": 582,
+              "target": "receiver parameter interp.Bnf"
+            },
+            {
+              "column": 23,
+              "line": 583,
+              "target": "receiver parameter interp.Bnf"
+            },
+            {
+              "column": 23,
+              "line": 600,
+              "target": "receiver parameter interp.Bnf"
+            },
+            {
+              "column": 23,
+              "line": 601,
               "target": "receiver parameter interp.Bnf"
             }
           ],
           "compiler": [
             {
               "column": 92,
-              "line": 571,
+              "line": 574,
               "target": "receiver parameter interp.Compiler"
             },
             {
               "column": 23,
-              "line": 596,
+              "line": 599,
               "target": "receiver parameter interp.Compiler"
             },
             {
               "column": 27,
-              "line": 623,
+              "line": 626,
               "target": "receiver parameter interp.Compiler"
             },
             {
               "column": 13,
-              "line": 640,
+              "line": 643,
               "target": "receiver parameter interp.Compiler"
             }
           ],
@@ -33975,50 +33975,55 @@
               "target": "receiver parameter interp.Config"
             },
             {
-              "column": 27,
-              "line": 326,
-              "target": "receiver parameter interp.Config"
-            },
-            {
-              "column": 30,
-              "line": 329,
-              "target": "receiver parameter interp.Config"
-            },
-            {
-              "column": 34,
-              "line": 340,
-              "target": "receiver parameter interp.Config"
-            },
-            {
-              "column": 34,
-              "line": 341,
-              "target": "receiver parameter interp.Config"
-            },
-            {
-              "column": 27,
-              "line": 444,
+              "column": 28,
+              "line": 288,
               "target": "receiver parameter interp.Config"
             },
             {
               "column": 9,
-              "line": 446,
+              "line": 309,
+              "target": "receiver parameter interp.Config"
+            },
+            {
+              "column": 27,
+              "line": 329,
+              "target": "receiver parameter interp.Config"
+            },
+            {
+              "column": 30,
+              "line": 332,
+              "target": "receiver parameter interp.Config"
+            },
+            {
+              "column": 34,
+              "line": 343,
+              "target": "receiver parameter interp.Config"
+            },
+            {
+              "column": 34,
+              "line": 344,
+              "target": "receiver parameter interp.Config"
+            },
+            {
+              "column": 27,
+              "line": 447,
+              "target": "receiver parameter interp.Config"
+            },
+            {
+              "column": 9,
+              "line": 449,
               "target": "receiver parameter interp.Config"
             },
             {
               "column": 124,
-              "line": 473,
+              "line": 476,
               "target": "receiver parameter interp.Config"
             }
           ],
           "core": [
             {
               "column": 17,
-              "line": 328,
-              "target": "receiver parameter interp.Core"
-            },
-            {
-              "column": 25,
-              "line": 479,
+              "line": 331,
               "target": "receiver parameter interp.Core"
             },
             {
@@ -34027,45 +34032,50 @@
               "target": "receiver parameter interp.Core"
             },
             {
+              "column": 25,
+              "line": 485,
+              "target": "receiver parameter interp.Core"
+            },
+            {
               "column": 29,
-              "line": 561,
+              "line": 564,
               "target": "receiver parameter interp.Core"
             },
             {
               "column": 41,
-              "line": 571,
+              "line": 574,
               "target": "receiver parameter interp.Core"
             },
             {
               "column": 17,
-              "line": 616,
+              "line": 619,
               "target": "receiver parameter interp.Core"
             },
             {
               "column": 23,
-              "line": 639,
+              "line": 642,
               "target": "receiver parameter interp.Core"
             }
           ],
           "evaluation": [
             {
               "column": 56,
-              "line": 561,
+              "line": 564,
               "target": "receiver parameter interp.Evaluation"
             },
             {
               "column": 19,
-              "line": 569,
+              "line": 572,
               "target": "receiver parameter interp.Evaluation"
             },
             {
               "column": 19,
-              "line": 570,
+              "line": 573,
               "target": "receiver parameter interp.Evaluation"
             },
             {
               "column": 51,
-              "line": 649,
+              "line": 652,
               "target": "receiver parameter interp.Evaluation"
             }
           ],
@@ -34087,144 +34097,129 @@
             },
             {
               "column": 24,
-              "line": 330,
+              "line": 333,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 70,
-              "line": 330,
+              "line": 333,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 9,
-              "line": 394,
+              "line": 397,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 9,
-              "line": 427,
+              "line": 430,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 9,
-              "line": 469,
+              "line": 472,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 64,
-              "line": 471,
-              "target": "receiver parameter interp.Heap"
-            },
-            {
-              "column": 42,
-              "line": 473,
-              "target": "receiver parameter interp.Heap"
-            },
-            {
-              "column": 89,
-              "line": 473,
-              "target": "receiver parameter interp.Heap"
-            },
-            {
-              "column": 17,
               "line": 474,
               "target": "receiver parameter interp.Heap"
             },
             {
-              "column": 31,
-              "line": 489,
+              "column": 42,
+              "line": 476,
               "target": "receiver parameter interp.Heap"
             },
             {
-              "column": 9,
+              "column": 89,
+              "line": 476,
+              "target": "receiver parameter interp.Heap"
+            },
+            {
+              "column": 17,
+              "line": 477,
+              "target": "receiver parameter interp.Heap"
+            },
+            {
+              "column": 31,
               "line": 492,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 9,
-              "line": 545,
+              "line": 495,
+              "target": "receiver parameter interp.Heap"
+            },
+            {
+              "column": 9,
+              "line": 548,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 29,
-              "line": 545,
+              "line": 548,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 9,
-              "line": 546,
+              "line": 549,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 9,
-              "line": 547,
+              "line": 550,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 23,
-              "line": 591,
+              "line": 594,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 30,
-              "line": 607,
+              "line": 610,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 30,
-              "line": 608,
+              "line": 611,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 35,
-              "line": 730,
+              "line": 733,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 45,
-              "line": 730,
+              "line": 733,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 78,
-              "line": 751,
+              "line": 754,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 15,
-              "line": 752,
+              "line": 755,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 5,
-              "line": 761,
+              "line": 764,
               "target": "receiver parameter interp.Heap"
             }
           ],
           "lexer": [
             {
               "column": 23,
-              "line": 574,
+              "line": 577,
               "target": "receiver parameter interp.Lexer"
             },
             {
               "column": 23,
-              "line": 575,
-              "target": "receiver parameter interp.Lexer"
-            },
-            {
-              "column": 23,
-              "line": 581,
-              "target": "receiver parameter interp.Lexer"
-            },
-            {
-              "column": 23,
-              "line": 582,
-              "target": "receiver parameter interp.Lexer"
-            },
-            {
-              "column": 23,
-              "line": 583,
+              "line": 578,
               "target": "receiver parameter interp.Lexer"
             },
             {
@@ -34263,101 +34258,101 @@
               "target": "receiver parameter interp.Lexer"
             },
             {
+              "column": 23,
+              "line": 591,
+              "target": "receiver parameter interp.Lexer"
+            },
+            {
+              "column": 23,
+              "line": 592,
+              "target": "receiver parameter interp.Lexer"
+            },
+            {
+              "column": 23,
+              "line": 593,
+              "target": "receiver parameter interp.Lexer"
+            },
+            {
               "column": 27,
-              "line": 617,
+              "line": 620,
               "target": "receiver parameter interp.Lexer"
             },
             {
               "column": 56,
-              "line": 625,
+              "line": 628,
               "target": "receiver parameter interp.Lexer"
             },
             {
               "column": 31,
-              "line": 627,
+              "line": 630,
               "target": "receiver parameter interp.Lexer"
             },
             {
               "column": 23,
-              "line": 637,
+              "line": 640,
               "target": "receiver parameter interp.Lexer"
             },
             {
               "column": 23,
-              "line": 638,
+              "line": 641,
               "target": "receiver parameter interp.Lexer"
             }
           ],
           "make": [
             {
               "column": 23,
-              "line": 572,
+              "line": 575,
               "target": "receiver parameter interp.Make"
             }
           ],
           "repl": [
             {
               "column": 23,
-              "line": 632,
+              "line": 635,
               "target": "receiver parameter interp.Repl"
             }
           ],
           "runtime": [
             {
               "column": 24,
-              "line": 343,
+              "line": 346,
               "target": "receiver parameter interp.Runtime"
             },
             {
               "column": 16,
-              "line": 459,
+              "line": 462,
               "target": "receiver parameter interp.Runtime"
             },
             {
               "column": 16,
-              "line": 470,
+              "line": 473,
               "target": "receiver parameter interp.Runtime"
             },
             {
               "column": 56,
-              "line": 482,
+              "line": 485,
               "target": "receiver parameter interp.Runtime"
             },
             {
               "column": 71,
-              "line": 571,
+              "line": 574,
               "target": "receiver parameter interp.Runtime"
             },
             {
               "column": 26,
-              "line": 573,
+              "line": 576,
               "target": "receiver parameter interp.Runtime"
             },
             {
               "column": 26,
-              "line": 634,
+              "line": 637,
               "target": "receiver parameter interp.Runtime"
             }
           ],
           "script": [
             {
               "column": 80,
-              "line": 484,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 23,
-              "line": 592,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 23,
-              "line": 593,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 23,
-              "line": 594,
+              "line": 487,
               "target": "receiver parameter interp.Script"
             },
             {
@@ -34366,18 +34361,18 @@
               "target": "receiver parameter interp.Script"
             },
             {
-              "column": 27,
-              "line": 618,
+              "column": 23,
+              "line": 596,
               "target": "receiver parameter interp.Script"
             },
             {
-              "column": 27,
-              "line": 619,
+              "column": 23,
+              "line": 597,
               "target": "receiver parameter interp.Script"
             },
             {
-              "column": 27,
-              "line": 620,
+              "column": 23,
+              "line": 598,
               "target": "receiver parameter interp.Script"
             },
             {
@@ -34391,20 +34386,35 @@
               "target": "receiver parameter interp.Script"
             },
             {
-              "column": 23,
-              "line": 630,
+              "column": 27,
+              "line": 623,
+              "target": "receiver parameter interp.Script"
+            },
+            {
+              "column": 27,
+              "line": 624,
+              "target": "receiver parameter interp.Script"
+            },
+            {
+              "column": 27,
+              "line": 625,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 23,
-              "line": 631,
+              "line": 633,
+              "target": "receiver parameter interp.Script"
+            },
+            {
+              "column": 23,
+              "line": 634,
               "target": "receiver parameter interp.Script"
             }
           ],
           "symbols": [
             {
               "column": 27,
-              "line": 603,
+              "line": 606,
               "target": "receiver parameter interp.Symbols"
             }
           ]
@@ -34609,7 +34619,7 @@
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
-              "column": 15,
+              "column": 22,
               "line": 263,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
@@ -34619,123 +34629,128 @@
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
+              "column": 15,
+              "line": 265,
+              "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
+            },
+            {
               "column": 20,
-              "line": 267,
+              "line": 268,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 16,
-              "line": 272,
-              "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
-            },
-            {
-              "column": 23,
               "line": 273,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
-              "column": 37,
-              "line": 287,
+              "column": 23,
+              "line": 274,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 37,
-              "line": 288,
+              "line": 289,
+              "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
+            },
+            {
+              "column": 37,
+              "line": 290,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 58,
-              "line": 325,
+              "line": 328,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 67,
-              "line": 325,
+              "line": 328,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 73,
-              "line": 325,
+              "line": 328,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 27,
-              "line": 331,
+              "line": 334,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 61,
-              "line": 372,
+              "line": 375,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 70,
-              "line": 372,
+              "line": 375,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 76,
-              "line": 372,
+              "line": 375,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 62,
-              "line": 415,
+              "line": 418,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 72,
-              "line": 415,
+              "line": 418,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 100,
-              "line": 415,
+              "line": 418,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 110,
-              "line": 415,
+              "line": 418,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 121,
-              "line": 415,
+              "line": 418,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 132,
-              "line": 415,
+              "line": 418,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 14,
-              "line": 646,
+              "line": 649,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 33,
-              "line": 653,
+              "line": 656,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 37,
-              "line": 663,
+              "line": 666,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 16,
-              "line": 687,
+              "line": 690,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 42,
-              "line": 758,
+              "line": 761,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 16,
-              "line": 760,
+              "line": 763,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             }
           ]
@@ -34744,12 +34759,12 @@
           "pointer_arithmetic": [
             {
               "column": 27,
-              "line": 612,
+              "line": 615,
               "target": "slice index (int)"
             },
             {
               "column": 45,
-              "line": 612,
+              "line": 615,
               "target": "slice index (int)"
             }
           ],
@@ -34761,19 +34776,19 @@
             },
             {
               "column": 22,
-              "line": 765,
+              "line": 768,
               "target": "Go string"
             },
             {
               "column": 26,
-              "line": 771,
+              "line": 774,
               "target": "Go string"
             }
           ],
           "sentinel_slice": [
             {
               "column": 127,
-              "line": 484,
+              "line": 487,
               "target": "Go string"
             }
           ],

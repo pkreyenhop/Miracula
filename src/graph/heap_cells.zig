@@ -260,6 +260,7 @@ pub const Heap = struct {
     /// mutations on the interrupted path.
     pub const Checkpoint = struct {
         space: Word,
+        space_limit: Word,
         hd: []Word,
         tl: []Word,
         tag: []word.NodeTag,
@@ -284,6 +285,7 @@ pub const Heap = struct {
         const start: usize = @intCast(ATOMLIMIT);
         return .{
             .space = self.SPACE,
+            .space_limit = config_state.config().SPACELIMIT,
             .hd = rt.allocator.dupe(Word, self.hd.?[start..][0..n]) catch mallocPanic("checkpoint"),
             .tl = rt.allocator.dupe(Word, self.tl.?[start..][0..n]) catch mallocPanic("checkpoint"),
             .tag = rt.allocator.dupe(word.NodeTag, self.tag.?[start..][0..n]) catch mallocPanic("checkpoint"),
@@ -304,6 +306,7 @@ pub const Heap = struct {
     pub fn restore(self: *Heap, snap: *Checkpoint) void {
         const n: usize = @intCast(snap.space);
         const start: usize = @intCast(ATOMLIMIT);
+        config_state.config().SPACELIMIT = snap.space_limit;
         self.SPACE = snap.space;
         @memcpy(self.hd.?[start..][0..n], snap.hd);
         @memcpy(self.tl.?[start..][0..n], snap.tl);

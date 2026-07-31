@@ -175,6 +175,7 @@ fn writeCompileStressScript(path: []const u8, items: usize) !void {
 
 test "mira integration suite" {
     try caseStandardArithmeticAndLists();
+    try caseReplHeapGrowthRollback();
     try caseBigIntegers();
     try caseBigIntegerSignsDivisionAndBases();
     try caseDivModLaws();
@@ -193,6 +194,17 @@ test "mira integration suite" {
     try caseDumpUndumpRoundTrip();
     try caseTofileAppendfileRoundTrip();
     try caseReadvalsSurvivesGcPressure();
+}
+
+fn caseReplHeapGrowthRollback() !void {
+    var env = try TestEnv.init();
+    defer env.deinit();
+    const rc_path = try std.fmt.allocPrint(allocator, "{s}/.mirarc", .{env.home});
+    defer allocator.free(rc_path);
+    try writeFile(rc_path, "hdve 51200 100000 2067 vi +!\n");
+    var result = try runMira(&env, "script.m", "fib 12\nfib 20\nfib 27\n/q\n", &.{});
+    defer result.deinit();
+    try assertSuccessOutput("REPL heap-growth rollback", &result, "144\n6765\n196418");
 }
 
 fn caseStandardArithmeticAndLists() !void {

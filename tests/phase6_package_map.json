@@ -113,7 +113,7 @@
     "graph/dump.zig": 33,
     "graph/dump_load.zig": 15,
     "graph/heap.zig": 116,
-    "graph/heap_cells.zig": 104,
+    "graph/heap_cells.zig": 106,
     "graph/heap_test.zig": 125,
     "graph/print.zig": 5,
     "graph/strtab.zig": 1,

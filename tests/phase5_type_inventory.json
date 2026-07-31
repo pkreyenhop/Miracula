@@ -124,7 +124,7 @@
       "from_raw": 0,
       "owner": "graph-and-codec",
       "to_raw": 0,
-      "word": 65
+      "word": 66
     },
     "graph/heap_test.zig": {
       "from_raw": 0,
