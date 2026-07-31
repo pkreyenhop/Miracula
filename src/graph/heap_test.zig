@@ -237,10 +237,10 @@ test "stoId/idWho/getId/getHere/getaka: identifier accessors" {
     // stoId builds a plain id with no recorded "who" (definition-site/alias)
     // info -- idWho is NIL, so getHere/getaka fall back to the simple case.
     const plain = stoId("zzheap_getaka_plain");
-    try std.testing.expectEqualStrings("zzheap_getaka_plain", std.mem.span(getId(plain)));
+    try std.testing.expectEqualStrings("zzheap_getaka_plain", getId(plain));
     try std.testing.expectEqual(@as(Word, word.NIL), idWho(plain));
     try std.testing.expectEqual(@as(Word, word.NIL), getHere(plain));
-    try std.testing.expectEqualStrings("zzheap_getaka_plain", std.mem.span(getaka(plain)));
+    try std.testing.expectEqualStrings("zzheap_getaka_plain", getaka(plain));
 
     // An id whose "who" field is a CONS (aka-name-holder . location): getHere
     // reads the location, getaka reads the alias name instead of the plain one.
@@ -249,10 +249,10 @@ test "stoId/idWho/getId/getHere/getaka: identifier accessors" {
     const name_holder = make(heap(), .STRCONS, strtab.strBits(strtab.table(), @as([*:0]const u8, "zzheap_getaka_aliased")), who_val);
     const aliased = make(heap(), .ID, cons(heap(), name_holder, word.undef_t), word.UNDEF);
 
-    try std.testing.expectEqualStrings("zzheap_getaka_aliased", std.mem.span(getId(aliased)));
+    try std.testing.expectEqualStrings("zzheap_getaka_aliased", getId(aliased));
     try std.testing.expectEqual(who_val, idWho(aliased));
     try std.testing.expectEqual(@as(Word, word.True), getHere(aliased));
-    try std.testing.expectEqualStrings("zzheap_aka", std.mem.span(getaka(aliased)));
+    try std.testing.expectEqualStrings("zzheap_aka", getaka(aliased));
 }
 test "append1: links y onto the tail of list x" {
     tu.freshInterp();
@@ -350,7 +350,7 @@ test "constructor: builds a CONSTRUCTOR cell from Word/i32/C-string fields" {
     try std.testing.expectEqual(@as(Word, 9), t(heap(), from_cint));
 
     const from_str = constructor(heap(), word.True, @as([*:0]const u8, "zzheap_constructor_test"));
-    try std.testing.expectEqualStrings("zzheap_constructor_test", std.mem.span(strtab.strOf(strtab.table(), t(heap(), from_str))));
+    try std.testing.expectEqualStrings("zzheap_constructor_test", strtab.strOf(strtab.table(), t(heap(), from_str)));
 }
 test "filInodev/sameFile: dev/ino identity comparison" {
     tu.freshInterp();

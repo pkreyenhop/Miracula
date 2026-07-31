@@ -571,7 +571,7 @@ pub fn bindparams(heap: *Heap, comp: *compiler_state.CompilerState, formal_val: 
         while (formal != word.NIL and (actual == word.NIL or blk: {
             f = castPtr(heap.h(heap.h(heap.t(heap.h(formal)))));
             a = heap.h(heap.h(actual));
-            break :blk os.strcmp(f, getId(a)) < 0;
+            break :blk os.strcmp(f, getId(a).ptr) < 0;
         })) {
             comp.MISSING = heap.cons(heap.h(heap.t(heap.h(formal))), comp.MISSING);
             formal = heap.t(formal);
@@ -579,7 +579,7 @@ pub fn bindparams(heap: *Heap, comp: *compiler_state.CompilerState, formal_val: 
         if (actual == word.NIL) {
             break;
         }
-        if (formal == word.NIL or os.strcmp(f, getId(a)) != 0) {
+        if (formal == word.NIL or os.strcmp(f, getId(a).ptr) != 0) {
             comp.DETROP = heap.cons(a, comp.DETROP);
         } else {
             const fa = if (heap.t(heap.t(heap.h(formal))) == word.type_t) tArity(heap.h(heap.h(formal))) else -1;

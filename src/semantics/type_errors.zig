@@ -150,7 +150,7 @@ pub fn sayhere(heap: *Heap, h_val: Word, nl: Word) void {
         }
     }
     const h_str = strtab.strOf(strtab.table(), h(heap, h_node));
-    const eq = std.mem.eql(u8, std.mem.span(h_str), std.mem.span(script_store.store().current_script.?));
+    const eq = std.mem.eql(u8, h_str, std.mem.span(script_store.store().current_script.?));
     const prefix: [*:0]const u8 = if (eq) "" else "%insert file ";
     word.print("(line {d:>3} of {s}\"{s}\")", .{ t(heap, h_node), prefix, h_str });
     if (nl != 0) {
@@ -377,7 +377,7 @@ pub fn outType2(heap: *Heap, t_val: Word) void {
                         const pn_val_node = pnVal(heap, t_val);
                         if (getTag(heap, pn_val_node) == .ID) {
                             _ = word.print("{s}", .{getId(heap, pn_val_node)});
-                        } else if (std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), h(heap, t(heap, tInfo(heap, t_val))))), std.mem.span(script_store.store().current_script.?))) {
+                        } else if (std.mem.eql(u8, strtab.strOf(strtab.table(), h(heap, t(heap, tInfo(heap, t_val)))), std.mem.span(script_store.store().current_script.?))) {
                             _ = word.print("{s}", .{strtab.strOf(strtab.table(), h(heap, h(heap, tInfo(heap, t_val))))});
                         } else {
                             _ = word.print("`{s}@{s}'", .{ strtab.strOf(strtab.table(), h(heap, h(heap, tInfo(heap, t_val)))), strtab.strOf(strtab.table(), h(heap, t(heap, tInfo(heap, t_val)))) });

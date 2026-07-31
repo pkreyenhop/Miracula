@@ -535,7 +535,7 @@ fn alfasortRaw(heap: *Heap, x_val: Word) Word {
     b = alfasortRaw(heap, b);
     x = NIL;
     while (a != NIL and b != NIL) {
-        if (std.mem.order(u8, std.mem.span(heap_mod.getId(heap_mod.h(heap, a))), std.mem.span(heap_mod.getId(heap_mod.h(heap, b)))) == .lt) {
+        if (std.mem.order(u8, heap_mod.getId(heap_mod.h(heap, a)), heap_mod.getId(heap_mod.h(heap, b))) == .lt) {
             x = heap_mod.cons(heap, heap_mod.h(heap, a), x);
             a = heap_mod.t(heap, a);
         } else {

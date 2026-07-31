@@ -129,7 +129,7 @@ pub fn idWho(x: Word) Word {
 }
 
 /// The interned name text of id `x`.
-pub fn getId(x: Word) [*:0]const u8 {
+pub fn getId(x: Word) [:0]const u8 {
     return strtab.strOf(strtab.table(), h(heap(), h(heap(), h(heap(), x))));
 }
 
@@ -137,7 +137,7 @@ pub fn getId(x: Word) [*:0]const u8 {
 ///
 /// The single file-name accessor: callers that want the empty string for an absent
 /// name use `getFil(fil) orelse ""` (matches `strtab.strOf(strtab.table(), 0)`).
-pub fn getFil(fil: Word) ?[*:0]const u8 {
+pub fn getFil(fil: Word) ?[:0]const u8 {
     const val = h(heap(), h(heap(), h(heap(), fil)));
     if (val == 0) return null;
     return strtab.strOf(strtab.table(), val);
@@ -182,7 +182,7 @@ pub fn getHere(x: Word) Word {
 }
 
 /// The original ('also known as') name of id `x` (before any alias).
-pub fn getaka(x: Word) [*:0]const u8 {
+pub fn getaka(x: Word) [:0]const u8 {
     const y = idWho(x);
     return if (getTag(heap(), y) != .CONS) getId(x) else strtab.strOf(strtab.table(), h(heap(), h(heap(), y)));
 }
@@ -218,7 +218,7 @@ pub fn hdsort(input: Word) Word {
     a = hdsort(a);
     b = hdsort(b);
     while (a != nil() and b != nil()) {
-        if (std.mem.order(u8, std.mem.span(getId(h(heap(), h(heap(), a)))), std.mem.span(getId(h(heap(), h(heap(), b))))) == .lt) {
+        if (std.mem.order(u8, getId(h(heap(), h(heap(), a))), getId(h(heap(), h(heap(), b)))) == .lt) {
             x = cons(heap(), h(heap(), a), x);
             a = t(heap(), a);
         } else {

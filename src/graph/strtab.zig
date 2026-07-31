@@ -82,7 +82,7 @@ fn ensureInit(self: *StringTable) void {
 ///
 /// Tests: intern de-dups by content and resolves
 pub fn strBits(self: *StringTable, p: anytype) Word {
-    const span = std.mem.span(p);
+    const span = if (@typeInfo(@TypeOf(p)) == .pointer and @typeInfo(@TypeOf(p)).pointer.size == .slice) p else std.mem.span(p);
     if (span.len == 0) return 0;
     ensureInit(self);
     if (self.dedup.get(span)) |id| return -@as(Word, id);
@@ -105,20 +105,20 @@ test "intern de-dups by content and resolves" {
     try std.testing.expect(foo1 != bar);
     try std.testing.expect(foo1 < 0); // real ids are negative (out of ptr range)
 
-    try std.testing.expectEqualStrings("foo", std.mem.span(strOf(table(), foo1)));
-    try std.testing.expectEqualStrings("bar", std.mem.span(strOf(table(), bar)));
+    try std.testing.expectEqualStrings("foo", strOf(table(), foo1));
+    try std.testing.expectEqualStrings("bar", strOf(table(), bar));
 }
 
 /// Resolve an id `Word` (as stored in a node) back to its NUL-terminated bytes.
 /// The 0 sentinel and any non-id Word resolve to "".
 ///
 /// Tests: empty interns to the 0 sentinel and 0 resolves to empty
-pub fn strOf(self: *StringTable, handle: Word) [*:0]const u8 {
+pub fn strOf(self: *StringTable, handle: Word) [:0]const u8 {
     if (handle >= 0) return "";
     ensureInit(self);
     const id: usize = @intCast(-handle);
     if (id >= self.slices.items.len) return "";
-    return self.slices.items[id].ptr;
+    return self.slices.items[id];
 }
 
 test "empty interns to the 0 sentinel and 0 resolves to empty" {
@@ -126,7 +126,7 @@ test "empty interns to the 0 sentinel and 0 resolves to empty" {
     defer deinit(table());
 
     try std.testing.expectEqual(@as(Word, 0), strBits(table(), @as([*:0]const u8, "")));
-    try std.testing.expectEqualStrings("", std.mem.span(strOf(table(), 0)));
+    try std.testing.expectEqualStrings("", strOf(table(), 0));
     // A real string never collides with the sentinel.
     try std.testing.expect(strBits(table(), @as([*:0]const u8, "x")) != 0);
 }
@@ -140,7 +140,7 @@ test "empty interns to the 0 sentinel and 0 resolves to empty" {
 ///
 /// Tests: privatize re-interns with the first byte high-bit set
 pub fn privatize(self: *StringTable, handle: Word) Word {
-    const cur = std.mem.span(strOf(self, handle));
+    const cur = strOf(self, handle);
     if (cur.len == 0) return handle;
     ensureInit(self);
     const scratch = self.arena.allocator().dupeSentinel(u8, cur, 0) catch oom();
@@ -155,7 +155,7 @@ test "privatize re-interns with the first byte high-bit set" {
     const foo = strBits(table(), @as([*:0]const u8, "foo"));
     const priv = privatize(table(), foo);
     try std.testing.expect(priv != foo); // a fresh entry, not an in-place mutation
-    const bytes = std.mem.span(strOf(table(), priv));
+    const bytes = strOf(table(), priv);
     try std.testing.expectEqual(@as(u8, 'f' + 128), bytes[0]);
     try std.testing.expectEqualStrings("oo", bytes[1..]);
     try std.testing.expectEqual(@as(Word, 0), privatize(table(), 0)); // empty unchanged
@@ -177,10 +177,10 @@ pub fn deinit(self: *StringTable) void {
 test "deinit clears the table so the next use re-inits fresh" {
     deinit(table());
     const a = strBits(table(), @as([*:0]const u8, "alpha"));
-    try std.testing.expectEqualStrings("alpha", std.mem.span(strOf(table(), a)));
+    try std.testing.expectEqualStrings("alpha", strOf(table(), a));
     deinit(table());
     // After deinit the table is empty, so the old handle no longer resolves.
-    try std.testing.expectEqualStrings("", std.mem.span(strOf(table(), a)));
+    try std.testing.expectEqualStrings("", strOf(table(), a));
     // A fresh intern restarts ids, so "beta" reclaims the first id that "alpha" had.
     const b = strBits(table(), @as([*:0]const u8, "beta"));
     try std.testing.expectEqual(a, b);

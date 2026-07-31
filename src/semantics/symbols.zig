@@ -75,7 +75,7 @@ pub const SymbolTable = struct {
         const name_z = try gpa.dupeZ(u8, name);
         defer gpa.free(name_z);
         const id = heap_mod.stoId(name_z);
-        const stable_name = std.mem.span(heap_mod.getId(id));
+        const stable_name = heap_mod.getId(id);
         try self.table.put(gpa, stable_name, id);
         return Value.fromRaw(id);
     }
@@ -108,7 +108,7 @@ pub const SymbolTable = struct {
         const name_z = try gpa.dupeZ(u8, name);
         defer gpa.free(name_z);
         const id = heap_mod.stoId(name_z);
-        const stable_name = std.mem.span(heap_mod.getId(id));
+        const stable_name = heap_mod.getId(id);
         try self.table.put(gpa, stable_name, id);
         return Value.fromRaw(id);
     }
@@ -148,7 +148,7 @@ pub const SymbolTable = struct {
         const name_z = try gpa.dupeZ(u8, name);
         defer gpa.free(name_z);
         const bits = strtab.strBits(strtab.table(), name_z.ptr);
-        const stable_name = std.mem.span(strtab.strOf(strtab.table(), bits));
+        const stable_name = strtab.strOf(strtab.table(), bits);
         try self.table.put(gpa, stable_name, id.toRaw());
     }
 };
@@ -227,7 +227,7 @@ test "SymbolTable.intern: the ID node round-trips through heap.getId" {
     var st: SymbolTable = .{};
     defer st.deinit(std.testing.allocator);
     const id = try st.intern(std.testing.allocator, "zzsymroundtrip");
-    try std.testing.expectEqualStrings("zzsymroundtrip", std.mem.span(heap_mod.getId(id.toRaw())));
+    try std.testing.expectEqualStrings("zzsymroundtrip", heap_mod.getId(id.toRaw()));
 }
 
 test "SymbolTable.count: tracks the number of distinct interned names" {

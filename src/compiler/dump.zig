@@ -118,7 +118,7 @@ pub fn unfixexports(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Ru
 /// keyed by name (`semantics/symbols.zig`, GO_PORT_PLAN.md Phase 1 step 6).
 fn privatise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
     const n = abi.makePn(heap, x);
-    const nm = std.mem.span(heap_mod.getId(x));
+    const nm = heap_mod.getId(x);
     const i = h(heap, n);
 
     if (heap_mod.idType(x) == word.type_t) {
@@ -149,7 +149,7 @@ fn privatise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
 fn publicise(heap: *Heap, lexs: *lex_state.LexState, x: Word) Word {
     _ = lexs;
     const i = heap_mod.idVal(x);
-    const nm = std.mem.span(heap_mod.getId(x));
+    const nm = heap_mod.getId(x);
 
     setTag(heap, i, .ID);
     hp(heap, i).* = h(heap, x);

@@ -116,7 +116,7 @@ pub fn ap3(heap: *Heap, w: Word, x: Word, y: Word, z: Word) Word {
 }
 
 /// The interned name text of id `x`.
-pub fn getId(heap: *Heap, x: Word) [*:0]const u8 {
+pub fn getId(heap: *Heap, x: Word) [:0]const u8 {
     return strtab.strOf(strtab.table(), h(heap, h(heap, h(heap, x))));
 }
 

@@ -744,7 +744,7 @@ pub inline fn pnVal(heap: *Heap, x: Value) Value {
     return tlGet(heap, x);
 }
 /// The interned name text of id node `x`.
-pub inline fn getId(heap: *Heap, x: Value) [*:0]const u8 {
+pub inline fn getId(heap: *Heap, x: Value) [:0]const u8 {
     return strtab.strOf(strtab.table(), hdGet(heap, hdGet(heap, hdGet(heap, x))).toRaw());
 }
 /// The printed name of constructor node `x` (via its id or private-name value).
@@ -780,7 +780,7 @@ test "neg/poz/pnVal/getId/constrName/suppressed: sign and name accessors" {
     try std.testing.expectEqual(Value.imm(33), pnVal(heap_ptr, pn_cell));
 
     const id = Value.fromRaw(lex_mod.makeId("zzrc_getid_test"));
-    try std.testing.expectEqualStrings("zzrc_getid_test", std.mem.span(getId(heap_ptr, id)));
+    try std.testing.expectEqualStrings("zzrc_getid_test", getId(heap_ptr, id));
 
     // constrName: a CONSTRUCTOR whose tail is directly the id.
     const ctor_direct = Value.fromRaw(heap_ptr.make(.CONSTRUCTOR, 0, id.toRaw()));

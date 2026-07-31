@@ -202,7 +202,7 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
                 _ = abi.unlink(@as([*:0]const u8, @ptrCast(&obf)));
             }
         }
-        if (core.errline == 0 and core.errs != 0 and std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap, core.errs))), std.mem.span(script_store.store().current_script.?))) {
+        if (core.errline == 0 and core.errs != 0 and std.mem.eql(u8, strtab.strOf(strtab.table(), heap_mod.h(heap, core.errs)), std.mem.span(script_store.store().current_script.?))) {
             core.errline = heap_mod.t(heap, core.errs);
         }
         comp.ND = depend_mod.alfasort(heap, Value.fromRaw(comp.ND)).toRaw();
@@ -252,7 +252,7 @@ fn resolveExportFileList(heap: *Heap, core: *core_state.CoreState, rs: *rt.Runti
                 var count: Word = 0;
                 var i = script_store.store().includees;
                 while (i != NIL) : (i = heap_mod.t(heap, i)) {
-                    if (std.mem.eql(u8, std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap, heap_mod.h(heap, heap_mod.h(heap, i))))), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap, s))))) {
+                    if (std.mem.eql(u8, strtab.strOf(strtab.table(), heap_mod.h(heap, heap_mod.h(heap, heap_mod.h(heap, i)))), strtab.strOf(strtab.table(), heap_mod.h(heap, s)))) {
                         heap_mod.hp(heap, s).* = heap_mod.h(heap, heap_mod.h(heap, heap_mod.h(heap, i)));
                         count += 1;
                     }
@@ -520,7 +520,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
         const fn_str = strtab.strOf(strtab.table(), heap_mod.h(heap, heap_mod.h(heap, heap_mod.h(heap, includees_list))));
 
         {
-            const fn_span = std.mem.span(fn_str);
+            const fn_span = fn_str;
             @memcpy(lexs.dicp[0..fn_span.len], fn_span);
             lexs.dicp[fn_span.len] = 0;
             const suffix_span = std.mem.span(core.obsuffix);
@@ -531,7 +531,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
 
         f = word.fopen(lexs.dicp, "r");
         if (f != null) {
-            x = abi.loadScript(heap, core, comp, rs, lexs, f.?, @constCast(fn_str), heap_mod.h(heap, heap_mod.t(heap, heap_mod.h(heap, includees_list))), heap_mod.t(heap, heap_mod.t(heap, heap_mod.h(heap, includees_list))), 0);
+            x = abi.loadScript(heap, core, comp, rs, lexs, f.?, @constCast(fn_str.ptr), heap_mod.h(heap, heap_mod.t(heap, heap_mod.h(heap, includees_list))), heap_mod.t(heap, heap_mod.t(heap, heap_mod.h(heap, includees_list))), 0);
             _ = word.fclose(f.?);
         }
 

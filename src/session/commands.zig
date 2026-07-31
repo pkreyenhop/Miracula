@@ -86,14 +86,14 @@ fn namescom(heap: *Heap, rs: *rt.RuntimeState, l: Word) void {
     }
     if (n == NIL) return;
     if (heap_mod.getFil(l)) |gf| {
-        filequote(rs, std.mem.span(gf));
+        filequote(rs, gf);
     } else {
         word.print("primitive:", .{});
     }
     word.print("\n", .{});
     while (n != NIL) {
         if (heap_mod.idType(heap_mod.h(heap, n)) == word.wrong_t or heap_mod.idVal(heap_mod.h(heap, n)) != word.UNDEF) {
-            const w = @as(Word, @intCast(std.mem.len(heap_mod.getId(heap_mod.h(heap, n)))));
+            const w = @as(Word, @intCast((heap_mod.getId(heap_mod.h(heap, n))).len));
             if (col_local + w < @as(Word, @intCast(scrwd))) {
                 col_local += if (col_local != 0) 1 else 0;
             } else if (wp > 0 and col_local + w >= @as(Word, @intCast(scrwd))) {
@@ -210,7 +210,7 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
                 var y = rs.primenv;
                 while (y != NIL) : (y = heap_mod.t(heap, y)) {
                     if (getTag(heap, heap_mod.h(heap, y)) == .ID) {
-                        if (heap_mod.h(heap, y) == x or std.mem.eql(u8, std.mem.span(abi.getaka(heap_mod.h(heap, y))), std.mem.span(n))) {
+                        if (heap_mod.h(heap, y) == x or std.mem.eql(u8, abi.getaka(heap_mod.h(heap, y)), n)) {
                             finger(heap, rs, heap_mod.getId(heap_mod.h(heap, y)));
                         }
                     }
@@ -220,7 +220,7 @@ fn cmdFiles(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
                     var y_def = heap_mod.filDefs(heap_mod.h(heap, ff));
                     while (y_def != NIL) : (y_def = heap_mod.t(heap, y_def)) {
                         if (getTag(heap, heap_mod.h(heap, y_def)) == .ID) {
-                            if (heap_mod.h(heap, y_def) == x or std.mem.eql(u8, std.mem.span(abi.getaka(heap_mod.h(heap, y_def))), std.mem.span(n))) {
+                            if (heap_mod.h(heap, y_def) == x or std.mem.eql(u8, abi.getaka(heap_mod.h(heap, y_def)), n)) {
                                 finger(heap, rs, heap_mod.getId(heap_mod.h(heap, y_def)));
                             }
                         }
@@ -313,7 +313,7 @@ fn cmdEdit(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState, lexs:
                 files.copyFile(mf.?, t_val.?);
             }
         }
-        const err_line_num: i32 = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errline) else if (core.errs != 0 and std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(strtab.strOf(strtab.table(), heap_mod.h(heap, core.errs))))) @intCast(heap_mod.t(heap, core.errs)) else @intCast(abi.geterrlin(heap, core, lexs, t_val.?));
+        const err_line_num: i32 = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errline) else if (core.errs != 0 and std.mem.eql(u8, std.mem.span(t_val.?), strtab.strOf(strtab.table(), heap_mod.h(heap, core.errs)))) @intCast(heap_mod.t(heap, core.errs)) else @intCast(abi.geterrlin(heap, core, lexs, t_val.?));
         const err_col_num: i32 = if (std.mem.eql(u8, std.mem.span(t_val.?), std.mem.span(script_store.store().current_script.?))) @intCast(core.errcol) else 0;
         editfile(heap, rs, t_val.?, err_line_num, err_col_num);
         return true;
@@ -722,7 +722,7 @@ pub fn finger(heap: *Heap, rs: *rt.RuntimeState, n: [*:0]const u8) void {
             word.print(" ||primitive to Miranda\n", .{});
         } else {
             const aka = abi.getaka(x);
-            const aka_opt: ?[*:0]const u8 = if (std.mem.eql(u8, std.mem.span(aka), std.mem.span(heap_mod.getId(x)))) null else aka;
+            const aka_opt: ?[:0]const u8 = if (std.mem.eql(u8, aka, heap_mod.getId(x))) null else aka;
             if (heap_mod.idVal(x) == word.UNDEF and heap_mod.idType(x) != word.wrong_t) {
                 word.print(" ||(UNDEFINED) specified in ", .{});
             } else if (heap_mod.idVal(x) == word.FREE) {

@@ -556,7 +556,7 @@ pub fn getspecloc(heap: *Heap, x: Word) Word {
 
 /// Translate a type identifier `x`.
 pub fn transtypeid(heap: *Heap, x: Word) Word {
-    const n_span = std.mem.span(getId(heap, x));
+    const n_span = getId(heap, x);
     if (std.mem.eql(u8, n_span, "bool")) return bool_t;
     if (std.mem.eql(u8, n_span, "num")) return num_t;
     if (std.mem.eql(u8, n_span, "char")) return char_t;

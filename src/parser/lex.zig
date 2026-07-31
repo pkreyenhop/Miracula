@@ -86,7 +86,7 @@ fn cons(x: Word, y: Word) Word {
 }
 
 /// The interned name text of id `x`.
-fn getId(heap: *Heap, x: Word) [*:0]const u8 {
+fn getId(heap: *Heap, x: Word) [:0]const u8 {
     return strtab.strOf(strtab.table(), h(heap, h(heap, h(heap, x))));
 }
 
@@ -616,11 +616,11 @@ pub fn mkprivate(heap: *Heap, x_input: Word) void {
         // the privatised text pointing at the same node (else a later dump
         // that references this id via its privatised spelling resolves to
         // nothing and misreports "UNDEFINED NAME").
-        const old_name = std.mem.span(getId(heap, id_node));
+        const old_name = getId(heap, id_node);
         _ = symbols.syms().table.remove(old_name);
         const strcons = h(heap, h(heap, id_node));
         hp(heap, strcons).* = strtab.privatize(strtab.table(), h(heap, strcons));
-        const new_name = std.mem.span(getId(heap, id_node));
+        const new_name = getId(heap, id_node);
         symbols.syms().table.put(rt.allocator, new_name, id_node) catch mallocPanic("symbols dictionary");
         x = t(heap, x);
     }

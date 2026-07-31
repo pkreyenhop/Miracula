@@ -177,7 +177,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                         continue;
                     }
                     if (heap_mod.idWho(x) == NIL) {
-                        word.print("{s} -- primitive to Miranda\n", .{@as([*:0]const u8, @ptrCast(if (lexs.dicp[0] != 0) lexs.dicp else heap_mod.getId(repl_session.session().lastid)))});
+                        word.print("{s} -- primitive to Miranda\n", .{@as([*:0]const u8, @ptrCast(if (lexs.dicp[0] != 0) lexs.dicp else heap_mod.getId(repl_session.session().lastid).ptr))});
                         repl_session.session().lastid = 0;
                         continue;
                     }

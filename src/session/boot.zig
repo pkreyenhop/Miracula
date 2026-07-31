@@ -315,7 +315,7 @@ fn reportMakeFailures(heap: *Heap) void {
     word.print("errors or undefined names found in:-\n", .{});
     while (make_state.make().make_status != 0) {
         h_val = abi.strcons(heap, heap_mod.h(heap, make_state.make().make_status), h_val);
-        const w = @as(Word, @intCast(std.mem.len(strtab.strOf(strtab.table(), heap_mod.h(heap, h_val)))));
+        const w = @as(Word, @intCast((strtab.strOf(strtab.table(), heap_mod.h(heap, h_val))).len));
         if (w > maxw) {
             maxw = w;
         }
@@ -327,7 +327,7 @@ fn reportMakeFailures(heap: *Heap) void {
     while (h_val != 0) {
         w += 1;
         const str = strtab.strOf(strtab.table(), heap_mod.h(heap, h_val));
-        const len = std.mem.len(str);
+        const len = str.len;
         const spaces_needed = if (@as(usize, @intCast(maxw)) > len) @as(usize, @intCast(maxw)) - len else 0;
         var pad_idx: usize = 0;
         while (pad_idx < spaces_needed) : (pad_idx += 1) {
