@@ -56937,12 +56937,12 @@
             },
             {
               "column": 55,
-              "line": 230,
+              "line": 245,
               "target": "receiver parameter interp.Compiler"
             },
             {
               "column": 55,
-              "line": 247,
+              "line": 256,
               "target": "receiver parameter interp.Compiler"
             }
           ],
@@ -56974,7 +56974,7 @@
             },
             {
               "column": 40,
-              "line": 249,
+              "line": 258,
               "target": "receiver parameter interp.Config"
             }
           ],
@@ -57061,12 +57061,12 @@
             },
             {
               "column": 39,
-              "line": 230,
+              "line": 245,
               "target": "receiver parameter interp.Core"
             },
             {
               "column": 39,
-              "line": 247,
+              "line": 256,
               "target": "receiver parameter interp.Core"
             }
           ],
@@ -57164,12 +57164,12 @@
             },
             {
               "column": 31,
-              "line": 230,
+              "line": 245,
               "target": "receiver parameter interp.Heap"
             },
             {
               "column": 31,
-              "line": 247,
+              "line": 256,
               "target": "receiver parameter interp.Heap"
             }
           ],
@@ -57206,32 +57206,32 @@
             },
             {
               "column": 5,
-              "line": 228,
+              "line": 243,
               "target": "receiver parameter interp.Lexer"
             },
             {
               "column": 5,
-              "line": 229,
+              "line": 244,
               "target": "receiver parameter interp.Lexer"
             },
             {
               "column": 70,
-              "line": 230,
+              "line": 245,
               "target": "receiver parameter interp.Lexer"
             },
             {
               "column": 5,
-              "line": 233,
+              "line": 248,
               "target": "receiver parameter interp.Lexer"
             },
             {
               "column": 5,
-              "line": 234,
+              "line": 249,
               "target": "receiver parameter interp.Lexer"
             },
             {
               "column": 70,
-              "line": 247,
+              "line": 256,
               "target": "receiver parameter interp.Lexer"
             }
           ],
@@ -57290,12 +57290,12 @@
             },
             {
               "column": 64,
-              "line": 230,
+              "line": 245,
               "target": "receiver parameter interp.Runtime"
             },
             {
               "column": 64,
-              "line": 247,
+              "line": 256,
               "target": "receiver parameter interp.Runtime"
             }
           ],
@@ -57388,12 +57388,12 @@
             },
             {
               "column": 32,
-              "line": 228,
+              "line": 243,
               "target": "Go string"
             },
             {
               "column": 32,
-              "line": 233,
+              "line": 248,
               "target": "Go string"
             }
           ],
@@ -57412,7 +57412,7 @@
             },
             {
               "column": 27,
-              "line": 249,
+              "line": 258,
               "target": "Go string conversion"
             }
           ]
