@@ -330,6 +330,11 @@ pub fn build(b: *std.Build) void {
     // `test`/`check` runs cannot race another runner over the same cache.
     if (!force_gc_every_allocation) run_smoke.step.dependOn(&run_mira_tests.step);
     run_golden_tests.step.dependOn(&run_smoke.step);
+    run_sigint_check.step.dependOn(&run_main_tests.step);
+    run_sigint_check.step.dependOn(&run_parser_tests.step);
+    run_sigint_check.step.dependOn(&run_utf8_tests.step);
+    run_sigint_check.step.dependOn(&run_just_tests.step);
+    run_sigint_check.step.dependOn(&run_menudriver_tests.step);
     run_sigint_check.step.dependOn(&run_golden_tests.step);
     run_spine_check.step.dependOn(&run_main_tests.step);
     run_spine_check.step.dependOn(&run_parser_tests.step);
@@ -338,6 +343,7 @@ pub fn build(b: *std.Build) void {
     run_spine_check.step.dependOn(&run_just_tests.step);
     run_spine_check.step.dependOn(&run_menudriver_tests.step);
     run_spine_check.step.dependOn(&run_golden_tests.step);
+    if (!force_gc_every_allocation) run_regression.step.dependOn(&run_spine_check.step);
 
     const test_golden = b.step("test-golden", "Run the golden output snapshot tests");
     test_golden.dependOn(&run_golden_tests.step);
@@ -583,6 +589,7 @@ pub fn build(b: *std.Build) void {
     strict_step.dependOn(&run_strict_golden_tests.step);
     strict_step.dependOn(&fmt_check.step);
     strict_step.dependOn(lint_step);
+    strict_step.dependOn(test_regression);
 
     // Language-neutral, per-stage migration oracles. Each verifier launches
     // an external producer and compares canonical JSONL; it never imports or
