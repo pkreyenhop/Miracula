@@ -174,3 +174,33 @@ test "Interp: two independent instances stay isolated when interleaved" {
     const r_b2 = try reduce.reduce(heap_mod.heap(), reduce.ap2(heap_mod.heap(), Value.fromRaw(word.PLUS), Value.fromRaw(b_val), Value.fromRaw(big.fromInt(heap_mod.heap(), 1))).toRaw());
     try std.testing.expectEqual(@as(i64, 223), @as(i64, @intCast(big.toInt(heap_mod.heap(), r_b2))));
 }
+
+test "Interp: independently owned state remains isolated under concurrent mutation" {
+    const std = @import("std");
+
+    const Worker = struct {
+        fn run(interp: *Interp, heap_marker: i64, limit: i64, verbosity: i32) void {
+            var i: usize = 0;
+            while (i < 50_000) : (i += 1) {
+                interp.heap.files = heap_marker;
+                interp.config.SPACELIMIT = limit;
+                interp.repl.verbosity = verbosity;
+                interp.core.errline = @intCast(i);
+            }
+        }
+    };
+
+    var a: Interp = .{};
+    var b: Interp = .{};
+    const ta = try std.Thread.spawn(.{}, Worker.run, .{ &a, 111, 12_000, 1 });
+    const tb = try std.Thread.spawn(.{}, Worker.run, .{ &b, 222, 24_000, 2 });
+    ta.join();
+    tb.join();
+
+    try std.testing.expectEqual(@as(i64, 111), a.heap.files);
+    try std.testing.expectEqual(@as(i64, 222), b.heap.files);
+    try std.testing.expectEqual(@as(i64, 12_000), a.config.SPACELIMIT);
+    try std.testing.expectEqual(@as(i64, 24_000), b.config.SPACELIMIT);
+    try std.testing.expectEqual(@as(i32, 1), a.repl.verbosity);
+    try std.testing.expectEqual(@as(i32, 2), b.repl.verbosity);
+}

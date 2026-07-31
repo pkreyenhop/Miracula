@@ -1,0 +1,327 @@
+{
+  "files": {
+    "compiler/compiler_state.zig": "application",
+    "compiler/dump.zig": "application",
+    "compiler/module_loader.zig": "application",
+    "compiler/setup.zig": "application",
+    "eval/combinators/combinators.zig": "evaluation",
+    "eval/combinators/combinators_list.zig": "evaluation",
+    "eval/combinators/io.zig": "evaluation",
+    "eval/combinators/lex.zig": "evaluation",
+    "eval/combinators/ready.zig": "evaluation",
+    "eval/combinators/ready_format.zig": "evaluation",
+    "eval/reduce.zig": "evaluation",
+    "eval/reduce_core.zig": "evaluation",
+    "eval/reduce_rt.zig": "evaluation",
+    "eval/reduce_test.zig": "evaluation",
+    "eval/resources.zig": "graphstore",
+    "eval/spine.zig": "evaluation",
+    "eval/stream.zig": "graphstore",
+    "eval/trace.zig": "evaluation",
+    "graph/bignum.zig": "graphstore",
+    "graph/bignum_fmt.zig": "graphstore",
+    "graph/combinator.zig": "protocol",
+    "graph/dump.zig": "graphstore",
+    "graph/dump_load.zig": "graphstore",
+    "graph/heap.zig": "graphstore",
+    "graph/heap_cells.zig": "graphstore",
+    "graph/heap_test.zig": "graphstore",
+    "graph/print.zig": "graphstore",
+    "graph/roots.zig": "graphstore",
+    "graph/semantic_types.zig": "protocol",
+    "graph/strtab.zig": "graphstore",
+    "graph/value.zig": "protocol",
+    "graph/word.zig": "protocol",
+    "io/files.zig": "platformsvc",
+    "io/platform.zig": "platformsvc",
+    "io/signals.zig": "platformsvc",
+    "io/utf8.zig": "platformsvc",
+    "main.zig": "commandapp",
+    "micro_benchmarks.zig": "application",
+    "os.zig": "platformsvc",
+    "os_scanf.zig": "platformsvc",
+    "parser/codegen.zig": "syntaxfront",
+    "parser/lex.zig": "syntaxfront",
+    "parser/lex_state.zig": "syntaxfront",
+    "parser/parser_api.zig": "syntaxfront",
+    "parser/parser_tests.zig": "syntaxfront",
+    "runtime/core_state.zig": "application",
+    "runtime/errors.zig": "protocol",
+    "runtime/runtime_state.zig": "application",
+    "runtime/version.zig": "application",
+    "semantics/depend.zig": "semantics",
+    "semantics/infer.zig": "semantics",
+    "semantics/infer_etype.zig": "semantics",
+    "semantics/infer_prims.zig": "semantics",
+    "semantics/infer_subst.zig": "semantics",
+    "semantics/lower.zig": "semantics",
+    "semantics/lower_front.zig": "semantics",
+    "semantics/lower_prims.zig": "semantics",
+    "semantics/lower_sort.zig": "semantics",
+    "semantics/match.zig": "semantics",
+    "semantics/modules.zig": "semantics",
+    "semantics/show_fns.zig": "semantics",
+    "semantics/symbols.zig": "semantics",
+    "semantics/type_errors.zig": "semantics",
+    "semantics/unify.zig": "semantics",
+    "session/bnf_state.zig": "application",
+    "session/boot.zig": "application",
+    "session/commands.zig": "commandapp",
+    "session/config.zig": "application",
+    "session/config_state.zig": "application",
+    "session/editor.zig": "application",
+    "session/interp.zig": "application",
+    "session/make_state.zig": "application",
+    "session/repl.zig": "application",
+    "session/repl_session.zig": "application",
+    "session/script_store.zig": "application",
+    "syntax/ast.zig": "syntaxfront",
+    "syntax/directives.zig": "syntaxfront",
+    "syntax/layout.zig": "syntaxfront",
+    "syntax/lexer.zig": "syntaxfront",
+    "syntax/lexer_test.zig": "syntaxfront",
+    "syntax/parser.zig": "syntaxfront",
+    "syntax/parser_test.zig": "syntaxfront",
+    "syntax/pratt.zig": "syntaxfront",
+    "syntax/source.zig": "syntaxfront",
+    "syntax/token_filter.zig": "syntaxfront",
+    "testutil.zig": "devtools",
+    "tools/fdate.zig": "devtools",
+    "tools/just.zig": "devtools",
+    "tools/menudriver.zig": "devtools"
+  },
+  "legacy_singleton_upper_bounds": {
+    "compiler/compiler_state.zig": 5,
+    "compiler/dump.zig": 34,
+    "compiler/module_loader.zig": 106,
+    "compiler/setup.zig": 28,
+    "eval/combinators/combinators.zig": 5,
+    "eval/combinators/ready.zig": 4,
+    "eval/reduce.zig": 2,
+    "eval/reduce_core.zig": 13,
+    "eval/reduce_rt.zig": 60,
+    "eval/reduce_test.zig": 31,
+    "eval/spine.zig": 35,
+    "eval/stream.zig": 2,
+    "graph/bignum.zig": 21,
+    "graph/bignum_fmt.zig": 7,
+    "graph/dump.zig": 33,
+    "graph/dump_load.zig": 15,
+    "graph/heap.zig": 116,
+    "graph/heap_cells.zig": 105,
+    "graph/heap_test.zig": 125,
+    "graph/print.zig": 5,
+    "graph/strtab.zig": 2,
+    "graph/value.zig": 4,
+    "io/files.zig": 11,
+    "main.zig": 3,
+    "micro_benchmarks.zig": 4,
+    "parser/codegen.zig": 16,
+    "parser/lex.zig": 253,
+    "parser/lex_state.zig": 4,
+    "parser/parser_api.zig": 46,
+    "parser/parser_tests.zig": 73,
+    "runtime/core_state.zig": 4,
+    "runtime/runtime_state.zig": 5,
+    "semantics/depend.zig": 12,
+    "semantics/infer.zig": 73,
+    "semantics/infer_etype.zig": 106,
+    "semantics/infer_subst.zig": 57,
+    "semantics/lower.zig": 96,
+    "semantics/lower_front.zig": 13,
+    "semantics/lower_prims.zig": 1,
+    "semantics/match.zig": 3,
+    "semantics/modules.zig": 6,
+    "semantics/show_fns.zig": 2,
+    "semantics/symbols.zig": 11,
+    "semantics/type_errors.zig": 32,
+    "semantics/unify.zig": 24,
+    "session/bnf_state.zig": 3,
+    "session/boot.zig": 102,
+    "session/commands.zig": 60,
+    "session/config.zig": 162,
+    "session/config_state.zig": 3,
+    "session/editor.zig": 2,
+    "session/interp.zig": 41,
+    "session/make_state.zig": 3,
+    "session/repl.zig": 60,
+    "session/repl_session.zig": 3,
+    "session/script_store.zig": 4,
+    "testutil.zig": 33
+  },
+  "packages": {
+    "application": {
+      "go_path": "internal/application",
+      "may_import": [
+        "protocol",
+        "platformsvc",
+        "graphstore",
+        "syntaxfront",
+        "semantics",
+        "evaluation"
+      ]
+    },
+    "commandapp": {
+      "go_path": "internal/commandapp",
+      "may_import": [
+        "protocol",
+        "platformsvc",
+        "application"
+      ]
+    },
+    "devtools": {
+      "go_path": "internal/devtools",
+      "may_import": [
+        "protocol",
+        "platformsvc"
+      ]
+    },
+    "evaluation": {
+      "go_path": "internal/evaluation",
+      "may_import": [
+        "protocol",
+        "platformsvc",
+        "graphstore"
+      ]
+    },
+    "graphstore": {
+      "go_path": "internal/graphstore",
+      "may_import": [
+        "protocol",
+        "platformsvc"
+      ]
+    },
+    "platformsvc": {
+      "go_path": "internal/platformsvc",
+      "may_import": [
+        "protocol"
+      ]
+    },
+    "protocol": {
+      "go_path": "internal/protocol",
+      "may_import": []
+    },
+    "semantics": {
+      "go_path": "internal/semantics",
+      "may_import": [
+        "protocol",
+        "platformsvc",
+        "graphstore",
+        "syntaxfront"
+      ]
+    },
+    "syntaxfront": {
+      "go_path": "internal/syntaxfront",
+      "may_import": [
+        "protocol",
+        "platformsvc",
+        "graphstore"
+      ]
+    }
+  },
+  "process_globals": {
+    "allowed": [
+      "runtime.interrupt_flag"
+    ],
+    "go_race_gate": "go test -race ./..."
+  },
+  "schema": 1,
+  "state": {
+    "big": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "bignum.bn",
+      "owner": "graphstore"
+    },
+    "bnf": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "bnf_state.bnf",
+      "owner": "syntaxfront"
+    },
+    "comp": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "compiler_state.cs",
+      "owner": "semantics"
+    },
+    "config": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "config_state.config",
+      "owner": "application"
+    },
+    "core": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "core_state.s",
+      "owner": "application"
+    },
+    "eval": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "reduce_rt.ev",
+      "owner": "evaluation"
+    },
+    "heap": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "heap.heap",
+      "owner": "graphstore"
+    },
+    "io": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "word.io",
+      "owner": "platformsvc"
+    },
+    "lex": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "lex_state.ls",
+      "owner": "syntaxfront"
+    },
+    "lineedit": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "editor.state",
+      "owner": "application"
+    },
+    "make": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "make_state.make",
+      "owner": "application"
+    },
+    "repl": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "repl_session.session",
+      "owner": "application"
+    },
+    "rs": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "runtime_state.rs",
+      "owner": "application"
+    },
+    "script": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "script_store.store",
+      "owner": "application"
+    },
+    "show": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "show_fns.show",
+      "owner": "semantics"
+    },
+    "strtab": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "strtab.table",
+      "owner": "graphstore"
+    },
+    "symbols": {
+      "go_rule": "constructor or receiver parameter",
+      "legacy_accessor": "symbols.syms",
+      "owner": "semantics"
+    }
+  },
+  "translation_order": [
+    "protocol",
+    "platformsvc",
+    "graphstore",
+    "syntaxfront",
+    "semantics",
+    "evaluation",
+    "application",
+    "commandapp",
+    "devtools"
+  ]
+}
