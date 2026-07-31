@@ -9,7 +9,7 @@ const std = @import("std");
 extern fn sigaction(signum: c_int, act: ?*const std.posix.Sigaction, oldact: ?*std.posix.Sigaction) c_int;
 
 ///
-pub fn signals(signum: c_int, handler: usize) usize {
+pub fn signals(signum: i32, handler: usize) usize {
     var act: std.posix.Sigaction = undefined;
     var oldact: std.posix.Sigaction = undefined;
 
@@ -17,7 +17,7 @@ pub fn signals(signum: c_int, handler: usize) usize {
     act.mask = std.posix.sigemptyset();
     act.flags = std.posix.SA.RESTART;
 
-    if (sigaction(signum, &act, &oldact) == 0) {
+    if (sigaction(@intCast(signum), &act, &oldact) == 0) {
         if (oldact.handler.handler) |h| {
             return @intFromPtr(h);
         }

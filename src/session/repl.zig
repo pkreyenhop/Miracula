@@ -107,7 +107,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
         abi.obey(heap, core, comp, rs, rs.main_id);
         abi.exit(0);
     }
-    _ = signals(abi.SIGINT, @intFromPtr(&onInterrupt));
+    _ = signals(@intCast(abi.SIGINT), @intFromPtr(&onInterrupt));
     dump.undump(heap, core_state.s(), cs(), rs, initscript);
     if (repl_session.session().verbosity != 0) {
         word.print("for help type /h\n", .{});
@@ -225,7 +225,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                     // Ignore SIGINT for the duration: a Ctrl-C meant for the
                     // shell command (e.g. an interactive `!vi`) must not also
                     // kill mira itself. Restored once the child returns.
-                    const oldsig = signals(abi.SIGINT, 1);
+                    const oldsig = signals(@intCast(abi.SIGINT), 1);
                     const argv = [_][]const u8{ shell, "-c", std.mem.span(lb.?) };
                     if (std.process.spawn(rt.io, .{
                         .argv = &argv,
@@ -238,7 +238,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
                     } else |_| {
                         abi.perror("UNIX error - cannot create process");
                     }
-                    _ = signals(abi.SIGINT, oldsig);
+                    _ = signals(@intCast(abi.SIGINT), oldsig);
                     if (dump_mod.srcUpdate(heap, rs) != 0) {
                         module_loader.loadfile(heap, core_state.s(), cs(), rs, ls(), script_store.store().current_script.?) catch {};
                     }

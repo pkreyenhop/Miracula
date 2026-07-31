@@ -496,7 +496,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
             }
         }
     } else { // child
-        _ = signals(abi.SIGINT, 0);
+        _ = signals(@intCast(abi.SIGINT), 0);
         rs.ideep += 1;
         make_state.make().making = true;
         make_state.make().make_status = 0;

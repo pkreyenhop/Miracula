@@ -161,7 +161,7 @@ pub fn mainEntry(heap: *Heap, argc: i32, argv: [*][*:0]u8) i32 {
         _ = abi.keep(ls().dicp);
     }
 
-    _ = signals_mod.signals(abi.SIGTERM, @intFromPtr(&abi.exit));
+    _ = signals_mod.signals(@intCast(abi.SIGTERM), @intFromPtr(&abi.exit));
     // Interactive stdin gets zigline line editing + history; piped/file stdin
     // keeps the plain read path (so the golden corpus and integration suite run
     // unchanged).

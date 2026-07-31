@@ -8,15 +8,15 @@ const std = @import("std");
 
 /// Opaque C `Stream` handle — this module talks to libc `getc`/`putc` directly.
 pub const Stream = opaque {};
-extern fn getc(fil: ?*Stream) c_int;
-extern fn putc(ch: c_int, fil: ?*Stream) c_int;
-const EOF: c_int = -1;
+extern fn getc(fil: ?*Stream) i32;
+extern fn putc(ch: i32, fil: ?*Stream) i32;
+const EOF: i32 = -1;
 
 ///
-pub export fn fromUTF8(fil: ?*Stream) c_ulong {
+pub export fn fromUTF8(fil: ?*Stream) u64 {
     const c0 = getc(fil);
     if (c0 == EOF) {
-        return std.math.maxInt(c_ulong);
+        return std.math.maxInt(u64);
     }
     if (c0 <= 0x7f) {
         return @intCast(c0);
@@ -62,7 +62,7 @@ pub export fn fromUTF8(fil: ?*Stream) c_ulong {
 }
 
 ///
-pub fn outUTF8(u: c_ulong, fil: ?*Stream) void {
+pub fn outUTF8(u: u64, fil: ?*Stream) void {
     if (u <= 0x7f) {
         out(u, fil);
     } else if (u <= 0x7ff) {
@@ -84,12 +84,12 @@ pub fn outUTF8(u: c_ulong, fil: ?*Stream) void {
 }
 
 ///
-pub fn out(byte: c_ulong, fil: ?*Stream) void {
+pub fn out(byte: u64, fil: ?*Stream) void {
     _ = putc(@intCast(byte), fil);
 }
 
 ///
-fn reportError(bytes: []const c_int) noreturn {
+fn reportError(bytes: []const i32) noreturn {
     var incomplete = false;
     for (bytes) |byte| {
         if (byte == EOF) {
@@ -104,7 +104,7 @@ fn reportError(bytes: []const c_int) noreturn {
         if (byte == EOF) {
             std.debug.print(" EOF", .{});
         } else {
-            std.debug.print(" 0x{x}", .{@as(c_uint, @intCast(byte))});
+            std.debug.print(" 0x{x}", .{@as(u32, @intCast(byte))});
         }
     }
     std.debug.print("\n", .{});

@@ -338,7 +338,7 @@ test "idType/idVal: an id cell's type and value fields" {
     try std.testing.expectEqual(@as(Word, word.type_t), idType(id));
     try std.testing.expectEqual(@as(Word, word.True), idVal(id));
 }
-test "constructor: builds a CONSTRUCTOR cell from Word/c_int/C-string fields" {
+test "constructor: builds a CONSTRUCTOR cell from Word/i32/C-string fields" {
     tu.freshInterp();
 
     const from_word = constructor(heap(), word.True, @as(Word, 77));

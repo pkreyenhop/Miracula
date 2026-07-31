@@ -23,12 +23,12 @@ pub const FileInfo = struct {
 const platform_impl = if (is_linux) struct {
     extern fn __errno_location() *c_int;
     ///
-    pub fn getErrno() c_int {
-        return __errno_location().*;
+    pub fn getErrno() i32 {
+        return @intCast(__errno_location().*);
     }
     ///
-    pub fn setErrno(val: c_int) void {
-        __errno_location().* = val;
+    pub fn setErrno(val: i32) void {
+        __errno_location().* = @intCast(val);
     }
 
     ///
@@ -66,12 +66,12 @@ const platform_impl = if (is_linux) struct {
     extern fn stat(path: [*:0]const u8, buf: *std.posix.system.Stat) c_int;
 
     ///
-    pub fn getErrno() c_int {
-        return __error().*;
+    pub fn getErrno() i32 {
+        return @intCast(__error().*);
     }
     ///
-    pub fn setErrno(val: c_int) void {
-        __error().* = val;
+    pub fn setErrno(val: i32) void {
+        __error().* = @intCast(val);
     }
 
     ///
