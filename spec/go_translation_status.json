@@ -4,7 +4,7 @@
     "bootstrap": "complete",
     "package:application": "complete",
     "package:commandapp": "complete",
-    "package:devtools": "pending",
+    "package:devtools": "complete",
     "package:evaluation": "complete",
     "package:graphstore": "complete",
     "package:platformsvc": "complete",

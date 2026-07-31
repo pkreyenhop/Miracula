@@ -101466,7 +101466,7 @@
           "target_file": "fdate.go",
           "target_package": "devtools",
           "target_symbol": "FdateEpochToDate",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -101489,7 +101489,7 @@
           "target_file": "fdate.go",
           "target_package": "devtools",
           "target_symbol": "FdateMain",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -101512,12 +101512,12 @@
           "target_file": "fdate.go",
           "target_package": "devtools",
           "target_symbol": "FdateReportBadFile",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "fdate.go",
       "target_package": "devtools",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -101587,7 +101587,7 @@
           "target_file": "just.go",
           "target_package": "devtools",
           "target_symbol": "JustMain",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -101610,7 +101610,7 @@
           "target_file": "just.go",
           "target_package": "devtools",
           "target_symbol": "JustReadWidthFile",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -101633,7 +101633,7 @@
           "target_file": "just.go",
           "target_package": "devtools",
           "target_symbol": "JustFormatText",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -101656,7 +101656,7 @@
           "target_file": "just.go",
           "target_package": "devtools",
           "target_symbol": "JustFlushParagraph",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -101679,7 +101679,7 @@
           "target_file": "just.go",
           "target_package": "devtools",
           "target_symbol": "JustFormatParagraph",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -101702,7 +101702,7 @@
           "target_file": "just.go",
           "target_package": "devtools",
           "target_symbol": "JustEmitLine",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -101725,7 +101725,7 @@
           "target_file": "just.go",
           "target_package": "devtools",
           "target_symbol": "JustAppendSpaces",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -101748,7 +101748,7 @@
           "target_file": "just.go",
           "target_package": "devtools",
           "target_symbol": "JustSqueezeLine",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -101771,7 +101771,7 @@
           "target_file": "just.go",
           "target_package": "devtools",
           "target_symbol": "JustIndent",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -101794,12 +101794,12 @@
           "target_file": "just.go",
           "target_package": "devtools",
           "target_symbol": "JustIsTerminator",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "just.go",
       "target_package": "devtools",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -101869,7 +101869,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -101892,7 +101892,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverInit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -101915,7 +101915,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.Deinit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -101938,7 +101938,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.Drive",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -101961,7 +101961,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.Singleton",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -101984,7 +101984,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.ShowFile",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102007,7 +102007,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.HandleSpecialOrBad",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102030,7 +102030,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.Settings",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102053,7 +102053,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.ShellEscape",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102076,7 +102076,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.ReadSelection",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102099,7 +102099,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.LastVal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102122,7 +102122,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.PushLast",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102145,7 +102145,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.PopLast",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102168,7 +102168,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.RunViewer",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102191,7 +102191,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.SetNext",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102214,7 +102214,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.SetNextFmt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102237,7 +102237,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.SetLast",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102260,7 +102260,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.ClearScreen",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102283,7 +102283,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverDriver.WaitForReturn",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102306,7 +102306,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverMain",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102329,7 +102329,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverIsOwnerExecutable",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102352,7 +102352,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverRunExecutable",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102375,7 +102375,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverRunShellViewer",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102398,7 +102398,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverRunShell",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102421,7 +102421,7 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverRunChild",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -102444,12 +102444,12 @@
           "target_file": "menudriver.go",
           "target_package": "devtools",
           "target_symbol": "MenudriverShellQuote",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "menudriver.go",
       "target_package": "devtools",
-      "translation_status": "pending"
+      "translation_status": "complete"
     }
   ],
   "translation_units": [
@@ -102669,11 +102669,7 @@
       "generated_check": "go generate ./... && git diff --exit-code",
       "id": "package:devtools",
       "package_test": "go test ./internal/devtools",
-      "source_files": [
-        "src/tools/fdate.zig",
-        "src/tools/just.zig",
-        "src/tools/menudriver.zig"
-      ],
+      "source_files": [],
       "stage_oracles": [
         {
           "command": "python3 tests/oracle/oracle.py verify --stage reduce --producer 'go run ./cmd/miracula-go-oracle'",
@@ -102681,7 +102677,7 @@
         }
       ],
       "target_package": "devtools",
-      "translation_status": "pending"
+      "translation_status": "complete"
     }
   ]
 }
