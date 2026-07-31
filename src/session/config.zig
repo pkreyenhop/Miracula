@@ -18,6 +18,7 @@ const Word = word.Word;
 
 const lex_state = @import("../parser/lex_state.zig");
 const version = @import("../runtime/version.zig");
+const typed_parse = @import("../io/typed_parse.zig");
 const repl = @import("repl.zig");
 const ls = lex_state.ls;
 const EDITOR: [*:0]const u8 = "vi +!";
@@ -73,22 +74,22 @@ pub fn parseFlags(argc: i32, argv: [*][*:0]u8) ParsedFlags {
             if (arg_idx == argc_u) {
                 missingParam("dic");
             } else {
-                var val: i64 = 0;
-                if (abi.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or flagOutOfRange(val)) {
+                const val = typed_parse.integerPrefix(i64, std.mem.span(argv[arg_idx])) catch {
                     errors.fatal("mira: bad value after flag \"-dic\"\n", .{});
-                }
-                config_state.config().DICSPACE = val;
+                };
+                if (flagOutOfRange(val.value)) errors.fatal("mira: bad value after flag \"-dic\"\n", .{});
+                config_state.config().DICSPACE = val.value;
             }
         } else if (argIs(arg, "-heap")) {
             arg_idx += 1;
             if (arg_idx == argc_u) {
                 missingParam("heap");
             } else {
-                var val: i64 = 0;
-                if (abi.sscanf(argv[arg_idx], "%ld", .{&val}) != 1 or flagOutOfRange(val)) {
+                const val = typed_parse.integerPrefix(i64, std.mem.span(argv[arg_idx])) catch {
                     errors.fatal("mira: bad value after flag \"-heap\"\n", .{});
-                }
-                config_state.config().SPACELIMIT = val;
+                };
+                if (flagOutOfRange(val.value)) errors.fatal("mira: bad value after flag \"-heap\"\n", .{});
+                config_state.config().SPACELIMIT = val.value;
             }
         } else if (argIs(arg, "-editor")) {
             arg_idx += 1;
@@ -255,6 +256,7 @@ pub fn resolveEnvironmentSettings() void {
 
 /// Load the saved `.mirarc` dump `rcfile`. Returns 1 on success, 0 on failure.
 pub fn readRc(rcfile: [*:0]const u8) Word {
+    const runtime = rt.rs();
     var z: [20]u8 = undefined;
     @memset(&z, 0);
     var h_val: i64 = 0;
@@ -266,79 +268,89 @@ pub fn readRc(rcfile: [*:0]const u8) Word {
     const in = word.fopen(rcfile, "r") orelse return 0;
     defer _ = word.fclose(in);
 
-    if (abi.fscanf(in, "%19s", .{@as([*c]u8, @ptrCast(&z))}) != 1) {
-        return 0;
-    }
-    const z_ptr: [*:0]const u8 = @ptrCast(&z);
-    const z_slice = std.mem.span(z_ptr);
+    const z_slice = (typed_parse.readToken(in, &z) catch return 0) orelse return 0;
     if (std.mem.startsWith(u8, z_slice, "hdve") or std.mem.eql(u8, z_slice, "lhdve")) {
-        var z1 = @as([*]u8, @ptrCast(&z)) + 3;
+        var option_index: usize = 3;
         if (z[0] == 'l') {
             repl_session.session().listing = 1;
-            z1 += 1;
+            option_index += 1;
         }
-        z1 += 1;
-        while (z1[0] != 0) : (z1 += 1) {
-            switch (z1[0]) {
+        option_index += 1;
+        while (option_index < z_slice.len) : (option_index += 1) {
+            switch (z_slice[option_index]) {
                 'l' => repl_session.session().listing = 1,
                 's' => {},
-                'r' => rt.rs().rechecking = 2,
-                else => rt.rs().rc_error = rcfile,
+                'r' => runtime.rechecking = 2,
+                else => runtime.rc_error = rcfile,
             }
         }
 
         const read_ok = blk: {
-            if (abi.fscanf(in, "%ld%ld%ld%*c", .{ &h_val, &d_val, &v_val }) != 3) break :blk false;
-            if (repl.getLine(in, rt.rs().ebuf.len - 1, @ptrCast(&rt.rs().ebuf)) == 0) break :blk false;
+            var number_buf: [32]u8 = undefined;
+            h_val = (typed_parse.readInteger(i64, in, &number_buf) catch null) orelse break :blk false;
+            d_val = (typed_parse.readInteger(i64, in, &number_buf) catch null) orelse break :blk false;
+            v_val = (typed_parse.readInteger(i64, in, &number_buf) catch null) orelse break :blk false;
+            if (repl.getLine(in, runtime.ebuf.len - 1, @ptrCast(&runtime.ebuf)) == 0) break :blk false;
             if (flagOutOfRange(h_val) or flagOutOfRange(d_val) or flagOutOfRange(v_val)) break :blk false;
             break :blk true;
         };
         if (!read_ok) {
-            rt.rs().rc_error = rcfile;
+            runtime.rc_error = rcfile;
         } else {
-            var len = std.mem.len(@as([*:0]const u8, @ptrCast(&rt.rs().ebuf)));
-            if (len > 0 and rt.rs().ebuf[len - 1] == '\n') {
-                rt.rs().ebuf[len - 1] = 0;
+            var len = std.mem.len(@as([*:0]const u8, @ptrCast(&runtime.ebuf)));
+            if (len > 0 and runtime.ebuf[len - 1] == '\n') {
+                runtime.ebuf[len - 1] = 0;
                 len -= 1;
             }
-            config_state.config().editor = @ptrCast(&rt.rs().ebuf);
+            config_state.config().editor = @ptrCast(&runtime.ebuf);
             config_state.config().SPACELIMIT = h_val;
             config_state.config().DICSPACE = d_val;
             r = 1;
         }
     } else if (std.mem.eql(u8, z_slice, "ehdsv")) {
         const read_ok = blk: {
-            if (abi.fscanf(in, "%19s%ld%ld%ld%ld", .{ &rt.rs().ebuf, &h_val, &d_val, &s_val, &v_val }) != 5) break :blk false;
+            const editor = (typed_parse.readToken(in, runtime.ebuf[0..19]) catch null) orelse break :blk false;
+            runtime.ebuf[editor.len] = 0;
+            var number_buf: [32]u8 = undefined;
+            h_val = (typed_parse.readInteger(i64, in, &number_buf) catch null) orelse break :blk false;
+            d_val = (typed_parse.readInteger(i64, in, &number_buf) catch null) orelse break :blk false;
+            s_val = (typed_parse.readInteger(i64, in, &number_buf) catch null) orelse break :blk false;
+            v_val = (typed_parse.readInteger(i64, in, &number_buf) catch null) orelse break :blk false;
             if (flagOutOfRange(h_val) or flagOutOfRange(d_val) or flagOutOfRange(v_val)) break :blk false;
             break :blk true;
         };
         if (!read_ok) {
-            rt.rs().rc_error = rcfile;
+            runtime.rc_error = rcfile;
         } else {
-            config_state.config().editor = @ptrCast(&rt.rs().ebuf);
+            config_state.config().editor = @ptrCast(&runtime.ebuf);
             config_state.config().SPACELIMIT = h_val;
             config_state.config().DICSPACE = d_val;
             r = 1;
         }
     } else if (std.mem.eql(u8, z_slice, "ehds")) {
         const read_ok = blk: {
-            if (abi.fscanf(in, "%1023s%ld%ld%ld", .{ &rt.rs().ebuf, &h_val, &d_val, &s_val }) != 4) break :blk false;
+            const editor = (typed_parse.readToken(in, runtime.ebuf[0 .. runtime.ebuf.len - 1]) catch null) orelse break :blk false;
+            runtime.ebuf[editor.len] = 0;
+            var number_buf: [32]u8 = undefined;
+            h_val = (typed_parse.readInteger(i64, in, &number_buf) catch null) orelse break :blk false;
+            d_val = (typed_parse.readInteger(i64, in, &number_buf) catch null) orelse break :blk false;
+            s_val = (typed_parse.readInteger(i64, in, &number_buf) catch null) orelse break :blk false;
             if (flagOutOfRange(h_val) or flagOutOfRange(d_val)) break :blk false;
             break :blk true;
         };
         if (!read_ok) {
-            rt.rs().rc_error = rcfile;
+            runtime.rc_error = rcfile;
         } else {
-            config_state.config().editor = @ptrCast(&rt.rs().ebuf);
+            config_state.config().editor = @ptrCast(&runtime.ebuf);
             config_state.config().SPACELIMIT = h_val;
             config_state.config().DICSPACE = d_val;
             r = 1;
         }
     } else {
-        rt.rs().rc_error = rcfile;
+        runtime.rc_error = rcfile;
     }
     if (config_state.config().editor != null) {
-        config_state.config().baded = @intFromBool(repl.badEditor(rt.rs()));
+        config_state.config().baded = @intFromBool(repl.badEditor(runtime));
     }
     return r;
 }

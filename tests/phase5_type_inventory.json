@@ -180,12 +180,6 @@
       "to_raw": 0,
       "word": 29
     },
-    "os_scanf.zig": {
-      "from_raw": 0,
-      "owner": "platform-support",
-      "to_raw": 0,
-      "word": 2
-    },
     "parser/codegen.zig": {
       "from_raw": 5,
       "owner": "syntax-and-codegen",

@@ -1,6 +1,6 @@
 //! os.zig (renamed from main_clib.zig, Phase 2 step 5, docs/GoReady.md)
 //! — the Zig-native C-standard-library/OS shim. Implements the
-//! `fork`/`wait`/`errno`/signals/rlimits/`sscanf` surface the C-ported
+//! `fork`/`wait`/`errno`/signals/rlimits surface the C-ported
 //! interpreter calls, layered over `std` and the raw OS syscalls, so the binary
 //! links no external libc. This is the project's irreducible FFI boundary (the
 //! few remaining `extern fn`s are the OS syscall floor). `printf`/`fopen`/
@@ -12,9 +12,6 @@
 const word_mod = @import("graph/word.zig");
 const std = @import("std");
 const builtin = @import("builtin");
-const os_scanf = @import("os_scanf.zig");
-pub const sscanf = os_scanf.sscanf;
-pub const fscanf = os_scanf.fscanf;
 const rt = @import("runtime/runtime_state.zig");
 const heap_mod = @import("graph/heap.zig");
 const print_mod = @import("graph/print.zig");

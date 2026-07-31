@@ -37,6 +37,7 @@ const core_state = @import("../runtime/core_state.zig");
 const lineedit = @import("editor.zig");
 const config = @import("config.zig");
 const platform = @import("../io/platform.zig");
+const typed_parse = @import("../io/typed_parse.zig");
 const ls = lex_state.ls;
 
 inline fn getTag(heap: *Heap, x: Word) word.NodeTag {
@@ -350,7 +351,9 @@ fn checkVersion(m: [*:0]const u8) i32 {
     var read_ok: bool = false;
     var r: i32 = 0;
     if (f != null) {
-        if (abi.fscanf(f, "%u", .{&v1}) == 1) {
+        var token: [32]u8 = undefined;
+        if (typed_parse.readInteger(u32, f.?, &token) catch null) |parsed| {
+            v1 = parsed;
             r = if (v1 == version.version) 1 else 0;
             read_ok = true;
         }

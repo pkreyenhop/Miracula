@@ -28,6 +28,7 @@ inline fn getTag(heap: *Heap, x: Word) word.NodeTag {
 const lex_state = @import("../parser/lex_state.zig");
 const lex = @import("../parser/lex.zig");
 const core_state = @import("../runtime/core_state.zig");
+const typed_parse = @import("../io/typed_parse.zig");
 const heap_mod = @import("../graph/heap.zig");
 const dump_mod = @import("../graph/dump.zig");
 const depend_mod = @import("../semantics/depend.zig");
@@ -460,7 +461,11 @@ pub fn command(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.C
                     return;
                 }
                 if (abi.getchar() != '\n') return;
-                if (abi.sscanf(lexs.dicp, "%ld", .{&x}) != 1 or heap_mod.badval(x)) {
+                x = (typed_parse.integerPrefix(i64, std.mem.span(lexs.dicp)) catch {
+                    word.print("illegal value (heap unchanged)\n", .{});
+                    return;
+                }).value;
+                if (heap_mod.badval(x)) {
                     word.print("illegal value (heap unchanged)\n", .{});
                     return;
                 }

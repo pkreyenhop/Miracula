@@ -644,6 +644,11 @@ pub fn build(b: *std.Build) void {
     test_phase9.dependOn(&run_phase9_platform.step);
     test_phase9.dependOn(&run_main_tests.step);
 
+    const run_phase10_strings = b.addSystemCommand(&.{ "python3", "scripts/phase10_strings.py" });
+    const test_phase10 = b.step("test-phase10", "Verify typed parsers and sentinel-string ownership ratchets");
+    test_phase10.dependOn(&run_phase10_strings.step);
+    test_phase10.dependOn(&run_main_tests.step);
+
     // Mandatory migration-readiness gate. Reference preparation is deliberately
     // separate: this target fails closed when the pinned artifact is absent.
     const go_ready_step = b.step("go-ready", "Run the complete fail-closed Go migration readiness gate");
@@ -662,6 +667,7 @@ pub fn build(b: *std.Build) void {
     go_ready_step.dependOn(test_phase7);
     go_ready_step.dependOn(test_phase8);
     go_ready_step.dependOn(test_phase9);
+    go_ready_step.dependOn(test_phase10);
 
     // Benchmark targets (optimized for ReleaseFast)
     const bench_version_options = b.addOptions();

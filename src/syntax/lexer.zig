@@ -396,7 +396,7 @@ pub const Lexer = struct {
     /// `hexnumeral`'s own grammar) and/or a `p`/`P` exponent (decimal digits,
     /// optional sign). Unlike decimal floats, the exponent is *not* required
     /// (`0x1.8` alone is a legal hex-float, matching `hexnumeral`'s lenient
-    /// `sscanf("%lf", ...)` — Zig's `parseFloat` accepts the same shape,
+    /// The typed float parser accepts the same shape,
     /// verified: it defaults a missing exponent to 0). The whole matched
     /// text (from `0x`/`0X` onward) is handed to `parseFloat` rather than
     /// hand-rolling hex-float arithmetic here.

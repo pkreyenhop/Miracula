@@ -1,0 +1,327 @@
+{
+  "files": {
+    "compiler/dump.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 11,
+      "sentinel_slice": 0,
+      "span_conversion": 14
+    },
+    "compiler/module_loader.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 12,
+      "sentinel_slice": 0,
+      "span_conversion": 10
+    },
+    "compiler/setup.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 5,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    },
+    "eval/combinators/io.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 0,
+      "sentinel_slice": 0,
+      "span_conversion": 1
+    },
+    "eval/combinators/ready.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 1,
+      "sentinel_slice": 0,
+      "span_conversion": 3
+    },
+    "eval/reduce_core.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 4,
+      "sentinel_slice": 1,
+      "span_conversion": 2
+    },
+    "eval/reduce_rt.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 10,
+      "sentinel_slice": 0,
+      "span_conversion": 8
+    },
+    "eval/stream.zig": {
+      "classification": "ffi_or_platform",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 3,
+      "sentinel_slice": 0,
+      "span_conversion": 4
+    },
+    "eval/trace.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 1,
+      "sentinel_slice": 0,
+      "span_conversion": 1
+    },
+    "graph/bignum_fmt.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 1,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    },
+    "graph/combinator.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 1,
+      "sentinel_slice": 0,
+      "span_conversion": 1
+    },
+    "graph/dump.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 7,
+      "sentinel_slice": 0,
+      "span_conversion": 2
+    },
+    "graph/dump_load.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 12,
+      "sentinel_pointer": 1,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    },
+    "graph/heap.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 4,
+      "sentinel_slice": 3,
+      "span_conversion": 0
+    },
+    "graph/heap_cells.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 2,
+      "sentinel_pointer": 3,
+      "sentinel_slice": 1,
+      "span_conversion": 0
+    },
+    "graph/heap_test.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 3,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    },
+    "graph/print.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 4,
+      "sentinel_slice": 0,
+      "span_conversion": 5
+    },
+    "graph/strtab.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 0,
+      "sentinel_slice": 10,
+      "span_conversion": 1
+    },
+    "graph/value.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 0,
+      "sentinel_slice": 0,
+      "span_conversion": 1
+    },
+    "io/files.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 11,
+      "sentinel_slice": 0,
+      "span_conversion": 4
+    },
+    "io/platform.zig": {
+      "classification": "ffi_or_platform",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 3,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    },
+    "main.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 1,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    },
+    "os.zig": {
+      "classification": "ffi_or_platform",
+      "pointer_arithmetic": 2,
+      "sentinel_pointer": 40,
+      "sentinel_slice": 0,
+      "span_conversion": 10
+    },
+    "parser/codegen.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 2,
+      "sentinel_slice": 0,
+      "span_conversion": 1
+    },
+    "parser/lex.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 10,
+      "sentinel_pointer": 27,
+      "sentinel_slice": 1,
+      "span_conversion": 14
+    },
+    "parser/lex_state.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 3,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    },
+    "parser/parser_api.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 3,
+      "sentinel_slice": 0,
+      "span_conversion": 3
+    },
+    "parser/parser_tests.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 5,
+      "sentinel_slice": 1,
+      "span_conversion": 2
+    },
+    "runtime/core_state.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 1,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    },
+    "runtime/runtime_state.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 5,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    },
+    "runtime/version.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 2,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    },
+    "semantics/infer_prims.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 0,
+      "sentinel_slice": 1,
+      "span_conversion": 0
+    },
+    "semantics/infer_subst.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 6,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    },
+    "semantics/lower.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 5,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    },
+    "semantics/lower_prims.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 0,
+      "sentinel_slice": 1,
+      "span_conversion": 0
+    },
+    "semantics/modules.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 0,
+      "sentinel_slice": 0,
+      "span_conversion": 1
+    },
+    "semantics/type_errors.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 6,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    },
+    "session/boot.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 11,
+      "sentinel_slice": 0,
+      "span_conversion": 2
+    },
+    "session/commands.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 6,
+      "sentinel_pointer": 30,
+      "sentinel_slice": 3,
+      "span_conversion": 19
+    },
+    "session/config.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 17,
+      "sentinel_slice": 1,
+      "span_conversion": 18
+    },
+    "session/config_state.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 4,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    },
+    "session/editor.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 1,
+      "sentinel_slice": 0,
+      "span_conversion": 2
+    },
+    "session/repl.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 4,
+      "sentinel_slice": 0,
+      "span_conversion": 8
+    },
+    "session/repl_session.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 1,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    },
+    "session/script_store.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 0,
+      "sentinel_slice": 2,
+      "span_conversion": 0
+    },
+    "tools/fdate.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 1,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    }
+  },
+  "schema": 1
+}

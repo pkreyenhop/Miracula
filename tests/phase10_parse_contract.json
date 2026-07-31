@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "former_formats": {
+    "%ld (flags and heap command)": "integerPrefix(i64, slice)",
+    "%u (library version)": "readInteger(u32, stream, buffer)",
+    "%19s (configuration header)": "readToken(stream, 19-byte buffer)",
+    "%ld%ld%ld%*c": "three readInteger calls followed by readLine",
+    "%19s%ld%ld%ld%ld": "bounded readToken plus four readInteger calls",
+    "%1023s%ld%ld%ld": "bounded readToken plus three readInteger calls",
+    "%lf%c": "strict float(slice)"
+  },
+  "required_cases": [
+    "eof",
+    "empty",
+    "leading_whitespace",
+    "trailing_whitespace",
+    "sign",
+    "base_prefixes",
+    "width_limits",
+    "overflow",
+    "malformed_suffix",
+    "float_exponents",
+    "partial_conversion",
+    "successful_conversion_count"
+  ]
+}

@@ -15,6 +15,7 @@ const ReductionCtx = reduce.ReductionCtx;
 const Word = reduce.Word;
 const Value = reduce.Value;
 const platform = @import("../../io/platform.zig");
+const typed_parse = @import("../../io/typed_parse.zig");
 const combinators = @import("combinators.zig");
 const io_handlers = @import("io.zig");
 const rt = @import("../../runtime/runtime_state.zig");
@@ -751,7 +752,7 @@ fn handleReadyEXEC(ctx: *ReductionCtx) reduce.ReduceError!void {
 
 /// `numval`: parses the last argument (a Miranda string) as a number,
 /// recognizing `0o`/`0x` integer prefixes and falling back to a float scan
-/// (via `sscanf`) if the string doesn't fully parse as an integer.
+/// with a strict typed float parser if the string is not entirely an integer.
 fn handleReadyNUMVAL(ctx: *ReductionCtx) reduce.ReduceError!void {
     reduce.upLeft(ctx);
     var x = lastArg(ctx);
@@ -799,8 +800,6 @@ fn handleReadyNUMVAL(ctx: *ReductionCtx) reduce.ReduceError!void {
         ctx.e = val;
     } else {
         var p = &ctx.rs.linebuf;
-        var d: f64 = 0.0;
-        var junk: u8 = 0;
         x = lastArg(ctx);
         var p_idx: usize = 0;
         while (x.toRaw() != word.NIL and p_idx < 1023) {
@@ -808,15 +807,14 @@ fn handleReadyNUMVAL(ctx: *ReductionCtx) reduce.ReduceError!void {
             p_idx += 1;
             x = reduce.tlGet(ctx.heap, x);
         }
-        p[p_idx] = 0;
-        p_idx += 1;
-        if (p_idx > 60 or os.sscanf(@ptrCast(p), "%lf%c", .{ &d, &junk }) != 1 or junk != 0) {
-            word.printErr("\nbad arg for numval: \"{s}\"\n", .{@as([*:0]const u8, @ptrCast(p))});
+        const d = if (p_idx <= 59) typed_parse.float(p[0..p_idx]) catch null else null;
+        if (d == null) {
+            word.printErr("\nbad arg for numval: \"{s}\"\n", .{p[0..p_idx]});
             reduce_rt.outstats();
             os.exit(1);
         } else {
             reduce.hdSet(ctx.heap, ctx.e, Value.fromRaw(word.I));
-            const val = Value.fromRaw(try heap.stoDbl(d));
+            const val = Value.fromRaw(try heap.stoDbl(d.?));
             reduce.tlSet(ctx.heap, ctx.e, val);
             ctx.e = val;
         }
