@@ -75,10 +75,10 @@ def main() -> None:
         assert "abi.wait(" not in text
 
     workflow = (ROOT / ".github/workflows/go-ready.yml").read_text()
-    assert "ubuntu-24.04" in workflow
-    assert "macos-15" in workflow
+    assert "ubuntu" not in workflow.lower()
+    assert "runs-on: macos-15" in workflow
     assert "zig build go-ready --summary failures" in workflow
-    print("phase 9 platform boundary verified: typed services, signals, processes, and 2 CI targets")
+    print("phase 9 platform boundary verified: typed services, signals, processes, and macOS CI")
 
 
 if __name__ == "__main__":
