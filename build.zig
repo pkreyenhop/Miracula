@@ -682,6 +682,10 @@ pub fn build(b: *std.Build) void {
         "-Dforce-gc-every-allocation=true",
         "--prefix",
         "zig-out/gc-stress",
+        "--cache-dir",
+        ".zig-cache-gc-stress",
+        "--global-cache-dir",
+        ".zig-global-cache-gc-stress",
         "--summary",
         "failures",
     });
