@@ -43,7 +43,11 @@ const outType = type_errors.outType;
 const algebraic_t = word.algebraic_t;
 const FREE = word.FREE;
 const bind_t: Word = 9;
-const unify = unify_mod.unify;
+fn unify(heap: *Heap, t1: Word, t2: Word) i32 {
+    const result = unify_mod.unify(heap, t1, t2);
+    if (result == 0) type_errors.typeError(heap, "unify", "with", t1, t2);
+    return result;
+}
 
 const infer_prims = @import("infer_prims.zig");
 const getTag = infer_prims.getTag;

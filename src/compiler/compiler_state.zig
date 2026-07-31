@@ -160,8 +160,15 @@ pub const CompilerState = struct {
     }
 };
 
+var default_state: CompilerState = .{};
+var active_state: *CompilerState = &default_state;
+
+pub fn bind(state: *CompilerState) void {
+    active_state = state;
+}
+
 /// Singleton compiler-state instance (a `*CompilerState` into `current_interp`).
 /// Import this module and use `cs()` so all mutations are reflected everywhere.
 pub inline fn cs() *CompilerState {
-    return &@import("../session/interp.zig").current_interp.comp;
+    return active_state;
 }

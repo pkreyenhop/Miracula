@@ -75,11 +75,14 @@ class Outcome:
 
 
 CPU_STAT = re.compile(rb"(?m)^(\|\|.*,\s*cpu\s*=\s*)[0-9]+(?:\.[0-9]+)?$")
+GC_STAT = re.compile(rb"(no of gc's\s*=\s*)[0-9]+")
+GC_STRESS = False
 
 
 def comparable_stderr(value: bytes) -> bytes:
     """Mask only nondeterministic CPU time; every other stderr byte is exact."""
-    return CPU_STAT.sub(rb"\1<TIME>", value)
+    value = CPU_STAT.sub(rb"\1<TIME>", value)
+    return GC_STAT.sub(rb"\1<FORCED>", value) if GC_STRESS else value
 
 
 def snapshot(root: Path) -> tuple[tuple[str, str, int, str], ...]:
@@ -221,17 +224,37 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--library", required=True, type=existing_dir)
     parser.add_argument("--repository", type=existing_dir, default=Path.cwd())
     parser.add_argument("--timeout", type=float, default=10.0)
+    parser.add_argument("--gc-stress", action="store_true")
     return parser.parse_args()
 
 
 def main() -> int:
+    global GC_STRESS
     args = parse_args()
+    GC_STRESS = args.gc_stress
     executed = 0
     passed = 0
     failed = 0
     skipped = 0
 
-    for case in CASES:
+    cases = CASES
+    if args.gc_stress:
+        cases = tuple(
+            TestCase(
+                name=f"{case.name}__line_{index}",
+                input=line + b"\n/q\n",
+                script_content=case.script_content,
+                script_path=case.script_path,
+                support_files=case.support_files,
+            )
+            for case in CASES
+            for index, line in enumerate(
+                (line for line in case.input.splitlines() if line and line != b"/q"),
+                1,
+            )
+        )
+
+    for case in cases:
         executed += 1
         print(f"Running differential case: {case.name} ... ", end="", flush=True)
         reference = run(

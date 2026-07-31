@@ -20,10 +20,17 @@ pub const MakeState = struct {
     make_status: Word = 0,
 };
 
+var default_state: MakeState = .{};
+var active_state: *MakeState = &default_state;
+
+pub fn bind(state: *MakeState) void {
+    active_state = state;
+}
+
 /// Pointer to the singleton make-mode state held in `current_interp` (so
 /// `interp.reset()` clears it). Accessed as `make_state.make().X`.
 pub inline fn make() *MakeState {
-    return &@import("interp.zig").current_interp.make;
+    return active_state;
 }
 
 test "MakeState default values are self-consistent" {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify typed parsing and ratchet remaining sentinel-string migration sites."""
+"""Verify typed parsing and exact translation of sentinel-string sites."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 INVENTORY = ROOT / "tests" / "phase10_string_inventory.json"
 CONTRACT = ROOT / "tests" / "phase10_parse_contract.json"
+TRANSLATION_MANIFEST = ROOT / "spec" / "go_translation_manifest.json"
 
 PATTERNS = {
     "sentinel_pointer": re.compile(r"\[\*:0\]"),
@@ -57,10 +58,26 @@ def verify_inventory(actual: dict, expected: dict) -> list[str]:
             errors.append(f"new sentinel-string owner: src/{path}")
             continue
         for name in PATTERNS:
-            if current[name] > old[name]:
-                errors.append(f"{name} increased: src/{path} {old[name]} -> {current[name]}")
+            if current[name] != old[name]:
+                errors.append(f"{name} inventory is stale: src/{path}")
         if current["classification"] != old["classification"]:
             errors.append(f"string ownership classification changed: src/{path}")
+    if set(actual["files"]) != set(expected.get("files", {})):
+        errors.append("phase 10 file inventory is stale")
+    return errors
+
+
+def verify_translation_targets(actual: dict) -> list[str]:
+    manifest = json.loads(TRANSLATION_MANIFEST.read_text())
+    sources = {item["source_file"]: item for item in manifest["sources"]}
+    errors = []
+    for path, counts in actual["files"].items():
+        source = sources.get(path)
+        mapped = source.get("compatibility", {}).get("string_sites", {}) if source else {}
+        for metric in PATTERNS:
+            sites = mapped.get(metric, [])
+            if len(sites) != counts[metric] or any(not site.get("target") for site in sites):
+                errors.append(f"src/{path}: {metric} sites lack exact Go targets")
     return errors
 
 
@@ -77,6 +94,7 @@ def main() -> int:
 
     expected = json.loads(INVENTORY.read_text(encoding="utf-8"))
     errors = verify_inventory(actual, expected)
+    errors.extend(verify_translation_targets(actual))
     contract = json.loads(CONTRACT.read_text(encoding="utf-8"))
     if contract.get("schema") != 1 or len(contract.get("former_formats", {})) != 7:
         errors.append("former scanf format inventory is incomplete")
@@ -114,7 +132,7 @@ def main() -> int:
     )
     print(
         "phase 10 typed parsing verified; generic scanner deleted; "
-        f"{compatibility} sentinel-string owners ratcheted"
+        f"{compatibility} sentinel-string owners have exact Go targets"
     )
     return 0
 

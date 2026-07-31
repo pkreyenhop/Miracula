@@ -18,8 +18,6 @@ const std = @import("std");
 const word = @import("../graph/word.zig");
 const strtab = @import("../graph/strtab.zig");
 
-const os = @import("../os.zig");
-
 const compiler_state = @import("../compiler/compiler_state.zig");
 const cs = compiler_state.cs;
 // `abi` — a private namespace of libc re-export aliases so this file can write

@@ -65,10 +65,17 @@ pub const EvalState = struct {
     gc_roots_head: ?*spine.Spine = null,
 };
 
+var default_state: EvalState = .{};
+var active_state: *EvalState = &default_state;
+
+pub fn bind(state: *EvalState) void {
+    active_state = state;
+}
+
 /// Pointer to the evaluator state held in `current_interp` (so `interp.reset()`
 /// clears it). Accessed as `ev().X`.
 pub inline fn ev() *EvalState {
-    return &@import("../session/interp.zig").current_interp.eval;
+    return active_state;
 }
 
 const stoChar = heap.stoChar;

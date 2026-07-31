@@ -137,10 +137,26 @@ pub const IoState = struct {
     resources: resources_mod.ResourceTable = .{},
 };
 
+var default_state: IoState = .{};
+var active_state: *IoState = &default_state;
+var process_io: std.Io = std.Options.debug_io;
+
+pub fn bind(state: *IoState) void {
+    active_state = state;
+}
+
+pub fn bindProcessIo(io: std.Io) void {
+    process_io = io;
+}
+
+pub fn closeOpaque(value: *anyopaque) void {
+    _ = fclose(@as(*Stream, @ptrCast(@alignCast(value))));
+}
+
 /// Pointer to the I/O subsystem state held in `current_interp` (so
 /// `interp.reset()` clears it). Accessed as `word.fio().X`.
 pub inline fn fio() *IoState {
-    return &@import("../session/interp.zig").current_interp.io;
+    return active_state;
 }
 
 /// The process's actual `std.Io` implementation (`rt.io`, set from
@@ -151,7 +167,7 @@ pub inline fn fio() *IoState {
 /// imports this file, and `word.zig` is a leaf module every other file is
 /// meant to import freely.
 inline fn procIo() std.Io {
-    return @import("../runtime/runtime_state.zig").io;
+    return process_io;
 }
 
 /// Lazily initialise the buffered stdout/stderr writers (once).

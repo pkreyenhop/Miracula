@@ -54,11 +54,18 @@ pub const StringTable = struct {
     initialized: bool = false,
 };
 
+var default_state: StringTable = .{};
+var active_state: *StringTable = &default_state;
+
+pub fn bind(state: *StringTable) void {
+    active_state = state;
+}
+
 /// Pointer to the string table held in `current_interp`. A convenience for
 /// *callers* to obtain a `*StringTable` to pass in — this module's own
 /// functions no longer read it ambiently.
 pub inline fn table() *StringTable {
-    return &@import("../session/interp.zig").current_interp.strtab;
+    return active_state;
 }
 
 /// Abort: the string table ran out of memory.

@@ -40,6 +40,7 @@ const parser_api = @import("../parser/parser_api.zig");
 const lineedit = @import("editor.zig");
 const platform = @import("../io/platform.zig");
 const platform_contract = @import("../io/platform_contract.zig");
+const bignum = @import("../graph/bignum.zig");
 
 const Word = word.Word;
 const Value = @import("../graph/value.zig").Value;
@@ -103,7 +104,7 @@ pub fn commandLoop(heap: *Heap, core: *core_state.CoreState, comp: *compiler_sta
             errors.fatal("mira: incorrect use of \"-exec\" flag\n", .{});
         }
         rs.magic = false;
-        abi.obey(heap, core, comp, rs, rs.main_id);
+        obey(heap, core, comp, rs, rs.main_id);
         abi.exit(0);
     }
     _ = signals_mod.register(.interrupt, .{ .notify = onInterrupt }) catch {};
@@ -322,7 +323,7 @@ pub fn obey(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
             abi.make(heap, .AP, abi.mkshow(heap, 0, 0, typ), x);
         break :blk abi.make(heap, .CONS, abi.make(heap, .AP, rs.standardout, inner), NIL);
     };
-    abi.output(heap, reduce.ev(), rs, Value.fromRaw(out_val)) catch {};
+    reduce.output(heap, reduce.ev(), rs, Value.fromRaw(out_val)) catch {};
 }
 
 /// Evaluate a typed REPL expression: compile it, then reduce and print
@@ -331,6 +332,13 @@ pub fn obey(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.Comp
 /// between REPL commands, matching the old forked-child model's own
 /// invariant exactly (see this file's module doc for why).
 pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, x_in: Word) void {
+    var snap = heap.checkpoint();
+    defer heap.restore(&snap);
+    const compiler_snapshot = comp.*;
+    defer comp.* = compiler_snapshot;
+    var bignum_snapshot = bignum.bn().*;
+    bignum_snapshot.b_rem = NIL;
+    defer bignum.bn().* = bignum_snapshot;
     var x = x_in;
     const typ = types_mod.typeOf(heap, Value.fromRaw(x)).toRaw();
     if (options.is_strict or @import("builtin").mode == .Debug) {
@@ -361,10 +369,9 @@ pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_st
     };
 
     rt.interrupt_flag.store(false, .release); // discard any stale, pre-eval interrupt
-    var snap = heap.checkpoint();
     core.compiling = 0;
     resetgcstats();
-    if (abi.output(heap, reduce.ev(), rs, Value.fromRaw(out_val))) {
+    if (reduce.output(heap, reduce.ev(), rs, Value.fromRaw(out_val))) {
         _ = word.putchar('\n');
     } else |err| switch (err) {
         error.Interrupted => {
@@ -377,7 +384,6 @@ pub fn evaluateRepl(heap: *Heap, core: *core_state.CoreState, comp: *compiler_st
     }
     outstats();
     repl_session.session().last_gc_count = heap.nogcs;
-    heap.restore(&snap);
 }
 
 /// Warn that the configured editor lacks open-at-line support, disabling `??` and related features.
@@ -479,11 +485,11 @@ pub fn parseLine(heap: *Heap, core: *core_state.CoreState, rs: *rt.RuntimeState,
             word.print("please re-enter data:\n", .{});
         } else {
             if (fil != 0) {
-                word.printErr("readvals: bad data in file \"{s}\"\n", .{(abi.getstring(heap, Value.fromRaw(fil), @constCast("")) catch null) orelse "?"});
+                word.printErr("readvals: bad data in file \"{s}\"\n", .{(reduce.getstring(heap, Value.fromRaw(fil), @constCast("")) catch null) orelse "?"});
             } else {
                 word.printErr("bad data in $+ input\n", .{});
             }
-            abi.outstats();
+            reduce.outstats();
             abi.exit(1);
         }
     }

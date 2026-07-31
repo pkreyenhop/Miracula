@@ -43,12 +43,19 @@ const strtab = @import("../graph/strtab.zig");
 const Word = word.Word;
 const Value = @import("../graph/value.zig").Value;
 
+var default_state: SymbolTable = .{};
+var active_state: *SymbolTable = &default_state;
+
+pub fn bindActive(state: *SymbolTable) void {
+    active_state = state;
+}
+
 /// Pointer to the singleton `SymbolTable` inside `current_interp` (so
 /// `interp.reset()` clears it, same convention as `heap.heap()`/`core_state.s()`).
 /// Accessed as `symbols.syms().X`. (Named `syms`, not `table`, to avoid
 /// colliding with `strtab.table()`.)
 pub inline fn syms() *SymbolTable {
-    return &@import("../session/interp.zig").current_interp.symbols;
+    return active_state;
 }
 
 /// Maps identifier text to its heap `ID` node, first-seen-wins (matching

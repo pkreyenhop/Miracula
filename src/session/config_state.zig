@@ -17,14 +17,14 @@
 //! signature change, which is eval's step-5 receiver-threading work, not
 //! a data-ownership move.
 
-const abi = @import("../os.zig");
+const word = @import("../graph/word.zig");
 const Word = i64;
 
 pub const ConfigState = struct {
     // File paths — null-terminated byte arrays populated by startup; treated as C strings.
     // Zero-initialised so a `.{}` singleton reads as the empty string before startup fills them.
-    PRELUDE: [abi.pnlim + 10]u8 = @import("std").mem.zeroes([abi.pnlim + 10]u8),
-    STDENV: [abi.pnlim + 9]u8 = @import("std").mem.zeroes([abi.pnlim + 9]u8),
+    PRELUDE: [word.pnlim + 10]u8 = @import("std").mem.zeroes([word.pnlim + 10]u8),
+    STDENV: [word.pnlim + 9]u8 = @import("std").mem.zeroes([word.pnlim + 9]u8),
 
     /// Maximum heap cells before GC triggers; set from `-heap N` CLI flag.
     SPACELIMIT: Word = 2500000,
@@ -39,13 +39,20 @@ pub const ConfigState = struct {
     /// Non-zero when the configured editor command is invalid.
     baded: Word = 0,
     miralib: ?[*:0]u8 = null,
-    s_in: ?*abi.Stream = null,
+    s_in: ?*word.Stream = null,
 };
+
+var default_state: ConfigState = .{};
+var active_state: *ConfigState = &default_state;
+
+pub fn bind(state: *ConfigState) void {
+    active_state = state;
+}
 
 /// Pointer to the singleton config state held in `current_interp` (so
 /// `interp.reset()` clears it). Accessed as `config_state.config().X`.
 pub inline fn config() *ConfigState {
-    return &@import("interp.zig").current_interp.config;
+    return active_state;
 }
 
 test "ConfigState default values are self-consistent" {

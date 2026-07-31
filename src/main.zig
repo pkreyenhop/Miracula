@@ -26,7 +26,7 @@ pub fn main(ctx: std.process.Init) !void {
     // (the process doesn't return until `std.process.exit` below), so
     // pointing `current_interp` at it is as safe as the module-level default.
     var interp_storage: interp_mod.Interp = .{};
-    interp_mod.current_interp = &interp_storage;
+    interp_mod.setCurrent(&interp_storage);
 
     const raw_args = ctx.minimal.args.vector;
     const argv: [*][*:0]u8 = @ptrCast(@constCast(raw_args.ptr));

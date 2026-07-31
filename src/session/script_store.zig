@@ -38,10 +38,17 @@ pub const ScriptStore = struct {
     fnts: Word = NIL,
 };
 
+var default_state: ScriptStore = .{};
+var active_state: *ScriptStore = &default_state;
+
+pub fn bind(state: *ScriptStore) void {
+    active_state = state;
+}
+
 /// Pointer to the singleton script-store state held in `current_interp` (so
 /// `interp.reset()` clears it). Accessed as `script_store.store().X`.
 pub inline fn store() *ScriptStore {
-    return &@import("interp.zig").current_interp.script;
+    return active_state;
 }
 
 test "ScriptStore default values are self-consistent" {

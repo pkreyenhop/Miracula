@@ -39,6 +39,7 @@ pub fn build(b: *std.Build) void {
     const reduce_trace = b.option(bool, "reduce-trace", "Enable reduction tracing (per-combinator counts to stderr)") orelse false;
 
     const is_strict = b.option(bool, "strict", "Enable strict build validation features") orelse false;
+    const force_gc_every_allocation = b.option(bool, "force-gc-every-allocation", "Collect before every graph allocation") orelse false;
 
     // Some sandboxed environments hang indefinitely on the default test
     // runner's `--listen=-` IPC protocol (the build's `run test ...` step
@@ -62,6 +63,7 @@ pub fn build(b: *std.Build) void {
     version_options.addOption([]const u8, "host", b.fmt("compiled by zig build\n{s}\n", .{host}));
     version_options.addOption(bool, "reduce_trace", reduce_trace);
     version_options.addOption(bool, "is_strict", is_strict);
+    version_options.addOption(bool, "force_gc_every_allocation", force_gc_every_allocation);
 
     // On macOS, libSystem is implicitly linked by the OS linker — no explicit link_libc needed.
     // On Linux (including musl targets), link musl/glibc so setjmp, strcmp, getcwd etc. resolve.
@@ -202,6 +204,7 @@ pub fn build(b: *std.Build) void {
     const mira_test_options = b.addOptions();
     mira_test_options.addOption([]const u8, "mira_path", mira_path);
     mira_test_options.addOption([]const u8, "lib_path", lib_path);
+    mira_test_options.addOption(bool, "force_gc_every_allocation", force_gc_every_allocation);
 
     const mira_tests = b.addTest(.{
         .name = "mira-tests",
@@ -258,6 +261,7 @@ pub fn build(b: *std.Build) void {
     run_regression.addArg("--candidate");
     run_regression.addFileArg(mira.getEmittedBin());
     run_regression.addArgs(&.{ "--reference", reference_path, "--library", lib_path, "--repository", b.pathFromRoot(".") });
+    if (force_gc_every_allocation) run_regression.addArgs(&.{ "--gc-stress", "--timeout", "120" });
     run_regression.step.dependOn(&install_mira.step);
     run_regression.step.dependOn(&verify_reference.step);
 
@@ -324,7 +328,7 @@ pub fn build(b: *std.Build) void {
     // These process-level suites create and remove compiled `.x` caches in
     // shared fixture directories. Keep the spine corpus last so aggregate
     // `test`/`check` runs cannot race another runner over the same cache.
-    run_smoke.step.dependOn(&run_mira_tests.step);
+    if (!force_gc_every_allocation) run_smoke.step.dependOn(&run_mira_tests.step);
     run_golden_tests.step.dependOn(&run_smoke.step);
     run_sigint_check.step.dependOn(&run_golden_tests.step);
     run_spine_check.step.dependOn(&run_main_tests.step);
@@ -382,11 +386,13 @@ pub fn build(b: *std.Build) void {
     check_step.dependOn(&run_just_tests.step);
     check_step.dependOn(&run_menudriver_tests.step);
     check_step.dependOn(&run_main_tests.step);
-    check_step.dependOn(&run_mira_tests.step);
+    if (!force_gc_every_allocation) check_step.dependOn(&run_mira_tests.step);
     check_step.dependOn(&run_parser_tests.step);
-    check_step.dependOn(&run_sigint_check.step);
-    check_step.dependOn(&run_spine_check.step);
-    check_step.dependOn(&run_smoke.step);
+    if (!force_gc_every_allocation) {
+        check_step.dependOn(&run_sigint_check.step);
+        check_step.dependOn(&run_spine_check.step);
+        check_step.dependOn(&run_smoke.step);
+    }
 
     const migration_check = b.step("check-migration", "Alias for the full Zig build verification gate");
     migration_check.dependOn(check_step);
@@ -428,6 +434,7 @@ pub fn build(b: *std.Build) void {
     strict_version_options.addOption([]const u8, "host", b.fmt("compiled by zig build\n{s}\n", .{host}));
     strict_version_options.addOption(bool, "reduce_trace", reduce_trace);
     strict_version_options.addOption(bool, "is_strict", true);
+    strict_version_options.addOption(bool, "force_gc_every_allocation", force_gc_every_allocation);
 
     const strict_mira_module = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
@@ -535,6 +542,7 @@ pub fn build(b: *std.Build) void {
     const strict_mira_test_options = b.addOptions();
     strict_mira_test_options.addOption([]const u8, "mira_path", "./zig-out/bin/strict-mira");
     strict_mira_test_options.addOption([]const u8, "lib_path", lib_path);
+    strict_mira_test_options.addOption(bool, "force_gc_every_allocation", force_gc_every_allocation);
 
     const strict_mira_tests = b.addTest(.{
         .name = "strict-mira-tests",
@@ -667,6 +675,19 @@ pub fn build(b: *std.Build) void {
     const test_phase13 = b.step("test-phase13", "Verify the complete mechanical Go translation contract");
     test_phase13.dependOn(&run_phase13_translation.step);
 
+    const run_gc_stress = b.addSystemCommand(&.{
+        b.graph.zig_exe,
+        "build",
+        "test-regression",
+        "-Dforce-gc-every-allocation=true",
+        "--prefix",
+        "zig-out/gc-stress",
+        "--summary",
+        "failures",
+    });
+    const test_gc_stress = b.step("test-gc-stress", "Run the complete applicable corpus with GC before every allocation");
+    test_gc_stress.dependOn(&run_gc_stress.step);
+
     // Mandatory migration-readiness gate. Reference preparation is deliberately
     // separate: this target fails closed when the pinned artifact is absent.
     const go_ready_step = b.step("go-ready", "Run the complete fail-closed Go migration readiness gate");
@@ -689,6 +710,7 @@ pub fn build(b: *std.Build) void {
     go_ready_step.dependOn(test_phase11);
     go_ready_step.dependOn(test_phase12);
     go_ready_step.dependOn(test_phase13);
+    go_ready_step.dependOn(test_gc_stress);
 
     // Benchmark targets (optimized for ReleaseFast)
     const bench_version_options = b.addOptions();
@@ -697,6 +719,7 @@ pub fn build(b: *std.Build) void {
     bench_version_options.addOption([]const u8, "host", b.fmt("compiled by zig build\n{s}\n", .{host}));
     bench_version_options.addOption(bool, "reduce_trace", false);
     bench_version_options.addOption(bool, "is_strict", false);
+    bench_version_options.addOption(bool, "force_gc_every_allocation", false);
 
     const bench_mira_module = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),

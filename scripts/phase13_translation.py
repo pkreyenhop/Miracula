@@ -49,6 +49,82 @@ PACKAGE_INTERFACES = {
     "commandapp": ["Command"],
     "devtools": ["Tool"],
 }
+RAW_PATTERNS = {
+    "word": re.compile(r"\bWord\b"),
+    "from_raw": re.compile(r"\bfromRaw\s*\("),
+    "to_raw": re.compile(r"\btoRaw\s*\("),
+}
+STRING_PATTERNS = {
+    "sentinel_pointer": re.compile(r"\[\*:0\]"),
+    "sentinel_slice": re.compile(r"\[:0\]"),
+    "span_conversion": re.compile(r"\bstd\.mem\.span\("),
+    "pointer_arithmetic": re.compile(r"\b(?:ptrInt|ptrFrom)\("),
+}
+AMBIENT_PATTERNS = {
+    "heap": re.compile(r"\bheap\(\)"),
+    "runtime": re.compile(r"\brs\(\)"),
+    "compiler": re.compile(r"\bcs\(\)"),
+    "lexer": re.compile(r"\bls\(\)"),
+    "core": re.compile(r"\bcore_state\.s\(\)|\bcore\.s\(\)"),
+    "evaluation": re.compile(r"\breduce_rt\.ev\(\)|\breduce\.ev\(\)"),
+    "bignum": re.compile(r"\bbig\.bn\(\)|\bbignum\.bn\(\)"),
+    "symbols": re.compile(r"\bsymbols\.syms\(\)"),
+    "make": re.compile(r"\bmake_state\.make\(\)"),
+    "bnf": re.compile(r"\bbnf_state\.bnf\(\)"),
+    "repl": re.compile(r"\brepl_session\.session\(\)"),
+    "config": re.compile(r"\bconfig_state\.config\(\)"),
+    "script": re.compile(r"\bscript_store\.store\(\)"),
+}
+AMBIENT_TARGETS = {
+    name: f"receiver parameter interp.{name.title()}"
+    for name in AMBIENT_PATTERNS
+}
+
+
+def locations(text: str, pattern: re.Pattern[str], target: str) -> list[dict]:
+    result = []
+    for match in pattern.finditer(text):
+        line = text.count("\n", 0, match.start()) + 1
+        line_start = text.rfind("\n", 0, match.start()) + 1
+        result.append({
+            "line": line,
+            "column": match.start() - line_start + 1,
+            "target": target,
+        })
+    return result
+
+
+def without_line_comments(text: str) -> str:
+    return "\n".join(line.split("//", 1)[0] for line in text.splitlines())
+
+
+def compatibility_contract(rel: str, text: str) -> dict:
+    raw_targets = {
+        "word": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol",
+        "from_raw": "protocol.ValueFromWord checked conversion",
+        "to_raw": "protocol.Value.Word explicit conversion",
+    }
+    platform = architecture.destination(rel) == "platformsvc"
+    string_targets = {
+        "sentinel_pointer": "platform adapter temporary NUL buffer" if platform else "Go string",
+        "sentinel_slice": "platform adapter temporary NUL buffer" if platform else "Go string",
+        "span_conversion": "[]byte at platform boundary" if platform else "Go string conversion",
+        "pointer_arithmetic": "uintptr confined to platform adapter" if platform else "slice index (int)",
+    }
+    return {
+        "raw_value_sites": {
+            name: locations(text, pattern, raw_targets[name])
+            for name, pattern in RAW_PATTERNS.items()
+        },
+        "string_sites": {
+            name: locations(without_line_comments(text), pattern, string_targets[name])
+            for name, pattern in STRING_PATTERNS.items()
+        },
+        "ambient_state_sites": {
+            name: locations(text, pattern, AMBIENT_TARGETS[name])
+            for name, pattern in AMBIENT_PATTERNS.items()
+        },
+    }
 
 
 def mask_non_code(source: str) -> str:
@@ -194,12 +270,13 @@ def build_manifest(rules: dict) -> dict:
     production_files = []
     for path in sorted(SRC.rglob("*.zig")):
         rel = path.relative_to(SRC).as_posix()
+        source_text = path.read_text(encoding="utf-8")
         reason = excluded_reason(rel)
         package = architecture.destination(rel)
         unit_id = f"src/{rel}"
         imports = sorted({
             resolved
-            for imported in IMPORT_RE.findall(path.read_text(encoding="utf-8"))
+            for imported in IMPORT_RE.findall(source_text)
             if (resolved := resolve_import(rel, imported)) is not None
         })
         status = "not_ported" if reason else "pending"
@@ -235,6 +312,7 @@ def build_manifest(rules: dict) -> dict:
             "platform_specific": package == "platformsvc",
             "generated": rel.endswith("_generated.zig"),
             "not_ported_reason": reason,
+            "compatibility": compatibility_contract(rel, source_text),
             "symbols": unit_symbols,
         })
     package_contract = architecture.build_manifest()["packages"]

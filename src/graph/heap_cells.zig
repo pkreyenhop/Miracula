@@ -20,7 +20,6 @@ const repl_session = @import("../session/repl_session.zig");
 const lex = @import("../parser/lex.zig");
 const symbols = @import("../semantics/symbols.zig");
 const big = @import("bignum.zig");
-const big_fmt = @import("bignum_fmt.zig");
 const reduce = @import("../eval/reduce_rt.zig");
 const os = @import("../os.zig");
 const setup = @import("../compiler/setup.zig");
@@ -34,7 +33,6 @@ const NILS = word.NILS;
 const outstats = reduce.outstats;
 const initclock = reduce.initclock;
 const hashsize = word.hashsize;
-const bigtostr = big_fmt.toDecimalList;
 const SIGNBIT = 0x10000000;
 const MAXDIGIT = 0x7fff;
 const isconstrname = lex.isconstrname;
@@ -570,7 +568,7 @@ pub const Heap = struct {
         }
         self.mark(reduce.ev().outfilq);
         self.mark(reduce.ev().waiting);
-        if (core.s().compiling != 0 or rt.rs().rv_expr != 0 or cs().rv_script != 0) {
+        if (self.force_gc_every != 0 or core.s().compiling != 0 or rt.rs().rv_expr != 0 or cs().rv_script != 0) {
             self.mark(make_state.make().make_status);
             self.mark(rt.rs().primenv);
             self.mark(ls().fileq);
@@ -742,10 +740,17 @@ pub const Heap = struct {
     }
 };
 
+var default_state: Heap = .{};
+var active_state: *Heap = &default_state;
+
+pub fn bind(state: *Heap) void {
+    active_state = state;
+}
+
 /// Pointer to the singleton [Heap] inside `current_interp` (so `interp.reset()`
 /// clears it). The free functions below operate on it; call sites use `heap.heap().X`.
 pub inline fn heap() *Heap {
-    return &@import("../session/interp.zig").current_interp.heap;
+    return active_state;
 }
 
 /// Mark `x` reachable (GC). A free-function adapter to the singleton's

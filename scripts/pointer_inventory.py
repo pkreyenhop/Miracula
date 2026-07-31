@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PATTERN = re.compile(r"ptrInt|ptrFrom|@intFromPtr|@ptrFromInt")
 RULES = {
     "src/os.zig": "platform ABI boundary",
+    "src/platform/c_compat.zig": "platform ABI boundary",
     "src/io/signals.zig": "signal-handler ABI",
     "src/session/boot.zig": "signal-handler registration",
     "src/session/repl.zig": "signal-handler registration",

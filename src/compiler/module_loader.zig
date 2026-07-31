@@ -39,6 +39,7 @@ const dump = @import("dump.zig");
 const ls = lex_state.ls;
 const resources = @import("../eval/resources.zig");
 const process = @import("../io/process.zig");
+const reduce = @import("../eval/reduce_rt.zig");
 
 // Global variables defined/exported in parser/lex.zig
 
@@ -339,7 +340,7 @@ fn resolveExports(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
                 abi.sayhere(heap, h_val, 1);
                 h_val = NIL;
             } else if (script_store.store().exports == NIL or n != NIL) {
-                abi.outHere(heap, core, abi.stderr(), Value.fromRaw(h_val), 1);
+                reduce.outHere(heap, core, abi.stderr(), Value.fromRaw(h_val), 1);
                 h_val = NIL;
             }
         }
@@ -419,7 +420,7 @@ fn reportBereavedExports(heap: *Heap, core: *core_state.CoreState, comp: *compil
             abi.printlist(heap, @constCast(""), b);
         }
         if (b != NIL and h_val != NIL) {
-            abi.outHere(heap, core, abi.stdout(), Value.fromRaw(h_val), 1);
+            reduce.outHere(heap, core, abi.stdout(), Value.fromRaw(h_val), 1);
         }
     }
 }
@@ -437,7 +438,7 @@ fn reportUnusedDefinitions(heap: *Heap, core: *core_state.CoreState, rs: *rt.Run
             word.print("warning, script contains unused local definitions:-\n", .{});
         }
         while (script_store.store().detrop != NIL) {
-            abi.outHere(heap, core, abi.stdout(), Value.fromRaw(heap_mod.h(heap, heap_mod.h(heap, heap_mod.t(heap, heap_mod.dval(heap_mod.h(heap, script_store.store().detrop)))))), 0);
+            reduce.outHere(heap, core, abi.stdout(), Value.fromRaw(heap_mod.h(heap, heap_mod.h(heap, heap_mod.t(heap, heap_mod.dval(heap_mod.h(heap, script_store.store().detrop)))))), 0);
             _ = word.putchar('\t');
             abi.outPattern(heap, abi.stdout().?, heap_mod.dlhs(heap_mod.h(heap, script_store.store().detrop)));
             _ = word.putchar('\n');
@@ -455,7 +456,7 @@ fn reportUnusedDefinitions(heap: *Heap, core: *core_state.CoreState, rs: *rt.Run
             word.print("warning, grammar contains unused nonterminals:-\n", .{});
         }
         while (gd_mut != NIL) {
-            abi.outHere(heap, core, abi.stdout(), Value.fromRaw(heap_mod.h(heap, heap_mod.dval(heap_mod.h(heap, gd_mut)))), 0);
+            reduce.outHere(heap, core, abi.stdout(), Value.fromRaw(heap_mod.h(heap, heap_mod.dval(heap_mod.h(heap, gd_mut)))), 0);
             _ = word.putchar('\t');
             abi.outPattern(heap, abi.stdout().?, heap_mod.dlhs(heap_mod.h(heap, gd_mut)));
             _ = word.putchar('\n');

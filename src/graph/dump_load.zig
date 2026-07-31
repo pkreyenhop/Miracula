@@ -18,7 +18,8 @@ const Value = @import("value.zig").Value;
 const files = @import("../io/files.zig");
 const lex = @import("../parser/lex.zig");
 const print = @import("print.zig");
-const os = @import("../os.zig");
+const stream = @import("../eval/stream.zig");
+const compat = @import("../platform/c_compat.zig");
 const heap_mod = @import("heap.zig");
 const Heap = heap_mod.Heap;
 
@@ -102,7 +103,7 @@ pub fn loadScript(heap: *Heap, core_st: *core.CoreState, comp: *compiler_state.C
     comp.CLASHES = word.NIL;
     dsetup(heap);
     setprefix(heap, src);
-    if (os.getc(file) != wordsize or os.getc(file) != word.XVERSION) {
+    if (stream.getc(file) != wordsize or stream.getc(file) != word.XVERSION) {
         comp.BAD_DUMP = -1;
         return word.NIL;
     }
@@ -144,39 +145,39 @@ pub fn loadScript(heap: *Heap, core_st: *core.CoreState, comp: *compiler_state.C
     var files_list: Word = word.NIL;
     var files_root = heap.roots.root(rt.allocator, &files_list);
     defer files_root.deinit();
-    var ch: Word = os.getc(file);
-    while (ch != 0 and ch != os.EOF and comp.BAD_DUMP == 0) {
+    var ch: Word = stream.getc(file);
+    while (ch != 0 and ch != compat.EOF and comp.BAD_DUMP == 0) {
         var s: Word = 0;
         var holde: Word = 0;
         lexs.dicq = lexs.dicp;
         if (files_list == word.NIL and ch == 1) {
             holde = getword(file);
-            ch = os.getc(file);
+            ch = stream.getc(file);
             if (main_flag != 0) {
                 core_st.errline = holde;
             }
         }
         if (ch != '/') {
-            _ = os.strcpy(lexs.dicp, &heap.prefix);
+            _ = compat.strcpy(lexs.dicp, &heap.prefix);
             lexs.dicq = lexs.dicp + @as(usize, @intCast(heap.preflen));
         }
         lexs.dicq[0] = @intCast(ch);
         lexs.dicq += 1;
         while (true) {
-            ch = os.getc(file);
+            ch = stream.getc(file);
             lexs.dicq[0] = @intCast(ch);
             lexs.dicq += 1;
-            if (ch == 0 or ch == os.EOF) {
+            if (ch == 0 or ch == compat.EOF) {
                 break;
             }
         }
-        if (os.ptrInt(lexs.dicq) - os.ptrInt(lexs.dicp) > config_state.config().DICSPACE) {
+        if (compat.ptrInt(lexs.dicq) - compat.ptrInt(lexs.dicp) > config_state.config().DICSPACE) {
             lex.dicovflo();
         }
         ch = getword(file);
-        s = os.getc(file);
+        s = stream.getc(file);
         if (files_list == word.NIL) {
-            if (os.strcmp(lexs.dicp, src) != 0) {
+            if (compat.strcmp(lexs.dicp, src) != 0) {
                 comp.BAD_DUMP = 1;
                 if (aliases != word.NIL) {
                     unscramble(heap, comp, aliases);
@@ -186,9 +187,9 @@ pub fn loadScript(heap: *Heap, core_st: *core.CoreState, comp: *compiler_state.C
         }
         heap.CFN = getId(name(heap));
         files_list = heap.cons(makeFil(heap.CFN, ch, s, loadDefs(heap, comp, rs, lexs, file)), files_list);
-        ch = os.getc(file);
+        ch = stream.getc(file);
     }
-    if (ch == os.EOF or comp.BAD_DUMP != 0) {
+    if (ch == compat.EOF or comp.BAD_DUMP != 0) {
         if (comp.BAD_DUMP == 0) {
             comp.BAD_DUMP = 2;
         }
@@ -203,31 +204,31 @@ pub fn loadScript(heap: *Heap, core_st: *core.CoreState, comp: *compiler_state.C
             core_st.errline = ch;
         }
         while (true) {
-            ch = os.getc(file);
-            if (ch == os.EOF) {
+            ch = stream.getc(file);
+            if (ch == compat.EOF) {
                 break;
             }
             lexs.dicq = lexs.dicp;
             if (ch != '/') {
-                _ = os.strcpy(lexs.dicp, &heap.prefix);
+                _ = compat.strcpy(lexs.dicp, &heap.prefix);
                 lexs.dicq = lexs.dicp + @as(usize, @intCast(heap.preflen));
             }
             lexs.dicq[0] = @intCast(ch);
             lexs.dicq += 1;
             while (true) {
-                ch = os.getc(file);
+                ch = stream.getc(file);
                 lexs.dicq[0] = @intCast(ch);
                 lexs.dicq += 1;
-                if (ch == 0 or ch == os.EOF) {
+                if (ch == 0 or ch == compat.EOF) {
                     break;
                 }
             }
-            if (os.ptrInt(lexs.dicq) - os.ptrInt(lexs.dicp) > config_state.config().DICSPACE) {
+            if (compat.ptrInt(lexs.dicq) - compat.ptrInt(lexs.dicp) > config_state.config().DICSPACE) {
                 lex.dicovflo();
             }
             ch = getword(file);
             if (script_store.store().oldfiles == word.NIL) {
-                if (os.strcmp(lexs.dicp, src) != 0) {
+                if (compat.strcmp(lexs.dicp, src) != 0) {
                     comp.BAD_DUMP = 1;
                     if (aliases != word.NIL) {
                         unscramble(heap, comp, aliases);
@@ -268,23 +269,23 @@ pub fn loadScript(heap: *Heap, core_st: *core.CoreState, comp: *compiler_state.C
 /// Tests: dumpOb / loadDefs: roundtrip a cons of two ints through the .x format
 pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, file: ?*word.Stream) Word {
     _ = rs;
-    var ch = os.getc(file);
+    var ch = stream.getc(file);
     var defs: Word = word.NIL;
     var defs_root = heap.roots.root(rt.allocator, &defs);
     defer defs_root.deinit();
-    while (ch != os.EOF) {
+    while (ch != compat.EOF) {
         if (heap.stackp == heap.dlim) {
             dgrow(heap);
         }
         switch (ch) {
             word.CHAR_X => {
-                stackpPush(heap, os.getc(file) + 128);
+                stackpPush(heap, stream.getc(file) + 128);
             },
             word.TVAR_X => {
-                stackpPush(heap, mktvar(heap, os.getc(file)));
+                stackpPush(heap, mktvar(heap, stream.getc(file)));
             },
             word.SHORT_X => {
-                var val = os.getc(file);
+                var val = stream.getc(file);
                 if ((val & 128) != 0) {
                     val = val | (~@as(i32, 127));
                 }
@@ -308,8 +309,8 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
                 stackpPush(heap, heap.make(.UNICODE, getint(file), 0));
             },
             word.PN_X => {
-                var val = os.getc(file);
-                val = val | (os.getc(file) << 8);
+                var val = stream.getc(file);
+                val = val | (stream.getc(file) << 8);
                 const idx = heap.PNBASE + val;
                 stackpPush(heap, if (idx < lexs.nextpn) lexs.pnvec.?[@intCast(idx)] else lex.stoPn(heap, idx));
             },
@@ -318,8 +319,8 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
                 stackpPush(heap, if (idx < lexs.nextpn) lexs.pnvec.?[@intCast(idx)] else lex.stoPn(heap, idx));
             },
             word.CONSTRUCT_X => {
-                var val = os.getc(file);
-                val = val | (os.getc(file) << 8);
+                var val = stream.getc(file);
+                val = val | (stream.getc(file) << 8);
                 stackpSetTop(heap, constructor(heap, val, stackpTop(heap)));
             },
             word.RV_X => {
@@ -329,14 +330,14 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
             word.ID_X => {
                 lexs.dicq = lexs.dicp;
                 while (true) {
-                    const next = os.getc(file);
+                    const next = stream.getc(file);
                     lexs.dicq[0] = @intCast(next);
                     lexs.dicq += 1;
-                    if (next == 0 or next == os.EOF) {
+                    if (next == 0 or next == compat.EOF) {
                         break;
                     }
                 }
-                if (os.ptrInt(lexs.dicq) - os.ptrInt(lexs.dicp) > config_state.config().DICSPACE) {
+                if (compat.ptrInt(lexs.dicq) - compat.ptrInt(lexs.dicp) > config_state.config().DICSPACE) {
                     lex.dicovflo();
                 }
                 stackpPush(heap, name(heap));
@@ -351,45 +352,45 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
             word.AKA_X => {
                 lexs.dicq = lexs.dicp;
                 while (true) {
-                    const next = os.getc(file);
+                    const next = stream.getc(file);
                     lexs.dicq[0] = @intCast(next);
                     lexs.dicq += 1;
-                    if (next == 0 or next == os.EOF) {
+                    if (next == 0 or next == compat.EOF) {
                         break;
                     }
                 }
-                if (os.ptrInt(lexs.dicq) - os.ptrInt(lexs.dicp) > config_state.config().DICSPACE) {
+                if (compat.ptrInt(lexs.dicq) - compat.ptrInt(lexs.dicp) > config_state.config().DICSPACE) {
                     lex.dicovflo();
                 }
                 stackpPush(heap, datapair(heap, strtab.strBits(strtab.table(), getId(name(heap))), 0));
             },
             word.HERE_X => {
                 lexs.dicq = lexs.dicp;
-                var next = os.getc(file);
+                var next = stream.getc(file);
                 if (next == 0) {
-                    next = os.getc(file);
-                    next = next | (os.getc(file) << 8);
+                    next = stream.getc(file);
+                    next = next | (stream.getc(file) << 8);
                     stackpPush(heap, fileinfo(heap, strtab.strBitsZ(strtab.table(), heap.CFN.?), next));
                 } else {
                     if (next != '/') {
-                        _ = os.strcpy(lexs.dicp, &heap.prefix);
+                        _ = compat.strcpy(lexs.dicp, &heap.prefix);
                         lexs.dicq = lexs.dicp + @as(usize, @intCast(heap.preflen));
                     }
                     lexs.dicq[0] = @intCast(next);
                     lexs.dicq += 1;
                     while (true) {
-                        const val = os.getc(file);
+                        const val = stream.getc(file);
                         lexs.dicq[0] = @intCast(val);
                         lexs.dicq += 1;
-                        if (val == 0 or val == os.EOF) {
+                        if (val == 0 or val == compat.EOF) {
                             break;
                         }
                     }
-                    if (os.ptrInt(lexs.dicq) - os.ptrInt(lexs.dicp) > config_state.config().DICSPACE) {
+                    if (compat.ptrInt(lexs.dicq) - compat.ptrInt(lexs.dicp) > config_state.config().DICSPACE) {
                         lex.dicovflo();
                     }
-                    var line = os.getc(file);
-                    line = line | (os.getc(file) << 8);
+                    var line = stream.getc(file);
+                    line = line | (stream.getc(file) << 8);
                     stackpPush(heap, fileinfo(heap, strtab.strBits(strtab.table(), getId(name(heap))), line));
                 }
             },
@@ -412,7 +413,7 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
                         if (heap.getTag(top) != .ID) {
                             if (top == word.NIL) {
                                 heap.stackp = heap.stackp.? - 4;
-                                ch = os.getc(file);
+                                ch = stream.getc(file);
                                 continue;
                             }
                             const ch_val = stackpPop(heap);
@@ -443,7 +444,7 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
                                 pnValPtr(heap, ch_val).* = ap(heap, akap_val, fileinfo(heap, strtab.strBitsZ(strtab.table(), heap.CFN.?), 0));
                             }
                             defs = heap.cons(ch_val, defs);
-                            ch = os.getc(file);
+                            ch = stream.getc(file);
                             continue;
                         }
                         const top_val = stackpTop(heap);
@@ -454,14 +455,14 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
                                 if (a == word.NIL) {
                                     std.debug.print("impossible event in cyclic alias ({s})\n", .{getId(top_val)});
                                     heap.stackp = heap.stackp.? - 4;
-                                    ch = os.getc(file);
+                                    ch = stream.getc(file);
                                     continue;
                                 }
                                 defs = heap.cons(stackpPop(heap), defs);
                                 heap.hp(heap.h(heap.h(a))).* = stackpPop(heap); // who
                                 heap.hp(heap.t(heap.h(heap.h(a)))).* = stackpPop(heap); // type
                                 heap.tp(heap.t(heap.h(heap.h(a)))).* = stackpPop(heap); // value
-                                ch = os.getc(file);
+                                ch = stream.getc(file);
                                 continue;
                             }
                             comp.CLASHES = add1(heap, Value.fromRaw(top_val), Value.fromRaw(comp.CLASHES)).toRaw();
@@ -497,7 +498,7 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
                 stackpPush(heap, if (ch > 127) ch + 256 else ch);
             },
         }
-        ch = os.getc(file);
+        ch = stream.getc(file);
     }
     comp.BAD_DUMP = 4;
     return defs;
@@ -534,10 +535,10 @@ test "dumpOb / loadDefs: roundtrip a cons of two ints through the .x format" {
     _ = word.fclose(f_read.?);
 
     // Clean up temp file
-    _ = os.unlink(filename);
+    _ = compat.unlink(filename);
 
     // 7. Verify structural equality
-    try std.testing.expect(os.ptrInt(heap_val.stackp.?) > os.ptrInt(old_stackp.?));
+    try std.testing.expect(compat.ptrInt(heap_val.stackp.?) > compat.ptrInt(old_stackp.?));
     const loaded = stackpTop(heap_val);
 
     try std.testing.expectEqual(word.NodeTag.CONS, heap_val.getTag(loaded));

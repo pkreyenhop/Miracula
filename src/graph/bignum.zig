@@ -31,7 +31,6 @@ const platform = @import("../io/platform.zig");
 const heap_mod = @import("heap.zig");
 const Heap = heap_mod.Heap;
 const word = @import("word.zig");
-const reduce = @import("../eval/reduce_rt.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 const Word = i64;
@@ -47,7 +46,15 @@ const TENW: Word = 4; // decimal digits per PTEN chunk
 const CMBASE = word.CMBASE;
 const NIL = word.NIL;
 
-const mathError = reduce.mathError;
+var math_error: *const fn ([*:0]const u8) void = struct {
+    fn fail(_: [*:0]const u8) void {
+        @panic("bignum math-error handler is not bound");
+    }
+}.fail;
+
+pub fn bindMathError(callback: *const fn ([*:0]const u8) void) void {
+    math_error = callback;
+}
 
 /// Bignum subsystem state (shared-state plan Phase 2e). `logIBASE`/`log10IBASE`
 /// are caches set by `setup` (runtime `@log`, not comptime); `big_one`/`b_rem`
@@ -62,12 +69,19 @@ pub const Bignum = struct {
     big_one: Word = 0,
 };
 
+var default_state: Bignum = .{};
+var active_state: *Bignum = &default_state;
+
+pub fn bind(state: *Bignum) void {
+    active_state = state;
+}
+
 /// Pointer to the bignum subsystem state held in `current_interp` (so
 /// `interp.reset()` clears it). A convenience for *callers* to obtain a
 /// `*Bignum` to pass in — this module's own functions no longer read `bn.X`
 /// themselves.
 pub inline fn bn() *Bignum {
-    return &@import("../session/interp.zig").current_interp.big;
+    return active_state;
 }
 
 /// The head cell's digit with the sign/overflow bits masked off (its plain
@@ -751,7 +765,7 @@ pub fn ln(heap: *Heap, self: *Bignum, input_x: Word) f64 {
     var r: f64 = @floatFromInt(digit(heap, x));
     if (signBit(heap, x) != 0 or isZero(heap, x)) {
         setErrnoDomain();
-        mathError("log");
+        math_error("log");
     }
     while (rest(heap, x) != 0) {
         x = rest(heap, x);
@@ -778,7 +792,7 @@ pub fn log10(heap: *Heap, self: *Bignum, input_x: Word) f64 {
     var r: f64 = @floatFromInt(digit(heap, x));
     if (signBit(heap, x) != 0 or isZero(heap, x)) {
         setErrnoDomain();
-        mathError("log10");
+        math_error("log10");
     }
     while (rest(heap, x) != 0) {
         x = rest(heap, x);

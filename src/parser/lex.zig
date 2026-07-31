@@ -32,8 +32,7 @@ const rt = @import("../runtime/runtime_state.zig");
 const script_store = @import("../session/script_store.zig");
 const config_state = @import("../session/config_state.zig");
 const repl_session = @import("../session/repl_session.zig");
-const types = @import("../semantics/infer.zig");
-const os = @import("../os.zig");
+const compat = @import("../platform/c_compat.zig");
 const core_state = @import("../runtime/core_state.zig");
 const symbols = @import("../semantics/symbols.zig");
 const Value = @import("../graph/value.zig").Value;
@@ -47,11 +46,15 @@ const UNDEF = word.UNDEF;
 const make = heap_mod.make;
 const mallocPanic = heap_mod.mallocPanic;
 const stoId = heap_mod.stoId;
-const genlstatType = types.genlstatType;
+var generalize_stat_type: *const fn (*Heap) Value = undefined;
+
+pub fn bindTypeGeneralizer(callback: *const fn (*Heap) Value) void {
+    generalize_stat_type = callback;
+}
 
 /// The standard-input `Stream` handle.
 fn getStdin() ?*word.Stream {
-    return os.stdin();
+    return word.stdin();
 }
 
 /// Head (`hd`) of cell `x`.
@@ -91,8 +94,8 @@ fn fileinfo(file: Word, line: Word) Word {
 
 /// Abort if the dictionary buffer has overflowed.
 fn ovflocheck() void {
-    const d_ptr = @as(usize, os.ptrInt(ls().dicq));
-    const start_ptr = @as(usize, os.ptrInt(ls().dic));
+    const d_ptr = @as(usize, compat.ptrInt(ls().dicq));
+    const start_ptr = @as(usize, compat.ptrInt(ls().dic));
     if (d_ptr - start_ptr > @as(usize, @intCast(config_state.config().DICSPACE))) {
         dicovflo();
     }
@@ -131,7 +134,7 @@ inline fn charOf(ch: i32) ?u8 {
 /// Resolve a `~`-relative path `n` against ``.
 fn gethome(n: [*:0]const u8) ?[*:0]const u8 {
     if (n[0] == 0) {
-        if (os.getenv("HOME")) |h_dir| {
+        if (std.process.Environ.getPosix(rt.environ, "HOME")) |h_dir| {
             return h_dir;
         }
         return null;
@@ -141,19 +144,19 @@ fn gethome(n: [*:0]const u8) ?[*:0]const u8 {
 
 /// Read the next whitespace-delimited token into the dictionary buffer.
 pub fn token() ?[*:0]u8 {
-    var ch = os.getchar();
+    var ch = word.getchar();
     ls().dicq = ls().dicp; // uses top of dictionary as temporary work space
     while (ch == ' ' or ch == '\t') {
-        ch = os.getchar();
+        ch = word.getchar();
     }
     if (ch == '~') {
         ls().dicq[0] = @intCast(ch);
         ls().dicq += 1;
-        ch = os.getchar();
+        ch = word.getchar();
         while ((if (charOf(ch)) |b| std.ascii.isAlphanumeric(b) else false) or ch == '-' or ch == '_' or ch == '.') {
             ls().dicq[0] = @intCast(ch);
             ls().dicq += 1;
-            ch = os.getchar();
+            ch = word.getchar();
         }
         ls().dicq[0] = 0;
         if (gethome(ls().dicp + 1)) |h_dir| {
@@ -163,11 +166,11 @@ pub fn token() ?[*:0]u8 {
             ls().dicq = ls().dicp + std.mem.len(ls().dicp);
         }
     }
-    while (ch != os.EOF and !(if (charOf(ch)) |b| std.ascii.isWhitespace(b) else false)) {
+    while (ch != compat.EOF and !(if (charOf(ch)) |b| std.ascii.isWhitespace(b) else false)) {
         ls().dicq[0] = @intCast(ch);
         ls().dicq += 1;
         if (ch == '%') {
-            const idx = @as(usize, os.ptrInt(ls().dicq)) - @as(usize, os.ptrInt(ls().dicp));
+            const idx = @as(usize, compat.ptrInt(ls().dicq)) - @as(usize, compat.ptrInt(ls().dicp));
             if (idx >= 2 and (ls().dicq - 2)[0] == '\\') {
                 (ls().dicq - 2)[0] = '%';
                 ls().dicq -= 1;
@@ -181,16 +184,16 @@ pub fn token() ?[*:0]u8 {
                 ls().dicq += script_store.store().current_script.?.len;
             }
         }
-        ch = os.getchar();
+        ch = word.getchar();
     }
     ls().dicq[0] = 0;
     ls().dicq += 1;
     ovflocheck();
     while (ch == ' ' or ch == '\t') {
-        ch = os.getchar();
+        ch = word.getchar();
     }
     if (getStdin()) |stdin_file| {
-        _ = os.ungetc(ch, stdin_file);
+        _ = word.ungetc(ch, stdin_file);
     }
     if (ls().dicp[0] == 0) {
         return null;
@@ -273,17 +276,17 @@ pub fn addextn(b: Word, s_input: [*:0]u8) [*:0]u8 {
 /// Read a whole input line into a buffer.
 pub fn rdline() ?[*:0]u8 {
     var p: [*]u8 = &ls().rdline_linebuf;
-    var ch = os.getchar();
+    var ch = word.getchar();
     var expansion: Word = 0;
     while (ch == ' ' or ch == '\t') {
-        ch = os.getchar();
+        ch = word.getchar();
     }
     if (ch == '\n' or (ch == '!' and ls().rdline_linebuf[0] == 0)) {
         if (ls().rdline_linebuf[0] != 0) {
             word.print("!{s}", .{@as([*:0]const u8, @ptrCast(&ls().rdline_linebuf))});
         }
-        while (ch != '\n' and ch != os.EOF) {
-            ch = os.getchar();
+        while (ch != '\n' and ch != compat.EOF) {
+            ch = word.getchar();
         }
         return @ptrCast(&ls().rdline_linebuf);
     }
@@ -292,34 +295,34 @@ pub fn rdline() ?[*:0]u8 {
         p = @ptrCast(&ls().rdline_linebuf[std.mem.len(@as([*:0]const u8, @ptrCast(&ls().rdline_linebuf))) - 1]); // p now points at old '\n'
     } else {
         if (getStdin()) |stdin_file| {
-            _ = os.ungetc(ch, stdin_file);
+            _ = word.ungetc(ch, stdin_file);
         }
     }
     while (true) {
-        ch = os.getchar();
+        ch = word.getchar();
         p[0] = @intCast(ch);
         p += 1;
-        if (ch == '\n' or ch == os.EOF) {
+        if (ch == '\n' or ch == compat.EOF) {
             break;
         }
-        const offset = @as(usize, os.ptrInt(p)) - @as(usize, os.ptrInt(&ls().rdline_linebuf));
+        const offset = @as(usize, compat.ptrInt(p)) - @as(usize, compat.ptrInt(&ls().rdline_linebuf));
         if (offset >= 1024) {
             p[0] = 0;
             word.printErr("sorry, !command too long (limit={} chars): {s}...\n", .{ @as(i32, 1024), @as([*:0]const u8, @ptrCast(&ls().rdline_linebuf)) });
             while (true) {
-                ch = os.getchar();
-                if (ch == '\n' or ch == os.EOF) {
+                ch = word.getchar();
+                if (ch == '\n' or ch == compat.EOF) {
                     break;
                 }
             }
             return null;
         }
         if ((p - 1)[0] == '%') {
-            if (os.ptrInt(p) > os.ptrInt(&ls().rdline_linebuf[1]) and (p - 2)[0] == '\\') {
+            if (compat.ptrInt(p) > compat.ptrInt(&ls().rdline_linebuf[1]) and (p - 2)[0] == '\\') {
                 (p - 2)[0] = '%';
                 p -= 1;
             } else {
-                const remaining = 1024 - (@as(usize, os.ptrInt(p - 1)) - @as(usize, os.ptrInt(&ls().rdline_linebuf)));
+                const remaining = 1024 - (@as(usize, compat.ptrInt(p - 1)) - @as(usize, compat.ptrInt(&ls().rdline_linebuf)));
                 {
                     const src_span = script_store.store().current_script.?;
                     const limit = @min(src_span.len, remaining);
@@ -363,7 +366,7 @@ pub fn mklexvar(heap: *Heap, i: Word) Word {
     if (ls().lexvar == 0) {
         ls().lexvar = cons(stoId("ls.lexvar"), stoId("ls.lexvar"));
         tp(heap, h(heap, ls().lexvar)).* = cs().ltchar;
-        tp(heap, t(heap, ls().lexvar)).* = genlstatType(heap).toRaw();
+        tp(heap, t(heap, ls().lexvar)).* = generalize_stat_type(heap).toRaw();
     }
     return if (i != 0) t(heap, ls().lexvar) else h(heap, ls().lexvar);
 }
@@ -691,11 +694,11 @@ pub fn resetLex(heap: *Heap) void {
 /// Reset the full lexer state (between sessions).
 pub fn resetState(heap: *Heap) void {
     if (core_state.s().commandmode != 0) {
-        while (ls().c != '\n' and ls().c != os.EOF) {
+        while (ls().c != '\n' and ls().c != compat.EOF) {
             if (config_state.config().s_in) |sin| {
-                ls().c = os.getc(sin);
+                ls().c = word.getc(sin);
             } else {
-                ls().c = os.EOF;
+                ls().c = compat.EOF;
             }
         }
     }

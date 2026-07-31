@@ -32,6 +32,7 @@ build_errors.log
 .aider*
 *.txt
 !scripts/layer_allowlist.txt
+!tests/golden/directive_insert_body.txt
 /linux_stat_test
 /mira_original
 /mira_original_debug

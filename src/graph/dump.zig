@@ -23,7 +23,8 @@ const Value = @import("value.zig").Value;
 const files = @import("../io/files.zig");
 const lex = @import("../parser/lex.zig");
 const print = @import("print.zig");
-const os = @import("../os.zig");
+const stream = @import("../eval/stream.zig");
+const compat = @import("../platform/c_compat.zig");
 const heap_mod = @import("heap.zig");
 const Heap = heap_mod.Heap;
 
@@ -220,8 +221,8 @@ pub fn okdump(core_st: *core.CoreState, t_ptr: [*:0]const u8) bool {
     const f = word.fopen(&obf, "r") orelse return false;
     defer _ = word.fclose(f);
 
-    const ch1 = os.getc(f);
-    const ch2 = os.getc(f);
+    const ch1 = stream.getc(f);
+    const ch2 = stream.getc(f);
     if (ch1 == word.XVERSION and ch2 != 0) {
         return true;
     }
@@ -249,12 +250,12 @@ pub fn geterrlin(heap: *Heap, core_st: *core.CoreState, lexs: *lex_state.LexStat
     const f = word.fopen(&obf, "r") orelse return 0;
     defer _ = word.fclose(f);
 
-    const ch1 = os.getc(f);
+    const ch1 = stream.getc(f);
     if (ch1 != word.XVERSION) {
         return 0;
     }
 
-    const ch2 = os.getc(f);
+    const ch2 = stream.getc(f);
     if (ch2 != 0 and ch2 != 1) {
         return 0;
     }
@@ -263,7 +264,7 @@ pub fn geterrlin(heap: *Heap, core_st: *core.CoreState, lexs: *lex_state.LexStat
 
     // now check this is right dump
     setprefix(heap, t_ptr);
-    var ch = os.getc(f);
+    var ch = stream.getc(f);
     lexs.dicq = lexs.dicp;
     if (ch != '/') {
         const prefix_len = @as(usize, @intCast(heap.preflen));
@@ -277,16 +278,16 @@ pub fn geterrlin(heap: *Heap, core_st: *core.CoreState, lexs: *lex_state.LexStat
     lexs.dicq += 1;
 
     while (true) {
-        ch = os.getc(f);
+        ch = stream.getc(f);
         lexs.dicq[0] = @intCast(ch);
         lexs.dicq += 1;
-        if (ch == 0 or ch == os.EOF) {
+        if (ch == 0 or ch == compat.EOF) {
             break;
         }
     }
 
     const mtime = getword(f);
-    if (os.strcmp(lexs.dicp, t_ptr) != 0 or mtime != fileMtime(t_ptr)) {
+    if (compat.strcmp(lexs.dicp, t_ptr) != 0 or mtime != fileMtime(t_ptr)) {
         return 0; // wrong dump
     }
 
@@ -296,11 +297,11 @@ pub fn geterrlin(heap: *Heap, core_st: *core.CoreState, lexs: *lex_state.LexStat
 pub fn getword(file: ?*word.Stream) Word {
     var s: i32 = 0;
     var i: usize = @sizeOf(Word);
-    var x = @as(Word, @intCast(os.getc(file)));
+    var x = @as(Word, @intCast(stream.getc(file)));
     while (i > 1) {
         i -= 1;
         s += 8;
-        const next_ch = @as(Word, @intCast(os.getc(file)));
+        const next_ch = @as(Word, @intCast(stream.getc(file)));
         x |= next_ch << @intCast(s);
     }
     return x;
@@ -515,7 +516,7 @@ pub fn dumpOb(x: Word, file: ?*word.Stream) void {
         .FILEINFO => {
             var line = t(heap_mod.heap(), x);
             const path = castPtr(h(heap_mod.heap(), x));
-            if (os.strcmp(path, heap_mod.heap().CFN.?) == 0) {
+            if (compat.strcmp(path, heap_mod.heap().CFN.?) == 0) {
                 _ = word.putc(word.HERE_X, file);
             } else {
                 _ = word.fprint(file, "{c}{s}", .{ @as(u8, @intCast(word.HERE_X)), mkrel(heap_mod.heap(), path) });
@@ -590,7 +591,7 @@ pub fn bindparams(heap: *Heap, comp: *compiler_state.CompilerState, formal_val: 
         while (formal != word.NIL and (actual == word.NIL or blk: {
             f = castPtr(heap.h(heap.h(heap.t(heap.h(formal)))));
             a = heap.h(heap.h(actual));
-            break :blk os.strcmp(f, getId(a).ptr) < 0;
+            break :blk compat.strcmp(f, getId(a).ptr) < 0;
         })) {
             comp.MISSING = heap.cons(heap.h(heap.t(heap.h(formal))), comp.MISSING);
             formal = heap.t(formal);
@@ -598,7 +599,7 @@ pub fn bindparams(heap: *Heap, comp: *compiler_state.CompilerState, formal_val: 
         if (actual == word.NIL) {
             break;
         }
-        if (formal == word.NIL or os.strcmp(f, getId(a).ptr) != 0) {
+        if (formal == word.NIL or compat.strcmp(f, getId(a).ptr) != 0) {
             comp.DETROP = heap.cons(a, comp.DETROP);
         } else {
             const fa = if (heap.t(heap.t(heap.h(formal))) == word.type_t) tArity(heap.h(heap.h(formal))) else -1;

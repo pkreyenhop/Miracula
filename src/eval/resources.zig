@@ -150,13 +150,24 @@ pub const ResourceTable = struct {
     }
 };
 
+var default_table: ResourceTable = .{};
+var active_table: *ResourceTable = &default_table;
+var native_closer: ?*const fn (*anyopaque) void = null;
+
+pub fn bind(next: *ResourceTable) void {
+    active_table = next;
+}
+
+pub fn bindNativeCloser(closer: *const fn (*anyopaque) void) void {
+    native_closer = closer;
+}
+
 pub inline fn table() *ResourceTable {
-    return &@import("stream.zig").fio().resources;
+    return active_table;
 }
 
 pub fn closeNativeStream(value: *anyopaque) void {
-    const stream = @import("stream.zig");
-    _ = stream.fclose(@as(*stream.Stream, @ptrCast(@alignCast(value))));
+    if (native_closer) |close| close(value);
 }
 
 test "resource table distinguishes missing, closed, and wrong-kind IDs" {

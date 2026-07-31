@@ -23,7 +23,6 @@ const ls = lex_state.ls;
 const heap_mod = @import("../graph/heap.zig");
 const Heap = heap_mod.Heap;
 const big = @import("../graph/bignum.zig");
-const lower = @import("lower.zig");
 const value_mod = @import("../graph/value.zig");
 const Value = value_mod.Value;
 
@@ -37,6 +36,21 @@ const False = word.False;
 const NIL = word.NIL;
 const NILS = word.NILS;
 const CONST = word.CONST;
+
+var lower_fallible: *const fn (*Heap, Word) Word = undefined;
+var lower_codegen: *const fn (*Heap, Word) Word = undefined;
+
+pub fn bindLower(
+    fallible_fn: *const fn (*Heap, Word) Word,
+    codegen_fn: *const fn (*Heap, Word) Word,
+) void {
+    lower_fallible = fallible_fn;
+    lower_codegen = codegen_fn;
+}
+
+fn identifierName(heap: *Heap, x: Word) [:0]const u8 {
+    return strtab.strOf(strtab.table(), heap.h(heap.h(heap.h(x))));
+}
 
 const member = types_mod.member;
 const isnat = big.isNat;
@@ -93,7 +107,7 @@ fn datapair(heap: *Heap, x: Word, y: Word) Word {
 
 /// Whether `x` names a data constructor.
 fn isConstructor(heap: *Heap, x: Word) bool {
-    return getTag(heap, x) == .ID and isconstrname(lower.getId(heap, x));
+    return getTag(heap, x) == .ID and isconstrname(identifierName(heap, x));
 }
 
 /// Whether `x` is an `n+k` pattern.
@@ -177,8 +191,8 @@ pub fn transtries(heap: *Heap, id_val: Value, input_x_val: Value) Value {
     var info: Word = 0;
     var earliest: Word = 0;
     var r: Word = undefined;
-    if (lower.fallible(heap, h(heap, x)) != 0) {
-        const oldn = if (getTag(heap, id) == .ID) datapair(heap, @as(Word, strtab.strBits(strtab.table(), lower.getId(heap, id))), 0) else 0;
+    if (lower_fallible(heap, h(heap, x)) != 0) {
+        const oldn = if (getTag(heap, id) == .ID) datapair(heap, @as(Word, strtab.strBits(strtab.table(), identifierName(heap, id))), 0) else 0;
         info = cons(heap, oldn, 0);
         r = ap(heap, BADCASE, info);
         if (x == NIL) {
@@ -186,12 +200,12 @@ pub fn transtries(heap: *Heap, id_val: Value, input_x_val: Value) Value {
         }
     } else {
         earliest = h(heap, x);
-        r = lower.codegen(heap, earliest);
+        r = lower_codegen(heap, earliest);
         x = t(heap, x);
     }
     while (x != NIL) {
         earliest = h(heap, x);
-        r = ap2(heap, TRY, lower.codegen(heap, earliest), r);
+        r = ap2(heap, TRY, lower_codegen(heap, earliest), r);
         x = t(heap, x);
     }
     if (info != 0) {

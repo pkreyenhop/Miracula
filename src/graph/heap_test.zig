@@ -4,6 +4,7 @@
 //! public API. Aggregated into the test build one-way (no import cycle).
 
 const std = @import("std");
+const options = @import("version_options");
 const word = @import("word.zig");
 const strtab = @import("strtab.zig");
 const combinator = @import("combinator.zig");
@@ -88,6 +89,7 @@ test "heap accessors: cons/make build cells that h/t/getTag read back" {
     try std.testing.expectEqual(word.NodeTag.CONS, getTag(heap_val, apnode));
 }
 test "gc: a long-lived list survives many forced collections; garbage is reclaimed" {
+    if (options.force_gc_every_allocation) return error.SkipZigTest;
     tu.freshInterp();
 
     // Shrink the heap so allocating the workload below forces `gc()` to run
@@ -162,6 +164,7 @@ test "gc: a long-lived list survives many forced collections; garbage is reclaim
 }
 
 test "explicit roots survive deterministic every-N and named-checkpoint GC schedules" {
+    if (options.force_gc_every_allocation) return error.SkipZigTest;
     for ([_]usize{ 1, 2, 3, 5 }) |schedule| {
         tu.freshInterp();
         heap().force_gc_every = schedule;

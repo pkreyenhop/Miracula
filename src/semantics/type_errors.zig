@@ -14,10 +14,10 @@ const script_store = @import("../session/script_store.zig");
 const core_state = @import("../runtime/core_state.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
 const cs = compiler_state.cs;
-const infer = @import("infer.zig");
+const infer_prims = @import("infer_prims.zig");
 const depend = @import("depend.zig");
 const unify_mod = @import("unify.zig");
-const lower = @import("lower.zig");
+const lower_front = @import("lower_front.zig");
 
 const Word = word.Word;
 const Value = @import("../graph/value.zig").Value;
@@ -35,15 +35,14 @@ const arrow_t: Word = 6;
 const void_t: Word = 7;
 const wrong_t: Word = 8;
 
-const getId = infer.getId;
-const idType = infer.idType;
-const type_t = infer.type_t;
-const tArity = infer.tArity;
-const tInfo = infer.tInfo;
-const idWho = infer.idWho;
-const getStdout = infer.getStdout;
-const locateInc = infer.locateInc;
-const isCompoundType = infer.isCompoundType;
+const getId = infer_prims.getId;
+const idType = infer_prims.idType;
+const type_t: Word = 10;
+const tArity = infer_prims.tArity;
+const tInfo = infer_prims.tInfo;
+const idWho = infer_prims.idWho;
+const getStdout = infer_prims.getStdout;
+const isCompoundType = infer_prims.isCompoundType;
 
 const member = depend.member;
 const add1 = depend.add1;
@@ -52,8 +51,8 @@ const redtvars = unify_mod.redtvars;
 const subst = unify_mod.subst;
 const gettvar = unify_mod.gettvar;
 
-const same = lower.same;
-const lastlink = lower.lastlink;
+const same = lower_front.same;
+const lastlink = lower_front.lastlink;
 
 const print_mod = @import("../graph/print.zig");
 const out = print_mod.outTerm;
@@ -61,6 +60,13 @@ const isChar = heap_mod.isChar;
 const charname = print_mod.charname;
 const size = heap_mod.size;
 const getDbl = heap_mod.getDbl;
+
+fn locateInc(heap: *Heap) void {
+    if (cs().lasthereinc == cs().hereinc) return;
+    _ = word.print("incorrect %include directive ", .{});
+    cs().lasthereinc = cs().hereinc;
+    sayhere(heap, cs().hereinc, 1);
+}
 
 /// The node tag of cell `x`.
 inline fn getTag(heap: *Heap, x: Word) word.NodeTag {

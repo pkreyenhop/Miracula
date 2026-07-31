@@ -113,8 +113,6 @@ pub const getstring = reduce_mod.getstring;
 pub const head = reduce_mod.head;
 /// Re-export of [reduce_mod.force] (deep evaluation to normal form).
 pub const force = reduce_mod.force;
-/// Re-export of the engine entry point [reducer_reduce.reduce] (reduce to WHNF).
-pub const reduce = reducer_reduce.reduce;
 
 // `Value`-typed wrappers over the above, still-`Word`-typed cross-boundary
 // functions — `reduce()`/`head()`/`force()`/`getstring()`/`badcaseError()`/
@@ -127,8 +125,14 @@ pub const reduce = reducer_reduce.reduce;
 // `combinators/io.zig`.
 
 /// `Value`-typed [reduce]: reduce `e` to WHNF and return the rewritten root.
+var reduce_whnf: *const fn (*Heap, Word) ReduceError!Word = undefined;
+
+pub fn bindReducer(callback: *const fn (*Heap, Word) ReduceError!Word) void {
+    reduce_whnf = callback;
+}
+
 pub inline fn reduceVal(heap: *Heap, e: Value) ReduceError!Value {
-    return Value.fromRaw(try reduce(heap, e.toRaw()));
+    return Value.fromRaw(try reduce_whnf(heap, e.toRaw()));
 }
 
 /// `Value`-typed [head]: the head atom of application spine `x`.
@@ -174,7 +178,6 @@ pub inline fn cleanPtr(x: Value) usize {
 
 // Cross-module functions via direct (circular) @import — R7.3.
 const reduce_mod = @import("reduce_rt.zig");
-const reducer_reduce = @import("reduce.zig");
 const lex_mod = @import("../parser/lex.zig");
 const big = @import("../graph/bignum.zig");
 const os = @import("../os.zig");

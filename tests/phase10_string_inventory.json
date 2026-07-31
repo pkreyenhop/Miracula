@@ -63,6 +63,13 @@
       "sentinel_slice": 0,
       "span_conversion": 1
     },
+    "graph/bignum.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 3,
+      "sentinel_slice": 0,
+      "span_conversion": 0
+    },
     "graph/bignum_fmt.zig": {
       "classification": "migration_compatibility",
       "pointer_arithmetic": 0,
@@ -101,7 +108,7 @@
     "graph/heap.zig": {
       "classification": "migration_compatibility",
       "pointer_arithmetic": 0,
-      "sentinel_pointer": 3,
+      "sentinel_pointer": 4,
       "sentinel_slice": 3,
       "span_conversion": 0
     },
@@ -196,6 +203,13 @@
       "sentinel_slice": 1,
       "span_conversion": 2
     },
+    "platform/c_compat.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 1,
+      "sentinel_pointer": 4,
+      "sentinel_slice": 0,
+      "span_conversion": 2
+    },
     "runtime/core_state.zig": {
       "classification": "migration_compatibility",
       "pointer_arithmetic": 0,
@@ -239,6 +253,13 @@
       "span_conversion": 0
     },
     "semantics/lower_prims.zig": {
+      "classification": "migration_compatibility",
+      "pointer_arithmetic": 0,
+      "sentinel_pointer": 0,
+      "sentinel_slice": 1,
+      "span_conversion": 0
+    },
+    "semantics/match.zig": {
       "classification": "migration_compatibility",
       "pointer_arithmetic": 0,
       "sentinel_pointer": 0,

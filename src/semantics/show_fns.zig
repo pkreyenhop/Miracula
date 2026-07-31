@@ -30,10 +30,17 @@ pub const ShowFns = struct {
     showwhat: Word = 0,
 };
 
+var default_state: ShowFns = .{};
+var active_state: *ShowFns = &default_state;
+
+pub fn bind(state: *ShowFns) void {
+    active_state = state;
+}
+
 /// Pointer to the singleton show-function-id state held in `current_interp`
 /// (so `interp.reset()` clears it). Accessed as `show_fns.show().X`.
 pub inline fn show() *ShowFns {
-    return &@import("../session/interp.zig").current_interp.show;
+    return active_state;
 }
 
 test "ShowFns default values are self-consistent" {

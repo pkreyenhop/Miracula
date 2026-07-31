@@ -9,6 +9,7 @@
     "os.zig:ptrFrom": "platform_pointer_boundary",
     "os.zig:ptrInt": "platform_pointer_boundary",
     "os.zig:syscallResult": "platform_integer_boundary",
+    "platform/c_compat.zig:ptrInt": "platform_pointer_boundary",
     "runtime/errors.zig:fatal": "diagnostic_formatting",
     "syntax/directives.zig:Scanner.record": "diagnostic_formatting",
     "syntax/directives.zig:Scanner.recordStdout": "diagnostic_formatting",

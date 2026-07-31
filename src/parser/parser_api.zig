@@ -26,10 +26,13 @@ const compiler_state = @import("../compiler/compiler_state.zig");
 
 const parser_mod = @import("../syntax/parser.zig");
 const codegen = @import("codegen.zig");
-const repl = @import("../session/repl.zig");
 const lex_state = @import("lex_state.zig");
 // Forks like the original C evaluate(): compiling=0 only in child; parent's heap is safe.
-const evaluateRepl = repl.evaluateRepl;
+var evaluate_repl: *const fn (*heap.Heap, *core.CoreState, *compiler_state.CompilerState, *rt.RuntimeState, word.Word) void = undefined;
+
+pub fn bindEvaluator(callback: *const fn (*heap.Heap, *core.CoreState, *compiler_state.CompilerState, *rt.RuntimeState, word.Word) void) void {
+    evaluate_repl = callback;
+}
 
 const source_mod = @import("../syntax/source.zig");
 const lexer_mod = @import("../syntax/lexer.zig");
@@ -208,7 +211,7 @@ fn runParsedTokens(heap_ptr: *heap.Heap, p: *parser_mod.Parser, alloc: std.mem.A
             rt.rs().validate();
         }
         repl_session.session().lastexp = expr_word; // anchor as GC root before typeOf() inside evaluateRepl() can trigger GC
-        evaluateRepl(heap_ptr, core.s(), compiler_state.cs(), rt.rs(), expr_word);
+        evaluate_repl(heap_ptr, core.s(), compiler_state.cs(), rt.rs(), expr_word);
         // driver/repl.zig's command loop checks `lexs.c` after this call
         // returns to decide whether the line held trailing garbage (`lexs.c
         // != '\n'` -> "syntax error", matching the legacy lexer's own

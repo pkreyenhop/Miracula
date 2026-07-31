@@ -19,10 +19,17 @@ pub const BnfState = struct {
     lexdefs: Word = NIL,
 };
 
+var default_state: BnfState = .{};
+var active_state: *BnfState = &default_state;
+
+pub fn bind(state: *BnfState) void {
+    active_state = state;
+}
+
 /// Pointer to the singleton `%bnf` state held in `current_interp` (so
 /// `interp.reset()` clears it). Accessed as `bnf_state.bnf().X`.
 pub inline fn bnf() *BnfState {
-    return &@import("interp.zig").current_interp.bnf;
+    return active_state;
 }
 
 test "BnfState default values are self-consistent" {

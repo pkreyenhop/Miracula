@@ -55,9 +55,16 @@ pub const LineEditState = struct {
     completion_handler: CompletionHandler = .{},
 };
 
+var default_state: LineEditState = .{};
+var active_state: *LineEditState = &default_state;
+
+pub fn bind(next: *LineEditState) void {
+    active_state = next;
+}
+
 /// Pointer to the singleton `LineEditState` inside `current_interp`.
 pub inline fn state() *LineEditState {
-    return &@import("interp.zig").current_interp.lineedit;
+    return active_state;
 }
 
 /// Whether the line editor is installed (stdin was interactive at startup).

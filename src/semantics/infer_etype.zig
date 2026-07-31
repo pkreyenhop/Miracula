@@ -54,7 +54,11 @@ const typeError8 = type_errors.typeError8;
 const isArrowType = type_errors.isArrowType;
 const CONST = word.CONST;
 const subsumes = unify_mod.subsumes;
-const unify = unify_mod.unify;
+fn unify(heap: *Heap, t1: Word, t2: Word) i32 {
+    const result = unify_mod.unify(heap, t1, t2);
+    if (result == 0) typeError(heap, "unify", "with", t1, t2);
+    return result;
+}
 
 const infer_prims = @import("infer_prims.zig");
 const getTag = infer_prims.getTag;
@@ -305,8 +309,12 @@ pub fn etypeAp(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word
 /// type, reporting the first mismatch found (checked tail-first, matching the
 /// original C reducer's error-reporting order).
 pub fn etypeCons(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
-    const elem_type = NTV(heap);
-    const list_type = lt(heap, elem_type);
+    var elem_type = NTV(heap);
+    var elem_root = heap.roots.root(rt.allocator, &elem_type);
+    defer elem_root.deinit();
+    var list_type = lt(heap, elem_type);
+    var list_root = heap.roots.root(rt.allocator, &list_type);
+    defer list_root.deinit();
 
     // 1. Find the tail of the CONS chain
     var cur = x;
@@ -316,7 +324,9 @@ pub fn etypeCons(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Wo
     const tail_expr = cur;
 
     // 2. Type check the tail
-    const tail_type = try etype(heap, tail_expr, env, ngt);
+    var tail_type = try etype(heap, tail_expr, env, ngt);
+    var tail_root = heap.roots.root(rt.allocator, &tail_type);
+    defer tail_root.deinit();
     if (unify1(heap, list_type, tail_type) == 0) {
         // Find the last CONS node to report the error on
         var last_cons = x;

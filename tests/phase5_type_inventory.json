@@ -64,7 +64,7 @@
       "from_raw": 33,
       "owner": "reducer",
       "to_raw": 42,
-      "word": 19
+      "word": 23
     },
     "eval/reduce_rt.zig": {
       "from_raw": 58,
@@ -151,10 +151,10 @@
       "word": 18
     },
     "graph/value.zig": {
-      "from_raw": 39,
+      "from_raw": 15,
       "owner": "graph-and-codec",
-      "to_raw": 45,
-      "word": 45
+      "to_raw": 4,
+      "word": 32
     },
     "graph/word.zig": {
       "from_raw": 0,
@@ -202,7 +202,7 @@
       "from_raw": 0,
       "owner": "syntax-and-codegen",
       "to_raw": 1,
-      "word": 0
+      "word": 2
     },
     "parser/parser_tests.zig": {
       "from_raw": 0,
@@ -232,13 +232,13 @@
       "from_raw": 26,
       "owner": "type-and-lowering",
       "to_raw": 15,
-      "word": 32
+      "word": 34
     },
     "semantics/infer_etype.zig": {
       "from_raw": 4,
       "owner": "type-and-lowering",
       "to_raw": 2,
-      "word": 53
+      "word": 55
     },
     "semantics/infer_prims.zig": {
       "from_raw": 0,
@@ -250,7 +250,7 @@
       "from_raw": 19,
       "owner": "type-and-lowering",
       "to_raw": 15,
-      "word": 33
+      "word": 35
     },
     "semantics/lower.zig": {
       "from_raw": 40,
@@ -280,7 +280,7 @@
       "from_raw": 5,
       "owner": "type-and-lowering",
       "to_raw": 7,
-      "word": 41
+      "word": 50
     },
     "semantics/modules.zig": {
       "from_raw": 1,
@@ -304,7 +304,7 @@
       "from_raw": 4,
       "owner": "type-and-lowering",
       "to_raw": 1,
-      "word": 52
+      "word": 53
     },
     "semantics/unify.zig": {
       "from_raw": 0,

@@ -17,6 +17,7 @@ ALLOWED_NATIVE = {
     "eval/stream.zig",
     "os.zig",
     "os_scanf.zig",
+    "platform/c_compat.zig",
 }
 
 

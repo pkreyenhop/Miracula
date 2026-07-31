@@ -88,7 +88,8 @@ fn runMira(env: *const TestEnv, script: ?[]const u8, input: []const u8, extra_ar
     multi_reader.init(allocator, testing.io, multi_reader_buffer.toStreams(), &.{ child.stdout.?, child.stderr.? });
     defer multi_reader.deinit();
 
-    const timeout = std.Io.Timeout{ .duration = .{ .raw = std.Io.Duration.fromSeconds(10), .clock = .real } };
+    const timeout_seconds = if (build_options.force_gc_every_allocation) 120 else 10;
+    const timeout = std.Io.Timeout{ .duration = .{ .raw = std.Io.Duration.fromSeconds(timeout_seconds), .clock = .real } };
     while (multi_reader.fill(64, timeout)) |_| {
         if (multi_reader.reader(0).buffered().len > 1024 * 1024 or multi_reader.reader(1).buffered().len > 1024 * 1024) {
             return error.StreamTooLong;
@@ -96,8 +97,7 @@ fn runMira(env: *const TestEnv, script: ?[]const u8, input: []const u8, extra_ar
     } else |err| switch (err) {
         error.EndOfStream => {},
         error.Timeout => {
-            child.kill(testing.io);
-            _ = try child.wait(testing.io);
+            _ = child.kill(testing.io);
             return error.Timeout;
         },
         else => |e| return e,

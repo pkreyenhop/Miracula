@@ -4,7 +4,8 @@
 //! singleton lives in `interp`; callers reach it as `rs.X`.
 
 const std = @import("std");
-const abi = @import("../os.zig");
+const buffer_size = 1024;
+const path_name_limit = 1024;
 
 /// The process-wide debug allocator that backs `allocator`.
 pub var gpa = std.heap.DebugAllocator(.{}){};
@@ -23,6 +24,18 @@ pub var environ: std.process.Environ = .empty;
 /// non-local jump. Cleared once the interrupted evaluation has been reported
 /// back to the REPL prompt.
 pub var interrupt_flag: std.atomic.Value(bool) = .init(false);
+var default_state: RuntimeState = .{};
+var active_state: *RuntimeState = &default_state;
+var active_heap_top: *const fn () i64 = defaultHeapTop;
+
+fn defaultHeapTop() i64 {
+    return 0;
+}
+
+pub fn bind(state: *RuntimeState, heap_top: *const fn () i64) void {
+    active_state = state;
+    active_heap_top = heap_top;
+}
 
 const Word = i64;
 const CMBASE: Word = 306;
@@ -72,10 +85,10 @@ pub const RuntimeState = struct {
     rechecking: Word = 0,
     // Working buffers — sized for the longest supported pathname (pnlim).
     // Zero-initialised (see above): cheap for a singleton, removes read-before-write UB risk.
-    linebuf: [abi.BUFSIZE]u8 = std.mem.zeroes([abi.BUFSIZE]u8),
-    ebuf: [abi.pnlim]u8 = std.mem.zeroes([abi.pnlim]u8),
-    home_rc: [abi.pnlim + 8]u8 = std.mem.zeroes([abi.pnlim + 8]u8),
-    lib_rc: [abi.pnlim + 8]u8 = std.mem.zeroes([abi.pnlim + 8]u8),
+    linebuf: [buffer_size]u8 = std.mem.zeroes([buffer_size]u8),
+    ebuf: [path_name_limit]u8 = std.mem.zeroes([path_name_limit]u8),
+    home_rc: [path_name_limit + 8]u8 = std.mem.zeroes([path_name_limit + 8]u8),
+    lib_rc: [path_name_limit + 8]u8 = std.mem.zeroes([path_name_limit + 8]u8),
     /// Non-null when readRc fails; points into home_rc or lib_rc (not heap-allocated).
     rc_error: ?[*:0]const u8 = null,
 
@@ -108,8 +121,7 @@ pub const RuntimeState = struct {
         const options = @import("version_options");
         if (@import("builtin").mode != .Debug and !options.is_strict) return;
 
-        const heap = &@import("../session/interp.zig").current_interp.heap;
-        const top_limit = heap.TOP();
+        const top_limit = active_heap_top();
 
         inline for (.{ self.Void, self.main_id, self.message, self.standardout, self.diagonalise, self.concat, self.indent_fn, self.outdent_fn, self.listdiff_fn, self.rv_expr, self.primenv }) |field| {
             if (field >= @import("../graph/word.zig").ATOMLIMIT) {
@@ -133,7 +145,7 @@ pub const RuntimeState = struct {
 /// Pointer to the singleton runtime state held in `current_interp` (so
 /// `interp.reset()` clears it). Accessed as `rt.rs().X`.
 pub inline fn rs() *RuntimeState {
-    return &@import("../session/interp.zig").current_interp.rs;
+    return active_state;
 }
 
 test "RuntimeState default values are self-consistent" {

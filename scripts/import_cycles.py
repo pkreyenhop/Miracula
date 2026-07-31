@@ -20,11 +20,55 @@ from pathlib import Path
 
 IMPORT_RE = re.compile(r'@import\(\s*"([^"]+\.zig)"\s*\)')
 
+EXCLUDED = re.compile(r"(?:^|/)(?:[^/]+_test\.zig|testutil\.zig|micro_benchmarks\.zig)$")
+
+
+def production_text(text: str) -> str:
+    """Remove test blocks while preserving production import spellings."""
+    chars = list(text)
+    masked = list(text)
+    i = 0
+    while i < len(chars):
+        if text.startswith("//", i):
+            end = text.find("\n", i)
+            end = len(chars) if end < 0 else end
+            masked[i:end] = " " * (end - i)
+            i = end
+        elif text.startswith("/*", i):
+            end = text.find("*/", i + 2)
+            end = len(chars) - 2 if end < 0 else end
+            masked[i : end + 2] = " " * (end + 2 - i)
+            i = end + 2
+        elif chars[i] == '"':
+            i += 1
+            while i < len(chars) and chars[i] != '"':
+                if chars[i] == "\\":
+                    i += 1
+                i += 1
+            i += 1
+        else:
+            i += 1
+    code = "".join(masked)
+    for match in reversed(list(re.finditer(r"(?m)^[ \t]*test\b[^{]*\{", code))):
+        depth = 1
+        pos = match.end()
+        while pos < len(code) and depth:
+            if code[pos] == "{":
+                depth += 1
+            elif code[pos] == "}":
+                depth -= 1
+            pos += 1
+        chars[match.start() : pos] = " " * (pos - match.start())
+    return "".join(chars)
+
 
 def build_graph(root: Path) -> dict[Path, set[Path]]:
     graph: dict[Path, set[Path]] = {}
     for f in root.rglob("*.zig"):
-        text = f.read_text(encoding="utf-8", errors="replace")
+        rel = f.relative_to(root).as_posix()
+        if EXCLUDED.search(rel):
+            continue
+        text = production_text(f.read_text(encoding="utf-8", errors="replace"))
         edges = set()
         for m in IMPORT_RE.finditer(text):
             target = (f.parent / m.group(1)).resolve()

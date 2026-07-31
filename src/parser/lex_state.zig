@@ -64,8 +64,15 @@ pub const LexState = struct {
     rdline_linebuf: [1024]u8 = std.mem.zeroes([1024]u8),
 };
 
+var default_state: LexState = .{};
+var active_state: *LexState = &default_state;
+
+pub fn bind(state: *LexState) void {
+    active_state = state;
+}
+
 /// Pointer to the singleton [LexState] held in `current_interp` (so
 /// `interp.reset()` clears it). Accessed as `ls().X`.
 pub inline fn ls() *LexState {
-    return &@import("../session/interp.zig").current_interp.lex;
+    return active_state;
 }

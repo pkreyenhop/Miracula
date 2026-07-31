@@ -23,13 +23,6 @@ const compiler_state = @import("../compiler/compiler_state.zig");
 const make_state = @import("../session/make_state.zig");
 const bnf_state = @import("../session/bnf_state.zig");
 const repl_session = @import("../session/repl_session.zig");
-const lex = @import("../parser/lex.zig");
-const symbols = @import("../semantics/symbols.zig");
-const big = @import("bignum.zig");
-const big_fmt = @import("bignum_fmt.zig");
-const reduce = @import("../eval/reduce_rt.zig");
-const os = @import("../os.zig");
-const setup = @import("../compiler/setup.zig");
 const cs = compiler_state.cs;
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
@@ -37,6 +30,7 @@ const heap_cells = @import("heap_cells.zig");
 pub const Heap = heap_cells.Heap;
 pub const Cell = heap_cells.Cell;
 pub const heap = heap_cells.heap;
+pub const bind = heap_cells.bind;
 pub const mallocPanic = heap_cells.mallocPanic;
 pub const mallocfail = heap_cells.mallocfail;
 
@@ -151,7 +145,7 @@ pub fn getChar(x: Word) Word {
         .atom => {},
     }
     std.debug.print("impossible event in getChar(x), tag[x]=={d}\n", .{heap().getTag(x)});
-    os.exit(1);
+    std.process.exit(1);
 }
 
 /// Whether `x` is a char value (1/0).
@@ -282,8 +276,13 @@ pub fn nil() Word {
 // (Dead module duplicates of `Heap.SPACE`/`Heap.listp` removed — the live
 // copies are the struct fields, accessed via `self.SPACE`/`self.listp`.)
 
-const outstats = reduce.outstats;
-const initclock = reduce.initclock;
+var init_clock: *const fn () void = struct {
+    fn noop() void {}
+}.noop;
+
+pub fn bindInitClock(callback: *const fn () void) void {
+    init_clock = callback;
+}
 const hashsize = word.hashsize;
 
 /// The current heap top — the next free cell index.
@@ -312,7 +311,7 @@ pub fn resetgcstats() void {
     heap().cellcount = -heap().claims;
     heap().nogcs = 0;
     heap().hnogcs = 0;
-    initclock();
+    init_clock();
 }
 
 /// Head (`hd`) of cell `x` without atom checks.
@@ -340,7 +339,6 @@ pub fn stoId(p1: [*:0]const u8) Word {
     return make(heap(), .ID, cons(heap(), make(heap(), .STRCONS, strtab.strBitsZ(strtab.table(), p1), word.NIL), word.undef_t), word.UNDEF);
 }
 
-const bigtostr = big_fmt.toDecimalList;
 const SIGNBIT = 0x10000000;
 const MAXDIGIT = 0x7fff;
 
@@ -473,7 +471,11 @@ pub fn isfreeid(x: Word) bool {
     return idType(x) == word.undef_t and idVal(x) == word.UNDEF;
 }
 
-const isconstrname = lex.isconstrname;
+fn isconstrname(input: [*:0]const u8) bool {
+    var name = input;
+    if (name[0] == '$') name += 1;
+    return std.ascii.isUpper(name[0]);
+}
 /// Whether `x` names a data constructor.
 pub fn isconstructor(self: Heap, x: Word) bool {
     return self.getTag(x) == .ID and isconstrname(getId(x));
@@ -540,20 +542,12 @@ pub fn size(input: Word) Word {
 
 /// Detect whether the current locale is UTF-8 (1/0).
 pub fn utf8test() bool {
-    var lang = os.getenv("LC_CTYPE");
-    if (lang == null) {
-        lang = os.getenv("LANG");
-    }
-    if (lang) |l| {
-        if (os.strstr(l, "UTF-8") != null or
-            os.strstr(l, "UTF8") != null or
-            os.strstr(l, "utf-8") != null or
-            os.strstr(l, "utf8") != null)
-        {
-            return true;
-        }
-    }
-    return false;
+    const lang = std.process.Environ.getPosix(rt.environ, "LC_CTYPE") orelse
+        std.process.Environ.getPosix(rt.environ, "LANG") orelse return false;
+    return std.mem.indexOf(u8, lang, "UTF-8") != null or
+        std.mem.indexOf(u8, lang, "UTF8") != null or
+        std.mem.indexOf(u8, lang, "utf-8") != null or
+        std.mem.indexOf(u8, lang, "utf8") != null;
 }
 
 // ── Domain types (C2) ────────────────────────────────────────────────────────

@@ -145,6 +145,7 @@
     "parser/lex.zig",
     "parser/lex_state.zig",
     "parser/parser_api.zig",
+    "platform/c_compat.zig",
     "runtime/core_state.zig",
     "runtime/errors.zig",
     "runtime/runtime_state.zig",

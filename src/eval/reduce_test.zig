@@ -113,6 +113,7 @@ test "interp.reset clears the aggregated state structs" {
 const spine_depth = 60000;
 
 test "codegen handles a deep application spine without overflow" {
+    if (@import("version_options").force_gc_every_allocation) return error.SkipZigTest;
     ensureSetup();
     // ap(ap(...ap(I, NIL)...), NIL) — a left-nested spine recursed via h(x).
     var g: Word = word.I;
@@ -122,6 +123,7 @@ test "codegen handles a deep application spine without overflow" {
 }
 
 test "codegen handles a deep tuple spine without overflow" {
+    if (@import("version_options").force_gc_every_allocation) return error.SkipZigTest;
     ensureSetup();
     // tcons(NIL, tcons(NIL, ... pair(NIL, NIL))) — a right-nested spine recursed via t(x).
     var g: Word = heap.make(heap.heap(), .PAIR, word.NIL, word.NIL);

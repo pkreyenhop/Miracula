@@ -22,8 +22,8 @@ const Heap = heap_mod.Heap;
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 const lex_mod = @import("../parser/lex.zig");
 const isconstrname = lex_mod.isconstrname;
-const infer = @import("infer.zig");
-const getId = infer.getId;
+const infer_prims = @import("infer_prims.zig");
+const getId = infer_prims.getId;
 const value_mod = @import("../graph/value.zig");
 const Value = value_mod.Value;
 

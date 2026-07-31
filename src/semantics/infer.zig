@@ -13,7 +13,6 @@ const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
 const dump = @import("../compiler/dump.zig");
 const strtab = @import("../graph/strtab.zig");
-const os = @import("../os.zig");
 const rt = @import("../runtime/runtime_state.zig");
 const script_store = @import("../session/script_store.zig");
 
@@ -24,11 +23,6 @@ const Heap = heap_mod.Heap;
 const print_mod = @import("../graph/print.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 const cs = compiler_state.cs;
-// `abi` — a private namespace of libc / `word`-combinator re-export aliases so
-// this file can write `os.printf(...)`, `word.PLUS`, etc. Internal only (the
-// container is not `pub`, so these never appear in autodoc); each member just
-// re-exports an already-documented symbol from `os`/`word`.
-
 const Word = word.Word;
 const Value = @import("../graph/value.zig").Value;
 const CMBASE = word.CMBASE;
@@ -449,7 +443,11 @@ const bind_t: Word = 9;
 
 const subsu1 = unify_mod.subsu1;
 const subsumes = unify_mod.subsumes;
-const unify = unify_mod.unify;
+fn unify(heap: *Heap, t1: Word, t2: Word) i32 {
+    const result = unify_mod.unify(heap, t1, t2);
+    if (result == 0) typeError(heap, "unify", "with", t1, t2);
+    return result;
+}
 
 /// Type-check `x`, returning 1 if it typechecks cleanly, 0 otherwise (a flag,
 /// not a graph value — matches `cyclicAbstr`'s precedent above).

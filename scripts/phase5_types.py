@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Fail-closed typed-value migration inventory.
+"""Fail-closed typed-value translation contract.
 
-The Go translator consumes this manifest instead of guessing the semantic
-meaning of legacy raw-word compatibility sites. Counts may decrease as typed
-APIs replace compatibility calls, but any increase or new owning file fails.
+Every remaining raw-value site must have an exact target representation in
+the Go translation manifest. There is no count-based compatibility ratchet.
 """
 
 from __future__ import annotations
@@ -16,6 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 MANIFEST = ROOT / "tests" / "phase5_type_inventory.json"
+TRANSLATION_MANIFEST = ROOT / "spec" / "go_translation_manifest.json"
 
 PATTERNS = {
     "word": re.compile(r"\bWord\b"),
@@ -76,11 +76,24 @@ def verify(actual: dict, expected: dict) -> list[str]:
         if current["owner"] != baseline["owner"]:
             errors.append(f"owner changed without manifest update: src/{path}")
         for metric in PATTERNS:
-            if current[metric] > baseline[metric]:
-                errors.append(
-                    f"src/{path}: {metric} increased "
-                    f"{baseline[metric]} -> {current[metric]}"
-                )
+            if current[metric] != baseline[metric]:
+                errors.append(f"src/{path}: {metric} inventory is stale")
+    if set(actual["files"]) != set(expected["files"]):
+        errors.append("phase 5 file inventory is stale")
+    return errors
+
+
+def verify_translation_targets(actual: dict) -> list[str]:
+    manifest = json.loads(TRANSLATION_MANIFEST.read_text())
+    sources = {item["source_file"]: item for item in manifest["sources"]}
+    errors = []
+    for path, counts in actual["files"].items():
+        source = sources.get(path)
+        mapped = source.get("compatibility", {}).get("raw_value_sites", {}) if source else {}
+        for metric in PATTERNS:
+            sites = mapped.get(metric, [])
+            if len(sites) != counts[metric] or any(not site.get("target") for site in sites):
+                errors.append(f"src/{path}: {metric} sites lack exact Go targets")
     return errors
 
 
@@ -95,6 +108,7 @@ def main() -> int:
         return 0
     expected = json.loads(MANIFEST.read_text())
     errors = verify(actual, expected)
+    errors.extend(verify_translation_targets(actual))
     if errors:
         print("\n".join(errors))
         return 1
@@ -102,14 +116,15 @@ def main() -> int:
     value_model = (SRC / "graph" / "value.zig").read_text()
     token_model = (SRC / "syntax" / "token_filter.zig").read_text()
     resource_model = (SRC / "eval" / "resources.zig").read_text()
-    locations = vocabulary + value_model + token_model + resource_model
+    word_model = (SRC / "graph" / "word.zig").read_text()
+    locations = vocabulary + value_model + token_model + resource_model + word_model
     missing = [name for name in expected["typed_vocabulary"] if name not in locations]
     if missing:
         print("missing typed vocabulary: " + ", ".join(missing))
         return 1
     print(
         "phase 5 typed boundary verified: "
-        f"{len(actual['files'])} compatibility owners, no count increases"
+        f"{len(actual['files'])} compatibility owners, every site has an exact Go target"
     )
     return 0
 

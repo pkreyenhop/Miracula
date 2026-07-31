@@ -46,8 +46,15 @@ pub const CoreState = struct {
     commandmode: Word = 0,
 };
 
+var default_state: CoreState = .{};
+var active_state: *CoreState = &default_state;
+
+pub fn bind(state: *CoreState) void {
+    active_state = state;
+}
+
 /// Pointer to the singleton `CoreState` inside `current_interp`. Call sites
 /// use `core_state.s().X` (or `s().X` via a local alias).
 pub inline fn s() *CoreState {
-    return &@import("../session/interp.zig").current_interp.core;
+    return active_state;
 }

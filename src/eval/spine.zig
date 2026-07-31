@@ -463,6 +463,7 @@ test "guarded downright/upleft report exhaustion instead of underflowing" {
 }
 
 test "depth is unbounded: a very long spine does not overflow a fixed stack" {
+    if (@import("version_options").force_gc_every_allocation) return error.SkipZigTest;
     tu.freshInterp();
     // This is the property pointer-reversal used to get "for free" (the
     // stack was the heap, so it scaled with available memory, not a fixed

@@ -30,10 +30,17 @@ pub const ReplSession = struct {
     last_gc_count: ?i64 = null,
 };
 
+var default_state: ReplSession = .{};
+var active_state: *ReplSession = &default_state;
+
+pub fn bind(state: *ReplSession) void {
+    active_state = state;
+}
+
 /// Pointer to the singleton REPL session state held in `current_interp`
 /// (so `interp.reset()` clears it). Accessed as `repl_session.session().X`.
 pub inline fn session() *ReplSession {
-    return &@import("interp.zig").current_interp.repl;
+    return active_state;
 }
 
 test "ReplSession default values are self-consistent" {

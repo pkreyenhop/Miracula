@@ -15,14 +15,14 @@ const heap_mod = @import("../graph/heap.zig");
 const Heap = heap_mod.Heap;
 const compiler_state = @import("../compiler/compiler_state.zig");
 const cs = compiler_state.cs;
-const infer = @import("infer.zig");
+const infer_prims = @import("infer_prims.zig");
 
 const Word = word.Word;
 const NIL = word.NIL;
 
 const make = heap_mod.make;
-const isCompoundType = infer.isCompoundType;
-const isVarType = infer.isVarType;
+const isCompoundType = infer_prims.isCompoundType;
+const isVarType = infer_prims.isVarType;
 
 /// The node tag of cell `x`.
 inline fn getTag(heap: *Heap, x: Word) word.NodeTag {
@@ -253,8 +253,6 @@ pub fn ispoly(heap: *Heap, t_val: Word) bool {
     return isVarType(heap, term);
 }
 
-const type_errors = @import("type_errors.zig");
-const typeError = type_errors.typeError;
 const wrong_t = word.wrong_t;
 
 /// Whether `t1` can be made to match `t2` (one-directional; extends the
@@ -322,6 +320,5 @@ pub fn unify(heap: *Heap, t1_val: Word, t2_val: Word) i32 {
     if (isCompoundType(heap, t1) and isCompoundType(heap, t2) and unify1(heap, h(heap, t1), h(heap, t2)) != 0 and unify1(heap, t(heap, t1), t(heap, t2)) != 0) {
         return 1;
     }
-    typeError(heap, "unify", "with", t1, t2);
     return 0;
 }
