@@ -419,10 +419,13 @@ pub fn build(b: *std.Build) void {
         "tests/mira_tests",
         "miralib/preludx",
         "miralib/stdenv.x",
-        "script.x",
+    });
+    const clean_root_x = b.addSystemCommand(&.{
+        "find", ".", "-maxdepth", "1", "-type", "f", "-name", "*.x", "-delete",
     });
     const clean_step = b.step("clean", "Remove Zig and legacy build outputs");
     clean_step.dependOn(&clean.step);
+    clean_step.dependOn(&clean_root_x.step);
 
     // `zig build lint` — lint the project's own Zig sources with zlinter.
     // Scoped to src/ and tests/ so the dependency cache (zig-pkg/) is not linted.
