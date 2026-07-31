@@ -55,7 +55,6 @@ fn unlimitStack() void {
 /// Process entry point: parse flags and arguments, install signal handlers, set up the heap, locate the library, then enter `commandLoop`. Returns the exit code.
 pub fn mainEntry(heap: *Heap, argc: i32, argv: [*][*:0]u8) i32 {
     var manonly: Word = 0;
-    rt.rs().cstack = @ptrCast(&manonly);
     unlimitStack();
     repl_session.session().verbosity = if (abi.isatty(0) != 0) 1 else 0;
     word.setbuf(abi.stdout(), null);

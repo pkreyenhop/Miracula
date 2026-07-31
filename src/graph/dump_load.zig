@@ -93,6 +93,10 @@ const dumpOb = dump.dumpOb;
 
 /// Load a script graph from a dump `file`, binding params and aliases.
 pub fn loadScript(heap: *Heap, core_st: *core.CoreState, comp: *compiler_state.CompilerState, rs: *rt.RuntimeState, lexs: *lex_state.LexState, file: ?*word.Stream, src: [*:0]const u8, aliases: Word, params: Word, main_flag: Word) Word {
+    var aliases_root = heap.roots.root(rt.allocator, &aliases);
+    defer aliases_root.deinit();
+    var params_root = heap.roots.root(rt.allocator, &params);
+    defer params_root.deinit();
     comp.TORPHANS = 0;
     comp.BAD_DUMP = 0;
     comp.CLASHES = word.NIL;
@@ -138,6 +142,8 @@ pub fn loadScript(heap: *Heap, core_st: *core.CoreState, comp: *compiler_state.C
     comp.TSUPPRESSED = word.NIL;
 
     var files_list: Word = word.NIL;
+    var files_root = heap.roots.root(rt.allocator, &files_list);
+    defer files_root.deinit();
     var ch: Word = os.getc(file);
     while (ch != 0 and ch != os.EOF and comp.BAD_DUMP == 0) {
         var s: Word = 0;
@@ -264,6 +270,8 @@ pub fn loadDefs(heap: *Heap, comp: *compiler_state.CompilerState, rs: *rt.Runtim
     _ = rs;
     var ch = os.getc(file);
     var defs: Word = word.NIL;
+    var defs_root = heap.roots.root(rt.allocator, &defs);
+    defer defs_root.deinit();
     while (ch != os.EOF) {
         if (heap.stackp == heap.dlim) {
             dgrow(heap);

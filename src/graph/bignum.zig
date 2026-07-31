@@ -25,6 +25,7 @@
 //! module's own internals stopped assuming where they come from.
 
 const std = @import("std");
+const rt = @import("../runtime/runtime_state.zig");
 
 const platform = @import("../io/platform.zig");
 const heap_mod = @import("heap.zig");
@@ -258,6 +259,13 @@ fn addMagnitude(heap: *Heap, input_x: Word, input_y: Word, signbit: Word) Word {
     var z = restPtr(heap, r);
     x = rest(heap, x);
     y = rest(heap, y);
+    if (x == 0 and y == 0 and carry == 0) return r;
+    var x_root = heap.roots.root(rt.allocator, &x);
+    defer x_root.deinit();
+    var y_root = heap.roots.root(rt.allocator, &y);
+    defer y_root.deinit();
+    var r_root = heap.roots.root(rt.allocator, &r);
+    defer r_root.deinit();
     while (x != 0 and y != 0) {
         d = carry + digit(heap, x) + digit(heap, y);
         carry = if ((d & IBASE) != 0) 1 else 0;
@@ -309,6 +317,13 @@ fn subMagnitude(heap: *Heap, input_x: Word, input_y: Word) Word {
     var p: ?CellPtr = null;
     x = rest(heap, x);
     y = rest(heap, y);
+    if (x == 0 and y == 0 and borrow == 0) return r;
+    var x_root = heap.roots.root(rt.allocator, &x);
+    defer x_root.deinit();
+    var y_root = heap.roots.root(rt.allocator, &y);
+    defer y_root.deinit();
+    var r_root = heap.roots.root(rt.allocator, &r);
+    defer r_root.deinit();
     while (x != 0 and y != 0) {
         d = digit(heap, x) - digit(heap, y) - borrow;
         borrow = if ((d & IBASE) != 0) 1 else 0;

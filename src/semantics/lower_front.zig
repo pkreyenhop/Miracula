@@ -296,6 +296,10 @@ pub fn abshfnck(heap: *Heap, t_type: Word, f_input: Word) Word {
 
 /// Combine two bracket-abstraction results, optimising redundant `K`s.
 pub fn combine(heap: *Heap, x: Word, y: Word) Word {
+    var x_root = heap.roots.root(rt.allocator, &x);
+    defer x_root.deinit();
+    var y_root = heap.roots.root(rt.allocator, &y);
+    defer y_root.deinit();
     const a = getTag(heap, x) == .AP and h(heap, x) == K;
     const b = getTag(heap, y) == .AP and h(heap, y) == K;
     if (a and b) {
@@ -335,6 +339,10 @@ pub fn combine(heap: *Heap, x: Word, y: Word) Word {
 
 /// Combine two abstraction results building a cons, optimising the `K` cases.
 pub fn liscomb(heap: *Heap, x: Word, y: Word) Word {
+    var x_root = heap.roots.root(rt.allocator, &x);
+    defer x_root.deinit();
+    var y_root = heap.roots.root(rt.allocator, &y);
+    defer y_root.deinit();
     const a = getTag(heap, x) == .AP and h(heap, x) == K;
     const b = getTag(heap, y) == .AP and h(heap, y) == K;
     if (a and b) {
@@ -356,6 +364,10 @@ pub fn liscomb(heap: *Heap, x: Word, y: Word) Word {
 pub fn abstract(heap: *Heap, input_x: Word, input_e: Word) Word {
     var x = input_x;
     var e = input_e;
+    var x_root = heap.roots.root(rt.allocator, &x);
+    defer x_root.deinit();
+    var e_root = heap.roots.root(rt.allocator, &e);
+    defer e_root.deinit();
     switch (getTag(heap, x)) {
         .ID => {
             if (isConstructor(heap, x)) {
@@ -370,12 +382,23 @@ pub fn abstract(heap: *Heap, input_x: Word, input_e: Word) Word {
                 }
                 return ap2(heap, MATCH, if (t(heap, x) == NILS) NIL else t(heap, x), e);
             }
-            return ap(heap, U_, abstract(heap, h(heap, x), abstract(heap, t(heap, x), e)));
+            var inner = abstract(heap, t(heap, x), e);
+            var inner_root = heap.roots.root(rt.allocator, &inner);
+            defer inner_root.deinit();
+            return ap(heap, U_, abstract(heap, h(heap, x), inner));
         },
-        .TCONS, .PAIR => return ap(heap, U, abstract(heap, h(heap, x), abstract(heap, t(heap, x), e))),
+        .TCONS, .PAIR => {
+            var inner = abstract(heap, t(heap, x), e);
+            var inner_root = heap.roots.root(rt.allocator, &inner);
+            defer inner_root.deinit();
+            return ap(heap, U, abstract(heap, h(heap, x), inner));
+        },
         .AP => {
             if (member(heap, Value.fromRaw(cs().SGC), Value.fromRaw(appHead(heap, x))) != 0) {
-                return ap(heap, Uf, abstract(heap, h(heap, x), abstract(heap, t(heap, x), e)));
+                var inner = abstract(heap, t(heap, x), e);
+                var inner_root = heap.roots.root(rt.allocator, &inner);
+                defer inner_root.deinit();
+                return ap(heap, Uf, abstract(heap, h(heap, x), inner));
             }
             if (getTag(heap, h(heap, x)) == .AP and h(heap, h(heap, x)) == PLUS) {
                 return ap2(heap, ATLEAST, t(heap, h(heap, x)), abstract(heap, t(heap, x), e));
@@ -399,13 +422,25 @@ pub fn abstract(heap: *Heap, input_x: Word, input_e: Word) Word {
 
 /// Bracket-abstract `x` from `e` (the recursive inner step).
 pub fn abstr(heap: *Heap, x: Word, e: Word) Word {
+    var x_root = heap.roots.root(rt.allocator, &x);
+    defer x_root.deinit();
+    var e_root = heap.roots.root(rt.allocator, &e);
+    defer e_root.deinit();
     switch (getTag(heap, e)) {
-        .TCONS, .PAIR, .CONS => return liscomb(heap, abstr(heap, x, h(heap, e)), abstr(heap, x, t(heap, e))),
+        .TCONS, .PAIR, .CONS => {
+            var left = abstr(heap, x, h(heap, e));
+            var left_root = heap.roots.root(rt.allocator, &left);
+            defer left_root.deinit();
+            return liscomb(heap, left, abstr(heap, x, t(heap, e)));
+        },
         .AP => {
             if (h(heap, e) == BADCASE or h(heap, e) == CONFERROR) {
                 return ap(heap, K, e);
             }
-            return combine(heap, abstr(heap, x, h(heap, e)), abstr(heap, x, t(heap, e)));
+            var left = abstr(heap, x, h(heap, e));
+            var left_root = heap.roots.root(rt.allocator, &left);
+            defer left_root.deinit();
+            return combine(heap, left, abstr(heap, x, t(heap, e)));
         },
         .LAMBDA, .LET, .LETREC, .TRIES, .LABEL, .SHOW, .LEXER, .SHARE => {
             std.debug.print("impossible event in abstr (main.tag={d})\n", .{getTag(heap, e)});
@@ -422,13 +457,26 @@ pub fn abstr(heap: *Heap, x: Word, e: Word) Word {
 
 /// Bracket-abstract a list of variables `x` from `e`.
 pub fn abstrlist(heap: *Heap, x_input: Word, e: Word) Word {
+    var rooted_x = x_input;
+    var x_root = heap.roots.root(rt.allocator, &rooted_x);
+    defer x_root.deinit();
+    var e_root = heap.roots.root(rt.allocator, &e);
+    defer e_root.deinit();
     switch (getTag(heap, e)) {
-        .TCONS, .PAIR, .CONS => return liscomb(heap, abstrlist(heap, x_input, h(heap, e)), abstrlist(heap, x_input, t(heap, e))),
+        .TCONS, .PAIR, .CONS => {
+            var left = abstrlist(heap, rooted_x, h(heap, e));
+            var left_root = heap.roots.root(rt.allocator, &left);
+            defer left_root.deinit();
+            return liscomb(heap, left, abstrlist(heap, rooted_x, t(heap, e)));
+        },
         .AP => {
             if (h(heap, e) == BADCASE or h(heap, e) == CONFERROR) {
                 return ap(heap, K, e);
             }
-            return combine(heap, abstrlist(heap, x_input, h(heap, e)), abstrlist(heap, x_input, t(heap, e)));
+            var left = abstrlist(heap, rooted_x, h(heap, e));
+            var left_root = heap.roots.root(rt.allocator, &left);
+            defer left_root.deinit();
+            return combine(heap, left, abstrlist(heap, rooted_x, t(heap, e)));
         },
         .LAMBDA, .LET, .LETREC, .TRIES, .LABEL, .SHOW, .LEXER, .SHARE => {
             std.debug.print("impossible event in abstrlist (main.tag={d})\n", .{getTag(heap, e)});
@@ -436,7 +484,7 @@ pub fn abstrlist(heap: *Heap, x_input: Word, e: Word) Word {
         },
         else => {
             var i: Word = 0;
-            var x = x_input;
+            var x = rooted_x;
             while (x != NIL and h(heap, x) != e) {
                 i += 1;
                 x = t(heap, x);

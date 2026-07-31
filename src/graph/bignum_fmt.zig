@@ -9,6 +9,7 @@ const std = @import("std");
 const heap_mod = @import("heap.zig");
 const Heap = heap_mod.Heap;
 const word = @import("word.zig");
+const rt = @import("../runtime/runtime_state.zig");
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 
 const Word = i64;
@@ -42,6 +43,8 @@ pub fn scanDecimal(heap: *Heap, p: [*:0]const u8) Word {
     var cursor: usize = 0;
     var s = false;
     const r = heap.make(.INT, 0, 0);
+    var r_root = heap.roots.root(rt.allocator, &r);
+    defer r_root.deinit();
     if (p[0] == '-') {
         s = true;
         cursor += 1;
@@ -73,6 +76,8 @@ test "scanDecimal: parses a NUL-terminated decimal string" {
 /// Tests: scanHex: parses a hex byte range into a bignum
 pub fn scanHex(heap: *Heap, p: [*]const u8, q: [*]const u8) Word {
     const r = heap.make(.INT, 0, 0);
+    var r_root = heap.roots.root(rt.allocator, &r);
+    defer r_root.deinit();
     var cursor: usize = 0;
     const len = q - p;
     while (cursor < len) {
@@ -107,6 +112,8 @@ test "scanHex: parses a hex byte range into a bignum" {
 /// Tests: scanOctal: parses an octal byte range into a bignum
 pub fn scanOctal(heap: *Heap, p: [*]const u8, q: [*]const u8) Word {
     const r = heap.make(.INT, 0, 0);
+    var r_root = heap.roots.root(rt.allocator, &r);
+    defer r_root.deinit();
     var cursor: usize = 0;
     const len = q - p;
     while (cursor < len) {
@@ -207,9 +214,13 @@ fn multiplyAddInPlace(heap: *Heap, r: Word, f: Word, addend: Word) void {
 /// Tests: toDecimalList: renders a bignum as decimal digits
 pub fn toDecimalList(heap: *Heap, input_x: Word) Word {
     var x = input_x;
+    var x_root = heap.roots.root(rt.allocator, &x);
+    defer x_root.deinit();
     if (rest(heap, x) == 0) return wordToDecimalList(heap, toSmallInt(heap, x));
     const sign = signBit(heap, x) != 0;
     var x1 = heap.make(.INT, digit0(heap, x), 0);
+    var x1_root = heap.roots.root(rt.allocator, &x1);
+    defer x1_root.deinit();
     x = rest(heap, x);
     while (x != 0) {
         x1 = heap.make(.INT, digit(heap, x), x1);
@@ -217,6 +228,8 @@ pub fn toDecimalList(heap: *Heap, input_x: Word) Word {
     }
     x = x1;
     var s: Word = NIL;
+    var s_root = heap.roots.root(rt.allocator, &s);
+    defer s_root.deinit();
     while (true) {
         var d = digit(heap, x);
         var rem = @rem(d, PTEN);
@@ -259,6 +272,8 @@ fn wordToDecimalList(heap: *Heap, value: Word) Word {
     // 64 bytes holds any decimal Word (<= 20 digits); bufPrint cannot overflow.
     const text = std.fmt.bufPrint(&buffer, "{d}", .{value}) catch unreachable;
     var result: Word = NIL;
+    var result_root = heap.roots.root(rt.allocator, &result);
+    defer result_root.deinit();
     var i = text.len;
     while (i != 0) {
         i -= 1;
@@ -273,6 +288,10 @@ fn wordToDecimalList(heap: *Heap, value: Word) Word {
 pub fn toHexList(heap: *Heap, input_x: Word) Word {
     var x = input_x;
     var r: Word = NIL;
+    var x_root = heap.roots.root(rt.allocator, &x);
+    defer x_root.deinit();
+    var r_root = heap.roots.root(rt.allocator, &r);
+    defer r_root.deinit();
     const s = signBit(heap, x) != 0;
     while (x != 0) {
         var count: Word = 4;
@@ -311,6 +330,10 @@ test "toHexList: renders a 0x-prefixed hex char list" {
 pub fn toOctalList(heap: *Heap, input_x: Word) Word {
     var x = input_x;
     var r: Word = NIL;
+    var x_root = heap.roots.root(rt.allocator, &x);
+    defer x_root.deinit();
+    var r_root = heap.roots.root(rt.allocator, &r);
+    defer r_root.deinit();
     const s = signBit(heap, x) != 0;
     while (x != 0) {
         var buffer: [6]u8 = undefined;

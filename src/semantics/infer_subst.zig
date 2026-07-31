@@ -2,6 +2,7 @@
 
 const word = @import("../graph/word.zig");
 const errors = @import("../runtime/errors.zig");
+const rt = @import("../runtime/runtime_state.zig");
 const dump = @import("../compiler/dump.zig");
 const strtab = @import("../graph/strtab.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
@@ -189,6 +190,12 @@ pub fn metaTcheck(heap: *Heap, t_val: Word) errors.MiraError!Word {
 pub fn compDeps(heap: *Heap, n: Word) errors.MiraError!void {
     var rhs = NIL;
     var r: Word = 0;
+    var n_root = heap.roots.root(rt.allocator, &n);
+    defer n_root.deinit();
+    var rhs_root = heap.roots.root(rt.allocator, &rhs);
+    defer rhs_root.deinit();
+    var r_root = heap.roots.root(rt.allocator, &r);
+    defer r_root.deinit();
     if (idType(heap, n) == type_t) {
         switch (tClass(heap, n)) {
             algebraic_t => {

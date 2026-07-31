@@ -495,6 +495,10 @@ pub fn addtoenv(self: *Heap, x: Word) void {
 pub fn reverse(input: Word) Word {
     var x = input;
     var y: Word = NIL;
+    var x_root = heap().roots.root(rt.allocator, &x);
+    defer x_root.deinit();
+    var y_root = heap().roots.root(rt.allocator, &y);
+    defer y_root.deinit();
     while (x != NIL) {
         y = cons(heap(), h(heap(), x), y);
         x = t(heap(), x);
@@ -508,6 +512,10 @@ pub fn reverse(input: Word) Word {
 pub fn shunt(input_x: Word, input_y: Word) Word {
     var x = input_x;
     var y = input_y;
+    var x_root = heap().roots.root(rt.allocator, &x);
+    defer x_root.deinit();
+    var y_root = heap().roots.root(rt.allocator, &y);
+    defer y_root.deinit();
     while (x != NIL) {
         y = cons(heap(), h(heap(), x), y);
         x = t(heap(), x);

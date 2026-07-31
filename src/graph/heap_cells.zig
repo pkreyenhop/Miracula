@@ -24,6 +24,7 @@ const big_fmt = @import("bignum_fmt.zig");
 const reduce = @import("../eval/reduce_rt.zig");
 const os = @import("../os.zig");
 const setup = @import("../compiler/setup.zig");
+const roots_mod = @import("roots.zig");
 const cs = compiler_state.cs;
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 const Word = i64;
@@ -68,6 +69,7 @@ pub const Heap = struct {
     /// in `setupheap` — `self.SPACE` only ever changes which prefix of that
     /// range `make`/`gc` currently treat as in play.
     live: std.DynamicBitSetUnmanaged = .{},
+    allocated_snapshot: std.DynamicBitSetUnmanaged = .{},
     /// Head of the free list, threaded through free cells' own `tl` field
     /// (`0` — never a valid cell index, since cells start at `ATOMLIMIT` —
     /// is the "no free cells" sentinel). `make` pops from it in O(1); `gc`
@@ -100,6 +102,15 @@ pub const Heap = struct {
     PNBASE: Word = 0,
     CFN: ?[*:0]const u8 = null,
     charname_buffer: [8]u8 = undefined,
+    /// Scoped off-heap graph references. Permanent interpreter-state roots
+    /// are enumerated explicitly in `bases`; reducer spines have their own
+    /// intrusive registry and are marked alongside this one.
+    roots: roots_mod.Registry = .{},
+    /// Deterministic GC stress schedule. Zero disables forced collection;
+    /// otherwise every Nth allocation collects before claiming its cell.
+    force_gc_every: usize = 0,
+    allocation_count: usize = 0,
+    force_gc_checkpoints: bool = false,
 
     /// Refresh the cached column pointers after `cells` is (re)allocated.
     fn refreshPointers(self: *Heap) void {
@@ -198,11 +209,14 @@ pub const Heap = struct {
             // Sized once, to the full [ATOMLIMIT, BIGTOP) range -- SPACE only
             // ever changes which prefix of it `make`/`gc` currently use.
             self.live.resize(rt.allocator, bigtop_val + 1 - @as(usize, @intCast(ATOMLIMIT)), false) catch mallocPanic("heap");
+            self.allocated_snapshot.resize(rt.allocator, bigtop_val + 1 - @as(usize, @intCast(ATOMLIMIT)), false) catch mallocPanic("heap");
         }
         self.refreshPointers();
         if (self.SPACE > config_state.config().SPACELIMIT) {
             self.SPACE = config_state.config().SPACELIMIT;
         }
+        self.live.setRangeValue(.{ .start = 0, .end = @intCast(self.SPACE) }, false);
+        self.allocated_snapshot.setRangeValue(.{ .start = 0, .end = @intCast(self.SPACE) }, false);
         self.free_head = 0;
         self.threadFree(ATOMLIMIT, self.TOP());
     }
@@ -226,7 +240,9 @@ pub const Heap = struct {
             self.tag.?[@intCast(self.TOP())] = .ATOM;
         }
         self.live.resize(rt.allocator, bigtop_val + 1 - @as(usize, @intCast(ATOMLIMIT)), false) catch mallocPanic("heap");
+        self.allocated_snapshot.resize(rt.allocator, bigtop_val + 1 - @as(usize, @intCast(ATOMLIMIT)), false) catch mallocPanic("heap");
         self.live.setRangeValue(.{ .start = 0, .end = @intCast(self.SPACE) }, false);
+        self.allocated_snapshot.setRangeValue(.{ .start = 0, .end = @intCast(self.SPACE) }, false);
         self.free_head = 0;
         self.threadFree(ATOMLIMIT, self.TOP());
     }
@@ -336,13 +352,19 @@ pub const Heap = struct {
             }
         }
         if (self.free_head == 0) {
+            var root_x = x;
+            var root_y = y;
+            var x_guard: ?roots_mod.Guard = if (@intFromEnum(t_val) > @intFromEnum(word.NodeTag.STRCONS))
+                self.roots.root(rt.allocator, &root_x)
+            else
+                null;
+            defer if (x_guard) |*guard| guard.deinit();
+            var y_guard: ?roots_mod.Guard = if (@intFromEnum(t_val) >= @intFromEnum(word.NodeTag.INT))
+                self.roots.root(rt.allocator, &root_y)
+            else
+                null;
+            defer if (y_guard) |*guard| guard.deinit();
             self.gc();
-            if (@intFromEnum(t_val) > @intFromEnum(word.NodeTag.STRCONS)) {
-                self.mark(x);
-            }
-            if (@intFromEnum(t_val) >= @intFromEnum(word.NodeTag.INT)) {
-                self.mark(y);
-            }
             return self.make(t_val, x, y);
         }
         return self.make(t_val, x, y);
@@ -350,6 +372,24 @@ pub const Heap = struct {
 
     /// Allocate a cell with tag `t_val` and fields `(x, y)` — the core allocator.
     pub inline fn make(self: *Heap, t_val: word.NodeTag, x: Word, y: Word) Word {
+        self.allocation_count +%= 1;
+        if (self.force_gc_every != 0 and self.collecting == 0 and
+            self.allocation_count % self.force_gc_every == 0)
+        {
+            var root_x = x;
+            var root_y = y;
+            var x_guard: ?roots_mod.Guard = if (@intFromEnum(t_val) > @intFromEnum(word.NodeTag.STRCONS))
+                self.roots.root(rt.allocator, &root_x)
+            else
+                null;
+            defer if (x_guard) |*guard| guard.deinit();
+            var y_guard: ?roots_mod.Guard = if (@intFromEnum(t_val) >= @intFromEnum(word.NodeTag.INT))
+                self.roots.root(rt.allocator, &root_y)
+            else
+                null;
+            defer if (y_guard) |*guard| guard.deinit();
+            self.gc();
+        }
         if (self.free_head == 0) {
             return self.makeSlow(t_val, x, y);
         }
@@ -362,6 +402,15 @@ pub const Heap = struct {
         self.hd.?[idx] = x;
         self.tl.?[idx] = y;
         return cell;
+    }
+
+    /// Deterministic named pipeline collection point used by stress tests.
+    /// The name is deliberately part of the call site even though all enabled
+    /// checkpoints currently collect; this keeps schedules readable and
+    /// allows selective filtering without changing pipeline code later.
+    pub fn gcCheckpoint(self: *Heap, name: []const u8) void {
+        _ = name;
+        if (self.force_gc_checkpoints and self.collecting == 0) self.gc();
     }
 
     /// Allocate two cells in bulk.
@@ -405,10 +454,13 @@ pub const Heap = struct {
         @memset(self.tag.?[old_bigtop .. new_bigtop + 1], .ATOM);
 
         self.live.resize(rt.allocator, new_bigtop + 1 - @as(usize, @intCast(ATOMLIMIT)), false) catch return false;
+        self.allocated_snapshot.resize(rt.allocator, new_bigtop + 1 - @as(usize, @intCast(ATOMLIMIT)), false) catch return false;
 
         self.SPACE = new_limit;
 
-        _ = word.printErr("\n<<increase heap maximum from {d} to {d} cells>>\n", .{ old_limit, new_limit });
+        if (rt.rs().atgc != 0) {
+            _ = word.printErr("\n<<increase heap maximum from {d} to {d} cells>>\n", .{ old_limit, new_limit });
+        }
         return true;
     }
 
@@ -420,7 +472,7 @@ pub const Heap = struct {
         if (rt.rs().atgc != 0) {
             _ = word.printErr("\n<<gc after {d} claims>>\n", .{heap().claims});
         }
-        if (heap().claims <= @divTrunc(self.SPACE, 10) and heap().nogcs > 1 and self.SPACE == config_state.config().SPACELIMIT) {
+        if (self.force_gc_every == 0 and heap().claims <= @divTrunc(self.SPACE, 10) and heap().nogcs > 1 and self.SPACE == config_state.config().SPACELIMIT) {
             if (heap().nogcs == self.hnogcs) {
                 if (self.growHeap()) {
                     self.hnogcs = 0;
@@ -441,6 +493,8 @@ pub const Heap = struct {
         }
         heap().nogcs += 1;
 
+        const mask_len = std.math.divCeil(usize, self.live.bit_length, @bitSizeOf(usize)) catch unreachable;
+        @memcpy(self.allocated_snapshot.masks[0..mask_len], self.live.masks[0..mask_len]);
         self.live.setRangeValue(.{ .start = 0, .end = @intCast(self.SPACE) }, false);
         self.bases();
 
@@ -499,24 +553,21 @@ pub const Heap = struct {
         }
     }
 
-    /// Mark the GC roots: the live Words on the C stack and in registers.
+    /// Mark every explicitly declared permanent, scoped, and reducer root.
     pub fn bases(self: *Heap) void {
-        var p: [*]Word = undefined;
-        p = @ptrCast(@alignCast(&p));
-        const cstack_ptr = rt.rs().cstack.?;
-        if (os.ptrInt(p) < os.ptrInt(cstack_ptr)) {
-            p += 1;
-            while (os.ptrInt(p) < os.ptrInt(cstack_ptr)) : (p += 1) {
-                self.mark(p[0]);
-            }
-        } else {
-            p -= 1;
-            while (os.ptrInt(p) > os.ptrInt(cstack_ptr)) : (p -= 1) {
-                self.mark(p[0]);
+        // Compilation and reduction both build mutually-referential graph
+        // fragments across many calls. Treat allocations made during either
+        // transaction as an explicitly owned arena. Once the outermost epoch
+        // ends, ordinary reachability collection resumes and discarded
+        // temporaries are reclaimed.
+        const arena_owned = core.s().compiling != 0 or reduce.ev().gc_roots_head != null;
+        if (arena_owned) {
+            var bit: usize = 0;
+            const active: usize = @intCast(self.SPACE);
+            while (bit < active) : (bit += 1) {
+                if (self.allocated_snapshot.isSet(bit)) self.live.set(bit);
             }
         }
-        self.mark(cstack_ptr[0]);
-
         self.mark(reduce.ev().outfilq);
         self.mark(reduce.ev().waiting);
         if (core.s().compiling != 0 or rt.rs().rv_expr != 0 or cs().rv_script != 0) {
@@ -588,28 +639,10 @@ pub const Heap = struct {
             self.mark(ls().yylval);
             self.mark(ls().echostack);
             self.mark(core.s().errs);
-
-            // Automatically trace all active roots in CompilerState cs singleton using compile-time reflection.
-            inline for (std.meta.fields(compiler_state.CompilerState)) |field| {
-                const T = field.type;
-                switch (@typeInfo(T)) {
-                    .int => {
-                        if (T == Word) {
-                            self.mark(@field(cs(), field.name));
-                        }
-                    },
-                    .array => |info| {
-                        if (info.child == Word) {
-                            for (@field(cs(), field.name)) |elem| {
-                                self.mark(elem);
-                            }
-                        }
-                    },
-                    else => {},
-                }
-            }
+            cs().markRoots(markRoot);
         }
 
+        self.roots.markAll(markRoot);
         // Every currently-registered Spine's frames (see reducer/spine.zig):
         // an explicit spine's frame buffer is a separate heap allocation, not
         // a Word sitting on the C stack the scan above already covers, and
@@ -631,7 +664,10 @@ pub const Heap = struct {
     /// pointer-reversal used to get from the tag's sign bit.
     pub fn mark(self: *Heap, x_val: Word) void {
         var x = x_val;
-        while (self.isptr(x) and !self.live.isSet(@intCast(x - ATOMLIMIT))) {
+        while (self.isptr(x) and
+            self.allocated_snapshot.isSet(@intCast(x - ATOMLIMIT)) and
+            !self.live.isSet(@intCast(x - ATOMLIMIT)))
+        {
             self.live.set(@intCast(x - ATOMLIMIT));
             const tag_val = @intFromEnum(self.tag.?[@intCast(x)]);
             if (tag_val > @intFromEnum(word.NodeTag.STRCONS)) {
@@ -652,6 +688,21 @@ pub const Heap = struct {
 
         var x: Word = ATOMLIMIT;
         const top_limit = self.TOP();
+        var free = self.free_head;
+        var free_count: usize = 0;
+        while (free != 0) {
+            if (free < ATOMLIMIT or free >= top_limit) {
+                std.debug.panic("heap.validate: invalid free-list cell {d} (TOP is {d})", .{ free, top_limit });
+            }
+            if (self.live.isSet(@intCast(free - ATOMLIMIT))) {
+                std.debug.panic("heap.validate: live cell {d} is also on the free list", .{free});
+            }
+            free = self.tl.?[@intCast(free)];
+            free_count += 1;
+            if (free_count > @as(usize, @intCast(top_limit - ATOMLIMIT))) {
+                std.debug.panic("heap.validate: free-list cycle", .{});
+            }
+        }
         while (x < top_limit) : (x += 1) {
             if (!self.live.isSet(@intCast(x - ATOMLIMIT))) continue; // Free cell.
 

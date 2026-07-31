@@ -445,6 +445,7 @@ pub fn handleITERATE1(ctx: *ReductionCtx) reduce.ReduceError!void {
     }
     var lastarg = reduce.tlGet(ctx.heap, ctx.e);
     lastarg = try reduce.reduceVal(ctx.heap, lastarg);
+    ctx.hold = lastarg;
     if (lastarg.toRaw() == word.FAIL) {
         reduce.rewriteToNil(ctx.heap, &ctx.e);
     } else {
@@ -622,6 +623,7 @@ pub fn handleUg(ctx: *ReductionCtx) reduce.ReduceError!void {
     }
     var lastarg = reduce.tlGet(ctx.heap, ctx.e);
     lastarg = try reduce.reduceVal(ctx.heap, lastarg);
+    ctx.hold = lastarg;
     if (reduce.hdGet(ctx.heap, arg1) != reduce.hdGet(ctx.heap, reduce.headVal(ctx.heap, lastarg))) {
         reduce.rewriteToFail(ctx.heap, &ctx.e);
         ctx.action = word.ACT_NEXTREDEX;

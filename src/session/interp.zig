@@ -111,6 +111,7 @@ pub fn reset() void {
     const active = current_interp;
     const next_resource_id = active.io.resources.next_id;
     active.io.resources.reset(@import("../runtime/runtime_state.zig").allocator);
+    active.heap.roots.reset(@import("../runtime/runtime_state.zig").allocator);
     active.* = .{};
     active.io.resources.next_id = next_resource_id;
 }

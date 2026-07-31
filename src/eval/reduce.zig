@@ -91,6 +91,12 @@ pub fn reduce(heap: *heap_mod.Heap, e_val: Word) core.ReduceError!Word {
     ctx.args[2] = Value.fromRaw(0);
     ctx.args[3] = Value.fromRaw(0);
     ctx.action = word.ACT_NONE;
+    var e_root = heap.roots.root(rt.allocator, @ptrCast(&ctx.e));
+    defer e_root.deinit();
+    var hold_root = heap.roots.root(rt.allocator, @ptrCast(&ctx.hold));
+    defer hold_root.deinit();
+    var args_root = heap.roots.rootSlice(rt.allocator, @as([*]const Word, @ptrCast(&ctx.args))[0..ctx.args.len]);
+    defer args_root.deinit();
 
     main_loop: while (true) {
         // (1) Unwind the left spine: descend through `AP` nodes (reversing
@@ -215,6 +221,7 @@ pub fn reduce(heap: *heap_mod.Heap, e_val: Word) core.ReduceError!Word {
 
         // A handler rewrote the redex in place and wants it re-examined.
         if (ctx.action == word.ACT_NEXTREDEX) {
+            clearScratchRoots(&ctx);
             continue :main_loop;
         }
 
@@ -224,7 +231,13 @@ pub fn reduce(heap: *heap_mod.Heap, e_val: Word) core.ReduceError!Word {
         if (try forceSpineArguments(&ctx)) |result| {
             return result;
         }
+        clearScratchRoots(&ctx);
     }
+}
+
+fn clearScratchRoots(ctx: *ReductionCtx) void {
+    ctx.hold = Value.fromRaw(0);
+    for (&ctx.args) |*arg| arg.* = Value.fromRaw(0);
 }
 
 /// Step (2b) of the main dispatch: the head of the spine is not a bare

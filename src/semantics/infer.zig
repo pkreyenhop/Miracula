@@ -269,15 +269,23 @@ pub const genbnft = infer_etype.genbnft;
 
 fn abstrCheck(heap: *Heap, x_in: Word) errors.MiraError!void {
     var x = x_in;
-    const rtypes = t(heap, h(heap, x));
-    const sigids = t(heap, x);
+    var x_root = heap.roots.root(rt.allocator, &x);
+    defer x_root.deinit();
+    var rtypes = t(heap, h(heap, x));
+    var sigids = t(heap, x);
+    var rtypes_root = heap.roots.root(rt.allocator, &rtypes);
+    defer rtypes_root.deinit();
+    var sigids_root = heap.roots.root(rt.allocator, &sigids);
+    defer sigids_root.deinit();
     cs().ATNAMES = h(heap, h(heap, x));
     txchangeRaw(heap, sigids, rtypes); // install representation types
     x = sigids;
     while (x != NIL) {
         const oldte = cs().TYPERRS;
         cs().current_id = h(heap, x);
-        const t_val = subst(heap, try etype(heap, idVal(heap, h(heap, x)), NIL, NIL));
+        var t_val = subst(heap, try etype(heap, idVal(heap, h(heap, x)), NIL, NIL));
+        var t_val_root = heap.roots.root(rt.allocator, &t_val);
+        defer t_val_root.deinit();
         if (subsumes(heap, t_val, instantiate(heap, idType(heap, h(heap, x)))) == 0) {
             cs().TYPERRS += 1;
             _ = word.print("abstype implementation error\n", .{});
@@ -486,8 +494,12 @@ pub fn typeOf(heap: *Heap, x: Value) Value {
 
 /// Run type inference over definition `x`.
 fn inferType(heap: *Heap, x: Word) void {
+    var x_root = heap.roots.root(rt.allocator, &x);
+    defer x_root.deinit();
     if (getTag(heap, x) == .ID) {
-        var t_val: Word = undefined;
+        var t_val: Word = NIL;
+        var t_val_root = heap.roots.root(rt.allocator, &t_val);
+        defer t_val_root.deinit();
         const oldte = cs().TYPERRS;
         cs().current_id = x;
         if (idType(heap, x) != undef_t) {
@@ -510,6 +522,10 @@ fn inferType(heap: *Heap, x: Word) void {
         var x1 = x;
         var oldte: Word = undefined;
         var ngt = NIL;
+        var x1_root = heap.roots.root(rt.allocator, &x1);
+        defer x1_root.deinit();
+        var ngt_root = heap.roots.root(rt.allocator, &ngt);
+        defer ngt_root.deinit();
         while (x1 != NIL) {
             ngt = cons(heap, NTV(heap), ngt);
             tp(heap, h(heap, h(heap, x1))).* = ap(heap, bind_t, h(heap, ngt));
@@ -565,6 +581,8 @@ pub fn checktypes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
             readoption(heap, comp, rs);
         }
         var s = reverse(t(heap, h(heap, heap.files)));
+        var s_root = heap.roots.root(rt.allocator, &s);
+        defer s_root.deinit();
         while (s != NIL) {
             compDeps(heap, h(heap, s)) catch break :outer;
             s = t(heap, s);
@@ -592,6 +610,8 @@ pub fn checktypes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
     }
     comp.R = msc(heap, Value.fromRaw(comp.R)).toRaw();
     var s = tsort(heap, Value.fromRaw(comp.R)).toRaw();
+    var s_root = heap.roots.root(rt.allocator, &s);
+    defer s_root.deinit();
     comp.NT = NIL;
     comp.R = NIL;
     while (s != NIL) {

@@ -344,6 +344,8 @@ fn floatLiteralOverflow(heap_ptr: *heap.Heap) Word {
 fn codegenString(heap_ptr: *heap.Heap, s: []const u8) Word {
     // Walk the UTF-8 string right-to-left; decode codepoints for stoChar.
     var result: Word = word.NIL;
+    var result_root = heap_ptr.roots.root(rt.allocator, &result);
+    defer result_root.deinit();
     var i: usize = s.len;
     while (i > 0) {
         // Simple byte-by-byte (ASCII) walk.  For multi-byte UTF-8 we'd need
@@ -462,7 +464,11 @@ fn codegenExprRaw(heap_ptr: *heap.Heap, alloc: Allocator, e: ast.Expr) Word {
         .infix => |inf| blk: {
             const op = inf.op;
             const lhs = codegenExprRaw(heap_ptr, alloc, inf.lhs.*);
+            var lhs_root = heap_ptr.roots.root(rt.allocator, &lhs);
+            defer lhs_root.deinit();
             const rhs_w = codegenExprRaw(heap_ptr, alloc, inf.rhs.*);
+            var rhs_root = heap_ptr.roots.root(rt.allocator, &rhs_w);
+            defer rhs_root.deinit();
             // '!' subscript: args are REVERSED — ap2(heap_ptr, SUBSCRIPT, rhs, lhs)
             if (std.mem.eql(u8, op, "bang")) break :blk ap2(heap_ptr, word.SUBSCRIPT, rhs_w, lhs);
             // ':' list cons: make(CONS, lhs, rhs)
@@ -644,8 +650,14 @@ fn codegenRhs(heap_ptr: *heap.Heap, alloc: Allocator, rhs: ast.Rhs) Word {
 /// Code a single local (`where`) definition.
 fn codegenLocalDef(heap_ptr: *heap.Heap, alloc: Allocator, def: ast.Def) Word {
     const here = makeHere(heap_ptr, @intCast(def.span.line));
+    var here_root = heap_ptr.roots.root(rt.allocator, &here);
+    defer here_root.deinit();
     var lhs = codegenLhsExpr(heap_ptr, alloc, def.lhs);
+    var lhs_root = heap_ptr.roots.root(rt.allocator, &lhs);
+    defer lhs_root.deinit();
     var rhs = codegenRhs(heap_ptr, alloc, def.rhs);
+    var rhs_root = heap_ptr.roots.root(rt.allocator, &rhs);
+    defer rhs_root.deinit();
 
     // Apply nested where clause before lambda-desugaring.
     rhs = applyWhereDefs(heap_ptr, alloc, rhs, def.where_defs);
@@ -674,6 +686,8 @@ fn codegenLocalDef(heap_ptr: *heap.Heap, alloc: Allocator, def: ast.Def) Word {
 /// Build the binding list for a `letrec` of local definitions.
 fn buildLdefs(heap_ptr: *heap.Heap, alloc: Allocator, where_defs: []const ast.Def) Word {
     var ldefs: Word = word.NIL;
+    var ldefs_root = heap_ptr.roots.root(rt.allocator, &ldefs);
+    defer ldefs_root.deinit();
     for (where_defs) |wd| {
         const cell = codegenLocalDef(heap_ptr, alloc, wd); // defn(lhs, undef_t, labeled)
         const lhs_word = h(heap_ptr, cell);
@@ -706,8 +720,14 @@ fn applyWhereDefs(heap_ptr: *heap.Heap, alloc: Allocator, e: Word, where_defs: [
 /// Code a top-level definition and install it in the environment.
 fn codegenDef(heap_ptr: *heap.Heap, alloc: Allocator, def: ast.Def) void {
     const here = makeHere(heap_ptr, @intCast(def.span.line));
+    var here_root = heap_ptr.roots.root(rt.allocator, &here);
+    defer here_root.deinit();
     var lhs = codegenLhsExpr(heap_ptr, alloc, def.lhs);
+    var lhs_root = heap_ptr.roots.root(rt.allocator, &lhs);
+    defer lhs_root.deinit();
     var rhs = codegenRhs(heap_ptr, alloc, def.rhs);
+    var rhs_root = heap_ptr.roots.root(rt.allocator, &rhs);
+    defer rhs_root.deinit();
 
     // Apply where clause (block wraps the rhs before lambda-desugaring).
     rhs = applyWhereDefs(heap_ptr, alloc, rhs, def.where_defs);
@@ -735,7 +755,11 @@ fn codegenDef(heap_ptr: *heap.Heap, alloc: Allocator, def: ast.Def) void {
 /// Code a type signature (`::`) declaration.
 fn codegenTypeSpec(heap_ptr: *heap.Heap, ts: ast.TypeSpec) void {
     const here = makeHere(heap_ptr, @intCast(ts.span.line));
+    var here_root = heap_ptr.roots.root(rt.allocator, &here);
+    defer here_root.deinit();
     const type_w = codegenType(heap_ptr, ts.typ);
+    var type_root = heap_ptr.roots.root(rt.allocator, &type_w);
+    defer type_root.deinit();
     for (ts.names) |name| {
         specify(heap_ptr, nameWord(name), type_w, here);
     }

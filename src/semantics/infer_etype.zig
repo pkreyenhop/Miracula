@@ -5,6 +5,7 @@ const errors = @import("../runtime/errors.zig");
 const script_store = @import("../session/script_store.zig");
 const compiler_state = @import("../compiler/compiler_state.zig");
 const core_state = @import("../runtime/core_state.zig");
+const rt = @import("../runtime/runtime_state.zig");
 const heap_mod = @import("../graph/heap.zig");
 const Heap = heap_mod.Heap;
 const print_mod = @import("../graph/print.zig");
@@ -89,6 +90,14 @@ const isBoundType = infer_subst.isBoundType;
 
 /// Type-check that pattern `p` conforms to type `t_val` in environment `e`.
 pub fn conforms(heap: *Heap, p: Word, t_val: Word, e_in: Word, ngt: Word) errors.MiraError!Word {
+    var p_root = heap.roots.root(rt.allocator, &p);
+    defer p_root.deinit();
+    var t_root = heap.roots.root(rt.allocator, &t_val);
+    defer t_root.deinit();
+    var env_root = heap.roots.root(rt.allocator, &e_in);
+    defer env_root.deinit();
+    var ngt_root = heap.roots.root(rt.allocator, &ngt);
+    defer ngt_root.deinit();
     var e = e_in;
     if (e == -1) {
         return -1;
@@ -167,15 +176,27 @@ pub fn conforms(heap: *Heap, p: Word, t_val: Word, e_in: Word, ngt: Word) errors
 
 /// Infer the type of expression `x` in environment `env` — the core of inference.
 pub fn etype(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word {
+    var x_root = heap.roots.root(rt.allocator, &x);
+    defer x_root.deinit();
+    var env_root = heap.roots.root(rt.allocator, &env);
+    defer env_root.deinit();
+    var ngt_root = heap.roots.root(rt.allocator, &ngt);
+    defer ngt_root.deinit();
     switch (getTag(heap, x)) {
         .AP => return etypeAp(heap, x, env, ngt),
         .CONS => return etypeCons(heap, x, env, ngt),
         .LEXER => return etypeLexer(heap, x, env, ngt),
         .TCONS => {
-            return ap2(heap, comma_t, try etype(heap, h(heap, x), env, ngt), try etype(heap, t(heap, x), env, ngt));
+            var left = try etype(heap, h(heap, x), env, ngt);
+            var left_root = heap.roots.root(rt.allocator, &left);
+            defer left_root.deinit();
+            return ap2(heap, comma_t, left, try etype(heap, t(heap, x), env, ngt));
         },
         .PAIR => {
-            return ap2(heap, comma_t, try etype(heap, h(heap, x), env, ngt), ap2(heap, comma_t, try etype(heap, t(heap, x), env, ngt), void_t));
+            var left = try etype(heap, h(heap, x), env, ngt);
+            var left_root = heap.roots.root(rt.allocator, &left);
+            defer left_root.deinit();
+            return ap2(heap, comma_t, left, ap2(heap, comma_t, try etype(heap, t(heap, x), env, ngt), void_t));
         },
         .DOUBLE, .INT => {
             return num_t;
@@ -254,9 +275,15 @@ pub fn etypeAp(heap: *Heap, x: Word, env: Word, ngt: Word) errors.MiraError!Word
     if (h(heap, x) == word.BADCASE or h(heap, x) == word.CONFERROR) {
         return NTV(heap);
     }
-    const ft_val = try etype(heap, h(heap, x), env, ngt);
-    const at = try etype(heap, t(heap, x), env, ngt);
-    const rt_ty = NTV(heap);
+    var ft_val = try etype(heap, h(heap, x), env, ngt);
+    var ft_root = heap.roots.root(rt.allocator, &ft_val);
+    defer ft_root.deinit();
+    var at = try etype(heap, t(heap, x), env, ngt);
+    var at_root = heap.roots.root(rt.allocator, &at);
+    defer at_root.deinit();
+    var rt_ty = NTV(heap);
+    var result_root = heap.roots.root(rt.allocator, &rt_ty);
+    defer result_root.deinit();
     if (unify1(heap, ft_val, ap2(heap, arrow_t, at, rt_ty)) == 0) {
         const ft = subst(heap, ft_val);
         if (isArrowType(heap, ft)) {

@@ -11,13 +11,6 @@ pub fn main(ctx: std.process.Init) !void {
     rt.environ = ctx.minimal.environ;
     rt.allocator = rt.gpa.allocator();
 
-    // Anchor the GC's stack scan at this frame. gc() -> bases() walks the C
-    // stack from the current SP toward rt.rs().cstack; if it stays null the scan
-    // runs to address 0 and segfaults. Set it to a live local in main() before
-    // any allocation can trigger a collection (mirrors startup.mainEntry).
-    var cstack_base: word.Word = 0;
-    rt.rs().cstack = @ptrCast(&cstack_base);
-
     // benchInterning() interns 100k unique identifiers (~16 bytes each) into the
     // lexer dictionary, which far exceeds the 100 KB production default. Size the
     // dictionary for the benchmark workload before setupdic() allocates it.

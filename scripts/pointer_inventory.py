@@ -14,7 +14,7 @@ RULES = {
     "src/io/signals.zig": "signal-handler ABI",
     "src/session/boot.zig": "signal-handler registration",
     "src/session/repl.zig": "signal-handler registration",
-    "src/graph/heap_cells.zig": "native-stack GC slated for Phase 4",
+    "src/graph/heap_cells.zig": "explicit dump scratch buffer boundary",
     "src/graph/dump_load.zig": "dictionary/stack buffer arithmetic",
     "src/parser/lex.zig": "dictionary/line buffer arithmetic",
     "src/session/commands.zig": "dictionary/line buffer arithmetic",

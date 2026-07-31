@@ -321,6 +321,20 @@ pub fn build(b: *std.Build) void {
     run_golden_tests.addArg(mira_path);
     run_golden_tests.step.dependOn(&install_mira.step);
 
+    // These process-level suites create and remove compiled `.x` caches in
+    // shared fixture directories. Keep the spine corpus last so aggregate
+    // `test`/`check` runs cannot race another runner over the same cache.
+    run_smoke.step.dependOn(&run_mira_tests.step);
+    run_golden_tests.step.dependOn(&run_smoke.step);
+    run_sigint_check.step.dependOn(&run_golden_tests.step);
+    run_spine_check.step.dependOn(&run_main_tests.step);
+    run_spine_check.step.dependOn(&run_parser_tests.step);
+    run_spine_check.step.dependOn(&run_sigint_check.step);
+    run_spine_check.step.dependOn(&run_utf8_tests.step);
+    run_spine_check.step.dependOn(&run_just_tests.step);
+    run_spine_check.step.dependOn(&run_menudriver_tests.step);
+    run_spine_check.step.dependOn(&run_golden_tests.step);
+
     const test_golden = b.step("test-golden", "Run the golden output snapshot tests");
     test_golden.dependOn(&run_golden_tests.step);
 
@@ -602,6 +616,9 @@ pub fn build(b: *std.Build) void {
     const run_phase3_inventory = b.addSystemCommand(&.{ "python3", "scripts/pointer_inventory.py" });
     const test_phase3 = b.step("test-phase3", "Verify graph values contain no native resource pointers");
     test_phase3.dependOn(&run_phase3_inventory.step);
+    const run_phase4_roots = b.addSystemCommand(&.{ "python3", "scripts/phase4_roots.py" });
+    const test_phase4 = b.step("test-phase4", "Verify explicit GC roots and native-stack independence");
+    test_phase4.dependOn(&run_phase4_roots.step);
 
     // Mandatory migration-readiness gate. Reference preparation is deliberately
     // separate: this target fails closed when the pinned artifact is absent.
@@ -615,6 +632,7 @@ pub fn build(b: *std.Build) void {
     go_ready_step.dependOn(verify_all_oracles);
     go_ready_step.dependOn(test_phase2);
     go_ready_step.dependOn(test_phase3);
+    go_ready_step.dependOn(test_phase4);
 
     // Benchmark targets (optimized for ReleaseFast)
     const bench_version_options = b.addOptions();

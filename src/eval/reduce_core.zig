@@ -298,6 +298,7 @@ pub inline fn upRight(ctx: *ReductionCtx) void {
 pub inline fn GETARG(ctx: *ReductionCtx, a: *Value) void {
     upLeft(ctx);
     a.* = tlGet(ctx.heap, ctx.e);
+    pinArgument(ctx, a.*);
 }
 
 /// Pull the next argument off the spine into `a`; true if the spine is exhausted.
@@ -306,7 +307,23 @@ pub inline fn getarg(ctx: *ReductionCtx, a: *Value) bool {
         return true;
     }
     a.* = tlGet(ctx.heap, ctx.e);
+    pinArgument(ctx, a.*);
     return false;
+}
+
+/// Mirror arguments pulled into handler-local variables into the explicitly
+/// rooted reducer register file. The legacy collector found those locals by
+/// scanning the native stack; precise collection must retain them directly.
+inline fn pinArgument(ctx: *ReductionCtx, value: Value) void {
+    for (ctx.args) |slot| {
+        if (slot.toRaw() == value.toRaw()) return;
+    }
+    for (&ctx.args) |*slot| {
+        if (slot.toRaw() == 0) {
+            slot.* = value;
+            return;
+        }
+    }
 }
 
 /// Overwrite the focus node with an `I`-indirection to `r` and refocus on `r`

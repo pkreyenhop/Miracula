@@ -856,6 +856,8 @@ pub fn outf(heap_ptr: *heap.Heap, eval: *EvalState, e_val: Value) reduce_core.Re
 /// Print a Miranda char-list to the current output stream (`eval.s_out`), honouring UTF-8.
 pub fn print(heap_ptr: *heap.Heap, eval: *EvalState, rs: *rt.RuntimeState, arg_e_val: Value) reduce_core.ReduceError!void {
     var e = try reduce(heap_ptr, arg_e_val.toRaw());
+    var e_root = heap_ptr.roots.root(rt.allocator, &e);
+    defer e_root.deinit();
     while (getTag(heap_ptr, e) == .CONS) {
         hp(heap_ptr, e).* = try reduce(heap_ptr, h(heap_ptr, e));
         if (!heap.isChar(h(heap_ptr, e))) {
@@ -896,9 +898,8 @@ const Appendfileb = 9;
 /// Drive a list of output directives (`Stdout`/`Tofile`/`System`/`Exit`/…) — the top of the I/O interpreter.
 pub fn output(heap_ptr: *heap.Heap, eval: *EvalState, rs: *rt.RuntimeState, arg_e_val: Value) reduce_core.ReduceError!void {
     var e = arg_e_val.toRaw();
-    const old_cstack = rs.cstack;
-    rs.cstack = @ptrCast(&e);
-    defer rs.cstack = old_cstack;
+    var e_root = heap_ptr.roots.root(rt.allocator, &e);
+    defer e_root.deinit();
 
     e = try reduce(heap_ptr, e);
     while (getTag(heap_ptr, e) == .CONS) {

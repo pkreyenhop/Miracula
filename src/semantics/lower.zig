@@ -686,6 +686,8 @@ fn tInfo(heap: *Heap, x: Word) Word {
 /// Whether constructor `k` is the sole constructor of its type.
 /// Compile expression `x` to its final combinator graph — the codegen entry point.
 pub fn codegen(heap: *Heap, x: Word) Word {
+    var x_root = heap.roots.root(rt.allocator, &x);
+    defer x_root.deinit();
     switch (getTag(heap, x)) {
         .AP => {
             // Walk the application spine (the deep recursion is codegen(heap, h(heap, x)))

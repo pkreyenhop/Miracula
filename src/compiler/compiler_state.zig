@@ -111,6 +111,23 @@ pub const CompilerState = struct {
     /// Scratch set of already-reported-missing type names, so `fixtype()`
     /// doesn't re-report the same one twice within one `readoption()` pass.
     pfrts: Word = NIL,
+
+    /// Enumerate compiler-owned graph roots explicitly. Counter, flag, arity,
+    /// and source-line fields are intentionally absent: treating an arbitrary
+    /// integer as a cell can enter the collector's free-list chain.
+    pub fn markRoots(self: *const CompilerState, mark: *const fn (Word) void) void {
+        inline for (.{
+            "current_id",   "NT",      "ND",         "R",           "SBND",
+            "FBS",          "NGT",     "ATNAMES",    "TABSTRS",     "bnf_t",
+            "meta_pending", "tvmap",   "localtvmap", "showchain",   "tfnum",
+            "tfbool",       "tfbool2", "tfnum2",     "tfstrstr",    "tfnumnum",
+            "ltchar",       "tstep",   "tstepuntil", "exec_t",      "read_t",
+            "filestat_t",   "SGC",     "newtyps",    "speclocs",    "algshfns",
+            "rv_script",    "ALIASES", "SUPPRESSED", "TSUPPRESSED", "TORPHANS",
+            "DETROP",       "MISSING", "internals",  "tlost",       "pfrts",
+        }) |name| mark(@field(self, name));
+        for (self.SUBST) |value| mark(value);
+    }
 };
 
 /// Singleton compiler-state instance (a `*CompilerState` into `current_interp`).

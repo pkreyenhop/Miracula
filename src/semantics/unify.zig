@@ -9,6 +9,7 @@
 //! both files' otherwise-unrelated logic.
 
 const std = @import("std");
+const rt = @import("../runtime/runtime_state.zig");
 const word = @import("../graph/word.zig");
 const heap_mod = @import("../graph/heap.zig");
 const Heap = heap_mod.Heap;
@@ -124,11 +125,15 @@ fn ap(heap: *Heap, x: Word, y: Word) Word {
 
 /// Apply `f` to every type variable in `term`, rebuilding it.
 fn walktype(heap: *Heap, term: Word, f: *const fn (*Heap, Word) Word) Word {
+    var term_root = heap.roots.root(rt.allocator, &term);
+    defer term_root.deinit();
     if (isVarType(heap, term)) {
         return f(heap, term);
     }
     if (isCompoundType(heap, term)) {
         const h1 = walktype(heap, h(heap, term), f);
+        var h1_root = heap.roots.root(rt.allocator, &h1);
+        defer h1_root.deinit();
         const t1 = walktype(heap, t(heap, term), f);
         return if (h1 == h(heap, term) and t1 == t(heap, term)) term else ap(heap, h1, t1);
     }

@@ -88,16 +88,6 @@ test "heap accessors: cons/make build cells that h/t/getTag read back" {
 test "gc: a long-lived list survives many forced collections; garbage is reclaimed" {
     tu.freshInterp();
 
-    // `bases()`'s conservative stack scan needs `rt.rs().cstack` as its "bottom
-    // of the interesting range" boundary -- normally set once by
-    // `startup.mainEntry` (real runs only). Unit tests never go through
-    // that, so it's `null` here; take the address of a local, matching what
-    // `mainEntry` does with its own `manonly`, so a real `gc()` cycle
-    // (this test's whole point) doesn't crash finding it unset.
-    var stack_anchor: Word = 0;
-    const saved_cstack = rt.rs().cstack;
-    rt.rs().cstack = @ptrCast(&stack_anchor);
-
     // Shrink the heap so allocating the workload below forces `gc()` to run
     // many times (B3's own DoD: "GC stress test stable"), then restore it --
     // `tu.freshInterp()` only sets up once per test binary, so a later test
@@ -108,7 +98,6 @@ test "gc: a long-lived list survives many forced collections; garbage is reclaim
         config_state.config().SPACELIMIT = saved_spacelimit;
         heap().SPACE = saved_space;
         heap().resetheap();
-        rt.rs().cstack = saved_cstack;
     }
     // Set the small heap size once, *before* any allocation in this test.
     // `resetheap()` unconditionally rebuilds the free list over the entire
@@ -122,9 +111,8 @@ test "gc: a long-lived list survives many forced collections; garbage is reclaim
     config_state.config().SPACELIMIT = chain_len * 4;
     heap().resetheap();
 
-    // A long-lived chain, kept alive only by this local `Word` (matching how
-    // real roots are found: the conservative stack scan in `bases()`, not any
-    // special-cased "test root" mechanism) -- if `mark`/`gc` ever lose track
+    // A long-lived chain, kept alive by an explicit scoped root. If `mark`/`gc`
+    // ever lose track
     // of part of it, or if the `Spine`/GC-root registry from the B2(b) cutover
     // somehow interfered, this is exactly the kind of workload that would
     // show it: every collection below must re-discover the *entire* chain as
@@ -137,6 +125,8 @@ test "gc: a long-lived list survives many forced collections; garbage is reclaim
     // once the heap is this small. Not a GC bug; a property of this
     // representation (the same ambiguity B2/B3's audits already flagged).
     var chain: Word = word.NIL;
+    var chain_root = heap().roots.root(rt.allocator, &chain);
+    defer chain_root.deinit();
     var i: Word = 0;
     while (i < chain_len) : (i += 1) {
         chain = heap().cons(@mod(i, 100), chain);
@@ -168,13 +158,32 @@ test "gc: a long-lived list survives many forced collections; garbage is reclaim
     }
     try std.testing.expectEqual(@as(Word, -1), expected);
 }
+
+test "explicit roots survive deterministic every-N and named-checkpoint GC schedules" {
+    for ([_]usize{ 1, 2, 3, 5 }) |schedule| {
+        tu.freshInterp();
+        heap().force_gc_every = schedule;
+        var chain: Word = word.NIL;
+        var chain_root = heap().roots.root(rt.allocator, &chain);
+        defer chain_root.deinit();
+        var i: Word = 0;
+        while (i < 40) : (i += 1) chain = heap().cons(@mod(i, 10), chain);
+        heap().force_gc_checkpoints = true;
+        heap().gcCheckpoint("after-chain-build");
+        var cursor = chain;
+        var expected: Word = 39;
+        while (cursor != word.NIL) {
+            try std.testing.expectEqual(@mod(expected, 10), h(heap(), cursor));
+            cursor = t(heap(), cursor);
+            expected -= 1;
+        }
+        try std.testing.expectEqual(@as(Word, -1), expected);
+        heap().force_gc_every = 0;
+        heap().force_gc_checkpoints = false;
+    }
+}
 test "Heap.checkpoint/restore: undoes cell mutations and new allocations made after the snapshot" {
     tu.freshInterp();
-
-    var stack_anchor: Word = 0;
-    const saved_cstack = rt.rs().cstack;
-    rt.rs().cstack = @ptrCast(&stack_anchor);
-    defer rt.rs().cstack = saved_cstack;
 
     // A cell that exists *before* the checkpoint: restore must put its
     // fields back exactly, even though it gets mutated in place below.

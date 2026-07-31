@@ -158,7 +158,9 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
         types_mod.checktypes(heap, core, comp, rs);
     }
 
-    const h_val = resolveExports(heap, core, comp, rs);
+    var h_val = resolveExports(heap, core, comp, rs);
+    var h_val_root = heap.roots.root(rt.allocator, &h_val);
+    defer h_val_root.deinit();
 
     computeBereavedNames(heap, core, comp, rs);
 
@@ -168,6 +170,8 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
 
     if (core.SYNERR == 0) {
         var x = heap_mod.filDefs(heap_mod.h(heap, heap.files));
+        var x_root = heap.roots.root(rt.allocator, &x);
+        defer x_root.deinit();
         comp.lfrule = 0;
         while (x != NIL) : (x = heap_mod.t(heap, x)) {
             if (heap_mod.idType(heap_mod.h(heap, x)) != word.type_t) {

@@ -70,8 +70,6 @@ pub const RuntimeState = struct {
     /// Converted from Word at B1; only ever true/false.
     strictif: bool = true,
     rechecking: Word = 0,
-    cstack: ?[*]Word = null,
-
     // Working buffers — sized for the longest supported pathname (pnlim).
     // Zero-initialised (see above): cheap for a singleton, removes read-before-write UB risk.
     linebuf: [abi.BUFSIZE]u8 = std.mem.zeroes([abi.BUFSIZE]u8),

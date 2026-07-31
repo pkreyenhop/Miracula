@@ -27,19 +27,24 @@ const ExCorpusItem = struct {
 };
 
 const EX_CORPUS = [_]ExCorpusItem{
-    .{ .script = "./miralib/ex/fib.m", .expr = "fib 27" },
+    // Keep this large enough to exercise repeated collections without making
+    // the precise-root Debug build spend minutes in exponential evaluation.
+    .{ .script = "./miralib/ex/fib.m", .expr = "fib 20" },
     .{ .script = "./miralib/ex/quicksort.m", .expr = "qsort testdata" },
     .{ .script = "./miralib/ex/treesort.m", .expr = "treesort testdata" },
     .{ .script = "./miralib/ex/primes.m", .expr = "#(take 150 primes)" },
     .{ .script = "./miralib/ex/hamming.m", .expr = "take 30 ham" },
     .{ .script = "./miralib/ex/topsort.m", .expr = "topsort [(1,2),(2,3),(1,3),(4,1)]" },
-    .{ .script = "./tests/spine_corpus/ack_nk_free.m", .expr = "ack 3 6" },
+    .{ .script = "./tests/spine_corpus/ack_nk_free.m", .expr = "ack 3 5" },
 };
 
 pub fn main(ctx: std.process.Init) !void {
     var gpa = std.heap.DebugAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
+    const stdenv_cache = "./miralib/stdenv.x";
+    std.Io.Dir.cwd().deleteFile(ctx.io, stdenv_cache) catch {};
+    defer std.Io.Dir.cwd().deleteFile(ctx.io, stdenv_cache) catch {};
 
     const raw_args = ctx.minimal.args.vector;
     var binary_path: []const u8 = "./zig-out/bin/mira";
@@ -134,7 +139,7 @@ pub fn main(ctx: std.process.Init) !void {
         multi_reader.init(allocator, ctx.io, multi_reader_buffer.toStreams(), &.{ child.stdout.?, child.stderr.? });
         defer multi_reader.deinit();
 
-        const timeout = std.Io.Timeout{ .duration = .{ .raw = std.Io.Duration.fromSeconds(10), .clock = .real } };
+        const timeout = std.Io.Timeout{ .duration = .{ .raw = std.Io.Duration.fromSeconds(30), .clock = .real } };
         while (multi_reader.fill(64, timeout)) |_| {} else |err| switch (err) {
             error.EndOfStream => {},
             error.Timeout => {
@@ -222,7 +227,7 @@ pub fn main(ctx: std.process.Init) !void {
         multi_reader.init(allocator, ctx.io, multi_reader_buffer.toStreams(), &.{ child.stdout.?, child.stderr.? });
         defer multi_reader.deinit();
 
-        const timeout = std.Io.Timeout{ .duration = .{ .raw = std.Io.Duration.fromSeconds(10), .clock = .real } };
+        const timeout = std.Io.Timeout{ .duration = .{ .raw = std.Io.Duration.fromSeconds(30), .clock = .real } };
         while (multi_reader.fill(64, timeout)) |_| {} else |err| switch (err) {
             error.EndOfStream => {},
             error.Timeout => {

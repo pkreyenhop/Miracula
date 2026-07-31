@@ -17,6 +17,7 @@
 const std = @import("std");
 const word = @import("../graph/word.zig");
 const heap_mod = @import("../graph/heap.zig");
+const rt = @import("../runtime/runtime_state.zig");
 const Heap = heap_mod.Heap;
 const tu = @import("../testutil.zig"); // unit-test harness (test builds only)
 const lex_mod = @import("../parser/lex.zig");
@@ -401,6 +402,10 @@ pub fn msc(heap: *Heap, R_input: Value) Value {
 fn rembvarsRaw(heap: *Heap, x_in: Word, p_in: Word) Word {
     var x = x_in;
     var p = p_in;
+    var x_root = heap.roots.root(rt.allocator, &x);
+    defer x_root.deinit();
+    var p_root = heap.roots.root(rt.allocator, &p);
+    defer p_root.deinit();
     while (true) {
         switch (getTag(heap, p)) {
             .ID => {
@@ -440,30 +445,72 @@ pub fn rembvars(heap: *Heap, x_in: Value, p_in: Value) Value {
 }
 
 /// The dependency set of definition `x`.
+fn unionDepsRaw(heap: *Heap, left: Word, expression: Word) Word {
+    var right = depsRaw(heap, expression);
+    var right_root = heap.roots.root(rt.allocator, &right);
+    defer right_root.deinit();
+    return UNIONRaw(heap, left, right);
+}
+
+/// Traverse structural binary nodes with an explicitly rooted worklist,
+/// avoiding dependence on the native call stack for deeply nested terms.
+fn genericDepsRaw(heap: *Heap, initial: Word, initial_deps: Word) Word {
+    var work: std.ArrayListUnmanaged(Word) = .empty;
+    defer work.deinit(rt.allocator);
+    work.append(rt.allocator, initial) catch @panic("dependency worklist");
+    var work_root = heap.roots.rootList(rt.allocator, &work);
+    defer work_root.deinit();
+    var d = initial_deps;
+    var d_root = heap.roots.root(rt.allocator, &d);
+    defer d_root.deinit();
+    while (work.pop()) |node| switch (getTag(heap, node)) {
+        .AP, .TCONS, .PAIR, .CONS => {
+            work.append(rt.allocator, t(heap, node)) catch @panic("dependency worklist");
+            work.append(rt.allocator, h(heap, node)) catch @panic("dependency worklist");
+        },
+        .ID => if (!isConstructor(heap, node)) {
+            d = add1Raw(heap, node, d);
+        },
+        else => d = unionDepsRaw(heap, d, node),
+    };
+    return d;
+}
+
 fn depsRaw(heap: *Heap, x_in: Word) Word {
     var x = x_in;
     var d = NIL;
+    var x_root = heap.roots.root(rt.allocator, &x);
+    defer x_root.deinit();
+    var d_root = heap.roots.root(rt.allocator, &d);
+    defer d_root.deinit();
     while (true) {
         switch (getTag(heap, x)) {
             .AP, .TCONS, .PAIR, .CONS => {
-                d = UNIONRaw(heap, d, depsRaw(heap, h(heap, x)));
-                x = t(heap, x);
+                return genericDepsRaw(heap, x, d);
             },
             .ID => {
                 return if (isConstructor(heap, x)) d else add1Raw(heap, x, d);
             },
             .LAMBDA => {
-                return rembvarsRaw(heap, UNIONRaw(heap, d, depsRaw(heap, t(heap, x))), h(heap, x));
+                var merged = unionDepsRaw(heap, d, t(heap, x));
+                var merged_root = heap.roots.root(rt.allocator, &merged);
+                defer merged_root.deinit();
+                return rembvarsRaw(heap, merged, h(heap, x));
             },
             .LET => {
-                d = rembvarsRaw(heap, UNIONRaw(heap, d, depsRaw(heap, t(heap, x))), h(heap, h(heap, x)));
-                return UNIONRaw(heap, d, depsRaw(heap, t(heap, t(heap, h(heap, x)))));
+                var merged = unionDepsRaw(heap, d, t(heap, x));
+                var merged_root = heap.roots.root(rt.allocator, &merged);
+                defer merged_root.deinit();
+                d = rembvarsRaw(heap, merged, h(heap, h(heap, x)));
+                return unionDepsRaw(heap, d, t(heap, t(heap, h(heap, x))));
             },
             .LETREC => {
-                d = UNIONRaw(heap, d, depsRaw(heap, t(heap, x)));
+                d = unionDepsRaw(heap, d, t(heap, x));
                 var y = h(heap, x);
+                var y_root = heap.roots.root(rt.allocator, &y);
+                defer y_root.deinit();
                 while (y != NIL) {
-                    d = UNIONRaw(heap, d, depsRaw(heap, t(heap, t(heap, h(heap, y)))));
+                    d = unionDepsRaw(heap, d, t(heap, t(heap, h(heap, y))));
                     y = t(heap, y);
                 }
                 y = h(heap, x);
@@ -475,8 +522,10 @@ fn depsRaw(heap: *Heap, x_in: Word) Word {
             },
             .LEXER => {
                 var lex_x = x;
+                var lex_root = heap.roots.root(rt.allocator, &lex_x);
+                defer lex_root.deinit();
                 while (lex_x != NIL) {
-                    d = UNIONRaw(heap, d, depsRaw(heap, t(heap, t(heap, h(heap, lex_x)))));
+                    d = unionDepsRaw(heap, d, t(heap, t(heap, h(heap, lex_x))));
                     lex_x = t(heap, lex_x);
                 }
                 return d;
@@ -517,6 +566,14 @@ fn alfasortRaw(heap: *Heap, x_val: Word) Word {
     var a = NIL;
     var b = NIL;
     var hold = NIL;
+    var x_root = heap.roots.root(rt.allocator, &x);
+    defer x_root.deinit();
+    var a_root = heap.roots.root(rt.allocator, &a);
+    defer a_root.deinit();
+    var b_root = heap.roots.root(rt.allocator, &b);
+    defer b_root.deinit();
+    var hold_root = heap.roots.root(rt.allocator, &hold);
+    defer hold_root.deinit();
     if (x == NIL) {
         return NIL;
     }
