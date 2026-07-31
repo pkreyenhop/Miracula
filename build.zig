@@ -253,6 +253,12 @@ pub fn build(b: *std.Build) void {
 
     const run_phase1_acceptance = b.addSystemCommand(&.{ "python3", "-B", "-m", "unittest", "tests/test_phase1.py" });
 
+    const run_source_startup = b.addSystemCommand(&.{ "python3", "tests/startup_from_source.py" });
+    run_source_startup.addFileArg(mira.getEmittedBin());
+    run_source_startup.step.dependOn(&install_mira.step);
+    const test_source_startup = b.step("test-source-startup", "Compile a clean Miranda standard library from source");
+    test_source_startup.dependOn(&run_source_startup.step);
+
     const run_regression = b.addSystemCommand(&.{ "python3", "tests/regression.py" });
     run_regression.addArg("--candidate");
     run_regression.addFileArg(mira.getEmittedBin());
@@ -388,6 +394,7 @@ pub fn build(b: *std.Build) void {
     check_step.dependOn(&run_just_tests.step);
     check_step.dependOn(&run_menudriver_tests.step);
     check_step.dependOn(&run_main_tests.step);
+    check_step.dependOn(test_source_startup);
     if (!force_gc_every_allocation) check_step.dependOn(&run_mira_tests.step);
     check_step.dependOn(&run_parser_tests.step);
     if (!force_gc_every_allocation) {

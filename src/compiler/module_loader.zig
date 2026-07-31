@@ -173,7 +173,11 @@ pub fn loadfile(heap: *Heap, core: *core_state.CoreState, comp: *compiler_state.
             if (heap_mod.idType(heap_mod.h(heap, x)) != word.type_t) {
                 comp.current_id = heap_mod.h(heap, x);
                 comp.polyshowerror = 0;
-                heap_mod.tp(heap, heap_mod.h(heap, x)).* = trans_mod.codegen(heap, heap_mod.idVal(heap_mod.h(heap, x)));
+                // codegen may grow or collect the heap. Compute the value
+                // before taking a pointer into heap storage; otherwise the
+                // pointer can be invalidated while evaluating the RHS.
+                const generated = trans_mod.codegen(heap, heap_mod.idVal(comp.current_id));
+                heap_mod.tp(heap, comp.current_id).* = generated;
                 if (comp.polyshowerror != 0) {
                     heap_mod.tp(heap, heap_mod.h(heap, x)).* = word.UNDEF;
                 }

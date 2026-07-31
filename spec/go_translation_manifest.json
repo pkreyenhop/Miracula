@@ -2001,12 +2001,12 @@
             },
             {
               "column": 64,
-              "line": 187,
+              "line": 191,
               "target": "receiver parameter interp.Config"
             },
             {
               "column": 59,
-              "line": 219,
+              "line": 223,
               "target": "receiver parameter interp.Config"
             }
           ],
@@ -2042,32 +2042,32 @@
             },
             {
               "column": 76,
-              "line": 183,
+              "line": 187,
               "target": "receiver parameter interp.Make"
             },
             {
               "column": 13,
-              "line": 513,
+              "line": 517,
               "target": "receiver parameter interp.Make"
             },
             {
               "column": 13,
-              "line": 514,
+              "line": 518,
               "target": "receiver parameter interp.Make"
             },
             {
               "column": 46,
-              "line": 519,
+              "line": 523,
               "target": "receiver parameter interp.Make"
             },
             {
               "column": 21,
-              "line": 522,
+              "line": 526,
               "target": "receiver parameter interp.Make"
             },
             {
               "column": 31,
-              "line": 526,
+              "line": 530,
               "target": "receiver parameter interp.Make"
             }
           ],
@@ -2089,22 +2089,22 @@
             },
             {
               "column": 35,
-              "line": 183,
+              "line": 187,
               "target": "receiver parameter interp.Repl"
             },
             {
               "column": 13,
-              "line": 515,
+              "line": 519,
               "target": "receiver parameter interp.Repl"
             },
             {
               "column": 13,
-              "line": 516,
+              "line": 520,
               "target": "receiver parameter interp.Repl"
             },
             {
               "column": 13,
-              "line": 517,
+              "line": 521,
               "target": "receiver parameter interp.Repl"
             }
           ],
@@ -2197,107 +2197,82 @@
             },
             {
               "column": 129,
-              "line": 210,
+              "line": 214,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 5,
-              "line": 221,
+              "line": 225,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 55,
-              "line": 241,
+              "line": 245,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 43,
-              "line": 253,
+              "line": 257,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 159,
-              "line": 253,
+              "line": 257,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 25,
-              "line": 258,
+              "line": 262,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 48,
-              "line": 272,
+              "line": 276,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 16,
-              "line": 278,
+              "line": 282,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 30,
-              "line": 285,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 13,
-              "line": 287,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 21,
               "line": 289,
               "target": "receiver parameter interp.Script"
             },
             {
-              "column": 38,
+              "column": 13,
+              "line": 291,
+              "target": "receiver parameter interp.Script"
+            },
+            {
+              "column": 21,
               "line": 293,
               "target": "receiver parameter interp.Script"
             },
             {
+              "column": 38,
+              "line": 297,
+              "target": "receiver parameter interp.Script"
+            },
+            {
               "column": 13,
-              "line": 294,
+              "line": 298,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 61,
-              "line": 294,
+              "line": 298,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 59,
-              "line": 300,
+              "line": 304,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 17,
-              "line": 305,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 17,
-              "line": 306,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 80,
-              "line": 306,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 125,
-              "line": 306,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 13,
-              "line": 308,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 84,
-              "line": 308,
+              "line": 309,
               "target": "receiver parameter interp.Script"
             },
             {
@@ -2306,218 +2281,243 @@
               "target": "receiver parameter interp.Script"
             },
             {
-              "column": 17,
-              "line": 320,
+              "column": 80,
+              "line": 310,
+              "target": "receiver parameter interp.Script"
+            },
+            {
+              "column": 125,
+              "line": 310,
+              "target": "receiver parameter interp.Script"
+            },
+            {
+              "column": 13,
+              "line": 312,
+              "target": "receiver parameter interp.Script"
+            },
+            {
+              "column": 84,
+              "line": 312,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 17,
-              "line": 323,
+              "line": 314,
+              "target": "receiver parameter interp.Script"
+            },
+            {
+              "column": 17,
+              "line": 324,
+              "target": "receiver parameter interp.Script"
+            },
+            {
+              "column": 17,
+              "line": 327,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 117,
-              "line": 323,
+              "line": 327,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 17,
-              "line": 335,
+              "line": 339,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 24,
-              "line": 342,
+              "line": 346,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 15,
-              "line": 351,
+              "line": 355,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 50,
-              "line": 357,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 18,
-              "line": 358,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 13,
               "line": 361,
               "target": "receiver parameter interp.Script"
             },
             {
+              "column": 18,
+              "line": 362,
+              "target": "receiver parameter interp.Script"
+            },
+            {
+              "column": 13,
+              "line": 365,
+              "target": "receiver parameter interp.Script"
+            },
+            {
               "column": 14,
-              "line": 390,
+              "line": 394,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 17,
-              "line": 406,
+              "line": 410,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 90,
-              "line": 406,
+              "line": 410,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 9,
-              "line": 416,
+              "line": 420,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 49,
-              "line": 416,
+              "line": 420,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 56,
-              "line": 417,
+              "line": 421,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 44,
-              "line": 428,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 30,
               "line": 432,
               "target": "receiver parameter interp.Script"
             },
             {
+              "column": 30,
+              "line": 436,
+              "target": "receiver parameter interp.Script"
+            },
+            {
               "column": 20,
-              "line": 433,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 16,
-              "line": 434,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 99,
-              "line": 434,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 13,
-              "line": 435,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 60,
-              "line": 435,
-              "target": "receiver parameter interp.Script"
-            },
-            {
-              "column": 13,
               "line": 437,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 16,
-              "line": 440,
+              "line": 438,
               "target": "receiver parameter interp.Script"
             },
             {
-              "column": 150,
+              "column": 99,
+              "line": 438,
+              "target": "receiver parameter interp.Script"
+            },
+            {
+              "column": 13,
+              "line": 439,
+              "target": "receiver parameter interp.Script"
+            },
+            {
+              "column": 60,
+              "line": 439,
+              "target": "receiver parameter interp.Script"
+            },
+            {
+              "column": 13,
               "line": 441,
               "target": "receiver parameter interp.Script"
             },
             {
+              "column": 16,
+              "line": 444,
+              "target": "receiver parameter interp.Script"
+            },
+            {
+              "column": 150,
+              "line": 445,
+              "target": "receiver parameter interp.Script"
+            },
+            {
               "column": 81,
-              "line": 443,
+              "line": 447,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 13,
-              "line": 445,
+              "line": 449,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 60,
-              "line": 445,
+              "line": 449,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 20,
-              "line": 446,
+              "line": 450,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 103,
-              "line": 446,
+              "line": 450,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 17,
-              "line": 447,
+              "line": 451,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 64,
-              "line": 447,
+              "line": 451,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 60,
-              "line": 487,
+              "line": 491,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 72,
-              "line": 505,
+              "line": 509,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 62,
-              "line": 521,
+              "line": 525,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 9,
-              "line": 551,
+              "line": 555,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 64,
-              "line": 551,
+              "line": 555,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 17,
-              "line": 555,
+              "line": 559,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 62,
-              "line": 555,
+              "line": 559,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 47,
-              "line": 612,
+              "line": 616,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 163,
-              "line": 612,
+              "line": 616,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 42,
-              "line": 631,
+              "line": 635,
               "target": "receiver parameter interp.Script"
             },
             {
               "column": 13,
-              "line": 632,
+              "line": 636,
               "target": "receiver parameter interp.Script"
             }
           ],
@@ -2527,274 +2527,274 @@
           "from_raw": [
             {
               "column": 51,
-              "line": 213,
+              "line": 217,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 98,
-              "line": 253,
+              "line": 257,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 134,
-              "line": 253,
+              "line": 257,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 52,
-              "line": 299,
+              "line": 303,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 88,
-              "line": 299,
+              "line": 303,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 51,
-              "line": 300,
+              "line": 304,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 96,
-              "line": 300,
+              "line": 304,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 72,
-              "line": 306,
+              "line": 310,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 117,
-              "line": 306,
+              "line": 310,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 76,
-              "line": 308,
+              "line": 312,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 52,
-              "line": 314,
+              "line": 318,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 88,
-              "line": 314,
+              "line": 318,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 92,
-              "line": 323,
+              "line": 327,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 64,
-              "line": 343,
+              "line": 347,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 51,
-              "line": 366,
+              "line": 370,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 84,
-              "line": 366,
+              "line": 370,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 47,
-              "line": 371,
+              "line": 375,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 80,
-              "line": 371,
+              "line": 375,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 51,
-              "line": 380,
+              "line": 384,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 84,
-              "line": 380,
+              "line": 384,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 47,
-              "line": 385,
+              "line": 389,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 80,
-              "line": 385,
+              "line": 389,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 47,
-              "line": 395,
+              "line": 399,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 80,
-              "line": 395,
+              "line": 399,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 43,
-              "line": 400,
+              "line": 404,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 76,
-              "line": 400,
+              "line": 404,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 40,
-              "line": 405,
+              "line": 409,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 58,
-              "line": 405,
+              "line": 409,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 48,
-              "line": 417,
+              "line": 421,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 94,
-              "line": 417,
+              "line": 421,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 60,
-              "line": 423,
+              "line": 427,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 60,
-              "line": 441,
+              "line": 445,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 60,
-              "line": 459,
+              "line": 463,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 40,
-              "line": 606,
+              "line": 610,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 73,
-              "line": 606,
+              "line": 610,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 102,
-              "line": 612,
+              "line": 616,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 138,
-              "line": 612,
+              "line": 616,
               "target": "protocol.ValueFromWord checked conversion"
             },
             {
               "column": 81,
-              "line": 715,
+              "line": 719,
               "target": "protocol.ValueFromWord checked conversion"
             }
           ],
           "to_raw": [
             {
               "column": 69,
-              "line": 213,
+              "line": 217,
               "target": "protocol.Value.Word explicit conversion"
             },
             {
               "column": 191,
-              "line": 253,
+              "line": 257,
               "target": "protocol.Value.Word explicit conversion"
             },
             {
               "column": 106,
-              "line": 299,
+              "line": 303,
               "target": "protocol.Value.Word explicit conversion"
             },
             {
               "column": 158,
-              "line": 306,
+              "line": 310,
               "target": "protocol.Value.Word explicit conversion"
             },
             {
               "column": 115,
-              "line": 308,
+              "line": 312,
               "target": "protocol.Value.Word explicit conversion"
             },
             {
               "column": 106,
-              "line": 314,
+              "line": 318,
               "target": "protocol.Value.Word explicit conversion"
             },
             {
               "column": 108,
-              "line": 323,
+              "line": 327,
               "target": "protocol.Value.Word explicit conversion"
             },
             {
               "column": 132,
-              "line": 366,
+              "line": 370,
               "target": "protocol.Value.Word explicit conversion"
             },
             {
               "column": 94,
-              "line": 371,
+              "line": 375,
               "target": "protocol.Value.Word explicit conversion"
             },
             {
               "column": 132,
-              "line": 380,
+              "line": 384,
               "target": "protocol.Value.Word explicit conversion"
             },
             {
               "column": 94,
-              "line": 385,
+              "line": 389,
               "target": "protocol.Value.Word explicit conversion"
             },
             {
               "column": 146,
-              "line": 395,
+              "line": 399,
               "target": "protocol.Value.Word explicit conversion"
             },
             {
               "column": 90,
-              "line": 400,
+              "line": 404,
               "target": "protocol.Value.Word explicit conversion"
             },
             {
               "column": 117,
-              "line": 417,
+              "line": 421,
               "target": "protocol.Value.Word explicit conversion"
             },
             {
               "column": 195,
-              "line": 612,
+              "line": 616,
               "target": "protocol.Value.Word explicit conversion"
             },
             {
               "column": 154,
-              "line": 715,
+              "line": 719,
               "target": "protocol.Value.Word explicit conversion"
             }
           ],
@@ -2826,77 +2826,77 @@
             },
             {
               "column": 28,
-              "line": 257,
+              "line": 261,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 120,
-              "line": 282,
+              "line": 286,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 16,
-              "line": 284,
+              "line": 288,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 20,
-              "line": 290,
+              "line": 294,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 20,
-              "line": 291,
+              "line": 295,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 24,
-              "line": 292,
+              "line": 296,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 16,
-              "line": 359,
+              "line": 363,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 16,
-              "line": 360,
+              "line": 364,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 134,
-              "line": 414,
+              "line": 418,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 162,
-              "line": 473,
+              "line": 477,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 168,
-              "line": 473,
+              "line": 477,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 17,
-              "line": 475,
+              "line": 479,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 19,
-              "line": 476,
+              "line": 480,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 16,
-              "line": 531,
+              "line": 535,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             },
             {
               "column": 98,
-              "line": 585,
+              "line": 589,
               "target": "protocol.Word (defined int64); semantic refinement follows the enclosing manifest symbol"
             }
           ]
@@ -2921,47 +2921,47 @@
             },
             {
               "column": 36,
-              "line": 207,
+              "line": 211,
               "target": "Go string"
             },
             {
               "column": 28,
-              "line": 234,
+              "line": 238,
               "target": "Go string"
             },
             {
               "column": 139,
-              "line": 267,
+              "line": 271,
               "target": "Go string"
             },
             {
               "column": 76,
-              "line": 651,
+              "line": 655,
               "target": "Go string"
             },
             {
               "column": 82,
-              "line": 656,
+              "line": 660,
               "target": "Go string"
             },
             {
               "column": 86,
-              "line": 691,
+              "line": 695,
               "target": "Go string"
             },
             {
               "column": 64,
-              "line": 697,
-              "target": "Go string"
-            },
-            {
-              "column": 124,
               "line": 701,
               "target": "Go string"
             },
             {
+              "column": 124,
+              "line": 705,
+              "target": "Go string"
+            },
+            {
               "column": 84,
-              "line": 712,
+              "line": 716,
               "target": "Go string"
             }
           ],
@@ -2994,27 +2994,27 @@
             },
             {
               "column": 40,
-              "line": 199,
+              "line": 203,
               "target": "Go string conversion"
             },
             {
               "column": 41,
-              "line": 202,
+              "line": 206,
               "target": "Go string conversion"
             },
             {
               "column": 32,
-              "line": 226,
+              "line": 230,
               "target": "Go string conversion"
             },
             {
               "column": 33,
-              "line": 229,
+              "line": 233,
               "target": "Go string conversion"
             },
             {
               "column": 33,
-              "line": 539,
+              "line": 543,
               "target": "Go string conversion"
             }
           ]
