@@ -2,7 +2,7 @@
 //! strings (Track B1 / R6, step 2).
 //!
 //! Step 1 funnelled every read/write of a node-stored string through three
-//! accessors in `word.zig` (`strOf`/`strOfMut`/`strBits`) that cast a `[*:0]`
+//! accessors in `word.zig` (`strOf`/`strOfMut`/`strBits`) that cast a null-terminated pointer
 //! pointer to/from a `Word`. Step 2 moves the accessors here and swaps the
 //! representation: a node now stores a `StrId` (a table index) instead of a raw
 //! pointer, and the bytes live once in a process-lifetime arena. Interning
@@ -97,9 +97,9 @@ test "intern de-dups by content and resolves" {
     deinit(table());
     defer deinit(table());
 
-    const foo1 = strBits(table(), @as([*:0]const u8, "foo"));
-    const foo2 = strBits(table(), @as([*:0]const u8, "foo"));
-    const bar = strBits(table(), @as([*:0]const u8, "bar"));
+    const foo1 = strBits(table(), @as([:0]const u8, "foo"));
+    const foo2 = strBits(table(), @as([:0]const u8, "foo"));
+    const bar = strBits(table(), @as([:0]const u8, "bar"));
 
     try std.testing.expectEqual(foo1, foo2); // dedup: same content -> same id
     try std.testing.expect(foo1 != bar);
@@ -125,10 +125,10 @@ test "empty interns to the 0 sentinel and 0 resolves to empty" {
     deinit(table());
     defer deinit(table());
 
-    try std.testing.expectEqual(@as(Word, 0), strBits(table(), @as([*:0]const u8, "")));
+    try std.testing.expectEqual(@as(Word, 0), strBits(table(), @as([:0]const u8, "")));
     try std.testing.expectEqualStrings("", strOf(table(), 0));
     // A real string never collides with the sentinel.
-    try std.testing.expect(strBits(table(), @as([*:0]const u8, "x")) != 0);
+    try std.testing.expect(strBits(table(), @as([:0]const u8, "x")) != 0);
 }
 
 /// Re-intern the string identified by `handle` with its first byte privatised
@@ -145,14 +145,14 @@ pub fn privatize(self: *StringTable, handle: Word) Word {
     ensureInit(self);
     const scratch = self.arena.allocator().dupeSentinel(u8, cur, 0) catch oom();
     scratch[0] +%= 128;
-    return strBits(self, @as([*:0]const u8, scratch.ptr));
+    return strBits(self, scratch);
 }
 
 test "privatize re-interns with the first byte high-bit set" {
     deinit(table());
     defer deinit(table());
 
-    const foo = strBits(table(), @as([*:0]const u8, "foo"));
+    const foo = strBits(table(), @as([:0]const u8, "foo"));
     const priv = privatize(table(), foo);
     try std.testing.expect(priv != foo); // a fresh entry, not an in-place mutation
     const bytes = strOf(table(), priv);
@@ -176,13 +176,13 @@ pub fn deinit(self: *StringTable) void {
 
 test "deinit clears the table so the next use re-inits fresh" {
     deinit(table());
-    const a = strBits(table(), @as([*:0]const u8, "alpha"));
+    const a = strBits(table(), @as([:0]const u8, "alpha"));
     try std.testing.expectEqualStrings("alpha", strOf(table(), a));
     deinit(table());
     // After deinit the table is empty, so the old handle no longer resolves.
     try std.testing.expectEqualStrings("", strOf(table(), a));
     // A fresh intern restarts ids, so "beta" reclaims the first id that "alpha" had.
-    const b = strBits(table(), @as([*:0]const u8, "beta"));
+    const b = strBits(table(), @as([:0]const u8, "beta"));
     try std.testing.expectEqual(a, b);
     deinit(table());
 }
