@@ -22,7 +22,7 @@ func TestDumpStageAvailableAndUntranslatedStageFailsClosed(t *testing.T) {
 		t.Fatal("dump output missing translated case")
 	}
 
-	command := exec.Command(binary, "--stage", "lex", "--cases", "../../tests/oracle/fixtures/cases.json")
+	command := exec.Command(binary, "--stage", "not-translated", "--cases", "../../tests/oracle/fixtures/cases.json")
 	stdout, err = command.Output()
 	if err == nil {
 		t.Fatal("unavailable stage unexpectedly succeeded")
@@ -34,7 +34,7 @@ func TestDumpStageAvailableAndUntranslatedStageFailsClosed(t *testing.T) {
 	if !ok || exitError.ExitCode() != 3 {
 		t.Fatalf("unavailable stage exit = %v, want 3", err)
 	}
-	if got := string(exitError.Stderr); got != "miracula-go-oracle: stage \"lex\" is not implemented\n" {
+	if got := string(exitError.Stderr); got != "miracula-go-oracle: stage \"not-translated\" is not implemented\n" {
 		t.Fatalf("unexpected diagnostic: %q", got)
 	}
 }

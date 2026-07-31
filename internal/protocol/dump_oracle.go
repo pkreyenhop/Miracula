@@ -97,7 +97,7 @@ func ProduceDumpOracle(casesPath string) error {
 			o.Payload.EncodedBase64 = base64.StdEncoding.EncodeToString(input)
 			o.Payload.Graph = oracleGraph{Roots: []int{id}, Cells: []oracleCell{{ID: id, Tag: "small_integer", Value: value}}}
 		} else {
-			start, end := 0, len(input)-1
+			start, end := 0, len(input)
 			o.Outcome = oracleOutcome{Kind: "failure", FailureType: "truncated_input"}
 			o.Diagnostics = []oracleDiagnostic{{Severity: "error", Message: "truncated or invalid dump", File: nil, Start: &start, End: &end, Line: nil, Column: nil}}
 		}

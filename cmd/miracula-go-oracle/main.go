@@ -13,6 +13,7 @@ import (
 	"github.com/pkreyenhop/miracula-go/internal/graphstore"
 	"github.com/pkreyenhop/miracula-go/internal/platformsvc"
 	"github.com/pkreyenhop/miracula-go/internal/protocol"
+	"github.com/pkreyenhop/miracula-go/internal/syntaxfront"
 )
 
 type producer func(casesPath string) error
@@ -22,6 +23,10 @@ var producers = map[string]producer{
 	"dump":   protocol.ProduceDumpOracle,
 	"reduce": platformsvc.ProduceReduceOracle,
 	"lower":  graphstore.ProduceLowerOracle,
+	"source": syntaxfront.ProduceSourceOracle,
+	"lex":    syntaxfront.ProduceLexOracle,
+	"layout": syntaxfront.ProduceLayoutOracle,
+	"parse":  syntaxfront.ProduceParseOracle,
 }
 
 func main() {

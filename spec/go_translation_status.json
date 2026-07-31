@@ -10,6 +10,6 @@
     "package:platformsvc": "complete",
     "package:protocol": "complete",
     "package:semantics": "pending",
-    "package:syntaxfront": "pending"
+    "package:syntaxfront": "complete"
   }
 }

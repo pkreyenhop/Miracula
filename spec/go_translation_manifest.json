@@ -49567,7 +49567,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenAllocator",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -49621,7 +49621,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -49675,7 +49675,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenH",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -49729,7 +49729,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -49783,7 +49783,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenTp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -49837,7 +49837,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenTg",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -49891,7 +49891,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenAp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -49945,7 +49945,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenAp2",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -49999,7 +49999,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenAp3",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50053,7 +50053,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenMkcons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50107,7 +50107,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenMklabel",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50161,7 +50161,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenMklambda",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50215,7 +50215,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenMkpair",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50269,7 +50269,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenMktcons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50323,7 +50323,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenBigscanZ",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50377,7 +50377,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenMakeHere",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50431,7 +50431,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenIsConstructorWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50485,7 +50485,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenNameWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50539,7 +50539,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenCodegenTypeVar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50593,7 +50593,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenCodegenType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50647,7 +50647,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenOpWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50701,7 +50701,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenCodegenGuarded",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50755,7 +50755,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenFloatLiteralOverflow",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50809,7 +50809,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenCodegenString",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50863,7 +50863,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenCodegenPattern",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50917,7 +50917,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenCodegenExprRaw",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -50971,7 +50971,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenCodegenExpr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -51025,7 +51025,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenCodegenLhsExpr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -51079,7 +51079,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenCodegenRhs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -51133,7 +51133,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenCodegenLocalDef",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -51187,7 +51187,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenBuildLdefs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -51241,7 +51241,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenApplyWhereDefs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -51295,7 +51295,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenCodegenDef",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -51349,7 +51349,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenCodegenTypeSpec",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -51403,7 +51403,7 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenCodegenTypeDecl",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -51457,12 +51457,12 @@
           "target_file": "codegen.go",
           "target_package": "syntaxfront",
           "target_symbol": "CodegenCodegenScript",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "codegen.go",
       "target_package": "syntaxfront",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -53358,7 +53358,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexHeap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -53409,7 +53409,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -53460,7 +53460,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexBindTypeGeneralizer",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -53511,7 +53511,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexGetStdin",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -53562,7 +53562,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexH",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -53613,7 +53613,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexHp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -53664,7 +53664,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexT",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -53715,7 +53715,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexTp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -53766,7 +53766,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexCons",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -53817,7 +53817,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexGetId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -53868,7 +53868,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexFileinfo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -53919,7 +53919,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexOvflocheck",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -53970,7 +53970,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexDicovflo",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54021,7 +54021,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexSetupdic",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54072,7 +54072,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexCharOf",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54123,7 +54123,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexGethome",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54174,7 +54174,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexToken",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54225,7 +54225,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexAddextn",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54276,7 +54276,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexRdline",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54327,7 +54327,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexMkgvar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54378,7 +54378,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexMklexvar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54429,7 +54429,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexConvArgs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54480,7 +54480,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexStrConv",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54531,7 +54531,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexAdjustPrefix",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54582,7 +54582,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexOpenfile",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54633,7 +54633,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexCloseCurrentStreamResource",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54684,7 +54684,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexKeep",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54735,7 +54735,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexDicCheck",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54786,7 +54786,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexName",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54837,7 +54837,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexMakeId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54888,7 +54888,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexFindid",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54939,7 +54939,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexCompleteIds",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -54990,7 +54990,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexResetPns",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -55041,7 +55041,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexMakePn",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -55092,7 +55092,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexStoPn",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -55143,7 +55143,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexMkprivate",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -55194,7 +55194,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexResetLex",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -55245,7 +55245,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexResetState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -55296,7 +55296,7 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexIsconstrname",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -55347,12 +55347,12 @@
           "target_file": "lex.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexOkid",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "lex.go",
       "target_package": "syntaxfront",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -55669,7 +55669,7 @@
           "target_file": "lex_state.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexStateWord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -55704,7 +55704,7 @@
           "target_file": "lex_state.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -55739,7 +55739,7 @@
           "target_file": "lex_state.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexStateBind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -55774,12 +55774,12 @@
           "target_file": "lex_state.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexStateLs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "lex_state.go",
       "target_package": "syntaxfront",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -56194,7 +56194,7 @@
           "target_file": "parser_api.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserApiBindEvaluator",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -56246,7 +56246,7 @@
           "target_file": "parser_api.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserApiParseError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -56298,7 +56298,7 @@
           "target_file": "parser_api.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserApiParseResult",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -56350,7 +56350,7 @@
           "target_file": "parser_api.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserApiParseCurrent",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -56402,7 +56402,7 @@
           "target_file": "parser_api.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserApiSlurpCurrentStream",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -56454,7 +56454,7 @@
           "target_file": "parser_api.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserApiParseCurrentNative",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -56506,7 +56506,7 @@
           "target_file": "parser_api.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserApiReportLexerDiagnostic",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -56558,7 +56558,7 @@
           "target_file": "parser_api.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserApiRunParsedTokens",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -56610,7 +56610,7 @@
           "target_file": "parser_api.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserApiRecordDiagnosticMessage",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -56662,7 +56662,7 @@
           "target_file": "parser_api.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserApiReportIncludeError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -56714,7 +56714,7 @@
           "target_file": "parser_api.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserApiValidateUtf8File",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -56766,7 +56766,7 @@
           "target_file": "parser_api.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserApiParseString",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -56818,7 +56818,7 @@
           "target_file": "parser_api.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserApiNewParseResult",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -56870,7 +56870,7 @@
           "target_file": "parser_api.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserApiDeinit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -56922,12 +56922,12 @@
           "target_file": "parser_api.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserApiParseWithNew",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "parser_api.go",
       "target_package": "syntaxfront",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -57526,7 +57526,7 @@
           "target_file": "parser_tests.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserTestsMakeFilRecord",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -57576,7 +57576,7 @@
           "target_file": "parser_tests.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserTestsResetLexerState",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -57626,7 +57626,7 @@
           "target_file": "parser_tests.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserTestsEnsureInitialized",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -57676,12 +57676,12 @@
           "target_file": "parser_tests.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserTestsRunASTSnapshotTest",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "parser_tests.go",
       "target_package": "syntaxfront",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -92521,7 +92521,7 @@
           "target_file": "ast.go",
           "target_package": "syntaxfront",
           "target_symbol": "AstTypeExpr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -92558,7 +92558,7 @@
           "target_file": "ast.go",
           "target_package": "syntaxfront",
           "target_symbol": "AstLiteral",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -92595,7 +92595,7 @@
           "target_file": "ast.go",
           "target_package": "syntaxfront",
           "target_symbol": "AstQualifier",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -92632,7 +92632,7 @@
           "target_file": "ast.go",
           "target_package": "syntaxfront",
           "target_symbol": "AstExpr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -92669,7 +92669,7 @@
           "target_file": "ast.go",
           "target_package": "syntaxfront",
           "target_symbol": "AstPat",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -92706,7 +92706,7 @@
           "target_file": "ast.go",
           "target_package": "syntaxfront",
           "target_symbol": "AstGuard",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -92743,7 +92743,7 @@
           "target_file": "ast.go",
           "target_package": "syntaxfront",
           "target_symbol": "AstRhs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -92780,7 +92780,7 @@
           "target_file": "ast.go",
           "target_package": "syntaxfront",
           "target_symbol": "AstDef",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -92817,7 +92817,7 @@
           "target_file": "ast.go",
           "target_package": "syntaxfront",
           "target_symbol": "AstTypeSpec",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -92854,7 +92854,7 @@
           "target_file": "ast.go",
           "target_package": "syntaxfront",
           "target_symbol": "AstConstructor",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -92891,7 +92891,7 @@
           "target_file": "ast.go",
           "target_package": "syntaxfront",
           "target_symbol": "AstTypeDecl",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -92928,7 +92928,7 @@
           "target_file": "ast.go",
           "target_package": "syntaxfront",
           "target_symbol": "AstTopLevel",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -92965,12 +92965,12 @@
           "target_file": "ast.go",
           "target_package": "syntaxfront",
           "target_symbol": "AstScript",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "ast.go",
       "target_package": "syntaxfront",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -93070,7 +93070,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesSpan",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93108,7 +93108,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesAlias",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93146,7 +93146,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesInclude",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93184,7 +93184,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesDirective",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93222,7 +93222,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesDiagnostic",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93260,7 +93260,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesIsIdentCont",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93298,7 +93298,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesScanner",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93336,7 +93336,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesInit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93374,7 +93374,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesScanner.Deinit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93412,7 +93412,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesScanner.Record",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93450,7 +93450,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesScanner.RecordStdout",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93488,7 +93488,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesScanner.PeekByte",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93526,7 +93526,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesScanner.PeekByteAt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93564,7 +93564,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesScanner.SkipHorizontalWhitespace",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93602,7 +93602,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesScanner.ScanKeyword",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93640,7 +93640,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesScanner.ScanPathname",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93678,7 +93678,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesScanner.ScanBraceBlock",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93716,7 +93716,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesScanner.ScanToEndOfLine",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93754,7 +93754,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesScanner.ScanAliases",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93792,7 +93792,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesScanner.ScanIdentLike",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93830,7 +93830,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesScanner.ScanDirective",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93868,7 +93868,7 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesScanOne",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -93906,12 +93906,12 @@
           "target_file": "directives.go",
           "target_package": "syntaxfront",
           "target_symbol": "DirectivesExtractKeywordText",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "directives.go",
       "target_package": "syntaxfront",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -94015,7 +94015,7 @@
           "target_file": "layout.go",
           "target_package": "syntaxfront",
           "target_symbol": "LayoutToken",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94055,7 +94055,7 @@
           "target_file": "layout.go",
           "target_package": "syntaxfront",
           "target_symbol": "LayoutTokenId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94095,7 +94095,7 @@
           "target_file": "layout.go",
           "target_package": "syntaxfront",
           "target_symbol": "LayoutSpan",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94135,7 +94135,7 @@
           "target_file": "layout.go",
           "target_package": "syntaxfront",
           "target_symbol": "LayoutApplyLayout",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94175,7 +94175,7 @@
           "target_file": "layout.go",
           "target_package": "syntaxfront",
           "target_symbol": "LayoutPushMargin",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94215,7 +94215,7 @@
           "target_file": "layout.go",
           "target_package": "syntaxfront",
           "target_symbol": "LayoutNextCol",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94255,7 +94255,7 @@
           "target_file": "layout.go",
           "target_package": "syntaxfront",
           "target_symbol": "LayoutTok",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94295,7 +94295,7 @@
           "target_file": "layout.go",
           "target_package": "syntaxfront",
           "target_symbol": "LayoutTokText",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94335,12 +94335,12 @@
           "target_file": "layout.go",
           "target_package": "syntaxfront",
           "target_symbol": "LayoutIdsOf",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "layout.go",
       "target_package": "syntaxfront",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -94442,7 +94442,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexerToken",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94481,7 +94481,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexerTokenId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94520,7 +94520,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexerSpan",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94559,7 +94559,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexerDirective",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94598,7 +94598,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexerDiagnostic",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94637,7 +94637,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexerIsIdentCont",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94676,7 +94676,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94715,7 +94715,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexerInit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94754,7 +94754,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.Deinit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94793,7 +94793,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.PeekByte",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94832,7 +94832,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.PeekByteAt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94871,7 +94871,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.DigitFollows",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94910,7 +94910,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.SpanAt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94949,7 +94949,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.SkipTrivia",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -94988,7 +94988,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.Record",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95027,7 +95027,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.RecordStdout",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95066,7 +95066,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.TryFollow",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95105,7 +95105,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.Next",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95144,7 +95144,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.LexIdentifier",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95183,7 +95183,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.LexDollar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95222,7 +95222,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.LexStarOrTypevar",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95261,7 +95261,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.LexNumeral",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95300,7 +95300,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexerIsRadixDigit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95339,7 +95339,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.LexRadixInt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95378,7 +95378,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.LexHexFloat",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95417,7 +95417,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.LexDecimal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95456,7 +95456,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexerEscapeErrorKind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95495,7 +95495,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexerEscape",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95534,7 +95534,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.DecodeEscape",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95573,7 +95573,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.RecordEscapeError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95612,7 +95612,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.LexCharConst",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95651,7 +95651,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.LexStringConst",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95690,7 +95690,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "Lexer.LexDirective",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95729,7 +95729,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexerDigitsToDecimal",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95768,7 +95768,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexerTokenize",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95807,7 +95807,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexerTokenizeResult",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95846,7 +95846,7 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexerTokenizeResult.Deinit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -95885,12 +95885,12 @@
           "target_file": "lexer.go",
           "target_package": "syntaxfront",
           "target_symbol": "LexerTokenizeWithDirectives",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "lexer.go",
       "target_package": "syntaxfront",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -96325,7 +96325,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserAllocator",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96364,7 +96364,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserTokenId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96403,7 +96403,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserToken",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96442,7 +96442,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserSpan",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96481,7 +96481,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserTokenStream",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96520,7 +96520,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96559,7 +96559,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserDiagnostic",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96598,7 +96598,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "Parser",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96637,7 +96637,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserInit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96676,7 +96676,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserInitWithDirectives",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96715,7 +96715,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "Parser.Peek",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96754,7 +96754,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "Parser.Advance",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96793,7 +96793,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "Parser.Check",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96832,7 +96832,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "Parser.Eat",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96871,7 +96871,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "Parser.Expect",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96910,7 +96910,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "Parser.Span",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96949,7 +96949,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "Parser.AddError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -96988,7 +96988,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "Parser.Validate",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97027,7 +97027,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "Parser.SyncToNextItem",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97066,7 +97066,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserIsArgtypeStart",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97105,7 +97105,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97144,7 +97144,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseType1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97183,7 +97183,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseType2",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97222,7 +97222,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseTap",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97261,7 +97261,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseArgtype",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97300,7 +97300,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseTypeSpec",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97339,7 +97339,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParsePat",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97378,7 +97378,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParsePatV",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97417,7 +97417,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParsePatV1",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97456,7 +97456,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserApplyPatName",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97495,7 +97495,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParsePatV2",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97534,7 +97534,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserIsPatV3Start",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97573,7 +97573,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParsePatV3",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97612,7 +97612,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseExpr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97651,7 +97651,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseRhs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97690,7 +97690,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseGuardedRhs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97729,7 +97729,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseSingleGuard",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97768,7 +97768,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseWhereDefs",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97807,7 +97807,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseDef",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97846,7 +97846,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseScript",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97885,7 +97885,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseTopLevel",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97924,7 +97924,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseConstructor",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -97963,7 +97963,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseAlgebraicType",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98002,7 +98002,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseTypeSynonym",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98041,7 +98041,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseOneTypeSpec",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98080,7 +98080,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseAbstype",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98119,7 +98119,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseInclude",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98158,7 +98158,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseExport",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98197,7 +98197,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseFree",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98236,7 +98236,7 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseDirectiveToken",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98275,12 +98275,12 @@
           "target_file": "parser.go",
           "target_package": "syntaxfront",
           "target_symbol": "ParserParseDiscardSection",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "parser.go",
       "target_package": "syntaxfront",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -98557,7 +98557,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattAllocator",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98595,7 +98595,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattTokenId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98633,7 +98633,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattToken",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98671,7 +98671,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattExpr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98709,7 +98709,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattSpan",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98747,7 +98747,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattParseError",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98785,7 +98785,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattIsRelopId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98823,7 +98823,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattIsRelopName",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98861,7 +98861,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattChainSubject",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98899,7 +98899,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattInfixBp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98937,7 +98937,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattInfixBpFunction",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -98975,7 +98975,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattPrefixBp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99013,7 +99013,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattTokenStream",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99051,7 +99051,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattTokenStream.Peek",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99089,7 +99089,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattTokenStream.Advance",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99127,7 +99127,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattTokenStream.Expect",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99165,7 +99165,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattTokenStream.Check",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99203,7 +99203,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattTokenStream.Eat",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99241,7 +99241,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattTokenStream.PeekAt",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99279,7 +99279,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattIsRightSectionOp",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99317,7 +99317,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattIsArgStart",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99355,7 +99355,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattParseExpr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99393,7 +99393,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattParseQualifier",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99431,7 +99431,7 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattBoxExpr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99469,12 +99469,12 @@
           "target_file": "pratt.go",
           "target_package": "syntaxfront",
           "target_symbol": "PrattCloneExpr",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "pratt.go",
       "target_package": "syntaxfront",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -99572,7 +99572,7 @@
           "target_file": "source.go",
           "target_package": "syntaxfront",
           "target_symbol": "SourceSpan",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99609,7 +99609,7 @@
           "target_file": "source.go",
           "target_package": "syntaxfront",
           "target_symbol": "Source",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99646,7 +99646,7 @@
           "target_file": "source.go",
           "target_package": "syntaxfront",
           "target_symbol": "Source.Deinit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99683,7 +99683,7 @@
           "target_file": "source.go",
           "target_package": "syntaxfront",
           "target_symbol": "SourceLoadFile",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99720,7 +99720,7 @@
           "target_file": "source.go",
           "target_package": "syntaxfront",
           "target_symbol": "SourceFromBytes",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99757,7 +99757,7 @@
           "target_file": "source.go",
           "target_package": "syntaxfront",
           "target_symbol": "SourceResolveInserts",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99794,7 +99794,7 @@
           "target_file": "source.go",
           "target_package": "syntaxfront",
           "target_symbol": "SourceMatchesInsertKeyword",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99831,7 +99831,7 @@
           "target_file": "source.go",
           "target_package": "syntaxfront",
           "target_symbol": "SourceSpliceOneInsert",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99868,7 +99868,7 @@
           "target_file": "source.go",
           "target_package": "syntaxfront",
           "target_symbol": "SourceIsLiterateName",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99905,7 +99905,7 @@
           "target_file": "source.go",
           "target_package": "syntaxfront",
           "target_symbol": "SourceInit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99942,7 +99942,7 @@
           "target_file": "source.go",
           "target_package": "syntaxfront",
           "target_symbol": "SourceBlankProse",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -99979,7 +99979,7 @@
           "target_file": "source.go",
           "target_package": "syntaxfront",
           "target_symbol": "SourceComputeLineStarts",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [
@@ -100016,12 +100016,12 @@
           "target_file": "source.go",
           "target_package": "syntaxfront",
           "target_symbol": "Source.Position",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "source.go",
       "target_package": "syntaxfront",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -100115,7 +100115,7 @@
           "target_file": "token_filter.go",
           "target_package": "syntaxfront",
           "target_symbol": "TokenFilterDiagnosticStream",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -100150,7 +100150,7 @@
           "target_file": "token_filter.go",
           "target_package": "syntaxfront",
           "target_symbol": "TokenFilterDiagnostic",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -100185,7 +100185,7 @@
           "target_file": "token_filter.go",
           "target_package": "syntaxfront",
           "target_symbol": "TokenFilterTokenId",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -100220,7 +100220,7 @@
           "target_file": "token_filter.go",
           "target_package": "syntaxfront",
           "target_symbol": "TokenFilterTokenKind",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -100255,7 +100255,7 @@
           "target_file": "token_filter.go",
           "target_package": "syntaxfront",
           "target_symbol": "TokenFilterSpan",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -100290,7 +100290,7 @@
           "target_file": "token_filter.go",
           "target_package": "syntaxfront",
           "target_symbol": "TokenFilterToken",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -100325,7 +100325,7 @@
           "target_file": "token_filter.go",
           "target_package": "syntaxfront",
           "target_symbol": "TokenFilterDirectiveAlias",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -100360,7 +100360,7 @@
           "target_file": "token_filter.go",
           "target_package": "syntaxfront",
           "target_symbol": "TokenFilterDirectiveInclude",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -100395,7 +100395,7 @@
           "target_file": "token_filter.go",
           "target_package": "syntaxfront",
           "target_symbol": "TokenFilterDirective",
-          "translation_status": "pending"
+          "translation_status": "complete"
         },
         {
           "dependencies": [],
@@ -100430,12 +100430,12 @@
           "target_file": "token_filter.go",
           "target_package": "syntaxfront",
           "target_symbol": "TokenFilterDirective.Deinit",
-          "translation_status": "pending"
+          "translation_status": "complete"
         }
       ],
       "target_file": "token_filter.go",
       "target_package": "syntaxfront",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "compatibility": {
@@ -102537,21 +102537,7 @@
       "generated_check": "go generate ./... && git diff --exit-code",
       "id": "package:syntaxfront",
       "package_test": "go test ./internal/syntaxfront",
-      "source_files": [
-        "src/parser/codegen.zig",
-        "src/parser/lex.zig",
-        "src/parser/lex_state.zig",
-        "src/parser/parser_api.zig",
-        "src/parser/parser_tests.zig",
-        "src/syntax/ast.zig",
-        "src/syntax/directives.zig",
-        "src/syntax/layout.zig",
-        "src/syntax/lexer.zig",
-        "src/syntax/parser.zig",
-        "src/syntax/pratt.zig",
-        "src/syntax/source.zig",
-        "src/syntax/token_filter.zig"
-      ],
+      "source_files": [],
       "stage_oracles": [
         {
           "command": "python3 tests/oracle/oracle.py verify --stage source --producer 'go run ./cmd/miracula-go-oracle'",
@@ -102571,7 +102557,7 @@
         }
       ],
       "target_package": "syntaxfront",
-      "translation_status": "pending"
+      "translation_status": "complete"
     },
     {
       "dag_check": "go run ./cmd/checkdag",
