@@ -43,7 +43,7 @@ func (t *StringTable) Privatize(handle protocol.Word) protocol.Word {
 		return handle
 	}
 	b := []byte(s)
-	b[0] += 128
+	b[0] |= 0x80
 	return t.Intern(string(b))
 }
 func (t *StringTable) Reset() { t.values = nil; t.ids = nil }

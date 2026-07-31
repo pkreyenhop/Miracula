@@ -3,7 +3,7 @@
   "milestones": {
     "00-contract": "complete",
     "01-production-command": "complete",
-    "02-runtime-graph": "pending",
+    "02-runtime-graph": "complete",
     "03-source-parser": "pending",
     "04-semantics-lowering": "pending",
     "05-evaluator": "pending",

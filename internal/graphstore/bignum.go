@@ -18,23 +18,28 @@ func (n *Bignum) Add(m *Bignum) *Bignum { r := new(Bignum); r.value.Add(&n.value
 func (n *Bignum) Sub(m *Bignum) *Bignum { r := new(Bignum); r.value.Sub(&n.value, &m.value); return r }
 func (n *Bignum) Mul(m *Bignum) *Bignum { r := new(Bignum); r.value.Mul(&n.value, &m.value); return r }
 func (n *Bignum) Quo(m *Bignum) (*Bignum, bool) {
+	q, _, ok := n.DivMod(m)
+	return q, ok
+}
+func (n *Bignum) DivMod(m *Bignum) (*Bignum, *Bignum, bool) {
 	if m.Sign() == 0 {
-		return nil, false
+		return nil, nil, false
 	}
-	r := new(Bignum)
-	r.value.Quo(&n.value, &m.value)
-	return r, true
+	q, r := new(Bignum), new(Bignum)
+	q.value.QuoRem(&n.value, &m.value, &r.value)
+	if r.Sign() != 0 && r.Sign() != m.Sign() {
+		q.value.Sub(&q.value, big.NewInt(1))
+		r.value.Add(&r.value, &m.value)
+	}
+	return q, r, true
 }
 func (n *Bignum) Mod(m *Bignum) (*Bignum, bool) {
-	if m.Sign() == 0 {
-		return nil, false
-	}
-	r := new(Bignum)
-	r.value.Mod(&n.value, &m.value)
-	return r, true
+	_, r, ok := n.DivMod(m)
+	return r, ok
 }
 func (n *Bignum) Pow(exp uint64) *Bignum {
 	r := new(Bignum)
 	r.value.Exp(&n.value, new(big.Int).SetUint64(exp), nil)
 	return r
 }
+func (n *Bignum) Cmp(m *Bignum) int { return n.value.Cmp(&m.value) }

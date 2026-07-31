@@ -36,7 +36,9 @@ type ResourceTable struct {
 func (t *ResourceTable) RegisterStream(s *Stream) StreamID {
 	if t.entries == nil {
 		t.entries = make(map[StreamID]*resourceEntry)
-		t.next = 1
+		if t.next == 0 {
+			t.next = 1
+		}
 	}
 	id := t.next
 	t.next++
@@ -87,6 +89,5 @@ func (t *ResourceTable) Reset() {
 		}
 	}
 	t.entries = nil
-	t.next = 1
 	t.generation++
 }

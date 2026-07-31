@@ -16,6 +16,9 @@ func TestSemanticIDs(t *testing.T) {
 	}
 }
 func TestValues(t *testing.T) {
+	if FitsInByte(-1) || !FitsInByte(0) || !FitsInByte(255) || FitsInByte(256) {
+		t.Fatal("byte bounds")
+	}
 	v := ValueComb(CombPLUS)
 	k, ok := v.Kind()
 	if !ok || k.Tag != KindCombinator || k.Combinator != CombPLUS {

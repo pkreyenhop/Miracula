@@ -31,7 +31,7 @@ func RefOf(x Word) Ref   { return Ref(x) }
 func (r Ref) Word() Word { return Word(r) }
 
 func IsAtom(x Word) bool       { return x < AtomLimit }
-func FitsInByte(x Word) bool   { return x < 256 }
+func FitsInByte(x Word) bool   { return x >= 0 && x < 256 }
 func IsLatin1Char(x Word) bool { return x >= 0 && x < 256 }
 
 type NodeTag uint8

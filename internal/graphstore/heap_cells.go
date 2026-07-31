@@ -13,12 +13,14 @@ type Cell struct {
 }
 
 var ErrHeapExhausted = errors.New("heap exhausted")
+var ErrInvalidNodeTag = errors.New("invalid node tag")
 
 type Heap struct {
-	cells []Cell
-	live  []bool
-	free  []protocol.CellRef
-	Roots Registry
+	cells        []Cell
+	live         []bool
+	free         []protocol.CellRef
+	Roots        Registry
+	forceCollect bool
 }
 
 func NewHeap(capacity int) *Heap {
@@ -32,6 +34,12 @@ func NewHeap(capacity int) *Heap {
 	return h
 }
 func (h *Heap) Make(tag protocol.NodeTag, head, tail Word) (protocol.CellRef, error) {
+	if tag > protocol.NodeTypeCons {
+		return 0, ErrInvalidNodeTag
+	}
+	if h.forceCollect || len(h.free) == 0 {
+		h.Collect(head, tail)
+	}
 	if len(h.free) == 0 {
 		return 0, ErrHeapExhausted
 	}
@@ -42,6 +50,68 @@ func (h *Heap) Make(tag protocol.NodeTag, head, tail Word) (protocol.CellRef, er
 	h.cells[i] = Cell{tag, head, tail}
 	h.live[i-int(protocol.AtomLimit)] = true
 	return r, nil
+}
+
+// SetForceCollect makes every allocation collect first. All live Go locals
+// other than the new cell's head and tail must be registered in Roots.
+func (h *Heap) SetForceCollect(enabled bool) { h.forceCollect = enabled }
+
+// Collect reclaims every cell unreachable from registered roots and extra
+// values. It is iterative so deep Miranda graphs do not consume the Go stack.
+func (h *Heap) Collect(extra ...Word) int {
+	marked := make([]bool, len(h.live))
+	stack := append([]Word(nil), extra...)
+	h.Roots.MarkAll(func(value protocol.Word) { stack = append(stack, value) })
+	for len(stack) != 0 {
+		value := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		ref, ok := protocol.CellRefOf(value)
+		if !ok {
+			continue
+		}
+		index := int(ref) - int(protocol.AtomLimit)
+		if index < 0 || index >= len(h.live) || !h.live[index] || marked[index] {
+			continue
+		}
+		marked[index] = true
+		cell := h.cells[int(ref)]
+		stack = append(stack, cell.Head, cell.Tail)
+	}
+	reclaimed := 0
+	for index, live := range h.live {
+		if live && !marked[index] {
+			h.live[index] = false
+			h.cells[int(protocol.AtomLimit)+index] = Cell{}
+			h.free = append(h.free, protocol.CellRef(uint32(int(protocol.AtomLimit)+index)))
+			reclaimed++
+		}
+	}
+	return reclaimed
+}
+
+func (h *Heap) LiveCount() int {
+	count := 0
+	for _, live := range h.live {
+		if live {
+			count++
+		}
+	}
+	return count
+}
+
+func (h *Heap) Validate() error {
+	free := make(map[protocol.CellRef]bool, len(h.free))
+	for _, ref := range h.free {
+		index := int(ref) - int(protocol.AtomLimit)
+		if index < 0 || index >= len(h.live) || h.live[index] || free[ref] {
+			return errors.New("heap free-list invariant violated")
+		}
+		free[ref] = true
+	}
+	if len(free)+h.LiveCount() != len(h.live) {
+		return errors.New("heap accounting invariant violated")
+	}
+	return nil
 }
 func (h *Heap) Cons(head, tail Word) (protocol.CellRef, error) {
 	return h.Make(protocol.NodeCons, head, tail)

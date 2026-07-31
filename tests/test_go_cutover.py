@@ -36,7 +36,7 @@ class CutoverStatusTests(unittest.TestCase):
 
     def test_repository_contract_is_valid(self) -> None:
         self.assertEqual(go_cutover.validate(), [])
-        self.assertEqual(go_cutover.first_pending(), "02-runtime-graph")
+        self.assertEqual(go_cutover.first_pending(), "03-source-parser")
 
     def test_unknown_status_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
