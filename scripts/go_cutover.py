@@ -38,6 +38,7 @@ MILESTONE_COMMANDS = {
     "01-production-command": (
         "python3 scripts/build_go_candidate.py --output build/mira-go",
         "build/mira-go --build-info",
+        "python3 tests/test_go_command.py",
     ),
     "02-runtime-graph": ("go test -race ./internal/protocol ./internal/graphstore",),
     "03-source-parser": (

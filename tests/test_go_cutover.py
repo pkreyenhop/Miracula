@@ -36,7 +36,7 @@ class CutoverStatusTests(unittest.TestCase):
 
     def test_repository_contract_is_valid(self) -> None:
         self.assertEqual(go_cutover.validate(), [])
-        self.assertEqual(go_cutover.first_pending(), "01-production-command")
+        self.assertEqual(go_cutover.first_pending(), "02-runtime-graph")
 
     def test_unknown_status_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -142,7 +142,7 @@ class CandidateIdentityTests(unittest.TestCase):
 
 
 class CandidateBuildTests(unittest.TestCase):
-    def test_failed_build_removes_stale_candidate(self) -> None:
+    def test_build_replaces_stale_candidate(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "mira-go"
             output.write_text("stale", encoding="utf-8")
@@ -159,8 +159,17 @@ class CandidateBuildTests(unittest.TestCase):
                 timeout=10,
                 check=False,
             )
-            self.assertNotEqual(result.returncode, 0)
-            self.assertFalse(output.exists())
+            self.assertEqual(result.returncode, 0, result.stderr.decode())
+            self.assertNotEqual(output.read_bytes(), b"stale")
+            identity = subprocess.run(
+                [output, "--build-info"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=5,
+                check=False,
+            )
+            self.assertEqual(identity.returncode, 0)
+            self.assertIn(b"implementation=go\n", identity.stdout)
 
 if __name__ == "__main__":
     unittest.main()

@@ -13,14 +13,15 @@ import (
 const module = "github.com/pkreyenhop/miracula-go"
 
 var allowed = map[string]map[string]bool{
+	"buildcfg":    {},
 	"protocol":    {},
 	"platformsvc": {"protocol": true},
 	"graphstore":  {"protocol": true, "platformsvc": true},
 	"syntaxfront": {"protocol": true, "platformsvc": true, "graphstore": true},
 	"semantics":   {"protocol": true, "platformsvc": true, "graphstore": true, "syntaxfront": true},
 	"evaluation":  {"protocol": true, "platformsvc": true, "graphstore": true},
-	"application": {"protocol": true, "platformsvc": true, "graphstore": true, "syntaxfront": true, "semantics": true, "evaluation": true},
-	"commandapp":  {"protocol": true, "platformsvc": true, "application": true},
+	"application": {"buildcfg": true, "protocol": true, "platformsvc": true, "graphstore": true, "syntaxfront": true, "semantics": true, "evaluation": true},
+	"commandapp":  {"buildcfg": true, "protocol": true, "platformsvc": true, "application": true},
 	"devtools":    {"protocol": true, "platformsvc": true},
 }
 

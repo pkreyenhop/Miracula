@@ -1,7 +1,10 @@
 package application
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/pkreyenhop/miracula-go/internal/buildcfg"
+)
 
-const Release = 2067
+const Release = buildcfg.Version
 
 func VersionString() string { return fmt.Sprintf("%d.%03d", Release/1000, Release%1000) }
