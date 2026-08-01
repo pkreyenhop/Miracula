@@ -564,34 +564,8 @@ func (i *Interpreter) handleQuery(line string, out io.Writer) error {
 }
 
 func (i *Interpreter) findDefinition(name string) (semantics.TypedDefinition, string, bool) {
-	path := i.Compiler.CurrentModule
-	program := i.Programs[path]
-	if program != nil {
-		for _, definition := range program.Definitions {
-			if definition.Name == name {
-				return definition, path, true
-			}
-		}
-	}
-	if provenance, exists := i.runtime().provenance[name]; exists {
-		source, err := os.ReadFile(provenance.Path)
-		if err == nil {
-			if line, ok := sourceDefinitionLine(source, provenance.Original); ok {
-				return semantics.TypedDefinition{Name: name, Expression: syntaxfront.Expr{Span: syntaxfront.Span{Line: line}}}, provenance.Path, true
-			}
-		}
-	}
-	paths := make([]string, 0, len(i.Scripts.Scripts))
-	for candidate := range i.Scripts.Scripts {
-		if candidate != path {
-			paths = append(paths, candidate)
-		}
-	}
-	sort.Strings(paths)
-	for _, candidate := range paths {
-		if line, ok := sourceDefinitionLine(i.Scripts.Scripts[candidate].Source, name); ok {
-			return semantics.TypedDefinition{Name: name, Expression: syntaxfront.Expr{Span: syntaxfront.Span{Line: line}}}, candidate, true
-		}
+	if entry, ok := i.scopeEntry(name); ok {
+		return entry.definition(), entry.Path, true
 	}
 	return semantics.TypedDefinition{}, "", false
 }
@@ -603,14 +577,18 @@ func (i *Interpreter) fingerName(out io.Writer, name string) error {
 	}
 	typeText := formatType(definition.Type)
 	if definition.Type == nil {
-		typeText = sourceDefinitionType(i.Scripts.Scripts[path].Source, name)
+		original := name
+		if entry, exists := i.scopeEntry(name); exists {
+			original = entry.Original
+		}
+		typeText = sourceDefinitionType(i.Scripts.Scripts[path].Source, original)
 		if typeText == "" {
 			typeText = "*"
 		}
 	}
 	aliasText := ""
-	if provenance, ok := i.runtime().provenance[name]; ok && provenance.Original != name {
-		aliasText = fmt.Sprintf(" (alias of %s)", provenance.Original)
+	if entry, ok := i.scopeEntry(name); ok && entry.Original != name {
+		aliasText = fmt.Sprintf(" (alias of %s)", entry.Original)
 	}
 	_, err := fmt.Fprintf(out, "%s :: %s%s ||defined in %q line %d\n", name, typeText, aliasText, path, definition.Expression.Span.Line)
 	return err
@@ -647,17 +625,12 @@ func sourceDefinitionType(source []byte, name string) string {
 }
 
 func (i *Interpreter) allNames(out io.Writer) error {
-	program := i.Programs[i.Compiler.CurrentModule]
-	if program == nil {
+	entries := i.scopeIndex()
+	if len(entries) == 0 && i.Programs[i.Compiler.CurrentModule] == nil {
 		return fmt.Errorf("no current script")
 	}
-	names := make([]string, 0, len(program.Definitions))
-	for _, definition := range program.Definitions {
-		names = append(names, definition.Name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		if _, err := fmt.Fprintln(out, name); err != nil {
+	for _, entry := range entries {
+		if _, err := fmt.Fprintln(out, entry.Name); err != nil {
 			return err
 		}
 	}
@@ -724,21 +697,9 @@ func (i *Interpreter) completeIdentifier(prefix string) []string {
 		return nil
 	}
 	seen := map[string]bool{}
-	for name := range i.StandardTypes {
-		if strings.HasPrefix(name, prefix) {
-			seen[name] = true
-		}
-	}
-	for name := range i.runtime().globals {
-		if strings.HasPrefix(name, prefix) {
-			seen[name] = true
-		}
-	}
-	if program := i.Programs[i.Compiler.CurrentModule]; program != nil {
-		for _, definition := range program.Definitions {
-			if strings.HasPrefix(definition.Name, prefix) {
-				seen[definition.Name] = true
-			}
+	for _, entry := range i.scopeIndex() {
+		if strings.HasPrefix(entry.Name, prefix) {
+			seen[entry.Name] = true
 		}
 	}
 	matches := make([]string, 0, len(seen))
@@ -889,7 +850,7 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 			return false, fmt.Errorf("\aextra characters at end of command")
 		}
 		for _, name := range fields[1:] {
-			if err := i.printNames(out, true, name); err != nil {
+			if err := i.findAliases(out, name); err != nil {
 				return false, err
 			}
 		}
@@ -1060,22 +1021,42 @@ func (i *Interpreter) definitionReference(name string) (int, string) {
 }
 
 func (i *Interpreter) printNames(out io.Writer, withType bool, only string) error {
-	path := i.Compiler.CurrentModule
-	program := i.Programs[path]
-	if program == nil {
+	entries := i.scopeIndex()
+	if len(entries) == 0 && i.Programs[i.Compiler.CurrentModule] == nil {
 		return fmt.Errorf("no current script")
 	}
-	for _, definition := range program.Definitions {
-		if only != "" && definition.Name != only {
+	for _, entry := range entries {
+		if only != "" && entry.Name != only {
 			continue
 		}
-		text := definition.Name
+		text := entry.Name
 		if withType {
-			text += " :: " + formatType(definition.Type)
+			text += " :: " + formatType(entry.Type)
 		}
 		if _, err := fmt.Fprintln(out, text); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (i *Interpreter) findAliases(out io.Writer, original string) error {
+	found := false
+	for _, entry := range i.scopeIndex() {
+		if entry.Name != original && entry.Original != original {
+			continue
+		}
+		found = true
+		text := entry.Name + " :: " + formatType(entry.Type)
+		if entry.Original != entry.Name {
+			text += " (alias of " + entry.Original + ")"
+		}
+		if _, err := fmt.Fprintln(out, text); err != nil {
+			return err
+		}
+	}
+	if !found {
+		return i.diagnose(out, original)
 	}
 	return nil
 }

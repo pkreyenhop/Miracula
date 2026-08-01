@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -102,6 +103,54 @@ func TestIdentifierQueriesFindStandardEnvironmentDefinitions(t *testing.T) {
 	want := "reverse :: [*]->[*] ||defined in \"/tmp/miralib/stdenv.m\" line 4\n"
 	if output.String() != want {
 		t.Fatalf("finger = %q, want %q", output.String(), want)
+	}
+}
+
+func TestScopeIndexUnifiesStandardIncludedAliasedSuppressedAndLocalNames(t *testing.T) {
+	i := queryInterpreter()
+	standardPath := "/tmp/miralib/stdenv.m"
+	includePath := "/tmp/modules/values.m"
+	i.Scripts.Put(Script{Path: standardPath, Source: []byte("reverse :: [*]->[*]\nreverse x = x\n")})
+	i.Scripts.Put(Script{Path: includePath, Source: []byte("public :: num\npublic = 1\noriginal :: char\noriginal = 'x'\nhidden = 9\nalpha = 99\n")})
+	i.StandardTypes = map[string]*semantics.Type{"reverse": {Kind: semantics.TypeArrow, From: &semantics.Type{Kind: semantics.TypeList, Items: []*semantics.Type{{Kind: semantics.TypeVariable, ID: 1}}}, To: &semantics.Type{Kind: semantics.TypeList, Items: []*semantics.Type{{Kind: semantics.TypeVariable, ID: 1}}}}}
+	runtime := i.runtime()
+	runtime.globals["public"] = immediate(languageValue{kind: valueNumber, small: 1})
+	runtime.globals["renamed"] = immediate(languageValue{kind: valueChar, small: 'x'})
+	runtime.globals["alpha"] = immediate(languageValue{kind: valueNumber, small: 99})
+	runtime.provenance["public"] = sourceProvenance{Path: includePath, Original: "public"}
+	runtime.provenance["renamed"] = sourceProvenance{Path: includePath, Original: "original"}
+	runtime.provenance["alpha"] = sourceProvenance{Path: includePath, Original: "alpha"}
+
+	var output bytes.Buffer
+	if err := i.handleQuery("?", &output); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := output.String(), "alpha\npublic\nrenamed\nreverse\nzeta\n"; got != want {
+		t.Fatalf("scope names = %q, want %q", got, want)
+	}
+	if matches := i.completeIdentifier("re"); !reflect.DeepEqual(matches, []string{"renamed", "reverse"}) {
+		t.Fatalf("completion = %v", matches)
+	}
+	output.Reset()
+	if err := i.fingerName(&output, "renamed"); err != nil {
+		t.Fatal(err)
+	}
+	if got := output.String(); !strings.Contains(got, "renamed :: char (alias of original)") || !strings.Contains(got, includePath) {
+		t.Fatalf("alias query = %q", got)
+	}
+	output.Reset()
+	if err := i.findAliases(&output, "original"); err != nil {
+		t.Fatal(err)
+	}
+	if got := output.String(); got != "renamed :: char (alias of original)\n" {
+		t.Fatalf("find aliases = %q", got)
+	}
+	if _, _, ok := i.findDefinition("hidden"); ok {
+		t.Fatal("suppressed included name is in scope")
+	}
+	definition, path, ok := i.findDefinition("alpha")
+	if !ok || path != i.Compiler.CurrentModule || definition.Expression.Span.Line != 3 {
+		t.Fatalf("local shadow = %+v, %q, %v", definition, path, ok)
 	}
 }
 
