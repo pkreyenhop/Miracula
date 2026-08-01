@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	goruntime "runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -239,6 +240,8 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 	}
 	i.Repl.LastCommand = line
 	switch fields[0] {
+	case "a", "aux":
+		return false, platformsvc.FileCopy(filepath.Join(i.Config.LibraryPath, "auxfile"), out)
 	case "q", "quit":
 		i.Repl.ExitRequested = true
 		return true, nil
@@ -258,7 +261,7 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 	case "v", "version":
 		_, err := fmt.Fprintln(out, VersionString())
 		return false, err
-	case "f", "files":
+	case "files":
 		paths := make([]string, 0, len(i.Scripts.Scripts))
 		for path := range i.Scripts.Scripts {
 			paths = append(paths, path)
@@ -270,7 +273,16 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 			}
 		}
 		return false, nil
-	case "l", "load":
+	case "f", "file", "l", "load":
+		if fields[0] == "f" || fields[0] == "file" {
+			if len(fields) == 1 {
+				if i.Compiler.CurrentModule == "" {
+					return false, fmt.Errorf("no current script")
+				}
+				_, err := fmt.Fprintln(out, i.Compiler.CurrentModule)
+				return false, err
+			}
+		}
 		if len(fields) != 2 {
 			return false, fmt.Errorf("usage: /load file")
 		}
@@ -292,11 +304,135 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 		return false, i.printNames(out, true, fields[1])
 	case "set":
 		return false, i.setOption(fields[1:])
+	case "cd":
+		directory := ""
+		if len(fields) == 2 {
+			directory = fields[1]
+		} else if len(fields) == 1 {
+			directory, _ = i.Services.Environment("HOME")
+		} else {
+			return false, fmt.Errorf("cannot cd to %s", strings.Join(fields[1:], " "))
+		}
+		if err := os.Chdir(directory); err != nil {
+			return false, fmt.Errorf("cannot cd to %s", directory)
+		}
+		return false, nil
+	case "dic":
+		if len(fields) == 1 {
+			_, err := fmt.Fprintf(out, "%d chars 0 in use\n", i.Config.DictionaryCells)
+			return false, err
+		}
+		if len(fields) == 2 {
+			_, err := fmt.Fprintf(out, "sorry, cannot change size of dictionary while in use\n(/q and reinvoke with flag: mira -dic %s ... )\n", fields[1])
+			return false, err
+		}
+	case "gc":
+		i.Config.GC = true
+		return false, nil
+	case "nogc":
+		i.Config.GC = false
+		return false, nil
+	case "heap":
+		return false, i.heapCommand(fields[1:], out)
+	case "hush":
+		i.Config.Hush = true
+		return false, nil
+	case "nohush":
+		i.Config.Hush = false
+		return false, nil
+	case "list":
+		i.Config.List = true
+		return false, nil
+	case "nolist":
+		i.Config.List = false
+		return false, nil
+	case "miralib":
+		_, err := fmt.Fprintln(out, i.Config.LibraryPath)
+		return false, err
+	case "recheck":
+		i.Config.Recheck = true
+		return false, nil
+	case "norecheck":
+		i.Config.Recheck = false
+		return false, nil
+	case "s", "settings":
+		return false, i.printSettings(out)
+	case "V":
+		_, err := fmt.Fprintf(out, "Miranda release %s (Go, %s/%s)\n", VersionString(), goruntime.GOOS, goruntime.GOARCH)
+		return false, err
+	case "find":
+		if len(fields) == 1 {
+			return false, fmt.Errorf("\aextra characters at end of command")
+		}
+		for _, name := range fields[1:] {
+			if err := i.printNames(out, true, name); err != nil {
+				return false, err
+			}
+		}
+		return false, nil
+	case "m", "man":
+		return false, fmt.Errorf("manual command is unavailable in this session")
 	case "edit", "e":
 		return false, fmt.Errorf("editor command is unavailable in this session")
 	default:
-		return false, fmt.Errorf("unknown command /%s; use /help", fields[0])
+		return false, fmt.Errorf("\aunknown command - type /h for help")
 	}
+	return false, fmt.Errorf("\aunknown command - type /h for help")
+}
+
+func (i *Interpreter) heapCommand(arguments []string, out io.Writer) error {
+	if len(arguments) == 0 {
+		_, err := fmt.Fprintf(out, "%d cells", i.Config.HeapCells)
+		if i.Config.HeapCells != DefaultConfig().HeapCells {
+			_, _ = fmt.Fprintf(out, " (default=%d)", DefaultConfig().HeapCells)
+		}
+		_, _ = fmt.Fprintln(out)
+		return err
+	}
+	if len(arguments) != 1 {
+		return fmt.Errorf("illegal value (heap unchanged)")
+	}
+	value, err := strconv.Atoi(arguments[0])
+	if err != nil || value < 100 || value > 50000000 {
+		return fmt.Errorf("illegal value (heap unchanged)")
+	}
+	if value < i.Heap.LiveCount() {
+		return fmt.Errorf("sorry, cannot shrink heap to %d at this time", value)
+	}
+	i.Config.HeapCells = value
+	_, err = fmt.Fprintf(out, "heaplimit = %d cells\n", value)
+	return err
+}
+
+func (i *Interpreter) printSettings(out io.Writer) error {
+	list := "no"
+	if i.Config.List {
+		list = ""
+	}
+	recheck := "no"
+	if i.Config.Recheck {
+		recheck = ""
+	}
+	if _, err := fmt.Fprintf(out, "*\theap %d\n*\tdic %d\n*\teditor = %s\n*\t%slist\n*\t%srecheck\n", i.Config.HeapCells, i.Config.DictionaryCells, i.Config.Editor, list, recheck); err != nil {
+		return err
+	}
+	if !i.Config.StrictIf {
+		fmt.Fprintln(out, "\t-nostrictif (deprecated!)")
+	}
+	if i.Config.Count {
+		fmt.Fprintln(out, "\tcount")
+	}
+	if i.Config.GC {
+		fmt.Fprintln(out, "\tgc")
+	}
+	if i.Config.UTF8 {
+		fmt.Fprintln(out, "\tUTF-8 i/o")
+	}
+	if i.Config.Hush {
+		fmt.Fprintln(out, "\thush")
+	}
+	_, err := fmt.Fprintln(out, "\n* items remembered between sessions")
+	return err
 }
 
 func legacyEvaluationError(err error) string {
