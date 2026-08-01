@@ -56,9 +56,11 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 			}
 		}
 		editor.SetCompleter(i.completeIdentifier)
+		i.activeEditor = editor
 		defer func() {
 			_ = editor.SaveHistory()
 			_ = editor.Close()
+			i.activeEditor = nil
 		}()
 	} else {
 		scanner = bufio.NewScanner(in)
@@ -373,7 +375,9 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 	case "m", "man":
 		return false, fmt.Errorf("manual command is unavailable in this session")
 	case "edit", "e":
-		return false, fmt.Errorf("editor command is unavailable in this session")
+		return false, i.editCommand(fields[1:], out)
+	case "editor":
+		return false, i.editorCommand(fields[1:], out)
 	default:
 		return false, fmt.Errorf("\aunknown command - type /h for help")
 	}

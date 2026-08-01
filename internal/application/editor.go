@@ -7,7 +7,8 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -20,6 +21,8 @@ type LineEditor interface {
 	SetCompleter(func(string) []string)
 	LoadHistory(path string) error
 	SaveHistory() error
+	Suspend() error
+	Resume() error
 	Close() error
 }
 
@@ -29,6 +32,7 @@ type terminalLineEditor struct {
 	file        *os.File
 	state       platformsvc.TerminalState
 	raw         bool
+	terminal    bool
 	history     []string
 	historyPath string
 	complete    func(string) []string
@@ -74,8 +78,32 @@ func NewLineEditor(input io.Reader, output io.Writer) (LineEditor, error) {
 			return nil, err
 		}
 		editor.file, editor.state, editor.raw = file, state, true
+		editor.terminal = true
 	}
 	return editor, nil
+}
+
+func (e *terminalLineEditor) Suspend() error {
+	if !e.raw {
+		return nil
+	}
+	if err := platformsvc.RestoreTerminal(e.file.Fd(), e.state); err != nil {
+		return err
+	}
+	e.raw = false
+	return nil
+}
+
+func (e *terminalLineEditor) Resume() error {
+	if !e.terminal || e.raw {
+		return nil
+	}
+	state, err := platformsvc.MakeRaw(e.file.Fd())
+	if err != nil {
+		return err
+	}
+	e.state, e.raw = state, true
+	return nil
 }
 
 func (e *terminalLineEditor) Close() error {
@@ -239,6 +267,130 @@ func isIdentifierRune(r rune) bool {
 	return r <= unicode.MaxASCII && (r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '\'')
 }
 
-func OpenEditor(ctx context.Context, editor, path string, line, column int) error {
-	return exec.CommandContext(ctx, editor, path).Run()
+func editorCommandTemplate(template, path string, line, column int) string {
+	quotedPath := `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(path) + `"`
+	var command strings.Builder
+	hasFile := false
+	for index := 0; index < len(template); index++ {
+		character := template[index]
+		if character == '\\' && index+1 < len(template) && strings.ContainsRune("!%&", rune(template[index+1])) {
+			index++
+			command.WriteByte(template[index])
+			continue
+		}
+		switch character {
+		case '!':
+			command.WriteString(strconv.Itoa(line))
+		case '&':
+			command.WriteString(strconv.Itoa(column))
+		case '%':
+			command.WriteString(quotedPath)
+			hasFile = true
+		default:
+			command.WriteByte(character)
+		}
+	}
+	if !hasFile {
+		if command.Len() != 0 && !strings.HasSuffix(command.String(), " ") {
+			command.WriteByte(' ')
+		}
+		command.WriteString(quotedPath)
+	}
+	return command.String()
+}
+
+func (i *Interpreter) editCommand(arguments []string, out io.Writer) error {
+	if len(arguments) > 1 {
+		return fmt.Errorf("usage: /edit [file]")
+	}
+	path := i.Compiler.CurrentModule
+	if len(arguments) == 1 {
+		path = arguments[0]
+		if filepath.Ext(path) == "" {
+			path += ".m"
+		}
+	}
+	if path == "" {
+		return fmt.Errorf("no current script")
+	}
+	absolute, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
+	if _, err = os.Stat(absolute); errors.Is(err, os.ErrNotExist) {
+		header := ""
+		if home, ok := i.Services.Environment("HOME"); ok {
+			candidate := filepath.Join(home, ".mirahdr")
+			if _, statErr := os.Stat(candidate); statErr == nil {
+				header = candidate
+			}
+		}
+		if header == "" {
+			candidate := filepath.Join(i.Config.LibraryPath, ".mirahdr")
+			if _, statErr := os.Stat(candidate); statErr == nil {
+				header = candidate
+			}
+		}
+		if header != "" && absolute != i.Compiler.CurrentModule {
+			if i.activeEditor == nil {
+				return fmt.Errorf("cannot confirm creation outside an interactive session")
+			}
+			answer, readErr := i.activeEditor.ReadLine(fmt.Sprintf("open new script %q? [ny]", absolute))
+			if readErr != nil || len(answer) == 0 || answer[0] != 'y' && answer[0] != 'Y' {
+				return readErr
+			}
+		}
+		if header != "" {
+			if err = platformsvc.CopyFile(header, absolute); err != nil {
+				return err
+			}
+		}
+	} else if err != nil {
+		return err
+	}
+	before, beforeOK := i.Services.Metadata(absolute)
+	command := editorCommandTemplate(i.Config.Editor, absolute, 1, 1)
+	if i.activeEditor != nil {
+		if err = i.activeEditor.Suspend(); err != nil {
+			return err
+		}
+		defer i.activeEditor.Resume()
+	}
+	_, err = i.Services.Run(platformsvc.ProcessRequest{Context: context.Background(), Executable: platformsvc.ShellFallbackPath, Arguments: []string{platformsvc.ShellCommandArgument, command}, InheritEnvironment: true, Stdin: platformsvc.StreamInherit, Stdout: platformsvc.StreamInherit, Stderr: platformsvc.StreamInherit})
+	if err != nil {
+		return err
+	}
+	after, afterOK := i.Services.Metadata(absolute)
+	if afterOK && (!beforeOK || after != before) {
+		_, err = i.LoadProgram(absolute)
+	}
+	return err
+}
+
+func (i *Interpreter) editorCommand(arguments []string, out io.Writer) error {
+	if len(arguments) == 0 {
+		_, err := fmt.Fprintln(out, i.Config.Editor)
+		return err
+	}
+	name := strings.Join(arguments, " ")
+	if name[0] == '"' || name[0] == '\'' {
+		return fmt.Errorf("please type name of editor without quotation marks")
+	}
+	if i.activeEditor == nil {
+		return fmt.Errorf("cannot confirm editor change outside an interactive session")
+	}
+	answer, err := i.activeEditor.ReadLine(fmt.Sprintf("change editor to: %q? [ny]", name))
+	if err != nil {
+		return err
+	}
+	if len(answer) == 0 || answer[0] != 'y' && answer[0] != 'Y' {
+		_, err = fmt.Fprintln(out, "editor not changed")
+		return err
+	}
+	i.Config.Editor = name
+	if err = i.WriteRC(); err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(out, "editor = "+name)
+	return err
 }

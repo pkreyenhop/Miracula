@@ -6,7 +6,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
+
+	"github.com/pkreyenhop/miracula/internal/platformsvc"
 )
 
 func TestLineEditorNavigationAndEditing(t *testing.T) {
@@ -23,6 +27,53 @@ func TestLineEditorNavigationAndEditing(t *testing.T) {
 	}
 	if line != "YaX" {
 		t.Fatalf("edited line = %q", line)
+	}
+}
+
+type editorServices struct {
+	request platformsvc.ProcessRequest
+}
+
+func (*editorServices) Metadata(string) (platformsvc.FileMetadata, bool) {
+	return platformsvc.FileMetadata{ModifiedSeconds: 1}, true
+}
+func (s *editorServices) Run(request platformsvc.ProcessRequest) (platformsvc.ProcessOutcome, error) {
+	s.request = request
+	return platformsvc.Exited(0), nil
+}
+func (*editorServices) Terminal(uint32) platformsvc.TerminalInfo { return platformsvc.TerminalInfo{} }
+func (*editorServices) Monotonic() time.Duration                 { return 0 }
+func (*editorServices) Environment(string) (string, bool)        { return "", false }
+func (*editorServices) FindExecutable(string) (string, bool)     { return "", false }
+
+func TestEditorCommandTemplateSubstitutions(t *testing.T) {
+	got := editorCommandTemplate(`vi +! % \! \% \& &`, `/tmp/a b.m`, 12, 3)
+	if want := `vi +12 "/tmp/a b.m" ! % & 3`; got != want {
+		t.Fatalf("command = %q, want %q", got, want)
+	}
+	if got = editorCommandTemplate("myed", "foo.m", 1, 1); got != `myed "foo.m"` {
+		t.Fatalf("appended command = %q", got)
+	}
+}
+
+func TestEditCommandRunsConfiguredTemplate(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "sample.m")
+	if err := os.WriteFile(path, []byte("answer = 42\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	services := &editorServices{}
+	i := New(services)
+	i.Config.Editor = "fake-editor +! %"
+	if err := i.editCommand([]string{strings.TrimSuffix(path, ".m")}, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	if services.request.Executable != platformsvc.ShellFallbackPath || len(services.request.Arguments) != 2 {
+		t.Fatalf("request = %+v", services.request)
+	}
+	want := `fake-editor +1 "` + path + `"`
+	if services.request.Arguments[1] != want {
+		t.Fatalf("shell command = %q, want %q", services.request.Arguments[1], want)
 	}
 }
 

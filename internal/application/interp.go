@@ -26,6 +26,7 @@ type Interpreter struct {
 	startupFailed bool
 	Input         io.Reader
 	Output, Error io.Writer
+	activeEditor  LineEditor
 }
 
 func New(services platformsvc.Services) *Interpreter {
