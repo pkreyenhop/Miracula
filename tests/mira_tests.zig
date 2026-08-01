@@ -88,7 +88,11 @@ fn runMira(env: *const TestEnv, script: ?[]const u8, input: []const u8, extra_ar
     multi_reader.init(allocator, testing.io, multi_reader_buffer.toStreams(), &.{ child.stdout.?, child.stderr.? });
     defer multi_reader.deinit();
 
-    const timeout_seconds = if (build_options.force_gc_every_allocation) 120 else 10;
+    // Hosted macOS runners can spend more than ten seconds in the strict Zig
+    // reference's fib-27 regression while other go-ready jobs contend for the
+    // same machine. Keep a firm ceiling, aligned with the spine/signal suites,
+    // without turning ordinary load into a flaky failure.
+    const timeout_seconds = if (build_options.force_gc_every_allocation) 120 else 30;
     const timeout = std.Io.Timeout{ .duration = .{ .raw = std.Io.Duration.fromSeconds(timeout_seconds), .clock = .real } };
     while (multi_reader.fill(64, timeout)) |_| {
         if (multi_reader.reader(0).buffered().len > 1024 * 1024 or multi_reader.reader(1).buffered().len > 1024 * 1024) {
