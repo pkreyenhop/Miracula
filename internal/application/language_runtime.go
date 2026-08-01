@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/pkreyenhop/miracula/internal/platformsvc"
 	"github.com/pkreyenhop/miracula/internal/syntaxfront"
@@ -25,6 +26,7 @@ const (
 	valueNumber valueKind = iota
 	valueFloat
 	valueBool
+	valueChar
 	valueString
 	valueList
 	valueTuple
@@ -49,6 +51,8 @@ func listTypeMismatch(value languageValue) error {
 		actual = "num"
 	case valueBool:
 		actual = "bool"
+	case valueChar:
+		actual = "char"
 	case valueString:
 		actual = "[char]"
 	case valueList:
@@ -621,6 +625,96 @@ func parseRuntimeExpression(text string) (syntaxfront.Expr, error) {
 	return parsed.Script.Items[0].RHS, nil
 }
 
+func decodeMirandaQuoted(text string, quote byte) (string, error) {
+	if len(text) < 2 || text[0] != quote || text[len(text)-1] != quote {
+		return "", errors.New("unterminated quoted literal")
+	}
+	input := text[1 : len(text)-1]
+	var output strings.Builder
+	for position := 0; position < len(input); {
+		if input[position] != '\\' {
+			r, size := utf8.DecodeRuneInString(input[position:])
+			if r == utf8.RuneError && size == 1 {
+				return "", errors.New("illegal UTF-8 character")
+			}
+			output.WriteRune(r)
+			position += size
+			continue
+		}
+		position++
+		if position >= len(input) {
+			return "", errors.New("incomplete escape sequence")
+		}
+		if input[position] == '\n' {
+			if quote != '"' {
+				return "", errors.New("newline is not allowed in a character literal")
+			}
+			position++
+			continue
+		}
+		escapes := map[byte]rune{'a': '\a', 'b': '\b', 'f': '\f', 'n': '\n', 'r': '\r', 't': '\t', 'v': '\v', '\\': '\\', '\'': '\'', '"': '"'}
+		if decoded, ok := escapes[input[position]]; ok {
+			output.WriteRune(decoded)
+			position++
+			continue
+		}
+		base, maximum := 10, 3
+		if input[position] == 'x' || input[position] == 'X' {
+			if input[position] == 'x' {
+				maximum = 4
+			} else {
+				maximum = 6
+			}
+			base = 16
+			position++
+		}
+		start := position
+		for position < len(input) && position-start < maximum && (base == 10 && input[position] >= '0' && input[position] <= '9' || base == 16 && isHexDigit(input[position])) {
+			position++
+		}
+		if start == position {
+			return "", errors.New("numeric escape requires at least one digit")
+		}
+		code, err := strconv.ParseInt(input[start:position], base, 32)
+		if err != nil || !utf8.ValidRune(rune(code)) {
+			return "", errors.New("numeric escape is outside the Unicode range")
+		}
+		output.WriteRune(rune(code))
+	}
+	return output.String(), nil
+}
+
+func isHexDigit(value byte) bool {
+	return value >= '0' && value <= '9' || value >= 'a' && value <= 'f' || value >= 'A' && value <= 'F'
+}
+
+func quoteMirandaChar(value rune) string {
+	switch value {
+	case '\a':
+		return "'\\a'"
+	case '\b':
+		return "'\\b'"
+	case '\f':
+		return "'\\f'"
+	case '\n':
+		return "'\\n'"
+	case '\r':
+		return "'\\r'"
+	case '\t':
+		return "'\\t'"
+	case '\v':
+		return "'\\v'"
+	case '\\':
+		return "'\\\\'"
+	case '\'':
+		return "'\\''"
+	}
+	if value >= 0x20 && value != 0x7f {
+		return "'" + string(value) + "'"
+	}
+	return fmt.Sprintf("'\\x%x'", value)
+}
+
 func runtimePatterns(expression syntaxfront.Expr) (string, []syntaxfront.Expr, bool) {
 	var parameters []syntaxfront.Expr
 	for expression.Variant == "application" {
@@ -932,6 +1026,13 @@ func (r *languageRuntime) matchRuntimePatternBound(pattern syntaxfront.Expr, val
 			return false
 		}
 		return value.kind == valueNumber && integerPointer(value).Cmp(expected) == 0
+	case "char":
+		expected, err := decodeMirandaQuoted(pattern.Text, '\'')
+		runes := []rune(expected)
+		return err == nil && len(runes) == 1 && value.kind == valueChar && value.small == int64(runes[0])
+	case "string":
+		expected, err := decodeMirandaQuoted(pattern.Text, '"')
+		return err == nil && value.kind == valueString && value.text == expected
 	case "tuple":
 		if value.kind != valueTuple || len(value.items) != len(pattern.Items) {
 			return false
@@ -1082,11 +1183,21 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 		}
 		return languageValue{kind: valueNumber, num: value}, nil
 	case "string":
-		value, err := strconv.Unquote(expression.Text)
+		value, err := decodeMirandaQuoted(expression.Text, '"')
 		if err != nil {
 			return languageValue{}, err
 		}
 		return languageValue{kind: valueString, text: value}, nil
+	case "char":
+		value, err := decodeMirandaQuoted(expression.Text, '\'')
+		if err != nil {
+			return languageValue{}, err
+		}
+		runes := []rune(value)
+		if len(runes) != 1 {
+			return languageValue{}, errors.New("character literal must contain exactly one character")
+		}
+		return languageValue{kind: valueChar, small: int64(runes[0])}, nil
 	case "float":
 		value, err := strconv.ParseFloat(expression.Text, 64)
 		if err != nil {
@@ -1520,6 +1631,14 @@ func compareLanguageValues(ctx context.Context, left, right languageValue) (int,
 			return -1, nil
 		}
 		return 1, nil
+	case valueChar:
+		if left.small < right.small {
+			return -1, nil
+		}
+		if left.small > right.small {
+			return 1, nil
+		}
+		return 0, nil
 	case valueString:
 		return strings.Compare(left.text, right.text), nil
 	case valueTuple, valueConstructor:
@@ -1836,6 +1955,19 @@ func (r *languageRuntime) installBuiltins() {
 	}))
 	r.builtin("True", languageValue{kind: valueBool, flag: true})
 	r.builtin("False", languageValue{kind: valueBool, flag: false})
+	r.builtin("code", languageValue{kind: valueFunction, fn: func(_ context.Context, value languageValue) (languageValue, error) {
+		if value.kind != valueChar {
+			return languageValue{}, errors.New("character expected")
+		}
+		return languageValue{kind: valueNumber, small: value.small}, nil
+	}})
+	r.builtin("decode", languageValue{kind: valueFunction, fn: func(_ context.Context, value languageValue) (languageValue, error) {
+		number, err := numberValue(value)
+		if err != nil || !number.IsInt64() || !utf8.ValidRune(rune(number.Int64())) {
+			return languageValue{}, errors.New("valid Unicode code point expected")
+		}
+		return languageValue{kind: valueChar, small: number.Int64()}, nil
+	}})
 	r.builtin("&", lazyBooleanOperator(true))
 	r.builtin("/\\", lazyBooleanOperator(true))
 	r.builtin("\\/", lazyBooleanOperator(false))
@@ -1859,7 +1991,7 @@ func (r *languageRuntime) installBuiltins() {
 			if index.Int64() >= int64(len(chars)) {
 				return languageValue{}, errors.New("subscript out of range")
 			}
-			return languageValue{kind: valueString, text: string(chars[index.Int64()])}, nil
+			return languageValue{kind: valueChar, small: int64(chars[index.Int64()])}, nil
 		}
 		if sequence.kind != valueList {
 			return languageValue{}, listTypeMismatch(sequence)
@@ -2294,6 +2426,8 @@ func renderLanguage(ctx context.Context, value languageValue) (string, error) {
 			return "True", nil
 		}
 		return "False", nil
+	case valueChar:
+		return quoteMirandaChar(rune(value.small)), nil
 	case valueString:
 		return value.text, nil
 	case valueTuple:

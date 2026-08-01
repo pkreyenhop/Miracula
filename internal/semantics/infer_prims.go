@@ -11,6 +11,7 @@ func PrimitiveType(name string) (*Type, bool) {
 		"reverse": "[*]->[*]", "take": "num->[*]->[*]", "map": "(*->**)->[*]->[**]",
 		"filter": "(*->bool)->[*]->[*]", "foldl": "(*->**->*)->*->[**]->*", "foldr": "(*->**->**)->**->[*]->**",
 		"sum": "[num]->num", "product": "[num]->num", "show": "*->[char]", "readvals": "[char]->[*]",
+		"code": "char->num", "decode": "num->char",
 		"True": "bool", "False": "bool", "undef": "*",
 	}
 	signature, ok := signatures[name]

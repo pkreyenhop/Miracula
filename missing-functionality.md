@@ -162,7 +162,14 @@ Implementation instructions:
 Acceptance tests: execute every example in manual sections 8 and 9, including
 negative `div`/`mod`, continued relations, structured equality, and sections.
 
-### MISSING-004 — Complete literals and character semantics
+### MISSING-004 — Complete literals and character semantics ✅
+
+Status: completed. Miranda literals now use a dedicated decoder for named,
+decimal, `\x`, and `\X` escapes, escaped string newlines, Unicode validation,
+and malformed-literal diagnostics. Characters have their own runtime value,
+pattern, display, comparison, subscript, `code`, and `decode` behavior.
+Hexadecimal floating-point literals and identifier digit/apostrophe boundaries
+are covered end to end by lexer and evaluator conformance tests.
 
 Manual sections: 10–12, 26, 32.
 

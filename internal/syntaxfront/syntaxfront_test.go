@@ -66,6 +66,19 @@ func TestLexerFamilies(t *testing.T) {
 	}
 }
 
+func TestLiteralLexicalConformance(t *testing.T) {
+	tokens := Lex(NewSource([]byte("foo2' = 0x1.8p+2; bar'3 = 0o77; s = \"a\\\nb\"; c = '\\X0020ac'"), false))
+	want := []string{"name", "eq", "const_float", "semicolon", "name", "eq", "const_int", "semicolon", "name", "eq", "const_str", "semicolon", "name", "eq", "const_char", "eof"}
+	if len(tokens) != len(want) {
+		t.Fatalf("token count = %d, want %d: %#v", len(tokens), len(want), tokens)
+	}
+	for index, kind := range want {
+		if tokens[index].Kind != kind {
+			t.Fatalf("token %d = %s, want %s", index, tokens[index].Kind, kind)
+		}
+	}
+}
+
 func TestParenthesizedNegativeIsNotAnOperatorSection(t *testing.T) {
 	parsed := Run([]byte("value = (-12345678901234567890) + 12345678901234567880\n"))
 	if len(parsed.Diagnostics) > 0 || len(parsed.Script.Items) != 1 {

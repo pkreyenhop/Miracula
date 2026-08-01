@@ -111,8 +111,14 @@ func Lex(source Source) []Token {
 
 func scanQuoted(input []byte, start int, quote byte, kind string) (int, string) {
 	i := start + 1
-	for i < len(input) && input[i] != quote && input[i] != '\n' {
+	for i < len(input) && input[i] != quote {
+		if input[i] == '\n' {
+			return i, "error"
+		}
 		if input[i] == '\\' && i+1 < len(input) {
+			if input[i+1] == '\n' && quote != '"' {
+				return i + 1, "error"
+			}
 			i += 2
 		} else {
 			i++
@@ -130,9 +136,33 @@ func scanNumber(input []byte, start int) (string, int) {
 		kind = "const_float"
 		i++
 	}
-	if i+1 < len(input) && input[i] == '0' && (input[i+1] == 'x' || input[i+1] == 'X' || input[i+1] == 'o' || input[i+1] == 'O') {
+	if i+1 < len(input) && input[i] == '0' && (input[i+1] == 'x' || input[i+1] == 'X') {
 		i += 2
 		for i < len(input) && (isDigit(input[i]) || input[i] >= 'a' && input[i] <= 'f' || input[i] >= 'A' && input[i] <= 'F') {
+			i++
+		}
+		if i < len(input) && input[i] == '.' && !(i+1 < len(input) && input[i+1] == '.') {
+			kind = "const_float"
+			i++
+			for i < len(input) && (isDigit(input[i]) || input[i] >= 'a' && input[i] <= 'f' || input[i] >= 'A' && input[i] <= 'F') {
+				i++
+			}
+		}
+		if i < len(input) && (input[i] == 'p' || input[i] == 'P') {
+			kind = "const_float"
+			i++
+			if i < len(input) && (input[i] == '+' || input[i] == '-') {
+				i++
+			}
+			for i < len(input) && isDigit(input[i]) {
+				i++
+			}
+		}
+		return kind, i
+	}
+	if i+1 < len(input) && input[i] == '0' && (input[i+1] == 'o' || input[i+1] == 'O') {
+		i += 2
+		for i < len(input) && input[i] >= '0' && input[i] <= '7' {
 			i++
 		}
 		return kind, i

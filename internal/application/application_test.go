@@ -235,6 +235,40 @@ func TestMirandaOperatorSemantics(t *testing.T) {
 	}
 }
 
+func TestMirandaLiteralAndCharacterSemantics(t *testing.T) {
+	runtime := newLanguageRuntime(io.Discard)
+	tests := map[string]string{
+		"'a'": "'a'", "'\\n'": "'\\n'", "'\\127'": "'\\x7f'", "'\\x3b3'": "'γ'", "'\\X0020ac'": "'€'",
+		"\"\\0078\"": "\a8", "\"\\78\"": "N", "\"hello \\\ndolly\"": "hello dolly",
+		"code 'a'": "97", "decode 8364": "'€'", "decode (code 'γ')": "'γ'",
+		"0x1.0p-2": "0.25", "0x1p4": "16.0", "'a' < 'b'": "True", "\"abc\"!1": "'b'",
+	}
+	for expression, want := range tests {
+		parsed, err := parseRuntimeExpression(expression)
+		if err != nil {
+			t.Fatalf("parse %q: %v", expression, err)
+		}
+		value, err := runtime.evaluate(context.Background(), parsed)
+		if err != nil {
+			t.Fatalf("%q: %v", expression, err)
+		}
+		got, err := renderLanguage(context.Background(), value)
+		if err != nil || got != want {
+			t.Fatalf("%q = %q, %v; want %q", expression, got, err, want)
+		}
+	}
+	for _, expression := range []string{"'\\x'", "'\\X110000'", "'ab'", "decode (-1)"} {
+		parsed, _ := parseRuntimeExpression(expression)
+		value, err := runtime.evaluate(context.Background(), parsed)
+		if err == nil {
+			_, err = renderLanguage(context.Background(), value)
+		}
+		if err == nil {
+			t.Fatalf("%q unexpectedly succeeded", expression)
+		}
+	}
+}
+
 func TestStrictConstructorFieldForcesArgument(t *testing.T) {
 	runtime := newLanguageRuntime(io.Discard)
 	if err := runtime.installSource([]byte("box ::= Lazy num | Strict num!\ntag (Lazy x) = 1\ntag (Strict x) = 1\n")); err != nil {
