@@ -216,20 +216,63 @@ func (r *languageRuntime) install(script syntaxfront.Script) error {
 }
 
 type runtimeClause struct {
-	parameters []syntaxfront.Expr
-	body       syntaxfront.Expr
-	condition  *syntaxfront.Expr
+	parameters  []syntaxfront.Expr
+	body        syntaxfront.Expr
+	condition   *syntaxfront.Expr
+	otherwise   bool
+	localSource []byte
 }
 
 // installSource preserves guarded equations, whose continuation-line shape is
 // intentionally models the complete language syntax needed by evaluation.
 func (r *languageRuntime) installSource(source []byte) error {
 	clauses := map[string][]runtimeClause{}
+	type conformalBinding struct{ pattern, body syntaxfront.Expr }
+	var conformals []conformalBinding
 	currentName := ""
 	var currentParameters []syntaxfront.Expr
-	for _, rawLine := range logicalSourceLines(source) {
+	closed := map[string]bool{}
+	otherwiseSeen := map[string]bool{}
+	lines := logicalSourceLines(source)
+	currentIndent := 0
+	for lineIndex := 0; lineIndex < len(lines); lineIndex++ {
+		rawLine := lines[lineIndex]
 		line := strings.TrimSpace(rawLine)
 		if line == "" || strings.HasPrefix(line, "||") || strings.HasPrefix(line, "%") {
+			continue
+		}
+		if line == "where" {
+			var localLines []string
+			minimum := -1
+			for lineIndex+1 < len(lines) {
+				next := lines[lineIndex+1]
+				trimmed := strings.TrimSpace(next)
+				if trimmed == "" {
+					lineIndex++
+					continue
+				}
+				indent := leadingIndent(next)
+				if indent <= currentIndent {
+					break
+				}
+				lineIndex++
+				if minimum < 0 || indent < minimum {
+					minimum = indent
+				}
+				localLines = append(localLines, next)
+			}
+			if currentName == "" || len(localLines) == 0 {
+				return errors.New("where must qualify a definition")
+			}
+			for index := range localLines {
+				if len(localLines[index]) >= minimum {
+					localLines[index] = localLines[index][minimum:]
+				}
+			}
+			localSource := []byte(strings.Join(localLines, "\n") + "\n")
+			for index := range clauses[currentName] {
+				clauses[currentName][index].localSource = localSource
+			}
 			continue
 		}
 		if marker := strings.Index(line, "::="); marker >= 0 {
@@ -261,13 +304,48 @@ func (r *languageRuntime) installSource(source []byte) error {
 				continue
 			}
 			var ok bool
-			currentName, currentParameters, ok = runtimePatterns(lhsParsed.Script.Items[0].LHS)
+			name, parameters, parsed := runtimePatterns(lhsParsed.Script.Items[0].LHS)
+			if !parsed {
+				pattern := lhsParsed.Script.Items[0].LHS
+				if patternBindingCount(pattern) == 0 {
+					return errors.New("conformal definition must bind at least one name")
+				}
+				body, err := parseRuntimeExpression(right)
+				if err != nil {
+					return err
+				}
+				conformals = append(conformals, conformalBinding{pattern: pattern, body: body})
+				currentName = ""
+				continue
+			}
+			if currentName != "" && name != currentName {
+				closed[currentName] = true
+			}
+			if closed[name] {
+				return fmt.Errorf("non-contiguous or duplicate top-level binding %s", name)
+			}
+			if existing := clauses[name]; len(existing) > 0 && len(existing[0].parameters) != len(parameters) {
+				return fmt.Errorf("inconsistent arity in definition of %s", name)
+			}
+			for _, pattern := range parameters {
+				if err := validateRuntimePattern(pattern); err != nil {
+					return fmt.Errorf("%s: %w", name, err)
+				}
+			}
+			if otherwiseSeen[name] {
+				return fmt.Errorf("otherwise must be the final alternative of %s", name)
+			}
+			currentName, currentParameters, ok = name, parameters, true
+			currentIndent = leadingIndent(rawLine)
 			if !ok {
 				continue
 			}
 		}
 		if currentName == "" || right == "" {
 			continue
+		}
+		if otherwiseSeen[currentName] {
+			return fmt.Errorf("otherwise must be the final alternative of %s", currentName)
 		}
 		bodyText, conditionText := right, ""
 		if marker := strings.LastIndex(right, ","); marker >= 0 {
@@ -282,7 +360,7 @@ func (r *languageRuntime) installSource(source []byte) error {
 		if err != nil {
 			return fmt.Errorf("%s: %w", currentName, err)
 		}
-		clause := runtimeClause{parameters: append([]syntaxfront.Expr(nil), currentParameters...), body: body}
+		clause := runtimeClause{parameters: append([]syntaxfront.Expr(nil), currentParameters...), body: body, otherwise: strings.HasSuffix(right, ", otherwise")}
 		if conditionText != "" {
 			condition, err := parseRuntimeExpression(conditionText)
 			if err != nil {
@@ -291,6 +369,9 @@ func (r *languageRuntime) installSource(source []byte) error {
 			clause.condition = &condition
 		}
 		clauses[currentName] = append(clauses[currentName], clause)
+		if clause.otherwise {
+			otherwiseSeen[currentName] = true
+		}
 	}
 	for name, alternatives := range clauses {
 		name, alternatives := name, alternatives
@@ -302,6 +383,38 @@ func (r *languageRuntime) installSource(source []byte) error {
 			return r.clauseFunction(alternatives, nil), nil
 		}
 		r.globals[name] = thunk
+	}
+	for _, conformal := range conformals {
+		conformal := conformal
+		bindings := map[string]*languageThunk{}
+		match := &languageThunk{eval: func() (languageValue, error) {
+			value, err := r.eval(context.Background(), conformal.body, r.globals)
+			if err != nil {
+				return languageValue{}, err
+			}
+			captured := map[string]*languageThunk{}
+			if !r.matchRuntimePattern(conformal.pattern, value, captured) {
+				return languageValue{}, errors.New("conformal definition pattern mismatch")
+			}
+			for name, value := range captured {
+				bindings[name] = value
+			}
+			return languageValue{kind: valueBool, flag: true}, nil
+		}}
+		names := map[string]bool{}
+		collectPatternNames(conformal.pattern, names)
+		for name := range names {
+			name := name
+			if r.globals[name] != nil {
+				return fmt.Errorf("duplicate top-level binding %s", name)
+			}
+			r.globals[name] = &languageThunk{eval: func() (languageValue, error) {
+				if _, err := match.force(); err != nil {
+					return languageValue{}, err
+				}
+				return bindings[name].force()
+			}}
+		}
 	}
 	return nil
 }
@@ -896,8 +1009,9 @@ func (r *languageRuntime) selectClause(ctx context.Context, clauses []runtimeCla
 		frame := r.acquireCallFrame(clause.parameters)
 		environment := frame.environment
 		matched := true
+		seen := map[string]languageValue{}
 		for index, pattern := range clause.parameters {
-			if !r.matchRuntimePatternBound(pattern, arguments[index], environment, frame.bind) {
+			if !r.matchRuntimePatternBound(pattern, arguments[index], environment, frame.bind, seen) {
 				matched = false
 				break
 			}
@@ -905,6 +1019,12 @@ func (r *languageRuntime) selectClause(ctx context.Context, clauses []runtimeCla
 		if !matched {
 			r.releaseCallFrame(frame)
 			continue
+		}
+		if len(clause.localSource) != 0 {
+			if err := r.installLocalSource(clause.localSource, environment); err != nil {
+				r.releaseCallFrame(frame)
+				return languageValue{}, err
+			}
 		}
 		if clause.condition != nil {
 			condition, err := r.eval(ctx, *clause.condition, environment)
@@ -926,6 +1046,43 @@ func (r *languageRuntime) selectClause(ctx context.Context, clauses []runtimeCla
 		return result, err
 	}
 	return languageValue{}, errors.New("no matching equation")
+}
+
+func (r *languageRuntime) installLocalSource(source []byte, environment map[string]*languageThunk) error {
+	child := &languageRuntime{globals: map[string]*languageThunk{}, productConstructors: r.productConstructors, appendFiles: r.appendFiles, output: r.output}
+	for name, value := range r.globals {
+		child.globals[name] = value
+	}
+	for name, value := range environment {
+		child.globals[name] = value
+	}
+	before := map[string]*languageThunk{}
+	for name, value := range child.globals {
+		before[name] = value
+	}
+	if err := child.installSource(source); err != nil {
+		return err
+	}
+	for name, value := range child.globals {
+		if before[name] != value {
+			environment[name] = value
+		}
+	}
+	return nil
+}
+
+func leadingIndent(line string) int {
+	indent := 0
+	for _, char := range line {
+		if char == ' ' {
+			indent++
+		} else if char == '\t' {
+			indent += 8
+		} else {
+			break
+		}
+	}
+	return indent
 }
 
 func (r *languageRuntime) acquireCallFrame(patterns []syntaxfront.Expr) *languageCallFrame {
@@ -966,12 +1123,17 @@ func patternBindingCount(pattern syntaxfront.Expr) int {
 }
 
 func (r *languageRuntime) matchRuntimePattern(pattern syntaxfront.Expr, value languageValue, environment map[string]*languageThunk) bool {
-	return r.matchRuntimePatternBound(pattern, value, environment, func(name string, value languageValue) { environment[name] = immediate(value) })
+	return r.matchRuntimePatternBound(pattern, value, environment, func(name string, value languageValue) { environment[name] = immediate(value) }, map[string]languageValue{})
 }
 
-func (r *languageRuntime) matchRuntimePatternBound(pattern syntaxfront.Expr, value languageValue, environment map[string]*languageThunk, bind func(string, languageValue)) bool {
+func (r *languageRuntime) matchRuntimePatternBound(pattern syntaxfront.Expr, value languageValue, environment map[string]*languageThunk, bind func(string, languageValue), seen map[string]languageValue) bool {
 	if pattern.Variant == "name" {
 		if pattern.Text != "_" {
+			if previous, exists := seen[pattern.Text]; exists {
+				equal, err := compareLanguage(context.Background(), "=", previous, value)
+				return err == nil && equal
+			}
+			seen[pattern.Text] = value
 			bind(pattern.Text, value)
 		}
 		return true
@@ -989,7 +1151,7 @@ func (r *languageRuntime) matchRuntimePatternBound(pattern syntaxfront.Expr, val
 				}
 				return outer.items[itemIndex], nil
 			}}}
-			if !r.matchRuntimePatternBound(item, projection, environment, bind) {
+			if !r.matchRuntimePatternBound(item, projection, environment, bind, seen) {
 				return false
 			}
 		}
@@ -1008,7 +1170,7 @@ func (r *languageRuntime) matchRuntimePatternBound(pattern syntaxfront.Expr, val
 				}
 				return outer.items[itemIndex], nil
 			}}}
-			if !r.matchRuntimePatternBound(item, projection, environment, bind) {
+			if !r.matchRuntimePatternBound(item, projection, environment, bind, seen) {
 				return false
 			}
 		}
@@ -1040,7 +1202,7 @@ func (r *languageRuntime) matchRuntimePatternBound(pattern syntaxfront.Expr, val
 			return false
 		}
 		for index, item := range pattern.Items {
-			if !r.matchRuntimePatternBound(item, value.items[index], environment, bind) {
+			if !r.matchRuntimePatternBound(item, value.items[index], environment, bind, seen) {
 				return false
 			}
 		}
@@ -1054,12 +1216,27 @@ func (r *languageRuntime) matchRuntimePatternBound(pattern syntaxfront.Expr, val
 			return false
 		}
 		for index, item := range pattern.Items {
-			if !r.matchRuntimePatternBound(item, items[index], environment, bind) {
+			if !r.matchRuntimePatternBound(item, items[index], environment, bind, seen) {
 				return false
 			}
 		}
 		return true
 	case "infix":
+		if pattern.Text == "+" && pattern.Tail != nil && pattern.Tail.Variant == "int" && value.kind == valueNumber {
+			offset := new(big.Int)
+			if _, ok := offset.SetString(pattern.Tail.Text, 0); !ok || offset.Sign() < 0 {
+				return false
+			}
+			actual := integerPointer(value)
+			if actual.Cmp(offset) < 0 {
+				return false
+			}
+			remainder := numberFromBig(new(big.Int).Sub(actual, offset))
+			return r.matchRuntimePatternBound(*pattern.Head, remainder, environment, bind, seen)
+		}
+		if strings.HasPrefix(pattern.Text, "$") && value.kind == valueConstructor && value.name == strings.TrimPrefix(pattern.Text, "$") && len(value.items) == 2 {
+			return r.matchRuntimePatternBound(*pattern.Head, value.items[0], environment, bind, seen) && r.matchRuntimePatternBound(*pattern.Tail, value.items[1], environment, bind, seen)
+		}
 		if pattern.Text != ":" || value.kind != valueList {
 			return false
 		}
@@ -1068,14 +1245,24 @@ func (r *languageRuntime) matchRuntimePatternBound(pattern syntaxfront.Expr, val
 			return false
 		}
 		tail := languageValue{kind: valueList, list: &lazyList{next: func(ctx context.Context, index int) (languageValue, bool, error) { return value.list.at(ctx, index+1) }}}
-		return r.matchRuntimePatternBound(*pattern.Head, head, environment, bind) && r.matchRuntimePatternBound(*pattern.Tail, tail, environment, bind)
+		return r.matchRuntimePatternBound(*pattern.Head, head, environment, bind, seen) && r.matchRuntimePatternBound(*pattern.Tail, tail, environment, bind, seen)
+	case "neg":
+		if pattern.Arg == nil || pattern.Arg.Variant != "int" || value.kind != valueNumber {
+			return false
+		}
+		expected := new(big.Int)
+		if _, ok := expected.SetString(pattern.Arg.Text, 0); !ok {
+			return false
+		}
+		expected.Neg(expected)
+		return integerPointer(value).Cmp(expected) == 0
 	case "application", "constructor":
 		name, patterns, ok := constructorPattern(pattern)
 		if !ok || value.kind != valueConstructor || value.name != name || len(value.items) != len(patterns) {
 			return false
 		}
 		for index, item := range patterns {
-			if !r.matchRuntimePatternBound(item, value.items[index], environment, bind) {
+			if !r.matchRuntimePatternBound(item, value.items[index], environment, bind, seen) {
 				return false
 			}
 		}
@@ -1083,6 +1270,28 @@ func (r *languageRuntime) matchRuntimePatternBound(pattern syntaxfront.Expr, val
 	default:
 		return false
 	}
+}
+
+func validateRuntimePattern(pattern syntaxfront.Expr) error {
+	if pattern.Variant == "float" {
+		return errors.New("floating-point constants are not permitted in patterns")
+	}
+	if pattern.Variant == "infix" && pattern.Text == "+" && (pattern.Tail == nil || pattern.Tail.Variant != "int") {
+		return errors.New("natural-number pattern offset must be a literal integer")
+	}
+	for _, child := range []*syntaxfront.Expr{pattern.Head, pattern.Tail, pattern.Func, pattern.Arg} {
+		if child != nil {
+			if err := validateRuntimePattern(*child); err != nil {
+				return err
+			}
+		}
+	}
+	for _, item := range pattern.Items {
+		if err := validateRuntimePattern(item); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func irrefutableRuntimePattern(pattern syntaxfront.Expr) bool {

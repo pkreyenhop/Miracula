@@ -229,7 +229,15 @@ Implementation instructions:
 Acceptance tests: run every example in sections 13/1–13/3, including finite
 prefixes of multiple infinite diagonal generators.
 
-### MISSING-006 — Complete definitions, guards, local scope, and patterns
+### MISSING-006 — Complete definitions, guards, local scope, and patterns ✅
+
+Status: completed. Runtime declaration loading now groups contiguous equations,
+checks duplicate bindings and arity, enforces final `otherwise` alternatives,
+and installs recursively scoped, layout-delimited `where` groups over bodies
+and guards. Pattern matching covers repeated-name equality, natural-number and
+negative-integer patterns, constructor/list/product forms, float rejection,
+and irrefutable projections. Conformal definitions bind atomically and leave
+every name undefined on failure; declaration-order independence is retained.
 
 Manual sections: 12, 14–16, 24–25.
 

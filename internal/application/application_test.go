@@ -297,6 +297,38 @@ func TestLazyRangesAndComprehensions(t *testing.T) {
 	}
 }
 
+func TestDefinitionAndPatternSemantics(t *testing.T) {
+	runtime := newLanguageRuntime(io.Discard)
+	source := "equal x x = True\nequal x y = False\npred (n+1) = n\npred 0 = 0\nnegative (-2) = True\nnegative x = False\n[a,b,3] = [1,2,3]\nforward = later+1\nlater = 4\nfoo x = p+q, if p<q\n      = p-q, otherwise\n  where\n  p = x^2+1\n  q = 3*x\nouter x = local x\n  where\n  local y = helper y\n    where\n    helper z = z+1\n"
+	if err := runtime.installSource([]byte(source)); err != nil {
+		t.Fatal(err)
+	}
+	for expression, want := range map[string]string{"equal 3 3": "True", "equal 3 4": "False", "pred 9": "8", "pred 0": "0", "negative (-2)": "True", "negative 2": "False", "a+b": "3", "forward": "5", "foo 2": "11", "outer 4": "5"} {
+		parsed, _ := parseRuntimeExpression(expression)
+		value, err := runtime.evaluate(context.Background(), parsed)
+		if err != nil {
+			t.Fatalf("%s: %v", expression, err)
+		}
+		got, err := renderLanguage(context.Background(), value)
+		if err != nil || got != want {
+			t.Fatalf("%s = %q, %v; want %q", expression, got, err, want)
+		}
+	}
+	for _, invalid := range []string{"f x = x\ng = 1\nf y = y\n", "f x = x\nf x y = x\n", "f x = 1, otherwise\n = 2, if x=0\n", "f 1.5 = 2\n", "1 = 2\n"} {
+		if err := newLanguageRuntime(io.Discard).installSource([]byte(invalid)); err == nil {
+			t.Fatalf("invalid definitions accepted: %q", invalid)
+		}
+	}
+	failed := newLanguageRuntime(io.Discard)
+	if err := failed.installSource([]byte("(x,x) = (1,2)\n")); err != nil {
+		t.Fatal(err)
+	}
+	parsed, _ := parseRuntimeExpression("x")
+	if _, err := failed.evaluate(context.Background(), parsed); err == nil {
+		t.Fatal("failed conformal match defined x")
+	}
+}
+
 func TestStrictConstructorFieldForcesArgument(t *testing.T) {
 	runtime := newLanguageRuntime(io.Discard)
 	if err := runtime.installSource([]byte("box ::= Lazy num | Strict num!\ntag (Lazy x) = 1\ntag (Strict x) = 1\n")); err != nil {
