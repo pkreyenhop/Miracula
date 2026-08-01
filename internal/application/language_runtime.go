@@ -124,6 +124,12 @@ type languageRuntime struct {
 	productConstructors map[string]bool
 	appendFiles         map[string]bool
 	output              io.Writer
+	input               io.Reader
+	arguments           []string
+	inputMu             sync.Mutex
+	inputData           []byte
+	inputRead           bool
+	inputMode           int
 	reductions          uint64
 	cells               uint64
 }
@@ -204,7 +210,7 @@ func deepForceLanguage(ctx context.Context, value languageValue) error {
 }
 
 func newLanguageRuntime(output io.Writer) *languageRuntime {
-	r := &languageRuntime{globals: map[string]*languageThunk{}, productConstructors: map[string]bool{}, appendFiles: map[string]bool{}, output: output}
+	r := &languageRuntime{globals: map[string]*languageThunk{}, productConstructors: map[string]bool{}, appendFiles: map[string]bool{}, output: output, input: strings.NewReader("")}
 	r.installBuiltins()
 	return r
 }
@@ -213,6 +219,10 @@ func (i *Interpreter) runtime() *languageRuntime {
 	if i.language == nil {
 		i.language = newLanguageRuntime(i.Output)
 	}
+	if i.Input != nil {
+		i.language.input = i.Input
+	}
+	i.language.arguments = append(i.language.arguments[:0], i.Arguments...)
 	return i.language
 }
 
@@ -2413,8 +2423,84 @@ func (r *languageRuntime) builtin(name string, value languageValue) {
 	r.globals[name] = immediate(value)
 }
 
+func (r *languageRuntime) standardInput(binary bool) ([]byte, error) {
+	r.inputMu.Lock()
+	defer r.inputMu.Unlock()
+	mode := 1
+	if binary {
+		mode = 2
+	}
+	if r.inputMode != 0 && r.inputMode != mode {
+		return nil, errors.New("$- and $:- cannot be used in the same evaluation")
+	}
+	r.inputMode = mode
+	if !r.inputRead {
+		data, err := io.ReadAll(r.input)
+		if err != nil {
+			return nil, err
+		}
+		r.inputData, r.inputRead = data, true
+	}
+	return append([]byte(nil), r.inputData...), nil
+}
+
+func (r *languageRuntime) readValues(ctx context.Context, data []byte) languageValue {
+	lines := strings.Split(string(data), "\n")
+	lineIndex := 0
+	return languageValue{kind: valueList, list: &lazyList{next: func(nextCtx context.Context, _ int) (languageValue, bool, error) {
+		for lineIndex < len(lines) {
+			line := strings.TrimSpace(lines[lineIndex])
+			lineIndex++
+			if line == "" || strings.HasPrefix(line, "||") {
+				continue
+			}
+			expression, err := parseRuntimeExpression(line)
+			if err != nil {
+				return languageValue{}, false, err
+			}
+			captured := expression
+			return languageValue{kind: valueThunk, thunk: &languageThunk{eval: func() (languageValue, error) { return r.eval(nextCtx, captured, r.globals) }}}, true, nil
+		}
+		return languageValue{}, false, nil
+	}}}
+}
+
 func (r *languageRuntime) installBuiltins() {
 	r.globals["undef"] = &languageThunk{eval: func() (languageValue, error) { return languageValue{}, errors.New("undefined") }}
+	for name, arity := range map[string]int{"Stdout": 1, "Stderr": 1, "Tofile": 2, "Closefile": 1, "Appendfile": 1, "System": 1, "Exit": 1, "Stdoutb": 1, "Tofileb": 2, "Appendfileb": 1} {
+		r.installConstructor(name, make([]bool, arity))
+	}
+	r.globals["$-"] = &languageThunk{eval: func() (languageValue, error) {
+		data, err := r.standardInput(false)
+		if err != nil {
+			return languageValue{}, err
+		}
+		if !utf8.Valid(data) {
+			return languageValue{}, errors.New("illegal UTF-8 input")
+		}
+		return languageValue{kind: valueString, text: string(data)}, nil
+	}}
+	r.globals["$:-"] = &languageThunk{eval: func() (languageValue, error) {
+		data, err := r.standardInput(true)
+		if err != nil {
+			return languageValue{}, err
+		}
+		return languageValue{kind: valueString, text: string(data)}, nil
+	}}
+	r.globals["$+"] = &languageThunk{eval: func() (languageValue, error) {
+		data, err := r.standardInput(false)
+		if err != nil {
+			return languageValue{}, err
+		}
+		return r.readValues(context.Background(), data), nil
+	}}
+	r.globals["$*"] = &languageThunk{eval: func() (languageValue, error) {
+		values := make([]languageValue, len(r.arguments))
+		for index, argument := range r.arguments {
+			values[index] = languageValue{kind: valueString, text: argument}
+		}
+		return listValue(values), nil
+	}}
 	integer := func(small func(int64, int64) (int64, bool), op func(*big.Int, *big.Int) *big.Int) languageValue {
 		return curry2(func(_ context.Context, a, b languageValue) (languageValue, error) {
 			if a.kind == valueNumber && b.kind == valueNumber && a.num == nil && b.num == nil {
@@ -2795,45 +2881,8 @@ func (r *languageRuntime) installBuiltins() {
 		if err != nil {
 			return languageValue{}, err
 		}
-		var values []languageValue
-		for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
-			expression, err := parseRuntimeExpression(strings.TrimSpace(line))
-			if err != nil {
-				return languageValue{}, err
-			}
-			value, err := r.eval(ctx, expression, r.globals)
-			if err != nil {
-				return languageValue{}, err
-			}
-			values = append(values, value)
-			if r.output != nil {
-				text, err := renderLanguage(ctx, value)
-				if err != nil {
-					return languageValue{}, err
-				}
-				fmt.Fprintln(r.output, text)
-			}
-		}
-		return listValue(values), nil
+		return r.readValues(ctx, data), nil
 	}})
-	r.builtin("Appendfile", languageValue{kind: valueFunction, fn: func(_ context.Context, path languageValue) (languageValue, error) {
-		if path.kind != valueString {
-			return languageValue{}, errors.New("string expected")
-		}
-		r.appendFiles[path.text] = true
-		return languageValue{kind: valueMessage}, nil
-	}})
-	r.builtin("Tofile", curry2(func(_ context.Context, path, message languageValue) (languageValue, error) {
-		if path.kind != valueString || message.kind != valueString {
-			return languageValue{}, errors.New("string expected")
-		}
-		appendMode := r.appendFiles[path.text]
-		delete(r.appendFiles, path.text)
-		if err := platformsvc.WriteText(path.text, message.text, appendMode); err != nil {
-			return languageValue{}, err
-		}
-		return languageValue{kind: valueMessage}, nil
-	}))
 	for name, function := range map[string]func(float64) float64{"sin": math.Sin, "cos": math.Cos, "tan": math.Tan} {
 		function := function
 		r.builtin(name, languageValue{kind: valueFunction, fn: func(_ context.Context, value languageValue) (languageValue, error) {
@@ -2949,18 +2998,23 @@ func (r *languageRuntime) installBuiltins() {
 		}
 		return languageValue{kind: valueString, text: os.Getenv(value.text)}, nil
 	}})
-	readFile := func(_ context.Context, value languageValue) (languageValue, error) {
-		if value.kind != valueString {
-			return languageValue{}, errors.New("string expected")
+	readFile := func(binary bool) func(context.Context, languageValue) (languageValue, error) {
+		return func(_ context.Context, value languageValue) (languageValue, error) {
+			if value.kind != valueString {
+				return languageValue{}, errors.New("string expected")
+			}
+			content, err := os.ReadFile(value.text)
+			if err != nil {
+				return languageValue{}, err
+			}
+			if !binary && !utf8.Valid(content) {
+				return languageValue{}, errors.New("illegal UTF-8 input")
+			}
+			return languageValue{kind: valueString, text: string(content)}, nil
 		}
-		content, err := os.ReadFile(value.text)
-		if err != nil {
-			return languageValue{}, err
-		}
-		return languageValue{kind: valueString, text: string(content)}, nil
 	}
-	r.builtin("read", languageValue{kind: valueFunction, fn: readFile})
-	r.builtin("readb", languageValue{kind: valueFunction, fn: readFile})
+	r.builtin("read", languageValue{kind: valueFunction, fn: readFile(false)})
+	r.builtin("readb", languageValue{kind: valueFunction, fn: readFile(true)})
 	r.builtin("filemode", languageValue{kind: valueFunction, fn: func(_ context.Context, value languageValue) (languageValue, error) {
 		if value.kind != valueString {
 			return languageValue{}, errors.New("string expected")

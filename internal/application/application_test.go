@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"github.com/pkreyenhop/miracula/internal/platformsvc"
 	"github.com/pkreyenhop/miracula/internal/protocol"
 	"github.com/pkreyenhop/miracula/internal/semantics"
@@ -346,6 +347,67 @@ func TestDefinitionAndPatternSemantics(t *testing.T) {
 	parsed, _ := parseRuntimeExpression("x")
 	if _, err := failed.evaluate(context.Background(), parsed); err == nil {
 		t.Fatal("failed conformal match defined x")
+	}
+}
+
+func TestSystemMessageIOAndInputValues(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "messages.txt")
+	if err := os.WriteFile(path, []byte("old"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	i := New(platformsvc.NativeServices{})
+	var stdout, stderr bytes.Buffer
+	i.Error = &stderr
+	expression := fmt.Sprintf("[Tofile %q \"a\",Tofile %q \"b\",Closefile %q,Appendfile %q,Tofile %q \"c\",Stdout \"out\",Stderr \"err\",Exit 7,Stdout \"never\"]", path, path, path, path, path)
+	streamed, err := i.evaluateTo(context.Background(), expression, &stdout)
+	if err != nil || !streamed {
+		t.Fatalf("messages: streamed=%v err=%v", streamed, err)
+	}
+	content, _ := os.ReadFile(path)
+	if string(content) != "abc" || stdout.String() != "out" || stderr.String() != "err" || !i.Repl.ExitRequested || i.Repl.ExitStatus != 7 {
+		t.Fatalf("content=%q stdout=%q stderr=%q exit=%v/%d", content, stdout.String(), stderr.String(), i.Repl.ExitRequested, i.Repl.ExitStatus)
+	}
+	binaryInput, binaryOutput := filepath.Join(directory, "input.bin"), filepath.Join(directory, "output.bin")
+	binary := []byte{0, 0xff, 0x80, 'x'}
+	if err := os.WriteFile(binaryInput, binary, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	binaryInterpreter := New(platformsvc.NativeServices{})
+	binaryExpression := fmt.Sprintf("[Tofileb %q (readb %q)]", binaryOutput, binaryInput)
+	if _, err := binaryInterpreter.evaluateTo(context.Background(), binaryExpression, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	written, _ := os.ReadFile(binaryOutput)
+	if !bytes.Equal(written, binary) {
+		t.Fatalf("binary output = %v, want %v", written, binary)
+	}
+	if _, err := binaryInterpreter.Evaluate(context.Background(), fmt.Sprintf("read %q", binaryInput)); err == nil {
+		t.Fatal("text read accepted invalid UTF-8")
+	}
+
+	input := New(platformsvc.NativeServices{})
+	input.Input = strings.NewReader("hello")
+	value, err := input.Evaluate(context.Background(), "$- ++ $-")
+	if err != nil || value != "hellohello" {
+		t.Fatalf("shared stdin = %q, %v", value, err)
+	}
+	conflict := New(platformsvc.NativeServices{})
+	conflict.Input = strings.NewReader("x")
+	if _, err := conflict.Evaluate(context.Background(), "($-, $:-)"); err == nil {
+		t.Fatal("mixed text and binary stdin accepted")
+	}
+
+	values := newLanguageRuntime(io.Discard)
+	values.input = strings.NewReader("1\n|| ignored\n2+3\n")
+	parsed, _ := parseRuntimeExpression("sum $+")
+	result, err := values.evaluate(context.Background(), parsed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rendered, err := renderLanguage(context.Background(), result)
+	if err != nil || rendered != "6" {
+		t.Fatalf("sum $+ = %q, %v", rendered, err)
 	}
 }
 

@@ -306,7 +306,17 @@ Implementation instructions:
 Acceptance tests: every exported standard-environment name resolves, has the
 declared type, and its documented examples execute.
 
-### MISSING-008 — Implement the complete system-message I/O model
+### MISSING-008 — Implement the complete system-message I/O model ✅
+
+Status: completed. `sys_message` constructors are lazy values and command
+output executes message lists sequentially with evaluation-scoped file-stream
+state, append/replace/close behavior, stdout/stderr routing, shell commands,
+validated exit status, early `Exit`, and deterministic cleanup. Text and
+binary reads/writes distinguish UTF-8 validation from arbitrary bytes. Shared
+`$-`, `$:-`, lazy `$+`, and `$*` input values are typed and installed, with
+mixed text/binary stdin rejected. `readvals` now parses one non-comment
+expression per line lazily, and filesystem/environment primitives implement
+their documented missing/error behavior.
 
 Manual sections: 31/1–31/3 and 31/9.
 

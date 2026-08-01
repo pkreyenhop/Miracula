@@ -6,6 +6,7 @@ type ReplSession struct {
 	Prompt        string
 	LastCommand   string
 	ExitRequested bool
+	ExitStatus    int
 	LastElapsed   *time.Duration
 	LastGC        *int
 	Errors        map[string]ErrorLocation

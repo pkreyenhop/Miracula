@@ -27,6 +27,7 @@ type Interpreter struct {
 	startupFailed bool
 	Input         io.Reader
 	Output, Error io.Writer
+	Arguments     []string
 	activeEditor  LineEditor
 }
 

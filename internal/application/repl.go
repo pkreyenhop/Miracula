@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/pkreyenhop/miracula/internal/platformsvc"
 	"github.com/pkreyenhop/miracula/internal/protocol"
@@ -70,6 +71,15 @@ func (i *Interpreter) evaluateTo(ctx context.Context, expression string, out io.
 		return false, err
 	}
 	if value.kind == valueList {
+		if first, ok, firstErr := value.list.at(ctx, 0); firstErr != nil {
+			return true, firstErr
+		} else if ok && isSystemMessage(first) {
+			errOut := i.Error
+			if errOut == nil {
+				errOut = out
+			}
+			return true, i.executeSystemMessages(ctx, value, out, errOut)
+		}
 		if err = streamLanguageList(ctx, out, value); err != nil {
 			return true, err
 		}
@@ -82,6 +92,152 @@ func (i *Interpreter) evaluateTo(ctx context.Context, expression string, out io.
 	}
 	_, err = fmt.Fprintln(out, text)
 	return false, err
+}
+
+func isSystemMessage(value languageValue) bool {
+	value, err := forceLanguageValue(value, nil)
+	if err != nil || value.kind != valueConstructor {
+		return false
+	}
+	switch value.name {
+	case "Stdout", "Stderr", "Tofile", "Closefile", "Appendfile", "System", "Exit", "Stdoutb", "Tofileb", "Appendfileb":
+		return true
+	}
+	return false
+}
+
+func (i *Interpreter) executeSystemMessages(ctx context.Context, messages languageValue, stdout, stderr io.Writer) error {
+	files := map[string]*os.File{}
+	appendNext := map[string]bool{}
+	defer func() {
+		for _, file := range files {
+			_ = file.Close()
+		}
+	}()
+	for index := 0; ; index++ {
+		message, ok, err := messages.list.at(ctx, index)
+		if err != nil || !ok {
+			return err
+		}
+		message, err = forceLanguageValue(message, nil)
+		if err != nil {
+			return err
+		}
+		if message.kind != valueConstructor {
+			return errors.New("system message expected")
+		}
+		items := make([]languageValue, len(message.items))
+		for itemIndex, item := range message.items {
+			items[itemIndex], err = forceLanguageValue(item, nil)
+			if err != nil {
+				return err
+			}
+		}
+		stringAt := func(position int) (string, error) {
+			if position >= len(items) || items[position].kind != valueString {
+				return "", errors.New("string message argument expected")
+			}
+			if len(items[position].text) > 1024 && message.name != "Stdout" && message.name != "Stderr" && message.name != "Stdoutb" {
+				return "", errors.New("pathname or command exceeds 1024 characters")
+			}
+			return items[position].text, nil
+		}
+		switch message.name {
+		case "Stdout", "Stdoutb":
+			text, err := stringAt(0)
+			if err != nil {
+				return err
+			}
+			if message.name == "Stdout" && !utf8.ValidString(text) {
+				return errors.New("illegal UTF-8 output")
+			}
+			_, err = io.WriteString(stdout, text)
+			if err != nil {
+				return err
+			}
+		case "Stderr":
+			text, err := stringAt(0)
+			if err != nil {
+				return err
+			}
+			if !utf8.ValidString(text) {
+				return errors.New("illegal UTF-8 output")
+			}
+			_, err = io.WriteString(stderr, text)
+			if err != nil {
+				return err
+			}
+		case "Appendfile", "Appendfileb":
+			path, err := stringAt(0)
+			if err != nil {
+				return err
+			}
+			appendNext[path] = true
+		case "Closefile":
+			path, err := stringAt(0)
+			if err != nil {
+				return err
+			}
+			if file := files[path]; file != nil {
+				if err := file.Close(); err != nil {
+					return err
+				}
+				delete(files, path)
+			}
+		case "Tofile", "Tofileb":
+			path, err := stringAt(0)
+			if err != nil {
+				return err
+			}
+			text, err := stringAt(1)
+			if err != nil {
+				return err
+			}
+			if message.name == "Tofile" && !utf8.ValidString(text) {
+				return errors.New("illegal UTF-8 output")
+			}
+			file := files[path]
+			if file == nil {
+				flags := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
+				if appendNext[path] {
+					flags = os.O_CREATE | os.O_WRONLY | os.O_APPEND
+				}
+				file, err = os.OpenFile(path, flags, 0o644)
+				if err != nil {
+					return err
+				}
+				files[path] = file
+				delete(appendNext, path)
+			}
+			if _, err = file.WriteString(text); err != nil {
+				return err
+			}
+		case "System":
+			command, err := stringAt(0)
+			if err != nil {
+				return err
+			}
+			output, errorOutput, _, err := platformsvc.CaptureShell(ctx, command)
+			if err != nil {
+				return err
+			}
+			if _, err = io.WriteString(stdout, output); err != nil {
+				return err
+			}
+			if _, err = io.WriteString(stderr, errorOutput); err != nil {
+				return err
+			}
+		case "Exit":
+			number, err := numberValue(items[0])
+			if err != nil || !number.IsInt64() || number.Sign() < 0 || number.Int64() > 127 {
+				return errors.New("Exit status must be an integer from 0 to 127")
+			}
+			i.Repl.ExitRequested, i.Repl.ExitStatus = true, int(number.Int64())
+			return nil
+		default:
+			return fmt.Errorf("unknown system message %s", message.name)
+		}
+	}
 }
 
 func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) error {

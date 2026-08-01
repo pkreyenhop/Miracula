@@ -255,7 +255,7 @@ func parsePratt(tokens []Token, position, minimum int) (Expr, int) {
 
 func isExpressionStart(kind string) bool {
 	switch kind {
-	case "name", "cname", "const_int", "const_float", "const_str", "const_char", "lparen", "lbracket", "minus", "not", "length", "kw_show", "kw_readvals", "dollars":
+	case "name", "cname", "const_int", "const_float", "const_str", "const_char", "lparen", "lbracket", "minus", "not", "length", "kw_show", "kw_readvals", "dollars", "stdin_text", "stdin_binary", "stdin_values", "arguments":
 		return true
 	}
 	return false
@@ -297,6 +297,9 @@ func parsePrimary(tokens []Token) (Expr, int) {
 func atom(token Token) Expr {
 	variant := map[string]string{"name": "name", "cname": "constructor", "const_int": "int", "const_float": "float", "const_str": "string", "const_char": "char"}[token.Kind]
 	if token.Kind == "kw_show" || token.Kind == "kw_readvals" {
+		variant = "name"
+	}
+	if token.Kind == "stdin_text" || token.Kind == "stdin_binary" || token.Kind == "stdin_values" || token.Kind == "arguments" {
 		variant = "name"
 	}
 	if variant == "" {

@@ -17,6 +17,7 @@ var keywords = map[string]string{
 
 var operators = []struct{ text, kind string }{
 	{"::=", "type_def"}, {"***", "typevar"}, {"$$", "dollars"},
+	{"$:-", "stdin_binary"}, {"$-", "stdin_text"}, {"$+", "stdin_values"}, {"$*", "arguments"},
 	{"->", "arrow"}, {"<-", "left_arrow"}, {"::", "type_annotation"},
 	{"++", "append"}, {"--", "difference"}, {"..", "range"},
 	{"~=", "not_equal"}, {"<=", "less_equal"}, {">=", "greater_equal"},
