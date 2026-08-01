@@ -31,6 +31,7 @@ const (
 	valueConstructor
 	valueMessage
 	valueFunction
+	valueThunk
 )
 
 type languageTypeMismatch struct {
@@ -61,17 +62,19 @@ func listTypeMismatch(value languageValue) error {
 }
 
 type languageValue struct {
-	kind  valueKind
-	num   *big.Int
-	small int64
-	real  float64
-	flag  bool
-	text  string
-	list  *lazyList
-	items []languageValue
-	name  string
-	fn    func(context.Context, languageValue) (languageValue, error)
-	intFn func(context.Context, int64) (int64, bool, error)
+	kind   valueKind
+	num    *big.Int
+	small  int64
+	real   float64
+	flag   bool
+	text   string
+	list   *lazyList
+	items  []languageValue
+	name   string
+	thunk  *languageThunk
+	fn     func(context.Context, languageValue) (languageValue, error)
+	lazyFn func(context.Context, *languageThunk) (languageValue, error)
+	intFn  func(context.Context, int64) (int64, bool, error)
 }
 
 type lazyList struct {
@@ -86,7 +89,8 @@ func (l *lazyList) at(ctx context.Context, index int) (languageValue, bool, erro
 		if index < len(l.values) {
 			value := l.values[index]
 			l.mu.Unlock()
-			return value, true, nil
+			value, err := forceLanguageValue(value, nil)
+			return value, true, err
 		}
 		next, nextIndex := l.next, len(l.values)
 		l.mu.Unlock()
@@ -111,20 +115,21 @@ func (l *lazyList) at(ctx context.Context, index int) (languageValue, bool, erro
 }
 
 type languageRuntime struct {
-	globals     map[string]*languageThunk
-	appendFiles map[string]bool
-	output      io.Writer
-	reductions  uint64
-	cells       uint64
-	frames      sync.Pool
+	globals             map[string]*languageThunk
+	productConstructors map[string]bool
+	appendFiles         map[string]bool
+	output              io.Writer
+	reductions          uint64
+	cells               uint64
 }
 
 type languageThunk struct {
-	once  sync.Once
-	value languageValue
-	err   error
-	eval  func() (languageValue, error)
-	ready bool
+	mu         sync.Mutex
+	value      languageValue
+	err        error
+	eval       func() (languageValue, error)
+	ready      bool
+	evaluating bool
 }
 
 type languageCallFrame struct {
@@ -133,15 +138,40 @@ type languageCallFrame struct {
 }
 
 func (t *languageThunk) force() (languageValue, error) {
+	t.mu.Lock()
 	if t.ready {
-		return t.value, t.err
+		value, err := t.value, t.err
+		t.mu.Unlock()
+		return forceLanguageValue(value, err)
 	}
-	t.once.Do(func() { t.value, t.err = t.eval(); t.eval = nil })
-	return t.value, t.err
+	if t.evaluating {
+		t.mu.Unlock()
+		return languageValue{}, errors.New("cyclic evaluation")
+	}
+	t.evaluating = true
+	evaluate := t.eval
+	t.mu.Unlock()
+	value, err := evaluate()
+	t.mu.Lock()
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		t.evaluating = false
+		t.mu.Unlock()
+		return value, err
+	}
+	t.value, t.err, t.eval, t.ready, t.evaluating = value, err, nil, true, false
+	t.mu.Unlock()
+	return forceLanguageValue(value, err)
+}
+
+func forceLanguageValue(value languageValue, err error) (languageValue, error) {
+	for err == nil && value.kind == valueThunk && value.thunk != nil {
+		value, err = value.thunk.force()
+	}
+	return value, err
 }
 
 func newLanguageRuntime(output io.Writer) *languageRuntime {
-	r := &languageRuntime{globals: map[string]*languageThunk{}, appendFiles: map[string]bool{}, output: output}
+	r := &languageRuntime{globals: map[string]*languageThunk{}, productConstructors: map[string]bool{}, appendFiles: map[string]bool{}, output: output}
 	r.installBuiltins()
 	return r
 }
@@ -197,12 +227,20 @@ func (r *languageRuntime) installSource(source []byte) error {
 			continue
 		}
 		if marker := strings.Index(line, "::="); marker >= 0 {
-			for _, alternative := range strings.Split(line[marker+3:], "|") {
-				fields := strings.Fields(strings.TrimSpace(alternative))
+			alternatives := strings.Split(line[marker+3:], "|")
+			for _, alternative := range alternatives {
+				fields := runtimeConstructorFields(strings.TrimSpace(alternative))
 				if len(fields) == 0 {
 					continue
 				}
-				r.installConstructor(fields[0], len(fields)-1)
+				strict := make([]bool, len(fields)-1)
+				for index, field := range fields[1:] {
+					strict[index] = strings.HasSuffix(field, "!")
+				}
+				r.installConstructor(fields[0], strict)
+				if len(alternatives) == 1 && len(strict) > 0 {
+					r.productConstructors[fields[0]] = true
+				}
 			}
 			continue
 		}
@@ -260,6 +298,30 @@ func (r *languageRuntime) installSource(source []byte) error {
 		r.globals[name] = thunk
 	}
 	return nil
+}
+
+func runtimeConstructorFields(text string) []string {
+	var fields []string
+	start, depth := 0, 0
+	for index, char := range text {
+		switch char {
+		case '(', '[':
+			depth++
+		case ')', ']':
+			depth--
+		case ' ', '\t':
+			if depth == 0 && start < index {
+				fields = append(fields, text[start:index])
+				start = index + 1
+			} else if depth == 0 {
+				start = index + 1
+			}
+		}
+	}
+	if start < len(text) {
+		fields = append(fields, text[start:])
+	}
+	return fields
 }
 
 func (i *Interpreter) ValidateCurrent() error {
@@ -521,15 +583,24 @@ func (r *languageRuntime) installIncludes(base string, source []byte) error {
 	return nil
 }
 
-func (r *languageRuntime) installConstructor(name string, arity int) {
+func (r *languageRuntime) installConstructor(name string, strict []bool) {
+	arity := len(strict)
 	if arity == 0 {
 		r.builtin(name, languageValue{kind: valueConstructor, name: name})
 		return
 	}
 	var build func([]languageValue) languageValue
 	build = func(arguments []languageValue) languageValue {
-		return languageValue{kind: valueFunction, fn: func(_ context.Context, argument languageValue) (languageValue, error) {
-			values := append(append([]languageValue(nil), arguments...), argument)
+		return languageValue{kind: valueFunction, lazyFn: func(_ context.Context, argument *languageThunk) (languageValue, error) {
+			lazyArgument := languageValue{kind: valueThunk, thunk: argument}
+			if strict[len(arguments)] {
+				forced, err := argument.force()
+				if err != nil {
+					return languageValue{}, err
+				}
+				lazyArgument = forced
+			}
+			values := append(append([]languageValue(nil), arguments...), lazyArgument)
 			if len(values) == arity {
 				return languageValue{kind: valueConstructor, name: name, items: values}, nil
 			}
@@ -563,14 +634,15 @@ func runtimePatterns(expression syntaxfront.Expr) (string, []syntaxfront.Expr, b
 }
 
 func (r *languageRuntime) clauseFunction(clauses []runtimeClause, arguments []languageValue) languageValue {
-	value := languageValue{kind: valueFunction, fn: func(ctx context.Context, argument languageValue) (languageValue, error) {
+	value := languageValue{kind: valueFunction, lazyFn: func(ctx context.Context, argument *languageThunk) (languageValue, error) {
+		lazyArgument := languageValue{kind: valueThunk, thunk: argument}
 		if len(arguments) == 0 && len(clauses[0].parameters) == 1 {
-			values := [1]languageValue{argument}
+			values := [1]languageValue{lazyArgument}
 			return r.selectClause(ctx, clauses, values[:])
 		}
 		values := make([]languageValue, len(arguments)+1)
 		copy(values, arguments)
-		values[len(arguments)] = argument
+		values[len(arguments)] = lazyArgument
 		if len(values) < len(clauses[0].parameters) {
 			return r.clauseFunction(clauses, values), nil
 		}
@@ -729,7 +801,7 @@ func (r *languageRuntime) selectClause(ctx context.Context, clauses []runtimeCla
 		environment := frame.environment
 		matched := true
 		for index, pattern := range clause.parameters {
-			if !matchRuntimePatternBound(pattern, arguments[index], environment, frame.bind) {
+			if !r.matchRuntimePatternBound(pattern, arguments[index], environment, frame.bind) {
 				matched = false
 				break
 			}
@@ -765,16 +837,7 @@ func (r *languageRuntime) acquireCallFrame(patterns []syntaxfront.Expr) *languag
 	for _, pattern := range patterns {
 		count += patternBindingCount(pattern)
 	}
-	var frame *languageCallFrame
-	if pooled := r.frames.Get(); pooled != nil {
-		frame = pooled.(*languageCallFrame)
-	} else {
-		frame = &languageCallFrame{environment: make(map[string]*languageThunk, 4)}
-	}
-	if cap(frame.bindings) < count {
-		frame.bindings = make([]languageThunk, 0, count)
-	}
-	return frame
+	return &languageCallFrame{environment: make(map[string]*languageThunk, max(4, count)), bindings: make([]languageThunk, 0, count)}
 }
 
 func (f *languageCallFrame) bind(name string, value languageValue) {
@@ -783,10 +846,8 @@ func (f *languageCallFrame) bind(name string, value languageValue) {
 }
 
 func (r *languageRuntime) releaseCallFrame(frame *languageCallFrame) {
-	clear(frame.environment)
-	clear(frame.bindings)
-	frame.bindings = frame.bindings[:0]
-	r.frames.Put(frame)
+	// Results may contain lazy closures pointing into this environment. Let the
+	// frame follow normal Go reachability instead of recycling it prematurely.
 }
 
 func patternBindingCount(pattern syntaxfront.Expr) int {
@@ -808,16 +869,62 @@ func patternBindingCount(pattern syntaxfront.Expr) int {
 	return count
 }
 
-func matchRuntimePattern(pattern syntaxfront.Expr, value languageValue, environment map[string]*languageThunk) bool {
-	return matchRuntimePatternBound(pattern, value, environment, func(name string, value languageValue) { environment[name] = immediate(value) })
+func (r *languageRuntime) matchRuntimePattern(pattern syntaxfront.Expr, value languageValue, environment map[string]*languageThunk) bool {
+	return r.matchRuntimePatternBound(pattern, value, environment, func(name string, value languageValue) { environment[name] = immediate(value) })
 }
 
-func matchRuntimePatternBound(pattern syntaxfront.Expr, value languageValue, environment map[string]*languageThunk, bind func(string, languageValue)) bool {
-	switch pattern.Variant {
-	case "name":
+func (r *languageRuntime) matchRuntimePatternBound(pattern syntaxfront.Expr, value languageValue, environment map[string]*languageThunk, bind func(string, languageValue)) bool {
+	if pattern.Variant == "name" {
 		if pattern.Text != "_" {
 			bind(pattern.Text, value)
 		}
+		return true
+	}
+	if pattern.Variant == "tuple" && value.kind == valueThunk && irrefutableRuntimePattern(pattern) {
+		for index, item := range pattern.Items {
+			itemIndex := index
+			projection := languageValue{kind: valueThunk, thunk: &languageThunk{eval: func() (languageValue, error) {
+				outer, err := value.thunk.force()
+				if err != nil {
+					return languageValue{}, err
+				}
+				if outer.kind != valueTuple || itemIndex >= len(outer.items) {
+					return languageValue{}, errors.New("tuple pattern mismatch")
+				}
+				return outer.items[itemIndex], nil
+			}}}
+			if !r.matchRuntimePatternBound(item, projection, environment, bind) {
+				return false
+			}
+		}
+		return true
+	}
+	if name, patterns, ok := constructorPattern(pattern); ok && r.productConstructors[name] && value.kind == valueThunk {
+		for index, item := range patterns {
+			itemIndex := index
+			projection := languageValue{kind: valueThunk, thunk: &languageThunk{eval: func() (languageValue, error) {
+				outer, err := value.thunk.force()
+				if err != nil {
+					return languageValue{}, err
+				}
+				if outer.kind != valueConstructor || outer.name != name || itemIndex >= len(outer.items) {
+					return languageValue{}, errors.New("constructor pattern mismatch")
+				}
+				return outer.items[itemIndex], nil
+			}}}
+			if !r.matchRuntimePatternBound(item, projection, environment, bind) {
+				return false
+			}
+		}
+		return true
+	}
+	var forceErr error
+	value, forceErr = forceLanguageValue(value, nil)
+	if forceErr != nil {
+		return false
+	}
+	switch pattern.Variant {
+	case "name":
 		return true
 	case "int":
 		expected := new(big.Int)
@@ -830,7 +937,7 @@ func matchRuntimePatternBound(pattern syntaxfront.Expr, value languageValue, env
 			return false
 		}
 		for index, item := range pattern.Items {
-			if !matchRuntimePatternBound(item, value.items[index], environment, bind) {
+			if !r.matchRuntimePatternBound(item, value.items[index], environment, bind) {
 				return false
 			}
 		}
@@ -844,7 +951,7 @@ func matchRuntimePatternBound(pattern syntaxfront.Expr, value languageValue, env
 			return false
 		}
 		for index, item := range pattern.Items {
-			if !matchRuntimePatternBound(item, items[index], environment, bind) {
+			if !r.matchRuntimePatternBound(item, items[index], environment, bind) {
 				return false
 			}
 		}
@@ -858,14 +965,14 @@ func matchRuntimePatternBound(pattern syntaxfront.Expr, value languageValue, env
 			return false
 		}
 		tail := languageValue{kind: valueList, list: &lazyList{next: func(ctx context.Context, index int) (languageValue, bool, error) { return value.list.at(ctx, index+1) }}}
-		return matchRuntimePatternBound(*pattern.Head, head, environment, bind) && matchRuntimePatternBound(*pattern.Tail, tail, environment, bind)
+		return r.matchRuntimePatternBound(*pattern.Head, head, environment, bind) && r.matchRuntimePatternBound(*pattern.Tail, tail, environment, bind)
 	case "application", "constructor":
 		name, patterns, ok := constructorPattern(pattern)
 		if !ok || value.kind != valueConstructor || value.name != name || len(value.items) != len(patterns) {
 			return false
 		}
 		for index, item := range patterns {
-			if !matchRuntimePatternBound(item, value.items[index], environment, bind) {
+			if !r.matchRuntimePatternBound(item, value.items[index], environment, bind) {
 				return false
 			}
 		}
@@ -873,6 +980,21 @@ func matchRuntimePatternBound(pattern syntaxfront.Expr, value languageValue, env
 	default:
 		return false
 	}
+}
+
+func irrefutableRuntimePattern(pattern syntaxfront.Expr) bool {
+	if pattern.Variant == "name" {
+		return true
+	}
+	if pattern.Variant != "tuple" || len(pattern.Items) == 0 {
+		return false
+	}
+	for _, item := range pattern.Items {
+		if !irrefutableRuntimePattern(item) {
+			return false
+		}
+	}
+	return true
 }
 func constructorPattern(pattern syntaxfront.Expr) (string, []syntaxfront.Expr, bool) {
 	var arguments []syntaxfront.Expr
@@ -901,12 +1023,12 @@ func (r *languageRuntime) function(parameters []string, body syntaxfront.Expr, c
 			return r.eval(ctx, body, closure)
 		}}
 	}
-	return languageValue{kind: valueFunction, fn: func(ctx context.Context, argument languageValue) (languageValue, error) {
+	return languageValue{kind: valueFunction, lazyFn: func(ctx context.Context, argument *languageThunk) (languageValue, error) {
 		environment := make(map[string]*languageThunk, len(closure)+1)
 		for name, value := range closure {
 			environment[name] = value
 		}
-		environment[parameters[0]] = immediate(argument)
+		environment[parameters[0]] = argument
 		if len(parameters) == 1 {
 			return r.eval(ctx, body, environment)
 		}
@@ -982,6 +1104,12 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 		if err != nil {
 			return languageValue{}, err
 		}
+		if function.lazyFn != nil {
+			argumentExpression := *expression.Arg
+			argumentEnvironment := cloneEnvironment(environment)
+			argument := &languageThunk{eval: func() (languageValue, error) { return r.eval(ctx, argumentExpression, argumentEnvironment) }}
+			return function.lazyFn(ctx, argument)
+		}
 		argument, err := r.eval(ctx, *expression.Arg, environment)
 		if err != nil {
 			return languageValue{}, err
@@ -989,10 +1117,9 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 		return applyLanguage(ctx, function, argument)
 	case "infix":
 		if expression.Text == ":" {
-			head, err := r.eval(ctx, *expression.Head, environment)
-			if err != nil {
-				return languageValue{}, err
-			}
+			headExpression := *expression.Head
+			headEnvironment := cloneEnvironment(environment)
+			head := languageValue{kind: valueThunk, thunk: &languageThunk{eval: func() (languageValue, error) { return r.eval(ctx, headExpression, headEnvironment) }}}
 			var tail languageValue
 			var tailErr error
 			var once sync.Once
@@ -1112,23 +1239,21 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 		}
 		return languageValue{kind: valueNumber, num: new(big.Int).Neg(n)}, nil
 	case "list":
-		values := make([]languageValue, len(expression.Items))
-		for index := range expression.Items {
-			value, err := r.eval(ctx, expression.Items[index], environment)
-			if err != nil {
-				return languageValue{}, err
+		items := append([]syntaxfront.Expr(nil), expression.Items...)
+		captured := cloneEnvironment(environment)
+		return languageValue{kind: valueList, list: &lazyList{next: func(ctx context.Context, index int) (languageValue, bool, error) {
+			if index >= len(items) {
+				return languageValue{}, false, nil
 			}
-			values[index] = value
-		}
-		return listValue(values), nil
+			item := items[index]
+			return languageValue{kind: valueThunk, thunk: &languageThunk{eval: func() (languageValue, error) { return r.eval(ctx, item, captured) }}}, true, nil
+		}}}, nil
 	case "tuple":
 		values := make([]languageValue, len(expression.Items))
 		for index := range expression.Items {
-			value, err := r.eval(ctx, expression.Items[index], environment)
-			if err != nil {
-				return languageValue{}, err
-			}
-			values[index] = value
+			item := expression.Items[index]
+			captured := cloneEnvironment(environment)
+			values[index] = languageValue{kind: valueThunk, thunk: &languageThunk{eval: func() (languageValue, error) { return r.eval(ctx, item, captured) }}}
 		}
 		return languageValue{kind: valueTuple, items: values}, nil
 	case "range":
@@ -1209,7 +1334,7 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 				}
 				for _, value := range values {
 					bound := cloneEnvironment(candidate)
-					if matchRuntimePattern(*qualifier.Pattern, value, bound) {
+					if r.matchRuntimePattern(*qualifier.Pattern, value, bound) {
 						next = append(next, bound)
 					}
 				}
@@ -1325,8 +1450,11 @@ func compareLanguage(operator string, left, right languageValue) (bool, error) {
 }
 
 func applyLanguage(ctx context.Context, function, argument languageValue) (languageValue, error) {
-	if function.kind != valueFunction || function.fn == nil {
+	if function.kind != valueFunction || function.fn == nil && function.lazyFn == nil {
 		return languageValue{}, errors.New("function expected")
+	}
+	if function.lazyFn != nil {
+		return function.lazyFn(ctx, immediate(argument))
 	}
 	if function.intFn != nil && argument.kind == valueNumber && argument.num == nil {
 		if result, ok, err := function.intFn(ctx, argument.small); err != nil {
@@ -1399,6 +1527,7 @@ func (r *languageRuntime) builtin(name string, value languageValue) {
 }
 
 func (r *languageRuntime) installBuiltins() {
+	r.globals["undef"] = &languageThunk{eval: func() (languageValue, error) { return languageValue{}, errors.New("undefined") }}
 	integer := func(small func(int64, int64) (int64, bool), op func(*big.Int, *big.Int) *big.Int) languageValue {
 		return curry2(func(_ context.Context, a, b languageValue) (languageValue, error) {
 			if a.kind == valueNumber && b.kind == valueNumber && a.num == nil && b.num == nil {
@@ -1882,6 +2011,11 @@ func finiteList(ctx context.Context, value languageValue, limit int) ([]language
 }
 
 func renderLanguage(ctx context.Context, value languageValue) (string, error) {
+	var forceErr error
+	value, forceErr = forceLanguageValue(value, nil)
+	if forceErr != nil {
+		return "", forceErr
+	}
 	switch value.kind {
 	case valueNumber:
 		if value.num == nil {
@@ -2006,6 +2140,11 @@ func renderConstructor(ctx context.Context, value languageValue, nested bool) (s
 }
 
 func showLanguage(ctx context.Context, value languageValue) (string, error) {
+	var err error
+	value, err = forceLanguageValue(value, nil)
+	if err != nil {
+		return "", err
+	}
 	if value.kind == valueString {
 		return strconv.Quote(value.text), nil
 	}
@@ -2013,6 +2152,11 @@ func showLanguage(ctx context.Context, value languageValue) (string, error) {
 }
 
 func renderNestedLanguage(ctx context.Context, value languageValue) (string, error) {
+	var err error
+	value, err = forceLanguageValue(value, nil)
+	if err != nil {
+		return "", err
+	}
 	if value.kind == valueString {
 		return strconv.Quote(value.text), nil
 	}

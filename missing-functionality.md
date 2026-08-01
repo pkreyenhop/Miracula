@@ -79,7 +79,15 @@ Acceptance tests:
   20 and 21.
 - Preserve the existing `f1 x = reverse x, if x < 1000` diagnostic.
 
-### MISSING-002 — Implement non-strict graph reduction consistently
+### MISSING-002 — Implement non-strict graph reduction consistently ✅
+
+Status: completed. The production language runtime now uses memoized
+call-by-need thunks for user applications, constructor fields, tuples, lists,
+and cons cells. It preserves sharing and lazy call environments, detects
+cyclic evaluation, retries interrupted thunks, honors strict constructor
+fields, and implements irrefutable projection semantics for tuples and
+one-constructor product types. Infinite recursive values and unused `undef`
+arguments are covered by runtime tests.
 
 Manual sections: 3, 16, 20, 21, 23.
 

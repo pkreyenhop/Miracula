@@ -8,6 +8,7 @@ import (
 	"github.com/pkreyenhop/miracula/internal/protocol"
 	"github.com/pkreyenhop/miracula/internal/semantics"
 	"github.com/pkreyenhop/miracula/internal/syntaxfront"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -159,6 +160,81 @@ func TestLanguageRuntimeSupportsLazyHigherOrderAndBignumValues(t *testing.T) {
 		if err != nil || actual != expected {
 			t.Fatalf("%s = %q, %v; want %q", expression, actual, err, expected)
 		}
+	}
+}
+
+func TestLanguageRuntimeUsesCallByNeed(t *testing.T) {
+	runtime := newLanguageRuntime(io.Discard)
+	if err := runtime.installSource([]byte("constant x = 1\ndouble x = x+x\nignorePair (x,y) = 7\n")); err != nil {
+		t.Fatal(err)
+	}
+	for expression, want := range map[string]string{
+		"constant (1 div 0)":      "1",
+		"ignorePair (1 div 0, 2)": "7",
+		"ignorePair undef":        "7",
+	} {
+		parsed, err := parseRuntimeExpression(expression)
+		if err != nil {
+			t.Fatal(err)
+		}
+		value, err := runtime.evaluate(context.Background(), parsed)
+		if err != nil {
+			t.Fatalf("%s: %v", expression, err)
+		}
+		if got, err := renderLanguage(context.Background(), value); err != nil || got != want {
+			t.Fatalf("%s = %q, %v; want %q", expression, got, err, want)
+		}
+	}
+	forces := 0
+	runtime.globals["counted"] = &languageThunk{eval: func() (languageValue, error) {
+		forces++
+		return languageValue{kind: valueNumber, small: 3}, nil
+	}}
+	parsed, _ := parseRuntimeExpression("double counted")
+	value, err := runtime.evaluate(context.Background(), parsed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := renderLanguage(context.Background(), value); err != nil || got != "6" || forces != 1 {
+		t.Fatalf("double counted = %q, %v; forces = %d", got, err, forces)
+	}
+}
+
+func TestStrictConstructorFieldForcesArgument(t *testing.T) {
+	runtime := newLanguageRuntime(io.Discard)
+	if err := runtime.installSource([]byte("box ::= Lazy num | Strict num!\ntag (Lazy x) = 1\ntag (Strict x) = 1\n")); err != nil {
+		t.Fatal(err)
+	}
+	for expression, wantError := range map[string]bool{"tag (Lazy (1 div 0))": false, "tag (Strict (1 div 0))": true} {
+		parsed, _ := parseRuntimeExpression(expression)
+		value, err := runtime.evaluate(context.Background(), parsed)
+		if err == nil {
+			_, err = renderLanguage(context.Background(), value)
+		}
+		if (err != nil) != wantError {
+			t.Fatalf("%s error = %v, wantError = %v", expression, err, wantError)
+		}
+	}
+}
+
+func TestLazyResultsRetainCallEnvironment(t *testing.T) {
+	runtime := newLanguageRuntime(io.Discard)
+	if err := runtime.installSource([]byte("pair x = (x,x)\ntree ::= Node num tree\nbig = Node 1 big\nroot (Node x rest) = x\nproduct ::= Product num bool\nignoreProduct (Product x y) = 9\nloop = loop\n")); err != nil {
+		t.Fatal(err)
+	}
+	for expression, want := range map[string]string{"pair (2+3)": "(5,5)", "root big": "1", "ignoreProduct undef": "9"} {
+		parsed, _ := parseRuntimeExpression(expression)
+		value, err := runtime.evaluate(context.Background(), parsed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got, err := renderLanguage(context.Background(), value); err != nil || got != want {
+			t.Fatalf("%s = %q, %v; want %q", expression, got, err, want)
+		}
+	}
+	parsed, _ := parseRuntimeExpression("loop")
+	if _, err := runtime.evaluate(context.Background(), parsed); err == nil || !strings.Contains(err.Error(), "cyclic") {
+		t.Fatalf("loop error = %v", err)
 	}
 }
 
