@@ -495,7 +495,11 @@ underlining before lexing; and test `.lit.m` plus first-character `>` detection.
 
 ## P1: REPL and manual interface
 
-### MISSING-014 — Complete command-level expression facilities
+### MISSING-014 — Complete command-level expression facilities ✅
+
+Status: completed. The command lexer implements typed `$$`, `exp ::`,
+cancellable background redirection with append/error routing and closed input,
+central `%` substitution with escaping, and `!!` shell history.
 
 Manual section: 4.
 
@@ -515,7 +519,10 @@ route `::` through inference without evaluation; implement cancellable child
 evaluation contexts for redirection/background execution; centralize `%`
 substitution and shell history. Add interactive integration tests.
 
-### MISSING-015 — Bring identifier discovery and completion to full scope parity
+### MISSING-015 — Bring identifier discovery and completion to full scope parity ✅
+
+Status: completed. One provenance-aware scope index now drives listing,
+queries, editing, completion, alias lookup, suppression, and local shadowing.
 
 Manual sections: 4 and 27/3.
 
@@ -532,7 +539,11 @@ graph and use it for all name-list, query, edit, completion, undefined-name,
 and `/find` operations. Test standard, included, aliased, suppressed, local,
 and shadowing cases.
 
-### MISSING-016 — Complete pathname and reload behavior
+### MISSING-016 — Complete pathname and reload behavior ✅
+
+Status: completed. Session paths resolve `%`, quoted names, home forms, and
+miralib-relative paths, while metadata and reload cover the transitive source
+graph and preserve dependency diagnostics.
 
 Manual sections: 4, 14, 27/5, and 31/5.
 
@@ -550,7 +561,11 @@ Implementation instructions: add a session pathname resolver for `%`, `~`,
 `~user`, quoted paths, and `<...>`; track metadata for the full dependency DAG;
 reload affected nodes in order while preserving source-ordered diagnostics.
 
-### MISSING-017 — Finish the recursive manual menu protocol
+### MISSING-017 — Finish the recursive manual menu protocol ✅
+
+Status: completed. The built-in pager supports recursive menus, parent returns,
+numeric history navigation, shell escapes, bidirectional search, help, dynamic
+terminal height, and documented viewer compatibility behavior.
 
 Manual section: 1.
 
@@ -580,7 +595,11 @@ Implementation instructions:
 
 ## P2: diagnostics, configuration, and compatibility
 
-### MISSING-018 — Make diagnostics compiler-wide and source accurate
+### MISSING-018 — Make diagnostics compiler-wide and source accurate ✅
+
+Status: completed. Source, syntax, type, module, and name failures use a stable
+structured diagnostic model with insert-origin mapping, multi-error rendering,
+definition context, columns, and first-error editor navigation across files.
 
 Manual sections: 4, 14–18, 27, and 31/5.
 
@@ -594,7 +613,12 @@ severity, phase, file, span, definition, notes, and stable ordering; allow
 parser/type/module phases to recover and collect independent errors; render
 legacy-compatible text at the UI boundary; navigate to the first diagnostic.
 
-### MISSING-019 — Complete settings, flags, and environment behavior
+### MISSING-019 — Complete settings, flags, and environment behavior ✅
+
+Status: completed. Configuration precedence and sticky settings are documented
+and tested; heap and dictionary sizing are live, object queries and concurrent
+editor rechecking work, locale/environment behavior is covered, and the
+production target policy explicitly excludes Linux.
 
 Manual sections: 6 and 31/5–31/8.
 
@@ -617,7 +641,13 @@ Implementation instructions: define a documented config precedence table
 effective, persist only sticky settings, and add table-driven startup tests.
 Update historical/current support wording without altering historical facts.
 
-### MISSING-020 — Remove arbitrary semantic list limits while retaining safe output
+### MISSING-020 — Remove arbitrary semantic list limits while retaining safe output ✅
+
+Status: completed. Semantic list bounds were removed; consuming operations are
+streaming or cancellable and list-producing filter/append operations remain
+lazy. Regressions cross the former million-element boundary and take finite
+prefixes from infinite results. The production-binary conformance gate and its
+machine-readable 34-section coverage manifest run under `make verify`.
 
 Manual sections: 3, 4, 13, 18, and 20.
 

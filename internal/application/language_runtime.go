@@ -1489,8 +1489,15 @@ func (r *languageRuntime) matchRuntimePatternBound(pattern syntaxfront.Expr, val
 		if value.kind != valueList {
 			return false
 		}
-		items, err := finiteList(context.Background(), value, len(pattern.Items)+1)
-		if err != nil || len(items) != len(pattern.Items) {
+		items := make([]languageValue, len(pattern.Items))
+		for index := range items {
+			item, ok, err := value.list.at(context.Background(), index)
+			if err != nil || !ok {
+				return false
+			}
+			items[index] = item
+		}
+		if _, ok, err := value.list.at(context.Background(), len(items)); err != nil || ok {
 			return false
 		}
 		for index, item := range pattern.Items {
@@ -1986,11 +1993,12 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 		if value.kind == valueString {
 			return languageValue{kind: valueNumber, num: big.NewInt(int64(len([]rune(value.text))))}, nil
 		}
-		items, err := finiteList(ctx, value, 1_000_000)
+		count := int64(0)
+		err = streamList(ctx, value, func(languageValue) (bool, error) { count++; return true, nil })
 		if err != nil {
 			return languageValue{}, err
 		}
-		return languageValue{kind: valueNumber, num: big.NewInt(int64(len(items)))}, nil
+		return languageValue{kind: valueNumber, num: big.NewInt(count)}, nil
 	case "listcomp", "diagonal_listcomp":
 		stream := r.comprehensionEnvironments(expression.Qualifiers, environment)
 		if expression.Variant == "diagonal_listcomp" {
@@ -2340,7 +2348,7 @@ func listDifference(ctx context.Context, left, right languageValue) (languageVal
 	if left.kind != valueList {
 		return languageValue{}, listTypeMismatch(left)
 	}
-	rightItems, err := finiteList(ctx, right, maxMaterializedList)
+	rightItems, err := collectList(ctx, right)
 	if err != nil {
 		return languageValue{}, err
 	}
@@ -2711,6 +2719,23 @@ func (r *languageRuntime) readValues(ctx context.Context, data []byte) languageV
 }
 
 func (r *languageRuntime) installBuiltins() {
+	r.builtin(":", languageValue{kind: valueFunction, lazyFn: func(_ context.Context, head *languageThunk) (languageValue, error) {
+		return languageValue{kind: valueFunction, lazyFn: func(_ context.Context, tail *languageThunk) (languageValue, error) {
+			return languageValue{kind: valueList, list: &lazyList{next: func(nextCtx context.Context, index int) (languageValue, bool, error) {
+				if index == 0 {
+					return languageValue{kind: valueThunk, thunk: head}, true, nil
+				}
+				tailValue, err := tail.force()
+				if err != nil {
+					return languageValue{}, false, err
+				}
+				if tailValue.kind != valueList || tailValue.list == nil {
+					return languageValue{}, false, listTypeMismatch(tailValue)
+				}
+				return tailValue.list.at(nextCtx, index-1)
+			}}}, nil
+		}}, nil
+	}})
 	r.globals["undef"] = &languageThunk{eval: func() (languageValue, error) { return languageValue{}, errors.New("undefined") }}
 	for name, arity := range map[string]int{"Stdout": 1, "Stderr": 1, "Tofile": 2, "Closefile": 1, "Appendfile": 1, "System": 1, "Exit": 1, "Stdoutb": 1, "Tofileb": 2, "Appendfileb": 1} {
 		r.installConstructor(name, make([]bool, arity))
@@ -2891,55 +2916,52 @@ func (r *languageRuntime) installBuiltins() {
 	}))
 	r.builtin("--", curry2(listDifference))
 	r.builtin("product", languageValue{kind: valueFunction, fn: func(ctx context.Context, input languageValue) (languageValue, error) {
-		values, e := finiteList(ctx, input, 1_000_000)
-		if e != nil {
-			return languageValue{}, e
-		}
 		total := big.NewInt(1)
-		for _, v := range values {
-			n, e := numberValue(v)
-			if e != nil {
-				return languageValue{}, e
+		err := streamList(ctx, input, func(value languageValue) (bool, error) {
+			n, err := numberValue(value)
+			if err != nil {
+				return false, err
 			}
 			total.Mul(total, n)
+			return true, nil
+		})
+		if err != nil {
+			return languageValue{}, err
 		}
 		return languageValue{kind: valueNumber, num: total}, nil
 	}})
 	r.builtin("sum", languageValue{kind: valueFunction, fn: func(ctx context.Context, input languageValue) (languageValue, error) {
-		values, err := finiteList(ctx, input, 1_000_000)
-		if err != nil {
-			return languageValue{}, err
-		}
 		total := big.NewInt(0)
-		for _, value := range values {
+		err := streamList(ctx, input, func(value languageValue) (bool, error) {
 			number, err := numberValue(value)
 			if err != nil {
-				return languageValue{}, err
+				return false, err
 			}
 			total.Add(total, number)
+			return true, nil
+		})
+		if err != nil {
+			return languageValue{}, err
 		}
 		return languageValue{kind: valueNumber, num: total}, nil
 	}})
 	r.builtin("max", languageValue{kind: valueFunction, fn: func(ctx context.Context, input languageValue) (languageValue, error) {
-		values, err := finiteList(ctx, input, 1_000_000)
-		if err != nil {
-			return languageValue{}, err
-		}
-		if len(values) == 0 {
-			return languageValue{}, errors.New("non-empty list expected")
-		}
-		result, err := numberValue(values[0])
-		if err != nil {
-			return languageValue{}, err
-		}
-		for _, value := range values[1:] {
+		var result *big.Int
+		err := streamList(ctx, input, func(value languageValue) (bool, error) {
 			number, err := numberValue(value)
 			if err != nil {
-				return languageValue{}, err
+				return false, err
 			}
-			if number.Cmp(result) > 0 {
-				result = number
+			if result == nil || number.Cmp(result) > 0 {
+				result = new(big.Int).Set(number)
 			}
+			return true, nil
+		})
+		if err != nil {
+			return languageValue{}, err
+		}
+		if result == nil {
+			return languageValue{}, errors.New("non-empty list expected")
 		}
 		return languageValue{kind: valueNumber, num: result}, nil
 	}})
@@ -2951,7 +2973,7 @@ func (r *languageRuntime) installBuiltins() {
 			}
 			return languageValue{kind: valueString, text: string(runes)}, nil
 		}
-		values, e := finiteList(ctx, input, 1_000_000)
+		values, e := collectList(ctx, input)
 		if e != nil {
 			return languageValue{}, e
 		}
@@ -2998,45 +3020,47 @@ func (r *languageRuntime) installBuiltins() {
 		}}}, nil
 	}))
 	r.builtin("filter", curry2(func(ctx context.Context, predicate, input languageValue) (languageValue, error) {
-		values, e := finiteList(ctx, input, 1_000_000)
-		if e != nil {
-			return languageValue{}, e
+		if input.kind != valueList || input.list == nil {
+			return languageValue{}, listTypeMismatch(input)
 		}
-		out := make([]languageValue, 0, len(values))
-		for _, value := range values {
-			keep, e := applyLanguage(ctx, predicate, value)
-			if e != nil {
-				return languageValue{}, e
+		sourceIndex := 0
+		return languageValue{kind: valueList, list: &lazyList{next: func(nextCtx context.Context, _ int) (languageValue, bool, error) {
+			for {
+				value, ok, err := input.list.at(nextCtx, sourceIndex)
+				sourceIndex++
+				if err != nil || !ok {
+					return languageValue{}, ok, err
+				}
+				keep, err := applyLanguage(nextCtx, predicate, value)
+				if err != nil {
+					return languageValue{}, false, err
+				}
+				if keep.kind != valueBool {
+					return languageValue{}, false, errors.New("truthvalue expected")
+				}
+				if keep.flag {
+					return value, true, nil
+				}
 			}
-			if keep.kind != valueBool {
-				return languageValue{}, errors.New("truthvalue expected")
-			}
-			if keep.flag {
-				out = append(out, value)
-			}
-		}
-		return listValue(out), nil
+		}}}, nil
 	}))
 	r.builtin("foldl", curry3(func(ctx context.Context, function, initial, input languageValue) (languageValue, error) {
-		values, e := finiteList(ctx, input, 1_000_000)
-		if e != nil {
-			return languageValue{}, e
-		}
 		result := initial
-		for _, value := range values {
-			step, e := applyLanguage(ctx, function, result)
-			if e != nil {
-				return languageValue{}, e
+		err := streamList(ctx, input, func(value languageValue) (bool, error) {
+			step, err := applyLanguage(ctx, function, result)
+			if err != nil {
+				return false, err
 			}
-			result, e = applyLanguage(ctx, step, value)
-			if e != nil {
-				return languageValue{}, e
-			}
+			result, err = applyLanguage(ctx, step, value)
+			return err == nil, err
+		})
+		if err != nil {
+			return languageValue{}, err
 		}
 		return result, nil
 	}))
 	r.builtin("foldr", curry3(func(ctx context.Context, function, initial, input languageValue) (languageValue, error) {
-		values, e := finiteList(ctx, input, 1_000_000)
+		values, e := collectList(ctx, input)
 		if e != nil {
 			return languageValue{}, e
 		}
@@ -3094,19 +3118,18 @@ func (r *languageRuntime) installBuiltins() {
 		return languageValue{kind: valueNumber, num: result}, nil
 	}})
 	r.builtin("and", languageValue{kind: valueFunction, fn: func(ctx context.Context, value languageValue) (languageValue, error) {
-		items, err := finiteList(ctx, value, 1_000_000)
-		if err != nil {
-			return languageValue{}, err
-		}
-		for _, item := range items {
+		result := true
+		err := streamList(ctx, value, func(item languageValue) (bool, error) {
 			if item.kind != valueBool {
-				return languageValue{}, errors.New("truthvalue expected")
+				return false, errors.New("truthvalue expected")
 			}
 			if !item.flag {
-				return languageValue{kind: valueBool, flag: false}, nil
+				result = false
+				return false, nil
 			}
-		}
-		return languageValue{kind: valueBool, flag: true}, nil
+			return true, nil
+		})
+		return languageValue{kind: valueBool, flag: result}, err
 	}})
 	r.builtin("system", languageValue{kind: valueFunction, fn: func(ctx context.Context, value languageValue) (languageValue, error) {
 		if value.kind != valueString {
@@ -3182,33 +3205,37 @@ func (r *languageRuntime) installBuiltins() {
 		}}}, nil
 	}))
 	r.builtin("last", languageValue{kind: valueFunction, fn: func(ctx context.Context, input languageValue) (languageValue, error) {
-		values, err := finiteList(ctx, input, maxMaterializedList)
+		var result languageValue
+		found := false
+		err := streamList(ctx, input, func(value languageValue) (bool, error) { result, found = value, true; return true, nil })
 		if err != nil {
 			return languageValue{}, err
 		}
-		if len(values) == 0 {
+		if !found {
 			return languageValue{}, errors.New("last of empty list")
 		}
-		return values[len(values)-1], nil
+		return result, nil
 	}})
 	r.builtin("foldl1", curry2(func(ctx context.Context, operation, input languageValue) (languageValue, error) {
-		values, err := finiteList(ctx, input, maxMaterializedList)
+		var result languageValue
+		found := false
+		err := streamList(ctx, input, func(value languageValue) (bool, error) {
+			if !found {
+				result, found = value, true
+				return true, nil
+			}
+			fn, err := applyLanguage(ctx, operation, result)
+			if err != nil {
+				return false, err
+			}
+			result, err = applyLanguage(ctx, fn, value)
+			return err == nil, err
+		})
 		if err != nil {
 			return languageValue{}, err
 		}
-		if len(values) == 0 {
+		if !found {
 			return languageValue{}, errors.New("foldl1 applied to []")
-		}
-		result := values[0]
-		for _, value := range values[1:] {
-			fn, err := applyLanguage(ctx, operation, result)
-			if err != nil {
-				return languageValue{}, err
-			}
-			result, err = applyLanguage(ctx, fn, value)
-			if err != nil {
-				return languageValue{}, err
-			}
 		}
 		return result, nil
 	}))
@@ -3322,20 +3349,33 @@ func (r *languageRuntime) installBuiltins() {
 			return languageValue{kind: valueString, text: a.text + b.text}, nil
 		}
 		if a.kind == valueString && b.kind == valueList {
-			empty, err := finiteList(ctx, b, 1)
-			if err == nil && len(empty) == 0 {
+			_, present, err := b.list.at(ctx, 0)
+			if err == nil && !present {
 				return a, nil
 			}
 		}
-		left, e := finiteList(ctx, a, 1_000_000)
-		if e != nil {
-			return languageValue{}, e
+		if a.kind != valueList || a.list == nil {
+			return languageValue{}, listTypeMismatch(a)
 		}
-		right, e := finiteList(ctx, b, 1_000_000)
-		if e != nil {
-			return languageValue{}, e
+		if b.kind != valueList || b.list == nil {
+			return languageValue{}, listTypeMismatch(b)
 		}
-		return listValue(append(left, right...)), nil
+		leftDone, rightIndex := false, 0
+		return languageValue{kind: valueList, list: &lazyList{next: func(nextCtx context.Context, index int) (languageValue, bool, error) {
+			if !leftDone {
+				value, ok, err := a.list.at(nextCtx, index)
+				if err != nil {
+					return languageValue{}, false, err
+				}
+				if ok {
+					return value, true, nil
+				}
+				leftDone = true
+			}
+			value, ok, err := b.list.at(nextCtx, rightIndex)
+			rightIndex++
+			return value, ok, err
+		}}}, nil
 	}))
 }
 
@@ -3434,14 +3474,12 @@ func smallMul(a, b int64) (int64, bool) {
 	return result, result/b == a
 }
 
-const maxMaterializedList = 1_000_000
-
-func finiteList(ctx context.Context, value languageValue, limit int) ([]languageValue, error) {
+func collectList(ctx context.Context, value languageValue) ([]languageValue, error) {
 	if value.kind != valueList || value.list == nil {
 		return nil, listTypeMismatch(value)
 	}
 	var out []languageValue
-	for index := 0; index < limit; index++ {
+	for index := 0; ; index++ {
 		item, ok, err := value.list.at(ctx, index)
 		if err != nil {
 			return nil, err
@@ -3451,14 +3489,22 @@ func finiteList(ctx context.Context, value languageValue, limit int) ([]language
 		}
 		out = append(out, item)
 	}
-	_, ok, err := value.list.at(ctx, limit)
-	if err != nil {
-		return nil, err
+}
+
+func streamList(ctx context.Context, value languageValue, visit func(languageValue) (bool, error)) error {
+	if value.kind != valueList || value.list == nil {
+		return listTypeMismatch(value)
 	}
-	if !ok {
-		return out, nil
+	for index := 0; ; index++ {
+		item, ok, err := value.list.at(ctx, index)
+		if err != nil || !ok {
+			return err
+		}
+		keepGoing, err := visit(item)
+		if err != nil || !keepGoing {
+			return err
+		}
 	}
-	return nil, errors.New("list output limit exceeded")
 }
 
 func renderLanguage(ctx context.Context, value languageValue) (string, error) {
@@ -3501,7 +3547,7 @@ func renderLanguage(ctx context.Context, value languageValue) (string, error) {
 	case valueConstructor:
 		return renderConstructor(ctx, value, false)
 	case valueList:
-		values, e := finiteList(ctx, value, maxMaterializedList)
+		values, e := collectList(ctx, value)
 		if e != nil {
 			return "", e
 		}

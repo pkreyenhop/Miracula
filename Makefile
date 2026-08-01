@@ -31,6 +31,7 @@ verify: clean
 	python3 test/integration/test_go_install.py
 	python3 tools/package.py build --output $(BUILD_DIR)/mira
 	python3 test/integration/startup_from_source.py $(BUILD_DIR)/mira
+	python3 test/conformance/manual_conformance.py $(BUILD_DIR)/mira
 
 install:
 	python3 tools/package.py install --prefix $(PREFIX) --destdir $(DESTDIR)
