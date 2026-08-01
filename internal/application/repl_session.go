@@ -8,6 +8,12 @@ type ReplSession struct {
 	ExitRequested bool
 	LastElapsed   *time.Duration
 	LastGC        *int
+	Errors        map[string]ErrorLocation
+}
+
+type ErrorLocation struct {
+	Path         string
+	Line, Column int
 }
 
 func (s *ReplSession) clearTiming() {

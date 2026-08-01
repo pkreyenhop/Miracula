@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	goruntime "runtime"
 	"sort"
 	"strconv"
@@ -48,6 +49,7 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 		var err error
 		editor, err = NewLineEditor(in, out)
 		if err != nil {
+			i.recordError(i.Compiler.CurrentModule, err)
 			return err
 		}
 		if home, ok := i.Services.Environment("HOME"); ok {
@@ -289,6 +291,7 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 			return false, fmt.Errorf("usage: /load file")
 		}
 		_, err := i.LoadProgram(fields[1])
+		i.recordLoadResult(fields[1], err)
 		return false, err
 	case "r", "reload":
 		path := i.Compiler.CurrentModule
@@ -296,6 +299,7 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 			return false, fmt.Errorf("no current script")
 		}
 		_, err := i.LoadProgram(path)
+		i.recordLoadResult(path, err)
 		return false, err
 	case "n", "names":
 		return false, i.printNames(out, false, "")
@@ -382,6 +386,42 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 		return false, fmt.Errorf("\aunknown command - type /h for help")
 	}
 	return false, fmt.Errorf("\aunknown command - type /h for help")
+}
+
+var diagnosticLocationPattern = regexp.MustCompile(`^(?:(.*):)?([0-9]+):([0-9]+):`)
+
+func (i *Interpreter) recordError(path string, err error) {
+	if err == nil {
+		return
+	}
+	match := diagnosticLocationPattern.FindStringSubmatch(err.Error())
+	if match == nil {
+		return
+	}
+	line, _ := strconv.Atoi(match[2])
+	column, _ := strconv.Atoi(match[3])
+	if match[1] != "" {
+		path = match[1]
+	}
+	if absolute, absoluteErr := filepath.Abs(path); absoluteErr == nil {
+		path = absolute
+	}
+	if i.Repl.Errors == nil {
+		i.Repl.Errors = map[string]ErrorLocation{}
+	}
+	i.Repl.Errors[path] = ErrorLocation{Path: path, Line: line, Column: column}
+}
+
+func (i *Interpreter) recordLoadResult(path string, err error) {
+	absolute, absoluteErr := filepath.Abs(path)
+	if absoluteErr == nil {
+		path = absolute
+	}
+	if err != nil {
+		i.recordError(path, err)
+		return
+	}
+	delete(i.Repl.Errors, path)
 }
 
 func (i *Interpreter) heapCommand(arguments []string, out io.Writer) error {

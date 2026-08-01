@@ -349,7 +349,11 @@ func (i *Interpreter) editCommand(arguments []string, out io.Writer) error {
 		return err
 	}
 	before, beforeOK := i.Services.Metadata(absolute)
-	command := editorCommandTemplate(i.Config.Editor, absolute, 1, 1)
+	line, column := 1, 1
+	if location, ok := i.Repl.Errors[absolute]; ok {
+		line, column = location.Line, location.Column
+	}
+	command := editorCommandTemplate(i.Config.Editor, absolute, line, column)
 	if i.activeEditor != nil {
 		if err = i.activeEditor.Suspend(); err != nil {
 			return err
@@ -363,6 +367,7 @@ func (i *Interpreter) editCommand(arguments []string, out io.Writer) error {
 	after, afterOK := i.Services.Metadata(absolute)
 	if afterOK && (!beforeOK || after != before) {
 		_, err = i.LoadProgram(absolute)
+		i.recordLoadResult(absolute, err)
 	}
 	return err
 }

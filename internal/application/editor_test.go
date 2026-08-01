@@ -65,13 +65,14 @@ func TestEditCommandRunsConfiguredTemplate(t *testing.T) {
 	services := &editorServices{}
 	i := New(services)
 	i.Config.Editor = "fake-editor +! %"
+	i.Repl.Errors = map[string]ErrorLocation{path: {Path: path, Line: 12, Column: 4}}
 	if err := i.editCommand([]string{strings.TrimSuffix(path, ".m")}, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	if services.request.Executable != platformsvc.ShellFallbackPath || len(services.request.Arguments) != 2 {
 		t.Fatalf("request = %+v", services.request)
 	}
-	want := `fake-editor +1 "` + path + `"`
+	want := `fake-editor +12 "` + path + `"`
 	if services.request.Arguments[1] != want {
 		t.Fatalf("shell command = %q, want %q", services.request.Arguments[1], want)
 	}

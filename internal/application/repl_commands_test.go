@@ -2,6 +2,8 @@ package application
 
 import (
 	"bytes"
+	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -38,5 +40,19 @@ func TestHeapCommandRejectsIllegalValue(t *testing.T) {
 	_, err := i.runCommand("/heap nope", &bytes.Buffer{})
 	if err == nil || err.Error() != "illegal value (heap unchanged)" {
 		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestRecordErrorTracksAndClearsSourceLocation(t *testing.T) {
+	i := New(nil)
+	path := filepath.Join(t.TempDir(), "broken.m")
+	i.recordError(path, fmt.Errorf("%s:7:13: type error", path))
+	absolute, _ := filepath.Abs(path)
+	if got := i.Repl.Errors[absolute]; got.Line != 7 || got.Column != 13 {
+		t.Fatalf("location = %+v", got)
+	}
+	i.recordLoadResult(path, nil)
+	if _, ok := i.Repl.Errors[absolute]; ok {
+		t.Fatal("successful load did not clear error")
 	}
 }
