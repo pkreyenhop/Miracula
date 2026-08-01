@@ -47,7 +47,15 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 		if err != nil {
 			return err
 		}
-		defer editor.Close()
+		if home, ok := i.Services.Environment("HOME"); ok {
+			if err = editor.LoadHistory(filepath.Join(home, ".miranda_history")); err != nil {
+				return err
+			}
+		}
+		defer func() {
+			_ = editor.SaveHistory()
+			_ = editor.Close()
+		}()
 	} else {
 		scanner = bufio.NewScanner(in)
 	}

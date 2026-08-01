@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/pkreyenhop/miracula/internal/platformsvc"
@@ -15,15 +16,47 @@ import (
 
 type LineEditor interface {
 	ReadLine(prompt string) (string, error)
+	LoadHistory(path string) error
+	SaveHistory() error
 	Close() error
 }
 
 type terminalLineEditor struct {
-	input  *bufio.Reader
-	output io.Writer
-	file   *os.File
-	state  platformsvc.TerminalState
-	raw    bool
+	input       *bufio.Reader
+	output      io.Writer
+	file        *os.File
+	state       platformsvc.TerminalState
+	raw         bool
+	history     []string
+	historyPath string
+}
+
+func (e *terminalLineEditor) LoadHistory(path string) error {
+	e.historyPath = path
+	data, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	for _, line := range strings.Split(strings.TrimSuffix(string(data), "\n"), "\n") {
+		if line != "" {
+			e.history = append(e.history, line)
+		}
+	}
+	return nil
+}
+
+func (e *terminalLineEditor) SaveHistory() error {
+	if e.historyPath == "" {
+		return nil
+	}
+	data := []byte(strings.Join(e.history, "\n"))
+	if len(data) != 0 {
+		data = append(data, '\n')
+	}
+	return platformsvc.AtomicReplace(e.historyPath, data, 0o600)
 }
 
 func NewLineEditor(input io.Reader, output io.Writer) (LineEditor, error) {
@@ -52,6 +85,8 @@ func (e *terminalLineEditor) ReadLine(prompt string) (string, error) {
 	}
 	var line []rune
 	cursor := 0
+	historyIndex := len(e.history)
+	var draft []rune
 	redraw := func() error {
 		if _, err := fmt.Fprintf(e.output, "\r\x1b[2K%s%s", prompt, string(line)); err != nil {
 			return err
@@ -75,7 +110,11 @@ func (e *terminalLineEditor) ReadLine(prompt string) (string, error) {
 			if e.raw {
 				_, _ = io.WriteString(e.output, "\r\n")
 			}
-			return string(line), nil
+			result := string(line)
+			if result != "" {
+				e.history = append(e.history, result)
+			}
+			return result, nil
 		case 1: // Ctrl-A
 			cursor = 0
 		case 5: // Ctrl-E
@@ -99,6 +138,25 @@ func (e *terminalLineEditor) ReadLine(prompt string) (string, error) {
 			b2, _ := e.input.ReadByte()
 			if a == '[' {
 				switch b2 {
+				case 'A':
+					if historyIndex == len(e.history) {
+						draft = append(draft[:0], line...)
+					}
+					if historyIndex > 0 {
+						historyIndex--
+						line = []rune(e.history[historyIndex])
+						cursor = len(line)
+					}
+				case 'B':
+					if historyIndex < len(e.history) {
+						historyIndex++
+						if historyIndex == len(e.history) {
+							line = append(line[:0], draft...)
+						} else {
+							line = []rune(e.history[historyIndex])
+						}
+						cursor = len(line)
+					}
 				case 'D':
 					if cursor > 0 {
 						cursor--

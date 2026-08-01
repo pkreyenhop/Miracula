@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -46,5 +48,37 @@ func TestLineEditorControlDOnEmptyLineIsEOF(t *testing.T) {
 	_, err = editor.ReadLine("")
 	if !errors.Is(err, io.EOF) {
 		t.Fatalf("Ctrl-D error = %v", err)
+	}
+}
+
+func TestLineEditorPersistsAndRecallsHistory(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".miranda_history")
+	first, err := NewLineEditor(bytes.NewBufferString("1+1\n"), io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = first.LoadHistory(path); err != nil {
+		t.Fatal(err)
+	}
+	if line, readErr := first.ReadLine(""); readErr != nil || line != "1+1" {
+		t.Fatalf("line = %q, err = %v", line, readErr)
+	}
+	if err = first.SaveHistory(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || string(data) != "1+1\n" {
+		t.Fatalf("history = %q, err = %v", data, err)
+	}
+	second, err := NewLineEditor(bytes.NewReader([]byte{27, '[', 'A', '\n'}), io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = second.LoadHistory(path); err != nil {
+		t.Fatal(err)
+	}
+	line, err := second.ReadLine("")
+	if err != nil || line != "1+1" {
+		t.Fatalf("recalled line = %q, err = %v", line, err)
 	}
 }
