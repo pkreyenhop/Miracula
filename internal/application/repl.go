@@ -38,20 +38,46 @@ func (i *Interpreter) Evaluate(ctx context.Context, expression string) (string, 
 }
 
 func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) error {
-	scanner := bufio.NewScanner(in)
 	interactive := i.Services.Terminal(0).Interactive
+	var scanner *bufio.Scanner
+	var editor LineEditor
+	if interactive {
+		var err error
+		editor, err = NewLineEditor(in, out)
+		if err != nil {
+			return err
+		}
+		defer editor.Close()
+	} else {
+		scanner = bufio.NewScanner(in)
+	}
 	hadError := i.startupFailed
 	for {
+		var rawLine string
 		if interactive {
 			prompt := i.Config.Prompt
-			if prompt == "" {
+			if i.Config.Hush {
+				prompt = ""
+			} else if prompt == "" {
 				prompt = "Miranda "
 			}
-			if _, err := fmt.Fprint(out, prompt); err != nil {
+			line, err := editor.ReadLine(prompt)
+			if err != nil && !errors.Is(err, io.EOF) {
 				return err
 			}
-		}
-		if !scanner.Scan() {
+			if errors.Is(err, io.EOF) {
+				if !i.Config.Hush {
+					fmt.Fprintln(out, "miranda logout")
+				}
+				if hadError {
+					return ErrEvaluationReported
+				}
+				return nil
+			}
+			rawLine = line
+		} else if scanner.Scan() {
+			rawLine = scanner.Text()
+		} else {
 			if err := scanner.Err(); err != nil {
 				return err
 			}
@@ -60,7 +86,7 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 			}
 			return nil
 		}
-		line := strings.TrimSpace(scanner.Text())
+		line := strings.TrimSpace(rawLine)
 		if line == "" {
 			continue
 		}

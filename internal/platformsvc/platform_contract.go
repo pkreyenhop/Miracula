@@ -66,6 +66,10 @@ type TerminalInfo struct {
 	Columns     *uint16
 }
 
+type TerminalState struct {
+	termios [72]byte
+}
+
 type Services interface {
 	Metadata(string) (FileMetadata, bool)
 	Run(ProcessRequest) (ProcessOutcome, error)

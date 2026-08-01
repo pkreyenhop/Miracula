@@ -58,6 +58,35 @@ func TerminalWidth(fd uintptr) (uint16, bool) {
 	}
 	return size.Col, true
 }
+
+func MakeRaw(fd uintptr) (TerminalState, error) {
+	var state TerminalState
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, syscall.TIOCGETA, uintptr(unsafe.Pointer(&state.termios[0])))
+	if errno != 0 {
+		return TerminalState{}, errno
+	}
+	raw := state.termios
+	// Darwin termios stores input, output, control, and local flags in the
+	// first four uint64-compatible slots. Disable canonical input and echo while
+	// retaining signal generation so Ctrl-C still reaches the interpreter.
+	flags := (*[4]uint64)(unsafe.Pointer(&raw[0]))
+	flags[3] &^= uint64(syscall.ICANON | syscall.ECHO)
+	raw[32+syscall.VMIN] = 1
+	raw[32+syscall.VTIME] = 0
+	_, _, errno = syscall.Syscall(syscall.SYS_IOCTL, fd, syscall.TIOCSETA, uintptr(unsafe.Pointer(&raw[0])))
+	if errno != 0 {
+		return TerminalState{}, errno
+	}
+	return state, nil
+}
+
+func RestoreTerminal(fd uintptr, state TerminalState) error {
+	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, syscall.TIOCSETA, uintptr(unsafe.Pointer(&state.termios[0])))
+	if errno != 0 {
+		return errno
+	}
+	return nil
+}
 func RunShell(ctx context.Context, shell, command string) (ProcessOutcome, error) {
 	if shell == "" {
 		shell = ShellFallbackPath
