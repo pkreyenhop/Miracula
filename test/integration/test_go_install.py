@@ -12,8 +12,8 @@ import tarfile
 import tempfile
 import unittest
 
-ROOT = Path(__file__).resolve().parents[1]
-PACKAGER = ROOT / "scripts/package_go.py"
+ROOT = Path(__file__).resolve().parents[2]
+PACKAGER = ROOT / "tools/package.py"
 
 
 class InstalledProductTests(unittest.TestCase):

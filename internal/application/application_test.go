@@ -34,7 +34,7 @@ func repositoryRoot(t testing.TB) string {
 
 func TestBootLoadsLibraryAndUserProgram(t *testing.T) {
 	i := New(platformsvc.NativeServices{})
-	i.Config.LibraryPath = filepath.Join(repositoryRoot(t), "miralib")
+	i.Config.LibraryPath = filepath.Join(repositoryRoot(t), "lib/miralib")
 	directory := t.TempDir()
 	script := filepath.Join(directory, "sample.m")
 	if err := os.WriteFile(script, []byte("main = 1+2\n"), 0600); err != nil {
@@ -153,7 +153,7 @@ func TestLanguageRuntimeSupportsLazyHigherOrderAndBignumValues(t *testing.T) {
 func TestLanguageRuntimeLoadsRecursiveGuardedDefinitions(t *testing.T) {
 	root := repositoryRoot(t)
 	i := New(platformsvc.NativeServices{})
-	if _, err := i.LoadProgram(filepath.Join(root, "miralib/ex/fib.m")); err != nil {
+	if _, err := i.LoadProgram(filepath.Join(root, "lib/miralib/ex/fib.m")); err != nil {
 		t.Fatal(err)
 	}
 	actual, err := i.Evaluate(context.Background(), "fib 10")
@@ -164,7 +164,7 @@ func TestLanguageRuntimeLoadsRecursiveGuardedDefinitions(t *testing.T) {
 
 func BenchmarkLanguageRuntimeFibonacci(b *testing.B) {
 	i := New(platformsvc.NativeServices{})
-	if _, err := i.LoadProgram(filepath.Join(repositoryRoot(b), "miralib/ex/fib.m")); err != nil {
+	if _, err := i.LoadProgram(filepath.Join(repositoryRoot(b), "lib/miralib/ex/fib.m")); err != nil {
 		b.Fatal(err)
 	}
 	for n := 0; n < b.N; n++ {
@@ -186,7 +186,7 @@ func BenchmarkLanguageRuntimeLargeListAndBignum(b *testing.B) {
 func TestLanguageRuntimeLoadsAlgebraicValues(t *testing.T) {
 	root := repositoryRoot(t)
 	i := New(platformsvc.NativeServices{})
-	if _, err := i.LoadProgram(filepath.Join(root, "tests/golden/algebraic_param.m")); err != nil {
+	if _, err := i.LoadProgram(filepath.Join(root, "testdata/golden/algebraic_param.m")); err != nil {
 		t.Fatal(err)
 	}
 	for expression, expected := range map[string]string{"t1": "Branch (Leaf 1) (Leaf 2)"} {

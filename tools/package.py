@@ -63,7 +63,7 @@ def destination(prefix: Path, destdir: Path) -> Path:
 
 def copy_library(target: Path) -> None:
     shutil.copytree(
-        ROOT / "miralib", target, dirs_exist_ok=True,
+        ROOT / "lib" / "miralib", target, dirs_exist_ok=True,
         ignore=shutil.ignore_patterns("*.x", "preludx", "__pycache__", ".DS_Store"),
     )
 
@@ -77,7 +77,7 @@ def install(prefix: Path, destdir: Path) -> None:
     docs = target / "share" / "doc" / "miracula"
     docs.mkdir(parents=True, exist_ok=True)
     shutil.copy2(ROOT / "README.md", docs / "README.md")
-    shutil.copy2(ROOT / "miralib" / "COPYING", docs / "COPYING")
+    shutil.copy2(ROOT / "lib" / "miralib" / "COPYING", docs / "COPYING")
 
 
 def uninstall(prefix: Path, destdir: Path) -> None:
@@ -111,7 +111,7 @@ def archive(output: Path) -> None:
 def clean() -> None:
     for relative in ("build",):
         shutil.rmtree(ROOT / relative, ignore_errors=True)
-    (ROOT / "miralib" / "preludx").unlink(missing_ok=True)
+    (ROOT / "lib" / "miralib" / "preludx").unlink(missing_ok=True)
     for path in ROOT.rglob("*.x"):
         path.unlink()
 

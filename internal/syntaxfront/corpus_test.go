@@ -11,7 +11,7 @@ import (
 func TestRepositoryMirandaCorpusProducesSyntaxTrees(t *testing.T) {
 	_, file, _, _ := runtime.Caller(0)
 	root := filepath.Clean(filepath.Join(filepath.Dir(file), "../.."))
-	for _, directory := range []string{"miralib", "tests/golden", "tests/spine_corpus"} {
+	for _, directory := range []string{"lib/miralib", "testdata/golden", "testdata/spine"} {
 		err := filepath.WalkDir(filepath.Join(root, directory), func(path string, entry os.DirEntry, err error) error {
 			if err != nil {
 				return err

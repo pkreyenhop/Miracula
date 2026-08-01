@@ -9,7 +9,7 @@ import (
 
 func TestUnsupportedLinuxTargetFailsAtBuildTime(t *testing.T) {
 	command := exec.Command("go", "test", "./internal/platformsvc")
-	command.Dir = "../.."
+	command.Dir = "../../.."
 	command.Env = append(os.Environ(), "GOOS=linux", "GOARCH=amd64", "CGO_ENABLED=0")
 	output, err := command.CombinedOutput()
 	if err == nil {

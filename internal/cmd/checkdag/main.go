@@ -47,6 +47,9 @@ func main() {
 			os.Exit(1)
 		}
 		name := strings.TrimPrefix(pkg.ImportPath, module+"/internal/")
+		if strings.HasPrefix(name, "cmd/") {
+			continue
+		}
 		if _, ok := allowed[name]; !ok || strings.Contains(name, "/") {
 			violations = append(violations, "unknown internal package "+pkg.ImportPath)
 			continue

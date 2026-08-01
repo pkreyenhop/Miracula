@@ -10,7 +10,7 @@ type Config struct {
 
 func DefaultConfig() Config {
 	return Config{
-		LibraryPath: "./miralib", Editor: "vi +!", Prompt: "Miranda ",
+		LibraryPath: "./lib/miralib", Editor: "vi +!", Prompt: "Miranda ",
 		HeapCells: 1250000, DictionaryCells: 100000, UTF8: true, StrictIf: true,
 	}
 }

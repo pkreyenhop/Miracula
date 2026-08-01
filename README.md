@@ -56,7 +56,7 @@ explicitly:
 mira -lib /path/to/miralib myfile.m
 ```
 
-The manual under `miralib/manual/` describes the available command-line and
+The manual under `lib/miralib/manual/` describes the available command-line and
 interactive options.
 
 ## Example program
@@ -83,13 +83,14 @@ fib 20
 
 ## Repository contents
 
-- `cmd/` — command-line programs
+- `cmd/mira/` — the user-facing interpreter command
+- `internal/cmd/` — repository-only developer commands
 - `internal/` — compiler, runtime, evaluator, REPL, and platform services
-- `miralib/` — standard environment, manual, help data, and example programs
-- `tests/` — unit, integration, compatibility, golden-output, interrupt, and
-  stress tests
+- `lib/miralib/` — standard environment, manual, help data, and examples
+- `testdata/` — language fixtures and golden-output corpus
+- `test/integration/` — installed-product and command-boundary tests
 - `docs/` — project documentation and historical notes
-- `scripts/` — repository checks and maintenance utilities
+- `tools/` — release and packaging utilities
 
 ## Building and installing
 
@@ -134,8 +135,9 @@ output and disposable `.x` caches created by integration tests.
 
 ## Standard library and examples
 
-The `miralib/` directory contains the standard environment and the historical
-Miranda documentation. Example programs are under `miralib/ex/`.
+The `lib/miralib/` directory contains the standard environment and the
+historical Miranda documentation. Example programs are under
+`lib/miralib/ex/`.
 
 Common examples include:
 
@@ -164,7 +166,7 @@ different implementation; see `docs/GoCompatibilityExceptions.md`. Observable
 behavior is protected by unit, golden-corpus, command, and installation tests.
 
 The project includes material derived from the historical Miranda distribution.
-See [LICENSE](LICENSE) and `miralib/COPYING` for licensing information.
+See [LICENSE](LICENSE) and `lib/miralib/COPYING` for licensing information.
 
 ## Contributing
 

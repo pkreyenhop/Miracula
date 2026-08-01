@@ -10,7 +10,7 @@ import shutil
 import subprocess
 import tempfile
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 LIBRARY_FILES = (".version", "auxfile", "helpfile", "prelude", "stdenv.m")
 
 
@@ -24,7 +24,7 @@ def main() -> int:
         library = temp / "miralib"
         library.mkdir()
         for name in LIBRARY_FILES:
-            shutil.copy2(ROOT / "miralib" / name, library / name)
+            shutil.copy2(ROOT / "lib" / "miralib" / name, library / name)
         environment = dict(os.environ)
         environment["HOME"] = os.fspath(temp / "home")
         (temp / "home").mkdir()

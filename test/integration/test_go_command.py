@@ -11,7 +11,7 @@ import tempfile
 import unittest
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class GoCommandTests(unittest.TestCase):
@@ -22,7 +22,7 @@ class GoCommandTests(unittest.TestCase):
         subprocess.run(
             [
                 sys.executable,
-                str(ROOT / "scripts/package_go.py"),
+                str(ROOT / "tools/package.py"),
                 "build",
                 "--output",
                 str(cls.binary),

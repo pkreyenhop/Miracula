@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 class GoReplTests(unittest.TestCase):
@@ -20,7 +20,7 @@ class GoReplTests(unittest.TestCase):
                 check=True,
             )
             result = subprocess.run(
-                [binary, "-lib", ROOT / "miralib", "-hush"],
+                [binary, "-lib", ROOT / "lib/miralib", "-hush"],
                 cwd=ROOT,
                 input=b"1 div 0\n1+2\n/q\n",
                 stdout=subprocess.PIPE,

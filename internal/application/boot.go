@@ -39,7 +39,7 @@ func (i *Interpreter) Boot() error {
 }
 
 func (i *Interpreter) resolveLibrary() error {
-	candidates := []string{i.Config.LibraryPath, "/usr/lib/miralib", "/usr/local/lib/miralib", "miralib"}
+	candidates := []string{i.Config.LibraryPath, "/usr/lib/miralib", "/usr/local/lib/miralib", "lib/miralib"}
 	seen := map[string]bool{}
 	for _, candidate := range candidates {
 		if candidate == "" || seen[candidate] {
