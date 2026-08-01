@@ -27,8 +27,8 @@ class GoReplTests(unittest.TestCase):
                 stderr=subprocess.PIPE,
                 check=True,
             )
-            self.assertEqual(result.stdout, b"division by zero\n3\n")
-            self.assertEqual(result.stderr, b"")
+            self.assertEqual(result.stdout, b"3\n")
+            self.assertEqual(result.stderr, b"\nprogram error: attempt to divide by zero\n")
 
 
 if __name__ == "__main__":

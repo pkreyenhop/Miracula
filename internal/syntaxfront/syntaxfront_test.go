@@ -65,3 +65,25 @@ func TestLexerFamilies(t *testing.T) {
 		}
 	}
 }
+
+func TestParenthesizedNegativeIsNotAnOperatorSection(t *testing.T) {
+	parsed := Run([]byte("value = (-12345678901234567890) + 12345678901234567880\n"))
+	if len(parsed.Diagnostics) > 0 || len(parsed.Script.Items) != 1 {
+		t.Fatal(parsed.Diagnostics)
+	}
+	left := parsed.Script.Items[0].RHS.Head
+	if left == nil || left.Variant != "neg" {
+		t.Fatalf("left = %#v", left)
+	}
+}
+
+func BenchmarkParseSource(b *testing.B) {
+	source := []byte("qsort [] = []\nqsort (a:x) = qsort [b | b <- x; b <= a] ++ [a] ++ qsort [b | b <- x; b > a]\n")
+	b.ReportAllocs()
+	for n := 0; n < b.N; n++ {
+		result := Run(source)
+		if len(result.Diagnostics) != 0 {
+			b.Fatal(result.Diagnostics)
+		}
+	}
+}

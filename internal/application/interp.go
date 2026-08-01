@@ -22,6 +22,8 @@ type Interpreter struct {
 	Programs      map[string]*semantics.Program
 	Scripts       ScriptStore
 	InitialScript string
+	language      *languageRuntime
+	startupFailed bool
 	Input         io.Reader
 	Output, Error io.Writer
 }
@@ -40,6 +42,8 @@ func (i *Interpreter) Reset() {
 	i.Compiler = CompilerState{}
 	i.Repl = ReplSession{}
 	i.Programs = nil
+	i.language = nil
+	i.startupFailed = false
 	i.Scripts = ScriptStore{}
 	i.Evaluator = evaluation.Evaluator{Heap: i.Heap}
 }

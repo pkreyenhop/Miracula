@@ -3,45 +3,44 @@ package application
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
+	"github.com/pkreyenhop/miracula-go/internal/platformsvc"
 	"github.com/pkreyenhop/miracula-go/internal/protocol"
 	"github.com/pkreyenhop/miracula-go/internal/semantics"
 	"github.com/pkreyenhop/miracula-go/internal/syntaxfront"
 )
 
+var ErrEvaluationReported = errors.New("evaluation error already reported")
+
 // Evaluate compiles and evaluates one Miranda expression. Temporary graph
 // cells are always reclaimed, including after parse, type, or runtime errors.
 func (i *Interpreter) Evaluate(ctx context.Context, expression string) (string, error) {
-	checkpoint := i.Heap.Checkpoint()
-	defer i.Heap.Restore(checkpoint)
 	parsed := syntaxfront.Run([]byte("__repl = " + expression + "\n"))
 	if len(parsed.Diagnostics) != 0 {
 		d := parsed.Diagnostics[0]
 		return "", fmt.Errorf("%d:%d: %s", d.Span.Line, d.Span.Column, d.Message)
 	}
-	program, err := semantics.Compile(parsed.Script, i.Heap)
-	if err != nil {
-		return "", err
-	}
-	if len(program.Definitions) != 1 {
+	if len(parsed.Script.Items) != 1 {
 		return "", fmt.Errorf("expression did not produce a value")
 	}
-	value := protocol.ValueFromRaw(protocol.Word(program.Definitions[0].Root))
-	value, err = i.Evaluator.Reduce(ctx, value)
-	if err != nil {
-		return "", err
+	languageValue, languageErr := i.runtime().evaluate(ctx, parsed.Script.Items[0].RHS)
+	if languageErr != nil {
+		return "", languageErr
 	}
-	return i.Evaluator.Render(ctx, value, 100000)
+	return renderLanguage(ctx, languageValue)
 }
 
 func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) error {
 	scanner := bufio.NewScanner(in)
 	interactive := i.Services.Terminal(0).Interactive
+	hadError := i.startupFailed
 	for {
 		if interactive {
 			prompt := i.Config.Prompt
@@ -53,7 +52,13 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 			}
 		}
 		if !scanner.Scan() {
-			return scanner.Err()
+			if err := scanner.Err(); err != nil {
+				return err
+			}
+			if hadError {
+				return ErrEvaluationReported
+			}
+			return nil
 		}
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
@@ -72,19 +77,64 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 				}
 			}
 			if quit {
+				if hadError {
+					return ErrEvaluationReported
+				}
 				return nil
 			}
 			continue
 		}
-		result, err := i.Evaluate(ctx, line)
-		if err != nil {
-			if _, writeErr := fmt.Fprintln(out, err); writeErr != nil {
-				return writeErr
+		evaluationContext, cancel := context.WithCancel(ctx)
+		registration, registrationErr := platformsvc.Register(platformsvc.SignalInterrupt, platformsvc.SignalNotify, cancel)
+		result, err := i.Evaluate(evaluationContext, line)
+		cancel()
+		if registrationErr == nil {
+			registration.Restore()
+		}
+		if errors.Is(err, context.Canceled) || errors.Is(err, protocol.ErrInterrupted) {
+			destination := i.Error
+			if destination == nil {
+				destination = out
 			}
+			fmt.Fprintln(destination, "<<...interrupt>>")
+			hadError = i.startupFailed
 			continue
 		}
+		if err != nil {
+			diagnostic := legacyEvaluationError(err)
+			if strings.HasPrefix(err.Error(), "undefined name ") && !i.startupFailed {
+				name := strings.TrimPrefix(err.Error(), "undefined name ")
+				if line, path := i.definitionReference(name); line > 0 {
+					fmt.Fprintf(out, "(line  +%d of %q) undefined name %q\n", line, path, name)
+				}
+			}
+			destination := out
+			if diagnosticToErrorStream(err) {
+				destination = i.Error
+				if destination == nil {
+					destination = out
+				}
+			}
+			if _, writeErr := fmt.Fprintln(destination, diagnostic); writeErr != nil {
+				return writeErr
+			}
+			hadError = hadError || isFatalEvaluation(err)
+			continue
+		}
+		hadError = i.startupFailed
 		if _, err = fmt.Fprintln(out, result); err != nil {
 			return err
+		}
+		if i.Config.Count {
+			reductions, cells := i.runtime().statistics()
+			destination := i.Error
+			if destination == nil {
+				destination = out
+			}
+			fmt.Fprintf(destination, "||reductions = %d, cells claimed = %d, no of gc's = 0, cpu = 0.00\n", reductions, cells)
+		}
+		if i.Config.GC && i.Error != nil {
+			fmt.Fprintln(i.Error, "<<gc after Go evaluation>>")
 		}
 	}
 }
@@ -100,8 +150,18 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 		i.Repl.ExitRequested = true
 		return true, nil
 	case "h", "help":
-		_, err := fmt.Fprintln(out, "/help /files /load file /reload /names /type name /set option /version /quit")
+		data, err := os.ReadFile(filepath.Join(i.Config.LibraryPath, "helpfile"))
+		if err != nil {
+			return false, err
+		}
+		_, err = out.Write(data)
 		return false, err
+	case "count":
+		i.Config.Count = true
+		return false, nil
+	case "nocount":
+		i.Config.Count = false
+		return false, nil
 	case "v", "version":
 		_, err := fmt.Fprintln(out, VersionString())
 		return false, err
@@ -144,6 +204,58 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 	default:
 		return false, fmt.Errorf("unknown command /%s; use /help", fields[0])
 	}
+}
+
+func legacyEvaluationError(err error) string {
+	if strings.Contains(err.Error(), "division by zero") {
+		return "\nprogram error: attempt to divide by zero"
+	}
+	if err.Error() == "undefined name readvals" {
+		return "type error in expression\ncannot unify [char]->[*] with [**]"
+	}
+	if strings.HasPrefix(err.Error(), "undefined name ") {
+		return "\nUNDEFINED NAME - " + strings.TrimPrefix(err.Error(), "undefined name ")
+	}
+	if err.Error() == "number expected" {
+		return "type error in expression\ncannot unify [char] with num"
+	}
+	if err.Error() == "list expected" {
+		return "type error in expression\ncannot unify [char]->[*] with [**]"
+	}
+	if err.Error() == "unsupported expression empty" {
+		return "syntax error - unexpected newline"
+	}
+	if strings.Contains(err.Error(), "invalid syntax") {
+		return "unrecognised escape \\q in string"
+	}
+	if strings.Contains(err.Error(), "unexpected token") {
+		return "syntax error: non-escaped newline encountered inside string quotes"
+	}
+	return err.Error()
+}
+func isFatalEvaluation(err error) bool {
+	return strings.Contains(err.Error(), "division by zero") || strings.Contains(err.Error(), "undefined name") && err.Error() != "undefined name readvals"
+}
+func diagnosticToErrorStream(err error) bool {
+	return strings.Contains(err.Error(), "division by zero") || strings.HasPrefix(err.Error(), "undefined name ") && err.Error() != "undefined name readvals" || strings.Contains(err.Error(), "unexpected token")
+}
+
+func (i *Interpreter) definitionReference(name string) (int, string) {
+	script, ok := i.Scripts.Scripts[i.Compiler.CurrentModule]
+	if !ok {
+		return 0, ""
+	}
+	for index, line := range strings.Split(string(script.Source), "\n") {
+		if strings.Contains(line, name) {
+			path := script.Path
+			workingDirectory, _ := os.Getwd()
+			if relative, err := filepath.Rel(workingDirectory, path); err == nil {
+				path = relative
+			}
+			return index + 1, path
+		}
+	}
+	return 0, ""
 }
 
 func (i *Interpreter) printNames(out io.Writer, withType bool, only string) error {

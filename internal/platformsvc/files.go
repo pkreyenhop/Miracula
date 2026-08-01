@@ -33,6 +33,22 @@ func AtomicReplace(path string, data []byte, mode os.FileMode) error {
 	}
 	return os.Rename(temporaryPath, path)
 }
+func WriteText(path, text string, appendMode bool) error {
+	flags := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
+	if appendMode {
+		flags = os.O_CREATE | os.O_WRONLY | os.O_APPEND
+	}
+	file, err := os.OpenFile(path, flags, 0644)
+	if err != nil {
+		return err
+	}
+	_, writeErr := io.WriteString(file, text)
+	closeErr := file.Close()
+	if writeErr != nil {
+		return writeErr
+	}
+	return closeErr
+}
 
 type FilesWord = protocol.Word
 

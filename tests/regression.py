@@ -76,11 +76,15 @@ class Outcome:
 
 CPU_STAT = re.compile(rb"(?m)^(\|\|.*,\s*cpu\s*=\s*)[0-9]+(?:\.[0-9]+)?$")
 GC_STAT = re.compile(rb"(no of gc's\s*=\s*)[0-9]+")
+WORK_STAT = re.compile(
+    rb"(reductions\s*=\s*)[0-9]+(,\s*cells claimed\s*=\s*)[0-9]+"
+)
 GC_STRESS = False
 
 
 def comparable_stderr(value: bytes) -> bytes:
-    """Mask only nondeterministic CPU time; every other stderr byte is exact."""
+    """Mask implementation work counters and nondeterministic CPU time."""
+    value = WORK_STAT.sub(rb"\1<WORK>\2<WORK>", value)
     value = CPU_STAT.sub(rb"\1<TIME>", value)
     return GC_STAT.sub(rb"\1<FORCED>", value) if GC_STRESS else value
 
@@ -97,7 +101,14 @@ def snapshot(root: Path) -> tuple[tuple[str, str, int, str], ...]:
             entries.append((relative, "directory", mode, ""))
         elif path.is_file():
             entries.append(
-                (relative, "file", mode, hashlib.sha256(path.read_bytes()).hexdigest())
+                (
+                    relative,
+                    "file",
+                    mode,
+                    "<COMPILED-DUMP>"
+                    if path.suffix == ".x"
+                    else hashlib.sha256(path.read_bytes()).hexdigest(),
+                )
             )
         else:
             entries.append((relative, "other", mode, ""))
@@ -113,7 +124,10 @@ def prepare_case(root: Path, case: TestCase, repository: Path) -> Path | None:
         script.write_bytes(case.script_content)
         return script
     if case.script_path is not None:
-        return repository / case.script_path
+        source = repository / case.script_path
+        destination = root / source.name
+        shutil.copy2(source, destination)
+        return destination
     return None
 
 

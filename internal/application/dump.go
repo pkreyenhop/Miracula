@@ -42,6 +42,9 @@ func WriteCompiledDump(path string, source []byte) error {
 	if err = temporary.Close(); err != nil {
 		return err
 	}
+	if err = os.Chmod(name, 0o644); err != nil {
+		return err
+	}
 	return os.Rename(name, path)
 }
 func ReadCompiledDump(path string, source []byte) (CompiledDump, error) {

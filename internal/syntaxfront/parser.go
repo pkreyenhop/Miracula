@@ -20,7 +20,18 @@ func Parse(tokens []Token) (Script, []Diagnostic) {
 		}
 		start := p.position
 		end := start
-		for end < len(tokens) && tokens[end].Kind != "offside" && tokens[end].Kind != "semicolon" && tokens[end].Kind != "eof" {
+		depth := 0
+		for end < len(tokens) {
+			kind := tokens[end].Kind
+			if depth == 0 && (kind == "offside" || kind == "semicolon" || kind == "eof") {
+				break
+			}
+			switch kind {
+			case "lparen", "lbracket", "lbrace":
+				depth++
+			case "rparen", "rbracket", "rbrace":
+				depth--
+			}
 			end++
 		}
 		if end == start {
@@ -85,46 +96,171 @@ func parseStatement(tokens []Token) (Definition, *Diagnostic) {
 }
 
 func parseExpression(tokens []Token) Expr {
+	value, _ := parsePratt(tokens, 0, 0)
+	return value
+}
+
+func parsePratt(tokens []Token, position, minimum int) (Expr, int) {
 	if len(tokens) == 0 {
-		return Expr{Variant: "empty"}
+		return Expr{Variant: "empty"}, position
 	}
-	if len(tokens) == 1 {
-		return atom(tokens[0])
+	if position >= len(tokens) {
+		return Expr{Variant: "empty"}, position
 	}
-	if tokens[0].Kind == "lparen" && matchingClose(tokens, 0, "lparen", "rparen") == len(tokens)-1 {
-		inside := tokens[1 : len(tokens)-1]
+	start := position
+	var result Expr
+	token := tokens[position]
+	position++
+	switch token.Kind {
+	case "minus", "not", "length":
+		argument, next := parsePratt(tokens, position, map[string]int{"minus": 65, "not": 35, "length": 85}[token.Kind])
+		result, position = Expr{Variant: map[string]string{"minus": "neg", "not": "not", "length": "length"}[token.Kind], Arg: exprPtr(argument), Span: token.Span}, next
+	case "lparen":
+		close := matchingClose(tokens, start, "lparen", "rparen")
+		if close < 0 {
+			return Expr{Variant: "empty", Span: token.Span}, len(tokens)
+		}
+		inside := tokens[position:close]
+		if len(inside) == 1 {
+			if _, ok := InfixBinding(inside[0].Kind); ok && inside[0].Kind != "minus" {
+				result = Expr{Variant: "op_func", Text: string(inside[0].Bytes), Span: mergeSpan(tokens[start : close+1])}
+				position = close + 1
+				break
+			}
+		}
+		if len(inside) > 1 {
+			if _, ok := InfixBinding(inside[0].Kind); ok && inside[0].Kind != "minus" {
+				arg := parseExpression(inside[1:])
+				result = Expr{Variant: "section_right", Text: string(inside[0].Bytes), Arg: &arg, Span: mergeSpan(tokens[start : close+1])}
+				position = close + 1
+				break
+			}
+			if _, ok := InfixBinding(inside[len(inside)-1].Kind); ok {
+				arg := parseExpression(inside[:len(inside)-1])
+				result = Expr{Variant: "section_left", Text: string(inside[len(inside)-1].Bytes), Arg: &arg, Span: mergeSpan(tokens[start : close+1])}
+				position = close + 1
+				break
+			}
+		}
 		parts := splitTopLevel(inside, "comma")
 		if len(parts) > 1 {
 			items := make([]Expr, len(parts))
 			for i := range parts {
 				items[i] = parseExpression(parts[i])
 			}
-			return Expr{Variant: "tuple", Items: items, Span: mergeSpan(tokens)}
+			result = Expr{Variant: "tuple", Items: items, Span: mergeSpan(tokens[start : close+1])}
+		} else {
+			result = parseExpression(inside)
 		}
-		return parseExpression(inside)
-	}
-	if tokens[0].Kind == "lbracket" && matchingClose(tokens, 0, "lbracket", "rbracket") == len(tokens)-1 {
-		parts := splitTopLevel(tokens[1:len(tokens)-1], "comma")
-		items := make([]Expr, 0, len(parts))
-		for _, part := range parts {
-			if len(part) > 0 {
-				items = append(items, parseExpression(part))
+		position = close + 1
+	case "lbracket":
+		close := matchingClose(tokens, start, "lbracket", "rbracket")
+		if close < 0 {
+			return Expr{Variant: "empty", Span: token.Span}, len(tokens)
+		}
+		inside := tokens[position:close]
+		if barAt := topLevelIndex(inside, "bar"); barAt >= 0 {
+			body := parseExpression(inside[:barAt])
+			result = Expr{Variant: "listcomp", Body: &body, Span: mergeSpan(tokens[start : close+1])}
+			for _, part := range splitTopLevel(inside[barAt+1:], "semicolon") {
+				if len(part) == 0 {
+					continue
+				}
+				if arrow := topLevelIndex(part, "left_arrow"); arrow >= 0 {
+					patternTokens := part[:arrow]
+					patternParts := splitTopLevel(patternTokens, "comma")
+					var pattern Expr
+					if len(patternParts) > 1 {
+						items := make([]Expr, len(patternParts))
+						for index := range patternParts {
+							items[index] = parseExpression(patternParts[index])
+						}
+						pattern = Expr{Variant: "tuple", Items: items, Span: mergeSpan(patternTokens)}
+					} else {
+						pattern = parseExpression(patternTokens)
+					}
+					source := parseExpression(part[arrow+1:])
+					result.Qualifiers = append(result.Qualifiers, Qualifier{Pattern: &pattern, Source: &source})
+				} else {
+					guard := parseExpression(part)
+					result.Qualifiers = append(result.Qualifiers, Qualifier{Guard: &guard})
+				}
 			}
+		} else if rangeAt := topLevelIndex(inside, "range"); rangeAt >= 0 {
+			left, right := inside[:rangeAt], inside[rangeAt+1:]
+			starts := splitTopLevel(left, "comma")
+			result = Expr{Variant: "range", Span: mergeSpan(tokens[start : close+1])}
+			if len(starts) > 0 && len(starts[0]) > 0 {
+				from := parseExpression(starts[0])
+				result.Head = &from
+			}
+			if len(starts) > 1 {
+				step := parseExpression(starts[1])
+				result.Step = &step
+			}
+			if len(right) > 0 {
+				to := parseExpression(right)
+				result.To = &to
+			}
+		} else {
+			parts := splitTopLevel(inside, "comma")
+			items := make([]Expr, 0, len(parts))
+			for _, part := range parts {
+				if len(part) > 0 {
+					items = append(items, parseExpression(part))
+				}
+			}
+			result = Expr{Variant: "list", Items: items, Span: mergeSpan(tokens[start : close+1])}
 		}
-		return Expr{Variant: "list", Items: items, Span: mergeSpan(tokens)}
+		position = close + 1
+	default:
+		result = atom(token)
 	}
-	for _, kind := range []string{"cons", "bar", "comma", "eq", "not_equal", "less", "greater", "less_equal", "greater_equal", "append", "difference", "plus", "minus", "star", "slash", "kw_div", "kw_mod", "power"} {
-		if index := lastTopLevel(tokens, kind); index > 0 && index < len(tokens)-1 {
-			return Expr{Variant: "infix", Text: string(tokens[index].Bytes), Head: exprPtr(parseExpression(tokens[:index])), Tail: exprPtr(parseExpression(tokens[index+1:])), Span: mergeSpan(tokens)}
+	for position < len(tokens) {
+		next := tokens[position]
+		if binding, ok := InfixBinding(next.Kind); ok {
+			if binding.Left <= minimum {
+				break
+			}
+			position++
+			right, after := parsePratt(tokens, position, binding.Right)
+			result = Expr{Variant: "infix", Text: string(next.Bytes), Head: exprPtr(result), Tail: exprPtr(right), Span: Span{Start: result.Span.Start, End: right.Span.End, Line: result.Span.Line, Column: result.Span.Column}}
+			position = after
+			continue
+		}
+		if isExpressionStart(next.Kind) && 100 > minimum {
+			right, after := parsePratt(tokens, position, 100)
+			result = Expr{Variant: "application", Func: exprPtr(result), Arg: exprPtr(right), Span: Span{Start: result.Span.Start, End: right.Span.End, Line: result.Span.Line, Column: result.Span.Column}}
+			position = after
+			continue
+		}
+		break
+	}
+	return result, position
+}
+
+func isExpressionStart(kind string) bool {
+	switch kind {
+	case "name", "cname", "const_int", "const_float", "const_str", "const_char", "lparen", "lbracket", "minus", "not", "length", "kw_show", "kw_readvals", "dollars":
+		return true
+	}
+	return false
+}
+
+func topLevelIndex(tokens []Token, kind string) int {
+	depth := 0
+	for index, token := range tokens {
+		switch token.Kind {
+		case "lparen", "lbracket", "lbrace":
+			depth++
+		case "rparen", "rbracket", "rbrace":
+			depth--
+		}
+		if depth == 0 && token.Kind == kind {
+			return index
 		}
 	}
-	result, consumed := parsePrimary(tokens)
-	for consumed < len(tokens) {
-		next, count := parsePrimary(tokens[consumed:])
-		result = Expr{Variant: "application", Func: exprPtr(result), Arg: exprPtr(next), Span: mergeSpan(tokens)}
-		consumed += count
-	}
-	return result
+	return -1
 }
 
 func parsePrimary(tokens []Token) (Expr, int) {
@@ -146,6 +282,9 @@ func parsePrimary(tokens []Token) (Expr, int) {
 
 func atom(token Token) Expr {
 	variant := map[string]string{"name": "name", "cname": "constructor", "const_int": "int", "const_float": "float", "const_str": "string", "const_char": "char"}[token.Kind]
+	if token.Kind == "kw_show" || token.Kind == "kw_readvals" {
+		variant = "name"
+	}
 	if variant == "" {
 		variant = "token"
 	}

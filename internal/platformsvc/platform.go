@@ -3,6 +3,7 @@
 package platformsvc
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -11,6 +12,21 @@ import (
 	"time"
 	"unsafe"
 )
+
+func CaptureShell(ctx context.Context, command string) (string, string, int, error) {
+	cmd := exec.CommandContext(ctx, ShellFallbackPath, ShellCommandArgument, command)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	err := cmd.Run()
+	if err == nil {
+		return stdout.String(), stderr.String(), 0, nil
+	}
+	var exit *exec.ExitError
+	if errors.As(err, &exit) {
+		return stdout.String(), stderr.String(), exit.ExitCode(), nil
+	}
+	return "", "", 0, ErrSpawnFailed
+}
 
 func GetFileInfo(path string) (FileMetadata, bool) {
 	i, e := os.Stat(path)

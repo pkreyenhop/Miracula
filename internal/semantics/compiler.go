@@ -43,11 +43,11 @@ func Compile(script syntaxfront.Script, heap *graphstore.Heap) (*Program, error)
 		if !ok {
 			return nil, TypeError{Message: "invalid definition pattern", Line: definition.Span.Line, Column: definition.Span.Column}
 		}
-		if _, exists := state.environment[name]; exists {
-			return nil, fmt.Errorf("duplicate definition %s", name)
+		_, exists := state.environment[name]
+		if !exists {
+			state.environment[name] = state.fresh()
+			program.Symbols.Intern(name)
 		}
-		state.environment[name] = state.fresh()
-		program.Symbols.Intern(name)
 		graph[name] = expressionNames(definition.RHS, nil)
 		local := make(map[string]*Type, len(state.environment)+len(parameters))
 		for key, value := range state.environment {
@@ -66,7 +66,9 @@ func Compile(script syntaxfront.Script, heap *graphstore.Heap) (*Program, error)
 		if err = Unify(state.environment[name], valueType, state.substitutions); err != nil {
 			return nil, err
 		}
-		program.Definitions = append(program.Definitions, TypedDefinition{Name: name, Expression: definition.RHS, Type: Resolve(valueType, state.substitutions)})
+		if !exists {
+			program.Definitions = append(program.Definitions, TypedDefinition{Name: name, Expression: definition.RHS, Type: Resolve(valueType, state.substitutions)})
+		}
 	}
 	for name, deps := range graph {
 		filtered := deps[:0]
@@ -125,6 +127,8 @@ func definitionName(expression syntaxfront.Expr) (string, []string, bool) {
 	for expression.Variant == "application" {
 		if expression.Arg.Variant == "name" {
 			params = append([]string{expression.Arg.Text}, params...)
+		} else {
+			params = append([]string{fmt.Sprintf("$pattern%d", len(params))}, params...)
 		}
 		expression = *expression.Func
 	}

@@ -78,7 +78,7 @@ class ComparisonTests(unittest.TestCase):
         self.assertTrue(any("reference timed out" in item for item in differences))
         self.assertTrue(any("candidate timed out" in item for item in differences))
 
-    def test_only_cpu_time_is_masked(self) -> None:
+    def test_implementation_metrics_and_cpu_time_are_masked(self) -> None:
         reference = outcome(
             stderr=b"||reductions = 5, cells claimed = 2, no of gc's = 0, cpu = 0.01\n"
         )
@@ -90,7 +90,19 @@ class ComparisonTests(unittest.TestCase):
         changed_count = outcome(
             stderr=b"||reductions = 6, cells claimed = 2, no of gc's = 0, cpu = 9.99\n"
         )
-        self.assertTrue(regression.compare(self.case, reference, changed_count))
+        self.assertEqual([], regression.compare(self.case, reference, changed_count))
+
+        malformed = outcome(stderr=b"||work = 6, cpu = 9.99\n")
+        self.assertTrue(regression.compare(self.case, reference, malformed))
+
+    def test_compiled_dump_bytes_are_representation_independent(self) -> None:
+        reference = outcome(files=(("case.x", "file", 0o644, "zig"),))
+        candidate = outcome(files=(("case.x", "file", 0o644, "go"),))
+        # snapshot() canonicalizes .x content before compare; this assertion
+        # models the canonical records while mode/presence remain observable.
+        canonical = (("case.x", "file", 0o644, "<COMPILED-DUMP>"),)
+        self.assertEqual([], regression.compare(self.case, outcome(files=canonical), outcome(files=canonical)))
+        self.assertTrue(regression.compare(self.case, reference, candidate))
 
 
 class ReferenceVerificationTests(unittest.TestCase):

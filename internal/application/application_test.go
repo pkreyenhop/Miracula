@@ -10,6 +10,7 @@ import (
 	"github.com/pkreyenhop/miracula-go/internal/syntaxfront"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -23,7 +24,7 @@ func TestInterpreterIsolation(t *testing.T) {
 	}
 }
 
-func repositoryRoot(t *testing.T) string {
+func repositoryRoot(t testing.TB) string {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("caller")
@@ -59,6 +60,10 @@ func TestCompiledDumpRejectsStaleSource(t *testing.T) {
 	}
 	if _, err := ReadCompiledDump(path, []byte("main = 2\n")); !errors.Is(err, ErrStaleDump) {
 		t.Fatal(err)
+	}
+	info, err := os.Stat(path)
+	if err != nil || info.Mode().Perm() != 0o644 {
+		t.Fatalf("dump mode = %v, %v", info.Mode().Perm(), err)
 	}
 }
 
@@ -103,13 +108,91 @@ func TestREPLEvaluatesPipedExpressionWithoutPrompt(t *testing.T) {
 	}
 }
 
+func TestREPLCountReportsGoRuntimeWork(t *testing.T) {
+	i := New(platformsvc.NativeServices{})
+	i.Config.Count = true
+	var out, diagnostics bytes.Buffer
+	i.Error = &diagnostics
+	if err := i.REPL(context.Background(), strings.NewReader("1+2\n2+3\n/q\n"), &out); err != nil {
+		t.Fatal(err)
+	}
+	pattern := regexp.MustCompile(`(?m)^\|\|reductions = [1-9][0-9]*, cells claimed = [1-9][0-9]*, no of gc's = 0, cpu = 0\.00$`)
+	if len(pattern.FindAllString(diagnostics.String(), -1)) != 2 {
+		t.Fatalf("count diagnostics = %q", diagnostics.String())
+	}
+}
+
 func TestREPLRecoversAfterEvaluationError(t *testing.T) {
 	i := New(platformsvc.NativeServices{})
 	var out bytes.Buffer
 	if err := i.REPL(context.Background(), strings.NewReader("1 div 0\n2+2\n/q\n"), &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "division by zero\n4\n") {
+	if !strings.Contains(out.String(), "\nprogram error: attempt to divide by zero\n4\n") {
 		t.Fatalf("output = %q", out.String())
+	}
+}
+
+func TestLanguageRuntimeSupportsLazyHigherOrderAndBignumValues(t *testing.T) {
+	i := New(platformsvc.NativeServices{})
+	for expression, expected := range map[string]string{
+		"product [1..10]":    "3628800",
+		"map (2*) [1..5]":    "[2,4,6,8,10]",
+		"2^80":               "1208925819614629174706176",
+		"take 5 [1..]":       "[1,2,3,4,5]",
+		"zip2 [1,2] [3,4]":   "[(1,3),(2,4)]",
+		"\"abc\" ++ \"def\"": "abcdef",
+	} {
+		actual, err := i.Evaluate(context.Background(), expression)
+		if err != nil || actual != expected {
+			t.Fatalf("%s = %q, %v; want %q", expression, actual, err, expected)
+		}
+	}
+}
+
+func TestLanguageRuntimeLoadsRecursiveGuardedDefinitions(t *testing.T) {
+	root := repositoryRoot(t)
+	i := New(platformsvc.NativeServices{})
+	if _, err := i.LoadProgram(filepath.Join(root, "miralib/ex/fib.m")); err != nil {
+		t.Fatal(err)
+	}
+	actual, err := i.Evaluate(context.Background(), "fib 10")
+	if err != nil || actual != "55" {
+		t.Fatalf("fib 10 = %q, %v", actual, err)
+	}
+}
+
+func BenchmarkLanguageRuntimeFibonacci(b *testing.B) {
+	i := New(platformsvc.NativeServices{})
+	if _, err := i.LoadProgram(filepath.Join(repositoryRoot(b), "miralib/ex/fib.m")); err != nil {
+		b.Fatal(err)
+	}
+	for n := 0; n < b.N; n++ {
+		if _, err := i.Evaluate(context.Background(), "fib 20"); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkLanguageRuntimeLargeListAndBignum(b *testing.B) {
+	i := New(platformsvc.NativeServices{})
+	for n := 0; n < b.N; n++ {
+		if _, err := i.Evaluate(context.Background(), "(sum (take 1000 [1..])) + 2^80"); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestLanguageRuntimeLoadsAlgebraicValues(t *testing.T) {
+	root := repositoryRoot(t)
+	i := New(platformsvc.NativeServices{})
+	if _, err := i.LoadProgram(filepath.Join(root, "tests/golden/algebraic_param.m")); err != nil {
+		t.Fatal(err)
+	}
+	for expression, expected := range map[string]string{"t1": "Branch (Leaf 1) (Leaf 2)"} {
+		actual, err := i.Evaluate(context.Background(), expression)
+		if err != nil || actual != expected {
+			t.Fatalf("%s = %q, %v", expression, actual, err)
+		}
 	}
 }

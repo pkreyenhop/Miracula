@@ -39,6 +39,9 @@ func (c Command) Run(ctx context.Context, args []string) error {
 	if err = i.Boot(); err != nil {
 		return err
 	}
+	if options.Mode == ModeMake {
+		return i.ValidateCurrent()
+	}
 	return i.REPL(ctx, c.Stdin, c.Stdout)
 }
 

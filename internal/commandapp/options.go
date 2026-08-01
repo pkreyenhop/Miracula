@@ -135,6 +135,9 @@ func ParseOptions(args []string, defaults application.Config) (Options, error) {
 	remaining := args[index:]
 	if opts.Mode == ModeMake || opts.Mode == ModeExports || opts.Mode == ModeSources {
 		opts.ScriptArgs = append([]string(nil), remaining...)
+		if len(remaining) > 0 {
+			opts.Script = remaining[0]
+		}
 		return opts, nil
 	}
 	if len(remaining) > 1 {

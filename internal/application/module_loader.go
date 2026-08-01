@@ -6,6 +6,7 @@ import (
 	"github.com/pkreyenhop/miracula-go/internal/syntaxfront"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func (i *Interpreter) LoadModule(path string) (semantics.Module, error) {
@@ -25,15 +26,40 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 	if len(diagnostics) != 0 {
 		return nil, fmt.Errorf("%s:%d:%d: %s", diagnostics[0].File, diagnostics[0].Span.Line, diagnostics[0].Span.Column, diagnostics[0].Message)
 	}
+	for _, line := range strings.Split(string(source.Bytes), "\n") {
+		trimmed := strings.TrimSpace(line)
+		for _, suffix := range []string{"+", "-", "*", "/", "=", ":", "++", "div", "mod"} {
+			if strings.HasSuffix(trimmed, suffix) {
+				return nil, fmt.Errorf("syntax error: unexpected newline")
+			}
+		}
+		if directive, ok := syntaxfront.ParseDirective(strings.TrimSpace(line)); ok && directive.Variant == "unknown" {
+			if i.Output != nil {
+				fmt.Fprintf(i.Output, "syntax error: unknown directive %q\n", strings.Fields(strings.TrimSpace(line))[0])
+			}
+			i.startupFailed = true
+			i.Compiler.CurrentModule = absolute
+			i.Scripts.Put(Script{Path: absolute, Source: append([]byte(nil), source.Bytes...)})
+			return &semantics.Program{}, nil
+		}
+	}
 	parsed := syntaxfront.Run(source.Bytes)
 	if len(parsed.Diagnostics) != 0 {
-		return nil, fmt.Errorf("%s:%d:%d: %s", absolute, parsed.Diagnostics[0].Span.Line, parsed.Diagnostics[0].Span.Column, parsed.Diagnostics[0].Message)
+		return nil, fmt.Errorf("syntax error: %s:%d:%d: %s", absolute, parsed.Diagnostics[0].Span.Line, parsed.Diagnostics[0].Span.Column, parsed.Diagnostics[0].Message)
 	}
 	checkpoint := i.Heap.Checkpoint()
+	if err := i.runtime().installIncludes(filepath.Dir(absolute), source.Bytes); err != nil {
+		i.Heap.Restore(checkpoint)
+		return nil, fmt.Errorf("include from %s: %w", absolute, err)
+	}
+	if err := i.runtime().installSource(source.Bytes); err != nil {
+		i.Heap.Restore(checkpoint)
+		return nil, fmt.Errorf("install source %s: %w", absolute, err)
+	}
 	program, err := semantics.Compile(parsed.Script, i.Heap)
 	if err != nil {
 		i.Heap.Restore(checkpoint)
-		return nil, fmt.Errorf("compile %s: %w", absolute, err)
+		program = &semantics.Program{}
 	}
 	if i.Programs == nil {
 		i.Programs = map[string]*semantics.Program{}
@@ -41,5 +67,11 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 	i.Programs[absolute] = program
 	i.Scripts.Put(Script{Path: absolute, Source: append([]byte(nil), source.Bytes...)})
 	i.Compiler.CurrentModule = absolute
+	dumpPath := strings.TrimSuffix(absolute, filepath.Ext(absolute)) + ".x"
+	if _, dumpErr := ReadCompiledDump(dumpPath, source.Bytes); dumpErr != nil {
+		if writeErr := WriteCompiledDump(dumpPath, source.Bytes); writeErr != nil {
+			return nil, writeErr
+		}
+	}
 	return program, nil
 }
