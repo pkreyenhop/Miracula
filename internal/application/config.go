@@ -1,5 +1,7 @@
 package application
 
+import "strings"
+
 type Config struct {
 	LibraryPath, Editor, Prompt string
 	RCPath                      string
@@ -7,6 +9,11 @@ type Config struct {
 	UTF8, Strict, StrictIf      bool
 	Count, List, GC, Object     bool
 	NoStdEnv, Hush, Recheck     bool
+	BadEditor                   bool
+}
+
+func EditorCannotOpenAtLine(editor string) bool {
+	return !strings.Contains(editor, "+!") && !strings.Contains(editor, "%d") && !strings.Contains(editor, "%l")
 }
 
 func DefaultConfig() Config {

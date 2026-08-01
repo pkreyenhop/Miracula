@@ -351,7 +351,13 @@ func (i *Interpreter) editCommand(arguments []string, out io.Writer) error {
 	before, beforeOK := i.Services.Metadata(absolute)
 	line, column := 1, 1
 	if location, ok := i.Repl.Errors[absolute]; ok {
-		line, column = location.Line, location.Column
+		if i.Config.BadEditor {
+			if err = i.editorWarning(out); err != nil {
+				return err
+			}
+		} else {
+			line, column = location.Line, location.Column
+		}
 	}
 	command := editorCommandTemplate(i.Config.Editor, absolute, line, column)
 	if i.activeEditor != nil {
@@ -393,9 +399,15 @@ func (i *Interpreter) editorCommand(arguments []string, out io.Writer) error {
 		return err
 	}
 	i.Config.Editor = name
+	i.Config.BadEditor = EditorCannotOpenAtLine(name)
 	if err = i.WriteRC(); err != nil {
 		return err
 	}
 	_, err = fmt.Fprintln(out, "editor = "+name)
+	return err
+}
+
+func (i *Interpreter) editorWarning(out io.Writer) error {
+	_, err := fmt.Fprintf(out, "The currently installed editor command, %q, does not\ninclude a facility for opening a file at a specified line number.  As a\nresult the `??' command and certain other features of the Miranda system\nare disabled.  See manual section 31/5 on changing the editor for more\ninformation.\n", i.Config.Editor)
 	return err
 }

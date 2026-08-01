@@ -56,6 +56,24 @@ func TestEditorCommandTemplateSubstitutions(t *testing.T) {
 	}
 }
 
+func TestEditorValidityAndWarning(t *testing.T) {
+	for editor, bad := range map[string]bool{"vi +!": false, "emacs +%l": false, "ed %d": false, "cat": true} {
+		if got := EditorCannotOpenAtLine(editor); got != bad {
+			t.Errorf("EditorCannotOpenAtLine(%q) = %v", editor, got)
+		}
+	}
+	i := New(nil)
+	i.Config.Editor = "cat"
+	var output bytes.Buffer
+	if err := i.editorWarning(&output); err != nil {
+		t.Fatal(err)
+	}
+	want := "The currently installed editor command, \"cat\", does not\ninclude a facility for opening a file at a specified line number.  As a\nresult the `??' command and certain other features of the Miranda system\nare disabled.  See manual section 31/5 on changing the editor for more\ninformation.\n"
+	if output.String() != want {
+		t.Fatalf("warning = %q", output.String())
+	}
+}
+
 func TestEditCommandRunsConfiguredTemplate(t *testing.T) {
 	directory := t.TempDir()
 	path := filepath.Join(directory, "sample.m")

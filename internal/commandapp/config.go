@@ -39,6 +39,7 @@ func environmentOneShots(services platformsvc.Services, config application.Confi
 	if _, ok := services.Environment("NOSTRICTIF"); ok {
 		config.StrictIf = false
 	}
+	config.BadEditor = application.EditorCannotOpenAtLine(config.Editor)
 	return config
 }
 
