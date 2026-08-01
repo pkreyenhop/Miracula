@@ -132,6 +132,22 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 			}
 			continue
 		}
+		if interactive && strings.HasPrefix(line, "!") {
+			i.Repl.clearTiming()
+			command := strings.TrimSpace(strings.TrimPrefix(line, "!"))
+			if command == "" {
+				if _, err := fmt.Fprintln(out, `No previous shell command to substitute for "!"`); err != nil {
+					return err
+				}
+				continue
+			}
+			if err := i.runShell(ctx, command); err != nil {
+				if _, writeErr := fmt.Fprintln(out, err); writeErr != nil {
+					return writeErr
+				}
+			}
+			continue
+		}
 		started := i.Services.Monotonic()
 		var beforeGC goruntime.MemStats
 		goruntime.ReadMemStats(&beforeGC)
@@ -194,6 +210,25 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 			fmt.Fprintln(i.Error, "<<gc after Go evaluation>>")
 		}
 	}
+}
+
+func (i *Interpreter) runShell(ctx context.Context, command string) error {
+	shell := platformsvc.ShellFallbackPath
+	if configured, ok := i.Services.Environment("SHELL"); ok && configured != "" {
+		shell = configured
+	}
+	if i.activeEditor != nil {
+		if err := i.activeEditor.Suspend(); err != nil {
+			return err
+		}
+		defer i.activeEditor.Resume()
+	}
+	registration, registrationErr := platformsvc.Register(platformsvc.SignalInterrupt, platformsvc.SignalIgnore, nil)
+	if registrationErr == nil {
+		defer registration.Restore()
+	}
+	_, err := i.Services.Run(platformsvc.ProcessRequest{Context: ctx, Executable: shell, Arguments: []string{platformsvc.ShellCommandArgument, command}, InheritEnvironment: true, Stdin: platformsvc.StreamInherit, Stdout: platformsvc.StreamInherit, Stderr: platformsvc.StreamInherit})
+	return err
 }
 
 func (i *Interpreter) handleQuery(line string, out io.Writer) error {

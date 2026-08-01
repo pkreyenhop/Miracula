@@ -2,10 +2,12 @@ package application
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -32,6 +34,7 @@ func TestLineEditorNavigationAndEditing(t *testing.T) {
 
 type editorServices struct {
 	request platformsvc.ProcessRequest
+	shell   string
 }
 
 func (*editorServices) Metadata(string) (platformsvc.FileMetadata, bool) {
@@ -43,8 +46,13 @@ func (s *editorServices) Run(request platformsvc.ProcessRequest) (platformsvc.Pr
 }
 func (*editorServices) Terminal(uint32) platformsvc.TerminalInfo { return platformsvc.TerminalInfo{} }
 func (*editorServices) Monotonic() time.Duration                 { return 0 }
-func (*editorServices) Environment(string) (string, bool)        { return "", false }
-func (*editorServices) FindExecutable(string) (string, bool)     { return "", false }
+func (s *editorServices) Environment(name string) (string, bool) {
+	if name == "SHELL" && s.shell != "" {
+		return s.shell, true
+	}
+	return "", false
+}
+func (*editorServices) FindExecutable(string) (string, bool) { return "", false }
 
 func TestEditorCommandTemplateSubstitutions(t *testing.T) {
 	got := editorCommandTemplate(`vi +! % \! \% \& &`, `/tmp/a b.m`, 12, 3)
@@ -53,6 +61,17 @@ func TestEditorCommandTemplateSubstitutions(t *testing.T) {
 	}
 	if got = editorCommandTemplate("myed", "foo.m", 1, 1); got != `myed "foo.m"` {
 		t.Fatalf("appended command = %q", got)
+	}
+}
+
+func TestRunShellUsesConfiguredShell(t *testing.T) {
+	services := &editorServices{shell: "/bin/custom-shell"}
+	i := New(services)
+	if err := i.runShell(context.Background(), "echo hello"); err != nil {
+		t.Fatal(err)
+	}
+	if services.request.Executable != "/bin/custom-shell" || !reflect.DeepEqual(services.request.Arguments, []string{"-c", "echo hello"}) {
+		t.Fatalf("request = %+v", services.request)
 	}
 }
 
