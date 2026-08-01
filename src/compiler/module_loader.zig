@@ -572,6 +572,7 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
                         if (heap_mod.filShare(heap_mod.h(heap, z)) != 0 and files.sameFile(heap, heap_mod.h(heap, y), heap_mod.h(heap, z)) and heap_mod.filTime(heap_mod.h(heap, y)) == heap_mod.filTime(heap_mod.h(heap, z))) {
                             var p = heap_mod.filDefs(heap_mod.h(heap, y));
                             var q = heap_mod.filDefs(heap_mod.h(heap, z));
+                            const z_fil = heap_mod.getFil(heap_mod.h(heap, z)).?;
                             while (p != NIL and q != NIL) {
                                 if (getTag(heap, heap_mod.h(heap, p)) == .ID) {
                                     if (heap_mod.idType(heap_mod.h(heap, p)) == word.type_t and (getTag(heap, heap_mod.h(heap, q)) == .ID or getTag(heap, pnVal(heap, heap_mod.h(heap, q))) == .ID)) {
@@ -582,11 +583,11 @@ pub fn mkincludes(heap: *Heap, core: *core_state.CoreState, comp: *compiler_stat
                                             q = heap_mod.t(heap, q);
                                             continue;
                                         }
-                                        while (w != NIL and (std.mem.orderZ(u8, heap_mod.getFil(heap_mod.h(heap, w)).?, heap_mod.getFil(heap_mod.h(heap, z)).?) != .eq or heap_mod.h(heap, heap_mod.t(heap, heap_mod.h(heap, w))) != orig)) {
+                                        while (w != NIL and (std.mem.orderZ(u8, heap_mod.getFil(heap_mod.h(heap, w)).?, z_fil) != .eq or heap_mod.h(heap, heap_mod.t(heap, heap_mod.h(heap, w))) != orig)) {
                                             w = heap_mod.t(heap, w);
                                         }
                                         if (w == NIL) {
-                                            tclashes = heap_mod.cons(heap, abi.strcons(heap, @as(Word, strtab.strBits(strtab.table(), heap_mod.getFil(heap_mod.h(heap, z)).?)), heap_mod.cons(heap, orig, NIL)), tclashes);
+                                            tclashes = heap_mod.cons(heap, abi.strcons(heap, @as(Word, strtab.strBits(strtab.table(), z_fil)), heap_mod.cons(heap, orig, NIL)), tclashes);
                                             w = tclashes;
                                         }
                                         heap_mod.tp(heap, heap_mod.t(heap, heap_mod.t(heap, heap_mod.h(heap, w)))).* = heap_mod.cons(heap, heap_mod.h(heap, p), heap_mod.t(heap, heap_mod.t(heap, heap_mod.h(heap, w))));
