@@ -200,6 +200,41 @@ func TestLanguageRuntimeUsesCallByNeed(t *testing.T) {
 	}
 }
 
+func TestMirandaOperatorSemantics(t *testing.T) {
+	runtime := newLanguageRuntime(io.Discard)
+	if err := runtime.installSource([]byte("join x y = x*10+y\nbox ::= Box num\n")); err != nil {
+		t.Fatal(err)
+	}
+	tests := map[string]string{
+		"False & (1 div 0 = 0)": "False", "True \\/ (1 div 0 = 0)": "True", "~False": "True",
+		"[1,2,1,3]--[1,3]": "[2,1]", "[10,20,30]!1": "20", "((2*) . (1+)) 3": "8", "2 $join 7": "27",
+		"take 3 ([1..]--[2])": "[1,3,4]",
+		"[1,2] < [1,3]":       "True", "(1,False) < (1,True)": "True", "Box 2 = Box 2": "True",
+		"2^(-2)": "0.25", "4.0^0.5": "2.0", "(-7) div 2": "-4", "(-7) mod 2": "1", "7 div (-2)": "-4", "7 mod (-2)": "-1",
+		"(+) 2 3": "5", "(2+) 3": "5", "(+2) 3": "5",
+	}
+	for expression, want := range tests {
+		parsed, err := parseRuntimeExpression(expression)
+		if err != nil {
+			t.Fatalf("parse %s: %v", expression, err)
+		}
+		value, err := runtime.evaluate(context.Background(), parsed)
+		if err != nil {
+			t.Fatalf("%s: %v", expression, err)
+		}
+		got, err := renderLanguage(context.Background(), value)
+		if err != nil || got != want {
+			t.Fatalf("%s = %q, %v; want %q", expression, got, err, want)
+		}
+	}
+	for _, expression := range []string{"(1,(+)) = (1,(+))", "[1,(+)] = [1,(+)]"} {
+		parsed, _ := parseRuntimeExpression(expression)
+		if _, err := runtime.evaluate(context.Background(), parsed); err == nil || !strings.Contains(err.Error(), "functions") {
+			t.Fatalf("%s error = %v; want nested function comparison error", expression, err)
+		}
+	}
+}
+
 func TestStrictConstructorFieldForcesArgument(t *testing.T) {
 	runtime := newLanguageRuntime(io.Discard)
 	if err := runtime.installSource([]byte("box ::= Lazy num | Strict num!\ntag (Lazy x) = 1\ntag (Strict x) = 1\n")); err != nil {

@@ -72,6 +72,12 @@ func Lex(source Source) []Token {
 			i, kind = scanQuoted(b, i, '"', "const_str")
 		case c == '\'':
 			i, kind = scanQuoted(b, i, '\'', "const_char")
+		case c == '$' && i+1 < len(b) && isLetter(b[i+1]):
+			i += 2
+			for i < len(b) && (isLetter(b[i]) || isDigit(b[i]) || b[i] == '_' || b[i] == '\'') {
+				i++
+			}
+			kind = "custom_infix"
 		default:
 			matched := false
 			for _, operator := range operators {

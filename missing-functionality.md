@@ -122,7 +122,16 @@ Acceptance tests:
 - Strict constructor fields force errors while unannotated fields remain lazy.
 - Repeated use of an expensive argument is evaluated once.
 
-### MISSING-003 — Complete expression operators and their semantics
+### MISSING-003 — Complete expression operators and their semantics ✅
+
+Status: completed. The evaluator now implements lazy short-circuit boolean
+operators, first-occurrence list subtraction (including infinite left-hand
+lists), subscript, composition, custom `$name` infix application, numeric
+power, and the documented negative `div`/`mod` laws. Comparisons are
+structural and lexicographic across non-function values and reject functions
+at any nesting depth. Operators, presections, and postsections share the lazy
+application path, with precedence and associativity covered by parser and
+runtime conformance tests.
 
 Manual sections: 7–9, 24, 26.
 

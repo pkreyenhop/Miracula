@@ -424,7 +424,8 @@ func (s *inferState) infer(expression syntaxfront.Expr, environment map[string]*
 		}
 		return Resolve(result, s.substitutions), nil
 	case "infix":
-		function := syntaxfront.Expr{Variant: "application", Func: &syntaxfront.Expr{Variant: "name", Text: expression.Text}, Arg: expression.Head}
+		name := strings.TrimPrefix(expression.Text, "$")
+		function := syntaxfront.Expr{Variant: "application", Func: &syntaxfront.Expr{Variant: "name", Text: name}, Arg: expression.Head}
 		return s.infer(syntaxfront.Expr{Variant: "application", Func: &function, Arg: expression.Tail}, environment)
 	case "list":
 		element := s.fresh()
@@ -494,12 +495,28 @@ func (s *inferState) infer(expression syntaxfront.Expr, environment map[string]*
 		}
 		return &Type{Kind: TypeList, Items: []*Type{number}}, nil
 	case "op_func":
-		if value, ok := PrimitiveType(expression.Text); ok {
+		name := strings.TrimPrefix(expression.Text, "$")
+		if value, ok := PrimitiveType(name); ok {
 			return s.instantiate(value), nil
+		}
+		if value, ok := environment[name]; ok {
+			return value, nil
+		}
+		if scheme, ok := s.schemes[name]; ok {
+			return s.instantiateScheme(scheme), nil
 		}
 		return nil, fmt.Errorf("undefined operator %s", expression.Text)
 	case "section_left", "section_right":
-		operator, ok := PrimitiveType(expression.Text)
+		name := strings.TrimPrefix(expression.Text, "$")
+		operator, ok := PrimitiveType(name)
+		if !ok {
+			operator, ok = environment[name]
+		}
+		if !ok {
+			if scheme, exists := s.schemes[name]; exists {
+				operator, ok = s.instantiateScheme(scheme), true
+			}
+		}
 		if !ok {
 			return nil, fmt.Errorf("undefined operator %s", expression.Text)
 		}

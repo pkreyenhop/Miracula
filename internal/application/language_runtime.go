@@ -1150,15 +1150,47 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 			if err != nil {
 				return languageValue{}, err
 			}
-			first, err := compareLanguage(expression.Head.Text, left, middle)
+			first, err := compareLanguage(ctx, expression.Head.Text, left, middle)
 			if err != nil {
 				return languageValue{}, err
 			}
-			second, err := compareLanguage(expression.Text, middle, right)
+			second, err := compareLanguage(ctx, expression.Text, middle, right)
 			if err != nil {
 				return languageValue{}, err
 			}
 			return languageValue{kind: valueBool, flag: first && second}, nil
+		}
+		if expression.Text == "&" || expression.Text == "/\\" || expression.Text == "\\/" {
+			left, err := r.eval(ctx, *expression.Head, environment)
+			if err != nil {
+				return languageValue{}, err
+			}
+			left, err = forceLanguageValue(left, nil)
+			if err != nil || left.kind != valueBool {
+				if err != nil {
+					return languageValue{}, err
+				}
+				return languageValue{}, errors.New("boolean expected")
+			}
+			isAnd := expression.Text == "&" || expression.Text == "/\\"
+			if isAnd && !left.flag {
+				return languageValue{kind: valueBool}, nil
+			}
+			if !isAnd && left.flag {
+				return languageValue{kind: valueBool, flag: true}, nil
+			}
+			right, err := r.eval(ctx, *expression.Tail, environment)
+			if err != nil {
+				return languageValue{}, err
+			}
+			right, err = forceLanguageValue(right, nil)
+			if err != nil || right.kind != valueBool {
+				if err != nil {
+					return languageValue{}, err
+				}
+				return languageValue{}, errors.New("boolean expected")
+			}
+			return right, nil
 		}
 		if isDirectNumericOperator(expression.Text) {
 			left, err := r.eval(ctx, *expression.Head, environment)
@@ -1171,7 +1203,8 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 			}
 			return directNumericInfix(expression.Text, left, right)
 		}
-		function := r.lookup(environment, expression.Text)
+		operatorName := strings.TrimPrefix(expression.Text, "$")
+		function := r.lookup(environment, operatorName)
 		if function == nil {
 			return languageValue{}, fmt.Errorf("undefined operator %s", expression.Text)
 		}
@@ -1179,29 +1212,23 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 		if err != nil {
 			return languageValue{}, err
 		}
-		left, err := r.eval(ctx, *expression.Head, environment)
+		leftExpression, leftEnvironment := *expression.Head, cloneEnvironment(environment)
+		left := &languageThunk{eval: func() (languageValue, error) { return r.eval(ctx, leftExpression, leftEnvironment) }}
+		value, err = applyLanguageThunk(ctx, value, left)
 		if err != nil {
 			return languageValue{}, err
 		}
-		value, err = applyLanguage(ctx, value, left)
-		if err != nil {
-			return languageValue{}, err
-		}
-		right, err := r.eval(ctx, *expression.Tail, environment)
-		if err != nil {
-			return languageValue{}, err
-		}
-		return applyLanguage(ctx, value, right)
+		rightExpression, rightEnvironment := *expression.Tail, cloneEnvironment(environment)
+		right := &languageThunk{eval: func() (languageValue, error) { return r.eval(ctx, rightExpression, rightEnvironment) }}
+		return applyLanguageThunk(ctx, value, right)
 	case "section_left", "section_right":
-		operator := r.lookup(environment, expression.Text)
+		operator := r.lookup(environment, strings.TrimPrefix(expression.Text, "$"))
 		if operator == nil {
 			return languageValue{}, fmt.Errorf("undefined operator %s", expression.Text)
 		}
-		fixed, err := r.eval(ctx, *expression.Arg, environment)
-		if err != nil {
-			return languageValue{}, err
-		}
-		return languageValue{kind: valueFunction, fn: func(ctx context.Context, argument languageValue) (languageValue, error) {
+		fixedExpression, fixedEnvironment := *expression.Arg, cloneEnvironment(environment)
+		fixed := &languageThunk{eval: func() (languageValue, error) { return r.eval(ctx, fixedExpression, fixedEnvironment) }}
+		return languageValue{kind: valueFunction, lazyFn: func(ctx context.Context, argument *languageThunk) (languageValue, error) {
 			fn, err := operator.force()
 			if err != nil {
 				return languageValue{}, err
@@ -1210,14 +1237,14 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 			if expression.Variant == "section_right" {
 				first, second = argument, fixed
 			}
-			fn, err = applyLanguage(ctx, fn, first)
+			fn, err = applyLanguageThunk(ctx, fn, first)
 			if err != nil {
 				return languageValue{}, err
 			}
-			return applyLanguage(ctx, fn, second)
+			return applyLanguageThunk(ctx, fn, second)
 		}}, nil
 	case "op_func":
-		value := r.lookup(environment, expression.Text)
+		value := r.lookup(environment, strings.TrimPrefix(expression.Text, "$"))
 		if value == nil {
 			return languageValue{}, fmt.Errorf("undefined operator %s", expression.Text)
 		}
@@ -1238,6 +1265,19 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 			return languageValue{}, err
 		}
 		return languageValue{kind: valueNumber, num: new(big.Int).Neg(n)}, nil
+	case "not":
+		value, err := r.eval(ctx, *expression.Arg, environment)
+		if err != nil {
+			return languageValue{}, err
+		}
+		value, err = forceLanguageValue(value, nil)
+		if err != nil {
+			return languageValue{}, err
+		}
+		if value.kind != valueBool {
+			return languageValue{}, errors.New("boolean expected")
+		}
+		return languageValue{kind: valueBool, flag: !value.flag}, nil
 	case "list":
 		items := append([]syntaxfront.Expr(nil), expression.Items...)
 		captured := cloneEnvironment(environment)
@@ -1369,7 +1409,7 @@ func isDirectNumericOperator(operator string) bool {
 
 func directNumericInfix(operator string, left, right languageValue) (languageValue, error) {
 	if isComparison(operator) {
-		comparison, err := compareLanguage(operator, left, right)
+		comparison, err := compareLanguage(context.Background(), operator, left, right)
 		return languageValue{kind: valueBool, flag: comparison}, err
 	}
 	if left.kind == valueFloat || right.kind == valueFloat {
@@ -1419,34 +1459,114 @@ func directNumericInfix(operator string, left, right languageValue) (languageVal
 	}
 	return languageValue{}, errors.New("unknown numeric operator")
 }
-func compareLanguage(operator string, left, right languageValue) (bool, error) {
-	if left.kind == valueNumber && right.kind == valueNumber {
-		comparison := 0
-		if left.num == nil && right.num == nil {
-			if left.small < right.small {
-				comparison = -1
-			} else if left.small > right.small {
-				comparison = 1
-			}
-		} else {
-			comparison = integerPointer(left).Cmp(integerPointer(right))
+func compareLanguage(ctx context.Context, operator string, left, right languageValue) (bool, error) {
+	comparison, err := compareLanguageValues(ctx, left, right)
+	if err != nil {
+		return false, err
+	}
+	switch operator {
+	case "=":
+		return comparison == 0, nil
+	case "~=":
+		return comparison != 0, nil
+	case "<":
+		return comparison < 0, nil
+	case "<=":
+		return comparison <= 0, nil
+	case ">":
+		return comparison > 0, nil
+	case ">=":
+		return comparison >= 0, nil
+	}
+	return false, errors.New("unknown comparison operator")
+}
+
+func compareLanguageValues(ctx context.Context, left, right languageValue) (int, error) {
+	var err error
+	left, err = forceLanguageValue(left, nil)
+	if err != nil {
+		return 0, err
+	}
+	right, err = forceLanguageValue(right, nil)
+	if err != nil {
+		return 0, err
+	}
+	if left.kind == valueFunction || right.kind == valueFunction {
+		return 0, errors.New("cannot compare functions")
+	}
+	if (left.kind == valueNumber || left.kind == valueFloat) && (right.kind == valueNumber || right.kind == valueFloat) {
+		if left.kind == valueNumber && right.kind == valueNumber {
+			return integerPointer(left).Cmp(integerPointer(right)), nil
 		}
-		switch operator {
-		case "=":
-			return comparison == 0, nil
-		case "~=":
-			return comparison != 0, nil
-		case "<":
-			return comparison < 0, nil
-		case "<=":
-			return comparison <= 0, nil
-		case ">":
-			return comparison > 0, nil
-		case ">=":
-			return comparison >= 0, nil
+		a, _ := realValue(left)
+		b, _ := realValue(right)
+		if a < b {
+			return -1, nil
+		}
+		if a > b {
+			return 1, nil
+		}
+		return 0, nil
+	}
+	if left.kind != right.kind {
+		return 0, errors.New("values of different types cannot be compared")
+	}
+	switch left.kind {
+	case valueBool:
+		if left.flag == right.flag {
+			return 0, nil
+		}
+		if !left.flag {
+			return -1, nil
+		}
+		return 1, nil
+	case valueString:
+		return strings.Compare(left.text, right.text), nil
+	case valueTuple, valueConstructor:
+		if left.kind == valueConstructor {
+			if c := strings.Compare(left.name, right.name); c != 0 {
+				return c, nil
+			}
+		}
+		for i := 0; i < len(left.items) && i < len(right.items); i++ {
+			c, e := compareLanguageValues(ctx, left.items[i], right.items[i])
+			if e != nil || c != 0 {
+				return c, e
+			}
+		}
+		if len(left.items) < len(right.items) {
+			return -1, nil
+		}
+		if len(left.items) > len(right.items) {
+			return 1, nil
+		}
+		return 0, nil
+	case valueList:
+		for i := 0; ; i++ {
+			a, aok, e := left.list.at(ctx, i)
+			if e != nil {
+				return 0, e
+			}
+			b, bok, e := right.list.at(ctx, i)
+			if e != nil {
+				return 0, e
+			}
+			if !aok || !bok {
+				if aok {
+					return 1, nil
+				}
+				if bok {
+					return -1, nil
+				}
+				return 0, nil
+			}
+			c, e := compareLanguageValues(ctx, a, b)
+			if e != nil || c != 0 {
+				return c, e
+			}
 		}
 	}
-	return false, errors.New("comparable values expected")
+	return 0, errors.New("comparable values expected")
 }
 
 func applyLanguage(ctx context.Context, function, argument languageValue) (languageValue, error) {
@@ -1508,6 +1628,110 @@ func curry3(operation func(context.Context, languageValue, languageValue, langua
 	}}
 }
 
+func applyLanguageThunk(ctx context.Context, function languageValue, argument *languageThunk) (languageValue, error) {
+	function, err := forceLanguageValue(function, nil)
+	if err != nil {
+		return languageValue{}, err
+	}
+	if function.kind != valueFunction {
+		return languageValue{}, errors.New("function expected")
+	}
+	if function.lazyFn != nil {
+		return function.lazyFn(ctx, argument)
+	}
+	value, err := argument.force()
+	if err != nil {
+		return languageValue{}, err
+	}
+	return function.fn(ctx, value)
+}
+
+func lazyBooleanOperator(and bool) languageValue {
+	return languageValue{kind: valueFunction, lazyFn: func(ctx context.Context, first *languageThunk) (languageValue, error) {
+		left, err := first.force()
+		if err != nil {
+			return languageValue{}, err
+		}
+		if left.kind != valueBool {
+			return languageValue{}, errors.New("boolean expected")
+		}
+		return languageValue{kind: valueFunction, lazyFn: func(_ context.Context, second *languageThunk) (languageValue, error) {
+			if and && !left.flag {
+				return languageValue{kind: valueBool}, nil
+			}
+			if !and && left.flag {
+				return languageValue{kind: valueBool, flag: true}, nil
+			}
+			right, err := second.force()
+			if err != nil {
+				return languageValue{}, err
+			}
+			if right.kind != valueBool {
+				return languageValue{}, errors.New("boolean expected")
+			}
+			return right, nil
+		}}, nil
+	}}
+}
+
+func mirandaDivMod(a, b *big.Int) (*big.Int, *big.Int) {
+	q, remainder := new(big.Int), new(big.Int)
+	q.QuoRem(a, b, remainder)
+	if remainder.Sign() != 0 && remainder.Sign() != b.Sign() {
+		q.Sub(q, big.NewInt(1))
+		remainder.Add(remainder, b)
+	}
+	return q, remainder
+}
+
+func listDifference(ctx context.Context, left, right languageValue) (languageValue, error) {
+	if left.kind == valueString && right.kind == valueString {
+		remaining := []rune(left.text)
+		for _, remove := range []rune(right.text) {
+			for i, item := range remaining {
+				if item == remove {
+					remaining = append(remaining[:i], remaining[i+1:]...)
+					break
+				}
+			}
+		}
+		return languageValue{kind: valueString, text: string(remaining)}, nil
+	}
+	if left.kind != valueList {
+		return languageValue{}, listTypeMismatch(left)
+	}
+	rightItems, err := finiteList(ctx, right, maxMaterializedList)
+	if err != nil {
+		return languageValue{}, err
+	}
+	removals := append([]languageValue(nil), rightItems...)
+	sourceIndex := 0
+	return languageValue{kind: valueList, list: &lazyList{next: func(nextCtx context.Context, _ int) (languageValue, bool, error) {
+		for {
+			item, ok, e := left.list.at(nextCtx, sourceIndex)
+			sourceIndex++
+			if e != nil || !ok {
+				return languageValue{}, ok, e
+			}
+			removed := false
+			for index, remove := range removals {
+				equal, e := compareLanguage(nextCtx, "=", item, remove)
+				if e != nil {
+					return languageValue{}, false, e
+				}
+				if equal {
+					removals = append(removals[:index], removals[index+1:]...)
+					removed = true
+					break
+				}
+			}
+			if !removed {
+				return item, true, nil
+			}
+		}
+	}}}, nil
+}
+
 func realValue(value languageValue) (float64, error) {
 	if value.kind == valueFloat {
 		return value.real, nil
@@ -1549,11 +1773,22 @@ func (r *languageRuntime) installBuiltins() {
 	r.builtin("+", numericBinary(smallAdd, func(a, b *big.Int) *big.Int { return new(big.Int).Add(a, b) }, func(a, b float64) float64 { return a + b }))
 	r.builtin("-", integer(smallSub, func(a, b *big.Int) *big.Int { return new(big.Int).Sub(a, b) }))
 	r.builtin("*", numericBinary(smallMul, func(a, b *big.Int) *big.Int { return new(big.Int).Mul(a, b) }, func(a, b float64) float64 { return a * b }))
-	r.builtin("^", integer(func(_, _ int64) (int64, bool) { return 0, false }, func(a, b *big.Int) *big.Int {
-		if !b.IsInt64() || b.Sign() < 0 {
-			return big.NewInt(0)
+	r.builtin("^", curry2(func(_ context.Context, a, b languageValue) (languageValue, error) {
+		if a.kind == valueNumber && b.kind == valueNumber {
+			exponent := integerPointer(b)
+			if exponent.Sign() >= 0 && exponent.IsInt64() {
+				return numberFromBig(new(big.Int).Exp(integerPointer(a), exponent, nil)), nil
+			}
 		}
-		return new(big.Int).Exp(a, b, nil)
+		x, e := realValue(a)
+		if e != nil {
+			return languageValue{}, e
+		}
+		y, e := realValue(b)
+		if e != nil {
+			return languageValue{}, e
+		}
+		return languageValue{kind: valueFloat, real: math.Pow(x, y)}, nil
 	}))
 	r.builtin("div", curry2(func(_ context.Context, a, b languageValue) (languageValue, error) {
 		x, e := numberValue(a)
@@ -1567,7 +1802,8 @@ func (r *languageRuntime) installBuiltins() {
 		if y.Sign() == 0 {
 			return languageValue{}, errors.New("division by zero")
 		}
-		return languageValue{kind: valueNumber, num: new(big.Int).Div(x, y)}, nil
+		q, _ := mirandaDivMod(x, y)
+		return numberFromBig(q), nil
 	}))
 	r.builtin("mod", curry2(func(_ context.Context, a, b languageValue) (languageValue, error) {
 		x, e := numberValue(a)
@@ -1581,7 +1817,8 @@ func (r *languageRuntime) installBuiltins() {
 		if y.Sign() == 0 {
 			return languageValue{}, errors.New("division by zero")
 		}
-		return languageValue{kind: valueNumber, num: new(big.Int).Mod(x, y)}, nil
+		_, remainder := mirandaDivMod(x, y)
+		return numberFromBig(remainder), nil
 	}))
 	r.builtin("/", curry2(func(_ context.Context, a, b languageValue) (languageValue, error) {
 		x, e := realValue(a)
@@ -1599,29 +1836,53 @@ func (r *languageRuntime) installBuiltins() {
 	}))
 	r.builtin("True", languageValue{kind: valueBool, flag: true})
 	r.builtin("False", languageValue{kind: valueBool, flag: false})
+	r.builtin("&", lazyBooleanOperator(true))
+	r.builtin("/\\", lazyBooleanOperator(true))
+	r.builtin("\\/", lazyBooleanOperator(false))
 	for name, comparison := range map[string]func(int) bool{"=": func(c int) bool { return c == 0 }, "~=": func(c int) bool { return c != 0 }, "<": func(c int) bool { return c < 0 }, "<=": func(c int) bool { return c <= 0 }, ">": func(c int) bool { return c > 0 }, ">=": func(c int) bool { return c >= 0 }} {
 		compare := comparison
-		r.builtin(name, curry2(func(_ context.Context, a, b languageValue) (languageValue, error) {
-			if a.kind == valueNumber && b.kind == valueNumber && a.num == nil && b.num == nil {
-				comparison := 0
-				if a.small < b.small {
-					comparison = -1
-				} else if a.small > b.small {
-					comparison = 1
-				}
-				return languageValue{kind: valueBool, flag: compare(comparison)}, nil
-			}
-			x, e := numberValue(a)
+		r.builtin(name, curry2(func(ctx context.Context, a, b languageValue) (languageValue, error) {
+			comparison, e := compareLanguageValues(ctx, a, b)
 			if e != nil {
 				return languageValue{}, e
 			}
-			y, e := numberValue(b)
-			if e != nil {
-				return languageValue{}, e
-			}
-			return languageValue{kind: valueBool, flag: compare(x.Cmp(y))}, nil
+			return languageValue{kind: valueBool, flag: compare(comparison)}, nil
 		}))
 	}
+	r.builtin("!", curry2(func(ctx context.Context, sequence, position languageValue) (languageValue, error) {
+		index, e := numberValue(position)
+		if e != nil || !index.IsInt64() || index.Sign() < 0 {
+			return languageValue{}, errors.New("non-negative integer subscript expected")
+		}
+		if sequence.kind == valueString {
+			chars := []rune(sequence.text)
+			if index.Int64() >= int64(len(chars)) {
+				return languageValue{}, errors.New("subscript out of range")
+			}
+			return languageValue{kind: valueString, text: string(chars[index.Int64()])}, nil
+		}
+		if sequence.kind != valueList {
+			return languageValue{}, listTypeMismatch(sequence)
+		}
+		value, ok, e := sequence.list.at(ctx, int(index.Int64()))
+		if e != nil {
+			return languageValue{}, e
+		}
+		if !ok {
+			return languageValue{}, errors.New("subscript out of range")
+		}
+		return value, nil
+	}))
+	r.builtin(".", curry2(func(_ context.Context, outer, inner languageValue) (languageValue, error) {
+		return languageValue{kind: valueFunction, lazyFn: func(ctx context.Context, argument *languageThunk) (languageValue, error) {
+			middle, e := applyLanguageThunk(ctx, inner, argument)
+			if e != nil {
+				return languageValue{}, e
+			}
+			return applyLanguage(ctx, outer, middle)
+		}}, nil
+	}))
+	r.builtin("--", curry2(listDifference))
 	r.builtin("product", languageValue{kind: valueFunction, fn: func(ctx context.Context, input languageValue) (languageValue, error) {
 		values, e := finiteList(ctx, input, 1_000_000)
 		if e != nil {

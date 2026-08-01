@@ -22,6 +22,8 @@ func InfixBinding(kind string) (BindingPower, bool) {
 		return BindingPower{80, 81}, true
 	case "subscript":
 		return BindingPower{90, 91}, true
+	case "custom_infix":
+		return BindingPower{99, 98}, true
 	}
 	return BindingPower{}, false
 }
