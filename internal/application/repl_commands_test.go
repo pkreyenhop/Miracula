@@ -3,10 +3,12 @@ package application
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/pkreyenhop/miracula/internal/platformsvc"
 	"github.com/pkreyenhop/miracula/internal/semantics"
 	"github.com/pkreyenhop/miracula/internal/syntaxfront"
 )
@@ -27,6 +29,31 @@ func TestExtendedReplSettingsCommands(t *testing.T) {
 		if !strings.Contains(output.String(), text) {
 			t.Errorf("settings output lacks %q:\n%s", text, output.String())
 		}
+	}
+}
+
+func TestRecheckSourceReloadsChangedScript(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "reload.m")
+	if err := os.WriteFile(path, []byte("answer = 1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	i := New(platformsvc.NativeServices{})
+	if err := i.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := i.LoadProgram(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("answer = 200\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := i.recheckSource(); err != nil {
+		t.Fatal(err)
+	}
+	absolute, _ := filepath.Abs(path)
+	if got := string(i.Scripts.Scripts[absolute].Source); got != "answer = 200\n" {
+		t.Fatalf("reloaded source = %q", got)
 	}
 }
 

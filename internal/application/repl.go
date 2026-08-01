@@ -69,6 +69,11 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 	}
 	hadError := i.startupFailed
 	for {
+		if interactive && i.Config.Recheck {
+			if err := i.recheckSource(); err != nil {
+				fmt.Fprintln(out, err)
+			}
+		}
 		var rawLine string
 		if interactive {
 			prompt := i.replPrompt()
@@ -243,6 +248,27 @@ func (i *Interpreter) runShell(ctx context.Context, command string) error {
 		defer registration.Restore()
 	}
 	_, err := i.Services.Run(platformsvc.ProcessRequest{Context: ctx, Executable: shell, Arguments: []string{platformsvc.ShellCommandArgument, command}, InheritEnvironment: true, Stdin: platformsvc.StreamInherit, Stdout: platformsvc.StreamInherit, Stderr: platformsvc.StreamInherit})
+	if err == nil && i.Config.Recheck {
+		err = i.recheckSource()
+	}
+	return err
+}
+
+func (i *Interpreter) recheckSource() error {
+	path := i.Compiler.CurrentModule
+	if path == "" {
+		return nil
+	}
+	script, ok := i.Scripts.Scripts[path]
+	if !ok || !script.HasMetadata {
+		return nil
+	}
+	metadata, exists := i.Services.Metadata(path)
+	if !exists || metadata == script.Metadata {
+		return nil
+	}
+	_, err := i.LoadProgram(path)
+	i.recordLoadResult(path, err)
 	return err
 }
 
@@ -483,6 +509,9 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 		}
 		if err := os.Chdir(directory); err != nil {
 			return false, fmt.Errorf("cannot cd to %s", directory)
+		}
+		if i.Config.Recheck {
+			return false, i.recheckSource()
 		}
 		return false, nil
 	case "dic":

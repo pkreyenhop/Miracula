@@ -39,7 +39,8 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 			}
 			i.startupFailed = true
 			i.Compiler.CurrentModule = absolute
-			i.Scripts.Put(Script{Path: absolute, Source: append([]byte(nil), source.Bytes...)})
+			metadata, hasMetadata := i.Services.Metadata(absolute)
+			i.Scripts.Put(Script{Path: absolute, Source: append([]byte(nil), source.Bytes...), Metadata: metadata, HasMetadata: hasMetadata})
 			return &semantics.Program{}, nil
 		}
 	}
@@ -65,7 +66,8 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 		i.Programs = map[string]*semantics.Program{}
 	}
 	i.Programs[absolute] = program
-	i.Scripts.Put(Script{Path: absolute, Source: append([]byte(nil), source.Bytes...)})
+	metadata, hasMetadata := i.Services.Metadata(absolute)
+	i.Scripts.Put(Script{Path: absolute, Source: append([]byte(nil), source.Bytes...), Metadata: metadata, HasMetadata: hasMetadata})
 	i.Compiler.CurrentModule = absolute
 	dumpPath := strings.TrimSuffix(absolute, filepath.Ext(absolute)) + ".x"
 	if _, dumpErr := ReadCompiledDump(dumpPath, source.Bytes); dumpErr != nil {

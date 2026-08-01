@@ -10,6 +10,8 @@ type FileIdentity struct{ Device, Inode uint64 }
 type FileMetadata struct {
 	Identity           FileIdentity
 	ModifiedSeconds    int64
+	ModifiedNanos      int64
+	Size               int64
 	Mode, Owner, Group uint32
 }
 type StreamMode uint8

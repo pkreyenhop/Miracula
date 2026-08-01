@@ -1,8 +1,12 @@
 package application
 
+import "github.com/pkreyenhop/miracula/internal/platformsvc"
+
 type Script struct {
-	Path   string
-	Source []byte
+	Path        string
+	Source      []byte
+	Metadata    platformsvc.FileMetadata
+	HasMetadata bool
 }
 type ScriptStore struct{ Scripts map[string]Script }
 

@@ -37,7 +37,7 @@ func GetFileInfo(path string) (FileMetadata, bool) {
 	if !ok {
 		return FileMetadata{}, false
 	}
-	return FileMetadata{Identity: FileIdentity{Device: uint64(s.Dev), Inode: uint64(s.Ino)}, ModifiedSeconds: i.ModTime().Unix(), Mode: uint32(i.Mode().Perm()), Owner: s.Uid, Group: s.Gid}, true
+	return FileMetadata{Identity: FileIdentity{Device: uint64(s.Dev), Inode: uint64(s.Ino)}, ModifiedSeconds: i.ModTime().Unix(), ModifiedNanos: i.ModTime().UnixNano(), Size: i.Size(), Mode: uint32(i.Mode().Perm()), Owner: s.Uid, Group: s.Gid}, true
 }
 func Geteuid() uint32    { return uint32(os.Geteuid()) }
 func Getegid() uint32    { return uint32(os.Getegid()) }
