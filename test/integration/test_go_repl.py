@@ -2,6 +2,7 @@
 """Black-box checks for the production Go Miranda REPL."""
 
 from pathlib import Path
+import os
 import subprocess
 import tempfile
 import unittest
@@ -21,7 +22,8 @@ class GoReplTests(unittest.TestCase):
             )
             result = subprocess.run(
                 [binary, "-lib", ROOT / "lib/miralib", "-hush"],
-                cwd=ROOT,
+                cwd=temporary,
+                env={**os.environ, "HOME": temporary},
                 input=b"1 div 0\n1+2\n/q\n",
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,

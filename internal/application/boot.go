@@ -1,6 +1,7 @@
 package application
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -26,6 +27,15 @@ func (i *Interpreter) Boot() error {
 		}
 		i.Scripts.Put(Script{Path: path, Source: append([]byte(nil), source...)})
 	}
+	if i.InitialScript == "" {
+		workingDirectory, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+		if i.InitialScript, err = i.ensureDefaultScript(workingDirectory); err != nil {
+			return err
+		}
+	}
 	if i.InitialScript != "" {
 		path := i.InitialScript
 		if filepath.Ext(path) == "" {
@@ -36,6 +46,30 @@ func (i *Interpreter) Boot() error {
 		}
 	}
 	return nil
+}
+
+func (i *Interpreter) ensureDefaultScript(workingDirectory string) (string, error) {
+	if home, ok := i.Services.Environment("HOME"); ok && home != "" {
+		path := filepath.Join(home, "script.m")
+		if info, err := os.Stat(path); err == nil && !info.IsDir() {
+			return path, nil
+		}
+	}
+	path := filepath.Join(workingDirectory, "script.m")
+	if info, err := os.Stat(path); err == nil && !info.IsDir() {
+		return path, nil
+	}
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if errors.Is(err, os.ErrExist) {
+		return path, nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("create default script %s: %w", path, err)
+	}
+	if err = file.Close(); err != nil {
+		return "", fmt.Errorf("create default script %s: %w", path, err)
+	}
+	return path, nil
 }
 
 func (i *Interpreter) resolveLibrary() error {

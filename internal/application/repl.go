@@ -26,19 +26,47 @@ var ErrEvaluationReported = errors.New("evaluation error already reported")
 // Evaluate compiles and evaluates one Miranda expression. Temporary graph
 // cells are always reclaimed, including after parse, type, or runtime errors.
 func (i *Interpreter) Evaluate(ctx context.Context, expression string) (string, error) {
+	languageValue, err := i.evaluateValue(ctx, expression)
+	if err != nil {
+		return "", err
+	}
+	return renderLanguage(ctx, languageValue)
+}
+
+func (i *Interpreter) evaluateValue(ctx context.Context, expression string) (languageValue, error) {
 	parsed := syntaxfront.Run([]byte("__repl = " + expression + "\n"))
 	if len(parsed.Diagnostics) != 0 {
 		d := parsed.Diagnostics[0]
-		return "", fmt.Errorf("%d:%d: %s", d.Span.Line, d.Span.Column, d.Message)
+		return languageValue{}, fmt.Errorf("%d:%d: %s", d.Span.Line, d.Span.Column, d.Message)
 	}
 	if len(parsed.Script.Items) != 1 {
-		return "", fmt.Errorf("expression did not produce a value")
+		return languageValue{}, fmt.Errorf("expression did not produce a value")
 	}
-	languageValue, languageErr := i.runtime().evaluate(ctx, parsed.Script.Items[0].RHS)
+	value, languageErr := i.runtime().evaluate(ctx, parsed.Script.Items[0].RHS)
 	if languageErr != nil {
-		return "", languageErr
+		return languageValue{}, languageErr
 	}
-	return renderLanguage(ctx, languageValue)
+	return value, nil
+}
+
+func (i *Interpreter) evaluateTo(ctx context.Context, expression string, out io.Writer) (bool, error) {
+	value, err := i.evaluateValue(ctx, expression)
+	if err != nil {
+		return false, err
+	}
+	if value.kind == valueList {
+		if err = streamLanguageList(ctx, out, value); err != nil {
+			return true, err
+		}
+		_, err = fmt.Fprintln(out)
+		return true, err
+	}
+	text, err := renderLanguage(ctx, value)
+	if err != nil {
+		return false, err
+	}
+	_, err = fmt.Fprintln(out, text)
+	return false, err
 }
 
 func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) error {
@@ -168,7 +196,7 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 		goruntime.ReadMemStats(&beforeGC)
 		evaluationContext, cancel := context.WithCancel(ctx)
 		registration, registrationErr := platformsvc.Register(platformsvc.SignalInterrupt, platformsvc.SignalNotify, cancel)
-		result, err := i.Evaluate(evaluationContext, line)
+		streamed, err := i.evaluateTo(evaluationContext, line, out)
 		elapsed := i.Services.Monotonic() - started
 		var afterGC goruntime.MemStats
 		goruntime.ReadMemStats(&afterGC)
@@ -183,6 +211,9 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 			destination := i.Error
 			if destination == nil {
 				destination = out
+			}
+			if streamed {
+				fmt.Fprintln(out)
 			}
 			fmt.Fprintln(destination, "<<...interrupt>>")
 			hadError = i.startupFailed
@@ -210,9 +241,6 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 			continue
 		}
 		hadError = i.startupFailed
-		if _, err = fmt.Fprintln(out, result); err != nil {
-			return err
-		}
 		if i.Config.Count {
 			reductions, cells := i.runtime().statistics()
 			destination := i.Error

@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"math/big"
+	"strings"
 	"testing"
 )
 
@@ -40,5 +41,16 @@ func TestMillionElementSumBoundary(t *testing.T) {
 	}
 	if result != "500000500000" {
 		t.Fatalf("result = %q", result)
+	}
+}
+
+func TestMillionElementReverseCanBeRendered(t *testing.T) {
+	i := New(nil)
+	result, err := i.Evaluate(context.Background(), "reverse [1..1000000]")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(result, "[1000000,999999,999998") || !strings.HasSuffix(result, ",3,2,1]") {
+		t.Fatalf("unexpected reverse output boundaries: length=%d", len(result))
 	}
 }

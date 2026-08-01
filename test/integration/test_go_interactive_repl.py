@@ -9,6 +9,7 @@ from pathlib import Path
 import pty
 import re
 import select
+import signal
 import subprocess
 import tempfile
 import time
@@ -72,6 +73,10 @@ class InteractiveReplTests(unittest.TestCase):
                 os.write(master, b"|| ignored\n")
                 os.write(master, b"| unknown\n")
                 read_until(rb"\x07unknown command - type /h for help")
+                os.write(master, b"[1..]\n")
+                read_until(rb"\[1,2,3,4,5,6,7,8,9,10,")
+                process.send_signal(signal.SIGINT)
+                read_until(rb"<<\.\.\.interrupt>>.*Miranda ")
                 os.write(master, b"/q\n")
                 read_until(rb"miranda logout")
                 self.assertEqual(process.wait(timeout=5), 0)

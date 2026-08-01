@@ -30,6 +30,7 @@ def main() -> int:
         (temp / "home").mkdir()
         completed = subprocess.run(
             [os.fspath(executable), "-lib", os.fspath(library)],
+            cwd=temp,
             input=b"/q\n",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

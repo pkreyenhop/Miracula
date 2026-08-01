@@ -35,6 +35,7 @@ func TestLineEditorNavigationAndEditing(t *testing.T) {
 type editorServices struct {
 	request platformsvc.ProcessRequest
 	shell   string
+	home    string
 }
 
 func (*editorServices) Metadata(string) (platformsvc.FileMetadata, bool) {
@@ -49,6 +50,9 @@ func (*editorServices) Monotonic() time.Duration                 { return 0 }
 func (s *editorServices) Environment(name string) (string, bool) {
 	if name == "SHELL" && s.shell != "" {
 		return s.shell, true
+	}
+	if name == "HOME" && s.home != "" {
+		return s.home, true
 	}
 	return "", false
 }

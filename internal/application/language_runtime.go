@@ -1,6 +1,7 @@
 package application
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -34,6 +35,7 @@ const (
 type languageValue struct {
 	kind  valueKind
 	num   *big.Int
+	small int64
 	real  float64
 	flag  bool
 	text  string
@@ -41,6 +43,7 @@ type languageValue struct {
 	items []languageValue
 	name  string
 	fn    func(context.Context, languageValue) (languageValue, error)
+	intFn func(context.Context, int64) (int64, bool, error)
 }
 
 type lazyList struct {
@@ -85,6 +88,7 @@ type languageRuntime struct {
 	output      io.Writer
 	reductions  uint64
 	cells       uint64
+	frames      sync.Pool
 }
 
 type languageThunk struct {
@@ -92,9 +96,18 @@ type languageThunk struct {
 	value languageValue
 	err   error
 	eval  func() (languageValue, error)
+	ready bool
+}
+
+type languageCallFrame struct {
+	environment map[string]*languageThunk
+	bindings    []languageThunk
 }
 
 func (t *languageThunk) force() (languageValue, error) {
+	if t.ready {
+		return t.value, t.err
+	}
 	t.once.Do(func() { t.value, t.err = t.eval(); t.eval = nil })
 	return t.value, t.err
 }
@@ -113,7 +126,7 @@ func (i *Interpreter) runtime() *languageRuntime {
 }
 
 func immediate(value languageValue) *languageThunk {
-	return &languageThunk{eval: func() (languageValue, error) { return value, nil }}
+	return &languageThunk{value: value, ready: true}
 }
 
 func (r *languageRuntime) install(script syntaxfront.Script) error {
@@ -131,7 +144,7 @@ func (r *languageRuntime) install(script syntaxfront.Script) error {
 			if len(parameters) == 0 {
 				return r.eval(context.Background(), definition.RHS, r.globals)
 			}
-			return r.function(parameters, definition.RHS, r.globals), nil
+			return r.function(parameters, definition.RHS, nil), nil
 		}
 		r.globals[name] = thunk
 	}
@@ -473,13 +486,161 @@ func runtimePatterns(expression syntaxfront.Expr) (string, []syntaxfront.Expr, b
 }
 
 func (r *languageRuntime) clauseFunction(clauses []runtimeClause, arguments []languageValue) languageValue {
-	return languageValue{kind: valueFunction, fn: func(ctx context.Context, argument languageValue) (languageValue, error) {
-		values := append(append([]languageValue(nil), arguments...), argument)
+	value := languageValue{kind: valueFunction, fn: func(ctx context.Context, argument languageValue) (languageValue, error) {
+		if len(arguments) == 0 && len(clauses[0].parameters) == 1 {
+			values := [1]languageValue{argument}
+			return r.selectClause(ctx, clauses, values[:])
+		}
+		values := make([]languageValue, len(arguments)+1)
+		copy(values, arguments)
+		values[len(arguments)] = argument
 		if len(values) < len(clauses[0].parameters) {
 			return r.clauseFunction(clauses, values), nil
 		}
 		return r.selectClause(ctx, clauses, values)
 	}}
+	if len(arguments) == 0 {
+		value.intFn = r.compileUnaryIntegerClauses(clauses)
+	}
+	return value
+}
+
+type fastScalar struct {
+	integer int64
+	boolean bool
+	isBool  bool
+}
+
+func (r *languageRuntime) compileUnaryIntegerClauses(clauses []runtimeClause) func(context.Context, int64) (int64, bool, error) {
+	if len(clauses) == 0 {
+		return nil
+	}
+	for _, clause := range clauses {
+		if len(clause.parameters) != 1 || clause.parameters[0].Variant != "name" && clause.parameters[0].Variant != "int" || clause.parameters[0].Text == "_" {
+			return nil
+		}
+	}
+	var compiled func(context.Context, int64) (int64, bool, error)
+	compiled = func(ctx context.Context, argument int64) (int64, bool, error) {
+		select {
+		case <-ctx.Done():
+			return 0, false, ctx.Err()
+		default:
+		}
+		for _, clause := range clauses {
+			pattern := clause.parameters[0]
+			parameter := ""
+			if pattern.Variant == "int" {
+				expected, err := strconv.ParseInt(pattern.Text, 0, 64)
+				if err != nil {
+					return 0, false, nil
+				}
+				if argument != expected {
+					continue
+				}
+			} else {
+				parameter = pattern.Text
+			}
+			if clause.condition != nil {
+				condition, ok, err := r.evalFastScalar(ctx, *clause.condition, parameter, argument)
+				if err != nil || !ok {
+					return 0, false, err
+				}
+				if !condition.isBool || !condition.boolean {
+					continue
+				}
+			}
+			result, ok, err := r.evalFastScalar(ctx, clause.body, parameter, argument)
+			if err != nil || !ok || result.isBool {
+				return 0, false, err
+			}
+			return result.integer, true, nil
+		}
+		return 0, false, nil
+	}
+	return compiled
+}
+
+func (r *languageRuntime) evalFastScalar(ctx context.Context, expression syntaxfront.Expr, parameter string, argument int64) (fastScalar, bool, error) {
+	switch expression.Variant {
+	case "int":
+		value, err := strconv.ParseInt(expression.Text, 0, 64)
+		return fastScalar{integer: value}, err == nil, nil
+	case "name":
+		if expression.Text == parameter {
+			return fastScalar{integer: argument}, true, nil
+		}
+	case "neg":
+		value, ok, err := r.evalFastScalar(ctx, *expression.Arg, parameter, argument)
+		if err != nil || !ok || value.isBool || value.integer == math.MinInt64 {
+			return fastScalar{}, false, err
+		}
+		return fastScalar{integer: -value.integer}, true, nil
+	case "infix":
+		left, ok, err := r.evalFastScalar(ctx, *expression.Head, parameter, argument)
+		if err != nil || !ok || left.isBool {
+			return fastScalar{}, false, err
+		}
+		right, ok, err := r.evalFastScalar(ctx, *expression.Tail, parameter, argument)
+		if err != nil || !ok || right.isBool {
+			return fastScalar{}, false, err
+		}
+		if isComparison(expression.Text) {
+			comparison := 0
+			if left.integer < right.integer {
+				comparison = -1
+			} else if left.integer > right.integer {
+				comparison = 1
+			}
+			matched := false
+			switch expression.Text {
+			case "=":
+				matched = comparison == 0
+			case "~=":
+				matched = comparison != 0
+			case "<":
+				matched = comparison < 0
+			case "<=":
+				matched = comparison <= 0
+			case ">":
+				matched = comparison > 0
+			case ">=":
+				matched = comparison >= 0
+			}
+			return fastScalar{isBool: true, boolean: matched}, true, nil
+		}
+		var result int64
+		switch expression.Text {
+		case "+":
+			result, ok = smallAdd(left.integer, right.integer)
+		case "-":
+			result, ok = smallSub(left.integer, right.integer)
+		case "*":
+			result, ok = smallMul(left.integer, right.integer)
+		default:
+			return fastScalar{}, false, nil
+		}
+		return fastScalar{integer: result}, ok, nil
+	case "application":
+		if expression.Func == nil || expression.Func.Variant != "name" || expression.Arg == nil {
+			return fastScalar{}, false, nil
+		}
+		input, ok, err := r.evalFastScalar(ctx, *expression.Arg, parameter, argument)
+		if err != nil || !ok || input.isBool {
+			return fastScalar{}, false, err
+		}
+		thunk := r.globals[expression.Func.Text]
+		if thunk == nil {
+			return fastScalar{}, false, nil
+		}
+		function, err := thunk.force()
+		if err != nil || function.intFn == nil {
+			return fastScalar{}, false, err
+		}
+		result, ok, err := function.intFn(ctx, input.integer)
+		return fastScalar{integer: result}, ok, err
+	}
+	return fastScalar{}, false, nil
 }
 
 func (r *languageRuntime) selectClause(ctx context.Context, clauses []runtimeClause, arguments []languageValue) (languageValue, error) {
@@ -487,39 +648,98 @@ func (r *languageRuntime) selectClause(ctx context.Context, clauses []runtimeCla
 		if len(clause.parameters) != len(arguments) {
 			continue
 		}
-		environment := cloneEnvironment(r.globals)
+		frame := r.acquireCallFrame(clause.parameters)
+		environment := frame.environment
 		matched := true
 		for index, pattern := range clause.parameters {
-			if !matchRuntimePattern(pattern, arguments[index], environment) {
+			if !matchRuntimePatternBound(pattern, arguments[index], environment, frame.bind) {
 				matched = false
 				break
 			}
 		}
 		if !matched {
+			r.releaseCallFrame(frame)
 			continue
 		}
 		if clause.condition != nil {
 			condition, err := r.eval(ctx, *clause.condition, environment)
 			if err != nil {
+				r.releaseCallFrame(frame)
 				return languageValue{}, err
 			}
 			if condition.kind != valueBool {
+				r.releaseCallFrame(frame)
 				return languageValue{}, errors.New("truthvalue expected")
 			}
 			if !condition.flag {
+				r.releaseCallFrame(frame)
 				continue
 			}
 		}
-		return r.eval(ctx, clause.body, environment)
+		result, err := r.eval(ctx, clause.body, environment)
+		r.releaseCallFrame(frame)
+		return result, err
 	}
 	return languageValue{}, errors.New("no matching equation")
 }
 
+func (r *languageRuntime) acquireCallFrame(patterns []syntaxfront.Expr) *languageCallFrame {
+	count := 0
+	for _, pattern := range patterns {
+		count += patternBindingCount(pattern)
+	}
+	var frame *languageCallFrame
+	if pooled := r.frames.Get(); pooled != nil {
+		frame = pooled.(*languageCallFrame)
+	} else {
+		frame = &languageCallFrame{environment: make(map[string]*languageThunk, 4)}
+	}
+	if cap(frame.bindings) < count {
+		frame.bindings = make([]languageThunk, 0, count)
+	}
+	return frame
+}
+
+func (f *languageCallFrame) bind(name string, value languageValue) {
+	f.bindings = append(f.bindings, languageThunk{value: value, ready: true})
+	f.environment[name] = &f.bindings[len(f.bindings)-1]
+}
+
+func (r *languageRuntime) releaseCallFrame(frame *languageCallFrame) {
+	clear(frame.environment)
+	clear(frame.bindings)
+	frame.bindings = frame.bindings[:0]
+	r.frames.Put(frame)
+}
+
+func patternBindingCount(pattern syntaxfront.Expr) int {
+	if pattern.Variant == "name" {
+		if pattern.Text == "_" {
+			return 0
+		}
+		return 1
+	}
+	count := 0
+	for _, item := range pattern.Items {
+		count += patternBindingCount(item)
+	}
+	for _, child := range []*syntaxfront.Expr{pattern.Head, pattern.Tail, pattern.Func, pattern.Arg} {
+		if child != nil {
+			count += patternBindingCount(*child)
+		}
+	}
+	return count
+}
+
 func matchRuntimePattern(pattern syntaxfront.Expr, value languageValue, environment map[string]*languageThunk) bool {
+	return matchRuntimePatternBound(pattern, value, environment, func(name string, value languageValue) { environment[name] = immediate(value) })
+}
+
+func matchRuntimePatternBound(pattern syntaxfront.Expr, value languageValue, environment map[string]*languageThunk, bind func(string, languageValue)) bool {
 	switch pattern.Variant {
 	case "name":
 		if pattern.Text != "_" {
-			environment[pattern.Text] = immediate(value)
+			bind(pattern.Text, value)
 		}
 		return true
 	case "int":
@@ -527,13 +747,13 @@ func matchRuntimePattern(pattern syntaxfront.Expr, value languageValue, environm
 		if _, ok := expected.SetString(pattern.Text, 0); !ok {
 			return false
 		}
-		return value.kind == valueNumber && value.num.Cmp(expected) == 0
+		return value.kind == valueNumber && integerPointer(value).Cmp(expected) == 0
 	case "tuple":
 		if value.kind != valueTuple || len(value.items) != len(pattern.Items) {
 			return false
 		}
 		for index, item := range pattern.Items {
-			if !matchRuntimePattern(item, value.items[index], environment) {
+			if !matchRuntimePatternBound(item, value.items[index], environment, bind) {
 				return false
 			}
 		}
@@ -547,7 +767,7 @@ func matchRuntimePattern(pattern syntaxfront.Expr, value languageValue, environm
 			return false
 		}
 		for index, item := range pattern.Items {
-			if !matchRuntimePattern(item, items[index], environment) {
+			if !matchRuntimePatternBound(item, items[index], environment, bind) {
 				return false
 			}
 		}
@@ -561,14 +781,14 @@ func matchRuntimePattern(pattern syntaxfront.Expr, value languageValue, environm
 			return false
 		}
 		tail := languageValue{kind: valueList, list: &lazyList{next: func(ctx context.Context, index int) (languageValue, bool, error) { return value.list.at(ctx, index+1) }}}
-		return matchRuntimePattern(*pattern.Head, head, environment) && matchRuntimePattern(*pattern.Tail, tail, environment)
+		return matchRuntimePatternBound(*pattern.Head, head, environment, bind) && matchRuntimePatternBound(*pattern.Tail, tail, environment, bind)
 	case "application", "constructor":
 		name, patterns, ok := constructorPattern(pattern)
 		if !ok || value.kind != valueConstructor || value.name != name || len(value.items) != len(patterns) {
 			return false
 		}
 		for index, item := range patterns {
-			if !matchRuntimePattern(item, value.items[index], environment) {
+			if !matchRuntimePatternBound(item, value.items[index], environment, bind) {
 				return false
 			}
 		}
@@ -605,13 +825,23 @@ func (r *languageRuntime) function(parameters []string, body syntaxfront.Expr, c
 		}}
 	}
 	return languageValue{kind: valueFunction, fn: func(ctx context.Context, argument languageValue) (languageValue, error) {
-		environment := cloneEnvironment(closure)
+		environment := make(map[string]*languageThunk, len(closure)+1)
+		for name, value := range closure {
+			environment[name] = value
+		}
 		environment[parameters[0]] = immediate(argument)
 		if len(parameters) == 1 {
 			return r.eval(ctx, body, environment)
 		}
 		return r.function(parameters[1:], body, environment), nil
 	}}
+}
+
+func (r *languageRuntime) lookup(environment map[string]*languageThunk, name string) *languageThunk {
+	if value := environment[name]; value != nil {
+		return value
+	}
+	return r.globals[name]
 }
 
 func cloneEnvironment(source map[string]*languageThunk) map[string]*languageThunk {
@@ -644,6 +874,9 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 	}
 	switch expression.Variant {
 	case "int":
+		if small, err := strconv.ParseInt(expression.Text, 0, 64); err == nil {
+			return languageValue{kind: valueNumber, small: small}, nil
+		}
 		value := new(big.Int)
 		if _, ok := value.SetString(expression.Text, 0); !ok {
 			return languageValue{}, fmt.Errorf("invalid integer %s", expression.Text)
@@ -662,7 +895,7 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 		}
 		return languageValue{kind: valueFloat, real: value}, nil
 	case "name", "constructor":
-		value := environment[expression.Text]
+		value := r.lookup(environment, expression.Text)
 		if value == nil {
 			return languageValue{}, fmt.Errorf("undefined name %s", expression.Text)
 		}
@@ -723,7 +956,18 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 			}
 			return languageValue{kind: valueBool, flag: first && second}, nil
 		}
-		function := environment[expression.Text]
+		if isDirectNumericOperator(expression.Text) {
+			left, err := r.eval(ctx, *expression.Head, environment)
+			if err != nil {
+				return languageValue{}, err
+			}
+			right, err := r.eval(ctx, *expression.Tail, environment)
+			if err != nil {
+				return languageValue{}, err
+			}
+			return directNumericInfix(expression.Text, left, right)
+		}
+		function := r.lookup(environment, expression.Text)
 		if function == nil {
 			return languageValue{}, fmt.Errorf("undefined operator %s", expression.Text)
 		}
@@ -745,7 +989,7 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 		}
 		return applyLanguage(ctx, value, right)
 	case "section_left", "section_right":
-		operator := environment[expression.Text]
+		operator := r.lookup(environment, expression.Text)
 		if operator == nil {
 			return languageValue{}, fmt.Errorf("undefined operator %s", expression.Text)
 		}
@@ -769,7 +1013,7 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 			return applyLanguage(ctx, fn, second)
 		}}, nil
 	case "op_func":
-		value := environment[expression.Text]
+		value := r.lookup(environment, expression.Text)
 		if value == nil {
 			return languageValue{}, fmt.Errorf("undefined operator %s", expression.Text)
 		}
@@ -781,6 +1025,9 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 		}
 		if value.kind == valueFloat {
 			return languageValue{kind: valueFloat, real: -value.real}, nil
+		}
+		if value.kind == valueNumber && value.num == nil && value.small != math.MinInt64 {
+			return languageValue{kind: valueNumber, small: -value.small}, nil
 		}
 		n, err := numberValue(value)
 		if err != nil {
@@ -913,9 +1160,75 @@ func isComparison(operator string) bool {
 	}
 	return false
 }
+
+func isDirectNumericOperator(operator string) bool {
+	return isComparison(operator) || operator == "+" || operator == "-" || operator == "*"
+}
+
+func directNumericInfix(operator string, left, right languageValue) (languageValue, error) {
+	if isComparison(operator) {
+		comparison, err := compareLanguage(operator, left, right)
+		return languageValue{kind: valueBool, flag: comparison}, err
+	}
+	if left.kind == valueFloat || right.kind == valueFloat {
+		a, err := realValue(left)
+		if err != nil {
+			return languageValue{}, err
+		}
+		b, err := realValue(right)
+		if err != nil {
+			return languageValue{}, err
+		}
+		switch operator {
+		case "+":
+			return languageValue{kind: valueFloat, real: a + b}, nil
+		case "*":
+			return languageValue{kind: valueFloat, real: a * b}, nil
+		case "-":
+			return languageValue{kind: valueFloat, real: a - b}, nil
+		}
+	}
+	if left.kind != valueNumber || right.kind != valueNumber {
+		return languageValue{}, errors.New("number expected")
+	}
+	if left.num == nil && right.num == nil {
+		var result int64
+		var ok bool
+		switch operator {
+		case "+":
+			result, ok = smallAdd(left.small, right.small)
+		case "-":
+			result, ok = smallSub(left.small, right.small)
+		case "*":
+			result, ok = smallMul(left.small, right.small)
+		}
+		if ok {
+			return languageValue{kind: valueNumber, small: result}, nil
+		}
+	}
+	a, b := integerPointer(left), integerPointer(right)
+	switch operator {
+	case "+":
+		return numberFromBig(new(big.Int).Add(a, b)), nil
+	case "-":
+		return numberFromBig(new(big.Int).Sub(a, b)), nil
+	case "*":
+		return numberFromBig(new(big.Int).Mul(a, b)), nil
+	}
+	return languageValue{}, errors.New("unknown numeric operator")
+}
 func compareLanguage(operator string, left, right languageValue) (bool, error) {
 	if left.kind == valueNumber && right.kind == valueNumber {
-		comparison := left.num.Cmp(right.num)
+		comparison := 0
+		if left.num == nil && right.num == nil {
+			if left.small < right.small {
+				comparison = -1
+			} else if left.small > right.small {
+				comparison = 1
+			}
+		} else {
+			comparison = integerPointer(left).Cmp(integerPointer(right))
+		}
 		switch operator {
 		case "=":
 			return comparison == 0, nil
@@ -938,14 +1251,38 @@ func applyLanguage(ctx context.Context, function, argument languageValue) (langu
 	if function.kind != valueFunction || function.fn == nil {
 		return languageValue{}, errors.New("function expected")
 	}
+	if function.intFn != nil && argument.kind == valueNumber && argument.num == nil {
+		if result, ok, err := function.intFn(ctx, argument.small); err != nil {
+			return languageValue{}, err
+		} else if ok {
+			return languageValue{kind: valueNumber, small: result}, nil
+		}
+	}
 	return function.fn(ctx, argument)
 }
 
 func numberValue(value languageValue) (*big.Int, error) {
-	if value.kind != valueNumber || value.num == nil {
+	if value.kind != valueNumber {
 		return nil, errors.New("number expected")
 	}
+	if value.num == nil {
+		return big.NewInt(value.small), nil
+	}
 	return new(big.Int).Set(value.num), nil
+}
+
+func integerPointer(value languageValue) *big.Int {
+	if value.num != nil {
+		return value.num
+	}
+	return big.NewInt(value.small)
+}
+
+func numberFromBig(value *big.Int) languageValue {
+	if value.IsInt64() {
+		return languageValue{kind: valueNumber, small: value.Int64()}
+	}
+	return languageValue{kind: valueNumber, num: value}
 }
 
 func listValue(values []languageValue) languageValue {
@@ -971,6 +1308,9 @@ func realValue(value languageValue) (float64, error) {
 		return value.real, nil
 	}
 	if value.kind == valueNumber {
+		if value.num == nil {
+			return float64(value.small), nil
+		}
 		result, _ := new(big.Float).SetInt(value.num).Float64()
 		return result, nil
 	}
@@ -982,8 +1322,13 @@ func (r *languageRuntime) builtin(name string, value languageValue) {
 }
 
 func (r *languageRuntime) installBuiltins() {
-	integer := func(op func(*big.Int, *big.Int) *big.Int) languageValue {
+	integer := func(small func(int64, int64) (int64, bool), op func(*big.Int, *big.Int) *big.Int) languageValue {
 		return curry2(func(_ context.Context, a, b languageValue) (languageValue, error) {
+			if a.kind == valueNumber && b.kind == valueNumber && a.num == nil && b.num == nil {
+				if result, ok := small(a.small, b.small); ok {
+					return languageValue{kind: valueNumber, small: result}, nil
+				}
+			}
 			x, e := numberValue(a)
 			if e != nil {
 				return languageValue{}, e
@@ -992,13 +1337,13 @@ func (r *languageRuntime) installBuiltins() {
 			if e != nil {
 				return languageValue{}, e
 			}
-			return languageValue{kind: valueNumber, num: op(x, y)}, nil
+			return numberFromBig(op(x, y)), nil
 		})
 	}
-	r.builtin("+", numericBinary(func(a, b *big.Int) *big.Int { return new(big.Int).Add(a, b) }, func(a, b float64) float64 { return a + b }))
-	r.builtin("-", integer(func(a, b *big.Int) *big.Int { return new(big.Int).Sub(a, b) }))
-	r.builtin("*", numericBinary(func(a, b *big.Int) *big.Int { return new(big.Int).Mul(a, b) }, func(a, b float64) float64 { return a * b }))
-	r.builtin("^", integer(func(a, b *big.Int) *big.Int {
+	r.builtin("+", numericBinary(smallAdd, func(a, b *big.Int) *big.Int { return new(big.Int).Add(a, b) }, func(a, b float64) float64 { return a + b }))
+	r.builtin("-", integer(smallSub, func(a, b *big.Int) *big.Int { return new(big.Int).Sub(a, b) }))
+	r.builtin("*", numericBinary(smallMul, func(a, b *big.Int) *big.Int { return new(big.Int).Mul(a, b) }, func(a, b float64) float64 { return a * b }))
+	r.builtin("^", integer(func(_, _ int64) (int64, bool) { return 0, false }, func(a, b *big.Int) *big.Int {
 		if !b.IsInt64() || b.Sign() < 0 {
 			return big.NewInt(0)
 		}
@@ -1051,6 +1396,15 @@ func (r *languageRuntime) installBuiltins() {
 	for name, comparison := range map[string]func(int) bool{"=": func(c int) bool { return c == 0 }, "~=": func(c int) bool { return c != 0 }, "<": func(c int) bool { return c < 0 }, "<=": func(c int) bool { return c <= 0 }, ">": func(c int) bool { return c > 0 }, ">=": func(c int) bool { return c >= 0 }} {
 		compare := comparison
 		r.builtin(name, curry2(func(_ context.Context, a, b languageValue) (languageValue, error) {
+			if a.kind == valueNumber && b.kind == valueNumber && a.num == nil && b.num == nil {
+				comparison := 0
+				if a.small < b.small {
+					comparison = -1
+				} else if a.small > b.small {
+					comparison = 1
+				}
+				return languageValue{kind: valueBool, flag: compare(comparison)}, nil
+			}
 			x, e := numberValue(a)
 			if e != nil {
 				return languageValue{}, e
@@ -1382,10 +1736,15 @@ func (r *languageRuntime) installBuiltins() {
 	}))
 }
 
-func numericBinary(integer func(*big.Int, *big.Int) *big.Int, floating func(float64, float64) float64) languageValue {
+func numericBinary(small func(int64, int64) (int64, bool), integer func(*big.Int, *big.Int) *big.Int, floating func(float64, float64) float64) languageValue {
 	return curry2(func(_ context.Context, a, b languageValue) (languageValue, error) {
 		if a.kind == valueNumber && b.kind == valueNumber {
-			return languageValue{kind: valueNumber, num: integer(new(big.Int).Set(a.num), new(big.Int).Set(b.num))}, nil
+			if a.num == nil && b.num == nil {
+				if result, ok := small(a.small, b.small); ok {
+					return languageValue{kind: valueNumber, small: result}, nil
+				}
+			}
+			return numberFromBig(integer(integerPointer(a), integerPointer(b))), nil
 		}
 		x, err := realValue(a)
 		if err != nil {
@@ -1398,6 +1757,27 @@ func numericBinary(integer func(*big.Int, *big.Int) *big.Int, floating func(floa
 		return languageValue{kind: valueFloat, real: floating(x, y)}, nil
 	})
 }
+
+func smallAdd(a, b int64) (int64, bool) {
+	result := a + b
+	return result, (b <= 0 || result >= a) && (b >= 0 || result <= a)
+}
+func smallSub(a, b int64) (int64, bool) {
+	result := a - b
+	return result, (b <= 0 || result <= a) && (b >= 0 || result >= a)
+}
+func smallMul(a, b int64) (int64, bool) {
+	if a == 0 || b == 0 {
+		return 0, true
+	}
+	if a == math.MinInt64 && b == -1 || b == math.MinInt64 && a == -1 {
+		return 0, false
+	}
+	result := a * b
+	return result, result/b == a
+}
+
+const maxMaterializedList = 1_000_000
 
 func finiteList(ctx context.Context, value languageValue, limit int) ([]languageValue, error) {
 	if value.kind != valueList || value.list == nil {
@@ -1427,6 +1807,9 @@ func finiteList(ctx context.Context, value languageValue, limit int) ([]language
 func renderLanguage(ctx context.Context, value languageValue) (string, error) {
 	switch value.kind {
 	case valueNumber:
+		if value.num == nil {
+			return strconv.FormatInt(value.small, 10), nil
+		}
 		return value.num.String(), nil
 	case valueFloat:
 		text := strconv.FormatFloat(value.real, 'f', -1, 64)
@@ -1454,7 +1837,7 @@ func renderLanguage(ctx context.Context, value languageValue) (string, error) {
 	case valueConstructor:
 		return renderConstructor(ctx, value, false)
 	case valueList:
-		values, e := finiteList(ctx, value, 100000)
+		values, e := finiteList(ctx, value, maxMaterializedList)
 		if e != nil {
 			return "", e
 		}
@@ -1475,6 +1858,57 @@ func renderLanguage(ctx context.Context, value languageValue) (string, error) {
 		return "[" + strings.Join(parts, ",") + "]", nil
 	default:
 		return "", errors.New("cannot display function")
+	}
+}
+
+func streamLanguageList(ctx context.Context, destination io.Writer, value languageValue) error {
+	if value.kind != valueList || value.list == nil {
+		return errors.New("list expected")
+	}
+	writer := bufio.NewWriterSize(destination, 16*1024)
+	defer writer.Flush()
+	opened := false
+	written := 0
+	for index := 0; ; index++ {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		item, ok, err := value.list.at(ctx, index)
+		if err != nil {
+			return err
+		}
+		if !ok {
+			if opened {
+				_, err = writer.WriteString("]")
+			}
+			return err
+		}
+		if item.kind == valueMessage {
+			continue
+		}
+		text, err := renderLanguage(ctx, item)
+		if err != nil {
+			return err
+		}
+		if !opened {
+			if _, err = writer.WriteString("["); err != nil {
+				return err
+			}
+			opened = true
+		} else if _, err = writer.WriteString(","); err != nil {
+			return err
+		}
+		if _, err = writer.WriteString(text); err != nil {
+			return err
+		}
+		written++
+		if written%256 == 0 {
+			if err = writer.Flush(); err != nil {
+				return err
+			}
+		}
 	}
 }
 
