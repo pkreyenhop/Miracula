@@ -269,6 +269,34 @@ func TestMirandaLiteralAndCharacterSemantics(t *testing.T) {
 	}
 }
 
+func TestLazyRangesAndComprehensions(t *testing.T) {
+	runtime := newLanguageRuntime(io.Discard)
+	tests := map[string]string{
+		"[1.0,1.1..1.3]":                    "[1.0,1.1,1.2,1.3]",
+		"[3,2..-1]":                         "[3,2,1,0,-1]",
+		"take 5 [n*n | n<-[1..]]":           "[1,4,9,16,25]",
+		"[10*x+y | x<-[1..2]; y<-[1..3]]":   "[11,12,13,21,22,23]",
+		"take 5 [n | n<-1,2*n..]":           "[1,2,4,8,16]",
+		"take 6 [(x,y)//x<-[1..];y<-[1..]]": "[(1,1),(1,2),(2,1),(1,3),(2,2),(3,1)]",
+		"take 4 [(a,b)//a,b<-[1..]]":        "[(1,1),(1,2),(2,1),(1,3)]",
+		"[(x,y)//x<-[1..2];y<-[1..2]]":      "[(1,1),(1,2),(2,1),(2,2)]",
+	}
+	for expression, want := range tests {
+		parsed, err := parseRuntimeExpression(expression)
+		if err != nil {
+			t.Fatalf("parse %s: %v", expression, err)
+		}
+		value, err := runtime.evaluate(context.Background(), parsed)
+		if err != nil {
+			t.Fatalf("%s: %v", expression, err)
+		}
+		got, err := renderLanguage(context.Background(), value)
+		if err != nil || got != want {
+			t.Fatalf("%s = %q, %v; want %q", expression, got, err, want)
+		}
+	}
+}
+
 func TestStrictConstructorFieldForcesArgument(t *testing.T) {
 	runtime := newLanguageRuntime(io.Discard)
 	if err := runtime.installSource([]byte("box ::= Lazy num | Strict num!\ntag (Lazy x) = 1\ntag (Strict x) = 1\n")); err != nil {

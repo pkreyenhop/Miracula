@@ -539,7 +539,7 @@ func (s *inferState) infer(expression syntaxfront.Expr, environment map[string]*
 			return nil, err
 		}
 		return &Type{Kind: TypeArrow, From: first, To: result}, nil
-	case "listcomp":
+	case "listcomp", "diagonal_listcomp":
 		local := make(map[string]*Type, len(environment))
 		for name, value := range environment {
 			local[name] = value
@@ -560,6 +560,22 @@ func (s *inferState) infer(expression syntaxfront.Expr, environment map[string]*
 				return nil, err
 			}
 			item := s.fresh()
+			if qualifier.Recurrence != nil {
+				if err = Unify(source, item, s.substitutions); err != nil {
+					return nil, err
+				}
+				if err = s.inferPattern(*qualifier.Pattern, item, local); err != nil {
+					return nil, err
+				}
+				next, nextErr := s.infer(*qualifier.Recurrence, local)
+				if nextErr != nil {
+					return nil, nextErr
+				}
+				if err = Unify(next, item, s.substitutions); err != nil {
+					return nil, err
+				}
+				continue
+			}
 			if err = Unify(source, &Type{Kind: TypeList, Items: []*Type{item}}, s.substitutions); err != nil {
 				return nil, err
 			}

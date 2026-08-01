@@ -141,6 +141,8 @@ type languageCallFrame struct {
 	bindings    []languageThunk
 }
 
+type environmentStream func(context.Context) (map[string]*languageThunk, bool, error)
+
 func (t *languageThunk) force() (languageValue, error) {
 	t.mu.Lock()
 	if t.ready {
@@ -1412,17 +1414,63 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 		if err != nil {
 			return languageValue{}, err
 		}
+		floating := start.kind == valueFloat
+		var stepValue, endValue languageValue
+		if expression.Step != nil {
+			stepValue, err = r.eval(ctx, *expression.Step, environment)
+			if err != nil {
+				return languageValue{}, err
+			}
+			floating = floating || stepValue.kind == valueFloat
+		}
+		if expression.To != nil {
+			endValue, err = r.eval(ctx, *expression.To, environment)
+			if err != nil {
+				return languageValue{}, err
+			}
+			floating = floating || endValue.kind == valueFloat
+		}
+		if floating {
+			from, e := realValue(start)
+			if e != nil {
+				return languageValue{}, e
+			}
+			increment := 1.0
+			if expression.Step != nil {
+				second, e := realValue(stepValue)
+				if e != nil {
+					return languageValue{}, e
+				}
+				increment = second - from
+			}
+			var end *float64
+			if expression.To != nil {
+				limit, e := realValue(endValue)
+				if e != nil {
+					return languageValue{}, e
+				}
+				end = &limit
+			}
+			precision := rangeDecimalPrecision(expression)
+			scale := math.Pow10(precision)
+			return languageValue{kind: valueList, list: &lazyList{next: func(_ context.Context, index int) (languageValue, bool, error) {
+				current := from + float64(index)*increment
+				if precision > 0 {
+					current = math.Round(current*scale) / scale
+				}
+				if end != nil && (increment >= 0 && current > *end+math.Abs(increment)*1e-12 || increment < 0 && current < *end-math.Abs(increment)*1e-12) {
+					return languageValue{}, false, nil
+				}
+				return languageValue{kind: valueFloat, real: current}, true, nil
+			}}}, nil
+		}
 		from, err := numberValue(start)
 		if err != nil {
 			return languageValue{}, err
 		}
 		step := big.NewInt(1)
 		if expression.Step != nil {
-			value, e := r.eval(ctx, *expression.Step, environment)
-			if e != nil {
-				return languageValue{}, e
-			}
-			second, e := numberValue(value)
+			second, e := numberValue(stepValue)
 			if e != nil {
 				return languageValue{}, e
 			}
@@ -1430,13 +1478,9 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 		}
 		var end *big.Int
 		if expression.To != nil {
-			value, e := r.eval(ctx, *expression.To, environment)
-			if e != nil {
-				return languageValue{}, e
-			}
-			end, e = numberValue(value)
-			if e != nil {
-				return languageValue{}, e
+			end, err = numberValue(endValue)
+			if err != nil {
+				return languageValue{}, err
 			}
 		}
 		origin, increment := new(big.Int).Set(from), new(big.Int).Set(step)
@@ -1460,50 +1504,40 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 			return languageValue{}, err
 		}
 		return languageValue{kind: valueNumber, num: big.NewInt(int64(len(items)))}, nil
-	case "listcomp":
-		environments := []map[string]*languageThunk{cloneEnvironment(environment)}
-		for _, qualifier := range expression.Qualifiers {
-			var next []map[string]*languageThunk
-			for _, candidate := range environments {
-				if qualifier.Guard != nil {
-					guard, err := r.eval(ctx, *qualifier.Guard, candidate)
-					if err != nil {
-						return languageValue{}, err
-					}
-					if guard.kind == valueBool && guard.flag {
-						next = append(next, candidate)
-					}
-					continue
-				}
-				source, err := r.eval(ctx, *qualifier.Source, candidate)
-				if err != nil {
-					return languageValue{}, err
-				}
-				values, err := finiteList(ctx, source, 1_000_000)
-				if err != nil {
-					return languageValue{}, err
-				}
-				for _, value := range values {
-					bound := cloneEnvironment(candidate)
-					if r.matchRuntimePattern(*qualifier.Pattern, value, bound) {
-						next = append(next, bound)
-					}
-				}
-			}
-			environments = next
+	case "listcomp", "diagonal_listcomp":
+		stream := r.comprehensionEnvironments(expression.Qualifiers, environment)
+		if expression.Variant == "diagonal_listcomp" {
+			stream = r.diagonalComprehensionEnvironments(expression.Qualifiers, environment)
 		}
-		values := make([]languageValue, 0, len(environments))
-		for _, candidate := range environments {
-			value, err := r.eval(ctx, *expression.Body, candidate)
-			if err != nil {
-				return languageValue{}, err
+		body := *expression.Body
+		return languageValue{kind: valueList, list: &lazyList{next: func(nextCtx context.Context, _ int) (languageValue, bool, error) {
+			candidate, ok, err := stream(nextCtx)
+			if err != nil || !ok {
+				return languageValue{}, ok, err
 			}
-			values = append(values, value)
-		}
-		return listValue(values), nil
+			captured := cloneEnvironment(candidate)
+			return languageValue{kind: valueThunk, thunk: &languageThunk{eval: func() (languageValue, error) { return r.eval(nextCtx, body, captured) }}}, true, nil
+		}}}, nil
 	default:
 		return languageValue{}, fmt.Errorf("unsupported expression %s", expression.Variant)
 	}
+}
+
+func rangeDecimalPrecision(expression syntaxfront.Expr) int {
+	maximum := 0
+	for _, part := range []*syntaxfront.Expr{expression.Head, expression.Step, expression.To} {
+		if part == nil || part.Variant != "float" || strings.HasPrefix(strings.ToLower(part.Text), "0x") {
+			continue
+		}
+		text := part.Text
+		if exponent := strings.IndexAny(text, "eE"); exponent >= 0 {
+			text = text[:exponent]
+		}
+		if dot := strings.IndexByte(text, '.'); dot >= 0 && len(text)-dot-1 > maximum {
+			maximum = len(text) - dot - 1
+		}
+	}
+	return maximum
 }
 
 func isComparison(operator string) bool {
@@ -1849,6 +1883,284 @@ func listDifference(ctx context.Context, left, right languageValue) (languageVal
 			}
 		}
 	}}}, nil
+}
+
+func (r *languageRuntime) comprehensionEnvironments(qualifiers []syntaxfront.Qualifier, root map[string]*languageThunk) environmentStream {
+	emitted := false
+	stream := environmentStream(func(context.Context) (map[string]*languageThunk, bool, error) {
+		if emitted {
+			return nil, false, nil
+		}
+		emitted = true
+		return cloneEnvironment(root), true, nil
+	})
+	for _, qualifier := range qualifiers {
+		parent := stream
+		qualifier := qualifier
+		if qualifier.Guard != nil {
+			stream = func(ctx context.Context) (map[string]*languageThunk, bool, error) {
+				for {
+					candidate, ok, err := parent(ctx)
+					if err != nil || !ok {
+						return nil, ok, err
+					}
+					guard, err := r.eval(ctx, *qualifier.Guard, candidate)
+					if err != nil {
+						return nil, false, err
+					}
+					guard, err = forceLanguageValue(guard, nil)
+					if err != nil {
+						return nil, false, err
+					}
+					if guard.kind != valueBool {
+						return nil, false, errors.New("boolean guard expected")
+					}
+					if guard.flag {
+						return candidate, true, nil
+					}
+				}
+			}
+			continue
+		}
+		var candidate map[string]*languageThunk
+		var source languageValue
+		position := 0
+		haveCandidate := false
+		var recurrenceValue languageValue
+		stream = func(ctx context.Context) (map[string]*languageThunk, bool, error) {
+			for {
+				if !haveCandidate {
+					var ok bool
+					var err error
+					candidate, ok, err = parent(ctx)
+					if err != nil || !ok {
+						return nil, ok, err
+					}
+					position = 0
+					if qualifier.Recurrence != nil {
+						recurrenceValue, err = r.eval(ctx, *qualifier.Source, candidate)
+					} else {
+						source, err = r.eval(ctx, *qualifier.Source, candidate)
+					}
+					if err != nil {
+						return nil, false, err
+					}
+					if qualifier.Recurrence == nil && source.kind != valueList {
+						return nil, false, listTypeMismatch(source)
+					}
+					haveCandidate = true
+				}
+				var value languageValue
+				var ok bool
+				var err error
+				if qualifier.Recurrence != nil {
+					value, ok = recurrenceValue, true
+				} else {
+					value, ok, err = source.list.at(ctx, position)
+				}
+				if err != nil {
+					return nil, false, err
+				}
+				if !ok {
+					haveCandidate = false
+					continue
+				}
+				position++
+				bound := cloneEnvironment(candidate)
+				if !r.matchRuntimePattern(*qualifier.Pattern, value, bound) {
+					if qualifier.Recurrence != nil {
+						return nil, false, errors.New("recurrence value does not match its pattern")
+					}
+					continue
+				}
+				if qualifier.Recurrence != nil {
+					recurrenceValue, err = r.eval(ctx, *qualifier.Recurrence, bound)
+					if err != nil {
+						return nil, false, err
+					}
+				}
+				return bound, true, nil
+			}
+		}
+	}
+	return stream
+}
+
+func (r *languageRuntime) diagonalComprehensionEnvironments(qualifiers []syntaxfront.Qualifier, root map[string]*languageThunk) environmentStream {
+	generatorCount := 0
+	for _, qualifier := range qualifiers {
+		if qualifier.Pattern != nil {
+			generatorCount++
+		}
+	}
+	if generatorCount < 2 {
+		return r.comprehensionEnvironments(qualifiers, root)
+	}
+	total, combination := 0, 0
+	vectors := indexCompositions(0, generatorCount)
+	maximumTotal, allFinite := 0, true
+	for _, qualifier := range qualifiers {
+		if qualifier.Pattern == nil {
+			continue
+		}
+		if qualifier.Recurrence != nil || qualifier.Source == nil || qualifier.Source.Variant != "range" && qualifier.Source.Variant != "list" {
+			allFinite = false
+			break
+		}
+		length, err := r.staticGeneratorLength(context.Background(), *qualifier.Source, root)
+		if err != nil {
+			allFinite = false
+			break
+		}
+		if length == 0 {
+			maximumTotal = -1
+			break
+		}
+		maximumTotal += length - 1
+	}
+	return func(ctx context.Context) (map[string]*languageThunk, bool, error) {
+		for {
+			if combination >= len(vectors) {
+				total++
+				if allFinite && total > maximumTotal {
+					return nil, false, nil
+				}
+				vectors = indexCompositions(total, generatorCount)
+				combination = 0
+			}
+			indices := vectors[combination]
+			combination++
+			environment := cloneEnvironment(root)
+			generator := 0
+			valid := true
+			for _, qualifier := range qualifiers {
+				if qualifier.Guard != nil {
+					guard, err := r.eval(ctx, *qualifier.Guard, environment)
+					if err != nil {
+						return nil, false, err
+					}
+					guard, err = forceLanguageValue(guard, nil)
+					if err != nil {
+						return nil, false, err
+					}
+					if guard.kind != valueBool {
+						return nil, false, errors.New("boolean guard expected")
+					}
+					if !guard.flag {
+						valid = false
+						break
+					}
+					continue
+				}
+				value, ok, err := r.comprehensionGeneratorAt(ctx, qualifier, environment, indices[generator])
+				generator++
+				if err != nil {
+					return nil, false, err
+				}
+				if !ok {
+					valid = false
+					break
+				}
+				if !r.matchRuntimePattern(*qualifier.Pattern, value, environment) {
+					valid = false
+					break
+				}
+			}
+			if valid {
+				return environment, true, nil
+			}
+		}
+	}
+}
+
+func (r *languageRuntime) staticGeneratorLength(ctx context.Context, expression syntaxfront.Expr, environment map[string]*languageThunk) (int, error) {
+	if expression.Variant == "list" {
+		return len(expression.Items), nil
+	}
+	if expression.Variant != "range" || expression.To == nil {
+		return 0, errors.New("not statically finite")
+	}
+	start, err := r.eval(ctx, *expression.Head, environment)
+	if err != nil {
+		return 0, err
+	}
+	end, err := r.eval(ctx, *expression.To, environment)
+	if err != nil {
+		return 0, err
+	}
+	var second languageValue
+	if expression.Step != nil {
+		second, err = r.eval(ctx, *expression.Step, environment)
+		if err != nil {
+			return 0, err
+		}
+	}
+	if start.kind == valueFloat || end.kind == valueFloat || expression.Step != nil && second.kind == valueFloat {
+		from, _ := realValue(start)
+		limit, _ := realValue(end)
+		increment := 1.0
+		if expression.Step != nil {
+			value, _ := realValue(second)
+			increment = value - from
+		}
+		if increment == 0 || increment > 0 && from > limit || increment < 0 && from < limit {
+			return 0, nil
+		}
+		return int(math.Floor((limit-from)/increment+1e-12)) + 1, nil
+	}
+	from, _ := numberValue(start)
+	limit, _ := numberValue(end)
+	increment := big.NewInt(1)
+	if expression.Step != nil {
+		value, _ := numberValue(second)
+		increment.Sub(value, from)
+	}
+	if increment.Sign() == 0 || increment.Sign() > 0 && from.Cmp(limit) > 0 || increment.Sign() < 0 && from.Cmp(limit) < 0 {
+		return 0, nil
+	}
+	count := new(big.Int).Quo(new(big.Int).Sub(limit, from), increment)
+	count.Add(count, big.NewInt(1))
+	if !count.IsInt64() || count.Int64() > int64(^uint(0)>>1) {
+		return 0, errors.New("finite range is too large for host indexing")
+	}
+	return int(count.Int64()), nil
+}
+
+func (r *languageRuntime) comprehensionGeneratorAt(ctx context.Context, qualifier syntaxfront.Qualifier, environment map[string]*languageThunk, index int) (languageValue, bool, error) {
+	value, err := r.eval(ctx, *qualifier.Source, environment)
+	if err != nil {
+		return languageValue{}, false, err
+	}
+	if qualifier.Recurrence == nil {
+		if value.kind != valueList {
+			return languageValue{}, false, listTypeMismatch(value)
+		}
+		return value.list.at(ctx, index)
+	}
+	for position := 0; position < index; position++ {
+		bound := cloneEnvironment(environment)
+		if !r.matchRuntimePattern(*qualifier.Pattern, value, bound) {
+			return languageValue{}, false, nil
+		}
+		value, err = r.eval(ctx, *qualifier.Recurrence, bound)
+		if err != nil {
+			return languageValue{}, false, err
+		}
+	}
+	return value, true, nil
+}
+
+func indexCompositions(total, dimensions int) [][]int {
+	if dimensions == 1 {
+		return [][]int{{total}}
+	}
+	var result [][]int
+	for first := 0; first <= total; first++ {
+		for _, tail := range indexCompositions(total-first, dimensions-1) {
+			result = append(result, append([]int{first}, tail...))
+		}
+	}
+	return result
 }
 
 func realValue(value languageValue) (float64, error) {

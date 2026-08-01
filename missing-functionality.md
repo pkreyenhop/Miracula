@@ -194,7 +194,15 @@ Implementation instructions:
 4. Support hexadecimal floating literals and escaped physical newlines.
 5. Add lexer conformance tests generated from section 26’s grammar.
 
-### MISSING-005 — Complete ranges and list comprehensions lazily
+### MISSING-005 — Complete ranges and list comprehensions lazily ✅
+
+Status: completed. Integer and fractional arithmetic progressions are lazy,
+bounded in either direction, and free of semantic materialization limits.
+Ordinary comprehensions now use a lazy qualifier pipeline with left-to-right
+scope, filters, pattern skipping, multi-variable generator expansion, and
+recurrence generators. `//` has a distinct syntax node and performs fair
+higher-dimensional Cantorian enumeration, including finite termination and
+finite prefixes drawn from multiple infinite generators.
 
 Manual sections: 13/1–13/3.
 

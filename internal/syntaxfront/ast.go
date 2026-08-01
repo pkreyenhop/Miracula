@@ -15,9 +15,10 @@ type Expr struct {
 	Span       Span        `json:"span,omitempty"`
 }
 type Qualifier struct {
-	Pattern *Expr `json:"pattern,omitempty"`
-	Source  *Expr `json:"source,omitempty"`
-	Guard   *Expr `json:"guard,omitempty"`
+	Pattern    *Expr `json:"pattern,omitempty"`
+	Source     *Expr `json:"source,omitempty"`
+	Recurrence *Expr `json:"recurrence,omitempty"`
+	Guard      *Expr `json:"guard,omitempty"`
 }
 type Definition struct {
 	Variant string `json:"variant"`

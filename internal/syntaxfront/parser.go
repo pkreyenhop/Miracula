@@ -166,9 +166,13 @@ func parsePratt(tokens []Token, position, minimum int) (Expr, int) {
 			return Expr{Variant: "empty", Span: token.Span}, len(tokens)
 		}
 		inside := tokens[position:close]
-		if barAt := topLevelIndex(inside, "bar"); barAt >= 0 {
+		barAt, variant := topLevelIndex(inside, "bar"), "listcomp"
+		if diagonalAt := topLevelIndex(inside, "diagonal"); barAt < 0 && diagonalAt >= 0 {
+			barAt, variant = diagonalAt, "diagonal_listcomp"
+		}
+		if barAt >= 0 {
 			body := parseExpression(inside[:barAt])
-			result = Expr{Variant: "listcomp", Body: &body, Span: mergeSpan(tokens[start : close+1])}
+			result = Expr{Variant: variant, Body: &body, Span: mergeSpan(tokens[start : close+1])}
 			for _, part := range splitTopLevel(inside[barAt+1:], "semicolon") {
 				if len(part) == 0 {
 					continue
@@ -176,18 +180,21 @@ func parsePratt(tokens []Token, position, minimum int) (Expr, int) {
 				if arrow := topLevelIndex(part, "left_arrow"); arrow >= 0 {
 					patternTokens := part[:arrow]
 					patternParts := splitTopLevel(patternTokens, "comma")
-					var pattern Expr
-					if len(patternParts) > 1 {
-						items := make([]Expr, len(patternParts))
-						for index := range patternParts {
-							items[index] = parseExpression(patternParts[index])
+					sourceTokens := part[arrow+1:]
+					var recurrence *Expr
+					if rangeAt := topLevelIndex(sourceTokens, "range"); rangeAt >= 0 {
+						starts := splitTopLevel(sourceTokens[:rangeAt], "comma")
+						if len(starts) == 2 {
+							sourceTokens = starts[0]
+							next := parseExpression(starts[1])
+							recurrence = &next
 						}
-						pattern = Expr{Variant: "tuple", Items: items, Span: mergeSpan(patternTokens)}
-					} else {
-						pattern = parseExpression(patternTokens)
 					}
-					source := parseExpression(part[arrow+1:])
-					result.Qualifiers = append(result.Qualifiers, Qualifier{Pattern: &pattern, Source: &source})
+					source := parseExpression(sourceTokens)
+					for _, patternTokens := range patternParts {
+						pattern := parseExpression(patternTokens)
+						result.Qualifiers = append(result.Qualifiers, Qualifier{Pattern: &pattern, Source: &source, Recurrence: recurrence})
+					}
 				} else {
 					guard := parseExpression(part)
 					result.Qualifiers = append(result.Qualifiers, Qualifier{Guard: &guard})
