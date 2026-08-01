@@ -40,7 +40,14 @@ func (e *Evaluator) Apply(function protocol.Value, args ...protocol.Value) (prot
 			if b == 0 {
 				return 0, ErrDivisionByZero
 			}
-			return a / b, nil
+			return floorDiv(a, b), nil
+		})
+	case protocol.CombMOD:
+		return integerBinary(args, func(a, b int64) (int64, error) {
+			if b == 0 {
+				return 0, ErrDivisionByZero
+			}
+			return a - floorDiv(a, b)*b, nil
 		})
 	}
 	return protocol.Value{}, errors.New("unimplemented combinator")

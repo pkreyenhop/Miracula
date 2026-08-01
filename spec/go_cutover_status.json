@@ -6,7 +6,7 @@
     "02-runtime-graph": "complete",
     "03-source-parser": "complete",
     "04-semantics-lowering": "complete",
-    "05-evaluator": "pending",
+    "05-evaluator": "complete",
     "06-module-dump-boot": "pending",
     "07-repl-commands": "pending",
     "08-platform-integration": "pending",

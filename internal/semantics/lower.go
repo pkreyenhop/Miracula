@@ -45,6 +45,9 @@ func lowerExpr(expression syntaxfront.Expr, heap *graphstore.Heap) (protocol.Wor
 		ref, err := heap.Make(protocol.NodeInteger, protocol.Word(value), 0)
 		return protocol.Word(ref), err
 	case "name", "constructor", "string", "char", "float", "token", "raw":
+		if code, ok := PrimitiveCombinator(expression.Text); ok {
+			return protocol.CombinatorWord(protocol.Comb(code)), nil
+		}
 		ref, err := heap.Make(protocol.NodeIdentifier, protocol.Word(hashName(expression.Text)), 0)
 		return protocol.Word(ref), err
 	case "application":
