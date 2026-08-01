@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -63,7 +64,10 @@ MILESTONE_COMMANDS = {
         "python3 scripts/run_go_differential.py --candidate build/mira-go",
     ),
     "10-production-packaging": ("python3 tests/test_go_install.py",),
-    "11-cutover": ("complete final verification in go-cutover.md",),
+    "11-cutover": (
+        "python3 tests/test_go_rollback.py",
+        "complete final verification in go-cutover.md",
+    ),
 }
 
 CONTRACT_FILES = (
@@ -74,6 +78,10 @@ CONTRACT_FILES = (
     "scripts/run_go_differential.py",
     "tests/test_go_cutover.py",
     "docs/GoCompatibilityExceptions.md",
+    "docs/ReleaseNotes-GoCutover.md",
+    "spec/go_cutover_evidence.json",
+    "scripts/install_reference_rollback.py",
+    "tests/test_go_rollback.py",
 )
 
 # These narrowly match the known scaffolding recorded in go-cutover.md. They
@@ -175,6 +183,39 @@ def validate(status_path: Path = DEFAULT_STATUS, root: Path = ROOT) -> list[str]
                     errors.append(f"{milestone}: {relative} is not a Go main package")
             elif re.search(pattern, source, re.DOTALL):
                 errors.append(f"{milestone}: known placeholder remains in {relative}")
+
+    if milestones.get("11-cutover") == "complete":
+        evidence_path = root / "spec/go_cutover_evidence.json"
+        evidence, evidence_errors = read_json(evidence_path, "Go cutover evidence")
+        errors.extend(evidence_errors)
+        manifest, manifest_errors = read_json(
+            root / "tests/reference/manifest.json", "pinned reference manifest"
+        )
+        errors.extend(manifest_errors)
+        if evidence is not None and manifest is not None:
+            if evidence.get("schema") != 1:
+                errors.append("11-cutover: unsupported evidence schema")
+            if evidence.get("supported_target") != "darwin-arm64":
+                errors.append("11-cutover: supported target must be darwin-arm64")
+            reference = evidence.get("reference")
+            pinned = manifest.get("platforms", {}).get("darwin-arm64", {})
+            if not isinstance(reference, dict):
+                errors.append("11-cutover: evidence has no reference record")
+            else:
+                if reference.get("source_commit") != manifest.get("source_commit"):
+                    errors.append("11-cutover: reference source commit disagrees with manifest")
+                if reference.get("binary_sha256") != pinned.get("sha256"):
+                    errors.append("11-cutover: reference hash disagrees with manifest")
+                artifact = root / str(pinned.get("binary", ""))
+                if not artifact.is_file():
+                    errors.append("11-cutover: pinned reference artifact is missing")
+                else:
+                    actual = hashlib.sha256(artifact.read_bytes()).hexdigest()
+                    if actual != pinned.get("sha256"):
+                        errors.append("11-cutover: pinned reference artifact checksum mismatch")
+            gates = evidence.get("required_gates")
+            if not isinstance(gates, list) or "verified-reference-rollback-drill" not in gates:
+                errors.append("11-cutover: rollback drill evidence is missing")
 
     return errors
 

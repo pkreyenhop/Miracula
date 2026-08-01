@@ -638,17 +638,21 @@ a safe rollback point.
 
 ### Pre-cutover checklist
 
-- [ ] Milestones 00 through 10 are complete in order.
-- [ ] The full parity suite passed three consecutive clean builds.
-- [ ] Race tests passed.
-- [ ] Installed-package smoke tests passed.
-- [ ] No skipped, quarantined, or flaky required tests remain.
-- [ ] All nine stage oracles pass using production package paths.
-- [ ] Pinned reference hashes verify.
-- [ ] `main` is clean and synchronized with `origin/main`.
-- [ ] The last known-good Zig reference commit and binary hash are recorded.
-- [ ] A rollback procedure has been tested.
-- [ ] Release notes clearly state macOS ARM64-only support.
+- [x] Milestones 00 through 10 are complete in order.
+- [x] The full parity suite passed three consecutive clean builds.
+- [x] Race tests passed.
+- [x] Installed-package smoke tests passed.
+- [x] No skipped, quarantined, or flaky required tests remain.
+- [x] All nine stage oracles pass using production package paths.
+- [x] Pinned reference hashes verify.
+- [x] `main` was clean and synchronized with `origin/main` at the cutover start.
+- [x] The last known-good Zig reference commit and binary hash are recorded.
+- [x] A rollback procedure has been tested.
+- [x] Release notes clearly state macOS ARM64-only support.
+
+The machine-readable evidence and reference identity are recorded in
+`spec/go_cutover_evidence.json`. Release scope and the tested rollback procedure
+are documented in `docs/ReleaseNotes-GoCutover.md`.
 
 ### Cutover change
 

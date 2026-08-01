@@ -36,7 +36,19 @@ class CutoverStatusTests(unittest.TestCase):
 
     def test_repository_contract_is_valid(self) -> None:
         self.assertEqual(go_cutover.validate(), [])
-        self.assertEqual(go_cutover.first_pending(), "11-cutover")
+        self.assertIsNone(go_cutover.first_pending())
+
+    def test_completed_cutover_requires_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            states = dict.fromkeys(go_cutover.MILESTONES, "complete")
+            status = self.write_status(root, states)
+            for relative in go_cutover.CONTRACT_FILES:
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.touch()
+            errors = go_cutover.validate(status, root)
+            self.assertTrue(any("cutover evidence" in item for item in errors))
 
     def test_unknown_status_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -12,6 +12,6 @@
     "08-platform-integration": "complete",
     "09-full-parity": "complete",
     "10-production-packaging": "complete",
-    "11-cutover": "pending"
+    "11-cutover": "complete"
   }
 }

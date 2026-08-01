@@ -113,7 +113,7 @@ The installed command finds `../lib/miralib` relative to itself. `MIRALIB` and
 `-lib` remain available as explicit overrides. Release archives are produced
 with `make package`; set `SOURCE_DATE_EPOCH` to reproduce metadata exactly.
 
-The historical Zig implementation is test-only during the Go cutover. Build it
+The historical Zig implementation is retained as a test-only reference. Build it
 explicitly as `zig-out/bin/mira-zig-reference` with `make reference`. `zig
 build` also produces the Go `zig-out/bin/mira`; it does not select the Zig
 interpreter as the product.

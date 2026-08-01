@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "supported_target": "darwin-arm64",
+  "pre_cutover_commit": "a70e9293a927deef4763f4fd22e36808a99a2c57",
+  "reference": {
+    "source_commit": "620b7495165c5801b73fb39b6e4cba8c55277932",
+    "binary_sha256": "daf2d36448482b391a838b015e12954f22f9f9659db12e5d0a0e384e5a5c1a3f",
+    "manifest": "tests/reference/manifest.json"
+  },
+  "required_gates": [
+    "three-consecutive-clean-candidate-parity-runs",
+    "go-test",
+    "go-test-race",
+    "nine-stage-oracles",
+    "golden-integration-spine-sigint",
+    "forced-allocation-differential",
+    "installed-product-smoke",
+    "deterministic-release-archive",
+    "verified-reference-rollback-drill"
+  ],
+  "tag_policy": "tag only after remote CI passes"
+}
