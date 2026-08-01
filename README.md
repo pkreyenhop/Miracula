@@ -83,8 +83,7 @@ fib 20
 
 ## Repository contents
 
-- `src/` — interpreter, parser, type checker, graph runtime, session, and
-  platform services
+- `src/` — historical Zig reference interpreter used by compatibility tests
 - `miralib/` — standard environment, manual, help data, and example programs
 - `tests/` — unit, integration, compatibility, golden-output, interrupt, and
   stress tests
@@ -118,6 +117,12 @@ explicitly as `zig-out/bin/mira-zig-reference` with `make reference`. `zig
 build` also produces the Go `zig-out/bin/mira`; it does not select the Zig
 interpreter as the product.
 
+The production cutover was completed and tagged as `go-cutover-2.067`. See
+[`docs/ReleaseNotes-GoCutover.md`](docs/ReleaseNotes-GoCutover.md) for the
+verification and rollback record. Remaining interactive convenience work is
+tracked separately in [`repl.md`](repl.md); it does not change the production
+runtime or supported target.
+
 ## Testing
 
 The repository includes:
@@ -134,6 +139,8 @@ The repository includes:
 Before submitting a change, run `make test`, `make race`, and `make smoke`.
 `make parity` compares a fresh Go binary with the pinned reference. The broader
 Zig-hosted compatibility gate remains available as `zig build go-ready`.
+Run `zig build clean` afterward to remove build output and disposable `.x`
+caches created by compatibility tests.
 
 ## Standard library and examples
 

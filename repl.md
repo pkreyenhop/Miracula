@@ -1,12 +1,12 @@
-# reapl.md — Go REPL feature-parity specification
+# Go REPL feature-parity roadmap
 
 ## Purpose
 
 The Go `mira` binary (`cmd/mira`, driven by `internal/commandapp` →
-`internal/application`) is now the production interpreter and has correct
-**base** functionality: it reads lines, evaluates expressions, prints results,
-and handles a small set of `/` commands. What it lacks is the entire **comfort
-layer** of the interactive REPL that the Zig implementation still has.
+`internal/application`) is the production interpreter and has complete language
+runtime and compiler functionality. This post-cutover roadmap covers optional
+interactive conveniences beyond its base REPL: line editing, history,
+completion, and the extended command surface retained by the Zig reference.
 
 This document specifies each missing feature precisely enough that an agent can
 implement it, one feature at a time, and verify it against the Zig behavior.

@@ -31,6 +31,13 @@ differential, all nine stage oracles, Go unit and race tests, the full golden
 and integration suites, deep-spine and interrupt stress, forced-allocation
 checks, installed-product smoke tests, and deterministic archive tests.
 
+Milestone 11 and the complete local `zig build go-ready --summary failures`
+release gate passed on 1 August 2026. The clean, synchronized production head
+was `bdd2a00c8290f4af4db53be085b151329614d66e` and is published as the annotated
+tag `go-cutover-2.067`. A resource-bound hosted rerun was canceled; the release
+decision explicitly accepted the complete local gate as the authoritative
+proof.
+
 The retained rollback reference is:
 
 - source commit: `620b7495165c5801b73fb39b6e4cba8c55277932`
@@ -54,4 +61,6 @@ The command verifies the pinned checksum, preserves the Go executable as
 procedure is exercised in an isolated prefix by `tests/test_go_rollback.py`.
 After fixing forward, rerun Milestones 09–11 before a new cutover.
 
-The cutover commit must be tagged only after its remote CI run passes.
+The normal tag gate is a passing remote CI run. For this cutover, the release
+decision explicitly accepted the equivalent complete local gate after the
+hosted Apple runner became resource-bound.

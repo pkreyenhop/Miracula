@@ -1,5 +1,10 @@
 # Miranda Go Production Cutover Plan
 
+> **Status: complete.** Milestones 00–11 are complete, the Go interpreter is
+> the production `mira`, and the verified head is tagged `go-cutover-2.067`.
+> This file is retained as the historical execution and rollback record; it is
+> not an active migration backlog.
+
 ## 1. Purpose
 
 This document is the execution plan for turning the current Go translation into
@@ -11,7 +16,7 @@ order, satisfy every entry and exit condition, and commit and push after each
 milestone passes. Do not interpret the existing translation status as evidence
 of production completeness.
 
-The current repository has:
+At the time this plan was written, the repository had:
 
 - a complete mechanical translation ledger (`0 pending units`);
 - Go packages corresponding to the planned package DAG;
@@ -818,7 +823,8 @@ The Go migration is done only when:
 - unsupported targets fail explicitly;
 - the normal build is independent of Zig;
 - the repository is clean and synchronized after generation and tests;
-- remote CI passes on the cutover commit.
+- the complete release gate passes on the cutover commit, normally in remote
+  CI, or an explicitly accepted local run is recorded in the release notes.
 
 Zero pending entries in `spec/go_translation_status.json`, passing package
 tests, or passing stage oracles alone are insufficient evidence of production

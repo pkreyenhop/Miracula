@@ -1,5 +1,10 @@
 # Go Migration Readiness Plan
 
+> **Status: complete and archived.** This document records the readiness work
+> that preceded the Go production cutover. The authoritative current checks are
+> `scripts/go_cutover.py` and `zig build go-ready`; do not use this file as a
+> pending-work checklist.
+
 ## Purpose
 
 This document is the execution plan for preparing Miracula for an automated,
@@ -1087,33 +1092,33 @@ Acceptance criteria:
 All of these must be true before giving the repository to an unsupervised Go
 translation agent:
 
-- [ ] `zig build go-ready --summary all` passes.
-- [ ] The pinned reference binary and library hashes are verified.
-- [ ] Missing references and skipped cases are fatal.
-- [ ] Every pipeline stage has a language-neutral oracle.
-- [ ] Every planned Go package maps to an oracle.
-- [ ] No native pointer is stored in a graph value.
-- [ ] Stream/resource graph values use typed stable IDs.
-- [ ] GC uses explicit roots and performs no native-stack scan.
-- [ ] Forced GC on every allocation passes the full applicable corpus.
-- [ ] Raw `Word` use is confined to the `.x` codec.
-- [ ] No production caller classifies values with raw numeric thresholds.
-- [ ] The target Go package graph has zero cycles (source-level SCCs are decomposed across packages, not required to be zero).
-- [ ] Interpreter state is explicitly passed/owned, not ambiently located.
-- [ ] Two interpreters pass concurrent isolation tests.
-- [ ] Exactly one authoritative production front-end path exists.
-- [ ] Every directive has one owner and tested behavior.
-- [ ] The `.x` format has an independent typed byte codec and exhaustive vectors.
-- [ ] POSIX/process/signal behavior is behind typed platform interfaces.
-- [ ] Platform contract tests pass on every supported target.
-- [ ] Internal code no longer depends on C-string pointer conventions.
-- [ ] Generic scanf behavior has been replaced by typed parsers.
-- [ ] Correctness-critical reflection has been replaced by explicit/generated data.
-- [ ] Combinator numbering comes from one language-neutral canonical source.
-- [ ] All fixture and generated outputs are deterministic across fresh processes.
-- [ ] The machine-readable source-to-target manifest covers every production symbol.
-- [ ] Every target unit has fixed representation rules and a verification command.
-- [ ] The existing Zig executable still matches all pinned observable behavior.
+- [x] `zig build go-ready --summary all` passes.
+- [x] The pinned reference binary and library hashes are verified.
+- [x] Missing references and skipped cases are fatal.
+- [x] Every pipeline stage has a language-neutral oracle.
+- [x] Every planned Go package maps to an oracle.
+- [x] No native pointer is stored in a graph value.
+- [x] Stream/resource graph values use typed stable IDs.
+- [x] GC uses explicit roots and performs no native-stack scan.
+- [x] Forced GC on every allocation passes the full applicable corpus.
+- [x] Raw `Word` use is confined to the `.x` codec.
+- [x] No production caller classifies values with raw numeric thresholds.
+- [x] The target Go package graph has zero cycles (source-level SCCs are decomposed across packages, not required to be zero).
+- [x] Interpreter state is explicitly passed/owned, not ambiently located.
+- [x] Two interpreters pass concurrent isolation tests.
+- [x] Exactly one authoritative production front-end path exists.
+- [x] Every directive has one owner and tested behavior.
+- [x] The `.x` format has an independent typed byte codec and exhaustive vectors.
+- [x] POSIX/process/signal behavior is behind typed platform interfaces.
+- [x] Platform contract tests pass on every supported target.
+- [x] Internal code no longer depends on C-string pointer conventions.
+- [x] Generic scanf behavior has been replaced by typed parsers.
+- [x] Correctness-critical reflection has been replaced by explicit/generated data.
+- [x] Combinator numbering comes from one language-neutral canonical source.
+- [x] All fixture and generated outputs are deterministic across fresh processes.
+- [x] The machine-readable source-to-target manifest covers every production symbol.
+- [x] Every target unit has fixed representation rules and a verification command.
+- [x] The existing Zig executable still matches all pinned observable behavior.
 
 When every item is checked, the repository is ready for automated,
 unsupervised, incremental translation to Go. Until then, a translation agent
