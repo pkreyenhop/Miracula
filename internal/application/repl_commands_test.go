@@ -86,6 +86,19 @@ func TestUnknownReplCommandUsesLegacyDiagnostic(t *testing.T) {
 	}
 }
 
+func TestBarCommentsAndUnknownCommand(t *testing.T) {
+	var output bytes.Buffer
+	if err := handleBarLine("|| note", &output); err != nil || output.Len() != 0 {
+		t.Fatalf("comment output = %q, err = %v", output.String(), err)
+	}
+	if err := handleBarLine("| note", &output); err != nil {
+		t.Fatal(err)
+	}
+	if output.String() != "\aunknown command - type /h for help\n" {
+		t.Fatalf("single bar output = %q", output.String())
+	}
+}
+
 func TestHeapCommandRejectsIllegalValue(t *testing.T) {
 	i := New(nil)
 	_, err := i.runCommand("/heap nope", &bytes.Buffer{})

@@ -148,6 +148,13 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 			}
 			continue
 		}
+		if interactive && strings.HasPrefix(line, "|") {
+			i.Repl.clearTiming()
+			if err := handleBarLine(line, out); err != nil {
+				return err
+			}
+			continue
+		}
 		started := i.Services.Monotonic()
 		var beforeGC goruntime.MemStats
 		goruntime.ReadMemStats(&beforeGC)
@@ -210,6 +217,14 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 			fmt.Fprintln(i.Error, "<<gc after Go evaluation>>")
 		}
 	}
+}
+
+func handleBarLine(line string, out io.Writer) error {
+	if strings.HasPrefix(line, "||") {
+		return nil
+	}
+	_, err := fmt.Fprintln(out, "\aunknown command - type /h for help")
+	return err
 }
 
 func (i *Interpreter) runShell(ctx context.Context, command string) error {
