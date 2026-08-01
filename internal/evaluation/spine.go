@@ -1,6 +1,6 @@
 package evaluation
 
-import "github.com/pkreyenhop/miracula-go/internal/protocol"
+import "github.com/pkreyenhop/miracula/internal/protocol"
 
 type Frame struct {
 	Cell  protocol.CellRef

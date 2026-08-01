@@ -1,1 +1,0 @@
-Definition name=square params=[x] body=(* x x)

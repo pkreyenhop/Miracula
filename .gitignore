@@ -1,9 +1,4 @@
-# Zig build outputs
-.zig-cache/
-.zig-cache-gc-stress/
-.zig-global-cache-gc-stress/
-zig-cache/
-zig-out/
+# Build outputs
 /build/
 
 # Object files and libraries
@@ -17,12 +12,7 @@ zig-out/
 # Compiled / generated Miranda formats
 *.x
 /mira
-/fdate
-/just
-/miralib/menudriver
 /miralib/preludx
-/tests/mira_tests
-/tests/utf8_tests
 
 # Documents and host metadata
 /.host
@@ -40,15 +30,7 @@ build_errors.log
 /mira_original
 /mira_original_debug
 
-# Reference copy of original Miranda C distribution (not compiled, not part of the build)
-/miranda/
-
 # Editor and metadata
 .DS_Store
 __pycache__/
 .claude/
-zig-pkg/
-zig-linux-x86_64-0.14.0
-zig-linux-x86_64-0.14.0.tar.xz
-zig-x86_64-linux-0.16.0
-zig-x86_64-linux-0.16.0.tar.xz

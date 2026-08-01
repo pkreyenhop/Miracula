@@ -1,4 +1,4 @@
-// Command checkdag enforces the package import contract used by the Go port.
+// Command checkdag enforces the production package import contract.
 package main
 
 import (
@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-const module = "github.com/pkreyenhop/miracula-go"
+const module = "github.com/pkreyenhop/miracula"
 
 var allowed = map[string]map[string]bool{
 	"buildcfg":    {},

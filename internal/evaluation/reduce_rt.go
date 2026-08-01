@@ -1,7 +1,7 @@
 package evaluation
 
 import (
-	"github.com/pkreyenhop/miracula-go/internal/graphstore"
+	"github.com/pkreyenhop/miracula/internal/graphstore"
 	"io"
 )
 

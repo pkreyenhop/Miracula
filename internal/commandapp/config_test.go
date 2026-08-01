@@ -1,7 +1,7 @@
 package commandapp
 
 import (
-	"github.com/pkreyenhop/miracula-go/internal/platformsvc"
+	"github.com/pkreyenhop/miracula/internal/platformsvc"
 	"os"
 	"path/filepath"
 	"testing"

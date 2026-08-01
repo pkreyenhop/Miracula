@@ -2,7 +2,7 @@ package evaluation
 
 import (
 	"context"
-	"github.com/pkreyenhop/miracula-go/internal/platformsvc"
+	"github.com/pkreyenhop/miracula/internal/platformsvc"
 )
 
 func RunSystem(ctx context.Context, command string) (platformsvc.ProcessOutcome, error) {

@@ -3,7 +3,7 @@ package commandapp
 import (
 	"errors"
 	"fmt"
-	"github.com/pkreyenhop/miracula-go/internal/application"
+	"github.com/pkreyenhop/miracula/internal/application"
 	"strconv"
 	"strings"
 )

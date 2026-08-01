@@ -2,7 +2,7 @@ package application
 
 import (
 	"fmt"
-	"github.com/pkreyenhop/miracula-go/internal/buildcfg"
+	"github.com/pkreyenhop/miracula/internal/buildcfg"
 )
 
 const Release = buildcfg.Version

@@ -1,6 +1,6 @@
 package graphstore
 
-import "github.com/pkreyenhop/miracula-go/internal/protocol"
+import "github.com/pkreyenhop/miracula/internal/protocol"
 
 type rootEntry func(func(protocol.Word))
 type Registry struct{ entries []rootEntry }

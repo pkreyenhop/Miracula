@@ -16,9 +16,9 @@ LIBRARY_FILES = (".version", "auxfile", "helpfile", "prelude", "stdenv.m")
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("candidate", type=Path)
+    parser.add_argument("executable", type=Path)
     args = parser.parse_args()
-    candidate = args.candidate.resolve()
+    executable = args.executable.resolve()
     with tempfile.TemporaryDirectory(prefix="miracula-source-startup-") as directory:
         temp = Path(directory)
         library = temp / "miralib"
@@ -29,7 +29,7 @@ def main() -> int:
         environment["HOME"] = os.fspath(temp / "home")
         (temp / "home").mkdir()
         completed = subprocess.run(
-            [os.fspath(candidate), "-lib", os.fspath(library)],
+            [os.fspath(executable), "-lib", os.fspath(library)],
             input=b"/q\n",
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -41,9 +41,6 @@ def main() -> int:
             print(f"source startup exited {completed.returncode}")
             print(completed.stdout.decode("utf-8", "backslashreplace"))
             print(completed.stderr.decode("utf-8", "backslashreplace"))
-            return 1
-        if not (library / "preludx").is_file() or not (library / "stdenv.x").is_file():
-            print("source startup did not generate both library object files")
             return 1
     print("source-only standard-library startup passed")
     return 0

@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"github.com/pkreyenhop/miracula-go/internal/graphstore"
+	"github.com/pkreyenhop/miracula/internal/graphstore"
 	"io"
 	"os"
 	"path/filepath"

@@ -1,7 +1,7 @@
 package commandapp
 
 import (
-	"github.com/pkreyenhop/miracula-go/internal/application"
+	"github.com/pkreyenhop/miracula/internal/application"
 	"testing"
 )
 

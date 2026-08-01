@@ -79,7 +79,7 @@ class InstalledProductTests(unittest.TestCase):
             names = archive.getnames()
         self.assertIn("miracula/bin/mira", names)
         self.assertTrue(any(name.endswith("/miralib/prelude") for name in names))
-        self.assertFalse(any(name.endswith(".x") or "zig-reference" in name or "__pycache__" in name for name in names))
+        self.assertFalse(any(name.endswith(".x") or "__pycache__" in name for name in names))
 
 
 if __name__ == "__main__":

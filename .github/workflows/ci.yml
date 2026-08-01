@@ -1,16 +1,14 @@
-name: Go migration readiness
+name: CI
 
 on:
   push:
   pull_request:
 
 jobs:
-  go-ready:
+  test:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23'
@@ -19,10 +17,8 @@ jobs:
       - run: go run ./cmd/checkdag
       - run: go generate ./...
       - run: git diff --exit-code
-      - run: python3 scripts/package_go.py build --output build/mira
+      - run: python3 tests/test_go_command.py
+      - run: python3 tests/test_go_repl.py
       - run: python3 tests/test_go_install.py
-      - uses: mlugg/setup-zig@v2
-        with:
-          version: 0.16.0
-      - run: python3 scripts/run_go_differential.py --candidate build/mira
-      - run: zig build go-ready --summary failures
+      - run: python3 scripts/package_go.py build --output build/mira
+      - run: python3 tests/startup_from_source.py build/mira

@@ -40,19 +40,19 @@ def build(output: Path) -> None:
     commit, date, host = metadata()
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="miracula-build-") as temporary:
-        candidate = Path(temporary) / "mira"
+        executable = Path(temporary) / "mira"
         ldflags = " ".join((
             "-s", "-w",
-            f"-X=github.com/pkreyenhop/miracula-go/internal/buildcfg.Commit={commit}",
-            f"-X=github.com/pkreyenhop/miracula-go/internal/buildcfg.VersionDate={date}",
-            f"-X=github.com/pkreyenhop/miracula-go/internal/buildcfg.Host={host}",
+            f"-X=github.com/pkreyenhop/miracula/internal/buildcfg.Commit={commit}",
+            f"-X=github.com/pkreyenhop/miracula/internal/buildcfg.VersionDate={date}",
+            f"-X=github.com/pkreyenhop/miracula/internal/buildcfg.Host={host}",
         ))
         subprocess.run(
             ["go", "build", "-trimpath", "-buildvcs=false", "-ldflags", ldflags,
-             "-o", candidate, "./cmd/mira"],
+             "-o", executable, "./cmd/mira"],
             cwd=ROOT, check=True,
         )
-        os.replace(candidate, output)
+        os.replace(executable, output)
 
 
 def destination(prefix: Path, destdir: Path) -> Path:
@@ -64,7 +64,7 @@ def destination(prefix: Path, destdir: Path) -> Path:
 def copy_library(target: Path) -> None:
     shutil.copytree(
         ROOT / "miralib", target, dirs_exist_ok=True,
-        ignore=shutil.ignore_patterns("*.x", "__pycache__", ".DS_Store"),
+        ignore=shutil.ignore_patterns("*.x", "preludx", "__pycache__", ".DS_Store"),
     )
 
 
@@ -109,10 +109,9 @@ def archive(output: Path) -> None:
 
 
 def clean() -> None:
-    for relative in ("build", ".zig-cache", "zig-out"):
+    for relative in ("build",):
         shutil.rmtree(ROOT / relative, ignore_errors=True)
-    for relative in ("mira", "fdate", "just", "miralib/menudriver", "tests/utf8_tests", "tests/mira_tests"):
-        (ROOT / relative).unlink(missing_ok=True)
+    (ROOT / "miralib" / "preludx").unlink(missing_ok=True)
     for path in ROOT.rglob("*.x"):
         path.unlink()
 

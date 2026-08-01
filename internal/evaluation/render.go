@@ -3,7 +3,7 @@ package evaluation
 import (
 	"context"
 	"fmt"
-	"github.com/pkreyenhop/miracula-go/internal/protocol"
+	"github.com/pkreyenhop/miracula/internal/protocol"
 	"strconv"
 	"strings"
 )

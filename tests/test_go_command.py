@@ -17,12 +17,13 @@ ROOT = Path(__file__).resolve().parents[1]
 class GoCommandTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.temporary = tempfile.TemporaryDirectory(prefix="miracula-go-command-")
+        cls.temporary = tempfile.TemporaryDirectory(prefix="miracula-command-")
         cls.binary = Path(cls.temporary.name) / "mira"
         subprocess.run(
             [
                 sys.executable,
-                str(ROOT / "scripts/build_go_candidate.py"),
+                str(ROOT / "scripts/package_go.py"),
+                "build",
                 "--output",
                 str(cls.binary),
             ],

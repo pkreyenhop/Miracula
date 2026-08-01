@@ -1,6 +1,6 @@
 package graphstore
 
-import "github.com/pkreyenhop/miracula-go/internal/protocol"
+import "github.com/pkreyenhop/miracula/internal/protocol"
 
 type StringTable struct {
 	values []string

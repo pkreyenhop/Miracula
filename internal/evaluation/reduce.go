@@ -3,8 +3,8 @@ package evaluation
 import (
 	"context"
 	"errors"
-	"github.com/pkreyenhop/miracula-go/internal/graphstore"
-	"github.com/pkreyenhop/miracula-go/internal/protocol"
+	"github.com/pkreyenhop/miracula/internal/graphstore"
+	"github.com/pkreyenhop/miracula/internal/protocol"
 )
 
 var ErrNotReducible = errors.New("not reducible")

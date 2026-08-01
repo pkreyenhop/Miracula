@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/pkreyenhop/miracula-go/internal/protocol"
+	"github.com/pkreyenhop/miracula/internal/protocol"
 )
 
 // AtomicReplace writes a complete file beside its destination and then

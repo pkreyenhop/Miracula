@@ -2,8 +2,8 @@ package application
 
 import (
 	"errors"
-	"github.com/pkreyenhop/miracula-go/internal/graphstore"
-	"github.com/pkreyenhop/miracula-go/internal/semantics"
+	"github.com/pkreyenhop/miracula/internal/graphstore"
+	"github.com/pkreyenhop/miracula/internal/semantics"
 )
 
 var ErrAlreadySetup = errors.New("interpreter already set up")

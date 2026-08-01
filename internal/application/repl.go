@@ -11,10 +11,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pkreyenhop/miracula-go/internal/platformsvc"
-	"github.com/pkreyenhop/miracula-go/internal/protocol"
-	"github.com/pkreyenhop/miracula-go/internal/semantics"
-	"github.com/pkreyenhop/miracula-go/internal/syntaxfront"
+	"github.com/pkreyenhop/miracula/internal/platformsvc"
+	"github.com/pkreyenhop/miracula/internal/protocol"
+	"github.com/pkreyenhop/miracula/internal/semantics"
+	"github.com/pkreyenhop/miracula/internal/syntaxfront"
 )
 
 var ErrEvaluationReported = errors.New("evaluation error already reported")

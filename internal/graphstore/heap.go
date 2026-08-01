@@ -1,6 +1,6 @@
 package graphstore
 
-import "github.com/pkreyenhop/miracula-go/internal/protocol"
+import "github.com/pkreyenhop/miracula/internal/protocol"
 
 func H(heap *Heap, value protocol.Word) protocol.Word {
 	r, ok := protocol.CellRefOf(value)

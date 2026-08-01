@@ -30,7 +30,7 @@ func NewSource(raw []byte, literateName bool) Source {
 }
 
 // LoadSource expands source-local %insert directives recursively. Includes
-// remain module declarations and are owned by the semantic/module phase.
+// remain module declarations and are owned by semantic module loading.
 func LoadSource(path string) (Source, []Diagnostic) {
 	bytes, diagnostics := loadSource(path, map[string]bool{})
 	return NewSource(bytes, strings.HasSuffix(path, ".lit.m")), diagnostics

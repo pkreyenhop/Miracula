@@ -3,7 +3,7 @@ package graphstore
 import (
 	"bytes"
 	"errors"
-	"github.com/pkreyenhop/miracula-go/internal/protocol"
+	"github.com/pkreyenhop/miracula/internal/protocol"
 	"io"
 	"testing"
 )

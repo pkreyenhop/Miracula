@@ -2,8 +2,8 @@ package semantics
 
 import (
 	"fmt"
-	"github.com/pkreyenhop/miracula-go/internal/graphstore"
-	"github.com/pkreyenhop/miracula-go/internal/syntaxfront"
+	"github.com/pkreyenhop/miracula/internal/graphstore"
+	"github.com/pkreyenhop/miracula/internal/syntaxfront"
 	"sort"
 )
 

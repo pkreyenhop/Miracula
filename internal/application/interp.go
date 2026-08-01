@@ -1,10 +1,10 @@
 package application
 
 import (
-	"github.com/pkreyenhop/miracula-go/internal/evaluation"
-	"github.com/pkreyenhop/miracula-go/internal/graphstore"
-	"github.com/pkreyenhop/miracula-go/internal/platformsvc"
-	"github.com/pkreyenhop/miracula-go/internal/semantics"
+	"github.com/pkreyenhop/miracula/internal/evaluation"
+	"github.com/pkreyenhop/miracula/internal/graphstore"
+	"github.com/pkreyenhop/miracula/internal/platformsvc"
+	"github.com/pkreyenhop/miracula/internal/semantics"
 	"io"
 )
 

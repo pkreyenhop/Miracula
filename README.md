@@ -83,7 +83,8 @@ fib 20
 
 ## Repository contents
 
-- `src/` — historical Zig reference interpreter used by compatibility tests
+- `cmd/` — command-line programs
+- `internal/` — compiler, runtime, evaluator, REPL, and platform services
 - `miralib/` — standard environment, manual, help data, and example programs
 - `tests/` — unit, integration, compatibility, golden-output, interrupt, and
   stress tests
@@ -92,8 +93,8 @@ fib 20
 
 ## Building and installing
 
-The production interpreter is written in Go and supports macOS on Apple
-Silicon. Go 1.23 or newer is required. A normal build does not require Zig:
+The interpreter is written in Go and supports macOS on Apple Silicon. Go 1.23
+or newer is required:
 
 ```sh
 make
@@ -112,17 +113,6 @@ The installed command finds `../lib/miralib` relative to itself. `MIRALIB` and
 `-lib` remain available as explicit overrides. Release archives are produced
 with `make package`; set `SOURCE_DATE_EPOCH` to reproduce metadata exactly.
 
-The historical Zig implementation is retained as a test-only reference. Build it
-explicitly as `zig-out/bin/mira-zig-reference` with `make reference`. `zig
-build` also produces the Go `zig-out/bin/mira`; it does not select the Zig
-interpreter as the product.
-
-The production cutover was completed and tagged as `go-cutover-2.067`. See
-[`docs/ReleaseNotes-GoCutover.md`](docs/ReleaseNotes-GoCutover.md) for the
-verification and rollback record. Remaining interactive convenience work is
-tracked separately in [`repl.md`](repl.md); it does not change the production
-runtime or supported target.
-
 ## Testing
 
 The repository includes:
@@ -133,14 +123,12 @@ The repository includes:
 - golden stdout and stderr comparisons;
 - object-file round-trip tests;
 - interrupt handling tests;
-- graph-reduction stress tests; and
-- compatibility comparisons against a reference executable.
+- graph-runtime stress tests; and
+- installed-product and deterministic-package tests.
 
 Before submitting a change, run `make test`, `make race`, and `make smoke`.
-`make parity` compares a fresh Go binary with the pinned reference. The broader
-Zig-hosted compatibility gate remains available as `zig build go-ready`.
-Run `zig build clean` afterward to remove build output and disposable `.x`
-caches created by compatibility tests.
+Run `make clean` afterward to remove build output and disposable `.x` caches
+created by integration tests.
 
 ## Standard library and examples
 
@@ -168,10 +156,10 @@ production build rather than compiling a partial interpreter.
 
 ## Compatibility
 
-Miracula preserves Miranda language and interactive behavior. Go `.x` files
+Miracula preserves Miranda language and interactive behavior. `.x` files
 are disposable, versioned caches and are rebuilt safely when stale or from a
-different implementation; see `docs/GoCompatibilityExceptions.md`. Observable behavior is protected by
-golden-output, regression, and differential test suites.
+different implementation; see `docs/GoCompatibilityExceptions.md`. Observable
+behavior is protected by unit, golden-corpus, command, and installation tests.
 
 The project includes material derived from the historical Miranda distribution.
 See [LICENSE](LICENSE) and `miralib/COPYING` for licensing information.

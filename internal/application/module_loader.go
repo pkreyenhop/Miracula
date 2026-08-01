@@ -2,8 +2,8 @@ package application
 
 import (
 	"fmt"
-	"github.com/pkreyenhop/miracula-go/internal/semantics"
-	"github.com/pkreyenhop/miracula-go/internal/syntaxfront"
+	"github.com/pkreyenhop/miracula/internal/semantics"
+	"github.com/pkreyenhop/miracula/internal/syntaxfront"
 	"os"
 	"path/filepath"
 	"strings"

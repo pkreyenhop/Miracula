@@ -2,8 +2,8 @@ package commandapp
 
 import (
 	"bufio"
-	"github.com/pkreyenhop/miracula-go/internal/application"
-	"github.com/pkreyenhop/miracula-go/internal/platformsvc"
+	"github.com/pkreyenhop/miracula/internal/application"
+	"github.com/pkreyenhop/miracula/internal/platformsvc"
 	"os"
 	"path/filepath"
 	"strconv"

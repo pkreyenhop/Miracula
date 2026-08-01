@@ -13,8 +13,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pkreyenhop/miracula-go/internal/platformsvc"
-	"github.com/pkreyenhop/miracula-go/internal/syntaxfront"
+	"github.com/pkreyenhop/miracula/internal/platformsvc"
+	"github.com/pkreyenhop/miracula/internal/syntaxfront"
 )
 
 type valueKind uint8
@@ -145,7 +145,7 @@ type runtimeClause struct {
 }
 
 // installSource preserves guarded equations, whose continuation-line shape is
-// intentionally richer than the compatibility AST used by the stage oracle.
+// intentionally models the complete language syntax needed by evaluation.
 func (r *languageRuntime) installSource(source []byte) error {
 	clauses := map[string][]runtimeClause{}
 	currentName := ""
@@ -634,8 +634,7 @@ func (r *languageRuntime) statistics() (uint64, uint64) {
 func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr, environment map[string]*languageThunk) (languageValue, error) {
 	// These are Go-runtime work counters. A reduction is one interpreted AST
 	// node and a claimed cell is one value-producing node. They deliberately
-	// measure useful work without pretending that Go allocates the reference
-	// implementation's pointer-tagged graph cells.
+	// measure useful work without pretending that Go allocates raw graph cells.
 	r.reductions++
 	r.cells++
 	select {

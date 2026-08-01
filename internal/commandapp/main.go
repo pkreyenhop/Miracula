@@ -3,9 +3,9 @@ package commandapp
 import (
 	"context"
 	"fmt"
-	"github.com/pkreyenhop/miracula-go/internal/application"
-	"github.com/pkreyenhop/miracula-go/internal/buildcfg"
-	"github.com/pkreyenhop/miracula-go/internal/platformsvc"
+	"github.com/pkreyenhop/miracula/internal/application"
+	"github.com/pkreyenhop/miracula/internal/buildcfg"
+	"github.com/pkreyenhop/miracula/internal/platformsvc"
 	"io"
 )
 

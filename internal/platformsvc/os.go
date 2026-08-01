@@ -7,7 +7,7 @@ import (
 	"os/exec"
 	"syscall"
 
-	"github.com/pkreyenhop/miracula-go/internal/protocol"
+	"github.com/pkreyenhop/miracula/internal/protocol"
 )
 
 type OsWord = protocol.Word

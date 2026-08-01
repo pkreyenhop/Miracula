@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/pkreyenhop/miracula-go/internal/application"
-	"github.com/pkreyenhop/miracula-go/internal/commandapp"
-	"github.com/pkreyenhop/miracula-go/internal/platformsvc"
+	"github.com/pkreyenhop/miracula/internal/application"
+	"github.com/pkreyenhop/miracula/internal/commandapp"
+	"github.com/pkreyenhop/miracula/internal/platformsvc"
 	"os"
 )
 
