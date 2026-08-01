@@ -83,11 +83,11 @@ func TestFilesAndShell(t *testing.T) {
 	if e = FileCopy(from, &out); e != nil || out.String() != "abc" {
 		t.Fatal(out.String(), e)
 	}
-	o, e := RunShell(t.Context(), ShellFallbackPath, "exit 7")
+	o, e := RunShell(context.Background(), ShellFallbackPath, "exit 7")
 	if e != nil || o.ExitCode == nil || *o.ExitCode != 7 {
 		t.Fatal(o, e)
 	}
-	if _, e = RunShell(t.Context(), "/definitely/not/a/shell", "true"); !errors.Is(e, ErrSpawnFailed) {
+	if _, e = RunShell(context.Background(), "/definitely/not/a/shell", "true"); !errors.Is(e, ErrSpawnFailed) {
 		t.Fatal(e)
 	}
 }
@@ -109,7 +109,7 @@ func TestNativeServicesProcessOutcomes(t *testing.T) {
 	if err != nil || outcome.ExitCode == nil || *outcome.ExitCode != 9 {
 		t.Fatal(outcome, err)
 	}
-	ctx, cancel := context.WithCancel(t.Context())
+	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	_, err = services.Run(ProcessRequest{Context: ctx, Executable: "/bin/sh", Arguments: []string{"-c", "sleep 10"}, Stdout: StreamDiscard, Stderr: StreamDiscard})
 	if !errors.Is(err, ErrProcessInterrupted) {
