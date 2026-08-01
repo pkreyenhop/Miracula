@@ -27,6 +27,7 @@ verify: clean
 	go run ./internal/cmd/checkdag
 	python3 test/integration/test_go_command.py
 	python3 test/integration/test_go_repl.py
+	python3 test/integration/test_go_interactive_repl.py
 	python3 test/integration/test_go_install.py
 	python3 tools/package.py build --output $(BUILD_DIR)/mira
 	python3 test/integration/startup_from_source.py $(BUILD_DIR)/mira
