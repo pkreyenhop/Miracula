@@ -156,6 +156,17 @@ func (e *terminalLineEditor) ReadLine(prompt string) (string, error) {
 			cursor = len(line)
 		case 11: // Ctrl-K
 			line = line[:cursor]
+		case 20: // Ctrl-T
+			if len(line) > 1 && cursor > 0 {
+				left := cursor - 1
+				if cursor == len(line) {
+					left--
+				}
+				line[left], line[left+1] = line[left+1], line[left]
+				if cursor < len(line) {
+					cursor++
+				}
+			}
 		case 4: // Ctrl-D
 			if len(line) == 0 {
 				return "", io.EOF
@@ -184,8 +195,22 @@ func (e *terminalLineEditor) ReadLine(prompt string) (string, error) {
 			}
 		case 27:
 			a, _ := e.input.ReadByte()
-			b2, _ := e.input.ReadByte()
-			if a == '[' {
+			if a == 'b' {
+				for cursor > 0 && line[cursor-1] == ' ' {
+					cursor--
+				}
+				for cursor > 0 && isIdentifierRune(line[cursor-1]) {
+					cursor--
+				}
+			} else if a == 'f' {
+				for cursor < len(line) && isIdentifierRune(line[cursor]) {
+					cursor++
+				}
+				for cursor < len(line) && line[cursor] == ' ' {
+					cursor++
+				}
+			} else if a == '[' {
+				b2, _ := e.input.ReadByte()
 				switch b2 {
 				case 'A':
 					if historyIndex == len(e.history) {

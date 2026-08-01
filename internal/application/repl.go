@@ -121,6 +121,9 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 				}
 			}
 			if quit {
+				if interactive && !i.Config.Hush {
+					fmt.Fprintln(out, "miranda logout")
+				}
 				if hadError {
 					return ErrEvaluationReported
 				}

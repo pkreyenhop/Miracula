@@ -128,6 +128,19 @@ func TestLineEditorDeleteHomeAndEnd(t *testing.T) {
 	}
 }
 
+func TestLineEditorWordNavigationAndTranspose(t *testing.T) {
+	input := bytes.NewBuffer([]byte("ab cd"))
+	input.Write([]byte{20, 27, 'b', 'X', 27, 'f', '!', '\n'})
+	editor, err := NewLineEditor(input, io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	line, err := editor.ReadLine("")
+	if err != nil || line != "ab Xdc!" {
+		t.Fatalf("line = %q, err = %v", line, err)
+	}
+}
+
 func TestLineEditorControlDOnEmptyLineIsEOF(t *testing.T) {
 	editor, err := NewLineEditor(bytes.NewReader([]byte{4}), io.Discard)
 	if err != nil {
