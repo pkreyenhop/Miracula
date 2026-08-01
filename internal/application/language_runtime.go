@@ -237,6 +237,17 @@ func (i *Interpreter) runtime() *languageRuntime {
 	return i.language
 }
 
+func (r *languageRuntime) prepareInput(closed bool) {
+	r.inputMu.Lock()
+	defer r.inputMu.Unlock()
+	if closed {
+		r.input = strings.NewReader("")
+	}
+	r.inputData = nil
+	r.inputRead = false
+	r.inputMode = 0
+}
+
 func immediate(value languageValue) *languageThunk {
 	return &languageThunk{value: value, ready: true}
 }

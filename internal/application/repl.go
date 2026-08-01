@@ -62,17 +62,31 @@ func (i *Interpreter) evaluateValue(ctx context.Context, expression string) (lan
 			typeEnvironment[name] = value
 		}
 	}
-	if _, typeErr := semantics.CheckWithTypes(parsed.Script, typeEnvironment); typeErr != nil {
+	if i.Repl.LastExpressionType != nil {
+		typeEnvironment["$$"] = i.Repl.LastExpressionType
+	}
+	typed, typeErr := semantics.CheckWithTypes(parsed.Script, typeEnvironment)
+	if typeErr != nil {
 		return languageValue{}, typeErr
 	}
-	value, languageErr := i.runtime().evaluate(ctx, parsed.Script.Items[0].RHS)
+	runtime := i.runtime()
+	runtime.prepareInput(ctx.Value(closedInputContextKey{}) == true)
+	value, languageErr := runtime.evaluate(ctx, parsed.Script.Items[0].RHS)
 	if languageErr != nil {
 		return languageValue{}, languageErr
 	}
+	if len(typed.Definitions) == 1 {
+		i.Repl.LastExpressionType = typed.Definitions[0].Type
+	}
+	runtime.globals["$$"] = immediate(value)
 	return value, nil
 }
 
 func (i *Interpreter) evaluateTo(ctx context.Context, expression string, out io.Writer) (bool, error) {
+	return i.evaluateToWriters(ctx, expression, out, nil)
+}
+
+func (i *Interpreter) evaluateToWriters(ctx context.Context, expression string, out, errorOut io.Writer) (bool, error) {
 	value, err := i.evaluateValue(ctx, expression)
 	if err != nil {
 		return false, err
@@ -81,7 +95,10 @@ func (i *Interpreter) evaluateTo(ctx context.Context, expression string, out io.
 		if first, ok, firstErr := value.list.at(ctx, 0); firstErr != nil {
 			return true, firstErr
 		} else if ok && isSystemMessage(first) {
-			errOut := i.Error
+			errOut := errorOut
+			if errOut == nil {
+				errOut = i.Error
+			}
 			if errOut == nil {
 				errOut = out
 			}
@@ -100,6 +117,8 @@ func (i *Interpreter) evaluateTo(ctx context.Context, expression string, out io.
 	_, err = fmt.Fprintln(out, text)
 	return false, err
 }
+
+type closedInputContextKey struct{}
 
 func (i *Interpreter) RunMain(ctx context.Context, out io.Writer) error {
 	_, err := i.evaluateTo(ctx, "main", out)
@@ -328,7 +347,7 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 		}
 		if strings.HasPrefix(line, "/") {
 			i.Repl.clearTiming()
-			quit, err := i.runCommand(line, out)
+			quit, err := i.runCommand(i.expandCurrentScript(line), out)
 			if err != nil {
 				if _, writeErr := fmt.Fprintln(out, err); writeErr != nil {
 					return writeErr
@@ -356,7 +375,7 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 		}
 		if interactive && strings.HasPrefix(line, "!") {
 			i.Repl.clearTiming()
-			command := strings.TrimSpace(strings.TrimPrefix(line, "!"))
+			command := i.shellCommand(line)
 			if command == "" {
 				if _, err := fmt.Fprintln(out, `No previous shell command to substitute for "!"`); err != nil {
 					return err
@@ -367,6 +386,28 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 				if _, writeErr := fmt.Fprintln(out, err); writeErr != nil {
 					return writeErr
 				}
+			}
+			continue
+		}
+		commandExpression, commandErr := parseCommandExpression(line)
+		if commandErr != nil {
+			fmt.Fprintln(out, commandErr)
+			continue
+		}
+		if commandExpression.TypeQuery {
+			i.Repl.clearTiming()
+			typeText, err := i.expressionType(commandExpression.Expression)
+			if err != nil {
+				fmt.Fprintln(out, legacyEvaluationError(err))
+			} else {
+				fmt.Fprintln(out, typeText)
+			}
+			continue
+		}
+		if commandExpression.Background {
+			i.Repl.clearTiming()
+			if err := i.startBackgroundEvaluation(ctx, commandExpression); err != nil {
+				fmt.Fprintln(out, err)
 			}
 			continue
 		}

@@ -302,6 +302,9 @@ func atom(token Token) Expr {
 	if token.Kind == "stdin_text" || token.Kind == "stdin_binary" || token.Kind == "stdin_values" || token.Kind == "arguments" {
 		variant = "name"
 	}
+	if token.Kind == "dollars" {
+		variant = "name"
+	}
 	if variant == "" {
 		variant = "token"
 	}

@@ -1,15 +1,21 @@
 package application
 
-import "time"
+import (
+	"time"
+
+	"github.com/pkreyenhop/miracula/internal/semantics"
+)
 
 type ReplSession struct {
-	Prompt        string
-	LastCommand   string
-	ExitRequested bool
-	ExitStatus    int
-	LastElapsed   *time.Duration
-	LastGC        *int
-	Errors        map[string]ErrorLocation
+	Prompt             string
+	LastCommand        string
+	LastShellCommand   string
+	LastExpressionType *semantics.Type
+	ExitRequested      bool
+	ExitStatus         int
+	LastElapsed        *time.Duration
+	LastGC             *int
+	Errors             map[string]ErrorLocation
 }
 
 type ErrorLocation struct {
