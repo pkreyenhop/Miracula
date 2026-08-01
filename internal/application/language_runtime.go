@@ -1414,6 +1414,13 @@ func finiteList(ctx context.Context, value languageValue, limit int) ([]language
 		}
 		out = append(out, item)
 	}
+	_, ok, err := value.list.at(ctx, limit)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return out, nil
+	}
 	return nil, errors.New("list output limit exceeded")
 }
 
