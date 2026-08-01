@@ -91,3 +91,25 @@ func TestREPLQuit(t *testing.T) {
 		t.Fatal(e)
 	}
 }
+
+func TestREPLEvaluatesPipedExpressionWithoutPrompt(t *testing.T) {
+	i := New(platformsvc.NativeServices{})
+	var out bytes.Buffer
+	if err := i.REPL(context.Background(), strings.NewReader("1+2\n/q\n"), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out.String() != "3\n" {
+		t.Fatalf("output = %q", out.String())
+	}
+}
+
+func TestREPLRecoversAfterEvaluationError(t *testing.T) {
+	i := New(platformsvc.NativeServices{})
+	var out bytes.Buffer
+	if err := i.REPL(context.Background(), strings.NewReader("1 div 0\n2+2\n/q\n"), &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "division by zero\n4\n") {
+		t.Fatalf("output = %q", out.String())
+	}
+}

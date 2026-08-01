@@ -54,7 +54,10 @@ MILESTONE_COMMANDS = {
         "python3 tests/oracle/oracle.py verify --stage reduce --producer 'go run ./cmd/miracula-go-oracle'",
     ),
     "06-module-dump-boot": ("go test ./internal/application",),
-    "07-repl-commands": ("go test ./internal/application ./internal/commandapp",),
+    "07-repl-commands": (
+        "go test ./internal/application ./internal/commandapp",
+        "python3 tests/test_go_repl.py",
+    ),
     "08-platform-integration": ("go test -race ./internal/platformsvc ./...",),
     "09-full-parity": (
         "python3 scripts/run_go_differential.py --candidate build/mira-go",
