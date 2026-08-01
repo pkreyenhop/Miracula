@@ -11,10 +11,18 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: mlugg/setup-zig@v2
-        with:
-          version: 0.16.0
       - uses: actions/setup-go@v5
         with:
           go-version: '1.23'
+      - run: go test ./...
+      - run: go test -race ./...
+      - run: go run ./cmd/checkdag
+      - run: go generate ./...
+      - run: git diff --exit-code
+      - run: python3 scripts/package_go.py build --output build/mira
+      - run: python3 tests/test_go_install.py
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.16.0
+      - run: python3 scripts/run_go_differential.py --candidate build/mira
       - run: zig build go-ready --summary failures

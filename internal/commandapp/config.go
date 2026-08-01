@@ -69,7 +69,14 @@ func readRC(path string, config application.Config) (application.Config, bool) {
 }
 
 func resolveDefaults(services platformsvc.Services) application.Config {
-	config := environmentConfig(services, application.DefaultConfig())
+	config := application.DefaultConfig()
+	if executable, err := os.Executable(); err == nil {
+		installedLibrary := filepath.Clean(filepath.Join(filepath.Dir(executable), "..", "lib", "miralib"))
+		if info, statErr := os.Stat(installedLibrary); statErr == nil && info.IsDir() {
+			config.LibraryPath = installedLibrary
+		}
+	}
+	config = environmentConfig(services, config)
 	if home, ok := services.Environment("HOME"); ok {
 		if loaded, found := readRC(filepath.Join(home, ".mirarc"), config); found {
 			return environmentOneShots(services, loaded)

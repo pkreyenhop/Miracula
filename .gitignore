@@ -4,6 +4,7 @@
 .zig-global-cache-gc-stress/
 zig-cache/
 zig-out/
+/build/
 
 # Object files and libraries
 *.o

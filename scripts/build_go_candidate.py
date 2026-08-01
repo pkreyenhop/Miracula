@@ -46,7 +46,7 @@ def main() -> int:
     temporary.unlink()
     try:
         completed = subprocess.run(
-            ["go", "build", "-trimpath", "-o", os.fspath(temporary), "./cmd/mira"],
+            [sys.executable, "scripts/package_go.py", "build", "--output", os.fspath(temporary)],
             cwd=ROOT,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,

@@ -95,12 +95,18 @@ pub fn build(b: *std.Build) void {
 
     // Build Executables
     const mira = b.addExecutable(.{
-        .name = "mira",
+        .name = "mira-zig-reference",
         .root_module = mira_module,
     });
 
     const install_mira = b.addInstallArtifact(mira, .{});
-    b.getInstallStep().dependOn(&install_mira.step);
+    const build_go_mira = b.addSystemCommand(&.{
+        "python3", "scripts/build_go_candidate.py", "--output", "zig-out/bin/mira",
+    });
+    install_mira.step.dependOn(&build_go_mira.step);
+    b.getInstallStep().dependOn(&build_go_mira.step);
+    const reference_step = b.step("reference", "Build the test-only Zig reference executable");
+    reference_step.dependOn(&install_mira.step);
 
     const fdate = b.addExecutable(.{
         .name = "fdate",
@@ -411,6 +417,7 @@ pub fn build(b: *std.Build) void {
         "-rf",
         ".zig-cache",
         "zig-out",
+        "build",
         "mira",
         "fdate",
         "just",
@@ -574,6 +581,19 @@ pub fn build(b: *std.Build) void {
     run_strict_golden_tests.addArg("./zig-out/bin/strict-mira");
     run_strict_golden_tests.step.dependOn(&install_strict_mira.step);
     run_strict_golden_tests.step.dependOn(&copy_strict_menudriver.step);
+
+    // Go and Zig intentionally use different disposable .x encodings. The
+    // build graph runs candidate and reference suites in parallel, so remove
+    // candidate caches before either strict-reference executable starts.
+    const clean_candidate_dumps = b.addSystemCommand(&.{
+        "find", ".", "-type", "f", "-name", "*.x", "-delete",
+    });
+    clean_candidate_dumps.step.dependOn(&run_mira_tests.step);
+    clean_candidate_dumps.step.dependOn(&run_golden_tests.step);
+    clean_candidate_dumps.step.dependOn(&run_spine_check.step);
+    clean_candidate_dumps.step.dependOn(test_regression);
+    run_strict_mira_tests.step.dependOn(&clean_candidate_dumps.step);
+    run_strict_golden_tests.step.dependOn(&clean_candidate_dumps.step);
 
     const fmt_check = b.addSystemCommand(&.{
         b.graph.zig_exe, "fmt", "--check", "src", "tests", "build.zig",

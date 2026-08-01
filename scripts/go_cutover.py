@@ -62,7 +62,7 @@ MILESTONE_COMMANDS = {
     "09-full-parity": (
         "python3 scripts/run_go_differential.py --candidate build/mira-go",
     ),
-    "10-production-packaging": ("production install and installed smoke test",),
+    "10-production-packaging": ("python3 tests/test_go_install.py",),
     "11-cutover": ("complete final verification in go-cutover.md",),
 }
 

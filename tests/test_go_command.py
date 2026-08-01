@@ -60,15 +60,15 @@ class GoCommandTests(unittest.TestCase):
     def test_version(self) -> None:
         result = self.run_mira("-version")
         self.assertEqual(result.returncode, 0)
-        self.assertEqual(result.stdout, b"2.067 last revised unknown-date\n")
+        self.assertRegex(result.stdout, rb"^2\.067 last revised [0-9]{4}-[0-9]{2}-[0-9]{2}\n$")
         self.assertEqual(result.stderr, b"")
 
     def test_full_version(self) -> None:
         result = self.run_mira("-V")
         self.assertEqual(result.returncode, 0)
-        self.assertEqual(
+        self.assertRegex(
             result.stdout,
-            b"2.067 last revised unknown-date\ncompiled by go build\nunknown-host\nXVERSION 83\n",
+            rb"^2\.067 last revised [0-9]{4}-[0-9]{2}-[0-9]{2}\ngo-production-build\nXVERSION 83\n$",
         )
 
     def test_invalid_option(self) -> None:

@@ -91,15 +91,32 @@ fib 20
 - `docs/` — project documentation and historical notes
 - `scripts/` — repository checks and maintenance utilities
 
-## Building
+## Building and installing
 
-Use the build tooling supplied with the source checkout. A successful default
-build produces the `mira` command and the companion utilities used by the
-standard library.
+The production interpreter is written in Go and supports macOS on Apple
+Silicon. Go 1.23 or newer is required. A normal build does not require Zig:
 
-Build instructions may change as the implementation evolves. The available
-targets in the project build definition are the source of truth for a given
-checkout.
+```sh
+make
+./build/mira --build-info
+```
+
+Install the binary and its standard library under `/usr/local` (or set a
+different `PREFIX`):
+
+```sh
+make install PREFIX=/usr/local
+make uninstall PREFIX=/usr/local
+```
+
+The installed command finds `../lib/miralib` relative to itself. `MIRALIB` and
+`-lib` remain available as explicit overrides. Release archives are produced
+with `make package`; set `SOURCE_DATE_EPOCH` to reproduce metadata exactly.
+
+The historical Zig implementation is test-only during the Go cutover. Build it
+explicitly as `zig-out/bin/mira-zig-reference` with `make reference`. `zig
+build` also produces the Go `zig-out/bin/mira`; it does not select the Zig
+interpreter as the product.
 
 ## Testing
 
@@ -114,9 +131,9 @@ The repository includes:
 - graph-reduction stress tests; and
 - compatibility comparisons against a reference executable.
 
-Before submitting a change, run the complete verification target provided by
-the project build tooling. Tests that require a reference executable must run
-against the pinned reference rather than being treated as optional.
+Before submitting a change, run `make test`, `make race`, and `make smoke`.
+`make parity` compares a fresh Go binary with the pinned reference. The broader
+Zig-hosted compatibility gate remains available as `zig build go-ready`.
 
 ## Standard library and examples
 
@@ -139,13 +156,14 @@ The project is tested on:
 
 - macOS on 64-bit ARM systems
 
-Behavior that depends on processes, signals, terminals, or filesystem metadata
-may vary on unsupported systems.
+Linux, Intel macOS, and other targets are explicitly unsupported and fail the
+production build rather than compiling a partial interpreter.
 
 ## Compatibility
 
-Miracula aims to preserve Miranda language behavior, interactive behavior, and
-compiled object compatibility. Observable behavior is protected by
+Miracula preserves Miranda language and interactive behavior. Go `.x` files
+are disposable, versioned caches and are rebuilt safely when stale or from a
+different implementation; see `docs/GoCompatibilityExceptions.md`. Observable behavior is protected by
 golden-output, regression, and differential test suites.
 
 The project includes material derived from the historical Miranda distribution.
@@ -160,7 +178,7 @@ Changes should preserve:
 - standard-library compatibility;
 - command-line and interactive behavior;
 - diagnostic output where covered by compatibility tests; and
-- the compiled object-file format.
+- safe compiled-cache lifecycle and reload behavior.
 
 Add or update tests for observable behavior changes. Keep generated fixtures
 deterministic and avoid committing local build outputs.
