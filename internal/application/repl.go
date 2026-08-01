@@ -568,7 +568,7 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 		}
 		return false, nil
 	case "m", "man":
-		return false, fmt.Errorf("manual command is unavailable in this session")
+		return false, i.runManual(out)
 	case "edit", "e":
 		return false, i.editCommand(fields[1:], out)
 	case "editor":
