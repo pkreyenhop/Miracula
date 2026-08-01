@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/pkreyenhop/miracula/internal/platformsvc"
@@ -16,6 +17,7 @@ import (
 
 type LineEditor interface {
 	ReadLine(prompt string) (string, error)
+	SetCompleter(func(string) []string)
 	LoadHistory(path string) error
 	SaveHistory() error
 	Close() error
@@ -29,6 +31,11 @@ type terminalLineEditor struct {
 	raw         bool
 	history     []string
 	historyPath string
+	complete    func(string) []string
+}
+
+func (e *terminalLineEditor) SetCompleter(complete func(string) []string) {
+	e.complete = complete
 }
 
 func (e *terminalLineEditor) LoadHistory(path string) error {
@@ -133,6 +140,20 @@ func (e *terminalLineEditor) ReadLine(prompt string) (string, error) {
 				line = append(line[:cursor-1], line[cursor:]...)
 				cursor--
 			}
+		case '\t':
+			prefix, ok := identifierPrefix(line, cursor)
+			if ok && e.complete != nil {
+				matches := e.complete(prefix)
+				if len(matches) == 1 {
+					suffix := []rune(strings.TrimPrefix(matches[0], prefix))
+					line = append(line, make([]rune, len(suffix))...)
+					copy(line[cursor+len(suffix):], line[cursor:len(line)-len(suffix)])
+					copy(line[cursor:], suffix)
+					cursor += len(suffix)
+				} else if len(matches) > 1 {
+					_, _ = fmt.Fprintf(e.output, "\r\n%s\r\n", strings.Join(matches, "  "))
+				}
+			}
 		case 27:
 			a, _ := e.input.ReadByte()
 			b2, _ := e.input.ReadByte()
@@ -196,6 +217,26 @@ func (e *terminalLineEditor) ReadLine(prompt string) (string, error) {
 			return "", err
 		}
 	}
+}
+
+func identifierPrefix(line []rune, cursor int) (string, bool) {
+	start := cursor
+	for start > 0 && isIdentifierRune(line[start-1]) {
+		start--
+	}
+	if start == cursor {
+		return "", false
+	}
+	for _, r := range line[start:cursor] {
+		if r > unicode.MaxASCII {
+			return "", false
+		}
+	}
+	return string(line[start:cursor]), true
+}
+
+func isIdentifierRune(r rune) bool {
+	return r <= unicode.MaxASCII && (r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '_' || r == '\'')
 }
 
 func OpenEditor(ctx context.Context, editor, path string, line, column int) error {

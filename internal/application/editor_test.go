@@ -82,3 +82,54 @@ func TestLineEditorPersistsAndRecallsHistory(t *testing.T) {
 		t.Fatalf("recalled line = %q, err = %v", line, err)
 	}
 }
+
+func TestLineEditorCompletesIdentifierAtCursor(t *testing.T) {
+	input := bytes.NewBufferString("map'\t 1\n")
+	editor, err := NewLineEditor(input, io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	editor.SetCompleter(func(prefix string) []string {
+		if prefix != "map'" {
+			t.Fatalf("prefix = %q", prefix)
+		}
+		return []string{"map'values"}
+	})
+	line, err := editor.ReadLine("")
+	if err != nil || line != "map'values 1" {
+		t.Fatalf("line = %q, err = %v", line, err)
+	}
+}
+
+func TestLineEditorListsMultipleCompletions(t *testing.T) {
+	var output bytes.Buffer
+	editor, err := NewLineEditor(bytes.NewBufferString("ma\t\n"), &output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	editor.SetCompleter(func(string) []string { return []string{"map", "max"} })
+	line, err := editor.ReadLine("Miranda ")
+	if err != nil || line != "ma" {
+		t.Fatalf("line = %q, err = %v", line, err)
+	}
+	if !bytes.Contains(output.Bytes(), []byte("map  max")) {
+		t.Fatalf("completion output = %q", output.String())
+	}
+}
+
+func TestLineEditorDoesNotCompleteEmptyOrNonASCIIPrefixes(t *testing.T) {
+	for _, input := range []string{"\t\n", "é\t\n"} {
+		called := false
+		editor, err := NewLineEditor(bytes.NewBufferString(input), io.Discard)
+		if err != nil {
+			t.Fatal(err)
+		}
+		editor.SetCompleter(func(string) []string { called = true; return nil })
+		if _, err = editor.ReadLine(""); err != nil {
+			t.Fatal(err)
+		}
+		if called {
+			t.Fatalf("completer called for %q", input)
+		}
+	}
+}

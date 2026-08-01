@@ -52,6 +52,7 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 				return err
 			}
 		}
+		editor.SetCompleter(i.completeIdentifier)
 		defer func() {
 			_ = editor.SaveHistory()
 			_ = editor.Close()
@@ -171,6 +172,24 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 			fmt.Fprintln(i.Error, "<<gc after Go evaluation>>")
 		}
 	}
+}
+
+func (i *Interpreter) completeIdentifier(prefix string) []string {
+	program := i.Programs[i.Compiler.CurrentModule]
+	if program == nil || prefix == "" {
+		return nil
+	}
+	matches := make([]string, 0)
+	for _, definition := range program.Definitions {
+		if strings.HasPrefix(definition.Name, prefix) {
+			matches = append(matches, definition.Name)
+			if len(matches) == 128 {
+				break
+			}
+		}
+	}
+	sort.Strings(matches)
+	return matches
 }
 
 func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
