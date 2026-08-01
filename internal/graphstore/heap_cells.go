@@ -98,6 +98,7 @@ func (h *Heap) LiveCount() int {
 	}
 	return count
 }
+func (h *Heap) Capacity() int { return len(h.live) }
 
 func (h *Heap) Validate() error {
 	free := make(map[protocol.CellRef]bool, len(h.free))

@@ -7,7 +7,7 @@
     "03-source-parser": "complete",
     "04-semantics-lowering": "complete",
     "05-evaluator": "complete",
-    "06-module-dump-boot": "pending",
+    "06-module-dump-boot": "complete",
     "07-repl-commands": "pending",
     "08-platform-integration": "pending",
     "09-full-parity": "pending",

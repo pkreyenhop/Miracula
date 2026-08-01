@@ -34,6 +34,7 @@ func (c Command) Run(ctx context.Context, args []string) error {
 	}
 	i := application.New(c.Services)
 	i.Config = options.Config
+	i.InitialScript = options.Script
 	i.Input, i.Output, i.Error = c.Stdin, c.Stdout, c.Stderr
 	if err = i.Boot(); err != nil {
 		return err

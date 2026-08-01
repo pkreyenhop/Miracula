@@ -18,6 +18,10 @@ type Interpreter struct {
 	Config        Config
 	Runtime       RuntimeState
 	Compiler      CompilerState
+	Repl          ReplSession
+	Programs      map[string]*semantics.Program
+	Scripts       ScriptStore
+	InitialScript string
 	Input         io.Reader
 	Output, Error io.Writer
 }
@@ -34,5 +38,8 @@ func (i *Interpreter) Reset() {
 	i.Symbols = semantics.SymbolTable{}
 	i.Runtime = RuntimeState{}
 	i.Compiler = CompilerState{}
+	i.Repl = ReplSession{}
+	i.Programs = nil
+	i.Scripts = ScriptStore{}
 	i.Evaluator = evaluation.Evaluator{Heap: i.Heap}
 }
