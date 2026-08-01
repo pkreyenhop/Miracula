@@ -411,6 +411,52 @@ func TestSystemMessageIOAndInputValues(t *testing.T) {
 	}
 }
 
+func TestIncludeGraphExportsAliasesAndCycles(t *testing.T) {
+	directory := t.TempDir()
+	library := filepath.Join(directory, "miralib")
+	if err := os.Mkdir(library, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	write := func(path, source string) {
+		if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(filepath.Join(directory, "a.m"), "%export + -private\npublic = 41\nprivate = 99\n")
+	write(filepath.Join(directory, "b.m"), "%export \"a\" +\n%include \"a\"\nb = public+1\n")
+	write(filepath.Join(library, "angle.m"), "angle = 7\n")
+	runtime := newLanguageRuntime(io.Discard)
+	runtime.libraryPath = library
+	root := []byte("%include \"b\" rootpub/public\n%include <angle>\nanswer = rootpub+b+angle\n")
+	if err := runtime.installIncludes(directory, root); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.installSource(root); err != nil {
+		t.Fatal(err)
+	}
+	parsed, _ := parseRuntimeExpression("answer")
+	value, err := runtime.evaluate(context.Background(), parsed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := renderLanguage(context.Background(), value)
+	if err != nil || got != "90" {
+		t.Fatalf("answer = %q, %v", got, err)
+	}
+	if runtime.globals["private"] != nil || runtime.globals["public"] != nil {
+		t.Fatal("private or pre-alias name escaped export boundary")
+	}
+	if provenance := runtime.provenance["rootpub"]; !strings.HasSuffix(provenance.Path, "b.m") || provenance.Original != "public" {
+		t.Fatalf("provenance = %+v", provenance)
+	}
+
+	write(filepath.Join(directory, "cycle1.m"), "%include \"cycle2\"\nx=1\n")
+	write(filepath.Join(directory, "cycle2.m"), "%include \"cycle1\"\ny=2\n")
+	if err := newLanguageRuntime(io.Discard).installIncludes(directory, []byte("%include \"cycle1\"\n")); err == nil || !strings.Contains(err.Error(), "cyclic") {
+		t.Fatalf("cycle error = %v", err)
+	}
+}
+
 func TestStrictConstructorFieldForcesArgument(t *testing.T) {
 	runtime := newLanguageRuntime(io.Discard)
 	if err := runtime.installSource([]byte("box ::= Lazy num | Strict num!\ntag (Lazy x) = 1\ntag (Strict x) = 1\n")); err != nil {

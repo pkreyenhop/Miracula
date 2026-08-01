@@ -130,9 +130,14 @@ type languageRuntime struct {
 	inputData           []byte
 	inputRead           bool
 	inputMode           int
+	libraryPath         string
+	includeLoading      map[string]bool
+	provenance          map[string]sourceProvenance
 	reductions          uint64
 	cells               uint64
 }
+
+type sourceProvenance struct{ Path, Original string }
 
 type languageThunk struct {
 	mu         sync.Mutex
@@ -210,7 +215,7 @@ func deepForceLanguage(ctx context.Context, value languageValue) error {
 }
 
 func newLanguageRuntime(output io.Writer) *languageRuntime {
-	r := &languageRuntime{globals: map[string]*languageThunk{}, productConstructors: map[string]bool{}, appendFiles: map[string]bool{}, output: output, input: strings.NewReader("")}
+	r := &languageRuntime{globals: map[string]*languageThunk{}, productConstructors: map[string]bool{}, appendFiles: map[string]bool{}, output: output, input: strings.NewReader(""), includeLoading: map[string]bool{}, provenance: map[string]sourceProvenance{}}
 	r.installBuiltins()
 	return r
 }
@@ -223,6 +228,7 @@ func (i *Interpreter) runtime() *languageRuntime {
 		i.language.input = i.Input
 	}
 	i.language.arguments = append(i.language.arguments[:0], i.Arguments...)
+	i.language.libraryPath = i.Config.LibraryPath
 	return i.language
 }
 
@@ -258,6 +264,7 @@ type runtimeClause struct {
 	condition   *syntaxfront.Expr
 	otherwise   bool
 	localSource []byte
+	closure     map[string]*languageThunk
 }
 
 // installSource preserves guarded equations, whose continuation-line shape is
@@ -406,8 +413,12 @@ func (r *languageRuntime) installSource(source []byte) error {
 		clauses[currentName] = append(clauses[currentName], clause)
 		previousAlternativeWasOtherwise = clause.otherwise
 	}
+	moduleScope := cloneEnvironment(r.globals)
 	for name, alternatives := range clauses {
 		name, alternatives := name, alternatives
+		for index := range alternatives {
+			alternatives[index].closure = moduleScope
+		}
 		thunk := &languageThunk{}
 		thunk.eval = func() (languageValue, error) {
 			if len(alternatives[0].parameters) == 0 {
@@ -416,6 +427,7 @@ func (r *languageRuntime) installSource(source []byte) error {
 			return r.clauseFunction(alternatives, nil), nil
 		}
 		r.globals[name] = thunk
+		moduleScope[name] = thunk
 	}
 	for _, conformal := range conformals {
 		conformal := conformal
@@ -655,7 +667,7 @@ func (r *languageRuntime) installIncludes(base string, source []byte) error {
 		}
 		path := directive.Path
 		if directive.FromMiralib {
-			return fmt.Errorf("miralib-relative include requires resolved library path")
+			path = filepath.Join(r.libraryPath, path)
 		}
 		if filepath.Ext(path) == "" {
 			path += ".m"
@@ -663,44 +675,126 @@ func (r *languageRuntime) installIncludes(base string, source []byte) error {
 		if !filepath.IsAbs(path) {
 			path = filepath.Join(base, path)
 		}
+		path, _ = filepath.Abs(path)
+		if resolved, err := filepath.EvalSymlinks(path); err == nil {
+			path = resolved
+		}
+		if r.includeLoading[path] {
+			return fmt.Errorf("cyclic include involving %s", path)
+		}
+		r.includeLoading[path] = true
 		included, diagnostics := syntaxfront.LoadSource(path)
 		if len(diagnostics) > 0 {
+			delete(r.includeLoading, path)
 			return errors.New(diagnostics[0].Message)
 		}
-		before := map[string]bool{}
-		for name := range r.globals {
-			before[name] = true
+		before := map[string]*languageThunk{}
+		for name, value := range r.globals {
+			before[name] = value
+		}
+		if parsed := syntaxfront.Run(included.Bytes); len(parsed.Diagnostics) != 0 {
+			delete(r.includeLoading, path)
+			return fmt.Errorf("included script %s: %s", path, parsed.Diagnostics[0].Message)
 		}
 		if err := r.installIncludes(filepath.Dir(path), included.Bytes); err != nil {
+			delete(r.includeLoading, path)
 			return err
+		}
+		dependencyNames := map[string]bool{}
+		for name, value := range r.globals {
+			if before[name] != value {
+				dependencyNames[name] = true
+			}
+		}
+		beforeLocal := map[string]*languageThunk{}
+		for name, value := range r.globals {
+			beforeLocal[name] = value
 		}
 		if err := r.installSource(included.Bytes); err != nil {
+			delete(r.includeLoading, path)
 			return err
 		}
-		exports := map[string]bool{}
+		localNames := map[string]bool{}
+		for name, value := range r.globals {
+			if beforeLocal[name] != value {
+				localNames[name] = true
+			}
+		}
+		exports, explicit := map[string]bool{}, false
+		negativeExports := map[string]bool{}
 		for _, includedLine := range strings.Split(string(included.Bytes), "\n") {
-			if directive, ok := syntaxfront.ParseDirective(strings.TrimSpace(includedLine)); ok && directive.Variant == "export" {
-				for _, name := range strings.Fields(directive.Text) {
-					exports[name] = true
+			exportDirective, ok := syntaxfront.ParseDirective(strings.TrimSpace(includedLine))
+			if !ok || exportDirective.Variant != "export" {
+				continue
+			}
+			if explicit {
+				delete(r.includeLoading, path)
+				return fmt.Errorf("multiple %%export directives in %s", path)
+			}
+			explicit = true
+			fields := strings.Fields(exportDirective.Text)
+			for _, part := range fields {
+				switch {
+				case part == "+":
+					for name := range localNames {
+						exports[name] = true
+					}
+				case strings.HasPrefix(part, "-"):
+					negativeExports[strings.TrimPrefix(part, "-")] = true
+				case strings.HasPrefix(part, "\"") || strings.HasPrefix(part, "<"):
+					for name := range dependencyNames {
+						exports[name] = true
+					}
+				default:
+					exports[part] = true
 				}
 			}
 		}
-		if len(exports) > 0 {
-			for name := range r.globals {
-				if !before[name] && !exports[name] {
+		if !explicit {
+			exports = localNames
+		}
+		for name := range negativeExports {
+			delete(exports, name)
+		}
+		for name, value := range r.globals {
+			if before[name] != value && !exports[name] {
+				if old := before[name]; old != nil {
+					r.globals[name] = old
+				} else {
 					delete(r.globals, name)
 				}
 			}
 		}
 		for _, alias := range directive.Aliases {
 			if alias.Suppress {
-				delete(r.globals, alias.Old)
+				if exports[alias.Old] {
+					delete(r.globals, alias.Old)
+					delete(exports, alias.Old)
+				}
 				continue
 			}
 			if original := r.globals[alias.Old]; original != nil {
+				if existing := r.globals[alias.New]; existing != nil && existing != original {
+					delete(r.includeLoading, path)
+					return fmt.Errorf("include alias %s clashes with an existing name", alias.New)
+				}
 				r.globals[alias.New] = original
+				delete(r.globals, alias.Old)
+				delete(exports, alias.Old)
+				exports[alias.New] = true
+				r.provenance[alias.New] = sourceProvenance{Path: path, Original: alias.Old}
 			}
 		}
+		for name := range exports {
+			if old := before[name]; old != nil && old != r.globals[name] {
+				delete(r.includeLoading, path)
+				return fmt.Errorf("included name %s clashes with an existing binding", name)
+			}
+			if _, ok := r.provenance[name]; !ok {
+				r.provenance[name] = sourceProvenance{Path: path, Original: name}
+			}
+		}
+		delete(r.includeLoading, path)
 		if start := strings.Index(directive.Text, "{"); start >= 0 {
 			if end := strings.LastIndex(directive.Text, "}"); end > start {
 				for _, binding := range strings.Split(directive.Text[start+1:end], ";") {
@@ -1041,6 +1135,9 @@ func (r *languageRuntime) selectClause(ctx context.Context, clauses []runtimeCla
 		}
 		frame := r.acquireCallFrame(clause.parameters)
 		environment := frame.environment
+		for name, value := range clause.closure {
+			environment[name] = value
+		}
 		matched := true
 		seen := map[string]languageValue{}
 		for index, pattern := range clause.parameters {

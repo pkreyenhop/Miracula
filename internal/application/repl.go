@@ -517,6 +517,14 @@ func (i *Interpreter) findDefinition(name string) (semantics.TypedDefinition, st
 			}
 		}
 	}
+	if provenance, exists := i.runtime().provenance[name]; exists {
+		source, err := os.ReadFile(provenance.Path)
+		if err == nil {
+			if line, ok := sourceDefinitionLine(source, provenance.Original); ok {
+				return semantics.TypedDefinition{Name: name, Expression: syntaxfront.Expr{Span: syntaxfront.Span{Line: line}}}, provenance.Path, true
+			}
+		}
+	}
 	paths := make([]string, 0, len(i.Scripts.Scripts))
 	for candidate := range i.Scripts.Scripts {
 		if candidate != path {
@@ -544,7 +552,11 @@ func (i *Interpreter) fingerName(out io.Writer, name string) error {
 			typeText = "*"
 		}
 	}
-	_, err := fmt.Fprintf(out, "%s :: %s ||defined in %q line %d\n", name, typeText, path, definition.Expression.Span.Line)
+	aliasText := ""
+	if provenance, ok := i.runtime().provenance[name]; ok && provenance.Original != name {
+		aliasText = fmt.Sprintf(" (alias of %s)", provenance.Original)
+	}
+	_, err := fmt.Fprintf(out, "%s :: %s%s ||defined in %q line %d\n", name, typeText, aliasText, path, definition.Expression.Span.Line)
 	return err
 }
 

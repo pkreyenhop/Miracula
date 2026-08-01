@@ -347,7 +347,15 @@ Implementation instructions:
 
 ## P1: modules, compilation, and command-line modes
 
-### MISSING-009 — Finish `%include`, `%export`, aliases, and scope rules
+### MISSING-009 — Finish `%include`, `%export`, aliases, and scope rules ✅
+
+Status: completed. Includes now resolve quoted and miralib-relative paths to
+canonical files, traverse dependencies before installation, reject cycles and
+syntax-invalid includees, and preserve lexical module closures. Explicit
+export profiles implement local `+`, negative overrides, dependency
+re-exports, and the default local-only profile. Imports enforce name-clash
+rules, apply rename/suppression aliases at the boundary, and retain source and
+original-name provenance for queries and editor navigation.
 
 Manual sections: 17 and 27/1–27/3.
 
