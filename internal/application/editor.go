@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/pkreyenhop/miracula/internal/semantics"
 	"io"
 	"os"
 	"path/filepath"
@@ -443,23 +444,20 @@ func (i *Interpreter) reloadEditedProgram(path string, out io.Writer) error {
 	fmt.Fprintf(out, "compiling %s\nchecking types in %s\n", display, display)
 	_, loadErr := i.LoadProgram(path)
 	i.recordLoadResult(path, loadErr)
-	if loadErr != nil {
+	var semanticTypeErrors semantics.TypeErrors
+	if loadErr != nil && !errors.As(loadErr, &semanticTypeErrors) {
 		return loadErr
 	}
 	firstErrorLine := 0
-	if typeErr := i.ValidateCurrentTypes(); typeErr != nil {
-		var sourceTypeErrors SourceTypeErrors
-		if !errors.As(typeErr, &sourceTypeErrors) || len(sourceTypeErrors) == 0 {
-			return typeErr
-		}
+	if loadErr != nil {
 		if i.Repl.Errors == nil {
 			i.Repl.Errors = map[string]ErrorLocation{}
 		}
-		firstErrorLine = sourceTypeErrors[0].Line
-		absolute, _ := filepath.Abs(sourceTypeErrors[0].Path)
+		firstErrorLine = semanticTypeErrors[0].Line
+		absolute, _ := filepath.Abs(path)
 		i.Repl.Errors[absolute] = ErrorLocation{Path: absolute, Line: firstErrorLine, Column: 1}
-		for _, sourceTypeErr := range sourceTypeErrors {
-			if _, err := fmt.Fprintf(out, "type error in definition of %s\n(line %3d of %q) %s\n", sourceTypeErr.Definition, sourceTypeErr.Line, display, sourceTypeErr.Error()); err != nil {
+		for _, semanticTypeErr := range semanticTypeErrors {
+			if _, err := fmt.Fprintf(out, "type error in definition of %s\n(line %3d of %q) %s\n", semanticTypeErr.Definition, semanticTypeErr.Line, display, semanticTypeErr.Message); err != nil {
 				return err
 			}
 		}

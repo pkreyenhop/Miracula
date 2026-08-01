@@ -42,6 +42,21 @@ func (i *Interpreter) evaluateValue(ctx context.Context, expression string) (lan
 	if len(parsed.Script.Items) != 1 {
 		return languageValue{}, fmt.Errorf("expression did not produce a value")
 	}
+	typeEnvironment := make(map[string]*semantics.Type, len(i.StandardTypes)+16)
+	for name, value := range i.StandardTypes {
+		typeEnvironment[name] = value
+	}
+	if program := i.Programs[i.Compiler.CurrentModule]; program != nil {
+		for _, definition := range program.Definitions {
+			typeEnvironment[definition.Name] = definition.Type
+		}
+		for name, value := range program.Specifications {
+			typeEnvironment[name] = value
+		}
+	}
+	if _, typeErr := semantics.CheckWithTypes(parsed.Script, typeEnvironment); typeErr != nil {
+		return languageValue{}, typeErr
+	}
 	value, languageErr := i.runtime().evaluate(ctx, parsed.Script.Items[0].RHS)
 	if languageErr != nil {
 		return languageValue{}, languageErr
@@ -746,6 +761,10 @@ func (i *Interpreter) printSettings(out io.Writer) error {
 }
 
 func legacyEvaluationError(err error) string {
+	var typeErr semantics.TypeError
+	if errors.As(err, &typeErr) {
+		return "type error in expression\n" + typeErr.Message
+	}
 	if strings.Contains(err.Error(), "division by zero") {
 		return "\nprogram error: attempt to divide by zero"
 	}
@@ -823,28 +842,7 @@ func (i *Interpreter) printNames(out io.Writer, withType bool, only string) erro
 }
 
 func formatType(t *semantics.Type) string {
-	if t == nil {
-		return "?"
-	}
-	switch t.Kind {
-	case semantics.TypeVariable:
-		return fmt.Sprintf("t%d", t.ID)
-	case semantics.TypeNamed:
-		return t.Name
-	case semantics.TypeArrow:
-		return "(" + formatType(t.From) + " -> " + formatType(t.To) + ")"
-	case semantics.TypeList:
-		if len(t.Items) == 1 {
-			return "[" + formatType(t.Items[0]) + "]"
-		}
-	case semantics.TypeTuple:
-		parts := make([]string, len(t.Items))
-		for index := range t.Items {
-			parts[index] = formatType(t.Items[index])
-		}
-		return "(" + strings.Join(parts, ",") + ")"
-	}
-	return "?"
+	return semantics.FormatType(t)
 }
 
 func (i *Interpreter) setOption(arguments []string) error {

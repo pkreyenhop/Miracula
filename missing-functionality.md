@@ -25,7 +25,15 @@ is intended to be independently actionable by a coding agent.
 
 ## P0: language and runtime foundations
 
-### MISSING-001 — Replace the partial type checker with full Miranda inference
+### MISSING-001 — Replace the partial type checker with full Miranda inference ✅
+
+Status: completed. The semantic checker now provides SCC-aware polymorphic
+inference, Miranda type parsing/formatting, declared and imported signatures,
+synonyms, parameterized algebraic constructors, abstract representation
+checking, pattern/guard/comprehension inference, command-expression checking,
+and source-ordered recovery of independent type errors. File loading treats
+these diagnostics as authoritative and the former save-time `reverse`
+heuristic has been removed.
 
 Manual sections: 14, 18–23, 24.
 

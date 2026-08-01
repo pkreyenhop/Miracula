@@ -1,6 +1,9 @@
 package semantics
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type TypeKind uint8
 
@@ -10,6 +13,7 @@ const (
 	TypeArrow
 	TypeList
 	TypeTuple
+	TypeApply
 )
 
 type Type struct {
@@ -31,6 +35,21 @@ func Resolve(t *Type, s Substitution) *Type {
 	}
 	return t
 }
+
+func DeepResolve(t *Type, s Substitution) *Type {
+	t = Resolve(t, s)
+	if t == nil {
+		return nil
+	}
+	result := *t
+	result.From = DeepResolve(t.From, s)
+	result.To = DeepResolve(t.To, s)
+	result.Items = make([]*Type, len(t.Items))
+	for index := range t.Items {
+		result.Items[index] = DeepResolve(t.Items[index], s)
+	}
+	return &result
+}
 func Unify(a, b *Type, s Substitution) error {
 	a, b = Resolve(a, s), Resolve(b, s)
 	if a == nil || b == nil {
@@ -50,7 +69,7 @@ func Unify(a, b *Type, s Substitution) error {
 		return Unify(b, a, s)
 	}
 	if a.Kind != b.Kind || a.Name != b.Name || len(a.Items) != len(b.Items) {
-		return fmt.Errorf("type mismatch")
+		return fmt.Errorf("cannot unify %s with %s", FormatType(a), FormatType(b))
 	}
 	if a.From != nil {
 		if e := Unify(a.From, b.From, s); e != nil {
@@ -64,6 +83,57 @@ func Unify(a, b *Type, s Substitution) error {
 		}
 	}
 	return nil
+}
+
+func FormatType(t *Type) string {
+	return formatType(t, map[int]string{}, new(int))
+}
+
+func formatType(t *Type, variables map[int]string, next *int) string {
+	if t == nil {
+		return "?"
+	}
+	if t.Kind == TypeVariable {
+		name, ok := variables[t.ID]
+		if !ok {
+			(*next)++
+			name = "*" + strings.Repeat("*", *next-1)
+			variables[t.ID] = name
+		}
+		return name
+	}
+	switch t.Kind {
+	case TypeNamed:
+		return t.Name
+	case TypeArrow:
+		left := formatType(t.From, variables, next)
+		if t.From != nil && t.From.Kind == TypeArrow {
+			left = "(" + left + ")"
+		}
+		return left + "->" + formatType(t.To, variables, next)
+	case TypeList:
+		if len(t.Items) == 1 {
+			return "[" + formatType(t.Items[0], variables, next) + "]"
+		}
+	case TypeTuple:
+		parts := make([]string, len(t.Items))
+		for index := range t.Items {
+			parts[index] = formatType(t.Items[index], variables, next)
+		}
+		return "(" + strings.Join(parts, ",") + ")"
+	case TypeApply:
+		parts := make([]string, len(t.Items)+1)
+		parts[0] = t.Name
+		for index := range t.Items {
+			part := formatType(t.Items[index], variables, next)
+			if t.Items[index].Kind == TypeArrow {
+				part = "(" + part + ")"
+			}
+			parts[index+1] = part
+		}
+		return strings.Join(parts, " ")
+	}
+	return "?"
 }
 
 func occurs(id int, value *Type, substitutions Substitution) bool {

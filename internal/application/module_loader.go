@@ -48,6 +48,12 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 	if len(parsed.Diagnostics) != 0 {
 		return nil, fmt.Errorf("syntax error: %s:%d:%d: %s", absolute, parsed.Diagnostics[0].Span.Line, parsed.Diagnostics[0].Span.Column, parsed.Diagnostics[0].Message)
 	}
+	if typeErrors := semantics.CheckAllWithTypes(parsed.Script, i.StandardTypes); len(typeErrors) != 0 {
+		metadata, hasMetadata := i.Services.Metadata(absolute)
+		i.Scripts.Put(Script{Path: absolute, Source: append([]byte(nil), source.Bytes...), Metadata: metadata, HasMetadata: hasMetadata})
+		i.Compiler.CurrentModule = absolute
+		return nil, typeErrors
+	}
 	checkpoint := i.Heap.Checkpoint()
 	if err := i.runtime().installIncludes(filepath.Dir(absolute), source.Bytes); err != nil {
 		i.Heap.Restore(checkpoint)

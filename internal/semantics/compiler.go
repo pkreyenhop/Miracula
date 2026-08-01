@@ -5,6 +5,7 @@ import (
 	"github.com/pkreyenhop/miracula/internal/graphstore"
 	"github.com/pkreyenhop/miracula/internal/syntaxfront"
 	"sort"
+	"strings"
 )
 
 type TypedDefinition struct {
@@ -14,15 +15,25 @@ type TypedDefinition struct {
 	Root       int
 }
 type Program struct {
-	Definitions []TypedDefinition
-	Symbols     SymbolTable
-	Order       []string
+	Definitions    []TypedDefinition
+	Specifications map[string]*Type
+	Symbols        SymbolTable
+	Order          []string
 }
 
 type inferState struct {
-	next          int
-	substitutions Substitution
-	environment   map[string]*Type
+	next            int
+	substitutions   Substitution
+	environment     map[string]*Type
+	schemes         map[string]TypeScheme
+	aliases         map[string]TypeAlias
+	abstract        map[string]bool
+	representations map[string]TypeAlias
+}
+
+type TypeScheme struct {
+	Type       *Type
+	Quantified map[int]bool
 }
 
 func (s *inferState) fresh() *Type {
@@ -32,42 +43,73 @@ func (s *inferState) fresh() *Type {
 }
 
 func Compile(script syntaxfront.Script, heap *graphstore.Heap) (*Program, error) {
-	state := &inferState{substitutions: Substitution{}, environment: map[string]*Type{}}
-	program := &Program{}
+	return compile(script, heap, true, nil)
+}
+
+func Check(script syntaxfront.Script) (*Program, error) {
+	return CheckWithTypes(script, nil)
+}
+
+func CheckWithTypes(script syntaxfront.Script, external map[string]*Type) (*Program, error) {
+	return compile(script, nil, false, external)
+}
+
+func compile(script syntaxfront.Script, heap *graphstore.Heap, lower bool, external map[string]*Type) (*Program, error) {
+	script.Items = semanticDefinitions(script)
+	state := &inferState{substitutions: Substitution{}, environment: map[string]*Type{}, schemes: map[string]TypeScheme{}, aliases: map[string]TypeAlias{}, abstract: map[string]bool{}, representations: map[string]TypeAlias{}}
+	for name, value := range external {
+		state.schemes[name] = generalize(value)
+	}
+	program := &Program{Specifications: map[string]*Type{}}
 	graph := map[string][]string{}
-	for _, definition := range script.Items {
-		if definition.Variant != "definition" {
-			continue
+	signatures := map[string]*Type{}
+	definitions := map[string][]syntaxfront.Definition{}
+	var sourceOrder []string
+	if err := installTypeDeclarations(script, state); err != nil {
+		return nil, err
+	}
+	for _, declaration := range script.Items {
+		declarationText := normalizedDeclarationText(declaration.Text)
+		if strings.Contains(declarationText, "::") && !strings.Contains(declarationText, "::=") {
+			separator := strings.Index(declarationText, "::")
+			if separator < 0 {
+				continue
+			}
+			leftText := strings.TrimSpace(declarationText[:separator])
+			leftText = strings.TrimSpace(strings.TrimPrefix(leftText, "with "))
+			rightText := strings.TrimSpace(declarationText[separator+2:])
+			if rightText == "type" {
+				continue
+			}
+			value, err := ParseType(rightText)
+			if err != nil {
+				return nil, TypeError{Message: err.Error(), Line: declaration.Span.Line, Column: declaration.Span.Column}
+			}
+			value = state.expandAliases(value)
+			for _, name := range strings.Split(leftText, ",") {
+				name = strings.TrimSpace(name)
+				if signatures[name] != nil {
+					return nil, TypeError{Message: "type of " + name + " declared more than once", Line: declaration.Span.Line, Column: declaration.Span.Column}
+				}
+				signatures[name] = value
+				program.Specifications[name] = value
+				program.Symbols.Intern(name)
+			}
 		}
-		name, parameters, ok := definitionName(definition.LHS)
-		if !ok {
-			return nil, TypeError{Message: "invalid definition pattern", Line: definition.Span.Line, Column: definition.Span.Column}
-		}
-		_, exists := state.environment[name]
-		if !exists {
-			state.environment[name] = state.fresh()
-			program.Symbols.Intern(name)
-		}
-		graph[name] = expressionNames(definition.RHS, nil)
-		local := make(map[string]*Type, len(state.environment)+len(parameters))
-		for key, value := range state.environment {
-			local[key] = value
-		}
-		for _, parameter := range parameters {
-			local[parameter] = state.fresh()
-		}
-		valueType, err := state.infer(definition.RHS, local)
-		if err != nil {
-			return nil, TypeError{Message: err.Error(), Line: definition.Span.Line, Column: definition.Span.Column}
-		}
-		for index := len(parameters) - 1; index >= 0; index-- {
-			valueType = &Type{Kind: TypeArrow, From: local[parameters[index]], To: valueType}
-		}
-		if err = Unify(state.environment[name], valueType, state.substitutions); err != nil {
-			return nil, err
-		}
-		if !exists {
-			program.Definitions = append(program.Definitions, TypedDefinition{Name: name, Expression: definition.RHS, Type: Resolve(valueType, state.substitutions)})
+		if declaration.Variant == "definition" && !strings.Contains(normalizedDeclarationText(declaration.Text), "==") {
+			name, _, ok := definitionName(declaration.LHS)
+			if ok {
+				if len(definitions[name]) == 0 {
+					sourceOrder = append(sourceOrder, name)
+					program.Symbols.Intern(name)
+				}
+				definitions[name] = append(definitions[name], declaration)
+				body, guard, _ := semanticDefinitionExpressions(declaration)
+				graph[name] = append(graph[name], expressionNames(body, nil)...)
+				if guard != nil {
+					graph[name] = append(graph[name], expressionNames(*guard, nil)...)
+				}
+			}
 		}
 	}
 	for name, deps := range graph {
@@ -79,7 +121,85 @@ func Compile(script syntaxfront.Script, heap *graphstore.Heap) (*Program, error)
 		}
 		graph[name] = filtered
 	}
+	for _, component := range StronglyConnectedOrder(graph) {
+		for _, name := range component {
+			state.environment[name] = state.fresh()
+		}
+		for _, name := range component {
+			for _, definition := range definitions[name] {
+				_, patterns, ok := definitionPatterns(definition.LHS)
+				if !ok {
+					return nil, TypeError{Message: "invalid definition pattern", Line: definition.Span.Line, Column: definition.Span.Column}
+				}
+				local := make(map[string]*Type, len(state.environment)+len(patterns))
+				for key, value := range state.environment {
+					local[key] = value
+				}
+				parameterTypes := make([]*Type, len(patterns))
+				for index, pattern := range patterns {
+					parameterTypes[index] = state.fresh()
+					if err := state.inferPattern(pattern, parameterTypes[index], local); err != nil {
+						return nil, TypeError{Message: err.Error(), Line: definition.Span.Line, Column: definition.Span.Column}
+					}
+				}
+				body, guard, parseErr := semanticDefinitionExpressions(definition)
+				if parseErr != nil {
+					return nil, TypeError{Message: parseErr.Error(), Line: definition.Span.Line, Column: definition.Span.Column}
+				}
+				if guard != nil {
+					guardType, guardErr := state.infer(*guard, local)
+					if guardErr != nil {
+						return nil, TypeError{Message: guardErr.Error(), Definition: name, Line: definition.Span.Line, Column: definition.Span.Column}
+					}
+					if guardErr = Unify(guardType, &Type{Kind: TypeNamed, Name: "bool"}, state.substitutions); guardErr != nil {
+						return nil, TypeError{Message: guardErr.Error(), Definition: name, Line: definition.Span.Line, Column: definition.Span.Column}
+					}
+				}
+				valueType, err := state.infer(body, local)
+				if err != nil {
+					return nil, TypeError{Message: err.Error(), Definition: name, Line: definition.Span.Line, Column: definition.Span.Column}
+				}
+				for index := len(parameterTypes) - 1; index >= 0; index-- {
+					valueType = &Type{Kind: TypeArrow, From: parameterTypes[index], To: valueType}
+				}
+				if err = Unify(state.environment[name], valueType, state.substitutions); err != nil {
+					return nil, TypeError{Message: err.Error(), Definition: name, Line: definition.Span.Line, Column: definition.Span.Column}
+				}
+			}
+		}
+		for _, name := range component {
+			if signature := signatures[name]; signature != nil {
+				implementationType := state.expandRepresentations(state.instantiate(signature))
+				if err := Unify(state.environment[name], implementationType, state.substitutions); err != nil {
+					definition := definitions[name][0]
+					return nil, TypeError{Message: err.Error(), Definition: name, Line: definition.Span.Line, Column: definition.Span.Column}
+				}
+			}
+		}
+		for _, name := range component {
+			resolved := DeepResolve(state.environment[name], state.substitutions)
+			if signature := signatures[name]; signature != nil {
+				resolved = signature
+			}
+			if name != "__repl" && signatures[name] == nil && definitionsUseSpecialShow(definitions[name]) {
+				hasVariables := false
+				visitType(resolved, func(int) { hasVariables = true })
+				if hasVariables {
+					definition := definitions[name][0]
+					return nil, TypeError{Message: "polymorphic use of show or readvals requires a type declaration", Definition: name, Line: definition.Span.Line, Column: definition.Span.Column}
+				}
+			}
+			state.schemes[name] = generalize(resolved)
+			delete(state.environment, name)
+		}
+	}
+	for _, name := range sourceOrder {
+		program.Definitions = append(program.Definitions, TypedDefinition{Name: name, Expression: definitions[name][0].RHS, Type: state.schemes[name].Type})
+	}
 	program.Order = RecursiveOrder(graph)
+	if !lower {
+		return program, nil
+	}
 	roots, err := Lower(script, heap)
 	if err != nil {
 		return nil, err
@@ -90,6 +210,109 @@ func Compile(script syntaxfront.Script, heap *graphstore.Heap) (*Program, error)
 		}
 	}
 	return program, nil
+}
+
+func definitionsUseSpecialShow(definitions []syntaxfront.Definition) bool {
+	for _, definition := range definitions {
+		body, guard, _ := semanticDefinitionExpressions(definition)
+		for _, name := range append(expressionNames(body, nil), func() []string {
+			if guard == nil {
+				return nil
+			}
+			return expressionNames(*guard, nil)
+		}()...) {
+			if name == "show" || name == "readvals" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func semanticDefinitions(script syntaxfront.Script) []syntaxfront.Definition {
+	items := make([]syntaxfront.Definition, 0, len(script.Items))
+	currentLeft := ""
+	for _, item := range script.Items {
+		if item.Variant == "definition" {
+			if lines := strings.Split(item.Text, "\n"); len(lines) > 1 {
+				first := true
+				for offset, line := range lines {
+					line = strings.TrimSpace(line)
+					if line == "" {
+						continue
+					}
+					text := line
+					if !first && strings.HasPrefix(line, "=") {
+						text = currentLeft + " " + line
+					}
+					parsed := syntaxfront.Run([]byte(text + "\n"))
+					if len(parsed.Diagnostics) == 0 && len(parsed.Script.Items) == 1 {
+						part := parsed.Script.Items[0]
+						part.Span.Line = item.Span.Line + offset
+						items = append(items, part)
+						if first {
+							if separator := strings.Index(part.Text, "="); separator >= 0 {
+								currentLeft = strings.TrimSpace(part.Text[:separator])
+							}
+							first = false
+						}
+					}
+				}
+				continue
+			}
+			if separator := strings.Index(item.Text, "="); separator >= 0 {
+				currentLeft = strings.TrimSpace(item.Text[:separator])
+			}
+			items = append(items, item)
+			continue
+		}
+		if item.Variant == "continuation" && currentLeft != "" && strings.HasPrefix(strings.TrimSpace(item.Text), "=") {
+			parsed := syntaxfront.Run([]byte(currentLeft + " " + item.Text + "\n"))
+			if len(parsed.Diagnostics) == 0 && len(parsed.Script.Items) == 1 {
+				continuation := parsed.Script.Items[0]
+				continuation.Span = item.Span
+				items = append(items, continuation)
+				continue
+			}
+		}
+		items = append(items, item)
+	}
+	return items
+}
+
+func semanticDefinitionExpressions(definition syntaxfront.Definition) (syntaxfront.Expr, *syntaxfront.Expr, error) {
+	separator := strings.Index(definition.Text, "=")
+	if separator < 0 {
+		return definition.RHS, nil, nil
+	}
+	right := strings.TrimSpace(definition.Text[separator+1:])
+	bodyText := right
+	guardText := ""
+	if comma := strings.LastIndex(right, ","); comma >= 0 {
+		qualifier := strings.TrimSpace(right[comma+1:])
+		if strings.HasPrefix(qualifier, "if ") {
+			bodyText = strings.TrimSpace(right[:comma])
+			guardText = strings.TrimSpace(strings.TrimPrefix(qualifier, "if "))
+		} else if qualifier == "otherwise" {
+			bodyText = strings.TrimSpace(right[:comma])
+		}
+	}
+	parse := func(text string) (syntaxfront.Expr, error) {
+		parsed := syntaxfront.Run([]byte("__semantic_value = " + text + "\n"))
+		if len(parsed.Diagnostics) != 0 || len(parsed.Script.Items) != 1 {
+			if len(parsed.Diagnostics) != 0 {
+				return syntaxfront.Expr{}, fmt.Errorf("%s", parsed.Diagnostics[0].Message)
+			}
+			return syntaxfront.Expr{}, fmt.Errorf("invalid expression")
+		}
+		return parsed.Script.Items[0].RHS, nil
+	}
+	body, err := parse(bodyText)
+	if err != nil || guardText == "" {
+		return body, nil, err
+	}
+	guard, err := parse(guardText)
+	return body, &guard, err
 }
 
 // RecursiveOrder is deterministic and permits mutually recursive SCCs. Names
@@ -123,16 +346,25 @@ func RecursiveOrder(graph map[string][]string) []string {
 }
 
 func definitionName(expression syntaxfront.Expr) (string, []string, bool) {
+	name, patterns, ok := definitionPatterns(expression)
 	var params []string
-	for expression.Variant == "application" {
-		if expression.Arg.Variant == "name" {
-			params = append([]string{expression.Arg.Text}, params...)
+	for _, pattern := range patterns {
+		if pattern.Variant == "name" {
+			params = append(params, pattern.Text)
 		} else {
-			params = append([]string{fmt.Sprintf("$pattern%d", len(params))}, params...)
+			params = append(params, fmt.Sprintf("$pattern%d", len(params)))
 		}
+	}
+	return name, params, ok
+}
+
+func definitionPatterns(expression syntaxfront.Expr) (string, []syntaxfront.Expr, bool) {
+	var patterns []syntaxfront.Expr
+	for expression.Variant == "application" {
+		patterns = append([]syntaxfront.Expr{*expression.Arg}, patterns...)
 		expression = *expression.Func
 	}
-	return expression.Text, params, expression.Variant == "name" && expression.Text != ""
+	return expression.Text, patterns, expression.Variant == "name" && expression.Text != ""
 }
 func expressionNames(expression syntaxfront.Expr, out []string) []string {
 	if expression.Variant == "name" {
@@ -168,9 +400,14 @@ func (s *inferState) infer(expression syntaxfront.Expr, environment map[string]*
 		if value, ok := environment[expression.Text]; ok {
 			return value, nil
 		}
-		if value, ok := PrimitiveType(expression.Text); ok {
-			return value, nil
+		if scheme, ok := s.schemes[expression.Text]; ok {
+			return s.instantiateScheme(scheme), nil
 		}
+		if value, ok := PrimitiveType(expression.Text); ok {
+			return s.instantiate(value), nil
+		}
+		// Undefined-name reporting is a separate scope-validation pass. Keep a
+		// fresh type here so one missing name cannot hide independent type errors.
 		return s.fresh(), nil
 	case "application":
 		function, err := s.infer(*expression.Func, environment)
@@ -182,7 +419,7 @@ func (s *inferState) infer(expression syntaxfront.Expr, environment map[string]*
 			return nil, err
 		}
 		result := s.fresh()
-		if err = Unify(function, &Type{Kind: TypeArrow, From: argument, To: result}, s.substitutions); err != nil {
+		if err = Unify(&Type{Kind: TypeArrow, From: argument, To: result}, function, s.substitutions); err != nil {
 			return nil, err
 		}
 		return Resolve(result, s.substitutions), nil
@@ -211,7 +448,256 @@ func (s *inferState) infer(expression syntaxfront.Expr, environment map[string]*
 			items[i] = value
 		}
 		return &Type{Kind: TypeTuple, Items: items}, nil
+	case "neg":
+		argument, err := s.infer(*expression.Arg, environment)
+		if err != nil {
+			return nil, err
+		}
+		number := &Type{Kind: TypeNamed, Name: "num"}
+		if err = Unify(argument, number, s.substitutions); err != nil {
+			return nil, err
+		}
+		return number, nil
+	case "not":
+		argument, err := s.infer(*expression.Arg, environment)
+		if err != nil {
+			return nil, err
+		}
+		boolean := &Type{Kind: TypeNamed, Name: "bool"}
+		if err = Unify(argument, boolean, s.substitutions); err != nil {
+			return nil, err
+		}
+		return boolean, nil
+	case "length":
+		argument, err := s.infer(*expression.Arg, environment)
+		if err != nil {
+			return nil, err
+		}
+		item := s.fresh()
+		if err = Unify(argument, &Type{Kind: TypeList, Items: []*Type{item}}, s.substitutions); err != nil {
+			return nil, err
+		}
+		return &Type{Kind: TypeNamed, Name: "num"}, nil
+	case "range":
+		number := &Type{Kind: TypeNamed, Name: "num"}
+		for _, part := range []*syntaxfront.Expr{expression.Head, expression.Step, expression.To} {
+			if part == nil {
+				continue
+			}
+			value, err := s.infer(*part, environment)
+			if err != nil {
+				return nil, err
+			}
+			if err = Unify(value, number, s.substitutions); err != nil {
+				return nil, err
+			}
+		}
+		return &Type{Kind: TypeList, Items: []*Type{number}}, nil
+	case "op_func":
+		if value, ok := PrimitiveType(expression.Text); ok {
+			return s.instantiate(value), nil
+		}
+		return nil, fmt.Errorf("undefined operator %s", expression.Text)
+	case "section_left", "section_right":
+		operator, ok := PrimitiveType(expression.Text)
+		if !ok {
+			return nil, fmt.Errorf("undefined operator %s", expression.Text)
+		}
+		operatorType := s.instantiate(operator)
+		fixed, err := s.infer(*expression.Arg, environment)
+		if err != nil {
+			return nil, err
+		}
+		first, second, result := s.fresh(), s.fresh(), s.fresh()
+		if err = Unify(operatorType, &Type{Kind: TypeArrow, From: first, To: &Type{Kind: TypeArrow, From: second, To: result}}, s.substitutions); err != nil {
+			return nil, err
+		}
+		if expression.Variant == "section_left" {
+			if err = Unify(fixed, first, s.substitutions); err != nil {
+				return nil, err
+			}
+			return &Type{Kind: TypeArrow, From: second, To: result}, nil
+		}
+		if err = Unify(fixed, second, s.substitutions); err != nil {
+			return nil, err
+		}
+		return &Type{Kind: TypeArrow, From: first, To: result}, nil
+	case "listcomp":
+		local := make(map[string]*Type, len(environment))
+		for name, value := range environment {
+			local[name] = value
+		}
+		for _, qualifier := range expression.Qualifiers {
+			if qualifier.Guard != nil {
+				guard, err := s.infer(*qualifier.Guard, local)
+				if err != nil {
+					return nil, err
+				}
+				if err = Unify(guard, &Type{Kind: TypeNamed, Name: "bool"}, s.substitutions); err != nil {
+					return nil, err
+				}
+				continue
+			}
+			source, err := s.infer(*qualifier.Source, local)
+			if err != nil {
+				return nil, err
+			}
+			item := s.fresh()
+			if err = Unify(source, &Type{Kind: TypeList, Items: []*Type{item}}, s.substitutions); err != nil {
+				return nil, err
+			}
+			if err = s.inferPattern(*qualifier.Pattern, item, local); err != nil {
+				return nil, err
+			}
+		}
+		body, err := s.infer(*expression.Body, local)
+		if err != nil {
+			return nil, err
+		}
+		return &Type{Kind: TypeList, Items: []*Type{body}}, nil
 	default:
-		return s.fresh(), nil
+		return nil, fmt.Errorf("unsupported expression %s", expression.Variant)
 	}
+}
+
+func (s *inferState) inferPattern(pattern syntaxfront.Expr, expected *Type, environment map[string]*Type) error {
+	switch pattern.Variant {
+	case "name":
+		if pattern.Text != "_" {
+			if previous := environment[pattern.Text]; previous != nil {
+				return Unify(previous, expected, s.substitutions)
+			}
+			environment[pattern.Text] = expected
+		}
+		return nil
+	case "int":
+		return Unify(expected, &Type{Kind: TypeNamed, Name: "num"}, s.substitutions)
+	case "tuple":
+		items := make([]*Type, len(pattern.Items))
+		for index, item := range pattern.Items {
+			items[index] = s.fresh()
+			if err := s.inferPattern(item, items[index], environment); err != nil {
+				return err
+			}
+		}
+		return Unify(expected, &Type{Kind: TypeTuple, Items: items}, s.substitutions)
+	case "list":
+		itemType := s.fresh()
+		for _, item := range pattern.Items {
+			if err := s.inferPattern(item, itemType, environment); err != nil {
+				return err
+			}
+		}
+		return Unify(expected, &Type{Kind: TypeList, Items: []*Type{itemType}}, s.substitutions)
+	case "infix":
+		if pattern.Text == ":" {
+			itemType := s.fresh()
+			if err := s.inferPattern(*pattern.Head, itemType, environment); err != nil {
+				return err
+			}
+			if err := s.inferPattern(*pattern.Tail, &Type{Kind: TypeList, Items: []*Type{itemType}}, environment); err != nil {
+				return err
+			}
+			return Unify(expected, &Type{Kind: TypeList, Items: []*Type{itemType}}, s.substitutions)
+		}
+	case "constructor", "application":
+		name, arguments, ok := patternConstructor(pattern)
+		if ok {
+			scheme, exists := s.schemes[name]
+			if !exists {
+				return fmt.Errorf("undefined constructor %s", name)
+			}
+			constructorType := s.instantiateScheme(scheme)
+			for _, argument := range arguments {
+				argumentType, resultType := s.fresh(), s.fresh()
+				if err := Unify(constructorType, &Type{Kind: TypeArrow, From: argumentType, To: resultType}, s.substitutions); err != nil {
+					return err
+				}
+				if err := s.inferPattern(argument, argumentType, environment); err != nil {
+					return err
+				}
+				constructorType = resultType
+			}
+			return Unify(expected, constructorType, s.substitutions)
+		}
+	}
+	return fmt.Errorf("invalid pattern")
+}
+
+func patternConstructor(pattern syntaxfront.Expr) (string, []syntaxfront.Expr, bool) {
+	var arguments []syntaxfront.Expr
+	for pattern.Variant == "application" {
+		arguments = append([]syntaxfront.Expr{*pattern.Arg}, arguments...)
+		pattern = *pattern.Func
+	}
+	return pattern.Text, arguments, pattern.Variant == "constructor"
+}
+
+func generalize(value *Type) TypeScheme {
+	quantified := map[int]bool{}
+	visitType(value, func(variable int) { quantified[variable] = true })
+	return TypeScheme{Type: value, Quantified: quantified}
+}
+
+func visitType(value *Type, visit func(int)) {
+	if value == nil {
+		return
+	}
+	if value.Kind == TypeVariable {
+		visit(value.ID)
+		return
+	}
+	visitType(value.From, visit)
+	visitType(value.To, visit)
+	for _, item := range value.Items {
+		visitType(item, visit)
+	}
+}
+
+func (s *inferState) instantiateScheme(scheme TypeScheme) *Type {
+	variables := map[int]*Type{}
+	var clone func(*Type) *Type
+	clone = func(current *Type) *Type {
+		if current == nil {
+			return nil
+		}
+		if current.Kind == TypeVariable && scheme.Quantified[current.ID] {
+			if variables[current.ID] == nil {
+				variables[current.ID] = s.fresh()
+			}
+			return variables[current.ID]
+		}
+		result := *current
+		result.From, result.To = clone(current.From), clone(current.To)
+		result.Items = make([]*Type, len(current.Items))
+		for index := range current.Items {
+			result.Items[index] = clone(current.Items[index])
+		}
+		return &result
+	}
+	return clone(scheme.Type)
+}
+
+func (s *inferState) instantiate(value *Type) *Type {
+	variables := map[int]*Type{}
+	var clone func(*Type) *Type
+	clone = func(current *Type) *Type {
+		if current == nil {
+			return nil
+		}
+		if current.Kind == TypeVariable {
+			if variables[current.ID] == nil {
+				variables[current.ID] = s.fresh()
+			}
+			return variables[current.ID]
+		}
+		result := *current
+		result.From, result.To = clone(current.From), clone(current.To)
+		result.Items = make([]*Type, len(current.Items))
+		for index := range current.Items {
+			result.Items[index] = clone(current.Items[index])
+		}
+		return &result
+	}
+	return clone(value)
 }

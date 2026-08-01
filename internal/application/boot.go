@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/pkreyenhop/miracula/internal/semantics"
 )
 
 func (i *Interpreter) Boot() error {
@@ -26,6 +28,12 @@ func (i *Interpreter) Boot() error {
 			return fmt.Errorf("load %s: %w", name, err)
 		}
 		i.Scripts.Put(Script{Path: path, Source: append([]byte(nil), source...)})
+		if i.StandardTypes == nil {
+			i.StandardTypes = map[string]*semantics.Type{}
+		}
+		for declaredName, declaredType := range semantics.DeclaredTypes(source) {
+			i.StandardTypes[declaredName] = declaredType
+		}
 	}
 	if i.InitialScript == "" {
 		workingDirectory, err := os.Getwd()

@@ -20,6 +20,7 @@ type Interpreter struct {
 	Compiler      CompilerState
 	Repl          ReplSession
 	Programs      map[string]*semantics.Program
+	StandardTypes map[string]*semantics.Type
 	Scripts       ScriptStore
 	InitialScript string
 	language      *languageRuntime
@@ -43,6 +44,7 @@ func (i *Interpreter) Reset() {
 	i.Compiler = CompilerState{}
 	i.Repl = ReplSession{}
 	i.Programs = nil
+	i.StandardTypes = nil
 	i.language = nil
 	i.startupFailed = false
 	i.Scripts = ScriptStore{}

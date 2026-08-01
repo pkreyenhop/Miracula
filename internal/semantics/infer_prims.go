@@ -1,9 +1,22 @@
 package semantics
 
 func PrimitiveType(name string) (*Type, bool) {
-	if name == "+" {
-		n := &Type{Kind: TypeNamed, Name: "num"}
-		return &Type{Kind: TypeArrow, From: n, To: &Type{Kind: TypeArrow, From: n, To: n}}, true
+	signatures := map[string]string{
+		"+": "num->num->num", "-": "num->num->num", "*": "num->num->num", "/": "num->num->num",
+		"div": "num->num->num", "mod": "num->num->num", "^": "num->num->num",
+		"=": "*->*->bool", "~=": "*->*->bool", "<": "*->*->bool", "<=": "*->*->bool", ">": "*->*->bool", ">=": "*->*->bool",
+		"&": "bool->bool->bool", "\\/": "bool->bool->bool", "~": "bool->bool",
+		":": "*->[*]->[*]", "++": "[*]->[*]->[*]", "--": "[*]->[*]->[*]",
+		"#": "[*]->num", "!": "[*]->num->*", ".": "(**->***)->(*->**)->*->***",
+		"reverse": "[*]->[*]", "take": "num->[*]->[*]", "map": "(*->**)->[*]->[**]",
+		"filter": "(*->bool)->[*]->[*]", "foldl": "(*->**->*)->*->[**]->*", "foldr": "(*->**->**)->**->[*]->**",
+		"sum": "[num]->num", "product": "[num]->num", "show": "*->[char]", "readvals": "[char]->[*]",
+		"True": "bool", "False": "bool", "undef": "*",
 	}
-	return nil, false
+	signature, ok := signatures[name]
+	if !ok {
+		return nil, false
+	}
+	value, err := ParseType(signature)
+	return value, err == nil
 }

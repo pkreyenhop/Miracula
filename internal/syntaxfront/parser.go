@@ -58,11 +58,18 @@ func Parse(tokens []Token) (Script, []Diagnostic) {
 func parseStatement(tokens []Token) (Definition, *Diagnostic) {
 	span := tokens[0].Span
 	span.End = tokens[len(tokens)-1].Span.End
-	textParts := make([]string, len(tokens))
-	for i := range tokens {
-		textParts[i] = string(tokens[i].Bytes)
+	var textBuilder strings.Builder
+	for index := range tokens {
+		if index != 0 {
+			if tokens[index].Span.Line > tokens[index-1].Span.Line {
+				textBuilder.WriteByte('\n')
+			} else {
+				textBuilder.WriteByte(' ')
+			}
+		}
+		textBuilder.Write(tokens[index].Bytes)
 	}
-	text := strings.Join(textParts, " ")
+	text := textBuilder.String()
 	if tokens[0].Kind == "directive" {
 		return Definition{Variant: "directive", LHS: Expr{Variant: "directive", Text: string(tokens[0].Bytes), Span: span}, Text: text, Span: span}, nil
 	}
