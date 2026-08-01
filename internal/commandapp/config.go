@@ -17,14 +17,16 @@ func environmentConfig(services platformsvc.Services, config application.Config)
 	if value, ok := services.Environment("EDITOR"); ok && value != "" {
 		config.Editor = value
 	}
-	if value, ok := services.Environment("MIRAPROMPT"); ok {
-		config.Prompt = value
+	locale := ""
+	for _, name := range []string{"LC_ALL", "LC_CTYPE", "LANG"} {
+		if value, ok := services.Environment(name); ok && value != "" {
+			locale = value
+			break
+		}
 	}
-	if _, ok := services.Environment("RECHECKMIRA"); ok {
-		config.Recheck = true
-	}
-	if _, ok := services.Environment("NOSTRICTIF"); ok {
-		config.StrictIf = false
+	if locale != "" {
+		upper := strings.ToUpper(locale)
+		config.UTF8 = strings.Contains(upper, "UTF-8") || strings.Contains(upper, "UTF8")
 	}
 	return config
 }
@@ -77,6 +79,11 @@ func resolveDefaults(services platformsvc.Services) application.Config {
 			config.LibraryPath = installedLibrary
 		}
 	}
+	// Later sources win: defaults, global rc, environment, user rc,
+	// one-shot environment controls, then command-line flags.
+	if loaded, found := readRC(filepath.Join(config.LibraryPath, ".mirarc"), config); found {
+		config = loaded
+	}
 	config = environmentConfig(services, config)
 	if home, ok := services.Environment("HOME"); ok {
 		config.RCPath = filepath.Join(home, ".mirarc")
@@ -84,9 +91,6 @@ func resolveDefaults(services platformsvc.Services) application.Config {
 			loaded.RCPath = config.RCPath
 			return environmentOneShots(services, loaded)
 		}
-	}
-	if loaded, found := readRC(filepath.Join(config.LibraryPath, ".mirarc"), config); found {
-		return environmentOneShots(services, loaded)
 	}
 	return environmentOneShots(services, config)
 }

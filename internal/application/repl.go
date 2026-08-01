@@ -596,7 +596,11 @@ func (i *Interpreter) fingerName(out io.Writer, name string) error {
 	if entry, ok := i.scopeEntry(name); ok && entry.Original != name {
 		aliasText = fmt.Sprintf(" (alias of %s)", entry.Original)
 	}
-	_, err := fmt.Fprintf(out, "%s :: %s%s ||defined in %q line %d\n", name, typeText, aliasText, path, definition.Expression.Span.Line)
+	objectText := ""
+	if i.Config.Object {
+		objectText = fmt.Sprintf(" ||combinator root %d", definition.Root)
+	}
+	_, err := fmt.Fprintf(out, "%s :: %s%s ||defined in %q line %d%s\n", name, typeText, aliasText, path, definition.Expression.Span.Line, objectText)
 	return err
 }
 
@@ -821,11 +825,19 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 		return false, nil
 	case "dic":
 		if len(fields) == 1 {
-			_, err := fmt.Fprintf(out, "%d chars 0 in use\n", i.Config.DictionaryCells)
+			_, err := fmt.Fprintf(out, "%d chars %d in use\n", i.Config.DictionaryCells, i.Strings.Used())
 			return false, err
 		}
 		if len(fields) == 2 {
-			_, err := fmt.Fprintf(out, "sorry, cannot change size of dictionary while in use\n(/q and reinvoke with flag: mira -dic %s ... )\n", fields[1])
+			value, err := strconv.Atoi(fields[1])
+			if err != nil || value < 100 || value > 50000000 || !i.Strings.SetLimit(value) {
+				return false, fmt.Errorf("illegal value (dictionary unchanged)")
+			}
+			i.Config.DictionaryCells = value
+			if err = i.WriteRC(); err != nil {
+				return false, err
+			}
+			_, err = fmt.Fprintf(out, "dictionary = %d chars\n", value)
 			return false, err
 		}
 	case "gc":
@@ -964,6 +976,9 @@ func (i *Interpreter) heapCommand(arguments []string, out io.Writer) error {
 	}
 	if value < i.Heap.LiveCount() {
 		return fmt.Errorf("sorry, cannot shrink heap to %d at this time", value)
+	}
+	if err = i.Heap.Resize(value); err != nil {
+		return fmt.Errorf("sorry, cannot resize heap to %d at this time", value)
 	}
 	i.Config.HeapCells = value
 	if _, err = fmt.Fprintf(out, "heaplimit = %d cells\n", value); err != nil {

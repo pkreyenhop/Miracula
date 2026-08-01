@@ -1,5 +1,9 @@
 _R_E_C_E_N_T_ _C_H_A_N_G_E_S
 
+CURRENT GO TARGET POLICY: the production Go implementation supports macOS
+only. The platform list in the historical entry below applies to the C release
+and does not claim Linux or other Unix support for the Go cutover.
+
 May 2025 (version 2.067)
 
 First maintenance release from codeberg.org/DATurner/miranda, working on

@@ -541,6 +541,9 @@ func (i *Interpreter) editorCommand(arguments []string, out io.Writer) error {
 	}
 	i.Config.Editor = name
 	i.Config.BadEditor = EditorCannotOpenAtLine(name)
+	if strings.Contains(name, "&") {
+		i.Config.Recheck = true
+	}
 	if err = i.WriteRC(); err != nil {
 		return err
 	}

@@ -1,5 +1,9 @@
 _A_b_o_u_t_ _t_h_i_s_ _r_e_l_e_a_s_e
 
+CURRENT GO TARGET POLICY: the production Go implementation in this repository
+supports macOS only. Linux and the other systems named in historical release
+notes describe earlier C releases and are not supported Go targets.
+
 This is Miranda release two of October 1989 rereleased thirty  years  on
 as  open source - as historical record and in the hope that it may still
 be useful.  Originally released in 1985, Miranda was  the  first  widely
@@ -52,4 +56,3 @@ copies in a library or with second hand book sellers.
 
   Ian Holyer "Functional Programming with Miranda"
   Pitman, 215 pages, 1991
-

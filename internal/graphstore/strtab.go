@@ -5,6 +5,8 @@ import "github.com/pkreyenhop/miracula/internal/protocol"
 type StringTable struct {
 	values []string
 	ids    map[string]protocol.StringID
+	limit  int
+	used   int
 }
 
 func (t *StringTable) init() {
@@ -22,8 +24,12 @@ func (t *StringTable) Intern(value string) protocol.Word {
 		return protocol.Word(id.ToStored())
 	}
 	id := protocol.StringID(len(t.values))
+	if t.limit > 0 && t.used+len(value) > t.limit {
+		return 0
+	}
 	t.values = append(t.values, value)
 	t.ids[value] = id
+	t.used += len(value)
 	return protocol.Word(id.ToStored())
 }
 func (t *StringTable) Resolve(handle protocol.Word) string {
@@ -46,4 +52,13 @@ func (t *StringTable) Privatize(handle protocol.Word) protocol.Word {
 	b[0] |= 0x80
 	return t.Intern(string(b))
 }
-func (t *StringTable) Reset() { t.values = nil; t.ids = nil }
+func (t *StringTable) Reset() { t.values = nil; t.ids = nil; t.used = 0 }
+func (t *StringTable) SetLimit(limit int) bool {
+	if limit < t.used {
+		return false
+	}
+	t.limit = limit
+	return true
+}
+func (t *StringTable) Limit() int { return t.limit }
+func (t *StringTable) Used() int  { return t.used }

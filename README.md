@@ -114,6 +114,10 @@ The installed command finds `../lib/miralib` relative to itself. `MIRALIB` and
 `-lib` remain available as explicit overrides. Release archives are produced
 with `make package`; set `SOURCE_DATE_EPOCH` to reproduce metadata exactly.
 
+The production Go release supports macOS only; Linux is explicitly not a
+supported build or migration target. Configuration precedence is documented in
+[`docs/configuration.md`](docs/configuration.md).
+
 ## Testing
 
 The repository includes:

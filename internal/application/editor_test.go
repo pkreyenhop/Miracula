@@ -101,6 +101,22 @@ func TestEditorValidityAndWarning(t *testing.T) {
 	}
 }
 
+func TestConcurrentEditorTemplateEnablesStickyRecheck(t *testing.T) {
+	i := New(&editorServices{})
+	i.Config.RCPath = filepath.Join(t.TempDir(), ".mirarc")
+	i.activeEditor = &manualEditor{lines: []string{"y"}}
+	if err := i.editorCommand([]string{"emacs", "+!", "%", "&"}, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	if !i.Config.Recheck {
+		t.Fatal("concurrent editor did not enable recheck")
+	}
+	data, err := os.ReadFile(i.Config.RCPath)
+	if err != nil || !strings.Contains(string(data), "r ") {
+		t.Fatalf("sticky rc = %q, %v", data, err)
+	}
+}
+
 func TestEditCommandRunsConfiguredTemplate(t *testing.T) {
 	directory := t.TempDir()
 	path := filepath.Join(directory, "sample.m")

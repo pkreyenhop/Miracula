@@ -100,6 +100,39 @@ func (h *Heap) LiveCount() int {
 }
 func (h *Heap) Capacity() int { return len(h.live) }
 
+func (h *Heap) Resize(capacity int) error {
+	if capacity < 1 || capacity < h.LiveCount() {
+		return ErrHeapExhausted
+	}
+	old := len(h.live)
+	if capacity == old {
+		return nil
+	}
+	if capacity < old {
+		for index := capacity; index < old; index++ {
+			if h.live[index] {
+				return ErrHeapExhausted
+			}
+		}
+		h.live = h.live[:capacity]
+		h.cells = h.cells[:int(protocol.AtomLimit)+capacity]
+		filtered := h.free[:0]
+		for _, ref := range h.free {
+			if int(ref)-int(protocol.AtomLimit) < capacity {
+				filtered = append(filtered, ref)
+			}
+		}
+		h.free = filtered
+		return nil
+	}
+	h.live = append(h.live, make([]bool, capacity-old)...)
+	h.cells = append(h.cells, make([]Cell, capacity-old)...)
+	for index := capacity - 1; index >= old; index-- {
+		h.free = append(h.free, protocol.CellRef(uint32(int(protocol.AtomLimit)+index)))
+	}
+	return nil
+}
+
 func (h *Heap) Validate() error {
 	free := make(map[protocol.CellRef]bool, len(h.free))
 	for _, ref := range h.free {

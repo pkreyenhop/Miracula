@@ -71,3 +71,23 @@ func TestResources(t *testing.T) {
 		t.Fatal(e)
 	}
 }
+
+func TestHeapResizeChangesLiveAllocationWithoutMovingCells(t *testing.T) {
+	heap := NewHeap(4)
+	ref, err := heap.Make(protocol.NodeCons, 1, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = heap.Resize(8); err != nil || heap.Capacity() != 8 {
+		t.Fatalf("grow = %v, capacity %d", err, heap.Capacity())
+	}
+	if cell, ok := heap.Cell(ref); !ok || cell.Head != 1 {
+		t.Fatalf("cell moved after growth: %+v, %v", cell, ok)
+	}
+	if err = heap.Resize(1); err != nil || heap.Capacity() != 1 {
+		t.Fatalf("shrink = %v, capacity %d", err, heap.Capacity())
+	}
+	if err = heap.Validate(); err != nil {
+		t.Fatal(err)
+	}
+}

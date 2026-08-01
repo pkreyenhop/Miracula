@@ -34,6 +34,34 @@ func TestExtendedReplSettingsCommands(t *testing.T) {
 	}
 }
 
+func TestHeapDictionaryAndObjectSettingsAreOperational(t *testing.T) {
+	i := New(nil)
+	i.Config.RCPath = filepath.Join(t.TempDir(), ".mirarc")
+	var output bytes.Buffer
+	if _, err := i.runCommand("/heap 3000000", &output); err != nil {
+		t.Fatal(err)
+	}
+	if i.Heap.Capacity() != 3000000 {
+		t.Fatalf("live heap capacity = %d", i.Heap.Capacity())
+	}
+	i.Strings.Intern("hello")
+	if _, err := i.runCommand("/dic 200000", &output); err != nil {
+		t.Fatal(err)
+	}
+	if i.Strings.Limit() != 200000 || i.Strings.Used() != 5 {
+		t.Fatalf("dictionary limit=%d used=%d", i.Strings.Limit(), i.Strings.Used())
+	}
+	i = queryInterpreter()
+	i.Config.Object = true
+	output.Reset()
+	if err := i.fingerName(&output, "alpha"); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), "||combinator root") {
+		t.Fatalf("object query = %q", output.String())
+	}
+}
+
 func TestRecheckSourceReloadsChangedScript(t *testing.T) {
 	directory := t.TempDir()
 	path := filepath.Join(directory, "reload.m")

@@ -19,6 +19,9 @@ func (i *Interpreter) Setup() error {
 		i.Heap = graphstore.NewHeap(i.Config.HeapCells)
 		i.Evaluator.Heap = i.Heap
 	}
+	if !i.Strings.SetLimit(i.Config.DictionaryCells) {
+		return errors.New("dictionary configuration smaller than current use")
+	}
 	i.Programs = map[string]*semantics.Program{}
 	i.Repl.Prompt = i.Config.Prompt
 	return nil

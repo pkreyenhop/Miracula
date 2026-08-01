@@ -71,3 +71,20 @@ func TestFlagsOverrideResolvedDefaults(t *testing.T) {
 		t.Fatalf("flags did not win: %+v", options.Config)
 	}
 }
+
+func TestEnvironmentLocaleAndOneShotPrecedence(t *testing.T) {
+	tests := []struct {
+		locale string
+		utf8   bool
+	}{{"en_NZ.UTF-8", true}, {"C", false}, {"de_DE.ISO-8859-1", false}}
+	for _, test := range tests {
+		config := resolveDefaults(configServices{"LANG": test.locale, "MIRAPROMPT": "m> ", "RECHECKMIRA": "1", "NOSTRICTIF": "1"})
+		if config.UTF8 != test.utf8 || config.Prompt != "m> " || !config.Recheck || config.StrictIf {
+			t.Errorf("locale %q config = %+v", test.locale, config)
+		}
+	}
+	config := resolveDefaults(configServices{"LC_ALL": "C", "LANG": "en_US.UTF-8"})
+	if config.UTF8 {
+		t.Fatal("LC_ALL did not override LANG")
+	}
+}
