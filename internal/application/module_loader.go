@@ -107,6 +107,9 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 	i.Programs[absolute] = program
 	metadata, hasMetadata := i.Services.Metadata(absolute)
 	i.Scripts.Put(Script{Path: absolute, Source: append([]byte(nil), source.Bytes...), Metadata: metadata, HasMetadata: hasMetadata})
+	if err := i.trackProgramSources(absolute); err != nil {
+		return nil, err
+	}
 	i.Compiler.CurrentModule = absolute
 	if !i.Compiler.UsedCompiledArtifact {
 		dependencies, dependencyErr := dependencyHashes(absolute, i.Config.LibraryPath)
@@ -119,4 +122,23 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 		}
 	}
 	return program, nil
+}
+
+func (i *Interpreter) trackProgramSources(root string) error {
+	paths, err := RelevantSources(root, i.Config.LibraryPath)
+	if err != nil {
+		return err
+	}
+	for _, path := range paths {
+		if path == root {
+			continue
+		}
+		source, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return readErr
+		}
+		metadata, hasMetadata := i.Services.Metadata(path)
+		i.Scripts.Put(Script{Path: path, Source: source, Metadata: metadata, HasMetadata: hasMetadata})
+	}
+	return nil
 }

@@ -854,8 +854,11 @@ func (r *languageRuntime) installIncludes(base string, source []byte) error {
 			}
 			if original := r.globals[alias.Old]; original != nil {
 				if existing := r.globals[alias.New]; existing != nil && existing != original {
-					delete(r.includeLoading, path)
-					return fmt.Errorf("include alias %s clashes with an existing name", alias.New)
+					previous, reloading := r.provenance[alias.New]
+					if !reloading || previous.Path != path || previous.Original != alias.Old {
+						delete(r.includeLoading, path)
+						return fmt.Errorf("include alias %s clashes with an existing name", alias.New)
+					}
 				}
 				r.globals[alias.New] = original
 				delete(r.globals, alias.Old)
@@ -866,10 +869,15 @@ func (r *languageRuntime) installIncludes(base string, source []byte) error {
 		}
 		for name := range exports {
 			if old := before[name]; old != nil && old != r.globals[name] {
-				delete(r.includeLoading, path)
-				return fmt.Errorf("included name %s clashes with an existing binding", name)
+				if previous, reloading := r.provenance[name]; !reloading || previous.Path != path {
+					delete(r.includeLoading, path)
+					return fmt.Errorf("included name %s clashes with an existing binding", name)
+				}
 			}
-			if _, ok := r.provenance[name]; !ok {
+			if previous, aliased := r.provenance[name]; aliased && previous.Path == path && previous.Original != name {
+				previous.Instance = moduleInstance
+				r.provenance[name] = previous
+			} else {
 				r.provenance[name] = sourceProvenance{Path: path, Original: name, Instance: moduleInstance}
 			}
 		}

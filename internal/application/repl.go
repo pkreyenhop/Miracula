@@ -507,21 +507,27 @@ func (i *Interpreter) runShell(ctx context.Context, command string) error {
 }
 
 func (i *Interpreter) recheckSource() error {
-	path := i.Compiler.CurrentModule
-	if path == "" {
+	root := i.Compiler.CurrentModule
+	if root == "" {
 		return nil
 	}
-	script, ok := i.Scripts.Scripts[path]
-	if !ok || !script.HasMetadata {
-		return nil
+	paths, err := RelevantSources(root, i.Config.LibraryPath)
+	if err != nil {
+		return err
 	}
-	metadata, exists := i.Services.Metadata(path)
-	if !exists || metadata == script.Metadata {
-		return nil
+	for _, path := range paths {
+		script, ok := i.Scripts.Scripts[path]
+		if !ok || !script.HasMetadata {
+			continue
+		}
+		metadata, exists := i.Services.Metadata(path)
+		if exists && metadata != script.Metadata {
+			_, err = i.LoadProgram(root)
+			i.recordLoadResult(root, err)
+			return err
+		}
 	}
-	_, err := i.LoadProgram(path)
-	i.recordLoadResult(path, err)
-	return err
+	return nil
 }
 
 func (i *Interpreter) handleQuery(line string, out io.Writer) error {
@@ -714,7 +720,10 @@ func (i *Interpreter) completeIdentifier(prefix string) []string {
 }
 
 func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
-	fields := strings.Fields(strings.TrimPrefix(line, "/"))
+	fields, fieldsErr := commandWords(strings.TrimPrefix(line, "/"))
+	if fieldsErr != nil {
+		return false, fieldsErr
+	}
 	if len(fields) == 0 {
 		return false, nil
 	}
@@ -766,8 +775,12 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 		if len(fields) != 2 {
 			return false, fmt.Errorf("usage: /load file")
 		}
-		_, err := i.LoadProgram(fields[1])
-		i.recordLoadResult(fields[1], err)
+		path, resolveErr := i.resolveSessionPath(fields[1])
+		if resolveErr != nil {
+			return false, resolveErr
+		}
+		_, err := i.LoadProgram(path)
+		i.recordLoadResult(path, err)
 		return false, err
 	case "r", "reload":
 		path := i.Compiler.CurrentModule
@@ -789,7 +802,11 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 	case "cd":
 		directory := ""
 		if len(fields) == 2 {
-			directory = fields[1]
+			var err error
+			directory, err = i.resolveSessionPath(fields[1])
+			if err != nil {
+				return false, err
+			}
 		} else if len(fields) == 1 {
 			directory, _ = i.Services.Environment("HOME")
 		} else {
@@ -858,7 +875,15 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 	case "m", "man":
 		return false, i.runManual(out)
 	case "edit", "e":
-		return false, i.editCommand(fields[1:], out)
+		arguments := fields[1:]
+		for index := range arguments {
+			resolved, err := i.resolveSessionPath(arguments[index])
+			if err != nil {
+				return false, err
+			}
+			arguments[index] = resolved
+		}
+		return false, i.editCommand(arguments, out)
 	case "editor":
 		return false, i.editorCommand(fields[1:], out)
 	default:

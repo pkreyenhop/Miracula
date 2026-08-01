@@ -2,6 +2,7 @@ package application
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -55,6 +56,73 @@ func TestRecheckSourceReloadsChangedScript(t *testing.T) {
 	absolute, _ := filepath.Abs(path)
 	if got := string(i.Scripts.Scripts[absolute].Source); got != "answer = 200\n" {
 		t.Fatalf("reloaded source = %q", got)
+	}
+}
+
+func TestSessionPathResolutionAndQuotedLoad(t *testing.T) {
+	directory := t.TempDir()
+	library := filepath.Join(directory, "library")
+	home := filepath.Join(directory, "home")
+	i := New(&editorServices{home: home})
+	i.Config.LibraryPath = library
+	i.Compiler.CurrentModule = filepath.Join(directory, "current.m")
+	for raw, want := range map[string]string{
+		"%":          i.Compiler.CurrentModule,
+		"~/work":     filepath.Join(home, "work"),
+		"<ex/fib.m>": filepath.Join(library, "ex/fib.m"),
+		"plain.m":    "plain.m",
+	} {
+		got, err := i.resolveSessionPath(raw)
+		if err != nil || got != want {
+			t.Errorf("resolve %q = %q, %v; want %q", raw, got, err, want)
+		}
+	}
+
+	script := filepath.Join(directory, "space file.m")
+	if err := os.WriteFile(script, []byte("answer = 1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	i = New(platformsvc.NativeServices{})
+	if err := i.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := i.runCommand(`/load "`+script+`"`, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := i.runCommand(`/f %`, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestRecheckReloadsChangedTransitiveDependency(t *testing.T) {
+	directory := t.TempDir()
+	child := filepath.Join(directory, "child.m")
+	root := filepath.Join(directory, "root.m")
+	if err := os.WriteFile(child, []byte("child = 1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(root, []byte("%include \"child.m\"\nmain = child\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	i := New(platformsvc.NativeServices{})
+	if err := i.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := i.LoadProgram(root); err != nil {
+		t.Fatal(err)
+	}
+	absoluteChild, _ := filepath.Abs(child)
+	if _, tracked := i.Scripts.Scripts[absoluteChild]; !tracked {
+		t.Fatal("included source metadata was not tracked")
+	}
+	if err := os.WriteFile(child, []byte("child = 200\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := i.recheckSource(); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := i.Evaluate(context.Background(), "child"); err != nil || got != "200" {
+		t.Fatalf("reloaded child = %q, %v", got, err)
 	}
 }
 
