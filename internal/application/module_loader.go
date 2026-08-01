@@ -30,7 +30,11 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 	}
 	source, diagnostics := syntaxfront.LoadSource(absolute)
 	if len(diagnostics) != 0 {
-		return nil, fmt.Errorf("%s:%d:%d: %s", diagnostics[0].File, diagnostics[0].Span.Line, diagnostics[0].Span.Column, diagnostics[0].Message)
+		set := make(DiagnosticSet, 0, len(diagnostics))
+		for index, diagnostic := range diagnostics {
+			set = append(set, sourceDiagnostic("source", absolute, source, diagnostic, index))
+		}
+		return nil, stableDiagnostics(set)
 	}
 	if i.Config.List && i.Output != nil {
 		listing := true
@@ -63,7 +67,7 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 			i.startupFailed = true
 			i.Compiler.CurrentModule = absolute
 			metadata, hasMetadata := i.Services.Metadata(absolute)
-			i.Scripts.Put(Script{Path: absolute, Source: append([]byte(nil), source.Bytes...), Metadata: metadata, HasMetadata: hasMetadata})
+			i.Scripts.Put(Script{Path: absolute, Source: append([]byte(nil), source.Bytes...), Metadata: metadata, HasMetadata: hasMetadata, Origins: append([]syntaxfront.Origin(nil), source.Origins...)})
 			return &semantics.Program{}, nil
 		}
 	}
@@ -74,20 +78,24 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 		parsed = syntaxfront.Run(source.Bytes)
 	}
 	if len(parsed.Diagnostics) != 0 {
-		return nil, fmt.Errorf("syntax error: %s:%d:%d: %s", absolute, parsed.Diagnostics[0].Span.Line, parsed.Diagnostics[0].Span.Column, parsed.Diagnostics[0].Message)
+		set := make(DiagnosticSet, 0, len(parsed.Diagnostics))
+		for index, diagnostic := range parsed.Diagnostics {
+			set = append(set, sourceDiagnostic("syntax", absolute, source, diagnostic, index))
+		}
+		return nil, stableDiagnostics(set)
 	}
 	if !i.Compiler.UsedCompiledArtifact {
 		if typeErrors := semantics.CheckAllWithTypes(parsed.Script, i.StandardTypes); len(typeErrors) != 0 {
 			metadata, hasMetadata := i.Services.Metadata(absolute)
-			i.Scripts.Put(Script{Path: absolute, Source: append([]byte(nil), source.Bytes...), Metadata: metadata, HasMetadata: hasMetadata})
+			i.Scripts.Put(Script{Path: absolute, Source: append([]byte(nil), source.Bytes...), Metadata: metadata, HasMetadata: hasMetadata, Origins: append([]syntaxfront.Origin(nil), source.Origins...)})
 			i.Compiler.CurrentModule = absolute
-			return nil, typeErrors
+			return nil, stableDiagnostics(typeDiagnostics(absolute, source, typeErrors, 0))
 		}
 	}
 	checkpoint := i.Heap.Checkpoint()
 	if err := i.runtime().installIncludes(filepath.Dir(absolute), source.Bytes); err != nil {
 		i.Heap.Restore(checkpoint)
-		return nil, fmt.Errorf("include from %s: %w", absolute, err)
+		return nil, DiagnosticSet{{Severity: "error", Phase: "module", File: absolute, Span: syntaxfront.Span{Line: 1, Column: 1}, Message: err.Error()}}
 	}
 	if err := i.runtime().installSource(source.Bytes); err != nil {
 		i.Heap.Restore(checkpoint)
@@ -106,7 +114,7 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 	}
 	i.Programs[absolute] = program
 	metadata, hasMetadata := i.Services.Metadata(absolute)
-	i.Scripts.Put(Script{Path: absolute, Source: append([]byte(nil), source.Bytes...), Metadata: metadata, HasMetadata: hasMetadata})
+	i.Scripts.Put(Script{Path: absolute, Source: append([]byte(nil), source.Bytes...), Metadata: metadata, HasMetadata: hasMetadata, Origins: append([]syntaxfront.Origin(nil), source.Origins...)})
 	if err := i.trackProgramSources(absolute); err != nil {
 		return nil, err
 	}

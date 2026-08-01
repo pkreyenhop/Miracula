@@ -16,6 +16,7 @@ type ReplSession struct {
 	LastElapsed        *time.Duration
 	LastGC             *int
 	Errors             map[string]ErrorLocation
+	Diagnostics        DiagnosticSet
 }
 
 type ErrorLocation struct {

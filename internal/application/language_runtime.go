@@ -538,12 +538,23 @@ func (i *Interpreter) ValidateCurrent() error {
 			return err
 		}
 		for _, name := range undefinedNames(expression, bound, i.runtime().globals) {
-			validationErrors = append(validationErrors, SourceValidationError{Path: script.Path, Line: sourceLine.number, Name: name})
+			errorPath, errorLine := script.Path, sourceLine.number
+			if errorLine > 0 && errorLine <= len(script.Origins) {
+				origin := script.Origins[errorLine-1]
+				if origin.File != "" {
+					errorPath, errorLine = origin.File, origin.Line
+				}
+			}
+			validationErrors = append(validationErrors, SourceValidationError{Path: errorPath, Line: errorLine, Name: name})
 		}
 	}
 	sort.SliceStable(validationErrors, func(left, right int) bool { return validationErrors[left].Line < validationErrors[right].Line })
 	if len(validationErrors) != 0 {
-		return validationErrors
+		diagnostics := make(DiagnosticSet, 0, len(validationErrors))
+		for index, validationErr := range validationErrors {
+			diagnostics = append(diagnostics, Diagnostic{Severity: "error", Phase: "name", File: validationErr.Path, Span: syntaxfront.Span{Line: validationErr.Line, Column: 1}, Message: validationErr.Error(), Order: index})
+		}
+		return diagnostics
 	}
 	return nil
 }

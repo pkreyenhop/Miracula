@@ -361,6 +361,9 @@ func (i *Interpreter) editCommand(arguments []string, out io.Writer) error {
 		return fmt.Errorf("usage: /edit [file]")
 	}
 	path := i.Compiler.CurrentModule
+	if len(arguments) == 0 && len(i.Repl.Diagnostics) != 0 && i.Repl.Diagnostics[0].File != "" {
+		path = i.Repl.Diagnostics[0].File
+	}
 	if len(arguments) == 1 {
 		path = arguments[0]
 		if filepath.Ext(path) == "" {
@@ -446,18 +449,42 @@ func (i *Interpreter) reloadEditedProgram(path string, out io.Writer) error {
 	i.recordLoadResult(path, loadErr)
 	var semanticTypeErrors semantics.TypeErrors
 	if loadErr != nil && !errors.As(loadErr, &semanticTypeErrors) {
+		var diagnostics DiagnosticSet
+		if errors.As(loadErr, &diagnostics) {
+			for _, diagnostic := range diagnostics {
+				diagnosticDisplay := diagnostic.File
+				if workingDirectory, cwdErr := os.Getwd(); cwdErr == nil {
+					if relative, relativeErr := filepath.Rel(workingDirectory, diagnostic.File); relativeErr == nil {
+						diagnosticDisplay = relative
+					}
+				}
+				if _, err := fmt.Fprintf(out, "(line %3d of %q) %s\n", diagnostic.Span.Line, diagnosticDisplay, diagnostic.Message); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
 		return loadErr
 	}
-	firstErrorLine := 0
 	if loadErr != nil {
 		if i.Repl.Errors == nil {
 			i.Repl.Errors = map[string]ErrorLocation{}
 		}
-		firstErrorLine = semanticTypeErrors[0].Line
-		absolute, _ := filepath.Abs(path)
-		i.Repl.Errors[absolute] = ErrorLocation{Path: absolute, Line: firstErrorLine, Column: 1}
 		for _, semanticTypeErr := range semanticTypeErrors {
-			if _, err := fmt.Fprintf(out, "type error in definition of %s\n(line %3d of %q) %s\n", semanticTypeErr.Definition, semanticTypeErr.Line, display, semanticTypeErr.Message); err != nil {
+			errorPath, errorDisplay := semanticTypeErr.File, display
+			if errorPath == "" {
+				errorPath = path
+			}
+			if workingDirectory, cwdErr := os.Getwd(); cwdErr == nil {
+				if relative, relativeErr := filepath.Rel(workingDirectory, errorPath); relativeErr == nil {
+					errorDisplay = relative
+				}
+			}
+			absolute, _ := filepath.Abs(errorPath)
+			if _, exists := i.Repl.Errors[absolute]; !exists {
+				i.Repl.Errors[absolute] = ErrorLocation{Path: absolute, Line: semanticTypeErr.Line, Column: max(1, semanticTypeErr.Column)}
+			}
+			if _, err := fmt.Fprintf(out, "type error in definition of %s\n(line %3d of %q) %s\n", semanticTypeErr.Definition, semanticTypeErr.Line, errorDisplay, semanticTypeErr.Message); err != nil {
 				return err
 			}
 		}
@@ -468,13 +495,22 @@ func (i *Interpreter) reloadEditedProgram(path string, out io.Writer) error {
 		if i.Repl.Errors == nil {
 			i.Repl.Errors = map[string]ErrorLocation{}
 		}
-		first := sourceErrors[0]
-		if firstErrorLine == 0 || first.Line < firstErrorLine {
-			absolute, _ := filepath.Abs(first.Path)
-			i.Repl.Errors[absolute] = ErrorLocation{Path: absolute, Line: first.Line, Column: 1}
+		var validationDiagnostics DiagnosticSet
+		if errors.As(validationErr, &validationDiagnostics) {
+			i.Repl.Diagnostics = stableDiagnostics(append(i.Repl.Diagnostics, validationDiagnostics...))
 		}
 		for _, sourceErr := range sourceErrors {
-			if _, err := fmt.Fprintf(out, "(line %3d of %q) undefined name %q\n", sourceErr.Line, display, sourceErr.Name); err != nil {
+			absolute, _ := filepath.Abs(sourceErr.Path)
+			if _, exists := i.Repl.Errors[absolute]; !exists {
+				i.Repl.Errors[absolute] = ErrorLocation{Path: absolute, Line: sourceErr.Line, Column: 1}
+			}
+			errorDisplay := sourceErr.Path
+			if workingDirectory, cwdErr := os.Getwd(); cwdErr == nil {
+				if relative, relativeErr := filepath.Rel(workingDirectory, sourceErr.Path); relativeErr == nil {
+					errorDisplay = relative
+				}
+			}
+			if _, err := fmt.Fprintf(out, "(line %3d of %q) undefined name %q\n", sourceErr.Line, errorDisplay, sourceErr.Name); err != nil {
 				return err
 			}
 		}

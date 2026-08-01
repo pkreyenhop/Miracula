@@ -898,6 +898,23 @@ func (i *Interpreter) recordError(path string, err error) {
 	if err == nil {
 		return
 	}
+	var diagnostics DiagnosticSet
+	if errors.As(err, &diagnostics) && len(diagnostics) != 0 {
+		i.Repl.Diagnostics = append(DiagnosticSet(nil), diagnostics...)
+		for _, diagnostic := range diagnostics {
+			diagnosticPath := diagnostic.File
+			if absolute, absoluteErr := filepath.Abs(diagnosticPath); absoluteErr == nil {
+				diagnosticPath = absolute
+			}
+			if i.Repl.Errors == nil {
+				i.Repl.Errors = map[string]ErrorLocation{}
+			}
+			if _, exists := i.Repl.Errors[diagnosticPath]; !exists {
+				i.Repl.Errors[diagnosticPath] = ErrorLocation{Path: diagnosticPath, Line: diagnostic.Span.Line, Column: diagnostic.Span.Column}
+			}
+		}
+		return
+	}
 	match := diagnosticLocationPattern.FindStringSubmatch(err.Error())
 	if match == nil {
 		return
@@ -926,6 +943,7 @@ func (i *Interpreter) recordLoadResult(path string, err error) {
 		return
 	}
 	delete(i.Repl.Errors, path)
+	i.Repl.Diagnostics = nil
 }
 
 func (i *Interpreter) heapCommand(arguments []string, out io.Writer) error {
