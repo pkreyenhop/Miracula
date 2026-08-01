@@ -433,7 +433,15 @@ Implementation instructions:
 4. Test cold build, warm no-recompile load, transitive invalidation, corruption,
    and source deletion.
 
-### MISSING-012 — Implement special command-line modes instead of REPL fallback
+### MISSING-012 — Implement special command-line modes instead of REPL fallback ✅
+
+Status: completed. `-make`, `-exports`, and `-sources` now normalize every
+root, build through the dependency/artifact graph, return command-appropriate
+status, and never enter the REPL. Export output uses explicit profiles;
+source output is transitive and omits implicit stdenv. `-exec` evaluates typed
+`main` with `$*` containing the command and arguments, honors `Exit`, and
+`-exec2` records runtime failures in writable `miralog` directories. Obsolete
+flag diagnostics remain, with command-mode and shebang-style coverage.
 
 Manual sections: 27/5, 31/4, and 31/7.
 

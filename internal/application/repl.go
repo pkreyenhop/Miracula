@@ -24,6 +24,13 @@ import (
 
 var ErrEvaluationReported = errors.New("evaluation error already reported")
 
+type ProcessExitError struct{ Status int }
+
+func (e *ProcessExitError) Error() string {
+	return fmt.Sprintf("process exited with status %d", e.Status)
+}
+func (e *ProcessExitError) Is(target error) bool { return target == ErrEvaluationReported }
+
 // Evaluate compiles and evaluates one Miranda expression. Temporary graph
 // cells are always reclaimed, including after parse, type, or runtime errors.
 func (i *Interpreter) Evaluate(ctx context.Context, expression string) (string, error) {
@@ -92,6 +99,14 @@ func (i *Interpreter) evaluateTo(ctx context.Context, expression string, out io.
 	}
 	_, err = fmt.Fprintln(out, text)
 	return false, err
+}
+
+func (i *Interpreter) RunMain(ctx context.Context, out io.Writer) error {
+	_, err := i.evaluateTo(ctx, "main", out)
+	if err == nil && i.Repl.ExitRequested {
+		return &ProcessExitError{Status: i.Repl.ExitStatus}
+	}
+	return err
 }
 
 func isSystemMessage(value languageValue) bool {

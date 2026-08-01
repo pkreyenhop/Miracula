@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 )
 
@@ -75,18 +76,77 @@ func dependencyHashes(root, libraryPath string) (map[string]string, error) {
 	return result, nil
 }
 
+func RelevantSources(root, libraryPath string) ([]string, error) {
+	hashes, err := dependencyHashes(root, libraryPath)
+	if err != nil {
+		return nil, err
+	}
+	root, _ = filepath.Abs(root)
+	paths := []string{root}
+	for path := range hashes {
+		if filepath.Base(path) != "stdenv.m" {
+			paths = append(paths, path)
+		}
+	}
+	sort.Strings(paths)
+	return paths, nil
+}
+
 func exportedTypeProfile(script syntaxfront.Script, program *semantics.Program) map[string]string {
-	profile := map[string]string{}
+	all := map[string]string{}
 	if program == nil {
-		return profile
+		return all
 	}
 	for _, definition := range program.Definitions {
-		profile[definition.Name] = semantics.FormatType(definition.Type)
+		all[definition.Name] = semantics.FormatType(definition.Type)
 	}
 	for name, value := range program.Specifications {
-		profile[name] = semantics.FormatType(value)
+		all[name] = semantics.FormatType(value)
+	}
+	profile, explicit, negative := map[string]string{}, false, map[string]bool{}
+	for _, item := range script.Items {
+		directive, ok := syntaxfront.ParseDirective(item.Text)
+		if !ok || directive.Variant != "export" {
+			continue
+		}
+		explicit = true
+		for _, part := range strings.Fields(directive.Text) {
+			if part == "+" {
+				for name, value := range all {
+					profile[name] = value
+				}
+			} else if strings.HasPrefix(part, "-") {
+				negative[strings.TrimPrefix(part, "-")] = true
+			} else if !strings.HasPrefix(part, "\"") && !strings.HasPrefix(part, "<") {
+				if value, ok := all[part]; ok {
+					profile[part] = value
+				}
+			}
+		}
+	}
+	if !explicit {
+		profile = all
+	}
+	for name := range negative {
+		delete(profile, name)
 	}
 	return profile
+}
+
+func ExportedTypeProfile(script syntaxfront.Script, program *semantics.Program) map[string]string {
+	return exportedTypeProfile(script, program)
+}
+
+func ExportedProfileForPath(path string, program *semantics.Program) (map[string]string, error) {
+	source, diagnostics := syntaxfront.LoadSource(path)
+	if len(diagnostics) != 0 {
+		return nil, errors.New(diagnostics[0].Message)
+	}
+	parsed := syntaxfront.Run(source.Bytes)
+	if len(parsed.Diagnostics) != 0 {
+		return nil, errors.New(parsed.Diagnostics[0].Message)
+	}
+	return exportedTypeProfile(parsed.Script, program), nil
 }
 
 var ErrStaleDump = errors.New("stale compiled dump")
