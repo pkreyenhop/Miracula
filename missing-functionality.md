@@ -382,7 +382,15 @@ Implementation instructions:
 4. Detect cycles and reject incorrect/open includees at the include site.
 5. Make dependency metadata drive reload and object-cache invalidation.
 
-### MISSING-010 — Implement `%free` parameterized scripts
+### MISSING-010 — Implement `%free` parameterized scripts ✅
+
+Status: completed. `%free` signatures are parsed as a complete parameter set;
+include bindings distinguish value `=` from type `==`, require every declared
+parameter exactly once, reject extras, substitute bound type names, and type
+check value expressions before module installation. Bound values enter only
+the includee’s lexical scope. Repeated instantiations receive distinct nominal
+module identities and can be safely aliased apart; numeric and boolean
+operator instantiations execute end to end.
 
 Manual section: 27/4.
 

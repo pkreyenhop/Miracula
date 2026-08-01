@@ -18,6 +18,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/pkreyenhop/miracula/internal/platformsvc"
+	"github.com/pkreyenhop/miracula/internal/semantics"
 	"github.com/pkreyenhop/miracula/internal/syntaxfront"
 )
 
@@ -133,11 +134,15 @@ type languageRuntime struct {
 	libraryPath         string
 	includeLoading      map[string]bool
 	provenance          map[string]sourceProvenance
+	nextModuleInstance  uint64
 	reductions          uint64
 	cells               uint64
 }
 
-type sourceProvenance struct{ Path, Original string }
+type sourceProvenance struct {
+	Path, Original string
+	Instance       uint64
+}
 
 type languageThunk struct {
 	mu         sync.Mutex
@@ -683,6 +688,8 @@ func (r *languageRuntime) installIncludes(base string, source []byte) error {
 			return fmt.Errorf("cyclic include involving %s", path)
 		}
 		r.includeLoading[path] = true
+		r.nextModuleInstance++
+		moduleInstance := r.nextModuleInstance
 		included, diagnostics := syntaxfront.LoadSource(path)
 		if len(diagnostics) > 0 {
 			delete(r.includeLoading, path)
@@ -691,6 +698,67 @@ func (r *languageRuntime) installIncludes(base string, source []byte) error {
 		before := map[string]*languageThunk{}
 		for name, value := range r.globals {
 			before[name] = value
+		}
+		free, err := parseFreeParameters(included.Bytes)
+		if err != nil {
+			delete(r.includeLoading, path)
+			return fmt.Errorf("%s: %w", path, err)
+		}
+		valueBindings, typeBindings, err := parseIncludeBindings(directive.Bindings)
+		if err != nil {
+			delete(r.includeLoading, path)
+			return err
+		}
+		if len(free) == 0 && (len(valueBindings) != 0 || len(typeBindings) != 0) {
+			delete(r.includeLoading, path)
+			return fmt.Errorf("bindings supplied to non-parameterized script %s", path)
+		}
+		for name, signature := range free {
+			if signature == "type" {
+				if typeBindings[name] == "" {
+					delete(r.includeLoading, path)
+					return fmt.Errorf("missing type binding for free identifier %s", name)
+				}
+				continue
+			}
+			expressionText, exists := valueBindings[name]
+			if !exists {
+				delete(r.includeLoading, path)
+				return fmt.Errorf("missing value binding for free identifier %s", name)
+			}
+			if _, ok := syntaxfront.InfixBinding(map[string]string{"+": "plus", "-": "minus", "*": "star", "/": "slash", "&": "ampersand", "\\/": "or"}[expressionText]); ok {
+				expressionText = "(" + expressionText + ")"
+			}
+			for typeName, replacement := range typeBindings {
+				signature = strings.ReplaceAll(signature, typeName, replacement)
+			}
+			if err := checkBoundExpression(expressionText, signature); err != nil {
+				delete(r.includeLoading, path)
+				return fmt.Errorf("binding %s: %w", name, err)
+			}
+			expression, err := parseRuntimeExpression(expressionText)
+			if err != nil {
+				delete(r.includeLoading, path)
+				return err
+			}
+			value, err := r.eval(context.Background(), expression, r.globals)
+			if err != nil {
+				delete(r.includeLoading, path)
+				return err
+			}
+			r.globals[name] = immediate(value)
+		}
+		for name := range valueBindings {
+			if _, ok := free[name]; !ok {
+				delete(r.includeLoading, path)
+				return fmt.Errorf("unknown free binding %s", name)
+			}
+		}
+		for name := range typeBindings {
+			if free[name] != "type" {
+				delete(r.includeLoading, path)
+				return fmt.Errorf("unknown free type binding %s", name)
+			}
 		}
 		if parsed := syntaxfront.Run(included.Bytes); len(parsed.Diagnostics) != 0 {
 			delete(r.includeLoading, path)
@@ -782,7 +850,7 @@ func (r *languageRuntime) installIncludes(base string, source []byte) error {
 				delete(r.globals, alias.Old)
 				delete(exports, alias.Old)
 				exports[alias.New] = true
-				r.provenance[alias.New] = sourceProvenance{Path: path, Original: alias.Old}
+				r.provenance[alias.New] = sourceProvenance{Path: path, Original: alias.Old, Instance: moduleInstance}
 			}
 		}
 		for name := range exports {
@@ -791,40 +859,90 @@ func (r *languageRuntime) installIncludes(base string, source []byte) error {
 				return fmt.Errorf("included name %s clashes with an existing binding", name)
 			}
 			if _, ok := r.provenance[name]; !ok {
-				r.provenance[name] = sourceProvenance{Path: path, Original: name}
+				r.provenance[name] = sourceProvenance{Path: path, Original: name, Instance: moduleInstance}
 			}
 		}
 		delete(r.includeLoading, path)
-		if start := strings.Index(directive.Text, "{"); start >= 0 {
-			if end := strings.LastIndex(directive.Text, "}"); end > start {
-				for _, binding := range strings.Split(directive.Text[start+1:end], ";") {
-					if strings.Contains(binding, "==") {
-						continue
-					}
-					pair := strings.SplitN(strings.TrimSpace(binding), "=", 2)
-					if len(pair) != 2 {
-						continue
-					}
-					name := strings.TrimSpace(pair[0])
-					expression := strings.TrimSpace(pair[1])
-					if expression == "num" || expression == "type" {
-						continue
-					}
-					if _, ok := syntaxfront.InfixBinding(map[string]string{"+": "plus", "-": "minus", "*": "star", "/": "slash", "++": "append"}[expression]); ok {
-						expression = "(" + expression + ")"
-					}
-					parsed, err := parseRuntimeExpression(expression)
-					if err != nil {
-						return err
-					}
-					value, err := r.eval(context.Background(), parsed, r.globals)
-					if err != nil {
-						return err
-					}
-					r.globals[name] = immediate(value)
-				}
-			}
+	}
+	return nil
+}
+
+func parseFreeParameters(source []byte) (map[string]string, error) {
+	text := string(source)
+	marker := strings.Index(text, "%free")
+	if marker < 0 {
+		return map[string]string{}, nil
+	}
+	if strings.Index(text[marker+5:], "%free") >= 0 {
+		return nil, errors.New("multiple %free directives")
+	}
+	start := strings.Index(text[marker:], "{")
+	if start < 0 {
+		return nil, errors.New("malformed %free directive")
+	}
+	start += marker
+	end := strings.Index(text[start+1:], "}")
+	if end < 0 {
+		return nil, errors.New("unterminated %free directive")
+	}
+	body := text[start+1 : start+1+end]
+	parameters := map[string]string{}
+	for _, declaration := range strings.FieldsFunc(body, func(r rune) bool { return r == ';' || r == '\n' }) {
+		parts := strings.SplitN(strings.TrimSpace(declaration), "::", 2)
+		if len(parts) != 2 {
+			continue
 		}
+		signature := strings.TrimSpace(parts[1])
+		for _, rawName := range strings.Split(parts[0], ",") {
+			fields := strings.Fields(strings.TrimSpace(rawName))
+			if len(fields) == 0 {
+				continue
+			}
+			name := fields[0]
+			if parameters[name] != "" {
+				return nil, fmt.Errorf("duplicate free identifier %s", name)
+			}
+			parameters[name] = signature
+		}
+	}
+	return parameters, nil
+}
+
+func parseIncludeBindings(text string) (map[string]string, map[string]string, error) {
+	values, types := map[string]string{}, map[string]string{}
+	start, end := strings.Index(text, "{"), strings.LastIndex(text, "}")
+	if start < 0 || end < start {
+		return values, types, nil
+	}
+	for _, raw := range strings.Split(text[start+1:end], ";") {
+		binding := strings.TrimSpace(raw)
+		if binding == "" {
+			continue
+		}
+		if parts := strings.SplitN(binding, "==", 2); len(parts) == 2 {
+			fields := strings.Fields(strings.TrimSpace(parts[0]))
+			if len(fields) == 0 {
+				return nil, nil, errors.New("invalid type binding")
+			}
+			types[fields[0]] = strings.TrimSpace(parts[1])
+			continue
+		}
+		parts := strings.SplitN(binding, "=", 2)
+		if len(parts) != 2 {
+			return nil, nil, fmt.Errorf("invalid free binding %q", binding)
+		}
+		values[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+	}
+	return values, types, nil
+}
+
+func checkBoundExpression(expression, signature string) error {
+	parsed := syntaxfront.Run([]byte("__free :: " + signature + "\n__free = " + expression + "\n"))
+	if len(parsed.Diagnostics) != 0 {
+		return errors.New(parsed.Diagnostics[0].Message)
+	}
+	if typeErrors := semantics.CheckAll(parsed.Script); len(typeErrors) != 0 {
+		return typeErrors
 	}
 	return nil
 }

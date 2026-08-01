@@ -29,10 +29,18 @@ func ParseDirective(line string) (Directive, bool) {
 		directive.FromMiralib = strings.HasPrefix(path, "<") && strings.HasSuffix(path, ">")
 		directive.Path = strings.Trim(path, `"<>`)
 		if variant == "include" {
+			inBindings := false
 			for _, field := range fields[2:] {
 				if strings.HasPrefix(field, "{") {
 					directive.Bindings = directive.Text
-					break
+					inBindings = !strings.Contains(field, "}")
+					continue
+				}
+				if inBindings {
+					if strings.Contains(field, "}") {
+						inBindings = false
+					}
+					continue
 				}
 				if strings.HasPrefix(field, "-") {
 					directive.Aliases = append(directive.Aliases, Alias{Old: field[1:], Suppress: true})

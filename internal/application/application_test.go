@@ -457,6 +457,39 @@ func TestIncludeGraphExportsAliasesAndCycles(t *testing.T) {
 	}
 }
 
+func TestParameterizedFreeModuleInstantiations(t *testing.T) {
+	directory := t.TempDir()
+	module := "%export pair\n%free { elem::type; zero::elem; combine::elem->elem->elem; }\npair x y = combine x y\n"
+	if err := os.WriteFile(filepath.Join(directory, "parameterized.m"), []byte(module), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	source := []byte("%include \"parameterized\" {elem==num;zero=0;combine=+;} addpair/pair\n%include \"parameterized\" {elem==bool;zero=False;combine=&;} andpair/pair\nanswer = (addpair 2 3,andpair True False)\n")
+	runtime := newLanguageRuntime(io.Discard)
+	if err := runtime.installIncludes(directory, source); err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.installSource(source); err != nil {
+		t.Fatal(err)
+	}
+	parsed, _ := parseRuntimeExpression("answer")
+	value, err := runtime.evaluate(context.Background(), parsed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := renderLanguage(context.Background(), value)
+	if err != nil || got != "(5,False)" {
+		t.Fatalf("answer = %q, %v", got, err)
+	}
+	if runtime.provenance["addpair"].Instance == runtime.provenance["andpair"].Instance {
+		t.Fatal("repeated parameterized modules reused a nominal instance")
+	}
+	for _, bad := range []string{"%include \"parameterized\" {elem==num;zero=0;}\n", "%include \"parameterized\" {elem==num;zero=False;combine=+;}\n", "%include \"parameterized\" {elem==num;zero=0;combine=+;extra=1;}\n"} {
+		if err := newLanguageRuntime(io.Discard).installIncludes(directory, []byte(bad)); err == nil {
+			t.Fatalf("invalid free instantiation accepted: %s", bad)
+		}
+	}
+}
+
 func TestStrictConstructorFieldForcesArgument(t *testing.T) {
 	runtime := newLanguageRuntime(io.Discard)
 	if err := runtime.installSource([]byte("box ::= Lazy num | Strict num!\ntag (Lazy x) = 1\ntag (Strict x) = 1\n")); err != nil {
