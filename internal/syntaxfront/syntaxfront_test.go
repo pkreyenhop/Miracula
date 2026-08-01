@@ -3,6 +3,7 @@ package syntaxfront
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -51,6 +52,43 @@ func TestLoadSourceExpandsNestedInsert(t *testing.T) {
 	}
 	if string(source.Bytes) != "b = 1\na = b\nc = b+1\n" {
 		t.Fatalf("%q", source.Bytes)
+	}
+}
+
+func TestInsertIndentSourceMapAndLiterateRules(t *testing.T) {
+	directory := t.TempDir()
+	fragment := filepath.Join(directory, "fragment")
+	root := filepath.Join(directory, "root.m")
+	if err := os.WriteFile(fragment, []byte("x = 1\ny = 2\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(root, []byte("f = value\n  where\n  %insert \"fragment\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	source, diagnostics := LoadSource(root)
+	if len(diagnostics) != 0 {
+		t.Fatal(diagnostics)
+	}
+	if string(source.Bytes) != "f = value\n  where\n  x = 1\n  y = 2\n" {
+		t.Fatalf("inserted source = %q", source.Bytes)
+	}
+	if len(source.Origins) < 4 || source.Origins[2].File != fragment || source.Origins[2].Line != 1 {
+		t.Fatalf("origins = %+v", source.Origins)
+	}
+
+	literate := filepath.Join(directory, "example.lit.m")
+	if err := os.WriteFile(literate, []byte("Narrative\n> x = 1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, diagnostics := LoadSource(literate); len(diagnostics) == 0 || !strings.Contains(diagnostics[0].Message, "blank line") {
+		t.Fatalf("literate diagnostics = %+v", diagnostics)
+	}
+	if err := os.WriteFile(literate, []byte("Narrative\n\n> x = 1 _\b< 2\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	normalized, diagnostics := LoadSource(literate)
+	if len(diagnostics) != 0 || !strings.Contains(string(normalized.Bytes), "x = 1 <= 2") {
+		t.Fatalf("normalized=%q diagnostics=%+v", normalized.Bytes, diagnostics)
 	}
 }
 func TestLexerFamilies(t *testing.T) {

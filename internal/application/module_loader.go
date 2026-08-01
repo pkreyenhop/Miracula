@@ -32,6 +32,23 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 	if len(diagnostics) != 0 {
 		return nil, fmt.Errorf("%s:%d:%d: %s", diagnostics[0].File, diagnostics[0].Span.Line, diagnostics[0].Span.Column, diagnostics[0].Message)
 	}
+	if i.Config.List && i.Output != nil {
+		listing := true
+		for _, line := range strings.Split(string(source.Bytes), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if trimmed == "%nolist" {
+				listing = false
+				continue
+			}
+			if trimmed == "%list" {
+				listing = true
+				continue
+			}
+			if listing {
+				fmt.Fprintln(i.Output, line)
+			}
+		}
+	}
 	for _, line := range strings.Split(string(source.Bytes), "\n") {
 		trimmed := strings.TrimSpace(line)
 		for _, suffix := range []string{"+", "-", "*", "/", "=", ":", "++", "div", "mod"} {

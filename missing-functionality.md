@@ -467,7 +467,15 @@ Implementation instructions:
    when that writable directory exists.
 7. Add shebang integration tests and retain `-exp`/`-log` obsolete diagnostics.
 
-### MISSING-013 — Complete `%insert`, listing directives, and literate syntax
+### MISSING-013 — Complete `%insert`, listing directives, and literate syntax ✅
+
+Status: completed. Recursive `%insert` expansion now preserves static relative
+resolution, inherited indentation, cycle errors, and an origin map back to
+each physical source line. Compiler listing honors per-source `%list` and
+`%nolist` transitions. Literate detection supports both `.lit.m` and a first
+column `>`, enforces blank separation between narrative and formal groups,
+and normalizes nroff-underlined keywords and the documented `<=`/`>=`
+comparison spellings before lexing.
 
 Manual sections: 17 and 29.
 

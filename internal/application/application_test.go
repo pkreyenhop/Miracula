@@ -137,6 +137,23 @@ func TestCompiledArtifactWarmLoadAndDependencyInvalidation(t *testing.T) {
 	}
 }
 
+func TestSourceListingDirectives(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "listing.m")
+	if err := os.WriteFile(path, []byte("a = 1\n%nolist\nb = 2\n%list\nc = 3\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	interpreter := New(platformsvc.NativeServices{})
+	interpreter.Config.List, interpreter.Output = true, &output
+	if _, err := interpreter.LoadProgram(path); err != nil {
+		t.Fatal(err)
+	}
+	listed := output.String()
+	if !strings.Contains(listed, "a = 1") || !strings.Contains(listed, "c = 3") || strings.Contains(listed, "b = 2") {
+		t.Fatalf("listing = %q", listed)
+	}
+}
+
 func TestProductionPipelineComputesExpression(t *testing.T) {
 	i := New(platformsvc.NativeServices{})
 	parsed := syntaxfront.Run([]byte("main = 1+2\n"))

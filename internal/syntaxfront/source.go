@@ -8,14 +8,19 @@ import (
 )
 
 type Position struct{ Line, Column int }
+type Origin struct {
+	File string
+	Line int
+}
 type Source struct {
 	Bytes      []byte
 	LineStarts []int
 	Literate   bool
+	Origins    []Origin
 }
 
 func NewSource(raw []byte, literateName bool) Source {
-	b := append([]byte(nil), raw...)
+	b := normalizeNroffUnderlining(raw)
 	lit := literateName || (len(b) > 0 && b[0] == '>')
 	if lit {
 		blankProse(b)
@@ -26,31 +31,38 @@ func NewSource(raw []byte, literateName bool) Source {
 			starts = append(starts, i+1)
 		}
 	}
-	return Source{b, starts, lit}
+	return Source{Bytes: b, LineStarts: starts, Literate: lit}
 }
 
 // LoadSource expands source-local %insert directives recursively. Includes
 // remain module declarations and are owned by semantic module loading.
 func LoadSource(path string) (Source, []Diagnostic) {
-	bytes, diagnostics := loadSource(path, map[string]bool{})
-	return NewSource(bytes, strings.HasSuffix(path, ".lit.m")), diagnostics
+	bytes, origins, diagnostics := loadSource(path, map[string]bool{}, "")
+	literate := strings.HasSuffix(path, ".lit.m") || len(bytes) > 0 && bytes[0] == '>'
+	if literate {
+		diagnostics = append(diagnostics, validateLiterateSeparation(bytes, path)...)
+	}
+	source := NewSource(bytes, literate)
+	source.Origins = origins
+	return source, diagnostics
 }
 
-func loadSource(path string, active map[string]bool) ([]byte, []Diagnostic) {
+func loadSource(path string, active map[string]bool, inheritedIndent string) ([]byte, []Origin, []Diagnostic) {
 	absolute, err := filepath.Abs(path)
 	if err != nil {
-		return nil, []Diagnostic{{Severity: "error", Message: err.Error(), File: path}}
+		return nil, nil, []Diagnostic{{Severity: "error", Message: err.Error(), File: path}}
 	}
 	if active[absolute] {
-		return nil, []Diagnostic{{Severity: "error", Message: "recursive insert", File: path}}
+		return nil, nil, []Diagnostic{{Severity: "error", Message: "recursive insert", File: path}}
 	}
 	raw, err := os.ReadFile(absolute)
 	if err != nil {
-		return nil, []Diagnostic{{Severity: "error", Message: "insert file not found", File: path}}
+		return nil, nil, []Diagnostic{{Severity: "error", Message: "insert file not found", File: path}}
 	}
 	active[absolute] = true
 	defer delete(active, absolute)
 	var output []byte
+	var origins []Origin
 	var diagnostics []Diagnostic
 	lines := strings.SplitAfter(string(raw), "\n")
 	offset := 0
@@ -62,16 +74,64 @@ func loadSource(path string, active map[string]bool) ([]byte, []Diagnostic) {
 				diagnostics = append(diagnostics, Diagnostic{"error", "invalid insert directive", path, Span{offset, offset + len(line), lineIndex + 1, 1}})
 			} else {
 				insertedPath := filepath.Join(filepath.Dir(absolute), directive.Path)
-				inserted, nested := loadSource(insertedPath, active)
+				indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+				inserted, insertedOrigins, nested := loadSource(insertedPath, active, inheritedIndent+indent)
 				output = append(output, inserted...)
+				origins = append(origins, insertedOrigins...)
 				diagnostics = append(diagnostics, nested...)
 			}
 		} else {
+			if inheritedIndent != "" && strings.TrimSpace(line) != "" {
+				line = inheritedIndent + line
+			}
 			output = append(output, line...)
+			origins = append(origins, Origin{File: absolute, Line: lineIndex + 1})
 		}
 		offset += len(line)
 	}
-	return output, diagnostics
+	return output, origins, diagnostics
+}
+
+func normalizeNroffUnderlining(raw []byte) []byte {
+	result := make([]byte, 0, len(raw))
+	for index := 0; index < len(raw); {
+		if index+2 < len(raw) && raw[index] == '_' && raw[index+1] == '\b' {
+			symbol := raw[index+2]
+			if symbol == '>' {
+				result = append(result, '>', '=')
+			} else if symbol == '<' {
+				result = append(result, '<', '=')
+			} else {
+				result = append(result, symbol)
+			}
+			index += 3
+			continue
+		}
+		result = append(result, raw[index])
+		index++
+	}
+	return result
+}
+
+func validateLiterateSeparation(raw []byte, path string) []Diagnostic {
+	lines := strings.Split(string(raw), "\n")
+	previousKind, blank := -1, true
+	var diagnostics []Diagnostic
+	for index, line := range lines {
+		if strings.TrimSpace(line) == "" {
+			blank = true
+			continue
+		}
+		kind := 0
+		if strings.HasPrefix(line, ">") {
+			kind = 1
+		}
+		if previousKind >= 0 && kind != previousKind && !blank {
+			diagnostics = append(diagnostics, Diagnostic{Severity: "error", Message: "literate narrative and formal text must be separated by a blank line", File: path, Span: Span{Line: index + 1, Column: 1}})
+		}
+		previousKind, blank = kind, false
+	}
+	return diagnostics
 }
 
 func blankProse(b []byte) {
