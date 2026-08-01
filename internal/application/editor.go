@@ -18,6 +18,8 @@ import (
 
 type LineEditor interface {
 	ReadLine(prompt string) (string, error)
+	ReadKey(prompt string) (byte, error)
+	ReadChoice(prompt string) (string, error)
 	SetCompleter(func(string) []string)
 	LoadHistory(path string) error
 	SaveHistory() error
@@ -272,6 +274,35 @@ func (e *terminalLineEditor) ReadLine(prompt string) (string, error) {
 	}
 }
 
+func (e *terminalLineEditor) ReadKey(prompt string) (byte, error) {
+	if _, err := io.WriteString(e.output, prompt); err != nil {
+		return 0, err
+	}
+	return e.input.ReadByte()
+}
+
+// ReadChoice is a line read which also recognizes a standalone Escape. It is
+// used by modal menus without changing Escape handling in the normal REPL.
+func (e *terminalLineEditor) ReadChoice(prompt string) (string, error) {
+	if _, err := io.WriteString(e.output, prompt); err != nil {
+		return "", err
+	}
+	key, err := e.input.ReadByte()
+	if err != nil {
+		return "", err
+	}
+	if key == 27 {
+		if e.raw {
+			_, _ = io.WriteString(e.output, "\r\n")
+		}
+		return "\x1b", nil
+	}
+	if err = e.input.UnreadByte(); err != nil {
+		return "", err
+	}
+	return e.ReadLine("")
+}
+
 func identifierPrefix(line []rune, cursor int) (string, bool) {
 	start := cursor
 	for start > 0 && isIdentifierRune(line[start-1]) {
@@ -415,6 +446,24 @@ func (i *Interpreter) reloadEditedProgram(path string, out io.Writer) error {
 	if loadErr != nil {
 		return loadErr
 	}
+	firstErrorLine := 0
+	if typeErr := i.ValidateCurrentTypes(); typeErr != nil {
+		var sourceTypeErrors SourceTypeErrors
+		if !errors.As(typeErr, &sourceTypeErrors) || len(sourceTypeErrors) == 0 {
+			return typeErr
+		}
+		if i.Repl.Errors == nil {
+			i.Repl.Errors = map[string]ErrorLocation{}
+		}
+		firstErrorLine = sourceTypeErrors[0].Line
+		absolute, _ := filepath.Abs(sourceTypeErrors[0].Path)
+		i.Repl.Errors[absolute] = ErrorLocation{Path: absolute, Line: firstErrorLine, Column: 1}
+		for _, sourceTypeErr := range sourceTypeErrors {
+			if _, err := fmt.Fprintf(out, "type error in definition of %s\n(line %3d of %q) %s\n", sourceTypeErr.Definition, sourceTypeErr.Line, display, sourceTypeErr.Error()); err != nil {
+				return err
+			}
+		}
+	}
 	validationErr := i.ValidateCurrent()
 	var sourceErrors SourceValidationErrors
 	if errors.As(validationErr, &sourceErrors) && len(sourceErrors) != 0 {
@@ -422,8 +471,10 @@ func (i *Interpreter) reloadEditedProgram(path string, out io.Writer) error {
 			i.Repl.Errors = map[string]ErrorLocation{}
 		}
 		first := sourceErrors[0]
-		absolute, _ := filepath.Abs(first.Path)
-		i.Repl.Errors[absolute] = ErrorLocation{Path: absolute, Line: first.Line, Column: 1}
+		if firstErrorLine == 0 || first.Line < firstErrorLine {
+			absolute, _ := filepath.Abs(first.Path)
+			i.Repl.Errors[absolute] = ErrorLocation{Path: absolute, Line: first.Line, Column: 1}
+		}
 		for _, sourceErr := range sourceErrors {
 			if _, err := fmt.Fprintf(out, "(line %3d of %q) undefined name %q\n", sourceErr.Line, display, sourceErr.Name); err != nil {
 				return err

@@ -350,6 +350,14 @@ or the editor subprocess (F5).
 - Works with `LibraryPath` pointing at the installed `miralib` (asset `manual`
   exists in the repo).
 
+The Go manual browser pages long menus and sections in the style of `more`.
+Press Space for the next page, Enter for the next line, `b` for the previous
+page, `/` to search forward, `n` to repeat the search, and `q` to leave the
+current display. Escape also leaves the current display. Finishing or leaving
+a chapter redisplays the manual menu. At the menu, Escape exits the manual.
+Entering `/text` at the menu searches case-insensitively through every manual
+chapter and displays the matching chapter, line number, and text.
+
 ---
 
 ## F9 — Full `/` command-set parity

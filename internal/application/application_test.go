@@ -133,6 +133,18 @@ func TestREPLRecoversAfterEvaluationError(t *testing.T) {
 	}
 }
 
+func TestREPLReportsActualTypeForReverseNonList(t *testing.T) {
+	i := New(platformsvc.NativeServices{})
+	var out bytes.Buffer
+	if err := i.REPL(context.Background(), strings.NewReader("reverse 2\n/q\n"), &out); err != nil {
+		t.Fatal(err)
+	}
+	want := "type error in expression\ncannot unify num with [*]\n"
+	if out.String() != want {
+		t.Fatalf("output = %q, want %q", out.String(), want)
+	}
+}
+
 func TestLanguageRuntimeSupportsLazyHigherOrderAndBignumValues(t *testing.T) {
 	i := New(platformsvc.NativeServices{})
 	for expression, expected := range map[string]string{

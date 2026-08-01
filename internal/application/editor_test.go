@@ -147,6 +147,60 @@ func TestReloadEditedProgramReportsSourceErrorImmediately(t *testing.T) {
 	}
 }
 
+func TestReloadEditedProgramReportsGuardedDefinitionTypeError(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "script.m")
+	source := strings.Repeat("\n", 18) + "f1 x = reverse x, if x < 1000\n"
+	if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	i := New(&editorServices{})
+	if err := i.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := i.reloadEditedProgram(path, &output); err != nil {
+		t.Fatal(err)
+	}
+	workingDirectory, _ := os.Getwd()
+	display, _ := filepath.Rel(workingDirectory, path)
+	want := fmt.Sprintf("compiling %s\nchecking types in %s\ntype error in definition of f1\n(line %3d of %q) cannot unify num with [*]\n", display, display, 19, display)
+	if output.String() != want {
+		t.Fatalf("reload output = %q, want %q", output.String(), want)
+	}
+	absolute, _ := filepath.Abs(path)
+	if location := i.Repl.Errors[absolute]; location.Line != 19 {
+		t.Fatalf("recorded location = %+v", location)
+	}
+}
+
+func TestReloadEditedProgramReportsTypeAndNameErrors(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "script.m")
+	source := "f1 x = reverse x, if x < 1000\nadd1 x = i22\n\nadd2 x = i33\n"
+	if err := os.WriteFile(path, []byte(source), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	i := New(&editorServices{})
+	if err := i.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := i.reloadEditedProgram(path, &output); err != nil {
+		t.Fatal(err)
+	}
+	workingDirectory, _ := os.Getwd()
+	display, _ := filepath.Rel(workingDirectory, path)
+	want := fmt.Sprintf("compiling %s\nchecking types in %s\ntype error in definition of f1\n(line %3d of %q) cannot unify num with [*]\n(line %3d of %q) undefined name %q\n(line %3d of %q) undefined name %q\n", display, display, 1, display, 2, display, "i22", 4, display, "i33")
+	if output.String() != want {
+		t.Fatalf("reload output = %q, want %q", output.String(), want)
+	}
+	absolute, _ := filepath.Abs(path)
+	if location := i.Repl.Errors[absolute]; location.Line != 1 {
+		t.Fatalf("recorded location = %+v", location)
+	}
+}
+
 func TestLineEditorDeleteHomeAndEnd(t *testing.T) {
 	input := bytes.NewBuffer([]byte{'a', 'c', 27, '[', 'H', 27, '[', 'C', 'b', 27, '[', 'F', 27, '[', 'D', 27, '[', '3', '~', '\n'})
 	editor, err := NewLineEditor(input, io.Discard)

@@ -87,6 +87,24 @@ func TestIdentifierQueries(t *testing.T) {
 	}
 }
 
+func TestIdentifierQueriesFindStandardEnvironmentDefinitions(t *testing.T) {
+	i := queryInterpreter()
+	path := "/tmp/miralib/stdenv.m"
+	i.Scripts.Put(Script{Path: path, Source: []byte("Some documentation.\n\n> reverse :: [*]->[*]\n> reverse = foldl (converse(:)) []\n")})
+	definition, foundPath, ok := i.findDefinition("reverse")
+	if !ok || foundPath != path || definition.Expression.Span.Line != 4 {
+		t.Fatalf("definition = %+v, path = %q, ok = %v", definition, foundPath, ok)
+	}
+	var output bytes.Buffer
+	if err := i.handleQuery("?reverse", &output); err != nil {
+		t.Fatal(err)
+	}
+	want := "reverse :: [*]->[*] ||defined in \"/tmp/miralib/stdenv.m\" line 4\n"
+	if output.String() != want {
+		t.Fatalf("finger = %q, want %q", output.String(), want)
+	}
+}
+
 func TestIdentifierQueryDiagnostics(t *testing.T) {
 	i := queryInterpreter()
 	for query, want := range map[string]string{

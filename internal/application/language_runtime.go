@@ -33,6 +33,33 @@ const (
 	valueFunction
 )
 
+type languageTypeMismatch struct {
+	actual, expected string
+}
+
+func (e *languageTypeMismatch) Error() string { return "list expected" }
+
+func listTypeMismatch(value languageValue) error {
+	actual := "?"
+	switch value.kind {
+	case valueNumber:
+		actual = "num"
+	case valueFloat:
+		actual = "num"
+	case valueBool:
+		actual = "bool"
+	case valueString:
+		actual = "[char]"
+	case valueList:
+		actual = "[*]"
+	case valueTuple:
+		actual = "(**,**)"
+	case valueFunction:
+		actual = "*->**"
+	}
+	return &languageTypeMismatch{actual: actual, expected: "[*]"}
+}
+
 type languageValue struct {
 	kind  valueKind
 	num   *big.Int
@@ -277,6 +304,133 @@ func (i *Interpreter) ValidateCurrent() error {
 		return validationErrors
 	}
 	return nil
+}
+
+type SourceTypeError struct {
+	Path       string
+	Line       int
+	Definition string
+	Actual     string
+	Expected   string
+}
+
+func (e SourceTypeError) Error() string {
+	return fmt.Sprintf("cannot unify %s with %s", e.Actual, e.Expected)
+}
+
+type SourceTypeErrors []SourceTypeError
+
+func (e SourceTypeErrors) Error() string {
+	if len(e) == 0 {
+		return "source type validation failed"
+	}
+	return e[0].Error()
+}
+
+// ValidateCurrentTypes checks constraints which span a guarded definition's
+// result and guard. The runtime parser deliberately separates those pieces,
+// so they must share one parameter environment here.
+func (i *Interpreter) ValidateCurrentTypes() error {
+	script, ok := i.Scripts.Scripts[i.Compiler.CurrentModule]
+	if !ok {
+		return errors.New("no current script")
+	}
+	var validationErrors SourceTypeErrors
+	for _, sourceLine := range logicalSourceLineRecords(script.Source) {
+		trimmed := strings.TrimSpace(sourceLine.text)
+		separator := strings.Index(trimmed, "=")
+		if separator < 0 || strings.Contains(trimmed[:separator], "::") {
+			continue
+		}
+		left, right := strings.TrimSpace(trimmed[:separator]), strings.TrimSpace(trimmed[separator+1:])
+		lhs := syntaxfront.Run([]byte(left + " = 0\n"))
+		if len(lhs.Script.Items) != 1 {
+			continue
+		}
+		name, patterns, valid := runtimePatterns(lhs.Script.Items[0].LHS)
+		if !valid {
+			continue
+		}
+		constraints := map[string]string{}
+		for _, pattern := range patterns {
+			if pattern.Variant == "name" {
+				constraints[pattern.Text] = ""
+			}
+		}
+		bodyText, guardText := right, ""
+		if comma := strings.LastIndex(right, ","); comma >= 0 {
+			qualifier := strings.TrimSpace(right[comma+1:])
+			if strings.HasPrefix(qualifier, "if ") {
+				bodyText = strings.TrimSpace(right[:comma])
+				guardText = strings.TrimSpace(strings.TrimPrefix(qualifier, "if "))
+			}
+		}
+		// Check the guard first, matching Miranda's diagnostic orientation:
+		// the guard establishes num before the body requires a list.
+		for _, text := range []string{guardText, bodyText} {
+			if text == "" {
+				continue
+			}
+			expression, err := parseRuntimeExpression(text)
+			if err != nil {
+				continue
+			}
+			if actual, expected, conflict := constrainSourceExpression(expression, constraints); conflict {
+				validationErrors = append(validationErrors, SourceTypeError{Path: script.Path, Line: sourceLine.number, Definition: name, Actual: actual, Expected: expected})
+				break
+			}
+		}
+	}
+	if len(validationErrors) != 0 {
+		return validationErrors
+	}
+	return nil
+}
+
+func constrainSourceExpression(expression syntaxfront.Expr, constraints map[string]string) (string, string, bool) {
+	constrain := func(value syntaxfront.Expr, expected string) (string, string, bool) {
+		if value.Variant != "name" {
+			return "", "", false
+		}
+		actual, tracked := constraints[value.Text]
+		if !tracked {
+			return "", "", false
+		}
+		if actual != "" && actual != expected {
+			return actual, expected, true
+		}
+		constraints[value.Text] = expected
+		return "", "", false
+	}
+	if expression.Variant == "infix" {
+		switch expression.Text {
+		case "<", ">", "<=", ">=", "+", "-", "*", "/", "div", "mod":
+			if actual, expected, conflict := constrain(*expression.Head, "num"); conflict {
+				return actual, expected, true
+			}
+			if actual, expected, conflict := constrain(*expression.Tail, "num"); conflict {
+				return actual, expected, true
+			}
+		}
+	}
+	if expression.Variant == "application" && expression.Func != nil && expression.Arg != nil && expression.Func.Variant == "name" && expression.Func.Text == "reverse" {
+		if actual, expected, conflict := constrain(*expression.Arg, "[*]"); conflict {
+			return actual, expected, true
+		}
+	}
+	for _, child := range []*syntaxfront.Expr{expression.Func, expression.Arg, expression.Head, expression.Tail, expression.Step, expression.To, expression.Body} {
+		if child != nil {
+			if actual, expected, conflict := constrainSourceExpression(*child, constraints); conflict {
+				return actual, expected, true
+			}
+		}
+	}
+	for _, item := range expression.Items {
+		if actual, expected, conflict := constrainSourceExpression(item, constraints); conflict {
+			return actual, expected, true
+		}
+	}
+	return "", "", false
 }
 
 type SourceValidationError struct {
@@ -978,7 +1132,7 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 					return languageValue{}, false, tailErr
 				}
 				if tail.kind != valueList {
-					return languageValue{}, false, errors.New("list expected")
+					return languageValue{}, false, listTypeMismatch(tail)
 				}
 				return tail.list.at(ctx, index-1)
 			}}}, nil
@@ -1538,7 +1692,7 @@ func (r *languageRuntime) installBuiltins() {
 	}})
 	r.builtin("take", curry2(func(ctx context.Context, count, input languageValue) (languageValue, error) {
 		if input.kind != valueList || input.list == nil {
-			return languageValue{}, errors.New("list expected")
+			return languageValue{}, listTypeMismatch(input)
 		}
 		n, e := numberValue(count)
 		if e != nil {
@@ -1562,7 +1716,7 @@ func (r *languageRuntime) installBuiltins() {
 	}))
 	r.builtin("map", curry2(func(ctx context.Context, function, input languageValue) (languageValue, error) {
 		if input.kind != valueList {
-			return languageValue{}, errors.New("list expected")
+			return languageValue{}, listTypeMismatch(input)
 		}
 		return languageValue{kind: valueList, list: &lazyList{next: func(ctx context.Context, index int) (languageValue, bool, error) {
 			v, ok, e := input.list.at(ctx, index)
@@ -1831,7 +1985,7 @@ const maxMaterializedList = 1_000_000
 
 func finiteList(ctx context.Context, value languageValue, limit int) ([]languageValue, error) {
 	if value.kind != valueList || value.list == nil {
-		return nil, errors.New("list expected")
+		return nil, listTypeMismatch(value)
 	}
 	var out []languageValue
 	for index := 0; index < limit; index++ {

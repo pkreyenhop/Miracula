@@ -339,12 +339,23 @@ func (i *Interpreter) handleQuery(line string, out io.Writer) error {
 func (i *Interpreter) findDefinition(name string) (semantics.TypedDefinition, string, bool) {
 	path := i.Compiler.CurrentModule
 	program := i.Programs[path]
-	if program == nil {
-		return semantics.TypedDefinition{}, "", false
+	if program != nil {
+		for _, definition := range program.Definitions {
+			if definition.Name == name {
+				return definition, path, true
+			}
+		}
 	}
-	for _, definition := range program.Definitions {
-		if definition.Name == name {
-			return definition, path, true
+	paths := make([]string, 0, len(i.Scripts.Scripts))
+	for candidate := range i.Scripts.Scripts {
+		if candidate != path {
+			paths = append(paths, candidate)
+		}
+	}
+	sort.Strings(paths)
+	for _, candidate := range paths {
+		if line, ok := sourceDefinitionLine(i.Scripts.Scripts[candidate].Source, name); ok {
+			return semantics.TypedDefinition{Name: name, Expression: syntaxfront.Expr{Span: syntaxfront.Span{Line: line}}}, candidate, true
 		}
 	}
 	return semantics.TypedDefinition{}, "", false
@@ -355,8 +366,45 @@ func (i *Interpreter) fingerName(out io.Writer, name string) error {
 	if !ok {
 		return i.diagnose(out, name)
 	}
-	_, err := fmt.Fprintf(out, "%s :: %s ||defined in %q line %d\n", name, formatType(definition.Type), path, definition.Expression.Span.Line)
+	typeText := formatType(definition.Type)
+	if definition.Type == nil {
+		typeText = sourceDefinitionType(i.Scripts.Scripts[path].Source, name)
+		if typeText == "" {
+			typeText = "*"
+		}
+	}
+	_, err := fmt.Fprintf(out, "%s :: %s ||defined in %q line %d\n", name, typeText, path, definition.Expression.Span.Line)
 	return err
+}
+
+func sourceDefinitionLine(source []byte, name string) (int, bool) {
+	for index, raw := range strings.Split(string(source), "\n") {
+		line := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(raw), ">"))
+		separator := strings.Index(line, "=")
+		if separator < 0 || strings.Contains(line[:separator], "::") {
+			continue
+		}
+		parsed := syntaxfront.Run([]byte(strings.TrimSpace(line[:separator]) + " = 0\n"))
+		if len(parsed.Script.Items) != 1 {
+			continue
+		}
+		definitionName, _, ok := runtimePatterns(parsed.Script.Items[0].LHS)
+		if ok && definitionName == name {
+			return index + 1, true
+		}
+	}
+	return 0, false
+}
+
+func sourceDefinitionType(source []byte, name string) string {
+	prefix := name + " ::"
+	for _, raw := range strings.Split(string(source), "\n") {
+		line := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(raw), ">"))
+		if strings.HasPrefix(line, prefix) {
+			return strings.TrimSpace(strings.TrimPrefix(line, prefix))
+		}
+	}
+	return ""
 }
 
 func (i *Interpreter) allNames(out io.Writer) error {
@@ -710,8 +758,12 @@ func legacyEvaluationError(err error) string {
 	if err.Error() == "number expected" {
 		return "type error in expression\ncannot unify [char] with num"
 	}
+	var mismatch *languageTypeMismatch
+	if errors.As(err, &mismatch) {
+		return fmt.Sprintf("type error in expression\ncannot unify %s with %s", mismatch.actual, mismatch.expected)
+	}
 	if err.Error() == "list expected" {
-		return "type error in expression\ncannot unify [char]->[*] with [**]"
+		return "type error in expression\ncannot unify ? with [*]"
 	}
 	if err.Error() == "unsupported expression empty" {
 		return "syntax error - unexpected newline"
