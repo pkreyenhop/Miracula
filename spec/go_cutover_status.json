@@ -5,7 +5,7 @@
     "01-production-command": "complete",
     "02-runtime-graph": "complete",
     "03-source-parser": "complete",
-    "04-semantics-lowering": "pending",
+    "04-semantics-lowering": "complete",
     "05-evaluator": "pending",
     "06-module-dump-boot": "pending",
     "07-repl-commands": "pending",

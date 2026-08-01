@@ -1,6 +1,9 @@
 package semantics
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
 func TopologicalOrder(graph map[string][]string) ([]string, error) {
 	state := map[string]uint8{}
@@ -14,7 +17,9 @@ func TopologicalOrder(graph map[string][]string) ([]string, error) {
 			return nil
 		}
 		state[n] = 1
-		for _, d := range graph[n] {
+		dependencies := append([]string(nil), graph[n]...)
+		sort.Strings(dependencies)
+		for _, d := range dependencies {
 			if e := visit(d); e != nil {
 				return e
 			}
@@ -23,7 +28,12 @@ func TopologicalOrder(graph map[string][]string) ([]string, error) {
 		out = append(out, n)
 		return nil
 	}
+	names := make([]string, 0, len(graph))
 	for n := range graph {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	for _, n := range names {
 		if e := visit(n); e != nil {
 			return nil, e
 		}

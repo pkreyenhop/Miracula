@@ -33,13 +33,21 @@ func Resolve(t *Type, s Substitution) *Type {
 }
 func Unify(a, b *Type, s Substitution) error {
 	a, b = Resolve(a, s), Resolve(b, s)
+	if a == nil || b == nil {
+		return fmt.Errorf("type mismatch")
+	}
 	if a.Kind == TypeVariable {
+		if b.Kind == TypeVariable && a.ID == b.ID {
+			return nil
+		}
+		if occurs(a.ID, b, s) {
+			return fmt.Errorf("infinite type")
+		}
 		s[a.ID] = b
 		return nil
 	}
 	if b.Kind == TypeVariable {
-		s[b.ID] = a
-		return nil
+		return Unify(b, a, s)
 	}
 	if a.Kind != b.Kind || a.Name != b.Name || len(a.Items) != len(b.Items) {
 		return fmt.Errorf("type mismatch")
@@ -56,4 +64,23 @@ func Unify(a, b *Type, s Substitution) error {
 		}
 	}
 	return nil
+}
+
+func occurs(id int, value *Type, substitutions Substitution) bool {
+	value = Resolve(value, substitutions)
+	if value == nil {
+		return false
+	}
+	if value.Kind == TypeVariable {
+		return value.ID == id
+	}
+	if occurs(id, value.From, substitutions) || occurs(id, value.To, substitutions) {
+		return true
+	}
+	for _, item := range value.Items {
+		if occurs(id, item, substitutions) {
+			return true
+		}
+	}
+	return false
 }
