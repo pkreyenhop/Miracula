@@ -126,9 +126,11 @@ The repository includes:
 - graph-runtime stress tests; and
 - installed-product and deterministic-package tests.
 
-Before submitting a change, run `make test`, `make race`, and `make smoke`.
-Run `make clean` afterward to remove build output and disposable `.x` caches
-created by integration tests.
+Builds and tests run locally; the repository does not use hosted CI. Before
+submitting a change, run `make verify`. This performs generation checks, unit
+and race tests, package-DAG validation, command/REPL/install tests, a production
+build, and clean-source startup. Run `make clean` afterward to remove build
+output and disposable `.x` caches created by integration tests.
 
 ## Standard library and examples
 
