@@ -342,19 +342,19 @@ func (i *Interpreter) runCommand(line string, out io.Writer) (bool, error) {
 		return false, nil
 	case "list":
 		i.Config.List = true
-		return false, nil
+		return false, i.WriteRC()
 	case "nolist":
 		i.Config.List = false
-		return false, nil
+		return false, i.WriteRC()
 	case "miralib":
 		_, err := fmt.Fprintln(out, i.Config.LibraryPath)
 		return false, err
 	case "recheck":
 		i.Config.Recheck = true
-		return false, nil
+		return false, i.WriteRC()
 	case "norecheck":
 		i.Config.Recheck = false
-		return false, nil
+		return false, i.WriteRC()
 	case "s", "settings":
 		return false, i.printSettings(out)
 	case "V":
@@ -400,8 +400,10 @@ func (i *Interpreter) heapCommand(arguments []string, out io.Writer) error {
 		return fmt.Errorf("sorry, cannot shrink heap to %d at this time", value)
 	}
 	i.Config.HeapCells = value
-	_, err = fmt.Fprintf(out, "heaplimit = %d cells\n", value)
-	return err
+	if _, err = fmt.Fprintf(out, "heaplimit = %d cells\n", value); err != nil {
+		return err
+	}
+	return i.WriteRC()
 }
 
 func (i *Interpreter) printSettings(out io.Writer) error {

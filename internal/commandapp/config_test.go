@@ -1,6 +1,7 @@
 package commandapp
 
 import (
+	"github.com/pkreyenhop/miracula/internal/application"
 	"github.com/pkreyenhop/miracula/internal/platformsvc"
 	"os"
 	"path/filepath"
@@ -43,6 +44,20 @@ func TestResolveDefaultsPrecedence(t *testing.T) {
 	}
 	if config.HeapCells != 2000 || config.DictionaryCells != 3000 || !config.List || !config.Recheck || config.StrictIf {
 		t.Fatalf("unexpected option config: %+v", config)
+	}
+	if config.RCPath != filepath.Join(home, ".mirarc") {
+		t.Fatalf("rc path = %q", config.RCPath)
+	}
+}
+
+func TestReadRCWrittenInCurrentLegacyFormat(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".mirarc")
+	if err := os.WriteFile(path, []byte("hdvelr 3000000 200000 2067 vi +!\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	config, ok := readRC(path, application.DefaultConfig())
+	if !ok || config.HeapCells != 3000000 || config.DictionaryCells != 200000 || config.Editor != "vi +!" || !config.List || !config.Recheck {
+		t.Fatalf("loaded=%v config=%+v", ok, config)
 	}
 }
 

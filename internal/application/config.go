@@ -2,6 +2,7 @@ package application
 
 type Config struct {
 	LibraryPath, Editor, Prompt string
+	RCPath                      string
 	HeapCells, DictionaryCells  int
 	UTF8, Strict, StrictIf      bool
 	Count, List, GC, Object     bool

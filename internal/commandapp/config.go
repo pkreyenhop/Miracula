@@ -78,7 +78,9 @@ func resolveDefaults(services platformsvc.Services) application.Config {
 	}
 	config = environmentConfig(services, config)
 	if home, ok := services.Environment("HOME"); ok {
-		if loaded, found := readRC(filepath.Join(home, ".mirarc"), config); found {
+		config.RCPath = filepath.Join(home, ".mirarc")
+		if loaded, found := readRC(config.RCPath, config); found {
+			loaded.RCPath = config.RCPath
 			return environmentOneShots(services, loaded)
 		}
 	}
