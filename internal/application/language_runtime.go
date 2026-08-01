@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -239,7 +240,9 @@ func (i *Interpreter) ValidateCurrent() error {
 	if !ok {
 		return errors.New("no current script")
 	}
-	for _, line := range logicalSourceLines(script.Source) {
+	var validationErrors SourceValidationErrors
+	for _, sourceLine := range logicalSourceLineRecords(script.Source) {
+		line := sourceLine.text
 		trimmed := strings.TrimSpace(line)
 		separator := strings.Index(trimmed, "=")
 		if separator < 0 || strings.Contains(trimmed[:separator], "::") {
@@ -265,11 +268,32 @@ func (i *Interpreter) ValidateCurrent() error {
 		if err != nil {
 			return err
 		}
-		if name := firstUndefined(expression, bound, i.runtime().globals); name != "" {
-			return fmt.Errorf("undefined name %s", name)
+		for _, name := range undefinedNames(expression, bound, i.runtime().globals) {
+			validationErrors = append(validationErrors, SourceValidationError{Path: script.Path, Line: sourceLine.number, Name: name})
 		}
 	}
+	sort.SliceStable(validationErrors, func(left, right int) bool { return validationErrors[left].Line < validationErrors[right].Line })
+	if len(validationErrors) != 0 {
+		return validationErrors
+	}
 	return nil
+}
+
+type SourceValidationError struct {
+	Path string
+	Line int
+	Name string
+}
+
+func (e SourceValidationError) Error() string { return "undefined name " + e.Name }
+
+type SourceValidationErrors []SourceValidationError
+
+func (e SourceValidationErrors) Error() string {
+	if len(e) == 0 {
+		return "source validation failed"
+	}
+	return e[0].Error()
 }
 func collectPatternNames(pattern syntaxfront.Expr, names map[string]bool) {
 	if pattern.Variant == "name" {
@@ -286,31 +310,57 @@ func collectPatternNames(pattern syntaxfront.Expr, names map[string]bool) {
 	}
 }
 func firstUndefined(expression syntaxfront.Expr, bound map[string]bool, globals map[string]*languageThunk) string {
-	if expression.Variant == "name" || expression.Variant == "constructor" {
-		if !bound[expression.Text] && globals[expression.Text] == nil {
-			return expression.Text
-		}
-	}
-	children := []*syntaxfront.Expr{expression.Func, expression.Arg, expression.Head, expression.Tail, expression.Step, expression.To, expression.Body}
-	for _, child := range children {
-		if child != nil {
-			if name := firstUndefined(*child, bound, globals); name != "" {
-				return name
-			}
-		}
-	}
-	for _, item := range expression.Items {
-		if name := firstUndefined(item, bound, globals); name != "" {
-			return name
-		}
+	names := undefinedNames(expression, bound, globals)
+	if len(names) != 0 {
+		return names[0]
 	}
 	return ""
 }
 
+func undefinedNames(expression syntaxfront.Expr, bound map[string]bool, globals map[string]*languageThunk) []string {
+	seen := map[string]bool{}
+	var names []string
+	var visit func(syntaxfront.Expr)
+	visit = func(expression syntaxfront.Expr) {
+		if expression.Variant == "name" || expression.Variant == "constructor" {
+			if !bound[expression.Text] && globals[expression.Text] == nil && !seen[expression.Text] {
+				seen[expression.Text] = true
+				names = append(names, expression.Text)
+			}
+		}
+		children := []*syntaxfront.Expr{expression.Func, expression.Arg, expression.Head, expression.Tail, expression.Step, expression.To, expression.Body}
+		for _, child := range children {
+			if child != nil {
+				visit(*child)
+			}
+		}
+		for _, item := range expression.Items {
+			visit(item)
+		}
+	}
+	visit(expression)
+	return names
+}
+
 func logicalSourceLines(source []byte) []string {
+	records := logicalSourceLineRecords(source)
+	result := make([]string, len(records))
+	for index := range records {
+		result[index] = records[index].text
+	}
+	return result
+}
+
+type logicalSourceLine struct {
+	text   string
+	number int
+}
+
+func logicalSourceLineRecords(source []byte) []logicalSourceLine {
 	physical := strings.Split(string(source), "\n")
-	result := make([]string, 0, len(physical))
+	result := make([]logicalSourceLine, 0, len(physical))
 	for index := 0; index < len(physical); index++ {
+		lineNumber := index + 1
 		line := physical[index]
 		trimmed := strings.TrimSpace(line)
 		if trimmed != "" && !strings.HasPrefix(trimmed, "||") && !strings.HasPrefix(trimmed, "%") && !strings.Contains(line, "=") && index+1 < len(physical) && strings.HasPrefix(strings.TrimSpace(physical[index+1]), "=") {
@@ -323,7 +373,7 @@ func logicalSourceLines(source []byte) []string {
 			line += " " + strings.TrimSpace(physical[index])
 			depth += delimiterBalance(physical[index])
 		}
-		result = append(result, line)
+		result = append(result, logicalSourceLine{text: line, number: lineNumber})
 	}
 	return result
 }

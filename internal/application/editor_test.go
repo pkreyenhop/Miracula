@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -116,6 +117,33 @@ func TestEditCommandRunsConfiguredTemplate(t *testing.T) {
 	want := `fake-editor +12 "` + path + `"`
 	if services.request.Arguments[1] != want {
 		t.Fatalf("shell command = %q, want %q", services.request.Arguments[1], want)
+	}
+}
+
+func TestReloadEditedProgramReportsSourceErrorImmediately(t *testing.T) {
+	directory := t.TempDir()
+	path := filepath.Join(directory, "script.m")
+	if err := os.WriteFile(path, []byte("good x = x\n\nbad x = missingName\n\nworse x = anotherMissingName\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	services := &editorServices{}
+	i := New(services)
+	if err := i.Setup(); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	if err := i.reloadEditedProgram(path, &output); err != nil {
+		t.Fatal(err)
+	}
+	workingDirectory, _ := os.Getwd()
+	display, _ := filepath.Rel(workingDirectory, path)
+	want := fmt.Sprintf("compiling %s\nchecking types in %s\n(line %3d of %q) undefined name %q\n(line %3d of %q) undefined name %q\n", display, display, 3, display, "missingName", 5, display, "anotherMissingName")
+	if output.String() != want {
+		t.Fatalf("reload output = %q, want %q", output.String(), want)
+	}
+	absolute, _ := filepath.Abs(path)
+	if location := i.Repl.Errors[absolute]; location.Line != 3 {
+		t.Fatalf("recorded location = %+v", location)
 	}
 }
 

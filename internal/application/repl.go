@@ -221,12 +221,6 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 		}
 		if err != nil {
 			diagnostic := legacyEvaluationError(err)
-			if strings.HasPrefix(err.Error(), "undefined name ") && !i.startupFailed {
-				name := strings.TrimPrefix(err.Error(), "undefined name ")
-				if line, path := i.definitionReference(name); line > 0 {
-					fmt.Fprintf(out, "(line  +%d of %q) undefined name %q\n", line, path, name)
-				}
-			}
 			destination := out
 			if diagnosticToErrorStream(err) {
 				destination = i.Error

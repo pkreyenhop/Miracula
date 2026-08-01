@@ -397,10 +397,41 @@ func (i *Interpreter) editCommand(arguments []string, out io.Writer) error {
 	}
 	after, afterOK := i.Services.Metadata(absolute)
 	if afterOK && (!beforeOK || after != before) {
-		_, err = i.LoadProgram(absolute)
-		i.recordLoadResult(absolute, err)
+		err = i.reloadEditedProgram(absolute, out)
 	}
 	return err
+}
+
+func (i *Interpreter) reloadEditedProgram(path string, out io.Writer) error {
+	display := path
+	if workingDirectory, err := os.Getwd(); err == nil {
+		if relative, relativeErr := filepath.Rel(workingDirectory, path); relativeErr == nil {
+			display = relative
+		}
+	}
+	fmt.Fprintf(out, "compiling %s\nchecking types in %s\n", display, display)
+	_, loadErr := i.LoadProgram(path)
+	i.recordLoadResult(path, loadErr)
+	if loadErr != nil {
+		return loadErr
+	}
+	validationErr := i.ValidateCurrent()
+	var sourceErrors SourceValidationErrors
+	if errors.As(validationErr, &sourceErrors) && len(sourceErrors) != 0 {
+		if i.Repl.Errors == nil {
+			i.Repl.Errors = map[string]ErrorLocation{}
+		}
+		first := sourceErrors[0]
+		absolute, _ := filepath.Abs(first.Path)
+		i.Repl.Errors[absolute] = ErrorLocation{Path: absolute, Line: first.Line, Column: 1}
+		for _, sourceErr := range sourceErrors {
+			if _, err := fmt.Fprintf(out, "(line %3d of %q) undefined name %q\n", sourceErr.Line, display, sourceErr.Name); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return validationErr
 }
 
 func (i *Interpreter) editorCommand(arguments []string, out io.Writer) error {
