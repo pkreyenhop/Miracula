@@ -1,18 +1,48 @@
-# Go REPL feature-parity roadmap
+# Go REPL feature-parity implementation record
+
+## Completion status
+
+Completed on 2026-08-01. All fourteen feature units and the cross-cutting
+pseudo-terminal transcript gate are implemented, locally verified, committed,
+and pushed to `main`.
+
+| Unit | Production commit |
+|---|---|
+| F1 — line editor | `a5af758`, completed by `c1dfa6b` |
+| F2 — persistent history | `a9f80fd` |
+| F3 — identifier completion | `4bde9ec` |
+| F4 — timing/GC prompt | `a3be67a` |
+| F5 — editor invocation | `b87306d` |
+| F6 — go to error | `362d070` |
+| F7 — identifier queries | `e804c45` |
+| F8 — manual browser | `7cee89a` |
+| F9 — command-set parity | `c41e320` |
+| F10 — shell escape | `a217039` |
+| F11 — comment lines | `c602fc5` |
+| F12 — persistent settings | `8eaacb4` |
+| F13 — source auto-recheck | `cd51745` |
+| F14 — editor-validity warning | `b5e548e` |
+| Interactive transcript gate | `b91ac7f` |
+
+The authoritative local acceptance command is `make verify`. It covers unit
+tests, race tests, package-DAG enforcement, non-interactive integration tests,
+the interactive pseudo-terminal transcript, installation checks, and a
+source-only standard-library startup.
 
 ## Purpose
 
 The Go `mira` binary (`cmd/mira`, driven by `internal/commandapp` →
 `internal/application`) is the production interpreter and has complete language
-runtime and compiler functionality. This post-cutover roadmap covers optional
-interactive conveniences beyond its base REPL: line editing, history,
-completion, and the extended command surface retained by the Zig reference.
+runtime, compiler, and interactive REPL functionality. This document retains
+the behavioral contracts used to implement that REPL.
 
-This document specifies each missing feature precisely enough that an agent can
-implement it, one feature at a time, and verify it against the Zig behavior.
+The feature sections below are retained as acceptance specifications and as a
+maintenance guide for future changes.
 
-**The Zig implementation is the behavioral oracle.** Where this document and the
-Zig source disagree, the Zig source wins. Key Zig files:
+The removed Zig implementation was the historical behavioral oracle during the
+port. Its sources remain available in Git history at the pre-removal parent of
+`5ad09a1`. The production Go behavior and tests are now authoritative. Historical
+source locations cited below refer to that revision:
 
 | Concern | Zig source |
 |---|---|
@@ -456,24 +486,20 @@ print the `edWarn` message instead of opening; `vi +!` does not.
 
 ## Cross-cutting: parity testing
 
-Interactive features can’t use the existing non-interactive golden corpus
-directly. Add an **interactive transcript** harness:
+Interactive features cannot use the non-interactive corpus directly. The local
+gate therefore runs `test/integration/test_go_interactive_repl.py`, which drives
+the production binary through a pseudo-terminal and checks completion, timed
+prompts, comments, legacy diagnostics, and clean logout. Focused Go tests cover
+history, editing keys, editor templates and diagnostic positioning, identifier
+queries, settings, shell dispatch, rechecking, and manual navigation.
 
-1. Drive both the Zig `mira` (pinned reference, `tests/reference/`) and the Go
-   `mira` through a pseudo-terminal with a scripted key sequence (including
-   arrows, Tab, Ctrl-keys).
-2. Compare visible output. Normalize only terminal control sequences that are
-   editor-implementation-specific (cursor moves); keep semantic output exact.
-3. Cover: history recall, a Tab completion, a timed prompt, `/e` with a fake
-   `$EDITOR` recording argv, `??name`, `/s`, `!echo`, `||` comment, `/man`
-   launch/return.
+The pseudo-terminal test remains separate from the non-interactive integration
+test so piped behavior stays byte-identical and prompt-free.
 
-Keep these tests gated to interactive/TTY; they must not run in the
-non-interactive `go-ready` differential (which stays byte-identical).
+## Implemented order
 
-## Suggested order
-
-F1 → F2 → F3 (the editor stack), then F4 (timing), F9 (commands) and F12
-(persistence) together, then F5/F6/F14 (editor + go-to-error), F7 (info/explain),
-F10/F11 (shell/comments), F13 (recheck), F8 (manual). Land each with its own
-tests and keep the non-interactive path untouched at every step.
+F1 → F2 → F3 (the editor stack), then F4 (timing), F9 and F12
+(commands/persistence), F5/F6/F14 (editor + go-to-error), F7 (info/explain),
+F10/F11 (shell/comments), F13 (recheck), F8 (manual), followed by the final F1
+acceptance closure and pseudo-terminal transcript gate. Each unit was landed
+with tests while keeping the non-interactive path unchanged.
