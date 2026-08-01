@@ -89,6 +89,54 @@ func TestCompiledDumpRejectsStaleSource(t *testing.T) {
 	}
 }
 
+func TestCompiledArtifactWarmLoadAndDependencyInvalidation(t *testing.T) {
+	directory := t.TempDir()
+	dependency := filepath.Join(directory, "dep.m")
+	root := filepath.Join(directory, "root.m")
+	artifact := filepath.Join(directory, "root.x")
+	if err := os.WriteFile(dependency, []byte("dep = 1\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(root, []byte("%include \"dep\"\nmain = 2\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	first := New(platformsvc.NativeServices{})
+	if _, err := first.LoadProgram(root); err != nil || first.Compiler.UsedCompiledArtifact {
+		t.Fatalf("cold load used artifact=%v err=%v", first.Compiler.UsedCompiledArtifact, err)
+	}
+	dump, err := ReadCompiledDump(artifact, []byte("%include \"dep\"\nmain = 2\n"))
+	if err != nil || dump.Program == nil || len(dump.Dependencies) != 1 || dump.Target == "" {
+		t.Fatalf("artifact = %+v, %v", dump, err)
+	}
+	second := New(platformsvc.NativeServices{})
+	if _, err := second.LoadProgram(root); err != nil || !second.Compiler.UsedCompiledArtifact {
+		t.Fatalf("warm load used artifact=%v err=%v", second.Compiler.UsedCompiledArtifact, err)
+	}
+	if err := os.WriteFile(dependency, []byte("dep = 3\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	third := New(platformsvc.NativeServices{})
+	if _, err := third.LoadProgram(root); err != nil || third.Compiler.UsedCompiledArtifact {
+		t.Fatalf("dependency-stale load used artifact=%v err=%v", third.Compiler.UsedCompiledArtifact, err)
+	}
+	if err := os.WriteFile(artifact, []byte("corrupt"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	fourth := New(platformsvc.NativeServices{})
+	if _, err := fourth.LoadProgram(root); err != nil || fourth.Compiler.UsedCompiledArtifact {
+		t.Fatalf("corrupt load used artifact=%v err=%v", fourth.Compiler.UsedCompiledArtifact, err)
+	}
+	if err := os.Remove(root); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fourth.LoadProgram(root); err == nil {
+		t.Fatal("missing source loaded")
+	}
+	if _, err := os.Stat(artifact); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("orphan artifact remains: %v", err)
+	}
+}
+
 func TestProductionPipelineComputesExpression(t *testing.T) {
 	i := New(platformsvc.NativeServices{})
 	parsed := syntaxfront.Run([]byte("main = 1+2\n"))

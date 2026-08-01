@@ -6,24 +6,99 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/pkreyenhop/miracula/internal/graphstore"
+	"github.com/pkreyenhop/miracula/internal/semantics"
+	"github.com/pkreyenhop/miracula/internal/syntaxfront"
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 )
 
 func DumpGraph(w io.Writer, g graphstore.DumpGraph) error { return graphstore.EncodeGraph(w, g) }
 
 type CompiledDump struct {
-	Version      int    `json:"version"`
-	SourceSHA256 string `json:"source_sha256"`
-	Source       []byte `json:"source"`
+	Version      int                `json:"version"`
+	Target       string             `json:"target"`
+	SourceSHA256 string             `json:"source_sha256"`
+	Source       []byte             `json:"source"`
+	Dependencies map[string]string  `json:"dependencies,omitempty"`
+	Script       syntaxfront.Script `json:"script"`
+	Program      *semantics.Program `json:"program,omitempty"`
+	Exports      map[string]string  `json:"exports,omitempty"`
+	Diagnostics  []string           `json:"diagnostics,omitempty"`
+}
+
+func dependencyHashes(root, libraryPath string) (map[string]string, error) {
+	result, visited := map[string]string{}, map[string]bool{}
+	var visit func(string) error
+	visit = func(path string) error {
+		absolute, err := filepath.Abs(path)
+		if err != nil {
+			return err
+		}
+		if visited[absolute] {
+			return nil
+		}
+		visited[absolute] = true
+		content, err := os.ReadFile(absolute)
+		if err != nil {
+			return err
+		}
+		if absolute != root {
+			digest := sha256.Sum256(content)
+			result[absolute] = hex.EncodeToString(digest[:])
+		}
+		for _, line := range strings.Split(string(content), "\n") {
+			directive, ok := syntaxfront.ParseDirective(strings.TrimSpace(line))
+			if !ok || directive.Variant != "include" && directive.Variant != "insert" {
+				continue
+			}
+			child := directive.Path
+			if directive.FromMiralib {
+				child = filepath.Join(libraryPath, child)
+			} else if !filepath.IsAbs(child) {
+				child = filepath.Join(filepath.Dir(absolute), child)
+			}
+			if filepath.Ext(child) == "" {
+				child += ".m"
+			}
+			if err := visit(child); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if err := visit(root); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func exportedTypeProfile(script syntaxfront.Script, program *semantics.Program) map[string]string {
+	profile := map[string]string{}
+	if program == nil {
+		return profile
+	}
+	for _, definition := range program.Definitions {
+		profile[definition.Name] = semantics.FormatType(definition.Type)
+	}
+	for name, value := range program.Specifications {
+		profile[name] = semantics.FormatType(value)
+	}
+	return profile
 }
 
 var ErrStaleDump = errors.New("stale compiled dump")
 
 func WriteCompiledDump(path string, source []byte) error {
+	return WriteCompiledArtifact(path, CompiledDump{Source: source})
+}
+
+func WriteCompiledArtifact(path string, dump CompiledDump) error {
+	source := dump.Source
 	digest := sha256.Sum256(source)
-	dump := CompiledDump{Version: Release, SourceSHA256: hex.EncodeToString(digest[:]), Source: append([]byte(nil), source...)}
+	dump.Version, dump.Target, dump.SourceSHA256, dump.Source = Release, runtime.GOOS+"/"+runtime.GOARCH, hex.EncodeToString(digest[:]), append([]byte(nil), source...)
 	temporary, err := os.CreateTemp(filepath.Dir(path), ".mira-dump-*")
 	if err != nil {
 		return err
@@ -58,8 +133,18 @@ func ReadCompiledDump(path string, source []byte) (CompiledDump, error) {
 		return CompiledDump{}, err
 	}
 	digest := sha256.Sum256(source)
-	if dump.Version != Release || dump.SourceSHA256 != hex.EncodeToString(digest[:]) {
+	if dump.Version != Release || dump.Target != runtime.GOOS+"/"+runtime.GOARCH || dump.SourceSHA256 != hex.EncodeToString(digest[:]) {
 		return CompiledDump{}, ErrStaleDump
+	}
+	for path, expected := range dump.Dependencies {
+		content, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return CompiledDump{}, ErrStaleDump
+		}
+		actual := sha256.Sum256(content)
+		if hex.EncodeToString(actual[:]) != expected {
+			return CompiledDump{}, ErrStaleDump
+		}
 	}
 	return dump, nil
 }

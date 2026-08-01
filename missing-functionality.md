@@ -405,7 +405,15 @@ without scope capture; generate fresh nominal identities per instantiation;
 then apply exports and aliases. Use both numeric and boolean matrix examples
 from section 27/4 as end-to-end tests.
 
-### MISSING-011 — Make `.x` files real validated compiled artifacts
+### MISSING-011 — Make `.x` files real validated compiled artifacts ✅
+
+Status: completed. `.x` files are now atomic, versioned, target-specific
+compiled artifacts containing the normalized source identity, parsed script,
+typed program, export type profile, diagnostics slot, and canonical hashes of
+all transitive include/insert dependencies. Valid warm loads reuse the typed
+artifact; source/dependency changes, target/version mismatch, and corruption
+rebuild safely. Missing source removes its orphan artifact. Tests cover cold,
+warm, transitive-stale, corrupt, and deleted-source paths.
 
 Manual section: 27/5.
 
