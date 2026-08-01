@@ -8,8 +8,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	goruntime "runtime"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/pkreyenhop/miracula/internal/platformsvc"
 	"github.com/pkreyenhop/miracula/internal/protocol"
@@ -64,12 +66,7 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 	for {
 		var rawLine string
 		if interactive {
-			prompt := i.Config.Prompt
-			if i.Config.Hush {
-				prompt = ""
-			} else if prompt == "" {
-				prompt = "Miranda "
-			}
+			prompt := i.replPrompt()
 			line, err := editor.ReadLine(prompt)
 			if err != nil && !errors.Is(err, io.EOF) {
 				return err
@@ -97,6 +94,7 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 		}
 		line := strings.TrimSpace(rawLine)
 		if line == "" {
+			i.Repl.clearTiming()
 			continue
 		}
 		select {
@@ -105,6 +103,7 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 		default:
 		}
 		if strings.HasPrefix(line, "/") {
+			i.Repl.clearTiming()
 			quit, err := i.runCommand(line, out)
 			if err != nil {
 				if _, writeErr := fmt.Fprintln(out, err); writeErr != nil {
@@ -119,9 +118,18 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 			}
 			continue
 		}
+		started := i.Services.Monotonic()
+		var beforeGC goruntime.MemStats
+		goruntime.ReadMemStats(&beforeGC)
 		evaluationContext, cancel := context.WithCancel(ctx)
 		registration, registrationErr := platformsvc.Register(platformsvc.SignalInterrupt, platformsvc.SignalNotify, cancel)
 		result, err := i.Evaluate(evaluationContext, line)
+		elapsed := i.Services.Monotonic() - started
+		var afterGC goruntime.MemStats
+		goruntime.ReadMemStats(&afterGC)
+		collections := int(afterGC.NumGC - beforeGC.NumGC)
+		i.Repl.LastElapsed = &elapsed
+		i.Repl.LastGC = &collections
 		cancel()
 		if registrationErr == nil {
 			registration.Restore()
@@ -172,6 +180,38 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 			fmt.Fprintln(i.Error, "<<gc after Go evaluation>>")
 		}
 	}
+}
+
+func (i *Interpreter) replPrompt() string {
+	if i.Config.Hush {
+		return ""
+	}
+	prompt := i.Config.Prompt
+	if prompt == "" {
+		prompt = "Miranda "
+	}
+	if i.Repl.LastElapsed == nil {
+		return prompt
+	}
+	annotation := formatExecutionTime(*i.Repl.LastElapsed)
+	if i.Repl.LastGC != nil && *i.Repl.LastGC > 0 {
+		label := "GCs"
+		if *i.Repl.LastGC == 1 {
+			label = "GC"
+		}
+		annotation += fmt.Sprintf(", %d %s", *i.Repl.LastGC, label)
+	}
+	return "[" + annotation + "] " + prompt
+}
+
+func formatExecutionTime(elapsed time.Duration) string {
+	if elapsed < time.Millisecond {
+		return fmt.Sprintf("%.3fms", float64(elapsed)/float64(time.Millisecond))
+	}
+	if elapsed < time.Second {
+		return fmt.Sprintf("%.2fms", float64(elapsed)/float64(time.Millisecond))
+	}
+	return fmt.Sprintf("%.3fs", elapsed.Seconds())
 }
 
 func (i *Interpreter) completeIdentifier(prefix string) []string {
