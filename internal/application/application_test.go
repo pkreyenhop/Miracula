@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -47,6 +48,25 @@ func TestBootLoadsLibraryAndUserProgram(t *testing.T) {
 	}
 	if len(i.Scripts.Scripts) < 3 || len(i.Programs) != 1 {
 		t.Fatalf("scripts=%d programs=%d", len(i.Scripts.Scripts), len(i.Programs))
+	}
+	var missing []string
+	for name := range i.StandardTypes {
+		if name == "char" || name == "num" {
+			continue
+		}
+		if i.runtime().globals[name] == nil {
+			missing = append(missing, name)
+		}
+	}
+	if len(missing) != 0 {
+		sort.Strings(missing)
+		t.Fatalf("standard names missing at runtime: %v", missing)
+	}
+	for expression, want := range map[string]string{"fst (1,2)": "1", "abs (-3)": "3", "concat [[1,2],[],[3,4]]": "[1,2,3,4]", "digit '7'": "True", "const 3 undef": "3"} {
+		got, err := i.Evaluate(context.Background(), expression)
+		if err != nil || got != want {
+			t.Fatalf("%s = %q, %v; want %q", expression, got, err, want)
+		}
 	}
 }
 

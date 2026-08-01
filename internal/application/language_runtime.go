@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"unicode/utf8"
 
 	"github.com/pkreyenhop/miracula/internal/platformsvc"
@@ -176,6 +177,32 @@ func forceLanguageValue(value languageValue, err error) (languageValue, error) {
 	return value, err
 }
 
+func deepForceLanguage(ctx context.Context, value languageValue) error {
+	value, err := forceLanguageValue(value, nil)
+	if err != nil {
+		return err
+	}
+	switch value.kind {
+	case valueTuple, valueConstructor:
+		for _, item := range value.items {
+			if err := deepForceLanguage(ctx, item); err != nil {
+				return err
+			}
+		}
+	case valueList:
+		for index := 0; ; index++ {
+			item, ok, err := value.list.at(ctx, index)
+			if err != nil || !ok {
+				return err
+			}
+			if err := deepForceLanguage(ctx, item); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func newLanguageRuntime(output io.Writer) *languageRuntime {
 	r := &languageRuntime{globals: map[string]*languageThunk{}, productConstructors: map[string]bool{}, appendFiles: map[string]bool{}, output: output}
 	r.installBuiltins()
@@ -232,7 +259,7 @@ func (r *languageRuntime) installSource(source []byte) error {
 	currentName := ""
 	var currentParameters []syntaxfront.Expr
 	closed := map[string]bool{}
-	otherwiseSeen := map[string]bool{}
+	previousAlternativeWasOtherwise := false
 	lines := logicalSourceLines(source)
 	currentIndent := 0
 	for lineIndex := 0; lineIndex < len(lines); lineIndex++ {
@@ -332,11 +359,9 @@ func (r *languageRuntime) installSource(source []byte) error {
 					return fmt.Errorf("%s: %w", name, err)
 				}
 			}
-			if otherwiseSeen[name] {
-				return fmt.Errorf("otherwise must be the final alternative of %s", name)
-			}
 			currentName, currentParameters, ok = name, parameters, true
 			currentIndent = leadingIndent(rawLine)
+			previousAlternativeWasOtherwise = false
 			if !ok {
 				continue
 			}
@@ -344,7 +369,7 @@ func (r *languageRuntime) installSource(source []byte) error {
 		if currentName == "" || right == "" {
 			continue
 		}
-		if otherwiseSeen[currentName] {
+		if left == "" && previousAlternativeWasOtherwise {
 			return fmt.Errorf("otherwise must be the final alternative of %s", currentName)
 		}
 		bodyText, conditionText := right, ""
@@ -369,9 +394,7 @@ func (r *languageRuntime) installSource(source []byte) error {
 			clause.condition = &condition
 		}
 		clauses[currentName] = append(clauses[currentName], clause)
-		if clause.otherwise {
-			otherwiseSeen[currentName] = true
-		}
+		previousAlternativeWasOtherwise = clause.otherwise
 	}
 	for name, alternatives := range clauses {
 		name, alternatives := name, alternatives
@@ -2821,6 +2844,167 @@ func (r *languageRuntime) installBuiltins() {
 			return languageValue{kind: valueFloat, real: function(number)}, nil
 		}})
 	}
+	for name, function := range map[string]func(float64) float64{"arctan": math.Atan, "exp": math.Exp, "log": math.Log, "log10": math.Log10, "sqrt": math.Sqrt} {
+		function := function
+		r.builtin(name, languageValue{kind: valueFunction, fn: func(_ context.Context, value languageValue) (languageValue, error) {
+			number, err := realValue(value)
+			if err != nil {
+				return languageValue{}, err
+			}
+			return languageValue{kind: valueFloat, real: function(number)}, nil
+		}})
+	}
+	r.builtin("hugenum", languageValue{kind: valueFloat, real: math.MaxFloat64})
+	r.builtin("tinynum", languageValue{kind: valueFloat, real: math.SmallestNonzeroFloat64})
+	r.builtin("integer", languageValue{kind: valueFunction, fn: func(_ context.Context, value languageValue) (languageValue, error) {
+		if value.kind == valueNumber {
+			return languageValue{kind: valueBool, flag: true}, nil
+		}
+		if value.kind == valueFloat {
+			return languageValue{kind: valueBool, flag: value.real == math.Trunc(value.real)}, nil
+		}
+		return languageValue{}, errors.New("number expected")
+	}})
+	r.builtin("error", languageValue{kind: valueFunction, fn: func(_ context.Context, value languageValue) (languageValue, error) {
+		if value.kind != valueString {
+			return languageValue{}, errors.New("string expected")
+		}
+		return languageValue{}, errors.New(value.text)
+	}})
+	r.builtin("drop", curry2(func(_ context.Context, count, input languageValue) (languageValue, error) {
+		number, err := numberValue(count)
+		if err != nil || !number.IsInt64() {
+			return languageValue{}, errors.New("integer count expected")
+		}
+		offset := number.Int64()
+		if offset < 0 {
+			offset = 0
+		}
+		if input.kind != valueList {
+			return languageValue{}, listTypeMismatch(input)
+		}
+		return languageValue{kind: valueList, list: &lazyList{next: func(ctx context.Context, index int) (languageValue, bool, error) {
+			return input.list.at(ctx, int(offset)+index)
+		}}}, nil
+	}))
+	r.builtin("last", languageValue{kind: valueFunction, fn: func(ctx context.Context, input languageValue) (languageValue, error) {
+		values, err := finiteList(ctx, input, maxMaterializedList)
+		if err != nil {
+			return languageValue{}, err
+		}
+		if len(values) == 0 {
+			return languageValue{}, errors.New("last of empty list")
+		}
+		return values[len(values)-1], nil
+	}})
+	r.builtin("foldl1", curry2(func(ctx context.Context, operation, input languageValue) (languageValue, error) {
+		values, err := finiteList(ctx, input, maxMaterializedList)
+		if err != nil {
+			return languageValue{}, err
+		}
+		if len(values) == 0 {
+			return languageValue{}, errors.New("foldl1 applied to []")
+		}
+		result := values[0]
+		for _, value := range values[1:] {
+			fn, err := applyLanguage(ctx, operation, result)
+			if err != nil {
+				return languageValue{}, err
+			}
+			result, err = applyLanguage(ctx, fn, value)
+			if err != nil {
+				return languageValue{}, err
+			}
+		}
+		return result, nil
+	}))
+	r.builtin("shownum", languageValue{kind: valueFunction, fn: func(_ context.Context, value languageValue) (languageValue, error) {
+		if value.kind == valueNumber {
+			return languageValue{kind: valueString, text: integerPointer(value).String()}, nil
+		}
+		if value.kind == valueFloat {
+			return languageValue{kind: valueString, text: strconv.FormatFloat(value.real, 'g', -1, 64)}, nil
+		}
+		return languageValue{}, errors.New("number expected")
+	}})
+	r.builtin("seq", languageValue{kind: valueFunction, lazyFn: func(_ context.Context, first *languageThunk) (languageValue, error) {
+		if _, err := first.force(); err != nil {
+			return languageValue{}, err
+		}
+		return languageValue{kind: valueFunction, lazyFn: func(_ context.Context, second *languageThunk) (languageValue, error) {
+			return languageValue{kind: valueThunk, thunk: second}, nil
+		}}, nil
+	}})
+	r.builtin("force", languageValue{kind: valueFunction, fn: func(ctx context.Context, value languageValue) (languageValue, error) {
+		if err := deepForceLanguage(ctx, value); err != nil {
+			return languageValue{}, err
+		}
+		return value, nil
+	}})
+	r.builtin("showfloat", curry2(formatMirandaFloat('f')))
+	r.builtin("showscaled", curry2(formatMirandaFloat('e')))
+	r.builtin("getenv", languageValue{kind: valueFunction, fn: func(_ context.Context, value languageValue) (languageValue, error) {
+		if value.kind != valueString {
+			return languageValue{}, errors.New("string expected")
+		}
+		return languageValue{kind: valueString, text: os.Getenv(value.text)}, nil
+	}})
+	readFile := func(_ context.Context, value languageValue) (languageValue, error) {
+		if value.kind != valueString {
+			return languageValue{}, errors.New("string expected")
+		}
+		content, err := os.ReadFile(value.text)
+		if err != nil {
+			return languageValue{}, err
+		}
+		return languageValue{kind: valueString, text: string(content)}, nil
+	}
+	r.builtin("read", languageValue{kind: valueFunction, fn: readFile})
+	r.builtin("readb", languageValue{kind: valueFunction, fn: readFile})
+	r.builtin("filemode", languageValue{kind: valueFunction, fn: func(_ context.Context, value languageValue) (languageValue, error) {
+		if value.kind != valueString {
+			return languageValue{}, errors.New("string expected")
+		}
+		info, err := os.Stat(value.text)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				return languageValue{kind: valueString}, nil
+			}
+			return languageValue{}, err
+		}
+		mode := []byte("----")
+		if info.IsDir() {
+			mode[0] = 'd'
+		}
+		if file, err := os.Open(value.text); err == nil {
+			mode[1] = 'r'
+			_ = file.Close()
+		}
+		if file, err := os.OpenFile(value.text, os.O_WRONLY, 0); err == nil {
+			mode[2] = 'w'
+			_ = file.Close()
+		}
+		if info.Mode()&0111 != 0 {
+			mode[3] = 'x'
+		}
+		return languageValue{kind: valueString, text: string(mode)}, nil
+	}})
+	r.builtin("filestat", languageValue{kind: valueFunction, fn: func(_ context.Context, value languageValue) (languageValue, error) {
+		if value.kind != valueString {
+			return languageValue{}, errors.New("string expected")
+		}
+		info, err := os.Stat(value.text)
+		if err != nil {
+			return languageValue{kind: valueTuple, items: []languageValue{{kind: valueTuple, items: []languageValue{{kind: valueNumber}, {kind: valueNumber, small: -1}}}, {kind: valueNumber}}}, nil
+		}
+		stat, _ := info.Sys().(*syscall.Stat_t)
+		inode, device := int64(0), int64(0)
+		if stat != nil {
+			inode, device = int64(stat.Ino), int64(stat.Dev)
+		}
+		return languageValue{kind: valueTuple, items: []languageValue{{kind: valueTuple, items: []languageValue{{kind: valueNumber, small: inode}, {kind: valueNumber, small: device}}}, {kind: valueNumber, small: info.ModTime().Unix()}}}, nil
+	}})
+	r.builtin("merge", curry2(mergeLanguageLists))
 	r.builtin("zip2", curry2(func(ctx context.Context, a, b languageValue) (languageValue, error) {
 		return languageValue{kind: valueList, list: &lazyList{next: func(ctx context.Context, index int) (languageValue, bool, error) {
 			x, ok, e := a.list.at(ctx, index)
@@ -2876,6 +3060,60 @@ func numericBinary(small func(int64, int64) (int64, bool), integer func(*big.Int
 		}
 		return languageValue{kind: valueFloat, real: floating(x, y)}, nil
 	})
+}
+
+func formatMirandaFloat(format byte) func(context.Context, languageValue, languageValue) (languageValue, error) {
+	return func(_ context.Context, precisionValue, numberValue languageValue) (languageValue, error) {
+		precision, err := numberValueInteger(precisionValue)
+		if err != nil || !precision.IsInt64() || precision.Sign() < 0 {
+			return languageValue{}, errors.New("non-negative integer precision expected")
+		}
+		number, err := realValue(numberValue)
+		if err != nil {
+			return languageValue{}, err
+		}
+		return languageValue{kind: valueString, text: strconv.FormatFloat(number, format, int(precision.Int64()), 64)}, nil
+	}
+}
+
+func numberValueInteger(value languageValue) (*big.Int, error) { return numberValue(value) }
+
+func mergeLanguageLists(ctx context.Context, left, right languageValue) (languageValue, error) {
+	if left.kind != valueList || right.kind != valueList {
+		return languageValue{}, errors.New("list expected")
+	}
+	leftIndex, rightIndex := 0, 0
+	return languageValue{kind: valueList, list: &lazyList{next: func(nextCtx context.Context, _ int) (languageValue, bool, error) {
+		a, aok, err := left.list.at(nextCtx, leftIndex)
+		if err != nil {
+			return languageValue{}, false, err
+		}
+		b, bok, err := right.list.at(nextCtx, rightIndex)
+		if err != nil {
+			return languageValue{}, false, err
+		}
+		if !aok {
+			if bok {
+				rightIndex++
+				return b, true, nil
+			}
+			return languageValue{}, false, nil
+		}
+		if !bok {
+			leftIndex++
+			return a, true, nil
+		}
+		comparison, err := compareLanguageValues(ctx, a, b)
+		if err != nil {
+			return languageValue{}, false, err
+		}
+		if comparison <= 0 {
+			leftIndex++
+			return a, true, nil
+		}
+		rightIndex++
+		return b, true, nil
+	}}}, nil
 }
 
 func smallAdd(a, b int64) (int64, bool) {

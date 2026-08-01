@@ -496,20 +496,35 @@ func formatExecutionTime(elapsed time.Duration) string {
 }
 
 func (i *Interpreter) completeIdentifier(prefix string) []string {
-	program := i.Programs[i.Compiler.CurrentModule]
-	if program == nil || prefix == "" {
+	if prefix == "" {
 		return nil
 	}
-	matches := make([]string, 0)
-	for _, definition := range program.Definitions {
-		if strings.HasPrefix(definition.Name, prefix) {
-			matches = append(matches, definition.Name)
-			if len(matches) == 128 {
-				break
+	seen := map[string]bool{}
+	for name := range i.StandardTypes {
+		if strings.HasPrefix(name, prefix) {
+			seen[name] = true
+		}
+	}
+	for name := range i.runtime().globals {
+		if strings.HasPrefix(name, prefix) {
+			seen[name] = true
+		}
+	}
+	if program := i.Programs[i.Compiler.CurrentModule]; program != nil {
+		for _, definition := range program.Definitions {
+			if strings.HasPrefix(definition.Name, prefix) {
+				seen[definition.Name] = true
 			}
 		}
 	}
+	matches := make([]string, 0, len(seen))
+	for name := range seen {
+		matches = append(matches, name)
+	}
 	sort.Strings(matches)
+	if len(matches) > 128 {
+		matches = matches[:128]
+	}
 	return matches
 }
 

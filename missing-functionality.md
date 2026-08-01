@@ -271,7 +271,15 @@ Implementation instructions:
 
 ## P0: standard environment and effects
 
-### MISSING-007 — Actually load and expose the complete standard environment
+### MISSING-007 — Actually load and expose the complete standard environment ✅
+
+Status: completed. Boot now installs the prelude and literate `stdenv.m`
+definitions into the production lazy runtime before the user script, while
+retaining Go implementations only for documented internal primitives. The
+declared standard type profile is checked against the runtime scope, and the
+same unified set feeds expression typing, undefined-name checks, identifier
+completion, and source queries. Startup tests execute representative exported
+definitions such as `fst`, `abs`, `concat`, `digit`, and `const`.
 
 Manual sections: 4, 7–9, 11, 13, 16, 18, 23, 28, 31.
 

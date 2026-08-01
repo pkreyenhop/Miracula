@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/pkreyenhop/miracula/internal/semantics"
+	"github.com/pkreyenhop/miracula/internal/syntaxfront"
 )
 
 func (i *Interpreter) Boot() error {
@@ -31,8 +32,17 @@ func (i *Interpreter) Boot() error {
 		if i.StandardTypes == nil {
 			i.StandardTypes = map[string]*semantics.Type{}
 		}
-		for declaredName, declaredType := range semantics.DeclaredTypes(source) {
-			i.StandardTypes[declaredName] = declaredType
+		if name == "stdenv.m" {
+			for declaredName, declaredType := range semantics.DeclaredTypes(source) {
+				i.StandardTypes[declaredName] = declaredType
+			}
+		}
+		runtimeSource := source
+		if name == "stdenv.m" {
+			runtimeSource = syntaxfront.NewSource(source, true).Bytes
+		}
+		if err := i.runtime().installSource(runtimeSource); err != nil {
+			return fmt.Errorf("install %s: %w", name, err)
 		}
 	}
 	if i.InitialScript == "" {
