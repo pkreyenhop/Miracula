@@ -3,12 +3,15 @@ package platformsvc
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"math"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
+	"time"
 )
 
 func TestTypedParsing(t *testing.T) {
@@ -86,6 +89,51 @@ func TestFilesAndShell(t *testing.T) {
 	}
 	if _, e = RunShell(t.Context(), "/definitely/not/a/shell", "true"); !errors.Is(e, ErrSpawnFailed) {
 		t.Fatal(e)
+	}
+}
+
+func TestAtomicReplace(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state")
+	if err := AtomicReplace(path, []byte("complete"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || string(data) != "complete" {
+		t.Fatal(string(data), err)
+	}
+}
+
+func TestNativeServicesProcessOutcomes(t *testing.T) {
+	services := NativeServices{}
+	outcome, err := services.Run(ProcessRequest{Executable: "/bin/sh", Arguments: []string{"-c", "exit 9"}, Stdout: StreamDiscard, Stderr: StreamDiscard})
+	if err != nil || outcome.ExitCode == nil || *outcome.ExitCode != 9 {
+		t.Fatal(outcome, err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	_, err = services.Run(ProcessRequest{Context: ctx, Executable: "/bin/sh", Arguments: []string{"-c", "sleep 10"}, Stdout: StreamDiscard, Stderr: StreamDiscard})
+	if !errors.Is(err, ErrProcessInterrupted) {
+		t.Fatal(err)
+	}
+}
+
+func TestSignalRegistrationRestoreStopsNotifier(t *testing.T) {
+	notified := make(chan struct{}, 1)
+	registration, err := Register(SignalInterrupt, SignalNotify, func() { notified <- struct{}{} })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = syscall.Kill(os.Getpid(), syscall.SIGINT); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-notified:
+	case <-time.After(time.Second):
+		t.Fatal("signal notification timed out")
+	}
+	registration.Restore()
+	if registration.channel != nil || registration.done != nil {
+		t.Fatal("signal registration retained notifier resources")
 	}
 }
 

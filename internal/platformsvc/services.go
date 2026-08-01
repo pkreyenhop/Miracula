@@ -49,6 +49,9 @@ func (NativeServices) Run(request ProcessRequest) (ProcessOutcome, error) {
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		return ProcessOutcome{}, ErrTimedOut
 	}
+	if errors.Is(ctx.Err(), context.Canceled) {
+		return ProcessOutcome{}, ErrProcessInterrupted
+	}
 	var ee *exec.ExitError
 	if !errors.As(e, &ee) {
 		return ProcessOutcome{}, ErrSpawnFailed

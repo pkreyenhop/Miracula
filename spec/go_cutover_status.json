@@ -9,7 +9,7 @@
     "05-evaluator": "complete",
     "06-module-dump-boot": "complete",
     "07-repl-commands": "complete",
-    "08-platform-integration": "pending",
+    "08-platform-integration": "complete",
     "09-full-parity": "pending",
     "10-production-packaging": "pending",
     "11-cutover": "pending"

@@ -9,6 +9,31 @@ import (
 	"github.com/pkreyenhop/miracula-go/internal/protocol"
 )
 
+// AtomicReplace writes a complete file beside its destination and then
+// renames it into place. A failed write never exposes a partial destination.
+func AtomicReplace(path string, data []byte, mode os.FileMode) error {
+	directory := filepath.Dir(path)
+	temporary, err := os.CreateTemp(directory, ".miracula-*")
+	if err != nil {
+		return err
+	}
+	temporaryPath := temporary.Name()
+	defer os.Remove(temporaryPath)
+	if err = temporary.Chmod(mode); err == nil {
+		_, err = temporary.Write(data)
+	}
+	if err == nil {
+		err = temporary.Sync()
+	}
+	if closeErr := temporary.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return err
+	}
+	return os.Rename(temporaryPath, path)
+}
+
 type FilesWord = protocol.Word
 
 func FileMtime(path string) protocol.Word {
