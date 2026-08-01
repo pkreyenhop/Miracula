@@ -6,6 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/pkreyenhop/miracula/internal/semantics"
+	"github.com/pkreyenhop/miracula/internal/syntaxfront"
 )
 
 func TestExtendedReplSettingsCommands(t *testing.T) {
@@ -23,6 +26,54 @@ func TestExtendedReplSettingsCommands(t *testing.T) {
 	for _, text := range []string{"heaplimit = 3000000 cells", "*\theap 3000000", "*\tlist", "*\trecheck", "\tgc", "\thush"} {
 		if !strings.Contains(output.String(), text) {
 			t.Errorf("settings output lacks %q:\n%s", text, output.String())
+		}
+	}
+}
+
+func queryInterpreter() *Interpreter {
+	i := New(nil)
+	i.Compiler.CurrentModule = "/tmp/query.m"
+	i.Programs = map[string]*semantics.Program{
+		i.Compiler.CurrentModule: {Definitions: []semantics.TypedDefinition{
+			{Name: "zeta", Type: &semantics.Type{Kind: semantics.TypeNamed, Name: "num"}, Expression: syntaxfront.Expr{Span: syntaxfront.Span{Line: 9}}},
+			{Name: "alpha", Type: &semantics.Type{Kind: semantics.TypeNamed, Name: "char"}, Expression: syntaxfront.Expr{Span: syntaxfront.Span{Line: 3}}},
+		}},
+	}
+	return i
+}
+
+func TestIdentifierQueries(t *testing.T) {
+	i := queryInterpreter()
+	var output bytes.Buffer
+	if err := i.handleQuery("?alpha", &output); err != nil {
+		t.Fatal(err)
+	}
+	if got := output.String(); got != "alpha :: char ||defined in \"/tmp/query.m\" line 3\n" {
+		t.Fatalf("finger = %q", got)
+	}
+	output.Reset()
+	if err := i.handleQuery("?", &output); err != nil {
+		t.Fatal(err)
+	}
+	if got := output.String(); got != "alpha\nzeta\n" {
+		t.Fatalf("all names = %q", got)
+	}
+}
+
+func TestIdentifierQueryDiagnostics(t *testing.T) {
+	i := queryInterpreter()
+	for query, want := range map[string]string{
+		"??":        "\aidentifier needed after `??'\n",
+		"?nonesuch": "identifier \"nonesuch\" not in scope\n",
+		"?if":       "if -- keyword (see manual, section 15)\n",
+		"?not-bad":  "\"not-bad\" -- not an identifier\n",
+	} {
+		var output bytes.Buffer
+		if err := i.handleQuery(query, &output); err != nil {
+			t.Fatal(err)
+		}
+		if output.String() != want {
+			t.Errorf("%s = %q, want %q", query, output.String(), want)
 		}
 	}
 }

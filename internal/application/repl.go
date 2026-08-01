@@ -123,6 +123,15 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 			}
 			continue
 		}
+		if interactive && strings.HasPrefix(line, "?") {
+			i.Repl.clearTiming()
+			if err := i.handleQuery(line, out); err != nil {
+				if _, writeErr := fmt.Fprintln(out, err); writeErr != nil {
+					return writeErr
+				}
+			}
+			continue
+		}
 		started := i.Services.Monotonic()
 		var beforeGC goruntime.MemStats
 		goruntime.ReadMemStats(&beforeGC)
@@ -185,6 +194,109 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 			fmt.Fprintln(i.Error, "<<gc after Go evaluation>>")
 		}
 	}
+}
+
+func (i *Interpreter) handleQuery(line string, out io.Writer) error {
+	if strings.HasPrefix(line, "??") {
+		name := strings.TrimSpace(strings.TrimPrefix(line, "??"))
+		if name == "" {
+			_, err := fmt.Fprintln(out, "\aidentifier needed after `??'")
+			return err
+		}
+		definition, path, ok := i.findDefinition(name)
+		if !ok {
+			return i.diagnose(out, name)
+		}
+		if i.Config.BadEditor {
+			return i.editorWarning(out)
+		}
+		if i.Repl.Errors == nil {
+			i.Repl.Errors = map[string]ErrorLocation{}
+		}
+		previous, hadPrevious := i.Repl.Errors[path]
+		i.Repl.Errors[path] = ErrorLocation{Path: path, Line: definition.Expression.Span.Line, Column: 0}
+		err := i.editCommand([]string{path}, out)
+		if hadPrevious {
+			i.Repl.Errors[path] = previous
+		} else {
+			delete(i.Repl.Errors, path)
+		}
+		return err
+	}
+	names := strings.Fields(strings.TrimSpace(strings.TrimPrefix(line, "?")))
+	if len(names) == 0 {
+		return i.allNames(out)
+	}
+	for _, name := range names {
+		if err := i.fingerName(out, name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (i *Interpreter) findDefinition(name string) (semantics.TypedDefinition, string, bool) {
+	path := i.Compiler.CurrentModule
+	program := i.Programs[path]
+	if program == nil {
+		return semantics.TypedDefinition{}, "", false
+	}
+	for _, definition := range program.Definitions {
+		if definition.Name == name {
+			return definition, path, true
+		}
+	}
+	return semantics.TypedDefinition{}, "", false
+}
+
+func (i *Interpreter) fingerName(out io.Writer, name string) error {
+	definition, path, ok := i.findDefinition(name)
+	if !ok {
+		return i.diagnose(out, name)
+	}
+	_, err := fmt.Fprintf(out, "%s :: %s ||defined in %q line %d\n", name, formatType(definition.Type), path, definition.Expression.Span.Line)
+	return err
+}
+
+func (i *Interpreter) allNames(out io.Writer) error {
+	program := i.Programs[i.Compiler.CurrentModule]
+	if program == nil {
+		return fmt.Errorf("no current script")
+	}
+	names := make([]string, 0, len(program.Definitions))
+	for _, definition := range program.Definitions {
+		names = append(names, definition.Name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		if _, err := fmt.Fprintln(out, name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (i *Interpreter) diagnose(out io.Writer, name string) error {
+	valid := name != "" && name[0] >= 'A' && name[0] <= 'Z' || name != "" && name[0] >= 'a' && name[0] <= 'z'
+	if valid {
+		for _, character := range name[1:] {
+			if !isIdentifierRune(character) {
+				valid = false
+				break
+			}
+		}
+	}
+	if !valid {
+		_, err := fmt.Fprintf(out, "%q -- not an identifier\n", name)
+		return err
+	}
+	sections := map[string]int{"abstype": 21, "div": 8, "if": 15, "mod": 8, "otherwise": 15, "readvals": 31, "show": 23, "type": 22, "where": 15, "with": 21}
+	if section, ok := sections[name]; ok {
+		_, err := fmt.Fprintf(out, "%s -- keyword (see manual, section %d)\n", name, section)
+		return err
+	}
+	_, err := fmt.Fprintf(out, "identifier %q not in scope\n", name)
+	return err
 }
 
 func (i *Interpreter) replPrompt() string {
