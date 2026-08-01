@@ -37,6 +37,7 @@ type editorServices struct {
 	request platformsvc.ProcessRequest
 	shell   string
 	home    string
+	rows    *uint16
 }
 
 func (*editorServices) Metadata(string) (platformsvc.FileMetadata, bool) {
@@ -46,8 +47,10 @@ func (s *editorServices) Run(request platformsvc.ProcessRequest) (platformsvc.Pr
 	s.request = request
 	return platformsvc.Exited(0), nil
 }
-func (*editorServices) Terminal(uint32) platformsvc.TerminalInfo { return platformsvc.TerminalInfo{} }
-func (*editorServices) Monotonic() time.Duration                 { return 0 }
+func (s *editorServices) Terminal(uint32) platformsvc.TerminalInfo {
+	return platformsvc.TerminalInfo{Rows: s.rows}
+}
+func (*editorServices) Monotonic() time.Duration { return 0 }
 func (s *editorServices) Environment(name string) (string, bool) {
 	if name == "SHELL" && s.shell != "" {
 		return s.shell, true

@@ -39,7 +39,12 @@ the  session  prompt,  instead of the default prompt "Miranda " (version
 If the environment variable NOSTRICTIF is set (to any non-empty  string)
 Miranda accepts old scripts with no `if' after the guard comma.
 
-For displaying pages of the manual mira uses the program entered in  the
+The Go Miranda implementation uses its built-in, terminal-aware pager for
+both contents and chapters.  VIEWER, MENUVIEWER, and RETURNTOMENU are accepted
+for environment compatibility but do not replace this pager; entering ??? at
+the next-selection prompt reports these effective settings.
+
+Historical Miranda systems used the program entered in  the
 environment  as  VIEWER  -  if  this  variable is not set the default is
 likely to be 'more -d' or (roughly equivalent) 'less -EX'.
 
@@ -80,4 +85,3 @@ Example, setting the environment variable VIEWER to /usr/local/view
 
       to undo the above say `unsetenv VIEWER',
       to make permanent add the setenv line to your .login or .cshrc
-

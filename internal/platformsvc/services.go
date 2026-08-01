@@ -17,11 +17,11 @@ type NativeServices struct{}
 func (NativeServices) Metadata(path string) (FileMetadata, bool) { return GetFileInfo(path) }
 func (NativeServices) Terminal(fd uint32) TerminalInfo {
 	interactive := IsTerminal(uintptr(fd))
-	columns, ok := TerminalWidth(uintptr(fd))
+	rows, columns, ok := TerminalSize(uintptr(fd))
 	if !ok {
 		return TerminalInfo{Interactive: interactive}
 	}
-	return TerminalInfo{Interactive: interactive, Columns: &columns}
+	return TerminalInfo{Interactive: interactive, Columns: &columns, Rows: &rows}
 }
 func (NativeServices) Monotonic() time.Duration               { return time.Duration(MonotonicNs()) }
 func (NativeServices) Environment(name string) (string, bool) { return os.LookupEnv(name) }

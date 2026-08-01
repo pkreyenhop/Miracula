@@ -51,12 +51,16 @@ func IsTerminal(fd uintptr) bool {
 	return errno == 0
 }
 func TerminalWidth(fd uintptr) (uint16, bool) {
+	_, columns, ok := TerminalSize(fd)
+	return columns, ok
+}
+func TerminalSize(fd uintptr) (uint16, uint16, bool) {
 	var size struct{ Row, Col, XPixel, YPixel uint16 }
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, fd, syscall.TIOCGWINSZ, uintptr(unsafe.Pointer(&size)))
 	if errno != 0 || size.Col == 0 {
-		return 0, false
+		return 0, 0, false
 	}
-	return size.Col, true
+	return size.Row, size.Col, true
 }
 
 func MakeRaw(fd uintptr) (TerminalState, error) {

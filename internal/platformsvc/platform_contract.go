@@ -66,6 +66,7 @@ const (
 type TerminalInfo struct {
 	Interactive bool
 	Columns     *uint16
+	Rows        *uint16
 }
 
 type TerminalState struct {
