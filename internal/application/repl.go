@@ -50,21 +50,7 @@ func (i *Interpreter) evaluateValue(ctx context.Context, expression string) (lan
 	if len(parsed.Script.Items) != 1 {
 		return languageValue{}, fmt.Errorf("expression did not produce a value")
 	}
-	typeEnvironment := make(map[string]*semantics.Type, len(i.StandardTypes)+16)
-	for name, value := range i.StandardTypes {
-		typeEnvironment[name] = value
-	}
-	if program := i.Programs[i.Compiler.CurrentModule]; program != nil {
-		for _, definition := range program.Definitions {
-			typeEnvironment[definition.Name] = definition.Type
-		}
-		for name, value := range program.Specifications {
-			typeEnvironment[name] = value
-		}
-	}
-	if i.Repl.LastExpressionType != nil {
-		typeEnvironment["$$"] = i.Repl.LastExpressionType
-	}
+	typeEnvironment := i.replTypeEnvironment()
 	typed, typeErr := semantics.CheckWithTypes(parsed.Script, typeEnvironment)
 	if typeErr != nil {
 		return languageValue{}, typeErr
@@ -80,6 +66,63 @@ func (i *Interpreter) evaluateValue(ctx context.Context, expression string) (lan
 	}
 	runtime.globals["$$"] = immediate(value)
 	return value, nil
+}
+
+const replModulePath = "<repl>"
+
+func (i *Interpreter) replTypeEnvironment() map[string]*semantics.Type {
+	typeEnvironment := make(map[string]*semantics.Type, len(i.StandardTypes)+16)
+	for name, value := range i.StandardTypes {
+		typeEnvironment[name] = value
+	}
+	if program := i.Programs[i.Compiler.CurrentModule]; program != nil {
+		for _, definition := range program.Definitions {
+			typeEnvironment[definition.Name] = definition.Type
+		}
+		for name, value := range program.Specifications {
+			typeEnvironment[name] = value
+		}
+	}
+	if i.Repl.LastExpressionType != nil {
+		typeEnvironment["$$"] = i.Repl.LastExpressionType
+	}
+	if program := i.Programs[replModulePath]; program != nil {
+		for _, definition := range program.Definitions {
+			typeEnvironment[definition.Name] = definition.Type
+		}
+	}
+	return typeEnvironment
+}
+
+func (i *Interpreter) defineREPL(line string) (bool, error) {
+	lineParsed := syntaxfront.Run([]byte(line + "\n"))
+	if len(lineParsed.Diagnostics) != 0 || len(lineParsed.Script.Items) != 1 || lineParsed.Script.Items[0].Variant != "definition" {
+		return false, nil
+	}
+	if _, _, ok := runtimePatterns(lineParsed.Script.Items[0].LHS); !ok {
+		return false, nil
+	}
+	candidate := append(append([]byte(nil), i.Repl.DefinitionSource...), line...)
+	candidate = append(candidate, '\n')
+	parsed := syntaxfront.Run(candidate)
+	if len(parsed.Diagnostics) != 0 {
+		diagnostic := parsed.Diagnostics[0]
+		return true, fmt.Errorf("%d:%d: %s", diagnostic.Span.Line, diagnostic.Span.Column, diagnostic.Message)
+	}
+	program, err := semantics.CheckWithTypes(parsed.Script, i.replTypeEnvironment())
+	if err != nil {
+		return true, err
+	}
+	if err = i.runtime().installSource(candidate); err != nil {
+		return true, err
+	}
+	i.Repl.DefinitionSource = candidate
+	if i.Programs == nil {
+		i.Programs = map[string]*semantics.Program{}
+	}
+	i.Programs[replModulePath] = program
+	i.Scripts.Put(Script{Path: replModulePath, Source: append([]byte(nil), candidate...)})
+	return true, nil
 }
 
 func (i *Interpreter) evaluateTo(ctx context.Context, expression string, out io.Writer) (bool, error) {
@@ -389,6 +432,13 @@ func (i *Interpreter) REPL(ctx context.Context, in io.Reader, out io.Writer) err
 			}
 			continue
 		}
+		if defined, definitionErr := i.defineREPL(line); defined {
+			i.Repl.clearTiming()
+			if definitionErr != nil {
+				fmt.Fprintln(out, legacyEvaluationError(definitionErr))
+			}
+			continue
+		}
 		commandExpression, commandErr := parseCommandExpression(line)
 		if commandErr != nil {
 			fmt.Fprintln(out, commandErr)
@@ -542,6 +592,15 @@ func (i *Interpreter) handleQuery(line string, out io.Writer) error {
 			return i.diagnose(out, name)
 		}
 		if path == "<built-in>" {
+			return i.fingerName(out, name)
+		}
+		if path == replModulePath {
+			lines := strings.Split(string(i.Repl.DefinitionSource), "\n")
+			line := definition.Expression.Span.Line
+			if line > 0 && line <= len(lines) {
+				_, err := fmt.Fprintln(out, lines[line-1])
+				return err
+			}
 			return i.fingerName(out, name)
 		}
 		if i.Config.BadEditor {

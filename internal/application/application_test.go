@@ -234,6 +234,40 @@ func TestREPLEvaluatesPipedExpressionWithoutPrompt(t *testing.T) {
 	}
 }
 
+func TestREPLInstallsFunctionDefinitions(t *testing.T) {
+	i := New(platformsvc.NativeServices{})
+	input := strings.NewReader("double x = x+x\ndouble 21\nfib 0 = 0\nfib 1 = 1\nfib n = fib (n-1)+fib (n-2)\nfib 6\n/q\n")
+	var output bytes.Buffer
+	if err := i.REPL(context.Background(), input, &output); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := output.String(), "42\n8\n"; got != want {
+		t.Fatalf("output = %q, want %q", got, want)
+	}
+	entry, ok := i.scopeEntry("double")
+	if !ok || entry.Path != replModulePath || entry.Line != 1 {
+		t.Fatalf("REPL definition entry = %+v, ok = %v", entry, ok)
+	}
+	output.Reset()
+	if err := i.handleQuery("??double", &output); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := output.String(), "double x = x+x\n"; got != want {
+		t.Fatalf("definition query = %q, want %q", got, want)
+	}
+}
+
+func TestREPLRejectsInvalidFunctionDefinition(t *testing.T) {
+	i := New(platformsvc.NativeServices{})
+	var output bytes.Buffer
+	if err := i.REPL(context.Background(), strings.NewReader("bad x = reverse x, if x < 1\nbad 2\n/q\n"), &output); !errors.Is(err, ErrEvaluationReported) {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), "cannot unify num with [*]") || !strings.Contains(output.String(), "UNDEFINED NAME - bad") {
+		t.Fatalf("output = %q", output.String())
+	}
+}
+
 func TestIncompleteForwardPipelineReportsSyntaxError(t *testing.T) {
 	i := New(platformsvc.NativeServices{})
 	var output bytes.Buffer

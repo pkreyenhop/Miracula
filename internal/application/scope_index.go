@@ -24,6 +24,11 @@ func (i *Interpreter) scopeIndex() []scopeEntry {
 			entries[definition.Name] = scopeEntry{Name: definition.Name, Original: definition.Name, Path: current, Line: definition.Expression.Span.Line, Type: definition.Type, Local: true}
 		}
 	}
+	if program := i.Programs[replModulePath]; program != nil {
+		for _, definition := range program.Definitions {
+			entries[definition.Name] = scopeEntry{Name: definition.Name, Original: definition.Name, Path: replModulePath, Line: definition.Expression.Span.Line, Type: definition.Type, Local: true}
+		}
+	}
 	runtime := i.runtime()
 	for name := range runtime.globals {
 		if _, local := entries[name]; local || strings.HasPrefix(name, "__") || name == "$$" {

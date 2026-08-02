@@ -17,6 +17,7 @@ type ReplSession struct {
 	LastGC             *int
 	Errors             map[string]ErrorLocation
 	Diagnostics        DiagnosticSet
+	DefinitionSource   []byte
 }
 
 type ErrorLocation struct {
