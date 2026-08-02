@@ -178,6 +178,7 @@ type languageRuntime struct {
 	includeLoading      map[string]bool
 	provenance          map[string]sourceProvenance
 	nextModuleInstance  uint64
+	callFrames          []*languageCallFrame
 	allowShadow         bool
 	reductions          uint64
 	cells               uint64
@@ -204,6 +205,7 @@ const (
 type languageCallFrame struct {
 	environment map[string]*languageThunk
 	bindings    []languageThunk
+	seen        map[string]languageValue
 }
 
 type environmentStream func(context.Context) (map[string]*languageThunk, bool, error)
@@ -1600,40 +1602,39 @@ func (r *languageRuntime) selectClause(ctx context.Context, clauses []runtimeCla
 			environment[name] = value
 		}
 		matched := true
-		seen := map[string]languageValue{}
 		for index, pattern := range clause.parameters {
-			if !r.matchRuntimePatternBound(pattern, arguments[index], environment, frame.bind, seen) {
+			if !r.matchRuntimePatternBound(pattern, arguments[index], environment, frame.bind, frame.seen) {
 				matched = false
 				break
 			}
 		}
 		if !matched {
-			r.releaseCallFrame(frame)
+			r.releaseCallFrame(frame, true)
 			continue
 		}
 		if len(clause.localSource) != 0 {
 			if err := r.installLocalSource(clause.localSource, environment); err != nil {
-				r.releaseCallFrame(frame)
+				r.releaseCallFrame(frame, true)
 				return languageValue{}, err
 			}
 		}
 		if clause.condition != nil {
 			condition, err := r.eval(ctx, *clause.condition, environment)
 			if err != nil {
-				r.releaseCallFrame(frame)
+				r.releaseCallFrame(frame, true)
 				return languageValue{}, err
 			}
 			if condition.kind != valueBool {
-				r.releaseCallFrame(frame)
+				r.releaseCallFrame(frame, true)
 				return languageValue{}, errors.New("truthvalue expected")
 			}
 			if !condition.flag {
-				r.releaseCallFrame(frame)
+				r.releaseCallFrame(frame, true)
 				continue
 			}
 		}
 		result, err := r.eval(ctx, clause.body, environment)
-		r.releaseCallFrame(frame)
+		r.releaseCallFrame(frame, err != nil || !valueMayRetainEnvironment(result))
 		return result, err
 	}
 	return languageValue{}, errors.New("no matching equation")
@@ -1681,7 +1682,15 @@ func (r *languageRuntime) acquireCallFrame(patterns []syntaxfront.Expr) *languag
 	for _, pattern := range patterns {
 		count += patternBindingCount(pattern)
 	}
-	return &languageCallFrame{environment: make(map[string]*languageThunk, max(4, count)), bindings: make([]languageThunk, 0, count)}
+	if last := len(r.callFrames) - 1; last >= 0 {
+		frame := r.callFrames[last]
+		r.callFrames = r.callFrames[:last]
+		if cap(frame.bindings) < count {
+			frame.bindings = make([]languageThunk, 0, count)
+		}
+		return frame
+	}
+	return &languageCallFrame{environment: make(map[string]*languageThunk, max(4, count)), bindings: make([]languageThunk, 0, count), seen: make(map[string]languageValue, max(1, count))}
 }
 
 func (f *languageCallFrame) bind(name string, value languageValue) {
@@ -1691,9 +1700,28 @@ func (f *languageCallFrame) bind(name string, value languageValue) {
 	f.environment[name] = thunk
 }
 
-func (r *languageRuntime) releaseCallFrame(frame *languageCallFrame) {
-	// Results may contain lazy closures pointing into this environment. Let the
-	// frame follow normal Go reachability instead of recycling it prematurely.
+func (r *languageRuntime) releaseCallFrame(frame *languageCallFrame, reusable bool) {
+	if !reusable || len(r.callFrames) >= 2048 || cap(frame.bindings) > 64 || len(frame.environment) > 128 {
+		return
+	}
+	for name := range frame.environment {
+		delete(frame.environment, name)
+	}
+	for name := range frame.seen {
+		delete(frame.seen, name)
+	}
+	clear(frame.bindings)
+	frame.bindings = frame.bindings[:0]
+	r.callFrames = append(r.callFrames, frame)
+}
+
+func valueMayRetainEnvironment(value languageValue) bool {
+	switch value.kind {
+	case valueNumber, valueFloat, valueBool, valueChar, valueString, valueMessage:
+		return false
+	default:
+		return true
+	}
 }
 
 func patternBindingCount(pattern syntaxfront.Expr) int {

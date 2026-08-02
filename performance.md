@@ -365,6 +365,20 @@ Reduce short-lived allocations for calls, pattern matching, and list traversal.
 - Retained heap size does not grow after repeated large evaluations.
 - Race tests and interpreter-isolation tests pass.
 
+### Result recorded 2026-08-02
+
+Allocation profiling identified call-frame environments, binding slices, and
+duplicate-pattern maps as the dominant reusable scratch state. These now live
+in a bounded interpreter-local cache and are cleared before reuse. Frames are
+recycled only after failed matches, errors, or immediate scalar results; lazy
+values and functions that may capture an environment retain their frames under
+ordinary Go reachability. Oversized frames are discarded and the cache is
+capped at 2,048 entries. In a three-evaluation pattern-recursion benchmark,
+allocations fell from approximately 58,043 to 37,935 per operation (34.6%
+fewer), retained bytes fell from 209.4 MB to 197.6 MB, and the median improved
+to 53,366,639 ns/op. Tests verify reference clearing, the retention bound,
+call-by-need behavior, race safety, and interpreter isolation.
+
 ## Milestone 9: specialize standard higher-order functions
 
 ### Objective

@@ -430,6 +430,24 @@ func TestLanguageThunkCycleAndInterruptionState(t *testing.T) {
 	}
 }
 
+func TestCallFrameCacheClearsReferencesAndIsBounded(t *testing.T) {
+	runtime := newLanguageRuntime(io.Discard)
+	pattern := syntaxfront.Expr{Variant: "name", Text: "x"}
+	frame := runtime.acquireCallFrame([]syntaxfront.Expr{pattern})
+	frame.bind("x", languageValue{kind: valueString, text: "retained"})
+	frame.seen["x"] = languageValue{kind: valueString, text: "retained"}
+	runtime.releaseCallFrame(frame, true)
+	reused := runtime.acquireCallFrame([]syntaxfront.Expr{pattern})
+	if len(reused.environment) != 0 || len(reused.bindings) != 0 || len(reused.seen) != 0 {
+		t.Fatalf("reused frame retained state: %#v", reused)
+	}
+	runtime.callFrames = make([]*languageCallFrame, 2048)
+	runtime.releaseCallFrame(reused, true)
+	if len(runtime.callFrames) != 2048 {
+		t.Fatalf("frame cache grew to %d entries", len(runtime.callFrames))
+	}
+}
+
 func TestMirandaOperatorSemantics(t *testing.T) {
 	runtime := newLanguageRuntime(io.Discard)
 	if err := runtime.installSource([]byte("join x y = x*10+y\nbox ::= Box num\n")); err != nil {
