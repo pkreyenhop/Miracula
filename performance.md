@@ -148,6 +148,17 @@ general AST evaluator.
 - Existing call-by-need, overflow, interrupt, and error tests pass.
 - Unsupported expressions reliably fall back to the general evaluator.
 
+### Result recorded 2026-08-02
+
+Scalar clause bodies, guards, operators, nested calls, and numeric literals are
+now compiled once into scalar closures. The general lazy evaluator remains the
+fallback for unsupported expressions. Pattern-equation Fibonacci 32 improved
+from a 581,210,542 ns/op baseline median to approximately 207,363,750 ns/op
+(2.8x faster). Guarded Fibonacci 32 measured approximately 137,881,958 ns/op.
+The pattern benchmark remains at roughly 21 KB and 114 allocations per top-level
+evaluation; the speedup comes from eliminating repeated AST dispatch and integer
+literal parsing inside recursion.
+
 ## Milestone 3: cache REPL parsing and typing
 
 ### Objective

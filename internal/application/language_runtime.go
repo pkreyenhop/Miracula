@@ -1198,6 +1198,8 @@ type fastScalar struct {
 	isBool  bool
 }
 
+type fastScalarFn func(context.Context, int64) (fastScalar, bool, error)
+
 func (r *languageRuntime) compileUnaryIntegerClauses(clauses []runtimeClause) func(context.Context, int64) (int64, bool, error) {
 	if len(clauses) == 0 {
 		return nil
@@ -1207,6 +1209,41 @@ func (r *languageRuntime) compileUnaryIntegerClauses(clauses []runtimeClause) fu
 			return nil
 		}
 	}
+	type compiledClause struct {
+		expected  int64
+		literal   bool
+		condition fastScalarFn
+		body      fastScalarFn
+	}
+	compiledClauses := make([]compiledClause, len(clauses))
+	for index, clause := range clauses {
+		parameter := ""
+		if clause.parameters[0].Variant == "name" {
+			parameter = clause.parameters[0].Text
+		}
+		body, ok := r.compileFastScalar(clause.body, parameter)
+		if !ok {
+			return nil
+		}
+		var condition fastScalarFn
+		if clause.condition != nil {
+			condition, ok = r.compileFastScalar(*clause.condition, parameter)
+			if !ok {
+				return nil
+			}
+		}
+		pattern := clause.parameters[0]
+		compiled := compiledClause{condition: condition, body: body}
+		if pattern.Variant == "int" {
+			expected, parseErr := strconv.ParseInt(pattern.Text, 0, 64)
+			if parseErr != nil {
+				return nil
+			}
+			compiled.expected = expected
+			compiled.literal = true
+		}
+		compiledClauses[index] = compiled
+	}
 	var compiled func(context.Context, int64) (int64, bool, error)
 	compiled = func(ctx context.Context, argument int64) (int64, bool, error) {
 		select {
@@ -1214,22 +1251,14 @@ func (r *languageRuntime) compileUnaryIntegerClauses(clauses []runtimeClause) fu
 			return 0, false, ctx.Err()
 		default:
 		}
-		for _, clause := range clauses {
-			pattern := clause.parameters[0]
-			parameter := ""
-			if pattern.Variant == "int" {
-				expected, err := strconv.ParseInt(pattern.Text, 0, 64)
-				if err != nil {
-					return 0, false, nil
-				}
-				if argument != expected {
+		for _, clause := range compiledClauses {
+			if clause.literal {
+				if argument != clause.expected {
 					continue
 				}
-			} else {
-				parameter = pattern.Text
 			}
 			if clause.condition != nil {
-				condition, ok, err := r.evalFastScalar(ctx, *clause.condition, parameter, argument)
+				condition, ok, err := clause.condition(ctx, argument)
 				if err != nil || !ok {
 					return 0, false, err
 				}
@@ -1237,7 +1266,7 @@ func (r *languageRuntime) compileUnaryIntegerClauses(clauses []runtimeClause) fu
 					continue
 				}
 			}
-			result, ok, err := r.evalFastScalar(ctx, clause.body, parameter, argument)
+			result, ok, err := clause.body(ctx, argument)
 			if err != nil || !ok || result.isBool {
 				return 0, false, err
 			}
@@ -1246,6 +1275,122 @@ func (r *languageRuntime) compileUnaryIntegerClauses(clauses []runtimeClause) fu
 		return 0, false, nil
 	}
 	return compiled
+}
+
+func (r *languageRuntime) compileFastScalar(expression syntaxfront.Expr, parameter string) (fastScalarFn, bool) {
+	switch expression.Variant {
+	case "int":
+		value, err := strconv.ParseInt(expression.Text, 0, 64)
+		if err != nil {
+			return nil, false
+		}
+		return func(context.Context, int64) (fastScalar, bool, error) {
+			return fastScalar{integer: value}, true, nil
+		}, true
+	case "name":
+		if expression.Text != parameter {
+			return nil, false
+		}
+		return func(_ context.Context, argument int64) (fastScalar, bool, error) {
+			return fastScalar{integer: argument}, true, nil
+		}, true
+	case "neg":
+		argument, ok := r.compileFastScalar(*expression.Arg, parameter)
+		if !ok {
+			return nil, false
+		}
+		return func(ctx context.Context, input int64) (fastScalar, bool, error) {
+			value, matched, err := argument(ctx, input)
+			if err != nil || !matched || value.isBool || value.integer == math.MinInt64 {
+				return fastScalar{}, false, err
+			}
+			return fastScalar{integer: -value.integer}, true, nil
+		}, true
+	case "infix":
+		left, leftOK := r.compileFastScalar(*expression.Head, parameter)
+		right, rightOK := r.compileFastScalar(*expression.Tail, parameter)
+		if !leftOK || !rightOK {
+			return nil, false
+		}
+		operator := expression.Text
+		return func(ctx context.Context, input int64) (fastScalar, bool, error) {
+			leftValue, ok, err := left(ctx, input)
+			if err != nil || !ok || leftValue.isBool {
+				return fastScalar{}, false, err
+			}
+			rightValue, ok, err := right(ctx, input)
+			if err != nil || !ok || rightValue.isBool {
+				return fastScalar{}, false, err
+			}
+			return evaluateFastInfix(operator, leftValue.integer, rightValue.integer)
+		}, true
+	case "application":
+		if expression.Func == nil || expression.Func.Variant != "name" || expression.Arg == nil {
+			return nil, false
+		}
+		argument, ok := r.compileFastScalar(*expression.Arg, parameter)
+		if !ok {
+			return nil, false
+		}
+		name := expression.Func.Text
+		return func(ctx context.Context, input int64) (fastScalar, bool, error) {
+			value, matched, err := argument(ctx, input)
+			if err != nil || !matched || value.isBool {
+				return fastScalar{}, false, err
+			}
+			thunk := r.globals[name]
+			if thunk == nil {
+				return fastScalar{}, false, nil
+			}
+			function, err := thunk.force()
+			if err != nil || function.intFn == nil {
+				return fastScalar{}, false, err
+			}
+			result, matched, err := function.intFn(ctx, value.integer)
+			return fastScalar{integer: result}, matched, err
+		}, true
+	}
+	return nil, false
+}
+
+func evaluateFastInfix(operator string, left, right int64) (fastScalar, bool, error) {
+	if isComparison(operator) {
+		comparison := 0
+		if left < right {
+			comparison = -1
+		} else if left > right {
+			comparison = 1
+		}
+		matched := false
+		switch operator {
+		case "=":
+			matched = comparison == 0
+		case "~=":
+			matched = comparison != 0
+		case "<":
+			matched = comparison < 0
+		case "<=":
+			matched = comparison <= 0
+		case ">":
+			matched = comparison > 0
+		case ">=":
+			matched = comparison >= 0
+		}
+		return fastScalar{isBool: true, boolean: matched}, true, nil
+	}
+	var result int64
+	var ok bool
+	switch operator {
+	case "+":
+		result, ok = smallAdd(left, right)
+	case "-":
+		result, ok = smallSub(left, right)
+	case "*":
+		result, ok = smallMul(left, right)
+	default:
+		return fastScalar{}, false, nil
+	}
+	return fastScalar{integer: result}, ok, nil
 }
 
 func (r *languageRuntime) evalFastScalar(ctx context.Context, expression syntaxfront.Expr, parameter string, argument int64) (fastScalar, bool, error) {
