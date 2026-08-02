@@ -85,9 +85,14 @@ type languageValue struct {
 }
 
 type lazyList struct {
-	mu     sync.Mutex
-	values []languageValue
-	next   func(context.Context, int) (languageValue, bool, error)
+	mu           sync.Mutex
+	values       []languageValue
+	next         func(context.Context, int) (languageValue, bool, error)
+	integerRange *integerRange
+}
+
+type integerRange struct {
+	origin, step, end *big.Int
 }
 
 type sequenceIterator struct {
@@ -2350,7 +2355,12 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 			}
 		}
 		origin, increment := new(big.Int).Set(from), new(big.Int).Set(step)
-		return languageValue{kind: valueList, list: &lazyList{next: func(ctx context.Context, index int) (languageValue, bool, error) {
+		var limit *big.Int
+		if end != nil {
+			limit = new(big.Int).Set(end)
+		}
+		rangeInfo := &integerRange{origin: origin, step: increment, end: limit}
+		return languageValue{kind: valueList, list: &lazyList{integerRange: rangeInfo, next: func(ctx context.Context, index int) (languageValue, bool, error) {
 			current := new(big.Int).Add(origin, new(big.Int).Mul(increment, big.NewInt(int64(index))))
 			if end != nil && (increment.Sign() >= 0 && current.Cmp(end) > 0 || increment.Sign() < 0 && current.Cmp(end) < 0) {
 				return languageValue{}, false, nil
@@ -3302,6 +3312,16 @@ func (r *languageRuntime) installBuiltins() {
 		return languageValue{kind: valueNumber, num: total}, nil
 	}})
 	r.builtin("sum", languageValue{kind: valueFunction, fn: func(ctx context.Context, input languageValue) (languageValue, error) {
+		select {
+		case <-ctx.Done():
+			return languageValue{}, ctx.Err()
+		default:
+		}
+		if input.kind == valueList && input.list != nil {
+			if total, ok := sumIntegerRange(ctx, input.list.integerRange); ok {
+				return numberFromBig(total), nil
+			}
+		}
 		total := big.NewInt(0)
 		err := streamList(ctx, input, func(value languageValue) (bool, error) {
 			number, err := numberValue(value)
@@ -3920,6 +3940,40 @@ func streamList(ctx context.Context, value languageValue, visit func(languageVal
 			return err
 		}
 	}
+}
+
+func sumIntegerRange(ctx context.Context, sequence *integerRange) (*big.Int, bool) {
+	if sequence == nil || sequence.end == nil || sequence.step.Sign() == 0 {
+		return nil, false
+	}
+	select {
+	case <-ctx.Done():
+		return nil, false
+	default:
+	}
+	distance := new(big.Int)
+	step := new(big.Int).Set(sequence.step)
+	if step.Sign() > 0 {
+		if sequence.origin.Cmp(sequence.end) > 0 {
+			return new(big.Int), true
+		}
+		distance.Sub(sequence.end, sequence.origin)
+	} else {
+		if sequence.origin.Cmp(sequence.end) < 0 {
+			return new(big.Int), true
+		}
+		distance.Sub(sequence.origin, sequence.end)
+		step.Neg(step)
+	}
+	count := new(big.Int).Quo(distance, step)
+	count.Add(count, big.NewInt(1))
+	lastOffset := new(big.Int).Sub(count, big.NewInt(1))
+	lastOffset.Mul(lastOffset, sequence.step)
+	last := new(big.Int).Add(sequence.origin, lastOffset)
+	total := new(big.Int).Add(sequence.origin, last)
+	total.Mul(total, count)
+	total.Quo(total, big.NewInt(2))
+	return total, true
 }
 
 func renderLanguage(ctx context.Context, value languageValue) (string, error) {

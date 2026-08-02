@@ -361,6 +361,10 @@ func TestLanguageRuntimeSupportsLazyHigherOrderAndBignumValues(t *testing.T) {
 		"drop 1 \"AλB\"":                  "λB",
 		"\"AλB\"!1":                       "'λ'",
 		"map code \"Aλ\"":                 "[65,955]",
+		"sum [1..1000000]":                "500000500000",
+		"sum [10,8..0]":                   "30",
+		"sum [5..1]":                      "0",
+		"sum [9223372036854775808..9223372036854775810]": "27670116110564327427",
 	} {
 		actual, err := i.Evaluate(context.Background(), expression)
 		if err != nil || actual != expected {
@@ -403,6 +407,22 @@ func TestLanguageRuntimeUsesCallByNeed(t *testing.T) {
 	}
 	if got, err := renderLanguage(context.Background(), value); err != nil || got != "6" || forces != 1 {
 		t.Fatalf("double counted = %q, %v; forces = %d", got, err, forces)
+	}
+}
+
+func TestOptimizedSumRemainsInterruptibleAndShadowable(t *testing.T) {
+	interpreter := New(nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := interpreter.Evaluate(ctx, "sum [1..1000000]"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled sum error = %v", err)
+	}
+	if err := interpreter.runtime().installSource([]byte("sum xs = 7\n")); err != nil {
+		t.Fatal(err)
+	}
+	result, err := interpreter.Evaluate(context.Background(), "sum [1..]")
+	if err != nil || result != "7" {
+		t.Fatalf("shadowed sum = %q, %v", result, err)
 	}
 }
 

@@ -404,6 +404,20 @@ Miranda definitions authoritative and queryable.
 - `Ctrl-C` remains responsive during optimized operations and streamed output.
 - Queries still show the definitions in `stdenv.m`.
 
+### Result recorded 2026-08-02
+
+Finite integer ranges now carry immutable numeric metadata that the internal
+`sum` implementation can consume with the exact arithmetic-series formula.
+The result uses arbitrary-precision integers, including descending, stepped,
+empty, and values beyond `int64`. General lists, transformed ranges, zero-step
+ranges, and infinite ranges retain the ordinary lazy streaming implementation.
+The fast path checks cancellation before arithmetic, and user/REPL definitions
+still shadow it; manual queries continue to use the authoritative `stdenv.m`
+source. The one-iteration million-item sum median improved from approximately
+194,607,125 ns/op after Milestone 8 to 52,458 ns/op, while allocations fell from
+about 5,000,440 and 984 MB to 401 and 66.9 KB. At cache-steady state it measures
+about 1.0 microsecond and 32 allocations per operation.
+
 ## Milestone 10: persist optimized compiled artifacts
 
 ### Objective
