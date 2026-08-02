@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"unicode/utf8"
 
@@ -146,13 +147,17 @@ type sourceProvenance struct {
 }
 
 type languageThunk struct {
-	mu         sync.Mutex
-	value      languageValue
-	err        error
-	eval       func() (languageValue, error)
-	ready      bool
-	evaluating bool
+	value languageValue
+	err   error
+	eval  func() (languageValue, error)
+	state atomic.Uint32
 }
+
+const (
+	thunkUnevaluated uint32 = iota
+	thunkEvaluating
+	thunkReady
+)
 
 type languageCallFrame struct {
 	environment map[string]*languageThunk
@@ -162,28 +167,23 @@ type languageCallFrame struct {
 type environmentStream func(context.Context) (map[string]*languageThunk, bool, error)
 
 func (t *languageThunk) force() (languageValue, error) {
-	t.mu.Lock()
-	if t.ready {
-		value, err := t.value, t.err
-		t.mu.Unlock()
-		return forceLanguageValue(value, err)
+	if t.state.Load() == thunkReady {
+		return forceLanguageValue(t.value, t.err)
 	}
-	if t.evaluating {
-		t.mu.Unlock()
+	if !t.state.CompareAndSwap(thunkUnevaluated, thunkEvaluating) {
+		if t.state.Load() == thunkReady {
+			return forceLanguageValue(t.value, t.err)
+		}
 		return languageValue{}, errors.New("cyclic evaluation")
 	}
-	t.evaluating = true
 	evaluate := t.eval
-	t.mu.Unlock()
 	value, err := evaluate()
-	t.mu.Lock()
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-		t.evaluating = false
-		t.mu.Unlock()
+		t.state.Store(thunkUnevaluated)
 		return value, err
 	}
-	t.value, t.err, t.eval, t.ready, t.evaluating = value, err, nil, true, false
-	t.mu.Unlock()
+	t.value, t.err, t.eval = value, err, nil
+	t.state.Store(thunkReady)
 	return forceLanguageValue(value, err)
 }
 
@@ -250,7 +250,9 @@ func (r *languageRuntime) prepareInput(closed bool) {
 }
 
 func immediate(value languageValue) *languageThunk {
-	return &languageThunk{value: value, ready: true}
+	thunk := &languageThunk{value: value}
+	thunk.state.Store(thunkReady)
+	return thunk
 }
 
 func (r *languageRuntime) install(script syntaxfront.Script) error {
@@ -1641,8 +1643,10 @@ func (r *languageRuntime) acquireCallFrame(patterns []syntaxfront.Expr) *languag
 }
 
 func (f *languageCallFrame) bind(name string, value languageValue) {
-	f.bindings = append(f.bindings, languageThunk{value: value, ready: true})
-	f.environment[name] = &f.bindings[len(f.bindings)-1]
+	f.bindings = append(f.bindings, languageThunk{value: value})
+	thunk := &f.bindings[len(f.bindings)-1]
+	thunk.state.Store(thunkReady)
+	f.environment[name] = thunk
 }
 
 func (r *languageRuntime) releaseCallFrame(frame *languageCallFrame) {

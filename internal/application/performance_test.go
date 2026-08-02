@@ -8,7 +8,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"unsafe"
 
 	"github.com/pkreyenhop/miracula/internal/platformsvc"
 	"github.com/pkreyenhop/miracula/internal/semantics"
@@ -73,6 +75,55 @@ func TestScalarInstructionDisassembly(t *testing.T) {
 	}
 	if _, ok := compileFastInfixOperator("/"); ok {
 		t.Fatal("unsupported operator compiled into the scalar instruction path")
+	}
+}
+
+func BenchmarkForceEvaluatedThunk(b *testing.B) {
+	thunk := immediate(languageValue{kind: valueNumber, small: 42})
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		value, err := thunk.force()
+		if err != nil || value.small != 42 {
+			b.Fatalf("force = %#v, %v", value, err)
+		}
+	}
+}
+
+type legacyMutexThunk struct {
+	mu         sync.Mutex
+	value      languageValue
+	err        error
+	eval       func() (languageValue, error)
+	ready      bool
+	evaluating bool
+}
+
+func TestSpecializedThunkStorageIsCompact(t *testing.T) {
+	current, legacy := unsafe.Sizeof(languageThunk{}), unsafe.Sizeof(legacyMutexThunk{})
+	t.Logf("specialized thunk=%d bytes, mutex thunk=%d bytes", current, legacy)
+	if current >= legacy {
+		t.Fatalf("specialized thunk uses %d bytes; mutex representation uses %d", current, legacy)
+	}
+}
+
+//go:noinline
+func forceLegacyMutexThunk(thunk *legacyMutexThunk) (languageValue, error) {
+	thunk.mu.Lock()
+	value, err := forceLanguageValue(thunk.value, nil)
+	thunk.mu.Unlock()
+	return value, err
+}
+
+func BenchmarkForceEvaluatedThunkLegacyMutex(b *testing.B) {
+	thunk := legacyMutexThunk{value: languageValue{kind: valueNumber, small: 42}}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		value, err := forceLegacyMutexThunk(&thunk)
+		if err != nil || value.small != 42 {
+			b.Fatalf("force = %#v, %v", value, err)
+		}
 	}
 }
 

@@ -401,6 +401,30 @@ func TestLanguageRuntimeUsesCallByNeed(t *testing.T) {
 	}
 }
 
+func TestLanguageThunkCycleAndInterruptionState(t *testing.T) {
+	var cyclic *languageThunk
+	cyclic = &languageThunk{eval: func() (languageValue, error) { return cyclic.force() }}
+	if _, err := cyclic.force(); err == nil || !strings.Contains(err.Error(), "cyclic evaluation") {
+		t.Fatalf("cyclic thunk error = %v", err)
+	}
+
+	forces := 0
+	interrupted := &languageThunk{eval: func() (languageValue, error) {
+		forces++
+		if forces == 1 {
+			return languageValue{}, context.Canceled
+		}
+		return languageValue{kind: valueNumber, small: 42}, nil
+	}}
+	if _, err := interrupted.force(); !errors.Is(err, context.Canceled) {
+		t.Fatalf("interrupted thunk error = %v", err)
+	}
+	value, err := interrupted.force()
+	if err != nil || value.small != 42 || forces != 2 {
+		t.Fatalf("retried thunk = %#v, %v; forces=%d", value, err, forces)
+	}
+}
+
 func TestMirandaOperatorSemantics(t *testing.T) {
 	runtime := newLanguageRuntime(io.Discard)
 	if err := runtime.installSource([]byte("join x y = x*10+y\nbox ::= Box num\n")); err != nil {

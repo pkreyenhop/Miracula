@@ -291,6 +291,19 @@ and call-by-need semantics.
   arguments remain unevaluated.
 - Recursive black-hole and interruption behavior is tested.
 
+### Result recorded 2026-08-02
+
+Thunk state is now a compact atomic tag (`unevaluated`, `evaluating`, or
+`ready`) instead of a mutex plus two booleans. The representation is 168 bytes
+on the production target versus 176 bytes for the prior layout, publishes a
+memoized value safely, detects recursive black holes, and resets interrupted
+evaluations so they can be retried. Forcing an evaluated thunk improved from a
+15.0 ns/op mutex baseline to 11.76 ns/op (21.6% faster), with zero allocations
+in both cases. The end-to-end million-item sum median improved modestly from
+195,835,083 ns/op in the same-revision mutex A/B run to 192,523,084 ns/op;
+allocations remained stable. Call-by-need, unused-argument, cycle, cancellation,
+and race coverage protect the semantics of the new state machine.
+
 ## Milestone 7: unify strings and character-list operations
 
 ### Objective
