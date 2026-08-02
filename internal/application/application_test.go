@@ -3,6 +3,7 @@ package application
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/pkreyenhop/miracula/internal/platformsvc"
@@ -173,6 +174,45 @@ func TestCompiledArtifactWarmLoadAndDependencyInvalidation(t *testing.T) {
 	}
 	if _, err := os.Stat(artifact); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("orphan artifact remains: %v", err)
+	}
+}
+
+func TestCompiledArtifactInstallsLoweredRuntimeUnit(t *testing.T) {
+	directory := t.TempDir()
+	script := filepath.Join(directory, "unit.m")
+	source := []byte("double x = x+x\nanswer = double 21\n")
+	if err := os.WriteFile(script, source, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cold := New(platformsvc.NativeServices{})
+	if _, err := cold.LoadProgram(script); err != nil {
+		t.Fatal(err)
+	}
+	dump, err := ReadCompiledDump(filepath.Join(directory, "unit.x"), source)
+	if err != nil || dump.RuntimeUnit == nil || len(dump.RuntimeUnit.Definitions) != 2 {
+		t.Fatalf("runtime unit = %+v, %v", dump.RuntimeUnit, err)
+	}
+	malformed := dump
+	malformed.RuntimeUnit.Definitions[0].Name = ""
+	content, err := json.Marshal(malformed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	malformedPath := filepath.Join(directory, "malformed.x")
+	if err := os.WriteFile(malformedPath, content, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ReadCompiledDump(malformedPath, source); !errors.Is(err, ErrStaleDump) {
+		t.Fatalf("malformed runtime unit error = %v", err)
+	}
+	dump.RuntimeUnit.Definitions[0].Name = "double"
+	warm := New(platformsvc.NativeServices{})
+	if _, err := warm.LoadProgram(script); err != nil || !warm.Compiler.UsedCompiledArtifact {
+		t.Fatalf("warm load used artifact=%v err=%v", warm.Compiler.UsedCompiledArtifact, err)
+	}
+	result, err := warm.Evaluate(context.Background(), "answer")
+	if err != nil || result != "42" {
+		t.Fatalf("lowered artifact answer = %q, %v", result, err)
 	}
 }
 

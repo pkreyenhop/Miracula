@@ -445,6 +445,25 @@ resolution, and lowering during startup.
 - Stale and corrupted artifact tests pass.
 - Reproducible builds and source-only startup remain supported.
 
+### Result recorded 2026-08-02
+
+Artifact format 2 records the Go compiler version and a lowered runtime unit for
+scripts whose definitions can be installed directly without changing guarded,
+pattern-equation, constructor, local-definition, or directive semantics. Warm
+loads install those immutable definitions from the artifact instead of parsing
+the root source a second time for the evaluator; unsupported source shapes use
+the established source path. Empty scripts are valid warm artifacts as well.
+Validation covers format, compiler, target, source bytes and hash, dependency
+hashes, trailing data, and runtime-unit structure. Writes remain synchronized,
+atomic temporary-file renames, while stale, malformed, truncated, corrupted,
+or orphaned artifacts are cache misses or removed as appropriate.
+
+On the existing startup benchmark, the cold median is 13,267,458 ns/op and the
+warm median is 7,267,083 ns/op (45.2% faster). Warm allocation volume falls from
+about 138.1 MB to 101.8 MB (26.3% less). Tests prove the artifact path installs
+and executes lowered definitions, bypasses front-end work through the existing
+compiler hook, invalidates dependencies, and safely rejects malformed data.
+
 ## Final acceptance
 
 After completing all milestones:

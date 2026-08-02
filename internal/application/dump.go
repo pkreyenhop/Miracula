@@ -1,6 +1,7 @@
 package application
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -19,16 +20,20 @@ import (
 func DumpGraph(w io.Writer, g graphstore.DumpGraph) error { return graphstore.EncodeGraph(w, g) }
 
 type CompiledDump struct {
-	Version      int                `json:"version"`
-	Target       string             `json:"target"`
-	SourceSHA256 string             `json:"source_sha256"`
-	Source       []byte             `json:"source"`
-	Dependencies map[string]string  `json:"dependencies,omitempty"`
-	Script       syntaxfront.Script `json:"script"`
-	Program      *semantics.Program `json:"program,omitempty"`
-	Exports      map[string]string  `json:"exports,omitempty"`
-	Diagnostics  []string           `json:"diagnostics,omitempty"`
+	Version      int                  `json:"version"`
+	Target       string               `json:"target"`
+	Compiler     string               `json:"compiler"`
+	SourceSHA256 string               `json:"source_sha256"`
+	Source       []byte               `json:"source"`
+	Dependencies map[string]string    `json:"dependencies,omitempty"`
+	Script       syntaxfront.Script   `json:"script"`
+	Program      *semantics.Program   `json:"program,omitempty"`
+	Exports      map[string]string    `json:"exports,omitempty"`
+	Diagnostics  []string             `json:"diagnostics,omitempty"`
+	RuntimeUnit  *compiledRuntimeUnit `json:"runtime_unit,omitempty"`
 }
+
+const compiledArtifactVersion = 2
 
 func dependencyHashes(root, libraryPath string) (map[string]string, error) {
 	result, visited := map[string]string{}, map[string]bool{}
@@ -158,7 +163,7 @@ func WriteCompiledDump(path string, source []byte) error {
 func WriteCompiledArtifact(path string, dump CompiledDump) error {
 	source := dump.Source
 	digest := sha256.Sum256(source)
-	dump.Version, dump.Target, dump.SourceSHA256, dump.Source = Release, runtime.GOOS+"/"+runtime.GOARCH, hex.EncodeToString(digest[:]), append([]byte(nil), source...)
+	dump.Version, dump.Target, dump.Compiler, dump.SourceSHA256, dump.Source = compiledArtifactVersion, runtime.GOOS+"/"+runtime.GOARCH, runtime.Version(), hex.EncodeToString(digest[:]), append([]byte(nil), source...)
 	temporary, err := os.CreateTemp(filepath.Dir(path), ".mira-dump-*")
 	if err != nil {
 		return err
@@ -189,11 +194,16 @@ func ReadCompiledDump(path string, source []byte) (CompiledDump, error) {
 	}
 	defer file.Close()
 	var dump CompiledDump
-	if err = json.NewDecoder(file).Decode(&dump); err != nil {
+	decoder := json.NewDecoder(file)
+	if err = decoder.Decode(&dump); err != nil {
 		return CompiledDump{}, err
 	}
+	var trailing any
+	if err = decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		return CompiledDump{}, ErrStaleDump
+	}
 	digest := sha256.Sum256(source)
-	if dump.Version != Release || dump.Target != runtime.GOOS+"/"+runtime.GOARCH || dump.SourceSHA256 != hex.EncodeToString(digest[:]) {
+	if dump.Version != compiledArtifactVersion || dump.Target != runtime.GOOS+"/"+runtime.GOARCH || dump.Compiler != runtime.Version() || dump.SourceSHA256 != hex.EncodeToString(digest[:]) || !bytes.Equal(dump.Source, source) || !validRuntimeUnit(dump.RuntimeUnit) {
 		return CompiledDump{}, ErrStaleDump
 	}
 	for path, expected := range dump.Dependencies {
@@ -207,4 +217,25 @@ func ReadCompiledDump(path string, source []byte) (CompiledDump, error) {
 		}
 	}
 	return dump, nil
+}
+
+func validRuntimeUnit(unit *compiledRuntimeUnit) bool {
+	if unit == nil {
+		return true
+	}
+	names := make(map[string]bool, len(unit.Definitions))
+	for _, definition := range unit.Definitions {
+		if definition.Name == "" || definition.Body.Variant == "" || names[definition.Name] {
+			return false
+		}
+		names[definition.Name] = true
+		parameters := make(map[string]bool, len(definition.Parameters))
+		for _, parameter := range definition.Parameters {
+			if parameter == "" || parameters[parameter] {
+				return false
+			}
+			parameters[parameter] = true
+		}
+	}
+	return true
 }

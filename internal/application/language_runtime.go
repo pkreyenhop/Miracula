@@ -335,6 +335,59 @@ type runtimeClause struct {
 	closure     map[string]*languageThunk
 }
 
+type compiledRuntimeDefinition struct {
+	Name       string           `json:"name"`
+	Parameters []string         `json:"parameters,omitempty"`
+	Body       syntaxfront.Expr `json:"body"`
+}
+
+type compiledRuntimeUnit struct {
+	Definitions []compiledRuntimeDefinition `json:"definitions,omitempty"`
+}
+
+func lowerRuntimeUnit(script syntaxfront.Script, source []byte) (*compiledRuntimeUnit, bool) {
+	for _, line := range logicalSourceLines(source) {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "%") || trimmed == "where" || strings.HasPrefix(trimmed, "=") || strings.Contains(trimmed, "::=") || strings.Contains(trimmed, ", if ") || strings.HasSuffix(trimmed, ", otherwise") {
+			return nil, false
+		}
+	}
+	unit := &compiledRuntimeUnit{Definitions: make([]compiledRuntimeDefinition, 0, len(script.Items))}
+	seen := make(map[string]bool, len(script.Items))
+	for _, definition := range script.Items {
+		if definition.Variant != "definition" {
+			return nil, false
+		}
+		name, parameters, ok := runtimeDefinitionName(definition.LHS)
+		if !ok || seen[name] {
+			return nil, false
+		}
+		parameterNames := make(map[string]bool, len(parameters))
+		for _, parameter := range parameters {
+			if parameterNames[parameter] {
+				return nil, false
+			}
+			parameterNames[parameter] = true
+		}
+		seen[name] = true
+		unit.Definitions = append(unit.Definitions, compiledRuntimeDefinition{Name: name, Parameters: parameters, Body: definition.RHS})
+	}
+	return unit, true
+}
+
+func (r *languageRuntime) installRuntimeUnit(unit *compiledRuntimeUnit) {
+	for _, definition := range unit.Definitions {
+		definition := definition
+		thunk := &languageThunk{eval: func() (languageValue, error) {
+			if len(definition.Parameters) == 0 {
+				return r.eval(context.Background(), definition.Body, r.globals)
+			}
+			return r.function(definition.Parameters, definition.Body, nil), nil
+		}}
+		r.globals[definition.Name] = thunk
+	}
+}
+
 // installSource preserves guarded equations, whose continuation-line shape is
 // intentionally models the complete language syntax needed by evaluation.
 func (r *languageRuntime) installSource(source []byte) error {

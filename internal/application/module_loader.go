@@ -67,7 +67,7 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 		}
 	}
 	dump, dumpErr := ReadCompiledDump(dumpPath, source.Bytes)
-	i.Compiler.UsedCompiledArtifact = dumpErr == nil && dump.Program != nil && len(dump.Script.Items) != 0
+	i.Compiler.UsedCompiledArtifact = dumpErr == nil && dump.Program != nil
 	parsed := syntaxfront.PipelineResult{Script: dump.Script}
 	if !i.Compiler.UsedCompiledArtifact {
 		parsed = syntaxfront.Run(source.Bytes)
@@ -106,9 +106,15 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 		i.Heap.Restore(checkpoint)
 		return nil, DiagnosticSet{{Severity: "error", Phase: "module", File: absolute, Span: syntaxfront.Span{Line: 1, Column: 1}, Message: err.Error()}}
 	}
-	if err := i.runtime().installSource(source.Bytes); err != nil {
+	var installErr error
+	if i.Compiler.UsedCompiledArtifact && dump.RuntimeUnit != nil {
+		i.runtime().installRuntimeUnit(dump.RuntimeUnit)
+	} else {
+		installErr = i.runtime().installSource(source.Bytes)
+	}
+	if installErr != nil {
 		i.Heap.Restore(checkpoint)
-		return nil, fmt.Errorf("install source %s: %w", absolute, err)
+		return nil, fmt.Errorf("install source %s: %w", absolute, installErr)
 	}
 	program := dump.Program
 	if !i.Compiler.UsedCompiledArtifact {
@@ -133,7 +139,8 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 		if dependencyErr != nil {
 			return nil, dependencyErr
 		}
-		artifact := CompiledDump{Source: source.Bytes, Dependencies: dependencies, Script: parsed.Script, Program: program, Exports: exportedTypeProfile(parsed.Script, program)}
+		runtimeUnit, _ := lowerRuntimeUnit(parsed.Script, source.Bytes)
+		artifact := CompiledDump{Source: source.Bytes, Dependencies: dependencies, Script: parsed.Script, Program: program, Exports: exportedTypeProfile(parsed.Script, program), RuntimeUnit: runtimeUnit}
 		if writeErr := WriteCompiledArtifact(dumpPath, artifact); writeErr != nil {
 			return nil, writeErr
 		}
