@@ -50,6 +50,21 @@ func TestSmallIntegerOverflowChecks(t *testing.T) {
 	}
 }
 
+func TestPatternFibonacciUsesIntegerSpecialization(t *testing.T) {
+	i := New(nil)
+	if err := i.runtime().installSource([]byte(patternFibonacciSource)); err != nil {
+		t.Fatal(err)
+	}
+	result, err := i.Evaluate(context.Background(), "fib 22")
+	if err != nil || result != "17711" {
+		t.Fatalf("fib 22 = %q, %v", result, err)
+	}
+	reductions, _ := i.runtime().statistics()
+	if reductions > 20 {
+		t.Fatalf("fib 22 used interpreted recursion: %d reductions", reductions)
+	}
+}
+
 func BenchmarkEvaluateFib12(b *testing.B) {
 	i := fibonacciInterpreter(b)
 	b.ResetTimer()

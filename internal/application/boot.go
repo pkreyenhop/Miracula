@@ -60,7 +60,17 @@ func (i *Interpreter) Boot() error {
 			path += ".m"
 		}
 		if _, err := i.LoadProgram(path); err != nil {
-			return err
+			if !i.ContinueAfterLoadError {
+				return err
+			}
+			i.startupFailed = true
+			destination := i.Error
+			if destination == nil {
+				destination = i.Output
+			}
+			if destination != nil {
+				fmt.Fprintln(destination, err)
+			}
 		}
 	}
 	return nil

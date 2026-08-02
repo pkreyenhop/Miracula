@@ -15,6 +15,32 @@ type TypeAlias struct {
 func installTypeDeclarations(script syntaxfront.Script, state *inferState) error {
 	for _, declaration := range script.Items {
 		text := normalizedDeclarationText(declaration.Text)
+		if strings.HasPrefix(text, "%free") {
+			start, end := strings.Index(text, "{"), strings.LastIndex(text, "}")
+			if start < 0 || end <= start {
+				return TypeError{Message: "malformed %free directive", Line: declaration.Span.Line, Column: declaration.Span.Column}
+			}
+			for _, part := range strings.Split(text[start+1:end], ";") {
+				pieces := strings.SplitN(strings.TrimSpace(part), "::", 2)
+				if len(pieces) != 2 {
+					continue
+				}
+				signature := strings.TrimSpace(pieces[1])
+				if signature == "type" {
+					continue
+				}
+				value, err := ParseType(signature)
+				if err != nil {
+					return TypeError{Message: err.Error(), Line: declaration.Span.Line, Column: declaration.Span.Column}
+				}
+				for _, name := range strings.Split(pieces[0], ",") {
+					state.schemes[strings.TrimSpace(name)] = generalize(value)
+				}
+			}
+		}
+		if declaration.Variant == "directive" {
+			continue
+		}
 		if strings.HasPrefix(text, "abstype ") {
 			fields := strings.Fields(strings.TrimPrefix(text, "abstype "))
 			if len(fields) != 0 {
@@ -75,6 +101,9 @@ func installTypeDeclarations(script syntaxfront.Script, state *inferState) error
 			constructorType := result
 			for index := len(fields) - 1; index >= 1; index-- {
 				fieldText := strings.TrimSuffix(fields[index], "!")
+				if fieldText == "" || fieldText == "!" {
+					continue
+				}
 				fieldType, err := parseTypeWithVariables(fieldText, parameterByText)
 				if err != nil {
 					return TypeError{Message: err.Error(), Line: declaration.Span.Line, Column: declaration.Span.Column}
@@ -99,7 +128,10 @@ func (s *inferState) expandAliases(value *Type) *Type {
 
 func (s *inferState) expandRepresentations(value *Type) *Type {
 	value = s.expandAliases(value)
-	return s.expandTypeMap(value, s.representations)
+	// Representation bodies can themselves use ordinary aliases (for example
+	// bignum == (sign, exponent, mantissa)). Expand those after exposing the
+	// abstract representation as well.
+	return s.expandAliases(s.expandTypeMap(value, s.representations))
 }
 
 func (s *inferState) expandTypeMap(value *Type, aliases map[string]TypeAlias) *Type {

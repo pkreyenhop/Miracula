@@ -71,6 +71,41 @@ func TestBootLoadsLibraryAndUserProgram(t *testing.T) {
 	}
 }
 
+func TestInteractiveBootReportsInvalidInitialScriptAndContinues(t *testing.T) {
+	i := New(platformsvc.NativeServices{})
+	i.Config.LibraryPath = filepath.Join(repositoryRoot(t), "lib/miralib")
+	directory := t.TempDir()
+	script := filepath.Join(directory, "script.m")
+	if err := os.WriteFile(script, []byte("fib 0 = 0\nfib 1 = 1\nfib n = fib (n-1)+fib (n-2)\n\nf1 x = reverse x, if x < 1000\nadd1 x = i22\n\nadd2 x = i33\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var diagnostics bytes.Buffer
+	i.InitialScript = script
+	i.Error = &diagnostics
+	i.ContinueAfterLoadError = true
+	if err := i.Boot(); err != nil {
+		t.Fatalf("interactive boot failed: %v", err)
+	}
+	if !i.startupFailed {
+		t.Fatal("startup error was not retained for the interactive session")
+	}
+	for _, expected := range []string{"cannot unify num with [*]", "undefined name i22", "undefined name i33"} {
+		if !strings.Contains(diagnostics.String(), expected) {
+			t.Fatalf("diagnostics = %q; missing %q", diagnostics.String(), expected)
+		}
+	}
+	if strings.Index(diagnostics.String(), "cannot unify") > strings.Index(diagnostics.String(), "i22") || strings.Index(diagnostics.String(), "i22") > strings.Index(diagnostics.String(), "i33") {
+		t.Fatalf("diagnostics = %q", diagnostics.String())
+	}
+	if i.Compiler.CurrentModule != script {
+		t.Fatalf("current module = %q, want %q", i.Compiler.CurrentModule, script)
+	}
+	got, err := i.Evaluate(context.Background(), "fib 12")
+	if err != nil || got != "144" {
+		t.Fatalf("fib 12 = %q, %v; want 144", got, err)
+	}
+}
+
 func TestCompiledDumpRejectsStaleSource(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "sample.x")
 	source := []byte("main = 1\n")

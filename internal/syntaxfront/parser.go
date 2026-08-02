@@ -30,7 +30,12 @@ func Parse(tokens []Token) (Script, []Diagnostic) {
 			case "lparen", "lbracket", "lbrace":
 				depth++
 			case "rparen", "rbracket", "rbrace":
-				depth--
+				// Keep an unmatched closer in this statement for the expression
+				// diagnostic, but do not let it consume subsequent top-level
+				// definitions by making the nesting depth negative.
+				if depth > 0 {
+					depth--
+				}
 			}
 			end++
 		}

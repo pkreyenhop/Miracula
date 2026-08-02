@@ -70,7 +70,7 @@ func compile(script syntaxfront.Script, heap *graphstore.Heap, lower bool, exter
 	}
 	for _, declaration := range script.Items {
 		declarationText := normalizedDeclarationText(declaration.Text)
-		if strings.Contains(declarationText, "::") && !strings.Contains(declarationText, "::=") {
+		if declaration.Variant == "type_signature" && strings.Contains(declarationText, "::") && !strings.Contains(declarationText, "::=") {
 			separator := strings.Index(declarationText, "::")
 			if separator < 0 {
 				continue
@@ -92,6 +92,7 @@ func compile(script syntaxfront.Script, heap *graphstore.Heap, lower bool, exter
 					return nil, TypeError{Message: "type of " + name + " declared more than once", Line: declaration.Span.Line, Column: declaration.Span.Column}
 				}
 				signatures[name] = value
+				state.schemes[name] = generalize(state.expandRepresentations(value))
 				program.Specifications[name] = value
 				program.Symbols.Intern(name)
 			}
@@ -179,7 +180,7 @@ func compile(script syntaxfront.Script, heap *graphstore.Heap, lower bool, exter
 		for _, name := range component {
 			resolved := DeepResolve(state.environment[name], state.substitutions)
 			if signature := signatures[name]; signature != nil {
-				resolved = signature
+				resolved = state.expandRepresentations(signature)
 			}
 			if name != "__repl" && signatures[name] == nil && definitionsUseSpecialShow(definitions[name]) {
 				hasVariables := false
@@ -194,7 +195,11 @@ func compile(script syntaxfront.Script, heap *graphstore.Heap, lower bool, exter
 		}
 	}
 	for _, name := range sourceOrder {
-		program.Definitions = append(program.Definitions, TypedDefinition{Name: name, Expression: definitions[name][0].RHS, Type: state.schemes[name].Type})
+		resolved := state.schemes[name].Type
+		if signature := signatures[name]; signature != nil {
+			resolved = signature
+		}
+		program.Definitions = append(program.Definitions, TypedDefinition{Name: name, Expression: definitions[name][0].RHS, Type: resolved})
 	}
 	program.Order = RecursiveOrder(graph)
 	if !lower {
@@ -234,32 +239,6 @@ func semanticDefinitions(script syntaxfront.Script) []syntaxfront.Definition {
 	currentLeft := ""
 	for _, item := range script.Items {
 		if item.Variant == "definition" {
-			if lines := strings.Split(item.Text, "\n"); len(lines) > 1 {
-				first := true
-				for offset, line := range lines {
-					line = strings.TrimSpace(line)
-					if line == "" {
-						continue
-					}
-					text := line
-					if !first && strings.HasPrefix(line, "=") {
-						text = currentLeft + " " + line
-					}
-					parsed := syntaxfront.Run([]byte(text + "\n"))
-					if len(parsed.Diagnostics) == 0 && len(parsed.Script.Items) == 1 {
-						part := parsed.Script.Items[0]
-						part.Span.Line = item.Span.Line + offset
-						items = append(items, part)
-						if first {
-							if separator := strings.Index(part.Text, "="); separator >= 0 {
-								currentLeft = strings.TrimSpace(part.Text[:separator])
-							}
-							first = false
-						}
-					}
-				}
-				continue
-			}
 			if separator := strings.Index(item.Text, "="); separator >= 0 {
 				currentLeft = strings.TrimSpace(item.Text[:separator])
 			}
@@ -286,6 +265,11 @@ func semanticDefinitionExpressions(definition syntaxfront.Definition) (syntaxfro
 		return definition.RHS, nil, nil
 	}
 	right := strings.TrimSpace(definition.Text[separator+1:])
+	for _, marker := range []string{"\nwhere\n", "\nwhere ", " where ", "\n="} {
+		if index := strings.Index(right, marker); index >= 0 {
+			right = strings.TrimSpace(right[:index])
+		}
+	}
 	bodyText := right
 	guardText := ""
 	if comma := strings.LastIndex(right, ","); comma >= 0 {
@@ -359,6 +343,9 @@ func definitionName(expression syntaxfront.Expr) (string, []string, bool) {
 }
 
 func definitionPatterns(expression syntaxfront.Expr) (string, []syntaxfront.Expr, bool) {
+	if expression.Variant == "infix" && strings.HasPrefix(expression.Text, "$") && expression.Head != nil && expression.Tail != nil {
+		return strings.TrimPrefix(expression.Text, "$"), []syntaxfront.Expr{*expression.Head, *expression.Tail}, true
+	}
 	var patterns []syntaxfront.Expr
 	for expression.Variant == "application" {
 		patterns = append([]syntaxfront.Expr{*expression.Arg}, patterns...)
@@ -424,6 +411,27 @@ func (s *inferState) infer(expression syntaxfront.Expr, environment map[string]*
 		}
 		return Resolve(result, s.substitutions), nil
 	case "infix":
+		if comparisonOperator(expression.Text) && expression.Head != nil && expression.Head.Variant == "infix" && comparisonOperator(expression.Head.Text) {
+			left, err := s.infer(*expression.Head.Head, environment)
+			if err != nil {
+				return nil, err
+			}
+			middle, err := s.infer(*expression.Head.Tail, environment)
+			if err != nil {
+				return nil, err
+			}
+			right, err := s.infer(*expression.Tail, environment)
+			if err != nil {
+				return nil, err
+			}
+			if err = Unify(left, middle, s.substitutions); err != nil {
+				return nil, err
+			}
+			if err = Unify(middle, right, s.substitutions); err != nil {
+				return nil, err
+			}
+			return &Type{Kind: TypeNamed, Name: "bool"}, nil
+		}
 		name := strings.TrimPrefix(expression.Text, "$")
 		function := syntaxfront.Expr{Variant: "application", Func: &syntaxfront.Expr{Variant: "name", Text: name}, Arg: expression.Head}
 		return s.infer(syntaxfront.Expr{Variant: "application", Func: &function, Arg: expression.Tail}, environment)
@@ -593,6 +601,14 @@ func (s *inferState) infer(expression syntaxfront.Expr, environment map[string]*
 	}
 }
 
+func comparisonOperator(name string) bool {
+	switch name {
+	case "=", "~=", "<", "<=", ">", ">=":
+		return true
+	}
+	return false
+}
+
 func (s *inferState) inferPattern(pattern syntaxfront.Expr, expected *Type, environment map[string]*Type) error {
 	switch pattern.Variant {
 	case "name":
@@ -605,6 +621,10 @@ func (s *inferState) inferPattern(pattern syntaxfront.Expr, expected *Type, envi
 		return nil
 	case "int":
 		return Unify(expected, &Type{Kind: TypeNamed, Name: "num"}, s.substitutions)
+	case "char":
+		return Unify(expected, &Type{Kind: TypeNamed, Name: "char"}, s.substitutions)
+	case "string":
+		return Unify(expected, &Type{Kind: TypeList, Items: []*Type{{Kind: TypeNamed, Name: "char"}}}, s.substitutions)
 	case "tuple":
 		items := make([]*Type, len(pattern.Items))
 		for index, item := range pattern.Items {
@@ -632,6 +652,13 @@ func (s *inferState) inferPattern(pattern syntaxfront.Expr, expected *Type, envi
 				return err
 			}
 			return Unify(expected, &Type{Kind: TypeList, Items: []*Type{itemType}}, s.substitutions)
+		}
+		if pattern.Text == "+" && pattern.Head != nil && pattern.Tail != nil && pattern.Tail.Variant == "int" {
+			numberType := &Type{Kind: TypeNamed, Name: "num"}
+			if err := s.inferPattern(*pattern.Head, numberType, environment); err != nil {
+				return err
+			}
+			return Unify(expected, numberType, s.substitutions)
 		}
 	case "constructor", "application":
 		name, arguments, ok := patternConstructor(pattern)

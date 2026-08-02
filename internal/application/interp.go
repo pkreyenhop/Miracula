@@ -28,7 +28,10 @@ type Interpreter struct {
 	Input         io.Reader
 	Output, Error io.Writer
 	Arguments     []string
-	activeEditor  LineEditor
+	// ContinueAfterLoadError keeps an interactive session available when its
+	// initial script is invalid. Batch modes leave this false and still fail.
+	ContinueAfterLoadError bool
+	activeEditor           LineEditor
 }
 
 func New(services platformsvc.Services) *Interpreter {

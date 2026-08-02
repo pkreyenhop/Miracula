@@ -1,6 +1,9 @@
 package syntaxfront
 
-import "unicode"
+import (
+	"strings"
+	"unicode"
+)
 
 type Span struct{ Start, End, Line, Column int }
 type Token struct {
@@ -49,8 +52,33 @@ func Lex(source Source) []Token {
 		kind := "error"
 		switch c := b[i]; {
 		case c == '%':
-			for i < len(b) && b[i] != '\n' {
+			braceDepth := 0
+			lineEnd := start
+			for lineEnd < len(b) && b[lineEnd] != '\n' {
+				lineEnd++
+			}
+			directiveHead := string(b[start:lineEnd])
+			continuedDirective := strings.HasPrefix(directiveHead, "%include") || strings.HasPrefix(directiveHead, "%export") || strings.HasPrefix(directiveHead, "%free")
+			for i < len(b) {
+				switch b[i] {
+				case '{':
+					braceDepth++
+				case '}':
+					braceDepth--
+				}
 				i++
+				if (i == len(b) || b[i-1] == '\n') && braceDepth <= 0 {
+					if i < len(b) && continuedDirective && (b[i] == ' ' || b[i] == '\t') {
+						lookahead := i
+						for lookahead < len(b) && (b[lookahead] == ' ' || b[lookahead] == '\t') {
+							lookahead++
+						}
+						if lookahead < len(b) && b[lookahead] != '\n' {
+							continue
+						}
+					}
+					break
+				}
 			}
 			kind = "directive"
 		case isLetter(c) || c == '_':

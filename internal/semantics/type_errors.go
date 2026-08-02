@@ -25,8 +25,10 @@ func (e TypeErrors) Error() string {
 	return e[0].Error()
 }
 
-// CheckAll recovers after a bad definition by replacing that binding with the
-// polymorphic undefined value, allowing independent later errors to surface.
+// CheckAll recovers after a bad definition by removing that binding from the
+// next checking pass, allowing independent later errors to surface. Removing
+// the complete source item is important for malformed expressions: merely
+// replacing RHS leaves continuation text that can be parsed as the same error.
 func CheckAll(script syntaxfront.Script) TypeErrors {
 	return CheckAllWithTypes(script, nil)
 }
@@ -53,12 +55,12 @@ func CheckAllWithTypes(script syntaxfront.Script, external map[string]*Type) Typ
 		diagnostics = append(diagnostics, typeErr)
 		masked := false
 		for index := range working.Items {
-			item := &working.Items[index]
+			item := working.Items[index]
 			name, _, ok := definitionName(item.LHS)
 			if item.Variant == "definition" && ok && (typeErr.Definition != "" && name == typeErr.Definition || typeErr.Definition == "" && item.Span.Line == typeErr.Line) {
-				item.RHS = syntaxfront.Expr{Variant: "name", Text: "undef", Span: item.RHS.Span}
-				item.Text = name + " = undef"
+				working.Items = append(working.Items[:index], working.Items[index+1:]...)
 				masked = true
+				break
 			}
 		}
 		if !masked {

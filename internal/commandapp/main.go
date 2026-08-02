@@ -39,6 +39,7 @@ func (c Command) Run(ctx context.Context, args []string) error {
 	}
 	i := application.New(c.Services)
 	i.Config = options.Config
+	i.ContinueAfterLoadError = options.Mode == ModeREPL || options.Mode == ModeManual
 	i.InitialScript = options.Script
 	i.Input, i.Output, i.Error = c.Stdin, c.Stdout, c.Stderr
 	if options.Mode == ModeMake || options.Mode == ModeExports || options.Mode == ModeSources {

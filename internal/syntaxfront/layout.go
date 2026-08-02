@@ -1,8 +1,8 @@
 package syntaxfront
 
 // ApplyLayout inserts offside separators at equal/dedented margins. Explicit
-// semicolons remain authoritative. A where token opens a margin on the first
-// token of the following line.
+// semicolons remain authoritative. Where and with tokens open a margin on the
+// first token of the following line.
 func ApplyLayout(tokens []Token) []Token {
 	if len(tokens) == 0 {
 		return nil
@@ -23,22 +23,20 @@ func ApplyLayout(tokens []Token) []Token {
 		if len(margins) == 0 {
 			margins = append(margins, token.Span.Column)
 		}
-		if newLine {
-			if openWhere {
-				margins = append(margins, token.Span.Column)
-				openWhere = false
-			} else {
-				for len(margins) > 1 && token.Span.Column < margins[len(margins)-1] {
-					result = append(result, offsideAt(token))
-					margins = margins[:len(margins)-1]
-				}
-				if token.Span.Column == margins[len(margins)-1] && token.Kind != "eq" {
-					result = append(result, offsideAt(token))
-				}
+		if openWhere {
+			margins = append(margins, token.Span.Column)
+			openWhere = false
+		} else if newLine {
+			for len(margins) > 1 && token.Span.Column < margins[len(margins)-1] {
+				result = append(result, offsideAt(token))
+				margins = margins[:len(margins)-1]
+			}
+			if token.Span.Column == margins[len(margins)-1] && token.Kind != "eq" {
+				result = append(result, offsideAt(token))
 			}
 		}
 		result = append(result, token)
-		if token.Kind == "kw_where" {
+		if token.Kind == "kw_where" || token.Kind == "kw_with" {
 			openWhere = true
 		}
 		previousLine = token.Span.Line

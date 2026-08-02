@@ -135,6 +135,7 @@ type languageRuntime struct {
 	includeLoading      map[string]bool
 	provenance          map[string]sourceProvenance
 	nextModuleInstance  uint64
+	allowShadow         bool
 	reductions          uint64
 	cells               uint64
 }
@@ -357,6 +358,9 @@ func (r *languageRuntime) installSource(source []byte) error {
 		if separator < 0 {
 			continue
 		}
+		if separator+1 < len(line) && line[separator+1] == '=' {
+			continue
+		}
 		left, right := strings.TrimSpace(line[:separator]), strings.TrimSpace(line[separator+1:])
 		if left != "" {
 			lhsParsed := syntaxfront.Run([]byte(left + " = 0\n"))
@@ -368,7 +372,7 @@ func (r *languageRuntime) installSource(source []byte) error {
 			if !parsed {
 				pattern := lhsParsed.Script.Items[0].LHS
 				if patternBindingCount(pattern) == 0 {
-					return errors.New("conformal definition must bind at least one name")
+					return fmt.Errorf("conformal definition %q must bind at least one name", left)
 				}
 				body, err := parseRuntimeExpression(right)
 				if err != nil {
@@ -466,7 +470,7 @@ func (r *languageRuntime) installSource(source []byte) error {
 		collectPatternNames(conformal.pattern, names)
 		for name := range names {
 			name := name
-			if r.globals[name] != nil {
+			if r.globals[name] != nil && !r.allowShadow {
 				return fmt.Errorf("duplicate top-level binding %s", name)
 			}
 			r.globals[name] = &languageThunk{eval: func() (languageValue, error) {
@@ -509,8 +513,30 @@ func (i *Interpreter) ValidateCurrent() error {
 	if !ok {
 		return errors.New("no current script")
 	}
+	records := logicalSourceLineRecords(script.Source)
+	known := make(map[string]*languageThunk, len(i.runtime().globals)+len(records))
+	for name, value := range i.runtime().globals {
+		known[name] = value
+	}
+	// All top-level definitions are mutually visible for scope validation,
+	// including recursion, even when a type error prevents runtime installation.
+	for _, sourceLine := range records {
+		trimmed := strings.TrimSpace(sourceLine.text)
+		separator := strings.Index(trimmed, "=")
+		if separator < 0 || strings.Contains(trimmed[:separator], "::") {
+			continue
+		}
+		left := strings.TrimSpace(trimmed[:separator])
+		lhs := syntaxfront.Run([]byte(left + " = 0\n"))
+		if len(lhs.Script.Items) != 1 {
+			continue
+		}
+		if name, _, valid := runtimePatterns(lhs.Script.Items[0].LHS); valid {
+			known[name] = &languageThunk{}
+		}
+	}
 	var validationErrors SourceValidationErrors
-	for _, sourceLine := range logicalSourceLineRecords(script.Source) {
+	for _, sourceLine := range records {
 		line := sourceLine.text
 		trimmed := strings.TrimSpace(line)
 		separator := strings.Index(trimmed, "=")
@@ -537,7 +563,7 @@ func (i *Interpreter) ValidateCurrent() error {
 		if err != nil {
 			return err
 		}
-		for _, name := range undefinedNames(expression, bound, i.runtime().globals) {
+		for _, name := range undefinedNames(expression, bound, known) {
 			errorPath, errorLine := script.Path, sourceLine.number
 			if errorLine > 0 && errorLine <= len(script.Origins) {
 				origin := script.Origins[errorLine-1]
@@ -641,10 +667,10 @@ func logicalSourceLineRecords(source []byte) []logicalSourceLine {
 	result := make([]logicalSourceLine, 0, len(physical))
 	for index := 0; index < len(physical); index++ {
 		lineNumber := index + 1
-		line := physical[index]
+		line := stripMirandaLineComment(physical[index])
 		trimmed := strings.TrimSpace(line)
-		if trimmed != "" && !strings.HasPrefix(trimmed, "||") && !strings.HasPrefix(trimmed, "%") && !strings.Contains(line, "=") && index+1 < len(physical) && strings.HasPrefix(strings.TrimSpace(physical[index+1]), "=") {
-			line += " " + strings.TrimSpace(physical[index+1])
+		if trimmed != "" && !strings.HasPrefix(trimmed, "%") && !strings.Contains(line, "=") && index+1 < len(physical) && strings.HasPrefix(strings.TrimSpace(stripMirandaLineComment(physical[index+1])), "=") {
+			line += " " + strings.TrimSpace(stripMirandaLineComment(physical[index+1]))
 			index++
 		}
 		depth := delimiterBalance(line)
@@ -656,6 +682,32 @@ func logicalSourceLineRecords(source []byte) []logicalSourceLine {
 		result = append(result, logicalSourceLine{text: line, number: lineNumber})
 	}
 	return result
+}
+
+func stripMirandaLineComment(line string) string {
+	quoted := byte(0)
+	escaped := false
+	for index := 0; index+1 < len(line); index++ {
+		char := line[index]
+		if quoted != 0 {
+			if escaped {
+				escaped = false
+			} else if char == '\\' {
+				escaped = true
+			} else if char == quoted {
+				quoted = 0
+			}
+			continue
+		}
+		if char == '\'' || char == '"' {
+			quoted = char
+			continue
+		}
+		if char == '|' && line[index+1] == '|' {
+			return line[:index]
+		}
+	}
+	return line
 }
 func delimiterBalance(line string) int {
 	depth := 0
@@ -687,8 +739,9 @@ func delimiterBalance(line string) int {
 }
 
 func (r *languageRuntime) installIncludes(base string, source []byte) error {
-	for _, line := range strings.Split(string(source), "\n") {
-		directive, ok := syntaxfront.ParseDirective(strings.TrimSpace(line))
+	parsedSource := syntaxfront.Run(source)
+	for _, item := range parsedSource.Script.Items {
+		directive, ok := syntaxfront.ParseDirective(item.Text)
 		if !ok || directive.Variant != "include" {
 			continue
 		}
@@ -763,12 +816,10 @@ func (r *languageRuntime) installIncludes(base string, source []byte) error {
 				delete(r.includeLoading, path)
 				return err
 			}
-			value, err := r.eval(context.Background(), expression, r.globals)
-			if err != nil {
-				delete(r.includeLoading, path)
-				return err
-			}
-			r.globals[name] = immediate(value)
+			expressionCopy := expression
+			r.globals[name] = &languageThunk{eval: func() (languageValue, error) {
+				return r.eval(context.Background(), expressionCopy, r.globals)
+			}}
 		}
 		for name := range valueBindings {
 			if _, ok := free[name]; !ok {
@@ -1106,6 +1157,9 @@ func quoteMirandaChar(value rune) string {
 }
 
 func runtimePatterns(expression syntaxfront.Expr) (string, []syntaxfront.Expr, bool) {
+	if expression.Variant == "infix" && strings.HasPrefix(expression.Text, "$") && expression.Head != nil && expression.Tail != nil {
+		return strings.TrimPrefix(expression.Text, "$"), []syntaxfront.Expr{*expression.Head, *expression.Tail}, true
+	}
 	var parameters []syntaxfront.Expr
 	for expression.Variant == "application" {
 		if expression.Arg == nil {
@@ -1327,7 +1381,7 @@ func (r *languageRuntime) selectClause(ctx context.Context, clauses []runtimeCla
 }
 
 func (r *languageRuntime) installLocalSource(source []byte, environment map[string]*languageThunk) error {
-	child := &languageRuntime{globals: map[string]*languageThunk{}, productConstructors: r.productConstructors, appendFiles: r.appendFiles, output: r.output}
+	child := &languageRuntime{globals: map[string]*languageThunk{}, productConstructors: r.productConstructors, appendFiles: r.appendFiles, output: r.output, allowShadow: true}
 	for name, value := range r.globals {
 		child.globals[name] = value
 	}
@@ -1710,6 +1764,23 @@ func (r *languageRuntime) eval(ctx context.Context, expression syntaxfront.Expr,
 		function, err := r.eval(ctx, *expression.Func, environment)
 		if err != nil {
 			return languageValue{}, err
+		}
+		// Scalar-specialized functions also carry a lazy implementation. Prefer
+		// the integer path when the argument can itself be evaluated by the pure
+		// scalar evaluator. Do not force a general argument here: non-strict
+		// functions such as constant must retain call-by-need behavior.
+		if function.intFn != nil {
+			argument, scalar, argumentErr := r.evalFastScalar(ctx, *expression.Arg, "", 0)
+			if argumentErr != nil {
+				return languageValue{}, argumentErr
+			}
+			if scalar && !argument.isBool {
+				if result, matched, fastErr := function.intFn(ctx, argument.integer); fastErr != nil {
+					return languageValue{}, fastErr
+				} else if matched {
+					return languageValue{kind: valueNumber, small: result}, nil
+				}
+			}
 		}
 		if function.lazyFn != nil {
 			argumentExpression := *expression.Arg

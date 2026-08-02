@@ -54,12 +54,6 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 		}
 	}
 	for _, line := range strings.Split(string(source.Bytes), "\n") {
-		trimmed := strings.TrimSpace(line)
-		for _, suffix := range []string{"+", "-", "*", "/", "=", ":", "++", "div", "mod"} {
-			if strings.HasSuffix(trimmed, suffix) {
-				return nil, fmt.Errorf("syntax error: unexpected newline")
-			}
-		}
 		if directive, ok := syntaxfront.ParseDirective(strings.TrimSpace(line)); ok && directive.Variant == "unknown" {
 			if i.Output != nil {
 				fmt.Fprintf(i.Output, "syntax error: unknown directive %q\n", strings.Fields(strings.TrimSpace(line))[0])
@@ -89,7 +83,21 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 			metadata, hasMetadata := i.Services.Metadata(absolute)
 			i.Scripts.Put(Script{Path: absolute, Source: append([]byte(nil), source.Bytes...), Metadata: metadata, HasMetadata: hasMetadata, Origins: append([]syntaxfront.Origin(nil), source.Origins...)})
 			i.Compiler.CurrentModule = absolute
-			return nil, stableDiagnostics(typeDiagnostics(absolute, source, typeErrors, 0))
+			diagnostics := typeDiagnostics(absolute, source, typeErrors, 0)
+			// Name validation is deliberately independent from type inference so
+			// undefined names do not mask useful type errors. Loading must aggregate
+			// both passes just as editor save/reload does.
+			if validationErr := i.ValidateCurrent(); validationErr != nil {
+				var nameDiagnostics DiagnosticSet
+				if errors.As(validationErr, &nameDiagnostics) {
+					diagnostics = append(diagnostics, nameDiagnostics...)
+				}
+			}
+			// Miranda keeps independently valid definitions available after a
+			// failed interactive compilation. Install a source-preserving filtered
+			// program while retaining the original script for editing and errors.
+			i.installValidDefinitions(absolute, source.Bytes, parsed.Script, diagnostics)
+			return nil, stableDiagnostics(diagnostics)
 		}
 	}
 	checkpoint := i.Heap.Checkpoint()
@@ -130,6 +138,58 @@ func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
 		}
 	}
 	return program, nil
+}
+
+func (i *Interpreter) installValidDefinitions(path string, source []byte, script syntaxfront.Script, diagnostics DiagnosticSet) {
+	badDefinitions := map[string]bool{}
+	badLines := map[int]bool{}
+	for _, diagnostic := range diagnostics {
+		if diagnostic.Definition != "" {
+			badDefinitions[diagnostic.Definition] = true
+		}
+		if diagnostic.Span.Line > 0 {
+			badLines[diagnostic.Span.Line] = true
+		}
+	}
+	filtered := append([]byte(nil), source...)
+	for _, item := range script.Items {
+		if item.Variant != "definition" {
+			continue
+		}
+		name, _, named := runtimePatterns(item.LHS)
+		bad := badLines[item.Span.Line] || named && badDefinitions[name]
+		if !bad {
+			continue
+		}
+		start, end := max(0, item.Span.Start), min(len(filtered), item.Span.End)
+		for index := start; index < end; index++ {
+			if filtered[index] != '\n' {
+				filtered[index] = ' '
+			}
+		}
+	}
+	parsed := syntaxfront.Run(filtered)
+	if len(parsed.Diagnostics) != 0 || len(semantics.CheckAllWithTypes(parsed.Script, i.StandardTypes)) != 0 {
+		return
+	}
+	checkpoint := i.Heap.Checkpoint()
+	if err := i.runtime().installIncludes(filepath.Dir(path), filtered); err != nil {
+		i.Heap.Restore(checkpoint)
+		return
+	}
+	if err := i.runtime().installSource(filtered); err != nil {
+		i.Heap.Restore(checkpoint)
+		return
+	}
+	program, err := semantics.Compile(parsed.Script, i.Heap)
+	if err != nil {
+		i.Heap.Restore(checkpoint)
+		return
+	}
+	if i.Programs == nil {
+		i.Programs = map[string]*semantics.Program{}
+	}
+	i.Programs[path] = program
 }
 
 func (i *Interpreter) trackProgramSources(root string) error {
