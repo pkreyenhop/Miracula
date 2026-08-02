@@ -268,6 +268,35 @@ func TestREPLRejectsInvalidFunctionDefinition(t *testing.T) {
 	}
 }
 
+func TestREPLExpressionCacheIsBoundedAndInvalidated(t *testing.T) {
+	i := New(platformsvc.NativeServices{})
+	for value := 0; value < replCacheLimit+12; value++ {
+		if _, err := i.Evaluate(context.Background(), fmt.Sprintf("%d+1", value)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(i.replCache) != replCacheLimit || len(i.replCacheOrder) != replCacheLimit {
+		t.Fatalf("cache size = %d, order = %d", len(i.replCache), len(i.replCacheOrder))
+	}
+	generation := i.replCacheGeneration
+	defined, err := i.defineREPL("increment x = x+1")
+	if err != nil || !defined {
+		t.Fatalf("definition handled=%v err=%v", defined, err)
+	}
+	if len(i.replCache) != 0 || i.replCacheGeneration == generation {
+		t.Fatalf("cache was not invalidated: size=%d generation=%d", len(i.replCache), i.replCacheGeneration)
+	}
+	if result, err := i.Evaluate(context.Background(), "increment 41"); err != nil || result != "42" {
+		t.Fatalf("increment 41 = %q, %v", result, err)
+	}
+	if _, err := i.Evaluate(context.Background(), "$$+1"); err != nil {
+		t.Fatal(err)
+	}
+	if _, exists := i.replCache["$$+1"]; exists {
+		t.Fatal("expression depending on $$ was cached")
+	}
+}
+
 func TestIncompleteForwardPipelineReportsSyntaxError(t *testing.T) {
 	i := New(platformsvc.NativeServices{})
 	var output bytes.Buffer

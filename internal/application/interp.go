@@ -32,6 +32,9 @@ type Interpreter struct {
 	// initial script is invalid. Batch modes leave this false and still fail.
 	ContinueAfterLoadError bool
 	activeEditor           LineEditor
+	replCache              map[string]cachedREPLExpression
+	replCacheOrder         []string
+	replCacheGeneration    uint64
 }
 
 func New(services platformsvc.Services) *Interpreter {
@@ -51,6 +54,9 @@ func (i *Interpreter) Reset() {
 	i.StandardTypes = nil
 	i.language = nil
 	i.startupFailed = false
+	i.replCache = nil
+	i.replCacheOrder = nil
+	i.replCacheGeneration = 0
 	i.Scripts = ScriptStore{}
 	i.Evaluator = evaluation.Evaluator{Heap: i.Heap}
 }

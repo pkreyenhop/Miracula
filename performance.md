@@ -186,6 +186,16 @@ definitions.
 - Editing, reloading, or defining a function invalidates affected entries.
 - Two interpreter instances cannot observe each other's cache entries.
 
+### Result recorded 2026-08-02
+
+Successful parsed and typed REPL expressions are cached in a 128-entry,
+interpreter-local FIFO cache. Failures, runtime values, and expressions using
+`$$` are never cached. Script loads and successful REPL definitions advance the
+environment generation and clear the cache. The repeated `sum [1..100]`
+benchmark improved from approximately 55,583 ns/op to 16,794 ns/op at steady
+state (3.3x faster), with allocations reduced from 900 to 534 per operation
+(40.7% fewer).
+
 ## Milestone 4: resolve names to symbol IDs
 
 ### Objective

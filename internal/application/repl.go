@@ -42,33 +42,81 @@ func (i *Interpreter) Evaluate(ctx context.Context, expression string) (string, 
 }
 
 func (i *Interpreter) evaluateValue(ctx context.Context, expression string) (languageValue, error) {
-	parsed := syntaxfront.Run([]byte("__repl = " + expression + "\n"))
-	if len(parsed.Diagnostics) != 0 {
-		d := parsed.Diagnostics[0]
-		return languageValue{}, fmt.Errorf("%d:%d: %s", d.Span.Line, d.Span.Column, d.Message)
-	}
-	if len(parsed.Script.Items) != 1 {
-		return languageValue{}, fmt.Errorf("expression did not produce a value")
-	}
-	typeEnvironment := i.replTypeEnvironment()
-	typed, typeErr := semantics.CheckWithTypes(parsed.Script, typeEnvironment)
-	if typeErr != nil {
-		return languageValue{}, typeErr
+	entry, cached := i.cachedREPLExpression(expression)
+	if !cached {
+		parsed := syntaxfront.Run([]byte("__repl = " + expression + "\n"))
+		if len(parsed.Diagnostics) != 0 {
+			d := parsed.Diagnostics[0]
+			return languageValue{}, fmt.Errorf("%d:%d: %s", d.Span.Line, d.Span.Column, d.Message)
+		}
+		if len(parsed.Script.Items) != 1 {
+			return languageValue{}, fmt.Errorf("expression did not produce a value")
+		}
+		typed, typeErr := semantics.CheckWithTypes(parsed.Script, i.replTypeEnvironment())
+		if typeErr != nil {
+			return languageValue{}, typeErr
+		}
+		entry.expression = parsed.Script.Items[0].RHS
+		if len(typed.Definitions) == 1 {
+			entry.valueType = typed.Definitions[0].Type
+		}
+		i.storeREPLExpression(expression, entry)
 	}
 	runtime := i.runtime()
 	runtime.prepareInput(ctx.Value(closedInputContextKey{}) == true)
-	value, languageErr := runtime.evaluate(ctx, parsed.Script.Items[0].RHS)
+	value, languageErr := runtime.evaluate(ctx, entry.expression)
 	if languageErr != nil {
 		return languageValue{}, languageErr
 	}
-	if len(typed.Definitions) == 1 {
-		i.Repl.LastExpressionType = typed.Definitions[0].Type
+	if entry.valueType != nil {
+		i.Repl.LastExpressionType = entry.valueType
 	}
 	runtime.globals["$$"] = immediate(value)
 	return value, nil
 }
 
 const replModulePath = "<repl>"
+
+const replCacheLimit = 128
+
+type cachedREPLExpression struct {
+	generation uint64
+	expression syntaxfront.Expr
+	valueType  *semantics.Type
+}
+
+func (i *Interpreter) cachedREPLExpression(source string) (cachedREPLExpression, bool) {
+	if strings.Contains(source, "$$") || i.replCache == nil {
+		return cachedREPLExpression{}, false
+	}
+	entry, ok := i.replCache[source]
+	return entry, ok && entry.generation == i.replCacheGeneration
+}
+
+func (i *Interpreter) storeREPLExpression(source string, entry cachedREPLExpression) {
+	if strings.Contains(source, "$$") {
+		return
+	}
+	if i.replCache == nil {
+		i.replCache = make(map[string]cachedREPLExpression, replCacheLimit)
+	}
+	if _, exists := i.replCache[source]; !exists {
+		if len(i.replCacheOrder) == replCacheLimit {
+			delete(i.replCache, i.replCacheOrder[0])
+			copy(i.replCacheOrder, i.replCacheOrder[1:])
+			i.replCacheOrder = i.replCacheOrder[:replCacheLimit-1]
+		}
+		i.replCacheOrder = append(i.replCacheOrder, source)
+	}
+	entry.generation = i.replCacheGeneration
+	i.replCache[source] = entry
+}
+
+func (i *Interpreter) invalidateREPLCache() {
+	i.replCacheGeneration++
+	clear(i.replCache)
+	i.replCacheOrder = i.replCacheOrder[:0]
+}
 
 func (i *Interpreter) replTypeEnvironment() map[string]*semantics.Type {
 	typeEnvironment := make(map[string]*semantics.Type, len(i.StandardTypes)+16)
@@ -117,6 +165,7 @@ func (i *Interpreter) defineREPL(line string) (bool, error) {
 		return true, err
 	}
 	i.Repl.DefinitionSource = candidate
+	i.invalidateREPLCache()
 	if i.Programs == nil {
 		i.Programs = map[string]*semantics.Program{}
 	}

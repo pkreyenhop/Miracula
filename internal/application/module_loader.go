@@ -19,6 +19,7 @@ func (i *Interpreter) LoadModule(path string) (semantics.Module, error) {
 }
 
 func (i *Interpreter) LoadProgram(path string) (*semantics.Program, error) {
+	i.invalidateREPLCache()
 	absolute, err := filepath.Abs(path)
 	if err != nil {
 		return nil, err
