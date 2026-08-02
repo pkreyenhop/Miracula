@@ -57,6 +57,25 @@ func TestSmallIntegerOverflowChecks(t *testing.T) {
 	}
 }
 
+func TestScalarInstructionDisassembly(t *testing.T) {
+	operators := []struct {
+		source, want string
+	}{
+		{"+", "add"}, {"-", "subtract"}, {"*", "multiply"},
+		{"=", "equal"}, {"~=", "not-equal"}, {"<", "less"},
+		{"<=", "less-equal"}, {">", "greater"}, {">=", "greater-equal"},
+	}
+	for _, test := range operators {
+		instruction, ok := compileFastInfixOperator(test.source)
+		if !ok || instruction.disassemble() != test.want {
+			t.Fatalf("instruction %q disassembled as %q, ok=%v", test.source, instruction.disassemble(), ok)
+		}
+	}
+	if _, ok := compileFastInfixOperator("/"); ok {
+		t.Fatal("unsupported operator compiled into the scalar instruction path")
+	}
+}
+
 func TestPatternFibonacciUsesIntegerSpecialization(t *testing.T) {
 	i := New(nil)
 	if err := i.runtime().installSource([]byte(patternFibonacciSource)); err != nil {

@@ -1312,7 +1312,10 @@ func (r *languageRuntime) compileFastScalar(expression syntaxfront.Expr, paramet
 		if !leftOK || !rightOK {
 			return nil, false
 		}
-		operator := expression.Text
+		operator, ok := compileFastInfixOperator(expression.Text)
+		if !ok {
+			return nil, false
+		}
 		return func(ctx context.Context, input int64) (fastScalar, bool, error) {
 			leftValue, ok, err := left(ctx, input)
 			if err != nil || !ok || leftValue.isBool {
@@ -1322,7 +1325,8 @@ func (r *languageRuntime) compileFastScalar(expression syntaxfront.Expr, paramet
 			if err != nil || !ok || rightValue.isBool {
 				return fastScalar{}, false, err
 			}
-			return evaluateFastInfix(operator, leftValue.integer, rightValue.integer)
+			value, matched := operator.execute(leftValue.integer, rightValue.integer)
+			return value, matched, nil
 		}, true
 	case "application":
 		if expression.Func == nil || expression.Func.Variant != "name" || expression.Arg == nil {
@@ -1360,6 +1364,63 @@ func (r *languageRuntime) compileFastScalar(expression syntaxfront.Expr, paramet
 		}, true
 	}
 	return nil, false
+}
+
+type fastInfixOperator struct {
+	name    string
+	execute func(int64, int64) (fastScalar, bool)
+}
+
+func (operator fastInfixOperator) disassemble() string { return operator.name }
+
+func fastInfixInstruction(name string, execute func(int64, int64) (fastScalar, bool)) fastInfixOperator {
+	return fastInfixOperator{name: name, execute: execute}
+}
+
+func compileFastInfixOperator(operator string) (fastInfixOperator, bool) {
+	switch operator {
+	case "+":
+		return fastInfixInstruction("add", func(left, right int64) (fastScalar, bool) {
+			value, ok := smallAdd(left, right)
+			return fastScalar{integer: value}, ok
+		}), true
+	case "-":
+		return fastInfixInstruction("subtract", func(left, right int64) (fastScalar, bool) {
+			value, ok := smallSub(left, right)
+			return fastScalar{integer: value}, ok
+		}), true
+	case "*":
+		return fastInfixInstruction("multiply", func(left, right int64) (fastScalar, bool) {
+			value, ok := smallMul(left, right)
+			return fastScalar{integer: value}, ok
+		}), true
+	case "=":
+		return fastInfixInstruction("equal", func(left, right int64) (fastScalar, bool) {
+			return fastScalar{isBool: true, boolean: left == right}, true
+		}), true
+	case "~=":
+		return fastInfixInstruction("not-equal", func(left, right int64) (fastScalar, bool) {
+			return fastScalar{isBool: true, boolean: left != right}, true
+		}), true
+	case "<":
+		return fastInfixInstruction("less", func(left, right int64) (fastScalar, bool) {
+			return fastScalar{isBool: true, boolean: left < right}, true
+		}), true
+	case "<=":
+		return fastInfixInstruction("less-equal", func(left, right int64) (fastScalar, bool) {
+			return fastScalar{isBool: true, boolean: left <= right}, true
+		}), true
+	case ">":
+		return fastInfixInstruction("greater", func(left, right int64) (fastScalar, bool) {
+			return fastScalar{isBool: true, boolean: left > right}, true
+		}), true
+	case ">=":
+		return fastInfixInstruction("greater-equal", func(left, right int64) (fastScalar, bool) {
+			return fastScalar{isBool: true, boolean: left >= right}, true
+		}), true
+	default:
+		return fastInfixOperator{}, false
+	}
 }
 
 func evaluateFastInfix(operator string, left, right int64) (fastScalar, bool, error) {

@@ -255,6 +255,18 @@ recursive interpretation of verbose syntax nodes.
 - At least the dominant expression shapes execute through the IR.
 - CPU profiles show reduced recursive evaluator and syntax-node overhead.
 
+### Result recorded 2026-08-02
+
+The first executable IR tier covers the dominant compiled-scalar infix shapes.
+Operators are lowered once to compact, named instructions with direct execution
+entries; deterministic disassembly tests cover every supported opcode, and all
+other expression shapes retain the existing lazy evaluator fallback. Selecting
+the operation during lowering removes the string comparison and dispatch that
+previously occurred at every recursive arithmetic step. Pattern Fibonacci 32
+improved from the Milestone 4 median of 66,275,792 ns/op to 58,214,000 ns/op
+(12.2% faster), while allocations remained effectively stable at 126 per
+top-level evaluation.
+
 ## Milestone 6: specialize thunk storage
 
 ### Objective
